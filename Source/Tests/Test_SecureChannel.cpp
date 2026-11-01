@@ -780,6 +780,7 @@ namespace
             pos += sizeof(uint32_t);
             return value;
         };
+
         auto read_bool = [&]() -> bool {
             REQUIRE(pos < message.size());
             uint8_t value = message[pos++];

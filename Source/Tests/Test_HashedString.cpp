@@ -236,6 +236,7 @@ TEST_CASE("HashedString")
         constexpr int32_t iterations = 512;
 
         threads.reserve(thread_count);
+
         for (int32_t thread_index = 0; thread_index < thread_count; thread_index++) {
             threads.emplace_back([&storage, &start, &failures, thread_index]() {
                 while (!start.load(std::memory_order_acquire)) {

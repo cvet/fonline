@@ -571,6 +571,7 @@ auto ServerEngine::InitMetadataJob() -> std::optional<timespan>
             FO_VERIFY_AND_THROW(prop, "Property not found by index");
             prop->AddSetter(std::move(callback));
         };
+
         auto set_post_setter = [](nptr<const PropertyRegistrar> registrar, int32_t prop_index, PropertyPostSetCallback callback) {
             FO_VERIFY_AND_THROW(registrar, "Missing property registrar");
             auto registrar_ptr = registrar;
@@ -869,8 +870,10 @@ void ServerEngine::OnPlayerConnected(ptr<Player> not_logged_in_player)
     scope_fail rollback_publication {[&]() noexcept {
         safe_call([&] {
             scoped_lock locker {_notLoggedInPlayersLocker};
+
             vec_remove_unique_value(_notLoggedInPlayers, not_logged_in_player.hold_ref());
         });
+
         safe_call([&] { not_logged_in_player->GetConnection()->HardDisconnect(DisconnectReason::ProtocolError); });
         safe_call([&] { not_logged_in_player->MarkAsDestroyed(); });
     }};
@@ -1180,6 +1183,7 @@ void ServerEngine::Shutdown()
     if (_workerPool) {
         logging::write("Shutdown stage: workerPool.reset");
         scoped_lock sync_locker {_syncLocker};
+
         _workerPool.reset();
     }
 
@@ -1383,6 +1387,7 @@ auto ServerEngine::RunInQuiescence(optional<timespan> max_wait_time, const Quies
     bool admission_was_open;
     {
         scoped_lock admission_locker {_connectionAdmissionLocker};
+
         admission_was_open = _connectionAdmissionOpen;
         _connectionAdmissionOpen = false;
     }
@@ -1390,6 +1395,7 @@ auto ServerEngine::RunInQuiescence(optional<timespan> max_wait_time, const Quies
     auto restore_admission = scope_exit([this, admission_was_open]() noexcept {
         safe_call([this, admission_was_open] {
             scoped_lock admission_locker {_connectionAdmissionLocker};
+
             _connectionAdmissionOpen = admission_was_open;
         });
     });
@@ -1409,6 +1415,7 @@ auto ServerEngine::RunInQuiescence(optional<timespan> max_wait_time, const Quies
     vector<refcount_ptr<Player>> not_logged_in_players;
     {
         scoped_lock locker {_notLoggedInPlayersLocker};
+
         not_logged_in_players = _notLoggedInPlayers;
     }
 
@@ -1598,6 +1605,7 @@ void ServerEngine::DrawGui()
             ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
             return true;
         }
+
         return false;
     };
 
@@ -1736,6 +1744,7 @@ void ServerEngine::DrawGui()
         case CritterCondition::Dead:
             return "Dead";
         }
+
         return "?";
     };
 
@@ -2616,6 +2625,7 @@ void ServerEngine::UnloadCritter(ptr<Critter> cr)
     cr->Broadcast_Action(CritterAction::Disconnect, 0, nullptr);
 
     refcount_nptr<Map> map {};
+
     if (cr->GetMapId()) {
         map = require_refcount_ptr(cr->GetParent<Map>());
     }
@@ -3017,6 +3027,7 @@ void ServerEngine::LoadReportedHashes()
 
     {
         scoped_lock locker {_reportedHashesLocker};
+
         _reportedStrings.insert(loaded.begin(), loaded.end());
         total = _reportedStrings.size();
     }
@@ -3074,6 +3085,7 @@ void ServerEngine::RegisterClientReportedHash(ptr<ServerConnection> connection, 
         bool first_report;
         {
             scoped_lock locker {_reportedHashesLocker};
+
             first_report = _unresolvableReportedHashes.emplace(hash).second;
         }
 
@@ -3451,6 +3463,7 @@ void ServerEngine::RequirePlayerPreLogin(ptr<Player> not_logged_in_player)
 
     if (not_logged_in_player->IsDestroyed()) {
         scoped_lock locker {_notLoggedInPlayersLocker};
+
         auto it = std::ranges::find(_notLoggedInPlayers, player_holder);
 
         if (it != _notLoggedInPlayers.end()) {
@@ -4219,6 +4232,7 @@ void ServerEngine::Process_Property(ptr<Player> player)
         if (prop) {
             entity = this;
         }
+
         break;
     case NetProperty::Player:
         prop = get_property(GetPropertyRegistrar(PlayerProperties::ENTITY_TYPE_NAME), property_index);
@@ -4226,6 +4240,7 @@ void ServerEngine::Process_Property(ptr<Player> player)
         if (prop) {
             entity = player;
         }
+
         break;
     case NetProperty::Critter:
         is_public = true;
@@ -4234,6 +4249,7 @@ void ServerEngine::Process_Property(ptr<Player> player)
         if (prop) {
             entity = EntityMngr.GetCritter(cr_id);
         }
+
         break;
     case NetProperty::Chosen:
         prop = get_property(GetPropertyRegistrar(CritterProperties::ENTITY_TYPE_NAME), property_index);
@@ -4241,6 +4257,7 @@ void ServerEngine::Process_Property(ptr<Player> player)
         if (prop) {
             entity = cr;
         }
+
         break;
     case NetProperty::MapItem:
         is_public = true;
@@ -4249,6 +4266,7 @@ void ServerEngine::Process_Property(ptr<Player> player)
         if (prop) {
             entity = EntityMngr.GetItem(item_id);
         }
+
         break;
     case NetProperty::CritterItem:
         is_public = true;
@@ -4265,6 +4283,7 @@ void ServerEngine::Process_Property(ptr<Player> player)
                 }
             }
         }
+
         break;
     case NetProperty::ChosenItem:
         prop = get_property(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), property_index);
@@ -4278,6 +4297,7 @@ void ServerEngine::Process_Property(ptr<Player> player)
                 }
             }
         }
+
         break;
     case NetProperty::Map:
         is_public = true;
@@ -4288,6 +4308,7 @@ void ServerEngine::Process_Property(ptr<Player> player)
                 entity = cr->GetParent<Map>();
             }
         }
+
         break;
     case NetProperty::Location:
         is_public = true;
@@ -4302,6 +4323,7 @@ void ServerEngine::Process_Property(ptr<Player> player)
                 }
             }
         }
+
         break;
     default:
         break;
@@ -4661,6 +4683,7 @@ void ServerEngine::ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map)
             if (cr->GetHex() != expected_hex) {
                 return false;
             }
+
             return true;
         };
 
@@ -4900,6 +4923,7 @@ auto ServerEngine::ReconcileCritterStopPosition(string_view request_name, ptr<Pl
     if (player->GetConnection()->IsHardDisconnected() || player->GetConnection()->IsGracefulDisconnected()) {
         return false;
     }
+
     auto controlled_cr = player->GetControlledCritter();
     nptr<Critter> expected_cr = cr;
 
@@ -4989,6 +5013,7 @@ auto ServerEngine::MoveCritterToStopHex(ptr<Critter> cr, ptr<Map> map, mpos targ
         if (cr->GetHex() != target_hex) {
             return false;
         }
+
         return true;
     };
 

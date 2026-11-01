@@ -1261,6 +1261,7 @@ void MapManager::RemoveCritterFromMap(ptr<Critter> cr, nptr<Map> map)
 
         // Notify spectators
         map->RefreshAreaSpectators(cr, true);
+
         if (map->HasSpectatorPlayers()) {
             for (ptr<Player> player : copy_hold_ref(map->GetSpectatorPlayers())) {
                 if (!player->IsAreaView()) {

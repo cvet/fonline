@@ -244,6 +244,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
         auto vertex_pass_text = make_ptr(vertex_pass_content.c_str());
         const char* vertex_strings[] = {shader_version_text.get(), shader_defines_text.get(), shader_defines_ex_text.get(), shader_defines_ex2_text.get(), shader_common_text.get(), vertex_pass_text.get()};
         vert.setStrings(vertex_strings, 6);
+
         if (!vert.parse(GetDefaultResources(), shader_version, true, EShMessages::EShMsgDefault)) {
             throw EffectBakerException("Failed to parse vertex shader", fname, pass, MakeShaderCompilerInfoLogForMessage(vert.getInfoLog()));
         }
@@ -256,6 +257,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
         auto fragment_pass_text = make_ptr(fragment_pass_content.c_str());
         const char* fragment_strings[] = {shader_version_text.get(), shader_defines_text.get(), shader_defines_ex_text.get(), shader_defines_ex2_text.get(), shader_common_text.get(), fragment_pass_text.get()};
         frag.setStrings(fragment_strings, 6);
+
         if (!frag.parse(GetDefaultResources(), shader_version, true, EShMessages::EShMsgDefault)) {
             throw EffectBakerException("Failed to parse fragment shader", fname, pass, MakeShaderCompilerInfoLogForMessage(frag.getInfoLog()));
         }

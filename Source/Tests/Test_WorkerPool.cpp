@@ -42,12 +42,15 @@ FO_BEGIN_NAMESPACE
 static auto WaitFor(function<bool()> predicate, std::chrono::milliseconds max_wait = std::chrono::milliseconds {500}) -> bool
 {
     auto deadline = std::chrono::steady_clock::now() + max_wait;
+
     while (std::chrono::steady_clock::now() < deadline) {
         if (predicate()) {
             return true;
         }
+
         std::this_thread::sleep_for(std::chrono::milliseconds {1});
     }
+
     return predicate();
 }
 
@@ -134,11 +137,14 @@ TEST_CASE("WorkerPoolKeyed")
         // First job: blocks until release flag flips, occupying the worker
         pool.Submit(gate_key, [&]() -> std::optional<timespan> {
             blocker_acquired.fetch_add(1);
+
             while (blocker_release.load() == 0) {
                 std::this_thread::sleep_for(std::chrono::milliseconds {1});
             }
+
             return std::nullopt;
         });
+
         REQUIRE(WaitFor([&] { return blocker_acquired.load() == 1; }));
 
         // Now another key, submitted many times — second and beyond should be dropped (queued dedup)
@@ -148,6 +154,7 @@ TEST_CASE("WorkerPoolKeyed")
                 return std::nullopt;
             });
         }
+
         CHECK(pool.IsKeyActive(dup_key));
 
         blocker_release.store(1);
@@ -168,9 +175,11 @@ TEST_CASE("WorkerPoolKeyed")
 
         pool.Submit(key, [&]() -> std::optional<timespan> {
             run_count.fetch_add(1);
+
             while (gate.load() == 0) {
                 std::this_thread::sleep_for(std::chrono::milliseconds {1});
             }
+
             return std::nullopt;
         });
 
@@ -207,9 +216,11 @@ TEST_CASE("WorkerPoolKeyed")
         pool.Submit(key, [&]() -> std::optional<timespan> {
             run_count.fetch_add(1);
             first_run_started.store(true);
+
             while (first_run_release.load() == 0) {
                 std::this_thread::sleep_for(std::chrono::milliseconds {1});
             }
+
             return std::nullopt;
         });
 
@@ -244,6 +255,7 @@ TEST_CASE("WorkerPoolKeyed")
             player_runs.fetch_add(1);
             return std::nullopt;
         });
+
         pool.Submit(critter_key, [&]() -> std::optional<timespan> {
             critter_runs.fetch_add(1);
             return std::nullopt;
@@ -322,11 +334,14 @@ TEST_CASE("WorkerPoolWake")
             int32_t n = runs.fetch_add(1, std::memory_order_relaxed) + 1;
             if (n == 1) {
                 first_run_started.store(true);
+
                 while (first_run_release.load() == 0) {
                     std::this_thread::sleep_for(std::chrono::milliseconds {1});
                 }
+
                 return std::optional<timespan> {std::chrono::seconds {5}};
             }
+
             return std::nullopt;
         });
 
@@ -358,17 +373,21 @@ TEST_CASE("WorkerPoolCancel")
 
         pool.Submit(gate_key, [&]() -> std::optional<timespan> {
             gate_run.fetch_add(1);
+
             while (gate_release.load() == 0) {
                 std::this_thread::sleep_for(std::chrono::milliseconds {1});
             }
+
             return std::nullopt;
         });
+
         REQUIRE(WaitFor([&] { return gate_run.load() == 1; }));
 
         pool.Submit(target_key, [&]() -> std::optional<timespan> {
             target_runs.fetch_add(1);
             return std::nullopt;
         });
+
         CHECK(pool.IsKeyActive(target_key));
 
         bool cancelled = pool.Cancel(target_key);
@@ -392,6 +411,7 @@ TEST_CASE("WorkerPoolCancel")
         pool.Submit(key, [&]() -> std::optional<timespan> {
             runs.fetch_add(1);
             first_started.store(true);
+
             while (first_release.load() == 0) {
                 std::this_thread::sleep_for(std::chrono::milliseconds {1});
             }
@@ -421,11 +441,14 @@ TEST_CASE("WorkerPoolCancel")
         pool.Submit(key, [&]() -> std::optional<timespan> {
             runs.fetch_add(1);
             first_started.store(true);
+
             while (first_release.load() == 0) {
                 std::this_thread::sleep_for(std::chrono::milliseconds {1});
             }
+
             return std::nullopt;
         });
+
         REQUIRE(WaitFor([&] { return first_started.load(); }));
 
         CHECK(pool.Cancel(key));
@@ -503,9 +526,11 @@ TEST_CASE("WorkerPoolClearAndParallelism")
                 // Self-reschedule — but Clear() should suppress this rerun
                 return std::optional<timespan> {std::chrono::milliseconds {1}};
             }
+
             gate_reruns.fetch_add(1);
             return std::nullopt;
         });
+
         REQUIRE(WaitFor([&] { return gate_started.load() == 1; }));
 
         for (int i = 0; i < 20; i++) {
@@ -606,6 +631,7 @@ TEST_CASE("WorkerPoolConcurrentChaos")
                         if (i % 512 == 511) {
                             pool.Clear();
                         }
+
                         break;
                     default:
                         break;
@@ -646,9 +672,11 @@ TEST_CASE("WorkerPoolWaitIdleTimeout")
 
         pool.Submit([&]() -> std::optional<timespan> {
             started.fetch_add(1);
+
             while (release.load() == 0) {
                 std::this_thread::sleep_for(std::chrono::milliseconds {1});
             }
+
             return std::nullopt;
         });
 
@@ -691,6 +719,7 @@ TEST_CASE("WorkerPoolCountsAnonymousScheduledJobsIncrementally")
         ran++;
         return std::nullopt;
     });
+
     pool.Resume();
     REQUIRE(WaitFor([&] { return ran.load() == 1; }, std::chrono::milliseconds {2000}));
     pool.WaitIdle();

@@ -549,6 +549,7 @@ static auto Any_Conv(const any_t& self) -> T
         if (strvex(self).is_explicit_bool()) {
             return strvex(self).to_bool() ? 1 : 0;
         }
+
         return numeric_cast<T>(strvex(self).to_int64());
     }
     else if constexpr (std::floating_point<T>) {

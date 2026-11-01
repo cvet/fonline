@@ -181,6 +181,7 @@ void NetworkServerConnection_WebSockets<Secured>::Start()
             OnMessage(msg);
         }
     });
+
     connection->set_fail_handler([weak_self, this](auto&& hdl) FO_DEFERRED {
         auto self = weak_self.lock();
 
@@ -188,6 +189,7 @@ void NetworkServerConnection_WebSockets<Secured>::Start()
             OnFail(hdl);
         }
     });
+
     connection->set_close_handler([weak_self, this](auto&& hdl) FO_DEFERRED {
         auto self = weak_self.lock();
 
@@ -195,6 +197,7 @@ void NetworkServerConnection_WebSockets<Secured>::Start()
             OnClose(hdl);
         }
     });
+
     connection->set_http_handler([weak_self, this](auto&& hdl) FO_DEFERRED {
         auto self = weak_self.lock();
 

@@ -177,6 +177,7 @@ void ParticleViewer::Draw()
     if (ImGui::BeginChild("Particles", {260.0f, 0.0f}, ImGuiChildFlags_Borders)) {
         DrawResourceList();
     }
+
     ImGui::EndChild();
 
     ImGui::SameLine();
@@ -184,6 +185,7 @@ void ParticleViewer::Draw()
     if (ImGui::BeginChild("Preview", {0.0f, 0.0f}, ImGuiChildFlags_Borders)) {
         DrawPreview();
     }
+
     ImGui::EndChild();
 
     ImGui::End();
@@ -320,12 +322,14 @@ void ParticleViewer::DrawControls()
     ImGui::InputInt("Seed", &_seed);
 
     ImGui::SameLine();
+
     if (ImGui::Button("New seed")) {
         _seed++;
         PlayCurrent();
     }
 
     ImGui::SameLine();
+
     if (ImGui::Button("Replay")) {
         PlayCurrent();
     }
@@ -564,6 +568,7 @@ void ParticleViewer::DrawOverlays(ipos32 sprite_pos, isize32 sprite_size, float3
         lines.emplace_back(PrimitivePoint {.PointPos = a, .PointColor = color});
         lines.emplace_back(PrimitivePoint {.PointPos = b, .PointColor = color});
     };
+
     auto add_rect = [&](irect32 sprite_rect, ucolor color) {
         ipos32 tl = to_screen({sprite_rect.x, sprite_rect.y});
         ipos32 tr = to_screen({sprite_rect.x + sprite_rect.width, sprite_rect.y});

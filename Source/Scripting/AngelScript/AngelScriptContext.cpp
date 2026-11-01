@@ -254,9 +254,11 @@ auto AngelScriptContextManager::RequestContext() -> ptr<AngelScript::asIScriptCo
 
     ctx_ext->Parent = parent_ctx;
     ctx_ext->Root = root_ctx;
+
     if (!ctx_ext->Root) {
         ctx_ext->Root = ctx.get();
     }
+
     ctx_ext->Exception = {};
     ctx_ext->ExecutionSuspended.store(false);
 
@@ -742,6 +744,7 @@ static void AngelScriptException(AngelScript::asIScriptContext* raw_ctx, void* p
     backend->IncreaseExceptionCounter();
 
     nptr<AngelScript::asIScriptContext> ctx_iter = ctx;
+
     while (ctx_iter) {
         auto ctx_ext = GetAngelScriptContextData(ctx_iter);
         FO_VERIFY_AND_THROW(ctx_ext, "Missing extended script execution context");

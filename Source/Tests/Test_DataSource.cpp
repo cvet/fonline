@@ -362,9 +362,11 @@ static auto MakeFallout2Dat(string_view file_name, string_view file_content) -> 
     AppendLe32(tree, 1);
     AppendLe32(tree, name_size);
     tree.append(file_name);
+
     if (terminated) {
         tree.push_back('\0');
     }
+
     AppendLe32(tree, 0);
     AppendLe32(tree, flags);
     AppendLe32(tree, real_size);

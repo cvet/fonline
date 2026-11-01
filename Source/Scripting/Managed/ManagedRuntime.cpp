@@ -106,6 +106,7 @@ auto RestoreManagedRuntimeResources(const FileSystem& resources, string_view cac
     }
 
     scoped_lock restore_locker {ManagedRuntimeRestoreLocker};
+
     auto runtime_cache_root = std::filesystem::path {fs::make_path(cache_dir)} / fs::make_path(MANAGED_RUNTIME_RESOURCE_DIR);
     string cache_key = MakeManagedRuntimeCacheKey(runtime_resources);
     auto cache_root = runtime_cache_root / fs::make_path(cache_key);

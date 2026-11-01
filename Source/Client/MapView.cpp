@@ -642,6 +642,7 @@ void MapView::AddItemToField(ptr<ItemHexView> item)
 
     auto item_spr = item->GetSprite();
     FO_VERIFY_AND_THROW(item_spr, "Item is missing its sprite");
+
     if (!MeasureMapBorders(item_spr, item->GetSpriteOffset()) && !_mapLoading) {
         if (IsHexToDraw(hex)) {
             DrawHexItem(item, field, hex, false);
@@ -2408,6 +2409,7 @@ void MapView::InvalidateSpriteChain(ptr<Field> field)
 {
     if (field->SpriteChain) {
         FO_VERIFY_AND_THROW(field->SpriteChain->IsValid(), "Map field sprite chain is invalid");
+
         while (field->SpriteChain) {
             FO_VERIFY_AND_THROW(field->SpriteChain->IsValid(), "Map field sprite chain is invalid");
             field->SpriteChain->Invalidate();
@@ -2770,9 +2772,11 @@ void MapView::DrawFogSlot(const irect32& draw_area, DrawOrderType draw_order)
             if (flush_effect->IsNeedScriptValueBuf() && fog_points.size() >= 3) {
                 auto to_target = [&draw_area](const PrimitivePoint& p) -> ipos32 {
                     ipos32 pos = p.PointPos;
+
                     if (p.PointOffset) {
                         pos += *p.PointOffset;
                     }
+
                     return pos - ipos32 {draw_area.x, draw_area.y};
                 };
 
@@ -3830,6 +3834,7 @@ auto MapView::GetCritterAtScreen(ipos32 screen_pos, bool ignore_dead_and_chosen,
     if (!best) {
         return {};
     }
+
     return {best, best_mspr};
 }
 
@@ -3980,6 +3985,7 @@ void MapView::TraceBullet(mpos start_hex, mpos target_hex, int32_t dist, float32
 
         if (critters) {
             auto hex_critters = GetCrittersOnHex(next_hex, find_type);
+
             for (ptr<CritterHexView> cr : hex_critters) {
                 critters->emplace_back(cr);
             }

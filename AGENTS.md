@@ -104,8 +104,10 @@ in versioned docs; sanitize evidence.
   initialization/validation; a formatter cannot infer these groups.
   Surround complete control-flow statements with blank lines; adjacent statements
   of the same construct may form a run. Preprocessor directives do not change this
-  spacing. Put a blank line before a comment and none between it and its following
-  block. Edited source ends with
+  spacing. A comment never requires a preceding blank line, in any context, including
+  function/lambda bodies, enums and struct/class member lists. Choose blank lines
+  from the semantic grouping of the code; keep comments attached to what they describe.
+  Edited source ends with
   exactly one trailing blank line. Reuse MIT headers and `#pragma once`.
   Manually review changed semantic groups and control-flow blocks in the final diff;
   neither a formatter nor `git diff --check` verifies these spacing rules.

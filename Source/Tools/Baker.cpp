@@ -1022,6 +1022,7 @@ auto BakerDataSource::Reindex() -> bool
             WriteData(res_pack_name, path, data);
             return BakingWriteResult::Changed;
         };
+
         res_entry.Bakers = BaseBaker::SetupBakers(res_pack.Bakers, res_pack.Name, *_settings, bake_checker, write_data, &_outputResources);
 
         // Live sources: the on-demand baker serves editors and viewers whose content is edited while the tool runs,

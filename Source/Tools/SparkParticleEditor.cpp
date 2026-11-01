@@ -139,6 +139,7 @@ private:
 
         ImGui::InputTextWithHint("##SparkParticleEditorFilter", "Search .spark sources...", _filterBuf.data(), _filterBuf.size());
         ImGui::SameLine();
+
         if (ImGui::Button("Refresh")) {
             RefreshResources();
         }
@@ -158,6 +159,7 @@ private:
                 }
             }
         }
+
         ImGui::EndChild();
         ImGui::End();
     }
@@ -453,13 +455,17 @@ auto SparkParticleEditor::Draw() -> bool
                 ImGui::CloseCurrentPopup();
             }
         }
+
         ImGui::SameLine();
+
         if (ImGui::Button("Discard and close")) {
             DiscardChanges();
             keep_open = false;
             ImGui::CloseCurrentPopup();
         }
+
         ImGui::SameLine();
+
         if (ImGui::Button("Cancel")) {
             _saveError.clear();
             ImGui::CloseCurrentPopup();
@@ -507,12 +513,14 @@ void SparkParticleEditor::DrawContent()
 
         if (_changed) {
             ImGui::SameLine();
+
             if (ImGui::Button("Discard")) {
                 DiscardChanges();
             }
 
             if (can_save_source) {
                 ImGui::SameLine();
+
                 if (ImGui::Button("Save")) {
                     (void)SaveChanges();
                 }
@@ -527,11 +535,13 @@ void SparkParticleEditor::DrawContent()
             }
         }
     }
+
     ImGui::EndChild();
 
     if (ImGui::BeginChild("Hierarchy")) {
         _impl->DrawGenericSparkObject(GetSparkParticleRuntimeSystem(&_impl->_particle.value())->GetEditableBaseSystem());
     }
+
     ImGui::EndChild();
 
     _changed |= _impl->_changed;
@@ -573,12 +583,14 @@ void SparkParticleEditor::DrawContent()
 
     draw_list->AddLine({pos.x + frame_width / 2.0f, pos.y}, {pos.x + frame_width / 2.0f, pos.y + frame_height}, border_col);
     draw_list->AddLine({pos.x, pos.y + frame_height - frame_height / 4.0f}, {pos.x + frame_width, pos.y + frame_height - frame_height / 4.0f}, border_col);
+
     if (GetApp()->Render.IsRenderTargetFlipped()) {
         draw_list->AddImage(_impl->_renderTarget.get(), pos, {pos.x + frame_width, pos.y + frame_height}, {0.0f, 1.0f}, {1.0f, 0.0f});
     }
     else {
         draw_list->AddImage(_impl->_renderTarget.get(), pos, {pos.x + frame_width, pos.y + frame_height}, {0.0f, 0.0f}, {1.0f, 1.0f});
     }
+
     draw_list->AddRect({pos.x - 1.0f, pos.y - 1.0f}, {pos.x + frame_width + 2.0f, pos.y + frame_height + 2.0f}, border_col);
 
     if (!_impl->_particle->IsActive() && _autoReplay) {
@@ -760,6 +772,7 @@ void SparkParticleEditor::Impl::DrawGenericSparkObject(const SPK::Ref<SPK::SPKOb
     if (_namingMode) {
         char buf[1000];
         strcpy(buf, obj->getName().c_str());
+
         if (ImGui::InputText("Name", buf, 1000)) {
             _changed |= true;
             obj->setName(buf);
@@ -1075,9 +1088,11 @@ void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FloatGraphIn
 
         if (delIndex != -1) {
             auto it = graph.begin();
+
             for (int32_t i = 0; i < delIndex; i++) {
                 ++it;
             }
+
             graph.erase(it);
         }
 
@@ -1141,9 +1156,11 @@ void SparkParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ColorGraphIn
 
         if (delIndex != -1) {
             auto it = graph.begin();
+
             for (int32_t i = 0; i < delIndex; i++) {
                 ++it;
             }
+
             graph.erase(it);
         }
 
@@ -1268,6 +1285,7 @@ void SparkParticleEditor::Impl::DrawSparkEmitter(const SPK::Ref<SPK::Emitter>& o
     bool min_changed = _changed |= ImGui::InputInt("MinTank", &min_tank);
     int32_t max_tank = obj->getMaxTank();
     _changed |= ImGui::InputInt("MaxTank", &max_tank);
+
     if ((min_tank >= 0) != (max_tank >= 0)) {
         if (min_changed) {
             max_tank = min_tank;
@@ -1276,6 +1294,7 @@ void SparkParticleEditor::Impl::DrawSparkEmitter(const SPK::Ref<SPK::Emitter>& o
             min_tank = max_tank;
         }
     }
+
     obj->setTank(min_tank, max_tank);
 
     DRAW_SPK_FLOAT("Flow", getFlow, setFlow);

@@ -341,6 +341,7 @@ TEST_CASE("PathFinding::FindPath")
 
         // Walk the path and verify each step moves to a valid adjacent hex
         mpos cur = from;
+
         for (const auto& step : output.Steps) {
             ipos32 raw = ipos32 {cur.x, cur.y};
             GeometryHelper::MoveHexByDirUnsafe(raw, step);
@@ -360,6 +361,7 @@ TEST_CASE("PathFinding::FindPath")
         REQUIRE(!output.ControlSteps.empty());
 
         uint16_t prev = 0;
+
         for (auto cs : output.ControlSteps) {
             CHECK(cs > prev);
             prev = cs;
@@ -398,8 +400,10 @@ TEST_CASE("PathFinding::FindPath")
             if (hex == gag_hex) {
                 return HexBlockResult::DeferGag;
             }
+
             return HexBlockResult::Passable;
         };
+
         auto output = PathFinding::FindPath(settings);
 
         CHECK(output.Result == FindPathOutput::ResultType::Ok);
@@ -416,8 +420,10 @@ TEST_CASE("PathFinding::FindPath")
             if (hex.x == 7) {
                 return HexBlockResult::DeferGag;
             }
+
             return HexBlockResult::Passable;
         };
+
         auto output = PathFinding::FindPath(settings);
 
         CHECK(output.Result == FindPathOutput::ResultType::Ok);
@@ -434,8 +440,10 @@ TEST_CASE("PathFinding::FindPath")
             if (hex == critter_hex) {
                 return HexBlockResult::DeferCritter;
             }
+
             return HexBlockResult::Passable;
         };
+
         auto output = PathFinding::FindPath(settings);
 
         CHECK(output.Result == FindPathOutput::ResultType::Ok);
@@ -450,8 +458,10 @@ TEST_CASE("PathFinding::FindPath")
             if (hex.x == 7) {
                 return HexBlockResult::DeferCritter;
             }
+
             return HexBlockResult::Passable;
         };
+
         auto output = PathFinding::FindPath(settings);
 
         CHECK(output.Result == FindPathOutput::ResultType::Ok);
@@ -470,8 +480,10 @@ TEST_CASE("PathFinding::FindPath")
             if (hex.x == 8) {
                 return HexBlockResult::DeferCritter;
             }
+
             return HexBlockResult::Passable;
         };
+
         auto output = PathFinding::FindPath(settings);
 
         CHECK(output.Result == FindPathOutput::ResultType::Ok);
@@ -516,8 +528,10 @@ TEST_CASE("PathFinding::FindPath")
             if (hex.x == 55) {
                 return HexBlockResult::Blocked;
             }
+
             return HexBlockResult::Passable;
         };
+
         auto output = PathFinding::FindPath(settings);
 
         // Full x=55 column blocked; multihex must route around or fail
@@ -542,8 +556,10 @@ TEST_CASE("PathFinding::FindPath")
             if (hex == mpos {105, 99}) {
                 return HexBlockResult::DeferCritter;
             }
+
             return HexBlockResult::Passable;
         };
+
         auto output = PathFinding::FindPath(settings);
 
         CHECK(output.Result == FindPathOutput::ResultType::Ok);
@@ -561,8 +577,10 @@ TEST_CASE("PathFinding::FindPath")
             if (hex.x == 105) {
                 return HexBlockResult::DeferGag;
             }
+
             return HexBlockResult::Passable;
         };
+
         auto output = PathFinding::FindPath(settings);
 
         CHECK(output.Result == FindPathOutput::ResultType::Ok);
@@ -613,12 +631,14 @@ TEST_CASE("PathFinding::FindPath")
 
         // Walk path and verify end point
         mpos cur = from;
+
         for (const auto& step : output.Steps) {
             ipos32 raw = ipos32 {cur.x, cur.y};
             GeometryHelper::MoveHexByDirUnsafe(raw, step);
             REQUIRE(TEST_MAP_SIZE.is_valid_pos(raw));
             cur = TEST_MAP_SIZE.from_raw_pos(raw);
         }
+
         CHECK(cur == output.NewToHex);
     }
 
@@ -635,6 +655,7 @@ TEST_CASE("PathFinding::FindPath")
         set<uint32_t> visited;
         mpos cur = from;
         visited.insert(cur.x * 1000 + cur.y);
+
         for (const auto& step : output.Steps) {
             ipos32 raw = ipos32 {cur.x, cur.y};
             GeometryHelper::MoveHexByDirUnsafe(raw, step);
@@ -661,14 +682,17 @@ TEST_CASE("PathFinding::FindPath")
 
         // Each control step segment uses a single direction (non-free movement)
         uint16_t prev_cs = 0;
+
         for (auto cs : output.ControlSteps) {
             // All steps in [prev_cs, cs) should be the same direction
             if (cs > prev_cs + 1) {
                 auto dir = output.Steps[prev_cs];
+
                 for (int32_t j = prev_cs + 1; j < cs; j++) {
                     CHECK(output.Steps[j] == dir);
                 }
             }
+
             prev_cs = cs;
         }
     }
@@ -703,12 +727,14 @@ TEST_CASE("PathFinding::FindPath")
 
         // Walk the path and verify we end at the target
         mpos cur = from;
+
         for (const auto& step : output.Steps) {
             ipos32 raw = ipos32 {cur.x, cur.y};
             GeometryHelper::MoveHexByDirUnsafe(raw, step);
             REQUIRE(TEST_MAP_SIZE.is_valid_pos(raw));
             cur = TEST_MAP_SIZE.from_raw_pos(raw);
         }
+
         CHECK(cur == output.NewToHex);
         CHECK(output.NewToHex == to);
     }
@@ -810,8 +836,10 @@ TEST_CASE("PathFinding::FindPath")
             if (hex.x == 15 && hex.y != 10) {
                 return true;
             }
+
             return false;
         });
+
         auto output = PathFinding::FindPath(settings);
 
         CHECK(output.Result == FindPathOutput::ResultType::Ok);
@@ -1150,6 +1178,7 @@ TEST_CASE("PathFinding::AStar")
             calls++;
             return HexBlockResult::Passable;
         };
+
         auto output = PathFinding::FindPath(settings);
 
         CHECK(output.Result == FindPathOutput::ResultType::TooFar);
@@ -1168,6 +1197,7 @@ TEST_CASE("PathFinding::AStar")
             calls++;
             return HexBlockResult::Passable;
         };
+
         auto output = PathFinding::FindPath(settings);
 
         int32_t distance = GeometryHelper::GetDistance(mpos {50, 150}, mpos {250, 150});
@@ -1200,6 +1230,7 @@ TEST_CASE("PathFinding::AStar")
 
                 return hex.x == 30 && hex.y != gap_y ? HexBlockResult::Blocked : HexBlockResult::Passable;
             };
+
             auto output = PathFinding::FindPath(settings);
             REQUIRE(output.Result == FindPathOutput::ResultType::Ok);
 
@@ -1299,6 +1330,7 @@ TEST_CASE("PathFinding::AStar")
             calls++;
             return GeometryHelper::GetDistance(hex, target) <= 1 ? HexBlockResult::DeferCritter : HexBlockResult::Passable;
         };
+
         auto output = PathFinding::FindPath(settings);
 
         REQUIRE(output.Result == FindPathOutput::ResultType::Ok);
@@ -1320,6 +1352,7 @@ TEST_CASE("PathFinding::AStar")
             calls++;
             return hex == target ? HexBlockResult::DeferCritter : HexBlockResult::Passable;
         };
+
         auto output = PathFinding::FindPath(settings);
 
         REQUIRE(output.Result == FindPathOutput::ResultType::Ok);
@@ -1346,6 +1379,7 @@ TEST_CASE("PathFinding::AStar")
 
             return GeometryHelper::GetDistance(hex, free_hex) == 1 && GeometryHelper::GetDistance(hex, target) > 1 ? HexBlockResult::Blocked : HexBlockResult::Passable;
         };
+
         auto output = PathFinding::FindPath(settings);
 
         REQUIRE(output.Result == FindPathOutput::ResultType::Ok);
@@ -1489,6 +1523,7 @@ TEST_CASE("PathFinding::FindReachable")
             asked.emplace(hex);
             return GeometryHelper::GetDistance(hex, POCKET_CENTER) == 2 ? HexBlockResult::Blocked : HexBlockResult::Passable;
         };
+
         vector<mpos> reachable = PathFinding::FindReachable(make_input(FAR_START, WIDE_MAP_SIZE, 1000, targets, check));
 
         CHECK(reachable.empty());
@@ -1504,6 +1539,7 @@ TEST_CASE("PathFinding::FindReachable")
             calls++;
             return HexBlockResult::Passable;
         };
+
         vector<mpos> reachable = PathFinding::FindReachable(make_input(mpos {50, 60}, WIDE_MAP_SIZE, 1000, targets, check));
 
         CHECK(reachable == targets);

@@ -160,12 +160,14 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
                 if (file_ext != ext) {
                     continue;
                 }
+
                 current_sprite_sources.emplace(file_header.GetPath());
                 maximum_source_write_time = std::max(maximum_source_write_time, file_header.GetWriteTime());
                 // The checker is handed the resource this source bakes to: what it registers is the output the master
                 // baker keeps, and a critter frame registered under its source spelling is renamed back to it
                 if (scan_mode && _context->BakeChecker) {
                     string resource_path {file_header.GetPath()};
+
                     if (loader.ResolveOutput) {
                         resource_path = loader.ResolveOutput(resource_path);
                     }
@@ -487,6 +489,7 @@ auto ImageBaker::BakeCollection(string_view fname, const ImageImport::FrameColle
     for (const SpriteMeshBakingFrameReport& frame_report : frame_reports) {
         RecordSpriteMeshBakingFrame(frame_report);
     }
+
     if (stats.SharedFrameReferences != 0) {
         RecordSharedSpriteMeshBakingFrames(stats.SharedFrameReferences);
     }

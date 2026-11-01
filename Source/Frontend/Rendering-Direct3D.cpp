@@ -654,6 +654,7 @@ Direct3D_Renderer::~Direct3D_Renderer()
     ReleaseComObjectSlot(_ctx->PointSampler);
     ReleaseComObjectSlot(_ctx->LinearSampler);
     ReleaseComObjectSlot(_ctx->SwapChain);
+
     if (_ctx->D3DDeviceContext1) {
         ReleaseComObjectSlot(_ctx->D3DDeviceContext1);
         _ctx->D3DDeviceContext = nullptr;
@@ -661,6 +662,7 @@ Direct3D_Renderer::~Direct3D_Renderer()
     else {
         ReleaseComObjectSlot(_ctx->D3DDeviceContext);
     }
+
     ReleaseComObjectSlot(_ctx->D3DDevice);
 
     _ctx->Settings = nullptr;
@@ -1400,6 +1402,7 @@ Direct3D_Effect::~Direct3D_Effect()
         ReleaseComObjectSlot(InputLayout[i]);
         ReleaseComObjectSlot(PixelShader[i]);
         ReleaseComObjectSlot(BlendState[i]);
+
         for (size_t cull_mode = 0; cull_mode < EFFECT_CULL_MODES; cull_mode++) {
             ReleaseComObjectSlot(RasterizerState[cull_mode][i]);
         }
@@ -1407,6 +1410,7 @@ Direct3D_Effect::~Direct3D_Effect()
             ReleaseComObjectSlot(DepthStencilState[i][slot]);
         }
     }
+
     ReleaseComObjectSlot(Cb_ProjBuf);
     ReleaseComObjectSlot(Cb_MainTexBuf);
     ReleaseComObjectSlot(Cb_EggBuf);

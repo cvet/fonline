@@ -162,6 +162,7 @@ auto BuildModelSkeletonCompatibilityReport(const ModelSkeletonSource& base_skele
                             GetMaxRestTransformDifference(canonical_joint_it->second.RestLocalTransform, source_joint.RestLocalTransform),
                         });
                     }
+
                     continue;
                 }
 
@@ -1002,6 +1003,7 @@ static void FillModelAnimationAuthoredTrack(const ModelAnimationJointSource& sou
                 throw ModelAnimationConverterException("Smooth track starts inside the playback window where legacy sampling has a discontinuity that ozz interpolation cannot preserve", track_name, animation_context, times.front(), duration);
             }
         };
+
         validate_smooth_window_start(source.Translation.Times, "translation");
         validate_smooth_window_start(source.Rotation.Times, "rotation");
         validate_smooth_window_start(source.Scale.Times, "scale");
@@ -1145,6 +1147,7 @@ static auto BuildModelAnimationNearestTimeline(const ModelAnimationSource& anima
                 throw ModelAnimationConverterException("Nearest-sampled animation track must contain exact keys at playback boundaries 0 and duration", animation.FileName, animation.Name, joint.OutputName, track_name, animation.Duration);
             }
         };
+
         validate_boundary_keys(joint.Translation.Times, "translation");
         validate_boundary_keys(joint.Rotation.Times, "rotation");
         validate_boundary_keys(joint.Scale.Times, "scale");
@@ -1511,13 +1514,16 @@ static auto HashModelAnimationSource(const ozz::animation::offline::RawAnimation
 
     for (const ozz::animation::offline::RawAnimation::JointTrack& track : animation.tracks) {
         HashModelAnimationUnsigned(hash, numeric_cast<uint64_t>(track.translations.size()));
+
         for (const auto& key : track.translations) {
             HashModelAnimationFloat(hash, key.time);
             HashModelAnimationFloat(hash, key.value.x);
             HashModelAnimationFloat(hash, key.value.y);
             HashModelAnimationFloat(hash, key.value.z);
         }
+
         HashModelAnimationUnsigned(hash, numeric_cast<uint64_t>(track.rotations.size()));
+
         for (const auto& key : track.rotations) {
             HashModelAnimationFloat(hash, key.time);
             HashModelAnimationFloat(hash, key.value.x);
@@ -1525,7 +1531,9 @@ static auto HashModelAnimationSource(const ozz::animation::offline::RawAnimation
             HashModelAnimationFloat(hash, key.value.z);
             HashModelAnimationFloat(hash, key.value.w);
         }
+
         HashModelAnimationUnsigned(hash, numeric_cast<uint64_t>(track.scales.size()));
+
         for (const auto& key : track.scales) {
             HashModelAnimationFloat(hash, key.time);
             HashModelAnimationFloat(hash, key.value.x);

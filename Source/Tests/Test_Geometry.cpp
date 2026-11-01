@@ -182,6 +182,7 @@ TEST_CASE("GeometryHelper")
         CHECK(map_size.is_valid_pos(pos));
         count++;
     });
+
     CHECK(count == 3);
 
     // ForEachMultihexLines edge cases
@@ -198,6 +199,7 @@ TEST_CASE("GeometryHelper")
         CHECK(pos != start);
         reverse_count++;
     });
+
     CHECK(reverse_count == 1);
 
     // HexesInRadius
@@ -349,6 +351,7 @@ TEST_CASE("GetHexPos and GetHexPosCoord")
     SECTION("GetHexPosCoord large coordinates")
     {
         const int32_t coords[] = {-100, -50, 0, 50, 100};
+
         for (int32_t rx : coords) {
             for (int32_t ry : coords) {
                 ipos32 center = GeometryHelper::GetHexPos(ipos32 {rx, ry});

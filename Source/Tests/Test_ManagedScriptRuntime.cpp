@@ -285,6 +285,7 @@ TEST_CASE("ManagedTimeEventsAwaitCompletion", "[managed][scripting][time-events]
             previous(message, trace, fatal);
         }
     });
+
     auto restore_exception_callback = scope_exit([previous = std::move(previous_exception_callback)]() mutable noexcept { exceptions::set_callback(std::move(previous)); });
 
     {
@@ -506,6 +507,7 @@ TEST_CASE("ManagedTimeEventsAwaitCompletion", "[managed][scripting][time-events]
 
                 return false;
             };
+
             REQUIRE(wait_for([&] { return live_starts.Call() && live_starts.GetResult() == 1; }));
             REQUIRE(live_server->Lock(timespan {std::chrono::seconds {10}}));
             auto unlock_modify = scope_exit([&live_server]() noexcept { safe_call([&live_server] { live_server->Unlock(); }); });

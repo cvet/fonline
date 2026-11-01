@@ -478,6 +478,7 @@ TEST_CASE("SmartPointers")
                 auto owned_value = adopt_unique_ptr(value);
                 deleted_opaque_value = *owned_value;
             });
+
             CHECK(opaque_owner.get() == raw_opaque_value.void_cast());
         }
         CHECK(deleted_opaque_value == 70);

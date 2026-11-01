@@ -521,6 +521,7 @@ void DebuggerEndpointServer::Impl::ProcessLine(ptr<AngelScript::asIScriptContext
             case DebuggerStepMode::None:
                 return false;
             }
+
             return false;
         }();
 
@@ -582,6 +583,7 @@ void DebuggerEndpointServer::Impl::Stop() noexcept
 
     {
         scoped_lock locker {_clientIoLocker};
+
         _activeClientSock.close();
     }
 
@@ -951,6 +953,7 @@ void DebuggerEndpointServer::Impl::HandleTcpClient(tcp_socket client_sock)
 
     {
         scoped_lock locker {_clientIoLocker};
+
         _activeClientSock = std::move(client_sock);
         _clientConnected = _activeClientSock.is_valid();
     }

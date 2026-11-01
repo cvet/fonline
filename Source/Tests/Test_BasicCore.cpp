@@ -88,6 +88,7 @@ TEST_CASE("ScopeSuccess", "[scope-success]")
             auto guard = scope_success([&]() noexcept { ++calls; });
             return 42;
         };
+
         CHECK(operation() == 42);
         CHECK(calls == 1);
     }
@@ -101,6 +102,7 @@ TEST_CASE("ScopeSuccess", "[scope-success]")
             });
             throw std::runtime_error("Operation failed");
         };
+
         CHECK_THROWS_WITH(operation(), "Operation failed");
         CHECK(calls == 0);
     }
@@ -113,6 +115,7 @@ TEST_CASE("ScopeSuccess", "[scope-success]")
                 throw std::runtime_error("Success callback failed");
             });
         };
+
         CHECK_THROWS_WITH(operation(), "Success callback failed");
         CHECK(calls == 1);
     }

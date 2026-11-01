@@ -107,6 +107,7 @@ TEST_CASE("LineTracer")
         mdir expected_dir = mdir(hdir::SouthEast);
 
         mpos target = start;
+
         for (int32_t step = 0; step < expected_steps; step++) {
             REQUIRE(GeometryHelper::MoveHexByDir(target, expected_dir, map_size));
         }

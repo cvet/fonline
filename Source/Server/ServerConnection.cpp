@@ -384,6 +384,7 @@ auto ServerConnection::AsyncSendData() -> vector<uint8_t>
     FO_TRACE_ZONE(Network);
 
     scoped_lock locker {_outBufLocker};
+
     scoped_lock channel_locker {_channelLocker};
 
     vector<uint8_t> send_buf;

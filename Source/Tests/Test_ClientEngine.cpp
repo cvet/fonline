@@ -167,6 +167,7 @@ TEST_CASE("ClientResourceIndexPreservesEmbeddedAndWritablePrecedence")
         (void)fs::remove_dir_tree(dir);
         (void)fs::remove_dir_tree(install);
     });
+
     string writable = strex(dir).combine_path("Writable").str();
     string overlay = fs::make_writable_path(writable, install);
 
@@ -1562,6 +1563,7 @@ TEST_CASE("DefaultSpriteFactoryValidatesBakedMeshPayload")
         data[offset] = numeric_cast<uint8_t>(value & 0xFF);
         data[offset + 1] = numeric_cast<uint8_t>(value >> 8);
     };
+
     auto write_u32 = [](vector<uint8_t>& data, size_t offset, uint32_t value) {
         data[offset] = numeric_cast<uint8_t>(value & 0xFF);
         data[offset + 1] = numeric_cast<uint8_t>((value >> 8) & 0xFF);
@@ -1880,6 +1882,7 @@ TEST_CASE("ClientEngineAnimationResolverReportsCleanupExceptions")
         *cast_from_void<uint32_t*>(call.ArgsData[3]) = spr_id;
         return resolved ? Entity::EventResult::ContinueChain : Entity::EventResult::StopChain;
     };
+
     callback.SubscriptionPtr = reinterpret_cast<uintptr_t>(&spr_id);
     client->OnCritterAnimationSprite.Subscribe(std::move(callback));
     auto unsubscribe = scope_exit([&client, &spr_id]() noexcept { client->OnCritterAnimationSprite.Unsubscribe(reinterpret_cast<uintptr_t>(&spr_id)); });
@@ -2020,6 +2023,7 @@ TEST_CASE("CritterFramesCacheReentrantResolutionUsesCachedResult")
 
         return Entity::EventResult::ContinueChain;
     };
+
     client->OnCritterAnimationSprite.Subscribe(std::move(callback));
     auto unsubscribe = scope_exit([&client]() noexcept { client->OnCritterAnimationSprite.UnsubscribeAll(); });
     auto result = client->CritterFrames.GetCritterAnimFrames(model_name, state_anim, action_anim, mdir {0});
@@ -2103,6 +2107,7 @@ TEST_CASE("ModelAnimationUsesProjectLocomotionAndFrozenPose")
             flags = CritterAnimationFlags::Freeze;
             normalized_time = time;
         });
+
         (void)model->PlayAnim(state, action, nullptr, 0.0f, ModelAnimFlags::NoSmooth);
         pose();
         auto first = model->GetBonePos(root);
@@ -2134,6 +2139,7 @@ TEST_CASE("ModelAnimationUsesProjectLocomotionAndFrozenPose")
             flags = CritterAnimationFlags::Freeze;
             normalized_time = time;
         });
+
         (void)model->PlayAnim(state, action, nullptr, 0.0f, ModelAnimFlags::NoSmooth);
         model->SetDir(mdir {0}, false);
         model->SetMovementState(true, false, 0);
@@ -2215,6 +2221,7 @@ TEST_CASE("ModelAnimationUsesProjectLocomotionAndFrozenPose")
             normalized_time = start_time;
             playback_speed = speed;
         });
+
         (void)model->PlayAnim(state, action, nullptr, 0.0f, ModelAnimFlags::NoSmooth);
         client->GameTime.FrameAdvance(false);
         model->PoseSpriteFrame(true);
@@ -2254,6 +2261,7 @@ TEST_CASE("ModelAnimationUsesProjectLocomotionAndFrozenPose")
             flags = CritterAnimationFlags::Freeze;
             normalized_time = 0.0f;
         });
+
         model->SetMovementState(true, true, 137);
         pose();
         CHECK(model->GetBonePos(root) == frozen);
@@ -2304,6 +2312,7 @@ TEST_CASE("ModelAnimationUsesProjectLocomotionAndFrozenPose")
 
             return Entity::EventResult::ContinueChain;
         };
+
         client->OnCritterAnimationInit.Subscribe(std::move(selection));
 
         auto map = safe_alloc::make_refcounted<MapView>(client, ident_t {1001}, client->GetProtoMap(client->Hashes.to_hashed_string("PolicyMap")), isize32 {320, 200});
@@ -2340,6 +2349,7 @@ TEST_CASE("ModelAnimationUsesProjectLocomotionAndFrozenPose")
 
             return Entity::EventResult::ContinueChain;
         };
+
         client->OnCritterAnimationInit.Subscribe(std::move(selection));
         auto map = safe_alloc::make_refcounted<MapView>(client, ident_t {1001}, client->GetProtoMap(client->Hashes.to_hashed_string("PolicyMap")), isize32 {320, 200});
         auto destroy_map = scope_exit([&map]() noexcept { safe_call([&map] { map->DestroySelf(); }); });
@@ -2381,6 +2391,7 @@ TEST_CASE("ModelAnimationUsesProjectLocomotionAndFrozenPose")
             selected_action = action;
             speed = 0.73f;
         });
+
         model->SetDir(mdir {0}, false);
         model->SetMovementState(true, true, 137);
         CHECK(effective_speed == 137);

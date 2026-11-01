@@ -53,6 +53,7 @@ template<typename T>
     if (float_abs(f1 - f2) <= epsilon) {
         return true;
     }
+
     return float_abs(f1 - f2) <= epsilon * std::max(float_abs(f1), float_abs(f2));
 }
 

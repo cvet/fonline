@@ -177,6 +177,7 @@ auto AudioManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
                 auto source = make_ptr(sound->ConvertedBuf.data()).offset(sound->ConvertedBufCur);
                 memory::copy(target, source, output.size());
             }
+
             sound->ConvertedBufCur += output.size();
         }
 
@@ -216,6 +217,7 @@ auto AudioManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
             auto silence_target = make_ptr(output.data());
             memory::fill(silence_target, silence, output.size());
         }
+
         return true;
     }
 
@@ -274,6 +276,7 @@ auto AudioManager::Load(string_view fname, bool is_music, timespan repeat_time, 
             else {
                 file_context->Reader.GoBack(numeric_cast<size_t>(-offset));
             }
+
             break;
         case SEEK_END:
             file_context->Reader.SetCurPos(file_context->Reader.GetSize() - numeric_cast<size_t>(offset));
@@ -306,6 +309,7 @@ auto AudioManager::Load(string_view fname, bool is_music, timespan repeat_time, 
         auto owned_vf = adopt_unique_ptr(vf);
         ov_clear(owned_vf.get());
     });
+
     auto ogg_stream = sound->OggStream.as_nptr();
     FO_VERIFY_AND_THROW(ogg_stream, "Ogg stream is null");
 

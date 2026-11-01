@@ -4816,6 +4816,7 @@ namespace MapOpsTest
         writer.write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
         writer.write_string_bytes(proto_name);
         writer.write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
+
         if (!props_data.empty()) {
             writer.write_bytes({props_data.data(), props_data.size()});
         }
@@ -4833,6 +4834,7 @@ namespace MapOpsTest
                 proto.SetHidden(false);
             }
         });
+
         item_protos.emplace_back("TestStaticHiddenItem", [set_hidden](ProtoItem& proto) {
             proto.SetStatic(true);
 
@@ -4930,10 +4932,12 @@ namespace MapOpsTest
             proto.SetNoBlock(false);
             proto.SetShootThru(false);
         });
+
         multihex_items.emplace_back("TestMultihexBlocker", [](ProtoItem& proto) {
             proto.SetNoBlock(false);
             proto.SetShootThru(true);
         });
+
         auto multihex_item_blob = BakerTests::MakeMultiProtoResourceBlob<ProtoItem>(proto_engine, item_type, multihex_items);
         auto static_item_blob = MakeStaticItemProtoBlob(proto_engine, item_type, true);
         auto static_item_client_blob = MakeStaticItemProtoBlob(client_proto_engine, client_item_type, false);

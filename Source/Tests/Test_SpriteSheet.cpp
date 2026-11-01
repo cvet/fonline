@@ -70,6 +70,7 @@ namespace
             for (int32_t frame = 0; frame < 3; frame++) {
                 bool shared = shared_frame && frame == 1;
                 writer.write<uint8_t>(shared ? uint8_t {1} : uint8_t {0});
+
                 if (shared) {
                     writer.write<uint16_t>(uint16_t {0});
                     continue;
@@ -82,9 +83,11 @@ namespace
                 int16_t delta = numeric_cast<int16_t>((dir + 1) * (frame + 1));
                 writer.write<int16_t>(delta);
                 writer.write<int16_t>(numeric_cast<int16_t>(-delta));
+
                 for (size_t pixel = 0; pixel < 35; pixel++) {
                     writer.write<ucolor>(ucolor {255, 255, 255, 255});
                 }
+
                 writer.write<uint8_t>(static_cast<uint8_t>(SpriteMeshKind::Quad));
             }
         }
@@ -492,6 +495,7 @@ TEST_CASE("ResourceManagerUpdatesFactoriesBeforeSpriteInstances", "[sprite]")
         CHECK(phase == 1);
         phase = 2;
     };
+
     sprite->StartUpdate();
     fixture.GetSprites().BeginScene();
     fixture.GetSprites().EndScene();

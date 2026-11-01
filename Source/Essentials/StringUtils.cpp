@@ -1350,6 +1350,7 @@ auto utf8::lower(uint32_t ucs) noexcept -> uint32_t
     if (ucs <= 0x02B6) {
         if (ucs >= 0x0041) {
             ret = UCS_TABLE_0041[ucs - 0x0041];
+
             if (ret > 0) {
                 return ret;
             }
@@ -1361,6 +1362,7 @@ auto utf8::lower(uint32_t ucs) noexcept -> uint32_t
     if (ucs <= 0x0556) {
         if (ucs >= 0x0386) {
             ret = UCS_TABLE_0386[ucs - 0x0386];
+
             if (ret > 0) {
                 return ret;
             }
@@ -1372,6 +1374,7 @@ auto utf8::lower(uint32_t ucs) noexcept -> uint32_t
     if (ucs <= 0x10C5) {
         if (ucs >= 0x10A0) {
             ret = UCS_TABLE_10_A0[ucs - 0x10A0];
+
             if (ret > 0) {
                 return ret;
             }
@@ -1383,6 +1386,7 @@ auto utf8::lower(uint32_t ucs) noexcept -> uint32_t
     if (ucs <= 0x1FFC) {
         if (ucs >= 0x1E00) {
             ret = UCS_TABLE_1_E00[ucs - 0x1E00];
+
             if (ret > 0) {
                 return ret;
             }
@@ -1394,6 +1398,7 @@ auto utf8::lower(uint32_t ucs) noexcept -> uint32_t
     if (ucs <= 0x2133) {
         if (ucs >= 0x2102) {
             ret = UCS_TABLE_2102[ucs - 0x2102];
+
             if (ret > 0) {
                 return ret;
             }
@@ -1405,6 +1410,7 @@ auto utf8::lower(uint32_t ucs) noexcept -> uint32_t
     if (ucs <= 0x24CF) {
         if (ucs >= 0x24B6) {
             ret = UCS_TABLE_24_B6[ucs - 0x24B6];
+
             if (ret > 0) {
                 return ret;
             }
@@ -1416,6 +1422,7 @@ auto utf8::lower(uint32_t ucs) noexcept -> uint32_t
     if (ucs <= 0x33CE) {
         if (ucs >= 0x33CE) {
             ret = UCS_TABLE_33_CE[ucs - 0x33CE];
+
             if (ret > 0) {
                 return ret;
             }
@@ -1427,6 +1434,7 @@ auto utf8::lower(uint32_t ucs) noexcept -> uint32_t
     if (ucs <= 0xFF3A) {
         if (ucs >= 0xFF21) {
             ret = UCS_TABLE_FF21[ucs - 0xFF21];
+
             if (ret > 0) {
                 return ret;
             }

@@ -751,6 +751,7 @@ static auto ResolveInstructionLocation(ptr<const AngelScript::asIScriptFunction>
     int row = 0;
     int column = 1;
     nptr<const char> section;
+
     if (func->GetDeclaredAt(section.get_pp(), &row, &column) >= 0 && row > 0) {
         return ScriptBytecodeLocation {
             .Section = section ? section.get() : "<unknown>",

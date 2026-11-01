@@ -346,6 +346,7 @@ void DataBaseImpl::InitializeOpLogs()
             if (command == "delete" && has_other) {
                 throw DataBaseException("Oplog file has invalid delete command format", i + 1, file_path);
             }
+
             try {
                 hstring collection_name = ResolveCollectionName(collection);
                 auto record_id = DecodeStorageDbKey(record_id_str, GetCollectionKeyType(collection_name), GetStringKeyEscaping());
@@ -357,6 +358,7 @@ void DataBaseImpl::InitializeOpLogs()
             catch (const std::exception&) {
                 throw DataBaseException("Oplog file has invalid record id value", record_id_str, i + 1, file_path);
             }
+
             if (has_other && (other.find('\n') != string_view::npos || other.find('\r') != string_view::npos)) {
                 throw DataBaseException("Oplog file has invalid payload line break", i + 1, file_path);
             }
@@ -1008,6 +1010,7 @@ void DataBaseImpl::RestoreSnapshotData(const_span<uint8_t> snapshot_data)
 void DataBaseImpl::ClearChanges() noexcept
 {
     scoped_lock mutation_locker {_mutationLocker};
+
     scoped_lock locker {_stateLocker};
 
     _pendingCommitOperations.clear();
@@ -1647,16 +1650,19 @@ static void ValidateFiniteAnyValue(const AnyData::Value& value)
         if (!std::isfinite(value.AsDouble())) {
             throw DataBaseException("Database value is not finite", value.AsDouble());
         }
+
         break;
     case AnyData::ValueType::Array:
         for (const AnyData::Value& array_value : value.AsArray()) {
             ValidateFiniteAnyValue(array_value);
         }
+
         break;
     case AnyData::ValueType::Dict:
         for (const auto& dict_entry : value.AsDict()) {
             ValidateFiniteAnyValue(dict_entry.second);
         }
+
         break;
     case AnyData::ValueType::Int64:
     case AnyData::ValueType::Bool:

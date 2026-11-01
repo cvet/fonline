@@ -100,6 +100,7 @@ auto Map::CreateHexField(msize map_size, string_view grid_type) -> unique_ptr<Tw
     if (grid_type == "Dynamic") {
         return safe_alloc::make_unique<DynamicTwoDimensionalGrid<Field, mpos, msize>>(map_size);
     }
+
     throw SettingsException("Unknown server map grid type; expected Static, Chunked or Dynamic", "Server.MapInstanceGridType", grid_type);
 }
 
@@ -633,6 +634,7 @@ void Map::AddItem(ptr<Item> item, mpos hex, nptr<Critter> dropper)
 
     // Notify spectators
     RefreshAreaSpectators(item);
+
     for (refcount_ptr<Player> player : GetSpectatorPlayersForSend()) {
         if (!player->IsAreaView()) {
             player->Send_AddItemOnMap(item);
@@ -836,6 +838,7 @@ void Map::SendProperty(NetProperty type, ptr<const Property> prop, ptr<ServerEnt
         }
 
         RefreshAreaSpectators(item);
+
         for (refcount_ptr<Player> player : GetSpectatorPlayersForSend(item->GetId(), item->GetHex())) {
             player->Send_Property(type, prop, entity);
         }
@@ -1557,6 +1560,7 @@ void Map::VerifyTrigger(ptr<Critter> cr, mpos from_hex, mpos to_hex, mdir dir)
         if (cr->GetMapId() != initial_cr_map_id || cr->GetHex() != initial_cr_hex) {
             return true;
         }
+
         nptr<Critter> trigger_cr = cr;
         auto map_cr = GetCritter(cr->GetId());
 

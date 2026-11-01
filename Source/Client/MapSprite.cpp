@@ -193,6 +193,7 @@ void MapSprite::SetLight(CornerType corner, ptr<const ucolor> light, msize size)
             FO_STRONG_ASSERT(pos < lights.size(), "Light index is out of range");
             return &lights[pos];
         };
+
         size_t light_index = numeric_cast<size_t>(_hex.y) * width + numeric_cast<size_t>(_hex.x);
         _light = light_at(light_index);
 

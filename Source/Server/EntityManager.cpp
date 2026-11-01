@@ -1207,6 +1207,7 @@ void EntityManager::RegisterLocation(ptr<Location> loc)
     FO_TRACE_ZONE(Entity);
 
     scoped_lock lock {_registryLock};
+
     CaptureFreshEntity(loc);
 
     RegisterEntity(loc);
@@ -1231,6 +1232,7 @@ void EntityManager::RegisterMap(ptr<Map> map)
     FO_TRACE_ZONE(Entity);
 
     scoped_lock lock {_registryLock};
+
     CaptureFreshEntity(map);
 
     RegisterEntity(map);
@@ -1255,6 +1257,7 @@ void EntityManager::RegisterCritter(ptr<Critter> cr)
     FO_TRACE_ZONE(Entity);
 
     scoped_lock lock {_registryLock};
+
     CaptureFreshEntity(cr);
 
     RegisterEntity(cr);
@@ -1279,6 +1282,7 @@ void EntityManager::RegisterItem(ptr<Item> item)
     FO_TRACE_ZONE(Entity);
 
     scoped_lock lock {_registryLock};
+
     CaptureFreshEntity(item);
 
     RegisterEntity(item);

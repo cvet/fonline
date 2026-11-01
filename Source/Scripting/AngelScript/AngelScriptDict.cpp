@@ -164,6 +164,7 @@ static void CleanupTypeInfoDictCache(AngelScript::asITypeInfo* type)
     if (cache) {
         CleanupScriptDictTypeData(cache);
     }
+
     type_info->SetUserData(nullptr, AS_TYPE_DICT_CACHE);
 }
 

@@ -362,6 +362,7 @@ TEST_CASE("StringUtilsUtf8Validation")
         CHECK(strvex(text).is_valid_utf8());
         CHECK(strex(string(text.data(), text.size())).is_valid_utf8());
     };
+
     auto check_invalid = [](string_view text) {
         CHECK_FALSE(strvex(text).is_valid_utf8());
         CHECK_FALSE(strex(string(text.data(), text.size())).is_valid_utf8());

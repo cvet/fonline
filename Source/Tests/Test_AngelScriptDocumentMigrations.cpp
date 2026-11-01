@@ -303,6 +303,7 @@ namespace DocMigrations
             auto kind = proto.GetProperties()->GetRegistrar()->FindProperty("MigrationKind");
             proto.GetPropertiesForEdit()->SetValue<int32_t>(kind.as_ptr(), 7);
         };
+
         vector<pair<string, function<void(ProtoItem&)>>> prototype_entries;
         prototype_entries.emplace_back("Current", configure_proto);
         auto prototypes = BakerTests::MakeMultiProtoResourceBlob<ProtoItem>(compiler, item_type, prototype_entries);

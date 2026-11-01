@@ -781,6 +781,7 @@ TEST_CASE("CritterManagerCppApi")
 
         bool found1 = false;
         bool found2 = false;
+
         for (auto& npc : npcs) {
             if (npc == cr1.get()) {
                 found1 = true;
@@ -789,6 +790,7 @@ TEST_CASE("CritterManagerCppApi")
                 found2 = true;
             }
         }
+
         CHECK(found1);
         CHECK(found2);
 
@@ -1289,6 +1291,7 @@ TEST_CASE("PlayerPreLoginRunsBeforeEveryRegistrationRoute", "[player][admission]
 
         return refusal == 0 ? Entity::EventResult::StopChain : Entity::EventResult::ContinueChain;
     };
+
     server->OnPlayerPreLogin.Subscribe(std::move(gate));
 
     Entity::EventCallbackData logged_in;
@@ -1297,6 +1300,7 @@ TEST_CASE("PlayerPreLoginRunsBeforeEveryRegistrationRoute", "[player][admission]
         login_calls++;
         return Entity::EventResult::ContinueChain;
     };
+
     server->OnPlayerLogin.Subscribe(std::move(logged_in));
     auto unsubscribe = scope_exit([&]() noexcept {
         server->OnPlayerPreLogin.Unsubscribe(reinterpret_cast<uintptr_t>(&gate_calls));
@@ -1364,6 +1368,7 @@ TEST_CASE("PlayerPreLoginAllowsReconnectWithoutDuplicatingTheCritter", "[player]
         CHECK_FALSE(incoming->GetLoggedIn());
         return Entity::EventResult::ContinueChain;
     };
+
     server->OnPlayerPreLogin.Subscribe(std::move(gate));
     auto unsubscribe = scope_exit([&]() noexcept { server->OnPlayerPreLogin.Unsubscribe(reinterpret_cast<uintptr_t>(&gate_calls)); });
 
@@ -1425,6 +1430,7 @@ TEST_CASE("PlayerPreProcessChecksEachQueuedMessageBeforeReadingIt", "[player][ad
 
         return refusal == 0 ? Entity::EventResult::StopChain : Entity::EventResult::ContinueChain;
     };
+
     server->OnPlayerPreProcess.Subscribe(std::move(gate));
     auto unsubscribe = scope_exit([&]() noexcept { server->OnPlayerPreProcess.Unsubscribe(reinterpret_cast<uintptr_t>(&gate_calls)); });
 
@@ -1545,6 +1551,7 @@ TEST_CASE("CritterRestoresOnItsStoredMap", "[player][persistence]")
 
         return scenario == 3 ? Entity::EventResult::StopChain : Entity::EventResult::ContinueChain;
     };
+
     server->OnCritterPreLoad.Subscribe(std::move(preload));
 
     Entity::EventCallbackData entered;
@@ -1576,6 +1583,7 @@ TEST_CASE("CritterRestoresOnItsStoredMap", "[player][persistence]")
 
         return Entity::EventResult::ContinueChain;
     };
+
     server->OnMapCritterIn.Subscribe(std::move(entered));
 
     Entity::EventCallbackData init;
@@ -1612,6 +1620,7 @@ TEST_CASE("CritterRestoresOnItsStoredMap", "[player][persistence]")
 
                 return Entity::EventResult::ContinueChain;
             };
+
             restored->OnCritterAppeared.Subscribe(std::move(appeared));
         }
 
@@ -1628,6 +1637,7 @@ TEST_CASE("CritterRestoresOnItsStoredMap", "[player][persistence]")
 
         return Entity::EventResult::ContinueChain;
     };
+
     server->OnCritterInit.Subscribe(std::move(init));
 
     Entity::EventCallbackData load;
@@ -1658,6 +1668,7 @@ TEST_CASE("CritterRestoresOnItsStoredMap", "[player][persistence]")
 
         return Entity::EventResult::ContinueChain;
     };
+
     server->OnCritterLoad.Subscribe(std::move(load));
     auto unsubscribe = scope_exit([&]() noexcept {
         if (visibility_owner && !visibility_owner->IsDestroyed()) {
@@ -1779,9 +1790,11 @@ TEST_CASE("LoadedCritterVisibilityStopsAfterItemCallbackDestroysIt", "[player][p
             server->CrMngr.DestroyCritter(restored);
             return Entity::EventResult::ContinueChain;
         };
+
         restored->OnItemOnMapAppeared.Subscribe(std::move(appeared));
         return Entity::EventResult::ContinueChain;
     };
+
     server->OnCritterInit.Subscribe(std::move(init));
     auto unsubscribe = scope_exit([&]() noexcept {
         server->OnCritterInit.Unsubscribe(reinterpret_cast<uintptr_t>(&visible_items));

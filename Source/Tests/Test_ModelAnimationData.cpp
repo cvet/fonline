@@ -549,12 +549,14 @@ TEST_CASE("ModelAnimationRigData rig manifest round-trip and corruption rejectio
     CHECK(loaded.Clips[0].Animation.Metadata.ObjectName == "Idle");
     CHECK(loaded.Clips[1].Animation.Metadata.ObjectName == "Run");
     REQUIRE(loaded.Bindings.size() == source.Bindings.size());
+
     for (size_t i = 0; i < loaded.Bindings.size(); i++) {
         CHECK(loaded.Bindings[i].StateAnim == source.Bindings[i].StateAnim);
         CHECK(loaded.Bindings[i].ActionAnim == source.Bindings[i].ActionAnim);
         CHECK(loaded.Bindings[i].ClipIndex == source.Bindings[i].ClipIndex);
         CHECK(loaded.Bindings[i].Reversed == source.Bindings[i].Reversed);
     }
+
     CHECK(WriteModelAnimationRigData(loaded, "Models/Test.fo3d") == data);
     CHECK(std::equal(MODEL_ANIMATION_RIG_DATA_MAGIC.begin(), MODEL_ANIMATION_RIG_DATA_MAGIC.end(), data.begin()));
     CHECK(data[8] == 0x01);

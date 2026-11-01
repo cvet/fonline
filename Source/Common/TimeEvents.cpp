@@ -514,6 +514,7 @@ void TimeEventManager::FireTimeEvent(ptr<Entity> entity, shared_ptr<Entity::Time
             NotifySchedule(entity, event_id, MIN_REPEAT_TIME);
         }
     };
+
     auto context = execution->Context.as_ptr();
 
     if (auto func1 = std::get_if<ScriptFunc<void>>(&te->Func); func1) {

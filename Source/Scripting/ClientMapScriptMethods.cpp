@@ -994,6 +994,7 @@ FO_SCRIPT_API bool Client_Map_IsOutsideArea(ptr<MapView> self, mpos hex)
 FO_SCRIPT_API ptr<FogLayer> Client_Map_AddFog(ptr<MapView> self, nptr<CritterView> cr, DrawOrderType drawOrder, int32_t flushEffectSubtype = -1)
 {
     nptr<RenderEffect> customFlushEffect = nullptr;
+
     if (flushEffectSubtype >= 0) {
         customFlushEffect = self->GetEngine()->GetOffscreenEffect(flushEffectSubtype);
     }
@@ -1011,6 +1012,7 @@ FO_SCRIPT_API ptr<FogLayer> Client_Map_AddFog(ptr<MapView> self, mpos hex, DrawO
     }
 
     nptr<RenderEffect> customFlushEffect = nullptr;
+
     if (flushEffectSubtype >= 0) {
         customFlushEffect = self->GetEngine()->GetOffscreenEffect(flushEffectSubtype);
     }

@@ -174,10 +174,12 @@ TEST_CASE("BaseLogging")
         REQUIRE(input);
 
         std::string content((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+
         for (int32_t i = 0; i < message_count; i++) {
             strex needle = strex("async-line-{}\n", i);
             CHECK(content.find(string_view {needle}) != std::string::npos);
         }
+
         CHECK(content.find("Dropped") == std::string::npos);
 
         input.close();

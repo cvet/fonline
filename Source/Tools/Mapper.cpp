@@ -219,6 +219,7 @@ void MapperEngine::InitIface()
     // Interface
     MainPanelPos = {-1, -1};
     MainPanelWindowRect = MakeRectFromEdges(0, 0, 0, 28);
+
     if (MainPanelPos.x == -1) {
         MainPanelPos.x = 0;
     }
@@ -374,15 +375,18 @@ auto MapperEngine::BeginMapperFrameInput() -> bool
 
     if (!window_focused) {
         OnInputLost.Fire();
+
         if (!PendingSelectionMoveEntries.empty()) {
             CommitPendingSelectionMove();
         }
+
         MouseHoldMode = INT_NONE;
         RightMouseDragged = false;
         RightMouseInertia = {};
     }
 
     InputEvent ev;
+
     while (GetApp()->Input.PollEvent(ev)) {
         ProcessInputEvent(ev);
 
@@ -674,6 +678,7 @@ void MapperEngine::HandlePrimaryMapperHotkeys(KeyCode dikdw, bool block_hotkeys)
         else {
             WindowedMouseScroll = !WindowedMouseScroll;
         }
+
         break;
     case KeyCode::F9:
         if (InspectorVisible) {
@@ -682,6 +687,7 @@ void MapperEngine::HandlePrimaryMapperHotkeys(KeyCode dikdw, bool block_hotkeys)
         else if (!SelectedEntities.empty() || InContItem) {
             InspectorVisible = true;
         }
+
         break;
     case KeyCode::F10:
         ToggleMapperHexOverlay();
@@ -707,16 +713,19 @@ void MapperEngine::HandlePrimaryMapperHotkeys(KeyCode dikdw, bool block_hotkeys)
             MouseHoldMode = INT_NONE;
             SetCurMode(CUR_MODE_DEFAULT);
         }
+
         break;
     case KeyCode::Add:
         if (_curMap && !ConsoleEdit && SelectedEntities.empty()) {
             SetGlobalDayTime(ShiftDayTimeWithWrap(GetGlobalDayTime(), 60));
         }
+
         break;
     case KeyCode::Subtract:
         if (_curMap && !ConsoleEdit && SelectedEntities.empty()) {
             SetGlobalDayTime(ShiftDayTimeWithWrap(GetGlobalDayTime(), -60));
         }
+
         break;
     case KeyCode::Tab:
         SelectAxialGrid = !SelectAxialGrid;
@@ -788,6 +797,7 @@ void MapperEngine::HandleCtrlMapperHotkeys(KeyCode dikdw, bool block_hotkeys)
         if (_curMap) {
             SaveCurrentMap();
         }
+
         break;
     case KeyCode::D:
         if (_curMap) {
@@ -795,6 +805,7 @@ void MapperEngine::HandleCtrlMapperHotkeys(KeyCode dikdw, bool block_hotkeys)
             FO_VERIFY_AND_THROW(cur_map, "Current map is null");
             cur_map->SetScrollCheck(!cur_map->IsScrollCheck());
         }
+
         break;
     case KeyCode::B:
         MarkBlockedHexes();
@@ -1268,6 +1279,7 @@ auto MapperEngine::FindEntityById(ptr<MapView> map, ident_t id) -> nptr<ClientEn
                 return found;
             }
         }
+
         return nullptr;
     };
 
@@ -1432,10 +1444,13 @@ void MapperEngine::DrawMainPanelImGui()
             if (ImGui::MenuItem("Reset changes", nullptr, false, _curMap && IsMapDirty(GetCurMap()))) {
                 ResetCurrentMapChanges();
             }
+
             ImGui::Separator();
+
             if (ImGui::MenuItem("Exit")) {
                 GetApp()->RequestQuit();
             }
+
             ImGui::EndMenu();
         }
 
@@ -1445,6 +1460,7 @@ void MapperEngine::DrawMainPanelImGui()
 
             if (ImGui::MenuItem("Console", "~", ConsoleEdit)) {
                 ConsoleEdit = !ConsoleEdit;
+
                 if (ConsoleEdit) {
                     ConsoleHistoryCur = numeric_cast<int32_t>(ConsoleHistory.size());
                 }
@@ -1461,6 +1477,7 @@ void MapperEngine::DrawMainPanelImGui()
             if (ImGui::MenuItem("Particle viewer", nullptr, &particle_viewer_visible)) {
                 PartViewer->SetVisible(particle_viewer_visible);
             }
+
             ImGui::MenuItem("Script call", nullptr, &ScriptCallWindowVisible);
             ImGui::MenuItem("Map browser", nullptr, &MapListWindowVisible);
             ImGui::MenuItem("Controls", nullptr, &MapWindowVisible, !!_curMap);
@@ -1482,6 +1499,7 @@ void MapperEngine::DrawMainPanelImGui()
             }
 
             ImGui::Separator();
+
             if (ImGui::MenuItem("Select all", "Ctrl+A")) {
                 SelectAll();
             }
@@ -1545,6 +1563,7 @@ void MapperEngine::DrawMainPanelImGui()
             run_menu_action_with_message(ImGui::MenuItem("Break by command", nullptr, false, !!_curMap), [&] { ParseCommand("* break-items"); }, "Break items command done");
 
             ImGui::Separator();
+
             if (ImGui::MenuItem("Merge multihex items", nullptr, false, !!_curMap)) {
                 auto cur_map = GetCurMap();
                 FO_VERIFY_AND_THROW(cur_map, "Current map is null");
@@ -1557,6 +1576,7 @@ void MapperEngine::DrawMainPanelImGui()
                 size_t broken = BreakItemsMultihexMeshes(cur_map);
                 AddMess(strex("Broken items: {}", broken));
             }
+
             ImGui::EndMenu();
         }
 
@@ -1572,12 +1592,14 @@ void MapperEngine::DrawMainPanelImGui()
             }
 
             ImGui::Separator();
+
             if (SprMngr.IsFullscreen()) {
                 ImGui::MenuItem("Fullscreen mouse scroll", nullptr, &FullscreenMouseScroll);
             }
             else {
                 ImGui::MenuItem("Windowed mouse scroll", nullptr, &WindowedMouseScroll);
             }
+
             ImGui::EndMenu();
         }
 
@@ -1719,6 +1741,7 @@ void MapperEngine::DrawWorkspaceWindowImGui()
         ImGui::TableNextColumn();
         ImGui::Text("Tabs");
         ImGui::Separator();
+
         if (ImGui::BeginChild("##WorkspaceTabs", {0.0f, 0.0f}, false)) {
             for (auto mode : tab_order) {
                 if (Tabs[mode].empty()) {
@@ -1732,11 +1755,13 @@ void MapperEngine::DrawWorkspaceWindowImGui()
                 }
             }
         }
+
         ImGui::EndChild();
 
         ImGui::TableNextColumn();
         ImGui::Text("SubTabs");
         ImGui::Separator();
+
         if (ImGui::BeginChild("##WorkspaceSubTabs", {0.0f, 0.0f}, false)) {
             if (auto active_subtab = GetActiveSubTab()) {
                 for (auto& [name, subtab] : Tabs[ActivePanelMode]) {
@@ -1751,9 +1776,11 @@ void MapperEngine::DrawWorkspaceWindowImGui()
                 ImGui::TextDisabled("No subtabs");
             }
         }
+
         ImGui::EndChild();
 
         ImGui::TableNextColumn();
+
         if (IsItemMode() || IsCritMode()) {
             ImGuiInputTextStringWithHint("##WorkspaceFilter", "Filter prototypes...", WorkspaceFilter);
             string_view filter = WorkspaceFilter;
@@ -1834,6 +1861,7 @@ void MapperEngine::DrawWorkspaceWindowImGui()
 
                     ImGuiListClipper clipper;
                     clipper.Begin(numeric_cast<int32_t>(visible_indices.size()), 72.0f);
+
                     while (clipper.Step()) {
                         for (int32_t row = clipper.DisplayStart; row < clipper.DisplayEnd; row++) {
                             int32_t i = visible_indices[row];
@@ -1889,6 +1917,7 @@ void MapperEngine::DrawWorkspaceWindowImGui()
 
                     ImGuiListClipper clipper;
                     clipper.Begin(numeric_cast<int32_t>(visible_indices.size()), 72.0f);
+
                     while (clipper.Step()) {
                         for (int32_t row = clipper.DisplayStart; row < clipper.DisplayEnd; row++) {
                             int32_t i = visible_indices[row];
@@ -1909,6 +1938,7 @@ void MapperEngine::DrawWorkspaceWindowImGui()
         else {
             ImGui::Separator();
             ImGui::TextDisabled("This mode uses the Content window.");
+
             if (ImGui::Button("Open Content")) {
                 ContentWindowVisible = true;
             }
@@ -1979,6 +2009,7 @@ void MapperEngine::DrawContentWindowImGui()
                     }
                 }
             }
+
             ImGui::EndChild();
 
             if (InContItem && ImGui::Button("Remove item")) {
@@ -2075,6 +2106,7 @@ void MapperEngine::DrawContentWindowImGui()
                 }
             }
         }
+
         ImGui::EndChild();
 
         ImGui::SeparatorText("Map commands");
@@ -2098,6 +2130,7 @@ void MapperEngine::DrawContentWindowImGui()
                 }
             }
         }
+
         ImGui::SameLine();
         run_button_action_with_message(
             ImGui::Button("Save current") && _curMap,
@@ -2108,6 +2141,7 @@ void MapperEngine::DrawContentWindowImGui()
             },
             "Save map success");
         ImGui::SameLine();
+
         if (ImGui::Button("Save As") && _curMap) {
             string map_name = get_map_name_input();
             if (!map_name.empty()) {
@@ -2134,8 +2168,10 @@ void MapperEngine::DrawContentWindowImGui()
         }
 
         ImGui::SameLine();
+
         if (ImGui::Button("Copy all")) {
             string all_messages;
+
             for (const auto& entry : MessBox) {
                 all_messages += entry.Time;
                 all_messages += entry.Mess;
@@ -2151,6 +2187,7 @@ void MapperEngine::DrawContentWindowImGui()
                 ImGui::TextUnformatted(strex("{}{}", it->Time, it->Mess).c_str());
             }
         }
+
         ImGui::EndChild();
     }
     else {
@@ -2187,11 +2224,13 @@ void MapperEngine::DrawCritterAnimationsWindowImGui()
 
     ImGui::InputInt("State", &anim_state);
     ImGui::InputInt("Action", &anim_action);
+
     if (ImGui::Button("Play pair")) {
         ParseCommand(strex("@ {} {}", anim_state, anim_action));
     }
 
     ImGuiInputTextStringWithHint("##AnimSequence", "Sequence: state action [state action]...", anim_sequence);
+
     if (ImGui::Button("Play sequence")) {
         string sequence = strvex(anim_sequence).trim().str();
         if (!sequence.empty()) {
@@ -2270,10 +2309,12 @@ void MapperEngine::DrawMapListWindowImGui()
     }
 
     string& map_filter = MapBrowserFilter;
+
     if (ImGui::IsWindowAppearing()) {
         ImGui::SetKeyboardFocusHere();
         MapBrowserNamesStale = true;
     }
+
     ImGuiInputTextStringWithHint("##AllMapsFilter", "Search maps...", map_filter);
 
     if (MapBrowserNamesStale) {
@@ -2317,6 +2358,7 @@ void MapperEngine::DrawMapListWindowImGui()
             bool is_current = is_loaded && GetCurMap() == loaded_map;
 
             auto label = map_name;
+
             if (is_current) {
                 label = strex("* {}", label).str();
             }
@@ -2338,6 +2380,7 @@ void MapperEngine::DrawMapListWindowImGui()
             }
         }
     }
+
     ImGui::EndChild();
 
     ImGui::End();
@@ -2398,6 +2441,7 @@ void MapperEngine::DrawMapWindowImGui()
 
         ImGui::EndTable();
     }
+
     ImGui::SeparatorText("Map");
 
     if (ImGui::Button("Time +1h")) {
@@ -2405,34 +2449,43 @@ void MapperEngine::DrawMapWindowImGui()
     }
 
     ImGui::SameLine();
+
     if (ImGui::Button("Time -1h")) {
         SetGlobalDayTime(ShiftDayTimeWithWrap(day_time, -60));
     }
 
     ImGui::SameLine();
+
     if (ImGui::Button("Toggle hex")) {
         ToggleMapperHexOverlay();
     }
 
     float32_t current_zoom = cur_map->GetSpritesZoomTarget();
     ImGui::Text("Zoom: %.2f", current_zoom);
+
     if (ImGui::Button("Zoom in")) {
         ChangeZoom(ScaleZoomValue(current_zoom, 1.2f));
     }
+
     ImGui::SameLine();
+
     if (ImGui::Button("Zoom out")) {
         ChangeZoom(ScaleZoomValue(current_zoom, 0.8f));
     }
+
     ImGui::SameLine();
+
     if (ImGui::Button("Zoom reset")) {
         ChangeZoom(1.0f);
     }
 
     int32_t tile_layer = TileLayer;
     ImGui::SetNextItemWidth(140.0f);
+
     if (ImGui::SliderInt("##TileLayer", &tile_layer, 0, 4)) {
         TileLayer = tile_layer;
     }
+
     ImGui::SameLine();
     ImGui::TextUnformatted("Tile layer");
 
@@ -2528,9 +2581,11 @@ void MapperEngine::DrawInspectorImGui()
     auto flags = ImGuiWindowFlags_AlwaysAutoResize;
     if (!ImGui::Begin("Inspector", &keep_open, flags)) {
         ImGui::End();
+
         if (!keep_open) {
             SelectClear();
         }
+
         return;
     }
 
@@ -2545,6 +2600,7 @@ void MapperEngine::DrawInspectorImGui()
         bool same_item = selected_item && item;
         return same_cr || same_item;
     };
+
     auto is_inspector_front_entity = [&]() -> bool {
         if (SelectedEntities.empty()) {
             return false;
@@ -2593,6 +2649,7 @@ void MapperEngine::DrawInspectorImGui()
 
     auto sync_edit_buf = [&]() {
         edit_buf = InspectorSelectedLineValue;
+
         if (edit_buf.capacity() < 4096) {
             edit_buf.reserve(4096);
         }
@@ -2751,6 +2808,7 @@ void MapperEngine::DrawInspectorImGui()
 
                 ImGui::TableNextColumn();
                 ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, left_column_bg);
+
                 if (ImGui::Selectable(label.c_str(), selected, ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowOverlap)) {
                     reset_selected_line_state(line);
                 }
@@ -2763,6 +2821,7 @@ void MapperEngine::DrawInspectorImGui()
                 bool request_caret_reset = pending_caret_reset_line == line && pending_caret_reset_frames > 0;
                 auto select_value_line = [&] {
                     SelectInspectorPropertyLine(line);
+
                     if (!is_const) {
                         begin_edit_state(line);
                     }
@@ -2784,6 +2843,7 @@ void MapperEngine::DrawInspectorImGui()
                     bool focus_consumed = false;
                     auto edit_text_value = [&](float32_t item_width = -58.0f) {
                         ImGui::SetNextItemWidth(item_width);
+
                         if (request_focus) {
                             ImGui::SetKeyboardFocusHere();
                             focus_consumed = true;
@@ -2891,10 +2951,12 @@ void MapperEngine::DrawInspectorImGui()
                                 ImGui::SeparatorText(strex("Item {}", entry_index).str().c_str());
                                 array_changed |= edit_struct_fields(field_values, numeric_cast<int32_t>(entry_index), focus_edit_line == line && entry_index == numeric_cast<size_t>(focus_edit_array_index), pending_caret_reset_line == line && pending_caret_reset_frames > 0 && entry_index == numeric_cast<size_t>(caret_reset_array_index));
                                 struct_entries[entry_index] = SerializeInspectorStringArray(field_values);
+
                                 if (ImGui::SmallButton("Remove")) {
                                     remove_index = entry_index;
                                     commit_requested = true;
                                 }
+
                                 ImGui::PopID();
                             }
 
@@ -2944,6 +3006,7 @@ void MapperEngine::DrawInspectorImGui()
                                     if (value_buf.capacity() < 512) {
                                         value_buf.reserve(512);
                                     }
+
                                     ImGui::SetNextItemWidth(-34.0f);
                                     bool value_submitted = ImGuiInputTextString("##ArrayValue", value_buf, ImGuiInputTextFlags_EnterReturnsTrue, true, pending_caret_reset_line == line && pending_caret_reset_frames > 0 && entry_index == numeric_cast<size_t>(caret_reset_array_index));
                                     bool value_deactivated = ImGui::IsItemDeactivatedAfterEdit();
@@ -2953,12 +3016,14 @@ void MapperEngine::DrawInspectorImGui()
                                             if (!prop->IsBaseTypeSignedInt() && entry_value < 0) {
                                                 entry_value = 0;
                                             }
+
                                             entries[entry_index] = AnyData::Value {entry_value};
                                             array_changed = true;
                                         }
                                         catch (const std::exception&) {
                                         }
                                     }
+
                                     commit_requested |= value_submitted || value_deactivated;
                                     finish_edit_requested |= value_submitted;
                                     cancel_requested |= ImGui::IsItemActive() && ImGui::IsKeyPressed(ImGuiKey_Escape);
@@ -2969,6 +3034,7 @@ void MapperEngine::DrawInspectorImGui()
                                     if (value_buf.capacity() < 512) {
                                         value_buf.reserve(512);
                                     }
+
                                     ImGui::SetNextItemWidth(-34.0f);
                                     bool value_submitted = ImGuiInputTextString("##ArrayValue", value_buf, ImGuiInputTextFlags_EnterReturnsTrue, true, pending_caret_reset_line == line && pending_caret_reset_frames > 0 && entry_index == numeric_cast<size_t>(caret_reset_array_index));
                                     bool value_deactivated = ImGui::IsItemDeactivatedAfterEdit();
@@ -2980,6 +3046,7 @@ void MapperEngine::DrawInspectorImGui()
                                         catch (const std::exception&) {
                                         }
                                     }
+
                                     commit_requested |= value_submitted || value_deactivated;
                                     finish_edit_requested |= value_submitted;
                                     cancel_requested |= ImGui::IsItemActive() && ImGui::IsKeyPressed(ImGuiKey_Escape);
@@ -2992,6 +3059,7 @@ void MapperEngine::DrawInspectorImGui()
                                         array_changed = true;
                                         commit_requested = true;
                                     }
+
                                     break;
                                 }
                                 case AnyData::ValueType::String: {
@@ -2999,6 +3067,7 @@ void MapperEngine::DrawInspectorImGui()
                                     if (string_buf.capacity() < 512) {
                                         string_buf.reserve(512);
                                     }
+
                                     ImGui::SetNextItemWidth(-34.0f);
                                     bool value_submitted = ImGuiInputTextString("##ArrayValue", string_buf, ImGuiInputTextFlags_EnterReturnsTrue, true, pending_caret_reset_line == line && pending_caret_reset_frames > 0 && entry_index == numeric_cast<size_t>(caret_reset_array_index));
                                     bool value_deactivated = ImGui::IsItemDeactivatedAfterEdit();
@@ -3006,6 +3075,7 @@ void MapperEngine::DrawInspectorImGui()
                                         entries[entry_index] = AnyData::Value {std::move(string_buf)};
                                         array_changed = true;
                                     }
+
                                     commit_requested |= value_submitted || value_deactivated;
                                     finish_edit_requested |= value_submitted;
                                     cancel_requested |= ImGui::IsItemActive() && ImGui::IsKeyPressed(ImGuiKey_Escape);
@@ -3016,6 +3086,7 @@ void MapperEngine::DrawInspectorImGui()
                                 }
 
                                 ImGui::SameLine();
+
                                 if (ImGui::SmallButton("X")) {
                                     remove_index = entry_index;
                                     commit_requested = true;
@@ -3055,6 +3126,7 @@ void MapperEngine::DrawInspectorImGui()
                     }
                     else if (prop->IsBaseTypeBool()) {
                         bool current_value = false;
+
                         if (auto parsed_value = ParseInspectorValue(prop, InspectorSelectedLineValue); parsed_value.has_value() && parsed_value->Type() == AnyData::ValueType::Bool) {
                             current_value = parsed_value->AsBool();
                         }
@@ -3088,6 +3160,7 @@ void MapperEngine::DrawInspectorImGui()
 
                     if (pending_caret_reset_line == line && pending_caret_reset_frames > 0) {
                         pending_caret_reset_frames--;
+
                         if (pending_caret_reset_frames == 0) {
                             pending_caret_reset_line = -1;
                             pending_caret_reset_array_index = -1;
@@ -3124,6 +3197,7 @@ void MapperEngine::DrawInspectorImGui()
 
                             if (reset_enabled) {
                                 ImGui::SameLine();
+
                                 if (ImGui::SmallButton("Reset")) {
                                     reset_selected_value(line);
                                 }
@@ -3151,6 +3225,7 @@ void MapperEngine::DrawInspectorImGui()
             ImGui::EndTable();
         }
     }
+
     ImGui::EndChild();
 
     ImGui::End();
@@ -3258,6 +3333,7 @@ auto MapperEngine::CancelInspectorPropertyEdit() -> bool
 
     InspectorSelectedLineValue = InspectorSelectedLineInitialValue;
     InspectorEditBuf = InspectorSelectedLineValue;
+
     if (InspectorEditBuf.capacity() < 4096) {
         InspectorEditBuf.reserve(4096);
     }
@@ -3692,6 +3768,7 @@ void MapperEngine::RefreshActiveProtoLists()
 
         // Update fast pids
         cur_map->ClearFastPids();
+
         for (const auto& fast_proto : ActiveSubTabs[INT_MODE_FAST]->ItemProtos) {
             cur_map->AddFastPid(fast_proto->GetProtoId());
         }
@@ -3758,6 +3835,7 @@ void MapperEngine::MoveEntity(ptr<ClientEntity> entity, mpos hex)
                 if (!target) {
                     return false;
                 }
+
                 mapper->MoveEntity(target, old_hex);
                 return true;
             },
@@ -3766,6 +3844,7 @@ void MapperEngine::MoveEntity(ptr<ClientEntity> entity, mpos hex)
                 if (!target) {
                     return false;
                 }
+
                 mapper->MoveEntity(target, hex);
                 return true;
             }});
@@ -3781,6 +3860,7 @@ void MapperEngine::DeleteEntity(ptr<ClientEntity> entity)
 
     if (auto item = entity.dyn_cast<ItemView>()) {
         item_ownership = item->GetOwnership();
+
         if (item_ownership == ItemOwnership::CritterInventory) {
             owner_id = item->GetCritterId();
         }
@@ -3825,6 +3905,7 @@ void MapperEngine::DeleteEntity(ptr<ClientEntity> entity)
 
                 if (item_ownership == ItemOwnership::CritterInventory || item_ownership == ItemOwnership::ItemContainer) {
                     owner = mapper->FindEntityById(*active_map, owner_id);
+
                     if (!owner) {
                         return false;
                     }
@@ -3837,6 +3918,7 @@ void MapperEngine::DeleteEntity(ptr<ClientEntity> entity)
                     mapper->DeleteEntity(target);
                     return true;
                 }
+
                 return false;
             }});
 }
@@ -4162,9 +4244,11 @@ auto MapperEngine::SelectMove(bool hex_move, int32_t& offs_hx, int32_t& offs_hy,
             entry.HasOffset = true;
             entry.OldOffset = item->GetOffset();
             entry.NewOffset = {numeric_cast<int16_t>(ox), numeric_cast<int16_t>(oy)};
+
             if (entry.OldOffset == entry.NewOffset) {
                 continue;
             }
+
             move_entries.emplace_back(std::move(entry));
 
             item->SetOffset({numeric_cast<int16_t>(ox), numeric_cast<int16_t>(oy)});
@@ -4207,6 +4291,7 @@ auto MapperEngine::SelectMove(bool hex_move, int32_t& offs_hx, int32_t& offs_hy,
                 if (entry.OldHex == entry.NewHex && entry.OldMultihexMesh == entry.NewMultihexMesh) {
                     continue;
                 }
+
                 move_entries.emplace_back(std::move(entry));
 
                 cur_map->MoveItem(item, hex);
@@ -4217,9 +4302,11 @@ auto MapperEngine::SelectMove(bool hex_move, int32_t& offs_hx, int32_t& offs_hy,
                 entry.HasHex = true;
                 entry.OldHex = cr->GetHex();
                 entry.NewHex = hex;
+
                 if (entry.OldHex == entry.NewHex) {
                     continue;
                 }
+
                 move_entries.emplace_back(std::move(entry));
 
                 cur_map->MoveCritter(cr, hex, false);
@@ -4284,6 +4371,7 @@ void MapperEngine::SelectDelete()
 
             if (auto item = entity.dyn_cast<ItemView>()) {
                 entry.Ownership = item->GetOwnership();
+
                 if (entry.Ownership == ItemOwnership::CritterInventory) {
                     entry.OwnerId = item->GetCritterId();
                 }
@@ -4304,9 +4392,11 @@ void MapperEngine::SelectDelete()
 
         UndoRedoInProgress = true;
         auto progress_guard = scope_fail([this]() noexcept { UndoRedoInProgress = false; });
+
         for (ptr<ClientEntity> entity : copy_hold_ref(SelectedEntities)) {
             DeleteEntity(entity);
         }
+
         UndoRedoInProgress = false;
 
         SelectClear();
@@ -4322,6 +4412,7 @@ void MapperEngine::SelectDelete()
 
                         if (entry.Ownership == ItemOwnership::CritterInventory || entry.Ownership == ItemOwnership::ItemContainer) {
                             owner = mapper->FindEntityById(*active_map, entry.OwnerId);
+
                             if (!owner) {
                                 return false;
                             }
@@ -4390,6 +4481,7 @@ auto MapperEngine::CreateCritter(hstring pid, mpos hex) -> ptr<CritterView>
                     mapper->DeleteEntity(target);
                     return true;
                 }
+
                 return false;
             },
             [entity_buf = std::move(entity_buf)](ptr<MapperEngine> mapper, ptr<ptr<MapView>> active_map) {
@@ -4478,6 +4570,7 @@ auto MapperEngine::CreateItem(hstring pid, mpos hex, nptr<Entity> owner) -> ptr<
                         mapper->DeleteEntity(target);
                         return true;
                     }
+
                     return false;
                 },
                 [entity_buf = std::move(entity_buf), item_ownership, owner_id](ptr<MapperEngine> mapper, ptr<ptr<MapView>> active_map) {
@@ -4485,6 +4578,7 @@ auto MapperEngine::CreateItem(hstring pid, mpos hex, nptr<Entity> owner) -> ptr<
 
                     if (item_ownership == ItemOwnership::CritterInventory || item_ownership == ItemOwnership::ItemContainer) {
                         restore_owner = mapper->FindEntityById(*active_map, owner_id);
+
                         if (!restore_owner) {
                             return false;
                         }
@@ -4529,6 +4623,7 @@ auto MapperEngine::CloneEntity(ptr<Entity> entity) -> nptr<Entity>
                         mapper->DeleteEntity(target);
                         return true;
                     }
+
                     return false;
                 },
                 [entity_buf = std::move(entity_buf)](ptr<MapperEngine> mapper, ptr<ptr<MapView>> active_map) {
@@ -4556,6 +4651,7 @@ auto MapperEngine::CloneEntity(ptr<Entity> entity) -> nptr<Entity>
                         mapper->DeleteEntity(target);
                         return true;
                     }
+
                     return false;
                 },
                 [entity_buf = std::move(entity_buf)](ptr<MapperEngine> mapper, ptr<ptr<MapView>> active_map) {
@@ -4766,9 +4862,11 @@ auto MapperEngine::CoalesceItemMultihexMesh(ptr<MapView> map, ptr<ItemHexView> i
 
         while (merge_item) {
             merge_item = TryMergeItemToMultihexMesh(map, merge_item, skip_selected);
+
             if (!merge_item) {
                 break;
             }
+
             merges++;
         }
 
@@ -4828,6 +4926,7 @@ auto MapperEngine::CoalesceItemMultihexMesh(ptr<MapView> map, ptr<ItemHexView> i
         source_items.clear();
         scanned.clear();
         collect_item_hexes(item, hex_scratch);
+
         for (auto hex : hex_scratch) {
             scan_hex_once(hex);
         }
@@ -4995,6 +5094,7 @@ auto MapperEngine::TryMergeItemToMultihexMesh(ptr<MapView> map, ptr<ItemHexView>
                     source_item = item;
                     target_item = check_item;
                 }
+
                 break;
             }
         }
@@ -5415,6 +5515,7 @@ void MapperEngine::DrawHistoryWindowImGui()
 
     auto draw_history_button = [&](string_view label, int32_t target_index, bool is_current) {
         string button_label = is_current ? strex("%s  [current]", label).str() : string(label);
+
         if (is_current) {
             ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
@@ -5450,6 +5551,7 @@ void MapperEngine::DrawHistoryWindowImGui()
 
         ImGui::SeparatorText("Current position");
         ImGui::TextDisabled("Applied commands: %d", undo_count);
+
         if (scroll_to_current) {
             ImGui::SetScrollHereY(0.5f);
         }
@@ -5522,6 +5624,7 @@ void MapperEngine::CurDraw()
             int32_t height = iround<int32_t>(numeric_cast<float32_t>(spr->GetSize().height) * zoom);
             SprMngr.DrawSpriteSize(spr, pos, {width, height}, true, false, Color::Neutral);
         }
+
         return;
     }
 
@@ -5580,10 +5683,13 @@ void MapperEngine::DrawSettingsWindowImGui()
     if (ImGui::Checkbox("Fullscreen", &fullscreen)) {
         SprMngr.ToggleFullscreen();
     }
+
     ImGui::Separator();
+
     if (ImGui::Button("Reset layout")) {
         ResetImGuiSettingsRequested = true;
     }
+
     ImGui::Separator();
     ImGui::TextUnformatted("Popular resolutions");
 
@@ -5603,6 +5709,7 @@ void MapperEngine::DrawSettingsWindowImGui()
     if (ImGui::BeginChild("##SettingsResolutions", {0.0f, 0.0f}, false)) {
         for (const auto& res : popular_resolutions) {
             bool is_current = SprMngr.GetScreenSize() == res;
+
             if (ImGui::Selectable(strex("{} x {}", res.width, res.height).c_str(), is_current)) {
                 apply_resolution(res);
             }
@@ -5766,6 +5873,7 @@ void MapperEngine::DrawConsoleImGui()
             ConsoleStr.clear();
         }
     }
+
     ImGui::End();
 
     if (!keep_open) {
@@ -5798,9 +5906,11 @@ void MapperEngine::ConsoleSubmitCommand()
     ConsoleHistoryCur = numeric_cast<int32_t>(ConsoleHistory.size());
 
     string history_str;
+
     for (const auto& str : ConsoleHistory) {
         history_str += str + "\n";
     }
+
     Cache.SetString("mapper_console.txt", history_str);
 
     bool process_command = OnMapperMessage.Fire(ConsoleStr) == EventResult::ContinueChain;
@@ -6238,6 +6348,7 @@ void MapperEngine::ShowMap(ptr<MapView> map)
         nptr<const MapView> target_map = map;
         return loaded_map_view == target_map;
     });
+
     FO_VERIFY_AND_THROW(it != LoadedMaps.end(), "Mapper show requested for a map that is not tracked as loaded", map->GetName(), LoadedMaps.size());
 
     WorkspaceWindowVisible = true;
@@ -6444,6 +6555,7 @@ void MapperEngine::SaveMap(ptr<MapView> map, string_view custom_name)
         nptr<const MapView> target_map = map;
         return loaded_map_view == target_map;
     });
+
     FO_VERIFY_AND_THROW(it != LoadedMaps.end(), "Mapper save requested for a map that is not tracked as loaded", map->GetName(), custom_name, LoadedMaps.size());
 
     string fomap_name = !custom_name.empty() ? string(custom_name) : string(map->GetProto()->GetName());
@@ -6559,6 +6671,7 @@ void MapperEngine::SaveMapToDir(ptr<MapView> map, string_view sub_dir, string_vi
         nptr<const MapView> target_map = map;
         return loaded_map_view == target_map;
     });
+
     FO_VERIFY_AND_THROW(it != LoadedMaps.end(), "Map to save is not in the loaded maps list");
 
     string fomap_content = map->SaveToText(name);
@@ -6641,6 +6754,7 @@ void MapperEngine::UnloadMap(ptr<MapView> map, bool clear_undo)
         nptr<const MapView> target_map = map;
         return loaded_map_view == target_map;
     });
+
     FO_VERIFY_AND_THROW(it != LoadedMaps.end(), "Mapper unload requested for a map that is not tracked as loaded", map->GetName(), LoadedMaps.size(), clear_undo);
 
     SetMapDirty(map, false);
@@ -7074,6 +7188,7 @@ auto MapperEngine::ImGuiInputTextStringImpl(ptr<const char> label, nptr<const ch
     auto value_ptr = make_ptr(&value);
     ImGuiInputTextStringUserData user_data {.Value = value_ptr, .LatinOnly = latin_only, .MoveCaretToEnd = move_caret_to_end};
     flags |= ImGuiInputTextFlags_CallbackResize;
+
     if (latin_only) {
         flags |= ImGuiInputTextFlags_CallbackCharFilter;
     }

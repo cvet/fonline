@@ -215,6 +215,7 @@ auto WorkerPool::Cancel(JobKey key) -> bool
                     break;
                 }
             }
+
             removed = true;
             wake = true;
         }

@@ -757,6 +757,7 @@ namespace SPK::FO
                 aabbMin.setMin(it->position());
                 aabbMax.setMax(it->position());
             }
+
             aabbMin -= diag_v;
             aabbMax += diag_v;
         }

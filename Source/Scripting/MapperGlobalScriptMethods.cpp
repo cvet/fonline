@@ -620,6 +620,7 @@ FO_SCRIPT_API void Mapper_Game_TabSetCritterPids(ptr<MapperEngine> mapper, int32
         if (&stab == &stab_default) {
             continue;
         }
+
         for (size_t i = 0; i < stab.CritterProtos.size(); i++) {
             stab_default.CritterProtos.emplace_back(stab.CritterProtos[i]);
         }

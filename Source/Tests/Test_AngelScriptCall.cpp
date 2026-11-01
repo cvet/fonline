@@ -486,11 +486,13 @@ TEST_CASE("AngelScriptTimeEventWaitsForContextCompletion", "[scripting][time-eve
         scheduled_contexts++;
         resume = std::move(body);
     });
+
     server->TimeEventMngr.SetDispatcherHooks({});
     auto clear_hooks = scope_exit([&]() noexcept {
         context_manager->SetDelayedScheduler({});
         server->TimeEventMngr.ClearDispatcherHooks();
     });
+
     bool cancel = false;
     bool shutdown_pending = false;
     bool fault = false;
@@ -577,6 +579,7 @@ TEST_CASE("AngelScriptTypeIdsAreLazilyAssignedAcrossThreads")
             }
         });
     });
+
     constexpr size_t THREAD_COUNT = 16;
     constexpr size_t TYPE_COUNT = 128;
 
@@ -659,6 +662,7 @@ TEST_CASE("ScriptFuncCleansStoredReturnHandle")
             FO_VERIFY_AND_THROW(call.RetData, "Missing return storage");
             NativeDataProvider::WriteHandleSlot(call.RetData, returned_obj);
         };
+
         func_desc.ReturnValueCleaner = [&release_count, returned_obj](ptr<void> ret_data) {
             nptr<void> stored_obj = NativeDataProvider::ReadHandleSlot(ret_data);
 
@@ -701,6 +705,7 @@ TEST_CASE("VoidScriptFuncDoesNotRetainReturnCleanerAcrossDeferredLifetime")
         ignore_unused(call);
         call_count++;
     };
+
     func_desc.ReturnValueCleaner = [cleanup_token](ptr<void> ret_data) {
         ignore_unused(cleanup_token, ret_data);
         FO_UNREACHABLE_PLACE();

@@ -87,6 +87,7 @@ public:
     {
         static_assert(std::is_base_of_v<ServerEntity, T>);
         shared_lock lock {_registryLock};
+
         auto it = _allEntities.find(id);
 
         if (it == _allEntities.end()) {
@@ -101,6 +102,7 @@ public:
     {
         static_assert(std::is_base_of_v<ServerEntity, T>);
         shared_lock lock {_registryLock};
+
         auto it = _allEntities.find(id);
 
         if (it == _allEntities.end()) {

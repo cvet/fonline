@@ -234,6 +234,7 @@ TEST_CASE("ExceptionHandling")
             FO_VERIFY_AND_RETURN(false, "Return context", 42);
             FAIL("Verify return message form did not return");
         };
+
         auto return_value_msg = [&]() -> int32_t {
             FO_VERIFY_AND_RETURN_VALUE(false, 22, "Return value context", 43);
             return 0;

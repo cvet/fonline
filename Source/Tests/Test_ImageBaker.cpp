@@ -1656,6 +1656,7 @@ TEST_CASE("ImageBaker")
         CHECK(BakedMeshDoubleArea(dilation_frame) == 2);
 
         vector<string> diagonal_rows(40, string(40, '.'));
+
         for (size_t i = 8; i < 32; i++) {
             diagonal_rows[i][i] = '#';
         }
@@ -1668,6 +1669,7 @@ TEST_CASE("ImageBaker")
         CHECK(simplified_diagonal_frame.Mesh.Vertices.size() <= 12);
 
         vector<string> shallow_notch_rows(30, string(30, '#'));
+
         for (size_t y = 23; y < 30; y++) {
             for (size_t x = 5; x < 25; x++) {
                 shallow_notch_rows[y][x] = '.';
@@ -1682,6 +1684,7 @@ TEST_CASE("ImageBaker")
         CHECK_FALSE(IsPointInsideBakedMesh(shallow_notch_frame, SourcePointToBakedMeshPoint(shallow_notch_frame, {15.5f, 29.5f})));
 
         vector<string> shallow_diagonal_rows(40, string(80, '.'));
+
         for (size_t x = 2; x < 78; x++) {
             size_t y = 8 + (x - 2) * 19 / 75;
             shallow_diagonal_rows[y][x] = '#';
@@ -1692,6 +1695,7 @@ TEST_CASE("ImageBaker")
         BakedImageFrame shallow_diagonal_frame = ReadSingleFrame(BakeAlphaMask(shallow_diagonal, shallow_diagonal_rows));
 
         REQUIRE(shallow_diagonal_frame.MeshKind == SpriteMeshKind::Mesh);
+
         for (size_t y = 0; y < shallow_diagonal_rows.size(); y++) {
             for (size_t x = 0; x < shallow_diagonal_rows[y].size(); x++) {
                 if (shallow_diagonal_rows[y][x] == '#') {
@@ -1720,6 +1724,7 @@ TEST_CASE("ImageBaker")
         const BakedImageFrame& edge_coverage_frame = edge_coverage_sequence.Frames.front();
 
         REQUIRE(edge_coverage_frame.MeshKind == SpriteMeshKind::Mesh);
+
         for (size_t sample_y = 0; sample_y < edge_coverage_rows.size(); sample_y++) {
             for (size_t sample_x = 0; sample_x < edge_coverage_rows[sample_y].size(); sample_x++) {
                 if (edge_coverage_rows[sample_y][sample_x] != '#') {
@@ -1735,9 +1740,11 @@ TEST_CASE("ImageBaker")
         }
 
         vector<string> diamond_rows(41, string(81, '.'));
+
         for (size_t y = 0; y < diamond_rows.size(); y++) {
             int32_t distance = std::abs(numeric_cast<int32_t>(y) - 20);
             int32_t half_width = (20 - distance) * 2;
+
             for (int32_t x = 40 - half_width; x <= 40 + half_width; x++) {
                 diamond_rows[y][numeric_cast<size_t>(x)] = '#';
             }
@@ -1766,8 +1773,10 @@ TEST_CASE("ImageBaker")
         }
 
         vector<string> wedge_rows(61, string(61, '.'));
+
         for (size_t y = 5; y <= 55; y++) {
             size_t right = 60 - y;
+
             for (size_t x = 5; x <= right; x++) {
                 wedge_rows[y][x] = '#';
             }
@@ -1785,6 +1794,7 @@ TEST_CASE("ImageBaker")
         CHECK(preferred_triangle_frame.Mesh.Indices.size() == 3);
 
         vector<string> rectangle_rows(31, string(61, '.'));
+
         for (size_t y = 5; y <= 25; y++) {
             for (size_t x = 5; x <= 55; x++) {
                 rectangle_rows[y][x] = '#';
@@ -1806,6 +1816,7 @@ TEST_CASE("ImageBaker")
 
         vector<ipos32> adaptive_tree_hull {{0, 115}, {13, 81}, {33, 29}, {49, 0}, {55, 0}, {58, 7}, {86, 67}, {106, 120}, {106, 141}, {88, 159}, {23, 159}, {0, 137}};
         vector<string> adaptive_tree_rows(160, string(107, '.'));
+
         for (size_t y = 0; y < adaptive_tree_rows.size(); y++) {
             for (size_t x = 0; x < adaptive_tree_rows[y].size(); x++) {
                 int64_t sample_x = numeric_cast<int64_t>(x) * 2 + 1;
@@ -1841,6 +1852,7 @@ TEST_CASE("ImageBaker")
 
         vector<ipos32> pentagon_hull {{50, 5}, {95, 38}, {78, 95}, {22, 95}, {5, 38}};
         vector<string> pentagon_rows(101, string(101, '.'));
+
         for (size_t y = 0; y < pentagon_rows.size(); y++) {
             for (size_t x = 0; x < pentagon_rows[y].size(); x++) {
                 int64_t sample_x = numeric_cast<int64_t>(x) * 2 + 1;
@@ -1867,6 +1879,7 @@ TEST_CASE("ImageBaker")
         CHECK(enclosing_budget_frame.Mesh.Indices.size() == 9);
 
         vector<string> door_rows(61, string(101, '.'));
+
         for (size_t y = 5; y <= 55; y++) {
             for (size_t x = 5; x <= 19; x++) {
                 door_rows[y][x] = '#';
@@ -1917,9 +1930,11 @@ TEST_CASE("ImageBaker")
     SECTION("SpriteMeshAutomaticSimplificationPreservesLShape")
     {
         vector<string> rows(123, string(64, '.'));
+
         for (size_t x = 0; x < 64; x++) {
             size_t top = 17 - x * 15 / 63;
             size_t bottom = 48 - x * 15 / 63;
+
             for (size_t y = top; y <= bottom; y++) {
                 rows[y][x] = '#';
             }
@@ -1945,8 +1960,10 @@ TEST_CASE("ImageBaker")
     {
         vector<string> rows(123, string(64, '.'));
         vector<size_t> top_left {60, 56, 52, 49, 45, 41, 37, 33, 29, 25, 21, 17, 13, 9, 5, 1};
+
         for (size_t y = 2; y <= 17; y++) {
             size_t left = top_left[y - 2];
+
             for (size_t x = left; x < 64; x++) {
                 rows[y][x] = '#';
             }
@@ -1956,9 +1973,12 @@ TEST_CASE("ImageBaker")
                 rows[y][x] = '#';
             }
         }
+
         vector<size_t> bottom_right {59, 56, 52, 48, 44, 40, 36, 32, 28, 24, 20, 16, 12, 8};
+
         for (size_t y = 33; y <= 46; y++) {
             size_t right = bottom_right[y - 33];
+
             for (size_t x = 0; x <= right; x++) {
                 rows[y][x] = '#';
             }
@@ -1991,6 +2011,7 @@ TEST_CASE("ImageBaker")
     {
         vector<string> rows(123, string(64, '.'));
         vector<size_t> top_left {60, 55, 52, 50, 46, 42, 38, 34, 30, 26, 22, 18, 12, 7, 4, 2};
+
         for (size_t y = 0; y < top_left.size(); y++) {
             for (size_t x = top_left[y]; x < 64; x++) {
                 rows[y][x] = '#';
@@ -2001,7 +2022,9 @@ TEST_CASE("ImageBaker")
                 rows[y][x] = '#';
             }
         }
+
         vector<size_t> lower_right {54, 54, 50, 50, 42, 38, 34, 30, 26, 22, 20, 19, 10, 6, 5, 4, 4};
+
         for (size_t y = 26; y <= 42; y++) {
             for (size_t x = 0; x <= lower_right[y - 26]; x++) {
                 rows[y][x] = '#';
@@ -2028,6 +2051,7 @@ TEST_CASE("ImageBaker")
     SECTION("SpriteMeshClustersMoreComponentsThanTriangleBudget")
     {
         vector<string> rows(31, string(101, '.'));
+
         for (size_t y = 5; y <= 25; y++) {
             for (size_t x = 5; x <= 15; x++) {
                 rows[y][x] = '#';
@@ -2474,6 +2498,7 @@ TEST_CASE("ImageBaker")
 
         for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
             CHECK_FALSE(reader.read<bool>());
+
             if (dir == 0) {
                 CHECK(reader.read<int16_t>() == 1);
                 CHECK(reader.read<int16_t>() == -1);
@@ -3119,6 +3144,7 @@ Frm=one.toy
             collection.Main.Frames = {ImageImport::FrameShot {.Width = 1, .Height = 1, .Data = {1, 2, 3, 255}}};
             return collection;
         };
+
         auto make_shared_collection = [](int32_t shared_index) {
             ImageImport::FrameCollection collection;
             collection.SequenceSize = 2;
@@ -3155,6 +3181,7 @@ Frm=one.toy
         for (int32_t value : {-1, 65536}) {
             invalid.emplace_back(make_shared_collection(value));
         }
+
         invalid.emplace_back(make_shared_collection(1));
 
         ImageImport::FrameCollection incomplete_sequence = make_valid();

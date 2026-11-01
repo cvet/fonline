@@ -88,6 +88,7 @@ TEST_CASE("CacheStorage")
 
             (void)fs::remove_dir_tree(temp_dir);
         });
+
         CacheStorage cache {temp_dir};
         cache.SetString("text", "old");
         array<uint8_t, 3> before {'o', 'l', 'd'};

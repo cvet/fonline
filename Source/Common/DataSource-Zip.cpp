@@ -94,24 +94,30 @@ ZipFile::ZipFile(string_view fname) :
         FO_VERIFY_AND_THROW(stream, "Zip open callback received a null stream handle");
         return opaque;
     };
+
     ffunc.zread_file = [](voidpf, voidpf stream, void* buf, uLong size) -> uLong {
         auto file = cast_from_void<std::ifstream*>(stream);
         FO_VERIFY_AND_THROW(file, "Zip read callback received a null file stream");
+
         if (size == 0) {
             return 0;
         }
+
         FO_VERIFY_AND_THROW(buf != nullptr, "Zip read callback received a null output buffer");
         return fs::stream_read_exact(*file, make_span(buf, size)) ? size : 0;
     };
+
     ffunc.zwrite_file = [](voidpf, voidpf, const void*, uLong) -> uLong { return 0; };
     ffunc.ztell_file = [](voidpf, voidpf stream) -> long {
         auto file = cast_from_void<std::ifstream*>(stream);
         FO_VERIFY_AND_THROW(file, "Zip tell callback received a null file stream");
         return numeric_cast<long>(fs::stream_get_read_pos(*file));
     };
+
     ffunc.zseek_file = [](voidpf, voidpf stream, uLong offset, int32_t origin) -> long {
         auto file = cast_from_void<std::ifstream*>(stream);
         FO_VERIFY_AND_THROW(file, "Zip seek callback received a null file stream");
+
         switch (origin) {
         case ZLIB_FILEFUNC_SEEK_SET:
             return fs::stream_set_read_pos(*file, numeric_cast<int32_t>(offset), std::ios_base::beg) ? 0 : -1;
@@ -123,15 +129,18 @@ ZipFile::ZipFile(string_view fname) :
             return -1;
         }
     };
+
     ffunc.zclose_file = [](voidpf, voidpf) -> int32_t {
         // The ifstream is owned by the ZipFile object (_fileStream), not by zlib, so closing the zip must
         // not delete it. This keeps ownership RAII-safe when the constructor throws on a malformed zip
         return 0;
     };
+
     ffunc.zerror_file = [](voidpf, voidpf stream) -> int32_t {
         if (!stream) {
             return 1;
         }
+
         return 0;
     };
 

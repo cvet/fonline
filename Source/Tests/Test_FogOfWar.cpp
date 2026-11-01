@@ -324,6 +324,7 @@ TEST_CASE("FogOfWar")
 
             return block_hex;
         };
+
         fog.Prepare(input);
 
         CHECK(!fog.GetPoints().empty());

@@ -155,6 +155,7 @@ static auto MakeScratchModelResources() -> vector<pair<string, vector<uint8_t>>>
         asset.Skeleton.Joints.emplace_back(ModelSkeletonJoint {.Name = "Root", .Hierarchy = {"Root"}, .RestLocalTransform = mat44 {1.0f}});
         return asset;
     });
+
     baker.BakeFiles(rig.GetAllSourceFiles(), "");
     REQUIRE(rig.Outputs.count(string {model_path}) == 1);
     vector<pair<string, vector<uint8_t>>> resources;
@@ -216,6 +217,7 @@ TEST_CASE("ModelSpriteScratchTargetsAreReleasedByCacheCleanup")
             AppRender::MAX_ATLAS_WIDTH = previous_max_width;
             AppRender::MAX_ATLAS_HEIGHT = previous_max_height;
         });
+
         AppRender::MAX_ATLAS_WIDTH = 4096;
         AppRender::MAX_ATLAS_HEIGHT = 4096;
         sprite->SetSize({512, 512});
@@ -311,6 +313,7 @@ TEST_CASE("MapViewDestroyClearsOnlyItsCachedIndoorMaskReferences")
             targets.DeleteRenderTarget(outer_target);
         });
     });
+
     auto mask_a = client->EffectMngr.LoadEffect(EffectUsage::QuadSprite, "Effects/LifetimeMaskA.fofx");
     auto mask_b = client->EffectMngr.LoadEffect(EffectUsage::QuadSprite, "Effects/LifetimeMaskB.fofx");
     auto mask_c = client->EffectMngr.LoadEffect(EffectUsage::QuadSprite, "Effects/LifetimeMaskC.fofx");
@@ -326,6 +329,7 @@ TEST_CASE("MapViewDestroyClearsOnlyItsCachedIndoorMaskReferences")
             }
         });
     });
+
     first->DrawMap();
     REQUIRE(mask_a->IndoorMaskTex);
     auto retiring_texture = mask_a->IndoorMaskTex;
@@ -339,6 +343,7 @@ TEST_CASE("MapViewDestroyClearsOnlyItsCachedIndoorMaskReferences")
             }
         });
     });
+
     second->DrawMap();
     REQUIRE(mask_c->IndoorMaskTex);
     auto second_texture = mask_c->IndoorMaskTex;
@@ -441,6 +446,7 @@ TEST_CASE("ClientMapUnloadReleasesRenderTargetsWithRetainedHandles")
                 }
             });
         });
+
         CHECK(rt_mngr.GetRenderTargetCount() == initial_targets + 3);
         map->DestroySelf();
         CHECK(map->IsDestroyed());
@@ -460,6 +466,7 @@ TEST_CASE("ClientMapUnloadReleasesRenderTargetsWithRetainedHandles")
                 }
             });
         });
+
         CHECK(rt_mngr.GetRenderTargetCount() == initial_targets + 3);
         map->DestroySelf();
         CHECK(map->IsDestroyed());
@@ -494,6 +501,7 @@ TEST_CASE("ClientLargeMapFieldsStayWithinMemoryBudget")
             }
         });
     });
+
     size_t map_memory = platform::get_process_private_memory_usage();
 
     // Measure the real constructor, including view and light buffers, without optional allocator diagnostics
@@ -588,6 +596,7 @@ TEST_CASE("ClientMapUnloadDropsPendingItemOwners")
             }
         });
     });
+
     auto item = safe_alloc::make_refcounted<ItemHexView>(map.as_ptr(), ident_t {}, item_proto.as_ptr());
     map->RefreshItem(item, true);
     REQUIRE(item->GetRefCount() == 2);
@@ -696,10 +705,12 @@ TEST_CASE("ClientMapFieldAccessCost", "[.]")
             StaticTwoDimensionalGrid<MapView::Field, mpos, msize> dense {{1200, 1200}};
             dense_checksum = measure(dense, "dense");
         }
+
         {
             ChunkedTwoDimensionalGrid<MapView::Field, mpos, msize, GameSettings::CLIENT_MAP_CHUNK_SIDE> chunked {{1200, 1200}};
             CHECK(measure(chunked, "chunked") == dense_checksum);
         }
+
         {
             DynamicTwoDimensionalGrid<MapView::Field, mpos, msize> dynamic {{1200, 1200}};
             CHECK(measure(dynamic, "hash") == dense_checksum);
@@ -727,10 +738,12 @@ TEST_CASE("ClientCritterFinalizationDropsAttachmentIds", "[client][entity][attac
     auto previous_exception_callback = exceptions::get_callback();
     exceptions::set_callback([&native_reports, previous_exception_callback](string_view message, const stack_trace::catched_data& trace, bool fatal) {
         native_reports.fetch_add(1, std::memory_order_relaxed);
+
         if (previous_exception_callback) {
             previous_exception_callback(message, trace, fatal);
         }
     });
+
     auto restore_exception_callback = scope_exit([previous = std::move(previous_exception_callback)]() mutable noexcept { exceptions::set_callback(std::move(previous)); });
 
     master->DestroySelf();
@@ -790,6 +803,7 @@ TEST_CASE("ClientItemPrototypeFootprintRecachesOnBlockingChange")
         proto.SetMultihexLines(vector<uint8_t> {5, 1});
         proto.SetDrawMultihexLines(false);
     });
+
     auto proto_blob = BakerTests::MakeMultiProtoResourceBlob<ProtoItem>(client_engine, client_engine.Hashes.to_hashed_string("Item"), client_protos);
     vector<pair<string, vector<uint8_t>>> extra_resources;
     extra_resources.emplace_back("FootprintItems.fopro-bin-client", std::move(proto_blob));

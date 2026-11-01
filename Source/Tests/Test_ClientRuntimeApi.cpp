@@ -101,6 +101,7 @@ TEST_CASE("ClientRuntimeApi")
     {
         ClientRuntimeRunFunc stub_run = +[](int32_t argc, char** argv, ClientRuntimeResult* raw_runtime_result) noexcept {
             CommandLineArgs args {argc, argv};
+
             if (raw_runtime_result != nullptr) {
                 auto result = make_ptr(raw_runtime_result);
                 result->StructSize = numeric_cast<uint32_t>(sizeof(ClientRuntimeResult));

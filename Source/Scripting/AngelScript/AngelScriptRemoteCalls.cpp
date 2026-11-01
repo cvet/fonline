@@ -337,6 +337,7 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<En
         }
         else if (type.IsStruct) {
             ptr<vector<uint8_t>> buf = &std::get<vector<uint8_t>>(temp_data.emplace_back(vector<uint8_t>(type.Size, 0)));
+
             for (const auto& field : type.StructLayout->Fields) {
                 auto field_data = read_simple(field.Type);
 
@@ -346,10 +347,12 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<En
                     span_write_bytes(make_span(*buf), field_pos, make_span(field_data.get(), field.Type.Size));
                 }
             }
+
             nptr<uint8_t> buf_data = buf->data();
             if (!buf_data) {
                 return nullptr;
             }
+
             return buf_data.void_cast();
         }
         else {

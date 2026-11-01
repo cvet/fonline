@@ -533,6 +533,7 @@ void ClientEngine::MainLoop()
             SprMngr.AbortScene();
             ReleaseAbandonedOffscreenSurfaces();
         });
+
         SprMngr.BeginScene();
 
         // Make dirty offscreen surfaces
@@ -565,6 +566,7 @@ void ClientEngine::ProcessInputEvents()
 
     if (SprMngr.IsWindowFocused()) {
         InputEvent ev;
+
         while (input->PollEvent(ev)) {
             ProcessInputEvent(ev);
         }
@@ -774,13 +776,17 @@ void ClientEngine::Net_SendMove(ptr<CritterHexView> cr)
     _conn.OutBuf->Write(moving->GetSpeed());
     _conn.OutBuf->Write(moving->GetStartHex());
     _conn.OutBuf->Write(numeric_cast<uint16_t>(moving->GetSteps().size()));
+
     for (auto step : moving->GetSteps()) {
         _conn.OutBuf->Write(step.hex());
     }
+
     _conn.OutBuf->Write(numeric_cast<uint16_t>(moving->GetControlSteps().size()));
+
     for (auto control_step : moving->GetControlSteps()) {
         _conn.OutBuf->Write(control_step);
     }
+
     _conn.OutBuf->Write(moving->GetEndHexOffset());
 
     // A held direction's plan goes with its number and lease; a path to a point runs to its end
@@ -1894,6 +1900,7 @@ void ClientEngine::Net_OnProperty()
             FO_VERIFY_AND_THROW(map, "Map is null");
             entity = map->GetCritter(cr_id);
         }
+
         break;
     case NetProperty::Chosen:
         entity = GetChosen();
@@ -1904,6 +1911,7 @@ void ClientEngine::Net_OnProperty()
             FO_VERIFY_AND_THROW(map, "Map is null");
             entity = map->GetItem(item_id);
         }
+
         break;
     case NetProperty::CritterItem:
         if (_curMap) {
@@ -1914,11 +1922,13 @@ void ClientEngine::Net_OnProperty()
                 entity = cr->GetInvItem(item_id);
             }
         }
+
         break;
     case NetProperty::ChosenItem:
         if (auto chosen = GetChosen()) {
             entity = chosen->GetInvItem(item_id);
         }
+
         break;
     case NetProperty::Map:
         entity = GetCurMap();
@@ -2378,6 +2388,7 @@ void ClientEngine::ReceiveCritterMoving(nptr<CritterHexView> cr)
 auto ClientEngine::GetEntity(ident_t id) -> refcount_nptr<ClientEntity>
 {
     scoped_lock locker {_allEntitiesLocker};
+
     auto it = _allEntities.find(id);
 
     if (it == _allEntities.end()) {
@@ -2393,6 +2404,7 @@ void ClientEngine::RegisterEntity(ptr<ClientEntity> entity)
     FO_VERIFY_AND_THROW(entity->GetId(), "Entity has no assigned id");
 
     scoped_lock locker {_allEntitiesLocker};
+
     _allEntities.insert_or_assign(entity->GetId(), entity);
 }
 
@@ -3537,6 +3549,7 @@ void ClientEngine::SetEffectScriptValues(EffectType effectType, int64_t effectSu
     auto effect = ResolveRequiredEffectScriptValueTarget(effectType, effectSubtype);
 
     const_span<float32_t> selected_values;
+
     if (actual_values_count != 0) {
         selected_values = values.subspan(numeric_cast<size_t>(valuesOffset), numeric_cast<size_t>(actual_values_count));
     }

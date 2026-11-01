@@ -1099,6 +1099,7 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
 
             out << indent << "}\n";
         };
+
         bool first_domain = true;
         unordered_set<string> domain_names;
 

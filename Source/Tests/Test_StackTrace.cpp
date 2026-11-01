@@ -248,9 +248,11 @@ TEST_CASE("StackTrace")
             static_cast<stack_trace::native_frame_address>(0xB1), // parent's Execute()         (= anchor for parent layer)
             static_cast<stack_trace::native_frame_address>(0x80), // main()
         };
+
         for (size_t i = 0; i < pcs.size(); i++) {
             st.native_frames[i] = pcs[i];
         }
+
         st.native_frame_count = static_cast<uint32_t>(pcs.size());
 
         stack_trace::script_layer child;

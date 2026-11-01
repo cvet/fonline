@@ -288,6 +288,7 @@ $Text engl Name = Broken
             ProtoTextBaker baker(local_rig.MakeContext("ProtoTextBrokenSection"));
             CHECK_THROWS_AS(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), ProtoTextBakerException);
         }
+
         {
             TestRig local_rig;
             local_rig.AddBakedFile("Metadata.fometa-server", BakerTests::MakeMetadataBlob({{"Entity", {{"AuditLog"}}}}));
@@ -299,6 +300,7 @@ $Text engl Name = Audit
             ProtoTextBaker baker(local_rig.MakeContext("ProtoTextNoProtos"));
             CHECK_THROWS_AS(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), ProtoTextBakerException);
         }
+
         {
             TestRig local_rig;
             local_rig.AddBakedFile("Metadata.fometa-server", MakeEmptyMetadataBlob());
@@ -310,6 +312,7 @@ $Text engl Name = Unknown
             ProtoTextBaker baker(local_rig.MakeContext("ProtoTextUnknownType"));
             CHECK_THROWS_AS(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), ProtoTextBakerException);
         }
+
         {
             TestRig local_rig;
             local_rig.AddBakedFile("Metadata.fometa-server", MakeEmptyMetadataBlob());
@@ -325,6 +328,7 @@ $Text engl Name = Two
             ProtoTextBaker baker(local_rig.MakeContext("ProtoTextDuplicate"));
             CHECK_THROWS_AS(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), ProtoTextBakerException);
         }
+
         {
             TestRig local_rig;
             local_rig.AddBakedFile("Metadata.fometa-server", MakeEmptyMetadataBlob());
@@ -337,6 +341,7 @@ $Text engl Name = Orphan
             ProtoTextBaker baker(local_rig.MakeContext("ProtoTextMissingParent"));
             CHECK_THROWS_AS(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), ProtoTextBakerException);
         }
+
         {
             TestRig local_rig;
             local_rig.AddBakedFile("Metadata.fometa-server", MakeEmptyMetadataBlob());
@@ -348,6 +353,7 @@ $Text engl Name Extra Overflow = Too many
             ProtoTextBaker baker(local_rig.MakeContext("ProtoTextTooManyTokens"));
             CHECK_THROWS(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
         }
+
         {
             TestRig local_rig;
             OverrideSetting(local_rig.Settings.Baking.BakeLanguages, vector<string> {});
@@ -359,6 +365,7 @@ $Text = No default language
 
             CHECK_THROWS_AS(ProtoTextBaker(local_rig.MakeContext("ProtoTextNoLanguages")), ProtoTextBakerException);
         }
+
         {
             TestRig local_rig;
             local_rig.AddBakedFile("Metadata.fometa-server", MakeEmptyMetadataBlob());
@@ -376,6 +383,7 @@ $Text engl Name = Child
             ProtoTextBaker baker(local_rig.MakeContext("ProtoTextNestedMissingParent"));
             CHECK_THROWS_AS(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), ProtoTextBakerException);
         }
+
         {
             TestRig local_rig;
             OverrideSetting(local_rig.Settings.Baking.BakeLanguages, vector<string> {"engl"});

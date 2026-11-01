@@ -145,6 +145,7 @@ void FogShape::BuildPoints(const Input& input, vector<PrimitivePoint>& fog_point
                     GeometryHelper::MoveHexByDirUnsafe(target_raw_hex, hdir::North);
 #endif
                 }
+
                 seek_start = false;
                 j = -1;
             }

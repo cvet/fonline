@@ -910,6 +910,7 @@ TEST_CASE("TimeEventCancellationContinuesAfterDispatcherFailure")
         cancel_calls++;
         throw GenericException("Injected time-event cancellation notification failure");
     };
+
     server->TimeEventMngr.SetDispatcherHooks(std::move(hooks));
     auto clear_dispatcher_hooks = scope_exit([&server]() noexcept { safe_call([&server] { server->TimeEventMngr.ClearDispatcherHooks(); }); });
 
@@ -920,6 +921,7 @@ TEST_CASE("TimeEventCancellationContinuesAfterDispatcherFailure")
             cancellation_exception_reports++;
         }
     });
+
     auto restore_exception_callback = scope_exit([previous = std::move(previous_exception_callback)]() mutable noexcept { exceptions::set_callback(std::move(previous)); });
 
     REQUIRE_NOTHROW(server->TimeEventMngr.CancelAllForEntity(cr));
@@ -1151,6 +1153,7 @@ TEST_CASE("TimeEventManagerCollectsReadyEventsAndNotifiesDispatcher")
         scheduled_ids.push_back(event_id);
         scheduled_delays.push_back(delay);
     };
+
     hooks.Cancel = [&](uint32_t event_id) { cancelled_ids.push_back(event_id); };
     server->TimeEventMngr.SetDispatcherHooks(std::move(hooks));
     auto clear_dispatcher_hooks = scope_exit([&server]() noexcept { safe_call([&server] { server->TimeEventMngr.ClearDispatcherHooks(); }); });
@@ -1259,6 +1262,7 @@ TEST_CASE("DestroyingEntityRejectsNewTimeEvents")
 
         return Entity::EventResult::ContinueChain;
     };
+
     callback.SubscriptionPtr = reinterpret_cast<uintptr_t>(&finish_called);
     server->OnCritterFinish.Subscribe(std::move(callback));
     auto unsubscribe = scope_exit([&server, &finish_called]() noexcept { server->OnCritterFinish.Unsubscribe(reinterpret_cast<uintptr_t>(&finish_called)); });

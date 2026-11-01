@@ -137,6 +137,7 @@ TEST_CASE("ResourcePack")
             writer.AddFile("Payload.bin", const_span<uint8_t> {compressible.data(), compressible.size()});
             writer.Finish();
         }
+
         {
             ResourcePackWriter writer {incompressible_path};
             writer.AddFile("Payload.bin", const_span<uint8_t> {incompressible.data(), incompressible.size()});
@@ -466,6 +467,7 @@ TEST_CASE("ResourcePackPatch")
         (void)fs::remove_file(target);
         (void)fs::remove_file(recovery);
     });
+
     WritePatchTestPack(base, {{"A.txt", "same"}, {"B.txt", "old"}, {"C.txt", "deleted"}});
     auto original_base = fs::read_file(base);
     REQUIRE(original_base);

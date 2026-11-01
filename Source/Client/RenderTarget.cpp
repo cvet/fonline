@@ -174,6 +174,7 @@ void RenderTargetManager::DeleteRenderTarget(nptr<RenderTarget> rt)
         auto check_rt_ptr = check_rt.as_ptr();
         return check_rt_ptr == rt;
     });
+
     FO_VERIFY_AND_THROW(it != _rtAll.end(), "Lookup failed in rt all");
     _rtAll.erase(it);
 }

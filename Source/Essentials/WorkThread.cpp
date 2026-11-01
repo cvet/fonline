@@ -304,6 +304,7 @@ void work_thread::thread_entry() noexcept
 
                 {
                     scoped_lock locker {_data_locker};
+
                     _completed_jobs++;
                 }
             }

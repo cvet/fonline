@@ -865,6 +865,7 @@ auto LoadModelAnimationRuntimeRig(const_span<uint8_t> data, string_view model_de
         if (joint_remap.CanonicalJointCount != canonical_joint_count || joint_remap.Duration != animation.duration()) {
             throw ModelAnimationRuntimeException("Ozz animation remap canonical joint count and duration do not match expected values", clip_context, joint_remap.CanonicalJointCount, joint_remap.Duration, canonical_joint_count, animation.duration());
         }
+
         bool has_nearest_timeline = !joint_remap.NearestSampleTimes.empty();
 
         if (has_nearest_timeline != nearest_sampling) {
@@ -1385,6 +1386,7 @@ static void BlendModelAnimationRuntimeTracks(const array<ModelAnimationRuntimeRe
 
         return result;
     };
+
     auto pack_rotations = [](const array<quaternion, 4>& rotations, ozz::math::SoaTransform& transform) {
         array<float32_t, 4> x {};
         array<float32_t, 4> y {};

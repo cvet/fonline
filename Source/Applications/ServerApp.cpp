@@ -117,6 +117,7 @@ int main(int argc, char** argv) // Handled by SDL
             auto settings = make_ptr(&GetApp()->Settings);
             server = safe_alloc::make_refcounted<ServerEngine>(settings, GetServerResources(*settings));
         };
+
         auto stop_server = [&server, &get_server] {
             auto running_server = get_server();
             running_server->Shutdown();
@@ -656,6 +657,7 @@ int main(int argc, char** argv) // Handled by SDL
 
             {
                 InputEvent ev;
+
                 while (GetApp()->Input.PollEvent(ev)) {
                     events.emplace_back(ev);
                 }

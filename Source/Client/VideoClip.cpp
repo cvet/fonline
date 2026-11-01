@@ -86,6 +86,7 @@ VideoClip::VideoClip(vector<uint8_t> video_data) :
             th_setup_free(owned_setup_info.get());
         }
     });
+
     _impl->RawVideoData = std::move(video_data);
 
     _impl->Streams.Streams.resize(Impl::StreamStates::COUNT);
@@ -133,6 +134,7 @@ VideoClip::VideoClip(vector<uint8_t> video_data) :
             th_decode_free(owned_decoder_context.get());
         }
     });
+
     _impl->RenderedTextureData.resize(numeric_cast<size_t>(_impl->VideoInfo.get().pic_width) * _impl->VideoInfo.get().pic_height);
     _impl->StartTime = nanotime::now();
 }

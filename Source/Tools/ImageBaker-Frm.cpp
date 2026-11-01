@@ -525,6 +525,7 @@ static_assert(sizeof(FoPalette) == 1024);
                             }
                             else if (index >= 248 && index <= 253) {
                                 index = numeric_cast<uint8_t>(index - frm % 6);
+
                                 if (index < 248) {
                                     index = numeric_cast<uint8_t>(index + 6);
                                 }

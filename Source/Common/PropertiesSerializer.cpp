@@ -1610,6 +1610,7 @@ static auto ConvertToString(const AnyData::Value& value, string& buf) -> string_
         if (!std::isfinite(value.AsDouble())) {
             throw PropertySerializationException("Numeric value is not finite", value.AsDouble());
         }
+
         return buf = strex("{}", value.AsDouble());
     case AnyData::ValueType::Bool:
         return buf = strex("{}", value.AsBool());
@@ -2234,6 +2235,7 @@ void PropertiesSerializer::LoadPropertyFromValue(ptr<const Property> prop, const
         if (dict_key_type->IsSimpleStruct) {
             dict_key_type = &dict_key_type->StructLayout->Fields.front().Type;
         }
+
         string str_buf;
 
         // Measure data length
@@ -2314,6 +2316,7 @@ void PropertiesSerializer::LoadPropertyFromValue(ptr<const Property> prop, const
             data_pos = align_up(data_pos, alignment_for_size(size));
             WriteRawBytes(data_ptr, data_pos, source, size);
         };
+
         auto write_uint32 = [&](uint32_t value) { WriteRawUInt32(data_ptr, data_pos, value); };
 
         for (auto&& [dict_key, dict_value] : dict) {
@@ -2471,6 +2474,7 @@ void PropertiesSerializer::LoadPropertyFromText(ptr<Properties> props, ptr<const
 
             for (const auto& field : prop->GetBaseTypeLayout().Fields) {
                 s = ReadTextTokenView(s, token);
+
                 if (!s) {
                     throw PropertySerializationException("Wrong struct size (from text)");
                 }

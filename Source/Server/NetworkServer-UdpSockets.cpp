@@ -325,6 +325,7 @@ void NetworkServer_UdpSockets::ProcessIncomingPackets()
 
         {
             scoped_lock locker {_connectionsLocker};
+
             auto it = _sessions.find(packet.SessionId);
 
             if (it != _sessions.end()) {

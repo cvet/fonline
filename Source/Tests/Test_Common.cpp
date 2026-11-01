@@ -693,6 +693,7 @@ TEST_CASE("SpriteResourceDecoderKeepsWideMeshCountsAndCoordinatesPositive")
     writer.write<uint16_t>(uint16_t {65535});
     writer.write<int32_t>(int32_t {0});
     writer.write<int32_t>(int32_t {0});
+
     for (int32_t vertex = 0; vertex < vertex_count; vertex++) {
         writer.write<uint16_t>(vertex == 1 ? uint16_t {65535} : uint16_t {0});
         writer.write<uint16_t>(vertex == vertex_count - 1 ? uint16_t {1} : uint16_t {0});

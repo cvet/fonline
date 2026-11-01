@@ -582,6 +582,7 @@ void Critter::MoveAttachedCritters()
         if (checked_cr->GetMapId() != checked_map->GetId()) {
             return false;
         }
+
         return true;
     };
 

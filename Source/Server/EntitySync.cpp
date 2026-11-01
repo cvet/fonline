@@ -526,6 +526,7 @@ static void LogUncoveredEntity(nptr<const ServerEntity> entity) noexcept
         if (lock->IsLockedByCurrentThread()) {
             return "HELD-by-this-thread";
         }
+
         return "not-held";
     };
 
@@ -938,6 +939,7 @@ void SyncContext::SyncEntities(const_span<ptr<ServerEntity>> entities)
                                 widen_covered = true;
                                 break;
                             };
+
                             current = current->GetParentRaw();
                         }
                     }
@@ -1477,6 +1479,7 @@ void SyncContext::CollectHeldUnion(nptr<SyncContext> first, unordered_map<ptr<En
             reacquire_count.emplace(lock, lock->GetExclusiveRecursionForCurrentThread());
         }
     };
+
     auto add_hold = [&reregister_count](ptr<EntityLock> lock) {
         if (!reregister_count.contains(lock)) {
             reregister_count.emplace(lock, lock->GetDescendantHoldCountForCurrentThread());

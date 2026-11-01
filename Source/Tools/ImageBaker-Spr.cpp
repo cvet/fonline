@@ -239,6 +239,7 @@ namespace ImageBakerSpr
 
             vector<int32_t> bboxes;
             bboxes.resize(frame_slot_count);
+
             if (!bboxes.empty()) {
                 reader.ReadObjectArray(span<int32_t> {bboxes.data(), bboxes.size()});
             }
@@ -349,6 +350,7 @@ namespace ImageBakerSpr
             if (anim_frames.empty()) {
                 anim_frames.push_back(0);
             }
+
             FO_VERIFY_AND_THROW(anim_frames.size() <= numeric_cast<size_t>(std::numeric_limits<uint16_t>::max()), "SPR animation frame count exceeds the serialized range", fname, anim_frames.size());
 
             if (dir == 0) {

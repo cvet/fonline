@@ -349,6 +349,7 @@ auto NormalizeScriptPropertyDecl(string_view decl) -> string
                         while (element_begin > 0 && (std::isalnum(static_cast<unsigned char>(fixed_decl[element_begin - 1])) != 0 || fixed_decl[element_begin - 1] == '_' || fixed_decl[element_begin - 1] == ':' || fixed_decl[element_begin - 1] == '@')) {
                             element_begin--;
                         }
+
                         break;
                     }
                 }
@@ -606,6 +607,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
         memory::copy(&result, enum_data.data(), enum_data.size());
         return result;
     };
+
     auto create_ref_obj = [prop](const_span<uint8_t> ref_data) -> refcount_ptr<DynamicRefTypeInstance> { return CreateRefTypeScriptObjectFromProperty(prop, ref_data); };
 
     ptr<const uint8_t> data = prop_data.GetPtrAs<uint8_t>();
@@ -930,14 +932,17 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
                     auto ref_data = span_read_aligned_bytes(data_span, data_pos, ref_data_size, MAX_SERIALIZED_ALIGNMENT);
                     return create_ref_obj(ref_data);
                 };
+
                 auto read_fixed_type = [&]() -> nptr<Entity> {
                     auto value_data = span_read_aligned_bytes(data_span, data_pos, prop->GetBaseSize(), alignment_for_size(prop->GetBaseSize()));
                     return resolve_fixed_type(value_data);
                 };
+
                 auto read_hash = [&]() -> hstring {
                     auto value_data = span_read_aligned_bytes(data_span, data_pos, prop->GetBaseSize(), alignment_for_size(prop->GetBaseSize()));
                     return resolve_hash(value_data);
                 };
+
                 auto read_raw_value = [&]() -> const_span<uint8_t> { return span_read_aligned_bytes(data_span, data_pos, prop->GetBaseSize(), alignment_for_size(prop->GetBaseSize())); };
 
                 while (data_pos < data_span.size()) {

@@ -346,6 +346,7 @@ public:
                 cb(args...);
             }
         }
+
         return *this;
     }
 

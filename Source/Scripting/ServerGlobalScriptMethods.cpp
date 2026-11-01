@@ -1352,6 +1352,7 @@ namespace
         if (!collectionName) {
             throw ScriptException("Collection name arg is empty");
         }
+
         if constexpr (std::is_same_v<std::decay_t<decltype(id)>, ident_t>) {
             if (!id) {
                 throw ScriptException("Record id arg is zero");
@@ -1368,6 +1369,7 @@ namespace
         if (!strvex(key).is_valid_utf8()) {
             throw ScriptException("Record key has invalid encoding");
         }
+
         if constexpr (std::is_same_v<T, string_view>) {
             if (!strvex(value).is_valid_utf8()) {
                 throw ScriptException("Record value has invalid encoding");
@@ -1657,6 +1659,7 @@ FO_SCRIPT_API int32_t Server_Game_SystemCall(ptr<ServerEngine> server, string_vi
         if (!output.empty()) {
             output += "\n";
         }
+
         output += line;
     });
 }

@@ -895,6 +895,7 @@ void Properties::CopyFrom(const Properties& other) noexcept
             auto prop = _registrar->GetPropertyByIndexUnsafe(entry.PropRegIndex);
 
             span<const uint8_t> other_raw_data;
+
             if (entry.DataSize != 0) {
                 nptr<const uint8_t> other_overlay_data = other._overlayData.get();
                 FO_STRONG_ASSERT(other_overlay_data, "Source overlay data buffer is null");
@@ -1715,6 +1716,7 @@ void Properties::SetRawData(ptr<const Property> prop, span<const uint8_t> raw_da
             auto entry_data = overlay_data.offset(entry.DataOffset);
             return {entry_data.get(), entry.DataSize};
         };
+
         auto set_overlay_raw_data = [this](size_t data_offset, span<const uint8_t> data) noexcept {
             if (data.empty()) {
                 return;
@@ -2128,6 +2130,7 @@ auto Properties::GetValueAsInt(int32_t property_index) const -> int32_t
     if (prop->IsDisabled()) {
         throw PropertiesException("Can't retreive integer value from disabled property", prop->GetName());
     }
+
     return GetPlainDataValueAsInt(prop);
 }
 
@@ -2145,6 +2148,7 @@ auto Properties::GetValueAsAny(int32_t property_index) const -> any_t
     if (prop->IsDisabled()) {
         throw PropertiesException("Can't retreive integer value from disabled property", prop->GetName());
     }
+
     return GetPlainDataValueAsAny(prop);
 }
 
@@ -2162,6 +2166,7 @@ void Properties::SetValueAsInt(int32_t property_index, int32_t value)
     if (prop->IsDisabled()) {
         throw PropertiesException("Can't set integer value to disabled property", prop->GetName());
     }
+
     SetPlainDataValueAsInt(prop, value);
 }
 
@@ -2179,6 +2184,7 @@ void Properties::SetValueAsAny(int32_t property_index, const any_t& value)
     if (prop->IsDisabled()) {
         throw PropertiesException("Can't set any value to disabled property", prop->GetName());
     }
+
     SetPlainDataValueAsAny(prop, value);
 }
 
@@ -2202,6 +2208,7 @@ void Properties::SetValueAsIntProps(int32_t property_index, int32_t value)
     if (!prop->IsMutable()) {
         throw PropertiesException("Can't set integer value to non mutable property", prop->GetName());
     }
+
     const auto& base_type = prop->IsBaseTypeSimpleStruct() ? prop->GetStructFirstType() : prop->GetBaseType();
 
     if (base_type.IsHashedString) {

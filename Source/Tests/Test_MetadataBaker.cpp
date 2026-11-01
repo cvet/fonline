@@ -57,22 +57,28 @@ static auto ReadMetadataTags(const vector<uint8_t>& output) -> map<string, vecto
         reader.read_string_bytes(value);
         return value;
     };
+
     map<string, vector<vector<string>>> tags;
+
     for (uint16_t i = 0; i < tag_count; i++) {
         uint16_t tag_name_len = reader.read<uint16_t>();
         string tag_name = read_string(tag_name_len);
         uint32_t tag_value_count = reader.read<uint32_t>();
+
         for (uint32_t j = 0; j < tag_value_count; j++) {
             uint32_t value_parts_count = reader.read<uint32_t>();
             vector<string> value_parts;
             value_parts.reserve(value_parts_count);
+
             for (uint32_t k = 0; k < value_parts_count; k++) {
                 uint16_t part_len = reader.read<uint16_t>();
                 value_parts.emplace_back(read_string(part_len));
             }
+
             tags[tag_name].emplace_back(std::move(value_parts));
         }
     }
+
     reader.verify_end();
     return tags;
 }
@@ -101,6 +107,7 @@ TEST_CASE("MetadataBaker")
         auto version_size = reader.read<uint16_t>();
         ignore_unused(reader.read_string_view(version_size));
     };
+
     auto read_baked_header = [](const vector<uint8_t>& output) {
         data_reader reader(output);
         CHECK(reader.read<uint32_t>() == METADATA_FILE_MAGIC);
@@ -111,6 +118,7 @@ TEST_CASE("MetadataBaker")
         reader.read_string_bytes(version);
         return version;
     };
+
     auto read_baked_tags = [](const vector<uint8_t>& output) { return ReadMetadataTags(output); };
 
     REQUIRE(bakers.size() == 1);
@@ -628,6 +636,7 @@ namespace TestOffTargetMetadataStubs
             MetadataBaker baker(local_rig.MakeContext());
             REQUIRE_THROWS_WITH(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("empty tag"));
         }
+
         {
             TestRig local_rig;
             local_rig.AddSourceFile("Scripts/UnknownTag.fos", "///@ Unknown Tag");
@@ -1398,6 +1407,7 @@ TEST_CASE("MetadataBakerPropertyTransformRoundTripsAndValidates")
 
     MetadataBaker baker(rig.MakeContext());
     REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+
     for (auto target : {"server", "client", "mapper"}) {
         EngineMetadata meta {[] { }};
         meta.RegisterSide(target == string_view {"server"} ? EngineSideKind::ServerSide : EngineSideKind::ClientSide);
@@ -1457,10 +1467,12 @@ TEST_CASE("MetadataBakerEntityHolderScopes")
         REQUIRE(tags.contains("EntityHolder"));
         const auto& entities = tags.at("Entity");
         const auto& holders = tags.at("EntityHolder");
+
         for (string_view candidate : {"Server", "Client", "Mapper"}) {
             string holder = strex("Scope{}Holder", candidate);
             string child = strex("Scope{}Child", candidate);
             string flag = candidate == "Server" ? "Persistent" : "NoSync";
+
             if (candidate == side) {
                 CHECK(std::ranges::count(entities, vector<string> {holder}) == 1);
                 CHECK(std::ranges::count(entities, vector<string> {child}) == 1);

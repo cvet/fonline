@@ -240,6 +240,7 @@ namespace NativeDataProvider
                     entries.emplace_back(make_ptr(&entry.first).void_cast(), make_ptr(&entry.second).void_cast());
                 }
             };
+
             _clearCallback = [&]() FO_DEFERRED { cont.clear(); };
             _addCallback = [&](ptr<void> key, ptr<void> value) FO_DEFERRED { cont.emplace(*cast_from_void<const typename T::key_type*>(key.get()), *cast_from_void<typename T::mapped_type*>(value.get())); };
         }
@@ -257,6 +258,7 @@ namespace NativeDataProvider
                     entries.emplace_back(make_ptr(&entry.first).void_cast(), make_ptr(&entry.second).void_cast());
                 }
             };
+
             _clearCallback = []() FO_DEFERRED { throw InvalidCallException(FO_LINE_STR); };
             _addCallback = [](ptr<void> /*key*/, ptr<void> /*value*/) FO_DEFERRED { throw InvalidCallException(FO_LINE_STR); };
         }

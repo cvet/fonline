@@ -155,6 +155,7 @@ auto Updater::Process() -> bool
     _gameTime.FrameAdvance(is_run_in_debugger());
 
     InputEvent ev;
+
     while (_sprMngr.GetInput()->PollEvent(ev)) {
         if (ev.Type == InputEvent::EventType::KeyDownEvent) {
             if (ev.KeyDown.Code == KeyCode::Escape) {
@@ -589,6 +590,7 @@ void Updater::GetNextFile()
         string live_path = make_live_path(f);
         return file_uses_binary_dir(f) ? strex("{}{}", live_path, ClientBinaryStagingSuffix).str() : live_path;
     };
+
     auto try_promote_staged_binary = [&](const UpdateFile& f, string_view staged_path) {
         if (file_uses_binary_dir(f)) {
             ReplaceFileSafely(staged_path, make_live_path(f));

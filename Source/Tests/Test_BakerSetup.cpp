@@ -95,9 +95,11 @@ static auto SumBakerSetupReportCounts(const nlohmann::json& entries) -> uint64_t
 {
     REQUIRE(entries.is_array());
     uint64_t total = 0;
+
     for (const nlohmann::json& entry : entries) {
         total += entry.at("count").get<uint64_t>();
     }
+
     return total;
 }
 
@@ -981,6 +983,7 @@ Bakers = AngelScript
     diagnostics_lock.reset();
 #endif
     REQUIRE(baker.BakeAll());
+
     for (string_view pack : {"ScriptsA", "ScriptsB"}) {
         for (string_view side : {"server", "client", "mapper"}) {
             string path = strex(output_dir).combine_path(pack).combine_path(strex("{}.fos-bin-{}", pack, side)).str();
@@ -988,6 +991,7 @@ Bakers = AngelScript
             CHECK(*fs::file_size(path) > 0);
         }
     }
+
     CHECK(fs::try_lock_file(output_dir + ".lock").owns_lock());
 #if defined(AS_DEBUG)
     CHECK(fs::try_lock_file("AS_DEBUG.lock").owns_lock());
@@ -1074,9 +1078,11 @@ Bakers = {}
     CHECK(sprite_mesh.at("largestRejectedCandidateSavings").is_array());
 
     uint64_t mesh_triangles = 0;
+
     for (const nlohmann::json& entry : triangle_histogram) {
         mesh_triangles += entry.at("triangles").get<uint64_t>() * entry.at("count").get<uint64_t>();
     }
+
     const nlohmann::json& geometry = sprite_mesh.at("geometry");
     uint64_t mesh_vertices = geometry.at("meshVertices").get<uint64_t>();
     CHECK(geometry.at("meshTriangles") == mesh_triangles);

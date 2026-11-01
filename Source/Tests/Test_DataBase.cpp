@@ -123,6 +123,7 @@ namespace
 
             {
                 scoped_lock locker {_callbackLocker};
+
                 callback = std::move(_onGetAllRecordIds);
                 _onGetAllRecordIds = {};
             }
@@ -139,6 +140,7 @@ namespace
         void PrimeRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc)
         {
             scoped_lock locker {_collectionsLocker};
+
             _collections[collection_name][id] = doc.Copy();
         }
 
@@ -160,6 +162,7 @@ namespace
         void SetOnGetRecord(function<void()> callback)
         {
             scoped_lock locker {_callbackLocker};
+
             _onGetRecord = std::move(callback);
         }
 
@@ -167,36 +170,42 @@ namespace
         void SetOnGetAllRecordIds(function<void()> callback)
         {
             scoped_lock locker {_callbackLocker};
+
             _onGetAllRecordIds = std::move(callback);
         }
 
         void SetStrictRecordSemantics(bool enabled = true)
         {
             scoped_lock locker {_collectionsLocker};
+
             _strictRecordSemantics = enabled;
         }
 
         void SetBackendWriteFailure(bool enabled = true)
         {
             scoped_lock locker {_collectionsLocker};
+
             _failBackendWrites = enabled;
         }
 
         void WaitUntilCommitOperationWrittenToOpLog()
         {
             unique_lock locker {_mirrorLocker};
+
             _mirrorCv.wait(locker, [this]() FO_TSA_REQUIRES(_mirrorLocker) { return _pendingChangesMirrored; });
         }
 
         void WaitUntilPendingChangesRestored()
         {
             unique_lock locker {_restoreLocker};
+
             _restoreCv.wait(locker, [this]() FO_TSA_REQUIRES(_restoreLocker) { return _pendingChangesRestored; });
         }
 
         void BlockRecordRead(ident_t id)
         {
             scoped_lock locker {_blockedReadLocker};
+
             _blockedReadEnabled = true;
             _blockedReadId = id;
             _blockedReadEntered = false;
@@ -205,6 +214,7 @@ namespace
         void WaitUntilBlockedReadEntered()
         {
             unique_lock locker {_blockedReadLocker};
+
             _blockedReadCv.wait(locker, [this]() FO_TSA_REQUIRES(_blockedReadLocker) { return _blockedReadEntered; });
         }
 
@@ -218,6 +228,7 @@ namespace
         {
             {
                 scoped_lock locker {_blockedReadLocker};
+
                 _blockedReadEnabled = false;
                 _blockedReadAfterCopy = false;
             }
@@ -229,6 +240,7 @@ namespace
         void BlockRecordReadAfterCopy(ident_t id)
         {
             scoped_lock locker {_blockedReadLocker};
+
             _blockedReadEnabled = true;
             _blockedReadAfterCopy = true;
             _blockedReadId = id;
@@ -238,6 +250,7 @@ namespace
         void BlockRecordWrite(ident_t id)
         {
             scoped_lock locker {_blockedWriteLocker};
+
             _blockedWriteEnabled = true;
             _blockedWriteId = id;
             _blockedWriteEntered = false;
@@ -246,6 +259,7 @@ namespace
         void WaitUntilBlockedWriteEntered()
         {
             unique_lock locker {_blockedWriteLocker};
+
             _blockedWriteCv.wait(locker, [this]() FO_TSA_REQUIRES(_blockedWriteLocker) { return _blockedWriteEntered; });
         }
 
@@ -253,6 +267,7 @@ namespace
         {
             {
                 scoped_lock locker {_blockedWriteLocker};
+
                 _blockedWriteEnabled = false;
             }
 
@@ -262,6 +277,7 @@ namespace
         void BlockSnapshot()
         {
             scoped_lock locker {_snapshotTestLocker};
+
             _snapshotBlocked = true;
             _snapshotEntered = false;
         }
@@ -269,6 +285,7 @@ namespace
         void WaitUntilSnapshotEntered()
         {
             unique_lock locker {_snapshotTestLocker};
+
             _snapshotTestCv.wait(locker, [this]() FO_TSA_REQUIRES(_snapshotTestLocker) { return _snapshotEntered; });
         }
 
@@ -276,6 +293,7 @@ namespace
         {
             {
                 scoped_lock locker {_snapshotTestLocker};
+
                 _snapshotBlocked = false;
             }
 
@@ -288,6 +306,7 @@ namespace
             ignore_unused(key_type);
 
             scoped_lock locker {_collectionsLocker};
+
             _collections.try_emplace(collection_name);
         }
 
@@ -301,6 +320,7 @@ namespace
         {
             {
                 scoped_lock locker {_mirrorLocker};
+
                 _pendingChangesMirrored = true;
             }
 
@@ -311,6 +331,7 @@ namespace
         {
             {
                 scoped_lock locker {_restoreLocker};
+
                 _pendingChangesRestored = true;
             }
 
@@ -321,6 +342,7 @@ namespace
         {
             {
                 scoped_lock locker {_readStatsLocker};
+
                 _recordReadCount[id]++;
             }
 
@@ -345,6 +367,7 @@ namespace
                 function<void()> callback;
                 {
                     scoped_lock locker {_callbackLocker};
+
                     callback = std::move(_onGetRecord);
                     _onGetRecord = {};
                 }
@@ -358,6 +381,7 @@ namespace
 
             if (block_after_copy) {
                 unique_lock locker {_blockedReadLocker};
+
                 _blockedReadEntered = true;
                 _blockedReadCv.notify_all();
                 _blockedReadCv.wait(locker, [this]() FO_TSA_REQUIRES(_blockedReadLocker) { return !_blockedReadEnabled; });
@@ -437,6 +461,7 @@ namespace
         {
             {
                 unique_lock locker {_snapshotTestLocker};
+
                 _snapshotEntered = true;
                 _snapshotTestCv.notify_all();
                 _snapshotTestCv.wait(locker, [this]() FO_TSA_REQUIRES(_snapshotTestLocker) { return !_snapshotBlocked; });
@@ -1407,6 +1432,7 @@ TEST_CASE("DataBaseConditionalReadCannotBorrowAnotherReadersCommitMarker")
 
         conditional_finished = true;
     });
+
     auto cleanup = scope_exit([&]() noexcept {
         release_reader = true;
         db.UnblockRecordRead();
@@ -1418,6 +1444,7 @@ TEST_CASE("DataBaseConditionalReadCannotBorrowAnotherReadersCommitMarker")
             reader.join();
         }
     });
+
     REQUIRE(db.WaitUntilBlockedReadEntered(std::chrono::seconds {5}));
     db.StartCommitChanges();
     db.WaitCommitChanges();
@@ -1428,6 +1455,7 @@ TEST_CASE("DataBaseConditionalReadCannotBorrowAnotherReadersCommitMarker")
             std::this_thread::yield();
         }
     });
+
     reader = run_thread("AnotherReadAfterCommit", [&] {
         try {
             observed = db.GetDocument(collection, id);
@@ -1436,6 +1464,7 @@ TEST_CASE("DataBaseConditionalReadCannotBorrowAnotherReadersCommitMarker")
             reader_error = std::current_exception();
         }
     });
+
     auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds {5};
 
     while (!reader_entered.load() && std::chrono::steady_clock::now() < deadline) {
@@ -1525,6 +1554,7 @@ TEST_CASE("DataBaseConditionalReadSerializesRestoreAndQueueClear")
             std::this_thread::yield();
         }
     });
+
     thread producer = run_thread("ConditionalRead", [&] {
         try {
             exchanged = db.CompareExchange(collection, id, "value", int64_t {1}, int64_t {2});
@@ -1533,10 +1563,12 @@ TEST_CASE("DataBaseConditionalReadSerializesRestoreAndQueueClear")
             producer_error = std::current_exception();
         }
     });
+
     auto release_producer = scope_exit([&]() noexcept {
         release = true;
         producer.join();
     });
+
     auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds {5};
 
     while (!reading.load() && std::chrono::steady_clock::now() < deadline) {
@@ -1561,10 +1593,12 @@ TEST_CASE("DataBaseConditionalReadSerializesRestoreAndQueueClear")
 
         other_finished = true;
     });
+
     auto release_other = scope_exit([&]() noexcept {
         release = true;
         other.join();
     });
+
     deadline = std::chrono::steady_clock::now() + std::chrono::seconds {5};
 
     while (!other_started.load() && std::chrono::steady_clock::now() < deadline) {
@@ -1867,6 +1901,7 @@ TEST_CASE("DataBaseWaitCommitChangesReturnsAfterSpillToOplog")
 
         {
             scoped_lock locker {fallback_locker};
+
             stop_completed = true;
         }
 

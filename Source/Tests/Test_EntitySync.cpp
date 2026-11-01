@@ -64,6 +64,7 @@ TEST_CASE("EntityLock")
 
         auto reader = [&]() {
             ready.fetch_add(1);
+
             while (!start.load()) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
@@ -71,10 +72,12 @@ TEST_CASE("EntityLock")
             lock.AcquireShared(0);
             int32_t n = inside.fetch_add(1) + 1;
             int32_t prev = max_concurrent.load();
+
             while (n > prev && !max_concurrent.compare_exchange_weak(prev, n)) {
             }
 
             std::chrono::steady_clock::time_point deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+
             while (max_concurrent.load() < 2 && std::chrono::steady_clock::now() < deadline) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
@@ -85,9 +88,11 @@ TEST_CASE("EntityLock")
 
         std::thread a(reader);
         std::thread b(reader);
+
         while (ready.load() != 2) {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
+
         start.store(true);
         a.join();
         b.join();
@@ -106,9 +111,11 @@ TEST_CASE("EntityLock")
         std::thread reader([&]() {
             lock.AcquireShared(0);
             reader_in.store(true);
+
             while (!release_reader.load()) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
+
             lock.ReleaseShared();
         });
 
@@ -233,6 +240,7 @@ TEST_CASE("EntityLock")
         EntityLock lock;
 
         constexpr int depth = 10;
+
         for (int i = 0; i < depth; i++) {
             lock.Acquire(0);
         }
@@ -282,9 +290,11 @@ TEST_CASE("EntityLock")
         std::thread holder([&]() {
             lock.Acquire(0);
             locked.store(true);
+
             while (locked.load()) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
+
             lock.Release();
         });
 
@@ -311,6 +321,7 @@ TEST_CASE("EntityLock")
             lock.Acquire(10);
             {
                 scoped_lock g {order_mutex};
+
                 order.push_back(1);
             }
             lock.Release();
@@ -320,6 +331,7 @@ TEST_CASE("EntityLock")
             lock.Acquire(5);
             {
                 scoped_lock g {order_mutex};
+
                 order.push_back(2);
             }
             lock.Release();
@@ -354,6 +366,7 @@ TEST_CASE("EntityLock")
                 lock.Acquire(ticket);
                 {
                     scoped_lock g {order_mutex};
+
                     order.push_back(id);
                 }
                 lock.Release();
@@ -369,6 +382,7 @@ TEST_CASE("EntityLock")
         while (lock.WaiterCount() != 3) {
             std::this_thread::yield();
         }
+
         lock.Release();
 
         t1.join();
@@ -478,9 +492,11 @@ TEST_CASE("EntityLock")
             return std::thread([&, ticket]() {
                 lock.AcquireShared(ticket);
                 flag.store(true);
+
                 while (!release_readers.load()) {
                     std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 }
+
                 lock.ReleaseShared();
             });
         };
@@ -494,6 +510,7 @@ TEST_CASE("EntityLock")
             got_w.store(true);
             lock.Release();
         });
+
         std::thread r3 = reader(got_r3, 40);
 
         while (lock.WaiterCount() != 4) {
@@ -506,6 +523,7 @@ TEST_CASE("EntityLock")
         while (!(got_r1.load() && got_r2.load())) {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
+
         CHECK_FALSE(got_w.load());
         CHECK_FALSE(got_r3.load());
         CHECK(lock.WaiterCount() == 2); // W and R3 still parked
@@ -535,9 +553,11 @@ TEST_CASE("EntityLock")
         for (int i = 0; i < reader_count; i++) {
             readers.emplace_back([&, i]() {
                 lock.AcquireShared(numeric_cast<uint64_t>(10 + i));
+
                 while (!release_readers.load()) {
                     std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 }
+
                 lock.ReleaseShared();
             });
         }
@@ -546,6 +566,7 @@ TEST_CASE("EntityLock")
         while (lock.WaiterCount() != static_cast<size_t>(reader_count)) {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
+
         CHECK(lock.WaiterCount() == static_cast<size_t>(reader_count));
 
         lock.Release(); // all eight shared waiters are batch-granted and erase their queue entries
@@ -555,9 +576,11 @@ TEST_CASE("EntityLock")
             CHECK(lock.WaiterCount() <= static_cast<size_t>(reader_count)); // never exceeds the spawned count
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
+
         CHECK(lock.WaiterCount() == 0);
 
         release_readers.store(true);
+
         for (auto& t : readers) {
             t.join();
         }
@@ -579,6 +602,7 @@ TEST_CASE("EntityLockNegative")
         lock.Acquire(0);
 
         std::vector<std::thread> threads;
+
         for (int i = 0; i < 4; i++) {
             threads.emplace_back([&]() {
                 for (int j = 0; j < attempts; j++) {
@@ -609,9 +633,11 @@ TEST_CASE("EntityLockNegative")
         std::thread holder([&]() {
             lock.Acquire(0);
             held.store(true);
+
             while (held.load()) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
+
             lock.Release();
         });
 
@@ -733,9 +759,11 @@ TEST_CASE("EntityLockDescendantHold")
         std::thread holder([&]() {
             lock.RegisterDescendantHold(0);
             holder_in.store(true);
+
             while (!release_holder.load()) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
+
             lock.UnregisterDescendantHold();
         });
 
@@ -791,9 +819,11 @@ TEST_CASE("EntityLockDescendantHold")
         auto worker = [&]() {
             lock.RegisterDescendantHold(0);
             in_count.fetch_add(1);
+
             while (!release_all.load()) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
+
             lock.UnregisterDescendantHold();
         };
 
@@ -804,6 +834,7 @@ TEST_CASE("EntityLockDescendantHold")
         while (in_count.load() != 2) {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
+
         CHECK(in_count.load() == 2);
 
         release_all.store(true);
@@ -866,9 +897,11 @@ TEST_CASE("EntityLockDescendantHold")
         std::thread holder([&]() {
             lock.RegisterDescendantHold(0);
             holder_in.store(true);
+
             while (!release_holder.load()) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
+
             lock.UnregisterDescendantHold();
         });
 
@@ -899,9 +932,11 @@ TEST_CASE("EntityLockDescendantHold")
         std::thread holder([&]() {
             lock.RegisterDescendantHold(0);
             holder_in.store(true);
+
             while (!release_holder.load()) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
+
             lock.UnregisterDescendantHold();
         });
 
@@ -913,9 +948,11 @@ TEST_CASE("EntityLockDescendantHold")
         std::thread writer([&]() {
             lock.Acquire(10);
             writer_got.store(true);
+
             while (!release_writer.load()) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
+
             lock.Release();
         });
 
@@ -933,15 +970,18 @@ TEST_CASE("EntityLockDescendantHold")
         while (lock.WaiterCount() != 2) {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
+
         std::this_thread::sleep_for(std::chrono::milliseconds(30));
         CHECK_FALSE(late_registered.load()); // queued behind the writer
         CHECK_FALSE(writer_got.load());
 
         // Drain the original holder: the WRITER must win next (not the later sibling mark)
         release_holder.store(true);
+
         while (!writer_got.load()) {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
+
         CHECK(writer_got.load());
         CHECK_FALSE(late_registered.load()); // still behind the now-running writer
 
@@ -1019,6 +1059,7 @@ TEST_CASE("SyncContext")
 
             singleton.Release();
         });
+
         auto join_holder = scope_exit([&holder, &release_holder]() noexcept {
             release_holder.store(true);
             holder.join();
@@ -1041,6 +1082,7 @@ TEST_CASE("SyncContext")
             precise_sleep(std::chrono::milliseconds {40});
             release_holder.store(true);
         });
+
         auto join_releaser = scope_exit([&releaser]() noexcept { releaser.join(); });
 
         time_meter wait_only_time;
@@ -1191,9 +1233,11 @@ TEST_CASE("SyncContextNegative")
         std::thread holder([&]() {
             lock.Acquire(0);
             held.store(true);
+
             while (held.load()) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
+
             lock.Release();
         });
 

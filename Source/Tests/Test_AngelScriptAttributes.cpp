@@ -319,6 +319,7 @@ namespace
         for (auto define : defines) {
             Preprocessor::Define(pp_ctx.get(), std::string(define));
         }
+
         Preprocessor::StringOutStream pp_errors;
         Preprocessor::LexemList lexems;
         auto loader = SingleScriptLoader {string(path), string(script)};
@@ -416,10 +417,13 @@ namespace
                 INFO("AS message: " << entry);
             }
         }
+
         REQUIRE(build_result >= 0);
+
         if (!messages.GetEntries().empty()) {
             INFO(messages.GetEntries().front());
         }
+
         CHECK(messages.GetEntries().empty());
         return module;
     }
@@ -455,6 +459,7 @@ namespace
         REQUIRE(func);
 
         auto user_data = GetFunctionAttributesUserData(func);
+
         if (expected.size() == 0) {
             CHECK_FALSE(static_cast<bool>(user_data));
             return;
@@ -464,6 +469,7 @@ namespace
         REQUIRE(user_data->Attributes.size() == expected.size());
 
         size_t index = 0;
+
         for (auto attr : expected) {
             CHECK(user_data->Attributes[index] == attr);
             index++;
@@ -1833,12 +1839,14 @@ void TakesIntPlease(int? value)
         CHECK(mod->Build() < 0);
 
         bool found_message = false;
+
         for (const auto& entry : messages.GetEntries()) {
             if (entry.find("Nullable marker '?' is only allowed on handle types") != string::npos) {
                 found_message = true;
                 break;
             }
         }
+
         CHECK(found_message);
     }
 

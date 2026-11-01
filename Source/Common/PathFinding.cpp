@@ -184,6 +184,7 @@ auto PathFinding::CheckHexWithMultihex(mpos hex, mdir dir, int32_t multihex, msi
         if (static_cast<int8_t>(result) > static_cast<int8_t>(worst)) {
             worst = result;
         }
+
         return false;
     };
 

@@ -40,6 +40,13 @@ making all fields public does not establish encapsulation. Choose the type from
 its responsibilities; do not add getters merely to preserve a record's old
 method syntax. Classes follow the method order and result-use rules below.
 
+## Comment spacing
+
+A comment never requires a preceding blank line. This applies everywhere, including
+function and lambda bodies, enums and struct/class member lists. Choose blank lines
+from the semantic grouping of code and declarations. Keep comments immediately
+above the code they describe. The rules for separating semantic stages still apply.
+
 ## Class method order
 
 Place construction, assignment and destruction first. Follow them with an upper

@@ -96,6 +96,7 @@ TEST_CASE("WorkThread")
             counter.fetch_add(1);
             return std::nullopt;
         });
+
         worker.add_job([&]() -> optional<timespan> {
             counter.fetch_add(2);
             return std::nullopt;
@@ -159,10 +160,12 @@ TEST_CASE("WorkThread")
             jobs_enqueued.wait(false);
             throw std::runtime_error("boom");
         });
+
         worker.add_job([&]() -> optional<timespan> {
             second_job_called = true;
             return std::nullopt;
         });
+
         jobs_enqueued = true;
         jobs_enqueued.notify_one();
 
@@ -279,9 +282,11 @@ TEST_CASE("WorkThread")
 
         worker.add_job([&]() -> optional<timespan> {
             a_started.store(true);
+
             while (!gate.load()) {
                 std::this_thread::sleep_for(std::chrono::milliseconds {1});
             }
+
             return std::nullopt;
         });
         worker.add_job([&]() -> optional<timespan> { return std::nullopt; }); // stays queued behind the gated job
@@ -368,6 +373,7 @@ TEST_CASE("WorkThread")
             final_ran.store(true);
             return std::nullopt;
         });
+
         worker.wait();
         CHECK(final_ran.load());
     }
@@ -435,6 +441,7 @@ TEST_CASE("WorkThread")
                 final_ran.store(true);
                 return std::nullopt;
             });
+
             worker.wait();
 
             CHECK(final_ran.load());
@@ -518,6 +525,7 @@ TEST_CASE("WorkThread")
                 final_ran.store(true);
                 return std::nullopt;
             });
+
             worker.wait();
 
             CHECK(final_ran.load());

@@ -1854,6 +1854,7 @@ static void ValidateModelDescriptionLinkData(const FileCollection& source_files,
 static void ValidateModelDescriptionCut(const FileCollection& source_files, const FileSystem& baked_files, unordered_map<string, BakedModelMeshInfo>& mesh_cache, const BakedModelMeshInfo& target_info, const BakerModelDescriptionCut& cut, string_view fname)
 {
     const BakedModelMeshInfo& cut_info = GetBakedModelMeshInfo(baked_files, mesh_cache, cut.FileName);
+
     if (source_files.FindFileByPath(cut.FileName)) {
         ValidateBakedModelMeshFreshness(source_files, cut_info, fname);
     }
@@ -2267,6 +2268,7 @@ static auto BakeModelAnimationInfoSection(const BakingContext& ctx, const FileCo
             resolved_state_inputs.emplace_back(state_anim);
             seen_state_inputs.emplace(state_anim);
         }
+
         for (const auto& [from, to] : description.StateAnimEquals) {
             auto it = state_anim_equals.find(from);
 
@@ -2279,6 +2281,7 @@ static auto BakeModelAnimationInfoSection(const BakingContext& ctx, const FileCo
             resolved_action_inputs.emplace_back(action_anim);
             seen_action_inputs.emplace(action_anim);
         }
+
         for (const auto& [from, to] : description.ActionAnimEquals) {
             auto it = action_anim_equals.find(from);
 

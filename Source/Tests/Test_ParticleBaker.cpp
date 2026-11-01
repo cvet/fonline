@@ -288,23 +288,28 @@ static void MutateSystemGroupsReference(vector<uint8_t>& binary, ParticleReferen
         require_range(offset, sizeof(uint32_t), limit);
         return uint32_t {binary[offset]} | (uint32_t {binary[offset + 1]} << 8) | (uint32_t {binary[offset + 2]} << 16) | (uint32_t {binary[offset + 3]} << 24);
     };
+
     auto read_string = [&binary](size_t& offset, size_t limit) -> string {
         string value;
+
         while (offset < limit) {
             uint8_t ch = binary[offset++];
             if (ch == 0) {
                 return value;
             }
+
             value += numeric_cast<char>(ch);
         }
 
         FO_VERIFY_AND_THROW(false, "Particle binary fixture has an unterminated string");
         return {};
     };
+
     auto read_bool = [&binary, &require_range](size_t& offset, size_t limit) -> bool {
         require_range(offset, sizeof(uint8_t), limit);
         return binary[offset++] != 0;
     };
+
     auto write_uint32 = [&binary, &require_range](size_t offset, uint32_t value) {
         require_range(offset, sizeof(uint32_t), binary.size());
         binary[offset] = numeric_cast<uint8_t>(value & 0xFFU);
@@ -332,6 +337,7 @@ static void MutateSystemGroupsReference(vector<uint8_t>& binary, ParticleReferen
         FO_VERIFY_AND_THROW(numeric_cast<size_t>(object_data_size) >= sizeof(uint32_t) && numeric_cast<size_t>(object_data_size) <= binary.size() - position, "Particle binary fixture has an invalid object record");
 
         size_t object_end = position + numeric_cast<size_t>(object_data_size);
+
         if (object_type == "System") {
             FO_VERIFY_AND_THROW(reference_offset == string::npos, "Particle binary fixture has multiple System objects");
 
@@ -386,6 +392,7 @@ static void MutateSystemGroupsReference(vector<uint8_t>& binary, ParticleReferen
     FO_VERIFY_AND_THROW(original_reference > 0 && original_reference <= object_count && original_reference != system_reference, "Particle binary fixture has an invalid original System.groups reference");
 
     uint32_t replacement_reference = 0;
+
     switch (mutation) {
     case ParticleReferenceMutation::Zero:
         break;

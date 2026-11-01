@@ -154,12 +154,14 @@ TEST_CASE("ServerEngineRandomGeneratorRoundTrip")
     CHECK_FALSE(std::ranges::all_of(captured_state, [](uint64_t part) { return part == 0; }));
 
     vector<int32_t> expected_sequence;
+
     for (size_t i = 0; i < 32; i++) {
         expected_sequence.emplace_back(server->Random(-100000, 100000));
     }
 
     // The generator stays behind the engine's own lock and its state travels as bare words, so a replay is a restore
     server->RestoreRandomState(captured_state);
+
     for (int32_t expected_value : expected_sequence) {
         CHECK(server->Random(-100000, 100000) == expected_value);
     }
@@ -168,6 +170,7 @@ TEST_CASE("ServerEngineRandomGeneratorRoundTrip")
     random_generator rebuilt_generator {uint64_t {1}};
     rebuilt_generator.restore_state(captured_state);
     server->RestoreRandomState(rebuilt_generator.capture_state());
+
     for (int32_t expected_value : expected_sequence) {
         CHECK(server->Random(-100000, 100000) == expected_value);
     }
@@ -877,6 +880,7 @@ TEST_CASE("ServerShutdownPreservesPersistentCustomEntityTreesAcrossRestarts")
                 REQUIRE(children->size() == 1);
                 CHECK(children->front()->GetId() == expected_id);
             };
+
             check_holder(server, root_entry, root_id);
             check_holder(root, leaf_entry, leaf_id);
             check_holder(critter, critter_entry, critter_leaf_id);
@@ -1326,6 +1330,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
                     sync_diag_seen = true;
                 }
             });
+
             auto clear_log_callback = scope_exit([]() noexcept { logging::set_callback("entity_access_valid_diagnose_test", {}); });
 
             CHECK_FALSE(IsEntityAccessValid(cr_b, false));
@@ -1529,9 +1534,11 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
         CHECK(intermediate_lock->GetDescendantHoldCountForCurrentThread() == 0);
         bool first_state_mutex_free = first_lock->TryLockStateMutex();
         REQUIRE(first_state_mutex_free);
+
         if (first_state_mutex_free) {
             first_lock->UnlockStateMutex();
         }
+
         CHECK(ctx.ValidateAccess(map));
         auto cover_after_second_state_mutex_contention = ctx.GetHeldEntities();
         CHECK(std::ranges::find(cover_after_second_state_mutex_contention, map_entity) != cover_after_second_state_mutex_contention.end());
@@ -1980,11 +1987,13 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisitionAncestorAndSiblingLiveness")
         SyncContext ctx;
         ctx.Activate();
         vector<ptr<ServerEntity>> req {flat_map};
+
         for (int32_t i = 0; i < FLAT_ITERS; i++) {
             ctx.SyncEntities(req);
             ancestor_progress.fetch_add(1, std::memory_order_relaxed);
             ctx.Release();
         }
+
         ctx.Deactivate();
     };
 
@@ -1992,11 +2001,13 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisitionAncestorAndSiblingLiveness")
         SyncContext ctx;
         ctx.Activate();
         vector<ptr<ServerEntity>> req {flat_critter};
+
         for (int32_t i = 0; i < FLAT_ITERS; i++) {
             ctx.SyncEntities(req);
             sibling_progress.fetch_add(1, std::memory_order_relaxed);
             ctx.Release();
         }
+
         ctx.Deactivate();
     };
 
@@ -2054,6 +2065,7 @@ TEST_CASE("ServerEngineSyncContextReparentStress")
     constexpr int32_t REPARENTER_THREADS = 4;
 
     vector<ptr<Critter>> critters;
+
     for (int32_t i = 0; i < CRITTER_COUNT; i++) {
         auto cr = server->CreateCritter(critter_pid, false);
         cr->SetParent(map_a); // parent only - escalation reads _parent, not the map critter list
@@ -2077,6 +2089,7 @@ TEST_CASE("ServerEngineSyncContextReparentStress")
         ctx.Activate();
 
         uint64_t step = numeric_cast<uint64_t>(tid);
+
         while (!stop.load(std::memory_order_relaxed)) {
             for (int32_t i = tid; i < CRITTER_COUNT; i += REPARENTER_THREADS) {
                 try {
@@ -2090,6 +2103,7 @@ TEST_CASE("ServerEngineSyncContextReparentStress")
 
                 ctx.Release();
             }
+
             step++;
         }
 
@@ -2128,6 +2142,7 @@ TEST_CASE("ServerEngineSyncContextReparentStress")
 
     vector<std::thread> reparenter_threads;
     vector<std::thread> reader_threads;
+
     for (int32_t i = 0; i < REPARENTER_THREADS; i++) {
         reparenter_threads.emplace_back(reparenter_fn, i);
     }
@@ -2137,7 +2152,9 @@ TEST_CASE("ServerEngineSyncContextReparentStress")
     for (auto& t : reader_threads) {
         t.join();
     }
+
     stop.store(true);
+
     for (auto& t : reparenter_threads) {
         t.join();
     }
@@ -2156,10 +2173,13 @@ TEST_CASE("ServerEngineSyncContextReparentStress")
     REQUIRE(cleanup_ctx);
     vector<ptr<ServerEntity>> cleanup_req;
     cleanup_req.reserve(critters.size());
+
     for (const auto& cr : critters) {
         cleanup_req.emplace_back(cr);
     }
+
     cleanup_ctx->SyncEntities(cleanup_req);
+
     for (auto& cr : critters) {
         cr->SetParent(nullptr);
     }
@@ -2222,9 +2242,11 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
             vector<ptr<ServerEntity>> req {map};
             ctx.SyncEntities(req); // ancestor: the map's own lock, held exclusively
             t1_holds_map.store(true);
+
             while (!t2_may_finish.load(std::memory_order_acquire)) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
+
             ctx.Release();
             ctx.Deactivate();
         });
@@ -2246,6 +2268,7 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
         // The generous window is what rules out a concurrent acquisition: a flat model would set the flag almost
         // immediately, a hierarchical one never while the ancestor is held
         nanotime exclusion_window = nanotime::now() + timespan {std::chrono::milliseconds {300}};
+
         while (nanotime::now() < exclusion_window) {
             CHECK_FALSE(t2_got_cr.load(std::memory_order_acquire));
             std::this_thread::sleep_for(std::chrono::milliseconds(5));
@@ -2270,6 +2293,7 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
             SyncContext ctx;
             ctx.Activate();
             vector<ptr<ServerEntity>> req {map};
+
             for (int32_t i = 0; i < ITERS; i++) {
                 ctx.SyncEntities(req);
                 CHECK(IsEntityAccessValid(cr_a)); // descendant reachable via the ancestor cover
@@ -2277,6 +2301,7 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
                 ctx.Release();
                 ancestor_done.fetch_add(1, std::memory_order_relaxed);
             }
+
             ctx.Deactivate();
         });
 
@@ -2284,12 +2309,14 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
             SyncContext ctx;
             ctx.Activate();
             vector<ptr<ServerEntity>> req {cr_a};
+
             for (int32_t i = 0; i < ITERS; i++) {
                 ctx.SyncEntities(req);
                 CHECK(IsEntityAccessValid(cr_a)); // own lock
                 ctx.Release();
                 sibling_done.fetch_add(1, std::memory_order_relaxed);
             }
+
             ctx.Deactivate();
         });
 
@@ -2396,6 +2423,7 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
 
     auto barrier = [&](int32_t round) {
         int32_t gen = generation.load(std::memory_order_acquire);
+
         if (arrive.fetch_add(1, std::memory_order_acq_rel) + 1 == 2) {
             arrive.store(0, std::memory_order_release);
             generation.store(round + 1, std::memory_order_release);
@@ -2409,6 +2437,7 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
 
     auto primary_barrier = [&](int32_t round) -> bool {
         int32_t gen = primary_generation.load(std::memory_order_acquire);
+
         if (primary_arrive.fetch_add(1, std::memory_order_acq_rel) + 1 == 2) {
             primary_arrive.store(0, std::memory_order_release);
             primary_generation.store(round + 1, std::memory_order_release);
@@ -2416,6 +2445,7 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
         }
 
         nanotime deadline = nanotime::now() + timespan {std::chrono::seconds {10}};
+
         while (primary_generation.load(std::memory_order_acquire) == gen && !failed.load(std::memory_order_acquire) && nanotime::now() < deadline) {
             std::this_thread::yield();
         }

@@ -207,6 +207,7 @@ TEST_CASE("ServerMapGridSelectionPreservesFieldBehavior", "[server][map][grid]")
         CHECK_FALSE(other_map->GetCritterOnHex(critter_hex, CritterFindType::Any));
         server->MapMngr.DestroyLocation(loc);
     });
+
     REQUIRE(completed);
 }
 
@@ -218,12 +219,14 @@ TEST_CASE("ServerMapGridTypesRejectInvalidSettings", "[server][map][grid]")
     GlobalSettings settings = MakeServerEntityLifetimeSettings();
     CHECK(settings.Server.ProtoMapGridType == "Dynamic");
     CHECK(settings.Server.MapInstanceGridType == "Dynamic");
+
     if (prototype_setting) {
         BakerTests::OverrideSetting(settings.Server.ProtoMapGridType, invalid_type);
     }
     else {
         BakerTests::OverrideSetting(settings.Server.MapInstanceGridType, invalid_type);
     }
+
     CHECK_THROWS_AS(StaticMap(msize {2, 2}, invalid_type), SettingsException);
     auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources());
     auto shutdown = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
@@ -269,7 +272,9 @@ static void MeasureServerMapGridMemory(string_view grid_type)
             safe_call([&server] { server->Shutdown(); });
         }
     });
+
     REQUIRE(WaitForServerEntityLifetimeStartup(server));
+
     if (platform::get_process_private_memory_usage() == 0) {
         SKIP("Process-private-memory measurement is unavailable on this platform");
     }
@@ -277,15 +282,18 @@ static void MeasureServerMapGridMemory(string_view grid_type)
     auto measure = [&](string_view stage) {
         array<size_t, 5> private_samples {};
         array<size_t, 5> allocator_samples {};
+
         for (size_t index = 0; index < private_samples.size(); index++) {
             coarse_sleep(std::chrono::milliseconds {100});
             private_samples[index] = platform::get_process_private_memory_usage();
             allocator_samples[index] = memory::get_in_use_bytes();
         }
+
         std::sort(private_samples.begin(), private_samples.end());
         std::sort(allocator_samples.begin(), allocator_samples.end());
         WARN(strex("SERVER_GRID_MEMORY_CSV,{},{},{},{}", grid_type, stage, private_samples[2], allocator_samples[2]).str());
     };
+
     auto hex_for_index = [&](int32_t index) -> mpos {
         int32_t cell = numeric_cast<int32_t>(numeric_cast<int64_t>(index) * 104729 % (side * side));
         return map_size.from_raw_pos(cell % side, cell / side);
@@ -296,11 +304,13 @@ static void MeasureServerMapGridMemory(string_view grid_type)
         hstring map_pid = server->Hashes.to_hashed_string("LifetimeMap");
         auto location = server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("LifetimeLocation"), vector<hstring>(map_count, map_pid));
         vector<ptr<Map>> maps;
+
         for (int32_t index = 0; index < map_count; index++) {
             auto map = location->GetMapByIndex(index);
             REQUIRE(map);
             maps.emplace_back(map);
         }
+
         measure("empty_maps");
 
         for (auto map : maps) {
@@ -312,26 +322,32 @@ static void MeasureServerMapGridMemory(string_view grid_type)
             for (int32_t index = 0; index < critters_per_map; index++) {
                 (void)server->CrMngr.CreateCritterOnMap(server->Hashes.to_hashed_string("LifetimeCritter"), nullptr, map, hex_for_index(items_per_map + index), mdir {0});
             }
+
             CHECK(map->GetItems().size() == items_per_map);
             CHECK(map->GetCritters().size() == critters_per_map);
         }
+
         measure("populated_1280_fields");
 
         // Toggle then clear the same fields to measure retained storage after activity, with no extra live entities
         for (int32_t percent : {10, 90}) {
             int32_t touched = side * side * percent / 100;
+
             for (auto map : maps) {
                 for (int32_t index = 0; index < touched; index++) {
                     mpos hex = hex_for_index(index);
                     map->SetHexManualBlock(hex, true, true);
                     map->SetHexManualBlock(hex, false, true);
                 }
+
                 CHECK(map->GetItems().size() == items_per_map);
                 CHECK(map->GetCritters().size() == critters_per_map);
                 CHECK(map->IsHexMovable(hex_for_index(touched - 1)));
             }
+
             measure(percent == 10 ? "touched_10_percent" : "touched_90_percent");
         }
+
         server->MapMngr.DestroyLocation(location);
     }));
     measure("after_destroy_and_cover_release");
@@ -368,6 +384,7 @@ TEST_CASE("ServerMapGridOperationsCost", "[.][server][map][grid][benchmark]")
             cell(x + width - 1, y + dy) = 1;
         }
     };
+
     for (int32_t i = 0; i < side * side / 33; i++) {
         cell(random.next_between(1, side - 2), random.next_between(1, side - 2)) = 1;
     }
@@ -381,15 +398,19 @@ TEST_CASE("ServerMapGridOperationsCost", "[.][server][map][grid][benchmark]")
         cell(door_x, y) = 0;
         cell(door_x + 1, y) = 0;
     }
+
     vector<mpos> sealed_centers;
+
     for (int32_t i = 0; i < 16; i++) {
         int32_t x = 20 + (i % 4) * 150;
         int32_t y = 20 + (i / 4) * 150;
+
         for (int32_t dy = 0; dy < 11; dy++) {
             for (int32_t dx = 0; dx < 11; dx++) {
                 cell(x + dx, y + dy) = 0;
             }
         }
+
         outline(x, y, 11, 11);
         sealed_centers.emplace_back(map_size.from_raw_pos(x + 5, y + 5));
     }
@@ -402,6 +423,7 @@ TEST_CASE("ServerMapGridOperationsCost", "[.][server][map][grid][benchmark]")
             }
         }
     };
+
     auto pick_near = [&](mpos from, int32_t min_distance, int32_t max_distance) -> mpos {
         for (;;) {
             ipos32 raw {from.x + random.next_between(-max_distance, max_distance), from.y + random.next_between(-max_distance, max_distance)};
@@ -414,6 +436,7 @@ TEST_CASE("ServerMapGridOperationsCost", "[.][server][map][grid][benchmark]")
             }
         }
     };
+
     struct Route
     {
         mpos From;
@@ -421,34 +444,41 @@ TEST_CASE("ServerMapGridOperationsCost", "[.][server][map][grid][benchmark]")
         vector<mpos> Targets {};
     };
     vector<vector<Route>> routes(5);
+
     for (size_t scenario = 0; scenario < 4; scenario++) {
         int32_t count = scenario == 2 ? 40 : 200;
         int32_t minimum = scenario == 1 ? 20 : scenario == 2 ? 100 : 3;
         int32_t maximum = scenario == 1 ? 60 : scenario == 2 ? 300 : 15;
+
         for (int32_t i = 0; i < count; i++) {
             mpos from = pick_open();
             mpos to = pick_near(from, minimum, maximum);
             Route route {.From = from, .To = to};
+
             for (int32_t direction = 0; direction < GameSettings::MAP_DIR_COUNT; direction++) {
                 mpos target = to;
                 if (GeometryHelper::MoveHexByDir(target, hdir {direction}, map_size)) {
                     route.Targets.emplace_back(target);
                 }
             }
+
             routes[scenario].emplace_back(std::move(route));
         }
     }
     for (mpos center : sealed_centers) {
         routes[4].emplace_back(Route {.From = pick_near(center, 30, 80), .To = center});
     }
+
     vector<mpos> scattered;
     vector<mpos> clustered;
     vector<mpos> writable;
     vector<mpos> critter_hexes;
     vector<mpos> item_hexes;
+
     for (int32_t i = 0; i < 8192; i++) {
         scattered.emplace_back(map_size.from_raw_pos(random.next_between(0, side - 1), random.next_between(0, side - 1)));
         clustered.emplace_back(map_size.from_raw_pos(250 + i % 96, 250 + (i / 96) % 64));
+
         if (i < 1024) {
             writable.emplace_back(pick_open());
             item_hexes.emplace_back(pick_open());
@@ -465,19 +495,23 @@ TEST_CASE("ServerMapGridOperationsCost", "[.][server][map][grid][benchmark]")
         hash = hash_hex(hash, output.NewToHex);
         hash = mix(hash, numeric_cast<uint64_t>(static_cast<uint16_t>(output.EndHexOffset.x)));
         hash = mix(hash, numeric_cast<uint64_t>(static_cast<uint16_t>(output.EndHexOffset.y)));
+
         for (mdir step : output.Steps) {
             hash = mix(hash, numeric_cast<uint64_t>(step.angle()));
         }
         for (uint16_t step : output.ControlSteps) {
             hash = mix(hash, step);
         }
+
         return hash;
     };
+
     vector<int32_t> iterations;
     vector<uint64_t> reference_hashes;
     vector<string> report;
     std::array<string_view, 3> modes {"dense", "chunked", "hash"};
     array<string, 3> grid_types {"Static", "Chunked", "Dynamic"};
+
     for (int32_t sample = 0; sample < samples; sample++) {
         for (int32_t order = 0; order < 9; order++) {
             // Rotate and reverse the matrix so host load and cache history cannot always favour one mode
@@ -499,11 +533,13 @@ TEST_CASE("ServerMapGridOperationsCost", "[.][server][map][grid][benchmark]")
                 REQUIRE(map);
                 auto static_map = server->MapMngr.GetStaticMap(map->GetProtoMap());
                 size_t wall_count = 0;
+
                 for (int32_t y = 0; y < side; y++) {
                     for (int32_t x = 0; x < side; x++) {
                         if (cell(x, y) != 0) {
                             mpos hex = map_size.from_raw_pos(x, y);
                             static_map->MarkScrollBlocked(hex);
+
                             if (wall_count++ % 32 == 0) {
                                 map->SetHexManualBlock(hex, true, true);
                             }
@@ -518,30 +554,38 @@ TEST_CASE("ServerMapGridOperationsCost", "[.][server][map][grid][benchmark]")
                 for (mpos hex : critter_hexes) {
                     (void)server->CrMngr.CreateCritterOnMap(server->Hashes.to_hashed_string("LifetimeCritter"), nullptr, map, hex, mdir {0});
                 }
+
                 REQUIRE(map->GetItems().size() == item_hexes.size());
                 REQUIRE(map->GetCritters().size() == critter_hexes.size());
                 vector<Route> reachable_routes;
+
                 for (size_t index = 0; index < 16; index++) {
                     const Route& route = routes[0][index];
                     Route reachable_route {.From = route.From, .To = route.To};
+
                     for (mpos target : route.Targets) {
                         auto path = server->MapMngr.FindPath(map, nullptr, route.From, target, 0, 0);
                         if (path.Result == FindPathOutput::ResultType::Ok || path.Result == FindPathOutput::ResultType::AlreadyHere) {
                             reachable_route.Targets.emplace_back(target);
                         }
                     }
+
                     if (!reachable_route.Targets.empty()) {
                         reachable_routes.emplace_back(std::move(reachable_route));
                     }
                 }
+
                 REQUIRE_FALSE(reachable_routes.empty());
+
                 if (sample == 0 && order == 0) {
                     WARN(strex("Server grid fixture: {} walls, {} items, {} critters, {} reachable requests", wall_count, map->GetItems().size(), map->GetCritters().size(), reachable_routes.size()).str());
+
                     for (size_t index = 0; index < routes.size(); index++) {
                         size_t ok = 0;
                         size_t no_way = 0;
                         size_t busy = 0;
                         size_t too_far = 0;
+
                         for (const Route& route : routes[index]) {
                             auto path = server->MapMngr.FindPath(map, nullptr, route.From, route.To, index == 3 ? 1 : 0, 0);
                             ok += path.Result == FindPathOutput::ResultType::Ok ? 1 : 0;
@@ -549,9 +593,11 @@ TEST_CASE("ServerMapGridOperationsCost", "[.][server][map][grid][benchmark]")
                             busy += path.Result == FindPathOutput::ResultType::HexBusy ? 1 : 0;
                             too_far += path.Result == FindPathOutput::ResultType::TooFar ? 1 : 0;
                         }
+
                         WARN(strex("Server grid paths {}: {} requests, {} ok, {} no way, {} busy, {} too far", index, routes[index].size(), ok, no_way, busy, too_far).str());
                     }
                 }
+
                 struct Workload
                 {
                     string Name;
@@ -560,49 +606,62 @@ TEST_CASE("ServerMapGridOperationsCost", "[.][server][map][grid][benchmark]")
                 };
                 vector<Workload> workloads;
                 std::array<string_view, 5> names {"path_near", "path_medium", "path_long", "path_multihex", "path_sealed"};
+
                 for (size_t index = 0; index < routes.size(); index++) {
                     workloads.emplace_back(Workload {string {names[index]}, routes[index].size(), [&, index] {
                                                          uint64_t hash = 14695981039346656037ull;
+
                                                          for (const Route& route : routes[index]) {
                                                              hash = hash_path(hash, server->MapMngr.FindPath(map, nullptr, route.From, route.To, index == 3 ? 1 : 0, 0));
                                                          }
+
                                                          return hash;
                                                      }});
                 }
+
                 workloads.emplace_back(Workload {"path_to_any", routes[0].size(), [&] {
                                                      uint64_t hash = 14695981039346656037ull;
+
                                                      for (const Route& route : routes[0]) {
                                                          hash = hash_path(hash, server->MapMngr.FindPathToAny(map, nullptr, route.From, route.Targets, 0));
                                                      }
+
                                                      return hash;
                                                  }});
                 workloads.emplace_back(Workload {"reachable_near", reachable_routes.size(), [&] {
                                                      uint64_t hash = 14695981039346656037ull;
+
                                                      for (const Route& route : reachable_routes) {
                                                          auto hexes = server->MapMngr.FindReachableHexes(map, route.From, route.Targets);
                                                          hash = mix(hash, hexes.size());
+
                                                          for (mpos hex : hexes) {
                                                              hash = hash_hex(hash, hex);
                                                          }
                                                      }
+
                                                      return hash;
                                                  }});
                 workloads.emplace_back(Workload {"reachable_sealed", 1, [&] {
                                                      auto hexes = server->MapMngr.FindReachableHexes(map, routes[4][0].From, const_span<mpos> {sealed_centers.data(), 1});
                                                      uint64_t hash = mix(14695981039346656037ull, hexes.size());
+
                                                      for (mpos hex : hexes) {
                                                          hash = hash_hex(hash, hex);
                                                      }
+
                                                      return hash;
                                                  }});
                 workloads.emplace_back(Workload {"trace", routes[2].size(), [&] {
                                                      uint64_t hash = 14695981039346656037ull;
+
                                                      for (const Route& route : routes[2]) {
                                                          auto trace = server->MapMngr.TracePath(map, route.From, route.To, 0, 0.0f, nullptr, CritterFindType::Any, true, true);
                                                          hash = mix(hash, static_cast<uint64_t>(trace.FullyTraced) | (static_cast<uint64_t>(trace.HasLastMovable) << 1) | (static_cast<uint64_t>(trace.IsCritterFound) << 2));
                                                          hash = hash_hex(hash_hex(hash_hex(hash, trace.Block), trace.PreBlock), trace.LastMovable);
                                                          hash = mix(hash, trace.Critters.size());
                                                      }
+
                                                      return hash;
                                                  }});
 
@@ -629,44 +688,55 @@ TEST_CASE("ServerMapGridOperationsCost", "[.][server][map][grid][benchmark]")
                                                  }});
                 workloads.emplace_back(Workload {"items_on_hex", item_hexes.size(), [&] {
                                                      uint64_t hash = 14695981039346656037ull;
+
                                                      for (mpos hex : item_hexes) {
                                                          hash = mix(hash, map->GetItemsOnHex(hex).size());
                                                      }
+
                                                      return hash;
                                                  }});
                 workloads.emplace_back(Workload {"manual_block_toggle", writable.size(), [&] {
                                                      uint64_t hash = 14695981039346656037ull;
+
                                                      for (mpos hex : writable) {
                                                          map->SetHexManualBlock(hex, true, true);
                                                          hash = mix(hash, static_cast<uint64_t>(map->IsHexMovable(hex)) | (static_cast<uint64_t>(map->IsHexShootable(hex)) << 1));
                                                          map->SetHexManualBlock(hex, false, true);
                                                      }
+
                                                      return hash;
                                                  }});
                 if (iterations.empty()) {
                     iterations.resize(workloads.size());
                     reference_hashes.resize(workloads.size());
                 }
+
                 for (size_t index = 0; index < workloads.size(); index++) {
                     const auto& workload = workloads[index];
                     auto warm_started = std::chrono::steady_clock::now();
                     uint64_t warm_hash = workload.Run();
                     double warm_ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - warm_started).count();
+
                     if (sample == 0 && order == 0) {
                         iterations[index] = iround<int32_t>(std::clamp(std::ceil(200.0 / std::max(warm_ms, 0.01)), 1.0, 4096.0));
                         reference_hashes[index] = warm_hash;
                     }
+
                     REQUIRE(warm_hash == reference_hashes[index]);
                     uint64_t expected_hash = 14695981039346656037ull;
+
                     for (int32_t iteration = 0; iteration < iterations[index]; iteration++) {
                         expected_hash = mix(expected_hash, warm_hash);
                     }
+
                     uint64_t hash = 14695981039346656037ull;
                     auto cpu_before = platform::get_cpu_usage_snapshot();
                     auto started = std::chrono::steady_clock::now();
+
                     for (int32_t iteration = 0; iteration < iterations[index]; iteration++) {
                         hash = mix(hash, workload.Run());
                     }
+
                     double wall_ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count();
                     auto cpu_after = platform::get_cpu_usage_snapshot();
                     double cpu_ms = numeric_cast<double>(cpu_after.process_time_ns - cpu_before.process_time_ns) / 1000000.0;
@@ -674,12 +744,15 @@ TEST_CASE("ServerMapGridOperationsCost", "[.][server][map][grid][benchmark]")
                     size_t operations = workload.Operations * numeric_cast<size_t>(iterations[index]);
                     report.emplace_back(strex("SERVER_GRID_CSV,{},{},{},{},{},{},{:.6f},{:.6f},{:016x}", sample, modes[numeric_cast<size_t>(proto_mode)], modes[numeric_cast<size_t>(instance_mode)], workload.Name, iterations[index], operations, wall_ms, cpu_ms, hash).str());
                 }
+
                 server->MapMngr.DestroyLocation(location);
             }));
             WARN(strex("Server grid sample {} prototype {} instance {} complete", sample, modes[numeric_cast<size_t>(proto_mode)], modes[numeric_cast<size_t>(instance_mode)]).str());
+
             for (const string& line : report) {
                 WARN(line);
             }
+
             report.clear();
         }
     }
@@ -711,14 +784,17 @@ protected:
     void DispatchImpl() override
     {
         scoped_lock locker {_channelLocker};
+
         vector<uint8_t> encoded_data = SendCallback();
         vector<uint8_t> plain_data;
+
         if (!encoded_data.empty()) {
             _clientChannel.Receive(encoded_data, plain_data);
         }
 
         constexpr size_t header_size = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(NetMessage);
         size_t offset = 0;
+
         while (offset < plain_data.size()) {
             FO_VERIFY_AND_THROW(plain_data.size() - offset >= header_size, "Truncated outgoing network message header");
             uint32_t signature {};
@@ -729,9 +805,11 @@ protected:
             memory::copy(&message, plain_data.data() + offset + sizeof(signature) + sizeof(message_size), sizeof(message));
             FO_VERIFY_AND_THROW(signature == NetBuffer::NETMSG_SIGNATURE, "Invalid outgoing network message signature", signature);
             FO_VERIFY_AND_THROW(message_size >= header_size && message_size <= plain_data.size() - offset, "Invalid outgoing network message size", message_size);
+
             if (message == NetMessage::CritterAttachments) {
                 _attachmentCount.fetch_add(1, std::memory_order_relaxed);
             }
+
             offset += message_size;
         }
     }
@@ -786,10 +864,12 @@ TEST_CASE("CritterAttachmentTeardown", "[server][entity][attachments]")
     auto previous_exception_callback = exceptions::get_callback();
     exceptions::set_callback([&native_reports, previous_exception_callback](string_view message, const stack_trace::catched_data& trace, bool fatal) {
         native_reports.fetch_add(1, std::memory_order_relaxed);
+
         if (previous_exception_callback) {
             previous_exception_callback(message, trace, fatal);
         }
     });
+
     auto restore_exception_callback = scope_exit([previous = std::move(previous_exception_callback)]() mutable noexcept { exceptions::set_callback(std::move(previous)); });
 
     SECTION("LiveDetachKeepsTheOtherAttachment")
@@ -836,22 +916,28 @@ TEST_CASE("CritterAttachmentTeardown", "[server][entity][attachments]")
     CHECK(native_reports.load(std::memory_order_relaxed) == 0);
 
     server->SwitchPlayerCritter(player, nullptr);
+
     if (other_peer->GetIsAttached()) {
         other_peer->DetachFromCritter();
     }
+
     server->CrMngr.DestroyCritter(other_peer);
+
     if (!peer->IsDestroyed()) {
         if (peer->GetControlledByPlayer()) {
             peer->UnmarkIsForPlayer();
         }
+
         server->CrMngr.DestroyCritter(peer);
     }
     if (!master->IsDestroyed()) {
         if (master->GetControlledByPlayer()) {
             master->UnmarkIsForPlayer();
         }
+
         server->CrMngr.DestroyCritter(master);
     }
+
     CHECK(native_reports.load(std::memory_order_relaxed) == 0);
 }
 
@@ -895,6 +981,7 @@ TEST_CASE("ServerEntityOwnersReleasedAfterShutdownOnAnotherThread", "[server][en
             released.fetch_add(1, std::memory_order_relaxed);
         }
     });
+
     finalizer.join();
 
     CHECK(releasing_thread != owning_thread);
@@ -1007,6 +1094,7 @@ TEST_CASE("ServerSyncWidenOfCoveredEntityKeepsHeldLocks", "[server][sync]")
         waiter_ctx.Release();
         waiter_ctx.Deactivate();
     });
+
     auto join_waiter = scope_exit([&ctx, &waiter]() noexcept {
         ctx.Release();
         waiter.join();
@@ -1156,6 +1244,7 @@ TEST_CASE("ServerSyncYieldHandsTheWholeThreadCoverToWaitersAndTakesItBack", "[se
         waiter_ctx.Release();
         waiter_ctx.Deactivate();
     });
+
     auto join_waiter = scope_exit([&outer, &nested, &waiter]() noexcept {
         nested.Release();
         outer.Release();
@@ -1245,6 +1334,7 @@ TEST_CASE("ServerSyncRetainedCoverRefreshesReparentedAncestors", "[server][sync]
             transfer_ctx.Release();
             transfer_ctx.Deactivate();
         });
+
         vector<ptr<ServerEntity>> transfer {cr, old_map, new_map};
         transfer_ctx.SyncEntities(transfer);
         cr->SetParent(new_map);
@@ -1276,6 +1366,7 @@ TEST_CASE("ServerSyncRetainedCoverRefreshesReparentedAncestors", "[server][sync]
             new_map->GetEntityLock()->Release();
         }
     });
+
     probe.join();
     CHECK_FALSE(took_map.load());
 }
@@ -1304,6 +1395,7 @@ TEST_CASE("BoundedMapSpectatorsTrackVisibility", "[server][map][observation]")
             ctx.Release();
             ctx.Deactivate();
         });
+
         vector<ptr<ServerEntity>> roots {cr, item, map, full, bounded, second};
         ctx.SyncEntities(roots);
         cr->SetHex(mpos {10, 10});
@@ -1318,6 +1410,7 @@ TEST_CASE("BoundedMapSpectatorsTrackVisibility", "[server][map][observation]")
                 map->RemoveItem(item->GetId());
             });
         });
+
         full->SetViewMap(map, mpos {10, 10});
         bounded->SetViewMap(map, mpos {10, 10}, 3);
         second->SetViewMap(map, mpos {20, 20}, 2);
@@ -1325,9 +1418,11 @@ TEST_CASE("BoundedMapSpectatorsTrackVisibility", "[server][map][observation]")
         CHECK(map->IsSpectatorEntityVisible(bounded->GetId(), item->GetId()));
         CHECK_FALSE(map->IsSpectatorEntityVisible(second->GetId(), cr->GetId()));
         ipos32 edge {10, 10};
+
         for (int32_t i = 0; i < 3; i++) {
             GeometryHelper::MoveHexByDirUnsafe(edge, hdir::East);
         }
+
         cr->SetHex(map->GetSize().from_raw_pos(edge));
         map->RefreshAreaSpectators(cr);
         CHECK(map->GetSpectatorPlayersForSend(cr->GetId(), cr->GetHex()).size() == 2);

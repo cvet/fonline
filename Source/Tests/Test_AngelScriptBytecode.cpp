@@ -181,6 +181,7 @@ namespace
         }
 
         it->second--;
+
         if (it->second == 0) {
             state->ActiveRefs.erase(it);
         }
@@ -192,6 +193,7 @@ namespace
         if (state->FirstObservedId == 0) {
             state->FirstObservedId = id;
         }
+
         state->LastObservedId = id;
     }
 
@@ -224,6 +226,7 @@ namespace
         }
         else {
             it->second--;
+
             if (it->second == 0) {
                 active_refs.erase(it);
             }
@@ -466,11 +469,13 @@ namespace
 
             FAIL("Execute failed: result=" << exec_result << ", section=" << (section ? section.get() : "<unknown>") << ", line=" << line << ", column=" << column << ", function=" << exception_decl << ", exception=" << (exception_text ? exception_text.get() : "<none>") << ", first_observed=" << state.FirstObservedId << ", last_observed=" << state.LastObservedId);
         }
+
         ctx->Release();
 
         CHECK(engine->GarbageCollect(asGC_FULL_CYCLE) >= 0);
 
         int leaked_count = 0;
+
         for (const auto& [id, ref_count] : state.ActiveRefs) {
             static_cast<void>(id);
             leaked_count += ref_count;
@@ -920,10 +925,12 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
         engine->SetUserData(nullptr);
         CHECK(engine->GarbageCollect(asGC_FULL_CYCLE) >= 0);
         int leaked_count = 0;
+
         for (const auto& [id, ref_count] : state.ActiveRefs) {
             static_cast<void>(id);
             leaked_count += ref_count;
         }
+
         CHECK(leaked_count == 0);
     }
 
@@ -956,12 +963,14 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
                 cap);
             CHECK(r < 0);
             bool found = false;
+
             for (const auto& e : cap.Errors) {
                 if (e.find("Cannot assign 'null' to a non-nullable handle") != string::npos) {
                     found = true;
                     break;
                 }
             }
+
             CHECK(found);
         }
 
@@ -978,12 +987,14 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
                 cap);
             CHECK(r < 0);
             bool found = false;
+
             for (const auto& e : cap.Errors) {
                 if (e.find("Cannot assign nullable") != string::npos) {
                     found = true;
                     break;
                 }
             }
+
             CHECK(found);
         }
 
@@ -1004,6 +1015,7 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
             if (!cap.Errors.empty()) {
                 INFO(cap.Errors.front());
             }
+
             CHECK(r >= 0);
         }
 
@@ -1021,12 +1033,14 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
                 cap);
             CHECK(r < 0);
             bool found = false;
+
             for (const auto& e : cap.Errors) {
                 if (e.find("Cannot assign nullable") != string::npos) {
                     found = true;
                     break;
                 }
             }
+
             CHECK(found);
         }
 
@@ -1042,12 +1056,14 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
                 cap);
             CHECK(r < 0);
             bool found = false;
+
             for (const auto& e : cap.Errors) {
                 if (e.find("Cannot assign nullable") != string::npos) {
                     found = true;
                     break;
                 }
             }
+
             CHECK(found);
         }
 
@@ -1065,6 +1081,7 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
             if (!cap.Errors.empty()) {
                 INFO(cap.Errors.front());
             }
+
             CHECK(r >= 0);
         }
     }
@@ -1103,12 +1120,14 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
                 cap);
             CHECK(r >= 0); // build succeeds (warning, not error)
             bool found = false;
+
             for (const auto& w : cap.Warnings) {
                 if (w.find("Redundant '?'") != string::npos) {
                     found = true;
                     break;
                 }
             }
+
             CHECK(found);
         }
 
@@ -1123,6 +1142,7 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
             )",
                 cap);
             CHECK(r >= 0);
+
             for (const auto& w : cap.Warnings) {
                 CHECK(w.find("Redundant '?'") == string::npos);
             }
@@ -1139,6 +1159,7 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
             )",
                 cap);
             CHECK(r >= 0);
+
             for (const auto& w : cap.Warnings) {
                 CHECK(w.find("Redundant '?'") == string::npos);
             }
@@ -1156,6 +1177,7 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
             )",
                 cap);
             CHECK(r >= 0);
+
             for (const auto& w : cap.Warnings) {
                 CHECK(w.find("Redundant '?'") == string::npos);
             }
@@ -1199,14 +1221,18 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
                     return true;
                 }
             }
+
             return false;
         };
+
         auto dumpErrors = [](const MsgCapture& cap) -> string {
             string joined;
+
             for (const auto& e : cap.Errors) {
                 joined += e;
                 joined += " | ";
             }
+
             return joined;
         };
 
@@ -1314,6 +1340,7 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
                     return true;
                 }
             }
+
             return false;
         };
 
@@ -1375,6 +1402,7 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
                     return true;
                 }
             }
+
             return false;
         };
 
@@ -1474,6 +1502,7 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
                     return true;
                 }
             }
+
             return false;
         };
 
@@ -1688,6 +1717,7 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
                     return true;
                 }
             }
+
             return false;
         };
 
@@ -1795,6 +1825,7 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
                     CHECK(func->IsNoReturn());
                 }
             }
+
             engine->SetMessageCallback(asFUNCTION(CaptureMessageCallback), &capture, asCALL_CDECL);
             nptr<asIScriptModule> module = engine->GetModule("NoReturnMod", asGM_ALWAYS_CREATE);
             REQUIRE(module);
@@ -1808,6 +1839,7 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
                     return true;
                 }
             }
+
             return false;
         };
 
@@ -1883,12 +1915,14 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
             module->AddScriptSection("neg_guard", source, std::strlen(source));
             return module->Build();
         };
+
         auto hasDerefWarning = [](const MsgCapture& cap) -> bool {
             for (const auto& w : cap.Warnings) {
                 if (w.find("Dereference of nullable handle") != string::npos) {
                     return true;
                 }
             }
+
             return false;
         };
 
@@ -2004,6 +2038,7 @@ void GuardedReadAfterEarlyReturn()
         if (build_result < 0) {
             FAIL("Smart-cast script failed to build; the narrowed reads should compile without an Assert.");
         }
+
         REQUIRE(build_result >= 0);
 
         ResourceTrackerState state {};
@@ -2078,6 +2113,7 @@ void NarrowsCompoundOrAfterReturn()
         if (build_result < 0) {
             FAIL("Compound smart-cast script failed to build; && / || narrowing should compile without an explicit cast.");
         }
+
         REQUIRE(build_result >= 0);
 
         ResourceTrackerState state {};
@@ -2133,12 +2169,14 @@ void NarrowsCompoundOrAfterReturn()
             cap);
         CHECK(r < 0);
         bool found = false;
+
         for (const auto& e : cap.Errors) {
             if (e.find("Cannot assign nullable") != string::npos) {
                 found = true;
                 break;
             }
         }
+
         CHECK(found);
 
         // A `null` reassignment drops the narrowing and must still compile, because the write goes through the
@@ -2160,6 +2198,7 @@ void NarrowsCompoundOrAfterReturn()
                 null_cap);
             CHECK(null_r < 0);
             bool found_bind_error = false;
+
             for (const auto& e : null_cap.Errors) {
                 if (e.find("Cannot assign nullable") != string::npos) {
                     found_bind_error = true;
@@ -2167,6 +2206,7 @@ void NarrowsCompoundOrAfterReturn()
                 // The null write itself must not be rejected
                 CHECK(e.find("Cannot assign 'null'") == string::npos);
             }
+
             CHECK(found_bind_error);
         }
     }
@@ -2244,9 +2284,11 @@ void NullAssignToNarrowedRefParam()
             CHECK(ctx->Prepare(func.get()) >= 0);
             int32_t result = ctx->Execute();
             UNSCOPED_INFO(decl);
+
             if (result == asEXECUTION_EXCEPTION) {
                 UNSCOPED_INFO(ctx->GetExceptionString());
             }
+
             CHECK(result == asEXECUTION_FINISHED);
             ctx->Release();
             // The branch body ran to completion and the slot observes as null
@@ -2289,12 +2331,14 @@ void NullAssignToNarrowedRefParam()
             cap);
         CHECK(r < 0);
         bool found = false;
+
         for (const auto& e : cap.Errors) {
             if (e.find("Cannot assign nullable") != string::npos) {
                 found = true;
                 break;
             }
         }
+
         CHECK(found);
     }
 
@@ -2336,6 +2380,7 @@ void DistinctHandles()
         if (build_result < 0) {
             FAIL("Handle-identity fallback script failed to build; `==` between two `Node` handles should fall through to asBC_CmpPtr.");
         }
+
         REQUIRE(build_result >= 0);
 
         ResourceTrackerState state {};
@@ -2403,6 +2448,7 @@ void TagsDiffer()
         if (build_result < 0) {
             FAIL("opEquals dispatch script failed to build.");
         }
+
         REQUIRE(build_result >= 0);
 
         ResourceTrackerState state {};
@@ -2466,6 +2512,7 @@ void NullableParameter()
         if (build_result < 0) {
             FAIL("Nullable return / parameter parse test failed to build.");
         }
+
         REQUIRE(build_result >= 0);
 
         ResourceTrackerState state {};
@@ -2515,12 +2562,14 @@ void NullableParameter()
             cap);
         CHECK(r < 0);
         bool found = false;
+
         for (const auto& e : cap.Errors) {
             if (e.find("Cannot assign 'null' to a non-nullable handle") != string::npos) {
                 found = true;
                 break;
             }
         }
+
         CHECK(found);
     }
 

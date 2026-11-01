@@ -55,12 +55,14 @@ TEST_CASE("GenericUtils")
         for (int32_t i = 1; i < 10000; i++) {
             (void)rnd32();
         }
+
         CHECK(rnd32() == 4123659995);
 
         std::mt19937_64 rnd64; // NOLINT(cert-msc51-cpp)
         for (int32_t i = 1; i < 10000; i++) {
             (void)rnd64();
         }
+
         CHECK(rnd64() == 9981545732273789042UL);
     }
 

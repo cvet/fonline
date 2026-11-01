@@ -466,6 +466,7 @@ static void SkipSavedModelInfoCut(data_reader& reader)
     (void)reader.read_bytes(numeric_cast<size_t>(layer_count) * sizeof(int32_t));
 
     uint32_t shape_count = reader.read<uint32_t>();
+
     for (uint32_t i = 0; i < shape_count; i++) {
         (void)ReadSavedModelInfoString(reader);
     }
@@ -499,11 +500,13 @@ static auto ReadSavedModelInfoLink(data_reader& reader) -> SavedModelInfoLink
     (void)reader.read_bytes(numeric_cast<size_t>(link.DisabledLayerCount) * sizeof(int32_t));
 
     link.DisabledMeshCount = reader.read<uint32_t>();
+
     for (uint32_t i = 0; i < link.DisabledMeshCount; i++) {
         (void)ReadSavedModelInfoString(reader);
     }
 
     link.TextureInfoCount = reader.read<uint32_t>();
+
     for (uint32_t i = 0; i < link.TextureInfoCount; i++) {
         (void)ReadSavedModelInfoString(reader);
         (void)ReadSavedModelInfoString(reader);
@@ -511,12 +514,14 @@ static auto ReadSavedModelInfoLink(data_reader& reader) -> SavedModelInfoLink
     }
 
     link.EffectInfoCount = reader.read<uint32_t>();
+
     for (uint32_t i = 0; i < link.EffectInfoCount; i++) {
         (void)ReadSavedModelInfoString(reader);
         (void)ReadSavedModelInfoString(reader);
     }
 
     link.CutInfoCount = reader.read<uint32_t>();
+
     for (uint32_t i = 0; i < link.CutInfoCount; i++) {
         SkipSavedModelInfoCut(reader);
     }
@@ -566,6 +571,7 @@ static void SkipBakedModelMeshPayload(data_reader& reader, BakedModelMeshSummary
     size_t vertex_offset = summary.VertexData.size();
     summary.VertexData.resize(vertex_offset + vertex_count);
     reader.read_object_array(span<Vertex3D> {summary.VertexData}.subspan(vertex_offset, vertex_count));
+
     if (vertex_count != 0 && !summary.FirstVertex) {
         summary.FirstVertex = summary.VertexData[vertex_offset];
     }
@@ -580,6 +586,7 @@ static void SkipBakedModelMeshPayload(data_reader& reader, BakedModelMeshSummary
 
     uint32_t skin_bone_count = reader.read<uint32_t>();
     summary.SkinBones += skin_bone_count;
+
     for (uint32_t i = 0; i < skin_bone_count; i++) {
         (void)ReadSavedModelInfoString(reader);
     }
@@ -602,6 +609,7 @@ static void ReadBakedModelMeshSummaryBone(data_reader& reader, BakedModelMeshSum
     }
 
     uint32_t children_count = reader.read<uint32_t>();
+
     for (uint32_t i = 0; i < children_count; i++) {
         ReadBakedModelMeshSummaryBone(reader, summary);
     }
@@ -1088,11 +1096,13 @@ TEST_CASE("ModelMeshBakerOrchestration")
         REQUIRE(summary.IndexData.size() >= 6);
 
         bool first_triangles_share_vertex = false;
+
         for (size_t first = 0; first < 3; first++) {
             for (size_t second = 3; second < 6; second++) {
                 first_triangles_share_vertex = first_triangles_share_vertex || summary.IndexData[first] == summary.IndexData[second];
             }
         }
+
         CHECK(first_triangles_share_vertex);
 
         vector<uint8_t> seen_vertices(summary.VertexData.size());

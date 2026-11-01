@@ -50,6 +50,7 @@ TEST_CASE("MemorySystem")
         memory::init_backup_chunks();
 
         size_t released = 0;
+
         while (memory::free_backup_chunk()) {
             released++;
         }
@@ -184,6 +185,7 @@ TEST_CASE("MemorySystem")
 
         std::thread worker {[&] {
             pristine_heap_initialized = rpmalloc_test_initialize_pristine_thread_heap() != 0;
+
             if (!pristine_heap_initialized) {
                 return;
             }
@@ -195,13 +197,16 @@ TEST_CASE("MemorySystem")
 
                 if (first_allocation_succeeded) {
                     rpmalloc_test_set_span_commit_failures(1);
+
                     while (block_count < blocks.size()) {
                         void* block = rpmalloc(128 * 1024);
                         if (block == nullptr) {
                             break;
                         }
+
                         blocks[block_count++] = block;
                     }
+
                     remaining_failures = rpmalloc_test_get_span_commit_failures();
                     rpmalloc_test_set_span_commit_failures(0);
                 }
@@ -231,6 +236,7 @@ TEST_CASE("MemorySystem")
 
         std::thread worker {[&] {
             pristine_heap_initialized = rpmalloc_test_initialize_pristine_thread_heap() != 0;
+
             if (!pristine_heap_initialized) {
                 return;
             }
@@ -266,6 +272,7 @@ TEST_CASE("MemorySystem")
                     retried_block_writable = true;
                     rpfree(retried);
                 }
+
                 for (size_t i = 0; i < reused_count; i++) {
                     rpfree(reused[i]);
                 }
@@ -295,6 +302,7 @@ TEST_CASE("MemorySystem")
 
         std::thread worker {[&] {
             pristine_heap_initialized = rpmalloc_test_initialize_pristine_thread_heap() != 0;
+
             if (!pristine_heap_initialized) {
                 return;
             }
@@ -305,6 +313,7 @@ TEST_CASE("MemorySystem")
                 blocks[block_count++] = safe_alloc::make_unique_arr<uint8_t>(96 * 1024);
 
                 rpmalloc_test_set_span_commit_failures(1);
+
                 while (!allocation_reported && block_count < blocks.size()) {
                     blocks[block_count++] = safe_alloc::make_unique_arr<uint8_t>(96 * 1024);
                 }
@@ -325,9 +334,11 @@ TEST_CASE("MemorySystem")
         CHECK(retry_succeeded);
 
         size_t backup_chunks = 0;
+
         while (memory::free_backup_chunk()) {
             backup_chunks++;
         }
+
         CHECK(backup_chunks == 99);
         memory::init_backup_chunks();
     }

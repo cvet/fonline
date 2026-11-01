@@ -277,6 +277,7 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
             else {
                 effect = _modelInfo->_hierarchy->GetEffect(std::get<0>(eff_info));
             }
+
             FO_VERIFY_AND_THROW(effect, "Effect was not loaded", std::get<0>(eff_info));
 
             // Assign it
@@ -300,6 +301,7 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
     if (clear) {
         _allCuts.clear();
     }
+
     for (auto& cut_info : data.CutInfo) {
         _allCuts.emplace_back(cut_info);
     }
@@ -1066,6 +1068,7 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
     auto is_affine_clip_matrix = [](const mat44& matrix) noexcept { //
         return matrix[0][3] == 0.0f && matrix[1][3] == 0.0f && matrix[2][3] == 0.0f && matrix[3][3] == 1.0f;
     };
+
     float32_t viewport_offset_x = numeric_cast<float32_t>(viewport[0]);
     float32_t viewport_offset_y = numeric_cast<float32_t>(viewport[1]);
     float32_t viewport_width = numeric_cast<float32_t>(viewport[2]);
@@ -1164,6 +1167,7 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
     auto facing_delta_matrix = [&](float32_t degrees) -> mat44 { //
         return facing_prefix * glm::rotate(mat44 {1.0f}, degrees * DEG_TO_RAD_FLOAT, vec3 {0.0f, 1.0f, 0.0f}) * facing_prefix_inverse;
     };
+
     mat44 facing_rotation_90 = facing_delta_matrix(90.0f);
     mat44 facing_rotation_180 = facing_delta_matrix(180.0f);
     // Matrix product is associative, so Proj*(R*v) == (Proj*R)*v: folding each facing rotation into the clip
@@ -1184,6 +1188,7 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
         float64_t radius = std::sqrt(cosine * cosine + sine * sine);
         return {numeric_cast<float32_t>(center - radius), numeric_cast<float32_t>(center + radius)};
     };
+
     bool has_all_facings_point = false;
     float32_t all_facings_min_x {};
     float32_t all_facings_min_y {};
@@ -1803,11 +1808,13 @@ auto ModelInstance::CanBatchCombinedMesh(ptr<const CombinedMesh> combined_mesh, 
     if (combined_mesh->DrawEffect != mesh_instance->CurEffect) {
         return false;
     }
+
     for (size_t i = 0; i < MODEL_MAX_TEXTURES; i++) {
         if (combined_mesh->Textures[i] && mesh_instance->CurTexures[i] && combined_mesh->Textures[i]->MainTex != mesh_instance->CurTexures[i]->MainTex) {
             return false;
         }
     }
+
     return combined_mesh->CurBoneMatrix + mesh_instance->Mesh->SkinBones.size() <= combined_mesh->SkinBindings.size();
 }
 
@@ -1852,6 +1859,7 @@ void ModelInstance::BatchCombinedMesh(ptr<CombinedMesh> combined_mesh, ptr<const
 
         // Add indices offset
         auto start_index = indices.size() - mesh_data->Indices.size();
+
         for (auto i = start_index, j = indices.size(); i < j; i++) {
             indices[i] += index_offset;
         }
@@ -1859,6 +1867,7 @@ void ModelInstance::BatchCombinedMesh(ptr<CombinedMesh> combined_mesh, ptr<const
         // Add bones matrices offset
         float32_t bone_index_offset = numeric_cast<float32_t>(combined_mesh->CurBoneMatrix);
         auto start_vertex = vertices.size() - mesh_data->Vertices.size();
+
         for (auto i = start_vertex, j = vertices.size(); i < j; i++) {
             for (auto& blend_index : vertices[i].BlendIndices) {
                 blend_index += bone_index_offset;
@@ -1972,6 +1981,7 @@ static auto SphereLineIntersection(const Vertex3D& p1, const Vertex3D& p2, const
         // Ignore
         return -2;
     }
+
     return 0;
 }
 
@@ -2187,6 +2197,7 @@ void ModelInstance::CutCombinedMesh(ptr<CombinedMesh> combined_mesh, ptr<const M
                     // Get vertex side
                     auto diff = v.Position - sp;
                     bool v_side = (glm::dot(diff, diff) <= sphere_square_radius);
+
                     if (revert_shape) {
                         v_side = !v_side;
                     }
@@ -2223,6 +2234,7 @@ void ModelInstance::CutCombinedMesh(ptr<CombinedMesh> combined_mesh, ptr<const M
 
                         // Move influence to other bones
                         v.BlendWeights[b] = 0.0f;
+
                         for (auto& blend_weight : v.BlendWeights) {
                             blend_weight += blend_weight / (1.0f - w) * w;
                         }
@@ -2275,6 +2287,7 @@ void ModelInstance::SetupFrame(isize32 draw_size, ipos32 frame_pivot)
                 recurse(child.as_ptr(), recurse);
             }
         };
+
         rebase_particles(this, rebase_particles);
     }
 

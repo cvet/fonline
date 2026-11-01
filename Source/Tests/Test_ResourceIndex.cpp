@@ -106,6 +106,7 @@ static void WriteStoredZip(string_view path, const vector<std::pair<string, stri
             buf.emplace_back(static_cast<uint8_t>((value >> (i * 8)) & 0xFF));
         }
     };
+
     auto put_bytes = [](vector<uint8_t>& buf, string_view text) { buf.insert(buf.end(), text.begin(), text.end()); };
 
     for (const auto& [name, content] : files) {

@@ -210,6 +210,7 @@ void AnimationViewer::Draw()
     if (ImGui::BeginChild("Critters", {240.0f, 0.0f}, ImGuiChildFlags_Borders)) {
         DrawCritterList();
     }
+
     ImGui::EndChild();
 
     ImGui::SameLine();
@@ -217,6 +218,7 @@ void AnimationViewer::Draw()
     if (ImGui::BeginChild("Preview", {numeric_cast<float32_t>(PREVIEW_SIZE.width) + 16.0f, 0.0f}, ImGuiChildFlags_Borders)) {
         DrawPreview();
     }
+
     ImGui::EndChild();
 
     ImGui::SameLine();
@@ -228,13 +230,16 @@ void AnimationViewer::Draw()
         if (ImGui::BeginChild("Animations", {0.0f, column_height * 0.5f}, ImGuiChildFlags_Borders)) {
             DrawAnimationList();
         }
+
         ImGui::EndChild();
 
         if (ImGui::BeginChild("Hierarchy", {0.0f, 0.0f}, ImGuiChildFlags_Borders)) {
             DrawHierarchy();
         }
+
         ImGui::EndChild();
     }
+
     ImGui::EndChild();
 
     ImGui::End();
@@ -288,6 +293,7 @@ void AnimationViewer::DrawPreview()
     // Facing is an angle; a 2D sprite snaps it to the nearest hex frame, a model
     // turns to it. Drag the preview with the left button to rotate, too
     ImGui::SetNextItemWidth(110.0f);
+
     if (ImGui::SliderFloat("Angle", &_dirAngle, 0.0f, 360.0f, "%.0f deg")) {
         _dirAngle = NormalizeAngle(_dirAngle);
         ApplyDir();
@@ -374,6 +380,7 @@ void AnimationViewer::DrawAnimationList()
 
     ImGui::Checkbox("Loop", &_looped);
     ImGui::SameLine();
+
     if (ImGui::Button("Idle")) {
         PlayIdle();
     }
@@ -743,6 +750,7 @@ void AnimationViewer::DrawOverlays(ipos32 sprite_pos, isize32 sprite_size, float
         lines.emplace_back(PrimitivePoint {.PointPos = a, .PointColor = color});
         lines.emplace_back(PrimitivePoint {.PointPos = b, .PointColor = color});
     };
+
     auto add_rect = [&](irect32 sprite_rect, ucolor color) {
         ipos32 tl = to_screen({sprite_rect.x, sprite_rect.y});
         ipos32 tr = to_screen({sprite_rect.x + sprite_rect.width, sprite_rect.y});
@@ -859,6 +867,7 @@ void AnimationViewer::DrawHierarchy()
 
     if (!_enabledBones.empty() || !_enabledAttachments.empty()) {
         ImGui::SameLine();
+
         if (ImGui::SmallButton("Clear")) {
             _enabledBones.clear();
             _enabledAttachments.clear();

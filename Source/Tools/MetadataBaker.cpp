@@ -755,12 +755,14 @@ void MetadataBaker::ParseValueType(TagsParsingContext& ctx) const
         result_entry.emplace_back(type_name);
 
         size_t tok_index = 4;
+
         while (tok_index < tag_desc.Tokens.size()) {
             size_t type_begin = tok_index;
 
             while (tok_index < tag_desc.Tokens.size() && tag_desc.Tokens[tok_index] != "-") {
                 tok_index++;
             }
+
             if (tok_index == type_begin || tok_index >= tag_desc.Tokens.size()) {
                 throw MetadataBakerException("Invalid ValueType codegen tag: expected 'type-field' layout entry", tag_desc.SourceFile, tag_desc.LineNumber, type_name);
             }
@@ -774,6 +776,7 @@ void MetadataBaker::ParseValueType(TagsParsingContext& ctx) const
             catch (TypeResolveException& ex) {
                 throw MetadataBakerException("Invalid ValueType codegen tag: cannot resolve field type", tag_desc.SourceFile, tag_desc.LineNumber, ex.what());
             }
+
             if (type_tokens != tok_index - type_begin) {
                 throw MetadataBakerException("Invalid ValueType codegen tag: invalid field type", tag_desc.SourceFile, tag_desc.LineNumber, type_name);
             }

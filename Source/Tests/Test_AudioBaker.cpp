@@ -282,6 +282,7 @@ TEST_CASE("AudioBaker")
 #if FO_AUDIO_ACM
         baker.BakeFiles(rig.GetAllSourceFiles(), "");
         REQUIRE(rig.Outputs.size() == 2);
+
         for (const auto& [path, channels] : vector<std::pair<string, int32_t>> {{"sound/SFX/Synthetic.ACM", 1}, {"Sound/Music/Synthetic.acm", 2}}) {
             REQUIRE(rig.Outputs.contains(path));
             DecodedAudio decoded = DecodeVorbis(rig.Outputs.at(path));
@@ -289,6 +290,7 @@ TEST_CASE("AudioBaker")
             CHECK(decoded.SampleRate == sample_rate);
             CHECK(decoded.Samples.size() == acm[4]);
         }
+
         rig.Outputs.clear();
         baker.BakeFiles(rig.GetAllSourceFiles(), "sound/SFX/Synthetic.ACM");
         REQUIRE(rig.Outputs.size() == 1);

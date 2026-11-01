@@ -369,6 +369,7 @@ TEST_CASE("NetBufferAdversarial")
             // Every 8th frame is left intact as a control; the rest get 1..3 random bit flips
             if (iter % 8 != 0 && !frame.empty()) {
                 int32_t flips = static_cast<int32_t>(next() % 3) + 1;
+
                 for (int f = 0; f < flips; f++) {
                     frame[next() % frame.size()] ^= static_cast<uint8_t>(1U << (next() % 8));
                 }

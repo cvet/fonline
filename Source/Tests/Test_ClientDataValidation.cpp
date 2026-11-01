@@ -623,6 +623,7 @@ TEST_CASE("ClientDataValidationFuzz")
         }
         if (!data.empty()) {
             int32_t flips = static_cast<int32_t>(next() % 3) + 1;
+
             for (int f = 0; f < flips; f++) {
                 data[next() % data.size()] ^= static_cast<uint8_t>(1U << (next() % 8));
             }

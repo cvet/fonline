@@ -169,6 +169,7 @@ TEST_CASE("Logging")
             first_count++;
             last_first = string(message);
         });
+
         logging::set_callback("second", [&](logging::type, string_view message, nptr<const stack_trace::catched_data>) {
             second_count++;
             last_second = string(message);

@@ -521,6 +521,7 @@ auto fs::write_file_durable_new(string_view path, const_span<uint8_t> content) n
             (void)fs::remove_file(path);
         }
     });
+
     fs::disk_write_file writer {path, fs::disk_write_mode::create_new};
 
     if (!writer) {
@@ -765,6 +766,7 @@ auto fs::hash_data(const_span<uint8_t> data) noexcept -> uint64_t
         for (size_t i = 0; i < count; ++i) {
             hash = (hash ^ bytes[i]) * prime;
         }
+
         return hash;
     };
 

@@ -701,6 +701,7 @@ auto ModelInformation::GetAvailableAnimations() const -> vector<pair<CritterStat
         if (lhs.first != rhs.first) {
             return lhs.first < rhs.first;
         }
+
         return lhs.second < rhs.second;
     });
 

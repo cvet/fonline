@@ -93,6 +93,7 @@ void CopyBackManagedAbiNativeFrame(const ManagedAbiNativeFrame& frame)
             memory::copy(frame.PackedFrame.data() + slot.Offset, frame.Storage.data() + frame.ArgOffsets[i], slot.Size);
         }
     }
+
     if (frame.Ret.Size != 0) {
         memory::copy(frame.PackedFrame.data() + frame.Ret.Offset, frame.Storage.data() + frame.ResultOffset, frame.Ret.Size);
     }

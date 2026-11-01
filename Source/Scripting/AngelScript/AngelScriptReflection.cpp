@@ -334,6 +334,7 @@ void ScriptType::Instantiate(ptr<void*> out, int32_t out_type_id) const
     if (!out_type_info) {
         throw ScriptException("Invalid 'instance' argument, not an handle", DescribeTypeId(engine, out_type_id));
     }
+
     nptr<void> out_object = *out;
 
     if (out_object) {
@@ -355,6 +356,7 @@ void ScriptType::InstantiateCopy(ptr<void> in, int32_t in_type_id, ptr<void*> ou
     if (!out_type_info) {
         throw ScriptException("Invalid 'instance' argument, not an handle", DescribeTypeId(engine, out_type_id));
     }
+
     nptr<void> out_object = *out;
 
     if (out_object) {
@@ -367,6 +369,7 @@ void ScriptType::InstantiateCopy(ptr<void> in, int32_t in_type_id, ptr<void*> ou
     if (!in_type_info) {
         throw ScriptException("Invalid 'copyFrom' argument, not an handle", DescribeTypeId(engine, in_type_id));
     }
+
     auto in_object = NativeDataProvider::ReadHandleSlot(in);
 
     if (!in_object) {

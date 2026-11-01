@@ -233,6 +233,7 @@ auto ModelSourceAssetCache::Get(string_view path) const -> shared_ptr<const Mode
 
     {
         scoped_lock locker {_mutex};
+
         const auto [it, inserted] = _loads.emplace(string(path), pending);
         load = it->second;
         owner = inserted;

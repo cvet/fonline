@@ -115,6 +115,7 @@ EmbeddedFile::EmbeddedFile()
 
         return mem_stream.release().void_cast();
     };
+
     ffunc.zread_file = [](voidpf, voidpf stream, void* buf, uLong size) -> uLong {
         auto mem_stream = cast_from_void<EmbeddedZipMemStream*>(stream);
         FO_VERIFY_AND_THROW(mem_stream, "Embedded zip read callback received a null memory stream");
@@ -125,21 +126,26 @@ EmbeddedFile::EmbeddedFile()
         }
 
         FO_VERIFY_AND_THROW(out_buf, "Embedded zip read callback received a null output buffer");
+
         for (size_t i = 0; i < size; i++) {
             out_buf[i] = mem_stream->Buf[mem_stream->Pos + i];
         }
+
         mem_stream->Pos += numeric_cast<uint32_t>(size);
         return size;
     };
+
     ffunc.zwrite_file = [](voidpf, voidpf, const void*, uLong) -> uLong { return 0; };
     ffunc.ztell_file = [](voidpf, voidpf stream) -> long {
         auto mem_stream = cast_from_void<const EmbeddedZipMemStream*>(stream);
         FO_VERIFY_AND_THROW(mem_stream, "Embedded zip tell callback received a null memory stream");
         return numeric_cast<long>(mem_stream->Pos);
     };
+
     ffunc.zseek_file = [](voidpf, voidpf stream, uLong offset, int32_t origin) -> long {
         auto mem_stream = cast_from_void<EmbeddedZipMemStream*>(stream);
         FO_VERIFY_AND_THROW(mem_stream, "Embedded zip seek callback received a null memory stream");
+
         switch (origin) {
         case ZLIB_FILEFUNC_SEEK_SET:
             mem_stream->Pos = numeric_cast<uint32_t>(offset);
@@ -153,8 +159,10 @@ EmbeddedFile::EmbeddedFile()
         default:
             return -1;
         }
+
         return 0;
     };
+
     ffunc.zclose_file = [](voidpf, voidpf stream) -> int32_t {
         auto mem_stream = cast_from_void<EmbeddedZipMemStream*>(stream);
         FO_VERIFY_AND_THROW(mem_stream, "Embedded zip close callback received a null memory stream");
@@ -163,12 +171,15 @@ EmbeddedFile::EmbeddedFile()
         ignore_unused(owned_mem_stream);
         return 0;
     };
+
     ffunc.zerror_file = [](voidpf, voidpf stream) -> int32_t {
         if (!stream) {
             return 1;
         }
+
         return 0;
     };
+
     ffunc.opaque = nullptr;
 
     auto zip_handle = make_nptr(unzOpen2("", &ffunc));

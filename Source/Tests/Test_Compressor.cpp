@@ -49,6 +49,7 @@ TEST_CASE("Compressor")
     {
         vector<uint8_t> src;
         src.reserve(4096);
+
         for (int32_t i = 0; i < 4096; i++) {
             src.emplace_back(static_cast<uint8_t>(i % 251));
         }
@@ -81,6 +82,7 @@ TEST_CASE("Compressor")
     {
         vector<uint8_t> part1;
         vector<uint8_t> part2;
+
         for (int32_t i = 0; i < 128; i++) {
             part1.emplace_back(static_cast<uint8_t>(i));
             part2.emplace_back(static_cast<uint8_t>(255 - i));

@@ -160,6 +160,7 @@ void stream_compressor::compress(const_span<uint8_t> buf, vector<uint8_t>& resul
             constexpr safe_allocator<uint8_t> allocator;
             return allocator.allocate(numeric_cast<size_t>(items) * size);
         };
+
         _impl->stream.zfree = [](voidpf, voidpf address) {
             constexpr safe_allocator<uint8_t> allocator;
             allocator.deallocate(static_cast<uint8_t*>(address), 0);
@@ -231,6 +232,7 @@ void stream_decompressor::decompress(const_span<uint8_t> buf, vector<uint8_t>& r
             constexpr safe_allocator<uint8_t> allocator;
             return allocator.allocate(numeric_cast<size_t>(items) * size);
         };
+
         _impl->stream.zfree = [](voidpf, voidpf address) {
             constexpr safe_allocator<uint8_t> allocator;
             allocator.deallocate(static_cast<uint8_t*>(address), 0);

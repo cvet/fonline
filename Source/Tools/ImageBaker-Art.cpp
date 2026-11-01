@@ -81,6 +81,7 @@ namespace ImageBakerArt
                     i += 2;
                     FO_VERIFY_AND_THROW(i + 1 == opt.length() || string_view {"TtHhVvFfRr"}.find(opt[i + 1]) != string_view::npos, "Invalid ART option after rotation", fname, opt);
                 }
+
                 break;
             case 'T':
             case 't':

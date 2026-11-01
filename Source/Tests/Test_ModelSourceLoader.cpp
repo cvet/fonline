@@ -282,6 +282,7 @@ TEST_CASE("ModelSourceAssetCacheLoadsOneSharedAssetForParallelCallers")
             safe_call([&] { release_load_promise.set_value(); });
         }
     });
+
     ModelSourceAssetCache cache {files, [&](string_view path, const File& file) {
                                      if (load_count.fetch_add(1) == 0) {
                                          load_entered_promise.set_value();
@@ -329,6 +330,7 @@ TEST_CASE("ModelSourceAssetCacheFansOutOneLoadException")
             safe_call([&] { release_load_promise.set_value(); });
         }
     });
+
     ModelSourceAssetCache cache {files, [&](string_view path, const File& file) -> ModelSourceAsset {
                                      ignore_unused(path, file);
 

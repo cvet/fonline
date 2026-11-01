@@ -838,6 +838,7 @@ void Player::Send_ViewMap()
     auto view_map = make_ptr(&*_viewMap);
 
     scoped_lock conn_lock {_connectionLock};
+
     auto out_buf = _connection->WriteMsg(NetMessage::ViewMap);
 
     out_buf->Write(view_map->Hex);

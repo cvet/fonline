@@ -984,6 +984,7 @@ auto ScriptArray::GetBuffer() -> nptr<void>
     if (!buffer) {
         return nullptr;
     }
+
     return buffer.void_cast();
 }
 
@@ -993,6 +994,7 @@ auto ScriptArray::GetBuffer() const -> nptr<void>
     if (!buffer) {
         return nullptr;
     }
+
     return buffer.void_cast();
 }
 

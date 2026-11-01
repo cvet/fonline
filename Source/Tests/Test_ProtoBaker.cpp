@@ -76,11 +76,13 @@ TEST_CASE("ProtoBaker")
         local_rig.AddBakedFile("Metadata.fometa-client", metadata_blob);
         local_rig.AddBakedFile("Metadata.fometa-mapper", metadata_blob);
     };
+
     auto add_client_mapper_metadata_blob = [](TestRig& local_rig, const vector<uint8_t>& metadata_blob) {
         local_rig.AddBakedFile("Metadata.fometa-server", metadata_blob);
         local_rig.AddBakedFile("Metadata.fometa-client", metadata_blob);
         local_rig.AddBakedFile("Metadata.fometa-mapper", metadata_blob);
     };
+
     auto server_only_bake = [](string_view path, uint64_t) { return path.ends_with(".fopro-bin-server"); };
     auto client_mapper_bake = [](string_view path, uint64_t) { return path.ends_with(".fopro-bin-client") || path.ends_with(".fopro-bin-mapper"); };
 

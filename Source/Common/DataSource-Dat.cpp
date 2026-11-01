@@ -411,6 +411,7 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64_t& write_time) 
             constexpr safe_allocator<uint8_t> allocator;
             return allocator.allocate(numeric_cast<size_t>(items) * size_);
         };
+
         stream.zfree = [](voidpf, voidpf address) {
             constexpr safe_allocator<uint8_t> allocator;
             allocator.deallocate(cast_from_void<uint8_t*>(address).get(), 0);

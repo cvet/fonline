@@ -829,6 +829,7 @@ namespace MapperMergeTest
             proto.SetDrawMultihexMesh(true);
             proto.SetPicMap(tile_pic);
         };
+
         auto configure_unique = [tile_pic](ProtoItem& proto) {
             proto.SetStatic(true);
             proto.SetMultihexGeneration(MultihexGenerationType::AnyUnique);
@@ -843,6 +844,7 @@ namespace MapperMergeTest
             proto.SetPicMap(tile_pic);
             proto.GetPropertiesForEdit()->ApplyFromText(map<string, string> {{"AuthoringNumber", "20"}, {"AuthoringFlag", "True"}, {"AuthoringText", "base"}, {"AuthoringList", "7 9"}, {"AuthoringClient", "20"}});
         };
+
         auto configure_wall = [tile_pic](ProtoItem& proto) {
             proto.SetIsWall(true);
             proto.SetPicMap(tile_pic);

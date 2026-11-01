@@ -312,18 +312,22 @@ TEST_CASE("ServerEventCallContracts")
     }
 
     string unexpected_report = "Unexpected server event calls:";
+
     for (const string& key : unexpected_calls) {
         unexpected_report += "\n  ";
         unexpected_report += key;
     }
+
     INFO(unexpected_report);
     CHECK(unexpected_calls.empty());
 
     string missing_report = "Missing server event calls:";
+
     for (const string& key : missing_calls) {
         missing_report += "\n  ";
         missing_report += key;
     }
+
     INFO(missing_report);
     CHECK(missing_calls.empty());
 }

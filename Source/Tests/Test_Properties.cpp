@@ -2507,6 +2507,7 @@ TEST_CASE("PropertiesCustomAccessors")
         setter_calls++;
         prop_data.SetAs<int32_t>(prop_data.GetAs<int32_t>() + 5);
     });
+
     plain_prop->AddPostSetter([&](nptr<Entity>, ptr<const Property>) { post_setter_calls++; });
 
     virtual_prop->SetGetter([&](nptr<Entity>, ptr<const Property>) {
@@ -2514,6 +2515,7 @@ TEST_CASE("PropertiesCustomAccessors")
         prop_data.SetAs<int32_t>(virtual_value);
         return prop_data;
     });
+
     virtual_prop->AddSetter([&](nptr<Entity>, ptr<const Property>, PropertyRawData& prop_data) { virtual_value = prop_data.GetAs<int32_t>(); });
 
     props.SetValue<int32_t>(plain_prop, 10);
@@ -3194,6 +3196,7 @@ TEST_CASE("DocumentMigratorsUseOriginalContextAndCommitTogether")
 
         return AnyData::Value {string {"new-first"}};
     });
+
     AnyData::Document document;
     document.Emplace("First", string {"old-first"});
     document.Emplace("Second", string {"old-second"});
@@ -3207,6 +3210,7 @@ TEST_CASE("DocumentMigratorsUseOriginalContextAndCommitTogether")
 
             return AnyData::Value {string {"new-second"}};
         });
+
         AnyData::Document updates;
 
         CHECK(PropertiesSerializer::MigrateDocument(&registrar, document, &updates, AnyData::Value {string {"CurrentProto"}}));
@@ -3621,6 +3625,7 @@ TEST_CASE("PropertiesValueRangeClampingWithCallbacks")
         last_setter_value = prop_data.GetAs<int32_t>();
         prop_data.SetAs<int32_t>(last_setter_value + 50);
     });
+
     health_prop->AddPostSetter([&](nptr<Entity>, ptr<const Property>) { post_setter_calls++; });
 
     // Setters see the already clamped value, and their own result is clamped again before storage

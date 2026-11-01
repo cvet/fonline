@@ -256,6 +256,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
                 if (type_name == location_type_name) {
                     return "Locations";
                 }
+
                 return "Protos";
             }();
 

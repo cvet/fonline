@@ -149,9 +149,11 @@ TEST_CASE("DiskFileSystem")
         string temp_dir = MakeTempTestDir("unicode_lock");
         auto cleanup = scope_exit([&]() noexcept { (void)fs::remove_dir_tree(temp_dir); });
         string dir = temp_dir;
+
         for (int32_t i = 0; i != 18; i++) {
             dir = strex(dir).combine_path("long-directory-segment").str();
         }
+
         REQUIRE(fs::create_directories(dir));
         string path = strex(dir).combine_path("блокировка.lock").str();
         REQUIRE(path.size() > 320);
@@ -1012,6 +1014,7 @@ TEST_CASE("DiskFileSystemRejectsInvalidUtf8")
     string replacement = root + "/bad-\xEF\xBF\xBD.bin";
     string source = root + "/source.bin";
     array<uint8_t, 1> bytes {'x'};
+
     for (string_view invalid : {string_view {"\xED\xA0\x80"}, string_view {"\xC0\x80"}, string_view {"\xF4\x90\x80\x80"}, string_view {"\xEF\xBF\xBD"}}) {
         CHECK_THROWS_AS(fs::make_path(invalid), std::filesystem::filesystem_error);
         CHECK_THROWS_AS(fs::make_writable_path("", invalid), std::filesystem::filesystem_error);
@@ -1121,6 +1124,7 @@ TEST_CASE("DiskFileSystemPathContracts")
             }
             CHECK(fs::compare_file_content(file, bytes));
         }
+
         CHECK_FALSE(fs::write_file(bad_file, "replacement"));
         CHECK(fs::compare_file_content(file, bytes));
         CHECK_FALSE(fs::write_file(bad_file, bytes));
@@ -1233,6 +1237,7 @@ TEST_CASE("ExclusiveFileLockProcessProbe", "[.process]")
         return value ? optional<string> {value.get()} : std::nullopt;
 #endif
     };
+
     auto path = get_probe_path("FO_LOCK_PROBE_PATH");
     auto ready = get_probe_path("FO_LOCK_PROBE_READY");
     auto release = get_probe_path("FO_LOCK_PROBE_RELEASE");
@@ -1243,9 +1248,11 @@ TEST_CASE("ExclusiveFileLockProcessProbe", "[.process]")
     REQUIRE(lock.owns_lock());
     REQUIRE(fs::write_file(*ready, "held"));
     auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds {30};
+
     while (!fs::exists(*release) && std::chrono::steady_clock::now() < deadline) {
         coarse_sleep(std::chrono::milliseconds {10});
     }
+
     REQUIRE(fs::exists(*release));
 #endif
 }

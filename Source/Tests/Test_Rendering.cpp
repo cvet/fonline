@@ -357,10 +357,12 @@ TEST_CASE("ModelSpriteHitMaskThrottlesRequestedCopiesButPollsPendingPixels")
     state.Pixels = {ucolor {0, 0, 0, 0}, ucolor {0, 0, 0, 255}};
     mask.MarkStale();
     mask.RequestRefresh();
+
     for (int64_t now = 2; now < 100; now++) {
         mask.RequestRefresh();
         update(now);
     }
+
     CHECK(state.Requests == 1);
     CHECK(mask.IsHitTest({0, 0}));
     update(100);

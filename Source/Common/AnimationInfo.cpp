@@ -189,6 +189,7 @@ auto WriteSpriteInfoFile(const vector<SpriteInfoFileEntry>& entries) -> string
             if (!first_frame) {
                 target += ' ';
             }
+
             target += strex("{}", value);
         };
 
@@ -291,6 +292,7 @@ auto ReadModelAnimationInfo(const FileSystem& resources, hash_resolver& hashes) 
             FO_VERIFY_AND_THROW(it != key_values.end(), "Model animation info key lookup failed", MODEL_ANIMATION_INFO_FILE_NAME, section_name, key);
             return it->second;
         };
+
         auto parse_int_values = [&get_value, section_name](string_view key) -> vector<int32_t> {
             vector<string_view> tokens = strvex(get_value(key)).split(' ');
             vector<int32_t> values;
@@ -307,6 +309,7 @@ auto ReadModelAnimationInfo(const FileSystem& resources, hash_resolver& hashes) 
 
             return values;
         };
+
         auto parse_float_values = [&get_value, section_name](string_view key) -> vector<float32_t> {
             vector<string_view> tokens = strvex(get_value(key)).split(' ');
             vector<float32_t> values;
@@ -323,6 +326,7 @@ auto ReadModelAnimationInfo(const FileSystem& resources, hash_resolver& hashes) 
 
             return values;
         };
+
         auto has_any_key = [&key_values](const auto& keys) -> bool { return std::ranges::any_of(keys, [&key_values](string_view key) { return key_values.count(key) != 0; }); };
         bool has_animation_durations = has_any_key(animation_duration_keys);
         bool has_animation_bounds = has_any_key(animation_bounds_keys);

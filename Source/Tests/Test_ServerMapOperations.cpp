@@ -52,6 +52,7 @@ TEST_CASE("MapManagerLoadsStaticMapEntities")
             }
         });
     });
+
     string startup_error = WaitForStart(server.get());
     INFO(startup_error);
     REQUIRE(startup_error.empty());
@@ -109,6 +110,7 @@ TEST_CASE("MapPathGagChecksRespectStaticBlockers", "[map-path]")
             }
         });
     });
+
     string startup_error = WaitForStart(server.get());
     INFO(startup_error);
     REQUIRE(startup_error.empty());
@@ -163,6 +165,7 @@ TEST_CASE("MapPathfindingObstaclePolicyIsIndependentOfLifeCondition")
             }
         });
     });
+
     string startup_error = WaitForStart(server.get());
     INFO(startup_error);
     REQUIRE(startup_error.empty());

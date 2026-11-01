@@ -247,6 +247,7 @@ TEST_CASE("AngelScriptTimeEventManagerFiresScriptCallbacks")
         REQUIRE(timer_func);
         return server->TimeEventMngr.StartTimeEvent(cr, Entity::TimeEventData::FuncType {std::move(timer_func)}, timespan {std::chrono::seconds {60}}, repeat, {});
     };
+
     auto backdate_all_events = [&cr]() {
         auto time_events = cr->GetTimeEvents();
         REQUIRE(time_events);

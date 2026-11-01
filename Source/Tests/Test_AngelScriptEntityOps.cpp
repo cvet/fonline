@@ -2089,6 +2089,7 @@ TEST_CASE("AngelScriptEntityConstGlobalStartupFailures")
         message += msg;
         message += '\n';
     });
+
     auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); });
 
     auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeConstGlobalMismatchResources());

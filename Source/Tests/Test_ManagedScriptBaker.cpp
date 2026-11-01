@@ -879,9 +879,11 @@ TEST_CASE("ManagedScriptBaker")
         REQUIRE(std::filesystem::create_directory(blocked_output));
         CHECK_THROWS(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
         CHECK(std::filesystem::is_directory(blocked_output));
+
         if (blocked_output_path == 1) {
             CHECK_FALSE(std::filesystem::exists(script_dir / "ServerEnums.gen.cs.tmp"));
         }
+
         return;
     }
 
@@ -1030,6 +1032,7 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_entities.find("return (short)global::FOnline.Native.GetEntityValueAsInt(_entityPtr, ") != string::npos);
     CHECK(server_entities.find("global::FOnline.Native.SetEntityValueAsInt(_entityPtr, ") != string::npos);
     CHECK(server_entities.find("global::FOnline.Native.GetPropertyValue<bool>(_entityPtr, ") != string::npos);
+
     for (string_view scalar_type : {"sbyte", "byte", "short"}) {
         CHECK(server_entities.find(strex("return ({})global::FOnline.Native.GetEntityValueAsInt(_entityPtr, ", scalar_type).str()) != string::npos);
     }
@@ -1102,6 +1105,7 @@ TEST_CASE("ManagedScriptBaker")
         CHECK(server_entities.find(strex("global::FOnline.Native.{}(\"Critter\", GetPropertyCallbackName(property), {});", callback, argument).str()) != string::npos);
         CHECK(server_entities.find(strex("global::FOnline.Native.{}(\"Critter\", property.ToString(), {});", callback, argument).str()) == string::npos);
     }
+
     CHECK(server_entities.find("public static Dictionary<string, string> ReadConfigSection(\n        string resourcePath,\n        string sectionName\n    )") != string::npos);
     CHECK(server_entities.find("object __result = global::FOnline.Native.CallMethodBoxed(") != string::npos);
     CHECK(server_entities.find("return (Dictionary<string, string>)__result;") != string::npos);
@@ -1969,6 +1973,7 @@ TEST_CASE("ManagedScriptBaker packs helper assemblies")
             declared_paths.emplace(path);
             return false;
         });
+
         context->OutputDiscovery = true;
         ManagedScriptBaker baker(std::move(context));
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));

@@ -178,6 +178,7 @@ auto AtlasSprite::FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const
                 uint32_t weighted = numeric_cast<uint32_t>(left_component) * (color_width - color_x) + numeric_cast<uint32_t>(right_component) * color_x;
                 return numeric_cast<uint8_t>((weighted + color_width / 2) / color_width);
             };
+
             auto& vertex = vbuf[vpos++];
 
             vertex.PosX = pos.x + pos.width * logical_x;

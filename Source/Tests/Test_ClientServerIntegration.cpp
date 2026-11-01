@@ -216,6 +216,7 @@ TEST_CASE("ServerRejectsUnsafeUpdaterGenerationBeforeInitData")
     client.Send(handshake.GetData());
 
     bool received_rejection = false;
+
     for (int32_t i = 0; i < 2000 && !received_rejection; i++) {
         vector<uint8_t> response_data = client.GetPlaintext();
 
@@ -289,6 +290,7 @@ TEST_CASE("ClientShutdownDisconnectsActiveConnection")
         shutdown_disconnected_calls++;
         return Entity::EventResult::ContinueChain;
     };
+
     shutdown_disconnect_observer.SubscriptionPtr = reinterpret_cast<uintptr_t>(&shutdown_disconnected_calls);
     client->OnDisconnected.Subscribe(std::move(shutdown_disconnect_observer));
 
@@ -414,6 +416,7 @@ TEST_CASE("ClientUpdaterResourcePatchLifecycle")
         (void)fs::remove_dir_tree(published);
         (void)fs::remove_dir_tree(writable);
     });
+
     REQUIRE(fs::create_directories(published));
     REQUIRE(fs::create_directories(writable));
     vector<uint8_t> metadata = BakerTests::MakeMetadataBlob({});
@@ -433,6 +436,7 @@ TEST_CASE("ClientUpdaterResourcePatchLifecycle")
 
         writer.Finish();
     };
+
     string unchanged(65536, 'b');
     write_art(install, {{"Keep.bin", unchanged}, {"Change.txt", "old"}, {"Removed.txt", "removed"}});
     write_art(published, {{"Keep.bin", unchanged}, {"Change.txt", "first update"}});
@@ -697,6 +701,7 @@ TEST_CASE("SingleGameplayWorkerProcessesRequestsFromTwoClientsWithoutLostUpdates
         safe_call([&] { first->Shutdown(); });
         safe_call([&] { server->Shutdown(); });
     });
+
     REQUIRE(WaitForServerStart(server).empty());
     REQUIRE(server->GetWorkerThreadCount() == 1);
     CHECK(HasInterthreadListener(port) == !dedicated_remote_only);

@@ -54,6 +54,7 @@ namespace ImageBakerTil
         // Read header
         char head[7];
         reader.ReadObjectArray<char>(head);
+
         if (head[6] != 0 || strcmp(head, "<tile>") != 0) {
             throw ImageBakerException("Invalid TIL file header", fname);
         }

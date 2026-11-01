@@ -135,6 +135,7 @@ auto ValidateEffekseerModelPayload(const_span<uint8_t> data) -> optional<string>
         offset += sizeof(uint32_t);
         return true;
     };
+
     const auto skip_array = [&data, &offset](int32_t count, size_t element_size) -> bool {
         if (count < 0 || offset > data.size()) {
             return false;
@@ -241,6 +242,7 @@ static auto ToEffekseerMatrix43(const mat44& matrix) -> Effekseer::Matrix43
             result.Value[row][column] = matrix[row][column];
         }
     }
+
     return result;
 }
 
@@ -254,6 +256,7 @@ static auto ToEffekseerMatrix44(const mat44& matrix) -> Effekseer::Matrix44
             result.Values[row][column] = matrix[row][column];
         }
     }
+
     return result;
 }
 
@@ -316,6 +319,7 @@ public:
 
         string texture_path = strex(ToUtf8(path)).format_path().str();
         auto [render_texture, atlas_rect] = _textureLoader(texture_path);
+
         if (!render_texture) {
             logging::write(logging::type::warning, "Effekseer texture '{}' is missing", texture_path);
             return nullptr;
@@ -734,11 +738,13 @@ static auto ValidateSpriteNodeParameter(const Effekseer::SpriteRenderer::NodePar
     if (basic.TextureWraps[0] != Effekseer::TextureWrapType::Clamp && basic.TextureWraps[0] != Effekseer::TextureWrapType::Repeat) {
         return "mirrored texture wrapping is unsupported";
     }
+
     for (size_t texture_slot = 1; texture_slot < basic.TextureIndexes.size(); texture_slot++) {
         if (basic.TextureIndexes[texture_slot] >= 0) {
             return "advanced texture slots are unsupported";
         }
     }
+
     if (basic.GetIsRenderedWithAdvancedRenderer() || basic.TextureBlendType != -1 || basic.EmissiveScaling != 1.0f || basic.SoftParticleDistanceFar != 0.0f || basic.SoftParticleDistanceNear != 0.0f || basic.SoftParticleDistanceNearOffset != 0.0f) {
         return "advanced material parameters are unsupported";
     }
@@ -790,11 +796,13 @@ static auto ValidateRingNodeParameter(const Effekseer::RingRenderer::NodeParamet
     if (basic.TextureIndexes[0] >= 0 && basic.TextureWraps[0] != Effekseer::TextureWrapType::Clamp && basic.TextureWraps[0] != Effekseer::TextureWrapType::Repeat) {
         return "mirrored texture wrapping is unsupported";
     }
+
     for (size_t texture_slot = 1; texture_slot < basic.TextureIndexes.size(); texture_slot++) {
         if (basic.TextureIndexes[texture_slot] >= 0) {
             return "advanced texture slots are unsupported";
         }
     }
+
     if (basic.GetIsRenderedWithAdvancedRenderer() || basic.TextureBlendType != -1 || basic.EmissiveScaling != 1.0f || basic.SoftParticleDistanceFar != 0.0f || basic.SoftParticleDistanceNear != 0.0f || basic.SoftParticleDistanceNearOffset != 0.0f) {
         return "advanced material parameters are unsupported";
     }
@@ -836,6 +844,7 @@ static auto CalculateBillboardBasis(Effekseer::BillboardType billboard, const Ef
     }
 
     right = glm::cross(up, front);
+
     if (glm::dot(right, right) <= std::numeric_limits<float32_t>::epsilon()) {
         if (billboard == Effekseer::BillboardType::YAxisFixed || billboard == Effekseer::BillboardType::DirectionalBillboard) {
             vec3 fallback_axis = std::abs(up.y) < 0.999f ? vec3 {0.0f, 1.0f, 0.0f} : vec3 {1.0f, 0.0f, 0.0f};
@@ -846,6 +855,7 @@ static auto CalculateBillboardBasis(Effekseer::BillboardType billboard, const Ef
             right = glm::cross(fallback_up, front);
         }
     }
+
     right = glm::normalize(right);
 
     if (billboard == Effekseer::BillboardType::YAxisFixed || billboard == Effekseer::BillboardType::DirectionalBillboard) {
@@ -1020,6 +1030,7 @@ public:
     void Rendering(const NodeParameter& parameter, const InstanceParameter& instance, void* user_data) override
     {
         ignore_unused(parameter, user_data);
+
         if (!_binding->GetCurrentSystem() || !_node || _binding->GetCurrentSystem()->Failed) {
             return;
         }
@@ -1039,12 +1050,14 @@ public:
             _binding->Fail("sprite callback emitted a non-finite transform");
             return;
         }
+
         for (const auto& position : instance.Positions) {
             if (!IsFinite(position)) {
                 _binding->Fail("sprite callback emitted a non-finite local position");
                 return;
             }
         }
+
         if (_node->Billboard == Effekseer::BillboardType::DirectionalBillboard && !IsFinite(instance.Direction)) {
             _binding->Fail("directional sprite callback emitted a non-finite direction");
             return;
@@ -1071,6 +1084,7 @@ public:
         }
 
         Effekseer::SIMD::Vec3f direction {0.0f, 1.0f, 0.0f};
+
         if (_node->Billboard == Effekseer::BillboardType::DirectionalBillboard) {
             direction = instance.Direction;
         }
@@ -2804,6 +2818,7 @@ static auto ValidateStaticNodeMaterial(string_view path, const Effekseer::Effect
         LogEffekseerRejection(path, "node texture index is out of range");
         return false;
     }
+
     for (size_t texture_slot = 1; texture_slot < parameter.TextureIndexes.size(); texture_slot++) {
         if (parameter.TextureIndexes[texture_slot] >= 0) {
             LogEffekseerRejection(path, "advanced texture slots are unsupported");
@@ -2863,11 +2878,13 @@ static auto ValidateEffectNode(string_view path, nptr<Effekseer::EffectNode> nod
         LogEffekseerRejection(path, "effect node reports an invalid child count");
         return false;
     }
+
     for (int32_t child_index = 0; child_index < children_count; child_index++) {
         if (!ValidateEffectNode(path, node->GetChild(child_index), effect)) {
             return false;
         }
     }
+
     return true;
 }
 
@@ -2881,12 +2898,14 @@ static auto ValidateEffect(string_view path, ptr<Effekseer::Effect> effect, bool
         LogEffekseerRejection(path, "normal textures, sounds, custom materials, and external curves are unsupported");
         return false;
     }
+
     for (int32_t model_index = 0; model_index < effect->GetModelCount(); model_index++) {
         if (!effect->GetModel(model_index)) {
             LogEffekseerRejection(path, "model resource failed validation or loading");
             return false;
         }
     }
+
     return ValidateEffectNode(path, effect->GetRoot(), effect);
 }
 
@@ -3063,12 +3082,15 @@ auto EffekseerParticleRuntimeSystem::Prewarm() -> float32_t
     float32_t remaining_frames = EFFEKSEER_PREWARM_SECONDS * EFFEKSEER_FRAMES_PER_SECOND;
     _impl->Runtime->GetManager()->SetMatrix(_impl->Handle, ToEffekseerMatrix43(_impl->RootMatrix));
     _impl->Runtime->GetManager()->BeginUpdate();
+
     while (remaining_frames > 0.0f && _impl->Runtime->GetManager()->Exists(_impl->Handle)) {
         float32_t step = std::min(remaining_frames, 1.0f);
         _impl->Runtime->GetManager()->UpdateHandle(_impl->Handle, step);
         remaining_frames -= step;
     }
+
     _impl->Runtime->GetManager()->EndUpdate();
+
     if (!_impl->Runtime->GetManager()->Exists(_impl->Handle)) {
         RetireEffekseerHandle(_impl.as_ptr());
     }
@@ -3081,11 +3103,13 @@ void EffekseerParticleRuntimeSystem::Respawn(optional<int32_t> seed)
     FO_TRACE_ZONE(Particles);
 
     RetireEffekseerHandle(_impl.as_ptr());
+
     if (_impl->Failed) {
         return;
     }
 
     _impl->Handle = _impl->Runtime->GetManager()->Play(_impl->Effect, 0.0f, 0.0f, 0.0f);
+
     if (_impl->Handle < 0) {
         FailEffekseerSystem(_impl.as_ptr(), "Effekseer manager failed to play the effect");
         return;
@@ -3102,6 +3126,7 @@ void EffekseerParticleRuntimeSystem::Update(float32_t delta_seconds)
     FO_TRACE_ZONE(Particles);
 
     FO_VERIFY_AND_THROW(std::isfinite(delta_seconds) && delta_seconds >= 0.0f, "Invalid Effekseer update delta", delta_seconds);
+
     if (_impl->Failed || _impl->Handle < 0) {
         return;
     }
@@ -3114,6 +3139,7 @@ void EffekseerParticleRuntimeSystem::Update(float32_t delta_seconds)
     _impl->Runtime->GetManager()->BeginUpdate();
     _impl->Runtime->GetManager()->UpdateHandle(_impl->Handle, delta_seconds * EFFEKSEER_FRAMES_PER_SECOND);
     _impl->Runtime->GetManager()->EndUpdate();
+
     if (!_impl->Runtime->GetManager()->Exists(_impl->Handle)) {
         RetireEffekseerHandle(_impl.as_ptr());
         return;

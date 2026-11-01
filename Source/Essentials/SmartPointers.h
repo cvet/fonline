@@ -242,6 +242,7 @@ public:
         if (this != &other) {
             _ptr = other._ptr;
         }
+
         return *this;
     }
     template<typename U>
@@ -330,12 +331,14 @@ public:
     {
         return _ptr[index];
     }
+
     template<typename U = T>
         requires(!std::is_void_v<U>)
     [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) const noexcept -> const U&
     {
         return _ptr[index];
     }
+
     template<typename U = T>
         requires(!std::is_void_v<U>)
     [[nodiscard]] FO_FORCE_INLINE auto offset(size_t count) const noexcept -> ptr<T>
@@ -468,6 +471,7 @@ public:
         if (this != &other) {
             _ptr = other._ptr;
         }
+
         return *this;
     }
     template<typename U>
@@ -562,12 +566,14 @@ public:
     {
         return _ptr[index];
     }
+
     template<typename U = T>
         requires(!std::is_void_v<U>)
     [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) const noexcept -> const U&
     {
         return _ptr[index];
     }
+
     template<typename U = T>
         requires(!std::is_void_v<U>)
     [[nodiscard]] FO_FORCE_INLINE auto offset(size_t count) const noexcept -> nptr<T>
@@ -1032,6 +1038,7 @@ public:
         if (this != &other) {
             reset(other._ptr);
         }
+
         return *this;
     }
     template<typename U>
@@ -1048,6 +1055,7 @@ public:
             _ptr = other._ptr;
             other._ptr = nullptr;
         }
+
         return *this;
     }
     template<typename U>
@@ -1242,6 +1250,7 @@ public:
         if (this != &other) {
             reset(other._ptr);
         }
+
         return *this;
     }
     template<typename U>
@@ -1258,6 +1267,7 @@ public:
             _ptr = other._ptr;
             other._ptr = nullptr;
         }
+
         return *this;
     }
     template<typename U>
@@ -2057,12 +2067,14 @@ public:
     {
         return _ptr[index];
     }
+
     template<typename U = T>
         requires(!std::is_void_v<U>)
     [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) const noexcept -> const U&
     {
         return _ptr[index];
     }
+
     [[nodiscard]] FO_FORCE_INLINE auto get() noexcept -> T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto get() const noexcept -> const T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto get_no_const() const noexcept -> T* { return _ptr; }
@@ -2175,12 +2187,14 @@ public:
     {
         return _owner[index];
     }
+
     template<typename U = T>
         requires(!std::is_void_v<U>)
     [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) const noexcept -> const U&
     {
         return _owner[index];
     }
+
     [[nodiscard]] FO_FORCE_INLINE auto get() noexcept -> T* { return _owner.get(); }
     [[nodiscard]] FO_FORCE_INLINE auto get() const noexcept -> const T* { return _owner.get(); }
     [[nodiscard]] FO_FORCE_INLINE auto get_no_const() const noexcept -> T* { return _owner.get(); }

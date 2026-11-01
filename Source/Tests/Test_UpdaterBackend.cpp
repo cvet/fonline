@@ -83,6 +83,7 @@ TEST_CASE("UpdaterBackendUsesPlatformSpecificResourcePackInsteadOfCommonPack")
         writer.AddFile("Metadata.fometa-client", metadata);
         writer.Finish();
     }
+
     {
         ResourcePackWriter writer {windows_pack_path};
         writer.AddFile("Metadata.fometa-client", metadata);
@@ -155,6 +156,7 @@ TEST_CASE("UpdateDescriptorIsOneFormatForTheServerAndBothClientReaders")
 
         return entry;
     };
+
     auto write_one = [](const UpdateDescriptorEntry& entry) {
         vector<uint8_t> desc;
         WriteUpdateDescriptor(desc, vector<UpdateDescriptorEntry> {entry});

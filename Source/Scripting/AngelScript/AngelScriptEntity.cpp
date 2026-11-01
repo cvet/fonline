@@ -615,6 +615,7 @@ static void Game_SetPropertyGetter(AngelScript::asIScriptGeneric* gen)
     if (func->GetReturnTypeId() == AngelScript::asTYPEID_VOID) {
         throw ScriptException("Invalid getter function", prop->GetName(), func->GetName());
     }
+
     nptr<const char> return_type_decl = as_engine->GetTypeDeclaration(func->GetReturnTypeId());
     if (MakeScriptPropertyName(prop) != NormalizeScriptPropertyDecl(return_type_decl ? string_view {return_type_decl.get()} : string_view {})) {
         throw ScriptException("Invalid getter function", prop->GetName(), func->GetName());
@@ -728,6 +729,7 @@ static void Game_AddPropertySetter(AngelScript::asIScriptGeneric* gen)
         nptr<const char> param_type_decl = as_engine->GetTypeDeclaration(type_id);
         if (MakeScriptPropertyName(prop) == NormalizeScriptPropertyDecl(param_type_decl ? string_view {param_type_decl.get()} : string_view {}) && flags == AngelScript::asTM_INOUTREF) {
             has_value_ref = true;
+
             if (func->GetParamCount() == 3) {
                 throw ScriptException("Invalid setter function", prop->GetName(), func->GetName());
             }
@@ -1270,8 +1272,10 @@ void RegisterAngelScriptEntity(ptr<AngelScript::asIScriptEngine> as_engine)
                 if (prop->IsBaseTypeProtoReference()) {
                     return prop->IsNullable() ? "@?+" : "@+";
                 }
+
                 return "";
             }();
+
             string_view handle_str = handle_str_storage;
 
             if (!prop->IsDisabled() && !prop->IsComponentItself()) {
@@ -1321,8 +1325,10 @@ void RegisterAngelScriptEntity(ptr<AngelScript::asIScriptEngine> as_engine)
                 if (prop->IsBaseTypeProtoReference()) {
                     return prop->IsNullable() ? "@?+" : "@+";
                 }
+
                 return "";
             }();
+
             string_view handle_str = handle_str_storage;
 
             if (!prop->IsDisabled() && !prop->IsComponentItself()) {

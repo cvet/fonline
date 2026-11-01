@@ -59,6 +59,7 @@ BakingReport::BakingReport(ptr<const BakingSettings> settings) :
 void BakingReport::SetRebuildMode(bool effective, string_view reason)
 {
     scoped_lock lock {_locker};
+
     _fullRebuild = effective;
     _rebuildReason = reason;
 }
@@ -66,12 +67,14 @@ void BakingReport::SetRebuildMode(bool effective, string_view reason)
 void BakingReport::RecordPackInput(string_view pack_name, string_view path, size_t size)
 {
     scoped_lock lock {_locker};
+
     _packs[string(pack_name)].InputPathSizes[string(path)] = numeric_cast<uint64_t>(size);
 }
 
 void BakingReport::RecordBakerRegistration(string_view pack_name, string_view baker_name, int32_t order)
 {
     scoped_lock lock {_locker};
+
     GetPackBaker(pack_name, baker_name).Order = order;
     GetAggregateBaker(baker_name).Order = order;
 }
@@ -79,6 +82,7 @@ void BakingReport::RecordBakerRegistration(string_view pack_name, string_view ba
 void BakingReport::RecordBakerInvocation(string_view pack_name, string_view baker_name, int32_t order, size_t input_files, uint64_t input_bytes, int64_t duration_ms, bool success, string_view failure_message)
 {
     scoped_lock lock {_locker};
+
     auto update = [&](BakingReportBakerStats& stats, string_view stored_failure_message) {
         stats.Order = order;
         stats.Invocations++;
@@ -87,10 +91,12 @@ void BakingReport::RecordBakerInvocation(string_view pack_name, string_view bake
         stats.AvailableInputFiles += numeric_cast<uint64_t>(input_files);
         stats.AvailableInputBytes += input_bytes;
         stats.DurationMs += duration_ms;
+
         if (!success && !stored_failure_message.empty()) {
             stats.FailureMessages.emplace_back(stored_failure_message);
         }
     };
+
     update(GetPackBaker(pack_name, baker_name), failure_message);
     update(GetAggregateBaker(baker_name), failure_message.empty() ? string {} : strex("{}: {}", pack_name, failure_message).str());
 }
@@ -98,7 +104,9 @@ void BakingReport::RecordBakerInvocation(string_view pack_name, string_view bake
 void BakingReport::RecordOutputCheck(string_view pack_name, string_view baker_name, string_view path, bool scheduled)
 {
     scoped_lock lock {_locker};
+
     string aggregate_path = strex(pack_name).combine_path(path).str();
+
     auto update = [&](BakingReportBakerStats& stats, string_view stored_path) {
         stats.Outputs.CheckCalls++;
         stats.Outputs.ScheduledCheckCalls += scheduled ? 1 : 0;
@@ -106,6 +114,7 @@ void BakingReport::RecordOutputCheck(string_view pack_name, string_view baker_na
         stats.Outputs.CheckedPaths.emplace(stored_path);
         (scheduled ? stats.Outputs.ScheduledPaths : stats.Outputs.UpToDatePaths).emplace(stored_path);
     };
+
     update(GetPackBaker(pack_name, baker_name), path);
     update(GetAggregateBaker(baker_name), aggregate_path);
 }
@@ -113,12 +122,15 @@ void BakingReport::RecordOutputCheck(string_view pack_name, string_view baker_na
 void BakingReport::RecordOutputSubmission(string_view pack_name, string_view baker_name, string_view path, size_t size, BakingWriteResult result)
 {
     scoped_lock lock {_locker};
+
     uint64_t output_size = numeric_cast<uint64_t>(size);
     string aggregate_path = strex(pack_name).combine_path(path).str();
+
     auto update = [&](BakingReportBakerStats& stats, string_view stored_path) {
         stats.Outputs.SubmitCalls++;
         stats.Outputs.SubmittedBytes += output_size;
         stats.Outputs.SubmittedPathSizes[string(stored_path)] = output_size;
+
         if (result == BakingWriteResult::Changed) {
             stats.Outputs.ChangedPathSizes[string(stored_path)] = output_size;
             stats.Outputs.UnchangedPathSizes.erase(string(stored_path));
@@ -127,10 +139,12 @@ void BakingReport::RecordOutputSubmission(string_view pack_name, string_view bak
             stats.Outputs.UnchangedPathSizes[string(stored_path)] = output_size;
         }
     };
+
     update(GetPackBaker(pack_name, baker_name), path);
     update(GetAggregateBaker(baker_name), aggregate_path);
 
     BakingReportPackStats& pack = _packs[string(pack_name)];
+
     if (result == BakingWriteResult::Changed) {
         pack.ChangedPathSizes[string(path)] = output_size;
         pack.UnchangedPathSizes.erase(string(path));
@@ -143,16 +157,19 @@ void BakingReport::RecordOutputSubmission(string_view pack_name, string_view bak
 void BakingReport::RecordPackDuration(string_view pack_name, int64_t duration_ms)
 {
     scoped_lock lock {_locker};
+
     _packs[string(pack_name)].DurationMs = duration_ms;
 }
 
 void BakingReport::RecordOutdatedFile(string_view path)
 {
     scoped_lock lock {_locker};
+
     _outdatedFilesDeleted++;
 
     string normalized_path = strex(path).normalize_path_slashes().str();
     string_view pack_name = strvex(normalized_path).substring_until('/');
+
     if (auto it = _packs.find(pack_name); it != _packs.end()) {
         it->second.OutdatedFilesDeleted++;
     }
@@ -161,6 +178,7 @@ void BakingReport::RecordOutdatedFile(string_view path)
 void BakingReport::AddCounter(string_view pack_name, string_view baker_name, string_view name, uint64_t value)
 {
     scoped_lock lock {_locker};
+
     GetPackBaker(pack_name, baker_name).Counters[string(name)] += value;
     GetAggregateBaker(baker_name).Counters[string(name)] += value;
 }
@@ -168,6 +186,7 @@ void BakingReport::AddCounter(string_view pack_name, string_view baker_name, str
 void BakingReport::AddHistogramValue(string_view pack_name, string_view baker_name, string_view name, string_view value, uint64_t count)
 {
     scoped_lock lock {_locker};
+
     GetPackBaker(pack_name, baker_name).Histograms[string(name)][string(value)] += count;
     GetAggregateBaker(baker_name).Histograms[string(name)][string(value)] += count;
 }
@@ -175,6 +194,7 @@ void BakingReport::AddHistogramValue(string_view pack_name, string_view baker_na
 void BakingReport::RecordSpriteMeshSettings(string_view pack_name, string_view baker_name, const SpriteMeshBakingReportSettings& settings)
 {
     scoped_lock lock {_locker};
+
     GetPackBaker(pack_name, baker_name).SpriteMesh.Settings = settings;
     GetAggregateBaker(baker_name).SpriteMesh.Settings = settings;
 }
@@ -196,6 +216,7 @@ void BakingReport::RecordSpriteMeshFrame(string_view pack_name, string_view bake
         stats.PaddingHistogram[stored_frame.Padding]++;
         stats.SourceFramePixels += stored_frame.SourceFramePixels;
         stats.BakedCanvasPixels += stored_frame.BakedCanvasPixels;
+
         if (stored_frame.BakedCanvasPixels < stored_frame.SourceFramePixels) {
             stats.CroppedFrames++;
             stats.CroppedTexturePixels += stored_frame.SourceFramePixels - stored_frame.BakedCanvasPixels;
@@ -204,9 +225,11 @@ void BakingReport::RecordSpriteMeshFrame(string_view pack_name, string_view bake
             stats.ExpandedFrames++;
             stats.ExpandedTexturePixels += stored_frame.BakedCanvasPixels - stored_frame.SourceFramePixels;
         }
+
         stats.VisiblePixels += stored_frame.VisiblePixels;
         stats.SubmittedGeometryDoubleArea += stored_frame.SubmittedGeometryDoubleArea;
         stats.SourceComponentHistogram[stored_frame.SourceComponentCount]++;
+
         if (stored_frame.DilatedComponentCount.has_value()) {
             stats.DilatedComponentHistogram[*stored_frame.DilatedComponentCount]++;
         }
@@ -257,12 +280,14 @@ void BakingReport::RecordSpriteMeshFrame(string_view pack_name, string_view bake
     SpriteMeshBakingFrameReport aggregate_frame = frame;
     aggregate_frame.SourcePath = strex(pack_name).combine_path(frame.SourcePath).str();
     aggregate_frame.OutputPath = strex(pack_name).combine_path(frame.OutputPath).str();
+
     update(GetAggregateBaker(baker_name).SpriteMesh, aggregate_frame);
 }
 
 void BakingReport::RecordSharedSpriteMeshFrames(string_view pack_name, string_view baker_name, uint64_t count)
 {
     scoped_lock lock {_locker};
+
     GetPackBaker(pack_name, baker_name).SpriteMesh.SharedFrameReferences += count;
     GetAggregateBaker(baker_name).SpriteMesh.SharedFrameReferences += count;
 }
@@ -270,6 +295,7 @@ void BakingReport::RecordSharedSpriteMeshFrames(string_view pack_name, string_vi
 void BakingReport::Complete(bool success, string_view failure_message)
 {
     scoped_lock lock {_locker};
+
     _status = success ? "success" : "failed";
     _failureMessage = failure_message;
     _completedDurationMs = _duration.get_duration().milliseconds();
@@ -278,6 +304,7 @@ void BakingReport::Complete(bool success, string_view failure_message)
 auto BakingReport::IsFullRebuild() const -> bool
 {
     scoped_lock lock {_locker};
+
     return _fullRebuild;
 }
 
@@ -321,12 +348,15 @@ static auto IsBakingReportSpriteFrameIdentityLess(const SpriteMeshBakingFrameRep
     if (left.OutputPath != right.OutputPath) {
         return left.OutputPath < right.OutputPath;
     }
+
     if (left.SourcePath != right.SourcePath) {
         return left.SourcePath < right.SourcePath;
     }
+
     if (left.Direction != right.Direction) {
         return left.Direction < right.Direction;
     }
+
     return left.FrameIndex < right.FrameIndex;
 }
 
@@ -342,6 +372,7 @@ static void KeepLargestMissedSpriteFrames(vector<SpriteMeshBakingFrameReport>& f
         uint64_t right_savings = right.SourceFramePixels - right.VisiblePixels;
         return left_savings != right_savings ? left_savings > right_savings : IsBakingReportSpriteFrameIdentityLess(left, right);
     });
+
     if (frames.size() > BAKING_REPORT_TOP_ENTRY_COUNT) {
         frames.resize(BAKING_REPORT_TOP_ENTRY_COUNT);
     }
@@ -359,6 +390,7 @@ static void KeepLargestRejectedSpriteFrames(vector<SpriteMeshBakingFrameReport>&
         uint64_t right_savings = right.SourceFramePixels * 2 - right.BestRejectedCandidate->SubmittedGeometryDoubleArea;
         return left_savings != right_savings ? left_savings > right_savings : IsBakingReportSpriteFrameIdentityLess(left, right);
     });
+
     if (frames.size() > BAKING_REPORT_TOP_ENTRY_COUNT) {
         frames.resize(BAKING_REPORT_TOP_ENTRY_COUNT);
     }
@@ -378,8 +410,10 @@ static void KeepMostComplexSpriteFrames(vector<SpriteMeshBakingFrameReport>& fra
         if (left.VertexCount != right.VertexCount) {
             return left.VertexCount > right.VertexCount;
         }
+
         return IsBakingReportSpriteFrameIdentityLess(left, right);
     });
+
     if (frames.size() > BAKING_REPORT_TOP_ENTRY_COUNT) {
         frames.resize(BAKING_REPORT_TOP_ENTRY_COUNT);
     }
@@ -397,6 +431,7 @@ static void KeepLargestPaddingSpriteFrames(vector<SpriteMeshBakingFrameReport>& 
         uint64_t right_overhead = right.BakedCanvasPixels - right.SourceFramePixels;
         return left_overhead != right_overhead ? left_overhead > right_overhead : IsBakingReportSpriteFrameIdentityLess(left, right);
     });
+
     if (frames.size() > BAKING_REPORT_TOP_ENTRY_COUNT) {
         frames.resize(BAKING_REPORT_TOP_ENTRY_COUNT);
     }
@@ -414,6 +449,7 @@ static void KeepLargestCroppedSpriteFrames(vector<SpriteMeshBakingFrameReport>& 
         uint64_t right_savings = right.SourceFramePixels - right.BakedCanvasPixels;
         return left_savings != right_savings ? left_savings > right_savings : IsBakingReportSpriteFrameIdentityLess(left, right);
     });
+
     if (frames.size() > BAKING_REPORT_TOP_ENTRY_COUNT) {
         frames.resize(BAKING_REPORT_TOP_ENTRY_COUNT);
     }
@@ -424,16 +460,19 @@ using BakingReportJson = nlohmann::ordered_json;
 static auto SumBakingReportPathSizes(const map<string, uint64_t>& path_sizes) noexcept -> uint64_t
 {
     uint64_t total = 0;
+
     for (const auto& [path, size] : path_sizes) {
         ignore_unused(path);
         total += size;
     }
+
     return total;
 }
 
 static auto MakeBakingReportPathCountJson(const set<string>& paths) -> BakingReportJson
 {
     map<string, uint64_t> extensions;
+
     for (const string& path : paths) {
         string extension = strex(path).get_file_extension();
         extensions[extension.empty() ? "<none>" : extension]++;
@@ -442,9 +481,11 @@ static auto MakeBakingReportPathCountJson(const set<string>& paths) -> BakingRep
     BakingReportJson result;
     result["count"] = paths.size();
     result["byExtension"] = BakingReportJson::array();
+
     for (const auto& [extension, count] : extensions) {
         result["byExtension"].push_back({{"extension", extension}, {"count", count}, {"percent", BakingReportPercent(count, numeric_cast<uint64_t>(paths.size()))}});
     }
+
     return result;
 }
 
@@ -470,6 +511,7 @@ static auto MakeBakingReportPathSizeJson(const map<string, uint64_t>& path_sizes
     }
 
     std::ranges::sort(largest, [](const auto& left, const auto& right) { return left.second != right.second ? left.second > right.second : left.first < right.first; });
+
     if (largest.size() > BAKING_REPORT_TOP_ENTRY_COUNT) {
         largest.resize(BAKING_REPORT_TOP_ENTRY_COUNT);
     }
@@ -478,22 +520,28 @@ static auto MakeBakingReportPathSizeJson(const map<string, uint64_t>& path_sizes
     result["count"] = path_sizes.size();
     result["bytes"] = total_bytes;
     result["byExtension"] = BakingReportJson::array();
+
     for (const auto& [extension, stats] : extensions) {
         result["byExtension"].push_back({{"extension", extension}, {"count", stats.Count}, {"countPercent", BakingReportPercent(stats.Count, numeric_cast<uint64_t>(path_sizes.size()))}, {"bytes", stats.Bytes}, {"bytesPercent", BakingReportPercent(stats.Bytes, total_bytes)}});
     }
+
     result["largest"] = BakingReportJson::array();
+
     for (const auto& [path, size] : largest) {
         result["largest"].push_back({{"path", path}, {"bytes", size}});
     }
+
     return result;
 }
 
 static auto MakeBakingReportStringDistribution(const map<string, uint64_t>& distribution, uint64_t denominator, string_view value_name) -> BakingReportJson
 {
     BakingReportJson result = BakingReportJson::array();
+
     for (const auto& [value, count] : distribution) {
         result.push_back({{string(value_name), value}, {"count", count}, {"percent", BakingReportPercent(count, denominator)}});
     }
+
     return result;
 }
 
@@ -501,9 +549,11 @@ template<typename T>
 static auto MakeBakingReportNumericDistribution(const map<T, uint64_t>& distribution, uint64_t denominator, string_view value_name) -> BakingReportJson
 {
     BakingReportJson result = BakingReportJson::array();
+
     for (const auto& [value, count] : distribution) {
         result.push_back({{string(value_name), value}, {"count", count}, {"percent", BakingReportPercent(count, denominator)}});
     }
+
     return result;
 }
 
@@ -532,19 +582,23 @@ static auto MakeBakingReportSpriteFrameJson(const SpriteMeshBakingFrameReport& f
         {"paddingAddedPixels", frame.BakedCanvasPixels >= frame.SourceFramePixels ? frame.BakedCanvasPixels - frame.SourceFramePixels : 0},
         {"croppingSavedPixels", frame.SourceFramePixels >= frame.BakedCanvasPixels ? frame.SourceFramePixels - frame.BakedCanvasPixels : 0},
     };
+
     result["dilatedComponents"] = nullptr;
     if (frame.DilatedComponentCount.has_value()) {
         result["dilatedComponents"] = *frame.DilatedComponentCount;
     }
+
     result["selectionScore"] = nullptr;
     if (frame.SelectionScore.has_value()) {
         result["selectionScore"] = *frame.SelectionScore;
     }
+
     if (frame.BestRejectedCandidate.has_value()) {
         const SpriteMeshBakingCandidateReport& candidate = *frame.BestRejectedCandidate;
         uint64_t reference_double_area = frame.SourceFramePixels * 2;
         uint64_t saved_double_area = reference_double_area >= candidate.SubmittedGeometryDoubleArea ? reference_double_area - candidate.SubmittedGeometryDoubleArea : 0;
         int64_t additional_triangles = numeric_cast<int64_t>(candidate.TriangleCount) - 2;
+
         result["bestRejectedCandidate"] = {
             {"selectionOrigin", candidate.SelectionOrigin},
             {"triangles", candidate.TriangleCount},
@@ -558,6 +612,7 @@ static auto MakeBakingReportSpriteFrameJson(const SpriteMeshBakingFrameReport& f
             {"simplifyTolerance", candidate.SimplifyTolerance},
             {"actualDilation", candidate.ActualDilation},
         };
+
         result["bestRejectedCandidate"]["breakEvenAreaSavingsWeight"] = nullptr;
         if (saved_double_area != 0) {
             float64_t saved_area_ratio = numeric_cast<float64_t>(saved_double_area) / numeric_cast<float64_t>(reference_double_area);
@@ -567,6 +622,7 @@ static auto MakeBakingReportSpriteFrameJson(const SpriteMeshBakingFrameReport& f
     else {
         result["bestRejectedCandidate"] = nullptr;
     }
+
     return result;
 }
 
@@ -576,14 +632,17 @@ static auto MakeBakingReportScoreJson(const BakingReportScoreStats& stats) -> Ba
         {"count", stats.Count},
         {"average", stats.Count != 0 ? stats.Sum / numeric_cast<float64_t>(stats.Count) : 0.0},
     };
+
     result["minimum"] = nullptr;
     if (stats.Minimum.has_value()) {
         result["minimum"] = *stats.Minimum;
     }
+
     result["maximum"] = nullptr;
     if (stats.Maximum.has_value()) {
         result["maximum"] = *stats.Maximum;
     }
+
     return result;
 }
 
@@ -591,12 +650,15 @@ static auto MakeBakingReportSpriteMeshJson(const BakingReportSpriteMeshStats& st
 {
     uint64_t unique_frames = [&] {
         uint64_t total = 0;
+
         for (const auto& [form, count] : stats.Forms) {
             ignore_unused(form);
             total += count;
         }
+
         return total;
     }();
+
     uint64_t mesh_frames = stats.Forms.contains("mesh") ? stats.Forms.at("mesh") : 0;
     uint64_t quad_frames = stats.Forms.contains("quad") ? stats.Forms.at("quad") : 0;
     uint64_t empty_frames = stats.Forms.contains("empty") ? stats.Forms.at("empty") : 0;
@@ -606,6 +668,7 @@ static auto MakeBakingReportSpriteMeshJson(const BakingReportSpriteMeshStats& st
         {"frames", "rebuilt_this_run"},
         {"completeCorpus", complete_corpus},
     };
+
     if (stats.Settings.has_value()) {
         result["settings"] = {
             {"enabled", stats.Settings->Enabled},
@@ -627,16 +690,21 @@ static auto MakeBakingReportSpriteMeshJson(const BakingReportSpriteMeshStats& st
     };
 
     result["triangleHistogram"] = BakingReportJson::array();
+
     for (const auto& [triangles, count] : stats.TriangleHistogram) {
         result["triangleHistogram"].push_back({{"triangles", triangles}, {"count", count}, {"percentOfMeshes", BakingReportPercent(count, mesh_frames)}, {"percentOfUniqueFrames", BakingReportPercent(count, unique_frames)}});
     }
+
     result["vertexHistogram"] = MakeBakingReportNumericDistribution(stats.VertexHistogram, mesh_frames, "vertices");
     result["sourceComponentHistogram"] = MakeBakingReportNumericDistribution(stats.SourceComponentHistogram, unique_frames, "components");
+
     uint64_t dilated_component_frames = 0;
+
     for (const auto& [components, count] : stats.DilatedComponentHistogram) {
         ignore_unused(components);
         dilated_component_frames += count;
     }
+
     result["dilatedComponentHistogram"] = MakeBakingReportNumericDistribution(stats.DilatedComponentHistogram, dilated_component_frames, "components");
     result["selectedSimplifyToleranceHistogram"] = MakeBakingReportNumericDistribution(stats.SimplifyToleranceHistogram, mesh_frames, "tolerance");
     result["selectedActualDilationHistogram"] = MakeBakingReportNumericDistribution(stats.ActualDilationHistogram, mesh_frames, "dilation");
@@ -709,6 +777,7 @@ static auto MakeBakingReportSpriteMeshJson(const BakingReportSpriteMeshStats& st
     if (!stats.PaddingHistogram.empty()) {
         maximum_padding = stats.PaddingHistogram.rbegin()->first;
     }
+
     result["padding"] = {
         {"framesPadded", unique_frames >= zero_padding_frames ? unique_frames - zero_padding_frames : 0},
         {"maximum", maximum_padding},
@@ -729,6 +798,7 @@ static auto MakeBakingReportSpriteMeshJson(const BakingReportSpriteMeshStats& st
     result["selectionScore"]["quadScore"] = -2.0;
 
     map<string, uint64_t> resource_forms;
+
     for (const auto& [path, resource] : stats.Resources) {
         ignore_unused(path);
         uint32_t populated_forms = (resource.MeshFrames != 0 ? 1 : 0) + (resource.QuadFrames != 0 ? 1 : 0) + (resource.EmptyFrames != 0 ? 1 : 0);
@@ -745,28 +815,38 @@ static auto MakeBakingReportSpriteMeshJson(const BakingReportSpriteMeshStats& st
             resource_forms["empty_only"]++;
         }
     }
+
     result["resources"] = {
         {"count", stats.Resources.size()},
         {"classifications", MakeBakingReportStringDistribution(resource_forms, numeric_cast<uint64_t>(stats.Resources.size()), "classification")},
     };
 
     result["largestMissedSavings"] = BakingReportJson::array();
+
     for (const SpriteMeshBakingFrameReport& frame : stats.LargestMissedSavings) {
         result["largestMissedSavings"].push_back(MakeBakingReportSpriteFrameJson(frame));
     }
+
     result["largestRejectedCandidateSavings"] = BakingReportJson::array();
+
     for (const SpriteMeshBakingFrameReport& frame : stats.LargestRejectedCandidateSavings) {
         result["largestRejectedCandidateSavings"].push_back(MakeBakingReportSpriteFrameJson(frame));
     }
+
     result["mostComplexMeshes"] = BakingReportJson::array();
+
     for (const SpriteMeshBakingFrameReport& frame : stats.MostComplexMeshes) {
         result["mostComplexMeshes"].push_back(MakeBakingReportSpriteFrameJson(frame));
     }
+
     result["largestCroppingSavings"] = BakingReportJson::array();
+
     for (const SpriteMeshBakingFrameReport& frame : stats.LargestCroppingSavings) {
         result["largestCroppingSavings"].push_back(MakeBakingReportSpriteFrameJson(frame));
     }
+
     result["largestPaddingOverhead"] = BakingReportJson::array();
+
     for (const SpriteMeshBakingFrameReport& frame : stats.LargestPaddingOverhead) {
         result["largestPaddingOverhead"].push_back(MakeBakingReportSpriteFrameJson(frame));
     }
@@ -814,21 +894,28 @@ static auto MakeBakingReportBakerJson(string_view name, const BakingReportBakerS
     };
 
     result["details"]["counters"] = BakingReportJson::object();
+
     for (const auto& [counter, value] : stats.Counters) {
         result["details"]["counters"][std::string {counter.begin(), counter.end()}] = value;
     }
+
     result["details"]["histograms"] = BakingReportJson::object();
+
     for (const auto& [histogram, values] : stats.Histograms) {
         uint64_t total = 0;
+
         for (const auto& [value, count] : values) {
             ignore_unused(value);
             total += count;
         }
+
         result["details"]["histograms"][std::string {histogram.begin(), histogram.end()}] = MakeBakingReportStringDistribution(values, total, "value");
     }
+
     if (stats.SpriteMesh.Settings.has_value() || !stats.SpriteMesh.Forms.empty() || stats.SpriteMesh.SharedFrameReferences != 0) {
         result["details"]["spriteMesh"] = MakeBakingReportSpriteMeshJson(stats.SpriteMesh, complete_corpus);
     }
+
     return result;
 }
 
@@ -862,6 +949,7 @@ auto BakingReport::Serialize() const -> string
         total_unchanged_files += numeric_cast<uint64_t>(pack.UnchangedPathSizes.size());
         total_unchanged_bytes += SumBakingReportPathSizes(pack.UnchangedPathSizes);
     }
+
     for (const auto& [baker_name, baker] : _aggregateBakers) {
         ignore_unused(baker_name);
         total_baker_runs += baker.Invocations;
@@ -913,11 +1001,13 @@ auto BakingReport::Serialize() const -> string
     };
 
     report["bakers"] = BakingReportJson::array();
+
     for (const auto& [name, baker] : _aggregateBakers) {
         report["bakers"].push_back(MakeBakingReportBakerJson(name, baker, _fullRebuild));
     }
 
     report["packs"] = BakingReportJson::array();
+
     for (const auto& [name, pack] : _packs) {
         BakingReportJson pack_json {
             {"name", name},
@@ -930,16 +1020,20 @@ auto BakingReport::Serialize() const -> string
                     {"outdatedFilesDeleted", pack.OutdatedFilesDeleted},
                 }},
         };
+
         pack_json["bakers"] = BakingReportJson::array();
+
         for (const auto& [baker_name, baker] : pack.Bakers) {
             pack_json["bakers"].push_back(MakeBakingReportBakerJson(baker_name, baker, _fullRebuild));
         }
+
         report["packs"].push_back(std::move(pack_json));
     }
 
     std::string serialized_report = report.dump(2);
     string result {serialized_report.begin(), serialized_report.end()};
     result += '\n';
+
     return result;
 }
 

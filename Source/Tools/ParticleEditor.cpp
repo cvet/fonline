@@ -235,6 +235,7 @@ void ParticlePreviewSubEditor::DrawWindows()
 
     ImGui::InputTextWithHint("##ParticlePreviewFilter", "Search particle resources...", _filterBuf.data(), _filterBuf.size());
     ImGui::SameLine();
+
     if (ImGui::Button("Refresh")) {
         RefreshResources(true);
     }
@@ -257,6 +258,7 @@ void ParticlePreviewSubEditor::DrawWindows()
             }
         }
     }
+
     ImGui::EndChild();
 
     ImGui::Separator();
@@ -271,7 +273,9 @@ void ParticlePreviewSubEditor::DrawWindows()
     if (ImGui::RadioButton("Mouse position", !_useMapCenter)) {
         _useMapCenter = false;
     }
+
     ImGui::SameLine();
+
     if (ImGui::RadioButton("View center", _useMapCenter)) {
         _useMapCenter = true;
     }
@@ -305,20 +309,26 @@ void ParticlePreviewSubEditor::DrawWindows()
 
     bool can_play = !_resourcePath.empty() && placement_hex.has_value();
     ImGui::BeginDisabled(!can_play);
+
     if (ImGui::Button("Play")) {
         Play(*placement_hex);
     }
+
     ImGui::EndDisabled();
 
     ImGui::SameLine();
     ImGui::BeginDisabled(!_mapSpriteValid);
+
     if (ImGui::Button("Restart")) {
         Play(_previewHex);
     }
+
     ImGui::SameLine();
+
     if (ImGui::Button("Remove")) {
         Remove();
     }
+
     ImGui::EndDisabled();
 
     if (_mapSpriteValid) {

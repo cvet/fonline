@@ -876,6 +876,7 @@ TEST_CASE("AngelScriptScriptFunctionCalls")
     {
         auto func = server->FindFunc<int32_t>(fn("EntityLifecycle::GetItemInitCalls"));
         CHECK(func);
+
         if (func) {
             REQUIRE(func.Call());
         }

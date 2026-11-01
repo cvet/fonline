@@ -321,6 +321,7 @@ void AngelScriptBackend::LoadBinaryScripts(const FileSystem& resources)
         case EngineSideKind::MapperSide:
             return resources.FilterFiles("fos-bin-mapper");
         }
+
         FO_UNREACHABLE_PLACE();
     }();
 
@@ -589,6 +590,7 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
 
     string attribute_errors;
     auto parsed_attributes = ParseFunctionAttributeRecords(preprocessor_context, lexems, attribute_errors);
+
     if (!attribute_errors.empty()) {
         throw ScriptCompilerException("Function attribute parsing failed", attribute_errors);
     }
@@ -658,13 +660,17 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
     writer.write<uint8_t>(AS_BYTECODE_ENDIAN_TAG);
     writer.write<uint8_t>(build_condition<FO_MANAGED_SCRIPTING>() ? AS_BYTECODE_CONFIG_MANAGED : uint8_t {0});
     writer.write<uint32_t>(numeric_cast<uint32_t>(buf.size()));
+
     if (!buf.empty()) {
         writer.write_object_array(const_span<AngelScript::asBYTE> {buf.data(), buf.size()});
     }
+
     writer.write<uint32_t>(numeric_cast<uint32_t>(lnt_data.size()));
+
     if (!lnt_data.empty()) {
         writer.write_bytes({lnt_data.data(), lnt_data.size()});
     }
+
     SerializeFunctionAttributeRecords(writer, parsed_attributes);
     return data;
 }

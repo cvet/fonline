@@ -186,10 +186,12 @@ TEST_CASE("TextureAtlasLayoutNeverOverlapsLiveAllocations")
         auto allocation = layout.Allocate(size);
         if (allocation) {
             allocations.emplace_back(std::move(allocation));
+
             if (!first_observer) {
                 first_observer = allocations.back().as_nptr();
                 first_position = first_observer->GetPosition();
             }
+
             validate();
             CHECK(first_observer == allocations.front().as_nptr());
             CHECK(first_observer->GetPosition() == first_position);
@@ -312,6 +314,7 @@ static auto RunAtlasCorpus(const vector<isize32>& corpus, bool churn) -> size_t
             }
 
             auto fit_key = std::tie(fit->ShortSideFit, fit->LongSideFit, fit->AreaWaste);
+
             if (!best_fit) {
                 best_layout = layout;
                 best_fit = fit;

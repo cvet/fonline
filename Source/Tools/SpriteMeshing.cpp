@@ -406,6 +406,7 @@ static void NormalizeSpriteContour(vector<ipos32>& points)
             unique_points.emplace_back(point);
         }
     }
+
     if (unique_points.size() > 1 && unique_points.front() == unique_points.back()) {
         unique_points.pop_back();
     }
@@ -650,6 +651,7 @@ static void SimplifyEnclosingClosedSpriteContour(vector<ipos32>& points, float32
     }
 
     NormalizeSpriteContour(enclosing);
+
     if (enclosing.size() >= 3 && SpriteContourDoubleArea(enclosing) > 0) {
         points = std::move(enclosing);
     }
@@ -849,6 +851,7 @@ static auto ExtractSpriteContours(const vector<uint8_t>& mask, int32_t width, in
         edges.emplace_back(SpriteBoundaryEdge {.Start = start, .Direction = direction});
         outgoing_edges[SpriteGridPointKey(start)] |= numeric_cast<uint8_t>(1u << direction);
     };
+
     auto is_visible = [&mask, width, height](int32_t x, int32_t y) -> bool { return x >= 0 && x < width && y >= 0 && y < height && mask[numeric_cast<size_t>(y) * width + x] != 0; };
 
     for (int32_t y = 0; y < height; y++) {
@@ -1357,6 +1360,7 @@ static auto ValidateSpriteMesh(const SpriteMeshData& mesh, const vector<SpriteCo
     for (const SpriteContour& contour : contours) {
         expected_double_area += contour.DoubleArea;
     }
+
     if (expected_double_area <= 0) {
         return SpriteMeshBuildFailure::InvalidMeshShape;
     }
@@ -1936,6 +1940,7 @@ static auto BuildGreedyEnclosingSpriteCandidates(const vector<SpriteContour>& so
         while (first < active_lines.size() && !active_lines[first].Active) {
             first++;
         }
+
         if (first == active_lines.size()) {
             return std::nullopt;
         }
@@ -1963,6 +1968,7 @@ static auto BuildGreedyEnclosingSpriteCandidates(const vector<SpriteContour>& so
 
         vector<ipos32> points;
         points.reserve(active_indices.size());
+
         for (size_t i = 0; i < active_indices.size(); i++) {
             optional<pair<float64_t, float64_t>> intersection = intersect_lines(active_indices[i], active_indices[(i + 1) % active_indices.size()]);
 
@@ -2066,6 +2072,7 @@ static auto BuildGreedyEnclosingSpriteCandidates(const vector<SpriteContour>& so
                 break;
             }
         }
+
         if (!removal_index.has_value()) {
             break;
         }
@@ -2140,6 +2147,7 @@ static auto BuildGreedyEnclosingSpriteCandidates(const vector<SpriteContour>& so
             candidates.emplace_back(std::move(*candidate));
         }
     }
+
     return candidates;
 }
 
@@ -2175,6 +2183,7 @@ static auto BuildSimplifiedSpriteCandidates(const vector<SpriteContour>& simplif
         for (const SpriteContour& contour : candidate_contours) {
             candidate_double_area += contour.DoubleArea;
         }
+
         if (candidate_double_area <= 0) {
             return std::nullopt;
         }
@@ -2263,6 +2272,7 @@ static auto BuildSimplifiedSpriteCandidates(const vector<SpriteContour>& simplif
                     for (const SpriteContour& contour : reduced_contours) {
                         total_double_area += contour.DoubleArea;
                     }
+
                     if (total_double_area > 0) {
                         removal_options.emplace_back(RemovalOption {.Contours = std::move(reduced_contours), .DoubleArea = total_double_area});
                     }
@@ -2690,6 +2700,7 @@ static auto TryBuildSpriteMesh(const vector<uint8_t>& original_mask, const vecto
             else {
                 SimplifyClosedSpriteContour(contour.Points, simplify_tolerance);
             }
+
             contour.DoubleArea = SpriteContourDoubleArea(contour.Points);
         }
     }

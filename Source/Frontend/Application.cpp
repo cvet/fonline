@@ -1569,6 +1569,7 @@ void Application::BeginFrame()
                 if (_activeWindow != _childWindows[i]) {
                     _activeWindow = _childWindows[i];
                 }
+
                 break;
             }
         }
@@ -1900,11 +1901,13 @@ void Application::BeginFrame()
                                 SDL_free(data.get());
                             }
                         });
+
                         paste_ev.Text = string {clipboard_text.get()};
                     }
                     else {
                         paste_ev.Text = {};
                     }
+
                     _ctx->EventsQueue.emplace_back(MakeInputEvent(paste_ev));
                     InputEvent::KeyUpEvent paste_ev2;
                     paste_ev2.Code = KeyCode::Text;
@@ -2885,6 +2888,7 @@ auto AppInput::PollEvent(InputEvent& ev) -> bool
         _app->_ctx->EventsQueue.erase(_app->_ctx->EventsQueue.begin());
         return true;
     }
+
     return false;
 }
 
@@ -2943,6 +2947,7 @@ auto AppInput::GetClipboardText() -> const string&
                 SDL_free(data.get());
             }
         });
+
         _clipboardTextStorage = string {clipboard_text.get()};
     }
     else {
@@ -3112,12 +3117,14 @@ void Application::ShowErrorMessage(string_view message, string_view traceback, b
     data.buttons = can_ignore ? buttons_with_ignore : buttons_with_exit;
 
     int32_t buttonid = 0;
+
     while (SDL_ShowMessageBox(&data, &buttonid)) {
         if (buttonid == 0) {
             SDL_SetClipboardText(message_ptr.get());
         }
         else if (buttonid == 1) {
             scoped_lock locker {IgnoredErrorMessages->Locker};
+
             IgnoredErrorMessages->Messages.emplace(verb_message);
             break;
         }
@@ -3125,6 +3132,7 @@ void Application::ShowErrorMessage(string_view message, string_view traceback, b
             if (IsAppInitialized()) {
                 GetApp()->RequestQuit(false);
             }
+
             break;
         }
         else {

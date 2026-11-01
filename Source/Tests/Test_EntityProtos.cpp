@@ -155,14 +155,17 @@ TEST_CASE("EntityProtos")
             reader_started.store(true, std::memory_order_release);
 
             nanotime deadline = nanotime::now() + timespan {std::chrono::seconds {5}};
+
             while (!entity->IsDestroying() && nanotime::now() < deadline) {
                 std::this_thread::yield();
             }
+
             saw_destroying.store(entity->IsDestroying(), std::memory_order_release);
 
             while (!entity->IsDestroyed() && nanotime::now() < deadline) {
                 std::this_thread::yield();
             }
+
             saw_destroyed.store(entity->IsDestroyed(), std::memory_order_release);
         }};
 

@@ -466,6 +466,7 @@ static void CleanupClientApp() noexcept
             auto client = GetClient();
             client->Shutdown();
         });
+
         Data->Client.reset();
     }
 }

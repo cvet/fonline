@@ -174,6 +174,7 @@ TEST_CASE("RandomGeneratorStateCaptureAndRestore")
         random_generator::state_data state = generator.capture_state();
 
         vector<uint64_t> expected;
+
         for (size_t i = 0; i < 16; i++) {
             expected.emplace_back(generator.next());
         }

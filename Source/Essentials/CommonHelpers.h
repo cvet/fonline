@@ -176,9 +176,11 @@ template<typename T>
 [[nodiscard]] constexpr auto copy_hold_ref(vector<T>&& value) -> ref_hold_vector<ref_hold_ptr_t<T>>
 {
     auto ref_vec = ref_hold_vector<ref_hold_ptr_t<T>>(value.size());
+
     for (T ref : value) {
         ref_vec.add(ref_hold_ptr_t<T>(ref));
     }
+
     return ref_vec;
 }
 
@@ -187,9 +189,11 @@ template<typename T>
 [[nodiscard]] constexpr auto copy_hold_ref(vector<T>&& value) -> ref_hold_vector<ref_hold_ptr_t<T>>
 {
     auto ref_vec = ref_hold_vector<ref_hold_ptr_t<T>>(value.size());
+
     for (auto&& ref : value) {
         ref_vec.add(ref_hold_ptr_t<T>(ref.get()));
     }
+
     return ref_vec;
 }
 
@@ -198,9 +202,11 @@ template<typename T>
 [[nodiscard]] constexpr auto copy_hold_ref(vector<T>& value) -> ref_hold_vector<ref_hold_ptr_t<T>>
 {
     auto ref_vec = ref_hold_vector<ref_hold_ptr_t<T>>(value.size());
+
     for (T ref : value) {
         ref_vec.add(ref_hold_ptr_t<T>(ref));
     }
+
     return ref_vec;
 }
 
@@ -209,9 +215,11 @@ template<typename T>
 [[nodiscard]] constexpr auto copy_hold_ref(vector<T>& value) -> ref_hold_vector<ref_hold_ptr_t<T>>
 {
     auto ref_vec = ref_hold_vector<ref_hold_ptr_t<T>>(value.size());
+
     for (auto&& ref : value) {
         ref_vec.add(ref_hold_ptr_t<T>(ref.get()));
     }
+
     return ref_vec;
 }
 
@@ -220,9 +228,11 @@ template<typename T>
 [[nodiscard]] constexpr auto copy_hold_ref(span<T> value) -> ref_hold_vector<ref_hold_ptr_t<T>>
 {
     auto ref_vec = ref_hold_vector<ref_hold_ptr_t<T>>(value.size());
+
     for (T ref : value) {
         ref_vec.add(ref_hold_ptr_t<T>(ref));
     }
+
     return ref_vec;
 }
 
@@ -231,9 +241,11 @@ template<typename T>
 [[nodiscard]] constexpr auto copy_hold_ref(span<T> value) -> ref_hold_vector<ref_hold_ptr_t<T>>
 {
     auto ref_vec = ref_hold_vector<ref_hold_ptr_t<T>>(value.size());
+
     for (auto&& ref : value) {
         ref_vec.add(ref_hold_ptr_t<T>(ref.get()));
     }
+
     return ref_vec;
 }
 
@@ -242,9 +254,11 @@ template<typename T, typename U>
 [[nodiscard]] constexpr auto copy_hold_ref(unordered_map<T, U>& value) -> ref_hold_vector<ref_hold_ptr_t<U>>
 {
     auto ref_vec = ref_hold_vector<ref_hold_ptr_t<U>>(value.size());
+
     for (auto&& ref : value | std::views::values) {
         ref_vec.add(ref_hold_ptr_t<U>(ref.get()));
     }
+
     return ref_vec;
 }
 
@@ -253,9 +267,11 @@ template<typename T, typename U>
 [[nodiscard]] constexpr auto copy_hold_ref(unordered_map<T, U>&& value) -> ref_hold_vector<ref_hold_ptr_t<U>>
 {
     auto ref_vec = ref_hold_vector<ref_hold_ptr_t<U>>(value.size());
+
     for (auto&& ref : value | std::views::values) {
         ref_vec.add(ref_hold_ptr_t<U>(ref.get()));
     }
+
     return ref_vec;
 }
 
@@ -264,9 +280,11 @@ template<typename T>
 [[nodiscard]] constexpr auto copy_hold_ref(unordered_set<T>& value) -> ref_hold_vector<ref_hold_ptr_t<T>>
 {
     auto ref_vec = ref_hold_vector<ref_hold_ptr_t<T>>(value.size());
+
     for (auto&& ref : value) {
         ref_vec.add(ref_hold_ptr_t<T>(ref.get_no_const()));
     }
+
     return ref_vec;
 }
 
@@ -323,6 +341,7 @@ constexpr auto vec_safe_add_unique_value(T& vec, typename T::value_type value) n
         vec.emplace_back(std::move(value));
         return true;
     }
+
     return false;
 }
 
@@ -333,6 +352,7 @@ constexpr auto vec_safe_remove_unique_value(T& vec, typename T::value_type value
         vec.erase(it);
         return true;
     }
+
     return false;
 }
 
@@ -343,6 +363,7 @@ constexpr auto vec_safe_remove_unique_value_if(T& vec, const U& predicate) noexc
         vec.erase(it);
         return true;
     }
+
     return false;
 }
 
@@ -372,11 +393,13 @@ template<std::ranges::range T, typename U>
 {
     rebind_vector_t<T, std::ranges::range_value_t<T>> vec;
     vec.reserve(cont.size());
+
     for (auto&& value : cont) {
         if (static_cast<bool>(filter(value))) {
             vec.emplace_back(value);
         }
     }
+
     return vec;
 }
 
@@ -386,9 +409,11 @@ template<std::ranges::range T, typename U>
     using result_type = std::remove_cvref_t<std::invoke_result_t<U, std::ranges::range_reference_t<T>>>;
     rebind_vector_t<T, result_type> vec;
     vec.reserve(cont.size());
+
     for (auto&& value : cont) {
         vec.emplace_back(transfromer(value));
     }
+
     return vec;
 }
 
@@ -400,6 +425,7 @@ template<std::ranges::range T, typename U>
             return true;
         }
     }
+
     return false;
 }
 

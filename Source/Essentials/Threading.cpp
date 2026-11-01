@@ -359,6 +359,7 @@ auto run_thread(string_view task_name, function<void()> task) -> thread
             }
             catch (...) {
             }
+
             exceptions::report_and_continue(ex);
             return;
         }
@@ -369,6 +370,7 @@ auto run_thread(string_view task_name, function<void()> task) -> thread
             }
             catch (...) {
             }
+
             FO_UNKNOWN_EXCEPTION();
             return;
         }

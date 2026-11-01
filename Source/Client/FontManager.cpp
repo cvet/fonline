@@ -742,6 +742,7 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
             else {
                 x_advance = 0;
             }
+
             break;
         }
 
@@ -982,9 +983,11 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
         switch (letter) {
         case ' ':
             curx += font->SpaceWidth;
+
             if (can_count) {
                 spaces++;
             }
+
             break;
         case '\t':
             curx += font->SpaceWidth * 4;
@@ -1238,6 +1241,7 @@ void FontManager::DrawText(irect32 rect, string_view str, ucolor color, TextForm
             else if (is_enum_set(flags, FontFlag::AlignRight)) {
                 curx += rect.width - fi->LineWidth[curstr];
             }
+
             continue;
         case '\r':
             continue;

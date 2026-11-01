@@ -454,6 +454,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState> s
                 if (!missing_funcs.empty()) {
                     missing_funcs += ", ";
                 }
+
                 missing_funcs += fn_name;
             }
         };
@@ -530,6 +531,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState> s
         if (!has_ext) {
             string msg = critical ? "Critical" : "Not critical";
             logging::write(logging::type::warning, "OpenGL extension '{}' not supported. {}", ext_name, msg);
+
             if (critical) {
                 extension_errors++;
             }
@@ -542,9 +544,11 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState> s
     check_extension("vertex_array_object", GL_HAS_CTX(vertex_array_object, _ctx.get()), false);
     check_extension("async_readback", GL_HAS_CTX(async_readback, _ctx.get()), false);
     check_extension("framebuffer_object", GL_HAS_CTX(framebuffer_object, _ctx.get()), false);
+
     if (!GL_HAS_CTX(framebuffer_object, _ctx.get())) {
         check_extension("framebuffer_object_ext", GL_HAS_CTX(framebuffer_object_ext, _ctx.get()), true);
     }
+
     FO_VERIFY_AND_THROW(!extension_errors, "Extension errors is already set");
 
     // Map framebuffer_object_ext to framebuffer_object

@@ -363,12 +363,14 @@ void GeometryHelper::MoveHexByDirUnsafe(ipos32& hex, mdir dir) noexcept
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         if (hex_dir == hdir::NorthEast) {
             hex.x--;
+
             if ((hex.x % 2) == 0) {
                 hex.y--;
             }
         }
         else if (hex_dir == hdir::East) {
             hex.x--;
+
             if ((hex.x % 2) != 0) {
                 hex.y++;
             }
@@ -378,12 +380,14 @@ void GeometryHelper::MoveHexByDirUnsafe(ipos32& hex, mdir dir) noexcept
         }
         else if (hex_dir == hdir::SouthWest) {
             hex.x++;
+
             if ((hex.x % 2) != 0) {
                 hex.y++;
             }
         }
         else if (hex_dir == hdir::West) {
             hex.x++;
+
             if ((hex.x % 2) == 0) {
                 hex.y--;
             }
@@ -455,6 +459,7 @@ void GeometryHelper::MoveHexAroundAwayUnsafe(ipos32& hex, int32_t index)
         if (round < 1) {
             round = 1;
         }
+
         while (round > 1 && 3 * (round - 1) * round >= index) {
             round--;
         }
@@ -513,6 +518,7 @@ void GeometryHelper::MoveHexAroundAwayUnsafe(ipos32& hex, int32_t index)
         if (round < 1) {
             round = 1;
         }
+
         while (round > 1 && 4 * (round - 1) * round >= index) {
             round--;
         }

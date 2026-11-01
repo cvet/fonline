@@ -1709,6 +1709,7 @@ static void RegisterManagedTracyImage(nptr<MonoImage> image)
     }
 
     scoped_lock lock {ManagedTracy->Locker};
+
     ManagedTracy->Images.emplace(std::bit_cast<size_t>(image.get()));
 }
 
@@ -3408,6 +3409,7 @@ static void NativeSubscribeEventImpl(void* backend_ptr, int32_t event_id, void* 
     if (!entry.IsGlobal) {
         subscription->Args.emplace_back(meta->ResolveComplexType(entry.Owner));
     }
+
     for (const ArgDesc& arg : entry.Event->Args) {
         if (!IsManagedBridgeType(arg.Type)) {
             throw ScriptSystemException("Managed event argument type is not supported yet", entry.Owner, entry.Name, arg.Name);
@@ -3541,6 +3543,7 @@ static auto NativeFireEventImpl(void* backend_ptr, const ManagedAbiEventRuntime&
             mono_gchandle_free(args_handle);
         }
     });
+
     auto get_args = [args, args_handle]() -> MonoArray* { return args_handle != 0 ? reinterpret_cast<MonoArray*>(mono_gchandle_get_target(args_handle)) : args; };
 
     array<void*, MAX_CALL_ARGS> args_data {};
@@ -3564,6 +3567,7 @@ static auto NativeFireEventImpl(void* backend_ptr, const ManagedAbiEventRuntime&
 
     small_vector<ptr<void>, MAX_CALL_ARGS> args_ptrs;
     args_ptrs.reserve(call_args_count);
+
     for (size_t arg_idx = 0; arg_idx < call_args_count; arg_idx++) {
         args_ptrs.emplace_back(args_data[arg_idx]);
     }
@@ -3576,8 +3580,10 @@ static auto NativeFireEventImpl(void* backend_ptr, const ManagedAbiEventRuntime&
         for (size_t i = 0; i < args_count; i++) {
             ReconcileMutableDynamicRefTypeOwner(entry.Event->Args[i].Type, native_args[i]);
         }
+
         ref_type_owners_reconciled = true;
     };
+
     auto reconcile_ref_type_owners_on_exit = scope_exit([&]() noexcept {
         if (!ref_type_owners_reconciled) {
             reconcile_ref_type_owners();
@@ -4315,6 +4321,7 @@ static auto NativeCallMethodImpl(void* backend_ptr, const ManagedAbiMethodRuntim
             mono_gchandle_free(args_handle);
         }
     });
+
     auto get_args = [args, args_handle]() -> MonoArray* { return args_handle != 0 ? reinterpret_cast<MonoArray*>(mono_gchandle_get_target(args_handle)) : args; };
     nptr<const MethodDesc> method = entry.Method;
 
@@ -4348,6 +4355,7 @@ static auto NativeCallMethodImpl(void* backend_ptr, const ManagedAbiMethodRuntim
 
     small_vector<ptr<void>, MAX_CALL_ARGS> args_ptrs;
     args_ptrs.reserve(args_count + first_method_arg);
+
     for (size_t arg_idx = 0; arg_idx < args_count + first_method_arg; arg_idx++) {
         args_ptrs.emplace_back(args_data[arg_idx]);
     }
@@ -4405,8 +4413,10 @@ static auto NativeCallMethodImpl(void* backend_ptr, const ManagedAbiMethodRuntim
         for (size_t i = 0; i < args_count; i++) {
             ReconcileMutableDynamicRefTypeOwner(method->Args[i].Type, native_args[i]);
         }
+
         ref_type_owners_reconciled = true;
     };
+
     auto reconcile_ref_type_owners_on_exit = scope_exit([&]() noexcept {
         if (!ref_type_owners_reconciled) {
             reconcile_ref_type_owners();
@@ -4602,6 +4612,7 @@ static auto NativeInvokeScriptFuncStatusImpl(void* backend_ptr, MonoString* func
             mono_gchandle_free(args_handle);
         }
     });
+
     auto get_args = [args, args_handle]() -> MonoArray* { return args_handle != 0 ? reinterpret_cast<MonoArray*>(mono_gchandle_get_target(args_handle)) : args; };
 
     auto candidates = script_sys->FindFuncCandidates(hashed_func_name);
@@ -4641,6 +4652,7 @@ static auto NativeInvokeScriptFuncStatusImpl(void* backend_ptr, MonoString* func
 
         vector<ptr<void>> args_ptrs;
         args_ptrs.reserve(call_args_count);
+
         for (size_t arg_idx = 0; arg_idx < call_args_count; arg_idx++) {
             args_ptrs.emplace_back(args_data[arg_idx]);
         }
@@ -4654,8 +4666,10 @@ static auto NativeInvokeScriptFuncStatusImpl(void* backend_ptr, MonoString* func
             for (size_t i = 0; i < call_args_count; i++) {
                 ReconcileMutableDynamicRefTypeOwner(func_desc->Args[i].Type, native_args[i]);
             }
+
             ref_type_owners_reconciled = true;
         };
+
         auto reconcile_ref_type_owners_on_exit = scope_exit([&]() noexcept {
             if (!ref_type_owners_reconciled) {
                 reconcile_ref_type_owners();
@@ -4723,6 +4737,7 @@ static auto NativeInvokeScriptFuncStatusImpl(void* backend_ptr, MonoString* func
                 FO_VERIFY_AND_THROW(ret_array, "Managed invoke array return storage is null");
 
                 ret = ret_array->Root.GetObject();
+
                 if (ret == nullptr) {
                     ret = CreateManagedList(backend, func_desc->Ret.BaseType);
                     ret_array->Root.SetObject(ret);
@@ -4734,6 +4749,7 @@ static auto NativeInvokeScriptFuncStatusImpl(void* backend_ptr, MonoString* func
                 FO_VERIFY_AND_THROW(func_desc->Ret.KeyType, "Managed invoke dictionary return type has no key type");
 
                 ret = ret_dict->Root.GetObject();
+
                 if (ret == nullptr) {
                     ret = CreateManagedDictionary(backend, *func_desc->Ret.KeyType, func_desc->Ret.BaseType);
                     ret_dict->Root.SetObject(ret);
@@ -5034,9 +5050,11 @@ static void NativeRegisterRemoteCallHandlerImpl(void* backend_ptr, MonoString* n
 
             vector<ptr<void>> args_ptrs;
             args_ptrs.reserve(args.size());
+
             for (size_t data_idx = 0; data_idx < args.size(); data_idx++) {
                 args_ptrs.emplace_back(data_storage[data_idx]);
             }
+
             call.ArgsData = const_span<ptr<void>> {args_ptrs.data(), args_ptrs.size()};
 
             try {
@@ -5085,9 +5103,11 @@ static void NativeSendRemoteCallImpl(void* backend_ptr, MonoObject* caller, Mono
     // A managed caller may send both managed and AngelScript-defined outbound RPCs: arguments use the shared
     // RemoteCallWire byte format that either inbound handler reads
     nptr<Entity> caller_entity;
+
     if (caller != nullptr) {
         caller_entity = ExtractEntityPtr(caller);
     }
+
     FO_VERIFY_AND_THROW(caller_entity, "Managed remote call send requires a caller", name);
     auto data = SerializeManagedRemoteCallArgs(backend, outbound_call.Args, args_array, name);
 
@@ -5130,6 +5150,7 @@ static void NativeLoopbackRemoteCallImpl(void* backend_ptr, MonoObject* caller, 
     }
 
     nptr<Entity> caller_entity;
+
     if (caller != nullptr) {
         caller_entity = ExtractEntityPtr(caller);
     }
@@ -5354,6 +5375,7 @@ static auto FindCallbackAdapter(ptr<ManagedScriptBackend> backend, string_view k
     FO_VERIFY_AND_THROW(caches, "Managed backend caches are not created");
 
     scoped_lock adapters_locker {caches->CallbackAdaptersLocker};
+
     auto it = caches->CallbackAdapters.find(key);
 
     if (it != caches->CallbackAdapters.end()) {
@@ -8745,6 +8767,7 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
 
         {
             scoped_lock runtime_init_locker {ManagedRuntimeInitLocker};
+
             domain = mono_get_root_domain();
 
             if (domain == nullptr) {
@@ -8908,6 +8931,7 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
                 ignore_unused(call);
                 InvokeInitializator(assembly.get_no_const(), "Initialize");
             };
+
             unique_del_nptr<ScriptFuncDesc> init_func_desc = make_unique_del_ptr(std::move(init_func).release(), [](ScriptFuncDesc* desc) { delete desc; });
             _scriptSys->AddInitFunc(ScriptFunc<void>(std::move(init_func_desc)), 0);
 

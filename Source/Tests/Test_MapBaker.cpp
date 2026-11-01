@@ -64,6 +64,7 @@ static auto MakeMapProtoBlob(EngineMetadata& proto_engine, hstring type_name, st
     writer.write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
     writer.write_string_bytes(proto_name);
     writer.write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
+
     if (!props_data.empty()) {
         writer.write_bytes({props_data.data(), props_data.size()});
     }
@@ -125,6 +126,7 @@ static void AddMapBakerMetadataAndEntityProtos(BakerTests::TestRig& rig, string_
 
             proto.SetPicMap(proto_engine.Hashes.to_hashed_string("MapBakerVisibleItemPic"));
         });
+
         item_protos.emplace_back(string(hidden_proto), [&proto_engine, set_hidden](ProtoItem& proto) {
             proto.SetStatic(true);
 

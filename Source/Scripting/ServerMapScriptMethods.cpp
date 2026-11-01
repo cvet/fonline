@@ -971,6 +971,7 @@ FO_SCRIPT_API bool Server_Map_FindPathToAny(ptr<Map> self, mpos fromHex, readonl
     if (targetHexes.empty()) {
         throw ScriptException("Empty target hexes arg");
     }
+
     for (mpos candidateHex : targetHexes) {
         if (!self->GetSize().is_valid_pos(candidateHex)) {
             throw ScriptException("Invalid target hex arg");
@@ -1001,6 +1002,7 @@ FO_SCRIPT_API bool Server_Map_FindPathToAny(ptr<Map> self, ptr<Critter> cr, read
     if (targetHexes.empty()) {
         throw ScriptException("Empty target hexes arg");
     }
+
     for (mpos candidateHex : targetHexes) {
         if (!self->GetSize().is_valid_pos(candidateHex)) {
             throw ScriptException("Invalid target hex arg");
@@ -1033,6 +1035,7 @@ FO_SCRIPT_API vector<mpos> Server_Map_FindReachableHexes(ptr<Map> self, mpos fro
     if (!self->GetSize().is_valid_pos(fromHex)) {
         throw ScriptException("Invalid from hex arg");
     }
+
     for (mpos candidateHex : targetHexes) {
         if (!self->GetSize().is_valid_pos(candidateHex)) {
             throw ScriptException("Invalid target hex arg");

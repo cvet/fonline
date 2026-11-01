@@ -779,6 +779,7 @@ namespace LocEntity
         writer.write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
         writer.write_string_bytes(proto_name);
         writer.write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
+
         if (!props_data.empty()) {
             writer.write_bytes({props_data.data(), props_data.size()});
         }

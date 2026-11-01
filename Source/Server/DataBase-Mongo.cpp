@@ -108,6 +108,7 @@ public:
         auto database_guard = scope_fail([&]() noexcept { mongoc_database_destroy(database.get()); });
         auto collections_guard = scope_fail([&]() noexcept {
             scoped_lock locker {_storageLocker};
+
             for (auto& value : _collections | std::views::values) {
                 mongoc_collection_destroy(value.get());
             }
@@ -156,6 +157,7 @@ public:
             auto aligned_doc = std::assume_aligned<BSON_ALIGN_OF_PTR>(doc.get());
             bson_destroy(aligned_doc);
         });
+
         ptr<const bson_t> ping_ptr = ping.get();
         bson_t reply;
         auto aligned_ping = std::assume_aligned<BSON_ALIGN_OF_PTR>(ping_ptr.get());
@@ -235,6 +237,7 @@ protected:
             auto aligned_doc = std::assume_aligned<BSON_ALIGN_OF_PTR>(doc.get());
             bson_destroy(aligned_doc);
         });
+
         ptr<const bson_t> opts_ptr = opts.get();
         auto aligned_opts = std::assume_aligned<BSON_ALIGN_OF_PTR>(opts_ptr.get());
         auto cursor = make_nptr(mongoc_collection_find_with_opts(collection.get(), &filter, aligned_opts, nullptr));
@@ -526,6 +529,7 @@ protected:
             auto aligned_doc = std::assume_aligned<BSON_ALIGN_OF_PTR>(doc.get());
             bson_destroy(aligned_doc);
         });
+
         ptr<const bson_t> ping_ptr = ping.get();
         bson_t reply;
         bson_error_t error;

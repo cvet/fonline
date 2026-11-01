@@ -489,6 +489,7 @@ TEST_CASE("NetworkServerAsioRearmsAcceptAfterCallbackException")
             logging::write_base("\n\n");
         }
     });
+
     auto restore_exception_callback = scope_exit([previous_exception_callback]() noexcept { exceptions::set_callback(previous_exception_callback); });
 
     std::atomic_int callback_count {};
@@ -661,11 +662,13 @@ TEST_CASE("NetworkServerWebSocketsDeliversFrameAndTearsDownCleanly")
                 conn->SetAsyncCallbacks([]() -> vector<uint8_t> { return {}; },
                     [&](const_span<uint8_t> buf) {
                         scoped_lock lock {state_mutex};
+
                         received.insert(received.end(), buf.begin(), buf.end());
                     },
                     []() {});
 
                 scoped_lock lock {state_mutex};
+
                 accepted_conn = std::move(conn);
             });
         }
@@ -728,6 +731,7 @@ TEST_CASE("NetworkServerWebSocketsDeliversFrameAndTearsDownCleanly")
     shared_ptr<NetworkServerConnection> connection_to_close;
     {
         scoped_lock lock {state_mutex};
+
         CHECK(received == payload);
         REQUIRE(accepted_conn);
         connection_to_close = accepted_conn;
@@ -737,6 +741,7 @@ TEST_CASE("NetworkServerWebSocketsDeliversFrameAndTearsDownCleanly")
     CHECK(connection_to_close->IsDisconnected());
 
     client.stop();
+
     if (client_thread.joinable()) {
         client_thread.join();
     }
@@ -776,11 +781,13 @@ TEST_CASE("NetworkServerWebSocketsQueuesCloseAcrossPeerAbortAndRetainedWrapper")
                     conn->SetAsyncCallbacks([]() -> vector<uint8_t> { return {}; },
                         [&](const_span<uint8_t> buf) {
                             scoped_lock lock {state_mutex};
+
                             received.insert(received.end(), buf.begin(), buf.end());
                         },
                         [&]() { disconnect_count.fetch_add(1); });
 
                     scoped_lock lock {state_mutex};
+
                     accepted_conn = std::move(conn);
                 });
             }
@@ -850,6 +857,7 @@ TEST_CASE("NetworkServerWebSocketsQueuesCloseAcrossPeerAbortAndRetainedWrapper")
 
         {
             scoped_lock lock {state_mutex};
+
             CHECK(received == payload);
         }
 

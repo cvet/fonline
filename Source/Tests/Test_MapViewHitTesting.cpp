@@ -71,10 +71,12 @@ namespace
             proto.SetIsWall(true);
             proto.SetPicMap(proto_engine.Hashes.to_hashed_string("HitTest.png"));
         });
+
         items.emplace_back("HitTestFloor", [&proto_engine](ProtoItem& proto) {
             proto.SetIsTile(true);
             proto.SetPicMap(proto_engine.Hashes.to_hashed_string("HitTest.png"));
         });
+
         source->AddFile("HitTestItems.fopro-bin-client", BakerTests::MakeMultiProtoResourceBlob<ProtoItem>(proto_engine, proto_engine.Hashes.to_hashed_string("Item"), items));
         source->AddFile("HitTest.png", BakerTests::MakeMinimalBakedSprite(32, 16));
 

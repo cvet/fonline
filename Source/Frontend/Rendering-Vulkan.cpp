@@ -905,6 +905,7 @@ auto Vulkan_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vector<
     {
         auto pixels = make_nptr(tex_region.data()).reinterpret_as<uint8_t>();
         FO_VERIFY_AND_THROW(pixels, "Texture region pixel data is null");
+
         for (size_t i = 0; i < tex_region.size(); i++) {
             std::swap(pixels[i * 4 + 0], pixels[i * 4 + 2]);
         }
@@ -1366,6 +1367,7 @@ Vulkan_Effect::~Vulkan_Effect()
             vkDestroyShaderModule(_ctx->Device, FragmentShaderModule[pass], nullptr);
             FragmentShaderModule[pass] = VK_NULL_HANDLE;
         }
+
         for (size_t prim = 0; prim < 5; prim++) {
             for (size_t blend_disabled = 0; blend_disabled < 2; blend_disabled++) {
                 for (size_t depth_slot = 0; depth_slot < EFFECT_DEPTH_VARIANTS; depth_slot++) {
@@ -1727,6 +1729,7 @@ Vulkan_Renderer::~Vulkan_Renderer()
         for (auto& slot : _ctx->FrameSlots) {
             DestroyPooledBuffers(_ctx, slot.TextureStagingRing);
         }
+
         FlushAllDeferredDestroyQueues(_ctx);
     }
 
@@ -1814,6 +1817,7 @@ Vulkan_Renderer::~Vulkan_Renderer()
             vkDestroySemaphore(_ctx->Device, semaphore, nullptr);
         }
     }
+
     _ctx->RenderCompleteSemaphores.clear();
 
     if (_ctx->Swapchain != VK_NULL_HANDLE) {
@@ -1848,6 +1852,7 @@ Vulkan_Renderer::~Vulkan_Renderer()
         if (auto vkDestroyDebugUtilsMessengerEXT_fn = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(_ctx->Instance, "vkDestroyDebugUtilsMessengerEXT")); vkDestroyDebugUtilsMessengerEXT_fn != nullptr) {
             vkDestroyDebugUtilsMessengerEXT_fn(_ctx->Instance, _ctx->DebugMessenger, nullptr);
         }
+
         _ctx->DebugMessenger = VK_NULL_HANDLE;
     }
     if (_ctx->Instance != VK_NULL_HANDLE) {
@@ -2108,6 +2113,7 @@ auto Vulkan_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
             // slots the effect can resolve to - one for an ordinary effect, all of them when it declares variants
             for (size_t blend_variant = 0; blend_variant < 2; blend_variant++) {
                 VkPipelineColorBlendAttachmentState variant_blend_attachment = blend_attachment;
+
                 if (blend_variant == 1) {
                     variant_blend_attachment.blendEnable = VK_FALSE;
                 }
@@ -2230,6 +2236,7 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState> s
     }
 
     vkGetInstanceProcAddr = reinterpret_cast<PFN_vkGetInstanceProcAddr>(SDL_Vulkan_GetVkGetInstanceProcAddr());
+
     if (vkGetInstanceProcAddr == nullptr) {
         throw RenderingException("SDL_Vulkan_GetVkGetInstanceProcAddr returned null", SDL_GetError());
     }
@@ -2362,25 +2369,31 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState> s
         vkEnumerateDeviceExtensionProperties(dev, nullptr, &ext_count, nullptr);
         vector<VkExtensionProperties> exts(ext_count);
         vkEnumerateDeviceExtensionProperties(dev, nullptr, &ext_count, exts.data());
+
         for (const auto& e : exts) {
             if (strcmp(e.extensionName, VK_KHR_SWAPCHAIN_EXTENSION_NAME) == 0) {
                 return true;
             }
         }
+
         return false;
     };
+
     auto has_graphics_present_family = [](VkPhysicalDevice dev, VkSurfaceKHR surface) -> bool {
         uint32_t fam_count = 0;
         vkGetPhysicalDeviceQueueFamilyProperties(dev, &fam_count, nullptr);
         vector<VkQueueFamilyProperties> fams(fam_count);
         vkGetPhysicalDeviceQueueFamilyProperties(dev, &fam_count, fams.data());
+
         for (uint32_t i = 0; i < fam_count; i++) {
             VkBool32 present = VK_FALSE;
             vkGetPhysicalDeviceSurfaceSupportKHR(dev, i, surface, &present);
+
             if ((fams[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0 && present != VK_FALSE) {
                 return true;
             }
         }
+
         return false;
     };
 

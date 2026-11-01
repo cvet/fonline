@@ -191,6 +191,7 @@ TEST_CASE("ClientUpdaterWaitsForAnotherClientsUpdate")
         (void)fs::remove_dir_tree(install);
         (void)fs::remove_dir_tree(writable);
     });
+
     BakerTests::OverrideSetting(settings.Baking.BakeOutput, install);
     settings.ApplyWritableRoot(writable);
     string resources = GetClientWritableResourceDir(settings);
@@ -206,12 +207,14 @@ TEST_CASE("ClientUpdaterWaitsForAnotherClientsUpdate")
         held.set_value(static_cast<bool>(lock));
         release.get_future().wait();
     });
+
     auto join_other_client = scope_exit([&]() noexcept {
         safe_call([&] {
             release.set_value();
             other_client.join();
         });
     });
+
     REQUIRE(held.get_future().get());
 
     Updater updater {&settings, &GetApp()->MainWindow};
@@ -247,6 +250,7 @@ TEST_CASE("ClientUpdaterRecoversNestedBackupsBeforeConnecting")
         (void)fs::remove_dir_tree(install);
         (void)fs::remove_dir_tree(writable);
     });
+
     BakerTests::OverrideSetting(settings.Baking.BakeOutput, install);
     settings.ApplyWritableRoot(writable);
     string resources = GetClientWritableResourceDir(settings);
@@ -291,6 +295,7 @@ TEST_CASE("ClientResourcePackCurrencyFollowsTheEffectivePair")
         (void)fs::remove_dir_tree(writable);
         (void)fs::remove_dir_tree(remote);
     });
+
     BakerTests::OverrideSetting(settings.Common.Packaged, true);
     BakerTests::OverrideSetting(settings.Baking.ClientResources, install);
     settings.ApplyWritableRoot(writable);
@@ -304,6 +309,7 @@ TEST_CASE("ClientResourcePackCurrencyFollowsTheEffectivePair")
         writer.AddFile("Changed.txt", {reinterpret_cast<const uint8_t*>(content.data()), content.size()});
         writer.Finish();
     };
+
     write_pack(base_path, "installed");
     write_pack(target_path, "server");
 

@@ -58,13 +58,17 @@ namespace
         vector<uint8_t> data;
         data_writer writer {data};
         writer.write<uint32_t>(uint32_t {2});
+
         for (hstring part : {first_key.Collection.underlying_value(), first_key.Key1, first_key.Key2, first_key.Key3}) {
             writer.write_string(part.as_str());
         }
+
         writer.write_string("Accepted prefix");
+
         for (hstring part : {first_key.Collection.underlying_value(), first_key.Key1, first_key.Key2, first_key.Key3}) {
             writer.write_string(part.as_str());
         }
+
         writer.write<uint32_t>(uint32_t {3});
         writer.write_string_bytes("x");
         return data;
@@ -80,6 +84,7 @@ TEST_CASE("TextPackResourceBatchMatchesSequentialLoads", "[text-pack]")
 
     for (int32_t index = 0; index < 64; index++) {
         string pack_name = strex("Pack{:02}", 63 - index).str();
+
         for (string_view locale : {string_view {"engl"}, string_view {"russ"}}) {
             TextPack pack {&TestHashes};
             pack.AddStr(duplicate, strex("{} {} first", locale, index).str());
@@ -90,11 +95,13 @@ TEST_CASE("TextPackResourceBatchMatchesSequentialLoads", "[text-pack]")
             source->AddFile(strex("Texts.{}.{}.fotxt-bin", pack_name, locale).str(), pack.GetBinaryData());
         }
     }
+
     source->AddFile("unrelated.fotxt", "Ignored");
     FileSystem resources;
     resources.AddCustomSource(std::move(source));
     TextPack batch {&TestHashes};
     TextPack sequential {&TestHashes};
+
     for (ptr<TextPack> pack : {make_ptr(&batch), make_ptr(&sequential)}) {
         pack->AddStr(duplicate, string_view {"Existing first"});
         pack->AddStr(MakeKey("Seed", "Unsorted"), string_view {"Existing other"});
@@ -103,16 +110,20 @@ TEST_CASE("TextPackResourceBatchMatchesSequentialLoads", "[text-pack]")
 
     for (int32_t pass = 0; pass < 2; pass++) {
         vector<string> expected {"Existing first", "Existing second"};
+
         for (int32_t repetition = 0; repetition <= pass; repetition++) {
             for (const FileHeader& header : resources.FilterFiles("fotxt-bin")) {
                 vector<string_view> parts = strvex(header.GetNameNoExt()).split('.');
                 if (!language.empty() && parts[2] != language) {
                     continue;
                 }
+
                 File file = File::Load(header);
+
                 if (repetition == pass) {
                     REQUIRE(sequential.LoadFromBinaryData(file.GetData(), parts[1]));
                 }
+
                 TextPack pack {&TestHashes};
                 REQUIRE(pack.LoadFromBinaryData(file.GetData(), parts[1]));
                 expected.emplace_back(pack.GetStr(duplicate, 0));
@@ -123,9 +134,11 @@ TEST_CASE("TextPackResourceBatchMatchesSequentialLoads", "[text-pack]")
         batch.LoadFromResources(resources, language);
         REQUIRE(batch.GetBinaryData() == sequential.GetBinaryData());
         REQUIRE(batch.GetStrCount(duplicate) == expected.size());
+
         for (size_t index = 0; index < expected.size(); index++) {
             CHECK(batch.GetStr(duplicate, index) == expected[index]);
         }
+
         CHECK(batch.GetStr(MakeKey("Pack00", "Local"), 0) == "Local value");
         CHECK(batch.GetStr(MakeKey("Pack63", "Local"), 0) == "Local value");
     }
@@ -138,11 +151,13 @@ TEST_CASE("TextPackDecodeFailureSkipsSortUntilRetry", "[text-pack]")
     if (higher < lower) {
         std::swap(lower, higher);
     }
+
     TextPack pack {&TestHashes};
     pack.AddStr(higher, string_view {"Existing"});
     vector<uint8_t> invalid = MakeTruncatedTextPack(lower);
     bool resources_route = GENERATE(false, true);
     CAPTURE(resources_route);
+
     if (resources_route) {
         auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("TextRecovery");
         source->AddFile("Texts.Recovery.engl.fotxt-bin", invalid);
@@ -153,6 +168,7 @@ TEST_CASE("TextPackDecodeFailureSkipsSortUntilRetry", "[text-pack]")
     else {
         CHECK_THROWS_AS(pack.LoadFromBinaryData(invalid), DataReadingException);
     }
+
     CHECK(pack.GetSize() == 2);
     CHECK_THROWS_AS(pack.GetStr(higher, 0), VerificationException);
     CHECK_THROWS_AS(pack.GetStr(lower, 0), VerificationException);
@@ -172,6 +188,7 @@ TEST_CASE("TextPackResourceBatchFailureRetainsEarlierFilesUntilRetry", "[text-pa
     if (higher < lower) {
         std::swap(lower, higher);
     }
+
     TextPack first {&TestHashes};
     first.AddStr(lower, string_view {"First one"});
     first.AddStr(lower, string_view {"First two"});
@@ -217,11 +234,13 @@ TEST_CASE("TextPackBinaryRejectsImpossibleSizesBeforeAllocation", "[text-pack]")
     vector<uint8_t> invalid;
     data_writer writer {invalid};
     writer.write<uint32_t>(invalid_kind == 0 ? std::numeric_limits<uint32_t>::max() : uint32_t {1});
+
     if (invalid_kind != 0) {
         for (int32_t field = 0; field < 5; field++) {
             writer.write<uint32_t>(field == (invalid_kind == 1 ? 0 : 4) ? std::numeric_limits<uint32_t>::max() : uint32_t {0});
         }
     }
+
     TextPack pack {&TestHashes};
     pack.AddStr(MakeKey("Existing", "Keep"), string_view {"Existing value"});
     vector<uint8_t> before = pack.GetBinaryData();
@@ -247,6 +266,7 @@ TEST_CASE("TextPackBatchPreservesEmptyAndFilteredInputs", "[text-pack]")
     if (first < second) {
         std::swap(first, second);
     }
+
     pack.AddStr(first, string_view {"First"});
     pack.AddStr(second, string_view {"Second"});
     pack.LoadFromResources(resources, "engl");
@@ -462,6 +482,7 @@ TEST_CASE("TextPack")
         REQUIRE(pack.GetStrCount(key) == VARIANT_COUNT);
 
         map<string, size_t> hits;
+
         for (size_t i = 0; i < SAMPLE_COUNT; i++) {
             hits[string(pack.GetStr(key))]++;
         }

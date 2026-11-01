@@ -208,6 +208,7 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, nptr<const Properties>
     if (map->IsDestroyed()) {
         throw CritterManagerException("Critter map add event destroyed the target map", proto_id);
     }
+
     auto map_cr = map->GetCritter(cr->GetId());
 
     if (cr->GetMapId() != target_map_id || cr->GetHex() != final_hex || !(map_cr == cr)) {

@@ -68,16 +68,20 @@ auto is_run_in_debugger() noexcept -> bool
 #elif FO_LINUX
     std::call_once(run_in_debugger_once, [] {
         std::ifstream status("/proc/self/status");
+
         if (status.is_open()) {
             std::string line;
+
             while (std::getline(status, line)) {
                 if (line.starts_with("TracerPid:")) {
                     std::istringstream iss(line.substr("TracerPid:"_len));
                     std::string value;
                     iss >> value;
+
                     if (!value.empty() && std::all_of(value.begin(), value.end(), ::isdigit)) {
                         run_in_debugger = value != "0";
                     }
+
                     break;
                 }
             }

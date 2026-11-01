@@ -133,6 +133,7 @@ namespace
         if (self.Value > other.Value) {
             return 1;
         }
+
         return 0;
     }
 
@@ -144,6 +145,7 @@ namespace
         if (self.Value > other.Value) {
             return 1;
         }
+
         return 0;
     }
 
@@ -3545,6 +3547,7 @@ TEST_CASE("ScriptBuiltinsStringOperations")
             traceback = stack_trace::format(st);
             fatal = is_fatal;
         });
+
         auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); });
 
         CHECK_FALSE(func.Call());
@@ -4328,6 +4331,7 @@ TEST_CASE("ScriptBuiltinsDictOperations")
         INFO(func_name);
         CHECK(func.GetResult() == 1);
     };
+
     auto run_throwing_func = [&server, &fn](string_view func_name, string_view expected_message) {
         auto func = server->FindFunc<void>(fn(func_name));
         REQUIRE(func);
@@ -4600,6 +4604,7 @@ TEST_CASE("ScriptBuiltinsGlobalBindings")
         INFO(func_name);
         CHECK(func.GetResult() == 1);
     };
+
     auto run_throwing_func = [&server, &fn](string_view func_name, string_view expected_message) -> string {
         auto func = server->FindFunc<void>(fn(func_name));
         REQUIRE(func);
@@ -4674,6 +4679,7 @@ TEST_CASE("ScriptBuiltinsNestedSettingsRoundTrip")
             }
         });
     });
+
     string startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
@@ -4732,6 +4738,7 @@ TEST_CASE("ScriptBuiltinsReflectionOperations")
         INFO(func_name);
         CHECK(func.GetResult() == 1);
     };
+
     auto run_throwing_func = [&server, &fn](string_view func_name, string_view expected_message) {
         auto func = server->FindFunc<void>(fn(func_name));
         REQUIRE(func);

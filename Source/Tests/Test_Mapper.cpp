@@ -72,6 +72,7 @@ TEST_CASE("MapperMultihexMeshMerge")
     {
         // A horizontal run of four clean TileA tiles
         string body;
+
         for (int32_t i = 0; i < 4; i++) {
             body += MakeItemBlock(10 + i, TILE_A, 5 + i, 5);
         }
@@ -82,11 +83,13 @@ TEST_CASE("MapperMultihexMeshMerge")
         REQUIRE(CountItemsOfProto(map, tile_a) == 1);
 
         nptr<const ItemHexView> survivor;
+
         for (const auto& item : map->GetItems()) {
             if (item->GetProtoId() == tile_a) {
                 survivor = item;
             }
         }
+
         REQUIRE(survivor);
         CHECK(survivor->IsNonEmptyMultihexMesh());
 
@@ -112,11 +115,13 @@ TEST_CASE("MapperMultihexMeshMerge")
         REQUIRE(CountItemsOfProto(map, tile_a) == 1);
 
         nptr<const ItemHexView> survivor;
+
         for (const auto& item : map->GetItems()) {
             if (item->GetProtoId() == tile_a) {
                 survivor = item;
             }
         }
+
         REQUIRE(survivor);
 
         auto covered = CollectMeshHexes(survivor);
@@ -162,6 +167,7 @@ TEST_CASE("MapperMultihexMeshMerge")
     SECTION("Idempotent: re-running the merge changes nothing")
     {
         string body;
+
         for (int32_t i = 0; i < 4; i++) {
             body += MakeItemBlock(40 + i, TILE_A, 5 + i, 5);
         }
@@ -171,11 +177,13 @@ TEST_CASE("MapperMultihexMeshMerge")
         REQUIRE(CountItemsOfProto(map, tile_a) == 1);
 
         nptr<const ItemHexView> survivor;
+
         for (const auto& item : map->GetItems()) {
             if (item->GetProtoId() == tile_a) {
                 survivor = item;
             }
         }
+
         REQUIRE(survivor);
 
         auto origin_before = survivor->GetHex();
@@ -244,11 +252,13 @@ TEST_CASE("MapperMultihexMeshMerge")
         REQUIRE(CountItemsOfProto(map, tile_a) == 1);
 
         nptr<const ItemHexView> survivor;
+
         for (const auto& item : map->GetItems()) {
             if (item->GetProtoId() == tile_a) {
                 survivor = item;
             }
         }
+
         REQUIRE(survivor);
         CHECK(survivor->IsNonEmptyMultihexMesh());
         CHECK(CollectMeshHexes(survivor).size() == 4);
@@ -270,6 +280,7 @@ TEST_CASE("MapperMultihexMeshMerge")
         REQUIRE(CountItemsOfProto(map, tile_a) == 2);
 
         int32_t mesh_items = 0;
+
         for (const auto& item : map->GetItems()) {
             if (item->GetProtoId() == tile_a) {
                 CHECK(item->IsNonEmptyMultihexMesh());
@@ -277,6 +288,7 @@ TEST_CASE("MapperMultihexMeshMerge")
                 mesh_items++;
             }
         }
+
         CHECK(mesh_items == 2);
     }
 
@@ -369,6 +381,7 @@ TEST_CASE("MapperMultihexMeshMerge")
 
         string body;
         int32_t id = 100;
+
         for (int32_t y = 0; y < block; y++) {
             for (int32_t x = 0; x < block; x++) {
                 body += MakeItemBlock(id++, TILE_A, origin + x, origin + y);
@@ -382,11 +395,13 @@ TEST_CASE("MapperMultihexMeshMerge")
         REQUIRE(CountItemsOfProto(map, tile_a) == 1);
 
         nptr<const ItemHexView> survivor;
+
         for (const auto& item : map->GetItems()) {
             if (item->GetProtoId() == tile_a) {
                 survivor = item;
             }
         }
+
         REQUIRE(survivor);
 
         auto covered = CollectMeshHexes(survivor);
@@ -575,6 +590,7 @@ TEST_CASE("MapperDrawsEditorPanelsHeadlessly")
         call.Accessor->AddArrayElement(properties, &separator);
         return Entity::EventResult::ContinueChain;
     };
+
     inspector_properties.SubscriptionPtr = reinterpret_cast<uintptr_t>(&mapper);
     mapper->OnInspectorProperties.Subscribe(std::move(inspector_properties));
     auto unsubscribe_inspector = scope_exit([&mapper]() noexcept { mapper->OnInspectorProperties.Unsubscribe(reinterpret_cast<uintptr_t>(&mapper)); });
@@ -1160,6 +1176,7 @@ TEST_CASE("MapperEntityBufferOwnsNestedPropertySnapshots")
     function<string()> read_snapshot = [snapshot = std::move(snapshot), light_prop] {
         return snapshot.Children.front()->Props->SavePropertyToText(light_prop);
     };
+
     CHECK(read_snapshot() == "3");
     CHECK(read_snapshot() == "3");
 }
@@ -1976,6 +1993,7 @@ TEST_CASE("MapperProcessesInputEventsAndDrawsFrame")
         // A denser map plus zoom/scroll changes walks far more of the map-view draw path than a
         // single static frame does
         string dense;
+
         for (int32_t i = 0; i < 12; i++) {
             dense += MakeItemBlock(100 + i, TILE_A, 4 + i, 4 + (i % 3));
             dense += MakeItemBlock(200 + i, TILE_B, 6 + i, 8 + (i % 4));
@@ -2537,6 +2555,7 @@ TEST_CASE("MapperDynamicItemAuthoringRejectsUndeliveredOverrides")
             CHECK(mapper->ApplyEntityPropertyText(item, prop, "3"));
             CHECK(item->GetProperties()->SavePropertyToText(prop) == "3");
         }
+
         CHECK_NOTHROW(map->SaveToText("AllowedChannels"));
     }
 
@@ -2647,6 +2666,7 @@ TEST_CASE("AnimationViewerRequestsTheConfiguredOpaquePreviewPair")
 
         return Entity::EventResult::ContinueChain;
     };
+
     mapper->OnCritterAnimationSprite.Subscribe(std::move(resolution));
 
     SettingsStorage viewer_settings {"AnimationViewer"};
@@ -2709,6 +2729,7 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
         *cast_from_void<float32_t*>(call.ArgsData[7]) = normalized_time;
         return Entity::EventResult::ContinueChain;
     };
+
     mapper->OnCritterAnimationInit.Subscribe(std::move(selection));
     Entity::EventCallbackData resolution;
     resolution.Callback = [&observed, &spr_id](FuncCallData& call) {
@@ -2716,6 +2737,7 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
         *cast_from_void<uint32_t*>(call.ArgsData[3]) = spr_id;
         return Entity::EventResult::ContinueChain;
     };
+
     mapper->OnCritterAnimationSprite.Subscribe(std::move(resolution));
     critter->SetMoving(safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {60}, vector<mdir> {mdir {0}}, vector<uint16_t> {1}, mapper->GameTime.GetFrameTime(), timespan {}, critter->GetHex(), ipos16 {}, ipos16 {}));
     critter->RefreshView();
@@ -3071,6 +3093,7 @@ TEST_CASE("MapperPropertyTextEditHandlesReentrantPostSetters")
             CHECK(mapper->IsMapDirty(map));
             mapper->ShowMap(other_map);
         });
+
         CHECK(mapper->ApplyEntityPropertyText(critter, critter->GetPropertyCondition(), "Dead"));
         CHECK(callback_ran);
         CHECK(mapper->GetCurMap() == other_map);
@@ -3088,6 +3111,7 @@ TEST_CASE("MapperPropertyTextEditHandlesReentrantPostSetters")
             CHECK(mapper->IsMapDirty(map));
             mapper->UnloadMap(map);
         });
+
         CHECK(mapper->ApplyEntityPropertyText(critter, prop, "Dead"));
         CHECK(callback_ran);
         CHECK(map->IsDestroyed());
@@ -3111,6 +3135,7 @@ TEST_CASE("MapperPropertyTextEditHandlesReentrantPostSetters")
                 mapper->DeleteEntity(sibling);
             }
         });
+
         CHECK_NOTHROW(mapper->ApplyEntityPropertyText(primary, prop, "30"));
         CHECK(callback_ran);
         CHECK(primary->GetProperties()->SavePropertyToText(prop) == "30");
@@ -3134,6 +3159,7 @@ TEST_CASE("MapperPropertyTextEditHandlesReentrantPostSetters")
                 mapper->ShowMap(other_map);
             }
         });
+
         REQUIRE_NOTHROW(mapper->ApplyInspectorPropertyEdit(primary));
         CHECK(mapper->GetCurMap() == other_map);
         CHECK_FALSE(mapper->CanUndo());
