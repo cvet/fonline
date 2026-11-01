@@ -54,7 +54,7 @@ class EngineVersionTests(unittest.TestCase):
             return subprocess.check_output(
                 ["git", "-C", str(root), "-c", "user.name=Version Test",
                  "-c", "user.email=version@example.invalid", *args],
-                text=True, stderr=subprocess.STDOUT).strip()
+                text=True, stderr=subprocess.STDOUT, timeout=30).strip()
 
         with tempfile.TemporaryDirectory(prefix="engine-version-cmake-") as directory:
             fixture = Path(directory).resolve()
@@ -77,23 +77,43 @@ class EngineVersionTests(unittest.TestCase):
                 f'set(Python3_EXECUTABLE "{Path(sys.executable).as_posix()}")\n'
                 f'include("{helper}")\n'
                 f'ReadEngineVersion("{repository.as_posix()}" version dependencies)\n'
+                f'execute_process(COMMAND git -C "{repository.as_posix()}" rev-parse HEAD '
+                'OUTPUT_VARIABLE revision OUTPUT_STRIP_TRAILING_WHITESPACE)\n'
                 'file(WRITE "${CMAKE_BINARY_DIR}/tracked.txt" "${dependencies}")\n'
-                'add_custom_command(OUTPUT version.stamp\n'
-                ' COMMAND "${CMAKE_COMMAND}" -E touch version.stamp DEPENDS ${dependencies})\n'
-                'add_custom_target(version_stamp ALL DEPENDS version.stamp)\n', encoding="utf-8")
+                'file(WRITE "${CMAKE_BINARY_DIR}/configured-head.txt" "${revision}")\n'
+                'add_custom_command(OUTPUT "${CMAKE_BINARY_DIR}/consumed-head.txt"\n'
+                ' COMMAND "${CMAKE_COMMAND}" -E copy_if_different '
+                '"${CMAKE_BINARY_DIR}/configured-head.txt" "${CMAKE_BINARY_DIR}/consumed-head.txt"\n'
+                ' DEPENDS ${dependencies} "${CMAKE_BINARY_DIR}/configured-head.txt")\n'
+                'add_custom_target(version_stamp ALL DEPENDS "${CMAKE_BINARY_DIR}/consumed-head.txt")\n',
+                encoding="utf-8")
             build = fixture / "build"
             subprocess.run(["cmake", "-G", "Ninja", "-S", str(source), "-B", str(build)],
-                           check=True, capture_output=True, text=True)
-            dependencies = (build / "tracked.txt").read_text(encoding="utf-8").split(";")
-            self.assertTrue(dependencies)
-            self.assertTrue(all(Path(entry).is_file() for entry in dependencies), dependencies)
-            subprocess.run(["cmake", "--build", str(build)], check=True, capture_output=True, text=True)
-            git(repository, "commit", "--allow-empty", "-m", "Next loose fixture commit")
+                           check=True, capture_output=True, text=True, timeout=60)
+
+            def assert_consumed(expected: str) -> None:
+                subprocess.run(["cmake", "--build", str(build)], check=True,
+                               capture_output=True, text=True, timeout=60)
+                self.assertEqual(expected, (build / "consumed-head.txt").read_text(encoding="utf-8"))
+                dependencies = (build / "tracked.txt").read_text(encoding="utf-8").split(";")
+                self.assertTrue(dependencies)
+                self.assertTrue(all(Path(entry).is_file() for entry in dependencies), dependencies)
+
+            baseline = git(repository, "rev-parse", "HEAD")
+            assert_consumed(baseline)
+            git(repository, "commit", "--allow-empty", "-m", "First loose fixture commit")
+            first_loose = git(repository, "rev-parse", "HEAD")
+            self.assertNotEqual(baseline, first_loose)
             self.assertTrue(branch.is_file())
-            subprocess.run(["cmake", "--build", str(build)], check=True, capture_output=True, text=True)
+            assert_consumed(first_loose)
             dependencies = (build / "tracked.txt").read_text(encoding="utf-8").split(";")
             self.assertIn(branch.as_posix(), dependencies)
-            self.assertTrue(all(Path(entry).is_file() for entry in dependencies), dependencies)
+            git(repository, "commit", "--allow-empty", "-m", "Next loose fixture commit")
+            subsequent = git(repository, "rev-parse", "HEAD")
+            self.assertNotEqual(first_loose, subsequent)
+            assert_consumed(subsequent)
+            dependencies = (build / "tracked.txt").read_text(encoding="utf-8").split(";")
+            self.assertIn(branch.as_posix(), dependencies)
 
     def test_notation_and_file_shape(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

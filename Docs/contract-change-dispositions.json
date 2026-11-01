@@ -15705,7 +15705,7 @@
       "classification": "breaking",
       "rationale": "The exact inventory retains2593 symbols while replacing three old stable identifiers with explicit phase/playback identifiers; incoming VisualOffset and coordinate declarations remain.",
       "migration": "Apply current-only native Sprite::GetTime/SetTime -> GetPhase/SetPhase and the exact script/event replacements in Docs/en/how-to/migration/script-owned-sprite-animations.md and its Russian mirror. Unrelated ModelInstance, VideoClip and ParticleSystem clocks retain meaning. No aliases or persisted-data conversion. Regenerate bindings/metadata; rebuild extensions and all affected roles, force-rebake one coherent set and deploy/roll back together.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-01",
+      "release_note": "Docs/en/reference/changelog.md#2026196-dev---2026-11-01",
       "compatibility": "Manual marker0.0.86 remains. Codegen hashes callable/event identifiers; successful packet field types/units/order, Managed ABI9, SpriteResourcev3 and snapshot4 are unchanged. Reject mixed artifact generations.",
       "owner": "Engine playback and outgoing transaction maintainers"
     },
@@ -15717,7 +15717,7 @@
       "classification": "breaking",
       "rationale": "OnCritterAnimationInit -> OnCritterAnimationPlaybackInit; preserve all argument types, reference qualifiers and meanings, renaming only the normalized-position local.",
       "migration": "Apply current-only native Sprite::GetTime/SetTime -> GetPhase/SetPhase and the exact script/event replacements in Docs/en/how-to/migration/script-owned-sprite-animations.md and its Russian mirror. Unrelated ModelInstance, VideoClip and ParticleSystem clocks retain meaning. No aliases or persisted-data conversion. Regenerate bindings/metadata; rebuild extensions and all affected roles, force-rebake one coherent set and deploy/roll back together.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-01",
+      "release_note": "Docs/en/reference/changelog.md#2026196-dev---2026-11-01",
       "compatibility": "Manual marker0.0.86 remains. Codegen hashes callable/event identifiers; successful packet field types/units/order, Managed ABI9, SpriteResourcev3 and snapshot4 are unchanged. Reject mixed artifact generations.",
       "owner": "Engine playback and outgoing transaction maintainers"
     },
@@ -15729,7 +15729,7 @@
       "classification": "breaking",
       "rationale": "Game.SetSpriteTime -> Game.SetSpritePhase with normalized phase in[0,1].",
       "migration": "Apply current-only native Sprite::GetTime/SetTime -> GetPhase/SetPhase and the exact script/event replacements in Docs/en/how-to/migration/script-owned-sprite-animations.md and its Russian mirror. Unrelated ModelInstance, VideoClip and ParticleSystem clocks retain meaning. No aliases or persisted-data conversion. Regenerate bindings/metadata; rebuild extensions and all affected roles, force-rebake one coherent set and deploy/roll back together.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-01",
+      "release_note": "Docs/en/reference/changelog.md#2026196-dev---2026-11-01",
       "compatibility": "Manual marker0.0.86 remains. Codegen hashes callable/event identifiers; successful packet field types/units/order, Managed ABI9, SpriteResourcev3 and snapshot4 are unchanged. Reject mixed artifact generations.",
       "owner": "Engine playback and outgoing transaction maintainers"
     },
@@ -15741,7 +15741,7 @@
       "classification": "breaking",
       "rationale": "Item.SetAnimTime -> Item.SetAnimPhase with normalized phase in[0,1].",
       "migration": "Apply current-only native Sprite::GetTime/SetTime -> GetPhase/SetPhase and the exact script/event replacements in Docs/en/how-to/migration/script-owned-sprite-animations.md and its Russian mirror. Unrelated ModelInstance, VideoClip and ParticleSystem clocks retain meaning. No aliases or persisted-data conversion. Regenerate bindings/metadata; rebuild extensions and all affected roles, force-rebake one coherent set and deploy/roll back together.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-01",
+      "release_note": "Docs/en/reference/changelog.md#2026196-dev---2026-11-01",
       "compatibility": "Manual marker0.0.86 remains. Codegen hashes callable/event identifiers; successful packet field types/units/order, Managed ABI9, SpriteResourcev3 and snapshot4 are unchanged. Reject mixed artifact generations.",
       "owner": "Engine playback and outgoing transaction maintainers"
     }

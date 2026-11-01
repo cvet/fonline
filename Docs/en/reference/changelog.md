@@ -16,6 +16,19 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Fixed
 
+- Keep Git configuration dependencies file-only, including the first loose branch ref after `pack-refs`. Visual Studio regeneration no longer reports a Git directory as a missing file (`MSB8064`).
+- Write native build markers from a stable target-specific configured hash file. A direct Visual Studio build that regenerates late now writes the same project revision as its generated header and compiled executable on that first build.
+
+### Migration
+
+- Base `027a6b38a343658f383bab3ea613ef173cfc3d32` (`2026.1.98-dev`) to `2026.1.99-dev`: reconfigure and rebuild the affected native targets. No project source, setting, content or saved-data conversion is required; existing project and Engine revision identities retain their meaning. Exact-ref creation detection remains active for normal and linked Git worktrees.
+- `WriteBuildHash.cmake` retains the existing literal `BUILD_HASH` mode and adds the exclusive `BUILD_HASH_INPUT_FILE` mode. Supply exactly one non-empty literal or existing non-empty file; missing, directory, empty or ambiguous inputs fail before the output is changed. The configured build helper selects the file mode automatically; callers using the literal mode need no changes.
+- No network, managed ABI, resource schema, updater format or manual compatibility-marker change is introduced. The marker remains `0.0.86`, Managed ABI `9` and SpriteResource v3 remain unchanged. Reconfiguration restores the old helper on rollback; build/package markers must still describe the binaries they accompany. Windows Visual Studio and Ninja fixture checks are separate from full project build/bake and other-platform qualification.
+
+## 2026.1.98-dev - 2026-11-02
+
+### Fixed
+
 - Preserve loop, one-shot and frozen sprite playback through refresh and reentrant animation selection. Use explicit normalized-phase APIs: native `Sprite.GetTime/SetTime` → `GetPhase/SetPhase`, script `Game.SetSpriteTime` → `Game.SetSpritePhase`, `Item.SetAnimTime` → `Item.SetAnimPhase`, and `OnCritterAnimationInit` → `OnCritterAnimationPlaybackInit` with ref `normalizedPosition`.
 - Abort an outgoing message if its writer unwinds or finalization fails, retaining earlier complete queued messages and releasing the buffer lock. Successful packets keep their existing layout, field types, units and order.
 - Retain the inventory owner, moved item and peer snapshot across synchronous post-setters; stop after owner/item invalidation and skip peers removed by reentrant callbacks.

@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/release/versioning.html
 ---
 
 # Версия движка и заметки о выпусках
-<!-- docs-translation: {"document_id":"engine-versioning","locale":"ru","source_path":"Docs/en/how-to/release/versioning.md","source_sha256":"a5bbb96f7760ba4fa6d7cd94a8c14ed660d004300b101914adf2d3cd08d0624d"} -->
+<!-- docs-translation: {"document_id":"engine-versioning","locale":"ru","source_path":"Docs/en/how-to/release/versioning.md","source_sha256":"04647b63d57670bb3874309dc8c91e5e4e3a7da42bd8bd23479229397fce53f6"} -->
 Корневой [VERSION](https://github.com/cvet/fonline/blob/master/VERSION) задаёт идентификатор движка. Эта политика CalVer с календарным годом, [ADR-0002](../../contributing/decisions/0002-public-api-stability-contract.md) и [процедура изменения контрактов](../../contributing/contract-change-management.md) обязательны для каждого обновления master. Перед обновлением игры прочитайте [историю изменений](../../reference/changelog.md).
 
 Навигация, маршруты и данные для ИИ ссылаются на `VERSION`, не копируя значение. Шаблон Jekyll включает корневой файл напрямую при сборке.
@@ -105,4 +105,4 @@ Engine поддерживает только актуальный API выбра
 - `BuildTools/cmake/helpers/EngineVersion.cmake`, `BuildTools/cmake/stages/Codegen.cmake`, `BuildTools/codegen.py`, `Source/Frontend/ApplicationInit.cpp`
 - `.github/workflows/validate.yml`, `AGENTS.md`, `Docs/documentation-manifest.json`, `BuildTools/docs_site.py`, `BuildTools/docs_ai_delivery.py`
 
-CMake экспортирует только файловые Git-зависимости Engine/проекта. Watch ближайшего существующего ref-каталога обнаруживает packed-to-loose переход до загрузки целей Visual Studio; `CONFIGURE_DEPENDS` обслуживает другие генераторы. Проверки: `test_engine_version.py`, `test_cmake_build_hash.py`.
+CMake экспортирует только файловые Git-зависимости Engine/проекта. Glob точной ссылки с `CONFIGURE_DEPENDS` обнаруживает первую loose-ссылку упакованной ветки и запускает переконфигурацию, в том числе для Visual Studio. Генератор метаданных читает стабильный файл аргументов; маркеры native-целей читают стабильный файл настроенного хеша отдельной цели, поэтому поздняя переконфигурация Visual Studio сохраняет соответствие маркера сгенерированному заголовку. `WriteBuildHash.cmake` сохраняет литеральный вход `BUILD_HASH` и принимает взаимоисключающий режим `BUILD_HASH_INPUT_FILE`; отсутствующий, пустой или неоднозначный вход приводит к ошибке до записи результата. Проверки: `test_engine_version.py`, `test_cmake_build_hash.py`.
