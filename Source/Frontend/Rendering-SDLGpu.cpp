@@ -208,6 +208,7 @@ struct SDLGpu_Renderer::Context
     nptr<SDL_GPUSampler> LinearSampler {};
     nptr<SDL_GPUTransferBuffer> UploadTransferBuf {};
     size_t UploadTransferBufSize {};
+    size_t PendingUploads {};
     nptr<SDL_GPUTransferBuffer> DownloadTransferBuf {};
     size_t DownloadTransferBufSize {};
     shared_ptr<SDLGpu_SubmitFence> CmdBufFence {}; // Present once a readback rides on the command buffer being recorded
@@ -494,6 +495,7 @@ static void SubmitAndWait(ptr<SDLGpu_Renderer::Context> ctx)
 
     auto fence {make_nptr(SDL_SubmitGPUCommandBufferAndAcquireFence(ctx->CmdBuf.get()))};
     ctx->CmdBuf = nullptr;
+    ctx->PendingUploads = 0;
     FO_VERIFY_AND_THROW(fence, "SDL_SubmitGPUCommandBufferAndAcquireFence failed", SDL_GetError());
 
     SDL_GPUFence* fence_handles[] {fence.get()};
@@ -506,10 +508,18 @@ static void SubmitAndWait(ptr<SDLGpu_Renderer::Context> ctx)
     }
 }
 
+static constexpr size_t MAX_UPLOADS_PER_SUBMIT = 256;
+
 static auto EnsureTransferBuffer(ptr<SDLGpu_Renderer::Context> ctx, nptr<SDL_GPUTransferBuffer>& transfer_buf, size_t& transfer_buf_size, size_t required_size, bool download) -> ptr<SDL_GPUTransferBuffer>
 {
     if (!transfer_buf || required_size > transfer_buf_size) {
         if (transfer_buf) {
+            // Copies already recorded into the pending command buffer still read from the old transfer buffer, so they
+            // must reach the GPU before it is released, otherwise those uploads silently land as empty texture regions
+            if (ctx->CmdBuf) {
+                SubmitAndWait(ctx);
+            }
+
             SDL_ReleaseGPUTransferBuffer(ctx->Device.get(), transfer_buf.get());
             transfer_buf = nullptr;
         }
@@ -781,12 +791,14 @@ void SDLGpu_Renderer::Present()
 
         auto fence {make_nptr(SDL_SubmitGPUCommandBufferAndAcquireFence(_ctx->CmdBuf.get()))};
         _ctx->CmdBuf = nullptr;
+        _ctx->PendingUploads = 0;
         FO_VERIFY_AND_THROW(fence, "SDL_SubmitGPUCommandBufferAndAcquireFence failed", SDL_GetError());
         readback_fence->SetSubmitted(fence);
     }
     else {
         bool submit_ok {SDL_SubmitGPUCommandBuffer(_ctx->CmdBuf.get())};
         _ctx->CmdBuf = nullptr;
+        _ctx->PendingUploads = 0;
         FO_VERIFY_AND_THROW(submit_ok, "SDL_SubmitGPUCommandBuffer failed", SDL_GetError());
     }
 }
@@ -1369,6 +1381,12 @@ void SDLGpu_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<uc
 
     // No cycle: partial updates must preserve the rest of the texture (the transfer-buffer cycle above covers the CPU hazard)
     SDL_UploadToGPUTexture(copy_pass.get(), &transfer_info, &dest_region, false);
+
+    // A burst of uploads (a map load streams hundreds of sprites, five regions each) cycles the same transfer buffer
+    // thousands of times inside one command buffer; Metal then drops some of the copies, so submit in bounded chunks
+    if (++_ctx->PendingUploads >= MAX_UPLOADS_PER_SUBMIT) {
+        SubmitAndWait(_ctx);
+    }
 }
 
 SDLGpu_DrawBuffer::~SDLGpu_DrawBuffer()
