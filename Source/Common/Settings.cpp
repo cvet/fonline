@@ -34,7 +34,9 @@
 #include "Settings.h"
 
 #include "AnyData.h"
+#include "CacheStorage.h"
 #include "ConfigFile.h"
+#include "FileSystem.h"
 #include "ImGuiStuff.h"
 
 FO_BEGIN_NAMESPACE
@@ -351,6 +353,7 @@ void GlobalSettings::CopyFrom(const GlobalSettings& other)
     _appliedConfigs = other._appliedConfigs;
     _appliedSettings = other._appliedSettings;
     _settingValues = other._settingValues;
+    _resourceConfigContent = other._resourceConfigContent;
     _bakingMode = other._bakingMode;
     _customSettings = other._customSettings;
     _customSettingsGeneration++;
@@ -360,6 +363,89 @@ void GlobalSettings::CopyFrom(const GlobalSettings& other)
 #define SETTING_GROUP_END(group)
 #define SETTING(type, group, name, ...) (*FixedSettingForEdit(group.name)) = other.group.name
 #include "Settings.inc"
+}
+
+void GlobalSettings::ApplyResourceConfig(string_view content)
+{
+    FO_TRACE_ZONE(Core);
+
+    auto bootstrap = GlobalSettings(false);
+    bootstrap.ApplyDefaultSettings();
+    bootstrap.ApplyInternalConfig();
+
+    auto config = ConfigFile(string(content));
+    auto updated = GlobalSettings(false);
+    updated.ApplyDefaultSettings();
+    updated.ApplyConfigFile(config, "");
+
+    FO_VERIFY_AND_THROW(updated.Baking.ServerResources == bootstrap.Baking.ServerResources && updated.Baking.ClientResources == bootstrap.Baking.ClientResources, "Configuration resource location does not match native bootstrap");
+
+    updated._resourceConfigContent = string(content);
+    CopyFrom(updated);
+}
+
+auto ReadResourceConfig(const GlobalSettings& settings, bool required) -> optional<string>
+{
+    FO_TRACE_ZONE(FileSystem);
+
+    auto server_packs = settings.GetServerResourcePacks();
+    auto client_packs = settings.GetClientResourcePacks();
+
+    if (!vec_exists(server_packs, METADATA_PACK_NAME) && !vec_exists(client_packs, METADATA_PACK_NAME)) {
+        return std::nullopt;
+    }
+
+    FileSystem resources;
+
+    if (settings.Common.Packaged) {
+        if (vec_exists(server_packs, METADATA_PACK_NAME)) {
+            resources.AddPackSource(settings.Baking.ServerResources, METADATA_PACK_NAME, true);
+        }
+        if (resources.FilterFiles("fomain-server").GetFilesCount() == 0 && vec_exists(client_packs, METADATA_PACK_NAME)) {
+            AddClientPackSource(resources, settings, METADATA_PACK_NAME, !required);
+        }
+    }
+    else {
+        resources.AddPackSource(settings.Baking.BakeOutput, METADATA_PACK_NAME, !required);
+    }
+
+    auto configs = resources.FilterFiles("fomain-server");
+
+    if (configs.GetFilesCount() == 0) {
+        configs = resources.FilterFiles("fomain-client");
+    }
+
+    FO_VERIFY_AND_THROW(configs.GetFilesCount() <= 1, "Resource pack contains multiple configurations", configs.GetFilesCount());
+
+    if (configs.GetFilesCount() == 0) {
+        FO_VERIFY_AND_THROW(!required, "Resource configuration is missing");
+        return std::nullopt;
+    }
+
+    auto file = resources.ReadFile(configs.GetFileByIndex(0).GetPath());
+    FO_VERIFY_AND_THROW(file, "Resource configuration is unreadable", configs.GetFileByIndex(0).GetPath());
+    return file.GetStr();
+}
+
+void PreserveLocalConfig(const GlobalSettings& previous, const GlobalSettings& updated)
+{
+    FO_TRACE_ZONE(FileSystem);
+
+    string old_path = fs::make_writable_path(previous.Common.UserWritablePath, previous.Baking.CacheResources);
+    string new_path = fs::make_writable_path(updated.Common.UserWritablePath, updated.Baking.CacheResources);
+
+    if (old_path == new_path || !fs::is_dir(old_path)) {
+        return;
+    }
+
+    auto old_cache = CacheStorage(old_path);
+    auto new_cache = CacheStorage(new_path);
+
+    if (old_cache.HasEntry(LOCAL_CONFIG_NAME) && !new_cache.HasEntry(LOCAL_CONFIG_NAME)) {
+        auto preferences = old_cache.GetData(LOCAL_CONFIG_NAME);
+        bool copied = new_cache.SetDataChecked(LOCAL_CONFIG_NAME, preferences);
+        FO_VERIFY_AND_THROW(copied, "Can't preserve local configuration", new_path);
+    }
 }
 
 void GlobalSettings::ApplySubConfigSection(string_view name)

@@ -16724,10 +16724,6 @@
           "source_sha256": "d952b4645908f472bb1123dd151e8049951ee00d30a8ef9e7d9f9c1510d3fd6f",
           "translation": "Пропускает подготовку ресурсов и изменение встроенных данных, конфигурации и имени сборки."
         },
-        "/packs/@id=package.pack.OGL/description": {
-          "source_sha256": "68bb64a87f2399e5b033b19963c8839adfd7377155a7de575c8655386b452a92",
-          "translation": "Включает обычный и OpenGL-варианты клиента и задаёт ForceOpenGL=1."
-        },
         "/packs/@id=package.pack.OnDemandProfiling/description": {
           "source_sha256": "b50065f47241bf367f1a1f8003a0c7f114eaddd05f17c8eef230b3c76f2652bf",
           "translation": "Включает обычный вариант бинарного файла и вариант профилирования по запросу."

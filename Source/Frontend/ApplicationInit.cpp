@@ -324,6 +324,31 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
     // cache, log and update write - lands where this process is allowed to write
     settings.ApplyWritableRoot(ResolveWritableRoot(args));
 
+    if (IsPackaged()) {
+        auto resource_settings = GlobalSettings(false);
+        resource_settings.CopyFrom(settings);
+        resource_settings.SetSettingValue(SettingNames::Common_Packaged, "1");
+
+        // Only location overrides belong here; the full command line follows the resource and local configs
+        for (const CommandLineSetting& setting : args.GetSettings()) {
+            if (setting.Name == SettingNames::Baking_ClientResources || setting.Name == SettingNames::Baking_ServerResources || setting.Name == SettingNames::Baking_CacheResources) {
+                string value = strex(setting.Value.value_or("1")).trim().str();
+                resource_settings.SetSettingValue(string(setting.Name), value);
+            }
+        }
+
+        auto content = ReadResourceConfig(resource_settings, false);
+
+        if (content) {
+            auto updated = GlobalSettings(false);
+            updated.ApplyResourceConfig(*content);
+            updated.ApplyWritableRoot(settings.Common.UserWritablePath);
+            PreserveLocalConfig(resource_settings, updated);
+            settings.CopyFrom(updated);
+            logging::write("Resource configuration loaded before application initialization");
+        }
+    }
+
     if (!settings.Common.UserWritablePath.empty()) {
         // Pre-create the writable cache and resource-overlay subdirs so the cache and the self-update
         // resource writer never fail on a missing parent directory

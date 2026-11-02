@@ -14772,6 +14772,18 @@
       "release_note": "Docs/en/reference/changelog.md#current---2026-11-01",
       "compatibility": "FO_COMPATIBILITY_VERSION changes because the declared and resolved layouts are hashed; MigrationRule Version 0.0.85 and Managed ABI 9 stay unchanged. Default-width network, baked property and database bytes are identical; wide builds add four bytes per position and refuse 16-bit peers. Deploy matching binaries, assemblies and resources; rollback restores the preceding complete set.",
       "owner": "Engine geometry, codegen and scripting backend maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.0b02324d541cbd03",
+      "baseline_contract_sha256": "2c101124f62b50387eca7eb744fcb8454037f6ea7f705cb0fec20a12d0951ad1",
+      "current_contract_sha256": "ece4a27dd1921e4859623cbd1e03ab98eb14c26644fa2ac1597cd94a45191710",
+      "classification": "breaking",
+      "rationale": "Advance runtime compatibility from 0.0.85 to 0.0.86 for packaged resource configuration read before initialization and the StandaloneClient startup flag; all published migrations stay.",
+      "migration": "Docs/en/reference/changelog.md#current---2026-11-02: rebuild every native role and Baker, rebake Metadata with Config and ClientConfig, and package the selected --config for each role. No saved-data conversion is required.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-02 and Docs/ru/reference/changelog.md#current---2026-11-02: selected resource configuration, ClientConfigBaker, AppInitFlags::StandaloneClient and removal of the OGL package token.",
+      "compatibility": "Runtime 0.0.85 -> 0.0.86 rejects mixed native and metadata sets. Managed ABI 9, client host ABI, updater wire layout and saved-data meanings are unchanged. Deploy or roll back matching binaries, metadata, assemblies and resources together.",
+      "owner": "Engine application startup and resource configuration"
     }
   ]
 }

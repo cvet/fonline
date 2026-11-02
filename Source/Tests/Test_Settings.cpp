@@ -39,6 +39,7 @@
 #include "CacheStorage.h"
 #include "ConfigFile.h"
 #include "DiskFileSystem.h"
+#include "ResourcePack.h"
 #include "Settings.h"
 
 FO_BEGIN_NAMESPACE
@@ -1076,6 +1077,413 @@ TEST_CASE("ApplicationSettings")
     CHECK(command_line.Render.Sleep == 0);
     CHECK(command_line.Network.NetBufferSize == 8192);
     CHECK(command_line.SpriteMesh.MaxTriangles == 4096);
+}
+
+TEST_CASE("PackagedApplicationSettings", "[.][settings]")
+{
+    if (!IsPackaged()) {
+        SKIP("Requires a packaged unit-test binary with a Metadata bootstrap pack");
+    }
+
+    string root = MakeTempSettingsDir("packaged_application_settings");
+    auto cleanup = scope_exit([&root]() noexcept { safe_call([&root] { (void)fs::remove_dir_tree(root); }); });
+    char program[] = "settings_test";
+    char writable_path[] = "--Common.UserWritablePath";
+    char append_setting[] = "--Common.SecretSettingTokens";
+    char append_value[] = "+startup-probe";
+    char direct_draw[] = "--View.MapDirectDraw";
+    char enabled[] = "1";
+    char compatibility[] = "--Network.ForceCompatibilityVersion";
+    char compatibility_value[] = "startup-probe-version";
+    vector<CommandLineArg> args {program, writable_path, root.data(), append_setting, append_value, direct_draw, enabled, compatibility, compatibility_value};
+    size_t append_logs = 0;
+    logging::set_callback("packaged_settings_once_test", [&append_logs](logging::type, string_view message, nptr<const stack_trace::catched_data>) {
+        if (message.find("Set Common.SecretSettingTokens to ") != string_view::npos) {
+            append_logs++;
+        }
+    });
+    auto remove_callback = scope_exit([]() noexcept { logging::set_callback("packaged_settings_once_test", nullptr); });
+
+    SECTION("MissingResourceAppliesCommandLineOnce")
+    {
+        auto settings = LoadAppSettings(CommandLineArgs {args});
+        CHECK_FALSE(settings.GetResourceConfigContent());
+        CHECK(std::ranges::count(settings.Common.SecretSettingTokens, "startup-probe") == 1);
+        CHECK(append_logs == 1);
+        CHECK(settings.Common.Packaged);
+        CHECK(settings.View.MapDirectDraw);
+        CHECK_FALSE(settings.View.MapZoomEnabled);
+        CHECK(settings.Network.CompatibilityVersion == compatibility_value);
+    }
+
+    SECTION("ResourceLocationOverrideAndFinalPrecedence")
+    {
+        string resources = strex(root).combine_path("AlternateResources").str();
+        REQUIRE(fs::create_directories(resources));
+        string content = "Common.GameVersion=resource-version\n"
+                         "Client.Language=russ\nCommon.SecretSettingTokens=resource-secret\n"
+                         "Baking.CacheResources=ResourceCache\n"
+                         "[ResourcePack]\nName=Metadata\n";
+        {
+            ResourcePackWriter writer {strex(resources).combine_path("Metadata.fores").str()};
+            writer.AddFile("Selected.fomain-client", make_const_span(content));
+            // The reader filters by config suffix and never parses the metadata payload
+            string metadata_content = "metadata-bytes";
+            writer.AddFile("Metadata.fometa-client", make_const_span(metadata_content));
+            writer.Finish();
+        }
+        string cache_path = strex(root).combine_path("SelectedCache").str();
+        {
+            CacheStorage cache(cache_path);
+            cache.SetString(LOCAL_CONFIG_NAME, "Client.Language=ru18\nCommon.SecretSettingTokens=local-secret\n");
+        }
+        char resource_path[] = "--Baking.ClientResources";
+        char cache_setting[] = "--Baking.CacheResources";
+        char language[] = "--Client.Language";
+        char language_value[] = "en18";
+        args.emplace_back(resource_path);
+        args.emplace_back(resources.data());
+        args.emplace_back(cache_setting);
+        args.emplace_back(cache_path.data());
+        args.emplace_back(language);
+        args.emplace_back(language_value);
+        auto settings = LoadAppSettings(CommandLineArgs {args});
+        REQUIRE(settings.GetResourceConfigContent());
+        CHECK(*settings.GetResourceConfigContent() == content);
+        CHECK(settings.Common.GameVersion == "resource-version");
+        CHECK(settings.Baking.ClientResources == resources);
+        CHECK(settings.Baking.CacheResources == cache_path);
+        CHECK(settings.Client.Language == "en18");
+        CHECK(std::ranges::count(settings.Common.SecretSettingTokens, "local-secret") == 1);
+        CHECK(std::ranges::count(settings.Common.SecretSettingTokens, "startup-probe") == 1);
+        CHECK(append_logs == 1);
+        CHECK(settings.Common.Packaged);
+        CHECK_FALSE(settings.View.MapZoomEnabled);
+        CHECK(settings.Network.CompatibilityVersion == compatibility_value);
+    }
+}
+
+TEST_CASE("PackagedServerApplicationSettings", "[.][settings]")
+{
+    if (!IsPackaged()) {
+        SKIP("Requires a packaged unit-test binary with a Metadata bootstrap pack");
+    }
+
+    string root = MakeTempSettingsDir("packaged_server_settings");
+    auto cleanup = scope_exit([&root]() noexcept { safe_call([&root] { (void)fs::remove_dir_tree(root); }); });
+    string server_resources = strex(root).combine_path("ServerResources").str();
+    string client_resources = strex(root).combine_path("ClientResources").str();
+    char program[] = "settings_test";
+    char writable_path[] = "--Common.UserWritablePath";
+    char server_path[] = "--Baking.ServerResources";
+    char client_path[] = "--Baking.ClientResources";
+    char append_setting[] = "--Common.SecretSettingTokens";
+    char append_value[] = "+server-startup-probe";
+    vector<CommandLineArg> args {program, writable_path, root.data(), server_path, server_resources.data(), client_path, client_resources.data(), append_setting, append_value};
+
+    SECTION("ReadsServerResourceAndKeepsServerSettings")
+    {
+        REQUIRE(fs::create_directories(server_resources));
+        REQUIRE(fs::create_directories(client_resources));
+        {
+            string content = "Common.GameVersion=server-resource-version\nServer.DbStorage=JSON\nServer.AutoStartClientOnServer=2\n"
+                             "[ResourcePack]\nName=Metadata\n";
+            ResourcePackWriter writer {strex(server_resources).combine_path("Metadata.fores").str()};
+            writer.AddFile("Selected.fomain-server", make_const_span(content));
+            // The reader filters by config suffix and never parses the metadata payload
+            string metadata_content = "metadata-bytes";
+            writer.AddFile("Metadata.fometa-server", make_const_span(metadata_content));
+            writer.Finish();
+        }
+        {
+            string content = "Common.GameVersion=client-resource-version\n[ResourcePack]\nName=Metadata\n";
+            ResourcePackWriter writer {strex(client_resources).combine_path("Metadata.fores").str()};
+            writer.AddFile("Selected.fomain-client", make_const_span(content));
+            string metadata_content = "metadata-bytes";
+            writer.AddFile("Metadata.fometa-client", make_const_span(metadata_content));
+            writer.Finish();
+        }
+        {
+            CacheStorage cache(strex(root).combine_path("Cache").str());
+            cache.SetString(LOCAL_CONFIG_NAME, "Server.ServerHeight=600\n");
+        }
+        char height[] = "--Server.ServerHeight";
+        char height_value[] = "720";
+        args.emplace_back(height);
+        args.emplace_back(height_value);
+        auto settings = LoadAppSettings(CommandLineArgs {args});
+        CHECK(settings.Common.GameVersion == "server-resource-version");
+        CHECK(settings.Server.DbStorage == "JSON");
+        CHECK(settings.Server.AutoStartClientOnServer == 2);
+        CHECK(settings.Server.ServerHeight == 720);
+        CHECK(settings.Baking.ServerResources == server_resources);
+        CHECK(settings.Baking.ClientResources == client_resources);
+        CHECK(std::ranges::count(settings.Common.SecretSettingTokens, "server-startup-probe") == 1);
+    }
+
+    SECTION("MissingServerConfigurationFallsBackToClient")
+    {
+        REQUIRE(fs::create_directories(client_resources));
+        string content = "Common.GameVersion=client-fallback-version\n[ResourcePack]\nName=Metadata\n";
+        {
+            ResourcePackWriter writer {strex(client_resources).combine_path("Metadata.fores").str()};
+            writer.AddFile("Selected.fomain-client", make_const_span(content));
+            string metadata_content = "metadata-bytes";
+            writer.AddFile("Metadata.fometa-client", make_const_span(metadata_content));
+            writer.Finish();
+        }
+        auto settings = LoadAppSettings(CommandLineArgs {args});
+        CHECK(settings.Common.GameVersion == "client-fallback-version");
+        CHECK(settings.GetResourceConfigContent() == content);
+        CHECK(std::ranges::count(settings.Common.SecretSettingTokens, "server-startup-probe") == 1);
+    }
+
+    SECTION("MissingResourcesKeepBootstrap")
+    {
+        auto settings = LoadAppSettings(CommandLineArgs {args});
+        CHECK_FALSE(settings.GetResourceConfigContent());
+        CHECK(settings.Common.GameVersion == "bootstrap-version");
+        CHECK(std::ranges::count(settings.Common.SecretSettingTokens, "server-startup-probe") == 1);
+    }
+}
+
+TEST_CASE("ResourceConfigurationPriority")
+{
+    string root = MakeTempSettingsDir("resource_config_priority");
+    auto cleanup = scope_exit([&root]() noexcept { safe_call([&root] { (void)fs::remove_dir_tree(root); }); });
+    auto settings = GlobalSettings(false);
+    settings.ApplyDefaultSettings();
+    ConfigFile declarations {"[ResourcePack]\nName=Metadata\n"};
+    settings.ApplyConfigFile(declarations, "");
+    string server_content = "Common.GameVersion=server-version\nServer.DbStorage=JSON\n";
+    string client_content = "Common.GameVersion=client-version\n";
+
+    SECTION("ServerConfigurationPrecedesClientInTheSamePack")
+    {
+        settings.SetSettingValue("Baking.BakeOutput", root);
+        string directory = strex(root).combine_path("Metadata").str();
+        REQUIRE(fs::create_directories(directory));
+        string server_path = strex(directory).combine_path("Selected.fomain-server").str();
+        REQUIRE(fs::write_file(server_path, string_view {server_content}));
+        REQUIRE(fs::write_file(strex(directory).combine_path("Selected.fomain-client").str(), string_view {client_content}));
+        CHECK(ReadResourceConfig(settings, true) == server_content);
+        REQUIRE(fs::remove_file(server_path));
+        CHECK(ReadResourceConfig(settings, true) == client_content);
+    }
+
+    SECTION("MetadataPackWithoutConfigurationIsAbsent")
+    {
+        // The pack carries its metadata payload but no baked configuration of either role:
+        // the reader ignores the metadata files and reports the configuration as absent
+        settings.SetSettingValue("Baking.BakeOutput", root);
+        string directory = strex(root).combine_path("Metadata").str();
+        REQUIRE(fs::create_directories(directory));
+        REQUIRE(fs::write_file(strex(directory).combine_path("Metadata.fometa-server").str(), string_view {"metadata-bytes"}));
+        REQUIRE(fs::write_file(strex(directory).combine_path("Metadata.fometa-client").str(), string_view {"metadata-bytes"}));
+        CHECK_FALSE(ReadResourceConfig(settings, false));
+        CHECK_THROWS_AS(ReadResourceConfig(settings, true), BaseEngineException);
+    }
+}
+
+// Requires a test-binary copy with its internal config patched and its unpackaged marker retained.
+TEST_CASE("ServerConfiguration", "[.][settings]")
+{
+    string content = "Common.GameVersion=server-resource-version\nServer.DbStorage=JSON\nServer.AutoStartClientOnServer=2\n"
+                     "[ResourcePack]\nName=Metadata\n";
+    auto settings = GlobalSettings(false);
+    settings.ApplyResourceConfig(content);
+
+    SECTION("ReplacesServerSnapshot")
+    {
+        CHECK(settings.Common.GameVersion == "server-resource-version");
+        CHECK(settings.Server.DbStorage == "JSON");
+        CHECK(settings.Server.AutoStartClientOnServer == 2);
+        CHECK_FALSE(settings.Render.ForceOpenGL);
+        REQUIRE(settings.GetResourceConfigContent());
+        CHECK(*settings.GetResourceConfigContent() == content);
+    }
+
+    SECTION("RejectsRelocatedServerResourcesWithoutChangingSnapshot")
+    {
+        CHECK_THROWS_AS(settings.ApplyResourceConfig("Baking.ServerResources=OtherServerResources\n" + content), BaseEngineException);
+        CHECK(settings.Server.DbStorage == "JSON");
+        CHECK(settings.Baking.ServerResources == "ServerResources");
+        CHECK(*settings.GetResourceConfigContent() == content);
+    }
+
+    SECTION("PrefersServerAndRejectsMultipleServerConfigurations")
+    {
+        string root = MakeTempSettingsDir("server_resource_config");
+        auto cleanup = scope_exit([&root]() noexcept { safe_call([&root] { (void)fs::remove_dir_tree(root); }); });
+        settings.SetSettingValue("Baking.BakeOutput", root);
+        CHECK_FALSE(ReadResourceConfig(settings, false));
+        CHECK_THROWS_AS(ReadResourceConfig(settings, true), BaseEngineException);
+        string directory = strex(root).combine_path("Metadata").str();
+        REQUIRE(fs::create_directories(directory));
+        REQUIRE(fs::write_file(strex(directory).combine_path("Selected.fomain-server").str(), string_view {content}));
+        CHECK(ReadResourceConfig(settings, true) == content);
+        REQUIRE(fs::write_file(strex(directory).combine_path("Other.fomain-server").str(), string_view {content}));
+        CHECK_THROWS_AS(ReadResourceConfig(settings, true), BaseEngineException);
+        bool removed = fs::remove_file(strex(directory).combine_path("Other.fomain-server").str());
+        REQUIRE(removed);
+        REQUIRE(fs::write_file(strex(directory).combine_path("Selected.fomain-client").str(), string_view {content}));
+        CHECK(ReadResourceConfig(settings, true) == content);
+    }
+}
+
+TEST_CASE("ClientConfiguration", "[.][settings]")
+{
+    string content = "Common.GameVersion=0.3.1482\n"
+                     "Client.Language=russ\nRender.ForceOpenGL=0\nClient.DirectMoveRetargetMinMs=0\nClient.DirectMoveSlide=0\nGame.Enabled=false\nGame.Caption=\n"
+                     "[ResourcePack]\nName=Metadata\n";
+    auto build_settings = [](string_view text) {
+        auto result = GlobalSettings(false);
+        result.SetSettingValue("Game.Removed", "old");
+        result.ApplyResourceConfig(text);
+        return result;
+    };
+
+    SECTION("ReplacesBootstrap")
+    {
+        auto updated = build_settings(content);
+        CHECK(updated.Common.GameVersion == "0.3.1482");
+        CHECK(updated.Client.Language == "russ");
+        CHECK_FALSE(updated.Render.ForceOpenGL);
+        CHECK(updated.Client.DirectMoveRetargetMinMs == 0);
+        CHECK_FALSE(updated.Client.DirectMoveSlide);
+        CHECK(updated.GetCustomSetting("Game.Enabled") == "false");
+        CHECK(updated.GetCustomSetting("Game.Caption").empty());
+        CHECK_FALSE(updated.FindCustomSetting("Game.Removed"));
+        CHECK_THROWS_AS(updated.SetRuntimeSetting("Common.GameVersion", "changed"), SettingsException);
+    }
+
+    SECTION("UserConfigurationAndCommandLineRemainHigherPriority")
+    {
+        auto updated = build_settings(content);
+        ConfigFile preferences {"Client.Language=engl\nRender.ForceOpenGL=0\n"};
+        updated.ApplyConfigFile(preferences, "");
+        CHECK(updated.Client.Language == "engl");
+        CHECK_FALSE(updated.Render.ForceOpenGL);
+        char program[] = "lf_tests";
+        char option[] = "--Client.Language";
+        char value[] = "ru18";
+        vector<CommandLineArg> argv {program, option, value};
+        updated.ApplyCommandLine(CommandLineArgs {argv});
+        CHECK(updated.Client.Language == "ru18");
+    }
+
+    SECTION("ChangingCacheDirectoryPreservesPreferencesAndExistingDestinationWins")
+    {
+        string directory = MakeTempSettingsDir("client_preferences");
+        auto cleanup = scope_exit([&directory]() noexcept { safe_call([&directory] { (void)fs::remove_dir_tree(directory); }); });
+        auto previous = build_settings(content);
+        previous.ApplyWritableRoot(directory);
+        previous.SetSettingValue("Baking.CacheResources", "old-cache");
+        auto updated = build_settings(content);
+        updated.ApplyWritableRoot(directory);
+        updated.SetSettingValue("Baking.CacheResources", "new-cache");
+        auto old_cache = CacheStorage(fs::make_writable_path(directory, previous.Baking.CacheResources));
+        old_cache.SetString(LOCAL_CONFIG_NAME, "Client.Language=ru18\n");
+        PreserveLocalConfig(previous, updated);
+        auto new_cache = CacheStorage(fs::make_writable_path(directory, updated.Baking.CacheResources));
+        CHECK(new_cache.GetString(LOCAL_CONFIG_NAME) == "Client.Language=ru18\n");
+        new_cache.SetString(LOCAL_CONFIG_NAME, "Client.Language=en18\n");
+        PreserveLocalConfig(previous, updated);
+        CHECK(new_cache.GetString(LOCAL_CONFIG_NAME) == "Client.Language=en18\n");
+    }
+
+    SECTION("ResourceProfileAndSecondStartup")
+    {
+        string directory = MakeTempSettingsDir("client_config");
+        auto cleanup = scope_exit([&directory]() noexcept { safe_call([&directory] { (void)fs::remove_dir_tree(directory); }); });
+        auto settings = build_settings(content);
+        settings.SetSettingValue("Baking.BakeOutput", directory);
+        CHECK_FALSE(ReadResourceConfig(settings, false));
+        CHECK_THROWS_AS(ReadResourceConfig(settings, true), BaseEngineException);
+        string pack_directory = strex(directory).combine_path("Metadata").str();
+        REQUIRE(fs::create_directories(pack_directory));
+        string path = strex(pack_directory).combine_path("Test.fomain-client").str();
+        REQUIRE(fs::write_file(path, string_view {content}));
+        auto applied = ReadResourceConfig(settings, true);
+        REQUIRE(applied);
+        auto running = build_settings(*applied);
+        CHECK(running.GetResourceConfigContent() == applied);
+
+        string next = content;
+        next.replace(next.find("0.3.1482"), 8, "0.3.1483");
+        REQUIRE(fs::write_file(path, string_view {next}));
+        auto downloaded = ReadResourceConfig(settings, true);
+        REQUIRE(downloaded);
+        CHECK(*downloaded == next);
+        CHECK(running.GetResourceConfigContent() != downloaded);
+        CHECK(running.Common.GameVersion == "0.3.1482");
+        auto relaunched = build_settings(*downloaded);
+        CHECK(relaunched.Common.GameVersion == "0.3.1483");
+        CHECK(relaunched.GetResourceConfigContent() == ReadResourceConfig(settings, true));
+        CHECK_FALSE(fs::exists(strex(directory).combine_path(".client-config").str()));
+        REQUIRE(fs::write_file(strex(pack_directory).combine_path("Other.fomain-client"), string_view {content}));
+        CHECK_THROWS_AS(ReadResourceConfig(settings, true), BaseEngineException);
+    }
+
+    SECTION("ProfileMemorySurvivesCopyAndPreferenceOverrides")
+    {
+        auto applied = build_settings(content);
+        auto copied = GlobalSettings(false);
+        CHECK_FALSE(copied.GetResourceConfigContent());
+        copied.CopyFrom(applied);
+        copied.SetSettingValue("Client.Language", "en18");
+        REQUIRE(copied.GetResourceConfigContent());
+        CHECK(*copied.GetResourceConfigContent() == content);
+        CHECK(copied.Client.Language == "en18");
+    }
+
+    SECTION("RejectsRelocatedConfigurationWithoutChangingAppliedSettings")
+    {
+        auto applied = build_settings(content);
+        CHECK_THROWS_AS(applied.ApplyResourceConfig("Baking.ClientResources=OtherResources\n" + content), BaseEngineException);
+        CHECK(applied.Common.GameVersion == "0.3.1482");
+        REQUIRE(applied.GetResourceConfigContent());
+        CHECK(*applied.GetResourceConfigContent() == content);
+    }
+}
+
+TEST_CASE("PackagedResourceConfiguration", "[.][settings]")
+{
+    if (!IsPackaged()) {
+        SKIP("Requires a packaged test binary with a patched internal config");
+    }
+
+    auto bootstrap = GlobalSettings(false);
+    bootstrap.ApplyDefaultSettings();
+    bootstrap.ApplyInternalConfig();
+    CHECK(bootstrap.Common.GameVersion == "bootstrap-version");
+    CHECK(bootstrap.GetCustomSetting("Game.Removed") == "old");
+    CHECK(bootstrap.Render.ForceOpenGL);
+
+    string content = "Common.GameVersion=resource-version\nRender.ForceOpenGL=0\n"
+                     "[ResourcePack]\nName=Metadata\n";
+    auto updated = GlobalSettings(false);
+    updated.ApplyResourceConfig(content);
+    CHECK(updated.Common.GameVersion == "resource-version");
+    CHECK_FALSE(updated.Render.ForceOpenGL);
+    CHECK_FALSE(updated.FindCustomSetting("Game.Removed"));
+    REQUIRE(updated.GetResourceConfigContent());
+    CHECK(*updated.GetResourceConfigContent() == content);
+    CHECK(bootstrap.Common.GameVersion == "bootstrap-version");
+
+    string next = "Common.GameVersion=next-version\nRender.ForceOpenGL=0\n"
+                  "[ResourcePack]\nName=Metadata\n";
+    auto relaunched = GlobalSettings(false);
+    relaunched.ApplyResourceConfig(next);
+    CHECK(relaunched.Common.GameVersion == "next-version");
+    CHECK_FALSE(relaunched.Render.ForceOpenGL);
+    CHECK(updated.Common.GameVersion == "resource-version");
+    CHECK(updated.GetResourceConfigContent() != relaunched.GetResourceConfigContent());
+
+    CHECK_THROWS_AS(updated.ApplyResourceConfig("Baking.ClientResources=OtherResources\n" + content), BaseEngineException);
+    CHECK_THROWS_AS(updated.ApplyResourceConfig("Baking.ServerResources=OtherServerResources\n" + content), BaseEngineException);
+    CHECK(updated.Common.GameVersion == "resource-version");
+    CHECK(*updated.GetResourceConfigContent() == content);
 }
 
 FO_END_NAMESPACE

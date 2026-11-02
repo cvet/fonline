@@ -545,13 +545,13 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
         throw AppInitException("SDL_InitSubSystem SDL_INIT_VIDEO failed", SDL_GetError());
     }
 
-    _clientMode = is_enum_set(flags, AppInitFlags::ClientMode);
+    _standaloneClient = is_enum_set(flags, AppInitFlags::StandaloneClient);
 
-    if (is_enum_set(flags, AppInitFlags::ClientMode)) {
+    if (_standaloneClient) {
         SDL_DisableScreenSaver();
     }
 
-    if (is_enum_set(flags, AppInitFlags::ClientMode) && (Settings.View.HideNativeCursor || !Input.IsMouseAvailable())) {
+    if (_standaloneClient && (Settings.View.HideNativeCursor || !Input.IsMouseAvailable())) {
         SDL_HideCursor();
         _nativeCursorHidden = true;
     }
@@ -569,7 +569,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
         ScreenState.Fullscreen = true;
     }
 
-    if (is_enum_set(flags, AppInitFlags::ClientMode)) {
+    if (_standaloneClient) {
         _ctx->ClearColor = {0, 0, 0, 255};
     }
 
@@ -598,7 +598,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
         }
     }
 
-    if (_ctx->ActiveRendererType != RenderType::Null && is_enum_set(flags, AppInitFlags::ClientMode) && !_isTablet && ScreenState.Fullscreen) {
+    if (_ctx->ActiveRendererType != RenderType::Null && _standaloneClient && !_isTablet && ScreenState.Fullscreen) {
         auto sdl_window = MainWindow._windowHandle.reinterpret_as<SDL_Window>();
         FO_VERIFY_AND_THROW(sdl_window, "Window handle does not reference a valid SDL window");
 
@@ -617,7 +617,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
 
     LogSystemEnvironment(_ctx->ActiveRendererType != RenderType::Null ? MainWindow._windowHandle.reinterpret_as<SDL_Window>() : nullptr, ScreenState);
 
-    if (is_enum_set(flags, AppInitFlags::ClientMode) && Settings.Render.AlwaysOnTop) {
+    if (_standaloneClient && Settings.Render.AlwaysOnTop) {
         MainWindow.AlwaysOnTop(true);
     }
 
@@ -1356,7 +1356,7 @@ void Application::UpdateNativeCursorVisibility(bool imguiOverlayWantsCursor)
         should_hide_cursor = false;
     }
     else {
-        should_hide_cursor = _clientMode && Settings.View.HideNativeCursor && !imguiOverlayWantsCursor;
+        should_hide_cursor = _standaloneClient && Settings.View.HideNativeCursor && !imguiOverlayWantsCursor;
     }
 
     if (should_hide_cursor == _nativeCursorHidden) {

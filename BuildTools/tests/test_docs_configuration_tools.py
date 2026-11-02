@@ -130,6 +130,7 @@ class ConfigurationAndToolsDocumentationTests(unittest.TestCase):
             "AngelScriptBaker",
             "AudioBaker",
             "ConfigBaker",
+            "ClientConfigBaker",
             "EffectBaker",
             "ImageBaker",
             "MapBaker",
@@ -148,8 +149,9 @@ class ConfigurationAndToolsDocumentationTests(unittest.TestCase):
         english = self._text(TOOLS_EN)
         russian = self._text(TOOLS_RU)
         for baker in sorted(expected):
-            self.assertIn(f"`Source/Tools/{baker}.*`", english)
-            self.assertIn(f"`Source/Tools/{baker}.*`", russian)
+            module = "ConfigBaker" if baker == "ClientConfigBaker" else baker
+            self.assertIn(f"`Source/Tools/{module}.*`", english)
+            self.assertIn(f"`Source/Tools/{module}.*`", russian)
 
         mapper_bindings = self._text("Source/Scripting/MapperGlobalScriptMethods.cpp")
         self.assertIn("Mapper_Game_SaveMapperScreenshot", mapper_bindings)

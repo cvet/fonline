@@ -5,7 +5,7 @@ locale: ru
 document_id: tools
 permalink: /Docs/ru/reference/tools/
 ---
-<!-- docs-translation: {"document_id":"tools","locale":"ru","source_path":"Docs/en/reference/tools/index.md","source_sha256":"ee1f868745b31534d7e05195f69d432344bc018fc500a40b53768c4bf166fbd1"} -->
+<!-- docs-translation: {"document_id":"tools","locale":"ru","source_path":"Docs/en/reference/tools/index.md","source_sha256":"8b9dea6e4ec75c29d98d711a89d764ae6509ac4c54bdc10a068e1114ea579edf"} -->
 # Инструменты
 
 > Документация движка. Эта страница сопоставляет переиспользуемые инструменты из `Source/Tools/` с точками входа приложений. Конкретные игровые content pipelines, project-specific command lines и release automation принадлежат документации встраивающего проекта, если они явно не отмечены как примеры.
@@ -94,7 +94,7 @@ permalink: /Docs/ru/reference/tools/
 Встроенные реализации bakers:
 
 - `Source/Tools/MetadataBaker.*` - разбирает metadata tags и создает metadata resources для runtime registration;
-- `Source/Tools/ConfigBaker.*` - выпекает configuration resources;
+- `Source/Tools/ConfigBaker.*` — запекает конфигурацию; в этом же модуле `ClientConfigBaker : ConfigBaker` пишет полные настройки `.fomain-client`;
 - `Source/Tools/RawCopyBaker.*` - копирует выбранные resources без преобразования;
 - `Source/Tools/AudioBaker.*` - проверяет Ogg/Vorbis и преобразует поддерживаемые WAV inputs в общий runtime Vorbis payload, сохраняя authored paths;
 - `Source/Tools/ImageBaker.*` - импортирует image/sprite/frame formats, включая классические Fallout formats и PNG/TGA;

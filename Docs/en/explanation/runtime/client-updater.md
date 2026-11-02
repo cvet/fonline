@@ -492,7 +492,6 @@ from the generated binary markers before writing bootstrap config data.
 Naming convention from `build_runtime_update_target_name` in `BuildTools/package.py`:
 - `Windows-win64`, `Linux-x64`, `Linux-arm64`, `macOS-arm64`, `Android-arm64`, etc.
 - Profiling variants get the `_Profiling` suffix in the staged file name.
-- The Windows OpenGL variant (`OGL`) is staged separately and patches `ForceOpenGL=1`.
 - Binary outputs tagged by `FO_BINARY_OUTPUT_POSTFIX` (e.g. `Client-Linux-x64-Steam`, `Client-Windows-win64-Steam`) are staged under the same `PlatformBinaries/<target>/` directory as the default variant, but `package_all_client_runtime_update_payloads` appends `_<postfix>` to every staged payload name (`<runtime-name>_Steam.so`, `<runtime-name>_Headless_Steam.so`, etc.) so variants do not clobber each other. `extract_binary_entry_postfix` strips either the packager order (`-Profiling_X-Debug`) or the actual CMake multi-config name (`-Debug_Profiling_X`), as well as the named release and sanitizer configurations, before reading an optional postfix. Unrelated or malformed `Client-*` directories are skipped instead of aborting an otherwise valid package. The matching package declaration must put the same value on that `BINARY` entry with `POSTFIX <value>`; there is no package-wide fallback from `FO_BINARY_OUTPUT_POSTFIX`. The client-side packager mirrors the suffix in `bin_out_name`, so the patched `PACKAGED_BUILD_NAME` lines up with the server-side payload name used by `Updater.cpp::remap_runtime_name` (`runtime_server_prefix = GetPackagedRuntimeName()`). `win32-win7` and `win64-win7` normalize to updater targets `Windows-win32` and `Windows-win64`; an explicit postfix is what keeps a legacy payload distinct from the regular build.
 
 ## Embedding-project practices
@@ -650,3 +649,20 @@ Local validation steps:
 - [Engine Architecture](../architecture/) for engine, application, and build ownership.
 - [Native, AngelScript, and Managed Debugging](../../troubleshooting/debugging.md) for debugger setup; the host vs runtime split affects which binary the debugger should attach to.
 - The embedding project's release documentation for product-specific package profiles and alternative distribution channels.
+
+## Complete configuration updates
+
+Before initialization, a packaged client reads its selected `.fomain-client`
+from `Metadata`. Package `--config` selects the same file for native embedding.
+Each archive retains target metadata/sidecars and one config. Server packages
+separate `.fomain-server` startup resources from `.fomain-client` distribution.
+[Configuration and data sources](../../reference/settings/configuration-and-data-sources.md#downloaded-client-configuration)
+owns the file, precedence and validation contract.
+
+After resource/metadata verification, `Updater::FinishResourcesUpdate` compares
+the downloaded file with the text applied at startup. Changed text returns
+`UpdaterResult::SettingsRestartRequired`; the existing restart screen waits for
+client shutdown, and headless clients exit immediately. This successful resource
+update does not promote native modules or report a crash. The next launch reads
+the resource config before frontend creation; unchanged text proceeds directly.
+Rebuild the native client for first adoption and qualify each shipped platform.

@@ -50,7 +50,7 @@ class WebDebuggingDocumentationTests(unittest.TestCase):
             "The `build_gated` label qualifies compilation of the browser client",
             "The helper does not build or bake.",
             "binds `('', port)`",
-            "The audited generic path does not prove automatic write-back",
+            "this does not establish automatic write-back for every other virtual-filesystem modification",
             "The Engine build lane intentionally does not supply this browser/release evidence.",
         ):
             self.assertIn(contract, guide)
@@ -103,7 +103,7 @@ class WebDebuggingDocumentationTests(unittest.TestCase):
         import buildtools
 
         with tempfile.TemporaryDirectory() as temporary_directory:
-            workspace = Path(temporary_directory) / "workspace"
+            workspace = Path(temporary_directory).resolve() / "workspace"
             workspace_emsdk = workspace / "emsdk"
             workspace_emsdk.mkdir(parents=True)
             with patch.dict(
@@ -182,7 +182,10 @@ class WebDebuggingDocumentationTests(unittest.TestCase):
             "window.visualViewport.addEventListener('resize', notifyResize)",
             "document.addEventListener('fullscreenchange', notifyResize)",
             "FS.mount(IDBFS, {}, '/PersistentData')",
-            "FS.syncfs(true, function(err) { Module.syncfsDone = 1; })",
+            "FS.syncfs(true, function(err)",
+            "FS.syncfs(false, function(err)",
+            "abort('Unable to load persistent client data: ' + err)",
+            "abort('Unable to save persistent client data: ' + err)",
             "emscripten_set_main_loop_arg(entry, data, 0, 1)",
             'SDL_SetHint(SDL_HINT_EMSCRIPTEN_ASYNCIFY, "0")',
         ):

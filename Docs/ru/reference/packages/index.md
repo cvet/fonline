@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-package-index","locale":"ru","source_path":"Docs/en/reference/packages/index.md","source_sha256":"9db76ced446a91cfefb813e8ba62368ee11f420563d83491179a0b1576a377dc"} -->
+<!-- docs-translation: {"document_id":"generated-package-index","locale":"ru","source_path":"Docs/en/reference/packages/index.md","source_sha256":"d49b8da383d4439b1a7336a41dc9d0bede9bb38f21cae9420f365d7c7c1b8647"} -->
 
 # Сгенерированный интерфейс пакетов
 
@@ -34,14 +34,14 @@ generated: true
 | Support policy | Версионируемая линия поддержки пакетов не объявлена; встраивающие проекты должны фиксировать ревизию движка. |
 | Manifest | [BuildTools/PackageInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/PackageInterface.json) |
 | Packager | [BuildTools/package.py](https://github.com/cvet/fonline/blob/master/BuildTools/package.py) |
-| Contract digest | <code>9b7ee7503482fcd68637cfa9957ff420cce81dbb15cc97b09b33bf255ee976b9</code> |
+| Contract digest | <code>7c255cadeb4dd744b470ffdf984c85e4a887b18f43a07f7d2707f94d7c1d8554</code> |
 
 ## Покрытие
 
 | Справочник | Записи | Назначение |
 | --- | --- | --- |
 | [Declaration](declaration.md) | 2 | CMake clauses and per-binary modifiers. |
-| [Targets/platforms/packs](matrix.md) | 6 / 6 / 19 | Accepted runtime dimensions and support status. |
+| [Targets/platforms/packs](matrix.md) | 6 / 6 / 18 | Accepted runtime dimensions and support status. |
 | [Payloads and artifacts](payloads.md) | 8 | Implemented output-producing pack tokens. |
 | [Packager CLI](cli.md) | 17 | Exact internal package.py invocation contract. |
 

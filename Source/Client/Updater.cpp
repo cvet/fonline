@@ -41,6 +41,7 @@
 #include "ResourceIndex.h"
 #include "ResourcePack.h"
 #include "UpdateDescriptor.h"
+#include "WebRelated.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -506,6 +507,31 @@ void Updater::FinishResourcesUpdate()
     }
 
     RebuildResourceIndex();
+
+    if (_settings->Common.Packaged) {
+        auto content = ReadResourceConfig(*_settings, true);
+
+        if (content) {
+            auto checked = GlobalSettings(false);
+            checked.ApplyResourceConfig(*content);
+            checked.ApplyWritableRoot(_settings->Common.UserWritablePath);
+            bool changed = _settings->GetResourceConfigContent() != content;
+
+            if (changed) {
+                PreserveLocalConfig(*_settings, checked);
+                WebRelated::FlushPersistentData();
+                logging::write("Client updater: configuration changed, restart required before gameplay");
+                _result = UpdaterResult::SettingsRestartRequired;
+
+                if (!GetApp()->IsHeadless()) {
+                    AddText(StrRestartRequired);
+                    _restartPrompt = true;
+                }
+
+                return;
+            }
+        }
+    }
 
     logging::write("Client updater: resources ready, metadata version {}", local_metadata_version);
     _result = UpdaterResult::ResourcesReady;
@@ -1802,6 +1828,8 @@ static auto UpdaterResultToString(UpdaterResult result) noexcept -> string_view
         return "ResourcesReady";
     case UpdaterResult::BinariesStaged:
         return "BinariesStaged";
+    case UpdaterResult::SettingsRestartRequired:
+        return "SettingsRestartRequired";
     case UpdaterResult::PlatformUnsupported:
         return "PlatformUnsupported";
     case UpdaterResult::ServerMissingNativeUpdate:
@@ -1823,7 +1851,7 @@ auto IsUpdaterFailureReportable(UpdaterResult result) noexcept -> bool
 {
     // Client-local updater failures are reportable; transient server downtime would otherwise emit one crash
     // per player for every restart
-    return result != UpdaterResult::ConnectionFailed;
+    return result != UpdaterResult::ConnectionFailed && result != UpdaterResult::SettingsRestartRequired;
 }
 
 // Reported, not thrown: the caller still owns the dialog and the quit that follows. Constructing the
@@ -1869,6 +1897,7 @@ void ShowUpdaterFailure(UpdaterResult result)
         break;
     case UpdaterResult::ResourcesReady:
     case UpdaterResult::BinariesStaged:
+    case UpdaterResult::SettingsRestartRequired:
     default:
         break;
     }

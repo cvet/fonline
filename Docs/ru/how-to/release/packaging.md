@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/release/packaging.html
 ---
 
 # Упаковка и выпуск
-<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"d4b29f496340836345f392fcb2f3888713df09523818743d0c14a1e59da6c812"} -->
+<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"3494ef16034db8f8813026128ac9a6f0fd28107441f1b9b32eaa43d5b6dd1b03"} -->
 Точная текущая grammar, совместимость target/platform, pack tokens, payloads и
 command-line arguments находятся в сгенерированном
 [package interface](../../reference/packages/index.md). Перед тем как
@@ -143,7 +143,7 @@ BINARY <target> <platform> <architecture> <pack+tokens> [POSTFIX <variant>]
 ```
 
 `CONFIG` выбирает baked sub-config. Для resource-bearing client и server
-packages baking должен создать `Baking/Configs/<config>.fomain-client` или
+packages baking должен создать `Baking/Metadata/<config>.fomain-client` или
 `...-server` через baker `Config`. Package target не создаёт незаметно
 отсутствующие application binaries или baked resources.
 
@@ -300,7 +300,6 @@ evidence. Для Linux support и immutable example-release evidence необх�
   service; любая другая ошибка linker/ICE и failed fallback остаются
   фатальными. На POSIX packaging host требуется `wixl` версии
   0.102 или новее.
-- `OGL` добавляет отдельно собранный OpenGL runtime variant.
 - `Lib` выбирает library form там, где target её поддерживает.
 - `POSTFIX` не даёт независимо собранным variants, например depot-specific
   client, конфликтовать.
@@ -579,7 +578,7 @@ compatibility или безопасный rollback.
 
 | Симптом | Сначала проверьте |
 |---|---|
-| `Config file not found` | Baker `Config`, package `CONFIG`, `Baking/Configs` и fresh bake output |
+| `Config file not found` | Baker `Config`, package `CONFIG`, `Baking/Metadata` и fresh bake output |
 | Отсутствует binary input | Built target/variant, platform architecture key, `POSTFIX` и общий `FO_OUTPUT_PATH` |
 | Unknown или invalid pack token | Generated package matrix, а не запомненные комбинации |
 | Package успешен, но requested artifact отсутствует | Output-producing pack token и final package output path |

@@ -547,8 +547,9 @@ TEST_CASE("ClientUpdaterKeepsConfirmedBytesWhenTheUdpServerDropsAndResumesOnTheN
     REQUIRE(fs::create_directories(writable));
     vector<uint8_t> metadata = BakerTests::MakeMetadataBlob({});
 
+    // This transport fixture has no packaged config, so its metadata uses a custom pack
     for (const string& directory : {install, published}) {
-        ResourcePackWriter writer {strex(directory).combine_path("Metadata.fores").str()};
+        ResourcePackWriter writer {strex(directory).combine_path("TestMetadata.fores").str()};
         writer.AddFile("Metadata.fometa-client", metadata);
         writer.Finish();
     }
@@ -596,7 +597,7 @@ TEST_CASE("ClientUpdaterKeepsConfirmedBytesWhenTheUdpServerDropsAndResumesOnTheN
         GlobalSettings server_settings = MakeServerTestSettings(port);
         BakerTests::OverrideSetting(server_settings.Common.Packaged, true);
         BakerTests::OverrideSetting(server_settings.Baking.ClientResources, published);
-        auto server_pack_config = ConfigFile("[ResourcePack]\nName = Metadata\nClientOnly = True\n[ResourcePack]\nName = Art\nClientOnly = True\n");
+        auto server_pack_config = ConfigFile("[ResourcePack]\nName = TestMetadata\nClientOnly = True\n[ResourcePack]\nName = Art\nClientOnly = True\n");
         server_settings.ApplyConfigFile(server_pack_config, "");
         BakerTests::OverrideSetting(server_settings.Baking.PlatformBinaries, strex(published).combine_path("NoBinaries").str());
         BakerTests::OverrideSetting(server_settings.Network.DisableInterthreadCommunication, true);
@@ -625,9 +626,10 @@ TEST_CASE("ClientUpdaterKeepsConfirmedBytesWhenTheUdpServerDropsAndResumesOnTheN
         // A lost UDP disconnect packet must time out inside this fixture's processing window
         BakerTests::OverrideSetting(client_settings.ClientNetwork.PingTimeout, 1000);
 
-        auto client_pack_config = ConfigFile("[ResourcePack]\nName = Embedded\nClientOnly = True\n[ResourcePack]\nName = Metadata\nClientOnly = True\n[ResourcePack]\nName = Art\nClientOnly = True\n");
+        auto client_pack_config = ConfigFile("[ResourcePack]\nName = Embedded\nClientOnly = True\n[ResourcePack]\nName = TestMetadata\nClientOnly = True\n[ResourcePack]\nName = Art\nClientOnly = True\n");
         client_settings.ApplyConfigFile(client_pack_config, "");
         client_settings.ApplyWritableRoot(writable);
+        REQUIRE_FALSE(ReadResourceConfig(client_settings, true));
 
         Updater updater {&client_settings, &GetApp()->MainWindow};
         int32_t transfer_iterations = 0;
@@ -784,8 +786,10 @@ TEST_CASE("ClientUpdaterResourcePatchLifecycle")
     REQUIRE(fs::create_directories(writable));
     vector<uint8_t> metadata = BakerTests::MakeMetadataBlob({});
 
+    // This patch-only fixture has no packaged native bootstrap or resource configuration.
+    // Keep its metadata in a custom pack; the reserved Metadata pack also owns the startup config.
     for (const string& directory : {install, published}) {
-        ResourcePackWriter writer {strex(directory).combine_path("Metadata.fores").str()};
+        ResourcePackWriter writer {strex(directory).combine_path("TestMetadata.fores").str()};
         writer.AddFile("Metadata.fometa-client", metadata);
         writer.Finish();
     }
@@ -814,7 +818,7 @@ TEST_CASE("ClientUpdaterResourcePatchLifecycle")
         GlobalSettings server_settings = MakeServerTestSettings(port);
         BakerTests::OverrideSetting(server_settings.Common.Packaged, true);
         BakerTests::OverrideSetting(server_settings.Baking.ClientResources, published);
-        auto server_pack_config = ConfigFile("[ResourcePack]\nName = Metadata\nClientOnly = True\n[ResourcePack]\nName = Art\nClientOnly = True\n");
+        auto server_pack_config = ConfigFile("[ResourcePack]\nName = TestMetadata\nClientOnly = True\n[ResourcePack]\nName = Art\nClientOnly = True\n");
         server_settings.ApplyConfigFile(server_pack_config, "");
         BakerTests::OverrideSetting(server_settings.Baking.PlatformBinaries, strex(published).combine_path("NoBinaries").str());
         BakerTests::OverrideSetting(server_settings.ServerNetwork.UpdateFilesInMemory, in_memory);
@@ -836,9 +840,10 @@ TEST_CASE("ClientUpdaterResourcePatchLifecycle")
         GlobalSettings client_settings = MakeClientTestSettings(port);
         BakerTests::OverrideSetting(client_settings.Common.Packaged, true);
         BakerTests::OverrideSetting(client_settings.Baking.ClientResources, install);
-        auto client_pack_config = ConfigFile("[ResourcePack]\nName = Embedded\nClientOnly = True\n[ResourcePack]\nName = Metadata\nClientOnly = True\n[ResourcePack]\nName = Art\nClientOnly = True\n");
+        auto client_pack_config = ConfigFile("[ResourcePack]\nName = Embedded\nClientOnly = True\n[ResourcePack]\nName = TestMetadata\nClientOnly = True\n[ResourcePack]\nName = Art\nClientOnly = True\n");
         client_settings.ApplyConfigFile(client_pack_config, "");
         client_settings.ApplyWritableRoot(writable);
+        REQUIRE_FALSE(ReadResourceConfig(client_settings, true));
         Updater updater {&client_settings, &GetApp()->MainWindow};
         REQUIRE(WaitForUpdaterResult(updater));
         REQUIRE(updater.GetResult() == UpdaterResult::ResourcesReady);

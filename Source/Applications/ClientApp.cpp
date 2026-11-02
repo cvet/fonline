@@ -61,6 +61,7 @@ struct ClientAppData
     string StagedRuntimePath;
     string WritableRoot {};
     optional<Updater> ResourceUpdater {};
+    vector<string> StartupArguments {};
 };
 FO_GLOBAL_DATA(ClientAppData, Data);
 
@@ -78,6 +79,7 @@ static auto RunClientFromLibrary(CommandLineArgs args, const RequestedClientRunt
 static auto PromoteStagedReloadForRestart(string_view runtime_path) -> bool;
 static auto RunEmbeddedClient(CommandLineArgs args) -> ClientRuntimeHostResult;
 static auto RunClientRuntime(CommandLineArgs args) noexcept -> ClientRuntimeResult;
+static void InitClientApp(CommandLineArgs args);
 static void MainEntry(void* data);
 static void CleanupClientApp() noexcept;
 static auto TryLoadRuntime(const RequestedClientRuntime& requested_runtime, ClientRuntimeExports& exports) -> nptr<void>;
@@ -263,18 +265,19 @@ static auto RunClientRuntime(CommandLineArgs args) noexcept -> ClientRuntimeResu
     runtime_result.ResultKind = ClientRuntimeResultKind::Shutdown;
 
     try {
-        logging::write("Client runtime embedded: starting InitApp, build {}, compatibility {}", FO_BUILD_HASH, FO_COMPATIBILITY_VERSION);
-        InitApp(args, combine_enum(AppInitFlags::ClientMode, AppInitFlags::ShowMessageOnException, AppInitFlags::PrebakeResources, AppInitFlags::AppendLogFile));
-        logging::write("Compatibility version: {}", GetApp()->Settings.Network.CompatibilityVersion);
-        logging::write("Client runtime: embedded client build {}, compatibility {}", FO_BUILD_HASH, FO_COMPATIBILITY_VERSION);
+#if FO_WEB
+        for (size_t i = 0; i < args.size(); i++) {
+            Data->StartupArguments.emplace_back(args.Get(i));
+        }
+
+        WebRelated::InitializePersistentData();
+        WebRelated::StartMainLoop(MainEntry, nullptr);
+#else
+        InitClientApp(args);
 
 #if FO_IOS
         MainEntry(nullptr);
         GetApp()->SetMainLoopCallback(MainEntry);
-
-#elif FO_WEB
-        WebRelated::InitializePersistentData();
-        WebRelated::StartMainLoop(MainEntry, nullptr);
 
 #elif FO_ANDROID
         while (!GetApp()->IsQuitRequested()) {
@@ -289,6 +292,7 @@ static auto RunClientRuntime(CommandLineArgs args) noexcept -> ClientRuntimeResu
             MainEntry(nullptr);
             balancer.EndLoop();
         }
+#endif
 #endif
 
         logging::write("Exit from game");
@@ -331,6 +335,16 @@ static auto RunClientRuntime(CommandLineArgs args) noexcept -> ClientRuntimeResu
     return runtime_result;
 }
 
+static void InitClientApp(CommandLineArgs args)
+{
+    FO_TRACE_ZONE(App);
+
+    logging::write("Client runtime embedded: starting InitApp, build {}, compatibility {}", FO_BUILD_HASH, FO_COMPATIBILITY_VERSION);
+    InitApp(args, combine_enum(AppInitFlags::StandaloneClient, AppInitFlags::ShowMessageOnException, AppInitFlags::PrebakeResources, AppInitFlags::AppendLogFile));
+    logging::write("Compatibility version: {}", GetApp()->Settings.Network.CompatibilityVersion);
+    logging::write("Client runtime: embedded client build {}, compatibility {}", FO_BUILD_HASH, FO_COMPATIBILITY_VERSION);
+}
+
 static auto GetClient() -> ptr<ClientEngine>
 {
     FO_VERIFY_AND_THROW(Data->Client, "Client engine is not created");
@@ -340,6 +354,27 @@ static auto GetClient() -> ptr<ClientEngine>
 static void MainEntry([[maybe_unused]] void* data)
 {
     FO_TRACE_ZONE(App);
+
+    if (!WebRelated::IsPersistentDataReady()) {
+        return;
+    }
+
+#if FO_WEB
+    if (!IsAppInitialized()) {
+        vector<CommandLineArg> arguments;
+
+        for (string& argument : Data->StartupArguments) {
+            arguments.emplace_back(argument.data());
+        }
+
+        try {
+            InitClientApp(CommandLineArgs {arguments});
+        }
+        catch (const std::exception& ex) {
+            exceptions::report_and_exit(ex);
+        }
+    }
+#endif
 
     if (GetApp()->IsQuitRequested()) {
 #if FO_WEB
@@ -352,10 +387,6 @@ static void MainEntry([[maybe_unused]] void* data)
     }
 
     try {
-        if (!WebRelated::IsPersistentDataReady()) {
-            return;
-        }
-
         try {
             GetApp()->BeginFrame();
         }
@@ -400,6 +431,10 @@ static void MainEntry([[maybe_unused]] void* data)
                         logging::write("Client runtime embedded: updater finished, resources ready");
                         Data->ResourcesSynced = true;
                         break;
+                    case UpdaterResult::SettingsRestartRequired:
+                        logging::write("Client runtime embedded: exiting for configuration restart");
+                        GetApp()->RequestQuit();
+                        return;
                     case UpdaterResult::BinariesStaged:
                         Data->StagedRuntimePath = staged_runtime_path;
                         Data->ReloadRequested = true;

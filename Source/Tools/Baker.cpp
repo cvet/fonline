@@ -115,6 +115,9 @@ auto BaseBaker::SetupBakers(span<const string> request_bakers, const string& pac
     if (vec_exists(request_bakers, ConfigBaker::NAME)) {
         bakers.emplace_back(safe_alloc::make_unique<ConfigBaker>(ctx));
     }
+    if (vec_exists(request_bakers, ClientConfigBaker::NAME)) {
+        bakers.emplace_back(safe_alloc::make_unique<ClientConfigBaker>(ctx));
+    }
     if (vec_exists(request_bakers, RawCopyBaker::NAME)) {
         bakers.emplace_back(safe_alloc::make_unique<RawCopyBaker>(ctx));
     }

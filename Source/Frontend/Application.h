@@ -656,7 +656,7 @@ private:
 enum class AppInitFlags : uint8_t
 {
     None = 0x00,
-    ClientMode = 0x01,
+    StandaloneClient = 0x01,
     DisableLogTags = 0x02,
     ShowMessageOnException = 0x04,
     PrebakeResources = 0x08,
@@ -794,7 +794,7 @@ private:
     uint64_t _time {};
     uint64_t _timeFrequency {};
     bool _isTablet {};
-    bool _clientMode {};
+    bool _standaloneClient {};
     bool _nativeCursorHidden {};
     bool _mouseCanUseGlobalState {};
     int32_t _pendingMouseLeaveFrame {};

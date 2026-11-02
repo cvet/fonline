@@ -170,6 +170,14 @@ the temporary settings borrow before the settings can move or unwind.
 The resolved setting controls subsequent errors. Fatal exception reporting
 still exits with failure; a nonfatal error requests the ordinary shutdown path.
 
+`AppInitFlags::StandaloneClient` identifies the standalone player-client application,
+including its runtime DLL. Client engines embedded in a server window leave this
+flag unset. It controls the standalone window's native-cursor policy, screen saver,
+clear color, initial fullscreen and always-on-top behavior. Resource configuration
+loads before frontend creation, preferring a server config and otherwise a client
+config. The flag describes the application that owns these services; client
+engines are created later and their presence alone does not set it.
+
 After initialization, the client records the OS/version, CPU count, memory, SDL video driver, display mode and window metrics once in its log; a browser build also records its user agent. Each renderer names its selected device and driver, while degraded capabilities are warnings. These diagnostics describe the environment, not a guarantee that a particular GPU or platform passed release acceptance.
 
 ## Application services

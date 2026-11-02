@@ -549,6 +549,7 @@ For the exact project-configuration grammar and precedence rules, see [Configure
 | --- | --- | ---: | --- |
 | `Metadata` | `MetadataBaker` | 1 | always |
 | `Config` | `ConfigBaker` | 2 | always |
+| `ClientConfig` | `ClientConfigBaker` | 2 | complete client configuration outputs |
 | `RawCopy` | `RawCopyBaker` | 4 | always |
 | `Audio` | `AudioBaker` | 4 | always |
 | `Image` | `ImageBaker` | 4 | always |
@@ -566,6 +567,17 @@ For the exact project-configuration grammar and precedence rules, see [Configure
 The particle/model/prototype/map stages intentionally form a strict dependency chain: particle outputs at order `5` are visible to model-info validation at order `6`, model descriptions are visible to prototype validation at order `7`, and baked prototypes are visible to map baking at order `8`. Bakers at the same order may run concurrently across resource packs and therefore must not consume one another's outputs.
 
 When documenting a specific asset type, inspect the relevant baker class and its tests rather than inferring behavior from file extensions alone.
+
+`ClientConfigBaker` inherits the configuration baking algorithm and order from
+`ConfigBaker`; both classes live in the `ConfigBaker.h/.cpp` module.
+It owns the `ClientConfig` name and writes complete client configuration files.
+When both bakers are declared in the same pack, `ConfigBaker` leaves client files
+to `ClientConfigBaker`, retaining the existing output names without duplicate
+compact profiles. Ordinary `Bakers=Config` keeps its server/client outputs.
+Packaging selects the existing sub-config once for native embedding and resources.
+Use `Bakers=Metadata Config ClientConfig` in `Metadata`. Archives retain target
+metadata/sidecars and one selected config; all profiles remain in bake output.
+Server/client archives stay separate for startup and distribution.
 
 ### Image conversion failures
 

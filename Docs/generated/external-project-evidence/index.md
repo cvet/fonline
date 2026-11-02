@@ -302,7 +302,7 @@ This internal audit records discovery material, ownership decisions, and promoti
 
 ## Verification
 
-The normal generator/check validates schema, ownership, disposition rules, Engine targets, and deterministic output. A maintainer with both exact external checkouts also runs source verification; it proves every recorded path exists in the pinned commit rather than trusting the current working tree.
+The normal generator/check validates schema, ownership, disposition rules, Engine targets, and deterministic output. Source verification maps every snapshot to its repository checkout and reads its pinned commit; multiple revisions may share a checkout without changing HEAD. Dirty or newer files cannot supply missing pinned sources. Unsupported repositories, missing commits and missing sources are errors.
 
 ```bash
 python BuildTools/docs_external_evidence.py --check

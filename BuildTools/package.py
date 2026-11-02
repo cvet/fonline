@@ -347,6 +347,12 @@ def load_config_from_data(config_data: bytes) -> foconfig.ConfigParser:
 	return config
 
 
+def load_package_pack_names(build_tools_path: str) -> frozenset[str]:
+	with open(os.path.join(build_tools_path, 'PackageInterface.json'), 'r', encoding='utf-8') as file:
+		package_interface = json.load(file)
+	return frozenset(pack['name'] for pack in package_interface['packs'])
+
+
 def is_png_data(data: bytes) -> bool:
 	return data.startswith(PNG_FILE_SIGNATURE)
 
@@ -363,6 +369,8 @@ def resolve_android_abi(arch: str) -> str:
 
 # Compiled into the executable rather than shipped as a pack; DataSource.h owns the same name
 EMBEDDED_PACK_NAME = 'Embedded'
+# Carries the baked metadata and the one packaged application config; DataSource.h owns the same name
+METADATA_PACK_NAME = 'Metadata'
 
 RESOURCE_PACK_MAGIC = 0x53524F46
 RESOURCE_PACK_VERSION_MAJOR = 2
@@ -893,18 +901,12 @@ def make_embedded_marker(size: int) -> bytearray:
 class BinaryVariant:
 	role: str = ''
 	profiling: str = ''
-	graphics: str = ''
 
 	def log_name(self) -> str:
-		return '+'.join(part for part in [self.role, self.profiling, self.graphics] if part)
+		return '+'.join(part for part in [self.role, self.profiling] if part)
 
-	def output_suffix(self, is_windows: bool) -> str:
-		suffix = ''
-		if self.profiling:
-			suffix += '_Profiling'
-		if is_windows and self.graphics == 'OGL':
-			suffix += '_OpenGL'
-		return suffix
+	def output_suffix(self) -> str:
+		return '_Profiling' if self.profiling else ''
 
 
 @dataclass
@@ -937,6 +939,9 @@ class Packager:
 		self.pack_args = set(self.args.pack.split('+'))
 		self.output_path = os.path.realpath(self.args.output if self.args.output else os.getcwd()).rstrip('\\/')
 		self.build_tools_path = os.path.dirname(os.path.realpath(__file__))
+		# A removed or misspelled token would otherwise silently select nothing
+		unknown_packs = sorted(self.pack_args - load_package_pack_names(self.build_tools_path))
+		assert not unknown_packs, 'Unknown package pack token: ' + ', '.join(unknown_packs)
 		self.server_res_dir = self.fomain.mainSection().getStr('Baking.ServerResources')
 		self.client_res_dir = self.fomain.mainSection().getStr('Baking.ClientResources')
 		self.platform_binaries_dir = self.fomain.mainSection().getStr('Baking.PlatformBinaries')
@@ -991,8 +996,8 @@ class Packager:
 			entry += '-' + self.args.binary_output_postfix
 		return entry
 
-	def build_output_variant_suffix(self, variant: BinaryVariant, is_windows: bool) -> str:
-		return variant.output_suffix(is_windows)
+	def build_output_variant_suffix(self, variant: BinaryVariant) -> str:
+		return variant.output_suffix()
 
 	def build_client_runtime_input_name(self, variant: BinaryVariant | None = None) -> str:
 		role = variant.role if variant is not None else ''
@@ -1110,10 +1115,10 @@ class Packager:
 			log('Runtime companion included', entry_name)
 			shutil.copy(entry_path, os.path.join(self.target_output_path, entry_name))
 
-	def package_platform_binary(self, bin_path: str, input_name: str, output_name: str, output_ext: str, additional_config_data: str | None = None, excluded_companions: set[str] | None = None) -> str:
+	def package_platform_binary(self, bin_path: str, input_name: str, output_name: str, output_ext: str, excluded_companions: set[str] | None = None) -> str:
 		output_file_path = os.path.join(self.target_output_path, output_name + output_ext)
 		shutil.copy(os.path.join(bin_path, input_name + output_ext), output_file_path)
-		self.patch_packaged_binary(output_file_path, output_name, additional_config_data)
+		self.patch_packaged_binary(output_file_path, output_name)
 		self.copy_runtime_companions(bin_path, input_name, output_ext, excluded_companions)
 		return output_file_path
 
@@ -1201,15 +1206,13 @@ class Packager:
 				# the right file
 				postfix_suffix = '_' + entry_postfix if entry_postfix else ''
 
-				variant_specs: list[tuple[str, str | None, BinaryVariant]] = []
-				variant_specs.append((self.args.nicename + suffix + postfix_suffix, None, default_runtime_variant))
-				if platform == 'Windows':
-					variant_specs.append((self.args.nicename + suffix + '_OpenGL' + postfix_suffix, 'Render.ForceOpenGL=1', default_runtime_variant))
+				variant_specs: list[tuple[str, BinaryVariant]] = []
+				variant_specs.append((self.args.nicename + suffix + postfix_suffix, default_runtime_variant))
 				headless_runtime_path = os.path.join(entry_path, self.build_client_runtime_input_name(headless_runtime_variant) + runtime_ext)
 				if os.path.isfile(headless_runtime_path):
-					variant_specs.append((self.args.nicename + suffix + '_Headless' + postfix_suffix, None, headless_runtime_variant))
+					variant_specs.append((self.args.nicename + suffix + '_Headless' + postfix_suffix, headless_runtime_variant))
 
-				for output_name, variant_config_data, runtime_variant in variant_specs:
+				for output_name, runtime_variant in variant_specs:
 					runtime_input_name = self.build_client_runtime_input_name(runtime_variant)
 					runtime_input_path = os.path.join(entry_path, runtime_input_name + runtime_ext)
 					if not os.path.isfile(runtime_input_path):
@@ -1237,7 +1240,7 @@ class Packager:
 					try:
 						self.embedded_data = client_embedded_data
 						self.config_data = client_config_data
-						self.patch_packaged_binary(output_path, output_name, variant_config_data)
+						self.patch_packaged_binary(output_path, output_name)
 					finally:
 						self.embedded_data = old_embedded_data
 						self.config_data = old_config_data
@@ -1331,10 +1334,6 @@ class Packager:
 		if copied_payloads:
 			return 'staged ' + ', '.join(sorted(target + '/' + name for target, name in copied_payloads))
 		return 'no client binaries directory was found for it'
-
-	def merge_additional_config_data(self, *entries: str | None) -> str | None:
-		lines = [entry for entry in entries if entry]
-		return '\n'.join(lines) if lines else None
 
 	def select_platform_packager(self) -> Callable[[], None]:
 		if self.args.platform == 'Windows':
@@ -1461,7 +1460,23 @@ class Packager:
 		used_paths = self.get_resource_usage_allowlists().get(pack_name)
 		assert used_paths is not None, 'Resource pack is not listed in the resource usage manifest: ' + pack_name
 		pack_root = os.path.join(self.baking_path, pack_name)
-		files = [os.path.join(pack_root, *relative_path.split('/')) for relative_path in sorted(used_paths)]
+		selected_config_relative_path: str | None = None
+
+		if pack_name == METADATA_PACK_NAME:
+			selected_config_name, _ = self.read_config_data(target)
+			selected_config_relative_path = PurePosixPath(selected_config_name.replace(os.sep, '/')).as_posix()
+			assert selected_config_relative_path in used_paths, (
+				'Selected config is not listed in the resource usage manifest: ' + pack_name + '/' + selected_config_relative_path)
+
+		selected_paths = sorted(used_paths)
+		if selected_config_relative_path is not None:
+			# Every baked profile is listed as used; Metadata ships only the package-selected config
+			selected_paths = [
+				relative_path for relative_path in selected_paths
+				if relative_path == selected_config_relative_path or not PurePosixPath(relative_path).suffix.startswith('.fomain-')
+			]
+
+		files = [os.path.join(pack_root, *relative_path.split('/')) for relative_path in selected_paths]
 		return [file_path for file_path in files if self.filter_resource_file(target, file_path)]
 
 	def make_embedded_data_for_target(self, target: str) -> bytes:
@@ -1476,7 +1491,7 @@ class Packager:
 		assert self.baking_path, 'Baking path is not initialized'
 		config_suffix = 'client' if target == 'Client' else 'server'
 		config_name = (self.args.config if self.args.config else '(Root)') + '.fomain-' + config_suffix
-		config_path = os.path.join(self.baking_path, 'Configs', config_name)
+		config_path = os.path.join(self.baking_path, METADATA_PACK_NAME, config_name)
 		assert os.path.isfile(config_path), 'Config file not found'
 		with open(config_path, 'r', encoding='utf-8-sig') as file:
 			return config_name, file.read().encode()
@@ -1810,24 +1825,22 @@ class Packager:
 		assert embedded_capacity >= 10000, embedded_capacity
 		patch_data(file_path, make_embedded_marker(embedded_capacity), self.embedded_data, embedded_capacity)
 
-	def patch_config(self, file_path: str, additional_config_data: str | None = None) -> None:
+	def patch_config(self, file_path: str) -> None:
 		assert self.config_data, 'Embedded config is not prepared'
-		# The baked config ends with its [ResourcePack] sections, and a line appended after them would belong to the last one
-		result_data = ((additional_config_data + '\n').encode() if additional_config_data else b'') + self.config_data
 		with open(file_path, 'rb') as file:
 			content = file.read()
-		patch_data(file_path, INTERNAL_CONFIG_MARKER, result_data, find_internal_config_capacity(content))
+		patch_data(file_path, INTERNAL_CONFIG_MARKER, self.config_data, find_internal_config_capacity(content))
 
 	def patch_packaged_build_name(self, file_path: str, build_name: str) -> None:
 		name_bytes = build_name.encode('utf-8')
 		assert len(name_bytes) + 1 <= PACKAGED_BUILD_NAME_CAPACITY, f'Packaged build name too long ({len(name_bytes)} bytes, cap {PACKAGED_BUILD_NAME_CAPACITY - 1}): {build_name}'
 		patch_data(file_path, PACKAGED_BUILD_NAME_MARKER, name_bytes + b'\x00' * (PACKAGED_BUILD_NAME_CAPACITY - len(name_bytes)), PACKAGED_BUILD_NAME_CAPACITY)
 
-	def patch_packaged_binary(self, file_path: str, build_name: str, additional_config_data: str | None = None) -> None:
+	def patch_packaged_binary(self, file_path: str, build_name: str) -> None:
 		if self.has_pack('NoRes'):
 			return
 		self.patch_embedded(file_path)
-		self.patch_config(file_path, additional_config_data)
+		self.patch_config(file_path)
 		self.patch_packaged_build_name(file_path, build_name)
 
 	def iter_windows_variants(self) -> list[BinaryVariant]:
@@ -1843,15 +1856,10 @@ class Packager:
 		if self.has_pack('OnDemandProfiling'):
 			profiling_variants.append('OnDemandProfiling')
 
-		graphics_variants = ['']
-		if self.has_pack('OGL'):
-			graphics_variants.append('OGL')
-
 		return [
-			BinaryVariant(bin_role, profiling_variant, graphics_variant)
+			BinaryVariant(bin_role, profiling_variant)
 			for bin_role in bin_roles
 			for profiling_variant in profiling_variants
-			for graphics_variant in graphics_variants
 		]
 
 	def iter_linux_variants(self) -> list[BinaryVariant]:
@@ -1891,21 +1899,20 @@ class Packager:
 				bin_name = self.args.devname + '_' + self.args.target + variant.role + ('Lib' if is_lib else '')
 				log('Setup', arch, bin_name, variant.log_name())
 
-				bin_out_name = bin_name + self.build_output_variant_suffix(variant, is_windows=True) if self.args.target != 'Client' else self.args.nicename + ('_' + variant.role if variant.role else '') + self.build_output_variant_suffix(variant, is_windows=True) + client_postfix_suffix
+				bin_out_name = bin_name + self.build_output_variant_suffix(variant) if self.args.target != 'Client' else self.args.nicename + ('_' + variant.role if variant.role else '') + self.build_output_variant_suffix(variant) + client_postfix_suffix
 				bin_path = self.resolve_binary_input_dir(arch, variant, bin_name)
 				bin_ext = '.dll' if is_lib else '.exe'
 				log('Binary input', bin_path)
 
-				additional_config_data = 'Render.ForceOpenGL=1' if variant.graphics == 'OGL' else None
 				excluded_companions = set(client_runtime_companions)
 
 				if self.args.target == 'Client' and not is_lib:
 					runtime_input_name = self.build_client_runtime_input_name(variant)
 					runtime_out_name = bin_out_name
-					runtime_dll_path = self.package_platform_binary(bin_path, runtime_input_name, runtime_out_name, '.dll', additional_config_data, excluded_companions=excluded_companions)
+					runtime_dll_path = self.package_platform_binary(bin_path, runtime_input_name, runtime_out_name, '.dll', excluded_companions=excluded_companions)
 					self.copy_runtime_pdb(bin_path, runtime_input_name, runtime_dll_path)
 
-				main_binary_path = self.package_platform_binary(bin_path, bin_name, bin_out_name, bin_ext, additional_config_data, excluded_companions)
+				main_binary_path = self.package_platform_binary(bin_path, bin_name, bin_out_name, bin_ext, excluded_companions)
 				self.copy_pdb(bin_path, bin_name, bin_out_name)
 				if bin_ext == '.exe':
 					# Point the frozen host exe at its sibling `<name>.pdb` (renamed from the
@@ -1933,20 +1940,19 @@ class Packager:
 					bin_out_name_base = self.args.nicename + ('_' + variant.role if variant.role else '')
 				else:
 					bin_out_name_base = bin_name
-				bin_out_name = bin_out_name_base + self.build_output_variant_suffix(variant, is_windows=False) + client_postfix_suffix
+				bin_out_name = bin_out_name_base + self.build_output_variant_suffix(variant) + client_postfix_suffix
 				log('Setup', arch, bin_name, variant.log_name())
 				bin_path = self.resolve_binary_input_dir(arch, variant, bin_name)
 				log('Binary input', bin_path)
 
-				additional_config_data = None
 				excluded_companions: set[str] = set(cross_variant_excluded)
 
 				if self.args.target == 'Client':
 					runtime_input_name = self.build_client_runtime_input_name(variant)
 					runtime_out_name = bin_out_name
-					self.package_platform_binary(bin_path, runtime_input_name, runtime_out_name, '.so', additional_config_data, excluded_companions=excluded_companions)
+					self.package_platform_binary(bin_path, runtime_input_name, runtime_out_name, '.so', excluded_companions=excluded_companions)
 
-				output_file_path = self.package_platform_binary(bin_path, bin_name, bin_out_name, '', additional_config_data, excluded_companions)
+				output_file_path = self.package_platform_binary(bin_path, bin_name, bin_out_name, '', excluded_companions)
 
 				self.record_logical_file_mode(output_file_path, 0o755)
 				st = os.stat(output_file_path)
