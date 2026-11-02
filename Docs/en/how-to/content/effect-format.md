@@ -338,6 +338,12 @@ sizes to the native structures and rejects unknown blocks.
 | `ScriptValueBuf` | `vec4 ScriptValue[MAX_SCRIPT_VALUES / 4]` | project-controlled float slots |
 | `CameraBuf` | `vec4 MapAnchorScreenPos; vec4 ChunkScreenAnchor` | world/screen affine UV bases |
 
+`EffectManager` refreshes `TimeBuf` and `RandomValueBuf` once per frame.
+Every draw using the same effect in that frame must see those values, including
+later offscreen presentations. Vulkan uploads them into each fresh descriptor
+set and retains the payload until its producer refreshes it; a completed draw
+does not consume the frame values.
+
 For `CameraBuf`, evaluate either basis as:
 
 ```glsl

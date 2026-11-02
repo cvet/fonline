@@ -1,0 +1,11 @@
+Common.GameName = Frame Uniform Probe
+Common.NonInteractive = True
+Render.HeadlessWindow = True
+Render.ForceVulkan = True
+Render.NullRenderer = False
+Render.VSync = False
+Render.Fullscreen = False
+View.ScreenWidth = 64
+View.ScreenHeight = 64
+Audio.DisableAudio = True
+Input.DisableGamepad = True

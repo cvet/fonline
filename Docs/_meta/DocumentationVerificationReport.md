@@ -1,5 +1,36 @@
 # Documentation Verification Report
 
+## 2026-11-02 - Preserve Vulkan frame uniforms across repeated draws
+
+Review `EffectManager::PerFrameEffectUpdate`, the client frame update, Vulkan
+descriptor uploads and the other frontend buffer lifetimes. Frame time and
+random values are supplied once per frame. Vulkan cleared their CPU payloads
+after the first draw and supplied zero defaults to the next fresh descriptor set.
+Retain both payloads until their producer refreshes them; per-draw derived buffers
+keep their existing reset behavior. Document this contract in the paired effect
+guides and the separate hardware route in the paired testing guides.
+
+The actual Windows/Vulkan shader/readback probe reproduced a first-draw PASS and
+second-draw zero payload on two different frames. The unchanged oracle passed
+after the fix. The `RunFrameUniformProbe` target in `BuildTools/validation-project`
+was then built and run through CMake. Independent time-only and random-only
+reset mutations in an isolated source copy both failed for their specific GPU
+channels; restoring the source returned the target to PASS. The first fixture
+attempts used an unsupported out-of-tree Engine layout and a headless profile;
+they are retained as preparation failures. This copied validation project has an
+explicit source manifest and dirty-source delta, not a clean-commit producer claim.
+
+The native mixed sprite/text characterization passed 1758 assertions over direct,
+prepared-owner and scheduler paths. Its complete Managed/native configuration
+suite passed 871 cases with one explicit missing-named-timer fixture skip and
+1749217 assertions. It does not exercise the hardware backend. Native layout and
+module checks passed; the focused effect-format documentation suite passed ten
+tests, the documentation validator suite passed fifty tests, and documentation
+validation passed for 415 Markdown entries. The original accepted application
+binaries were preserved. Ordinary GUI behavior, other hardware backends and
+platforms still require their own qualification; transient CRT effects are not
+disabled or accepted as proof of a threading defect.
+
 ## 2026-10-24 - Prepare FOFRM rework against published master 61
 
 Integrate published feature `a0489ef02bc71b2c5caab53b19d1524bc0e2b381`

@@ -1679,11 +1679,10 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
     EggBuf.reset();
     SpriteBorderBuf.reset();
     ParticleSamplingBuf.reset();
-    TimeBuf.reset();
-    RandomValueBuf.reset();
     CameraBuf.reset();
-    // ScriptValueBuf intentionally not reset: it persists across draws and is re-uploaded each
-    // draw, matching the OpenGL/D3D backends (D3D uploads it with reset_buf=false)
+
+    // Frame time, random and script payloads outlive individual draws; each fresh descriptor set
+    // must receive their current values until the owning producer replaces them
 #if FO_ENABLE_3D
     ModelBuf.reset();
     ModelTexBuf.reset();

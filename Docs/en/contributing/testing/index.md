@@ -42,6 +42,14 @@ The standard generated names use the embedding project's development-name prefix
 
 Feature-specific test bodies use the same compile-time guards as their runtime types. `ModelSpriteHitTestReadsItsMaskFromTheAtlas` requires `FO_ENABLE_3D` and runs with either scripting backend; a 2D-only project still builds and runs the remaining client, atlas and hit-testing suites.
 
+The validation project also provides the explicit `RunFrameUniformProbe` target
+on desktop builds with Baker, frontend and unit-test support. It opens a hidden
+Vulkan window, bakes its own shader and reads back two draws per frame over two
+different frame payloads. Both draws must see the supplied time and random
+values. Build it with `cmake --build <validation-build> --config RelWithDebInfo --target RunFrameUniformProbe`.
+This hardware check is separate from the headless Catch2 suite; it performs no
+player input and does not qualify ordinary GUI behavior or another renderer.
+
 The client/server login fixture sets the controlled critter's `LookDistance` to 20 before entering the world. Its movement and synchronized ground-item probes require that visibility range when an embedding project's visibility hooks use distance checks; a zero default would legitimately hide the probed items after movement.
 
 `Test_SpriteSheet.cpp` uses a native resolver and stub frontend with either scripting

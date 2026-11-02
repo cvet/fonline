@@ -5,7 +5,7 @@ locale: ru
 document_id: effect-format-guide
 permalink: /Docs/ru/how-to/content/effect-format.html
 ---
-<!-- docs-translation: {"document_id":"effect-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/effect-format.md","source_sha256":"dce3f7ec64a38feb365c46e8fb1a36c0fd1b89ddc976d03d7720b6437b6da145"} -->
+<!-- docs-translation: {"document_id":"effect-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/effect-format.md","source_sha256":"3bb3ea8ff89b6a9c4533c1e305bb1eddab47760a91216041d2a193d66deefde0"} -->
 # Формат эффектов и runtime шейдеров
 
 FOnline использует файлы `.fofx` для авторских GPU-эффектов. Один исходный файл
@@ -347,6 +347,12 @@ Runtime распознаёт следующие имена sampler-ов:
 | `RandomValueBuf` | `vec4 RandomValue` | четыре значения кадра в диапазоне `[0,1]` |
 | `ScriptValueBuf` | `vec4 ScriptValue[MAX_SCRIPT_VALUES / 4]` | управляемые проектом float-слоты |
 | `CameraBuf` | `vec4 MapAnchorScreenPos; vec4 ChunkScreenAnchor` | аффинные UV-базисы мира/экрана |
+
+`EffectManager` обновляет `TimeBuf` и `RandomValueBuf` один раз за кадр.
+Все отрисовки одним эффектом в этом кадре должны видеть эти значения, включая
+последующие offscreen-презентации. Vulkan загружает их в каждый новый descriptor
+set и сохраняет payload до обновления владельцем; завершённая отрисовка
+не потребляет значения кадра.
 
 Для `CameraBuf` вычисляйте любой базис так:
 

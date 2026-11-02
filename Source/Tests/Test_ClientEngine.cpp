@@ -1934,6 +1934,99 @@ TEST_CASE("SpriteManagerMapsPolygonAtlasPatternsAndPaddedEffects")
     sprite->SetDrawEffect(nullptr);
 }
 
+TEST_CASE("SpriteManagerPreservesMixedImageTextPacketsAcrossScissorFlush")
+{
+    int32_t mode = GENERATE(0, 1, 2);
+    CAPTURE(mode);
+
+    auto resources = MakeUnitTestFontResources();
+    REQUIRE(resources.front().first == "UnitTestFont.fofnt");
+    string descriptor(resources.front().second.begin(), resources.front().second.end());
+    size_t end_offset = descriptor.find("End\n");
+    REQUIRE(end_offset != string::npos);
+    descriptor.insert(end_offset, "Letter '/'\nPositionX 0\nPositionY 0\nWidth 4\nHeight 6\nOffsetX 0\nOffsetY 0\nXAdvance 5\n");
+    resources.front().second.assign(descriptor.begin(), descriptor.end());
+    resources.emplace_back("HudBar.png", BakerTests::MakeMinimalBakedSprite(4, 4));
+
+    RecordingQuadEffect effect;
+    auto settings = MakeClientTestSettings();
+    BakerTests::OverrideSetting(settings.Client.Multithreading, mode != 0);
+    BakerTests::OverrideSetting(settings.Client.MultithreadingMaxWorkers, int32_t {2});
+    BakerTests::OverrideSetting(settings.Client.MultithreadingHeadroomMinCores, int32_t {0});
+    BakerTests::OverrideSetting(settings.Render.ParallelSpriteGeometryMinCount, mode == 1 ? std::numeric_limits<int32_t>::max() : int32_t {2});
+    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(resources)));
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+
+    if (mode != 0 && !client->WorkSched.IsParallel()) {
+        SKIP("Prepared sprite geometry requires client workers on this platform");
+    }
+
+    auto sprite = client->ResMngr.LoadSprite("HudBar.png", AtlasType::OneImage);
+    REQUIRE(sprite);
+    sprite->SetDrawEffect(make_nptr(&effect));
+    client->FontMngr.BindFoFont(FontType::Default, "UnitTestFont.fofnt", AtlasType::OneImage, true, false);
+    client->FontMngr.SetFontEffect(FontType::Default, make_nptr(&effect));
+
+    auto before = client->WorkSched.GetDiagnostics();
+    ucolor background {30, 80, 120, 210};
+    ucolor foreground {100, 230, 40, 255};
+    client->SprMngr.PushScissor({10, 20, 120, 14});
+    REQUIRE(client->SprMngr.DrawSpriteRegion(sprite, {0.0f, 0.0f}, {0.75f, 1.0f}, {10.0f, 20.0f}, {90.0f, 14.0f}, background));
+    client->FontMngr.DrawText({10, 20, 120, 14}, "100 / 100", foreground, {FontType::Default, FontFlag::NoWrap, 0});
+    client->SprMngr.PopScissor();
+    client->SprMngr.DrawSpriteSize(sprite, {2, 3}, {4, 4}, false, false, background);
+    client->SprMngr.Flush();
+
+    auto after = client->WorkSched.GetDiagnostics();
+    CHECK(after.ParallelBatches - before.ParallelBatches == (mode == 2 ? 1 : 0));
+    REQUIRE(effect.Draws.size() == 3);
+    CHECK(effect.Draws[0].StartIndex == 0);
+    CHECK(effect.Draws[0].IndicesToDraw == 6);
+    CHECK(effect.Draws[1].StartIndex == 6);
+    CHECK(effect.Draws[1].IndicesToDraw == 42);
+    CHECK(effect.Draws[2].StartIndex == 0);
+    CHECK(effect.Draws[2].IndicesToDraw == 6);
+    CHECK(effect.Draws[0].CustomTexture == sprite->GetBatchTexture());
+    CHECK(effect.Draws[1].CustomTexture != sprite->GetBatchTexture());
+    CHECK(effect.Draws[2].CustomTexture == sprite->GetBatchTexture());
+
+    auto check_quad = [](const RecordedQuadDraw& draw, size_t offset, frect32 position, frect32 uv, ucolor color) {
+        REQUIRE(offset + 4 <= draw.Vertices.size());
+        array<fpos32, 4> positions {{{position.x, position.y + position.height}, {position.x, position.y}, {position.x + position.width, position.y}, {position.x + position.width, position.y + position.height}}};
+        array<fpos32, 4> texture_positions {{{uv.x, uv.y + uv.height}, {uv.x, uv.y}, {uv.x + uv.width, uv.y}, {uv.x + uv.width, uv.y + uv.height}}};
+
+        for (size_t corner = 0; corner < 4; corner++) {
+            const auto& vertex = draw.Vertices[offset + corner];
+            CHECK(vertex.PosX == Catch::Approx(positions[corner].x));
+            CHECK(vertex.PosY == Catch::Approx(positions[corner].y));
+            CHECK(vertex.PosZ == 0.0f);
+            CHECK(vertex.TexU == Catch::Approx(texture_positions[corner].x));
+            CHECK(vertex.TexV == Catch::Approx(texture_positions[corner].y));
+            CHECK(vertex.Color == color);
+            CHECK(vertex.EggFlags[0] == 0.0f);
+            CHECK(vertex.EggFlags[1] == 0.0f);
+        }
+    };
+
+    for (size_t draw_index = 0; draw_index < 2; draw_index++) {
+        const auto& draw = effect.Draws[draw_index];
+        REQUIRE(draw.Vertices.size() == 32);
+        REQUIRE(draw.Indices.size() == 48);
+        check_quad(draw, 0, {10.0f, 20.0f, 90.0f, 14.0f}, {1.0f / 6.0f, 1.0f / 6.0f, 0.5f, 2.0f / 3.0f}, background);
+        CHECK(vector<vindex_t>(draw.Indices.begin(), draw.Indices.begin() + 6) == vector<vindex_t> {0, 1, 3, 1, 2, 3});
+        CHECK(vector<vindex_t>(draw.Indices.end() - 6, draw.Indices.end()) == vector<vindex_t> {28, 29, 31, 29, 30, 31});
+        array<float32_t, 7> glyph_lefts {9.0f, 14.0f, 19.0f, 29.0f, 39.0f, 44.0f, 49.0f};
+
+        for (size_t glyph = 0; glyph < glyph_lefts.size(); glyph++) {
+            check_quad(draw, (glyph + 1) * 4, {glyph_lefts[glyph], 19.0f, 6.0f, 8.0f}, {0.0f, 0.0f, 1.0f / 3.0f, 4.0f / 9.0f}, foreground);
+        }
+    }
+
+    REQUIRE(effect.Draws[2].Vertices.size() == 4);
+    CHECK(effect.Draws[2].Indices == vector<vindex_t> {0, 1, 3, 1, 2, 3});
+    check_quad(effect.Draws[2], 0, {2.0f, 3.0f, 4.0f, 4.0f}, {1.0f / 6.0f, 1.0f / 6.0f, 2.0f / 3.0f, 2.0f / 3.0f}, background);
+}
+
 TEST_CASE("SpriteWireframeRendersThroughPrimitiveOverlay")
 {
     auto settings = MakeClientTestSettings();

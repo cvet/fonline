@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/testing/
 ---
 
 # Тестирование
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"b2a40dbc9a48cd6fdf641a9ba43b8e6be856ef71b2fd9d133b069c8b0fd3f5fa"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"fb7277353743d1917ebdc7ab5545cb62d7397172935848c72e3afbc147edaba1"} -->
 > Test executable движка, сгенерированные test/coverage targets и все текущие suites `Source/Tests/Test_*.cpp`.
 
 ## Назначение
@@ -61,6 +61,14 @@ Python требует, чтобы процесс оставался жив по�
 runtime-типы. `ModelSpriteHitTestReadsItsMaskFromTheAtlas` требует
 `FO_ENABLE_3D` и работает с обоими скриптовыми бэкендами; проект только с 2D продолжает
 собирать и выполнять остальные client, atlas и hit-testing suites.
+
+Validation project также предоставляет явный target `RunFrameUniformProbe`
+в desktop-сборках с Baker, frontend и поддержкой unit tests. Он открывает скрытое
+окно Vulkan, запекает собственный shader и читает результат двух отрисовок за кадр
+на двух различных frame payload. Обе отрисовки должны видеть переданные значения
+времени и случайных чисел. Сборка запускается командой `cmake --build <validation-build> --config RelWithDebInfo --target RunFrameUniformProbe`.
+Эта аппаратная проверка отделена от headless Catch2 suite; она не выполняет
+игровой ввод и не подтверждает обычный GUI-маршрут или другой renderer.
 
 Заготовка входа client/server задаёт контролируемому персонажу `LookDistance`
 равным 20 до входа в мир. Проверки движения и синхронизации предметов на земле
