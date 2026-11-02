@@ -39,10 +39,13 @@ FO_BEGIN_NAMESPACE
 static constexpr int32_t GAG_DETOUR_STEPS {10};
 // A plain or gag step raises an estimate by its cost and by at most one hex of distance, so its push lands within the
 // ring; a critter dearer than that waits in the heap
-static constexpr int32_t OPEN_BUCKETS {16};
-static constexpr int32_t SEARCH_BLOCK_SHIFT {4};
-static constexpr int32_t SEARCH_BLOCK_SIDE {1 << SEARCH_BLOCK_SHIFT};
-static constexpr int32_t SEARCH_BLOCK_CELLS {SEARCH_BLOCK_SIDE * SEARCH_BLOCK_SIDE};
+static constexpr int32_t OPEN_BUCKETS = 16;
+static constexpr int32_t SEARCH_BLOCK_SHIFT = 4;
+static constexpr int32_t SEARCH_BLOCK_SIDE = 1 << SEARCH_BLOCK_SHIFT;
+static constexpr int32_t SEARCH_BLOCK_CELLS = SEARCH_BLOCK_SIDE * SEARCH_BLOCK_SIDE;
+// Maps with more blocks than this index touched blocks through a hash table, so a search on a continent-sized map
+// does not pay for a map-sized block index (128,000 cells per side would need 256 MB per search)
+static constexpr int64_t DENSE_SEARCH_BLOCK_INDEX_LIMIT = 1 << 16;
 
 static_assert(1 + GAG_DETOUR_STEPS + 1 < OPEN_BUCKETS);
 
@@ -102,8 +105,12 @@ private:
     auto GetBlockSlot(mpos hex) const -> size_t { return numeric_cast<size_t>(safe_numeric_cast<int64_t>(hex.y >> SEARCH_BLOCK_SHIFT) * _blocksPerRow + (hex.x >> SEARCH_BLOCK_SHIFT)); }
     static auto GetCellSlot(int32_t block, mpos hex) -> int32_t { return block * SEARCH_BLOCK_CELLS + (hex.y & (SEARCH_BLOCK_SIDE - 1)) * SEARCH_BLOCK_SIDE + (hex.x & (SEARCH_BLOCK_SIDE - 1)); }
 
+    [[nodiscard]] auto FindBlock(mpos hex) const -> int32_t;
+
     int64_t _blocksPerRow;
+    bool _sparseBlockIndex {};
     vector<int32_t> _blockIndex {};
+    unordered_map<size_t, int32_t> _sparseBlocks {};
     vector<PathSearchCell> _cells {};
 };
 
@@ -1023,13 +1030,28 @@ void PathOpenList::AdmitLater()
 PathSearchGrid::PathSearchGrid(msize map_size) :
     _blocksPerRow {(safe_numeric_cast<int64_t>(map_size.width) + SEARCH_BLOCK_SIDE - 1) >> SEARCH_BLOCK_SHIFT}
 {
-    int64_t block_rows {(safe_numeric_cast<int64_t>(map_size.height) + SEARCH_BLOCK_SIDE - 1) >> SEARCH_BLOCK_SHIFT};
-    _blockIndex.assign(numeric_cast<size_t>(checked_mul(_blocksPerRow, block_rows)), -1);
+    int64_t block_rows = (safe_numeric_cast<int64_t>(map_size.height) + SEARCH_BLOCK_SIDE - 1) >> SEARCH_BLOCK_SHIFT;
+    int64_t block_count = checked_mul(_blocksPerRow, block_rows);
+    _sparseBlockIndex = block_count > DENSE_SEARCH_BLOCK_INDEX_LIMIT;
+
+    if (!_sparseBlockIndex) {
+        _blockIndex.assign(numeric_cast<size_t>(block_count), -1);
+    }
+}
+
+auto PathSearchGrid::FindBlock(mpos hex) const -> int32_t
+{
+    if (!_sparseBlockIndex) {
+        return _blockIndex[GetBlockSlot(hex)];
+    }
+
+    auto it = _sparseBlocks.find(GetBlockSlot(hex));
+    return it != _sparseBlocks.end() ? it->second : -1;
 }
 
 auto PathSearchGrid::FindCell(mpos hex) const -> nptr<const PathSearchCell>
 {
-    int32_t block {_blockIndex[GetBlockSlot(hex)]};
+    int32_t block = FindBlock(hex);
 
     if (block < 0) {
         return nullptr;
@@ -1040,7 +1062,7 @@ auto PathSearchGrid::FindCell(mpos hex) const -> nptr<const PathSearchCell>
 
 auto PathSearchGrid::GetCellIndex(mpos hex) -> int32_t
 {
-    int32_t& block {_blockIndex[GetBlockSlot(hex)]};
+    int32_t& block = _sparseBlockIndex ? _sparseBlocks.try_emplace(GetBlockSlot(hex), -1).first->second : _blockIndex[GetBlockSlot(hex)];
 
     if (block < 0) {
         block = numeric_cast<int32_t>(_cells.size()) / SEARCH_BLOCK_CELLS;

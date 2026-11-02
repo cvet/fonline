@@ -192,6 +192,109 @@ TEST_CASE("TwoDimensionalGrid")
         check_chunk_side.operator()<32>();
     }
 
+    SECTION("ChunkedGridIndexFollowsTouchedAreaOnContinentSizedMaps")
+    {
+        // 128,000 cells per side with 16-cell chunks would need a 512 MB flat chunk index
+        ChunkedTwoDimensionalGrid<int32_t, ipos32, isize32, 16> grid {{128000, 128000}};
+        CHECK(grid.GetAllocatedChunkCount() == 0);
+        CHECK(grid.GetCellForReading({127999, 127999}) == 0);
+
+        *grid.GetCellForWriting({0, 0}) = 1;
+        *grid.GetCellForWriting({127999, 127999}) = 2;
+        *grid.GetCellForWriting({64000, 64015}) = 3;
+
+        CHECK(grid.GetAllocatedChunkCount() == 3);
+        CHECK(grid.GetCellForReading({0, 0}) == 1);
+        CHECK(grid.GetCellForReading({127999, 127999}) == 2);
+        CHECK(grid.GetCellForReading({64000, 64015}) == 3);
+        CHECK(grid.GetCellForReading({64000, 64016}) == 0);
+    }
+
+    SECTION("ChunkedGridClearAreaReleasesCoveredChunksAndResetsPartialOnes")
+    {
+        ChunkedTwoDimensionalGrid<unique_nptr<int32_t>, ipos32, isize32, 16> grid {{256, 256}};
+
+        for (int32_t y = 0; y < 64; y++) {
+            for (int32_t x = 0; x < 64; x++) {
+                *grid.GetCellForWriting({64 + x, 64 + y}) = safe_alloc::make_unique<int32_t>(x + y);
+            }
+        }
+
+        *grid.GetCellForWriting({140, 70}) = safe_alloc::make_unique<int32_t>(7);
+        REQUIRE(grid.GetAllocatedChunkCount() == 17);
+
+        // A sector-shaped area: the 16 chunks inside are released, the neighbouring chunk keeps its other cells
+        grid.ClearArea({64, 64}, {64, 64});
+        CHECK(grid.GetAllocatedChunkCount() == 1);
+        CHECK_FALSE(grid.GetCellForReading({64, 64}));
+        CHECK_FALSE(grid.GetCellForReading({127, 127}));
+        REQUIRE(grid.GetCellForReading({140, 70}));
+        CHECK(*grid.GetCellForReading({140, 70}) == 7);
+
+        *grid.GetCellForWriting({139, 70}) = safe_alloc::make_unique<int32_t>(8);
+        grid.ClearArea({136, 64}, {4, 16});
+        CHECK(grid.GetAllocatedChunkCount() == 1);
+        CHECK_FALSE(grid.GetCellForReading({139, 70}));
+        REQUIRE(grid.GetCellForReading({140, 70}));
+
+        // Areas are clipped to the grid; empty and outside areas change nothing
+        grid.ClearArea({-100, -100}, {0, 50});
+        grid.ClearArea({300, 300}, {10, 10});
+        CHECK(grid.GetAllocatedChunkCount() == 1);
+        grid.ClearArea({-1000, -1000}, {5000, 5000});
+        CHECK(grid.GetAllocatedChunkCount() == 0);
+        CHECK_FALSE(grid.GetCellForReading({140, 70}));
+    }
+
+    SECTION("ChunkedGridLoadUnloadCyclesKeepStorageBounded")
+    {
+        ChunkedTwoDimensionalGrid<int32_t, ipos32, isize32, 16> grid {{128000, 128000}};
+
+        for (int32_t step = 0; step < 100; step++) {
+            ipos32 origin {step * 64, 64000};
+
+            for (int32_t y = 0; y < 64; y += 4) {
+                for (int32_t x = 0; x < 64; x += 4) {
+                    *grid.GetCellForWriting({origin.x + x, origin.y + y}) = step + 1;
+                }
+            }
+
+            if (step >= 2) {
+                grid.ClearArea({(step - 2) * 64, 64000}, {64, 64});
+            }
+
+            CHECK(grid.GetAllocatedChunkCount() <= 3 * 16);
+        }
+
+        CHECK(grid.GetCellForReading({99 * 64, 64000}) == 100);
+        CHECK(grid.GetCellForReading({97 * 64, 64000}) == 0);
+    }
+
+    SECTION("DynamicAndStaticGridsClearArea")
+    {
+        DynamicTwoDimensionalGrid<int32_t, ipos32, isize32> dynamic_grid {{100, 100}};
+        StaticTwoDimensionalGrid<int32_t, ipos32, isize32> static_grid {{100, 100}};
+
+        for (ipos32 pos : {ipos32 {10, 10}, ipos32 {19, 19}, ipos32 {20, 20}, ipos32 {99, 99}}) {
+            *dynamic_grid.GetCellForWriting(pos) = 5;
+            *static_grid.GetCellForWriting(pos) = 5;
+        }
+
+        dynamic_grid.ClearArea({10, 10}, {10, 10});
+        static_grid.ClearArea({10, 10}, {10, 10});
+        dynamic_grid.ClearArea({90, 90}, {1, 1}); // Smaller than the stored cell count: per-cell erase path
+
+        auto check_cleared = [](const auto& grid) {
+            CHECK(grid.GetCellForReading({10, 10}) == 0);
+            CHECK(grid.GetCellForReading({19, 19}) == 0);
+            CHECK(grid.GetCellForReading({20, 20}) == 5);
+            CHECK(grid.GetCellForReading({99, 99}) == 5);
+        };
+
+        check_cleared(dynamic_grid);
+        check_cleared(static_grid);
+    }
+
     SECTION("EveryGridRejectsNegativeSizeOnConstruction")
     {
         using DynamicGrid = DynamicTwoDimensionalGrid<int32_t, ipos32, isize32>;

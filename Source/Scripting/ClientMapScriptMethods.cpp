@@ -108,7 +108,7 @@ FO_SCRIPT_API void Client_Map_DrawMapSprite(ptr<MapView> self, ptr<MapSpriteHold
         mspr->SetMapProjected(true);
     }
     if (!no_light) {
-        mspr->SetLight(corner, self->GetLightData(), self->GetSize());
+        self->SetupSpriteLight(mspr, corner);
     }
 
     if (!is_flat && !disable_egg) {

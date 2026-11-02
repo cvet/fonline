@@ -565,6 +565,51 @@ TEST_CASE("ClientLargeMapScrollBoundsStayWithinMemoryBudget")
     CHECK(map_memory < initial_memory + 64 * 1024 * 1024);
 }
 
+TEST_CASE("ClientMaximumSizeMapLoadsWithoutMapSizedWork")
+{
+    // A map at the configured maximum (up to a 128,000-cell continent with wide coordinates) must construct, scroll,
+    // light and unload with storage and time that follow the touched area rather than the map size
+    auto settings = MakeClientLifetimeSettings();
+    BakerTests::OverrideSetting(settings.View.DisableLighting, false);
+    auto client = MakeClientLifetimeEngine(settings);
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto proto = safe_alloc::make_refcounted<ProtoMap>(client->Hashes.to_hashed_string("MaximumSizeMap"), client->GetPropertyRegistrar("Map"));
+    auto side = numeric_cast<mcoord_t>(std::min<int32_t>(GameSettings::MAX_MAP_SIZE, 128000));
+    auto far_coord = numeric_cast<mcoord_t>(side - 200);
+    proto->SetSize(msize {side, side});
+    proto->SetWorkHex(mpos {far_coord, far_coord});
+
+    size_t initial_memory = platform::get_process_private_memory_usage();
+    auto start_time = nanotime::now();
+    auto map = safe_alloc::make_refcounted<MapView>(client, ident_t {9001}, proto, isize32 {320, 200});
+    auto destroy_map = scope_exit([&map]() noexcept {
+        safe_call([&map] {
+            if (!map->IsDestroyed()) {
+                map->DestroySelf();
+            }
+        });
+    });
+    map->SetScrollCheck(false);
+    map->InstantScrollTo(mpos {200, 200});
+    map->InstantScrollTo(mpos {far_coord, far_coord});
+    auto elapsed = (nanotime::now() - start_time).to_ms<int64_t>();
+    size_t map_memory = platform::get_process_private_memory_usage();
+
+    INFO("Map side " << side << ", construction and two far scrolls took " << elapsed << " ms");
+    CHECK(elapsed < 5000);
+    CHECK(map->GetField(mpos {far_coord, far_coord}).IsView);
+    CHECK_FALSE(map->GetField(mpos {200, 200}).IsView);
+    CHECK(map->GetField(mpos {numeric_cast<mcoord_t>(side - 1), numeric_cast<mcoord_t>(side - 1)}).Items.empty());
+
+    if (initial_memory != 0 && map_memory != 0) {
+        INFO("Maximum-size map private memory: " << map_memory << "; initial: " << initial_memory);
+        CHECK(map_memory < initial_memory + 64 * 1024 * 1024);
+    }
+
+    map->DestroySelf();
+    CHECK_FALSE(client->GetEntity(map->GetId()));
+}
+
 TEST_CASE("ClientMapConstructionFailureReleasesRenderTargets")
 {
     auto settings {MakeClientLifetimeSettings()};

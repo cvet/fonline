@@ -174,6 +174,7 @@ public:
         vector<ptr<ItemHexView>> OriginItems {};
         vector<pair<ptr<ItemHexView>, bool>> MultihexItems {}; // true if drawable
         unordered_map<ptr<LightSource>, ucolor> LightSources {};
+        ucolor Light {}; // Strongest applied light; map sprites keep pointers to it
         nptr<ItemHexView> GroundTile {};
         int32_t RoofNum {};
         CornerType Corner {};
@@ -210,7 +211,6 @@ public:
     [[nodiscard]] auto GetScreenSize() const noexcept -> isize32 { return _screenSize; }
     [[nodiscard]] auto GetField(mpos hex) noexcept -> const Field& { return _hexField->GetCellForReading(hex); }
     [[nodiscard]] auto IsHexToDraw(mpos hex) const noexcept -> bool { return _hexField->GetCellForReading(hex).IsView; }
-    [[nodiscard]] auto GetLightData() noexcept -> ptr<ucolor> { return make_ptr(_hexLight.data()); }
     [[nodiscard]] auto IsManualScrolling() const noexcept -> bool { return _manualScroll != ScrollDirection::None; }
     [[nodiscard]] auto GetManualScroll() const noexcept -> ScrollDirection { return _manualScroll; }
     [[nodiscard]] auto GetVisibleLayers() const noexcept -> MapLayers { return _visibleLayers; }
@@ -314,6 +314,8 @@ public:
     void UpdateHexLightSources(mpos hex);
 
     void SetHiddenRoof(mpos hex);
+    // Points the sprite at the light of its hex and two corner neighbours, allocating those fields
+    void SetupSpriteLight(ptr<MapSprite> mspr, CornerType corner);
     auto GetHiddenRoofNum() -> int32_t;
     void EnsureRoofNums();
 
@@ -366,7 +368,7 @@ private:
     void RemoveItemFromField(ptr<ItemHexView> item);
     void DrawHexItem(ptr<ItemHexView> item, ptr<Field> field, mpos hex, bool extra_draw);
 
-    void RecacheHexFlags(ptr<Field> field);
+    void RecacheHexFlags(mpos hex, ptr<Field> field);
     void RecacheScrollBlocks();
 
     void RebuildMapNow();
@@ -403,7 +405,7 @@ private:
     void MarkLightEnd(ptr<LightSource> ls, mpos from_hex, mpos to_hex, int32_t raw_intensity);
     void MarkLightEndNeighbor(ptr<LightSource> ls, mpos hex, bool north_south, int32_t raw_intensity);
     void MarkLight(ptr<LightSource> ls, mpos hex, int32_t raw_intensity);
-    void CalculateHexLight(mpos hex, ptr<const Field> field);
+    void CalculateHexLight(ptr<Field> field);
     void LightFanToPrimitves(ptr<const LightSource> ls, vector<PrimitivePoint>& points) const;
 
     void OnDestroySelf() override;
@@ -472,7 +474,6 @@ private:
     static constexpr size_t FOG_SLOT_COUNT {static_cast<size_t>(DrawOrderType::Last) + 1};
     array<vector<refcount_ptr<FogLayer>>, FOG_SLOT_COUNT> _fogs {};
 
-    vector<ucolor> _hexLight {};
     vector<ucolor> _hexTargetLight {};
     nanotime _hexLightTime {};
 
@@ -491,6 +492,9 @@ private:
 
     int32_t _hiddenRoofNum {};
     optional<mpos> _hiddenRoofHex {};
+    unordered_set<mpos> _roofHexes {};
+    vector<mpos> _numberedRoofHexes {};
+    vector<mpos> _scrollBlockHexes {};
     bool _roofNumsDirty {true};
 
     array<TransparentEggInfo, SpriteManager::EGG_SLOT_COUNT> _transparentEggs {};
