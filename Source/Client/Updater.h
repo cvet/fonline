@@ -113,6 +113,7 @@ private:
         uint64_t RemaningSize {};
         uint64_t Hash {};
         bool IsClientBinary {};
+        bool RetriedWholeFile {};
         bool TryPatch {true};
         ResourcePackHeader PackHeader {};
     };

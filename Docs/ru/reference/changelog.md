@@ -7,12 +7,22 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"3996ff6af46013aece10c6c66d9a7cf442056df6a7d9c73d0b61ca9613a905fc"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"e701ebcedfd0fa448aac9332f66cba27e4fee4cf63747a503be439f059178fd4"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
 ## Current - 2026-11-02
+
+### Исправлено
+
+- Повреждённая native-загрузка updater восстанавливается в том же запуске: временный файл с неверным размером, hash или префиксом удаляется и запрашивается один раз с нуля, корректный префикс возобновляется; при отказе удаления или повторной ошибке обновление прерывается без замены. `///@ Enum <Name> <Entry> = -` отклоняется.
+
+### Миграция
+
+- База `d6742fb78664773f64f09d497243db08106aed35` (`2026.1.97-dev`), новая версия `2026.1.98-dev`: преобразование не требуется. Протокол, `MigrationRule Version` `0.0.86`, Managed ABI `9` и схемы ресурсов не меняются.
+
+## 2026.1.97-dev - 2026-11-02
 
 ### Добавлено
 

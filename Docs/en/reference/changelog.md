@@ -14,6 +14,16 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-11-02
 
+### Fixed
+
+- Recover a corrupted native updater payload within the current launch: a temporary file with a wrong size, hash or prefix is removed and requested once from offset zero, a valid prefix still resumes, and a refused removal or second failure aborts without promotion. Reject `///@ Enum <Name> <Entry> = -`.
+
+### Migration
+
+- Baseline `d6742fb78664773f64f09d497243db08106aed35` (`2026.1.97-dev`) to `2026.1.98-dev`: no conversion is required. The protocol, `MigrationRule Version` `0.0.86`, Managed ABI `9` and resource schemas are unchanged.
+
+## 2026.1.97-dev - 2026-11-02
+
 ### Added
 
 - `ClientConfigBaker`, derived from `ConfigBaker` in the same module, writes complete client settings to the existing `.fomain-client` outputs. A paired `Metadata` pack has no duplicate compact client outputs.
