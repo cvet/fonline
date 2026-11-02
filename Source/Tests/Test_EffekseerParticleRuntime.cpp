@@ -1258,19 +1258,21 @@ public:
     ptr<const uint8_t> Identity;
 };
 
-static auto MakeCpuEquationEffect(bool local) -> vector<uint8_t>
+static auto MakeCpuEquationEffect(bool local, int32_t particle_count) -> vector<uint8_t>
 {
     // The compiler deliberately excludes equation authoring. Build a normal version-1800 effect, then encode
     // the documented vendored InternalScript records before either validation or the runtime loads the payload.
-    constexpr string_view project = R"XML(<EffekseerProject><Root><Children><Node><Name>Equation</Name>
-<CommonValues><MaxGeneration><Value>128</Value></MaxGeneration><Life><Max>600</Max><Min>600</Min></Life>
+    string project = strex(R"XML(<EffekseerProject><Root><Children><Node><Name>Equation</Name>
+<CommonValues><MaxGeneration><Value>{}</Value></MaxGeneration><Life><Max>600</Max><Min>600</Min></Life>
 <Generation><GenerationTime><Max>0</Max><Min>0</Min></GenerationTime></Generation></CommonValues>
 <LocationValues><Type>0</Type><Fixed><Location><X>123.25</X><Y>456.5</Y><Z>789.75</Z></Location></Fixed></LocationValues>
 <RendererCommonValues><ColorTexture>Texture/Cpu.png</ColorTexture></RendererCommonValues>
 <DrawingValues><Type>2</Type></DrawingValues><Children/></Node></Children></Root>
-<Dynamic><Inputs/><Equations/></Dynamic><ToolVersion>1.80.5</ToolVersion><Version>3</Version></EffekseerProject>)XML";
+<Dynamic><Inputs/><Equations/></Dynamic><ToolVersion>1.80.5</ToolVersion><Version>3</Version></EffekseerProject>)XML", particle_count).str();
+
     vector<uint8_t> source(project.begin(), project.end());
     auto payload = CompileEffekseerProject("Particles/Equation.efkproj", source).Binary;
+
     vector<uint8_t> program;
     const auto append = [](vector<uint8_t>& bytes, int32_t value) {
         auto record = std::bit_cast<array<uint8_t, 4>>(value);
@@ -1355,21 +1357,24 @@ struct EffekseerEquationWorkerEvidence
     uint64_t LocalWorkerKernelCalls {};
 };
 
-static auto RunEffekseerEquationGeometryScenario() -> EffekseerEquationWorkerEvidence;
+static auto RunEffekseerEquationGeometryScenario(int32_t particle_count) -> EffekseerEquationWorkerEvidence;
 
 TEST_CASE("Effekseer serialized local and global equations change actual particle geometry", "[particle][effekseer][particle-cpu-dynamics]")
 {
-    (void)RunEffekseerEquationGeometryScenario();
+    (void)RunEffekseerEquationGeometryScenario(128);
 }
 
 TEST_CASE("Effekseer equation CPU worker participation qualification", "[.][particle-worker-qualification][particle-cpu-dynamics]")
 {
+    // Keep the default oracle small; qualification needs enough independent instances for helper work
+    constexpr int32_t particle_count = 4096;
+
     EffekseerEquationWorkerEvidence total_evidence;
     size_t attempts = 0;
     bool witness_present = false;
 
     for (size_t attempt = 0; attempt < 4; attempt++) {
-        EffekseerEquationWorkerEvidence attempt_evidence = RunEffekseerEquationGeometryScenario();
+        EffekseerEquationWorkerEvidence attempt_evidence = RunEffekseerEquationGeometryScenario(particle_count);
         attempts++;
 
         logging::write("EFFEKSEEREQUATIONWORKERQUALIFY attempt={} globalWorkerCalls={} localWorkerCalls={}",
@@ -1389,7 +1394,7 @@ TEST_CASE("Effekseer equation CPU worker participation qualification", "[.][part
     CHECK(total_evidence.GlobalWorkerKernelCalls > 0);
 }
 
-static auto RunEffekseerEquationGeometryScenario() -> EffekseerEquationWorkerEvidence
+static auto RunEffekseerEquationGeometryScenario(int32_t particle_count) -> EffekseerEquationWorkerEvidence
 {
     InitializeEffekseerMemory();
     WorkScheduler zero {"EquationZero", 0};
@@ -1399,7 +1404,7 @@ static auto RunEffekseerEquationGeometryScenario() -> EffekseerEquationWorkerEvi
 
     for (bool local : {false, true}) {
         CAPTURE(local);
-        auto payload = MakeCpuEquationEffect(local);
+        auto payload = MakeCpuEquationEffect(local, particle_count);
         auto manager = Effekseer::Manager::Create(16384);
         auto effect = Effekseer::Effect::Create(manager, payload.data(), numeric_cast<int32_t>(payload.size()));
         REQUIRE(effect);
@@ -1434,7 +1439,7 @@ static auto RunEffekseerEquationGeometryScenario() -> EffekseerEquationWorkerEvi
                 rig.ClearDraws();
                 system->Draw();
                 const auto& draws = rig.GetDraws();
-                REQUIRE(CountCpuVertices(draws) == 128 * 4);
+                REQUIRE(CountCpuVertices(draws) == numeric_cast<size_t>(particle_count) * 4);
                 REQUIRE(draws.front().Vertices.size() >= 4);
                 float32_t center = 0.0f;
 

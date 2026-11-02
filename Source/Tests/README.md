@@ -69,6 +69,8 @@ Use the executable target directly when you need Catch2 arguments. Generated tes
 
 Run hidden `[particle-worker-qualification]` with the default suite. It reuses all state, geometry, RNG, attachment and callback checks. Separate actual worker-kernel witnesses are required for basic and moving sprites per backend, SPARK atlas/root callbacks, model SPARK/Effekseer and global equations; local equations remain serial. Sprite/callback qualifiers log four complete samples; model/equation qualifiers log up to four. Disabled backends and SPARK with `SPK_DEBUG` need no witness. Missing work fails qualification. Defaults require completed work and admission where eligible, accept owner-only/helper-only execution, and include an occupied-worker regression. Retain all samples; pool size and planned batches prove neither worker participation nor performance.
 
+Equation geometry uses 128 particles by default. Worker qualification uses 4096 within the runtime's 16384-instance limit, retaining the position/draw and local-equation oracles, four-sample bound, actual-worker requirement and scheduler policy.
+
 ## Opt-in pose batch cost
 
 `ClientPoseBatchCost` in `Test_ClientPoseBatchCost.cpp` is hidden (`[.]`) and requires 3D. Run only that case in a directory containing `ClientPoseBatchCost.json`. Supply `schema: 1`, `rigFile` (a complete `WriteModelAnimationRigData` archive), `nearestSampling` (bool), `clipIndex` (0..65534), `poseCount` (1..1024), `workers` (0..64), `samples` (2..2000), `iterations` (1..64), and `warmup` (1..512). Each lane is capped at four million measured evaluations.
