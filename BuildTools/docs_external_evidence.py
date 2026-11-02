@@ -506,11 +506,7 @@ def verify_external_sources(
             raise ValueError(
                 f"external checkout does not exist for {snapshot_id}: {checkout}"
             )
-        head = _git_output(checkout, "rev-parse", "HEAD")
-        if head != snapshot["revision"]:
-            raise ValueError(
-                f"{snapshot_id} checkout HEAD must be {snapshot['revision']}, got {head}"
-            )
+        _git_output(checkout, "cat-file", "-e", f"{snapshot['revision']}^{{commit}}")
         for source_path in sorted(sources_by_snapshot[snapshot_id]):
             result = subprocess.run(
                 [
@@ -581,13 +577,16 @@ def main(argv: list[str] | None = None) -> int:
                     "--verify-sources requires --last-frontier-root and --tla-root"
                 )
             model = generate_model(root)
-            verify_external_sources(
-                model,
-                {
-                    "last-frontier": args.last_frontier_root,
-                    "fonline-tla": args.tla_root,
-                },
-            )
+            source_roots: dict[str, Path] = {}
+            for snapshot_id, snapshot in model["snapshots"].items():
+                repository = snapshot["repository"]
+                if repository == "lastfrontierdev/lf":
+                    source_roots[snapshot_id] = args.last_frontier_root
+                elif repository == "cvet/fonline-tla":
+                    source_roots[snapshot_id] = args.tla_root
+                else:
+                    raise ValueError(f"unsupported external repository: {repository}")
+            verify_external_sources(model, source_roots)
             print("External project source snapshots are verified")
         return 0
     except ValueError as exception:

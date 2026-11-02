@@ -13459,3 +13459,55 @@ Mapper disk/runtime, bake and player receipts retain their original revisions;
 the new combined source still needs fresh native, Managed, bake and ordinary
 player/platform checks. Rendered-site/browser and final version-history results
 are retained in the consuming reconciliation evidence, separately from runtime.
+
+## 2026-11-02 — Reconciled master and gag-aware client path cuts
+
+Reconcile unpublished local `c095b1f57e873e1c2b7f3b7ca4e147ecceadb928`
+with published `efefc47f3ace19b4e45428a20c2a1b12fc7f7666`, using common
+`c1b3f7114d8c7ec7299ab936fe3c36ee20726dd1`. The incoming range has six files:
+the two current CMake interface expectations, partial Vulkan buffer cleanup,
+bilingual changes and VERSION96. Preserve all four local changes as versions
+97–100 on `c811962f25ae6d551316b76996b5e69e7436fa7a`; every version-history
+step passes. Published versions95/96 remain intact. Retain manual86, ABI9,
+SpriteResource v3 and snapshot4; source changes beyond the incoming range are
+limited to release-note reconciliation.
+
+The next101 step fixes the callback overload of client Map.GetPath. Its ordinary
+CutPath prefilter discarded positive-cut routes before the gag predicate could
+run. One FindPath now owns both cut and gag admission; argument validation,
+adjacent shortcut, signature and result handling retain their meanings. The API
+model was regenerated: its34 differences are source-line offsets only, with no
+symbol or declaration replacement. Public API pages were regenerated too.
+Paired maps-and-movement and release notes document the actual non-adjacent
+contract and the unchanged compatibility identities.
+
+The self-contained real client-map fixture qualifies ScriptFunc/NativeDataCaller
+under ManagedON/AngelScriptOFF/NativeScriptingOFF. Before the fix it passed27
+assertions, including actual gag/wall boolean conversion, physical refusal and
+an exact cut-zero route; only the positive-cut route failed. Catch2 exit42 is its
+documented test-failure result. The final regression adds refusing-callback,
+solid-gap replacement, within-cut, negative-cut and invalid-argument controls.
+On the101 working source, all five native targets build without warnings. The
+full unit runner passes812 of813cases, with one pre-existing skip and750498
+passing assertions. All managed roles and resource baking pass with unchanged
+authored inputs and nine protected ordinary-player database files. The real
+embedding-project closed-door caller changes from its recorded semantic RED to
+one passing test with six expectations and no timeout, skip or global exception.
+
+The regenerated API model changes only34source locations. The contract comparison
+reports zero API changes across17domains and no missing dispositions; pointer,
+allocator, source-layout and module checks pass. The existing Strong exception
+contract is rederived unchanged and its single body hash refreshed; the full audit
+has7637functions with no errors or warnings. Documentation preparation and
+validation pass414Markdown entries. These results do not qualify another backend,
+platform, renderer, ordinary Ward completion or release publication.
+
+
+The external-evidence verifier now resolves all snapshot IDs through the existing
+repository-root flags and reads each pinned commit object independently of HEAD.
+Its10tests cover multiple pins, dirty/deleted overlays, missing commits, wrong
+pinned paths and unknown repository identities. All four real source snapshots
+verify, preserving the earlier three snapshots and32records. The added record
+promotes only the native cut/gag behavior. Fresh documentation-validator tests
+pass50cases, followed by documentation preparation/validation and the101version
+gate; no player completion or public API stability label is inferred from this.

@@ -16,6 +16,18 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Fixed
 
+- Apply the requested cut and gag callback in the same client path search. A valid route through an admitted gag is no longer discarded by an earlier callback-free cut search.
+
+### Migration
+
+- Base `c811962f25ae6d551316b76996b5e69e7436fa7a` (`2026.1.100-dev`) to `2026.1.101-dev`: rebuild Client, Mapper and the native test host. Existing callback signatures, hex coordinates, cut units, invalid-argument errors and the adjacent-hex shortcut retain their meanings. This restores positive-cut routing through admitted gag items; no project source, settings, saved-data or resource conversion is required.
+- The native map owner handles cut-zero exact targets, negative-cut normalization and starts already within cut. Refused gag items and solid blockers remain impassable. The regression uses a real exported callback and script-function conversion on a wall-separated client map; project gameplay and presentation acceptance are separate.
+- No manual compatibility-marker, Managed ABI, network, resource-schema or updater-format change is introduced. The marker remains `0.0.86`, Managed ABI `9`, SpriteResource v3 and snapshot format4 remain unchanged. Normal revision/metadata regeneration still applies; use one matching client/server/resource set when adopting or rolling back the Engine revision.
+
+## 2026.1.100-dev - 2026-11-02
+
+### Fixed
+
 - End standalone Mapper map output with exactly one LF while retaining blank separators between sections.
 - Keep the separator before the next retained section when replacing a map in a multi-map container; untouched sibling blocks remain byte-exact.
 - Retain the Mapper freeze documentation and its source-bound check with the normalized phase-zero API adopted in `2026.1.98-dev`; first-frame authoring behavior is unchanged.

@@ -599,18 +599,10 @@ FO_SCRIPT_API vector<mdir> Client_Map_GetPath(ptr<MapView> self, mpos fromHex, m
     }
 
     mpos to_hex = toHex;
-    mpos init_to_hex = toHex;
-
-    if (cut > 0 && !self->CutPath(nullptr, fromHex, to_hex, numeric_cast<int32_t>(cut))) {
-        return {};
-    }
-
-    if (cut > 0 && GeometryHelper::GetDistance(fromHex, init_to_hex) <= cut && GeometryHelper::GetDistance(fromHex, to_hex) <= 1) {
-        return {};
-    }
 
     function<bool(ptr<const ItemHexView>)> gag_check = [gag_cb = safe_alloc::make_shared<ScriptFunc<bool, ptr<ItemView>>>(std::move(gagCallback))](ptr<const ItemHexView> gag) mutable { return gag_cb->Call(make_ptr(const_cast<ItemHexView*>(std::addressof(*gag)))) && gag_cb->GetResult(); };
-    auto result = self->FindPath(nullptr, fromHex, to_hex, -1, ipos16 {}, gag_check);
+
+    auto result = self->FindPath(nullptr, fromHex, to_hex, cut, ipos16 {}, gag_check);
 
     if (!result) {
         return {};

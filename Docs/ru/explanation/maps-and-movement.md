@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/maps-and-movement.html
 ---
 
 # Карты, движение и геометрия
-<!-- docs-translation: {"document_id":"maps-movement-geometry","locale":"ru","source_path":"Docs/en/explanation/maps-and-movement.md","source_sha256":"ee1b6841bc81398a5338e8e6f453679f70c7e5f5209eec1166572f7380ec9281"} -->
+<!-- docs-translation: {"document_id":"maps-movement-geometry","locale":"ru","source_path":"Docs/en/explanation/maps-and-movement.md","source_sha256":"7ae1e03ca763af3230911729b807551caa8ac32bbec538954b70f49a3fa73c27"} -->
 Владельцы геометрии/движения Engine: `Source/Common/Geometry.*`, `LineTracer.*`, `Movement.*`, `PathFinding.*`, `MapLoader.*`, map bakers и тесты.
 
 Разделы `.fomap`, identity/владение размещением, Mapper round-trip, side-specific baking и материализация runtime описаны в [формате карт](../how-to/content/map-format.md).
@@ -96,6 +96,17 @@ Engine владеет типами координат, алгоритмами п
 На текущем гексе и для заблокированной цели длина равна нулю; длина пути
 совпадает с числом возвращённых шагов. `Test_ClientMapPaths.cpp` проверяет эти
 скриптовые экспорты на настоящей клиентской карте и multihex-криттере.
+
+Для несоседних гексов клиентская перегрузка
+`Map.GetPath(fromHex, toHex, cut, gagCallback)` применяет `cut` и предикат gag в
+одном нативном поиске. Разрешённый gag можно пересечь, даже если обычный физический
+маршрут заблокирован; отказ предиката или сплошной блокирующий предмет без gag
+по-прежнему закрывает этот путь. Нулевой cut требует точной цели, положительный
+останавливает в заданном радиусе, а начало уже внутри радиуса не требует движения.
+Отрицательный cut нормализуется нативным поиском в нулевой. Существующий быстрый
+путь для соседних гексов не меняется. Нативные тесты клиентской карты проверяют
+скриптовый экспорт, настоящую конвертацию аргумента и результата callback и полную
+стену, отдельно от тестов универсального поиска пути.
 
 `Source/Common/PathFinding.h` экспортирует основное API поиска пути:
 
