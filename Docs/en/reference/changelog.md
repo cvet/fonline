@@ -12,7 +12,17 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-11-01
+## Current - 2026-11-02
+
+### Fixed
+
+- Release a partially created Vulkan buffer and its allocated memory when memory-type selection, memory allocation or buffer binding fails. Leave caller output handles unchanged on failure and transfer ownership only after successful binding.
+
+### Migration
+
+- Baseline `1ab76a88f25c1ee9116275768e227896c5d21039` (`2026.1.95-dev`) to `2026.1.96-dev`: no project source, settings, saved-data or resource conversion is required. Rebuild Client, Mapper and other targets that include the Vulkan renderer. The successful allocation path, deferred destruction of completed resources, ABI, wire protocol, compatibility marker and resource schemas are unchanged. Normal version/metadata regeneration still applies when selecting the new Engine revision; keep clients, servers and resources on one matching revision.
+
+## 2026.1.95-dev - 2026-11-01
 
 ### Fixed
 

@@ -649,11 +649,22 @@ static void AllocateBuffer(ptr<Vulkan_Renderer::Context> ctx, VkDeviceSize size,
     buffer_ci.usage = usage;
     buffer_ci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-    vk_result = vkCreateBuffer(ctx->Device, &buffer_ci, nullptr, &buffer);
+    VkBuffer new_buffer {};
+    vk_result = vkCreateBuffer(ctx->Device, &buffer_ci, nullptr, &new_buffer);
     VerifyVkResult(vk_result);
 
+    VkDeviceMemory new_memory {};
+    bool memory_allocated = false;
+    auto cleanup_on_fail = scope_fail([&]() noexcept {
+        vkDestroyBuffer(ctx->Device, new_buffer, nullptr);
+
+        if (memory_allocated) {
+            vkFreeMemory(ctx->Device, new_memory, nullptr);
+        }
+    });
+
     VkMemoryRequirements mem_req {};
-    vkGetBufferMemoryRequirements(ctx->Device, buffer, &mem_req);
+    vkGetBufferMemoryRequirements(ctx->Device, new_buffer, &mem_req);
 
     // Find suitable memory type
     optional<uint32_t> mem_type_idx;
@@ -673,11 +684,15 @@ static void AllocateBuffer(ptr<Vulkan_Renderer::Context> ctx, VkDeviceSize size,
     alloc_info.allocationSize = mem_req.size;
     alloc_info.memoryTypeIndex = mem_type_idx.value();
 
-    vk_result = vkAllocateMemory(ctx->Device, &alloc_info, nullptr, &memory);
+    vk_result = vkAllocateMemory(ctx->Device, &alloc_info, nullptr, &new_memory);
+    VerifyVkResult(vk_result);
+    memory_allocated = true;
+
+    vk_result = vkBindBufferMemory(ctx->Device, new_buffer, new_memory, 0);
     VerifyVkResult(vk_result);
 
-    vk_result = vkBindBufferMemory(ctx->Device, buffer, memory, 0);
-    VerifyVkResult(vk_result);
+    buffer = new_buffer;
+    memory = new_memory;
 }
 
 static void EnsurePooledBufferCapacity(ptr<Vulkan_Renderer::Context> ctx, VulkanPooledBuffer& pooled, VkDeviceSize size, VkBufferUsageFlags usage)
