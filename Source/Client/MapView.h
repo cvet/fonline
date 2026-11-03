@@ -232,6 +232,11 @@ public:
     void LoadFromFile(string_view map_name, string_view file_name, const string& str);
     void LoadStaticData();
     void ApplyStaticItemRemovals();
+    // Adds the static items of another proto map's client bake at offset, with ids from OnGenerateStaticItemIds,
+    // and returns those ids; UnloadStaticItems removes them again and releases the field blocks they leave empty
+    auto LoadStaticItems(hstring map_pid, mpos offset) -> vector<ident_t>;
+    void UnloadStaticItems(const_span<ident_t> static_item_ids);
+    [[nodiscard]] auto IsRuntimeStaticItem(ident_t static_item_id) const noexcept -> bool { return _runtimeStaticItems.contains(static_item_id); }
     void Process();
 
     void DrawMap();
@@ -363,6 +368,8 @@ private:
 
     auto CollectRemovedStaticItemIds() const -> unordered_set<ident_t>;
 
+    void ReleaseEmptyFields(mpos origin, msize size);
+
     auto AddItemInternal(ptr<ItemHexView> item) -> ptr<ItemHexView>;
     void AddItemToField(ptr<ItemHexView> item);
     void RemoveItemFromField(ptr<ItemHexView> item);
@@ -425,6 +432,7 @@ private:
     unordered_map<ident_t, ptr<CritterHexView>> _crittersMap {};
     vector<refcount_ptr<ItemHexView>> _items {};
     vector<ptr<ItemHexView>> _staticItems {};
+    unordered_set<ident_t> _runtimeStaticItems {};
     vector<ptr<ItemHexView>> _dynamicItems {};
     vector<ptr<ItemHexView>> _processingItems {};
     unordered_map<ident_t, ptr<ItemHexView>> _itemsMap {};

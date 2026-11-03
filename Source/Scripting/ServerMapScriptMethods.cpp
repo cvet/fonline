@@ -472,6 +472,9 @@ FO_SCRIPT_API bool Server_Map_RemoveStaticItem(ptr<Map> self, ident_t staticItem
     if (!self->HasStaticItem(staticItemId)) {
         throw ScriptException("Static item not found on map", staticItemId);
     }
+    if (self->IsRuntimeStaticItem(staticItemId)) {
+        throw ScriptException("Static item was loaded at runtime; unload it with UnloadStaticItems", staticItemId);
+    }
 
     return self->RemoveStaticItem(staticItemId);
 }
@@ -483,11 +486,58 @@ FO_SCRIPT_API bool Server_Map_RemoveStaticItem(ptr<Map> self, ptr<StaticItem> st
     if (!self->HasStaticItem(staticItem->GetId())) {
         throw ScriptException("Static item belongs to another map", staticItem->GetId(), staticItem->GetProtoId());
     }
+    if (self->IsRuntimeStaticItem(staticItem->GetId())) {
+        throw ScriptException("Static item was loaded at runtime; unload it with UnloadStaticItems", staticItem->GetId());
+    }
 
     return self->RemoveStaticItem(staticItem->GetId());
 }
 
-// Return a static map item by id
+// Copies the static items of proto map `mapPid` into this map with their hexes moved by `offset` and ids from `Game.OnGenerateStaticItemIds`; returns those ids. Critters and dynamic items of the proto map are left out (see `GenerateContent`), and the copies are not saved with the map
+// SyncScope: requires self; the id event runs under the same cover, and the proto map's baked content is read and cached on first use
+///@ ExportMethod
+FO_SCRIPT_API vector<ident_t> Server_Map_LoadStaticItems(ptr<Map> self, hstring mapPid, mpos offset)
+{
+    if (self->IsDestroying()) {
+        throw ScriptException("Cannot load static items into a map that is being destroyed", self->GetId());
+    }
+
+    auto source_proto = self->GetEngine()->GetProtoMap(mapPid);
+
+    if (!source_proto) {
+        throw ScriptException("Map proto not found", mapPid);
+    }
+
+    return self->GetEngine()->MapMngr.LoadStaticItems(self, source_proto, offset);
+}
+
+// Removes static items that `LoadStaticItems` added to this map
+// SyncScope: requires self; mutates only this map's runtime static items
+///@ ExportMethod
+FO_SCRIPT_API void Server_Map_UnloadStaticItems(ptr<Map> self, readonly_vector<ident_t> staticItemIds)
+{
+    self->GetEngine()->MapMngr.UnloadStaticItems(self, staticItemIds);
+}
+
+// Creates the critters and dynamic items of proto map `mapPid` on this map with their hexes moved by `offset`, as a new map of that proto would get them; returns the ids of the created critters and map items, without the items inside them
+// SyncScope: requires self; creates entities on this map under its cover, and their init events run under the same cover
+///@ ExportMethod
+FO_SCRIPT_API vector<ident_t> Server_Map_GenerateContent(ptr<Map> self, hstring mapPid, mpos offset)
+{
+    if (self->IsDestroying()) {
+        throw ScriptException("Cannot generate content on a map that is being destroyed", self->GetId());
+    }
+
+    auto source_proto = self->GetEngine()->GetProtoMap(mapPid);
+
+    if (!source_proto) {
+        throw ScriptException("Map proto not found", mapPid);
+    }
+
+    return self->GetEngine()->MapMngr.GenerateContent(self, source_proto, offset);
+}
+
+// SyncScope: requires self; returned static item is map-static data covered by the map cover
 ///@ ExportMethod
 FO_SCRIPT_API nptr<StaticItem> Server_Map_GetStaticItem(ptr<Map> self, ident_t id)
 {

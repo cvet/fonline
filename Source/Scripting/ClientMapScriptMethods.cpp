@@ -162,6 +162,20 @@ FO_SCRIPT_API bool Client_Map_DrawEntitySprite(ptr<MapView> self, ptr<ClientEnti
     return self->DrawEntitySprite(entity, effect, color, padding);
 }
 
+// Adds the static items of proto map `mapPid`'s client bake to this map view with their hexes moved by `offset` and ids from `Game.OnGenerateStaticItemIds`; returns those ids
+///@ ExportMethod
+FO_SCRIPT_API vector<ident_t> Client_Map_LoadStaticItems(ptr<MapView> self, hstring mapPid, mpos offset)
+{
+    return self->LoadStaticItems(mapPid, offset);
+}
+
+// Removes static items that `LoadStaticItems` added to this map view and releases the field blocks they leave empty
+///@ ExportMethod
+FO_SCRIPT_API void Client_Map_UnloadStaticItems(ptr<MapView> self, readonly_vector<ident_t> staticItemIds)
+{
+    self->UnloadStaticItems(staticItemIds);
+}
+
 // Rebuilds this map view's fog geometry and rendering state from its current fog layers
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Map_RebuildFog(ptr<MapView> self)
