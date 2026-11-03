@@ -188,6 +188,18 @@ TEST_CASE("MapLoadsAndUnloadsContentOfOtherMaps")
     CHECK_THROWS(server->MapMngr.LoadStaticItems(map, content_proto, mpos {190, 190}));
     CHECK(map->GetStaticItems().size() == 2);
 
+    // An area of the source map lands with its first hex at offset and must lie inside the source map
+    vector<ident_t> area_ids = server->MapMngr.LoadStaticItems(map, content_proto, mpos {40, 40}, mpos {2, 3}, msize {1, 1});
+    REQUIRE(area_ids.size() == 1);
+    REQUIRE(map->GetStaticItem(area_ids.front()));
+    CHECK(map->GetStaticItem(area_ids.front())->GetHex() == mpos {40, 40});
+    CHECK_FALSE(map->IsHexMovable(mpos {40, 40}));
+    CHECK(server->MapMngr.LoadStaticItems(map, content_proto, mpos {50, 50}, mpos {5, 5}, msize {3, 3}).empty());
+    CHECK_THROWS(server->MapMngr.LoadStaticItems(map, content_proto, mpos {60, 60}, mpos {10, 10}, msize {7, 1}));
+    CHECK_THROWS(server->MapMngr.LoadStaticItems(map, content_proto, mpos {60, 60}, mpos {0, 0}, msize {0, 1}));
+    server->MapMngr.UnloadStaticItems(map, area_ids);
+    CHECK(map->GetStaticItems().size() == 2);
+
     // Loaded items merge with baked ones on a shared hex and leave the baked one when unloaded
     vector<ident_t> merged_ids = server->MapMngr.LoadStaticItems(baked_map, content_proto, mpos {10, 10});
     CHECK(baked_map->GetStaticItemsOnHex(mpos {12, 13}).size() == 2);
@@ -215,7 +227,7 @@ TEST_CASE("MapLoadsAndUnloadsContentOfOtherMaps")
     // Cached content is released on request unless a map instance of that proto exists
     CHECK(server->MapMngr.UnloadStaticMap(content_proto));
     CHECK_FALSE(server->MapMngr.IsStaticMapLoaded(content_proto));
-    CHECK_FALSE(server->MapMngr.UnloadStaticMap(content_proto));
+    CHECK(server->MapMngr.UnloadStaticMap(content_proto));
     CHECK_FALSE(server->MapMngr.UnloadStaticMap(baked_map->GetProtoMap()));
     server->MapMngr.LoadStaticMap(content_proto);
     CHECK(server->MapMngr.IsStaticMapLoaded(content_proto));

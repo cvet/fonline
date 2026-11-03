@@ -10993,6 +10993,22 @@
         "/symbols/@id=script.method.server.Game.LoadStaticMapsAsync/description": {
           "source_sha256": "364ffcd0067cdf2649aedcf6c31173924affa4d0e4a8746660f843737867130a",
           "translation": "Запускает чтение запечённого содержимого перечисленных proto-карт в рабочих потоках и сразу возвращается; экземпляр карты, `Map.LoadStaticItems` или `Map.GenerateContent`, которому одна из них нужна до окончания чтения, ждёт этого чтения. Неудачное чтение сообщается при следующем использовании карты\nSyncScope: только кэш статических proto-карт; покрытие живых сущностей не требуется"
+        },
+        "/symbols/@id=script.method.client.Map.LoadStaticItems%2303425f8a5f227e36/description": {
+          "source_sha256": "fe3a2cc4c017568befde235e297c1bd742a9fd53f1e8bbbeac54de16a1a70933",
+          "translation": "Добавляет в это представление карты статические предметы клиентской выпечки proto-карты `mapPid` со сдвигом гексов на `offset` и идентификаторами из `Game.OnGenerateStaticItemIds`; возвращает эти идентификаторы"
+        },
+        "/symbols/@id=script.method.server.Map.LoadStaticItems%2303425f8a5f227e36/description": {
+          "source_sha256": "765dbb5017dcf6a312f525385091c3c34ffa53ee38601387c3e13d8029eb5012",
+          "translation": "Копирует статические предметы proto-карты `mapPid` в эту карту со сдвигом гексов на `offset` и идентификаторами из `Game.OnGenerateStaticItemIds`; возвращает эти идентификаторы. Криттеры и динамические предметы proto-карты не копируются (см. `GenerateContent`), а копии не сохраняются вместе с картой\nSyncScope: требует self; событие идентификаторов выполняется под тем же покрытием, а запечённое содержимое proto-карты читается и кэшируется при первом использовании"
+        },
+        "/symbols/@id=script.method.client.Map.LoadStaticItems%23aa117f69739fd959/description": {
+          "source_sha256": "f11ab2667519c2b3d56086ba728ffdda3d2546312e7d0d2870352834d24b7257",
+          "translation": "Добавляет в это представление карты статические предметы, стоящие в области `sourceSize` с началом в `sourceHex` клиентской выпечки proto-карты `mapPid`, так что первый гекс области попадает в `offset`, с идентификаторами из `Game.OnGenerateStaticItemIds`; возвращает эти идентификаторы"
+        },
+        "/symbols/@id=script.method.server.Map.LoadStaticItems%23aa117f69739fd959/description": {
+          "source_sha256": "897ccf58bd565caa50bc0e649fb6e59579108fa214a48fa0d63c66275cb77cc2",
+          "translation": "Копирует в эту карту статические предметы, стоящие в области `sourceSize` с началом в `sourceHex` proto-карты `mapPid`, так что первый гекс области попадает в `offset`, с идентификаторами из `Game.OnGenerateStaticItemIds`; возвращает эти идентификаторы\nSyncScope: требует self; событие идентификаторов выполняется под тем же покрытием, а запечённое содержимое proto-карты читается и кэшируется при первом использовании"
         }
       }
     },

@@ -235,6 +235,7 @@ public:
     // Adds the static items of another proto map's client bake at offset, with ids from OnGenerateStaticItemIds,
     // and returns those ids; UnloadStaticItems removes them again and releases the field blocks they leave empty
     auto LoadStaticItems(hstring map_pid, mpos offset) -> vector<ident_t>;
+    auto LoadStaticItems(hstring map_pid, mpos offset, mpos source_hex, msize source_size) -> vector<ident_t>;
     void UnloadStaticItems(const_span<ident_t> static_item_ids);
     [[nodiscard]] auto IsRuntimeStaticItem(ident_t static_item_id) const noexcept -> bool { return _runtimeStaticItems.contains(static_item_id); }
     void Process();

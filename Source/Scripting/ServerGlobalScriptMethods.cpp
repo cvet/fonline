@@ -1622,7 +1622,7 @@ FO_SCRIPT_API bool Server_Game_IsStaticMapLoaded(ptr<ServerEngine> server, hstri
     return server->MapMngr.IsStaticMapLoaded(proto);
 }
 
-// Frees the cached baked content of proto map `mapPid`; returns false when it is not loaded or a map instance of that proto exists
+// Frees the cached baked content of proto map `mapPid` and returns whether it is unloaded: false while it is being read or a map instance of that proto exists
 // SyncScope: static proto-map cache only; no live entity cover is required
 ///@ ExportMethod
 FO_SCRIPT_API bool Server_Game_UnloadStaticMap(ptr<ServerEngine> server, hstring mapPid)

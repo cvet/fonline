@@ -106,28 +106,26 @@ public:
     auto UnloadStaticMap(ptr<const ProtoMap> proto) -> bool;
     void ClearStaticMaps() noexcept;
     auto LoadStaticItems(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos offset) -> vector<ident_t>;
+    auto LoadStaticItems(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos offset, mpos source_hex, msize source_size) -> vector<ident_t>;
     void UnloadStaticItems(ptr<Map> map, const_span<ident_t> static_item_ids);
     // Creates the critters and dynamic items of another proto map on a map at offset; returns the critter and hex item ids
     auto GenerateContent(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos offset) -> vector<ident_t>;
 
 private:
-    auto IsCritterSeeCritter(ptr<const Map> map, ptr<const Critter> cr, ptr<const Critter> target) const -> CritterVisibilityMode;
-
-    void ProcessCritterLook(ptr<Map> map, ptr<Critter> cr, ptr<Critter> target);
-    void Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, optional<int32_t> safe_radius, ident_t global_cr_id);
-    void GenerateMapContent(ptr<Map> map);
-    auto GenerateContent(ptr<Map> map, ptr<const StaticMap> source, mpos offset, bool fresh_map) -> vector<ident_t>;
     using PendingStaticMap = std::shared_future<shared_ptr<StaticMap>>;
 
     struct StaticMapEntry
     {
         PendingStaticMap Data {};
-        // Identifies the read that created the entry, so a failed read drops only its own entry
         uintptr_t ReadToken {};
     };
 
+    auto IsCritterSeeCritter(ptr<const Map> map, ptr<const Critter> cr, ptr<const Critter> target) const -> CritterVisibilityMode;
+    void ProcessCritterLook(ptr<Map> map, ptr<Critter> cr, ptr<Critter> target);
+    void Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, optional<int32_t> safe_radius, ident_t global_cr_id);
+    void GenerateMapContent(ptr<Map> map);
+    auto GenerateContent(ptr<Map> map, ptr<const StaticMap> source, mpos offset, bool fresh_map) -> vector<ident_t>;
     static auto IsStaticMapReady(const PendingStaticMap& static_map) -> bool;
-
     auto ReadStaticMap(ptr<const ProtoMap> map_proto) -> shared_ptr<StaticMap>;
     void BindStaticItemScripts(string_view map_name, ptr<StaticItem> item);
     auto RequestStaticMap(ptr<const ProtoMap> proto, bool in_background) -> PendingStaticMap;
@@ -137,7 +135,6 @@ private:
 
     ptr<ServerEngine> _engine;
     mutable mutex _staticMapsLock {};
-    // Read or being read; one read per proto map however many requests arrive while it runs
     unordered_map<ptr<const ProtoMap>, StaticMapEntry> _staticMaps FO_TSA_GUARDED_BY(_staticMapsLock) {};
 };
 

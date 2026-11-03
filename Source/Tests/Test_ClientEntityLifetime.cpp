@@ -622,6 +622,7 @@ TEST_CASE("ClientMapLoadsAndUnloadsStaticItemsOfOtherMaps")
     BakerClientEngine proto_engine {compiler_resources};
 
     hstring item_type = proto_engine.Hashes.to_hashed_string("Item");
+    hstring map_type = proto_engine.Hashes.to_hashed_string("Map");
     hstring blocker_pid = proto_engine.Hashes.to_hashed_string("ClientContentBlocker");
 
     vector<pair<string, function<void(ProtoItem&)>>> item_protos;
@@ -629,6 +630,8 @@ TEST_CASE("ClientMapLoadsAndUnloadsStaticItemsOfOtherMaps")
         proto.SetStatic(true);
         proto.SetNoBlock(false);
     });
+    vector<pair<string, function<void(ProtoMap&)>>> map_protos;
+    map_protos.emplace_back("ClientContentMap", [](ProtoMap& proto) { proto.SetSize(msize {32, 32}); });
 
     auto item_registrar = proto_engine.GetPropertyRegistrar(item_type);
     REQUIRE(static_cast<bool>(item_registrar));
@@ -659,6 +662,7 @@ TEST_CASE("ClientMapLoadsAndUnloadsStaticItemsOfOtherMaps")
 
     vector<pair<string, vector<uint8_t>>> extra;
     extra.emplace_back("ClientContentItems.fopro-bin-client", BakerTests::MakeMultiProtoResourceBlob<ProtoItem>(proto_engine, item_type, item_protos));
+    extra.emplace_back("ClientContentMap.fopro-bin-client", BakerTests::MakeMultiProtoResourceBlob<ProtoMap>(proto_engine, map_type, map_protos));
     extra.emplace_back("ClientContentMap.fomap-bin-client", std::move(content_map));
 
     auto settings = MakeClientLifetimeSettings();
@@ -730,6 +734,16 @@ TEST_CASE("ClientMapLoadsAndUnloadsStaticItemsOfOtherMaps")
     // Loading again gives the same ids
     CHECK(map->LoadStaticItems(content_pid, offset) == ids);
     CHECK(map->GetItem(blocker_id));
+
+    // An area of the source map lands with its first hex at offset and must lie inside the source map
+    vector<ident_t> area_ids = map->LoadStaticItems(content_pid, mpos {100, 100}, mpos {20, 20}, msize {12, 12});
+    REQUIRE(area_ids.size() == 1);
+    REQUIRE(map->GetItem(area_ids.front()));
+    CHECK(map->GetItem(area_ids.front())->GetHex() == mpos {100, 100});
+    CHECK_THROWS(map->LoadStaticItems(content_pid, mpos {200, 200}, mpos {20, 20}, msize {13, 1}));
+    CHECK_THROWS(map->LoadStaticItems(content_pid, mpos {200, 200}, mpos {32, 0}, msize {1, 1}));
+    map->UnloadStaticItems(area_ids);
+    CHECK_FALSE(map->GetItem(area_ids.front()));
 
     map->DestroySelf();
 }

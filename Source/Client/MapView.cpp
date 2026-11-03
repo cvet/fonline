@@ -420,7 +420,30 @@ void MapView::LoadStaticData()
 
 auto MapView::LoadStaticItems(hstring map_pid, mpos offset) -> vector<ident_t>
 {
+    auto source_proto = _engine->GetProtoMap(map_pid);
+
+    if (!source_proto) {
+        throw MapViewLoadException("Map proto not found", map_pid);
+    }
+
+    return LoadStaticItems(map_pid, offset, mpos {}, source_proto->GetSize());
+}
+
+auto MapView::LoadStaticItems(hstring map_pid, mpos offset, mpos source_hex, msize source_size) -> vector<ident_t>
+{
     FO_TRACE_ZONE(Map);
+
+    auto source_proto = _engine->GetProtoMap(map_pid);
+
+    if (!source_proto) {
+        throw MapViewLoadException("Map proto not found", map_pid);
+    }
+
+    msize source_map_size = source_proto->GetSize();
+
+    if (source_size.width <= 0 || source_size.height <= 0 || !source_map_size.is_valid_pos(source_hex) || safe_numeric_cast<int64_t>(source_hex.x) + source_size.width > source_map_size.width || safe_numeric_cast<int64_t>(source_hex.y) + source_size.height > source_map_size.height) {
+        throw MapViewLoadException("Source area is outside the source map", map_pid, source_hex, source_size, source_map_size);
+    }
 
     auto file = _engine->Resources.ReadFile(strex("{}.fomap-bin-client", map_pid));
 
@@ -432,16 +455,16 @@ auto MapView::LoadStaticItems(hstring map_pid, mpos offset) -> vector<ident_t>
     MapLoader::ReadBakedFileHeader(reader, map_pid);
 
     {
-        auto hashes_count = reader.read<uint32_t>();
+        uint32_t hashes_count = reader.read<uint32_t>();
         reader.verify_payload_count(hashes_count, sizeof(uint32_t));
 
         for (uint32_t i = 0; i < hashes_count; i++) {
             string str = reader.read_string();
-            ignore_unused(_engine->Hashes.to_hashed_string(str));
+            (void)_engine->Hashes.to_hashed_string(str);
         }
     }
 
-    auto items_count = reader.read<uint32_t>();
+    uint32_t items_count = reader.read<uint32_t>();
     reader.verify_payload_count(items_count, sizeof(ident_t::underlying_type) + sizeof(hstring::hash_t) + sizeof(uint32_t));
 
     struct LoadedItem
@@ -456,9 +479,10 @@ auto MapView::LoadStaticItems(hstring map_pid, mpos offset) -> vector<ident_t>
     item_ids.reserve(items_count);
     vector<uint8_t> props_data;
 
-    auto move_hex = [offset, map_size = _mapSize, map_pid](mpos hex) -> mpos {
-        int64_t x = safe_numeric_cast<int64_t>(hex.x) + offset.x;
-        int64_t y = safe_numeric_cast<int64_t>(hex.y) + offset.y;
+    // The source area's first hex lands at offset
+    auto move_hex = [offset, source_hex, map_size = _mapSize, map_pid](mpos hex) -> mpos {
+        int64_t x = safe_numeric_cast<int64_t>(hex.x) - source_hex.x + offset.x;
+        int64_t y = safe_numeric_cast<int64_t>(hex.y) - source_hex.y + offset.y;
 
         if (x < 0 || y < 0 || x >= map_size.width || y >= map_size.height) {
             throw MapViewLoadException("Loaded static item lands outside the map", map_pid, hex, offset, map_size);
@@ -473,7 +497,7 @@ auto MapView::LoadStaticItems(hstring map_pid, mpos offset) -> vector<ident_t>
         auto item_proto = _engine->GetProtoItem(item_pid);
         FO_VERIFY_AND_THROW(item_proto, "Missing required item prototype", item_pid);
 
-        auto props_data_size = reader.read<uint32_t>();
+        uint32_t props_data_size = reader.read<uint32_t>();
         reader.verify_payload_count(props_data_size, sizeof(uint8_t));
         props_data.resize(props_data_size);
         span<uint8_t> props_data_span = props_data;
@@ -484,7 +508,13 @@ auto MapView::LoadStaticItems(hstring map_pid, mpos offset) -> vector<ident_t>
 
         // Positions move on the plain property set before the view exists, so no entity setter observes them
         ItemProperties item_view {item_props};
-        item_view.SetHex(move_hex(item_view.GetHex()));
+        mpos hex = item_view.GetHex();
+
+        if (hex.x < source_hex.x || hex.y < source_hex.y || hex.x - source_hex.x >= source_size.width || hex.y - source_hex.y >= source_size.height) {
+            continue;
+        }
+
+        item_view.SetHex(move_hex(hex));
 
         if (item_view.IsNonEmptyMultihexMesh()) {
             vector<mpos> mesh = item_view.GetMultihexMesh();

@@ -1709,6 +1709,7 @@ auto Map::RemoveStaticItem(ident_t static_item_id) -> bool
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
     FO_VERIFY_AND_THROW(HasStaticItem(static_item_id), "Map has no static item with this id", GetId(), GetProtoId(), static_item_id);
+
     // The removal list persists baked ids only; a loaded item leaves through RemoveRuntimeStaticItems
     FO_VERIFY_AND_THROW(!IsRuntimeStaticItem(static_item_id), "Runtime-loaded static item cannot join the removal list", GetId(), GetProtoId(), static_item_id);
 
@@ -1860,14 +1861,17 @@ void Map::AddRuntimeStaticItems(span<refcount_ptr<StaticItem>> static_items)
     FO_TRACE_ZONE(Map);
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
 
+    for (const auto& static_item : static_items) {
+        FO_VERIFY_AND_THROW(!HasStaticItem(static_item->GetId()), "Map already has a static item with this id", GetId(), GetProtoId(), static_item->GetId());
+        FO_VERIFY_AND_THROW(_mapSize.is_valid_pos(static_item->GetHex()), "Runtime static item is outside the map", GetId(), GetProtoId(), static_item->GetId(), static_item->GetHex());
+    }
+
     if (!_runtimeStatics) {
         _runtimeStatics = safe_alloc::make_unique<StaticMap>(_mapSize, _engine->Settings->Server.MapInstanceGridType);
     }
 
     for (auto& static_item : static_items) {
         ident_t static_item_id = static_item->GetId();
-        FO_VERIFY_AND_THROW(!HasStaticItem(static_item_id), "Map already has a static item with this id", GetId(), GetProtoId(), static_item_id);
-        FO_VERIFY_AND_THROW(_mapSize.is_valid_pos(static_item->GetHex()), "Runtime static item is outside the map", GetId(), GetProtoId(), static_item_id, static_item->GetHex());
         _runtimeStatics->AddOwnedItemBillet(static_item_id, static_item);
         _runtimeStatics->AddStaticItem(static_item_id, static_item);
     }
@@ -1906,6 +1910,7 @@ void Map::RemoveRuntimeStaticItems(const unordered_set<ident_t>& static_item_ids
 
     for (ident_t static_item_id : static_item_ids) {
         FO_VERIFY_AND_THROW(_runtimeStatics->HasStaticItem(static_item_id), "Map has no runtime static item with this id", GetId(), GetProtoId(), static_item_id);
+
         _runtimeStatics->ForEachItemHex(static_item_id, [this, &merged_hexes](mpos item_hex) {
             if (_staticFieldOverrides.count(item_hex) != 0) {
                 merged_hexes.emplace(item_hex);

@@ -279,7 +279,7 @@ auto MapManager::IsStaticMapReady(const PendingStaticMap& static_map) -> bool
 auto MapManager::RequestStaticMap(ptr<const ProtoMap> proto, bool in_background) -> PendingStaticMap
 {
     auto read_promise = safe_alloc::make_shared<std::promise<shared_ptr<StaticMap>>>();
-    auto read_token = reinterpret_cast<uintptr_t>(read_promise.get());
+    uintptr_t read_token = reinterpret_cast<uintptr_t>(read_promise.get());
     PendingStaticMap static_map;
 
     {
@@ -342,8 +342,6 @@ void MapManager::LoadStaticMap(ptr<const ProtoMap> proto)
 
 void MapManager::LoadStaticMapsAsync(const_span<ptr<const ProtoMap>> protos)
 {
-    FO_TRACE_ZONE(Map);
-
     for (ptr<const ProtoMap> proto : protos) {
         (void)RequestStaticMap(proto, true);
     }
@@ -357,8 +355,12 @@ auto MapManager::UnloadStaticMap(ptr<const ProtoMap> proto) -> bool
 
     auto it = _staticMaps.find(proto);
 
+    if (it == _staticMaps.end()) {
+        return true;
+    }
+
     // A read in progress belongs to its waiters
-    if (it == _staticMaps.end() || !IsStaticMapReady(it->second.Data)) {
+    if (!IsStaticMapReady(it->second.Data)) {
         return false;
     }
 
@@ -385,18 +387,29 @@ auto MapManager::IsStaticMapLoaded(ptr<const ProtoMap> proto) const -> bool
 
 auto MapManager::LoadStaticItems(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos offset) -> vector<ident_t>
 {
+    return LoadStaticItems(map, source_proto, offset, mpos {}, source_proto->GetSize());
+}
+
+auto MapManager::LoadStaticItems(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos offset, mpos source_hex, msize source_size) -> vector<ident_t>
+{
     FO_TRACE_ZONE(Map);
 
     ValidateEntityAccess(map);
     FO_VERIFY_AND_THROW(!map->IsDestroyed() && !map->IsDestroying(), "Cannot load static items into a map that is being destroyed", map->GetId());
 
+    msize source_map_size = source_proto->GetSize();
+
+    if (source_size.width <= 0 || source_size.height <= 0 || !source_map_size.is_valid_pos(source_hex) || safe_numeric_cast<int64_t>(source_hex.x) + source_size.width > source_map_size.width || safe_numeric_cast<int64_t>(source_hex.y) + source_size.height > source_map_size.height) {
+        throw MapManagerException("Source area is outside the source map", source_proto->GetName(), source_hex, source_size, source_map_size);
+    }
+
     shared_ptr<StaticMap> source = AcquireStaticMap(source_proto);
-    const_span<ptr<StaticItem>> source_items = source->GetStaticItems();
     msize map_size = map->GetSize();
 
-    auto move_hex = [offset, map_size, source_proto](mpos hex) -> mpos {
-        int64_t x = safe_numeric_cast<int64_t>(hex.x) + offset.x;
-        int64_t y = safe_numeric_cast<int64_t>(hex.y) + offset.y;
+    // The source area's first hex lands at offset
+    auto move_hex = [offset, source_hex, map_size, source_proto](mpos hex) -> mpos {
+        int64_t x = safe_numeric_cast<int64_t>(hex.x) - source_hex.x + offset.x;
+        int64_t y = safe_numeric_cast<int64_t>(hex.y) - source_hex.y + offset.y;
 
         if (x < 0 || y < 0 || x >= map_size.width || y >= map_size.height) {
             throw MapManagerException("Loaded static item lands outside the map", source_proto->GetName(), hex, offset, map_size);
@@ -405,12 +418,17 @@ auto MapManager::LoadStaticItems(ptr<Map> map, ptr<const ProtoMap> source_proto,
         return mpos {numeric_cast<mcoord_t>(x), numeric_cast<mcoord_t>(y)};
     };
 
+    vector<ptr<StaticItem>> source_items;
     vector<ident_t> item_ids;
-    item_ids.reserve(source_items.size());
 
-    for (ptr<StaticItem> source_item : source_items) {
-        ignore_unused(move_hex(source_item->GetHex()));
-        item_ids.emplace_back(source_item->GetId());
+    for (ptr<StaticItem> source_item : source->GetStaticItems()) {
+        mpos hex = source_item->GetHex();
+
+        if (hex.x >= source_hex.x && hex.y >= source_hex.y && hex.x - source_hex.x < source_size.width && hex.y - source_hex.y < source_size.height) {
+            (void)move_hex(hex);
+            source_items.emplace_back(source_item);
+            item_ids.emplace_back(source_item->GetId());
+        }
     }
 
     // Project code chooses the ids, so a client loading the same content can give its copies the same ones
@@ -520,7 +538,7 @@ void MapManager::GenerateMapContent(ptr<Map> map)
 {
     FO_TRACE_ZONE(Map);
 
-    ignore_unused(GenerateContent(map, map->GetStaticMap(), mpos {}, true));
+    (void)GenerateContent(map, map->GetStaticMap(), mpos {}, true);
 }
 
 auto MapManager::GenerateContent(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos offset) -> vector<ident_t>
@@ -553,10 +571,10 @@ auto MapManager::GenerateContent(ptr<Map> map, ptr<const StaticMap> source, mpos
 
     // Every position is checked before the first entity exists
     for (const auto& base_cr : source->GetCritterBillets() | std::views::values) {
-        ignore_unused(move_hex(base_cr->GetHex()));
+        (void)move_hex(base_cr->GetHex());
     }
     for (const auto& base_item : source->GetHexItemBillets() | std::views::values) {
-        ignore_unused(move_hex(base_item->GetHex()));
+        (void)move_hex(base_item->GetHex());
     }
 
     unordered_map<ident_t, ident_t> id_map;

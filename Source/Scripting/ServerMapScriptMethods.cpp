@@ -511,6 +511,24 @@ FO_SCRIPT_API vector<ident_t> Server_Map_LoadStaticItems(ptr<Map> self, hstring 
     return self->GetEngine()->MapMngr.LoadStaticItems(self, source_proto, offset);
 }
 
+// Copies the static items standing in the `sourceSize` area at `sourceHex` of proto map `mapPid` into this map, the area's first hex landing at `offset`, with ids from `Game.OnGenerateStaticItemIds`; returns those ids
+// SyncScope: requires self; the id event runs under the same cover, and the proto map's baked content is read and cached on first use
+///@ ExportMethod
+FO_SCRIPT_API vector<ident_t> Server_Map_LoadStaticItems(ptr<Map> self, hstring mapPid, mpos offset, mpos sourceHex, msize sourceSize)
+{
+    if (self->IsDestroying()) {
+        throw ScriptException("Cannot load static items into a map that is being destroyed", self->GetId());
+    }
+
+    auto source_proto = self->GetEngine()->GetProtoMap(mapPid);
+
+    if (!source_proto) {
+        throw ScriptException("Map proto not found", mapPid);
+    }
+
+    return self->GetEngine()->MapMngr.LoadStaticItems(self, source_proto, offset, sourceHex, sourceSize);
+}
+
 // Removes static items that `LoadStaticItems` added to this map
 // SyncScope: requires self; mutates only this map's runtime static items
 ///@ ExportMethod

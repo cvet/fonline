@@ -169,6 +169,13 @@ FO_SCRIPT_API vector<ident_t> Client_Map_LoadStaticItems(ptr<MapView> self, hstr
     return self->LoadStaticItems(mapPid, offset);
 }
 
+// Adds the static items standing in the `sourceSize` area at `sourceHex` of proto map `mapPid`'s client bake to this map view, the area's first hex landing at `offset`, with ids from `Game.OnGenerateStaticItemIds`; returns those ids
+///@ ExportMethod
+FO_SCRIPT_API vector<ident_t> Client_Map_LoadStaticItems(ptr<MapView> self, hstring mapPid, mpos offset, mpos sourceHex, msize sourceSize)
+{
+    return self->LoadStaticItems(mapPid, offset, sourceHex, sourceSize);
+}
+
 // Removes static items that `LoadStaticItems` added to this map view and releases the field blocks they leave empty
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Map_UnloadStaticItems(ptr<MapView> self, readonly_vector<ident_t> staticItemIds)
