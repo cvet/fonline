@@ -31,9 +31,10 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
-#include "Common.h"
 #include "NetSockets.h"
 #include "NetworkServer.h"
 #include "ServerConnection.h"
@@ -94,18 +95,30 @@ namespace
     class SendProbeConnection final : public NetworkServerConnection
     {
     public:
-        explicit SendProbeConnection(ptr<ServerNetworkSettings> settings) :
-            NetworkServerConnection(settings)
+        explicit SendProbeConnection(ptr<ServerNetworkSettings> settings, bool reenter = false) :
+            NetworkServerConnection(settings),
+            _reenter {reenter}
         {
         }
 
         using NetworkServerConnection::SendCallback;
 
         void Receive(const_span<uint8_t> buf) { ReceiveCallback(buf); }
+        auto GetTransportCloseCount() const -> uint32_t { return _transportCloses.load(); }
 
     private:
         void DispatchImpl() override { }
-        void DisconnectImpl() override { }
+        void DisconnectImpl() override
+        {
+            _transportCloses.fetch_add(1);
+
+            if (_reenter) {
+                Disconnect();
+            }
+        }
+
+        bool _reenter;
+        std::atomic<uint32_t> _transportCloses {};
     };
 
     static auto MakeTestChannelKey(uint8_t fill) -> crypto::key_bytes
@@ -164,9 +177,121 @@ TEST_CASE("NetworkServerStopsPullingOutgoingDataAfterDisconnect")
     CHECK(output.empty());
 }
 
+TEST_CASE("NetworkTransportClosureDoesNotWaitForCallbacks", "[rpc-runtime]")
+{
+    bool receive {};
+    bool reenter {};
+
+    SECTION("A sender remains blocked while the transport closes")
+    {
+    }
+    SECTION("A receiver remains blocked while the transport closes")
+    {
+        receive = true;
+    }
+    SECTION("A nested close does not wait on the blocked sender")
+    {
+        reenter = true;
+    }
+
+    auto settings {MakeServerNetworkSettings()};
+    auto connection {safe_alloc::make_shared<SendProbeConnection>(&settings, reenter)};
+    std::atomic<bool> release {};
+    std::atomic<uint32_t> notifications {};
+    std::promise<void> entered {};
+    auto entered_future {entered.get_future()};
+    std::promise<void> requested {};
+    auto requested_future {requested.get_future()};
+    std::promise<void> cleanup_entered {};
+    std::promise<void> cleaned {};
+    auto cleanup_entered_future {cleanup_entered.get_future()};
+    auto cleaned_future {cleaned.get_future()};
+    auto block {[&] {
+        entered.set_value();
+
+        while (!release.load()) {
+            coarse_sleep(std::chrono::milliseconds {1});
+        }
+    }};
+    connection->SetAsyncCallbacks(
+        [&]() -> vector<uint8_t> {
+            if (!receive) {
+                block();
+            }
+
+            return {};
+        },
+        [&](const_span<uint8_t>) {
+            if (receive) {
+                block();
+            }
+        },
+        [&] { notifications.fetch_add(1); });
+    std::thread callback_worker {[&] {
+        if (receive) {
+            connection->Receive(vector<uint8_t> {1});
+        }
+        else {
+            (void)connection->SendCallback();
+        }
+    }};
+    std::thread request_worker {};
+    std::thread cleanup_worker {};
+    auto cleanup {scope_exit([&]() noexcept {
+        release.store(true);
+
+        for (auto worker : {std::ref(callback_worker), std::ref(request_worker), std::ref(cleanup_worker)}) {
+            if (worker.get().joinable()) {
+                worker.get().join();
+            }
+        }
+
+        safe_call([&] { connection->Disconnect(); });
+    })};
+    REQUIRE(entered_future.wait_for(std::chrono::seconds {5}) == std::future_status::ready);
+    request_worker = std::thread([&] {
+        try {
+            connection->RequestDisconnect();
+            requested.set_value();
+        }
+        catch (...) {
+            requested.set_exception(std::current_exception());
+        }
+    });
+    bool requested_ready {requested_future.wait_for(std::chrono::seconds {5}) == std::future_status::ready};
+    REQUIRE(requested_ready);
+    requested_future.get();
+    CHECK(connection->IsDisconnected());
+    CHECK(connection->GetTransportCloseCount() == 1);
+    CHECK(notifications.load() == 0);
+    connection->RequestDisconnect();
+    CHECK(connection->GetTransportCloseCount() == 1);
+
+    cleanup_worker = std::thread([&] {
+        cleanup_entered.set_value();
+
+        try {
+            connection->Disconnect();
+            cleaned.set_value();
+        }
+        catch (...) {
+            cleaned.set_exception(std::current_exception());
+        }
+    });
+    REQUIRE(cleanup_entered_future.wait_for(std::chrono::seconds {5}) == std::future_status::ready);
+    CHECK(cleaned_future.wait_for(std::chrono::milliseconds {20}) == std::future_status::timeout);
+    CHECK(notifications.load() == 0);
+    release.store(true);
+    REQUIRE(cleaned_future.wait_for(std::chrono::seconds {5}) == std::future_status::ready);
+    cleaned_future.get();
+    CHECK(notifications.load() == 1);
+    connection->Disconnect();
+    CHECK(notifications.load() == 1);
+}
+
 TEST_CASE("ServerConnectionRecordsWhyItWasDisconnected")
 {
-    static constexpr DisconnectReason ALL_REASONS[] {DisconnectReason::None, DisconnectReason::ClientClosed, DisconnectReason::InactivityTimeout, DisconnectReason::PingTimeout, DisconnectReason::LoginTimeout, DisconnectReason::ProtocolError, DisconnectReason::UpdaterError, DisconnectReason::ServerShutdown, DisconnectReason::ScriptRequest, DisconnectReason::LoginFailed, DisconnectReason::ReplacedByReconnect};
+    static constexpr DisconnectReason ALL_REASONS[] {DisconnectReason::None, DisconnectReason::ClientClosed, DisconnectReason::InactivityTimeout, DisconnectReason::PingTimeout, DisconnectReason::LoginTimeout, DisconnectReason::ProtocolError, DisconnectReason::UpdaterError, DisconnectReason::ServerShutdown, DisconnectReason::ScriptRequest, DisconnectReason::LoginFailed, DisconnectReason::ReplacedByReconnect, DisconnectReason::RpcRuntimeLimit};
 
     SECTION("every reason is named, so a new one cannot silently degrade a log line to \"unknown\"")
     {
@@ -634,6 +759,187 @@ TEST_CASE("NetworkServerWebSocketsReportsAddressInUseInEnglish")
     CHECK(std::ranges::all_of(error_message, [](char ch) { return static_cast<unsigned char>(ch) < 0x80; }));
 }
 
+// Binds like an independent process without SO_REUSEADDR, so any socket still reserving the port shows up as a failure
+static auto TryBindWithoutReuse(uint16_t port) -> std::error_code
+{
+    asio::io_context context {};
+    asio::ip::tcp::acceptor probe {context};
+
+    std::error_code error {};
+    probe.open(asio::ip::tcp::v6(), error);
+
+    if (!error) {
+        probe.bind(asio::ip::tcp::endpoint(asio::ip::tcp::v6(), port), error);
+    }
+
+    return error;
+}
+
+static auto TryListen(asio::ip::tcp::acceptor& acceptor, uint16_t port, bool reuse_addr) -> bool
+{
+    std::error_code error {};
+    acceptor.open(asio::ip::tcp::v6(), error);
+
+    if (!error) {
+        acceptor.set_option(asio::socket_base::reuse_address(reuse_addr), error);
+    }
+    if (!error) {
+        acceptor.bind(asio::ip::tcp::endpoint(asio::ip::tcp::v6(), port), error);
+    }
+    if (!error) {
+        acceptor.listen(asio::socket_base::max_listen_connections, error);
+    }
+
+    if (error) {
+        std::error_code close_error {};
+        acceptor.close(close_error);
+        return false;
+    }
+
+    return true;
+}
+
+// A restart must reopen the port whose previous connection the old server closed first: a POSIX kernel keeps that
+// port reserved in TIME_WAIT, which the bind probe proves, while Windows never blocks it
+TEST_CASE("NetworkServerWebSocketsRebindsPortLeftInTimeWaitByPreviousServer")
+{
+    REQUIRE(net_sockets::startup());
+
+    auto settings {MakeServerNetworkSettings()};
+    BakerTests::OverrideSetting(settings.Network.SecuredWebSockets, false);
+
+    auto require_ok {[](const std::error_code& socket_error) {
+        INFO(net_sockets::error_text(socket_error));
+        REQUIRE_FALSE(socket_error);
+    }};
+
+    asio::io_context context {};
+    asio::ip::tcp::acceptor previous_listener {context};
+    uint16_t port {0};
+
+    // The probe first skips ports another process holds, because a reusing listener could share them on Windows
+    for (int32_t attempt {0}; attempt != 64 && !previous_listener.is_open(); ++attempt) {
+        port = TestServerPort.fetch_add(1);
+
+        if (!TryBindWithoutReuse(port)) {
+            TryListen(previous_listener, port, true);
+        }
+    }
+
+    REQUIRE(previous_listener.is_open());
+
+    auto loopback {asio::ip::tcp::endpoint(asio::ip::make_address("127.0.0.1"), port)};
+    std::error_code error {};
+
+    asio::ip::tcp::socket client {context};
+    client.connect(loopback, error);
+    require_ok(error);
+
+    asio::ip::tcp::socket accepted {context};
+    previous_listener.accept(accepted, error);
+    require_ok(error);
+
+    // The old server closes first, so its half of the connection is the one that lingers once the peer follows
+    accepted.shutdown(asio::ip::tcp::socket::shutdown_both, error);
+    require_ok(error);
+    accepted.close(error);
+    require_ok(error);
+
+    client.non_blocking(true, error);
+    require_ok(error);
+
+    vector<uint8_t> sink {vector<uint8_t>(16)};
+    std::error_code read_error {};
+
+    REQUIRE(WaitForCondition(
+        [&] {
+            client.read_some(asio::buffer(sink), read_error);
+            return read_error != asio::error::would_block;
+        },
+        std::chrono::milliseconds {5000}));
+    CHECK(read_error == asio::error::eof);
+
+    client.close(error);
+    require_ok(error);
+    previous_listener.close(error);
+    require_ok(error);
+
+#if !FO_WINDOWS
+    REQUIRE(WaitForCondition([port] { return TryBindWithoutReuse(port) == asio::error::address_in_use; }, std::chrono::milliseconds {5000}));
+#endif
+
+    BakerTests::OverrideSetting(settings.Network.WebSocketPort, static_cast<int32_t>(port));
+
+    unique_nptr<NetworkServer> server {};
+    string startup_error {};
+
+    try {
+        server = NetworkServer::StartWebSocketsServer(&settings, [](shared_ptr<NetworkServerConnection>) { });
+    }
+    catch (const std::exception& ex) {
+        startup_error = ex.what();
+    }
+
+    CAPTURE(startup_error);
+    REQUIRE(server);
+
+    auto shutdown_server {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
+
+    asio::ip::tcp::socket restarted_client {context};
+    restarted_client.connect(loopback, error);
+    require_ok(error);
+}
+
+// A listener that is still alive keeps its port whichever options its owner chose, and the refusal is reported in English
+TEST_CASE("NetworkServerWebSocketsRefusesPortHeldByIndependentListener")
+{
+    REQUIRE(net_sockets::startup());
+
+    auto settings {MakeServerNetworkSettings()};
+    BakerTests::OverrideSetting(settings.Network.SecuredWebSockets, false);
+
+    for (bool owner_reuse_addr : {false, true}) {
+        asio::io_context context {};
+        asio::ip::tcp::acceptor owner {context};
+        uint16_t port {0};
+
+        for (int32_t attempt {0}; attempt != 64 && !owner.is_open(); ++attempt) {
+            port = TestServerPort.fetch_add(1);
+
+            if (!TryBindWithoutReuse(port)) {
+                TryListen(owner, port, owner_reuse_addr);
+            }
+        }
+
+        CAPTURE(owner_reuse_addr);
+        REQUIRE(owner.is_open());
+
+        BakerTests::OverrideSetting(settings.Network.WebSocketPort, static_cast<int32_t>(port));
+
+        unique_nptr<NetworkServer> server {};
+        string error_message {};
+
+        try {
+            server = NetworkServer::StartWebSocketsServer(&settings, [](shared_ptr<NetworkServerConnection>) { });
+        }
+        catch (const std::exception& ex) {
+            error_message = ex.what();
+        }
+
+        auto shutdown_server {scope_exit([&server]() noexcept {
+            if (server) {
+                safe_call([&server] { server->Shutdown(); });
+            }
+        })};
+
+        CAPTURE(error_message);
+        REQUIRE_FALSE(server);
+        REQUIRE_FALSE(error_message.empty());
+        CHECK(error_message.find("Address already in use") != string::npos);
+        CHECK(error_message.find(std::to_string(port)) != string::npos);
+    }
+}
+
 // A real client connects, sends a frame that must reach the receive callback, and then the transport must tear
 // down without racing the io thread — the path whose threading bugs the sanitizer jobs turn into failures
 TEST_CASE("NetworkServerWebSocketsDeliversFrameAndTearsDownCleanly")
@@ -900,4 +1206,3 @@ TEST_CASE("NetworkServerWebSocketsQueuesCloseAcrossPeerAbortAndRetainedWrapper")
 #endif
 
 FO_END_NAMESPACE
-

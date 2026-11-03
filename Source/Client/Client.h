@@ -472,6 +472,7 @@ protected:
     void OnSetCritterModelName(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetCritterHideSprite(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetCritterElevation(ptr<Entity> entity, ptr<const Property> prop);
+    void OnSetCritterVisualOffset(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetCritterDrawFlatten(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetCritterLight(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetItemFlags(ptr<Entity> entity, ptr<const Property> prop);
@@ -549,4 +550,3 @@ protected:
 };
 
 FO_END_NAMESPACE
-

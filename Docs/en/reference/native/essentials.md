@@ -191,6 +191,14 @@ order cannot depend on (`BasicCore.cpp`, `BaseLogging.cpp`, and
 `StringUtils.cpp`) plus `NetSockets.*` and `ServerServiceApp.cpp`, which are OS
 wrappers themselves rather than ordinary consumers.
 
+`WinApiUndef.inc` removes Windows macro aliases after platform and third-party
+headers. Its commented `// #undef Name` entries form the generator-preserved
+allowlist for later headers in the same Unity translation unit. Windows SDK socket
+headers need `CopyMemory` and `ZeroMemory`, including their `RtlCopyMemory` and
+`RtlZeroMemory` expansions, even when `<Windows.h>` was included and cleaned up
+earlier. Qualify allowlist changes with the real SDK and compiler in that header
+order; preserving only the outer aliases leaves their expansions undefined.
+
 Darwin SDK signal-set operations can be function-like macros. Inside `Posix.cpp`,
 call `sigfillset`, `sigdelset`, `sigemptyset` and `sigaddset` without a `::`
 qualifier so those definitions expand correctly; Linux still resolves its global
@@ -388,7 +396,12 @@ unqualified so argument-dependent lookup selects the engine overload. String
 growth uses the same deterministic terminate-on-OOM policy as other engine
 storage.
 
-`DataSerialization.*` contains binary read/write helpers used by network, persistence, resources, and tests. `data_reader::read<T>()` and `data_writer::write<T>()` copy standard-layout values through byte copies so serialized streams do not depend on buffer alignment. The zero-copy `read_ptr<T>(size)` overload is only for raw byte/string views (`uint8_t`, `char`, or `void`); typed values that need alignment must use `read<T>()` or `read_ptr(destination, size)`. `StringUtils.*`, `HashedString.*`, `StrongType.*`, `ExtendedTypes.*`, `SafeArithmetics.*`, and `TimeRelated.*` provide the small reusable values that higher layers treat as primitives. `iround` rejects non-finite and out-of-int64-range floating-point input before rounding so no value undefined for `std::llround` can reach it. `hash_storage::set_resolve_hash_failure_handler` lets higher layers observe failed hash resolution in both throwing and flagged no-throw lookup paths without teaching essentials about a specific recovery policy.
+`DataSerialization.*` supplies binary network/persistence/resource/test I/O. `data_reader::read<T>()` and `data_writer::write<T>()` copy standard-layout bytes independently of alignment. Zero-copy `read_ptr<T>(size)` accepts only raw byte/string views (`uint8_t`, `char`, `void`); aligned typed values use `read<T>()` or `read_ptr(destination, size)`. `StringUtils.*`, `HashedString.*`, `StrongType.*`, `ExtendedTypes.*`, `SafeArithmetics.*` and `TimeRelated.*` own primitive values. `synctime` stores signed int64 milliseconds; its ms/seconds getters avoid nanosecond overflow. `iround` rejects non-finite/out-of-int64 input before `std::llround`. `hash_storage::set_resolve_hash_failure_handler` observes unresolved hashes on throwing and flagged no-throw paths; higher layers own recovery.
+
+`timespan::to_ms/to_sec` retain fractions for floating T; integers truncate toward zero.
+Use `div<T>` for ratios. Numeric file/config/wire units need explicit adapters.
+Use the existing `timespan::zero` for explicit zero-duration expressions;
+ordinary field and variable initialization can keep `{}`.
 
 Use `checked_add`, `checked_sub`, `checked_mul` and `checked_div` for important arithmetic influenced by scripts or decoded data, before allocation, indexing or observable mutation. Casting an already-overflowed expression with `numeric_cast` is too late. The checked helpers reject integer overflow, signed `min / -1`, non-finite floating-point operands and non-finite results with `OverflowException`. `checked_div` raises `DivisionByZeroException` for an integer zero divisor or a floating-point divisor whose magnitude is below the type's epsilon. Finite floating-point underflow to zero remains allowed.
 

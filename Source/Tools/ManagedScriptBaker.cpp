@@ -211,7 +211,7 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
         }
     }
 
-    auto settings {_context->Settings.as_ptr()};
+    auto settings {_context->GetSettings().as_ptr()};
     auto managed_config_dir {GetManagedConfigDir(*settings)};
     auto managed_generated_dir {GetManagedGeneratedDir(settings->ManagedScript.GeneratedDir, managed_config_dir)};
     auto managed_assemblies_output_dir {GetManagedAssembliesOutputDir(*_context)};
@@ -224,7 +224,7 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
         throw ManagedScriptBakerException("ManagedScript.Assemblies setting is empty");
     }
 
-    string managed_pack_name {_context->PackName};
+    string managed_pack_name {_context->GetPackName()};
     string project_name {settings->ManagedScript.ProjectName};
 
     if (project_name.empty()) {
@@ -319,15 +319,15 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
 
     for (string_view target : MANAGED_TARGETS) {
         if (target == "Server") {
-            BakerServerEngine engine {*_context->BakedFiles};
+            BakerServerEngine engine {*_context->GetBakedFiles()};
             GenerateTargetApiFiles(engine, managed_generated_dir, target);
         }
         else if (target == "Client") {
-            BakerClientEngine engine {*_context->BakedFiles};
+            BakerClientEngine engine {*_context->GetBakedFiles()};
             GenerateTargetApiFiles(engine, managed_generated_dir, target);
         }
         else if (target == "Mapper") {
-            BakerMapperEngine engine {*_context->BakedFiles};
+            BakerMapperEngine engine {*_context->GetBakedFiles()};
             GenerateTargetApiFiles(engine, managed_generated_dir, target);
         }
         else {
@@ -340,12 +340,12 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
 
     for (TargetBakeTask& task : target_tasks) {
         uint64_t managed_bake_stamp {GetManagedBakeStamp(*_context, task.Target, task.SourceFiles, task.References, managed_host_source, analysis, managed_generated_dir, project_name)};
-        bool should_bake {!_context->BakeChecker || _context->BakeChecker(task.ResourcePath, managed_bake_stamp)};
+        bool should_bake {!_context->HasBakeChecker() || _context->CheckOutput(task.ResourcePath, managed_bake_stamp)};
         task.BakeStamp = managed_bake_stamp;
 
-        if (_context->BakeChecker) {
+        if (_context->HasBakeChecker()) {
             string host_resource_path {MakeManagedOutputAssemblyResourcePath(task.Target, MANAGED_HOST_ASSEMBLY_FILE_NAME)};
-            should_bake = _context->BakeChecker(host_resource_path, managed_bake_stamp) || should_bake;
+            should_bake = _context->CheckOutput(host_resource_path, managed_bake_stamp) || should_bake;
 
             // What the previous bake shipped, not the build directory: that one lies inside the pack output and the
             // sweep removes it after every bake, so an assembly beyond the entry and the host would go unclaimed
@@ -354,7 +354,7 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
                 string output_resource_path {MakeManagedOutputAssemblyResourcePath(task.Target, output_file_name)};
 
                 if (output_resource_path != task.ResourcePath && output_resource_path != host_resource_path) {
-                    should_bake = _context->BakeChecker(output_resource_path, managed_bake_stamp) || should_bake;
+                    should_bake = _context->CheckOutput(output_resource_path, managed_bake_stamp) || should_bake;
                 }
             }
         }
@@ -392,8 +392,8 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
 
                 // A package or project reference copied beside the entry assembly is known only now, and an output
                 // nobody claims is deleted as outdated at the end of the bake
-                if (_context->BakeChecker) {
-                    (void)_context->BakeChecker(resource_path, task.BakeStamp);
+                if (_context->HasBakeChecker()) {
+                    (void)_context->CheckOutput(resource_path, task.BakeStamp);
                 }
 
                 _context->WriteData(resource_path, assembly_data);
@@ -501,13 +501,16 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                 vector<string> ctor_args {};
                 size_t ctor_args_length {0};
 
+                // Map coordinate constructors take int at either FO_MAP_WIDE_COORDS width; the scripts' checked arithmetic guards the narrowing
+                bool int_coord_ctor {type->Name == "mpos" || type->Name == "msize"};
+
                 for (const FieldDesc& field : type->StructLayout->Fields) {
                     string field_name {EscapeCsIdentifier(field.Name)};
                     string field_type {MakeCsTypeName(field.Type)};
 
                     out << CS_INDENT << "public " << field_type << " " << field_name << ";\n";
 
-                    string ctor_arg {strex("{} {}", field_type, field_name).str()};
+                    string ctor_arg {strex("{} {}", int_coord_ctor ? "int" : field_type, field_name).str()};
                     ctor_args_length += ctor_arg.length();
                     ctor_args.emplace_back(std::move(ctor_arg));
                 }
@@ -543,7 +546,14 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
 
                     for (const FieldDesc& field : type->StructLayout->Fields) {
                         string field_name {EscapeCsIdentifier(field.Name)};
-                        out << CS_INDENT << "    this." << field_name << " = " << field_name << ";\n";
+                        string field_type {MakeCsTypeName(field.Type)};
+
+                        if (int_coord_ctor && field_type != "int") {
+                            out << CS_INDENT << "    this." << field_name << " = (" << field_type << ")" << field_name << ";\n";
+                        }
+                        else {
+                            out << CS_INDENT << "    this." << field_name << " = " << field_name << ";\n";
+                        }
                     }
 
                     out << CS_INDENT << "}\n";
@@ -965,7 +975,7 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                     out << CS_INDENT << "    catch (Exception ex)\n";
                     out << CS_INDENT << "    {\n";
                     out << CS_INDENT << "        global::FOnline.ScriptExceptions.Record(ex, true);\n";
-                    out << CS_INDENT << "        result = (int)EventResult.StopChain;\n";
+                    out << CS_INDENT << "        result = (int)(hasExplicitResult ? EventResult.StopChain : EventResult.ContinueChain);\n";
                     out << CS_INDENT << "    }\n";
                     out << CS_INDENT << "}\n";
                 }
@@ -1492,7 +1502,7 @@ auto ManagedScriptBaker::CollectSourceFiles(const FileCollection& files, const v
 auto ManagedScriptBaker::CollectReferences(const vector<string>& extra_references, string_view assembly_name, string_view target_name, const std::filesystem::path& config_dir) -> vector<string>
 {
     vector<string> result {};
-    unordered_set<string> unique_refs {unordered_set<string>(result.begin(), result.end())};
+    unordered_set<string> unique_refs {result.begin(), result.end()};
 
     for (const string& reference_value : CollectScopedValues(extra_references, assembly_name, target_name)) {
         bool is_path_reference {reference_value.find('\\') != string::npos || reference_value.find('/') != string::npos || std::filesystem::path(fs::make_path(reference_value)).extension() == ".dll"};
@@ -1656,9 +1666,9 @@ static auto GetManagedBakeStamp(const BakingContext& context, string_view target
         }
     }
 
-    if (context.BakedFiles) {
+    if (auto baked_files {context.GetBakedFiles()}) {
         string target_lower {static_cast<string&&>(strex(target_name).lower())};
-        FileHeader metadata_header {context.BakedFiles->ReadFileHeader(strex("Metadata.fometa-{}", target_lower))};
+        FileHeader metadata_header {baked_files->ReadFileHeader(strex("Metadata.fometa-{}", target_lower))};
 
         if (metadata_header) {
             stamp = std::max(stamp, metadata_header.GetWriteTime());
@@ -2324,11 +2334,11 @@ static auto MakeAbsoluteProjectOutputPath(const std::filesystem::path& assemblie
 
 static auto GetManagedAssembliesOutputDir(const BakingContext& context) -> std::filesystem::path
 {
-    FO_VERIFY_AND_THROW(context.Settings, "Baking context has no settings");
+    FO_VERIFY_AND_THROW(context.GetSettings(), "Baking context has no settings");
 
     std::error_code ec {};
-    auto output_dir {std::filesystem::absolute(std::filesystem::current_path() / fs::make_path(context.Settings->Baking.BakeOutput) / fs::make_path(context.PackName) / "Assemblies", ec).lexically_normal()};
-    return ec ? (std::filesystem::current_path() / fs::make_path(context.Settings->Baking.BakeOutput) / fs::make_path(context.PackName) / "Assemblies").lexically_normal() : output_dir;
+    auto output_dir {std::filesystem::absolute(std::filesystem::current_path() / fs::make_path(context.GetSettings()->Baking.BakeOutput) / fs::make_path(context.GetPackName()) / "Assemblies", ec).lexically_normal()};
+    return ec ? (std::filesystem::current_path() / fs::make_path(context.GetSettings()->Baking.BakeOutput) / fs::make_path(context.GetPackName()) / "Assemblies").lexically_normal() : output_dir;
 }
 
 static auto MakeCsTypeToken(string_view name) -> string
@@ -5186,7 +5196,7 @@ static void BakeManagedRuntimePayload(const BakingContext& context, const vector
         string relative_path {strex("{}", disk_path.lexically_relative(*runtime_dir).generic_string()).str()};
         string resource_path {strex(MANAGED_RUNTIME_RESOURCE_DIR).combine_path(relative_path).str()};
         uint64_t write_time {std::max<uint64_t>(fs::last_write_time(disk_path.string()), 1)};
-        bool should_bake {!context.BakeChecker || context.BakeChecker(resource_path, write_time)};
+        bool should_bake {!context.HasBakeChecker() || context.CheckOutput(resource_path, write_time)};
 
         if (should_bake) {
             context.WriteData(resource_path, ReadFileBytes(disk_path));
@@ -5197,10 +5207,10 @@ static void BakeManagedRuntimePayload(const BakingContext& context, const vector
     // registered with the checker and then rewritten from its content, which the writer leaves untouched when equal
     string manifest_resource_path {strex(MANAGED_RUNTIME_RESOURCE_DIR).combine_path(MANAGED_RUNTIME_MANIFEST_FILE).str()};
 
-    if (context.BakeChecker) {
-        (void)context.BakeChecker(manifest_resource_path, std::max<uint64_t>(fs::last_write_time(manifest_path.string()), 1));
+    if (context.HasBakeChecker()) {
+        (void)context.CheckOutput(manifest_resource_path, std::max<uint64_t>(fs::last_write_time(manifest_path.string()), 1));
     }
-    if (!context.OutputDiscovery) {
+    if (!context.IsOutputDiscovery()) {
         context.WriteData(manifest_resource_path, const_span<uint8_t> {reinterpret_cast<const uint8_t*>(selected_manifest.data()), selected_manifest.size()});
     }
 }

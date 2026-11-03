@@ -32,6 +32,7 @@
 //
 
 #include "MetadataBaker.h"
+
 #include "MetadataRegistration.h"
 
 FO_BEGIN_NAMESPACE
@@ -68,7 +69,7 @@ void MetadataBaker::BakeFiles(const FileCollection& files, string_view target_pa
         filtered_files.emplace_back(File::Load(file_header));
     }
 
-    for (const auto& config_path : _context->Settings->GetAppliedConfigs()) {
+    for (const auto& config_path : _context->GetSettings()->GetAppliedConfigs()) {
         max_write_time = std::max(max_write_time, fs::last_write_time(config_path));
     }
 
@@ -76,9 +77,9 @@ void MetadataBaker::BakeFiles(const FileCollection& files, string_view target_pa
         return;
     }
 
-    bool bake_server {!_context->BakeChecker || _context->BakeChecker(_context->PackName + ".fometa-server", max_write_time)};
-    bool bake_client {!_context->BakeChecker || _context->BakeChecker(_context->PackName + ".fometa-client", max_write_time)};
-    bool bake_mapper {!_context->BakeChecker || _context->BakeChecker(_context->PackName + ".fometa-mapper", max_write_time)};
+    bool bake_server {!_context->HasBakeChecker() || _context->CheckOutput(_context->GetPackName() + ".fometa-server", max_write_time)};
+    bool bake_client {!_context->HasBakeChecker() || _context->CheckOutput(_context->GetPackName() + ".fometa-client", max_write_time)};
+    bool bake_mapper {!_context->HasBakeChecker() || _context->CheckOutput(_context->GetPackName() + ".fometa-mapper", max_write_time)};
 
     if (!bake_server && !bake_client && !bake_mapper) {
         return;
@@ -92,19 +93,19 @@ void MetadataBaker::BakeFiles(const FileCollection& files, string_view target_pa
     if (bake_server) {
         file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeMetadata-Server", [&]() FO_DEFERRED {
             auto data {BakeMetadata(filtered_files, "Server")};
-            _context->WriteData(_context->PackName + ".fometa-server", data);
+            _context->WriteData(_context->GetPackName() + ".fometa-server", data);
         }));
     }
     if (bake_client) {
         file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeMetadata-Client", [&]() FO_DEFERRED {
             auto data {BakeMetadata(filtered_files, "Client")};
-            _context->WriteData(_context->PackName + ".fometa-client", data);
+            _context->WriteData(_context->GetPackName() + ".fometa-client", data);
         }));
     }
     if (bake_mapper) {
         file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeMetadata-Mapper", [&]() FO_DEFERRED {
             auto data {BakeMetadata(filtered_files, "Mapper")};
-            _context->WriteData(_context->PackName + ".fometa-mapper", data);
+            _context->WriteData(_context->GetPackName() + ".fometa-mapper", data);
         }));
     }
 
@@ -115,7 +116,7 @@ void MetadataBaker::BakeFiles(const FileCollection& files, string_view target_pa
             file_baking.get();
         }
         catch (const std::exception& ex) {
-            if (_context->ForceSyncMode.value_or(false)) {
+            if (_context->GetForceSyncMode().value_or(false)) {
                 throw;
             }
 
@@ -145,6 +146,33 @@ auto MetadataBaker::BakeMetadata(const vector<File>& files, string_view target) 
 
     TagsParsingContext ctx {.Target = target};
     ctx.ResultTags[METADATA_TARGET_SECTION].emplace_back(vector<string> {string(target)});
+
+    auto tokenize_migration_rule {[](string_view line, string_view source_file, size_t line_number) -> vector<string_view> {
+        vector<string_view> result {};
+        size_t segment_begin {0};
+
+        while (true) {
+            size_t quote_begin {line.find('"', segment_begin)};
+            string_view unquoted_part {quote_begin != string::npos ? line.substr(segment_begin, quote_begin - segment_begin) : line.substr(segment_begin)};
+            vector<string_view> unquoted_tokens {strvex(unquoted_part).tokenize()};
+            result.insert(result.end(), unquoted_tokens.begin(), unquoted_tokens.end());
+
+            if (quote_begin == string::npos) {
+                break;
+            }
+
+            size_t quote_end {line.find('"', quote_begin + 1)};
+
+            if (quote_end == string::npos) {
+                throw MetadataBakerException("Invalid MigrationRule codegen tag: malformed quoted rule argument", source_file, line_number);
+            }
+
+            result.emplace_back(line.substr(quote_begin + 1, quote_end - quote_begin - 1));
+            segment_begin = quote_end + 1;
+        }
+
+        return result;
+    }};
 
     for (size_t i {0}; i < files.size(); i++) {
         const auto& file_str {readed_files[i]};
@@ -217,6 +245,11 @@ auto MetadataBaker::BakeMetadata(const vector<File>& files, string_view target) 
             }
 
             string_view tag_name {tokens.front()};
+
+            if (tag_name == METADATA_MIGRATION_RULE_SECTION) {
+                tokens = tokenize_migration_rule(line, files[i].GetPath(), line_number);
+            }
+
             tokens.erase(tokens.begin());
 
             if (!valid_codegen_tags.contains(tag_name)) {
@@ -383,7 +416,10 @@ void MetadataBaker::ParseEnum(TagsParsingContext& ctx) const
             int64_t value {};
 
             if (tag_desc.Tokens[3] == "-") {
-                if (tag_desc.Tokens.size() < 5 || !strvex(tag_desc.Tokens[4]).is_number()) {
+                if (tag_desc.Tokens.size() < 5) {
+                    throw MetadataBakerException("Invalid Enum codegen tag: expected number after '-'", tag_desc.SourceFile, tag_desc.LineNumber);
+                }
+                if (!strvex(tag_desc.Tokens[4]).is_number()) {
                     throw MetadataBakerException("Invalid Enum codegen tag: expected number after '-'", tag_desc.SourceFile, tag_desc.LineNumber, tag_desc.Tokens[4]);
                 }
 
@@ -1545,7 +1581,7 @@ void MetadataBaker::ParseSetting(TagsParsingContext& ctx) const
         tag_tokens.emplace_back(std::move(name));
         tag_tokens.emplace_back(type_str);
 
-        auto setting_value {_context->Settings->FindSettingValue(tag_tokens.front())};
+        auto setting_value {_context->GetSettings()->FindSettingValue(tag_tokens.front())};
 
         if (!setting_value) {
             throw MetadataBakerException("Invalid Setting codegen tag: setting has no configured value", tag_desc.SourceFile, tag_desc.LineNumber, tag_tokens.front());
@@ -1579,6 +1615,10 @@ void MetadataBaker::ParseMigrationRule(TagsParsingContext& ctx) const
 
             for (size_t i {0}; i < tokens.size(); i++) {
                 auto token {tokens[i]};
+
+                if (token.empty()) {
+                    throw MetadataBakerException("Invalid MigrationRule codegen tag: empty rule argument", tag_desc.SourceFile, tag_desc.LineNumber);
+                }
 
                 if (token == ":") {
                     if (!allow_namespace || expect_token || i + 1 == tokens.size() || tokens[i + 1] != ":") {
@@ -1659,7 +1699,7 @@ void MetadataBaker::ParseMigrationRule(TagsParsingContext& ctx) const
             throw MetadataBakerException("Invalid MigrationRule codegen tag: insufficient parameters", tag_desc.SourceFile, tag_desc.LineNumber);
         }
 
-        size_t target_begin {action_rule ? 3u : 2u};
+        size_t target_begin {action_rule ? size_t {3} : size_t {2}};
 
         if (action_rule && (tag_desc.Tokens.size() < 5 || last_arg_begin <= target_begin)) {
             throw MetadataBakerException("Invalid MigrationRule action codegen tag: insufficient parameters", tag_desc.SourceFile, tag_desc.LineNumber);
@@ -1667,6 +1707,10 @@ void MetadataBaker::ParseMigrationRule(TagsParsingContext& ctx) const
 
         string target {merge_name_tokens(span(tag_desc.Tokens).subspan(target_begin, last_arg_begin - target_begin))};
         string replacement {merge_name_tokens(span(tag_desc.Tokens).subspan(last_arg_begin), action == "Transform")};
+
+        if (replacement.find_first_of(" \t\r\n") != string::npos) {
+            throw MetadataBakerException("Invalid MigrationRule codegen tag: rule replacement must not contain whitespace", tag_desc.SourceFile, tag_desc.LineNumber);
+        }
 
         if (action_rule && ctx.OtherEntityTypes.contains(extra_info)) {
             continue;

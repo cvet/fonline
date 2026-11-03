@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
 #include "Baker.h"
@@ -73,7 +75,57 @@ namespace
         {
             scoped_lock locker {_clientChannelLocker};
 
-            return numeric_cast<size_t>(std::ranges::count(_receivedMovement, std::pair {message, cr_id}));
+            return numeric_cast<size_t>(std::ranges::count_if(_receivedMovement, [message, cr_id](const ReceivedMovement& received) { return received.Message == message && received.CritterId == cr_id; }));
+        }
+
+        [[nodiscard]] auto ReadReceivedSenderTime(NetMessage message, ident_t cr_id) -> int64_t
+        {
+            scoped_lock locker {_clientChannelLocker};
+
+            for (auto it {_receivedMovement.rbegin()}; it != _receivedMovement.rend(); ++it) {
+                const ReceivedMovement& received {*it};
+
+                if (received.Message != message || received.CritterId != cr_id) {
+                    continue;
+                }
+
+                NetInBuffer packet {numeric_cast<size_t>(_settings->Network.NetBufferSize)};
+                packet.AddData(received.Data);
+                REQUIRE(packet.ReadMsg() == message);
+                REQUIRE(packet.Read<ident_t>() == cr_id);
+
+                if (message == NetMessage::CritterMove) {
+                    (void)packet.Read<uint32_t>();
+                    (void)packet.Read<uint32_t>();
+                    (void)packet.Read<uint16_t>();
+                    (void)packet.Read<mpos>();
+
+                    uint16_t steps_count {packet.Read<uint16_t>()};
+
+                    for (uint16_t i {0}; i < steps_count; i++) {
+                        (void)packet.Read<hdir>();
+                    }
+
+                    uint16_t control_steps_count {packet.Read<uint16_t>()};
+
+                    for (uint16_t i {0}; i < control_steps_count; i++) {
+                        (void)packet.Read<uint16_t>();
+                    }
+
+                    (void)packet.Read<ipos16>();
+                    (void)packet.Read<uint32_t>();
+                    (void)packet.Read<float32_t>();
+                }
+                else {
+                    REQUIRE(message == NetMessage::CritterMoveLease);
+                    (void)packet.Read<uint32_t>();
+                    (void)packet.Read<float32_t>();
+                }
+
+                return packet.Read<int64_t>();
+            }
+
+            FO_VERIFY_AND_THROW(false, "Movement message was not received", message, cr_id);
         }
 
         void Receive(const_span<uint8_t> buf)
@@ -113,6 +165,13 @@ namespace
         void DisconnectImpl() override { }
 
     private:
+        struct ReceivedMovement
+        {
+            NetMessage Message {};
+            ident_t CritterId {};
+            vector<uint8_t> Data {};
+        };
+
         // The compressed stream is continuous, so every packet is unpacked in order even when nothing in it is recorded
         void RecordMovementMessages()
         {
@@ -140,12 +199,13 @@ namespace
 
                 FO_VERIFY_AND_THROW(message_size >= header_size && message_size <= data.size() - offset, "Invalid outgoing network message size", message_size, data.size(), offset);
 
-                if (message == NetMessage::CritterMove || message == NetMessage::CritterPos) {
+                if (message == NetMessage::CritterMove || message == NetMessage::CritterPos || message == NetMessage::CritterMoveLease) {
                     FO_VERIFY_AND_THROW(message_size >= header_size + sizeof(ident_t), "Truncated outgoing movement message", message_size);
 
                     ident_t cr_id {};
                     memory::copy(&cr_id, data.data() + offset + header_size, sizeof(cr_id));
-                    _receivedMovement.emplace_back(message, cr_id);
+                    const_span<uint8_t> message_data {data.subspan(offset, message_size)};
+                    _receivedMovement.push_back(ReceivedMovement {.Message = message, .CritterId = cr_id, .Data = vector<uint8_t>(message_data.begin(), message_data.end())});
                 }
 
                 offset += message_size;
@@ -157,7 +217,7 @@ namespace
         vector<uint8_t> _plainData {};
         stream_decompressor _decompressor {};
         vector<uint8_t> _unpackedData {};
-        vector<pair<NetMessage, ident_t>> _receivedMovement {};
+        vector<ReceivedMovement> _receivedMovement {};
     };
 
     auto MakeSettings() -> GlobalSettings
@@ -554,7 +614,7 @@ TEST_CASE("ServerCritterMovePositionReconciliation")
         // The allowance is min(round trip / 2, MoveFinishCatchUpMaxMs) + CritterMovingPeriodMs. This movement
         // is authored to fit inside it, and the guard fails loudly if the hex metric or the defaults change
         int32_t allowed_catch_up_ms {std::min(400, server->Settings->Server.MoveFinishCatchUpMaxMs) + server->Settings->Server.CritterMovingPeriodMs};
-        REQUIRE(moving->GetWholeTime() < numeric_cast<float32_t>(allowed_catch_up_ms));
+        REQUIRE(moving->GetWholeTime().to_ms<float64_t>() < numeric_cast<float32_t>(allowed_catch_up_ms));
 
         // Reporting arrival one hex in must settle the critter there, short of where the plan ends. Left to
         // itself the movement would carry it to end_hex, so this is what the reconciliation actually decides
@@ -705,6 +765,42 @@ TEST_CASE("ServerCritterMovePositionReconciliation")
         server->MapMngr.DestroyLocation(loc);
     }
 
+    SECTION("MovementMessagesAreStampedAtSendTime")
+    {
+        auto test_connection {safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings)};
+        auto player {CreateLoggedPlayer(server, test_connection, "MovementSendTime")};
+
+        auto loc {server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")})};
+        auto map {loc->GetMapByIndex(0)};
+        REQUIRE(static_cast<bool>(map));
+
+        auto cr {server->CreateCritter(fn("TestCritter"), false)};
+        server->MapMngr.TransferToMap(cr, map, mpos {20, 20}, mdir {}, std::nullopt);
+        server->StartCritterMoving(cr, uint16_t {70}, vector<mdir> {hdir::East, hdir::East, hdir::East}, vector<uint16_t> {3}, ipos16 {}, nullptr);
+
+        server->GameTime.Pause();
+        auto resume {scope_exit([&server]() noexcept { safe_call([&server] { server->GameTime.Resume(); }); })};
+
+        coarse_sleep(std::chrono::milliseconds {250});
+        test_connection->ClearReceivedMovement();
+
+        // A frame snapshot can be old, but its link timestamp belongs to the actual send, not that frame
+        int64_t before_send_ms {nanotime::now().milliseconds()};
+        player->Send_Moving(cr);
+        player->Send_MovingLease(cr);
+        int64_t after_send_ms {nanotime::now().milliseconds()};
+        test_connection->Dispatch();
+
+        CHECK(test_connection->ReadReceivedSenderTime(NetMessage::CritterMove, cr->GetId()) >= before_send_ms);
+        CHECK(test_connection->ReadReceivedSenderTime(NetMessage::CritterMove, cr->GetId()) <= after_send_ms);
+        CHECK(test_connection->ReadReceivedSenderTime(NetMessage::CritterMoveLease, cr->GetId()) >= before_send_ms);
+        CHECK(test_connection->ReadReceivedSenderTime(NetMessage::CritterMoveLease, cr->GetId()) <= after_send_ms);
+
+        server->StopCritterMoving(cr);
+        server->CrMngr.DestroyCritter(cr);
+        server->MapMngr.DestroyLocation(loc);
+    }
+
     // A stop reaching the server after the player's own plan ran out there still names a point on that plan: the server
     // walks back to it rather than correcting the player to the plan's end while its later messages move the server on
     SECTION("StopArrivingAfterTheOwnPlanEndedWalksBackAlongIt")
@@ -799,7 +895,7 @@ TEST_CASE("ServerCritterMovePositionReconciliation")
 
             auto moving {cr->GetMoving()};
             REQUIRE(static_cast<bool>(moving));
-            float32_t elapsed_ms {moving->GetRuntimeElapsedTime(server->GameTime.GetFrameTime())};
+            float64_t elapsed_ms {moving->GetRuntimeElapsedTime(server->GameTime.GetFrameTime()).to_ms<float64_t>()};
 
             if (delay_ms != 0) {
                 CHECK(elapsed_ms >= 2800.0f);
@@ -911,7 +1007,7 @@ TEST_CASE("ServerCritterMovePositionReconciliation")
         small_vector<ptr<ServerEntity>, 4> sync_entities {player, cr, map, loc};
         ctx->SyncEntities(sync_entities);
         REQUIRE(cr->GetMoving()->GetSteps().size() == 5);
-        CHECK(cr->GetMoving()->GetLeaseTime() == 0.0f);
+        CHECK(cr->GetMoving()->GetLeaseTime().to_ms<float64_t>() == 0.0f);
 
         server->StopCritterMoving(cr);
         server->SwitchPlayerCritter(player, nullptr);
@@ -934,11 +1030,11 @@ TEST_CASE("ServerCritterMovePositionReconciliation")
         server->SwitchPlayerCritter(player, cr);
 
         vector<mdir> steps {vector<mdir>(12, mdir {hdir::East})};
-        auto moving {safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {300}, steps, vector<uint16_t> {12}, server->GameTime.GetFrameTime(), timespan {}, start_hex, ipos16 {}, ipos16 {})};
-        moving->SetLeaseTime(200.0f, server->GameTime.GetFrameTime());
+        auto moving {safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {300}, steps, vector<uint16_t> {12}, server->GameTime.GetFrameTime(), timespan::zero, start_hex, ipos16 {}, ipos16 {})};
+        moving->SetLeaseTime(timespan {std::chrono::duration<float64_t, std::milli> {200.0f}}, server->GameTime.GetFrameTime());
         server->StartCritterMoving(cr, moving, player, 7);
         server->ChangeCritterMovingSpeed(cr, uint16_t {150});
-        REQUIRE(moving->GetLeaseTime() == 400.0f);
+        REQUIRE(moving->GetLeaseTime().to_ms<float64_t>() == 400.0f);
 
         // This renewal was sent before the player learned the new speed: its boundary is still ninety pixels in
         SendCritterMoveLease(test_connection, server, map->GetId(), cr->GetId(), 7, 300.0f, uint16_t {300});
@@ -946,13 +1042,13 @@ TEST_CASE("ServerCritterMovePositionReconciliation")
         REQUIRE(WaitForUnlockedServerCondition(server, server_locked, [&server, &cr] {
             auto ctx {server->RequireCurrentSyncContext()};
             ctx->SyncEntity(cr);
-            return cr->IsMoving() && cr->GetMoving()->GetLeaseTime() >= 590.0f;
+            return cr->IsMoving() && cr->GetMoving()->GetLeaseTime().to_ms<float64_t>() >= 590.0f;
         }));
 
         auto ctx {server->RequireCurrentSyncContext()};
         small_vector<ptr<ServerEntity>, 4> sync_entities {player, cr, map, loc};
         ctx->SyncEntities(sync_entities);
-        CHECK(moving->GetLeaseTime() == 600.0f);
+        CHECK(moving->GetLeaseTime().to_ms<float64_t>() == 600.0f);
 
         server->StopCritterMoving(cr);
         server->SwitchPlayerCritter(player, nullptr);

@@ -54,19 +54,43 @@ class DocumentationSiteTests(unittest.TestCase):
         self.assertIn("visiblefenceexample", search["terms"])
         self.assertIn("visibleinlineexample", search["terms"])
 
-    def test_repository_search_uses_reviewed_budget(self) -> None:
-        root = BUILDTOOLS_DIR.parent
-        manifest = json.loads((root / docs_site.DEFAULT_MANIFEST).read_text(encoding="utf-8"))
-        max_bytes = manifest["site_delivery"]["search"]["max_bytes"]
-        outputs = docs_site.render_outputs(root)
-        output_bytes = len(outputs[docs_site.DEFAULT_SEARCH_OUTPUT].encode("utf-8"))
-        russian_output_bytes = len(
-            outputs[docs_site.DEFAULT_RUSSIAN_SEARCH_OUTPUT].encode("utf-8")
+    def test_large_locale_indexes_preserve_documents_and_search_results(self) -> None:
+        temporary_directory, root = self._create_fixture()
+        self.addCleanup(temporary_directory.cleanup)
+        source_path = root / "Docs/Guide.md"
+        terms = [f"searchmarker{index:05d}" + "payload" * 5 for index in range(40000)]
+        content = source_path.read_text(encoding="utf-8") + "\n" + " ".join(terms) + "\n"
+        source_path.write_text(content, encoding="utf-8")
+        russian_path = root / "Docs/ru/guide.md"
+        russian_path.parent.mkdir(parents=True)
+        russian_path.write_text(
+            docs_localization.translation_metadata_line(
+                "guide", "Docs/Guide.md", docs_localization.normalized_sha256(content)
+            ) + "\n# Руководство\n\n" + " ".join(terms) + "\n",
+            encoding="utf-8",
         )
+        for name, source in (("generated-api-index", "index"), ("generated-api-methods", "methods")):
+            relative_source = f"Docs/generated/api/{source}.md"
+            (root / f"Docs/ru/{name}.md").write_text(
+                docs_localization.translation_metadata_line(
+                    name, relative_source, docs_localization.normalized_sha256(
+                        (root / relative_source).read_text(encoding="utf-8")
+                    )
+                ) + "\n# Справочник API\n",
+                encoding="utf-8",
+            )
 
-        self.assertEqual(max_bytes, 1_867_776)
-        self.assertLessEqual(output_bytes, max_bytes)
-        self.assertLessEqual(russian_output_bytes, max_bytes)
+        outputs = docs_site.render_outputs(root)
+        for output_path in (docs_site.DEFAULT_SEARCH_OUTPUT, docs_site.DEFAULT_RUSSIAN_SEARCH_OUTPUT):
+            rendered = outputs[output_path]
+            self.assertGreater(len(rendered.encode("utf-8")), 2_000_000)
+            search = json.loads(rendered)
+            self.assertEqual(search["document_count"], len(search["documents"]))
+            self.assertEqual(search["document_count"], 4 if search["locale"] == "en" else 3)
+            self.assertEqual(len({document["id"] for document in search["documents"]}), search["document_count"])
+            self.assertIn("guide", [document["id"] for document in search["documents"]])
+            self.assertIn(terms[-1], search["terms"])
+            self.assertEqual(docs_site.search_documents(search, terms[-1])[0]["document"]["id"], "guide")
 
     def test_empty_anchor_metadata_is_not_searchable_but_code_examples_are(self) -> None:
         temporary_directory, root = self._create_fixture()
@@ -214,7 +238,6 @@ class DocumentationSiteTests(unittest.TestCase):
                 },
                 "full_context": {
                     "path": docs_ai_delivery.DEFAULT_FULL_CONTEXT_OUTPUT,
-                    "max_bytes": 65536,
                     "generated_pages": "indexes-only",
                 },
                 "public_manifest": {"path": docs_ai_delivery.DEFAULT_PUBLIC_MANIFEST_OUTPUT},
@@ -229,7 +252,6 @@ class DocumentationSiteTests(unittest.TestCase):
                         "en": docs_site.DEFAULT_SEARCH_OUTPUT,
                         "ru": docs_site.DEFAULT_RUSSIAN_SEARCH_OUTPUT,
                     },
-                    "max_bytes": 65536,
                     "minimum_query_length": 2,
                 },
                 "routing": {
@@ -533,20 +555,13 @@ class DocumentationSiteTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "navigation omits .*guide"):
             docs_site.render_outputs(root)
 
-    def test_outputs_are_deterministic_and_search_budget_is_enforced(self) -> None:
+    def test_outputs_are_deterministic(self) -> None:
         temporary_directory, root = self._create_fixture()
         self.addCleanup(temporary_directory.cleanup)
 
         first = docs_site.render_outputs(root)
         self.assertEqual(first, docs_site.render_outputs(root))
         self.assertTrue(all(content.endswith("\n") for content in first.values()))
-
-        manifest_path = root / docs_site.DEFAULT_MANIFEST
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        manifest["site_delivery"]["search"]["max_bytes"] = 100
-        manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
-        with self.assertRaisesRegex(ValueError, "search index is .* limit is 100"):
-            docs_site.render_outputs(root)
 
     def test_write_and_check_modes_detect_stale_output(self) -> None:
         temporary_directory, root = self._create_fixture()

@@ -106,7 +106,7 @@ class PrototypeFormatDocumentationTests(unittest.TestCase):
             "## Validation workflow",
         ):
             self.assertIn(heading, guide)
-        self.assertIn("must not contain `/` or `$`", guide)
+        self.assertIn("must not contain `/`, `$`, or whitespace", guide)
         self.assertIn("`ProtoBaker` interprets `$Name` and `$Parent`", guide)
         self.assertIn("section and metadata, not the extension or directory", guide)
 

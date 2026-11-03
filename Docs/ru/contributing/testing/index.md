@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/testing/
 ---
 
 # Тестирование
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"464ef466c169f7b574030d0288682dabb7d9cf1ff6e9867fd953f3de1c438a30"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"0cd3e28d71aa3de9497c135847193d53a0ae0dd13ff130f463253c55f4ae8cf7"} -->
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
 > `Source/Tests/Test_*.cpp`.
@@ -99,12 +99,74 @@ extraction, directional/shared offsets и копирование усечённ�
 
 `Test_ManagedScriptRuntime.cpp` компилирует принадлежащий движку `Source/Tests/Fixtures/ManagedRuntimeProbe.cs` настоящим `ManagedScriptBaker` и .NET SDK, затем загружает сборки сервера, клиента и Mapper. Он проверяет инициализацию модулей, события персонажей, вызовы из native-кода в C#, массивы в аргументах и результатах, словари, строки UTF-8 и строки по ссылке, хеши, допускающие null ссылки на сущности, отчёт об исключении и изоляцию двух одновременно работающих серверов. Требуются SDK для `ManagedScript.TargetFramework` и настроенные файлы среды выполнения; маркеры пробного запуска не доказывают выполнение скриптов. Это целевое покрытие связки native/Managed, а не полное соответствие каждому сценарию AS-привязок.
 
+`Test_RpcRuntimeTracker.cpp` проверяет границы warning/disconnect,
+независимые нулевые настройки, интервал и сброс эпизода, ID и завершение вызовов,
+предел pending, ограничение истории прихода, готовность по последнему байту и
+полные 64-битные хеши ожидающих вызовов. `Test_NetBuffer.cpp` проверяет пассивное
+чтение фреймов при фрагментации, непрочитанном текущем payload, shrink и неверном
+входе. Выбор — `[rpc-runtime]`.
+
+`Test_ClientServerIntegration.cpp` использует `[rpc-runtime-transport]` для
+настоящих защищённых interthread-соединений: сохранение связи при warning,
+отключение watchdog при занятом единственном script worker, отложенное завершение
+и полностью отключённую политику. Managed core harness дополнительно проверяет
+настоящий adapter: успех, ошибку, отмену, вложенность, завершение из другого потока
+и гонки teardown. Native-пробы отложенного обработчика сами по себе не доказывают
+работу скриптового backend.
+`NetworkTransportClosureDoesNotWaitForCallbacks` удерживает send/receive callbacks
+при запросе закрытия, затем проверяет полную очистку и единственное уведомление;
+секция вложенного закрытия защищает синхронный повторный вход из транспорта.
+`ManagedScriptRuntime` также вызывает настоящий Managed RPC через native bridge
+и проверяет фоновый успех, ошибку и отмену при остановленном script pump,
+заранее отменённую Task, вложенный ownerless `Task<T>`, изоляцию двух backend и
+гонку completion с закрытием входа teardown. Строковые getter/ref-setter проверяют
+boxed-мост property callbacks. Python-набор блокируется внутри подставленного
+native completion, доказывая ожидание уже вошедшего callback при teardown и
+подавление позднего завершения; контроль с удалённым gate должен отказать по
+наблюдаемому поведению.
+
+<a id="native-module-and-resource-pipeline-checks"></a>
+
+## Проверки нативных модулей и ресурсного пайплайна
+
+Задача CI `engine-update` запускает Python-регрессии отбора ресурсов,
+последовательной и параллельной упаковки, формата ресурсного пака, `IsPackaged`,
+оформления нативных модулей и связей CMake. Задача форматирования также выполняет
+`python3 BuildTools/check_native_modules.py`; область проверки и рассмотренные
+исключения описаны в [оформлении нативных модулей](../source-tree/index.md#native-module-layout).
+
+Цель `RunResourceUsageIntegrationTests` запускает настоящий нативный Baker через
+`BuildTools/tests/check_resource_usage_pipeline.py`. При включённом `FO_UNIT_TESTS`,
+наличии цели Baker и нативной конфигурации она входит в зависимости `RunUnitTests`.
+Стандартный validation-project явно включает `FO_BUILD_BAKER`; регрессия CMake
+проверяет этот параметр, исполняя настоящий профиль с отключёнными побочными
+действиями стадий. Отдельные проекты-фикстуры CMake собирают `RunUnitTests`
+и проверяют, что команда пайплайна выполняется первой.
+
+Фикстура запекает настоящие метаданные, прототипы, FOFRM и страницу шрифта,
+проверяет точный отбор manifest и создаёт архив обычным упаковщиком. Другой процесс
+Baker подключает архив через нативный `DataSource` и копирует все записи для
+побайтового сравнения. Повторный bake удаляет включение из `ResourceSet.Files`
+и меняет содержимое изображения с сохранением его времени. Тот же экземпляр
+Packager должен перечитать manifest и обновить архив. Отрицательные контроли —
+упаковка всех запечённых файлов и потеря страницы шрифта. Неиспользуемые выходы
+остаются в полной выпечке. Временные файлы принадлежат изолированной фикстуре
+и удаляются при выходе; вывод завершившегося с ошибкой Baker включается в диагностику.
+
+Прямому запуску нужны стандартная библиотека Python и существующий Baker:
+
+```bash
+python3 BuildTools/tests/check_resource_usage_pipeline.py --baker /absolute/path/to/Project_Baker
+```
+
+При включённом `FO_ANGELSCRIPT_SCRIPTING` CMake передаёт этому runner флаг `--angelscript`. Изолированный пакет Metadata тогда использует `Metadata AngelScript Proto` и минимальный модуль `.fos`, создавая bytecode, необходимый для запекания прототипов. При прямой проверке AngelScript Baker добавляйте тот же флаг; для остальных бэкендов по умолчанию сохраняется фикстура только с данными.
+
 ## Запуск тестов
 
 Задача CI `engine-update` также выполняет
-`python3 -m pytest -q BuildTools/tests/test_codegen_default_args.py` с
-`python3-pytest`. Эти проверки исходников охватывают сгенерированную конфигурацию,
-аргументы по умолчанию и метаданные привязок. Заготовка конфигурации только из
+`python3 -m pytest -q BuildTools/tests/test_codegen_default_args.py BuildTools/tests/test_codegen_value_type_layouts.py BuildTools/tests/test_cmake_map_size_options.py`
+с `python3-pytest` и CMake. Эти проверки исходников охватывают сгенерированную конфигурацию,
+аргументы по умолчанию, метаданные привязок, layout value-типов, выбранный при сборке, и пределы размера карты при конфигурации. Заготовка конфигурации только из
 макросов использует фиксированные версию и ревизию Engine и проверяет
 `FO_ENGINE_VERSION` и `FO_ENGINE_REVISION` независимо от текущей рабочей копии.
 
@@ -243,6 +305,12 @@ Linux-specific. `BuildTools/tests/test_native_unit_validation.py` покрыва
 platform resolution, передачу configure, проверки generator cache и
 неподдерживаемые hosts.
 
+Обычная job `unit-tests` в CI остаётся независимой от CMake Unity-сборки. Отдельная job `unity` в `validate.yml` задаёт `FO_UNITY_BUILD=ON` и `FO_UNITY_BUILD_BATCH_SIZE=32`, запускает `BuildTools/tests/test_unity_build.py`, а затем повторяет тот же validator `unit-tests` с пакетами first-party исходников. Она выполняется при `all` и доступна вручную через `job: unity`; bundled third-party targets не объединяются.
+
+Job `wide-coords` повторяет validator `unit-tests` с `FO_MAP_WIDE_COORDS=ON`, чтобы нативный код, AngelScript и тесты собирались и проходили и с 32-битными координатами карты. Она выполняется при `all` и доступна вручную через `job: wide-coords`. Тесты, зависящие от ширины координат, ветвятся по `mcoord_t`, а не предполагают 16-битные значения.
+
+Различайте имена внутренних helper’ов разных единиц трансляции и явно указывайте пространства имён общих фикстур, если Unity lookup может выбрать другого владельца. Макросы, принадлежащие тестовому файлу, также получают отдельные имена; не исключайте тестовые исходники и не меняйте проверки ради компиляции Unity batch.
+
 Начинайте с минимального focused test и добавляйте общий target, когда изменение
 пересекает границы подсистем.
 
@@ -318,6 +386,8 @@ coverage на нативных платформах хоста. Они такж�
 Coverage зависит от platform и environment. Sources, не скомпилированные в текущем build, не имеют mapping и отдельно показываются как untouched. Sources, которые компилируются, но не могут выполниться в headless test process, входят в `ENVIRONMENT_EXCLUDED_SOURCES` с письменной причиной; сейчас это device-backed audio/video, Mongo/updater infrastructure и намеренно завершающий процесс diagnostic self-test. Loopback sockets и debugger endpoint остаются в headline. Report раздельно показывает scoped, all-source и excluded buckets. Exclusion является routing decision: его обязан покрыть owning platform, windowed run или integration lane с реальным endpoint.
 
 ### Шаблоны focused harness
+
+- **Неинтерактивные ошибки:** каждый скрытый случай `ApplicationNonInteractiveErrorMessage`, `ApplicationNonInteractiveException`, `ApplicationHeadlessErrorMessage` и `ApplicationHeadlessException` запускается по точному имени в отдельном процессе сгенерированного unit-test приложения. Состояние quit необратимо; общий тег нельзя запускать одним набором. Headless-случаи сохраняют `Common.NonInteractive = False`, а прямое сообщение проверяет сохранение статуса ошибки после позднего успешного запроса quit. Эти случаи проверяют headless-реализацию; для графического frontend и ошибки до создания приложения нужны отдельные process smoke с проверками лога/trace, exit status и тайм-аута.
 
 - **Отсоединение при уничтожении:** `CritterAttachmentTeardown` в `Test_ServerEntityLifetime.cpp` использует автономный сервер при любом scripting backend. Он проверяет обычное отсоединение и уничтожение любого конца связи, считает native-отчёты через штатный callback исключений с сохранением прежнего обработчика и декодирует пакет `CritterAttachments` игрока, управляющего оставшимся существом. `ClientCritterFinalizationDropsAttachmentIds` в `Test_ClientEntityLifetime.cpp` проверяет финализацию представления с кешированными attachment IDs и живым peer. Одного конечного состояния недостаточно: после пойманного native-исключения повторная попытка может завершить удаление.
 

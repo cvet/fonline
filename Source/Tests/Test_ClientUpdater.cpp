@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
 #include "Application.h"
@@ -397,4 +399,3 @@ TEST_CASE("ClientRuntimeBootstrapPublicationFailurePreservesThePreviousSelector"
 #endif
 
 FO_END_NAMESPACE
-

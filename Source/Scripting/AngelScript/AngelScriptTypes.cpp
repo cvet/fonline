@@ -643,21 +643,27 @@ static void Ucolor_ConstructRgba(ucolor* self, int32_t r, int32_t g, int32_t b, 
 template<typename T>
 static void Time_ConstructWithPlace(T* self, int64_t value, int32_t place)
 {
-    if (place == 0) {
-        new (self) T {std::chrono::nanoseconds {value}};
-    }
-    else if (place == 1) {
-        new (self) T {std::chrono::microseconds {value}};
-    }
-    else if (place == 2) {
-        new (self) T {std::chrono::milliseconds {value}};
-    }
-    else if (place == 3) {
-        new (self) T {std::chrono::seconds {value}};
-    }
-    else {
+    if (place < 0 || place > 3) {
         throw ScriptException("Invalid time place", place);
     }
+
+    if constexpr (std::same_as<T, synctime>) {
+        if (place == 0) {
+            value /= 1000000;
+        }
+        else if (place == 1) {
+            value /= 1000;
+        }
+        else if (place == 3) {
+            value = checked_mul(value, int64_t {1000});
+        }
+    }
+    else {
+        constexpr array<int64_t, 4> scales {1, 1000, 1000000, 1000000000};
+        value = checked_mul(value, scales[place]);
+    }
+
+    new (self) T {value};
 }
 
 static void Ipos_ConstructXandY(ipos32* self, int32_t x, int32_t y)
@@ -779,7 +785,7 @@ static void Fsize_ConstructWandH(fsize32* self, float32_t width, float32_t heigh
 
 static void Mpos_ConstructXandY(mpos* self, int32_t x, int32_t y)
 {
-    new (self) mpos {numeric_cast<int16_t>(x), numeric_cast<int16_t>(y)};
+    new (self) mpos {numeric_cast<mcoord_t>(x), numeric_cast<mcoord_t>(y)};
 }
 
 static auto Mpos_FitToSize(const mpos& self, msize size) -> bool
@@ -1150,14 +1156,23 @@ void RegisterAngelScriptTypes(ptr<AngelScript::asIScriptEngine> as_engine)
     FO_AS_VERIFY(as_engine->RegisterObjectProperty("fsize", "float width", offsetof(fsize32, width)));
     FO_AS_VERIFY(as_engine->RegisterObjectProperty("fsize", "float height", offsetof(fsize32, height)));
 
+    // Map coordinate fields follow the metadata layout, whose width FO_MAP_WIDE_COORDS selects
+    auto register_layout_properties {[&](string_view name) {
+        const BaseTypeDesc& type {meta->GetBaseType(name)};
+        auto layout {type.StructLayout};
+        FO_VERIFY_AND_THROW(layout, "Layout is null", name);
+
+        for (const auto& field : layout->Fields) {
+            FO_AS_VERIFY(as_engine->RegisterObjectProperty(type.Name.c_str(), strex("{} {}", MakeScriptTypeName(field.Type), field.Name).c_str(), numeric_cast<int32_t>(field.Offset)));
+        }
+    }};
+
     register_engine_type.operator()<mpos>("mpos");
     FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("mpos", AngelScript::asBEHAVE_CONSTRUCT, "void f(int x, int y)", FO_SCRIPT_FUNC_THIS(Mpos_ConstructXandY), FO_SCRIPT_FUNC_THIS_CONV));
-    FO_AS_VERIFY(as_engine->RegisterObjectProperty("mpos", "int16 x", offsetof(mpos, x)));
-    FO_AS_VERIFY(as_engine->RegisterObjectProperty("mpos", "int16 y", offsetof(mpos, y)));
+    register_layout_properties("mpos");
 
     register_engine_type.operator()<msize>("msize");
-    FO_AS_VERIFY(as_engine->RegisterObjectProperty("msize", "int16 width", offsetof(msize, width)));
-    FO_AS_VERIFY(as_engine->RegisterObjectProperty("msize", "int16 height", offsetof(msize, height)));
+    register_layout_properties("msize");
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("mpos", "bool fitTo(msize size) const", FO_SCRIPT_FUNC_THIS(Mpos_FitToSize), FO_SCRIPT_FUNC_THIS_CONV));
 
     registered_types.emplace("hdir");

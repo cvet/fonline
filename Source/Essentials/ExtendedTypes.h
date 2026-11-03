@@ -99,10 +99,10 @@ struct ucolor
 
     struct components
     {
-        uint8_t r;
-        uint8_t g;
-        uint8_t b;
-        uint8_t a;
+        uint8_t r {};
+        uint8_t g {};
+        uint8_t b {};
+        uint8_t a {};
     };
 
     union
@@ -289,7 +289,11 @@ struct isize
     [[nodiscard]] constexpr auto operator/(const T& other) const noexcept -> isize { return {width / other, height / other}; }
     [[nodiscard]] constexpr auto operator-() const noexcept -> isize { return {-width, -height}; }
 
-    [[nodiscard]] constexpr auto square() const noexcept -> size_t { return width * height; }
+    template<std::integral R>
+    [[nodiscard]] constexpr auto square() const -> R
+    {
+        return numeric_cast<R>(checked_mul(safe_numeric_cast<int64_t>(width), safe_numeric_cast<int64_t>(height)));
+    }
     [[nodiscard]] constexpr auto is_valid_pos(std::integral auto x, std::integral auto y) const noexcept -> bool
     { //
         return std::cmp_greater_equal(x, 0) && std::cmp_greater_equal(y, 0) && std::cmp_less(x, width) && std::cmp_less(y, height);

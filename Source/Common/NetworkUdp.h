@@ -52,8 +52,8 @@ struct UdpTransportOptions
 {
     size_t MaxPayload {};
     size_t MaxPendingBytes {};
-    uint32_t ResendTimeoutMs {};
-    uint32_t ConnectRetryMs {};
+    timespan ResendTimeout {};
+    timespan ConnectRetry {};
     uint32_t Redundancy {};
     uint32_t MaxReorderAhead {}; // Max packets buffered ahead of the next expected sequence (0 = unlimited)
 };

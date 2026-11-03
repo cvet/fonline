@@ -5,7 +5,7 @@ locale: ru
 document_id: generated-api-metadata
 permalink: /Docs/ru/reference/metadata/
 ---
-<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"c0ecdbb3a63fc63f5d2d68adffb7631cc4bf024b96c6ffcf79bb8d06389adc2b"} -->
+<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"3fc087328da2ddf62fad24f658f343ea7136fe32108dfd2444349ba36fc98e1c"} -->
 # Сгенерированный API и метаданные
 
 Этот документ описывает потоки генерации кода и регистрации метаданных движка. Используйте его при изменении generated source, metadata annotations, определений свойств и видимых скриптам API contracts.
@@ -972,7 +972,7 @@ targets, tag changes и отказ от старого file layout), `Test_Prope
 `Test_ClientServerIntegration.cpp`
 (`ServerReportsMetadataMismatchInHandshake`).
 
-Правила Proto используют явные действия `Rename`, `Remove` или `Transform`. Rename/Remove остаются правилами lookup без контекста; `Remove` не принимает замену. Transform задаёт имя-источник у владельца, поддерживающего прототипы, и получает исходный документ БД до поиска прототипа. У источника допускается одно действие; неизвестные действия, повтор источника и прежний токен удаления отклоняются. Правила Property и Proto Rename/Transform создают записи метаданных из пяти частей; Remove у обоих видов содержит четыре. См. [контракт миграции документов Managed](../../how-to/scripting/managed-csharp.md#миграция-свойств-документа).
+Правила Proto используют явные действия `Rename`, `Remove` или `Transform`. Rename/Remove остаются правилами lookup без контекста; `Remove` не принимает замену. Transform задаёт имя-источник у владельца, поддерживающего прототипы, и получает исходный документ БД до поиска прототипа. У источника допускается одно действие; неизвестные действия, повтор источника и прежний токен удаления отклоняются. Legacy source-идентификатор с whitespace записывается в двойных кавычках, например `Proto Modifier Rename "Local knowledge" LocalKnowledge`; quoted source также работает в `Transform` и `Remove`. Голая последовательность слов и replacement с whitespace отклоняются. Правила Property и Proto Rename/Transform создают записи метаданных из пяти частей; Remove у обоих видов содержит четыре. См. [контракт миграции документов Managed](../../how-to/scripting/managed-csharp.md#миграция-свойств-документа).
 
 Migration rules являются generic remaps `(kind, extra-info, target → replacement)` с transitive resolution и задаются как `///@ MigrationRule <Kind> ...`. Помимо `Proto` / `Property`, применяемых при lookup proto и resolution property name, kind `Enum` используется `PropertiesSerializer`, когда сохранённое **имя** enum value больше не разрешается при load. Вместо `EnumResolveException` rule сопоставляет старое имя текущему значению как для scalar enum properties, так и для enum keys словаря. Удалённые или переименованные enum values не делают старые saves непригодными.
 

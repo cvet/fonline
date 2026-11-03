@@ -32,6 +32,7 @@
 //
 
 #include "ItemView.h"
+
 #include "Client.h"
 #include "MapLoader.h"
 

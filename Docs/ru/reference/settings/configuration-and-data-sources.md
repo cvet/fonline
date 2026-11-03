@@ -5,7 +5,7 @@ locale: ru
 document_id: configuration-data-sources
 permalink: /Docs/ru/reference/settings/configuration-and-data-sources.html
 ---
-<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"e82c745c21810309f67ed0fa40e1df64829a805a8628337b749d27ba2a27747a"} -->
+<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"a94df7a857e452ec8924622a50afa3f5322761341e102b6191cd2c7813c59b4c"} -->
 # Конфигурация и источники данных
 
 > Документация движка. Эта страница описывает переиспользуемые механизмы разбора конфигурации, runtime settings, смонтированные источники данных, поиск файлов и хранение кэша. Конкретные значения конфигурации и правила размещения контента принадлежат встраивающему проекту.
@@ -76,6 +76,10 @@ permalink: /Docs/ru/reference/settings/configuration-and-data-sources.html
 - `SkipNestedSections` разбирает только anchor sections и пропускает тела вложенных sections с адресацией через `/`. Это дешевый способ перечислить заголовки в файлах с большим вложенным payload, например в map files.
 - Section считается вложенной, если ее имя содержит `/`. `ConfigFile` распознает только синтаксис: имена хранятся **дословно**, а prefix никогда не разрешается автоматически. Семантика prefix принадлежит формату-потребителю. `GetOrderedSections()` возвращает sections в порядке файла, что позволяет связать вложенную section с предшествующим anchor. Multimap по имени этого выразить не может, потому что повторяющиеся имена схлопываются. `SkipNestedSections` разбирает только невложенные sections и пропускает тела вложенных.
 - `ConfigFile` получает только содержимое: без identity файла, parse callbacks и format tokens. Для map files интерпретацией владеет `MapLoader`: `[ProtoMap]` объявляет map с именем из `$Name` или из имени файла, а вложенный prefix `$Name/<Type>` связывает содержимое с предыдущим anchor.
+
+Пробел/табуляция и конечный обратный слеш продолжают строку. Накопленное
+продолжение у EOF разбирается одинаково с завершающим переводом строки и без него.
+Пустые значения допустимы; ограничения формата проверяет потребитель.
 
 Парсер хранит собственные строки и возвращает `string_view` из разобранных sections. Потребитель не должен считать, что эти views живут дольше экземпляра `ConfigFile`.
 
@@ -152,7 +156,7 @@ Managed getters numeric, boolean и enum settings используют typed ind
 
 `Baking.BakeLanguages` является упорядоченным контрактом контента, а не неупорядоченным locale allowlist: text baking использует первое значение как базу нормализации. `Client.Language` выбирает начальный client text pack. Точное поведение `.fotxt`, `$Text`, fallback и runtime lookup описано в разделе [Текст и локализация](../../how-to/content/text-and-localization.md).
 
-До открытия log, config и local-config cache выполняется отдельный startup-шаг. `ResolveWritableRoot(args)` в `Source/Frontend/ApplicationInit.cpp` определяет read-only `Common.UserWritablePath`, не обращаясь к settings: первым приоритетом служит `--Common.UserWritablePath <path>`, marker `INSTALLED` рядом с executable выбирает per-OS user-data directory плюс `FO_NICE_NAME`, а при отсутствии обоих пустое значение сохраняет portable layout относительно working directory. Специальное CLI-значение `*` запрашивает тот же per-user directory, что и marker. На Android base directory берётся из SDL internal storage, на остальных платформах — через `Platform::GetUserDataBase()`. Config file не может задавать этот путь, потому что сам config может находиться под ним. Разрешённое значение применяется к settings snapshot до чтения local cache, затем создаются обязательные cache/resource subdirectories; ошибка записывает warning и безопасно возвращает процесс к working directory.
+До открытия log, config и local-config cache выполняется отдельный startup-шаг. `ResolveWritableRoot(args)` в `Source/Frontend/ApplicationInit.cpp` определяет read-only `Common.UserWritablePath`, не обращаясь к settings: первым приоритетом служит `--Common.UserWritablePath <path>`, marker `INSTALLED` рядом с executable выбирает per-OS user-data directory плюс `FO_NICE_NAME`, а при отсутствии обоих пустое значение сохраняет portable layout относительно working directory. Специальное CLI-значение `*` запрашивает тот же per-user directory, что и marker. На Android base directory берётся из SDL internal storage, на остальных платформах — через `platform::get_user_data_base()`. Config file не может задавать этот путь, потому что сам config может находиться под ним. Разрешённое значение применяется к settings snapshot до чтения local cache, затем создаются обязательные cache/resource subdirectories; ошибка записывает warning и безопасно возвращает процесс к working directory.
 
 Любое непустое `Common.UserWritablePath` в основном config, sub-config,
 local-config cache или упакованном internal config вызывает `SettingsException`
@@ -166,9 +170,43 @@ local-config cache или упакованном internal config вызывае�
 
 `CommandLineArgs::IsOption()` считает аргумент опцией, только если после начального дефиса идёт буква. Поэтому `--Render.Sleep -1` и другие отрицательные значения не превращаются в новые опции. Строковая настройка сохраняет текст буквально, включая обратные косые черты Windows и кавычки; список строк делится только по пробелам и табуляции. Числовые, логические и enum-настройки по-прежнему разбирают текст. Грамматика экранированных строк `AnyData` применяется к свойствам, но не к настройкам (`Source/Common/Settings.cpp`, `Source/Tests/Test_Settings.cpp`).
 
+`CommandLineArgs::GetSettingValue(name, implicit_value = "1")` читает отдельную
+настройку до создания settings snapshot. Передавайте точное имя с учётом регистра
+без дефисов, например `Common.NonInteractive` или `ClientLibPath`. Принимаются формы
+`-Name` и `--Name`; общий парсер удаляет пробелы по краям имени опции, побеждает
+последнее совпадающее вхождение. Отсутствующая настройка возвращает `std::nullopt`.
+Опция без значения возвращает `implicit_value`; передайте `std::nullopt`, чтобы
+пропускать такие вхождения и искать последнее явно переданное значение. Явный
+пустой аргумент остаётся присутствующим и пустым, отрицательные числа остаются
+значениями по правилам `IsOption()`. Возвращаемые views заимствуют память аргументов
+либо переданного неявного значения и сохраняют текст значения без удаления пробелов.
+Преобразование и значения по умолчанию выбирает вызывающая сторона.
+
+Имена встроенных настроек объявлены в `SettingNames` в `Common.h` и формируются
+непосредственно из `Settings.inc`: например, `SettingNames::Common_NonInteractive`
+и `SettingNames::Network_CompatibilityVersion`. Подчёркивание разделяет группу
+и имя настройки. Нативный код использует эти
+константы при чтении, записи, сериализации и диагностике настроек. Новые встроенные
+имена добавляются только через схему. Имена, используемые только в командной строке,
+остаются в `CommandLineSettings`, включая `Fork`, `ApplyConfig` и `ClientLibPath`.
+Константы собственных настроек принадлежат встраивающему проекту. Написание в
+командной строке и конфигурационных файлах сохраняется.
+
+`GetSettings(name = {})` использует тот же парсер и возвращает все совпадающие
+`CommandLineSetting` в порядке командной строки, включая повторы. Пустой фильтр
+выбирает все настройки. Запись содержит очищенное от краевых пробелов имя `Name`
+без дефисов и необязательное исходное значение `Value`: `std::nullopt` отличает
+неявный флаг от явной пустой строки. Views заимствуют память argv. Выбор runtime
+host, флаги fork и Windows-службы, выбор конфига, writable root и
+`ApplyCommandLine()` используют этот API. Каждое вхождение запроса конфига или
+subconfig требует значения, даже если последующий запрос корректен. Subconfig
+и `+`-append сохраняют порядок; writable root использует первый явно переданный
+непустой допустимый путь. Эти helpers не загружают конфигурацию и не применяют
+переопределения.
+
 ## Resource packs и источники данных
 
-`ResourcePackInfo` описывает входы resource pack, используемые bakers и runtimes. На стороне baking применяются `BakingContext` и `BakerDataSource` из `Source/Tools/Baker.*`; на стороне runtime применяются смонтированные абстракции `DataSource` и `FileSystem`.
+`ResourcePackInfo` описывает входы resource pack, используемые bakers и runtimes. На стороне baking применяются `BakingContext` из `Source/Tools/BakingContext.*` и `BakerDataSource` из `Source/Tools/Baker.*`; на стороне runtime применяются смонтированные абстракции `DataSource` и `FileSystem`.
 
 Входные каталоги resource pack монтируются рекурсивно. `IncludePatterns` и `ExcludePatterns` являются необязательными списками glob patterns, разделенными пробелами; они применяются к нормализованным resource-relative paths до запуска любого baker. Пустой include list принимает любой path; exclusion проверяется после inclusion и имеет приоритет. Patterns чувствительны к регистру и поддерживают:
 
@@ -226,7 +264,7 @@ Snapshot нового источника снимается до его публ
 
 ## Хранилище settings
 
-`Source/Common/SettingsStorage.*` сохраняет небольшие пользовательские настройки инструментов и редакторов (ImGui window layout, view options, last selection) через `GetString()`/`SetString()`, типизированные `GetInt`/`SetInt`, `GetBool`/`SetBool`, `GetFloat`/`SetFloat`, а также `HasKey()` и `Remove()`. Область задается именем приложения в конструкторе, поэтому разные инструменты не конфликтуют. Platform-specific backend скрыт за pimpl: при `FO_WINDOWS` значения являются `REG_SZ` entries в `HKCU\Software\FOnline\<app_name>` (Win32 headers остаются в `.cpp` за `WIN32_LEAN_AND_MEAN` и `WinApiUndef.inc`, используются явные registry entry points `*A`); на остальных платформах применяется per-application `CacheStorage` в `Platform::GetUserDataBase()/FOnline/<app_name>`. Каждое значение хранится строкой, а typed accessors сериализуют через нее, поэтому оба backends ведут себя одинаково и многострочный ImGui blob `imgui.ini` проходит round trip без изменений. Persistence работает по принципу **best effort**: backend failure журналируется, но не выбрасывается, поэтому инструмент не завершается из-за невозможности записать settings. От `CacheStorage` этот слой отличается назначением (долговечные user preferences вместо восстанавливаемых cache artifacts), а в Windows еще и носителем (registry вместо файлов).
+`Source/Common/SettingsStorage.*` сохраняет небольшие пользовательские настройки инструментов и редакторов (ImGui window layout, view options, last selection) через `GetString()`/`SetString()`, типизированные `GetInt`/`SetInt`, `GetBool`/`SetBool`, `GetFloat`/`SetFloat`, а также `HasKey()` и `Remove()`. Область задается именем приложения в конструкторе, поэтому разные инструменты не конфликтуют. Platform-specific backend скрыт за pimpl: при `FO_WINDOWS` значения являются `REG_SZ` entries в `HKCU\Software\FOnline\<app_name>` (Win32 headers остаются в `.cpp` за `WIN32_LEAN_AND_MEAN` и `WinApiUndef.inc`, используются явные registry entry points `*A`); на остальных платформах применяется per-application `CacheStorage` в `platform::get_user_data_base()/FOnline/<app_name>`. Каждое значение хранится строкой, а typed accessors сериализуют через нее, поэтому оба backends ведут себя одинаково и многострочный ImGui blob `imgui.ini` проходит round trip без изменений. Persistence работает по принципу **best effort**: backend failure журналируется, но не выбрасывается, поэтому инструмент не завершается из-за невозможности записать settings. От `CacheStorage` этот слой отличается назначением (долговечные user preferences вместо восстанавливаемых cache artifacts), а в Windows еще и носителем (registry вместо файлов).
 
 Его используют только GUI tools: Mapper через `MapperEngine::_uiSettings`, перенесенный из resource `Cache`, а также standalone AnimationViewer и ParticleViewer, загружающие settings в конструкторе и сохраняющие при shutdown. Код находится в `CommonLib` для простоты, но client и server не ссылаются на символы `SettingsStorage`, поэтому linker (`/OPT:REF` и on-demand inclusion static library) исключает объект из поставляемых client/server binaries. Windows registry calls тем самым не попадают в них и не вызывают лишних antivirus heuristics. Собственный autosave ImGui `imgui.ini` отключен в `Application.cpp`, поэтому вся persistence layout проходит через это хранилище.
 
@@ -285,3 +323,43 @@ Snapshot нового источника снимается до его публ
 `DataSource.cpp` владеет dispatch; соседние пары `DataSource-Directory`, `DataSource-Embedded` обязательны, `DataSource-Dat` требует `FO_DATA_SOURCE_DAT`, `DataSource-Zip` — `FO_DATA_SOURCE_ZIP`. Регистрация/includes безусловны, guards внутренние. [Выбор компонентов](../../how-to/build/project-configuration.md#optional-native-components) описывает роли/зависимости.
 
 Приоритет: Embedded / `.fores` / `.zip` / `.bos` / `.dat`. Существующий выключенный архив сообщает путь/опцию даже при `maybe_not_available=true`; пустой источник — только для отсутствующего optional pack. Повреждённый приоритетный pack не подменяется следующим. Embedded/APK сохраняют bundled minizip при внешнем ZIP OFF; `.fores`/updater patches остаются базовыми.
+
+## Ресурсная конфигурация упакованных приложений
+
+Каждый субконфиг даёт `.fomain-client` и `.fomain-server`. Прежний `--config` выбирает
+один файл для встраивания в бинарник и для архива `Metadata` каждой роли; серверный
+и клиентский архивы остаются раздельными.
+
+Пакет называет `METADATA_PACK_NAME` в `DataSource.h`, `package.py` повторяет его.
+Объявите в нём `Bakers=Metadata Config ClientConfig`; архив хранит метаданные стороны,
+общие файлы и только выбранный конфиг. `ClientConfigBaker` наследует `ConfigBaker`
+в том же модуле и пишет полные клиентские настройки, включая false, ноль, пустые и
+объявленные игровые. `ConfigBaker` сохраняет серверные выходы; один `Bakers=Config`
+сохраняет оба.
+
+До создания frontend функция `ReadResourceConfig` сначала ищет `.fomain-server`,
+а при его отсутствии — `.fomain-client`. Упакованные приложения проверяют
+`Baking.ServerResources` перед клиентскими ресурсами с writable overlays;
+неупакованные потребители используют `Baking.BakeOutput`. Один загрузчик обслуживает
+все приложения через `InitApp(args, flags)`. Несколько файлов приоритетного суффикса — ошибка.
+
+`GlobalSettings::ApplyResourceConfig(content)` заменяет снимок на defaults плюс
+ресурсные настройки; значения вшитого конфига в нём не сохраняются.
+Клиентский и серверный каталоги ресурсов должны совпадать с вшитым bootstrap.
+Для поиска ресурса используется временный упакованный снимок только с
+CLI-путями ресурсов/кэша. При смене кэша пользовательские настройки сохраняются.
+Полные CLI и вычисляемые настройки применяются один раз после ресурсного и
+локального конфигов, включая `+`-добавления и диагностику. Встроенные настройки
+остаются только для чтения во время игры.
+
+### Скачиваемая конфигурация клиента
+
+Отсутствие конфигурации на первом запуске оставляет встроенный bootstrap;
+после синхронизации объявленный `Metadata` обязан содержать однозначный конфиг.
+`BaseSettings::GetResourceConfigContent` хранит применённый ресурсный текст
+в памяти для сравнения обновлятором. Изменение требует перезапуска до игры;
+следующий запуск читает обновлённый файл. Неизменный файл не вызывает перезапуск.
+Конфиг остаётся в существующем пакете ресурсов; конфигурационный кэш не записывается.
+Для первого внедрения пересоберите и переупакуйте native-приложения. Проверьте
+загрузку клиентом, сохранение ресурсов, перезапуск и следующий запуск на каждой
+поставляемой платформе, а также выбранный ресурсный конфиг сервера до приёмки запуска.

@@ -190,7 +190,7 @@ namespace AngelScriptDocumentMigrations
     {
         FO_TRACE_ZONE(Script);
 
-        auto declaration {_asEngine->GetTypeDeclaration(output_type_id, true)};
+        const char* declaration {_asEngine->GetTypeDeclaration(output_type_id, true)};
         FO_VERIFY_AND_THROW(declaration, "Document output type has no declaration", output_type_id);
         string output_type {NormalizeScriptPropertyDecl(declaration)};
 
@@ -210,7 +210,7 @@ namespace AngelScriptDocumentMigrations
 
         auto prop {_registrar->FindProperty(key)};
         FO_VERIFY_AND_THROW(prop, "Database document property does not exist", _registrar->GetTypeName(), key);
-        auto expected_type {MakeScriptPropertyName(prop.as_ptr())};
+        string expected_type {MakeScriptPropertyName(prop.as_ptr())};
         FO_VERIFY_AND_THROW(output_type_id == _asEngine->GetTypeIdByDecl(expected_type.c_str()), "Database document output type does not match property", key, output_type);
 
         nptr<const AnyData::Value> selected {};
@@ -346,7 +346,7 @@ namespace AngelScriptDocumentMigrations
         FO_VERIFY_AND_THROW(manager, "Document migration requires a script context manager");
 
         auto context {manager->PrepareContext(function)};
-        auto generation {manager->GetContextGeneration(context)};
+        uint64_t generation {manager->GetContextGeneration(context)};
         auto return_context {scope_exit([&]() noexcept { manager->ReturnContext(context, generation); })};
 
         int32_t as_result {0};

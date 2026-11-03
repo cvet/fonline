@@ -5,7 +5,7 @@ locale: ru
 document_id: particle-format-guide
 permalink: /Docs/ru/how-to/content/particle-format.html
 ---
-<!-- docs-translation: {"document_id":"particle-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/particle-format.md","source_sha256":"0c18b98c371f2e22f83ace80ae794918a37f9817785b64e2d6cf7d019a9b482a"} -->
+<!-- docs-translation: {"document_id":"particle-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/particle-format.md","source_sha256":"8ffb17e1197f82778180abc133818e8be20fcd44edec9a29321606e4b9a12cdd"} -->
 # Авторинг и runtime частиц
 
 FOnline предоставляет два опциональных backend частиц за единым
@@ -197,7 +197,9 @@ Preview поддерживает фильтрацию ресурсов, разм
 
 `ParticleRuntimeBackend` владеет маршрутизацией расширений, созданием ресурсов и
 инвалидацией кэша. `ParticleRuntimeSystem` владеет специфичной для backend симуляцией
-и отрисовкой. `ParticleSystem` добавляет общий фасад времени и управления:
+и отрисовкой. `ParticleSystem` добавляет общий фасад времени и управления. Его
+`Update(timespan)` и `GetElapsedTime()` сохраняют наносекунды; адаптеры backend
+для update/prewarm используют секунды:
 
 - `Setup` применяет проекцию, world transform, offset позиции/вида, look direction, scale,
   угол камеры карты и projection tilt;

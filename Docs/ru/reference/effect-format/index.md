@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-effect-format-index","locale":"ru","source_path":"Docs/en/reference/effect-format/index.md","source_sha256":"bc521e1fdaecdbb570a3074393031e08e061c42343cc6f174545f6afe44cdce0"} -->
+<!-- docs-translation: {"document_id":"generated-effect-format-index","locale":"ru","source_path":"Docs/en/reference/effect-format/index.md","source_sha256":"380a4ba209bf54364fecbcb2e770818eb682c0b29f321443a89987ba816cbdb1"} -->
 
 # Сгенерированный справочник формата эффектов
 
@@ -22,7 +22,7 @@ generated: true
 | Стабильность | <code>experimental</code> |
 | Политика поддержки | Контракт генерируется для закреплённой ревизии Engine. Проекты владеют каталогами эффектов, визуальной политикой, профилями качества, конкретными путями переопределений и значениями слотов ScriptValue. |
 | Исходный манифест | [BuildTools/EffectFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/EffectFormatInterface.json) |
-| Дайджест контракта | <code>571296b42eb72a4281de9ee7f457216ecd335ee15a3bc0f8518745a40936f5e2</code> |
+| Дайджест контракта | <code>77b8fb3b52a68b4c02cc0b57f12c39269e96853a539773e4480bedf68c9b7454</code> |
 | Расширение исходного файла | <code>.fofx</code> |
 | Сторона runtime | <code>client</code> |
 

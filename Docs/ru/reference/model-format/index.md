@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-model-format-index","locale":"ru","source_path":"Docs/en/reference/model-format/index.md","source_sha256":"6707b9d1209dabe9656ac456516d5fa60a55216cb5318b2e9cd708bd4add777c"} -->
+<!-- docs-translation: {"document_id":"generated-model-format-index","locale":"ru","source_path":"Docs/en/reference/model-format/index.md","source_sha256":"555ce2a3f269a583e5409e562eda522b3fd8d1320bd96789571ce9817abf424b"} -->
 
 # Справочник формата моделей
 
@@ -22,7 +22,7 @@ generated: true
 | Стабильность | <code>experimental</code> |
 | Политика поддержки | Контракт генерируется для закреплённой ревизии движка. Каталоги моделей, семантика слоёв, enum анимаций, визуальные правила и конкретные ресурсы принадлежат проектам. |
 | Исходный манифест | [BuildTools/ModelFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/ModelFormatInterface.json) |
-| Дайджест контракта | <code>c67a93b84e8cb252007195884ad4d4f89293a2b437774d85f932f7be4ed7cdf3</code> |
+| Дайджест контракта | <code>bc460bb8956347d91d204d8e435742b2847bb99fd0c87424307602d636d6b626</code> |
 | Расширение исходника | <code>.fo3d</code> |
 | Входные меши | <code>.fbx</code>, <code>.obj</code> |
 | Runtime-сторона | <code>client</code> |
@@ -31,7 +31,7 @@ generated: true
 | --- | --- | --- |
 | [Токены](tokens.md) | 32 группы / 59 написаний | Все принимаемые текущим parser токены. |
 | [Ресурсы](assets.md) | 6 | Входы мешей, описаний, текстур, эффектов и частиц. |
-| [Валидация](validation.md) | 15 | Правила авторинга, запекания, runtime и legacy. |
+| [Валидация](validation.md) | 16 | Правила авторинга, запекания, runtime и legacy. |
 
 ## Граница
 

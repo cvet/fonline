@@ -20,7 +20,7 @@ This reference describes the Engine-owned image import, FOFRM composition, baked
 | Stability | <code>experimental</code> |
 | Support policy | The contract is generated for a pinned Engine revision. Projects own asset catalogs, source licensing, visual style, compression policy, resource-pack precedence, animation substitutions, movement tuning, and visible acceptance. |
 | Source manifest | [BuildTools/ImageFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/ImageFormatInterface.json) |
-| Contract digest | <code>37777a23a6dc2ab044c5e32af9a731a28d1119e55f317dcc9248c49f5a92a6a8</code> |
+| Contract digest | <code>6215313ec354fb3367e5020ae45f91080d138b1b5378a254ff56a457cb77e496</code> |
 | Baker | <code>Image</code>, order 4 |
 | Baked pixels | <code>RGBA8</code> |
 | Runtime side | <code>client</code> |
@@ -28,11 +28,11 @@ This reference describes the Engine-owned image import, FOFRM composition, baked
 | Reference | Entries | Purpose |
 | --- | --- | --- |
 | [Formats](formats.md) | 12 | Accepted source formats and their current import behavior. |
-| [FOFRM](fofrm.md) | 10 | Descriptor fields, aliases, directions, flattening, and timing. |
+| [FOFRM](fofrm.md) | 33 | Descriptor fields, aliases, directions, flattening, and timing. |
 | [Options](options.md) | 4 | ART, SPR, and BAM filename selectors. |
-| [Baking](baking.md) | 10 | Discovery, output naming, container records, and failures. |
+| [Baking](baking.md) | 14 | Discovery, output naming, container records, and failures. |
 | [Runtime](runtime.md) | 8 | Factory coverage, sprite sheets, atlas upload, and caches. |
-| [Validation](validation.md) | 10 | Source constraints and executable checks. |
+| [Validation](validation.md) | 11 | Source constraints and executable checks. |
 
 ## Boundary
 

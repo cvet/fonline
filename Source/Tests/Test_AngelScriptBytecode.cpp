@@ -77,10 +77,10 @@ namespace
         int RefCount {};
     };
 
-    class BytecodeStream final : public asIBinaryStream
+    class AngelScriptBytecodeBytecodeStream final : public asIBinaryStream
     {
     public:
-        explicit BytecodeStream(vector<asBYTE>& buf) :
+        explicit AngelScriptBytecodeBytecodeStream(vector<asBYTE>& buf) :
             _buf {BufferPtr(buf)}
         {
         }
@@ -148,7 +148,7 @@ namespace
         return active_engine;
     }
 
-    static void ReleaseScriptEngine(ptr<asIScriptEngine> engine) noexcept
+    static void AngelScriptBytecodeReleaseScriptEngine(ptr<asIScriptEngine> engine) noexcept
     {
         engine->ShutDownAndRelease();
     }
@@ -157,7 +157,7 @@ namespace
     {
         auto engine {make_nptr(asCreateScriptEngine())};
         REQUIRE(engine);
-        auto engine_owner {make_unique_del_ptr(engine, ReleaseScriptEngine)};
+        auto engine_owner {make_unique_del_ptr(engine, AngelScriptBytecodeReleaseScriptEngine)};
         REQUIRE(engine_owner);
         return take_not_null(engine_owner);
     }
@@ -727,7 +727,7 @@ TEST_CASE("AngelScriptBytecode", "[angelscript][bytecode]")
         auto build_metrics {RunScenario(build_module, build_state)};
 
         vector<asBYTE> bytecode {};
-        BytecodeStream writer {bytecode};
+        AngelScriptBytecodeBytecodeStream writer {bytecode};
         CHECK(build_module->SaveByteCode(&writer) >= 0);
         REQUIRE_FALSE(bytecode.empty());
 
@@ -737,7 +737,7 @@ TEST_CASE("AngelScriptBytecode", "[angelscript][bytecode]")
 
         nptr<asIScriptModule> load_module {load_engine->GetModule("LoadModule", asGM_ALWAYS_CREATE)};
         REQUIRE(load_module);
-        BytecodeStream reader {bytecode};
+        AngelScriptBytecodeBytecodeStream reader {bytecode};
         CHECK(load_module->LoadByteCode(&reader) >= 0);
 
         ResourceTrackerState load_state {};
@@ -779,7 +779,7 @@ TEST_CASE("AngelScriptBytecode", "[angelscript][bytecode]")
 
         // Save bytecode
         vector<asBYTE> bytecode {};
-        BytecodeStream writer {bytecode};
+        AngelScriptBytecodeBytecodeStream writer {bytecode};
         CHECK(build_module->SaveByteCode(&writer) >= 0);
         REQUIRE_FALSE(bytecode.empty());
 
@@ -790,7 +790,7 @@ TEST_CASE("AngelScriptBytecode", "[angelscript][bytecode]")
 
         nptr<asIScriptModule> load_module {load_engine->GetModule("LoadModule", asGM_ALWAYS_CREATE)};
         REQUIRE(load_module);
-        BytecodeStream reader {bytecode};
+        AngelScriptBytecodeBytecodeStream reader {bytecode};
         CHECK(load_module->LoadByteCode(&reader) >= 0);
 
         // Execute loaded bytecode and verify identical results
@@ -2735,7 +2735,7 @@ void CallCalleeNullableWithNull()
 
         // Save bytecode in portable format
         vector<asBYTE> bytecode {};
-        BytecodeStream writer {bytecode};
+        AngelScriptBytecodeBytecodeStream writer {bytecode};
         CHECK(build_module->SaveByteCode(&writer) >= 0);
         REQUIRE_FALSE(bytecode.empty());
 
@@ -2747,7 +2747,7 @@ void CallCalleeNullableWithNull()
 
         nptr<asIScriptModule> load_module {load_engine->GetModule("LoadModule", asGM_ALWAYS_CREATE)};
         REQUIRE(load_module);
-        BytecodeStream reader {bytecode};
+        AngelScriptBytecodeBytecodeStream reader {bytecode};
         CHECK(load_module->LoadByteCode(&reader) >= 0);
 
         // Execute loaded bytecode and verify identical results
@@ -2789,7 +2789,7 @@ void CallCalleeNullableWithNull()
         CHECK(run(build_module, "bool ReturnByValueUsesAlignedCount()") == 1);
 
         vector<asBYTE> bytecode {};
-        BytecodeStream writer {bytecode};
+        AngelScriptBytecodeBytecodeStream writer {bytecode};
         REQUIRE(build_module->SaveByteCode(&writer) >= 0);
         REQUIRE_FALSE(bytecode.empty());
 
@@ -2800,7 +2800,7 @@ void CallCalleeNullableWithNull()
 
         nptr<asIScriptModule> load_module {load_engine->GetModule("LoadModule", asGM_ALWAYS_CREATE)};
         REQUIRE(load_module);
-        BytecodeStream reader {bytecode};
+        AngelScriptBytecodeBytecodeStream reader {bytecode};
         REQUIRE(load_module->LoadByteCode(&reader) >= 0);
         CHECK(run(load_module, "bool PrimitiveConstructorUsesAlignedCount()") == 1);
         CHECK(run(load_module, "bool ObjectConstructorUsesAlignedCount()") == 1);

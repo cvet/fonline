@@ -32,6 +32,7 @@
 //
 
 #include "WebRelated.h"
+
 #include "Settings.h"
 
 #if FO_WEB
@@ -217,11 +218,28 @@ EM_JS(void, WebInitializePersistentDataImpl, (), {
     FS.mkdir('/PersistentData');
     FS.mount(IDBFS, {}, '/PersistentData');
     Module.syncfsDone = 0;
-    FS.syncfs(true, function(err) { Module.syncfsDone = 1; });
+    FS.syncfs(true, function(err) {
+        if (err) {
+            abort('Unable to load persistent client data: ' + err);
+            return;
+        }
+        Module.syncfsDone = 1;
+    });
 });
 
 EM_JS(int, WebIsPersistentDataReadyImpl, (), {
     return Module.syncfsDone == 1 ? 1 : 0;
+});
+
+EM_JS(void, WebFlushPersistentDataImpl, (), {
+    Module.syncfsDone = 0;
+    FS.syncfs(false, function(err) {
+        if (err) {
+            abort('Unable to save persistent client data: ' + err);
+            return;
+        }
+        Module.syncfsDone = 1;
+    });
 });
 
 EM_JS(void, WebSetWebSocketSchemeImpl, (int secure), {
@@ -520,6 +538,13 @@ namespace WebRelated
     {
 #if FO_WEB
         WebInitializePersistentDataImpl();
+#endif
+    }
+
+    void FlushPersistentData()
+    {
+#if FO_WEB
+        WebFlushPersistentDataImpl();
 #endif
     }
 

@@ -746,7 +746,7 @@ namespace LocEntity
     inline auto MakeEmptyMapBlob() -> vector<uint8_t>
     {
         vector<uint8_t> map_data {};
-        auto writer {data_writer(map_data)};
+        data_writer writer {data_writer(map_data)};
         writer.write<uint32_t>(BAKED_MAP_FILE_MAGIC);
         writer.write<uint32_t>(BAKED_MAP_FILE_VERSION);
         writer.write<uint32_t>(uint32_t {0});
@@ -768,7 +768,7 @@ namespace LocEntity
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
         vector<uint8_t> protos_data {};
-        auto writer {data_writer(protos_data)};
+        data_writer writer {data_writer(protos_data)};
 
         writer.write<uint32_t>(uint32_t {0});
         ignore_unused(str_hashes);
@@ -866,8 +866,8 @@ namespace LocEntity
 }
 
 #define MAKE_LEM_SERVER() \
-    auto settings {MakeSettings()}; \
-    refcount_ptr<ServerEngine> server {MakeServerEngine(settings)}; \
+    auto settings {LocationAndEntityMgmtTests::MakeSettings()}; \
+    refcount_ptr<ServerEngine> server {LocationAndEntityMgmtTests::MakeServerEngine(settings)}; \
     auto shutdown {scope_exit([&server]() noexcept { \
         safe_call([&server] { \
             if (server->IsStarted()) { \
@@ -875,7 +875,7 @@ namespace LocEntity
             } \
         }); \
     })}; \
-    string startup_error {WaitForStart(server)}; \
+    string startup_error {LocationAndEntityMgmtTests::WaitForStart(server)}; \
     INFO(startup_error); \
     REQUIRE(startup_error.empty()); \
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}})); \

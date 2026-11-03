@@ -32,6 +32,7 @@
 //
 
 #include "SpriteManager.h"
+
 #include "Application.h"
 #include "DefaultSprites.h"
 
@@ -377,7 +378,7 @@ void SpriteManager::DrawTexture(ptr<const RenderTexture> tex, bool alpha_blend, 
         vbuf[vpos].EggFlags[1] = 0.0f;
     }
     else {
-        auto rect_from {region_from ? *region_from : frect32(0.0f, 0.0f, width_from_f, height_from_f)};
+        frect32 rect_from {region_from ? *region_from : frect32(0.0f, 0.0f, width_from_f, height_from_f)};
         frect32 rect_to {frect32(region_to ? *region_to : irect32(0, 0, width_to_i, height_to_i))};
 
         auto& vbuf {_flushDrawBuf->Vertices};
@@ -740,7 +741,7 @@ auto SpriteManager::DrawSpriteRegion(ptr<const Sprite> spr, fpos32 uv0, fpos32 u
     auto source_spr {spr};
 
     if (auto sheet {spr.dyn_cast<const SpriteSheet>()}) {
-        source_spr = sheet->GetCurSpr();
+        source_spr = sheet->GetCurrentSprite();
     }
 
     auto atlas_spr {source_spr.dyn_cast<const AtlasSprite>()};
@@ -1260,7 +1261,7 @@ void SpriteManager::DrawSpriteWithEffect(ptr<const Sprite> spr, ipos32 pos, ucol
     auto source_spr {spr};
 
     if (auto sheet {spr.dyn_cast<const SpriteSheet>()}) {
-        source_spr = sheet->GetCurSpr();
+        source_spr = sheet->GetCurrentSprite();
     }
 
     auto atlas_spr {source_spr.dyn_cast<const AtlasSprite>()};
@@ -1353,4 +1354,3 @@ auto SpriteManager::ApplyColorBrightness(ucolor color) const -> ucolor
 }
 
 FO_END_NAMESPACE
-

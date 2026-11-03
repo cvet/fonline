@@ -43,7 +43,7 @@ void WriteUpdateDescriptor(vector<uint8_t>& desc, const_span<UpdateDescriptorEnt
         FO_VERIFY_AND_THROW((entry.Target == UpdateFileTarget::ClientResources) == entry.PackHeader.has_value(), "Update target/header mismatch", entry.Name);
     }
 
-    auto writer {data_writer(desc)};
+    data_writer writer {data_writer(desc)};
 
     for (const UpdateDescriptorEntry& entry : entries) {
         writer.write<int16_t>(numeric_cast<int16_t>(entry.Name.length()));
@@ -69,7 +69,7 @@ void WriteUpdateDescriptor(vector<uint8_t>& desc, const_span<UpdateDescriptorEnt
 auto ReadUpdateDescriptor(const_span<uint8_t> desc) -> vector<UpdateDescriptorEntry>
 {
     vector<UpdateDescriptorEntry> entries {};
-    auto reader {data_reader(desc)};
+    data_reader reader {data_reader(desc)};
 
     while (true) {
         int16_t name_len {reader.read<int16_t>()};

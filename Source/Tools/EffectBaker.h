@@ -67,6 +67,8 @@ public:
     void BakeFiles(const FileCollection& files, string_view target_path) const override;
 
 private:
+    auto CollectResourceDependencies(const FileCollection& files, string_view path, const ResourceProviderCallback& providers) const -> vector<string> override;
+
     void BakeShaderProgram(string_view fname, string_view content) const;
     void BakeShaderStage(string_view fname_wo_ext, const glslang::TIntermediate& intermediate, const SdlStageSlots& sdl_slots, bool is_vertex) const;
 };

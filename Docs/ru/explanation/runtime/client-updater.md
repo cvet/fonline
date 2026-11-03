@@ -5,7 +5,7 @@ locale: ru
 document_id: client-updater
 permalink: /Docs/ru/explanation/runtime/client-updater.html
 ---
-<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"890f5da56c0c61d9675016ac14a9e4db0cf6ff32451f2e6111bab575705dd959"} -->
+<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"347348bfc1bba4eafe6c37b52593d09bca49ebe59636619de9fb5637e6f217ca"} -->
 # Разделение клиентской среды выполнения и обновление
 
 > Документация движка по переиспользуемому ABI между клиентским host и runtime,
@@ -404,7 +404,7 @@ Backward-compatible fallback отсутствует. Старый протоко
 state, file index и portion counter удалён при введении `FO_UPDATER_VERSION`.
 Client и server обязаны использовать одно поколение.
 
-Updater держит lock writable resource directory на протяжении всего запуска. Второй клиент с тем же каталогом ждёт и повторяет попытку, не соревнуясь за запись. Под lock восстанавливаются прерванные замены `.fobackup`; полная база продвигается только после проверки physical hash и каталога, а patch удаляется только после успешного продвижения. Append записывает и flush-ит payload и полный каталог до commit footer, поэтому ошибка оставляет прежний commit читаемым. Перед `ResourcesReady` повторно сверяются все объявленные ресурсы, затем — metadata. Packs фиксируются независимо; частичный набор не допускается в игру, но общего atomic switch и rollback всех packs нет. Ошибка обработчика обновления означает `Failed`, даже если вызванный ею disconnect случился при наличии ожидаемых файлов; действительно молчащий сервер ограничен `ClientNetwork.PingTimeout` и даёт `ConnectionFailed`.
+Updater держит lock writable resource directory на протяжении всего запуска. Второй клиент с тем же каталогом ждёт и повторяет попытку, не соревнуясь за запись. Под lock восстанавливаются прерванные замены `.fobackup`; полная база продвигается только после проверки physical hash и каталога, а patch удаляется только после успешного продвижения. Append записывает и flush-ит payload и полный каталог до commit footer, поэтому ошибка оставляет прежний commit читаемым. Перед `ResourcesReady` повторно сверяются все объявленные ресурсы, затем — metadata. Packs фиксируются независимо; частичный набор не допускается в игру, но общего atomic switch и rollback всех packs нет. Ошибка обработчика обновления означает `Failed`, даже если вызванный ею disconnect случился при наличии ожидаемых файлов; действительно молчащий сервер ограничен `ClientNetwork.PingTimeout` и даёт `ConnectionFailed`. Сбой транспорта после ответа сервера на рукопожатие, например ошибка отправки UDP посреди скачивания, идёт тем же путём: `ClientConnection` не открывает сессию заново по TCP, потому что новое соединение — это новая серверная сессия, список обновления которой этот updater уже принял. Updater завершается с `ConnectionFailed`, подтверждённые байты временного файла остаются на диске, а следующий запуск докачивает их с обычными проверками докачки.
 
 ## Серверная сторона: `UpdaterBackend`
 
@@ -536,7 +536,7 @@ Internal config patch area имеет фиксированную движком 
 
 `build_runtime_update_target_name` образует `Windows-win64`, `Linux-x64`,
 `Linux-arm64`, `macOS-arm64`, `Android-arm64` и другие targets. Profiling получает
-`_Profiling`; OGL staged отдельно с `ForceOpenGL=1`. Для
+`_Profiling`. Для
 `FO_BINARY_OUTPUT_POSTFIX`, например `Steam`, каждый payload получает `_Steam`,
 чтобы варианты не перезаписывались. `extract_binary_entry_postfix` сначала
 удаляет как порядок packager (`-Profiling_X-Debug`), так и фактическое имя
@@ -708,3 +708,20 @@ server missing payload, repeated outdated launches, selector на каждой
 - [Архитектура движка](../architecture/) - владение engine, application и build layers.
 - [Нативная отладка и отладка AngelScript](../../troubleshooting/debugging.md) - выбор host/runtime binary для debugger.
 - Release-документация встраивающего проекта - его package profiles и альтернативные distribution channels.
+
+## Обновление полной конфигурации
+
+Перед инициализацией упакованный клиент читает выбранный `.fomain-client`
+из `Metadata`. Прежний `--config` выбирает тот же файл для встраивания в бинарник.
+Архив сохраняет метаданные своей стороны, общие файлы и один конфиг. Серверная
+поставка разделяет ресурсы запуска с `.fomain-server` и раздачи с `.fomain-client`.
+[Конфигурация и источники данных](../../reference/settings/configuration-and-data-sources.md#скачиваемая-конфигурация-клиента)
+определяют файл, приоритеты и проверки.
+
+После проверки ресурсов и metadata `Updater::FinishResourcesUpdate` сравнивает
+скачанный файл с текстом, применённым при запуске. Изменение возвращает
+`UpdaterResult::SettingsRestartRequired`: существующий экран ждёт закрытия
+клиента, а headless-клиент завершается сразу. Успешное обновление ресурсов не
+продвигает native-модули и не сообщает о падении. Следующий запуск читает ресурсный
+конфиг до создания frontend; неизменный текст позволяет продолжить запуск.
+Для первого внедрения пересоберите native-клиент и проверьте каждую платформу.

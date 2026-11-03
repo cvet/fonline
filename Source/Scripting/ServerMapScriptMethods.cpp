@@ -910,7 +910,14 @@ FO_SCRIPT_API void Server_Map_GetWallHexInPath(ptr<Map> self, mpos fromHex, mpos
     }
 }
 
-// Return the path length in steps from a valid hex to another, or zero when no path exists
+// Returns movable cells within the radius that have an unobstructed line of sight from the origin
+///@ ExportMethod
+FO_SCRIPT_API vector<mpos> Server_Map_GetMovableHexesInSight(ptr<Map> self, mpos origin, int32_t radius)
+{
+    return self->GetMovableHexesInSight(origin, radius);
+}
+
+// Returns the path length in steps between two cells, or zero when no path exists
 ///@ ExportMethod
 FO_SCRIPT_API int32_t Server_Map_GetPathLength(ptr<Map> self, mpos fromHex, mpos toHex, int32_t cut, ScriptFunc<bool, ptr<Item>> gagCallabck)
 {

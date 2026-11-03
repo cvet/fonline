@@ -50,6 +50,8 @@
 
 FO_BEGIN_NAMESPACE
 
+inline constexpr timespan FOG_DEFAULT_TRANSITION_DURATION {std::chrono::milliseconds {150}};
+
 FO_DECLARE_EXCEPTION(MapViewLoadException);
 
 class ClientEngine;
@@ -108,7 +110,7 @@ public:
     int32_t Distance {}; // Zone reach in hexes (traced overlay); 0 = derive from the look distance
     int32_t Radius {}; // Look radius in hexes; 0 = use the origin critter's look distance
     int32_t ExtraLength {1}; // Extra look length added to the derived radius
-    int32_t TransitionDuration {150}; // Grow/move/shrink morph duration in ms
+    timespan TransitionDuration {FOG_DEFAULT_TRANSITION_DURATION}; // Grow/move/shrink morph duration
     float32_t OvalRoundness {1.0f}; // 0 = raw hexagon, 1 = full smooth oval
     float32_t EdgeNoise {0.15f}; // Drifting-mist rim ripple strength
     float32_t Depth {0.15f}; // Extra darkening with distance past the edge
@@ -208,7 +210,6 @@ public:
     [[nodiscard]] auto GetScreenSize() const noexcept -> isize32 { return _screenSize; }
     [[nodiscard]] auto GetField(mpos hex) noexcept -> const Field& { return _hexField->GetCellForReading(hex); }
     [[nodiscard]] auto IsHexToDraw(mpos hex) const noexcept -> bool { return _hexField->GetCellForReading(hex).IsView; }
-    [[nodiscard]] auto GetHiddenRoofNum() const noexcept -> int32_t { return _hiddenRoofNum; }
     [[nodiscard]] auto GetLightData() noexcept -> ptr<ucolor> { return make_ptr(_hexLight.data()); }
     [[nodiscard]] auto IsManualScrolling() const noexcept -> bool { return _manualScroll != ScrollDirection::None; }
     [[nodiscard]] auto GetManualScroll() const noexcept -> ScrollDirection { return _manualScroll; }
@@ -313,6 +314,9 @@ public:
     void UpdateHexLightSources(mpos hex);
 
     void SetHiddenRoof(mpos hex);
+    auto GetHiddenRoofNum() -> int32_t;
+    void EnsureRoofNums();
+
     void SetTransparentEgg(TransparentEggSlot slot, mpos hex, ipos32 hex_offset, isize32 egg_size, TransparentEggTarget target, bool apply_size_ext);
     void ClearTransparentEgg(TransparentEggSlot slot);
 
@@ -345,8 +349,8 @@ private:
         bool Valid {};
     };
 
-    void ProcessScroll(float32_t dt);
-    void ProcessZoom(float32_t dt);
+    void ProcessScroll(timespan elapsed);
+    void ProcessZoom(timespan elapsed);
     void RefreshMinZoom();
 
     auto AddCritterInternal(ptr<CritterHexView> cr) -> ptr<CritterHexView>;
@@ -486,6 +490,8 @@ private:
     vector<ptr<LightSource>> _removeLightSourcesScratch {};
 
     int32_t _hiddenRoofNum {};
+    optional<mpos> _hiddenRoofHex {};
+    bool _roofNumsDirty {true};
 
     array<TransparentEggInfo, SpriteManager::EGG_SLOT_COUNT> _transparentEggs {};
 

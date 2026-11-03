@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "Rendering.h"
 
 FO_BEGIN_NAMESPACE
@@ -244,7 +246,7 @@ public:
                     size_data = custom_tex->SizeData;
                 }
 
-                auto main_texture_size {main_tex_buf->MainTexSize};
+                float32_t* main_texture_size {main_tex_buf->MainTexSize};
                 memory::copy(main_texture_size, size_data, 4 * sizeof(float32_t));
             }
         }

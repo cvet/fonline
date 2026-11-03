@@ -32,6 +32,7 @@
 //
 
 #include "WorkThread.h"
+
 #include "ExceptionHandling.h"
 #include "StackTrace.h"
 

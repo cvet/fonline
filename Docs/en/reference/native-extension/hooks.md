@@ -164,3 +164,41 @@ FO_END_NAMESPACE
 ```
 
 Default: Return true.
+
+<a id="entry-native-extension-hook-checkviewmapcrittervisibilityhook-22eaa6e045"></a>
+## `CheckViewMapCritterVisibilityHook`
+
+Apply project map-view critter visibility policy using an opaque nullable entity context and view center. Hooks are synchronous read-only checks under complete entity cover; null meaning is project-owned.
+
+- Stable ID: `native-extension.hook.CheckViewMapCritterVisibilityHook`
+- Role: `SERVER`
+- Compatibility-hashed presence: `yes`
+- Call sites: [Source/Server/Map.cpp](https://github.com/cvet/fonline/blob/master/Source/Server/Map.cpp)
+
+```cpp
+FO_BEGIN_NAMESPACE
+///@ EngineHook
+FO_SCRIPT_API CritterVisibilityMode CheckViewMapCritterVisibilityHook(ptr<const ServerEngine> server, ptr<const Map> map, nptr<const Entity> context, mpos hex, ptr<const Critter> target);
+FO_END_NAMESPACE
+```
+
+Default: Return CritterVisibilityMode::Full.
+
+<a id="entry-native-extension-hook-checkviewmapitemvisibilityhook-dd501614f5"></a>
+## `CheckViewMapItemVisibilityHook`
+
+Apply project map-view item visibility policy using an opaque nullable entity context and view center. Hooks are synchronous read-only checks under complete entity cover; null meaning is project-owned.
+
+- Stable ID: `native-extension.hook.CheckViewMapItemVisibilityHook`
+- Role: `SERVER`
+- Compatibility-hashed presence: `yes`
+- Call sites: [Source/Server/Map.cpp](https://github.com/cvet/fonline/blob/master/Source/Server/Map.cpp)
+
+```cpp
+FO_BEGIN_NAMESPACE
+///@ EngineHook
+FO_SCRIPT_API bool CheckViewMapItemVisibilityHook(ptr<const ServerEngine> server, ptr<const Map> map, nptr<const Entity> context, mpos hex, ptr<const Item> target);
+FO_END_NAMESPACE
+```
+
+Default: Return true.

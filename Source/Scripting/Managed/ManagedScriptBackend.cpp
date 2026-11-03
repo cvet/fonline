@@ -619,7 +619,7 @@ static auto DispatchManagedEventInContext(shared_ptr<ManagedEventSubscription> s
 
 // Remote-call argument marshaling
 static auto SerializeManagedRemoteCallArgs(ptr<ManagedScriptBackend> backend, const vector<ArgDesc>& call_args, MonoArray* args_array, string_view name) -> vector<uint8_t>;
-static void AppendRawBytes(vector<uint8_t>& data, const_span<uint8_t> bytes);
+static void AppendManagedRawBytes(vector<uint8_t>& data, const_span<uint8_t> bytes);
 static void AppendAlignedRawBytes(vector<uint8_t>& data, const_span<uint8_t> bytes, size_t alignment);
 template<typename T>
 static void AppendRawValue(vector<uint8_t>& data, const T& value);
@@ -1093,8 +1093,8 @@ static constexpr array<pair<string_view, int32_t>, 20> MANAGED_NATIVE_HELPERS {{
     {"GetDictionaryValue", 2},
     {"GetListCount", 1},
     {"GetListItem", 2},
-    {"InvokeCallback", 2},
-    {"InvokeTrackedCallback", 3},
+    {"InvokeCallback", 3},
+    {"InvokeTrackedCallback", 5},
     {"InvokeEvent", 3},
 }};
 
@@ -1129,6 +1129,7 @@ struct ManagedCallbackPlan
     nptr<MonoMethod> Adapter {};
     nptr<BaseEngine> Engine {};
     bool IsAsync {};
+    bool IsRemoteCall {};
 };
 
 // Static free-function definitions (same order as the declarations above)
@@ -1861,7 +1862,7 @@ static auto GetManagedTracyMethodEntry(ptr<MonoMethod> method) -> ptr<const Mana
 
     scoped_lock lock {ManagedTracy->Locker};
 
-    auto [it, inserted] = ManagedTracy->MethodEntries.emplace(method_key, ManagedTracyMethodEntry {});
+    auto [it, inserted] {ManagedTracy->MethodEntries.emplace(method_key, ManagedTracyMethodEntry {})};
     ptr<ManagedTracyMethodEntry> entry {&it->second};
 
     // A method first called on two threads at once is resolved twice, and the loser must not rewrite the
@@ -2956,12 +2957,12 @@ static void NativeProbeTransportScenario(void* backend_ptr, MonoObject* handler,
             int32_t mode_value {static_cast<int32_t>(ManagedProbeCallbackMode::UnmanagedCallersOnly)};
             uint8_t flag {1};
             int64_t wide {0x1122334455667788};
-            array<int16_t, 2> hex {7, -9};
+            mpos hex {7, -9};
             hstring tag {meta->Hashes.to_hashed_string("InteropProbeTag")};
             memory::copy(frame.data(), &mode_value, sizeof(mode_value));
             memory::copy(frame.data() + 4, &flag, sizeof(flag));
             memory::copy(frame.data() + 8, &wide, sizeof(wide));
-            memory::copy(frame.data() + 16, hex.data(), sizeof(hex));
+            memory::copy(frame.data() + 16, &hex, sizeof(hex));
             memory::copy(frame.data() + 24, &tag, sizeof(tag));
             frame_size = 32;
         }
@@ -4972,10 +4973,11 @@ static void NativeRegisterRemoteCallHandlerImpl(void* backend_ptr, MonoString* n
     release_handler_handle_on_error.release();
 
     shared_ptr<ManagedCallbackPlan> plan {MakeManagedCallbackPlan(backend, ComplexTypeDesc {}, args, handler)};
+    plan->IsRemoteCall = true;
 
     engine->SetRemoteCallHandler(
         name_hashed,
-        [backend = backend.as_ptr(), engine, args, plan, handler_handle, server_side, call_name, max_payload_size, max_collection_size, wire_arg_names](hstring, nptr<Entity> entity, span<uint8_t> data) FO_DEFERRED {
+        [backend = backend.as_ptr(), engine, args, plan, handler_handle, server_side, call_name, max_payload_size, max_collection_size, wire_arg_names](hstring, nptr<Entity> entity, span<uint8_t> data, shared_ptr<ScriptCallCompletion> completion) FO_DEFERRED {
             FO_VERIFY_AND_THROW(max_payload_size == 0 || data.size() <= max_payload_size, "Remote call payload exceeds structural limit", call_name, data.size(), max_payload_size);
 
             // Attach to the Managed domain up front: building managed List objects for array args (below) invokes mono,
@@ -5055,6 +5057,13 @@ static void NativeRegisterRemoteCallHandlerImpl(void* backend_ptr, MonoString* n
             }
 
             call.ArgsData = const_span<ptr<void>> {args_ptrs.data(), args_ptrs.size()};
+
+            // The common callback registry retains this detached RPC token through an asynchronous Task.
+            // Dropping an abandoned completion during backend teardown releases accounting without engine access
+            if (completion) {
+                call.Completion = [completion = std::move(completion)](bool) noexcept { };
+                call.CompletionOnAnyThread = true;
+            }
 
             try {
                 DispatchManagedCallback(backend, handler_handle, *plan, call);
@@ -5298,9 +5307,10 @@ static void SetSettingValueFromString(ptr<ManagedScriptBackend> backend, MonoStr
 
 static auto InvokeManagedCallbackHandler(ptr<ManagedScriptBackend> backend, MonoObject* handler, MonoArray* args_array) -> MonoObject*
 {
-    MonoMethod* invoke_callback {FindNativeMethod(backend, "InvokeCallback", 2)};
+    MonoMethod* invoke_callback {FindNativeMethod(backend, "InvokeCallback", 3)};
+    mono_bool ignore_cancellation {0};
 
-    void* invoke_args[] {handler, args_array};
+    void* invoke_args[] {handler, args_array, &ignore_cancellation};
     return InvokeManagedScript(backend, invoke_callback, nullptr, invoke_args, "Managed property callback failed");
 }
 
@@ -5424,7 +5434,7 @@ static void DispatchManagedCallbackInContext(ptr<ManagedScriptBackend> backend, 
         throw ScriptSystemException("Managed callback argument count mismatch");
     }
 
-    if ((call.Completion && plan.IsAsync && !IsTypeDefined(plan.Ret)) || !plan.Adapter || !TryDispatchManagedCallbackTyped(backend, handler_handle, plan, call)) {
+    if ((plan.IsAsync && !IsTypeDefined(plan.Ret)) || !plan.Adapter || !TryDispatchManagedCallbackTyped(backend, handler_handle, plan, call)) {
         DispatchManagedCallbackBoxed(backend, handler_handle, plan, call);
     }
 }
@@ -5503,25 +5513,28 @@ static void DispatchManagedCallbackBoxed(ptr<ManagedScriptBackend> backend, uint
     if (call.Completion && plan.IsAsync && !IsTypeDefined(ret)) {
         uint64_t completion_id {backend->RegisterCallCompletion(call.Completion)};
         auto fail_completion {scope_fail([&]() noexcept { safe_call([&] { backend->CompleteCall(completion_id, false); }); })};
-        MonoMethod* invoke_tracked {FindNativeMethod(backend, "InvokeTrackedCallback", 3)};
-        void* tracked_args[] {mono_gchandle_get_target(handler_handle), get_args_array(), &completion_id};
+        MonoMethod* invoke_tracked {FindNativeMethod(backend, "InvokeTrackedCallback", 5)};
+        mono_bool any_thread {call.CompletionOnAnyThread ? 1 : 0};
+        mono_bool ignore_cancellation {plan.IsRemoteCall ? 1 : 0};
+        void* tracked_args[] {mono_gchandle_get_target(handler_handle), get_args_array(), &completion_id, &any_thread, &ignore_cancellation};
         ManagedObjectRoot pending {};
         pending.SetObject(InvokeManagedScript(backend, invoke_tracked, nullptr, tracked_args, "Managed tracked callback failed"));
         FO_VERIFY_AND_THROW(pending.GetObject() != nullptr, "Managed tracked callback status is missing");
         int32_t status {*static_cast<int32_t*>(mono_object_unbox(pending.GetObject()))};
-        FO_VERIFY_AND_THROW(status == 0 || status == 1, "Managed tracked callback status is invalid", status);
+        FO_VERIFY_AND_THROW(status == 0 || status == 1 || status == 2, "Managed tracked callback status is invalid", status);
 
-        if (status == 0) {
-            backend->CompleteCall(completion_id, true);
+        if (status != 1) {
+            backend->CompleteCall(completion_id, status == 0);
         }
 
         return;
     }
 
     // Delegate types can belong to system assemblies; Native belongs to the backend's loaded scripts
-    MonoMethod* invoke_callback {FindNativeMethod(backend, "InvokeCallback", 2)};
+    MonoMethod* invoke_callback {FindNativeMethod(backend, "InvokeCallback", 3)};
+    mono_bool ignore_cancellation {plan.IsRemoteCall ? 1 : 0};
 
-    void* invoke_args[] {mono_gchandle_get_target(handler_handle), get_args_array()};
+    void* invoke_args[] {mono_gchandle_get_target(handler_handle), get_args_array(), &ignore_cancellation};
     ManagedObjectRoot result {};
     result.SetObject(InvokeManagedScript(backend, invoke_callback, nullptr, invoke_args, "Managed callback failed"));
 
@@ -5938,7 +5951,7 @@ static auto DispatchManagedEventInContext(shared_ptr<ManagedEventSubscription> s
         return Entity::EventResult::ContinueChain;
     }
 
-    auto result {*static_cast<int32_t*>(mono_object_unbox(ret.GetObject()))};
+    int32_t result {*static_cast<int32_t*>(mono_object_unbox(ret.GetObject()))};
     return static_cast<Entity::EventResult>(result);
 }
 
@@ -6013,7 +6026,7 @@ static auto SerializeManagedRemoteCallArgs(ptr<ManagedScriptBackend> backend, co
     return data;
 }
 
-static void AppendRawBytes(vector<uint8_t>& data, const_span<uint8_t> bytes)
+static void AppendManagedRawBytes(vector<uint8_t>& data, const_span<uint8_t> bytes)
 {
     if (bytes.empty()) {
         return;
@@ -6030,13 +6043,13 @@ static void AppendAlignedRawBytes(vector<uint8_t>& data, const_span<uint8_t> byt
         data.resize(align_up(data.size(), alignment));
     }
 
-    AppendRawBytes(data, bytes);
+    AppendManagedRawBytes(data, bytes);
 }
 
 template<typename T>
 static void AppendRawValue(vector<uint8_t>& data, const T& value)
 {
-    AppendRawBytes(data, const_span<uint8_t> {reinterpret_cast<const uint8_t*>(std::addressof(value)), sizeof(value)});
+    AppendManagedRawBytes(data, const_span<uint8_t> {reinterpret_cast<const uint8_t*>(std::addressof(value)), sizeof(value)});
 }
 
 template<typename T>
@@ -6318,7 +6331,7 @@ static auto CreatePropertyStructObject(ptr<const ManagedScriptBackend> backend, 
 {
     FO_VERIFY_AND_THROW(raw_data.size() == base_type.Size, "Raw property struct size does not match the value type size", base_type.Name, raw_data.size(), base_type.Size);
 
-    small_vector<uint8_t, 64> value {small_vector<uint8_t, 64>(raw_data.begin(), raw_data.end())};
+    small_vector<uint8_t, 64> value {raw_data.begin(), raw_data.end()};
     PropertyDataToValue(backend, base_type, value.data());
     return CreateStructObject(backend, base_type, value.data());
 }
@@ -7188,7 +7201,7 @@ static auto ConvertManagedObjectToPropertyData(ptr<ManagedScriptBackend> backend
                     if (prop->IsDictOfArrayOfString()) {
                         uint32_t item_size {numeric_cast<uint32_t>(item_data.GetSize())};
                         AppendAlignedRawValue(data, item_size, sizeof(uint32_t));
-                        AppendRawBytes(data, const_span<uint8_t> {reinterpret_cast<const uint8_t*>(item_data.GetPtr().get()), item_data.GetSize()});
+                        AppendManagedRawBytes(data, const_span<uint8_t> {reinterpret_cast<const uint8_t*>(item_data.GetPtr().get()), item_data.GetSize()});
                     }
                     else {
                         if (item_data.GetSize() != base_type.Size) {
@@ -7232,7 +7245,7 @@ static auto ConvertManagedObjectToPropertyData(ptr<ManagedScriptBackend> backend
             string text {ToStringAndFree(reinterpret_cast<MonoString*>(item))};
             uint32_t text_size {numeric_cast<uint32_t>(text.size())};
             AppendAlignedRawValue(data, text_size, sizeof(uint32_t));
-            AppendRawBytes(data, const_span<uint8_t> {reinterpret_cast<const uint8_t*>(text.data()), text.size()});
+            AppendManagedRawBytes(data, const_span<uint8_t> {reinterpret_cast<const uint8_t*>(text.data()), text.size()});
         }
     }
     else if (prop->IsBaseTypeRefType()) {
@@ -7268,7 +7281,7 @@ static auto ConvertManagedObjectToPropertyData(ptr<ManagedScriptBackend> backend
                 throw ScriptSystemException("Managed property array item size mismatch", prop->GetName());
             }
 
-            AppendRawBytes(data, const_span<uint8_t> {reinterpret_cast<const uint8_t*>(item_data.GetPtr().get()), item_data.GetSize()});
+            AppendManagedRawBytes(data, const_span<uint8_t> {reinterpret_cast<const uint8_t*>(item_data.GetPtr().get()), item_data.GetSize()});
         }
     }
 
@@ -8552,6 +8565,7 @@ ManagedScriptBackend::~ManagedScriptBackend()
 
     _continuationPumps.clear();
     _continuationShutdowns.clear();
+    _snapshotWorkCounters.clear();
     _refTypePumps.clear();
     _refTypeShutdowns.clear();
     _persistentGcHandles.clear();
@@ -8561,6 +8575,31 @@ ManagedScriptBackend::~ManagedScriptBackend()
     // Mono VM state is process-wide. Server/client/mapper backends may coexist
     // in one process, so shutdown is left to process teardown
     _domain = nullptr;
+}
+
+auto ManagedScriptBackend::GetSnapshotWorkCount() const -> uint64_t
+{
+    FO_TRACE_ZONE(Script);
+
+    if (_snapshotWorkCounters.empty()) {
+        return 0;
+    }
+
+    MonoDomain* domain {GetDomainOrThrow(GetDomain())};
+    ManagedThreadAttachment managed_thread {domain, ManagedThreadAttachmentMode::CacheForThread};
+    uint64_t count {0};
+
+    for (nptr<void> counter : _snapshotWorkCounters) {
+        MonoObject* result {InvokeManagedScript(this, counter.reinterpret_as<MonoMethod>().get(), nullptr, nullptr, "Managed snapshot work count failed")};
+        FO_VERIFY_AND_THROW(result != nullptr, "Managed snapshot work count returned no value");
+        int64_t pending {*static_cast<int64_t*>(mono_object_unbox(result))};
+        FO_VERIFY_AND_THROW(pending >= 0, "Managed snapshot work count is negative", pending);
+        uint64_t pending_count {numeric_cast<uint64_t>(pending)};
+        FO_VERIFY_AND_THROW(pending_count <= std::numeric_limits<uint64_t>::max() - count, "Managed snapshot work count overflow");
+        count += pending_count;
+    }
+
+    return count;
 }
 
 void ManagedScriptBackend::Process()
@@ -8899,6 +8938,8 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
             MonoMethod* pump {mono_class_get_method_from_name(native_class, "PumpContinuations", 0)};
             MonoMethod* shutdown {mono_class_get_method_from_name(native_class, "ShutdownContinuations", 0)};
             FO_VERIFY_AND_THROW(pump != nullptr && shutdown != nullptr, "Managed continuation scheduler methods not found");
+            MonoMethod* snapshot_counter {mono_class_get_method_from_name(native_class, "GetSnapshotWorkCount", 0)};
+            FO_VERIFY_AND_THROW(snapshot_counter != nullptr, "Managed snapshot work counter not found");
             MonoMethod* bind {mono_class_get_method_from_name(native_class, "BindBackend", 1)};
             MonoMethod* unbind {mono_class_get_method_from_name(native_class, "UnbindBackend", 0)};
             FO_VERIFY_AND_THROW(bind != nullptr && unbind != nullptr, "Managed backend binding methods not found");
@@ -8911,6 +8952,7 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
 
             _continuationPumps.emplace_back(pump);
             _continuationShutdowns.emplace_back(shutdown);
+            _snapshotWorkCounters.emplace_back(snapshot_counter);
             _refTypePumps.emplace_back(ref_pump);
             _refTypeShutdowns.emplace_back(ref_shutdown);
             _backendUnbinds.emplace_back(unbind);

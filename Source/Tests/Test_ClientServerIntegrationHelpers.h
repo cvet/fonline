@@ -896,7 +896,7 @@ End
         vector<uint8_t> item_props {make_default_props_blob("Item")};
 
         vector<uint8_t> map_data {};
-        auto writer {data_writer(map_data)};
+        data_writer writer {data_writer(map_data)};
 
         writer.write<uint32_t>(BAKED_MAP_FILE_MAGIC);
         writer.write<uint32_t>(BAKED_MAP_FILE_VERSION);
@@ -944,7 +944,7 @@ End
         vector<uint8_t> static_item_props {MakeStaticItemPropsBlob(engine)};
 
         vector<uint8_t> map_data {};
-        auto writer {data_writer(map_data)};
+        data_writer writer {data_writer(map_data)};
         writer.write<uint32_t>(BAKED_MAP_FILE_MAGIC);
         writer.write<uint32_t>(BAKED_MAP_FILE_VERSION);
 
@@ -975,7 +975,7 @@ End
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
         vector<uint8_t> protos_data {};
-        auto writer {data_writer(protos_data)};
+        data_writer writer {data_writer(protos_data)};
 
         writer.write<uint32_t>(uint32_t {0});
         ignore_unused(str_hashes);
@@ -1163,7 +1163,7 @@ End
         auto pos {health_info.find(prefix)};
         REQUIRE(pos != string::npos);
 
-        auto begin {pos + prefix.length()};
+        size_t begin {pos + prefix.length()};
         auto end {health_info.find('\n', begin)};
         auto value_sv {string_view {health_info}.substr(begin, end == string::npos ? string::npos : end - begin)};
 
@@ -1264,6 +1264,60 @@ End
         InterthreadDataCallback _send {};
     };
 
+    // The handshake a compatible client opens with, so the raw connection stays on the server as a not logged in session
+    inline void SendCompatibleHandshake(RawChannelClient& client, ptr<ServerEngine> server)
+    {
+        auto handshake {NetOutBuffer(128)};
+        handshake.StartMsg(NetMessage::Handshake);
+        handshake.Write(server->Settings->Network.CompatibilityVersion);
+        handshake.Write(server->GetMetadataVersion());
+        handshake.Write<uint32_t>(FO_UPDATER_VERSION);
+        handshake.Write<string_view>("Linux-x64");
+        handshake.EndMsg();
+        client.Send(handshake.GetData());
+    }
+
+    // Counts what the server has written so far; the stream is unpacked only when compression is off
+    inline auto CountServerMessages(RawChannelClient& client, NetMessage message) -> size_t
+    {
+        vector<uint8_t> stream {client.GetPlaintext()};
+        constexpr size_t header_size {sizeof(uint32_t) + sizeof(uint32_t) + sizeof(NetMessage)};
+        size_t count {0};
+        size_t offset {0};
+
+        while (stream.size() - offset >= header_size) {
+            uint32_t message_size {};
+            NetMessage current {};
+            memory::copy(&message_size, stream.data() + offset + sizeof(uint32_t), sizeof(message_size));
+            memory::copy(&current, stream.data() + offset + sizeof(uint32_t) + sizeof(message_size), sizeof(current));
+
+            if (message_size < header_size || message_size > stream.size() - offset) {
+                break;
+            }
+
+            if (current == message) {
+                count++;
+            }
+
+            offset += message_size;
+        }
+
+        return count;
+    }
+
+    inline auto WaitForServerMessageCount(RawChannelClient& client, NetMessage message, size_t expected_count) -> bool
+    {
+        for (int32_t i {0}; i < 2000; i++) {
+            if (CountServerMessages(client, message) >= expected_count) {
+                return true;
+            }
+
+            std::this_thread::sleep_for(std::chrono::milliseconds {2});
+        }
+
+        return false;
+    }
+
     inline auto WaitForConnected(ptr<ClientEngine> client, ptr<ServerEngine> server, size_t expected_connections = 1) -> bool
     {
         for (int32_t i {0}; i < 2000; i++) {
@@ -1329,4 +1383,3 @@ End
 }
 
 FO_END_NAMESPACE
-

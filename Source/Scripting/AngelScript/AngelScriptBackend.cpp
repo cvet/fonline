@@ -332,7 +332,7 @@ void AngelScriptBackend::LoadBinaryScripts(const FileSystem& resources)
     FO_VERIFY_AND_THROW(_asEngine->GetModuleCount() == 0, "AngelScript engine must not contain modules before loading bytecode", _asEngine->GetModuleCount());
     FO_VERIFY_AND_THROW(!script_bin.empty(), "AngelScript bytecode resource is empty", script_bin_file.GetPath(), _meta->GetSide());
 
-    auto reader {data_reader({script_bin.data(), script_bin.size()})};
+    data_reader reader {data_reader({script_bin.data(), script_bin.size()})};
 
     uint32_t container_magic {reader.read<uint32_t>()};
 
@@ -654,7 +654,7 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
     Preprocessor::StoreLineNumberTranslator(lnt.get(), lnt_data);
 
     vector<uint8_t> data {};
-    auto writer {data_writer(data)};
+    data_writer writer {data_writer(data)};
     writer.write<uint32_t>(AS_BYTECODE_CONTAINER_MAGIC);
     writer.write<uint8_t>(AS_BYTECODE_POINTER_SIZE);
     writer.write<uint8_t>(AS_BYTECODE_ENDIAN_TAG);

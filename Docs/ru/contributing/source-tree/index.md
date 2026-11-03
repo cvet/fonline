@@ -5,7 +5,7 @@ locale: ru
 document_id: source-tree
 permalink: /Docs/ru/contributing/source-tree/
 ---
-<!-- docs-translation: {"document_id":"source-tree","locale":"ru","source_path":"Docs/en/contributing/source-tree/index.md","source_sha256":"2b65c498d72746769344b2148d897437b87a614a1f55115e2a5a829729403654"} -->
+<!-- docs-translation: {"document_id":"source-tree","locale":"ru","source_path":"Docs/en/contributing/source-tree/index.md","source_sha256":"8a71bccda71634e881867eaca35e18248ff98e8e65c0038c855274b29b07534c"} -->
 # Руководство по дереву исходного кода
 
 Это руководство объясняет, откуда начинать навигацию по `Source/`. Оно дополняет краткий [Source README](../../../../Source/README.ru.md).
@@ -34,6 +34,68 @@ codegen принадлежит `BuildTools/cmake/stages/Codegen.cmake` и
 Mapper. Для этой границы используйте [BuildTools pipeline](../../reference/cmake-and-buildtools/pipeline.md);
 при изменении поведения bake меняйте владельца самого native tool.
 
+<a id="native-module-layout"></a>
+
+## Оформление нативных модулей
+
+Публичный native-модуль, чей заголовок используется другими единицами трансляции,
+оформляется соседней парой `Name.h` + `Name.cpp`. Оба файла регистрируются у владельца
+в [`EngineSources.cmake`](../../../../BuildTools/cmake/stages/EngineSources.cmake),
+[`CoreLibs.cmake`](../../../../BuildTools/cmake/stages/CoreLibs.cmake) или у целевого
+приложения в [`Applications.cmake`](../../../../BuildTools/cmake/stages/Applications.cmake).
+Общие пассивные данные и константы сохраняют опорный `.cpp`, как в паре
+`ResourceDefaults.h` + `ResourceDefaults.cpp`. Вспомогательные шаблонные, constexpr
+и агрегирующие заголовки допускают рассмотренные header-only исключения.
+
+Единицам реализации без внешнего интерфейса заголовок не нужен. Удаляйте заголовки,
+подключаемые только собственным `.cpp`; не создавайте пустые файлы, обёртки над общим
+заголовком или повторные объявления generated script API ради формальной пары.
+Реализации рендереров, транспортов, script bindings и точек входа могут состоять
+только из `.cpp`. Списки исходников внутри владеющей цели сохраняются безусловными,
+а числовые feature guards размещаются внутри опциональных модулей.
+
+После добавления или переноса модулей запускайте `python3 BuildTools/check_native_modules.py`.
+Он проверяет регистр имён пар и регистрацию у владельцев списков исходников, включая
+алиас каталога AngelScript и библиотечные цели приложений. `.cpp` без заголовка тоже
+обязан быть зарегистрирован. Комментарии и диагностические строки не регистрируют
+исходники. Рассмотренные header-only исключения и особые точки входа/шаблоны задаются
+точными путями и непустыми причинами в
+[`NativeModuleExceptions.json`](../../../../BuildTools/NativeModuleExceptions.json),
+версия схемы `Version = 1`. Устаревшие записи, шаблоны путей, повторные ключи и
+исключения для полных пар запрещены. Два `Source/Common/*.template.cpp` являются
+входными шаблонами генерации, а не компилируемыми модулями. Эффективную конфигурацию
+CMake проверяют сборки соответствующих платформ.
+
+Первый include заголовка — `#include "Common.h"`. `.cpp` начинает список include
+с соседнего одноимённого заголовка с точным регистром, если тот существует, иначе
+с `Common.h`. Этот include отделяется от следующего содержимого пустой строкой.
+Если он единственный и стоит в конце файла, дополнительная пустая строка не нужна.
+Лицензия и `#pragma once` могут предшествовать ему; условия препроцессора не меняют
+лексический порядок include. Bootstrap-заголовки не могут подключать `Common.h`:
+сам `Source/Common/Common.h`, заголовки непосредственно в `Source/Essentials/` и
+`Source/Common/ImGuiExt/ImGuiConfig.h` сохраняют свой порядок зависимостей.
+ImGui подключает конфигурацию через `IMGUI_USER_CONFIG`; отсутствие буквального
+локального include не означает, что такой заголовок не используется.
+
+Native-файл заканчивается ровно одним переводом строки: `text\n` или `text\r\n`.
+Отсутствие EOL, пробелы в конце и дополнительные пустые строки EOF запрещены.
+Formatter, layout-валидатор и обычная проверка Git whitespace следуют одной конвенции.
+
+Вместе с проверкой модулей запускайте `python3 BuildTools/check_native_source_layout.py`.
+Он рекурсивно проверяет собственные `.h/.cpp` в `Source/`, кроме двух шаблонов
+генерации, и игнорирует ложные директивы в комментариях и строковых литералах.
+Ошибочная или пустая область возвращает ненулевой код. Расширения проекта проверяются
+с `--root <project> --source-dir SourceExt --shallow`, чтобы исключить вложенные
+импортированные библиотеки. Generated build output и `ThirdParty/` не входят в
+authored scope. Оба валидатора и их регрессии обязательны в CI. Также проверяются
+`--source-dir Examples` и `--source-dir BuildTools/validation-project`.
+
+`Examples/NativeExtensionSample/SourceExt/NativeExtensionCore.h` принадлежит
+самостоятельной C++-библиотеке, собираемой без заголовков Engine: он сохраняет
+стандартную библиотеку и не должен подключать `Common.h`. Её отдельный
+`Tests/NativeExtensionCoreTest.cpp` начинается с `NativeExtensionCore.h`. Эти точные
+границы проверяются явно; серверное расширение следует обычным правилам cpp-only.
+
 ## `Source/Applications/`
 
 Содержит точки входа приложений и библиотек. Примеры включают client, варианты server, Mapper, editor, baker, AngelScript compiler, Managed script baker и обёртки testing app. Wiring build targets находится в `BuildTools/cmake/stages/Applications.cmake`.
@@ -55,7 +117,7 @@ Mapper. Для этой границы используйте [BuildTools pipeli
 - Карты и движение: `MapLoader.*`, `Geometry.*`, `Movement.*`, `PathFinding.*`, `LineTracer.*`.
 - Сетевые примитивы: `NetBuffer.*`, `NetworkUdp.*` и общий для сервера/клиента разбор списка файлов updater в `UpdateDescriptor.*`.
 - Конфигурация и данные: `ConfigFile.*`, `DataSource.*`, `ResourcePack.*`, `ResourceIndex.*`, `FileSystem.*`, `CacheStorage.*`.
-- Общие presentation metadata и resources: `AnimationInfo.*`, `ModelBounds.*`, `SpriteResource.*`.
+- Общие presentation metadata и resources: `AnimationInfo.*`, `ModelBounds.*`, `ResourceDefaults.*`, `SpriteResource.*`.
 - Script bridge: `ScriptSystem.*`.
 
 Если изменение переиспользуемо и общее для client и server, оно, вероятно, начинается здесь.

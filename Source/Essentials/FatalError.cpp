@@ -32,6 +32,7 @@
 //
 
 #include "FatalError.h"
+
 #include "BaseLogging.h"
 #include "StackTrace.h"
 

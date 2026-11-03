@@ -42,6 +42,7 @@ SETTING(string, Common, GameVersion, "0.0.0"); // Game version, used in logs and
 SETTING(string, Common, UnpackagedSubConfig); // Config applied in unpackaged builds
 SETTING(bool, Common, Packaged); // If yes, then the packaging was done (read only)
 SETTING(bool, Common, AsyncLogWrite, false); // If true, log messages are written to file and console from a dedicated background thread
+SETTING(bool, Common, NonInteractive, false); // If true, system error dialogs log the error and request a failed exit without waiting for user input
 SETTING(vector<string>, Common, SecretSettingTokens, "secret", "token", "password", "apikey"); // Case-insensitive substrings that mark a setting name as a credential whose value is masked as "***" in command-line override logs
 SETTING(string, Common, UserWritablePath); // Read only. Writable data root for everything written at runtime - log, cache, resource overlay, self-updated binaries, server database. Resolved at startup before anything is read from disk and therefore NOT settable from a config file: the command line names it, otherwise an INSTALLED marker beside the executable selects the per-OS user data dir plus the project name (Windows %LOCALAPPDATA% else %APPDATA%; macOS/iOS ~/Library/Application Support; Linux/Android $XDG_DATA_HOME else ~/.local/share), and without a marker everything stays relative to the working directory. Read-only base resources stay where they are with this dir layered on top
 SETTING_GROUP_END(Common);
@@ -124,6 +125,10 @@ SETTING(int32_t, ServerNetwork, MaxMessageSize, 1048576); // Max single inbound 
 SETTING(int32_t, ServerNetwork, MaxBufferedInputSize, 4194304); // Max total unread input bytes retained per connection (0 = unlimited)
 SETTING(int32_t, ServerNetwork, MaxRemoteCallPayloadSize, 1048576); // Runtime cap for a decoded remote-call payload (0 = structural per-call cap only)
 SETTING(int32_t, ServerNetwork, MaxMessagesPerProcessPass, 256); // Max messages drained per connection per worker job pass (0 = unlimited)
+SETTING(int32_t, ServerNetwork, RemoteCallWarningTimeMs, 1000); // Warning age for unfinished RPCs or ready input frames (0 = disabled)
+SETTING(int32_t, ServerNetwork, RemoteCallDisconnectTimeMs, 30000); // Disconnect age for unfinished RPCs or ready input frames (0 = disabled)
+SETTING(int32_t, ServerNetwork, RemoteCallWarningIntervalMs, 10000); // Repeat warning interval per connection (0 = once per violating episode)
+SETTING(int32_t, ServerNetwork, MaxPendingRemoteCalls, 256); // Concurrent accepted RPC handlers per connection; the next call disconnects (0 = unlimited)
 SETTING(int32_t, ServerNetwork, MaxUdpReorderAhead, 1024); // Max UDP packets buffered ahead of the next expected sequence (0 = unlimited)
 SETTING(int32_t, ServerNetwork, MaxConnections, 0); // Max simultaneous connections incl. unlogined (0 = unlimited); over this, new connections are rejected at accept
 SETTING(int32_t, ServerNetwork, MaxPlayers, 0); // Max simultaneous logined players (0 = unlimited); over this, new connections are rejected at accept
@@ -303,6 +308,7 @@ SETTING_GROUP_END(Timer);
 ///@ ExportSettings Common
 SETTING_GROUP(Baking, virtual AngelScriptSettings, virtual ManagedScriptSettings, virtual SpriteMeshSettings, virtual AnimationSettings, virtual BaseSettings)
 SETTING(bool, Baking, ForceBaking, false); // If true, baking of all packs are forced
+SETTING(bool, Baking, FilterResources, false); // If true, resource packs contain only outputs reachable from authored resource references instead of every baked output
 SETTING(bool, Baking, SingleThreadBaking, false); // If true, single-threaded baking is enabled
 SETTING(bool, Baking, IgnoreMissingBakerWarning, false); // If true, missing baker warning is suppressed when stale baked resources already exist
 SETTING(bool, Baking, PrebakeOnStartup, true); // If false, an unpackaged application starts on the resources already baked instead of running the baker first; for launching several processes from one freshly baked checkout

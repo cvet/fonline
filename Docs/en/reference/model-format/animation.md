@@ -28,4 +28,4 @@ This page lists `.fo3d` directives that participate in animation selection or mo
 
 ## Separation from 2D root motion
 
-These directives drive 3D skeletal clips and model composition. `NextX` / `NextY` sprite-frame offsets and movement-projected frame selection belong to [Sprite Root Motion](../../how-to/content/sprite-root-motion.md).
+These directives drive 3D skeletal clips and model composition. `Motion` sprite-frame offsets and movement-projected frame selection belong to [Sprite Root Motion](../../how-to/content/sprite-root-motion.md).

@@ -34,6 +34,7 @@
 #pragma once
 
 #include "Common.h"
+
 #include "FileSystem.h"
 
 FO_BEGIN_NAMESPACE
@@ -46,13 +47,14 @@ namespace ImageImport
 
     struct FrameShot
     {
-        int32_t Width {};
-        int32_t Height {};
-        int16_t NextX {};
-        int16_t NextY {};
+        isize32 Size {};
+        ipos32 Offset {};
+        ipos32 Motion {};
+        timespan Duration {};
         vector<uint8_t> Data {};
         bool Shared {};
         int32_t SharedIndex {};
+        bool PreserveHiddenColor {};
     };
 
     struct FrameSequence
@@ -64,12 +66,8 @@ namespace ImageImport
 
     struct FrameCollection
     {
-        int32_t SequenceSize {};
-        int32_t AnimTicks {};
         FrameSequence Main {};
-        bool HaveDirs {};
         FrameSequence Dirs[MAX_DIRS_MINUS_ONE] {};
-        string EffectName {};
         string NewName {};
     };
 
@@ -82,13 +80,25 @@ namespace ImageImport
     using LoadFunc = copyable_function<FrameCollection(string_view, string_view, FileReader, const Context&)>;
     using OutputResolver = copyable_function<string(string_view)>;
 
+    struct DependencyReference
+    {
+        string Path {};
+        bool Optional {};
+    };
+
+    using DependencyDiscovery = copyable_function<vector<DependencyReference>(string_view, const FileCollection&)>;
+
     struct Loader
     {
         LoadFunc Load {};
         OutputResolver ResolveOutput {};
+        DependencyDiscovery DiscoverDependencies {};
     };
 
     void CheckEnabled(string_view fname);
+    void SetFrameSequenceDuration(FrameSequence& sequence, timespan duration);
+    auto GetDirectionCount(const FrameCollection& collection) -> uint8_t;
+    auto GetDuration(const FrameSequence& sequence) -> timespan;
 }
 
 FO_END_NAMESPACE

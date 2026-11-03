@@ -32,6 +32,7 @@
 //
 
 #include "Rendering.h"
+
 #include "ConfigFile.h"
 
 FO_BEGIN_NAMESPACE

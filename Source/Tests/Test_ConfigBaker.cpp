@@ -31,11 +31,13 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
 #include "Test_BakerHelpers.h"
 
-#if FO_ANGELSCRIPT_SCRIPTING
+#if FO_ANGELSCRIPT_SCRIPTING || FO_MANAGED_SCRIPTING
 #include "ConfigBaker.h"
 #include "ConfigFile.h"
 #include "MetadataRegistration.h"
@@ -43,7 +45,7 @@
 
 FO_BEGIN_NAMESPACE
 
-#if FO_ANGELSCRIPT_SCRIPTING
+#if FO_ANGELSCRIPT_SCRIPTING || FO_MANAGED_SCRIPTING
 static auto MakeConfigBakerTempDir() -> string
 {
     return fs::path_to_string(std::filesystem::temp_directory_path() / std::format("lf_config_baker_{}", std::chrono::steady_clock::now().time_since_epoch().count()));
@@ -94,7 +96,7 @@ static auto MakeCompleteConfigBakerConfig() -> string
 {
     string config {};
 
-#define SETTING(type, group, name, ...) AppendConfigBakerSetting(config, #group "." #name, type {__VA_ARGS__})
+#define SETTING(type, group, name, ...) AppendConfigBakerSetting(config, SettingNames::group##_##name, type {__VA_ARGS__})
 #define SETTING_GROUP(group, ...)
 #define SETTING_GROUP_END(group)
 #include "Settings.inc"
@@ -108,7 +110,7 @@ static auto MakeCompleteConfigBakerConfig() -> string
 
 TEST_CASE("ConfigBaker")
 {
-#if FO_ANGELSCRIPT_SCRIPTING
+#if FO_ANGELSCRIPT_SCRIPTING || FO_MANAGED_SCRIPTING
     using namespace BakerTests;
 
     SECTION("SkipsUnsupportedTargetWithoutTouchingMetadata")
@@ -404,6 +406,86 @@ TEST_CASE("ConfigBaker")
 
         std::error_code ec {};
         std::filesystem::remove_all(fs::make_path(temp_dir), ec);
+    }
+
+    SECTION("ClientOnlyPackContainsCompleteProfilesWithoutServerData")
+    {
+        string temp_dir {MakeConfigBakerTempDir()};
+        REQUIRE(std::filesystem::create_directories(fs::make_path(temp_dir)));
+        auto cleanup {scope_exit([&temp_dir]() noexcept { safe_call([&temp_dir] { (void)fs::remove_dir_tree(temp_dir); }); })};
+        string config_path {static_cast<string&&>(strex(temp_dir).combine_path("Test.fomain"))};
+        string config {MakeCompleteConfigBakerConfig() +
+            "Client.Language=\nClient.DirectMoveSlide=false\n"
+            "Client.DirectMoveRetargetMinMs=0\nServerNetwork.ChannelSecretKey=private-server-value\n"
+            "[ResourcePack]\nName=Metadata\nBakers=Config ClientConfig\n"
+            "[SubConfig]\nName=Child\nCommon.GameVersion=1.2.3\n"};
+        bool written {fs::write_file(config_path, config)};
+        REQUIRE(written);
+        TestRig rig {};
+        AddConfigBakerMetadata(rig);
+        rig.Settings.ApplyConfigAtPath("Test.fomain", temp_dir);
+        auto context {rig.MakeContext("Metadata")};
+        ClientConfigBaker baker {context};
+        REQUIRE_NOTHROW(baker.BakeFiles(TestRig::MakeEmptyFiles(), ""));
+        REQUIRE(rig.Outputs.size() == 2);
+        CHECK_FALSE(rig.Outputs.contains("(Root).fomain-server"));
+        CHECK_FALSE(rig.Outputs.contains("Child.fomain-server"));
+        string root {rig.GetOutputText("(Root).fomain-client")};
+        string child {rig.GetOutputText("Child.fomain-client")};
+        CHECK(root.find("Client.Language=\n") != string::npos);
+        CHECK(root.find("Client.DirectMoveSlide=0\n") != string::npos);
+        CHECK(root.find("Client.DirectMoveRetargetMinMs=0\n") != string::npos);
+        CHECK(root.find("private-server-value") == string::npos);
+        CHECK(child.find("Common.GameVersion=1.2.3\n") != string::npos);
+        ConfigFile profile {child};
+        CHECK(profile.GetAsStr("", "Common.GameVersion") == "1.2.3");
+        ConfigBaker server_baker {context};
+        REQUIRE_NOTHROW(server_baker.BakeFiles(TestRig::MakeEmptyFiles(), ""));
+        CHECK(rig.Outputs.size() == 4);
+        CHECK(rig.Outputs.contains("(Root).fomain-server"));
+        CHECK(rig.GetOutputText("Child.fomain-client") == child);
+    }
+
+    SECTION("MasterBakerWritesMetadataAndConfigurationsToTheSamePack")
+    {
+        string temp_dir {MakeConfigBakerTempDir()};
+        auto cleanup {scope_exit([&temp_dir]() noexcept { safe_call([&temp_dir] { (void)fs::remove_dir_tree(temp_dir); }); })};
+        string output_dir {strex(temp_dir).combine_path("output").str()};
+        string config_path {strex(temp_dir).combine_path("Test.fomain").str()};
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("input/Fixture.cs").str(), string_view {"// Metadata input\n"}));
+        string config {MakeCompleteConfigBakerConfig() + strex("Baking.BakeOutput={}\nBaking.SingleThreadBaking=true\n", output_dir).str() +
+            "[ResourcePack]\nName=Metadata\nInputDirs=input\nIncludePatterns=*\nBakers=Metadata Config ClientConfig\n"
+            "[SubConfig]\nName=Child\nCommon.GameVersion=1.2.3\n"};
+        REQUIRE(fs::write_file(config_path, string_view {config}));
+        auto settings {GlobalSettings(true)};
+        settings.ApplyConfigAtPath("Test.fomain", temp_dir);
+
+        MasterBaker baker {&settings};
+        REQUIRE(baker.BakeAll());
+
+        string pack_dir {strex(output_dir).combine_path("Metadata").str()};
+        for (string_view role : {"client", "server", "mapper"}) {
+            CHECK(fs::exists(strex(pack_dir).combine_path(strex("Metadata.fometa-{}", role)).str()));
+        }
+        for (string_view role : {"client", "server"}) {
+            CHECK(fs::exists(strex(pack_dir).combine_path(strex("(Root).fomain-{}", role)).str()));
+            auto content {fs::read_file(strex(pack_dir).combine_path(strex("Child.fomain-{}", role)).str())};
+            REQUIRE(content);
+            ConfigFile profile {*content};
+            CHECK(profile.GetAsStr("", "Common.GameVersion") == "1.2.3");
+        }
+        CHECK_FALSE(fs::exists(strex(output_dir).combine_path("Configs").str()));
+    }
+
+    SECTION("SetupBakersReturnsClientConfig")
+    {
+        TestRig rig {};
+        ConfigFile config {"[ResourcePack]\nName=Metadata\nBakers=Config ClientConfig\n"};
+        rig.Settings.ApplyConfigFile(config, "");
+        auto bakers {MakeRequestedBakers({string(ClientConfigBaker::NAME)}, rig, "Metadata")};
+        REQUIRE(bakers.size() == 1);
+        CHECK(bakers.front()->GetName() == ClientConfigBaker::NAME);
+        CHECK(bakers.front()->GetOrder() == 2);
     }
 
     SECTION("SetupBakersReturnsRequestedBaker")

@@ -43,6 +43,7 @@
 FO_BEGIN_NAMESPACE
 
 struct SpriteInfoFileEntry;
+struct ImageOutputCandidate;
 
 class ImageBaker final : public BaseBaker
 {
@@ -58,7 +59,9 @@ public:
     [[nodiscard]] auto GetName() const -> string_view override { return NAME; }
     [[nodiscard]] auto GetOrder() const -> int32_t override { return 4; }
 
-    void AddLoader(const ImageImport::LoadFunc& loader, const vector<string>& file_extensions, const ImageImport::OutputResolver& output_resolver = {});
+    void AddLoader(const ImageImport::LoadFunc& loader, const vector<string>& file_extensions, const ImageImport::OutputResolver& output_resolver = {}, const ImageImport::DependencyDiscovery& dependency_discovery = {});
+    [[nodiscard]] auto GetLoaders() const -> const unordered_map<string, ImageImport::Loader>& { return _fileLoaders; }
+    [[nodiscard]] auto CollectOutputCandidates(string_view pack, const FileCollection& files) const -> vector<ImageOutputCandidate>;
     void BakeFiles(const FileCollection& files, string_view target_path) const override;
 
 private:

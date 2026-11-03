@@ -32,6 +32,7 @@
 //
 
 #include "MapSprite.h"
+
 #include "SpriteManager.h"
 
 FO_BEGIN_NAMESPACE
@@ -186,15 +187,13 @@ void MapSprite::SetLight(CornerType corner, ptr<const ucolor> light, msize size)
 {
     if (_hex.x >= 1 && _hex.x < size.width - 1 && _hex.y >= 1 && _hex.y < size.height - 1) [[likely]] {
         size_t width {numeric_cast<size_t>(size.width)};
-        size_t height {numeric_cast<size_t>(size.height)};
-        size_t light_count {width * height};
+        size_t light_count {size.square<size_t>()};
         auto lights {make_span(light, light_count)};
         auto light_at {[&lights](size_t pos) noexcept -> ptr<const ucolor> {
             FO_STRONG_ASSERT(pos < lights.size(), "Light index is out of range");
             return &lights[pos];
         }};
-
-        size_t light_index {numeric_cast<size_t>(_hex.y) * width + numeric_cast<size_t>(_hex.x)};
+        size_t light_index {numeric_cast<size_t>(safe_numeric_cast<int64_t>(_hex.y) * size.width + _hex.x)};
         _light = light_at(light_index);
 
         switch (corner) {
@@ -275,19 +274,24 @@ void MapSprite::AddToExtraChain(ptr<MapSprite> mspr)
     mspr->_extraChainParent = last_spr;
 }
 
+// The draw order key fields hold every draw-order group, standing layer and map coordinate up to GameSettings::MAP_SIZE_LIMIT
+static_assert(static_cast<int32_t>(DrawOrderType::Last) < (1 << 6));
+static_assert(static_cast<int32_t>(DrawOrderType::NormalEnd) - static_cast<int32_t>(DrawOrderType::NormalBegin) < (1 << 4));
+static_assert(GameSettings::MAP_SIZE_LIMIT <= (1 << 22), "Draw order secondary field must hold every cell X below the map size limit");
+static_assert((GameSettings::MAP_SIZE_LIMIT - 1) * 2 < (1 << 24), "Draw order primary field must hold every screen row below the map size limit");
+
 auto MapSpriteList::MakeDrawOrderPos(DrawOrderType draw_order, mpos hex, int8_t sub_layer) noexcept -> uint64_t
 {
-    // Bit layout: [group 8][primary 24][layer 8][sub-layer 8][secondary 16]; a standing row is one ground depth, so its
+    // Bit layout: [group 6][primary 24][layer 4][sub-layer 8][secondary 22]; a standing row is one ground depth, so its
     // critters stand in front of every item of it, and among the items its walls (lowest sub-layer) go first
     uint64_t group {static_cast<uint64_t>(draw_order < DrawOrderType::NormalBegin || draw_order > DrawOrderType::NormalEnd ? draw_order : DrawOrderType::NormalBegin)};
     bool standing {group == static_cast<uint64_t>(DrawOrderType::NormalBegin)};
-    // Preserve the packed key's unsigned bit pattern even for signed coordinates outside the map
     uint64_t primary {std::bit_cast<uint64_t>(safe_numeric_cast<int64_t>(standing ? GeometryHelper::GetHexScreenRow(hex) : hex.y))};
     uint64_t secondary {std::bit_cast<uint64_t>(safe_numeric_cast<int64_t>(hex.x))};
     uint64_t layer {standing ? static_cast<uint64_t>(draw_order) - static_cast<uint64_t>(DrawOrderType::NormalBegin) : 0};
     uint64_t sub {numeric_cast<uint64_t>(sub_layer - std::numeric_limits<int8_t>::min())};
 
-    return (group << 56) | (primary << 32) | (layer << 24) | (sub << 16) | secondary;
+    return (group << 58) | (primary << 34) | (layer << 30) | (sub << 22) | secondary;
 }
 
 void MapSpriteList::GrowPool() noexcept
@@ -470,4 +474,3 @@ void MapSpriteHolder::StopDraw()
 }
 
 FO_END_NAMESPACE
-

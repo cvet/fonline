@@ -32,6 +32,7 @@
 //
 
 #include "Properties.h"
+
 #include "PropertiesSerializer.h"
 
 FO_BEGIN_NAMESPACE
@@ -920,7 +921,7 @@ void Properties::StoreAllData(vector<uint8_t>& all_data, set<hstring>& str_hashe
 
     all_data.clear();
 
-    auto writer {data_writer(all_data)};
+    data_writer writer {data_writer(all_data)};
     writer.write<uint32_t>(numeric_cast<uint32_t>(_registrar->_wholePodDataSize));
     writer.write<bool>(!!_baseProps);
 
@@ -1044,7 +1045,7 @@ void Properties::RestoreAllData(const vector<uint8_t>& all_data)
 {
     FO_TRACE_ZONE(Entity);
 
-    auto reader {data_reader(all_data)};
+    data_reader reader {data_reader(all_data)};
     auto whole_pod_data_size {reader.read<uint32_t>()};
     FO_VERIFY_AND_THROW(whole_pod_data_size == _registrar->_wholePodDataSize, "Serialized POD property block was baked for a different property layout", _registrar->GetTypeName(), whole_pod_data_size, _registrar->_wholePodDataSize);
     bool has_overlay_data {reader.read<bool>()};

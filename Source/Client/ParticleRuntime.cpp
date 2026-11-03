@@ -32,6 +32,7 @@
 //
 
 #include "ParticleRuntime.h"
+
 #include "Application.h"
 #include "EffectManager.h"
 #include "EffekseerExtension.h"

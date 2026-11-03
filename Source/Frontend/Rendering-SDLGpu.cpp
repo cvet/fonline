@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "Rendering.h"
 
 #if FO_HAVE_SDL_GPU
@@ -298,7 +300,7 @@ static auto ConvertBlendFactor(BlendFuncType blend, bool is_alpha) -> SDL_GPUBle
     FO_UNREACHABLE_PLACE();
 }
 
-static auto ConvertBlendOp(BlendEquationType blend_op) -> SDL_GPUBlendOp
+static auto ConvertBlendOpToSdlGpu(BlendEquationType blend_op) -> SDL_GPUBlendOp
 {
     switch (blend_op) {
     case BlendEquationType::FuncAdd:
@@ -316,7 +318,7 @@ static auto ConvertBlendOp(BlendEquationType blend_op) -> SDL_GPUBlendOp
     FO_UNREACHABLE_PLACE();
 }
 
-static auto ConvertCullMode(CullModeType cull_mode) -> SDL_GPUCullMode
+static auto ConvertCullModeToSdlGpu(CullModeType cull_mode) -> SDL_GPUCullMode
 {
     switch (cull_mode) {
     case CullModeType::None:
@@ -878,7 +880,7 @@ auto SDLGpu_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
     // `-spv` that Rendering-Vulkan uses: `-spv_sdl` for the Vulkan driver, SDL-remapped `-msl_*` for the Metal driver
     bool spirv {_ctx->ShaderFormat == SDL_GPU_SHADERFORMAT_SPIRV};
 #if FO_IOS
-    const string_view shader_flavor {static_cast<string_view>(spirv ? "spv_sdl" : "msl_ios")};
+    string_view shader_flavor {spirv ? "spv_sdl" : "msl_ios"};
 #else
     string_view shader_flavor {spirv ? "spv_sdl" : "msl_mac"};
 #endif
@@ -1241,7 +1243,7 @@ auto SDLGpu_Texture::RequestTextureRegion(ipos32 pos, isize32 size) const -> uni
 
     SDL_GPUTransferBufferCreateInfo transfer_buf_info {};
     transfer_buf_info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD;
-    transfer_buf_info.size = numeric_cast<uint32_t>(size.square() * sizeof(ucolor));
+    transfer_buf_info.size = numeric_cast<uint32_t>(size.square<size_t>() * sizeof(ucolor));
 
     auto transfer_buf {make_nptr(SDL_CreateGPUTransferBuffer(_ctx->Device.get(), &transfer_buf_info))};
     FO_VERIFY_AND_THROW(transfer_buf, "SDL_CreateGPUTransferBuffer failed for a texture readback", SDL_GetError(), size);
@@ -1344,9 +1346,9 @@ auto SDLGpu_TextureReadback::TakePixels() -> optional<vector<ucolor>>
         return std::nullopt;
     }
 
-    size_t data_size {_size.square() * sizeof(ucolor)};
+    size_t data_size {_size.square<size_t>() * sizeof(ucolor)};
     vector<ucolor> pixels {};
-    pixels.resize(_size.square());
+    pixels.resize(_size.square<size_t>());
 
     auto mapped {MapTransferBuffer(_ctx, _transferBuf, false)};
     memory::copy(pixels.data(), mapped, data_size);
@@ -1639,7 +1641,7 @@ auto SDLGpu_Effect::GetOrCreatePipeline(size_t pass, SDL_GPUPrimitiveType topolo
     pipeline_info.rasterizer_state.front_face = SDL_GPU_FRONTFACE_COUNTER_CLOCKWISE;
     pipeline_info.rasterizer_state.enable_depth_clip = true;
 
-    pipeline_info.rasterizer_state.cull_mode = ConvertCullMode(cull_mode);
+    pipeline_info.rasterizer_state.cull_mode = ConvertCullModeToSdlGpu(cull_mode);
 
     pipeline_info.multisample_state.sample_count = SDL_GPU_SAMPLECOUNT_1;
 
@@ -1664,10 +1666,10 @@ auto SDLGpu_Effect::GetOrCreatePipeline(size_t pass, SDL_GPUPrimitiveType topolo
         color_target_desc.blend_state.enable_blend = true;
         color_target_desc.blend_state.src_color_blendfactor = ConvertBlendFactor(_srcBlendFunc[pass], false);
         color_target_desc.blend_state.dst_color_blendfactor = ConvertBlendFactor(_destBlendFunc[pass], false);
-        color_target_desc.blend_state.color_blend_op = ConvertBlendOp(_blendEquation[pass]);
+        color_target_desc.blend_state.color_blend_op = ConvertBlendOpToSdlGpu(_blendEquation[pass]);
         color_target_desc.blend_state.src_alpha_blendfactor = ConvertBlendFactor(_srcBlendFunc[pass], true);
         color_target_desc.blend_state.dst_alpha_blendfactor = ConvertBlendFactor(_destBlendFunc[pass], true);
-        color_target_desc.blend_state.alpha_blend_op = ConvertBlendOp(_blendEquation[pass]);
+        color_target_desc.blend_state.alpha_blend_op = ConvertBlendOpToSdlGpu(_blendEquation[pass]);
     }
 
     pipeline_info.target_info.color_target_descriptions = &color_target_desc;
@@ -1726,15 +1728,15 @@ void SDLGpu_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
     // and overwriting it with the renderer's 2D ortho would push the skinned mesh off-screen
     if (_needProjBuf && !ProjBuf.has_value()) {
         auto& proj_buf {ProjBuf = ProjBuffer()};
-        auto projection_matrix {proj_buf->ProjMatrix};
+        float32_t* projection_matrix {proj_buf->ProjMatrix};
         auto projection_matrix_values {make_ptr(glm::value_ptr(_ctx->ProjMatrix))};
         memory::copy(projection_matrix, projection_matrix_values, 16 * sizeof(float32_t));
     }
 
     if (_needMainTexBuf && !MainTexBuf.has_value()) {
         auto& main_tex_buf {MainTexBuf = MainTexBuffer()};
-        auto main_texture_size {main_tex_buf->MainTexSize};
-        auto main_texture_size_data {main_tex->SizeData};
+        float32_t* main_texture_size {main_tex_buf->MainTexSize};
+        const float32_t* main_texture_size_data {main_tex->SizeData};
         memory::copy(main_texture_size, main_texture_size_data, 4 * sizeof(float32_t));
     }
 

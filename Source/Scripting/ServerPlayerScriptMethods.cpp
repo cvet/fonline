@@ -33,6 +33,7 @@
 
 #include "Common.h"
 
+#include "ScriptSystem.h"
 #include "Server.h"
 
 FO_BEGIN_NAMESPACE
@@ -169,7 +170,7 @@ FO_SCRIPT_API void Server_Player_ViewMap(ptr<Player> self, ptr<Map> map, mpos he
 
 // Open a bounded view of the map after validating the player, hex and positive int16_t radius
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Player_ViewMapArea(ptr<Player> self, ptr<Map> map, mpos hex, int32_t radius)
+FO_SCRIPT_API void Server_Player_ViewMapArea(ptr<Player> self, ptr<Map> map, mpos hex, int32_t radius, nptr<ServerEntity> context)
 {
     ValidateEntityAccess(map);
 
@@ -180,14 +181,23 @@ FO_SCRIPT_API void Server_Player_ViewMapArea(ptr<Player> self, ptr<Map> map, mpo
     auto loc {map->GetLocation()};
     FO_VERIFY_AND_THROW(loc, "Missing location instance");
     ValidateEntityAccess(loc);
-    self->SetViewMap(map, hex, radius);
+    self->SetViewMap(map, hex, radius, context);
     self->Send_LoadMap(map);
     self->GetEngine()->MapMngr.ViewMap(self, map);
     self->Send_ViewMap();
     self->Send_PlaceToGameComplete();
 }
 
-// Return a viewing player with a controlled critter to ordinary display
+///@ ApiContract script.method.server.Player.RefreshViewMapVisibility experimental Since=2026.1.83-dev
+// Recomputes visible subjects for the retained view context without reloading the map
+///@ ExportMethod
+FO_SCRIPT_API void Server_Player_RefreshViewMapVisibility(ptr<Player> self, ptr<Map> map)
+{
+    ValidateEntityAccess(map);
+    self->RefreshViewMapVisibility(map);
+}
+
+// Restores the controlled critter's ordinary display and its initial visible subjects
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Player_ReturnFromViewMap(ptr<Player> self)
 {

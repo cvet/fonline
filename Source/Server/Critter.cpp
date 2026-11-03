@@ -32,6 +32,7 @@
 //
 
 #include "Critter.h"
+
 #include "Item.h"
 #include "Location.h"
 #include "Map.h"

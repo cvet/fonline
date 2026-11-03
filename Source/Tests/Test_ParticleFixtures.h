@@ -441,13 +441,13 @@ namespace ParticleTests
     {
         vector<uint8_t> result {};
 
-        const auto write_int32 {[&result](int32_t value) {
+        auto write_int32 {[&result](int32_t value) {
             for (size_t byte {0}; byte < sizeof(int32_t); byte++) {
                 result.emplace_back(numeric_cast<uint8_t>((numeric_cast<uint32_t>(value) >> (byte * 8)) & 0xff));
             }
         }};
 
-        const auto write_float {[&result](float32_t value) {
+        auto write_float {[&result](float32_t value) {
             array<uint8_t, sizeof(float32_t)> bytes {};
             memory::copy(bytes.data(), &value, sizeof(float32_t));
 
@@ -456,7 +456,7 @@ namespace ParticleTests
             }
         }};
 
-        const auto write_vertex {[&write_float, &result](float32_t x, float32_t y, float32_t u, float32_t v, uint8_t red) {
+        auto write_vertex {[&write_float, &result](float32_t x, float32_t y, float32_t u, float32_t v, uint8_t red) {
             write_float(x);
             write_float(y);
             write_float(0.0f);

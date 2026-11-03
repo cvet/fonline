@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "Rendering.h"
 
 #if FO_HAVE_VULKAN
@@ -367,7 +369,7 @@ static void ResetCommandBufferRecording(VkCommandBuffer cmd_buf)
     VerifyVkResult(vk_result);
 }
 
-static auto ConvertBlend(BlendFuncType blend, bool is_alpha) -> VkBlendFactor
+static auto ConvertBlendToVulkan(BlendFuncType blend, bool is_alpha) -> VkBlendFactor
 {
     switch (blend) {
     case BlendFuncType::Zero:
@@ -401,7 +403,7 @@ static auto ConvertBlend(BlendFuncType blend, bool is_alpha) -> VkBlendFactor
     FO_UNREACHABLE_PLACE();
 }
 
-static auto ConvertBlendOp(BlendEquationType blend_op) -> VkBlendOp
+static auto ConvertBlendOpToVulkan(BlendEquationType blend_op) -> VkBlendOp
 {
     switch (blend_op) {
     case BlendEquationType::FuncAdd:
@@ -419,7 +421,7 @@ static auto ConvertBlendOp(BlendEquationType blend_op) -> VkBlendOp
     FO_UNREACHABLE_PLACE();
 }
 
-static auto ConvertDepthFunc(DepthFuncType depth_func) -> VkCompareOp
+static auto ConvertDepthFuncToVulkan(DepthFuncType depth_func) -> VkCompareOp
 {
     switch (depth_func) {
     case DepthFuncType::Always:
@@ -443,7 +445,7 @@ static auto ConvertDepthFunc(DepthFuncType depth_func) -> VkCompareOp
     FO_UNREACHABLE_PLACE();
 }
 
-static auto ConvertCullMode(CullModeType cull_mode) -> VkCullModeFlags
+static auto ConvertCullModeToVulkan(CullModeType cull_mode) -> VkCullModeFlags
 {
     switch (cull_mode) {
     case CullModeType::None:
@@ -644,11 +646,22 @@ static void AllocateBuffer(ptr<Vulkan_Renderer::Context> ctx, VkDeviceSize size,
     buffer_ci.usage = usage;
     buffer_ci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-    vk_result = vkCreateBuffer(ctx->Device, &buffer_ci, nullptr, &buffer);
+    VkBuffer new_buffer {};
+    vk_result = vkCreateBuffer(ctx->Device, &buffer_ci, nullptr, &new_buffer);
     VerifyVkResult(vk_result);
 
+    VkDeviceMemory new_memory {};
+    bool memory_allocated {false};
+    auto cleanup_on_fail {scope_fail([&]() noexcept {
+        vkDestroyBuffer(ctx->Device, new_buffer, nullptr);
+
+        if (memory_allocated) {
+            vkFreeMemory(ctx->Device, new_memory, nullptr);
+        }
+    })};
+
     VkMemoryRequirements mem_req {};
-    vkGetBufferMemoryRequirements(ctx->Device, buffer, &mem_req);
+    vkGetBufferMemoryRequirements(ctx->Device, new_buffer, &mem_req);
 
     // Find suitable memory type
     optional<uint32_t> mem_type_idx {};
@@ -668,11 +681,15 @@ static void AllocateBuffer(ptr<Vulkan_Renderer::Context> ctx, VkDeviceSize size,
     alloc_info.allocationSize = mem_req.size;
     alloc_info.memoryTypeIndex = mem_type_idx.value();
 
-    vk_result = vkAllocateMemory(ctx->Device, &alloc_info, nullptr, &memory);
+    vk_result = vkAllocateMemory(ctx->Device, &alloc_info, nullptr, &new_memory);
+    VerifyVkResult(vk_result);
+    memory_allocated = true;
+
+    vk_result = vkBindBufferMemory(ctx->Device, new_buffer, new_memory, 0);
     VerifyVkResult(vk_result);
 
-    vk_result = vkBindBufferMemory(ctx->Device, buffer, memory, 0);
-    VerifyVkResult(vk_result);
+    buffer = new_buffer;
+    memory = new_memory;
 }
 
 static void EnsurePooledBufferCapacity(ptr<Vulkan_Renderer::Context> ctx, VulkanPooledBuffer& pooled, VkDeviceSize size, VkBufferUsageFlags usage)
@@ -862,7 +879,7 @@ auto Vulkan_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vector<
 
     VkResult vk_result {VK_SUCCESS};
     vector<ucolor> tex_region {};
-    VkDeviceSize region_size {size.square() * sizeof(ucolor)};
+    VkDeviceSize region_size {size.square<size_t>() * sizeof(ucolor)};
     size_t region_data_size {numeric_cast<size_t>(region_size)};
 
     // Create staging buffer for reading from GPU
@@ -901,7 +918,7 @@ auto Vulkan_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vector<
     VerifyVkResult(vk_result);
     auto map_data {make_nptr(map_data_raw)};
     FO_VERIFY_AND_THROW(map_data, "Mapped memory data pointer is null");
-    tex_region.resize(size.square());
+    tex_region.resize(size.square<size_t>());
     memory::copy(tex_region.data(), map_data, region_data_size);
     vkUnmapMemory(_ctx->Device, staging_mem);
 
@@ -942,7 +959,7 @@ auto Vulkan_Texture::RequestTextureRegion(ipos32 pos, isize32 size) const -> uni
     FO_VERIFY_AND_THROW(pos.x + size.width <= Size.width, "Requested texture read rectangle right edge is outside texture bounds", pos.x, size.width, Size.width);
     FO_VERIFY_AND_THROW(pos.y + size.height <= Size.height, "Requested texture read rectangle bottom edge is outside texture bounds", pos.y, size.height, Size.height);
 
-    VkDeviceSize region_size {size.square() * sizeof(ucolor)};
+    VkDeviceSize region_size {size.square<size_t>() * sizeof(ucolor)};
     VkBuffer buffer {};
     VkDeviceMemory memory {};
     AllocateBuffer(_ctx, region_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, buffer, memory);
@@ -1016,9 +1033,9 @@ auto Vulkan_TextureReadback::TakePixels() -> optional<vector<ucolor>>
         return std::nullopt;
     }
 
-    size_t data_size {_size.square() * sizeof(ucolor)};
+    size_t data_size {_size.square<size_t>() * sizeof(ucolor)};
     vector<ucolor> pixels {};
-    pixels.resize(_size.square());
+    pixels.resize(_size.square<size_t>());
 
     void* map_data_raw {};
     VkResult vk_result {vkMapMemory(_ctx->Device, _memory, 0, numeric_cast<VkDeviceSize>(data_size), 0, &map_data_raw)};
@@ -1419,15 +1436,15 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
 
     if (_needProjBuf && !ProjBuf.has_value()) {
         auto& proj_buf {ProjBuf = ProjBuffer()};
-        auto projection_matrix {proj_buf->ProjMatrix};
+        float32_t* projection_matrix {proj_buf->ProjMatrix};
         auto projection_matrix_values {make_ptr(glm::value_ptr(_ctx->ProjMatrix))};
         memory::copy(projection_matrix, projection_matrix_values, 16 * sizeof(float32_t));
     }
 
     if (_needMainTexBuf && !MainTexBuf.has_value()) {
         auto& main_tex_buf {MainTexBuf = MainTexBuffer()};
-        auto main_texture_size {main_tex_buf->MainTexSize};
-        auto main_texture_size_data {main_tex->SizeData};
+        float32_t* main_texture_size {main_tex_buf->MainTexSize};
+        const float32_t* main_texture_size_data {main_tex->SizeData};
         memory::copy(main_texture_size, main_texture_size_data, 4 * sizeof(float32_t));
     }
 
@@ -2065,12 +2082,12 @@ auto Vulkan_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
         VkPipelineColorBlendAttachmentState blend_attachment {};
         blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
         blend_attachment.blendEnable = VK_TRUE;
-        blend_attachment.srcColorBlendFactor = ConvertBlend(vk_effect->_srcBlendFunc[pass], false);
-        blend_attachment.dstColorBlendFactor = ConvertBlend(vk_effect->_destBlendFunc[pass], false);
-        blend_attachment.colorBlendOp = ConvertBlendOp(vk_effect->_blendEquation[pass]);
-        blend_attachment.srcAlphaBlendFactor = ConvertBlend(vk_effect->_srcBlendFunc[pass], true);
-        blend_attachment.dstAlphaBlendFactor = ConvertBlend(vk_effect->_destBlendFunc[pass], true);
-        blend_attachment.alphaBlendOp = ConvertBlendOp(vk_effect->_blendEquation[pass]);
+        blend_attachment.srcColorBlendFactor = ConvertBlendToVulkan(vk_effect->_srcBlendFunc[pass], false);
+        blend_attachment.dstColorBlendFactor = ConvertBlendToVulkan(vk_effect->_destBlendFunc[pass], false);
+        blend_attachment.colorBlendOp = ConvertBlendOpToVulkan(vk_effect->_blendEquation[pass]);
+        blend_attachment.srcAlphaBlendFactor = ConvertBlendToVulkan(vk_effect->_srcBlendFunc[pass], true);
+        blend_attachment.dstAlphaBlendFactor = ConvertBlendToVulkan(vk_effect->_destBlendFunc[pass], true);
+        blend_attachment.alphaBlendOp = ConvertBlendOpToVulkan(vk_effect->_blendEquation[pass]);
 
         VkPipelineColorBlendStateCreateInfo blend_ci {};
         blend_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
@@ -2134,7 +2151,7 @@ auto Vulkan_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
                     depth_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
                     depth_ci.depthTestEnable = depth_state_used ? VK_TRUE : VK_FALSE;
                     depth_ci.depthWriteEnable = depth_state_used && vk_effect->GetDepthVariantWrite(depth_slot) ? VK_TRUE : VK_FALSE;
-                    depth_ci.depthCompareOp = ConvertDepthFunc(vk_effect->GetDepthVariantFunc(pass, depth_slot));
+                    depth_ci.depthCompareOp = ConvertDepthFuncToVulkan(vk_effect->GetDepthVariantFunc(pass, depth_slot));
                     depth_ci.depthBoundsTestEnable = VK_FALSE;
                     depth_ci.stencilTestEnable = VK_FALSE;
 
@@ -2144,7 +2161,7 @@ auto Vulkan_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
                         }
 
                         VkPipelineRasterizationStateCreateInfo variant_rasterization_ci {rasterization_ci};
-                        variant_rasterization_ci.cullMode = ConvertCullMode(static_cast<CullModeType>(cull_mode));
+                        variant_rasterization_ci.cullMode = ConvertCullModeToVulkan(static_cast<CullModeType>(cull_mode));
 
                         VkGraphicsPipelineCreateInfo pipeline_ci {};
                         pipeline_ci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;

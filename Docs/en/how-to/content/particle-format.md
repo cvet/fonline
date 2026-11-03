@@ -194,7 +194,7 @@ for automation/integration details.
 
 `ParticleRuntimeBackend` owns extension routing, resource creation, and cache
 invalidation. `ParticleRuntimeSystem` owns backend-specific simulation and
-drawing. `ParticleSystem` adds the shared timing and control facade:
+drawing. `ParticleSystem` adds the shared timing and control facade. Its explicit `Update(timespan)` and `GetElapsedTime()` preserve nanoseconds; backend update/prewarm adapters use seconds:
 
 - `Setup` applies projection, world transform, position/view offsets, look
   direction, scale, map camera angle, and projection tilt;

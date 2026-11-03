@@ -32,6 +32,7 @@
 //
 
 #include "ServerEntity.h"
+
 #include "Server.h"
 
 FO_BEGIN_NAMESPACE
@@ -229,32 +230,7 @@ auto ServerEntity::FireEvent(const vector<EventCallbackData>& callbacks, FuncCal
     // Engine-wide invariant: a primary SyncContext is always active when an event fires
     FO_STRONG_ASSERT(SyncContext::GetCurrentOnThisThread(), "Server entity event fired without active sync context");
 
-    bool had_exception {false};
-
-    // Iterate a copy — callbacks vector may be changed/invalidated during cycle work
-    small_vector<EventCallbackData, 4> callbacks_snapshot {small_vector<EventCallbackData, 4>(callbacks.begin(), callbacks.end())};
-
-    for (const auto& cb : callbacks_snapshot) {
-        EventResult result {EventResult::ContinueChain};
-
-        try {
-            result = cb.Callback(call);
-        }
-        catch (const std::exception& ex) {
-            exceptions::report_and_continue(ex);
-            had_exception = true;
-
-            if (cb.HasExplicitResult) {
-                return EventResult::StopChain;
-            }
-        }
-
-        if (result == EventResult::StopChain) {
-            return EventResult::StopChain;
-        }
-    }
-
-    return had_exception ? EventResult::StopChain : EventResult::ContinueChain;
+    return Entity::FireEvent(callbacks, call);
 }
 
 auto CustomEntity::GetName() const noexcept -> string_view

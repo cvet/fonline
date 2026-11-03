@@ -924,8 +924,8 @@
           "path": "Source/Tools/EffectBaker.cpp",
           "anchors": [
             "fofx-{}-info",
-            "fofx-{}-vert-spv_sdl",
-            "fofx-{}-frag-msl_ios"
+            "vert-spv_sdl",
+            "frag-msl_ios"
           ]
         }
       ]
@@ -1357,5 +1357,5 @@
       "experimental": 53
     }
   },
-  "contract_digest": "571296b42eb72a4281de9ee7f457216ecd335ee15a3bc0f8518745a40936f5e2"
+  "contract_digest": "77b8fb3b52a68b4c02cc0b57f12c39269e96853a539773e4480bedf68c9b7454"
 }

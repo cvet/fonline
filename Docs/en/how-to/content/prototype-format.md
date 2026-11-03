@@ -102,7 +102,7 @@ The reusable Engine no longer defines `Item.Count`, `Item.Stackable`, partial-co
 
 `$Name = <PrototypeId>` sets the ID. Without it, the source file name without its extension is used.
 
-An ID must not contain `/` or `$`; both characters are reserved for nested-section addressing and are rejected before hashing and duplicate detection.
+An ID must not contain `/`, `$`, or whitespace. Slash and dollar are reserved for nested-section addressing; whitespace is forbidden so current identifiers remain single tokens. The baker applies the file-basename fallback, then rejects these characters before migration resolution, hashing, or duplicate detection.
 
 Identity is scoped by resolved type. `Item/Foo` and `Critter/Foo` can coexist, but two `Item/Foo` declarations anywhere in the same pack input fail. IDs are hashed and passed through `Proto` migration rules before duplicate detection.
 
@@ -206,6 +206,13 @@ Parser applicability is only the first gate. A project should separately classif
 - derived/cache state that must never be authored;
 - project-required fields and valid field combinations.
 
+A `Resource` property is also a packaging root. Each nonempty scalar `hstring`
+or `hstring[]` element in current baked prototypes and placed map properties
+retains that exact baked resource and its runtime dependency closure. The end-of-bake
+collector re-reads cached definitions too. An ordinary FixedType table can declare
+forced inclusions for script-computed paths; it needs no constructor execution.
+See [used-resource selection](../../explanation/content-pipeline/baking.md#resource-usage-manifest).
+
 ## Text values and references
 
 `PropertiesSerializer` is the value authority. It rejects malformed collections, integer overflow, invalid enum values, non-finite floating-point values, and unresolved references. Booleans accept their declared text form or numeric `0`/`1`; numeric and enum acceptance must not be inferred from loose configuration parsing.
@@ -244,7 +251,10 @@ Declare:
 ```cpp
 ///@ MigrationRule Proto Item Rename OldContainer NewContainer
 ///@ MigrationRule Proto Item Remove RemovedContainer
+///@ MigrationRule Proto Modifier Rename "Local knowledge" LocalKnowledge
 ```
+
+Double quotes are required for a legacy source containing whitespace and work for `Rename`, `Transform`, and `Remove`. Bare multiword sources and destinations containing whitespace are rejected. New authored prototype IDs must not contain whitespace.
 
 The owning project decides where project metadata declarations live and how long rules are retained. A rename target must exist at the receiving revision. A removal is valid only when loading policy can safely discard the reference or entity; otherwise migrate to a compatible replacement.
 

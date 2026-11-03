@@ -31,11 +31,12 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
 #include <atomic>
 
-#include "Common.h"
 #include "NetSockets.h"
 
 FO_BEGIN_NAMESPACE

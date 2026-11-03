@@ -69,3 +69,11 @@ Continue with the [canonical English reference](en/reference/settings/configurat
 ## Resource loading failures
 
 Continue with the [canonical English reference](en/reference/settings/configuration-and-data-sources.md#resource-loading-failures).
+
+## Packaged application configuration
+
+Continue with the [canonical English reference](en/reference/settings/configuration-and-data-sources.md#packaged-application-configuration).
+
+### Downloaded client configuration
+
+Continue with the [canonical English reference](en/reference/settings/configuration-and-data-sources.md#downloaded-client-configuration).

@@ -55,6 +55,9 @@ Continue with the [canonical reference](../../en/reference/model-format/validati
 <a id="entry-model-format-rule-validation-boundary-7d55b07e20"></a>
 - [`entry-model-format-rule-validation-boundary-7d55b07e20`](../../en/reference/model-format/validation.md#entry-model-format-rule-validation-boundary-7d55b07e20)
 
+<a id="entry-model-format-rule-texture-wire-4fa4fa3573"></a>
+- [`entry-model-format-rule-texture-wire-4fa4fa3573`](../../en/reference/model-format/validation.md#entry-model-format-rule-texture-wire-4fa4fa3573)
+
 ## Removed legacy spellings
 
 Continue with the [canonical reference](../../en/reference/model-format/validation.md).

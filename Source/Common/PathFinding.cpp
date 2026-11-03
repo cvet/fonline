@@ -99,10 +99,10 @@ public:
     [[nodiscard]] auto GetCell(mpos hex) -> PathSearchCell& { return _cells[GetCellIndex(hex)]; }
 
 private:
-    auto GetBlockSlot(mpos hex) const -> int32_t { return (hex.y >> SEARCH_BLOCK_SHIFT) * _blocksPerRow + (hex.x >> SEARCH_BLOCK_SHIFT); }
+    auto GetBlockSlot(mpos hex) const -> size_t { return numeric_cast<size_t>(safe_numeric_cast<int64_t>(hex.y >> SEARCH_BLOCK_SHIFT) * _blocksPerRow + (hex.x >> SEARCH_BLOCK_SHIFT)); }
     static auto GetCellSlot(int32_t block, mpos hex) -> int32_t { return block * SEARCH_BLOCK_CELLS + (hex.y & (SEARCH_BLOCK_SIDE - 1)) * SEARCH_BLOCK_SIDE + (hex.x & (SEARCH_BLOCK_SIDE - 1)); }
 
-    int32_t _blocksPerRow;
+    int64_t _blocksPerRow;
     vector<int32_t> _blockIndex {};
     vector<PathSearchCell> _cells {};
 };
@@ -121,7 +121,7 @@ public:
     auto Backtrack(vector<mdir>& raw_steps) -> bool;
 
 private:
-    auto GetDeviation(mpos hex) const -> int32_t;
+    auto GetDeviation(mpos hex) const -> int64_t;
     auto IsGoal(mpos hex) -> bool;
     auto CheckEntry(mpos hex, mdir dir) -> HexBlockResult;
     auto CheckHexOnce(mpos hex) -> HexBlockResult;
@@ -651,7 +651,7 @@ auto PathSearch::Run() -> FindPathOutput::ResultType
     bool enclosure_probed {_input->CheckTarget || _input->EnclosureProbeLimit <= 0};
     bool goal_found {false};
     int64_t goal_cost {0};
-    int32_t goal_deviation {0};
+    int64_t goal_deviation {0};
 
     while (!_open.IsEmpty()) {
         PathSearchNode node {_open.Pop()};
@@ -674,7 +674,7 @@ auto PathSearch::Run() -> FindPathOutput::ResultType
 
         if (IsGoal(node.Hex)) {
             // Of the cheapest goals, the one nearest the straight line to the target
-            int32_t deviation {GetDeviation(node.Hex)};
+            int64_t deviation {GetDeviation(node.Hex)};
 
             if (!goal_found || deviation < goal_deviation) {
                 _goal = node.Hex;
@@ -777,11 +777,11 @@ auto PathSearch::IsLineHexBlocked(mpos hex, mdir dir) -> bool
     return CheckEntry(hex, dir) == HexBlockResult::Blocked;
 }
 
-auto PathSearch::GetDeviation(mpos hex) const -> int32_t
+auto PathSearch::GetDeviation(mpos hex) const -> int64_t
 {
     ipos32 hex_pos {GetPlanePos(hex)};
-    int32_t dx {hex_pos.x - _lineStart.x};
-    int32_t dy {hex_pos.y - _lineStart.y};
+    int64_t dx {hex_pos.x - _lineStart.x};
+    int64_t dy {hex_pos.y - _lineStart.y};
 
     return std::abs(dx * _line.y - dy * _line.x);
 }
@@ -1021,10 +1021,10 @@ void PathOpenList::AdmitLater()
 }
 
 PathSearchGrid::PathSearchGrid(msize map_size) :
-    _blocksPerRow {(numeric_cast<int32_t>(map_size.width) + SEARCH_BLOCK_SIDE - 1) >> SEARCH_BLOCK_SHIFT}
+    _blocksPerRow {(safe_numeric_cast<int64_t>(map_size.width) + SEARCH_BLOCK_SIDE - 1) >> SEARCH_BLOCK_SHIFT}
 {
-    int32_t block_rows {(numeric_cast<int32_t>(map_size.height) + SEARCH_BLOCK_SIDE - 1) >> SEARCH_BLOCK_SHIFT};
-    _blockIndex.assign(numeric_cast<size_t>(_blocksPerRow) * numeric_cast<size_t>(block_rows), -1);
+    int64_t block_rows {(safe_numeric_cast<int64_t>(map_size.height) + SEARCH_BLOCK_SIDE - 1) >> SEARCH_BLOCK_SHIFT};
+    _blockIndex.assign(numeric_cast<size_t>(checked_mul(_blocksPerRow, block_rows)), -1);
 }
 
 auto PathSearchGrid::FindCell(mpos hex) const -> nptr<const PathSearchCell>

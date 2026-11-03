@@ -51,7 +51,7 @@ FO_BEGIN_NAMESPACE
 
 namespace
 {
-    static auto MakeSettings() -> GlobalSettings
+    static auto AngelScriptCommonScriptMethodsMakeSettings() -> GlobalSettings
     {
         auto settings {GlobalSettings(false)};
 
@@ -63,7 +63,7 @@ namespace
         return settings;
     }
 
-    static auto MakeScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
+    static auto AngelScriptCommonScriptMethodsMakeScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
     {
         BakerServerEngine compiler_engine {metadata_resources};
 
@@ -843,6 +843,24 @@ namespace CommonMethods
     void TestInvalidTimePlaceThrows()
     {
         timespan invalid = timespan(1, 99);
+    }
+
+    void TestTimeUnitOverflowThrows()
+    {
+        timespan invalid = timespan(9223372036854775807, 1);
+    }
+
+    void TestSyncTimeUnitOverflowThrows()
+    {
+        synctime invalid = synctime(9223372036854775807, 3);
+    }
+
+    int TestTimeUnitBoundaryValues()
+    {
+        if (timespan(9223372036854775, 1).nanoseconds != 9223372036854775000) return -1;
+        if (synctime(9223372036854775807, 2).milliseconds != 9223372036854775807) return -2;
+        if (synctime(-9223372036854775807, 0).milliseconds != -9223372036854) return -3;
+        return 0;
     }
 
     void TestInvalidAnyToIntThrows()
@@ -1712,7 +1730,7 @@ namespace CommonMethods
         return BakerTests::MakeMetadataBlob({{"ValueType", value_types}, {"RefType", ref_types}});
     }
 
-    static auto MakeResources() -> FileSystem
+    static auto AngelScriptCommonScriptMethodsMakeResources() -> FileSystem
     {
         auto metadata_blob {MakeCommonMethodsMetadataBlob()};
 
@@ -1731,7 +1749,7 @@ namespace CommonMethods
         auto item_blob {BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem")};
         auto container_blob {BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestContainer")};
         auto location_blob {BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "TestLocation")};
-        auto script_blob {MakeScriptBinary(compiler_resources)};
+        auto script_blob {AngelScriptCommonScriptMethodsMakeScriptBinary(compiler_resources)};
 
         auto runtime_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("CommonMethodsRuntimeResources")};
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
@@ -1776,7 +1794,7 @@ BoundsMaxZ = 3.5
         return resources;
     }
 
-    static auto WaitForStart(ptr<ServerEngine> server) -> string
+    static auto AngelScriptCommonScriptMethodsWaitForStart(ptr<ServerEngine> server) -> string
     {
         for (int32_t i {0}; i < 6000; i++) {
             if (server->IsStarted()) {
@@ -1792,9 +1810,9 @@ BoundsMaxZ = 3.5
         return "ServerEngine startup timed out";
     }
 
-    static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
+    static auto AngelScriptCommonScriptMethodsMakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
     {
-        return safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources());
+        return safe_alloc::make_refcounted<ServerEngine>(&settings, AngelScriptCommonScriptMethodsMakeResources());
     }
 
     static void CheckHstringStringConvBinding(ptr<ServerEngine> server)
@@ -1828,8 +1846,8 @@ BoundsMaxZ = 3.5
 }
 
 #define MAKE_CM_SERVER() \
-    auto settings {MakeSettings()}; \
-    refcount_ptr<ServerEngine> server {MakeServerEngine(settings)}; \
+    auto settings {AngelScriptCommonScriptMethodsMakeSettings()}; \
+    refcount_ptr<ServerEngine> server {AngelScriptCommonScriptMethodsMakeServerEngine(settings)}; \
     auto shutdown {scope_exit([&server]() noexcept { \
         safe_call([&server] { \
             if (server->IsStarted()) { \
@@ -1837,7 +1855,7 @@ BoundsMaxZ = 3.5
             } \
         }); \
     })}; \
-    string startup_error {WaitForStart(server)}; \
+    string startup_error {AngelScriptCommonScriptMethodsWaitForStart(server)}; \
     INFO(startup_error); \
     REQUIRE(startup_error.empty()); \
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}})); \
@@ -1865,6 +1883,181 @@ BoundsMaxZ = 3.5
     CHECK(message.find(expected_message) != string::npos)
 
 // ========== Geometry Tests ==========
+
+TEST_CASE("TimeEventRestartFromRecordedName")
+{
+    MAKE_CM_SERVER();
+
+    hstring no_args {server->Hashes.to_hashed_string("CommonMethods::OnGlobalTimer")};
+    hstring with_data {server->Hashes.to_hashed_string("CommonMethods::OnGlobalTimerWithData")};
+
+    SECTION("IssuedIdsSurviveWithoutAnActiveEvent")
+    {
+        server->TimeEventMngr.ReserveTimeEventIds(1000);
+        CHECK(server->TimeEventMngr.CaptureSerializableTimeEvents().LastEventId == 1000);
+        auto func {server->FindFunc<void>(no_args)};
+        REQUIRE(func);
+        CHECK(server->TimeEventMngr.StartTimeEvent(server, std::move(func), timespan {std::chrono::seconds {60}}, {}, {}) == 1001);
+    }
+
+    SECTION("ExhaustedIdsDoNotWrapToZero")
+    {
+        server->TimeEventMngr.ReserveTimeEventIds(std::numeric_limits<uint32_t>::max());
+        auto func {server->FindFunc<void>(no_args)};
+        REQUIRE(func);
+        CHECK_THROWS(server->TimeEventMngr.StartTimeEvent(server, std::move(func), timespan {std::chrono::seconds {60}}, {}, {}));
+    }
+
+    SECTION("AZeroArgumentEventRebuilds")
+    {
+        uint32_t event_id {server->TimeEventMngr.RestartTimeEvent(server, no_args, 0, 41, timespan {std::chrono::seconds {60}}, {}, {})};
+        CHECK(event_id == 41);
+        CHECK(server->TimeEventMngr.CountTimeEvent(server, {no_args, 0}, 0) == 1);
+        CHECK_THROWS_AS(server->TimeEventMngr.RestartTimeEvent(server, no_args, 0, 41, timespan {std::chrono::seconds {60}}, {}, {}), TimeEventException);
+
+        auto next_func {server->FindFunc<void>(no_args)};
+        REQUIRE(next_func);
+        CHECK(server->TimeEventMngr.StartTimeEvent(server, std::move(next_func), timespan {std::chrono::seconds {60}}, {}, {}) > 41);
+    }
+
+    SECTION("AnAnyArgumentEventRebuildsWithItsData")
+    {
+        vector<any_t> data {};
+        data.emplace_back(any_t {"payload"});
+
+        uint32_t event_id {server->TimeEventMngr.RestartTimeEvent(server, with_data, 1, 42, timespan {std::chrono::seconds {60}}, {}, std::move(data))};
+        CHECK(event_id == 42);
+        CHECK(server->TimeEventMngr.CountTimeEvent(server, {with_data, 0}, 0) == 1);
+    }
+
+    SECTION("ConcreteEntityCallbacksRebuildWithTheirRecordedVariant")
+    {
+        auto cr {server->CreateCritter(get_func("TestCritter"), false).hold_ref()};
+        hstring plain {get_func("CommonMethods::OnCritterTimeEvent")};
+        hstring with_entity_data {get_func("CommonMethods::OnCritterTimeEventWithData")};
+        hstring with_array {get_func("CommonMethods::OnCritterTimerWithArrayData")};
+        hstring with_context {get_func("CommonMethods::OnCritterContextTimer")};
+        timespan delay {std::chrono::seconds {60}};
+
+        CHECK(server->TimeEventMngr.RestartTimeEvent(cr, plain, 4, 44, delay, {}, {}) == 44);
+        CHECK(server->TimeEventMngr.RestartTimeEvent(cr, with_entity_data, 5, 45, delay, {}, {any_t {"one"}}) == 45);
+        CHECK(server->TimeEventMngr.RestartTimeEvent(cr, with_array, 6, 46, delay, {}, {any_t {"two"}}) == 46);
+        CHECK(server->TimeEventMngr.RestartTimeEvent(cr, with_context, 7, 47, delay, {}, {}) == 47);
+        CHECK(server->TimeEventMngr.CountTimeEvent(cr, {plain, 0}, 0) == 1);
+        CHECK(server->TimeEventMngr.CountTimeEvent(cr, {with_entity_data, 0}, 0) == 1);
+        CHECK(server->TimeEventMngr.CountTimeEvent(cr, {with_array, 0}, 0) == 1);
+        CHECK(server->TimeEventMngr.CountTimeEvent(cr, {with_context, 0}, 0) == 1);
+
+        CHECK_THROWS_AS(server->TimeEventMngr.RestartTimeEvent(cr, plain, 5, 48, delay, {}, {}), TimeEventException);
+        CHECK_THROWS_AS(server->TimeEventMngr.RestartTimeEvent(cr, get_func("CommonMethods::OnItemTimeEvent"), 4, 48, delay, {}, {}), TimeEventException);
+        CHECK_THROWS_AS(server->TimeEventMngr.RestartTimeEvent(server, plain, 4, 48, delay, {}, {}), TimeEventException);
+        CHECK_THROWS_AS(server->TimeEventMngr.RestartTimeEvent(cr, no_args, 0, 48, delay, {}, {}), TimeEventException);
+
+        auto loc {server->MapMngr.CreateLocation(get_func("TestLocation")).hold_ref()};
+        hstring location_timer {get_func("CommonMethods::OnLocationTimeEvent")};
+        CHECK(server->TimeEventMngr.RestartTimeEvent(loc, location_timer, 4, 48, delay, {}, {}) == 48);
+        CHECK(server->TimeEventMngr.CountTimeEvent(loc, {location_timer, 0}, 0) == 1);
+
+        auto item {server->CrMngr.AddItemToCritter(cr, server->ItemMngr.CreateItem(get_func("TestItem"), nullptr), true).hold_ref()};
+        hstring item_timer {get_func("CommonMethods::OnItemTimeEventData")};
+        CHECK(server->TimeEventMngr.RestartTimeEvent(item, item_timer, 5, 49, delay, {}, {any_t {"item"}}) == 49);
+        CHECK(server->TimeEventMngr.CountTimeEvent(item, {item_timer, 0}, 0) == 1);
+    }
+
+    SECTION("TheWrongAlternativeIsRefusedRatherThanBoundLoosely")
+    {
+        CHECK_THROWS_AS(server->TimeEventMngr.RestartTimeEvent(server, no_args, 1, 43, timespan {std::chrono::seconds {60}}, {}, {}), TimeEventException);
+
+        CHECK_THROWS_AS(server->TimeEventMngr.RestartTimeEvent(server, with_data, 0, 43, timespan {std::chrono::seconds {60}}, {}, {}), TimeEventException);
+    }
+
+    SECTION("ADispatcherFailureRemovesTheUnscheduledRecord")
+    {
+        uint32_t cancelled_id {0};
+        TimeEventManager::DispatcherHooks hooks {};
+        hooks.Schedule = [](refcount_ptr<Entity>, uint32_t, timespan) { throw TimeEventException("Injected dispatcher failure"); };
+        hooks.Cancel = [&](uint32_t id) { cancelled_id = id; };
+        server->TimeEventMngr.SetDispatcherHooks(std::move(hooks));
+        CHECK_THROWS_AS(server->TimeEventMngr.RestartTimeEvent(server, no_args, 0, 43, timespan {std::chrono::seconds {1}}, {}, {}), TimeEventException);
+        CHECK(cancelled_id == 43);
+        CHECK(server->TimeEventMngr.CountTimeEvent(server, {}, 43) == 0);
+        CHECK(server->TimeEventMngr.CaptureSerializableTimeEvents().Events.empty());
+        server->TimeEventMngr.ClearDispatcherHooks();
+    }
+
+    SECTION("AFailedBulkDispatcherModificationRemovesAllUnscheduledRecords")
+    {
+        uint32_t fail_after {GENERATE(0u, 1u)};
+        for (uint32_t id : {43u, 44u, 45u}) {
+            (void)server->TimeEventMngr.RestartTimeEvent(server, no_args, 0, id, timespan {std::chrono::seconds {60}}, {}, {});
+        }
+        uint32_t scheduled {0};
+        TimeEventManager::DispatcherHooks hooks {};
+        hooks.Schedule = [&](refcount_ptr<Entity>, uint32_t, timespan) {
+            if (scheduled == fail_after) {
+                throw TimeEventException("Injected dispatcher failure");
+            }
+            scheduled++;
+        };
+        server->TimeEventMngr.SetDispatcherHooks(std::move(hooks));
+        CHECK_THROWS_AS(server->TimeEventMngr.ModifyTimeEvent(server, {no_args, 0}, 0, timespan {std::chrono::seconds {1}}, std::nullopt), TimeEventException);
+        CHECK(server->TimeEventMngr.CountTimeEvent(server, {no_args, 0}, 0) == fail_after);
+        CHECK(server->TimeEventMngr.CaptureSerializableTimeEvents().Events.size() == fail_after);
+        CHECK(server->TimeEventMngr.CountTimeEvent(server, {}, 43) == fail_after);
+        CHECK(server->TimeEventMngr.CountTimeEvent(server, {}, 44) == 0);
+        CHECK(server->TimeEventMngr.CountTimeEvent(server, {}, 45) == 0);
+        server->TimeEventMngr.StopTimeEvent(server, {}, 0);
+        server->TimeEventMngr.ClearDispatcherHooks();
+    }
+
+    SECTION("AnUnrepresentableCallbackRepeatRemovesItsRecord")
+    {
+        (void)server->TimeEventMngr.RestartTimeEvent(server, no_args, 0, 43, timespan {std::chrono::seconds {60}}, {}, {});
+        auto event {server->GetTimeEvents()->front()};
+        auto context {safe_alloc::make_refcounted<TimeEventContext>(43, timespan {}, vector<any_t> {})};
+        context->Repeat(timespan {std::numeric_limits<int64_t>::max()});
+        event->Execution = safe_alloc::make_shared<TimeEventExecution>();
+        event->Execution->Context = std::move(context);
+        event->Execution->CompletionTime = server->GameTime.GetFrameTime();
+        event->Execution->Completed = true;
+        event->Execution->CallResult = true;
+        CHECK_THROWS_AS(server->TimeEventMngr.FireAndAdvance(server, 43), TimeEventException);
+        CHECK(server->TimeEventMngr.CountTimeEvent(server, {}, 43) == 0);
+        CHECK(server->TimeEventMngr.CaptureSerializableTimeEvents().Events.empty());
+    }
+
+    SECTION("AnExecutingEventCannotBeCapturedBeforeFinalization")
+    {
+        bool completed {GENERATE(false, true)};
+        (void)server->TimeEventMngr.RestartTimeEvent(server, no_args, 0, 43, timespan {std::chrono::seconds {60}}, {}, {});
+        auto event {server->GetTimeEvents()->front()};
+        event->Execution = safe_alloc::make_shared<TimeEventExecution>();
+        event->Execution->Context = safe_alloc::make_refcounted<TimeEventContext>(43, timespan {}, vector<any_t> {});
+        event->Execution->Completed = completed;
+        CHECK(server->TimeEventMngr.CaptureSerializableTimeEvents().Events.empty());
+    }
+
+    SECTION("AnUnrepresentableDeadlineIsRefusedBeforeInsertingTheEvent")
+    {
+        timespan maximum {std::numeric_limits<int64_t>::max()};
+        CHECK_THROWS_AS(server->TimeEventMngr.RestartTimeEvent(server, no_args, 0, 43, maximum, {}, {}), TimeEventException);
+        CHECK_THROWS_AS(server->TimeEventMngr.RestartTimeEvent(server, no_args, 0, 43, timespan {std::chrono::seconds {1}}, maximum, {}), TimeEventException);
+        CHECK(server->TimeEventMngr.CountTimeEvent(server, {}, 43) == 0);
+    }
+
+    SECTION("AnUnknownNameIsRefused")
+    {
+        hstring missing {server->Hashes.to_hashed_string("CommonMethods::NoSuchTimerFunction")};
+        CHECK_THROWS_AS(server->TimeEventMngr.RestartTimeEvent(server, missing, 0, 43, timespan {std::chrono::seconds {60}}, {}, {}), TimeEventException);
+    }
+
+    SECTION("AnOutOfRangeAlternativeIsRefused")
+    {
+        size_t past_end {TimeEventManager::GetTimeEventFuncAlternativeCount()};
+        CHECK(past_end == 8);
+        CHECK_THROWS(server->TimeEventMngr.RestartTimeEvent(server, no_args, past_end, 43, timespan {std::chrono::seconds {60}}, {}, {}));
+    }
+}
 
 TEST_CASE("GeometryDirectionAngles")
 {
@@ -2031,6 +2224,21 @@ TEST_CASE("ScriptTypeConversionOps")
     SECTION("InvalidTimePlaceThrows")
     {
         RUN_CM_FUNC_THROWS("TestInvalidTimePlaceThrows", "Invalid time place");
+    }
+
+    SECTION("TimeUnitBoundaries")
+    {
+        RUN_CM_FUNC("TestTimeUnitBoundaryValues");
+    }
+
+    SECTION("TimeUnitOverflowThrows")
+    {
+        RUN_CM_FUNC_THROWS("TestTimeUnitOverflowThrows", "Integer multiplication overflow");
+    }
+
+    SECTION("SyncTimeUnitOverflowThrows")
+    {
+        RUN_CM_FUNC_THROWS("TestSyncTimeUnitOverflowThrows", "Integer multiplication overflow");
     }
 
     SECTION("InvalidAnyToIntThrows")
@@ -2307,4 +2515,3 @@ TEST_CASE("LocationTimeEventOps")
 FO_END_NAMESPACE
 
 #endif
-

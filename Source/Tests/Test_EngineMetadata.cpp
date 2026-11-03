@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
 #include "AnimationInfo.h"
@@ -50,15 +52,13 @@ static auto MakeSpriteAnimationInfoResources() -> FileSystem
         .ResourcePath = "Art/Test.png",
         .Info =
             {
-                .FrameCount = 2,
-                .Duration = std::chrono::milliseconds {75},
                 .Directions =
                     {
                         SpriteDirInfo {
                             .Frames =
                                 {
-                                    SpriteFrameInfo {.Offset = {-3, 4}, .Size = {2, 1}, .NextOffset = {5, -6}},
-                                    SpriteFrameInfo {.SharedFrameIndex = 0, .Offset = {-3, 4}, .Size = {2, 1}, .NextOffset = {5, -6}},
+                                    SpriteFrameInfo {.Offset = {-3, 4}, .Size = {2, 1}, .NextOffset = {5, -6}, .Duration = std::chrono::milliseconds {37}},
+                                    SpriteFrameInfo {.SharedFrameIndex = 0, .Offset = {-3, 4}, .Size = {2, 1}, .NextOffset = {5, -6}, .Duration = std::chrono::milliseconds {38}},
                                 },
                         },
                     },
@@ -474,8 +474,8 @@ TEST_CASE("EngineMetadataSpriteAnimationInfo")
         REQUIRE(static_cast<bool>(info));
         REQUIRE(info->Sprite.has_value());
         const SpriteInfo& sprite_info {*info->Sprite};
-        CHECK(sprite_info.FrameCount == 2);
-        CHECK(sprite_info.Duration == std::chrono::milliseconds {75});
+        CHECK(sprite_info.Directions[0].Frames.size() == 2);
+        CHECK(GetSpriteDirDuration(sprite_info.Directions[0]) == std::chrono::milliseconds {75});
         REQUIRE(sprite_info.Directions.size() == 1);
         REQUIRE(sprite_info.Directions.front().Frames.size() == 2);
         CHECK(sprite_info.Directions.front().Frames.front().Offset == ipos32 {-3, 4});
@@ -489,7 +489,7 @@ TEST_CASE("EngineMetadataSpriteAnimationInfo")
         FileSystem resources {MakeSpriteAnimationInfoResources()};
         File info_file {resources.ReadFile("SpriteInfo/TestPack.foinfo")};
         string invalid_info {info_file.GetStr()};
-        invalid_info = strex(invalid_info).replace("InfoVersion = 1", "InfoVersion = 2").str();
+        invalid_info = strex(invalid_info).replace(strex("InfoVersion = {}", SPRITE_INFO_VERSION).str(), strex("InfoVersion = {}", SPRITE_INFO_VERSION + 1).str()).str();
 
         CheckSpriteAnimationInfoRejected(invalid_info);
     }
@@ -499,7 +499,7 @@ TEST_CASE("EngineMetadataSpriteAnimationInfo")
         FileSystem resources {MakeSpriteAnimationInfoResources()};
         File info_file {resources.ReadFile("SpriteInfo/TestPack.foinfo")};
         string invalid_info {info_file.GetStr()};
-        invalid_info = strex(invalid_info).replace("FrameCount = 2", "FrameCount = -1").str();
+        invalid_info = strex(invalid_info).replace("DirectionFrameCounts = 2", "DirectionFrameCounts = -1").str();
 
         CheckSpriteAnimationInfoRejected(invalid_info);
     }
@@ -509,7 +509,7 @@ TEST_CASE("EngineMetadataSpriteAnimationInfo")
         FileSystem resources {MakeSpriteAnimationInfoResources()};
         File info_file {resources.ReadFile("SpriteInfo/TestPack.foinfo")};
         string invalid_info {info_file.GetStr()};
-        invalid_info = strex(invalid_info).replace("FrameCount = 2", "FrameCount = 65536").str();
+        invalid_info = strex(invalid_info).replace("DirectionFrameCounts = 2", "DirectionFrameCounts = 65536").str();
 
         CheckSpriteAnimationInfoRejected(invalid_info);
     }
@@ -527,7 +527,7 @@ TEST_CASE("EngineMetadataSpriteAnimationInfo")
     SECTION("AcceptsMaximumFrameCountAndSharedFrameIndexes")
     {
         constexpr int32_t frame_count {65535};
-        SpriteFrameInfo first_frame {.Offset = {-3, 4}, .Size = {2, 1}, .NextOffset = {5, -6}};
+        SpriteFrameInfo first_frame {.Offset = {-3, 4}, .Size = {2, 1}, .NextOffset = {5, -6}, .Duration = std::chrono::milliseconds {1}};
         SpriteDirInfo direction {};
         direction.Frames.resize(numeric_cast<size_t>(frame_count));
         direction.Frames.front() = first_frame;
@@ -541,11 +541,7 @@ TEST_CASE("EngineMetadataSpriteAnimationInfo")
         SpriteInfoFileEntry entry {
             .SourcePath = "Art/Max.png",
             .ResourcePath = "Art/Max.png",
-            .Info =
-                {
-                    .FrameCount = frame_count,
-                    .Duration = std::chrono::milliseconds {75},
-                },
+            .Info = {},
         };
         entry.Info.Directions.emplace_back(std::move(direction));
 
@@ -556,7 +552,7 @@ TEST_CASE("EngineMetadataSpriteAnimationInfo")
 
         REQUIRE(parsed_entries.size() == 1);
         const SpriteInfo& parsed_info {parsed_entries.front().Info};
-        CHECK(parsed_info.FrameCount == frame_count);
+        CHECK(GetSpriteDirDuration(parsed_info.Directions.front()) == std::chrono::milliseconds {frame_count});
         REQUIRE(parsed_info.Directions.size() == 1);
         REQUIRE(parsed_info.Directions.front().Frames.size() == numeric_cast<size_t>(frame_count));
         CHECK(parsed_info.Directions.front().Frames.front().Offset == ipos32 {-3, 4});
@@ -566,27 +562,26 @@ TEST_CASE("EngineMetadataSpriteAnimationInfo")
         CHECK(*parsed_info.Directions.front().Frames.back().SharedFrameIndex == 65533);
     }
 
-    SECTION("WriterRejectsNegativeFrameCount")
+    SECTION("WriterRejectsEmptyFrameSequence")
     {
         SpriteInfoFileEntry entry {
             .SourcePath = "Art/Negative.png",
             .ResourcePath = "Art/Negative.png",
             .Info =
                 {
-                    .FrameCount = -1,
-                    .Duration = std::chrono::milliseconds {75},
                     .Directions =
                         {
                             SpriteDirInfo {
                                 .Frames =
                                     {
-                                        SpriteFrameInfo {.Offset = {-3, 4}, .Size = {2, 1}, .NextOffset = {5, -6}},
+                                        SpriteFrameInfo {.Offset = {-3, 4}, .Size = {2, 1}, .NextOffset = {5, -6}, .Duration = std::chrono::milliseconds {1}},
                                     },
                             },
                         },
                 },
         };
 
+        entry.Info.Directions.front().Frames.clear();
         CHECK_THROWS_AS(WriteSpriteInfoFile({entry}), VerificationException);
     }
 
@@ -597,20 +592,19 @@ TEST_CASE("EngineMetadataSpriteAnimationInfo")
             .ResourcePath = "Art/Oversized.png",
             .Info =
                 {
-                    .FrameCount = 65536,
-                    .Duration = std::chrono::milliseconds {75},
                     .Directions =
                         {
                             SpriteDirInfo {
                                 .Frames =
                                     {
-                                        SpriteFrameInfo {.Offset = {-3, 4}, .Size = {2, 1}, .NextOffset = {5, -6}},
+                                        SpriteFrameInfo {.Offset = {-3, 4}, .Size = {2, 1}, .NextOffset = {5, -6}, .Duration = std::chrono::milliseconds {1}},
                                     },
                             },
                         },
                 },
         };
 
+        entry.Info.Directions.front().Frames.resize(65536, entry.Info.Directions.front().Frames.front());
         CHECK_THROWS_AS(WriteSpriteInfoFile({entry}), VerificationException);
     }
 
@@ -621,15 +615,13 @@ TEST_CASE("EngineMetadataSpriteAnimationInfo")
             .ResourcePath = "Art/Shared.png",
             .Info =
                 {
-                    .FrameCount = 2,
-                    .Duration = std::chrono::milliseconds {75},
                     .Directions =
                         {
                             SpriteDirInfo {
                                 .Frames =
                                     {
-                                        SpriteFrameInfo {.Offset = {-3, 4}, .Size = {2, 1}, .NextOffset = {5, -6}},
-                                        SpriteFrameInfo {.SharedFrameIndex = -2, .Offset = {-3, 4}, .Size = {2, 1}, .NextOffset = {5, -6}},
+                                        SpriteFrameInfo {.Offset = {-3, 4}, .Size = {2, 1}, .NextOffset = {5, -6}, .Duration = std::chrono::milliseconds {1}},
+                                        SpriteFrameInfo {.SharedFrameIndex = -2, .Offset = {-3, 4}, .Size = {2, 1}, .NextOffset = {5, -6}, .Duration = std::chrono::milliseconds {1}},
                                     },
                             },
                         },
@@ -1032,4 +1024,3 @@ TEST_CASE("Const native collection proxies reject writes without changing their 
 }
 
 FO_END_NAMESPACE
-

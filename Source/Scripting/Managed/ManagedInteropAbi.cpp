@@ -753,8 +753,8 @@ auto BuildManagedAbiCallbackLayout(const ComplexTypeDesc& ret, const_span<Comple
     return layout;
 }
 
-static_assert(sizeof(mpos) == 4 && std::is_standard_layout_v<mpos>);
-static_assert(sizeof(msize) == 4 && std::is_standard_layout_v<msize>);
+static_assert(sizeof(mpos) == sizeof(mcoord_t) * 2 && std::is_standard_layout_v<mpos>);
+static_assert(sizeof(msize) == sizeof(mcoord_t) * 2 && std::is_standard_layout_v<msize>);
 static_assert(sizeof(ipos32) == 8 && std::is_standard_layout_v<ipos32>);
 static_assert(sizeof(isize32) == 8 && std::is_standard_layout_v<isize32>);
 static_assert(sizeof(irect32) == 16 && std::is_standard_layout_v<irect32>);

@@ -32,6 +32,7 @@
 //
 
 #include "Threading.h"
+
 #include "BaseLogging.h"
 #include "ExceptionHandling.h"
 #include "GlobalData.h"
@@ -263,7 +264,7 @@ static auto hardware_concurrency_or_one() noexcept -> size_t
 
 static void submit_run_thread(string_view task_name, function<void()> task)
 {
-    auto& pool {pools->run_pool};
+    thread_pool& pool {pools->run_pool};
 
     {
         std::lock_guard locker {pool.locker};
@@ -390,7 +391,7 @@ auto try_submit_async(string_view task_name, function<void()> task) -> bool
 {
     FO_TRACE_ZONE(Threading);
 
-    auto& pool {pools->async_pool};
+    thread_pool& pool {pools->async_pool};
 
     {
         std::lock_guard locker {pool.locker};
@@ -406,7 +407,7 @@ void submit_async(string_view task_name, function<void()> task)
 {
     FO_TRACE_ZONE(Threading);
 
-    auto& pool {pools->async_pool};
+    thread_pool& pool {pools->async_pool};
 
     {
         std::lock_guard locker {pool.locker};

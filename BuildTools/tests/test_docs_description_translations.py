@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import json
+import re
 import sys
 import tempfile
 import unittest
@@ -47,26 +48,26 @@ class DocumentationDescriptionTranslationTests(unittest.TestCase):
         self.assertEqual(first, second)
         self.assertEqual(first["summary"]["domain_count"], 19)
         self.assertEqual(first["enforcement"], "complete")
-        self.assertEqual(first["summary"]["entry_count"], 4891)
-        self.assertEqual(first["summary"]["current_count"], 4891)
+        self.assertEqual(first["summary"]["entry_count"], 5002)
+        self.assertEqual(first["summary"]["current_count"], 5002)
         self.assertEqual(first["summary"]["missing_count"], 0)
         self.assertTrue(first["summary"]["complete"])
         for domain, count in (
             ("ai-control-protocol", 137),
-            ("api", 2582),
+            ("api", 2595),
             ("audio", 106),
             ("cli", 42),
-            ("cmake", 79),
+            ("cmake", 83),
             ("effect-format", 157),
             ("font-format", 187),
             ("helper-cli", 125),
-            ("image-format", 162),
-            ("map-format", 216),
-            ("model-format", 141),
-            ("native-extension", 44),
-            ("package", 66),
+            ("image-format", 246),
+            ("map-format", 218),
+            ("model-format", 144),
+            ("native-extension", 48),
+            ("package", 65),
             ("particle-format", 339),
-            ("prototype-format", 194),
+            ("prototype-format", 196),
             ("public-examples", 13),
             ("support-matrix", 76),
             ("text-format", 119),
@@ -80,7 +81,7 @@ class DocumentationDescriptionTranslationTests(unittest.TestCase):
                 self.assertTrue(
                     all("@index=" not in entry["locator"] for entry in status["entries"])
                 )
-        # The regenerated catalog records current locators directly, without relocation fallback.
+        # The regenerated catalog records current locators directly, without relocation fallback
         self.assertEqual(
             sum(
                 1
@@ -89,6 +90,20 @@ class DocumentationDescriptionTranslationTests(unittest.TestCase):
             ),
             0,
         )
+
+    def test_buildtools_readmes_state_the_inventoried_domain_count(self) -> None:
+        domain_count = len(docs_description_translations.MODEL_PATHS)
+
+        for path, pattern in (
+            ("BuildTools/README.md", r"prose in (\d+) generated contract models"),
+            ("BuildTools/README.ru.md", r"текст в (\d+) генерируемых контрактных моделях"),
+        ):
+            with self.subTest(readme=path):
+                readme = (ENGINE_ROOT / path).read_text(encoding="utf-8")
+                match = re.search(pattern, readme)
+
+                self.assertIsNotNone(match, f"{path} must state the inventoried model count")
+                self.assertEqual(int(match.group(1)), domain_count)
 
     def test_application_uses_copy_and_translates_strings_and_lists(self) -> None:
         package = json.loads(

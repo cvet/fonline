@@ -31,9 +31,9 @@
 // SOFTWARE.
 //
 
-#include "catch_amalgamated.hpp"
-
 #include "Common.h"
+
+#include "catch_amalgamated.hpp"
 
 #include "Application.h"
 #include "Geometry.h"
@@ -80,6 +80,27 @@ TEST_CASE("Direction constructors normalize full-width inputs")
     CHECK(mdir(std::numeric_limits<int16_t>::max()).angle() == 7);
     CHECK(mdir(std::numeric_limits<int32_t>::min()).angle() == 232);
     CHECK(mdir(std::numeric_limits<int32_t>::max()).angle() == 127);
+}
+
+TEST_CASE("Map coordinates use the configured component width")
+{
+    STATIC_REQUIRE(sizeof(mpos) == sizeof(mcoord_t) * 2);
+    STATIC_REQUIRE(sizeof(msize) == sizeof(mcoord_t) * 2);
+    STATIC_REQUIRE(GameSettings::MAX_MAP_SIZE <= std::numeric_limits<mcoord_t>::max());
+
+    mcoord_t max_side {numeric_cast<mcoord_t>(GameSettings::MAX_MAP_SIZE)};
+    mcoord_t last {numeric_cast<mcoord_t>(max_side - 1)};
+    msize max_size {max_side, max_side};
+    CHECK(max_size.from_raw_pos(GameSettings::MAX_MAP_SIZE - 1, GameSettings::MAX_MAP_SIZE - 1) == mpos {last, last});
+    CHECK(max_size.clamp_pos(GameSettings::MAX_MAP_SIZE + 100, -5) == mpos {last, 0});
+    CHECK_THROWS(max_size.from_raw_pos(GameSettings::MAX_MAP_SIZE, 0));
+
+    if constexpr (sizeof(mcoord_t) == sizeof(int32_t)) {
+        // Wide coordinates address cells past the 16-bit range
+        msize wide_size {numeric_cast<mcoord_t>(70000), numeric_cast<mcoord_t>(70000)};
+        CHECK(wide_size.from_raw_pos(69999, 65536) == mpos {numeric_cast<mcoord_t>(69999), numeric_cast<mcoord_t>(65536)});
+        CHECK(strex("{}", wide_size.from_raw_pos(69999, 65536)).str() == "69999 65536");
+    }
 }
 
 TEST_CASE("GeometryHelper")
@@ -716,7 +737,7 @@ TEST_CASE("NormalizeHexOffset")
     constexpr mpos START_HEX {100, 100};
 
     // An offset of one whole hex step: normalization must move the logical hex by exactly that step
-    const auto offset_to_neighbour {[](mpos from_hex, mpos to_hex) -> ipos16 {
+    auto offset_to_neighbour {[](mpos from_hex, mpos to_hex) -> ipos16 {
         ipos32 delta {GeometryHelper::GetHexPos(to_hex) - GeometryHelper::GetHexPos(from_hex)};
         return {numeric_cast<int16_t>(delta.x), numeric_cast<int16_t>(delta.y)};
     }};
@@ -743,7 +764,7 @@ TEST_CASE("NormalizeHexOffset")
 
         // This is the production defect: the rounding lands on a hex the critter could never walk
         // onto, and adopting it makes the server's move reconciliation fail for good
-        const auto reject_neighbour {[neighbour_hex](mpos check_hex) { return check_hex != neighbour_hex; }};
+        auto reject_neighbour {[neighbour_hex](mpos check_hex) { return check_hex != neighbour_hex; }};
 
         CHECK_FALSE(GeometryHelper::NormalizeHexOffset(hex, hex_offset, MAP_SIZE, reject_neighbour));
         CHECK(hex == START_HEX);

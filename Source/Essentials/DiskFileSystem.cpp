@@ -32,6 +32,7 @@
 //
 
 #include "DiskFileSystem.h"
+
 #include "Posix.h"
 #include "SafeArithmetics.h"
 #include "WinApi.h"
@@ -99,7 +100,7 @@ auto fs::try_lock_file(string_view path) noexcept -> exclusive_file_lock
         return {};
     }
 
-    auto lock_path {fs_native_path_to_string(fs_path, ec)};
+    string lock_path {fs_native_path_to_string(fs_path, ec)};
 
     if (ec) {
         return {};
@@ -505,7 +506,7 @@ auto fs::write_file_durable_new(string_view path, const_span<uint8_t> content) n
         return false;
     }
 
-    auto parent {fs_native_path_to_string(native_parent, ec)};
+    string parent {fs_native_path_to_string(native_parent, ec)};
 
     if (ec) {
         return false;
@@ -645,14 +646,14 @@ auto fs::sync_parent(string_view path) noexcept -> bool
         return false;
     }
 
-    auto dir {fs_native_path_to_string(native_parent, ec)};
+    string dir {fs_native_path_to_string(native_parent, ec)};
 
     if (ec) {
         return false;
     }
 
 #if FO_WINDOWS
-    auto io_dir {fs_make_io_string(dir.empty() ? string_view {"."} : string_view {dir}, ec)};
+    string io_dir {fs_make_io_string(dir.empty() ? string_view {"."} : string_view {dir}, ec)};
     return !ec && winapi::sync_directory(io_dir);
 #else
     return posix::sync_directory(dir);
@@ -665,13 +666,13 @@ auto fs::rename_durable(string_view from_path, string_view to_path) noexcept -> 
 
 #if FO_WINDOWS
     std::error_code ec {};
-    auto from {fs_make_io_string(from_path, ec)};
+    string from {fs_make_io_string(from_path, ec)};
 
     if (ec) {
         return false;
     }
 
-    auto to {fs_make_io_string(to_path, ec)};
+    string to {fs_make_io_string(to_path, ec)};
     return !ec && winapi::rename_file_durable(from, to);
 #else
     return fs::rename(from_path, to_path) && fs::sync_parent(to_path) && fs::sync_parent(from_path);
@@ -684,13 +685,13 @@ auto fs::replace_file(string_view from_path, string_view to_path) noexcept -> bo
 
 #if FO_WINDOWS
     std::error_code ec {};
-    auto from {fs_make_io_string(from_path, ec)};
+    string from {fs_make_io_string(from_path, ec)};
 
     if (ec) {
         return false;
     }
 
-    auto to {fs_make_io_string(to_path, ec)};
+    string to {fs_make_io_string(to_path, ec)};
     return !ec && winapi::replace_file(from, to);
 #else
     return fs::rename(from_path, to_path);
@@ -970,7 +971,7 @@ fs::disk_read_file::disk_read_file(string_view path) noexcept
 
 #if FO_WINDOWS
     std::error_code ec {};
-    auto io_path {fs_make_io_string(path, ec)};
+    string io_path {fs_make_io_string(path, ec)};
 
     if (ec) {
         return;
@@ -1116,7 +1117,7 @@ fs::disk_directory_lock::disk_directory_lock(string_view path) noexcept
         return;
     }
 
-    auto canonical_string {fs_native_path_to_string(canonical, error)};
+    string canonical_string {fs_native_path_to_string(canonical, error)};
 
     if (error) {
         return;
@@ -1158,7 +1159,7 @@ fs::disk_write_file::disk_write_file(string_view path, fs::disk_write_mode mode)
 
 #if FO_WINDOWS
     std::error_code ec {};
-    auto io_path {fs_make_io_string(path, ec)};
+    string io_path {fs_make_io_string(path, ec)};
 
     if (ec) {
         return;

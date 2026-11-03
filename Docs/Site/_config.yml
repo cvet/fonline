@@ -35,6 +35,8 @@ exclude:
   - Docs/ProductionDocumentationPlan.md
   - Docs/generated/external-project-evidence.json
   - Docs/generated/external-project-evidence/
+  - BuildTools/**/bin
+  - BuildTools/**/obj
   - BuildTools/__pycache__/
   - BuildTools/android-project/
   - BuildTools/angelscript-debugger/

@@ -32,6 +32,7 @@
 //
 
 #include "FontManager.h"
+
 #include "DefaultSprites.h"
 #include "ResourceManager.h"
 #include "SpriteManager.h"
@@ -1409,4 +1410,3 @@ auto FontManager::HaveLetter(FontType num_font, uint32_t letter) const -> bool
 }
 
 FO_END_NAMESPACE
-

@@ -233,6 +233,8 @@ auto Entity::FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData&
         }
 
         if (result == EventResult::StopChain) {
+            // Only a callback with an explicit result decides the chain; one without a result always continues it
+            FO_VERIFY_AND_CONTINUE(cb.HasExplicitResult, "Event callback without an explicit result returned StopChain", GetName(), GetTypeName(), GetId());
             return EventResult::StopChain;
         }
     }

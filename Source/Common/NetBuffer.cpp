@@ -111,8 +111,9 @@ void NetOutBuffer::DiscardWriteBuf(size_t len)
     }
 
     if (len > _bufEndPos) {
+        size_t buf_end_pos {_bufEndPos};
         ResetBuf();
-        throw NetBufferException("Invalid discard length", len, _bufEndPos);
+        throw NetBufferException("Invalid discard length", len, buf_end_pos);
     }
 
     size_t move_len {_bufEndPos - len};
@@ -225,8 +226,10 @@ void NetInBuffer::Pop(nptr<void> buf, size_t len)
     size_t read_limit {GetReadLimit()};
 
     if (_bufReadPos > read_limit || len > read_limit - _bufReadPos) {
+        size_t read_pos {_bufReadPos};
+        size_t buf_end_pos {_bufEndPos};
         ResetBuf();
-        throw NetBufferException("Invalid read length", len, _bufReadPos, read_limit, _bufEndPos);
+        throw NetBufferException("Invalid read length", len, read_pos, read_limit, buf_end_pos);
     }
 
     FO_VERIFY_AND_THROW(buf, "Network buffer pop received a null destination for a non-empty read");
@@ -241,8 +244,10 @@ void NetInBuffer::ShrinkReadBuf()
     FinishMessageRead();
 
     if (_bufReadPos > _bufEndPos) {
+        size_t read_pos {_bufReadPos};
+        size_t buf_end_pos {_bufEndPos};
         ResetBuf();
-        throw NetBufferException("Invalid shrink pos", _bufReadPos, _bufEndPos);
+        throw NetBufferException("Invalid shrink pos", read_pos, buf_end_pos);
     }
 
     if (_bufReadPos >= _bufEndPos) {
@@ -267,9 +272,11 @@ void NetInBuffer::ReadPropsData(vector<vector<uint8_t>>& props_data)
     auto data_count {Read<uint16_t>()};
 
     // Each entry carries at least its uint32 size prefix, so the count can never exceed unread/4; reject before allocating
-    if (data_count > GetUnreadSize() / sizeof(uint32_t)) {
+    size_t unread_total {GetUnreadSize()};
+
+    if (data_count > unread_total / sizeof(uint32_t)) {
         ResetBuf();
-        throw NetBufferException("Property data count exceeds remaining buffer", data_count, GetUnreadSize());
+        throw NetBufferException("Property data count exceeds remaining buffer", data_count, unread_total);
     }
 
     props_data.resize(data_count);
@@ -315,8 +322,9 @@ auto NetInBuffer::ReadMsg() -> NetMessage
     FO_VERIFY_AND_THROW(msg_len >= sizeof(NetMessage) + sizeof(msg_signature) + sizeof(msg_len), "Incoming network message length is smaller than the protocol header", msg_len, sizeof(NetMessage) + sizeof(msg_signature) + sizeof(msg_len));
 
     if (msg_len > _bufEndPos - msg_start_pos) {
+        size_t buf_end_pos {_bufEndPos};
         ResetBuf();
-        throw NetBufferException("Incoming network message extends past buffered data", msg_len, msg_start_pos, _bufEndPos);
+        throw NetBufferException("Incoming network message extends past buffered data", msg_len, msg_start_pos, buf_end_pos);
     }
 
     _msgEndPos = msg_start_pos + msg_len;
@@ -339,6 +347,37 @@ auto NetInBuffer::ReadHashedString(const hash_resolver& hashes) -> hstring
     if (failed) {
         ResetBuf();
         throw NetBufferException("Can't resolve received hash", hash);
+    }
+
+    return result;
+}
+
+auto NetInBuffer::PeekQueuedMessage() const -> optional<QueuedMessage>
+{
+    size_t begin {_msgEndPos != 0 ? _msgEndPos : _bufReadPos};
+    constexpr size_t header_size {sizeof(uint32_t) * 2 + sizeof(NetMessage)};
+
+    if (begin > _bufEndPos || _bufEndPos - begin < header_size) {
+        return {};
+    }
+
+    uint32_t signature {};
+    uint32_t length {};
+    NetMessage message {};
+    auto header {make_ptr(_bufData.data()).offset(begin)};
+    memory::copy(&signature, header, sizeof(signature));
+    memory::copy(&length, header.offset(sizeof(signature)), sizeof(length));
+    memory::copy(&message, header.offset(sizeof(signature) + sizeof(length)), sizeof(message));
+
+    // The processing thread owns malformed-input rejection; diagnostics never advance or reset its cursor
+    if (signature != NETMSG_SIGNATURE || length < header_size || (_maxMsgLen != 0 && length > _maxMsgLen) || length > _bufEndPos - begin) {
+        return {};
+    }
+
+    QueuedMessage result {.PrefixBytes = begin - _bufReadPos + length};
+
+    if (message == NetMessage::RemoteCall && length >= header_size + sizeof(hstring::hash_t)) {
+        memory::copy(&result.RemoteCallHash, header.offset(header_size), sizeof(result.RemoteCallHash));
     }
 
     return result;

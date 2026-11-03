@@ -32,6 +32,7 @@
 //
 
 #include "TextPack.h"
+
 #include "FileSystem.h"
 
 FO_BEGIN_NAMESPACE
@@ -181,7 +182,7 @@ auto TextPack::GetBinaryData() -> vector<uint8_t>
     FO_TRACE_ZONE(Core);
 
     vector<uint8_t> data {};
-    auto writer {data_writer {data}};
+    data_writer writer {data_writer {data}};
 
     EnsureSorted();
 
@@ -214,7 +215,7 @@ void TextPack::AppendBinaryData(const_span<uint8_t> data, string_view collection
 {
     FO_TRACE_ZONE(Core);
 
-    auto reader {data_reader {data}};
+    data_reader reader {data_reader {data}};
     auto collection_key {TextPackName {MakeKeyPart(collection)}};
 
     auto count {reader.read<uint32_t>()};

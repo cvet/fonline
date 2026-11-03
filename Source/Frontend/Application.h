@@ -695,7 +695,7 @@ private:
 enum class AppInitFlags : uint8_t
 {
     None = 0x00,
-    ClientMode = 0x01,
+    StandaloneClient = 0x01,
     DisableLogTags = 0x02,
     ShowMessageOnException = 0x04,
     PrebakeResources = 0x08,
@@ -795,8 +795,8 @@ private:
         bool Active {};
     };
 
-    static constexpr uint32_t TOUCH_TAP_MAX_TIME_MS {250};
-    static constexpr uint32_t TOUCH_DOUBLE_TAP_MAX_TIME_MS {200};
+    static constexpr timespan TOUCH_TAP_MAX_TIME {std::chrono::milliseconds {250}};
+    static constexpr timespan TOUCH_DOUBLE_TAP_MAX_TIME {std::chrono::milliseconds {200}};
     static constexpr int32_t TOUCH_TAP_MAX_DIST {12};
     static constexpr int32_t TOUCH_DOUBLE_TAP_MAX_DIST {48};
 
@@ -810,7 +810,7 @@ private:
     void SyncMainWindowBackbufferSize();
     auto MakeAspectFitRect(isize32 source_size, isize32 target_size) const -> irect32;
     auto ResolveTouchPos(float32_t normalized_x, float32_t normalized_y) const -> ipos32;
-    auto GetTouchElapsedMs(uint64_t start_time, uint64_t end_time) const -> uint32_t;
+    auto GetTouchElapsedTime(uint64_t start_time, uint64_t end_time) const -> timespan;
     auto GetTouchDistance(ipos32 from, ipos32 to) const -> float32_t;
     auto FindTouchPoint(int64_t finger_id) -> nptr<TouchPointState>;
     auto FindOtherTouchPoint(int64_t finger_id) -> nptr<TouchPointState>;
@@ -835,7 +835,7 @@ private:
     uint64_t _time {};
     uint64_t _timeFrequency {};
     bool _isTablet {};
-    bool _clientMode {};
+    bool _standaloneClient {};
     bool _nativeCursorHidden {};
     bool _mouseCanUseGlobalState {};
     int32_t _pendingMouseLeaveFrame {};
@@ -902,6 +902,7 @@ inline auto AppWindow::GetWindowHandleForInput() const -> nptr<WindowInternalHan
 }
 
 auto IsAppInitialized() noexcept -> bool;
+auto IsNonInteractiveMode() -> bool;
 auto GetApp() noexcept -> ptr<Application>;
 void ResetApp() noexcept;
 auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings;

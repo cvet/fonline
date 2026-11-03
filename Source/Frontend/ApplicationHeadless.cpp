@@ -31,9 +31,13 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "Application.h"
 
 FO_BEGIN_NAMESPACE
+
+static constexpr std::chrono::milliseconds QUIT_WAIT_POLL_INTERVAL {100};
 
 struct Application::Context
 {
@@ -311,12 +315,12 @@ auto Application::ResolveTouchPos(float32_t normalized_x, float32_t normalized_y
     return {0, 0};
 }
 
-auto Application::GetTouchElapsedMs(uint64_t start_time, uint64_t end_time) const -> uint32_t
+auto Application::GetTouchElapsedTime(uint64_t start_time, uint64_t end_time) const -> timespan
 {
     ignore_unused(start_time);
     ignore_unused(end_time);
 
-    return 0;
+    return {};
 }
 
 auto Application::GetTouchDistance(ipos32 from, ipos32 to) const -> float32_t
@@ -443,7 +447,7 @@ void Application::WaitForRequestedQuit()
     unique_lock locker {_quitLocker};
 
     while (!_quit) {
-        _quitEvent.wait_for(locker, std::chrono::milliseconds {100});
+        _quitEvent.wait_for(locker, QUIT_WAIT_POLL_INTERVAL);
 
         if (IsQuitSignalReceived()) {
             RequestQuit();
@@ -780,9 +784,21 @@ void AppAudio::UnlockDevice()
 
 void Application::ShowErrorMessage(string_view message, string_view traceback, bool fatal_error)
 {
-    ignore_unused(message);
-    ignore_unused(traceback);
     ignore_unused(fatal_error);
+
+    logging::write_message(logging::type::error, message);
+
+    if (!traceback.empty()) {
+        logging::write_message(logging::type::error, traceback);
+    }
+
+    if (IsAppInitialized()) {
+        GetApp()->RequestQuit(false);
+    }
+    else {
+        logging::write_message(logging::type::error, "Shutdown!");
+        exit_app(false);
+    }
 }
 
 void Application::ShowProgressWindow(string_view text, const ProgressWindowCallback& callback)

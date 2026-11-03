@@ -32,6 +32,7 @@
 //
 
 #include "Location.h"
+
 #include "Critter.h"
 #include "Map.h"
 #include "Server.h"

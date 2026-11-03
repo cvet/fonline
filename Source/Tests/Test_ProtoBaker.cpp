@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
 #if FO_ANGELSCRIPT_SCRIPTING
@@ -44,7 +46,7 @@ FO_BEGIN_NAMESPACE
 // The pack opens with its string table: the count, then each string length-prefixed
 static auto ReadProtoPackStrings(const vector<uint8_t>& data) -> set<string>
 {
-    auto reader {data_reader {data}};
+    data_reader reader {data_reader {data}};
     uint32_t count {reader.read<uint32_t>()};
     set<string> strings {};
 
@@ -454,6 +456,29 @@ SharedEffectId = OpenVaultDoor
         CHECK(client_strings.contains("OpenVaultDoor"));
         CHECK(client_strings.contains("RevealVaultDoor"));
         CHECK(client_strings.contains("HideVaultDoor"));
+    }
+
+    SECTION("RejectsWhitespaceInExplicitProtoName")
+    {
+        TestRig local_rig {};
+        local_rig.AddSourceFile("Items/BadName.fopro", R"([ProtoItem]
+$Name = Bad Name
+)");
+        add_client_mapper_metadata(local_rig);
+
+        ProtoBaker baker {local_rig.MakeContext("ProtoPackBadName", client_mapper_bake)};
+        CHECK_THROWS_AS(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), ProtoBakerException);
+    }
+
+    SECTION("RejectsWhitespaceInFileStemProtoName")
+    {
+        TestRig local_rig {};
+        local_rig.AddSourceFile("Items/Bad Name.fopro", R"([ProtoItem]
+)");
+        add_client_mapper_metadata(local_rig);
+
+        ProtoBaker baker {local_rig.MakeContext("ProtoPackBadName", client_mapper_bake)};
+        CHECK_THROWS_AS(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), ProtoBakerException);
     }
 
     SECTION("RejectsInvalidProtoSectionNames")

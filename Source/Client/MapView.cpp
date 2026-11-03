@@ -32,9 +32,11 @@
 //
 
 #include "MapView.h"
+
 #include "Client.h"
 #include "LineTracer.h"
 #include "MapLoader.h"
+#include "ResourceDefaults.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -45,6 +47,7 @@ static constexpr int32_t LIGHT_HEX_COLOR_MAX {200};
 static constexpr int32_t LIGHT_COLOR_CHANNEL_MAX {255};
 static constexpr float32_t MAP_DEPTH_RANGE_MARGIN {1000.0f};
 static constexpr isize32 MAP_RENDER_TARGET_PADDING {GameSettings::MAP_HEX_WIDTH, GameSettings::MAP_HEX_LINE_HEIGHT * 2};
+static constexpr timespan LIGHT_TRANSITION_DURATION {std::chrono::milliseconds {200}};
 
 // A map flush effect may displace its lookup (a screen shake, a heat warp) by a few percent of the view
 static constexpr int32_t MAP_COMPOSITE_MARGIN_DIVISOR {8};
@@ -102,6 +105,7 @@ MapView::MapView(ptr<ClientEngine> engine, ident_t id, ptr<const ProtoMap> proto
 
     _mapSize = GetSize();
     FO_VERIFY_AND_THROW(_mapSize.width > 0 && _mapSize.height > 0, "Map size must be positive", _mapSize.width, _mapSize.height);
+    FO_VERIFY_AND_THROW(_mapSize.width <= GameSettings::MAX_MAP_SIZE && _mapSize.height <= GameSettings::MAX_MAP_SIZE, "Map size exceeds the engine maximum", _mapSize.width, _mapSize.height, GameSettings::MAX_MAP_SIZE);
 
     {
         const ipos32 corners[] {{0, 0}, {numeric_cast<int32_t>(_mapSize.width) - 1, 0}, //
@@ -128,7 +132,7 @@ MapView::MapView(ptr<ClientEngine> engine, ident_t id, ptr<const ProtoMap> proto
         _mapDepthHalf = std::max(std::abs(near_bound), std::abs(far_bound));
     }
 
-    _hexLight.resize(_mapSize.square() * 3);
+    _hexLight.resize(_mapSize.square<size_t>());
     _hexField.emplace(_mapSize);
 
     _lightPoints.resize(1);
@@ -345,7 +349,7 @@ void MapView::LoadStaticData()
         throw MapViewLoadException("Map file not found", GetProtoId());
     }
 
-    auto reader {data_reader(file.GetDataSpan())};
+    data_reader reader {file.GetDataSpan()};
 
     MapLoader::ReadBakedFileHeader(reader, GetProtoId());
 
@@ -412,7 +416,30 @@ void MapView::LoadStaticData()
 
     reader.verify_end();
 
-    // Index roof
+    EnsureRoofNums();
+    RebuildMapNow();
+}
+
+void MapView::EnsureRoofNums()
+{
+    FO_TRACE_ZONE(Map);
+
+    if (!_roofNumsDirty) {
+        return;
+    }
+
+    _roofNumsDirty = false;
+
+    for (mcoord_t hx {0}; hx < _mapSize.width; hx++) {
+        for (mcoord_t hy {0}; hy < _mapSize.height; hy++) {
+            mpos hex {hx, hy};
+
+            if (_hexField->GetCellForReading(hex).RoofNum != 0) {
+                _hexField->GetCellForWriting(hex)->RoofNum = 0;
+            }
+        }
+    }
+
     auto mark_roof_num {[this](ipos32 raw_hex, int32_t num) {
         std::stack<ipos32, vector<ipos32>> next_raw_hexes {};
         next_raw_hexes.push(raw_hex);
@@ -443,8 +470,8 @@ void MapView::LoadStaticData()
 
     int32_t roof_num {1};
 
-    for (int16_t hx {0}; hx < _mapSize.width; hx++) {
-        for (int16_t hy {0}; hy < _mapSize.height; hy++) {
+    for (mcoord_t hx {0}; hx < _mapSize.width; hx++) {
+        for (mcoord_t hy {0}; hy < _mapSize.height; hy++) {
             const auto& field {_hexField->GetCellForReading(mpos(hx, hy))};
 
             if (field.RoofNum == 0 && field.HasRoof) {
@@ -456,7 +483,11 @@ void MapView::LoadStaticData()
         }
     }
 
-    RebuildMapNow();
+    if (_hiddenRoofHex) {
+        SetHiddenRoof(*_hiddenRoofHex);
+    }
+
+    RebuildMap();
 }
 
 void MapView::ApplyStaticItemRemovals()
@@ -493,6 +524,8 @@ void MapView::ApplyStaticItemRemovals()
 void MapView::Process()
 {
     FO_TRACE_ZONE(Map);
+
+    EnsureRoofNums();
 
     // Critters
     {
@@ -544,8 +577,8 @@ void MapView::Process()
         if (_scrollDtAccum >= fixed_dt) {
             _scrollDtAccum = std::min(_scrollDtAccum, timespan(fixed_dt.value() * 10));
             _scrollDtAccum -= fixed_dt;
-            ProcessZoom(fixed_dt.to_ms<float32_t>());
-            ProcessScroll(fixed_dt.to_ms<float32_t>());
+            ProcessZoom(fixed_dt);
+            ProcessScroll(fixed_dt);
         }
     }
 }
@@ -1124,6 +1157,8 @@ void MapView::RebuildMapNow()
 {
     FO_TRACE_ZONE(Map);
 
+    EnsureRoofNums();
+
     HideHexLines(0, _hVisible);
     FO_VERIFY_AND_THROW(!_mapSprites.HasActiveSprites(), "Map sprites must be cleared before reinitializing the view");
     FO_VERIFY_AND_THROW(!_indoorMaskSprites.HasActiveSprites(), "Indoor mask sprites must be cleared before reinitializing the view");
@@ -1155,26 +1190,9 @@ void MapView::RebuildMapOffset(ipos32 axial_hex_offset)
     HideHexLines(-ox, -oy);
 
     // Shift view position
-    mdir shift_ox_dir {};
-
-    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-        shift_ox_dir = ox > 0 ? hdir::East : hdir::West;
-    }
-    else {
-        shift_ox_dir = ox > 0 ? hdir::East : hdir::NorthWest;
-    }
-
-    mdir shift_oy_dir1 {};
-    mdir shift_oy_dir2 {};
-
-    if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-        shift_oy_dir1 = oy > 0 ? hdir::SouthEast : hdir::NorthEast;
-        shift_oy_dir2 = oy > 0 ? hdir::SouthWest : hdir::NorthWest;
-    }
-    else {
-        shift_oy_dir1 = oy > 0 ? hdir::SouthEast : hdir::NorthEast;
-        shift_oy_dir2 = oy > 0 ? hdir::West : hdir::NorthWest;
-    }
+    mdir shift_ox_dir {ox > 0 ? hdir::East : hdir::West};
+    mdir shift_oy_dir1 {oy > 0 ? hdir::SouthEast : hdir::NorthEast};
+    mdir shift_oy_dir2 {oy > 0 ? hdir::SouthWest : hdir::NorthWest};
 
     if (ox != 0) {
         for (int32_t i {0}; i < std::abs(ox); i++) {
@@ -1458,7 +1476,7 @@ void MapView::ProcessLighting()
         int32_t prev_intensity {ls->CurIntensity};
 
         if (ls->CurIntensity != ls->TargetIntensity) {
-            float32_t elapsed_time {(_engine->GameTime.GetFrameTime() - ls->Time).div<float32_t>(std::chrono::milliseconds {200})};
+            float32_t elapsed_time {(_engine->GameTime.GetFrameTime() - ls->Time).div<float32_t>(LIGHT_TRANSITION_DURATION)};
             ls->CurIntensity = lerp(ls->StartIntensity, ls->TargetIntensity, std::clamp(elapsed_time, 0.0f, 1.0f));
         }
 
@@ -2022,7 +2040,7 @@ void MapView::MarkLight(ptr<LightSource> ls, mpos hex, int32_t raw_intensity)
 
 void MapView::CalculateHexLight(mpos hex, ptr<const Field> field)
 {
-    auto& hex_light {_hexLight[hex.y * _mapSize.width + hex.x]};
+    auto& hex_light {_hexLight[numeric_cast<size_t>(safe_numeric_cast<int64_t>(hex.y) * _mapSize.width + hex.x)]};
 
     hex_light = {};
 
@@ -2096,8 +2114,17 @@ void MapView::LightFanToPrimitves(ptr<const LightSource> ls, vector<PrimitivePoi
     FO_VERIFY_AND_THROW(points.size() % 3 == 0, "Client map border polygon points must be grouped into render triangles", GetId(), points.size(), 3);
 }
 
+auto MapView::GetHiddenRoofNum() -> int32_t
+{
+    EnsureRoofNums();
+    return _hiddenRoofNum;
+}
+
 void MapView::SetHiddenRoof(mpos hex)
 {
+    _hiddenRoofHex = hex;
+    EnsureRoofNums();
+
     // The lattice may be authored on any parity, so instead of the even-snapped hex this scans the
     // MapTileStep block below-and-left, which contains the covering hex whichever parity was used
     int32_t step {_engine->Settings->Geometry.MapTileStep};
@@ -2163,6 +2190,7 @@ void MapView::RecacheHexFlags(mpos hex)
 
 void MapView::RecacheHexFlags(ptr<Field> field)
 {
+    bool had_roof {field->HasRoof};
     field->HasWall = false;
     field->HasTransparentWall = false;
     field->HasScenery = false;
@@ -2218,6 +2246,7 @@ void MapView::RecacheHexFlags(ptr<Field> field)
     }
 
     field->MovableWithGag = field->MovableWithGag && field->MoveBlocked;
+    _roofNumsDirty = _roofNumsDirty || had_roof != field->HasRoof;
 }
 
 void MapView::RecacheScrollBlocks()
@@ -2227,8 +2256,8 @@ void MapView::RecacheScrollBlocks()
     irect32 scroll_area {GetScrollAxialArea()};
     int32_t scroll_block_size {_engine->Settings->Hex.ScrollBlockSize};
 
-    for (int16_t hx {0}; hx < _mapSize.width; hx++) {
-        for (int16_t hy {0}; hy < _mapSize.height; hy++) {
+    for (mcoord_t hx {0}; hx < _mapSize.width; hx++) {
+        for (mcoord_t hy {0}; hy < _mapSize.height; hy++) {
             mpos hex {hx, hy};
             const auto& field {_hexField->GetCellForReading(hex)};
             ipos32 axial_hex {GeometryHelper::GetHexAxialCoord(hex)};
@@ -2263,6 +2292,8 @@ void MapView::Resize(msize size)
     FO_VERIFY_AND_THROW(size.height >= GameSettings::MIN_MAP_SIZE, "Map resize height is smaller than the engine minimum", size.height, GameSettings::MIN_MAP_SIZE);
     FO_VERIFY_AND_THROW(size.height <= GameSettings::MAX_MAP_SIZE, "Map resize height is larger than the engine maximum", size.height, GameSettings::MAX_MAP_SIZE);
 
+    size_t hex_count {size.square<size_t>()};
+
     for (const auto& vf : _viewField) {
         if (_mapSize.is_valid_pos(vf.RawHex)) {
             auto field {_hexField->GetCellForWriting(_mapSize.from_raw_pos(vf.RawHex))};
@@ -2272,8 +2303,8 @@ void MapView::Resize(msize size)
     }
 
     // Remove objects on shrink
-    for (int16_t hy {0}; hy < std::max(size.height, _mapSize.height); hy++) {
-        for (int16_t hx {0}; hx < std::max(size.width, _mapSize.width); hx++) {
+    for (mcoord_t hy {0}; hy < std::max(size.height, _mapSize.height); hy++) {
+        for (mcoord_t hx {0}; hx < std::max(size.width, _mapSize.width); hx++) {
             if (hx >= size.width || hy >= size.height) {
                 const auto& field {_hexField->GetCellForReading({hx, hy})};
 
@@ -2300,11 +2331,11 @@ void MapView::Resize(msize size)
 
     SetWorkHex(_mapSize.clamp_pos(GetWorkHex()));
 
-    _hexLight.resize(_mapSize.square() * 3);
+    _hexLight.resize(hex_count);
     _hexField->Resize(_mapSize);
 
-    for (int16_t hy {0}; hy < _mapSize.height; hy++) {
-        for (int16_t hx {0}; hx < _mapSize.width; hx++) {
+    for (mcoord_t hy {0}; hy < _mapSize.height; hy++) {
+        for (mcoord_t hx {0}; hx < _mapSize.width; hx++) {
             CalculateHexLight(mpos(hx, hy), &_hexField->GetCellForReading(mpos(hx, hy)));
         }
     }
@@ -3057,13 +3088,13 @@ void MapView::DrawViewAreaMask(const irect32& draw_area)
         interior[i * 2 + 1].EggData = fpos32(world_center);
     }
 
-    auto effect {_engine->EffectMngr.LoadEffect(EffectUsage::Primitive, "Effects/Primitive_ViewAreaFog.fofx")};
+    auto effect {_engine->EffectMngr.LoadEffect(EffectUsage::Primitive, EffectDefaults::ViewAreaFog)};
     FO_VERIFY_AND_THROW(effect, "Bounded view fog effect is null");
     _engine->SprMngr.DrawPoints(interior, RenderPrimitiveType::TriangleStrip, &draw_area, effect);
     _engine->SprMngr.DrawPoints(points, RenderPrimitiveType::TriangleStrip, &draw_area, effect);
 }
 
-void MapView::ProcessScroll(float32_t dt)
+void MapView::ProcessScroll(timespan elapsed)
 {
     bool is_manual_scrolling {IsManualScrolling()};
 
@@ -3074,7 +3105,7 @@ void MapView::ProcessScroll(float32_t dt)
     fpos32 scroll {};
 
     if (_autoScrollActive) {
-        float32_t scroll_step {numeric_cast<float32_t>(_autoScrollSpeed) / 10000.0f * dt};
+        float32_t scroll_step {numeric_cast<float32_t>(_autoScrollSpeed) / 10.0f * elapsed.to_sec<float32_t>()};
         scroll.x = lerp(0.0f, _autoScrollOffset.x, scroll_step);
         scroll.y = lerp(0.0f, _autoScrollOffset.y, scroll_step);
 
@@ -3107,7 +3138,7 @@ void MapView::ProcessScroll(float32_t dt)
         }
 
         float32_t zoom {GetSpritesZoom()};
-        float32_t scroll_step {numeric_cast<float32_t>(_engine->Settings->Hex.ScrollSpeed) / 1000.f / zoom * dt};
+        float32_t scroll_step {numeric_cast<float32_t>(_engine->Settings->Hex.ScrollSpeed) / zoom * elapsed.to_sec<float32_t>()};
         scroll.x *= scroll_step;
         scroll.y *= scroll_step;
     }
@@ -3125,7 +3156,7 @@ void MapView::ChangeZoom(float32_t new_zoom, fpos32 anchor)
     SetSpritesZoomTarget(new_zoom);
 }
 
-void MapView::ProcessZoom(float32_t dt)
+void MapView::ProcessZoom(timespan elapsed)
 {
     if (!_engine->Settings->View.MapZoomEnabled) {
         return;
@@ -3154,7 +3185,7 @@ void MapView::ProcessZoom(float32_t dt)
         int32_t zoom_speed {_engine->Settings->Hex.ZoomSpeed};
         constexpr float32_t zoom_stop_bias {0.001f};
 
-        float32_t new_zoom {lerp(init_zoom, clamped_target_zoom, dt * numeric_cast<float32_t>(zoom_speed) / 10000.0f)};
+        float32_t new_zoom {lerp(init_zoom, clamped_target_zoom, elapsed.to_sec<float32_t>() * numeric_cast<float32_t>(zoom_speed) / 10.0f)};
 
         if (std::abs(new_zoom - clamped_target_zoom) < zoom_stop_bias) {
             new_zoom = clamped_target_zoom;

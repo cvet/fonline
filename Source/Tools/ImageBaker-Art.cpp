@@ -210,11 +210,11 @@ namespace ImageBakerArt
         size_t frame_table_count {numeric_cast<size_t>(frame_table_count_wide)};
         FO_VERIFY_AND_THROW(frame_table_count <= (reader.GetSize() - reader.GetCurPos()) / sizeof(ArtFrameInfo), "Truncated ART frame table", fname, frm_count, stored_rotations);
 
-        vector<ArtFrameInfo> frame_infos {frame_table_count};
+        vector<ArtFrameInfo> frame_infos {vector<ArtFrameInfo>(frame_table_count)};
         reader.ReadObjectArray<ArtFrameInfo>(span {frame_infos});
 
         // Decode every stored frame into palette indices
-        vector<vector<uint8_t>> frame_indices {frame_infos.size()};
+        vector<vector<uint8_t>> frame_indices {vector<vector<uint8_t>>(frame_infos.size())};
 
         for (size_t fi {0}; fi < frame_infos.size(); fi++) {
             const ArtFrameInfo& info {frame_infos[fi]};
@@ -263,17 +263,20 @@ namespace ImageBakerArt
         bool roof {lower_name.starts_with("art/roof/")};
 
         FrameCollection collection {};
-        collection.SequenceSize = frm_count_target;
-        // Frame-indexed ART can exceed the baked 16-bit duration
-        int64_t anim_ticks {header.FrameRate > 0 ? checked_mul(numeric_cast<int64_t>(1000 / header.FrameRate), numeric_cast<int64_t>(frm_count_target)) : int64_t {0}};
-        collection.AnimTicks = numeric_cast<int32_t>(std::min(anim_ticks, numeric_cast<int64_t>(std::numeric_limits<uint16_t>::max())));
-        collection.HaveDirs = stored_rotations == art_rotations && forced_rotation < 0;
+        int32_t sequence_size {};
+        uint32_t duration_ms {};
+        bool have_dirs {};
+        sequence_size = frm_count_target;
+        // Sprite v3 preserves the complete imported duration in uint32 milliseconds
+        int64_t imported_ticks {header.FrameRate > 0 ? checked_mul(numeric_cast<int64_t>(std::max(1, 1000 / header.FrameRate)), numeric_cast<int64_t>(frm_count_target)) : 0};
+        duration_ms = numeric_cast<uint32_t>(imported_ticks);
+        have_dirs = stored_rotations == art_rotations && forced_rotation < 0;
 
-        int32_t dir_count {collection.HaveDirs ? GameSettings::MAP_DIR_COUNT : 1};
+        int32_t dir_count {have_dirs ? GameSettings::MAP_DIR_COUNT : 1};
 
         for (int32_t dir {0}; dir < dir_count; dir++) {
             FrameSequence& sequence {dir == 0 ? collection.Main : collection.Dirs[dir - 1]};
-            sequence.Frames.resize(numeric_cast<size_t>(collection.SequenceSize));
+            sequence.Frames.resize(numeric_cast<size_t>(sequence_size));
 
             // ART rotations run clockwise from north; square Engine directions start north-east
             int32_t rotation {0};
@@ -281,7 +284,7 @@ namespace ImageBakerArt
             if (forced_rotation >= 0) {
                 rotation = stored_rotations == art_rotations ? forced_rotation : 0;
             }
-            else if (collection.HaveDirs) {
+            else if (have_dirs) {
                 if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
                     constexpr int32_t hex_dir_to_rotation[6] {1, 2, 3, 5, 6, 7};
                     rotation = hex_dir_to_rotation[dir];
@@ -383,10 +386,8 @@ namespace ImageBakerArt
                 const vector<uint8_t>& indices {frame_indices[frame.Index]};
 
                 FrameShot& shot {sequence.Frames[frm_write]};
-                shot.Width = canvas_w;
-                shot.Height = canvas_h;
-                shot.NextX = numeric_cast<int16_t>(frame.DeltaX);
-                shot.NextY = numeric_cast<int16_t>(frame.DeltaY);
+                shot.Size = {numeric_cast<int32_t>(canvas_w), numeric_cast<int32_t>(canvas_h)};
+                shot.Motion = {numeric_cast<int32_t>(frame.DeltaX), numeric_cast<int32_t>(frame.DeltaY)};
 
                 int64_t pixel_count {checked_mul(numeric_cast<int64_t>(canvas_w), numeric_cast<int64_t>(canvas_h))};
                 size_t data_size {numeric_cast<size_t>(checked_mul(pixel_count, int64_t {4}))};
@@ -427,6 +428,25 @@ namespace ImageBakerArt
 
                 shot.Data = std::move(data);
             }
+        }
+
+        // Raw formats without a playable clock use the default cadence; positive sub-ms
+        // averages normalize to one ms per frame. Explicit FOFRM timelines are strict
+        if (!have_dirs) {
+            for (auto& sequence : collection.Dirs) {
+                sequence.Frames.clear();
+            }
+        }
+
+        for (uint8_t direction {0}; direction < ImageImport::GetDirectionCount(collection); direction++) {
+            auto& sequence {direction == 0 ? collection.Main : collection.Dirs[direction - 1]};
+
+            if (std::all_of(sequence.Frames.begin(), sequence.Frames.end(), [](const ImageImport::FrameShot& frame) { return frame.Duration == timespan::zero; })) {
+                uint32_t count {numeric_cast<uint32_t>(sequence.Frames.size())};
+                ImageImport::SetFrameSequenceDuration(sequence, std::chrono::milliseconds {duration_ms == 0 ? count * 100 : std::max(duration_ms, count)});
+            }
+
+            (void)ImageImport::GetDuration(sequence);
         }
 
         return collection;

@@ -127,9 +127,13 @@ namespace ImageBakerBam
 
         // Create animation
         FrameCollection collection {};
-        collection.SequenceSize = specific_frame == -1 ? cycle_frames : 1;
-        collection.AnimTicks = 100;
-        collection.Main.Frames.resize(numeric_cast<size_t>(collection.SequenceSize));
+        int32_t sequence_size {};
+        uint32_t duration_ms {};
+        bool have_dirs {};
+        sequence_size = numeric_cast<int32_t>(specific_frame == -1 ? cycle_frames : 1);
+        duration_ms = 100;
+
+        collection.Main.Frames.resize(numeric_cast<size_t>(sequence_size));
 
         // Palette
         ucolor palette[256] {};
@@ -152,8 +156,8 @@ namespace ImageBakerBam
             reader.SetCurPos(checked_add(frames_offset, numeric_cast<size_t>(frame_byte_offset)));
             int32_t width {numeric_cast<int32_t>(reader.ReadLEUInt16())};
             int32_t height {numeric_cast<int32_t>(reader.ReadLEUInt16())};
-            int32_t ox {numeric_cast<int32_t>(reader.ReadLEUInt16())};
-            int32_t oy {numeric_cast<int32_t>(reader.ReadLEUInt16())};
+            int32_t ox {numeric_cast<int32_t>(reader.ReadLEInt16())};
+            int32_t oy {numeric_cast<int32_t>(reader.ReadLEInt16())};
             uint32_t data_offset_wire {reader.ReadLEUInt32()};
             bool rle {(data_offset_wire & 0x80000000) == 0};
             data_offset_wire &= 0x7FFFFFFF;
@@ -204,15 +208,32 @@ namespace ImageBakerBam
             // Set in animation sequence
             size_t shot_index {specific_frame != -1 ? size_t {0} : numeric_cast<size_t>(i)};
             auto& shot {collection.Main.Frames[shot_index]};
-            shot.Width = width;
-            shot.Height = height;
-            shot.NextX = numeric_cast<int16_t>(checked_add(checked_sub(int32_t {0}, ox), width / 2));
-            shot.NextY = numeric_cast<int16_t>(checked_add(checked_sub(int32_t {0}, oy), height));
+            shot.Size = {width, height};
+            shot.Offset = {checked_add(checked_sub(int32_t {0}, ox), width / 2), checked_add(checked_sub(int32_t {0}, oy), height)};
             shot.Data = std::move(data);
 
             if (specific_frame != -1) {
                 break;
             }
+        }
+
+        // Raw formats without a playable clock use the default cadence; positive sub-ms
+        // averages normalize to one ms per frame. Explicit FOFRM timelines are strict
+        if (!have_dirs) {
+            for (auto& sequence : collection.Dirs) {
+                sequence.Frames.clear();
+            }
+        }
+
+        for (uint8_t direction {0}; direction < ImageImport::GetDirectionCount(collection); direction++) {
+            auto& sequence {direction == 0 ? collection.Main : collection.Dirs[direction - 1]};
+
+            if (std::all_of(sequence.Frames.begin(), sequence.Frames.end(), [](const ImageImport::FrameShot& frame) { return frame.Duration == timespan::zero; })) {
+                uint32_t count {numeric_cast<uint32_t>(sequence.Frames.size())};
+                ImageImport::SetFrameSequenceDuration(sequence, std::chrono::milliseconds {duration_ms == 0 ? count * 100 : std::max(duration_ms, count)});
+            }
+
+            (void)ImageImport::GetDuration(sequence);
         }
 
         return collection;

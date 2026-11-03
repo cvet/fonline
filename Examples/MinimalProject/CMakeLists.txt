@@ -25,7 +25,8 @@ add_library(StarterProjectDependency INTERFACE)
 target_compile_definitions(StarterProjectDependency INTERFACE FO_STARTER_PROJECT_DEPENDENCY=1)
 # Current revision-pinned project-library integration point.
 list(APPEND FO_SERVER_LIBS StarterProjectDependency)
-AddEngineSources(SERVER StarterServerExtension.cpp)
+AddEngineSources(
+    SERVER StarterServerExtension.cpp)
 RegisterEngineSources()
 SetupCodeGeneration()
 BuildCoreLibraries()

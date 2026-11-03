@@ -50,6 +50,7 @@ namespace WebRelated
     void SetupClipboard();
     void SyncClipboardToSystem(string_view text);
     void InitializePersistentData();
+    void FlushPersistentData();
     auto IsPersistentDataReady() noexcept -> bool;
     void StartMainLoop(void (*entry)(void*), void* data) noexcept;
     void StopMainLoop() noexcept;

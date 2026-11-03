@@ -421,7 +421,7 @@ static auto MakeManagedAssemblyImage(string_view name, const vector<string>& ref
     section.resize(cli_header_size, 0);
     section.insert(section.end(), metadata.begin(), metadata.end());
 
-    uint32_t optional_header_size {shape.Pe32Plus ? 240u : 224u};
+    uint32_t optional_header_size {shape.Pe32Plus ? uint32_t {240} : uint32_t {224}};
     size_t optional_header_offset {0x80 + 24};
     vector<uint8_t> image {vector<uint8_t>(section_file_offset, 0)};
     image[0] = 'M';
@@ -1170,6 +1170,9 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_events.find("FireEventBoxed(") != string::npos);
     CHECK(server_events.find("internal static void AdaptInvoke(global::System.Delegate handler, bool hasExplicitResult, global::System.IntPtr entityPtr, ref byte frame, int frameSize, ref int result)") != string::npos);
     CHECK(server_events.find("return (int)EventResult") == string::npos);
+    // A faulting handler without an explicit result must not stop the chain
+    CHECK(server_events.find("result = (int)(hasExplicitResult ? EventResult.StopChain : EventResult.ContinueChain);") != string::npos);
+    CHECK(server_events.find("result = (int)EventResult.StopChain;") == string::npos);
 
     // An entity argument rides the event frame as a pointer slot: the adapter wraps it, Fire writes the wrapper's pointer
     CHECK(server_events.find("Critter __a0 = global::FOnline.Native.WrapEntityNotNull<Critter>((global::System.IntPtr)global::System.Runtime.CompilerServices.Unsafe.ReadUnaligned<long>(ref global::System.Runtime.CompilerServices.Unsafe.Add(ref frame, 0)));") != string::npos);
@@ -1265,9 +1268,20 @@ TEST_CASE("ManagedScriptBaker")
 
     // A value type converts to and from `any` field by field, nested value types flattened, as GenericType_AnyConv does
     CHECK(server_types.find("public static implicit operator global::FOnline.any(mpos value)\n    {\n        return global::FOnline.any.FromFields(new string[]\n        {\n            global::FOnline.any.FieldText(value.x),\n            global::FOnline.any.FieldText(value.y),\n        });\n    }") != string::npos);
-    CHECK(server_types.find("public static explicit operator mpos(global::FOnline.any value)\n    {\n        string[] fields = value.SplitFields(2, \"mpos\");\n        mpos result = default;\n        result.x = global::FOnline.any.FieldInt16(fields[0]);\n        result.y = global::FOnline.any.FieldInt16(fields[1]);\n        return result;\n    }") != string::npos);
+    string_view coord_field_reader {sizeof(mcoord_t) == sizeof(int32_t) ? "FieldInt32" : "FieldInt16"};
+    CHECK(server_types.find(strex("public static explicit operator mpos(global::FOnline.any value)\n    {{\n        string[] fields = value.SplitFields(2, \"mpos\");\n        mpos result = default;\n        result.x = global::FOnline.any.{}(fields[0]);\n        result.y = global::FOnline.any.{}(fields[1]);\n        return result;\n    }}", coord_field_reader, coord_field_reader).str()) != string::npos);
     CHECK(server_types.find("global::FOnline.any.FieldText(value.Collection.Name),") != string::npos);
     CHECK(server_types.find("result.Collection.Name = global::FOnline.any.FieldHash(fields[0]);") != string::npos);
+
+    // Map coordinate constructors take int at either coordinate width and narrow 16-bit fields under checked arithmetic
+    if constexpr (sizeof(mcoord_t) == sizeof(int32_t)) {
+        CHECK(server_types.find("public mpos(int x, int y)\n    {\n        this.x = x;\n        this.y = y;\n    }") != string::npos);
+    }
+    else {
+        CHECK(server_types.find("public mpos(int x, int y)\n    {\n        this.x = (short)x;\n        this.y = (short)y;\n    }") != string::npos);
+    }
+
+    CHECK(server_types.find("public msize(int width, int height)") != string::npos);
 
     for (string_view target : {"Server", "Client", "Mapper"}) {
         string types {ReadTextFile(script_dir / fs::make_path(strex("{}Types.gen.cs", target).str()))};
@@ -1973,8 +1987,7 @@ TEST_CASE("ManagedScriptBaker packs helper assemblies")
             declared_paths.emplace(path);
             return false;
         })};
-
-        context->OutputDiscovery = true;
+        context->SetOutputDiscovery(true);
         ManagedScriptBaker baker {std::move(context)};
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 
@@ -2021,4 +2034,3 @@ TEST_CASE("ManagedScriptBaker packs helper assemblies")
 FO_END_NAMESPACE
 
 #endif
-

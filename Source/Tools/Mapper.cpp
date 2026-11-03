@@ -1,4 +1,4 @@
-﻿//      __________        ___               ______            _
+//      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
 //    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
@@ -32,6 +32,7 @@
 //
 
 #include "Mapper.h"
+
 #include "AngelScriptScripting.h"
 #include "AnyData.h"
 #include "ConfigFile.h"
@@ -6778,7 +6779,7 @@ void MapperEngine::ResizeMap(ptr<MapView> map, int32_t width, int32_t height)
     int32_t corrected_width {std::clamp(width, GameSettings::MIN_MAP_SIZE, GameSettings::MAX_MAP_SIZE)};
     int32_t corrected_height {std::clamp(height, GameSettings::MIN_MAP_SIZE, GameSettings::MAX_MAP_SIZE)};
 
-    map->Resize(msize(numeric_cast<int16_t>(corrected_width), numeric_cast<int16_t>(corrected_height)));
+    map->Resize(msize(numeric_cast<mcoord_t>(corrected_width), numeric_cast<mcoord_t>(corrected_height)));
     map->InstantScrollTo(map->GetWorkHex());
 
     nptr<MapView> map_view {map};
@@ -6907,7 +6908,7 @@ auto MapperEngine::ResolveAtlasSprite(nptr<const Sprite> sprite) const -> nptr<c
     auto source_sprite {sprite};
 
     if (auto sprite_sheet {source_sprite.dyn_cast<const SpriteSheet>()}) {
-        source_sprite = sprite_sheet->GetCurSpr();
+        source_sprite = sprite_sheet->GetCurrentSprite();
     }
 
     return source_sprite.dyn_cast<const AtlasSprite>();
@@ -7335,4 +7336,3 @@ auto MapperEngine::GetCritterPreviewModelSpr(hstring model_name, CritterStateAni
 #endif
 
 FO_END_NAMESPACE
-

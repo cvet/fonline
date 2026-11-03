@@ -31,12 +31,17 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
 #include "ExtendedTypes.h"
 #include "TwoDimensionalGrid.h"
 
 FO_BEGIN_NAMESPACE
+
+FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE ipos<int64_t>, "{} {}", value.x, value.y);
+FO_DECLARE_TYPE_FORMATTER(FO_NAMESPACE isize<int64_t>, "{} {}", value.width, value.height);
 
 TEST_CASE("TwoDimensionalGrid")
 {
@@ -185,6 +190,30 @@ TEST_CASE("TwoDimensionalGrid")
         check_chunk_side.operator()<1>();
         check_chunk_side.operator()<8>();
         check_chunk_side.operator()<32>();
+    }
+
+    SECTION("EveryGridRejectsNegativeSizeOnConstruction")
+    {
+        using DynamicGrid = DynamicTwoDimensionalGrid<int32_t, ipos32, isize32>;
+        using StaticGrid = StaticTwoDimensionalGrid<int32_t, ipos32, isize32>;
+        using ChunkedGrid = ChunkedTwoDimensionalGrid<int32_t, ipos32, isize32, 16>;
+
+        CHECK_THROWS(DynamicGrid(isize32 {-1, 3}));
+        CHECK_THROWS(StaticGrid(isize32 {3, -1}));
+        CHECK_THROWS(ChunkedGrid(isize32 {-1, -1}));
+    }
+}
+
+TEST_CASE("StaticGridOverflowResizePreservesPublishedSize")
+{
+    StaticTwoDimensionalGrid<int32_t, ipos<int64_t>, isize<int64_t>> grid {{3, 3}};
+    *grid.GetCellForWriting({1, 1}) = 42;
+
+    CHECK_THROWS_AS(grid.Resize({std::numeric_limits<int64_t>::max(), 2}), OverflowException);
+    CHECK(grid.GetSize() == isize<int64_t> {3, 3});
+
+    if (grid.GetSize() == isize<int64_t> {3, 3}) {
+        CHECK(grid.GetCellForReading({1, 1}) == 42);
     }
 }
 

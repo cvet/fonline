@@ -50,7 +50,7 @@ class WebDebuggingDocumentationTests(unittest.TestCase):
             "The `build_gated` label qualifies compilation of the browser client",
             "The helper does not build or bake.",
             "binds `('', port)`",
-            "The audited generic path does not prove automatic write-back",
+            "this does not establish automatic write-back for every other virtual-filesystem modification",
             "The Engine build lane intentionally does not supply this browser/release evidence.",
         ):
             self.assertIn(contract, guide)
@@ -103,7 +103,7 @@ class WebDebuggingDocumentationTests(unittest.TestCase):
         import buildtools
 
         with tempfile.TemporaryDirectory() as temporary_directory:
-            workspace = Path(temporary_directory) / "workspace"
+            workspace = Path(temporary_directory).resolve() / "workspace"
             workspace_emsdk = workspace / "emsdk"
             workspace_emsdk.mkdir(parents=True)
             with patch.dict(
@@ -182,7 +182,10 @@ class WebDebuggingDocumentationTests(unittest.TestCase):
             "window.visualViewport.addEventListener('resize', notifyResize)",
             "document.addEventListener('fullscreenchange', notifyResize)",
             "FS.mount(IDBFS, {}, '/PersistentData')",
-            "FS.syncfs(true, function(err) { Module.syncfsDone = 1; })",
+            "FS.syncfs(true, function(err)",
+            "FS.syncfs(false, function(err)",
+            "abort('Unable to load persistent client data: ' + err)",
+            "abort('Unable to save persistent client data: ' + err)",
             "emscripten_set_main_loop_arg(entry, data, 0, 1)",
             'SDL_SetHint(SDL_HINT_EMSCRIPTEN_ASYNCIFY, "0")',
         ):
@@ -191,8 +194,8 @@ class WebDebuggingDocumentationTests(unittest.TestCase):
         self.assertIn('SETTING(string, ClientNetwork, WebSocketHost, "localhost")', settings)
         self.assertIn("SETTING(int32_t, Network, WebSocketPort, 4001)", settings)
         self.assertIn("SETTING(bool, Network, SecuredWebSockets, false)", settings)
-        self.assertIn("const string_view host = _settings->ClientNetwork.WebSocketHost", sockets)
-        self.assertIn("const uint16_t port = numeric_cast<uint16_t>(_settings->Network.WebSocketPort)", sockets)
+        self.assertIn("const string_view host {static_cast<string_view>(_settings->ClientNetwork.WebSocketHost)}", sockets)
+        self.assertIn("const uint16_t port {numeric_cast<uint16_t>(_settings->Network.WebSocketPort)}", sockets)
         self.assertIn("#if !FO_IOS && !FO_ANDROID && !FO_WEB", sockets)
         self.assertIn("return \"Web-wasm\"", updater)
         self.assertIn("case UpdatePlatform::Web:", updater)

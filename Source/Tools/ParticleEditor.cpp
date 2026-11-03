@@ -32,6 +32,7 @@
 //
 
 #include "ParticleEditor.h"
+
 #include "ImGuiStuff.h"
 #include "Mapper.h"
 #include "ParticleSprites.h"
@@ -612,4 +613,3 @@ void ParticleEditorManager::DrawWindows()
 }
 
 FO_END_NAMESPACE
-

@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "NetworkClient.h"
 
 #include "NetSockets.h"
@@ -42,6 +44,9 @@ FO_BEGIN_NAMESPACE
 constexpr auto PROXY_SOCKS4 {1};
 constexpr auto PROXY_SOCKS5 {2};
 constexpr auto PROXY_HTTP {3};
+
+static constexpr timespan PROXY_ANSWER_TIMEOUT {std::chrono::milliseconds {10000}};
+static constexpr std::chrono::milliseconds PROXY_ANSWER_POLL_INTERVAL {1};
 
 class NetworkClientConnection_Sockets final : public NetworkClientConnection
 {
@@ -150,11 +155,11 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetwo
                 return vector<uint8_t>(result_buf.begin(), result_buf.end());
             }
 
-            if (nanotime::now() - time >= std::chrono::milliseconds {10000}) {
+            if (nanotime::now() - time >= PROXY_ANSWER_TIMEOUT) {
                 throw NetworkClientException("Proxy answer timeout");
             }
 
-            coarse_sleep(std::chrono::milliseconds {1});
+            coarse_sleep(PROXY_ANSWER_POLL_INTERVAL);
         }
     }};
 
@@ -167,7 +172,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetwo
     // Authentication
     if (_settings->ClientNetwork.ProxyType == PROXY_SOCKS4) {
         // Connect
-        auto writer {data_writer(send_buf)};
+        data_writer writer {data_writer(send_buf)};
         writer.write<uint8_t>(numeric_cast<uint8_t>(4)); // Socks version
         writer.write<uint8_t>(numeric_cast<uint8_t>(1)); // Connect command
         writer.write<uint16_t>(net_sockets::host_to_net_u16(_gameAddrPort));
@@ -176,7 +181,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetwo
 
         recv_buf = send_recv(send_buf);
 
-        auto reader {data_reader(recv_buf)};
+        data_reader reader {data_reader(recv_buf)};
         b1 = reader.read<uint8_t>(); // Null byte
         b2 = reader.read<uint8_t>(); // Answer code
 
@@ -194,14 +199,14 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetwo
         }
     }
     else if (_settings->ClientNetwork.ProxyType == PROXY_SOCKS5) {
-        auto writer {data_writer(send_buf)};
+        data_writer writer {data_writer(send_buf)};
         writer.write<uint8_t>(numeric_cast<uint8_t>(5)); // Socks version
         writer.write<uint8_t>(numeric_cast<uint8_t>(1)); // Count methods
         writer.write<uint8_t>(numeric_cast<uint8_t>(2)); // Method
 
         recv_buf = send_recv(send_buf);
 
-        auto reader {data_reader(recv_buf)};
+        data_reader reader {data_reader(recv_buf)};
         b1 = reader.read<uint8_t>(); // Socks version
         b2 = reader.read<uint8_t>(); // Method
 
@@ -209,7 +214,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetwo
             send_buf.clear();
 
             {
-                auto auth_writer {data_writer(send_buf)};
+                data_writer auth_writer {data_writer(send_buf)};
                 auth_writer.write<uint8_t>(numeric_cast<uint8_t>(1)); // Subnegotiation version
                 auth_writer.write<uint8_t>(numeric_cast<uint8_t>(_settings->ClientNetwork.ProxyUser.length())); // Name length
                 auth_writer.write_string_bytes(_settings->ClientNetwork.ProxyUser); // Name
@@ -235,7 +240,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetwo
         send_buf.clear();
 
         {
-            auto connect_writer {data_writer(send_buf)};
+            data_writer connect_writer {data_writer(send_buf)};
             connect_writer.write<uint8_t>(numeric_cast<uint8_t>(5)); // Socks version
             connect_writer.write<uint8_t>(numeric_cast<uint8_t>(1)); // Connect command
             connect_writer.write<uint8_t>(numeric_cast<uint8_t>(0)); // Reserved

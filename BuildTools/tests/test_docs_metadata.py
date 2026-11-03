@@ -51,7 +51,7 @@ def _write_metadata(root: Path, side: str, remote_calls: list[list[str]]) -> Pat
 class DocumentationMetadataTests(unittest.TestCase):
     def test_decoder_version_matches_engine_header(self) -> None:
         header = (BUILDTOOLS_DIR.parent / "Source/Common/MetadataRegistration.h").read_text(encoding="utf-8")
-        match = re.search(r"constexpr uint16_t METADATA_FILE_VERSION = (\d+);", header)
+        match = re.search(r"constexpr uint16_t METADATA_FILE_VERSION \{(\d+)\};", header)
         self.assertIsNotNone(match)
         self.assertEqual(docs_metadata.METADATA_FILE_VERSION, int(match.group(1)))
 

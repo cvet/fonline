@@ -32,6 +32,7 @@
 //
 
 #include "Server.h"
+
 #include "AngelScriptBackend.h"
 #include "AngelScriptScripting.h"
 #include "AnyData.h"
@@ -39,6 +40,7 @@
 #include "ClientDataValidation.h"
 #include "EntitySync.h"
 #include "ImGuiStuff.h"
+#include "ManagedScriptBackend.h"
 #include "ManagedScripting.h"
 #include "MetadataRegistration.h"
 #include "Movement.h"
@@ -48,37 +50,46 @@ FO_BEGIN_NAMESPACE
 
 void ServerInitHook(ptr<ServerEngine>);
 
+class FO_TSA_SCOPED_CAPABILITY ServerQuiescenceGuard final
+{
+public:
+    ServerQuiescenceGuard(mutex& target, bool try_only) FO_TSA_ACQUIRE(target) :
+        _target {&target}
+    {
+        if (try_only) {
+            if (!_target->try_lock()) {
+                throw VerificationException("Simulation control is busy; retry after releasing the external lock");
+            }
+        }
+        else {
+            _target->lock();
+        }
+    }
+
+    ServerQuiescenceGuard(const ServerQuiescenceGuard&) = delete;
+    ServerQuiescenceGuard(ServerQuiescenceGuard&&) noexcept = delete;
+    auto operator=(const ServerQuiescenceGuard&) -> ServerQuiescenceGuard& = delete;
+    auto operator=(ServerQuiescenceGuard&&) noexcept -> ServerQuiescenceGuard& = delete;
+    ~ServerQuiescenceGuard() FO_TSA_RELEASE() { _target->unlock(); }
+
+private:
+    ptr<mutex> _target;
+};
+
+static constexpr timespan JOB_STATS_SAMPLE_INTERVAL {std::chrono::seconds {1}};
+static constexpr timespan JOB_STATS_ROLLING_WINDOW {std::chrono::minutes {1}};
+
 // An off-thread caller that Locks to pause the main worker still mutates engine state on its own thread, and
 // the engine-wide invariant requires an active SyncContext there
 thread_local optional<SyncContext> ExternalLockSyncCtx {};
+thread_local nptr<ServerEngine> ExternalLockOwner {};
+thread_local bool ExternalLockQuiescenceCallback {};
 
 auto GetServerResources(GlobalSettings& settings) -> FileSystem
 {
     FileSystem resources {};
     resources.AddPacksSource(settings.Common.Packaged ? settings.Baking.ServerResources : settings.Baking.BakeOutput, settings.GetServerResourcePacks());
     return resources;
-}
-
-static void ValidateServerSnapshotState(const ServerSnapshotState& state)
-{
-    if (state.FormatVersion != ServerSnapshotState::FORMAT_VERSION) {
-        throw ServerSnapshotException("Unsupported server snapshot format version", state.FormatVersion);
-    }
-    if (state.CompatibilityVersion.empty() || state.CompatibilityVersion.size() > 512) {
-        throw ServerSnapshotException("Invalid snapshot compatibility version");
-    }
-    if (state.MetadataVersion.empty() || state.MetadataVersion.size() > 512) {
-        throw ServerSnapshotException("Invalid snapshot metadata version");
-    }
-    if (state.SynchronizedTime.milliseconds() < 0) {
-        throw ServerSnapshotException("Invalid snapshot synchronized time", state.SynchronizedTime);
-    }
-    if (state.LastEntityId.underlying_value() < 0) {
-        throw ServerSnapshotException("Invalid snapshot entity id boundary", state.LastEntityId);
-    }
-    if (std::ranges::all_of(state.RandomState, [](uint64_t part) { return part == 0; })) {
-        throw ServerSnapshotException("Invalid snapshot random state: every generator word is zero");
-    }
 }
 
 ServerEngine::ServerEngine(ptr<GlobalSettings> settings, FileSystem&& resources, optional<ServerSnapshotRestore> restore_snapshot) :
@@ -185,32 +196,7 @@ auto ServerEngine::FireEvent(const vector<EventCallbackData>& callbacks, FuncCal
     // Engine-wide invariant: a primary SyncContext is always active when an event fires
     FO_STRONG_ASSERT(GetCurrentSyncContext(), "Server event fired without active sync context");
 
-    bool had_exception {false};
-
-    // Iterate a copy - callbacks vector may be changed/invalidated during cycle work
-    small_vector<EventCallbackData, 4> callbacks_snapshot {small_vector<EventCallbackData, 4>(callbacks.begin(), callbacks.end())};
-
-    for (const auto& cb : callbacks_snapshot) {
-        EventResult result {EventResult::ContinueChain};
-
-        try {
-            result = cb.Callback(call);
-        }
-        catch (const std::exception& ex) {
-            exceptions::report_and_continue(ex);
-            had_exception = true;
-
-            if (cb.HasExplicitResult) {
-                return EventResult::StopChain;
-            }
-        }
-
-        if (result == EventResult::StopChain) {
-            return EventResult::StopChain;
-        }
-    }
-
-    return had_exception ? EventResult::StopChain : EventResult::ContinueChain;
+    return Entity::FireEvent(callbacks, call);
 }
 
 auto ServerEngine::WrapJobWithSync(work_thread::job body) -> work_thread::job
@@ -300,6 +286,42 @@ auto ServerEngine::HealthFileJob() -> std::optional<timespan>
     return std::chrono::milliseconds {Settings->Server.HealthFilePeriodMs};
 }
 
+auto ServerEngine::RpcWatchdogJob() -> std::optional<timespan>
+{
+    FO_TRACE_ZONE(Network);
+
+    if (IsShutdownInProgress()) {
+        return std::nullopt;
+    }
+
+    vector<shared_ptr<ServerConnection::RuntimeState>> states {};
+
+    {
+        scoped_lock locker {_rpcStatesLocker};
+
+        std::erase_if(_rpcStates, [](const auto& weak_state) {
+            auto state {weak_state.lock()};
+            return !state || !ServerConnection::IsRuntimeStateActive(state);
+        });
+
+        states.reserve(_rpcStates.size());
+
+        for (const auto& weak_state : _rpcStates) {
+            if (auto state {weak_state.lock()}) {
+                states.emplace_back(std::move(state));
+            }
+        }
+    }
+
+    nanotime now {nanotime::now()};
+
+    for (auto& state : states) {
+        safe_call([&] { ServerConnection::CheckRuntimeState(state, now); });
+    }
+
+    return std::chrono::milliseconds {100};
+}
+
 auto ServerEngine::HealthFileWriteJob(const string& health_info) -> std::optional<timespan>
 {
     FO_TRACE_ZONE(FileSystem);
@@ -362,10 +384,14 @@ auto ServerEngine::InitNetworkingJob() -> std::optional<timespan>
     FO_VERIFY_AND_THROW(Settings->ServerNetwork.MaxMessageSize >= 0, "ServerNetwork.MaxMessageSize must not be negative", Settings->ServerNetwork.MaxMessageSize);
     FO_VERIFY_AND_THROW(Settings->ServerNetwork.MaxBufferedInputSize >= 0, "ServerNetwork.MaxBufferedInputSize must not be negative", Settings->ServerNetwork.MaxBufferedInputSize);
     FO_VERIFY_AND_THROW(Settings->ServerNetwork.MaxRemoteCallPayloadSize >= 0, "ServerNetwork.MaxRemoteCallPayloadSize must not be negative", Settings->ServerNetwork.MaxRemoteCallPayloadSize);
+    FO_VERIFY_AND_THROW(Settings->ServerNetwork.RemoteCallWarningTimeMs >= 0, "ServerNetwork.RemoteCallWarningTimeMs must not be negative");
+    FO_VERIFY_AND_THROW(Settings->ServerNetwork.RemoteCallDisconnectTimeMs >= 0, "ServerNetwork.RemoteCallDisconnectTimeMs must not be negative");
+    FO_VERIFY_AND_THROW(Settings->ServerNetwork.RemoteCallWarningIntervalMs >= 0, "ServerNetwork.RemoteCallWarningIntervalMs must not be negative");
+    FO_VERIFY_AND_THROW(Settings->ServerNetwork.MaxPendingRemoteCalls >= 0, "ServerNetwork.MaxPendingRemoteCalls must not be negative");
     FO_VERIFY_AND_THROW(Settings->ServerNetwork.MaxBufferedInputSize == 0 || Settings->ServerNetwork.MaxMessageSize == 0 || Settings->ServerNetwork.MaxBufferedInputSize >= Settings->ServerNetwork.MaxMessageSize, "ServerNetwork.MaxBufferedInputSize must be zero or at least ServerNetwork.MaxMessageSize", Settings->ServerNetwork.MaxBufferedInputSize, Settings->ServerNetwork.MaxMessageSize);
 
     // Every connection runs the secure channel, so a server without its key must not accept anyone
-    _channelIdentity.emplace(ParseSecureChannelKey(Settings->ServerNetwork.ChannelSecretKey, "ServerNetwork.ChannelSecretKey"));
+    _channelIdentity.emplace(ParseSecureChannelKey(Settings->ServerNetwork.ChannelSecretKey, SettingNames::ServerNetwork_ChannelSecretKey));
     logging::write("Secure channel public key {}", crypto::format_key(_channelIdentity->GetPublicKey()));
 
     if (!Settings->Network.DisableInterthreadCommunication) {
@@ -684,12 +710,20 @@ auto ServerEngine::InitGameLogicJob() -> std::optional<timespan>
         // an id a baked map file already uses for its static items, which share the client's item index
         EntityMngr.InitEntityIdBoundary();
 
-        GameTime.SetSynchronizedTime(GetSynchronizedTime());
-        FrameAdvance();
-
         // Worker pool
         int32_t worker_threads {Settings->Server.SingleThreadedLogic ? 1 : Settings->Server.WorkerThreads};
         _workerPool.emplace("ServerPool", worker_threads, &_shutdownInProgress, /*start_paused*/ true);
+
+        // The starter owns the pause before publication. It must not wait on _quiescenceLocker:
+        // Shutdown holds that mutex while joining the starter after a failed initialization
+        FrameAdvance(false);
+        GameTime.SetSynchronizedTime(GetSynchronizedTime());
+        SuspendSimulationWork();
+        _startupSimulationPause = true;
+
+        if (_restoreSnapshot) {
+            TimeEventMngr.ReserveTimeEventIds(_restoreSnapshot->State.LastTimeEventId);
+        }
 
         TimeEventManager::DispatcherHooks hooks {};
         hooks.Schedule = [this](refcount_ptr<Entity> entity, uint32_t event_id, timespan delay) { OnTimeEventSchedule(std::move(entity), event_id, delay); };
@@ -734,6 +768,12 @@ auto ServerEngine::InitGameLogicJob() -> std::optional<timespan>
             }
         }
 
+        if (_restoreSnapshot) {
+            SyncWholeWorld(*RequireCurrentSyncContext());
+            RestoreSnapshotTimeEvents();
+            RestoreSnapshotCritterMovements();
+        }
+
         logging::write("Start world");
 
         // Start script
@@ -753,7 +793,7 @@ auto ServerEngine::InitGameLogicJob() -> std::optional<timespan>
     DbStorage.WaitCommitChanges();
 
     // Advance time after initialization
-    FrameAdvance();
+    FrameAdvance(false);
 
     return std::nullopt;
 }
@@ -780,12 +820,17 @@ auto ServerEngine::InitDoneJob() -> std::optional<timespan>
     _mainWorker.add_job(WrapJobWithSync([this]() FO_DEFERRED { return SyncPointJob(); }));
     _mainWorker.add_job(WrapJobWithSync([this]() FO_DEFERRED { return FrameTimeJob(); }));
 
+    _startupSimulationPause = false;
+    if (!_manualSimulationPause && _simulationHolds.empty()) {
+        RestoreSimulationWork();
+    }
     _workerPool->Resume();
 
     // Set started flag AFTER workerPool is resumed and mainWorker has jobs queued so
     // external observers (tests, network OnNewConnection) only see a fully-running server
     FinishStartingUp();
     _started = true;
+    _rpcWatchdog.add_job([this]() FO_DEFERRED { return RpcWatchdogJob(); });
 
     return std::nullopt;
 }
@@ -852,7 +897,7 @@ auto ServerEngine::SyncPointJob() -> std::optional<timespan>
 
 auto ServerEngine::FrameTimeJob() -> std::optional<timespan>
 {
-    FrameAdvance();
+    FrameAdvance(!IsSimulationPaused());
 
     return std::chrono::nanoseconds {Settings->Server.FrameTimePeriodNs};
 }
@@ -906,14 +951,7 @@ auto ServerEngine::NotLoggedInPlayerJob(ptr<Player> not_logged_in_player) -> std
         connection->HardDisconnect(DisconnectReason::ProtocolError);
     }
     catch (const NetBufferException& ex) {
-        if (!connection->IsHandshakeComplete()) {
-            logging::write(logging::type::warning, "Invalid handshake data from host {}:{}", connection->GetHost(), connection->GetPort());
-        }
-        else {
-            exceptions::report_and_continue(ex);
-        }
-
-        connection->HardDisconnect(DisconnectReason::ProtocolError);
+        RejectMalformedInput(connection, ex);
     }
     catch (const std::exception& ex) {
         exceptions::report_and_continue(ex);
@@ -965,8 +1003,7 @@ auto ServerEngine::PlayerJob(ptr<Player> player) -> std::optional<timespan>
         ProcessPlayer(player);
     }
     catch (const NetBufferException& ex) {
-        exceptions::report_and_continue(ex);
-        connection->HardDisconnect(DisconnectReason::ProtocolError);
+        RejectMalformedInput(connection, ex);
     }
     catch (const std::exception& ex) {
         exceptions::report_and_continue(ex);
@@ -977,6 +1014,16 @@ auto ServerEngine::PlayerJob(ptr<Player> player) -> std::optional<timespan>
     }
 
     return std::chrono::milliseconds {Settings->Server.ConnectionProcessPeriodMs};
+}
+
+// A peer's broken framing is dropped with its connection, not reported: headless reports end the whole application
+void ServerEngine::RejectMalformedInput(ptr<ServerConnection> connection, const NetBufferException& ex)
+{
+    string_view stage {connection->IsHandshakeComplete() ? "network" : "handshake"};
+
+    logging::write(logging::type::warning, "Invalid {} data from host {}:{}: {} ({})", stage, connection->GetHost(), connection->GetPort(), ex.message(), strex(", ").join(ex.params()).str());
+
+    connection->HardDisconnect(DisconnectReason::ProtocolError);
 }
 
 void ServerEngine::UpdateJobStats(nanotime cur_time)
@@ -993,7 +1040,7 @@ void ServerEngine::UpdateJobStats(nanotime cur_time)
         return;
     }
 
-    if (cur_time - _stats.JobCounterBegin < std::chrono::seconds {1}) {
+    if (cur_time - _stats.JobCounterBegin < JOB_STATS_SAMPLE_INTERVAL) {
         return;
     }
 
@@ -1006,7 +1053,7 @@ void ServerEngine::UpdateJobStats(nanotime cur_time)
 
     _stats.JobTimeStamps.emplace_back(cur_time, completed_jobs);
 
-    while (_stats.JobTimeStamps.size() > 1 && cur_time - _stats.JobTimeStamps.front().first > std::chrono::minutes {1}) {
+    while (_stats.JobTimeStamps.size() > 1 && cur_time - _stats.JobTimeStamps.front().first > JOB_STATS_ROLLING_WINDOW) {
         _stats.JobTimeStamps.pop_front();
     }
 
@@ -1113,6 +1160,7 @@ void ServerEngine::Shutdown()
     logging::write("Stop server");
 
     _shutdownInProgress.store(true, std::memory_order_release);
+    _rpcWatchdog.clear();
 
     // Shutdown runs on a caller thread with no SyncContext, so one is stood up here to satisfy the invariant
     // that any entity touch happens under a primary context
@@ -1281,10 +1329,15 @@ void ServerEngine::Shutdown()
 
     // Done
     logging::write("Server stopped!");
+    {
+        scoped_lock locker {_snapshotEligibilityLocker};
+        _snapshotEligibilityChecks.clear();
+    }
     _started = false;
     _didFinishDispatcher();
 
     FO_VERIFY_AND_THROW(GetRefCount() == 1, "Server engine still has external references after shutdown", GetRefCount());
+    _shutdownCompleted = true;
 }
 
 auto ServerEngine::Lock(optional<timespan> max_wait_time) -> bool
@@ -1321,6 +1374,7 @@ auto ServerEngine::Lock(optional<timespan> max_wait_time) -> bool
     // active context for its own Sync/Ensure calls
     ExternalLockSyncCtx.emplace();
     ExternalLockSyncCtx->Activate();
+    ExternalLockOwner = this;
 
     return true;
 }
@@ -1348,9 +1402,11 @@ void ServerEngine::SyncWholeWorld(SyncContext& ctx, span<const refcount_ptr<Play
 void ServerEngine::Unlock()
 {
     FO_VERIFY_AND_THROW(ExternalLockSyncCtx, "Missing required external lock sync context");
+    FO_VERIFY_AND_THROW(ExternalLockOwner == this, "External lock belongs to another server");
     ExternalLockSyncCtx->Release();
     ExternalLockSyncCtx->Deactivate();
     ExternalLockSyncCtx.reset();
+    ExternalLockOwner = nullptr;
 
     if (std::this_thread::get_id() != _mainWorker.get_thread_id()) {
         unique_lock locker {_syncLocker};
@@ -1380,9 +1436,6 @@ auto ServerEngine::RunInQuiescence(optional<timespan> max_wait_time, const Quies
     if (!_started || IsShutdownInProgress()) {
         throw ServerQuiescenceException("Server quiescence requires a running server");
     }
-    if (GameTime.IsPaused()) {
-        throw ServerQuiescenceException("Server game timer is already paused");
-    }
 
     bool admission_was_open {};
     {
@@ -1406,8 +1459,17 @@ auto ServerEngine::RunInQuiescence(optional<timespan> max_wait_time, const Quies
 
     auto unlock {scope_exit([this]() noexcept { safe_call([this] { Unlock(); }); })};
 
-    GameTime.Pause();
-    auto resume_time {scope_exit([this]() noexcept { safe_call([this] { GameTime.Resume(); }); })};
+    bool owns_time_pause {!GameTime.IsPaused()};
+
+    if (owns_time_pause) {
+        GameTime.Pause();
+    }
+
+    auto resume_time {scope_exit([this, owns_time_pause]() noexcept {
+        if (owns_time_pause) {
+            safe_call([this] { GameTime.Resume(); });
+        }
+    })};
 
     _workerPool->FreezeSchedulingTime();
     auto resume_scheduling_time {scope_exit([this]() noexcept { safe_call([this] { _workerPool->ResumeSchedulingTime(); }); })};
@@ -1425,6 +1487,8 @@ auto ServerEngine::RunInQuiescence(optional<timespan> max_wait_time, const Quies
     state.SynchronizedTime = GameTime.GetSynchronizedTime();
     state.RandomState = CaptureRandomState();
 
+    ExternalLockQuiescenceCallback = true;
+    auto clear_callback {scope_exit([]() noexcept { ExternalLockQuiescenceCallback = false; })};
     callback(state);
     return true;
 }
@@ -1462,25 +1526,375 @@ auto ServerEngine::CollectSnapshotBlockers() -> vector<ServerSnapshotBlocker>
         blockers.emplace_back(ServerSnapshotBlocker {.Kind = ServerSnapshotBlockerKind::DelayedCallbacks, .Count = worker_diagnostics.AnonymousScheduledJobs});
     }
 
-    auto time_event_diagnostics {TimeEventMngr.GetDiagnostics()};
+    // Delegate-bound time events cannot cross a process boundary
+    TimeEventManager::TimeEventCapture time_event_capture {TimeEventMngr.CaptureSerializableTimeEvents()};
 
-    if (time_event_diagnostics.EventCount != 0) {
-        blockers.emplace_back(ServerSnapshotBlocker {.Kind = ServerSnapshotBlockerKind::TimeEvents, .Count = time_event_diagnostics.EventCount});
+    if (time_event_capture.DelegateBoundCount != 0) {
+        blockers.emplace_back(ServerSnapshotBlocker {.Kind = ServerSnapshotBlockerKind::DelegateBoundTimeEvents, .Count = time_event_capture.DelegateBoundCount});
     }
 
-    size_t moving_critters {0};
+    size_t unsupported_events {time_event_capture.UnresolvedFunctionCount + time_event_capture.ExecutingCount};
 
-    for (const auto& critter : EntityMngr.GetCritters()) {
-        if (!critter->IsDestroyed() && critter->IsMoving()) {
-            moving_critters++;
+    for (const auto& event : time_event_capture.Events) {
+        if (event.EntityId) {
+            auto owner {EntityMngr.GetEntity(event.EntityId)};
+            if (!owner || !CanRestoreSnapshotEntity(owner)) {
+                unsupported_events++;
+            }
         }
     }
 
-    if (moving_critters != 0) {
-        blockers.emplace_back(ServerSnapshotBlocker {.Kind = ServerSnapshotBlockerKind::CritterMovements, .Count = moving_critters});
+    if (unsupported_events != 0) {
+        blockers.emplace_back(ServerSnapshotBlocker {.Kind = ServerSnapshotBlockerKind::TimeEvents, .Count = unsupported_events});
+    }
+
+    size_t unsupported_movements {0};
+
+    for (const auto& critter : EntityMngr.GetCritters()) {
+        if (!critter->IsDestroyed() && critter->IsMoving() && (!CanRestoreSnapshotEntity(critter) || !critter->GetMapId() || critter->GetIsAttached())) {
+            unsupported_movements++;
+        }
+    }
+
+    if (unsupported_movements != 0) {
+        blockers.emplace_back(ServerSnapshotBlocker {.Kind = ServerSnapshotBlockerKind::CritterMovements, .Count = unsupported_movements});
+    }
+
+#if FO_MANAGED_SCRIPTING
+    if (auto backend {GetBackend<ManagedScriptBackend>(ScriptSystemBackend::MANAGED_BACKEND_INDEX)}; backend) {
+        uint64_t pending {backend->GetSnapshotWorkCount()};
+        if (pending != 0) {
+            blockers.emplace_back(ServerSnapshotBlocker {.Kind = ServerSnapshotBlockerKind::ManagedScriptWork, .Count = numeric_cast<size_t>(pending)});
+        }
+    }
+#endif
+
+    vector<SnapshotEligibilityCheck> embedding_checks {};
+    {
+        scoped_lock locker {_snapshotEligibilityLocker};
+
+        embedding_checks = _snapshotEligibilityChecks;
+    }
+
+    for (const auto& check : embedding_checks) {
+        vector<ServerSnapshotEligibilityIssue> issues {check(this)};
+
+        for (ServerSnapshotEligibilityIssue& issue : issues) {
+            if (issue.Identifier.empty() || issue.Identifier.size() > 128 || issue.Identifier.find('\0') != string::npos) {
+                throw ServerSnapshotException("Invalid embedding snapshot blocker identifier", issue.Identifier.size());
+            }
+            if (issue.Count == 0) {
+                throw ServerSnapshotException("Invalid embedding snapshot blocker count", issue.Identifier);
+            }
+
+            auto existing {std::ranges::find_if(blockers, [&issue](const ServerSnapshotBlocker& blocker) { return blocker.Kind == ServerSnapshotBlockerKind::EmbeddingState && blocker.Identifier == issue.Identifier; })};
+
+            if (existing == blockers.end()) {
+                blockers.emplace_back(ServerSnapshotBlocker {.Kind = ServerSnapshotBlockerKind::EmbeddingState, .Count = issue.Count, .Identifier = std::move(issue.Identifier)});
+            }
+            else {
+                if (issue.Count > std::numeric_limits<size_t>::max() - existing->Count) {
+                    throw ServerSnapshotException("Embedding snapshot blocker count overflow", issue.Identifier);
+                }
+
+                existing->Count += issue.Count;
+            }
+        }
     }
 
     return blockers;
+}
+
+void ServerEngine::RegisterSnapshotEligibilityCheck(SnapshotEligibilityCheck check)
+{
+    if (!check) {
+        throw ServerSnapshotException("Snapshot eligibility check is empty");
+    }
+
+    scoped_lock locker {_snapshotEligibilityLocker};
+
+    if (_shutdownInProgress.load(std::memory_order_acquire)) {
+        throw ServerSnapshotException("Snapshot eligibility check cannot be registered during shutdown");
+    }
+
+    _snapshotEligibilityChecks.emplace_back(std::move(check));
+}
+
+auto ServerSessionStateName(ServerSessionState state) noexcept -> string_view
+{
+    switch (state) {
+    case ServerSessionState::Starting:
+        return "Starting";
+    case ServerSessionState::Running:
+        return "Running";
+    case ServerSessionState::Paused:
+        return "Paused";
+    case ServerSessionState::Stopping:
+        return "Stopping";
+    case ServerSessionState::Stopped:
+        return "Stopped";
+    case ServerSessionState::Failed:
+        return "Failed";
+    }
+
+    return "Unknown";
+}
+
+auto ServerEngine::GetSessionState() const noexcept -> ServerSessionState
+{
+    // A failed startup remains failed during teardown
+    if (_startingError) {
+        return ServerSessionState::Failed;
+    }
+
+    if (_shutdownInProgress) {
+        return _shutdownCompleted ? ServerSessionState::Stopped : ServerSessionState::Stopping;
+    }
+
+    if (!_started) {
+        return ServerSessionState::Starting;
+    }
+
+    return _simulationPaused ? ServerSessionState::Paused : ServerSessionState::Running;
+}
+
+auto ServerEngine::CaptureCritterMovements() -> vector<SerializableCritterMovement>
+{
+    vector<SerializableCritterMovement> movements {};
+
+    for (const auto& critter : EntityMngr.GetCritters()) {
+        if (critter->IsDestroyed() || !critter->IsMoving()) {
+            continue;
+        }
+
+        nptr<const MovingContext> moving {critter->GetMoving()};
+
+        if (!moving) {
+            continue;
+        }
+
+        movements.emplace_back(SerializableCritterMovement {
+            .CritterId = critter->GetId(),
+            .MapId = critter->GetMapId(),
+            .MapSize = moving->GetMapSize(),
+            .Speed = moving->GetSpeed(),
+            .Steps = vector<mdir>(moving->GetSteps().begin(), moving->GetSteps().end()),
+            .ControlSteps = vector<uint16_t>(moving->GetControlSteps().begin(), moving->GetControlSteps().end()),
+            .StartHex = moving->GetStartHex(),
+            .StartHexOffset = moving->GetStartHexOffset(),
+            .EndHexOffset = moving->GetEndHexOffset(),
+            .ElapsedTimeMs = moving->GetElapsedTime().to_ms<float32_t>(),
+            .WholeTimeMs = moving->GetWholeTime().to_ms<float32_t>(),
+            .LeaseTimeMs = moving->GetLeaseTime().to_ms<float32_t>(),
+        });
+    }
+
+    return movements;
+}
+
+void ServerEngine::RestoreSnapshotCritterMovements()
+{
+    if (!_restoreSnapshot || _restoreSnapshot->State.CritterMovements.empty()) {
+        return;
+    }
+
+    logging::write("Restore {} critter movements", _restoreSnapshot->State.CritterMovements.size());
+
+    nanotime now {GameTime.GetFrameTime()};
+
+    for (const auto& record : _restoreSnapshot->State.CritterMovements) {
+        refcount_nptr<Critter> critter {EntityMngr.GetCritter(record.CritterId)};
+
+        if (!critter || critter->IsDestroyed() || critter->GetMapId() != record.MapId || critter->GetIsAttached()) {
+            throw ServerInitException("Snapshot movement owner is absent or changed map", record.CritterId, record.MapId);
+        }
+        auto map {EntityMngr.GetMap(record.MapId)};
+        if (!map || map->GetSize() != record.MapSize) {
+            throw ServerInitException("Snapshot movement map changed size", record.MapId);
+        }
+
+        // Rebase elapsed progress on this process's monotonic clock
+        refcount_ptr<MovingContext> moving {safe_alloc::make_refcounted<MovingContext>( //
+            record.MapSize, record.Speed, record.Steps, record.ControlSteps, now, timespan {std::chrono::nanoseconds {iround<int64_t>(numeric_cast<float64_t>(record.ElapsedTimeMs) * 1000000.0)}}, //
+            record.StartHex, record.StartHexOffset, record.EndHexOffset, timespan {std::chrono::nanoseconds {iround<int64_t>(numeric_cast<float64_t>(record.WholeTimeMs) * 1000000.0)}})};
+
+        moving->SetLeaseTime(timespan {std::chrono::nanoseconds {iround<int64_t>(numeric_cast<float64_t>(record.LeaseTimeMs) * 1000000.0)}}, now);
+        critter->SetMoving(std::move(moving));
+
+        // Restoring a plan does not fire OnCritterStartMoving again, but it must restore its driver
+        auto key {WorkerJobKey {.Type = WorkerJobType::CritterMovement, .Id = numeric_cast<size_t>(record.CritterId.underlying_value())}};
+        _workerPool->Submit(key, [this, owner = critter.take_not_null()]() mutable { return CritterMovingJob(owner); });
+    }
+}
+
+void ServerEngine::RestoreSnapshotTimeEvents()
+{
+    if (!_restoreSnapshot || _restoreSnapshot->State.TimeEvents.empty()) {
+        return;
+    }
+
+    logging::write("Restore {} time events", _restoreSnapshot->State.TimeEvents.size());
+
+    for (const auto& record : _restoreSnapshot->State.TimeEvents) {
+        // A zero id identifies the global engine entity
+        ptr<Entity> owner {this};
+
+        if (record.EntityId) {
+            refcount_nptr<ServerEntity> entity {EntityMngr.GetEntity(record.EntityId)};
+
+            if (!entity || entity->IsDestroyed()) {
+                throw ServerInitException("Snapshot time event owner is absent", record.EntityTypeName, record.EntityId);
+            }
+            if (entity->GetTypeName().as_str() != record.EntityTypeName) {
+                throw ServerInitException("Snapshot time event entity changed type", record.EntityTypeName, entity->GetTypeName(), record.EntityId);
+            }
+
+            owner = entity.get();
+        }
+
+        if (!record.EntityId && owner->GetTypeName().as_str() != record.EntityTypeName) {
+            throw ServerInitException("Snapshot global time event owner changed type", record.EntityTypeName);
+        }
+
+        // Re-hash and validate the exact signature against this engine instance
+        TimeEventMngr.RestartTimeEvent(owner, Hashes.to_hashed_string(record.FuncName), record.FuncAlternative, record.EventId, record.FireDelay, record.RepeatDuration, record.Data);
+    }
+}
+
+void ServerEngine::PauseSimulation()
+{
+    FO_VERIFY_AND_THROW(!GetCurrentSyncContext(), "Simulation control must be requested outside a server execution context");
+
+    scoped_lock quiescence_locker {_quiescenceLocker};
+
+    FO_VERIFY_AND_THROW(_started, "Simulation can only be paused on a started server");
+    FO_VERIFY_AND_THROW(!_manualSimulationPause, "Simulation is already manually paused");
+    FO_VERIFY_AND_THROW(!_shutdownInProgress, "Simulation cannot be paused during shutdown");
+
+    if (!_simulationPaused) {
+        SuspendSimulationWork();
+    }
+
+    _manualSimulationPause = true;
+}
+
+void ServerEngine::ResumeSimulation()
+{
+    FO_VERIFY_AND_THROW(!GetCurrentSyncContext(), "Simulation control must be requested outside a server execution context");
+
+    scoped_lock quiescence_locker {_quiescenceLocker};
+
+    FO_VERIFY_AND_THROW(_started && !_shutdownInProgress, "Simulation resume requires a running server");
+    FO_VERIFY_AND_THROW(_manualSimulationPause, "Simulation is not manually paused");
+    FO_VERIFY_AND_THROW(_simulationHolds.empty(), "Simulation cannot resume while a hold remains");
+
+    if (!_startupSimulationPause) {
+        RestoreSimulationWork();
+    }
+
+    _manualSimulationPause = false;
+}
+
+auto ServerEngine::HoldSimulation(string_view reason) -> bool
+{
+    bool startup_context {!_started && std::this_thread::get_id() == _starter.get_thread_id()};
+    bool drained_context {ExternalLockOwner == this && !ExternalLockQuiescenceCallback && std::this_thread::get_id() != _mainWorker.get_thread_id()};
+    FO_VERIFY_AND_THROW(startup_context || !GetCurrentSyncContext() || drained_context, "Simulation control requires an outside, startup or drained external-lock context");
+
+    auto hold_simulation {[&]() -> bool {
+        FO_VERIFY_AND_THROW(_started || startup_context, "Simulation hold during startup requires the starter thread");
+        FO_VERIFY_AND_THROW(!reason.empty(), "Simulation hold requires a reason");
+        FO_VERIFY_AND_THROW(_workerPool && !_shutdownInProgress, "Simulation hold requires an initialized server");
+
+        auto [hold, inserted] {_simulationHolds.emplace(reason)};
+
+        if (!inserted) {
+            return false;
+        }
+
+        auto remove_on_error {scope_fail([this, hold]() noexcept { _simulationHolds.erase(hold); })};
+
+        if (!_simulationPaused) {
+            SuspendSimulationWork();
+        }
+
+        remove_on_error.release();
+        return true;
+    }};
+
+    if (startup_context) {
+        return hold_simulation();
+    }
+
+    // A drained external lock must not wait for a controller that is waiting for that lock
+    ServerQuiescenceGuard guard {_quiescenceLocker, drained_context};
+    return hold_simulation();
+}
+
+auto ServerEngine::ReleaseSimulationHold(string_view reason) -> bool
+{
+    bool startup_context {!_started && std::this_thread::get_id() == _starter.get_thread_id()};
+    bool drained_context {ExternalLockOwner == this && !ExternalLockQuiescenceCallback && std::this_thread::get_id() != _mainWorker.get_thread_id()};
+    FO_VERIFY_AND_THROW(startup_context || !GetCurrentSyncContext() || drained_context, "Simulation control requires an outside, startup or drained external-lock context");
+
+    auto release_hold {[&]() -> bool {
+        FO_VERIFY_AND_THROW(_started || startup_context, "Simulation hold release during startup requires the starter thread");
+        FO_VERIFY_AND_THROW(_workerPool && !_shutdownInProgress, "Simulation hold release requires an initialized server");
+
+        auto hold {_simulationHolds.find(string {reason})};
+
+        if (hold == _simulationHolds.end()) {
+            return false;
+        }
+
+        if (_simulationHolds.size() == 1 && !_manualSimulationPause && !_startupSimulationPause) {
+            RestoreSimulationWork();
+        }
+
+        _simulationHolds.erase(hold);
+        return true;
+    }};
+
+    if (startup_context) {
+        return release_hold();
+    }
+
+    ServerQuiescenceGuard guard {_quiescenceLocker, drained_context};
+    return release_hold();
+}
+
+void ServerEngine::SuspendSimulationWork()
+{
+    bool locked {false};
+    auto unlock {scope_exit([this, &locked]() noexcept {
+        if (locked) {
+            safe_call([this] { Unlock(); });
+        }
+    })};
+
+    if (_started && ExternalLockOwner != this) {
+        locked = Lock(std::nullopt);
+        FO_VERIFY_AND_THROW(locked, "Failed to drain simulation before pausing");
+    }
+
+    GameTime.Pause();
+    auto resume_on_error {scope_fail([this]() noexcept { safe_call([this] { GameTime.Resume(); }); })};
+
+    // Player and connection jobs remain responsive
+    const WorkerJobType held_types[] {WorkerJobType::CritterMovement, WorkerJobType::TimeEvent};
+    _workerPool->HoldJobTypes(held_types);
+
+    _simulationPaused = true;
+    resume_on_error.release();
+}
+
+void ServerEngine::RestoreSimulationWork()
+{
+    // Restore job delays before resuming their scheduling clock
+    _workerPool->ReleaseHeldJobTypes();
+    GameTime.Resume();
+
+    _simulationPaused = false;
 }
 
 auto ServerEngine::CreateSnapshot(optional<timespan> max_wait_time) -> ServerSnapshotCaptureResult
@@ -1504,6 +1918,10 @@ auto ServerEngine::CreateSnapshot(optional<timespan> max_wait_time) -> ServerSna
         state.SynchronizedTime = quiescence_state.SynchronizedTime;
         state.LastEntityId = GetLastEntityId();
         state.RandomState = quiescence_state.RandomState;
+        auto time_events {TimeEventMngr.CaptureSerializableTimeEvents()};
+        state.LastTimeEventId = time_events.LastEventId;
+        state.TimeEvents = std::move(time_events.Events);
+        state.CritterMovements = CaptureCritterMovements();
 
         result.Payload = DbStorage.CreateSnapshot();
 
@@ -2040,6 +2458,7 @@ auto ServerEngine::GetHealthInfo() const -> string
     buf += strex("Metadata version: {}\n", GetMetadataVersion());
     buf += strex("System time: {}\n", nanotime::now());
     buf += strex("Synchronized time: {}\n", GetSynchronizedTime());
+    buf += strex("Session state: {}\n", ServerSessionStateName(GetSessionState()));
     buf += strex("Server uptime: {}\n", _stats.Uptime);
     buf += strex("Connections: {}\n", _stats.CurOnline);
     buf += strex("Players: {}\n", EntityMngr.GetPlayersCount());
@@ -2104,13 +2523,13 @@ void ServerEngine::StartConnectionServer(string_view what, const function<unique
 
             break;
         }
-        catch (const std::exception&) {
+        catch (const std::exception& ex) {
             if (nanotime::now() >= deadline) {
                 logging::write("Listener {} did not start within {} ms of retries", what, std::max(Settings->ServerNetwork.ListenRetryTime, 0));
                 throw;
             }
 
-            logging::write("Listener {} did not start on attempt {}, retrying in {} ms", what, attempt, retry_delay.count());
+            logging::write("Listener {} did not start on attempt {}, retrying in {} ms: {}", what, attempt, retry_delay.count(), ex.what());
             coarse_sleep(retry_delay);
         }
     }
@@ -2183,6 +2602,13 @@ auto ServerEngine::CreateNotLoggedInPlayer(shared_ptr<NetworkServerConnection> n
 
         FO_VERIFY_AND_THROW(_channelIdentity.has_value(), "Connection accepted before the secure channel identity was loaded");
         auto connection {safe_alloc::make_unique<ServerConnection>(Settings, std::move(net_connection), _channelIdentity.value())};
+
+        {
+            scoped_lock state_locker {_rpcStatesLocker};
+
+            _rpcStates.emplace_back(connection->GetRuntimeState());
+        }
+
         auto new_player {safe_alloc::make_refcounted<Player>(this, ident_t {}, std::move(connection))};
         _notLoggedInPlayers.emplace_back(std::move(new_player));
         return _notLoggedInPlayers.back();
@@ -2219,7 +2645,7 @@ void ServerEngine::ProcessNotLoggedInPlayer(ptr<Player> not_logged_in_player)
         return;
     }
 
-    if (connection->IsLoginTimedOut(GameTime.GetFrameTime())) {
+    if (connection->IsLoginTimedOut(nanotime::now())) {
         logging::write("Connection login timeout from host '{}'", connection->GetHost());
         connection->HardDisconnect(DisconnectReason::LoginTimeout);
         return;
@@ -2242,7 +2668,9 @@ void ServerEngine::ProcessNotLoggedInPlayer(ptr<Player> not_logged_in_player)
                 Process_Handshake(not_logged_in_player);
             }
             else {
-                throw GenericException("Expected handshake message", msg);
+                in_buf.Lock();
+                in_buf->ResetBuf();
+                throw NetBufferException("Expected handshake message", msg);
             }
         }
         else {
@@ -2265,12 +2693,12 @@ void ServerEngine::ProcessNotLoggedInPlayer(ptr<Player> not_logged_in_player)
 
                 auto updater_backend {make_ptr(&*_updaterBackend)};
                 updater_backend->ProcessUpdateFile(not_logged_in_player, Settings->Network.UpdateFileMaxPortionSize);
-                connection->RegisterLoginProgress(GameTime.GetFrameTime());
+                connection->RegisterLoginProgress(nanotime::now());
                 break;
             }
             case NetMessage::RemoteCall:
                 Process_RemoteCall(not_logged_in_player);
-                connection->RegisterLoginProgress(GameTime.GetFrameTime());
+                connection->RegisterLoginProgress(nanotime::now());
                 break;
             case NetMessage::UnresolvedHash:
                 Process_UnresolvedHash(connection);
@@ -2283,7 +2711,7 @@ void ServerEngine::ProcessNotLoggedInPlayer(ptr<Player> not_logged_in_player)
         in_buf.Lock();
         in_buf->ShrinkReadBuf();
 
-        connection->RegisterActivity(GameTime.GetFrameTime());
+        connection->RegisterActivity(nanotime::now());
     }
 }
 
@@ -2303,7 +2731,7 @@ void ServerEngine::ProcessPlayer(ptr<Player> player)
 
         // A held direction ends with the session that held it: its renewals and its release can no longer arrive, so a
         // plan left waiting at its lease would wait there for good and the player would find it still under way on return
-        if (cr && cr->IsMoving() && cr->GetMoving()->GetLeaseTime() > 0.0f) {
+        if (cr && cr->IsMoving() && cr->GetMoving()->GetLeaseTime() > timespan::zero) {
             StopCritterMoving(cr);
         }
 
@@ -2404,7 +2832,7 @@ void ServerEngine::ProcessPlayer(ptr<Player> player)
         in_buf.Lock();
         in_buf->ShrinkReadBuf();
 
-        connection->RegisterActivity(GameTime.GetFrameTime());
+        connection->RegisterActivity(nanotime::now());
 
         processed_msgs++;
     }
@@ -2426,11 +2854,12 @@ void ServerEngine::ProcessConnection(ptr<Player> player)
         return;
     }
 
-    nanotime frame_time {GameTime.GetFrameTime()};
+    // Connection deadlines use the service clock even while simulation time is paused
+    nanotime service_time {nanotime::now()};
 
-    connection->EnsureActivityTime(frame_time);
+    connection->EnsureActivityTime(service_time);
 
-    if (connection->IsInactive(frame_time)) {
+    if (connection->IsInactive(service_time)) {
         logging::write("Connection activity timeout from host '{}'", connection->GetHost());
         connection->HardDisconnect(DisconnectReason::InactivityTimeout);
         return;
@@ -2438,7 +2867,7 @@ void ServerEngine::ProcessConnection(ptr<Player> player)
 
     // Every connection is pinged for the round trip movement allowances are clamped by, but only a watchdog transport is
     // dropped for a late answer; the others wait for it rather than re-ping, keeping each sample paired with its request
-    if (connection->NeedPing(frame_time)) {
+    if (connection->NeedPing(service_time)) {
         if (connection->HasPendingPing()) {
             if (!connection->NeedsPingWatchdog()) {
                 return;
@@ -2453,7 +2882,7 @@ void ServerEngine::ProcessConnection(ptr<Player> player)
 
         player->Send_Ping(false);
 
-        connection->RegisterPingRequest(frame_time);
+        connection->RegisterPingRequest(service_time);
     }
 }
 
@@ -2990,7 +3419,7 @@ void ServerEngine::Process_Handshake(ptr<Player> player)
     player->Send_InitData(update_desc);
 
     connection->MarkHandshakeComplete();
-    connection->RegisterLoginProgress(GameTime.GetFrameTime());
+    connection->RegisterLoginProgress(nanotime::now());
 
     if (compatibility_outdated) {
         logging::write("Connected client {} has outdated compatibility version {} for binary target {}", connection->GetHost(), comp_version, requested_binary_target);
@@ -3168,7 +3597,7 @@ void ServerEngine::Process_Ping(ptr<Player> player)
     connection->RegisterSenderTime(sender_ms, nanotime::now());
 
     if (answer) {
-        connection->RegisterPingAnswer(GameTime.GetFrameTime());
+        connection->RegisterPingAnswer(nanotime::now());
     }
     else {
         player->Send_Ping(true);
@@ -3741,9 +4170,9 @@ void ServerEngine::Process_Move(ptr<Player> player)
     // A held direction runs on the server only as far as the player has confirmed holding it
     // A corrected path replaces the client's held plan; it must finish without renewals for that retired plan
     if (lease_distance > 0.0f && !client_steps.empty() && !path_truncated) {
-        auto client_moving {safe_alloc::make_refcounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(corrected_speed), std::move(client_steps), std::move(client_control_steps), GameTime.GetFrameTime(), timespan {}, client_start_hex, ipos16 {}, ipos16 {clamped_end_hex_ox, clamped_end_hex_oy})};
+        auto client_moving {safe_alloc::make_refcounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(corrected_speed), std::move(client_steps), std::move(client_control_steps), GameTime.GetFrameTime(), timespan::zero, client_start_hex, ipos16 {}, ipos16 {clamped_end_hex_ox, clamped_end_hex_oy})};
         plan_distance_shift = server_moving->GetWholeDist() - client_moving->GetWholeDist();
-        server_moving->SetLeaseTime(std::max((lease_distance + plan_distance_shift) * 1000.0f / numeric_cast<float32_t>(corrected_speed), 0.001f), GameTime.GetFrameTime());
+        server_moving->SetLeaseTime(EvaluateMovementLeaseDuration(lease_distance + plan_distance_shift, numeric_cast<uint16_t>(corrected_speed)), GameTime.GetFrameTime());
     }
 
     nptr<const Player> initiator {player};
@@ -3799,11 +4228,11 @@ void ServerEngine::Process_MoveLease(ptr<Player> player)
     FO_VERIFY_AND_THROW(std::isfinite(lease_distance) && lease_distance > 0.0f, "Movement renewal must name a finite positive distance", lease_distance);
 
     // An authoritative finite correction has retired this plan's lease, including renewals already in transit
-    if (moving->GetLeaseTime() == 0.0f) {
+    if (moving->GetLeaseTime() == timespan::zero) {
         return;
     }
 
-    float32_t server_lease_time {std::max((lease_distance + cr->GetPlayerPlanDistanceShift()) * 1000.0f / numeric_cast<float32_t>(moving->GetSpeed()), 0.001f)};
+    timespan server_lease_time {EvaluateMovementLeaseDuration(lease_distance + cr->GetPlayerPlanDistanceShift(), moving->GetSpeed())};
 
     if (server_lease_time <= moving->GetLeaseTime()) {
         return;
@@ -3819,7 +4248,7 @@ void ServerEngine::Process_MoveLease(ptr<Player> player)
     }
 
     if (Settings->Network.MoveSyncTrace) {
-        TraceMoveSync("lease_req", strex("cr={} uid={} seq={} lease_ms={} late_ms={} catchup_ms={} elapsed_ms={}", cr_id, cr->GetMovingUid(), plan_seq, iround<int32_t>(server_lease_time), late_time.milliseconds(), catch_up_time.milliseconds(), iround<int32_t>(moving->GetElapsedTime())).strv());
+        TraceMoveSync("lease_req", strex("cr={} uid={} seq={} lease_ms={} late_ms={} catchup_ms={} elapsed_ms={}", cr_id, cr->GetMovingUid(), plan_seq, iround<int32_t>(server_lease_time.to_ms<float64_t>()), late_time.milliseconds(), catch_up_time.milliseconds(), iround<int32_t>(moving->GetElapsedTime().to_ms<float64_t>())).strv());
     }
 
     nptr<const Player> ignore_player {player};
@@ -4043,17 +4472,17 @@ void ServerEngine::Process_MoveFinished(ptr<Player> player)
         return;
     }
 
-    float32_t remaining_time {moving->GetWholeTime() - moving->GetRuntimeElapsedTime(GameTime.GetFrameTime())};
+    timespan remaining_time {moving->GetWholeTime() - moving->GetRuntimeElapsedTime(GameTime.GetFrameTime())};
 
     // A client may fast-forward only what transport plausibly cost it: half the measured round trip, capped, plus the
     // movement job period by which the server's own arrival can lag; a larger claim is refused
     int64_t allowed_catch_up_ms {std::min<int64_t>(connection->GetRoundTrip().milliseconds() / 2, Settings->Server.MoveFinishCatchUpMaxMs) + Settings->Server.CritterMovingPeriodMs};
 
-    trace_remaining_ms = iround<int64_t>(remaining_time);
+    trace_remaining_ms = iround<int64_t>(remaining_time.to_ms<float64_t>());
     trace_allowed_ms = allowed_catch_up_ms;
 
-    if (remaining_time > numeric_cast<float32_t>(allowed_catch_up_ms)) {
-        logging::write("Process_MoveFinished: arrival reported too early, player '{}', critter '{}' ({}) on map '{}', remaining_ms {}, allowed_ms {}, round_trip_ms {}", player->GetName(), cr->GetName(), cr_id, map->GetName(), iround<int64_t>(remaining_time), allowed_catch_up_ms, connection->GetRoundTrip().milliseconds());
+    if (remaining_time > timespan {std::chrono::milliseconds {allowed_catch_up_ms}}) {
+        logging::write("Process_MoveFinished: arrival reported too early, player '{}', critter '{}' ({}) on map '{}', remaining_ms {}, allowed_ms {}, round_trip_ms {}", player->GetName(), cr->GetName(), cr_id, map->GetName(), iround<int64_t>(remaining_time.to_ms<float64_t>()), allowed_catch_up_ms, connection->GetRoundTrip().milliseconds());
         trace_finish("too_early");
         return;
     }
@@ -4730,7 +5159,7 @@ void ServerEngine::ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map)
                 FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
 
                 if (Settings->Network.MoveSyncTrace) {
-                    TraceMoveSync("step", strex("cr={} uid={} hex={},{} elapsed_ms={} runtime_ms={}", cr->GetId(), cr->GetMovingUid(), target_hex.x, target_hex.y, iround<int32_t>(moving->GetElapsedTime()), iround<int32_t>(moving->GetRuntimeElapsedTime(current_time))).strv());
+                    TraceMoveSync("step", strex("cr={} uid={} hex={},{} elapsed_ms={} runtime_ms={}", cr->GetId(), cr->GetMovingUid(), target_hex.x, target_hex.y, iround<int32_t>(moving->GetElapsedTime().to_ms<float64_t>()), iround<int32_t>(moving->GetRuntimeElapsedTime(current_time).to_ms<float64_t>())).strv());
                 }
 
                 map->VerifyTrigger(cr, old_hex, target_hex, dir);
@@ -5108,7 +5537,7 @@ void ServerEngine::StartCritterMoving(ptr<Critter> cr, refcount_ptr<MovingContex
         mpos end_hex {moving_context->GetEndHex()};
         string_view initiator_name {initiator ? initiator->GetName() : string_view {"none"}};
 
-        TraceMoveSync("move_start", strex("cr={} uid={} start={},{} end={},{} whole_ms={} offset_ms={} lease_ms={} speed={} was_moving={} initiator={}", cr->GetId(), cr->GetMovingUid(), start_hex.x, start_hex.y, end_hex.x, end_hex.y, iround<int32_t>(moving_context->GetWholeTime()), iround<int32_t>(moving_context->GetRuntimeElapsedTime(GameTime.GetFrameTime())), iround<int32_t>(moving_context->GetLeaseTime()), moving_context->GetSpeed(), was_moving ? 1 : 0, initiator_name).strv());
+        TraceMoveSync("move_start", strex("cr={} uid={} start={},{} end={},{} whole_ms={} offset_ms={} lease_ms={} speed={} was_moving={} initiator={}", cr->GetId(), cr->GetMovingUid(), start_hex.x, start_hex.y, end_hex.x, end_hex.y, iround<int32_t>(moving_context->GetWholeTime().to_ms<float64_t>()), iround<int32_t>(moving_context->GetRuntimeElapsedTime(GameTime.GetFrameTime()).to_ms<float64_t>()), iround<int32_t>(moving_context->GetLeaseTime().to_ms<float64_t>()), moving_context->GetSpeed(), was_moving ? 1 : 0, initiator_name).strv());
     }
 
     _workerPool->Submit(movement_key, [this, cr_ = cr.hold_ref()]() mutable -> std::optional<timespan> { return CritterMovingJob(cr_); });
@@ -5238,8 +5667,8 @@ void ServerEngine::ChangeCritterMovingSpeed(ptr<Critter> cr, uint16_t speed)
 
     nanotime cur_time {GameTime.GetFrameTime()};
     uint16_t old_speed {moving_context->GetSpeed()};
-    float32_t old_elapsed {moving_context->GetElapsedTime()};
-    float32_t old_runtime {moving_context->GetRuntimeElapsedTime(cur_time)};
+    timespan old_elapsed {moving_context->GetElapsedTime()};
+    timespan old_runtime {moving_context->GetRuntimeElapsedTime(cur_time)};
 
     moving_context->ChangeSpeed(speed, cur_time);
     cr->SetMovingSpeed(speed);
@@ -5249,7 +5678,7 @@ void ServerEngine::ChangeCritterMovingSpeed(ptr<Critter> cr, uint16_t speed)
     if (Settings->Network.MoveSyncTrace) {
         mpos hex {cr->GetHex()};
 
-        TraceMoveSync("speed_change", strex("cr={} uid={} old_speed={} speed={} hex={},{} elapsed_ms={} runtime_ms={} rebased_ms={} whole_ms={}", cr->GetId(), cr->GetMovingUid(), old_speed, speed, hex.x, hex.y, iround<int32_t>(old_elapsed), iround<int32_t>(old_runtime), iround<int32_t>(moving_context->GetElapsedTime()), iround<int32_t>(moving_context->GetWholeTime())).strv());
+        TraceMoveSync("speed_change", strex("cr={} uid={} old_speed={} speed={} hex={},{} elapsed_ms={} runtime_ms={} rebased_ms={} whole_ms={}", cr->GetId(), cr->GetMovingUid(), old_speed, speed, hex.x, hex.y, iround<int32_t>(old_elapsed.to_ms<float64_t>()), iround<int32_t>(old_runtime.to_ms<float64_t>()), iround<int32_t>(moving_context->GetElapsedTime().to_ms<float64_t>()), iround<int32_t>(moving_context->GetWholeTime().to_ms<float64_t>())).strv());
     }
 
     cr->SendAndBroadcast(nullptr, [cr](ptr<Player> p) { p->Send_MovingSpeed(cr); });
@@ -5297,12 +5726,153 @@ void ServerEngine::Process_RemoteCall(ptr<Player> player)
 
     in_buf.Unlock();
 
+    ServerConnection::InboundCall call {connection->BeginRemoteCall(remote_call_name, player->GetId())};
+
+    if (!call.Accepted) {
+        return;
+    }
+
     ValidateInboundRemoteCallData(remote_call_it->second, remote_call_data, *this);
 
     auto ctx {RequireCurrentSyncContext()};
     ctx->SyncEntity(player);
 
-    HandleInboundRemoteCall(remote_call_name, player, remote_call_data);
+    HandleInboundRemoteCall(remote_call_name, player, remote_call_data, std::move(call.Completion));
+}
+
+auto ServerEngine::CanRestoreSnapshotEntity(ptr<const ServerEntity> entity) const -> bool
+{
+    refcount_nptr<const ServerEntity> current {entity.hold_ref()};
+
+    while (current) {
+        if (!current->IsPersistent() || current->IsDestroyed() || current->IsDestroying()) {
+            return false;
+        }
+        if (current.dyn_cast<const Location>()) {
+            return true;
+        }
+
+        auto parent {current->GetParent()};
+        if (auto critter {current.dyn_cast<const Critter>()}; critter) {
+            auto map {parent.dyn_cast<const Map>()};
+            if (!map) {
+                return false;
+            }
+            // Player critters have durable records but are excluded from the map's automatic restore list
+            auto critter_ids {map->GetCritterIds()};
+            if (std::ranges::find(critter_ids, critter->GetId()) == critter_ids.end()) {
+                return false;
+            }
+        }
+        if (auto custom {current.dyn_cast<const CustomEntity>()}; custom) {
+            ptr<const Entity> holder {this};
+            if (parent) {
+                holder = parent.as_ptr();
+            }
+            auto entry {GetEntityType(holder->GetTypeName()).HolderEntries.find(custom->GetCustomHolderEntry())};
+            if (entry == GetEntityType(holder->GetTypeName()).HolderEntries.end() || !entry->second.Persistent) {
+                return false;
+            }
+            if (!parent) {
+                auto children {GetInnerEntities(custom->GetCustomHolderEntry())};
+                return children && std::ranges::any_of(*children, [&custom](const refcount_ptr<Entity>& child) { return child == custom; });
+            }
+        }
+
+        current = std::move(parent);
+    }
+
+    return false;
+}
+
+void ServerEngine::ValidateServerSnapshotState(const ServerSnapshotState& state)
+{
+    if (state.FormatVersion != ServerSnapshotState::FORMAT_VERSION) {
+        throw ServerSnapshotException("Unsupported server snapshot format version", state.FormatVersion);
+    }
+    if (state.CompatibilityVersion.empty() || state.CompatibilityVersion.size() > 512) {
+        throw ServerSnapshotException("Invalid snapshot compatibility version");
+    }
+    if (state.MetadataVersion.empty() || state.MetadataVersion.size() > 512) {
+        throw ServerSnapshotException("Invalid snapshot metadata version");
+    }
+    if (state.SynchronizedTime.milliseconds() < 0) {
+        throw ServerSnapshotException("Invalid snapshot synchronized time", state.SynchronizedTime);
+    }
+    if (state.LastEntityId.underlying_value() < 0) {
+        throw ServerSnapshotException("Invalid snapshot entity id boundary", state.LastEntityId);
+    }
+    if (std::ranges::all_of(state.RandomState, [](uint64_t part) { return part == 0; })) {
+        throw ServerSnapshotException("Invalid snapshot random state: every generator word is zero");
+    }
+
+    unordered_set<uint32_t> time_event_ids {};
+
+    for (const auto& event : state.TimeEvents) {
+        if (event.EntityId.underlying_value() < 0 || state.LastEntityId < event.EntityId || event.EntityTypeName.empty() || event.EntityTypeName.size() > 512 || event.EntityTypeName.find('\0') != string::npos || !strvex(event.EntityTypeName).is_valid_utf8()) {
+            throw ServerSnapshotException("Invalid snapshot time event owner", event.EntityTypeName, event.EntityId);
+        }
+
+        bool unique_id {time_event_ids.emplace(event.EventId).second};
+
+        if (event.EventId == 0 || event.EventId > state.LastTimeEventId || !unique_id) {
+            throw ServerSnapshotException("Invalid or duplicate snapshot time event id", event.EventId);
+        }
+        if (event.FuncName.empty() || event.FuncName.size() > 512 || event.FuncName.find('\0') != string::npos || !strvex(event.FuncName).is_valid_utf8() || event.FuncAlternative >= TimeEventManager::GetTimeEventFuncAlternativeCount()) {
+            throw ServerSnapshotException("Invalid snapshot time event function", event.FuncName, event.FuncAlternative);
+        }
+        if ((!event.EntityId) != (event.FuncAlternative < 4)) {
+            throw ServerSnapshotException("Snapshot time event owner does not match its function signature", event.EventId);
+        }
+        if (event.FireDelay < timespan::zero) {
+            throw ServerSnapshotException("Invalid snapshot time event duration", event.EventId);
+        }
+
+        int64_t clock_remaining {std::numeric_limits<int64_t>::max() - nanotime::now().nanoseconds()};
+        int64_t delay {std::max(event.FireDelay, TimeEventManager::MIN_REPEAT_TIME).nanoseconds()};
+        int64_t repeat {std::max(event.RepeatDuration, timespan::zero).nanoseconds()};
+
+        if (delay > clock_remaining || repeat > clock_remaining - delay) {
+            throw ServerSnapshotException("Snapshot time event deadline is outside the clock range", event.EventId);
+        }
+    }
+
+    unordered_set<ident_t> moving_critter_ids {};
+
+    for (const auto& movement : state.CritterMovements) {
+        bool unique_id {moving_critter_ids.emplace(movement.CritterId).second};
+
+        if (movement.CritterId.underlying_value() <= 0 || movement.MapId.underlying_value() <= 0 || state.LastEntityId < movement.CritterId || state.LastEntityId < movement.MapId || !unique_id) {
+            throw ServerSnapshotException("Invalid or duplicate snapshot movement owner", movement.CritterId);
+        }
+
+        float64_t max_duration_ms {numeric_cast<float64_t>(std::numeric_limits<int64_t>::max()) / 1000000.0};
+
+        if (!std::isfinite(movement.ElapsedTimeMs) || movement.ElapsedTimeMs < 0.0f || numeric_cast<float64_t>(movement.ElapsedTimeMs) >= max_duration_ms || !std::isfinite(movement.WholeTimeMs) || movement.WholeTimeMs <= 0.0f || numeric_cast<float64_t>(movement.WholeTimeMs) >= max_duration_ms || !std::isfinite(movement.LeaseTimeMs) || movement.LeaseTimeMs < 0.0f || numeric_cast<float64_t>(movement.LeaseTimeMs) >= max_duration_ms) {
+            throw ServerSnapshotException("Invalid snapshot movement timing", movement.CritterId);
+        }
+        if (movement.MapSize.width <= 0 || movement.MapSize.height <= 0 || !movement.MapSize.is_valid_pos(movement.StartHex) || movement.Steps.empty() || movement.Steps.size() > std::numeric_limits<uint16_t>::max() || movement.ControlSteps.empty() || movement.ControlSteps.back() > movement.Steps.size()) {
+            throw ServerSnapshotException("Invalid snapshot movement path", movement.CritterId);
+        }
+
+        uint16_t previous {0};
+
+        for (uint16_t control_step : movement.ControlSteps) {
+            if (control_step < previous || control_step > movement.Steps.size()) {
+                throw ServerSnapshotException("Invalid snapshot movement control step", movement.CritterId, control_step);
+            }
+
+            previous = control_step;
+        }
+
+        mpos hex {movement.StartHex};
+
+        for (mdir step : const_span<mdir> {movement.Steps}.first(movement.ControlSteps.back())) {
+            if (!GeometryHelper::MoveHexByDir(hex, step, movement.MapSize)) {
+                throw ServerSnapshotException("Snapshot movement leaves its map", movement.CritterId);
+            }
+        }
+    }
 }
 
 FO_END_NAMESPACE

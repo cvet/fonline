@@ -338,6 +338,9 @@ Continue with the [canonical reference](../../en/reference/script-api/types.md).
 <a id="symbol-script-enum-value-critterproperty-visibilitymode-f92e88b4c6"></a>
 - [`symbol-script-enum-value-critterproperty-visibilitymode-f92e88b4c6`](../../en/reference/script-api/types.md#symbol-script-enum-value-critterproperty-visibilitymode-f92e88b4c6)
 
+<a id="symbol-script-enum-value-critterproperty-visualoffset-ce9bdede83"></a>
+- [`symbol-script-enum-value-critterproperty-visualoffset-ce9bdede83`](../../en/reference/script-api/types.md#symbol-script-enum-value-critterproperty-visualoffset-ce9bdede83)
+
 <a id="symbol-script-enum-critterseetype-f8dc891511"></a>
 - [`symbol-script-enum-critterseetype-f8dc891511`](../../en/reference/script-api/types.md#symbol-script-enum-critterseetype-f8dc891511)
 
@@ -407,6 +410,9 @@ Continue with the [canonical reference](../../en/reference/script-api/types.md).
 
 <a id="symbol-script-enum-value-disconnectreason-replacedbyreconnect-99c31232b9"></a>
 - [`symbol-script-enum-value-disconnectreason-replacedbyreconnect-99c31232b9`](../../en/reference/script-api/types.md#symbol-script-enum-value-disconnectreason-replacedbyreconnect-99c31232b9)
+
+<a id="symbol-script-enum-value-disconnectreason-rpcruntimelimit-e5f46dc099"></a>
+- [`symbol-script-enum-value-disconnectreason-rpcruntimelimit-e5f46dc099`](../../en/reference/script-api/types.md#symbol-script-enum-value-disconnectreason-rpcruntimelimit-e5f46dc099)
 
 <a id="symbol-script-enum-value-disconnectreason-scriptrequest-0f5f9ce475"></a>
 - [`symbol-script-enum-value-disconnectreason-scriptrequest-0f5f9ce475`](../../en/reference/script-api/types.md#symbol-script-enum-value-disconnectreason-scriptrequest-0f5f9ce475)
@@ -3189,6 +3195,9 @@ Continue with the [canonical reference](../../en/reference/script-api/types.md).
 
 <a id="symbol-script-ref-field-client-mapspriteholder-drawordersublayer-77051f0070"></a>
 - [`symbol-script-ref-field-client-mapspriteholder-drawordersublayer-77051f0070`](../../en/reference/script-api/types.md#symbol-script-ref-field-client-mapspriteholder-drawordersublayer-77051f0070)
+
+<a id="symbol-script-ref-field-client-mapspriteholder-elevation-612cdf20f5"></a>
+- [`symbol-script-ref-field-client-mapspriteholder-elevation-612cdf20f5`](../../en/reference/script-api/types.md#symbol-script-ref-field-client-mapspriteholder-elevation-612cdf20f5)
 
 <a id="symbol-script-ref-field-client-mapspriteholder-hex-e458bb5b43"></a>
 - [`symbol-script-ref-field-client-mapspriteholder-hex-e458bb5b43`](../../en/reference/script-api/types.md#symbol-script-ref-field-client-mapspriteholder-hex-e458bb5b43)

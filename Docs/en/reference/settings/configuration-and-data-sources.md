@@ -85,6 +85,10 @@ Read this together with:
   map files, `MapLoader` owns the interpretation - `[ProtoMap]` declares a map named by its `$Name`
   or by the file, and a nested `$Name/<Type>` prefix binds content to the anchor above it.
 
+Space/tab plus trailing backslash joins lines. A terminal continuation is parsed
+identically with/without a final newline. Empty values remain valid; each consumer
+enforces format constraints.
+
 The parser stores owned strings internally and returns `string_view` values from parsed sections. Consumers must not assume those views outlive the `ConfigFile` instance.
 
 ## Runtime settings
@@ -171,7 +175,7 @@ allowlist: text baking uses the first value as the normalization base.
 fallback, and runtime lookup behavior belongs to
 [Text and Localization](../../how-to/content/text-and-localization.md).
 
-Startup has one extra resolution step before the log, config, or local-config cache is opened. `ResolveWritableRoot(args)` in `Source/Frontend/ApplicationInit.cpp` derives the read-only `Common.UserWritablePath` without consulting settings: `--Common.UserWritablePath <path>` wins, an `INSTALLED` marker beside the executable selects the per-OS user-data directory plus `FO_NICE_NAME`, and otherwise the empty value keeps the portable working-directory layout. The special CLI value `*` requests the same per-user directory as the marker. Android obtains its base directory from SDL internal storage; the other platforms use `Platform::GetUserDataBase()`. A config file cannot set this path because the config itself may live beneath it. The resolved value is applied to the settings snapshot before the local cache is read, and the required cache/resource subdirectories are then created; failure logs a warning and falls back to the working directory.
+Startup has one extra resolution step before the log, config, or local-config cache is opened. `ResolveWritableRoot(args)` in `Source/Frontend/ApplicationInit.cpp` derives the read-only `Common.UserWritablePath` without consulting settings: `--Common.UserWritablePath <path>` wins, an `INSTALLED` marker beside the executable selects the per-OS user-data directory plus `FO_NICE_NAME`, and otherwise the empty value keeps the portable working-directory layout. The special CLI value `*` requests the same per-user directory as the marker. Android obtains its base directory from SDL internal storage; the other platforms use `platform::get_user_data_base()`. A config file cannot set this path because the config itself may live beneath it. The resolved value is applied to the settings snapshot before the local cache is read, and the required cache/resource subdirectories are then created; failure logs a warning and falls back to the working directory.
 
 Any nonempty `Common.UserWritablePath` in a main config, sub-config, local-config
 cache, or packaged internal config throws `SettingsException` with
@@ -185,9 +189,41 @@ The ordinary command line is still applied to live settings exactly **once**, af
 
 `CommandLineArgs::IsOption()` recognizes a leading dash as an option only when the next character is a letter. Thus `--Render.Sleep -1` and other negative values remain values, not new option names. String settings preserve text as written, including Windows backslashes and quote characters; string-list settings split only at spaces and tabs. Numeric, boolean, and enum settings still parse their text. The `AnyData` escaped-string grammar belongs to properties, not settings (`Source/Common/Settings.cpp`, `Source/Tests/Test_Settings.cpp`).
 
+`CommandLineArgs::GetSettingValue(name, implicit_value = "1")` reads a single
+setting before a settings snapshot exists. Pass its exact, case-sensitive name
+without dashes, for example `Common.NonInteractive` or `ClientLibPath`. Both
+`-Name` and `--Name` are accepted; option names are trimmed by the shared parser,
+and the last matching occurrence wins. An absent setting returns `std::nullopt`.
+A valueless option returns `implicit_value`; pass `std::nullopt` to skip such
+occurrences and find the last explicit value instead. An explicitly empty
+argument remains present and empty, and negative numbers remain values under
+`IsOption()`. Returned views borrow the argument storage or the supplied implicit
+value and preserve value text without trimming. Callers own conversion and defaults.
+
+Builtin setting names are declared in `SettingNames` in `Common.h`, generated
+directly from `Settings.inc`: for example, `SettingNames::Common_NonInteractive`
+and `SettingNames::Network_CompatibilityVersion`. The underscore separates the
+group and setting name. Use these constants for native
+setting lookups, writes, serialization and diagnostics. Add builtin names only
+through the schema. Command-line-only names remain in `CommandLineSettings`,
+including `Fork`, `ApplyConfig` and `ClientLibPath`. Embedding projects own the
+constants for their custom settings. Command lines and config files keep their
+existing spelling.
+
+`GetSettings(name = {})` uses the same parser and returns every matching
+`CommandLineSetting` in command-line order, including duplicates. An empty filter
+selects all settings. Each entry has a trimmed `Name` without dashes and an
+optional raw `Value`: `std::nullopt` distinguishes an implicit flag from an
+explicit empty string. The views borrow argv storage. Runtime-host selection,
+fork and Windows-service flags, config selection, writable-root selection, and
+`ApplyCommandLine()` all use this API. Config and sub-config requests require a
+value on every occurrence, even when a later request is valid. Sub-configs and
+`+`-append overrides retain their order; the writable root uses the first explicit
+nonempty valid path. These helpers neither load configuration nor apply overrides.
+
 ## Resource packs and data sources
 
-`ResourcePackInfo` describes resource-pack inputs that bakers and runtimes consume. The bake side uses `BakingContext` / `BakerDataSource` in `Source/Tools/Baker.*`; the runtime side uses mounted `DataSource` and `FileSystem` abstractions.
+`ResourcePackInfo` describes resource-pack inputs that bakers and runtimes consume. The bake side uses `BakingContext` in `Source/Tools/BakingContext.*` and `BakerDataSource` in `Source/Tools/Baker.*`; the runtime side uses mounted `DataSource` and `FileSystem` abstractions.
 
 Resource-pack input directories are mounted recursively. `IncludePatterns` and `ExcludePatterns` are optional space-separated glob lists applied to normalized resource-relative paths before any baker runs. An empty include list accepts every path; exclusion is evaluated after inclusion and wins. Patterns are case-sensitive and support:
 
@@ -245,7 +281,7 @@ An entry is stored as one plain file named after the entry, with path separators
 
 ## Settings store
 
-`Source/Common/SettingsStorage.*` persists small per-user tool/editor preferences (ImGui window layout, view options, last selection) behind `GetString()`/`SetString()`, typed `GetInt`/`SetInt`, `GetBool`/`SetBool`, `GetFloat`/`SetFloat`, `HasKey()`, and `Remove()`. It is scoped by an application name passed to the constructor so different tools never collide. The backend is platform-specific through a pimpl: on `FO_WINDOWS` the values are `REG_SZ` entries under `HKCU\Software\FOnline\<app_name>` (Win32 headers are confined to the `.cpp` behind `WIN32_LEAN_AND_MEAN` + `WinApiUndef.inc`, using the explicit `*A` registry entry points); on other platforms it is a per-application `CacheStorage` under `Platform::GetUserDataBase()/FOnline/<app_name>`. Every value is stored as a string (the typed accessors serialize through it), so both backends behave identically, and the multi-line ImGui `imgui.ini` blob round-trips verbatim. Persistence is **best-effort**: a backend failure is logged, never thrown, so a tool never dies because its settings could not be written. It differs from `CacheStorage` in intent (durable user preferences vs. regenerable cache artifacts) and, on Windows, in medium (registry vs. files).
+`Source/Common/SettingsStorage.*` persists small per-user tool/editor preferences (ImGui window layout, view options, last selection) behind `GetString()`/`SetString()`, typed `GetInt`/`SetInt`, `GetBool`/`SetBool`, `GetFloat`/`SetFloat`, `HasKey()`, and `Remove()`. It is scoped by an application name passed to the constructor so different tools never collide. The backend is platform-specific through a pimpl: on `FO_WINDOWS` the values are `REG_SZ` entries under `HKCU\Software\FOnline\<app_name>` (Win32 headers are confined to the `.cpp` behind `WIN32_LEAN_AND_MEAN` + `WinApiUndef.inc`, using the explicit `*A` registry entry points); on other platforms it is a per-application `CacheStorage` under `platform::get_user_data_base()/FOnline/<app_name>`. Every value is stored as a string (the typed accessors serialize through it), so both backends behave identically, and the multi-line ImGui `imgui.ini` blob round-trips verbatim. Persistence is **best-effort**: a backend failure is logged, never thrown, so a tool never dies because its settings could not be written. It differs from `CacheStorage` in intent (durable user preferences vs. regenerable cache artifacts) and, on Windows, in medium (registry vs. files).
 
 Only the GUI tools reference it (Mapper `MapperEngine::_uiSettings`, migrated from the resource `Cache`; standalone AnimationViewer / ParticleViewer, each loading in its constructor and saving on shutdown). It lives in `CommonLib` for simplicity, but because the client and server reference no `SettingsStorage` symbol, the linker (`/OPT:REF` plus on-demand static-library inclusion) drops the object from the shipped client/server binaries — so the Windows registry calls never land where antivirus heuristics might flag them. ImGui's own `imgui.ini` autosave stays disabled (`Application.cpp`), so all layout persistence flows through this store.
 
@@ -304,3 +340,41 @@ ZIP/embedded ZIP failures include the pack, entry or index and minizip status. R
 `DataSource.cpp` owns dispatch; adjacent `DataSource-Directory` and `DataSource-Embedded` pairs are mandatory, `DataSource-Dat` requires `FO_DATA_SOURCE_DAT`, `DataSource-Zip` requires `FO_DATA_SOURCE_ZIP`. Registration/includes are unconditional, guards internal. [Component selection](../../how-to/build/project-configuration.md#optional-native-components) owns roles/dependencies.
 
 Priority remains Embedded / `.fores` / `.zip` / `.bos` / `.dat`. Present disabled archives report their path/option even with `maybe_not_available=true`; only absent optional packs return empty sources. Corrupt priority packs never fall back. Embedded/APK retain bundled minizip with external ZIP OFF; `.fores` and updater patches remain baseline.
+
+## Packaged application configuration
+
+Each sub-config produces `.fomain-client` and `.fomain-server`. Packaging `--config`
+selects one file for native embedding and for the `Metadata` archive of each role;
+server and client archives stay separate.
+
+`METADATA_PACK_NAME` in `DataSource.h`, mirrored by `package.py`, names the pack. Declare
+`Bakers=Metadata Config ClientConfig` in it; the archive keeps target metadata/sidecars
+and only the selected config. `ClientConfigBaker` inherits `ConfigBaker` in the same
+module and writes complete client settings, including false, zero, empty and declared
+game settings. `ConfigBaker` keeps server outputs; `Bakers=Config` alone keeps both.
+
+Before frontend creation, `ReadResourceConfig` looks for `.fomain-server` first,
+then `.fomain-client` if no server configuration exists. Packaged applications
+check `Baking.ServerResources` before client resources with writable overlays;
+unpackaged consumers use `Baking.BakeOutput`. One loader serves every application
+through `InitApp(args, flags)`. Multiple files of the preferred suffix are an error.
+
+`GlobalSettings::ApplyResourceConfig(content)` replaces the snapshot with defaults
+plus resource settings; no embedded value survives it. Server/client resource
+directories must match the embedded bootstrap. Resource lookup uses a temporary packaged
+snapshot with only CLI resource/cache paths. Cache changes preserve preferences.
+Full CLI and auto settings run once, after resource and local configs, including
+`+` additions and diagnostics. Builtin settings remain read-only at runtime.
+
+### Downloaded client configuration
+
+No configuration on the first launch leaves the embedded bootstrap active; after
+synchronization a declared `Metadata` pack must contain an unambiguous configuration.
+`BaseSettings::GetResourceConfigContent` retains the applied text in memory for
+updater comparison. Changed text requires a restart before gameplay; the next
+launch reads the updated file. Unchanged text requires no restart.
+
+The configuration stays in its resource pack; no configuration cache is written.
+Rebuild/repackage native applications for first adoption. Qualify client download,
+persistent writes, restart and subsequent launch on every shipped platform, and
+verify the server's selected resource config before accepting its startup.

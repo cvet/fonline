@@ -32,6 +32,7 @@
 //
 
 #include "Application.h"
+
 #include "ConfigFile.h"
 #include "ImGuiStuff.h"
 #include "WebRelated.h"
@@ -42,6 +43,9 @@
 #include "SDL3/SDL_video.h"
 
 FO_BEGIN_NAMESPACE
+
+static constexpr std::chrono::milliseconds QUIT_WAIT_POLL_INTERVAL {100};
+static constexpr std::chrono::milliseconds SPLASH_CALLBACK_POLL_INTERVAL {16};
 
 static ImGuiKey KeycodeToImGuiKey(SDL_Keycode keycode);
 static auto MakeInputKeyMap() -> unordered_map<SDL_Keycode, KeyCode>;
@@ -541,13 +545,13 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
         throw AppInitException("SDL_InitSubSystem SDL_INIT_VIDEO failed", SDL_GetError());
     }
 
-    _clientMode = is_enum_set(flags, AppInitFlags::ClientMode);
+    _standaloneClient = is_enum_set(flags, AppInitFlags::StandaloneClient);
 
-    if (is_enum_set(flags, AppInitFlags::ClientMode)) {
+    if (_standaloneClient) {
         SDL_DisableScreenSaver();
     }
 
-    if (is_enum_set(flags, AppInitFlags::ClientMode) && (Settings.View.HideNativeCursor || !Input.IsMouseAvailable())) {
+    if (_standaloneClient && (Settings.View.HideNativeCursor || !Input.IsMouseAvailable())) {
         SDL_HideCursor();
         _nativeCursorHidden = true;
     }
@@ -565,7 +569,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
         ScreenState.Fullscreen = true;
     }
 
-    if (is_enum_set(flags, AppInitFlags::ClientMode)) {
+    if (_standaloneClient) {
         _ctx->ClearColor = {0, 0, 0, 255};
     }
 
@@ -594,7 +598,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
         }
     }
 
-    if (_ctx->ActiveRendererType != RenderType::Null && is_enum_set(flags, AppInitFlags::ClientMode) && !_isTablet && ScreenState.Fullscreen) {
+    if (_ctx->ActiveRendererType != RenderType::Null && _standaloneClient && !_isTablet && ScreenState.Fullscreen) {
         auto sdl_window {MainWindow._windowHandle.reinterpret_as<SDL_Window>()};
         FO_VERIFY_AND_THROW(sdl_window, "Window handle does not reference a valid SDL window");
 
@@ -613,7 +617,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
 
     LogSystemEnvironment(_ctx->ActiveRendererType != RenderType::Null ? MainWindow._windowHandle.reinterpret_as<SDL_Window>() : nullptr, ScreenState);
 
-    if (is_enum_set(flags, AppInitFlags::ClientMode) && Settings.Render.AlwaysOnTop) {
+    if (_standaloneClient && Settings.Render.AlwaysOnTop) {
         MainWindow.AlwaysOnTop(true);
     }
 
@@ -1208,13 +1212,15 @@ auto Application::ResolveTouchPos(float32_t normalized_x, float32_t normalized_y
     return WindowPosToScreenPos(active_renderer, ScreenState.Size, {window_x, window_y});
 }
 
-auto Application::GetTouchElapsedMs(uint64_t start_time, uint64_t end_time) const -> uint32_t
+auto Application::GetTouchElapsedTime(uint64_t start_time, uint64_t end_time) const -> timespan
 {
     if (end_time <= start_time || _timeFrequency == 0) {
-        return 0;
+        return {};
     }
 
-    return numeric_cast<uint32_t>((end_time - start_time) * 1000 / _timeFrequency);
+    float64_t elapsed_seconds {numeric_cast<float64_t>(end_time - start_time) / numeric_cast<float64_t>(_timeFrequency)};
+
+    return timespan {iround<int64_t>(elapsed_seconds * 1e9)};
 }
 
 auto Application::GetTouchDistance(ipos32 from, ipos32 to) const -> float32_t
@@ -1327,7 +1333,7 @@ void Application::FlushPendingTouchTap()
 
     auto cur_time {SDL_GetPerformanceCounter()};
 
-    if (GetTouchElapsedMs(_pendingTouchTap.ReleaseTime, cur_time) < TOUCH_DOUBLE_TAP_MAX_TIME_MS) {
+    if (GetTouchElapsedTime(_pendingTouchTap.ReleaseTime, cur_time) < TOUCH_DOUBLE_TAP_MAX_TIME) {
         return;
     }
 
@@ -1350,7 +1356,7 @@ void Application::UpdateNativeCursorVisibility(bool imguiOverlayWantsCursor)
         should_hide_cursor = false;
     }
     else {
-        should_hide_cursor = _clientMode && Settings.View.HideNativeCursor && !imguiOverlayWantsCursor;
+        should_hide_cursor = _standaloneClient && Settings.View.HideNativeCursor && !imguiOverlayWantsCursor;
     }
 
     if (should_hide_cursor == _nativeCursorHidden) {
@@ -1678,10 +1684,10 @@ void Application::BeginFrame()
                 auto cur_time {SDL_GetPerformanceCounter()};
 
                 if (_pendingTouchTap.Active) {
-                    uint32_t tap_elapsed {GetTouchElapsedMs(_pendingTouchTap.ReleaseTime, cur_time)};
+                    timespan tap_elapsed {GetTouchElapsedTime(_pendingTouchTap.ReleaseTime, cur_time)};
                     float32_t tap_distance {GetTouchDistance(_pendingTouchTap.Pos, touch_pos)};
 
-                    if (tap_elapsed >= TOUCH_DOUBLE_TAP_MAX_TIME_MS || tap_distance > numeric_cast<float32_t>(TOUCH_DOUBLE_TAP_MAX_DIST)) {
+                    if (tap_elapsed >= TOUCH_DOUBLE_TAP_MAX_TIME || tap_distance > numeric_cast<float32_t>(TOUCH_DOUBLE_TAP_MAX_DIST)) {
                         QueueTouchTap(_pendingTouchTap.Pos);
                         _pendingTouchTap = {};
                     }
@@ -1808,8 +1814,8 @@ void Application::BeginFrame()
 
                 auto cur_time {SDL_GetPerformanceCounter()};
                 float32_t tap_distance {GetTouchDistance(touch->StartPos, touch->LastPos)};
-                uint32_t tap_elapsed {GetTouchElapsedMs(touch->StartTime, cur_time)};
-                bool is_tap {!touch->ScrollActive && tap_distance <= numeric_cast<float32_t>(TOUCH_TAP_MAX_DIST) && tap_elapsed <= TOUCH_TAP_MAX_TIME_MS};
+                timespan tap_elapsed {GetTouchElapsedTime(touch->StartTime, cur_time)};
+                bool is_tap {!touch->ScrollActive && tap_distance <= numeric_cast<float32_t>(TOUCH_TAP_MAX_DIST) && tap_elapsed <= TOUCH_TAP_MAX_TIME};
 
                 ReleaseTouchPoint(finger_id);
 
@@ -1818,10 +1824,10 @@ void Application::BeginFrame()
                 }
 
                 if (_pendingTouchTap.Active) {
-                    uint32_t previous_tap_elapsed {GetTouchElapsedMs(_pendingTouchTap.ReleaseTime, cur_time)};
+                    timespan previous_tap_elapsed {GetTouchElapsedTime(_pendingTouchTap.ReleaseTime, cur_time)};
                     float32_t previous_tap_distance {GetTouchDistance(_pendingTouchTap.Pos, touch_pos)};
 
-                    if (previous_tap_elapsed <= TOUCH_DOUBLE_TAP_MAX_TIME_MS && previous_tap_distance <= numeric_cast<float32_t>(TOUCH_DOUBLE_TAP_MAX_DIST)) {
+                    if (previous_tap_elapsed <= TOUCH_DOUBLE_TAP_MAX_TIME && previous_tap_distance <= numeric_cast<float32_t>(TOUCH_DOUBLE_TAP_MAX_DIST)) {
                         if (!imgui_capture_mouse) {
                             QueueTouchDoubleTap(touch_pos);
                         }
@@ -2139,7 +2145,7 @@ void Application::BeginFrame()
 #if FO_WINDOWS || FO_LINUX || FO_MAC
         bool is_app_focused {main_sdl_window == SDL_GetKeyboardFocus()};
 #else
-        const bool is_app_focused {(SDL_GetWindowFlags(main_sdl_window.get()) & SDL_WINDOW_INPUT_FOCUS) != 0};
+        bool is_app_focused {(SDL_GetWindowFlags(main_sdl_window.get()) & SDL_WINDOW_INPUT_FOCUS) != 0};
 #endif
 
         if (is_app_focused) {
@@ -2224,7 +2230,7 @@ void Application::EndFrame()
             if (im_tex->Status != ImTextureStatus_OK) {
                 if (im_tex->Status == ImTextureStatus_WantCreate) {
                     auto tex_size {isize(im_tex->Width, im_tex->Height)};
-                    FO_VERIFY_AND_THROW(tex_size.square() * 4 == numeric_cast<size_t>(im_tex->GetSizeInBytes()), "ImGui texture byte size does not match square RGBA texture dimensions", tex_size.square() * 4, im_tex->GetSizeInBytes());
+                    FO_VERIFY_AND_THROW(tex_size.square<size_t>() * 4 == numeric_cast<size_t>(im_tex->GetSizeInBytes()), "ImGui texture byte size does not match square RGBA texture dimensions", tex_size.square<size_t>() * 4, im_tex->GetSizeInBytes());
                     auto font_tex {active_renderer->CreateTexture(tex_size, true, false)};
                     auto tex_data {cast_from_void<const ucolor*>(im_tex->GetPixels())};
                     FO_VERIFY_AND_THROW(tex_data, "ImGui texture pixel data is null");
@@ -2358,7 +2364,7 @@ void Application::WaitForRequestedQuit()
     while (!_quit) {
         // Timed wait: the signal handler only latches the quit-signal flag (async-signal-safe), so this
         // waiting thread is the one that converts it into a regular RequestQuit with logging/notification
-        _quitEvent.wait_for(locker, std::chrono::milliseconds {100});
+        _quitEvent.wait_for(locker, QUIT_WAIT_POLL_INTERVAL);
 
         if (IsQuitSignalReceived()) {
             RequestQuit();
@@ -3041,6 +3047,24 @@ void AppAudio::UnlockDevice()
 
 void Application::ShowErrorMessage(string_view message, string_view traceback, bool fatal_error)
 {
+    if (IsNonInteractiveMode()) {
+        logging::write_message(logging::type::error, message);
+
+        if (!traceback.empty()) {
+            logging::write_message(logging::type::error, traceback);
+        }
+
+        if (IsAppInitialized()) {
+            GetApp()->RequestQuit(false);
+        }
+        else {
+            logging::write_message(logging::type::error, "Shutdown!");
+            exit_app(false);
+        }
+
+        return;
+    }
+
     if (is_run_in_debugger()) {
         return;
     }
@@ -3055,8 +3079,8 @@ void Application::ShowErrorMessage(string_view message, string_view traceback, b
     const auto web_message {traceback.empty() ? string(message) : strex("{}\n\n{}", message, traceback)};
     WebRelated::ShowError(title, web_message);
 #else
-    const string title_text {string(title)};
-    const string message_text {string(message)};
+    string title_text {string(title)};
+    string message_text {string(message)};
     auto title_ptr {make_ptr(title_text.c_str())};
     auto message_ptr {make_ptr(message_text.c_str())};
     SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, title_ptr.get(), message_ptr.get(), nullptr);
@@ -3186,7 +3210,7 @@ void Application::ShowProgressWindow(string_view text, const ProgressWindowCallb
                 SDL_RenderDebugText(renderer.get(), text_x, text_y, window_text_ptr.get());
                 SDL_RenderPresent(renderer.get());
 
-                if (fut.wait_for(std::chrono::milliseconds(16)) == std::future_status::ready) {
+                if (fut.wait_for(SPLASH_CALLBACK_POLL_INTERVAL) == std::future_status::ready) {
                     fut.get();
                     break;
                 }

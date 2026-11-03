@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
 #include "Timer.h"
@@ -58,7 +60,7 @@ TEST_CASE("GameTimer")
         timer.FrameAdvance(false);
 
         CHECK(timer.GetFrameTime() >= initial_time);
-        CHECK(timer.GetFrameDeltaTime() >= timespan {});
+        CHECK(timer.GetFrameDeltaTime() >= timespan::zero);
     }
 
     SECTION("SynchronizedTimeMovesForwardAfterAdvance")
@@ -95,7 +97,7 @@ TEST_CASE("GameTimer")
         timer.FrameAdvance(false);
 
         CHECK(timer.GetFrameTime() == paused_frame_time);
-        CHECK(timer.GetFrameDeltaTime() == timespan {});
+        CHECK(timer.GetFrameDeltaTime() == timespan::zero);
         CHECK(timer.GetSynchronizedTime() == paused_sync_time);
 
         timer.Resume();

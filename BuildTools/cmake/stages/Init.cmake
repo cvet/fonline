@@ -26,10 +26,10 @@ DeclareRequiredValueOptions(BAKING
 	FO_MAP_CAMERA_ANGLE "Map camera angle in degrees")
 
 DeclareRequiredValueOptions(
-	FO_APP_ICON "Executable file icon"
 	FO_OUTPUT_PATH "Common output path")
 
 DeclareValueOptions(BAKING
+	FO_MAP_MAX_SIZE "Maximum map width and height in cells" 4000
 	FO_EFFECT_SCRIPT_VALUES "Number of float slots in ScriptValueBuf (must be multiple of 4)" 16
 	FO_EFFECT_MAX_PASSES "Maximum number of passes per effect" 6
 	FO_MODEL_LAYERS_COUNT "Number of model rendering layers" 30
@@ -38,7 +38,9 @@ DeclareValueOptions(BAKING
 	FO_MODEL_BONES_PER_VERTEX "Number of bone influences per 3D vertex" 4)
 
 DeclareValueOptions(
+	FO_APP_ICON "Executable file icon" ""
 	FO_CXX_STANDARD "C++ standard for project compilation (must be at least 20)" 20
+	FO_UNITY_BUILD_BATCH_SIZE "Sources per unity build batch (positive integer)" 32
 	FO_BINARY_OUTPUT_POSTFIX "Postfix appended to binary output directory names" ""
 	FO_EMBEDDED_DATA_CAPACITY "Capacity for embedded data in binaries" 200000
 	FO_STRING_INLINE_CAPACITY "Characters kept inside a string before it allocates (one less than a multiple of 8)" 31
@@ -48,6 +50,7 @@ DeclareValueOptions(
 	FO_RESHARPER_SETTINGS "Path to ReSharper solution settings (empty is default config)" "")
 
 DeclareBoolOptions(BAKING
+	FO_MAP_WIDE_COORDS "Signed 32-bit map cell coordinates instead of 16-bit" OFF
 	FO_ENABLE_3D "Supporting of 3d models" OFF
 	FO_SPARK_PARTICLES "Supporting of SPARK particles" OFF
 	FO_EFFEKSEER_PARTICLES "Supporting of Effekseer particles" OFF
@@ -77,6 +80,7 @@ DeclareBoolOptions(
 	FO_DISABLE_NAMESPACE "Force disable using of FOnline namespace" OFF
 	FO_DISABLE_VULKAN "Force disable using of Vulkan rendering (built by default, headers vendored with SDL3, no SDK needed)" OFF
 	FO_DISABLE_SDL_GPU "Force disable using of SDL_GPU rendering (Vulkan / Metal / D3D12 via SDL3)" OFF
+	FO_UNITY_BUILD "Combine first-party C++ sources into unity build batches" OFF
 	FO_VERBOSE_BUILD "Verbose build mode" OFF
 	FO_BUILD_CLIENT "Build Client binaries" OFF
 	FO_BUILD_SERVER "Build Server binaries" OFF
@@ -112,11 +116,16 @@ RequireNonEmptyVariables(
 	FO_MAP_HEX_WIDTH
 	FO_MAP_HEX_HEIGHT
 	FO_MAP_CAMERA_ANGLE
-	FO_APP_ICON
 	FO_OUTPUT_PATH)
 
 # Evaluate build hash
 SetValue(FO_GIT_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
+# Track the project's own Git identity so HEAD/ref changes reconfigure the build hash
+include("${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/cmake/helpers/EngineVersion.cmake")
+CollectGitHeadDependencies("${FO_GIT_ROOT}" FO_GIT_DEPENDENCIES)
+if(NOT "${FO_GIT_DEPENDENCIES}" STREQUAL "")
+	set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${FO_GIT_DEPENDENCIES})
+endif()
 ExecuteProcess(COMMAND git rev-parse HEAD
 	WORKING_DIRECTORY ${FO_GIT_ROOT}
 	RESULT_VARIABLE FO_GIT_HASH_RESULT

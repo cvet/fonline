@@ -22,6 +22,30 @@ Continue with the [canonical English explanation](en/explanation/content-pipelin
 
 Continue with the [canonical English explanation](en/explanation/content-pipeline/baking.md#output-ownership-and-competing-processes).
 
+## Resource usage manifest
+
+Continue with the [canonical English explanation](en/explanation/content-pipeline/baking.md#resource-usage-manifest).
+
+### Manifest lifecycle
+
+Continue with the [canonical English explanation](en/explanation/content-pipeline/baking.md#manifest-lifecycle).
+
+### Root references
+
+Continue with the [canonical English explanation](en/explanation/content-pipeline/baking.md#root-references).
+
+### Output kinds and registration
+
+Continue with the [canonical English explanation](en/explanation/content-pipeline/baking.md#output-kinds-and-registration).
+
+### Selection and dependency closure
+
+Continue with the [canonical English explanation](en/explanation/content-pipeline/baking.md#selection-and-dependency-closure).
+
+### Forced inclusion for opaque runtime names
+
+Continue with the [canonical English explanation](en/explanation/content-pipeline/baking.md#forced-inclusion-for-opaque-runtime-names).
+
 ## CMake entry points
 
 Continue with the [canonical English explanation](en/explanation/content-pipeline/baking.md#cmake-entry-points).

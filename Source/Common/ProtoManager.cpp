@@ -32,6 +32,7 @@
 //
 
 #include "ProtoManager.h"
+
 #include "ConfigFile.h"
 #include "EngineBase.h"
 #include "FileSystem.h"
@@ -123,7 +124,7 @@ void ProtoManager::LoadFromResources(const FileSystem& resources)
 
     for (const auto& proto_file_header : proto_files) {
         auto proto_file {File::Load(proto_file_header)};
-        auto reader {data_reader(proto_file.GetDataSpan())};
+        data_reader reader {data_reader(proto_file.GetDataSpan())};
 
         // Hashes
         {

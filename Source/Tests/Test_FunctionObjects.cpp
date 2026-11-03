@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
 #include "Containers.h"
@@ -388,8 +390,10 @@ TEST_CASE("FunctionObjects")
 
     SECTION("CallableThroughConstReference")
     {
-        const move_only_function<int32_t()> uniq {[] { return 5; }};
-        const copyable_function<int32_t()> copyable {[] { return 6; }};
+        move_only_function<int32_t()> uniq_target {[] { return 5; }};
+        const move_only_function<int32_t()>& uniq {uniq_target};
+        copyable_function<int32_t()> copyable_target {[] { return 6; }};
+        const copyable_function<int32_t()>& copyable {copyable_target};
 
         REQUIRE(uniq() == 5);
         REQUIRE(copyable() == 6);

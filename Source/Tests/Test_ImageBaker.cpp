@@ -31,10 +31,14 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
 #include "DataSerialization.h"
 #include "ImageBaker.h"
+#include "ImageWriter.h"
+#include "SpriteResource.h"
 #include "Test_BakerHelpers.h"
 
 FO_BEGIN_NAMESPACE
@@ -46,6 +50,7 @@ struct BakedImageFrame
     uint16_t Height {};
     int16_t NextX {};
     int16_t NextY {};
+    uint32_t DurationMs {};
     vector<uint8_t> Data {};
     SpriteMeshKind MeshKind {SpriteMeshKind::Quad};
     SpriteMeshData Mesh {};
@@ -54,7 +59,7 @@ struct BakedImageFrame
 struct BakedImageSequence
 {
     uint16_t SequenceSize {};
-    uint16_t AnimTicks {};
+    uint32_t AnimTicks {};
     vector<BakedImageFrame> Frames {};
 };
 
@@ -571,16 +576,6 @@ static void AppendTilPrefix(vector<uint8_t>& data)
     return data;
 }
 
-[[maybe_unused]] static auto MakeTilWithFrameCount(int32_t frames_count) -> vector<uint8_t>
-{
-    vector<uint8_t> data {};
-    AppendTilPrefix(data);
-    data.insert(data.end(), {'<', 't', 'i', 'l', 'e', 'd', 'a', 't', 'a', '>'});
-    data.insert(data.end(), 3, 0);
-    AppendLe32(data, std::bit_cast<uint32_t>(frames_count));
-    return data;
-}
-
 [[maybe_unused]] static auto MakeTilWithoutTiledata() -> vector<uint8_t>
 {
     vector<uint8_t> data {};
@@ -819,105 +814,60 @@ static void AddSourceBinaryFile(BakerTests::TestRig& rig, string_view path, cons
     rig.AddSourceFile(path, bytes, write_time);
 }
 
-static void ReadSpriteMesh(data_reader& reader, BakedImageFrame& frame)
+static auto ReadDirectionSequence(const SpriteResourceData& resource, size_t dir) -> BakedImageSequence
 {
-    uint8_t mesh_kind {reader.read<uint8_t>()};
-    REQUIRE(mesh_kind <= static_cast<uint8_t>(SpriteMeshKind::Mesh));
-    frame.MeshKind = static_cast<SpriteMeshKind>(mesh_kind);
+    const auto& direction {resource.Directions[dir]};
+    BakedImageSequence result {};
+    result.SequenceSize = numeric_cast<uint16_t>(direction.Frames.size());
+    result.AnimTicks = numeric_cast<uint32_t>(GetSpriteDirDuration(resource.Animation.Sprite->Directions[dir]).milliseconds());
 
-    if (frame.MeshKind != SpriteMeshKind::Mesh) {
-        return;
+    for (size_t index {0}; index < direction.Frames.size(); index++) {
+        const auto& slot {direction.Frames[index]};
+        size_t leaf {index};
+
+        while (direction.Frames[leaf].SharedFrameIndex) {
+            leaf = *direction.Frames[leaf].SharedFrameIndex;
+        }
+
+        const auto& pixels {direction.Frames[leaf]};
+        BakedImageFrame frame {};
+        frame.Offset = slot.Offset;
+        frame.Width = numeric_cast<uint16_t>(slot.Size.width);
+        frame.Height = numeric_cast<uint16_t>(slot.Size.height);
+        frame.NextX = numeric_cast<int16_t>(slot.NextOffset.x);
+        frame.NextY = numeric_cast<int16_t>(slot.NextOffset.y);
+        frame.DurationMs = numeric_cast<uint32_t>(slot.Duration.milliseconds());
+
+        for (ucolor pixel : pixels.Pixels) {
+            frame.Data.insert(frame.Data.end(), {pixel.comp.r, pixel.comp.g, pixel.comp.b, pixel.comp.a});
+        }
+
+        frame.MeshKind = !pixels.Mesh ? SpriteMeshKind::Quad : pixels.Mesh->Indices.empty() ? SpriteMeshKind::Empty : SpriteMeshKind::Mesh;
+
+        if (pixels.Mesh) {
+            frame.Mesh = *pixels.Mesh;
+        }
+
+        result.Frames.emplace_back(std::move(frame));
     }
 
-    uint16_t vertex_count {reader.read<uint16_t>()};
-    uint32_t index_count {reader.read<uint32_t>()};
-    frame.Mesh.SourceSize.width = reader.read<uint16_t>();
-    frame.Mesh.SourceSize.height = reader.read<uint16_t>();
-    frame.Mesh.SourceOffset.x = reader.read<int32_t>();
-    frame.Mesh.SourceOffset.y = reader.read<int32_t>();
-    frame.Mesh.Vertices.reserve(vertex_count);
-    frame.Mesh.Indices.reserve(index_count);
-
-    for (uint16_t i {0}; i < vertex_count; i++) {
-        uint16_t x {reader.read<uint16_t>()};
-        uint16_t y {reader.read<uint16_t>()};
-        frame.Mesh.Vertices.emplace_back(x, y);
-    }
-    for (uint32_t i {0}; i < index_count; i++) {
-        frame.Mesh.Indices.emplace_back(reader.read<uint16_t>());
-    }
-}
-
-static void SkipSpriteMesh(data_reader& reader)
-{
-    BakedImageFrame frame {};
-    ReadSpriteMesh(reader, frame);
-}
-
-static auto ReadSingleFrame(const vector<uint8_t>& baked_data) -> BakedImageFrame
-{
-    data_reader reader {baked_data};
-
-    CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
-    CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_VERSION);
-    CHECK(reader.read<uint16_t>() == 1);
-    CHECK(reader.read<uint16_t>() == 100);
-    CHECK(reader.read<uint8_t>() == 1);
-    CHECK_FALSE(reader.read<bool>());
-
-    BakedImageFrame frame {};
-    frame.Offset.x = reader.read<int16_t>();
-    frame.Offset.y = reader.read<int16_t>();
-    frame.Width = reader.read<uint16_t>();
-    frame.Height = reader.read<uint16_t>();
-    frame.NextX = reader.read<int16_t>();
-    frame.NextY = reader.read<int16_t>();
-
-    size_t data_size {numeric_cast<size_t>(frame.Width) * frame.Height * 4};
-    auto frame_data {reader.read_bytes(data_size)};
-    frame.Data.assign(frame_data.begin(), frame_data.end());
-    ReadSpriteMesh(reader, frame);
-
-    CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
-    CHECK_NOTHROW(reader.verify_end());
-
-    return frame;
+    return result;
 }
 
 static auto ReadSingleDirSequence(const vector<uint8_t>& baked_data) -> BakedImageSequence
 {
-    data_reader reader {baked_data};
+    auto resource {ReadSpriteResource(baked_data)};
+    REQUIRE(resource.Directions.size() == 1);
 
-    CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
-    CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_VERSION);
+    return ReadDirectionSequence(resource, 0);
+}
 
-    BakedImageSequence sequence {};
-    sequence.SequenceSize = reader.read<uint16_t>();
-    sequence.AnimTicks = reader.read<uint16_t>();
-    CHECK(reader.read<uint8_t>() == 1);
-    sequence.Frames.reserve(sequence.SequenceSize);
+static auto ReadSingleFrame(const vector<uint8_t>& baked_data) -> BakedImageFrame
+{
+    auto sequence {ReadSingleDirSequence(baked_data)};
+    REQUIRE(sequence.Frames.size() == 1);
 
-    for (uint16_t i {0}; i < sequence.SequenceSize; i++) {
-        CHECK_FALSE(reader.read<bool>());
-
-        auto& frame {sequence.Frames.emplace_back()};
-        frame.Offset.x = reader.read<int16_t>();
-        frame.Offset.y = reader.read<int16_t>();
-        frame.Width = reader.read<uint16_t>();
-        frame.Height = reader.read<uint16_t>();
-        frame.NextX = reader.read<int16_t>();
-        frame.NextY = reader.read<int16_t>();
-
-        size_t data_size {numeric_cast<size_t>(frame.Width) * frame.Height * 4};
-        const_span<uint8_t> frame_data {reader.read_bytes(data_size)};
-        frame.Data.assign(frame_data.begin(), frame_data.end());
-        ReadSpriteMesh(reader, frame);
-    }
-
-    CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
-    CHECK_NOTHROW(reader.verify_end());
-
-    return sequence;
+    return sequence.Frames.front();
 }
 
 static void ConfigureSpriteMesh(BakerTests::TestRig& rig, bool enabled = true, int32_t alpha_threshold = 0, int32_t max_triangles = 4096, float32_t area_savings_weight = 64.0f)
@@ -969,12 +919,45 @@ static auto BakeAlphaMask(BakerTests::TestRig& rig, const vector<string>& rows, 
             ignore_unused(fname, opt, reader, files);
 
             ImageImport::FrameCollection collection {};
-            collection.SequenceSize = 1;
-            collection.AnimTicks = 100;
+            [[maybe_unused]] uint16_t sequence_size {};
+            uint32_t duration_ms {100};
+            bool have_dirs {};
+            sequence_size = 1;
+            duration_ms = 100;
             collection.Main.OffsX = numeric_cast<int16_t>(offset.x);
             collection.Main.OffsY = numeric_cast<int16_t>(offset.y);
             collection.Main.Frames.resize(1);
-            collection.Main.Frames[0] = ImageImport::FrameShot {.Width = width, .Height = height, .Data = rgba};
+            collection.Main.Frames[0] = ImageImport::FrameShot {.Size = {width, height}, .Data = rgba};
+
+            if (!have_dirs) {
+                for (auto& direction : collection.Dirs) {
+                    direction.Frames.clear();
+                }
+            }
+            else {
+                for (int32_t direction {GameSettings::MAP_DIR_COUNT - 1}; direction < ImageImport::MAX_DIRS_MINUS_ONE; direction++) {
+                    collection.Dirs[direction].Frames.clear();
+                }
+            }
+
+            for (int32_t direction {0}; direction < (have_dirs ? GameSettings::MAP_DIR_COUNT : 1); direction++) {
+                auto& frames {direction == 0 ? collection.Main : collection.Dirs[direction - 1]};
+
+                for (size_t index {0}; index < frames.Frames.size(); index++) {
+                    auto& shot {frames.Frames[index]};
+
+                    if (shot.Shared && shot.SharedIndex >= 0 && numeric_cast<size_t>(shot.SharedIndex) < index) {
+                        int32_t reference {shot.SharedIndex};
+                        shot = frames.Frames[numeric_cast<size_t>(reference)];
+                        shot.Data.clear();
+                        shot.Shared = true;
+                        shot.SharedIndex = reference;
+                    }
+                }
+
+                ImageImport::SetFrameSequenceDuration(frames, std::chrono::milliseconds {duration_ms});
+            }
+
             return collection;
         },
         {"mask"});
@@ -1052,155 +1035,401 @@ TEST_CASE("ImageBakerFrmCustomPaletteWithByteWrapping")
 }
 #endif
 
-#if FO_IMAGE_SPR
-TEST_CASE("ImageBakerSpr")
+TEST_CASE("ImageBakerFofrmNormalizesRawFramesBeforeCheckingSerializedRanges")
 {
     using namespace BakerTests;
 
-    SECTION("BakesSprSequenceOptionsThroughFofrm")
-    {
+    auto loader {[](string_view fname, string_view opt, FileReader reader, const ImageImport::Context& context) {
+        ignore_unused(fname, opt, reader, context);
+        ImageImport::FrameCollection collection {};
+        collection.Main.Frames = {ImageImport::FrameShot {.Size = {1, 1}, .Motion = {40000, -40000}, .Data = {10, 20, 30, 255}}};
+        return collection;
+    }};
+
+    TestRig transformed {};
+    transformed.AddSourceFile("gfx/resolved.fofrm", "Frame = source.toy\nMotion = 5 -6\nDuration = 100\nSize = 2 1\n");
+    transformed.AddSourceFile("gfx/source.toy", "payload");
+    ImageBaker transformed_baker {transformed.MakeContext()};
+    transformed_baker.AddLoader(loader, {"toy"});
+    transformed_baker.BakeFiles(transformed.GetAllSourceFiles(), "gfx/resolved.fofrm");
+    REQUIRE(transformed.Outputs.contains("gfx/resolved.fofrm"));
+    auto frame {ReadSingleFrame(transformed.Outputs.at("gfx/resolved.fofrm"))};
+    CHECK(frame.Width == 2);
+    CHECK(frame.Height == 1);
+    CHECK(frame.NextX == 5);
+    CHECK(frame.NextY == -6);
+    CHECK(frame.DurationMs == 100);
+    CHECK(frame.Data == vector<uint8_t> {10, 20, 30, 255, 10, 20, 30, 255});
+
+    TestRig direct {};
+    direct.AddSourceFile("gfx/source.toy", "payload");
+    ImageBaker direct_baker {direct.MakeContext()};
+    direct_baker.AddLoader(loader, {"toy"});
+    CHECK_THROWS_AS(direct_baker.BakeFiles(direct.GetAllSourceFiles(), "gfx/source.toy"), ImageBakerException);
+    CHECK(direct.Outputs.empty());
+}
+
+TEST_CASE("ImageBakerFofrmMaterializesRawForwardReferencesAndRejectsNegativeIndexes")
+{
+    using namespace BakerTests;
+
+    for (int32_t reference : {1, -1}) {
         TestRig rig {};
-        rig.AddSourceFile("gfx/spr.fofrm", "Frm=actor$[1,5,-10,20]walk.spr\n");
-        AddSourceBinaryFile(rig, "gfx/actor.spr", MakeSimpleSpr());
-
+        rig.AddSourceFile("gfx/frames.fofrm", "Frame = source.toy\n");
+        rig.AddSourceFile("gfx/source.toy", "payload");
         ImageBaker baker {rig.MakeContext()};
-        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/spr.fofrm");
+        baker.AddLoader(
+            [reference](string_view fname, string_view opt, FileReader reader, const ImageImport::Context& context) {
+                ignore_unused(fname, opt, reader, context);
+                ImageImport::FrameCollection collection {};
+                collection.Main.Frames = {
+                    ImageImport::FrameShot {.Motion = {1, 2}, .Shared = true, .SharedIndex = reference},
+                    ImageImport::FrameShot {.Size = {1, 1}, .Motion = {3, 4}, .Data = {10, 20, 30, 255}},
+                };
+                return collection;
+            },
+            {"toy"});
 
-        REQUIRE(rig.Outputs.contains("gfx/spr.fofrm"));
-        auto sequence {ReadSingleDirSequence(rig.Outputs.at("gfx/spr.fofrm"))};
+        if (reference < 0) {
+            CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/frames.fofrm"), ImageBakerException);
+            CHECK(rig.Outputs.empty());
+            continue;
+        }
 
-        CHECK(sequence.SequenceSize == 1);
-        CHECK(sequence.AnimTicks == 100);
-        REQUIRE(sequence.Frames.size() == 1);
-        CHECK(sequence.Frames[0].Width == 3);
-        CHECK(sequence.Frames[0].Height == 1);
+        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/frames.fofrm");
+        REQUIRE(rig.Outputs.contains("gfx/frames.fofrm"));
+        auto sequence {ReadSingleDirSequence(rig.Outputs.at("gfx/frames.fofrm"))};
+        REQUIRE(sequence.Frames.size() == 2);
+        CHECK(sequence.Frames[0].Data == sequence.Frames[1].Data);
         CHECK(sequence.Frames[0].NextX == 1);
-        CHECK(sequence.Frames[0].NextY == 1);
-        CHECK(sequence.Frames[0].Data == vector<uint8_t> {0x33, 0x22, 0x11, 0xFF, 0x2D, 0x14, 0x28, 0xFF, 0, 0, 0, 0x40});
+        CHECK(sequence.Frames[0].NextY == 2);
+        CHECK(sequence.Frames[1].NextX == 3);
+        CHECK(sequence.Frames[1].NextY == 4);
+        CHECK(sequence.AnimTicks == 200);
+    }
+}
+
+TEST_CASE("ImageBakerResizesWidePngBeforeCheckingSerializedDimensions")
+{
+    using namespace BakerTests;
+
+    TestRig rig {};
+    ConfigureSpriteMesh(rig, false);
+    vector<ucolor> pixels {vector<ucolor>(65536, ucolor {10, 20, 30, 255})};
+    auto png {ImageWriter::EncodeCompactPng({65536, 1}, pixels)};
+    AddSourceBinaryFile(rig, "gfx/wide.png", png);
+    rig.AddSourceFile("gfx/resized.fofrm", "Frame = wide.png\nSize = 1 1\n");
+
+    ImageBaker baker {rig.MakeContext()};
+    TestRig direct {};
+    AddSourceBinaryFile(direct, "gfx/wide.png", png);
+    ImageBaker direct_baker {direct.MakeContext()};
+    CHECK_THROWS_AS(direct_baker.BakeFiles(direct.GetAllSourceFiles(), "gfx/wide.png"), ImageBakerException);
+    CHECK(direct.Outputs.empty());
+
+    baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/resized.fofrm");
+    auto frame {ReadSingleFrame(rig.Outputs.at("gfx/resized.fofrm"))};
+    CHECK(frame.Width == 1);
+    CHECK(frame.Height == 1);
+    CHECK(frame.Data == vector<uint8_t> {10, 20, 30, 255});
+}
+
+TEST_CASE("ImageBakerBakesWideRawTgaWithUnsignedWireDimensions")
+{
+    using namespace BakerTests;
+
+    TestRig rig {};
+    ConfigureSpriteMesh(rig, false);
+    constexpr int32_t wide_width {32768};
+    vector<uint8_t> pixels {vector<uint8_t>(numeric_cast<size_t>(wide_width) * 4)};
+    pixels[0] = 1;
+    pixels[1] = 2;
+    pixels[2] = 3;
+    pixels[3] = 4;
+    size_t last_pixel {(numeric_cast<size_t>(wide_width) - 1) * 4};
+    pixels[last_pixel + 0] = 5;
+    pixels[last_pixel + 1] = 6;
+    pixels[last_pixel + 2] = 7;
+    pixels[last_pixel + 3] = 8;
+    AddSourceBinaryFile(rig, "gfx/wide.tga", MakeRawTga(numeric_cast<uint16_t>(wide_width), 1, 32, pixels));
+
+    ImageBaker baker {rig.MakeContext()};
+    baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/wide.tga");
+
+    REQUIRE(rig.Outputs.contains("gfx/wide.tga"));
+    auto frame {ReadSingleFrame(rig.Outputs.at("gfx/wide.tga"))};
+
+    CHECK(frame.Width == 32768);
+    CHECK(frame.Height == 1);
+    REQUIRE(frame.Data.size() == pixels.size());
+    CHECK(frame.Data[0] == 3);
+    CHECK(frame.Data[1] == 2);
+    CHECK(frame.Data[2] == 1);
+    CHECK(frame.Data[3] == 4);
+    CHECK(frame.Data[last_pixel + 0] == 7);
+    CHECK(frame.Data[last_pixel + 1] == 6);
+    CHECK(frame.Data[last_pixel + 2] == 5);
+    CHECK(frame.Data[last_pixel + 3] == 8);
+}
+
+TEST_CASE("ImageBakerRejectsTruncatedAndOversizedTgaBeforeLargeAllocation")
+{
+    using namespace BakerTests;
+
+    TestRig rig {};
+    AddSourceBinaryFile(rig, "gfx/huge-raw.tga", MakeRawTga(65535, 65535, 32, vector<uint8_t> {}));
+    AddSourceBinaryFile(rig, "gfx/short-wide-raw.tga", MakeRawTga(65535, 1, 32, vector<uint8_t>(65532, 0x7F)));
+    AddSourceBinaryFile(rig, "gfx/huge-rle.tga", MakeRleTga(65535, 65535, 32, {0x7F, 1, 2, 3, 4}));
+    AddSourceBinaryFile(rig, "gfx/oversized-rle.tga", MakeRleTga(2, 1, 24, {0x7F, 1, 2, 3}));
+    AddSourceBinaryFile(rig, "gfx/oversized-run.tga", MakeRleTga(2, 1, 24, {0x82, 1, 2, 3}));
+    AddSourceBinaryFile(rig, "gfx/truncated-rle.tga", MakeRleTga(2, 1, 24, {0x00, 1, 2, 3, 0x80}));
+
+    ImageBaker baker {rig.MakeContext()};
+
+    for (string_view path : {"gfx/huge-raw.tga", "gfx/short-wide-raw.tga", "gfx/huge-rle.tga", "gfx/oversized-rle.tga", "gfx/oversized-run.tga", "gfx/truncated-rle.tga"}) {
+        CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), path), ImageBakerException);
     }
 
-    SECTION("BakesSprSkippedInvalidSequenceAndAllColorOffsets")
-    {
-        TestRig rig {};
-        rig.AddSourceFile("gfx/spr-all-offsets.fofrm", "Frm=actor$[9,1,2,3]walk.spr\n");
-        AddSourceBinaryFile(rig, "gfx/actor.spr", MakeSprWithSequenceFrames({-43, 11, 12, 13, 5}));
+    CHECK(rig.Outputs.empty());
+}
 
-        ImageBaker baker {rig.MakeContext()};
-        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/spr-all-offsets.fofrm");
+TEST_CASE("ImageBakerBakesExactV3BytesForCustomFrame")
+{
+    using namespace BakerTests;
 
-        REQUIRE(rig.Outputs.contains("gfx/spr-all-offsets.fofrm"));
-        auto sequence {ReadSingleDirSequence(rig.Outputs.at("gfx/spr-all-offsets.fofrm"))};
+    TestRig rig {};
+    ConfigureSpriteMesh(rig, false);
+    rig.AddSourceFile("gfx/exact.toy", "payload");
 
-        CHECK(sequence.SequenceSize == 1);
-        CHECK(sequence.AnimTicks == 100);
-        REQUIRE(sequence.Frames.size() == 1);
-        CHECK(sequence.Frames[0].Width == 3);
-        CHECK(sequence.Frames[0].Height == 1);
-        CHECK(sequence.Frames[0].NextX == 1);
-        CHECK(sequence.Frames[0].NextY == 1);
-        CHECK(sequence.Frames[0].Data == vector<uint8_t> {0x34, 0x24, 0x14, 0xFF, 0x29, 0x20, 0x17, 0xFF, 0x01, 0x02, 0x03, 0x40});
+    ImageBaker baker {rig.MakeContext()};
+    baker.AddLoader(
+        [](string_view fname, string_view opt, FileReader reader, const ImageImport::Context& files) {
+            ignore_unused(fname, opt, reader, files);
+            ImageImport::FrameCollection collection {};
+            collection.Main.Frames = {ImageImport::FrameShot {.Size = {1, 1}, .Duration = std::chrono::milliseconds {100}, .Data = {10, 20, 30, 40}}};
+            return collection;
+        },
+        {"toy"});
+    baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/exact.toy");
+
+    REQUIRE(rig.Outputs.contains("gfx/exact.toy"));
+    CHECK(rig.Outputs.at("gfx/exact.toy") ==
+        vector<uint8_t> {
+            SPRITE_RESOURCE_MAGIC,
+            SPRITE_RESOURCE_VERSION,
+            1,
+            1,
+            0,
+            100,
+            0,
+            0,
+            0,
+            100,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            1,
+            0,
+            10,
+            20,
+            30,
+            40,
+            static_cast<uint8_t>(SpriteMeshKind::Quad),
+            SPRITE_RESOURCE_MAGIC,
+        });
+}
+
+TEST_CASE("ImageBakerFofrmTimelineUsesPositiveUint32Milliseconds")
+{
+    using namespace BakerTests;
+
+    TestRig valid {};
+    valid.AddSourceFile("gfx/maximum.fofrm", "Duration = 4294967295\nFrame = frame.tga\n");
+    AddSourceBinaryFile(valid, "gfx/frame.tga", MakeRawTga(1, 1, 24, {0, 0, 255}));
+    ImageBaker valid_baker {valid.MakeContext()};
+    valid_baker.BakeFiles(valid.GetAllSourceFiles(), "gfx/maximum.fofrm");
+    REQUIRE(valid.Outputs.contains("gfx/maximum.fofrm"));
+    CHECK(ReadSingleDirSequence(valid.Outputs.at("gfx/maximum.fofrm")).AnimTicks == std::numeric_limits<uint32_t>::max());
+
+    for (string_view timeline : {"Fps = 0", "Duration = 0", "Duration = 4294967296", "FrameDurations = 4294967295 1"}) {
+        TestRig invalid {};
+        invalid.AddSourceFile("gfx/invalid.fofrm", strex("{}\nFrames = frame.tga frame.tga\n", timeline).str());
+        AddSourceBinaryFile(invalid, "gfx/frame.tga", MakeRawTga(1, 1, 24, {0, 0, 255}));
+        ImageBaker invalid_baker {invalid.MakeContext()};
+        CHECK_THROWS_AS(invalid_baker.BakeFiles(invalid.GetAllSourceFiles(), "gfx/invalid.fofrm"), ImageBakerException);
+        CHECK(invalid.Outputs.empty());
     }
+}
 
-    SECTION("BakesSprRepeatedFramesAsShared")
-    {
-        TestRig rig {};
-        AddSourceBinaryFile(rig, "gfx/repeated.spr", MakeSprWithSequenceFrames({0, 0}, 2));
+TEST_CASE("ImageBakerRejectsInvalidCustomLoaderCollectionsBeforeOutput")
+{
+    using namespace BakerTests;
 
-        ImageBaker baker {rig.MakeContext()};
-        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/repeated.spr");
+    auto make_valid {[] {
+        ImageImport::FrameCollection collection {};
+        collection.Main.Frames = {ImageImport::FrameShot {.Size = {1, 1}, .Duration = std::chrono::milliseconds {100}, .Data = {1, 2, 3, 255}}};
+        return collection;
+    }};
+    vector<ImageImport::FrameCollection> invalid {};
+    invalid.emplace_back();
+    auto excessive_count {make_valid()};
+    excessive_count.Main.Frames.resize(65536);
+    invalid.emplace_back(std::move(excessive_count));
 
-        REQUIRE(rig.Outputs.contains("gfx/repeated.spr"));
-
-        data_reader reader {rig.Outputs.at("gfx/repeated.spr")};
-        CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
-        CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_VERSION);
-        CHECK(reader.read<uint16_t>() == 2);
-        CHECK(reader.read<uint16_t>() == 200);
-        CHECK(reader.read<uint8_t>() == GameSettings::MAP_DIR_COUNT);
-
-        for (int32_t dir {0}; dir < GameSettings::MAP_DIR_COUNT; dir++) {
-            CHECK_FALSE(reader.read<bool>());
-            CHECK(reader.read<int16_t>() == 0);
-            CHECK(reader.read<int16_t>() == 0);
-
-            auto width {reader.read<uint16_t>()};
-            auto height {reader.read<uint16_t>()};
-            int16_t next_x {reader.read<int16_t>()};
-            int16_t next_y {reader.read<int16_t>()};
-
-            size_t data_size {numeric_cast<size_t>(width) * height * 4};
-            const_span<uint8_t> data {reader.read_bytes(data_size)};
-
-            if (width == 3) {
-                CHECK(width == 3);
-                CHECK(height == 1);
-                CHECK(next_x == 1);
-                CHECK(next_y == 1);
-                CHECK(vector<uint8_t>(data.begin(), data.end()) == vector<uint8_t> {0x33, 0x22, 0x11, 0xFF, 0x28, 0x1E, 0x14, 0xFF, 0, 0, 0, 0x40});
+    for (int32_t dimension : {-1, 0, 65536}) {
+        for (bool width : {false, true}) {
+            auto collection {make_valid()};
+            if (width) {
+                collection.Main.Frames[0].Size.width = dimension;
             }
             else {
-                CHECK(width == 1);
-                CHECK(height == 1);
-                CHECK(next_x == 0);
-                CHECK(next_y == 1);
-                CHECK(vector<uint8_t>(data.begin(), data.end()) == vector<uint8_t> {0, 0, 0, 0});
+                collection.Main.Frames[0].Size.height = dimension;
             }
-
-            SkipSpriteMesh(reader);
-            CHECK(reader.read<bool>());
-            CHECK(reader.read<uint16_t>() == 0);
+            invalid.emplace_back(std::move(collection));
         }
-
-        CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
-        CHECK_NOTHROW(reader.verify_end());
     }
 
-    SECTION("RejectsSprAnimationCountAndDurationRanges")
-    {
-        TestRig rig {};
-        AddSourceBinaryFile(rig, "gfx/too-many.spr", MakeSprWithSequenceFrames(vector<int16_t>(65536, 0)));
-        AddSourceBinaryFile(rig, "gfx/long.spr", MakeSprWithSequenceFrames(vector<int16_t>(656, 0)));
-
-        ImageBaker baker {rig.MakeContext()};
-
-        for (string_view path : {"gfx/too-many.spr", "gfx/long.spr"}) {
-            CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), path), ImageBakerException);
-        }
-
-        CHECK(rig.Outputs.empty());
+    for (int64_t duration : {-1LL, 0LL, 4294967296LL}) {
+        auto collection {make_valid()};
+        collection.Main.Frames[0].Duration = std::chrono::milliseconds {duration};
+        invalid.emplace_back(std::move(collection));
     }
 
-    SECTION("InvalidSprInputsAreReported")
-    {
+    for (int32_t index : {-1, 1, 65536}) {
+        auto collection {make_valid()};
+        collection.Main.Frames.emplace_back(ImageImport::FrameShot {.Duration = std::chrono::milliseconds {100}, .Shared = true, .SharedIndex = index});
+        invalid.emplace_back(std::move(collection));
+    }
+
+    auto gap {make_valid()};
+    gap.Dirs[1] = gap.Main;
+    invalid.emplace_back(std::move(gap));
+    auto incomplete_pixels {make_valid()};
+    incomplete_pixels.Main.Frames[0].Data.pop_back();
+    invalid.emplace_back(std::move(incomplete_pixels));
+    auto empty_raw_frame {make_valid()};
+    empty_raw_frame.Main.Frames[0].Size = {};
+    empty_raw_frame.Main.Frames[0].Data.clear();
+    invalid.emplace_back(std::move(empty_raw_frame));
+
+    for (const ImageImport::FrameCollection& collection : invalid) {
         TestRig rig {};
-        AddSourceBinaryFile(rig, "gfx/bad-header.spr", vector<uint8_t>(11));
-        rig.AddSourceFile("gfx/missing-sequence.fofrm", "Frm=actor$run.spr\n");
-        AddSourceBinaryFile(rig, "gfx/actor.spr", MakeSimpleSpr());
-
-        auto missing_spranim {MakeSimpleSpr()};
-        ReplaceFirstTagByte(missing_spranim, "<spranim>", numeric_cast<uint8_t>('x'));
-        AddSourceBinaryFile(rig, "gfx/missing-spranim.spr", missing_spranim);
-
-        auto bad_internal_zar {MakeSimpleSpr()};
-        ReplaceFirstTagByte(bad_internal_zar, "<zar>", numeric_cast<uint8_t>('x'));
-        AddSourceBinaryFile(rig, "gfx/bad-internal-zar.spr", bad_internal_zar);
-
+        ConfigureSpriteMesh(rig, false);
+        rig.AddSourceFile("gfx/invalid.toy", "payload");
         ImageBaker baker {rig.MakeContext()};
-
-        CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/bad-header.spr"), ImageBakerException);
-        CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/missing-sequence.fofrm"), ImageBakerException);
-        CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/missing-spranim.spr"), ImageBakerException);
-        CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/bad-internal-zar.spr"), ImageBakerException);
+        baker.AddLoader(
+            [collection](string_view fname, string_view opt, FileReader reader, const ImageImport::Context& files) {
+                ignore_unused(fname, opt, reader, files);
+                return collection;
+            },
+            {"toy"});
+        CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/invalid.toy"), ImageBakerException);
         CHECK(rig.Outputs.empty());
     }
 }
+
+#if FO_IMAGE_FRM
+TEST_CASE("ImageBakerFrmPreservesDurationsBeyondTheV2Limit")
+{
+    using namespace BakerTests;
+
+    TestRig rig {};
+    vector<FrmFrameSpec> frames {vector<FrmFrameSpec>(66, FrmFrameSpec {.Width = 1, .Height = 1, .Indices = {1}})};
+    AddSourceBinaryFile(rig, "gfx/long.frm", MakeFrm(1, frames));
+    ImageBaker baker {rig.MakeContext()};
+    baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/long.frm");
+    REQUIRE(rig.Outputs.contains("gfx/long.frm"));
+    auto sequence {ReadSingleDirSequence(rig.Outputs.at("gfx/long.frm"))};
+    CHECK(sequence.SequenceSize == 66);
+    CHECK(sequence.AnimTicks == 66000);
+    CHECK(sequence.Frames.front().DurationMs == 1000);
+}
 #endif
 
+#if FO_IMAGE_SPR
+TEST_CASE("ImageBakerSprValidatesCountAndPreservesLongTimelines")
+{
+    using namespace BakerTests;
+
+    TestRig rig {};
+    AddSourceBinaryFile(rig, "gfx/too-many.spr", MakeSprWithSequenceFrames(vector<int16_t>(65536, 0)));
+    AddSourceBinaryFile(rig, "gfx/long.spr", MakeSprWithSequenceFrames(vector<int16_t>(656, 0)));
+    ImageBaker baker {rig.MakeContext()};
+    CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/too-many.spr"), ImageBakerException);
+    CHECK(rig.Outputs.empty());
+    baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/long.spr");
+    REQUIRE(rig.Outputs.contains("gfx/long.spr"));
+    CHECK(ReadSingleDirSequence(rig.Outputs.at("gfx/long.spr")).AnimTicks == 65600);
+}
+#endif
+
+#if FO_IMAGE_TIL
+TEST_CASE("ImageBakerTilRejectsInvalidCountsBeforeReadingFramePayloads")
+{
+    using namespace BakerTests;
+
+    TestRig rig {};
+    for (int32_t count : {-1, 65536}) {
+        vector<uint8_t> data {};
+        AppendTilPrefix(data);
+        data.insert(data.end(), {'<', 't', 'i', 'l', 'e', 'd', 'a', 't', 'a', '>'});
+        data.insert(data.end(), 3, 0);
+        AppendLe32(data, std::bit_cast<uint32_t>(count));
+        string path {strex("legacy/{}.til", count).str()};
+        AddSourceBinaryFile(rig, path, data);
+    }
+    ImageBaker baker {rig.MakeContext()};
+    CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "legacy/-1.til"), ImageBakerException);
+    CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "legacy/65536.til"), ImageBakerException);
+    CHECK(rig.Outputs.empty());
+
+    auto single {MakeSimpleTil()};
+    vector<uint8_t> prefix {};
+    AppendTilPrefix(prefix);
+    size_t count_offset {prefix.size() + size_t {13}};
+    size_t frame_start {count_offset + sizeof(uint32_t)};
+    REQUIRE(single.size() > frame_start);
+    const_span<uint8_t> raw_frame {make_const_span(single).subspan(frame_start)};
+    auto repeated {single};
+    repeated.resize(frame_start);
+    SetLe32(repeated, count_offset, uint32_t {656});
+
+    for (int32_t frame_index {}; frame_index < 656; frame_index++) {
+        repeated.insert(repeated.end(), raw_frame.begin(), raw_frame.end());
+    }
+
+    AddSourceBinaryFile(rig, "legacy/long.til", repeated);
+    baker.BakeFiles(rig.GetAllSourceFiles(), "legacy/long.til");
+    REQUIRE(rig.Outputs.contains("legacy/long.til"));
+    auto sequence {ReadSingleDirSequence(rig.Outputs.at("legacy/long.til"))};
+    CHECK(sequence.SequenceSize == 656);
+    CHECK(sequence.AnimTicks == 65600);
+}
+#endif
+
+using namespace BakerTests;
+string_view fofrm_direction_prefix {FO_GEOMETRY == 1 ? "HexDir" : "SquareDir"};
+
+#if FO_IMAGE_ART
 TEST_CASE("ImageBaker")
 {
     using namespace BakerTests;
 
-#if FO_IMAGE_ART
     SECTION("BakesStaticArtHotSpotAsSequenceOffset")
     {
         // A frame's hot spot is the map anchor: the engine draws the sprite bottom-centre at hex + offset
@@ -1223,9 +1452,15 @@ TEST_CASE("ImageBaker")
         CHECK(sequence.Frames[0].NextY == -2);
         CHECK(sequence.Frames[0].Data == vector<uint8_t> {0x04, 0x05, 0x06, 0xFF, 0x08, 0x09, 0x0A, 0xFF});
     }
+}
+
 #endif
 
 #if FO_IMAGE_ART
+TEST_CASE("ImageBakerRejectsArtRleOverrunningItsFrame")
+{
+    using namespace BakerTests;
+
     SECTION("RejectsArtRleOverrunningItsFrame")
     {
         TestRig rig {};
@@ -1234,9 +1469,15 @@ TEST_CASE("ImageBaker")
         ImageBaker baker {rig.MakeContext()};
         CHECK_THROWS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/broken.art"));
     }
+}
+
 #endif
 
 #if FO_IMAGE_ART
+TEST_CASE("ImageBakerBakesFofrmAliasOfSingleArtRotation")
+{
+    using namespace BakerTests;
+
     SECTION("BakesFofrmAliasOfSingleArtRotation")
     {
         for (string_view dir : {string_view {"gfx"}, string_view {"art/critter"}}) {
@@ -1244,7 +1485,7 @@ TEST_CASE("ImageBaker")
             string fofrm_path {strex("{}/dirs_r3.fofrm", dir).str()};
 
             TestRig rig {};
-            rig.AddSourceFile(fofrm_path, "Alias = dirs$r=3.art\n");
+            rig.AddSourceFile(fofrm_path, "Source = dirs$r=3.art\n");
             AddSourceBinaryFile(rig, strex("{}/dirs.art", dir).str(), MakeRotationArt());
 
             ImageBaker baker {rig.MakeContext()};
@@ -1266,9 +1507,15 @@ TEST_CASE("ImageBaker")
             CHECK(sequence.Frames[0].Data == expected);
         }
     }
+}
+
 #endif
 
 #if FO_IMAGE_ART
+TEST_CASE("ImageBakerSelectsArtRotationInOrdinaryFofrmFrameOptions")
+{
+    using namespace BakerTests;
+
     SECTION("SelectsArtRotationInOrdinaryFofrmFrameOptions")
     {
         vector<ArtFrameSpec> frames {};
@@ -1278,7 +1525,7 @@ TEST_CASE("ImageBaker")
         }
 
         TestRig rig {};
-        rig.AddSourceFile("gfx/options.fofrm", "Frm = dirs$3R=3Hf0.art\n");
+        rig.AddSourceFile("gfx/options.fofrm", "Frame = dirs$3R=3Hf0.art\n");
         AddSourceBinaryFile(rig, "gfx/dirs.art", MakeArt(0, 10, {true, true, true, true}, 1, frames));
         ImageBaker baker {rig.MakeContext()};
         baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/options.fofrm");
@@ -1293,12 +1540,18 @@ TEST_CASE("ImageBaker")
         CHECK(frame.NextX == -3);
         CHECK(frame.NextY == -3);
     }
+}
+
 #endif
+
+TEST_CASE("ImageBakerForwardsAliasOptionsThroughRegisteredLoader")
+{
+    using namespace BakerTests;
 
     SECTION("ForwardsAliasOptionsThroughRegisteredLoader")
     {
         TestRig rig {};
-        rig.AddSourceFile("gfx/custom.fofrm", "Alias = custom$r=3.toy\n");
+        rig.AddSourceFile("gfx/custom.fofrm", "Source = custom$r=3.toy\n");
         rig.AddSourceFile("gfx/custom.toy", "Custom source");
         ImageBaker baker {rig.MakeContext()};
         string observed_name {};
@@ -1309,9 +1562,42 @@ TEST_CASE("ImageBaker")
                 observed_name = fname;
                 observed_options = opt;
                 ImageImport::FrameCollection collection {};
-                collection.SequenceSize = 1;
-                collection.AnimTicks = 123;
-                collection.Main.Frames.emplace_back(ImageImport::FrameShot {.Width = 1, .Height = 1, .Data = {1, 2, 3, 255}});
+                [[maybe_unused]] uint16_t sequence_size {};
+                uint32_t duration_ms {100};
+                bool have_dirs {};
+                sequence_size = 1;
+                duration_ms = 123;
+                collection.Main.Frames.emplace_back(ImageImport::FrameShot {.Size = {1, 1}, .Data = {1, 2, 3, 255}});
+
+                if (!have_dirs) {
+                    for (auto& direction : collection.Dirs) {
+                        direction.Frames.clear();
+                    }
+                }
+                else {
+                    for (int32_t direction {GameSettings::MAP_DIR_COUNT - 1}; direction < ImageImport::MAX_DIRS_MINUS_ONE; direction++) {
+                        collection.Dirs[direction].Frames.clear();
+                    }
+                }
+
+                for (int32_t direction {0}; direction < (have_dirs ? GameSettings::MAP_DIR_COUNT : 1); direction++) {
+                    auto& frames {direction == 0 ? collection.Main : collection.Dirs[direction - 1]};
+
+                    for (size_t index {0}; index < frames.Frames.size(); index++) {
+                        auto& shot {frames.Frames[index]};
+
+                        if (shot.Shared && shot.SharedIndex >= 0 && numeric_cast<size_t>(shot.SharedIndex) < index) {
+                            int32_t reference {shot.SharedIndex};
+                            shot = frames.Frames[numeric_cast<size_t>(reference)];
+                            shot.Data.clear();
+                            shot.Shared = true;
+                            shot.SharedIndex = reference;
+                        }
+                    }
+
+                    ImageImport::SetFrameSequenceDuration(frames, std::chrono::milliseconds {duration_ms});
+                }
+
                 return collection;
             },
             {"toy"});
@@ -1323,12 +1609,17 @@ TEST_CASE("ImageBaker")
         CHECK(sequence.AnimTicks == 123);
         CHECK(sequence.Frames.at(0).Data == vector<uint8_t> {1, 2, 3, 255});
     }
+}
 
 #if FO_IMAGE_ART
+TEST_CASE("ImageBakerPreservesLegacyUnknownRAndPaletteSelection")
+{
+    using namespace BakerTests;
+
     SECTION("PreservesLegacyUnknownRAndPaletteSelection")
     {
         TestRig rig {};
-        rig.AddSourceFile("gfx/palette.fofrm", "Alias = palette$r3.art\n");
+        rig.AddSourceFile("gfx/palette.fofrm", "Source = palette$r3.art\n");
         AddSourceBinaryFile(rig, "gfx/palette.art", MakeArt(1, 10, {true, true, true, true}, 1, {ArtFrameSpec {.Width = 1, .Height = 1, .Indices = {1}}}));
 
         ImageBaker baker {rig.MakeContext()};
@@ -1339,37 +1630,54 @@ TEST_CASE("ImageBaker")
         expected.emplace_back(255);
         CHECK(sequence.Frames.at(0).Data == expected);
     }
+}
+
 #endif
 
 #if FO_IMAGE_ART
-    SECTION("PreservesWholeArtAliasAndItsOutputName")
+TEST_CASE("ImageBakerAppliesWholeArtSourceMetadataAndItsOutputName")
+{
+    using namespace BakerTests;
+
+    SECTION("AppliesWholeArtSourceMetadataAndItsOutputName")
     {
         TestRig rig {};
-        rig.AddSourceFile("whole.fofrm", "Alias=dirs.art\nfps=1\ncount=99\noffs_x=100\n");
+        rig.AddSourceFile("whole.fofrm", "Source = dirs.art\nFps = 1\nOffset = 100 0\n");
         AddSourceBinaryFile(rig, "dirs.art", MakeRotationArt());
         ImageBaker baker {rig.MakeContext()};
         baker.BakeFiles(rig.GetAllSourceFiles(), "whole.fofrm");
         auto sprite {ReadSpriteResource(rig.Outputs.at("whole.fofrm"))};
         REQUIRE(sprite.Directions.size() == GameSettings::MAP_DIR_COUNT);
         REQUIRE(sprite.Animation.Sprite);
-        CHECK(sprite.Animation.Sprite->Duration == std::chrono::milliseconds {200});
+        CHECK(GetSpriteDirDuration(sprite.Animation.Sprite->Directions[0]) == std::chrono::milliseconds {1000});
         CHECK(sprite.Directions.front().Frames.size() == 1);
-        CHECK(sprite.Directions.front().Frames.front().Offset == ipos32 {0, 1});
+        CHECK(sprite.Directions.front().Frames.front().Offset == ipos32 {100, 1});
     }
+}
+
 #endif
+
+TEST_CASE("ImageBakerResolvesOrdinaryFofrmFramesAtPackRoot")
+{
+    using namespace BakerTests;
 
     SECTION("ResolvesOrdinaryFofrmFramesAtPackRoot")
     {
         TestRig rig {};
-        rig.AddSourceFile("root.fofrm", "frm=frame.tga\n");
+        rig.AddSourceFile("root.fofrm", "Frame = frame.tga\n");
         AddSourceBinaryFile(rig, "frame.tga", MakeRawTga(1, 1, 24, {0, 0, 255}));
         ImageBaker baker {rig.MakeContext()};
         baker.BakeFiles(rig.GetAllSourceFiles(), "root.fofrm");
         auto frame {ReadSingleFrame(rig.Outputs.at("root.fofrm"))};
         CHECK(frame.Data == vector<uint8_t> {255, 0, 0, 255});
     }
+}
 
 #if FO_IMAGE_ART
+TEST_CASE("ImageBakerAlignsChangingArtHotSpotsWithoutLosingFrameDeltas")
+{
+    using namespace BakerTests;
+
     SECTION("AlignsChangingArtHotSpotsWithoutLosingFrameDeltas")
     {
         TestRig rig {};
@@ -1391,16 +1699,22 @@ TEST_CASE("ImageBaker")
         CHECK(sequence.Frames[0].Data == vector<uint8_t> {0, 0, 0, 0, 4, 5, 6, 255, 8, 9, 10, 255});
         CHECK(sequence.Frames[1].Data == vector<uint8_t> {8, 9, 10, 255, 4, 5, 6, 255, 0, 0, 0, 0});
     }
+}
+
 #endif
 
 #if FO_IMAGE_ART
+TEST_CASE("ImageBakerSupportsLongFrameIndexedArtAndSparsePalettes")
+{
+    using namespace BakerTests;
+
     SECTION("SupportsLongFrameIndexedArtAndSparsePalettes")
     {
         TestRig rig {};
-        vector<ArtFrameSpec> frames {10001, ArtFrameSpec {.Width = 1, .Height = 1, .Indices = {1}}};
+        vector<ArtFrameSpec> frames {vector<ArtFrameSpec>(10001, ArtFrameSpec {.Width = 1, .Height = 1, .Indices = {1}})};
         frames.back().Indices = {2};
         AddSourceBinaryFile(rig, "long.art", MakeArt(1, 1, {false, false, true, false}, 10001, frames));
-        rig.AddSourceFile("last.fofrm", "Alias=long$F10000.art\n");
+        rig.AddSourceFile("last.fofrm", "Source=long$F10000.art\n");
         ImageBaker baker {rig.MakeContext()};
         baker.BakeFiles(rig.GetAllSourceFiles(), "last.fofrm");
         auto selected {ReadSingleDirSequence(rig.Outputs.at("last.fofrm"))};
@@ -1409,39 +1723,61 @@ TEST_CASE("ImageBaker")
         CHECK(selected.Frames.at(0).Data == vector<uint8_t> {136, 9, 10, 255});
 
         baker.BakeFiles(rig.GetAllSourceFiles(), "long.art");
-        auto sprite {ReadSpriteResource(rig.Outputs.at("long.art"))};
+        CHECK_FALSE(rig.Outputs.contains("long.art"));
+        TestRig standalone {};
+        AddSourceBinaryFile(standalone, "long.art", MakeArt(1, 1, {false, false, true, false}, 10001, frames));
+        ImageBaker standalone_baker {standalone.MakeContext()};
+        standalone_baker.BakeFiles(standalone.GetAllSourceFiles(), "long.art");
+        auto sprite {ReadSpriteResource(standalone.Outputs.at("long.art"))};
         REQUIRE(sprite.Animation.Sprite);
-        CHECK(sprite.Animation.Sprite->Duration == std::chrono::milliseconds {65535});
+        CHECK(GetSpriteDirDuration(sprite.Animation.Sprite->Directions[0]) == std::chrono::milliseconds {10001000});
         CHECK(sprite.Directions.at(0).Frames.size() == 10001);
     }
+}
+
 #endif
 
 #if FO_IMAGE_ART
+TEST_CASE("ImageBakerRejectsInvalidArtRotationOptions")
+{
+    using namespace BakerTests;
+
     SECTION("RejectsInvalidArtRotationOptions")
     {
         for (string_view rotation : {"", "8", "-1", "3x", "33"}) {
             TestRig rig {};
-            rig.AddSourceFile("gfx/invalid.fofrm", strex("Alias = source$r={}.art\n", rotation).str());
+            rig.AddSourceFile("gfx/invalid.fofrm", strex("Source = source$r={}.art\n", rotation).str());
             AddSourceBinaryFile(rig, "gfx/source.art", MakeSimpleArt());
 
             ImageBaker baker {rig.MakeContext()};
             CHECK_THROWS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/invalid.fofrm"));
         }
     }
+}
+
 #endif
+
+TEST_CASE("ImageBakerRejectsRecursiveAndMissingFofrmAliases")
+{
+    using namespace BakerTests;
 
     SECTION("RejectsRecursiveAndMissingFofrmAliases")
     {
         for (string_view source : {"loop.fofrm", "missing.art"}) {
             TestRig rig {};
-            rig.AddSourceFile("gfx/loop.fofrm", strex("Alias = {}\n", source).str());
+            rig.AddSourceFile("gfx/loop.fofrm", strex("Source = {}\n", source).str());
 
             ImageBaker baker {rig.MakeContext()};
             CHECK_THROWS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/loop.fofrm"));
         }
     }
+}
 
 #if FO_IMAGE_ART
+TEST_CASE("ImageBakerRejectsTruncatedArtTablesAndPixelStreams")
+{
+    using namespace BakerTests;
+
     SECTION("RejectsTruncatedArtTablesAndPixelStreams")
     {
         vector<uint8_t> truncated_table {MakeArt(1, 10, {true, false, false, false}, std::numeric_limits<int32_t>::max(), {})};
@@ -1458,9 +1794,15 @@ TEST_CASE("ImageBaker")
             CHECK_THROWS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/broken.art"));
         }
     }
+}
+
 #endif
 
 #if FO_IMAGE_ART
+TEST_CASE("ImageBakerRejectsArtHotSpotsOutsideBakedRange")
+{
+    using namespace BakerTests;
+
     SECTION("RejectsArtHotSpotsOutsideBakedRange")
     {
         for (int32_t hot_x : {std::numeric_limits<int32_t>::min(), std::numeric_limits<int32_t>::max()}) {
@@ -1471,15 +1813,21 @@ TEST_CASE("ImageBaker")
             CHECK_THROWS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/broken.art"));
         }
     }
+}
+
 #endif
 
 #if FO_IMAGE_ART
+TEST_CASE("ImageBakerBakesWallHotSpotShiftForPlacedRotation")
+{
+    using namespace BakerTests;
+
     SECTION("BakesWallHotSpotShiftForPlacedRotation")
     {
         // Wall rotations 0/1/6/7 use the original renderer hot spot shift even with one stored rotation
         TestRig rig {};
-        rig.AddSourceFile("art/wall/w_r0.fofrm", "Alias = w$r=0.art\n");
-        rig.AddSourceFile("art/wall/w_r2.fofrm", "Alias = w$r=2.art\n");
+        rig.AddSourceFile("art/wall/w_r0.fofrm", "Source = w$r=0.art\n");
+        rig.AddSourceFile("art/wall/w_r2.fofrm", "Source = w$r=2.art\n");
         AddSourceBinaryFile(rig, "art/wall/w.art", MakeArt(0x1, 10, {true, false, false, false}, 1, {ArtFrameSpec {.Width = 1, .Height = 1, .Indices = {1}}}));
 
         ImageBaker baker {rig.MakeContext()};
@@ -1500,9 +1848,15 @@ TEST_CASE("ImageBaker")
         CHECK(shifted.Frames[0].Height == 20);
         CHECK(shifted.Frames[0].Offset == ipos32 {20, 0});
     }
+}
+
 #endif
 
 #if FO_IMAGE_ART
+TEST_CASE("ImageBakerBakesArtRotationsAndMirrorsCritterRotations")
+{
+    using namespace BakerTests;
+
     SECTION("BakesArtRotationsAndMirrorsCritterRotations")
     {
         // ART rotation 0 faces screen north and goes clockwise; square direction 0 is north-east. Critter-like art
@@ -1517,12 +1871,8 @@ TEST_CASE("ImageBaker")
             baker.BakeFiles(rig.GetAllSourceFiles(), path);
 
             REQUIRE(rig.Outputs.contains(string(path)));
-            data_reader reader {rig.Outputs.at(string(path))};
-            CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
-            CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_VERSION);
-            CHECK(reader.read<uint16_t>() == 1);
-            CHECK(reader.read<uint16_t>() == 200);
-            REQUIRE(reader.read<uint8_t>() == GameSettings::MAP_DIR_COUNT);
+            auto resource {ReadSpriteResource(rig.Outputs.at(string(path)))};
+            REQUIRE(resource.Directions.size() == GameSettings::MAP_DIR_COUNT);
 
             for (int32_t dir {0}; dir < GameSettings::MAP_DIR_COUNT; dir++) {
                 int32_t rotation {0};
@@ -1537,27 +1887,28 @@ TEST_CASE("ImageBaker")
 
                 bool mirrored {critter && rotation > 0 && rotation < 4};
                 int32_t source {mirrored ? 8 - rotation : rotation};
-
-                CHECK_FALSE(reader.read<bool>());
-                CHECK(reader.read<int16_t>() == 0); // Offset x: canvas 1 / 2 - hot x 0
-                CHECK(reader.read<int16_t>() == 1); // Offset y: canvas 1 - hot y 0
-                CHECK(reader.read<uint16_t>() == 1);
-                CHECK(reader.read<uint16_t>() == 1);
-                CHECK(reader.read<int16_t>() == (mirrored ? -source : source));
-                CHECK(reader.read<int16_t>() == -source);
-
-                const_span<uint8_t> pixel {reader.read_bytes(4)};
-                vector<uint8_t> expected {ArtTestColor(0, source + 1)};
+                auto sequence {ReadDirectionSequence(resource, numeric_cast<size_t>(dir))};
+                REQUIRE(sequence.Frames.size() == 1);
+                CHECK(sequence.AnimTicks == 200);
+                const auto& frame {sequence.Frames[0]};
+                CHECK(frame.Offset == ipos32 {0, 1});
+                CHECK(frame.Width == 1);
+                CHECK(frame.Height == 1);
+                CHECK(frame.NextX == (mirrored ? -source : source));
+                CHECK(frame.NextY == -source);
+                auto expected {ArtTestColor(0, source + 1)};
                 expected.emplace_back(255);
-                CHECK(vector<uint8_t>(pixel.begin(), pixel.end()) == expected);
-                SkipSpriteMesh(reader);
+                CHECK(frame.Data == expected);
             }
-
-            CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
-            CHECK_NOTHROW(reader.verify_end());
         }
     }
+}
+
 #endif
+
+TEST_CASE("ImageBakerSetup")
+{
+    using namespace BakerTests;
 
     SECTION("Setup")
     {
@@ -1569,6 +1920,11 @@ TEST_CASE("ImageBaker")
         CHECK(bakers.front()->GetOrder() == 4);
         CHECK_NOTHROW(bakers.front()->BakeFiles(TestRig::MakeEmptyFiles(), "skip.bin"));
     }
+}
+
+TEST_CASE("ImageBakerSpriteMeshMasterSwitchAndEmptyKind")
+{
+    using namespace BakerTests;
 
     SECTION("SpriteMeshMasterSwitchAndEmptyKind")
     {
@@ -1596,6 +1952,11 @@ TEST_CASE("ImageBaker")
         REQUIRE(dilation_fills_frame_result.MeshKind == SpriteMeshKind::Mesh);
         CHECK(dilation_fills_frame_result.Mesh.Indices.size() <= 6);
     }
+}
+
+TEST_CASE("ImageBakerSpriteMeshConcaveContour")
+{
+    using namespace BakerTests;
 
     SECTION("SpriteMeshConcaveContour")
     {
@@ -1610,6 +1971,11 @@ TEST_CASE("ImageBaker")
         CHECK(IsPointInsideBakedMesh(frame, SourcePointToBakedMeshPoint(frame, {1.5f, 1.5f})));
         CHECK_FALSE(IsPointInsideBakedMesh(frame, SourcePointToBakedMeshPoint(frame, {4.5f, 4.5f})));
     }
+}
+
+TEST_CASE("ImageBakerSpriteMeshPreservesHole")
+{
+    using namespace BakerTests;
 
     SECTION("SpriteMeshPreservesHole")
     {
@@ -1622,6 +1988,11 @@ TEST_CASE("ImageBaker")
         CHECK(IsPointInsideBakedMesh(frame, SourcePointToBakedMeshPoint(frame, {0.5f, 0.5f})));
         CHECK_FALSE(IsPointInsideBakedMesh(frame, SourcePointToBakedMeshPoint(frame, {4.5f, 4.5f})));
     }
+}
+
+TEST_CASE("ImageBakerSpriteMeshPreservesSeparateIslands")
+{
+    using namespace BakerTests;
 
     SECTION("SpriteMeshPreservesSeparateIslands")
     {
@@ -1635,6 +2006,11 @@ TEST_CASE("ImageBaker")
         CHECK(IsPointInsideBakedMesh(frame, SourcePointToBakedMeshPoint(frame, {7.5f, 2.5f})));
         CHECK_FALSE(IsPointInsideBakedMesh(frame, SourcePointToBakedMeshPoint(frame, {4.5f, 2.5f})));
     }
+}
+
+TEST_CASE("ImageBakerSpriteMeshSettingsControlGeneration")
+{
+    using namespace BakerTests;
 
     SECTION("SpriteMeshSettingsControlGeneration")
     {
@@ -1655,7 +2031,6 @@ TEST_CASE("ImageBaker")
         CHECK(BakedMeshDoubleArea(dilation_frame) == 2);
 
         vector<string> diagonal_rows {vector<string>(40, string(40, '.'))};
-
         for (size_t i {8}; i < 32; i++) {
             diagonal_rows[i][i] = '#';
         }
@@ -1668,7 +2043,6 @@ TEST_CASE("ImageBaker")
         CHECK(simplified_diagonal_frame.Mesh.Vertices.size() <= 12);
 
         vector<string> shallow_notch_rows {vector<string>(30, string(30, '#'))};
-
         for (size_t y {23}; y < 30; y++) {
             for (size_t x {5}; x < 25; x++) {
                 shallow_notch_rows[y][x] = '.';
@@ -1683,7 +2057,6 @@ TEST_CASE("ImageBaker")
         CHECK_FALSE(IsPointInsideBakedMesh(shallow_notch_frame, SourcePointToBakedMeshPoint(shallow_notch_frame, {15.5f, 29.5f})));
 
         vector<string> shallow_diagonal_rows {vector<string>(40, string(80, '.'))};
-
         for (size_t x {2}; x < 78; x++) {
             size_t y {8 + (x - 2) * 19 / 75};
             shallow_diagonal_rows[y][x] = '#';
@@ -1694,7 +2067,6 @@ TEST_CASE("ImageBaker")
         BakedImageFrame shallow_diagonal_frame {ReadSingleFrame(BakeAlphaMask(shallow_diagonal, shallow_diagonal_rows))};
 
         REQUIRE(shallow_diagonal_frame.MeshKind == SpriteMeshKind::Mesh);
-
         for (size_t y {0}; y < shallow_diagonal_rows.size(); y++) {
             for (size_t x {0}; x < shallow_diagonal_rows[y].size(); x++) {
                 if (shallow_diagonal_rows[y][x] == '#') {
@@ -1723,7 +2095,6 @@ TEST_CASE("ImageBaker")
         const BakedImageFrame& edge_coverage_frame {edge_coverage_sequence.Frames.front()};
 
         REQUIRE(edge_coverage_frame.MeshKind == SpriteMeshKind::Mesh);
-
         for (size_t sample_y {0}; sample_y < edge_coverage_rows.size(); sample_y++) {
             for (size_t sample_x {0}; sample_x < edge_coverage_rows[sample_y].size(); sample_x++) {
                 if (edge_coverage_rows[sample_y][sample_x] != '#') {
@@ -1739,11 +2110,9 @@ TEST_CASE("ImageBaker")
         }
 
         vector<string> diamond_rows {vector<string>(41, string(81, '.'))};
-
         for (size_t y {0}; y < diamond_rows.size(); y++) {
             int32_t distance {std::abs(numeric_cast<int32_t>(y) - 20)};
             int32_t half_width {(20 - distance) * 2};
-
             for (int32_t x {40 - half_width}; x <= 40 + half_width; x++) {
                 diamond_rows[y][numeric_cast<size_t>(x)] = '#';
             }
@@ -1772,10 +2141,8 @@ TEST_CASE("ImageBaker")
         }
 
         vector<string> wedge_rows {vector<string>(61, string(61, '.'))};
-
         for (size_t y {5}; y <= 55; y++) {
             size_t right {60 - y};
-
             for (size_t x {5}; x <= right; x++) {
                 wedge_rows[y][x] = '#';
             }
@@ -1793,7 +2160,6 @@ TEST_CASE("ImageBaker")
         CHECK(preferred_triangle_frame.Mesh.Indices.size() == 3);
 
         vector<string> rectangle_rows {vector<string>(31, string(61, '.'))};
-
         for (size_t y {5}; y <= 25; y++) {
             for (size_t x {5}; x <= 55; x++) {
                 rectangle_rows[y][x] = '#';
@@ -1815,7 +2181,6 @@ TEST_CASE("ImageBaker")
 
         vector<ipos32> adaptive_tree_hull {{0, 115}, {13, 81}, {33, 29}, {49, 0}, {55, 0}, {58, 7}, {86, 67}, {106, 120}, {106, 141}, {88, 159}, {23, 159}, {0, 137}};
         vector<string> adaptive_tree_rows {vector<string>(160, string(107, '.'))};
-
         for (size_t y {0}; y < adaptive_tree_rows.size(); y++) {
             for (size_t x {0}; x < adaptive_tree_rows[y].size(); x++) {
                 int64_t sample_x {numeric_cast<int64_t>(x) * 2 + 1};
@@ -1851,7 +2216,6 @@ TEST_CASE("ImageBaker")
 
         vector<ipos32> pentagon_hull {{50, 5}, {95, 38}, {78, 95}, {22, 95}, {5, 38}};
         vector<string> pentagon_rows {vector<string>(101, string(101, '.'))};
-
         for (size_t y {0}; y < pentagon_rows.size(); y++) {
             for (size_t x {0}; x < pentagon_rows[y].size(); x++) {
                 int64_t sample_x {numeric_cast<int64_t>(x) * 2 + 1};
@@ -1878,7 +2242,6 @@ TEST_CASE("ImageBaker")
         CHECK(enclosing_budget_frame.Mesh.Indices.size() == 9);
 
         vector<string> door_rows {vector<string>(61, string(101, '.'))};
-
         for (size_t y {5}; y <= 55; y++) {
             for (size_t x {5}; x <= 19; x++) {
                 door_rows[y][x] = '#';
@@ -1925,15 +2288,18 @@ TEST_CASE("ImageBaker")
         BakedImageFrame unprofitable_frame {ReadSingleDirSequence(BakeAlphaMask(unprofitable, {".....", ".##..", ".##..", ".##..", "....."})).Frames.front()};
         CHECK(unprofitable_frame.MeshKind == SpriteMeshKind::Mesh);
     }
+}
+
+TEST_CASE("ImageBakerSpriteMeshAutomaticSimplificationPreservesLShape")
+{
+    using namespace BakerTests;
 
     SECTION("SpriteMeshAutomaticSimplificationPreservesLShape")
     {
         vector<string> rows {vector<string>(123, string(64, '.'))};
-
         for (size_t x {0}; x < 64; x++) {
             size_t top {17 - x * 15 / 63};
             size_t bottom {48 - x * 15 / 63};
-
             for (size_t y {top}; y <= bottom; y++) {
                 rows[y][x] = '#';
             }
@@ -1954,15 +2320,18 @@ TEST_CASE("ImageBaker")
         CHECK(IsPointInsideBakedMesh(frame, SourcePointToBakedMeshPoint(frame, {2.5f, 100.5f})));
         CHECK_FALSE(IsPointInsideBakedMesh(frame, SourcePointToBakedMeshPoint(frame, {40.5f, 100.5f})));
     }
+}
+
+TEST_CASE("ImageBakerSpriteMeshExpandedSimplificationBuildsConcaveWallCandidate")
+{
+    using namespace BakerTests;
 
     SECTION("SpriteMeshExpandedSimplificationBuildsConcaveWallCandidate")
     {
         vector<string> rows {vector<string>(123, string(64, '.'))};
         vector<size_t> top_left {60, 56, 52, 49, 45, 41, 37, 33, 29, 25, 21, 17, 13, 9, 5, 1};
-
         for (size_t y {2}; y <= 17; y++) {
             size_t left {top_left[y - 2]};
-
             for (size_t x {left}; x < 64; x++) {
                 rows[y][x] = '#';
             }
@@ -1972,12 +2341,9 @@ TEST_CASE("ImageBaker")
                 rows[y][x] = '#';
             }
         }
-
         vector<size_t> bottom_right {59, 56, 52, 48, 44, 40, 36, 32, 28, 24, 20, 16, 12, 8};
-
         for (size_t y {33}; y <= 46; y++) {
             size_t right {bottom_right[y - 33]};
-
             for (size_t x {0}; x <= right; x++) {
                 rows[y][x] = '#';
             }
@@ -2005,12 +2371,16 @@ TEST_CASE("ImageBaker")
         CHECK(IsPointInsideBakedMesh(frame, SourcePointToBakedMeshPoint(frame, {2.5f, 100.5f})));
         CHECK_FALSE(IsPointInsideBakedMesh(frame, SourcePointToBakedMeshPoint(frame, {40.5f, 100.5f})));
     }
+}
+
+TEST_CASE("ImageBakerSpriteMeshExpandedSimplificationEnclosesThinLShape")
+{
+    using namespace BakerTests;
 
     SECTION("SpriteMeshExpandedSimplificationEnclosesThinLShape")
     {
         vector<string> rows {vector<string>(123, string(64, '.'))};
         vector<size_t> top_left {60, 55, 52, 50, 46, 42, 38, 34, 30, 26, 22, 18, 12, 7, 4, 2};
-
         for (size_t y {0}; y < top_left.size(); y++) {
             for (size_t x {top_left[y]}; x < 64; x++) {
                 rows[y][x] = '#';
@@ -2021,9 +2391,7 @@ TEST_CASE("ImageBaker")
                 rows[y][x] = '#';
             }
         }
-
         vector<size_t> lower_right {54, 54, 50, 50, 42, 38, 34, 30, 26, 22, 20, 19, 10, 6, 5, 4, 4};
-
         for (size_t y {26}; y <= 42; y++) {
             for (size_t x {0}; x <= lower_right[y - 26]; x++) {
                 rows[y][x] = '#';
@@ -2046,11 +2414,15 @@ TEST_CASE("ImageBaker")
         CHECK(IsPointInsideBakedMesh(frame, SourcePointToBakedMeshPoint(frame, {1.5f, 100.5f})));
         CHECK_FALSE(IsPointInsideBakedMesh(frame, SourcePointToBakedMeshPoint(frame, {40.5f, 100.5f})));
     }
+}
+
+TEST_CASE("ImageBakerSpriteMeshClustersMoreComponentsThanTriangleBudget")
+{
+    using namespace BakerTests;
 
     SECTION("SpriteMeshClustersMoreComponentsThanTriangleBudget")
     {
         vector<string> rows {vector<string>(31, string(101, '.'))};
-
         for (size_t y {5}; y <= 25; y++) {
             for (size_t x {5}; x <= 15; x++) {
                 rows[y][x] = '#';
@@ -2071,6 +2443,11 @@ TEST_CASE("ImageBaker")
         CHECK(frame.Mesh.Indices.size() <= 12);
         CHECK_FALSE(IsPointInsideBakedMesh(frame, SourcePointToBakedMeshPoint(frame, {55.5f, 15.5f})));
     }
+}
+
+TEST_CASE("ImageBakerSpriteMeshUnsafeTouchingTopologyFallsBackToQuad")
+{
+    using namespace BakerTests;
 
     SECTION("SpriteMeshUnsafeTouchingTopologyFallsBackToQuad")
     {
@@ -2090,6 +2467,11 @@ TEST_CASE("ImageBaker")
         ConfigureSpriteMesh(checkerboard);
         CHECK(ReadSingleFrame(BakeAlphaMask(checkerboard, {"#.#.", ".#.#", "#.#.", ".#.#"})).MeshKind == SpriteMeshKind::Quad);
     }
+}
+
+TEST_CASE("ImageBakerSpriteMeshOutputIsDeterministic")
+{
+    using namespace BakerTests;
 
     SECTION("SpriteMeshOutputIsDeterministic")
     {
@@ -2105,6 +2487,11 @@ TEST_CASE("ImageBaker")
 
         CHECK(first_output == second_output);
     }
+}
+
+TEST_CASE("ImageBakerSpriteMeshSharedFrameHasNoDuplicatePayload")
+{
+    using namespace BakerTests;
 
     SECTION("SpriteMeshSharedFrameHasNoDuplicatePayload")
     {
@@ -2121,43 +2508,67 @@ TEST_CASE("ImageBaker")
                 ignore_unused(fname, opt, reader, files);
 
                 ImageImport::FrameCollection collection {};
-                collection.SequenceSize = 2;
-                collection.AnimTicks = 100;
+                [[maybe_unused]] uint16_t sequence_size {};
+                uint32_t duration_ms {100};
+                bool have_dirs {};
+                sequence_size = 2;
+                duration_ms = 100;
                 collection.Main.Frames = {
-                    ImageImport::FrameShot {.Width = 5, .Height = 5, .Data = rgba},
+                    ImageImport::FrameShot {.Size = {5, 5}, .Data = rgba},
                     ImageImport::FrameShot {.Shared = true, .SharedIndex = 0},
                 };
+
+                if (!have_dirs) {
+                    for (auto& direction : collection.Dirs) {
+                        direction.Frames.clear();
+                    }
+                }
+                else {
+                    for (int32_t direction {GameSettings::MAP_DIR_COUNT - 1}; direction < ImageImport::MAX_DIRS_MINUS_ONE; direction++) {
+                        collection.Dirs[direction].Frames.clear();
+                    }
+                }
+
+                for (int32_t direction {0}; direction < (have_dirs ? GameSettings::MAP_DIR_COUNT : 1); direction++) {
+                    auto& frames {direction == 0 ? collection.Main : collection.Dirs[direction - 1]};
+
+                    for (size_t index {0}; index < frames.Frames.size(); index++) {
+                        auto& shot {frames.Frames[index]};
+
+                        if (shot.Shared && shot.SharedIndex >= 0 && numeric_cast<size_t>(shot.SharedIndex) < index) {
+                            int32_t reference {shot.SharedIndex};
+                            shot = frames.Frames[numeric_cast<size_t>(reference)];
+                            shot.Data.clear();
+                            shot.Shared = true;
+                            shot.SharedIndex = reference;
+                        }
+                    }
+
+                    ImageImport::SetFrameSequenceDuration(frames, std::chrono::milliseconds {duration_ms});
+                }
+
                 return collection;
             },
             {"toy"});
         baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/shared-mesh.toy");
 
-        data_reader reader {rig.Outputs.at("gfx/shared-mesh.toy")};
-        CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
-        CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_VERSION);
-        CHECK(reader.read<uint16_t>() == 2);
-        CHECK(reader.read<uint16_t>() == 100);
-        CHECK(reader.read<uint8_t>() == 1);
-        CHECK_FALSE(reader.read<bool>());
-
-        BakedImageFrame first_frame {};
-        first_frame.Offset.x = reader.read<int16_t>();
-        first_frame.Offset.y = reader.read<int16_t>();
-        first_frame.Width = reader.read<uint16_t>();
-        first_frame.Height = reader.read<uint16_t>();
-        (void)reader.read<int16_t>();
-        (void)reader.read<int16_t>();
-        (void)reader.read_bytes(numeric_cast<size_t>(first_frame.Width) * first_frame.Height * 4);
-        ReadSpriteMesh(reader, first_frame);
+        auto resource {ReadSpriteResource(rig.Outputs.at("gfx/shared-mesh.toy"))};
+        REQUIRE(resource.Directions.size() == 1);
+        auto sequence {ReadDirectionSequence(resource, 0)};
+        REQUIRE(sequence.Frames.size() == 2);
+        CHECK(sequence.AnimTicks == 100);
+        const auto& first_frame {sequence.Frames[0]};
         CHECK(first_frame.MeshKind == SpriteMeshKind::Mesh);
         CHECK(first_frame.Offset.x == numeric_cast<int32_t>(first_frame.Width) / 2 - 5 / 2 + first_frame.Mesh.SourceOffset.x);
         CHECK(first_frame.Offset.y == numeric_cast<int32_t>(first_frame.Height) - 5 + first_frame.Mesh.SourceOffset.y);
-
-        CHECK(reader.read<bool>());
-        CHECK(reader.read<uint16_t>() == 0);
-        CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
-        CHECK_NOTHROW(reader.verify_end());
+        CHECK(resource.Directions[0].Frames[1].SharedFrameIndex == optional<int32_t> {0});
+        CHECK(sequence.Frames[1].Offset == first_frame.Offset);
     }
+}
+
+TEST_CASE("ImageBakerSpriteMeshRejectsInvalidSettings")
+{
+    using namespace BakerTests;
 
     SECTION("SpriteMeshRejectsInvalidSettings")
     {
@@ -2185,9 +2596,42 @@ TEST_CASE("ImageBaker")
                 ignore_unused(fname, opt, reader, files);
 
                 ImageImport::FrameCollection collection {};
-                collection.SequenceSize = 1;
-                collection.AnimTicks = 100;
-                collection.Main.Frames = {ImageImport::FrameShot {.Width = 1, .Height = 1, .Data = {255, 255, 255, 255}}};
+                [[maybe_unused]] uint16_t sequence_size {};
+                uint32_t duration_ms {100};
+                bool have_dirs {};
+                sequence_size = 1;
+                duration_ms = 100;
+                collection.Main.Frames = {ImageImport::FrameShot {.Size = {1, 1}, .Data = {255, 255, 255, 255}}};
+
+                if (!have_dirs) {
+                    for (auto& direction : collection.Dirs) {
+                        direction.Frames.clear();
+                    }
+                }
+                else {
+                    for (int32_t direction {GameSettings::MAP_DIR_COUNT - 1}; direction < ImageImport::MAX_DIRS_MINUS_ONE; direction++) {
+                        collection.Dirs[direction].Frames.clear();
+                    }
+                }
+
+                for (int32_t direction {0}; direction < (have_dirs ? GameSettings::MAP_DIR_COUNT : 1); direction++) {
+                    auto& frames {direction == 0 ? collection.Main : collection.Dirs[direction - 1]};
+
+                    for (size_t index {0}; index < frames.Frames.size(); index++) {
+                        auto& shot {frames.Frames[index]};
+
+                        if (shot.Shared && shot.SharedIndex >= 0 && numeric_cast<size_t>(shot.SharedIndex) < index) {
+                            int32_t reference {shot.SharedIndex};
+                            shot = frames.Frames[numeric_cast<size_t>(reference)];
+                            shot.Data.clear();
+                            shot.Shared = true;
+                            shot.SharedIndex = reference;
+                        }
+                    }
+
+                    ImageImport::SetFrameSequenceDuration(frames, std::chrono::milliseconds {duration_ms});
+                }
+
                 return collection;
             },
             {"mask"});
@@ -2195,6 +2639,61 @@ TEST_CASE("ImageBaker")
         CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/invalid-settings.mask"), ImageBakerException);
         CHECK(rig.Outputs.empty());
     }
+}
+
+TEST_CASE("ImageBakerRejectsCustomLoaderFrameSizeAndMotionOutsideSerializedRanges")
+{
+    using namespace BakerTests;
+
+    SECTION("RejectsCustomLoaderFrameSizeAndMotionOutsideSerializedRanges")
+    {
+        auto bake_invalid {[](const ImageImport::FrameShot& invalid, bool shared_motion) {
+            TestRig rig {};
+            rig.AddSourceFile("gfx/invalid-range.toy", "payload");
+
+            ImageBaker baker {rig.MakeContext()};
+            baker.AddLoader(
+                [invalid, shared_motion](string_view fname, string_view opt, FileReader reader, const ImageImport::Context& files) {
+                    ignore_unused(fname, opt, reader, files);
+
+                    ImageImport::FrameCollection collection {};
+
+                    if (shared_motion) {
+                        collection.Main.Frames = {
+                            ImageImport::FrameShot {.Size = {1, 1}, .Data = {255, 255, 255, 255}},
+                            ImageImport::FrameShot {.Motion = invalid.Motion, .Shared = true, .SharedIndex = 0},
+                        };
+                    }
+                    else {
+                        collection.Main.Frames = {invalid};
+                    }
+
+                    for (auto& direction : collection.Dirs) {
+                        direction.Frames.clear();
+                    }
+
+                    ImageImport::SetFrameSequenceDuration(collection.Main, std::chrono::milliseconds {100});
+
+                    return collection;
+                },
+                {"toy"});
+
+            CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/invalid-range.toy"), ImageBakerException);
+            CHECK(rig.Outputs.empty());
+        }};
+
+        bake_invalid(ImageImport::FrameShot {.Size = {-1, 1}}, false);
+        bake_invalid(ImageImport::FrameShot {.Size = {1, -1}}, false);
+        bake_invalid(ImageImport::FrameShot {.Size = {65536, 1}}, false);
+        bake_invalid(ImageImport::FrameShot {.Size = {1, 1}, .Motion = {32768, 0}, .Data = {255, 255, 255, 255}}, false);
+        bake_invalid(ImageImport::FrameShot {.Size = {1, 1}, .Motion = {0, -32769}, .Data = {255, 255, 255, 255}}, false);
+        bake_invalid(ImageImport::FrameShot {.Motion = {32768, 0}}, true);
+    }
+}
+
+TEST_CASE("ImageBakerBakesRawTgaTarget")
+{
+    using namespace BakerTests;
 
     SECTION("BakesRawTgaTarget")
     {
@@ -2215,61 +2714,11 @@ TEST_CASE("ImageBaker")
         CHECK(frame.Data == vector<uint8_t> {255, 0, 0, 128, 0, 255, 0, 255});
         CHECK(rig.Outputs.size() == 1);
     }
+}
 
-    SECTION("BakesWideRawTgaWithUnsignedWireDimensions")
-    {
-        TestRig rig {};
-        ConfigureSpriteMesh(rig, false);
-        constexpr int32_t wide_width {32768};
-        vector<uint8_t> pixels {vector<uint8_t>(numeric_cast<size_t>(wide_width) * 4)};
-        pixels[0] = 1;
-        pixels[1] = 2;
-        pixels[2] = 3;
-        pixels[3] = 4;
-        size_t last_pixel {(numeric_cast<size_t>(wide_width) - 1) * 4};
-        pixels[last_pixel + 0] = 5;
-        pixels[last_pixel + 1] = 6;
-        pixels[last_pixel + 2] = 7;
-        pixels[last_pixel + 3] = 8;
-        AddSourceBinaryFile(rig, "gfx/wide.tga", MakeRawTga(numeric_cast<uint16_t>(wide_width), 1, 32, pixels));
-
-        ImageBaker baker {rig.MakeContext()};
-        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/wide.tga");
-
-        REQUIRE(rig.Outputs.contains("gfx/wide.tga"));
-        auto frame {ReadSingleFrame(rig.Outputs.at("gfx/wide.tga"))};
-
-        CHECK(frame.Width == 32768);
-        CHECK(frame.Height == 1);
-        REQUIRE(frame.Data.size() == pixels.size());
-        CHECK(frame.Data[0] == 3);
-        CHECK(frame.Data[1] == 2);
-        CHECK(frame.Data[2] == 1);
-        CHECK(frame.Data[3] == 4);
-        CHECK(frame.Data[last_pixel + 0] == 7);
-        CHECK(frame.Data[last_pixel + 1] == 6);
-        CHECK(frame.Data[last_pixel + 2] == 5);
-        CHECK(frame.Data[last_pixel + 3] == 8);
-    }
-
-    SECTION("RejectsTruncatedAndOversizedTgaBeforeLargeAllocation")
-    {
-        TestRig rig {};
-        AddSourceBinaryFile(rig, "gfx/huge-raw.tga", MakeRawTga(65535, 65535, 32, vector<uint8_t> {}));
-        AddSourceBinaryFile(rig, "gfx/short-wide-raw.tga", MakeRawTga(65535, 1, 32, vector<uint8_t>(65532, 0x7F)));
-        AddSourceBinaryFile(rig, "gfx/huge-rle.tga", MakeRleTga(65535, 65535, 32, {0x7F, 1, 2, 3, 4}));
-        AddSourceBinaryFile(rig, "gfx/oversized-rle.tga", MakeRleTga(2, 1, 24, {0x7F, 1, 2, 3}));
-        AddSourceBinaryFile(rig, "gfx/oversized-run.tga", MakeRleTga(2, 1, 24, {0x82, 1, 2, 3}));
-        AddSourceBinaryFile(rig, "gfx/truncated-rle.tga", MakeRleTga(2, 1, 24, {0x00, 1, 2, 3, 0x80}));
-
-        ImageBaker baker {rig.MakeContext()};
-
-        for (string_view path : {"gfx/huge-raw.tga", "gfx/short-wide-raw.tga", "gfx/huge-rle.tga", "gfx/oversized-rle.tga", "gfx/oversized-run.tga", "gfx/truncated-rle.tga"}) {
-            CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), path), ImageBakerException);
-        }
-
-        CHECK(rig.Outputs.empty());
-    }
+TEST_CASE("ImageBakerTargetEarlyReturnsDoNotWrite")
+{
+    using namespace BakerTests;
 
     SECTION("TargetEarlyReturnsDoNotWrite")
     {
@@ -2282,6 +2731,11 @@ TEST_CASE("ImageBaker")
         CHECK_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), "ui/missing.tga"));
         CHECK(rig.Outputs.empty());
     }
+}
+
+TEST_CASE("ImageBakerBakesRleTgaWhenScanningAllFiles")
+{
+    using namespace BakerTests;
 
     SECTION("BakesRleTgaWhenScanningAllFiles")
     {
@@ -2326,13 +2780,18 @@ TEST_CASE("ImageBaker")
         string sprite_info_text {string(sprite_info_data.begin(), sprite_info_data.end())};
         vector<SpriteInfoFileEntry> sprite_info_entries {ReadSpriteInfoFile("SpriteInfo/TestPack.foinfo", sprite_info_text)};
         REQUIRE(sprite_info_entries.size() == 2);
-        CHECK(sprite_info_entries[0].Info.FrameCount == 1);
+        CHECK(sprite_info_entries[0].Info.Directions[0].Frames.size() == 1);
         CHECK(sprite_info_entries[0].Info.Directions.front().Frames.front().Size == isize32 {2, 1});
-        CHECK(sprite_info_entries[1].Info.FrameCount == 1);
+        CHECK(sprite_info_entries[1].Info.Directions[0].Frames.size() == 1);
         CHECK(sprite_info_entries[1].Info.Directions.front().Frames.front().Size == isize32 {2, 1});
     }
+}
 
 #if FO_IMAGE_FRM
+TEST_CASE("ImageBakerBakesFrmWithCritterNewNameAndCustomPalette")
+{
+    using namespace BakerTests;
+
     SECTION("BakesFrmWithCritterNewNameAndCustomPalette")
     {
         TestRig rig {};
@@ -2346,7 +2805,7 @@ TEST_CASE("ImageBaker")
         AddSourceBinaryFile(rig, "art/critters/RAT.pal", MakeFrmPalette());
 
         ImageBaker baker {rig.MakeContext()};
-        baker.BakeFiles(rig.GetAllSourceFiles(), "art/critters/RAT.frm");
+        baker.BakeFiles(rig.GetAllSourceFiles(), "art/critters/rat.frm");
 
         CHECK_FALSE(rig.Outputs.contains("art/critters/RAT.frm"));
         REQUIRE(rig.Outputs.contains("art/critters/rat.frm"));
@@ -2364,9 +2823,15 @@ TEST_CASE("ImageBaker")
         CHECK(sequence.Frames[1].NextY == 5);
         CHECK(sequence.Frames[1].Data == vector<uint8_t> {16, 20, 24, 255});
     }
+}
+
 #endif
 
 #if FO_IMAGE_FRM
+TEST_CASE("ImageBakerBakesFrmAnimatedPalettePixels")
+{
+    using namespace BakerTests;
+
     SECTION("BakesFrmAnimatedPalettePixels")
     {
         TestRig rig {};
@@ -2391,22 +2856,15 @@ TEST_CASE("ImageBaker")
         CHECK(sequence.Frames[1].Data.size() == 24);
         CHECK(sequence.Frames.front().Data != sequence.Frames[1].Data);
     }
+}
+
 #endif
 
 #if FO_IMAGE_FRM
-    SECTION("RejectsFrmDurationOverflowInsteadOfWrapping")
-    {
-        TestRig rig {};
-        vector<FrmFrameSpec> frames {66, FrmFrameSpec {.Width = 1, .Height = 1, .Indices = {1}}};
-        AddSourceBinaryFile(rig, "gfx/overflow.frm", MakeFrm(1, frames));
+TEST_CASE("ImageBakerBakesFrxCritterDirsIntoLowerCaseFofrm")
+{
+    using namespace BakerTests;
 
-        ImageBaker baker {rig.MakeContext()};
-        CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/overflow.frm"), ImageBakerException);
-        CHECK(rig.Outputs.empty());
-    }
-#endif
-
-#if FO_IMAGE_FRM
     SECTION("BakesFrxCritterDirsIntoLowerCaseFofrm")
     {
         TestRig rig {};
@@ -2429,45 +2887,37 @@ TEST_CASE("ImageBaker")
         AddSourceBinaryFile(rig, "art/critters/RAT.pal", MakeFrmPalette());
 
         ImageBaker baker {rig.MakeContext()};
-        baker.BakeFiles(rig.GetAllSourceFiles(), "art/critters/RAT.fr0");
+        baker.BakeFiles(rig.GetAllSourceFiles(), "art/critters/rat.fofrm");
 
         CHECK_FALSE(rig.Outputs.contains("art/critters/RAT.fr0"));
         REQUIRE(rig.Outputs.contains("art/critters/rat.fofrm"));
 
-        data_reader reader {rig.Outputs.at("art/critters/rat.fofrm")};
-        CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
-        CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_VERSION);
-        CHECK(reader.read<uint16_t>() == 1);
-        CHECK(reader.read<uint16_t>() == 200);
-        CHECK(reader.read<uint8_t>() == GameSettings::MAP_DIR_COUNT);
+        auto resource {ReadSpriteResource(rig.Outputs.at("art/critters/rat.fofrm"))};
+        REQUIRE(resource.Directions.size() == GameSettings::MAP_DIR_COUNT);
 
         for (int32_t dir {0}; dir < GameSettings::MAP_DIR_COUNT; dir++) {
-            CHECK_FALSE(reader.read<bool>());
-            CHECK(reader.read<int16_t>() == 10 + dir);
-            CHECK(reader.read<int16_t>() == -20 - dir);
-            CHECK(reader.read<uint16_t>() == 1);
-            CHECK(reader.read<uint16_t>() == 1);
-            CHECK(reader.read<int16_t>() == dir + 1);
-            CHECK(reader.read<int16_t>() == -dir - 1);
-
-            const_span<uint8_t> data {reader.read_bytes(4)};
+            auto sequence {ReadDirectionSequence(resource, numeric_cast<size_t>(dir))};
+            REQUIRE(sequence.Frames.size() == 1);
+            CHECK(sequence.AnimTicks == 200);
+            const auto& frame {sequence.Frames[0]};
+            CHECK(frame.Offset == ipos32 {10 + dir, -20 - dir});
+            CHECK(frame.Width == 1);
+            CHECK(frame.Height == 1);
+            CHECK(frame.NextX == dir + 1);
+            CHECK(frame.NextY == -dir - 1);
             uint8_t color_base {numeric_cast<uint8_t>(dir * 3 + 1)};
-            vector<uint8_t> expected_data {
-                numeric_cast<uint8_t>(color_base * 4),
-                numeric_cast<uint8_t>((color_base + 1) * 4),
-                numeric_cast<uint8_t>((color_base + 2) * 4),
-                255,
-            };
-            CHECK(vector<uint8_t>(data.begin(), data.end()) == expected_data);
-            SkipSpriteMesh(reader);
+            CHECK(frame.Data == vector<uint8_t> {numeric_cast<uint8_t>(color_base * 4), numeric_cast<uint8_t>((color_base + 1) * 4), numeric_cast<uint8_t>((color_base + 2) * 4), 255});
         }
-
-        CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
-        CHECK_NOTHROW(reader.verify_end());
     }
+}
+
 #endif
 
 #if FO_IMAGE_FRM
+TEST_CASE("ImageBakerBakesFrmEmbeddedDirectionsAndReportsTruncatedDirTable")
+{
+    using namespace BakerTests;
+
     SECTION("BakesFrmEmbeddedDirectionsAndReportsTruncatedDirTable")
     {
         vector<FrmFrameSpec> frames {
@@ -2488,35 +2938,21 @@ TEST_CASE("ImageBaker")
 
         REQUIRE(dirs.Outputs.contains("gfx/directional.frm"));
 
-        data_reader reader {dirs.Outputs.at("gfx/directional.frm")};
-        CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
-        CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_VERSION);
-        CHECK(reader.read<uint16_t>() == 1);
-        CHECK(reader.read<uint16_t>() == 200);
-        CHECK(reader.read<uint8_t>() == GameSettings::MAP_DIR_COUNT);
+        auto resource {ReadSpriteResource(dirs.Outputs.at("gfx/directional.frm"))};
+        REQUIRE(resource.Directions.size() == GameSettings::MAP_DIR_COUNT);
 
         for (int32_t dir {0}; dir < GameSettings::MAP_DIR_COUNT; dir++) {
-            CHECK_FALSE(reader.read<bool>());
-
-            if (dir == 0) {
-                CHECK(reader.read<int16_t>() == 1);
-                CHECK(reader.read<int16_t>() == -1);
-            }
-            else {
-                CHECK(reader.read<int16_t>() == 10 + dir);
-                CHECK(reader.read<int16_t>() == -10 - dir);
-            }
-
-            CHECK(reader.read<uint16_t>() == 1);
-            CHECK(reader.read<uint16_t>() == 1);
-            CHECK(reader.read<int16_t>() == 2);
-            CHECK(reader.read<int16_t>() == 3);
-            CHECK(reader.read_bytes(4).size() == 4);
-            SkipSpriteMesh(reader);
+            auto sequence {ReadDirectionSequence(resource, numeric_cast<size_t>(dir))};
+            REQUIRE(sequence.Frames.size() == 1);
+            CHECK(sequence.AnimTicks == 200);
+            const auto& frame {sequence.Frames[0]};
+            CHECK(frame.Offset == (dir == 0 ? ipos32 {1, -1} : ipos32 {10 + dir, -10 - dir}));
+            CHECK(frame.Width == 1);
+            CHECK(frame.Height == 1);
+            CHECK(frame.NextX == 2);
+            CHECK(frame.NextY == 3);
+            CHECK(frame.Data.size() == 4);
         }
-
-        CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
-        CHECK_NOTHROW(reader.verify_end());
 
         TestRig truncated {};
         AddSourceBinaryFile(truncated, "gfx/truncated-dirs.frm", MakeFrmWithDirTable(5, frames, 2));
@@ -2525,9 +2961,15 @@ TEST_CASE("ImageBaker")
         CHECK_THROWS_AS(truncated_baker.BakeFiles(truncated.GetAllSourceFiles(), "gfx/truncated-dirs.frm"), ImageBakerException);
         CHECK(truncated.Outputs.empty());
     }
+}
+
 #endif
 
 #if FO_IMAGE_FRM
+TEST_CASE("ImageBakerBakesFrxAnimatedPalettePixels")
+{
+    using namespace BakerTests;
+
     SECTION("BakesFrxAnimatedPalettePixels")
     {
         TestRig rig {};
@@ -2539,7 +2981,7 @@ TEST_CASE("ImageBaker")
                 3, -4));
 
         ImageBaker baker {rig.MakeContext()};
-        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/animated.fr0");
+        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/animated.frm");
 
         CHECK_FALSE(rig.Outputs.contains("gfx/animated.fr0"));
         REQUIRE(rig.Outputs.contains("gfx/animated.frm"));
@@ -2555,9 +2997,15 @@ TEST_CASE("ImageBaker")
         CHECK(sequence.Frames[1].Data.size() == 24);
         CHECK(sequence.Frames.front().Data != sequence.Frames[1].Data);
     }
+}
+
 #endif
 
 #if FO_IMAGE_FRM
+TEST_CASE("ImageBakerInvalidFrxMissingDirectionIsReported")
+{
+    using namespace BakerTests;
+
     SECTION("InvalidFrxMissingDirectionIsReported")
     {
         TestRig rig {};
@@ -2570,7 +3018,13 @@ TEST_CASE("ImageBaker")
         CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "art/critters/RAT.fr0"), ImageBakerException);
         CHECK(rig.Outputs.empty());
     }
+}
+
 #endif
+
+TEST_CASE("ImageBakerBakesPalettePngWithTransparency")
+{
+    using namespace BakerTests;
 
     SECTION("BakesPalettePngWithTransparency")
     {
@@ -2587,8 +3041,13 @@ TEST_CASE("ImageBaker")
         CHECK(frame.Height == 1);
         CHECK(frame.Data == vector<uint8_t> {255, 0, 0, 0, 0, 255, 0, 255});
     }
+}
 
 #if FO_IMAGE_BAM || FO_IMAGE_MOS || FO_IMAGE_RIX || FO_IMAGE_TIL || FO_IMAGE_ZAR
+TEST_CASE("ImageBakerBakesSimpleLegacyFormats")
+{
+    using namespace BakerTests;
+
     SECTION("BakesSimpleLegacyFormats")
     {
         TestRig rig {};
@@ -2656,8 +3115,9 @@ TEST_CASE("ImageBaker")
 
         CHECK(bam_frame.Width == 4);
         CHECK(bam_frame.Height == 1);
-        CHECK(bam_frame.NextX == 1);
-        CHECK(bam_frame.NextY == -1);
+        CHECK(bam_frame.Offset == ipos32 {1, -1});
+        CHECK(bam_frame.NextX == 0);
+        CHECK(bam_frame.NextY == 0);
         CHECK(bam_frame.Data == vector<uint8_t> {0x33, 0x22, 0x11, 0xFF, 0, 0, 0, 0, 6, 5, 4, 0xFF, 6, 5, 4, 0xFF});
 #endif
 
@@ -2670,32 +3130,20 @@ TEST_CASE("ImageBaker")
         CHECK(til_frame.Data == vector<uint8_t> {0x33, 0x22, 0x11, 0xFF, 0x33, 0x22, 0x11, 0x7F, 0x33, 0x22, 0x11, 0x40});
 #endif
     }
-#endif
+}
 
-#if FO_IMAGE_TIL
-    SECTION("RejectsTilFrameCountAndDurationRanges")
-    {
-        TestRig rig {};
-        AddSourceBinaryFile(rig, "legacy/negative.til", MakeTilWithFrameCount(-1));
-        AddSourceBinaryFile(rig, "legacy/large.til", MakeTilWithFrameCount(65536));
-        AddSourceBinaryFile(rig, "legacy/long.til", MakeTilWithFrameCount(656));
-
-        ImageBaker baker {rig.MakeContext()};
-
-        for (string_view path : {"legacy/negative.til", "legacy/large.til", "legacy/long.til"}) {
-            CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), path), ImageBakerException);
-        }
-
-        CHECK(rig.Outputs.empty());
-    }
 #endif
 
 #if FO_IMAGE_ART
+TEST_CASE("ImageBakerBakesArtFrameOptionsThroughFofrm")
+{
+    using namespace BakerTests;
+
     SECTION("BakesArtFrameOptionsThroughFofrm")
     {
         // Palette 1, transparency from color, flipped (hot x = w - hot x - 2) and vertically mirrored
         TestRig rig {};
-        rig.AddSourceFile("gfx/art.fofrm", "Frm=marker$1thv.art\n");
+        rig.AddSourceFile("gfx/art.fofrm", "Frame = marker$1thv.art\n");
         AddSourceBinaryFile(rig, "gfx/marker.art", MakeSimpleArt());
 
         ImageBaker baker {rig.MakeContext()};
@@ -2713,13 +3161,19 @@ TEST_CASE("ImageBaker")
         CHECK(sequence.Frames[0].NextY == 2);
         CHECK(sequence.Frames[0].Data == vector<uint8_t> {0, 0, 0, 0, 0, 0, 0, 0, 0x48, 0x09, 0x0A, 0x48, 0x44, 0x05, 0x06, 0x44});
     }
+}
+
 #endif
 
 #if FO_IMAGE_BAM
+TEST_CASE("ImageBakerBakesBamSpecificFrameOptionsThroughFofrm")
+{
+    using namespace BakerTests;
+
     SECTION("BakesBamSpecificFrameOptionsThroughFofrm")
     {
         TestRig specific_frame {};
-        specific_frame.AddSourceFile("legacy/bam-specific.fofrm", "Frm=multi$9-1.bam\n");
+        specific_frame.AddSourceFile("legacy/bam-specific.fofrm", "Frame = multi$9-1.bam\n");
         AddSourceBinaryFile(specific_frame, "legacy/multi.bam", MakeMultiFrameBam());
 
         ImageBaker specific_frame_baker {specific_frame.MakeContext()};
@@ -2733,12 +3187,13 @@ TEST_CASE("ImageBaker")
         REQUIRE(selected.Frames.size() == 1);
         CHECK(selected.Frames[0].Width == 2);
         CHECK(selected.Frames[0].Height == 1);
-        CHECK(selected.Frames[0].NextX == -1);
-        CHECK(selected.Frames[0].NextY == -2);
+        CHECK(selected.Frames[0].Offset == ipos32 {-1, -2});
+        CHECK(selected.Frames[0].NextX == 0);
+        CHECK(selected.Frames[0].NextY == 0);
         CHECK(selected.Frames[0].Data == vector<uint8_t> {0x06, 0x05, 0x04, 0xFF, 0x33, 0x22, 0x11, 0xFF});
 
         TestRig clamped_frame {};
-        clamped_frame.AddSourceFile("legacy/bam-clamped.fofrm", "Frm=multi$0-9.bam\n");
+        clamped_frame.AddSourceFile("legacy/bam-clamped.fofrm", "Frame = multi$0-9.bam\n");
         AddSourceBinaryFile(clamped_frame, "legacy/multi.bam", MakeMultiFrameBam());
 
         ImageBaker clamped_frame_baker {clamped_frame.MakeContext()};
@@ -2752,18 +3207,25 @@ TEST_CASE("ImageBaker")
         REQUIRE(clamped.Frames.size() == 1);
         CHECK(clamped.Frames[0].Width == 1);
         CHECK(clamped.Frames[0].Height == 1);
+        CHECK(clamped.Frames[0].Offset == ipos32 {0, 1});
         CHECK(clamped.Frames[0].NextX == 0);
-        CHECK(clamped.Frames[0].NextY == 1);
+        CHECK(clamped.Frames[0].NextY == 0);
         CHECK(clamped.Frames[0].Data == vector<uint8_t> {0x33, 0x22, 0x11, 0xFF});
     }
+}
+
 #endif
 
 #if FO_IMAGE_ART
+TEST_CASE("ImageBakerBakesArtFrameRangeAndRleThroughFofrm")
+{
+    using namespace BakerTests;
+
     SECTION("BakesArtFrameRangeAndRleThroughFofrm")
     {
         // Missing palette 3 falls back to the first present palette; frames share one canvas around their hot spots
         TestRig rig {};
-        rig.AddSourceFile("gfx/art-range.fofrm", "Frm=range$3F1-0.art\n");
+        rig.AddSourceFile("gfx/art-range.fofrm", "Frame = range$3F1-0.art\n");
         AddSourceBinaryFile(rig, "gfx/range.art", MakeRleFrameRangeArt());
 
         ImageBaker baker {rig.MakeContext()};
@@ -2773,7 +3235,7 @@ TEST_CASE("ImageBaker")
         auto sequence {ReadSingleDirSequence(rig.Outputs.at("gfx/art-range.fofrm"))};
 
         CHECK(sequence.SequenceSize == 2);
-        CHECK(sequence.AnimTicks == 100);
+        CHECK(sequence.AnimTicks == 200);
         REQUIRE(sequence.Frames.size() == 2);
         CHECK(sequence.Frames[0].Width == 3);
         CHECK(sequence.Frames[0].Height == 1);
@@ -2785,7 +3247,7 @@ TEST_CASE("ImageBaker")
         CHECK(sequence.Frames[1].Data == vector<uint8_t> {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0});
 
         TestRig forward {};
-        forward.AddSourceFile("gfx/art-forward.fofrm", "Frm=range$1F0-1.art\n");
+        forward.AddSourceFile("gfx/art-forward.fofrm", "Frame = range$1F0-1.art\n");
         AddSourceBinaryFile(forward, "gfx/range.art", MakeRleFrameRangeArt());
 
         ImageBaker forward_baker {forward.MakeContext()};
@@ -2801,26 +3263,620 @@ TEST_CASE("ImageBaker")
         CHECK(forward_sequence.Frames[1].NextY == -1);
         CHECK(forward_sequence.Frames[1].Data == vector<uint8_t> {0x04, 0x05, 0x06, 0xFF, 0x04, 0x05, 0x06, 0xFF, 0x08, 0x09, 0x0A, 0xFF});
     }
+}
+
 #endif
+
+#if FO_IMAGE_SPR
+TEST_CASE("ImageBakerBakesSprSequenceOptionsThroughFofrm")
+{
+    using namespace BakerTests;
+
+    SECTION("BakesSprSequenceOptionsThroughFofrm")
+    {
+        TestRig rig {};
+        rig.AddSourceFile("gfx/spr.fofrm", "Frame = actor$[1,5,-10,20]walk.spr\n");
+        AddSourceBinaryFile(rig, "gfx/actor.spr", MakeSimpleSpr());
+
+        ImageBaker baker {rig.MakeContext()};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/spr.fofrm");
+
+        REQUIRE(rig.Outputs.contains("gfx/spr.fofrm"));
+        auto sequence {ReadSingleDirSequence(rig.Outputs.at("gfx/spr.fofrm"))};
+
+        CHECK(sequence.SequenceSize == 1);
+        CHECK(sequence.AnimTicks == 100);
+        REQUIRE(sequence.Frames.size() == 1);
+        CHECK(sequence.Frames[0].Width == 3);
+        CHECK(sequence.Frames[0].Height == 1);
+        CHECK(sequence.Frames[0].Offset == ipos32 {1, 1});
+        CHECK(sequence.Frames[0].NextX == 0);
+        CHECK(sequence.Frames[0].NextY == 0);
+        CHECK(sequence.Frames[0].Data == vector<uint8_t> {0x33, 0x22, 0x11, 0xFF, 0x2D, 0x14, 0x28, 0xFF, 0, 0, 0, 0x40});
+    }
+}
+
+#endif
+
+#if FO_IMAGE_SPR
+TEST_CASE("ImageBakerBakesSprSkippedInvalidSequenceAndAllColorOffsets")
+{
+    using namespace BakerTests;
+
+    SECTION("BakesSprSkippedInvalidSequenceAndAllColorOffsets")
+    {
+        TestRig rig {};
+        rig.AddSourceFile("gfx/spr-all-offsets.fofrm", "Frame = actor$[9,1,2,3]walk.spr\n");
+        AddSourceBinaryFile(rig, "gfx/actor.spr", MakeSprWithSequenceFrames({-43, 11, 12, 13, 5}));
+
+        ImageBaker baker {rig.MakeContext()};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/spr-all-offsets.fofrm");
+
+        REQUIRE(rig.Outputs.contains("gfx/spr-all-offsets.fofrm"));
+        auto sequence {ReadSingleDirSequence(rig.Outputs.at("gfx/spr-all-offsets.fofrm"))};
+
+        CHECK(sequence.SequenceSize == 1);
+        CHECK(sequence.AnimTicks == 100);
+        REQUIRE(sequence.Frames.size() == 1);
+        CHECK(sequence.Frames[0].Width == 3);
+        CHECK(sequence.Frames[0].Height == 1);
+        CHECK(sequence.Frames[0].Offset == ipos32 {1, 1});
+        CHECK(sequence.Frames[0].NextX == 0);
+        CHECK(sequence.Frames[0].NextY == 0);
+        CHECK(sequence.Frames[0].Data == vector<uint8_t> {0x34, 0x24, 0x14, 0xFF, 0x29, 0x20, 0x17, 0xFF, 0x01, 0x02, 0x03, 0x40});
+    }
+}
+
+#endif
+
+#if FO_IMAGE_SPR
+TEST_CASE("ImageBakerBakesSprRepeatedFramesAsShared")
+{
+    using namespace BakerTests;
+
+    SECTION("BakesSprRepeatedFramesAsShared")
+    {
+        TestRig rig {};
+        AddSourceBinaryFile(rig, "gfx/repeated.spr", MakeSprWithSequenceFrames({0, 0}, 2));
+
+        ImageBaker baker {rig.MakeContext()};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/repeated.spr");
+
+        REQUIRE(rig.Outputs.contains("gfx/repeated.spr"));
+
+        auto resource {ReadSpriteResource(rig.Outputs.at("gfx/repeated.spr"))};
+        REQUIRE(resource.Directions.size() == GameSettings::MAP_DIR_COUNT);
+
+        for (size_t dir {0}; dir < resource.Directions.size(); dir++) {
+            auto sequence {ReadDirectionSequence(resource, dir)};
+            REQUIRE(sequence.Frames.size() == 2);
+            CHECK(sequence.AnimTicks == 200);
+            const auto& frame {sequence.Frames[0]};
+            CHECK(frame.Height == 1);
+
+            if (frame.Width == 3) {
+                CHECK(frame.Offset == ipos32 {1, 1});
+                CHECK(frame.NextX == 0);
+                CHECK(frame.NextY == 0);
+                CHECK(frame.Data == vector<uint8_t> {0x33, 0x22, 0x11, 0xFF, 0x28, 0x1E, 0x14, 0xFF, 0, 0, 0, 0x40});
+            }
+            else {
+                CHECK(frame.Width == 1);
+                CHECK(frame.Offset == ipos32 {0, 1});
+                CHECK(frame.NextX == 0);
+                CHECK(frame.NextY == 0);
+                CHECK(frame.Data == vector<uint8_t> {0, 0, 0, 0});
+            }
+
+            CHECK(resource.Directions[dir].Frames[1].SharedFrameIndex == optional<int32_t> {0});
+            CHECK(sequence.Frames[1].Offset == frame.Offset);
+            CHECK(sequence.Frames[1].NextX == frame.NextX);
+            CHECK(sequence.Frames[1].NextY == frame.NextY);
+        }
+    }
+}
+
+#endif
+
+TEST_CASE("ImageBakerBakesFofrmFrameOffsetsAsDrawPlacement")
+{
+    using namespace BakerTests;
+
+    SECTION("BakesFofrmFrameOffsetsAsDrawPlacement")
+    {
+        TestRig rig {};
+        rig.AddSourceFile("gfx/offsets.fofrm", R"(Offset = 10 20
+Frames = \
+    "first frame.tga" \
+    "first frame.tga" \
+    "first frame.tga"
+FrameOffsets = \
+    6 -8 \
+    -3 12 \
+    0 0
+)");
+        AddSourceBinaryFile(rig, "gfx/first frame.tga", MakeRawTga(1, 1, 24, {0, 0, 255}));
+        ImageBaker baker {rig.MakeContext()};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/offsets.fofrm");
+        auto sequence {ReadSingleDirSequence(rig.Outputs.at("gfx/offsets.fofrm"))};
+        REQUIRE(sequence.Frames.size() == 3);
+        CHECK(sequence.Frames[0].Offset == ipos32 {16, 12});
+        CHECK(sequence.Frames[1].Offset == ipos32 {7, 32});
+        CHECK(sequence.Frames[2].Offset == ipos32 {10, 20});
+
+        for (const auto& frame : sequence.Frames) {
+            CHECK(frame.NextX == 0);
+            CHECK(frame.NextY == 0);
+        }
+    }
+}
+
+TEST_CASE("ImageBakerBakesFofrmFrameOffsetsPerReferenceBeforeFlattening")
+{
+    using namespace BakerTests;
+
+    SECTION("BakesFofrmFrameOffsetsPerReferenceBeforeFlattening")
+    {
+        TestRig rig {};
+        rig.AddSourceFile("gfx/parent.fofrm", "Offset = 3 4\nFrame = child.fofrm\nFrameOffsets = 5 6\n");
+        rig.AddSourceFile("gfx/child.fofrm", "Offset = 99 88\nFrames = first.tga second.tga\nFrameOffsets = 2 3 -4 5\n");
+        AddSourceBinaryFile(rig, "gfx/first.tga", MakeRawTga(1, 1, 24, {0, 0, 255}));
+        AddSourceBinaryFile(rig, "gfx/second.tga", MakeRawTga(1, 1, 24, {0, 255, 0}));
+        ImageBaker baker {rig.MakeContext()};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/parent.fofrm");
+        auto sequence {ReadSingleDirSequence(rig.Outputs.at("gfx/parent.fofrm"))};
+        REQUIRE(sequence.Frames.size() == 2);
+        CHECK(sequence.AnimTicks == 200);
+        CHECK(sequence.Frames[0].Offset == ipos32 {10, 13});
+        CHECK(sequence.Frames[1].Offset == ipos32 {4, 15});
+    }
+}
+
+TEST_CASE("ImageBakerPreservesFofrmFrameOffsetsThroughMeshCropping")
+{
+    using namespace BakerTests;
+
+    SECTION("PreservesFofrmFrameOffsetsThroughMeshCropping")
+    {
+        TestRig rig {};
+        ConfigureSpriteMesh(rig);
+        rig.AddSourceFile("gfx/base-offset.fofrm", "Offset = 10 20\nFrames = shape.tga shape.tga\n");
+        rig.AddSourceFile("gfx/shifted-offset.fofrm", "Offset = 10 20\nFrames = shape.tga shape.tga\nFrameOffsets = 6 -8 -3 12\n");
+        vector<uint8_t> pixels {vector<uint8_t>(20 * 20 * 4)};
+        pixels[(10 * 20 + 10) * 4 + 3] = 255;
+        AddSourceBinaryFile(rig, "gfx/shape.tga", MakeRawTga(20, 20, 32, pixels));
+        ImageBaker baker {rig.MakeContext()};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/base-offset.fofrm");
+        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/shifted-offset.fofrm");
+        auto base {ReadSingleDirSequence(rig.Outputs.at("gfx/base-offset.fofrm"))};
+        auto shifted {ReadSingleDirSequence(rig.Outputs.at("gfx/shifted-offset.fofrm"))};
+        REQUIRE(base.Frames.size() == 2);
+        REQUIRE(shifted.Frames.size() == 2);
+        REQUIRE(base.Frames[0].MeshKind == SpriteMeshKind::Mesh);
+        CHECK(shifted.Frames[0].Offset == base.Frames[0].Offset + ipos32 {6, -8});
+        CHECK(shifted.Frames[1].Offset == base.Frames[1].Offset + ipos32 {-3, 12});
+        CHECK(shifted.Frames[0].Data == base.Frames[0].Data);
+        CHECK(shifted.Frames[1].Mesh.Vertices == base.Frames[1].Mesh.Vertices);
+
+        rig.AddSourceFile("gfx/large-offset.fofrm", "Frame = shape.tga\nFrameOffsets = 32768 0\n");
+        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/large-offset.fofrm");
+        CHECK(ReadSingleFrame(rig.Outputs.at("gfx/large-offset.fofrm")).Offset.x == base.Frames[0].Offset.x - 10 + 32768);
+
+        for (string_view value : {"0 -2147483648"}) {
+            rig.AddSourceFile("gfx/extreme-offset.fofrm", strex("Frame = shape.tga\nFrameOffsets = {}\n", value).str());
+            CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/extreme-offset.fofrm"), ImageBakerException);
+            CHECK_FALSE(rig.Outputs.contains("gfx/extreme-offset.fofrm"));
+        }
+    }
+}
+
+TEST_CASE("ImageBakerRejectsInvalidFofrmFrameOffsets")
+{
+    using namespace BakerTests;
+
+    SECTION("RejectsInvalidFofrmFrameOffsets")
+    {
+        for (string_view value : {"", "1", "1 2", "1 2 3", "1 2 3 4 5 6", "a 2 3 4", "1.5 2 3 4", "2147483648 2 3 4"}) {
+            CAPTURE(value);
+            TestRig rig {};
+            rig.AddSourceFile("gfx/bad.fofrm", strex("Frames = base.tga base.tga\nFrameOffsets = {}\n", value).str());
+            AddSourceBinaryFile(rig, "gfx/base.tga", MakeRawTga(1, 1, 24, {0, 0, 255}));
+            ImageBaker baker {rig.MakeContext()};
+            CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/bad.fofrm"), ImageBakerException);
+            CHECK(rig.Outputs.empty());
+        }
+    }
+}
+
+TEST_CASE("ImageBakerRejectsIndexedFofrmFrameDeltasBeforeAlias")
+{
+    using namespace BakerTests;
+
+    SECTION("RejectsIndexedFofrmFrameDeltasBeforeAlias")
+    {
+        FO_TEMPORARY_COMPAT(FofrmLegacyDescriptor, "2026-12-31");
+
+        for (string_view key : {"NextX_0", "NextY_0"}) {
+            TestRig rig {};
+            rig.AddSourceFile("gfx/old.fofrm", strex("Source = base.tga\n{} = 1\n", key).str());
+            AddSourceBinaryFile(rig, "gfx/base.tga", MakeRawTga(1, 1, 24, {0, 0, 255}));
+            ImageBaker baker {rig.MakeContext()};
+            CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/old.fofrm"), ImageBakerException);
+            CHECK(rig.Outputs.empty());
+        }
+    }
+}
+
+TEST_CASE("ImageBakerRejectsCompositeFofrmFrameOffsetTokens")
+{
+    using namespace BakerTests;
+
+    SECTION("RejectsCompositeFofrmFrameOffsetTokens")
+    {
+        for (string_view value : {R"("1 2" "")", R"("1 " " 2")"}) {
+            TestRig rig {};
+            rig.AddSourceFile("gfx/token.fofrm", strex("Frame = base.tga\nFrameOffsets = {}\n", value).str());
+            AddSourceBinaryFile(rig, "gfx/base.tga", MakeRawTga(1, 1, 24, {0, 0, 255}));
+            ImageBaker baker {rig.MakeContext()};
+            CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/token.fofrm"), ImageBakerException);
+            CHECK(rig.Outputs.empty());
+        }
+    }
+}
+
+TEST_CASE("ImageBakerRejectsInvalidFrameOffsetsInRootWithDirections")
+{
+    using namespace BakerTests;
+
+    SECTION("RejectsInvalidFrameOffsetsInRootWithDirections")
+    {
+        for (string_view root : {"FrameOffsets = 1 2\n", "Frame = base.tga\nFrameOffsets = 1 2 3 4\n"}) {
+            TestRig rig {};
+            string descriptor {root};
+
+            for (int32_t dir {1}; dir < GameSettings::MAP_DIR_COUNT; dir++) {
+                descriptor += strex("[{} {}]\nFrame = base.tga\n", fofrm_direction_prefix, dir);
+            }
+
+            rig.AddSourceFile("gfx/unused-root.fofrm", descriptor);
+            AddSourceBinaryFile(rig, "gfx/base.tga", MakeRawTga(1, 1, 24, {0, 0, 255}));
+            ImageBaker baker {rig.MakeContext()};
+            CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/unused-root.fofrm"), ImageBakerException);
+            CHECK(rig.Outputs.empty());
+        }
+    }
+}
+
+TEST_CASE("ImageBakerBakesFofrmFrameListsAndPairedOffset")
+{
+    using namespace BakerTests;
+
+    SECTION("BakesFofrmFrameListsAndPairedOffset")
+    {
+        TestRig rig {};
+        rig.AddSourceFile("gfx/list.fofrm", R"(Fps = 5
+Offset = -3 4
+Frames = \
+    first.tga \
+    second.tga \
+    first.tga
+FrameOffsets = 2 0 0 0 0 0
+)");
+        AddSourceBinaryFile(rig, "gfx/first.tga", MakeRawTga(1, 1, 32, {0, 0, 255, 255}));
+        AddSourceBinaryFile(rig, "gfx/second.tga", MakeRawTga(1, 1, 32, {0, 255, 0, 128}));
+
+        ImageBaker baker {rig.MakeContext()};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/list.fofrm");
+
+        auto sequence {ReadSingleDirSequence(rig.Outputs.at("gfx/list.fofrm"))};
+        CHECK(sequence.SequenceSize == 3);
+        CHECK(sequence.AnimTicks == 600);
+        REQUIRE(sequence.Frames.size() == 3);
+        CHECK(sequence.Frames[0].Offset == ipos32 {-1, 4});
+        CHECK(sequence.Frames[1].Offset == ipos32 {-3, 4});
+        CHECK(sequence.Frames[2].Offset == ipos32 {-3, 4});
+        CHECK(sequence.Frames[0].NextX == 0);
+        CHECK(sequence.Frames[1].Data == vector<uint8_t> {0, 255, 0, 128});
+        CHECK(sequence.Frames[2].Data == sequence.Frames[0].Data);
+    }
+}
+
+TEST_CASE("ImageBakerBakesFofrmQuotedFramePaths")
+{
+    using namespace BakerTests;
+
+    SECTION("BakesFofrmQuotedFramePaths")
+    {
+        TestRig rig {};
+        rig.AddSourceFile("gfx/quoted.fofrm", R"(Fps = 5
+Frames = \
+    "first frame.tga" \
+    second.tga \
+    "first frame.tga"
+FrameOffsets = 2 0 0 0 0 0
+)");
+        AddSourceBinaryFile(rig, "gfx/first frame.tga", MakeRawTga(1, 1, 24, {0, 0, 255}));
+        AddSourceBinaryFile(rig, "gfx/second.tga", MakeRawTga(1, 1, 24, {0, 255, 0}));
+
+        ImageBaker baker {rig.MakeContext()};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/quoted.fofrm");
+
+        auto sequence {ReadSingleDirSequence(rig.Outputs.at("gfx/quoted.fofrm"))};
+        CHECK(sequence.SequenceSize == 3);
+        CHECK(sequence.AnimTicks == 600);
+        REQUIRE(sequence.Frames.size() == 3);
+        CHECK(sequence.Frames[0].Data == vector<uint8_t> {255, 0, 0, 255});
+        CHECK(sequence.Frames[1].Data == vector<uint8_t> {0, 255, 0, 255});
+        CHECK(sequence.Frames[2].Data == sequence.Frames[0].Data);
+        CHECK(sequence.Frames[0].NextX == 0);
+        CHECK(sequence.Frames[0].Offset == ipos32 {2, 0});
+    }
+}
+
+TEST_CASE("ImageBakerRejectsMalformedFofrmQuotedFrames")
+{
+    using namespace BakerTests;
+
+    SECTION("RejectsMalformedFofrmQuotedFrames")
+    {
+        for (string_view frames : {R"("first frame.tga)", R"("first frame.tga"second.tga)", "first.tga\\"}) {
+            CAPTURE(frames);
+            TestRig rig {};
+            rig.AddSourceFile("gfx/invalid-quotes.fofrm", strex("Frames = {}\n", frames).str());
+            AddSourceBinaryFile(rig, "gfx/first.tga", MakeRawTga(1, 1, 24, {0, 0, 255}));
+            ImageBaker baker {rig.MakeContext()};
+            CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/invalid-quotes.fofrm"), ImageBakerException);
+            CHECK(rig.Outputs.empty());
+        }
+    }
+}
+
+TEST_CASE("ImageBakerBakesFofrmSingleFramePathWithSpaces")
+{
+    using namespace BakerTests;
+
+    SECTION("BakesFofrmSingleFramePathWithSpaces")
+    {
+        TestRig rig {};
+        rig.AddSourceFile("gfx/single.fofrm", "Offset = +3\t-4\nFrame = first frame.tga\n");
+        AddSourceBinaryFile(rig, "gfx/first frame.tga", MakeRawTga(1, 1, 24, {0, 0, 255}));
+
+        ImageBaker baker {rig.MakeContext()};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/single.fofrm");
+
+        auto frame {ReadSingleFrame(rig.Outputs.at("gfx/single.fofrm"))};
+        CHECK(frame.Offset == ipos32 {3, -4});
+        CHECK(frame.Data == vector<uint8_t> {255, 0, 0, 255});
+    }
+}
+
+TEST_CASE("ImageBakerBakesFofrmIndexedDirectionsWithImplicitZeroAndOffsetCarry")
+{
+    using namespace BakerTests;
+
+    SECTION("BakesFofrmIndexedDirectionsWithImplicitZeroAndOffsetCarry")
+    {
+        TestRig rig {};
+        string descriptor {"Offset = 7 -8\n"};
+
+        for (int32_t dir {0}; dir < GameSettings::MAP_DIR_COUNT; dir++) {
+            if (dir != 0) {
+                descriptor += strex("[{} {}]\n", fofrm_direction_prefix, dir);
+            }
+
+            descriptor += strex("Frame = frame{}.tga\n", dir);
+
+            if (dir == 0) {
+                descriptor += "FrameOffsets = 5 -6\n";
+            }
+
+            if (dir == 2) {
+                descriptor += "Offset = -3 2\n";
+            }
+
+            AddSourceBinaryFile(rig, strex("gfx/frame{}.tga", dir).str(), MakeRawTga(1, 1, 24, {0, 0, numeric_cast<uint8_t>(dir + 1)}));
+        }
+
+        rig.AddSourceFile("gfx/directions.fofrm", descriptor);
+        ImageBaker baker {rig.MakeContext()};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/directions.fofrm");
+
+        auto sprite {ReadSpriteResource(rig.Outputs.at("gfx/directions.fofrm"))};
+        REQUIRE(sprite.Directions.size() == GameSettings::MAP_DIR_COUNT);
+
+        for (int32_t dir {0}; dir < GameSettings::MAP_DIR_COUNT; dir++) {
+            REQUIRE(sprite.Directions[dir].Frames.size() == 1);
+            CHECK(sprite.Directions[dir].Frames.front().Offset == (dir == 0 ? ipos32 {12, -14} : dir == 1 ? ipos32 {7, -8} : ipos32 {-3, 2}));
+            CHECK(sprite.Directions[dir].Frames.front().Pixels == vector<ucolor> {ucolor {numeric_cast<uint8_t>(dir + 1), 0, 0, 255}});
+        }
+    }
+}
+
+TEST_CASE("ImageBakerRejectsExplicitlyEmptySecondDirectionFrames")
+{
+    using namespace BakerTests;
+
+    SECTION("RejectsExplicitlyEmptySecondDirectionFrames")
+    {
+        for (string_view key : {"Frame", "Frames"}) {
+            CAPTURE(key);
+            TestRig rig {};
+            rig.AddSourceFile("gfx/empty-direction.fofrm", strex("Frame = base.tga\n[{} 1]\n{} =\n", fofrm_direction_prefix, key).str());
+            AddSourceBinaryFile(rig, "gfx/base.tga", MakeRawTga(1, 1, 24, {0, 0, 255}));
+            ImageBaker baker {rig.MakeContext()};
+            CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/empty-direction.fofrm"), ImageBakerException);
+            CHECK(rig.Outputs.empty());
+        }
+    }
+}
+
+TEST_CASE("ImageBakerRejectsRetiredFofrmFieldsBeforeAlias")
+{
+    using namespace BakerTests;
+
+    SECTION("RejectsRetiredFofrmFieldsBeforeAlias")
+    {
+        FO_TEMPORARY_COMPAT(FofrmLegacyDescriptor, "2026-12-31");
+
+        for (string_view field : {"Count = 1", "OffsetX = 1", "OffsetY = 2", "Frm = base.tga", "Frm_0 = base.tga"}) {
+            CAPTURE(field);
+            TestRig rig {};
+            rig.AddSourceFile("gfx/invalid.fofrm", strex("Source = base.tga\n{}\n", field).str());
+            AddSourceBinaryFile(rig, "gfx/base.tga", MakeRawTga(1, 1, 24, {0, 0, 255}));
+            ImageBaker baker {rig.MakeContext()};
+            CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/invalid.fofrm"), ImageBakerException);
+            CHECK(rig.Outputs.empty());
+        }
+    }
+}
+
+TEST_CASE("ImageBakerRejectsInvalidFofrmFrameListsAndOffsets")
+{
+    using namespace BakerTests;
+
+    SECTION("RejectsInvalidFofrmFrameListsAndOffsets")
+    {
+        for (string_view descriptor : {"Frame = base.tga\nFrames = base.tga\n", "Frame =\n", "Frames =\n", "Frame = base.tga\nOffset = 1\n", "Frame = base.tga\nOffset = 1 2 3\n", "Frame = base.tga\nOffset = a 2\n", "Frame = base.tga\nOffset = 1.5 2\n", "Frame = base.tga\nOffset = 1-2\n", "Frame = base.tga\nOffset = 2147483648 0\n"}) {
+            CAPTURE(descriptor);
+            TestRig rig {};
+            rig.AddSourceFile("gfx/invalid.fofrm", descriptor);
+            AddSourceBinaryFile(rig, "gfx/base.tga", MakeRawTga(1, 1, 24, {0, 0, 255}));
+            ImageBaker baker {rig.MakeContext()};
+            CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/invalid.fofrm"), ImageBakerException);
+            CHECK(rig.Outputs.empty());
+        }
+    }
+}
+
+TEST_CASE("ImageBakerRejectsNonPascalCaseFofrmKeys")
+{
+    using namespace BakerTests;
+
+    SECTION("RejectsNonPascalCaseFofrmKeys")
+    {
+        FO_TEMPORARY_COMPAT(FofrmLegacyDescriptor, "2026-12-31");
+
+        for (string_view field : {"fps=10", "count=1", "offs_x=1", "offs_y=2", "effect=unused.fofx", "frm=base.tga", "frm_0=base.tga", "next_x_0=3", "next_y_0=4", "offsetX=1", "offsetY=2", "nextX_0=3", "nextY_0=4", "alias=base.tga"}) {
+            CAPTURE(field);
+
+            TestRig rig {};
+            rig.AddSourceFile("gfx/invalid.fofrm", strex("Frame = base.tga\n{}\n", field).str());
+            AddSourceBinaryFile(rig, "gfx/base.tga", MakeRawTga(1, 1, 24, {0, 0, 255}));
+
+            ImageBaker baker {rig.MakeContext()};
+            CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/invalid.fofrm"), ImageBakerException);
+            CHECK(rig.Outputs.empty());
+        }
+    }
+}
+
+TEST_CASE("ImageBakerRejectsNonPascalCaseFofrmSectionsBeforeAlias")
+{
+    using namespace BakerTests;
+
+    SECTION("RejectsNonPascalCaseFofrmSectionsBeforeAlias")
+    {
+        FO_TEMPORARY_COMPAT(FofrmLegacyDescriptor, "2026-12-31");
+
+        for (string_view section : {"dir_0", "dir_1", "DIR_0", "Dir_00", "Dir_99", "Dir_0", "Dir30", "Dir 1", "Dir 360"}) {
+            CAPTURE(section);
+
+            TestRig rig {};
+            rig.AddSourceFile("gfx/invalid.fofrm", strex("Source = base.tga\n[{}]\nFrame = base.tga\n", section).str());
+            AddSourceBinaryFile(rig, "gfx/base.tga", MakeRawTga(1, 1, 24, {0, 0, 255}));
+
+            ImageBaker baker {rig.MakeContext()};
+            CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/invalid.fofrm"), ImageBakerException);
+            CHECK(rig.Outputs.empty());
+        }
+    }
+}
+
+TEST_CASE("ImageBakerRejectsFofrmDegreeSectionsBeforeAlias")
+{
+    using namespace BakerTests;
+
+    SECTION("RejectsFofrmDegreeSectionsBeforeAlias")
+    {
+        FO_TEMPORARY_COMPAT(FofrmLegacyDescriptor, "2026-12-31");
+
+        for (string_view section : {"Dir 30", "Dir 90", "Dir 330"}) {
+            TestRig rig {};
+            rig.AddSourceFile("gfx/degree.fofrm", strex("Source = base.tga\n[{}]\nFrame = base.tga\n", section).str());
+            AddSourceBinaryFile(rig, "gfx/base.tga", MakeRawTga(1, 1, 24, {0, 0, 255}));
+            ImageBaker baker {rig.MakeContext()};
+            CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/degree.fofrm"), ImageBakerException);
+            CHECK(rig.Outputs.empty());
+        }
+    }
+}
+
+TEST_CASE("ImageBakerRejectsFofrmNamedZeroAndInvalidDirectionIndexesBeforeAlias")
+{
+    using namespace BakerTests;
+
+    SECTION("RejectsFofrmNamedZeroAndInvalidDirectionIndexesBeforeAlias")
+    {
+        for (string_view section : {"HexDir 0", "SquareDir 0", "HexDir 6", "SquareDir 8", "HexDir -1", "HexDir 01", "HexDir 1.5", "HexDir1", "hexDir 1"}) {
+            TestRig rig {};
+            rig.AddSourceFile("gfx/index.fofrm", strex("Source = base.tga\n[{}]\nFrame = base.tga\n", section).str());
+            AddSourceBinaryFile(rig, "gfx/base.tga", MakeRawTga(1, 1, 24, {0, 0, 255}));
+            ImageBaker baker {rig.MakeContext()};
+            CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/index.fofrm"), ImageBakerException);
+            CHECK(rig.Outputs.empty());
+        }
+    }
+}
+
+TEST_CASE("ImageBakerRejectsNonPascalCaseFofrmKeysBeforeAlias")
+{
+    using namespace BakerTests;
+
+    SECTION("RejectsNonPascalCaseFofrmKeysBeforeAlias")
+    {
+        FO_TEMPORARY_COMPAT(FofrmLegacyDescriptor, "2026-12-31");
+        TestRig rig {};
+        rig.AddSourceFile("gfx/invalid.fofrm", "Source=base.tga\nfps=10\n");
+        AddSourceBinaryFile(rig, "gfx/base.tga", MakeRawTga(1, 1, 24, {0, 0, 255}));
+
+        ImageBaker baker {rig.MakeContext()};
+        CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/invalid.fofrm"), ImageBakerException);
+        CHECK(rig.Outputs.empty());
+    }
+}
+
+TEST_CASE("ImageBakerRejectsUnknownFofrmKeysInCanonicalDirectionBeforeAlias")
+{
+    using namespace BakerTests;
+
+    SECTION("RejectsUnknownFofrmKeysInCanonicalDirectionBeforeAlias")
+    {
+        for (string_view field : {"frm_0=base.tga", "offsetX=1", "Unknown=1", "Frm_=base.tga", "NextX_bad=1"}) {
+            CAPTURE(field);
+
+            TestRig rig {};
+            rig.AddSourceFile("gfx/invalid.fofrm", strex("Source = base.tga\n[{} 1]\n{}\n", fofrm_direction_prefix, field).str());
+            AddSourceBinaryFile(rig, "gfx/base.tga", MakeRawTga(1, 1, 24, {0, 0, 255}));
+
+            ImageBaker baker {rig.MakeContext()};
+            CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/invalid.fofrm"), ImageBakerException);
+            CHECK(rig.Outputs.empty());
+        }
+    }
+}
+
+TEST_CASE("ImageBakerBakesFofrmSequenceThroughNestedImages")
+{
+    using namespace BakerTests;
 
     SECTION("BakesFofrmSequenceThroughNestedImages")
     {
         TestRig rig {};
         rig.AddSourceFile("gfx/anim.fofrm", R"(
-Fps=5
-Count=2
-OffsetX=1
-OffsetY=2
-
-[Dir_0]
-OffsetX=3
-OffsetY=4
-Frm_0=first.tga
-frm_1=second.tga
-NextX_0=5
-next_y_0=6
-next_x_1=-2
-NextY_1=8
+Fps = 5
+Offset = 3 4
+Frames = first.tga second.tga
+FrameOffsets = 5 6 -2 8
 )");
         AddSourceBinaryFile(rig, "gfx/first.tga", MakeRawTga(1, 1, 32, {0, 0, 255, 255}));
         AddSourceBinaryFile(rig, "gfx/second.tga", MakeRawTga(1, 1, 32, {0, 255, 0, 128}));
@@ -2834,75 +3890,49 @@ NextY_1=8
         CHECK(sequence.SequenceSize == 2);
         CHECK(sequence.AnimTicks == 400);
         REQUIRE(sequence.Frames.size() == 2);
-        CHECK(sequence.Frames[0].Offset == ipos32 {3, 4});
-        CHECK(sequence.Frames[1].Offset == ipos32 {3, 4});
-        CHECK(sequence.Frames[0].NextX == 5);
-        CHECK(sequence.Frames[0].NextY == 6);
+        CHECK(sequence.Frames[0].Offset == ipos32 {8, 10});
+        CHECK(sequence.Frames[1].Offset == ipos32 {1, 12});
+        CHECK(sequence.Frames[0].NextX == 0);
+        CHECK(sequence.Frames[0].NextY == 0);
         CHECK(sequence.Frames[0].Data == vector<uint8_t> {255, 0, 0, 255});
-        CHECK(sequence.Frames[1].NextX == -2);
-        CHECK(sequence.Frames[1].NextY == 8);
+        CHECK(sequence.Frames[1].NextX == 0);
+        CHECK(sequence.Frames[1].NextY == 0);
         CHECK(sequence.Frames[1].Data == vector<uint8_t> {0, 255, 0, 128});
     }
+}
 
-    SECTION("RejectsFofrmDurationOverflowAndKeepsZeroFps")
-    {
-        TestRig zero_fps {};
-        zero_fps.AddSourceFile("gfx/zero.fofrm", "Fps=0\nCount=1\nFrm=frame.tga\n");
-        AddSourceBinaryFile(zero_fps, "gfx/frame.tga", MakeRawTga(1, 1, 24, {0, 0, 255}));
-
-        ImageBaker zero_fps_baker {zero_fps.MakeContext()};
-        zero_fps_baker.BakeFiles(zero_fps.GetAllSourceFiles(), "gfx/zero.fofrm");
-
-        REQUIRE(zero_fps.Outputs.contains("gfx/zero.fofrm"));
-        auto zero_sequence {ReadSingleDirSequence(zero_fps.Outputs.at("gfx/zero.fofrm"))};
-        CHECK(zero_sequence.SequenceSize == 1);
-        CHECK(zero_sequence.AnimTicks == 0);
-
-        TestRig overflow {};
-        string fofrm {"Fps=1\nCount=66\n"};
-
-        for (int32_t i {0}; i < 66; i++) {
-            fofrm += strex("Frm_{}=frame.tga\n", i).str();
-        }
-
-        overflow.AddSourceFile("gfx/overflow.fofrm", fofrm);
-        AddSourceBinaryFile(overflow, "gfx/frame.tga", MakeRawTga(1, 1, 24, {0, 0, 255}));
-
-        ImageBaker overflow_baker {overflow.MakeContext()};
-        CHECK_THROWS_AS(overflow_baker.BakeFiles(overflow.GetAllSourceFiles(), "gfx/overflow.fofrm"), ImageBakerException);
-        CHECK(overflow.Outputs.empty());
-    }
+TEST_CASE("ImageBakerFofrmDirectionEdgeCases")
+{
+    using namespace BakerTests;
 
     SECTION("FofrmDirectionEdgeCases")
     {
         TestRig dir_one_without_frames {};
-        dir_one_without_frames.AddSourceFile("gfx/no-dir.fofrm", R"(
-Frm=base.tga
+        dir_one_without_frames.AddSourceFile("gfx/no-dir.fofrm",
+            strex(R"(
+Frame = base.tga
 
-[Dir_1]
-OffsetX=5
-)");
+[{} 1]
+Offset = 5 0
+)",
+                fofrm_direction_prefix)
+                .str());
         AddSourceBinaryFile(dir_one_without_frames, "gfx/base.tga", MakeRawTga(1, 1, 24, {0, 0, 255}));
 
         ImageBaker dir_one_baker {dir_one_without_frames.MakeContext()};
-        dir_one_baker.BakeFiles(dir_one_without_frames.GetAllSourceFiles(), "gfx/no-dir.fofrm");
-
-        REQUIRE(dir_one_without_frames.Outputs.contains("gfx/no-dir.fofrm"));
-        auto sequence {ReadSingleDirSequence(dir_one_without_frames.Outputs.at("gfx/no-dir.fofrm"))};
-
-        CHECK(sequence.SequenceSize == 1);
-        CHECK(sequence.AnimTicks == 100);
-        REQUIRE(sequence.Frames.size() == 1);
-        CHECK(sequence.Frames[0].Offset == ipos32 {});
-        CHECK(sequence.Frames[0].Data == vector<uint8_t> {255, 0, 0, 255});
+        CHECK_THROWS_AS(dir_one_baker.BakeFiles(dir_one_without_frames.GetAllSourceFiles(), "gfx/no-dir.fofrm"), ImageBakerException);
+        CHECK(dir_one_without_frames.Outputs.empty());
 
         TestRig direction_gap {};
-        direction_gap.AddSourceFile("gfx/gap.fofrm", R"(
-Frm=base.tga
+        direction_gap.AddSourceFile("gfx/gap.fofrm",
+            strex(R"(
+Frame = base.tga
 
-[Dir_1]
-Frm=dir1.tga
-)");
+[{} 1]
+Frame = dir1.tga
+)",
+                fofrm_direction_prefix)
+                .str());
         AddSourceBinaryFile(direction_gap, "gfx/base.tga", MakeRawTga(1, 1, 24, {0, 0, 255}));
         AddSourceBinaryFile(direction_gap, "gfx/dir1.tga", MakeRawTga(1, 1, 24, {0, 255, 0}));
 
@@ -2917,22 +3947,56 @@ Frm=dir1.tga
 
                     string fname_str {fname};
                     ImageImport::FrameCollection collection {};
-                    collection.SequenceSize = fname_str.find("two") != string::npos ? 2 : 1;
-                    collection.AnimTicks = 100;
-                    collection.Main.Frames.resize(collection.SequenceSize);
+                    [[maybe_unused]] uint16_t sequence_size {};
+                    uint32_t duration_ms {100};
+                    bool have_dirs {};
+                    sequence_size = fname_str.find("two") != string::npos ? 2 : 1;
+                    duration_ms = 100;
+                    collection.Main.Frames.resize(sequence_size);
 
                     if (fname_str.find("shared") != string::npos) {
                         collection.Main.Frames[0] = ImageImport::FrameShot {.Shared = true, .SharedIndex = 0};
+
+                        if (!have_dirs) {
+                            for (auto& direction : collection.Dirs) {
+                                direction.Frames.clear();
+                            }
+                        }
+                        else {
+                            for (int32_t direction {GameSettings::MAP_DIR_COUNT - 1}; direction < ImageImport::MAX_DIRS_MINUS_ONE; direction++) {
+                                collection.Dirs[direction].Frames.clear();
+                            }
+                        }
+
+                        for (int32_t direction {0}; direction < (have_dirs ? GameSettings::MAP_DIR_COUNT : 1); direction++) {
+                            auto& frames {direction == 0 ? collection.Main : collection.Dirs[direction - 1]};
+
+                            for (size_t index {0}; index < frames.Frames.size(); index++) {
+                                auto& shot {frames.Frames[index]};
+
+                                if (shot.Shared && shot.SharedIndex >= 0 && numeric_cast<size_t>(shot.SharedIndex) < index) {
+                                    int32_t reference {shot.SharedIndex};
+                                    shot = frames.Frames[numeric_cast<size_t>(reference)];
+                                    shot.Data.clear();
+                                    shot.Shared = true;
+                                    shot.SharedIndex = reference;
+                                }
+                            }
+
+                            ImageImport::SetFrameSequenceDuration(frames, std::chrono::milliseconds {duration_ms});
+                        }
+
                         return collection;
                     }
 
-                    for (uint16_t i {0}; i < collection.SequenceSize; i++) {
+                    for (uint16_t i {0}; i < sequence_size; i++) {
                         collection.Main.Frames[i] = ImageImport::FrameShot {
-                            .Width = 1,
-                            .Height = 1,
+                            .Size = {1, 1},
                             .Data = {numeric_cast<uint8_t>(10 + i), 20, 30, 255},
                         };
                     }
+
+                    ImageImport::SetFrameSequenceDuration(collection.Main, std::chrono::milliseconds {duration_ms});
 
                     return collection;
                 },
@@ -2940,12 +4004,15 @@ Frm=dir1.tga
         }};
 
         TestRig mismatched_direction {};
-        mismatched_direction.AddSourceFile("gfx/mismatch.fofrm", R"(
-Frm=two.toy
+        mismatched_direction.AddSourceFile("gfx/mismatch.fofrm",
+            strex(R"(
+Frame = two.toy
 
-[Dir_1]
-Frm=one.toy
-)");
+[{} 1]
+Frame = one.toy
+)",
+                fofrm_direction_prefix)
+                .str());
         mismatched_direction.AddSourceFile("gfx/two.toy", "two");
         mismatched_direction.AddSourceFile("gfx/one.toy", "one");
 
@@ -2955,7 +4022,7 @@ Frm=one.toy
         CHECK(mismatched_direction.Outputs.empty());
 
         TestRig shared_nested_frame {};
-        shared_nested_frame.AddSourceFile("gfx/shared.fofrm", "Frm=shared.toy\n");
+        shared_nested_frame.AddSourceFile("gfx/shared.fofrm", "Frame = shared.toy\n");
         shared_nested_frame.AddSourceFile("gfx/shared.toy", "shared");
 
         ImageBaker shared_nested_frame_baker {shared_nested_frame.MakeContext()};
@@ -2963,13 +4030,18 @@ Frm=one.toy
         CHECK_THROWS_AS(shared_nested_frame_baker.BakeFiles(shared_nested_frame.GetAllSourceFiles(), "gfx/shared.fofrm"), ImageBakerException);
         CHECK(shared_nested_frame.Outputs.empty());
     }
+}
+
+TEST_CASE("ImageBakerImageImportFailuresPreserveSourceAndNestedContext")
+{
+    using namespace BakerTests;
 
     SECTION("ImageImportFailuresPreserveSourceAndNestedContext")
     {
         TestRig rig {};
         rig.AddSourceFile("gfx/broken.toy", "x");
-        rig.AddSourceFile("gfx/alias.fofrm", "Alias=broken$probe.toy\n");
-        rig.AddSourceFile("gfx/composed.fofrm", "Frm=broken$probe.toy\n");
+        rig.AddSourceFile("gfx/alias.fofrm", "Source=broken$probe.toy\n");
+        rig.AddSourceFile("gfx/composed.fofrm", "Frame = broken$probe.toy\n");
         ImageBaker baker {rig.MakeContext()};
         baker.AddLoader(
             [](string_view, string_view, FileReader reader, const ImageImport::Context&) -> ImageImport::FrameCollection {
@@ -2979,7 +4051,10 @@ Frm=one.toy
             },
             {"toy"});
 
-        for (string_view path : {"gfx/broken.toy", "gfx/alias.fofrm", "gfx/composed.fofrm"}) {
+        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/broken.toy");
+        CHECK(rig.Outputs.empty());
+
+        for (string_view path : {"gfx/alias.fofrm", "gfx/composed.fofrm"}) {
             try {
                 baker.BakeFiles(rig.GetAllSourceFiles(), path);
                 FAIL("Truncated image imported without an error");
@@ -2999,6 +4074,11 @@ Frm=one.toy
         CHECK_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("gfx/broken.toy"));
         CHECK(rig.Outputs.empty());
     }
+}
+
+TEST_CASE("ImageBakerCustomLoaderBakesDirsSharedFramesAndNewName")
+{
+    using namespace BakerTests;
 
     SECTION("CustomLoaderBakesDirsSharedFramesAndNewName")
     {
@@ -3015,15 +4095,18 @@ Frm=one.toy
                 CHECK(reader.GetSize() == 7);
 
                 ImageImport::FrameCollection collection {};
-                collection.SequenceSize = 2;
-                collection.AnimTicks = 77;
-                collection.HaveDirs = true;
+                [[maybe_unused]] uint16_t sequence_size {};
+                uint32_t duration_ms {100};
+                bool have_dirs {};
+                sequence_size = 2;
+                duration_ms = 77;
+                have_dirs = true;
                 collection.NewName = "gfx/custom.baked";
 
                 collection.Main.OffsX = 1;
                 collection.Main.OffsY = 2;
                 collection.Main.Frames = {
-                    ImageImport::FrameShot {.Width = 1, .Height = 1, .NextX = 3, .NextY = 4, .Data = {10, 20, 30, 40}},
+                    ImageImport::FrameShot {.Size = {1, 1}, .Motion = {3, 4}, .Data = {10, 20, 30, 40}},
                     ImageImport::FrameShot {.Shared = true, .SharedIndex = 0},
                 };
 
@@ -3032,180 +4115,71 @@ Frm=one.toy
                     sequence.OffsX = numeric_cast<int16_t>(10 + dir);
                     sequence.OffsY = numeric_cast<int16_t>(20 + dir);
                     sequence.Frames = {
-                        ImageImport::FrameShot {.Width = 1, .Height = 1, .NextX = numeric_cast<int16_t>(30 + dir), .NextY = numeric_cast<int16_t>(40 + dir), .Data = {numeric_cast<uint8_t>(dir), 1, 2, 3}},
+                        ImageImport::FrameShot {.Size = {1, 1}, .Motion = {30 + dir, 40 + dir}, .Data = {numeric_cast<uint8_t>(dir), 1, 2, 3}},
                         ImageImport::FrameShot {.Shared = true, .SharedIndex = 0},
                     };
                 }
 
+                if (!have_dirs) {
+                    for (auto& direction : collection.Dirs) {
+                        direction.Frames.clear();
+                    }
+                }
+                else {
+                    for (int32_t direction {GameSettings::MAP_DIR_COUNT - 1}; direction < ImageImport::MAX_DIRS_MINUS_ONE; direction++) {
+                        collection.Dirs[direction].Frames.clear();
+                    }
+                }
+
+                for (int32_t direction {0}; direction < (have_dirs ? GameSettings::MAP_DIR_COUNT : 1); direction++) {
+                    auto& frames {direction == 0 ? collection.Main : collection.Dirs[direction - 1]};
+
+                    for (size_t index {0}; index < frames.Frames.size(); index++) {
+                        auto& shot {frames.Frames[index]};
+
+                        if (shot.Shared && shot.SharedIndex >= 0 && numeric_cast<size_t>(shot.SharedIndex) < index) {
+                            int32_t reference {shot.SharedIndex};
+                            shot = frames.Frames[numeric_cast<size_t>(reference)];
+                            shot.Data.clear();
+                            shot.Shared = true;
+                            shot.SharedIndex = reference;
+                        }
+                    }
+
+                    ImageImport::SetFrameSequenceDuration(frames, std::chrono::milliseconds {duration_ms});
+                }
+
                 return collection;
             },
-            {"toy"});
+            {"toy"}, [](string_view) { return string {"gfx/custom.baked"}; });
 
-        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/custom.toy");
+        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/custom.baked");
 
         REQUIRE_FALSE(rig.Outputs.contains("gfx/custom.toy"));
         REQUIRE(rig.Outputs.contains("gfx/custom.baked"));
 
-        data_reader reader {rig.Outputs.at("gfx/custom.baked")};
-        CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
-        CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_VERSION);
-        CHECK(reader.read<uint16_t>() == 2);
-        CHECK(reader.read<uint16_t>() == 77);
-        CHECK(reader.read<uint8_t>() == GameSettings::MAP_DIR_COUNT);
+        auto resource {ReadSpriteResource(rig.Outputs.at("gfx/custom.baked"))};
+        REQUIRE(resource.Directions.size() == GameSettings::MAP_DIR_COUNT);
 
-        for (int32_t dir {0}; dir < GameSettings::MAP_DIR_COUNT; dir++) {
-            CHECK_FALSE(reader.read<bool>());
-            int16_t offs_x {reader.read<int16_t>()};
-            int16_t offs_y {reader.read<int16_t>()};
-
-            if (dir == 0) {
-                CHECK(offs_x == 1);
-                CHECK(offs_y == 2);
-            }
-            else {
-                CHECK(offs_x == 9 + dir);
-                CHECK(offs_y == 19 + dir);
-            }
-
-            CHECK(reader.read<uint16_t>() == 1);
-            CHECK(reader.read<uint16_t>() == 1);
-            (void)reader.read<int16_t>();
-            (void)reader.read<int16_t>();
-            (void)reader.read_bytes(4);
-            SkipSpriteMesh(reader);
-
-            CHECK(reader.read<bool>());
-            CHECK(reader.read<uint16_t>() == 0);
-        }
-
-        CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
-        CHECK_NOTHROW(reader.verify_end());
-    }
-
-    SECTION("BakesExactV2BytesForCustomFrame")
-    {
-        TestRig rig {};
-        ConfigureSpriteMesh(rig, false);
-        rig.AddSourceFile("gfx/exact.toy", "payload");
-
-        ImageBaker baker {rig.MakeContext()};
-        baker.AddLoader(
-            [](string_view fname, string_view opt, FileReader reader, const ImageImport::Context& files) {
-                ignore_unused(fname, opt, reader, files);
-
-                ImageImport::FrameCollection collection {};
-                collection.SequenceSize = 1;
-                collection.AnimTicks = 100;
-                collection.Main.Frames = {ImageImport::FrameShot {.Width = 1, .Height = 1, .Data = {10, 20, 30, 40}}};
-                return collection;
-            },
-            {"toy"});
-        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/exact.toy");
-
-        REQUIRE(rig.Outputs.contains("gfx/exact.toy"));
-        CHECK(rig.Outputs.at("gfx/exact.toy") ==
-            vector<uint8_t> {
-                SPRITE_RESOURCE_MAGIC,
-                SPRITE_RESOURCE_VERSION,
-                0x01,
-                0x00,
-                0x64,
-                0x00,
-                0x01,
-                0x00,
-                0x00,
-                0x00,
-                0x00,
-                0x00,
-                0x01,
-                0x00,
-                0x01,
-                0x00,
-                0x00,
-                0x00,
-                0x00,
-                0x00,
-                10,
-                20,
-                30,
-                40,
-                static_cast<uint8_t>(SpriteMeshKind::Quad),
-                SPRITE_RESOURCE_MAGIC,
-            });
-    }
-
-    SECTION("RejectsInvalidCustomLoaderCollectionsBeforeOutput")
-    {
-        auto make_valid {[] {
-            ImageImport::FrameCollection collection {};
-            collection.SequenceSize = 1;
-            collection.AnimTicks = 100;
-            collection.Main.Frames = {ImageImport::FrameShot {.Width = 1, .Height = 1, .Data = {1, 2, 3, 255}}};
-            return collection;
-        }};
-
-        auto make_shared_collection {[](int32_t shared_index) {
-            ImageImport::FrameCollection collection {};
-            collection.SequenceSize = 2;
-            collection.AnimTicks = 100;
-            collection.Main.Frames = {
-                ImageImport::FrameShot {.Width = 1, .Height = 1, .Data = {1, 2, 3, 255}},
-                ImageImport::FrameShot {.Shared = true, .SharedIndex = shared_index},
-            };
-            return collection;
-        }};
-
-        vector<ImageImport::FrameCollection> invalid {};
-
-        for (int32_t value : {-1, 0, 65536}) {
-            auto collection {make_valid()};
-            collection.SequenceSize = value;
-            invalid.emplace_back(std::move(collection));
-        }
-        for (int32_t value : {-1, 65536}) {
-            auto collection {make_valid()};
-            collection.AnimTicks = value;
-            invalid.emplace_back(std::move(collection));
-        }
-        for (int32_t value : {-1, 0, 65536}) {
-            auto collection {make_valid()};
-            collection.Main.Frames[0].Width = value;
-            invalid.emplace_back(std::move(collection));
-        }
-        for (int32_t value : {-1, 0, 65536}) {
-            auto collection {make_valid()};
-            collection.Main.Frames[0].Height = value;
-            invalid.emplace_back(std::move(collection));
-        }
-        for (int32_t value : {-1, 65536}) {
-            invalid.emplace_back(make_shared_collection(value));
-        }
-
-        invalid.emplace_back(make_shared_collection(1));
-
-        ImageImport::FrameCollection incomplete_sequence {make_valid()};
-        incomplete_sequence.SequenceSize = 2;
-        invalid.emplace_back(std::move(incomplete_sequence));
-
-        ImageImport::FrameCollection incomplete_pixels {make_valid()};
-        incomplete_pixels.Main.Frames[0].Data.pop_back();
-        invalid.emplace_back(std::move(incomplete_pixels));
-
-        for (const ImageImport::FrameCollection& collection : invalid) {
-            TestRig rig {};
-            rig.AddSourceFile("gfx/invalid.toy", "payload");
-
-            ImageBaker baker {rig.MakeContext()};
-            baker.AddLoader(
-                [collection](string_view fname, string_view opt, FileReader reader, const ImageImport::Context& files) {
-                    ignore_unused(fname, opt, reader, files);
-                    return collection;
-                },
-                {"toy"});
-            CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/invalid.toy"), ImageBakerException);
-            CHECK(rig.Outputs.empty());
+        for (size_t dir {0}; dir < resource.Directions.size(); dir++) {
+            auto sequence {ReadDirectionSequence(resource, dir)};
+            REQUIRE(sequence.Frames.size() == 2);
+            CHECK(sequence.AnimTicks == 77);
+            const auto& frame {sequence.Frames[0]};
+            CHECK(frame.Offset == (dir == 0 ? ipos32 {1, 2} : ipos32 {9 + numeric_cast<int32_t>(dir), 19 + numeric_cast<int32_t>(dir)}));
+            CHECK(frame.Width == 1);
+            CHECK(frame.Height == 1);
+            CHECK(frame.Data.size() == 4);
+            CHECK(resource.Directions[dir].Frames[1].SharedFrameIndex == optional<int32_t> {0});
+            CHECK(sequence.Frames[0].DurationMs == 38);
+            CHECK(sequence.Frames[1].DurationMs == 39);
         }
     }
+}
+
+TEST_CASE("ImageBakerBakeCheckerSkipsTarget")
+{
+    using namespace BakerTests;
 
     SECTION("BakeCheckerSkipsTarget")
     {
@@ -3221,6 +4195,11 @@ Frm=one.toy
 
         CHECK(rig.Outputs.empty());
     }
+}
+
+TEST_CASE("ImageBakerScanModeRejectsIncompleteSpriteInfoIndex")
+{
+    using namespace BakerTests;
 
     SECTION("ScanModeRejectsIncompleteSpriteInfoIndex")
     {
@@ -3242,8 +4221,13 @@ Frm=one.toy
                 {"SpriteInfo/TestPack.foinfo", 31},
             });
     }
+}
 
 #if FO_IMAGE_FRM
+TEST_CASE("ImageBakerScanModeRegistersTheResourceEachSourceBakesTo")
+{
+    using namespace BakerTests;
+
     SECTION("ScanModeRegistersTheResourceEachSourceBakesTo")
     {
         // The master baker keeps the spelling the checker registered, so a critter frame registered under its source
@@ -3274,7 +4258,13 @@ Frm=one.toy
             CHECK(rig.Outputs.contains(path));
         }
     }
+}
+
 #endif
+
+TEST_CASE("ImageBakerBakesSpriteInfoIndexAsRuntimeTarget")
+{
+    using namespace BakerTests;
 
     SECTION("BakesSpriteInfoIndexAsRuntimeTarget")
     {
@@ -3291,9 +4281,14 @@ Frm=one.toy
         REQUIRE(entries.size() == 1);
         CHECK(entries.front().SourcePath == "gfx/runtime-info.tga");
         CHECK(entries.front().ResourcePath == "gfx/runtime-info.tga");
-        CHECK(entries.front().Info.FrameCount == 1);
+        CHECK(entries.front().Info.Directions[0].Frames.size() == 1);
         CHECK(entries.front().Info.Directions.front().Frames.front().Size == isize32 {1, 1});
     }
+}
+
+TEST_CASE("ImageBakerScanModeRemovesStaleSpriteInfoEntries")
+{
+    using namespace BakerTests;
 
     SECTION("ScanModeRemovesStaleSpriteInfoEntries")
     {
@@ -3301,10 +4296,9 @@ Frm=one.toy
         AddSourceBinaryFile(rig, "gfx/current.tga", MakeRawTga(1, 1, 24, {0, 0, 255}), 31);
 
         SpriteInfo info {
-            .FrameCount = 1,
-            .Duration = std::chrono::milliseconds {100},
-            .Directions = {SpriteDirInfo {.Frames = {SpriteFrameInfo {.Size = {1, 1}}}}},
+            .Directions = {SpriteDirInfo {.Frames = {SpriteFrameInfo {.Size = {1, 1}, .Duration = std::chrono::milliseconds {100}}}}},
         };
+
         rig.AddBakedFile("SpriteInfo/TestPack.foinfo",
             WriteSpriteInfoFile({
                 SpriteInfoFileEntry {.SourcePath = "gfx/current.tga", .ResourcePath = "gfx/current.tga", .Info = info},
@@ -3320,6 +4314,11 @@ Frm=one.toy
         REQUIRE(entries.size() == 1);
         CHECK(entries.front().SourcePath == "gfx/current.tga");
     }
+}
+
+TEST_CASE("ImageBakerInvalidTgaInputsAreReported")
+{
+    using namespace BakerTests;
 
     SECTION("InvalidTgaInputsAreReported")
     {
@@ -3345,6 +4344,11 @@ Frm=one.toy
         CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/bad-depth.tga"), ImageBakerException);
         CHECK(rig.Outputs.empty());
     }
+}
+
+TEST_CASE("ImageBakerInvalidPngInputIsReported")
+{
+    using namespace BakerTests;
 
     SECTION("InvalidPngInputIsReported")
     {
@@ -3358,8 +4362,13 @@ Frm=one.toy
         CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/corrupted.png"), ImageBakerException);
         CHECK(rig.Outputs.empty());
     }
+}
 
 #if FO_IMAGE_BAM || FO_IMAGE_MOS || FO_IMAGE_TIL || FO_IMAGE_ZAR
+TEST_CASE("ImageBakerInvalidLegacyHeadersAreReported")
+{
+    using namespace BakerTests;
+
     SECTION("InvalidLegacyHeadersAreReported")
     {
         TestRig rig {};
@@ -3400,24 +4409,290 @@ Frm=one.toy
 #endif
         CHECK(rig.Outputs.empty());
     }
+}
+
 #endif
+
+#if FO_IMAGE_SPR
+TEST_CASE("ImageBakerInvalidSprInputsAreReported")
+{
+    using namespace BakerTests;
+
+    SECTION("InvalidSprInputsAreReported")
+    {
+        TestRig rig {};
+        AddSourceBinaryFile(rig, "gfx/bad-header.spr", vector<uint8_t>(11));
+        rig.AddSourceFile("gfx/missing-sequence.fofrm", "Frame = actor$run.spr\n");
+        AddSourceBinaryFile(rig, "gfx/actor.spr", MakeSimpleSpr());
+
+        auto missing_spranim {MakeSimpleSpr()};
+        ReplaceFirstTagByte(missing_spranim, "<spranim>", numeric_cast<uint8_t>('x'));
+        AddSourceBinaryFile(rig, "gfx/missing-spranim.spr", missing_spranim);
+
+        auto bad_internal_zar {MakeSimpleSpr()};
+        ReplaceFirstTagByte(bad_internal_zar, "<zar>", numeric_cast<uint8_t>('x'));
+        AddSourceBinaryFile(rig, "gfx/bad-internal-zar.spr", bad_internal_zar);
+
+        ImageBaker baker {rig.MakeContext()};
+
+        CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/bad-header.spr"), ImageBakerException);
+        CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/missing-sequence.fofrm"), ImageBakerException);
+        CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/missing-spranim.spr"), ImageBakerException);
+        CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/bad-internal-zar.spr"), ImageBakerException);
+        CHECK(rig.Outputs.empty());
+    }
+}
+
+#endif
+
+TEST_CASE("ImageBakerInvalidFofrmNestedFramesAreReported")
+{
+    using namespace BakerTests;
 
     SECTION("InvalidFofrmNestedFramesAreReported")
     {
         TestRig missing_frame {};
-        missing_frame.AddSourceFile("gfx/missing.fofrm", "frm=missing.tga\n");
+        missing_frame.AddSourceFile("gfx/missing.fofrm", "Frame = missing.tga\n");
 
         ImageBaker missing_baker {missing_frame.MakeContext()};
         CHECK_THROWS_AS(missing_baker.BakeFiles(missing_frame.GetAllSourceFiles(), "gfx/missing.fofrm"), ImageBakerException);
         CHECK(missing_frame.Outputs.empty());
 
         TestRig unsupported_frame {};
-        unsupported_frame.AddSourceFile("gfx/unsupported.fofrm", "frm=frame.unsupported\n");
+        unsupported_frame.AddSourceFile("gfx/unsupported.fofrm", "Frame = frame.unsupported\n");
         unsupported_frame.AddSourceFile("gfx/frame.unsupported", "payload");
 
         ImageBaker unsupported_baker {unsupported_frame.MakeContext()};
         CHECK_THROWS_AS(unsupported_baker.BakeFiles(unsupported_frame.GetAllSourceFiles(), "gfx/unsupported.fofrm"), ImageBakerException);
         CHECK(unsupported_frame.Outputs.empty());
+    }
+}
+
+TEST_CASE("FofrmResizing")
+{
+    using namespace BakerTests;
+
+    SECTION("BakesFofrmSizeAndKeepsPixelOffsets")
+    {
+        TestRig rig {};
+        rig.AddSourceFile("gfx/size.fofrm", "Frame = source.tga\nSize = 4 2\nOffset = 10 20\nFrameOffsets = 5 -6\n");
+        AddSourceBinaryFile(rig, "gfx/source.tga", MakeRawTga(2, 1, 24, {0, 0, 255, 255, 0, 0}));
+        ImageBaker baker {rig.MakeContext()};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "SpriteInfo/TestPack.foinfo");
+        auto frame {ReadSingleFrame(rig.Outputs.at("gfx/size.fofrm"))};
+        CHECK(frame.Width == 4);
+        CHECK(frame.Height == 2);
+        CHECK(frame.Offset == ipos32 {15, 14});
+        CHECK(frame.Data == vector<uint8_t> {255, 0, 0, 255, 191, 0, 64, 255, 64, 0, 191, 255, 0, 0, 255, 255, 255, 0, 0, 255, 191, 0, 64, 255, 64, 0, 191, 255, 0, 0, 255, 255});
+        const auto& info_data {rig.Outputs.at("SpriteInfo/TestPack.foinfo")};
+        auto info {ReadSpriteInfoFile("SpriteInfo/TestPack.foinfo", string(info_data.begin(), info_data.end()))};
+        auto entry {std::find_if(info.begin(), info.end(), [](const auto& value) { return value.SourcePath == "gfx/size.fofrm"; })};
+        REQUIRE(entry != info.end());
+        CHECK(entry->Info.Directions.front().Frames.front().Size == isize32 {4, 2});
+    }
+
+    SECTION("BakesFofrmFrameSizesBeforeFlattening")
+    {
+        TestRig rig {};
+        rig.AddSourceFile("gfx/parent.fofrm", "Frames = child.fofrm child.fofrm\nFrameSizes = \\\n 3 2 \\\n 1 4\nOffset = 3 4\nFrameOffsets = 5 6 -1 -2\n");
+        rig.AddSourceFile("gfx/child.fofrm", "Frames = a.tga b.tga\nOffset = 99 88\nFrameOffsets = 2 3 -4 5\n");
+        AddSourceBinaryFile(rig, "gfx/a.tga", MakeRawTga(1, 1, 24, {0, 0, 255}));
+        AddSourceBinaryFile(rig, "gfx/b.tga", MakeRawTga(1, 1, 24, {0, 255, 0}));
+        ImageBaker baker {rig.MakeContext()};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/parent.fofrm");
+        auto sequence {ReadSingleDirSequence(rig.Outputs.at("gfx/parent.fofrm"))};
+        REQUIRE(sequence.Frames.size() == 4);
+        CHECK(sequence.AnimTicks == 400);
+
+        for (size_t index {0}; index < 4; index++) {
+            CHECK(sequence.Frames[index].Width == (index < 2 ? 3 : 1));
+            CHECK(sequence.Frames[index].Height == (index < 2 ? 2 : 4));
+        }
+
+        CHECK(sequence.Frames[0].Offset == ipos32 {10, 13});
+        CHECK(sequence.Frames[1].Offset == ipos32 {4, 15});
+        CHECK(sequence.Frames[2].Offset == ipos32 {4, 5});
+        CHECK(sequence.Frames[3].Offset == ipos32 {-2, 7});
+    }
+
+    SECTION("InheritsRootSizeWithoutCarryingLocalSizes")
+    {
+        TestRig rig {};
+        string_view prefix {FO_GEOMETRY == 1 ? "HexDir" : "SquareDir"};
+        string descriptor {"Frame = source.tga\nSize = 4 3\n"};
+
+        for (int32_t dir {1}; dir < GameSettings::MAP_DIR_COUNT; dir++) {
+            descriptor += strex("[{} {}]\nFrame = source.tga\n", prefix, dir);
+
+            if (dir == 1) {
+                descriptor += "Size = 2 1\n";
+            }
+            else if (dir == 2) {
+                descriptor += "FrameSizes = 3 2\n";
+            }
+        }
+
+        rig.AddSourceFile("gfx/dirs.fofrm", descriptor);
+        AddSourceBinaryFile(rig, "gfx/source.tga", MakeRawTga(1, 1, 24, {0, 0, 255}));
+        ImageBaker baker {rig.MakeContext()};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/dirs.fofrm");
+        auto sprite {ReadSpriteResource(rig.Outputs.at("gfx/dirs.fofrm"))};
+        REQUIRE(sprite.Directions.size() == GameSettings::MAP_DIR_COUNT);
+
+        for (size_t dir {0}; dir < sprite.Directions.size(); dir++) {
+            CHECK(sprite.Directions[dir].Frames.front().Size == (dir == 1 ? isize32 {2, 1} : dir == 2 ? isize32 {3, 2} : isize32 {4, 3}));
+        }
+    }
+
+    SECTION("ResamplesPremultipliedAlphaWithoutTransparentColorBleed")
+    {
+        TestRig rig {};
+        rig.AddSourceFile("gfx/alpha.fofrm", "Frame = source.tga\nFrameSizes = 1 1\n");
+        AddSourceBinaryFile(rig, "gfx/source.tga", MakeRawTga(2, 2, 32, {255, 0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 0, 0, 255, 255}));
+        ImageBaker baker {rig.MakeContext()};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/alpha.fofrm");
+        CHECK(ReadSingleFrame(rig.Outputs.at("gfx/alpha.fofrm")).Data == vector<uint8_t> {255, 0, 0, 64});
+    }
+
+    SECTION("PreservesIdentityResizeBytesIncludingTransparentRgb")
+    {
+        TestRig rig {};
+        rig.AddSourceFile("gfx/plain.fofrm", "Frame = source.tga\n");
+        rig.AddSourceFile("gfx/identity.fofrm", "Frame = source.tga\nSize = 2 1\n");
+        AddSourceBinaryFile(rig, "gfx/source.tga", MakeRawTga(2, 1, 32, {255, 0, 0, 0, 0, 0, 255, 255}));
+        ImageBaker baker {rig.MakeContext()};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/plain.fofrm");
+        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/identity.fofrm");
+        CHECK(rig.Outputs.at("gfx/plain.fofrm") == rig.Outputs.at("gfx/identity.fofrm"));
+    }
+
+    SECTION("ResizesEmptyFramesAndPreservesImportedMotion")
+    {
+        TestRig rig {};
+        rig.AddSourceFile("gfx/empty.fofrm", "Frame = source.toy\nSize = 3 2\n");
+        rig.AddSourceFile("gfx/source.toy", "payload");
+        ImageBaker baker {rig.MakeContext()};
+        baker.AddLoader(
+            [](string_view fname, string_view opt, FileReader reader, const ImageImport::Context& context) {
+                ignore_unused(fname, opt, reader, context);
+                ImageImport::FrameCollection collection {};
+                [[maybe_unused]] uint16_t sequence_size {};
+                uint32_t duration_ms {100};
+                bool have_dirs {};
+                sequence_size = 1;
+                collection.Main.Frames.emplace_back(ImageImport::FrameShot {.Offset = {3, -4}, .Motion = {7, -9}});
+
+                if (!have_dirs) {
+                    for (auto& direction : collection.Dirs) {
+                        direction.Frames.clear();
+                    }
+                }
+                else {
+                    for (int32_t direction {GameSettings::MAP_DIR_COUNT - 1}; direction < ImageImport::MAX_DIRS_MINUS_ONE; direction++) {
+                        collection.Dirs[direction].Frames.clear();
+                    }
+                }
+
+                for (int32_t direction {0}; direction < (have_dirs ? GameSettings::MAP_DIR_COUNT : 1); direction++) {
+                    auto& frames {direction == 0 ? collection.Main : collection.Dirs[direction - 1]};
+
+                    for (size_t index {0}; index < frames.Frames.size(); index++) {
+                        auto& shot {frames.Frames[index]};
+
+                        if (shot.Shared && shot.SharedIndex >= 0 && numeric_cast<size_t>(shot.SharedIndex) < index) {
+                            int32_t reference {shot.SharedIndex};
+                            shot = frames.Frames[numeric_cast<size_t>(reference)];
+                            shot.Data.clear();
+                            shot.Shared = true;
+                            shot.SharedIndex = reference;
+                        }
+                    }
+
+                    ImageImport::SetFrameSequenceDuration(frames, std::chrono::milliseconds {duration_ms});
+                }
+
+                return collection;
+            },
+            {"toy"});
+        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/empty.fofrm");
+        auto frame {ReadSingleFrame(rig.Outputs.at("gfx/empty.fofrm"))};
+        CHECK(frame.Width == 3);
+        CHECK(frame.Height == 2);
+        CHECK(frame.Data == vector<uint8_t>(24));
+        CHECK(frame.NextX == 7);
+        CHECK(frame.NextY == -9);
+        CHECK(frame.Offset == ipos32 {3, -4});
+    }
+
+    SECTION("RejectsInvalidFofrmSizes")
+    {
+        for (string_view value : {"", "1", "0 1", "1 0", "-1 2", "2 -1", "65536 1", "1 65536", "2147483648 2", "1.5 2", "1 2 3", "a 2"}) {
+            INFO(value);
+            TestRig rig {};
+            rig.AddSourceFile("gfx/bad.fofrm", strex("Frame = source.tga\nSize = {}\n", value).str());
+            AddSourceBinaryFile(rig, "gfx/source.tga", MakeRawTga(1, 1, 24, {0, 0, 255}));
+            ImageBaker baker {rig.MakeContext()};
+            CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/bad.fofrm"), ImageBakerException);
+            CHECK(rig.Outputs.empty());
+        }
+
+        for (string_view suffix : {"FrameSizes =\n", "FrameSizes = 1 2\n", "FrameSizes = 1 2 3\n", "FrameSizes = 1 2 3 0\n", "Size = 1 2\nFrameSizes = 1 2 3 4\n"}) {
+            INFO(suffix);
+            TestRig rig {};
+            rig.AddSourceFile("gfx/bad.fofrm", strex("Frames = source.tga source.tga\n{}", suffix).str());
+            AddSourceBinaryFile(rig, "gfx/source.tga", MakeRawTga(1, 1, 24, {0, 0, 255}));
+            ImageBaker baker {rig.MakeContext()};
+            CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/bad.fofrm"), ImageBakerException);
+            CHECK(rig.Outputs.empty());
+        }
+    }
+
+    SECTION("AcceptsQuotedIntegerSizeTokens")
+    {
+        TestRig rig {};
+        rig.AddSourceFile("gfx/quoted-size.fofrm", "Frame = source.tga\nSize = \"2\" \"3\"\n");
+        AddSourceBinaryFile(rig, "gfx/source.tga", MakeRawTga(1, 1, 24, {0, 0, 255}));
+        ImageBaker baker {rig.MakeContext()};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/quoted-size.fofrm");
+        auto frame {ReadSingleFrame(rig.Outputs.at("gfx/quoted-size.fofrm"))};
+        CHECK(frame.Width == 2);
+        CHECK(frame.Height == 3);
+    }
+
+    SECTION("RejectsEmbeddedWhitespaceAndEmptySizeTokens")
+    {
+        for (string_view value : {"\"1 2\" \"\"", "\"1 \" 2", "\"\" \"1 2\"", "\"1 2\" \"3 4\""}) {
+            TestRig rig {};
+            rig.AddSourceFile("gfx/tokens.fofrm", strex("Frame = source.tga\nFrameSizes = {}\n", value).str());
+            AddSourceBinaryFile(rig, "gfx/source.tga", MakeRawTga(1, 1, 24, {0, 0, 255}));
+            ImageBaker baker {rig.MakeContext()};
+            CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/tokens.fofrm"), ImageBakerException);
+        }
+    }
+
+    SECTION("RejectsUnfinishedSizeContinuationWithoutFinalNewline")
+    {
+        for (string_view key : {"Size", "FrameSizes"}) {
+            TestRig rig {};
+            rig.AddSourceFile("gfx/unfinished.fofrm", strex("Frame = source.tga\n{} = \\", key).str());
+            AddSourceBinaryFile(rig, "gfx/source.tga", MakeRawTga(1, 1, 24, {0, 0, 255}));
+            ImageBaker baker {rig.MakeContext()};
+            CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/unfinished.fofrm"), ImageBakerException);
+        }
+    }
+
+    SECTION("RejectsResizeListsWithoutReferencesAndLegacyAlias")
+    {
+        FO_TEMPORARY_COMPAT(FofrmWholeCollectionSource, "2026-12-31");
+
+        for (string_view descriptor : {"FrameSizes = 1 2\n", "Alias = source.tga\nSize = 1 2\n", "Alias = source.tga\nFrameSizes = 1 2\n"}) {
+            TestRig rig {};
+            rig.AddSourceFile("gfx/bad.fofrm", descriptor);
+            AddSourceBinaryFile(rig, "gfx/source.tga", MakeRawTga(1, 1, 24, {0, 0, 255}));
+            ImageBaker baker {rig.MakeContext()};
+            CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/bad.fofrm"), ImageBakerException);
+            CHECK(rig.Outputs.empty());
+        }
     }
 }
 
@@ -3432,8 +4707,8 @@ TEST_CASE("DisabledImageImportersIdentifyTheirRequiredOptions")
 #if !FO_IMAGE_ART
     CHECK_THROWS_WITH(ImageImport::CheckEnabled("gfx/image.art"), Catch::Matchers::ContainsSubstring("FO_IMAGE_ART"));
 
-    BakerTests::TestRig alias {};
-    alias.AddSourceFile("gfx/alias.fofrm", "Alias=image$r=3.art\n");
+    BakerTests::TestRig alias;
+    alias.AddSourceFile("gfx/alias.fofrm", "Source=image$r=3.art\n");
     alias.AddSourceFile("gfx/image.art", "payload");
     ImageBaker alias_baker {alias.MakeContext()};
     CHECK_THROWS_WITH(alias_baker.BakeFiles(alias.GetAllSourceFiles(), "gfx/alias.fofrm"), Catch::Matchers::ContainsSubstring("FO_IMAGE_ART"));
@@ -3459,13 +4734,329 @@ TEST_CASE("DisabledImageImportersIdentifyTheirRequiredOptions")
     CHECK_NOTHROW(ImageImport::CheckEnabled("gfx/image.fofrm"));
 
 #if !FO_IMAGE_FRM
-    BakerTests::TestRig nested {};
-    nested.AddSourceFile("gfx/nested.fofrm", "frm=image.frm\n");
+    BakerTests::TestRig nested;
+    nested.AddSourceFile("gfx/nested.fofrm", "Frame = image.frm\n");
     nested.AddSourceFile("gfx/image.frm", "payload");
     ImageBaker baker {nested.MakeContext()};
     CHECK_THROWS_WITH(baker.BakeFiles(nested.GetAllSourceFiles(), "gfx/nested.fofrm"), Catch::Matchers::ContainsSubstring("FO_IMAGE_FRM"));
     CHECK(nested.Outputs.empty());
 #endif
+}
+
+TEST_CASE("FofrmSourceCollection")
+{
+    BakerTests::TestRig rig {};
+    rig.AddSourceFile("gfx/source.toy", "collection");
+    string descriptor {"Source = source.toy\n"};
+    bool transformed {false};
+    bool local_override {false};
+
+    SECTION("SourcePreservesAnchorsAndTiming")
+    {
+    }
+
+    SECTION("SourceTransformPreservesAllDirections")
+    {
+        transformed = true;
+        descriptor += "Size = 2 3\nOffset = 7 8\n";
+    }
+
+    SECTION("NamedSourceDirectionOverridesNeedNoRepeatedReferences")
+    {
+        transformed = true;
+        local_override = true;
+        descriptor += strex("Size = 2 3\nOffset = 7 8\n[{} 1]\nSize = 4 5\n", FO_GEOMETRY == 1 ? "HexDir" : "SquareDir").str();
+    }
+
+    rig.AddSourceFile("gfx/root.fofrm", descriptor);
+    ImageBaker baker {rig.MakeContext()};
+    baker.AddLoader(
+        [](string_view, string_view, FileReader, const ImageImport::Context&) {
+            ImageImport::FrameCollection collection {};
+            [[maybe_unused]] uint16_t sequence_size {};
+            uint32_t duration_ms {100};
+            bool have_dirs {};
+            sequence_size = 2;
+            duration_ms = 200;
+            have_dirs = true;
+
+            for (int32_t direction {0}; direction < GameSettings::MAP_DIR_COUNT; direction++) {
+                auto& sequence {direction == 0 ? collection.Main : collection.Dirs[direction - 1]};
+                sequence.OffsX = numeric_cast<int16_t>(10 + direction);
+                sequence.OffsY = numeric_cast<int16_t>(20 + direction);
+                sequence.Frames = {
+                    ImageImport::FrameShot {.Size = {1, 1}, .Offset = {3, 4}, .Motion = {1, -1}, .Data = {40, 50, 60, 255}},
+                    ImageImport::FrameShot {.Shared = true, .SharedIndex = 0},
+                };
+            }
+
+            if (!have_dirs) {
+                for (auto& direction : collection.Dirs) {
+                    direction.Frames.clear();
+                }
+            }
+            else {
+                for (int32_t direction {GameSettings::MAP_DIR_COUNT - 1}; direction < ImageImport::MAX_DIRS_MINUS_ONE; direction++) {
+                    collection.Dirs[direction].Frames.clear();
+                }
+            }
+
+            for (int32_t direction {0}; direction < (have_dirs ? GameSettings::MAP_DIR_COUNT : 1); direction++) {
+                auto& frames {direction == 0 ? collection.Main : collection.Dirs[direction - 1]};
+
+                for (size_t index {0}; index < frames.Frames.size(); index++) {
+                    auto& shot {frames.Frames[index]};
+
+                    if (shot.Shared && shot.SharedIndex >= 0 && numeric_cast<size_t>(shot.SharedIndex) < index) {
+                        int32_t reference {shot.SharedIndex};
+                        shot = frames.Frames[numeric_cast<size_t>(reference)];
+                        shot.Data.clear();
+                        shot.Shared = true;
+                        shot.SharedIndex = reference;
+                    }
+                }
+
+                ImageImport::SetFrameSequenceDuration(frames, std::chrono::milliseconds {duration_ms});
+            }
+
+            return collection;
+        },
+        {"toy"});
+    baker.BakeFiles(rig.GetAllSourceFiles(), "");
+    auto resource {ReadSpriteResource(rig.Outputs.at("gfx/root.fofrm"))};
+    REQUIRE(resource.Directions.size() == GameSettings::MAP_DIR_COUNT);
+    REQUIRE(resource.Animation.Sprite.has_value());
+    CHECK(GetSpriteDirDuration(resource.Animation.Sprite->Directions[0]) == std::chrono::milliseconds {200});
+
+    for (size_t direction {0}; direction < resource.Directions.size(); direction++) {
+        REQUIRE(resource.Directions[direction].Frames.size() == 2);
+        const auto& frame {resource.Directions[direction].Frames[0]};
+        isize32 size {local_override && direction == 1 ? isize32 {4, 5} : transformed ? isize32 {2, 3} : isize32 {1, 1}};
+        CHECK(frame.Size == size);
+        CHECK(frame.Offset == ipos32 {numeric_cast<int32_t>(13 + direction + (transformed ? 7 : 0)), numeric_cast<int32_t>(24 + direction + (transformed ? 8 : 0))});
+        CHECK(frame.NextOffset == ipos32 {1, -1});
+        CHECK(frame.Pixels[0] == ucolor {40, 50, 60, 255});
+    }
+}
+
+TEST_CASE("FofrmFlattenedDefaultTimingUsesFinalFrames")
+{
+    BakerTests::TestRig rig {};
+    rig.AddSourceFile("source.toy", "two frames");
+    rig.AddSourceFile("root.fofrm", "Frame = source.toy\n");
+    ImageBaker baker {rig.MakeContext()};
+    baker.AddLoader(
+        [](string_view, string_view, FileReader, const ImageImport::Context&) {
+            ImageImport::FrameCollection collection {};
+            [[maybe_unused]] uint16_t sequence_size {};
+            uint32_t duration_ms {100};
+            bool have_dirs {};
+            sequence_size = 2;
+            duration_ms = 240;
+            collection.Main.OffsX = 100;
+            collection.Main.OffsY = 200;
+            collection.Main.Frames = {
+                ImageImport::FrameShot {.Size = {1, 1}, .Offset = {3, 4}, .Data = {40, 50, 60, 255}},
+                ImageImport::FrameShot {.Size = {1, 1}, .Data = {70, 80, 90, 255}},
+            };
+
+            if (!have_dirs) {
+                for (auto& direction : collection.Dirs) {
+                    direction.Frames.clear();
+                }
+            }
+            else {
+                for (int32_t direction {GameSettings::MAP_DIR_COUNT - 1}; direction < ImageImport::MAX_DIRS_MINUS_ONE; direction++) {
+                    collection.Dirs[direction].Frames.clear();
+                }
+            }
+
+            for (int32_t direction {0}; direction < (have_dirs ? GameSettings::MAP_DIR_COUNT : 1); direction++) {
+                auto& frames {direction == 0 ? collection.Main : collection.Dirs[direction - 1]};
+
+                for (size_t index {0}; index < frames.Frames.size(); index++) {
+                    auto& shot {frames.Frames[index]};
+
+                    if (shot.Shared && shot.SharedIndex >= 0 && numeric_cast<size_t>(shot.SharedIndex) < index) {
+                        int32_t reference {shot.SharedIndex};
+                        shot = frames.Frames[numeric_cast<size_t>(reference)];
+                        shot.Data.clear();
+                        shot.Shared = true;
+                        shot.SharedIndex = reference;
+                    }
+                }
+
+                ImageImport::SetFrameSequenceDuration(frames, std::chrono::milliseconds {duration_ms});
+            }
+
+            return collection;
+        },
+        {"toy"});
+    baker.BakeFiles(rig.GetAllSourceFiles(), "");
+    auto resource {ReadSpriteResource(rig.Outputs.at("root.fofrm"))};
+    REQUIRE(resource.Animation.Sprite.has_value());
+    CHECK(GetSpriteDirDuration(resource.Animation.Sprite->Directions[0]) == std::chrono::milliseconds {200});
+    CHECK(resource.Directions[0].Frames[0].Offset == ipos32 {3, 4});
+}
+
+#if FO_IMAGE_FRM
+TEST_CASE("FrmPaletteTimelineIsLocalToItsDirection")
+{
+    BakerTests::TestRig rig {};
+    vector<FrmFrameSpec> animated {FrmFrameSpec {.Width = 1, .Height = 1, .Indices = {229}}};
+    vector<FrmFrameSpec> still {FrmFrameSpec {.Width = 1, .Height = 1, .Indices = {1}}};
+    auto data {MakeFrm(10, animated)};
+
+    for (int32_t direction {1}; direction < 6; direction++) {
+        SetBe32(data, 0x22 + numeric_cast<size_t>(direction) * 4, numeric_cast<uint32_t>(data.size() - 0x3E));
+        AppendFrmFrames(data, still);
+    }
+
+    AddSourceBinaryFile(rig, "Source.frm", data);
+    rig.AddSourceFile("Root.fofrm", "Source = Source.frm\n");
+    ImageBaker baker {rig.MakeContext()};
+    baker.BakeFiles(rig.GetAllSourceFiles(), "Root.fofrm");
+    auto resource {ReadSpriteResource(rig.Outputs.at("Root.fofrm"))};
+    REQUIRE(resource.Directions.size() == GameSettings::MAP_DIR_COUNT);
+    CHECK(resource.Directions[0].Frames.size() == 4);
+    CHECK(GetSpriteDirDuration(resource.Animation.Sprite->Directions[0]) == std::chrono::milliseconds {800});
+
+    for (size_t direction {1}; direction < resource.Directions.size(); direction++) {
+        CHECK(resource.Directions[direction].Frames.size() == 1);
+        CHECK(GetSpriteDirDuration(resource.Animation.Sprite->Directions[direction]) == std::chrono::milliseconds {100});
+    }
+}
+#endif
+
+TEST_CASE("ImageFramePlacementDoesNotAccumulateMotion")
+{
+    using namespace BakerTests;
+
+#if FO_IMAGE_ART
+    SECTION("ArtRetainsInt32MotionUntilAnExplicitFofrmOverride")
+    {
+        TestRig rig {};
+        AddSourceBinaryFile(rig, "wide.art", MakeArt(1, 10, {true, false, false, false}, 1, {ArtFrameSpec {.Width = 1, .Height = 1, .DeltaX = 40000, .DeltaY = -40000, .Indices = {1}}}));
+        rig.AddSourceFile("root.fofrm", "Source = wide.art\nMotion = 1 -2\n");
+
+        ImageBaker baker {rig.MakeContext()};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "root.fofrm");
+
+        auto resource {ReadSpriteResource(rig.Outputs.at("root.fofrm"))};
+        CHECK(resource.Directions[0].Frames[0].NextOffset == ipos32 {1, -2});
+    }
+#endif
+
+#if FO_IMAGE_BAM
+    SECTION("BamCentersAreIndependentFramePlacement")
+    {
+        TestRig rig {};
+        AddSourceBinaryFile(rig, "cycle.bam", MakeMultiFrameBam());
+        rig.AddSourceFile("root.fofrm", "Frame = cycle.bam\nOffset = 10 20\nFrameOffsets = 1 2\n");
+
+        ImageBaker baker {rig.MakeContext()};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "root.fofrm");
+
+        auto resource {ReadSpriteResource(rig.Outputs.at("root.fofrm"))};
+        const auto& frames {resource.Directions[0].Frames};
+        REQUIRE(frames.size() == 2);
+        CHECK(frames[0].Offset == ipos32 {11, 23});
+        CHECK(frames[1].Offset == ipos32 {10, 20});
+        CHECK(frames[0].NextOffset == ipos32 {});
+        CHECK(frames[1].NextOffset == ipos32 {});
+    }
+
+    SECTION("BamCentersAreSigned")
+    {
+        TestRig rig {};
+        auto data {MakeSimpleBam()};
+        data[28] = 0xFE;
+        data[29] = 0xFF;
+        data[30] = 0xFD;
+        data[31] = 0xFF;
+        AddSourceBinaryFile(rig, "negative.bam", data);
+
+        ImageBaker baker {rig.MakeContext()};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "negative.bam");
+
+        auto resource {ReadSpriteResource(rig.Outputs.at("negative.bam"))};
+        const auto& frame {resource.Directions[0].Frames[0]};
+        CHECK(frame.Offset == ipos32 {4, 4});
+        CHECK(frame.NextOffset == ipos32 {});
+    }
+#endif
+
+#if FO_IMAGE_SPR
+    SECTION("RepeatedSprFramesKeepPlacementWithoutMovement")
+    {
+        TestRig rig {};
+        AddSourceBinaryFile(rig, "actor.spr", MakeSprWithSequenceFrames({0, 0}));
+        rig.AddSourceFile("root.fofrm", "Source = actor.spr\nOffset = 10 20\nFrameOffsets = 2 3\nMotion = -4 5\n");
+
+        ImageBaker baker {rig.MakeContext()};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "root.fofrm");
+
+        auto resource {ReadSpriteResource(rig.Outputs.at("root.fofrm"))};
+        const auto& frames {resource.Directions[0].Frames};
+        REQUIRE(frames.size() == 2);
+
+        for (const auto& frame : frames) {
+            CHECK(frame.Offset == ipos32 {13, 24});
+            CHECK(frame.NextOffset == ipos32 {-4, 5});
+        }
+    }
+
+    SECTION("SprSharedSlotsDoNotAcquireMotionFromTheirAnchor")
+    {
+        TestRig rig {};
+        AddSourceBinaryFile(rig, "actor.spr", MakeSprWithSequenceFrames({0, 0}));
+
+        ImageBaker baker {rig.MakeContext()};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "actor.spr");
+
+        auto resource {ReadSpriteResource(rig.Outputs.at("actor.spr"))};
+        const auto& frames {resource.Directions[0].Frames};
+        REQUIRE(frames.size() == 2);
+        CHECK(frames[1].SharedFrameIndex == optional<int32_t> {0});
+
+        for (const auto& frame : frames) {
+            CHECK(frame.Offset == ipos32 {1, 1});
+            CHECK(frame.NextOffset == ipos32 {});
+        }
+    }
+#endif
+}
+
+TEST_CASE("FofrmDataSurvivesMeshOptimization")
+{
+    string usage {GENERATE(string {"Data"}, string {"Normal"})};
+    BakerTests::TestRig rig {};
+    ConfigureSpriteMesh(rig);
+    rig.AddSourceFile("Source.toy", "data channels");
+    rig.AddSourceFile("Root.fofrm", strex("Frame = Source.toy\nPixelUsage = {}\n", usage).str());
+    ImageBaker baker {rig.MakeContext()};
+    baker.AddLoader(
+        [](string_view, string_view, FileReader, const ImageImport::Context&) {
+            ImageImport::FrameCollection collection {};
+            auto& frame {collection.Main.Frames.emplace_back()};
+            frame.Size = {64, 64};
+            frame.Duration = std::chrono::milliseconds {100};
+
+            for (int32_t y {0}; y < 64; y++) {
+                for (int32_t x {0}; x < 64; x++) {
+                    frame.Data.insert(frame.Data.end(), {10, 20, 30, numeric_cast<uint8_t>(x >= 28 && x < 36 && y >= 28 && y < 36 ? 255 : 0)});
+                }
+            }
+
+            return collection;
+        },
+        {"toy"});
+    baker.BakeFiles(rig.GetAllSourceFiles(), "Root.fofrm");
+    auto resource {ReadSpriteResource(rig.Outputs.at("Root.fofrm"))};
+    auto image {ExtractSpriteResourceFrameImage(resource.Directions[0].Frames[0])};
+    CHECK(image.Size == isize32 {64, 64});
+    CHECK(image.Pixels[0] == ucolor {10, 20, 30, 0});
+    CHECK(image.Pixels[30 * 64 + 30] == ucolor {10, 20, 30, 255});
 }
 
 FO_END_NAMESPACE

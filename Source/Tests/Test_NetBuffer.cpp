@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
 #include "NetBuffer.h"
@@ -335,6 +337,101 @@ TEST_CASE("NetBuffer")
 
         CHECK(in_buf.GetUnreadSize() == 0);
     }
+
+    SECTION("ShortFrameReadReportsPositionsFromBeforeReset")
+    {
+        // A ping that carries only the answer flag: the frame ends right after it, so the sender clock cannot be read
+        NetOutBuffer out_buf {16};
+        out_buf.StartMsg(NetMessage::Ping);
+        out_buf.Write(true);
+        out_buf.EndMsg();
+
+        NetInBuffer in_buf {16};
+        in_buf.AddData(out_buf.GetData());
+        REQUIRE(in_buf.NeedProcess());
+        REQUIRE(in_buf.ReadMsg() == NetMessage::Ping);
+        CHECK(in_buf.Read<bool>());
+
+        bool thrown {false};
+
+        try {
+            (void)in_buf.Read<int64_t>();
+        }
+        catch (const NetBufferException& ex) {
+            thrown = true;
+
+            // Requested length, read position, frame end and buffered end, as they were when the read failed
+            const_span<string> params {ex.params()};
+            REQUIRE(params.size() == 4);
+            CHECK(params[0] == "8");
+            CHECK(params[1] == "10");
+            CHECK(params[2] == "10");
+            CHECK(params[3] == "10");
+        }
+
+        CHECK(thrown);
+        CHECK(in_buf.GetDataSize() == 0);
+    }
+
+    SECTION("FrameBeyondBufferedDataReportsEndFromBeforeReset")
+    {
+        NetOutBuffer out_buf {32};
+        out_buf.StartMsg(NetMessage::Ping);
+        out_buf.Write(false);
+        out_buf.Write<int64_t>(1);
+        out_buf.EndMsg();
+
+        // The header announces the whole frame while only its first twelve bytes arrived
+        NetInBuffer in_buf {32};
+        in_buf.AddData(out_buf.GetData().subspan(0, 12));
+
+        bool thrown {false};
+
+        try {
+            (void)in_buf.ReadMsg();
+        }
+        catch (const NetBufferException& ex) {
+            thrown = true;
+
+            const_span<string> params {ex.params()};
+            REQUIRE(params.size() == 3);
+            CHECK(params[0] == "18");
+            CHECK(params[1] == "0");
+            CHECK(params[2] == "12");
+        }
+
+        CHECK(thrown);
+        CHECK(in_buf.GetDataSize() == 0);
+    }
+
+    SECTION("PropsCountBeyondFrameReportsUnreadFromBeforeReset")
+    {
+        NetOutBuffer out_buf {16};
+        out_buf.Write<uint16_t>(5);
+        out_buf.Write<uint16_t>(0);
+        out_buf.Write<uint8_t>(0);
+
+        NetInBuffer in_buf {16};
+        in_buf.AddData(out_buf.GetData());
+
+        vector<vector<uint8_t>> props_data {};
+        bool thrown {false};
+
+        try {
+            in_buf.ReadPropsData(props_data);
+        }
+        catch (const NetBufferException& ex) {
+            thrown = true;
+
+            const_span<string> params {ex.params()};
+            REQUIRE(params.size() == 2);
+            CHECK(params[0] == "5");
+            CHECK(params[1] == "3");
+        }
+
+        CHECK(thrown);
+        CHECK(in_buf.GetDataSize() == 0);
+    }
 }
 
 TEST_CASE("NetBufferAdversarial")
@@ -443,6 +540,73 @@ TEST_CASE("NetBufferAdversarial")
 
         vector<vector<uint8_t>> bad2_out {};
         CHECK_THROWS_AS(bad2_in.ReadPropsData(bad2_out), NetBufferException);
+    }
+}
+
+TEST_CASE("NetBufferQueuedFrameDiagnostics", "[rpc-runtime]")
+{
+    NetOutBuffer output {32};
+    output.StartMsg(NetMessage::RemoteCall);
+    output.Write<hstring::hash_t>(0x100000017ULL);
+    output.Write<int32_t>(0);
+    output.EndMsg();
+    size_t first_size {output.GetDataSize()};
+
+    SECTION("A fragment becomes queued only when its final byte arrives")
+    {
+        NetInBuffer input {32};
+        auto bytes {output.GetData()};
+        input.AddData(bytes.first(first_size - 1));
+        CHECK_FALSE(input.PeekQueuedMessage());
+        CHECK(input.GetReadPos() == 0);
+        CHECK(input.GetBufferedUnreadSize() == first_size - 1);
+        input.AddData(bytes.last(1));
+        auto queued {input.PeekQueuedMessage()};
+        REQUIRE(queued);
+        CHECK(queued->PrefixBytes == first_size);
+        CHECK(queued->RemoteCallHash == 0x100000017ULL);
+        CHECK(input.GetReadPos() == 0);
+    }
+
+    SECTION("Peeking skips a live frame without consuming its unread payload")
+    {
+        output.StartMsg(NetMessage::RemoteCall);
+        output.Write<hstring::hash_t>(0x200000019ULL);
+        output.Write<int32_t>(0);
+        output.EndMsg();
+        NetInBuffer input {32};
+        input.AddData(output.GetData());
+        REQUIRE(input.ReadMsg() == NetMessage::RemoteCall);
+        size_t read_pos {input.GetReadPos()};
+        auto queued {input.PeekQueuedMessage()};
+        REQUIRE(queued);
+        CHECK(queued->RemoteCallHash == 0x200000019ULL);
+        CHECK(queued->PrefixBytes == output.GetDataSize() - read_pos);
+        CHECK(input.GetReadPos() == read_pos);
+        CHECK(input.Read<hstring::hash_t>() == 0x100000017ULL);
+        CHECK(input.Read<int32_t>() == 0);
+        input.ShrinkReadBuf();
+        queued = input.PeekQueuedMessage();
+        REQUIRE(queued);
+        CHECK(queued->PrefixBytes == output.GetDataSize() - first_size);
+        CHECK(input.ReadMsg() == NetMessage::RemoteCall);
+        CHECK(input.Read<hstring::hash_t>() == 0x200000019ULL);
+        CHECK(input.Read<int32_t>() == 0);
+        CHECK_FALSE(input.NeedProcess());
+    }
+
+    SECTION("Diagnostic peeks leave malformed-input rejection to the processing owner")
+    {
+        NetOutBuffer malformed {16};
+        malformed.Write<uint32_t>(0);
+        malformed.Write<uint32_t>(9);
+        malformed.Write(NetMessage::Ping);
+        NetInBuffer input {16};
+        input.AddData(malformed.GetData());
+        CHECK_FALSE(input.PeekQueuedMessage());
+        CHECK(input.GetReadPos() == 0);
+        CHECK(input.GetBufferedUnreadSize() == malformed.GetDataSize());
+        CHECK_THROWS(input.NeedProcess());
     }
 }
 

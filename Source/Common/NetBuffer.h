@@ -123,6 +123,12 @@ private:
 class NetInBuffer final : public NetBuffer
 {
 public:
+    struct QueuedMessage
+    {
+        size_t PrefixBytes {};
+        hstring::hash_t RemoteCallHash {};
+    };
+
     explicit NetInBuffer(size_t buf_len) :
         NetBuffer(buf_len)
     {
@@ -137,6 +143,7 @@ public:
     [[nodiscard]] auto GetUnreadSize() const noexcept -> size_t { return GetReadLimit() - _bufReadPos; }
     [[nodiscard]] auto GetBufferedUnreadSize() const noexcept -> size_t { return _bufEndPos - _bufReadPos; }
     [[nodiscard]] auto NeedProcess() -> bool;
+    [[nodiscard]] auto PeekQueuedMessage() const -> optional<QueuedMessage>;
 
     void SetMaxMsgLen(size_t len) noexcept { _maxMsgLen = len; }
     void SetMaxBufLen(size_t len) noexcept { _maxBufLen = len; }

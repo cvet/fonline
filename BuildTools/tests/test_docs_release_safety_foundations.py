@@ -17,18 +17,22 @@ class ReleaseSafetyFoundationsDocumentationTests(unittest.TestCase):
 
     def test_windows_service_registration_and_log_locations_match_the_runbook(self) -> None:
         service = self._read("Source/Applications/ServerServiceApp.cpp")
+        common = self._read("Source/Common/Common.h")
         application = self._read("Source/Frontend/ApplicationInit.cpp")
         server = self._read("Source/Server/Server.cpp")
         guide = " ".join(self._read(OPERATIONS_GUIDE).split())
 
-        self.assertIn('wstring path = wstring(L"\\\"").append(buf)', service)
-        self.assertIn('append(L" --server-service")', service)
+        self.assertIn("wstring path {wstring(L\"\\\"\").append(buf)", service)
+        self.assertIn("ServerServiceStart {\"server-service-start\"}", common)
+        self.assertIn('args.GetSettingValue(CommandLineSettings::ServerServiceStart).has_value()', service)
+        self.assertIn('strex(" --{}", CommandLineSettings::ServerServiceStart).to_wide_char()', service)
+        self.assertIn('.append(service_start_arg)', service)
         self.assertIn('logging::to_file(fs::make_writable_path(ResolveWritableRoot(args), GetExeLogFileName())', application)
         self.assertIn('fs::make_writable_path(Settings->Common.UserWritablePath, health_file_name)', server)
         self.assertIn('fs::make_path(_healthFileName)', server)
 
         for marker in (
-            "quoted executable path, the current command line, and `--server-service`",
+            "quoted executable path, the current command line, and `--server-service-start`",
             "`--server-service-delete` removes the registration",
             "roots the log, health file, cache, resource overlay",
             "health file uses an executable-derived name below the same writable root",
@@ -48,7 +52,7 @@ class ReleaseSafetyFoundationsDocumentationTests(unittest.TestCase):
         ):
             self.assertIn(connection, database)
         self.assertIn('connection_info = strvex(connection_info).trim();', database)
-        self.assertIn('string_view storage_dir = strvex(connection_info.substr(options.front().size())).trim();', database)
+        self.assertIn('string_view storage_dir {static_cast<string_view>(strvex(connection_info.substr(options.front().size())).trim())};', database)
         for provider in ("DataBaseJson", "DataBaseSQLite"):
             self.assertIn(f'{provider}::Create(db_settings, storage_dir, std::move(panic_callback))', database)
         self.assertIn('Execute("PRAGMA journal_mode = WAL"', sqlite)

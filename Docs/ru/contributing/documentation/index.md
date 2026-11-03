@@ -5,7 +5,7 @@ locale: ru
 document_id: documentation-maintenance
 permalink: /Docs/ru/contributing/documentation/
 ---
-<!-- docs-translation: {"document_id":"documentation-maintenance","locale":"ru","source_path":"Docs/en/contributing/documentation/index.md","source_sha256":"623229148ff8a0660452cf659a4e570b73f03eb69b6e929e1a626f97bb29cecd"} -->
+<!-- docs-translation: {"document_id":"documentation-maintenance","locale":"ru","source_path":"Docs/en/contributing/documentation/index.md","source_sha256":"90e471195dff80ad3bef794683f19b6de86aac1f5f36ab1046314cb0a46638b5"} -->
 # Сопровождение документации
 
 > Документация движка. Эта страница объясняет, как сохранять документацию FOnline привязанной к исходному коду, удобной для навигации и отделённой от содержимого проектов, использующих движок.
@@ -328,13 +328,13 @@ git diff --stat <old-engine-sha>..<new-engine-sha>
 | Fenced block или `BuildTools/SnippetPolicy.json` | Объявить language/harness в [Documentation Snippet Validation](snippets.md), обновить report, выполнить external parser и semantic owner checks. |
 | Export methods, native tests или settings declarations | Перегенерировать `Docs/generated/source-inventory.json`. |
 | Inventoried Markdown, ownership/state/target/source, publication/version/locale policy | Обновить manifest; затем snippets, site, AI evaluation и AI delivery. Не обходить context budget усечением. |
-| Public title/path/state, README pair, site navigation/routing/search, Jekyll layout или assets | Обновить site data/search/routes, source/layout/artifact/browser tests и полный browser audit; не снижать gates. |
+| Public title/path/state, README pair, site navigation/routing/search, Jekyll layout или assets | Обновить site data/search/routes, source/layout/artifact/browser tests и полный browser audit; не снижать gates. Размер поисковых индексов не ограничивается; все допустимые документы должны сохраняться. |
 | AI task set, evidence, search ranking или source ref | Обновить [AI Documentation Evaluation](ai-evaluation.md), report и focused test; не добавлять нерелевантные keywords и не снижать threshold. |
 | Metadata baker или remote-call format/runtime | Обновить [Remote Calls](../../reference/scripting/remote-calls.md); проект должен rebake обе стороны и свой catalog. |
 | Module init, callbacks, `Yield`, scheduling/synchronization или teardown | Обновить [Script Lifecycle and Concurrency](../../how-to/scripting/lifecycle-and-concurrency.md) и narrow tests. |
 | Порядок `.fos`, side macros, ownership/style, formatter, mutable globals, attributed calls, generated script или refactoring | Обновить [Стиль AngelScript и рефакторинг](../../how-to/scripting/style-and-refactoring.md) и английский оригинал, запустить focused test и владеющий formatter, выполнить compile без warnings и behavior test; project style остаётся внешним. |
 | Model animation tokens/durations/aliases/metadata/methods | Обновить [Model Animation](../../how-to/content/model-animation.md), focused tests, API/reference при необходимости и bake проекта. |
-| `NextX`/`NextY`, baked offsets или movement render phase | Обновить [Sprite Root Motion](../../how-to/content/sprite-root-motion.md), tests, bake и visible movement validation. |
+| `Motion`, baked offsets или movement render phase | Обновить [Sprite Root Motion](../../how-to/content/sprite-root-motion.md), tests, bake и visible movement validation. |
 | Build, package, platform, runtime, persistence, networking или pointer/nullability behavior | Обновить owning source-grounded page и narrow behavior/test path из неё. |
 
 После каждого триггера генерируемой поверхности выполняйте `docs_contract_diff.py` против сохранённых старых models или выбранной Git base. Нулевой native API delta не закрывает изменения CMake, CLI, package, helper CLI, native extension и форматных/runtime contracts.

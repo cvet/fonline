@@ -13,12 +13,13 @@
     "included": [
       "DefinePackage declaration clauses and the per-binary POSTFIX modifier",
       "package.py targets, platforms, architecture keys, pack tokens, and payload effects",
-      "implemented, placeholder, and unsupported package boundaries"
+      "implemented, placeholder, and unsupported package boundaries",
+      "Resources.usage.json prerequisite and selection before target-specific resource packaging"
     ],
     "excluded": [
       "embedding-project package matrices and release policy",
       "project configuration key schema and secret provisioning",
-      "resource-pack content selection and deployment topology",
+      "game-specific resource root declarations and deployment topology",
       "installer signing credentials and external tool operation"
     ]
   },
@@ -86,7 +87,7 @@
   "packager": {
     "source": "BuildTools/package.py",
     "entrypoint": "main",
-    "description": "Stage one declared binary payload, patch runtime data, and emit selected artifacts."
+    "description": "Stage one declared binary payload, patch runtime data, and emit selected artifacts. Resource collection requires Resources.usage.json matching the baked build/configuration markers and intersects its exact per-pack file lists with target suffix restrictions. Baking.FilterResources defaults to False, listing all available current baker outputs; True opts into typed-root and runtime-dependency filtering."
   },
   "targets": [
     {
@@ -517,20 +518,6 @@
       "id": "package.pack.OnDemandProfiling"
     },
     {
-      "name": "OGL",
-      "category": "binary-selection",
-      "status": "implemented",
-      "artifact": false,
-      "platforms": [
-        "Windows"
-      ],
-      "targets": [
-        "Client"
-      ],
-      "description": "Include the regular and OpenGL client variants and patch ForceOpenGL=1.",
-      "id": "package.pack.OGL"
-    },
-    {
       "name": "Lib",
       "category": "binary-selection",
       "status": "implemented",
@@ -900,10 +887,10 @@
     "target_count": 6,
     "platform_count": 6,
     "implemented_platform_count": 4,
-    "pack_count": 19,
-    "implemented_pack_count": 18,
+    "pack_count": 18,
+    "implemented_pack_count": 17,
     "artifact_pack_count": 8,
     "cli_argument_count": 17
   },
-  "contract_digest": "13ad77ab5b1a53bc20e8c3a701043aebcc6c6c27dcc3e03b9d0fa696c6602b2f"
+  "contract_digest": "7c255cadeb4dd744b470ffdf984c85e4a887b18f43a07f7d2707f94d7c1d8554"
 }

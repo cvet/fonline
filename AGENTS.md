@@ -60,11 +60,19 @@ in versioned docs; sanitize evidence.
 
 ## Native review checklist
 
-- **Module structure:** a standalone named native module is a `.h` + `.cpp` pair,
-  both registered in its owning source list, even if it currently contains only
-  passive data. Pure template/constexpr/umbrella headers are exceptions. Keep
+- **Module structure:** public modules use a `.h` + `.cpp` pair, both registered
+  in the owning source list, even for shared passive data. Implementation-only
+  units do not need a header; do not create headers used only by their own `.cpp`.
+  Pure template/constexpr/umbrella headers are exceptions to header-side pairing. Keep
   engine-owned source inventories unconditional; self-guarded modules own their
   `#if FO_*` and are included normally. Third-party feature dependencies may be gated.
+  Headers include `Common.h` first. Implementations include their case-exact
+  same-stem header first when it exists, otherwise `Common.h`. Separate that
+  include from following content with a blank line; do not add an empty line at EOF.
+  Bootstrap headers (`Common.h`, Essentials and ImGui configuration) preserve their
+  lower-layer dependencies. Run `BuildTools/check_native_source_layout.py` and
+  `BuildTools/check_native_modules.py`; [source layout](Docs/en/contributing/source-tree/#native-module-layout)
+  owns exact scope and exceptions.
 - **Types/names:** `struct` is exclusively a passive record of public data: no declared
   constructors, destructors, methods or member operators, including defaulted ones,
   inherited behavior, invariants or `final`. Operations on records are free functions.
@@ -107,8 +115,9 @@ in versioned docs; sanitize evidence.
   spacing. A comment never requires a preceding blank line, in any context, including
   function/lambda bodies, enums and struct/class member lists. Choose blank lines
   from the semantic grouping of the code; keep comments attached to what they describe.
-  Edited source ends with
-  exactly one trailing blank line. Reuse MIT headers and `#pragma once`.
+  Native source ends with exactly one newline (`text\n`, or `text\r\n`),
+  without trailing spaces or an additional empty line.
+  Reuse MIT headers and `#pragma once`.
   Manually review changed semantic groups and control-flow blocks in the final diff;
   neither a formatter nor `git diff --check` verifies these spacing rules.
 - **Comments:** explain only what code cannot express: intent, units, ownership,
@@ -220,6 +229,10 @@ in versioned docs; sanitize evidence.
   Preserve checked arithmetic and restrict `unchecked` to intentional wrapping.
 
 ## Validation Routing
+
+Tool owners: [Mapper interactive manual](Docs/en/how-to/tools/mapper-interactive.md),
+[Mapper automation](Docs/en/how-to/tools/mapper.md), and
+[Animation and Particle Viewers](Docs/en/how-to/tools/animation-particle-viewers.md).
 
 Build and codegen finish warning-free; fix the source instead of suppressing a
 diagnostic or weakening a gate. Use the embedding project's authoritative targets

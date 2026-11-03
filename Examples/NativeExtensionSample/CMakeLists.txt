@@ -21,6 +21,7 @@ RegisterProjectOptions()
 AddThirdPartyLibraries()
 
 add_library(NativeExtensionCore STATIC
+    SourceExt/NativeExtensionCore.h
     SourceExt/NativeExtensionCore.cpp)
 target_include_directories(NativeExtensionCore PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/SourceExt")
@@ -42,7 +43,8 @@ target_link_libraries(FONATIVE_NativeExtensionCoreTest PRIVATE
 
 # Current revision-pinned project-library integration point.
 list(APPEND FO_SERVER_LIBS NativeExtensionCore)
-AddEngineSources(SERVER SourceExt/ServerExtension.cpp)
+AddEngineSources(
+    SERVER SourceExt/ServerExtension.cpp)
 RegisterEngineSources()
 SetupCodeGeneration()
 BuildCoreLibraries()

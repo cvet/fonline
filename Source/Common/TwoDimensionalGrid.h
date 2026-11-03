@@ -41,10 +41,10 @@ template<typename TCell, pos_type TPos, size_type TSize>
 class TwoDimensionalGrid
 {
 public:
-    explicit TwoDimensionalGrid(TSize size) noexcept
+    explicit TwoDimensionalGrid(TSize size)
     {
-        FO_VERIFY_AND_RETURN(size.width >= 0, "Two-dimensional grid width is negative", size.width, size.height);
-        FO_VERIFY_AND_RETURN(size.height >= 0, "Two-dimensional grid height is negative", size.width, size.height);
+        FO_VERIFY_AND_THROW(size.width >= 0, "Two-dimensional grid width is negative", size.width, size.height);
+        FO_VERIFY_AND_THROW(size.height >= 0, "Two-dimensional grid height is negative", size.width, size.height);
 
         _size = size;
     }
@@ -71,7 +71,7 @@ class DynamicTwoDimensionalGrid final : public TwoDimensionalGrid<TCell, TPos, T
     using base = TwoDimensionalGrid<TCell, TPos, TSize>;
 
 public:
-    explicit DynamicTwoDimensionalGrid(TSize size) noexcept :
+    explicit DynamicTwoDimensionalGrid(TSize size) :
         base(size)
     {
     }
@@ -128,12 +128,15 @@ class ChunkedTwoDimensionalGrid final : public TwoDimensionalGrid<TCell, TPos, T
     using base = TwoDimensionalGrid<TCell, TPos, TSize>;
     using Chunk = array<TCell, ChunkSide * ChunkSide>;
 
+    static constexpr int64_t CHUNK_SIDE {const_numeric_cast<int64_t>(ChunkSide)};
+
 public:
-    explicit ChunkedTwoDimensionalGrid(TSize size) noexcept :
+    explicit ChunkedTwoDimensionalGrid(TSize size) :
         base(size),
-        _chunksPerRow((static_cast<size_t>(base::_size.width) + ChunkSide - 1) / ChunkSide)
+        _chunksPerRow {(safe_numeric_cast<int64_t>(base::_size.width) + CHUNK_SIDE - 1) / CHUNK_SIDE}
     {
-        _chunks.resize(_chunksPerRow * ((static_cast<size_t>(base::_size.height) + ChunkSide - 1) / ChunkSide));
+        int64_t chunk_rows {(safe_numeric_cast<int64_t>(base::_size.height) + CHUNK_SIDE - 1) / CHUNK_SIDE};
+        _chunks.resize(numeric_cast<size_t>(checked_mul(_chunksPerRow, chunk_rows)));
     }
 
     [[nodiscard]] auto GetCellForReading(TPos pos) const noexcept -> const TCell& override
@@ -181,10 +184,12 @@ public:
             for (size_t cell_index {0}; cell_index < chunk->size(); cell_index++) {
                 auto& cell {(*chunk)[cell_index]};
 
-                size_t x {chunk_index % _chunksPerRow * ChunkSide + cell_index % ChunkSide};
-                size_t y {chunk_index / _chunksPerRow * ChunkSide + cell_index / ChunkSide};
+                int64_t chunk_slot {numeric_cast<int64_t>(chunk_index)};
+                int64_t cell_slot {numeric_cast<int64_t>(cell_index)};
+                int64_t x {chunk_slot % _chunksPerRow * CHUNK_SIDE + cell_slot % CHUNK_SIDE};
+                int64_t y {chunk_slot / _chunksPerRow * CHUNK_SIDE + cell_slot / CHUNK_SIDE};
 
-                if (x < static_cast<size_t>(size.width) && y < static_cast<size_t>(size.height)) {
+                if (x < size.width && y < size.height) {
                     TPos pos {numeric_cast<decltype(pos.x)>(x), numeric_cast<decltype(pos.y)>(y)};
                     *replacement.GetCellForWriting(pos) = std::move(cell);
                 }
@@ -197,10 +202,10 @@ public:
     }
 
 private:
-    auto GetChunkIndex(TPos pos) const noexcept -> size_t { return static_cast<size_t>(pos.y) / ChunkSide * _chunksPerRow + static_cast<size_t>(pos.x) / ChunkSide; }
-    static auto GetCellIndex(TPos pos) noexcept -> size_t { return static_cast<size_t>(pos.y) % ChunkSide * ChunkSide + static_cast<size_t>(pos.x) % ChunkSide; }
+    auto GetChunkIndex(TPos pos) const noexcept -> size_t { return numeric_cast<size_t>(safe_numeric_cast<int64_t>(pos.y) / CHUNK_SIDE * _chunksPerRow + safe_numeric_cast<int64_t>(pos.x) / CHUNK_SIDE); }
+    static auto GetCellIndex(TPos pos) noexcept -> size_t { return numeric_cast<size_t>(safe_numeric_cast<int64_t>(pos.y) % CHUNK_SIDE * CHUNK_SIDE + safe_numeric_cast<int64_t>(pos.x) % CHUNK_SIDE); }
 
-    size_t _chunksPerRow {};
+    int64_t _chunksPerRow {};
     vector<unique_nptr<Chunk>> _chunks {};
     const TCell _emptyCell {};
 };
@@ -211,11 +216,10 @@ class StaticTwoDimensionalGrid final : public TwoDimensionalGrid<TCell, TPos, TS
     using base = TwoDimensionalGrid<TCell, TPos, TSize>;
 
 public:
-    explicit StaticTwoDimensionalGrid(TSize size) noexcept :
+    explicit StaticTwoDimensionalGrid(TSize size) :
         base(size)
     {
-        size_t count {static_cast<size_t>(static_cast<int64_t>(base::_size.width) * base::_size.height)};
-        _preallocatedCells.resize(count);
+        _preallocatedCells.resize(base::_size.template square<size_t>());
     }
 
     [[nodiscard]] auto GetCellForReading(TPos pos) const noexcept -> const TCell& override
@@ -224,7 +228,7 @@ public:
             return _emptyCell;
         }
 
-        size_t index {static_cast<size_t>(static_cast<int64_t>(pos.y) * base::_size.width + pos.x)};
+        size_t index {numeric_cast<size_t>(safe_numeric_cast<int64_t>(pos.y) * base::_size.width + pos.x)};
         auto& cell {_preallocatedCells[index]};
 
         if (!cell) {
@@ -238,7 +242,7 @@ public:
     {
         FO_VERIFY_AND_THROW(base::_size.is_valid_pos(pos), "Dense two-dimensional grid write position is outside the grid bounds", pos, base::_size);
 
-        auto index {numeric_cast<size_t>(static_cast<int64_t>(pos.y) * base::_size.width + pos.x)};
+        auto index {numeric_cast<size_t>(safe_numeric_cast<int64_t>(pos.y) * base::_size.width + pos.x)};
         auto& cell {_preallocatedCells[index]};
 
         if (!cell) {
@@ -256,16 +260,13 @@ public:
         auto prev_width {base::_size.width};
         auto prev_height {base::_size.height};
 
-        base::_size = size;
-
         vector<optional<TCell>> new_cells {};
-        auto new_count {numeric_cast<size_t>(numeric_cast<int64_t>(base::_size.width) * base::_size.height)};
-        new_cells.resize(new_count);
+        new_cells.resize(size.template square<size_t>());
 
-        for (int64_t y {0}; y < std::max(prev_height, base::_size.height); y++) {
-            for (int64_t x {0}; x < std::max(prev_width, base::_size.width); x++) {
-                if (x < base::_size.width && y < base::_size.height && x < prev_width && y < prev_height) {
-                    auto new_index {numeric_cast<size_t>(y * base::_size.width + x)};
+        for (int64_t y {0}; y < std::max(prev_height, size.height); y++) {
+            for (int64_t x {0}; x < std::max(prev_width, size.width); x++) {
+                if (x < size.width && y < size.height && x < prev_width && y < prev_height) {
+                    auto new_index {numeric_cast<size_t>(y * size.width + x)};
                     auto prev_index {numeric_cast<size_t>(y * prev_width + x)};
                     new_cells[new_index] = std::move(_preallocatedCells[prev_index]);
                 }
@@ -273,6 +274,7 @@ public:
         }
 
         _preallocatedCells = std::move(new_cells);
+        base::_size = size;
     }
 
 private:

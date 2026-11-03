@@ -10,6 +10,13 @@ permalink: /Docs/en/how-to/scripting/managed-csharp.html
 
 > Engine-owned Managed C# guide; game modules and policy belong to the embedding project.
 
+
+Native ref-type wrappers with `HasFactory` expose a public empty constructor that calls their native factory; wrappers without a factory expose only internal pointer construction. `new MapSpriteHolder()` therefore returns a valid native holder before field access. Keep that holder alive through the last rendered frame, then call `StopDraw()` and `Dispose()` on the client thread. The current Managed lifetime lease also permits garbage collection to release ownership, but its timing is unspecified; deterministic drawing cleanup uses `Dispose()` or a correctly scoped `using`. Its `Elevation` is applied when the sprite is attached, independently of `Offset`.
+
+`Game.CreateItem(protoId, properties)` accepts `Dictionary<ItemProperty, any>` and applies overrides to a prototype copy through `Properties::SetValueAsAnyProps` before `OnItemInit` and `InitScript`. Each key must identify an enabled, stored, Mutable property; immutable, disabled and virtual properties are rejected before item registration. Values use the existing property text parser, including complex values such as `Offset`. Creation resets native placement/ownership fields; place the resulting item with `MoveItem`. Existing integer-property overloads retain their semantics. Give the dictionary an explicit value type when selecting an overload.
+
+Initial item snapshots obey the ordinary declared synchronization filter. `PicMap` and `Offset` are Mutable PublicSync and arrive before sprite setup. Immutable Common values, Common NoSync values and server-only values are not transferred; OwnerSync remains owner-only. `CreateItem` does not change those rules: initialize synchronized instance values there, and define shared unsynchronized structure in the item prototype.
+
 ## Contract status
 
 Managed C# embeds Mono and compiles scripts with the configured .NET SDK for server, client, Mapper, bakers and tests. It shares backend-neutral metadata with AngelScript. Native scripting is an unimplemented source-root placeholder.
@@ -120,6 +127,12 @@ mirror the native API (`ipos.x`, `hstr()`, `timespan.milliseconds`), and
 `__event_OnStart`) to avoid collisions with properties declared by an embedding
 project. Do not apply the handwritten member rule to those generated names.
 
+Use `TimePlace.Nanoseconds`, `TimePlace.Microseconds`, `TimePlace.Milliseconds`
+or `TimePlace.Seconds` for the `place` constructor argument of `timespan` and
+`synctime`, for example `new timespan(100, TimePlace.Milliseconds)`. The constants
+retain the native unit codes `0`, `1`, `2` and `3`; raw one-argument constructors
+continue to accept nanoseconds for `timespan` and milliseconds for `synctime`.
+
 Methods resolved by the native backend through `[CallableByEngine]` are
 `internal`, even though Mono lookup can find non-public methods. They are dispatch
 entry points, not ordinary direct-call helpers; a change must respect the owning
@@ -159,9 +172,13 @@ Entity-only post-set reactions may return `Task`; value-transforming setters wit
 
 Inbound remote-call handlers may return `void`, `Task`, or `Task<T>`. Remote calls have no wire result, so incomplete tasks are observed without blocking the network/client pump; a `Task<T>` value is ignored. A named script function returning non-generic `Task` follows the same asynchronous boundary. A `Task<T>` named function remains synchronous when native code requires `T`.
 
+RPC dispatch and awaited time events use the same `FuncCallData::Completion` ownership and backend registry. Direct Task-returning RPC delegates expose the actual Task; `Task<T>` is registered with a declared Task return because RPC has no wire result. Async delegates bypass Action adapters even when no monitor owns the call. Synchronous delegates retain the typed path. The default completion runs in script context. Only a callback holding detached state may set `CompletionOnAnyThread`; RPC accounting uses this permission so a completed Task is not held pending by a blocked script pump. A backend-local gate closes this off-thread entry at `BeginBackendTeardown` before native backend state is released. Time events keep context completion and their own Stop/Repeat/count policy.
+
+Server inbound RPC monitoring retains a completion owner through the actual returned task, including success, fault and cancellation. Incomplete tasks do not block dispatch. Backend teardown releases outstanding owners explicitly; racing or late task completion releases each owner at most once. The [remote-call runtime policy](../../reference/scripting/remote-calls.md#runtime-monitoring-and-disconnection) defines the age/count settings and transport disconnection; it does not cancel the task or roll back its effects.
+
 Callback and remote-call arguments keep their metadata shape: native `any[]` arrives as `List<any>` and `string=>any` as `Dictionary<string, any>`. The bridge does not adapt these into `List<object>` or string dictionaries; declare the exact generated types.
 
-`[CallableFromNative]` methods register under `TypeName::MethodName`. `List<T>` and `Dictionary<K,V>` parameters and results use Engine array and dictionary descriptors when their element/key/value types are supported simple Engine types. The native registration resolves `K=>V` before array syntax; dictionaries with collection values remain outside this callback bridge. By-reference registration currently supports the built-in `(Critter, Critter, ref string)` delegates. `Test_ManagedScriptRuntime.cpp` checks these calls through real compiled assemblies, including dictionary arguments and returned values.
+`[CallableFromNative]` methods register under `TypeName::MethodName`. `[TimeEvent]` handlers register under the same name for native named-timer lookup and snapshot restore. `List<T>` and `Dictionary<K,V>` parameters and results use Engine array and dictionary descriptors when their element/key/value types are supported simple Engine types. The native registration resolves `K=>V` before array syntax; dictionaries with collection values remain outside this callback bridge. By-reference registration currently supports the built-in `(Critter, Critter, ref string)` delegates. `Test_ManagedScriptRuntime.cpp` checks these calls through real compiled assemblies, including dictionary arguments and returned values.
 
 ## Async and continuation scheduling
 
@@ -172,6 +189,9 @@ Each backend owns a separate continuation queue. `BaseEngine::FrameAdvance` pump
 `Post` raises an atomic backend-ready flag while the scheduler is open; an idle frame does not enter managed code just to find an empty queue. A partly failed pump signals remaining work for the next frame. Shutdown closes the scheduler before unbinding the backend, so a late post cannot signal released native state. `Native.GetAndResetContinuationPumps` exposes pump counts to interop tests.
 
 Synchronous native-result callbacks and module initialization use a private continuation queue and drain only their own awaited continuations. `Game.YieldAsync` is rejected in that context because the blocked caller cannot advance the timer pump. Completed tasks remain valid.
+
+`ScriptTask.Delay(timespan)` retains nanoseconds; `Delay(int)` adapts milliseconds.
+Both reject synchronous callbacks. Unit scaling uses checked arithmetic.
 
 `ConfigureAwait(false)`, `Task.Run`, `Task.Factory`, `Parallel`, and manually dispatched ThreadPool work deliberately bypass the Engine synchronization context. They may perform isolated computation, but they must not call Engine APIs. The entry assembly's backend binding can still identify an Engine from such a thread, so this misuse is not guaranteed to fail at every native call; only synchronization-sensitive routes such as server entity access reliably reject it. Embedding projects should ban these escape APIs statically and return to the captured Engine context before touching Engine state.
 
@@ -279,7 +299,7 @@ Stored property-name migrations use `///@ MigrationRule Property Critter Rename 
 
 Use an owned `DatabaseDocument(entityType, originalValues)` and `Migrate<T>(property, ref value)` for isolated property fixtures. This invokes the registered typed callback without creating an entity; it does not commit a document or emulate database writes. Qualify persistence separately through a real database reload and process restart.
 
-Prototype rules use `///@ MigrationRule Proto Item Rename Old New`, `Proto Item Remove Old`, or `Proto Item Transform Old GameMigrations.RewriteProto`. `Remove` has no replacement argument and replaces the old `__remove__` token. A static synchronous `[ProtoMigrator]` method has the signature `bool RewriteProto(ref hstring value, DatabaseDocument document)`. The source may be retired; its owner must support prototypes. A document-only function runs before proto lookup and property migration. All callbacks read the same original document, including its original `_Proto`; a changed `_Proto` joins the staged property updates. Returning false retains the name; returning true with an empty name deliberately drops that entity without invoking its property callbacks. Rename/function chains are resolved with cycle detection; only one action is allowed per source. Context-dependent functions are never called by ordinary proto lookup or the content baker, so projects must author separate conditional paths for nested references. `DatabaseDocument.MigrateProto(ref value)` invokes the registered function in an owned fixture; it does not emulate the native chain or commit.
+Prototype rules use `///@ MigrationRule Proto Item Rename Old New`, `Proto Item Remove Old`, or `Proto Item Transform Old GameMigrations.RewriteProto`. `Remove` has no replacement argument and replaces the old `__remove__` token. A legacy source identifier with whitespace must be double-quoted, as in `Proto Modifier Rename "Local knowledge" LocalKnowledge`; quoted sources also work for `Transform` and `Remove`. Bare multiword sources and replacements containing whitespace are rejected. A static synchronous `[ProtoMigrator]` method has the signature `bool RewriteProto(ref hstring value, DatabaseDocument document)`. The source may be retired; its owner must support prototypes. A document-only function runs before proto lookup and property migration. All callbacks read the same original document, including its original `_Proto`; a changed `_Proto` joins the staged property updates. Returning false retains the name; returning true with an empty name deliberately drops that entity without invoking its property callbacks. Rename/function chains are resolved with cycle detection; only one action is allowed per source. Context-dependent functions are never called by ordinary proto lookup or the content baker, so projects must author separate conditional paths for nested references. `DatabaseDocument.MigrateProto(ref value)` invokes the registered function in an owned fixture; it does not emulate the native chain or commit.
 
 ### Indexed native interop ABI
 
@@ -375,6 +395,10 @@ No C++ exception may unwind through a Mono internal-call frame: doing so bypasse
 
 The managed backend reports fixed native context plus managed exception text and stack information through the common script error path. `ScriptExceptions.GlobalCount` is process-wide; a harness can call `ScriptExceptions.OpenScope()` and inspect the disposed scope's `Count` for faults recorded in its logical async flow, including continuations on another OS thread. Nested scopes also charge their parents. Deferred task faults count globally when observed, not as synchronous faults in a scope. A build that merely produces assemblies does not prove startup or callback dispatch. Set `ManagedScript.InteropProbeOnStart = True` for a client/device/browser qualification run that cannot host the native test suite; startup logs one `INTEROP-TRANSPORT` line per condition and a final summary.
 
+A managed event handler that throws is reported once by `Native.InvokeEvent` or the generated `AdaptInvoke`. A handler that returns `EventResult` then stops the chain with `StopChain`. A handler without a result returns `ContinueChain`, so every lower-priority subscriber still runs and the fault does not change the event result; a handler that must be able to refuse an event returns `EventResult`.
+
+`ScriptExceptions.OpenCaptureScope()` lets a harness exercise deliberately reported failures without native error notification or unattended application shutdown. Reports still log their exception text and increment every enclosing scope and `GlobalCount`; the harness must assert and acknowledge the exact observed failures. Capture follows only its logical async flow, ends on disposal even for a retained child flow, and never captures deferred Task faults. Ordinary `OpenScope()` and uncaptured reporting keep their behavior.
+
 Both script backends retain at most 32 distinct overrun entry names per Engine, counting repeats while preserving independent maximum execution and lock-wait times. `TakeScriptOverruns()` drains that buffer. The client drains before `OnLoop` and dispatches `OnScriptOverrun(entry, execution, lockWait, count)` outside the buffer lock; server and mapper do not publish the event in their loops. An overrun caused by a subscriber waits for the next drain. The usual threshold/debugger suppression still applies.
 
 `InteropProbe` compares runtime invoke, classic thunk, and `UnmanagedCallersOnly` transports where the runtime supplies them, then measures production dispatch and its synchronization, attachment, and overrun-report components. Each series verifies delivery and arguments and reports GC handles, metadata lookups, managed objects, wrapper construction, and—under Tracy—native allocations per call. Counters are thread-local and disabled outside a measured stretch. Latency is evidence for a quiet-host comparison, not a shared-CI threshold; allocation and delivery counts are hard assertions.
@@ -401,6 +425,10 @@ First diagnosis routes:
 | Package starts with missing framework type | `ManagedRuntime/runtime.manifest` and target-specific pack replacement. |
 | ABI bind fails before module initialization | Stale generated `*Abi.gen.cs`, native manifest/hash mismatch, or a skipped managed rebuild. |
 | A wrapper unsubscribe leaves the callback active | Subscription ownership on the native entity and delegate equality; do not keep wrapper-local event state. |
+
+## Session snapshots
+
+A native server snapshot blocks while engine-dispatched Managed `Task` work or script continuations remain pending. Completion, fault and cancellation release task accounting; queued continuations remain blockers until processed. A simulation pause keeps frame-driven continuations queued while publishing frozen frame/synchronized time. It does not serialize C# statics, object graphs or detached background work: the embedding controller must persist or reject that state through its own eligibility checks. See [server pause and snapshots](../../explanation/runtime/server.md).
 
 ## Validation matrix
 

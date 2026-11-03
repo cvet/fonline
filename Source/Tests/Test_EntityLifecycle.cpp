@@ -46,8 +46,8 @@ map<string, string> Server_Game_DbGetRecord(ptr<ServerEngine> server, hstring co
 
 TEST_CASE("EntityManagerCppApi")
 {
-    auto settings {MakeSettings()};
-    auto server {MakeServerEngine(settings)};
+    auto settings {EntityLifecycleTests::MakeSettings()};
+    auto server {EntityLifecycleTests::MakeServerEngine(settings)};
     auto shutdown {scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
@@ -56,7 +56,7 @@ TEST_CASE("EntityManagerCppApi")
         });
     })};
 
-    string startup_error {WaitForStart(server)};
+    string startup_error {EntityLifecycleTests::WaitForStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
@@ -217,8 +217,8 @@ TEST_CASE("EntityManagerCppApi")
 
 TEST_CASE("CritterCppApi")
 {
-    auto settings {MakeSettings()};
-    auto server {MakeServerEngine(settings)};
+    auto settings {EntityLifecycleTests::MakeSettings()};
+    auto server {EntityLifecycleTests::MakeServerEngine(settings)};
     auto shutdown {scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
@@ -227,7 +227,7 @@ TEST_CASE("CritterCppApi")
         });
     })};
 
-    string startup_error {WaitForStart(server)};
+    string startup_error {EntityLifecycleTests::WaitForStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
@@ -336,8 +336,8 @@ TEST_CASE("CritterCppApi")
 
 TEST_CASE("IndependentRootCoverEnumeration")
 {
-    auto settings {MakeSettings()};
-    auto server {MakeServerEngine(settings)};
+    auto settings {EntityLifecycleTests::MakeSettings()};
+    auto server {EntityLifecycleTests::MakeServerEngine(settings)};
     auto shutdown {scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
@@ -346,13 +346,13 @@ TEST_CASE("IndependentRootCoverEnumeration")
         });
     })};
 
-    string startup_error {WaitForStart(server)};
+    string startup_error {EntityLifecycleTests::WaitForStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
 
-    const auto fn {[&server](string_view name) { return server->Hashes.to_hashed_string(name); }};
+    auto fn {[&server](string_view name) { return server->Hashes.to_hashed_string(name); }};
 
     SECTION("GlobalMapGroupIdsReportEveryMemberWithAStableRevision")
     {
@@ -432,7 +432,7 @@ TEST_CASE("IndependentRootCoverEnumeration")
     SECTION("InitialInfoLeavesTheGlobalGroupFanOutToTheScript")
     {
         auto test_connection {safe_alloc::make_shared<TestNetworkConnection>(server->Settings)};
-        auto player {CreateLoggedPlayer(server, test_connection, "GlobalGroupInitialInfo")};
+        auto player {EntityLifecycleTests::CreateLoggedPlayer(server, test_connection, "GlobalGroupInitialInfo")};
 
         auto cr {server->CreateCritter(fn("TestCritter"), true)};
         auto group_member {server->CreateCritter(fn("TestCritter"), false)};
@@ -468,7 +468,7 @@ TEST_CASE("IndependentRootCoverEnumeration")
     SECTION("SendGlobalMapGroupInfoRequiresTheCallerToCoverEveryGroupMember")
     {
         auto test_connection {safe_alloc::make_shared<TestNetworkConnection>(server->Settings)};
-        auto player {CreateLoggedPlayer(server, test_connection, "GlobalGroupFanOut")};
+        auto player {EntityLifecycleTests::CreateLoggedPlayer(server, test_connection, "GlobalGroupFanOut")};
 
         auto cr {server->CreateCritter(fn("TestCritter"), true)};
         auto group_member {server->CreateCritter(fn("TestCritter"), false)};
@@ -548,8 +548,8 @@ TEST_CASE("IndependentRootCoverEnumeration")
 
 TEST_CASE("ItemCppApi")
 {
-    auto settings {MakeSettings()};
-    auto server {MakeServerEngine(settings)};
+    auto settings {EntityLifecycleTests::MakeSettings()};
+    auto server {EntityLifecycleTests::MakeServerEngine(settings)};
     auto shutdown {scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
@@ -558,7 +558,7 @@ TEST_CASE("ItemCppApi")
         });
     })};
 
-    string startup_error {WaitForStart(server)};
+    string startup_error {EntityLifecycleTests::WaitForStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
@@ -613,8 +613,8 @@ TEST_CASE("ItemCppApi")
 
 TEST_CASE("LocationCppApi")
 {
-    auto settings {MakeSettings()};
-    auto server {MakeServerEngine(settings)};
+    auto settings {EntityLifecycleTests::MakeSettings()};
+    auto server {EntityLifecycleTests::MakeServerEngine(settings)};
     auto shutdown {scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
@@ -623,7 +623,7 @@ TEST_CASE("LocationCppApi")
         });
     })};
 
-    string startup_error {WaitForStart(server)};
+    string startup_error {EntityLifecycleTests::WaitForStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
@@ -722,8 +722,8 @@ TEST_CASE("LocationCppApi")
 
 TEST_CASE("ServerHealthInfo")
 {
-    auto settings {MakeSettings()};
-    auto server {MakeServerEngine(settings)};
+    auto settings {EntityLifecycleTests::MakeSettings()};
+    auto server {EntityLifecycleTests::MakeServerEngine(settings)};
     auto shutdown {scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
@@ -732,7 +732,7 @@ TEST_CASE("ServerHealthInfo")
         });
     })};
 
-    string startup_error {WaitForStart(server)};
+    string startup_error {EntityLifecycleTests::WaitForStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
@@ -753,8 +753,8 @@ TEST_CASE("ServerHealthInfo")
 
 TEST_CASE("CritterManagerCppApi")
 {
-    auto settings {MakeSettings()};
-    auto server {MakeServerEngine(settings)};
+    auto settings {EntityLifecycleTests::MakeSettings()};
+    auto server {EntityLifecycleTests::MakeServerEngine(settings)};
     auto shutdown {scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
@@ -763,7 +763,7 @@ TEST_CASE("CritterManagerCppApi")
         });
     })};
 
-    string startup_error {WaitForStart(server)};
+    string startup_error {EntityLifecycleTests::WaitForStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
@@ -817,8 +817,8 @@ TEST_CASE("CritterManagerCppApi")
 
 TEST_CASE("ProtoAccessCppApi")
 {
-    auto settings {MakeSettings()};
-    auto server {MakeServerEngine(settings)};
+    auto settings {EntityLifecycleTests::MakeSettings()};
+    auto server {EntityLifecycleTests::MakeServerEngine(settings)};
     auto shutdown {scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
@@ -827,7 +827,7 @@ TEST_CASE("ProtoAccessCppApi")
         });
     })};
 
-    string startup_error {WaitForStart(server)};
+    string startup_error {EntityLifecycleTests::WaitForStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
@@ -874,10 +874,10 @@ TEST_CASE("ProtoAccessCppApi")
 
 TEST_CASE("CommonCppApiTests")
 {
-    auto settings {MakeSettings()};
-    auto server {MakeServerEngine(settings)};
+    auto settings {EntityLifecycleTests::MakeSettings()};
+    auto server {EntityLifecycleTests::MakeServerEngine(settings)};
     auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
-    string startup_error {WaitForStart(server)};
+    string startup_error {EntityLifecycleTests::WaitForStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
@@ -931,8 +931,8 @@ TEST_CASE("CommonCppApiTests")
 
 TEST_CASE("PlayerRegistrationNativeApi")
 {
-    auto settings {MakeSettings()};
-    auto server {MakeServerEngine(settings)};
+    auto settings {EntityLifecycleTests::MakeSettings()};
+    auto server {EntityLifecycleTests::MakeServerEngine(settings)};
     auto shutdown {scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
@@ -941,7 +941,7 @@ TEST_CASE("PlayerRegistrationNativeApi")
         });
     })};
 
-    string startup_error {WaitForStart(server)};
+    string startup_error {EntityLifecycleTests::WaitForStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
@@ -956,13 +956,13 @@ TEST_CASE("PlayerRegistrationNativeApi")
 
     SECTION("LoginPlayerToNewRecordAllocatesNonZeroId")
     {
-        auto player {CreateLoggedPlayer(server, "TestPlayer1")};
+        auto player {EntityLifecycleTests::CreateLoggedPlayer(server, "TestPlayer1")};
         CHECK(player->GetId() != ident_t {});
     }
 
     SECTION("LoginPlayerToNewRecordRegistersPlayer")
     {
-        auto player {CreateLoggedPlayer(server, "Player1")};
+        auto player {EntityLifecycleTests::CreateLoggedPlayer(server, "Player1")};
         auto registered_player {server->EntityMngr.GetPlayer(player->GetId())};
         REQUIRE(registered_player);
         CHECK(registered_player == player);
@@ -970,14 +970,14 @@ TEST_CASE("PlayerRegistrationNativeApi")
 
     SECTION("LoginPlayerToNewRecordProducesUniqueIds")
     {
-        auto player1 {CreateLoggedPlayer(server, "Player1")};
-        auto player2 {CreateLoggedPlayer(server, "Player2")};
+        auto player1 {EntityLifecycleTests::CreateLoggedPlayer(server, "Player1")};
+        auto player2 {EntityLifecycleTests::CreateLoggedPlayer(server, "Player2")};
         CHECK(player1->GetId() != player2->GetId());
     }
 
     SECTION("RegisterPlayerRejectsDuplicateIdBeforeMutatingCandidate")
     {
-        auto registered_player {CreateLoggedPlayer(server, "RegisteredPlayer").hold_ref()};
+        auto registered_player {EntityLifecycleTests::CreateLoggedPlayer(server, "RegisteredPlayer").hold_ref()};
         ident_t registered_id {registered_player->GetId()};
         auto net_connection {NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected)};
         auto connection {safe_alloc::make_unique<ServerConnection>(server->Settings, std::move(net_connection), BakerTests::MakeTestChannelIdentity())};
@@ -1010,7 +1010,7 @@ TEST_CASE("PlayerRegistrationNativeApi")
     SECTION("DetachPlayerCritterResendsPreviousChosenAsOrdinaryCritter")
     {
         auto test_connection {safe_alloc::make_shared<TestNetworkConnection>(server->Settings)};
-        auto player {CreateLoggedPlayer(server, test_connection, "ChosenDetach")};
+        auto player {EntityLifecycleTests::CreateLoggedPlayer(server, test_connection, "ChosenDetach")};
 
         auto loc {server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")})};
         auto destroy_loc {scope_exit([&server, &loc]() noexcept {
@@ -1050,7 +1050,7 @@ TEST_CASE("PlayerRegistrationNativeApi")
     SECTION("StopMoveFailedReconciliationSendsAuthoritativePosition")
     {
         auto test_connection {safe_alloc::make_shared<TestNetworkConnection>(server->Settings)};
-        auto player {CreateLoggedPlayer(server, test_connection, "StopMoveCorrection")};
+        auto player {EntityLifecycleTests::CreateLoggedPlayer(server, test_connection, "StopMoveCorrection")};
 
         auto loc {server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")})};
         auto destroy_loc {scope_exit([&server, &loc]() noexcept {
@@ -1087,7 +1087,7 @@ TEST_CASE("PlayerRegistrationNativeApi")
         test_connection->ResetSentPacketCount();
         SendStopCritterMove(test_connection, server, map->GetId(), cr->GetId(), blocked_client_hex, ipos16 {}, mdir {});
 
-        REQUIRE(WaitForUnlockedServerCondition(server, server_locked, [&server, &cr] {
+        REQUIRE(EntityLifecycleTests::WaitForUnlockedServerCondition(server, server_locked, [&server, &cr] {
             auto ctx {server->RequireCurrentSyncContext()};
             ctx->SyncEntity(cr);
             return !cr->IsMoving();
@@ -1108,7 +1108,7 @@ TEST_CASE("PlayerRegistrationNativeApi")
     SECTION("StopMoveKeepsPassableHexWhenOffsetRoundsIntoBlockedNeighbour")
     {
         auto test_connection {safe_alloc::make_shared<TestNetworkConnection>(server->Settings)};
-        auto player {CreateLoggedPlayer(server, test_connection, "StopMoveBlockedOffset")};
+        auto player {EntityLifecycleTests::CreateLoggedPlayer(server, test_connection, "StopMoveBlockedOffset")};
 
         auto loc {server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")})};
         auto destroy_loc {scope_exit([&server, &loc]() noexcept {
@@ -1148,7 +1148,7 @@ TEST_CASE("PlayerRegistrationNativeApi")
         test_connection->ResetSentPacketCount();
         SendStopCritterMove(test_connection, server, map->GetId(), cr->GetId(), server_hex, client_offset, mdir {});
 
-        REQUIRE(WaitForUnlockedServerCondition(server, server_locked, [&server, &cr] {
+        REQUIRE(EntityLifecycleTests::WaitForUnlockedServerCondition(server, server_locked, [&server, &cr] {
             auto ctx {server->RequireCurrentSyncContext()};
             ctx->SyncEntity(cr);
             return !cr->IsMoving();
@@ -1170,7 +1170,7 @@ TEST_CASE("PlayerRegistrationNativeApi")
     SECTION("StopMoveNormalizesOffsetIntoPassableNeighbour")
     {
         auto test_connection {safe_alloc::make_shared<TestNetworkConnection>(server->Settings)};
-        auto player {CreateLoggedPlayer(server, test_connection, "StopMovePassableOffset")};
+        auto player {EntityLifecycleTests::CreateLoggedPlayer(server, test_connection, "StopMovePassableOffset")};
 
         auto loc {server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")})};
         auto destroy_loc {scope_exit([&server, &loc]() noexcept {
@@ -1207,7 +1207,7 @@ TEST_CASE("PlayerRegistrationNativeApi")
         test_connection->ResetSentPacketCount();
         SendStopCritterMove(test_connection, server, map->GetId(), cr->GetId(), server_hex, client_offset, mdir {});
 
-        REQUIRE(WaitForUnlockedServerCondition(server, server_locked, [&server, &cr] {
+        REQUIRE(EntityLifecycleTests::WaitForUnlockedServerCondition(server, server_locked, [&server, &cr] {
             auto ctx {server->RequireCurrentSyncContext()};
             ctx->SyncEntity(cr);
             return !cr->IsMoving();
@@ -1233,10 +1233,10 @@ TEST_CASE("PlayerPreLoginRunsBeforeEveryRegistrationRoute", "[player][admission]
     int32_t refusal {GENERATE(0, 1, 2, 3, 4)};
     CAPTURE(route, refusal);
 
-    auto settings {MakeSettings()};
-    auto server {MakeServerEngine(settings)};
+    auto settings {EntityLifecycleTests::MakeSettings()};
+    auto server {EntityLifecycleTests::MakeServerEngine(settings)};
     auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
-    REQUIRE(WaitForStart(server).empty());
+    REQUIRE(EntityLifecycleTests::WaitForStart(server).empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     bool locked {true};
     auto unlock {scope_exit([&]() noexcept {
@@ -1250,7 +1250,7 @@ TEST_CASE("PlayerPreLoginRunsBeforeEveryRegistrationRoute", "[player][admission]
     nptr<ServerConnection> existing_connection {};
 
     if (route == 2) {
-        existing = CreateLoggedPlayer(server, "ExistingSession").hold_ref();
+        existing = EntityLifecycleTests::CreateLoggedPlayer(server, "ExistingSession").hold_ref();
         existing_id = existing->GetId();
         existing_connection = existing->GetConnection();
     }
@@ -1270,6 +1270,7 @@ TEST_CASE("PlayerPreLoginRunsBeforeEveryRegistrationRoute", "[player][admission]
 
     Entity::EventCallbackData gate {};
     gate.SubscriptionPtr = reinterpret_cast<uintptr_t>(&gate_calls);
+    gate.HasExplicitResult = true;
     gate.Callback = [&](FuncCallData&) {
         gate_calls++;
         CHECK(candidate->GetId() == ident_t {});
@@ -1321,8 +1322,8 @@ TEST_CASE("PlayerPreLoginRunsBeforeEveryRegistrationRoute", "[player][admission]
     auto has_connection_count {[&](size_t count) { return server->GetHealthInfo().find(strex("Connections: {}\n", count).str()) != string::npos; }};
 
     if (refusal >= 3 && route == 0) {
-        // Observe the occupied slot before destruction, so a stale initial zero cannot satisfy cleanup.
-        REQUIRE(WaitForUnlockedServerCondition(server, locked, [&]() { return has_connection_count(before_count + 1); }, std::chrono::milliseconds {3000}));
+        // Observe the occupied slot before destruction, so a stale initial zero cannot satisfy cleanup
+        REQUIRE(EntityLifecycleTests::WaitForUnlockedServerCondition(server, locked, [&]() { return has_connection_count(before_count + 1); }, std::chrono::milliseconds {3000}));
         server->RequireCurrentSyncContext()->SyncEntity(candidate);
     }
 
@@ -1334,7 +1335,7 @@ TEST_CASE("PlayerPreLoginRunsBeforeEveryRegistrationRoute", "[player][admission]
     CHECK(server->DbStorage.GetAllIntIds(server->Hashes.to_hashed_string("Players")) == before_ids);
 
     if (refusal >= 3 && route == 0) {
-        CHECK(WaitForUnlockedServerCondition(server, locked, [&]() { return has_connection_count(before_count); }, std::chrono::milliseconds {3000}));
+        CHECK(EntityLifecycleTests::WaitForUnlockedServerCondition(server, locked, [&]() { return has_connection_count(before_count); }, std::chrono::milliseconds {3000}));
     }
 
     if (existing) {
@@ -1347,14 +1348,14 @@ TEST_CASE("PlayerPreLoginRunsBeforeEveryRegistrationRoute", "[player][admission]
 
 TEST_CASE("PlayerPreLoginAllowsReconnectWithoutDuplicatingTheCritter", "[player][admission]")
 {
-    auto settings {MakeSettings()};
-    auto server {MakeServerEngine(settings)};
+    auto settings {EntityLifecycleTests::MakeSettings()};
+    auto server {EntityLifecycleTests::MakeServerEngine(settings)};
     auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
-    REQUIRE(WaitForStart(server).empty());
+    REQUIRE(EntityLifecycleTests::WaitForStart(server).empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
 
-    auto original {CreateLoggedPlayer(server, "ReconnectSession").hold_ref()};
+    auto original {EntityLifecycleTests::CreateLoggedPlayer(server, "ReconnectSession").hold_ref()};
     auto cr {server->CreateCritter(server->Hashes.to_hashed_string("TestCritter"), true)};
     server->SwitchPlayerCritter(original, cr);
     auto incoming {CreatePreparedNotLoggedInPlayer(server, "ReconnectSession").hold_ref()};
@@ -1388,10 +1389,10 @@ TEST_CASE("PlayerPreProcessChecksEachQueuedMessageBeforeReadingIt", "[player][ad
     int32_t refusal {GENERATE(0, 1, 2, 3)};
     CAPTURE(refusal);
 
-    auto settings {MakeSettings()};
-    auto server {MakeServerEngine(settings)};
+    auto settings {EntityLifecycleTests::MakeSettings()};
+    auto server {EntityLifecycleTests::MakeServerEngine(settings)};
     auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
-    REQUIRE(WaitForStart(server).empty());
+    REQUIRE(EntityLifecycleTests::WaitForStart(server).empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     bool locked {true};
     auto unlock {scope_exit([&]() noexcept {
@@ -1401,12 +1402,13 @@ TEST_CASE("PlayerPreProcessChecksEachQueuedMessageBeforeReadingIt", "[player][ad
     })};
 
     auto transport {safe_alloc::make_shared<TestNetworkConnection>(server->Settings)};
-    auto player {CreateLoggedPlayer(server, transport, "QueuedInput").hold_ref()};
+    auto player {EntityLifecycleTests::CreateLoggedPlayer(server, transport, "QueuedInput").hold_ref()};
     auto connection {player->GetConnection()};
     size_t gate_calls {0};
     size_t refused_unread {0};
     Entity::EventCallbackData gate {};
     gate.SubscriptionPtr = reinterpret_cast<uintptr_t>(&gate_calls);
+    gate.HasExplicitResult = true;
     gate.Callback = [&](FuncCallData&) {
         gate_calls++;
 
@@ -1453,7 +1455,7 @@ TEST_CASE("PlayerPreProcessChecksEachQueuedMessageBeforeReadingIt", "[player][ad
 
     size_t one_message_size {messages.GetData().size() / 3};
     transport->Receive(messages.GetData());
-    REQUIRE(WaitForUnlockedServerCondition(server, locked, [&]() { return gate_calls >= 2; }));
+    REQUIRE(EntityLifecycleTests::WaitForUnlockedServerCondition(server, locked, [&]() { return gate_calls >= 2; }));
     CHECK(gate_calls == 2);
 
     if (!player->IsDestroyed()) {
@@ -1463,16 +1465,104 @@ TEST_CASE("PlayerPreProcessChecksEachQueuedMessageBeforeReadingIt", "[player][ad
     CHECK(refused_unread == one_message_size * 2);
 }
 
+TEST_CASE("PlayerMalformedPingDisconnectsOnlyThatPlayerWithoutExceptionReport", "[player][admission]")
+{
+    // A ping body is the answer flag and the sender clock; the sizes cover a missing flag, a clock cut short (the
+    // frame read in the field is the flag alone) and bytes left over after the clock
+    size_t ping_body_size {GENERATE(size_t {0}, size_t {1}, size_t {5}, size_t {10})};
+    CAPTURE(ping_body_size);
+
+    auto settings {EntityLifecycleTests::MakeSettings()};
+    auto server {EntityLifecycleTests::MakeServerEngine(settings)};
+    auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
+    REQUIRE(EntityLifecycleTests::WaitForStart(server).empty());
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    bool locked {true};
+    auto unlock {scope_exit([&]() noexcept {
+        if (locked) {
+            safe_call([&server] { server->Unlock(); });
+        }
+    })};
+
+    auto previous_exception_callback {exceptions::get_callback()};
+    std::atomic_int exception_reports {};
+    exceptions::set_callback([&exception_reports](string_view, const stack_trace::catched_data&, bool) { exception_reports.fetch_add(1); });
+    auto restore_exception_callback {scope_exit([previous = std::move(previous_exception_callback)]() mutable noexcept { exceptions::set_callback(std::move(previous)); })};
+
+    auto faulty_transport {safe_alloc::make_shared<TestNetworkConnection>(server->Settings)};
+    auto live_transport {safe_alloc::make_shared<TestNetworkConnection>(server->Settings)};
+    auto faulty_player {EntityLifecycleTests::CreateLoggedPlayer(server, faulty_transport, "FaultyPing").hold_ref()};
+    auto live_player {EntityLifecycleTests::CreateLoggedPlayer(server, live_transport, "LivePing").hold_ref()};
+    auto faulty_connection {faulty_player->GetConnection()};
+    auto live_connection {live_player->GetConnection()};
+
+    auto make_ping {[](optional<size_t> body_size) {
+        NetOutBuffer packet {64};
+        packet.StartMsg(NetMessage::Ping);
+
+        if (body_size) {
+            vector<uint8_t> body {vector<uint8_t>(*body_size)};
+            packet.Push(body);
+        }
+        else {
+            packet.Write(false);
+            packet.Write(nanotime::now().milliseconds());
+        }
+
+        packet.EndMsg();
+
+        const_span<uint8_t> data {packet.GetData()};
+        return vector<uint8_t>(data.begin(), data.end());
+    }};
+
+    // Each answered ping ends with a time sync, which only a processed ping produces
+    auto wait_for_time_syncs {[](ptr<TestNetworkConnection> transport, size_t expected_count) {
+        for (int32_t i {0}; i < 400; i++) {
+            if (transport->GetSentMessageCount(NetMessage::TimeSync) >= expected_count) {
+                return true;
+            }
+
+            coarse_sleep(std::chrono::milliseconds {5});
+        }
+
+        return false;
+    }};
+
+    server->Unlock();
+    locked = false;
+
+    live_transport->Receive(make_ping({}));
+    REQUIRE(wait_for_time_syncs(live_transport, 1));
+
+    faulty_transport->Receive(make_ping(ping_body_size));
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    locked = true;
+    REQUIRE(EntityLifecycleTests::WaitForUnlockedServerCondition(server, locked, [&]() { return faulty_player->IsDestroyed(); }));
+
+    CHECK(exception_reports.load() == 0);
+    CHECK(faulty_connection->IsHardDisconnected());
+    CHECK_FALSE(live_connection->IsHardDisconnected());
+    CHECK_FALSE(live_player->IsDestroyed());
+    CHECK(server->EntityMngr.GetPlayersCount() == 1);
+
+    server->Unlock();
+    locked = false;
+
+    live_transport->Receive(make_ping({}));
+    CHECK(wait_for_time_syncs(live_transport, 2));
+    CHECK(exception_reports.load() == 0);
+}
+
 TEST_CASE("CritterRestoresOnItsStoredMap", "[player][persistence]")
 {
     int32_t scenario {GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)};
     bool for_player {GENERATE(false, true)};
     CAPTURE(scenario, for_player);
 
-    auto settings {MakeSettings()};
-    auto server {MakeServerEngine(settings)};
+    auto settings {EntityLifecycleTests::MakeSettings()};
+    auto server {EntityLifecycleTests::MakeServerEngine(settings)};
     auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
-    REQUIRE(WaitForStart(server).empty());
+    REQUIRE(EntityLifecycleTests::WaitForStart(server).empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
     auto hash {[&](string_view value) { return server->Hashes.to_hashed_string(value); }};
@@ -1533,6 +1623,7 @@ TEST_CASE("CritterRestoresOnItsStoredMap", "[player][persistence]")
     refcount_nptr<Critter> visibility_owner {};
     Entity::EventCallbackData preload {};
     preload.SubscriptionPtr = reinterpret_cast<uintptr_t>(&order);
+    preload.HasExplicitResult = true;
     preload.Callback = [&](FuncCallData&) {
         order.emplace_back("pre");
         auto restored {server->EntityMngr.GetCritter(cr_id)};
@@ -1752,10 +1843,10 @@ TEST_CASE("CritterRestoresOnItsStoredMap", "[player][persistence]")
 
 TEST_CASE("LoadedCritterVisibilityStopsAfterItemCallbackDestroysIt", "[player][persistence]")
 {
-    auto settings {MakeSettings()};
-    auto server {MakeServerEngine(settings)};
+    auto settings {EntityLifecycleTests::MakeSettings()};
+    auto server {EntityLifecycleTests::MakeServerEngine(settings)};
     auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
-    REQUIRE(WaitForStart(server).empty());
+    REQUIRE(EntityLifecycleTests::WaitForStart(server).empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
     auto hash {[&](string_view value) { return server->Hashes.to_hashed_string(value); }};
@@ -1810,6 +1901,127 @@ TEST_CASE("LoadedCritterVisibilityStopsAfterItemCallbackDestroysIt", "[player][p
     CHECK(restored->IsDestroyed());
     CHECK_FALSE(server->EntityMngr.GetCritter(cr_id));
     CHECK(map->GetItems().size() == 2);
+}
+
+enum class EventChainFault
+{
+    None,
+    ReturnsStopChain,
+    Throws,
+};
+
+struct EventChainRun
+{
+    vector<string> Order {};
+    Entity::EventResult Result {Entity::EventResult::ContinueChain};
+    size_t Reports {};
+};
+
+// Fires the event with three callbacks, the first of them faulting the given way, and records who ran and what was reported
+template<typename EventType>
+static auto RunEventChain(EventType& event, bool first_has_result, EventChainFault fault) -> EventChainRun
+{
+    EventChainRun run {};
+    array<int32_t, 3> tokens {};
+
+    // Server workers stay alive under the test lock, so only the reports this chain can produce are counted
+    auto prev_callback {exceptions::get_callback()};
+    exceptions::set_callback([&run](string_view message, const stack_trace::catched_data&, bool) {
+        if (message.find("Event callback failed") != string_view::npos || message.find("Event callback without an explicit result returned StopChain") != string_view::npos) {
+            run.Reports++;
+        }
+    });
+    auto restore_callback {scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); })};
+
+    // Armed before subscribing, so a refused later subscription cannot leave the earlier ones capturing this frame
+    auto unsubscribe {scope_exit([&]() noexcept {
+        for (int32_t& token : tokens) {
+            event.Unsubscribe(reinterpret_cast<uintptr_t>(&token));
+        }
+    })};
+
+    auto subscribe {[&](size_t index, string name, Entity::EventPriority priority, bool has_result, EventChainFault callback_fault) {
+        Entity::EventCallbackData callback {};
+        callback.Callback = [&run, name = std::move(name), callback_fault](FuncCallData&) -> Entity::EventResult {
+            run.Order.emplace_back(name);
+
+            if (callback_fault == EventChainFault::Throws) {
+                throw InvalidCallException("Event callback failed");
+            }
+
+            return callback_fault == EventChainFault::ReturnsStopChain ? Entity::EventResult::StopChain : Entity::EventResult::ContinueChain;
+        };
+        callback.SubscriptionPtr = reinterpret_cast<uintptr_t>(&tokens[index]);
+        callback.Priority = priority;
+        callback.HasExplicitResult = has_result;
+        event.Subscribe(std::move(callback));
+    }};
+
+    subscribe(0, "first", Entity::EventPriority::High, first_has_result, fault);
+    subscribe(1, "second", Entity::EventPriority::Normal, false, EventChainFault::None);
+    subscribe(2, "third", Entity::EventPriority::Lowest, false, EventChainFault::None);
+
+    run.Result = event.Fire();
+    return run;
+}
+
+TEST_CASE("EventChainStopsOnlyForCallbacksWithExplicitResult", "[events]")
+{
+    auto settings {EntityLifecycleTests::MakeSettings()};
+    auto server {EntityLifecycleTests::MakeServerEngine(settings)};
+    auto shutdown {scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    })};
+
+    string startup_error {EntityLifecycleTests::WaitForStart(server)};
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
+
+    auto cr {server->CreateCritter(server->Hashes.to_hashed_string("TestCritter"), false)};
+    auto destroy {scope_exit([&]() noexcept { safe_call([&] { server->CrMngr.DestroyCritter(cr); }); })};
+
+    struct Scenario
+    {
+        bool FirstHasResult {};
+        EventChainFault Fault {};
+        vector<string> Order {};
+        Entity::EventResult Result {};
+        size_t Reports {};
+    };
+
+    vector<string> whole_chain {"first", "second", "third"};
+    vector<string> stopped_chain {"first"};
+    vector<Scenario> scenarios {
+        {false, EventChainFault::None, whole_chain, Entity::EventResult::ContinueChain, 0},
+        // A callback without an explicit result never decides the chain, so StopChain from it is a reported contract violation
+        {false, EventChainFault::ReturnsStopChain, stopped_chain, Entity::EventResult::StopChain, 1},
+        {false, EventChainFault::Throws, whole_chain, Entity::EventResult::StopChain, 1},
+        {true, EventChainFault::None, whole_chain, Entity::EventResult::ContinueChain, 0},
+        // With an explicit result StopChain is the callback's own decision, and a throw means it failed to decide
+        {true, EventChainFault::ReturnsStopChain, stopped_chain, Entity::EventResult::StopChain, 0},
+        {true, EventChainFault::Throws, stopped_chain, Entity::EventResult::StopChain, 1},
+    };
+
+    // The engine event runs through ServerEngine::FireEvent and the critter event through ServerEntity::FireEvent, both over the one shared loop
+    for (const Scenario& scenario : scenarios) {
+        CAPTURE(scenario.FirstHasResult, static_cast<int32_t>(scenario.Fault));
+
+        for (bool on_critter : {false, true}) {
+            CAPTURE(on_critter);
+
+            EventChainRun run {on_critter ? RunEventChain(cr->OnFinish, scenario.FirstHasResult, scenario.Fault) : RunEventChain(server->OnFinish, scenario.FirstHasResult, scenario.Fault)};
+
+            CHECK(run.Order == scenario.Order);
+            CHECK(run.Result == scenario.Result);
+            CHECK(run.Reports == scenario.Reports);
+        }
+    }
 }
 
 FO_END_NAMESPACE

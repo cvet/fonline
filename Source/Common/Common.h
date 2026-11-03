@@ -42,10 +42,10 @@ FO_BEGIN_NAMESPACE
 
 // The native-codegen surface is offered for evaluation only, and stays revision-pinned until supported release lines exist.
 // SymbolCount and InventorySha256 force owner review of every addition, removal or stable-ID change
-///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2579 InventorySha256=b11ce3178a723a2ce73e966dde02ac25eae2631fecc486584527e17c606188dc
+///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2592 InventorySha256=d30863c773f528b16887e5cc24af643562f35daef626b0a7c71be2c6a7c84bee
 
 // Force change of compatability version
-///@ MigrationRule Version 0 0 78
+///@ MigrationRule Version 0 0 86
 
 auto IsPackaged() -> bool;
 auto GetPackagedRuntimeName() -> string;
@@ -84,8 +84,35 @@ inline void ValidateEntityAccess(nptr<const Entity> entity);
 using ident_t = strong_type<int64_t, struct ident_t_, strong_type_bool_test_tag, strong_type_sortings_tag>;
 static_assert(some_strong_type<ident_t>);
 
+namespace SettingNames
+{
+#define SETTING_GROUP(group, ...)
+#define SETTING_GROUP_END(group)
+#define SETTING(type, group, name, ...) inline constexpr string_view group##_##name = #group "." #name
+#include "Settings.inc"
+}
+
 // Command line arguments
 using CommandLineArg = nptr<char>;
+
+namespace CommandLineSettings
+{
+    inline constexpr string_view ApplyConfig {"ApplyConfig"};
+    inline constexpr string_view ApplySubConfig {"ApplySubConfig"};
+    inline constexpr string_view ClientLibPath {"ClientLibPath"};
+    inline constexpr string_view ClientLibCompatibilityVersion {"ClientLibCompatibilityVersion"};
+    inline constexpr string_view Fork {"fork"};
+    inline constexpr string_view ServerServiceStart {"server-service-start"};
+    inline constexpr string_view ServerServiceDelete {"server-service-delete"};
+}
+
+// One named command-line entry with the dashes removed from Name; a missing Value means an implicit
+// flag rather than an explicit empty string, and both views borrow the original argv storage
+struct CommandLineSetting
+{
+    string_view Name {};
+    optional<string_view> Value {};
+};
 
 class CommandLineArgs
 {
@@ -111,6 +138,8 @@ public:
         }
     }
 
+    [[nodiscard]] auto GetSettingValue(string_view name, optional<string_view> implicit_value = string_view("1")) const -> optional<string_view>;
+    [[nodiscard]] auto GetSettings(string_view name = {}) const -> vector<CommandLineSetting>;
     [[nodiscard]] auto Get(size_t index) const noexcept -> string_view { return index < _args.size() ? string_view(_args[index].get()) : string_view(); }
     [[nodiscard]] auto size() const noexcept -> size_t { return _args.size(); }
     [[nodiscard]] auto empty() const noexcept -> bool { return _args.empty(); }
@@ -136,6 +165,8 @@ public:
     }
 
 private:
+    auto GetSetting(size_t index) const noexcept -> optional<CommandLineSetting>;
+
     vector<CommandLineArg> _args {};
 };
 
@@ -383,6 +414,13 @@ enum class NetProperty : uint8_t
     CustomEntity, // One extra arg: id
 };
 
+// Component of the map-cell position and size value types
+#if FO_MAP_WIDE_COORDS
+using mcoord_t = int32_t;
+#else
+using mcoord_t = int16_t;
+#endif
+
 // Generic fixed game settings
 struct GameSettings
 {
@@ -405,10 +443,18 @@ struct GameSettings
     static constexpr float32_t MAX_ZOOM {20.0f};
     static constexpr int32_t DEFAULT_MAP_SIZE {200};
     static constexpr int32_t MIN_MAP_SIZE {10};
-    static constexpr int32_t MAX_MAP_SIZE {4000};
+    static constexpr int32_t MAX_MAP_SIZE {FO_MAP_MAX_SIZE};
+    // Widest map side the engine orders at any coordinate width: the client sprite draw-order key holds a cell X in
+    // 22 bits and a screen row, at most twice a side, in 24 bits (MapSpriteList::MakeDrawOrderPos)
+    static constexpr int32_t MAP_SIZE_LIMIT {4194304};
     static constexpr size_t CLIENT_MAP_CHUNK_SIDE {16};
     static constexpr size_t SERVER_MAP_CHUNK_SIDE {16};
 };
+
+// Pixel positions add a hex-size bound where they are computed
+static_assert(GameSettings::MAX_MAP_SIZE >= GameSettings::DEFAULT_MAP_SIZE, "FO_MAP_MAX_SIZE is below the default Mapper map size 200");
+static_assert(GameSettings::MAX_MAP_SIZE <= std::numeric_limits<mcoord_t>::max(), "FO_MAP_MAX_SIZE exceeds the map coordinate type; maps above 32767 need FO_MAP_WIDE_COORDS");
+static_assert(GameSettings::MAX_MAP_SIZE <= GameSettings::MAP_SIZE_LIMIT, "FO_MAP_MAX_SIZE exceeds 4194304, the widest map side the sprite draw-order key orders");
 
 // Stable text-message identifiers for connection, authentication, loading, and runtime status feedback. The generic info-message transport treats them as opaque values; embedding projects own their text and dispatch policy
 ///@ ExportEnum
@@ -957,7 +1003,8 @@ public:
 
 private:
     bool _enabled {};
-    int32_t _sleep {};
+    timespan _sleep {};
+    bool _yieldAfterLoop {};
     int32_t _fixedFps {};
     nanotime _loopStart {};
     timespan _loopDuration {};

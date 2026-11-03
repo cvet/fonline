@@ -131,7 +131,7 @@ Important responsibilities:
 - `CreateNetworkConnection(bool use_udp)` selects socket or UDP socket transport;
 - `Process()` advances connect, receive, dispatch, and send work;
 - `Disconnect()` tears down active transport and raises the configured disconnect handler;
-- `TryFallbackToTcp()` provides a fallback path when UDP setup fails;
+- `TryFallbackToTcp()` provides a fallback path while the connection is still being established, from the UDP connect until the server answers the handshake. A transport failure after that answer ends the session through the disconnect handler: a TCP connection would be a new server session, and the state built on the first one cannot continue on it;
 - `Net_SendHandshake()`, `Net_OnHandshakeAnswer()`, and `Net_OnPing()` handle connection-level protocol messages;
 - `AddMessageHandler(NetMessage, MessageCallback)` binds protocol messages to `ClientEngine::Net_On...` handlers.
 
@@ -312,7 +312,7 @@ Particle resources follow a separate backend-neutral factory path. `ParticleMana
 
 ## 2D sprite root motion
 
-Moving 2D critters keep logical path/hex progress in `MovingContext` while `CritterHexView` projects the current integer-pixel displacement onto the selected walk/run sheet's accumulated `NextX` / `NextY` cycle. The resulting frame and `_offsAnim` align the rendered gait without changing authoritative movement. Direction-specific sheet changes preserve wrapped cycle phase; movement start/stop resets the anchor. The complete data and math contract is [Sprite Root Motion](../../how-to/content/sprite-root-motion.md).
+Moving 2D critters keep logical path/hex progress in `MovingContext` while `CritterHexView` projects the current integer-pixel displacement onto the selected walk/run sheet's accumulated `Motion` cycle. The resulting frame and `_offsAnim` align the rendered gait without changing authoritative movement. Direction-specific sheet changes preserve wrapped cycle phase; movement start/stop resets the anchor. The complete data and math contract is [Sprite Root Motion](../../how-to/content/sprite-root-motion.md).
 
 ## `MapView`: map presentation and local spatial state
 

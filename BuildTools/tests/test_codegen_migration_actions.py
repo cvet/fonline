@@ -50,11 +50,26 @@ def test_angelscript_qualified_transform_functions():
     assert not codegen.errors
 
 
+def test_quoted_legacy_proto_sources():
+    assert parse('Proto Modifier Rename "Local knowledge" LocalKnowledge',
+                 'Proto Modifier Transform "Conditional legacy" Game.Migrations.Rewrite',
+                 'Proto Modifier Remove "Legacy achievement"') == [
+        ['Proto', 'Modifier', 'Rename', 'Local knowledge', 'LocalKnowledge'],
+        ['Proto', 'Modifier', 'Transform', 'Conditional legacy', 'Game.Migrations.Rewrite'],
+        ['Proto', 'Modifier', 'Remove', 'Legacy achievement'],
+    ]
+    assert not codegen.errors
+
+
 @pytest.mark.parametrize('rule', [
     'Proto Item Old New', 'Proto Item Old __remove__',
     'Proto Item Remove Old New', 'Proto Item Rename Old __remove__',
     'Proto Item Unknown Old New', 'Property Critter Remove',
     'Property Critter Remove Old New', 'Property Critter Rename Old __remove__',
+    'Proto Modifier Rename Local knowledge LocalKnowledge',
+    'Proto Modifier Rename "Local knowledge LocalKnowledge',
+    'Proto Modifier Rename "" LocalKnowledge',
+    'Proto Modifier Rename Old "New Name"',
 ])
 def test_legacy_and_malformed_actions_rejected(rule):
     assert not parse(rule)

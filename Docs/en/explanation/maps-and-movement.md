@@ -8,58 +8,49 @@ permalink: /Docs/en/explanation/maps-and-movement.html
 
 # Maps, Movement, and Geometry
 
-This document explains the reusable map-coordinate, movement, path-finding, line-tracing, and map-loading primitives used by client/server runtime and tools.
+Engine geometry/movement owners: `Source/Common/Geometry.*`, `LineTracer.*`, `Movement.*`, `PathFinding.*`, `MapLoader.*`, map bakers and tests.
 
-Use [Map Format](../how-to/content/map-format.md) for authored `.fomap` sections, placement identity and ownership, mapper round-trip behavior, side-specific baking, and runtime content materialization. This page owns geometry and movement semantics.
-
-Use it when changing `Source/Common/Geometry.*`, `LineTracer.*`, `Movement.*`, `PathFinding.*`, `MapLoader.*`, map baker behavior, or map/movement tests.
+For `.fomap` sections, placement identity/ownership, Mapper round-trips, side-specific baking and runtime materialization, see [Map Format](../how-to/content/map-format.md).
 
 ## Ownership model
 
-The engine owns coordinate types, path algorithms, movement interpolation, and map-file loading mechanics. An embedding game project owns concrete maps, blocker layout, encounter rules, and gameplay decisions around movement.
-
-Keep project-specific map content and quest/navigation rules outside this document.
+Engine owns coordinate types, path algorithms, interpolation and file loading. Projects own maps, blockers, encounter rules and gameplay navigation/quests.
 
 ## Coordinate and direction types
 
-`Source/Common/Geometry.h` defines the exported value types used across runtime, generated API, and scripts:
+`Source/Common/Geometry.h` exports these runtime/API/script value types:
 
-- `mpos` — map hex/tile position stored as `int16 x` + `int16 y`.
-- `msize` — map dimensions stored as `int16 width` + `int16 height`.
+- `mpos` — map hex/tile position stored as `mcoord x` + `mcoord y`.
+- `msize` — map dimensions stored as `mcoord width` + `mcoord height`.
 - `hdir` — discrete hex/tile direction.
 - `mdir` — movement direction angle; convertible to/from hex direction.
 
-`msize` provides checked/clamped helpers:
+`msize` bounds helpers:
 
 - `clamp_pos()` clamps raw coordinates into map bounds;
 - `from_raw_pos()` asserts that raw coordinates are already in bounds.
 
-Do not replace these types with generic `ipos`/`isize` in public map APIs without checking generated metadata and script-visible value layouts.
+Public map API substitutions with `ipos`/`isize` require generated metadata and script-layout checks.
+
+### Coordinate width and map size limit
+
+`mcoord` (`mcoord_t` in native code) is `int16` by default and `int32` when the embedding project enables the `FO_MAP_WIDE_COORDS` CMake option. Codegen resolves the `mcoord` layout field type from that option, so native structs, AngelScript fields (`int16`/`int32`), Managed C# fields (`short`/`int`), network messages and baked property data follow it. The resolved layout is part of `FO_COMPATIBILITY_VERSION`, so a client and server built with different widths refuse to connect. Database documents and text maps store coordinates as numbers, so switching the width needs a rebake but no data migration while every stored value fits the target width.
+
+Wide coordinates add four bytes to each position in network messages and baked property data. Per-hex grids do not grow: their cells hold no positions.
+
+Managed `mpos` and `msize` constructors take `int` at either width and narrow 16-bit fields with an overflow check. Script code that constructs positions with `new mpos(x, y)` and reads fields into `int` compiles for both widths; code that stores a field in `short` builds only with 16-bit coordinates.
+
+`FO_MAP_MAX_SIZE` (default `4000`) bounds map width and height. It must be at least the Mapper default size `200` and at most `32767`, the `int16` coordinate range, or `GameSettings::MAP_SIZE_LIMIT` (`4194304`) with wide coordinates: the client sprite draw-order key stores a cell X in 22 bits and a screen row, at most twice a side, in 24 bits. Configure rejects other values, and static assertions repeat the bounds. Map area and every array index derived from coordinates are computed in 64 bits and converted to `size_t` with an overflow check, so on a 32-bit target coordinates that `size_t` cannot index raise `OverflowException` instead of wrapping; a static assertion keeps pixel positions within half of the `int32` range for the configured hex size. The server and client reject a map whose `Size` exceeds the limit on load, and the Mapper clamps resizing to it. Client hex lighting and the path-search block index are still dense per map, so memory and per-search setup grow with map area. Render positions are `float32`, so far from the map origin (past about 2^23 pixels) they lose sub-pixel precision.
+
+`MapView::Resize` checks that the requested area fits `size_t` before changing the map or removing items. A static two-dimensional grid also checks the new area before moving cells and publishes its new dimensions only with the replacement storage. An area-overflow rejection preserves the previous dimensions and cells.
 
 ### Sub-hex offset convention
 
-Sub-hex pixel offsets are measured relative to the hex **visual center**, bounded by
-`±{MAP_HEX_WIDTH/2, MAP_HEX_HEIGHT/2}`. This single convention is used by critter `HexOffset`,
-`MovingContext` start/end offsets, move-target offsets (`MoveToHex`), transparent-egg offsets, and the
-value returned by `MapView::GetHexAtScreen` / `Client_Map_GetHexAtScreenPos`. A click/cursor offset is
-therefore directly usable as a move or critter offset with no conversion. Keep new offset
-producers/consumers on this convention.
+Sub-hex pixel offsets use the hex **visual center**, bounded by `±{MAP_HEX_WIDTH/2, MAP_HEX_HEIGHT/2}`. Critter `HexOffset`, `MovingContext` start/end, `MoveToHex`, transparent eggs and `MapView::GetHexAtScreen` / `Client_Map_GetHexAtScreenPos` share this convention; cursor offsets need no conversion.
 
-Implementation note — there are two anchor points that must not be confused:
+`GeometryHelper::GetHexPos`, `MapView::GetHexMapPos` and per-`Field` `Offset` return the **top-left** origin, stepping by `MAP_HEX_WIDTH` / `MAP_HEX_LINE_HEIGHT`. `HexView::AddSprite` anchors critters/items at origin `+ {MAP_HEX_WIDTH/2, MAP_HEX_HEIGHT/2}`; `MapView::GetHexScreenPos` returns this visual center (critter feet).
 
-- `GeometryHelper::GetHexPos` / `MapView::GetHexMapPos` (and the per-`Field` `Offset` grid) return the
-  hex cell **top-left** draw origin, stepping by full `MAP_HEX_WIDTH` / `MAP_HEX_LINE_HEIGHT`.
-- Sprites (critters, items) anchor at the hex **visual center** = top-left `+ {MAP_HEX_WIDTH/2,
-  MAP_HEX_HEIGHT/2}` (see `HexView::AddSprite`), and `MapView::GetHexScreenPos` returns that same
-  visual center (where a centered critter's feet render).
-
-Because the visual center is half a hex past the cell origin, any code that resolves or applies a
-center-relative offset against `GetHexMapPos` must add `{MAP_HEX_WIDTH/2, MAP_HEX_HEIGHT/2}`:
-`GetHexAtScreen` biases its lookup point by `-{half hex}` so `GetHexPosCoord` snaps to the hex whose
-visual center is nearest and the returned offset is already center-relative and in range (no clamping);
-`UpdateTransparentEgg` and the critter-based `SetTransparentEgg` add/subtract the same half-hex so a
-stored center-relative egg offset renders at the intended point. `GetHexScreenPos(hex) + offset`
-projects a `(hex, center-relative offset)` pair straight to screen with no further bias.
+When combining center offsets with `GetHexMapPos`, apply that half-hex bias. `GetHexAtScreen` subtracts it before `GetHexPosCoord`, selecting the nearest visual center and returning an in-range center offset without clamping. `UpdateTransparentEgg` and critter-based `SetTransparentEgg` add/subtract the same bias. `GetHexScreenPos(hex) + offset` projects directly without another bias.
 
 ## Geometry modes
 
@@ -71,6 +62,8 @@ projects a `(hex, center-relative offset)` pair straight to screen with no furth
 `GameSettings::MAP_DIR_COUNT` participates in direction normalization. When changing geometry, inspect compile-time geometry settings, generated value types, path-finding tests, and any rendering code that projects map positions.
 
 `mdir` stores normalized angles and `hdir` stores discrete map directions. Use the shared conversion helpers when moving or reversing directions: square builds place the north direction at angle `0`, so hand-written angle bucketing must handle wraparound at `360`/`0`.
+
+`MapView::RebuildMapOffset` keeps the camera center visible when reversing or combining axes on large maps. Negative X uses west; alternating positive Y uses south-east/south-west, negative Y north-east/north-west, in both geometries.
 
 ## Map camera projection
 
@@ -281,26 +274,18 @@ On the client there are exactly two paths, and the map view holds no state of it
 
 ## Line tracing
 
-`TraceLineInput` describes a trace from `StartHex` toward `TargetHex`:
+`TraceLineInput`: `StartHex` toward `TargetHex`; `MaxDist` limits length (`0`: start/target distance), `Angle` sets direction, `CheckLastMovable` requests the last movable hex, `IsHexBlocked` stops tracing, optional `IsHexMovable` records move-valid cells. `TraceLineOutput`: completion, last-movable presence, pre-block/block/last-movable hexes. Uses: movement/pathfinding, visibility, shooting.
 
-- `MaxDist` limits trace length; `0` means use start/target distance.
-- `Angle` can override/drive direction.
-- `CheckLastMovable` asks the trace to report the last movable hex.
-- `IsHexBlocked` stops the trace.
-- `IsHexMovable` optionally records move-valid candidates.
-
-`TraceLineOutput` reports whether the trace was full, whether a last movable hex exists, the pre-block hex, block hex, and last movable hex.
-
-Line tracing is used by movement/path logic and by gameplay systems that need visibility, shooting, or straight-line movement checks.
+Under caller-held map cover, native `Map::GetMovableHexesInSight` / script `Map.GetMovableHexesInSight(origin, radius)` returns movable cells by ascending x/y with `GeometryHelper::GetDistance <= radius`. Negative radii or out-of-bounds origins throw. The origin skips tracing; others match scalar `TracePath(..., distance, 0.0f).PreBlock` via `PathFinding::TraceLine` + `Map::IsHexShootable`. Dynamic/manual/instance-static blockers are read anew, without caching. Visibility/vision/friendliness/sneak/privacy remain project-owned.
 
 ### Direction traces
 
-`TraceDirectionInput` describes a held direction: `StartHex` plus `StartHexOffset` (where the mover is drawn, not its hex centre), `Dir`, a point the direction's line passes through (`RayHex` + `RayHexOffset`), `MaxSteps`, `Multihex`, `MapSize`, `CheckHex`, and `Slide`. `PathFinding::TraceDirection()` walks that line one hex at a time: of the neighbour directions either side of the angle it takes the one whose hex centre lies closest to the line, measured in the camera-projected plane `MovingContext` measures in, so the steps hug the line rather than a ray re-aimed at a rounded target. Anything but `Passable` blocks, because a held direction does not route through gags or critters the way a path does. `TraceDirectionOutput` returns the steps, the control steps and `EndHexOffset`:
+`TraceDirectionInput`: `StartHex`, rendered `StartHexOffset`, `Dir`, line point (`RayHex` + `RayHexOffset`), `MaxSteps`, `Multihex`, `MapSize`, `CheckHex`, `Slide`. `PathFinding::TraceDirection()` picks the bracketing direction whose hex centre is nearest the line in `MovingContext`'s camera-projected plane, without re-aiming at rounded targets. Only `Passable` permits steps; gags/critters block. `TraceDirectionOutput`: steps, control steps, `EndHexOffset`:
 
-- A trace that never left the line is one straight segment, and `EndHexOffset` projects its last point back onto the line. The line point is the start for a fresh direction and where the run began when a client extends one, so a chain of traces draws one straight line in the input direction with no rounding carried from link to link.
-- With `Slide`, a blocked next hex is replaced by the free neighbour direction closest to the input angle, and only one strictly under 90° off it; a parallel line then resumes from the hex the side step reached. Every step thus advances along the direction, so a trace can never oscillate or walk back over hexes it came from. A slid trace runs through hex centres (a control step after every side step) and returns a zero `EndHexOffset`. Pushing straight into a flat wall finds no side step and stops, exactly as without `Slide`; the map edge stops a trace without `Slide` and is followed with it.
+- Without deviation: one segment ends projected onto the line. Its line point is the fresh start or whole run's start on extension; rounding never accumulates across plans.
+- `Slide`: replace a blocked step with the free neighbour nearest the input angle, strictly within 90°; resume parallel from there. Steps advance without oscillation/backtracking. Slid traces use hex centres, a control step per side step, zero `EndHexOffset`. Perpendicular flat-wall input stops. Map edges stop without `Slide`, follow with it.
 
-`MapView::TraceMoveWay()` is the client's wrapper with the map's own blocking; the client's direct-move controller is its only caller (see [ClientRuntime.md](runtime/client.md#held-direction-movement)).
+`MapView::TraceMoveWay()` adds map blocking; only the client's [direct-move controller](runtime/client.md#held-direction-movement) calls it.
 
 ## Movement contexts
 

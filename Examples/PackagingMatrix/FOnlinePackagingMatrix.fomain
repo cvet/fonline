@@ -5,6 +5,7 @@
 Common.GameName = FOnline Packaging Matrix
 Common.GameVersion = 0.1.0
 Common.AsyncLogWrite = False
+Common.NonInteractive = False
 Common.SecretSettingTokens = secret token password apikey
 
 # AngelScript
@@ -77,6 +78,10 @@ ServerNetwork.MaxMessageSize = 1048576
 ServerNetwork.MaxBufferedInputSize = 4194304
 ServerNetwork.MaxRemoteCallPayloadSize = 1048576
 ServerNetwork.MaxMessagesPerProcessPass = 256
+ServerNetwork.RemoteCallWarningTimeMs = 1000
+ServerNetwork.RemoteCallDisconnectTimeMs = 30000
+ServerNetwork.RemoteCallWarningIntervalMs = 10000
+ServerNetwork.MaxPendingRemoteCalls = 256
 ServerNetwork.MaxUdpReorderAhead = 1024
 ServerNetwork.MaxConnections = 0
 ServerNetwork.MaxPlayers = 0
@@ -93,6 +98,7 @@ ClientNetwork.WebSocketHost = localhost
 ClientNetwork.PingPeriod = 2000
 ClientNetwork.PingTimeout = 30000
 ClientNetwork.UseUdp = False
+ClientNetwork.RequireInterthreadTransport = False
 ClientNetwork.ProxyType = 0
 ClientNetwork.ProxyHost =
 ClientNetwork.ProxyPort = 8080
@@ -228,6 +234,7 @@ Timer.DeltaTimeCap = 100
 
 # Baking
 Baking.ForceBaking = False
+Baking.FilterResources = False
 Baking.SingleThreadBaking = False
 Baking.IgnoreMissingBakerWarning = False
 Baking.PrebakeOnStartup = True

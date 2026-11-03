@@ -32,6 +32,7 @@
 //
 
 #include "ClientConnection.h"
+
 #include "Updater.h"
 
 FO_BEGIN_NAMESPACE
@@ -326,7 +327,7 @@ void ClientConnection::StartSecureChannel()
     server_keys.reserve(_settings->ClientNetwork.ChannelServerKeys.size());
 
     for (const string& server_key : _settings->ClientNetwork.ChannelServerKeys) {
-        server_keys.emplace_back(ParseSecureChannelKey(server_key, "ClientNetwork.ChannelServerKeys"));
+        server_keys.emplace_back(ParseSecureChannelKey(server_key, SettingNames::ClientNetwork_ChannelServerKeys));
     }
 
     _channel.emplace(server_keys);
@@ -501,6 +502,9 @@ void ClientConnection::Net_OnHandshakeAnswer()
     _serverMetadataVersion = _netIn.Read<string>();
 
     _wasHandshake = true;
+
+    // The server session exists from here on, and a TCP connection would be another one
+    _connectingOverUdp = false;
 
     if (updater_outdated) {
         _connectCallback(ConnectResult::UpdaterOutdated);

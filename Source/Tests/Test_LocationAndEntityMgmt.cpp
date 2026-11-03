@@ -647,11 +647,11 @@ TEST_CASE("PersistedCustomInnerEntitiesAreReloadedFromDisk")
     ident_t custom_id {};
 
     {
-        auto settings {MakeSettings()};
+        auto settings {LocationAndEntityMgmtTests::MakeSettings()};
         BakerTests::OverrideSetting(settings.Server.DbStorage, storage_option);
 
-        refcount_ptr<ServerEngine> server {MakeServerEngine(settings)};
-        string startup_error {WaitForStart(server.as_ptr())};
+        refcount_ptr<ServerEngine> server {LocationAndEntityMgmtTests::MakeServerEngine(settings)};
+        string startup_error {LocationAndEntityMgmtTests::WaitForStart(server.as_ptr())};
         INFO(startup_error);
         REQUIRE(startup_error.empty());
 
@@ -673,10 +673,10 @@ TEST_CASE("PersistedCustomInnerEntitiesAreReloadedFromDisk")
     }
 
     {
-        auto settings {MakeSettings()};
+        auto settings {LocationAndEntityMgmtTests::MakeSettings()};
         BakerTests::OverrideSetting(settings.Server.DbStorage, storage_option);
 
-        refcount_ptr<ServerEngine> server {MakeServerEngine(settings)};
+        refcount_ptr<ServerEngine> server {LocationAndEntityMgmtTests::MakeServerEngine(settings)};
 
         auto shutdown {scope_exit([&server]() noexcept {
             safe_call([&server] {
@@ -686,7 +686,7 @@ TEST_CASE("PersistedCustomInnerEntitiesAreReloadedFromDisk")
             });
         })};
 
-        string startup_error {WaitForStart(server.as_ptr())};
+        string startup_error {LocationAndEntityMgmtTests::WaitForStart(server.as_ptr())};
         INFO(startup_error);
         REQUIRE(startup_error.empty());
 
@@ -1188,7 +1188,7 @@ TEST_CASE("TimeEventManagerCollectsReadyEventsAndNotifiesDispatcher")
         optional<timespan> time_until_pending {};
         CHECK(server->TimeEventMngr.CollectReadyTimeEvents(time_until_pending).empty());
         REQUIRE(time_until_pending.has_value());
-        CHECK(time_until_pending.value() > timespan {});
+        CHECK(time_until_pending.value() > timespan::zero);
     }
 
     // Backdate one event instead of waiting on the frame clock, so readiness is deterministic
@@ -1210,7 +1210,7 @@ TEST_CASE("TimeEventManagerCollectsReadyEventsAndNotifiesDispatcher")
     CHECK(ready.front().Event->Id == ready_id);
     CHECK(ready.front().OwnerEntity == cr);
     REQUIRE(time_until_next.has_value());
-    CHECK(time_until_next.value() > timespan {});
+    CHECK(time_until_next.value() > timespan::zero);
 
     // A paused dispatcher stops delivering notifications without losing the hooks themselves
     cancelled_ids.clear();

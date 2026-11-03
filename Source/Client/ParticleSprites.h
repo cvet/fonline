@@ -63,7 +63,7 @@ public:
     void SetDrawInScene(bool draw_in_scene);
     void Prewarm() override;
     void SetTime(float32_t normalized_time) override;
-    void SetDir(mdir dir) override;
+    void SetDirection(mdir dir) override;
     void Play(hstring anim_name, bool looped, bool reversed) override;
     void Stop() override;
     auto Update() -> bool override;
@@ -111,4 +111,3 @@ private:
 };
 
 FO_END_NAMESPACE
-

@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
 #include "ManagedRuntime.h"
@@ -53,7 +55,7 @@ static auto MakeMapProtoBlob(EngineMetadata& proto_engine, hstring type_name, st
     proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
     vector<uint8_t> protos_data {};
-    auto writer {data_writer(protos_data)};
+    data_writer writer {data_writer(protos_data)};
 
     writer.write<uint32_t>(uint32_t {0});
     ignore_unused(str_hashes);
@@ -185,7 +187,7 @@ static void SkipBakedMapEntities(data_reader& reader, uint32_t count)
 
 static auto ReadBakedMapServerSummary(const vector<uint8_t>& data, string_view map_name) -> BakedMapServerSummary
 {
-    auto reader {data_reader {data}};
+    data_reader reader {data_reader {data}};
     auto summary {BakedMapServerSummary {}};
 
     MapLoader::ReadBakedFileHeader(reader, map_name);
@@ -202,7 +204,7 @@ static auto ReadBakedMapServerSummary(const vector<uint8_t>& data, string_view m
 
 static auto ReadBakedMapClientSummary(const vector<uint8_t>& data, string_view map_name) -> BakedMapClientSummary
 {
-    auto reader {data_reader {data}};
+    data_reader reader {data_reader {data}};
     auto summary {BakedMapClientSummary {}};
 
     MapLoader::ReadBakedFileHeader(reader, map_name);
@@ -224,7 +226,7 @@ static auto ReadBakedMapClientSummary(const vector<uint8_t>& data, string_view m
 
 static auto ReadBakedMapClientStrings(const vector<uint8_t>& data, string_view map_name) -> set<string>
 {
-    auto reader {data_reader {data}};
+    data_reader reader {data_reader {data}};
     set<string> strings {};
 
     MapLoader::ReadBakedFileHeader(reader, map_name);

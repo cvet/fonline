@@ -2442,6 +2442,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-server-game-createitem-6029176d1f44719d-5d507b7904"></a>
 - [`symbol-script-method-server-game-createitem-6029176d1f44719d-5d507b7904`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-createitem-6029176d1f44719d-5d507b7904)
 
+<a id="symbol-script-method-server-game-createitem-95d49151f6d1acf8-1b9708376d"></a>
+- [`symbol-script-method-server-game-createitem-95d49151f6d1acf8-1b9708376d`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-createitem-95d49151f6d1acf8-1b9708376d)
+
 <a id="symbol-script-method-server-game-createitem-ba49673cbfedbc07-d8a1d574b4"></a>
 - [`symbol-script-method-server-game-createitem-ba49673cbfedbc07-d8a1d574b4`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-createitem-ba49673cbfedbc07-d8a1d574b4)
 
@@ -3012,6 +3015,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-server-map-getlocation-dfe1edec9c"></a>
 - [`symbol-script-method-server-map-getlocation-dfe1edec9c`](../../en/reference/script-api/methods.md#symbol-script-method-server-map-getlocation-dfe1edec9c)
 
+<a id="symbol-script-method-server-map-getmovablehexesinsight-3277d4edbb"></a>
+- [`symbol-script-method-server-map-getmovablehexesinsight-3277d4edbb`](../../en/reference/script-api/methods.md#symbol-script-method-server-map-getmovablehexesinsight-3277d4edbb)
+
 <a id="symbol-script-method-server-map-getpathlength-aaa618b299e12baf-1eda1ba414"></a>
 - [`symbol-script-method-server-map-getpathlength-aaa618b299e12baf-1eda1ba414`](../../en/reference/script-api/methods.md#symbol-script-method-server-map-getpathlength-aaa618b299e12baf-1eda1ba414)
 
@@ -3135,6 +3141,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 
 <a id="symbol-script-method-server-player-refreshcrittermoving-e12f7da641"></a>
 - [`symbol-script-method-server-player-refreshcrittermoving-e12f7da641`](../../en/reference/script-api/methods.md#symbol-script-method-server-player-refreshcrittermoving-e12f7da641)
+
+<a id="symbol-script-method-server-player-refreshviewmapvisibility-f779e15fbd"></a>
+- [`symbol-script-method-server-player-refreshviewmapvisibility-f779e15fbd`](../../en/reference/script-api/methods.md#symbol-script-method-server-player-refreshviewmapvisibility-f779e15fbd)
 
 <a id="symbol-script-method-server-player-resetviewmap-0e49d3eb65"></a>
 - [`symbol-script-method-server-player-resetviewmap-0e49d3eb65`](../../en/reference/script-api/methods.md#symbol-script-method-server-player-resetviewmap-0e49d3eb65)

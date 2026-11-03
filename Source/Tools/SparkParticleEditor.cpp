@@ -145,8 +145,8 @@ private:
         }
 
         string_view particle_filter {SparkInputBufferView(_filterBuf)};
-        size_t visible_resource_count {numeric_cast<size_t>(std::ranges::count_if(_resourcePaths, [&](const string& particle_path) { return SparkPathContainsCaseInsensitive(particle_path, particle_filter); }))};
-        ImGui::Text("Sources: %d, open editors: %d", numeric_cast<int32_t>(visible_resource_count), numeric_cast<int32_t>(_editors.size()));
+        int32_t visible_resource_count {numeric_cast<int32_t>(std::ranges::count_if(_resourcePaths, [&](const string& particle_path) { return SparkPathContainsCaseInsensitive(particle_path, particle_filter); }))};
+        ImGui::Text("Sources: %d, open editors: %d", visible_resource_count, numeric_cast<int32_t>(_editors.size()));
 
         if (ImGui::BeginChild("##SparkParticleEditorResources", {0.0f, 0.0f}, true)) {
             for (const string& particle_path : _resourcePaths) {
@@ -226,35 +226,10 @@ static auto CreateSparkParticleEditorTextureLoader(ptr<FileSystem> baked_resourc
             return {nullptr, {}};
         }
 
-        auto reader {file.GetReader()};
-
-        uint8_t magic {reader.ReadUInt8()};
-        FO_VERIFY_AND_THROW(magic == SPRITE_RESOURCE_MAGIC, "Sprite file header magic is invalid", magic);
-
-        uint8_t version {reader.ReadUInt8()};
-        FO_VERIFY_AND_THROW(version == SPRITE_RESOURCE_VERSION, "Sprite file version is not supported", version);
-
-        // Collection header: frame count, animation ticks, direction count
-        (void)reader.ReadLEUInt16();
-        (void)reader.ReadLEUInt16();
-        (void)reader.ReadUInt8();
-
-        // First frame of the first direction: shared-reference flag, then offset and size
-        (void)reader.ReadUInt8();
-        (void)reader.ReadLEInt16();
-        (void)reader.ReadLEInt16();
-        uint16_t w {reader.ReadLEUInt16()};
-        uint16_t h {reader.ReadLEUInt16()};
-        (void)reader.ReadLEInt16();
-        (void)reader.ReadLEInt16();
-
-        const_span<uint8_t> data {reader.GetCurDataSpan(numeric_cast<size_t>(w) * h * sizeof(ucolor))};
-        FO_VERIFY_AND_THROW(!data.empty(), "Sprite has no pixel data");
-
-        auto tex {GetApp()->Render.CreateTexture({w, h}, true, false)};
-        nptr<const uint8_t> data_ptr {data.data()};
-        const_span<ucolor> pixels {data_ptr.reinterpret_as<const ucolor>().get(), numeric_cast<size_t>(w) * h};
-        tex->UpdateTextureRegion({}, {w, h}, pixels);
+        auto resource {ReadSpriteResource(file.GetDataSpan())};
+        auto image {ExtractSpriteResourceFrameImage(std::move(resource.Directions.front().Frames.front()))};
+        auto tex {GetApp()->Render.CreateTexture(image.Size, true, false)};
+        tex->UpdateTextureRegion({}, image.Size, image.Pixels);
 
         nptr<RenderTexture> texture {tex.as_nptr()};
         loaded_textures_ptr->emplace_back(std::move(tex));
@@ -503,7 +478,7 @@ void SparkParticleEditor::DrawContent()
         ImGui::SameLine();
         ImGui::Checkbox("Naming mode", &_impl->_namingMode);
         ImGui::Checkbox("Auto replay", &_autoReplay);
-        ImGui::Text("Elapsed: %.2f", numeric_cast<float64_t>(_impl->_particle->GetElapsedTime()));
+        ImGui::Text("Elapsed: %.2f", _impl->_particle->GetElapsedTime().to_sec<float64_t>());
         ImGui::SameLine();
         ImGui::SliderFloat("Dir angle", &_dirAngle, 0.0f, 360.0f);
 
@@ -737,9 +712,9 @@ auto SparkParticleEditor::SaveChanges() -> bool
     } while (0)
 #define DRAW_SPK_COMBO_COMBO_COMBO(label1, label2, label3, get1, get2, get3, set) \
     do { \
-        auto val1 {static_cast<int32_t>(obj->get1())}; \
-        auto val2 {static_cast<int32_t>(obj->get2())}; \
-        auto val3 {static_cast<int32_t>(obj->get3())}; \
+        int32_t val1 {static_cast<int32_t>(obj->get1())}; \
+        int32_t val2 {static_cast<int32_t>(obj->get2())}; \
+        int32_t val3 {static_cast<int32_t>(obj->get3())}; \
         Changed |= ImGui::Combo(label1, &val1, items1, sizeof(items1) / sizeof(items1[0])); \
         Changed |= ImGui::Combo(label2, &val2, items2, sizeof(items2) / sizeof(items2[0])); \
         Changed |= ImGui::Combo(label3, &val3, items3, sizeof(items3) / sizeof(items3[0])); \
@@ -1812,4 +1787,3 @@ void SparkParticleEditor::Impl::DrawSparkNullableField(const char* label, const 
 FO_END_NAMESPACE
 
 #endif
-

@@ -37,8 +37,7 @@ def test_linux_packager_records_raw_executable_mode_on_windows_too(tmp_path: Pat
     packager.logical_file_modes = {}
     packager.resolve_binary_input_dir = lambda *_args: str(tmp_path / "input")
 
-    def fake_package_binary(_input: str, _input_name: str, output_name: str, _ext: str,
-                            _config: str | None, _excluded: set[str]) -> str:
+    def fake_package_binary(_input: str, _input_name: str, output_name: str, _ext: str, _excluded: set[str]) -> str:
         output = target_root / output_name
         output.write_bytes(b"linux executable")
         return str(output)

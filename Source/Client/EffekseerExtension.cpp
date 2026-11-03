@@ -33,6 +33,8 @@
 
 #include "EffekseerExtension.h"
 
+#include "ResourceDefaults.h"
+
 #if FO_EFFEKSEER_PARTICLES
 
 #include "Application.h"
@@ -125,7 +127,7 @@ auto ValidateEffekseerModelPayload(const_span<uint8_t> data) -> optional<string>
     }
 
     size_t offset {0};
-    const auto read_int32 {[&data, &offset](int32_t& value) -> bool {
+    auto read_int32 {[&data, &offset](int32_t& value) -> bool {
         if (offset > data.size() || data.size() - offset < sizeof(uint32_t)) {
             return false;
         }
@@ -136,7 +138,7 @@ auto ValidateEffekseerModelPayload(const_span<uint8_t> data) -> optional<string>
         return true;
     }};
 
-    const auto skip_array {[&data, &offset](int32_t count, size_t element_size) -> bool {
+    auto skip_array {[&data, &offset](int32_t count, size_t element_size) -> bool {
         if (count < 0 || offset > data.size()) {
             return false;
         }
@@ -544,9 +546,9 @@ private:
 EffekseerParticleEffects::EffekseerParticleEffects(ptr<EffectManager> effect_mngr)
 {
     static constexpr string_view effect_names[BLEND_MODES] {
-        "Effects/Particles_ColorMulAtlas.fofx",
-        "Effects/Particles_ColorAddAtlas.fofx",
-        "Effects/Particles_ColorSubAtlas.fofx",
+        EffectDefaults::ParticleColorMul,
+        EffectDefaults::ParticleColorAdd,
+        EffectDefaults::ParticleColorSub,
     };
 
     for (size_t blend {0}; blend < BLEND_MODES; blend++) {
@@ -557,8 +559,8 @@ EffekseerParticleEffects::EffekseerParticleEffects(ptr<EffectManager> effect_mng
 #if FO_ENABLE_3D
     // The distortion family carries the particle's own plane per vertex, which is the model vertex layout
     static constexpr string_view distortion_effect_names[DISTORTION_BLEND_MODES] {
-        "Effects/Particles_DistortionAtlas.fofx",
-        "Effects/Particles_DistortionAddAtlas.fofx",
+        EffectDefaults::ParticleDistortion,
+        EffectDefaults::ParticleDistortionAdd,
     };
 
     for (size_t blend {0}; blend < DISTORTION_BLEND_MODES; blend++) {
@@ -941,7 +943,7 @@ static auto ResolveEffekseerNodeTexture(ptr<EffekseerParticleRuntimeSystem::Impl
 // binormal; a billboard takes them from its camera-facing basis, a fixed quad from its own rotation
 static auto CalculateParticleTangentFrame(Effekseer::BillboardType billboard, const Effekseer::SIMD::Mat43f& srt_matrix, const Effekseer::SIMD::Vec3f& direction, const vec3& camera_backward) -> pair<vec3, vec3>
 {
-    const auto normalize_axis {[](const vec3& axis, const vec3& fallback) -> vec3 { return glm::dot(axis, axis) > 0.0f ? glm::normalize(axis) : fallback; }};
+    auto normalize_axis {[](const vec3& axis, const vec3& fallback) -> vec3 { return glm::dot(axis, axis) > 0.0f ? glm::normalize(axis) : fallback; }};
 
     if (billboard == Effekseer::BillboardType::Fixed) {
         Effekseer::SIMD::Vec3f scale {};
@@ -1755,7 +1757,7 @@ static auto CalculateStripWidthAxis(const vec3& band_axis, const vec3& view_dire
 // product into the byte range and truncates it rather than rounding, so this reproduces that exactly
 static auto LerpTrackColor(const Effekseer::Color& from, const Effekseer::Color& to, float32_t factor) -> Effekseer::Color
 {
-    const auto lerp_channel {[factor](uint8_t from_channel, uint8_t to_channel) -> uint8_t {
+    auto lerp_channel {[factor](uint8_t from_channel, uint8_t to_channel) -> uint8_t {
         float32_t value {numeric_cast<float32_t>(from_channel) + (numeric_cast<float32_t>(to_channel) - numeric_cast<float32_t>(from_channel)) * factor};
 
         return iround<uint8_t>(std::trunc(std::clamp(value, 0.0f, 255.0f)));

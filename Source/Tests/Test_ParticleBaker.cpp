@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
 #include "ConfigFile.h"
@@ -588,7 +590,7 @@ TEST_CASE("Effekseer model payload validation", "[particle][effekseer]")
         }
     }
 
-    const auto write_int32 {[](vector<uint8_t>& data, size_t offset, int32_t value) {
+    auto write_int32 {[](vector<uint8_t>& data, size_t offset, int32_t value) {
         REQUIRE(offset + sizeof(int32_t) <= data.size());
         uint32_t encoded {std::bit_cast<uint32_t>(value)};
 

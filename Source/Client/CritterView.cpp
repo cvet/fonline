@@ -32,6 +32,7 @@
 //
 
 #include "CritterView.h"
+
 #include "Client.h"
 #include "ItemView.h"
 #include "MapLoader.h"

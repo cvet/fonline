@@ -124,7 +124,7 @@ A backend without a byte representation throws `DataBaseException` in both direc
 
 `DbSQLite::CreateSnapshotData()` serializes the database with `sqlite3_serialize()` while holding the source storage lock, so the bytes are the exact page image the database would have on disk with WAL content folded in. `RestoreSnapshotData()` loads those bytes into a private in-memory database with `sqlite3_deserialize()` and copies it into the live storage with the online-backup API: deserializing straight into the live handle would detach it from its file. The buffer handed to `sqlite3_deserialize()` is allocated with `sqlite3_malloc64()` and freed on close.
 
-`ServerEngine::CreateSnapshot()` is the higher Engine-state composition for a stable authoritative world. It first reaches quiescence and returns typed blockers for runtime-only script contexts, delayed closures, time events, or movement; only a ready world flushes exact time/id, creates the backend payload, and writes the paired versioned RNG/compatibility manifest. This does not change the narrower `DataBase` contract and is not atomic slot publication. Restore callers strictly read the manifest, copy the immutable database payload to an isolated live directory, and pass its state into a fresh `ServerEngine`; opening a selected snapshot directly as writable live storage is outside the supported contract.
+`ServerEngine::CreateSnapshot()` composes these bytes with format-4 runtime state under whole-world quiescence. Named time events, their issued-id boundary and restorable movements (including leases) are serialized; delegate callbacks, unfinished script work and unsupported owners block capture. Native projects can add eligibility diagnostics for their own state. See [server pause and snapshots](../runtime/server.md#initialization-and-server-jobs) for ownership, restore ordering and strict format validation. This remains separate from atomic slot publication and does not serialize transport or arbitrary project memory.
 
 `DataBaseSnapshotDrainsAndBlocksNewProducers` pins the shared commit/producer barrier. `SQLiteDataBaseCreatesReopenableSnapshotWithoutOverwriting` pins pending-write inclusion, later-source-mutation exclusion, live-source independent reopen, no-overwrite behavior, and a failed destination that leaves no database file.
 
@@ -180,6 +180,8 @@ Use empty JSON/SQLite storage: old EJSON/BSON has no reader/converter. Preserve 
 ## Relationship to entity state
 
 Persistence stores documents; entity state reaches those documents through property serialization and server entity-management code.
+
+A failed critter restoration reports the error but does not save persistent server-entity holder ID lists pruned to its partial runtime graph. Missing child documents therefore remain retryable without losing durable references. Successful pre-load handlers and explicit migrations still persist their changes normally.
 
 Relevant entity/property concepts from [Entity Model](../entity-and-property-model/):
 

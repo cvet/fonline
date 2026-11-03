@@ -78,6 +78,7 @@ public:
     [[nodiscard]] auto GetResourcePackDeclarations() const -> string;
     [[nodiscard]] auto GetSubConfigs() const noexcept -> const_span<SubConfigInfo> { return _subConfigs; }
     [[nodiscard]] auto GetAppliedConfigs() const -> const_span<string> { return _appliedConfigs; }
+    [[nodiscard]] auto GetResourceConfigContent() const noexcept -> const optional<string>& { return _resourceConfigContent; }
     [[nodiscard]] auto FindSettingValue(string_view name) const -> nptr<const string>;
 
 protected:
@@ -86,6 +87,7 @@ protected:
     vector<string> _appliedConfigs {};
     unordered_set<string> _appliedSettings {};
     map<string, string> _settingValues {};
+    optional<string> _resourceConfigContent {};
 };
 
 // A group owns its settings as a nested aggregate named after it, so a setting is addressed as Settings.Group.Name
@@ -131,6 +133,7 @@ public:
     void ApplyConfigFile(ConfigFile& config, string_view config_dir);
     void ApplyCommandLine(::fo::CommandLineArgs args);
     void ApplyInternalConfig();
+    void ApplyResourceConfig(string_view content);
     void ApplySubConfigSection(string_view name);
     void ApplyDefaultSettings();
     void ApplyAutoSettings();
@@ -153,11 +156,14 @@ private:
 
     // As the configs declare them; the packs in effect are these minus Baking.IgnoreInputDirs
     vector<ResourcePackInfo> _declaredResourcePacks {};
-    bool _bakingMode;
+    bool _bakingMode {};
     unordered_map<string, any_t> _customSettings {};
     uint64_t _customSettingsGeneration {};
     any_t _emptySetting {};
 };
+
+auto ReadResourceConfig(const GlobalSettings& settings, bool required) -> optional<string>;
+void PreserveLocalConfig(const GlobalSettings& previous, const GlobalSettings& updated);
 
 // Typed read of one builtin numeric or bool setting, so the managed bridge skips the format/parse round trip.
 // Settings are immutable, so there is no write half; exactly one Read* member is set, by the declared type

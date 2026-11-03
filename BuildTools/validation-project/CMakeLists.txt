@@ -18,6 +18,7 @@ SetOption(FO_MAP_HEX_HEIGHT 16)
 SetOption(FO_MAP_CAMERA_ANGLE 25.6589)
 
 SetOption(FO_UNIT_TESTS ON)
+SetOption(FO_BUILD_BAKER ON)
 SetOptionValues(
     FO_DATA_SOURCE_DAT ON
     FO_DATA_SOURCE_ZIP ON
@@ -37,7 +38,8 @@ SetOption(FO_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 StartProjectGeneration()
 RegisterProjectOptions()
 AddThirdPartyLibraries()
-AddEngineSources(SERVER TestServerExtension.cpp)
+AddEngineSources(
+    SERVER TestServerExtension.cpp)
 RegisterEngineSources()
 SetupCodeGeneration()
 BuildCoreLibraries()

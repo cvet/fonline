@@ -982,4 +982,3 @@ namespace MapperMergeTest
 }
 
 FO_END_NAMESPACE
-

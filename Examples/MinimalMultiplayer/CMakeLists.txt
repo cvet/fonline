@@ -22,7 +22,8 @@ SetOption(FO_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 StartProjectGeneration()
 RegisterProjectOptions()
 AddThirdPartyLibraries()
-AddEngineSources(SERVER SourceExt/ServerExtension.cpp)
+AddEngineSources(
+    SERVER SourceExt/ServerExtension.cpp)
 RegisterEngineSources()
 
 function(_fomm_post_target_setup)

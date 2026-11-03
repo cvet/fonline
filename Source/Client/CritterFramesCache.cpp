@@ -32,6 +32,7 @@
 //
 
 #include "CritterFramesCache.h"
+
 #include "ModelAnimation.h"
 
 FO_BEGIN_NAMESPACE
@@ -48,14 +49,14 @@ void CritterFramesCache::CleanupCritterFrames()
 
 auto CritterFramesCache::GetCritterAnimFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, mdir dir) -> nptr<const SpriteSheet>
 {
-    // Substitutions keep the original request as the cache key.
+    // Substitutions keep the original request as the cache key
     auto key {tuple {model_name, state_anim, action_anim}};
 
     if (auto it {_critterFrames.find(key)}; it != _critterFrames.end()) {
         auto anim {it->second.as_nptr()};
 
         if (anim) {
-            auto dir_anim {anim->GetDir(dir)};
+            auto dir_anim {anim->GetDirection(dir)};
 
             if (dir_anim) {
                 return dir_anim;
@@ -89,8 +90,8 @@ auto CritterFramesCache::GetCritterAnimFrames(hstring model_name, CritterStateAn
     }
 
     if (anim) {
-        for (int32_t d {0}; d < anim->_dirCount; d++) {
-            auto dir_anim {anim->GetDir(hdir(d))};
+        for (int32_t d {0}; d < anim->GetDirectionCount(); d++) {
+            auto dir_anim {anim->GetDirection(hdir(d))};
             FO_VERIFY_AND_THROW(dir_anim, "Missing animation direction");
             dir_anim->_stateAnim = state_anim;
             dir_anim->_actionAnim = action_anim;
@@ -101,7 +102,7 @@ auto CritterFramesCache::GetCritterAnimFrames(hstring model_name, CritterStateAn
     auto anim_loaded {it->second.as_nptr()};
 
     if (anim_loaded) {
-        auto dir_anim {anim_loaded->GetDir(dir)};
+        auto dir_anim {anim_loaded->GetDirection(dir)};
 
         if (dir_anim) {
             return dir_anim;
@@ -114,4 +115,3 @@ auto CritterFramesCache::GetCritterAnimFrames(hstring model_name, CritterStateAn
 }
 
 FO_END_NAMESPACE
-

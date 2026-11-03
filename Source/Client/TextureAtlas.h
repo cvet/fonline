@@ -34,6 +34,7 @@
 #pragma once
 
 #include "Common.h"
+
 #include "RenderTarget.h"
 #include "Rendering.h"
 #include "SpriteResource.h"
@@ -129,7 +130,7 @@ private:
     static auto Contains(irect32 outer, irect32 inner) noexcept -> bool;
     static auto GetArea(isize32 size) noexcept -> size_t;
 
-    isize32 _size;
+    isize32 _size {};
     vector<irect32> _freeRectangles {};
     vector<unique_ptr<Allocation>> _allocations {};
     vector<ptr<Allocation>> _activeAllocations {};
@@ -160,7 +161,7 @@ public:
     [[nodiscard]] auto GetLayout() noexcept -> ptr<TextureAtlasLayout> { return &_layout; }
 
 private:
-    AtlasType _type;
+    AtlasType _type {};
     ptr<RenderTarget> _rt;
     TextureAtlasLayout _layout;
 };

@@ -53,7 +53,7 @@ void RegisterDynamicMetadata(ptr<EngineMetadata> meta, const_span<uint8_t> metad
 {
     FO_TRACE_ZONE(Engine);
 
-    auto reader {data_reader(metadata_bin)};
+    data_reader reader {data_reader(metadata_bin)};
 
     meta->RegisterMetadataVersion(ReadMetadataHeader(reader));
 
@@ -415,7 +415,7 @@ auto ReadMetadataVersion(const_span<uint8_t> metadata_bin) -> string
 {
     // Header only: the updater compares its own resource pack against the server before any engine exists, and it
     // has no reason to walk the sections to do that
-    auto reader {data_reader(metadata_bin)};
+    data_reader reader {data_reader(metadata_bin)};
 
     return string(ReadMetadataHeader(reader));
 }
@@ -425,7 +425,7 @@ auto MakeMetadataHeader(string_view metadata_version) -> vector<uint8_t>
     FO_VERIFY_AND_THROW(!metadata_version.empty(), "Metadata version is empty");
 
     vector<uint8_t> metadata_bin {};
-    auto writer {data_writer(metadata_bin)};
+    data_writer writer {data_writer(metadata_bin)};
 
     writer.write<uint32_t>(METADATA_FILE_MAGIC);
     writer.write<uint16_t>(METADATA_FILE_VERSION);

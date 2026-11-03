@@ -24,6 +24,10 @@ endif()
 string(REGEX MATCH "All tests passed \\([^\r\n]*\\)" test_summary "${test_output}")
 
 if("${test_summary}" STREQUAL "")
+    string(REGEX MATCH "test cases:[ ]+[0-9]+ \\|[ ]+[0-9]+ passed \\|[ ]+[0-9]+ skipped" test_summary "${test_output}")
+endif()
+
+if("${test_summary}" STREQUAL "")
     message(FATAL_ERROR "Test executable exited successfully without a Catch2 summary. Full output: ${TEST_LOG}")
 endif()
 
