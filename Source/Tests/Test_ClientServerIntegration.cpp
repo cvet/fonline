@@ -1083,8 +1083,11 @@ TEST_CASE("ClientUpdaterRepairsAStalePartialNativeDownloadBeforeResourcesReady")
 
 #if !FO_WINDOWS
     if (corrupt_delivery) {
-        // The backend retains the advertised hash while its positional reader sees these altered bytes
-        REQUIRE(fs::write_file(source_path, obsolete));
+        // Overwrite the pinned file; atomic replacement would leave the backend reading the original bytes
+        fs::disk_write_file corrupt_source {source_path};
+        REQUIRE(static_cast<bool>(corrupt_source));
+        REQUIRE(corrupt_source.write(make_const_span(obsolete.data(), obsolete.size())));
+        REQUIRE(corrupt_source.flush());
     }
 #endif
 

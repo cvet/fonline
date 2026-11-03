@@ -1,5 +1,48 @@
 # Documentation Verification Report
 
+## 2026-11-03 - Native portability repairs for development update 100
+
+Prepare `2026.1.100-dev` from published master
+`9d838ea0ab99895e2063da56fa128e3a36258546` (`2026.1.99-dev`). Review the
+complete local source/test/doc delta. Replace 63 buffer-factory call sites in
+eight authored files with the existing direct typed accessor constructors.
+Preserve receivers, message IDs, explicit unlock/relock, exception handling and
+all four full-expression temporary lifetimes. Real-header compiler controls
+reject the old braced factory forms and accept direct construction; all eight
+caller translation units compile, including the enabled AngelScript caller.
+
+Qualify the libc++ DNS scoped-lock declaration and try-acquire boolean tracking
+with real-owner compiler controls. Preserve native lock implementations. Replace
+the Vulkan context's raw frame-slot array with Engine `array`, keeping its count,
+initial state and cyclic indices. The exact Vulkan translation unit reproduces
+the GCC 13.3 compiler crash before the change and compiles after it; GCC 13.4 and
+14 accept the original source too. No generic allocator behavior changes.
+Repair both platform-null-log declarations and two explicit local types in test
+helpers. The updater's corrupt-payload fixture now overwrites the pinned file:
+atomic replacement preserved the advertised snapshot and never delivered its
+intended bad bytes. Keep updater publication and validation behavior unchanged.
+
+The embedding Linux Managed build and full `RunUnitTests` pass: 864 cases,
+863 passed and one skipped, with all 747266 assertions passing. The focused
+updater case passes 397 assertions. Full/incremental resource usage integration,
+exact selection, native archive readback and both negative controls pass with
+the real Baker. Preserve the original failed builds and the earlier full run's
+four failing fixture assertions separately. These results do not qualify a
+complete AngelScript runtime, sanitizer, renderer or platform matrix.
+
+Re-derive 53 changed exception-safety body hashes without changing their levels,
+statuses or reasons: the complete audit passes 7657 functions. Full allocator
+audit passes 682 files with no errors or warnings. Pointer and local-variable
+checks pass for changed sources; Clang-query 21 completes the explicit-type
+checks after the retained Clang-query 20 crash. Source layout/module and format
+checks pass. Regenerate only six shifted TimeRelated source references in the
+API model and paired reference pages. The aggregate contract diff has zero
+changes across 17 domains. Paired local-variable and migration guidance retains
+runtime marker 0.0.86, Managed ABI 9 and existing resource schemas. Documentation
+validation accepts 414 Markdown entries; its 50 regression tests and seven
+native-document contract tests pass. Publication, site rendering, project
+Managed compilation/baking and gameplay runtime remain separate gates.
+
 ## 2026-11-03 - Reconcile native refactoring with published master 98
 
 Reconcile published feature `7fe60ec242fd184c7fb6ebc300954417f7322ea7`

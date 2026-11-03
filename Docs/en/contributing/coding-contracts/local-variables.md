@@ -36,6 +36,19 @@ size into an element. Construct the intended value explicitly and use it as the
 braced initializer. Use `auto value {expression};` for retained deduction;
 `auto value = {expression};` deduces an initializer list.
 
+Construct a named scoped guard directly when its constructor carries Clang Thread
+Safety Analysis acquisition annotations: `scoped_lock locker {bufferMutex};` or
+`ServerConnection::OutBufAccessor output {connection, NetMessage::Ping};`.
+Initializing it through `auto guard {factory()};` or `auto guard {Guard {args}};`
+can lose the analyzer's acquisition association and produce an unmatched-release
+diagnostic. Keep existing full-expression temporary guards as temporaries;
+introducing a named guard in the surrounding block extends the lock lifetime.
+
+When storing a try-lock result for a later condition, use `bool acquired {};`
+followed by `acquired = lock->TryLockStateMutex();`. Clang can lose the
+try-acquire association through a braced boolean initializer. Preserve the
+existing check and unlock order.
+
 Review this rule and its two exceptions in source review. The analyzer checks
 described below retain their existing type, constness and use-after-move scope.
 

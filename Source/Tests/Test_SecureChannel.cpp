@@ -476,7 +476,7 @@ namespace
         bool answer_handshake {false};
 
         {
-            auto in_buf {connection.ReadBuf()};
+            ServerConnection::InBufAccessor in_buf {make_ptr(&connection)};
 
             while (in_buf->NeedProcess()) {
                 NetMessage msg {in_buf->ReadMsg()};
@@ -502,7 +502,7 @@ namespace
         }
 
         if (answer_handshake) {
-            auto out_buf {connection.WriteMsg(NetMessage::HandshakeAnswer)};
+            ServerConnection::OutBufAccessor out_buf {make_ptr(&connection), NetMessage::HandshakeAnswer};
             out_buf->Write(false);
             out_buf->Write(false);
             out_buf->Write(false);
@@ -552,7 +552,7 @@ namespace
                 ServeClientMessages(*connection, server_received);
 
                 if (connect_result == ClientConnection::ConnectResult::Success && !server_pinged) {
-                    auto out_buf {connection->WriteMsg(NetMessage::Ping)};
+                    ServerConnection::OutBufAccessor out_buf {connection, NetMessage::Ping};
                     out_buf->Write(false);
                     out_buf->Write(nanotime::now().milliseconds());
                     server_pinged = true;
@@ -676,7 +676,7 @@ TEST_CASE("SecureChannelServerSendsNothingInTheClear")
 
     // Written before the client's channel stands, so it has to wait instead of leaving unsealed
     {
-        auto out_buf {connection->WriteMsg(NetMessage::Ping)};
+        ServerConnection::OutBufAccessor out_buf {connection, NetMessage::Ping};
         out_buf->Write(false);
         out_buf->Write(int64_t {1234});
     }
@@ -739,7 +739,7 @@ TEST_CASE("ServerRpcQueueDeadlineSurvivesLaterArrivalCoalescing", "[rpc-runtime]
     send(frame.GetData());
 
     {
-        auto input {connection->ReadBuf()};
+        ServerConnection::InBufAccessor input {connection};
         REQUIRE(input->ReadMsg() == NetMessage::Ping);
     }
 
@@ -753,7 +753,7 @@ TEST_CASE("ServerRpcQueueDeadlineSurvivesLaterArrivalCoalescing", "[rpc-runtime]
     REQUIRE(connection->GetDiagnostics().InputArrivalSegments == 4096);
 
     {
-        auto input {connection->ReadBuf()};
+        ServerConnection::InBufAccessor input {connection};
         CHECK_FALSE(input->Read<bool>());
         CHECK(input->Read<int64_t>() == 123);
         input->ShrinkReadBuf();
@@ -897,7 +897,7 @@ TEST_CASE("SecureChannelServerTellsAClientFromBeforeTheChannelToUpdate")
 
     CHECK(net_connection->SendCallback().empty());
     CHECK_FALSE(connection->IsInputRejected());
-    CHECK(connection->ReadBuf()->GetBufferedUnreadSize() == 0);
+    CHECK(ServerConnection::InBufAccessor {connection}->GetBufferedUnreadSize() == 0);
 }
 
 TEST_CASE("SecureChannelServerRejectsAStreamThatOnlyBeginsLikeAClientFromBeforeTheChannel")
@@ -1106,7 +1106,7 @@ TEST_CASE("SecureChannelRunsOverWebSockets")
 
     for (int32_t i {0}; i < 1000 && !ping_received; i++) {
         if (auto server_connection {test_server.GetConnection()}) {
-            auto in_buf {server_connection->ReadBuf()};
+            ServerConnection::InBufAccessor in_buf {server_connection};
 
             if (in_buf->NeedProcess()) {
                 REQUIRE(in_buf->ReadMsg() == NetMessage::Ping);

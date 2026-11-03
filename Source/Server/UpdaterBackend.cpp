@@ -229,7 +229,7 @@ void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_m
     FO_TRACE_ZONE(Network);
 
     auto connection {player->GetConnection()};
-    auto in_buf {connection->ReadBuf()};
+    ServerConnection::InBufAccessor in_buf {connection};
 
     auto file_index {in_buf->Read<uint32_t>()};
     auto start_offset {in_buf->Read<uint64_t>()};

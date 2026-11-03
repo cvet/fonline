@@ -2651,7 +2651,7 @@ void ServerEngine::ProcessNotLoggedInPlayer(ptr<Player> not_logged_in_player)
         return;
     }
 
-    auto in_buf {connection->ReadBuf()};
+    ServerConnection::InBufAccessor in_buf {connection};
 
     if (connection->IsGracefulDisconnected()) {
         in_buf->ResetBuf();
@@ -2746,7 +2746,7 @@ void ServerEngine::ProcessPlayer(ptr<Player> player)
     }
 
     if (connection->IsGracefulDisconnected()) {
-        auto in_buf {connection->ReadBuf()};
+        ServerConnection::InBufAccessor in_buf {connection};
 
         in_buf->ResetBuf();
         return;
@@ -2762,7 +2762,7 @@ void ServerEngine::ProcessPlayer(ptr<Player> player)
             break;
         }
 
-        auto in_buf {connection->ReadBuf()};
+        ServerConnection::InBufAccessor in_buf {connection};
 
         if (!in_buf->NeedProcess()) {
             break;
@@ -3384,7 +3384,7 @@ void ServerEngine::Process_Handshake(ptr<Player> player)
     FO_TRACE_ZONE(Network);
 
     auto connection {player->GetConnection()};
-    auto in_buf {connection->ReadBuf()};
+    ServerConnection::InBufAccessor in_buf {connection};
 
     // Net protocol
     string comp_version {in_buf->Read<string>()};
@@ -3468,7 +3468,7 @@ void ServerEngine::LoadReportedHashes()
 
 void ServerEngine::Process_UnresolvedHash(ptr<ServerConnection> connection)
 {
-    auto in_buf {connection->ReadBuf()};
+    ServerConnection::InBufAccessor in_buf {connection};
 
     auto hash {in_buf->Read<hstring::hash_t>()};
 
@@ -3479,7 +3479,7 @@ void ServerEngine::Process_UnresolvedHash(ptr<ServerConnection> connection)
 
 void ServerEngine::ProcessPendingUnresolvedHash(ptr<ServerConnection> connection)
 {
-    auto in_buf {connection->ReadBuf()};
+    ServerConnection::InBufAccessor in_buf {connection};
 
     if (!in_buf->NeedProcess()) {
         return;
@@ -3585,7 +3585,7 @@ void ServerEngine::BroadcastReportedString(string_view reported_string)
 void ServerEngine::Process_Ping(ptr<Player> player)
 {
     auto connection {player->GetConnection()};
-    auto in_buf {connection->ReadBuf()};
+    ServerConnection::InBufAccessor in_buf {connection};
 
     bool answer {in_buf->Read<bool>()};
     auto sender_ms {in_buf->Read<int64_t>()};
@@ -3928,7 +3928,7 @@ void ServerEngine::Process_Move(ptr<Player> player)
     FO_TRACE_ZONE(Map);
 
     auto connection {player->GetConnection()};
-    auto in_buf {connection->ReadBuf()};
+    ServerConnection::InBufAccessor in_buf {connection};
 
     auto map_id {in_buf->Read<ident_t>()};
     auto cr_id {in_buf->Read<ident_t>()};
@@ -4193,7 +4193,7 @@ void ServerEngine::Process_MoveLease(ptr<Player> player)
     FO_TRACE_ZONE(Map);
 
     auto connection {player->GetConnection()};
-    auto in_buf {connection->ReadBuf()};
+    ServerConnection::InBufAccessor in_buf {connection};
 
     auto map_id {in_buf->Read<ident_t>()};
     auto cr_id {in_buf->Read<ident_t>()};
@@ -4260,7 +4260,7 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
     FO_TRACE_ZONE(Map);
 
     auto connection {player->GetConnection()};
-    auto in_buf {connection->ReadBuf()};
+    ServerConnection::InBufAccessor in_buf {connection};
 
     auto map_id {in_buf->Read<ident_t>()};
     auto cr_id {in_buf->Read<ident_t>()};
@@ -4402,7 +4402,7 @@ void ServerEngine::Process_MoveFinished(ptr<Player> player)
     FO_TRACE_ZONE(Map);
 
     auto connection {player->GetConnection()};
-    auto in_buf {connection->ReadBuf()};
+    ServerConnection::InBufAccessor in_buf {connection};
 
     auto map_id {in_buf->Read<ident_t>()};
     auto cr_id {in_buf->Read<ident_t>()};
@@ -4531,7 +4531,7 @@ void ServerEngine::Process_Dir(ptr<Player> player)
     FO_TRACE_ZONE(Map);
 
     auto connection {player->GetConnection()};
-    auto in_buf {connection->ReadBuf()};
+    ServerConnection::InBufAccessor in_buf {connection};
 
     auto map_id {in_buf->Read<ident_t>()};
     auto cr_id {in_buf->Read<ident_t>()};
@@ -4604,7 +4604,7 @@ void ServerEngine::Process_Property(ptr<Player> player)
     FO_TRACE_ZONE(Entity);
 
     auto connection {player->GetConnection()};
-    auto in_buf {connection->ReadBuf()};
+    ServerConnection::InBufAccessor in_buf {connection};
 
     auto cr {player->GetControlledCritter()};
 
@@ -5692,7 +5692,7 @@ void ServerEngine::Process_RemoteCall(ptr<Player> player)
     FO_TRACE_ZONE(Script);
 
     auto connection {player->GetConnection()};
-    auto in_buf {connection->ReadBuf()};
+    ServerConnection::InBufAccessor in_buf {connection};
 
     hstring remote_call_name {in_buf->Read<hstring>(Hashes)};
     auto remote_calls {GetInboundRemoteCalls()};

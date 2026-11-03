@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/coding-contracts/local-variables.html
 ---
 
 # Локальные переменные
-<!-- docs-translation: {"document_id":"local-variables","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/local-variables.md","source_sha256":"48b8e7281f14ef23720b1fa4e17372f0ccfaf9898014e0830626ea88111ee415"} -->
+<!-- docs-translation: {"document_id":"local-variables","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/local-variables.md","source_sha256":"660e9606abd242516141d2762fb2d3d546e879e7a6084f9f33cf588e4a68d4bb"} -->
 Этот документ определяет правила собственного C++-кода для инициализации переменных,
 явного написания локальных типов, избыточного верхнеуровневого `const` и диагностики
 использования после перемещения.
@@ -38,6 +38,19 @@ C++ и не требуют аннотации при записи.
 в элемент. Явно создайте нужное значение и используйте его внутри инициализатора
 с фигурными скобками. Для сохранённого выведения используйте `auto value {expression};`;
 `auto value = {expression};` выводит список инициализации.
+
+Именованный scoped guard создавайте непосредственно, если его конструктор несёт
+аннотации захвата Clang Thread Safety Analysis: `scoped_lock locker {bufferMutex};`
+или `ServerConnection::OutBufAccessor output {connection, NetMessage::Ping};`.
+При инициализации через `auto guard {factory()};` или `auto guard {Guard {args}};`
+анализатор может потерять связь с захватом и сообщить об освобождении незахваченной
+блокировки. Существующие временные guard полного выражения сохраняйте временными;
+именованный guard во внешнем блоке продлевает время удержания блокировки.
+
+Если результат try-lock сохраняется для последующего условия, используйте
+`bool acquired {};`, затем `acquired = lock->TryLockStateMutex();`. При
+инициализации bool фигурными скобками Clang может потерять связь с try-acquire.
+Сохраняйте прежний порядок проверки и освобождения блокировки.
 
 Правило и два исключения проверяются при просмотре исходников. Описанные ниже
 анализаторы сохраняют прежнюю область типов, константности и использования после перемещения.

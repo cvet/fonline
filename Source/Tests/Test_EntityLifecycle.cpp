@@ -1416,7 +1416,7 @@ TEST_CASE("PlayerPreProcessChecksEachQueuedMessageBeforeReadingIt", "[player][ad
             return Entity::EventResult::ContinueChain;
         }
 
-        refused_unread = connection->ReadBuf()->GetBufferedUnreadSize();
+        refused_unread = ServerConnection::InBufAccessor {connection}->GetBufferedUnreadSize();
 
         if (refusal == 1) {
             connection->GracefulDisconnect();

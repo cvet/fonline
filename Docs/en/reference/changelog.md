@@ -14,6 +14,21 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-11-03
 
+### Fixed
+
+- Construct native network buffer guards directly so Clang Thread Safety Analysis associates braced initialization with lock acquisition. Keep message IDs, payload operations, explicit unlock/relock and the original named or full-expression temporary lifetime.
+- Declare the DNS lookup scoped lock directly for annotated libc++ builds. Use explicit `data_writer` locals in two AngelScript test helpers and refresh generated API source-line references after the formatter include correction.
+- Use Engine `array` for Vulkan in-flight frame slots to avoid the GCC 13.3 compiler crash when constructing the aggregate renderer context. Preserve the slot count, default state and cyclic indexing. Complete braced initialization of the platform-specific null log path in native logging tests.
+- Keep Clang's try-lock result association in synchronization tests through a separate assignment. Corrupt the updater rejection fixture in place so its pinned reader receives the altered bytes; atomic publication correctly preserves an existing reader's snapshot.
+
+### Migration
+
+- Baseline `9d838ea0ab99895e2063da56fa128e3a36258546` (`2026.1.99-dev`); target `2026.1.100-dev`. No API is added or removed, and no saved-data conversion is required. Buffer contents, message IDs, ownership and unwind behavior remain unchanged; the network protocol, `MigrationRule Version` `0.0.86`, Managed ABI `9` and resource schemas do not change.
+- In native callers with braced factory-result guards, replace `auto output {connection->WriteMsg(message)};` with `ServerConnection::OutBufAccessor output {connection, message};`, `auto output {connection->WriteBuf()};` with `ServerConnection::OutBufAccessor output {connection, std::nullopt};`, and `auto input {connection->ReadBuf()};` with `ServerConnection::InBufAccessor input {connection};`. These existing constructors and factories remain available. Direct construction avoids Clang's unmatched-release diagnostic; do not suppress it. A reference receiver uses `make_ptr(&connection)`. Preserve temporary guards as temporaries at their existing full-expression boundary; see [local variables](../contributing/coding-contracts/local-variables.md#braced-initialization).
+- Reconfigure and rebuild affected native applications, tests and custom extensions, regenerate metadata and bake one matching client/server resource set. Roll back executables and their matching resources together.
+
+## 2026.1.99-dev - 2026-11-03
+
 ### Changed
 
 - Remove the byte-size limit from documentation search indexes. Generate the complete English and Russian indexes without a capacity gate; retain document membership, token rules and search validation.

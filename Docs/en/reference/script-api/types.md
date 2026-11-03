@@ -2037,13 +2037,13 @@ Symbol ID: <code>script.value-type.nanotime</code><br>
 Runtime: server, client, mapper<br>
 Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:45](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L45)<br>
 Flags: <code>Layout</code>, <code>=</code>, <code>int64</code>, <code>-</code>, <code>value</code><br>
-Source: [Source/Essentials/TimeRelated.h:148](https://github.com/cvet/fonline/blob/master/Source/Essentials/TimeRelated.h#L148)
+Source: [Source/Essentials/TimeRelated.h:149](https://github.com/cvet/fonline/blob/master/Source/Essentials/TimeRelated.h#L149)
 
 Monotonic steady-clock time point stored as a signed 64-bit nanosecond count; it is not civil wall-clock time
 
 | Field | Symbol ID | Value contract | API contract | Source | Description |
 | --- | --- | --- | --- | --- | --- |
-| <code>int64 nanotime.value</code> | <a id="symbol-script-value-field-nanotime-value-480df27610"></a><code>script.value-field.nanotime.value</code> | value | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:45](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L45) | [Source/Essentials/TimeRelated.h:147](https://github.com/cvet/fonline/blob/master/Source/Essentials/TimeRelated.h#L147) | Nanoseconds from the process-local monotonic steady-clock epoch; this is not civil wall-clock time |
+| <code>int64 nanotime.value</code> | <a id="symbol-script-value-field-nanotime-value-480df27610"></a><code>script.value-field.nanotime.value</code> | value | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:45](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L45) | [Source/Essentials/TimeRelated.h:148](https://github.com/cvet/fonline/blob/master/Source/Essentials/TimeRelated.h#L148) | Nanoseconds from the process-local monotonic steady-clock epoch; this is not civil wall-clock time |
 
 <a id="symbol-script-value-type-synctime-1c27bdefae"></a>
 ### <code>synctime</code>
@@ -2053,13 +2053,13 @@ Symbol ID: <code>script.value-type.synctime</code><br>
 Runtime: server, client, mapper<br>
 Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:45](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L45)<br>
 Flags: <code>Layout</code>, <code>=</code>, <code>int64</code>, <code>-</code>, <code>value</code><br>
-Source: [Source/Essentials/TimeRelated.h:219](https://github.com/cvet/fonline/blob/master/Source/Essentials/TimeRelated.h#L219)
+Source: [Source/Essentials/TimeRelated.h:220](https://github.com/cvet/fonline/blob/master/Source/Essentials/TimeRelated.h#L220)
 
 Engine-synchronized time point stored as a signed 64-bit millisecond count for shared game-time state
 
 | Field | Symbol ID | Value contract | API contract | Source | Description |
 | --- | --- | --- | --- | --- | --- |
-| <code>int64 synctime.value</code> | <a id="symbol-script-value-field-synctime-value-2c3d9455cd"></a><code>script.value-field.synctime.value</code> | value | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:45](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L45) | [Source/Essentials/TimeRelated.h:218](https://github.com/cvet/fonline/blob/master/Source/Essentials/TimeRelated.h#L218) | Milliseconds in the Engine-synchronized game-time domain |
+| <code>int64 synctime.value</code> | <a id="symbol-script-value-field-synctime-value-2c3d9455cd"></a><code>script.value-field.synctime.value</code> | value | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:45](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L45) | [Source/Essentials/TimeRelated.h:219](https://github.com/cvet/fonline/blob/master/Source/Essentials/TimeRelated.h#L219) | Milliseconds in the Engine-synchronized game-time domain |
 
 <a id="symbol-script-value-type-timespan-08db5edc8b"></a>
 ### <code>timespan</code>
@@ -2069,13 +2069,13 @@ Symbol ID: <code>script.value-type.timespan</code><br>
 Runtime: server, client, mapper<br>
 Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:45](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L45)<br>
 Flags: <code>Layout</code>, <code>=</code>, <code>int64</code>, <code>-</code>, <code>value</code><br>
-Source: [Source/Essentials/TimeRelated.h:49](https://github.com/cvet/fonline/blob/master/Source/Essentials/TimeRelated.h#L49)
+Source: [Source/Essentials/TimeRelated.h:50](https://github.com/cvet/fonline/blob/master/Source/Essentials/TimeRelated.h#L50)
 
 Signed nanosecond-resolution duration stored as a 64-bit count
 
 | Field | Symbol ID | Value contract | API contract | Source | Description |
 | --- | --- | --- | --- | --- | --- |
-| <code>int64 timespan.value</code> | <a id="symbol-script-value-field-timespan-value-005d52b5ab"></a><code>script.value-field.timespan.value</code> | value | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:45](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L45) | [Source/Essentials/TimeRelated.h:48](https://github.com/cvet/fonline/blob/master/Source/Essentials/TimeRelated.h#L48) | Signed duration count in nanoseconds |
+| <code>int64 timespan.value</code> | <a id="symbol-script-value-field-timespan-value-005d52b5ab"></a><code>script.value-field.timespan.value</code> | value | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:45](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L45) | [Source/Essentials/TimeRelated.h:49](https://github.com/cvet/fonline/blob/master/Source/Essentials/TimeRelated.h#L49) | Signed duration count in nanoseconds |
 
 <a id="symbol-script-value-type-ucolor-92d4b0314f"></a>
 ### <code>ucolor</code>

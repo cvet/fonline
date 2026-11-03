@@ -1610,7 +1610,7 @@ TEST_CASE("MapViewDeferredRefreshCannotChangeReplacementSubscription", "[server]
         player->Send_ViewMap();
 
         {
-            auto output {player->GetConnection()->WriteBuf()};
+            ServerConnection::OutBufAccessor output {player->GetConnection(), std::nullopt};
             auto bytes {output->GetData()};
             replacement_output.assign(bytes.begin(), bytes.end());
             REQUIRE_FALSE(replacement_output.empty());
@@ -1639,7 +1639,7 @@ TEST_CASE("MapViewDeferredRefreshCannotChangeReplacementSubscription", "[server]
         CHECK(player->GetViewMap()->Hex == mpos {25, 25});
 
         {
-            auto output {player->GetConnection()->WriteBuf()};
+            ServerConnection::OutBufAccessor output {player->GetConnection(), std::nullopt};
             auto bytes {output->GetData()};
             vector<uint8_t> actual_output {vector<uint8_t>(bytes.begin(), bytes.end())};
             CHECK(actual_output == replacement_output);
@@ -1681,7 +1681,7 @@ TEST_CASE("MapViewDeferredRefreshSendsCurrentPosition", "[server][map][observati
         REQUIRE(map->IsSpectatorEntityVisible(player->GetId(), target->GetId()));
 
         {
-            auto output {player->GetConnection()->WriteBuf()};
+            ServerConnection::OutBufAccessor output {player->GetConnection(), std::nullopt};
             CHECK(output->GetData().empty());
         }
 
@@ -1714,7 +1714,7 @@ TEST_CASE("MapViewDeferredRefreshSendsCurrentPosition", "[server][map][observati
         CHECK(map->IsSpectatorEntityVisible(player->GetId(), target->GetId()));
 
         {
-            auto output {player->GetConnection()->WriteBuf()};
+            ServerConnection::OutBufAccessor output {player->GetConnection(), std::nullopt};
             auto bytes {output->GetData()};
             NetInBuffer input {128};
             input.AddData(bytes);
@@ -1802,7 +1802,7 @@ TEST_CASE("MapViewDeferredRefreshRestoresItemPropertiesWithoutBlockingOtherSubje
         sync.GetContext().SyncEntities(roots);
         CHECK(map->IsSpectatorEntityVisible(player->GetId(), item->GetId()));
         CHECK(map->IsSpectatorEntityVisible(player->GetId(), other_item->GetId()));
-        auto output {player->GetConnection()->WriteBuf()};
+        ServerConnection::OutBufAccessor output {player->GetConnection(), std::nullopt};
         NetInBuffer input {128};
         input.AddData(output->GetData());
         vector<ident_t> expected_ids {item->GetId(), other_item->GetId()};

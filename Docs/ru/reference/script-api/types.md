@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-api-types","locale":"ru","source_path":"Docs/en/reference/script-api/types.md","source_sha256":"7f94a14d84080b559488e41ce8296158106a9e3098986bd85287490b9f479b0d"} -->
+<!-- docs-translation: {"document_id":"generated-api-types","locale":"ru","source_path":"Docs/en/reference/script-api/types.md","source_sha256":"032974100b38f51993d9ec6f7d7892ec4f816bb6f9ca80330d9b8c749ad9618a"} -->
 
 # Типы скриптов
 
@@ -2039,13 +2039,13 @@ ID символа: <code>script.value-type.nanotime</code><br>
 Runtime: server, client, mapper<br>
 Контракт: <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:45](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L45)<br>
 Флаги: <code>Layout</code>, <code>=</code>, <code>int64</code>, <code>-</code>, <code>value</code><br>
-Исходник: [Source/Essentials/TimeRelated.h:148](https://github.com/cvet/fonline/blob/master/Source/Essentials/TimeRelated.h#L148)
+Исходник: [Source/Essentials/TimeRelated.h:149](https://github.com/cvet/fonline/blob/master/Source/Essentials/TimeRelated.h#L149)
 
 Монотонная точка времени steady clock, хранящаяся как знаковый 64-битный счётчик наносекунд; это не гражданское календарное время.
 
 | Поле | ID символа | Контракт значения | API-контракт | Исходник | Описание |
 | --- | --- | --- | --- | --- | --- |
-| <code>int64 nanotime.value</code> | <a id="symbol-script-value-field-nanotime-value-480df27610"></a><code>script.value-field.nanotime.value</code> | value | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:45](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L45) | [Source/Essentials/TimeRelated.h:147](https://github.com/cvet/fonline/blob/master/Source/Essentials/TimeRelated.h#L147) | Наносекунды от локальной для процесса эпохи монотонных steady clock; это не гражданское календарное время. |
+| <code>int64 nanotime.value</code> | <a id="symbol-script-value-field-nanotime-value-480df27610"></a><code>script.value-field.nanotime.value</code> | value | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:45](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L45) | [Source/Essentials/TimeRelated.h:148](https://github.com/cvet/fonline/blob/master/Source/Essentials/TimeRelated.h#L148) | Наносекунды от локальной для процесса эпохи монотонных steady clock; это не гражданское календарное время. |
 
 <a id="symbol-script-value-type-synctime-1c27bdefae"></a>
 ### <code>synctime</code>
@@ -2055,13 +2055,13 @@ ID символа: <code>script.value-type.synctime</code><br>
 Runtime: server, client, mapper<br>
 Контракт: <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:45](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L45)<br>
 Флаги: <code>Layout</code>, <code>=</code>, <code>int64</code>, <code>-</code>, <code>value</code><br>
-Исходник: [Source/Essentials/TimeRelated.h:219](https://github.com/cvet/fonline/blob/master/Source/Essentials/TimeRelated.h#L219)
+Исходник: [Source/Essentials/TimeRelated.h:220](https://github.com/cvet/fonline/blob/master/Source/Essentials/TimeRelated.h#L220)
 
 Синхронизируемая движком точка времени, хранящаяся как знаковый 64-битный счётчик миллисекунд для общего состояния игрового времени.
 
 | Поле | ID символа | Контракт значения | API-контракт | Исходник | Описание |
 | --- | --- | --- | --- | --- | --- |
-| <code>int64 synctime.value</code> | <a id="symbol-script-value-field-synctime-value-2c3d9455cd"></a><code>script.value-field.synctime.value</code> | value | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:45](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L45) | [Source/Essentials/TimeRelated.h:218](https://github.com/cvet/fonline/blob/master/Source/Essentials/TimeRelated.h#L218) | Миллисекунды во временном домене игры, синхронизированном Engine. |
+| <code>int64 synctime.value</code> | <a id="symbol-script-value-field-synctime-value-2c3d9455cd"></a><code>script.value-field.synctime.value</code> | value | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:45](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L45) | [Source/Essentials/TimeRelated.h:219](https://github.com/cvet/fonline/blob/master/Source/Essentials/TimeRelated.h#L219) | Миллисекунды во временном домене игры, синхронизированном Engine. |
 
 <a id="symbol-script-value-type-timespan-08db5edc8b"></a>
 ### <code>timespan</code>
@@ -2071,13 +2071,13 @@ ID символа: <code>script.value-type.timespan</code><br>
 Runtime: server, client, mapper<br>
 Контракт: <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:45](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L45)<br>
 Флаги: <code>Layout</code>, <code>=</code>, <code>int64</code>, <code>-</code>, <code>value</code><br>
-Исходник: [Source/Essentials/TimeRelated.h:49](https://github.com/cvet/fonline/blob/master/Source/Essentials/TimeRelated.h#L49)
+Исходник: [Source/Essentials/TimeRelated.h:50](https://github.com/cvet/fonline/blob/master/Source/Essentials/TimeRelated.h#L50)
 
 Знаковая длительность с наносекундным разрешением, хранящаяся как 64-битный счётчик.
 
 | Поле | ID символа | Контракт значения | API-контракт | Исходник | Описание |
 | --- | --- | --- | --- | --- | --- |
-| <code>int64 timespan.value</code> | <a id="symbol-script-value-field-timespan-value-005d52b5ab"></a><code>script.value-field.timespan.value</code> | value | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:45](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L45) | [Source/Essentials/TimeRelated.h:48](https://github.com/cvet/fonline/blob/master/Source/Essentials/TimeRelated.h#L48) | Знаковое значение длительности в наносекундах. |
+| <code>int64 timespan.value</code> | <a id="symbol-script-value-field-timespan-value-005d52b5ab"></a><code>script.value-field.timespan.value</code> | value | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:45](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L45) | [Source/Essentials/TimeRelated.h:49](https://github.com/cvet/fonline/blob/master/Source/Essentials/TimeRelated.h#L49) | Знаковое значение длительности в наносекундах. |
 
 <a id="symbol-script-value-type-ucolor-92d4b0314f"></a>
 ### <code>ucolor</code>

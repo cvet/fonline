@@ -319,12 +319,13 @@ TEST_CASE("ExceptionHandling")
     }
 }
 
-static const auto NULL_LOG_PATH {
+static constexpr string_view NULL_LOG_PATH {
 #if FO_WINDOWS
-    string_view {"NUL"}};
+    "NUL"
 #else
-    string_view {"/dev/null"};
+    "/dev/null"
 #endif
+};
 
 TEST_CASE("CrashReporterHooks")
 {

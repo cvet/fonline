@@ -37,12 +37,13 @@
 
 FO_BEGIN_NAMESPACE
 
-static const auto NullLogPath {
+static constexpr string_view NullLogPath {
 #if FO_WINDOWS
-    string_view {"NUL"}};
+    "NUL"
 #else
-    string_view {"/dev/null"};
+    "/dev/null"
 #endif
+};
 
 TEST_CASE("BaseLogging")
 {

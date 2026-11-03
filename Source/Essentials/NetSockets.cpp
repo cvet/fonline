@@ -152,7 +152,7 @@ auto net_sockets::resolve_ipv4(string_view host) noexcept -> optional<uint32_t>
     }
 
     static std::mutex gethostbyname_locker {};
-    auto locker {std::scoped_lock {gethostbyname_locker}};
+    std::scoped_lock locker {gethostbyname_locker};
 
     auto h {make_nptr(::gethostbyname(host_name_cstr.get()))}; // NOLINT(concurrency-mt-unsafe)
 

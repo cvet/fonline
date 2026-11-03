@@ -267,7 +267,7 @@ void Player::Send_LoginSuccess()
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf {_connection->WriteMsg(NetMessage::LoginSuccess)};
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::LoginSuccess};
 
     out_buf->Write(GetId());
 
@@ -324,7 +324,7 @@ void Player::SendCritter(ptr<const Critter> cr, bool is_chosen, CritterVisibilit
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf {_connection->WriteMsg(NetMessage::AddCritter)};
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::AddCritter};
 
     out_buf->Write(cr->GetId());
     out_buf->Write(cr->GetProtoId());
@@ -372,7 +372,7 @@ void Player::Send_RemoveCritter(ptr<const Critter> cr)
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf {_connection->WriteMsg(NetMessage::RemoveCritter)};
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::RemoveCritter};
 
     out_buf->Write(cr->GetId());
 }
@@ -384,7 +384,7 @@ void Player::Send_CritterVisibilityMode(ptr<const Critter> cr, CritterVisibility
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf {_connection->WriteMsg(NetMessage::CritterVisibilityMode)};
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::CritterVisibilityMode};
 
     out_buf->Write(cr->GetId());
     out_buf->Write(mode);
@@ -418,7 +418,7 @@ void Player::Send_LoadMap(nptr<const Map> map)
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf {_connection->WriteMsg(NetMessage::LoadMap)};
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::LoadMap};
 
     out_buf->Write(loc_id);
     out_buf->Write(map_id);
@@ -453,7 +453,7 @@ void Player::Send_Property(NetProperty type, ptr<const Property> prop, ptr<const
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf {_connection->WriteMsg(NetMessage::Property)};
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::Property};
 
     out_buf->Write(numeric_cast<uint32_t>(prop_raw_data.size()));
     out_buf->Write(type);
@@ -520,13 +520,13 @@ void Player::Send_Moving(ptr<const Critter> from_cr)
     scoped_lock conn_lock {_connectionLock};
 
     if (!IsAreaView() && from_cr->IsMoving()) {
-        auto out_buf {_connection->WriteMsg(NetMessage::CritterMove)};
+        ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::CritterMove};
 
         out_buf->Write(from_cr->GetId());
         SendCritterMoving(*out_buf, from_cr);
     }
     else {
-        auto out_buf {_connection->WriteMsg(NetMessage::CritterPos)};
+        ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::CritterPos};
 
         out_buf->Write(from_cr->GetId());
         out_buf->Write(from_cr->GetHex());
@@ -546,7 +546,7 @@ void Player::Send_MovingSpeed(ptr<const Critter> from_cr)
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf {_connection->WriteMsg(NetMessage::CritterMoveSpeed)};
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::CritterMoveSpeed};
 
     out_buf->Write(from_cr->GetId());
 
@@ -572,7 +572,7 @@ void Player::Send_MovingLease(ptr<const Critter> from_cr)
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf {_connection->WriteMsg(NetMessage::CritterMoveLease)};
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::CritterMoveLease};
 
     out_buf->Write(from_cr->GetId());
     out_buf->Write(from_cr->GetMovingUid());
@@ -587,7 +587,7 @@ void Player::Send_Dir(ptr<const Critter> from_cr)
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf {_connection->WriteMsg(NetMessage::CritterDir)};
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::CritterDir};
 
     out_buf->Write(from_cr->GetId());
     out_buf->Write(from_cr->GetDir());
@@ -604,7 +604,7 @@ void Player::Send_Action(ptr<const Critter> from_cr, CritterAction action, int32
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf {_connection->WriteMsg(NetMessage::CritterAction)};
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::CritterAction};
 
     out_buf->Write(from_cr->GetId());
     out_buf->Write(action);
@@ -642,7 +642,7 @@ void Player::Send_MoveItem(ptr<const Critter> from_cr, nptr<const Item> moved_it
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf {_connection->WriteMsg(NetMessage::CritterMoveItem)};
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::CritterMoveItem};
 
     CritterItemSlot moved_item_slot {CritterItemSlot::Inventory};
 
@@ -674,7 +674,7 @@ void Player::Send_AddItemOnMap(ptr<const Item> item)
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf {_connection->WriteMsg(NetMessage::AddItemOnMap)};
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::AddItemOnMap};
 
     out_buf->Write(item->GetHex());
     SendItem(*out_buf, item, false, false, true);
@@ -687,7 +687,7 @@ void Player::Send_RemoveItemFromMap(ptr<const Item> item)
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf {_connection->WriteMsg(NetMessage::RemoveItemFromMap)};
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::RemoveItemFromMap};
 
     out_buf->Write(item->GetId());
 }
@@ -699,7 +699,7 @@ void Player::Send_ChosenAddItem(ptr<const Item> item)
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf {_connection->WriteMsg(NetMessage::ChosenAddItem)};
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::ChosenAddItem};
 
     SendItem(*out_buf, item, true, true, true);
 }
@@ -711,7 +711,7 @@ void Player::Send_ChosenRemoveItem(ptr<const Item> item)
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf {_connection->WriteMsg(NetMessage::ChosenRemoveItem)};
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::ChosenRemoveItem};
 
     out_buf->Write(item->GetId());
 }
@@ -729,7 +729,7 @@ void Player::Send_Teleport(ptr<const Critter> cr, mpos to_hex)
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf {_connection->WriteMsg(NetMessage::CritterTeleport)};
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::CritterTeleport};
 
     out_buf->Write(cr->GetId());
     out_buf->Write(to_hex);
@@ -741,7 +741,7 @@ void Player::Send_TimeSync()
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf {_connection->WriteMsg(NetMessage::TimeSync)};
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::TimeSync};
 
     out_buf->Write(_engine->GameTime.GetSynchronizedTime());
 }
@@ -752,7 +752,7 @@ void Player::Send_InfoMessage(EngineInfoMessage info_message, string_view extra_
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf {_connection->WriteMsg(NetMessage::InfoMessage)};
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::InfoMessage};
 
     out_buf->Write(info_message);
     out_buf->Write(extra_text);
@@ -768,7 +768,7 @@ void Player::Send_HashList(const_span<string> hash_strings)
         return;
     }
 
-    auto out_buf {_connection->WriteMsg(NetMessage::HashList)};
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::HashList};
 
     out_buf->Write(numeric_cast<uint32_t>(hash_strings.size()));
 
@@ -783,7 +783,7 @@ void Player::Send_RemoteCall(hstring rpc_name, const_span<uint8_t> rpc_data)
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf {_connection->WriteMsg(NetMessage::RemoteCall)};
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::RemoteCall};
 
     out_buf->Write<hstring>(rpc_name);
     out_buf->Write<int32_t>(numeric_cast<int32_t>(rpc_data.size()));
@@ -796,7 +796,7 @@ void Player::Send_Ping(bool answer)
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf {_connection->WriteMsg(NetMessage::Ping)};
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::Ping};
 
     out_buf->Write(answer);
     out_buf->Write(nanotime::now().milliseconds());
@@ -808,7 +808,7 @@ void Player::Send_HandshakeAnswer(bool compatibility_outdated, bool updater_outd
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf {_connection->WriteMsg(NetMessage::HandshakeAnswer)};
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::HandshakeAnswer};
 
     out_buf->Write(compatibility_outdated);
     out_buf->Write(updater_outdated);
@@ -824,7 +824,7 @@ void Player::Send_InitData(const_span<uint8_t> update_desc)
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf {_connection->WriteMsg(NetMessage::InitData)};
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::InitData};
 
     out_buf->Write(numeric_cast<uint32_t>(update_desc.size()));
     out_buf->Push(update_desc);
@@ -846,7 +846,7 @@ void Player::Send_UpdateFileData(const_span<uint8_t> update_data)
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf {_connection->WriteMsg(NetMessage::UpdateFileData)};
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::UpdateFileData};
 
     out_buf->Write(numeric_cast<int32_t>(update_data.size()));
 
@@ -863,7 +863,7 @@ void Player::Send_ViewMap()
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf {_connection->WriteMsg(NetMessage::ViewMap)};
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::ViewMap};
 
     out_buf->Write(view_map->Hex);
     out_buf->Write(view_map->Radius);
@@ -875,7 +875,7 @@ void Player::Send_PlaceToGameComplete()
 
     scoped_lock conn_lock {_connectionLock};
 
-    _connection->WriteMsg(NetMessage::PlaceToGameComplete);
+    ServerConnection::OutBufAccessor {_connection, NetMessage::PlaceToGameComplete};
 }
 
 void Player::Send_SomeItems(const_span<ptr<const Item>> items, bool owned, bool with_inner_entities, const any_t& context_param)
@@ -886,7 +886,7 @@ void Player::Send_SomeItems(const_span<ptr<const Item>> items, bool owned, bool 
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf {_connection->WriteMsg(NetMessage::SomeItems)};
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::SomeItems};
 
     out_buf->Write(string(context_param));
     out_buf->Write(numeric_cast<uint32_t>(items.size()));
@@ -903,7 +903,7 @@ void Player::Send_Attachments(ptr<const Critter> from_cr)
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf {_connection->WriteMsg(NetMessage::CritterAttachments)};
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::CritterAttachments};
 
     out_buf->Write(from_cr->GetId());
 
@@ -927,7 +927,7 @@ void Player::Send_AddCustomEntity(ptr<CustomEntity> entity, bool owned)
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf {_connection->WriteMsg(NetMessage::AddCustomEntity)};
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::AddCustomEntity};
 
     out_buf->Write(entity->GetCustomHolderId());
     out_buf->Write(entity->GetCustomHolderEntry());
@@ -952,7 +952,7 @@ void Player::Send_RemoveCustomEntity(ident_t id)
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf {_connection->WriteMsg(NetMessage::RemoveCustomEntity)};
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::RemoveCustomEntity};
 
     out_buf->Write(id);
 }

@@ -775,7 +775,7 @@ void ServerConnection::GracefulDisconnect()
 {
     _gracefulDisconnected = true;
 
-    WriteMsg(NetMessage::Disconnect);
+    ServerConnection::OutBufAccessor {make_ptr(this), NetMessage::Disconnect};
 }
 
 void ServerConnection::SetDataArrivedCallback(DataArrivedCallback callback)

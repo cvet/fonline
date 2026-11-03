@@ -238,7 +238,7 @@ struct Vulkan_Renderer::Context
     VkCommandPool CommandPool {};
 
     // In-flight frame slots; draw code uses the current-slot aliases refreshed by BeginFrame
-    VulkanFrameSlot FrameSlots[VULKAN_FRAMES_IN_FLIGHT] {};
+    array<VulkanFrameSlot, VULKAN_FRAMES_IN_FLIGHT> FrameSlots {};
     VkCommandBuffer CommandBuffer {}; // Current slot's command buffer
     VkSemaphore ImageAvailableSemaphore {}; // Current slot's acquire semaphore
 
@@ -1013,7 +1013,7 @@ auto Vulkan_TextureReadback::IsCopyFinished() const -> bool
 
     // A submitted frame keeps its slot fence until that slot is reused, which is when the completed index catches up
     if (_frameIndex < _ctx->FrameIndex) {
-        VkResult fence_status {vkGetFenceStatus(_ctx->Device, _ctx->FrameSlots[_frameIndex % VULKAN_FRAMES_IN_FLIGHT].InFlightFence)};
+        VkResult fence_status {vkGetFenceStatus(_ctx->Device, _ctx->FrameSlots[numeric_cast<size_t>(_frameIndex % VULKAN_FRAMES_IN_FLIGHT)].InFlightFence)};
 
         if (fence_status == VK_SUCCESS) {
             return true;
@@ -3729,7 +3729,7 @@ static void FlushAllDeferredDestroyQueues(ptr<Vulkan_Renderer::Context> ctx)
 
 static auto GetCurrentVulkanFrameSlot(ptr<Vulkan_Renderer::Context> ctx) -> VulkanFrameSlot&
 {
-    return ctx->FrameSlots[ctx->FrameIndex % VULKAN_FRAMES_IN_FLIGHT];
+    return ctx->FrameSlots[numeric_cast<size_t>(ctx->FrameIndex % VULKAN_FRAMES_IN_FLIGHT)];
 }
 
 FO_END_NAMESPACE

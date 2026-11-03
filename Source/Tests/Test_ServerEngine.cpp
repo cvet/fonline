@@ -2299,7 +2299,8 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
         ExpectSustainedEnsureStateMutexContentionThrows(ctx, nested_item, second_lock);
         CHECK(target_lock->GetExclusiveRecursionForCurrentThread() == 0);
         CHECK(intermediate_lock->GetDescendantHoldCountForCurrentThread() == 0);
-        bool first_state_mutex_free {first_lock->TryLockStateMutex()};
+        bool first_state_mutex_free {};
+        first_state_mutex_free = first_lock->TryLockStateMutex();
         REQUIRE(first_state_mutex_free);
 
         if (first_state_mutex_free) {
