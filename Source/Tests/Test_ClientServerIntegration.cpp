@@ -790,7 +790,7 @@ TEST_CASE("ClientUpdaterResourcePatchLifecycle")
     vector<uint8_t> metadata {BakerTests::MakeMetadataBlob({})};
 
     // This patch-only fixture has no packaged native bootstrap or resource configuration.
-    // Keep its metadata in a custom pack; the reserved Metadata pack also owns the startup config.
+    // Keep its metadata in a custom pack; the reserved Metadata pack also owns the startup config
     for (const string& directory : {install, published}) {
         ResourcePackWriter writer {strex(directory).combine_path("TestMetadata.fores").str()};
         writer.AddFile("Metadata.fometa-client", metadata);

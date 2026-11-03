@@ -1964,7 +1964,7 @@ static auto SphereLineIntersection(const Vertex3D& p1, const Vertex3D& p2, const
     float32_t i {sq(b) - 4 * a * c};
 
     if (i > 0.0f) {
-        float32_t sqrt_i {sqrt(i)};
+        float32_t sqrt_i {numeric_cast<float32_t>(std::sqrt(i))};
         float32_t mu1 {(-b + sqrt_i) / (2 * a)};
         float32_t mu2 {(-b - sqrt_i) / (2 * a)};
 

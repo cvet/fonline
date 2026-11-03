@@ -35,6 +35,7 @@
 
 #include "BasicCore.h"
 #include "Containers.h"
+#include "SafeArithmetics.h"
 #include "StrongType.h"
 
 FO_BEGIN_NAMESPACE
@@ -302,14 +303,14 @@ struct std::formatter<FO_NAMESPACE steady_time_point::duration> : formatter<FO_N
         }
         else if (value < std::chrono::hours {24}) {
             int64_t hour {std::chrono::duration_cast<std::chrono::hours>(value).count()};
-            int32_t min {std::chrono::duration_cast<std::chrono::minutes>(value).count() % 60};
+            int32_t min {FO_NAMESPACE numeric_cast<int32_t>(std::chrono::duration_cast<std::chrono::minutes>(value).count() % 60)};
             auto sec {std::chrono::duration_cast<std::chrono::seconds>(value).count() % 60};
             std::format_to(std::back_inserter(buf), "{:02}:{:02}:{:02} sec", hour, min, sec);
         }
         else {
             int64_t day {std::chrono::duration_cast<std::chrono::hours>(value).count() / 24};
-            int32_t hour {std::chrono::duration_cast<std::chrono::hours>(value).count() % 24};
-            int32_t min {std::chrono::duration_cast<std::chrono::minutes>(value).count() % 60};
+            int32_t hour {FO_NAMESPACE numeric_cast<int32_t>(std::chrono::duration_cast<std::chrono::hours>(value).count() % 24)};
+            int32_t min {FO_NAMESPACE numeric_cast<int32_t>(std::chrono::duration_cast<std::chrono::minutes>(value).count() % 60)};
             auto sec {std::chrono::duration_cast<std::chrono::seconds>(value).count() % 60};
             std::format_to(std::back_inserter(buf), "{} day{} {:02}:{:02}:{:02} sec", day, day > 1 ? "s" : "", hour, min, sec);
         }

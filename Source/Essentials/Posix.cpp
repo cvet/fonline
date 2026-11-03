@@ -152,7 +152,7 @@ auto posix::get_running_process_start_time(int32_t pid) noexcept -> optional<uin
         return std::nullopt;
     }
 
-    vector<string_view> fields {static_cast<string_view>(strvex(string_view {text}.substr(comm_end + 2)).split(' '))};
+    vector<string_view> fields {strvex(string_view {text}.substr(comm_end + 2)).split(' ')};
     uint64_t start_time {0};
 
     if (fields.size() <= 19 || fields[0] == "Z" || fields[0] == "X" || !parse_counter(fields[19], start_time)) {
@@ -355,7 +355,7 @@ auto posix::get_process_cpu_time_ns() noexcept -> optional<uint64_t>
     }
 
     string_view fields_text {static_cast<string_view>(string_view {text}.substr(comm_end + 2))};
-    vector<string_view> fields {static_cast<string_view>(strvex(fields_text).split(' '))};
+    vector<string_view> fields {strvex(fields_text).split(' ')};
 
     if (fields.size() <= 12) {
         return std::nullopt;
@@ -442,7 +442,7 @@ auto posix::get_system_cpu_times() noexcept -> vector<posix::cpu_core_times>
         uint64_t values[MAX_CPU_FIELDS] {};
         size_t values_count {0};
         bool parse_failed {false};
-        vector<string_view> fields {static_cast<string_view>(strvex(line_view.substr(fields_pos + 1)).split(' '))};
+        vector<string_view> fields {strvex(line_view.substr(fields_pos + 1)).split(' ')};
 
         for (string_view field : fields) {
             if (values_count == std::size(values)) {

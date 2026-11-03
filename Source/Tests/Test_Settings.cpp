@@ -1285,7 +1285,7 @@ TEST_CASE("ResourceConfigurationPriority")
     }
 }
 
-// Requires a test-binary copy with its internal config patched and its unpackaged marker retained.
+// Requires a test-binary copy with its internal config patched and its unpackaged marker retained
 TEST_CASE("ServerConfiguration", "[.][settings]")
 {
     string content {"Common.GameVersion=server-resource-version\nServer.DbStorage=JSON\nServer.AutoStartClientOnServer=2\n"
