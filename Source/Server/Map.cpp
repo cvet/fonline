@@ -252,7 +252,7 @@ auto Map::GetStaticItems() const noexcept -> const_span<ptr<StaticItem>>
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
-    bool has_runtime = _runtimeStatics && !_runtimeStatics->GetStaticItems().empty();
+    bool has_runtime {_runtimeStatics && !_runtimeStatics->GetStaticItems().empty()};
 
     if (_removedStaticItems.empty()) {
         if (!has_runtime) {
@@ -1563,7 +1563,7 @@ auto Map::GetStaticItem(ident_t id) const noexcept -> nptr<StaticItem>
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
     if (_runtimeStatics) {
-        if (auto runtime_item = _runtimeStatics->GetStaticItem(id)) {
+        if (auto runtime_item {_runtimeStatics->GetStaticItem(id)}) {
             return runtime_item;
         }
     }
@@ -1764,7 +1764,7 @@ auto Map::GetStaticField(mpos hex) const noexcept -> const StaticMap::Field&
 
     // Where both static maps hold content an override merges them, so a non-empty runtime field here stands alone
     if (_runtimeStatics) {
-        const auto& runtime_field = _runtimeStatics->GetField(hex);
+        const auto& runtime_field {_runtimeStatics->GetField(hex)};
 
         if (!runtime_field.StaticItems.empty()) {
             return runtime_field;
@@ -1789,7 +1789,7 @@ void Map::RebuildStaticOverlay()
     if (_runtimeStatics) {
         for (ptr<StaticItem> runtime_item : _runtimeStatics->GetStaticItems()) {
             _runtimeStatics->ForEachItemHex(runtime_item->GetId(), [this, &dirty_hexes](mpos item_hex) {
-                const auto& baked_field = _staticMap->GetField(item_hex);
+                const auto& baked_field {_staticMap->GetField(item_hex)};
 
                 if (!baked_field.StaticItems.empty() || baked_field.ScrollBlocked) {
                     dirty_hexes.emplace(item_hex);
@@ -1807,18 +1807,18 @@ void Map::RebuildStaticOverlay()
 
 void Map::RefreshStaticFieldOverride(mpos hex)
 {
-    const auto& baked_field = _staticMap->GetField(hex);
-    bool baked_removed = !_removedStaticItems.empty() && std::ranges::any_of(baked_field.StaticItems, [this](ptr<StaticItem> item) { return _removedStaticItems.count(item->GetId()) != 0; });
-    nptr<const StaticMap::Field> runtime_field = _runtimeStatics ? nptr<const StaticMap::Field> {&_runtimeStatics->GetField(hex)} : nullptr;
-    bool has_runtime = runtime_field && !runtime_field->StaticItems.empty();
-    bool has_baked = !baked_field.StaticItems.empty() || baked_field.ScrollBlocked;
+    const auto& baked_field {_staticMap->GetField(hex)};
+    bool baked_removed {!_removedStaticItems.empty() && std::ranges::any_of(baked_field.StaticItems, [this](ptr<StaticItem> item) { return _removedStaticItems.count(item->GetId()) != 0; })};
+    nptr<const StaticMap::Field> runtime_field {_runtimeStatics ? nptr<const StaticMap::Field> {&_runtimeStatics->GetField(hex)} : nullptr};
+    bool has_runtime {runtime_field && !runtime_field->StaticItems.empty()};
+    bool has_baked {!baked_field.StaticItems.empty() || baked_field.ScrollBlocked};
 
     if (!baked_removed && !(has_runtime && has_baked)) {
         _staticFieldOverrides.erase(hex);
         return;
     }
 
-    StaticMap::Field field = baked_removed ? _staticMap->BuildFieldWithout(hex, _removedStaticItems) : baked_field;
+    StaticMap::Field field {baked_removed ? _staticMap->BuildFieldWithout(hex, _removedStaticItems) : baked_field};
 
     if (has_runtime) {
         for (ptr<StaticItem> runtime_item : runtime_field->StaticItems) {
@@ -1833,14 +1833,14 @@ void Map::RebuildVisibleStaticItems()
 {
     _visibleStaticItems.clear();
 
-    bool has_runtime = _runtimeStatics && !_runtimeStatics->GetStaticItems().empty();
+    bool has_runtime {_runtimeStatics && !_runtimeStatics->GetStaticItems().empty()};
 
     // GetStaticItems() reads a single source directly when nothing needs filtering or joining
     if (_removedStaticItems.empty() && (!has_runtime || _staticMap->GetStaticItems().empty())) {
         return;
     }
 
-    const_span<ptr<StaticItem>> baked_items = _staticMap->GetStaticItems();
+    const_span<ptr<StaticItem>> baked_items {_staticMap->GetStaticItems()};
     _visibleStaticItems.reserve(baked_items.size() + (has_runtime ? _runtimeStatics->GetStaticItems().size() : 0));
 
     for (ptr<StaticItem> static_item : baked_items) {
@@ -1871,16 +1871,16 @@ void Map::AddRuntimeStaticItems(span<refcount_ptr<StaticItem>> static_items)
     }
 
     for (auto& static_item : static_items) {
-        ident_t static_item_id = static_item->GetId();
+        ident_t static_item_id {static_item->GetId()};
         _runtimeStatics->AddOwnedItemBillet(static_item_id, static_item);
         _runtimeStatics->AddStaticItem(static_item_id, static_item);
     }
 
-    unordered_set<mpos> merged_hexes;
+    unordered_set<mpos> merged_hexes {};
 
     for (const auto& static_item : static_items) {
         _runtimeStatics->ForEachItemHex(static_item->GetId(), [this, &merged_hexes](mpos item_hex) {
-            const auto& baked_field = _staticMap->GetField(item_hex);
+            const auto& baked_field {_staticMap->GetField(item_hex)};
 
             if (!baked_field.StaticItems.empty() || baked_field.ScrollBlocked) {
                 merged_hexes.emplace(item_hex);
@@ -1906,7 +1906,7 @@ void Map::RemoveRuntimeStaticItems(const unordered_set<ident_t>& static_item_ids
 
     FO_VERIFY_AND_THROW(_runtimeStatics, "Map has no runtime static items", GetId(), GetProtoId());
 
-    unordered_set<mpos> merged_hexes;
+    unordered_set<mpos> merged_hexes {};
 
     for (ident_t static_item_id : static_item_ids) {
         FO_VERIFY_AND_THROW(_runtimeStatics->HasStaticItem(static_item_id), "Map has no runtime static item with this id", GetId(), GetProtoId(), static_item_id);

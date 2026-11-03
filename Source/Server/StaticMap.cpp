@@ -187,10 +187,10 @@ void StaticMap::ShrinkToFit()
 
 void StaticMap::RemoveStaticItems(const unordered_set<ident_t>& static_item_ids)
 {
-    unordered_set<mpos> dirty_hexes;
+    unordered_set<mpos> dirty_hexes {};
 
     for (ident_t static_item_id : static_item_ids) {
-        auto it = _staticItemsById.find(static_item_id);
+        auto it {_staticItemsById.find(static_item_id)};
         FO_VERIFY_AND_THROW(it != _staticItemsById.end(), "Static item to remove is missing from the static map", static_item_id);
 
         ForEachItemHex(it->second, [&dirty_hexes](mpos item_hex) { dirty_hexes.emplace(item_hex); });
@@ -198,7 +198,7 @@ void StaticMap::RemoveStaticItems(const unordered_set<ident_t>& static_item_ids)
 
     // Fields are rebuilt while the removed items are still owned, since a field holds plain pointers to them
     for (mpos hex : dirty_hexes) {
-        Field field = BuildFieldWithout(hex, static_item_ids);
+        Field field {BuildFieldWithout(hex, static_item_ids)};
 
         if (field.StaticItems.empty() && !field.ScrollBlocked) {
             _hexField->ClearArea(hex, msize {1, 1});

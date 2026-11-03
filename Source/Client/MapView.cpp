@@ -420,7 +420,7 @@ void MapView::LoadStaticData()
 
 auto MapView::LoadStaticItems(hstring map_pid, mpos offset) -> vector<ident_t>
 {
-    auto source_proto = _engine->GetProtoMap(map_pid);
+    auto source_proto {_engine->GetProtoMap(map_pid)};
 
     if (!source_proto) {
         throw MapViewLoadException("Map proto not found", map_pid);
@@ -433,19 +433,19 @@ auto MapView::LoadStaticItems(hstring map_pid, mpos offset, mpos source_hex, msi
 {
     FO_TRACE_ZONE(Map);
 
-    auto source_proto = _engine->GetProtoMap(map_pid);
+    auto source_proto {_engine->GetProtoMap(map_pid)};
 
     if (!source_proto) {
         throw MapViewLoadException("Map proto not found", map_pid);
     }
 
-    msize source_map_size = source_proto->GetSize();
+    msize source_map_size {source_proto->GetSize()};
 
     if (source_size.width <= 0 || source_size.height <= 0 || !source_map_size.is_valid_pos(source_hex) || safe_numeric_cast<int64_t>(source_hex.x) + source_size.width > source_map_size.width || safe_numeric_cast<int64_t>(source_hex.y) + source_size.height > source_map_size.height) {
         throw MapViewLoadException("Source area is outside the source map", map_pid, source_hex, source_size, source_map_size);
     }
 
-    auto file = _engine->Resources.ReadFile(strex("{}.fomap-bin-client", map_pid));
+    auto file {_engine->Resources.ReadFile(strex("{}.fomap-bin-client", map_pid))};
 
     if (!file) {
         throw MapViewLoadException("Map file not found", map_pid);
@@ -455,16 +455,16 @@ auto MapView::LoadStaticItems(hstring map_pid, mpos offset, mpos source_hex, msi
     MapLoader::ReadBakedFileHeader(reader, map_pid);
 
     {
-        uint32_t hashes_count = reader.read<uint32_t>();
+        uint32_t hashes_count {reader.read<uint32_t>()};
         reader.verify_payload_count(hashes_count, sizeof(uint32_t));
 
-        for (uint32_t i = 0; i < hashes_count; i++) {
-            string str = reader.read_string();
+        for (uint32_t i {0}; i < hashes_count; i++) {
+            string str {reader.read_string()};
             (void)_engine->Hashes.to_hashed_string(str);
         }
     }
 
-    uint32_t items_count = reader.read<uint32_t>();
+    uint32_t items_count {reader.read<uint32_t>()};
     reader.verify_payload_count(items_count, sizeof(ident_t::underlying_type) + sizeof(hstring::hash_t) + sizeof(uint32_t));
 
     struct LoadedItem
@@ -473,34 +473,34 @@ auto MapView::LoadStaticItems(hstring map_pid, mpos offset, mpos source_hex, msi
         Properties Props;
     };
 
-    vector<LoadedItem> loaded_items;
-    vector<ident_t> item_ids;
+    vector<LoadedItem> loaded_items {};
+    vector<ident_t> item_ids {};
     loaded_items.reserve(items_count);
     item_ids.reserve(items_count);
-    vector<uint8_t> props_data;
+    vector<uint8_t> props_data {};
 
     // The source area's first hex lands at offset
-    auto move_hex = [offset, source_hex, map_size = _mapSize, map_pid](mpos hex) -> mpos {
-        int64_t x = safe_numeric_cast<int64_t>(hex.x) - source_hex.x + offset.x;
-        int64_t y = safe_numeric_cast<int64_t>(hex.y) - source_hex.y + offset.y;
+    auto move_hex {[offset, source_hex, map_size = _mapSize, map_pid](mpos hex) -> mpos {
+        int64_t x {safe_numeric_cast<int64_t>(hex.x) - source_hex.x + offset.x};
+        int64_t y {safe_numeric_cast<int64_t>(hex.y) - source_hex.y + offset.y};
 
         if (x < 0 || y < 0 || x >= map_size.width || y >= map_size.height) {
             throw MapViewLoadException("Loaded static item lands outside the map", map_pid, hex, offset, map_size);
         }
 
         return mpos {numeric_cast<mcoord_t>(x), numeric_cast<mcoord_t>(y)};
-    };
+    }};
 
-    for (uint32_t i = 0; i < items_count; i++) {
-        ident_t baked_id = ident_t {reader.read<ident_t::underlying_type>()};
-        hstring item_pid = _engine->Hashes.resolve_hash(reader.read<hstring::hash_t>());
-        auto item_proto = _engine->GetProtoItem(item_pid);
+    for (uint32_t i {0}; i < items_count; i++) {
+        ident_t baked_id {ident_t {reader.read<ident_t::underlying_type>()}};
+        hstring item_pid {_engine->Hashes.resolve_hash(reader.read<hstring::hash_t>())};
+        auto item_proto {_engine->GetProtoItem(item_pid)};
         FO_VERIFY_AND_THROW(item_proto, "Missing required item prototype", item_pid);
 
-        uint32_t props_data_size = reader.read<uint32_t>();
+        uint32_t props_data_size {reader.read<uint32_t>()};
         reader.verify_payload_count(props_data_size, sizeof(uint8_t));
         props_data.resize(props_data_size);
-        span<uint8_t> props_data_span = props_data;
+        span<uint8_t> props_data_span {props_data};
         reader.read_bytes(props_data_span);
 
         Properties item_props {item_proto->GetProperties()->GetRegistrar()};
@@ -508,7 +508,7 @@ auto MapView::LoadStaticItems(hstring map_pid, mpos offset, mpos source_hex, msi
 
         // Positions move on the plain property set before the view exists, so no entity setter observes them
         ItemProperties item_view {item_props};
-        mpos hex = item_view.GetHex();
+        mpos hex {item_view.GetHex()};
 
         if (hex.x < source_hex.x || hex.y < source_hex.y || hex.x - source_hex.x >= source_size.width || hex.y - source_hex.y >= source_size.height) {
             continue;
@@ -517,7 +517,7 @@ auto MapView::LoadStaticItems(hstring map_pid, mpos offset, mpos source_hex, msi
         item_view.SetHex(move_hex(hex));
 
         if (item_view.IsNonEmptyMultihexMesh()) {
-            vector<mpos> mesh = item_view.GetMultihexMesh();
+            vector<mpos> mesh {item_view.GetMultihexMesh()};
 
             for (mpos& mesh_hex : mesh) {
                 mesh_hex = move_hex(mesh_hex);
@@ -542,7 +542,7 @@ auto MapView::LoadStaticItems(hstring map_pid, mpos offset, mpos source_hex, msi
         throw MapViewLoadException("Static item id generation changed the number of ids", map_pid, loaded_items.size(), item_ids.size());
     }
 
-    unordered_set<ident_t> unique_ids;
+    unordered_set<ident_t> unique_ids {};
     unique_ids.reserve(item_ids.size());
 
     for (ident_t item_id : item_ids) {
@@ -558,15 +558,15 @@ auto MapView::LoadStaticItems(hstring map_pid, mpos offset, mpos source_hex, msi
     }
 
     {
-        bool was_loading = _mapLoading;
+        bool was_loading {_mapLoading};
         _mapLoading = true;
-        auto reset_loading = scope_exit([this, was_loading]() noexcept { _mapLoading = was_loading; });
+        auto reset_loading {scope_exit([this, was_loading]() noexcept { _mapLoading = was_loading; })};
 
         _items.reserve(_items.size() + loaded_items.size());
         _staticItems.reserve(_staticItems.size() + loaded_items.size());
 
-        for (size_t i = 0; i < loaded_items.size(); i++) {
-            auto static_item = safe_alloc::make_refcounted<ItemHexView>(this, item_ids[i], loaded_items[i].Proto, make_nptr(&loaded_items[i].Props));
+        for (size_t i {0}; i < loaded_items.size(); i++) {
+            auto static_item {safe_alloc::make_refcounted<ItemHexView>(this, item_ids[i], loaded_items[i].Proto, make_nptr(&loaded_items[i].Props))};
             static_item->SetStatic(true);
             AddItemInternal(static_item);
             _runtimeStaticItems.emplace(item_ids[i]);
@@ -584,14 +584,14 @@ void MapView::UnloadStaticItems(const_span<ident_t> static_item_ids)
 {
     FO_TRACE_ZONE(Map);
 
-    vector<ptr<ItemHexView>> items;
+    vector<ptr<ItemHexView>> items {};
     items.reserve(static_item_ids.size());
-    unordered_set<ident_t> ids;
+    unordered_set<ident_t> ids {};
     ids.reserve(static_item_ids.size());
-    int64_t x0 = std::numeric_limits<int64_t>::max();
-    int64_t y0 = std::numeric_limits<int64_t>::max();
-    int64_t x1 = std::numeric_limits<int64_t>::min();
-    int64_t y1 = std::numeric_limits<int64_t>::min();
+    int64_t x0 {std::numeric_limits<int64_t>::max()};
+    int64_t y0 {std::numeric_limits<int64_t>::max()};
+    int64_t x1 {std::numeric_limits<int64_t>::min()};
+    int64_t y1 {std::numeric_limits<int64_t>::min()};
 
     for (ident_t static_item_id : static_item_ids) {
         if (!_runtimeStaticItems.contains(static_item_id)) {
@@ -602,21 +602,21 @@ void MapView::UnloadStaticItems(const_span<ident_t> static_item_ids)
         }
 
         // A removal the server recorded may have destroyed the view already
-        auto it = _itemsMap.find(static_item_id);
+        auto it {_itemsMap.find(static_item_id)};
 
         if (it == _itemsMap.end()) {
             continue;
         }
 
-        ptr<ItemHexView> item = it->second;
+        ptr<ItemHexView> item {it->second};
         items.emplace_back(item);
 
-        auto extend = [&](mpos hex) {
+        auto extend {[&](mpos hex) {
             x0 = std::min<int64_t>(x0, hex.x);
             y0 = std::min<int64_t>(y0, hex.y);
             x1 = std::max<int64_t>(x1, hex.x);
             y1 = std::max<int64_t>(y1, hex.y);
-        };
+        }};
 
         extend(item->GetHex());
 
@@ -648,13 +648,13 @@ void MapView::ReleaseEmptyFields(mpos origin, msize size)
 {
     FO_TRACE_ZONE(Map);
 
-    constexpr int32_t side = numeric_cast<int32_t>(GameSettings::CLIENT_MAP_CHUNK_SIDE);
+    constexpr int32_t side {numeric_cast<int32_t>(GameSettings::CLIENT_MAP_CHUNK_SIDE)};
 
     // Sprites keep pointers to the light of their hex and its neighbours, so blocks next to the view stay allocated
-    int64_t view_x0 = std::numeric_limits<int64_t>::max();
-    int64_t view_y0 = std::numeric_limits<int64_t>::max();
-    int64_t view_x1 = std::numeric_limits<int64_t>::min();
-    int64_t view_y1 = std::numeric_limits<int64_t>::min();
+    int64_t view_x0 {std::numeric_limits<int64_t>::max()};
+    int64_t view_y0 {std::numeric_limits<int64_t>::max()};
+    int64_t view_x1 {std::numeric_limits<int64_t>::min()};
+    int64_t view_y1 {std::numeric_limits<int64_t>::min()};
 
     for (const auto& vf : _viewField) {
         view_x0 = std::min<int64_t>(view_x0, vf.RawHex.x);
@@ -663,22 +663,22 @@ void MapView::ReleaseEmptyFields(mpos origin, msize size)
         view_y1 = std::max<int64_t>(view_y1, vf.RawHex.y);
     }
 
-    auto is_releasable = [](const Field& field) -> bool { return field.Items.empty() && field.Critters.empty() && field.OriginItems.empty() && field.OriginCritters.empty() && field.MultihexItems.empty() && field.LightSources.empty() && !field.SpriteChain && !field.IsView && !field.ScrollBlock && field.RoofNum == 0 && !field.HasRoof; };
+    auto is_releasable {[](const Field& field) -> bool { return field.Items.empty() && field.Critters.empty() && field.OriginItems.empty() && field.OriginCritters.empty() && field.MultihexItems.empty() && field.LightSources.empty() && !field.SpriteChain && !field.IsView && !field.ScrollBlock && field.RoofNum == 0 && !field.HasRoof; }};
 
-    int64_t x_end = safe_numeric_cast<int64_t>(origin.x) + size.width;
-    int64_t y_end = safe_numeric_cast<int64_t>(origin.y) + size.height;
+    int64_t x_end {safe_numeric_cast<int64_t>(origin.x) + size.width};
+    int64_t y_end {safe_numeric_cast<int64_t>(origin.y) + size.height};
 
     // Only blocks wholly inside the area are candidates; a partly covered block may still hold other content
-    for (int64_t cy = (origin.y + side - 1) / side * side; cy + side <= y_end; cy += side) {
-        for (int64_t cx = (origin.x + side - 1) / side * side; cx + side <= x_end; cx += side) {
+    for (int64_t cy {(origin.y + side - 1) / side * side}; cy + side <= y_end; cy += side) {
+        for (int64_t cx {(origin.x + side - 1) / side * side}; cx + side <= x_end; cx += side) {
             if (cx + side + side > view_x0 && cx - side <= view_x1 && cy + side + side > view_y0 && cy - side <= view_y1) {
                 continue;
             }
 
-            bool releasable = true;
+            bool releasable {true};
 
-            for (int64_t y = cy; y < cy + side && releasable; y++) {
-                for (int64_t x = cx; x < cx + side && releasable; x++) {
+            for (int64_t y {cy}; y < cy + side && releasable; y++) {
+                for (int64_t x {cx}; x < cx + side && releasable; x++) {
                     releasable = is_releasable(_hexField->GetCellForReading(mpos {numeric_cast<mcoord_t>(x), numeric_cast<mcoord_t>(y)}));
                 }
             }
@@ -709,8 +709,8 @@ void MapView::EnsureRoofNums()
 
     _numberedRoofHexes.clear();
 
-    auto mark_roof_num = [this](ipos32 raw_hex, int32_t num) {
-        std::stack<ipos32, vector<ipos32>> next_raw_hexes;
+    auto mark_roof_num {[this](ipos32 raw_hex, int32_t num) {
+        std::stack<ipos32, vector<ipos32>> next_raw_hexes {};
         next_raw_hexes.push(raw_hex);
 
         while (!next_raw_hexes.empty()) {
@@ -745,7 +745,7 @@ void MapView::EnsureRoofNums()
     std::ranges::sort(roof_hexes, [](mpos a, mpos b) { return a.x != b.x ? a.x < b.x : a.y < b.y; });
 
     for (mpos hex : roof_hexes) {
-        const auto& field = _hexField->GetCellForReading(hex);
+        const auto& field {_hexField->GetCellForReading(hex)};
 
         if (field.RoofNum == 0 && field.HasRoof) {
             // From the roof tile's own hex rather than one snapped to even: the lattice origin carries
@@ -2312,7 +2312,7 @@ void MapView::MarkLight(ptr<LightSource> ls, mpos hex, int32_t raw_intensity)
 
 void MapView::CalculateHexLight(ptr<Field> field)
 {
-    auto& hex_light = field->Light;
+    auto& hex_light {field->Light};
 
     hex_light = {};
 
@@ -2325,7 +2325,7 @@ void MapView::CalculateHexLight(ptr<Field> field)
 
 void MapView::SetupSpriteLight(ptr<MapSprite> mspr, CornerType corner)
 {
-    mpos hex = mspr->GetHex();
+    mpos hex {mspr->GetHex()};
 
     if (hex.x < 1 || hex.x >= _mapSize.width - 1 || hex.y < 1 || hex.y >= _mapSize.height - 1) {
         mspr->SetLight(nullptr, nullptr, nullptr);
@@ -2333,10 +2333,10 @@ void MapView::SetupSpriteLight(ptr<MapSprite> mspr, CornerType corner)
     }
 
     // Fields are written here so that the sprite keeps the addresses a later light change updates
-    auto light_at = [this, hex](int32_t ox, int32_t oy) -> ptr<const ucolor> {
+    auto light_at {[this, hex](int32_t ox, int32_t oy) -> ptr<const ucolor> {
         mpos light_hex {numeric_cast<mcoord_t>(hex.x + ox), numeric_cast<mcoord_t>(hex.y + oy)};
         return &_hexField->GetCellForWriting(light_hex)->Light;
-    };
+    }};
 
     switch (corner) {
     case CornerType::EastWest:
@@ -2585,11 +2585,11 @@ void MapView::RecacheScrollBlocks()
 
     _scrollBlockHexes.clear();
 
-    for (mcoord_t hx = 0; hx < _mapSize.width; hx++) {
-        for (mcoord_t hy = 0; hy < _mapSize.height; hy++) {
-            mpos hex = {hx, hy};
-            const auto& field = _hexField->GetCellForReading(hex);
-            ipos32 axial_hex = GeometryHelper::GetHexAxialCoord(hex);
+    for (mcoord_t hx {0}; hx < _mapSize.width; hx++) {
+        for (mcoord_t hy {0}; hy < _mapSize.height; hy++) {
+            mpos hex {hx, hy};
+            const auto& field {_hexField->GetCellForReading(hex)};
+            ipos32 axial_hex {GeometryHelper::GetHexAxialCoord(hex)};
 
             bool is_on_scroll_block {false};
 
@@ -2634,8 +2634,8 @@ void MapView::Resize(msize size)
     }
 
     // Remove objects on shrink; every critter and item view is in the view lists, so no cell scan is needed
-    vector<ptr<CritterHexView>> outside_critters;
-    vector<ptr<ItemHexView>> outside_items;
+    vector<ptr<CritterHexView>> outside_critters {};
+    vector<ptr<ItemHexView>> outside_items {};
 
     for (auto& cr : _critters) {
         if (!size.is_valid_pos(cr->GetHex())) {

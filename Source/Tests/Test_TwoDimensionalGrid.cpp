@@ -214,8 +214,8 @@ TEST_CASE("TwoDimensionalGrid")
     {
         ChunkedTwoDimensionalGrid<unique_nptr<int32_t>, ipos32, isize32, 16> grid {{256, 256}};
 
-        for (int32_t y = 0; y < 64; y++) {
-            for (int32_t x = 0; x < 64; x++) {
+        for (int32_t y {0}; y < 64; y++) {
+            for (int32_t x {0}; x < 64; x++) {
                 *grid.GetCellForWriting({64 + x, 64 + y}) = safe_alloc::make_unique<int32_t>(x + y);
             }
         }
@@ -250,11 +250,11 @@ TEST_CASE("TwoDimensionalGrid")
     {
         ChunkedTwoDimensionalGrid<int32_t, ipos32, isize32, 16> grid {{128000, 128000}};
 
-        for (int32_t step = 0; step < 100; step++) {
+        for (int32_t step {0}; step < 100; step++) {
             ipos32 origin {step * 64, 64000};
 
-            for (int32_t y = 0; y < 64; y += 4) {
-                for (int32_t x = 0; x < 64; x += 4) {
+            for (int32_t y {0}; y < 64; y += 4) {
+                for (int32_t x {0}; x < 64; x += 4) {
                     *grid.GetCellForWriting({origin.x + x, origin.y + y}) = step + 1;
                 }
             }
@@ -284,12 +284,12 @@ TEST_CASE("TwoDimensionalGrid")
         static_grid.ClearArea({10, 10}, {10, 10});
         dynamic_grid.ClearArea({90, 90}, {1, 1}); // Smaller than the stored cell count: per-cell erase path
 
-        auto check_cleared = [](const auto& grid) {
+        auto check_cleared {[](const auto& grid) {
             CHECK(grid.GetCellForReading({10, 10}) == 0);
             CHECK(grid.GetCellForReading({19, 19}) == 0);
             CHECK(grid.GetCellForReading({20, 20}) == 5);
             CHECK(grid.GetCellForReading({99, 99}) == 5);
-        };
+        }};
 
         check_cleared(dynamic_grid);
         check_cleared(static_grid);

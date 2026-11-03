@@ -14832,6 +14832,18 @@
       "release_note": "Docs/en/reference/changelog.md#current---2026-11-03",
       "compatibility": "No property, protocol or resource change: MigrationRule Version 0.0.86 and Managed ABI 9 are unchanged. Baked map content is now read on first use instead of at startup. Deploy matching binaries and scripts; rollback restores the preceding complete set.",
       "owner": "Engine map, scripting and compatibility maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.3113aabb79fb111a",
+      "baseline_contract_sha256": "1bef2a7ab7d7902bc3dc01dabf713874e83e66cfd2201fcc3a791634d9a9c1db",
+      "current_contract_sha256": "593c1e765983fab484be18107c986c2a5049b7c13c283ad79472e80dc11f3eb4",
+      "classification": "breaking",
+      "rationale": "The native-codegen inventory gains the runtime map content surface: the server Map.LoadStaticItems (whole map and source-area overloads), Map.UnloadStaticItems and Map.GenerateContent methods, Game.LoadStaticMap, Game.LoadStaticMapsAsync, Game.IsStaticMapLoaded and Game.UnloadStaticMap, the client Map.LoadStaticItems (both overloads) and Map.UnloadStaticItems methods, and the server and client Game.OnGenerateStaticItemIds events. SymbolCount and InventorySha256 are updated for owner review; existing symbols keep their identities.",
+      "migration": "Docs/en/reference/changelog.md#current---2026-11-03: additive surface; no source, data or resource conversion is required. Rebuild every native role and regenerate both scripting backends from the same revision.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-03",
+      "compatibility": "No property, protocol or resource change: MigrationRule Version 0.0.86 and Managed ABI 9 are unchanged. Baked map content is now read on first use instead of at startup. Deploy matching binaries and scripts; rollback restores the preceding complete set.",
+      "owner": "Engine map, scripting and compatibility maintainers"
     }
   ]
 }

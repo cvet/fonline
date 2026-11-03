@@ -1434,17 +1434,16 @@ TEST_CASE("PathFinding::RoutesMatchOnContinentSizedMaps")
         SKIP("Map coordinates are 16-bit in this build");
     }
     else {
-        constexpr int32_t shift = 120000;
-        auto wall_at = [](int32_t x, int32_t y) -> bool { return x == 12 && y >= 3 && y <= 16; };
+        constexpr int32_t shift {120000};
+        auto wall_at {[](int32_t x, int32_t y) -> bool { return x == 12 && y >= 3 && y <= 16; }};
 
-        FindPathInput small = MakeBlockedSettings(mpos {5, 10}, mpos {18, 10}, [&wall_at](mpos hex) -> bool { return wall_at(hex.x, hex.y); });
+        FindPathInput small {MakeBlockedSettings(mpos {5, 10}, mpos {18, 10}, [&wall_at](mpos hex) -> bool { return wall_at(hex.x, hex.y); })};
         small.MapSize = msize {40, 40};
-        FindPathInput huge = MakeBlockedSettings(mpos {numeric_cast<mcoord_t>(5 + shift), numeric_cast<mcoord_t>(10 + shift)}, mpos {numeric_cast<mcoord_t>(18 + shift), numeric_cast<mcoord_t>(10 + shift)},
-            [&wall_at, shift](mpos hex) -> bool { return wall_at(hex.x - shift, hex.y - shift); });
+        FindPathInput huge {MakeBlockedSettings(mpos {numeric_cast<mcoord_t>(5 + shift), numeric_cast<mcoord_t>(10 + shift)}, mpos {numeric_cast<mcoord_t>(18 + shift), numeric_cast<mcoord_t>(10 + shift)}, [&wall_at, shift](mpos hex) -> bool { return wall_at(hex.x - shift, hex.y - shift); })};
         huge.MapSize = msize {128000, 128000};
 
-        auto small_output = PathFinding::FindPath(small);
-        auto huge_output = PathFinding::FindPath(huge);
+        auto small_output {PathFinding::FindPath(small)};
+        auto huge_output {PathFinding::FindPath(huge)};
 
         REQUIRE(small_output.Result == FindPathOutput::ResultType::Ok);
         REQUIRE(huge_output.Result == FindPathOutput::ResultType::Ok);

@@ -1573,12 +1573,11 @@ FO_SCRIPT_API bool Server_Game_CallStaticItemFunction(ptr<ServerEngine> server, 
     return staticItem->StaticScriptFunc.Call(cr, staticItem, used_item, param) && staticItem->StaticScriptFunc.GetResult();
 }
 
-// Reads the baked content of proto map `mapPid` now instead of on first use by a map instance, `Map.LoadStaticItems` or `Map.GenerateContent`
-// SyncScope: static proto-map cache only; no live entity cover is required
+// Read the baked content of a prototype map into the cache now
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_LoadStaticMap(ptr<ServerEngine> server, hstring mapPid)
 {
-    auto proto = server->GetProtoMap(mapPid);
+    auto proto {server->GetProtoMap(mapPid)};
 
     if (!proto) {
         throw ScriptException("Map proto not found", mapPid);
@@ -1587,16 +1586,15 @@ FO_SCRIPT_API void Server_Game_LoadStaticMap(ptr<ServerEngine> server, hstring m
     server->MapMngr.LoadStaticMap(proto);
 }
 
-// Starts reading the baked content of the listed proto maps on worker threads and returns at once; a map instance, `Map.LoadStaticItems` or `Map.GenerateContent` that needs one of them before its read finishes waits for that read. A failed read is reported when the map is next used
-// SyncScope: static proto-map cache only; no live entity cover is required
+// Start reading the baked content of prototype maps on worker threads; a request for one of them waits for its read
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_LoadStaticMapsAsync(ptr<ServerEngine> server, readonly_vector<hstring> mapPids)
 {
-    vector<ptr<const ProtoMap>> protos;
+    vector<ptr<const ProtoMap>> protos {};
     protos.reserve(mapPids.size());
 
     for (hstring map_pid : mapPids) {
-        auto proto = server->GetProtoMap(map_pid);
+        auto proto {server->GetProtoMap(map_pid)};
 
         if (!proto) {
             throw ScriptException("Map proto not found", map_pid);
@@ -1608,12 +1606,11 @@ FO_SCRIPT_API void Server_Game_LoadStaticMapsAsync(ptr<ServerEngine> server, rea
     server->MapMngr.LoadStaticMapsAsync(protos);
 }
 
-// Returns whether the baked content of proto map `mapPid` is read and cached
-// SyncScope: static proto-map cache only; no live entity cover is required
+// Return whether the baked content of a prototype map is cached
 ///@ ExportMethod
 FO_SCRIPT_API bool Server_Game_IsStaticMapLoaded(ptr<ServerEngine> server, hstring mapPid)
 {
-    auto proto = server->GetProtoMap(mapPid);
+    auto proto {server->GetProtoMap(mapPid)};
 
     if (!proto) {
         throw ScriptException("Map proto not found", mapPid);
@@ -1622,12 +1619,11 @@ FO_SCRIPT_API bool Server_Game_IsStaticMapLoaded(ptr<ServerEngine> server, hstri
     return server->MapMngr.IsStaticMapLoaded(proto);
 }
 
-// Frees the cached baked content of proto map `mapPid` and returns whether it is unloaded: false while it is being read or a map instance of that proto exists
-// SyncScope: static proto-map cache only; no live entity cover is required
+// Free the cached baked content of a prototype map and return whether it is unloaded; it stays while being read or used by a map
 ///@ ExportMethod
 FO_SCRIPT_API bool Server_Game_UnloadStaticMap(ptr<ServerEngine> server, hstring mapPid)
 {
-    auto proto = server->GetProtoMap(mapPid);
+    auto proto {server->GetProtoMap(mapPid)};
 
     if (!proto) {
         throw ScriptException("Map proto not found", mapPid);
@@ -1636,7 +1632,7 @@ FO_SCRIPT_API bool Server_Game_UnloadStaticMap(ptr<ServerEngine> server, hstring
     return server->MapMngr.UnloadStaticMap(proto);
 }
 
-// SyncScope: static proto-map read only; no live entity cover is required
+// Return the static items of a prototype map
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<StaticItem>> Server_Game_GetStaticItemsForProtoMap(ptr<ServerEngine> server, ptr<ProtoMap> proto)
 {

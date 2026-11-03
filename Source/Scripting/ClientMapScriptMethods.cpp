@@ -162,21 +162,21 @@ FO_SCRIPT_API bool Client_Map_DrawEntitySprite(ptr<MapView> self, ptr<ClientEnti
     return self->DrawEntitySprite(entity, effect, color, padding);
 }
 
-// Adds the static items of proto map `mapPid`'s client bake to this map view with their hexes moved by `offset` and ids from `Game.OnGenerateStaticItemIds`; returns those ids
+// Copy the static items of a prototype map's client bake moved by the offset, with ids from `Game.OnGenerateStaticItemIds`, and return those ids
 ///@ ExportMethod
 FO_SCRIPT_API vector<ident_t> Client_Map_LoadStaticItems(ptr<MapView> self, hstring mapPid, mpos offset)
 {
     return self->LoadStaticItems(mapPid, offset);
 }
 
-// Adds the static items standing in the `sourceSize` area at `sourceHex` of proto map `mapPid`'s client bake to this map view, the area's first hex landing at `offset`, with ids from `Game.OnGenerateStaticItemIds`; returns those ids
+// Copy the static items of a prototype map area from its client bake so that the area's first hex lands at the offset, and return their ids
 ///@ ExportMethod
 FO_SCRIPT_API vector<ident_t> Client_Map_LoadStaticItems(ptr<MapView> self, hstring mapPid, mpos offset, mpos sourceHex, msize sourceSize)
 {
     return self->LoadStaticItems(mapPid, offset, sourceHex, sourceSize);
 }
 
-// Removes static items that `LoadStaticItems` added to this map view and releases the field blocks they leave empty
+// Remove static items that `LoadStaticItems` added to the map view and release the field blocks they leave empty
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Map_UnloadStaticItems(ptr<MapView> self, readonly_vector<ident_t> staticItemIds)
 {

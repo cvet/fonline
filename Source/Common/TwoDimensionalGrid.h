@@ -67,10 +67,10 @@ protected:
     // Clips an area to the grid as inclusive-exclusive int64 bounds {x0, y0, x1, y1}, or nothing when empty
     [[nodiscard]] auto ClipArea(TPos origin, TSize area) const noexcept -> optional<array<int64_t, 4>>
     {
-        int64_t x0 = std::max<int64_t>(origin.x, 0);
-        int64_t y0 = std::max<int64_t>(origin.y, 0);
-        int64_t x1 = std::min<int64_t>(safe_numeric_cast<int64_t>(origin.x) + area.width, _size.width);
-        int64_t y1 = std::min<int64_t>(safe_numeric_cast<int64_t>(origin.y) + area.height, _size.height);
+        int64_t x0 {std::max<int64_t>(origin.x, 0)};
+        int64_t y0 {std::max<int64_t>(origin.y, 0)};
+        int64_t x1 {std::min<int64_t>(safe_numeric_cast<int64_t>(origin.x) + area.width, _size.width)};
+        int64_t y1 {std::min<int64_t>(safe_numeric_cast<int64_t>(origin.y) + area.height, _size.height)};
 
         if (area.width <= 0 || area.height <= 0 || x0 >= x1 || y0 >= y1) {
             return std::nullopt;
@@ -134,17 +134,17 @@ public:
 
     void ClearArea(TPos origin, TSize area) override
     {
-        auto bounds = base::ClipArea(origin, area);
+        auto bounds {base::ClipArea(origin, area)};
 
         if (!bounds) {
             return;
         }
 
-        auto [x0, y0, x1, y1] = *bounds;
+        auto [x0, y0, x1, y1] {*bounds};
 
         if (checked_mul(x1 - x0, y1 - y0) <= numeric_cast<int64_t>(_cells.size())) {
-            for (int64_t y = y0; y < y1; y++) {
-                for (int64_t x = x0; x < x1; x++) {
+            for (int64_t y {y0}; y < y1; y++) {
+                for (int64_t x {x0}; x < x1; x++) {
                     _cells.erase(TPos {numeric_cast<decltype(TPos::x)>(x), numeric_cast<decltype(TPos::y)>(y)});
                 }
             }
@@ -169,8 +169,8 @@ class ChunkedTwoDimensionalGrid final : public TwoDimensionalGrid<TCell, TPos, T
     using base = TwoDimensionalGrid<TCell, TPos, TSize>;
     using Chunk = array<TCell, ChunkSide * ChunkSide>;
 
-    static constexpr int64_t CHUNK_SIDE = const_numeric_cast<int64_t>(ChunkSide);
-    static constexpr int64_t SUPER_SIDE = 32;
+    static constexpr int64_t CHUNK_SIDE {const_numeric_cast<int64_t>(ChunkSide)};
+    static constexpr int64_t SUPER_SIDE {32};
 
     struct SuperBlock
     {
@@ -182,10 +182,10 @@ public:
     explicit ChunkedTwoDimensionalGrid(TSize size) :
         base(size)
     {
-        int64_t chunks_per_row = (safe_numeric_cast<int64_t>(base::_size.width) + CHUNK_SIDE - 1) / CHUNK_SIDE;
-        int64_t chunk_rows = (safe_numeric_cast<int64_t>(base::_size.height) + CHUNK_SIDE - 1) / CHUNK_SIDE;
+        int64_t chunks_per_row {(safe_numeric_cast<int64_t>(base::_size.width) + CHUNK_SIDE - 1) / CHUNK_SIDE};
+        int64_t chunk_rows {(safe_numeric_cast<int64_t>(base::_size.height) + CHUNK_SIDE - 1) / CHUNK_SIDE};
         _superPerRow = (chunks_per_row + SUPER_SIDE - 1) / SUPER_SIDE;
-        int64_t super_rows = (chunk_rows + SUPER_SIDE - 1) / SUPER_SIDE;
+        int64_t super_rows {(chunk_rows + SUPER_SIDE - 1) / SUPER_SIDE};
         _superBlocks.resize(numeric_cast<size_t>(checked_mul(_superPerRow, super_rows)));
     }
 
@@ -195,15 +195,15 @@ public:
             return _emptyCell;
         }
 
-        int64_t cx = safe_numeric_cast<int64_t>(pos.x) / CHUNK_SIDE;
-        int64_t cy = safe_numeric_cast<int64_t>(pos.y) / CHUNK_SIDE;
-        const auto& super_block = _superBlocks[GetSuperIndex(cx, cy)];
+        int64_t cx {safe_numeric_cast<int64_t>(pos.x) / CHUNK_SIDE};
+        int64_t cy {safe_numeric_cast<int64_t>(pos.y) / CHUNK_SIDE};
+        const auto& super_block {_superBlocks[GetSuperIndex(cx, cy)]};
 
         if (!super_block) {
             return _emptyCell;
         }
 
-        const auto& chunk = super_block->Chunks[GetSlotIndex(cx, cy)];
+        const auto& chunk {super_block->Chunks[GetSlotIndex(cx, cy)]};
 
         if (!chunk) {
             return _emptyCell;
@@ -216,15 +216,15 @@ public:
     {
         FO_VERIFY_AND_THROW(base::_size.is_valid_pos(pos), "Chunked two-dimensional grid write position is outside the grid bounds", pos, base::_size);
 
-        int64_t cx = safe_numeric_cast<int64_t>(pos.x) / CHUNK_SIDE;
-        int64_t cy = safe_numeric_cast<int64_t>(pos.y) / CHUNK_SIDE;
-        auto& super_block = _superBlocks[GetSuperIndex(cx, cy)];
+        int64_t cx {safe_numeric_cast<int64_t>(pos.x) / CHUNK_SIDE};
+        int64_t cy {safe_numeric_cast<int64_t>(pos.y) / CHUNK_SIDE};
+        auto& super_block {_superBlocks[GetSuperIndex(cx, cy)]};
 
         if (!super_block) {
             super_block = safe_alloc::make_unique<SuperBlock>();
         }
 
-        auto& chunk = super_block->Chunks[GetSlotIndex(cx, cy)];
+        auto& chunk {super_block->Chunks[GetSlotIndex(cx, cy)]};
 
         if (!chunk) {
             chunk = safe_alloc::make_unique<Chunk>();
@@ -243,10 +243,10 @@ public:
         ChunkedTwoDimensionalGrid replacement {size};
 
         ForEachChunk([&](int64_t cx, int64_t cy, Chunk& chunk) {
-            for (size_t cell_index = 0; cell_index < chunk.size(); cell_index++) {
-                int64_t cell_slot = numeric_cast<int64_t>(cell_index);
-                int64_t x = cx * CHUNK_SIDE + cell_slot % CHUNK_SIDE;
-                int64_t y = cy * CHUNK_SIDE + cell_slot / CHUNK_SIDE;
+            for (size_t cell_index {0}; cell_index < chunk.size(); cell_index++) {
+                int64_t cell_slot {numeric_cast<int64_t>(cell_index)};
+                int64_t x {cx * CHUNK_SIDE + cell_slot % CHUNK_SIDE};
+                int64_t y {cy * CHUNK_SIDE + cell_slot / CHUNK_SIDE};
 
                 if (x < size.width && y < size.height) {
                     TPos pos {numeric_cast<decltype(pos.x)>(x), numeric_cast<decltype(pos.y)>(y)};
@@ -263,32 +263,32 @@ public:
 
     void ClearArea(TPos origin, TSize area) override
     {
-        auto bounds = base::ClipArea(origin, area);
+        auto bounds {base::ClipArea(origin, area)};
 
         if (!bounds) {
             return;
         }
 
-        auto [x0, y0, x1, y1] = *bounds;
+        auto [x0, y0, x1, y1] {*bounds};
 
-        for (int64_t cy = y0 / CHUNK_SIDE; cy <= (y1 - 1) / CHUNK_SIDE; cy++) {
-            for (int64_t cx = x0 / CHUNK_SIDE; cx <= (x1 - 1) / CHUNK_SIDE; cx++) {
-                auto& super_block = _superBlocks[GetSuperIndex(cx, cy)];
+        for (int64_t cy {y0 / CHUNK_SIDE}; cy <= (y1 - 1) / CHUNK_SIDE; cy++) {
+            for (int64_t cx {x0 / CHUNK_SIDE}; cx <= (x1 - 1) / CHUNK_SIDE; cx++) {
+                auto& super_block {_superBlocks[GetSuperIndex(cx, cy)]};
 
                 if (!super_block) {
                     cx = (cx / SUPER_SIDE + 1) * SUPER_SIDE - 1; // Skip the remaining slots of this absent super block row
                     continue;
                 }
 
-                auto& chunk = super_block->Chunks[GetSlotIndex(cx, cy)];
+                auto& chunk {super_block->Chunks[GetSlotIndex(cx, cy)]};
 
                 if (!chunk) {
                     continue;
                 }
 
-                int64_t chunk_x0 = cx * CHUNK_SIDE;
-                int64_t chunk_y0 = cy * CHUNK_SIDE;
-                bool covered = x0 <= chunk_x0 && y0 <= chunk_y0 && x1 >= chunk_x0 + CHUNK_SIDE && y1 >= chunk_y0 + CHUNK_SIDE;
+                int64_t chunk_x0 {cx * CHUNK_SIDE};
+                int64_t chunk_y0 {cy * CHUNK_SIDE};
+                bool covered {x0 <= chunk_x0 && y0 <= chunk_y0 && x1 >= chunk_x0 + CHUNK_SIDE && y1 >= chunk_y0 + CHUNK_SIDE};
 
                 if (covered) {
                     chunk.reset();
@@ -299,8 +299,8 @@ public:
                     }
                 }
                 else {
-                    for (int64_t y = std::max(y0, chunk_y0); y < std::min(y1, chunk_y0 + CHUNK_SIDE); y++) {
-                        for (int64_t x = std::max(x0, chunk_x0); x < std::min(x1, chunk_x0 + CHUNK_SIDE); x++) {
+                    for (int64_t y {std::max(y0, chunk_y0)}; y < std::min(y1, chunk_y0 + CHUNK_SIDE); y++) {
+                        for (int64_t x {std::max(x0, chunk_x0)}; x < std::min(x1, chunk_x0 + CHUNK_SIDE); x++) {
                             (*chunk)[numeric_cast<size_t>((y - chunk_y0) * CHUNK_SIDE + (x - chunk_x0))] = TCell {};
                         }
                     }
@@ -320,19 +320,19 @@ private:
     template<typename TCallback>
     void ForEachChunk(TCallback&& callback)
     {
-        for (size_t super_index = 0; super_index < _superBlocks.size(); super_index++) {
-            auto& super_block = _superBlocks[super_index];
+        for (size_t super_index {0}; super_index < _superBlocks.size(); super_index++) {
+            auto& super_block {_superBlocks[super_index]};
 
             if (!super_block) {
                 continue;
             }
 
-            int64_t sx = numeric_cast<int64_t>(super_index) % _superPerRow;
-            int64_t sy = numeric_cast<int64_t>(super_index) / _superPerRow;
+            int64_t sx {numeric_cast<int64_t>(super_index) % _superPerRow};
+            int64_t sy {numeric_cast<int64_t>(super_index) / _superPerRow};
 
-            for (size_t slot = 0; slot < super_block->Chunks.size(); slot++) {
-                if (auto& chunk = super_block->Chunks[slot]) {
-                    int64_t slot_value = numeric_cast<int64_t>(slot);
+            for (size_t slot {0}; slot < super_block->Chunks.size(); slot++) {
+                if (auto& chunk {super_block->Chunks[slot]}) {
+                    int64_t slot_value {numeric_cast<int64_t>(slot)};
                     callback(sx * SUPER_SIDE + slot_value % SUPER_SIDE, sy * SUPER_SIDE + slot_value / SUPER_SIDE, *chunk);
                 }
             }
@@ -414,16 +414,16 @@ public:
 
     void ClearArea(TPos origin, TSize area) override
     {
-        auto bounds = base::ClipArea(origin, area);
+        auto bounds {base::ClipArea(origin, area)};
 
         if (!bounds) {
             return;
         }
 
-        auto [x0, y0, x1, y1] = *bounds;
+        auto [x0, y0, x1, y1] {*bounds};
 
-        for (int64_t y = y0; y < y1; y++) {
-            for (int64_t x = x0; x < x1; x++) {
+        for (int64_t y {y0}; y < y1; y++) {
+            for (int64_t x {x0}; x < x1; x++) {
                 _preallocatedCells[numeric_cast<size_t>(y * base::_size.width + x)].reset();
             }
         }
