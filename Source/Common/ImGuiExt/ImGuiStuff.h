@@ -518,8 +518,8 @@ inline void ImGuiTextUnformatted(string_view text)
         return;
     }
 
-    auto text_begin = make_nptr(text.data());
-    auto text_end = text_begin.offset(text.size());
+    auto text_begin {make_nptr(text.data())};
+    auto text_end {text_begin.offset(text.size())};
     ImGui::TextUnformatted(text_begin.get(), text_end.get());
 }
 

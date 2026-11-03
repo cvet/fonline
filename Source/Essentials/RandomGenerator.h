@@ -58,8 +58,8 @@ public:
 
     [[nodiscard]] auto next() noexcept -> uint64_t
     {
-        uint64_t result = rotate_left(_state[0] + _state[3], 23) + _state[0];
-        uint64_t shifted = _state[1] << 17;
+        uint64_t result {rotate_left(_state[0] + _state[3], 23) + _state[0]};
+        uint64_t shifted {_state[1] << 17};
 
         _state[2] ^= _state[0];
         _state[3] ^= _state[1];
@@ -79,11 +79,11 @@ public:
     {
         FO_VERIFY_AND_THROW(bound != 0, "Random bound must be positive");
 
-        uint64_t product = static_cast<uint64_t>(static_cast<uint32_t>(next())) * bound;
-        uint32_t low = static_cast<uint32_t>(product);
+        uint64_t product {static_cast<uint64_t>(static_cast<uint32_t>(next())) * bound};
+        uint32_t low {static_cast<uint32_t>(product)};
 
         if (low < bound) {
-            uint32_t threshold = (~bound + 1) % bound;
+            uint32_t threshold {(~bound + 1) % bound};
 
             while (low < threshold) {
                 product = static_cast<uint64_t>(static_cast<uint32_t>(next())) * bound;
@@ -99,7 +99,7 @@ public:
     {
         FO_VERIFY_AND_THROW(min_value <= max_value, "Random range must not be inverted", min_value, max_value);
 
-        uint64_t span = static_cast<uint64_t>(static_cast<int64_t>(max_value) - static_cast<int64_t>(min_value)) + 1;
+        uint64_t span {static_cast<uint64_t>(static_cast<int64_t>(max_value) - static_cast<int64_t>(min_value)) + 1};
 
         if (span > std::numeric_limits<uint32_t>::max()) {
             return static_cast<int32_t>(static_cast<uint32_t>(next()));
@@ -132,7 +132,7 @@ private:
     {
         state += 0x9E3779B97F4A7C15ULL;
 
-        uint64_t mixed = state;
+        uint64_t mixed {state};
         mixed = (mixed ^ (mixed >> 30)) * 0xBF58476D1CE4E5B9ULL;
         mixed = (mixed ^ (mixed >> 27)) * 0x94D049BB133111EBULL;
 

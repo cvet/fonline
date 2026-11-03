@@ -120,15 +120,15 @@ class nptr;
 // True for the borrow pointer-wrapper vocabulary (ptr/nptr/refcount_ptr/refcount_nptr).
 // Used by marshalling layers to treat a wrapped entity pointer like the raw pointer it borrows
 template<typename>
-inline constexpr bool is_borrow_pointer_wrapper_v = false;
+inline constexpr bool is_borrow_pointer_wrapper_v {false};
 template<typename T>
-inline constexpr bool is_borrow_pointer_wrapper_v<ptr<T>> = true;
+inline constexpr bool is_borrow_pointer_wrapper_v<ptr<T>> {true};
 template<typename T>
-inline constexpr bool is_borrow_pointer_wrapper_v<nptr<T>> = true;
+inline constexpr bool is_borrow_pointer_wrapper_v<nptr<T>> {true};
 template<typename T>
-inline constexpr bool is_borrow_pointer_wrapper_v<refcount_ptr<T>> = true;
+inline constexpr bool is_borrow_pointer_wrapper_v<refcount_ptr<T>> {true};
 template<typename T>
-inline constexpr bool is_borrow_pointer_wrapper_v<refcount_nptr<T>> = true;
+inline constexpr bool is_borrow_pointer_wrapper_v<refcount_nptr<T>> {true};
 
 template<typename T>
 class unique_ptr;
@@ -146,33 +146,33 @@ class shared_ptr;
 // Owning smart pointers (refcount_ptr/unique_ptr/shared_ptr/unique_del_ptr and their nullable variants)
 // implicitly convert to a borrowed view (ptr/nptr) via ptr's/nptr's converting constructors below
 template<typename>
-inline constexpr bool is_nonnull_owning_pointer_v = false;
+inline constexpr bool is_nonnull_owning_pointer_v {false};
 template<typename T>
-inline constexpr bool is_nonnull_owning_pointer_v<refcount_ptr<T>> = true;
+inline constexpr bool is_nonnull_owning_pointer_v<refcount_ptr<T>> {true};
 template<typename T>
-inline constexpr bool is_nonnull_owning_pointer_v<unique_ptr<T>> = true;
+inline constexpr bool is_nonnull_owning_pointer_v<unique_ptr<T>> {true};
 template<typename T>
-inline constexpr bool is_nonnull_owning_pointer_v<unique_del_ptr<T>> = true;
+inline constexpr bool is_nonnull_owning_pointer_v<unique_del_ptr<T>> {true};
 
 template<typename T>
-inline constexpr bool is_owning_pointer_v = is_nonnull_owning_pointer_v<T>;
+inline constexpr bool is_owning_pointer_v {is_nonnull_owning_pointer_v<T>};
 template<typename T>
-inline constexpr bool is_owning_pointer_v<refcount_nptr<T>> = true;
+inline constexpr bool is_owning_pointer_v<refcount_nptr<T>> {true};
 template<typename T>
-inline constexpr bool is_owning_pointer_v<unique_nptr<T>> = true;
+inline constexpr bool is_owning_pointer_v<unique_nptr<T>> {true};
 template<typename T>
-inline constexpr bool is_owning_pointer_v<unique_del_nptr<T>> = true;
+inline constexpr bool is_owning_pointer_v<unique_del_nptr<T>> {true};
 template<typename T>
-inline constexpr bool is_owning_pointer_v<unique_arr_ptr<T>> = true;
+inline constexpr bool is_owning_pointer_v<unique_arr_ptr<T>> {true};
 template<typename T>
-inline constexpr bool is_owning_pointer_v<shared_ptr<T>> = true;
+inline constexpr bool is_owning_pointer_v<shared_ptr<T>> {true};
 
 // The nullable borrow wrapper. A guard-checked nptr implicitly narrows to a non-null ptr (with an always-on
 // non-null assert) through ptr's converting constructor below, so a checked nptr needs no manual .as_ptr()
 template<typename>
-inline constexpr bool is_nptr_v = false;
+inline constexpr bool is_nptr_v {false};
 template<typename T>
-inline constexpr bool is_nptr_v<nptr<T>> = true;
+inline constexpr bool is_nptr_v<nptr<T>> {true};
 
 template<typename T>
 class ptr
@@ -920,7 +920,7 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto take_not_null() noexcept -> unique_ptr<T>
     {
         FO_BASIC_STRONG_ASSERT(_ptr != nullptr);
-        auto released_ptr = ptr<T> {release()};
+        auto released_ptr {ptr<T> {release()}};
         return unique_ptr<T>(released_ptr.get());
     }
 
@@ -992,7 +992,7 @@ public:
     [[nodiscard]] FO_FORCE_INLINE static auto from_addref(T* p) noexcept -> refcount_ptr
     {
         FO_BASIC_STRONG_ASSERT(p != nullptr);
-        refcount_ptr result;
+        refcount_ptr result {};
         result._ptr = p;
         result.addref();
         return result;
@@ -1003,7 +1003,7 @@ public:
     [[nodiscard]] FO_FORCE_INLINE static auto from_adopted_ref(T* p) noexcept -> refcount_ptr
     {
         FO_BASIC_STRONG_ASSERT(p != nullptr);
-        refcount_ptr result;
+        refcount_ptr result {};
         result._ptr = p;
         return result;
     }
@@ -1173,7 +1173,7 @@ public:
 
     [[nodiscard]] FO_FORCE_INLINE static auto from_addref(T* p) noexcept -> refcount_nptr
     {
-        refcount_nptr result;
+        refcount_nptr result {};
         result._ptr = p;
         result.addref();
         return result;
@@ -1190,7 +1190,7 @@ public:
                 return {};
             }
 
-            refcount_nptr result;
+            refcount_nptr result {};
             result._ptr = p;
             return result;
         }
@@ -1201,7 +1201,7 @@ public:
 
     [[nodiscard]] FO_FORCE_INLINE static auto from_adopted_ref(T* p) noexcept -> refcount_nptr
     {
-        refcount_nptr result;
+        refcount_nptr result {};
         result._ptr = p;
         return result;
     }
@@ -1505,7 +1505,7 @@ public:
     FO_FORCE_INLINE void add_strong_ref() noexcept { _strong_refs.fetch_add(1, std::memory_order_relaxed); }
     [[nodiscard]] FO_FORCE_INLINE auto add_strong_ref_if_alive() noexcept -> bool
     {
-        int64_t refs = _strong_refs.load(std::memory_order_relaxed);
+        int64_t refs {_strong_refs.load(std::memory_order_relaxed)};
 
         while (refs > 0) {
             if (_strong_refs.compare_exchange_weak(refs, refs + 1, std::memory_order_acquire, std::memory_order_relaxed)) {
@@ -1531,7 +1531,7 @@ public:
     }
     [[nodiscard]] FO_FORCE_INLINE auto strong_ref_count() const noexcept -> size_t
     {
-        int64_t refs = _strong_refs.load(std::memory_order_relaxed);
+        int64_t refs {_strong_refs.load(std::memory_order_relaxed)};
         return refs > 0 ? static_cast<size_t>(refs) : 0;
     }
 
@@ -1636,8 +1636,8 @@ public:
     {
         if (this != &other) {
             // Read the source before releasing our reference: the source may live inside our pointee
-            shared_ptr_control_block* other_block = other._block;
-            T* other_obj = other._obj;
+            shared_ptr_control_block* other_block {other._block};
+            T* other_obj {other._obj};
 
             if (other_block != nullptr) {
                 other_block->add_strong_ref();
@@ -1656,8 +1656,8 @@ public:
     {
         if (this != &other) {
             // Steal the source before releasing our reference: the source may live inside our pointee
-            shared_ptr_control_block* other_block = std::exchange(other._block, nullptr);
-            T* other_obj = std::exchange(other._obj, nullptr);
+            shared_ptr_control_block* other_block {std::exchange(other._block, nullptr)};
+            T* other_obj {std::exchange(other._obj, nullptr)};
 
             if (_block != nullptr) {
                 _block->release_strong_ref();
@@ -1709,7 +1709,7 @@ public:
         requires(dynamically_castable_to<T, U>)
     [[nodiscard]] FO_FORCE_INLINE auto dyn_cast() noexcept -> shared_ptr<U>
     {
-        if (U* casted = dynamic_cast<U*>(_obj)) {
+        if (U * casted {dynamic_cast<U*>(_obj)}) {
             _block->add_strong_ref();
             return shared_ptr<U>(_block, casted);
         }
@@ -1720,7 +1720,7 @@ public:
         requires(dynamically_castable_to<T, const U>)
     [[nodiscard]] FO_FORCE_INLINE auto dyn_cast() const noexcept -> shared_ptr<const U>
     {
-        if (const U* casted = dynamic_cast<const U*>(_obj)) {
+        if (const U* casted {dynamic_cast<const U*>(_obj)}) {
             _block->add_strong_ref();
             return shared_ptr<const U>(_block, casted);
         }
@@ -1810,8 +1810,8 @@ public:
     {
         if (this != &other) {
             // Read the source before releasing our reference: the source may live inside owned storage
-            shared_ptr_control_block* other_block = other._block;
-            T* other_obj = other._obj;
+            shared_ptr_control_block* other_block {other._block};
+            T* other_obj {other._obj};
 
             if (other_block != nullptr) {
                 other_block->add_weak_ref();
@@ -1830,8 +1830,8 @@ public:
     {
         if (this != &other) {
             // Steal the source before releasing our reference: the source may live inside owned storage
-            shared_ptr_control_block* other_block = std::exchange(other._block, nullptr);
-            T* other_obj = std::exchange(other._obj, nullptr);
+            shared_ptr_control_block* other_block {std::exchange(other._block, nullptr)};
+            T* other_obj {std::exchange(other._obj, nullptr)};
 
             if (_block != nullptr) {
                 _block->release_weak_ref();
@@ -1848,8 +1848,8 @@ public:
     FO_FORCE_INLINE auto operator=(const shared_ptr<U>& owner) noexcept -> weak_ptr&
     {
         // Read the source before releasing our reference: the source may live inside owned storage
-        shared_ptr_control_block* owner_block = owner._block;
-        T* owner_obj = owner._obj;
+        shared_ptr_control_block* owner_block {owner._block};
+        T* owner_obj {owner._obj};
 
         if (owner_block != nullptr) {
             owner_block->add_weak_ref();
@@ -1896,13 +1896,13 @@ class enable_shared_from_this
 public:
     [[nodiscard]] FO_FORCE_INLINE auto shared_from_this() -> shared_ptr<T>
     {
-        auto locked = _weak_this.lock();
+        auto locked {_weak_this.lock()};
         FO_BASIC_STRONG_ASSERT(locked);
         return locked;
     }
     [[nodiscard]] FO_FORCE_INLINE auto shared_from_this() const -> shared_ptr<const T>
     {
-        shared_ptr<const T> locked = _weak_this.lock();
+        shared_ptr<const T> locked {_weak_this.lock()};
         FO_BASIC_STRONG_ASSERT(locked);
         return locked;
     }
@@ -2023,8 +2023,8 @@ public:
     {
         if (this != &other) {
             // Steal the source before destroying our pointee: the source may live inside it
-            T* other_ptr = std::exchange(other._ptr, nullptr);
-            function<void(T*)> other_deleter = std::move(other._deleter);
+            T* other_ptr {std::exchange(other._ptr, nullptr)};
+            function<void(T*)> other_deleter {std::move(other._deleter)};
 
             destroy();
 
@@ -2104,7 +2104,7 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto release() noexcept -> T* { return std::exchange(_ptr, nullptr); }
     FO_FORCE_INLINE void reset(T* p = nullptr) noexcept
     {
-        T* old = std::exchange(_ptr, p);
+        T* old {std::exchange(_ptr, p)};
 
         if (old != nullptr) {
             FO_BASIC_STRONG_ASSERT(_deleter);
@@ -2241,7 +2241,7 @@ template<typename T>
 template<typename T>
 [[nodiscard]] auto adopt_unique_ptr(nptr<T> value) noexcept -> unique_ptr<T>
 {
-    ptr<T> checked_value = value;
+    ptr<T> checked_value {value};
     return adopt_unique_ptr(checked_value);
 }
 
@@ -2263,9 +2263,9 @@ template<typename T>
 [[nodiscard]] auto take_not_null(unique_del_nptr<T>& value) noexcept -> unique_del_ptr<T>
 {
     FO_BASIC_STRONG_ASSERT(value);
-    auto value_ptr = ptr<T> {value};
-    auto deleter = std::move(value.get_deleter());
-    nptr<T> released = value.release();
+    auto value_ptr {ptr<T> {value}};
+    auto deleter {std::move(value.get_deleter())};
+    nptr<T> released {value.release()};
     ignore_unused(released);
     return unique_del_ptr<T> {value_ptr.get(), std::move(deleter)};
 }

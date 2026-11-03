@@ -35,16 +35,16 @@
 
 FO_BEGIN_NAMESPACE
 
-global_data::callback global_data::create_callbacks[global_data::MAX_CALLBACKS];
-global_data::callback global_data::delete_callbacks[global_data::MAX_CALLBACKS];
-const char* global_data::callback_names[global_data::MAX_CALLBACKS];
-int32_t global_data::callbacks_count;
+global_data::callback global_data::create_callbacks[global_data::MAX_CALLBACKS] {};
+global_data::callback global_data::delete_callbacks[global_data::MAX_CALLBACKS] {};
+const char* global_data::callback_names[global_data::MAX_CALLBACKS] {};
+int32_t global_data::callbacks_count {};
 
 // This module is the process-wide bootstrap registry that every engine instance is built on, so its state
 // is file-scope by necessity. The arrays are filled by static constructors, which run single-threaded
-static std::recursive_mutex global_data_locker;
-static bool global_data_created = false;
-static bool global_data_sweeping = false;
+static std::recursive_mutex global_data_locker {};
+static bool global_data_created {false};
+static bool global_data_sweeping {false};
 
 // A callback that reaches back into a sweep would build or tear down the set on top of itself. The lock is
 // recursive so that the second entry arrives here and says what happened, instead of hanging inside it
@@ -69,7 +69,7 @@ auto global_data::create() -> bool
 
     // The callbacks are noexcept, so this loop either completes or the process is gone: no caller ever
     // observes a partially built set of globals, and nothing can skip the reset below
-    for (int32_t i = 0; i < global_data::callbacks_count; i++) {
+    for (int32_t i {0}; i < global_data::callbacks_count; i++) {
         global_data::create_callbacks[i]();
     }
 
@@ -91,7 +91,7 @@ void global_data::destroy(teardown_observer observer, void* observer_context)
     global_data_created = false;
     global_data_sweeping = true;
 
-    for (int32_t i = 0; i < global_data::callbacks_count; i++) {
+    for (int32_t i {0}; i < global_data::callbacks_count; i++) {
         if (observer != nullptr) {
             observer(observer_context, global_data::callback_names[i] != nullptr ? global_data::callback_names[i] : "");
         }

@@ -44,12 +44,12 @@ namespace
     template<typename Func>
     auto BestElapsed(size_t attempts, Func&& sleeper) -> std::chrono::nanoseconds
     {
-        auto best = std::chrono::nanoseconds::max();
+        auto best {std::chrono::nanoseconds::max()};
 
-        for (size_t i = 0; i < attempts; i++) {
-            auto started = std::chrono::steady_clock::now();
+        for (size_t i {0}; i < attempts; i++) {
+            auto started {std::chrono::steady_clock::now()};
             sleeper();
-            auto elapsed = std::chrono::steady_clock::now() - started;
+            auto elapsed {std::chrono::steady_clock::now() - started};
 
             best = std::min(best, std::chrono::duration_cast<std::chrono::nanoseconds>(elapsed));
         }
@@ -66,7 +66,7 @@ TEST_CASE("Threading")
         for (std::chrono::microseconds requested : {std::chrono::microseconds {100}, std::chrono::microseconds {250}, std::chrono::microseconds {500}}) {
             CAPTURE(requested.count());
 
-            auto best = BestElapsed(20, [requested] { precise_sleep(requested); });
+            auto best {BestElapsed(20, [requested] { precise_sleep(requested); })};
 
             CHECK(best >= requested);
             CHECK(best < std::chrono::milliseconds {5});
@@ -75,7 +75,7 @@ TEST_CASE("Threading")
 
     SECTION("PreciseSleepReachesItsDeadlineForLongerWaits")
     {
-        auto best = BestElapsed(5, [] { precise_sleep(std::chrono::milliseconds {4}); });
+        auto best {BestElapsed(5, [] { precise_sleep(std::chrono::milliseconds {4}); })};
 
         CHECK(best >= std::chrono::milliseconds {4});
         CHECK(best < std::chrono::milliseconds {8});
@@ -83,7 +83,7 @@ TEST_CASE("Threading")
 
     SECTION("CoarseSleepLandsWithinHalfAMillisecond")
     {
-        auto best = BestElapsed(10, [] { coarse_sleep(std::chrono::milliseconds {2}); });
+        auto best {BestElapsed(10, [] { coarse_sleep(std::chrono::milliseconds {2}); })};
 
         CHECK(best >= std::chrono::microseconds {1500});
         CHECK(best < std::chrono::milliseconds {6});
@@ -91,7 +91,7 @@ TEST_CASE("Threading")
 
     SECTION("NonPositiveDurationReturnsImmediately")
     {
-        auto started = std::chrono::steady_clock::now();
+        auto started {std::chrono::steady_clock::now()};
 
         precise_sleep(std::chrono::nanoseconds::zero());
         coarse_sleep(std::chrono::nanoseconds::zero());

@@ -106,7 +106,7 @@ TEST_CASE("TwoDimensionalGrid")
     SECTION("ChunkedGridKeepsCellAddressesAcrossChunkAllocations")
     {
         ChunkedTwoDimensionalGrid<int32_t, ipos32, isize32, 16> grid {{33, 35}};
-        ptr<int32_t> first_cell = grid.GetCellForWriting({15, 15});
+        ptr<int32_t> first_cell {grid.GetCellForWriting({15, 15})};
         *first_cell = 42;
 
         for (ipos32 pos : {ipos32 {16, 15}, ipos32 {15, 16}, ipos32 {16, 16}, ipos32 {32, 34}}) {
@@ -160,10 +160,10 @@ TEST_CASE("TwoDimensionalGrid")
 
     SECTION("ChunkedGridUsesConfiguredChunkSideAcrossResize")
     {
-        auto check_chunk_side = []<size_t ChunkSide>() {
-            constexpr int32_t side = const_numeric_cast<int32_t>(ChunkSide);
+        auto check_chunk_side {[]<size_t ChunkSide>() {
+            constexpr int32_t side {const_numeric_cast<int32_t>(ChunkSide)};
             ChunkedTwoDimensionalGrid<int32_t, ipos32, isize32, ChunkSide> grid {{side * 2 + 1, side * 2 + 3}};
-            ptr<int32_t> first_cell = grid.GetCellForWriting({side - 1, side - 1});
+            ptr<int32_t> first_cell {grid.GetCellForWriting({side - 1, side - 1})};
             *first_cell = 42;
 
             for (ipos32 pos : {ipos32 {side, side - 1}, ipos32 {side - 1, side}, ipos32 {side, side}, ipos32 {side * 2, side * 2 + 2}}) {
@@ -180,7 +180,7 @@ TEST_CASE("TwoDimensionalGrid")
             CHECK(grid.GetCellForReading({side - 1, side}) == 7);
             CHECK(grid.GetCellForReading({side, side}) == 7);
             CHECK(grid.GetCellForReading({side * 2, side * 2 + 2}) == 0);
-        };
+        }};
 
         check_chunk_side.operator()<1>();
         check_chunk_side.operator()<8>();

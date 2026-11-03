@@ -123,7 +123,7 @@ struct std::formatter<FO_NAMESPACE ucolor> : formatter<FO_NAMESPACE string_view>
     template<typename FormatContext>
     auto format(const FO_NAMESPACE ucolor& value, FormatContext& ctx) const
     {
-        FO_NAMESPACE string buf;
+        FO_NAMESPACE string buf {};
         std::format_to(std::back_inserter(buf), "0x{:x}", value.rgba);
         return formatter<FO_NAMESPACE string_view>::format(buf, ctx);
     }
@@ -342,10 +342,10 @@ struct irect
     void expand(const irect& other) noexcept { *this = expanded(other); }
     [[nodiscard]] auto expanded(const irect& other) const noexcept -> irect
     {
-        T x1 = std::min(x, other.x);
-        T y1 = std::min(y, other.y);
-        T x2 = std::max(x + width, other.x + other.width);
-        T y2 = std::max(y + height, other.y + other.height);
+        T x1 {std::min(x, other.x)};
+        T y1 {std::min(y, other.y)};
+        T x2 {std::max(x + width, other.x + other.width)};
+        T y2 {std::max(y + height, other.y + other.height)};
         return irect(x1, y1, x2 - x1, y2 - y1);
     }
 
@@ -594,10 +594,10 @@ struct frect
     void expand(const frect& other) noexcept { *this = expanded(other); }
     [[nodiscard]] auto expanded(const frect& other) const noexcept -> frect
     {
-        T x1 = std::min(x, other.x);
-        T y1 = std::min(y, other.y);
-        T x2 = std::max(x + width, other.x + other.width);
-        T y2 = std::max(y + height, other.y + other.height);
+        T x1 {std::min(x, other.x)};
+        T y1 {std::min(y, other.y)};
+        T x2 {std::max(x + width, other.x + other.width)};
+        T y2 {std::max(y + height, other.y + other.height)};
         return frect(x1, y1, x2 - y2, y2 - y1);
     }
 

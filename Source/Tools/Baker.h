@@ -45,8 +45,8 @@ FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(ResourceBakingException);
 
-inline constexpr string_view BAKER_CACHE_DIR = ".baker-cache";
-inline constexpr string_view REPORT_FILE_SUFFIX = ".report.json";
+inline constexpr string_view BAKER_CACHE_DIR {".baker-cache"};
+inline constexpr string_view REPORT_FILE_SUFFIX {".report.json"};
 
 class Properties;
 class ScriptSystem;
@@ -96,7 +96,7 @@ protected:
     void RecordSpriteMeshBakingFrame(const SpriteMeshBakingFrameReport& frame) const;
     void RecordSharedSpriteMeshBakingFrames(uint64_t count) const;
 
-    shared_ptr<BakingContext> _context;
+    shared_ptr<BakingContext> _context {};
 
 private:
     // Fallback for a property script func the AngelScript-only bake script system can't resolve: a managed func

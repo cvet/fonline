@@ -37,7 +37,7 @@ FO_BEGIN_NAMESPACE
 
 void ImageImport::CheckEnabled(string_view fname)
 {
-    string ext = strex(fname).get_file_extension();
+    string ext {static_cast<string&&>(strex(fname).get_file_extension())};
     ignore_unused(ext);
 
 #if !FO_IMAGE_FRM

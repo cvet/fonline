@@ -71,9 +71,9 @@ private:
 class NoiseHandshakeNK final
 {
 public:
-    static constexpr string_view PROTOCOL_NAME = "Noise_NK_25519_ChaChaPoly_BLAKE2b";
+    static constexpr string_view PROTOCOL_NAME {"Noise_NK_25519_ChaChaPoly_BLAKE2b"};
     // Each of the two messages carries an ephemeral key and the tag of its encrypted payload
-    static constexpr size_t MESSAGE_OVERHEAD = crypto::key_size + crypto::aead_tag_size;
+    static constexpr size_t MESSAGE_OVERHEAD {crypto::key_size + crypto::aead_tag_size};
 
     struct TransportCiphers
     {
@@ -103,7 +103,7 @@ public:
     auto Split() -> TransportCiphers;
 
 private:
-    static constexpr size_t MESSAGE_COUNT = 2;
+    static constexpr size_t MESSAGE_COUNT {2};
 
     NoiseHandshakeNK(bool initiator, const_span<uint8_t> prologue, const crypto::key_bytes& static_secret_key, const crypto::key_bytes& responder_public_key, const crypto::key_bytes& ephemeral_secret_key);
 

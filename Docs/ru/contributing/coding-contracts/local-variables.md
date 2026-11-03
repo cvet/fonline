@@ -7,14 +7,40 @@ permalink: /Docs/ru/contributing/coding-contracts/local-variables.html
 ---
 
 # Локальные переменные
-<!-- docs-translation: {"document_id":"local-variables","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/local-variables.md","source_sha256":"9f1a122dc5f4c825be8e7fa3e4619403edb0de33977834e9925209add1cdd88b"} -->
-Этот документ определяет узкие правила собственного C++-кода для явного
-написания локальных типов, избыточного верхнеуровневого `const` и диагностики
+<!-- docs-translation: {"document_id":"local-variables","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/local-variables.md","source_sha256":"48b8e7281f14ef23720b1fa4e17372f0ccfaf9898014e0830626ea88111ee415"} -->
+Этот документ определяет правила собственного C++-кода для инициализации переменных,
+явного написания локальных типов, избыточного верхнеуровневого `const` и диагностики
 использования после перемещения.
 
 В движке нет отдельного правила «неизменяемость по умолчанию». Локальные
 переменные, параметры функций и методов следуют обычной семантике изменения
 C++ и не требуют аннотации при записи.
+
+## Инициализация через фигурные скобки
+
+Каждое определение переменной инициализируйте непосредственно фигурными скобками,
+где разрешён инициализатор: `T name {expression};`. Правило применяется к локальным
+переменным, полям, глобальным, статическим и thread-local переменным. Для начального
+состояния по умолчанию используйте пустые скобки, в том числе для объектов классов:
+`int32_t count {};`, `string text {};`.
+
+У инициализатора при объявлении есть два исключения:
+
+- Поле класса, инициализируемое его конструкторами, может не иметь инициализатора
+  в объявлении. Каждый применимый конструктор должен инициализировать его до использования.
+- Локальную переменную разрешено намеренно инициализировать позже. На каждом пути
+  управления ей должно быть присвоено значение до первого чтения; эта гарантия
+  должна быть видна из кода.
+
+Сохраняйте выбор конструктора, состав и размер контейнеров, выведенные типы и проверки
+преобразований. Скобки могут выбрать перегрузку `initializer_list`: замена
+`vector<int32_t> values(count)` на `vector<int32_t> values {count}` превращает размер
+в элемент. Явно создайте нужное значение и используйте его внутри инициализатора
+с фигурными скобками. Для сохранённого выведения используйте `auto value {expression};`;
+`auto value = {expression};` выводит список инициализации.
+
+Правило и два исключения проверяются при просмотре исходников. Описанные ниже
+анализаторы сохраняют прежнюю область типов, константности и использования после перемещения.
 
 ## Избыточный локальный `const`
 
@@ -22,18 +48,18 @@ C++ и не требуют аннотации при записи.
 если его удаление не меняет контракт типа:
 
 ```cpp
-int32_t count = GetCount();
-item_ptr item = FindItem();
+int32_t count {GetCount()};
+item_ptr item {FindItem()};
 ```
 
 Сохраняйте константность, являющуюся частью фактического типа или семантики
 значения:
 
 ```cpp
-const Item* item = FindItem();       // const pointee
-const Item& item = GetItem();        // const referent
-const int32_t values[] = {1, 2};     // const elements
-constexpr int32_t limit = 10;        // required by constexpr
+const Item* item {FindItem()};       // const pointee
+const Item& item {GetItem()};        // const referent
+const int32_t values[] {1, 2};       // const elements
+constexpr int32_t limit {10};        // required by constexpr
 ```
 
 У `int32_t* const pointer` верхнеуровневый `const` можно удалить, поэтому он
@@ -43,7 +69,7 @@ constexpr int32_t limit = 10;        // required by constexpr
 переменной можно подавить в строке диагностики или предыдущей строке:
 
 ```cpp
-const int32_t value = SelectOverload(); // FO_REDUNDANT_CONST_SUPPRESS: const is required for overload selection
+const int32_t value {SelectOverload()}; // FO_REDUNDANT_CONST_SUPPRESS: const is required for overload selection
 ```
 
 Причина обязательна и должна содержать не менее восьми символов.
@@ -67,19 +93,19 @@ const int32_t value = SelectOverload(); // FO_REDUNDANT_CONST_SUPPRESS: const is
 Примеры:
 
 ```cpp
-int32_t count = GetCount();
-float32_t factor = GetFactor();
-hstring name = GetName();
+int32_t count {GetCount()};
+float32_t factor {GetFactor()};
+hstring name {GetName()};
 ```
 
 Сохраняйте `auto` в случаях вроде:
 
 ```cpp
-auto values = vector<int32_t> {};
-auto iter = values.begin();                  // nested iterator type
-auto handle = MakeHandle<void>();            // template spelling
-auto pointer = GetRawPointer();               // explicit target may convert
-auto [left, right] = Split(value);            // structured binding
+auto values {vector<int32_t> {}};
+auto iter {values.begin()};                  // nested iterator type
+auto handle {MakeHandle<void>()};            // template spelling
+auto pointer {GetRawPointer()};              // explicit target may convert
+auto [left, right] {Split(value)};           // structured binding
 ```
 
 Если выведенный числовой примитив записывается явно, используйте размерное имя
@@ -104,7 +130,7 @@ auto [left, right] = Split(value);            // structured binding
 использование до корректной повторной инициализации:
 
 ```cpp
-value_type value = BuildValue();
+value_type value {BuildValue()};
 Consume(std::move(value));
 ```
 
@@ -118,7 +144,8 @@ CHECK(value.empty()); // FO_USE_AFTER_MOVE_SUPPRESS: test verifies the moved-fro
 
 ## Контроль соблюдения
 
-Эти правила рассчитаны на анализатор с `compile_commands.json` для Clang 20+:
+Правила типов, константности и использования после перемещения используют анализатор
+с `compile_commands.json` для Clang 20+:
 проверку явных типов и проверки `clang-query` / `clang-tidy` для избыточной
 локальной константности и использования после перемещения. Движок владеет
 только описанными правилами и маркерами `FO_REDUNDANT_CONST_SUPPRESS` /

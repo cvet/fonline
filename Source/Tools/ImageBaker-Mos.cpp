@@ -51,7 +51,7 @@ namespace ImageBakerMos
         ignore_unused(context);
 
         // Read signature
-        char head[8];
+        char head[8] {};
         reader.ReadObjectArray<char>(head);
 
         if (head[0] != 'M' || head[1] != 'O' || head[2] != 'S') {
@@ -59,19 +59,19 @@ namespace ImageBakerMos
         }
 
         // Packed
-        vector<uint8_t> unpacked_data;
+        vector<uint8_t> unpacked_data {};
 
         if (head[3] == 'C') {
-            uint32_t unpacked_len = reader.ReadLEUInt32();
-            size_t data_len = reader.GetSize() - size_t {12};
+            uint32_t unpacked_len {reader.ReadLEUInt32()};
+            size_t data_len {reader.GetSize() - size_t {12}};
 
-            vector<uint8_t> packed_data = reader.GetData();
+            vector<uint8_t> packed_data {reader.GetData()};
             packed_data.resize(data_len);
             FO_VERIFY_AND_THROW(packed_data.size() >= 2, "Packed data is too small to hold a zlib header", packed_data.size());
             packed_data[0] = 0x78;
             packed_data[1] = 0x9C;
 
-            size_t unpacked_size_hint = checked_add(numeric_cast<size_t>(unpacked_len) / reader.GetSize(), size_t {1});
+            size_t unpacked_size_hint {checked_add(numeric_cast<size_t>(unpacked_len) / reader.GetSize(), size_t {1})};
             unpacked_data = compressor::decompress(packed_data, unpacked_size_hint);
 
             if (unpacked_data.empty()) {
@@ -87,50 +87,50 @@ namespace ImageBakerMos
         }
 
         // Read header
-        int32_t width = numeric_cast<int32_t>(reader.ReadLEUInt16()); // Width (pixels)
-        int32_t height = numeric_cast<int32_t>(reader.ReadLEUInt16()); // Height (pixels)
-        int32_t col = numeric_cast<int32_t>(reader.ReadLEUInt16()); // Columns (blocks)
-        int32_t row = numeric_cast<int32_t>(reader.ReadLEUInt16()); // Rows (blocks)
-        uint32_t block_size = reader.ReadLEUInt32(); // Block size (pixels)
+        int32_t width {numeric_cast<int32_t>(reader.ReadLEUInt16())}; // Width (pixels)
+        int32_t height {numeric_cast<int32_t>(reader.ReadLEUInt16())}; // Height (pixels)
+        int32_t col {numeric_cast<int32_t>(reader.ReadLEUInt16())}; // Columns (blocks)
+        int32_t row {numeric_cast<int32_t>(reader.ReadLEUInt16())}; // Rows (blocks)
+        uint32_t block_size {reader.ReadLEUInt32()}; // Block size (pixels)
         ignore_unused(block_size);
-        int64_t palette_offset_wide = numeric_cast<int64_t>(reader.ReadLEUInt32()); // Offset (from start of file) to palettes
-        int64_t block_count = checked_mul(numeric_cast<int64_t>(col), numeric_cast<int64_t>(row));
-        int64_t palette_data_size = checked_mul(block_count, int64_t {256 * 4});
-        int64_t tile_index_size = checked_mul(block_count, int64_t {4});
-        int64_t tiles_offset_wide = checked_add(palette_offset_wide, palette_data_size);
-        int64_t data_offset_wide = checked_add(tiles_offset_wide, tile_index_size);
-        size_t palette_offset = numeric_cast<size_t>(palette_offset_wide);
-        size_t tiles_offset = numeric_cast<size_t>(tiles_offset_wide);
-        size_t data_offset = numeric_cast<size_t>(data_offset_wide);
+        int64_t palette_offset_wide {numeric_cast<int64_t>(reader.ReadLEUInt32())}; // Offset (from start of file) to palettes
+        int64_t block_count {checked_mul(numeric_cast<int64_t>(col), numeric_cast<int64_t>(row))};
+        int64_t palette_data_size {checked_mul(block_count, int64_t {256 * 4})};
+        int64_t tile_index_size {checked_mul(block_count, int64_t {4})};
+        int64_t tiles_offset_wide {checked_add(palette_offset_wide, palette_data_size)};
+        int64_t data_offset_wide {checked_add(tiles_offset_wide, tile_index_size)};
+        size_t palette_offset {numeric_cast<size_t>(palette_offset_wide)};
+        size_t tiles_offset {numeric_cast<size_t>(tiles_offset_wide)};
+        size_t data_offset {numeric_cast<size_t>(data_offset_wide)};
 
         // Allocate data
         FO_VERIFY_AND_THROW(width > 0 && height > 0, "Invalid MOS dimensions", fname, width, height);
 
-        int64_t pixel_count = checked_mul(numeric_cast<int64_t>(width), numeric_cast<int64_t>(height));
-        size_t data_size = numeric_cast<size_t>(checked_mul(pixel_count, int64_t {4}));
-        vector<uint8_t> data(data_size);
-        span<uint32_t> pixels = bytes_to_objects<uint32_t>(span {data});
+        int64_t pixel_count {checked_mul(numeric_cast<int64_t>(width), numeric_cast<int64_t>(height))};
+        size_t data_size {numeric_cast<size_t>(checked_mul(pixel_count, int64_t {4}))};
+        vector<uint8_t> data {vector<uint8_t>(data_size)};
+        span<uint32_t> pixels {bytes_to_objects<uint32_t>(span {data})};
 
         // Read image data
-        uint32_t palette[256] = {0};
-        int64_t block = 0;
+        uint32_t palette[256] {0};
+        int64_t block {0};
 
-        for (int32_t y = 0; y < row; y++) {
-            for (int32_t x = 0; x < col; x++) {
+        for (int32_t y {0}; y < row; y++) {
+            for (int32_t x {0}; x < col; x++) {
                 // Get palette for current block
-                size_t palette_block_offset = checked_mul(numeric_cast<size_t>(block), size_t {256 * 4});
+                size_t palette_block_offset {checked_mul(numeric_cast<size_t>(block), size_t {256 * 4})};
                 reader.SetCurPos(checked_add(palette_offset, palette_block_offset));
                 reader.ReadObjectArray<uint32_t>(palette);
 
                 // Set initial position
-                size_t tile_block_offset = checked_mul(numeric_cast<size_t>(block), size_t {4});
+                size_t tile_block_offset {checked_mul(numeric_cast<size_t>(block), size_t {4})};
                 reader.SetCurPos(checked_add(tiles_offset, tile_block_offset));
-                size_t block_data_offset = numeric_cast<size_t>(reader.ReadLEUInt32());
+                size_t block_data_offset {numeric_cast<size_t>(reader.ReadLEUInt32())};
                 reader.SetCurPos(checked_add(data_offset, block_data_offset));
 
                 // Calculate current block size
-                int32_t block_w = x == col - 1 ? width % 64 : 64;
-                int32_t block_h = y == row - 1 ? height % 64 : 64;
+                int32_t block_w {x == col - 1 ? width % 64 : 64};
+                int32_t block_h {y == row - 1 ? height % 64 : 64};
 
                 if (block_w == 0) {
                     block_w = 64;
@@ -140,13 +140,13 @@ namespace ImageBakerMos
                 }
 
                 // Read data
-                int64_t row_pixel_offset = checked_mul(checked_mul(numeric_cast<int64_t>(y), int64_t {64}), numeric_cast<int64_t>(width));
-                int64_t column_pixel_offset = checked_mul(numeric_cast<int64_t>(x), int64_t {64});
-                size_t pos = numeric_cast<size_t>(checked_add(row_pixel_offset, column_pixel_offset));
+                int64_t row_pixel_offset {checked_mul(checked_mul(numeric_cast<int64_t>(y), int64_t {64}), numeric_cast<int64_t>(width))};
+                int64_t column_pixel_offset {checked_mul(numeric_cast<int64_t>(x), int64_t {64})};
+                size_t pos {numeric_cast<size_t>(checked_add(row_pixel_offset, column_pixel_offset))};
 
-                for (int32_t yy = 0; yy < block_h; yy++) {
-                    for (int32_t xx = 0; xx < block_w; xx++) {
-                        uint32_t color = palette[reader.ReadUInt8()];
+                for (int32_t yy {0}; yy < block_h; yy++) {
+                    for (int32_t xx {0}; xx < block_w; xx++) {
+                        uint32_t color {palette[reader.ReadUInt8()]};
 
                         if (color == 0xFF00) {
                             color = 0; // Green is transparent
@@ -159,7 +159,7 @@ namespace ImageBakerMos
                         pos++;
                     }
 
-                    int32_t row_gap = checked_sub(width, block_w);
+                    int32_t row_gap {checked_sub(width, block_w)};
                     pos = checked_add(pos, numeric_cast<size_t>(row_gap));
                 }
 
@@ -168,7 +168,7 @@ namespace ImageBakerMos
             }
         }
 
-        FrameCollection collection;
+        FrameCollection collection {};
         collection.SequenceSize = 1;
         collection.AnimTicks = 100;
         collection.Main.Frames.resize(numeric_cast<size_t>(collection.SequenceSize));

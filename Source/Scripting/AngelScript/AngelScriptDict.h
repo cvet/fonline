@@ -55,8 +55,8 @@ class ScriptDict
     friend class safe_alloc;
 
     template<typename T>
-    static constexpr bool IsHandleAsType = std::is_same_v<T, void> || std::is_same_v<std::remove_cv_t<T>, Entity> || //
-        std::is_same_v<std::remove_cv_t<T>, DynamicRefTypeInstance> || std::is_same_v<std::remove_cv_t<T>, ScriptArray> || std::is_same_v<std::remove_cv_t<T>, ScriptDict>;
+    static constexpr bool IsHandleAsType {std::is_same_v<T, void> || std::is_same_v<std::remove_cv_t<T>, Entity> || //
+        std::is_same_v<std::remove_cv_t<T>, DynamicRefTypeInstance> || std::is_same_v<std::remove_cv_t<T>, ScriptArray> || std::is_same_v<std::remove_cv_t<T>, ScriptDict>};
 
 public:
     class ScriptDictComparator

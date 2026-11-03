@@ -43,32 +43,32 @@ using namespace ServerMapOperationsTests;
 
 TEST_CASE("MapManagerLoadsStaticMapEntities")
 {
-    auto settings = MakeSettings();
-    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources());
-    auto shutdown = scope_exit([&server]() noexcept {
+    auto settings {MakeSettings()};
+    auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources())};
+    auto shutdown {scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
                 server->Shutdown();
             }
         });
-    });
+    })};
 
-    string startup_error = WaitForStart(server.get());
+    string startup_error {WaitForStart(server.get())};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
-    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
 
-    hstring static_map_pid = server->Hashes.to_hashed_string("StaticMap");
-    hstring static_critter_pid = server->Hashes.to_hashed_string("TestStaticCritter");
-    hstring visible_item_pid = server->Hashes.to_hashed_string("TestStaticItem");
-    hstring hidden_item_pid = server->Hashes.to_hashed_string("TestStaticHiddenItem");
-    auto map_proto = server->GetProtoMap(static_map_pid);
+    hstring static_map_pid {server->Hashes.to_hashed_string("StaticMap")};
+    hstring static_critter_pid {server->Hashes.to_hashed_string("TestStaticCritter")};
+    hstring visible_item_pid {server->Hashes.to_hashed_string("TestStaticItem")};
+    hstring hidden_item_pid {server->Hashes.to_hashed_string("TestStaticHiddenItem")};
+    auto map_proto {server->GetProtoMap(static_map_pid)};
     REQUIRE(map_proto);
 
-    auto static_map = server->MapMngr.GetStaticMap(map_proto);
+    auto static_map {server->MapMngr.GetStaticMap(map_proto)};
 
-    const_span<StaticMap::CritterBillet> critter_billets = static_map->GetCritterBillets();
+    const_span<StaticMap::CritterBillet> critter_billets {static_map->GetCritterBillets()};
     REQUIRE(critter_billets.size() == 1);
     CHECK(critter_billets.front().first == ident_t {11});
     CHECK(critter_billets.front().second->GetProtoId() == static_critter_pid);
@@ -79,8 +79,8 @@ TEST_CASE("MapManagerLoadsStaticMapEntities")
     REQUIRE(static_map->HasStaticItem(ident_t {21}));
     REQUIRE(static_map->HasStaticItem(ident_t {22}));
 
-    auto visible_item = static_map->GetStaticItem(ident_t {21});
-    auto hidden_item = static_map->GetStaticItem(ident_t {22});
+    auto visible_item {static_map->GetStaticItem(ident_t {21})};
+    auto hidden_item {static_map->GetStaticItem(ident_t {22})};
     REQUIRE(visible_item);
     REQUIRE(hidden_item);
     CHECK(visible_item->GetProtoId() == visible_item_pid);
@@ -88,12 +88,12 @@ TEST_CASE("MapManagerLoadsStaticMapEntities")
     CHECK(visible_item->GetHex() == mpos {12, 13});
     CHECK(hidden_item->GetHex() == mpos {14, 15});
 
-    const auto& visible_field = static_map->GetField(mpos {12, 13});
+    const auto& visible_field {static_map->GetField(mpos {12, 13})};
     CHECK(std::ranges::find(visible_field.StaticItems, visible_item) != visible_field.StaticItems.end());
     CHECK(visible_field.MoveBlocked);
     CHECK(visible_field.ShootBlocked);
 
-    const auto& hidden_field = static_map->GetField(mpos {14, 15});
+    const auto& hidden_field {static_map->GetField(mpos {14, 15})};
     CHECK(std::ranges::find(hidden_field.StaticItems, hidden_item) != hidden_field.StaticItems.end());
     CHECK(hidden_field.MoveBlocked);
     CHECK(hidden_field.ShootBlocked);
@@ -101,31 +101,31 @@ TEST_CASE("MapManagerLoadsStaticMapEntities")
 
 TEST_CASE("MapPathGagChecksRespectStaticBlockers", "[map-path]")
 {
-    auto settings = MakeSettings();
-    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources());
-    auto shutdown = scope_exit([&server]() noexcept {
+    auto settings {MakeSettings()};
+    auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources())};
+    auto shutdown {scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
                 server->Shutdown();
             }
         });
-    });
+    })};
 
-    string startup_error = WaitForStart(server.get());
+    string startup_error {WaitForStart(server.get())};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
-    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
 
     array<hstring, 1> map_pids {server->Hashes.to_hashed_string("StaticMap")};
-    auto location = server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("TestLocation"), map_pids);
-    auto maps = location->GetMaps();
+    auto location {server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("TestLocation"), map_pids)};
+    auto maps {location->GetMaps()};
     REQUIRE(maps.size() == 1);
-    auto map = maps.front();
-    auto allow_gag = [](ptr<const Item>) { return true; };
+    auto map {maps.front()};
+    auto allow_gag {[](ptr<const Item>) { return true; }};
 
     for (mpos hex : {mpos {12, 13}, mpos {14, 15}, mpos {11, 14}}) {
-        auto gag = server->ItemMngr.CreateItemOnHex(map, hex, server->Hashes.to_hashed_string("TestItem"), nullptr);
+        auto gag {server->ItemMngr.CreateItemOnHex(map, hex, server->Hashes.to_hashed_string("TestItem"), nullptr)};
         gag->SetNoBlock(false);
         gag->SetShootThru(true);
         gag->SetIsGag(true);
@@ -156,36 +156,36 @@ TEST_CASE("MapPathGagChecksRespectStaticBlockers", "[map-path]")
 
 TEST_CASE("MapPathfindingObstaclePolicyIsIndependentOfLifeCondition")
 {
-    auto settings = MakeSettings();
-    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources());
-    auto shutdown = scope_exit([&server]() noexcept {
+    auto settings {MakeSettings()};
+    auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources())};
+    auto shutdown {scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
                 server->Shutdown();
             }
         });
-    });
+    })};
 
-    string startup_error = WaitForStart(server.get());
+    string startup_error {WaitForStart(server.get())};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
-    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
 
-    const hstring map_pids[] = {server->Hashes.to_hashed_string("TestMap")};
-    auto loc = server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("TestLocation"), map_pids);
-    auto map = loc->GetMaps().front();
-    auto cr = server->CrMngr.CreateCritterOnMap(server->Hashes.to_hashed_string("TestCritter"), nullptr, map, mpos {20, 20}, mdir {0});
-    auto from_hex = cr->GetHex();
-    auto to_hex = cr->GetHex();
+    const hstring map_pids[] {server->Hashes.to_hashed_string("TestMap")};
+    auto loc {server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("TestLocation"), map_pids)};
+    auto map {loc->GetMaps().front()};
+    auto cr {server->CrMngr.CreateCritterOnMap(server->Hashes.to_hashed_string("TestCritter"), nullptr, map, mpos {20, 20}, mdir {0})};
+    auto from_hex {cr->GetHex()};
+    auto to_hex {cr->GetHex()};
 
-    for (int32_t i = 0; i < 2; i++) {
+    for (int32_t i {0}; i < 2; i++) {
         REQUIRE(GeometryHelper::MoveHexByDir(from_hex, mdir {0}.reverse(), map->GetSize()));
         REQUIRE(GeometryHelper::MoveHexByDir(to_hex, mdir {0}, map->GetSize()));
     }
 
-    auto crosses_critter = [&](const FindPathOutput& path) {
-        auto hex = from_hex;
+    auto crosses_critter {[&](const FindPathOutput& path) {
+        auto hex {from_hex};
 
         for (auto dir : path.Steps) {
             REQUIRE(GeometryHelper::MoveHexByDir(hex, dir, map->GetSize()));
@@ -196,18 +196,18 @@ TEST_CASE("MapPathfindingObstaclePolicyIsIndependentOfLifeCondition")
         }
 
         return false;
-    };
+    }};
 
-    auto check_paths = [&](bool should_cross) {
-        auto path = server->MapMngr.FindPath(map, nullptr, from_hex, to_hex, 0, 0);
+    auto check_paths {[&](bool should_cross) {
+        auto path {server->MapMngr.FindPath(map, nullptr, from_hex, to_hex, 0, 0)};
         REQUIRE(path.Result == FindPathOutput::ResultType::Ok);
         CHECK(crosses_critter(path) == should_cross);
 
-        const mpos targets[] = {to_hex};
-        auto path_to_any = server->MapMngr.FindPathToAny(map, nullptr, from_hex, targets, 0);
+        const mpos targets[] {to_hex};
+        auto path_to_any {server->MapMngr.FindPathToAny(map, nullptr, from_hex, targets, 0)};
         REQUIRE(path_to_any.Result == FindPathOutput::ResultType::Ok);
         CHECK(crosses_critter(path_to_any) == should_cross);
-    };
+    }};
 
     cr->SetCondition(CritterCondition::Alive);
     cr->SetPathfindingObstacle(false);

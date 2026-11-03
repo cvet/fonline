@@ -40,7 +40,7 @@
 
 FO_BEGIN_NAMESPACE
 
-static constexpr uint32_t MODEL_MESH_TEST_PAYLOAD = 0x78563412U;
+static constexpr uint32_t MODEL_MESH_TEST_PAYLOAD {0x78563412U};
 
 static auto MakeModelMeshRoundTripData() -> ModelMeshData
 {
@@ -49,8 +49,8 @@ static auto MakeModelMeshRoundTripData() -> ModelMeshData
     data.RootBone->TransformationMatrix = mat44 {1.0f};
     data.RootBone->GlobalTransformationMatrix = mat44 {1.0f};
     data.RootBone->AttachedMesh.emplace();
-    auto& mesh = *data.RootBone->AttachedMesh;
-    auto& vertex = mesh.Vertices.emplace_back();
+    auto& mesh {*data.RootBone->AttachedMesh};
+    auto& vertex {mesh.Vertices.emplace_back()};
     vertex.Position = vec3 {1.0f, 2.0f, 3.0f};
     vertex.BlendWeights[0] = 1.0f;
     mesh.Indices.emplace_back(ModelMeshIndexData {0});
@@ -58,7 +58,7 @@ static auto MakeModelMeshRoundTripData() -> ModelMeshData
     mesh.SkinBoneNames.emplace_back("Root");
     mesh.SkinBoneOffsets.emplace_back(mat44 {1.0f});
 
-    auto child = safe_alloc::make_unique<ModelMeshBoneData>();
+    auto child {safe_alloc::make_unique<ModelMeshBoneData>()};
     child->Name = "Child";
     child->TransformationMatrix = mat44 {1.0f};
     child->GlobalTransformationMatrix = mat44 {1.0f};
@@ -68,7 +68,7 @@ static auto MakeModelMeshRoundTripData() -> ModelMeshData
 
 static auto MakeModelMeshTestData(const array<uint8_t, 8>& magic, uint16_t schema, uint16_t flags) -> vector<uint8_t>
 {
-    vector<uint8_t> data;
+    vector<uint8_t> data {};
     data_writer writer {data};
     writer.write_bytes({magic.data(), magic.size()});
     writer.write<uint16_t>(schema);
@@ -81,7 +81,7 @@ TEST_CASE("ModelMeshDataWireHeader")
 {
     SECTION("Round-trips and leaves the reader at the mesh payload")
     {
-        vector<uint8_t> data;
+        vector<uint8_t> data {};
         data_writer writer {data};
         WriteModelMeshHeader(writer);
         writer.write<uint32_t>(MODEL_MESH_TEST_PAYLOAD);
@@ -97,9 +97,9 @@ TEST_CASE("ModelMeshDataWireHeader")
 
     SECTION("Rejects wrong magic")
     {
-        array<uint8_t, 8> magic = MODEL_MESH_MAGIC;
+        array<uint8_t, 8> magic {MODEL_MESH_MAGIC};
         magic.front() = uint8_t {'X'};
-        vector<uint8_t> data = MakeModelMeshTestData(magic, MODEL_MESH_SCHEMA_VERSION, MODEL_MESH_SUPPORTED_FLAGS);
+        vector<uint8_t> data {MakeModelMeshTestData(magic, MODEL_MESH_SCHEMA_VERSION, MODEL_MESH_SUPPORTED_FLAGS)};
         data_reader reader {{data.data(), data.size()}};
         CHECK_THROWS_AS(ReadModelMeshHeader(reader, "Models/WrongMagic.fbx"), ModelMeshDataException);
         CHECK(reader.read<uint8_t>() == magic.front());
@@ -107,23 +107,23 @@ TEST_CASE("ModelMeshDataWireHeader")
 
     SECTION("Rejects unsupported schema")
     {
-        vector<uint8_t> data = MakeModelMeshTestData(MODEL_MESH_MAGIC, uint16_t {MODEL_MESH_SCHEMA_VERSION + 1}, MODEL_MESH_SUPPORTED_FLAGS);
+        vector<uint8_t> data {MakeModelMeshTestData(MODEL_MESH_MAGIC, uint16_t {MODEL_MESH_SCHEMA_VERSION + 1}, MODEL_MESH_SUPPORTED_FLAGS)};
         data_reader reader {{data.data(), data.size()}};
         CHECK_THROWS_AS(ReadModelMeshHeader(reader, "Models/WrongSchema.fbx"), ModelMeshDataException);
     }
 
     SECTION("Rejects unsupported flags")
     {
-        vector<uint8_t> data = MakeModelMeshTestData(MODEL_MESH_MAGIC, MODEL_MESH_SCHEMA_VERSION, uint16_t {1});
+        vector<uint8_t> data {MakeModelMeshTestData(MODEL_MESH_MAGIC, MODEL_MESH_SCHEMA_VERSION, uint16_t {1})};
         data_reader reader {{data.data(), data.size()}};
         CHECK_THROWS_AS(ReadModelMeshHeader(reader, "Models/WrongFlags.fbx"), ModelMeshDataException);
     }
 
     SECTION("Rejects every truncated header length")
     {
-        vector<uint8_t> complete_data = MakeModelMeshTestData(MODEL_MESH_MAGIC, MODEL_MESH_SCHEMA_VERSION, MODEL_MESH_SUPPORTED_FLAGS);
+        vector<uint8_t> complete_data {MakeModelMeshTestData(MODEL_MESH_MAGIC, MODEL_MESH_SCHEMA_VERSION, MODEL_MESH_SUPPORTED_FLAGS)};
 
-        for (size_t size = 0; size < MODEL_MESH_HEADER_SIZE; size++) {
+        for (size_t size {0}; size < MODEL_MESH_HEADER_SIZE; size++) {
             data_reader reader {{complete_data.data(), size}};
             CHECK_THROWS_AS(ReadModelMeshHeader(reader, "Models/Truncated.fbx"), ModelMeshDataException);
         }
@@ -131,7 +131,7 @@ TEST_CASE("ModelMeshDataWireHeader")
 
     SECTION("Rejects the removed headerless mesh layout")
     {
-        vector<uint8_t> legacy_data;
+        vector<uint8_t> legacy_data {};
         data_writer writer {legacy_data};
         writer.write_string("Root");
         writer.write<mat44>(mat44 {1.0f});
@@ -145,13 +145,13 @@ TEST_CASE("ModelMeshDataWirePayload")
 {
     SECTION("Round-trips the complete mesh hierarchy")
     {
-        ModelMeshData source = MakeModelMeshRoundTripData();
-        vector<uint8_t> bytes;
+        ModelMeshData source {MakeModelMeshRoundTripData()};
+        vector<uint8_t> bytes {};
         data_writer writer {bytes};
         REQUIRE_NOTHROW(WriteModelMeshData(writer, source, "Models/Test.fbx"));
 
         data_reader reader {{bytes.data(), bytes.size()}};
-        ModelMeshData decoded;
+        ModelMeshData decoded {};
         REQUIRE_NOTHROW(decoded = ReadModelMeshData(reader, "Models/Test.fbx"));
         REQUIRE(decoded.RootBone);
         CHECK(decoded.RootBone->Name == "Root");
@@ -170,19 +170,19 @@ TEST_CASE("ModelMeshDataWirePayload")
 
     SECTION("Preserves the schema-1 byte layout")
     {
-        ModelMeshData source = MakeModelMeshRoundTripData();
-        vector<uint8_t> codec_bytes;
+        ModelMeshData source {MakeModelMeshRoundTripData()};
+        vector<uint8_t> codec_bytes {};
         data_writer codec_writer {codec_bytes};
         WriteModelMeshData(codec_writer, source, "Models/Test.fbx");
 
-        vector<uint8_t> legacy_writer_bytes;
+        vector<uint8_t> legacy_writer_bytes {};
         data_writer legacy_writer {legacy_writer_bytes};
         WriteModelMeshHeader(legacy_writer);
         legacy_writer.write_string(source.RootBone->Name);
         legacy_writer.write<mat44>(source.RootBone->TransformationMatrix);
         legacy_writer.write<mat44>(source.RootBone->GlobalTransformationMatrix);
         legacy_writer.write<uint8_t>(uint8_t {1});
-        const ModelMeshGeometryData& mesh = *source.RootBone->AttachedMesh;
+        const ModelMeshGeometryData& mesh {*source.RootBone->AttachedMesh};
         legacy_writer.write<uint32_t>(numeric_cast<uint32_t>(mesh.Vertices.size()));
         legacy_writer.write_object_vector(mesh.Vertices);
         legacy_writer.write<uint32_t>(numeric_cast<uint32_t>(mesh.Indices.size()));
@@ -208,9 +208,9 @@ TEST_CASE("ModelMeshDataWirePayload")
 
     SECTION("Rejects invalid structure before writing")
     {
-        ModelMeshData data = MakeModelMeshRoundTripData();
+        ModelMeshData data {MakeModelMeshRoundTripData()};
         data.RootBone->AttachedMesh->Indices.front() = ModelMeshIndexData {1};
-        vector<uint8_t> bytes;
+        vector<uint8_t> bytes {};
         data_writer writer {bytes};
         CHECK_THROWS_AS(WriteModelMeshData(writer, data, "Models/BadIndex.fbx"), ModelMeshDataException);
         CHECK(bytes.empty());
@@ -218,8 +218,8 @@ TEST_CASE("ModelMeshDataWirePayload")
 
     SECTION("Rejects trailing payload data")
     {
-        ModelMeshData source = MakeModelMeshRoundTripData();
-        vector<uint8_t> bytes;
+        ModelMeshData source {MakeModelMeshRoundTripData()};
+        vector<uint8_t> bytes {};
         data_writer writer {bytes};
         WriteModelMeshData(writer, source, "Models/Trailing.fbx");
         writer.write<uint8_t>(uint8_t {0});
@@ -230,14 +230,14 @@ TEST_CASE("ModelMeshDataWirePayload")
 
     SECTION("Rejects mismatched skin palette data")
     {
-        ModelMeshData data = MakeModelMeshRoundTripData();
+        ModelMeshData data {MakeModelMeshRoundTripData()};
         data.RootBone->AttachedMesh->SkinBoneOffsets.clear();
         CHECK_THROWS_AS(ValidateModelMeshData(data, "Models/BadSkinPalette.fbx"), ModelMeshDataException);
     }
 
     SECTION("Rejects skin bones outside the hierarchy")
     {
-        ModelMeshData data = MakeModelMeshRoundTripData();
+        ModelMeshData data {MakeModelMeshRoundTripData()};
         data.RootBone->AttachedMesh->SkinBoneNames.front() = "Missing";
         CHECK_THROWS_AS(ValidateModelMeshData(data, "Models/MissingSkinBone.fbx"), ModelMeshDataException);
     }

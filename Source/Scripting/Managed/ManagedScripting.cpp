@@ -46,11 +46,11 @@ void InitManagedScripting(ptr<EngineMetadata> meta, ptr<const FileSystem> resour
 {
     FO_TRACE_ZONE(Script);
 
-    nptr<ScriptSystem> script_sys = meta.dyn_cast<ScriptSystem>();
+    nptr<ScriptSystem> script_sys {meta.dyn_cast<ScriptSystem>()};
     FO_VERIFY_AND_THROW(script_sys, "Managed scripting requires a script system");
 
-    auto managed_backend = safe_alloc::make_unique<ManagedScriptBackend>();
-    ptr<ManagedScriptBackend> backend = managed_backend;
+    auto managed_backend {safe_alloc::make_unique<ManagedScriptBackend>()};
+    ptr<ManagedScriptBackend> backend {managed_backend};
     script_sys->RegisterBackend(ScriptSystemBackend::MANAGED_BACKEND_INDEX, std::move(managed_backend));
 
     backend->RegisterMetadata(meta);

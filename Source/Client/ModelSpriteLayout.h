@@ -42,14 +42,14 @@
 
 FO_BEGIN_NAMESPACE
 
-constexpr int32_t MODEL_SPRITE_FRAME_SCALE = 2;
+constexpr int32_t MODEL_SPRITE_FRAME_SCALE {2};
 
 // Bake-host MAX_ATLAS_WIDTH is not the game device. MIN_ATLAS_SIZE is the portable GPU floor, and the model renders at 2x
-constexpr int32_t MODEL_SPRITE_MAX_LOGICAL_FRAME_DIMENSION = AppRender::MIN_ATLAS_SIZE / MODEL_SPRITE_FRAME_SCALE;
+constexpr int32_t MODEL_SPRITE_MAX_LOGICAL_FRAME_DIMENSION {AppRender::MIN_ATLAS_SIZE / MODEL_SPRITE_FRAME_SCALE};
 
 // Frame size keys the intermediate render-target cache, so it is quantized to this grid: an envelope that
 // breathed with the animation missed that cache and created a GPU texture mid-frame
-constexpr int32_t MODEL_SPRITE_FRAME_ALIGNMENT = 16;
+constexpr int32_t MODEL_SPRITE_FRAME_ALIGNMENT {16};
 static_assert(MODEL_SPRITE_FRAME_ALIGNMENT % MODEL_SPRITE_FRAME_SCALE == 0, "Frame alignment must keep frames aligned to the frame scale");
 static_assert(MODEL_SPRITE_MAX_LOGICAL_FRAME_DIMENSION % MODEL_SPRITE_FRAME_ALIGNMENT == 0, "Portable logical frame cap must stay on the frame grid");
 

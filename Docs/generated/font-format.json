@@ -569,9 +569,9 @@
           "path": "Source/Client/FontManager.cpp",
           "anchors": [
             "reader.ReadLEUInt32() / 20",
-            "uint16_t ox = reader.ReadLEUInt16()",
-            "uint16_t oy = reader.ReadLEUInt16()",
-            "uint16_t xa = reader.ReadLEUInt16()"
+            "uint16_t ox {reader.ReadLEUInt16()}",
+            "uint16_t oy {reader.ReadLEUInt16()}",
+            "uint16_t xa {reader.ReadLEUInt16()}"
           ]
         },
         {
@@ -1068,7 +1068,7 @@
         {
           "path": "Source/Client/FontManager.cpp",
           "anchors": [
-            "CACHE_INVALIDATION_FRAME_COUNT = 3",
+            "CACHE_INVALIDATION_FRAME_COUNT {3}",
             "key_parts",
             "LastUsedFrame",
             "_formatCache.clear()"
@@ -1140,9 +1140,9 @@
         {
           "path": "Source/Client/FontManager.cpp",
           "anchors": [
-            "uint16_t ox = reader.ReadLEUInt16()",
-            "uint16_t oy = reader.ReadLEUInt16()",
-            "uint16_t xa = reader.ReadLEUInt16()"
+            "uint16_t ox {reader.ReadLEUInt16()}",
+            "uint16_t oy {reader.ReadLEUInt16()}",
+            "uint16_t xa {reader.ReadLEUInt16()}"
           ]
         },
         {
@@ -1249,5 +1249,5 @@
       "internal": 2
     }
   },
-  "contract_digest": "95d43e09af98c33b62dde7b6acdd2fc07522853e9afcbfdf79db7ddf39662726"
+  "contract_digest": "1e48dc920d9eacdf5a862cad6718fba19faaa0af58ea21a62a5809eff603d94c"
 }

@@ -53,9 +53,9 @@ template<typename T, typename Tag, class... Opts>
 struct strong_type
 {
     using underlying_type = T;
-    static constexpr bool has_bool_test = sizeof...(Opts) != 0 && (std::same_as<Opts, strong_type_bool_test_tag> || ...);
-    static constexpr bool has_arithmetics = sizeof...(Opts) != 0 && (std::same_as<Opts, strong_type_arithmetics_tag> || ...);
-    static constexpr bool has_sorting = sizeof...(Opts) != 0 && (std::same_as<Opts, strong_type_sortings_tag> || ...);
+    static constexpr bool has_bool_test {sizeof...(Opts) != 0 && (std::same_as<Opts, strong_type_bool_test_tag> || ...)};
+    static constexpr bool has_arithmetics {sizeof...(Opts) != 0 && (std::same_as<Opts, strong_type_arithmetics_tag> || ...)};
+    static constexpr bool has_sorting {sizeof...(Opts) != 0 && (std::same_as<Opts, strong_type_sortings_tag> || ...)};
 
     constexpr strong_type() noexcept = default;
     constexpr explicit strong_type(underlying_type v) noexcept :
@@ -155,7 +155,7 @@ template<typename T>
     requires(FO_NAMESPACE some_strong_type<T>)
 inline auto operator>>(std::istream& istr, T& value) -> std::istream&
 {
-    typename T::underlying_type uv;
+    typename T::underlying_type uv {};
 
     if (istr >> uv) {
         value = T(uv);

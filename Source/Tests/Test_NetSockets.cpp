@@ -55,8 +55,8 @@ namespace
 
     auto BindUdpLoopback(udp_socket& sock) -> uint16_t
     {
-        for (int32_t attempt = 0; attempt != 128; ++attempt) {
-            uint16_t port = AcquireTestPort();
+        for (int32_t attempt {0}; attempt != 128; ++attempt) {
+            uint16_t port {AcquireTestPort()};
 
             if (sock.bind("127.0.0.1", port)) {
                 return port;
@@ -68,8 +68,8 @@ namespace
 
     auto ListenTcpLoopback(tcp_server& server) -> uint16_t
     {
-        for (int32_t attempt = 0; attempt != 128; ++attempt) {
-            uint16_t port = AcquireTestPort();
+        for (int32_t attempt {0}; attempt != 128; ++attempt) {
+            uint16_t port {AcquireTestPort()};
 
             if (server.listen("127.0.0.1", port)) {
                 return port;
@@ -86,12 +86,12 @@ TEST_CASE("NetSockets")
 
     SECTION("InvalidSocketsBehaveAsNoOps")
     {
-        tcp_socket tcp;
-        udp_socket udp;
-        tcp_server server;
+        tcp_socket tcp {};
+        udp_socket udp {};
+        tcp_server server {};
         uint8_t data[8] {};
-        string host;
-        uint16_t port = 123;
+        string host {};
+        uint16_t port {123};
 
         CHECK_FALSE(tcp.is_valid());
         CHECK_FALSE(tcp.can_read(ShortTimeout));
@@ -115,43 +115,43 @@ TEST_CASE("NetSockets")
 
     SECTION("UdpLoopbackRoundTrip")
     {
-        udp_socket receiver;
-        udp_socket sender;
-        uint16_t receiver_port = BindUdpLoopback(receiver);
+        udp_socket receiver {};
+        udp_socket sender {};
+        uint16_t receiver_port {BindUdpLoopback(receiver)};
 
         REQUIRE(sender.bind("127.0.0.1", 0));
         REQUIRE(sender.can_write(WriteTimeout));
 
-        array<uint8_t, 4> payload = {'p', 'i', 'n', 'g'};
+        array<uint8_t, 4> payload {'p', 'i', 'n', 'g'};
         REQUIRE(sender.send_to("127.0.0.1", receiver_port, payload) == numeric_cast<int32_t>(payload.size()));
         REQUIRE(receiver.can_read(ReadTimeout));
 
         array<uint8_t, 16> buffer {};
-        string host;
-        uint16_t port = 0;
-        int32_t received = receiver.receive_from(buffer, host, port);
+        string host {};
+        uint16_t port {0};
+        int32_t received {receiver.receive_from(buffer, host, port)};
 
         REQUIRE(received == numeric_cast<int32_t>(payload.size()));
         CHECK(std::equal(payload.begin(), payload.end(), buffer.begin()));
         CHECK(host == "127.0.0.1");
         CHECK(port != 0);
 
-        vector<uint8_t> oversized_payload(65536);
+        vector<uint8_t> oversized_payload {vector<uint8_t>(65536)};
         CHECK(sender.send_to("127.0.0.1", receiver_port, oversized_payload) == -1);
     }
 
     SECTION("NonBlockingTcpPreservesWouldBlockError")
     {
-        tcp_server server;
-        uint16_t port = ListenTcpLoopback(server);
-        tcp_socket client;
+        tcp_server server {};
+        uint16_t port {ListenTcpLoopback(server)};
+        tcp_socket client {};
 
         REQUIRE(client.connect_async("127.0.0.1", port));
         REQUIRE(client.can_write(ReadTimeout));
         REQUIRE(client.peek_socket_error() == 0);
         REQUIRE(server.can_accept(ReadTimeout));
 
-        tcp_socket accepted = server.accept();
+        tcp_socket accepted {server.accept()};
         REQUIRE(accepted.is_valid());
         array<uint8_t, 16> buffer {};
         CHECK(client.receive(buffer) == -1);
@@ -160,23 +160,23 @@ TEST_CASE("NetSockets")
 
     SECTION("TcpLoopbackConnectSendAndReceive")
     {
-        tcp_server server;
-        uint16_t port = ListenTcpLoopback(server);
+        tcp_server server {};
+        uint16_t port {ListenTcpLoopback(server)};
 
-        tcp_socket client;
+        tcp_socket client {};
         REQUIRE(client.connect("127.0.0.1", port));
         REQUIRE(client.can_write(ReadTimeout));
         REQUIRE(server.can_accept(ReadTimeout));
 
-        tcp_socket accepted = server.accept();
+        tcp_socket accepted {server.accept()};
         REQUIRE(accepted.is_valid());
 
-        array<uint8_t, 5> payload = {'h', 'e', 'l', 'l', 'o'};
+        array<uint8_t, 5> payload {'h', 'e', 'l', 'l', 'o'};
         REQUIRE(client.send(payload) == numeric_cast<int32_t>(payload.size()));
         REQUIRE(accepted.can_read(ReadTimeout));
 
         array<uint8_t, 16> buffer {};
-        int32_t received = accepted.receive(buffer);
+        int32_t received {accepted.receive(buffer)};
 
         REQUIRE(received == numeric_cast<int32_t>(payload.size()));
         CHECK(std::equal(payload.begin(), payload.end(), buffer.begin()));

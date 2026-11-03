@@ -49,7 +49,7 @@
       "source": [
         {
           "path": "Source/Frontend/Rendering.h",
-          "anchors": ["constexpr size_t MODEL_LAYERS_COUNT = FO_MODEL_LAYERS_COUNT;"]
+          "anchors": ["constexpr size_t MODEL_LAYERS_COUNT {FO_MODEL_LAYERS_COUNT};"]
         },
         {
           "path": "BuildTools/cmake/ProjectInterface.json",
@@ -65,7 +65,7 @@
       "source": [
         {
           "path": "Source/Frontend/Rendering.h",
-          "anchors": ["constexpr size_t MODEL_MAX_TEXTURES = FO_MODEL_MAX_TEXTURES;"]
+          "anchors": ["constexpr size_t MODEL_MAX_TEXTURES {FO_MODEL_MAX_TEXTURES};"]
         },
         {
           "path": "BuildTools/cmake/ProjectInterface.json",
@@ -81,7 +81,7 @@
       "source": [
         {
           "path": "Source/Frontend/Rendering.h",
-          "anchors": ["constexpr size_t MODEL_MAX_BONES = FO_MODEL_MAX_BONES;"]
+          "anchors": ["constexpr size_t MODEL_MAX_BONES {FO_MODEL_MAX_BONES};"]
         },
         {
           "path": "Source/Tools/ModelMeshBaker.cpp",
@@ -97,7 +97,7 @@
       "source": [
         {
           "path": "Source/Frontend/Rendering.h",
-          "anchors": ["constexpr size_t MODEL_BONES_PER_VERTEX = FO_MODEL_BONES_PER_VERTEX;"]
+          "anchors": ["constexpr size_t MODEL_BONES_PER_VERTEX {FO_MODEL_BONES_PER_VERTEX};"]
         },
         {
           "path": "Source/Tools/ModelMeshBaker.cpp",
@@ -640,7 +640,7 @@
         },
         {
           "path": "Source/Client/ModelInformation.cpp",
-          "anchors": ["bool reversed = anim_entry.Name.starts_with('~')", "_animController->RegisterAnimation("]
+          "anchors": ["bool reversed {anim_entry.Name.starts_with('~')}", "_animController->RegisterAnimation("]
         }
       ]
     },

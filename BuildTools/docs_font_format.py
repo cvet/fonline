@@ -245,9 +245,9 @@ def _derive_bmfont_contract(manager_text: str) -> dict[str, object]:
     signed_fields = []
     unsigned_fields = []
     for variable, field_name in (("ox", "xoffset"), ("oy", "yoffset"), ("xa", "xadvance")):
-        if re.search(rf"int16_t {variable}\s*=\s*reader\.ReadLEInt16\(\);", body):
+        if re.search(rf"int16_t {variable}\s*(?:=|\{{)\s*reader\.ReadLEInt16\(\)\s*\}}?;", body):
             signed_fields.append(field_name)
-        elif re.search(rf"uint16_t {variable}\s*=\s*reader\.ReadLEUInt16\(\);", body):
+        elif re.search(rf"uint16_t {variable}\s*(?:=|\{{)\s*reader\.ReadLEUInt16\(\)\s*\}}?;", body):
             unsigned_fields.append(field_name)
         else:
             raise ValueError(f"unable to derive the BMFont {field_name} integer decoding")
@@ -275,7 +275,7 @@ def _derive_outputs(root: Path, sources: dict[str, object]) -> dict[str, object]
         manager_text,
     )
     cache_match = re.search(
-        r"CACHE_INVALIDATION_FRAME_COUNT\s*=\s*([0-9]+)", manager_text
+        r"CACHE_INVALIDATION_FRAME_COUNT\s*(?:=|\{)\s*([0-9]+)", manager_text
     )
     scale_default_match = re.search(
         r"Client_Game_BindFont\([^\n]+defaultScale\s*=\s*([-0-9.]+)f", script_text
@@ -284,7 +284,7 @@ def _derive_outputs(root: Path, sources: dict[str, object]) -> dict[str, object]
         r"Bind(?:FoFont|BmfFont)\([^;]+AtlasType::([A-Za-z0-9_]+)", script_text
     )
     updater_match = re.search(r'BindFoFont\([^,]+,\s*"([^"]+)"', updater_text)
-    inline_match = re.search(r'InlineColorTagPrefix\s*=\s*"([^"]+)"', header_text)
+    inline_match = re.search(r'InlineColorTagPrefix\s*(?:=|\{)\s*"([^"]+)"', header_text)
     if None in (
         max_version_match,
         scale_match,

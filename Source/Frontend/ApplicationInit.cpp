@@ -43,7 +43,7 @@ FO_BEGIN_NAMESPACE
 
 // File the installer drops next to the exe to mark an installed (non-portable) build. The portable
 // zip has no marker and keeps writing next to the exe
-static constexpr string_view INSTALLED_MARKER_NAME = "INSTALLED";
+static constexpr string_view INSTALLED_MARKER_NAME {"INSTALLED"};
 
 static unique_nptr<Application> App {};
 
@@ -87,8 +87,8 @@ static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_test
     FO_TRACE_ZONE(App);
 
     // Ensure that we call init only once
-    static std::once_flag once;
-    bool first_call = false;
+    static std::once_flag once {};
+    bool first_call {false};
     std::call_once(once, [&first_call] { first_call = true; });
     FO_STRONG_ASSERT(first_call, "Application can be initialized only once");
 
@@ -118,7 +118,7 @@ static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_test
 
     logging::write("Starting {}", FO_NICE_NAME);
 
-    auto settings = unit_testing ? LoadTestingAppSettings() : LoadAppSettings(args);
+    auto settings {unit_testing ? LoadTestingAppSettings() : LoadAppSettings(args)};
 
     logging::write("Version: {}", settings.Common.GameVersion);
     logging::write("Engine: {} (revision {})", FO_ENGINE_VERSION, FO_ENGINE_REVISION);
@@ -188,7 +188,7 @@ static void SetupExceptionCallback(bool show_message_on_exception)
 
 static auto LoadTestingAppSettings() -> GlobalSettings
 {
-    auto settings = GlobalSettings(false);
+    auto settings {GlobalSettings(false)};
     settings.ApplyDefaultSettings();
     settings.ApplyAutoSettings();
     return settings;
@@ -198,26 +198,26 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
 {
     FO_TRACE_ZONE(Core);
 
-    auto settings = GlobalSettings(false);
+    auto settings {GlobalSettings(false)};
     settings.ApplyDefaultSettings();
 
     if (!IsPackaged()) {
         // Apply config
-        string config_to_apply;
-        string config_to_apply_dir;
-        bool auto_find_config = false;
+        string config_to_apply {};
+        string config_to_apply_dir {};
+        bool auto_find_config {false};
 
-        for (size_t i = 0; i < args.size(); i++) {
-            string_view arg = args.Get(i);
+        for (size_t i {0}; i < args.size(); i++) {
+            string_view arg {args.Get(i)};
 
             if (arg.empty()) {
                 continue;
             }
 
-            string_view arg_view = strex(arg).trim().strv();
+            string_view arg_view {strex(arg).trim().strv()};
 
             if (arg_view == "-ApplyConfig" || arg_view == "--ApplyConfig") {
-                string_view next_arg = args.Get(i + 1);
+                string_view next_arg {args.Get(i + 1)};
 
                 if (i + 1 >= args.size() || CommandLineArgs::IsOption(next_arg)) {
                     throw AppInitException("Config name not provided");
@@ -230,10 +230,10 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
 
         if (config_to_apply.empty()) {
             auto_find_config = true;
-            auto dir = std::filesystem::current_path();
+            auto dir {std::filesystem::current_path()};
 
             while (true) {
-                string config_path = fs::path_to_string(dir / FO_MAIN_CONFIG);
+                string config_path {fs::path_to_string(dir / FO_MAIN_CONFIG)};
 
                 if (fs::exists(config_path) && !fs::is_dir(config_path)) {
                     config_to_apply = FO_MAIN_CONFIG;
@@ -255,19 +255,19 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
         settings.ApplyConfigAtPath(config_to_apply, config_to_apply_dir);
 
         // Apply sub config
-        vector<string> sub_configs_to_apply;
+        vector<string> sub_configs_to_apply {};
 
-        for (size_t i = 0; i < args.size(); i++) {
-            string_view arg = args.Get(i);
+        for (size_t i {0}; i < args.size(); i++) {
+            string_view arg {args.Get(i)};
 
             if (arg.empty()) {
                 continue;
             }
 
-            string_view arg_view = strex(arg).trim().strv();
+            string_view arg_view {strex(arg).trim().strv()};
 
             if (arg_view == "-ApplySubConfig" || arg_view == "--ApplySubConfig") {
-                string_view next_arg = args.Get(i + 1);
+                string_view next_arg {args.Get(i + 1)};
 
                 if (i + 1 >= args.size() || CommandLineArgs::IsOption(next_arg)) {
                     throw AppInitException("Sub config name not provided");
@@ -291,8 +291,8 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
     else {
         // A packaged build carries one resolved config and no sub-config table, so a requested sub config cannot be
         // honoured; refusing it keeps a launch from silently running with settings the caller did not get
-        for (size_t i = 0; i < args.size(); i++) {
-            string_view arg_view = strex(args.Get(i)).trim().strv();
+        for (size_t i {0}; i < args.size(); i++) {
+            string_view arg_view {strex(args.Get(i)).trim().strv()};
 
             if (arg_view == "-ApplySubConfig" || arg_view == "--ApplySubConfig") {
                 throw AppInitException("Sub configs are not available in a packaged build", i + 1 < args.size() ? args.Get(i + 1) : string_view {});
@@ -314,13 +314,13 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
         logging::write("Writable data path: {}", settings.Common.UserWritablePath);
     }
 
-    string cache_dir = fs::make_writable_path(settings.Common.UserWritablePath, settings.Baking.CacheResources);
+    string cache_dir {fs::make_writable_path(settings.Common.UserWritablePath, settings.Baking.CacheResources)};
 
     if (fs::is_dir(cache_dir)) {
-        auto cache = CacheStorage(cache_dir);
+        auto cache {CacheStorage(cache_dir)};
 
         if (cache.HasEntry(LOCAL_CONFIG_NAME)) {
-            auto config = ConfigFile(cache.GetString(LOCAL_CONFIG_NAME));
+            auto config {ConfigFile(cache.GetString(LOCAL_CONFIG_NAME))};
             settings.ApplyConfigFile(config, "");
         }
     }
@@ -336,10 +336,10 @@ auto ResolveWritableRoot(CommandLineArgs args) -> string
 
     // Deliberately settings-free: the log, the cache and the local config all live under this root, so
     // nothing that is read from disk may decide where it is. Only the command line and the marker do
-    string root = FindWritablePathArg(args);
+    string root {FindWritablePathArg(args)};
 
     if (root.empty()) {
-        auto exe_path = platform::get_exe_path();
+        auto exe_path {platform::get_exe_path()};
 
         if (!exe_path.has_value() || !fs::exists(strex(*exe_path).extract_dir().combine_path(INSTALLED_MARKER_NAME).str())) {
             return "";
@@ -351,7 +351,7 @@ auto ResolveWritableRoot(CommandLineArgs args) -> string
     // An explicit "*" asks for the same per-user directory the marker selects, which is how a launcher
     // requests it without knowing the per-OS path
     if (root == "*") {
-        string base = platform::get_user_data_base();
+        string base {platform::get_user_data_base()};
 
         if (base.empty()) {
             logging::write(logging::type::warning, "Installed layout requested but no user data dir found; writing to the working directory");
@@ -376,11 +376,11 @@ auto ResolveWritableRoot(CommandLineArgs args) -> string
 static auto FindWritablePathArg(CommandLineArgs args) -> string
 {
     // Scanned by hand rather than through the settings parser, which runs far later
-    for (size_t i = 0; i + 1 < args.size(); i++) {
-        string_view arg = strex(args.Get(i)).trim().strv();
+    for (size_t i {0}; i + 1 < args.size(); i++) {
+        string_view arg {strex(args.Get(i)).trim().strv()};
 
         if (arg == "-Common.UserWritablePath" || arg == "--Common.UserWritablePath") {
-            string_view value = strex(args.Get(i + 1)).trim().strv();
+            string_view value {strex(args.Get(i + 1)).trim().strv()};
 
             if (!value.empty() && !CommandLineArgs::IsOption(value)) {
                 return string(value);
@@ -396,16 +396,16 @@ static void PrebakeResources(BakingSettings& settings)
     FO_TRACE_ZONE(Baking);
 
     using BakeResourcesFunc = bool (*)(void*);
-    auto bake_resources = platform::get_func_addr<BakeResourcesFunc>(nullptr, "FO_BakeResources");
+    auto bake_resources {platform::get_func_addr<BakeResourcesFunc>(nullptr, "FO_BakeResources")};
 
-    strex lib_name = strex("{}_BakerLib", FO_DEV_NAME);
+    strex lib_name {strex("{}_BakerLib", FO_DEV_NAME)};
 
     if (bake_resources == nullptr) {
-        auto exe_path = platform::get_exe_path();
-        string lib_path = strex(exe_path.value_or("")).extract_dir().combine_path(lib_name).str();
+        auto exe_path {platform::get_exe_path()};
+        string lib_path {strex(exe_path.value_or("")).extract_dir().combine_path(lib_name).str()};
         // Never unloaded: like every engine library it carries statically linked runtimes whose process-wide
         // callbacks cannot be withdrawn, so unmapping it would leave them pointing at nothing
-        nptr<void> baker_dll = platform::load_pinned_module(lib_path);
+        nptr<void> baker_dll {platform::load_pinned_module(lib_path)};
 
         if (baker_dll) {
             bake_resources = platform::get_func_addr<BakeResourcesFunc>(baker_dll, "FO_BakeResources");
@@ -413,7 +413,7 @@ static void PrebakeResources(BakingSettings& settings)
     }
 
     if (bake_resources != nullptr) {
-        bool result = false;
+        bool result {false};
         Application::ShowProgressWindow("Baking resources... Please wait", [&] { result = bake_resources(&settings); });
 
         if (!result) {
@@ -434,7 +434,7 @@ static void PrebakeResources(BakingSettings& settings)
 
 auto GetExeLogFileName() -> string
 {
-    if (auto exe_path = platform::get_exe_path()) {
+    if (auto exe_path {platform::get_exe_path()}) {
         return strex("{}.log", strex(exe_path.value()).extract_file_name().erase_file_extension());
     }
 

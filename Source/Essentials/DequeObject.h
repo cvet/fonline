@@ -40,10 +40,10 @@ FO_BEGIN_NAMESPACE
 
 // Element bytes held by one block. The standard deque fixes its block at 16 bytes, so every element wider
 // than a pointer costs a heap block of its own
-inline constexpr size_t DEQUE_BLOCK_BYTES = 512;
+inline constexpr size_t DEQUE_BLOCK_BYTES {512};
 
 // Blocks never hold fewer elements than this, so a wide element still amortises its allocations
-inline constexpr size_t DEQUE_MIN_BLOCK_ELEMENTS = 4;
+inline constexpr size_t DEQUE_MIN_BLOCK_ELEMENTS {4};
 
 // Behaves as std::deque over the operations the engine uses, with the block size chosen by the caller rather
 // than fixed by the standard library. Growth at either end never moves an element, as the standard promises
@@ -60,7 +60,7 @@ public:
     using const_pointer = const T*;
     using allocator_type = safe_allocator<T>;
 
-    static constexpr size_type block_elements = BlockBytes / sizeof(T) > DEQUE_MIN_BLOCK_ELEMENTS ? BlockBytes / sizeof(T) : DEQUE_MIN_BLOCK_ELEMENTS;
+    static constexpr size_type block_elements {BlockBytes / sizeof(T) > DEQUE_MIN_BLOCK_ELEMENTS ? BlockBytes / sizeof(T) : DEQUE_MIN_BLOCK_ELEMENTS};
 
     // Walks logical positions rather than storage, so crossing a block boundary needs no special case at the
     // call site. The block index and offset are derived from a compile-time constant divisor
@@ -103,7 +103,7 @@ public:
         }
         constexpr auto operator++(int) noexcept -> basic_iterator
         {
-            basic_iterator copy = *this;
+            basic_iterator copy {*this};
             ++_index;
             return copy;
         }
@@ -114,7 +114,7 @@ public:
         }
         constexpr auto operator--(int) noexcept -> basic_iterator
         {
-            basic_iterator copy = *this;
+            basic_iterator copy {*this};
             --_index;
             return copy;
         }
@@ -128,12 +128,12 @@ public:
 
         [[nodiscard]] constexpr auto operator+(difference_type offset) const noexcept -> basic_iterator
         {
-            basic_iterator copy = *this;
+            basic_iterator copy {*this};
             return copy += offset;
         }
         [[nodiscard]] constexpr auto operator-(difference_type offset) const noexcept -> basic_iterator
         {
-            basic_iterator copy = *this;
+            basic_iterator copy {*this};
             return copy -= offset;
         }
         [[nodiscard]] constexpr auto operator-(const basic_iterator& other) const noexcept -> difference_type { return static_cast<difference_type>(_index) - static_cast<difference_type>(other._index); }
@@ -183,7 +183,7 @@ public:
     auto operator=(const basic_deque& other) -> basic_deque&
     {
         if (this != &other) {
-            basic_deque copy = other;
+            basic_deque copy {other};
             swap(copy);
         }
 
@@ -246,7 +246,7 @@ public:
     {
         reserve_back();
 
-        T* place = address(_first + _size);
+        T* place {address(_first + _size)};
         std::construct_at(place, std::forward<Args>(args)...);
         _size++;
 
@@ -258,7 +258,7 @@ public:
     {
         reserve_front();
 
-        T* place = address(_first - 1);
+        T* place {address(_first - 1)};
         std::construct_at(place, std::forward<Args>(args)...);
         _first--;
         _size++;
@@ -285,17 +285,17 @@ public:
     // standard container does. Returns the position the removed element occupied
     auto erase(const_iterator pos) -> iterator
     {
-        size_type index = pos._index;
+        size_type index {pos._index};
 
         if (index < _size - index - 1) {
-            for (size_type i = index; i > 0; i--) {
+            for (size_type i {index}; i > 0; i--) {
                 slot(_first + i) = std::move(slot(_first + i - 1));
             }
 
             pop_front();
         }
         else {
-            for (size_type i = index; i + 1 < _size; i++) {
+            for (size_type i {index}; i + 1 < _size; i++) {
                 slot(_first + i) = std::move(slot(_first + i + 1));
             }
 
@@ -370,13 +370,13 @@ private:
             return;
         }
 
-        size_type new_capacity = _block_capacity != 0 ? _block_capacity * 2 : 4;
+        size_type new_capacity {_block_capacity != 0 ? _block_capacity * 2 : 4};
 
         if (new_capacity < required) {
             new_capacity = required;
         }
 
-        T** new_blocks = safe_allocator<T*>().allocate(new_capacity);
+        T** new_blocks {safe_allocator<T*>().allocate(new_capacity)};
         std::copy(_blocks, _blocks + _block_count, new_blocks);
 
         if (_blocks != nullptr) {
@@ -389,7 +389,7 @@ private:
 
     void destroy_elements() noexcept
     {
-        for (size_type i = 0; i < _size; i++) {
+        for (size_type i {0}; i < _size; i++) {
             std::destroy_at(address(_first + i));
         }
 
@@ -398,7 +398,7 @@ private:
 
     void release_blocks() noexcept
     {
-        for (size_type i = 0; i < _block_count; i++) {
+        for (size_type i {0}; i < _block_count; i++) {
             allocator_type().deallocate(_blocks[i], block_elements);
         }
 

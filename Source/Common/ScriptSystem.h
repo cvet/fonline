@@ -162,7 +162,7 @@ public:
 
     void Reset(function<void()>&& cleanup = {}) noexcept
     {
-        function<void()> previous = std::move(_cleanup);
+        function<void()> previous {std::move(_cleanup)};
         _cleanup = std::move(cleanup);
 
         if (previous) {
@@ -298,7 +298,7 @@ namespace NativeDataProvider
             _dirty = false;
         }
 
-        mutable vector<pair<ptr<void>, ptr<void>>> _ptrs;
+        mutable vector<pair<ptr<void>, ptr<void>>> _ptrs {};
         mutable bool _dirty {true};
         function<void(vector<pair<ptr<void>, ptr<void>>>&)> _refreshCallback {};
         function<void()> _clearCallback {};
@@ -323,7 +323,7 @@ namespace NativeDataProvider
         void AddDictElement(ptr<void> data, ptr<void> key, ptr<void> value) const override { cast_from_void<DictDataProxy*>(data.get())->Add(key, value); }
     };
 
-    static constexpr NativeDataAccessor NATIVE_DATA_ACCESSOR;
+    static constexpr NativeDataAccessor NATIVE_DATA_ACCESSOR {};
 
     template<class T>
     static auto NormalizeArg(T&& arg, StorageEntryType& temp_storage) -> ptr<void> // NOLINT(cppcoreguidelines-missing-std-forward)
@@ -339,7 +339,7 @@ namespace NativeDataProvider
         else if constexpr (is_borrow_pointer_wrapper_v<raw_t>) {
             using wrapped_t = std::remove_const_t<typename raw_t::element_type>;
             if constexpr (std::is_base_of_v<Entity, wrapped_t>) {
-                ptr<nptr<Entity>> entity = &temp_storage.emplace<nptr<Entity>>(arg);
+                ptr<nptr<Entity>> entity {&temp_storage.emplace<nptr<Entity>>(arg)};
                 return make_ptr(entity->get_pp()).void_cast();
             }
             else {
@@ -486,19 +486,19 @@ public:
         }
 
         array<NativeDataProvider::StorageEntryType, sizeof...(Args) + (std::is_same_v<TRet, void> ? 0 : 1)> temp_storage {};
-        size_t storage_index = 0;
+        size_t storage_index {0};
         array<ptr<void>, sizeof...(Args)> args_data {([&] { return NativeDataProvider::NormalizeArg(args, temp_storage[storage_index++]); }())...};
-        auto accessor = make_ptr(&NativeDataProvider::NATIVE_DATA_ACCESSOR);
+        auto accessor {make_ptr(&NativeDataProvider::NATIVE_DATA_ACCESSOR)};
         FuncCallData call {.Accessor = accessor};
         call.ArgsData = args_data;
 
         call.Completion = std::move(completion);
-        bool call_result = false;
-        auto complete = scope_exit([&]() noexcept {
+        bool call_result {false};
+        auto complete {scope_exit([&]() noexcept {
             if (call.Completion) {
                 safe_call([&] { call.Completion(call_result); });
             }
-        });
+        })};
 
         if constexpr (!std::is_same_v<TRet, void>) {
             call.RetData = NativeDataProvider::NormalizeArg(_ret, temp_storage[storage_index]);
@@ -598,7 +598,7 @@ namespace NativeDataProvider
 
     inline void CheckArgNotNull(const FuncCallData& call, size_t arg_index, string_view method_name, string_view arg_name, string_view type_name)
     {
-        auto arg_object = ReadHandleSlot(call.ArgsData[arg_index]);
+        auto arg_object {ReadHandleSlot(call.ArgsData[arg_index])};
 
         if (!arg_object) {
             throw ScriptException("Null passed to non-nullable parameter", method_name, arg_name, type_name);
@@ -609,7 +609,7 @@ namespace NativeDataProvider
     {
         FO_VERIFY_AND_THROW(call.RetData, "Script call has no return value storage");
 
-        auto ret_object = ReadHandleSlot(call.RetData);
+        auto ret_object {ReadHandleSlot(call.RetData)};
 
         if (!ret_object) {
             throw ScriptException("Non-nullable method returned null", method_name, type_name);
@@ -631,7 +631,7 @@ namespace NativeDataCaller
     public:
         using return_type = R;
         using args_tuple = tuple<Args...>;
-        static constexpr size_t arity = sizeof...(Args);
+        static constexpr size_t arity {sizeof...(Args)};
     };
 
     // Conjunction in a concept short-circuits, so `element_type` is only looked up on an actual handle;
@@ -655,8 +655,8 @@ namespace NativeDataCaller
     {
         using target_t = std::remove_const_t<typename ElemT::element_type>;
 
-        nptr<Entity> base_entity = NativeDataProvider::ReadTypedHandleSlot<Entity>(slot);
-        nptr<target_t> target_entity = base_entity.template dyn_cast<target_t>();
+        nptr<Entity> base_entity {NativeDataProvider::ReadTypedHandleSlot<Entity>(slot)};
+        nptr<target_t> target_entity {base_entity.template dyn_cast<target_t>()};
 
         if (base_entity && !target_entity) {
             ThrowScriptEntityTypeMismatch(base_entity.as_ptr());
@@ -674,8 +674,8 @@ namespace NativeDataCaller
 
         if constexpr (vector_collection<raw_t>) {
             using value_t = typename raw_t::value_type;
-            auto& v = temp.emplace();
-            size_t size = accessor.GetArraySize(data);
+            auto& v {temp.emplace()};
+            size_t size {accessor.GetArraySize(data)};
 
             if constexpr (raw_array_value<value_t>) {
                 v.resize(size);
@@ -689,8 +689,8 @@ namespace NativeDataCaller
 
             v.reserve(size);
 
-            for (size_t i = 0; i < size; i++) {
-                ptr<void> element = accessor.GetArrayElement(data, i);
+            for (size_t i {0}; i < size; i++) {
+                ptr<void> element {accessor.GetArrayElement(data, i)};
 
                 // Destroyed elements stay: an array may outlive entities the caller checked, and its callees
                 // drop them themselves, so rejecting one here would break their recoverable contract
@@ -713,11 +713,11 @@ namespace NativeDataCaller
             static_assert(!entity_handle_arg<key_t> && !entity_handle_collection<key_t>, "Entity handles are not supported as script dict keys");
             static_assert(!entity_handle_collection<mapped_t>, "Arrays of entity handles in a script dict value are not narrowed yet");
 
-            auto& m = temp.emplace();
-            size_t size = accessor.GetDictSize(data);
+            auto& m {temp.emplace()};
+            size_t size {accessor.GetDictSize(data)};
 
-            for (size_t i = 0; i < size; i++) {
-                auto kv = accessor.GetDictElement(data, i);
+            for (size_t i {0}; i < size; i++) {
+                auto kv {accessor.GetDictElement(data, i)};
 
                 if constexpr (entity_handle_arg<mapped_t>) {
                     m.emplace(*cast_from_void<const key_t*>(kv.first.get()), NarrowEntityCollectionSlot<mapped_t>(kv.second));
@@ -730,7 +730,7 @@ namespace NativeDataCaller
             return m;
         }
         else if constexpr (specialization_of<T, ScriptFunc>) {
-            auto callback = accessor.GetCallback(data);
+            auto callback {accessor.GetCallback(data)};
             return T(std::move(callback));
         }
         else if constexpr (std::is_same_v<raw_t, string_view>) {
@@ -739,8 +739,8 @@ namespace NativeDataCaller
         else if constexpr (specialization_of<raw_t, ptr> || specialization_of<raw_t, nptr>) {
             using elem_t = typename raw_t::element_type;
             if constexpr (std::is_base_of_v<Entity, std::remove_const_t<elem_t>>) {
-                nptr<Entity> base_entity = NativeDataProvider::ReadTypedHandleSlot<Entity>(data);
-                nptr<std::remove_const_t<elem_t>> target_entity = base_entity.template dyn_cast<std::remove_const_t<elem_t>>();
+                nptr<Entity> base_entity {NativeDataProvider::ReadTypedHandleSlot<Entity>(data)};
+                nptr<std::remove_const_t<elem_t>> target_entity {base_entity.template dyn_cast<std::remove_const_t<elem_t>>()};
 
                 // A method declared on the script Entity is promoted to the target entity here. The handle
                 // reaches native code as the base, so a prototype passed to one is rejected at the call
@@ -788,7 +788,7 @@ namespace NativeDataCaller
         // Copy back mutable collections or return value
         if constexpr (std::is_lvalue_reference_v<T> && !std::is_const_v<std::remove_reference_t<T>>) {
             if constexpr (vector_collection<raw_t>) {
-                auto& v = temp.value();
+                auto& v {temp.value()};
 
                 if constexpr (raw_array_value<typename raw_t::value_type>) {
                     if (accessor.WriteArrayRaw(data, make_const_span(v))) {
@@ -803,7 +803,7 @@ namespace NativeDataCaller
                 }
             }
             else if constexpr (map_collection<raw_t>) {
-                auto& v = temp.value();
+                auto& v {temp.value()};
                 accessor.ClearDict(data);
 
                 for (auto& e : v) {
@@ -814,7 +814,7 @@ namespace NativeDataCaller
                 using elem_t = typename raw_t::element_type;
                 FO_VERIFY_AND_THROW(temp.has_value(), "Optional value is not set");
                 if constexpr (std::is_base_of_v<Entity, std::remove_const_t<elem_t>>) {
-                    nptr<elem_t> target_entity = temp.value();
+                    nptr<elem_t> target_entity {temp.value()};
                     NativeDataProvider::WriteTypedHandleSlot<Entity>(data, target_entity);
                 }
                 else {
@@ -835,12 +835,12 @@ namespace NativeDataCaller
     template<bool AllowDestroyedEntityArgs, typename R, typename... Args, size_t... I>
     auto NativeCallImpl(R (*fn)(Args...), FuncCallData& call, std::index_sequence<I...> /**/)
     {
-        tuple<optional<std::remove_cvref_t<Args>>...> temp_data;
-        ptr<const DataAccessor> accessor = call.Accessor;
+        tuple<optional<std::remove_cvref_t<Args>>...> temp_data {};
+        ptr<const DataAccessor> accessor {call.Accessor};
 
         if constexpr (!std::is_void_v<R>) {
-            R&& r = fn(ConvertArg<Args, optional<std::remove_cvref_t<Args>>, AllowDestroyedEntityArgs>(call.ArgsData[I], *accessor, std::get<I>(temp_data))...);
-            optional<std::remove_cvref_t<R>> temp_r = std::move(r);
+            R&& r {fn(ConvertArg<Args, optional<std::remove_cvref_t<Args>>, AllowDestroyedEntityArgs>(call.ArgsData[I], *accessor, std::get<I>(temp_data))...)};
+            optional<std::remove_cvref_t<R>> temp_r {std::move(r)};
             ReturnArg<std::add_lvalue_reference_t<R>>(call.RetData, *accessor, temp_r);
         }
         else {
@@ -865,8 +865,8 @@ namespace NativeDataCaller
 class ScriptSystemBackend
 {
 public:
-    static constexpr int32_t ANGELSCRIPT_BACKEND_INDEX = 0;
-    static constexpr int32_t MANAGED_BACKEND_INDEX = 1;
+    static constexpr int32_t ANGELSCRIPT_BACKEND_INDEX {0};
+    static constexpr int32_t MANAGED_BACKEND_INDEX {1};
     virtual ~ScriptSystemBackend() = default;
 
     virtual void Process() { }
@@ -896,7 +896,7 @@ public:
         requires(std::is_base_of_v<ScriptSystemBackend, T>)
     [[nodiscard]] auto GetBackend(size_t index) noexcept -> nptr<T>
     {
-        auto it = _backends.find(index);
+        auto it {_backends.find(index)};
         if (it == _backends.end()) {
             return nullptr;
         }
@@ -908,7 +908,7 @@ public:
         requires(std::is_base_of_v<ScriptSystemBackend, T>)
     [[nodiscard]] auto GetBackend(size_t index) const noexcept -> nptr<const T>
     {
-        auto it = _backends.find(index);
+        auto it {_backends.find(index)};
         if (it == _backends.end()) {
             return nullptr;
         }
@@ -919,10 +919,10 @@ public:
     template<typename TRet, typename... Args>
     [[nodiscard]] auto FindFunc(hstring func_name) noexcept -> ScriptFunc<TRet, Args...>
     {
-        auto range = _globalFuncMap.equal_range(func_name);
+        auto range {_globalFuncMap.equal_range(func_name)};
         array<size_t, sizeof...(Args)> args_arr {ArgMapTypeIndex<Args>()...};
 
-        for (auto it = range.first; it != range.second; ++it) {
+        for (auto it {range.first}; it != range.second; ++it) {
             if (ValidateArgs(it->second, args_arr, ArgMapTypeIndex<TRet>())) {
                 return ScriptFunc<TRet, Args...>(it->second);
             }
@@ -939,10 +939,10 @@ public:
     template<typename TRet, typename... Args>
     [[nodiscard]] auto CheckFunc(hstring func_name, string_view attribute = {}) const noexcept -> bool
     {
-        auto range = _globalFuncMap.equal_range(func_name);
+        auto range {_globalFuncMap.equal_range(func_name)};
         array<size_t, sizeof...(Args)> args_arr {ArgMapTypeIndex<Args>()...};
 
-        for (auto it = range.first; it != range.second; ++it) {
+        for (auto it {range.first}; it != range.second; ++it) {
             if (ValidateArgs(it->second, args_arr, ArgMapTypeIndex<TRet>()) && (attribute.empty() || it->second->AttributeChecker(attribute))) {
                 return true;
             }
@@ -964,7 +964,7 @@ public:
         requires(!std::is_void_v<TRet>)
     auto CallFunc(hstring func_name, const Args&... args, TRet& ret) noexcept -> bool
     {
-        auto func = FindFunc<TRet, Args...>(func_name);
+        auto func {FindFunc<TRet, Args...>(func_name)};
 
         if (func && func.Call(args...)) {
             ret = func.GetResult();
@@ -978,7 +978,7 @@ public:
         requires(std::is_void_v<TRet>)
     auto CallFunc(hstring func_name, const Args&... args) noexcept -> bool
     {
-        auto func = FindFunc<void, Args...>(func_name);
+        auto func {FindFunc<void, Args...>(func_name)};
         return func && func.Call(args...);
     }
 
@@ -986,15 +986,15 @@ public:
         requires(std::is_void_v<TRet>)
     auto CallAdminFunc(hstring func_name, const Args&... args) noexcept -> bool
     {
-        auto range = _globalFuncMap.equal_range(func_name);
+        auto range {_globalFuncMap.equal_range(func_name)};
         array<size_t, sizeof...(Args)> args_arr {ArgMapTypeIndex<Args>()...};
 
-        for (auto it = range.first; it != range.second; ++it) {
+        for (auto it {range.first}; it != range.second; ++it) {
             if (!it->second->AttributeChecker("AdminRemoteCall") || !ValidateArgs(it->second, args_arr, ArgMapTypeIndex<void>())) {
                 continue;
             }
 
-            auto func = ScriptFunc<void, Args...>(it->second);
+            auto func {ScriptFunc<void, Args...>(it->second)};
             return func && func.Call(args...);
         }
 
@@ -1097,7 +1097,7 @@ namespace ScriptHelpers
     auto CallInitScript(ptr<ScriptSystem> script_sys, ptr<T> entity, hstring init_script, bool first_time) -> bool
     {
         if (init_script) {
-            auto init_func = script_sys->FindFunc<void, ptr<T>, bool>(init_script);
+            auto init_func {script_sys->FindFunc<void, ptr<T>, bool>(init_script)};
 
             if (!init_func) {
                 throw ScriptException("Init function not found or has a mismatched signature", init_script, T::ENTITY_TYPE_NAME);
@@ -1115,11 +1115,11 @@ namespace ScriptHelpers
 template<typename T, typename TContainer, typename TResolver>
 auto MakeScriptHandleVectorWith(const TContainer& entries, TResolver&& resolver)
 {
-    vector<ptr<T>> result;
+    vector<ptr<T>> result {};
     result.reserve(entries.size());
 
     for (auto&& entry : entries) {
-        auto entry_ptr = resolver(entry);
+        auto entry_ptr {resolver(entry)};
         result.emplace_back(entry_ptr);
     }
 
@@ -1147,11 +1147,11 @@ auto MakeScriptHandleVectorAs(const TContainer& entries)
 template<typename T, typename U, typename TContainer>
 auto MakeScriptRefHandleVectorAs(const TContainer& entries)
 {
-    vector<ptr<T>> result;
+    vector<ptr<T>> result {};
     result.reserve(entries.size());
 
-    for (size_t i = 0; i < entries.size(); i++) {
-        auto mutable_entry = make_ptr(const_cast<U*>(std::addressof(*entries[i])));
+    for (size_t i {0}; i < entries.size(); i++) {
+        auto mutable_entry {make_ptr(const_cast<U*>(std::addressof(*entries[i])))};
         result.emplace_back(mutable_entry);
     }
 

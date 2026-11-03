@@ -59,7 +59,6 @@ namespace
         ~TestLifecycleEntity() override = default;
 
         [[nodiscard]] auto GetName() const noexcept -> string_view override { return "TestLifecycleEntity"; }
-
     };
 
     static void InitEntityProtoTestMetadata(EngineMetadata& meta)
@@ -78,10 +77,10 @@ TEST_CASE("EntityProtos")
         EngineMetadata meta {[] { }};
         InitEntityProtoTestMetadata(meta);
 
-        hstring knife_pid = meta.Hashes.to_hashed_string("Knife");
-        hstring raider_pid = meta.Hashes.to_hashed_string("Raider");
-        auto item_registrar = meta.GetPropertyRegistrar("Item");
-        auto critter_registrar = meta.GetPropertyRegistrar("Critter");
+        hstring knife_pid {meta.Hashes.to_hashed_string("Knife")};
+        hstring raider_pid {meta.Hashes.to_hashed_string("Raider")};
+        auto item_registrar {meta.GetPropertyRegistrar("Item")};
+        auto critter_registrar {meta.GetPropertyRegistrar("Critter")};
 
         REQUIRE(static_cast<bool>(item_registrar));
         REQUIRE(static_cast<bool>(critter_registrar));
@@ -103,10 +102,10 @@ TEST_CASE("EntityProtos")
         EngineMetadata meta {[] { }};
         InitEntityProtoTestMetadata(meta);
 
-        auto registrar = meta.GetPropertyRegistrar("TestEntity");
+        auto registrar {meta.GetPropertyRegistrar("TestEntity")};
         REQUIRE(static_cast<bool>(registrar));
 
-        hstring custom_pid = meta.Hashes.to_hashed_string("TestProto");
+        hstring custom_pid {meta.Hashes.to_hashed_string("TestProto")};
         ProtoCustomEntity proto {custom_pid, registrar};
 
         CHECK(proto.GetProtoId() == custom_pid);
@@ -119,20 +118,20 @@ TEST_CASE("EntityProtos")
         EngineMetadata meta {[] { }};
         InitEntityProtoTestMetadata(meta);
 
-        hstring custom_pid = meta.Hashes.to_hashed_string("HeldProto");
-        auto registrar = meta.GetPropertyRegistrar("TestEntity");
+        hstring custom_pid {meta.Hashes.to_hashed_string("HeldProto")};
+        auto registrar {meta.GetPropertyRegistrar("TestEntity")};
         REQUIRE(static_cast<bool>(registrar));
 
-        optional<TestEntityHolder> holder;
+        optional<TestEntityHolder> holder {};
 
         {
-            refcount_ptr<ProtoEntity> proto = safe_alloc::make_refcounted<ProtoCustomEntity>(custom_pid, registrar);
+            refcount_ptr<ProtoEntity> proto {safe_alloc::make_refcounted<ProtoCustomEntity>(custom_pid, registrar)};
             holder.emplace(proto);
         }
 
         REQUIRE(holder.has_value());
 
-        auto held_proto = holder->GetProto();
+        auto held_proto {holder->GetProto()};
         CHECK(holder->GetProtoId() == custom_pid);
         CHECK(held_proto->GetName() == string_view {"HeldProto"});
         CHECK(held_proto->GetTypeName() == meta.Hashes.to_hashed_string("TestEntity"));
@@ -143,10 +142,10 @@ TEST_CASE("EntityProtos")
         EngineMetadata meta {[] { }};
         InitEntityProtoTestMetadata(meta);
 
-        auto registrar = meta.GetPropertyRegistrar("TestEntity");
+        auto registrar {meta.GetPropertyRegistrar("TestEntity")};
         REQUIRE(static_cast<bool>(registrar));
 
-        refcount_ptr<TestLifecycleEntity> entity = safe_alloc::make_refcounted<TestLifecycleEntity>(registrar);
+        refcount_ptr<TestLifecycleEntity> entity {safe_alloc::make_refcounted<TestLifecycleEntity>(registrar)};
         std::atomic_bool reader_started {false};
         std::atomic_bool saw_destroying {false};
         std::atomic_bool saw_destroyed {false};
@@ -154,7 +153,7 @@ TEST_CASE("EntityProtos")
         std::thread reader {[&] {
             reader_started.store(true, std::memory_order_release);
 
-            nanotime deadline = nanotime::now() + timespan {std::chrono::seconds {5}};
+            nanotime deadline {nanotime::now() + timespan {std::chrono::seconds {5}}};
 
             while (!entity->IsDestroying() && nanotime::now() < deadline) {
                 std::this_thread::yield();

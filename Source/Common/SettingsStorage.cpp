@@ -56,9 +56,9 @@ public:
 
 private:
 #if FO_WINDOWS
-    string _subKey;
+    string _subKey {};
 #else
-    unique_nptr<CacheStorage> _cache;
+    unique_nptr<CacheStorage> _cache {};
 #endif
 };
 
@@ -70,11 +70,11 @@ SettingsStorageImpl::SettingsStorageImpl(string_view app_name)
 #else
     // The one place that names the product without settings, because this layer has none: tool preferences
     // follow the user rather than one game install, so they never move into a client's writable root
-    string base = platform::get_user_data_base();
+    string base {platform::get_user_data_base()};
 
     // No user data base (unusual sandbox): keep the tool running without persistence rather than write next to the binary
     if (!base.empty()) {
-        string dir = strex(base).combine_path(FO_NICE_NAME).combine_path(app_name).str();
+        string dir {strex(base).combine_path(FO_NICE_NAME).combine_path(app_name).str()};
         _cache = safe_alloc::make_unique<CacheStorage>(dir);
     }
 #endif
@@ -140,25 +140,25 @@ auto SettingsStorage::HasKey(string_view key) const -> bool
 
 auto SettingsStorage::GetString(string_view key, string_view default_value) const -> string
 {
-    auto entry = _impl->GetEntry(key);
+    auto entry {_impl->GetEntry(key)};
     return entry ? *entry : string(default_value);
 }
 
 auto SettingsStorage::GetInt(string_view key, int64_t default_value) const -> int64_t
 {
-    auto entry = _impl->GetEntry(key);
+    auto entry {_impl->GetEntry(key)};
     return entry ? strex(*entry).to_int64() : default_value;
 }
 
 auto SettingsStorage::GetBool(string_view key, bool default_value) const -> bool
 {
-    auto entry = _impl->GetEntry(key);
+    auto entry {_impl->GetEntry(key)};
     return entry ? strex(*entry).to_bool() : default_value;
 }
 
 auto SettingsStorage::GetFloat(string_view key, float64_t default_value) const -> float64_t
 {
-    auto entry = _impl->GetEntry(key);
+    auto entry {_impl->GetEntry(key)};
     return entry ? strex(*entry).to_float64() : default_value;
 }
 

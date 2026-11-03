@@ -52,7 +52,7 @@ class AtlasSprite;
 
 namespace Color
 {
-    static constexpr auto TextDefault = ucolor {60, 248, 0};
+    static constexpr auto TextDefault {ucolor {60, 248, 0}};
 }
 
 // Font slot index. Engine ships a single named slot (Default = 0); scripts may add more entries via the codegen Enum annotation
@@ -183,7 +183,7 @@ private:
     static auto ParseInlineColorTag(string_view str, size_t marker_pos, size_t& tag_end, ucolor& color, bool& reset) -> bool;
     auto GetOrFormat(TextFormat format, FontType font, irect32 rect, ucolor color, FormatMode mode, string_view str) const -> ptr<const FontFormatInfo>;
 
-    static constexpr string_view InlineColorTagPrefix = "@color";
+    static constexpr string_view InlineColorTagPrefix {"@color"};
 
     ptr<SpriteManager> _sprMngr;
     ptr<ResourceManager> _resMngr;

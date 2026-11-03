@@ -161,13 +161,13 @@ ServerConnection::ServerConnection(ptr<ServerNetworkSettings> settings, shared_p
     _channel {channel_identity},
     _uplinkDelay {std::chrono::milliseconds {_settings->Network.LinkDelayWindowMs}, std::chrono::milliseconds {_settings->Network.MoveLateCatchUpMinMs}, std::chrono::milliseconds {_settings->Network.LinkDelayRebaseMs}}
 {
-    auto send = [this]() FO_DEFERRED -> vector<uint8_t> { return AsyncSendData(); };
-    auto receive = [this](const_span<uint8_t> buf) FO_DEFERRED { AsyncReceiveData(buf); };
-    auto disconnect = [this]() FO_DEFERRED {
+    auto send {[this]() FO_DEFERRED -> vector<uint8_t> { return AsyncSendData(); }};
+    auto receive {[this](const_span<uint8_t> buf) FO_DEFERRED { AsyncReceiveData(buf); }};
+    auto disconnect {[this]() FO_DEFERRED {
         RecordDisconnectReason(DisconnectReason::ClientClosed);
         logging::write("Closed connection from {}:{} ({})", _netConnection->GetHost(), _netConnection->GetPort(), GetDisconnectReasonName(GetDisconnectReason()));
         AsyncReceiveData({});
-    };
+    }};
 
     if (_settings->ServerNetwork.MaxMessageSize != 0) {
         _inBuf.SetMaxMsgLen(numeric_cast<size_t>(_settings->ServerNetwork.MaxMessageSize));
@@ -227,13 +227,13 @@ auto ServerConnection::GetDisconnectReason() const noexcept -> DisconnectReason
 
 void ServerConnection::RecordDisconnectReason(DisconnectReason reason) noexcept
 {
-    DisconnectReason expected = DisconnectReason::None;
+    DisconnectReason expected {DisconnectReason::None};
     (void)_disconnectReason.compare_exchange_strong(expected, reason, std::memory_order_relaxed);
 }
 
 auto ServerConnection::GetDiagnostics() const -> Diagnostics
 {
-    Diagnostics result;
+    Diagnostics result {};
     result.HandshakeComplete = _activity.HandshakeComplete;
     result.LastActivityTime = _activity.LastActivityTime;
     result.LastLoginProgressTime = _activity.LastLoginProgressTime;
@@ -333,7 +333,7 @@ void ServerConnection::RegisterPingAnswer(nanotime time) noexcept
     // A sample carries the client's frame time on top of the transport delay, so it is smoothed into an upper
     // bound one late answer cannot move far; an unpaired answer is ignored outright
     if (_activity.PingRequestTime && time > _activity.PingRequestTime) {
-        timespan sample = time - _activity.PingRequestTime;
+        timespan sample {time - _activity.PingRequestTime};
 
         if (_activity.RoundTrip) {
             _activity.RoundTrip = timespan {(_activity.RoundTrip.nanoseconds() * 3 + sample.nanoseconds()) / 4};
@@ -357,11 +357,11 @@ auto ServerConnection::PullUpdateFilePortion(size_t file_size, size_t max_portio
     FO_VERIFY_AND_THROW(_updateFileTransfer.PendingFileIndex, "Updater file portion requested without an active pending file", _updateFileTransfer.PortionIndex, file_size, max_portion_size);
     FO_VERIFY_AND_THROW(max_portion_size != 0, "Max portion size must be non-zero", max_portion_size);
 
-    size_t offset = _updateFileTransfer.PortionIndex * max_portion_size;
+    size_t offset {_updateFileTransfer.PortionIndex * max_portion_size};
     FO_VERIFY_AND_THROW(offset <= file_size, "Updater file transfer portion offset is outside the file bounds", _updateFileTransfer.PendingFileIndex.value(), _updateFileTransfer.PortionIndex, max_portion_size, offset, file_size);
 
-    size_t remaining_size = file_size - offset;
-    auto portion_size = std::min(remaining_size, max_portion_size);
+    size_t remaining_size {file_size - offset};
+    auto portion_size {std::min(remaining_size, max_portion_size)};
 
     if (offset + portion_size < file_size) {
         _updateFileTransfer.PortionIndex++;
@@ -387,7 +387,7 @@ auto ServerConnection::AsyncSendData() -> vector<uint8_t>
 
     scoped_lock channel_locker {_channelLocker};
 
-    vector<uint8_t> send_buf;
+    vector<uint8_t> send_buf {};
 
     // The one plaintext a connection ever sends, and all that a client from before the channel receives
     if (_preChannelRefusalPending) {
@@ -406,7 +406,7 @@ auto ServerConnection::AsyncSendData() -> vector<uint8_t>
 
     // Messages written before the client's channel stands wait in the buffer rather than leave in the clear
     if (_channel.IsEstablished() && !_outBuf.IsEmpty()) {
-        auto raw_buf = _outBuf.GetData();
+        auto raw_buf {_outBuf.GetData()};
 
         if (!_settings->Network.DisableZlibCompression) {
             _compressor.compress(raw_buf, _compressedBuf);
@@ -424,8 +424,8 @@ auto ServerConnection::AsyncSendData() -> vector<uint8_t>
 
 void ServerConnection::AsyncReceiveData(const_span<uint8_t> buf)
 {
-    DataArrivedCallback callback;
-    bool has_handshake_output = false;
+    DataArrivedCallback callback {};
+    bool has_handshake_output {false};
 
     {
         scoped_lock locker {_inBufLocker};

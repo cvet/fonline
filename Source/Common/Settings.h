@@ -104,7 +104,10 @@ protected:
     } \
     group {}; \
     }
-#define SETTING(type, group, name, ...) const type name = {}
+#define SETTING(type, group, name, ...) \
+    const type name \
+    { \
+    }
 #include "Settings.inc"
 
 struct GlobalSettings : virtual ClientSettings, virtual ServerSettings, virtual BakingSettings, virtual BaseSettings

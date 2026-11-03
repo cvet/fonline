@@ -51,7 +51,7 @@ FO_DECLARE_EXCEPTION(ParticleBakerException);
 class ParticleBaker final : public BaseBaker
 {
 public:
-    static constexpr string_view_nt NAME = "Particle";
+    static constexpr string_view_nt NAME {"Particle"};
 
     explicit ParticleBaker(shared_ptr<BakingContext> ctx);
     ParticleBaker(const ParticleBaker&) = delete;

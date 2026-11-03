@@ -42,10 +42,10 @@ FO_BEGIN_NAMESPACE
 
 TEST_CASE("ApplicationConsoleInterrupt", "[.][console-interrupt]")
 {
-    ptr<Application> app = GetApp();
+    ptr<Application> app {GetApp()};
     REQUIRE_FALSE(app->IsQuitRequested());
     REQUIRE(fs::write_file("console-interrupt.ready", "ready"));
-    auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds {15};
+    auto deadline {std::chrono::steady_clock::now() + std::chrono::seconds {15}};
 
     while (!app->IsQuitRequested() && std::chrono::steady_clock::now() < deadline) {
         app->BeginFrame();
@@ -60,13 +60,13 @@ TEST_CASE("ApplicationConsoleInterrupt", "[.][console-interrupt]")
 
 TEST_CASE("ApplicationConsoleInterruptDeferred", "[.][console-interrupt-deferred]")
 {
-    ptr<Application> app = GetApp();
+    ptr<Application> app {GetApp()};
     REQUIRE_FALSE(app->IsQuitRequested());
     REQUIRE(fs::write_file("console-interrupt-deferred.ready", "ready"));
 
     // Wait for the release marker without touching quit state: the control event must only latch
     // the flag, never terminate work on its own
-    auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds {15};
+    auto deadline {std::chrono::steady_clock::now() + std::chrono::seconds {15}};
 
     while (!fs::exists("console-interrupt-deferred.release") && std::chrono::steady_clock::now() < deadline) {
         coarse_sleep(std::chrono::milliseconds {10});
@@ -79,17 +79,17 @@ TEST_CASE("ApplicationConsoleInterruptDeferred", "[.][console-interrupt-deferred
 
 TEST_CASE("ApplicationChildWindowLifecycle")
 {
-    ptr<Application> app = GetApp();
+    ptr<Application> app {GetApp()};
 
     SECTION("ChildWindowsAreCreatedActivatedAndDestroyed")
     {
-        nptr<AppWindow> child = app->CreateChildWindow(isize32 {320, 240}, "coverage child");
+        nptr<AppWindow> child {app->CreateChildWindow(isize32 {320, 240}, "coverage child")};
         REQUIRE(child);
 
-        auto cleanup = scope_exit([&app, child]() noexcept { safe_call([&app, child] { app->DestroyChildWindow(child); }); });
+        auto cleanup {scope_exit([&app, child]() noexcept { safe_call([&app, child] { app->DestroyChildWindow(child); }); })};
 
         // A freshly created child is addressable and reports the size it was asked for
-        isize32 child_size = child->GetSize();
+        isize32 child_size {child->GetSize()};
         CHECK(child_size.width > 0);
         CHECK(child_size.height > 0);
         CHECK(child->GetDisplaySize() == app->MainWindow.GetDisplaySize());
@@ -104,8 +104,8 @@ TEST_CASE("ApplicationChildWindowLifecycle")
 
     SECTION("MultipleChildWindowsCoexist")
     {
-        nptr<AppWindow> first = app->CreateChildWindow(isize32 {200, 150}, "first");
-        nptr<AppWindow> second = app->CreateChildWindow(isize32 {400, 300}, "second");
+        nptr<AppWindow> first {app->CreateChildWindow(isize32 {200, 150}, "first")};
+        nptr<AppWindow> second {app->CreateChildWindow(isize32 {400, 300}, "second")};
         REQUIRE(first);
         REQUIRE(second);
         CHECK(first != second);
@@ -128,7 +128,7 @@ TEST_CASE("ApplicationChildWindowLifecycle")
 
 TEST_CASE("ApplicationWindowRenderScope")
 {
-    ptr<Application> app = GetApp();
+    ptr<Application> app {GetApp()};
 
     SECTION("RenderScopeOpensAndClosesForTheMainWindow")
     {
@@ -138,10 +138,10 @@ TEST_CASE("ApplicationWindowRenderScope")
 
     SECTION("RenderScopeOpensAndClosesForAChildWindow")
     {
-        nptr<AppWindow> child = app->CreateChildWindow(isize32 {256, 256}, "render child");
+        nptr<AppWindow> child {app->CreateChildWindow(isize32 {256, 256}, "render child")};
         REQUIRE(child);
 
-        auto cleanup = scope_exit([&app, child]() noexcept { safe_call([&app, child] { app->DestroyChildWindow(child); }); });
+        auto cleanup {scope_exit([&app, child]() noexcept { safe_call([&app, child] { app->DestroyChildWindow(child); }); })};
 
         // Rendering into a child stands up its virtual render texture on first use
         REQUIRE_NOTHROW(app->BeginWindowRender(child.as_ptr()));
@@ -154,15 +154,15 @@ TEST_CASE("ApplicationWindowRenderScope")
 
 TEST_CASE("ApplicationCoordinateTranslation")
 {
-    ptr<Application> app = GetApp();
+    ptr<Application> app {GetApp()};
 
     SECTION("HostAndActiveWindowRoundTripOnTheMainWindow")
     {
         app->SetActiveWindow(&app->MainWindow);
 
         ipos32 host_pos {40, 30};
-        ipos32 in_window = app->TranslateHostPosToActiveWindow(host_pos);
-        ipos32 back_to_host = app->TranslateActiveWindowPosToHost(in_window);
+        ipos32 in_window {app->TranslateHostPosToActiveWindow(host_pos)};
+        ipos32 back_to_host {app->TranslateActiveWindowPosToHost(in_window)};
 
         // With the main window active the mapping is identity in both directions
         CHECK(in_window.x == host_pos.x);
@@ -176,40 +176,40 @@ TEST_CASE("ApplicationCoordinateTranslation")
         app->SetActiveWindow(&app->MainWindow);
 
         ipos32 delta {7, -9};
-        ipos32 scaled = app->ScaleHostDeltaToActiveWindow(delta);
+        ipos32 scaled {app->ScaleHostDeltaToActiveWindow(delta)};
 
         CHECK(scaled.x == delta.x);
         CHECK(scaled.y == delta.y);
 
-        ipos32 zero = app->ScaleHostDeltaToActiveWindow(ipos32 {0, 0});
+        ipos32 zero {app->ScaleHostDeltaToActiveWindow(ipos32 {0, 0})};
         CHECK(zero.x == 0);
         CHECK(zero.y == 0);
     }
 
     SECTION("TranslationStaysWellFormedForAChildWindow")
     {
-        nptr<AppWindow> child = app->CreateChildWindow(isize32 {160, 120}, "translate child");
+        nptr<AppWindow> child {app->CreateChildWindow(isize32 {160, 120}, "translate child")};
         REQUIRE(child);
 
-        auto cleanup = scope_exit([&app, child]() noexcept {
+        auto cleanup {scope_exit([&app, child]() noexcept {
             safe_call([&app, child] {
                 app->SetActiveWindow(&app->MainWindow);
                 app->DestroyChildWindow(child);
             });
-        });
+        })};
 
         app->SetActiveWindow(child);
 
         // The child mapping may scale, but it must stay finite and round-trip without drifting wildly
-        ipos32 in_window = app->TranslateHostPosToActiveWindow(ipos32 {80, 60});
-        ipos32 back_to_host = app->TranslateActiveWindowPosToHost(in_window);
+        ipos32 in_window {app->TranslateHostPosToActiveWindow(ipos32 {80, 60})};
+        ipos32 back_to_host {app->TranslateActiveWindowPosToHost(in_window)};
 
         CHECK(std::abs(in_window.x) < 100000);
         CHECK(std::abs(in_window.y) < 100000);
         CHECK(std::abs(back_to_host.x) < 100000);
         CHECK(std::abs(back_to_host.y) < 100000);
 
-        ipos32 scaled = app->ScaleHostDeltaToActiveWindow(ipos32 {10, 10});
+        ipos32 scaled {app->ScaleHostDeltaToActiveWindow(ipos32 {10, 10})};
         CHECK(std::abs(scaled.x) < 100000);
         CHECK(std::abs(scaled.y) < 100000);
     }
@@ -217,11 +217,11 @@ TEST_CASE("ApplicationCoordinateTranslation")
 
 TEST_CASE("HeadlessApplicationAudioAndInputSurfaces")
 {
-    ptr<Application> app = GetApp();
+    ptr<Application> app {GetApp()};
 
     SECTION("AudioAnswersWithoutADevice")
     {
-        ptr<IAppAudio> audio = app->MainWindow.GetAudio();
+        ptr<IAppAudio> audio {app->MainWindow.GetAudio()};
 
         // The headless build has no audio device: the query answers false and every operation on it is
         // rejected outright rather than silently doing nothing
@@ -229,22 +229,22 @@ TEST_CASE("HeadlessApplicationAudioAndInputSurfaces")
         CHECK_THROWS(audio->LockDevice());
         CHECK_THROWS(audio->UnlockDevice());
 
-        vector<uint8_t> buf(16, uint8_t {0});
+        vector<uint8_t> buf {vector<uint8_t>(16, uint8_t {0})};
         CHECK_THROWS(audio->ConvertAudio(2, 44100, buf));
 
-        vector<uint8_t> output(16, uint8_t {0});
+        vector<uint8_t> output {vector<uint8_t>(16, uint8_t {0})};
         CHECK_THROWS(audio->MixAudio(output, buf, 100));
         CHECK_THROWS(audio->SetSource(nullptr));
     }
 
     SECTION("InputIgnoresSimulatedEvents")
     {
-        ptr<IAppInput> input = app->MainWindow.GetInput();
+        ptr<IAppInput> input {app->MainWindow.GetInput()};
 
-        InputEvent drained;
+        InputEvent drained {};
         CHECK_FALSE(input->PollEvent(drained));
 
-        InputEvent pushed = MakeInputEvent(InputEvent::KeyDownEvent {KeyCode::A, string {"a"}});
+        InputEvent pushed {MakeInputEvent(InputEvent::KeyDownEvent {KeyCode::A, string {"a"}})};
         input->PushEvent(pushed, false);
 
         // The true headless frontend has no event queue; embedders use GetAppWindowStub when they need
@@ -269,11 +269,11 @@ TEST_CASE("StubAppWindowServesAsAnEmbedderFrontend")
 {
     // The stub frontend is engine surface an embedding project plugs in through GetAppWindowStub; nothing
     // inside the engine calls it, so it only runs when a test does
-    auto settings = GlobalSettings(false);
+    auto settings {GlobalSettings(false)};
     settings.ApplyDefaultSettings();
     BakerTests::ApplySelfContainedClientSettings(settings);
 
-    unique_ptr<IAppWindow> window = GetAppWindowStub(settings);
+    unique_ptr<IAppWindow> window {GetAppWindowStub(settings)};
     ignore_unused(window.get());
 
     SECTION("GeometryAndStateRoundTrip")
@@ -281,7 +281,7 @@ TEST_CASE("StubAppWindowServesAsAnEmbedderFrontend")
         CHECK(window->GetDisplaySize() == isize32 {});
         CHECK(window->GetDisplayModes().empty());
 
-        isize32 initial_size = window->GetSize();
+        isize32 initial_size {window->GetSize()};
         CHECK(initial_size.width > 0);
         CHECK(initial_size.height > 0);
         CHECK(window->GetScreenSize() == initial_size);
@@ -322,12 +322,12 @@ TEST_CASE("StubAppWindowServesAsAnEmbedderFrontend")
 
     SECTION("RenderBackendAnswersWithoutADevice")
     {
-        ptr<IAppRender> render = window->GetRender();
+        ptr<IAppRender> render {window->GetRender()};
 
-        unique_ptr<RenderTexture> tex = render->CreateTexture(isize32 {32, 32}, true, false);
+        unique_ptr<RenderTexture> tex {render->CreateTexture(isize32 {32, 32}, true, false)};
         ignore_unused(tex.get());
 
-        unique_ptr<RenderDrawBuffer> buf = render->CreateDrawBuffer(false);
+        unique_ptr<RenderDrawBuffer> buf {render->CreateDrawBuffer(false)};
         ignore_unused(buf.get());
 
         CHECK_NOTHROW(render->SetRenderTarget(tex.get()));
@@ -337,7 +337,7 @@ TEST_CASE("StubAppWindowServesAsAnEmbedderFrontend")
         CHECK_NOTHROW(render->SetRenderTarget(nullptr));
         CHECK_NOTHROW(render->SetOrthoDepthRange(-10.0f, 10.0f));
 
-        mat44 ortho = render->CreateOrthoMatrix(0.0f, 100.0f, 0.0f, 100.0f, -1.0f, 1.0f);
+        mat44 ortho {render->CreateOrthoMatrix(0.0f, 100.0f, 0.0f, 100.0f, -1.0f, 1.0f)};
         ignore_unused(ortho);
         ignore_unused(render->GetProjMatrix());
         ignore_unused(render->IsRenderTargetFlipped());
@@ -346,7 +346,7 @@ TEST_CASE("StubAppWindowServesAsAnEmbedderFrontend")
 
     SECTION("InputAndAudioReportAnEmptyDevice")
     {
-        ptr<IAppInput> input = window->GetInput();
+        ptr<IAppInput> input {window->GetInput()};
 
         CHECK_FALSE(input->IsMouseAvailable());
         CHECK_FALSE(input->IsShiftDown());
@@ -358,10 +358,10 @@ TEST_CASE("StubAppWindowServesAsAnEmbedderFrontend")
         input->SetClipboardText("stub clipboard");
         CHECK(input->GetClipboardText() == "stub clipboard");
 
-        InputEvent ev;
+        InputEvent ev {};
         CHECK_FALSE(input->PollEvent(ev));
 
-        InputEvent pushed = MakeInputEvent(InputEvent::KeyDownEvent {KeyCode::A, string {"a"}});
+        InputEvent pushed {MakeInputEvent(InputEvent::KeyDownEvent {KeyCode::A, string {"a"}})};
         input->PushEvent(pushed, false);
         REQUIRE(input->PollEvent(ev));
         CHECK(ev.Type == InputEvent::EventType::KeyDownEvent);
@@ -369,7 +369,7 @@ TEST_CASE("StubAppWindowServesAsAnEmbedderFrontend")
         CHECK(ev.KeyDown.Text == "a");
         CHECK_FALSE(input->PollEvent(ev));
 
-        ptr<IAppAudio> audio = window->GetAudio();
+        ptr<IAppAudio> audio {window->GetAudio()};
         CHECK_FALSE(audio->IsEnabled());
     }
 

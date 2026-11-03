@@ -51,32 +51,32 @@ namespace ImageBakerRix
         ignore_unused(context);
 
         reader.SetCurPos(0x4);
-        uint16_t width_wire = 0;
+        uint16_t width_wire {0};
         reader.ReadObject(width_wire);
-        int32_t w = numeric_cast<int32_t>(width_wire);
-        uint16_t height_wire = 0;
+        int32_t w {numeric_cast<int32_t>(width_wire)};
+        uint16_t height_wire {0};
         reader.ReadObject(height_wire);
-        int32_t h = numeric_cast<int32_t>(height_wire);
+        int32_t h {numeric_cast<int32_t>(height_wire)};
 
         reader.SetCurPos(0xA);
-        const_span<uint8_t> palette = reader.GetCurDataSpan(numeric_cast<size_t>(256 * 3));
+        const_span<uint8_t> palette {reader.GetCurDataSpan(numeric_cast<size_t>(256 * 3))};
 
         FO_VERIFY_AND_THROW(w > 0 && h > 0, "Invalid RIX dimensions", fname, w, h);
-        int64_t pixel_count = checked_mul(numeric_cast<int64_t>(w), numeric_cast<int64_t>(h));
-        size_t data_size = numeric_cast<size_t>(checked_mul(pixel_count, int64_t {4}));
-        vector<uint8_t> data(data_size);
-        span<ucolor> pixels = bytes_to_objects<ucolor>(span {data});
+        int64_t pixel_count {checked_mul(numeric_cast<int64_t>(w), numeric_cast<int64_t>(h))};
+        size_t data_size {numeric_cast<size_t>(checked_mul(pixel_count, int64_t {4}))};
+        vector<uint8_t> data {vector<uint8_t>(data_size)};
+        span<ucolor> pixels {bytes_to_objects<ucolor>(span {data})};
         reader.SetCurPos(numeric_cast<size_t>(0xA + 256 * 3));
 
-        for (size_t i = 0; i < pixels.size(); i++) {
-            size_t index = checked_mul(numeric_cast<size_t>(reader.ReadUInt8()), size_t {3});
-            uint8_t r = numeric_cast<uint8_t>(numeric_cast<int32_t>(palette[checked_add(index, size_t {2})]) * 4);
-            uint8_t g = numeric_cast<uint8_t>(numeric_cast<int32_t>(palette[checked_add(index, size_t {1})]) * 4);
-            uint8_t b = numeric_cast<uint8_t>(numeric_cast<int32_t>(palette[index]) * 4);
+        for (size_t i {0}; i < pixels.size(); i++) {
+            size_t index {checked_mul(numeric_cast<size_t>(reader.ReadUInt8()), size_t {3})};
+            uint8_t r {numeric_cast<uint8_t>(numeric_cast<int32_t>(palette[checked_add(index, size_t {2})]) * 4)};
+            uint8_t g {numeric_cast<uint8_t>(numeric_cast<int32_t>(palette[checked_add(index, size_t {1})]) * 4)};
+            uint8_t b {numeric_cast<uint8_t>(numeric_cast<int32_t>(palette[index]) * 4)};
             pixels[i] = ucolor {r, g, b};
         }
 
-        FrameCollection collection;
+        FrameCollection collection {};
         collection.SequenceSize = 1;
         collection.AnimTicks = 100;
         collection.Main.Frames.resize(numeric_cast<size_t>(collection.SequenceSize));

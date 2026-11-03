@@ -93,12 +93,12 @@ public:
     CommandLineArgs() = default;
     explicit CommandLineArgs(int32_t argc, nptr<char*> argv)
     {
-        size_t arg_count = numeric_cast<size_t>(argc);
+        size_t arg_count {numeric_cast<size_t>(argc)};
         FO_VERIFY_AND_THROW(arg_count == 0 || argv, "Command line argument vector is null while argument count is non-zero");
 
         _args.resize(arg_count);
 
-        for (size_t i = 0; i < arg_count; ++i) {
+        for (size_t i {0}; i < arg_count; ++i) {
             FO_VERIFY_AND_THROW(argv[i] != nullptr, "Command line argument string is null");
             _args[i] = argv[i];
         }
@@ -125,13 +125,13 @@ public:
             return false;
         }
 
-        string_view name = arg.substr(arg.starts_with("--") ? 2 : 1);
+        string_view name {arg.substr(arg.starts_with("--") ? 2 : 1)};
 
         if (name.empty()) {
             return false;
         }
 
-        char first = name.front();
+        char first {name.front()};
         return (first >= 'A' && first <= 'Z') || (first >= 'a' && first <= 'z');
     }
 
@@ -266,7 +266,7 @@ public:
 
     void Unsubscribe() noexcept
     {
-        auto callbacks = std::move(_unsubscribeCallbacks);
+        auto callbacks {std::move(_unsubscribeCallbacks)};
         _unsubscribeCallbacks.clear();
 
         for (const auto& cb : callbacks) {
@@ -314,7 +314,7 @@ public:
 
     auto operator+=(Callback cb) noexcept -> EventUnsubscriberCallback
     {
-        auto it = _subscriberCallbacks.insert(_subscriberCallbacks.end(), std::move(cb));
+        auto it {_subscriberCallbacks.insert(_subscriberCallbacks.end(), std::move(cb))};
         return EventUnsubscriberCallback([this, it]() FO_DEFERRED { _subscriberCallbacks.erase(it); });
     }
 
@@ -365,7 +365,7 @@ static_assert(!some_property_plain_type<hstring>);
 static_assert(!some_property_plain_type<any_t>);
 
 // Generic constants
-static constexpr string_view_nt LOCAL_CONFIG_NAME = "LocalSettings.focfg";
+static constexpr string_view_nt LOCAL_CONFIG_NAME {"LocalSettings.focfg"};
 
 // Property type in network interaction
 enum class NetProperty : uint8_t
@@ -387,27 +387,27 @@ enum class NetProperty : uint8_t
 struct GameSettings
 {
 #if FO_GEOMETRY == 1
-    static constexpr bool HEXAGONAL_GEOMETRY = true;
-    static constexpr bool SQUARE_GEOMETRY = false;
-    static constexpr int32_t MAP_DIR_COUNT = 6;
+    static constexpr bool HEXAGONAL_GEOMETRY {true};
+    static constexpr bool SQUARE_GEOMETRY {false};
+    static constexpr int32_t MAP_DIR_COUNT {6};
 #elif FO_GEOMETRY == 2
-    static constexpr bool HEXAGONAL_GEOMETRY = false;
-    static constexpr bool SQUARE_GEOMETRY = true;
-    static constexpr int32_t MAP_DIR_COUNT = 8;
+    static constexpr bool HEXAGONAL_GEOMETRY {false};
+    static constexpr bool SQUARE_GEOMETRY {true};
+    static constexpr int32_t MAP_DIR_COUNT {8};
 #else
 #error FO_GEOMETRY not specified
 #endif
-    static constexpr int32_t MAP_HEX_WIDTH = FO_MAP_HEX_WIDTH;
-    static constexpr int32_t MAP_HEX_HEIGHT = FO_MAP_HEX_HEIGHT;
-    static constexpr int32_t MAP_HEX_LINE_HEIGHT = HEXAGONAL_GEOMETRY ? (MAP_HEX_HEIGHT * 3) / 4 : MAP_HEX_HEIGHT / 2;
-    static constexpr float32_t MAP_CAMERA_ANGLE = const_numeric_cast<float32_t>(FO_MAP_CAMERA_ANGLE);
-    static constexpr float32_t MIN_ZOOM = 0.05f;
-    static constexpr float32_t MAX_ZOOM = 20.0f;
-    static constexpr int32_t DEFAULT_MAP_SIZE = 200;
-    static constexpr int32_t MIN_MAP_SIZE = 10;
-    static constexpr int32_t MAX_MAP_SIZE = 4000;
-    static constexpr size_t CLIENT_MAP_CHUNK_SIDE = 16;
-    static constexpr size_t SERVER_MAP_CHUNK_SIDE = 16;
+    static constexpr int32_t MAP_HEX_WIDTH {FO_MAP_HEX_WIDTH};
+    static constexpr int32_t MAP_HEX_HEIGHT {FO_MAP_HEX_HEIGHT};
+    static constexpr int32_t MAP_HEX_LINE_HEIGHT {HEXAGONAL_GEOMETRY ? (MAP_HEX_HEIGHT * 3) / 4 : MAP_HEX_HEIGHT / 2};
+    static constexpr float32_t MAP_CAMERA_ANGLE {const_numeric_cast<float32_t>(FO_MAP_CAMERA_ANGLE)};
+    static constexpr float32_t MIN_ZOOM {0.05f};
+    static constexpr float32_t MAX_ZOOM {20.0f};
+    static constexpr int32_t DEFAULT_MAP_SIZE {200};
+    static constexpr int32_t MIN_MAP_SIZE {10};
+    static constexpr int32_t MAX_MAP_SIZE {4000};
+    static constexpr size_t CLIENT_MAP_CHUNK_SIDE {16};
+    static constexpr size_t SERVER_MAP_CHUNK_SIDE {16};
 };
 
 // Stable text-message identifiers for connection, authentication, loading, and runtime status feedback. The generic info-message transport treats them as opaque values; embedding projects own their text and dispatch policy
@@ -456,7 +456,7 @@ enum class EngineInfoMessage : uint16_t
     ServerLog = 5001, // Identifies a server-log message whose reader-facing payload is carried in extraText
 };
 
-static constexpr uint32_t FO_UPDATER_VERSION = 5;
+static constexpr uint32_t FO_UPDATER_VERSION {5};
 
 enum class UpdatePlatform : uint8_t
 {
@@ -529,7 +529,7 @@ enum class EngineSideKind : uint8_t
     MapperSide,
 };
 
-static constexpr size_t MAX_CALL_ARGS = 16;
+static constexpr size_t MAX_CALL_ARGS {16};
 
 struct StructLayoutDesc;
 struct RefTypeDesc;
@@ -920,7 +920,7 @@ decltype(auto) VisitBaseTypePrimitive(ptr<const void> a, ptr<const void> b, cons
         return VisitBaseTypePrimitive(a, b, *type.EnumUnderlyingType, std::forward<Fn>(fn));
     }
     else if (type.IsSimpleStruct) {
-        const auto& field = type.StructLayout->Fields.front();
+        const auto& field {type.StructLayout->Fields.front()};
         return VisitBaseTypePrimitive(a, b, field.Type, std::forward<Fn>(fn));
     }
 

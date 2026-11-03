@@ -41,110 +41,110 @@ FO_BEGIN_NAMESPACE
 
 // Shader Model 2 tokens (d3d9types.h): an instruction keeps its opcode in bits 0-15 and its length in 24-27; a register keeps
 // its number in 0-10, its type in 28-30 and 11-12, relative addressing in 13, the mask or the swizzle from 16, modifiers above
-static constexpr uint32_t SM2_OPCODE_MASK = 0xFFFF;
-static constexpr uint32_t SM2_LENGTH_SHIFT = 24;
-static constexpr uint32_t SM2_LENGTH_MASK = 0xF;
-static constexpr uint32_t SM2_COMMENT_OPCODE = 0xFFFE;
-static constexpr uint32_t SM2_COMMENT_LENGTH_SHIFT = 16;
-static constexpr uint32_t SM2_COMMENT_LENGTH_MASK = 0x7FFF;
-static constexpr uint32_t SM2_END_TOKEN = 0x0000FFFF;
-static constexpr uint32_t SM2_REGISTER_NUMBER_MASK = 0x7FF;
-static constexpr uint32_t SM2_REGISTER_TYPE_MASK = (0x7u << 28) | (0x3u << 11);
-static constexpr uint32_t SM2_RELATIVE_ADDRESSING = 1u << 13;
-static constexpr uint32_t SM2_SELECT_SHIFT = 16;
-static constexpr uint32_t SM2_SWIZZLE_MASK = 0xFFu << SM2_SELECT_SHIFT;
-static constexpr uint32_t SM2_WRITE_MASK_MASK = 0xFu << SM2_SELECT_SHIFT;
-static constexpr uint32_t SM2_RESULT_MODIFIERS_MASK = 0xFFu << 20;
-static constexpr uint32_t SM2_SOURCE_MODIFIER_MASK = 0xFu << 24;
-static constexpr uint32_t SM2_PARAMETER_TOKEN = 0x80000000u;
-static constexpr uint32_t SM2_IDENTITY_SWIZZLE = 0xE4;
-static constexpr uint32_t SM2_FULL_WRITE_MASK = 0xF;
-static constexpr uint32_t SM2_USAGE_MASK = 0x1F;
-static constexpr uint32_t SM2_USAGE_INDEX_SHIFT = 16;
-static constexpr uint32_t SM2_USAGE_INDEX_MASK = 0xF;
-static constexpr uint32_t SM2_SAMPLER_TYPE_SHIFT = 27;
-static constexpr uint32_t SM2_SAMPLER_TYPE_MASK = 0xF;
-static constexpr uint32_t SM2_TEX_CONTROL_SHIFT = 16;
-static constexpr uint32_t SM2_TEX_CONTROL_MASK = 0xFF;
+static constexpr uint32_t SM2_OPCODE_MASK {0xFFFF};
+static constexpr uint32_t SM2_LENGTH_SHIFT {24};
+static constexpr uint32_t SM2_LENGTH_MASK {0xF};
+static constexpr uint32_t SM2_COMMENT_OPCODE {0xFFFE};
+static constexpr uint32_t SM2_COMMENT_LENGTH_SHIFT {16};
+static constexpr uint32_t SM2_COMMENT_LENGTH_MASK {0x7FFF};
+static constexpr uint32_t SM2_END_TOKEN {0x0000FFFF};
+static constexpr uint32_t SM2_REGISTER_NUMBER_MASK {0x7FF};
+static constexpr uint32_t SM2_REGISTER_TYPE_MASK {(0x7u << 28) | (0x3u << 11)};
+static constexpr uint32_t SM2_RELATIVE_ADDRESSING {1u << 13};
+static constexpr uint32_t SM2_SELECT_SHIFT {16};
+static constexpr uint32_t SM2_SWIZZLE_MASK {0xFFu << SM2_SELECT_SHIFT};
+static constexpr uint32_t SM2_WRITE_MASK_MASK {0xFu << SM2_SELECT_SHIFT};
+static constexpr uint32_t SM2_RESULT_MODIFIERS_MASK {0xFFu << 20};
+static constexpr uint32_t SM2_SOURCE_MODIFIER_MASK {0xFu << 24};
+static constexpr uint32_t SM2_PARAMETER_TOKEN {0x80000000u};
+static constexpr uint32_t SM2_IDENTITY_SWIZZLE {0xE4};
+static constexpr uint32_t SM2_FULL_WRITE_MASK {0xF};
+static constexpr uint32_t SM2_USAGE_MASK {0x1F};
+static constexpr uint32_t SM2_USAGE_INDEX_SHIFT {16};
+static constexpr uint32_t SM2_USAGE_INDEX_MASK {0xF};
+static constexpr uint32_t SM2_SAMPLER_TYPE_SHIFT {27};
+static constexpr uint32_t SM2_SAMPLER_TYPE_MASK {0xF};
+static constexpr uint32_t SM2_TEX_CONTROL_SHIFT {16};
+static constexpr uint32_t SM2_TEX_CONTROL_MASK {0xFF};
 
-static constexpr uint32_t SM2_OP_NOP = 0x00;
-static constexpr uint32_t SM2_OP_MOV = 0x01;
-static constexpr uint32_t SM2_OP_MAD = 0x04;
-static constexpr uint32_t SM2_OP_LRP = 0x12;
-static constexpr uint32_t SM2_OP_M4X4 = 0x14;
-static constexpr uint32_t SM2_OP_M4X3 = 0x15;
-static constexpr uint32_t SM2_OP_M3X4 = 0x16;
-static constexpr uint32_t SM2_OP_M3X3 = 0x17;
-static constexpr uint32_t SM2_OP_M3X2 = 0x18;
-static constexpr uint32_t SM2_OP_CALL = 0x19;
-static constexpr uint32_t SM2_OP_CALLNZ = 0x1A;
-static constexpr uint32_t SM2_OP_LOOP = 0x1B;
-static constexpr uint32_t SM2_OP_RET = 0x1C;
-static constexpr uint32_t SM2_OP_ENDLOOP = 0x1D;
-static constexpr uint32_t SM2_OP_LABEL = 0x1E;
-static constexpr uint32_t SM2_OP_DCL = 0x1F;
-static constexpr uint32_t SM2_OP_POW = 0x20;
-static constexpr uint32_t SM2_OP_CRS = 0x21;
-static constexpr uint32_t SM2_OP_SGN = 0x22;
-static constexpr uint32_t SM2_OP_NRM = 0x24;
-static constexpr uint32_t SM2_OP_SINCOS = 0x25;
-static constexpr uint32_t SM2_OP_REP = 0x26;
-static constexpr uint32_t SM2_OP_ENDREP = 0x27;
-static constexpr uint32_t SM2_OP_IF = 0x28;
-static constexpr uint32_t SM2_OP_IFC = 0x29;
-static constexpr uint32_t SM2_OP_ELSE = 0x2A;
-static constexpr uint32_t SM2_OP_ENDIF = 0x2B;
-static constexpr uint32_t SM2_OP_BREAK = 0x2C;
-static constexpr uint32_t SM2_OP_BREAKC = 0x2D;
-static constexpr uint32_t SM2_OP_DEFB = 0x2F;
-static constexpr uint32_t SM2_OP_DEFI = 0x30;
-static constexpr uint32_t SM2_OP_TEXKILL = 0x41;
-static constexpr uint32_t SM2_OP_TEX = 0x42;
-static constexpr uint32_t SM2_OP_DEF = 0x51;
-static constexpr uint32_t SM2_OP_DP2ADD = 0x5A;
-static constexpr uint32_t SM2_OP_TEXLDD = 0x5D;
-static constexpr uint32_t SM2_OP_SETP = 0x5E;
-static constexpr uint32_t SM2_OP_TEXLDL = 0x5F;
-static constexpr uint32_t SM2_OP_BREAKP = 0x60;
+static constexpr uint32_t SM2_OP_NOP {0x00};
+static constexpr uint32_t SM2_OP_MOV {0x01};
+static constexpr uint32_t SM2_OP_MAD {0x04};
+static constexpr uint32_t SM2_OP_LRP {0x12};
+static constexpr uint32_t SM2_OP_M4X4 {0x14};
+static constexpr uint32_t SM2_OP_M4X3 {0x15};
+static constexpr uint32_t SM2_OP_M3X4 {0x16};
+static constexpr uint32_t SM2_OP_M3X3 {0x17};
+static constexpr uint32_t SM2_OP_M3X2 {0x18};
+static constexpr uint32_t SM2_OP_CALL {0x19};
+static constexpr uint32_t SM2_OP_CALLNZ {0x1A};
+static constexpr uint32_t SM2_OP_LOOP {0x1B};
+static constexpr uint32_t SM2_OP_RET {0x1C};
+static constexpr uint32_t SM2_OP_ENDLOOP {0x1D};
+static constexpr uint32_t SM2_OP_LABEL {0x1E};
+static constexpr uint32_t SM2_OP_DCL {0x1F};
+static constexpr uint32_t SM2_OP_POW {0x20};
+static constexpr uint32_t SM2_OP_CRS {0x21};
+static constexpr uint32_t SM2_OP_SGN {0x22};
+static constexpr uint32_t SM2_OP_NRM {0x24};
+static constexpr uint32_t SM2_OP_SINCOS {0x25};
+static constexpr uint32_t SM2_OP_REP {0x26};
+static constexpr uint32_t SM2_OP_ENDREP {0x27};
+static constexpr uint32_t SM2_OP_IF {0x28};
+static constexpr uint32_t SM2_OP_IFC {0x29};
+static constexpr uint32_t SM2_OP_ELSE {0x2A};
+static constexpr uint32_t SM2_OP_ENDIF {0x2B};
+static constexpr uint32_t SM2_OP_BREAK {0x2C};
+static constexpr uint32_t SM2_OP_BREAKC {0x2D};
+static constexpr uint32_t SM2_OP_DEFB {0x2F};
+static constexpr uint32_t SM2_OP_DEFI {0x30};
+static constexpr uint32_t SM2_OP_TEXKILL {0x41};
+static constexpr uint32_t SM2_OP_TEX {0x42};
+static constexpr uint32_t SM2_OP_DEF {0x51};
+static constexpr uint32_t SM2_OP_DP2ADD {0x5A};
+static constexpr uint32_t SM2_OP_TEXLDD {0x5D};
+static constexpr uint32_t SM2_OP_SETP {0x5E};
+static constexpr uint32_t SM2_OP_TEXLDL {0x5F};
+static constexpr uint32_t SM2_OP_BREAKP {0x60};
 
-static constexpr uint32_t SM2_USAGE_NORMAL = 3;
-static constexpr uint32_t SM2_USAGE_TEXCOORD = 5;
-static constexpr uint32_t SM2_SAMPLER_2D = 2;
-static constexpr uint32_t SM2_SAMPLER_CUBE = 3;
-static constexpr uint32_t SM2_SAMPLER_VOLUME = 4;
+static constexpr uint32_t SM2_USAGE_NORMAL {3};
+static constexpr uint32_t SM2_USAGE_TEXCOORD {5};
+static constexpr uint32_t SM2_SAMPLER_2D {2};
+static constexpr uint32_t SM2_SAMPLER_CUBE {3};
+static constexpr uint32_t SM2_SAMPLER_VOLUME {4};
 
 // Level 9.3 runs vs_2_x and ps_2_x: 32 temporaries each, 256 vertex and 512 pixel instruction slots, 256 vertex and
 // 32 pixel float constants, 16 vertex inputs and 8 interpolated texture coordinates
-static constexpr uint32_t LEVEL9_VERTEX_VERSION = 0xFFFE0201;
-static constexpr uint32_t LEVEL9_PIXEL_VERSION = 0xFFFF0201;
-static constexpr uint32_t VKD3D_VERTEX_VERSION = 0xFFFE0201;
-static constexpr uint32_t VKD3D_PIXEL_VERSION = 0xFFFF0200;
-static constexpr uint32_t LEVEL9_MAX_TEMPS = 32;
-static constexpr int32_t LEVEL9_MAX_VERTEX_SLOTS = 256;
-static constexpr int32_t LEVEL9_MAX_PIXEL_SLOTS = 512;
-static constexpr uint32_t LEVEL9_MAX_VERTEX_CONSTANTS = 256;
-static constexpr uint32_t LEVEL9_MAX_PIXEL_CONSTANTS = 32;
-static constexpr uint32_t LEVEL9_MAX_VERTEX_INPUTS = 16;
-static constexpr uint32_t LEVEL9_MAX_TEXCOORDS = 8;
+static constexpr uint32_t LEVEL9_VERTEX_VERSION {0xFFFE0201};
+static constexpr uint32_t LEVEL9_PIXEL_VERSION {0xFFFF0201};
+static constexpr uint32_t VKD3D_VERTEX_VERSION {0xFFFE0201};
+static constexpr uint32_t VKD3D_PIXEL_VERSION {0xFFFF0200};
+static constexpr uint32_t LEVEL9_MAX_TEMPS {32};
+static constexpr int32_t LEVEL9_MAX_VERTEX_SLOTS {256};
+static constexpr int32_t LEVEL9_MAX_PIXEL_SLOTS {512};
+static constexpr uint32_t LEVEL9_MAX_VERTEX_CONSTANTS {256};
+static constexpr uint32_t LEVEL9_MAX_PIXEL_CONSTANTS {32};
+static constexpr uint32_t LEVEL9_MAX_VERTEX_INPUTS {16};
+static constexpr uint32_t LEVEL9_MAX_TEXCOORDS {8};
 
 // Reflection data of the Shader Model 4.0 container (d3d11shader.h)
-static constexpr uint32_t D3D_SIT_CBUFFER = 0;
-static constexpr uint32_t D3D_SIT_TEXTURE = 2;
-static constexpr uint32_t D3D_SIT_SAMPLER = 3;
-static constexpr uint32_t D3D_SVT_BOOL = 1;
-static constexpr uint32_t D3D_SVT_INT = 2;
-static constexpr uint32_t D3D_SVT_FLOAT = 3;
-static constexpr uint32_t D3D_SVT_UINT = 19;
-static constexpr uint32_t D3DXRS_FLOAT4 = 2;
-static constexpr uint32_t D3DXRS_SAMPLER = 3;
+static constexpr uint32_t D3D_SIT_CBUFFER {0};
+static constexpr uint32_t D3D_SIT_TEXTURE {2};
+static constexpr uint32_t D3D_SIT_SAMPLER {3};
+static constexpr uint32_t D3D_SVT_BOOL {1};
+static constexpr uint32_t D3D_SVT_INT {2};
+static constexpr uint32_t D3D_SVT_FLOAT {3};
+static constexpr uint32_t D3D_SVT_UINT {19};
+static constexpr uint32_t D3DXRS_FLOAT4 {2};
+static constexpr uint32_t D3DXRS_SAMPLER {3};
 
 // Aon9 constant conversions: how the runtime turns a constant buffer value into a Direct3D 9 float
-static constexpr uint8_t AON9_CONVERSION_FLOAT = 0;
-static constexpr uint8_t AON9_CONVERSION_BOOL = 1;
-static constexpr uint8_t AON9_CONVERSION_INT = 2;
-static constexpr uint8_t AON9_CONVERSION_UINT = 3;
-static constexpr uint16_t AON9_RUNTIME_POSITION_OFFSET = 0;
-static constexpr uint32_t AON9_HEADER_SIZE = 36;
+static constexpr uint8_t AON9_CONVERSION_FLOAT {0};
+static constexpr uint8_t AON9_CONVERSION_BOOL {1};
+static constexpr uint8_t AON9_CONVERSION_INT {2};
+static constexpr uint8_t AON9_CONVERSION_UINT {3};
+static constexpr uint16_t AON9_RUNTIME_POSITION_OFFSET {0};
+static constexpr uint32_t AON9_HEADER_SIZE {36};
 
 enum class Sm2Register : uint8_t
 {
@@ -262,14 +262,14 @@ struct ScratchRegisters
 };
 
 // Little-endian four-character codes of the container sections and of the constant table comment
-static constexpr uint32_t TAG_AON9 = 'A' | ('o' << 8) | ('n' << 16) | ('9' << 24);
-static constexpr uint32_t TAG_RDEF = 'R' | ('D' << 8) | ('E' << 16) | ('F' << 24);
-static constexpr uint32_t TAG_ISGN = 'I' | ('S' << 8) | ('G' << 16) | ('N' << 24);
-static constexpr uint32_t TAG_OSGN = 'O' | ('S' << 8) | ('G' << 16) | ('N' << 24);
-static constexpr uint32_t TAG_CTAB = 'C' | ('T' << 8) | ('A' << 16) | ('B' << 24);
+static constexpr uint32_t TAG_AON9 {'A' | ('o' << 8) | ('n' << 16) | ('9' << 24)};
+static constexpr uint32_t TAG_RDEF {'R' | ('D' << 8) | ('E' << 16) | ('F' << 24)};
+static constexpr uint32_t TAG_ISGN {'I' | ('S' << 8) | ('G' << 16) | ('N' << 24)};
+static constexpr uint32_t TAG_OSGN {'O' | ('S' << 8) | ('G' << 16) | ('N' << 24)};
+static constexpr uint32_t TAG_CTAB {'C' | ('T' << 8) | ('A' << 16) | ('B' << 24)};
 
 // Direct3D 9 declaration usages, in the order of D3DDECLUSAGE
-static constexpr string_view SM2_USAGE_NAMES[] = {"POSITION", "BLENDWEIGHT", "BLENDINDICES", "NORMAL", "PSIZE", "TEXCOORD", "TANGENT", "BINORMAL", "TESSFACTOR", "POSITIONT", "COLOR"};
+static constexpr string_view SM2_USAGE_NAMES[] {"POSITION", "BLENDWEIGHT", "BLENDINDICES", "NORMAL", "PSIZE", "TEXCOORD", "TANGENT", "BINORMAL", "TESSFACTOR", "POSITIONT", "COLOR"};
 
 static auto ParseSm2Program(const_span<uint8_t> bytecode, string_view name) -> Sm2Program;
 static auto ParseConstantTable(const_span<uint8_t> data) -> vector<ConstantTableEntry>;
@@ -306,19 +306,19 @@ auto AddDirect3DLevel9Code(const_span<uint8_t> sm4_container, const_span<uint8_t
 
     vkd3d_shader_dxbc_desc container {};
     nptr<char> messages {};
-    int32_t parse_result = vkd3d_shader_parse_dxbc(&container_code, 0, &container, messages.get_pp());
-    auto messages_holder = make_unique_del_ptr(messages, vkd3d_shader_free_messages);
+    int32_t parse_result {vkd3d_shader_parse_dxbc(&container_code, 0, &container, messages.get_pp())};
+    auto messages_holder {make_unique_del_ptr(messages, vkd3d_shader_free_messages)};
 
     if (parse_result < 0) {
         throw Direct3DLevel9Exception("Shader Model 4.0 container does not parse", name, parse_result, messages ? string(messages.get()) : string());
     }
 
-    auto container_holder = scope_exit([&container]() noexcept { vkd3d_shader_free_dxbc(&container); });
+    auto container_holder {scope_exit([&container]() noexcept { vkd3d_shader_free_dxbc(&container); })};
 
-    auto find_section = [&container, name](uint32_t tag, string_view tag_name) -> const_span<uint8_t> {
-        for (size_t i = 0; i < container.section_count; i++) {
-            const vkd3d_shader_dxbc_section_desc& section = container.sections[i];
-            nptr<const void> section_code = section.data.code;
+    auto find_section {[&container, name](uint32_t tag, string_view tag_name) -> const_span<uint8_t> {
+        for (size_t i {0}; i < container.section_count; i++) {
+            const vkd3d_shader_dxbc_section_desc& section {container.sections[i]};
+            nptr<const void> section_code {section.data.code};
 
             if (section.tag == tag && section_code && section.data.size != 0) {
                 return {section_code.reinterpret_as<const uint8_t>().get(), section.data.size};
@@ -326,30 +326,30 @@ auto AddDirect3DLevel9Code(const_span<uint8_t> sm4_container, const_span<uint8_t
         }
 
         throw Direct3DLevel9Exception("Shader Model 4.0 container has no section", name, tag_name);
-    };
+    }};
 
-    ResourceDefinitions resources = ParseResourceDefinitions(find_section(TAG_RDEF, "RDEF"), name);
-    vector<SignatureElement> inputs = ParseSignature(find_section(TAG_ISGN, "ISGN"), name);
-    vector<SignatureElement> outputs = ParseSignature(find_section(TAG_OSGN, "OSGN"), name);
-    Sm2Program program = ParseSm2Program(sm2_bytecode, name);
+    ResourceDefinitions resources {ParseResourceDefinitions(find_section(TAG_RDEF, "RDEF"), name)};
+    vector<SignatureElement> inputs {ParseSignature(find_section(TAG_ISGN, "ISGN"), name)};
+    vector<SignatureElement> outputs {ParseSignature(find_section(TAG_OSGN, "OSGN"), name)};
+    Sm2Program program {ParseSm2Program(sm2_bytecode, name)};
 
     if (program.Version != (is_vertex ? VKD3D_VERTEX_VERSION : VKD3D_PIXEL_VERSION)) {
         throw Direct3DLevel9Exception("Shader Model 2 bytecode has an unexpected version", name, program.Version);
     }
 
-    Level9Tables tables = MapResources(ParseConstantTable(program.ConstantTable), resources, name);
+    Level9Tables tables {MapResources(ParseConstantTable(program.ConstantTable), resources, name)};
 
     // Survey the program: registers it takes, sampler dimensions, and anything level 9 cannot run
-    int32_t max_temp = -1;
-    int32_t max_const = -1;
-    unordered_map<uint32_t, uint32_t> sampler_types;
+    int32_t max_temp {-1};
+    int32_t max_const {-1};
+    unordered_map<uint32_t, uint32_t> sampler_types {};
 
     for (const Level9ConstantMapping& mapping : tables.Constants) {
         max_const = std::max(max_const, numeric_cast<int32_t>(mapping.TargetRegister + mapping.RegisterCount) - 1);
     }
 
     for (const Sm2Instruction& instruction : program.Instructions) {
-        uint32_t opcode = GetOpcode(instruction[0]);
+        uint32_t opcode {GetOpcode(instruction[0])};
 
         if (opcode == SM2_OP_SETP || opcode == SM2_OP_BREAKP) {
             throw Direct3DLevel9Exception("Level 9 has no predication", name);
@@ -368,8 +368,8 @@ auto AddDirect3DLevel9Code(const_span<uint8_t> sm4_container, const_span<uint8_t
                 continue;
             }
 
-            uint32_t token = instruction[operand.Index];
-            Sm2Register type = GetRegisterType(token);
+            uint32_t token {instruction[operand.Index]};
+            Sm2Register type {GetRegisterType(token)};
 
             if (type == Sm2Register::Temp) {
                 max_temp = std::max(max_temp, numeric_cast<int32_t>(GetRegisterNumber(token)));
@@ -389,7 +389,7 @@ auto AddDirect3DLevel9Code(const_span<uint8_t> sm4_container, const_span<uint8_t
         }
     }
 
-    ScratchRegisters scratch;
+    ScratchRegisters scratch {};
     scratch.Source0 = numeric_cast<uint32_t>(max_temp + 1);
     scratch.Source1 = scratch.Source0 + 1;
     scratch.Result = scratch.Source0 + 2;
@@ -400,11 +400,11 @@ auto AddDirect3DLevel9Code(const_span<uint8_t> sm4_container, const_span<uint8_t
     }
 
     // The runtime numbers level 9 inputs and outputs after the Shader Model 4.0 signature registers
-    vector<Sm2Instruction> remapped = RemapSignatures(program.Instructions, is_vertex, inputs, outputs, scratch, name);
+    vector<Sm2Instruction> remapped {RemapSignatures(program.Instructions, is_vertex, inputs, outputs, scratch, name)};
 
-    vector<Sm2Instruction> legalized;
+    vector<Sm2Instruction> legalized {};
     legalized.reserve(remapped.size() * 2);
-    bool position_written = false;
+    bool position_written {false};
 
     for (Sm2Instruction& instruction : remapped) {
         if (is_vertex) {
@@ -444,7 +444,7 @@ auto AddDirect3DLevel9Code(const_span<uint8_t> sm4_container, const_span<uint8_t
         throw Direct3DLevel9Exception("Level 9 pixel shader uses more than 32 constant registers", name, max_const + 1);
     }
 
-    int32_t slots = 0;
+    int32_t slots {0};
 
     for (const Sm2Instruction& instruction : legalized) {
         slots += GetInstructionSlots(GetOpcode(instruction[0]));
@@ -454,7 +454,7 @@ auto AddDirect3DLevel9Code(const_span<uint8_t> sm4_container, const_span<uint8_t
         throw Direct3DLevel9Exception("Level 9 code exceeds the instruction slot limit", name, slots, is_vertex ? LEVEL9_MAX_VERTEX_SLOTS : LEVEL9_MAX_PIXEL_SLOTS);
     }
 
-    vector<uint8_t> aon9 = BuildAon9Chunk(is_vertex ? LEVEL9_VERTEX_VERSION : LEVEL9_PIXEL_VERSION, legalized, tables);
+    vector<uint8_t> aon9 {BuildAon9Chunk(is_vertex ? LEVEL9_VERTEX_VERSION : LEVEL9_PIXEL_VERSION, legalized, tables)};
     return SerializeContainer(container, aon9, name);
 }
 
@@ -464,26 +464,26 @@ static auto ParseSm2Program(const_span<uint8_t> bytecode, string_view name) -> S
         throw Direct3DLevel9Exception("Shader Model 2 bytecode is not a token stream", name, bytecode.size());
     }
 
-    vector<uint32_t> tokens(bytecode.size() / sizeof(uint32_t));
+    vector<uint32_t> tokens {vector<uint32_t>(bytecode.size() / sizeof(uint32_t))};
     memory::copy(tokens.data(), bytecode.data(), bytecode.size());
 
-    Sm2Program program;
+    Sm2Program program {};
     program.Version = tokens[0];
-    size_t pos = 1;
+    size_t pos {1};
 
     while (true) {
         if (pos >= tokens.size()) {
             throw Direct3DLevel9Exception("Shader Model 2 bytecode has no end token", name);
         }
 
-        uint32_t token = tokens[pos];
+        uint32_t token {tokens[pos]};
 
         if (token == SM2_END_TOKEN) {
             break;
         }
 
         if (GetOpcode(token) == SM2_COMMENT_OPCODE) {
-            size_t length = (token >> SM2_COMMENT_LENGTH_SHIFT) & SM2_COMMENT_LENGTH_MASK;
+            size_t length {(token >> SM2_COMMENT_LENGTH_SHIFT) & SM2_COMMENT_LENGTH_MASK};
 
             if (length > tokens.size() - pos - 1) {
                 throw Direct3DLevel9Exception("Shader Model 2 comment runs past the bytecode", name);
@@ -498,7 +498,7 @@ static auto ParseSm2Program(const_span<uint8_t> bytecode, string_view name) -> S
             continue;
         }
 
-        size_t length = (token >> SM2_LENGTH_SHIFT) & SM2_LENGTH_MASK;
+        size_t length {(token >> SM2_LENGTH_SHIFT) & SM2_LENGTH_MASK};
 
         if (length > tokens.size() - pos - 1) {
             throw Direct3DLevel9Exception("Shader Model 2 instruction runs past the bytecode", name);
@@ -518,18 +518,18 @@ static auto ParseSm2Program(const_span<uint8_t> bytecode, string_view name) -> S
 static auto ParseConstantTable(const_span<uint8_t> data) -> vector<ConstantTableEntry>
 {
     // D3DXSHADER_CONSTANTTABLE, offsets from its start: Size, Creator, Version, Constants, ConstantInfo, Flags, Target
-    size_t pos = sizeof(uint32_t) * 3;
-    uint32_t count = span_read_object<uint32_t>(data, pos);
-    uint32_t info_offset = span_read_object<uint32_t>(data, pos);
-    vector<ConstantTableEntry> entries;
+    size_t pos {sizeof(uint32_t) * 3};
+    uint32_t count {span_read_object<uint32_t>(data, pos)};
+    uint32_t info_offset {span_read_object<uint32_t>(data, pos)};
+    vector<ConstantTableEntry> entries {};
     entries.reserve(count);
 
-    for (uint32_t i = 0; i < count; i++) {
+    for (uint32_t i {0}; i < count; i++) {
         // D3DXSHADER_CONSTANTINFO: Name, RegisterSet, RegisterIndex, RegisterCount, Reserved, TypeInfo, DefaultValue
-        size_t info_pos = numeric_cast<size_t>(info_offset) + numeric_cast<size_t>(i) * 20;
-        uint32_t name_offset = span_read_object<uint32_t>(data, info_pos);
+        size_t info_pos {numeric_cast<size_t>(info_offset) + numeric_cast<size_t>(i) * 20};
+        uint32_t name_offset {span_read_object<uint32_t>(data, info_pos)};
 
-        ConstantTableEntry entry;
+        ConstantTableEntry entry {};
         entry.Name = ReadStringAt(data, name_offset);
         entry.RegisterSet = span_read_object<uint16_t>(data, info_pos);
         entry.RegisterIndex = span_read_object<uint16_t>(data, info_pos);
@@ -543,25 +543,25 @@ static auto ParseConstantTable(const_span<uint8_t> data) -> vector<ConstantTable
 static auto ParseResourceDefinitions(const_span<uint8_t> data, string_view name) -> ResourceDefinitions
 {
     // RDEF of Shader Model 4.0: constant buffer and binding tables, then the creator string
-    size_t pos = 0;
-    uint32_t buffer_count = span_read_object<uint32_t>(data, pos);
-    uint32_t buffer_offset = span_read_object<uint32_t>(data, pos);
-    uint32_t binding_count = span_read_object<uint32_t>(data, pos);
-    uint32_t binding_offset = span_read_object<uint32_t>(data, pos);
-    uint8_t minor_version = span_read_object<uint8_t>(data, pos);
-    uint8_t major_version = span_read_object<uint8_t>(data, pos);
+    size_t pos {0};
+    uint32_t buffer_count {span_read_object<uint32_t>(data, pos)};
+    uint32_t buffer_offset {span_read_object<uint32_t>(data, pos)};
+    uint32_t binding_count {span_read_object<uint32_t>(data, pos)};
+    uint32_t binding_offset {span_read_object<uint32_t>(data, pos)};
+    uint8_t minor_version {span_read_object<uint8_t>(data, pos)};
+    uint8_t major_version {span_read_object<uint8_t>(data, pos)};
 
     if (major_version != 4) {
         throw Direct3DLevel9Exception("Resource definitions are not Shader Model 4", name, major_version, minor_version);
     }
 
-    ResourceDefinitions resources;
+    ResourceDefinitions resources {};
 
-    for (uint32_t i = 0; i < binding_count; i++) {
-        size_t binding_pos = numeric_cast<size_t>(binding_offset) + numeric_cast<size_t>(i) * 32;
-        uint32_t name_offset = span_read_object<uint32_t>(data, binding_pos);
+    for (uint32_t i {0}; i < binding_count; i++) {
+        size_t binding_pos {numeric_cast<size_t>(binding_offset) + numeric_cast<size_t>(i) * 32};
+        uint32_t name_offset {span_read_object<uint32_t>(data, binding_pos)};
 
-        ResourceBinding binding;
+        ResourceBinding binding {};
         binding.Name = ReadStringAt(data, name_offset);
         binding.Type = span_read_object<uint32_t>(data, binding_pos);
         binding_pos += sizeof(uint32_t) * 3;
@@ -569,28 +569,28 @@ static auto ParseResourceDefinitions(const_span<uint8_t> data, string_view name)
         resources.Bindings.emplace_back(std::move(binding));
     }
 
-    for (uint32_t i = 0; i < buffer_count; i++) {
-        size_t buffer_pos = numeric_cast<size_t>(buffer_offset) + numeric_cast<size_t>(i) * 24;
-        string buffer_name = ReadStringAt(data, span_read_object<uint32_t>(data, buffer_pos));
-        uint32_t variable_count = span_read_object<uint32_t>(data, buffer_pos);
-        uint32_t variable_offset = span_read_object<uint32_t>(data, buffer_pos);
+    for (uint32_t i {0}; i < buffer_count; i++) {
+        size_t buffer_pos {numeric_cast<size_t>(buffer_offset) + numeric_cast<size_t>(i) * 24};
+        string buffer_name {ReadStringAt(data, span_read_object<uint32_t>(data, buffer_pos))};
+        uint32_t variable_count {span_read_object<uint32_t>(data, buffer_pos)};
+        uint32_t variable_offset {span_read_object<uint32_t>(data, buffer_pos)};
 
-        auto binding = std::ranges::find_if(resources.Bindings, [&buffer_name](const ResourceBinding& b) { return b.Type == D3D_SIT_CBUFFER && b.Name == buffer_name; });
+        auto binding {std::ranges::find_if(resources.Bindings, [&buffer_name](const ResourceBinding& b) { return b.Type == D3D_SIT_CBUFFER && b.Name == buffer_name; })};
 
         if (binding == resources.Bindings.end()) {
             throw Direct3DLevel9Exception("Constant buffer has no binding", name, buffer_name);
         }
 
-        for (uint32_t j = 0; j < variable_count; j++) {
-            size_t variable_pos = numeric_cast<size_t>(variable_offset) + numeric_cast<size_t>(j) * 24;
-            string variable_name = ReadStringAt(data, span_read_object<uint32_t>(data, variable_pos));
+        for (uint32_t j {0}; j < variable_count; j++) {
+            size_t variable_pos {numeric_cast<size_t>(variable_offset) + numeric_cast<size_t>(j) * 24};
+            string variable_name {ReadStringAt(data, span_read_object<uint32_t>(data, variable_pos))};
 
-            BufferVariable variable;
+            BufferVariable variable {};
             variable.Buffer = binding->BindPoint;
             variable.Offset = span_read_object<uint32_t>(data, variable_pos);
             variable.Size = span_read_object<uint32_t>(data, variable_pos);
             variable_pos += sizeof(uint32_t);
-            size_t type_pos = span_read_object<uint32_t>(data, variable_pos) + sizeof(uint16_t);
+            size_t type_pos {span_read_object<uint32_t>(data, variable_pos) + sizeof(uint16_t)};
             variable.Type = span_read_object<uint16_t>(data, type_pos);
             resources.Variables.emplace(variable_name, variable);
         }
@@ -601,22 +601,22 @@ static auto ParseResourceDefinitions(const_span<uint8_t> data, string_view name)
 
 static auto ParseSignature(const_span<uint8_t> data, string_view name) -> vector<SignatureElement>
 {
-    size_t pos = 0;
-    uint32_t count = span_read_object<uint32_t>(data, pos);
-    uint32_t offset = span_read_object<uint32_t>(data, pos);
-    vector<SignatureElement> elements;
+    size_t pos {0};
+    uint32_t count {span_read_object<uint32_t>(data, pos)};
+    uint32_t offset {span_read_object<uint32_t>(data, pos)};
+    vector<SignatureElement> elements {};
     elements.reserve(count);
 
-    for (uint32_t i = 0; i < count; i++) {
+    for (uint32_t i {0}; i < count; i++) {
         // Name, SemanticIndex, SystemValueType, ComponentType, Register, Mask, ReadWriteMask
-        size_t element_pos = numeric_cast<size_t>(offset) + numeric_cast<size_t>(i) * 24;
+        size_t element_pos {numeric_cast<size_t>(offset) + numeric_cast<size_t>(i) * 24};
 
-        SignatureElement element;
+        SignatureElement element {};
         element.Name = strex(ReadStringAt(data, span_read_object<uint32_t>(data, element_pos))).upper();
         element.SemanticIndex = span_read_object<uint32_t>(data, element_pos);
         element_pos += sizeof(uint32_t) * 2;
         element.Register = span_read_object<uint32_t>(data, element_pos);
-        uint32_t mask = span_read_object<uint8_t>(data, element_pos) & SM2_FULL_WRITE_MASK;
+        uint32_t mask {span_read_object<uint8_t>(data, element_pos) & SM2_FULL_WRITE_MASK};
 
         if (mask == 0) {
             throw Direct3DLevel9Exception("Signature element has no components", name, element.Name, element.SemanticIndex);
@@ -632,18 +632,18 @@ static auto ParseSignature(const_span<uint8_t> data, string_view name) -> vector
 
 static auto MapResources(const vector<ConstantTableEntry>& constant_table, const ResourceDefinitions& resources, string_view name) -> Level9Tables
 {
-    Level9Tables tables;
+    Level9Tables tables {};
 
     for (const ConstantTableEntry& entry : constant_table) {
         if (entry.RegisterSet == D3DXRS_FLOAT4) {
-            auto variable_it = resources.Variables.find(entry.Name);
+            auto variable_it {resources.Variables.find(entry.Name)};
 
             if (variable_it == resources.Variables.end()) {
                 throw Direct3DLevel9Exception("Level 9 constant is not a constant buffer member", name, entry.Name);
             }
 
             // A member laid out mid-register would reach the level 9 code in the wrong components
-            const BufferVariable& variable = variable_it->second;
+            const BufferVariable& variable {variable_it->second};
 
             if (variable.Offset % 16 != 0) {
                 throw Direct3DLevel9Exception("Level 9 constant does not start a constant buffer register", name, entry.Name, variable.Offset);
@@ -653,7 +653,7 @@ static auto MapResources(const vector<ConstantTableEntry>& constant_table, const
                 throw Direct3DLevel9Exception("Level 9 constant maps past its constant buffer member", name, entry.Name, entry.RegisterCount, variable.Size);
             }
 
-            Level9ConstantMapping mapping;
+            Level9ConstantMapping mapping {};
             mapping.Buffer = numeric_cast<uint16_t>(variable.Buffer);
             mapping.StartRegister = numeric_cast<uint16_t>(variable.Offset / 16);
             mapping.RegisterCount = numeric_cast<uint16_t>(entry.RegisterCount);
@@ -684,20 +684,20 @@ static auto MapResources(const vector<ConstantTableEntry>& constant_table, const
             }
 
             // vkd3d-shader names a Direct3D 9 sampler after the sampler state and the texture it combines: "sampler+texture"
-            vector<string_view> parts = strvex(entry.Name).split('+');
+            vector<string_view> parts {strvex(entry.Name).split('+')};
 
             if (parts.size() != 2) {
                 throw Direct3DLevel9Exception("Level 9 sampler does not name a sampler and a texture", name, entry.Name);
             }
 
-            auto sampler = std::ranges::find_if(resources.Bindings, [&parts](const ResourceBinding& b) { return b.Type == D3D_SIT_SAMPLER && b.Name == parts[0]; });
-            auto texture = std::ranges::find_if(resources.Bindings, [&parts](const ResourceBinding& b) { return b.Type == D3D_SIT_TEXTURE && b.Name == parts[1]; });
+            auto sampler {std::ranges::find_if(resources.Bindings, [&parts](const ResourceBinding& b) { return b.Type == D3D_SIT_SAMPLER && b.Name == parts[0]; })};
+            auto texture {std::ranges::find_if(resources.Bindings, [&parts](const ResourceBinding& b) { return b.Type == D3D_SIT_TEXTURE && b.Name == parts[1]; })};
 
             if (sampler == resources.Bindings.end() || texture == resources.Bindings.end()) {
                 throw Direct3DLevel9Exception("Level 9 sampler does not name a bound sampler and texture", name, entry.Name);
             }
 
-            Level9SamplerMapping mapping;
+            Level9SamplerMapping mapping {};
             mapping.Texture = numeric_cast<uint8_t>(texture->BindPoint);
             mapping.Sampler = numeric_cast<uint8_t>(sampler->BindPoint);
             mapping.TargetSampler = numeric_cast<uint8_t>(entry.RegisterIndex);
@@ -715,9 +715,9 @@ static auto RemapSignatures(const vector<Sm2Instruction>& instructions, bool is_
 {
     // vkd3d-shader numbers the Shader Model 2 registers after the semantic index, the level 9 runtime after the
     // Shader Model 4.0 signature register, which may pack two semantics into one register
-    unordered_map<uint32_t, SignatureElement> texcoord_inputs;
-    unordered_map<uint32_t, uint32_t> texcoord_masks;
-    vector<Sm2Instruction> result;
+    unordered_map<uint32_t, SignatureElement> texcoord_inputs {};
+    unordered_map<uint32_t, uint32_t> texcoord_masks {};
+    vector<Sm2Instruction> result {};
     result.reserve(instructions.size());
 
     for (const Sm2Instruction& instruction : instructions) {
@@ -725,17 +725,17 @@ static auto RemapSignatures(const vector<Sm2Instruction>& instructions, bool is_
             continue;
         }
 
-        Sm2Register type = GetRegisterType(instruction[2]);
+        Sm2Register type {GetRegisterType(instruction[2])};
 
         if (!is_vertex && type == Sm2Register::Texture) {
-            const SignatureElement& element = FindSignatureElement(inputs, "TEXCOORD", GetRegisterNumber(instruction[2]), name);
+            const SignatureElement& element {FindSignatureElement(inputs, "TEXCOORD", GetRegisterNumber(instruction[2]), name)};
 
             if (element.Register >= LEVEL9_MAX_TEXCOORDS) {
                 throw Direct3DLevel9Exception("Level 9 pixel shader input register is beyond 8 texture coordinates", name, element.SemanticIndex, element.Register);
             }
 
             texcoord_inputs.emplace(GetRegisterNumber(instruction[2]), element);
-            uint32_t mask = ((instruction[2] & SM2_WRITE_MASK_MASK) >> SM2_SELECT_SHIFT) << element.FirstComponent;
+            uint32_t mask {((instruction[2] & SM2_WRITE_MASK_MASK) >> SM2_SELECT_SHIFT) << element.FirstComponent};
             texcoord_masks[element.Register] |= mask & SM2_FULL_WRITE_MASK;
         }
         else if (!is_vertex && type == Sm2Register::Input) {
@@ -743,36 +743,36 @@ static auto RemapSignatures(const vector<Sm2Instruction>& instructions, bool is_
         }
     }
 
-    unordered_set<uint32_t> declared_texcoords;
+    unordered_set<uint32_t> declared_texcoords {};
 
     for (Sm2Instruction instruction : instructions) {
-        uint32_t opcode = GetOpcode(instruction[0]);
+        uint32_t opcode {GetOpcode(instruction[0])};
 
         if (opcode == SM2_OP_DCL) {
-            Sm2Register type = GetRegisterType(instruction[2]);
+            Sm2Register type {GetRegisterType(instruction[2])};
 
             if (is_vertex && type == Sm2Register::Input) {
                 // The runtime declares signature register r as TEXCOORDr below 8 and as NORMAL(r - 8) above
-                uint32_t usage = instruction[1] & SM2_USAGE_MASK;
-                uint32_t usage_index = (instruction[1] >> SM2_USAGE_INDEX_SHIFT) & SM2_USAGE_INDEX_MASK;
+                uint32_t usage {instruction[1] & SM2_USAGE_MASK};
+                uint32_t usage_index {(instruction[1] >> SM2_USAGE_INDEX_SHIFT) & SM2_USAGE_INDEX_MASK};
 
                 if (usage >= std::size(SM2_USAGE_NAMES)) {
                     throw Direct3DLevel9Exception("Level 9 vertex input has an unknown usage", name, usage);
                 }
 
-                const SignatureElement& element = FindSignatureElement(inputs, SM2_USAGE_NAMES[usage], usage_index, name);
+                const SignatureElement& element {FindSignatureElement(inputs, SM2_USAGE_NAMES[usage], usage_index, name)};
 
                 if (element.FirstComponent != 0 || element.Register >= LEVEL9_MAX_VERTEX_INPUTS) {
                     throw Direct3DLevel9Exception("Level 9 vertex input is packed or beyond 16 registers", name, element.Name, element.SemanticIndex, element.Register);
                 }
 
-                uint32_t new_usage = element.Register < 8 ? SM2_USAGE_TEXCOORD : SM2_USAGE_NORMAL;
-                uint32_t new_index = element.Register % 8;
+                uint32_t new_usage {element.Register < 8 ? SM2_USAGE_TEXCOORD : SM2_USAGE_NORMAL};
+                uint32_t new_index {element.Register % 8};
                 instruction[1] = (instruction[1] & ~SM2_USAGE_MASK & ~(SM2_USAGE_INDEX_MASK << SM2_USAGE_INDEX_SHIFT)) | new_usage | (new_index << SM2_USAGE_INDEX_SHIFT);
             }
             else if (!is_vertex && type == Sm2Register::Texture) {
                 // Semantics packed into one register are declared once, with the joint mask
-                uint32_t target = texcoord_inputs.at(GetRegisterNumber(instruction[2])).Register;
+                uint32_t target {texcoord_inputs.at(GetRegisterNumber(instruction[2])).Register};
 
                 if (!declared_texcoords.emplace(target).second) {
                     continue;
@@ -785,18 +785,18 @@ static auto RemapSignatures(const vector<Sm2Instruction>& instructions, bool is_
             continue;
         }
 
-        optional<Sm2Instruction> shifted_output;
+        optional<Sm2Instruction> shifted_output {};
 
         for (const Sm2Operand& operand : GetOperands(instruction)) {
             if (operand.Kind != Sm2OperandKind::Destination && operand.Kind != Sm2OperandKind::Source) {
                 continue;
             }
 
-            uint32_t& token = instruction[operand.Index];
-            Sm2Register type = GetRegisterType(token);
+            uint32_t& token {instruction[operand.Index]};
+            Sm2Register type {GetRegisterType(token)};
 
             if (is_vertex && operand.Kind == Sm2OperandKind::Destination && type == Sm2Register::TexCoordOutput) {
-                const SignatureElement& element = FindSignatureElement(outputs, "TEXCOORD", GetRegisterNumber(token), name);
+                const SignatureElement& element {FindSignatureElement(outputs, "TEXCOORD", GetRegisterNumber(token), name)};
 
                 if (element.Register >= LEVEL9_MAX_TEXCOORDS) {
                     throw Direct3DLevel9Exception("Level 9 vertex output register is beyond 8 texture coordinates", name, element.SemanticIndex, element.Register);
@@ -807,15 +807,15 @@ static auto RemapSignatures(const vector<Sm2Instruction>& instructions, bool is_
                 }
                 else {
                     // A semantic packed after other components: compute it in a temporary, then move it into place
-                    uint32_t mask = (token & SM2_WRITE_MASK_MASK) >> SM2_SELECT_SHIFT;
-                    uint32_t swizzle = 0;
+                    uint32_t mask {(token & SM2_WRITE_MASK_MASK) >> SM2_SELECT_SHIFT};
+                    uint32_t swizzle {0};
 
-                    for (uint32_t component = 0; component < 4; component++) {
+                    for (uint32_t component {0}; component < 4; component++) {
                         swizzle |= (component > element.FirstComponent ? component - element.FirstComponent : 0) << (component * 2);
                     }
 
-                    uint32_t destination = SetRegister(token & ~SM2_RESULT_MODIFIERS_MASK & ~SM2_WRITE_MASK_MASK, Sm2Register::TexCoordOutput, element.Register) | (((mask << element.FirstComponent) & SM2_FULL_WRITE_MASK) << SM2_SELECT_SHIFT);
-                    uint32_t source = MakeTempSource(scratch.Result, swizzle);
+                    uint32_t destination {SetRegister(token & ~SM2_RESULT_MODIFIERS_MASK & ~SM2_WRITE_MASK_MASK, Sm2Register::TexCoordOutput, element.Register) | (((mask << element.FirstComponent) & SM2_FULL_WRITE_MASK) << SM2_SELECT_SHIFT)};
+                    uint32_t source {MakeTempSource(scratch.Result, swizzle)};
                     shifted_output = MakeMov(destination, const_span<uint32_t> {&source, 1});
                     token = MakeTempDestination(scratch.Result, mask) | (token & SM2_RESULT_MODIFIERS_MASK);
                 }
@@ -824,7 +824,7 @@ static auto RemapSignatures(const vector<Sm2Instruction>& instructions, bool is_
                 throw Direct3DLevel9Exception("Level 9 vertex shader writes a color output", name);
             }
             else if (!is_vertex && type == Sm2Register::Texture) {
-                const SignatureElement& element = texcoord_inputs.at(GetRegisterNumber(token));
+                const SignatureElement& element {texcoord_inputs.at(GetRegisterNumber(token))};
                 token = SetRegister(token, Sm2Register::Texture, element.Register);
 
                 if (operand.Kind == Sm2OperandKind::Source) {
@@ -847,23 +847,23 @@ static void LegalizeInstruction(Sm2Instruction instruction, const ScratchRegiste
 {
     // vkd3d-shader writes code the Direct3D 9 validator rejects, which a level 9 driver runs: each rule below is one
     // the validator states and the fix a compiler for Direct3D 9 applies
-    uint32_t opcode = GetOpcode(instruction[0]);
+    uint32_t opcode {GetOpcode(instruction[0])};
 
     if (opcode == SM2_OP_DCL || opcode == SM2_OP_DEF || opcode == SM2_OP_DEFI || opcode == SM2_OP_DEFB) {
         output.emplace_back(std::move(instruction));
         return;
     }
 
-    small_vector<Sm2Operand, 8> operands = GetOperands(instruction);
+    small_vector<Sm2Operand, 8> operands {GetOperands(instruction)};
 
     // texkill tests every component: replicate the written ones over the whole register
     if (opcode == SM2_OP_TEXKILL) {
-        uint32_t token = instruction[operands[0].Index];
-        uint32_t mask = (token & SM2_WRITE_MASK_MASK) >> SM2_SELECT_SHIFT;
-        uint32_t swizzle = 0;
-        uint32_t last_component = 0;
+        uint32_t token {instruction[operands[0].Index]};
+        uint32_t mask {(token & SM2_WRITE_MASK_MASK) >> SM2_SELECT_SHIFT};
+        uint32_t swizzle {0};
+        uint32_t last_component {0};
 
-        for (uint32_t component = 0, written = 0; component < 4; component++) {
+        for (uint32_t component {0}, written {0}; component < 4; component++) {
             if ((mask & (1u << component)) != 0) {
                 swizzle |= component << (written * 2);
                 last_component = component;
@@ -871,35 +871,35 @@ static void LegalizeInstruction(Sm2Instruction instruction, const ScratchRegiste
             }
         }
 
-        for (uint32_t written = numeric_cast<uint32_t>(std::popcount(mask)); written < 4; written++) {
+        for (uint32_t written {numeric_cast<uint32_t>(std::popcount(mask))}; written < 4; written++) {
             swizzle |= last_component << (written * 2);
         }
 
-        uint32_t source = (token & ~SM2_SWIZZLE_MASK & ~SM2_SOURCE_MODIFIER_MASK) | (swizzle << SM2_SELECT_SHIFT);
+        uint32_t source {(token & ~SM2_SWIZZLE_MASK & ~SM2_SOURCE_MODIFIER_MASK) | (swizzle << SM2_SELECT_SHIFT)};
         output.emplace_back(MakeMov(MakeTempDestination(scratch.Source0, SM2_FULL_WRITE_MASK), const_span<uint32_t> {&source, 1}));
         output.emplace_back(Sm2Instruction {instruction[0], MakeTempDestination(scratch.Source0, SM2_FULL_WRITE_MASK)});
         return;
     }
 
-    small_vector<Sm2Instruction, 4> before;
-    optional<Sm2Instruction> after;
+    small_vector<Sm2Instruction, 4> before {};
+    optional<Sm2Instruction> after {};
 
     // A texture coordinate is read without a swizzle: drop one that changes no component the lookup reads, or move it
     if (opcode == SM2_OP_TEX || opcode == SM2_OP_TEXLDD || opcode == SM2_OP_TEXLDL) {
-        uint32_t& coordinate = instruction[operands[1].Index];
-        uint32_t sampler = GetRegisterNumber(instruction[operands[2].Index]);
-        auto sampler_type = sampler_types.find(sampler);
-        bool projected = opcode == SM2_OP_TEX && ((instruction[0] >> SM2_TEX_CONTROL_SHIFT) & SM2_TEX_CONTROL_MASK) != 0;
-        uint32_t used_components = 4;
+        uint32_t& coordinate {instruction[operands[1].Index]};
+        uint32_t sampler {GetRegisterNumber(instruction[operands[2].Index])};
+        auto sampler_type {sampler_types.find(sampler)};
+        bool projected {opcode == SM2_OP_TEX && ((instruction[0] >> SM2_TEX_CONTROL_SHIFT) & SM2_TEX_CONTROL_MASK) != 0};
+        uint32_t used_components {4};
 
         if (!projected && opcode != SM2_OP_TEXLDL && sampler_type != sampler_types.end()) {
             used_components = sampler_type->second == SM2_SAMPLER_2D ? 2 : (sampler_type->second == SM2_SAMPLER_CUBE || sampler_type->second == SM2_SAMPLER_VOLUME ? 3 : 4);
         }
 
-        uint32_t swizzle = GetSwizzle(coordinate);
-        bool identity = (coordinate & SM2_SOURCE_MODIFIER_MASK) == 0;
+        uint32_t swizzle {GetSwizzle(coordinate)};
+        bool identity {(coordinate & SM2_SOURCE_MODIFIER_MASK) == 0};
 
-        for (uint32_t component = 0; component < used_components; component++) {
+        for (uint32_t component {0}; component < used_components; component++) {
             identity = identity && ((swizzle >> (component * 2)) & 0x3) == component;
         }
 
@@ -914,22 +914,22 @@ static void LegalizeInstruction(Sm2Instruction instruction, const ScratchRegiste
 
     // Read ports: one constant register (read at most twice) and one input register per instruction
     if (opcode != SM2_OP_SINCOS) {
-        optional<uint32_t> first_constant;
-        optional<uint32_t> first_input;
-        int32_t constant_reads = 0;
-        small_vector<uint32_t, 2> free_temps = {scratch.Source0, scratch.Source1};
-        small_vector<size_t, 2> dropped_address_tokens;
+        optional<uint32_t> first_constant {};
+        optional<uint32_t> first_input {};
+        int32_t constant_reads {0};
+        small_vector<uint32_t, 2> free_temps {scratch.Source0, scratch.Source1};
+        small_vector<size_t, 2> dropped_address_tokens {};
 
         for (const Sm2Operand& operand : operands) {
             if (operand.Kind != Sm2OperandKind::Source) {
                 continue;
             }
 
-            uint32_t& token = instruction[operand.Index];
-            Sm2Register type = GetRegisterType(token);
-            bool relative = (token & SM2_RELATIVE_ADDRESSING) != 0;
-            uint32_t key = (token & (SM2_REGISTER_NUMBER_MASK | SM2_RELATIVE_ADDRESSING));
-            bool move = false;
+            uint32_t& token {instruction[operand.Index]};
+            Sm2Register type {GetRegisterType(token)};
+            bool relative {(token & SM2_RELATIVE_ADDRESSING) != 0};
+            uint32_t key {(token & (SM2_REGISTER_NUMBER_MASK | SM2_RELATIVE_ADDRESSING))};
+            bool move {false};
 
             if (type == Sm2Register::Const) {
                 if (!first_constant.has_value()) {
@@ -957,9 +957,9 @@ static void LegalizeInstruction(Sm2Instruction instruction, const ScratchRegiste
                     throw Direct3DLevel9Exception("Level 9 instruction reads too many constant or input registers", name, opcode);
                 }
 
-                uint32_t temp = free_temps.front();
+                uint32_t temp {free_temps.front()};
                 free_temps.erase(free_temps.begin());
-                small_vector<uint32_t, 2> source = {SetSwizzle(token, SM2_IDENTITY_SWIZZLE) & ~SM2_SOURCE_MODIFIER_MASK};
+                small_vector<uint32_t, 2> source {SetSwizzle(token, SM2_IDENTITY_SWIZZLE) & ~SM2_SOURCE_MODIFIER_MASK};
 
                 if (relative) {
                     source.emplace_back(instruction[operand.Index + 1]);
@@ -971,7 +971,7 @@ static void LegalizeInstruction(Sm2Instruction instruction, const ScratchRegiste
             }
         }
 
-        for (auto it = dropped_address_tokens.rbegin(); it != dropped_address_tokens.rend(); ++it) {
+        for (auto it {dropped_address_tokens.rbegin()}; it != dropped_address_tokens.rend(); ++it) {
             instruction.erase(instruction.begin() + numeric_cast<ptrdiff_t>(*it));
         }
 
@@ -983,17 +983,17 @@ static void LegalizeInstruction(Sm2Instruction instruction, const ScratchRegiste
 
     // A color output is written only by mov, and sincos never writes the register it reads
     if (!operands.empty() && operands[0].Kind == Sm2OperandKind::Destination) {
-        uint32_t& destination = instruction[operands[0].Index];
-        bool redirect = GetRegisterType(destination) == Sm2Register::ColorOutput && opcode != SM2_OP_MOV;
+        uint32_t& destination {instruction[operands[0].Index]};
+        bool redirect {GetRegisterType(destination) == Sm2Register::ColorOutput && opcode != SM2_OP_MOV};
 
         if (opcode == SM2_OP_SINCOS) {
-            uint32_t source = instruction[operands[1].Index];
+            uint32_t source {instruction[operands[1].Index]};
             redirect = redirect || (GetRegisterType(destination) == GetRegisterType(source) && GetRegisterNumber(destination) == GetRegisterNumber(source));
         }
 
         if (redirect) {
-            uint32_t mask = (destination & SM2_WRITE_MASK_MASK) >> SM2_SELECT_SHIFT;
-            uint32_t source = MakeTempSource(scratch.Result, SM2_IDENTITY_SWIZZLE);
+            uint32_t mask {(destination & SM2_WRITE_MASK_MASK) >> SM2_SELECT_SHIFT};
+            uint32_t source {MakeTempSource(scratch.Result, SM2_IDENTITY_SWIZZLE)};
             after = MakeMov(destination & ~SM2_RESULT_MODIFIERS_MASK, const_span<uint32_t> {&source, 1});
             destination = MakeTempDestination(scratch.Result, mask) | (destination & SM2_RESULT_MODIFIERS_MASK);
         }
@@ -1012,7 +1012,7 @@ static void LegalizeInstruction(Sm2Instruction instruction, const ScratchRegiste
 
 static auto BuildAon9Chunk(uint32_t version, const vector<Sm2Instruction>& instructions, const Level9Tables& tables) -> vector<uint8_t>
 {
-    vector<uint8_t> bytecode;
+    vector<uint8_t> bytecode {};
 
     {
         data_writer writer {bytecode};
@@ -1026,13 +1026,13 @@ static auto BuildAon9Chunk(uint32_t version, const vector<Sm2Instruction>& instr
     }
 
     // Tables after the header: samplers, constant buffers, loop counters (none), runtime constants, then the code
-    size_t sampler_offset = AON9_HEADER_SIZE;
-    size_t constant_offset = sampler_offset + tables.Samplers.size() * 4;
-    size_t loop_offset = constant_offset + tables.Constants.size() * 12;
-    size_t runtime_count = tables.HasPositionOffset ? 1 : 0;
-    size_t bytecode_offset = loop_offset + runtime_count * 4;
+    size_t sampler_offset {AON9_HEADER_SIZE};
+    size_t constant_offset {sampler_offset + tables.Samplers.size() * 4};
+    size_t loop_offset {constant_offset + tables.Constants.size() * 12};
+    size_t runtime_count {tables.HasPositionOffset ? 1u : 0u};
+    size_t bytecode_offset {loop_offset + runtime_count * 4};
 
-    vector<uint8_t> chunk;
+    vector<uint8_t> chunk {};
     data_writer writer {chunk};
     writer.write<uint32_t>(numeric_cast<uint32_t>(bytecode_offset + bytecode.size()));
     writer.write<uint32_t>((version & 0xFFFF0000u) | 0x0200u);
@@ -1064,7 +1064,7 @@ static auto BuildAon9Chunk(uint32_t version, const vector<Sm2Instruction>& instr
         writer.write<uint16_t>(mapping.RegisterCount);
         writer.write<uint16_t>(mapping.TargetRegister);
 
-        for (int32_t component = 0; component < 4; component++) {
+        for (int32_t component {0}; component < 4; component++) {
             writer.write<uint8_t>(mapping.Conversion);
         }
     }
@@ -1082,39 +1082,39 @@ static auto BuildAon9Chunk(uint32_t version, const vector<Sm2Instruction>& instr
 static auto SerializeContainer(const vkd3d_shader_dxbc_desc& container, const_span<uint8_t> aon9, string_view name) -> vector<uint8_t>
 {
     // The runtime looks for the level 9 chunk first, as the Microsoft compiler writes it
-    vector<vkd3d_shader_dxbc_section_desc> sections;
+    vector<vkd3d_shader_dxbc_section_desc> sections {};
     sections.reserve(container.section_count + 1);
 
-    vkd3d_shader_dxbc_section_desc& aon9_section = sections.emplace_back();
+    vkd3d_shader_dxbc_section_desc& aon9_section {sections.emplace_back()};
     aon9_section.tag = TAG_AON9;
     aon9_section.data.code = aon9.data();
     aon9_section.data.size = aon9.size();
 
-    for (size_t i = 0; i < container.section_count; i++) {
+    for (size_t i {0}; i < container.section_count; i++) {
         sections.emplace_back(container.sections[i]);
     }
 
     vkd3d_shader_code dxbc {};
     nptr<char> messages {};
-    int32_t result = vkd3d_shader_serialize_dxbc(sections.size(), sections.data(), &dxbc, messages.get_pp());
-    auto messages_holder = make_unique_del_ptr(messages, vkd3d_shader_free_messages);
-    auto dxbc_holder = scope_exit([&dxbc]() noexcept { vkd3d_shader_free_shader_code(&dxbc); });
+    int32_t result {vkd3d_shader_serialize_dxbc(sections.size(), sections.data(), &dxbc, messages.get_pp())};
+    auto messages_holder {make_unique_del_ptr(messages, vkd3d_shader_free_messages)};
+    auto dxbc_holder {scope_exit([&dxbc]() noexcept { vkd3d_shader_free_shader_code(&dxbc); })};
 
     if (result < 0) {
         throw Direct3DLevel9Exception("Level 9 container does not serialize", name, result, messages ? string(messages.get()) : string());
     }
 
-    nptr<const void> code = dxbc.code;
+    nptr<const void> code {dxbc.code};
     FO_VERIFY_AND_THROW(code && dxbc.size != 0, "Level 9 container serialized without bytes", name);
-    vector<uint8_t> bytes(dxbc.size);
+    vector<uint8_t> bytes {vector<uint8_t>(dxbc.size)};
     memory::copy(bytes.data(), code, dxbc.size);
     return bytes;
 }
 
 static auto GetOperands(const Sm2Instruction& instruction) -> small_vector<Sm2Operand, 8>
 {
-    small_vector<Sm2Operand, 8> operands;
-    uint32_t opcode = GetOpcode(instruction[0]);
+    small_vector<Sm2Operand, 8> operands {};
+    uint32_t opcode {GetOpcode(instruction[0])};
 
     if (opcode == SM2_OP_DCL) {
         operands.emplace_back(Sm2Operand {1, Sm2OperandKind::Data});
@@ -1125,15 +1125,15 @@ static auto GetOperands(const Sm2Instruction& instruction) -> small_vector<Sm2Op
     if (opcode == SM2_OP_DEF || opcode == SM2_OP_DEFI || opcode == SM2_OP_DEFB) {
         operands.emplace_back(Sm2Operand {1, Sm2OperandKind::Destination});
 
-        for (size_t i = 2; i < instruction.size(); i++) {
+        for (size_t i {2}; i < instruction.size(); i++) {
             operands.emplace_back(Sm2Operand {i, Sm2OperandKind::Data});
         }
 
         return operands;
     }
 
-    bool has_destination = opcode != SM2_OP_NOP && opcode != SM2_OP_LABEL && opcode != SM2_OP_BREAKP && !IsFlowControl(opcode);
-    size_t index = 1;
+    bool has_destination {opcode != SM2_OP_NOP && opcode != SM2_OP_LABEL && opcode != SM2_OP_BREAKP && !IsFlowControl(opcode)};
+    size_t index {1};
 
     if (has_destination && index < instruction.size()) {
         operands.emplace_back(Sm2Operand {index, Sm2OperandKind::Destination});
@@ -1245,7 +1245,7 @@ static auto GetRegisterNumber(uint32_t token) -> uint32_t
 
 static auto SetRegister(uint32_t token, Sm2Register type, uint32_t number) -> uint32_t
 {
-    uint32_t type_value = static_cast<uint32_t>(type);
+    uint32_t type_value {static_cast<uint32_t>(type)};
     return (token & ~(SM2_REGISTER_NUMBER_MASK | SM2_REGISTER_TYPE_MASK)) | (number & SM2_REGISTER_NUMBER_MASK) | ((type_value & 0x7) << 28) | ((type_value & 0x18) << 8);
 }
 
@@ -1262,10 +1262,10 @@ static auto GetSwizzle(uint32_t token) -> uint32_t
 static auto ShiftSwizzle(uint32_t swizzle, uint32_t first_component, uint32_t component_count) -> uint32_t
 {
     // A component beyond the semantic reads its last one: its value was never meaningful
-    uint32_t shifted = 0;
+    uint32_t shifted {0};
 
-    for (uint32_t i = 0; i < 4; i++) {
-        uint32_t component = std::min((swizzle >> (i * 2)) & 0x3, component_count - 1);
+    for (uint32_t i {0}; i < 4; i++) {
+        uint32_t component {std::min((swizzle >> (i * 2)) & 0x3, component_count - 1)};
         shifted |= (first_component + component) << (i * 2);
     }
 
@@ -1284,7 +1284,7 @@ static auto MakeTempSource(uint32_t number, uint32_t swizzle) -> uint32_t
 
 static auto MakeMov(uint32_t destination, const_span<uint32_t> source) -> Sm2Instruction
 {
-    Sm2Instruction instruction;
+    Sm2Instruction instruction {};
     instruction.reserve(2 + source.size());
     instruction.emplace_back(SM2_OP_MOV | (numeric_cast<uint32_t>(1 + source.size()) << SM2_LENGTH_SHIFT));
     instruction.emplace_back(destination);
@@ -1298,7 +1298,7 @@ static auto ReadStringAt(const_span<uint8_t> data, size_t pos) -> string
         throw DataReadingException("String offset is past the data");
     }
 
-    auto end = std::find(data.begin() + numeric_cast<ptrdiff_t>(pos), data.end(), uint8_t {0});
+    auto end {std::find(data.begin() + numeric_cast<ptrdiff_t>(pos), data.end(), uint8_t {0})};
 
     if (end == data.end()) {
         throw DataReadingException("String is not terminated");

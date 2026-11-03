@@ -47,7 +47,7 @@ inline void span_align_pos(size_t& pos, size_t alignment)
     FO_VERIFY_AND_THROW(alignment != 0, "Span alignment is zero");
     FO_VERIFY_AND_THROW((alignment & (alignment - 1)) == 0, "Span alignment is not power of two");
 
-    size_t aligned_pos = checked_add(pos, alignment - 1);
+    size_t aligned_pos {checked_add(pos, alignment - 1)};
     pos = aligned_pos & ~(alignment - 1);
 }
 
@@ -57,7 +57,7 @@ inline void span_align_pos(size_t& pos, size_t alignment)
         throw DataReadingException("Unexpected end of buffer");
     }
 
-    const_span<uint8_t> bytes = buffer.subspan(pos, size);
+    const_span<uint8_t> bytes {buffer.subspan(pos, size)};
     pos += size;
     return bytes;
 }
@@ -68,7 +68,7 @@ inline void span_align_pos(size_t& pos, size_t alignment)
         throw DataReadingException("Unexpected end of buffer");
     }
 
-    span<uint8_t> bytes = buffer.subspan(pos, size);
+    span<uint8_t> bytes {buffer.subspan(pos, size)};
     pos += size;
     return bytes;
 }
@@ -97,8 +97,8 @@ template<typename T>
 {
     static_assert(std::is_trivially_copyable_v<T>);
 
-    T data;
-    const_span<uint8_t> bytes = span_read_bytes(buffer, pos, sizeof(T));
+    T data {};
+    const_span<uint8_t> bytes {span_read_bytes(buffer, pos, sizeof(T))};
     memory::copy(&data, bytes.data(), sizeof(T));
     return data;
 }
@@ -126,9 +126,9 @@ template<typename T>
         return {};
     }
 
-    const_span<uint8_t> bytes = span_read_bytes(buffer, pos, size);
-    auto bytes_data = make_ptr(bytes.data());
-    auto chars = bytes_data.reinterpret_as<const char>();
+    const_span<uint8_t> bytes {span_read_bytes(buffer, pos, size)};
+    auto bytes_data {make_ptr(bytes.data())};
+    auto chars {bytes_data.reinterpret_as<const char>()};
     return {chars.get(), bytes.size()};
 }
 
@@ -137,20 +137,20 @@ template<typename T>
     FO_VERIFY_AND_THROW(pos <= buffer.size(), "Write position past buffer end");
     FO_VERIFY_AND_THROW(size <= buffer.size() - pos, "Write size exceeds remaining buffer");
 
-    span<uint8_t> bytes = buffer.subspan(pos, size);
+    span<uint8_t> bytes {buffer.subspan(pos, size)};
     pos += size;
     return bytes;
 }
 
 inline void span_write_bytes(span<uint8_t> buffer, size_t& pos, const_span<uint8_t> data)
 {
-    span<uint8_t> bytes = span_write_bytes(buffer, pos, data.size());
+    span<uint8_t> bytes {span_write_bytes(buffer, pos, data.size())};
     memory::copy(bytes.data(), data.data(), data.size());
 }
 
 inline void span_write_bytes(span<uint8_t> buffer, size_t& pos, nptr<const void> source, size_t size)
 {
-    span<uint8_t> bytes = span_write_bytes(buffer, pos, size);
+    span<uint8_t> bytes {span_write_bytes(buffer, pos, size)};
     memory::copy(bytes.data(), source, size);
 }
 
@@ -165,13 +165,13 @@ inline void span_write_bytes(span<uint8_t> buffer, size_t& pos, nptr<const void>
 
 inline void span_write_aligned_bytes(span<uint8_t> buffer, size_t& pos, const_span<uint8_t> data, size_t alignment)
 {
-    span<uint8_t> bytes = span_write_aligned_bytes(buffer, pos, data.size(), alignment);
+    span<uint8_t> bytes {span_write_aligned_bytes(buffer, pos, data.size(), alignment)};
     memory::copy(bytes.data(), data.data(), data.size());
 }
 
 inline void span_write_aligned_bytes(span<uint8_t> buffer, size_t& pos, nptr<const void> source, size_t size, size_t alignment)
 {
-    span<uint8_t> bytes = span_write_aligned_bytes(buffer, pos, size, alignment);
+    span<uint8_t> bytes {span_write_aligned_bytes(buffer, pos, size, alignment)};
     memory::copy(bytes.data(), source, size);
 }
 
@@ -202,14 +202,14 @@ constexpr void span_write_uint16(span<uint8_t> buffer, size_t offset, uint16_t v
 
 constexpr void span_write_uint32(span<uint8_t> buffer, size_t offset, uint32_t value) noexcept
 {
-    for (size_t i = 0; i < 4; ++i) {
+    for (size_t i {0}; i < 4; ++i) {
         buffer[offset + i] = static_cast<uint8_t>((value >> (i * 8)) & 0xFF);
     }
 }
 
 constexpr void span_write_uint64(span<uint8_t> buffer, size_t offset, uint64_t value) noexcept
 {
-    for (size_t i = 0; i < 8; ++i) {
+    for (size_t i {0}; i < 8; ++i) {
         buffer[offset + i] = static_cast<uint8_t>((value >> (i * 8)) & 0xFF);
     }
 }
@@ -221,9 +221,9 @@ constexpr void span_write_uint64(span<uint8_t> buffer, size_t offset, uint64_t v
 
 [[nodiscard]] constexpr auto span_read_uint32(const_span<uint8_t> buffer, size_t offset) noexcept -> uint32_t
 {
-    uint32_t value = 0;
+    uint32_t value {0};
 
-    for (size_t i = 0; i < 4; ++i) {
+    for (size_t i {0}; i < 4; ++i) {
         value |= static_cast<uint32_t>(buffer[offset + i]) << (i * 8);
     }
 
@@ -232,9 +232,9 @@ constexpr void span_write_uint64(span<uint8_t> buffer, size_t offset, uint64_t v
 
 [[nodiscard]] constexpr auto span_read_uint64(const_span<uint8_t> buffer, size_t offset) noexcept -> uint64_t
 {
-    uint64_t value = 0;
+    uint64_t value {0};
 
-    for (size_t i = 0; i < 8; ++i) {
+    for (size_t i {0}; i < 8; ++i) {
         value |= static_cast<uint64_t>(buffer[offset + i]) << (i * 8);
     }
 
@@ -316,7 +316,7 @@ public:
 
     void read_bytes(span<uint8_t> out)
     {
-        const_span<uint8_t> bytes = read_bytes(out.size());
+        const_span<uint8_t> bytes {read_bytes(out.size())};
         copy_bytes_to(out, bytes);
     }
 
@@ -330,27 +330,27 @@ public:
     // Reads a zero-copy view of the next `size` bytes as text (no length prefix); the view borrows the underlying buffer
     [[nodiscard]] auto read_string_view(size_t size) -> string_view
     {
-        const_span<uint8_t> bytes = read_bytes(size);
+        const_span<uint8_t> bytes {read_bytes(size)};
 
         if (bytes.empty()) {
             return {};
         }
 
-        auto bytes_data = make_ptr(bytes.data());
-        auto chars = bytes_data.reinterpret_as<const char>();
+        auto bytes_data {make_ptr(bytes.data())};
+        auto chars {bytes_data.reinterpret_as<const char>()};
         return {chars.get(), bytes.size()};
     }
 
     // Reads a self-describing string written with write_string (uint32 length prefix + bytes)
     [[nodiscard]] auto read_string() -> string
     {
-        uint32_t len = read<uint32_t>();
+        uint32_t len {read<uint32_t>()};
 
         if (len > get_unread_size()) {
             throw DataReadingException("String length exceeds remaining buffer");
         }
 
-        string value;
+        string value {};
         value.resize(len);
         read_string_bytes(value);
         return value;
@@ -359,14 +359,14 @@ public:
     // Reads a self-describing vector of strings written with write_string_vector (uint32 count + each element via read_string)
     [[nodiscard]] auto read_string_vector() -> vector<string>
     {
-        uint32_t count = read<uint32_t>();
+        uint32_t count {read<uint32_t>()};
 
         verify_payload_count(numeric_cast<size_t>(count), sizeof(uint32_t));
 
-        vector<string> values;
+        vector<string> values {};
         values.reserve(count);
 
-        for (uint32_t i = 0; i < count; i++) {
+        for (uint32_t i {0}; i < count; i++) {
             values.emplace_back(read_string());
         }
 
@@ -382,9 +382,9 @@ public:
         if (!out.empty()) {
             verify_payload_count(out.size(), sizeof(T));
 
-            auto target = mutable_objects_ptr(out);
-            ptr<uint8_t> bytes = target.template reinterpret_as<uint8_t>();
-            size_t byte_count = checked_mul(out.size(), sizeof(T));
+            auto target {mutable_objects_ptr(out)};
+            ptr<uint8_t> bytes {target.template reinterpret_as<uint8_t>()};
+            size_t byte_count {checked_mul(out.size(), sizeof(T))};
             read_bytes({bytes.get(), byte_count});
         }
     }
@@ -396,11 +396,11 @@ public:
     {
         static_assert(std::is_trivially_copyable_v<T>);
 
-        uint32_t count = read<uint32_t>();
+        uint32_t count {read<uint32_t>()};
 
         verify_payload_count(numeric_cast<size_t>(count), sizeof(T));
 
-        vector<T> values;
+        vector<T> values {};
         values.resize(count);
         read_object_array(span<T> {values});
         return values;
@@ -410,7 +410,7 @@ public:
         requires(std::same_as<T, uint8_t> || std::same_as<T, char> || std::is_void_v<T>)
     [[nodiscard]] auto read_ptr(size_t size) -> nptr<const T>
     {
-        const_span<uint8_t> bytes = read_bytes(size);
+        const_span<uint8_t> bytes {read_bytes(size)};
 
         if (bytes.empty()) {
             return nullptr;
@@ -421,12 +421,12 @@ public:
 
     void read_ptr(nptr<void> out, size_t size)
     {
-        const_span<uint8_t> bytes = read_bytes(size);
+        const_span<uint8_t> bytes {read_bytes(size)};
 
         if (!bytes.empty()) {
             FO_VERIFY_AND_THROW(out, "Output pointer is null");
-            auto target = ptr<void> {out};
-            auto target_bytes = target.reinterpret_as<uint8_t>();
+            auto target {ptr<void> {out}};
+            auto target_bytes {target.reinterpret_as<uint8_t>()};
             copy_bytes_to({target_bytes.get(), bytes.size()}, bytes);
         }
     }
@@ -443,7 +443,7 @@ private:
     {
         FO_VERIFY_AND_THROW(out.size() == bytes.size(), "Output and source sizes differ");
 
-        size_t pos = 0;
+        size_t pos {0};
         span_write_bytes(out, pos, bytes);
     }
 
@@ -464,7 +464,7 @@ private:
 class data_writer
 {
 public:
-    static constexpr size_t BUF_RESERVE_SIZE = 1024;
+    static constexpr size_t BUF_RESERVE_SIZE {1024};
 
     explicit data_writer(vector<uint8_t>& buf) :
         _data_buf {&buf}
@@ -481,16 +481,16 @@ public:
         requires(std::is_standard_layout_v<T> && std::same_as<T, U>)
     void write(U data)
     {
-        span<uint8_t> bytes = append_bytes(sizeof(T));
-        size_t pos = 0;
+        span<uint8_t> bytes {append_bytes(sizeof(T))};
+        size_t pos {0};
         span_write_object<T>(bytes, pos, data);
     }
 
     void write_bytes(const_span<uint8_t> data)
     {
         if (!data.empty()) {
-            span<uint8_t> bytes = append_bytes(data.size());
-            size_t pos = 0;
+            span<uint8_t> bytes {append_bytes(data.size())};
+            size_t pos {0};
             span_write_bytes(bytes, pos, data);
         }
     }
@@ -516,9 +516,9 @@ public:
         static_assert(std::is_trivially_copyable_v<T>);
 
         if (!data.empty()) {
-            auto source = source_objects_ptr(data);
-            ptr<const uint8_t> bytes = source.template reinterpret_as<const uint8_t>();
-            size_t byte_count = checked_mul(data.size(), sizeof(T));
+            auto source {source_objects_ptr(data)};
+            ptr<const uint8_t> bytes {source.template reinterpret_as<const uint8_t>()};
+            size_t byte_count {checked_mul(data.size(), sizeof(T))};
             write_bytes({bytes.get(), byte_count});
         }
     }
@@ -527,8 +527,8 @@ public:
     {
         if (size != 0) {
             FO_VERIFY_AND_THROW(data, "Source pointer is null");
-            auto source = ptr<const void> {data};
-            auto source_bytes = source.reinterpret_as<uint8_t>();
+            auto source {ptr<const void> {data}};
+            auto source_bytes {source.reinterpret_as<uint8_t>()};
             write_bytes({source_bytes.get(), size});
         }
     }
@@ -572,11 +572,11 @@ private:
     {
         FO_VERIFY_AND_THROW(size != 0, "Append size is zero");
 
-        size_t offset = _data_buf->size();
+        size_t offset {_data_buf->size()};
         grow_buf(size);
 
-        ptr<uint8_t> data = _data_buf->data();
-        ptr<uint8_t> bytes = data.offset(offset);
+        ptr<uint8_t> data {_data_buf->data()};
+        ptr<uint8_t> bytes {data.offset(offset)};
         return {bytes.get(), size};
     }
 
@@ -592,8 +592,8 @@ private:
 
     void grow_buf(size_t size)
     {
-        size_t required_size = checked_add(_data_buf->size(), size);
-        size_t new_capacity = std::max<size_t>(_data_buf->capacity(), size_t {1});
+        size_t required_size {checked_add(_data_buf->size(), size)};
+        size_t new_capacity {std::max<size_t>(_data_buf->capacity(), size_t {1})};
 
         while (new_capacity < required_size) {
             new_capacity = checked_mul(new_capacity, size_t {2});

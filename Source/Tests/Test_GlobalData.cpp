@@ -79,7 +79,7 @@ namespace
 
     void RecordTeardown(void* context, const char* set_name) noexcept
     {
-        auto observed = static_cast<vector<ObservedTeardown>*>(context);
+        auto observed {static_cast<vector<ObservedTeardown>*>(context)};
         observed->emplace_back(ObservedTeardown {.Name = string(set_name), .DeletedBefore = DeleteCallCount});
     }
 
@@ -122,7 +122,7 @@ namespace
 
 TEST_CASE("GlobalData")
 {
-    GlobalDataCallbacksGuard callbacks_guard;
+    GlobalDataCallbacksGuard callbacks_guard {};
 
     CreateCallCount.store(0, std::memory_order_relaxed);
     DeleteCallCount = 0;
@@ -158,7 +158,7 @@ TEST_CASE("GlobalData")
         global_data::callback_names[1] = "SetB";
         global_data::callback_names[2] = nullptr;
 
-        vector<ObservedTeardown> observed;
+        vector<ObservedTeardown> observed {};
         global_data::destroy(&RecordTeardown, &observed);
 
         REQUIRE(observed.size() == 3);
@@ -240,11 +240,11 @@ TEST_CASE("GlobalData")
 
         global_data::destroy();
 
-        vector<std::thread> racers;
+        vector<std::thread> racers {};
         racers.reserve(8);
         std::atomic<int32_t> builders {};
 
-        for (size_t i = 0; i < 8; i++) {
+        for (size_t i {0}; i < 8; i++) {
             racers.emplace_back([&builders] {
                 if (global_data::create()) {
                     builders.fetch_add(1, std::memory_order_relaxed);
@@ -266,9 +266,9 @@ TEST_CASE("GlobalDataRegisteredSetsCarryTheirNames")
 {
     // The names are what a stuck teardown is reported by, so every set the macro registered must have one
     REQUIRE(global_data::callbacks_count > 0);
-    bool has_pools = false;
+    bool has_pools {false};
 
-    for (int32_t i = 0; i < global_data::callbacks_count; i++) {
+    for (int32_t i {0}; i < global_data::callbacks_count; i++) {
         REQUIRE(global_data::callback_names[i] != nullptr);
         CHECK(string_view(global_data::callback_names[i]).size() != 0);
         has_pools = has_pools || string_view(global_data::callback_names[i]) == "global_pools";

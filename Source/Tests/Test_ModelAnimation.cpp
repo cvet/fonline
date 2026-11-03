@@ -58,25 +58,25 @@ static void ConfigureTrack(ModelAnimationController& controller, int32_t track, 
 TEST_CASE("Model animation controller copies share immutable metadata and own timeline state")
 {
 #if FO_ENABLE_3D
-    hash_storage hashes;
-    hstring bone = hashes.to_hashed_string("Bone");
+    hash_storage hashes {};
+    hstring bone {hashes.to_hashed_string("Bone")};
     ModelAnimationController prototype {1};
-    int32_t first_index = prototype.RegisterAnimation(3, 2.0f, false, {bone});
-    int32_t second_index = prototype.RegisterAnimation(7, 4.0f, true, {bone});
+    int32_t first_index {prototype.RegisterAnimation(3, 2.0f, false, {bone})};
+    int32_t second_index {prototype.RegisterAnimation(7, 4.0f, true, {bone})};
 
     CHECK(prototype.GetAnimationsCount() == 2);
     CHECK(prototype.GetAnimDuration(first_index) == Catch::Approx(2.0f));
     CHECK(prototype.GetAnimDuration(second_index) == Catch::Approx(4.0f));
 
-    ModelAnimationController first_instance = prototype.Copy();
-    ModelAnimationController second_instance = prototype.Copy();
+    ModelAnimationController first_instance {prototype.Copy()};
+    ModelAnimationController second_instance {prototype.Copy()};
     ConfigureTrack(first_instance, 0, first_index, 0.25f, 1.0f, 1.0f);
     ConfigureTrack(second_instance, 0, second_index, 1.0f, 2.0f, 0.5f);
     first_instance.AdvanceTimeline(0.5f);
     second_instance.AdvanceTimeline(1.0f);
 
-    ModelAnimationController::TrackState first_track = first_instance.GetTrackState(0);
-    ModelAnimationController::TrackState second_track = second_instance.GetTrackState(0);
+    ModelAnimationController::TrackState first_track {first_instance.GetTrackState(0)};
+    ModelAnimationController::TrackState second_track {second_instance.GetTrackState(0)};
     CHECK(first_track.Position == Catch::Approx(0.75f));
     CHECK(first_track.ClipIndex == 3);
     CHECK_FALSE(first_track.Reversed);
@@ -91,10 +91,10 @@ TEST_CASE("Model animation controller copies share immutable metadata and own ti
 TEST_CASE("Model animation controller timeline resolves events for runtime track state")
 {
 #if FO_ENABLE_3D
-    hash_storage hashes;
-    hstring bone = hashes.to_hashed_string("Bone");
+    hash_storage hashes {};
+    hstring bone {hashes.to_hashed_string("Bone")};
     ModelAnimationController controller {1};
-    int32_t animation_index = controller.RegisterAnimation(5, 2.0f, true, {bone});
+    int32_t animation_index {controller.RegisterAnimation(5, 2.0f, true, {bone})};
     controller.SetTrackAnimation(0, animation_index, nullptr);
     controller.SetTrackEnable(0, true);
     controller.SetTrackSpeed(0, 1.0f);
@@ -102,7 +102,7 @@ TEST_CASE("Model animation controller timeline resolves events for runtime track
     controller.AddEventWeight(0, 1.0f, 0.0f, 1.0f);
 
     controller.AdvanceTimeline(0.5f);
-    ModelAnimationController::TrackState track = controller.GetTrackState(0);
+    ModelAnimationController::TrackState track {controller.GetTrackState(0)};
     CHECK(track.Enabled);
     CHECK(track.Speed == Catch::Approx(2.0f));
     CHECK(track.Weight == Catch::Approx(0.5f));
@@ -127,13 +127,13 @@ TEST_CASE("Model animation controller timeline resolves events for runtime track
 TEST_CASE("Model animation track bindings preserve allowed masks and transition suppression")
 {
 #if FO_ENABLE_3D
-    hash_storage hashes;
-    hstring bone = hashes.to_hashed_string("Bone");
-    hstring other = hashes.to_hashed_string("Other");
-    hstring missing = hashes.to_hashed_string("Missing");
+    hash_storage hashes {};
+    hstring bone {hashes.to_hashed_string("Bone")};
+    hstring other {hashes.to_hashed_string("Other")};
+    hstring missing {hashes.to_hashed_string("Missing")};
     ModelAnimationController controller {2};
-    int32_t first_index = controller.RegisterAnimation(11, 2.0f, true, {bone, other});
-    int32_t second_index = controller.RegisterAnimation(13, 2.0f, false, {bone, other});
+    int32_t first_index {controller.RegisterAnimation(11, 2.0f, true, {bone, other})};
+    int32_t second_index {controller.RegisterAnimation(13, 2.0f, false, {bone, other})};
 
     unordered_set<hstring> allowed_bones {bone};
     controller.SetTrackAnimation(0, first_index, &allowed_bones);
@@ -148,7 +148,7 @@ TEST_CASE("Model animation track bindings preserve allowed masks and transition 
     controller.AddEventWeight(1, 1.0f, 0.0f, 0.0f);
     controller.AdvanceTimeline(0.0f);
 
-    ModelAnimationController::TrackState first_track = controller.GetTrackState(0);
+    ModelAnimationController::TrackState first_track {controller.GetTrackState(0)};
     CHECK(first_track.Enabled);
     CHECK(first_track.Speed == Catch::Approx(1.5f));
     CHECK(first_track.Weight == Catch::Approx(0.75f));
@@ -171,7 +171,7 @@ TEST_CASE("Model animation track bindings preserve allowed masks and transition 
     CHECK(controller.IsTrackBoneEnabled(1, bone));
     CHECK(controller.IsTrackBoneEnabled(1, other));
 
-    unordered_set<hstring> no_allowed_bones;
+    unordered_set<hstring> no_allowed_bones {};
     controller.SetTrackAnimation(1, second_index, &no_allowed_bones);
     CHECK_FALSE(controller.IsTrackBoneEnabled(1, bone));
     CHECK_FALSE(controller.IsTrackBoneEnabled(1, other));
@@ -181,16 +181,16 @@ TEST_CASE("Model animation track bindings preserve allowed masks and transition 
 TEST_CASE("Model animation bone masks use exact runtime binding names")
 {
 #if FO_ENABLE_3D
-    hash_storage hashes;
-    hstring source_root = hashes.to_hashed_string("SourceRoot");
-    hstring runtime_root = hashes.to_hashed_string("ModelFile.fbx");
-    hstring child = hashes.to_hashed_string("Child");
-    hstring contributed = hashes.to_hashed_string("Contributed");
-    hstring absent = hashes.to_hashed_string("Absent");
+    hash_storage hashes {};
+    hstring source_root {hashes.to_hashed_string("SourceRoot")};
+    hstring runtime_root {hashes.to_hashed_string("ModelFile.fbx")};
+    hstring child {hashes.to_hashed_string("Child")};
+    hstring contributed {hashes.to_hashed_string("Contributed")};
+    hstring absent {hashes.to_hashed_string("Absent")};
     vector<hstring> canonical_names {source_root, child, contributed, absent};
     vector<hstring> runtime_names {runtime_root, child, contributed, absent};
     vector<uint8_t> canonical_joint_present {1, 1, 1, 0};
-    unordered_set<hstring> renamed_root_bindings = BuildModelAnimationBoundBones(canonical_names, runtime_names, canonical_joint_present, "renamed root test");
+    unordered_set<hstring> renamed_root_bindings {BuildModelAnimationBoundBones(canonical_names, runtime_names, canonical_joint_present, "renamed root test")};
 
     CHECK_FALSE(renamed_root_bindings.contains(source_root));
     CHECK_FALSE(renamed_root_bindings.contains(runtime_root));
@@ -199,7 +199,7 @@ TEST_CASE("Model animation bone masks use exact runtime binding names")
     CHECK_FALSE(renamed_root_bindings.contains(absent));
 
     ModelAnimationController renamed_root_controller {1};
-    int32_t renamed_root_animation = renamed_root_controller.RegisterAnimation(17, 2.0f, false, std::move(renamed_root_bindings));
+    int32_t renamed_root_animation {renamed_root_controller.RegisterAnimation(17, 2.0f, false, std::move(renamed_root_bindings))};
     renamed_root_controller.SetTrackAnimation(0, renamed_root_animation, nullptr);
     CHECK_FALSE(renamed_root_controller.IsTrackBoneEnabled(0, runtime_root));
     CHECK_FALSE(renamed_root_controller.IsTrackBoneEnabled(0, source_root));
@@ -210,7 +210,7 @@ TEST_CASE("Model animation bone masks use exact runtime binding names")
     vector<hstring> matching_runtime_names {source_root};
     vector<uint8_t> matching_presence {1};
     ModelAnimationController matching_root_controller {1};
-    int32_t matching_root_animation = matching_root_controller.RegisterAnimation(19, 2.0f, false, BuildModelAnimationBoundBones(const_span<hstring> {matching_runtime_names}, const_span<hstring> {matching_runtime_names}, const_span<uint8_t> {matching_presence}, "matching root test"));
+    int32_t matching_root_animation {matching_root_controller.RegisterAnimation(19, 2.0f, false, BuildModelAnimationBoundBones(const_span<hstring> {matching_runtime_names}, const_span<hstring> {matching_runtime_names}, const_span<uint8_t> {matching_presence}, "matching root test"))};
     matching_root_controller.SetTrackAnimation(0, matching_root_animation, nullptr);
     CHECK(matching_root_controller.IsTrackBoneEnabled(0, source_root));
     CHECK_FALSE(matching_root_controller.IsTrackBoneEnabled(0, runtime_root));

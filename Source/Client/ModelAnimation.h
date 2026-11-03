@@ -239,7 +239,7 @@ private:
 class ModelAnimationRuntimePose final
 {
 public:
-    static constexpr size_t MAX_PROCEDURAL_ROTATIONS = 2;
+    static constexpr size_t MAX_PROCEDURAL_ROTATIONS {2};
 
     struct TrackInput
     {

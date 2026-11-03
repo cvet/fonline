@@ -84,7 +84,7 @@ class ModelInstance final
     friend class ModelHierarchy;
 
 public:
-    constexpr static int32_t FRAME_SCALE = MODEL_SPRITE_FRAME_SCALE;
+    constexpr static int32_t FRAME_SCALE {MODEL_SPRITE_FRAME_SCALE};
 
     ModelInstance() = delete;
     ModelInstance(ptr<ModelManager> model_mngr, ptr<ModelInformation> info);

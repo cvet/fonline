@@ -132,6 +132,13 @@ in versioned docs; sanitize evidence.
   indices; do not replace it with implicit conversion or an unchecked cast.
   See [local variables](Docs/en/contributing/coding-contracts/local-variables.md)
   for justified suppression and use-after-move checks.
+- **Initialization:** initialize every variable definition with braces where an
+  initializer is permitted: `T value {expression};`, or `T value {};` for its intended
+  default state. This includes locals, fields, globals and static/thread-local variables.
+  Class fields initialized by constructors may omit an in-class initializer; locals
+  may defer initialization only when every path assigns a value before its first read.
+  Preserve constructor selection, container semantics and deduced types; see
+  [braced initialization](Docs/en/contributing/coding-contracts/local-variables.md#braced-initialization).
 - **Arithmetic:** use `checked_add/sub/mul/div` where script input or decoded data
   affects sizes, offsets or other important calculations. Check before mutation;
   `numeric_cast` cannot detect an overflow that already happened in its argument.

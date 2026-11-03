@@ -50,12 +50,12 @@ void RawCopyBaker::BakeFiles(const FileCollection& files, string_view target_pat
     FO_TRACE_ZONE(Baking);
 
     // Collect files
-    vector<File> filtered_files;
+    vector<File> filtered_files {};
 
     if (target_path.empty()) {
         for (const auto& file_header : files) {
-            string ext = strex(file_header.GetPath()).get_file_extension();
-            auto it = std::ranges::find(_context->Settings->Baking.RawCopyFileExtensions, ext);
+            string ext {static_cast<string&&>(strex(file_header.GetPath()).get_file_extension())};
+            auto it {std::ranges::find(_context->Settings->Baking.RawCopyFileExtensions, ext)};
 
             if (it == _context->Settings->Baking.RawCopyFileExtensions.end()) {
                 continue;
@@ -68,14 +68,14 @@ void RawCopyBaker::BakeFiles(const FileCollection& files, string_view target_pat
         }
     }
     else {
-        string ext = strex(target_path).get_file_extension();
-        auto it = std::ranges::find(_context->Settings->Baking.RawCopyFileExtensions, ext);
+        string ext {static_cast<string&&>(strex(target_path).get_file_extension())};
+        auto it {std::ranges::find(_context->Settings->Baking.RawCopyFileExtensions, ext)};
 
         if (it == _context->Settings->Baking.RawCopyFileExtensions.end()) {
             return;
         }
 
-        auto file = files.FindFileByPath(target_path);
+        auto file {files.FindFileByPath(target_path)};
 
         if (!file) {
             return;

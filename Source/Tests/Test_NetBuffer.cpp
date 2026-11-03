@@ -109,8 +109,8 @@ TEST_CASE("NetBuffer")
         out_buf.Write<uint16_t>(321);
         out_buf.EndMsg();
 
-        auto data = out_buf.GetData();
-        size_t partial_size = data.size() - 1;
+        auto data {out_buf.GetData()};
+        size_t partial_size {data.size() - 1};
 
         NetInBuffer in_buf {8};
         in_buf.AddData(data.first(partial_size));
@@ -128,7 +128,7 @@ TEST_CASE("NetBuffer")
     SECTION("HashedStringRoundtrip")
     {
         hash_storage hashes {};
-        hstring value = hashes.to_hashed_string("net_hash_value");
+        hstring value {hashes.to_hashed_string("net_hash_value")};
 
         NetOutBuffer out_buf {8};
         out_buf.Write<hstring>(value);
@@ -136,7 +136,7 @@ TEST_CASE("NetBuffer")
         NetInBuffer in_buf {8};
         in_buf.AddData(out_buf.GetData());
 
-        hstring read_value = in_buf.Read<hstring>(hashes);
+        hstring read_value {in_buf.Read<hstring>(hashes)};
         CHECK(read_value == value);
         CHECK(read_value.as_str() == "net_hash_value");
     }
@@ -144,14 +144,14 @@ TEST_CASE("NetBuffer")
     SECTION("UnresolvedHashReportsWithHandlerAndCanBeLearned")
     {
         hash_storage sender {};
-        hstring value = sender.to_hashed_string("runtime_only_hash");
+        hstring value {sender.to_hashed_string("runtime_only_hash")};
 
         NetOutBuffer out_buf {8};
         out_buf.Write<hstring>(value);
 
         // A receiver that doesn't know this hash yet fails and reports the raw hash
         hash_storage receiver {};
-        hstring::hash_t reported_hash = 0;
+        hstring::hash_t reported_hash {0};
         receiver.set_resolve_hash_failure_handler([&reported_hash](hstring::hash_t hash) { reported_hash = hash; });
 
         NetInBuffer in_buf {8};
@@ -161,12 +161,12 @@ TEST_CASE("NetBuffer")
         CHECK(reported_hash == value.as_hash());
 
         // Learning the string (as the client does from the server's HashList) makes the same hash resolve
-        hstring learned = receiver.to_hashed_string("runtime_only_hash");
+        hstring learned {receiver.to_hashed_string("runtime_only_hash")};
         CHECK(learned.as_hash() == value.as_hash());
 
         NetInBuffer in_buf_again {8};
         in_buf_again.AddData(out_buf.GetData());
-        hstring read_value = in_buf_again.Read<hstring>(receiver);
+        hstring read_value {in_buf_again.Read<hstring>(receiver)};
         CHECK(read_value.as_hash() == value.as_hash());
         CHECK(read_value.as_str() == "runtime_only_hash");
     }
@@ -174,7 +174,7 @@ TEST_CASE("NetBuffer")
     SECTION("InvalidSignatureThrows")
     {
         NetInBuffer in_buf {8};
-        uint32_t invalid_signature = 0xDEADBEEF;
+        uint32_t invalid_signature {0xDEADBEEF};
         in_buf.AddData({reinterpret_cast<const uint8_t*>(&invalid_signature), sizeof(invalid_signature)});
 
         CHECK_THROWS_AS(in_buf.NeedProcess(), UnknownMessageException);
@@ -183,8 +183,8 @@ TEST_CASE("NetBuffer")
     SECTION("InvalidMessageLengthThrowsAndResetsBuffer")
     {
         NetInBuffer in_buf {8};
-        uint32_t signature = NetBuffer::NETMSG_SIGNATURE;
-        uint32_t invalid_len = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(NetMessage) - 1;
+        uint32_t signature {NetBuffer::NETMSG_SIGNATURE};
+        uint32_t invalid_len {sizeof(uint32_t) + sizeof(uint32_t) + sizeof(NetMessage) - 1};
 
         in_buf.AddData({reinterpret_cast<const uint8_t*>(&signature), sizeof(signature)});
         in_buf.AddData({reinterpret_cast<const uint8_t*>(&invalid_len), sizeof(invalid_len)});
@@ -199,7 +199,7 @@ TEST_CASE("NetBuffer")
         // A client-declared string length larger than the bytes actually buffered must be rejected
         // before the resize, so a tiny message cannot amplify into a multi-GB allocation
         NetInBuffer in_buf {8};
-        uint32_t bogus_len = 0xFFFFFFFF;
+        uint32_t bogus_len {0xFFFFFFFF};
         in_buf.AddData({reinterpret_cast<const uint8_t*>(&bogus_len), sizeof(bogus_len)});
 
         CHECK_THROWS_AS(in_buf.Read<string>(), NetBufferException);
@@ -213,7 +213,7 @@ TEST_CASE("NetBuffer")
         out_buf.StartMsg(NetMessage::Ping);
         out_buf.Write<uint32_t>(0);
         out_buf.EndMsg();
-        auto data = out_buf.GetData();
+        auto data {out_buf.GetData()};
 
         NetInBuffer in_buf {8};
         in_buf.SetMaxMsgLen(data.size() - 1);
@@ -236,7 +236,7 @@ TEST_CASE("NetBuffer")
         out_buf.StartMsg(NetMessage::RemoteCall);
         out_buf.Write<uint32_t>(4);
         out_buf.EndMsg();
-        size_t first_frame_size = out_buf.GetDataSize();
+        size_t first_frame_size {out_buf.GetDataSize()};
         out_buf.StartMsg(NetMessage::Ping);
         out_buf.Write<uint32_t>(0xAABBCCDD);
         out_buf.EndMsg();
@@ -279,8 +279,8 @@ TEST_CASE("NetBuffer")
     {
         NetInBuffer in_buf {8};
         in_buf.SetMaxBufLen(8);
-        array<uint8_t, 5> first = {1, 2, 3, 4, 5};
-        array<uint8_t, 4> second = {6, 7, 8, 9};
+        array<uint8_t, 5> first {1, 2, 3, 4, 5};
+        array<uint8_t, 4> second {6, 7, 8, 9};
         in_buf.AddData(first);
         CHECK(in_buf.GetBufferedUnreadSize() == first.size());
         CHECK_THROWS_AS(in_buf.AddData(second), NetBufferException);
@@ -310,12 +310,12 @@ TEST_CASE("NetBuffer")
 
     SECTION("GrowthAcrossMultipleCapacities")
     {
-        uint32_t value_count = 128;
-        uint32_t initial_value = 0x10203040u;
+        uint32_t value_count {128};
+        uint32_t initial_value {0x10203040u};
 
         NetOutBuffer out_buf {0};
 
-        for (uint32_t i = 0; i < value_count; i++) {
+        for (uint32_t i {0}; i < value_count; i++) {
             out_buf.Write<uint32_t>(initial_value + i);
         }
 
@@ -323,13 +323,13 @@ TEST_CASE("NetBuffer")
 
         NetInBuffer in_buf {0};
 
-        for (uint32_t i = 0; i < value_count; i++) {
+        for (uint32_t i {0}; i < value_count; i++) {
             in_buf.AddData(out_buf.GetData().subspan(numeric_cast<size_t>(i) * sizeof(uint32_t), sizeof(uint32_t)));
         }
 
         CHECK(in_buf.GetBufferedUnreadSize() == value_count * sizeof(uint32_t));
 
-        for (uint32_t i = 0; i < value_count; i++) {
+        for (uint32_t i {0}; i < value_count; i++) {
             CHECK(in_buf.Read<uint32_t>() == initial_value + i);
         }
 
@@ -343,34 +343,34 @@ TEST_CASE("NetBufferAdversarial")
     // Parsing may succeed or throw a known exception, but must not over-read or hit UB
     SECTION("CorruptedFramesNeverOverread")
     {
-        auto build_frame = [&](uint32_t variant) {
+        auto build_frame {[&](uint32_t variant) {
             NetOutBuffer out {16};
             out.StartMsg(NetMessage::RemoteCall);
             out.Write<uint32_t>(variant * 2654435761U);
             out.Write<string_view>(variant % 2 == 0 ? "payload-string" : "");
             out.Write<uint16_t>(static_cast<uint16_t>(variant));
             out.EndMsg();
-            auto data = out.GetData();
+            auto data {out.GetData()};
             return vector<uint8_t> {data.begin(), data.end()};
-        };
+        }};
 
-        uint32_t rng = 0x1234567;
-        auto next = [&rng]() {
+        uint32_t rng {0x1234567};
+        auto next {[&rng]() {
             rng = rng * 1664525U + 1013904223U;
             return rng;
-        };
+        }};
 
-        int parsed = 0;
-        int threw = 0;
+        int parsed {0};
+        int threw {0};
 
-        for (int iter = 0; iter < 5000; iter++) {
-            auto frame = build_frame(static_cast<uint32_t>(iter));
+        for (int iter {0}; iter < 5000; iter++) {
+            auto frame {build_frame(static_cast<uint32_t>(iter))};
 
             // Every 8th frame is left intact as a control; the rest get 1..3 random bit flips
             if (iter % 8 != 0 && !frame.empty()) {
-                int32_t flips = static_cast<int32_t>(next() % 3) + 1;
+                int32_t flips {static_cast<int32_t>(next() % 3) + 1};
 
-                for (int f = 0; f < flips; f++) {
+                for (int f {0}; f < flips; f++) {
                     frame[next() % frame.size()] ^= static_cast<uint8_t>(1U << (next() % 8));
                 }
             }
@@ -414,7 +414,7 @@ TEST_CASE("NetBufferAdversarial")
         NetInBuffer in {16};
         in.AddData(out.GetData());
 
-        vector<vector<uint8_t>> read_back;
+        vector<vector<uint8_t>> read_back {};
         in.ReadPropsData(read_back);
         REQUIRE(read_back.size() == 3);
         CHECK(read_back[0] == a);
@@ -429,7 +429,7 @@ TEST_CASE("NetBufferAdversarial")
         NetInBuffer bad_in {16};
         bad_in.AddData(bad.GetData());
 
-        vector<vector<uint8_t>> bad_out;
+        vector<vector<uint8_t>> bad_out {};
         CHECK_THROWS_AS(bad_in.ReadPropsData(bad_out), NetBufferException);
         CHECK(bad_in.GetDataSize() == 0); // buffer reset on rejection
 
@@ -441,7 +441,7 @@ TEST_CASE("NetBufferAdversarial")
         NetInBuffer bad2_in {16};
         bad2_in.AddData(bad2.GetData());
 
-        vector<vector<uint8_t>> bad2_out;
+        vector<vector<uint8_t>> bad2_out {};
         CHECK_THROWS_AS(bad2_in.ReadPropsData(bad2_out), NetBufferException);
     }
 }

@@ -70,8 +70,8 @@ struct msize : isize<int16_t>
     {
         FO_VERIFY_AND_THROW(width > 0, "Width must be positive", width);
         FO_VERIFY_AND_THROW(height > 0, "Height must be positive", height);
-        auto clamped_x = numeric_cast<int16_t>(std::clamp(numeric_cast<int32_t>(x), 0, width - 1));
-        auto clamped_y = numeric_cast<int16_t>(std::clamp(numeric_cast<int32_t>(y), 0, height - 1));
+        auto clamped_x {numeric_cast<int16_t>(std::clamp(numeric_cast<int32_t>(x), 0, width - 1))};
+        auto clamped_y {numeric_cast<int16_t>(std::clamp(numeric_cast<int32_t>(y), 0, height - 1))};
         return {clamped_x, clamped_y};
     }
 
@@ -79,8 +79,8 @@ struct msize : isize<int16_t>
     {
         FO_VERIFY_AND_THROW(width > 0, "Width must be positive", width);
         FO_VERIFY_AND_THROW(height > 0, "Height must be positive", height);
-        auto clamped_x = numeric_cast<int16_t>(std::clamp(numeric_cast<int32_t>(pos.x), 0, width - 1));
-        auto clamped_y = numeric_cast<int16_t>(std::clamp(numeric_cast<int32_t>(pos.y), 0, height - 1));
+        auto clamped_x {numeric_cast<int16_t>(std::clamp(numeric_cast<int32_t>(pos.x), 0, width - 1))};
+        auto clamped_y {numeric_cast<int16_t>(std::clamp(numeric_cast<int32_t>(pos.y), 0, height - 1))};
         return {clamped_x, clamped_y};
     }
 

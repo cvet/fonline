@@ -167,7 +167,7 @@ auto NonCachedDir::IsFileExists(string_view path) const -> bool
         return false;
     }
 
-    string full_path = strex(_baseDir).combine_path(path);
+    string full_path {static_cast<string&&>(strex(_baseDir).combine_path(path))};
 
     if (!fs::exists(full_path)) {
         return false;
@@ -185,8 +185,8 @@ auto NonCachedDir::GetFileInfo(string_view path, size_t& size, uint64_t& write_t
         return false;
     }
 
-    string full_path = strex(_baseDir).combine_path(path);
-    auto file = fs::open_ifstream(full_path);
+    string full_path {static_cast<string&&>(strex(_baseDir).combine_path(path))};
+    auto file {fs::open_ifstream(full_path)};
 
     if (!file) {
         return false;
@@ -205,16 +205,16 @@ auto NonCachedDir::OpenFile(string_view path, size_t& size, uint64_t& write_time
         return nullptr;
     }
 
-    string full_path = strex(_baseDir).combine_path(path);
-    auto file = fs::open_ifstream(full_path);
+    string full_path {static_cast<string&&>(strex(_baseDir).combine_path(path))};
+    auto file {fs::open_ifstream(full_path)};
 
     if (!file) {
         return nullptr;
     }
 
     size = fs::stream_get_size(file);
-    auto buf = safe_alloc::make_unique_arr<uint8_t>(size);
-    ptr<uint8_t> buf_data = buf.get();
+    auto buf {safe_alloc::make_unique_arr<uint8_t>(size)};
+    ptr<uint8_t> buf_data {buf.get()};
 
     if (!fs::stream_read_exact(file, make_span(buf_data, size))) {
         throw DataSourceException("Can't read file from non cached dir", _baseDir, path);
@@ -232,13 +232,13 @@ auto NonCachedDir::GetFileNames(string_view dir, bool recursive, string_view ext
         return {};
     }
 
-    string full_dir = strex(_baseDir).combine_path(dir).str();
+    string full_dir {strex(_baseDir).combine_path(dir).str()};
 
     if (!dir.empty() && !fs::is_dir(full_dir)) {
         return {};
     }
 
-    vector<string> fnames;
+    vector<string> fnames {};
 
     fs::iterate_dir(full_dir, recursive && _recursive, [&fnames](string_view path2, size_t size, uint64_t write_time) {
         ignore_unused(size, write_time);
@@ -262,11 +262,11 @@ auto CachedDir::Reindex() -> bool
 {
     FO_TRACE_ZONE(FileSystem);
 
-    unordered_map<string, FileEntry> files_tree;
-    vector<string> files_tree_names;
+    unordered_map<string, FileEntry> files_tree {};
+    vector<string> files_tree_names {};
 
     fs::iterate_dir(_baseDir, _recursive, [&](string_view path, size_t size, uint64_t write_time) {
-        FileEntry fe;
+        FileEntry fe {};
         fe.FileName = strex("{}{}", _baseDir, path);
         fe.FileSize = size;
         fe.WriteTime = write_time;
@@ -275,10 +275,10 @@ auto CachedDir::Reindex() -> bool
         files_tree_names.emplace_back(path);
     });
 
-    bool changed = files_tree.size() != _filesTree.size() || std::ranges::any_of(files_tree, [this](const auto& entry) {
-        auto it = _filesTree.find(entry.first);
+    bool changed {files_tree.size() != _filesTree.size() || std::ranges::any_of(files_tree, [this](const auto& entry) {
+        auto it {_filesTree.find(entry.first)};
         return it == _filesTree.end() || it->second.FileSize != entry.second.FileSize || it->second.WriteTime != entry.second.WriteTime;
-    });
+    })};
 
     _filesTree = std::move(files_tree);
     _filesTreeNames = std::move(files_tree_names);
@@ -287,7 +287,7 @@ auto CachedDir::Reindex() -> bool
 
 auto CachedDir::IsFileExists(string_view path) const -> bool
 {
-    auto it = _filesTree.find(path);
+    auto it {_filesTree.find(path)};
 
     if (it == _filesTree.end()) {
         return false;
@@ -298,13 +298,13 @@ auto CachedDir::IsFileExists(string_view path) const -> bool
 
 auto CachedDir::GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool
 {
-    auto it = _filesTree.find(path);
+    auto it {_filesTree.find(path)};
 
     if (it == _filesTree.end()) {
         return false;
     }
 
-    const auto& fe = it->second;
+    const auto& fe {it->second};
     size = fe.FileSize;
     write_time = fe.WriteTime;
     return true;
@@ -314,22 +314,22 @@ auto CachedDir::OpenFile(string_view path, size_t& size, uint64_t& write_time) c
 {
     FO_TRACE_ZONE(FileSystem);
 
-    auto it = _filesTree.find(path);
+    auto it {_filesTree.find(path)};
 
     if (it == _filesTree.end()) {
         return nullptr;
     }
 
-    const auto& fe = it->second;
-    auto file = fs::open_ifstream(fe.FileName);
+    const auto& fe {it->second};
+    auto file {fs::open_ifstream(fe.FileName)};
 
     if (!file) {
         throw DataSourceException("Can't read file from cached dir", _baseDir, path);
     }
 
     size = fe.FileSize;
-    auto buf = safe_alloc::make_unique_arr<uint8_t>(size);
-    ptr<uint8_t> buf_data = buf.get();
+    auto buf {safe_alloc::make_unique_arr<uint8_t>(size)};
+    ptr<uint8_t> buf_data {buf.get()};
 
     if (!fs::stream_read_exact(file, make_span(buf_data, size))) {
         throw DataSourceException("Can't read complete file from cached dir", _baseDir, path, size);

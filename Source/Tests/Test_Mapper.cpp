@@ -46,23 +46,23 @@ TEST_CASE("MapperEngineClearsTheStartingUpFlagOnceItRuns")
 {
     // The client constructor deliberately does not finish start-up, because the mapper keeps coming up
     // through its own body; construction itself proves it, since a second finish would throw
-    auto settings = MakeMapperTestSettings();
-    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
+    auto settings {MakeMapperTestSettings()};
+    auto mapper {safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow)};
 
-    auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
+    auto shutdown {scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); })};
 
     CHECK_FALSE(mapper->IsStartingUp());
 }
 
 TEST_CASE("MapperMultihexMeshMerge")
 {
-    auto settings = MakeMapperTestSettings();
-    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
+    auto settings {MakeMapperTestSettings()};
+    auto mapper {safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow)};
 
-    auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
+    auto shutdown {scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); })};
 
-    hstring tile_a = mapper->Hashes.to_hashed_string(TILE_A);
-    hstring tile_b = mapper->Hashes.to_hashed_string(TILE_B);
+    hstring tile_a {mapper->Hashes.to_hashed_string(TILE_A)};
+    hstring tile_b {mapper->Hashes.to_hashed_string(TILE_B)};
 
     REQUIRE(mapper->GetProtoItem(tile_a));
     REQUIRE(mapper->GetProtoItem(tile_b));
@@ -71,18 +71,18 @@ TEST_CASE("MapperMultihexMeshMerge")
     SECTION("Coalesces an adjacent block into one multihex-mesh item")
     {
         // A horizontal run of four clean TileA tiles
-        string body;
+        string body {};
 
-        for (int32_t i = 0; i < 4; i++) {
+        for (int32_t i {0}; i < 4; i++) {
             body += MakeItemBlock(10 + i, TILE_A, 5 + i, 5);
         }
 
-        auto map = mapper->LoadMapFromText("CoalesceMap", "CoalesceMap.fomap", MakeMapText(body));
+        auto map {mapper->LoadMapFromText("CoalesceMap", "CoalesceMap.fomap", MakeMapText(body))};
         REQUIRE(map);
 
         REQUIRE(CountItemsOfProto(map, tile_a) == 1);
 
-        nptr<const ItemHexView> survivor;
+        nptr<const ItemHexView> survivor {};
 
         for (const auto& item : map->GetItems()) {
             if (item->GetProtoId() == tile_a) {
@@ -93,7 +93,7 @@ TEST_CASE("MapperMultihexMeshMerge")
         REQUIRE(survivor);
         CHECK(survivor->IsNonEmptyMultihexMesh());
 
-        auto covered = CollectMeshHexes(survivor);
+        auto covered {CollectMeshHexes(survivor)};
         REQUIRE(covered.size() == 4);
         CHECK(covered[0] == mpos {5, 5});
         CHECK(covered[1] == mpos {6, 5});
@@ -104,17 +104,17 @@ TEST_CASE("MapperMultihexMeshMerge")
     SECTION("Origin is normalized to the hex_less-smallest covered hex and mesh is sorted")
     {
         // Authoring order intentionally does not start at the smallest hex
-        string body;
+        string body {};
         body += MakeItemBlock(30, TILE_A, 8, 5);
         body += MakeItemBlock(31, TILE_A, 6, 5);
         body += MakeItemBlock(32, TILE_A, 7, 5);
         body += MakeItemBlock(33, TILE_A, 5, 5);
 
-        auto map = mapper->LoadMapFromText("NormalizeMap", "NormalizeMap.fomap", MakeMapText(body));
+        auto map {mapper->LoadMapFromText("NormalizeMap", "NormalizeMap.fomap", MakeMapText(body))};
         REQUIRE(map);
         REQUIRE(CountItemsOfProto(map, tile_a) == 1);
 
-        nptr<const ItemHexView> survivor;
+        nptr<const ItemHexView> survivor {};
 
         for (const auto& item : map->GetItems()) {
             if (item->GetProtoId() == tile_a) {
@@ -124,7 +124,7 @@ TEST_CASE("MapperMultihexMeshMerge")
 
         REQUIRE(survivor);
 
-        auto covered = CollectMeshHexes(survivor);
+        auto covered {CollectMeshHexes(survivor)};
         REQUIRE(covered.size() == 4);
 
         // Origin is the smallest covered hex
@@ -132,7 +132,7 @@ TEST_CASE("MapperMultihexMeshMerge")
         CHECK(survivor->GetHex() == mpos {5, 5});
 
         // The stored mesh (origin + remaining covered hexes) is sorted by hex_less
-        const auto& mesh = survivor->GetMultihexMesh();
+        const auto& mesh {survivor->GetMultihexMesh()};
         REQUIRE(!mesh.empty());
         CHECK(std::ranges::is_sorted(mesh, HexLess));
         CHECK(HexLess(survivor->GetHex(), mesh.front()));
@@ -140,23 +140,23 @@ TEST_CASE("MapperMultihexMeshMerge")
 
     SECTION("Physical-only mesh retains its single sprite origin during normalization and save")
     {
-        string props = "MultihexGeneration = None\nDrawMultihexMesh = False\nOffset = 7 -9\nMultihexMesh = \"6 5\" \"7 6\"";
-        auto map = mapper->LoadMapFromText("PhysicalMesh", "PhysicalMesh.fomap", MakeMapText(MakeItemBlock(50, TILE_A, 8, 5, props)));
+        string props {"MultihexGeneration = None\nDrawMultihexMesh = False\nOffset = 7 -9\nMultihexMesh = \"6 5\" \"7 6\""};
+        auto map {mapper->LoadMapFromText("PhysicalMesh", "PhysicalMesh.fomap", MakeMapText(MakeItemBlock(50, TILE_A, 8, 5, props)))};
         REQUIRE(map);
         REQUIRE(map->GetItems().size() == 1);
 
-        auto item = map->GetItems().front().as_ptr();
+        auto item {map->GetItems().front().as_ptr()};
         CHECK(item->GetHex() == mpos {8, 5});
         CHECK(item->GetOffset().x == 7);
         CHECK(item->GetOffset().y == -9);
         CHECK(CollectMeshHexes(item) == vector<mpos> {{6, 5}, {8, 5}, {7, 6}});
 
-        size_t extra_merges = mapper->MergeItemsToMultihexMeshes(map);
+        size_t extra_merges {mapper->MergeItemsToMultihexMeshes(map)};
         CHECK(extra_merges == 0);
         CHECK(item->GetHex() == mpos {8, 5});
 
-        string saved = map->SaveToText("PhysicalMeshSaved");
-        auto reloaded = mapper->LoadMapFromText("PhysicalMeshSaved", "PhysicalMeshSaved.fomap", saved);
+        string saved {map->SaveToText("PhysicalMeshSaved")};
+        auto reloaded {mapper->LoadMapFromText("PhysicalMeshSaved", "PhysicalMeshSaved.fomap", saved)};
         REQUIRE(reloaded);
         REQUIRE(reloaded->GetItems().size() == 1);
         CHECK(reloaded->GetItems().front()->GetHex() == mpos {8, 5});
@@ -166,17 +166,17 @@ TEST_CASE("MapperMultihexMeshMerge")
 
     SECTION("Idempotent: re-running the merge changes nothing")
     {
-        string body;
+        string body {};
 
-        for (int32_t i = 0; i < 4; i++) {
+        for (int32_t i {0}; i < 4; i++) {
             body += MakeItemBlock(40 + i, TILE_A, 5 + i, 5);
         }
 
-        auto map = mapper->LoadMapFromText("IdempotentMap", "IdempotentMap.fomap", MakeMapText(body));
+        auto map {mapper->LoadMapFromText("IdempotentMap", "IdempotentMap.fomap", MakeMapText(body))};
         REQUIRE(map);
         REQUIRE(CountItemsOfProto(map, tile_a) == 1);
 
-        nptr<const ItemHexView> survivor;
+        nptr<const ItemHexView> survivor {};
 
         for (const auto& item : map->GetItems()) {
             if (item->GetProtoId() == tile_a) {
@@ -186,12 +186,12 @@ TEST_CASE("MapperMultihexMeshMerge")
 
         REQUIRE(survivor);
 
-        auto origin_before = survivor->GetHex();
-        auto covered_before = CollectMeshHexes(survivor);
+        auto origin_before {survivor->GetHex()};
+        auto covered_before {CollectMeshHexes(survivor)};
 
         // LoadMapFromText already runs the merge twice (the second call asserts idempotency); run it once
         // more directly to lock that the public entry point is a fixed point on an already-merged map
-        size_t extra_merges = mapper->MergeItemsToMultihexMeshes(map);
+        size_t extra_merges {mapper->MergeItemsToMultihexMeshes(map)};
         CHECK(extra_merges == 0);
 
         REQUIRE(CountItemsOfProto(map, tile_a) == 1);
@@ -201,11 +201,11 @@ TEST_CASE("MapperMultihexMeshMerge")
 
     SECTION("Different protos do not merge")
     {
-        string body;
+        string body {};
         body += MakeItemBlock(50, TILE_A, 5, 5);
         body += MakeItemBlock(51, TILE_B, 6, 5);
 
-        auto map = mapper->LoadMapFromText("CrossProtoMap", "CrossProtoMap.fomap", MakeMapText(body));
+        auto map {mapper->LoadMapFromText("CrossProtoMap", "CrossProtoMap.fomap", MakeMapText(body))};
         REQUIRE(map);
 
         CHECK(CountItemsOfProto(map, tile_a) == 1);
@@ -220,11 +220,11 @@ TEST_CASE("MapperMultihexMeshMerge")
     {
         // Neither tile is clean and their data differs, so they stay apart: merging two non-clean items requires
         // identical data
-        string body;
+        string body {};
         body += MakeItemBlock(60, TILE_A, 5, 5, "LightDistance = 7");
         body += MakeItemBlock(61, TILE_A, 6, 5, "LightDistance = 9");
 
-        auto map = mapper->LoadMapFromText("ModifiedPairMap", "ModifiedPairMap.fomap", MakeMapText(body));
+        auto map {mapper->LoadMapFromText("ModifiedPairMap", "ModifiedPairMap.fomap", MakeMapText(body))};
         REQUIRE(map);
 
         REQUIRE(CountItemsOfProto(map, tile_a) == 2);
@@ -240,18 +240,18 @@ TEST_CASE("MapperMultihexMeshMerge")
     {
         // Locks the surprising rule that a clean source merges into any same-proto target, so one modified tile
         // among clean ones is not kept separate and its authored data is dropped
-        string body;
+        string body {};
         body += MakeItemBlock(70, TILE_A, 5, 5);
         body += MakeItemBlock(71, TILE_A, 6, 5);
         body += MakeItemBlock(72, TILE_A, 7, 5);
         body += MakeItemBlock(73, TILE_A, 8, 5, "LightDistance = 7");
 
-        auto map = mapper->LoadMapFromText("CleanPlusModifiedMap", "CleanPlusModifiedMap.fomap", MakeMapText(body));
+        auto map {mapper->LoadMapFromText("CleanPlusModifiedMap", "CleanPlusModifiedMap.fomap", MakeMapText(body))};
         REQUIRE(map);
 
         REQUIRE(CountItemsOfProto(map, tile_a) == 1);
 
-        nptr<const ItemHexView> survivor;
+        nptr<const ItemHexView> survivor {};
 
         for (const auto& item : map->GetItems()) {
             if (item->GetProtoId() == tile_a) {
@@ -266,7 +266,7 @@ TEST_CASE("MapperMultihexMeshMerge")
 
     SECTION("Two disjoint clusters stay separate")
     {
-        string body;
+        string body {};
         // Cluster 1 near the top-left
         body += MakeItemBlock(70, TILE_A, 3, 3);
         body += MakeItemBlock(71, TILE_A, 4, 3);
@@ -274,12 +274,12 @@ TEST_CASE("MapperMultihexMeshMerge")
         body += MakeItemBlock(72, TILE_A, 20, 20);
         body += MakeItemBlock(73, TILE_A, 21, 20);
 
-        auto map = mapper->LoadMapFromText("DisjointMap", "DisjointMap.fomap", MakeMapText(body));
+        auto map {mapper->LoadMapFromText("DisjointMap", "DisjointMap.fomap", MakeMapText(body))};
         REQUIRE(map);
 
         REQUIRE(CountItemsOfProto(map, tile_a) == 2);
 
-        int32_t mesh_items = 0;
+        int32_t mesh_items {0};
 
         for (const auto& item : map->GetItems()) {
             if (item->GetProtoId() == tile_a) {
@@ -296,16 +296,16 @@ TEST_CASE("MapperMultihexMeshMerge")
     {
         // A naive flood-fill would merge this line too but pick a different survivor: here clean middle tiles
         // bridge two modified ends and the clean proto data wins, which is exactly what must not change
-        string body;
+        string body {};
         body += MakeItemBlock(200, TILE_A, 5, 5, "LightDistance = 3");
         body += MakeItemBlock(201, TILE_A, 6, 5);
         body += MakeItemBlock(202, TILE_A, 7, 5);
         body += MakeItemBlock(203, TILE_A, 8, 5, "LightDistance = 9");
 
-        auto map = mapper->LoadMapFromText("ModChainAsc", "ModChainAsc.fomap", MakeMapText(body));
+        auto map {mapper->LoadMapFromText("ModChainAsc", "ModChainAsc.fomap", MakeMapText(body))};
         REQUIRE(map);
 
-        auto survivors = CollectSurvivors(map, tile_a);
+        auto survivors {CollectSurvivors(map, tile_a)};
         REQUIRE(survivors.size() == 1);
         CHECK(survivors[0].Origin == mpos {5, 5});
         CHECK(survivors[0].LightDistance == 0);
@@ -314,15 +314,15 @@ TEST_CASE("MapperMultihexMeshMerge")
 
     SECTION("Path-dependent: a modified tile bridged by clean neighbors is absorbed (clean - modified - clean)")
     {
-        string body;
+        string body {};
         body += MakeItemBlock(210, TILE_A, 5, 5);
         body += MakeItemBlock(211, TILE_A, 6, 5, "LightDistance = 4");
         body += MakeItemBlock(212, TILE_A, 7, 5);
 
-        auto map = mapper->LoadMapFromText("CleanModClean", "CleanModClean.fomap", MakeMapText(body));
+        auto map {mapper->LoadMapFromText("CleanModClean", "CleanModClean.fomap", MakeMapText(body))};
         REQUIRE(map);
 
-        auto survivors = CollectSurvivors(map, tile_a);
+        auto survivors {CollectSurvivors(map, tile_a)};
         REQUIRE(survivors.size() == 1);
         CHECK(survivors[0].Origin == mpos {5, 5});
         CHECK(survivors[0].LightDistance == 0);
@@ -333,16 +333,16 @@ TEST_CASE("MapperMultihexMeshMerge")
     {
         // The same chain with the id order reversed, so the per-step merge direction differs: an identical result
         // is what proves the optimization stayed insensitive to authoring order
-        string body;
+        string body {};
         body += MakeItemBlock(220, TILE_A, 5, 5, "LightDistance = 3");
         body += MakeItemBlock(223, TILE_A, 6, 5);
         body += MakeItemBlock(222, TILE_A, 7, 5);
         body += MakeItemBlock(221, TILE_A, 8, 5, "LightDistance = 9");
 
-        auto map = mapper->LoadMapFromText("ModChainModLowIds", "ModChainModLowIds.fomap", MakeMapText(body));
+        auto map {mapper->LoadMapFromText("ModChainModLowIds", "ModChainModLowIds.fomap", MakeMapText(body))};
         REQUIRE(map);
 
-        auto survivors = CollectSurvivors(map, tile_a);
+        auto survivors {CollectSurvivors(map, tile_a)};
         REQUIRE(survivors.size() == 1);
         CHECK(survivors[0].Origin == mpos {5, 5});
         CHECK(survivors[0].LightDistance == 0);
@@ -353,15 +353,15 @@ TEST_CASE("MapperMultihexMeshMerge")
     {
         // Two tiles share authored data and merge while the third differs with no clean tile to bridge it, which
         // a pure proto-adjacency flood-fill would over-merge into one mesh
-        string body;
+        string body {};
         body += MakeItemBlock(230, TILE_A, 5, 5, "LightDistance = 5");
         body += MakeItemBlock(231, TILE_A, 6, 5, "LightDistance = 5");
         body += MakeItemBlock(232, TILE_A, 7, 5, "LightDistance = 8");
 
-        auto map = mapper->LoadMapFromText("ModXModXModY", "ModXModXModY.fomap", MakeMapText(body));
+        auto map {mapper->LoadMapFromText("ModXModXModY", "ModXModXModY.fomap", MakeMapText(body))};
         REQUIRE(map);
 
-        auto survivors = CollectSurvivors(map, tile_a);
+        auto survivors {CollectSurvivors(map, tile_a)};
         REQUIRE(survivors.size() == 2);
 
         CHECK(survivors[0].Origin == mpos {5, 5});
@@ -376,25 +376,25 @@ TEST_CASE("MapperMultihexMeshMerge")
     SECTION("Large solid block coalesces and loads")
     {
         // Solid 24x24 block of clean TileA tiles; pins the result shape for the perf optimization
-        constexpr int32_t block = 24;
-        constexpr int32_t origin = 3;
+        constexpr int32_t block {24};
+        constexpr int32_t origin {3};
 
-        string body;
-        int32_t id = 100;
+        string body {};
+        int32_t id {100};
 
-        for (int32_t y = 0; y < block; y++) {
-            for (int32_t x = 0; x < block; x++) {
+        for (int32_t y {0}; y < block; y++) {
+            for (int32_t x {0}; x < block; x++) {
                 body += MakeItemBlock(id++, TILE_A, origin + x, origin + y);
             }
         }
 
-        auto map = mapper->LoadMapFromText("LargeBlockMap", "LargeBlockMap.fomap", MakeMapText(body, 64));
+        auto map {mapper->LoadMapFromText("LargeBlockMap", "LargeBlockMap.fomap", MakeMapText(body, 64))};
         REQUIRE(map);
 
         // Current behavior: an adjacency-connected block collapses into a single multihex-mesh item
         REQUIRE(CountItemsOfProto(map, tile_a) == 1);
 
-        nptr<const ItemHexView> survivor;
+        nptr<const ItemHexView> survivor {};
 
         for (const auto& item : map->GetItems()) {
             if (item->GetProtoId() == tile_a) {
@@ -404,7 +404,7 @@ TEST_CASE("MapperMultihexMeshMerge")
 
         REQUIRE(survivor);
 
-        auto covered = CollectMeshHexes(survivor);
+        auto covered {CollectMeshHexes(survivor)};
         CHECK(covered.size() == numeric_cast<size_t>(block) * block);
         CHECK(survivor->GetHex() == mpos {origin, origin});
     }
@@ -412,27 +412,27 @@ TEST_CASE("MapperMultihexMeshMerge")
 
 TEST_CASE("MapperAnyUniqueMeshMerge")
 {
-    auto settings = MakeMapperTestSettings();
-    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
+    auto settings {MakeMapperTestSettings()};
+    auto mapper {safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow)};
 
-    auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
+    auto shutdown {scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); })};
 
-    hstring tile_u = mapper->Hashes.to_hashed_string(TILE_U);
+    hstring tile_u {mapper->Hashes.to_hashed_string(TILE_U)};
 
     REQUIRE(mapper->GetProtoItem(tile_u));
     REQUIRE(mapper->GetProtoItem(tile_u)->GetMultihexGeneration() == MultihexGenerationType::AnyUnique);
 
     SECTION("Non-adjacent clean tiles merge into one mesh despite no adjacency")
     {
-        string body;
+        string body {};
         body += MakeItemBlock(300, TILE_U, 3, 3);
         body += MakeItemBlock(301, TILE_U, 20, 20);
         body += MakeItemBlock(302, TILE_U, 5, 25);
 
-        auto map = mapper->LoadMapFromText("U_NonAdjacentClean", "U_NonAdjacentClean.fomap", MakeMapText(body));
+        auto map {mapper->LoadMapFromText("U_NonAdjacentClean", "U_NonAdjacentClean.fomap", MakeMapText(body))};
         REQUIRE(map);
 
-        auto survivors = CollectSurvivors(map, tile_u);
+        auto survivors {CollectSurvivors(map, tile_u)};
         REQUIRE(survivors.size() == 1);
         CHECK(survivors[0].Id == 300); // lowest id wins
         CHECK(survivors[0].Origin == mpos {3, 3});
@@ -443,17 +443,17 @@ TEST_CASE("MapperAnyUniqueMeshMerge")
 
     SECTION("Scattered tiles partition by per-item data, each group collapsing into its lowest id")
     {
-        string body;
+        string body {};
         body += MakeItemBlock(310, TILE_U, 2, 2);
         body += MakeItemBlock(311, TILE_U, 10, 2, "LightDistance = 7");
         body += MakeItemBlock(312, TILE_U, 2, 10);
         body += MakeItemBlock(313, TILE_U, 25, 25, "LightDistance = 7");
         body += MakeItemBlock(314, TILE_U, 18, 4, "LightDistance = 9");
 
-        auto map = mapper->LoadMapFromText("U_MixedScatter", "U_MixedScatter.fomap", MakeMapText(body));
+        auto map {mapper->LoadMapFromText("U_MixedScatter", "U_MixedScatter.fomap", MakeMapText(body))};
         REQUIRE(map);
 
-        auto survivors = CollectSurvivors(map, tile_u);
+        auto survivors {CollectSurvivors(map, tile_u)};
         REQUIRE(survivors.size() == 3);
 
         // Clean group (310 + 312)
@@ -477,15 +477,15 @@ TEST_CASE("MapperAnyUniqueMeshMerge")
 
     SECTION("Survivor is the lowest-id group member regardless of authoring/position order")
     {
-        string body;
+        string body {};
         body += MakeItemBlock(330, TILE_U, 5, 5);
         body += MakeItemBlock(320, TILE_U, 6, 5);
         body += MakeItemBlock(325, TILE_U, 7, 5);
 
-        auto map = mapper->LoadMapFromText("U_ShuffledIds", "U_ShuffledIds.fomap", MakeMapText(body));
+        auto map {mapper->LoadMapFromText("U_ShuffledIds", "U_ShuffledIds.fomap", MakeMapText(body))};
         REQUIRE(map);
 
-        auto survivors = CollectSurvivors(map, tile_u);
+        auto survivors {CollectSurvivors(map, tile_u)};
         REQUIRE(survivors.size() == 1);
         CHECK(survivors[0].Id == 320); // lowest id, even though it was authored second and sits at (6,5)
         CHECK(survivors[0].Origin == mpos {5, 5}); // origin normalized to the hex_less-smallest covered hex
@@ -495,17 +495,17 @@ TEST_CASE("MapperAnyUniqueMeshMerge")
 
     SECTION("Different protos and a SameSibling tile never merge into an AnyUnique mesh")
     {
-        hstring tile_a = mapper->Hashes.to_hashed_string(TILE_A);
+        hstring tile_a {mapper->Hashes.to_hashed_string(TILE_A)};
 
-        string body;
+        string body {};
         body += MakeItemBlock(340, TILE_U, 3, 3);
         body += MakeItemBlock(341, TILE_A, 4, 3); // SameSibling, adjacent - must not join the AnyUnique mesh
         body += MakeItemBlock(342, TILE_U, 6, 3);
 
-        auto map = mapper->LoadMapFromText("U_CrossStrategy", "U_CrossStrategy.fomap", MakeMapText(body));
+        auto map {mapper->LoadMapFromText("U_CrossStrategy", "U_CrossStrategy.fomap", MakeMapText(body))};
         REQUIRE(map);
 
-        auto u_survivors = CollectSurvivors(map, tile_u);
+        auto u_survivors {CollectSurvivors(map, tile_u)};
         REQUIRE(u_survivors.size() == 1);
         CHECK(u_survivors[0].Id == 340);
         CHECK(u_survivors[0].Covered == vector<mpos> {{3, 3}, {6, 3}});
@@ -515,17 +515,17 @@ TEST_CASE("MapperAnyUniqueMeshMerge")
 
     SECTION("Idempotent: re-running the merge changes nothing")
     {
-        string body;
+        string body {};
         body += MakeItemBlock(350, TILE_U, 2, 2);
         body += MakeItemBlock(351, TILE_U, 9, 9);
         body += MakeItemBlock(352, TILE_U, 4, 12, "LightDistance = 4");
         body += MakeItemBlock(353, TILE_U, 20, 1, "LightDistance = 4");
 
-        auto map = mapper->LoadMapFromText("U_Idempotent", "U_Idempotent.fomap", MakeMapText(body));
+        auto map {mapper->LoadMapFromText("U_Idempotent", "U_Idempotent.fomap", MakeMapText(body))};
         REQUIRE(map);
 
-        auto before = CollectSurvivors(map, tile_u);
-        size_t extra_merges = mapper->MergeItemsToMultihexMeshes(map);
+        auto before {CollectSurvivors(map, tile_u)};
+        size_t extra_merges {mapper->MergeItemsToMultihexMeshes(map)};
         CHECK(extra_merges == 0);
         CHECK(CollectSurvivors(map, tile_u) == before);
     }
@@ -533,35 +533,35 @@ TEST_CASE("MapperAnyUniqueMeshMerge")
 
 TEST_CASE("MapperLoadMapResolvesNameAndPath")
 {
-    auto settings = MakeMapperTestSettings();
+    auto settings {MakeMapperTestSettings()};
 
     // Mirror the project's proto-extension order (LastFrontier.fomain), where .foloc precedes .fomap.
     // That ordering is what let a same-stem location file shadow the map file during discovery
     BakerTests::OverrideSetting(settings.Baking.ProtoFileExtensions, vector<string> {"foinfo", "fopro", "foloc", "fomap", "focr", "foitem"});
 
-    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
+    auto mapper {safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow)};
 
-    auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
+    auto shutdown {scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); })};
 
     // A single-map .fomap and a same-stem .foloc live side by side under a subdirectory, mirroring the
     // real content layout. The .foloc must not shadow the .fomap for either lookup form
-    auto maps_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("MapperLoadMapTestMaps");
+    auto maps_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("MapperLoadMapTestMaps")};
     maps_source->AddFile("Gambell/ShadowedMap.foloc", "[ProtoLocation]\n$Name = ShadowedMap\nMapProtos = ShadowedMap\n");
     maps_source->AddFile("Gambell/ShadowedMap.fomap", MakeMapText(MakeItemBlock(10, TILE_A, 5, 5)));
     mapper->MapsFileSys.AddCustomSource(std::move(maps_source));
 
-    hstring expected_proto = mapper->Hashes.to_hashed_string("ShadowedMap");
+    hstring expected_proto {mapper->Hashes.to_hashed_string("ShadowedMap")};
 
     SECTION("Loads by directory-qualified path despite a same-stem location sibling")
     {
-        auto map = mapper->LoadMap("Gambell/ShadowedMap");
+        auto map {mapper->LoadMap("Gambell/ShadowedMap")};
         REQUIRE(map);
         CHECK(map->GetProtoId() == expected_proto);
     }
 
     SECTION("Loads by bare declared map name")
     {
-        auto map = mapper->LoadMap("ShadowedMap");
+        auto map {mapper->LoadMap("ShadowedMap")};
         REQUIRE(map);
         CHECK(map->GetProtoId() == expected_proto);
     }
@@ -569,44 +569,44 @@ TEST_CASE("MapperLoadMapResolvesNameAndPath")
 
 TEST_CASE("MapperDrawsEditorPanelsHeadlessly")
 {
-    auto settings = MakeMapperTestSettings();
-    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
+    auto settings {MakeMapperTestSettings()};
+    auto mapper {safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow)};
 
-    auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
+    auto shutdown {scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); })};
 
     mapper->InitIface();
 
     // The inspector needs an explicit property-list provider, independently of the scripting backend
     mapper->OnInspectorProperties.UnsubscribeAll();
-    Entity::EventCallbackData inspector_properties;
+    Entity::EventCallbackData inspector_properties {};
     inspector_properties.Callback = [](FuncCallData& call) {
-        ptr<void> properties = call.ArgsData[1];
+        ptr<void> properties {call.ArgsData[1]};
 
-        for (int32_t index = 0; index < 12; index++) {
+        for (int32_t index {0}; index < 12; index++) {
             call.Accessor->AddArrayElement(properties, &index);
         }
 
-        int32_t separator = -1;
+        int32_t separator {-1};
         call.Accessor->AddArrayElement(properties, &separator);
         return Entity::EventResult::ContinueChain;
     };
 
     inspector_properties.SubscriptionPtr = reinterpret_cast<uintptr_t>(&mapper);
     mapper->OnInspectorProperties.Subscribe(std::move(inspector_properties));
-    auto unsubscribe_inspector = scope_exit([&mapper]() noexcept { mapper->OnInspectorProperties.Unsubscribe(reinterpret_cast<uintptr_t>(&mapper)); });
+    auto unsubscribe_inspector {scope_exit([&mapper]() noexcept { mapper->OnInspectorProperties.Unsubscribe(reinterpret_cast<uintptr_t>(&mapper)); })};
 
     REQUIRE(ImGui::GetCurrentContext() == nullptr);
     ImGuiExt::Init();
 
-    auto destroy_context = scope_exit([]() noexcept {
+    auto destroy_context {scope_exit([]() noexcept {
         safe_call([] {
             if (ImGui::GetCurrentContext() != nullptr) {
                 ImGui::DestroyContext();
             }
         });
-    });
+    })};
 
-    ImGuiIO& io = ImGui::GetIO();
+    ImGuiIO& io {ImGui::GetIO()};
     io.DisplaySize = ImVec2 {1280.0f, 720.0f};
     io.DeltaTime = 1.0f / 60.0f;
     io.IniFilename = nullptr;
@@ -625,8 +625,8 @@ TEST_CASE("MapperDrawsEditorPanelsHeadlessly")
 
     // A shown map with everything selected gives the map, content and inspector panels real rows to render:
     // the inspector only lists property lines for a selected entity, so without this it draws an empty frame
-    string body = MakeItemBlock(10, TILE_A, 5, 5) + MakeItemBlock(11, TILE_B, 7, 7);
-    auto map = mapper->LoadMapFromText("PanelMap", "PanelMap.fomap", MakeMapText(body));
+    string body {MakeItemBlock(10, TILE_A, 5, 5) + MakeItemBlock(11, TILE_B, 7, 7)};
+    auto map {mapper->LoadMapFromText("PanelMap", "PanelMap.fomap", MakeMapText(body))};
     REQUIRE(map);
 
     mapper->ShowMap(map.as_ptr());
@@ -635,13 +635,13 @@ TEST_CASE("MapperDrawsEditorPanelsHeadlessly")
     REQUIRE(mapper->GetInspectorEntity());
 
     // Walk the inspector's property lines and commit an edit so the parse/apply path runs too
-    for (int32_t line = 0; line < 4; line++) {
+    for (int32_t line {0}; line < 4; line++) {
         REQUIRE_NOTHROW(mapper->SelectInspectorPropertyLine(line));
     }
 
     // Committing an edit runs the text parser and the undo op behind it; the first property rows start at
     // line 3, and a malformed value has to be rejected and rolled back to the initial one
-    for (int32_t line = 3; line < 8; line++) {
+    for (int32_t line {3}; line < 8; line++) {
         mapper->SelectInspectorPropertyLine(line);
         mapper->InspectorSelectedLineValue = "1";
         REQUIRE_NOTHROW(mapper->ApplyInspectorPropertyEdit(mapper->GetInspectorEntity().as_ptr()));
@@ -662,23 +662,23 @@ TEST_CASE("MapperDrawsEditorPanelsHeadlessly")
     mapper->SelectInspectorPropertyLine(0);
 
     // Logging auto-expands tree nodes, so the panel bodies run instead of collapsing to headers
-    constexpr int32_t PANEL_FRAMES = 8;
-    string drawn_text;
+    constexpr int32_t PANEL_FRAMES {8};
+    string drawn_text {};
 
     // Each panel mode shows a different content-window body, so the frames walk through them
     vector<int32_t> panel_modes {MapperEngine::INT_MODE_ITEM, MapperEngine::INT_MODE_TILE, MapperEngine::INT_MODE_CRIT, MapperEngine::INT_MODE_INCONT, MapperEngine::INT_MODE_FAST, MapperEngine::INT_MODE_IGNORE, MapperEngine::INT_MODE_MESS, MapperEngine::INT_MODE_LIST};
 
     // Collapsing headers opt out of the log auto-expansion, so their bodies only render once their stored
     // state is seeded open; these are the ones the map window carries
-    constexpr std::array MAP_WINDOW_HEADER_IDS = {"Visibility", "Selection"};
+    constexpr std::array MAP_WINDOW_HEADER_IDS {"Visibility", "Selection"};
 
-    for (int32_t frame = 0; frame < PANEL_FRAMES; frame++) {
+    for (int32_t frame {0}; frame < PANEL_FRAMES; frame++) {
         mapper->SetActivePanelMode(panel_modes[numeric_cast<size_t>(frame) % panel_modes.size()]);
 
         ImGui::NewFrame();
 
         // State storage is per window, so the Controls window has to be found by name once it exists
-        if (auto controls_window = make_nptr(ImGui::FindWindowByName("Controls"))) {
+        if (auto controls_window {make_nptr(ImGui::FindWindowByName("Controls"))}) {
             for (string_view header_id : MAP_WINDOW_HEADER_IDS) {
                 controls_window->StateStorage.SetInt(controls_window->GetID(header_id.data(), header_id.data() + header_id.size()), 1);
             }
@@ -711,8 +711,8 @@ TEST_CASE("MapperDrawsEditorPanelsHeadlessly")
     // reaches each property type's widget
     REQUIRE_FALSE(mapper->ShowProps.empty());
 
-    for (size_t prop_index = 0; prop_index < mapper->ShowProps.size(); prop_index++) {
-        int32_t line = 3 + numeric_cast<int32_t>(prop_index);
+    for (size_t prop_index {0}; prop_index < mapper->ShowProps.size(); prop_index++) {
+        int32_t line {3 + numeric_cast<int32_t>(prop_index)};
         INFO(line);
 
         mapper->SelectInspectorPropertyLine(line);
@@ -720,7 +720,7 @@ TEST_CASE("MapperDrawsEditorPanelsHeadlessly")
         mapper->InspectorEditBuf = mapper->InspectorSelectedLineValue;
 
         // Two frames per line: the second one meets the pending focus/caret state the first one queued
-        for (int32_t frame = 0; frame < 2; frame++) {
+        for (int32_t frame {0}; frame < 2; frame++) {
             ImGui::NewFrame();
             ImGui::LogToBuffer(12);
             REQUIRE_NOTHROW(mapper->DrawInspectorImGui());
@@ -747,31 +747,31 @@ TEST_CASE("MapperSelectionFollowsLayerVisibility")
 {
     // Select-all admits each placed entity by its own kind, so the map carries one of every kind and the layers
     // are switched off one at a time to reach each arm
-    auto settings = MakeMapperTestSettings();
-    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
+    auto settings {MakeMapperTestSettings()};
+    auto mapper {safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow)};
 
-    auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
+    auto shutdown {scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); })};
 
     mapper->InitIface();
 
-    string body = MakeItemBlock(10, TILE_A, 5, 5);
+    string body {MakeItemBlock(10, TILE_A, 5, 5)};
     body += MakeItemBlock(11, SCENERY_A, 7, 5);
     body += MakeItemBlock(12, WALL_A, 9, 5);
     body += MakeCritterBlock(13, CRITTER_A, 11, 5);
 
-    auto map = mapper->LoadMapFromText("SelectionMap", "SelectionMap.fomap", MakeMapText(body));
+    auto map {mapper->LoadMapFromText("SelectionMap", "SelectionMap.fomap", MakeMapText(body))};
     REQUIRE(map);
     mapper->ShowMap(map.as_ptr());
 
     // Tiles are not authored in map text - the mapper places them, which is also what marks them as roof
-    ptr<MapView> map_ptr = map.as_ptr();
+    ptr<MapView> map_ptr {map.as_ptr()};
     REQUIRE_NOTHROW(ignore_unused(map_ptr->AddMapperTile(mapper->Hashes.to_hashed_string(TILE_A), mpos {6, 8}, 0, false).get()));
     REQUIRE_NOTHROW(ignore_unused(map_ptr->AddMapperTile(mapper->Hashes.to_hashed_string(TILE_B), mpos {8, 8}, 0, true).get()));
 
     SECTION("EveryLayerContributesItsOwnEntities")
     {
         mapper->SelectAll();
-        size_t all_layers = mapper->SelectedEntities.size();
+        size_t all_layers {mapper->SelectedEntities.size()};
         CHECK(all_layers >= 6);
 
         // Each layer switched off must cost exactly the entities that belong to it
@@ -781,7 +781,7 @@ TEST_CASE("MapperSelectionFollowsLayerVisibility")
 
         mapper->VisibleLayers = exclude_enum(mapper->VisibleLayers, MapLayers::Scenery, MapLayers::Walls, MapLayers::Tiles, MapLayers::Roof);
         mapper->SelectAll();
-        size_t items_only = mapper->SelectedEntities.size();
+        size_t items_only {mapper->SelectedEntities.size()};
         CHECK(items_only < all_layers);
 
         mapper->VisibleLayers = exclude_enum(mapper->VisibleLayers, MapLayers::Items);
@@ -799,7 +799,7 @@ TEST_CASE("MapperSelectionFollowsLayerVisibility")
         mapper->SelectTilesEnabled = false;
         mapper->SelectRoofTilesEnabled = false;
         mapper->SelectAll();
-        size_t items_only = mapper->SelectedEntities.size();
+        size_t items_only {mapper->SelectedEntities.size()};
 
         mapper->SelectItemsEnabled = false;
         mapper->SelectAll();
@@ -819,11 +819,11 @@ TEST_CASE("MapperSelectionFollowsLayerVisibility")
     {
         // Dropping an AnyUnique item out of the selection re-merges it through the per-step driver rather than the
         // whole-map coalescer, a path no other fixture reaches
-        ptr<MapView> selection_map = mapper->GetCurMap().as_ptr();
-        hstring unique_pid = mapper->Hashes.to_hashed_string(TILE_U);
+        ptr<MapView> selection_map {mapper->GetCurMap().as_ptr()};
+        hstring unique_pid {mapper->Hashes.to_hashed_string(TILE_U)};
 
-        auto first_unique = selection_map->AddMapperItem(unique_pid, mpos {4, 12}, nullptr);
-        auto second_unique = selection_map->AddMapperItem(unique_pid, mpos {16, 18}, nullptr);
+        auto first_unique {selection_map->AddMapperItem(unique_pid, mpos {4, 12}, nullptr)};
+        auto second_unique {selection_map->AddMapperItem(unique_pid, mpos {16, 18}, nullptr)};
         REQUIRE_NOTHROW(ignore_unused(first_unique.get()));
         REQUIRE_NOTHROW(ignore_unused(second_unique.get()));
 
@@ -838,7 +838,7 @@ TEST_CASE("MapperSelectionFollowsLayerVisibility")
         CHECK(mapper->SelectedEntities.empty());
 
         // Same-proto AnyUnique items with identical data collapse into one mesh regardless of distance
-        size_t unique_left = 0;
+        size_t unique_left {0};
 
         for (ptr<const ItemHexView> item : selection_map->GetItems()) {
             if (!item->IsDestroyed() && item->GetProtoId() == unique_pid) {
@@ -854,8 +854,8 @@ TEST_CASE("MapperSelectionFollowsLayerVisibility")
         mapper->SelectAll();
         REQUIRE_FALSE(mapper->SelectedEntities.empty());
 
-        size_t before = mapper->SelectedEntities.size();
-        ptr<ClientEntity> first = mapper->SelectedEntities.front().as_ptr();
+        size_t before {mapper->SelectedEntities.size()};
+        ptr<ClientEntity> first {mapper->SelectedEntities.front().as_ptr()};
 
         mapper->SelectRemove(first, false);
         CHECK(mapper->SelectedEntities.size() == before - 1);
@@ -876,55 +876,55 @@ TEST_CASE("MapperPanelControlsRunTheirActions")
 {
     // Panels draw in every headless frame but nothing is pressed, so the code behind each button needs an
     // explicit press; saving writes real files, hence the private Maps root
-    auto maps_dir = std::filesystem::temp_directory_path() / std::format("fo_engine_mapper_controls_test_{}", std::chrono::steady_clock::now().time_since_epoch().count());
-    std::error_code remove_error;
+    auto maps_dir {std::filesystem::temp_directory_path() / std::format("fo_engine_mapper_controls_test_{}", std::chrono::steady_clock::now().time_since_epoch().count())};
+    std::error_code remove_error {};
     std::filesystem::remove_all(maps_dir, remove_error);
     std::filesystem::create_directories(maps_dir);
 
-    auto cleanup_maps_dir = scope_exit([maps_dir]() noexcept {
+    auto cleanup_maps_dir {scope_exit([maps_dir]() noexcept {
         safe_call([maps_dir] {
-            std::error_code ignored;
+            std::error_code ignored {};
             std::filesystem::remove_all(maps_dir, ignored);
         });
-    });
+    })};
 
     REQUIRE(fs::write_file((maps_dir / "ReferenceMap.fomap").generic_string(), MakeMapText(MakeItemBlock(10, TILE_A, 5, 5))));
 
-    auto settings = MakeMapperTestSettings();
+    auto settings {MakeMapperTestSettings()};
     BakerTests::OverrideSetting(settings.Baking.ProtoFileExtensions, vector<string> {"fopro", "fomap"});
 
     // The direct-draw render path the headless fixture uses turns map zoom off, and with it the zoom
     // buttons become no-ops that cannot be told apart from a press that never landed
     BakerTests::OverrideSetting(settings.View.MapZoomEnabled, true);
-    auto pack_config = ConfigFile(strex("[ResourcePack]\nName = MapperControlsTestPack\nInputDirs = {}\n", maps_dir.generic_string()).str());
+    auto pack_config {ConfigFile(strex("[ResourcePack]\nName = MapperControlsTestPack\nInputDirs = {}\n", maps_dir.generic_string()).str())};
     settings.ApplyConfigFile(pack_config, "");
 
-    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
+    auto mapper {safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow)};
 
-    auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
+    auto shutdown {scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); })};
 
     mapper->InitIface();
 
     REQUIRE(ImGui::GetCurrentContext() == nullptr);
     ImGuiExt::Init();
 
-    auto destroy_context = scope_exit([]() noexcept {
+    auto destroy_context {scope_exit([]() noexcept {
         safe_call([] {
             if (ImGui::GetCurrentContext() != nullptr) {
                 ImGui::DestroyContext();
             }
         });
-    });
+    })};
 
-    ImGuiIO& io = ImGui::GetIO();
+    ImGuiIO& io {ImGui::GetIO()};
     io.DisplaySize = ImVec2 {1920.0f, 1080.0f};
     io.DeltaTime = 1.0f / 60.0f;
     io.IniFilename = nullptr;
     io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
 
     // Pressing the fullscreen control writes through to the process-global app window
-    bool saved_fullscreen = GetApp()->MainWindow.IsFullscreen();
-    auto restore_fullscreen = scope_exit([saved_fullscreen]() noexcept { safe_call([saved_fullscreen] { (void)GetApp()->MainWindow.ToggleFullscreen(saved_fullscreen); }); });
+    bool saved_fullscreen {GetApp()->MainWindow.IsFullscreen()};
+    auto restore_fullscreen {scope_exit([saved_fullscreen]() noexcept { safe_call([saved_fullscreen] { (void)GetApp()->MainWindow.ToggleFullscreen(saved_fullscreen); }); })};
 
     mapper->WorkspaceWindowVisible = true;
     mapper->ContentWindowVisible = true;
@@ -935,65 +935,65 @@ TEST_CASE("MapperPanelControlsRunTheirActions")
     mapper->HistoryWindowVisible = true;
     mapper->SettingsWindowVisible = true;
 
-    auto map = mapper->LoadMapFromText("ControlsMap", "ControlsMap.fomap", MakeMapText(MakeItemBlock(11, TILE_A, 5, 5) + MakeCritterBlock(12, CRITTER_A, 6, 6)));
+    auto map {mapper->LoadMapFromText("ControlsMap", "ControlsMap.fomap", MakeMapText(MakeItemBlock(11, TILE_A, 5, 5) + MakeCritterBlock(12, CRITTER_A, 6, 6)))};
     REQUIRE(map);
     mapper->ShowMap(map.as_ptr());
     mapper->SelectAll();
 
     // The two folded sections of the Controls window hold most of its checkboxes
-    constexpr std::array CONTROLS_HEADER_IDS = {"Visibility", "Selection"};
+    constexpr std::array CONTROLS_HEADER_IDS {"Visibility", "Selection"};
 
-    auto seed_controls_headers = [&] {
-        if (auto controls_window = make_nptr(ImGui::FindWindowByName("Controls"))) {
+    auto seed_controls_headers {[&] {
+        if (auto controls_window {make_nptr(ImGui::FindWindowByName("Controls"))}) {
             for (string_view header_id : CONTROLS_HEADER_IDS) {
                 controls_window->StateStorage.SetInt(controls_window->GetID(header_id.data(), header_id.data() + header_id.size()), 1);
             }
         }
-    };
+    }};
 
     // A press is addressed to one panel, so only that panel is drawn around it: a neighbouring window that
     // asks for keyboard focus while it appears would otherwise take over the queued activation
-    auto press = [&seed_controls_headers](string_view window_name, string_view control_label, auto&& draw_panel) {
+    auto press {[&seed_controls_headers](string_view window_name, string_view control_label, auto&& draw_panel) {
         INFO(window_name);
         INFO(control_label);
 
-        auto draw_frame = [&seed_controls_headers, &draw_panel] {
+        auto draw_frame {[&seed_controls_headers, &draw_panel] {
             ImGui::NewFrame();
             seed_controls_headers();
             REQUIRE_NOTHROW(draw_panel());
             ImGui::Render();
-        };
+        }};
 
         // ImGui consumes a queued activation when it meets the widget again, so the first frame submits
         // the widget and the second one runs the branch behind it
         draw_frame();
         REQUIRE(ImGuiTestHarness::ActivateItem(window_name, control_label));
         draw_frame();
-    };
+    }};
 
     // Controls laid out inside a child window belong to the child's id stack, not the panel's
-    auto press_child = [&seed_controls_headers](string_view window_name, std::initializer_list<string_view> child_labels, string_view control_label, auto&& draw_panel) {
+    auto press_child {[&seed_controls_headers](string_view window_name, std::initializer_list<string_view> child_labels, string_view control_label, auto&& draw_panel) {
         INFO(window_name);
         INFO(control_label);
 
-        auto draw_frame = [&seed_controls_headers, &draw_panel] {
+        auto draw_frame {[&seed_controls_headers, &draw_panel] {
             ImGui::NewFrame();
             seed_controls_headers();
             REQUIRE_NOTHROW(draw_panel());
             ImGui::Render();
-        };
+        }};
 
         draw_frame();
         REQUIRE(ImGuiTestHarness::ActivateChildItem(window_name, child_labels, control_label));
         draw_frame();
-    };
+    }};
 
-    auto draw_controls = [&mapper] { mapper->DrawMapWindowImGui(); };
-    auto draw_content = [&mapper] { mapper->DrawContentWindowImGui(); };
+    auto draw_controls {[&mapper] { mapper->DrawMapWindowImGui(); }};
+    auto draw_content {[&mapper] { mapper->DrawContentWindowImGui(); }};
 
     SECTION("TheMapControlsChangeTheShownMap")
     {
-        float32_t zoom_before = map->GetSpritesZoomTarget();
+        float32_t zoom_before {map->GetSpritesZoomTarget()};
         press("Controls", "Zoom in", draw_controls);
         CHECK(map->GetSpritesZoomTarget() > zoom_before);
 
@@ -1001,35 +1001,35 @@ TEST_CASE("MapperPanelControlsRunTheirActions")
         press("Controls", "Zoom reset", draw_controls);
         CHECK(map->GetSpritesZoomTarget() == 1.0f);
 
-        bool overlay_before = mapper->MapperHexOverlayVisible;
+        bool overlay_before {mapper->MapperHexOverlayVisible};
         press("Controls", "Toggle hex", draw_controls);
         CHECK(mapper->MapperHexOverlayVisible != overlay_before);
 
         press("Controls", "Time +1h", draw_controls);
         press("Controls", "Time -1h", draw_controls);
 
-        mdir dir_before = mapper->CritterDir;
+        mdir dir_before {mapper->CritterDir};
         press("Controls", strex("Rotate preview dir ({})", dir_before).str(), draw_controls);
         CHECK(mapper->CritterDir != dir_before);
 
         press("Controls", "Rotate selected critters", draw_controls);
 
-        bool roof_preview_before = mapper->PreviewRoofTiles;
+        bool roof_preview_before {mapper->PreviewRoofTiles};
         press("Controls", "Roof preview", draw_controls);
         CHECK(mapper->PreviewRoofTiles != roof_preview_before);
 
-        bool axial_before = mapper->SelectAxialGrid;
+        bool axial_before {mapper->SelectAxialGrid};
         press("Controls", "Axial grid selection", draw_controls);
         CHECK(mapper->SelectAxialGrid != axial_before);
 
-        bool entire_before = mapper->SelectEntireEntity;
+        bool entire_before {mapper->SelectEntireEntity};
         press("Controls", "Select entire entity", draw_controls);
         CHECK(mapper->SelectEntireEntity != entire_before);
 
         press("Controls", "Scroll check", draw_controls);
 
         // The folded groups carry the layer toggles the renderer reads
-        bool show_items_before = is_enum_set(mapper->VisibleLayers, MapLayers::Items);
+        bool show_items_before {is_enum_set(mapper->VisibleLayers, MapLayers::Items)};
         press("Controls", "Items", draw_controls);
         CHECK(is_enum_set(mapper->VisibleLayers, MapLayers::Items) != show_items_before);
 
@@ -1041,9 +1041,9 @@ TEST_CASE("MapperPanelControlsRunTheirActions")
     SECTION("TheToolWindowsRunTheirCommands")
     {
         // The workspace layer buttons rebuild the map, and its tab list is what switches the panel mode
-        auto draw_workspace = [&mapper] { mapper->DrawWorkspaceWindowImGui(); };
+        auto draw_workspace {[&mapper] { mapper->DrawWorkspaceWindowImGui(); }};
 
-        bool workspace_items_before = is_enum_set(mapper->VisibleLayers, MapLayers::Items);
+        bool workspace_items_before {is_enum_set(mapper->VisibleLayers, MapLayers::Items)};
         press("Workspace", "Items", draw_workspace);
         CHECK(is_enum_set(mapper->VisibleLayers, MapLayers::Items) != workspace_items_before);
 
@@ -1069,10 +1069,10 @@ TEST_CASE("MapperPanelControlsRunTheirActions")
         mapper->SetActivePanelMode(MapperEngine::INT_MODE_LIST);
 
         // Picking another loaded map out of the browser list is what switches the shown map
-        auto other_map = mapper->LoadMapFromText("OtherControlsMap", "OtherControlsMap.fomap", MakeMapText(MakeItemBlock(13, TILE_A, 4, 4)));
+        auto other_map {mapper->LoadMapFromText("OtherControlsMap", "OtherControlsMap.fomap", MakeMapText(MakeItemBlock(13, TILE_A, 4, 4)))};
         REQUIRE(other_map);
         // The list labels a map by its own name and marks the current one with a leading asterisk
-        string other_map_label = string {other_map->GetName()};
+        string other_map_label {string {other_map->GetName()}};
         press_child("Content", {"##LoadedMaps"}, other_map_label, draw_content);
         CHECK(mapper->GetCurMap() == other_map.as_ptr());
 
@@ -1086,8 +1086,8 @@ TEST_CASE("MapperPanelControlsRunTheirActions")
 
         // Saving resolves both the file name and the container from the loaded map files, so the result
         // may be a new .fomap or a splice into an existing one - either way the root grows
-        auto maps_root_bytes = [&maps_dir] {
-            uintmax_t total = 0;
+        auto maps_root_bytes {[&maps_dir] {
+            uintmax_t total {0};
 
             for (const auto& entry : std::filesystem::directory_iterator {maps_dir}) {
                 if (entry.is_regular_file()) {
@@ -1096,9 +1096,9 @@ TEST_CASE("MapperPanelControlsRunTheirActions")
             }
 
             return total;
-        };
+        }};
 
-        uintmax_t bytes_before_save = maps_root_bytes();
+        uintmax_t bytes_before_save {maps_root_bytes()};
         press("Content", "Save current", draw_content);
         CHECK(maps_root_bytes() > bytes_before_save);
 
@@ -1123,27 +1123,27 @@ TEST_CASE("MapperPanelControlsRunTheirActions")
 
 TEST_CASE("MapperEntityBufferOwnsNestedPropertySnapshots")
 {
-    auto settings = MakeMapperTestSettings();
-    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
-    auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
+    auto settings {MakeMapperTestSettings()};
+    auto mapper {safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow)};
+    auto shutdown {scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); })};
 
-    auto scene = mapper->LoadMapFromText("BufferSnapshot", "BufferSnapshot.fomap", MakeMapText(MakeItemBlock(10, SCENERY_A, 5, 5, "Static = False\nLightDistance = 7")));
+    auto scene {mapper->LoadMapFromText("BufferSnapshot", "BufferSnapshot.fomap", MakeMapText(MakeItemBlock(10, SCENERY_A, 5, 5, "Static = False\nLightDistance = 7")))};
     REQUIRE(scene);
     mapper->ShowMap(scene.as_ptr());
 
-    auto parent = scene->GetItem(ident_t {10});
+    auto parent {scene->GetItem(ident_t {10})};
     REQUIRE(parent);
-    auto proto = parent->GetProto().dyn_cast<const ProtoItem>();
+    auto proto {parent->GetProto().dyn_cast<const ProtoItem>()};
     REQUIRE(proto);
-    auto child = parent->AddMapperInnerItem(scene->GenTempEntityId(), proto, any_t {"child"}, nullptr);
-    auto grandchild = child->AddMapperInnerItem(scene->GenTempEntityId(), proto, any_t {"grandchild"}, nullptr);
+    auto child {parent->AddMapperInnerItem(scene->GenTempEntityId(), proto, any_t {"child"}, nullptr)};
+    auto grandchild {child->AddMapperInnerItem(scene->GenTempEntityId(), proto, any_t {"grandchild"}, nullptr)};
     child->GetPropertiesForEdit()->ApplyFromText(map<string, string> {{"LightDistance", "3"}});
     grandchild->GetPropertiesForEdit()->ApplyFromText(map<string, string> {{"LightDistance", "5"}});
-    ident_t child_id = child->GetId();
-    ident_t grandchild_id = grandchild->GetId();
-    auto light_prop = parent->GetPropertyLightDistance();
+    ident_t child_id {child->GetId()};
+    ident_t grandchild_id {grandchild->GetId()};
+    auto light_prop {parent->GetPropertyLightDistance()};
 
-    MapperEngine::EntityBuf snapshot;
+    MapperEngine::EntityBuf snapshot {};
     mapper->CaptureEntityBuf(snapshot, parent);
     REQUIRE(snapshot.Props);
     REQUIRE(snapshot.Children.size() == 1);
@@ -1161,10 +1161,10 @@ TEST_CASE("MapperEntityBufferOwnsNestedPropertySnapshots")
     CHECK(snapshot.Children.front()->Children.front()->Props->SavePropertyToText(light_prop) == "5");
 
     mapper->DeleteEntity(parent);
-    auto restored = mapper->RestoreEntityBuf(snapshot).dyn_cast<ItemView>();
+    auto restored {mapper->RestoreEntityBuf(snapshot).dyn_cast<ItemView>()};
     REQUIRE(restored);
     REQUIRE(restored->GetInnerItems().size() == 1);
-    auto restored_child = restored->GetInnerItems().front().as_ptr();
+    auto restored_child {restored->GetInnerItems().front().as_ptr()};
     CHECK(restored_child->GetId() == child_id);
     CHECK(restored_child->GetContainerStack() == "child");
     CHECK(restored_child->GetLightDistance() == 3);
@@ -1173,9 +1173,7 @@ TEST_CASE("MapperEntityBufferOwnsNestedPropertySnapshots")
     CHECK(restored_child->GetInnerItems().front()->GetContainerStack() == "grandchild");
     CHECK(restored_child->GetInnerItems().front()->GetLightDistance() == 5);
 
-    function<string()> read_snapshot = [snapshot = std::move(snapshot), light_prop] {
-        return snapshot.Children.front()->Props->SavePropertyToText(light_prop);
-    };
+    function<string()> read_snapshot {[snapshot = std::move(snapshot), light_prop] { return snapshot.Children.front()->Props->SavePropertyToText(light_prop); }};
 
     CHECK(read_snapshot() == "3");
     CHECK(read_snapshot() == "3");
@@ -1183,45 +1181,44 @@ TEST_CASE("MapperEntityBufferOwnsNestedPropertySnapshots")
 
 TEST_CASE("MapperUndoRedoKeepsNestedSnapshotsAcrossCycles")
 {
-    auto settings = MakeMapperTestSettings();
-    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
-    auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
+    auto settings {MakeMapperTestSettings()};
+    auto mapper {safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow)};
+    auto shutdown {scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); })};
 
-    auto scene = mapper->LoadMapFromText("UndoRedoSnapshot", "UndoRedoSnapshot.fomap",
-        MakeMapText(MakeItemBlock(10, SCENERY_A, 5, 5, "Static = False\nLightDistance = 7") + MakeItemBlock(11, SCENERY_A, 14, 14, "Static = False\nLightDistance = 11")));
+    auto scene {mapper->LoadMapFromText("UndoRedoSnapshot", "UndoRedoSnapshot.fomap", MakeMapText(MakeItemBlock(10, SCENERY_A, 5, 5, "Static = False\nLightDistance = 7") + MakeItemBlock(11, SCENERY_A, 14, 14, "Static = False\nLightDistance = 11")))};
     REQUIRE(scene);
     mapper->ShowMap(scene.as_ptr());
 
-    auto root_a = scene->GetItem(ident_t {10});
-    auto root_b = scene->GetItem(ident_t {11});
+    auto root_a {scene->GetItem(ident_t {10})};
+    auto root_b {scene->GetItem(ident_t {11})};
     REQUIRE(root_a);
     REQUIRE(root_b);
 
-    auto proto = root_a->GetProto().dyn_cast<const ProtoItem>();
+    auto proto {root_a->GetProto().dyn_cast<const ProtoItem>()};
     REQUIRE(proto);
 
-    auto child_a1 = root_a->AddMapperInnerItem(scene->GenTempEntityId(), proto, any_t {"child_a1"}, nullptr);
-    auto child_a2 = root_a->AddMapperInnerItem(scene->GenTempEntityId(), proto, any_t {"child_a2"}, nullptr);
-    auto grandchild_a = child_a1->AddMapperInnerItem(scene->GenTempEntityId(), proto, any_t {"grandchild_a"}, nullptr);
-    auto child_b1 = root_b->AddMapperInnerItem(scene->GenTempEntityId(), proto, any_t {"child_b1"}, nullptr);
+    auto child_a1 {root_a->AddMapperInnerItem(scene->GenTempEntityId(), proto, any_t {"child_a1"}, nullptr)};
+    auto child_a2 {root_a->AddMapperInnerItem(scene->GenTempEntityId(), proto, any_t {"child_a2"}, nullptr)};
+    auto grandchild_a {child_a1->AddMapperInnerItem(scene->GenTempEntityId(), proto, any_t {"grandchild_a"}, nullptr)};
+    auto child_b1 {root_b->AddMapperInnerItem(scene->GenTempEntityId(), proto, any_t {"child_b1"}, nullptr)};
 
     child_a1->GetPropertiesForEdit()->ApplyFromText(map<string, string> {{"LightDistance", "3"}});
     child_a2->GetPropertiesForEdit()->ApplyFromText(map<string, string> {{"LightDistance", "4"}});
     grandchild_a->GetPropertiesForEdit()->ApplyFromText(map<string, string> {{"LightDistance", "5"}});
     child_b1->GetPropertiesForEdit()->ApplyFromText(map<string, string> {{"LightDistance", "6"}});
 
-    ident_t root_a_id = root_a->GetId();
-    ident_t root_b_id = root_b->GetId();
-    ident_t child_a1_id = child_a1->GetId();
-    ident_t child_a2_id = child_a2->GetId();
-    ident_t grandchild_a_id = grandchild_a->GetId();
+    ident_t root_a_id {root_a->GetId()};
+    ident_t root_b_id {root_b->GetId()};
+    ident_t child_a1_id {child_a1->GetId()};
+    ident_t child_a2_id {child_a2->GetId()};
+    ident_t grandchild_a_id {grandchild_a->GetId()};
 
-    auto check_root_a_state = [&](nptr<ItemHexView> restored) {
+    auto check_root_a_state {[&](nptr<ItemHexView> restored) {
         REQUIRE(restored);
         REQUIRE(restored->GetInnerItems().size() == 2);
         CHECK(restored->GetLightDistance() == 7);
 
-        auto restored_child_a1 = restored->GetInnerItems().front().as_ptr();
+        auto restored_child_a1 {restored->GetInnerItems().front().as_ptr()};
         CHECK(restored_child_a1->GetId() == child_a1_id);
         CHECK(restored_child_a1->GetContainerStack() == "child_a1");
         CHECK(restored_child_a1->GetLightDistance() == 3);
@@ -1233,11 +1230,9 @@ TEST_CASE("MapperUndoRedoKeepsNestedSnapshotsAcrossCycles")
         CHECK(restored->GetInnerItems()[1]->GetId() == child_a2_id);
         CHECK(restored->GetInnerItems()[1]->GetContainerStack() == "child_a2");
         CHECK(restored->GetInnerItems()[1]->GetLightDistance() == 4);
-    };
+    }};
 
-    auto mutate_live_child = [](ptr<ItemView> child) {
-        child->GetPropertiesForEdit()->ApplyFromText(map<string, string> {{"LightDistance", "9"}});
-    };
+    auto mutate_live_child {[](ptr<ItemView> child) { child->GetPropertiesForEdit()->ApplyFromText(map<string, string> {{"LightDistance", "9"}}); }};
 
     SECTION("SingleDeleteUndoRedoCyclesKeepSnapshotState")
     {
@@ -1247,16 +1242,16 @@ TEST_CASE("MapperUndoRedoKeepsNestedSnapshotsAcrossCycles")
         CHECK_FALSE(scene->GetItem(root_a_id));
         REQUIRE(scene->GetItems().size() == 1);
 
-        for (int32_t cycle = 0; cycle < 2; cycle++) {
+        for (int32_t cycle {0}; cycle < 2; cycle++) {
             INFO(cycle);
             REQUIRE(mapper->ExecuteUndo());
 
-            auto restored = scene->GetItem(root_a_id);
+            auto restored {scene->GetItem(root_a_id)};
             REQUIRE(restored);
             REQUIRE(scene->GetItems().size() == 2);
             check_root_a_state(restored);
 
-            auto restored_child = restored->GetInnerItems().front().as_ptr();
+            auto restored_child {restored->GetInnerItems().front().as_ptr()};
             mutate_live_child(restored_child);
             CHECK(restored_child->GetLightDistance() == 9);
 
@@ -1266,7 +1261,7 @@ TEST_CASE("MapperUndoRedoKeepsNestedSnapshotsAcrossCycles")
         }
 
         REQUIRE(mapper->ExecuteUndo());
-        auto restored = scene->GetItem(root_a_id);
+        auto restored {scene->GetItem(root_a_id)};
         REQUIRE(restored);
         check_root_a_state(restored);
     }
@@ -1283,13 +1278,13 @@ TEST_CASE("MapperUndoRedoKeepsNestedSnapshotsAcrossCycles")
         mapper->SelectDelete();
         REQUIRE(scene->GetItems().empty());
 
-        for (int32_t cycle = 0; cycle < 2; cycle++) {
+        for (int32_t cycle {0}; cycle < 2; cycle++) {
             INFO(cycle);
             REQUIRE(mapper->ExecuteUndo());
             REQUIRE(scene->GetItems().size() == 2);
 
-            auto restored_a = scene->GetItem(root_a_id);
-            auto restored_b = scene->GetItem(root_b_id);
+            auto restored_a {scene->GetItem(root_a_id)};
+            auto restored_b {scene->GetItem(root_b_id)};
             check_root_a_state(restored_a);
             REQUIRE(restored_b);
             CHECK(restored_b->GetLightDistance() == 11);
@@ -1297,7 +1292,7 @@ TEST_CASE("MapperUndoRedoKeepsNestedSnapshotsAcrossCycles")
             CHECK(restored_b->GetInnerItems().front()->GetContainerStack() == "child_b1");
             CHECK(restored_b->GetInnerItems().front()->GetLightDistance() == 6);
 
-            auto restored_child = restored_a->GetInnerItems().front().as_ptr();
+            auto restored_child {restored_a->GetInnerItems().front().as_ptr()};
             mutate_live_child(restored_child);
             CHECK(restored_child->GetLightDistance() == 9);
 
@@ -1306,8 +1301,8 @@ TEST_CASE("MapperUndoRedoKeepsNestedSnapshotsAcrossCycles")
         }
 
         REQUIRE(mapper->ExecuteUndo());
-        auto restored_a = scene->GetItem(root_a_id);
-        auto restored_b = scene->GetItem(root_b_id);
+        auto restored_a {scene->GetItem(root_a_id)};
+        auto restored_b {scene->GetItem(root_b_id)};
         check_root_a_state(restored_a);
         REQUIRE(restored_b);
         CHECK(restored_b->GetInnerItems().front()->GetLightDistance() == 6);
@@ -1327,28 +1322,28 @@ TEST_CASE("MapperUndoRedoKeepsNestedSnapshotsAcrossCycles")
         REQUIRE(scene->GetItems().size() == 4);
         REQUIRE(mapper->SelectedEntities.size() == 2);
 
-        vector<ident_t> pasted_ids;
+        vector<ident_t> pasted_ids {};
         pasted_ids.reserve(mapper->SelectedEntities.size());
 
         for (const auto& pasted_entity : mapper->SelectedEntities) {
-            ident_t pasted_id = pasted_entity->GetId();
+            ident_t pasted_id {pasted_entity->GetId()};
             pasted_ids.emplace_back(pasted_id);
             REQUIRE(scene->GetItem(pasted_id));
         }
 
         REQUIRE(pasted_ids.size() == 2);
 
-        auto pasted_root_a = scene->GetItem(pasted_ids.front());
+        auto pasted_root_a {scene->GetItem(pasted_ids.front())};
         REQUIRE(pasted_root_a);
         REQUIRE(pasted_root_a->GetInnerItems().size() == 2);
 
-        auto pasted_child_a1 = pasted_root_a->GetInnerItems().front().as_ptr();
-        ident_t pasted_child_a1_id = pasted_child_a1->GetId();
-        ident_t pasted_grandchild_a_id = pasted_child_a1->GetInnerItems().front()->GetId();
+        auto pasted_child_a1 {pasted_root_a->GetInnerItems().front().as_ptr()};
+        ident_t pasted_child_a1_id {pasted_child_a1->GetId()};
+        ident_t pasted_grandchild_a_id {pasted_child_a1->GetInnerItems().front()->GetId()};
         CHECK(pasted_child_a1->GetLightDistance() == 3);
         CHECK(pasted_child_a1->GetInnerItems().front()->GetLightDistance() == 5);
 
-        for (int32_t cycle = 0; cycle < 2; cycle++) {
+        for (int32_t cycle {0}; cycle < 2; cycle++) {
             INFO(cycle);
             REQUIRE(mapper->ExecuteUndo());
             REQUIRE(scene->GetItems().size() == 2);
@@ -1361,15 +1356,15 @@ TEST_CASE("MapperUndoRedoKeepsNestedSnapshotsAcrossCycles")
             REQUIRE(scene->GetItems().size() == 4);
 
             for (ident_t pasted_id : pasted_ids) {
-                auto restored = scene->GetItem(pasted_id);
+                auto restored {scene->GetItem(pasted_id)};
                 REQUIRE(restored);
             }
 
-            auto restored_pasted_root = scene->GetItem(pasted_ids.front());
+            auto restored_pasted_root {scene->GetItem(pasted_ids.front())};
             REQUIRE(restored_pasted_root);
             REQUIRE(restored_pasted_root->GetInnerItems().size() == 2);
 
-            auto restored_pasted_child = restored_pasted_root->GetInnerItems().front().as_ptr();
+            auto restored_pasted_child {restored_pasted_root->GetInnerItems().front().as_ptr()};
             CHECK(restored_pasted_child->GetId() == pasted_child_a1_id);
             CHECK(restored_pasted_child->GetInnerItems().front()->GetId() == pasted_grandchild_a_id);
             CHECK(restored_pasted_child->GetLightDistance() == 3);
@@ -1385,15 +1380,15 @@ TEST_CASE("MapperUndoRedoKeepsNestedSnapshotsAcrossCycles")
 
 TEST_CASE("MapperEditorOperations")
 {
-    auto settings = MakeMapperTestSettings();
-    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
+    auto settings {MakeMapperTestSettings()};
+    auto mapper {safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow)};
 
-    auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
+    auto shutdown {scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); })};
 
     mapper->InitIface();
 
-    string body = MakeItemBlock(10, TILE_A, 5, 5) + MakeItemBlock(11, TILE_B, 7, 7) + MakeItemBlock(12, TILE_A, 9, 9);
-    auto map = mapper->LoadMapFromText("EditorMap", "EditorMap.fomap", MakeMapText(body));
+    string body {MakeItemBlock(10, TILE_A, 5, 5) + MakeItemBlock(11, TILE_B, 7, 7) + MakeItemBlock(12, TILE_A, 9, 9)};
+    auto map {mapper->LoadMapFromText("EditorMap", "EditorMap.fomap", MakeMapText(body))};
     REQUIRE(map);
 
     mapper->ShowMap(map.as_ptr());
@@ -1401,7 +1396,7 @@ TEST_CASE("MapperEditorOperations")
 
     SECTION("PanelModesAndCursorModesSwitch")
     {
-        for (int32_t mode = MapperEngine::INT_MODE_CUSTOM0; mode < MapperEngine::INT_MODE_COUNT; mode++) {
+        for (int32_t mode {MapperEngine::INT_MODE_CUSTOM0}; mode < MapperEngine::INT_MODE_COUNT; mode++) {
             REQUIRE_NOTHROW(mapper->SetActivePanelMode(mode));
         }
 
@@ -1417,7 +1412,7 @@ TEST_CASE("MapperEditorOperations")
 
     SECTION("SelectionBufferRoundTripAndUndo")
     {
-        size_t initial_items = map->GetItems().size();
+        size_t initial_items {map->GetItems().size()};
         REQUIRE(initial_items >= 3);
 
         mapper->SelectAll();
@@ -1465,7 +1460,7 @@ TEST_CASE("MapperEditorOperations")
 
 TEST_CASE("MapperViewerAndParticleEditorPanelsDrawHeadlessly")
 {
-    auto settings = MakeMapperTestSettings();
+    auto settings {MakeMapperTestSettings()};
 
     // The particle preview sub-editor initialises only when a preview effect is configured and a map is
     // shown; without both it returns immediately and none of its windows ever draw
@@ -1473,24 +1468,24 @@ TEST_CASE("MapperViewerAndParticleEditorPanelsDrawHeadlessly")
 
     // Every particle renderer draws a wireframe overlay on top of its geometry when this is on
     BakerTests::OverrideSetting(settings.Render.DrawWireframe, true);
-    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
+    auto mapper {safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow)};
 
-    auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
+    auto shutdown {scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); })};
 
     mapper->InitIface();
 
     REQUIRE(ImGui::GetCurrentContext() == nullptr);
     ImGuiExt::Init();
 
-    auto destroy_context = scope_exit([]() noexcept {
+    auto destroy_context {scope_exit([]() noexcept {
         safe_call([] {
             if (ImGui::GetCurrentContext() != nullptr) {
                 ImGui::DestroyContext();
             }
         });
-    });
+    })};
 
-    ImGuiIO& io = ImGui::GetIO();
+    ImGuiIO& io {ImGui::GetIO()};
     io.DisplaySize = ImVec2 {1280.0f, 720.0f};
     io.DeltaTime = 1.0f / 60.0f;
     io.IniFilename = nullptr;
@@ -1498,9 +1493,9 @@ TEST_CASE("MapperViewerAndParticleEditorPanelsDrawHeadlessly")
 
     // The viewer selects a critter only through a list click or its persisted "last critter" setting, so the
     // setting is seeded here and restored afterwards to leave the user store untouched
-    string saved_selected_proto;
+    string saved_selected_proto {};
 
-    string saved_selected_particle;
+    string saved_selected_particle {};
 
     {
         SettingsStorage viewer_settings {"AnimationViewer"};
@@ -1514,7 +1509,7 @@ TEST_CASE("MapperViewerAndParticleEditorPanelsDrawHeadlessly")
         particle_settings.SetString("SelectedPath", "Particles/MapperEditorTest.spk");
     }
 
-    auto restore_viewer_settings = scope_exit([&saved_selected_proto, &saved_selected_particle]() noexcept {
+    auto restore_viewer_settings {scope_exit([&saved_selected_proto, &saved_selected_particle]() noexcept {
         safe_call([&saved_selected_proto] {
             SettingsStorage viewer_settings {"AnimationViewer"};
             viewer_settings.SetString("SelectedProto", saved_selected_proto);
@@ -1524,19 +1519,19 @@ TEST_CASE("MapperViewerAndParticleEditorPanelsDrawHeadlessly")
             SettingsStorage particle_settings {"ParticleViewer"};
             particle_settings.SetString("SelectedPath", saved_selected_particle);
         });
-    });
+    })};
 
     AnimationViewer animation_viewer {mapper.as_ptr(), &mapper->SprMngr, &mapper->ResMngr, &mapper->CritterFrames, &mapper->GameTime};
     ParticleViewer particle_viewer {mapper.as_ptr(), &mapper->SprMngr, &mapper->ResMngr};
     ParticleEditorManager particle_editor {mapper.as_ptr()};
 
-    auto preview_map = mapper->LoadMapFromText("PreviewMap", "PreviewMap.fomap", MakeMapText(MakeItemBlock(30, TILE_A, 5, 5)));
+    auto preview_map {mapper->LoadMapFromText("PreviewMap", "PreviewMap.fomap", MakeMapText(MakeItemBlock(30, TILE_A, 5, 5)))};
     REQUIRE(preview_map);
     mapper->ShowMap(preview_map.as_ptr());
 
     REQUIRE_NOTHROW(particle_editor.Initialize());
 
-    auto editor_shutdown = scope_exit([&particle_editor]() noexcept { safe_call([&particle_editor] { particle_editor.Shutdown(); }); });
+    auto editor_shutdown {scope_exit([&particle_editor]() noexcept { safe_call([&particle_editor] { particle_editor.Shutdown(); }); })};
 
     CHECK_FALSE(animation_viewer.IsVisible());
     animation_viewer.SetVisible(true);
@@ -1551,9 +1546,9 @@ TEST_CASE("MapperViewerAndParticleEditorPanelsDrawHeadlessly")
     // populated panel; resetting the layout first would close it and leave only the early return covered
     REQUIRE_NOTHROW(particle_editor.OnFocusGained());
 
-    constexpr int32_t VIEWER_FRAMES = 3;
+    constexpr int32_t VIEWER_FRAMES {3};
 
-    for (int32_t frame = 0; frame < VIEWER_FRAMES; frame++) {
+    for (int32_t frame {0}; frame < VIEWER_FRAMES; frame++) {
         ImGui::NewFrame();
         ImGui::LogToBuffer(12);
 
@@ -1569,7 +1564,7 @@ TEST_CASE("MapperViewerAndParticleEditorPanelsDrawHeadlessly")
 #if FO_SPARK_PARTICLES || FO_EFFEKSEER_PARTICLES
     // Nothing below the resource list runs until a control is pressed, so each press is queued against
     // the drawn window and consumed by the frame that follows it
-    constexpr std::array PRESSED_CONTROLS = {"Refresh", "Mouse position", "View center", "Play", "Restart", "Remove"};
+    constexpr std::array PRESSED_CONTROLS {"Refresh", "Mouse position", "View center", "Play", "Restart", "Remove"};
 
     for (string_view control : PRESSED_CONTROLS) {
         INFO(control);
@@ -1613,7 +1608,7 @@ TEST_CASE("MapperViewerAndParticleEditorPanelsDrawHeadlessly")
     REQUIRE(ImGuiTestHarness::ActivateItem("Debug##Default", "SPARK particle editor"));
 
     {
-        for (int32_t frame = 0; frame < 3; frame++) {
+        for (int32_t frame {0}; frame < 3; frame++) {
             ImGui::NewFrame();
             ImGui::LogToBuffer(12);
             REQUIRE_NOTHROW(particle_editor.DrawMenuItems());
@@ -1635,7 +1630,7 @@ TEST_CASE("MapperViewerAndParticleEditorPanelsDrawHeadlessly")
             ImGui::Render();
         }
 
-        for (int32_t frame = 0; frame < 2; frame++) {
+        for (int32_t frame {0}; frame < 2; frame++) {
             ImGui::NewFrame();
             ImGui::LogToBuffer(12);
             REQUIRE_NOTHROW(particle_editor.DrawMenuItems());
@@ -1647,7 +1642,7 @@ TEST_CASE("MapperViewerAndParticleEditorPanelsDrawHeadlessly")
 #endif
 
     // Switching away from the previewed map and then unloading it must take the placed sprite with it
-    auto second_map = mapper->LoadMapFromText("PreviewMapB", "PreviewMapB.fomap", MakeMapText(MakeItemBlock(31, TILE_A, 6, 6)));
+    auto second_map {mapper->LoadMapFromText("PreviewMapB", "PreviewMapB.fomap", MakeMapText(MakeItemBlock(31, TILE_A, 6, 6)))};
     REQUIRE(second_map);
     REQUIRE_NOTHROW(particle_editor.OnCurrentMapChanging(second_map.as_ptr()));
     mapper->ShowMap(second_map.as_ptr());
@@ -1681,39 +1676,39 @@ TEST_CASE("MapperViewerAndParticleEditorPanelsDrawHeadlessly")
 #if (FO_SPARK_PARTICLES)
 TEST_CASE("SparkParticleEditorDrawsHeadlessly")
 {
-    auto settings = MakeMapperTestSettings();
+    auto settings {MakeMapperTestSettings()};
 
-    string asset_path = "Particles/MapperEditorTest.spark";
+    string asset_path {"Particles/MapperEditorTest.spark"};
 
-    auto raw_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("SparkEditorRawResources");
+    auto raw_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("SparkEditorRawResources")};
     raw_source->AddFile(asset_path, vector<uint8_t>(MAPPER_TEST_SPARK_ASSET.begin(), MAPPER_TEST_SPARK_ASSET.end()));
 
-    FileSystem raw_resources;
+    FileSystem raw_resources {};
     raw_resources.AddCustomSource(std::move(raw_source));
 
     // The editor previews the *baked* particle, so the raw asset is run through the real baker first
-    BakerTests::TestRig rig;
+    BakerTests::TestRig rig {};
     rig.AddSourceFile(asset_path, MAPPER_TEST_SPARK_ASSET, 10);
 
-    ParticleBaker baker(rig.MakeContext());
+    ParticleBaker baker {rig.MakeContext()};
     baker.BakeFiles(rig.GetAllSourceFiles(), "");
 
-    string baked_path = strex(asset_path).change_file_extension("spk").str();
+    string baked_path {strex(asset_path).change_file_extension("spk").str()};
     REQUIRE(rig.Outputs.contains(baked_path));
 
     // The SPARK renderer resolves the effect named in the asset plus the whole atlas-variant family the
     // particle runtime registers up front, so all of them are baked into the fixture
-    BakerTests::TestRig effect_rig;
+    BakerTests::TestRig effect_rig {};
 
     for (string_view effect_name : {"Effects/Particles_ColorAdd.fofx", "Effects/Particles_ColorAddAtlas.fofx", "Effects/Particles_ColorMulAtlas.fofx", "Effects/Particles_ColorSubAtlas.fofx", "Effects/Particles_DistortionAtlas.fofx", "Effects/Particles_DistortionAddAtlas.fofx"}) {
         effect_rig.AddSourceFile(effect_name, MAPPER_TEST_PARTICLE_EFFECT, 10);
     }
 
-    EffectBaker effect_baker(effect_rig.MakeContext());
+    EffectBaker effect_baker {effect_rig.MakeContext()};
     effect_baker.BakeFiles(effect_rig.GetAllSourceFiles(), "");
     REQUIRE(effect_rig.Outputs.contains("Effects/Particles_ColorAdd.fofx"));
 
-    auto baked_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("SparkEditorBakedResources");
+    auto baked_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("SparkEditorBakedResources")};
     baked_source->AddFile(baked_path, rig.Outputs.at(baked_path));
 
     for (const auto& [output_path, output_data] : effect_rig.Outputs) {
@@ -1723,27 +1718,27 @@ TEST_CASE("SparkParticleEditorDrawsHeadlessly")
     // The renderer resolves its texture relative to the particle asset directory
     baked_source->AddFile("Particles/TestParticle.png", BakerTests::MakeMinimalBakedSprite(4, 4));
 
-    FileSystem baked_resources;
+    FileSystem baked_resources {};
     baked_resources.AddCustomSource(std::move(baked_source));
 
     REQUIRE(ImGui::GetCurrentContext() == nullptr);
     ImGuiExt::Init();
 
-    auto destroy_context = scope_exit([]() noexcept {
+    auto destroy_context {scope_exit([]() noexcept {
         safe_call([] {
             if (ImGui::GetCurrentContext() != nullptr) {
                 ImGui::DestroyContext();
             }
         });
-    });
+    })};
 
-    ImGuiIO& io = ImGui::GetIO();
+    ImGuiIO& io {ImGui::GetIO()};
     io.DisplaySize = ImVec2 {1280.0f, 720.0f};
     io.DeltaTime = 1.0f / 60.0f;
     io.IniFilename = nullptr;
     io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
 
-    int32_t saved_calls = 0;
+    int32_t saved_calls {0};
     SparkParticleEditor editor {asset_path, &settings, &raw_resources, &baked_resources, [&saved_calls](string_view) { saved_calls++; }};
 
     CHECK(editor.GetAssetPath() == asset_path);
@@ -1752,16 +1747,16 @@ TEST_CASE("SparkParticleEditorDrawsHeadlessly")
     editor.BringToFront();
 
     // The window carries a stable "###" id suffix, which is what ImGui matches a window by
-    string editor_window_title = strex("###SparkParticleEditor_{}", asset_path).str();
+    string editor_window_title {strex("###SparkParticleEditor_{}", asset_path).str()};
 
     // Logging auto-expands the object tree so the per-node inspectors run instead of staying collapsed
-    constexpr int32_t EDITOR_FRAMES = 4;
+    constexpr int32_t EDITOR_FRAMES {4};
 
-    for (int32_t frame = 0; frame < EDITOR_FRAMES; frame++) {
+    for (int32_t frame {0}; frame < EDITOR_FRAMES; frame++) {
         ImGui::NewFrame();
         ImGui::LogToBuffer(12);
 
-        bool keep_open = true;
+        bool keep_open {true};
         REQUIRE_NOTHROW(keep_open = editor.Draw());
         CHECK(keep_open);
 
@@ -1770,7 +1765,7 @@ TEST_CASE("SparkParticleEditorDrawsHeadlessly")
     }
 
     // The editor's own controls live in a child window and only run when something is pressed
-    constexpr std::array INFO_CONTROLS = {"Adding mode", "Removing mode", "Naming mode", "Auto replay", "Respawn"};
+    constexpr std::array INFO_CONTROLS {"Adding mode", "Removing mode", "Naming mode", "Auto replay", "Respawn"};
 
     for (string_view control : INFO_CONTROLS) {
         INFO(control);
@@ -1796,43 +1791,43 @@ TEST_CASE("SparkParticleEditorDrawsHeadlessly")
 
 TEST_CASE("MapperProcessesInputEventsAndDrawsFrame")
 {
-    auto settings = MakeMapperTestSettings();
-    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
+    auto settings {MakeMapperTestSettings()};
+    auto mapper {safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow)};
 
-    auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
+    auto shutdown {scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); })};
 
     // The key sweep below presses F11, which dumps the atlases, so the directories it writes are cleared
     // once the case is done
-    set<string> tex_dumps_before = TexDumpArtifacts::CollectDumpDirs();
+    set<string> tex_dumps_before {TexDumpArtifacts::CollectDumpDirs()};
 
-    auto remove_tex_dumps = scope_exit([&tex_dumps_before]() noexcept { safe_call([&tex_dumps_before] { TexDumpArtifacts::RemoveNewDumpDirs(tex_dumps_before); }); });
+    auto remove_tex_dumps {scope_exit([&tex_dumps_before]() noexcept { safe_call([&tex_dumps_before] { TexDumpArtifacts::RemoveNewDumpDirs(tex_dumps_before); }); })};
 
     mapper->InitIface();
 
-    string body = MakeItemBlock(10, TILE_A, 5, 5) + MakeItemBlock(11, TILE_B, 7, 7);
-    auto map = mapper->LoadMapFromText("InputMap", "InputMap.fomap", MakeMapText(body));
+    string body {MakeItemBlock(10, TILE_A, 5, 5) + MakeItemBlock(11, TILE_B, 7, 7)};
+    auto map {mapper->LoadMapFromText("InputMap", "InputMap.fomap", MakeMapText(body))};
     REQUIRE(map);
     mapper->ShowMap(map.as_ptr());
 
     REQUIRE(ImGui::GetCurrentContext() == nullptr);
     ImGuiExt::Init();
 
-    auto destroy_context = scope_exit([]() noexcept {
+    auto destroy_context {scope_exit([]() noexcept {
         safe_call([] {
             if (ImGui::GetCurrentContext() != nullptr) {
                 ImGui::DestroyContext();
             }
         });
-    });
+    })};
 
-    ImGuiIO& io = ImGui::GetIO();
+    ImGuiIO& io {ImGui::GetIO()};
     io.DisplaySize = ImVec2 {1280.0f, 720.0f};
     io.DeltaTime = 1.0f / 60.0f;
     io.IniFilename = nullptr;
     io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
 
-    auto make_key_event = [](InputEvent::EventType type, KeyCode code, string_view text = {}) {
-        InputEvent ev;
+    auto make_key_event {[](InputEvent::EventType type, KeyCode code, string_view text = {}) {
+        InputEvent ev {};
         ev.Type = type;
 
         if (type == InputEvent::EventType::KeyDownEvent) {
@@ -1844,13 +1839,13 @@ TEST_CASE("MapperProcessesInputEventsAndDrawsFrame")
         }
 
         return ev;
-    };
+    }};
 
     SECTION("MouseAndWheelEventsAreProcessed")
     {
         ImGui::NewFrame();
 
-        InputEvent move;
+        InputEvent move {};
         move.Type = InputEvent::EventType::MouseMoveEvent;
         move.MouseMove.MouseX = 100;
         move.MouseMove.MouseY = 100;
@@ -1859,18 +1854,18 @@ TEST_CASE("MapperProcessesInputEventsAndDrawsFrame")
         REQUIRE_NOTHROW(mapper->ProcessMapperInputEvent(move));
 
         for (MouseButton button : {MouseButton::Left, MouseButton::Right, MouseButton::Middle}) {
-            InputEvent down;
+            InputEvent down {};
             down.Type = InputEvent::EventType::MouseDownEvent;
             down.MouseDown.Button = button;
             REQUIRE_NOTHROW(mapper->ProcessMapperInputEvent(down));
 
-            InputEvent up;
+            InputEvent up {};
             up.Type = InputEvent::EventType::MouseUpEvent;
             up.MouseUp.Button = button;
             REQUIRE_NOTHROW(mapper->ProcessMapperInputEvent(up));
         }
 
-        InputEvent wheel;
+        InputEvent wheel {};
         wheel.Type = InputEvent::EventType::MouseWheelEvent;
         wheel.MouseWheel.Delta = 3;
         REQUIRE_NOTHROW(mapper->ProcessMapperInputEvent(wheel));
@@ -1884,18 +1879,18 @@ TEST_CASE("MapperProcessesInputEventsAndDrawsFrame")
 
     SECTION("SelectingAndDraggingOverTheMapDrivesTheEditorCursor")
     {
-        auto mouse_move = [](int32_t x, int32_t y, int32_t dx, int32_t dy) {
-            InputEvent ev;
+        auto mouse_move {[](int32_t x, int32_t y, int32_t dx, int32_t dy) {
+            InputEvent ev {};
             ev.Type = InputEvent::EventType::MouseMoveEvent;
             ev.MouseMove.MouseX = x;
             ev.MouseMove.MouseY = y;
             ev.MouseMove.DeltaX = dx;
             ev.MouseMove.DeltaY = dy;
             return ev;
-        };
+        }};
 
-        auto mouse_button = [](InputEvent::EventType type, MouseButton button) {
-            InputEvent ev;
+        auto mouse_button {[](InputEvent::EventType type, MouseButton button) {
+            InputEvent ev {};
             ev.Type = type;
 
             if (type == InputEvent::EventType::MouseDownEvent) {
@@ -1906,7 +1901,7 @@ TEST_CASE("MapperProcessesInputEventsAndDrawsFrame")
             }
 
             return ev;
-        };
+        }};
 
         // Press over the map, drag across it and release: this is the rubber-band selection path, which is
         // where the cursor modes, the hit tests and the selection move live
@@ -1917,7 +1912,7 @@ TEST_CASE("MapperProcessesInputEventsAndDrawsFrame")
             REQUIRE_NOTHROW(mapper->ProcessMapperInputEvent(mouse_move(300, 300, 0, 0)));
             REQUIRE_NOTHROW(mapper->ProcessMapperInputEvent(mouse_button(InputEvent::EventType::MouseDownEvent, MouseButton::Left)));
 
-            for (int32_t step = 1; step <= 4; step++) {
+            for (int32_t step {1}; step <= 4; step++) {
                 REQUIRE_NOTHROW(mapper->ProcessMapperInputEvent(mouse_move(300 + step * 20, 300 + step * 15, 20, 15)));
                 REQUIRE_NOTHROW(mapper->DrawMapperFrame());
             }
@@ -1934,15 +1929,15 @@ TEST_CASE("MapperProcessesInputEventsAndDrawsFrame")
 
         // Rather than deriving the screen point from a hex, ask the map itself where something is: the
         // press has to land on a hit-testable entity for the drag to become a selection move
-        ptr<MapView> cur_map = mapper->GetCurMap().as_ptr();
+        ptr<MapView> cur_map {mapper->GetCurMap().as_ptr()};
         cur_map->InstantScrollTo(mpos {5, 5});
         cur_map->RebuildMap();
 
         ipos32 hex_screen_pos {};
-        bool found_entity = false;
+        bool found_entity {false};
 
-        for (int32_t y = 0; y < 720 && !found_entity; y += 8) {
-            for (int32_t x = 0; x < 1280 && !found_entity; x += 8) {
+        for (int32_t y {0}; y < 720 && !found_entity; y += 8) {
+            for (int32_t x {0}; x < 1280 && !found_entity; x += 8) {
                 if (cur_map->GetEntityAtScreen(ipos32 {x, y}, 0, false).first) {
                     hex_screen_pos = ipos32 {x, y};
                     found_entity = true;
@@ -1957,7 +1952,7 @@ TEST_CASE("MapperProcessesInputEventsAndDrawsFrame")
         REQUIRE_NOTHROW(mapper->ProcessMapperInputEvent(mouse_move(hex_screen_pos.x, hex_screen_pos.y, 0, 0)));
         REQUIRE_NOTHROW(mapper->ProcessMapperInputEvent(mouse_button(InputEvent::EventType::MouseDownEvent, MouseButton::Left)));
 
-        for (int32_t step = 1; step <= 3; step++) {
+        for (int32_t step {1}; step <= 3; step++) {
             REQUIRE_NOTHROW(mapper->ProcessMapperInputEvent(mouse_move(hex_screen_pos.x + step * 24, hex_screen_pos.y + step * 18, 24, 18)));
             REQUIRE_NOTHROW(mapper->DrawMapperFrame());
         }
@@ -1981,7 +1976,7 @@ TEST_CASE("MapperProcessesInputEventsAndDrawsFrame")
     SECTION("FullEditorFrameRenders")
     {
         // DrawMapperFrame drives the whole editor frame: map draw, interface events and every panel
-        for (int32_t frame = 0; frame < 2; frame++) {
+        for (int32_t frame {0}; frame < 2; frame++) {
             ImGui::NewFrame();
             REQUIRE_NOTHROW(mapper->DrawMapperFrame());
             ImGui::Render();
@@ -1992,14 +1987,14 @@ TEST_CASE("MapperProcessesInputEventsAndDrawsFrame")
     {
         // A denser map plus zoom/scroll changes walks far more of the map-view draw path than a
         // single static frame does
-        string dense;
+        string dense {};
 
-        for (int32_t i = 0; i < 12; i++) {
+        for (int32_t i {0}; i < 12; i++) {
             dense += MakeItemBlock(100 + i, TILE_A, 4 + i, 4 + (i % 3));
             dense += MakeItemBlock(200 + i, TILE_B, 6 + i, 8 + (i % 4));
         }
 
-        auto dense_map = mapper->LoadMapFromText("DenseMap", "DenseMap.fomap", MakeMapText(dense));
+        auto dense_map {mapper->LoadMapFromText("DenseMap", "DenseMap.fomap", MakeMapText(dense))};
         REQUIRE(dense_map);
         mapper->ShowMap(dense_map.as_ptr());
 
@@ -2008,7 +2003,7 @@ TEST_CASE("MapperProcessesInputEventsAndDrawsFrame")
         for (float32_t zoom : zooms) {
             REQUIRE_NOTHROW(mapper->ChangeZoom(zoom));
 
-            InputEvent scroll;
+            InputEvent scroll {};
             scroll.Type = InputEvent::EventType::MouseWheelEvent;
             scroll.MouseWheel.Delta = zoom > 1.0f ? 2 : -2;
             REQUIRE_NOTHROW(mapper->ProcessMapperInputEvent(scroll));
@@ -2072,9 +2067,9 @@ TEST_CASE("MapperProcessesInputEventsAndDrawsFrame")
 
         // The function keys drive the panel toggles, the view modes and the window state, and F8/F11/F12
         // reach through to the process-global app window, so the original state is put back afterwards
-        bool saved_fullscreen = GetApp()->MainWindow.IsFullscreen();
+        bool saved_fullscreen {GetApp()->MainWindow.IsFullscreen()};
 
-        auto restore_fullscreen = scope_exit([saved_fullscreen]() noexcept { safe_call([saved_fullscreen] { (void)GetApp()->MainWindow.ToggleFullscreen(saved_fullscreen); }); });
+        auto restore_fullscreen {scope_exit([saved_fullscreen]() noexcept { safe_call([saved_fullscreen] { (void)GetApp()->MainWindow.ToggleFullscreen(saved_fullscreen); }); })};
 
         // With an entity selected and the inspector up, F9, Delete and Escape take their other branches.
         // This runs before the sweep below, which toggles the layer visibility a selection depends on
@@ -2118,70 +2113,70 @@ TEST_CASE("MapperProcessesInputEventsAndDrawsFrame")
 
 TEST_CASE("MapViewItemHitTestingUsesActiveItemSprites")
 {
-    GlobalSettings settings = MakeMapperTestSettings();
-    refcount_ptr<MapperEngine> mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
+    GlobalSettings settings {MakeMapperTestSettings()};
+    refcount_ptr<MapperEngine> mapper {safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow)};
 
-    auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
+    auto shutdown {scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); })};
 
     mapper->InitIface();
 
-    nptr<MapView> map = mapper->LoadMapFromText("ItemHitMap", "ItemHitMap.fomap", MakeMapText(MakeItemBlock(10, TILE_A, 8, 8)));
+    nptr<MapView> map {mapper->LoadMapFromText("ItemHitMap", "ItemHitMap.fomap", MakeMapText(MakeItemBlock(10, TILE_A, 8, 8)))};
     REQUIRE(map);
     mapper->ShowMap(map.as_ptr());
 
-    ptr<MapView> map_ptr = map.as_ptr();
+    ptr<MapView> map_ptr {map.as_ptr()};
     map_ptr->InstantScrollTo(mpos {8, 8});
     map_ptr->RebuildMap();
 
-    span<refcount_ptr<ItemHexView>> items = map_ptr->GetItems();
+    span<refcount_ptr<ItemHexView>> items {map_ptr->GetItems()};
     REQUIRE(items.size() == 1);
-    ptr<ItemHexView> item = items.front().as_ptr();
+    ptr<ItemHexView> item {items.front().as_ptr()};
     REQUIRE(item->IsMapSpriteVisible());
 
-    irect32 first_rect = item->GetMapSprite()->GetDrawRect();
-    ipos32 first_pos = map_ptr->MapToScreenPos({first_rect.x + first_rect.width / 2, first_rect.y + first_rect.height / 2});
-    bool item_egg = false;
-    pair<nptr<ItemHexView>, nptr<const MapSprite>> first_hit = map_ptr->GetItemAtScreen(first_pos, item_egg, 0, false);
+    irect32 first_rect {item->GetMapSprite()->GetDrawRect()};
+    ipos32 first_pos {map_ptr->MapToScreenPos({first_rect.x + first_rect.width / 2, first_rect.y + first_rect.height / 2})};
+    bool item_egg {false};
+    pair<nptr<ItemHexView>, nptr<const MapSprite>> first_hit {map_ptr->GetItemAtScreen(first_pos, item_egg, 0, false)};
     CHECK(first_hit.first == item);
     CHECK_FALSE(item_egg);
 
     map_ptr->MoveItem(item, mpos {9, 8});
     REQUIRE(item->IsMapSpriteVisible());
 
-    irect32 moved_rect = item->GetMapSprite()->GetDrawRect();
-    ipos32 moved_pos = map_ptr->MapToScreenPos({moved_rect.x + moved_rect.width / 2, moved_rect.y + moved_rect.height / 2});
-    pair<nptr<ItemHexView>, nptr<const MapSprite>> moved_hit = map_ptr->GetItemAtScreen(moved_pos, item_egg, 0, false);
+    irect32 moved_rect {item->GetMapSprite()->GetDrawRect()};
+    ipos32 moved_pos {map_ptr->MapToScreenPos({moved_rect.x + moved_rect.width / 2, moved_rect.y + moved_rect.height / 2})};
+    pair<nptr<ItemHexView>, nptr<const MapSprite>> moved_hit {map_ptr->GetItemAtScreen(moved_pos, item_egg, 0, false)};
     CHECK(moved_hit.first == item);
 
     map_ptr->DestroyItem(item);
-    pair<nptr<ItemHexView>, nptr<const MapSprite>> removed_hit = map_ptr->GetItemAtScreen(moved_pos, item_egg, 0, false);
+    pair<nptr<ItemHexView>, nptr<const MapSprite>> removed_hit {map_ptr->GetItemAtScreen(moved_pos, item_egg, 0, false)};
     CHECK_FALSE(removed_hit.first);
 }
 
 TEST_CASE("MapViewLightingAndViewportOperations")
 {
-    auto settings = MakeMapperTestSettings();
-    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
+    auto settings {MakeMapperTestSettings()};
+    auto mapper {safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow)};
 
-    auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
+    auto shutdown {scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); })};
 
     mapper->InitIface();
 
     // A light-emitting item drives the light fan machinery: tracing, marking the fan ends and cleaning it up
     // on every rebuild. Without a light source those paths never run, whatever else the map contains
-    string light_props = "LightSource = true\nLightIntensity = 50\nLightDistance = 6\nLightFlags = 0\nLightColor = 0xFFFFFFFF";
-    string body = MakeItemBlock(10, TILE_A, 8, 8, light_props) + MakeItemBlock(11, TILE_B, 12, 12, light_props) + MakeItemBlock(12, TILE_A, 5, 5);
+    string light_props {"LightSource = true\nLightIntensity = 50\nLightDistance = 6\nLightFlags = 0\nLightColor = 0xFFFFFFFF"};
+    string body {MakeItemBlock(10, TILE_A, 8, 8, light_props) + MakeItemBlock(11, TILE_B, 12, 12, light_props) + MakeItemBlock(12, TILE_A, 5, 5)};
 
     // A map critter exercises the critter map view alongside the item paths. Its light properties are
     // client-scoped, so they cannot be authored in the map text and are switched on at runtime below
     body += MakeCritterBlock(20, CRITTER_A, 6, 6);
     body += MakeCritterBlock(21, CRITTER_A, 10, 10);
 
-    auto map = mapper->LoadMapFromText("LightMap", "LightMap.fomap", MakeMapText(body));
+    auto map {mapper->LoadMapFromText("LightMap", "LightMap.fomap", MakeMapText(body))};
     REQUIRE(map);
     mapper->ShowMap(map.as_ptr());
 
-    ptr<MapView> map_ptr = map.as_ptr();
+    ptr<MapView> map_ptr {map.as_ptr()};
 
     for (auto& map_critter : map_ptr->GetCritters()) {
         map_critter->SetLightSource(true);
@@ -2195,16 +2190,16 @@ TEST_CASE("MapViewLightingAndViewportOperations")
     {
         // A critter view only advances its animation while the map is processed, so nothing under the
         // per-frame animation walk runs in a test that just builds the map and looks at it
-        auto critters = map_ptr->GetCritters();
+        auto critters {map_ptr->GetCritters()};
         REQUIRE_FALSE(critters.empty());
 
-        ptr<CritterHexView> critter = critters.front().as_ptr();
+        ptr<CritterHexView> critter {critters.front().as_ptr()};
 
-        auto process_frames = [&map_ptr](int32_t count) {
-            for (int32_t frame = 0; frame < count; frame++) {
+        auto process_frames {[&map_ptr](int32_t count) {
+            for (int32_t frame {0}; frame < count; frame++) {
                 REQUIRE_NOTHROW(map_ptr->Process());
             }
-        };
+        }};
 
         // Queued animations play one after another, and appending adds to the queue instead of replacing
         REQUIRE_NOTHROW(critter->AppendAnim(static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(1), nullptr));
@@ -2218,7 +2213,7 @@ TEST_CASE("MapViewLightingAndViewportOperations")
         }
 
         // Direction changes and the view refresh rebuild the sprite the animation walks over
-        for (int32_t dir = 0; dir < 6; dir++) {
+        for (int32_t dir {0}; dir < 6; dir++) {
             REQUIRE_NOTHROW(critter->ChangeLookDir(mdir {numeric_cast<uint8_t>(dir)}));
             REQUIRE_NOTHROW(critter->ChangeMoveDir(mdir {numeric_cast<uint8_t>(dir)}));
             process_frames(2);
@@ -2243,7 +2238,7 @@ TEST_CASE("MapViewLightingAndViewportOperations")
     {
         REQUIRE_NOTHROW(map_ptr->RebuildMap());
 
-        auto items = map_ptr->GetItems();
+        auto items {map_ptr->GetItems()};
         REQUIRE_FALSE(items.empty());
 
         // Moving a light source retraces its fan from the new hex
@@ -2259,11 +2254,11 @@ TEST_CASE("MapViewLightingAndViewportOperations")
 
     SECTION("CritterViewsProcessAnimationAndVisibility")
     {
-        auto critters = map_ptr->GetCritters();
+        auto critters {map_ptr->GetCritters()};
         REQUIRE_FALSE(critters.empty());
 
         for (auto& cr : critters) {
-            ptr<CritterHexView> cr_ptr = cr.as_ptr();
+            ptr<CritterHexView> cr_ptr {cr.as_ptr()};
 
             REQUIRE_NOTHROW(cr_ptr->RefreshView());
             REQUIRE_NOTHROW(cr_ptr->ChangeDir(mdir {2}));
@@ -2288,7 +2283,7 @@ TEST_CASE("MapViewLightingAndViewportOperations")
         // between frames or the animation steps are all zero-length and never run
         REQUIRE_NOTHROW(map_ptr->ScrollToHex(mpos {8, 8}, ipos16 {}, 5, false));
 
-        for (int32_t i = 0; i < 8; i++) {
+        for (int32_t i {0}; i < 8; i++) {
             mapper->GameTime.FrameAdvance(true);
             REQUIRE_NOTHROW(map_ptr->Process());
             std::this_thread::sleep_for(std::chrono::milliseconds {12});
@@ -2296,7 +2291,7 @@ TEST_CASE("MapViewLightingAndViewportOperations")
 
         REQUIRE_NOTHROW(map_ptr->ApplyScrollOffset(ipos32 {20, 20}, 5, false));
 
-        for (int32_t i = 0; i < 8; i++) {
+        for (int32_t i {0}; i < 8; i++) {
             mapper->GameTime.FrameAdvance(true);
             REQUIRE_NOTHROW(map_ptr->Process());
             std::this_thread::sleep_for(std::chrono::milliseconds {12});
@@ -2311,15 +2306,15 @@ TEST_CASE("MapViewLightingAndViewportOperations")
         REQUIRE(ImGui::GetCurrentContext() == nullptr);
         ImGuiExt::Init();
 
-        auto destroy_context = scope_exit([]() noexcept {
+        auto destroy_context {scope_exit([]() noexcept {
             safe_call([] {
                 if (ImGui::GetCurrentContext() != nullptr) {
                     ImGui::DestroyContext();
                 }
             });
-        });
+        })};
 
-        ImGuiIO& io = ImGui::GetIO();
+        ImGuiIO& io {ImGui::GetIO()};
         io.DisplaySize = ImVec2 {1280.0f, 720.0f};
         io.DeltaTime = 1.0f / 60.0f;
         io.IniFilename = nullptr;
@@ -2327,7 +2322,7 @@ TEST_CASE("MapViewLightingAndViewportOperations")
 
         map_ptr->AddFog(mpos {8, 8}, DrawOrderType::Light, nullptr);
 
-        for (int32_t frame = 0; frame < 3; frame++) {
+        for (int32_t frame {0}; frame < 3; frame++) {
             ImGui::NewFrame();
             REQUIRE_NOTHROW(map_ptr->Process());
             REQUIRE_NOTHROW(map_ptr->DrawMap());
@@ -2340,33 +2335,33 @@ TEST_CASE("MapperSavesMapsToADiskMapsRoot")
 {
     // Saving resolves the on-disk Maps root from an existing map container, so the fixture needs a real
     // directory with a reference .fomap in it - a memory-only resource set can never reach this path
-    auto maps_dir = std::filesystem::temp_directory_path() / std::format("fo_engine_mapper_save_test_{}", std::chrono::steady_clock::now().time_since_epoch().count());
-    std::error_code remove_error;
+    auto maps_dir {std::filesystem::temp_directory_path() / std::format("fo_engine_mapper_save_test_{}", std::chrono::steady_clock::now().time_since_epoch().count())};
+    std::error_code remove_error {};
     std::filesystem::remove_all(maps_dir, remove_error);
     std::filesystem::create_directories(maps_dir);
 
-    auto cleanup_maps_dir = scope_exit([maps_dir]() noexcept {
+    auto cleanup_maps_dir {scope_exit([maps_dir]() noexcept {
         safe_call([maps_dir] {
-            std::error_code ignored;
+            std::error_code ignored {};
             std::filesystem::remove_all(maps_dir, ignored);
         });
-    });
+    })};
 
-    string reference_map = MakeMapText(MakeItemBlock(10, TILE_A, 5, 5));
+    string reference_map {MakeMapText(MakeItemBlock(10, TILE_A, 5, 5))};
     REQUIRE(fs::write_file((maps_dir / "ReferenceMap.fomap").generic_string(), reference_map));
 
-    auto settings = MakeMapperTestSettings();
+    auto settings {MakeMapperTestSettings()};
     BakerTests::OverrideSetting(settings.Baking.ProtoFileExtensions, vector<string> {"fopro", "fomap"});
-    auto pack_config = ConfigFile(strex("[ResourcePack]\nName = MapperSaveTestPack\nInputDirs = {}\n", maps_dir.generic_string()).str());
+    auto pack_config {ConfigFile(strex("[ResourcePack]\nName = MapperSaveTestPack\nInputDirs = {}\n", maps_dir.generic_string()).str())};
     settings.ApplyConfigFile(pack_config, "");
 
-    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
+    auto mapper {safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow)};
 
-    auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
+    auto shutdown {scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); })};
 
     mapper->InitIface();
 
-    auto map = mapper->LoadMapFromText("SaveMap", "SaveMap.fomap", MakeMapText(MakeItemBlock(11, TILE_B, 6, 6)));
+    auto map {mapper->LoadMapFromText("SaveMap", "SaveMap.fomap", MakeMapText(MakeItemBlock(11, TILE_B, 6, 6)))};
     REQUIRE(map);
     mapper->ShowMap(map.as_ptr());
 
@@ -2393,15 +2388,15 @@ TEST_CASE("MapperSavesMapsToADiskMapsRoot")
         REQUIRE(ImGui::GetCurrentContext() == nullptr);
         ImGuiExt::Init();
 
-        auto destroy_context = scope_exit([]() noexcept {
+        auto destroy_context {scope_exit([]() noexcept {
             safe_call([] {
                 if (ImGui::GetCurrentContext() != nullptr) {
                     ImGui::DestroyContext();
                 }
             });
-        });
+        })};
 
-        ImGuiIO& io = ImGui::GetIO();
+        ImGuiIO& io {ImGui::GetIO()};
         io.DisplaySize = ImVec2 {1280.0f, 720.0f};
         io.DeltaTime = 1.0f / 60.0f;
         io.IniFilename = nullptr;
@@ -2409,7 +2404,7 @@ TEST_CASE("MapperSavesMapsToADiskMapsRoot")
 
         mapper->MapListWindowVisible = true;
 
-        for (int32_t frame = 0; frame < 3; frame++) {
+        for (int32_t frame {0}; frame < 3; frame++) {
             ImGui::NewFrame();
             ImGui::LogToBuffer(12);
             REQUIRE_NOTHROW(mapper->DrawMapListWindowImGui());
@@ -2420,13 +2415,13 @@ TEST_CASE("MapperSavesMapsToADiskMapsRoot")
 
     SECTION("SavingAnUnloadedMapIsRejected")
     {
-        auto other = mapper->LoadMapFromText("OtherMap", "OtherMap.fomap", MakeMapText(MakeItemBlock(12, TILE_A, 7, 7)));
+        auto other {mapper->LoadMapFromText("OtherMap", "OtherMap.fomap", MakeMapText(MakeItemBlock(12, TILE_A, 7, 7)))};
         REQUIRE(other);
 
         // The engine's only owning reference lives in LoadedMaps, so unloading destroys the view outright. Hold
         // an own reference across it, or the rejection below reads freed memory instead of exercising the guard
-        ptr<MapView> other_view = other.as_ptr();
-        refcount_ptr<MapView> unloaded = refcount_ptr<MapView>::from_addref(other_view.get());
+        ptr<MapView> other_view {other.as_ptr()};
+        refcount_ptr<MapView> unloaded {refcount_ptr<MapView>::from_addref(other_view.get())};
 
         mapper->UnloadMap(other_view);
 
@@ -2436,10 +2431,10 @@ TEST_CASE("MapperSavesMapsToADiskMapsRoot")
 
 TEST_CASE("MapperConsoleCommands")
 {
-    auto settings = MakeMapperTestSettings();
-    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
+    auto settings {MakeMapperTestSettings()};
+    auto mapper {safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow)};
 
-    auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
+    auto shutdown {scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); })};
 
     mapper->InitIface();
 
@@ -2482,7 +2477,7 @@ TEST_CASE("MapperConsoleCommands")
 
     SECTION("AnimationCommandsWalkTheCrittersOfALoadedMap")
     {
-        auto map = mapper->LoadMapFromText("ConsoleMap", "ConsoleMap.fomap", MakeMapText(MakeItemBlock(10, TILE_A, 5, 5)));
+        auto map {mapper->LoadMapFromText("ConsoleMap", "ConsoleMap.fomap", MakeMapText(MakeItemBlock(10, TILE_A, 5, 5)))};
         REQUIRE(map);
         mapper->ShowMap(map.as_ptr());
 
@@ -2505,21 +2500,21 @@ TEST_CASE("MapperConsoleCommands")
 
 TEST_CASE("MapperDynamicItemAuthoringRejectsUndeliveredOverrides")
 {
-    auto settings = MakeMapperTestSettings();
-    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
-    auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
-    auto map = mapper->LoadMapFromText("DynamicAuthoring", "DynamicAuthoring.fomap", MakeMapText(MakeItemBlock(10, SCENERY_A, 8, 8)));
+    auto settings {MakeMapperTestSettings()};
+    auto mapper {safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow)};
+    auto shutdown {scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); })};
+    auto map {mapper->LoadMapFromText("DynamicAuthoring", "DynamicAuthoring.fomap", MakeMapText(MakeItemBlock(10, SCENERY_A, 8, 8)))};
     REQUIRE(map);
     mapper->ShowMap(map.as_ptr());
-    auto item = map->GetItems().front().as_ptr();
+    auto item {map->GetItems().front().as_ptr()};
     REQUIRE_FALSE(item->GetStatic());
 
     SECTION("Constants and persistent NoSync data reject zero false and empty overrides atomically")
     {
         for (auto [name, value] : {pair<string_view, string_view> {"AuthoringNumber", "0"}, {"AuthoringFlag", "False"}, {"AuthoringText", ""}, {"AuthoringList", ""}, {"AuthoringPrivate", "1"}, {"DrawFlatten", "True"}, {"AuthoringClient", "0"}}) {
-            auto prop = item->GetProperties()->GetRegistrar()->FindProperty(name);
+            auto prop {item->GetProperties()->GetRegistrar()->FindProperty(name)};
             REQUIRE(prop);
-            string before = item->GetProperties()->SavePropertyToText(prop);
+            string before {item->GetProperties()->SavePropertyToText(prop)};
             CHECK_FALSE(mapper->ApplyEntityPropertyText(item, prop, value));
             CHECK(item->GetProperties()->SavePropertyToText(prop) == before);
             CHECK_FALSE(mapper->IsMapDirty(map));
@@ -2529,7 +2524,7 @@ TEST_CASE("MapperDynamicItemAuthoringRejectsUndeliveredOverrides")
     SECTION("Equal prototype values are accepted without a dirty change")
     {
         for (auto name : {"AuthoringNumber", "AuthoringClient"}) {
-            auto prop = item->GetProperties()->GetRegistrar()->FindProperty(name);
+            auto prop {item->GetProperties()->GetRegistrar()->FindProperty(name)};
             REQUIRE(prop);
             CHECK(mapper->ApplyEntityPropertyText(item, prop, "20"));
             CHECK_FALSE(mapper->IsMapDirty(map));
@@ -2538,10 +2533,10 @@ TEST_CASE("MapperDynamicItemAuthoringRejectsUndeliveredOverrides")
 
     SECTION("Static placements retain client-only configuration overrides")
     {
-        auto static_map = mapper->LoadMapFromText("StaticClient", "StaticClient.fomap", MakeMapText(MakeItemBlock(20, SCENERY_A, 12, 12, "Static = True\nAuthoringClient = 0")));
+        auto static_map {mapper->LoadMapFromText("StaticClient", "StaticClient.fomap", MakeMapText(MakeItemBlock(20, SCENERY_A, 12, 12, "Static = True\nAuthoringClient = 0")))};
         REQUIRE(static_map);
-        auto static_item = static_map->GetItems().front().as_ptr();
-        auto prop = static_item->GetProperties()->GetRegistrar()->FindProperty("AuthoringClient");
+        auto static_item {static_map->GetItems().front().as_ptr()};
+        auto prop {static_item->GetProperties()->GetRegistrar()->FindProperty("AuthoringClient")};
         REQUIRE(prop);
         CHECK(static_item->GetProperties()->GetValueFast<int32_t>(prop) == 0);
         CHECK_NOTHROW(static_map->SaveToText("StaticClient"));
@@ -2550,7 +2545,7 @@ TEST_CASE("MapperDynamicItemAuthoringRejectsUndeliveredOverrides")
     SECTION("Existing public owner and server channels remain authorable")
     {
         for (auto name : {"LightDistance", "AuthoringOwner", "AuthoringServer"}) {
-            auto prop = item->GetProperties()->GetRegistrar()->FindProperty(name);
+            auto prop {item->GetProperties()->GetRegistrar()->FindProperty(name)};
             REQUIRE(prop);
             CHECK(mapper->ApplyEntityPropertyText(item, prop, "3"));
             CHECK(item->GetProperties()->SavePropertyToText(prop) == "3");
@@ -2561,10 +2556,10 @@ TEST_CASE("MapperDynamicItemAuthoringRejectsUndeliveredOverrides")
 
     SECTION("Static transition checks all overrides before committing")
     {
-        auto static_map = mapper->LoadMapFromText("StaticAuthoring", "StaticAuthoring.fomap", MakeMapText(MakeItemBlock(20, TILE_A, 12, 12, "DrawFlatten = True")));
+        auto static_map {mapper->LoadMapFromText("StaticAuthoring", "StaticAuthoring.fomap", MakeMapText(MakeItemBlock(20, TILE_A, 12, 12, "DrawFlatten = True")))};
         REQUIRE(static_map);
         mapper->ShowMap(static_map.as_ptr());
-        auto static_item = static_map->GetItems().front().as_ptr();
+        auto static_item {static_map->GetItems().front().as_ptr()};
         CHECK_FALSE(mapper->ApplyEntityPropertyText(static_item, static_item->GetPropertyStatic(), "False"));
         CHECK(static_item->GetStatic());
         CHECK(static_item->GetDrawFlatten());
@@ -2573,15 +2568,15 @@ TEST_CASE("MapperDynamicItemAuthoringRejectsUndeliveredOverrides")
 
     SECTION("A rejected dynamic sibling leaves the primary static item unchanged")
     {
-        string body = MakeItemBlock(20, TILE_A, 12, 12) + MakeItemBlock(21, TILE_A, 13, 12, "Static = False");
-        auto mixed_map = mapper->LoadMapFromText("MixedAuthoring", "MixedAuthoring.fomap", MakeMapText(body));
+        string body {MakeItemBlock(20, TILE_A, 12, 12) + MakeItemBlock(21, TILE_A, 13, 12, "Static = False")};
+        auto mixed_map {mapper->LoadMapFromText("MixedAuthoring", "MixedAuthoring.fomap", MakeMapText(body))};
         REQUIRE(mixed_map);
         mapper->ShowMap(mixed_map.as_ptr());
-        auto primary = mixed_map->GetItem(ident_t {20});
-        auto sibling = mixed_map->GetItem(ident_t {21});
+        auto primary {mixed_map->GetItem(ident_t {20})};
+        auto sibling {mixed_map->GetItem(ident_t {21})};
         REQUIRE(primary);
         REQUIRE(sibling);
-        auto prop = primary->GetProperties()->GetRegistrar()->FindProperty("AuthoringNumber");
+        auto prop {primary->GetProperties()->GetRegistrar()->FindProperty("AuthoringNumber")};
         REQUIRE(prop);
         CHECK_FALSE(mapper->ApplyEntityPropertyText(primary, prop, "30"));
         CHECK(primary->GetProperties()->GetValueFast<int32_t>(prop) == 0);
@@ -2596,16 +2591,16 @@ TEST_CASE("MapperDynamicItemAuthoringRejectsUndeliveredOverrides")
 
     SECTION("Save and clone creation reject direct raw property bypasses")
     {
-        auto prop = item->GetProperties()->GetRegistrar()->FindProperty("AuthoringList");
+        auto prop {item->GetProperties()->GetRegistrar()->FindProperty("AuthoringList")};
         REQUIRE(prop);
         item->GetPropertiesForEdit()->ApplyPropertyFromText(prop, "");
         CHECK_THROWS_AS(map->SaveToText("InvalidRaw"), MapLoaderException);
-        size_t before_count = map->GetItems().size();
+        size_t before_count {map->GetItems().size()};
         CHECK_THROWS_AS(map->AddMapperItem(item->GetProtoId(), mpos {10, 10}, item->GetProperties()), MapLoaderException);
         CHECK(map->GetItems().size() == before_count);
 
-        auto cr = map->AddMapperCritter(mapper->Hashes.to_hashed_string(CRITTER_A), mpos {12, 12}, mdir {}, nullptr);
-        auto proto = mapper->GetProtoItem(item->GetProtoId());
+        auto cr {map->AddMapperCritter(mapper->Hashes.to_hashed_string(CRITTER_A), mpos {12, 12}, mdir {}, nullptr)};
+        auto proto {mapper->GetProtoItem(item->GetProtoId())};
         REQUIRE(proto);
         CHECK_THROWS_AS(cr->AddMapperInvItem(ident_t {101}, proto, CritterItemSlot::Inventory, item->GetProperties()), MapLoaderException);
         CHECK(cr->GetInvItems().empty());
@@ -2616,13 +2611,13 @@ TEST_CASE("MapperDynamicItemAuthoringRejectsUndeliveredOverrides")
 
 TEST_CASE("MapperDynamicItemsNeverCoalesceIntoMesh")
 {
-    auto settings = MakeMapperTestSettings();
-    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
-    auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
+    auto settings {MakeMapperTestSettings()};
+    auto mapper {safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow)};
+    auto shutdown {scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); })};
 
     for (auto proto : {TILE_A, TILE_U}) {
-        string body = MakeItemBlock(10, proto, 8, 8, "Static = False") + MakeItemBlock(11, proto, 9, 8, "Static = False") + MakeItemBlock(12, proto, 10, 8);
-        auto map = mapper->LoadMapFromText("DynamicMerge", "DynamicMerge.fomap", MakeMapText(body));
+        string body {MakeItemBlock(10, proto, 8, 8, "Static = False") + MakeItemBlock(11, proto, 9, 8, "Static = False") + MakeItemBlock(12, proto, 10, 8)};
+        auto map {mapper->LoadMapFromText("DynamicMerge", "DynamicMerge.fomap", MakeMapText(body))};
         REQUIRE(map);
         CHECK(map->GetItems().size() == 3);
         CHECK(mapper->MergeItemsToMultihexMeshes(map.as_ptr()) == 0);
@@ -2638,26 +2633,26 @@ TEST_CASE("MapperDynamicItemsNeverCoalesceIntoMesh")
 
 TEST_CASE("AnimationViewerRequestsTheConfiguredOpaquePreviewPair")
 {
-    auto preview_action = static_cast<CritterActionAnim>(GENERATE(509, 600));
-    auto preview_state = static_cast<CritterStateAnim>(401);
-    auto settings = MakeMapperTestSettings();
+    auto preview_action {static_cast<CritterActionAnim>(GENERATE(509, 600))};
+    auto preview_state {static_cast<CritterStateAnim>(401)};
+    auto settings {MakeMapperTestSettings()};
     BakerTests::OverrideSetting(settings.Animation.PreviewStateAnim, preview_state);
     BakerTests::OverrideSetting(settings.Animation.PreviewActionAnim, preview_action);
-    auto resources = MakeMapperTestResources("Policy.fofrm");
-    auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("PreviewPolicyResources");
+    auto resources {MakeMapperTestResources("Policy.fofrm")};
+    auto source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("PreviewPolicyResources")};
     source->AddFile("Policy.fofrm", BakerTests::MakeMultiFrameBakedSprite(5, 2, 2, 100));
     resources.AddCustomSource(std::move(source));
-    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, std::move(resources), &GetApp()->MainWindow);
-    auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
+    auto mapper {safe_alloc::make_refcounted<MapperEngine>(&settings, std::move(resources), &GetApp()->MainWindow)};
+    auto shutdown {scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); })};
     mapper->InitIface();
-    auto sprite = mapper->ResMngr.LoadSprite("Policy.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>();
+    auto sprite {mapper->ResMngr.LoadSprite("Policy.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>()};
     REQUIRE(sprite);
-    uint32_t sprite_id = mapper->AnimAdd(sprite);
-    bool requested_preview = false;
-    Entity::EventCallbackData resolution;
+    uint32_t sprite_id {mapper->AnimAdd(sprite)};
+    bool requested_preview {false};
+    Entity::EventCallbackData resolution {};
     resolution.Callback = [&](FuncCallData& call) {
-        auto state = *cast_from_void<CritterStateAnim*>(call.ArgsData[1]);
-        auto action = *cast_from_void<CritterActionAnim*>(call.ArgsData[2]);
+        auto state {*cast_from_void<CritterStateAnim*>(call.ArgsData[1])};
+        auto action {*cast_from_void<CritterActionAnim*>(call.ArgsData[2])};
         requested_preview |= state == preview_state && action == preview_action;
 
         if (state == preview_state && action == static_cast<CritterActionAnim>(509)) {
@@ -2670,13 +2665,13 @@ TEST_CASE("AnimationViewerRequestsTheConfiguredOpaquePreviewPair")
     mapper->OnCritterAnimationSprite.Subscribe(std::move(resolution));
 
     SettingsStorage viewer_settings {"AnimationViewer"};
-    string previous_proto = viewer_settings.GetString("SelectedProto");
+    string previous_proto {viewer_settings.GetString("SelectedProto")};
     viewer_settings.SetString("SelectedProto", CRITTER_A);
-    auto restore_settings = scope_exit([&]() noexcept { safe_call([&] { viewer_settings.SetString("SelectedProto", previous_proto); }); });
+    auto restore_settings {scope_exit([&]() noexcept { safe_call([&] { viewer_settings.SetString("SelectedProto", previous_proto); }); })};
     REQUIRE(ImGui::GetCurrentContext() == nullptr);
     ImGuiExt::Init();
-    auto destroy_context = scope_exit([]() noexcept { ImGui::DestroyContext(); });
-    auto& io = ImGui::GetIO();
+    auto destroy_context {scope_exit([]() noexcept { ImGui::DestroyContext(); })};
+    auto& io {ImGui::GetIO()};
     io.DisplaySize = ImVec2 {1280.0f, 720.0f};
     io.DeltaTime = 1.0f / 60.0f;
     io.IniFilename = nullptr;
@@ -2685,7 +2680,7 @@ TEST_CASE("AnimationViewerRequestsTheConfiguredOpaquePreviewPair")
     viewer.SetVisible(true);
     viewer.SetFillViewport(true);
 
-    for (int32_t frame = 0; frame < 3; frame++) {
+    for (int32_t frame {0}; frame < 3; frame++) {
         ImGui::NewFrame();
         REQUIRE_NOTHROW(viewer.Draw());
         ImGui::Render();
@@ -2697,31 +2692,31 @@ TEST_CASE("AnimationViewerRequestsTheConfiguredOpaquePreviewPair")
 
 TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
 {
-    auto settings = MakeMapperTestSettings();
-    auto resources = MakeMapperTestResources();
-    auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("AnimationPolicyResources");
+    auto settings {MakeMapperTestSettings()};
+    auto resources {MakeMapperTestResources()};
+    auto source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("AnimationPolicyResources")};
     source->AddFile("Policy.fofrm", BakerTests::MakeMultiFrameBakedSprite(5, 2, 2, 100, ipos16 {2, 0}));
     resources.AddCustomSource(std::move(source));
-    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, std::move(resources), &GetApp()->MainWindow);
-    auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
+    auto mapper {safe_alloc::make_refcounted<MapperEngine>(&settings, std::move(resources), &GetApp()->MainWindow)};
+    auto shutdown {scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); })};
     mapper->InitIface();
-    auto map = mapper->LoadMapFromText("AnimationPolicyMap", "AnimationPolicyMap.fomap", MakeMapText(MakeCritterBlock(20, CRITTER_A, 6, 6)));
+    auto map {mapper->LoadMapFromText("AnimationPolicyMap", "AnimationPolicyMap.fomap", MakeMapText(MakeCritterBlock(20, CRITTER_A, 6, 6)))};
     REQUIRE(map);
     mapper->ShowMap(map);
-    auto critter = map->GetCritters().front();
+    auto critter {map->GetCritters().front()};
     CritterActionAnim observed {};
-    auto selected_action = static_cast<CritterActionAnim>(509);
-    auto sprite = mapper->ResMngr.LoadSprite("Policy.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>();
+    auto selected_action {static_cast<CritterActionAnim>(509)};
+    auto sprite {mapper->ResMngr.LoadSprite("Policy.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>()};
     REQUIRE(sprite);
 
-    for (int32_t index = 0; index < sprite->GetFramesCount(); index++) {
+    for (int32_t index {0}; index < sprite->GetFramesCount(); index++) {
         sprite->SetFrame(index, sprite->GetSpr(index)->MakeCopy(), ipos32 {40 + index, -17}, sprite->GetSprMotion()[index]);
     }
 
-    uint32_t spr_id = mapper->AnimAdd(sprite);
-    auto flags = CritterAnimationFlags::None;
-    float32_t normalized_time = 0.0f;
-    Entity::EventCallbackData selection;
+    uint32_t spr_id {mapper->AnimAdd(sprite)};
+    auto flags {CritterAnimationFlags::None};
+    float32_t normalized_time {0.0f};
+    Entity::EventCallbackData selection {};
     selection.Callback = [&flags, &normalized_time, &selected_action](FuncCallData& call) {
         *cast_from_void<CritterStateAnim*>(call.ArgsData[1]) = static_cast<CritterStateAnim>(401);
         *cast_from_void<CritterActionAnim*>(call.ArgsData[2]) = selected_action;
@@ -2731,7 +2726,7 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
     };
 
     mapper->OnCritterAnimationInit.Subscribe(std::move(selection));
-    Entity::EventCallbackData resolution;
+    Entity::EventCallbackData resolution {};
     resolution.Callback = [&observed, &spr_id](FuncCallData& call) {
         observed = *cast_from_void<CritterActionAnim*>(call.ArgsData[2]);
         *cast_from_void<uint32_t*>(call.ArgsData[3]) = spr_id;
@@ -2749,7 +2744,7 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
         flags = CritterAnimationFlags::Freeze;
         normalized_time = 0.5f;
         critter->RefreshView();
-        auto frames = mapper->CritterFrames.GetCritterAnimFrames(critter->GetModelName(), static_cast<CritterStateAnim>(401), static_cast<CritterActionAnim>(509), critter->GetDir());
+        auto frames {mapper->CritterFrames.GetCritterAnimFrames(critter->GetModelName(), static_cast<CritterStateAnim>(401), static_cast<CritterActionAnim>(509), critter->GetDir())};
         REQUIRE(frames);
         CHECK(critter->GetMapSprite()->GetSprite() == frames->GetSpr(2));
         critter->Process();
@@ -2771,7 +2766,7 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
         flags = CritterAnimationFlags::Freeze;
         normalized_time = 0.5f;
         critter->RefreshView();
-        auto frames = mapper->CritterFrames.GetCritterAnimFrames(critter->GetModelName(), static_cast<CritterStateAnim>(401), static_cast<CritterActionAnim>(509), critter->GetDir());
+        auto frames {mapper->CritterFrames.GetCritterAnimFrames(critter->GetModelName(), static_cast<CritterStateAnim>(401), static_cast<CritterActionAnim>(509), critter->GetDir())};
         REQUIRE(frames);
         CHECK(critter->GetMapSprite()->GetSprite() == frames->GetSpr(2));
         CHECK(critter->GetMapSprite()->GetSpriteRootOffset() == ipos32 {-41, 19});
@@ -2792,7 +2787,7 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
     {
         flags = CritterAnimationFlags::Movement;
         critter->RefreshView();
-        auto frame = critter->GetMapSprite()->GetSprite();
+        auto frame {critter->GetMapSprite()->GetSprite()};
         CHECK(*critter->GetMapSprite()->GetPSprOffset() == ipos32 {2, 0});
         critter->SetHexOffset(ipos16 {1, 0});
         critter->RefreshView();
@@ -2805,11 +2800,11 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
 
     SECTION("FrameAlignmentProjectsBothAxesAndFloorsNegativeCycles")
     {
-        auto aligned = sprite->MakeCopy().dyn_cast<SpriteSheet>();
+        auto aligned {sprite->MakeCopy().dyn_cast<SpriteSheet>()};
         REQUIRE(aligned);
-        const ipos32 deltas[] = {{2, 1}, {2, 1}, {4, 2}, {}, {}};
+        const ipos32 deltas[] {{2, 1}, {2, 1}, {4, 2}, {}, {}};
 
-        for (int32_t index = 0; index < aligned->GetFramesCount(); index++) {
+        for (int32_t index {0}; index < aligned->GetFramesCount(); index++) {
             aligned->SetFrame(index, aligned->GetSpr(index)->MakeCopy(), aligned->GetSprOffset(index), deltas[index]);
         }
 
@@ -2817,11 +2812,11 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
         selected_action = static_cast<CritterActionAnim>(512);
         flags = CritterAnimationFlags::Movement;
         critter->RefreshView();
-        auto frames = mapper->CritterFrames.GetCritterAnimFrames(critter->GetModelName(), static_cast<CritterStateAnim>(401), selected_action, critter->GetDir());
+        auto frames {mapper->CritterFrames.GetCritterAnimFrames(critter->GetModelName(), static_cast<CritterStateAnim>(401), selected_action, critter->GetDir())};
         REQUIRE(frames);
 
         // T=(8,4), cumulative projections 20,40,80; expected positions include complete cycles.
-        const tuple<ipos16, int32_t, ipos32> cases[] = {
+        const tuple<ipos16, int32_t, ipos32> cases[] {
             {{3, 1}, 0, {2, 1}},
             {{3, 2}, 1, {4, 2}},
             {{4, 2}, 1, {4, 2}},
@@ -2859,10 +2854,10 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
         critter->RefreshView();
         critter->SetHexOffset(ipos16 {5, 0});
         critter->RefreshView();
-        auto turned = sprite->MakeCopy().dyn_cast<SpriteSheet>();
+        auto turned {sprite->MakeCopy().dyn_cast<SpriteSheet>()};
         REQUIRE(turned);
 
-        for (int32_t index = 0; index < turned->GetFramesCount(); index++) {
+        for (int32_t index {0}; index < turned->GetFramesCount(); index++) {
             turned->SetFrame(index, turned->GetSpr(index)->MakeCopy(), turned->GetSprOffset(index), index == 0 ? ipos32 {-5, 7} : ipos32 {});
         }
 
@@ -2876,12 +2871,12 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
 
     SECTION("SheetReplacementPreservesNegativeAndFractionalPhase")
     {
-        const auto [position, expected] = GENERATE((tuple<ipos16, ipos32> {ipos16 {4, 2}, ipos32 {2, 5}}), (tuple<ipos16, ipos32> {ipos16 {-4, -2}, ipos32 {-6, 1}}), (tuple<ipos16, ipos32> {ipos16 {2, 1}, ipos32 {-2, 6}}));
-        auto source_frames = sprite->MakeCopy().dyn_cast<SpriteSheet>();
+        const auto [position, expected] {GENERATE((tuple<ipos16, ipos32> {ipos16 {4, 2}, ipos32 {2, 5}}), (tuple<ipos16, ipos32> {ipos16 {-4, -2}, ipos32 {-6, 1}}), (tuple<ipos16, ipos32> {ipos16 {2, 1}, ipos32 {-2, 6}}))};
+        auto source_frames {sprite->MakeCopy().dyn_cast<SpriteSheet>()};
         REQUIRE(source_frames);
-        const ipos32 deltas[] = {{2, 1}, {2, 1}, {4, 2}, {}, {}};
+        const ipos32 deltas[] {{2, 1}, {2, 1}, {4, 2}, {}, {}};
 
-        for (int32_t index = 0; index < source_frames->GetFramesCount(); index++) {
+        for (int32_t index {0}; index < source_frames->GetFramesCount(); index++) {
             source_frames->SetFrame(index, source_frames->GetSpr(index)->MakeCopy(), source_frames->GetSprOffset(index), deltas[index]);
         }
 
@@ -2891,10 +2886,10 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
         critter->RefreshView();
         critter->SetHexOffset(position);
         critter->RefreshView();
-        auto target_frames = sprite->MakeCopy().dyn_cast<SpriteSheet>();
+        auto target_frames {sprite->MakeCopy().dyn_cast<SpriteSheet>()};
         REQUIRE(target_frames);
 
-        for (int32_t index = 0; index < target_frames->GetFramesCount(); index++) {
+        for (int32_t index {0}; index < target_frames->GetFramesCount(); index++) {
             target_frames->SetFrame(index, target_frames->GetSpr(index)->MakeCopy(), target_frames->GetSprOffset(index), index == 0 ? ipos32 {-5, 7} : ipos32 {});
         }
 
@@ -2908,10 +2903,10 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
 
     SECTION("SheetReplacementScalesPhaseWithoutOverflowingTheNumerator")
     {
-        auto long_cycle = sprite->MakeCopy().dyn_cast<SpriteSheet>();
+        auto long_cycle {sprite->MakeCopy().dyn_cast<SpriteSheet>()};
         REQUIRE(long_cycle);
 
-        for (int32_t index = 0; index < long_cycle->GetFramesCount(); index++) {
+        for (int32_t index {0}; index < long_cycle->GetFramesCount(); index++) {
             long_cycle->SetFrame(index, long_cycle->GetSpr(index)->MakeCopy(), long_cycle->GetSprOffset(index), index == 0 ? ipos32 {1000000000, 0} : ipos32 {});
         }
 
@@ -2921,10 +2916,10 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
         critter->RefreshView();
         critter->SetHexOffset(ipos16 {32767, 0});
         critter->RefreshView();
-        auto turned = sprite->MakeCopy().dyn_cast<SpriteSheet>();
+        auto turned {sprite->MakeCopy().dyn_cast<SpriteSheet>()};
         REQUIRE(turned);
 
-        for (int32_t index = 0; index < turned->GetFramesCount(); index++) {
+        for (int32_t index {0}; index < turned->GetFramesCount(); index++) {
             turned->SetFrame(index, turned->GetSpr(index)->MakeCopy(), turned->GetSprOffset(index), index == 0 ? ipos32 {-2000000001, 2000000001} : ipos32 {});
         }
 
@@ -2942,10 +2937,10 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
         critter->RefreshView();
         critter->SetHexOffset(ipos16 {5, 0});
         critter->RefreshView();
-        auto turned = sprite->MakeCopy().dyn_cast<SpriteSheet>();
+        auto turned {sprite->MakeCopy().dyn_cast<SpriteSheet>()};
         REQUIRE(turned);
 
-        for (int32_t index = 0; index < turned->GetFramesCount(); index++) {
+        for (int32_t index {0}; index < turned->GetFramesCount(); index++) {
             turned->SetFrame(index, turned->GetSpr(index)->MakeCopy(), turned->GetSprOffset(index), ipos32 {0, 4});
         }
 
@@ -2960,11 +2955,11 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
 
     SECTION("ZeroTotalMotionAndFrozenPoseUseSeparateOffsetPolicies")
     {
-        auto zero = sprite->MakeCopy().dyn_cast<SpriteSheet>();
+        auto zero {sprite->MakeCopy().dyn_cast<SpriteSheet>()};
         REQUIRE(zero);
 
-        for (int32_t index = 0; index < zero->GetFramesCount(); index++) {
-            ipos32 motion = index == 0 ? ipos32 {4, -2} : index == 1 ? ipos32 {-4, 2} : ipos32 {};
+        for (int32_t index {0}; index < zero->GetFramesCount(); index++) {
+            ipos32 motion {index == 0 ? ipos32 {4, -2} : index == 1 ? ipos32 {-4, 2} : ipos32 {}};
             zero->SetFrame(index, zero->GetSpr(index)->MakeCopy(), zero->GetSprOffset(index), motion);
         }
 
@@ -3007,7 +3002,7 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
         normalized_time = 0.5f;
         critter->RefreshView();
         critter->AddExtraOffs({3, -4});
-        auto mspr = critter->GetMapSprite();
+        auto mspr {critter->GetMapSprite()};
         CHECK(*mspr->GetPSprOffset() == ipos32 {9, -4});
         critter->RefreshModel();
         CHECK(*mspr->GetPSprOffset() == ipos32 {3, -4});
@@ -3020,10 +3015,10 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
         critter->RefreshView();
         critter->SetHexOffset(ipos16 {5, 0});
         critter->RefreshView();
-        auto driven_offset = *critter->GetMapSprite()->GetPSprOffset();
+        auto driven_offset {*critter->GetMapSprite()->GetPSprOffset()};
         flags = CritterAnimationFlags::None;
         critter->RefreshView();
-        auto timed_offset = *critter->GetMapSprite()->GetPSprOffset();
+        auto timed_offset {*critter->GetMapSprite()->GetPSprOffset()};
         CHECK(driven_offset == ipos32 {4, 0});
         CHECK(timed_offset == ipos32 {7, 0});
     }
@@ -3040,7 +3035,7 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
         normalized_time = 0.0f;
         critter->StopAnim();
         CHECK_FALSE(critter->IsAnimPlaying());
-        auto frames = mapper->CritterFrames.GetCritterAnimFrames(critter->GetModelName(), static_cast<CritterStateAnim>(401), static_cast<CritterActionAnim>(509), critter->GetDir());
+        auto frames {mapper->CritterFrames.GetCritterAnimFrames(critter->GetModelName(), static_cast<CritterStateAnim>(401), static_cast<CritterActionAnim>(509), critter->GetDir())};
         REQUIRE(frames);
         CHECK(critter->GetMapSprite()->GetSprite() == frames->GetSpr(0));
     }
@@ -3064,7 +3059,7 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
 
     SECTION("MapperPropertyTextEditInvokesPostSetterWithCommittedValue")
     {
-        bool observed_dead = false;
+        bool observed_dead {false};
         critter->GetPropertyCondition()->AddPostSetter([&](nptr<Entity>, ptr<const Property>) { observed_dead = critter->GetCondition() == CritterCondition::Dead; });
         CHECK(mapper->ApplyEntityPropertyText(critter, critter->GetPropertyCondition(), "Dead"));
         CHECK(observed_dead);
@@ -3073,21 +3068,21 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
 
 TEST_CASE("MapperPropertyTextEditHandlesReentrantPostSetters")
 {
-    auto settings = MakeMapperTestSettings();
-    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
-    auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
-    auto body = MakeItemBlock(20, TILE_A, 12, 12, "LightDistance = 7") + MakeItemBlock(21, TILE_A, 13, 12, "LightDistance = 9") + MakeCritterBlock(30, CRITTER_A, 8, 8);
-    auto map = mapper->LoadMapFromText("PropertyCallbacks", "PropertyCallbacks.fomap", MakeMapText(body));
+    auto settings {MakeMapperTestSettings()};
+    auto mapper {safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow)};
+    auto shutdown {scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); })};
+    auto body {MakeItemBlock(20, TILE_A, 12, 12, "LightDistance = 7") + MakeItemBlock(21, TILE_A, 13, 12, "LightDistance = 9") + MakeCritterBlock(30, CRITTER_A, 8, 8)};
+    auto map {mapper->LoadMapFromText("PropertyCallbacks", "PropertyCallbacks.fomap", MakeMapText(body))};
     REQUIRE(map);
     mapper->ShowMap(map);
     REQUIRE_FALSE(mapper->IsMapDirty(map));
 
     SECTION("SwitchingTheCurrentMapKeepsTheEditOnItsOriginalMap")
     {
-        auto other_map = mapper->LoadMapFromText("OtherPropertyCallbacks", "OtherPropertyCallbacks.fomap", MakeMapText(""));
+        auto other_map {mapper->LoadMapFromText("OtherPropertyCallbacks", "OtherPropertyCallbacks.fomap", MakeMapText(""))};
         REQUIRE(other_map);
-        auto critter = map->GetCritters().front();
-        bool callback_ran = false;
+        auto critter {map->GetCritters().front()};
+        bool callback_ran {false};
         critter->GetPropertyCondition()->AddPostSetter([&](nptr<Entity>, ptr<const Property>) {
             callback_ran = true;
             CHECK(mapper->IsMapDirty(map));
@@ -3103,9 +3098,9 @@ TEST_CASE("MapperPropertyTextEditHandlesReentrantPostSetters")
 
     SECTION("UnloadingTheEditedMapDoesNotLeaveDeadTargetsOrDirtyEntries")
     {
-        ptr<CritterHexView> critter = map->GetCritters().front();
-        auto prop = critter->GetPropertyCondition();
-        bool callback_ran = false;
+        ptr<CritterHexView> critter {map->GetCritters().front()};
+        auto prop {critter->GetPropertyCondition()};
+        bool callback_ran {false};
         prop->AddPostSetter([&](nptr<Entity>, ptr<const Property>) {
             callback_ran = true;
             CHECK(mapper->IsMapDirty(map));
@@ -3121,13 +3116,13 @@ TEST_CASE("MapperPropertyTextEditHandlesReentrantPostSetters")
 
     SECTION("DestroyingAnotherPreparedSiblingSkipsItsLaterCommit")
     {
-        auto primary = map->GetItem(ident_t {20});
-        auto sibling = map->GetItem(ident_t {21});
+        auto primary {map->GetItem(ident_t {20})};
+        auto sibling {map->GetItem(ident_t {21})};
         REQUIRE(primary);
         REQUIRE(sibling);
-        auto prop = primary->GetProperties()->GetRegistrar()->FindProperty("AuthoringNumber");
+        auto prop {primary->GetProperties()->GetRegistrar()->FindProperty("AuthoringNumber")};
         REQUIRE(prop);
-        bool callback_ran = false;
+        bool callback_ran {false};
         prop->AddPostSetter([&](nptr<Entity> entity, ptr<const Property>) {
             if (entity == primary) {
                 callback_ran = true;
@@ -3144,11 +3139,11 @@ TEST_CASE("MapperPropertyTextEditHandlesReentrantPostSetters")
 
     SECTION("InspectorHistoryStaysWithTheOriginalMapAfterCallbackSwitchesMaps")
     {
-        auto other_map = mapper->LoadMapFromText("OtherInspectorMap", "OtherInspectorMap.fomap", MakeMapText(""));
+        auto other_map {mapper->LoadMapFromText("OtherInspectorMap", "OtherInspectorMap.fomap", MakeMapText(""))};
         REQUIRE(other_map);
-        auto primary = map->GetItem(ident_t {20});
+        auto primary {map->GetItem(ident_t {20})};
         REQUIRE(primary);
-        auto prop = primary->GetProperties()->GetRegistrar()->FindProperty("AuthoringNumber");
+        auto prop {primary->GetProperties()->GetRegistrar()->FindProperty("AuthoringNumber")};
         REQUIRE(prop);
         mapper->ShowProps = {prop};
         mapper->InspectorSelectedLine = 3;
@@ -3174,8 +3169,8 @@ TEST_CASE("MapperPropertyTextEditHandlesReentrantPostSetters")
 
     SECTION("InspectorEditCanUnloadItsMapDuringPostSetter")
     {
-        ptr<CritterHexView> critter = map->GetCritters().front();
-        auto prop = critter->GetPropertyCondition();
+        ptr<CritterHexView> critter {map->GetCritters().front()};
+        auto prop {critter->GetPropertyCondition()};
         mapper->ShowProps = {prop};
         mapper->InspectorSelectedLine = 3;
         mapper->InspectorSelectedLineInitialValue = "Alive";
@@ -3189,9 +3184,9 @@ TEST_CASE("MapperPropertyTextEditHandlesReentrantPostSetters")
 
     SECTION("UndoCanUnloadTheEditedMapFromItsPostSetter")
     {
-        auto primary = map->GetItem(ident_t {20});
+        auto primary {map->GetItem(ident_t {20})};
         REQUIRE(primary);
-        auto prop = primary->GetProperties()->GetRegistrar()->FindProperty("AuthoringNumber");
+        auto prop {primary->GetProperties()->GetRegistrar()->FindProperty("AuthoringNumber")};
         REQUIRE(prop);
         mapper->ShowProps = {prop};
         mapper->InspectorSelectedLine = 3;
@@ -3208,9 +3203,9 @@ TEST_CASE("MapperPropertyTextEditHandlesReentrantPostSetters")
 
     SECTION("RedoCanUnloadTheEditedMapFromItsPostSetter")
     {
-        auto primary = map->GetItem(ident_t {20});
+        auto primary {map->GetItem(ident_t {20})};
         REQUIRE(primary);
-        auto prop = primary->GetProperties()->GetRegistrar()->FindProperty("AuthoringNumber");
+        auto prop {primary->GetProperties()->GetRegistrar()->FindProperty("AuthoringNumber")};
         REQUIRE(prop);
         mapper->ShowProps = {prop};
         mapper->InspectorSelectedLine = 3;

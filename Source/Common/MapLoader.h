@@ -42,8 +42,8 @@ FO_BEGIN_NAMESPACE
 
 // Baked map binaries carry no self-description, so a stale or foreign file has to be rejected by this marker
 // instead of being read as element counts. Bump the version whenever the layout written by MapBaker changes
-constexpr uint32_t BAKED_MAP_FILE_MAGIC = 0x424D4F46; // "FOMB"
-constexpr uint32_t BAKED_MAP_FILE_VERSION = 1;
+constexpr uint32_t BAKED_MAP_FILE_MAGIC {0x424D4F46}; // "FOMB"
+constexpr uint32_t BAKED_MAP_FILE_VERSION {1};
 
 FO_DECLARE_EXCEPTION(MapLoaderException);
 

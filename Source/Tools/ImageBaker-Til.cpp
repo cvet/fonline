@@ -52,7 +52,7 @@ namespace ImageBakerTil
         ignore_unused(context);
 
         // Read header
-        char head[7];
+        char head[7] {};
         reader.ReadObjectArray<char>(head);
 
         if (head[6] != 0 || strcmp(head, "<tile>") != 0) {
@@ -65,9 +65,9 @@ namespace ImageBakerTil
 
         reader.GoForward(7 + 4); // Unknown
 
-        int32_t width = reader.ReadLEInt32();
+        int32_t width {reader.ReadLEInt32()};
         ignore_unused(width);
-        int32_t height = reader.ReadLEInt32();
+        int32_t height {reader.ReadLEInt32()};
         ignore_unused(height);
 
         if (!reader.SeekFragment("<tiledata>")) {
@@ -75,17 +75,17 @@ namespace ImageBakerTil
         }
 
         reader.GoForward(10 + 3); // Signature
-        int32_t frames_count = reader.ReadLEInt32();
+        int32_t frames_count {reader.ReadLEInt32()};
         FO_VERIFY_AND_THROW(frames_count > 0 && frames_count <= numeric_cast<int32_t>(std::numeric_limits<uint16_t>::max()), "TIL frame count is outside the serialized range", fname, frames_count);
 
-        FrameCollection collection;
+        FrameCollection collection {};
         collection.SequenceSize = frames_count;
-        int32_t anim_ticks = checked_mul(int32_t {100}, frames_count);
+        int32_t anim_ticks {checked_mul(int32_t {100}, frames_count)};
         FO_VERIFY_AND_THROW(anim_ticks <= numeric_cast<int32_t>(std::numeric_limits<uint16_t>::max()), "TIL animation duration is outside the serialized range", fname, anim_ticks);
         collection.AnimTicks = anim_ticks;
         collection.Main.Frames.resize(numeric_cast<size_t>(collection.SequenceSize));
 
-        for (int32_t frm = 0; frm < frames_count; frm++) {
+        for (int32_t frm {0}; frm < frames_count; frm++) {
             collection.Main.Frames[numeric_cast<size_t>(frm)] = ImageBakerZarDecoder::Decode(fname, reader, true);
         }
 

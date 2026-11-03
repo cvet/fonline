@@ -48,7 +48,7 @@ FO_DECLARE_EXCEPTION(ModelInfoBakerException);
 class ModelInfoBaker final : public BaseBaker
 {
 public:
-    static constexpr string_view_nt NAME = "ModelInfo";
+    static constexpr string_view_nt NAME {"ModelInfo"};
 
     explicit ModelInfoBaker(shared_ptr<BakingContext> ctx, ModelSourceAssetCache::LoadCallback model_source_loader = {});
     ModelInfoBaker(const ModelInfoBaker&) = delete;

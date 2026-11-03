@@ -67,10 +67,10 @@ private:
 class SecureChannel final
 {
 public:
-    static constexpr string_view PROLOGUE = "FOnline secure channel 1";
-    static constexpr size_t MAX_FRAME_SIZE = 0xFFFF;
-    static constexpr size_t MAX_TRANSPORT_PAYLOAD = MAX_FRAME_SIZE - crypto::aead_tag_size;
-    static constexpr size_t MAX_OFFERED_KEYS = 4;
+    static constexpr string_view PROLOGUE {"FOnline secure channel 1"};
+    static constexpr size_t MAX_FRAME_SIZE {0xFFFF};
+    static constexpr size_t MAX_TRANSPORT_PAYLOAD {MAX_FRAME_SIZE - crypto::aead_tag_size};
+    static constexpr size_t MAX_OFFERED_KEYS {4};
 
     explicit SecureChannel(const_span<crypto::key_bytes> server_keys);
     explicit SecureChannel(const SecureChannelIdentity& identity);

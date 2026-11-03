@@ -48,8 +48,8 @@ FO_DECLARE_EXCEPTION(AudioBakerException);
 class AudioBaker final : public BaseBaker
 {
 public:
-    static constexpr string_view_nt NAME = "Audio";
-    static constexpr string_view NATIVE_EXTENSION = "ogg";
+    static constexpr string_view_nt NAME {"Audio"};
+    static constexpr string_view NATIVE_EXTENSION {"ogg"};
 
     struct PcmAudio
     {

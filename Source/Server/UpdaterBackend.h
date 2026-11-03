@@ -64,7 +64,7 @@ private:
     struct UpdateFileData
     {
         bool InMemory {};
-        string DiskPath;
+        string DiskPath {};
         vector<uint8_t> MemoryData {};
         uint64_t Size {};
         uint64_t Hash {};
@@ -75,7 +75,7 @@ private:
     struct UpdateFileInfo
     {
         uint32_t FileIndex {};
-        string ClientPath;
+        string ClientPath {};
         UpdateFileTarget Target {UpdateFileTarget::ClientResources};
     };
 

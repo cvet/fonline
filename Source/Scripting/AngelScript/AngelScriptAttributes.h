@@ -55,7 +55,7 @@ namespace Preprocessor
 
 FO_BEGIN_NAMESPACE
 
-constexpr size_t AS_FUNC_ATTRIBUTES_USER_DATA = 1020;
+constexpr size_t AS_FUNC_ATTRIBUTES_USER_DATA {1020};
 
 struct ScriptFunctionAttributeUserData
 {

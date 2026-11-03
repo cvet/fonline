@@ -78,7 +78,7 @@ TEST_CASE("StrongType")
 
     SECTION("Hashing")
     {
-        unordered_set<test_id> values;
+        unordered_set<test_id> values {};
         values.emplace(test_id {42});
         values.emplace(test_id {42});
         values.emplace(test_id {100});

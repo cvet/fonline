@@ -40,7 +40,7 @@ FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(ManagedAssemblyReferencesException);
 
-inline constexpr string_view MANAGED_CORELIB_ASSEMBLY_NAME = "System.Private.CoreLib";
+inline constexpr string_view MANAGED_CORELIB_ASSEMBLY_NAME {"System.Private.CoreLib"};
 
 struct ManagedAssemblyIdentity
 {

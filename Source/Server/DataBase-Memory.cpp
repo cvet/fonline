@@ -70,9 +70,9 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        const auto& collection = _collections.at(collection_name);
+        const auto& collection {_collections.at(collection_name)};
 
-        vector<DataBaseKey> ids;
+        vector<DataBaseKey> ids {};
         ids.reserve(collection.size());
 
         for (const auto& key : collection | std::views::keys) {
@@ -89,9 +89,9 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        const auto& collection = _collections.at(collection_name);
+        const auto& collection {_collections.at(collection_name)};
 
-        auto it = collection.find(id);
+        auto it {collection.find(id)};
         return it != collection.end() ? it->second.Copy() : AnyData::Document();
     }
 
@@ -101,12 +101,12 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        const auto& collection = _collections.at(collection_name);
-        vector<AnyData::Document> docs;
+        const auto& collection {_collections.at(collection_name)};
+        vector<AnyData::Document> docs {};
         docs.reserve(ids.size());
 
         for (const auto& id : ids) {
-            auto it = collection.find(id);
+            auto it {collection.find(id)};
             docs.emplace_back(it != collection.end() ? it->second.Copy() : AnyData::Document());
         }
 
@@ -121,7 +121,7 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        auto& collection = _collections.at(collection_name);
+        auto& collection {_collections.at(collection_name)};
         FO_VERIFY_AND_THROW(!collection.count(id), "Memory database collection already contains the inserted record id", collection_name, id);
 
         collection.emplace(id, doc.Copy());
@@ -135,9 +135,9 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        auto& collection = _collections.at(collection_name);
+        auto& collection {_collections.at(collection_name)};
 
-        auto it_collection = collection.find(id);
+        auto it_collection {collection.find(id)};
 
         if (it_collection == collection.end()) {
             throw DataBaseException("DbMemory Document not found for update", collection_name, id);
@@ -154,9 +154,9 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        auto& collection = _collections.at(collection_name);
+        auto& collection {_collections.at(collection_name)};
 
-        auto it = collection.find(id);
+        auto it {collection.find(id)};
 
         if (it == collection.end()) {
             throw DataBaseException("DbMemory Document not found for delete", collection_name, id);
@@ -171,15 +171,15 @@ protected:
 
         DataBaseImpl::DrawGui();
 
-        constexpr ImGuiTableFlags TABLE_FLAGS = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_SizingStretchProp;
+        constexpr ImGuiTableFlags TABLE_FLAGS {ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_SizingStretchProp};
 
-        auto info_row = [](string_view key, string_view value) {
+        auto info_row {[](string_view key, string_view value) {
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0);
             ImGuiTextUnformatted(key);
             ImGui::TableSetColumnIndex(1);
             ImGuiTextUnformatted(value);
-        };
+        }};
 
         scoped_lock locker {_storageLocker};
 
@@ -187,35 +187,35 @@ protected:
         // and table stacks are still balanced
         struct FieldRow
         {
-            string key;
-            string value;
+            string key {};
+            string value {};
         };
         struct DocEntry
         {
-            string label;
-            const void* id;
-            vector<FieldRow> fields;
+            string label {};
+            const void* id {};
+            vector<FieldRow> fields {};
         };
         struct CollEntry
         {
-            string label;
-            const void* id;
-            vector<DocEntry> docs;
+            string label {};
+            const void* id {};
+            vector<DocEntry> docs {};
         };
 
-        string memory_docs_label = strex("Memory documents ({} collections)###MemoryDocs", _collections.size()).str();
+        string memory_docs_label {strex("Memory documents ({} collections)###MemoryDocs", _collections.size()).str()};
 
-        vector<CollEntry> model;
+        vector<CollEntry> model {};
         model.reserve(_collections.size());
 
         for (auto&& [collection_name, collection] : _collections) {
-            CollEntry coll_entry;
+            CollEntry coll_entry {};
             coll_entry.label = strex("{} ({})", collection_name.as_str(), collection.size()).str();
             coll_entry.id = static_cast<const void*>(&collection);
             coll_entry.docs.reserve(collection.size());
 
             for (auto&& [id, doc] : collection) {
-                DocEntry doc_entry;
+                DocEntry doc_entry {};
                 doc_entry.label = strex("{} ({} keys)", id, doc.Size()).str();
                 doc_entry.id = static_cast<const void*>(&doc);
                 doc_entry.fields.reserve(doc.Size());
@@ -230,7 +230,7 @@ protected:
             model.emplace_back(std::move(coll_entry));
         }
 
-        auto memory_docs_label_cstr = make_ptr(memory_docs_label.c_str());
+        auto memory_docs_label_cstr {make_ptr(memory_docs_label.c_str())};
 
         if (ImGui::TreeNode(memory_docs_label_cstr.get())) {
             if (model.empty()) {
@@ -240,13 +240,13 @@ protected:
             for (const auto& coll : model) {
                 ImGui::PushID(coll.id);
 
-                auto collection_label_cstr = make_ptr(coll.label.c_str());
+                auto collection_label_cstr {make_ptr(coll.label.c_str())};
 
                 if (ImGui::TreeNode(collection_label_cstr.get())) {
                     for (const auto& doc_entry : coll.docs) {
                         ImGui::PushID(doc_entry.id);
 
-                        auto doc_label_cstr = make_ptr(doc_entry.label.c_str());
+                        auto doc_label_cstr {make_ptr(doc_entry.label.c_str())};
 
                         if (ImGui::TreeNode(doc_label_cstr.get())) {
                             if (ImGui::BeginTable("##DocFields", 2, TABLE_FLAGS)) {

@@ -68,7 +68,7 @@ FO_SCRIPT_API void Server_Map_SetupScriptEx(ptr<Map> self, hstring initFunc)
 ///@ ExportMethod
 FO_SCRIPT_API FO_RETURNS_PARENT ptr<Location> Server_Map_GetLocation(ptr<Map> self)
 {
-    auto loc = self->GetLocation();
+    auto loc {self->GetLocation()};
     return loc;
 }
 
@@ -83,7 +83,7 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos
         throw ScriptException("Invalid hex arg");
     }
 
-    auto item = self->GetEngine()->ItemMngr.CreateItemOnHex(self, hex, protoId, nullptr);
+    auto item {self->GetEngine()->ItemMngr.CreateItemOnHex(self, hex, protoId, nullptr)};
     return item;
 }
 
@@ -98,7 +98,7 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos
         throw ScriptException("Invalid hex arg");
     }
 
-    auto item = self->GetEngine()->ItemMngr.CreateItemOnHex(self, hex, proto->GetProtoId(), nullptr);
+    auto item {self->GetEngine()->ItemMngr.CreateItemOnHex(self, hex, proto->GetProtoId(), nullptr)};
     return item;
 }
 
@@ -113,19 +113,19 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos
         throw ScriptException("Invalid hex arg");
     }
 
-    auto proto = self->GetEngine()->GetProtoItem(protoId);
+    auto proto {self->GetEngine()->GetProtoItem(protoId)};
 
     if (!proto) {
         throw ScriptException("Invalid item proto id arg", protoId);
     }
 
-    Properties props_ = proto->GetProperties()->Copy();
+    Properties props_ {proto->GetProperties()->Copy()};
 
     for (const auto& [key, value] : props) {
         props_.SetValueAsIntProps(static_cast<int32_t>(key), value);
     }
 
-    auto item = self->GetEngine()->ItemMngr.CreateItemOnHex(self, hex, protoId, &props_);
+    auto item {self->GetEngine()->ItemMngr.CreateItemOnHex(self, hex, protoId, &props_)};
     return item;
 }
 
@@ -140,13 +140,13 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos
         throw ScriptException("Invalid hex arg");
     }
 
-    Properties props_ = proto->GetProperties()->Copy();
+    Properties props_ {proto->GetProperties()->Copy()};
 
     for (const auto& [key, value] : props) {
         props_.SetValueAsIntProps(static_cast<int32_t>(key), value);
     }
 
-    auto item = self->GetEngine()->ItemMngr.CreateItemOnHex(self, hex, proto->GetProtoId(), &props_);
+    auto item {self->GetEngine()->ItemMngr.CreateItemOnHex(self, hex, proto->GetProtoId(), &props_)};
     return item;
 }
 
@@ -158,7 +158,7 @@ FO_SCRIPT_API FO_PROVIDES_COVER nptr<Item> Server_Map_GetItem(ptr<Map> self, ide
         return nullptr;
     }
 
-    auto item = self->GetItem(itemId);
+    auto item {self->GetItem(itemId)};
     return item;
 }
 
@@ -170,7 +170,7 @@ FO_SCRIPT_API FO_PROVIDES_COVER nptr<Item> Server_Map_GetItemOnHex(ptr<Map> self
         throw ScriptException("Invalid hex arg");
     }
 
-    auto item = self->GetItemOnHex(hex, pid, nullptr);
+    auto item {self->GetItemOnHex(hex, pid, nullptr)};
     return item;
 }
 
@@ -182,7 +182,7 @@ FO_SCRIPT_API FO_PROVIDES_COVER nptr<Item> Server_Map_GetItemOnHex(ptr<Map> self
         throw ScriptException("Invalid hex arg");
     }
 
-    auto item = self->GetItemOnHex(hex, proto->GetProtoId(), nullptr);
+    auto item {self->GetItemOnHex(hex, proto->GetProtoId(), nullptr)};
     return item;
 }
 
@@ -194,8 +194,8 @@ FO_SCRIPT_API FO_PROVIDES_COVER nptr<Item> Server_Map_GetItemOnHex(ptr<Map> self
         throw ScriptException("Invalid hex arg");
     }
 
-    auto prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
-    vector<ptr<Item>> hex_items = self->GetItemsOnHex(hex);
+    auto prop {ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property)};
+    vector<ptr<Item>> hex_items {self->GetItemsOnHex(hex)};
 
     for (ptr<Item> item : hex_items) {
         if (item->GetValueAsInt(prop) == propertyValue) {
@@ -217,7 +217,7 @@ FO_SCRIPT_API FO_PROVIDES_COVER nptr<Item> Server_Map_GetItemInRadius(ptr<Map> s
         throw ScriptException("Invalid hex arg");
     }
 
-    vector<ptr<Item>> hex_items = self->GetItemsInRadius(hex, radius);
+    vector<ptr<Item>> hex_items {self->GetItemsInRadius(hex, radius)};
 
     for (ptr<Item> item : hex_items) {
         if (item->GetProtoId() == pid) {
@@ -239,7 +239,7 @@ FO_SCRIPT_API FO_PROVIDES_COVER nptr<Item> Server_Map_GetItemInRadius(ptr<Map> s
         throw ScriptException("Invalid hex arg");
     }
 
-    vector<ptr<Item>> hex_items = self->GetItemsInRadius(hex, radius);
+    vector<ptr<Item>> hex_items {self->GetItemsInRadius(hex, radius)};
 
     for (ptr<Item> item : hex_items) {
         if (item->GetProtoId() == proto->GetProtoId()) {
@@ -261,8 +261,8 @@ FO_SCRIPT_API FO_PROVIDES_COVER nptr<Item> Server_Map_GetItemInRadius(ptr<Map> s
         throw ScriptException("Invalid hex arg");
     }
 
-    auto prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
-    vector<ptr<Item>> hex_items = self->GetItemsInRadius(hex, radius);
+    auto prop {ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property)};
+    vector<ptr<Item>> hex_items {self->GetItemsInRadius(hex, radius)};
 
     for (ptr<Item> item : hex_items) {
         if (item->GetValueAsInt(prop) == propertyValue) {
@@ -277,7 +277,7 @@ FO_SCRIPT_API FO_PROVIDES_COVER nptr<Item> Server_Map_GetItemInRadius(ptr<Map> s
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Map_GetItems(ptr<Map> self)
 {
-    span<ptr<Item>> items = self->GetItems();
+    span<ptr<Item>> items {self->GetItems()};
     return vector<ptr<Item>>(items.begin(), items.end());
 }
 
@@ -285,9 +285,9 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Map_GetItems(ptr<Map> s
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Map_GetItems(ptr<Map> self, hstring pid)
 {
-    span<ptr<Item>> map_items = self->GetItems();
+    span<ptr<Item>> map_items {self->GetItems()};
 
-    vector<ptr<Item>> result;
+    vector<ptr<Item>> result {};
     result.reserve(map_items.size());
 
     for (ptr<Item> item : map_items) {
@@ -303,9 +303,9 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Map_GetItems(ptr<Map> s
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Map_GetItems(ptr<Map> self, ptr<ProtoItem> proto)
 {
-    span<ptr<Item>> map_items = self->GetItems();
+    span<ptr<Item>> map_items {self->GetItems()};
 
-    vector<ptr<Item>> result;
+    vector<ptr<Item>> result {};
     result.reserve(map_items.size());
 
     for (ptr<Item> item : map_items) {
@@ -325,7 +325,7 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Map_GetItemsOnHex(ptr<M
         throw ScriptException("Invalid hex arg");
     }
 
-    vector<ptr<Item>> hex_items = self->GetItemsOnHex(hex);
+    vector<ptr<Item>> hex_items {self->GetItemsOnHex(hex)};
     return hex_items;
 }
 
@@ -354,9 +354,9 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Map_GetItemsInRadius(pt
         throw ScriptException("Invalid hex arg");
     }
 
-    vector<ptr<Item>> hex_items = self->GetItemsInRadius(hex, radius);
+    vector<ptr<Item>> hex_items {self->GetItemsInRadius(hex, radius)};
 
-    vector<ptr<Item>> result;
+    vector<ptr<Item>> result {};
     result.reserve(hex_items.size());
 
     for (ptr<Item> item : hex_items) {
@@ -379,9 +379,9 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Map_GetItemsInRadius(pt
         throw ScriptException("Invalid hex arg");
     }
 
-    vector<ptr<Item>> hex_items = self->GetItemsInRadius(hex, radius);
+    vector<ptr<Item>> hex_items {self->GetItemsInRadius(hex, radius)};
 
-    vector<ptr<Item>> result;
+    vector<ptr<Item>> result {};
     result.reserve(hex_items.size());
 
     for (ptr<Item> item : hex_items) {
@@ -397,10 +397,10 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Map_GetItemsInRadius(pt
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Map_GetItems(ptr<Map> self, ItemProperty property, int32_t propertyValue)
 {
-    auto prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
-    span<ptr<Item>> map_items = self->GetItems();
+    auto prop {ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property)};
+    span<ptr<Item>> map_items {self->GetItems()};
 
-    vector<ptr<Item>> result;
+    vector<ptr<Item>> result {};
     result.reserve(map_items.size());
 
     for (ptr<Item> item : map_items) {
@@ -416,15 +416,15 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Map_GetItems(ptr<Map> s
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Map_GetItemsOnHex(ptr<Map> self, mpos hex, ItemProperty property, int32_t propertyValue)
 {
-    auto prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
+    auto prop {ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property)};
 
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
 
-    vector<ptr<Item>> hex_items = self->GetItemsOnHex(hex);
+    vector<ptr<Item>> hex_items {self->GetItemsOnHex(hex)};
 
-    vector<ptr<Item>> result;
+    vector<ptr<Item>> result {};
     result.reserve(hex_items.size());
 
     for (ptr<Item> item : hex_items) {
@@ -444,15 +444,15 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Map_GetItemsInRadius(pt
         throw ScriptException("Radius arg must not be negative", radius);
     }
 
-    auto prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
+    auto prop {ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property)};
 
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
 
-    vector<ptr<Item>> hex_items = self->GetItemsInRadius(hex, radius);
+    vector<ptr<Item>> hex_items {self->GetItemsInRadius(hex, radius)};
 
-    vector<ptr<Item>> items;
+    vector<ptr<Item>> items {};
     items.reserve(hex_items.size());
 
     for (ptr<Item> item : hex_items) {
@@ -491,7 +491,7 @@ FO_SCRIPT_API bool Server_Map_RemoveStaticItem(ptr<Map> self, ptr<StaticItem> st
 ///@ ExportMethod
 FO_SCRIPT_API nptr<StaticItem> Server_Map_GetStaticItem(ptr<Map> self, ident_t id)
 {
-    auto item = self->GetStaticItem(id);
+    auto item {self->GetStaticItem(id)};
     return item;
 }
 
@@ -503,7 +503,7 @@ FO_SCRIPT_API nptr<StaticItem> Server_Map_GetStaticItemOnHex(ptr<Map> self, mpos
         throw ScriptException("Invalid hex arg");
     }
 
-    auto item = self->GetStaticItemOnHex(hex, pid);
+    auto item {self->GetStaticItemOnHex(hex, pid)};
     return item;
 }
 
@@ -515,7 +515,7 @@ FO_SCRIPT_API nptr<StaticItem> Server_Map_GetStaticItemOnHex(ptr<Map> self, mpos
         throw ScriptException("Invalid hex arg");
     }
 
-    auto item = self->GetStaticItemOnHex(hex, proto->GetProtoId());
+    auto item {self->GetStaticItemOnHex(hex, proto->GetProtoId())};
     return item;
 }
 
@@ -527,7 +527,7 @@ FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItemsOnHex(ptr<Map> se
         throw ScriptException("Invalid hex arg");
     }
 
-    const_span<ptr<StaticItem>> hex_static_items = self->GetStaticItemsOnHex(hex);
+    const_span<ptr<StaticItem>> hex_static_items {self->GetStaticItemsOnHex(hex)};
     return vector<ptr<StaticItem>>(hex_static_items.begin(), hex_static_items.end());
 }
 
@@ -542,7 +542,7 @@ FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItemsInRadius(ptr<Map>
         throw ScriptException("Invalid hex arg");
     }
 
-    vector<ptr<StaticItem>> static_items = self->GetStaticItemsInRadius(hex, radius, pid);
+    vector<ptr<StaticItem>> static_items {self->GetStaticItemsInRadius(hex, radius, pid)};
     return static_items;
 }
 
@@ -557,7 +557,7 @@ FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItemsInRadius(ptr<Map>
         throw ScriptException("Invalid hex arg");
     }
 
-    vector<ptr<StaticItem>> static_items = self->GetStaticItemsInRadius(hex, radius, proto->GetProtoId());
+    vector<ptr<StaticItem>> static_items {self->GetStaticItemsInRadius(hex, radius, proto->GetProtoId())};
     return static_items;
 }
 
@@ -569,10 +569,10 @@ FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItemsOnHex(ptr<Map> se
         throw ScriptException("Invalid hex arg");
     }
 
-    auto prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
-    const_span<ptr<StaticItem>> map_static_items = self->GetStaticItemsOnHex(hex);
+    auto prop {ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property)};
+    const_span<ptr<StaticItem>> map_static_items {self->GetStaticItemsOnHex(hex)};
 
-    vector<ptr<StaticItem>> result;
+    vector<ptr<StaticItem>> result {};
     result.reserve(map_static_items.size());
 
     for (ptr<StaticItem> item : map_static_items) {
@@ -595,10 +595,10 @@ FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItemsInRadius(ptr<Map>
         throw ScriptException("Invalid hex arg");
     }
 
-    auto prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
-    vector<ptr<StaticItem>> map_static_items = self->GetStaticItemsInRadius(hex, radius, {});
+    auto prop {ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property)};
+    vector<ptr<StaticItem>> map_static_items {self->GetStaticItemsInRadius(hex, radius, {})};
 
-    vector<ptr<StaticItem>> result;
+    vector<ptr<StaticItem>> result {};
     result.reserve(map_static_items.size());
 
     for (ptr<StaticItem> item : map_static_items) {
@@ -614,7 +614,7 @@ FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItemsInRadius(ptr<Map>
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItems(ptr<Map> self, hstring pid)
 {
-    vector<ptr<StaticItem>> static_items = self->GetStaticItems(pid);
+    vector<ptr<StaticItem>> static_items {self->GetStaticItems(pid)};
     return static_items;
 }
 
@@ -622,7 +622,7 @@ FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItems(ptr<Map> self, h
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItems(ptr<Map> self, ptr<ProtoItem> proto)
 {
-    vector<ptr<StaticItem>> static_items = self->GetStaticItems(proto->GetProtoId());
+    vector<ptr<StaticItem>> static_items {self->GetStaticItems(proto->GetProtoId())};
     return static_items;
 }
 
@@ -630,10 +630,10 @@ FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItems(ptr<Map> self, p
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItems(ptr<Map> self, ItemProperty property, int32_t propertyValue)
 {
-    auto prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
-    const_span<ptr<StaticItem>> map_static_items = self->GetStaticItems();
+    auto prop {ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property)};
+    const_span<ptr<StaticItem>> map_static_items {self->GetStaticItems()};
 
-    vector<ptr<StaticItem>> result;
+    vector<ptr<StaticItem>> result {};
     result.reserve(map_static_items.size());
 
     for (ptr<StaticItem> item : map_static_items) {
@@ -649,7 +649,7 @@ FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItems(ptr<Map> self, I
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItems(ptr<Map> self)
 {
-    const_span<ptr<StaticItem>> map_static_items = self->GetStaticItems();
+    const_span<ptr<StaticItem>> map_static_items {self->GetStaticItems()};
     return vector<ptr<StaticItem>>(map_static_items.begin(), map_static_items.end());
 }
 
@@ -657,7 +657,7 @@ FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItems(ptr<Map> self)
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER nptr<Critter> Server_Map_GetCritter(ptr<Map> self, ident_t crid)
 {
-    auto cr = self->GetCritter(crid);
+    auto cr {self->GetCritter(crid)};
     return cr;
 }
 
@@ -669,7 +669,7 @@ FO_SCRIPT_API FO_PROVIDES_COVER nptr<Critter> Server_Map_GetCritterOnHex(ptr<Map
         throw ScriptException("Invalid hex arg");
     }
 
-    auto cr = self->GetCritterOnHex(hex, CritterFindType::NonDead);
+    auto cr {self->GetCritterOnHex(hex, CritterFindType::NonDead)};
 
     if (!cr) {
         cr = self->GetCritterOnHex(hex, CritterFindType::Dead);
@@ -682,7 +682,7 @@ FO_SCRIPT_API FO_PROVIDES_COVER nptr<Critter> Server_Map_GetCritterOnHex(ptr<Map
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER nptr<Critter> Server_Map_GetCritter(ptr<Map> self, CritterProperty property, int32_t propertyValue, CritterFindType findType)
 {
-    auto prop = ScriptHelpers::GetIntConvertibleEntityProperty<Critter>(self->GetEngine(), property);
+    auto prop {ScriptHelpers::GetIntConvertibleEntityProperty<Critter>(self->GetEngine(), property)};
 
     for (ptr<Critter> cr : self->GetCritters(findType)) {
         if (cr->GetValueAsInt(prop) == propertyValue) {
@@ -701,11 +701,11 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCrittersOnHex
         throw ScriptException("Invalid hex arg");
     }
 
-    vector<ptr<Critter>> critters = self->GetCrittersOnHex(hex, findType);
+    vector<ptr<Critter>> critters {self->GetCrittersOnHex(hex, findType)};
 
     std::ranges::stable_sort(critters, [hex](ptr<const Critter> cr1, ptr<const Critter> cr2) {
-        int32_t dist1 = GeometryHelper::GetDistance(hex, cr1->GetHex()) - cr1->GetMultihex();
-        int32_t dist2 = GeometryHelper::GetDistance(hex, cr2->GetHex()) - cr2->GetMultihex();
+        int32_t dist1 {GeometryHelper::GetDistance(hex, cr1->GetHex()) - cr1->GetMultihex()};
+        int32_t dist2 {GeometryHelper::GetDistance(hex, cr2->GetHex()) - cr2->GetMultihex()};
         return dist1 < dist2;
     });
 
@@ -723,7 +723,7 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCrittersInRad
         throw ScriptException("Invalid hex arg");
     }
 
-    vector<ptr<Critter>> critters;
+    vector<ptr<Critter>> critters {};
 
     if (radius == 0) {
         critters = self->GetCrittersOnHex(hex, findType);
@@ -733,8 +733,8 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCrittersInRad
     }
 
     std::ranges::stable_sort(critters, [hex](ptr<const Critter> cr1, ptr<const Critter> cr2) {
-        int32_t dist1 = GeometryHelper::GetDistance(hex, cr1->GetHex()) - cr1->GetMultihex();
-        int32_t dist2 = GeometryHelper::GetDistance(hex, cr2->GetHex()) - cr2->GetMultihex();
+        int32_t dist1 {GeometryHelper::GetDistance(hex, cr1->GetHex()) - cr1->GetMultihex()};
+        int32_t dist2 {GeometryHelper::GetDistance(hex, cr2->GetHex()) - cr2->GetMultihex()};
         return dist1 < dist2;
     });
 
@@ -761,7 +761,7 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCritters(ptr<
 FO_SCRIPT_API vector<ptr<Player>> Server_Map_GetSpectatorPlayers(ptr<Map> self)
 {
     // Spectator membership changes under the Player's cover, not the map's, so read the lock-guarded snapshot
-    vector<refcount_ptr<Player>> spectators = self->GetSpectatorPlayersForSend();
+    vector<refcount_ptr<Player>> spectators {self->GetSpectatorPlayersForSend()};
 
     return MakeScriptHandleVector<Player>(spectators);
 }
@@ -770,8 +770,8 @@ FO_SCRIPT_API vector<ptr<Player>> Server_Map_GetSpectatorPlayers(ptr<Map> self)
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCritters(ptr<Map> self, hstring pid, CritterFindType findType)
 {
-    vector<ptr<Critter>> map_critters = self->GetCritters(findType);
-    vector<ptr<Critter>> critters;
+    vector<ptr<Critter>> map_critters {self->GetCritters(findType)};
+    vector<ptr<Critter>> critters {};
 
     critters.reserve(map_critters.size());
 
@@ -788,8 +788,8 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCritters(ptr<
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCritters(ptr<Map> self, ptr<ProtoCritter> proto, CritterFindType findType)
 {
-    vector<ptr<Critter>> map_critters = self->GetCritters(findType);
-    vector<ptr<Critter>> critters;
+    vector<ptr<Critter>> map_critters {self->GetCritters(findType)};
+    vector<ptr<Critter>> critters {};
 
     critters.reserve(map_critters.size());
 
@@ -806,9 +806,9 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCritters(ptr<
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCritters(ptr<Map> self, CritterProperty property, int32_t propertyValue, CritterFindType findType)
 {
-    auto prop = ScriptHelpers::GetIntConvertibleEntityProperty<Critter>(self->GetEngine(), property);
-    vector<ptr<Critter>> map_critters = self->GetCritters(findType);
-    vector<ptr<Critter>> critters;
+    auto prop {ScriptHelpers::GetIntConvertibleEntityProperty<Critter>(self->GetEngine(), property)};
+    vector<ptr<Critter>> map_critters {self->GetCritters(findType)};
+    vector<ptr<Critter>> critters {};
 
     critters.reserve(map_critters.size());
 
@@ -825,8 +825,8 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCritters(ptr<
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCrittersInPath(ptr<Map> self, mpos fromHex, mpos toHex, float32_t angle, int32_t dist, CritterFindType findType)
 {
-    auto trace_output = self->GetEngine()->MapMngr.TracePath(self, fromHex, toHex, dist, angle, nullptr, findType, false, true);
-    vector<ptr<const Critter>> trace_critters = trace_output.Critters;
+    auto trace_output {self->GetEngine()->MapMngr.TracePath(self, fromHex, toHex, dist, angle, nullptr, findType, false, true)};
+    vector<ptr<const Critter>> trace_critters {trace_output.Critters};
     return MakeMutableScriptHandleVector<Critter>(trace_critters);
 }
 
@@ -834,10 +834,10 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCrittersInPat
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCrittersInPath(ptr<Map> self, mpos fromHex, mpos toHex, float32_t angle, int32_t dist, CritterFindType findType, mpos& preBlockHex, mpos& blockHex)
 {
-    auto trace_output = self->GetEngine()->MapMngr.TracePath(self, fromHex, toHex, dist, angle, nullptr, findType, false, true);
+    auto trace_output {self->GetEngine()->MapMngr.TracePath(self, fromHex, toHex, dist, angle, nullptr, findType, false, true)};
     preBlockHex = trace_output.PreBlock;
     blockHex = trace_output.Block;
-    vector<ptr<const Critter>> trace_critters = trace_output.Critters;
+    vector<ptr<const Critter>> trace_critters {trace_output.Critters};
     return MakeMutableScriptHandleVector<Critter>(trace_critters);
 }
 
@@ -845,7 +845,7 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCrittersInPat
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCrittersWhoSeeHex(ptr<Map> self, mpos hex, CritterFindType findType)
 {
-    vector<ptr<Critter>> critters;
+    vector<ptr<Critter>> critters {};
 
     for (ptr<Critter> cr : self->GetCritters(findType)) {
         if (GeometryHelper::CheckDist(cr->GetHex(), hex, cr->GetLookDistance())) {
@@ -860,7 +860,7 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCrittersWhoSe
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCrittersWhoSeeHex(ptr<Map> self, mpos hex, int32_t radius, CritterFindType findType)
 {
-    vector<ptr<Critter>> critters;
+    vector<ptr<Critter>> critters {};
 
     for (ptr<Critter> cr : self->GetCritters(findType)) {
         if (GeometryHelper::CheckDist(cr->GetHex(), hex, cr->GetLookDistance() + radius)) {
@@ -875,10 +875,10 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCrittersWhoSe
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCrittersWhoSeePath(ptr<Map> self, mpos fromHex, mpos toHex, CritterFindType findType)
 {
-    vector<ptr<Critter>> critters;
+    vector<ptr<Critter>> critters {};
 
     for (ptr<Critter> cr : self->GetCritters(findType)) {
-        mpos hex = cr->GetHex();
+        mpos hex {cr->GetHex()};
 
         if (GeometryHelper::IntersectCircleLine(hex.x, hex.y, cr->GetLookDistance(), fromHex.x, fromHex.y, toHex.x, toHex.y)) {
             critters.emplace_back(cr);
@@ -892,7 +892,7 @@ FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Critter>> Server_Map_GetCrittersWhoSe
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Map_GetHexInPath(ptr<Map> self, mpos fromHex, mpos& toHex, float32_t angle, int32_t dist)
 {
-    auto trace_output = self->GetEngine()->MapMngr.TracePath(self, fromHex, toHex, dist, angle);
+    auto trace_output {self->GetEngine()->MapMngr.TracePath(self, fromHex, toHex, dist, angle)};
     toHex = trace_output.PreBlock;
 }
 
@@ -900,7 +900,7 @@ FO_SCRIPT_API void Server_Map_GetHexInPath(ptr<Map> self, mpos fromHex, mpos& to
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Map_GetWallHexInPath(ptr<Map> self, mpos fromHex, mpos& toHex, float32_t angle, int32_t dist)
 {
-    auto trace_output = self->GetEngine()->MapMngr.TracePath(self, fromHex, toHex, dist, angle, nullptr, CritterFindType::Any, true);
+    auto trace_output {self->GetEngine()->MapMngr.TracePath(self, fromHex, toHex, dist, angle, nullptr, CritterFindType::Any, true)};
 
     if (trace_output.HasLastMovable) {
         toHex = trace_output.LastMovable;
@@ -921,13 +921,13 @@ FO_SCRIPT_API int32_t Server_Map_GetPathLength(ptr<Map> self, mpos fromHex, mpos
         throw ScriptException("Invalid to hex args");
     }
 
-    function<bool(ptr<const Item>)> gag_callback;
+    function<bool(ptr<const Item>)> gag_callback {};
 
     if (gagCallabck) {
         gag_callback = [gag_cb = safe_alloc::make_shared<ScriptFunc<bool, ptr<Item>>>(std::move(gagCallabck))](ptr<const Item> gag) mutable { return gag_cb->Call(make_ptr(const_cast<Item*>(std::addressof(*gag)))) && gag_cb->GetResult(); };
     }
 
-    auto output = self->GetEngine()->MapMngr.FindPath(self, nullptr, fromHex, toHex, 0, cut, ipos16 {}, std::move(gag_callback));
+    auto output {self->GetEngine()->MapMngr.FindPath(self, nullptr, fromHex, toHex, 0, cut, ipos16 {}, std::move(gag_callback))};
 
     if (output.Result != FindPathOutput::ResultType::Ok) {
         return 0;
@@ -946,13 +946,13 @@ FO_SCRIPT_API int32_t Server_Map_GetPathLength(ptr<Map> self, ptr<Critter> cr, m
 
     ValidateEntityAccess(cr);
 
-    function<bool(ptr<const Item>)> gag_callback;
+    function<bool(ptr<const Item>)> gag_callback {};
 
     if (gagCallabck) {
         gag_callback = [gag_cb = safe_alloc::make_shared<ScriptFunc<bool, ptr<Critter>, ptr<Item>>>(std::move(gagCallabck)), cr](ptr<const Item> gag) mutable { return gag_cb->Call(cr, make_ptr(const_cast<Item*>(std::addressof(*gag)))) && gag_cb->GetResult(); };
     }
 
-    auto output = self->GetEngine()->MapMngr.FindPath(self, cr, cr->GetHex(), toHex, cr->GetMultihex(), cut, ipos16 {}, std::move(gag_callback));
+    auto output {self->GetEngine()->MapMngr.FindPath(self, cr, cr->GetHex(), toHex, cr->GetMultihex(), cut, ipos16 {}, std::move(gag_callback))};
 
     if (output.Result != FindPathOutput::ResultType::Ok) {
         return 0;
@@ -978,13 +978,13 @@ FO_SCRIPT_API bool Server_Map_FindPathToAny(ptr<Map> self, mpos fromHex, readonl
         }
     }
 
-    function<bool(ptr<const Item>)> gag_callback;
+    function<bool(ptr<const Item>)> gag_callback {};
 
     if (gagCallback) {
         gag_callback = [gag_cb = safe_alloc::make_shared<ScriptFunc<bool, ptr<Item>>>(std::move(gagCallback))](ptr<const Item> gag) mutable { return gag_cb->Call(make_ptr(const_cast<Item*>(std::addressof(*gag)))) && gag_cb->GetResult(); };
     }
 
-    auto output = self->GetEngine()->MapMngr.FindPathToAny(self, nullptr, fromHex, targetHexes, 0, std::move(gag_callback));
+    auto output {self->GetEngine()->MapMngr.FindPathToAny(self, nullptr, fromHex, targetHexes, 0, std::move(gag_callback))};
     pathLength = output.Result == FindPathOutput::ResultType::Ok ? numeric_cast<int32_t>(output.Steps.size()) : 0;
 
     if (output.Result != FindPathOutput::ResultType::Ok && output.Result != FindPathOutput::ResultType::AlreadyHere) {
@@ -1011,13 +1011,13 @@ FO_SCRIPT_API bool Server_Map_FindPathToAny(ptr<Map> self, ptr<Critter> cr, read
 
     ValidateEntityAccess(cr);
 
-    function<bool(ptr<const Item>)> gag_callback;
+    function<bool(ptr<const Item>)> gag_callback {};
 
     if (gagCallback) {
         gag_callback = [gag_cb = safe_alloc::make_shared<ScriptFunc<bool, ptr<Critter>, ptr<Item>>>(std::move(gagCallback)), cr](ptr<const Item> gag) mutable { return gag_cb->Call(cr, make_ptr(const_cast<Item*>(std::addressof(*gag)))) && gag_cb->GetResult(); };
     }
 
-    auto output = self->GetEngine()->MapMngr.FindPathToAny(self, cr, cr->GetHex(), targetHexes, cr->GetMultihex(), std::move(gag_callback));
+    auto output {self->GetEngine()->MapMngr.FindPathToAny(self, cr, cr->GetHex(), targetHexes, cr->GetMultihex(), std::move(gag_callback))};
     pathLength = output.Result == FindPathOutput::ResultType::Ok ? numeric_cast<int32_t>(output.Steps.size()) : 0;
 
     if (output.Result != FindPathOutput::ResultType::Ok && output.Result != FindPathOutput::ResultType::AlreadyHere) {
@@ -1042,7 +1042,7 @@ FO_SCRIPT_API vector<mpos> Server_Map_FindReachableHexes(ptr<Map> self, mpos fro
         }
     }
 
-    function<bool(ptr<const Item>)> gag_callback;
+    function<bool(ptr<const Item>)> gag_callback {};
 
     if (gagCallback) {
         gag_callback = [gag_cb = safe_alloc::make_shared<ScriptFunc<bool, ptr<Item>>>(std::move(gagCallback))](ptr<const Item> gag) mutable { return gag_cb->Call(make_ptr(const_cast<Item*>(std::addressof(*gag)))) && gag_cb->GetResult(); };
@@ -1062,7 +1062,7 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Critter> Server_Map_AddCritter(ptr<Map> self
         throw ScriptException("Invalid hex arg");
     }
 
-    auto cr = self->GetEngine()->CrMngr.CreateCritterOnMap(protoId, nullptr, self, hex, dir);
+    auto cr {self->GetEngine()->CrMngr.CreateCritterOnMap(protoId, nullptr, self, hex, dir)};
     return cr;
 }
 
@@ -1077,7 +1077,7 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Critter> Server_Map_AddCritter(ptr<Map> self
         throw ScriptException("Invalid hex arg");
     }
 
-    auto cr = self->GetEngine()->CrMngr.CreateCritterOnMap(proto->GetProtoId(), nullptr, self, hex, dir);
+    auto cr {self->GetEngine()->CrMngr.CreateCritterOnMap(proto->GetProtoId(), nullptr, self, hex, dir)};
     return cr;
 }
 
@@ -1092,19 +1092,19 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Critter> Server_Map_AddCritter(ptr<Map> self
         throw ScriptException("Invalid hex arg");
     }
 
-    auto proto = self->GetEngine()->GetProtoCritter(protoId);
+    auto proto {self->GetEngine()->GetProtoCritter(protoId)};
 
     if (!proto) {
         throw ScriptException("Invalid critter proto id arg", protoId);
     }
 
-    Properties props_ = proto->GetProperties()->Copy();
+    Properties props_ {proto->GetProperties()->Copy()};
 
     for (const auto& [key, value] : props) {
         props_.SetValueAsIntProps(static_cast<int32_t>(key), value);
     }
 
-    auto cr = self->GetEngine()->CrMngr.CreateCritterOnMap(protoId, &props_, self, hex, dir);
+    auto cr {self->GetEngine()->CrMngr.CreateCritterOnMap(protoId, &props_, self, hex, dir)};
     return cr;
 }
 
@@ -1119,13 +1119,13 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Critter> Server_Map_AddCritter(ptr<Map> self
         throw ScriptException("Invalid hex arg");
     }
 
-    Properties props_ = proto->GetProperties()->Copy();
+    Properties props_ {proto->GetProperties()->Copy()};
 
     for (const auto& [key, value] : props) {
         props_.SetValueAsIntProps(static_cast<int32_t>(key), value);
     }
 
-    auto cr = self->GetEngine()->CrMngr.CreateCritterOnMap(proto->GetProtoId(), &props_, self, hex, dir);
+    auto cr {self->GetEngine()->CrMngr.CreateCritterOnMap(proto->GetProtoId(), &props_, self, hex, dir)};
     return cr;
 }
 
@@ -1140,19 +1140,19 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Critter> Server_Map_AddCritter(ptr<Map> self
         throw ScriptException("Invalid hex arg");
     }
 
-    auto proto = self->GetEngine()->GetProtoCritter(protoId);
+    auto proto {self->GetEngine()->GetProtoCritter(protoId)};
 
     if (!proto) {
         throw ScriptException("Invalid critter proto id arg", protoId);
     }
 
-    Properties props_ = proto->GetProperties()->Copy();
+    Properties props_ {proto->GetProperties()->Copy()};
 
     for (const auto& [key, value] : props) {
         props_.SetValueAsAnyProps(static_cast<int32_t>(key), value);
     }
 
-    auto cr = self->GetEngine()->CrMngr.CreateCritterOnMap(protoId, &props_, self, hex, dir);
+    auto cr {self->GetEngine()->CrMngr.CreateCritterOnMap(protoId, &props_, self, hex, dir)};
     return cr;
 }
 
@@ -1167,13 +1167,13 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Critter> Server_Map_AddCritter(ptr<Map> self
         throw ScriptException("Invalid hex arg");
     }
 
-    Properties props_ = proto->GetProperties()->Copy();
+    Properties props_ {proto->GetProperties()->Copy()};
 
     for (const auto& [key, value] : props) {
         props_.SetValueAsAnyProps(static_cast<int32_t>(key), value);
     }
 
-    auto cr = self->GetEngine()->CrMngr.CreateCritterOnMap(proto->GetProtoId(), &props_, self, hex, dir);
+    auto cr {self->GetEngine()->CrMngr.CreateCritterOnMap(proto->GetProtoId(), &props_, self, hex, dir)};
     return cr;
 }
 
@@ -1235,7 +1235,7 @@ FO_SCRIPT_API bool Server_Map_IsOutsideArea(ptr<Map> self, mpos hex)
 ///@ ExportMethod
 FO_SCRIPT_API bool Server_Map_CheckPlaceForItem(ptr<Map> self, mpos hex, hstring pid)
 {
-    auto proto_ptr = self->GetEngine()->GetProtoItem(pid);
+    auto proto_ptr {self->GetEngine()->GetProtoItem(pid)};
 
     if (!proto_ptr) {
         throw ScriptException("Invalid item proto id arg", pid);
@@ -1302,9 +1302,9 @@ FO_SCRIPT_API bool Server_Map_MoveHexByDir(ptr<Map> self, mpos& hex, mdir dir)
 ///@ ExportMethod
 FO_SCRIPT_API int32_t Server_Map_MoveHexByDir(ptr<Map> self, mpos& hex, mdir dir, int32_t steps)
 {
-    int32_t result = 0;
+    int32_t result {0};
 
-    for (int32_t i = 0; i < steps; i++) {
+    for (int32_t i {0}; i < steps; i++) {
         if (GeometryHelper::MoveHexByDir(hex, dir, self->GetSize())) {
             result++;
         }
@@ -1329,7 +1329,7 @@ FO_SCRIPT_API void Server_Map_VerifyTrigger(ptr<Map> self, FO_REQUIRES_COVER ptr
 
     ValidateEntityAccess(cr);
 
-    mpos from_hex = hex;
+    mpos from_hex {hex};
 
     if (GeometryHelper::MoveHexByDir(from_hex, dir.reverse(), self->GetSize())) {
         self->VerifyTrigger(cr, from_hex, hex, dir);

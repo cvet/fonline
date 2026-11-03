@@ -151,7 +151,7 @@ static void AppendFrmFrames(vector<uint8_t>& data, const vector<FrmFrameSpec>& f
 
 static auto MakeRawTga(uint16_t width, uint16_t height, uint8_t pixel_depth, const vector<uint8_t>& pixels) -> vector<uint8_t>
 {
-    vector<uint8_t> data;
+    vector<uint8_t> data {};
     data.reserve(18 + pixels.size());
     data.emplace_back(0); // ID length
     data.emplace_back(0); // No color map
@@ -171,7 +171,7 @@ static auto MakeRawTga(uint16_t width, uint16_t height, uint8_t pixel_depth, con
 
 static auto MakeRleTga(uint16_t width, uint16_t height, uint8_t pixel_depth, const vector<uint8_t>& packets) -> vector<uint8_t>
 {
-    vector<uint8_t> data;
+    vector<uint8_t> data {};
     data.reserve(18 + packets.size());
     data.emplace_back(0);
     data.emplace_back(0);
@@ -191,7 +191,7 @@ static auto MakeRleTga(uint16_t width, uint16_t height, uint8_t pixel_depth, con
 
 static auto MakeFrm(uint16_t fps, const vector<FrmFrameSpec>& frames, int16_t offs_x = 0, int16_t offs_y = 0) -> vector<uint8_t>
 {
-    vector<uint8_t> data(0x3E);
+    vector<uint8_t> data {vector<uint8_t>(0x3E)};
 
     SetBe16(data, 0x4, fps);
     SetBe16(data, 0x8, numeric_cast<uint16_t>(frames.size()));
@@ -205,11 +205,11 @@ static auto MakeFrm(uint16_t fps, const vector<FrmFrameSpec>& frames, int16_t of
 
 [[maybe_unused]] static auto MakeFrmWithDirTable(uint16_t fps, const vector<FrmFrameSpec>& frames, int32_t dirs_to_fill) -> vector<uint8_t>
 {
-    auto data = MakeFrm(fps, frames, 1, -1);
+    auto data {MakeFrm(fps, frames, 1, -1)};
 
-    for (int32_t dir = 1; dir < dirs_to_fill; dir++) {
-        size_t dir_pos = numeric_cast<size_t>(dir) * 2;
-        size_t data_offset = data.size() - 0x3E;
+    for (int32_t dir {1}; dir < dirs_to_fill; dir++) {
+        size_t dir_pos {numeric_cast<size_t>(dir) * 2};
+        size_t data_offset {data.size() - 0x3E};
 
         SetBeInt16(data, 0xA + dir_pos, numeric_cast<int16_t>(10 + dir));
         SetBeInt16(data, 0x16 + dir_pos, numeric_cast<int16_t>(-10 - dir));
@@ -222,8 +222,8 @@ static auto MakeFrm(uint16_t fps, const vector<FrmFrameSpec>& frames, int16_t of
 
 [[maybe_unused]] static auto MakeFrxDir(uint16_t fps, uint8_t dir, const vector<FrmFrameSpec>& frames, int16_t offs_x, int16_t offs_y) -> vector<uint8_t>
 {
-    auto data = MakeFrm(fps, frames);
-    size_t dir_pos = numeric_cast<size_t>(dir) * 2;
+    auto data {MakeFrm(fps, frames)};
+    size_t dir_pos {numeric_cast<size_t>(dir) * 2};
 
     SetBeInt16(data, 0xA + dir_pos, offs_x);
     SetBeInt16(data, 0x16 + dir_pos, offs_y);
@@ -234,11 +234,11 @@ static auto MakeFrm(uint16_t fps, const vector<FrmFrameSpec>& frames, int16_t of
 
 [[maybe_unused]] static auto MakeFrmPalette() -> vector<uint8_t>
 {
-    vector<uint8_t> palette(256 * 3);
+    vector<uint8_t> palette {vector<uint8_t>(256 * 3)};
 
-    for (uint8_t index = 1; index <= GameSettings::MAP_DIR_COUNT; index++) {
-        uint8_t color_base = numeric_cast<uint8_t>((index - 1) * 3 + 1);
-        size_t palette_pos = numeric_cast<size_t>(index) * 3;
+    for (uint8_t index {1}; index <= GameSettings::MAP_DIR_COUNT; index++) {
+        uint8_t color_base {numeric_cast<uint8_t>((index - 1) * 3 + 1)};
+        size_t palette_pos {numeric_cast<size_t>(index) * 3};
         palette[palette_pos + 0] = color_base;
         palette[palette_pos + 1] = numeric_cast<uint8_t>(color_base + 1);
         palette[palette_pos + 2] = numeric_cast<uint8_t>(color_base + 2);
@@ -354,12 +354,12 @@ static auto MakePaletteTransparencyPng() -> vector<uint8_t>
 
 [[maybe_unused]] static auto MakeRix() -> vector<uint8_t>
 {
-    vector<uint8_t> data;
+    vector<uint8_t> data {};
     data.resize(0xA + 256 * 3 + 1);
     data[4] = 1;
     data[6] = 1;
 
-    size_t palette_index = 0xA + 1 * 3;
+    size_t palette_index {0xA + 1 * 3};
     data[palette_index + 0] = 1;
     data[palette_index + 1] = 2;
     data[palette_index + 2] = 3;
@@ -370,7 +370,7 @@ static auto MakePaletteTransparencyPng() -> vector<uint8_t>
 
 [[maybe_unused]] static auto MakeSimpleZar() -> vector<uint8_t>
 {
-    vector<uint8_t> data;
+    vector<uint8_t> data {};
     data.insert(data.end(), {'<', 'z', 'a', 'r', '>', '\0'});
     data.emplace_back(0);
     data.emplace_back(0);
@@ -384,7 +384,7 @@ static auto MakePaletteTransparencyPng() -> vector<uint8_t>
 
 [[maybe_unused]] static auto MakeZarWithPaletteCount(uint32_t palette_count) -> vector<uint8_t>
 {
-    vector<uint8_t> data;
+    vector<uint8_t> data {};
     data.insert(data.end(), {'<', 'z', 'a', 'r', '>', '\0'});
     data.emplace_back(0x34);
     data.emplace_back(0);
@@ -397,7 +397,7 @@ static auto MakePaletteTransparencyPng() -> vector<uint8_t>
 
 [[maybe_unused]] static auto MakePaletteZar() -> vector<uint8_t>
 {
-    vector<uint8_t> data;
+    vector<uint8_t> data {};
     data.insert(data.end(), {'<', 'z', 'a', 'r', '>', '\0'});
     data.emplace_back(0x34);
     data.emplace_back(0);
@@ -409,7 +409,7 @@ static auto MakePaletteTransparencyPng() -> vector<uint8_t>
     AppendLe32(data, 0x00332211);
     data.emplace_back(1);
 
-    vector<uint8_t> rle = {0x05, 1, 0x06, 1, 0x7F, 0x07, 0x40};
+    vector<uint8_t> rle {0x05, 1, 0x06, 1, 0x7F, 0x07, 0x40};
     AppendLe32(data, numeric_cast<uint32_t>(rle.size()));
     data.insert(data.end(), rle.begin(), rle.end());
     return data;
@@ -417,7 +417,7 @@ static auto MakePaletteTransparencyPng() -> vector<uint8_t>
 
 [[maybe_unused]] static auto MakeSimpleMos() -> vector<uint8_t>
 {
-    vector<uint8_t> data;
+    vector<uint8_t> data {};
     data.insert(data.end(), {'M', 'O', 'S', ' ', '\0', '\0', '\0', '\0'});
     AppendLe16(data, 2);
     AppendLe16(data, 1);
@@ -426,8 +426,8 @@ static auto MakePaletteTransparencyPng() -> vector<uint8_t>
     AppendLe32(data, 64);
     AppendLe32(data, 24);
 
-    for (uint32_t i = 0; i < 256; i++) {
-        uint32_t color = 0;
+    for (uint32_t i {0}; i < 256; i++) {
+        uint32_t color {0};
 
         if (i == 1) {
             color = 0x00030201;
@@ -447,7 +447,7 @@ static auto MakePaletteTransparencyPng() -> vector<uint8_t>
 
 [[maybe_unused]] static auto MakeSimpleBam() -> vector<uint8_t>
 {
-    vector<uint8_t> data;
+    vector<uint8_t> data {};
     data.insert(data.end(), {'B', 'A', 'M', ' ', '\0', '\0', '\0', '\0'});
     AppendLe16(data, 1);
     data.emplace_back(1);
@@ -465,8 +465,8 @@ static auto MakePaletteTransparencyPng() -> vector<uint8_t>
     AppendLe16(data, 1);
     AppendLe16(data, 0);
 
-    for (uint32_t i = 0; i < 256; i++) {
-        uint32_t color = 0;
+    for (uint32_t i {0}; i < 256; i++) {
+        uint32_t color {0};
 
         if (i == 1) {
             color = 0x00332211;
@@ -491,7 +491,7 @@ static auto MakePaletteTransparencyPng() -> vector<uint8_t>
 
 [[maybe_unused]] static auto MakeMultiFrameBam() -> vector<uint8_t>
 {
-    vector<uint8_t> data;
+    vector<uint8_t> data {};
     data.insert(data.end(), {'B', 'A', 'M', ' ', '\0', '\0', '\0', '\0'});
     AppendLe16(data, 2);
     data.emplace_back(1);
@@ -515,8 +515,8 @@ static auto MakePaletteTransparencyPng() -> vector<uint8_t>
     AppendLe16(data, 2);
     AppendLe16(data, 0);
 
-    for (uint32_t i = 0; i < 256; i++) {
-        uint32_t color = 0;
+    for (uint32_t i {0}; i < 256; i++) {
+        uint32_t color {0};
 
         if (i == 1) {
             color = 0x00332211;
@@ -547,7 +547,7 @@ static void AppendTilPrefix(vector<uint8_t>& data)
 
 [[maybe_unused]] static auto MakeSimpleTil() -> vector<uint8_t>
 {
-    vector<uint8_t> data;
+    vector<uint8_t> data {};
     AppendTilPrefix(data);
     SetLe32(data, data.size() - 8, 3);
     data.insert(data.end(), {'<', 't', 'i', 'l', 'e', 'd', 'a', 't', 'a', '>'});
@@ -565,7 +565,7 @@ static void AppendTilPrefix(vector<uint8_t>& data)
     AppendLe32(data, 0x00332211);
     data.emplace_back(1);
 
-    vector<uint8_t> rle = {0x05, 1, 0x06, 1, 0x7F, 0x07, 0x40};
+    vector<uint8_t> rle {0x05, 1, 0x06, 1, 0x7F, 0x07, 0x40};
     AppendLe32(data, numeric_cast<uint32_t>(rle.size()));
     data.insert(data.end(), rle.begin(), rle.end());
     return data;
@@ -573,7 +573,7 @@ static void AppendTilPrefix(vector<uint8_t>& data)
 
 [[maybe_unused]] static auto MakeTilWithFrameCount(int32_t frames_count) -> vector<uint8_t>
 {
-    vector<uint8_t> data;
+    vector<uint8_t> data {};
     AppendTilPrefix(data);
     data.insert(data.end(), {'<', 't', 'i', 'l', 'e', 'd', 'a', 't', 'a', '>'});
     data.insert(data.end(), 3, 0);
@@ -583,14 +583,14 @@ static void AppendTilPrefix(vector<uint8_t>& data)
 
 [[maybe_unused]] static auto MakeTilWithoutTiledata() -> vector<uint8_t>
 {
-    vector<uint8_t> data;
+    vector<uint8_t> data {};
     AppendTilPrefix(data);
     return data;
 }
 
 [[maybe_unused]] static auto MakeTilWithBadZarHeader() -> vector<uint8_t>
 {
-    vector<uint8_t> data;
+    vector<uint8_t> data {};
     AppendTilPrefix(data);
     data.insert(data.end(), {'<', 't', 'i', 'l', 'e', 'd', 'a', 't', 'a', '>'});
     data.insert(data.end(), 3, 0);
@@ -601,7 +601,7 @@ static void AppendTilPrefix(vector<uint8_t>& data)
 
 [[maybe_unused]] static auto MakeTilWithPaletteCount(uint32_t palette_count) -> vector<uint8_t>
 {
-    vector<uint8_t> data;
+    vector<uint8_t> data {};
     AppendTilPrefix(data);
     data.insert(data.end(), {'<', 't', 'i', 'l', 'e', 'd', 'a', 't', 'a', '>'});
     data.insert(data.end(), 3, 0);
@@ -639,7 +639,7 @@ static auto ArtTestColor(int32_t slot, int32_t index) -> vector<uint8_t>
 
 static auto MakeArt(uint32_t flags, int32_t fps, const array<bool, 4>& palettes, int32_t frame_count, const vector<ArtFrameSpec>& frames) -> vector<uint8_t>
 {
-    vector<uint8_t> data;
+    vector<uint8_t> data {};
     AppendLe32(data, flags);
     AppendLeInt32(data, fps);
     AppendLeInt32(data, 8); // Bits per pixel
@@ -651,23 +651,23 @@ static auto MakeArt(uint32_t flags, int32_t fps, const array<bool, 4>& palettes,
     AppendLeInt32(data, 0); // Action frame
     AppendLeInt32(data, frame_count);
 
-    for (int32_t i = 0; i < 24; i++) {
+    for (int32_t i {0}; i < 24; i++) {
         AppendLeInt32(data, 0); // Frame table pointers, data sizes, pixel table pointers
     }
 
-    for (int32_t slot = 0; slot < 4; slot++) {
+    for (int32_t slot {0}; slot < 4; slot++) {
         if (palettes[numeric_cast<size_t>(slot)]) {
-            for (int32_t i = 0; i < 256; i++) {
-                uint32_t rr = numeric_cast<uint32_t>((slot * 64 + i * 4) & 0xFF);
-                uint32_t gg = numeric_cast<uint32_t>((i * 4 + 1) & 0xFF);
-                uint32_t bb = numeric_cast<uint32_t>((i * 4 + 2) & 0xFF);
+            for (int32_t i {0}; i < 256; i++) {
+                uint32_t rr {numeric_cast<uint32_t>((slot * 64 + i * 4) & 0xFF)};
+                uint32_t gg {numeric_cast<uint32_t>((i * 4 + 1) & 0xFF)};
+                uint32_t bb {numeric_cast<uint32_t>((i * 4 + 2) & 0xFF)};
                 AppendLe32(data, (rr << 16) | (gg << 8) | bb);
             }
         }
     }
 
     for (const ArtFrameSpec& frame : frames) {
-        int32_t stored_size = numeric_cast<int32_t>(frame.Stored.empty() ? frame.Indices.size() : frame.Stored.size());
+        int32_t stored_size {numeric_cast<int32_t>(frame.Stored.empty() ? frame.Indices.size() : frame.Stored.size())};
         AppendLeInt32(data, frame.Width);
         AppendLeInt32(data, frame.Height);
         AppendLeInt32(data, stored_size);
@@ -678,7 +678,7 @@ static auto MakeArt(uint32_t flags, int32_t fps, const array<bool, 4>& palettes,
     }
 
     for (const ArtFrameSpec& frame : frames) {
-        const vector<uint8_t>& bytes = frame.Stored.empty() ? frame.Indices : frame.Stored;
+        const vector<uint8_t>& bytes {frame.Stored.empty() ? frame.Indices : frame.Stored};
         data.insert(data.end(), bytes.begin(), bytes.end());
     }
 
@@ -702,9 +702,9 @@ static auto MakeRleFrameRangeArt() -> vector<uint8_t>
 
 static auto MakeRotationArt() -> vector<uint8_t>
 {
-    vector<ArtFrameSpec> frames;
+    vector<ArtFrameSpec> frames {};
 
-    for (int32_t rotation = 0; rotation < 8; rotation++) {
+    for (int32_t rotation {0}; rotation < 8; rotation++) {
         frames.emplace_back(ArtFrameSpec {.Width = 1, .Height = 1, .DeltaX = rotation, .DeltaY = -rotation, .Indices = {numeric_cast<uint8_t>(rotation + 1)}});
     }
 
@@ -737,7 +737,7 @@ static void AppendSprImage(vector<uint8_t>& data, int32_t pos_x, int32_t pos_y, 
 
 static auto MakeSprWithSequenceFrames(const vector<int16_t>& sequence_frames, int32_t dir_count = 1) -> vector<uint8_t>
 {
-    vector<uint8_t> data;
+    vector<uint8_t> data {};
     data.insert(data.end(), {'<', 's', 'p', 'r', 'i', 't', 'e', '>', '\0', '\0', '\0'});
     data.emplace_back(0); // Left dimension
     data.emplace_back(0); // Up dimension
@@ -754,7 +754,7 @@ static auto MakeSprWithSequenceFrames(const vector<int16_t>& sequence_frames, in
         AppendLeInt16(data, frame);
     }
 
-    for (size_t i = 0; i < sequence_frames.size(); i++) {
+    for (size_t i {0}; i < sequence_frames.size(); i++) {
         AppendLeInt32(data, 0);
     }
 
@@ -763,13 +763,13 @@ static auto MakeSprWithSequenceFrames(const vector<int16_t>& sequence_frames, in
     AppendLe16(data, 0); // Animation index
 
     data.insert(data.end(), {'<', 's', 'p', 'r', 'a', 'n', 'i', 'm', '>', '\0', '\0', '\0'});
-    size_t file_offset_pos = data.size();
+    size_t file_offset_pos {data.size()};
     AppendLe32(data, 0);
     AppendLeInt32(data, 0); // Collection name length
     AppendLeInt32(data, 1); // Frame count
     AppendLeInt32(data, dir_count); // Direction count
 
-    for (int32_t i = 0; i < dir_count; i++) {
+    for (int32_t i {0}; i < dir_count; i++) {
         AppendLeInt32(data, 0); // BBox x
         AppendLeInt32(data, 0); // BBox y
         AppendLeInt32(data, 0);
@@ -797,7 +797,7 @@ static auto MakeSprWithSequenceFrames(const vector<int16_t>& sequence_frames, in
 
 [[maybe_unused]] static void ReplaceFirstTagByte(vector<uint8_t>& data, string_view tag, uint8_t replacement)
 {
-    auto it = std::search(data.begin(), data.end(), tag.begin(), tag.end(), [](uint8_t lhs, char rhs) { return lhs == numeric_cast<uint8_t>(rhs); });
+    auto it {std::search(data.begin(), data.end(), tag.begin(), tag.end(), [](uint8_t lhs, char rhs) { return lhs == numeric_cast<uint8_t>(rhs); })};
     FO_VERIFY_AND_THROW(it != data.end(), "Test tag not found", tag);
     *it = replacement;
 }
@@ -809,7 +809,7 @@ static auto MakeSprWithSequenceFrames(const vector<int16_t>& sequence_frames, in
 
 static void AddSourceBinaryFile(BakerTests::TestRig& rig, string_view path, const vector<uint8_t>& data, uint64_t write_time = 1)
 {
-    string bytes;
+    string bytes {};
     bytes.resize(data.size());
 
     if (!data.empty()) {
@@ -821,7 +821,7 @@ static void AddSourceBinaryFile(BakerTests::TestRig& rig, string_view path, cons
 
 static void ReadSpriteMesh(data_reader& reader, BakedImageFrame& frame)
 {
-    uint8_t mesh_kind = reader.read<uint8_t>();
+    uint8_t mesh_kind {reader.read<uint8_t>()};
     REQUIRE(mesh_kind <= static_cast<uint8_t>(SpriteMeshKind::Mesh));
     frame.MeshKind = static_cast<SpriteMeshKind>(mesh_kind);
 
@@ -829,8 +829,8 @@ static void ReadSpriteMesh(data_reader& reader, BakedImageFrame& frame)
         return;
     }
 
-    uint16_t vertex_count = reader.read<uint16_t>();
-    uint32_t index_count = reader.read<uint32_t>();
+    uint16_t vertex_count {reader.read<uint16_t>()};
+    uint32_t index_count {reader.read<uint32_t>()};
     frame.Mesh.SourceSize.width = reader.read<uint16_t>();
     frame.Mesh.SourceSize.height = reader.read<uint16_t>();
     frame.Mesh.SourceOffset.x = reader.read<int32_t>();
@@ -838,19 +838,19 @@ static void ReadSpriteMesh(data_reader& reader, BakedImageFrame& frame)
     frame.Mesh.Vertices.reserve(vertex_count);
     frame.Mesh.Indices.reserve(index_count);
 
-    for (uint16_t i = 0; i < vertex_count; i++) {
-        uint16_t x = reader.read<uint16_t>();
-        uint16_t y = reader.read<uint16_t>();
+    for (uint16_t i {0}; i < vertex_count; i++) {
+        uint16_t x {reader.read<uint16_t>()};
+        uint16_t y {reader.read<uint16_t>()};
         frame.Mesh.Vertices.emplace_back(x, y);
     }
-    for (uint32_t i = 0; i < index_count; i++) {
+    for (uint32_t i {0}; i < index_count; i++) {
         frame.Mesh.Indices.emplace_back(reader.read<uint16_t>());
     }
 }
 
 static void SkipSpriteMesh(data_reader& reader)
 {
-    BakedImageFrame frame;
+    BakedImageFrame frame {};
     ReadSpriteMesh(reader, frame);
 }
 
@@ -865,7 +865,7 @@ static auto ReadSingleFrame(const vector<uint8_t>& baked_data) -> BakedImageFram
     CHECK(reader.read<uint8_t>() == 1);
     CHECK_FALSE(reader.read<bool>());
 
-    BakedImageFrame frame;
+    BakedImageFrame frame {};
     frame.Offset.x = reader.read<int16_t>();
     frame.Offset.y = reader.read<int16_t>();
     frame.Width = reader.read<uint16_t>();
@@ -873,8 +873,8 @@ static auto ReadSingleFrame(const vector<uint8_t>& baked_data) -> BakedImageFram
     frame.NextX = reader.read<int16_t>();
     frame.NextY = reader.read<int16_t>();
 
-    size_t data_size = numeric_cast<size_t>(frame.Width) * frame.Height * 4;
-    auto frame_data = reader.read_bytes(data_size);
+    size_t data_size {numeric_cast<size_t>(frame.Width) * frame.Height * 4};
+    auto frame_data {reader.read_bytes(data_size)};
     frame.Data.assign(frame_data.begin(), frame_data.end());
     ReadSpriteMesh(reader, frame);
 
@@ -891,16 +891,16 @@ static auto ReadSingleDirSequence(const vector<uint8_t>& baked_data) -> BakedIma
     CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
     CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_VERSION);
 
-    BakedImageSequence sequence;
+    BakedImageSequence sequence {};
     sequence.SequenceSize = reader.read<uint16_t>();
     sequence.AnimTicks = reader.read<uint16_t>();
     CHECK(reader.read<uint8_t>() == 1);
     sequence.Frames.reserve(sequence.SequenceSize);
 
-    for (uint16_t i = 0; i < sequence.SequenceSize; i++) {
+    for (uint16_t i {0}; i < sequence.SequenceSize; i++) {
         CHECK_FALSE(reader.read<bool>());
 
-        auto& frame = sequence.Frames.emplace_back();
+        auto& frame {sequence.Frames.emplace_back()};
         frame.Offset.x = reader.read<int16_t>();
         frame.Offset.y = reader.read<int16_t>();
         frame.Width = reader.read<uint16_t>();
@@ -908,8 +908,8 @@ static auto ReadSingleDirSequence(const vector<uint8_t>& baked_data) -> BakedIma
         frame.NextX = reader.read<int16_t>();
         frame.NextY = reader.read<int16_t>();
 
-        size_t data_size = numeric_cast<size_t>(frame.Width) * frame.Height * 4;
-        const_span<uint8_t> frame_data = reader.read_bytes(data_size);
+        size_t data_size {numeric_cast<size_t>(frame.Width) * frame.Height * 4};
+        const_span<uint8_t> frame_data {reader.read_bytes(data_size)};
         frame.Data.assign(frame_data.begin(), frame_data.end());
         ReadSpriteMesh(reader, frame);
     }
@@ -933,15 +933,15 @@ static auto BakeAlphaMask(BakerTests::TestRig& rig, const vector<string>& rows, 
     REQUIRE(!rows.empty());
     REQUIRE(!rows.front().empty());
 
-    uint16_t width = numeric_cast<uint16_t>(rows.front().size());
-    uint16_t height = numeric_cast<uint16_t>(rows.size());
-    vector<uint8_t> rgba(numeric_cast<size_t>(width) * height * 4);
+    uint16_t width {numeric_cast<uint16_t>(rows.front().size())};
+    uint16_t height {numeric_cast<uint16_t>(rows.size())};
+    vector<uint8_t> rgba {vector<uint8_t>(numeric_cast<size_t>(width) * height * 4)};
 
-    for (uint16_t y = 0; y < height; y++) {
+    for (uint16_t y {0}; y < height; y++) {
         REQUIRE(rows[y].size() == width);
 
-        for (uint16_t x = 0; x < width; x++) {
-            uint8_t alpha = 0;
+        for (uint16_t x {0}; x < width; x++) {
+            uint8_t alpha {0};
 
             if (rows[y][x] == '#') {
                 alpha = 255;
@@ -953,7 +953,7 @@ static auto BakeAlphaMask(BakerTests::TestRig& rig, const vector<string>& rows, 
                 REQUIRE(rows[y][x] == '.');
             }
 
-            size_t pixel_pos = (numeric_cast<size_t>(y) * width + x) * 4;
+            size_t pixel_pos {(numeric_cast<size_t>(y) * width + x) * 4};
             rgba[pixel_pos + 0] = 255;
             rgba[pixel_pos + 1] = 255;
             rgba[pixel_pos + 2] = 255;
@@ -968,7 +968,7 @@ static auto BakeAlphaMask(BakerTests::TestRig& rig, const vector<string>& rows, 
         [width, height, rgba, offset](string_view fname, string_view opt, FileReader reader, const ImageImport::Context& files) {
             ignore_unused(fname, opt, reader, files);
 
-            ImageImport::FrameCollection collection;
+            ImageImport::FrameCollection collection {};
             collection.SequenceSize = 1;
             collection.AnimTicks = 100;
             collection.Main.OffsX = numeric_cast<int16_t>(offset.x);
@@ -986,14 +986,14 @@ static auto BakeAlphaMask(BakerTests::TestRig& rig, const vector<string>& rows, 
 
 static auto BakedMeshDoubleArea(const BakedImageFrame& frame) -> int64_t
 {
-    int64_t double_area = 0;
+    int64_t double_area {0};
 
-    for (size_t i = 0; i < frame.Mesh.Indices.size(); i += 3) {
+    for (size_t i {0}; i < frame.Mesh.Indices.size(); i += 3) {
         REQUIRE(i + 2 < frame.Mesh.Indices.size());
-        ipos32 a = frame.Mesh.Vertices.at(frame.Mesh.Indices[i]);
-        ipos32 b = frame.Mesh.Vertices.at(frame.Mesh.Indices[i + 1]);
-        ipos32 c = frame.Mesh.Vertices.at(frame.Mesh.Indices[i + 2]);
-        int64_t cross = numeric_cast<int64_t>(b.x - a.x) * (c.y - a.y) - numeric_cast<int64_t>(b.y - a.y) * (c.x - a.x);
+        ipos32 a {frame.Mesh.Vertices.at(frame.Mesh.Indices[i])};
+        ipos32 b {frame.Mesh.Vertices.at(frame.Mesh.Indices[i + 1])};
+        ipos32 c {frame.Mesh.Vertices.at(frame.Mesh.Indices[i + 2])};
+        int64_t cross {numeric_cast<int64_t>(b.x - a.x) * (c.y - a.y) - numeric_cast<int64_t>(b.y - a.y) * (c.x - a.x)};
         double_area += std::abs(cross);
     }
 
@@ -1002,15 +1002,15 @@ static auto BakedMeshDoubleArea(const BakedImageFrame& frame) -> int64_t
 
 static auto IsPointInsideBakedMesh(const BakedImageFrame& frame, fpos32 point) -> bool
 {
-    for (size_t i = 0; i < frame.Mesh.Indices.size(); i += 3) {
-        ipos32 a = frame.Mesh.Vertices.at(frame.Mesh.Indices[i]);
-        ipos32 b = frame.Mesh.Vertices.at(frame.Mesh.Indices[i + 1]);
-        ipos32 c = frame.Mesh.Vertices.at(frame.Mesh.Indices[i + 2]);
-        float32_t cross_ab = numeric_cast<float32_t>(b.x - a.x) * (point.y - a.y) - numeric_cast<float32_t>(b.y - a.y) * (point.x - a.x);
-        float32_t cross_bc = numeric_cast<float32_t>(c.x - b.x) * (point.y - b.y) - numeric_cast<float32_t>(c.y - b.y) * (point.x - b.x);
-        float32_t cross_ca = numeric_cast<float32_t>(a.x - c.x) * (point.y - c.y) - numeric_cast<float32_t>(a.y - c.y) * (point.x - c.x);
-        bool has_negative = cross_ab < 0.0f || cross_bc < 0.0f || cross_ca < 0.0f;
-        bool has_positive = cross_ab > 0.0f || cross_bc > 0.0f || cross_ca > 0.0f;
+    for (size_t i {0}; i < frame.Mesh.Indices.size(); i += 3) {
+        ipos32 a {frame.Mesh.Vertices.at(frame.Mesh.Indices[i])};
+        ipos32 b {frame.Mesh.Vertices.at(frame.Mesh.Indices[i + 1])};
+        ipos32 c {frame.Mesh.Vertices.at(frame.Mesh.Indices[i + 2])};
+        float32_t cross_ab {numeric_cast<float32_t>(b.x - a.x) * (point.y - a.y) - numeric_cast<float32_t>(b.y - a.y) * (point.x - a.x)};
+        float32_t cross_bc {numeric_cast<float32_t>(c.x - b.x) * (point.y - b.y) - numeric_cast<float32_t>(c.y - b.y) * (point.x - b.x)};
+        float32_t cross_ca {numeric_cast<float32_t>(a.x - c.x) * (point.y - c.y) - numeric_cast<float32_t>(a.y - c.y) * (point.x - c.x)};
+        bool has_negative {cross_ab < 0.0f || cross_bc < 0.0f || cross_ca < 0.0f};
+        bool has_positive {cross_ab > 0.0f || cross_bc > 0.0f || cross_ca > 0.0f};
 
         if (!(has_negative && has_positive)) {
             return true;
@@ -1030,22 +1030,21 @@ TEST_CASE("ImageBakerFrmCustomPaletteWithByteWrapping")
 {
     using namespace BakerTests;
 
-    TestRig rig;
+    TestRig rig {};
     ConfigureSpriteMesh(rig, false);
 
-    vector<uint8_t> palette = MakeFrmPalette();
+    vector<uint8_t> palette {MakeFrmPalette()};
     palette[3] = 255;
     palette[4] = 128;
     palette[5] = 65;
-    AddSourceBinaryFile(rig, "gfx/byte-palette.frm",
-        MakeFrm(10, {FrmFrameSpec {.Width = 1, .Height = 1, .Indices = {1}}}));
+    AddSourceBinaryFile(rig, "gfx/byte-palette.frm", MakeFrm(10, {FrmFrameSpec {.Width = 1, .Height = 1, .Indices = {1}}}));
     AddSourceBinaryFile(rig, "gfx/byte-palette.pal", palette);
 
     ImageBaker baker {rig.MakeContext()};
     baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/byte-palette.frm");
 
     REQUIRE(rig.Outputs.contains("gfx/byte-palette.frm"));
-    auto frame = ReadSingleFrame(rig.Outputs.at("gfx/byte-palette.frm"));
+    auto frame {ReadSingleFrame(rig.Outputs.at("gfx/byte-palette.frm"))};
 
     CHECK(frame.Width == 1);
     CHECK(frame.Height == 1);
@@ -1060,7 +1059,7 @@ TEST_CASE("ImageBakerSpr")
 
     SECTION("BakesSprSequenceOptionsThroughFofrm")
     {
-        TestRig rig;
+        TestRig rig {};
         rig.AddSourceFile("gfx/spr.fofrm", "Frm=actor$[1,5,-10,20]walk.spr\n");
         AddSourceBinaryFile(rig, "gfx/actor.spr", MakeSimpleSpr());
 
@@ -1068,7 +1067,7 @@ TEST_CASE("ImageBakerSpr")
         baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/spr.fofrm");
 
         REQUIRE(rig.Outputs.contains("gfx/spr.fofrm"));
-        auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/spr.fofrm"));
+        auto sequence {ReadSingleDirSequence(rig.Outputs.at("gfx/spr.fofrm"))};
 
         CHECK(sequence.SequenceSize == 1);
         CHECK(sequence.AnimTicks == 100);
@@ -1082,7 +1081,7 @@ TEST_CASE("ImageBakerSpr")
 
     SECTION("BakesSprSkippedInvalidSequenceAndAllColorOffsets")
     {
-        TestRig rig;
+        TestRig rig {};
         rig.AddSourceFile("gfx/spr-all-offsets.fofrm", "Frm=actor$[9,1,2,3]walk.spr\n");
         AddSourceBinaryFile(rig, "gfx/actor.spr", MakeSprWithSequenceFrames({-43, 11, 12, 13, 5}));
 
@@ -1090,7 +1089,7 @@ TEST_CASE("ImageBakerSpr")
         baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/spr-all-offsets.fofrm");
 
         REQUIRE(rig.Outputs.contains("gfx/spr-all-offsets.fofrm"));
-        auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/spr-all-offsets.fofrm"));
+        auto sequence {ReadSingleDirSequence(rig.Outputs.at("gfx/spr-all-offsets.fofrm"))};
 
         CHECK(sequence.SequenceSize == 1);
         CHECK(sequence.AnimTicks == 100);
@@ -1104,7 +1103,7 @@ TEST_CASE("ImageBakerSpr")
 
     SECTION("BakesSprRepeatedFramesAsShared")
     {
-        TestRig rig;
+        TestRig rig {};
         AddSourceBinaryFile(rig, "gfx/repeated.spr", MakeSprWithSequenceFrames({0, 0}, 2));
 
         ImageBaker baker {rig.MakeContext()};
@@ -1119,18 +1118,18 @@ TEST_CASE("ImageBakerSpr")
         CHECK(reader.read<uint16_t>() == 200);
         CHECK(reader.read<uint8_t>() == GameSettings::MAP_DIR_COUNT);
 
-        for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
+        for (int32_t dir {0}; dir < GameSettings::MAP_DIR_COUNT; dir++) {
             CHECK_FALSE(reader.read<bool>());
             CHECK(reader.read<int16_t>() == 0);
             CHECK(reader.read<int16_t>() == 0);
 
-            auto width = reader.read<uint16_t>();
-            auto height = reader.read<uint16_t>();
-            int16_t next_x = reader.read<int16_t>();
-            int16_t next_y = reader.read<int16_t>();
+            auto width {reader.read<uint16_t>()};
+            auto height {reader.read<uint16_t>()};
+            int16_t next_x {reader.read<int16_t>()};
+            int16_t next_y {reader.read<int16_t>()};
 
-            size_t data_size = numeric_cast<size_t>(width) * height * 4;
-            const_span<uint8_t> data = reader.read_bytes(data_size);
+            size_t data_size {numeric_cast<size_t>(width) * height * 4};
+            const_span<uint8_t> data {reader.read_bytes(data_size)};
 
             if (width == 3) {
                 CHECK(width == 3);
@@ -1158,7 +1157,7 @@ TEST_CASE("ImageBakerSpr")
 
     SECTION("RejectsSprAnimationCountAndDurationRanges")
     {
-        TestRig rig;
+        TestRig rig {};
         AddSourceBinaryFile(rig, "gfx/too-many.spr", MakeSprWithSequenceFrames(vector<int16_t>(65536, 0)));
         AddSourceBinaryFile(rig, "gfx/long.spr", MakeSprWithSequenceFrames(vector<int16_t>(656, 0)));
 
@@ -1173,16 +1172,16 @@ TEST_CASE("ImageBakerSpr")
 
     SECTION("InvalidSprInputsAreReported")
     {
-        TestRig rig;
+        TestRig rig {};
         AddSourceBinaryFile(rig, "gfx/bad-header.spr", vector<uint8_t>(11));
         rig.AddSourceFile("gfx/missing-sequence.fofrm", "Frm=actor$run.spr\n");
         AddSourceBinaryFile(rig, "gfx/actor.spr", MakeSimpleSpr());
 
-        auto missing_spranim = MakeSimpleSpr();
+        auto missing_spranim {MakeSimpleSpr()};
         ReplaceFirstTagByte(missing_spranim, "<spranim>", numeric_cast<uint8_t>('x'));
         AddSourceBinaryFile(rig, "gfx/missing-spranim.spr", missing_spranim);
 
-        auto bad_internal_zar = MakeSimpleSpr();
+        auto bad_internal_zar {MakeSimpleSpr()};
         ReplaceFirstTagByte(bad_internal_zar, "<zar>", numeric_cast<uint8_t>('x'));
         AddSourceBinaryFile(rig, "gfx/bad-internal-zar.spr", bad_internal_zar);
 
@@ -1205,14 +1204,14 @@ TEST_CASE("ImageBaker")
     SECTION("BakesStaticArtHotSpotAsSequenceOffset")
     {
         // A frame's hot spot is the map anchor: the engine draws the sprite bottom-centre at hex + offset
-        TestRig rig;
+        TestRig rig {};
         AddSourceBinaryFile(rig, "gfx/static.art", MakeSimpleArt());
 
         ImageBaker baker {rig.MakeContext()};
         baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/static.art");
 
         REQUIRE(rig.Outputs.contains("gfx/static.art"));
-        auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/static.art"));
+        auto sequence {ReadSingleDirSequence(rig.Outputs.at("gfx/static.art"))};
 
         CHECK(sequence.SequenceSize == 1);
         CHECK(sequence.AnimTicks == 100);
@@ -1229,7 +1228,7 @@ TEST_CASE("ImageBaker")
 #if FO_IMAGE_ART
     SECTION("RejectsArtRleOverrunningItsFrame")
     {
-        TestRig rig;
+        TestRig rig {};
         AddSourceBinaryFile(rig, "gfx/broken.art", MakeArt(0x1, 10, {true, false, false, false}, 1, {ArtFrameSpec {.Width = 2, .Height = 1, .Stored = {0x05, 0x01, 0x00}}}));
 
         ImageBaker baker {rig.MakeContext()};
@@ -1241,10 +1240,10 @@ TEST_CASE("ImageBaker")
     SECTION("BakesFofrmAliasOfSingleArtRotation")
     {
         for (string_view dir : {string_view {"gfx"}, string_view {"art/critter"}}) {
-            bool critter = dir == "art/critter";
-            string fofrm_path = strex("{}/dirs_r3.fofrm", dir).str();
+            bool critter {dir == "art/critter"};
+            string fofrm_path {strex("{}/dirs_r3.fofrm", dir).str()};
 
-            TestRig rig;
+            TestRig rig {};
             rig.AddSourceFile(fofrm_path, "Alias = dirs$r=3.art\n");
             AddSourceBinaryFile(rig, strex("{}/dirs.art", dir).str(), MakeRotationArt());
 
@@ -1252,8 +1251,8 @@ TEST_CASE("ImageBaker")
             baker.BakeFiles(rig.GetAllSourceFiles(), fofrm_path);
 
             REQUIRE(rig.Outputs.contains(fofrm_path));
-            auto sequence = ReadSingleDirSequence(rig.Outputs.at(fofrm_path));
-            int32_t source = critter ? 5 : 3;
+            auto sequence {ReadSingleDirSequence(rig.Outputs.at(fofrm_path))};
+            int32_t source {critter ? 5 : 3};
 
             CHECK(sequence.SequenceSize == 1);
             CHECK(sequence.AnimTicks == 200);
@@ -1262,7 +1261,7 @@ TEST_CASE("ImageBaker")
             CHECK(sequence.Frames[0].NextX == (critter ? -source : source));
             CHECK(sequence.Frames[0].NextY == -source);
 
-            vector<uint8_t> expected = ArtTestColor(0, source + 1);
+            vector<uint8_t> expected {ArtTestColor(0, source + 1)};
             expected.emplace_back(255);
             CHECK(sequence.Frames[0].Data == expected);
         }
@@ -1272,20 +1271,20 @@ TEST_CASE("ImageBaker")
 #if FO_IMAGE_ART
     SECTION("SelectsArtRotationInOrdinaryFofrmFrameOptions")
     {
-        vector<ArtFrameSpec> frames;
+        vector<ArtFrameSpec> frames {};
 
-        for (int32_t rotation = 0; rotation < 8; rotation++) {
+        for (int32_t rotation {0}; rotation < 8; rotation++) {
             frames.emplace_back(ArtFrameSpec {.Width = 1, .Height = 1, .DeltaX = rotation, .DeltaY = -rotation, .Indices = {numeric_cast<uint8_t>(rotation + 1)}});
         }
 
-        TestRig rig;
+        TestRig rig {};
         rig.AddSourceFile("gfx/options.fofrm", "Frm = dirs$3R=3Hf0.art\n");
         AddSourceBinaryFile(rig, "gfx/dirs.art", MakeArt(0, 10, {true, true, true, true}, 1, frames));
         ImageBaker baker {rig.MakeContext()};
         baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/options.fofrm");
 
-        auto frame = ReadSingleFrame(rig.Outputs.at("gfx/options.fofrm"));
-        vector<uint8_t> expected = ArtTestColor(3, 4);
+        auto frame {ReadSingleFrame(rig.Outputs.at("gfx/options.fofrm"))};
+        vector<uint8_t> expected {ArtTestColor(3, 4)};
         expected.emplace_back(255);
         expected.insert(expected.begin(), 4, 0);
         CHECK(frame.Width == 2);
@@ -1298,18 +1297,18 @@ TEST_CASE("ImageBaker")
 
     SECTION("ForwardsAliasOptionsThroughRegisteredLoader")
     {
-        TestRig rig;
+        TestRig rig {};
         rig.AddSourceFile("gfx/custom.fofrm", "Alias = custom$r=3.toy\n");
         rig.AddSourceFile("gfx/custom.toy", "Custom source");
         ImageBaker baker {rig.MakeContext()};
-        string observed_name;
-        string observed_options;
+        string observed_name {};
+        string observed_options {};
         baker.AddLoader(
             [&observed_name, &observed_options](string_view fname, string_view opt, FileReader reader, const ImageImport::Context& files) {
                 ignore_unused(reader, files);
                 observed_name = fname;
                 observed_options = opt;
-                ImageImport::FrameCollection collection;
+                ImageImport::FrameCollection collection {};
                 collection.SequenceSize = 1;
                 collection.AnimTicks = 123;
                 collection.Main.Frames.emplace_back(ImageImport::FrameShot {.Width = 1, .Height = 1, .Data = {1, 2, 3, 255}});
@@ -1320,7 +1319,7 @@ TEST_CASE("ImageBaker")
 
         CHECK(observed_name == "gfx/custom.toy");
         CHECK(observed_options == "r=3");
-        auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/custom.fofrm"));
+        auto sequence {ReadSingleDirSequence(rig.Outputs.at("gfx/custom.fofrm"))};
         CHECK(sequence.AnimTicks == 123);
         CHECK(sequence.Frames.at(0).Data == vector<uint8_t> {1, 2, 3, 255});
     }
@@ -1328,15 +1327,15 @@ TEST_CASE("ImageBaker")
 #if FO_IMAGE_ART
     SECTION("PreservesLegacyUnknownRAndPaletteSelection")
     {
-        TestRig rig;
+        TestRig rig {};
         rig.AddSourceFile("gfx/palette.fofrm", "Alias = palette$r3.art\n");
         AddSourceBinaryFile(rig, "gfx/palette.art", MakeArt(1, 10, {true, true, true, true}, 1, {ArtFrameSpec {.Width = 1, .Height = 1, .Indices = {1}}}));
 
         ImageBaker baker {rig.MakeContext()};
         baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/palette.fofrm");
 
-        auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/palette.fofrm"));
-        vector<uint8_t> expected = ArtTestColor(3, 1);
+        auto sequence {ReadSingleDirSequence(rig.Outputs.at("gfx/palette.fofrm"))};
+        vector<uint8_t> expected {ArtTestColor(3, 1)};
         expected.emplace_back(255);
         CHECK(sequence.Frames.at(0).Data == expected);
     }
@@ -1345,12 +1344,12 @@ TEST_CASE("ImageBaker")
 #if FO_IMAGE_ART
     SECTION("PreservesWholeArtAliasAndItsOutputName")
     {
-        TestRig rig;
+        TestRig rig {};
         rig.AddSourceFile("whole.fofrm", "Alias=dirs.art\nfps=1\ncount=99\noffs_x=100\n");
         AddSourceBinaryFile(rig, "dirs.art", MakeRotationArt());
         ImageBaker baker {rig.MakeContext()};
         baker.BakeFiles(rig.GetAllSourceFiles(), "whole.fofrm");
-        auto sprite = ReadSpriteResource(rig.Outputs.at("whole.fofrm"));
+        auto sprite {ReadSpriteResource(rig.Outputs.at("whole.fofrm"))};
         REQUIRE(sprite.Directions.size() == GameSettings::MAP_DIR_COUNT);
         REQUIRE(sprite.Animation.Sprite);
         CHECK(sprite.Animation.Sprite->Duration == std::chrono::milliseconds {200});
@@ -1361,19 +1360,19 @@ TEST_CASE("ImageBaker")
 
     SECTION("ResolvesOrdinaryFofrmFramesAtPackRoot")
     {
-        TestRig rig;
+        TestRig rig {};
         rig.AddSourceFile("root.fofrm", "frm=frame.tga\n");
         AddSourceBinaryFile(rig, "frame.tga", MakeRawTga(1, 1, 24, {0, 0, 255}));
         ImageBaker baker {rig.MakeContext()};
         baker.BakeFiles(rig.GetAllSourceFiles(), "root.fofrm");
-        auto frame = ReadSingleFrame(rig.Outputs.at("root.fofrm"));
+        auto frame {ReadSingleFrame(rig.Outputs.at("root.fofrm"))};
         CHECK(frame.Data == vector<uint8_t> {255, 0, 0, 255});
     }
 
 #if FO_IMAGE_ART
     SECTION("AlignsChangingArtHotSpotsWithoutLosingFrameDeltas")
     {
-        TestRig rig;
+        TestRig rig {};
         AddSourceBinaryFile(rig, "anchor.art",
             MakeArt(1, 10, {true, false, false, false}, 2,
                 {
@@ -1382,7 +1381,7 @@ TEST_CASE("ImageBaker")
                 }));
         ImageBaker baker {rig.MakeContext()};
         baker.BakeFiles(rig.GetAllSourceFiles(), "anchor.art");
-        auto sequence = ReadSingleDirSequence(rig.Outputs.at("anchor.art"));
+        auto sequence {ReadSingleDirSequence(rig.Outputs.at("anchor.art"))};
         REQUIRE(sequence.Frames.size() == 2);
         CHECK(sequence.Frames[0].Offset == ipos32 {0, 0});
         CHECK(sequence.Frames[1].Offset == sequence.Frames[0].Offset);
@@ -1397,20 +1396,20 @@ TEST_CASE("ImageBaker")
 #if FO_IMAGE_ART
     SECTION("SupportsLongFrameIndexedArtAndSparsePalettes")
     {
-        TestRig rig;
-        vector<ArtFrameSpec> frames(10001, ArtFrameSpec {.Width = 1, .Height = 1, .Indices = {1}});
+        TestRig rig {};
+        vector<ArtFrameSpec> frames {10001, ArtFrameSpec {.Width = 1, .Height = 1, .Indices = {1}}};
         frames.back().Indices = {2};
         AddSourceBinaryFile(rig, "long.art", MakeArt(1, 1, {false, false, true, false}, 10001, frames));
         rig.AddSourceFile("last.fofrm", "Alias=long$F10000.art\n");
         ImageBaker baker {rig.MakeContext()};
         baker.BakeFiles(rig.GetAllSourceFiles(), "last.fofrm");
-        auto selected = ReadSingleDirSequence(rig.Outputs.at("last.fofrm"));
+        auto selected {ReadSingleDirSequence(rig.Outputs.at("last.fofrm"))};
         CHECK(selected.SequenceSize == 1);
         CHECK(selected.AnimTicks == 1000);
         CHECK(selected.Frames.at(0).Data == vector<uint8_t> {136, 9, 10, 255});
 
         baker.BakeFiles(rig.GetAllSourceFiles(), "long.art");
-        auto sprite = ReadSpriteResource(rig.Outputs.at("long.art"));
+        auto sprite {ReadSpriteResource(rig.Outputs.at("long.art"))};
         REQUIRE(sprite.Animation.Sprite);
         CHECK(sprite.Animation.Sprite->Duration == std::chrono::milliseconds {65535});
         CHECK(sprite.Directions.at(0).Frames.size() == 10001);
@@ -1421,7 +1420,7 @@ TEST_CASE("ImageBaker")
     SECTION("RejectsInvalidArtRotationOptions")
     {
         for (string_view rotation : {"", "8", "-1", "3x", "33"}) {
-            TestRig rig;
+            TestRig rig {};
             rig.AddSourceFile("gfx/invalid.fofrm", strex("Alias = source$r={}.art\n", rotation).str());
             AddSourceBinaryFile(rig, "gfx/source.art", MakeSimpleArt());
 
@@ -1434,7 +1433,7 @@ TEST_CASE("ImageBaker")
     SECTION("RejectsRecursiveAndMissingFofrmAliases")
     {
         for (string_view source : {"loop.fofrm", "missing.art"}) {
-            TestRig rig;
+            TestRig rig {};
             rig.AddSourceFile("gfx/loop.fofrm", strex("Alias = {}\n", source).str());
 
             ImageBaker baker {rig.MakeContext()};
@@ -1445,14 +1444,14 @@ TEST_CASE("ImageBaker")
 #if FO_IMAGE_ART
     SECTION("RejectsTruncatedArtTablesAndPixelStreams")
     {
-        vector<uint8_t> truncated_table = MakeArt(1, 10, {true, false, false, false}, std::numeric_limits<int32_t>::max(), {});
-        vector<uint8_t> truncated_pixels = MakeSimpleArt();
+        vector<uint8_t> truncated_table {MakeArt(1, 10, {true, false, false, false}, std::numeric_limits<int32_t>::max(), {})};
+        vector<uint8_t> truncated_pixels {MakeSimpleArt()};
         truncated_pixels.pop_back();
-        vector<uint8_t> truncated_rle = MakeArt(1, 10, {true, false, false, false}, 1, {ArtFrameSpec {.Width = 3, .Height = 1, .Stored = {0x82, 1}}});
-        vector<uint8_t> short_rle = MakeArt(1, 10, {true, false, false, false}, 1, {ArtFrameSpec {.Width = 3, .Height = 1, .Stored = {1, 1}}});
+        vector<uint8_t> truncated_rle {MakeArt(1, 10, {true, false, false, false}, 1, {ArtFrameSpec {.Width = 3, .Height = 1, .Stored = {0x82, 1}}})};
+        vector<uint8_t> short_rle {MakeArt(1, 10, {true, false, false, false}, 1, {ArtFrameSpec {.Width = 3, .Height = 1, .Stored = {1, 1}}})};
 
         for (const auto& data : {truncated_table, truncated_pixels, truncated_rle, short_rle}) {
-            TestRig rig;
+            TestRig rig {};
             AddSourceBinaryFile(rig, "gfx/broken.art", data);
 
             ImageBaker baker {rig.MakeContext()};
@@ -1465,7 +1464,7 @@ TEST_CASE("ImageBaker")
     SECTION("RejectsArtHotSpotsOutsideBakedRange")
     {
         for (int32_t hot_x : {std::numeric_limits<int32_t>::min(), std::numeric_limits<int32_t>::max()}) {
-            TestRig rig;
+            TestRig rig {};
             AddSourceBinaryFile(rig, "gfx/broken.art", MakeArt(1, 10, {true, false, false, false}, 1, {ArtFrameSpec {.Width = 1, .Height = 1, .HotX = hot_x, .Indices = {1}}}));
 
             ImageBaker baker {rig.MakeContext()};
@@ -1478,7 +1477,7 @@ TEST_CASE("ImageBaker")
     SECTION("BakesWallHotSpotShiftForPlacedRotation")
     {
         // Wall rotations 0/1/6/7 use the original renderer hot spot shift even with one stored rotation
-        TestRig rig;
+        TestRig rig {};
         rig.AddSourceFile("art/wall/w_r0.fofrm", "Alias = w$r=0.art\n");
         rig.AddSourceFile("art/wall/w_r2.fofrm", "Alias = w$r=2.art\n");
         AddSourceBinaryFile(rig, "art/wall/w.art", MakeArt(0x1, 10, {true, false, false, false}, 1, {ArtFrameSpec {.Width = 1, .Height = 1, .Indices = {1}}}));
@@ -1489,8 +1488,8 @@ TEST_CASE("ImageBaker")
 
         REQUIRE(rig.Outputs.contains("art/wall/w_r0.fofrm"));
         REQUIRE(rig.Outputs.contains("art/wall/w_r2.fofrm"));
-        auto shifted = ReadSingleDirSequence(rig.Outputs.at("art/wall/w_r0.fofrm"));
-        auto plain = ReadSingleDirSequence(rig.Outputs.at("art/wall/w_r2.fofrm"));
+        auto shifted {ReadSingleDirSequence(rig.Outputs.at("art/wall/w_r0.fofrm"))};
+        auto plain {ReadSingleDirSequence(rig.Outputs.at("art/wall/w_r2.fofrm"))};
 
         REQUIRE(shifted.Frames.size() == 1);
         REQUIRE(plain.Frames.size() == 1);
@@ -1509,9 +1508,9 @@ TEST_CASE("ImageBaker")
         // ART rotation 0 faces screen north and goes clockwise; square direction 0 is north-east. Critter-like art
         // draws rotations 1..3 as mirrored rotations 7..5 (art.c tig_art_frame_data)
         for (string_view path : {string_view {"gfx/dirs.art"}, string_view {"art/critter/dirs.art"}}) {
-            bool critter = path.starts_with("art/critter/");
+            bool critter {path.starts_with("art/critter/")};
 
-            TestRig rig;
+            TestRig rig {};
             AddSourceBinaryFile(rig, path, MakeRotationArt());
 
             ImageBaker baker {rig.MakeContext()};
@@ -1525,19 +1524,19 @@ TEST_CASE("ImageBaker")
             CHECK(reader.read<uint16_t>() == 200);
             REQUIRE(reader.read<uint8_t>() == GameSettings::MAP_DIR_COUNT);
 
-            for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
-                int32_t rotation = 0;
+            for (int32_t dir {0}; dir < GameSettings::MAP_DIR_COUNT; dir++) {
+                int32_t rotation {0};
 
                 if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-                    constexpr int32_t hex_dir_to_rotation[6] = {1, 2, 3, 5, 6, 7};
+                    constexpr int32_t hex_dir_to_rotation[6] {1, 2, 3, 5, 6, 7};
                     rotation = hex_dir_to_rotation[dir];
                 }
                 else {
                     rotation = (dir + 1) % 8;
                 }
 
-                bool mirrored = critter && rotation > 0 && rotation < 4;
-                int32_t source = mirrored ? 8 - rotation : rotation;
+                bool mirrored {critter && rotation > 0 && rotation < 4};
+                int32_t source {mirrored ? 8 - rotation : rotation};
 
                 CHECK_FALSE(reader.read<bool>());
                 CHECK(reader.read<int16_t>() == 0); // Offset x: canvas 1 / 2 - hot x 0
@@ -1547,8 +1546,8 @@ TEST_CASE("ImageBaker")
                 CHECK(reader.read<int16_t>() == (mirrored ? -source : source));
                 CHECK(reader.read<int16_t>() == -source);
 
-                const_span<uint8_t> pixel = reader.read_bytes(4);
-                vector<uint8_t> expected = ArtTestColor(0, source + 1);
+                const_span<uint8_t> pixel {reader.read_bytes(4)};
+                vector<uint8_t> expected {ArtTestColor(0, source + 1)};
                 expected.emplace_back(255);
                 CHECK(vector<uint8_t>(pixel.begin(), pixel.end()) == expected);
                 SkipSpriteMesh(reader);
@@ -1562,8 +1561,8 @@ TEST_CASE("ImageBaker")
 
     SECTION("Setup")
     {
-        TestRig rig;
-        auto bakers = MakeRequestedBakers({string(ImageBaker::NAME)}, rig);
+        TestRig rig {};
+        auto bakers {MakeRequestedBakers({string(ImageBaker::NAME)}, rig)};
 
         REQUIRE(bakers.size() == 1);
         CHECK(bakers.front()->GetName() == ImageBaker::NAME);
@@ -1573,37 +1572,37 @@ TEST_CASE("ImageBaker")
 
     SECTION("SpriteMeshMasterSwitchAndEmptyKind")
     {
-        TestRig disabled;
+        TestRig disabled {};
         ConfigureSpriteMesh(disabled, false);
-        BakedImageFrame disabled_frame = ReadSingleFrame(BakeAlphaMask(disabled, {"...", "...", "..."}));
+        BakedImageFrame disabled_frame {ReadSingleFrame(BakeAlphaMask(disabled, {"...", "...", "..."}))};
         CHECK(disabled_frame.MeshKind == SpriteMeshKind::Quad);
         CHECK(disabled_frame.Mesh.Vertices.empty());
         CHECK(disabled_frame.Mesh.Indices.empty());
 
-        TestRig enabled;
+        TestRig enabled {};
         ConfigureSpriteMesh(enabled);
-        BakedImageFrame empty_frame = ReadSingleFrame(BakeAlphaMask(enabled, {"...", "...", "..."}));
+        BakedImageFrame empty_frame {ReadSingleFrame(BakeAlphaMask(enabled, {"...", "...", "..."}))};
         CHECK(empty_frame.MeshKind == SpriteMeshKind::Empty);
         CHECK(empty_frame.Mesh.Vertices.empty());
         CHECK(empty_frame.Mesh.Indices.empty());
 
-        TestRig opaque;
+        TestRig opaque {};
         ConfigureSpriteMesh(opaque);
         CHECK(ReadSingleFrame(BakeAlphaMask(opaque, {"##", "##"})).MeshKind == SpriteMeshKind::Quad);
 
-        TestRig dilation_fills_frame;
+        TestRig dilation_fills_frame {};
         ConfigureSpriteMesh(dilation_fills_frame);
-        BakedImageFrame dilation_fills_frame_result = ReadSingleFrame(BakeAlphaMask(dilation_fills_frame, {"...", ".#.", "..."}));
+        BakedImageFrame dilation_fills_frame_result {ReadSingleFrame(BakeAlphaMask(dilation_fills_frame, {"...", ".#.", "..."}))};
         REQUIRE(dilation_fills_frame_result.MeshKind == SpriteMeshKind::Mesh);
         CHECK(dilation_fills_frame_result.Mesh.Indices.size() <= 6);
     }
 
     SECTION("SpriteMeshConcaveContour")
     {
-        TestRig rig;
+        TestRig rig {};
         ConfigureSpriteMesh(rig);
-        BakedImageSequence sequence = ReadSingleDirSequence(BakeAlphaMask(rig, {"........", ".####...", ".####...", ".##.....", ".##.....", ".##.....", "........", "........"}));
-        const BakedImageFrame& frame = sequence.Frames.front();
+        BakedImageSequence sequence {ReadSingleDirSequence(BakeAlphaMask(rig, {"........", ".####...", ".####...", ".##.....", ".##.....", ".##.....", "........", "........"}))};
+        const BakedImageFrame& frame {sequence.Frames.front()};
 
         REQUIRE(frame.MeshKind == SpriteMeshKind::Mesh);
         CHECK(frame.Mesh.Indices.size() > 6);
@@ -1614,10 +1613,10 @@ TEST_CASE("ImageBaker")
 
     SECTION("SpriteMeshPreservesHole")
     {
-        TestRig rig;
+        TestRig rig {};
         ConfigureSpriteMesh(rig);
-        BakedImageSequence sequence = ReadSingleDirSequence(BakeAlphaMask(rig, {"#########", "#.......#", "#.......#", "#.......#", "#.......#", "#.......#", "#.......#", "#.......#", "#########"}));
-        const BakedImageFrame& frame = sequence.Frames.front();
+        BakedImageSequence sequence {ReadSingleDirSequence(BakeAlphaMask(rig, {"#########", "#.......#", "#.......#", "#.......#", "#.......#", "#.......#", "#.......#", "#.......#", "#########"}))};
+        const BakedImageFrame& frame {sequence.Frames.front()};
 
         REQUIRE(frame.MeshKind == SpriteMeshKind::Mesh);
         CHECK(IsPointInsideBakedMesh(frame, SourcePointToBakedMeshPoint(frame, {0.5f, 0.5f})));
@@ -1626,10 +1625,10 @@ TEST_CASE("ImageBaker")
 
     SECTION("SpriteMeshPreservesSeparateIslands")
     {
-        TestRig rig;
+        TestRig rig {};
         ConfigureSpriteMesh(rig);
-        BakedImageSequence sequence = ReadSingleDirSequence(BakeAlphaMask(rig, {".........", ".........", ".#.....#.", ".........", "........."}));
-        const BakedImageFrame& frame = sequence.Frames.front();
+        BakedImageSequence sequence {ReadSingleDirSequence(BakeAlphaMask(rig, {".........", ".........", ".#.....#.", ".........", "........."}))};
+        const BakedImageFrame& frame {sequence.Frames.front()};
 
         REQUIRE(frame.MeshKind == SpriteMeshKind::Mesh);
         CHECK(IsPointInsideBakedMesh(frame, SourcePointToBakedMeshPoint(frame, {1.5f, 2.5f})));
@@ -1639,65 +1638,65 @@ TEST_CASE("ImageBaker")
 
     SECTION("SpriteMeshSettingsControlGeneration")
     {
-        TestRig threshold;
+        TestRig threshold {};
         ConfigureSpriteMesh(threshold, true, 128);
-        BakedImageFrame threshold_frame = ReadSingleFrame(BakeAlphaMask(threshold, {"...", ".+.", "..."}));
+        BakedImageFrame threshold_frame {ReadSingleFrame(BakeAlphaMask(threshold, {"...", ".+.", "..."}))};
         CHECK(threshold_frame.MeshKind == SpriteMeshKind::Empty);
 
-        TestRig below_threshold;
+        TestRig below_threshold {};
         ConfigureSpriteMesh(below_threshold, true, 127);
-        BakedImageFrame below_threshold_frame = ReadSingleDirSequence(BakeAlphaMask(below_threshold, {".....", ".....", "..+..", ".....", "....."})).Frames.front();
+        BakedImageFrame below_threshold_frame {ReadSingleDirSequence(BakeAlphaMask(below_threshold, {".....", ".....", "..+..", ".....", "....."})).Frames.front()};
         CHECK(below_threshold_frame.MeshKind == SpriteMeshKind::Mesh);
 
-        TestRig dilation;
+        TestRig dilation {};
         ConfigureSpriteMesh(dilation);
-        BakedImageFrame dilation_frame = ReadSingleFrame(BakeAlphaMask(dilation, {".....", ".....", "..#..", ".....", "....."}));
+        BakedImageFrame dilation_frame {ReadSingleFrame(BakeAlphaMask(dilation, {".....", ".....", "..#..", ".....", "....."}))};
         REQUIRE(dilation_frame.MeshKind == SpriteMeshKind::Mesh);
         CHECK(BakedMeshDoubleArea(dilation_frame) == 2);
 
-        vector<string> diagonal_rows(40, string(40, '.'));
+        vector<string> diagonal_rows {vector<string>(40, string(40, '.'))};
 
-        for (size_t i = 8; i < 32; i++) {
+        for (size_t i {8}; i < 32; i++) {
             diagonal_rows[i][i] = '#';
         }
 
-        TestRig simplified_diagonal;
+        TestRig simplified_diagonal {};
         ConfigureSpriteMesh(simplified_diagonal);
-        BakedImageFrame simplified_diagonal_frame = ReadSingleFrame(BakeAlphaMask(simplified_diagonal, diagonal_rows));
+        BakedImageFrame simplified_diagonal_frame {ReadSingleFrame(BakeAlphaMask(simplified_diagonal, diagonal_rows))};
 
         REQUIRE(simplified_diagonal_frame.MeshKind == SpriteMeshKind::Mesh);
         CHECK(simplified_diagonal_frame.Mesh.Vertices.size() <= 12);
 
-        vector<string> shallow_notch_rows(30, string(30, '#'));
+        vector<string> shallow_notch_rows {vector<string>(30, string(30, '#'))};
 
-        for (size_t y = 23; y < 30; y++) {
-            for (size_t x = 5; x < 25; x++) {
+        for (size_t y {23}; y < 30; y++) {
+            for (size_t x {5}; x < 25; x++) {
                 shallow_notch_rows[y][x] = '.';
             }
         }
 
-        TestRig shallow_notch;
+        TestRig shallow_notch {};
         ConfigureSpriteMesh(shallow_notch);
-        BakedImageFrame shallow_notch_frame = ReadSingleFrame(BakeAlphaMask(shallow_notch, shallow_notch_rows));
+        BakedImageFrame shallow_notch_frame {ReadSingleFrame(BakeAlphaMask(shallow_notch, shallow_notch_rows))};
 
         REQUIRE(shallow_notch_frame.MeshKind == SpriteMeshKind::Mesh);
         CHECK_FALSE(IsPointInsideBakedMesh(shallow_notch_frame, SourcePointToBakedMeshPoint(shallow_notch_frame, {15.5f, 29.5f})));
 
-        vector<string> shallow_diagonal_rows(40, string(80, '.'));
+        vector<string> shallow_diagonal_rows {vector<string>(40, string(80, '.'))};
 
-        for (size_t x = 2; x < 78; x++) {
-            size_t y = 8 + (x - 2) * 19 / 75;
+        for (size_t x {2}; x < 78; x++) {
+            size_t y {8 + (x - 2) * 19 / 75};
             shallow_diagonal_rows[y][x] = '#';
         }
 
-        TestRig shallow_diagonal;
+        TestRig shallow_diagonal {};
         ConfigureSpriteMesh(shallow_diagonal);
-        BakedImageFrame shallow_diagonal_frame = ReadSingleFrame(BakeAlphaMask(shallow_diagonal, shallow_diagonal_rows));
+        BakedImageFrame shallow_diagonal_frame {ReadSingleFrame(BakeAlphaMask(shallow_diagonal, shallow_diagonal_rows))};
 
         REQUIRE(shallow_diagonal_frame.MeshKind == SpriteMeshKind::Mesh);
 
-        for (size_t y = 0; y < shallow_diagonal_rows.size(); y++) {
-            for (size_t x = 0; x < shallow_diagonal_rows[y].size(); x++) {
+        for (size_t y {0}; y < shallow_diagonal_rows.size(); y++) {
+            for (size_t x {0}; x < shallow_diagonal_rows[y].size(); x++) {
                 if (shallow_diagonal_rows[y][x] == '#') {
                     CAPTURE(x, y);
                     CHECK(IsPointInsideBakedMesh(shallow_diagonal_frame, SourcePointToBakedMeshPoint(shallow_diagonal_frame, {numeric_cast<float32_t>(x) + 0.01f, numeric_cast<float32_t>(y) + 0.01f})));
@@ -1708,25 +1707,25 @@ TEST_CASE("ImageBaker")
             }
         }
 
-        vector<string> edge_coverage_rows(40, string(80, '.'));
-        uint32_t edge_random_state = 3;
-        int32_t edge_y = 9;
+        vector<string> edge_coverage_rows {vector<string>(40, string(80, '.'))};
+        uint32_t edge_random_state {3};
+        int32_t edge_y {9};
 
-        for (size_t x = 2; x < 78; x++) {
+        for (size_t x {2}; x < 78; x++) {
             edge_coverage_rows[numeric_cast<size_t>(edge_y)][x] = '#';
             edge_random_state = edge_random_state * 1664525u + 1013904223u;
             edge_y = std::clamp(edge_y + numeric_cast<int32_t>((edge_random_state >> 30u) & 3u) - 1, 1, 38);
         }
 
-        TestRig edge_coverage;
+        TestRig edge_coverage {};
         ConfigureSpriteMesh(edge_coverage);
-        BakedImageSequence edge_coverage_sequence = ReadSingleDirSequence(BakeAlphaMask(edge_coverage, edge_coverage_rows));
-        const BakedImageFrame& edge_coverage_frame = edge_coverage_sequence.Frames.front();
+        BakedImageSequence edge_coverage_sequence {ReadSingleDirSequence(BakeAlphaMask(edge_coverage, edge_coverage_rows))};
+        const BakedImageFrame& edge_coverage_frame {edge_coverage_sequence.Frames.front()};
 
         REQUIRE(edge_coverage_frame.MeshKind == SpriteMeshKind::Mesh);
 
-        for (size_t sample_y = 0; sample_y < edge_coverage_rows.size(); sample_y++) {
-            for (size_t sample_x = 0; sample_x < edge_coverage_rows[sample_y].size(); sample_x++) {
+        for (size_t sample_y {0}; sample_y < edge_coverage_rows.size(); sample_y++) {
+            for (size_t sample_x {0}; sample_x < edge_coverage_rows[sample_y].size(); sample_x++) {
                 if (edge_coverage_rows[sample_y][sample_x] != '#') {
                     continue;
                 }
@@ -1739,22 +1738,22 @@ TEST_CASE("ImageBaker")
             }
         }
 
-        vector<string> diamond_rows(41, string(81, '.'));
+        vector<string> diamond_rows {vector<string>(41, string(81, '.'))};
 
-        for (size_t y = 0; y < diamond_rows.size(); y++) {
-            int32_t distance = std::abs(numeric_cast<int32_t>(y) - 20);
-            int32_t half_width = (20 - distance) * 2;
+        for (size_t y {0}; y < diamond_rows.size(); y++) {
+            int32_t distance {std::abs(numeric_cast<int32_t>(y) - 20)};
+            int32_t half_width {(20 - distance) * 2};
 
-            for (int32_t x = 40 - half_width; x <= 40 + half_width; x++) {
+            for (int32_t x {40 - half_width}; x <= 40 + half_width; x++) {
                 diamond_rows[y][numeric_cast<size_t>(x)] = '#';
             }
         }
 
-        TestRig preferred_quad;
+        TestRig preferred_quad {};
         ConfigureSpriteMesh(preferred_quad, true, 0, 2);
-        BakedImageSequence preferred_quad_sequence = ReadSingleDirSequence(BakeAlphaMask(preferred_quad, diamond_rows));
+        BakedImageSequence preferred_quad_sequence {ReadSingleDirSequence(BakeAlphaMask(preferred_quad, diamond_rows))};
         REQUIRE(preferred_quad_sequence.Frames.size() == 1);
-        const BakedImageFrame& preferred_quad_frame = preferred_quad_sequence.Frames.front();
+        const BakedImageFrame& preferred_quad_frame {preferred_quad_sequence.Frames.front()};
 
         REQUIRE(preferred_quad_frame.MeshKind == SpriteMeshKind::Mesh);
         CHECK(preferred_quad_frame.Mesh.SourceSize == isize32 {81, 41});
@@ -1763,8 +1762,8 @@ TEST_CASE("ImageBaker")
         CHECK(preferred_quad_frame.Mesh.Vertices.size() == 4);
         CHECK(preferred_quad_frame.Mesh.Indices.size() == 6);
 
-        for (size_t y = 0; y < diamond_rows.size(); y++) {
-            for (size_t x = 0; x < diamond_rows[y].size(); x++) {
+        for (size_t y {0}; y < diamond_rows.size(); y++) {
+            for (size_t x {0}; x < diamond_rows[y].size(); x++) {
                 if (diamond_rows[y][x] == '#') {
                     CAPTURE(x, y);
                     CHECK(IsPointInsideBakedMesh(preferred_quad_frame, SourcePointToBakedMeshPoint(preferred_quad_frame, {numeric_cast<float32_t>(x) + 0.5f, numeric_cast<float32_t>(y) + 0.5f})));
@@ -1772,38 +1771,38 @@ TEST_CASE("ImageBaker")
             }
         }
 
-        vector<string> wedge_rows(61, string(61, '.'));
+        vector<string> wedge_rows {vector<string>(61, string(61, '.'))};
 
-        for (size_t y = 5; y <= 55; y++) {
-            size_t right = 60 - y;
+        for (size_t y {5}; y <= 55; y++) {
+            size_t right {60 - y};
 
-            for (size_t x = 5; x <= right; x++) {
+            for (size_t x {5}; x <= right; x++) {
                 wedge_rows[y][x] = '#';
             }
         }
 
-        TestRig preferred_triangle;
+        TestRig preferred_triangle {};
         ConfigureSpriteMesh(preferred_triangle, true, 0, 1);
-        BakedImageSequence preferred_triangle_sequence = ReadSingleDirSequence(BakeAlphaMask(preferred_triangle, wedge_rows));
+        BakedImageSequence preferred_triangle_sequence {ReadSingleDirSequence(BakeAlphaMask(preferred_triangle, wedge_rows))};
         REQUIRE(preferred_triangle_sequence.Frames.size() == 1);
-        const BakedImageFrame& preferred_triangle_frame = preferred_triangle_sequence.Frames.front();
+        const BakedImageFrame& preferred_triangle_frame {preferred_triangle_sequence.Frames.front()};
 
         REQUIRE(preferred_triangle_frame.MeshKind == SpriteMeshKind::Mesh);
         CHECK(preferred_triangle_frame.Mesh.SourceSize == isize32 {61, 61});
         CHECK(preferred_triangle_frame.Mesh.Vertices.size() == 3);
         CHECK(preferred_triangle_frame.Mesh.Indices.size() == 3);
 
-        vector<string> rectangle_rows(31, string(61, '.'));
+        vector<string> rectangle_rows {vector<string>(31, string(61, '.'))};
 
-        for (size_t y = 5; y <= 25; y++) {
-            for (size_t x = 5; x <= 55; x++) {
+        for (size_t y {5}; y <= 25; y++) {
+            for (size_t x {5}; x <= 55; x++) {
                 rectangle_rows[y][x] = '#';
             }
         }
 
-        TestRig preferred_rectangle;
+        TestRig preferred_rectangle {};
         ConfigureSpriteMesh(preferred_rectangle, true, 0, 2);
-        BakedImageFrame preferred_rectangle_frame = ReadSingleDirSequence(BakeAlphaMask(preferred_rectangle, rectangle_rows, "gfx/mesh.mask", {7, -8})).Frames.front();
+        BakedImageFrame preferred_rectangle_frame {ReadSingleDirSequence(BakeAlphaMask(preferred_rectangle, rectangle_rows, "gfx/mesh.mask", {7, -8})).Frames.front()};
 
         REQUIRE(preferred_rectangle_frame.MeshKind == SpriteMeshKind::Mesh);
         CHECK(preferred_rectangle_frame.Width < 61);
@@ -1815,18 +1814,18 @@ TEST_CASE("ImageBaker")
         CHECK(preferred_rectangle_frame.Mesh.Indices.size() == 6);
 
         vector<ipos32> adaptive_tree_hull {{0, 115}, {13, 81}, {33, 29}, {49, 0}, {55, 0}, {58, 7}, {86, 67}, {106, 120}, {106, 141}, {88, 159}, {23, 159}, {0, 137}};
-        vector<string> adaptive_tree_rows(160, string(107, '.'));
+        vector<string> adaptive_tree_rows {vector<string>(160, string(107, '.'))};
 
-        for (size_t y = 0; y < adaptive_tree_rows.size(); y++) {
-            for (size_t x = 0; x < adaptive_tree_rows[y].size(); x++) {
-                int64_t sample_x = numeric_cast<int64_t>(x) * 2 + 1;
-                int64_t sample_y = numeric_cast<int64_t>(y) * 2 + 1;
-                bool inside = true;
+        for (size_t y {0}; y < adaptive_tree_rows.size(); y++) {
+            for (size_t x {0}; x < adaptive_tree_rows[y].size(); x++) {
+                int64_t sample_x {numeric_cast<int64_t>(x) * 2 + 1};
+                int64_t sample_y {numeric_cast<int64_t>(y) * 2 + 1};
+                bool inside {true};
 
-                for (size_t i = 0; i < adaptive_tree_hull.size(); i++) {
-                    ipos32 a = adaptive_tree_hull[i];
-                    ipos32 b = adaptive_tree_hull[(i + 1) % adaptive_tree_hull.size()];
-                    int64_t cross = numeric_cast<int64_t>(b.x - a.x) * (sample_y - numeric_cast<int64_t>(a.y) * 2) - numeric_cast<int64_t>(b.y - a.y) * (sample_x - numeric_cast<int64_t>(a.x) * 2);
+                for (size_t i {0}; i < adaptive_tree_hull.size(); i++) {
+                    ipos32 a {adaptive_tree_hull[i]};
+                    ipos32 b {adaptive_tree_hull[(i + 1) % adaptive_tree_hull.size()]};
+                    int64_t cross {numeric_cast<int64_t>(b.x - a.x) * (sample_y - numeric_cast<int64_t>(a.y) * 2) - numeric_cast<int64_t>(b.y - a.y) * (sample_x - numeric_cast<int64_t>(a.x) * 2)};
                     inside = inside && cross >= 0;
                 }
 
@@ -1836,11 +1835,11 @@ TEST_CASE("ImageBaker")
             }
         }
 
-        TestRig adaptive_padding;
+        TestRig adaptive_padding {};
         ConfigureSpriteMesh(adaptive_padding, true, 0, 4096, 1.0f);
-        BakedImageSequence adaptive_padding_sequence = ReadSingleDirSequence(BakeAlphaMask(adaptive_padding, adaptive_tree_rows));
+        BakedImageSequence adaptive_padding_sequence {ReadSingleDirSequence(BakeAlphaMask(adaptive_padding, adaptive_tree_rows))};
         REQUIRE(adaptive_padding_sequence.Frames.size() == 1);
-        const BakedImageFrame& adaptive_padding_frame = adaptive_padding_sequence.Frames.front();
+        const BakedImageFrame& adaptive_padding_frame {adaptive_padding_sequence.Frames.front()};
 
         REQUIRE(adaptive_padding_frame.MeshKind == SpriteMeshKind::Mesh);
         CHECK(adaptive_padding_frame.Mesh.SourceSize == isize32 {107, 160});
@@ -1851,18 +1850,18 @@ TEST_CASE("ImageBaker")
         CHECK(adaptive_padding_frame.Mesh.Indices.size() == 3);
 
         vector<ipos32> pentagon_hull {{50, 5}, {95, 38}, {78, 95}, {22, 95}, {5, 38}};
-        vector<string> pentagon_rows(101, string(101, '.'));
+        vector<string> pentagon_rows {vector<string>(101, string(101, '.'))};
 
-        for (size_t y = 0; y < pentagon_rows.size(); y++) {
-            for (size_t x = 0; x < pentagon_rows[y].size(); x++) {
-                int64_t sample_x = numeric_cast<int64_t>(x) * 2 + 1;
-                int64_t sample_y = numeric_cast<int64_t>(y) * 2 + 1;
-                bool inside = true;
+        for (size_t y {0}; y < pentagon_rows.size(); y++) {
+            for (size_t x {0}; x < pentagon_rows[y].size(); x++) {
+                int64_t sample_x {numeric_cast<int64_t>(x) * 2 + 1};
+                int64_t sample_y {numeric_cast<int64_t>(y) * 2 + 1};
+                bool inside {true};
 
-                for (size_t i = 0; i < pentagon_hull.size(); i++) {
-                    ipos32 a = pentagon_hull[i];
-                    ipos32 b = pentagon_hull[(i + 1) % pentagon_hull.size()];
-                    int64_t cross = numeric_cast<int64_t>(b.x - a.x) * (sample_y - numeric_cast<int64_t>(a.y) * 2) - numeric_cast<int64_t>(b.y - a.y) * (sample_x - numeric_cast<int64_t>(a.x) * 2);
+                for (size_t i {0}; i < pentagon_hull.size(); i++) {
+                    ipos32 a {pentagon_hull[i]};
+                    ipos32 b {pentagon_hull[(i + 1) % pentagon_hull.size()]};
+                    int64_t cross {numeric_cast<int64_t>(b.x - a.x) * (sample_y - numeric_cast<int64_t>(a.y) * 2) - numeric_cast<int64_t>(b.y - a.y) * (sample_x - numeric_cast<int64_t>(a.x) * 2)};
                     inside = inside && cross >= 0;
                 }
 
@@ -1872,83 +1871,83 @@ TEST_CASE("ImageBaker")
             }
         }
 
-        TestRig enclosing_budget;
+        TestRig enclosing_budget {};
         ConfigureSpriteMesh(enclosing_budget, true, 0, 3);
-        BakedImageFrame enclosing_budget_frame = ReadSingleDirSequence(BakeAlphaMask(enclosing_budget, pentagon_rows)).Frames.front();
+        BakedImageFrame enclosing_budget_frame {ReadSingleDirSequence(BakeAlphaMask(enclosing_budget, pentagon_rows)).Frames.front()};
         REQUIRE(enclosing_budget_frame.MeshKind == SpriteMeshKind::Mesh);
         CHECK(enclosing_budget_frame.Mesh.Indices.size() == 9);
 
-        vector<string> door_rows(61, string(101, '.'));
+        vector<string> door_rows {vector<string>(61, string(101, '.'))};
 
-        for (size_t y = 5; y <= 55; y++) {
-            for (size_t x = 5; x <= 19; x++) {
+        for (size_t y {5}; y <= 55; y++) {
+            for (size_t x {5}; x <= 19; x++) {
                 door_rows[y][x] = '#';
             }
-            for (size_t x = 81; x <= 95; x++) {
+            for (size_t x {81}; x <= 95; x++) {
                 door_rows[y][x] = '#';
             }
         }
 
-        TestRig component_budget;
+        TestRig component_budget {};
         ConfigureSpriteMesh(component_budget, true, 0, 4);
-        BakedImageFrame component_budget_frame = ReadSingleDirSequence(BakeAlphaMask(component_budget, door_rows)).Frames.front();
+        BakedImageFrame component_budget_frame {ReadSingleDirSequence(BakeAlphaMask(component_budget, door_rows)).Frames.front()};
         REQUIRE(component_budget_frame.MeshKind == SpriteMeshKind::Mesh);
         CHECK(component_budget_frame.Mesh.Indices.size() == 12);
         CHECK_FALSE(IsPointInsideBakedMesh(component_budget_frame, SourcePointToBakedMeshPoint(component_budget_frame, {55.5f, 35.5f})));
 
-        TestRig low_area_weight;
+        TestRig low_area_weight {};
         ConfigureSpriteMesh(low_area_weight, true, 0, 4, 1.0f);
-        BakedImageFrame low_area_weight_frame = ReadSingleDirSequence(BakeAlphaMask(low_area_weight, door_rows)).Frames.front();
+        BakedImageFrame low_area_weight_frame {ReadSingleDirSequence(BakeAlphaMask(low_area_weight, door_rows)).Frames.front()};
         REQUIRE(low_area_weight_frame.MeshKind == SpriteMeshKind::Mesh);
         CHECK(low_area_weight_frame.Mesh.Indices.size() == 6);
         CHECK(IsPointInsideBakedMesh(low_area_weight_frame, SourcePointToBakedMeshPoint(low_area_weight_frame, {55.5f, 35.5f})));
 
-        TestRig high_area_weight;
+        TestRig high_area_weight {};
         ConfigureSpriteMesh(high_area_weight, true, 0, 4, 64.0f);
-        BakedImageFrame high_area_weight_frame = ReadSingleDirSequence(BakeAlphaMask(high_area_weight, door_rows)).Frames.front();
+        BakedImageFrame high_area_weight_frame {ReadSingleDirSequence(BakeAlphaMask(high_area_weight, door_rows)).Frames.front()};
         REQUIRE(high_area_weight_frame.MeshKind == SpriteMeshKind::Mesh);
         CHECK(high_area_weight_frame.Mesh.Indices.size() == 12);
         CHECK_FALSE(IsPointInsideBakedMesh(high_area_weight_frame, SourcePointToBakedMeshPoint(high_area_weight_frame, {55.5f, 35.5f})));
 
-        TestRig triangle_uncapped;
+        TestRig triangle_uncapped {};
         ConfigureSpriteMesh(triangle_uncapped);
-        BakedImageFrame triangle_uncapped_frame = ReadSingleDirSequence(BakeAlphaMask(triangle_uncapped, {".......", ".#####.", ".#.....", ".#.....", ".#####.", ".......", "......."})).Frames.front();
+        BakedImageFrame triangle_uncapped_frame {ReadSingleDirSequence(BakeAlphaMask(triangle_uncapped, {".......", ".#####.", ".#.....", ".#.....", ".#####.", ".......", "......."})).Frames.front()};
         REQUIRE(triangle_uncapped_frame.MeshKind == SpriteMeshKind::Mesh);
 
-        TestRig triangle_capped;
+        TestRig triangle_capped {};
         ConfigureSpriteMesh(triangle_capped, true, 0, 2);
-        BakedImageFrame triangle_capped_frame = ReadSingleDirSequence(BakeAlphaMask(triangle_capped, {".......", ".#####.", ".#.....", ".#.....", ".#####.", ".......", "......."})).Frames.front();
+        BakedImageFrame triangle_capped_frame {ReadSingleDirSequence(BakeAlphaMask(triangle_capped, {".......", ".#####.", ".#.....", ".#.....", ".#####.", ".......", "......."})).Frames.front()};
         REQUIRE(triangle_capped_frame.MeshKind == SpriteMeshKind::Mesh);
         CHECK(triangle_capped_frame.Mesh.Indices.size() <= 6);
 
-        TestRig unprofitable;
+        TestRig unprofitable {};
         ConfigureSpriteMesh(unprofitable);
-        BakedImageFrame unprofitable_frame = ReadSingleDirSequence(BakeAlphaMask(unprofitable, {".....", ".##..", ".##..", ".##..", "....."})).Frames.front();
+        BakedImageFrame unprofitable_frame {ReadSingleDirSequence(BakeAlphaMask(unprofitable, {".....", ".##..", ".##..", ".##..", "....."})).Frames.front()};
         CHECK(unprofitable_frame.MeshKind == SpriteMeshKind::Mesh);
     }
 
     SECTION("SpriteMeshAutomaticSimplificationPreservesLShape")
     {
-        vector<string> rows(123, string(64, '.'));
+        vector<string> rows {vector<string>(123, string(64, '.'))};
 
-        for (size_t x = 0; x < 64; x++) {
-            size_t top = 17 - x * 15 / 63;
-            size_t bottom = 48 - x * 15 / 63;
+        for (size_t x {0}; x < 64; x++) {
+            size_t top {17 - x * 15 / 63};
+            size_t bottom {48 - x * 15 / 63};
 
-            for (size_t y = top; y <= bottom; y++) {
+            for (size_t y {top}; y <= bottom; y++) {
                 rows[y][x] = '#';
             }
         }
-        for (size_t y = 17; y < 123; y++) {
-            for (size_t x = 0; x < 6; x++) {
+        for (size_t y {17}; y < 123; y++) {
+            for (size_t x {0}; x < 6; x++) {
                 rows[y][x] = '#';
             }
         }
 
-        TestRig rig;
+        TestRig rig {};
         ConfigureSpriteMesh(rig, true, 10, 16, 64.0f);
-        BakedImageSequence sequence = ReadSingleDirSequence(BakeAlphaMask(rig, rows));
-        const BakedImageFrame& frame = sequence.Frames.front();
+        BakedImageSequence sequence {ReadSingleDirSequence(BakeAlphaMask(rig, rows))};
+        const BakedImageFrame& frame {sequence.Frames.front()};
         REQUIRE(frame.MeshKind == SpriteMeshKind::Mesh);
         CHECK(frame.Mesh.Vertices.size() <= 6);
         CHECK(frame.Mesh.Indices.size() <= 12);
@@ -1958,46 +1957,46 @@ TEST_CASE("ImageBaker")
 
     SECTION("SpriteMeshExpandedSimplificationBuildsConcaveWallCandidate")
     {
-        vector<string> rows(123, string(64, '.'));
+        vector<string> rows {vector<string>(123, string(64, '.'))};
         vector<size_t> top_left {60, 56, 52, 49, 45, 41, 37, 33, 29, 25, 21, 17, 13, 9, 5, 1};
 
-        for (size_t y = 2; y <= 17; y++) {
-            size_t left = top_left[y - 2];
+        for (size_t y {2}; y <= 17; y++) {
+            size_t left {top_left[y - 2]};
 
-            for (size_t x = left; x < 64; x++) {
+            for (size_t x {left}; x < 64; x++) {
                 rows[y][x] = '#';
             }
         }
-        for (size_t y = 18; y <= 32; y++) {
-            for (size_t x = 0; x < 64; x++) {
+        for (size_t y {18}; y <= 32; y++) {
+            for (size_t x {0}; x < 64; x++) {
                 rows[y][x] = '#';
             }
         }
 
         vector<size_t> bottom_right {59, 56, 52, 48, 44, 40, 36, 32, 28, 24, 20, 16, 12, 8};
 
-        for (size_t y = 33; y <= 46; y++) {
-            size_t right = bottom_right[y - 33];
+        for (size_t y {33}; y <= 46; y++) {
+            size_t right {bottom_right[y - 33]};
 
-            for (size_t x = 0; x <= right; x++) {
+            for (size_t x {0}; x <= right; x++) {
                 rows[y][x] = '#';
             }
         }
-        for (size_t y = 47; y <= 114; y++) {
-            for (size_t x = 0; x <= 4; x++) {
+        for (size_t y {47}; y <= 114; y++) {
+            for (size_t x {0}; x <= 4; x++) {
                 rows[y][x] = '#';
             }
         }
-        for (size_t y = 115; y <= 122; y++) {
-            for (size_t x = 0; x <= 5; x++) {
+        for (size_t y {115}; y <= 122; y++) {
+            for (size_t x {0}; x <= 5; x++) {
                 rows[y][x] = '#';
             }
         }
 
-        TestRig rig;
+        TestRig rig {};
         ConfigureSpriteMesh(rig, true, 10, 16, 200.0f);
-        BakedImageSequence sequence = ReadSingleDirSequence(BakeAlphaMask(rig, rows));
-        const BakedImageFrame& frame = sequence.Frames.front();
+        BakedImageSequence sequence {ReadSingleDirSequence(BakeAlphaMask(rig, rows))};
+        const BakedImageFrame& frame {sequence.Frames.front()};
         REQUIRE(frame.MeshKind == SpriteMeshKind::Mesh);
         CHECK(frame.Mesh.Vertices.size() <= 7);
         CHECK(frame.Mesh.Indices.size() >= 12);
@@ -2009,37 +2008,37 @@ TEST_CASE("ImageBaker")
 
     SECTION("SpriteMeshExpandedSimplificationEnclosesThinLShape")
     {
-        vector<string> rows(123, string(64, '.'));
+        vector<string> rows {vector<string>(123, string(64, '.'))};
         vector<size_t> top_left {60, 55, 52, 50, 46, 42, 38, 34, 30, 26, 22, 18, 12, 7, 4, 2};
 
-        for (size_t y = 0; y < top_left.size(); y++) {
-            for (size_t x = top_left[y]; x < 64; x++) {
+        for (size_t y {0}; y < top_left.size(); y++) {
+            for (size_t x {top_left[y]}; x < 64; x++) {
                 rows[y][x] = '#';
             }
         }
-        for (size_t y = 16; y <= 25; y++) {
-            for (size_t x = 0; x < 64; x++) {
+        for (size_t y {16}; y <= 25; y++) {
+            for (size_t x {0}; x < 64; x++) {
                 rows[y][x] = '#';
             }
         }
 
         vector<size_t> lower_right {54, 54, 50, 50, 42, 38, 34, 30, 26, 22, 20, 19, 10, 6, 5, 4, 4};
 
-        for (size_t y = 26; y <= 42; y++) {
-            for (size_t x = 0; x <= lower_right[y - 26]; x++) {
+        for (size_t y {26}; y <= 42; y++) {
+            for (size_t x {0}; x <= lower_right[y - 26]; x++) {
                 rows[y][x] = '#';
             }
         }
-        for (size_t y = 43; y < 123; y++) {
-            for (size_t x = 0; x <= 3; x++) {
+        for (size_t y {43}; y < 123; y++) {
+            for (size_t x {0}; x <= 3; x++) {
                 rows[y][x] = '#';
             }
         }
 
-        TestRig rig;
+        TestRig rig {};
         ConfigureSpriteMesh(rig, true, 10, 16, 100.0f);
-        BakedImageSequence sequence = ReadSingleDirSequence(BakeAlphaMask(rig, rows));
-        const BakedImageFrame& frame = sequence.Frames.front();
+        BakedImageSequence sequence {ReadSingleDirSequence(BakeAlphaMask(rig, rows))};
+        const BakedImageFrame& frame {sequence.Frames.front()};
         REQUIRE(frame.MeshKind == SpriteMeshKind::Mesh);
         CHECK(frame.Mesh.Indices.size() > 6);
         CHECK(frame.Mesh.Indices.size() <= 27);
@@ -2050,24 +2049,24 @@ TEST_CASE("ImageBaker")
 
     SECTION("SpriteMeshClustersMoreComponentsThanTriangleBudget")
     {
-        vector<string> rows(31, string(101, '.'));
+        vector<string> rows {vector<string>(31, string(101, '.'))};
 
-        for (size_t y = 5; y <= 25; y++) {
-            for (size_t x = 5; x <= 15; x++) {
+        for (size_t y {5}; y <= 25; y++) {
+            for (size_t x {5}; x <= 15; x++) {
                 rows[y][x] = '#';
             }
-            for (size_t x = 21; x <= 31; x++) {
+            for (size_t x {21}; x <= 31; x++) {
                 rows[y][x] = '#';
             }
-            for (size_t x = 81; x <= 95; x++) {
+            for (size_t x {81}; x <= 95; x++) {
                 rows[y][x] = '#';
             }
         }
 
-        TestRig rig;
+        TestRig rig {};
         ConfigureSpriteMesh(rig, true, 0, 4, 200.0f);
-        BakedImageSequence sequence = ReadSingleDirSequence(BakeAlphaMask(rig, rows));
-        const BakedImageFrame& frame = sequence.Frames.front();
+        BakedImageSequence sequence {ReadSingleDirSequence(BakeAlphaMask(rig, rows))};
+        const BakedImageFrame& frame {sequence.Frames.front()};
         REQUIRE(frame.MeshKind == SpriteMeshKind::Mesh);
         CHECK(frame.Mesh.Indices.size() <= 12);
         CHECK_FALSE(IsPointInsideBakedMesh(frame, SourcePointToBakedMeshPoint(frame, {55.5f, 15.5f})));
@@ -2075,19 +2074,19 @@ TEST_CASE("ImageBaker")
 
     SECTION("SpriteMeshUnsafeTouchingTopologyFallsBackToQuad")
     {
-        TestRig diagonal_islands;
+        TestRig diagonal_islands {};
         ConfigureSpriteMesh(diagonal_islands);
         CHECK(ReadSingleFrame(BakeAlphaMask(diagonal_islands, {"#.", ".#"})).MeshKind == SpriteMeshKind::Quad);
 
-        TestRig touching_hole;
+        TestRig touching_hole {};
         ConfigureSpriteMesh(touching_hole);
         CHECK(ReadSingleFrame(BakeAlphaMask(touching_hole, {".##", "#.#", "###"})).MeshKind == SpriteMeshKind::Quad);
 
-        TestRig diagonal_holes;
+        TestRig diagonal_holes {};
         ConfigureSpriteMesh(diagonal_holes);
         CHECK(ReadSingleFrame(BakeAlphaMask(diagonal_holes, {"#####", "#.###", "##.##", "#####", "#####"})).MeshKind == SpriteMeshKind::Quad);
 
-        TestRig checkerboard;
+        TestRig checkerboard {};
         ConfigureSpriteMesh(checkerboard);
         CHECK(ReadSingleFrame(BakeAlphaMask(checkerboard, {"#.#.", ".#.#", "#.#.", ".#.#"})).MeshKind == SpriteMeshKind::Quad);
     }
@@ -2096,24 +2095,24 @@ TEST_CASE("ImageBaker")
     {
         vector<string> mask {"......", ".####.", ".#..#.", ".####.", "......"};
 
-        TestRig first;
+        TestRig first {};
         ConfigureSpriteMesh(first);
-        vector<uint8_t> first_output = BakeAlphaMask(first, mask);
+        vector<uint8_t> first_output {BakeAlphaMask(first, mask)};
 
-        TestRig second;
+        TestRig second {};
         ConfigureSpriteMesh(second);
-        vector<uint8_t> second_output = BakeAlphaMask(second, mask);
+        vector<uint8_t> second_output {BakeAlphaMask(second, mask)};
 
         CHECK(first_output == second_output);
     }
 
     SECTION("SpriteMeshSharedFrameHasNoDuplicatePayload")
     {
-        TestRig rig;
+        TestRig rig {};
         ConfigureSpriteMesh(rig);
         rig.AddSourceFile("gfx/shared-mesh.toy", "payload");
 
-        vector<uint8_t> rgba(5 * 5 * 4);
+        vector<uint8_t> rgba {vector<uint8_t>(5 * 5 * 4)};
         rgba[(2 * 5 + 2) * 4 + 3] = 255;
 
         ImageBaker baker {rig.MakeContext()};
@@ -2121,7 +2120,7 @@ TEST_CASE("ImageBaker")
             [rgba](string_view fname, string_view opt, FileReader reader, const ImageImport::Context& files) {
                 ignore_unused(fname, opt, reader, files);
 
-                ImageImport::FrameCollection collection;
+                ImageImport::FrameCollection collection {};
                 collection.SequenceSize = 2;
                 collection.AnimTicks = 100;
                 collection.Main.Frames = {
@@ -2141,7 +2140,7 @@ TEST_CASE("ImageBaker")
         CHECK(reader.read<uint8_t>() == 1);
         CHECK_FALSE(reader.read<bool>());
 
-        BakedImageFrame first_frame;
+        BakedImageFrame first_frame {};
         first_frame.Offset.x = reader.read<int16_t>();
         first_frame.Offset.y = reader.read<int16_t>();
         first_frame.Width = reader.read<uint16_t>();
@@ -2162,7 +2161,7 @@ TEST_CASE("ImageBaker")
 
     SECTION("SpriteMeshRejectsInvalidSettings")
     {
-        TestRig rig;
+        TestRig rig {};
         ConfigureSpriteMesh(rig);
 
         SECTION("AlphaThreshold")
@@ -2185,7 +2184,7 @@ TEST_CASE("ImageBaker")
             [](string_view fname, string_view opt, FileReader reader, const ImageImport::Context& files) {
                 ignore_unused(fname, opt, reader, files);
 
-                ImageImport::FrameCollection collection;
+                ImageImport::FrameCollection collection {};
                 collection.SequenceSize = 1;
                 collection.AnimTicks = 100;
                 collection.Main.Frames = {ImageImport::FrameShot {.Width = 1, .Height = 1, .Data = {255, 255, 255, 255}}};
@@ -2199,7 +2198,7 @@ TEST_CASE("ImageBaker")
 
     SECTION("BakesRawTgaTarget")
     {
-        TestRig rig;
+        TestRig rig {};
         rig.AddSourceFile("ignored.txt", "not an image");
         AddSourceBinaryFile(rig, "ui/icon.tga", MakeRawTga(2, 1, 32, {0, 0, 255, 128, 0, 255, 0, 255}), 10);
 
@@ -2207,7 +2206,7 @@ TEST_CASE("ImageBaker")
         baker.BakeFiles(rig.GetAllSourceFiles(), "ui/icon.tga");
 
         REQUIRE(rig.Outputs.contains("ui/icon.tga"));
-        auto frame = ReadSingleFrame(rig.Outputs.at("ui/icon.tga"));
+        auto frame {ReadSingleFrame(rig.Outputs.at("ui/icon.tga"))};
 
         CHECK(frame.Width == 2);
         CHECK(frame.Height == 1);
@@ -2219,15 +2218,15 @@ TEST_CASE("ImageBaker")
 
     SECTION("BakesWideRawTgaWithUnsignedWireDimensions")
     {
-        TestRig rig;
+        TestRig rig {};
         ConfigureSpriteMesh(rig, false);
-        constexpr int32_t wide_width = 32768;
-        vector<uint8_t> pixels(numeric_cast<size_t>(wide_width) * 4);
+        constexpr int32_t wide_width {32768};
+        vector<uint8_t> pixels {vector<uint8_t>(numeric_cast<size_t>(wide_width) * 4)};
         pixels[0] = 1;
         pixels[1] = 2;
         pixels[2] = 3;
         pixels[3] = 4;
-        size_t last_pixel = (numeric_cast<size_t>(wide_width) - 1) * 4;
+        size_t last_pixel {(numeric_cast<size_t>(wide_width) - 1) * 4};
         pixels[last_pixel + 0] = 5;
         pixels[last_pixel + 1] = 6;
         pixels[last_pixel + 2] = 7;
@@ -2238,7 +2237,7 @@ TEST_CASE("ImageBaker")
         baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/wide.tga");
 
         REQUIRE(rig.Outputs.contains("gfx/wide.tga"));
-        auto frame = ReadSingleFrame(rig.Outputs.at("gfx/wide.tga"));
+        auto frame {ReadSingleFrame(rig.Outputs.at("gfx/wide.tga"))};
 
         CHECK(frame.Width == 32768);
         CHECK(frame.Height == 1);
@@ -2255,7 +2254,7 @@ TEST_CASE("ImageBaker")
 
     SECTION("RejectsTruncatedAndOversizedTgaBeforeLargeAllocation")
     {
-        TestRig rig;
+        TestRig rig {};
         AddSourceBinaryFile(rig, "gfx/huge-raw.tga", MakeRawTga(65535, 65535, 32, vector<uint8_t> {}));
         AddSourceBinaryFile(rig, "gfx/short-wide-raw.tga", MakeRawTga(65535, 1, 32, vector<uint8_t>(65532, 0x7F)));
         AddSourceBinaryFile(rig, "gfx/huge-rle.tga", MakeRleTga(65535, 65535, 32, {0x7F, 1, 2, 3, 4}));
@@ -2274,7 +2273,7 @@ TEST_CASE("ImageBaker")
 
     SECTION("TargetEarlyReturnsDoNotWrite")
     {
-        TestRig rig;
+        TestRig rig {};
         rig.AddSourceFile("ui/readme.txt", "not an image", 11);
 
         ImageBaker baker {rig.MakeContext()};
@@ -2286,7 +2285,7 @@ TEST_CASE("ImageBaker")
 
     SECTION("BakesRleTgaWhenScanningAllFiles")
     {
-        TestRig rig;
+        TestRig rig {};
         AddSourceBinaryFile(rig, "gfx/rle.tga", MakeRleTga(2, 1, 24, {0x81, 255, 0, 0}), 20);
         AddSourceBinaryFile(rig, "gfx/rle-raw-packets.tga",
             MakeRleTga(2, 1, 24,
@@ -2309,23 +2308,23 @@ TEST_CASE("ImageBaker")
         baker.BakeFiles(rig.GetAllSourceFiles(), "");
 
         REQUIRE(rig.Outputs.contains("gfx/rle.tga"));
-        auto frame = ReadSingleFrame(rig.Outputs.at("gfx/rle.tga"));
+        auto frame {ReadSingleFrame(rig.Outputs.at("gfx/rle.tga"))};
 
         CHECK(frame.Width == 2);
         CHECK(frame.Height == 1);
         CHECK(frame.Data == vector<uint8_t> {0, 0, 255, 255, 0, 0, 255, 255});
 
         REQUIRE(rig.Outputs.contains("gfx/rle-raw-packets.tga"));
-        auto raw_packet_frame = ReadSingleFrame(rig.Outputs.at("gfx/rle-raw-packets.tga"));
+        auto raw_packet_frame {ReadSingleFrame(rig.Outputs.at("gfx/rle-raw-packets.tga"))};
 
         CHECK(raw_packet_frame.Width == 2);
         CHECK(raw_packet_frame.Height == 1);
         CHECK(raw_packet_frame.Data == vector<uint8_t> {0x10, 0x20, 0x30, 0xFF, 0x40, 0x50, 0x60, 0xFF});
 
         REQUIRE(rig.Outputs.contains("SpriteInfo/TestPack.foinfo"));
-        const vector<uint8_t>& sprite_info_data = rig.Outputs.at("SpriteInfo/TestPack.foinfo");
-        string sprite_info_text(sprite_info_data.begin(), sprite_info_data.end());
-        vector<SpriteInfoFileEntry> sprite_info_entries = ReadSpriteInfoFile("SpriteInfo/TestPack.foinfo", sprite_info_text);
+        const vector<uint8_t>& sprite_info_data {rig.Outputs.at("SpriteInfo/TestPack.foinfo")};
+        string sprite_info_text {string(sprite_info_data.begin(), sprite_info_data.end())};
+        vector<SpriteInfoFileEntry> sprite_info_entries {ReadSpriteInfoFile("SpriteInfo/TestPack.foinfo", sprite_info_text)};
         REQUIRE(sprite_info_entries.size() == 2);
         CHECK(sprite_info_entries[0].Info.FrameCount == 1);
         CHECK(sprite_info_entries[0].Info.Directions.front().Frames.front().Size == isize32 {2, 1});
@@ -2336,7 +2335,7 @@ TEST_CASE("ImageBaker")
 #if FO_IMAGE_FRM
     SECTION("BakesFrmWithCritterNewNameAndCustomPalette")
     {
-        TestRig rig;
+        TestRig rig {};
         AddSourceBinaryFile(rig, "art/critters/RAT.frm",
             MakeFrm(5,
                 {
@@ -2351,7 +2350,7 @@ TEST_CASE("ImageBaker")
 
         CHECK_FALSE(rig.Outputs.contains("art/critters/RAT.frm"));
         REQUIRE(rig.Outputs.contains("art/critters/rat.frm"));
-        auto sequence = ReadSingleDirSequence(rig.Outputs.at("art/critters/rat.frm"));
+        auto sequence {ReadSingleDirSequence(rig.Outputs.at("art/critters/rat.frm"))};
 
         CHECK(sequence.SequenceSize == 2);
         CHECK(sequence.AnimTicks == 400);
@@ -2370,7 +2369,7 @@ TEST_CASE("ImageBaker")
 #if FO_IMAGE_FRM
     SECTION("BakesFrmAnimatedPalettePixels")
     {
-        TestRig rig;
+        TestRig rig {};
         AddSourceBinaryFile(rig, "gfx/animated.frm",
             MakeFrm(10,
                 {
@@ -2381,7 +2380,7 @@ TEST_CASE("ImageBaker")
         baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/animated.frm");
 
         REQUIRE(rig.Outputs.contains("gfx/animated.frm"));
-        auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/animated.frm"));
+        auto sequence {ReadSingleDirSequence(rig.Outputs.at("gfx/animated.frm"))};
 
         CHECK(sequence.SequenceSize == 60);
         CHECK(sequence.AnimTicks == 6000);
@@ -2397,8 +2396,8 @@ TEST_CASE("ImageBaker")
 #if FO_IMAGE_FRM
     SECTION("RejectsFrmDurationOverflowInsteadOfWrapping")
     {
-        TestRig rig;
-        vector<FrmFrameSpec> frames(66, FrmFrameSpec {.Width = 1, .Height = 1, .Indices = {1}});
+        TestRig rig {};
+        vector<FrmFrameSpec> frames {66, FrmFrameSpec {.Width = 1, .Height = 1, .Indices = {1}}};
         AddSourceBinaryFile(rig, "gfx/overflow.frm", MakeFrm(1, frames));
 
         ImageBaker baker {rig.MakeContext()};
@@ -2410,9 +2409,9 @@ TEST_CASE("ImageBaker")
 #if FO_IMAGE_FRM
     SECTION("BakesFrxCritterDirsIntoLowerCaseFofrm")
     {
-        TestRig rig;
+        TestRig rig {};
 
-        for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
+        for (int32_t dir {0}; dir < GameSettings::MAP_DIR_COUNT; dir++) {
             AddSourceBinaryFile(rig, strex("art/critters/RAT.fr{}", dir),
                 MakeFrxDir(5, numeric_cast<uint8_t>(dir),
                     {
@@ -2442,7 +2441,7 @@ TEST_CASE("ImageBaker")
         CHECK(reader.read<uint16_t>() == 200);
         CHECK(reader.read<uint8_t>() == GameSettings::MAP_DIR_COUNT);
 
-        for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
+        for (int32_t dir {0}; dir < GameSettings::MAP_DIR_COUNT; dir++) {
             CHECK_FALSE(reader.read<bool>());
             CHECK(reader.read<int16_t>() == 10 + dir);
             CHECK(reader.read<int16_t>() == -20 - dir);
@@ -2451,8 +2450,8 @@ TEST_CASE("ImageBaker")
             CHECK(reader.read<int16_t>() == dir + 1);
             CHECK(reader.read<int16_t>() == -dir - 1);
 
-            const_span<uint8_t> data = reader.read_bytes(4);
-            uint8_t color_base = numeric_cast<uint8_t>(dir * 3 + 1);
+            const_span<uint8_t> data {reader.read_bytes(4)};
+            uint8_t color_base {numeric_cast<uint8_t>(dir * 3 + 1)};
             vector<uint8_t> expected_data {
                 numeric_cast<uint8_t>(color_base * 4),
                 numeric_cast<uint8_t>((color_base + 1) * 4),
@@ -2481,7 +2480,7 @@ TEST_CASE("ImageBaker")
             },
         };
 
-        TestRig dirs;
+        TestRig dirs {};
         AddSourceBinaryFile(dirs, "gfx/directional.frm", MakeFrmWithDirTable(5, frames, GameSettings::MAP_DIR_COUNT));
 
         ImageBaker dirs_baker {dirs.MakeContext()};
@@ -2496,7 +2495,7 @@ TEST_CASE("ImageBaker")
         CHECK(reader.read<uint16_t>() == 200);
         CHECK(reader.read<uint8_t>() == GameSettings::MAP_DIR_COUNT);
 
-        for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
+        for (int32_t dir {0}; dir < GameSettings::MAP_DIR_COUNT; dir++) {
             CHECK_FALSE(reader.read<bool>());
 
             if (dir == 0) {
@@ -2519,7 +2518,7 @@ TEST_CASE("ImageBaker")
         CHECK(reader.read<uint8_t>() == SPRITE_RESOURCE_MAGIC);
         CHECK_NOTHROW(reader.verify_end());
 
-        TestRig truncated;
+        TestRig truncated {};
         AddSourceBinaryFile(truncated, "gfx/truncated-dirs.frm", MakeFrmWithDirTable(5, frames, 2));
 
         ImageBaker truncated_baker {truncated.MakeContext()};
@@ -2531,7 +2530,7 @@ TEST_CASE("ImageBaker")
 #if FO_IMAGE_FRM
     SECTION("BakesFrxAnimatedPalettePixels")
     {
-        TestRig rig;
+        TestRig rig {};
         AddSourceBinaryFile(rig, "gfx/animated.fr0",
             MakeFrxDir(10, 0,
                 {
@@ -2544,7 +2543,7 @@ TEST_CASE("ImageBaker")
 
         CHECK_FALSE(rig.Outputs.contains("gfx/animated.fr0"));
         REQUIRE(rig.Outputs.contains("gfx/animated.frm"));
-        auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/animated.frm"));
+        auto sequence {ReadSingleDirSequence(rig.Outputs.at("gfx/animated.frm"))};
 
         CHECK(sequence.SequenceSize == 60);
         CHECK(sequence.AnimTicks == 6000);
@@ -2561,7 +2560,7 @@ TEST_CASE("ImageBaker")
 #if FO_IMAGE_FRM
     SECTION("InvalidFrxMissingDirectionIsReported")
     {
-        TestRig rig;
+        TestRig rig {};
         AddSourceBinaryFile(rig, "art/critters/RAT.fr0", MakeFrxDir(5, 0, {FrmFrameSpec {.Width = 1, .Height = 1, .Indices = {1}}}, 0, 0));
         AddSourceBinaryFile(rig, "art/critters/RAT.fr1", MakeFrxDir(5, 1, {FrmFrameSpec {.Width = 1, .Height = 1, .Indices = {1}}}, 0, 0));
         AddSourceBinaryFile(rig, "art/critters/RAT.pal", MakeFrmPalette());
@@ -2575,14 +2574,14 @@ TEST_CASE("ImageBaker")
 
     SECTION("BakesPalettePngWithTransparency")
     {
-        TestRig rig;
+        TestRig rig {};
         AddSourceBinaryFile(rig, "gfx/indexed.png", MakePaletteTransparencyPng());
 
         ImageBaker baker {rig.MakeContext()};
         baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/indexed.png");
 
         REQUIRE(rig.Outputs.contains("gfx/indexed.png"));
-        auto frame = ReadSingleFrame(rig.Outputs.at("gfx/indexed.png"));
+        auto frame {ReadSingleFrame(rig.Outputs.at("gfx/indexed.png"))};
 
         CHECK(frame.Width == 2);
         CHECK(frame.Height == 1);
@@ -2592,7 +2591,7 @@ TEST_CASE("ImageBaker")
 #if FO_IMAGE_BAM || FO_IMAGE_MOS || FO_IMAGE_RIX || FO_IMAGE_TIL || FO_IMAGE_ZAR
     SECTION("BakesSimpleLegacyFormats")
     {
-        TestRig rig;
+        TestRig rig {};
 #if FO_IMAGE_RIX
         AddSourceBinaryFile(rig, "legacy/pixel.rix", MakeRix());
 #endif
@@ -2617,7 +2616,7 @@ TEST_CASE("ImageBaker")
 
 #if FO_IMAGE_RIX
         REQUIRE(rig.Outputs.contains("legacy/pixel.rix"));
-        auto rix_frame = ReadSingleFrame(rig.Outputs.at("legacy/pixel.rix"));
+        auto rix_frame {ReadSingleFrame(rig.Outputs.at("legacy/pixel.rix"))};
 
         CHECK(rix_frame.Width == 1);
         CHECK(rix_frame.Height == 1);
@@ -2626,7 +2625,7 @@ TEST_CASE("ImageBaker")
 
 #if FO_IMAGE_ZAR
         REQUIRE(rig.Outputs.contains("legacy/blank.zar"));
-        auto zar_frame = ReadSingleFrame(rig.Outputs.at("legacy/blank.zar"));
+        auto zar_frame {ReadSingleFrame(rig.Outputs.at("legacy/blank.zar"))};
 
         CHECK(zar_frame.Width == 1);
         CHECK(zar_frame.Height == 1);
@@ -2635,7 +2634,7 @@ TEST_CASE("ImageBaker")
 
 #if FO_IMAGE_ZAR
         REQUIRE(rig.Outputs.contains("legacy/palette.zar"));
-        auto palette_zar_frame = ReadSingleFrame(rig.Outputs.at("legacy/palette.zar"));
+        auto palette_zar_frame {ReadSingleFrame(rig.Outputs.at("legacy/palette.zar"))};
 
         CHECK(palette_zar_frame.Width == 3);
         CHECK(palette_zar_frame.Height == 1);
@@ -2644,7 +2643,7 @@ TEST_CASE("ImageBaker")
 
 #if FO_IMAGE_MOS
         REQUIRE(rig.Outputs.contains("legacy/panel.mos"));
-        auto mos_frame = ReadSingleFrame(rig.Outputs.at("legacy/panel.mos"));
+        auto mos_frame {ReadSingleFrame(rig.Outputs.at("legacy/panel.mos"))};
 
         CHECK(mos_frame.Width == 2);
         CHECK(mos_frame.Height == 1);
@@ -2653,7 +2652,7 @@ TEST_CASE("ImageBaker")
 
 #if FO_IMAGE_BAM
         REQUIRE(rig.Outputs.contains("legacy/cycle.bam"));
-        auto bam_frame = ReadSingleFrame(rig.Outputs.at("legacy/cycle.bam"));
+        auto bam_frame {ReadSingleFrame(rig.Outputs.at("legacy/cycle.bam"))};
 
         CHECK(bam_frame.Width == 4);
         CHECK(bam_frame.Height == 1);
@@ -2664,7 +2663,7 @@ TEST_CASE("ImageBaker")
 
 #if FO_IMAGE_TIL
         REQUIRE(rig.Outputs.contains("legacy/floor.til"));
-        auto til_frame = ReadSingleFrame(rig.Outputs.at("legacy/floor.til"));
+        auto til_frame {ReadSingleFrame(rig.Outputs.at("legacy/floor.til"))};
 
         CHECK(til_frame.Width == 3);
         CHECK(til_frame.Height == 1);
@@ -2676,7 +2675,7 @@ TEST_CASE("ImageBaker")
 #if FO_IMAGE_TIL
     SECTION("RejectsTilFrameCountAndDurationRanges")
     {
-        TestRig rig;
+        TestRig rig {};
         AddSourceBinaryFile(rig, "legacy/negative.til", MakeTilWithFrameCount(-1));
         AddSourceBinaryFile(rig, "legacy/large.til", MakeTilWithFrameCount(65536));
         AddSourceBinaryFile(rig, "legacy/long.til", MakeTilWithFrameCount(656));
@@ -2695,7 +2694,7 @@ TEST_CASE("ImageBaker")
     SECTION("BakesArtFrameOptionsThroughFofrm")
     {
         // Palette 1, transparency from color, flipped (hot x = w - hot x - 2) and vertically mirrored
-        TestRig rig;
+        TestRig rig {};
         rig.AddSourceFile("gfx/art.fofrm", "Frm=marker$1thv.art\n");
         AddSourceBinaryFile(rig, "gfx/marker.art", MakeSimpleArt());
 
@@ -2703,7 +2702,7 @@ TEST_CASE("ImageBaker")
         baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/art.fofrm");
 
         REQUIRE(rig.Outputs.contains("gfx/art.fofrm"));
-        auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/art.fofrm"));
+        auto sequence {ReadSingleDirSequence(rig.Outputs.at("gfx/art.fofrm"))};
 
         CHECK(sequence.SequenceSize == 1);
         CHECK(sequence.AnimTicks == 100);
@@ -2719,7 +2718,7 @@ TEST_CASE("ImageBaker")
 #if FO_IMAGE_BAM
     SECTION("BakesBamSpecificFrameOptionsThroughFofrm")
     {
-        TestRig specific_frame;
+        TestRig specific_frame {};
         specific_frame.AddSourceFile("legacy/bam-specific.fofrm", "Frm=multi$9-1.bam\n");
         AddSourceBinaryFile(specific_frame, "legacy/multi.bam", MakeMultiFrameBam());
 
@@ -2727,7 +2726,7 @@ TEST_CASE("ImageBaker")
         specific_frame_baker.BakeFiles(specific_frame.GetAllSourceFiles(), "legacy/bam-specific.fofrm");
 
         REQUIRE(specific_frame.Outputs.contains("legacy/bam-specific.fofrm"));
-        auto selected = ReadSingleDirSequence(specific_frame.Outputs.at("legacy/bam-specific.fofrm"));
+        auto selected {ReadSingleDirSequence(specific_frame.Outputs.at("legacy/bam-specific.fofrm"))};
 
         CHECK(selected.SequenceSize == 1);
         CHECK(selected.AnimTicks == 100);
@@ -2738,7 +2737,7 @@ TEST_CASE("ImageBaker")
         CHECK(selected.Frames[0].NextY == -2);
         CHECK(selected.Frames[0].Data == vector<uint8_t> {0x06, 0x05, 0x04, 0xFF, 0x33, 0x22, 0x11, 0xFF});
 
-        TestRig clamped_frame;
+        TestRig clamped_frame {};
         clamped_frame.AddSourceFile("legacy/bam-clamped.fofrm", "Frm=multi$0-9.bam\n");
         AddSourceBinaryFile(clamped_frame, "legacy/multi.bam", MakeMultiFrameBam());
 
@@ -2746,7 +2745,7 @@ TEST_CASE("ImageBaker")
         clamped_frame_baker.BakeFiles(clamped_frame.GetAllSourceFiles(), "legacy/bam-clamped.fofrm");
 
         REQUIRE(clamped_frame.Outputs.contains("legacy/bam-clamped.fofrm"));
-        auto clamped = ReadSingleDirSequence(clamped_frame.Outputs.at("legacy/bam-clamped.fofrm"));
+        auto clamped {ReadSingleDirSequence(clamped_frame.Outputs.at("legacy/bam-clamped.fofrm"))};
 
         CHECK(clamped.SequenceSize == 1);
         CHECK(clamped.AnimTicks == 100);
@@ -2763,7 +2762,7 @@ TEST_CASE("ImageBaker")
     SECTION("BakesArtFrameRangeAndRleThroughFofrm")
     {
         // Missing palette 3 falls back to the first present palette; frames share one canvas around their hot spots
-        TestRig rig;
+        TestRig rig {};
         rig.AddSourceFile("gfx/art-range.fofrm", "Frm=range$3F1-0.art\n");
         AddSourceBinaryFile(rig, "gfx/range.art", MakeRleFrameRangeArt());
 
@@ -2771,7 +2770,7 @@ TEST_CASE("ImageBaker")
         baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/art-range.fofrm");
 
         REQUIRE(rig.Outputs.contains("gfx/art-range.fofrm"));
-        auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/art-range.fofrm"));
+        auto sequence {ReadSingleDirSequence(rig.Outputs.at("gfx/art-range.fofrm"))};
 
         CHECK(sequence.SequenceSize == 2);
         CHECK(sequence.AnimTicks == 100);
@@ -2785,7 +2784,7 @@ TEST_CASE("ImageBaker")
         CHECK(sequence.Frames[1].Height == 1);
         CHECK(sequence.Frames[1].Data == vector<uint8_t> {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0});
 
-        TestRig forward;
+        TestRig forward {};
         forward.AddSourceFile("gfx/art-forward.fofrm", "Frm=range$1F0-1.art\n");
         AddSourceBinaryFile(forward, "gfx/range.art", MakeRleFrameRangeArt());
 
@@ -2793,7 +2792,7 @@ TEST_CASE("ImageBaker")
         forward_baker.BakeFiles(forward.GetAllSourceFiles(), "gfx/art-forward.fofrm");
 
         REQUIRE(forward.Outputs.contains("gfx/art-forward.fofrm"));
-        auto forward_sequence = ReadSingleDirSequence(forward.Outputs.at("gfx/art-forward.fofrm"));
+        auto forward_sequence {ReadSingleDirSequence(forward.Outputs.at("gfx/art-forward.fofrm"))};
 
         CHECK(forward_sequence.SequenceSize == 2);
         REQUIRE(forward_sequence.Frames.size() == 2);
@@ -2806,7 +2805,7 @@ TEST_CASE("ImageBaker")
 
     SECTION("BakesFofrmSequenceThroughNestedImages")
     {
-        TestRig rig;
+        TestRig rig {};
         rig.AddSourceFile("gfx/anim.fofrm", R"(
 Fps=5
 Count=2
@@ -2830,7 +2829,7 @@ NextY_1=8
         baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/anim.fofrm");
 
         REQUIRE(rig.Outputs.contains("gfx/anim.fofrm"));
-        auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/anim.fofrm"));
+        auto sequence {ReadSingleDirSequence(rig.Outputs.at("gfx/anim.fofrm"))};
 
         CHECK(sequence.SequenceSize == 2);
         CHECK(sequence.AnimTicks == 400);
@@ -2847,7 +2846,7 @@ NextY_1=8
 
     SECTION("RejectsFofrmDurationOverflowAndKeepsZeroFps")
     {
-        TestRig zero_fps;
+        TestRig zero_fps {};
         zero_fps.AddSourceFile("gfx/zero.fofrm", "Fps=0\nCount=1\nFrm=frame.tga\n");
         AddSourceBinaryFile(zero_fps, "gfx/frame.tga", MakeRawTga(1, 1, 24, {0, 0, 255}));
 
@@ -2855,14 +2854,14 @@ NextY_1=8
         zero_fps_baker.BakeFiles(zero_fps.GetAllSourceFiles(), "gfx/zero.fofrm");
 
         REQUIRE(zero_fps.Outputs.contains("gfx/zero.fofrm"));
-        auto zero_sequence = ReadSingleDirSequence(zero_fps.Outputs.at("gfx/zero.fofrm"));
+        auto zero_sequence {ReadSingleDirSequence(zero_fps.Outputs.at("gfx/zero.fofrm"))};
         CHECK(zero_sequence.SequenceSize == 1);
         CHECK(zero_sequence.AnimTicks == 0);
 
-        TestRig overflow;
-        string fofrm = "Fps=1\nCount=66\n";
+        TestRig overflow {};
+        string fofrm {"Fps=1\nCount=66\n"};
 
-        for (int32_t i = 0; i < 66; i++) {
+        for (int32_t i {0}; i < 66; i++) {
             fofrm += strex("Frm_{}=frame.tga\n", i).str();
         }
 
@@ -2876,7 +2875,7 @@ NextY_1=8
 
     SECTION("FofrmDirectionEdgeCases")
     {
-        TestRig dir_one_without_frames;
+        TestRig dir_one_without_frames {};
         dir_one_without_frames.AddSourceFile("gfx/no-dir.fofrm", R"(
 Frm=base.tga
 
@@ -2889,7 +2888,7 @@ OffsetX=5
         dir_one_baker.BakeFiles(dir_one_without_frames.GetAllSourceFiles(), "gfx/no-dir.fofrm");
 
         REQUIRE(dir_one_without_frames.Outputs.contains("gfx/no-dir.fofrm"));
-        auto sequence = ReadSingleDirSequence(dir_one_without_frames.Outputs.at("gfx/no-dir.fofrm"));
+        auto sequence {ReadSingleDirSequence(dir_one_without_frames.Outputs.at("gfx/no-dir.fofrm"))};
 
         CHECK(sequence.SequenceSize == 1);
         CHECK(sequence.AnimTicks == 100);
@@ -2897,7 +2896,7 @@ OffsetX=5
         CHECK(sequence.Frames[0].Offset == ipos32 {});
         CHECK(sequence.Frames[0].Data == vector<uint8_t> {255, 0, 0, 255});
 
-        TestRig direction_gap;
+        TestRig direction_gap {};
         direction_gap.AddSourceFile("gfx/gap.fofrm", R"(
 Frm=base.tga
 
@@ -2911,13 +2910,13 @@ Frm=dir1.tga
         CHECK_THROWS_AS(direction_gap_baker.BakeFiles(direction_gap.GetAllSourceFiles(), "gfx/gap.fofrm"), ImageBakerException);
         CHECK(direction_gap.Outputs.empty());
 
-        auto add_toy_loader = [](ImageBaker& baker) {
+        auto add_toy_loader {[](ImageBaker& baker) {
             baker.AddLoader(
                 [](string_view fname, string_view opt, FileReader reader, const ImageImport::Context& files) {
                     ignore_unused(opt, reader, files);
 
                     string fname_str {fname};
-                    ImageImport::FrameCollection collection;
+                    ImageImport::FrameCollection collection {};
                     collection.SequenceSize = fname_str.find("two") != string::npos ? 2 : 1;
                     collection.AnimTicks = 100;
                     collection.Main.Frames.resize(collection.SequenceSize);
@@ -2927,7 +2926,7 @@ Frm=dir1.tga
                         return collection;
                     }
 
-                    for (uint16_t i = 0; i < collection.SequenceSize; i++) {
+                    for (uint16_t i {0}; i < collection.SequenceSize; i++) {
                         collection.Main.Frames[i] = ImageImport::FrameShot {
                             .Width = 1,
                             .Height = 1,
@@ -2938,9 +2937,9 @@ Frm=dir1.tga
                     return collection;
                 },
                 {"toy"});
-        };
+        }};
 
-        TestRig mismatched_direction;
+        TestRig mismatched_direction {};
         mismatched_direction.AddSourceFile("gfx/mismatch.fofrm", R"(
 Frm=two.toy
 
@@ -2955,7 +2954,7 @@ Frm=one.toy
         CHECK_THROWS_AS(mismatched_direction_baker.BakeFiles(mismatched_direction.GetAllSourceFiles(), "gfx/mismatch.fofrm"), ImageBakerException);
         CHECK(mismatched_direction.Outputs.empty());
 
-        TestRig shared_nested_frame;
+        TestRig shared_nested_frame {};
         shared_nested_frame.AddSourceFile("gfx/shared.fofrm", "Frm=shared.toy\n");
         shared_nested_frame.AddSourceFile("gfx/shared.toy", "shared");
 
@@ -2967,7 +2966,7 @@ Frm=one.toy
 
     SECTION("ImageImportFailuresPreserveSourceAndNestedContext")
     {
-        TestRig rig;
+        TestRig rig {};
         rig.AddSourceFile("gfx/broken.toy", "x");
         rig.AddSourceFile("gfx/alias.fofrm", "Alias=broken$probe.toy\n");
         rig.AddSourceFile("gfx/composed.fofrm", "Frm=broken$probe.toy\n");
@@ -2975,7 +2974,7 @@ Frm=one.toy
         baker.AddLoader(
             [](string_view, string_view, FileReader reader, const ImageImport::Context&) -> ImageImport::FrameCollection {
                 (void)reader.ReadLEUInt32();
-                ImageImport::FrameCollection collection;
+                ImageImport::FrameCollection collection {};
                 return collection;
             },
             {"toy"});
@@ -2986,7 +2985,7 @@ Frm=one.toy
                 FAIL("Truncated image imported without an error");
             }
             catch (const ImageBakerException& ex) {
-                string_view message = ex.what();
+                string_view message {ex.what()};
                 CHECK(message.find("Image import failed") != string_view::npos);
                 CHECK(message.find(path) != string_view::npos);
                 CHECK(message.find("gfx/broken.toy") != string_view::npos);
@@ -3003,7 +3002,7 @@ Frm=one.toy
 
     SECTION("CustomLoaderBakesDirsSharedFramesAndNewName")
     {
-        TestRig rig;
+        TestRig rig {};
         rig.AddSourceFile("gfx/custom.toy", "payload");
 
         ImageBaker baker {rig.MakeContext()};
@@ -3015,7 +3014,7 @@ Frm=one.toy
                 CHECK(opt.empty());
                 CHECK(reader.GetSize() == 7);
 
-                ImageImport::FrameCollection collection;
+                ImageImport::FrameCollection collection {};
                 collection.SequenceSize = 2;
                 collection.AnimTicks = 77;
                 collection.HaveDirs = true;
@@ -3028,8 +3027,8 @@ Frm=one.toy
                     ImageImport::FrameShot {.Shared = true, .SharedIndex = 0},
                 };
 
-                for (int32_t dir = 0; dir < ImageImport::MAX_DIRS_MINUS_ONE; dir++) {
-                    auto& sequence = collection.Dirs[dir];
+                for (int32_t dir {0}; dir < ImageImport::MAX_DIRS_MINUS_ONE; dir++) {
+                    auto& sequence {collection.Dirs[dir]};
                     sequence.OffsX = numeric_cast<int16_t>(10 + dir);
                     sequence.OffsY = numeric_cast<int16_t>(20 + dir);
                     sequence.Frames = {
@@ -3054,10 +3053,10 @@ Frm=one.toy
         CHECK(reader.read<uint16_t>() == 77);
         CHECK(reader.read<uint8_t>() == GameSettings::MAP_DIR_COUNT);
 
-        for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
+        for (int32_t dir {0}; dir < GameSettings::MAP_DIR_COUNT; dir++) {
             CHECK_FALSE(reader.read<bool>());
-            int16_t offs_x = reader.read<int16_t>();
-            int16_t offs_y = reader.read<int16_t>();
+            int16_t offs_x {reader.read<int16_t>()};
+            int16_t offs_y {reader.read<int16_t>()};
 
             if (dir == 0) {
                 CHECK(offs_x == 1);
@@ -3085,7 +3084,7 @@ Frm=one.toy
 
     SECTION("BakesExactV2BytesForCustomFrame")
     {
-        TestRig rig;
+        TestRig rig {};
         ConfigureSpriteMesh(rig, false);
         rig.AddSourceFile("gfx/exact.toy", "payload");
 
@@ -3094,7 +3093,7 @@ Frm=one.toy
             [](string_view fname, string_view opt, FileReader reader, const ImageImport::Context& files) {
                 ignore_unused(fname, opt, reader, files);
 
-                ImageImport::FrameCollection collection;
+                ImageImport::FrameCollection collection {};
                 collection.SequenceSize = 1;
                 collection.AnimTicks = 100;
                 collection.Main.Frames = {ImageImport::FrameShot {.Width = 1, .Height = 1, .Data = {10, 20, 30, 40}}};
@@ -3137,16 +3136,16 @@ Frm=one.toy
 
     SECTION("RejectsInvalidCustomLoaderCollectionsBeforeOutput")
     {
-        auto make_valid = [] {
-            ImageImport::FrameCollection collection;
+        auto make_valid {[] {
+            ImageImport::FrameCollection collection {};
             collection.SequenceSize = 1;
             collection.AnimTicks = 100;
             collection.Main.Frames = {ImageImport::FrameShot {.Width = 1, .Height = 1, .Data = {1, 2, 3, 255}}};
             return collection;
-        };
+        }};
 
-        auto make_shared_collection = [](int32_t shared_index) {
-            ImageImport::FrameCollection collection;
+        auto make_shared_collection {[](int32_t shared_index) {
+            ImageImport::FrameCollection collection {};
             collection.SequenceSize = 2;
             collection.AnimTicks = 100;
             collection.Main.Frames = {
@@ -3154,27 +3153,27 @@ Frm=one.toy
                 ImageImport::FrameShot {.Shared = true, .SharedIndex = shared_index},
             };
             return collection;
-        };
+        }};
 
-        vector<ImageImport::FrameCollection> invalid;
+        vector<ImageImport::FrameCollection> invalid {};
 
         for (int32_t value : {-1, 0, 65536}) {
-            auto collection = make_valid();
+            auto collection {make_valid()};
             collection.SequenceSize = value;
             invalid.emplace_back(std::move(collection));
         }
         for (int32_t value : {-1, 65536}) {
-            auto collection = make_valid();
+            auto collection {make_valid()};
             collection.AnimTicks = value;
             invalid.emplace_back(std::move(collection));
         }
         for (int32_t value : {-1, 0, 65536}) {
-            auto collection = make_valid();
+            auto collection {make_valid()};
             collection.Main.Frames[0].Width = value;
             invalid.emplace_back(std::move(collection));
         }
         for (int32_t value : {-1, 0, 65536}) {
-            auto collection = make_valid();
+            auto collection {make_valid()};
             collection.Main.Frames[0].Height = value;
             invalid.emplace_back(std::move(collection));
         }
@@ -3184,16 +3183,16 @@ Frm=one.toy
 
         invalid.emplace_back(make_shared_collection(1));
 
-        ImageImport::FrameCollection incomplete_sequence = make_valid();
+        ImageImport::FrameCollection incomplete_sequence {make_valid()};
         incomplete_sequence.SequenceSize = 2;
         invalid.emplace_back(std::move(incomplete_sequence));
 
-        ImageImport::FrameCollection incomplete_pixels = make_valid();
+        ImageImport::FrameCollection incomplete_pixels {make_valid()};
         incomplete_pixels.Main.Frames[0].Data.pop_back();
         invalid.emplace_back(std::move(incomplete_pixels));
 
         for (const ImageImport::FrameCollection& collection : invalid) {
-            TestRig rig;
+            TestRig rig {};
             rig.AddSourceFile("gfx/invalid.toy", "payload");
 
             ImageBaker baker {rig.MakeContext()};
@@ -3210,7 +3209,7 @@ Frm=one.toy
 
     SECTION("BakeCheckerSkipsTarget")
     {
-        TestRig rig;
+        TestRig rig {};
         AddSourceBinaryFile(rig, "gfx/skipped.tga", MakeRawTga(1, 1, 24, {0, 0, 255}), 30);
 
         ImageBaker baker {rig.MakeContext("TestPack", [](string_view path, uint64_t write_time) {
@@ -3225,10 +3224,10 @@ Frm=one.toy
 
     SECTION("ScanModeRejectsIncompleteSpriteInfoIndex")
     {
-        TestRig rig;
+        TestRig rig {};
         AddSourceBinaryFile(rig, "gfx/skipped-scan.tga", MakeRawTga(1, 1, 24, {0, 0, 255}), 31);
 
-        vector<pair<string, uint64_t>> checked;
+        vector<pair<string, uint64_t>> checked {};
 
         ImageBaker baker {rig.MakeContext("TestPack", [&checked](string_view path, uint64_t write_time) {
             checked.emplace_back(string {path}, write_time);
@@ -3249,17 +3248,17 @@ Frm=one.toy
     {
         // The master baker keeps the spelling the checker registered, so a critter frame registered under its source
         // spelling was renamed back to it after baking, where the critter frame lookup never finds it
-        TestRig rig;
+        TestRig rig {};
         vector<FrmFrameSpec> frames {FrmFrameSpec {.Width = 1, .Height = 1, .Indices = {1}}};
         AddSourceBinaryFile(rig, "art/critters/RAT.FRM", MakeFrm(5, frames));
         AddSourceBinaryFile(rig, "art/scenery/ROCK.FRM", MakeFrm(5, frames));
 
-        for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
+        for (int32_t dir {0}; dir < GameSettings::MAP_DIR_COUNT; dir++) {
             AddSourceBinaryFile(rig, strex("art/critters/DOG.fr{}", dir), MakeFrxDir(5, numeric_cast<uint8_t>(dir), frames, 0, 0));
             AddSourceBinaryFile(rig, strex("art/misc/FIRE.fr{}", dir), MakeFrxDir(5, numeric_cast<uint8_t>(dir), frames, 0, 0));
         }
 
-        set<string> checked;
+        set<string> checked {};
 
         ImageBaker baker {rig.MakeContext("TestPack", [&checked](string_view path, uint64_t write_time) {
             ignore_unused(write_time);
@@ -3279,7 +3278,7 @@ Frm=one.toy
 
     SECTION("BakesSpriteInfoIndexAsRuntimeTarget")
     {
-        TestRig rig;
+        TestRig rig {};
         AddSourceBinaryFile(rig, "gfx/runtime-info.tga", MakeRawTga(1, 1, 24, {0, 0, 255}), 32);
 
         ImageBaker baker {rig.MakeContext()};
@@ -3287,8 +3286,8 @@ Frm=one.toy
 
         REQUIRE(rig.Outputs.contains("gfx/runtime-info.tga"));
         REQUIRE(rig.Outputs.contains("SpriteInfo/TestPack.foinfo"));
-        const vector<uint8_t>& sprite_info_data = rig.Outputs.at("SpriteInfo/TestPack.foinfo");
-        vector<SpriteInfoFileEntry> entries = ReadSpriteInfoFile("SpriteInfo/TestPack.foinfo", string(sprite_info_data.begin(), sprite_info_data.end()));
+        const vector<uint8_t>& sprite_info_data {rig.Outputs.at("SpriteInfo/TestPack.foinfo")};
+        vector<SpriteInfoFileEntry> entries {ReadSpriteInfoFile("SpriteInfo/TestPack.foinfo", string(sprite_info_data.begin(), sprite_info_data.end()))};
         REQUIRE(entries.size() == 1);
         CHECK(entries.front().SourcePath == "gfx/runtime-info.tga");
         CHECK(entries.front().ResourcePath == "gfx/runtime-info.tga");
@@ -3298,7 +3297,7 @@ Frm=one.toy
 
     SECTION("ScanModeRemovesStaleSpriteInfoEntries")
     {
-        TestRig rig;
+        TestRig rig {};
         AddSourceBinaryFile(rig, "gfx/current.tga", MakeRawTga(1, 1, 24, {0, 0, 255}), 31);
 
         SpriteInfo info {
@@ -3316,23 +3315,23 @@ Frm=one.toy
         baker.BakeFiles(rig.GetAllSourceFiles(), "");
 
         REQUIRE(rig.Outputs.contains("SpriteInfo/TestPack.foinfo"));
-        const vector<uint8_t>& sprite_info_data = rig.Outputs.at("SpriteInfo/TestPack.foinfo");
-        vector<SpriteInfoFileEntry> entries = ReadSpriteInfoFile("SpriteInfo/TestPack.foinfo", string(sprite_info_data.begin(), sprite_info_data.end()));
+        const vector<uint8_t>& sprite_info_data {rig.Outputs.at("SpriteInfo/TestPack.foinfo")};
+        vector<SpriteInfoFileEntry> entries {ReadSpriteInfoFile("SpriteInfo/TestPack.foinfo", string(sprite_info_data.begin(), sprite_info_data.end()))};
         REQUIRE(entries.size() == 1);
         CHECK(entries.front().SourcePath == "gfx/current.tga");
     }
 
     SECTION("InvalidTgaInputsAreReported")
     {
-        TestRig rig;
+        TestRig rig {};
         AddSourceBinaryFile(rig, "gfx/truncated.tga", vector<uint8_t> {0, 0, 2}, 1);
         AddSourceBinaryFile(rig, "gfx/indexed.tga", [] {
-            auto data = MakeRawTga(1, 1, 24, {0, 0, 0});
+            auto data {MakeRawTga(1, 1, 24, {0, 0, 0})};
             data[2] = 1;
             return data;
         }());
         AddSourceBinaryFile(rig, "gfx/gray.tga", [] {
-            auto data = MakeRawTga(1, 1, 24, {0, 0, 0});
+            auto data {MakeRawTga(1, 1, 24, {0, 0, 0})};
             data[2] = 3;
             return data;
         }());
@@ -3349,8 +3348,8 @@ Frm=one.toy
 
     SECTION("InvalidPngInputIsReported")
     {
-        TestRig rig;
-        auto corrupted_png = MakePaletteTransparencyPng();
+        TestRig rig {};
+        auto corrupted_png {MakePaletteTransparencyPng()};
         corrupted_png[80] ^= 0xFF;
         AddSourceBinaryFile(rig, "gfx/corrupted.png", corrupted_png);
 
@@ -3363,7 +3362,7 @@ Frm=one.toy
 #if FO_IMAGE_BAM || FO_IMAGE_MOS || FO_IMAGE_TIL || FO_IMAGE_ZAR
     SECTION("InvalidLegacyHeadersAreReported")
     {
-        TestRig rig;
+        TestRig rig {};
 #if FO_IMAGE_ZAR
         AddSourceBinaryFile(rig, "legacy/bad.zar", vector<uint8_t> {'b', 'a', 'd', 'z', 'a', 'r'});
         AddSourceBinaryFile(rig, "legacy/bad-palette.zar", MakeZarWithPaletteCount(257));
@@ -3405,14 +3404,14 @@ Frm=one.toy
 
     SECTION("InvalidFofrmNestedFramesAreReported")
     {
-        TestRig missing_frame;
+        TestRig missing_frame {};
         missing_frame.AddSourceFile("gfx/missing.fofrm", "frm=missing.tga\n");
 
         ImageBaker missing_baker {missing_frame.MakeContext()};
         CHECK_THROWS_AS(missing_baker.BakeFiles(missing_frame.GetAllSourceFiles(), "gfx/missing.fofrm"), ImageBakerException);
         CHECK(missing_frame.Outputs.empty());
 
-        TestRig unsupported_frame;
+        TestRig unsupported_frame {};
         unsupported_frame.AddSourceFile("gfx/unsupported.fofrm", "frm=frame.unsupported\n");
         unsupported_frame.AddSourceFile("gfx/frame.unsupported", "payload");
 
@@ -3433,7 +3432,7 @@ TEST_CASE("DisabledImageImportersIdentifyTheirRequiredOptions")
 #if !FO_IMAGE_ART
     CHECK_THROWS_WITH(ImageImport::CheckEnabled("gfx/image.art"), Catch::Matchers::ContainsSubstring("FO_IMAGE_ART"));
 
-    BakerTests::TestRig alias;
+    BakerTests::TestRig alias {};
     alias.AddSourceFile("gfx/alias.fofrm", "Alias=image$r=3.art\n");
     alias.AddSourceFile("gfx/image.art", "payload");
     ImageBaker alias_baker {alias.MakeContext()};
@@ -3460,7 +3459,7 @@ TEST_CASE("DisabledImageImportersIdentifyTheirRequiredOptions")
     CHECK_NOTHROW(ImageImport::CheckEnabled("gfx/image.fofrm"));
 
 #if !FO_IMAGE_FRM
-    BakerTests::TestRig nested;
+    BakerTests::TestRig nested {};
     nested.AddSourceFile("gfx/nested.fofrm", "frm=image.frm\n");
     nested.AddSourceFile("gfx/image.frm", "payload");
     ImageBaker baker {nested.MakeContext()};

@@ -54,8 +54,8 @@
 
 FO_BEGIN_NAMESPACE
 
-constexpr socket_t INVALID_SOCKET_VALUE = static_cast<socket_t>(-1);
-constexpr int32_t SOCKET_ERROR_VALUE = static_cast<int32_t>(-1);
+constexpr socket_t INVALID_SOCKET_VALUE {static_cast<socket_t>(-1)};
+constexpr int32_t SOCKET_ERROR_VALUE {static_cast<int32_t>(-1)};
 
 static void close_socket(socket_t sock) noexcept
 {
@@ -70,9 +70,9 @@ static void close_socket(socket_t sock) noexcept
 
 static auto make_socket_holder(socket_t sock) -> unique_del_ptr<socket_t>
 {
-    auto socket_holder = safe_alloc::make_unique<socket_t>(sock);
+    auto socket_holder {safe_alloc::make_unique<socket_t>(sock)};
     return make_unique_del_ptr(socket_holder.release(), [](ptr<socket_t> p) {
-        auto owned_socket = adopt_unique_ptr(p);
+        auto owned_socket {adopt_unique_ptr(p)};
         FO_VERIFY_AND_THROW(*owned_socket != INVALID_SOCKET_VALUE, "Socket handle is invalid");
         close_socket(*owned_socket);
     });
@@ -84,8 +84,8 @@ static auto wait_socket_ready(socket_t sock, bool check_read, bool check_write, 
 
     fd_set read_set {};
     fd_set write_set {};
-    nptr<fd_set> read_ptr = nullptr;
-    nptr<fd_set> write_ptr = nullptr;
+    nptr<fd_set> read_ptr {nullptr};
+    nptr<fd_set> write_ptr {nullptr};
 
     if (check_read) {
         FD_ZERO(&read_set);
@@ -99,16 +99,16 @@ static auto wait_socket_ready(socket_t sock, bool check_read, bool check_write, 
         write_ptr = &write_set;
     }
 
-    auto timeout_ms = std::max<int64_t>(timeout.milliseconds(), 0);
+    auto timeout_ms {std::max<int64_t>(timeout.milliseconds(), 0)};
 
     timeval timeout_tv {};
     timeout_tv.tv_sec = numeric_cast<decltype(timeout_tv.tv_sec)>(timeout_ms / 1000);
     timeout_tv.tv_usec = numeric_cast<decltype(timeout_tv.tv_usec)>((timeout_ms % 1000) * 1000);
 
 #if FO_WINDOWS
-    int32_t select_result = ::select(0, read_ptr.get(), write_ptr.get(), nullptr, &timeout_tv);
+    int32_t select_result {::select(0, read_ptr.get(), write_ptr.get(), nullptr, &timeout_tv)};
 #else
-    int32_t select_result = ::select(numeric_cast<int32_t>(sock) + 1, read_ptr.get(), write_ptr.get(), nullptr, &timeout_tv);
+    int32_t select_result {::select(numeric_cast<int32_t>(sock) + 1, read_ptr.get(), write_ptr.get(), nullptr, &timeout_tv)};
 #endif
 
     if (select_result <= 0) {
@@ -142,24 +142,24 @@ auto net_sockets::resolve_ipv4(string_view host) noexcept -> optional<uint32_t>
         return numeric_cast<uint32_t>(htonl(INADDR_LOOPBACK));
     }
 
-    string host_name = string(host);
-    auto host_name_cstr = make_ptr(host_name.c_str());
-    uint32_t addr = numeric_cast<uint32_t>(::inet_addr(host_name_cstr.get()));
+    string host_name {string(host)};
+    auto host_name_cstr {make_ptr(host_name.c_str())};
+    uint32_t addr {numeric_cast<uint32_t>(::inet_addr(host_name_cstr.get()))};
 
     if (addr != INADDR_NONE) {
         return addr;
     }
 
-    static std::mutex gethostbyname_locker;
-    auto locker = std::scoped_lock {gethostbyname_locker};
+    static std::mutex gethostbyname_locker {};
+    auto locker {std::scoped_lock {gethostbyname_locker}};
 
-    auto h = make_nptr(::gethostbyname(host_name_cstr.get())); // NOLINT(concurrency-mt-unsafe)
+    auto h {make_nptr(::gethostbyname(host_name_cstr.get()))}; // NOLINT(concurrency-mt-unsafe)
 
     if (!h) {
         return std::nullopt;
     }
 
-    nptr<const char> resolved_addr = h->h_addr;
+    nptr<const char> resolved_addr {h->h_addr};
 
     if (!resolved_addr || h->h_length < numeric_cast<int32_t>(sizeof(addr))) {
         return std::nullopt;
@@ -171,7 +171,7 @@ auto net_sockets::resolve_ipv4(string_view host) noexcept -> optional<uint32_t>
 
 auto net_sockets::ipv4_to_string(uint32_t addr_net_order) noexcept -> string
 {
-    uint32_t addr_host_order = numeric_cast<uint32_t>(ntohl(addr_net_order));
+    uint32_t addr_host_order {numeric_cast<uint32_t>(ntohl(addr_net_order))};
 
     return strex("{}.{}.{}.{}", //
         numeric_cast<uint8_t>((addr_host_order >> 24) & 0xFF), //
@@ -197,7 +197,7 @@ auto net_sockets::last_recv_was_would_block() noexcept -> bool
 
 auto net_sockets::error_text(const std::error_code& error) noexcept -> string
 {
-    string_view description;
+    string_view description {};
 
 #if FO_WINDOWS
     switch (error.value()) {
@@ -243,7 +243,7 @@ auto net_sockets::error_text(const std::error_code& error) noexcept -> string
 #endif
 
     if (description.empty()) {
-        auto condition = error.default_error_condition();
+        auto condition {error.default_error_condition()};
 
         if (condition == std::errc::permission_denied) {
             description = "Permission denied";
@@ -286,7 +286,7 @@ auto net_sockets::error_text(const std::error_code& error) noexcept -> string
         }
     }
 
-    string_view category = error.category().name();
+    string_view category {error.category().name()};
     return description.empty() ? strex("Network error ({}:{})", category, error.value()) : strex("{} ({}:{})", description, category, error.value());
 }
 
@@ -310,7 +310,7 @@ auto tcp_socket::connect(string_view host, uint16_t port) noexcept -> bool
 
     close();
 
-    socket_t sock = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    socket_t sock {::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)};
 
     if (sock == INVALID_SOCKET_VALUE) {
         return false;
@@ -320,7 +320,7 @@ auto tcp_socket::connect(string_view host, uint16_t port) noexcept -> bool
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
 
-    auto resolved = net_sockets::resolve_ipv4(host);
+    auto resolved {net_sockets::resolve_ipv4(host)};
 
     if (!resolved.has_value()) {
         close_socket(sock);
@@ -328,7 +328,7 @@ auto tcp_socket::connect(string_view host, uint16_t port) noexcept -> bool
     }
 
     addr.sin_addr.s_addr = *resolved;
-    auto addr_ptr = make_ptr(&addr).reinterpret_as<const sockaddr>();
+    auto addr_ptr {make_ptr(&addr).reinterpret_as<const sockaddr>()};
 
     if (::connect(sock, addr_ptr.get(), sizeof(addr)) == SOCKET_ERROR_VALUE) {
         close_socket(sock);
@@ -346,7 +346,7 @@ auto tcp_socket::connect_async(string_view host, uint16_t port) noexcept -> bool
 
     close();
 
-    socket_t sock = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    socket_t sock {::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)};
 
     if (sock == INVALID_SOCKET_VALUE) {
         return false;
@@ -356,7 +356,7 @@ auto tcp_socket::connect_async(string_view host, uint16_t port) noexcept -> bool
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
 
-    auto resolved = net_sockets::resolve_ipv4(host);
+    auto resolved {net_sockets::resolve_ipv4(host)};
 
     if (!resolved.has_value()) {
         close_socket(sock);
@@ -367,14 +367,14 @@ auto tcp_socket::connect_async(string_view host, uint16_t port) noexcept -> bool
 
     // Switch to non-blocking before kicking off connect so we can return immediately on EWOULDBLOCK/EINPROGRESS
 #if FO_WINDOWS
-    u_long mode = 1;
+    u_long mode {1};
 
     if (::ioctlsocket(sock, FIONBIO, &mode) != 0) {
         close_socket(sock);
         return false;
     }
 #else
-    int32_t flags = ::fcntl(sock, F_GETFL, 0);
+    int32_t flags {::fcntl(sock, F_GETFL, 0)};
 
     if (flags < 0 || ::fcntl(sock, F_SETFL, flags | O_NONBLOCK) != 0) {
         close_socket(sock);
@@ -382,8 +382,8 @@ auto tcp_socket::connect_async(string_view host, uint16_t port) noexcept -> bool
     }
 #endif
 
-    auto addr_ptr = make_ptr(&addr).reinterpret_as<const sockaddr>();
-    int32_t r = ::connect(sock, addr_ptr.get(), sizeof(addr));
+    auto addr_ptr {make_ptr(&addr).reinterpret_as<const sockaddr>()};
+    int32_t r {::connect(sock, addr_ptr.get(), sizeof(addr))};
 
     if (r == SOCKET_ERROR_VALUE) {
 #if FO_WINDOWS
@@ -428,8 +428,8 @@ auto tcp_socket::set_nodelay(bool enabled) noexcept -> bool
         return false;
     }
 
-    int32_t optval = enabled ? 1 : 0;
-    auto optval_data = make_ptr(&optval).reinterpret_as<const char>();
+    int32_t optval {enabled ? 1 : 0};
+    auto optval_data {make_ptr(&optval).reinterpret_as<const char>()};
 
     return ::setsockopt(*_sock, IPPROTO_TCP, TCP_NODELAY, optval_data.get(), sizeof(optval)) == 0;
 }
@@ -440,14 +440,14 @@ auto tcp_socket::peek_socket_error() const noexcept -> int32_t
         return -1;
     }
 
-    int32_t error = 0;
+    int32_t error {0};
 #if FO_WINDOWS
-    int32_t len = sizeof(error);
+    int32_t len {sizeof(error)};
 #else
-    socklen_t len = sizeof(error);
+    socklen_t len {sizeof(error)};
 #endif
 
-    auto error_data = make_ptr(&error).reinterpret_as<char>();
+    auto error_data {make_ptr(&error).reinterpret_as<char>()};
 
     if (::getsockopt(*_sock, SOL_SOCKET, SO_ERROR, error_data.get(), &len) != 0) {
         return -1;
@@ -489,7 +489,7 @@ auto tcp_server::listen(string_view bind_host, uint16_t port, int32_t backlog) n
 
     close();
 
-    socket_t sock = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    socket_t sock {::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)};
 
     if (sock == INVALID_SOCKET_VALUE) {
         return false;
@@ -499,7 +499,7 @@ auto tcp_server::listen(string_view bind_host, uint16_t port, int32_t backlog) n
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
 
-    auto resolved = net_sockets::resolve_ipv4(bind_host);
+    auto resolved {net_sockets::resolve_ipv4(bind_host)};
 
     if (!resolved.has_value()) {
         close_socket(sock);
@@ -508,7 +508,7 @@ auto tcp_server::listen(string_view bind_host, uint16_t port, int32_t backlog) n
 
     addr.sin_addr.s_addr = *resolved;
 
-    auto addr_ptr = make_ptr(&addr).reinterpret_as<const sockaddr>();
+    auto addr_ptr {make_ptr(&addr).reinterpret_as<const sockaddr>()};
 
     if (::bind(sock, addr_ptr.get(), sizeof(addr)) == SOCKET_ERROR_VALUE) {
         close_socket(sock);
@@ -544,13 +544,13 @@ auto tcp_server::accept() noexcept -> tcp_socket
 
     sockaddr_in addr {};
 #if FO_WINDOWS
-    int32_t addr_len = sizeof(addr);
+    int32_t addr_len {sizeof(addr)};
 #else
-    socklen_t addr_len = sizeof(addr);
+    socklen_t addr_len {sizeof(addr)};
 #endif
-    auto addr_len_ptr = make_ptr(&addr_len);
-    auto addr_ptr = make_ptr(&addr).reinterpret_as<sockaddr>();
-    socket_t client_sock = ::accept(*_listen_sock, addr_ptr.get(), addr_len_ptr.get());
+    auto addr_len_ptr {make_ptr(&addr_len)};
+    auto addr_ptr {make_ptr(&addr).reinterpret_as<sockaddr>()};
+    socket_t client_sock {::accept(*_listen_sock, addr_ptr.get(), addr_len_ptr.get())};
 
     if (client_sock == INVALID_SOCKET_VALUE) {
         return {};
@@ -570,7 +570,7 @@ auto udp_socket::bind(string_view bind_host, uint16_t port, bool reuse_addr) noe
 
     close();
 
-    socket_t sock = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    socket_t sock {::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)};
 
     if (sock == INVALID_SOCKET_VALUE) {
         return false;
@@ -578,8 +578,8 @@ auto udp_socket::bind(string_view bind_host, uint16_t port, bool reuse_addr) noe
 
 #if !FO_WEB
     if (reuse_addr) {
-        constexpr int32_t opt = 1;
-        auto opt_data = make_ptr(&opt).reinterpret_as<const char>();
+        constexpr int32_t opt {1};
+        auto opt_data {make_ptr(&opt).reinterpret_as<const char>()};
 
         if (::setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, opt_data.get(), sizeof(opt)) == SOCKET_ERROR_VALUE) {
             close_socket(sock);
@@ -594,7 +594,7 @@ auto udp_socket::bind(string_view bind_host, uint16_t port, bool reuse_addr) noe
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
 
-    auto resolved = net_sockets::resolve_ipv4(bind_host);
+    auto resolved {net_sockets::resolve_ipv4(bind_host)};
 
     if (!resolved.has_value()) {
         close_socket(sock);
@@ -603,7 +603,7 @@ auto udp_socket::bind(string_view bind_host, uint16_t port, bool reuse_addr) noe
 
     addr.sin_addr.s_addr = *resolved;
 
-    auto addr_ptr = make_ptr(&addr).reinterpret_as<const sockaddr>();
+    auto addr_ptr {make_ptr(&addr).reinterpret_as<const sockaddr>()};
 
     if (::bind(sock, addr_ptr.get(), sizeof(addr)) == SOCKET_ERROR_VALUE) {
         close_socket(sock);
@@ -640,8 +640,8 @@ auto udp_socket::set_broadcast(bool enabled) noexcept -> bool
     }
 
 #if !FO_WEB
-    int32_t opt = enabled ? 1 : 0;
-    auto opt_data = make_ptr(&opt).reinterpret_as<const char>();
+    int32_t opt {enabled ? 1 : 0};
+    auto opt_data {make_ptr(&opt).reinterpret_as<const char>()};
     return ::setsockopt(*_sock, SOL_SOCKET, SO_BROADCAST, opt_data.get(), sizeof(opt)) != SOCKET_ERROR_VALUE;
 #else
     return false;
@@ -660,7 +660,7 @@ auto udp_socket::send_to(string_view host, uint16_t port, const_span<uint8_t> da
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
 
-    auto resolved = net_sockets::resolve_ipv4(host);
+    auto resolved {net_sockets::resolve_ipv4(host)};
 
     if (!resolved.has_value()) {
         return 0;
@@ -668,7 +668,7 @@ auto udp_socket::send_to(string_view host, uint16_t port, const_span<uint8_t> da
 
     addr.sin_addr.s_addr = *resolved;
 
-    auto addr_ptr = make_ptr(&addr).reinterpret_as<const sockaddr>();
+    auto addr_ptr {make_ptr(&addr).reinterpret_as<const sockaddr>()};
     return numeric_cast<int32_t>(::sendto(*_sock, make_ptr(data.data()).reinterpret_as<const char>().get(), numeric_cast<int32_t>(data.size()), 0, addr_ptr.get(), sizeof(addr)));
 }
 
@@ -685,19 +685,19 @@ auto udp_socket::receive_from(span<uint8_t> data, string& out_host, uint16_t& ou
 
     sockaddr_in addr {};
 #if FO_WINDOWS
-    int32_t addr_len = sizeof(addr);
+    int32_t addr_len {sizeof(addr)};
 #else
-    socklen_t addr_len = sizeof(addr);
+    socklen_t addr_len {sizeof(addr)};
 #endif
-    auto addr_len_ptr = make_ptr(&addr_len);
-    auto addr_ptr = make_ptr(&addr).reinterpret_as<sockaddr>();
-    int32_t result = numeric_cast<int32_t>(::recvfrom(*_sock, make_ptr(data.data()).reinterpret_as<char>().get(), numeric_cast<int32_t>(data.size()), 0, addr_ptr.get(), addr_len_ptr.get()));
+    auto addr_len_ptr {make_ptr(&addr_len)};
+    auto addr_ptr {make_ptr(&addr).reinterpret_as<sockaddr>()};
+    int32_t result {numeric_cast<int32_t>(::recvfrom(*_sock, make_ptr(data.data()).reinterpret_as<char>().get(), numeric_cast<int32_t>(data.size()), 0, addr_ptr.get(), addr_len_ptr.get()))};
 
     if (result <= 0) {
         return result;
     }
 
-    uint32_t ip = ntohl(addr.sin_addr.s_addr);
+    uint32_t ip {ntohl(addr.sin_addr.s_addr)};
     out_host = strex("{}.{}.{}.{}", (ip >> 24U) & 0xFFU, (ip >> 16U) & 0xFFU, (ip >> 8U) & 0xFFU, ip & 0xFFU);
     out_port = ntohs(addr.sin_port);
     return result;

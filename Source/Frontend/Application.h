@@ -602,8 +602,8 @@ class AppRender final : public IAppRender
     friend class Application;
 
 public:
-    static constexpr int32_t MAX_ATLAS_SIZE = 8192;
-    static constexpr int32_t MIN_ATLAS_SIZE = 2048;
+    static constexpr int32_t MAX_ATLAS_SIZE {8192};
+    static constexpr int32_t MIN_ATLAS_SIZE {2048};
     static int32_t MAX_ATLAS_WIDTH;
     static int32_t MAX_ATLAS_HEIGHT;
     static int32_t MAX_BONES;
@@ -637,7 +637,7 @@ class AppInput final : public IAppInput
     friend class Application;
 
 public:
-    static constexpr size_t DROP_FILE_STRIP_LENGHT = 2048;
+    static constexpr size_t DROP_FILE_STRIP_LENGHT {2048};
 
     [[nodiscard]] auto IsMouseAvailable() const noexcept -> bool override;
     [[nodiscard]] auto GetMousePosition() const -> ipos32 override;
@@ -795,10 +795,10 @@ private:
         bool Active {};
     };
 
-    static constexpr uint32_t TOUCH_TAP_MAX_TIME_MS = 250;
-    static constexpr uint32_t TOUCH_DOUBLE_TAP_MAX_TIME_MS = 200;
-    static constexpr int32_t TOUCH_TAP_MAX_DIST = 12;
-    static constexpr int32_t TOUCH_DOUBLE_TAP_MAX_DIST = 48;
+    static constexpr uint32_t TOUCH_TAP_MAX_TIME_MS {250};
+    static constexpr uint32_t TOUCH_DOUBLE_TAP_MAX_TIME_MS {200};
+    static constexpr int32_t TOUCH_TAP_MAX_DIST {12};
+    static constexpr int32_t TOUCH_DOUBLE_TAP_MAX_DIST {48};
 
     struct Context;
 

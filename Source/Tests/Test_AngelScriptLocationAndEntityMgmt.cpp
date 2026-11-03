@@ -240,28 +240,28 @@ TEST_CASE("AngelScriptTimeEventManagerFiresScriptCallbacks")
 {
     MAKE_LEM_SERVER();
 
-    auto cr = server->CreateCritter(get_func("TestCritter"), false).hold_ref();
+    auto cr {server->CreateCritter(get_func("TestCritter"), false).hold_ref()};
 
-    auto start_self_event = [&server, &cr](string_view func_name, timespan repeat) {
-        auto timer_func = server->FindFunc<void, ptr<ScriptSelfEntity>>(server->Hashes.to_hashed_string(func_name));
+    auto start_self_event {[&server, &cr](string_view func_name, timespan repeat) {
+        auto timer_func {server->FindFunc<void, ptr<ScriptSelfEntity>>(server->Hashes.to_hashed_string(func_name))};
         REQUIRE(timer_func);
         return server->TimeEventMngr.StartTimeEvent(cr, Entity::TimeEventData::FuncType {std::move(timer_func)}, timespan {std::chrono::seconds {60}}, repeat, {});
-    };
+    }};
 
-    auto backdate_all_events = [&cr]() {
-        auto time_events = cr->GetTimeEvents();
+    auto backdate_all_events {[&cr]() {
+        auto time_events {cr->GetTimeEvents()};
         REQUIRE(time_events);
 
         for (auto& te : *time_events) {
             te->FireTime = nanotime {};
         }
-    };
+    }};
 
-    int32_t base_look = cr->GetLookDistance();
+    int32_t base_look {cr->GetLookDistance()};
 
     SECTION("RepeatingEventFiresAndReschedules")
     {
-        uint32_t event_id = start_self_event("LocEntity::OnCritterTickTimer", timespan {std::chrono::seconds {5}});
+        uint32_t event_id {start_self_event("LocEntity::OnCritterTickTimer", timespan {std::chrono::seconds {5}})};
         CHECK(event_id != 0);
 
         backdate_all_events();
@@ -271,14 +271,14 @@ TEST_CASE("AngelScriptTimeEventManagerFiresScriptCallbacks")
         // A repeating event survives its own firing and is pushed into the future
         CHECK(cr->HasTimeEvents());
 
-        optional<timespan> time_until_next;
+        optional<timespan> time_until_next {};
         CHECK(server->TimeEventMngr.CollectReadyTimeEvents(time_until_next).empty());
         CHECK(time_until_next.has_value());
     }
 
     SECTION("OneShotEventIsRemovedAfterFiring")
     {
-        uint32_t event_id = start_self_event("LocEntity::OnCritterTickTimer", {});
+        uint32_t event_id {start_self_event("LocEntity::OnCritterTickTimer", {})};
         CHECK(event_id != 0);
 
         backdate_all_events();
@@ -292,9 +292,9 @@ TEST_CASE("AngelScriptTimeEventManagerFiresScriptCallbacks")
     {
         (void)start_self_event("LocEntity::OnCritterThrowingTimer", timespan {std::chrono::seconds {5}});
 
-        auto prev_callback = exceptions::get_callback();
+        auto prev_callback {exceptions::get_callback()};
         exceptions::set_callback([](string_view, const stack_trace::catched_data&, bool) { });
-        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); });
+        auto restore_callback {scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); })};
 
         backdate_all_events();
         server->TimeEventMngr.ProcessTimeEvents();
@@ -306,17 +306,17 @@ TEST_CASE("AngelScriptTimeEventManagerFiresScriptCallbacks")
 
     SECTION("FireAndAdvanceRunsASingleEvent")
     {
-        uint32_t event_id = start_self_event("LocEntity::OnCritterTickTimer", timespan {std::chrono::seconds {5}});
+        uint32_t event_id {start_self_event("LocEntity::OnCritterTickTimer", timespan {std::chrono::seconds {5}})};
 
         backdate_all_events();
-        auto next_delay = server->TimeEventMngr.FireAndAdvance(cr, event_id);
+        auto next_delay {server->TimeEventMngr.FireAndAdvance(cr, event_id)};
 
         CHECK(cr->GetLookDistance() == base_look + 1);
         REQUIRE(next_delay.has_value());
         CHECK(next_delay.value() > timespan {});
 
         // A one-shot event reports no follow-up delay because it is gone after firing
-        uint32_t once_id = start_self_event("LocEntity::OnCritterTickTimer", {});
+        uint32_t once_id {start_self_event("LocEntity::OnCritterTickTimer", {})};
         backdate_all_events();
         CHECK_FALSE(server->TimeEventMngr.FireAndAdvance(cr, once_id).has_value());
     }

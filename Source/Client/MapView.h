@@ -465,7 +465,7 @@ private:
     int32_t _hVisible {};
     vector<ViewField> _viewField {};
 
-    static constexpr size_t FOG_SLOT_COUNT = static_cast<size_t>(DrawOrderType::Last) + 1;
+    static constexpr size_t FOG_SLOT_COUNT {static_cast<size_t>(DrawOrderType::Last) + 1};
     array<vector<refcount_ptr<FogLayer>>, FOG_SLOT_COUNT> _fogs {};
 
     vector<ucolor> _hexLight {};

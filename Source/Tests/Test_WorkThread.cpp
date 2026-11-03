@@ -42,13 +42,13 @@ FO_BEGIN_NAMESPACE
 // worker through the public queue until the outstanding calls leave, so every join below still completes
 static void JoinHelpersWithStallWatchdog(work_thread& worker, vector<thread>& helpers, int32_t helper_count, std::atomic_int32_t& helpers_done, std::atomic_int64_t& progress, std::atomic_bool& stop, std::atomic_bool& tripped)
 {
-    constexpr auto stall_limit = std::chrono::seconds {5};
+    constexpr auto stall_limit {std::chrono::seconds {5}};
 
-    int64_t seen_progress = progress.load(std::memory_order_relaxed);
-    auto stalled_since = std::chrono::steady_clock::now();
+    int64_t seen_progress {progress.load(std::memory_order_relaxed)};
+    auto stalled_since {std::chrono::steady_clock::now()};
 
     while (helpers_done.load(std::memory_order_acquire) < helper_count) {
-        int64_t now_progress = progress.load(std::memory_order_relaxed);
+        int64_t now_progress {progress.load(std::memory_order_relaxed)};
 
         if (now_progress != seen_progress) {
             seen_progress = now_progress;
@@ -76,8 +76,8 @@ TEST_CASE("WorkThread")
 {
     SECTION("RunThreadJoinConsumesHandle")
     {
-        std::atomic_bool ran = false;
-        thread worker = run_thread("JoinHandleWorker", [&] { ran = true; });
+        std::atomic_bool ran {false};
+        thread worker {run_thread("JoinHandleWorker", [&] { ran = true; })};
 
         REQUIRE(worker.joinable());
 
@@ -90,7 +90,7 @@ TEST_CASE("WorkThread")
     SECTION("ExecutesQueuedJobsAndWaitsForCompletion")
     {
         work_thread worker {"TestWorker"};
-        std::atomic_int32_t counter = 0;
+        std::atomic_int32_t counter {0};
 
         worker.add_job([&]() -> optional<timespan> {
             counter.fetch_add(1);
@@ -111,7 +111,7 @@ TEST_CASE("WorkThread")
     SECTION("PauseBlocksJobsUntilResume")
     {
         work_thread worker {"PauseWorker"};
-        std::atomic_bool executed = false;
+        std::atomic_bool executed {false};
 
         worker.pause();
         worker.add_job([&]() -> optional<timespan> {
@@ -131,10 +131,10 @@ TEST_CASE("WorkThread")
     SECTION("RepeatedJobReschedulesUntilItStops")
     {
         work_thread worker {"RepeatWorker"};
-        std::atomic_int32_t runs = 0;
+        std::atomic_int32_t runs {0};
 
         worker.add_job([&]() -> optional<timespan> {
-            int32_t next_run = ++runs;
+            int32_t next_run {++runs};
             return next_run < 3 ? optional<timespan> {std::chrono::milliseconds {1}} : std::nullopt;
         });
 
@@ -146,9 +146,9 @@ TEST_CASE("WorkThread")
     SECTION("ExceptionHandlerCanClearRemainingJobs")
     {
         work_thread worker {"ExceptionWorker"};
-        std::atomic_bool handler_called = false;
-        std::atomic_bool second_job_called = false;
-        std::atomic_bool jobs_enqueued = false;
+        std::atomic_bool handler_called {false};
+        std::atomic_bool second_job_called {false};
+        std::atomic_bool jobs_enqueued {false};
 
         worker.set_exception_handler([&](const std::exception&) {
             handler_called = true;
@@ -180,12 +180,12 @@ TEST_CASE("WorkThread")
     {
         // The handler knows what the failure means to its owner and when to say so. Reporting here as
         // well would print the same exception twice, the second copy behind everything the handler started
-        auto prev_callback = exceptions::get_callback();
-        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); });
+        auto prev_callback {exceptions::get_callback()};
+        auto restore_callback {scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); })};
 
         work_thread worker {"ExceptionHandlerWorker"};
-        std::atomic_bool handler_called = false;
-        std::atomic_bool report_called = false;
+        std::atomic_bool handler_called {false};
+        std::atomic_bool report_called {false};
 
         exceptions::set_callback([&](string_view, const stack_trace::catched_data&, bool) { report_called = true; });
 
@@ -204,11 +204,11 @@ TEST_CASE("WorkThread")
 
     SECTION("WithoutAHandlerTheExceptionIsStillReported")
     {
-        auto prev_callback = exceptions::get_callback();
-        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); });
+        auto prev_callback {exceptions::get_callback()};
+        auto restore_callback {scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); })};
 
         work_thread worker {"ExceptionReportWorker"};
-        std::atomic_bool report_called = false;
+        std::atomic_bool report_called {false};
 
         exceptions::set_callback([&](string_view, const stack_trace::catched_data&, bool) { report_called = true; });
 
@@ -222,7 +222,7 @@ TEST_CASE("WorkThread")
     SECTION("ClearRemovesQueuedJobsWhilePaused")
     {
         work_thread worker {"ClearWorker"};
-        std::atomic_bool executed = false;
+        std::atomic_bool executed {false};
 
         worker.pause();
         worker.add_job([&]() -> optional<timespan> {
@@ -250,7 +250,7 @@ TEST_CASE("WorkThread")
 
         worker.wait();
 
-        work_thread::diagnostics diagnostics = worker.get_diagnostics();
+        work_thread::diagnostics diagnostics {worker.get_diagnostics()};
         CHECK(diagnostics.completed_jobs == 2);
         CHECK(diagnostics.queued_jobs == 0);
         CHECK_FALSE(diagnostics.job_active);
@@ -259,10 +259,10 @@ TEST_CASE("WorkThread")
     SECTION("DiagnosticsCountEveryRescheduledRun")
     {
         work_thread worker {"RepeatDiagnosticsWorker"};
-        std::atomic_int32_t runs = 0;
+        std::atomic_int32_t runs {0};
 
         worker.add_job([&]() -> optional<timespan> {
-            int32_t next_run = ++runs;
+            int32_t next_run {++runs};
             return next_run < 3 ? optional<timespan> {std::chrono::milliseconds {1}} : std::nullopt;
         });
 
@@ -296,7 +296,7 @@ TEST_CASE("WorkThread")
         }
 
         // Pause from a helper thread while the first job is in flight and the second is still queued
-        thread pauser = run_thread("Pauser", [&]() { worker.pause(); });
+        thread pauser {run_thread("Pauser", [&]() { worker.pause(); })};
         gate.store(true); // let the in-flight job finish
 
         pauser.join(); // pre-fix: deadlocks here (the in-flight job cleared _jobActive but never signalled)
@@ -315,15 +315,15 @@ TEST_CASE("WorkThread")
         std::atomic_int64_t body_runs {0};
         std::atomic_bool stop {false};
 
-        constexpr int producer_count = 5;
-        constexpr int jobs_per_producer = 3000;
+        constexpr int producer_count {5};
+        constexpr int jobs_per_producer {3000};
 
-        vector<thread> producers;
+        vector<thread> producers {};
         producers.reserve(producer_count);
 
-        for (int p = 0; p < producer_count; p++) {
+        for (int p {0}; p < producer_count; p++) {
             producers.emplace_back(run_thread("ChaosProducer", [&]() {
-                for (int i = 0; i < jobs_per_producer; i++) {
+                for (int i {0}; i < jobs_per_producer; i++) {
                     worker.add_job([&body_runs]() -> optional<timespan> {
                         body_runs.fetch_add(1, std::memory_order_relaxed);
                         return std::nullopt;
@@ -332,12 +332,12 @@ TEST_CASE("WorkThread")
             }));
         }
 
-        thread controller = run_thread("ChaosController", [&]() {
-            uint32_t rng = 0xC0FFEEU;
-            auto next = [&rng]() {
+        thread controller {run_thread("ChaosController", [&]() {
+            uint32_t rng {0xC0FFEEU};
+            auto next {[&rng]() {
                 rng = rng * 1664525U + 1013904223U;
                 return rng;
-            };
+            }};
 
             while (!stop.load(std::memory_order_acquire)) {
                 switch (next() % 3) {
@@ -353,7 +353,7 @@ TEST_CASE("WorkThread")
                     break;
                 }
             }
-        });
+        })};
 
         for (auto& t : producers) {
             t.join();
@@ -384,9 +384,9 @@ TEST_CASE("WorkThread")
     {
         work_thread worker {"ClearLivenessEmptyWorker"};
 
-        constexpr int32_t concurrent_clears = 1000;
-        constexpr int32_t solo_tail_clears = 5000;
-        constexpr int32_t helper_count = 2;
+        constexpr int32_t concurrent_clears {1000};
+        constexpr int32_t solo_tail_clears {5000};
+        constexpr int32_t helper_count {2};
 
         std::atomic_int32_t helpers_done {0};
         std::atomic_int64_t progress {0};
@@ -394,13 +394,13 @@ TEST_CASE("WorkThread")
         std::atomic_bool stop {false};
         std::atomic_bool tripped {false};
 
-        vector<thread> helpers;
+        vector<thread> helpers {};
         helpers.reserve(helper_count);
 
         helpers.emplace_back(run_thread("ClearLivenessConcurrentHelper", [&]() {
             start.wait(false);
 
-            for (int32_t i = 0; i < concurrent_clears && !stop.load(std::memory_order_acquire); i++) {
+            for (int32_t i {0}; i < concurrent_clears && !stop.load(std::memory_order_acquire); i++) {
                 worker.clear();
                 progress.fetch_add(1, std::memory_order_relaxed);
             }
@@ -411,9 +411,9 @@ TEST_CASE("WorkThread")
         helpers.emplace_back(run_thread("ClearLivenessSoloTailHelper", [&]() {
             start.wait(false);
 
-            constexpr int32_t total_clears = concurrent_clears + solo_tail_clears;
+            constexpr int32_t total_clears {concurrent_clears + solo_tail_clears};
 
-            for (int32_t i = 0; i < total_clears && !stop.load(std::memory_order_acquire); i++) {
+            for (int32_t i {0}; i < total_clears && !stop.load(std::memory_order_acquire); i++) {
                 worker.clear();
                 progress.fetch_add(1, std::memory_order_relaxed);
             }
@@ -456,11 +456,11 @@ TEST_CASE("WorkThread")
         std::atomic_int32_t bodies_ran {0};
         work_thread worker {"ClearLivenessFutureWorker"};
 
-        constexpr int32_t concurrent_rounds = 500;
-        constexpr int32_t solo_tail_rounds = 2500;
-        constexpr int32_t helper_count = 2;
+        constexpr int32_t concurrent_rounds {500};
+        constexpr int32_t solo_tail_rounds {2500};
+        constexpr int32_t helper_count {2};
         // Past the watchdog stall limit on purpose: a clear delayed to the job deadline must trip first
-        constexpr auto job_delay = std::chrono::seconds {10};
+        constexpr auto job_delay {std::chrono::seconds {10}};
 
         std::atomic_int32_t helpers_done {0};
         std::atomic_int64_t progress {0};
@@ -468,22 +468,22 @@ TEST_CASE("WorkThread")
         std::atomic_bool stop {false};
         std::atomic_bool tripped {false};
 
-        auto add_then_clear = [&]() {
+        auto add_then_clear {[&]() {
             worker.add_job(job_delay, [&bodies_ran]() -> optional<timespan> {
                 bodies_ran.fetch_add(1, std::memory_order_relaxed);
                 return std::nullopt;
             });
 
             worker.clear();
-        };
+        }};
 
-        vector<thread> helpers;
+        vector<thread> helpers {};
         helpers.reserve(helper_count);
 
         helpers.emplace_back(run_thread("FutureClearConcurrentHelper", [&]() {
             start.wait(false);
 
-            for (int32_t i = 0; i < concurrent_rounds && !stop.load(std::memory_order_acquire); i++) {
+            for (int32_t i {0}; i < concurrent_rounds && !stop.load(std::memory_order_acquire); i++) {
                 add_then_clear();
                 progress.fetch_add(1, std::memory_order_relaxed);
             }
@@ -494,9 +494,9 @@ TEST_CASE("WorkThread")
         helpers.emplace_back(run_thread("FutureClearSoloTailHelper", [&]() {
             start.wait(false);
 
-            constexpr int32_t total_rounds = concurrent_rounds + solo_tail_rounds;
+            constexpr int32_t total_rounds {concurrent_rounds + solo_tail_rounds};
 
-            for (int32_t i = 0; i < total_rounds && !stop.load(std::memory_order_acquire); i++) {
+            for (int32_t i {0}; i < total_rounds && !stop.load(std::memory_order_acquire); i++) {
                 add_then_clear();
                 progress.fetch_add(1, std::memory_order_relaxed);
             }

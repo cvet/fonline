@@ -45,7 +45,7 @@ FO_DECLARE_EXCEPTION(RawCopyBakerException);
 class RawCopyBaker final : public BaseBaker
 {
 public:
-    static constexpr string_view_nt NAME = "RawCopy";
+    static constexpr string_view_nt NAME {"RawCopy"};
 
     explicit RawCopyBaker(shared_ptr<BakingContext> ctx);
     RawCopyBaker(const RawCopyBaker&) = delete;

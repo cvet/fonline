@@ -82,7 +82,7 @@ public:
             return _emptyCell;
         }
 
-        auto it = _cells.find(pos);
+        auto it {_cells.find(pos)};
 
         if (it == _cells.end()) {
             return _emptyCell;
@@ -96,7 +96,7 @@ public:
     {
         FO_VERIFY_AND_THROW(base::_size.is_valid_pos(pos), "Sparse two-dimensional grid write position is outside the grid bounds", pos, base::_size);
 
-        auto it = _cells.find(pos);
+        auto it {_cells.find(pos)};
 
         if (it == _cells.end()) {
             return &(_cells.emplace(pos, TCell {}).first->second);
@@ -142,7 +142,7 @@ public:
             return _emptyCell;
         }
 
-        const auto& chunk = _chunks[GetChunkIndex(pos)];
+        const auto& chunk {_chunks[GetChunkIndex(pos)]};
 
         if (!chunk) {
             return _emptyCell;
@@ -155,7 +155,7 @@ public:
     {
         FO_VERIFY_AND_THROW(base::_size.is_valid_pos(pos), "Chunked two-dimensional grid write position is outside the grid bounds", pos, base::_size);
 
-        auto& chunk = _chunks[GetChunkIndex(pos)];
+        auto& chunk {_chunks[GetChunkIndex(pos)]};
 
         if (!chunk) {
             chunk = safe_alloc::make_unique<Chunk>();
@@ -171,18 +171,18 @@ public:
 
         ChunkedTwoDimensionalGrid replacement {size};
 
-        for (size_t chunk_index = 0; chunk_index < _chunks.size(); chunk_index++) {
-            auto& chunk = _chunks[chunk_index];
+        for (size_t chunk_index {0}; chunk_index < _chunks.size(); chunk_index++) {
+            auto& chunk {_chunks[chunk_index]};
 
             if (!chunk) {
                 continue;
             }
 
-            for (size_t cell_index = 0; cell_index < chunk->size(); cell_index++) {
-                auto& cell = (*chunk)[cell_index];
+            for (size_t cell_index {0}; cell_index < chunk->size(); cell_index++) {
+                auto& cell {(*chunk)[cell_index]};
 
-                size_t x = chunk_index % _chunksPerRow * ChunkSide + cell_index % ChunkSide;
-                size_t y = chunk_index / _chunksPerRow * ChunkSide + cell_index / ChunkSide;
+                size_t x {chunk_index % _chunksPerRow * ChunkSide + cell_index % ChunkSide};
+                size_t y {chunk_index / _chunksPerRow * ChunkSide + cell_index / ChunkSide};
 
                 if (x < static_cast<size_t>(size.width) && y < static_cast<size_t>(size.height)) {
                     TPos pos {numeric_cast<decltype(pos.x)>(x), numeric_cast<decltype(pos.y)>(y)};
@@ -214,7 +214,7 @@ public:
     explicit StaticTwoDimensionalGrid(TSize size) noexcept :
         base(size)
     {
-        size_t count = static_cast<size_t>(static_cast<int64_t>(base::_size.width) * base::_size.height);
+        size_t count {static_cast<size_t>(static_cast<int64_t>(base::_size.width) * base::_size.height)};
         _preallocatedCells.resize(count);
     }
 
@@ -224,8 +224,8 @@ public:
             return _emptyCell;
         }
 
-        size_t index = static_cast<size_t>(static_cast<int64_t>(pos.y) * base::_size.width + pos.x);
-        auto& cell = _preallocatedCells[index];
+        size_t index {static_cast<size_t>(static_cast<int64_t>(pos.y) * base::_size.width + pos.x)};
+        auto& cell {_preallocatedCells[index]};
 
         if (!cell) {
             return _emptyCell;
@@ -238,8 +238,8 @@ public:
     {
         FO_VERIFY_AND_THROW(base::_size.is_valid_pos(pos), "Dense two-dimensional grid write position is outside the grid bounds", pos, base::_size);
 
-        auto index = numeric_cast<size_t>(static_cast<int64_t>(pos.y) * base::_size.width + pos.x);
-        auto& cell = _preallocatedCells[index];
+        auto index {numeric_cast<size_t>(static_cast<int64_t>(pos.y) * base::_size.width + pos.x)};
+        auto& cell {_preallocatedCells[index]};
 
         if (!cell) {
             cell.emplace();
@@ -253,20 +253,20 @@ public:
         FO_VERIFY_AND_THROW(size.width >= 0, "Size width is negative", size.width);
         FO_VERIFY_AND_THROW(size.height >= 0, "Size height is negative", size.height);
 
-        auto prev_width = base::_size.width;
-        auto prev_height = base::_size.height;
+        auto prev_width {base::_size.width};
+        auto prev_height {base::_size.height};
 
         base::_size = size;
 
-        vector<optional<TCell>> new_cells;
-        auto new_count = numeric_cast<size_t>(numeric_cast<int64_t>(base::_size.width) * base::_size.height);
+        vector<optional<TCell>> new_cells {};
+        auto new_count {numeric_cast<size_t>(numeric_cast<int64_t>(base::_size.width) * base::_size.height)};
         new_cells.resize(new_count);
 
-        for (int64_t y = 0; y < std::max(prev_height, base::_size.height); y++) {
-            for (int64_t x = 0; x < std::max(prev_width, base::_size.width); x++) {
+        for (int64_t y {0}; y < std::max(prev_height, base::_size.height); y++) {
+            for (int64_t x {0}; x < std::max(prev_width, base::_size.width); x++) {
                 if (x < base::_size.width && y < base::_size.height && x < prev_width && y < prev_height) {
-                    auto new_index = numeric_cast<size_t>(y * base::_size.width + x);
-                    auto prev_index = numeric_cast<size_t>(y * prev_width + x);
+                    auto new_index {numeric_cast<size_t>(y * base::_size.width + x)};
+                    auto prev_index {numeric_cast<size_t>(y * prev_width + x)};
                     new_cells[new_index] = std::move(_preallocatedCells[prev_index]);
                 }
             }

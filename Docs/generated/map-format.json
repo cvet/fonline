@@ -126,7 +126,7 @@
       "source": {
         "path": "Source/Common/MapLoader.cpp",
         "anchors": [
-          "anchor_name_it = section_kv->find(\"$Name\")",
+          "anchor_name_it {section_kv->find(\"$Name\")}",
           "string_view {file_stem}"
         ]
       }
@@ -3621,5 +3621,5 @@
       "Map": 15
     }
   },
-  "contract_digest": "14e4b564952d95cb067886e8b0883c06cf3081ffeacd993dc94cb89453e41abd"
+  "contract_digest": "4b2a6aaa5d04d7b52cd38a83e4adb88d40034b4de16802df6491bb35c265bdf0"
 }

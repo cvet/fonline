@@ -44,15 +44,15 @@ FO_DECLARE_EXCEPTION(ResourceIndexException);
 
 // The merged resource tree: one file naming every path the packs present and where its bytes live, carried by
 // a `.foindex` file. It holds references only - no payload
-constexpr uint32_t RESOURCE_INDEX_MAGIC = 0x58494F46; // "FOIX"
-constexpr uint16_t RESOURCE_INDEX_VERSION_MAJOR = 2;
-constexpr uint16_t RESOURCE_INDEX_VERSION_MINOR = 0;
-constexpr size_t RESOURCE_INDEX_HEADER_SIZE = 72;
-constexpr size_t RESOURCE_INDEX_PACK_SIZE = 32;
-constexpr size_t RESOURCE_INDEX_ENTRY_SIZE = 56;
+constexpr uint32_t RESOURCE_INDEX_MAGIC {0x58494F46}; // "FOIX"
+constexpr uint16_t RESOURCE_INDEX_VERSION_MAJOR {2};
+constexpr uint16_t RESOURCE_INDEX_VERSION_MINOR {0};
+constexpr size_t RESOURCE_INDEX_HEADER_SIZE {72};
+constexpr size_t RESOURCE_INDEX_PACK_SIZE {32};
+constexpr size_t RESOURCE_INDEX_ENTRY_SIZE {56};
 
 // The merged tree a client mounts, kept beside the packs under the writable root because it is built there
-constexpr string_view RESOURCE_INDEX_FILE_NAME = "Resources.foindex";
+constexpr string_view RESOURCE_INDEX_FILE_NAME {"Resources.foindex"};
 
 // One pack the merged tree draws from. The file records the name rather than a path, so an installed client
 // that moved on disk still resolves, and the hash is what proves the resolved file is the one merged
@@ -120,7 +120,7 @@ public:
 private:
     struct FileEntry
     {
-        string_view Path; // Points into _index, which outlives every entry
+        string_view Path {}; // Points into _index, which outlives every entry
         uint64_t DataOffset {};
         uint64_t StoredSize {};
         uint64_t DecodedSize {};

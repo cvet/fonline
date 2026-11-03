@@ -43,18 +43,18 @@ CritterView::CritterView(ptr<ClientEngine> engine, ident_t id, ptr<const ProtoCr
     EntityWithProto(proto),
     CritterProperties(*GetInitRef())
 {
-    auto unregister_on_fail = scope_fail([this]() noexcept {
+    auto unregister_on_fail {scope_fail([this]() noexcept {
         safe_call([this]() {
             if (GetId()) {
                 _engine->UnregisterEntity(this);
             }
         });
-    });
+    })};
 
     _name = strex("{}_{}", proto->GetName(), id);
 
 #if FO_ENABLE_3D
-    if (auto layers = GetModelLayers(); layers.size() != MODEL_LAYERS_COUNT) {
+    if (auto layers {GetModelLayers()}; layers.size() != MODEL_LAYERS_COUNT) {
         layers.resize(MODEL_LAYERS_COUNT);
         SetModelLayers(layers);
     }
@@ -69,7 +69,7 @@ CritterView::~CritterView()
 
 void CritterView::OnDestroySelf()
 {
-    for (size_t i = 0; i < _invItems.size(); i++) {
+    for (size_t i {0}; i < _invItems.size(); i++) {
         safe_call([&] { _invItems[i]->DestroySelf(); });
     }
 
@@ -96,8 +96,8 @@ auto CritterView::AddMapperInvItem(ident_t id, ptr<const ProtoItem> proto, Critt
 {
     FO_TRACE_ZONE(Entity);
 
-    auto item = safe_alloc::make_refcounted<ItemView>(_engine, id, proto, props);
-    auto destroy_on_fail = scope_fail([&]() noexcept { safe_call([&] { item->DestroySelf(); }); });
+    auto item {safe_alloc::make_refcounted<ItemView>(_engine, id, proto, props)};
+    auto destroy_on_fail {scope_fail([&]() noexcept { safe_call([&] { item->DestroySelf(); }); })};
 
     item->SetStatic(false);
     item->SetOwnership(ItemOwnership::CritterInventory);
@@ -113,8 +113,8 @@ auto CritterView::AddReceivedInvItem(ident_t id, ptr<const ProtoItem> proto, Cri
 {
     FO_TRACE_ZONE(Entity);
 
-    auto item = safe_alloc::make_refcounted<ItemView>(_engine, id, proto, nullptr);
-    auto destroy_on_fail = scope_fail([&]() noexcept { safe_call([&] { item->DestroySelf(); }); });
+    auto item {safe_alloc::make_refcounted<ItemView>(_engine, id, proto, nullptr)};
+    auto destroy_on_fail {scope_fail([&]() noexcept { safe_call([&] { item->DestroySelf(); }); })};
 
     item->RestoreData(props_data);
     item->SetStatic(false);
@@ -138,7 +138,7 @@ auto CritterView::AddRawInvItem(ptr<ItemView> item) -> ptr<ItemView>
 
 void CritterView::DeleteInvItem(ptr<ItemView> item)
 {
-    auto item_ref_holder = item.hold_ref();
+    auto item_ref_holder {item.hold_ref()};
     vec_remove_unique_value(_invItems, item_ref_holder);
 
     item->DestroySelf();
@@ -153,8 +153,8 @@ void CritterView::DeleteAllInvItems()
 
 auto CritterView::GetInvItem(ident_t item_id) noexcept -> nptr<ItemView>
 {
-    for (size_t i = 0; i < _invItems.size(); i++) {
-        auto item = _invItems[i].as_ptr();
+    for (size_t i {0}; i < _invItems.size(); i++) {
+        auto item {_invItems[i].as_ptr()};
 
         if (item->GetId() == item_id) {
             return item;
@@ -166,8 +166,8 @@ auto CritterView::GetInvItem(ident_t item_id) noexcept -> nptr<ItemView>
 
 auto CritterView::GetInvItemByPid(hstring item_pid) noexcept -> nptr<ItemView>
 {
-    for (size_t i = 0; i < _invItems.size(); i++) {
-        auto item = _invItems[i].as_ptr();
+    for (size_t i {0}; i < _invItems.size(); i++) {
+        auto item {_invItems[i].as_ptr()};
 
         if (item->GetProtoId() == item_pid) {
             return item;

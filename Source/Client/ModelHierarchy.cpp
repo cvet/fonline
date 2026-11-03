@@ -56,7 +56,7 @@ ModelHierarchy::~ModelHierarchy() = default;
 
 static void SetupBonesExt(multimap<uint32_t, ptr<ModelBone>>& bones, vector<ModelAnimationRuntimeJoint>& source_joints, vector<ptr<ModelBone>>& source_bones, ptr<ModelBone> bone, int32_t parent_index, uint32_t depth)
 {
-    int32_t source_index = numeric_cast<int32_t>(source_joints.size());
+    int32_t source_index {numeric_cast<int32_t>(source_joints.size())};
     source_joints.emplace_back(ModelAnimationRuntimeJoint {string {bone->SourceName.as_str()}, parent_index, bone->RestLocalTransform});
     source_bones.emplace_back(bone);
     bones.emplace(depth, bone);
@@ -70,11 +70,11 @@ void ModelHierarchy::SetupBones()
 {
     FO_TRACE_ZONE(Model);
 
-    multimap<uint32_t, ptr<ModelBone>> bones;
-    vector<ModelAnimationRuntimeJoint> source_joints;
-    vector<ptr<ModelBone>> source_bones;
-    vector<ptr<ModelBone>> all_bones;
-    vector<ptr<ModelBone>> all_draw_bones;
+    multimap<uint32_t, ptr<ModelBone>> bones {};
+    vector<ModelAnimationRuntimeJoint> source_joints {};
+    vector<ptr<ModelBone>> source_bones {};
+    vector<ptr<ModelBone>> all_bones {};
+    vector<ptr<ModelBone>> all_draw_bones {};
     SetupBonesExt(bones, source_joints, source_bones, _rootBone, -1, 0);
 
     for (ptr<ModelBone> bone : bones | std::views::values) {
@@ -97,8 +97,8 @@ auto FindModelBone(ptr<ModelBone> bone, hstring bone_name) noexcept -> nptr<Mode
         return bone;
     }
 
-    for (size_t i = 0; i < bone->Children.size(); i++) {
-        auto child_bone = FindModelBone(bone->Children[i].as_ptr(), bone_name);
+    for (size_t i {0}; i < bone->Children.size(); i++) {
+        auto child_bone {FindModelBone(bone->Children[i].as_ptr(), bone_name)};
 
         if (child_bone) {
             return child_bone;
@@ -114,8 +114,8 @@ auto FindModelBone(ptr<const ModelBone> bone, hstring bone_name) noexcept -> npt
         return bone;
     }
 
-    for (size_t i = 0; i < bone->Children.size(); i++) {
-        auto child_bone = FindModelBone(ptr<const ModelBone>(bone->Children[i]), bone_name);
+    for (size_t i {0}; i < bone->Children.size(); i++) {
+        auto child_bone {FindModelBone(ptr<const ModelBone>(bone->Children[i]), bone_name)};
 
         if (child_bone) {
             return child_bone;
@@ -129,11 +129,11 @@ auto ModelHierarchy::GetTexture(string_view tex_name) -> ptr<MeshTexture>
 {
     FO_VERIFY_AND_THROW(!tex_name.empty(), "Model texture request has an empty texture name", _fileName);
 
-    string tex_path = strex(_fileName).extract_dir().combine_path(tex_name);
-    auto&& [tex, tex_data] = _modelMngr->_textureLoader(tex_path);
+    string tex_path {static_cast<string&&>(strex(_fileName).extract_dir().combine_path(tex_name))};
+    auto&& [tex, tex_data] {_modelMngr->_textureLoader(tex_path)};
     FO_VERIFY_AND_THROW(tex, "Model texture could not be loaded", tex_name, _fileName);
 
-    auto texture = safe_alloc::make_unique<MeshTexture>(_modelMngr->_engineMetadata->Hashes.to_hashed_string(tex_name), tex, tex_data);
+    auto texture {safe_alloc::make_unique<MeshTexture>(_modelMngr->_engineMetadata->Hashes.to_hashed_string(tex_name), tex, tex_data)};
     _textures.emplace_back(std::move(texture));
 
     return _textures.back();
@@ -142,7 +142,7 @@ auto ModelHierarchy::GetTexture(string_view tex_name) -> ptr<MeshTexture>
 auto ModelHierarchy::GetEffect(string_view name) -> ptr<RenderEffect>
 {
     FO_VERIFY_AND_THROW(!name.empty(), "Model effect request has an empty effect name", _fileName);
-    auto effect = _modelMngr->_effectMngr->LoadEffect(EffectUsage::Model, name);
+    auto effect {_modelMngr->_effectMngr->LoadEffect(EffectUsage::Model, name)};
     FO_VERIFY_AND_THROW(effect, "Model effect could not be loaded", name, _fileName);
 
     return effect;

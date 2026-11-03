@@ -43,32 +43,32 @@ TEST_CASE("ServerRejectsMalformedPreHandshakePayloadWithoutExceptionReport")
 {
     using namespace TestClientServerIntegration;
 
-    auto port = IntegrationTestPort.fetch_add(1);
-    auto server_settings = MakeServerTestSettings(port);
-    auto server = MakeServerEngine(server_settings);
+    auto port {IntegrationTestPort.fetch_add(1)};
+    auto server_settings {MakeServerTestSettings(port)};
+    auto server {MakeServerEngine(server_settings)};
 
-    auto shutdown = scope_exit([&server]() noexcept {
+    auto shutdown {scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
                 server->Shutdown();
             }
         });
-    });
+    })};
 
-    string startup_error = WaitForServerStart(server);
+    string startup_error {WaitForServerStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(HasInterthreadListener(port));
 
-    auto previous_exception_callback = exceptions::get_callback();
+    auto previous_exception_callback {exceptions::get_callback()};
     std::atomic_int exception_reports {};
     exceptions::set_callback([&exception_reports](string_view, const stack_trace::catched_data&, bool) { exception_reports.fetch_add(1); });
-    auto restore_exception_callback = scope_exit([previous = std::move(previous_exception_callback)]() mutable noexcept { exceptions::set_callback(std::move(previous)); });
+    auto restore_exception_callback {scope_exit([previous = std::move(previous_exception_callback)]() mutable noexcept { exceptions::set_callback(std::move(previous)); })};
 
     RawChannelClient client {port};
     REQUIRE(WaitForServerConnectionCount(server, 1));
 
-    auto malformed_handshake = NetOutBuffer(64);
+    auto malformed_handshake {NetOutBuffer(64)};
     malformed_handshake.StartMsg(NetMessage::Handshake);
     malformed_handshake.Write<uint32_t>(std::numeric_limits<uint32_t>::max());
     malformed_handshake.Write<uint16_t>(uint16_t {0});
@@ -84,21 +84,21 @@ TEST_CASE("ServerDisconnectsPreLoginConnectionAfterLoginTimeout")
 {
     using namespace TestClientServerIntegration;
 
-    uint16_t port = IntegrationTestPort.fetch_add(1);
-    auto server_settings = MakeServerTestSettings(port);
+    uint16_t port {IntegrationTestPort.fetch_add(1)};
+    auto server_settings {MakeServerTestSettings(port)};
     BakerTests::OverrideSetting(server_settings.ServerNetwork.InactivityDisconnectTime, 0);
     BakerTests::OverrideSetting(server_settings.ServerNetwork.LoginTimeout, 25);
-    auto server = MakeServerEngine(server_settings);
+    auto server {MakeServerEngine(server_settings)};
 
-    auto shutdown = scope_exit([&server]() noexcept {
+    auto shutdown {scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
                 server->Shutdown();
             }
         });
-    });
+    })};
 
-    string startup_error = WaitForServerStart(server);
+    string startup_error {WaitForServerStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(HasInterthreadListener(port));
@@ -106,7 +106,7 @@ TEST_CASE("ServerDisconnectsPreLoginConnectionAfterLoginTimeout")
     RawChannelClient client {port};
     REQUIRE(WaitForServerConnectionCount(server, 1));
 
-    for (int32_t i = 0; i < 2000 && !client.IsDisconnected(); i++) {
+    for (int32_t i {0}; i < 2000 && !client.IsDisconnected(); i++) {
         std::this_thread::sleep_for(std::chrono::milliseconds {2});
     }
 
@@ -118,20 +118,20 @@ TEST_CASE("ServerReportsMetadataMismatchInHandshake")
 {
     using namespace TestClientServerIntegration;
 
-    uint16_t port = IntegrationTestPort.fetch_add(1);
-    auto server_settings = MakeServerTestSettings(port);
+    uint16_t port {IntegrationTestPort.fetch_add(1)};
+    auto server_settings {MakeServerTestSettings(port)};
     BakerTests::OverrideSetting(server_settings.Network.DisableZlibCompression, true);
-    auto server = MakeServerEngine(server_settings);
+    auto server {MakeServerEngine(server_settings)};
 
-    auto shutdown = scope_exit([&server]() noexcept {
+    auto shutdown {scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
                 server->Shutdown();
             }
         });
-    });
+    })};
 
-    string startup_error = WaitForServerStart(server);
+    string startup_error {WaitForServerStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(HasInterthreadListener(port));
@@ -142,7 +142,7 @@ TEST_CASE("ServerReportsMetadataMismatchInHandshake")
     // A binary-compatible client whose resources come from another bake: the layout verdict is what keeps its
     // property payloads from reaching deserialization
     REQUIRE_FALSE(server->GetMetadataVersion().empty());
-    auto handshake = NetOutBuffer(128);
+    auto handshake {NetOutBuffer(128)};
     handshake.StartMsg(NetMessage::Handshake);
     handshake.Write(server_settings.Network.CompatibilityVersion);
     handshake.Write<string_view>("0123456789abcdef");
@@ -151,10 +151,10 @@ TEST_CASE("ServerReportsMetadataMismatchInHandshake")
     handshake.EndMsg();
     client.Send(handshake.GetData());
 
-    bool received_answer = false;
+    bool received_answer {false};
 
-    for (int32_t i = 0; i < 2000 && !received_answer; i++) {
-        vector<uint8_t> response_data = client.GetPlaintext();
+    for (int32_t i {0}; i < 2000 && !received_answer; i++) {
+        vector<uint8_t> response_data {client.GetPlaintext()};
 
         if (!response_data.empty()) {
             NetInBuffer response {response_data.size()};
@@ -184,20 +184,20 @@ TEST_CASE("ServerRejectsUnsafeUpdaterGenerationBeforeInitData")
 {
     using namespace TestClientServerIntegration;
 
-    uint16_t port = IntegrationTestPort.fetch_add(1);
-    auto server_settings = MakeServerTestSettings(port);
+    uint16_t port {IntegrationTestPort.fetch_add(1)};
+    auto server_settings {MakeServerTestSettings(port)};
     BakerTests::OverrideSetting(server_settings.Network.DisableZlibCompression, true);
-    auto server = MakeServerEngine(server_settings);
+    auto server {MakeServerEngine(server_settings)};
 
-    auto shutdown = scope_exit([&server]() noexcept {
+    auto shutdown {scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
                 server->Shutdown();
             }
         });
-    });
+    })};
 
-    string startup_error = WaitForServerStart(server);
+    string startup_error {WaitForServerStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(HasInterthreadListener(port));
@@ -206,7 +206,7 @@ TEST_CASE("ServerRejectsUnsafeUpdaterGenerationBeforeInitData")
     REQUIRE(WaitForServerConnectionCount(server, 1));
 
     static_assert(FO_UPDATER_VERSION > 1);
-    auto handshake = NetOutBuffer(128);
+    auto handshake {NetOutBuffer(128)};
     handshake.StartMsg(NetMessage::Handshake);
     handshake.Write(server_settings.Network.CompatibilityVersion);
     handshake.Write(server->GetMetadataVersion());
@@ -215,10 +215,10 @@ TEST_CASE("ServerRejectsUnsafeUpdaterGenerationBeforeInitData")
     handshake.EndMsg();
     client.Send(handshake.GetData());
 
-    bool received_rejection = false;
+    bool received_rejection {false};
 
-    for (int32_t i = 0; i < 2000 && !received_rejection; i++) {
-        vector<uint8_t> response_data = client.GetPlaintext();
+    for (int32_t i {0}; i < 2000 && !received_rejection; i++) {
+        vector<uint8_t> response_data {client.GetPlaintext()};
 
         if (!response_data.empty()) {
             NetInBuffer response {response_data.size()};
@@ -254,17 +254,17 @@ TEST_CASE("ClientShutdownDisconnectsActiveConnection")
 {
     using namespace TestClientServerIntegration;
 
-    auto port = IntegrationTestPort.fetch_add(1);
+    auto port {IntegrationTestPort.fetch_add(1)};
 
-    auto server_settings = MakeServerTestSettings(port);
-    auto client_settings = MakeClientTestSettings(port);
+    auto server_settings {MakeServerTestSettings(port)};
+    auto client_settings {MakeClientTestSettings(port)};
 
-    auto server = MakeServerEngine(server_settings);
-    auto client = MakeClientEngine(client_settings);
-    bool client_shutdown = false;
-    int32_t shutdown_disconnected_calls = 0;
+    auto server {MakeServerEngine(server_settings)};
+    auto client {MakeClientEngine(client_settings)};
+    bool client_shutdown {false};
+    int32_t shutdown_disconnected_calls {0};
 
-    auto shutdown = scope_exit([&server, &client, &client_shutdown]() noexcept {
+    auto shutdown {scope_exit([&server, &client, &client_shutdown]() noexcept {
         safe_call([&client, &client_shutdown] {
             if (!client_shutdown) {
                 client->Shutdown();
@@ -276,16 +276,16 @@ TEST_CASE("ClientShutdownDisconnectsActiveConnection")
                 server->Shutdown();
             }
         });
-    });
+    })};
 
-    string startup_error = WaitForServerStart(server);
+    string startup_error {WaitForServerStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
     client->Connect();
     REQUIRE(WaitForConnected(client, server));
 
-    Entity::EventCallbackData shutdown_disconnect_observer;
+    Entity::EventCallbackData shutdown_disconnect_observer {};
     shutdown_disconnect_observer.Callback = [&shutdown_disconnected_calls](FuncCallData&) {
         shutdown_disconnected_calls++;
         return Entity::EventResult::ContinueChain;
@@ -308,15 +308,15 @@ TEST_CASE("ClientAndServerInterthreadConnectionKeepsProcessingAfterHandshake")
 {
     using namespace TestClientServerIntegration;
 
-    auto port = IntegrationTestPort.fetch_add(1);
+    auto port {IntegrationTestPort.fetch_add(1)};
 
-    auto server_settings = MakeServerTestSettings(port);
-    auto client_settings = MakeClientTestSettings(port);
+    auto server_settings {MakeServerTestSettings(port)};
+    auto client_settings {MakeClientTestSettings(port)};
 
-    auto server = MakeServerEngine(server_settings);
-    auto client = MakeClientEngine(client_settings);
+    auto server {MakeServerEngine(server_settings)};
+    auto client {MakeClientEngine(client_settings)};
 
-    auto shutdown = scope_exit([&server, &client]() noexcept {
+    auto shutdown {scope_exit([&server, &client]() noexcept {
         safe_call([&client] {
             client->Disconnect();
             client->Shutdown();
@@ -327,20 +327,20 @@ TEST_CASE("ClientAndServerInterthreadConnectionKeepsProcessingAfterHandshake")
                 server->Shutdown();
             }
         });
-    });
+    })};
 
-    string startup_error = WaitForServerStart(server);
+    string startup_error {WaitForServerStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
     client->Connect();
     REQUIRE(WaitForConnected(client, server));
 
-    size_t bytes_received_after_handshake = client->GetConnection()->GetBytesReceived();
+    size_t bytes_received_after_handshake {client->GetConnection()->GetBytesReceived()};
 
-    bool received_post_handshake_packet = false;
+    bool received_post_handshake_packet {false};
 
-    for (int32_t i = 0; i < 1000; i++) {
+    for (int32_t i {0}; i < 1000; i++) {
         client->MainLoop();
 
         if (client->GetConnection()->GetBytesReceived() > bytes_received_after_handshake) {
@@ -358,15 +358,15 @@ TEST_CASE("ClientReportsUnresolvedHashAndLearnsWithoutDisconnect")
 {
     using namespace TestClientServerIntegration;
 
-    auto port = IntegrationTestPort.fetch_add(1);
+    auto port {IntegrationTestPort.fetch_add(1)};
 
-    auto server_settings = MakeServerTestSettings(port);
-    auto client_settings = MakeClientTestSettings(port);
+    auto server_settings {MakeServerTestSettings(port)};
+    auto client_settings {MakeClientTestSettings(port)};
 
-    auto server = MakeServerEngine(server_settings);
-    auto client = MakeClientEngine(client_settings);
+    auto server {MakeServerEngine(server_settings)};
+    auto client {MakeClientEngine(client_settings)};
 
-    auto shutdown = scope_exit([&server, &client]() noexcept {
+    auto shutdown {scope_exit([&server, &client]() noexcept {
         safe_call([&client] { client->Shutdown(); });
 
         safe_call([&server] {
@@ -374,9 +374,9 @@ TEST_CASE("ClientReportsUnresolvedHashAndLearnsWithoutDisconnect")
                 server->Shutdown();
             }
         });
-    });
+    })};
 
-    string startup_error = WaitForServerStart(server);
+    string startup_error {WaitForServerStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -384,7 +384,7 @@ TEST_CASE("ClientReportsUnresolvedHashAndLearnsWithoutDisconnect")
     REQUIRE(WaitForConnected(client, server));
 
     // A string the server knows but the client doesn't РІР‚вЂќ mimics a runtime hstring the client can't resolve
-    hstring reported = server->Hashes.to_hashed_string("integration_test_only_hash");
+    hstring reported {server->Hashes.to_hashed_string("integration_test_only_hash")};
 
     // Send the exact wire message ClientEngine emits when it hits an unresolved hash
     client->GetConnection()->OutBuf->StartMsg(NetMessage::UnresolvedHash);
@@ -395,8 +395,8 @@ TEST_CASE("ClientReportsUnresolvedHashAndLearnsWithoutDisconnect")
     CHECK(client->IsConnected());
     CHECK(GetServerConnectionCount(server) == 1);
 
-    auto second_client = MakeClientEngine(client_settings);
-    auto shutdown_second_client = scope_exit([&second_client]() noexcept { safe_call([&second_client] { second_client->Shutdown(); }); });
+    auto second_client {MakeClientEngine(client_settings)};
+    auto shutdown_second_client {scope_exit([&second_client]() noexcept { safe_call([&second_client] { second_client->Shutdown(); }); })};
 
     second_client->Connect();
     REQUIRE(WaitForConnected(second_client, server, 2));
@@ -408,18 +408,18 @@ TEST_CASE("ClientUpdaterResourcePatchLifecycle")
 {
     using namespace TestClientServerIntegration;
 
-    string install = PrepareClientUpdaterBakeOutput();
-    string published = MakeTempClientUpdaterBakeDir("published");
-    string writable = MakeTempClientUpdaterBakeDir("writable");
-    auto cleanup = scope_exit([&]() noexcept {
+    string install {PrepareClientUpdaterBakeOutput()};
+    string published {MakeTempClientUpdaterBakeDir("published")};
+    string writable {MakeTempClientUpdaterBakeDir("writable")};
+    auto cleanup {scope_exit([&]() noexcept {
         (void)fs::remove_dir_tree(install);
         (void)fs::remove_dir_tree(published);
         (void)fs::remove_dir_tree(writable);
-    });
+    })};
 
     REQUIRE(fs::create_directories(published));
     REQUIRE(fs::create_directories(writable));
-    vector<uint8_t> metadata = BakerTests::MakeMetadataBlob({});
+    vector<uint8_t> metadata {BakerTests::MakeMetadataBlob({})};
 
     for (const string& directory : {install, published}) {
         ResourcePackWriter writer {strex(directory).combine_path("Metadata.fores").str()};
@@ -427,7 +427,7 @@ TEST_CASE("ClientUpdaterResourcePatchLifecycle")
         writer.Finish();
     }
 
-    auto write_art = [](string_view directory, const vector<pair<string, string>>& files) {
+    auto write_art {[](string_view directory, const vector<pair<string, string>>& files) {
         ResourcePackWriter writer {strex(directory).combine_path("Art.fores").str(), {0, 100}};
 
         for (const auto& [name, content] : files) {
@@ -435,30 +435,30 @@ TEST_CASE("ClientUpdaterResourcePatchLifecycle")
         }
 
         writer.Finish();
-    };
+    }};
 
-    string unchanged(65536, 'b');
+    string unchanged {string(65536, 'b')};
     write_art(install, {{"Keep.bin", unchanged}, {"Change.txt", "old"}, {"Removed.txt", "removed"}});
     write_art(published, {{"Keep.bin", unchanged}, {"Change.txt", "first update"}});
-    string installed_base = strex(install).combine_path("Art.fores").str();
-    auto original = fs::read_file(installed_base);
+    string installed_base {strex(install).combine_path("Art.fores").str()};
+    auto original {fs::read_file(installed_base)};
     REQUIRE(original);
-    string writable_resources = strex(writable).combine_path("Resources").str();
-    string patch = strex(writable_resources).combine_path("Art.patch.fores").str();
-    string replacement = strex(writable_resources).combine_path("Art.fores").str();
+    string writable_resources {strex(writable).combine_path("Resources").str()};
+    string patch {strex(writable_resources).combine_path("Art.patch.fores").str()};
+    string replacement {strex(writable_resources).combine_path("Art.fores").str()};
 
-    auto synchronize = [&](bool in_memory, bool replace_published = false) {
-        uint16_t port = IntegrationTestPort.fetch_add(1);
-        GlobalSettings server_settings = MakeServerTestSettings(port);
+    auto synchronize {[&](bool in_memory, bool replace_published = false) {
+        uint16_t port {IntegrationTestPort.fetch_add(1)};
+        GlobalSettings server_settings {MakeServerTestSettings(port)};
         BakerTests::OverrideSetting(server_settings.Common.Packaged, true);
         BakerTests::OverrideSetting(server_settings.Baking.ClientResources, published);
-        auto server_pack_config = ConfigFile("[ResourcePack]\nName = Metadata\nClientOnly = True\n[ResourcePack]\nName = Art\nClientOnly = True\n");
+        auto server_pack_config {ConfigFile("[ResourcePack]\nName = Metadata\nClientOnly = True\n[ResourcePack]\nName = Art\nClientOnly = True\n")};
         server_settings.ApplyConfigFile(server_pack_config, "");
         BakerTests::OverrideSetting(server_settings.Baking.PlatformBinaries, strex(published).combine_path("NoBinaries").str());
         BakerTests::OverrideSetting(server_settings.ServerNetwork.UpdateFilesInMemory, in_memory);
-        auto server = MakeServerEngine(server_settings);
-        auto shutdown = scope_exit([&]() noexcept { safe_call([&] { server->Shutdown(); }); });
-        string error = WaitForServerStart(server);
+        auto server {MakeServerEngine(server_settings)};
+        auto shutdown {scope_exit([&]() noexcept { safe_call([&] { server->Shutdown(); }); })};
+        string error {WaitForServerStart(server)};
         INFO(error);
         REQUIRE(error.empty());
 
@@ -471,26 +471,26 @@ TEST_CASE("ClientUpdaterResourcePatchLifecycle")
         ignore_unused(replace_published);
 #endif
 
-        GlobalSettings client_settings = MakeClientTestSettings(port);
+        GlobalSettings client_settings {MakeClientTestSettings(port)};
         BakerTests::OverrideSetting(client_settings.Common.Packaged, true);
         BakerTests::OverrideSetting(client_settings.Baking.ClientResources, install);
-        auto client_pack_config = ConfigFile("[ResourcePack]\nName = Embedded\nClientOnly = True\n[ResourcePack]\nName = Metadata\nClientOnly = True\n[ResourcePack]\nName = Art\nClientOnly = True\n");
+        auto client_pack_config {ConfigFile("[ResourcePack]\nName = Embedded\nClientOnly = True\n[ResourcePack]\nName = Metadata\nClientOnly = True\n[ResourcePack]\nName = Art\nClientOnly = True\n")};
         client_settings.ApplyConfigFile(client_pack_config, "");
         client_settings.ApplyWritableRoot(writable);
         Updater updater {&client_settings, &GetApp()->MainWindow};
         REQUIRE(WaitForUpdaterResult(updater));
         REQUIRE(updater.GetResult() == UpdaterResult::ResourcesReady);
         REQUIRE_FALSE(updater.IsAborted());
-        FileSystem resources = GetClientResources(client_settings);
+        FileSystem resources {GetClientResources(client_settings)};
         CHECK(resources.ReadFileText("Keep.bin") == unchanged);
         CHECK_FALSE(resources.IsFileExists("Removed.txt"));
-    };
+    }};
 
     synchronize(false);
     REQUIRE(fs::exists(patch));
     CHECK_FALSE(fs::exists(replacement));
     CHECK(fs::read_file(installed_base) == original);
-    auto first = fs::read_file(patch);
+    auto first {fs::read_file(patch)};
     REQUIRE(first);
     CHECK(first->size() < 1024);
 
@@ -498,7 +498,7 @@ TEST_CASE("ClientUpdaterResourcePatchLifecycle")
     {
         write_art(published, {{"Keep.bin", unchanged}, {"Renamed.txt", "first update"}, {"Added.txt", "second update"}});
         synchronize(true);
-        auto second = fs::read_file(patch);
+        auto second {fs::read_file(patch)};
         REQUIRE(second);
         CHECK(second->size() > first->size());
         CHECK(second->starts_with(*first));
@@ -512,7 +512,7 @@ TEST_CASE("ClientUpdaterResourcePatchLifecycle")
     {
         // One flipped payload byte leaves the header and the catalog intact, so the pair still reports the advertised
         // content; only reading its bytes back tells the damage apart, and the whole pack is the repair
-        string damaged = *original;
+        string damaged {*original};
         damaged[RESOURCE_PACK_HEADER_SIZE] = static_cast<char>(damaged[RESOURCE_PACK_HEADER_SIZE] ^ 0x01);
         REQUIRE(fs::write_file(installed_base, damaged));
 
@@ -524,29 +524,29 @@ TEST_CASE("ClientUpdaterResourcePatchLifecycle")
 
     SECTION("DamagedPatchPayloadIsFetchedAgain")
     {
-        string damaged = *first;
+        string damaged {*first};
         damaged[RESOURCE_PATCH_HEADER_SIZE] = static_cast<char>(damaged[RESOURCE_PATCH_HEADER_SIZE] ^ 0x01);
         REQUIRE(fs::write_file(patch, damaged));
 
         synchronize(false);
         CHECK_FALSE(fs::exists(replacement));
-        auto repaired = fs::read_file(patch);
+        auto repaired {fs::read_file(patch)};
         REQUIRE(repaired);
         CHECK(repaired->starts_with(damaged));
         ResourcePackSource pair {installed_base, patch};
-        size_t size = 0;
-        uint64_t write_time = 0;
+        size_t size {0};
+        uint64_t write_time {0};
         CHECK(static_cast<bool>(pair.OpenFile("Change.txt", size, write_time)));
         CHECK(size == string_view {"first update"}.size());
     }
 
     SECTION("PatchThatWouldOutgrowItsPackIsReplacedByThePack")
     {
-        constexpr size_t large_size = 65 * 1024 * 1024;
+        constexpr size_t large_size {65 * 1024 * 1024};
 
         {
-            vector<uint8_t> content(large_size, 'n');
-            string intermediate = strex(writable).combine_path("Intermediate.fores").str();
+            vector<uint8_t> content {vector<uint8_t>(large_size, 'n')};
+            string intermediate {strex(writable).combine_path("Intermediate.fores").str()};
 
             {
                 ResourcePackWriter writer {intermediate, {0, 100}};
@@ -594,22 +594,22 @@ TEST_CASE("ClientUpdaterConsumesReportedHashListDuringHandshake")
 {
     using namespace TestClientServerIntegration;
 
-    auto port = IntegrationTestPort.fetch_add(1);
+    auto port {IntegrationTestPort.fetch_add(1)};
 
-    auto server_settings = MakeServerTestSettings(port);
-    auto client_settings = MakeClientTestSettings(port);
-    string updater_bake_output = PrepareClientUpdaterBakeOutput();
-    auto cleanup_updater_bake_output = scope_exit([&updater_bake_output]() noexcept { (void)fs::remove_dir_tree(updater_bake_output); });
+    auto server_settings {MakeServerTestSettings(port)};
+    auto client_settings {MakeClientTestSettings(port)};
+    string updater_bake_output {PrepareClientUpdaterBakeOutput()};
+    auto cleanup_updater_bake_output {scope_exit([&updater_bake_output]() noexcept { (void)fs::remove_dir_tree(updater_bake_output); })};
     BakerTests::OverrideSetting(client_settings.Baking.BakeOutput, updater_bake_output);
 
     // The rig has no resource packs to read a version back from, and this case is about the hash list rather
     // than about pack reading, so the client reports the version the test metadata carries
     BakerTests::OverrideSetting(client_settings.Network.ForceMetadataVersion, string(BakerTests::TEST_METADATA_VERSION));
 
-    auto server = MakeServerEngine(server_settings);
-    auto client = MakeClientEngine(client_settings);
+    auto server {MakeServerEngine(server_settings)};
+    auto client {MakeClientEngine(client_settings)};
 
-    auto shutdown = scope_exit([&server, &client]() noexcept {
+    auto shutdown {scope_exit([&server, &client]() noexcept {
         safe_call([&client] { client->Shutdown(); });
 
         safe_call([&server] {
@@ -617,16 +617,16 @@ TEST_CASE("ClientUpdaterConsumesReportedHashListDuringHandshake")
                 server->Shutdown();
             }
         });
-    });
+    })};
 
-    string startup_error = WaitForServerStart(server);
+    string startup_error {WaitForServerStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
     client->Connect();
     REQUIRE(WaitForConnected(client, server));
 
-    hstring reported = server->Hashes.to_hashed_string("integration_test_updater_hash");
+    hstring reported {server->Hashes.to_hashed_string("integration_test_updater_hash")};
 
     client->GetConnection()->OutBuf->StartMsg(NetMessage::UnresolvedHash);
     client->GetConnection()->OutBuf->Write<hstring::hash_t>(reported.as_hash());
@@ -645,16 +645,16 @@ TEST_CASE("ClientUpdaterDoesNotSurfaceOutdatedMetadataLayoutBeforeRepair")
 {
     using namespace TestClientServerIntegration;
 
-    uint16_t port = IntegrationTestPort.fetch_add(1);
-    GlobalSettings client_settings = MakeClientTestSettings(port);
-    string updater_bake_output = PrepareClientUpdaterBakeOutput();
-    auto cleanup_updater_bake_output = scope_exit([&updater_bake_output]() noexcept { (void)fs::remove_dir_tree(updater_bake_output); });
-    string pack_name = "OutdatedClientPack";
-    string metadata_path = strex(updater_bake_output).combine_path(pack_name).combine_path("Metadata.fometa-client").str();
+    uint16_t port {IntegrationTestPort.fetch_add(1)};
+    GlobalSettings client_settings {MakeClientTestSettings(port)};
+    string updater_bake_output {PrepareClientUpdaterBakeOutput()};
+    auto cleanup_updater_bake_output {scope_exit([&updater_bake_output]() noexcept { (void)fs::remove_dir_tree(updater_bake_output); })};
+    string pack_name {"OutdatedClientPack"};
+    string metadata_path {strex(updater_bake_output).combine_path(pack_name).combine_path("Metadata.fometa-client").str()};
 
     STATIC_REQUIRE(METADATA_FILE_VERSION > 1);
-    constexpr uint16_t outdated_file_version = METADATA_FILE_VERSION - 1;
-    vector<uint8_t> outdated_metadata;
+    constexpr uint16_t outdated_file_version {METADATA_FILE_VERSION - 1};
+    vector<uint8_t> outdated_metadata {};
     data_writer outdated_writer {outdated_metadata};
     outdated_writer.write<uint32_t>(METADATA_FILE_MAGIC);
     outdated_writer.write<uint16_t>(outdated_file_version);
@@ -664,7 +664,7 @@ TEST_CASE("ClientUpdaterDoesNotSurfaceOutdatedMetadataLayoutBeforeRepair")
 
     REQUIRE(fs::write_file(metadata_path, outdated_metadata));
     BakerTests::OverrideSetting(client_settings.Baking.BakeOutput, updater_bake_output);
-    auto client_pack_config = ConfigFile(strex("[ResourcePack]\nName = {}\nClientOnly = True\n", pack_name).str());
+    auto client_pack_config {ConfigFile(strex("[ResourcePack]\nName = {}\nClientOnly = True\n", pack_name).str())};
     client_settings.ApplyConfigFile(client_pack_config, "");
 
     CHECK_NOTHROW([&client_settings] {
@@ -675,17 +675,17 @@ TEST_CASE("ClientUpdaterDoesNotSurfaceOutdatedMetadataLayoutBeforeRepair")
 
 TEST_CASE("SingleGameplayWorkerProcessesRequestsFromTwoClientsWithoutLostUpdates", "[network][player]")
 {
-    bool dedicated_remote_only = GENERATE(false, true);
+    bool dedicated_remote_only {GENERATE(false, true)};
     CAPTURE(dedicated_remote_only);
 
-    int32_t login_calls = 0;
-    int32_t world_steps = 0;
-    int32_t world_sum = 0;
-    map<ident_t, int32_t> steps_by_player;
-    uint16_t port = IntegrationTestPort.fetch_add(1);
-    auto server_settings = MakeServerTestSettings(port);
-    auto first_settings = MakeClientTestSettings(port);
-    auto second_settings = MakeClientTestSettings(port);
+    int32_t login_calls {0};
+    int32_t world_steps {0};
+    int32_t world_sum {0};
+    map<ident_t, int32_t> steps_by_player {};
+    uint16_t port {IntegrationTestPort.fetch_add(1)};
+    auto server_settings {MakeServerTestSettings(port)};
+    auto first_settings {MakeClientTestSettings(port)};
+    auto second_settings {MakeClientTestSettings(port)};
     BakerTests::OverrideSetting(server_settings.Server.SingleThreadedLogic, true);
     BakerTests::OverrideSetting(server_settings.ServerNetwork.DisableNetworking, false);
     BakerTests::OverrideSetting(server_settings.Network.DisableInterthreadCommunication, dedicated_remote_only);
@@ -693,33 +693,33 @@ TEST_CASE("SingleGameplayWorkerProcessesRequestsFromTwoClientsWithoutLostUpdates
     BakerTests::OverrideSetting(first_settings.ClientNetwork.RequireInterthreadTransport, !dedicated_remote_only);
     BakerTests::OverrideSetting(second_settings.ClientNetwork.RequireInterthreadTransport, !dedicated_remote_only);
 
-    auto server = MakeServerEngine(server_settings);
-    auto first = MakeClientEngine(first_settings);
-    auto second = MakeClientEngine(second_settings);
-    auto shutdown = scope_exit([&]() noexcept {
+    auto server {MakeServerEngine(server_settings)};
+    auto first {MakeClientEngine(first_settings)};
+    auto second {MakeClientEngine(second_settings)};
+    auto shutdown {scope_exit([&]() noexcept {
         safe_call([&] { second->Shutdown(); });
         safe_call([&] { first->Shutdown(); });
         safe_call([&] { server->Shutdown(); });
-    });
+    })};
 
     REQUIRE(WaitForServerStart(server).empty());
     REQUIRE(server->GetWorkerThreadCount() == 1);
     CHECK(HasInterthreadListener(port) == !dedicated_remote_only);
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     {
-        auto unlock = scope_exit([&]() noexcept { safe_call([&] { server->Unlock(); }); });
+        auto unlock {scope_exit([&]() noexcept { safe_call([&] { server->Unlock(); }); })};
 
         // Both scripting backends enter the same validated remote-call boundary. Native handlers keep this
         // worker/transport regression independent of the backend's fixture compiler and call syntax.
         server->SetRemoteCallHandler(
             server->Hashes.to_hashed_string("UnitTestLogin"),
             [&](hstring, nptr<Entity> caller, span<uint8_t>) {
-                ptr<Player> player = caller.dyn_cast<Player>();
+                ptr<Player> player {caller.dyn_cast<Player>()};
                 login_calls++;
-                auto logged = server->LoginPlayerToTempSession(player);
-                auto cr = server->CreateCritter(server->Hashes.to_hashed_string("UnitTestSharedCritter"), true);
-                auto loc = server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("UnitTestSharedLocation"), vector<hstring> {server->Hashes.to_hashed_string("UnitTestSharedMap")});
-                auto map = loc->GetMapByIndex(0);
+                auto logged {server->LoginPlayerToTempSession(player)};
+                auto cr {server->CreateCritter(server->Hashes.to_hashed_string("UnitTestSharedCritter"), true)};
+                auto loc {server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("UnitTestSharedLocation"), vector<hstring> {server->Hashes.to_hashed_string("UnitTestSharedMap")})};
+                auto map {loc->GetMapByIndex(0)};
                 server->MapMngr.TransferToMap(cr, map, mpos {20, 20}, mdir {}, std::nullopt);
                 server->SwitchPlayerCritter(logged, cr);
             },
@@ -727,9 +727,9 @@ TEST_CASE("SingleGameplayWorkerProcessesRequestsFromTwoClientsWithoutLostUpdates
         server->SetRemoteCallHandler(
             server->Hashes.to_hashed_string("UnitTestWorldStep"),
             [&](hstring, nptr<Entity> caller, span<uint8_t> data) {
-                ptr<Player> player = caller.dyn_cast<Player>();
+                ptr<Player> player {caller.dyn_cast<Player>()};
                 data_reader reader {data};
-                int32_t step = reader.read<int32_t>();
+                int32_t step {reader.read<int32_t>()};
                 world_steps++;
                 world_sum += step;
                 steps_by_player[player->GetId()]++;
@@ -737,11 +737,11 @@ TEST_CASE("SingleGameplayWorkerProcessesRequestsFromTwoClientsWithoutLostUpdates
             true);
     }
 
-    auto login = [&](ptr<ClientEngine> client, size_t expected_connections) {
+    auto login {[&](ptr<ClientEngine> client, size_t expected_connections) {
         client->Connect();
         REQUIRE(WaitForConnected(client, server, expected_connections));
         client->SendRemoteCall(client->Hashes.to_hashed_string("UnitTestLogin"), client->GetCurPlayer(), {});
-        nanotime deadline = nanotime::now() + std::chrono::seconds {10};
+        nanotime deadline {nanotime::now() + std::chrono::seconds {10}};
 
         while (nanotime::now() < deadline) {
             first->MainLoop();
@@ -755,31 +755,31 @@ TEST_CASE("SingleGameplayWorkerProcessesRequestsFromTwoClientsWithoutLostUpdates
         }
 
         return false;
-    };
+    }};
 
     REQUIRE(login(first, 1));
     REQUIRE(login(second, 2));
     CHECK(first->GetChosen()->GetId() != second->GetChosen()->GetId());
-    vector<uint8_t> payload;
+    vector<uint8_t> payload {};
     data_writer writer {payload};
     writer.write<int32_t>(7);
 
-    for (int32_t i = 0; i < 32; i++) {
+    for (int32_t i {0}; i < 32; i++) {
         first->SendRemoteCall(first->Hashes.to_hashed_string("UnitTestWorldStep"), first->GetCurPlayer(), payload);
         second->SendRemoteCall(second->Hashes.to_hashed_string("UnitTestWorldStep"), second->GetCurPlayer(), payload);
         first->MainLoop();
         second->MainLoop();
     }
 
-    bool complete = false;
-    nanotime deadline = nanotime::now() + std::chrono::seconds {10};
+    bool complete {false};
+    nanotime deadline {nanotime::now() + std::chrono::seconds {10}};
 
     while (nanotime::now() < deadline) {
         first->MainLoop();
         second->MainLoop();
         REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
         {
-            auto unlock = scope_exit([&]() noexcept { safe_call([&] { server->Unlock(); }); });
+            auto unlock {scope_exit([&]() noexcept { safe_call([&] { server->Unlock(); }); })};
             complete = world_steps >= 64;
 
             if (complete) {

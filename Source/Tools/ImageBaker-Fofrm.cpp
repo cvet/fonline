@@ -50,37 +50,37 @@ namespace ImageBakerFofrm
 
         ignore_unused(opt);
 
-        FrameCollection collection;
+        FrameCollection collection {};
 
-        ConfigFile fofrm(reader.GetStr());
+        ConfigFile fofrm {reader.GetStr()};
 
         if (string alias {fofrm.GetAsStr("", "Alias")}; !alias.empty()) {
             FO_VERIFY_AND_THROW(strex(alias).get_file_extension() != "fofrm", "FOFRM Alias must reference an image source", fname, alias);
 
-            FrameCollection aliased = context.Resolve(strex(fname).extract_dir().combine_path(alias).str());
+            FrameCollection aliased {context.Resolve(strex(fname).extract_dir().combine_path(alias).str())};
             aliased.NewName = string {fname};
             return aliased;
         }
 
-        int32_t frm_fps = fofrm.GetAsInt("", "fps", 10);
+        int32_t frm_fps {fofrm.GetAsInt("", "fps", 10)};
         frm_fps = fofrm.GetAsInt("", "Fps", frm_fps);
-        int32_t frm_count = fofrm.GetAsInt("", "count", 1);
+        int32_t frm_count {fofrm.GetAsInt("", "count", 1)};
         frm_count = fofrm.GetAsInt("", "Count", frm_count);
         FO_VERIFY_AND_THROW(frm_count > 0, "Frame count must be positive", frm_count);
 
-        int32_t ox = fofrm.GetAsInt("", "offs_x", 0);
+        int32_t ox {fofrm.GetAsInt("", "offs_x", 0)};
         ox = fofrm.GetAsInt("", "OffsetX", ox);
-        int32_t oy = fofrm.GetAsInt("", "offs_y", 0);
+        int32_t oy {fofrm.GetAsInt("", "offs_y", 0)};
         oy = fofrm.GetAsInt("", "OffsetY", oy);
 
         collection.EffectName = fofrm.GetAsStr("", "effect");
         collection.EffectName = fofrm.GetAsStr("", "Effect", collection.EffectName);
 
-        for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
-            vector<tuple<FrameCollection, int32_t, int32_t>> sub_collections;
+        for (int32_t dir {0}; dir < GameSettings::MAP_DIR_COUNT; dir++) {
+            vector<tuple<FrameCollection, int32_t, int32_t>> sub_collections {};
             sub_collections.reserve(10);
 
-            string dir_str = strex("dir_{}", dir);
+            string dir_str {static_cast<string&&>(strex("dir_{}", dir))};
 
             if (!fofrm.HasSection(dir_str)) {
                 dir_str = strex("Dir_{}", dir);
@@ -106,14 +106,14 @@ namespace ImageBakerFofrm
                 oy = fofrm.GetAsInt(dir_str, "OffsetY", oy);
             }
 
-            string frm_dir = strex(fname).extract_dir();
+            string frm_dir {static_cast<string&&>(strex(fname).extract_dir())};
 
-            int32_t frames = 0;
-            bool no_info = false;
-            bool load_fail = false;
+            int32_t frames {0};
+            bool no_info {false};
+            bool load_fail {false};
 
-            for (int32_t frm = 0; frm < frm_count; frm++) {
-                string_view frm_name = fofrm.GetAsStr(dir_str, strex("frm_{}", frm));
+            for (int32_t frm {0}; frm < frm_count; frm++) {
+                string_view frm_name {fofrm.GetAsStr(dir_str, strex("frm_{}", frm))};
 
                 if (frm_name.empty()) {
                     frm_name = fofrm.GetAsStr(dir_str, strex("Frm_{}", frm), frm_name);
@@ -132,7 +132,7 @@ namespace ImageBakerFofrm
                     break;
                 }
 
-                FrameCollection sub_collection;
+                FrameCollection sub_collection {};
 
                 try {
                     sub_collection = context.Resolve(strex(frm_dir).combine_path(frm_name).str());
@@ -144,9 +144,9 @@ namespace ImageBakerFofrm
                 frames = checked_add(frames, sub_collection.SequenceSize);
                 FO_VERIFY_AND_THROW(frames <= numeric_cast<int32_t>(std::numeric_limits<uint16_t>::max()), "FOFRM flattened frame count exceeds the serialized range", fname, frames);
 
-                int32_t next_x = fofrm.GetAsInt(dir_str, strex("next_x_{}", frm), 0);
+                int32_t next_x {fofrm.GetAsInt(dir_str, strex("next_x_{}", frm), 0)};
                 next_x = fofrm.GetAsInt(dir_str, strex("NextX_{}", frm), next_x);
-                int32_t next_y = fofrm.GetAsInt(dir_str, strex("next_y_{}", frm), 0);
+                int32_t next_y {fofrm.GetAsInt(dir_str, strex("next_y_{}", frm), 0)};
                 next_y = fofrm.GetAsInt(dir_str, strex("NextY_{}", frm), next_y);
 
                 sub_collections.emplace_back(std::move(sub_collection), next_x, next_y);
@@ -164,9 +164,9 @@ namespace ImageBakerFofrm
             // Allocate animation storage
             if (dir == 0) {
                 collection.SequenceSize = frames;
-                int64_t frame_count_wide = numeric_cast<int64_t>(frm_count);
-                int64_t fps_wide = numeric_cast<int64_t>(frm_fps);
-                int64_t anim_ticks = frm_fps != 0 ? checked_div(checked_mul(int64_t {1000}, frame_count_wide), fps_wide) : 0;
+                int64_t frame_count_wide {numeric_cast<int64_t>(frm_count)};
+                int64_t fps_wide {numeric_cast<int64_t>(frm_fps)};
+                int64_t anim_ticks {frm_fps != 0 ? checked_div(checked_mul(int64_t {1000}, frame_count_wide), fps_wide) : 0};
                 FO_VERIFY_AND_THROW(anim_ticks >= 0 && anim_ticks <= numeric_cast<int64_t>(std::numeric_limits<uint16_t>::max()), "FOFRM animation duration is outside the serialized range", fname, anim_ticks);
                 collection.AnimTicks = numeric_cast<int32_t>(anim_ticks);
             }
@@ -174,18 +174,18 @@ namespace ImageBakerFofrm
                 collection.HaveDirs = true;
             }
 
-            auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
+            auto& sequence {dir == 0 ? collection.Main : collection.Dirs[dir - 1]};
             sequence.OffsX = numeric_cast<int16_t>(ox);
             sequence.OffsY = numeric_cast<int16_t>(oy);
             sequence.Frames.resize(numeric_cast<size_t>(collection.SequenceSize));
 
             // Merge many animations in one
-            int32_t frm = 0;
+            int32_t frm {0};
 
             for (auto&& [sub_collection, next_x, next_y] : sub_collections) {
-                for (int32_t i = 0; i < sub_collection.SequenceSize; i++, frm++) {
-                    auto& shot = sequence.Frames[numeric_cast<size_t>(frm)];
-                    const FrameShot& sub_shot = sub_collection.Main.Frames[numeric_cast<size_t>(i)];
+                for (int32_t i {0}; i < sub_collection.SequenceSize; i++, frm++) {
+                    auto& shot {sequence.Frames[numeric_cast<size_t>(frm)]};
+                    const FrameShot& sub_shot {sub_collection.Main.Frames[numeric_cast<size_t>(i)]};
 
                     if (sub_shot.Shared) {
                         throw ImageBakerException("FOFRM file invalid data (shared index)", fname);

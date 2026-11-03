@@ -53,18 +53,18 @@ private:
 ParticleManager::Impl::Impl(const ParticleRuntimeServices& services) :
     _backends {CreateParticleRuntimeBackends(services)}
 {
-    unordered_set<string> registered_exts;
+    unordered_set<string> registered_exts {};
 
     for (const auto& backend_owner : _backends) {
-        auto backend = backend_owner.as_ptr();
-        vector<string> exts = backend->GetExtensions();
+        auto backend {backend_owner.as_ptr()};
+        vector<string> exts {backend->GetExtensions()};
 
         FO_VERIFY_AND_THROW(!exts.empty(), "Particle runtime backend does not declare any resource extensions");
 
         for (const string& ext : exts) {
             FO_VERIFY_AND_THROW(!ext.empty(), "Particle runtime backend declares an empty resource extension");
 
-            auto [it, inserted] = registered_exts.emplace(ext);
+            auto [it, inserted] {registered_exts.emplace(ext)};
             ignore_unused(it);
             FO_VERIFY_AND_THROW(inserted, "Particle resource extension is handled by more than one runtime backend", ext);
         }
@@ -74,8 +74,8 @@ ParticleManager::Impl::Impl(const ParticleRuntimeServices& services) :
 auto ParticleManager::Impl::FindBackend(string_view ext) -> nptr<ParticleRuntimeBackend>
 {
     for (auto& backend_owner : _backends) {
-        auto backend = backend_owner.as_ptr();
-        vector<string> exts = backend->GetExtensions();
+        auto backend {backend_owner.as_ptr()};
+        vector<string> exts {backend->GetExtensions()};
 
         if (std::ranges::find(exts, ext) != exts.end()) {
             return backend;
@@ -88,8 +88,8 @@ auto ParticleManager::Impl::FindBackend(string_view ext) -> nptr<ParticleRuntime
 auto ParticleManager::Impl::FindBackend(string_view ext) const -> nptr<const ParticleRuntimeBackend>
 {
     for (const auto& backend_owner : _backends) {
-        auto backend = backend_owner.as_ptr();
-        vector<string> exts = backend->GetExtensions();
+        auto backend {backend_owner.as_ptr()};
+        vector<string> exts {backend->GetExtensions()};
 
         if (std::ranges::find(exts, ext) != exts.end()) {
             return backend;
@@ -101,10 +101,10 @@ auto ParticleManager::Impl::FindBackend(string_view ext) const -> nptr<const Par
 
 auto ParticleManager::Impl::GetExtensions() const -> vector<string>
 {
-    vector<string> exts;
+    vector<string> exts {};
 
     for (const auto& backend_owner : _backends) {
-        vector<string> backend_exts = backend_owner->GetExtensions();
+        vector<string> backend_exts {backend_owner->GetExtensions()};
         exts.insert(exts.end(), backend_exts.begin(), backend_exts.end());
     }
 
@@ -144,15 +144,15 @@ void ParticleManager::InvalidateResource(string_view name)
 
 auto ParticleManager::CreateParticle(string_view name) -> optional<ParticleSystem>
 {
-    string ext = strex(name).get_file_extension();
-    auto backend = _impl->FindBackend(ext);
+    string ext {static_cast<string&&>(strex(name).get_file_extension())};
+    auto backend {_impl->FindBackend(ext)};
 
     if (!backend) {
         logging::write(logging::type::warning, "Particle resource '{}' has an unsupported extension", name);
         return {};
     }
 
-    auto runtime_system = backend->Create(name);
+    auto runtime_system {backend->Create(name)};
 
     if (!runtime_system) {
         return {};
@@ -214,9 +214,9 @@ auto ParticleSystem::ComputeSpriteFrame(const RenderSettings& settings) const ->
 {
     // The box corners are projected through the map camera tilt and then grown by the billboard radius, which is a
     // view-plane length the tilt must not touch; an effect that showed no particle falls back to a default square
-    optional<ParticleBounds3D> baked = GetBakedBounds();
-    float32_t proj_factor = settings.Render.ModelProjFactor;
-    ParticleSpriteFrame layout;
+    optional<ParticleBounds3D> baked {GetBakedBounds()};
+    float32_t proj_factor {settings.Render.ModelProjFactor};
+    ParticleSpriteFrame layout {};
 
     if (!baked) {
         layout.DrawSize = {settings.Render.DefaultParticleDrawWidth, settings.Render.DefaultParticleDrawHeight};
@@ -227,18 +227,18 @@ auto ParticleSystem::ComputeSpriteFrame(const RenderSettings& settings) const ->
         return layout;
     }
 
-    float32_t cos_a = std::cos(settings.Geometry.MapCameraAngle * DEG_TO_RAD_FLOAT);
-    float32_t sin_a = std::sin(settings.Geometry.MapCameraAngle * DEG_TO_RAD_FLOAT);
-    float32_t min_x = std::numeric_limits<float32_t>::max();
-    float32_t max_x = std::numeric_limits<float32_t>::lowest();
-    float32_t min_y = std::numeric_limits<float32_t>::max();
-    float32_t max_y = std::numeric_limits<float32_t>::lowest();
+    float32_t cos_a {std::cos(settings.Geometry.MapCameraAngle * DEG_TO_RAD_FLOAT)};
+    float32_t sin_a {std::sin(settings.Geometry.MapCameraAngle * DEG_TO_RAD_FLOAT)};
+    float32_t min_x {std::numeric_limits<float32_t>::max()};
+    float32_t max_x {std::numeric_limits<float32_t>::lowest()};
+    float32_t min_y {std::numeric_limits<float32_t>::max()};
+    float32_t max_y {std::numeric_limits<float32_t>::lowest()};
 
-    for (uint32_t corner_index = 0; corner_index < 8; corner_index++) {
-        float32_t cx = (corner_index & 1U) != 0 ? baked->PositionMax.x : baked->PositionMin.x;
-        float32_t cy = (corner_index & 2U) != 0 ? baked->PositionMax.y : baked->PositionMin.y;
-        float32_t cz = (corner_index & 4U) != 0 ? baked->PositionMax.z : baked->PositionMin.z;
-        float32_t view_y = cy * cos_a - cz * sin_a;
+    for (uint32_t corner_index {0}; corner_index < 8; corner_index++) {
+        float32_t cx {(corner_index & 1U) != 0 ? baked->PositionMax.x : baked->PositionMin.x};
+        float32_t cy {(corner_index & 2U) != 0 ? baked->PositionMax.y : baked->PositionMin.y};
+        float32_t cz {(corner_index & 4U) != 0 ? baked->PositionMax.z : baked->PositionMin.z};
+        float32_t view_y {cy * cos_a - cz * sin_a};
         min_x = std::min(min_x, cx);
         max_x = std::max(max_x, cx);
         min_y = std::min(min_y, view_y);
@@ -247,7 +247,7 @@ auto ParticleSystem::ComputeSpriteFrame(const RenderSettings& settings) const ->
 
     // A small margin so anti-aliased edges are not clipped by the tight frame, plus the billboard radius: the quad
     // faces the camera, so its half-extent applies to both frame axes and is added once, after the tilt
-    float32_t margin = 2.0f / proj_factor + baked->BillboardRadius;
+    float32_t margin {2.0f / proj_factor + baked->BillboardRadius};
     min_x -= margin;
     max_x += margin;
     min_y -= margin;
@@ -262,8 +262,8 @@ auto ParticleSystem::ComputeSpriteFrame(const RenderSettings& settings) const ->
 
     // Root convention is root = (width/2 - offset.x, height - offset.y) from the top-left; the emitter projects to
     // (-min_x, -min_y) world units from the box origin, i.e. those pixels from the frame's left and bottom
-    int32_t emitter_px_x = iround<int32_t>(-min_x * proj_factor);
-    int32_t emitter_px_y = iround<int32_t>(-min_y * proj_factor);
+    int32_t emitter_px_x {iround<int32_t>(-min_x * proj_factor)};
+    int32_t emitter_px_y {iround<int32_t>(-min_y * proj_factor)};
     layout.Offset = {layout.DrawSize.width / 2 - emitter_px_x, emitter_px_y};
 
     return layout;
@@ -308,7 +308,7 @@ void ParticleSystem::Prewarm()
         return;
     }
 
-    float32_t elapsed_seconds = _runtimeSystem->Prewarm();
+    float32_t elapsed_seconds {_runtimeSystem->Prewarm()};
     FO_VERIFY_AND_THROW(std::isfinite(elapsed_seconds) && elapsed_seconds >= 0.0f, "Particle runtime returned an invalid prewarm duration", elapsed_seconds);
 
     _elapsedTime += numeric_cast<float64_t>(elapsed_seconds);
@@ -342,8 +342,8 @@ auto ParticleSystem::Respawn(int32_t seed) -> bool
 
 void ParticleSystem::Update()
 {
-    nanotime time = GetTime();
-    float32_t delta_seconds = numeric_cast<float32_t>((time - _lastUpdateTime).nanoseconds()) * 1e-9f;
+    nanotime time {GetTime()};
+    float32_t delta_seconds {numeric_cast<float32_t>((time - _lastUpdateTime).nanoseconds()) * 1e-9f};
 
     if (_forceDraw && delta_seconds <= 0.0f) {
         delta_seconds = numeric_cast<float32_t>(std::max(_particleMngr->_animUpdateThreshold, 1)) * 0.001f;
@@ -356,7 +356,7 @@ void ParticleSystem::Update()
 void ParticleSystem::Update(float32_t delta_seconds)
 {
     FO_VERIFY_AND_THROW(std::isfinite(delta_seconds) && delta_seconds >= 0.0f, "Particle update duration must be finite and non-negative", delta_seconds);
-    bool was_active = _runtimeSystem->IsActive();
+    bool was_active {_runtimeSystem->IsActive()};
 
     if (!was_active) {
         return;
@@ -364,7 +364,7 @@ void ParticleSystem::Update(float32_t delta_seconds)
 
     _runtimeSystem->Update(delta_seconds);
 
-    bool is_active = _runtimeSystem->IsActive();
+    bool is_active {_runtimeSystem->IsActive()};
 
     if (delta_seconds > 0.0f || !is_active) {
         _renderPending = true;

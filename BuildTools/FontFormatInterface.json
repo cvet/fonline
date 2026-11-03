@@ -285,7 +285,7 @@
       "requirement": "Encode each Chars record in the 20-byte BMFont v3 layout. The format defines signed xoffset, yoffset, and xadvance fields, but the current loader reads all three as unsigned little-endian uint16 values; avoid negative metrics until that runtime defect is fixed separately.",
       "rationale": "Bundled fonts contain negative bearings, so this source-backed limitation must remain visible instead of being documented as correct signed decoding.",
       "source": [
-        {"path": "Source/Client/FontManager.cpp", "anchors": ["reader.ReadLEUInt32() / 20", "uint16_t ox = reader.ReadLEUInt16()", "uint16_t oy = reader.ReadLEUInt16()", "uint16_t xa = reader.ReadLEUInt16()"]},
+        {"path": "Source/Client/FontManager.cpp", "anchors": ["reader.ReadLEUInt32() / 20", "uint16_t ox {reader.ReadLEUInt16()}", "uint16_t oy {reader.ReadLEUInt16()}", "uint16_t xa {reader.ReadLEUInt16()}"]},
         {"path": "Source/Common/FileSystem.h", "anchors": ["ReadLEUInt16()"]}
       ]
     },
@@ -518,7 +518,7 @@
       "stability": "internal",
       "requirement": "Do not depend on cached layout identity or lifetime; the cache key includes text, font, flags, skips, rectangle size, color, and mode and expires after three unused frames.",
       "rationale": "The cache is a client implementation detail and is cleared whenever fonts are stored or cleared.",
-      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["CACHE_INVALIDATION_FRAME_COUNT = 3", "key_parts", "LastUsedFrame", "_formatCache.clear()"]}]
+      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["CACHE_INVALIDATION_FRAME_COUNT {3}", "key_parts", "LastUsedFrame", "_formatCache.clear()"]}]
     }
   ],
   "validation_rules": [
@@ -553,7 +553,7 @@
       "requirement": "Track that the current loader reads xoffset, yoffset, and xadvance with ReadLEUInt16 even though bundled binary fonts contain negative bearings.",
       "rationale": "Values such as -2 are currently reinterpreted as 65534 and can move rendered glyphs far outside their intended position; the runtime fix belongs in a separate code change.",
       "source": [
-        {"path": "Source/Client/FontManager.cpp", "anchors": ["uint16_t ox = reader.ReadLEUInt16()", "uint16_t oy = reader.ReadLEUInt16()", "uint16_t xa = reader.ReadLEUInt16()"]},
+        {"path": "Source/Client/FontManager.cpp", "anchors": ["uint16_t ox {reader.ReadLEUInt16()}", "uint16_t oy {reader.ReadLEUInt16()}", "uint16_t xa {reader.ReadLEUInt16()}"]},
         {"path": "Source/Common/FileSystem.h", "anchors": ["auto ReadLEUInt16() -> uint16_t"]}
       ]
     },

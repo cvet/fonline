@@ -46,7 +46,7 @@ namespace ImageBakerFrm
     using ImageImport::FrameShot;
 
     // clang-format off
-alignas(ucolor) static const uint8_t FoPalette[] = {
+alignas(ucolor) static const uint8_t FoPalette[] {
     // Transparent color
     0x00, 0x00, 0x00, 0x00,
     // Default colors
@@ -105,35 +105,35 @@ static_assert(sizeof(FoPalette) == 1024);
     {
         FO_TRACE_ZONE(Baking);
 
-        const FileCollection& files = *context.Files;
+        const FileCollection& files {*context.Files};
 
         ignore_unused(opt);
 
         reader.SetCurPos(0x4);
-        int32_t frm_fps = numeric_cast<int32_t>(reader.ReadBEUInt16());
+        int32_t frm_fps {numeric_cast<int32_t>(reader.ReadBEUInt16())};
 
         reader.SetCurPos(0x8);
-        int32_t frm_count = numeric_cast<int32_t>(reader.ReadBEUInt16());
+        int32_t frm_count {numeric_cast<int32_t>(reader.ReadBEUInt16())};
         FO_VERIFY_AND_THROW(frm_count > 0, "Frame count must be positive", frm_count);
 
-        FrameCollection collection;
+        FrameCollection collection {};
         collection.SequenceSize = frm_count;
-        int32_t frame_ms = frm_fps != 0 ? 1000 / frm_fps : 0;
-        int32_t anim_ticks = checked_mul(frame_ms, frm_count);
+        int32_t frame_ms {frm_fps != 0 ? 1000 / frm_fps : 0};
+        int32_t anim_ticks {checked_mul(frame_ms, frm_count)};
         FO_VERIFY_AND_THROW(anim_ticks >= 0 && anim_ticks <= numeric_cast<int32_t>(std::numeric_limits<uint16_t>::max()), "FRM animation duration is outside the serialized range", fname, anim_ticks);
         collection.AnimTicks = anim_ticks;
 
         collection.NewName = strvex(fname).starts_with("art/critters/") ? strex(fname).lower().str() : string(fname);
 
         // Animated palette flags: Slime 0x01, Monitors 0x02, FireSlow 0x04, FireFast 0x08, Shoreline 0x10, BlinkingRed 0x20
-        uint32_t anim_pix_type = 0;
-        const uint8_t blinking_red_vals[10] = {254, 210, 165, 120, 75, 45, 90, 135, 180, 225};
+        uint32_t anim_pix_type {0};
+        const uint8_t blinking_red_vals[10] {254, 210, 165, 120, 75, 45, 90, 135, 180, 225};
 
-        for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
-            auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
+        for (int32_t dir {0}; dir < GameSettings::MAP_DIR_COUNT; dir++) {
+            auto& sequence {dir == 0 ? collection.Main : collection.Dirs[dir - 1]};
             sequence.Frames.resize(numeric_cast<size_t>(collection.SequenceSize));
 
-            int32_t dir_frm = dir;
+            int32_t dir_frm {dir};
 
             if constexpr (GameSettings::SQUARE_GEOMETRY) {
                 if (dir >= 3) {
@@ -150,7 +150,7 @@ static_assert(sizeof(FoPalette) == 1024);
             sequence.OffsY = reader.ReadBEInt16();
 
             reader.SetCurPos(numeric_cast<size_t>(checked_add(int32_t {0x22}, checked_mul(dir_frm, int32_t {4}))));
-            size_t offset = numeric_cast<size_t>(reader.ReadBEUInt32());
+            size_t offset {numeric_cast<size_t>(reader.ReadBEUInt32())};
             offset = checked_add(size_t {0x3E}, offset);
 
             if (offset == size_t {0x3E} && dir_frm != 0) {
@@ -166,17 +166,17 @@ static_assert(sizeof(FoPalette) == 1024);
             }
 
             // Make palette
-            const_span<ucolor> palette = bytes_to_objects<ucolor>(span {FoPalette});
-            ucolor custom_palette[256];
-            File palette_file = files.FindFileByPath(strex("{}.pal", strvex(fname).erase_file_extension()));
+            const_span<ucolor> palette {bytes_to_objects<ucolor>(span {FoPalette})};
+            ucolor custom_palette[256] {};
+            File palette_file {files.FindFileByPath(strex("{}.pal", strvex(fname).erase_file_extension()))};
 
             if (palette_file) {
-                auto palette_reader = palette_file.GetReader();
+                auto palette_reader {palette_file.GetReader()};
 
                 for (auto& color : custom_palette) {
-                    uint8_t r = numeric_cast<uint8_t>((numeric_cast<int32_t>(palette_reader.ReadUInt8()) * 4) & 0xFF);
-                    uint8_t g = numeric_cast<uint8_t>((numeric_cast<int32_t>(palette_reader.ReadUInt8()) * 4) & 0xFF);
-                    uint8_t b = numeric_cast<uint8_t>((numeric_cast<int32_t>(palette_reader.ReadUInt8()) * 4) & 0xFF);
+                    uint8_t r {numeric_cast<uint8_t>((numeric_cast<int32_t>(palette_reader.ReadUInt8()) * 4) & 0xFF)};
+                    uint8_t g {numeric_cast<uint8_t>((numeric_cast<int32_t>(palette_reader.ReadUInt8()) * 4) & 0xFF)};
+                    uint8_t b {numeric_cast<uint8_t>((numeric_cast<int32_t>(palette_reader.ReadUInt8()) * 4) & 0xFF)};
                     color = ucolor {r, g, b, 0xFF};
                 }
 
@@ -184,12 +184,12 @@ static_assert(sizeof(FoPalette) == 1024);
                 palette = const_span<ucolor> {custom_palette};
             }
 
-            for (int32_t frm = 0; frm < frm_count; frm++) {
-                auto& shot = sequence.Frames[numeric_cast<size_t>(frm)];
+            for (int32_t frm {0}; frm < frm_count; frm++) {
+                auto& shot {sequence.Frames[numeric_cast<size_t>(frm)]};
 
                 reader.SetCurPos(offset);
-                int32_t w = numeric_cast<int32_t>(reader.ReadBEUInt16());
-                int32_t h = numeric_cast<int32_t>(reader.ReadBEUInt16());
+                int32_t w {numeric_cast<int32_t>(reader.ReadBEUInt16())};
+                int32_t h {numeric_cast<int32_t>(reader.ReadBEUInt16())};
                 FO_VERIFY_AND_THROW(w > 0 && h > 0, "Invalid FRM frame dimensions", fname, w, h);
 
                 shot.Width = w;
@@ -199,20 +199,20 @@ static_assert(sizeof(FoPalette) == 1024);
                 shot.NextY = reader.ReadBEInt16();
 
                 // Allocate data
-                int64_t pixel_count = checked_mul(numeric_cast<int64_t>(w), numeric_cast<int64_t>(h));
-                size_t data_size = numeric_cast<size_t>(checked_mul(pixel_count, int64_t {4}));
+                int64_t pixel_count {checked_mul(numeric_cast<int64_t>(w), numeric_cast<int64_t>(h))};
+                size_t data_size {numeric_cast<size_t>(checked_mul(pixel_count, int64_t {4}))};
                 shot.Data.resize(data_size);
-                span<ucolor> pixels = bytes_to_objects<ucolor>(span {shot.Data});
+                span<ucolor> pixels {bytes_to_objects<ucolor>(span {shot.Data})};
                 reader.SetCurPos(checked_add(offset, size_t {12}));
 
                 if (anim_pix_type == 0) {
-                    for (size_t i = 0; i < pixels.size(); i++) {
+                    for (size_t i {0}; i < pixels.size(); i++) {
                         pixels[i] = palette[numeric_cast<size_t>(reader.ReadUInt8())];
                     }
                 }
                 else {
-                    for (size_t i = 0; i < pixels.size(); i++) {
-                        uint8_t index = reader.ReadUInt8();
+                    for (size_t i {0}; i < pixels.size(); i++) {
+                        uint8_t index {reader.ReadUInt8()};
 
                         if (index >= 229 && index < 255) {
                             if (index >= 229 && index <= 232) {
@@ -264,8 +264,8 @@ static_assert(sizeof(FoPalette) == 1024);
                 if (anim_pix_type == 0 && frm == 0 && dir == 0 && frm_count == 1 && palette.data() != custom_palette) {
                     reader.SetCurPos(checked_add(offset, size_t {12}));
 
-                    for (size_t i = 0; i < pixels.size(); i++) {
-                        uint8_t index = reader.ReadUInt8();
+                    for (size_t i {0}; i < pixels.size(); i++) {
+                        uint8_t index {reader.ReadUInt8()};
 
                         if (index < 229 || index == 255) {
                             continue;
@@ -334,7 +334,7 @@ static_assert(sizeof(FoPalette) == 1024);
 
                         frm_count = 4;
 
-                        for (int32_t i = 0; i < 4; i++) {
+                        for (int32_t i {0}; i < 4; i++) {
                             if (frm_count % divs[i] == 0) {
                                 continue;
                             }
@@ -343,7 +343,7 @@ static_assert(sizeof(FoPalette) == 1024);
                             i = -1;
                         }
 
-                        int32_t scaled_anim_ticks = checked_mul(collection.AnimTicks, frm_count);
+                        int32_t scaled_anim_ticks {checked_mul(collection.AnimTicks, frm_count)};
                         FO_VERIFY_AND_THROW(scaled_anim_ticks >= 0 && scaled_anim_ticks <= numeric_cast<int32_t>(std::numeric_limits<uint16_t>::max()), "Animation duration is outside the serialized range", fname, scaled_anim_ticks);
                         collection.AnimTicks = scaled_anim_ticks;
                         collection.SequenceSize = frm_count;
@@ -352,7 +352,7 @@ static_assert(sizeof(FoPalette) == 1024);
                 }
 
                 if (anim_pix_type == 0) {
-                    size_t frame_payload = checked_add(numeric_cast<size_t>(pixel_count), size_t {12});
+                    size_t frame_payload {checked_add(numeric_cast<size_t>(pixel_count), size_t {12})};
                     offset = checked_add(offset, frame_payload);
                 }
             }
@@ -365,24 +365,24 @@ static_assert(sizeof(FoPalette) == 1024);
     {
         FO_TRACE_ZONE(Baking);
 
-        const FileCollection& files = *context.Files;
+        const FileCollection& files {*context.Files};
 
         ignore_unused(opt);
 
-        File dir_file;
+        File dir_file {};
 
         // Load from frm
         reader.SetCurPos(0x4);
-        int32_t frm_fps = numeric_cast<int32_t>(reader.ReadBEUInt16());
+        int32_t frm_fps {numeric_cast<int32_t>(reader.ReadBEUInt16())};
 
         reader.SetCurPos(0x8);
-        int32_t frm_count = numeric_cast<int32_t>(reader.ReadBEUInt16());
+        int32_t frm_count {numeric_cast<int32_t>(reader.ReadBEUInt16())};
         FO_VERIFY_AND_THROW(frm_count > 0, "Frame count must be positive", frm_count);
 
-        FrameCollection collection;
+        FrameCollection collection {};
         collection.SequenceSize = frm_count;
-        int32_t frame_ms = frm_fps != 0 ? 1000 / frm_fps : 0;
-        int32_t anim_ticks = checked_mul(frame_ms, frm_count);
+        int32_t frame_ms {frm_fps != 0 ? 1000 / frm_fps : 0};
+        int32_t anim_ticks {checked_mul(frame_ms, frm_count)};
         FO_VERIFY_AND_THROW(anim_ticks >= 0 && anim_ticks <= numeric_cast<int32_t>(std::numeric_limits<uint16_t>::max()), "FRX animation duration is outside the serialized range", fname, anim_ticks);
         collection.AnimTicks = anim_ticks;
 
@@ -394,14 +394,14 @@ static_assert(sizeof(FoPalette) == 1024);
         }
 
         // Animated palette flags: Slime 0x01, Monitors 0x02, FireSlow 0x04, FireFast 0x08, Shoreline 0x10, BlinkingRed 0x20
-        uint32_t anim_pix_type = 0;
-        const uint8_t blinking_red_vals[10] = {254, 210, 165, 120, 75, 45, 90, 135, 180, 225};
+        uint32_t anim_pix_type {0};
+        const uint8_t blinking_red_vals[10] {254, 210, 165, 120, 75, 45, 90, 135, 180, 225};
 
-        for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
-            auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
+        for (int32_t dir {0}; dir < GameSettings::MAP_DIR_COUNT; dir++) {
+            auto& sequence {dir == 0 ? collection.Main : collection.Dirs[dir - 1]};
             sequence.Frames.resize(numeric_cast<size_t>(collection.SequenceSize));
 
-            int32_t dir_frm = dir;
+            int32_t dir_frm {dir};
 
             if constexpr (GameSettings::SQUARE_GEOMETRY) {
                 if (dir >= 3) {
@@ -436,7 +436,7 @@ static_assert(sizeof(FoPalette) == 1024);
             sequence.OffsY = reader.ReadBEInt16();
 
             reader.SetCurPos(numeric_cast<size_t>(checked_add(int32_t {0x22}, checked_mul(dir_frm, int32_t {4}))));
-            size_t offset = numeric_cast<size_t>(reader.ReadBEUInt32());
+            size_t offset {numeric_cast<size_t>(reader.ReadBEUInt32())};
             offset = checked_add(size_t {0x3E}, offset);
 
             if (dir == 1) {
@@ -444,17 +444,17 @@ static_assert(sizeof(FoPalette) == 1024);
             }
 
             // Make palette
-            const_span<ucolor> palette = bytes_to_objects<ucolor>(span {FoPalette});
-            ucolor custom_palette[256];
-            File palette_file = files.FindFileByPath(strex("{}.pal", strvex(fname).erase_file_extension()));
+            const_span<ucolor> palette {bytes_to_objects<ucolor>(span {FoPalette})};
+            ucolor custom_palette[256] {};
+            File palette_file {files.FindFileByPath(strex("{}.pal", strvex(fname).erase_file_extension()))};
 
             if (palette_file) {
-                auto palette_reader = palette_file.GetReader();
+                auto palette_reader {palette_file.GetReader()};
 
                 for (auto& color : custom_palette) {
-                    uint8_t r = numeric_cast<uint8_t>((numeric_cast<int32_t>(palette_reader.ReadUInt8()) * 4) & 0xFF);
-                    uint8_t g = numeric_cast<uint8_t>((numeric_cast<int32_t>(palette_reader.ReadUInt8()) * 4) & 0xFF);
-                    uint8_t b = numeric_cast<uint8_t>((numeric_cast<int32_t>(palette_reader.ReadUInt8()) * 4) & 0xFF);
+                    uint8_t r {numeric_cast<uint8_t>((numeric_cast<int32_t>(palette_reader.ReadUInt8()) * 4) & 0xFF)};
+                    uint8_t g {numeric_cast<uint8_t>((numeric_cast<int32_t>(palette_reader.ReadUInt8()) * 4) & 0xFF)};
+                    uint8_t b {numeric_cast<uint8_t>((numeric_cast<int32_t>(palette_reader.ReadUInt8()) * 4) & 0xFF)};
                     color = ucolor {r, g, b};
                 }
 
@@ -462,12 +462,12 @@ static_assert(sizeof(FoPalette) == 1024);
                 palette = const_span<ucolor> {custom_palette};
             }
 
-            for (int32_t frm = 0; frm < frm_count; frm++) {
-                auto& shot = sequence.Frames[numeric_cast<size_t>(frm)];
+            for (int32_t frm {0}; frm < frm_count; frm++) {
+                auto& shot {sequence.Frames[numeric_cast<size_t>(frm)]};
 
                 reader.SetCurPos(offset);
-                int32_t w = numeric_cast<int32_t>(reader.ReadBEUInt16());
-                int32_t h = numeric_cast<int32_t>(reader.ReadBEUInt16());
+                int32_t w {numeric_cast<int32_t>(reader.ReadBEUInt16())};
+                int32_t h {numeric_cast<int32_t>(reader.ReadBEUInt16())};
                 FO_VERIFY_AND_THROW(w > 0 && h > 0, "Invalid FRM frame dimensions", fname, w, h);
 
                 shot.Width = w;
@@ -479,20 +479,20 @@ static_assert(sizeof(FoPalette) == 1024);
                 shot.NextY = reader.ReadBEInt16();
 
                 // Allocate data
-                int64_t pixel_count = checked_mul(numeric_cast<int64_t>(w), numeric_cast<int64_t>(h));
-                size_t data_size = numeric_cast<size_t>(checked_mul(pixel_count, int64_t {4}));
+                int64_t pixel_count {checked_mul(numeric_cast<int64_t>(w), numeric_cast<int64_t>(h))};
+                size_t data_size {numeric_cast<size_t>(checked_mul(pixel_count, int64_t {4}))};
                 shot.Data.resize(data_size);
-                span<ucolor> pixels = bytes_to_objects<ucolor>(span {shot.Data});
+                span<ucolor> pixels {bytes_to_objects<ucolor>(span {shot.Data})};
                 reader.SetCurPos(checked_add(offset, size_t {12}));
 
                 if (anim_pix_type == 0) {
-                    for (size_t i = 0; i < pixels.size(); i++) {
+                    for (size_t i {0}; i < pixels.size(); i++) {
                         pixels[i] = palette[numeric_cast<size_t>(reader.ReadUInt8())];
                     }
                 }
                 else {
-                    for (size_t i = 0; i < pixels.size(); i++) {
-                        uint8_t index = reader.ReadUInt8();
+                    for (size_t i {0}; i < pixels.size(); i++) {
+                        uint8_t index {reader.ReadUInt8()};
 
                         if (index >= 229 && index < 255) {
                             if (index >= 229 && index <= 232) {
@@ -544,8 +544,8 @@ static_assert(sizeof(FoPalette) == 1024);
                 if (anim_pix_type == 0 && frm == 0 && dir == 0 && frm_count == 1 && palette.data() != custom_palette) {
                     reader.SetCurPos(checked_add(offset, size_t {12}));
 
-                    for (size_t i = 0; i < pixels.size(); i++) {
-                        uint8_t index = reader.ReadUInt8();
+                    for (size_t i {0}; i < pixels.size(); i++) {
+                        uint8_t index {reader.ReadUInt8()};
 
                         if (index < 229 || index == 255) {
                             continue;
@@ -591,7 +591,7 @@ static_assert(sizeof(FoPalette) == 1024);
                     }
 
                     if (anim_pix_type != 0) {
-                        int32_t divs[4];
+                        int32_t divs[4] {};
                         divs[0] = 1;
                         divs[1] = 1;
                         divs[2] = 1;
@@ -618,7 +618,7 @@ static_assert(sizeof(FoPalette) == 1024);
 
                         frm_count = 4;
 
-                        for (int32_t i = 0; i < 4; i++) {
+                        for (int32_t i {0}; i < 4; i++) {
                             if (frm_count % divs[i] == 0) {
                                 continue;
                             }
@@ -627,7 +627,7 @@ static_assert(sizeof(FoPalette) == 1024);
                             i = -1;
                         }
 
-                        int32_t scaled_anim_ticks = checked_mul(collection.AnimTicks, frm_count);
+                        int32_t scaled_anim_ticks {checked_mul(collection.AnimTicks, frm_count)};
                         FO_VERIFY_AND_THROW(scaled_anim_ticks >= 0 && scaled_anim_ticks <= numeric_cast<int32_t>(std::numeric_limits<uint16_t>::max()), "Animation duration is outside the serialized range", fname, scaled_anim_ticks);
                         collection.AnimTicks = scaled_anim_ticks;
                         collection.SequenceSize = frm_count;
@@ -636,7 +636,7 @@ static_assert(sizeof(FoPalette) == 1024);
                 }
 
                 if (anim_pix_type == 0) {
-                    size_t frame_payload = checked_add(numeric_cast<size_t>(pixel_count), size_t {12});
+                    size_t frame_payload {checked_add(numeric_cast<size_t>(pixel_count), size_t {12})};
                     offset = checked_add(offset, frame_payload);
                 }
             }
@@ -647,8 +647,8 @@ static_assert(sizeof(FoPalette) == 1024);
 
     auto ResolveOutput(string_view fname) -> string
     {
-        string ext = strex(fname).get_file_extension();
-        bool is_critter = strvex(fname).starts_with("art/critters/");
+        string ext {static_cast<string&&>(strex(fname).get_file_extension())};
+        bool is_critter {strvex(fname).starts_with("art/critters/")};
 
         if (ext == "frm" && is_critter) {
             return strex(fname).lower();

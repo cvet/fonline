@@ -49,24 +49,24 @@ namespace
 {
     auto MakeMapViewHitTestResources() -> FileSystem
     {
-        auto metadata = BakerTests::MakeEmptyMetadataBlob();
-        auto compiler_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("MapViewHitTestCompiler");
+        auto metadata {BakerTests::MakeEmptyMetadataBlob()};
+        auto compiler_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("MapViewHitTestCompiler")};
         compiler_source->AddFile("Metadata.fometa-client", metadata);
-        FileSystem compiler_resources;
+        FileSystem compiler_resources {};
         compiler_resources.AddCustomSource(std::move(compiler_source));
         BakerClientEngine proto_engine {compiler_resources};
-        auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("MapViewHitTestRuntime");
+        auto source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("MapViewHitTestRuntime")};
         source->AddFile("Metadata.fometa-client", metadata);
 #if FO_ANGELSCRIPT_SCRIPTING
         source->AddFile("MapViewHitTest.fos-bin-client", BakerTests::CompileInlineScripts(&proto_engine, "MapViewHitTestScripts", {{"Scripts/MapViewHitTest.fos", "void HitTestFixtureEntry() {}"}}, [](string_view message) { FAIL(message); }));
 #endif
-        vector<pair<string, function<void(ProtoMap&)>>> maps;
+        vector<pair<string, function<void(ProtoMap&)>>> maps {};
         maps.emplace_back("HitTestMap", [](ProtoMap& proto) { proto.SetSize(msize {20, 20}); });
         source->AddFile("HitTestMap.fopro-bin-client", BakerTests::MakeMultiProtoResourceBlob<ProtoMap>(proto_engine, proto_engine.Hashes.to_hashed_string("Map"), maps));
-        vector<pair<string, function<void(ProtoCritter&)>>> critters;
+        vector<pair<string, function<void(ProtoCritter&)>>> critters {};
         critters.emplace_back("HitTestCritter", [](ProtoCritter&) { });
         source->AddFile("HitTestCritter.fopro-bin-client", BakerTests::MakeMultiProtoResourceBlob<ProtoCritter>(proto_engine, proto_engine.Hashes.to_hashed_string("Critter"), critters));
-        vector<pair<string, function<void(ProtoItem&)>>> items;
+        vector<pair<string, function<void(ProtoItem&)>>> items {};
         items.emplace_back("HitTestWall", [&proto_engine](ProtoItem& proto) {
             proto.SetIsWall(true);
             proto.SetPicMap(proto_engine.Hashes.to_hashed_string("HitTest.png"));
@@ -85,7 +85,7 @@ namespace
             source->AddFile(strex("Effects/{}.fofx-1-info", name).str(), "[EffectInfo]\n");
         }
 
-        FileSystem resources;
+        FileSystem resources {};
         resources.AddCustomSource(std::move(source));
         return resources;
     }
@@ -93,30 +93,30 @@ namespace
 
 TEST_CASE("MapViewItemHitTestingCanSelectTransparentEggOccluders")
 {
-    GlobalSettings settings(false);
+    GlobalSettings settings {false};
     settings.ApplyDefaultSettings();
     settings.ApplyAutoSettings();
     BakerTests::ApplySelfContainedClientSettings(settings);
     BakerTests::OverrideSetting(settings.Common.Packaged, false);
     BakerTests::OverrideSetting(settings.Baking.BakeOutput, string {});
-    auto client = safe_alloc::make_refcounted<ClientEngine>(&settings, MakeMapViewHitTestResources(), &GetApp()->MainWindow);
-    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
-    auto map = safe_alloc::make_refcounted<MapView>(client, ident_t {1001}, client->GetProtoMap(client->Hashes.to_hashed_string("HitTestMap")), isize32 {320, 200});
-    auto destroy_map = scope_exit([&map]() noexcept { safe_call([&map] { map->DestroySelf(); }); });
+    auto client {safe_alloc::make_refcounted<ClientEngine>(&settings, MakeMapViewHitTestResources(), &GetApp()->MainWindow)};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+    auto map {safe_alloc::make_refcounted<MapView>(client, ident_t {1001}, client->GetProtoMap(client->Hashes.to_hashed_string("HitTestMap")), isize32 {320, 200})};
+    auto destroy_map {scope_exit([&map]() noexcept { safe_call([&map] { map->DestroySelf(); }); })};
     map->EnableMapperMode();
-    ptr<ItemHexView> floor = map->AddMapperItem(client->Hashes.to_hashed_string("HitTestFloor"), mpos {8, 8}, nullptr);
-    ptr<ItemHexView> wall = map->AddMapperItem(client->Hashes.to_hashed_string("HitTestWall"), mpos {8, 8}, nullptr);
+    ptr<ItemHexView> floor {map->AddMapperItem(client->Hashes.to_hashed_string("HitTestFloor"), mpos {8, 8}, nullptr)};
+    ptr<ItemHexView> wall {map->AddMapperItem(client->Hashes.to_hashed_string("HitTestWall"), mpos {8, 8}, nullptr)};
     map->InstantScrollTo(mpos {8, 8});
     map->RebuildMap();
     REQUIRE(wall->IsMapSpriteVisible());
     REQUIRE(floor->IsMapSpriteVisible());
 
-    ptr<MapSprite> wall_sprite = wall->GetMapSprite();
+    ptr<MapSprite> wall_sprite {wall->GetMapSprite()};
     wall_sprite->SetEggAppearence(EggAppearenceType::Always);
     wall_sprite->SetEggStructure(true);
-    irect32 rect = wall_sprite->GetDrawRect();
-    ipos32 pixel = map->MapToScreenPos({rect.x + rect.width / 2, rect.y + rect.height / 2});
-    bool item_egg = false;
+    irect32 rect {wall_sprite->GetDrawRect()};
+    ipos32 pixel {map->MapToScreenPos({rect.x + rect.width / 2, rect.y + rect.height / 2})};
+    bool item_egg {false};
     CHECK(map->GetItemAtScreen(pixel, item_egg, 0, true).first == wall);
 
     map->SetTransparentEgg(TransparentEggSlot::Secondary, mpos {8, 8}, ipos32 {0, 0}, isize32 {128, 128}, TransparentEggTarget::Structure, false);
@@ -135,10 +135,10 @@ TEST_CASE("MapViewItemHitTestingCanSelectTransparentEggOccluders")
         ipos32 edge {8, 8};
         GeometryHelper::MoveHexByDirUnsafe(edge, hdir::East);
         GeometryHelper::MoveHexByDirUnsafe(edge, hdir::East);
-        mpos edge_hex = map->GetSize().from_raw_pos(edge);
+        mpos edge_hex {map->GetSize().from_raw_pos(edge)};
         GeometryHelper::MoveHexByDirUnsafe(edge, hdir::East);
-        mpos outside_hex = map->GetSize().from_raw_pos(edge);
-        ptr<ItemHexView> outside = map->AddMapperItem(client->Hashes.to_hashed_string("HitTestFloor"), outside_hex, nullptr);
+        mpos outside_hex {map->GetSize().from_raw_pos(edge)};
+        ptr<ItemHexView> outside {map->AddMapperItem(client->Hashes.to_hashed_string("HitTestFloor"), outside_hex, nullptr)};
         map->SetViewArea(mpos {8, 8}, 2);
         CHECK(map->IsHexInViewArea(edge_hex));
         CHECK_FALSE(map->IsHexInViewArea(outside_hex));
@@ -146,9 +146,9 @@ TEST_CASE("MapViewItemHitTestingCanSelectTransparentEggOccluders")
         CHECK_FALSE(Client_Map_GetItem(map, outside->GetId()));
         CHECK(Client_Map_GetItemsOnHex(map, outside_hex).empty());
         map->RebuildMap();
-        auto outside_sprite = outside->GetMapSprite();
-        irect32 outside_rect = outside_sprite->GetDrawRect();
-        ipos32 outside_pixel = map->MapToScreenPos({outside_rect.x + outside_rect.width / 2, outside_rect.y + outside_rect.height / 2});
+        auto outside_sprite {outside->GetMapSprite()};
+        irect32 outside_rect {outside_sprite->GetDrawRect()};
+        ipos32 outside_pixel {map->MapToScreenPos({outside_rect.x + outside_rect.width / 2, outside_rect.y + outside_rect.height / 2})};
         CHECK_FALSE(map->GetEntityAtScreen(outside_pixel, 0, false).first);
         mpos hit_hex {};
         CHECK_FALSE(map->GetHexAtScreen(outside_pixel, hit_hex, nullptr));
@@ -164,14 +164,14 @@ TEST_CASE("MapViewItemHitTestingCanSelectTransparentEggOccluders")
     {
         map->SetScrollAxialArea(irect32 {0, 0, 38, 20});
         map->SetScrollCheck(true);
-        auto check_viewport = [&map](isize32 size) {
-            fpos32 viewport_origin = fpos32(GeometryHelper::GetHexPos(map->GetScreenRawHex())) + map->GetScrollOffset();
-            fpos32 viewport_end = viewport_origin + fpos32(numeric_cast<float32_t>(size.width), numeric_cast<float32_t>(size.height)) / map->GetSpritesZoom();
+        auto check_viewport {[&map](isize32 size) {
+            fpos32 viewport_origin {fpos32(GeometryHelper::GetHexPos(map->GetScreenRawHex())) + map->GetScrollOffset()};
+            fpos32 viewport_end {viewport_origin + fpos32(numeric_cast<float32_t>(size.width), numeric_cast<float32_t>(size.height)) / map->GetSpritesZoom()};
             CHECK(viewport_origin.x >= GameSettings::MAP_HEX_WIDTH - 0.01f);
             CHECK(viewport_origin.y >= GameSettings::MAP_HEX_LINE_HEIGHT - 0.01f);
             CHECK(viewport_end.x <= 20 * GameSettings::MAP_HEX_WIDTH + 0.01f);
             CHECK(viewport_end.y <= 21 * GameSettings::MAP_HEX_LINE_HEIGHT + 0.01f);
-        };
+        }};
 
         for (mpos focus : {mpos {1, 1}, mpos {18, 18}}) {
             CAPTURE(focus);
@@ -179,7 +179,7 @@ TEST_CASE("MapViewItemHitTestingCanSelectTransparentEggOccluders")
             map->SetScreenSize(isize32 {320, 200});
             map->InstantZoom(1.0f, {0.5f, 0.5f});
             map->InstantScrollTo(focus);
-            ipos32 ordinary_focus_pixel = map->MapToScreenPos(map->GetHexMapPos(focus));
+            ipos32 ordinary_focus_pixel {map->MapToScreenPos(map->GetHexMapPos(focus))};
             check_viewport({320, 200});
             map->SetViewArea(focus, 2);
             CHECK(map->MapToScreenPos(map->GetHexMapPos(focus)) == ordinary_focus_pixel);
@@ -209,24 +209,24 @@ TEST_CASE("MapViewItemHitTestingCanSelectTransparentEggOccluders")
         map->SetScrollAxialArea(irect32 {-38, 0, 76, 40});
         map->SetScrollCheck(true);
         map->SetViewArea(mpos {8, 8}, 2);
-        auto camera_position = [&map]() { return fpos32(GeometryHelper::GetHexPos(map->GetScreenRawHex())) + map->GetScrollOffset(); };
-        fpos32 initial_position = camera_position();
+        auto camera_position {[&map]() { return fpos32(GeometryHelper::GetHexPos(map->GetScreenRawHex())) + map->GetScrollOffset(); }};
+        fpos32 initial_position {camera_position()};
         map->ScrollToHex(mpos {12, 12}, {}, 10000, true);
         CHECK(map->IsAutoScrolling());
         map->SetManualScroll(ScrollDirection::Right);
 
-        for (int32_t frame = 0; frame < 10; frame++) {
+        for (int32_t frame {0}; frame < 10; frame++) {
             coarse_sleep(std::chrono::milliseconds {10});
             client->GameTime.FrameAdvance(false);
             map->Process();
         }
 
         CHECK_FALSE(map->IsAutoScrolling());
-        fpos32 scrolled_position = camera_position();
+        fpos32 scrolled_position {camera_position()};
         CHECK(scrolled_position.x > initial_position.x);
         map->SetManualScroll(ScrollDirection::None);
 
-        for (int32_t frame = 0; frame < 10; frame++) {
+        for (int32_t frame {0}; frame < 10; frame++) {
             coarse_sleep(std::chrono::milliseconds {10});
             client->GameTime.FrameAdvance(false);
             map->Process();
@@ -242,18 +242,18 @@ TEST_CASE("MapViewItemHitTestingCanSelectTransparentEggOccluders")
 
 TEST_CASE("MapViewCritterFlatteningUsesProjectProperty")
 {
-    GlobalSettings settings(false);
+    GlobalSettings settings {false};
     settings.ApplyDefaultSettings();
     settings.ApplyAutoSettings();
     BakerTests::ApplySelfContainedClientSettings(settings);
     BakerTests::OverrideSetting(settings.Common.Packaged, false);
     BakerTests::OverrideSetting(settings.Baking.BakeOutput, string {});
-    auto client = safe_alloc::make_refcounted<ClientEngine>(&settings, MakeMapViewHitTestResources(), &GetApp()->MainWindow);
-    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
-    auto map = safe_alloc::make_refcounted<MapView>(client, ident_t {1001}, client->GetProtoMap(client->Hashes.to_hashed_string("HitTestMap")), isize32 {320, 200});
-    auto destroy_map = scope_exit([&map]() noexcept { safe_call([&map] { map->DestroySelf(); }); });
+    auto client {safe_alloc::make_refcounted<ClientEngine>(&settings, MakeMapViewHitTestResources(), &GetApp()->MainWindow)};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+    auto map {safe_alloc::make_refcounted<MapView>(client, ident_t {1001}, client->GetProtoMap(client->Hashes.to_hashed_string("HitTestMap")), isize32 {320, 200})};
+    auto destroy_map {scope_exit([&map]() noexcept { safe_call([&map] { map->DestroySelf(); }); })};
     map->EnableMapperMode();
-    auto cr = map->AddMapperCritter(client->Hashes.to_hashed_string("HitTestCritter"), mpos {8, 8}, mdir {0}, nullptr);
+    auto cr {map->AddMapperCritter(client->Hashes.to_hashed_string("HitTestCritter"), mpos {8, 8}, mdir {0}, nullptr)};
     map->InstantScrollTo(mpos {8, 8});
     map->RebuildMap();
     REQUIRE(cr->IsMapSpriteValid());
@@ -267,33 +267,33 @@ TEST_CASE("MapViewCritterFlatteningUsesProjectProperty")
 
 TEST_CASE("MapViewPathfindingUsesProjectObstacleProperty")
 {
-    GlobalSettings settings(false);
+    GlobalSettings settings {false};
     settings.ApplyDefaultSettings();
     settings.ApplyAutoSettings();
     BakerTests::ApplySelfContainedClientSettings(settings);
     BakerTests::OverrideSetting(settings.Common.Packaged, false);
     BakerTests::OverrideSetting(settings.Baking.BakeOutput, string {});
-    auto client = safe_alloc::make_refcounted<ClientEngine>(&settings, MakeMapViewHitTestResources(), &GetApp()->MainWindow);
-    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
-    auto map = safe_alloc::make_refcounted<MapView>(client, ident_t {1001}, client->GetProtoMap(client->Hashes.to_hashed_string("HitTestMap")), isize32 {320, 200});
-    auto destroy_map = scope_exit([&map]() noexcept { safe_call([&map] { map->DestroySelf(); }); });
+    auto client {safe_alloc::make_refcounted<ClientEngine>(&settings, MakeMapViewHitTestResources(), &GetApp()->MainWindow)};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+    auto map {safe_alloc::make_refcounted<MapView>(client, ident_t {1001}, client->GetProtoMap(client->Hashes.to_hashed_string("HitTestMap")), isize32 {320, 200})};
+    auto destroy_map {scope_exit([&map]() noexcept { safe_call([&map] { map->DestroySelf(); }); })};
     map->EnableMapperMode();
-    auto cr = map->AddMapperCritter(client->Hashes.to_hashed_string("HitTestCritter"), mpos {8, 8}, mdir {0}, nullptr);
-    auto from_hex = cr->GetHex();
-    auto to_hex = cr->GetHex();
+    auto cr {map->AddMapperCritter(client->Hashes.to_hashed_string("HitTestCritter"), mpos {8, 8}, mdir {0}, nullptr)};
+    auto from_hex {cr->GetHex()};
+    auto to_hex {cr->GetHex()};
 
-    for (int32_t i = 0; i < 2; i++) {
+    for (int32_t i {0}; i < 2; i++) {
         REQUIRE(GeometryHelper::MoveHexByDir(from_hex, mdir {0}.reverse(), map->GetSize()));
         REQUIRE(GeometryHelper::MoveHexByDir(to_hex, mdir {0}, map->GetSize()));
     }
 
-    auto check_path = [&](bool should_cross) {
-        auto target_hex = to_hex;
-        auto path = map->FindPath(nullptr, from_hex, target_hex, 0);
+    auto check_path {[&](bool should_cross) {
+        auto target_hex {to_hex};
+        auto path {map->FindPath(nullptr, from_hex, target_hex, 0)};
         REQUIRE(path);
 
-        auto hex = from_hex;
-        bool crossed = false;
+        auto hex {from_hex};
+        bool crossed {false};
 
         for (auto dir : path->DirSteps) {
             REQUIRE(GeometryHelper::MoveHexByDir(hex, dir, map->GetSize()));
@@ -301,7 +301,7 @@ TEST_CASE("MapViewPathfindingUsesProjectObstacleProperty")
         }
 
         CHECK(crossed == should_cross);
-    };
+    }};
 
     cr->SetCondition(CritterCondition::Alive);
     cr->SetPathfindingObstacle(false);

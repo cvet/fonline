@@ -82,7 +82,7 @@ struct ServerSnapshotBlocker
 
 struct ServerSnapshotState
 {
-    static constexpr uint32_t FORMAT_VERSION = 1;
+    static constexpr uint32_t FORMAT_VERSION {1};
 
     uint32_t FormatVersion {FORMAT_VERSION};
     string CompatibilityVersion {};
@@ -298,11 +298,11 @@ public:
     ItemManager ItemMngr;
 
     DataBase DbStorage {};
-    const hstring GameCollectionName = Hashes.to_hashed_string("Game");
-    const hstring HistoryCollectionName = Hashes.to_hashed_string("History");
-    const hstring PlayersCollectionName = Hashes.to_hashed_string("Players");
-    const hstring CrittersCollectionName = Hashes.to_hashed_string("Critters");
-    const hstring HashReportsCollectionName = Hashes.to_hashed_string("HashReports");
+    const hstring GameCollectionName {Hashes.to_hashed_string("Game")};
+    const hstring HistoryCollectionName {Hashes.to_hashed_string("History")};
+    const hstring PlayersCollectionName {Hashes.to_hashed_string("Players")};
+    const hstring CrittersCollectionName {Hashes.to_hashed_string("Critters")};
+    const hstring HashReportsCollectionName {Hashes.to_hashed_string("HashReports")};
 
     EventObserver<> OnWillFinish {};
     EventObserver<> OnDidFinish {};
@@ -436,7 +436,7 @@ private:
     std::atomic<uint64_t> _completedServerStatsJobs {};
 
     synctime _persistedSyncTimeMark {};
-    static constexpr auto SyncTimePersistLead = std::chrono::seconds {10};
+    static constexpr auto SyncTimePersistLead {std::chrono::seconds {10}};
 
     EntityLock _ownedLock {};
     mutable ptr<EntityLock> _entityLock {&_ownedLock};

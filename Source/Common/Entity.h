@@ -329,21 +329,21 @@ private:
 
         if (_entity->IsGlobal()) {
             array<NativeDataProvider::StorageEntryType, sizeof...(Args)> temp_storage {};
-            size_t storage_index = 0;
+            size_t storage_index {0};
             array<ptr<void>, sizeof...(Args)> args_data {([&] { return NativeDataProvider::NormalizeArg(args, temp_storage[storage_index++]); }())...};
 
-            auto accessor = make_ptr(&NativeDataProvider::NATIVE_DATA_ACCESSOR);
+            auto accessor {make_ptr(&NativeDataProvider::NATIVE_DATA_ACCESSOR)};
             FuncCallData call {.Accessor = accessor};
             call.ArgsData = args_data;
             return FireEvent(call);
         }
         else {
             array<NativeDataProvider::StorageEntryType, sizeof...(Args) + 1> temp_storage {};
-            size_t storage_index = 0;
-            nptr<Entity> first_arg = _entity;
+            size_t storage_index {0};
+            nptr<Entity> first_arg {_entity};
             array<ptr<void>, sizeof...(Args) + 1> args_data {make_ptr(first_arg.get_pp()).void_cast(), ([&] { return NativeDataProvider::NormalizeArg(args, temp_storage[storage_index++]); }())...};
 
-            auto accessor = make_ptr(&NativeDataProvider::NATIVE_DATA_ACCESSOR);
+            auto accessor {make_ptr(&NativeDataProvider::NATIVE_DATA_ACCESSOR)};
             FuncCallData call {.Accessor = accessor};
             call.ArgsData = args_data;
             return FireEvent(call);

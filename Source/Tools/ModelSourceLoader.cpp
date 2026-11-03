@@ -80,7 +80,7 @@ auto LoadModelSourceAsset(string_view path, const File& file) -> ModelSourceAsse
         throw ModelSourceLoaderException("Model source path does not match loaded file", path, file.GetPath());
     }
 
-    ufbx_load_opts opts = {};
+    ufbx_load_opts opts {};
     opts.ignore_embedded = true;
     opts.evaluate_skinning = true;
     opts.ignore_missing_external_files = true;
@@ -89,20 +89,20 @@ auto LoadModelSourceAsset(string_view path, const File& file) -> ModelSourceAsse
     opts.normalize_normals = true;
     opts.normalize_tangents = true;
 
-    ufbx_error fbx_error = {};
-    const_span<uint8_t> file_data = file.GetDataSpan();
-    auto file_data_bytes = make_nptr(file_data.data());
+    ufbx_error fbx_error {};
+    const_span<uint8_t> file_data {file.GetDataSpan()};
+    auto file_data_bytes {make_nptr(file_data.data())};
     FO_VERIFY_AND_THROW(file_data.empty() || file_data_bytes, "Non-empty model source data has a null buffer pointer", path);
-    auto scene = make_nptr(ufbx_load_memory(file_data_bytes.get(), file_data.size(), &opts, &fbx_error));
+    auto scene {make_nptr(ufbx_load_memory(file_data_bytes.get(), file_data.size(), &opts, &fbx_error))};
 
     if (!scene) {
         throw ModelSourceLoaderException("Unable to load model source", path, fbx_error.description.data);
     }
 
-    auto scene_holder = make_unique_del_ptr(scene, [](ufbx_scene* raw_scene) noexcept { ufbx_free_scene(raw_scene); });
+    auto scene_holder {make_unique_del_ptr(scene, [](ufbx_scene* raw_scene) noexcept { ufbx_free_scene(raw_scene); })};
     FO_VERIFY_AND_THROW(scene->root_node, "Loaded model source has no root node", path);
 
-    ModelSourceAsset result;
+    ModelSourceAsset result {};
     result.FileName = path;
     result.WriteTime = file.GetWriteTime();
     result.Skeleton.FileName = path;
@@ -129,9 +129,9 @@ void ValidateModelSourceAsset(const ModelSourceAsset& asset)
         throw ModelSourceLoaderException("Model source has too many animation clips", asset.FileName, asset.Animations.size(), MODEL_ANIMATION_RIG_MAX_CLIPS);
     }
 
-    set<vector<string>> skeleton_hierarchies;
-    map<string, vector<string>> hierarchy_by_name;
-    vector<string> root_hierarchy;
+    set<vector<string>> skeleton_hierarchies {};
+    map<string, vector<string>> hierarchy_by_name {};
+    vector<string> root_hierarchy {};
 
     for (const ModelSkeletonJoint& joint : asset.Skeleton.Joints) {
         ValidateModelSourceName(joint.Name, strex("skeleton joint in '{}'", asset.FileName), joint.Hierarchy.size() == 1);
@@ -147,12 +147,12 @@ void ValidateModelSourceAsset(const ModelSourceAsset& asset)
             throw ModelSourceLoaderException("Model source joint hierarchy is too deep", asset.FileName, joint.Name, joint.Hierarchy.size(), MODEL_MESH_MAX_HIERARCHY_DEPTH);
         }
 
-        for (size_t i = 0; i < joint.Hierarchy.size(); i++) {
+        for (size_t i {0}; i < joint.Hierarchy.size(); i++) {
             ValidateModelSourceName(joint.Hierarchy[i], strex("skeleton hierarchy in '{}'", asset.FileName), i == 0);
         }
 
-        for (mat44::length_type column = 0; column < 4; column++) {
-            for (mat44::length_type row = 0; row < 4; row++) {
+        for (mat44::length_type column {0}; column < 4; column++) {
+            for (mat44::length_type row {0}; row < 4; row++) {
                 if (!std::isfinite(joint.RestLocalTransform[column][row])) {
                     throw ModelSourceLoaderException("Model source contains a non-finite rest transform at a joint", asset.FileName, joint.Name);
                 }
@@ -163,7 +163,7 @@ void ValidateModelSourceAsset(const ModelSourceAsset& asset)
             throw ModelSourceLoaderException("Model source has a duplicate joint hierarchy", asset.FileName, joint.Name);
         }
 
-        const auto [name_it, name_inserted] = hierarchy_by_name.emplace(joint.Name, joint.Hierarchy);
+        const auto [name_it, name_inserted] {hierarchy_by_name.emplace(joint.Name, joint.Hierarchy)};
 
         if (!name_inserted) {
             throw ModelSourceLoaderException("Model source has a duplicate joint name", asset.FileName, name_it->first);
@@ -187,21 +187,21 @@ void ValidateModelSourceAsset(const ModelSourceAsset& asset)
             continue;
         }
 
-        vector<string> parent_hierarchy(joint.Hierarchy.begin(), joint.Hierarchy.end() - 1);
+        vector<string> parent_hierarchy {vector<string>(joint.Hierarchy.begin(), joint.Hierarchy.end() - 1)};
 
         if (skeleton_hierarchies.count(parent_hierarchy) == 0) {
             throw ModelSourceLoaderException("Model source has a joint without a parent hierarchy", asset.FileName, joint.Name);
         }
     }
 
-    for (size_t i = 0; i < asset.Animations.size(); i++) {
-        const ModelAnimationSource& animation = asset.Animations[i];
+    for (size_t i {0}; i < asset.Animations.size(); i++) {
+        const ModelAnimationSource& animation {asset.Animations[i]};
 
         if (animation.FileName != asset.FileName) {
             throw ModelSourceLoaderException("Animation in model source declares a mismatched source file", animation.Name, asset.FileName, animation.FileName);
         }
 
-        for (size_t j = 0; j < i; j++) {
+        for (size_t j {0}; j < i; j++) {
             if (strex(asset.Animations[j].Name).compare_ignore_case(animation.Name)) {
                 throw ModelSourceLoaderException("Model source contains case-insensitive duplicate animation names", asset.FileName, asset.Animations[j].Name, animation.Name);
             }
@@ -226,28 +226,28 @@ auto ModelSourceAssetCache::Get(string_view path) const -> shared_ptr<const Mode
     }
 
     using AssetPtr = shared_ptr<const ModelSourceAsset>;
-    auto promise = safe_alloc::make_shared<std::promise<AssetPtr>>();
-    PendingAsset pending = promise->get_future().share();
-    PendingAsset load;
-    bool owner = false;
+    auto promise {safe_alloc::make_shared<std::promise<AssetPtr>>()};
+    PendingAsset pending {promise->get_future().share()};
+    PendingAsset load {};
+    bool owner {false};
 
     {
         scoped_lock locker {_mutex};
 
-        const auto [it, inserted] = _loads.emplace(string(path), pending);
+        const auto [it, inserted] {_loads.emplace(string(path), pending)};
         load = it->second;
         owner = inserted;
     }
 
     if (owner) {
         try {
-            File file = _files->FindFileByPath(path);
+            File file {_files->FindFileByPath(path)};
 
             if (!file) {
                 throw ModelSourceLoaderException("Model source was not found", path);
             }
 
-            ModelSourceAsset asset = _loadCallback ? _loadCallback(path, file) : LoadModelSourceAsset(path, file);
+            ModelSourceAsset asset {_loadCallback ? _loadCallback(path, file) : LoadModelSourceAsset(path, file)};
 
             if (asset.FileName != path) {
                 throw ModelSourceLoaderException("Model source cache load returned a mismatched asset", path, asset.FileName);
@@ -269,7 +269,7 @@ auto ModelSourceAssetCache::Get(string_view path) const -> shared_ptr<const Mode
 
 static auto ConvertModelSourceString(const ufbx_string& value, const ModelSourceValidationContext& context) -> string
 {
-    auto data = make_nptr(value.data);
+    auto data {make_nptr(value.data)};
 
     if (value.length != 0 && !data) {
         throw ModelSourceLoaderException("Model source has a null string", context.FileName, context.ClipName, context.NodeName, context.FieldName, context.ElementIndex);
@@ -280,8 +280,8 @@ static auto ConvertModelSourceString(const ufbx_string& value, const ModelSource
 
 static auto ConvertModelSourceFloat(double value, const ModelSourceValidationContext& context, string_view component) -> float32_t
 {
-    constexpr double min_float = static_cast<double>(std::numeric_limits<float32_t>::lowest());
-    constexpr double max_float = static_cast<double>(std::numeric_limits<float32_t>::max());
+    constexpr double min_float {static_cast<double>(std::numeric_limits<float32_t>::lowest())};
+    constexpr double max_float {static_cast<double>(std::numeric_limits<float32_t>::max())};
 
     if (!std::isfinite(value) || value < min_float || value > max_float) {
         throw ModelSourceLoaderException("Model source has numeric data that is not representable as a finite float", context.FileName, context.ClipName, context.NodeName, context.FieldName, context.ElementIndex, component, value);
@@ -301,7 +301,7 @@ static auto ConvertModelSourceVec3(const ufbx_vec3& value, const ModelSourceVali
 
 static auto ConvertModelSourceQuaternion(const ufbx_quat& value, const ModelSourceValidationContext& context) -> quaternion
 {
-    quaternion result;
+    quaternion result {};
     result.x = ConvertModelSourceFloat(value.x, context, "x");
     result.y = ConvertModelSourceFloat(value.y, context, "y");
     result.z = ConvertModelSourceFloat(value.z, context, "z");
@@ -340,14 +340,14 @@ static void AppendModelSourceSkeletonJoint(ptr<const ufbx_node> node, const vect
         throw ModelSourceLoaderException("Model source exceeds the skeleton joint limit", skeleton.FileName, MODEL_ANIMATION_RIG_MAX_JOINTS);
     }
 
-    string node_name = ConvertModelSourceString(node->name, ModelSourceValidationContext {.FileName = skeleton.FileName, .NodeName = "<hierarchy>", .FieldName = "node_name", .ElementIndex = skeleton.Joints.size()});
-    vector<string> hierarchy = parent_hierarchy;
+    string node_name {ConvertModelSourceString(node->name, ModelSourceValidationContext {.FileName = skeleton.FileName, .NodeName = "<hierarchy>", .FieldName = "node_name", .ElementIndex = skeleton.Joints.size()})};
+    vector<string> hierarchy {parent_hierarchy};
     hierarchy.emplace_back(node_name);
-    mat44 rest_transform = ConvertModelSourceMatrix(node->node_to_parent, ModelSourceValidationContext {.FileName = skeleton.FileName, .NodeName = node_name, .FieldName = "node_to_parent", .ElementIndex = skeleton.Joints.size()});
+    mat44 rest_transform {ConvertModelSourceMatrix(node->node_to_parent, ModelSourceValidationContext {.FileName = skeleton.FileName, .NodeName = node_name, .FieldName = "node_to_parent", .ElementIndex = skeleton.Joints.size()})};
     skeleton.Joints.emplace_back(ModelSkeletonJoint {.Name = node_name, .Hierarchy = hierarchy, .RestLocalTransform = rest_transform});
 
-    for (size_t i = 0; i < node->children.count; i++) {
-        auto child = make_nptr(node->children[i]);
+    for (size_t i {0}; i < node->children.count; i++) {
+        auto child {make_nptr(node->children[i])};
         FO_VERIFY_AND_THROW(child, "Model source hierarchy contains a null child node", skeleton.FileName, node_name, i);
         AppendModelSourceSkeletonJoint(child, hierarchy, skeleton);
     }
@@ -359,7 +359,7 @@ static auto ExtractModelSourceAnimations(ptr<const ufbx_scene> scene, string_vie
         throw ModelSourceLoaderException("Model source has too many animation stacks", path, scene->anim_stacks.count, MODEL_ANIMATION_RIG_MAX_CLIPS);
     }
 
-    vector<ModelAnimationSource> result;
+    vector<ModelAnimationSource> result {};
     result.reserve(scene->anim_stacks.count);
 
     for (ptr<const ufbx_anim_stack> anim_stack : scene->anim_stacks) {
@@ -374,23 +374,23 @@ static auto ExtractModelSourceAnimation(ptr<const ufbx_scene> scene, ptr<const u
     FO_TRACE_ZONE(Baking);
 
     FO_VERIFY_AND_THROW(anim_stack->anim, "Model source animation stack has no animation", path);
-    ufbx_bake_opts bake_opts = {};
+    ufbx_bake_opts bake_opts {};
     bake_opts.trim_start_time = true;
-    ufbx_error bake_error = {};
-    auto baked_anim = make_nptr(ufbx_bake_anim(scene.get(), anim_stack->anim, &bake_opts, &bake_error));
-    string clip_name = ConvertModelSourceString(anim_stack->name, ModelSourceValidationContext {.FileName = path, .FieldName = "animation_stack_name"});
+    ufbx_error bake_error {};
+    auto baked_anim {make_nptr(ufbx_bake_anim(scene.get(), anim_stack->anim, &bake_opts, &bake_error))};
+    string clip_name {ConvertModelSourceString(anim_stack->name, ModelSourceValidationContext {.FileName = path, .FieldName = "animation_stack_name"})};
 
     if (!baked_anim) {
         throw ModelSourceLoaderException("Unable to bake animation from model source", clip_name, path, bake_error.description.data);
     }
 
-    auto baked_anim_holder = make_unique_del_ptr(baked_anim, [](ufbx_baked_anim* raw_anim) noexcept { ufbx_free_baked_anim(raw_anim); });
+    auto baked_anim_holder {make_unique_del_ptr(baked_anim, [](ufbx_baked_anim* raw_anim) noexcept { ufbx_free_baked_anim(raw_anim); })};
 
     if (baked_anim->nodes.count > MODEL_ANIMATION_RIG_MAX_JOINTS) {
         throw ModelSourceLoaderException("Animation from model source has too many baked nodes", clip_name, path, baked_anim->nodes.count, MODEL_ANIMATION_RIG_MAX_JOINTS);
     }
 
-    ModelAnimationSource result;
+    ModelAnimationSource result {};
     result.FileName = path;
     result.Name = clip_name;
     result.Duration = ConvertModelSourceFloat(baked_anim->playback_duration, ModelSourceValidationContext {.FileName = path, .ClipName = clip_name, .FieldName = "playback_duration"}, "time");
@@ -398,10 +398,10 @@ static auto ExtractModelSourceAnimation(ptr<const ufbx_scene> scene, ptr<const u
 
     for (const ufbx_baked_node& baked_node : baked_anim->nodes) {
         FO_VERIFY_AND_THROW(baked_node.typed_id < scene->nodes.count, "Baked model source animation node id is outside the scene node table", path, clip_name, baked_node.typed_id, scene->nodes.count);
-        auto node = make_nptr(scene->nodes[baked_node.typed_id]);
+        auto node {make_nptr(scene->nodes[baked_node.typed_id])};
         FO_VERIFY_AND_THROW(node, "Baked model source animation node is null", path, clip_name, baked_node.typed_id);
-        string node_name = ConvertModelSourceString(node->name, ModelSourceValidationContext {.FileName = path, .ClipName = clip_name, .FieldName = "node_name", .ElementIndex = baked_node.typed_id});
-        ModelAnimationJointSource joint;
+        string node_name {ConvertModelSourceString(node->name, ModelSourceValidationContext {.FileName = path, .ClipName = clip_name, .FieldName = "node_name", .ElementIndex = baked_node.typed_id})};
+        ModelAnimationJointSource joint {};
         joint.OutputName = node_name;
         joint.Hierarchy = BuildModelSourceHierarchy(node, path, clip_name);
 
@@ -416,20 +416,20 @@ static auto ExtractModelSourceAnimation(ptr<const ufbx_scene> scene, ptr<const u
         joint.Scale.Times.reserve(baked_node.scale_keys.count);
         joint.Scale.Values.reserve(baked_node.scale_keys.count);
 
-        for (size_t i = 0; i < baked_node.translation_keys.count; i++) {
-            const ufbx_baked_vec3& key = baked_node.translation_keys[i];
+        for (size_t i {0}; i < baked_node.translation_keys.count; i++) {
+            const ufbx_baked_vec3& key {baked_node.translation_keys[i]};
             ModelSourceValidationContext context {.FileName = path, .ClipName = clip_name, .NodeName = node_name, .FieldName = "translation", .ElementIndex = i};
             joint.Translation.Times.emplace_back(ConvertModelSourceFloat(key.time, context, "time"));
             joint.Translation.Values.emplace_back(ConvertModelSourceVec3(key.value, context));
         }
-        for (size_t i = 0; i < baked_node.rotation_keys.count; i++) {
-            const ufbx_baked_quat& key = baked_node.rotation_keys[i];
+        for (size_t i {0}; i < baked_node.rotation_keys.count; i++) {
+            const ufbx_baked_quat& key {baked_node.rotation_keys[i]};
             ModelSourceValidationContext context {.FileName = path, .ClipName = clip_name, .NodeName = node_name, .FieldName = "rotation", .ElementIndex = i};
             joint.Rotation.Times.emplace_back(ConvertModelSourceFloat(key.time, context, "time"));
             joint.Rotation.Values.emplace_back(ConvertModelSourceQuaternion(key.value, context));
         }
-        for (size_t i = 0; i < baked_node.scale_keys.count; i++) {
-            const ufbx_baked_vec3& key = baked_node.scale_keys[i];
+        for (size_t i {0}; i < baked_node.scale_keys.count; i++) {
+            const ufbx_baked_vec3& key {baked_node.scale_keys[i]};
             ModelSourceValidationContext context {.FileName = path, .ClipName = clip_name, .NodeName = node_name, .FieldName = "scale", .ElementIndex = i};
             joint.Scale.Times.emplace_back(ConvertModelSourceFloat(key.time, context, "time"));
             joint.Scale.Values.emplace_back(ConvertModelSourceVec3(key.value, context));
@@ -443,8 +443,8 @@ static auto ExtractModelSourceAnimation(ptr<const ufbx_scene> scene, ptr<const u
 
 static auto BuildModelSourceHierarchy(ptr<const ufbx_node> node, string_view path, string_view clip_name) -> vector<string>
 {
-    vector<string> result;
-    nptr<const ufbx_node> hierarchy_node = node;
+    vector<string> result {};
+    nptr<const ufbx_node> hierarchy_node {node};
 
     while (hierarchy_node) {
         if (result.size() >= MODEL_MESH_MAX_HIERARCHY_DEPTH) {
@@ -483,11 +483,11 @@ static void ValidateModelSourceAnimation(const ModelAnimationSource& animation, 
         throw ModelSourceLoaderException("Animation has too many joint outputs", animation.Name, animation.FileName, animation.Joints.size(), MODEL_ANIMATION_RIG_MAX_JOINTS);
     }
 
-    set<vector<string>> seen_hierarchies;
-    set<string> seen_outputs;
+    set<vector<string>> seen_hierarchies {};
+    set<string> seen_outputs {};
 
-    for (size_t i = 0; i < animation.Joints.size(); i++) {
-        const ModelAnimationJointSource& joint = animation.Joints[i];
+    for (size_t i {0}; i < animation.Joints.size(); i++) {
+        const ModelAnimationJointSource& joint {animation.Joints[i]};
         ValidateModelSourceName(joint.OutputName, strex("animation '{}#{}' output {}", animation.FileName, animation.Name, i), joint.Hierarchy.size() == 1);
 
         if (joint.Hierarchy.empty()) {
@@ -497,7 +497,7 @@ static void ValidateModelSourceAnimation(const ModelAnimationSource& animation, 
             throw ModelSourceLoaderException("Animation joint hierarchy has too many names", animation.Name, animation.FileName, joint.Hierarchy.size(), i, MODEL_MESH_MAX_HIERARCHY_DEPTH);
         }
 
-        for (size_t j = 0; j < joint.Hierarchy.size(); j++) {
+        for (size_t j {0}; j < joint.Hierarchy.size(); j++) {
             ValidateModelSourceName(joint.Hierarchy[j], strex("animation '{}#{}' hierarchy {}", animation.FileName, animation.Name, i), j == 0);
         }
 
@@ -531,8 +531,8 @@ static void ValidateModelSourceVec3Track(const ModelAnimationVec3Track& track, s
 
     ValidateModelSourceTimes(track.Times, source_file, clip_name, output_name, track_name);
 
-    for (size_t i = 0; i < track.Values.size(); i++) {
-        const vec3& value = track.Values[i];
+    for (size_t i {0}; i < track.Values.size(); i++) {
+        const vec3& value {track.Values[i]};
 
         if (!std::isfinite(value.x) || !std::isfinite(value.y) || !std::isfinite(value.z)) {
             throw ModelSourceLoaderException("Animation output has a non-finite track value", source_file, clip_name, output_name, track_name, i);
@@ -554,14 +554,14 @@ static void ValidateModelSourceQuaternionTrack(const ModelAnimationQuaternionTra
 
     ValidateModelSourceTimes(track.Times, source_file, clip_name, output_name, "rotation");
 
-    for (size_t i = 0; i < track.Values.size(); i++) {
-        const quaternion& value = track.Values[i];
+    for (size_t i {0}; i < track.Values.size(); i++) {
+        const quaternion& value {track.Values[i]};
 
         if (!std::isfinite(value.w) || !std::isfinite(value.x) || !std::isfinite(value.y) || !std::isfinite(value.z)) {
             throw ModelSourceLoaderException("Animation output has a non-finite rotation value", source_file, clip_name, output_name, i);
         }
 
-        float32_t norm_squared = glm::dot(value, value);
+        float32_t norm_squared {glm::dot(value, value)};
 
         if (!std::isfinite(norm_squared) || norm_squared <= std::numeric_limits<float32_t>::epsilon()) {
             throw ModelSourceLoaderException("Animation output has a zero rotation value", source_file, clip_name, output_name, i);
@@ -574,7 +574,7 @@ static void ValidateModelSourceQuaternionTrack(const ModelAnimationQuaternionTra
 
 static void ValidateModelSourceTimes(const vector<float32_t>& times, string_view source_file, string_view clip_name, string_view output_name, string_view track_name)
 {
-    for (size_t i = 0; i < times.size(); i++) {
+    for (size_t i {0}; i < times.size(); i++) {
         if (!std::isfinite(times[i])) {
             throw ModelSourceLoaderException("Animation output has a non-finite track time", source_file, clip_name, output_name, track_name, i);
         }
@@ -582,7 +582,7 @@ static void ValidateModelSourceTimes(const vector<float32_t>& times, string_view
             throw ModelSourceLoaderException("Animation output has non-ascending track times", source_file, clip_name, output_name, track_name, i - 1, i);
         }
         if (i != 0) {
-            float32_t delta = times[i] - times[i - 1];
+            float32_t delta {times[i] - times[i - 1]};
 
             if (!std::isfinite(delta) || !std::isfinite(1.0f / delta)) {
                 throw ModelSourceLoaderException("Animation output has an invalid track time interval", source_file, clip_name, output_name, track_name, i - 1, i, times[i - 1], times[i]);

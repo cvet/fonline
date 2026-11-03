@@ -113,7 +113,7 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
     FO_TRACE_ZONE(Baking);
 
     if (IsBakingReportEnabled()) {
-        SpriteMeshBakeConfig mesh_config = ResolveSpriteMeshBakeConfig(_context->Settings);
+        SpriteMeshBakeConfig mesh_config {ResolveSpriteMeshBakeConfig(_context->Settings)};
         RecordSpriteMeshBakingSettings(SpriteMeshBakingReportSettings {
             .Enabled = mesh_config.Enabled,
             .AlphaThreshold = mesh_config.AlphaThreshold,
@@ -124,26 +124,26 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
         });
     }
 
-    vector<pair<File, ImageImport::Loader>> files_to_bake;
+    vector<pair<File, ImageImport::Loader>> files_to_bake {};
     files_to_bake.reserve(files.GetFilesCount());
-    string sprite_info_path = strex("{}/{}.foinfo", SPRITE_INFO_DIRECTORY, _context->PackName);
-    bool scan_mode = target_path.empty();
-    bool sprite_info_target = target_path == sprite_info_path;
-    bool bake_sprite_info = scan_mode || sprite_info_target;
-    bool sprite_info_needs_write = !_context->BakeChecker;
-    map<string, SpriteInfoFileEntry> sprite_info_entries;
-    set<string> current_sprite_sources;
-    uint64_t maximum_source_write_time = 0;
+    string sprite_info_path {static_cast<string&&>(strex("{}/{}.foinfo", SPRITE_INFO_DIRECTORY, _context->PackName))};
+    bool scan_mode {target_path.empty()};
+    bool sprite_info_target {target_path == sprite_info_path};
+    bool bake_sprite_info {scan_mode || sprite_info_target};
+    bool sprite_info_needs_write {!_context->BakeChecker};
+    map<string, SpriteInfoFileEntry> sprite_info_entries {};
+    set<string> current_sprite_sources {};
+    uint64_t maximum_source_write_time {0};
 
-    nptr<const FileSystem> sprite_info_files = _context->PackBakedFiles ? _context->PackBakedFiles : _context->BakedFiles;
+    nptr<const FileSystem> sprite_info_files {_context->PackBakedFiles ? _context->PackBakedFiles : _context->BakedFiles};
     FO_VERIFY_AND_THROW(sprite_info_files, "Baker context has no baked file registry");
 
     if (scan_mode && sprite_info_files->IsFileExists(sprite_info_path)) {
-        File sprite_info_file = sprite_info_files->ReadFile(sprite_info_path);
+        File sprite_info_file {sprite_info_files->ReadFile(sprite_info_path)};
         FO_VERIFY_AND_THROW(sprite_info_file, "Baked sprite info resource is not readable", sprite_info_path);
 
         for (SpriteInfoFileEntry& entry : ReadSpriteInfoFile(sprite_info_path, sprite_info_file.GetStr())) {
-            bool inserted = sprite_info_entries.emplace(entry.SourcePath, std::move(entry)).second;
+            bool inserted {sprite_info_entries.emplace(entry.SourcePath, std::move(entry)).second};
             FO_VERIFY_AND_THROW(inserted, "Baked sprite info resource contains a duplicate source path", sprite_info_path);
         }
     }
@@ -155,7 +155,7 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
     if (bake_sprite_info) {
         for (auto&& [ext, loader] : _fileLoaders) {
             for (const auto& file_header : files) {
-                string file_ext = strex(file_header.GetPath()).get_file_extension();
+                string file_ext {static_cast<string&&>(strex(file_header.GetPath()).get_file_extension())};
 
                 if (file_ext != ext) {
                     continue;
@@ -182,13 +182,13 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
         }
     }
     else {
-        string ext = strex(target_path).get_file_extension();
+        string ext {static_cast<string&&>(strex(target_path).get_file_extension())};
 
         if (!_fileLoaders.contains(ext)) {
             return;
         }
 
-        auto file = files.FindFileByPath(target_path);
+        auto file {files.FindFileByPath(target_path)};
 
         if (!file) {
             return;
@@ -204,25 +204,25 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
         sprite_info_needs_write = _context->BakeChecker(sprite_info_path, maximum_source_write_time);
     }
 
-    vector<std::future<SpriteInfoFileEntry>> file_bakings;
+    vector<std::future<SpriteInfoFileEntry>> file_bakings {};
 
-    for (size_t file_index = 0; file_index < files_to_bake.size(); file_index++) {
-        string task_name = strex("BakeImage-{}", files_to_bake[file_index].first.GetPath()).str();
+    for (size_t file_index {0}; file_index < files_to_bake.size(); file_index++) {
+        string task_name {strex("BakeImage-{}", files_to_bake[file_index].first.GetPath()).str()};
         file_bakings.emplace_back(run_async(GetAsyncMode(), task_name, [this, &files, &files_to_bake, file_index]() FO_DEFERRED -> SpriteInfoFileEntry {
-            auto& file_to_bake = files_to_bake[file_index];
-            string_view path = file_to_bake.first.GetPath();
+            auto& file_to_bake {files_to_bake[file_index]};
+            string_view path {file_to_bake.first.GetPath()};
             ImageImport::Context context {&files, [this, &files](string_view nested_path) { return LoadAny(nested_path, files); }};
-            auto collection = LoadImage(file_to_bake.second, path, "", file_to_bake.first.GetReader(), context);
+            auto collection {LoadImage(file_to_bake.second, path, "", file_to_bake.first.GetReader(), context)};
             return BakeCollection(path, collection);
         }));
     }
 
-    int32_t errors = 0;
-    string first_error;
+    int32_t errors {0};
+    string first_error {};
 
-    for (size_t file_index = 0; file_index < file_bakings.size(); file_index++) {
+    for (size_t file_index {0}; file_index < file_bakings.size(); file_index++) {
         try {
-            SpriteInfoFileEntry entry = file_bakings[file_index].get();
+            SpriteInfoFileEntry entry {file_bakings[file_index].get()};
             sprite_info_entries[entry.SourcePath] = std::move(entry);
         }
         catch (const std::exception& ex) {
@@ -244,9 +244,9 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
         return;
     }
 
-    size_t sprite_info_entry_count = sprite_info_entries.size();
+    size_t sprite_info_entry_count {sprite_info_entries.size()};
     std::erase_if(sprite_info_entries, [&current_sprite_sources](const auto& entry) { return !current_sprite_sources.contains(entry.first); });
-    bool removed_sprite_info_entries = sprite_info_entries.size() != sprite_info_entry_count;
+    bool removed_sprite_info_entries {sprite_info_entries.size() != sprite_info_entry_count};
     FO_VERIFY_AND_THROW(sprite_info_entries.size() == current_sprite_sources.size(), "Sprite info index is incomplete; perform a full resource rebake", _context->PackName, sprite_info_entries.size(), current_sprite_sources.size());
 
     if (!sprite_info_needs_write && files_to_bake.empty() && !removed_sprite_info_entries) {
@@ -254,7 +254,7 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
     }
 
     if (!sprite_info_entries.empty()) {
-        vector<SpriteInfoFileEntry> entries;
+        vector<SpriteInfoFileEntry> entries {};
         entries.reserve(sprite_info_entries.size());
 
         for (auto& [source_path, entry] : sprite_info_entries) {
@@ -262,8 +262,8 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
             entries.emplace_back(std::move(entry));
         }
 
-        string sprite_info = WriteSpriteInfoFile(entries);
-        vector<uint8_t> sprite_info_data(sprite_info.begin(), sprite_info.end());
+        string sprite_info {WriteSpriteInfoFile(entries)};
+        vector<uint8_t> sprite_info_data {vector<uint8_t>(sprite_info.begin(), sprite_info.end())};
         _context->WriteData(sprite_info_path, sprite_info_data);
     }
 }
@@ -272,12 +272,12 @@ auto ImageBaker::BakeCollection(string_view fname, const ImageImport::FrameColle
 {
     FO_TRACE_ZONE(Baking);
 
-    vector<uint8_t> data;
-    auto writer = data_writer(data);
+    vector<uint8_t> data {};
+    auto writer {data_writer(data)};
 
-    int32_t dirs = collection.HaveDirs ? GameSettings::MAP_DIR_COUNT : 1;
-    SpriteMeshBakeConfig mesh_config = ResolveSpriteMeshBakeConfig(_context->Settings);
-    string output_path = collection.NewName.empty() ? string(fname) : collection.NewName;
+    int32_t dirs {collection.HaveDirs ? GameSettings::MAP_DIR_COUNT : 1};
+    SpriteMeshBakeConfig mesh_config {ResolveSpriteMeshBakeConfig(_context->Settings)};
+    string output_path {collection.NewName.empty() ? string(fname) : collection.NewName};
     SpriteInfoFileEntry sprite_info_entry {
         .SourcePath = string(fname),
         .ResourcePath = output_path,
@@ -288,8 +288,8 @@ auto ImageBaker::BakeCollection(string_view fname, const ImageImport::FrameColle
                 .Directions = vector<SpriteDirInfo>(numeric_cast<size_t>(dirs)),
             },
     };
-    bool report_enabled = IsBakingReportEnabled();
-    vector<SpriteMeshBakingFrameReport> frame_reports;
+    bool report_enabled {IsBakingReportEnabled()};
+    vector<SpriteMeshBakingFrameReport> frame_reports {};
     SpriteInfoBakingStats stats {
         .Collections = 1,
         .Directions = dirs,
@@ -300,23 +300,23 @@ auto ImageBaker::BakeCollection(string_view fname, const ImageImport::FrameColle
     writer.write<uint16_t>(numeric_cast<uint16_t>(collection.AnimTicks));
     writer.write<uint8_t>(numeric_cast<uint8_t>(dirs));
 
-    for (int32_t dir = 0; dir < dirs; dir++) {
-        const auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
-        SpriteDirInfo& direction_info = sprite_info_entry.Info.Directions[numeric_cast<size_t>(dir)];
+    for (int32_t dir {0}; dir < dirs; dir++) {
+        const auto& sequence {dir == 0 ? collection.Main : collection.Dirs[dir - 1]};
+        SpriteDirInfo& direction_info {sprite_info_entry.Info.Directions[numeric_cast<size_t>(dir)]};
         direction_info.Frames.resize(numeric_cast<size_t>(collection.SequenceSize));
-        vector<optional<BakedSpriteMesh>> prepared_meshes(sequence.Frames.size());
-        vector<int32_t> mesh_build_paddings(sequence.Frames.size());
-        vector<int32_t> frame_paddings(sequence.Frames.size());
+        vector<optional<BakedSpriteMesh>> prepared_meshes {vector<optional<BakedSpriteMesh>>(sequence.Frames.size())};
+        vector<int32_t> mesh_build_paddings {vector<int32_t>(sequence.Frames.size())};
+        vector<int32_t> frame_paddings {vector<int32_t>(sequence.Frames.size())};
 
         if (mesh_config.Enabled) {
-            for (size_t frame_index = 0; frame_index < sequence.Frames.size(); frame_index++) {
-                const ImageImport::FrameShot& shot = sequence.Frames[frame_index];
+            for (size_t frame_index {0}; frame_index < sequence.Frames.size(); frame_index++) {
+                const ImageImport::FrameShot& shot {sequence.Frames[frame_index]};
                 if (shot.Shared) {
                     continue;
                 }
 
-                optional<ImageImport::FrameShot> maximum_padded_shot;
-                ptr<const ImageImport::FrameShot> mesh_shot = &shot;
+                optional<ImageImport::FrameShot> maximum_padded_shot {};
+                ptr<const ImageImport::FrameShot> mesh_shot {&shot};
 
                 if (shot.Width > 0 && shot.Height > 0) {
                     maximum_padded_shot = PadSpriteFrame(shot, SPRITE_MESH_MAXIMUM_PADDING);
@@ -324,23 +324,23 @@ auto ImageBaker::BakeCollection(string_view fname, const ImageImport::FrameColle
                     mesh_build_paddings[frame_index] = SPRITE_MESH_MAXIMUM_PADDING;
                 }
 
-                int64_t reference_quad_double_area = checked_mul(checked_mul(numeric_cast<int64_t>(shot.Width), numeric_cast<int64_t>(shot.Height)), int64_t {2});
+                int64_t reference_quad_double_area {checked_mul(checked_mul(numeric_cast<int64_t>(shot.Width), numeric_cast<int64_t>(shot.Height)), int64_t {2})};
                 prepared_meshes[frame_index] = BuildSpriteMesh(mesh_shot->Data, {mesh_shot->Width, mesh_shot->Height}, mesh_config, reference_quad_double_area);
                 frame_paddings[frame_index] = ResolveSpriteFramePadding(shot, *prepared_meshes[frame_index], mesh_build_paddings[frame_index]);
             }
         }
 
-        for (int32_t i = 0; i < collection.SequenceSize; i++) {
-            const auto& shot = sequence.Frames[numeric_cast<size_t>(i)];
-            SpriteFrameInfo& frame_info = direction_info.Frames[numeric_cast<size_t>(i)];
+        for (int32_t i {0}; i < collection.SequenceSize; i++) {
+            const auto& shot {sequence.Frames[numeric_cast<size_t>(i)]};
+            SpriteFrameInfo& frame_info {direction_info.Frames[numeric_cast<size_t>(i)]};
             stats.FrameSlots++;
             writer.write<bool>(shot.Shared);
 
             if (!shot.Shared) {
                 stats.UniqueFrames++;
-                int32_t frame_padding = frame_paddings[numeric_cast<size_t>(i)];
-                optional<ImageImport::FrameShot> padded_shot;
-                ptr<const ImageImport::FrameShot> bake_shot = &shot;
+                int32_t frame_padding {frame_paddings[numeric_cast<size_t>(i)]};
+                optional<ImageImport::FrameShot> padded_shot {};
+                ptr<const ImageImport::FrameShot> bake_shot {&shot};
 
                 if (frame_padding > 0) {
                     padded_shot = PadSpriteFrame(shot, frame_padding);
@@ -349,22 +349,22 @@ auto ImageBaker::BakeCollection(string_view fname, const ImageImport::FrameColle
 
                 FO_VERIFY_AND_THROW(bake_shot->Width > 0 && bake_shot->Height > 0 && bake_shot->Width <= numeric_cast<int32_t>(std::numeric_limits<uint16_t>::max()) && bake_shot->Height <= numeric_cast<int32_t>(std::numeric_limits<uint16_t>::max()), "Animation frame dimensions are outside the serialized range", bake_shot->Width, bake_shot->Height);
 
-                int64_t pixel_count = checked_mul(numeric_cast<int64_t>(bake_shot->Width), numeric_cast<int64_t>(bake_shot->Height));
-                size_t expected_data_size = numeric_cast<size_t>(checked_mul(pixel_count, int64_t {4}));
+                int64_t pixel_count {checked_mul(numeric_cast<int64_t>(bake_shot->Width), numeric_cast<int64_t>(bake_shot->Height))};
+                size_t expected_data_size {numeric_cast<size_t>(checked_mul(pixel_count, int64_t {4}))};
                 FO_VERIFY_AND_THROW(bake_shot->Data.size() == expected_data_size, "Animation frame RGBA payload size does not match frame dimensions", bake_shot->Data.size(), bake_shot->Width, bake_shot->Height);
 
-                BakedSpriteMesh mesh;
+                BakedSpriteMesh mesh {};
 
                 if (prepared_meshes[numeric_cast<size_t>(i)].has_value() && prepared_meshes[numeric_cast<size_t>(i)]->Kind != SpriteMeshKind::Quad) {
                     mesh = std::move(*prepared_meshes[numeric_cast<size_t>(i)]);
                     TranslateSpriteMesh(mesh, frame_padding - mesh_build_paddings[numeric_cast<size_t>(i)], *bake_shot);
                 }
                 else {
-                    int64_t reference_quad_double_area = checked_mul(checked_mul(numeric_cast<int64_t>(shot.Width), numeric_cast<int64_t>(shot.Height)), int64_t {2});
+                    int64_t reference_quad_double_area {checked_mul(checked_mul(numeric_cast<int64_t>(shot.Width), numeric_cast<int64_t>(shot.Height)), int64_t {2})};
                     mesh = BuildSpriteMesh(bake_shot->Data, {bake_shot->Width, bake_shot->Height}, mesh_config, reference_quad_double_area);
                 }
 
-                optional<ImageImport::FrameShot> cropped_shot;
+                optional<ImageImport::FrameShot> cropped_shot {};
 
                 if (mesh.Kind == SpriteMeshKind::Mesh) {
                     cropped_shot = CropSpriteFrameToMeshBounds(*bake_shot, shot, frame_padding, mesh);
@@ -379,18 +379,18 @@ auto ImageBaker::BakeCollection(string_view fname, const ImageImport::FrameColle
                 isize32 cropped_size {bake_shot->Width, bake_shot->Height};
                 FO_VERIFY_AND_THROW(mesh.Kind != SpriteMeshKind::Mesh || (source_size.width > 0 && source_size.height > 0 && cropped_size.width > 0 && cropped_size.height > 0), "Sprite frame offset resolution requires positive dimensions", source_size, cropped_size);
 
-                ipos32 frame_offset = mesh.Kind == SpriteMeshKind::Mesh ?
-                    ipos32 {
-                        checked_add(checked_add(source_offset.x, cropped_size.width / 2), checked_sub(mesh.Data.SourceOffset.x, source_size.width / 2)),
-                        checked_add(checked_add(source_offset.y, cropped_size.height), checked_sub(mesh.Data.SourceOffset.y, source_size.height)),
-                    } :
-                    source_offset;
+                ipos32 frame_offset {mesh.Kind == SpriteMeshKind::Mesh ?
+                        ipos32 {
+                            checked_add(checked_add(source_offset.x, cropped_size.width / 2), checked_sub(mesh.Data.SourceOffset.x, source_size.width / 2)),
+                            checked_add(checked_add(source_offset.y, cropped_size.height), checked_sub(mesh.Data.SourceOffset.y, source_size.height)),
+                        } :
+                        source_offset};
 
                 if (report_enabled) {
-                    optional<SpriteMeshBakingCandidateReport> best_rejected_candidate;
+                    optional<SpriteMeshBakingCandidateReport> best_rejected_candidate {};
 
                     if (mesh.BestRejectedCandidate.has_value()) {
-                        const SpriteMeshCandidateSummary& candidate = *mesh.BestRejectedCandidate;
+                        const SpriteMeshCandidateSummary& candidate {*mesh.BestRejectedCandidate};
                         best_rejected_candidate = SpriteMeshBakingCandidateReport {
                             .SelectionOrigin = string(SpriteMeshCandidateSourceName(candidate.Source)),
                             .TriangleCount = candidate.TriangleCount,
@@ -502,32 +502,32 @@ static auto PadSpriteFrame(const ImageImport::FrameShot& shot, int32_t padding) 
     FO_VERIFY_AND_THROW(padding > 0, "Sprite frame padding must be positive", padding);
     FO_VERIFY_AND_THROW(shot.Width > 0 && shot.Height > 0 && shot.Width <= numeric_cast<int32_t>(std::numeric_limits<uint16_t>::max()) && shot.Height <= numeric_cast<int32_t>(std::numeric_limits<uint16_t>::max()), "Animation frame dimensions are outside the serialized range", shot.Width, shot.Height);
 
-    int64_t pixel_count = checked_mul(numeric_cast<int64_t>(shot.Width), numeric_cast<int64_t>(shot.Height));
-    size_t expected_data_size = numeric_cast<size_t>(checked_mul(pixel_count, int64_t {4}));
+    int64_t pixel_count {checked_mul(numeric_cast<int64_t>(shot.Width), numeric_cast<int64_t>(shot.Height))};
+    size_t expected_data_size {numeric_cast<size_t>(checked_mul(pixel_count, int64_t {4}))};
     FO_VERIFY_AND_THROW(shot.Data.size() == expected_data_size, "Animation frame RGBA payload size does not match frame dimensions", shot.Data.size(), shot.Width, shot.Height);
 
-    int32_t padded_width = checked_add(shot.Width, checked_mul(padding, int32_t {2}));
-    int32_t padded_height = checked_add(shot.Height, checked_mul(padding, int32_t {2}));
+    int32_t padded_width {checked_add(shot.Width, checked_mul(padding, int32_t {2}))};
+    int32_t padded_height {checked_add(shot.Height, checked_mul(padding, int32_t {2}))};
     FO_VERIFY_AND_THROW(padded_width <= numeric_cast<int32_t>(std::numeric_limits<uint16_t>::max()) && padded_height <= numeric_cast<int32_t>(std::numeric_limits<uint16_t>::max()), "Sprite frame padding exceeds the serialized dimension range", shot.Width, shot.Height, padding);
 
-    ImageImport::FrameShot result;
+    ImageImport::FrameShot result {};
     result.Width = padded_width;
     result.Height = padded_height;
     result.NextX = shot.NextX;
     result.NextY = shot.NextY;
-    int64_t destination_pixel_count = checked_mul(numeric_cast<int64_t>(result.Width), numeric_cast<int64_t>(result.Height));
+    int64_t destination_pixel_count {checked_mul(numeric_cast<int64_t>(result.Width), numeric_cast<int64_t>(result.Height))};
     result.Data.resize(numeric_cast<size_t>(checked_mul(destination_pixel_count, int64_t {4})));
 
-    size_t source_row_size = numeric_cast<size_t>(checked_mul(numeric_cast<int64_t>(shot.Width), int64_t {4}));
-    size_t destination_row_size = numeric_cast<size_t>(checked_mul(numeric_cast<int64_t>(result.Width), int64_t {4}));
-    int64_t destination_x_offset_wide = checked_mul(numeric_cast<int64_t>(padding), int64_t {4});
-    size_t destination_x_offset = numeric_cast<size_t>(destination_x_offset_wide);
+    size_t source_row_size {numeric_cast<size_t>(checked_mul(numeric_cast<int64_t>(shot.Width), int64_t {4}))};
+    size_t destination_row_size {numeric_cast<size_t>(checked_mul(numeric_cast<int64_t>(result.Width), int64_t {4}))};
+    int64_t destination_x_offset_wide {checked_mul(numeric_cast<int64_t>(padding), int64_t {4})};
+    size_t destination_x_offset {numeric_cast<size_t>(destination_x_offset_wide)};
 
-    for (int32_t y = 0; y < shot.Height; y++) {
-        int32_t destination_y = checked_add(y, padding);
-        size_t source_offset = checked_mul(numeric_cast<size_t>(y), source_row_size);
-        size_t destination_row_offset = checked_mul(numeric_cast<size_t>(destination_y), destination_row_size);
-        size_t destination_offset = checked_add(destination_row_offset, destination_x_offset);
+    for (int32_t y {0}; y < shot.Height; y++) {
+        int32_t destination_y {checked_add(y, padding)};
+        size_t source_offset {checked_mul(numeric_cast<size_t>(y), source_row_size)};
+        size_t destination_row_offset {checked_mul(numeric_cast<size_t>(destination_y), destination_row_size)};
+        size_t destination_offset {checked_add(destination_row_offset, destination_x_offset)};
         memory::copy(result.Data.data() + destination_offset, shot.Data.data() + source_offset, source_row_size);
     }
 
@@ -540,15 +540,15 @@ static auto ResolveSpriteFramePadding(const ImageImport::FrameShot& shot, const 
         return 0;
     }
 
-    int32_t required_padding = 0;
+    int32_t required_padding {0};
 
     for (ipos32 vertex : mesh.Data.Vertices) {
-        int32_t relative_x = checked_sub(vertex.x, build_padding);
-        int32_t relative_y = checked_sub(vertex.y, build_padding);
-        int32_t relative_right = checked_sub(relative_x, shot.Width);
-        int32_t relative_bottom = checked_sub(relative_y, shot.Height);
-        int32_t relative_left = checked_sub(int32_t {0}, relative_x);
-        int32_t relative_top = checked_sub(int32_t {0}, relative_y);
+        int32_t relative_x {checked_sub(vertex.x, build_padding)};
+        int32_t relative_y {checked_sub(vertex.y, build_padding)};
+        int32_t relative_right {checked_sub(relative_x, shot.Width)};
+        int32_t relative_bottom {checked_sub(relative_y, shot.Height)};
+        int32_t relative_left {checked_sub(int32_t {0}, relative_x)};
+        int32_t relative_top {checked_sub(int32_t {0}, relative_y)};
         required_padding = std::max({required_padding, relative_left, relative_right, relative_top, relative_bottom});
     }
 
@@ -563,8 +563,8 @@ static void TranslateSpriteMesh(BakedSpriteMesh& mesh, int32_t offset, const Ima
     }
 
     for (ipos32 vertex : mesh.Data.Vertices) {
-        int64_t translated_x = checked_add(numeric_cast<int64_t>(vertex.x), numeric_cast<int64_t>(offset));
-        int64_t translated_y = checked_add(numeric_cast<int64_t>(vertex.y), numeric_cast<int64_t>(offset));
+        int64_t translated_x {checked_add(numeric_cast<int64_t>(vertex.x), numeric_cast<int64_t>(offset))};
+        int64_t translated_y {checked_add(numeric_cast<int64_t>(vertex.y), numeric_cast<int64_t>(offset))};
         FO_VERIFY_AND_THROW(translated_x >= 0 && translated_x <= numeric_cast<int64_t>(shot.Width) && translated_y >= 0 && translated_y <= numeric_cast<int64_t>(shot.Height), "Translated sprite mesh vertex lies outside the baked frame", vertex, shot.Width, shot.Height, offset);
     }
 
@@ -579,8 +579,8 @@ static auto CropSpriteFrameToMeshBounds(const ImageImport::FrameShot& shot, cons
     FO_VERIFY_AND_THROW(mesh.Kind == SpriteMeshKind::Mesh && !mesh.Data.Vertices.empty() && !mesh.Data.Indices.empty(), "Sprite frame cropping requires a non-empty mesh");
     FO_VERIFY_AND_THROW(shot.Width > 0 && shot.Height > 0 && shot.Width <= numeric_cast<int32_t>(std::numeric_limits<uint16_t>::max()) && shot.Height <= numeric_cast<int32_t>(std::numeric_limits<uint16_t>::max()), "Animation frame dimensions are outside the serialized range", shot.Width, shot.Height);
 
-    int64_t pixel_count = checked_mul(numeric_cast<int64_t>(shot.Width), numeric_cast<int64_t>(shot.Height));
-    size_t expected_data_size = numeric_cast<size_t>(checked_mul(pixel_count, int64_t {4}));
+    int64_t pixel_count {checked_mul(numeric_cast<int64_t>(shot.Width), numeric_cast<int64_t>(shot.Height))};
+    size_t expected_data_size {numeric_cast<size_t>(checked_mul(pixel_count, int64_t {4}))};
     FO_VERIFY_AND_THROW(shot.Data.size() == expected_data_size, "Animation frame RGBA payload size does not match frame dimensions", shot.Data.size(), shot.Width, shot.Height);
 
     ipos32 minimum_vertex {shot.Width, shot.Height};
@@ -594,7 +594,7 @@ static auto CropSpriteFrameToMeshBounds(const ImageImport::FrameShot& shot, cons
         maximum_vertex.y = std::max(maximum_vertex.y, vertex.y);
     }
 
-    isize32 cropped_size = {checked_sub(maximum_vertex.x, minimum_vertex.x), checked_sub(maximum_vertex.y, minimum_vertex.y)};
+    isize32 cropped_size {checked_sub(maximum_vertex.x, minimum_vertex.x), checked_sub(maximum_vertex.y, minimum_vertex.y)};
     FO_VERIFY_AND_THROW(cropped_size.width > 0 && cropped_size.height > 0 && cropped_size.width <= numeric_cast<int32_t>(std::numeric_limits<uint16_t>::max()) && cropped_size.height <= numeric_cast<int32_t>(std::numeric_limits<uint16_t>::max()), "Sprite mesh bounds are outside the serialized dimension range", minimum_vertex, maximum_vertex);
 
     mesh.Data.SourceSize = {source_shot.Width, source_shot.Height};
@@ -608,24 +608,24 @@ static auto CropSpriteFrameToMeshBounds(const ImageImport::FrameShot& shot, cons
         return std::nullopt;
     }
 
-    ImageImport::FrameShot result;
+    ImageImport::FrameShot result {};
     result.Width = cropped_size.width;
     result.Height = cropped_size.height;
     result.NextX = shot.NextX;
     result.NextY = shot.NextY;
-    int64_t cropped_pixel_count = checked_mul(numeric_cast<int64_t>(result.Width), numeric_cast<int64_t>(result.Height));
+    int64_t cropped_pixel_count {checked_mul(numeric_cast<int64_t>(result.Width), numeric_cast<int64_t>(result.Height))};
     result.Data.resize(numeric_cast<size_t>(checked_mul(cropped_pixel_count, int64_t {4})));
 
-    size_t source_row_size = numeric_cast<size_t>(checked_mul(numeric_cast<int64_t>(shot.Width), int64_t {4}));
-    size_t cropped_row_size = numeric_cast<size_t>(checked_mul(numeric_cast<int64_t>(result.Width), int64_t {4}));
-    int64_t source_x_offset_wide = checked_mul(numeric_cast<int64_t>(minimum_vertex.x), int64_t {4});
-    size_t source_x_offset = numeric_cast<size_t>(source_x_offset_wide);
+    size_t source_row_size {numeric_cast<size_t>(checked_mul(numeric_cast<int64_t>(shot.Width), int64_t {4}))};
+    size_t cropped_row_size {numeric_cast<size_t>(checked_mul(numeric_cast<int64_t>(result.Width), int64_t {4}))};
+    int64_t source_x_offset_wide {checked_mul(numeric_cast<int64_t>(minimum_vertex.x), int64_t {4})};
+    size_t source_x_offset {numeric_cast<size_t>(source_x_offset_wide)};
 
-    for (int32_t y = 0; y < result.Height; y++) {
-        int32_t source_y = checked_add(y, minimum_vertex.y);
-        size_t source_row_offset = checked_mul(numeric_cast<size_t>(source_y), source_row_size);
-        size_t source_offset = checked_add(source_row_offset, source_x_offset);
-        size_t destination_offset = checked_mul(numeric_cast<size_t>(y), cropped_row_size);
+    for (int32_t y {0}; y < result.Height; y++) {
+        int32_t source_y {checked_add(y, minimum_vertex.y)};
+        size_t source_row_offset {checked_mul(numeric_cast<size_t>(source_y), source_row_size)};
+        size_t source_offset {checked_add(source_row_offset, source_x_offset)};
+        size_t destination_offset {checked_mul(numeric_cast<size_t>(y), cropped_row_size)};
         memory::copy(result.Data.data() + destination_offset, shot.Data.data() + source_offset, cropped_row_size);
     }
 
@@ -634,21 +634,21 @@ static auto CropSpriteFrameToMeshBounds(const ImageImport::FrameShot& shot, cons
 
 auto ImageBaker::LoadAny(string_view fname_with_opt, const FileCollection& files) const -> ImageImport::FrameCollection
 {
-    string ext = strex(fname_with_opt).get_file_extension();
-    string dir = strex(fname_with_opt).extract_dir();
-    string_view name = strvex(fname_with_opt).extract_file_name().erase_file_extension().substring_until('$');
-    string fname = strex(dir).combine_path(strex("{}.{}", name, ext)).str();
-    string_view opt = strvex(fname_with_opt).extract_file_name().erase_file_extension().substring_after('$');
+    string ext {static_cast<string&&>(strex(fname_with_opt).get_file_extension())};
+    string dir {static_cast<string&&>(strex(fname_with_opt).extract_dir())};
+    string_view name {static_cast<string_view>(strvex(fname_with_opt).extract_file_name().erase_file_extension().substring_until('$'))};
+    string fname {strex(dir).combine_path(strex("{}.{}", name, ext)).str()};
+    string_view opt {static_cast<string_view>(strvex(fname_with_opt).extract_file_name().erase_file_extension().substring_after('$'))};
 
     ImageImport::CheckEnabled(fname);
 
-    auto file = files.FindFileByPath(fname);
+    auto file {files.FindFileByPath(fname)};
 
     if (!file) {
         throw ImageBakerException("Image file not found", fname, fname_with_opt, dir, name, ext);
     }
 
-    if (auto it = _fileLoaders.find(ext); it != _fileLoaders.end()) {
+    if (auto it {_fileLoaders.find(ext)}; it != _fileLoaders.end()) {
         ImageImport::Context context {&files, [this, &files](string_view nested_path) { return LoadAny(nested_path, files); }};
         return LoadImage(it->second, fname, opt, file.GetReader(), context);
     }
@@ -659,10 +659,10 @@ auto ImageBaker::LoadAny(string_view fname_with_opt, const FileCollection& files
 
 static auto LoadImage(const ImageImport::Loader& loader, string_view fname, string_view opt, FileReader reader, const ImageImport::Context& context) -> ImageImport::FrameCollection
 {
-    size_t input_size = reader.GetSize();
+    size_t input_size {reader.GetSize()};
 
     try {
-        ImageImport::FrameCollection collection = loader.Load(fname, opt, std::move(reader), context);
+        ImageImport::FrameCollection collection {loader.Load(fname, opt, std::move(reader), context)};
         ValidateFrameCollection(fname, collection);
         return collection;
     }
@@ -676,14 +676,14 @@ static void ValidateFrameCollection(string_view fname, const ImageImport::FrameC
     FO_VERIFY_AND_THROW(collection.SequenceSize > 0 && collection.SequenceSize <= numeric_cast<int32_t>(std::numeric_limits<uint16_t>::max()), "Image frame count is outside the serialized range", fname, collection.SequenceSize);
     FO_VERIFY_AND_THROW(collection.AnimTicks >= 0 && collection.AnimTicks <= numeric_cast<int32_t>(std::numeric_limits<uint16_t>::max()), "Image animation duration is outside the serialized range", fname, collection.AnimTicks);
 
-    int32_t dir_count = collection.HaveDirs ? GameSettings::MAP_DIR_COUNT : 1;
+    int32_t dir_count {collection.HaveDirs ? GameSettings::MAP_DIR_COUNT : 1};
 
-    for (int32_t dir = 0; dir < dir_count; dir++) {
-        const ImageImport::FrameSequence& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
+    for (int32_t dir {0}; dir < dir_count; dir++) {
+        const ImageImport::FrameSequence& sequence {dir == 0 ? collection.Main : collection.Dirs[dir - 1]};
         FO_VERIFY_AND_THROW(sequence.Frames.size() == numeric_cast<size_t>(collection.SequenceSize), "Image direction frame count does not match the sequence size", fname, dir, sequence.Frames.size(), collection.SequenceSize);
 
-        for (int32_t frame_index = 0; frame_index < collection.SequenceSize; frame_index++) {
-            const ImageImport::FrameShot& shot = sequence.Frames[numeric_cast<size_t>(frame_index)];
+        for (int32_t frame_index {0}; frame_index < collection.SequenceSize; frame_index++) {
+            const ImageImport::FrameShot& shot {sequence.Frames[numeric_cast<size_t>(frame_index)]};
 
             if (shot.Shared) {
                 FO_VERIFY_AND_THROW(shot.SharedIndex >= 0 && shot.SharedIndex < frame_index, "Shared image frame points outside previously loaded frames", fname, dir, frame_index, shot.SharedIndex);
@@ -692,8 +692,8 @@ static void ValidateFrameCollection(string_view fname, const ImageImport::FrameC
 
             FO_VERIFY_AND_THROW(shot.Width > 0 && shot.Height > 0 && shot.Width <= numeric_cast<int32_t>(std::numeric_limits<uint16_t>::max()) && shot.Height <= numeric_cast<int32_t>(std::numeric_limits<uint16_t>::max()), "Image frame dimensions are outside the serialized range", fname, dir, frame_index, shot.Width, shot.Height);
 
-            int64_t pixel_count = checked_mul(numeric_cast<int64_t>(shot.Width), numeric_cast<int64_t>(shot.Height));
-            size_t expected_data_size = numeric_cast<size_t>(checked_mul(pixel_count, int64_t {4}));
+            int64_t pixel_count {checked_mul(numeric_cast<int64_t>(shot.Width), numeric_cast<int64_t>(shot.Height))};
+            size_t expected_data_size {numeric_cast<size_t>(checked_mul(pixel_count, int64_t {4}))};
             FO_VERIFY_AND_THROW(shot.Data.size() == expected_data_size, "Image frame RGBA payload size does not match frame dimensions", fname, dir, frame_index, shot.Data.size(), shot.Width, shot.Height);
         }
     }

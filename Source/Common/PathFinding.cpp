@@ -36,13 +36,13 @@
 FO_BEGIN_NAMESPACE
 
 // A gag costs as much as a detour this many steps long, so a short way around is preferred to it
-static constexpr int32_t GAG_DETOUR_STEPS = 10;
+static constexpr int32_t GAG_DETOUR_STEPS {10};
 // A plain or gag step raises an estimate by its cost and by at most one hex of distance, so its push lands within the
 // ring; a critter dearer than that waits in the heap
-static constexpr int32_t OPEN_BUCKETS = 16;
-static constexpr int32_t SEARCH_BLOCK_SHIFT = 4;
-static constexpr int32_t SEARCH_BLOCK_SIDE = 1 << SEARCH_BLOCK_SHIFT;
-static constexpr int32_t SEARCH_BLOCK_CELLS = SEARCH_BLOCK_SIDE * SEARCH_BLOCK_SIDE;
+static constexpr int32_t OPEN_BUCKETS {16};
+static constexpr int32_t SEARCH_BLOCK_SHIFT {4};
+static constexpr int32_t SEARCH_BLOCK_SIDE {1 << SEARCH_BLOCK_SHIFT};
+static constexpr int32_t SEARCH_BLOCK_CELLS {SEARCH_BLOCK_SIDE * SEARCH_BLOCK_SIDE};
 
 static_assert(1 + GAG_DETOUR_STEPS + 1 < OPEN_BUCKETS);
 
@@ -170,13 +170,13 @@ static void CloseDirectionSegment(TraceDirectionOutput& output);
 auto PathFinding::CheckHexWithMultihex(mpos hex, mdir dir, int32_t multihex, msize map_size, const function<HexBlockResult(mpos)>& check_hex) -> HexBlockResult
 {
     // Single hex: just check center
-    auto worst = check_hex(hex);
+    auto worst {check_hex(hex)};
 
     if (worst == HexBlockResult::Blocked || multihex == 0) {
         return worst;
     }
 
-    auto update_worst = [&worst](HexBlockResult result) -> bool {
+    auto update_worst {[&worst](HexBlockResult result) -> bool {
         if (result == HexBlockResult::Blocked) {
             worst = result;
             return true; // Short-circuit
@@ -186,12 +186,12 @@ auto PathFinding::CheckHexWithMultihex(mpos hex, mdir dir, int32_t multihex, msi
         }
 
         return false;
-    };
+    }};
 
     // Extend base hex in movement direction
-    ipos32 raw_extended = ipos32 {hex.x, hex.y};
+    ipos32 raw_extended {ipos32 {hex.x, hex.y}};
 
-    for (int32_t k = 0; k < multihex; k++) {
+    for (int32_t k {0}; k < multihex; k++) {
         GeometryHelper::MoveHexByDirUnsafe(raw_extended, dir);
     }
 
@@ -204,12 +204,12 @@ auto PathFinding::CheckHexWithMultihex(mpos hex, mdir dir, int32_t multihex, msi
     }
 
     // CW/CCW perimeter from extended hex
-    bool is_square_corner = (dir.hex().value() % 2) != 0 && !GameSettings::HEXAGONAL_GEOMETRY;
-    int32_t steps_count = is_square_corner ? multihex * 2 : multihex;
+    bool is_square_corner {(dir.hex().value() % 2) != 0 && !GameSettings::HEXAGONAL_GEOMETRY};
+    int32_t steps_count {is_square_corner ? multihex * 2 : multihex};
 
     // Clockwise
     {
-        mdir cw_dir;
+        mdir cw_dir {};
 
         if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
             cw_dir = dir.rotateHex(4);
@@ -222,9 +222,9 @@ auto PathFinding::CheckHexWithMultihex(mpos hex, mdir dir, int32_t multihex, msi
             cw_dir = cw_dir.rotateHex(1);
         }
 
-        ipos32 raw_hex = raw_extended;
+        ipos32 raw_hex {raw_extended};
 
-        for (int32_t k = 0; k < steps_count; k++) {
+        for (int32_t k {0}; k < steps_count; k++) {
             GeometryHelper::MoveHexByDirUnsafe(raw_hex, cw_dir);
 
             if (!map_size.is_valid_pos(raw_hex)) {
@@ -239,7 +239,7 @@ auto PathFinding::CheckHexWithMultihex(mpos hex, mdir dir, int32_t multihex, msi
 
     // Counter-clockwise
     {
-        mdir ccw_dir;
+        mdir ccw_dir {};
 
         if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
             ccw_dir = dir.rotateHex(2);
@@ -252,9 +252,9 @@ auto PathFinding::CheckHexWithMultihex(mpos hex, mdir dir, int32_t multihex, msi
             ccw_dir = ccw_dir.rotateHex(7);
         }
 
-        ipos32 raw_hex = raw_extended;
+        ipos32 raw_hex {raw_extended};
 
-        for (int32_t k = 0; k < steps_count; k++) {
+        for (int32_t k {0}; k < steps_count; k++) {
             GeometryHelper::MoveHexByDirUnsafe(raw_hex, ccw_dir);
 
             if (!map_size.is_valid_pos(raw_hex)) {
@@ -274,9 +274,9 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
 {
     FO_TRACE_ZONE(Map);
 
-    FindPathOutput output;
+    FindPathOutput output {};
 
-    msize map_size = input.MapSize;
+    msize map_size {input.MapSize};
 
     if (!map_size.is_valid_pos(input.FromHex) || (!input.CheckTarget && !map_size.is_valid_pos(input.ToHex))) {
         output.Result = FindPathOutput::ResultType::InvalidHexes;
@@ -306,8 +306,8 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
         return output;
     }
 
-    mpos to_hex = search.GetGoal();
-    vector<mdir> raw_steps;
+    mpos to_hex {search.GetGoal()};
+    vector<mdir> raw_steps {};
 
     if (!search.Backtrack(raw_steps)) {
         output.Result = FindPathOutput::ResultType::BacktraceError;
@@ -316,19 +316,19 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
 
     // Compile steps with control points
     if (input.FreeMovement) {
-        mpos trace_hex = input.FromHex;
+        mpos trace_hex {input.FromHex};
 
         while (true) {
-            mpos trace_hex2 = to_hex;
+            mpos trace_hex2 {to_hex};
 
-            for (int32_t i = numeric_cast<int32_t>(raw_steps.size()) - 1; i >= 0; i--) {
-                LineTracer tracer(trace_hex, trace_hex2, 0.0f, map_size);
-                mpos next_hex = trace_hex;
-                small_vector<mdir, 64> direct_steps;
-                bool failed = false;
+            for (int32_t i {numeric_cast<int32_t>(raw_steps.size()) - 1}; i >= 0; i--) {
+                LineTracer tracer {trace_hex, trace_hex2, 0.0f, map_size};
+                mpos next_hex {trace_hex};
+                small_vector<mdir, 64> direct_steps {};
+                bool failed {false};
 
                 while (true) {
-                    auto dir = tracer.GetNextHex(next_hex);
+                    auto dir {tracer.GetNextHex(next_hex)};
 
                     if (!dir.has_value()) {
                         failed = true;
@@ -369,11 +369,11 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
         }
     }
     else {
-        for (size_t i = 0; i < raw_steps.size(); i++) {
-            auto cur_dir = raw_steps[i];
+        for (size_t i {0}; i < raw_steps.size(); i++) {
+            auto cur_dir {raw_steps[i]};
             output.Steps.emplace_back(cur_dir);
 
-            for (size_t j = i + 1; j < raw_steps.size(); j++) {
+            for (size_t j {i + 1}; j < raw_steps.size(); j++) {
                 if (raw_steps[j] == cur_dir) {
                     output.Steps.emplace_back(cur_dir);
                     i++;
@@ -394,9 +394,9 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
     output.NewToHex = to_hex;
 
     if (input.FreeMovement) {
-        mpos target_hex = input.CheckTarget ? output.NewToHex : input.ToHex;
-        ipos16 target_hex_offset = input.CheckTarget ? ipos16 {} : input.ToHexOffset;
-        auto end_offset = EvaluateFreeMovementEndOffset(output.NewToHex, target_hex, target_hex_offset);
+        mpos target_hex {input.CheckTarget ? output.NewToHex : input.ToHex};
+        ipos16 target_hex_offset {input.CheckTarget ? ipos16 {} : input.ToHexOffset};
+        auto end_offset {EvaluateFreeMovementEndOffset(output.NewToHex, target_hex, target_hex_offset)};
         output.EndHexOffset = end_offset.value_or(input.FromHexOffset);
     }
 
@@ -407,14 +407,14 @@ auto PathFinding::FindReachable(const FindReachableInput& input) -> vector<mpos>
 {
     FO_TRACE_ZONE(Map);
 
-    msize map_size = input.MapSize;
-    vector<mpos> reachable;
+    msize map_size {input.MapSize};
+    vector<mpos> reachable {};
 
     if (!map_size.is_valid_pos(input.FromHex)) {
         return reachable;
     }
 
-    unordered_set<mpos> targets_left;
+    unordered_set<mpos> targets_left {};
     targets_left.reserve(input.TargetHexes.size());
 
     for (mpos target_hex : input.TargetHexes) {
@@ -424,30 +424,30 @@ auto PathFinding::FindReachable(const FindReachableInput& input) -> vector<mpos>
     }
 
     PathSearchGrid grid {map_size};
-    vector<mpos> flood;
+    vector<mpos> flood {};
     flood.emplace_back(input.FromHex);
     grid.GetCell(input.FromHex).Reached = true;
     targets_left.erase(input.FromHex);
 
     // Hexes are expanded in the order they were reached, so each is reached by its fewest steps
-    for (size_t i = 0; i < flood.size() && !targets_left.empty(); i++) {
-        mpos hex = flood[i];
-        int32_t steps = grid.GetCell(hex).Steps;
+    for (size_t i {0}; i < flood.size() && !targets_left.empty(); i++) {
+        mpos hex {flood[i]};
+        int32_t steps {grid.GetCell(hex).Steps};
 
         if (steps >= input.MaxLength) {
             continue;
         }
 
-        for (int32_t dir_value = 0; dir_value < GameSettings::MAP_DIR_COUNT; dir_value++) {
-            ipos32 raw_next_hex = ipos32 {hex.x, hex.y};
+        for (int32_t dir_value {0}; dir_value < GameSettings::MAP_DIR_COUNT; dir_value++) {
+            ipos32 raw_next_hex {ipos32 {hex.x, hex.y}};
             GeometryHelper::MoveHexByDirUnsafe(raw_next_hex, hdir(dir_value));
 
             if (!map_size.is_valid_pos(raw_next_hex)) {
                 continue;
             }
 
-            mpos next_hex = map_size.from_raw_pos(raw_next_hex);
-            PathSearchCell& next_cell = grid.GetCell(next_hex);
+            mpos next_hex {map_size.from_raw_pos(raw_next_hex)};
+            PathSearchCell& next_cell {grid.GetCell(next_hex)};
 
             if (next_cell.Reached) {
                 continue;
@@ -474,7 +474,7 @@ auto PathFinding::FindReachable(const FindReachableInput& input) -> vector<mpos>
             continue;
         }
 
-        nptr<const PathSearchCell> cell = grid.FindCell(target_hex);
+        nptr<const PathSearchCell> cell {grid.FindCell(target_hex)};
 
         if (cell && cell->Reached) {
             reachable.emplace_back(target_hex);
@@ -488,15 +488,15 @@ auto PathFinding::TraceLine(const TraceLineInput& input) -> TraceLineOutput
 {
     FO_TRACE_ZONE(Map);
 
-    TraceLineOutput output;
+    TraceLineOutput output {};
 
-    int32_t dist = input.MaxDist != 0 ? input.MaxDist : GeometryHelper::GetDistance(input.StartHex, input.TargetHex);
-    auto tracer = LineTracer(input.StartHex, input.TargetHex, input.Angle, input.MapSize);
-    mpos next_hex = input.StartHex;
-    mpos prev_hex = next_hex;
-    bool last_passed_ok = false;
+    int32_t dist {input.MaxDist != 0 ? input.MaxDist : GeometryHelper::GetDistance(input.StartHex, input.TargetHex)};
+    auto tracer {LineTracer(input.StartHex, input.TargetHex, input.Angle, input.MapSize)};
+    mpos next_hex {input.StartHex};
+    mpos prev_hex {next_hex};
+    bool last_passed_ok {false};
 
-    for (int32_t i = 0;; i++) {
+    for (int32_t i {0};; i++) {
         if (i >= dist) {
             output.FullyTraced = true;
             break;
@@ -536,17 +536,17 @@ auto PathFinding::TraceDirection(const TraceDirectionInput& input) -> TraceDirec
     FO_VERIFY_AND_THROW(input.MapSize.is_valid_pos(input.StartHex), "Direction trace starts outside the map", input.StartHex, input.MapSize);
     FO_VERIFY_AND_THROW(input.MapSize.is_valid_pos(input.RayHex), "Direction trace ray anchor lies outside the map", input.RayHex, input.MapSize);
 
-    TraceDirectionOutput output;
-    float32_t angle = numeric_cast<float32_t>(input.Dir.angle());
-    DirectionLine line = MakeDirectionLine(input.RayHex, input.RayHexOffset, angle);
-    mpos cur_hex = input.StartHex;
+    TraceDirectionOutput output {};
+    float32_t angle {numeric_cast<float32_t>(input.Dir.angle())};
+    DirectionLine line {MakeDirectionLine(input.RayHex, input.RayHexOffset, angle)};
+    mpos cur_hex {input.StartHex};
 
     while (std::cmp_less(output.Steps.size(), input.MaxSteps)) {
-        optional<mdir> line_dir = FindDirectionLineStep(cur_hex, line, angle, input.MapSize);
+        optional<mdir> line_dir {FindDirectionLineStep(cur_hex, line, angle, input.MapSize)};
 
         if (line_dir.has_value()) {
-            mpos next_hex = cur_hex;
-            bool moved = GeometryHelper::MoveHexByDir(next_hex, line_dir.value(), input.MapSize);
+            mpos next_hex {cur_hex};
+            bool moved {GeometryHelper::MoveHexByDir(next_hex, line_dir.value(), input.MapSize)};
             FO_VERIFY_AND_THROW(moved, "Direction trace line step left the map", cur_hex, line_dir.value());
 
             if (IsDirectionStepPassable(next_hex, line_dir.value(), input)) {
@@ -560,7 +560,7 @@ auto PathFinding::TraceDirection(const TraceDirectionInput& input) -> TraceDirec
             break;
         }
 
-        optional<mdir> side_dir = FindDirectionSideStep(cur_hex, angle, input);
+        optional<mdir> side_dir {FindDirectionSideStep(cur_hex, angle, input)};
 
         if (!side_dir.has_value()) {
             break;
@@ -568,7 +568,7 @@ auto PathFinding::TraceDirection(const TraceDirectionInput& input) -> TraceDirec
 
         // The drawn path turns at hex centres, so the run before the side step and the side step itself are segments
         CloseDirectionSegment(output);
-        bool moved = GeometryHelper::MoveHexByDir(cur_hex, side_dir.value(), input.MapSize);
+        bool moved {GeometryHelper::MoveHexByDir(cur_hex, side_dir.value(), input.MapSize)};
         FO_VERIFY_AND_THROW(moved, "Direction trace side step left the map", cur_hex, side_dir.value());
         output.Steps.emplace_back(side_dir.value());
         CloseDirectionSegment(output);
@@ -591,16 +591,16 @@ auto PathFinding::EvaluateFreeMovementEndOffset(mpos new_to_hex, mpos to_hex, ip
 {
     // Work in map pixel space with the final hex center as the origin.
     // C = final hex center -> target hex center; the real target adds the target's own sub-hex offset
-    ipos32 center_to_hex = GeometryHelper::GetHexOffset(new_to_hex, to_hex);
-    float32_t target_x = numeric_cast<float32_t>(center_to_hex.x + to_hex_offset.x);
-    float32_t target_y = numeric_cast<float32_t>(center_to_hex.y + to_hex_offset.y);
+    ipos32 center_to_hex {GeometryHelper::GetHexOffset(new_to_hex, to_hex)};
+    float32_t target_x {numeric_cast<float32_t>(center_to_hex.x + to_hex_offset.x)};
+    float32_t target_y {numeric_cast<float32_t>(center_to_hex.y + to_hex_offset.y)};
 
     // Distance uses the camera Y projection (same metric as MovingContext segment distances)
-    float32_t y_proj = GeometryHelper::GetYProj();
-    float32_t target_proj_y = target_y * y_proj;
-    float32_t target_len = std::sqrt(target_x * target_x + target_proj_y * target_proj_y);
+    float32_t y_proj {GeometryHelper::GetYProj()};
+    float32_t target_proj_y {target_y * y_proj};
+    float32_t target_len {std::sqrt(target_x * target_x + target_proj_y * target_proj_y)};
 
-    constexpr float32_t min_len = 0.5f;
+    constexpr float32_t min_len {0.5f};
 
     if (target_len < min_len) {
         // Already on the target
@@ -608,20 +608,20 @@ auto PathFinding::EvaluateFreeMovementEndOffset(mpos new_to_hex, mpos to_hex, ip
     }
 
     // Gap to preserve = continuous distance between the final hex center and the target hex center (the "cut" gap)
-    float32_t gap_x = numeric_cast<float32_t>(center_to_hex.x);
-    float32_t gap_proj_y = numeric_cast<float32_t>(center_to_hex.y) * y_proj;
-    float32_t gap_len = std::sqrt(gap_x * gap_x + gap_proj_y * gap_proj_y);
+    float32_t gap_x {numeric_cast<float32_t>(center_to_hex.x)};
+    float32_t gap_proj_y {numeric_cast<float32_t>(center_to_hex.y) * y_proj};
+    float32_t gap_len {std::sqrt(gap_x * gap_x + gap_proj_y * gap_proj_y)};
 
     // Stand at gap_len from the real target, on the final-hex side of it
-    float32_t factor = 1.0f - gap_len / target_len;
-    int32_t ox = iround<int32_t>(factor * target_x);
-    int32_t oy = iround<int32_t>(factor * target_y);
+    float32_t factor {1.0f - gap_len / target_len};
+    int32_t ox {iround<int32_t>(factor * target_x)};
+    int32_t oy {iround<int32_t>(factor * target_y)};
 
-    constexpr int32_t half_w = GameSettings::MAP_HEX_WIDTH / 2;
-    constexpr int32_t half_h = GameSettings::MAP_HEX_HEIGHT / 2;
+    constexpr int32_t half_w {GameSettings::MAP_HEX_WIDTH / 2};
+    constexpr int32_t half_h {GameSettings::MAP_HEX_HEIGHT / 2};
 
-    int16_t clamped_ox = numeric_cast<int16_t>(std::clamp(ox, -half_w, half_w));
-    int16_t clamped_oy = numeric_cast<int16_t>(std::clamp(oy, -half_h, half_h));
+    int16_t clamped_ox {numeric_cast<int16_t>(std::clamp(ox, -half_w, half_w))};
+    int16_t clamped_oy {numeric_cast<int16_t>(std::clamp(oy, -half_h, half_h))};
     return ipos16 {clamped_ox, clamped_oy};
 }
 
@@ -632,7 +632,7 @@ PathSearch::PathSearch(const FindPathInput& input) :
     _lineStart {GetPlanePos(input.FromHex)}
 {
     if (!input.CheckTarget) {
-        ipos32 to_pos = GetPlanePos(input.ToHex);
+        ipos32 to_pos {GetPlanePos(input.ToHex)};
         _line = ipos32 {to_pos.x - _lineStart.x, to_pos.y - _lineStart.y};
     }
 }
@@ -643,19 +643,19 @@ auto PathSearch::Run() -> FindPathOutput::ResultType
     // first step; a multi-target search has no ring to look at and takes its targets as they are
     _critterGoalAllowed = _input->CheckTarget || DoesEveryGoalHoldCritter();
 
-    PathSearchCell& start = _grid.GetCell(_input->FromHex);
+    PathSearchCell& start {_grid.GetCell(_input->FromHex)};
     start.Reached = true;
     _reached = 1;
     _open.Push(GetStepsToGoal(*_input, _input->FromHex), _input->FromHex);
 
-    bool enclosure_probed = _input->CheckTarget || _input->EnclosureProbeLimit <= 0;
-    bool goal_found = false;
-    int64_t goal_cost = 0;
-    int32_t goal_deviation = 0;
+    bool enclosure_probed {_input->CheckTarget || _input->EnclosureProbeLimit <= 0};
+    bool goal_found {false};
+    int64_t goal_cost {0};
+    int32_t goal_deviation {0};
 
     while (!_open.IsEmpty()) {
-        PathSearchNode node = _open.Pop();
-        PathSearchCell& cell = _grid.GetCell(node.Hex);
+        PathSearchNode node {_open.Pop()};
+        PathSearchCell& cell {_grid.GetCell(node.Hex)};
 
         // A cheaper entry for the same hex always comes out first, so a hex already closed means a stale entry
         if (cell.Closed) {
@@ -669,12 +669,12 @@ auto PathSearch::Run() -> FindPathOutput::ResultType
         }
 
         cell.Closed = true;
-        int64_t cost = cell.Cost;
-        int32_t steps = cell.Steps;
+        int64_t cost {cell.Cost};
+        int32_t steps {cell.Steps};
 
         if (IsGoal(node.Hex)) {
             // Of the cheapest goals, the one nearest the straight line to the target
-            int32_t deviation = GetDeviation(node.Hex);
+            int32_t deviation {GetDeviation(node.Hex)};
 
             if (!goal_found || deviation < goal_deviation) {
                 _goal = node.Hex;
@@ -709,22 +709,22 @@ auto PathSearch::Run() -> FindPathOutput::ResultType
 // the hex nearest the straight line back to the start, so of all the cheapest routes the straightest is taken
 auto PathSearch::Backtrack(vector<mdir>& raw_steps) -> bool
 {
-    msize map_size = _input->MapSize;
-    mpos cur_hex = _goal;
-    int32_t cur_steps = _grid.GetCell(_goal).Steps;
-    int64_t cur_cost = _grid.GetCell(_goal).Cost;
-    float32_t base_angle = GeometryHelper::GetDirAngle(_goal, _input->FromHex);
+    msize map_size {_input->MapSize};
+    mpos cur_hex {_goal};
+    int32_t cur_steps {_grid.GetCell(_goal).Steps};
+    int64_t cur_cost {_grid.GetCell(_goal).Cost};
+    float32_t base_angle {GeometryHelper::GetDirAngle(_goal, _input->FromHex)};
     raw_steps.resize(numeric_cast<size_t>(cur_steps));
 
     while (cur_steps > 0) {
-        mdir best_step_dir;
-        mpos best_step_hex;
-        int64_t best_step_cost = 0;
-        bool step_ok = false;
-        float32_t best_step_angle_diff = 0.0f;
+        mdir best_step_dir {};
+        mpos best_step_hex {};
+        int64_t best_step_cost {0};
+        bool step_ok {false};
+        float32_t best_step_angle_diff {0.0f};
 
-        for (int32_t dir_value = 0; dir_value < GameSettings::MAP_DIR_COUNT; dir_value++) {
-            mdir dir = hdir(dir_value);
+        for (int32_t dir_value {0}; dir_value < GameSettings::MAP_DIR_COUNT; dir_value++) {
+            mdir dir {hdir(dir_value)};
             ipos32 step_raw_hex {cur_hex.x, cur_hex.y};
             GeometryHelper::MoveHexByDirUnsafe(step_raw_hex, dir.reverse());
 
@@ -732,22 +732,22 @@ auto PathSearch::Backtrack(vector<mdir>& raw_steps) -> bool
                 continue;
             }
 
-            mpos step_hex = map_size.from_raw_pos(step_raw_hex);
-            nptr<const PathSearchCell> step_cell = _grid.FindCell(step_hex);
+            mpos step_hex {map_size.from_raw_pos(step_raw_hex)};
+            nptr<const PathSearchCell> step_cell {_grid.FindCell(step_hex)};
 
             if (!step_cell || !step_cell->Reached || step_cell->Steps != cur_steps - 1) {
                 continue;
             }
 
-            int64_t step_cost = step_cell->Cost;
-            HexBlockResult block = CheckEntry(cur_hex, dir);
+            int64_t step_cost {step_cell->Cost};
+            HexBlockResult block {CheckEntry(cur_hex, dir)};
 
             if (block == HexBlockResult::Blocked || step_cost + GetEntryCost(*_input, block) != cur_cost) {
                 continue;
             }
 
-            float32_t angle = GeometryHelper::GetDirAngle(step_hex, _input->FromHex);
-            float32_t angle_diff = GeometryHelper::GetDirAngleDiff(base_angle, angle);
+            float32_t angle {GeometryHelper::GetDirAngle(step_hex, _input->FromHex)};
+            float32_t angle_diff {GeometryHelper::GetDirAngleDiff(base_angle, angle)};
 
             if (!step_ok || angle_diff < best_step_angle_diff) {
                 best_step_dir = dir;
@@ -779,9 +779,9 @@ auto PathSearch::IsLineHexBlocked(mpos hex, mdir dir) -> bool
 
 auto PathSearch::GetDeviation(mpos hex) const -> int32_t
 {
-    ipos32 hex_pos = GetPlanePos(hex);
-    int32_t dx = hex_pos.x - _lineStart.x;
-    int32_t dy = hex_pos.y - _lineStart.y;
+    ipos32 hex_pos {GetPlanePos(hex)};
+    int32_t dx {hex_pos.x - _lineStart.x};
+    int32_t dy {hex_pos.y - _lineStart.y};
 
     return std::abs(dx * _line.y - dy * _line.x);
 }
@@ -809,7 +809,7 @@ auto PathSearch::CheckEntry(mpos hex, mdir dir) -> HexBlockResult
 
 auto PathSearch::CheckHexOnce(mpos hex) -> HexBlockResult
 {
-    PathSearchCell& cell = _grid.GetCell(hex);
+    PathSearchCell& cell {_grid.GetCell(hex)};
 
     if (cell.Answer == 0) {
         cell.Answer = numeric_cast<uint8_t>(static_cast<int8_t>(_input->CheckHex(hex)) + 2);
@@ -820,38 +820,38 @@ auto PathSearch::CheckHexOnce(mpos hex) -> HexBlockResult
 
 void PathSearch::Expand(mpos hex, int64_t cost, int32_t steps)
 {
-    msize map_size = _input->MapSize;
+    msize map_size {_input->MapSize};
 
-    for (int32_t dir_value = 0; dir_value < GameSettings::MAP_DIR_COUNT; dir_value++) {
-        mdir dir = hdir(dir_value);
-        ipos32 raw_next_hex = ipos32 {hex.x, hex.y};
+    for (int32_t dir_value {0}; dir_value < GameSettings::MAP_DIR_COUNT; dir_value++) {
+        mdir dir {hdir(dir_value)};
+        ipos32 raw_next_hex {ipos32 {hex.x, hex.y}};
         GeometryHelper::MoveHexByDirUnsafe(raw_next_hex, dir);
 
         if (!map_size.is_valid_pos(raw_next_hex)) {
             continue;
         }
 
-        mpos next_hex = map_size.from_raw_pos(raw_next_hex);
-        int32_t next_index = _grid.GetCellIndex(next_hex);
+        mpos next_hex {map_size.from_raw_pos(raw_next_hex)};
+        int32_t next_index {_grid.GetCellIndex(next_hex)};
 
         if (_grid.GetCell(next_index).Closed) {
             continue;
         }
 
-        HexBlockResult block = CheckEntry(next_hex, dir);
+        HexBlockResult block {CheckEntry(next_hex, dir)};
 
         if (block == HexBlockResult::Blocked) {
             continue;
         }
 
-        int64_t next_cost = cost + GetEntryCost(*_input, block);
-        PathSearchCell& next_cell = _grid.GetCell(next_index);
+        int64_t next_cost {cost + GetEntryCost(*_input, block)};
+        PathSearchCell& next_cell {_grid.GetCell(next_index)};
 
         if (next_cell.Reached && next_cell.Cost <= next_cost) {
             continue;
         }
 
-        int32_t remaining = GetStepsToGoal(*_input, next_hex);
+        int32_t remaining {GetStepsToGoal(*_input, next_hex)};
 
         if (int64_t {steps} + 1 + remaining > _input->MaxLength) {
             _cutByLength = true;
@@ -877,17 +877,17 @@ auto PathSearch::DoesEveryGoalHoldCritter() -> bool
         return false;
     }
 
-    int32_t goal_hexes = GeometryHelper::HexesInRadius(_input->Cut);
-    bool critter_found = false;
+    int32_t goal_hexes {GeometryHelper::HexesInRadius(_input->Cut)};
+    bool critter_found {false};
 
-    for (int32_t i = 0; i < goal_hexes; i++) {
-        mpos goal_hex = _input->ToHex;
+    for (int32_t i {0}; i < goal_hexes; i++) {
+        mpos goal_hex {_input->ToHex};
 
         if (!GeometryHelper::MoveHexAroundAway(goal_hex, i, _input->MapSize)) {
             continue;
         }
 
-        HexBlockResult block = CheckHexOnce(goal_hex);
+        HexBlockResult block {CheckHexOnce(goal_hex)};
 
         if (block == HexBlockResult::Passable || block == HexBlockResult::DeferGag) {
             return false;
@@ -903,30 +903,30 @@ auto PathSearch::DoesEveryGoalHoldCritter() -> bool
 // and critters included and multihex footprints ignored, so a goal side that closes first cannot be reached
 auto PathSearch::IsTargetWalledOff() -> bool
 {
-    msize map_size = _input->MapSize;
-    size_t limit = numeric_cast<size_t>(_input->EnclosureProbeLimit);
-    int32_t goal_hexes = GeometryHelper::HexesInRadius(std::max(_input->Cut, 0));
+    msize map_size {_input->MapSize};
+    size_t limit {numeric_cast<size_t>(_input->EnclosureProbeLimit)};
+    int32_t goal_hexes {GeometryHelper::HexesInRadius(std::max(_input->Cut, 0))};
 
     if (numeric_cast<size_t>(goal_hexes) > limit) {
         return false;
     }
 
-    vector<mpos> region;
+    vector<mpos> region {};
     region.reserve(limit);
 
-    for (int32_t i = 0; i < goal_hexes; i++) {
-        mpos goal_hex = _input->ToHex;
+    for (int32_t i {0}; i < goal_hexes; i++) {
+        mpos goal_hex {_input->ToHex};
 
         if (GeometryHelper::MoveHexAroundAway(goal_hex, i, map_size) && !VisitProbeHex(goal_hex, region)) {
             return false;
         }
     }
 
-    for (size_t i = 0; i < region.size(); i++) {
-        mpos cur_hex = region[i];
+    for (size_t i {0}; i < region.size(); i++) {
+        mpos cur_hex {region[i]};
 
-        for (int32_t dir_value = 0; dir_value < GameSettings::MAP_DIR_COUNT; dir_value++) {
-            ipos32 raw_hex = ipos32 {cur_hex.x, cur_hex.y};
+        for (int32_t dir_value {0}; dir_value < GameSettings::MAP_DIR_COUNT; dir_value++) {
+            ipos32 raw_hex {ipos32 {cur_hex.x, cur_hex.y}};
             GeometryHelper::MoveHexByDirUnsafe(raw_hex, hdir(dir_value));
 
             if (map_size.is_valid_pos(raw_hex) && !VisitProbeHex(map_size.from_raw_pos(raw_hex), region)) {
@@ -945,7 +945,7 @@ auto PathSearch::IsTargetWalledOff() -> bool
 // Answers false when the hex was reached by the search, which proves the goal side is not closed off
 auto PathSearch::VisitProbeHex(mpos hex, vector<mpos>& region) -> bool
 {
-    PathSearchCell& cell = _grid.GetCell(hex);
+    PathSearchCell& cell {_grid.GetCell(hex)};
 
     if (cell.Reached) {
         return false;
@@ -988,7 +988,7 @@ auto PathOpenList::Pop() -> PathSearchNode
     FO_VERIFY_AND_THROW(!IsEmpty(), "Path search open list popped while empty");
 
     while (true) {
-        auto& bucket = _buckets[GetBucket(_front)];
+        auto& bucket {_buckets[GetBucket(_front)]};
 
         if (_frontRead < bucket.size()) {
             _bucketed--;
@@ -1023,13 +1023,13 @@ void PathOpenList::AdmitLater()
 PathSearchGrid::PathSearchGrid(msize map_size) :
     _blocksPerRow {(numeric_cast<int32_t>(map_size.width) + SEARCH_BLOCK_SIDE - 1) >> SEARCH_BLOCK_SHIFT}
 {
-    int32_t block_rows = (numeric_cast<int32_t>(map_size.height) + SEARCH_BLOCK_SIDE - 1) >> SEARCH_BLOCK_SHIFT;
+    int32_t block_rows {(numeric_cast<int32_t>(map_size.height) + SEARCH_BLOCK_SIDE - 1) >> SEARCH_BLOCK_SHIFT};
     _blockIndex.assign(numeric_cast<size_t>(_blocksPerRow) * numeric_cast<size_t>(block_rows), -1);
 }
 
 auto PathSearchGrid::FindCell(mpos hex) const -> nptr<const PathSearchCell>
 {
-    int32_t block = _blockIndex[GetBlockSlot(hex)];
+    int32_t block {_blockIndex[GetBlockSlot(hex)]};
 
     if (block < 0) {
         return nullptr;
@@ -1040,7 +1040,7 @@ auto PathSearchGrid::FindCell(mpos hex) const -> nptr<const PathSearchCell>
 
 auto PathSearchGrid::GetCellIndex(mpos hex) -> int32_t
 {
-    int32_t& block = _blockIndex[GetBlockSlot(hex)];
+    int32_t& block {_blockIndex[GetBlockSlot(hex)]};
 
     if (block < 0) {
         block = numeric_cast<int32_t>(_cells.size()) / SEARCH_BLOCK_CELLS;
@@ -1109,15 +1109,15 @@ static auto IsNodeAfter(const PathSearchNode& a, const PathSearchNode& b) -> boo
 
 static auto MakeDirectionLine(mpos anchor_hex, ipos16 anchor_offset, float32_t angle) -> DirectionLine
 {
-    float32_t angle_rad = (angle - 90.0f) * DEG_TO_RAD_FLOAT;
+    float32_t angle_rad {(angle - 90.0f) * DEG_TO_RAD_FLOAT};
     return DirectionLine {.AnchorHex = anchor_hex, .AnchorOffset = anchor_offset, .DirX = std::cos(angle_rad), .DirY = std::sin(angle_rad)};
 }
 
 static auto GetDistanceFromLine(const DirectionLine& line, mpos hex) -> float32_t
 {
-    ipos32 center = GeometryHelper::GetHexOffset(line.AnchorHex, hex);
-    float32_t dx = numeric_cast<float32_t>(center.x - line.AnchorOffset.x);
-    float32_t dy = numeric_cast<float32_t>(center.y - line.AnchorOffset.y) * GeometryHelper::GetYProj();
+    ipos32 center {GeometryHelper::GetHexOffset(line.AnchorHex, hex)};
+    float32_t dx {numeric_cast<float32_t>(center.x - line.AnchorOffset.x)};
+    float32_t dy {numeric_cast<float32_t>(center.y - line.AnchorOffset.y) * GeometryHelper::GetYProj()};
     return std::abs(dx * line.DirY - dy * line.DirX);
 }
 
@@ -1125,26 +1125,26 @@ static auto GetDistanceFromLine(const DirectionLine& line, mpos hex) -> float32_
 // it; a direction the angle runs exactly along stands alone. Whether that hex is free is the caller's question
 static auto FindDirectionLineStep(mpos hex, const DirectionLine& line, float32_t angle, msize map_size) -> optional<mdir>
 {
-    constexpr float32_t bracket_angle = 360.0f / static_cast<float32_t>(GameSettings::MAP_DIR_COUNT);
+    constexpr float32_t bracket_angle {360.0f / static_cast<float32_t>(GameSettings::MAP_DIR_COUNT)};
 
-    optional<mdir> best_dir;
-    float32_t best_distance = std::numeric_limits<float32_t>::max();
+    optional<mdir> best_dir {};
+    float32_t best_distance {std::numeric_limits<float32_t>::max()};
 
-    for (int32_t i = 0; i < GameSettings::MAP_DIR_COUNT; i++) {
-        mdir dir = mdir(hdir(i));
+    for (int32_t i {0}; i < GameSettings::MAP_DIR_COUNT; i++) {
+        mdir dir {mdir(hdir(i))};
 
         if (GeometryHelper::GetDirAngleDiff(numeric_cast<float32_t>(dir.angle()), angle) >= bracket_angle) {
             continue;
         }
 
-        mpos next_hex = hex;
-        bool moved = GeometryHelper::MoveHexByDir(next_hex, dir, map_size);
+        mpos next_hex {hex};
+        bool moved {GeometryHelper::MoveHexByDir(next_hex, dir, map_size)};
 
         if (!moved) {
             continue;
         }
 
-        float32_t distance = GetDistanceFromLine(line, next_hex);
+        float32_t distance {GetDistanceFromLine(line, next_hex)};
 
         if (distance < best_distance) {
             best_dir = dir;
@@ -1164,19 +1164,19 @@ static auto IsDirectionStepPassable(mpos hex, mdir dir, const TraceDirectionInpu
 // along the direction and a trace can never walk back over hexes it came from
 static auto FindDirectionSideStep(mpos hex, float32_t angle, const TraceDirectionInput& input) -> optional<mdir>
 {
-    optional<mdir> best_dir;
-    float32_t best_diff = 90.0f;
+    optional<mdir> best_dir {};
+    float32_t best_diff {90.0f};
 
-    for (int32_t i = 0; i < GameSettings::MAP_DIR_COUNT; i++) {
-        mdir dir = mdir(hdir(i));
-        float32_t diff = GeometryHelper::GetDirAngleDiff(numeric_cast<float32_t>(dir.angle()), angle);
+    for (int32_t i {0}; i < GameSettings::MAP_DIR_COUNT; i++) {
+        mdir dir {mdir(hdir(i))};
+        float32_t diff {GeometryHelper::GetDirAngleDiff(numeric_cast<float32_t>(dir.angle()), angle)};
 
         if (diff >= best_diff) {
             continue;
         }
 
-        mpos next_hex = hex;
-        bool moved = GeometryHelper::MoveHexByDir(next_hex, dir, input.MapSize);
+        mpos next_hex {hex};
+        bool moved {GeometryHelper::MoveHexByDir(next_hex, dir, input.MapSize)};
 
         if (!moved || !IsDirectionStepPassable(next_hex, dir, input)) {
             continue;
@@ -1192,27 +1192,27 @@ static auto FindDirectionSideStep(mpos hex, float32_t angle, const TraceDirectio
 // Projects the end hex centre onto the line and returns the map-pixel offset that puts the plan's last point on it
 static auto EvaluateLineEndOffset(const DirectionLine& line, mpos end_hex) -> ipos16
 {
-    ipos32 end_center = GeometryHelper::GetHexOffset(line.AnchorHex, end_hex);
-    float32_t y_proj = GeometryHelper::GetYProj();
-    float32_t anchor_x = numeric_cast<float32_t>(line.AnchorOffset.x);
-    float32_t anchor_y = numeric_cast<float32_t>(line.AnchorOffset.y);
-    float32_t to_end_x = numeric_cast<float32_t>(end_center.x) - anchor_x;
-    float32_t to_end_y = (numeric_cast<float32_t>(end_center.y) - anchor_y) * y_proj;
-    float32_t along = to_end_x * line.DirX + to_end_y * line.DirY;
-    int32_t ox = iround<int32_t>(anchor_x + along * line.DirX) - end_center.x;
-    int32_t oy = iround<int32_t>(anchor_y + along * line.DirY / y_proj) - end_center.y;
+    ipos32 end_center {GeometryHelper::GetHexOffset(line.AnchorHex, end_hex)};
+    float32_t y_proj {GeometryHelper::GetYProj()};
+    float32_t anchor_x {numeric_cast<float32_t>(line.AnchorOffset.x)};
+    float32_t anchor_y {numeric_cast<float32_t>(line.AnchorOffset.y)};
+    float32_t to_end_x {numeric_cast<float32_t>(end_center.x) - anchor_x};
+    float32_t to_end_y {(numeric_cast<float32_t>(end_center.y) - anchor_y) * y_proj};
+    float32_t along {to_end_x * line.DirX + to_end_y * line.DirY};
+    int32_t ox {iround<int32_t>(anchor_x + along * line.DirX) - end_center.x};
+    int32_t oy {iround<int32_t>(anchor_y + along * line.DirY / y_proj) - end_center.y};
 
-    constexpr int32_t half_w = GameSettings::MAP_HEX_WIDTH / 2;
-    constexpr int32_t half_h = GameSettings::MAP_HEX_HEIGHT / 2;
+    constexpr int32_t half_w {GameSettings::MAP_HEX_WIDTH / 2};
+    constexpr int32_t half_h {GameSettings::MAP_HEX_HEIGHT / 2};
 
-    int16_t clamped_ox = numeric_cast<int16_t>(std::clamp(ox, -half_w, half_w));
-    int16_t clamped_oy = numeric_cast<int16_t>(std::clamp(oy, -half_h, half_h));
+    int16_t clamped_ox {numeric_cast<int16_t>(std::clamp(ox, -half_w, half_w))};
+    int16_t clamped_oy {numeric_cast<int16_t>(std::clamp(oy, -half_h, half_h))};
     return ipos16 {clamped_ox, clamped_oy};
 }
 
 static void CloseDirectionSegment(TraceDirectionOutput& output)
 {
-    uint16_t steps_count = numeric_cast<uint16_t>(output.Steps.size());
+    uint16_t steps_count {numeric_cast<uint16_t>(output.Steps.size())};
 
     if (steps_count != 0 && (output.ControlSteps.empty() || output.ControlSteps.back() != steps_count)) {
         output.ControlSteps.emplace_back(steps_count);

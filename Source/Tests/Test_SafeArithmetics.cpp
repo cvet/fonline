@@ -49,55 +49,55 @@ namespace TestSafeArithmeticContract
     };
 
     template<typename Left, typename Right>
-    constexpr bool RejectsMixedOperands =
-        !requires(const Left& left, const Right& right) { checked_add(left, right); } &&
-        !requires(const Left& left, const Right& right) { checked_sub(left, right); } &&
-        !requires(const Left& left, const Right& right) { checked_mul(left, right); } &&
-        !requires(const Left& left, const Right& right) { checked_div(left, right); };
+    constexpr bool RejectsMixedOperands {!requires(const Left& left, const Right& right) {checked_add(left, right);
+}
+&&!requires(const Left& left, const Right& right) { checked_sub(left, right); } && !requires(const Left& left, const Right& right) { checked_mul(left, right); } && !requires(const Left& left, const Right& right) { checked_div(left, right); }
+}
+;
 
-    template<typename T>
-    constexpr bool RejectsExplicitTypeArgument =
-        !requires(const T& left, const T& right) { checked_add<T>(left, right); } &&
-        !requires(const T& left, const T& right) { checked_sub<T>(left, right); } &&
-        !requires(const T& left, const T& right) { checked_mul<T>(left, right); } &&
-        !requires(const T& left, const T& right) { checked_div<T>(left, right); };
+template<typename T>
+constexpr bool RejectsExplicitTypeArgument {!requires(const T& left, const T& right) {checked_add<T>(left, right);
+}
+&&!requires(const T& left, const T& right) { checked_sub<T>(left, right); } && !requires(const T& left, const T& right) { checked_mul<T>(left, right); } && !requires(const T& left, const T& right) { checked_div<T>(left, right); }
+}
+;
 
-    template<auto Value, typename T>
-    constexpr bool RejectsValueArgument =
-        !requires(const T& left, const T& right) { checked_add<Value>(left, right); } &&
-        !requires(const T& left, const T& right) { checked_sub<Value>(left, right); } &&
-        !requires(const T& left, const T& right) { checked_mul<Value>(left, right); } &&
-        !requires(const T& left, const T& right) { checked_div<Value>(left, right); };
+template<auto Value, typename T>
+constexpr bool RejectsValueArgument {!requires(const T& left, const T& right) {checked_add<Value>(left, right);
+}
+&&!requires(const T& left, const T& right) { checked_sub<Value>(left, right); } && !requires(const T& left, const T& right) { checked_mul<Value>(left, right); } && !requires(const T& left, const T& right) { checked_div<Value>(left, right); }
+}
+;
 
-    static_assert(CanDeduceCheckedArithmetic<int32_t, int32_t>);
-    static_assert(CanDeduceCheckedArithmetic<int64_t, int64_t>);
-    static_assert(CanDeduceCheckedArithmetic<uint8_t, uint8_t>);
-    static_assert(CanDeduceCheckedArithmetic<uint64_t, uint64_t>);
-    static_assert(CanDeduceCheckedArithmetic<float32_t, float32_t>);
-    static_assert(CanDeduceCheckedArithmetic<float64_t, float64_t>);
+static_assert(CanDeduceCheckedArithmetic<int32_t, int32_t>);
+static_assert(CanDeduceCheckedArithmetic<int64_t, int64_t>);
+static_assert(CanDeduceCheckedArithmetic<uint8_t, uint8_t>);
+static_assert(CanDeduceCheckedArithmetic<uint64_t, uint64_t>);
+static_assert(CanDeduceCheckedArithmetic<float32_t, float32_t>);
+static_assert(CanDeduceCheckedArithmetic<float64_t, float64_t>);
 
-    static_assert(RejectsMixedOperands<int32_t, int64_t>);
-    static_assert(RejectsMixedOperands<int64_t, int32_t>);
-    static_assert(RejectsMixedOperands<int32_t, uint32_t>);
-    static_assert(RejectsMixedOperands<uint32_t, int32_t>);
-    static_assert(RejectsMixedOperands<float32_t, float64_t>);
-    static_assert(RejectsMixedOperands<float64_t, float32_t>);
-    static_assert(RejectsMixedOperands<int32_t, float32_t>);
-    static_assert(RejectsMixedOperands<float32_t, int32_t>);
-    static_assert(RejectsMixedOperands<int64_t, float64_t>);
-    static_assert(RejectsMixedOperands<float64_t, int64_t>);
-    static_assert(RejectsMixedOperands<bool, bool>);
-    static_assert(RejectsMixedOperands<std::integral_constant<int32_t, 1>, int32_t>);
+static_assert(RejectsMixedOperands<int32_t, int64_t>);
+static_assert(RejectsMixedOperands<int64_t, int32_t>);
+static_assert(RejectsMixedOperands<int32_t, uint32_t>);
+static_assert(RejectsMixedOperands<uint32_t, int32_t>);
+static_assert(RejectsMixedOperands<float32_t, float64_t>);
+static_assert(RejectsMixedOperands<float64_t, float32_t>);
+static_assert(RejectsMixedOperands<int32_t, float32_t>);
+static_assert(RejectsMixedOperands<float32_t, int32_t>);
+static_assert(RejectsMixedOperands<int64_t, float64_t>);
+static_assert(RejectsMixedOperands<float64_t, int64_t>);
+static_assert(RejectsMixedOperands<bool, bool>);
+static_assert(RejectsMixedOperands<std::integral_constant<int32_t, 1>, int32_t>);
 
-    static_assert(RejectsExplicitTypeArgument<int32_t>);
-    static_assert(RejectsExplicitTypeArgument<int64_t>);
-    static_assert(RejectsValueArgument<1, int32_t>);
+static_assert(RejectsExplicitTypeArgument<int32_t>);
+static_assert(RejectsExplicitTypeArgument<int64_t>);
+static_assert(RejectsValueArgument<1, int32_t>);
 
-    static_assert(checked_add(int32_t {2}, int32_t {3}) == 5);
-    static_assert(checked_sub(int64_t {9}, int64_t {4}) == 5);
-    static_assert(checked_mul(uint8_t {15}, uint8_t {17}) == uint8_t {255});
-    static_assert(checked_div(int64_t {9}, int64_t {2}) == 4);
-    static_assert(checked_mul(numeric_cast<int64_t>(int32_t {65535}), numeric_cast<int64_t>(int32_t {65535})) == int64_t {4294836225});
+static_assert(checked_add(int32_t {2}, int32_t {3}) == 5);
+static_assert(checked_sub(int64_t {9}, int64_t {4}) == 5);
+static_assert(checked_mul(uint8_t {15}, uint8_t {17}) == uint8_t {255});
+static_assert(checked_div(int64_t {9}, int64_t {2}) == 4);
+static_assert(checked_mul(numeric_cast<int64_t>(int32_t {65535}), numeric_cast<int64_t>(int32_t {65535})) == int64_t {4294836225});
 }
 
 TEST_CASE("SafeArithmetics")
@@ -180,8 +180,8 @@ TEST_CASE("SafeArithmetics")
 
     SECTION("CheckedOperandsRemainUnchanged")
     {
-        int32_t signed_left = 100;
-        int32_t signed_right = 23;
+        int32_t signed_left {100};
+        int32_t signed_right {23};
 
         CHECK(checked_add(signed_left, signed_right) == 123);
         CHECK(checked_sub(signed_left, signed_right) == 77);
@@ -190,15 +190,15 @@ TEST_CASE("SafeArithmetics")
         CHECK(signed_left == 100);
         CHECK(signed_right == 23);
 
-        int64_t min_value = std::numeric_limits<int64_t>::min();
-        int64_t minus_one = -1;
+        int64_t min_value {std::numeric_limits<int64_t>::min()};
+        int64_t minus_one {-1};
 
         CHECK_THROWS_AS((checked_div(min_value, minus_one)), OverflowException);
         CHECK(min_value == std::numeric_limits<int64_t>::min());
         CHECK(minus_one == -1);
 
-        uint32_t unsigned_left = 100u;
-        uint32_t unsigned_right = 23u;
+        uint32_t unsigned_left {100u};
+        uint32_t unsigned_right {23u};
 
         CHECK(checked_add(unsigned_left, unsigned_right) == 123u);
         CHECK(checked_sub(unsigned_left, unsigned_right) == 77u);
@@ -207,8 +207,8 @@ TEST_CASE("SafeArithmetics")
         CHECK(unsigned_left == 100u);
         CHECK(unsigned_right == 23u);
 
-        float32_t float_left = 1.5f;
-        float32_t float_right = 2.5f;
+        float32_t float_left {1.5f};
+        float32_t float_right {2.5f};
 
         CHECK(checked_add(float_left, float_right) == 4.0f);
         CHECK(checked_div(float_left, 2.0f) == 0.75f);
@@ -287,10 +287,10 @@ TEST_CASE("SafeArithmetics")
 
     SECTION("CheckedFloatingNonfiniteInputsAndResults")
     {
-        float32_t nan32 = std::numeric_limits<float32_t>::quiet_NaN();
-        float32_t inf32 = std::numeric_limits<float32_t>::infinity();
-        float64_t nan64 = std::numeric_limits<float64_t>::quiet_NaN();
-        float64_t inf64 = std::numeric_limits<float64_t>::infinity();
+        float32_t nan32 {std::numeric_limits<float32_t>::quiet_NaN()};
+        float32_t inf32 {std::numeric_limits<float32_t>::infinity()};
+        float64_t nan64 {std::numeric_limits<float64_t>::quiet_NaN()};
+        float64_t inf64 {std::numeric_limits<float64_t>::infinity()};
 
         CHECK_THROWS_AS((checked_add(nan32, 1.0f)), OverflowException);
         CHECK_THROWS_AS((checked_add(1.0, nan64)), OverflowException);
@@ -336,7 +336,7 @@ TEST_CASE("SafeArithmetics")
         CHECK_THROWS_AS((iround<int64_t>(-1e300)), OverflowException);
         CHECK_THROWS_AS((iround<int64_t>(std::numeric_limits<float64_t>::max())), OverflowException);
 
-        constexpr int32_t casted = const_numeric_cast<int32_t>(uint16_t {42});
+        constexpr int32_t casted {const_numeric_cast<int32_t>(uint16_t {42})};
         STATIC_REQUIRE(casted == 42);
     }
 }

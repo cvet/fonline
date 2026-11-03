@@ -39,7 +39,7 @@ FO_BEGIN_NAMESPACE
 
 namespace global_data
 {
-    constexpr auto MAX_CALLBACKS = 40;
+    constexpr auto MAX_CALLBACKS {40};
     using callback = void (*)() noexcept;
     // Told the name of each set just before its delete callback runs, so a teardown that never returns names the
     // set it stopped in. It runs inside the sweep and must touch no global data

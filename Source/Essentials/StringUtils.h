@@ -113,7 +113,7 @@ static_assert(!std::is_polymorphic_v<strvex>);
 class strex : protected strvex
 {
 public:
-    static constexpr size_t MAX_NUMBER_STRING_LENGTH = 80;
+    static constexpr size_t MAX_NUMBER_STRING_LENGTH {80};
 
     struct safe_format_tag
     {

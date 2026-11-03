@@ -175,8 +175,8 @@ TEST_CASE("FunctionObjects")
 
     SECTION("EmptyState")
     {
-        move_only_function<int32_t()> uniq;
-        copyable_function<int32_t()> copyable;
+        move_only_function<int32_t()> uniq {};
+        copyable_function<int32_t()> copyable {};
 
         REQUIRE(!uniq);
         REQUIRE(!copyable);
@@ -190,15 +190,15 @@ TEST_CASE("FunctionObjects")
         uniq = nullptr;
         REQUIRE(!uniq);
 
-        move_only_function<int32_t()> from_null_pointer = static_cast<int32_t (*)()>(nullptr);
+        move_only_function<int32_t()> from_null_pointer {static_cast<int32_t (*)()>(nullptr)};
         REQUIRE(!from_null_pointer);
     }
 
     SECTION("FunctionReferencesAndNullablePointers")
     {
-        move_only_function<int32_t(int32_t)> from_reference = DoubleValue;
-        copyable_function<int32_t(int32_t)> copyable_reference = DoubleValue;
-        copyable_function<int32_t(int32_t)> copied_reference = copyable_reference;
+        move_only_function<int32_t(int32_t)> from_reference {DoubleValue};
+        copyable_function<int32_t(int32_t)> copyable_reference {DoubleValue};
+        copyable_function<int32_t(int32_t)> copied_reference {copyable_reference};
 
         CHECK(from_reference(21) == 42);
         CHECK(copyable_reference(9) == 18);
@@ -208,12 +208,12 @@ TEST_CASE("FunctionObjects")
 
         using function_pointer = decltype(&DoubleValue);
         using member_pointer = decltype(&MemberTarget::Triple);
-        function_pointer empty_function = nullptr;
-        member_pointer empty_member = nullptr;
-        move_only_function<int32_t(int32_t)> empty_move_function = empty_function;
-        copyable_function<int32_t(int32_t)> empty_copy_function = empty_function;
-        move_only_function<int32_t(const MemberTarget&, int32_t)> empty_move_member = empty_member;
-        copyable_function<int32_t(const MemberTarget&, int32_t)> empty_copy_member = empty_member;
+        function_pointer empty_function {nullptr};
+        member_pointer empty_member {nullptr};
+        move_only_function<int32_t(int32_t)> empty_move_function {empty_function};
+        copyable_function<int32_t(int32_t)> empty_copy_function {empty_function};
+        move_only_function<int32_t(const MemberTarget&, int32_t)> empty_move_member {empty_member};
+        copyable_function<int32_t(const MemberTarget&, int32_t)> empty_copy_member {empty_member};
 
         CHECK_FALSE(empty_move_function);
         CHECK_FALSE(empty_copy_function);
@@ -223,16 +223,16 @@ TEST_CASE("FunctionObjects")
 
     SECTION("InlineStorageKeepsCommonTargetsOffTheHeap")
     {
-        int32_t counter = 0;
-        int32_t other = 0;
+        int32_t counter {0};
+        int32_t other {0};
 
-        move_only_function<void()> capture_nothing = [] { };
-        move_only_function<void()> capture_one = [&counter] { counter++; };
-        move_only_function<void()> capture_two = [&counter, &other] { counter += other; };
-        move_only_function<int32_t(int32_t)> free_function = &DoubleValue;
-        move_only_function<void()> capture_string = [text = string("engine callback")] { ignore_unused(text); };
-        move_only_function<int32_t()> capture_owner = [value = safe_alloc::make_unique<int32_t>(42)] { return *value; };
-        copyable_function<void()> copyable_capture = [&counter] { counter++; };
+        move_only_function<void()> capture_nothing {[] { }};
+        move_only_function<void()> capture_one {[&counter] { counter++; }};
+        move_only_function<void()> capture_two {[&counter, &other] { counter += other; }};
+        move_only_function<int32_t(int32_t)> free_function {&DoubleValue};
+        move_only_function<void()> capture_string {[text = string("engine callback")] { ignore_unused(text); }};
+        move_only_function<int32_t()> capture_owner {[value = safe_alloc::make_unique<int32_t>(42)] { return *value; }};
+        copyable_function<void()> copyable_capture {[&counter] { counter++; }};
 
         REQUIRE(!capture_nothing.is_heap_allocated());
         REQUIRE(!capture_one.is_heap_allocated());
@@ -242,8 +242,8 @@ TEST_CASE("FunctionObjects")
         REQUIRE(!capture_owner.is_heap_allocated());
         REQUIRE(!copyable_capture.is_heap_allocated());
 
-        move_only_function<int32_t()> oversized = OversizedTarget(11);
-        move_only_function<int32_t()> throwing_move = ThrowingMoveTarget(13);
+        move_only_function<int32_t()> oversized {OversizedTarget(11)};
+        move_only_function<int32_t()> throwing_move {ThrowingMoveTarget(13)};
 
         REQUIRE(oversized.is_heap_allocated());
         REQUIRE(throwing_move.is_heap_allocated());
@@ -253,18 +253,18 @@ TEST_CASE("FunctionObjects")
 
     SECTION("MoveTransfersTargetOwnership")
     {
-        int32_t alive = 0;
+        int32_t alive {0};
 
         {
-            move_only_function<int32_t()> source = InstanceCounter(&alive);
+            move_only_function<int32_t()> source {InstanceCounter(&alive)};
             REQUIRE(alive == 1);
 
-            move_only_function<int32_t()> moved = std::move(source);
+            move_only_function<int32_t()> moved {std::move(source)};
             REQUIRE(alive == 1);
             REQUIRE(!source); // NOLINT(bugprone-use-after-move)
             REQUIRE(moved() == 1);
 
-            move_only_function<int32_t()> assigned;
+            move_only_function<int32_t()> assigned {};
             assigned = std::move(moved);
             REQUIRE(alive == 1);
             REQUIRE(!moved); // NOLINT(bugprone-use-after-move)
@@ -276,11 +276,11 @@ TEST_CASE("FunctionObjects")
 
     SECTION("FundamentallyAlignedTargetsRemainInlineAfterCopyAndMove")
     {
-        auto target = [alignment = std::max_align_t {}] { return reinterpret_cast<uintptr_t>(&alignment); };
+        auto target {[alignment = std::max_align_t {}] { return reinterpret_cast<uintptr_t>(&alignment); }};
         STATIC_REQUIRE(details::function_target_fits_inline<decltype(target)>);
-        copyable_function<uintptr_t()> original = target;
-        copyable_function<uintptr_t()> copy = original;
-        move_only_function<uintptr_t()> moved = std::move(copy);
+        copyable_function<uintptr_t()> original {target};
+        copyable_function<uintptr_t()> copy {original};
+        move_only_function<uintptr_t()> moved {std::move(copy)};
 
         REQUIRE(!original.is_heap_allocated());
         REQUIRE(!moved.is_heap_allocated());
@@ -291,29 +291,29 @@ TEST_CASE("FunctionObjects")
 
     SECTION("MoveOnlyTargetSurvivesRelocation")
     {
-        move_only_function<int32_t()> owner = [value = safe_alloc::make_unique<int32_t>(42)] { return *value; };
-        move_only_function<int32_t()> moved = std::move(owner);
+        move_only_function<int32_t()> owner {[value = safe_alloc::make_unique<int32_t>(42)] { return *value; }};
+        move_only_function<int32_t()> moved {std::move(owner)};
 
         REQUIRE(moved() == 42);
 
-        move_only_function<int32_t()> move_only = MoveOnlyTarget {};
+        move_only_function<int32_t()> move_only {MoveOnlyTarget {}};
         REQUIRE(move_only() == 17);
     }
 
     SECTION("CopyDuplicatesTheTarget")
     {
-        int32_t alive = 0;
+        int32_t alive {0};
 
         {
-            copyable_function<int32_t()> original = InstanceCounter(&alive);
+            copyable_function<int32_t()> original {InstanceCounter(&alive)};
             REQUIRE(alive == 1);
 
-            copyable_function<int32_t()> copy = original;
+            copyable_function<int32_t()> copy {original};
             REQUIRE(alive == 2);
             REQUIRE(original);
             REQUIRE(copy() == 2);
 
-            copyable_function<int32_t()> assigned;
+            copyable_function<int32_t()> assigned {};
             assigned = copy;
             REQUIRE(alive == 3);
         }
@@ -323,8 +323,8 @@ TEST_CASE("FunctionObjects")
 
     SECTION("CopyOfHeapTargetAllocatesItsOwnBlock")
     {
-        copyable_function<int32_t()> original = OversizedTarget(5);
-        copyable_function<int32_t()> copy = original;
+        copyable_function<int32_t()> original {OversizedTarget(5)};
+        copyable_function<int32_t()> copy {original};
 
         REQUIRE(copy.is_heap_allocated());
         REQUIRE(original() == 5);
@@ -333,17 +333,17 @@ TEST_CASE("FunctionObjects")
 
     SECTION("CopyableNarrowsToMoveOnlyWithoutWrapping")
     {
-        int32_t alive = 0;
+        int32_t alive {0};
 
         {
-            copyable_function<int32_t()> copyable = InstanceCounter(&alive);
+            copyable_function<int32_t()> copyable {InstanceCounter(&alive)};
 
-            move_only_function<int32_t()> cloned = copyable;
+            move_only_function<int32_t()> cloned {copyable};
             REQUIRE(alive == 2);
             REQUIRE(!cloned.is_heap_allocated());
             REQUIRE(cloned() == 2);
 
-            move_only_function<int32_t()> adopted = std::move(copyable);
+            move_only_function<int32_t()> adopted {std::move(copyable)};
             REQUIRE(alive == 2);
             REQUIRE(!copyable); // NOLINT(bugprone-use-after-move)
             REQUIRE(!adopted.is_heap_allocated());
@@ -355,41 +355,41 @@ TEST_CASE("FunctionObjects")
 
     SECTION("SelfAssignmentKeepsTheTarget")
     {
-        copyable_function<int32_t()> copyable = [] { return 3; };
-        const copyable_function<int32_t()>& copyable_alias = copyable;
+        copyable_function<int32_t()> copyable {[] { return 3; }};
+        const copyable_function<int32_t()>& copyable_alias {copyable};
         copyable = copyable_alias;
         REQUIRE(copyable() == 3);
 
-        move_only_function<int32_t()> uniq = [] { return 4; };
-        move_only_function<int32_t()>& uniq_alias = uniq;
+        move_only_function<int32_t()> uniq {[] { return 4; }};
+        move_only_function<int32_t()>& uniq_alias {uniq};
         uniq = std::move(uniq_alias);
         REQUIRE(uniq() == 4);
     }
 
     SECTION("InvokeForwardsArgumentsAndReturn")
     {
-        move_only_function<int32_t(int32_t, int32_t)> sum = [](int32_t a, int32_t b) { return a + b; };
+        move_only_function<int32_t(int32_t, int32_t)> sum {[](int32_t a, int32_t b) { return a + b; }};
         REQUIRE(sum(2, 3) == 5);
 
-        move_only_function<void(string&)> mutate = [](string& text) { text += "!"; };
-        string text = "ok";
+        move_only_function<void(string&)> mutate {[](string& text) { text += "!"; }};
+        string text {"ok"};
         mutate(text);
         REQUIRE(text == "ok!");
 
         // A non-void target under a void signature discards its result, matching the standard wrapper
-        move_only_function<void(int32_t)> discarding = &DoubleValue;
+        move_only_function<void(int32_t)> discarding {&DoubleValue};
         discarding(1);
 
-        MemberTarget target;
+        MemberTarget target {};
         target.Bias = 1;
-        move_only_function<int32_t(const MemberTarget&, int32_t)> member = &MemberTarget::Triple;
+        move_only_function<int32_t(const MemberTarget&, int32_t)> member {&MemberTarget::Triple};
         REQUIRE(member(target, 2) == 7);
     }
 
     SECTION("CallableThroughConstReference")
     {
-        const move_only_function<int32_t()> uniq = [] { return 5; };
-        const copyable_function<int32_t()> copyable = [] { return 6; };
+        const move_only_function<int32_t()> uniq {[] { return 5; }};
+        const copyable_function<int32_t()> copyable {[] { return 6; }};
 
         REQUIRE(uniq() == 5);
         REQUIRE(copyable() == 6);
@@ -397,8 +397,8 @@ TEST_CASE("FunctionObjects")
 
     SECTION("SwapExchangesTargets")
     {
-        move_only_function<int32_t()> left = [] { return 1; };
-        move_only_function<int32_t()> right = [] { return 2; };
+        move_only_function<int32_t()> left {[] { return 1; }};
+        move_only_function<int32_t()> right {[] { return 2; }};
 
         left.swap(right);
 
@@ -408,9 +408,9 @@ TEST_CASE("FunctionObjects")
 
     SECTION("ResetReleasesTheTarget")
     {
-        int32_t alive = 0;
+        int32_t alive {0};
 
-        move_only_function<int32_t()> uniq = InstanceCounter(&alive);
+        move_only_function<int32_t()> uniq {InstanceCounter(&alive)};
         REQUIRE(alive == 1);
 
         uniq.reset();

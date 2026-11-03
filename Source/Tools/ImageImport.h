@@ -42,7 +42,7 @@ FO_DECLARE_EXCEPTION(ImageBakerException);
 
 namespace ImageImport
 {
-    inline constexpr int32_t MAX_DIRS_MINUS_ONE = 7;
+    inline constexpr int32_t MAX_DIRS_MINUS_ONE {7};
 
     struct FrameShot
     {
@@ -76,7 +76,7 @@ namespace ImageImport
     struct Context
     {
         ptr<const FileCollection> Files;
-        function<FrameCollection(string_view)> Resolve;
+        function<FrameCollection(string_view)> Resolve {};
     };
 
     using LoadFunc = copyable_function<FrameCollection(string_view, string_view, FileReader, const Context&)>;
@@ -84,8 +84,8 @@ namespace ImageImport
 
     struct Loader
     {
-        LoadFunc Load;
-        OutputResolver ResolveOutput;
+        LoadFunc Load {};
+        OutputResolver ResolveOutput {};
     };
 
     void CheckEnabled(string_view fname);

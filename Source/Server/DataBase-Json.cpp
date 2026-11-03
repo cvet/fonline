@@ -72,7 +72,7 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        string dir = strex("{}/{}", _storageDir, collection_name).str();
+        string dir {strex("{}/{}", _storageDir, collection_name).str()};
 
         if (!fs::create_directories(dir)) {
             throw DataBaseException("DbJson Can't ensure collection directory", dir);
@@ -85,12 +85,12 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        auto key_type = GetCollectionKeyType(collection_name);
-        vector<DataBaseKey> ids;
+        auto key_type {GetCollectionKeyType(collection_name)};
+        vector<DataBaseKey> ids {};
 
-        std::error_code ec;
-        auto dir_path = std::filesystem::path {fs::make_path(strex(_storageDir).combine_path(collection_name))};
-        auto dir_iterator = std::filesystem::directory_iterator(dir_path, ec);
+        std::error_code ec {};
+        auto dir_path {std::filesystem::path {fs::make_path(strex(_storageDir).combine_path(collection_name))}};
+        auto dir_iterator {std::filesystem::directory_iterator(dir_path, ec)};
 
         if (!ec) {
             for (const auto& dir_entry : dir_iterator) {
@@ -98,21 +98,21 @@ protected:
                     continue;
                 }
 
-                auto path_str = dir_entry.path().filename().u8string();
-                string path = string(path_str.begin(), path_str.end());
+                auto path_str {dir_entry.path().filename().u8string()};
+                string path {string(path_str.begin(), path_str.end())};
 
                 if (strex(path).get_file_extension() != "json") {
                     continue;
                 }
 
-                string key_str = strvex(path).extract_file_name().erase_file_extension().str();
+                string key_str {strvex(path).extract_file_name().erase_file_extension().str()};
 
                 if (key_type == DataBaseKeyType::IntId) {
                     if (!strvex(key_str).is_number()) {
                         throw DataBaseException("DbJson invalid numeric key format", key_str);
                     }
 
-                    int64_t id_value = strvex(key_str).to_int64();
+                    int64_t id_value {strvex(key_str).to_int64()};
 
                     if (id_value <= 0) {
                         throw DataBaseException("DbJson invalid numeric key value", key_str);
@@ -145,8 +145,8 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        DataBaseKeyType key_type = GetCollectionKeyType(collection_name);
-        vector<AnyData::Document> docs;
+        DataBaseKeyType key_type {GetCollectionKeyType(collection_name)};
+        vector<AnyData::Document> docs {};
         docs.reserve(ids.size());
 
         for (const auto& id : ids) {
@@ -164,18 +164,19 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        string path = strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name)));
+        string path {static_cast<string&&>(strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name))))};
 
         if (fs::exists(path)) {
             throw DataBaseException("DbJson File exists for inserting", path);
         }
 
-        auto pretty_json = DataBaseSerialization::ToJson(doc);
-        auto pretty_json_dump = pretty_json.dump(_jsonIndent > 0 ? _jsonIndent : -1);
+        nlohmann::json pretty_json {};
+        pretty_json = DataBaseSerialization::ToJson(doc);
+        auto pretty_json_dump {pretty_json.dump(_jsonIndent > 0 ? _jsonIndent : -1)};
 
         FO_VERIFY_AND_THROW(pretty_json_dump.size() <= DataBaseSerialization::MAX_DOCUMENT_BYTES, "Database document size limit exceeded", pretty_json_dump.size());
 
-        string dir = strex(path).extract_dir().str();
+        string dir {strex(path).extract_dir().str()};
 
         if (!dir.empty() && !fs::create_directories(dir)) {
             throw DataBaseException("DbJson Can't open file", path);
@@ -194,25 +195,25 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        string path = strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name)));
+        string path {static_cast<string&&>(strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name))))};
 
-        auto json = fs::read_file_bounded(path, DataBaseSerialization::MAX_DOCUMENT_BYTES);
+        auto json {fs::read_file_bounded(path, DataBaseSerialization::MAX_DOCUMENT_BYTES)};
 
         if (!json) {
             throw DataBaseException("DbJson Can't open file for reading", path);
         }
 
-        AnyData::Document existing = DataBaseSerialization::FromJsonText(string_view {json->data(), json->size()});
+        AnyData::Document existing {DataBaseSerialization::FromJsonText(string_view {json->data(), json->size()})};
 
         for (const auto& [key, value] : doc) {
             existing.Assign(key, value.Copy());
         }
 
-        auto pretty_json_dump = DataBaseSerialization::ToJson(existing).dump(_jsonIndent > 0 ? _jsonIndent : -1);
+        auto pretty_json_dump {DataBaseSerialization::ToJson(existing).dump(_jsonIndent > 0 ? _jsonIndent : -1)};
 
         FO_VERIFY_AND_THROW(pretty_json_dump.size() <= DataBaseSerialization::MAX_DOCUMENT_BYTES, "Database document size limit exceeded", pretty_json_dump.size());
 
-        string dir = strex(path).extract_dir().str();
+        string dir {strex(path).extract_dir().str()};
 
         if (!dir.empty() && !fs::create_directories(dir)) {
             throw DataBaseException("DbJson Can't open file for writing", path);
@@ -229,7 +230,7 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        string path = strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name)));
+        string path {static_cast<string&&>(strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name))))};
 
         if (!fs::remove_file(path)) {
             throw DataBaseException("DbJson Can't delete file", path);
@@ -239,8 +240,8 @@ protected:
 private:
     AnyData::Document ReadRecordFile(hstring collection_name, DataBaseKeyType key_type, const DataBaseKey& id) const FO_TSA_REQUIRES(_storageLocker)
     {
-        string path = strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, key_type));
-        auto json = fs::read_file_bounded(path, DataBaseSerialization::MAX_DOCUMENT_BYTES);
+        string path {static_cast<string&&>(strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, key_type)))};
+        auto json {fs::read_file_bounded(path, DataBaseSerialization::MAX_DOCUMENT_BYTES)};
 
         if (!json) {
             if (fs::exists(path)) {

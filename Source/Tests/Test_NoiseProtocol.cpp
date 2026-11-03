@@ -54,7 +54,7 @@ namespace
     // Noise_NK_25519_ChaChaPoly_BLAKE2b from three independent implementations' published suites
     auto GetNoiseVectors() -> vector<NoiseVector>
     {
-        vector<NoiseVector> result;
+        vector<NoiseVector> result {};
 
         result.emplace_back(NoiseVector {
             .Name = "cacophony",
@@ -116,12 +116,12 @@ namespace
     {
         FO_VERIFY_AND_THROW(hex.size() % 2 == 0, "Hex text must hold whole bytes", hex.size());
 
-        vector<uint8_t> result;
+        vector<uint8_t> result {};
         result.reserve(hex.size() / 2);
 
-        for (size_t i = 0; i < hex.size(); i += 2) {
-            uint8_t byte = 0;
-            auto parse_result = std::from_chars(hex.data() + i, hex.data() + i + 2, byte, 16);
+        for (size_t i {0}; i < hex.size(); i += 2) {
+            uint8_t byte {0};
+            auto parse_result {std::from_chars(hex.data() + i, hex.data() + i + 2, byte, 16)};
             FO_VERIFY_AND_THROW(parse_result.ec == std::errc {}, "Invalid hex digit in test data", hex.substr(i, 2));
             result.emplace_back(byte);
         }
@@ -131,16 +131,16 @@ namespace
 
     auto KeyFromHex(string_view hex) -> crypto::key_bytes
     {
-        optional<crypto::key_bytes> key = crypto::parse_key(hex);
+        optional<crypto::key_bytes> key {crypto::parse_key(hex)};
         FO_VERIFY_AND_THROW(key.has_value(), "Test key must be 64 hex digits", hex);
         return key.value();
     }
 
     auto MakeHandshakePair(const_span<uint8_t> prologue) -> pair<NoiseHandshakeNK, NoiseHandshakeNK>
     {
-        crypto::key_bytes responder_static = crypto::generate_secret_key();
-        NoiseHandshakeNK initiator = NoiseHandshakeNK::CreateInitiator(prologue, crypto::derive_public_key(responder_static), crypto::generate_secret_key());
-        NoiseHandshakeNK responder = NoiseHandshakeNK::CreateResponder(prologue, responder_static, crypto::generate_secret_key());
+        crypto::key_bytes responder_static {crypto::generate_secret_key()};
+        NoiseHandshakeNK initiator {NoiseHandshakeNK::CreateInitiator(prologue, crypto::derive_public_key(responder_static), crypto::generate_secret_key())};
+        NoiseHandshakeNK responder {NoiseHandshakeNK::CreateResponder(prologue, responder_static, crypto::generate_secret_key())};
         return {std::move(initiator), std::move(responder)};
     }
 }
@@ -150,23 +150,23 @@ TEST_CASE("NoiseHandshakeNKMatchesPublishedVectors")
     for (const NoiseVector& noise_vector : GetNoiseVectors()) {
         INFO(noise_vector.Name);
 
-        vector<uint8_t> prologue = FromHex(noise_vector.Prologue);
-        crypto::key_bytes responder_static = KeyFromHex(noise_vector.ResponderStatic);
+        vector<uint8_t> prologue {FromHex(noise_vector.Prologue)};
+        crypto::key_bytes responder_static {KeyFromHex(noise_vector.ResponderStatic)};
 
         REQUIRE(crypto::format_key(crypto::derive_public_key(responder_static)) == noise_vector.ResponderPublic);
 
-        NoiseHandshakeNK initiator = NoiseHandshakeNK::CreateInitiator(prologue, KeyFromHex(noise_vector.ResponderPublic), KeyFromHex(noise_vector.InitiatorEphemeral));
-        NoiseHandshakeNK responder = NoiseHandshakeNK::CreateResponder(prologue, responder_static, KeyFromHex(noise_vector.ResponderEphemeral));
+        NoiseHandshakeNK initiator {NoiseHandshakeNK::CreateInitiator(prologue, KeyFromHex(noise_vector.ResponderPublic), KeyFromHex(noise_vector.InitiatorEphemeral))};
+        NoiseHandshakeNK responder {NoiseHandshakeNK::CreateResponder(prologue, responder_static, KeyFromHex(noise_vector.ResponderEphemeral))};
 
         REQUIRE(noise_vector.Messages.size() > 2);
 
         // Two handshake messages, then transport messages alternating from the initiator
-        for (size_t i = 0; i < 2; i++) {
-            ptr<NoiseHandshakeNK> writer = i == 0 ? &initiator : &responder;
-            ptr<NoiseHandshakeNK> reader = i == 0 ? &responder : &initiator;
-            vector<uint8_t> payload = FromHex(noise_vector.Messages[i].first);
-            vector<uint8_t> message;
-            vector<uint8_t> received_payload;
+        for (size_t i {0}; i < 2; i++) {
+            ptr<NoiseHandshakeNK> writer {i == 0 ? &initiator : &responder};
+            ptr<NoiseHandshakeNK> reader {i == 0 ? &responder : &initiator};
+            vector<uint8_t> payload {FromHex(noise_vector.Messages[i].first)};
+            vector<uint8_t> message {};
+            vector<uint8_t> received_payload {};
 
             REQUIRE(writer->IsWriteTurn());
             writer->WriteMessage(payload, message);
@@ -183,16 +183,16 @@ TEST_CASE("NoiseHandshakeNKMatchesPublishedVectors")
             CHECK(vector<uint8_t>(initiator.GetHandshakeHash().begin(), initiator.GetHandshakeHash().end()) == FromHex(noise_vector.HandshakeHash));
         }
 
-        NoiseHandshakeNK::TransportCiphers initiator_ciphers = initiator.Split();
-        NoiseHandshakeNK::TransportCiphers responder_ciphers = responder.Split();
+        NoiseHandshakeNK::TransportCiphers initiator_ciphers {initiator.Split()};
+        NoiseHandshakeNK::TransportCiphers responder_ciphers {responder.Split()};
 
-        for (size_t i = 2; i < noise_vector.Messages.size(); i++) {
-            bool from_initiator = i % 2 == 0;
-            ptr<NoiseCipherState> sender = from_initiator ? &initiator_ciphers.Send : &responder_ciphers.Send;
-            ptr<NoiseCipherState> receiver = from_initiator ? &responder_ciphers.Receive : &initiator_ciphers.Receive;
-            vector<uint8_t> payload = FromHex(noise_vector.Messages[i].first);
-            vector<uint8_t> ciphertext;
-            vector<uint8_t> plaintext;
+        for (size_t i {2}; i < noise_vector.Messages.size(); i++) {
+            bool from_initiator {i % 2 == 0};
+            ptr<NoiseCipherState> sender {from_initiator ? &initiator_ciphers.Send : &responder_ciphers.Send};
+            ptr<NoiseCipherState> receiver {from_initiator ? &responder_ciphers.Receive : &initiator_ciphers.Receive};
+            vector<uint8_t> payload {FromHex(noise_vector.Messages[i].first)};
+            vector<uint8_t> ciphertext {};
+            vector<uint8_t> plaintext {};
 
             sender->EncryptWithAd({}, payload, ciphertext);
             CHECK(ciphertext == FromHex(noise_vector.Messages[i].second));
@@ -208,11 +208,11 @@ TEST_CASE("NoiseHandshakeNKRejectsWhatItCannotAuthenticate")
 
     SECTION("an initiator holding another responder key is refused at the first message")
     {
-        crypto::key_bytes responder_static = crypto::generate_secret_key();
-        NoiseHandshakeNK initiator = NoiseHandshakeNK::CreateInitiator(prologue, crypto::derive_public_key(crypto::generate_secret_key()), crypto::generate_secret_key());
-        NoiseHandshakeNK responder = NoiseHandshakeNK::CreateResponder(prologue, responder_static, crypto::generate_secret_key());
-        vector<uint8_t> message;
-        vector<uint8_t> payload;
+        crypto::key_bytes responder_static {crypto::generate_secret_key()};
+        NoiseHandshakeNK initiator {NoiseHandshakeNK::CreateInitiator(prologue, crypto::derive_public_key(crypto::generate_secret_key()), crypto::generate_secret_key())};
+        NoiseHandshakeNK responder {NoiseHandshakeNK::CreateResponder(prologue, responder_static, crypto::generate_secret_key())};
+        vector<uint8_t> message {};
+        vector<uint8_t> payload {};
 
         initiator.WriteMessage({}, message);
 
@@ -223,12 +223,12 @@ TEST_CASE("NoiseHandshakeNKRejectsWhatItCannotAuthenticate")
 
     SECTION("a different prologue is refused")
     {
-        crypto::key_bytes responder_static = crypto::generate_secret_key();
+        crypto::key_bytes responder_static {crypto::generate_secret_key()};
         vector<uint8_t> other_prologue {1, 2, 4};
-        NoiseHandshakeNK initiator = NoiseHandshakeNK::CreateInitiator(prologue, crypto::derive_public_key(responder_static), crypto::generate_secret_key());
-        NoiseHandshakeNK responder = NoiseHandshakeNK::CreateResponder(other_prologue, responder_static, crypto::generate_secret_key());
-        vector<uint8_t> message;
-        vector<uint8_t> payload;
+        NoiseHandshakeNK initiator {NoiseHandshakeNK::CreateInitiator(prologue, crypto::derive_public_key(responder_static), crypto::generate_secret_key())};
+        NoiseHandshakeNK responder {NoiseHandshakeNK::CreateResponder(other_prologue, responder_static, crypto::generate_secret_key())};
+        vector<uint8_t> message {};
+        vector<uint8_t> payload {};
 
         initiator.WriteMessage({}, message);
 
@@ -237,11 +237,11 @@ TEST_CASE("NoiseHandshakeNKRejectsWhatItCannotAuthenticate")
 
     SECTION("a changed byte anywhere in either message is refused")
     {
-        for (size_t message_index = 0; message_index < 2; message_index++) {
-            for (size_t byte_index = 0; byte_index < NoiseHandshakeNK::MESSAGE_OVERHEAD; byte_index += 5) {
-                auto [initiator, responder] = MakeHandshakePair(prologue);
-                vector<uint8_t> first_message;
-                vector<uint8_t> payload;
+        for (size_t message_index {0}; message_index < 2; message_index++) {
+            for (size_t byte_index {0}; byte_index < NoiseHandshakeNK::MESSAGE_OVERHEAD; byte_index += 5) {
+                auto [initiator, responder] {MakeHandshakePair(prologue)};
+                vector<uint8_t> first_message {};
+                vector<uint8_t> payload {};
 
                 initiator.WriteMessage({}, first_message);
 
@@ -253,7 +253,7 @@ TEST_CASE("NoiseHandshakeNKRejectsWhatItCannotAuthenticate")
 
                 REQUIRE(responder.ReadMessage(first_message, payload));
 
-                vector<uint8_t> second_message;
+                vector<uint8_t> second_message {};
                 responder.WriteMessage({}, second_message);
                 second_message[byte_index] ^= 0x01;
 
@@ -264,9 +264,9 @@ TEST_CASE("NoiseHandshakeNKRejectsWhatItCannotAuthenticate")
 
     SECTION("a truncated message is refused")
     {
-        auto [initiator, responder] = MakeHandshakePair(prologue);
-        vector<uint8_t> message;
-        vector<uint8_t> payload;
+        auto [initiator, responder] {MakeHandshakePair(prologue)};
+        vector<uint8_t> message {};
+        vector<uint8_t> payload {};
 
         initiator.WriteMessage({}, message);
         message.resize(NoiseHandshakeNK::MESSAGE_OVERHEAD - 1);
@@ -276,9 +276,9 @@ TEST_CASE("NoiseHandshakeNKRejectsWhatItCannotAuthenticate")
 
     SECTION("messages go in turn and split only after both")
     {
-        auto [initiator, responder] = MakeHandshakePair(prologue);
-        vector<uint8_t> message;
-        vector<uint8_t> payload;
+        auto [initiator, responder] {MakeHandshakePair(prologue)};
+        vector<uint8_t> message {};
+        vector<uint8_t> payload {};
 
         CHECK_THROWS(responder.WriteMessage({}, message));
         CHECK_THROWS(initiator.Split());
@@ -291,9 +291,9 @@ TEST_CASE("NoiseHandshakeNKRejectsWhatItCannotAuthenticate")
 
 TEST_CASE("NoiseCipherStateNeverReusesANonce")
 {
-    auto [initiator, responder] = MakeHandshakePair({});
-    vector<uint8_t> message;
-    vector<uint8_t> payload;
+    auto [initiator, responder] {MakeHandshakePair({})};
+    vector<uint8_t> message {};
+    vector<uint8_t> payload {};
 
     initiator.WriteMessage({}, message);
     REQUIRE(responder.ReadMessage(message, payload));
@@ -301,12 +301,12 @@ TEST_CASE("NoiseCipherStateNeverReusesANonce")
     responder.WriteMessage({}, message);
     REQUIRE(initiator.ReadMessage(message, payload));
 
-    NoiseHandshakeNK::TransportCiphers sender = initiator.Split();
-    NoiseHandshakeNK::TransportCiphers receiver = responder.Split();
+    NoiseHandshakeNK::TransportCiphers sender {initiator.Split()};
+    NoiseHandshakeNK::TransportCiphers receiver {responder.Split()};
     vector<uint8_t> text {10, 20, 30};
 
-    vector<uint8_t> first;
-    vector<uint8_t> second;
+    vector<uint8_t> first {};
+    vector<uint8_t> second {};
     sender.Send.EncryptWithAd({}, text, first);
     sender.Send.EncryptWithAd({}, text, second);
 
@@ -314,7 +314,7 @@ TEST_CASE("NoiseCipherStateNeverReusesANonce")
 
     SECTION("a replayed or reordered message fails and leaves the counter for the genuine one")
     {
-        vector<uint8_t> plaintext;
+        vector<uint8_t> plaintext {};
 
         CHECK_FALSE(receiver.Receive.DecryptWithAd({}, second, plaintext));
         CHECK(receiver.Receive.GetNonce() == 0);
@@ -326,7 +326,7 @@ TEST_CASE("NoiseCipherStateNeverReusesANonce")
 
     SECTION("the two directions never share a key")
     {
-        vector<uint8_t> plaintext;
+        vector<uint8_t> plaintext {};
 
         CHECK_FALSE(sender.Receive.DecryptWithAd({}, first, plaintext));
     }

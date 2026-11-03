@@ -99,8 +99,8 @@ namespace
                 return -1;
             }
 
-            auto target = make_ptr(raw_data);
-            auto source = make_ptr(&_buf->at(_readPos));
+            auto target {make_ptr(raw_data)};
+            auto source {make_ptr(&_buf->at(_readPos))};
             memory::copy(target, source, size);
             _readPos += size;
             return 0;
@@ -117,8 +117,8 @@ namespace
             }
 
             _buf->resize(_writePos + size);
-            auto target = make_ptr(&_buf->at(_writePos));
-            auto source = make_ptr(raw_data);
+            auto target {make_ptr(&_buf->at(_writePos))};
+            auto source {make_ptr(raw_data)};
             memory::copy(target, source, size);
             _writePos += size;
             return 0;
@@ -134,16 +134,16 @@ namespace
 
     static auto GetTrackerState(ptr<asIScriptEngine> engine) -> ptr<ResourceTrackerState>
     {
-        auto tracker_state = cast_from_void<ResourceTrackerState*>(engine->GetUserData());
+        auto tracker_state {cast_from_void<ResourceTrackerState*>(engine->GetUserData())};
         FO_VERIFY_AND_THROW(tracker_state, "Script engine has no resource tracker state attached");
         return tracker_state;
     }
 
     static auto GetActiveEngine() -> ptr<asIScriptEngine>
     {
-        auto ctx = make_nptr(asGetActiveContext());
+        auto ctx {make_nptr(asGetActiveContext())};
         FO_VERIFY_AND_THROW(ctx, "Missing required context");
-        nptr<asIScriptEngine> active_engine = ctx->GetEngine();
+        nptr<asIScriptEngine> active_engine {ctx->GetEngine()};
         FO_VERIFY_AND_THROW(active_engine, "Active script context has no engine");
         return active_engine;
     }
@@ -155,25 +155,25 @@ namespace
 
     static auto MakeScriptEngine() -> unique_del_ptr<asIScriptEngine>
     {
-        auto engine = make_nptr(asCreateScriptEngine());
+        auto engine {make_nptr(asCreateScriptEngine())};
         REQUIRE(engine);
-        auto engine_owner = make_unique_del_ptr(engine, ReleaseScriptEngine);
+        auto engine_owner {make_unique_del_ptr(engine, ReleaseScriptEngine)};
         REQUIRE(engine_owner);
         return take_not_null(engine_owner);
     }
 
     static auto AcquireResource() -> int
     {
-        auto state = GetTrackerState(GetActiveEngine());
-        int32_t id = ++state->NextId;
+        auto state {GetTrackerState(GetActiveEngine())};
+        int32_t id {++state->NextId};
         state->ActiveRefs[id] = 1;
         return id;
     }
 
     static void ReleaseResource(int id)
     {
-        auto state = GetTrackerState(GetActiveEngine());
-        auto it = state->ActiveRefs.find(id);
+        auto state {GetTrackerState(GetActiveEngine())};
+        auto it {state->ActiveRefs.find(id)};
 
         if (it == state->ActiveRefs.end() || it->second == 0) {
             state->DoubleFreeCount++;
@@ -189,7 +189,7 @@ namespace
 
     static void ObserveResource(int id)
     {
-        auto state = GetTrackerState(GetActiveEngine());
+        auto state {GetTrackerState(GetActiveEngine())};
         if (state->FirstObservedId == 0) {
             state->FirstObservedId = id;
         }
@@ -199,15 +199,15 @@ namespace
 
     static auto MakeNativeResource() -> NativeResource*
     {
-        auto state = GetTrackerState(GetActiveEngine());
-        int32_t id = ++state->NextId;
+        auto state {GetTrackerState(GetActiveEngine())};
+        int32_t id {++state->NextId};
         state->ActiveRefs[id] = 1;
         return new NativeResource {.State = state, .Id = id, .RefCount = 1};
     }
 
     static void NativeResourceAddRef(void* obj)
     {
-        auto self = cast_from_void<NativeResource*>(obj);
+        auto self {cast_from_void<NativeResource*>(obj)};
         FO_VERIFY_AND_THROW(self, "Native resource is null");
         self->RefCount++;
         self->State->ActiveRefs[self->Id]++;
@@ -215,12 +215,12 @@ namespace
 
     static void NativeResourceRelease(void* obj)
     {
-        auto self = cast_from_void<NativeResource*>(obj);
+        auto self {cast_from_void<NativeResource*>(obj)};
         FO_VERIFY_AND_THROW(self, "Native resource is null");
         self->RefCount--;
 
-        auto& active_refs = self->State->ActiveRefs;
-        auto it = active_refs.find(self->Id);
+        auto& active_refs {self->State->ActiveRefs};
+        auto it {active_refs.find(self->Id)};
         if (it == active_refs.end() || it->second == 0) {
             self->State->DoubleFreeCount++;
         }
@@ -233,7 +233,7 @@ namespace
         }
 
         if (self->RefCount == 0) {
-            auto owned_self = adopt_unique_ptr<NativeResource>(self);
+            auto owned_self {adopt_unique_ptr<NativeResource>(self)};
             ignore_unused(owned_self);
         }
     }
@@ -272,66 +272,66 @@ namespace
 
     static void VariadicProbeConstructDefault(asIScriptGeneric* gen)
     {
-        ptr<asIScriptGeneric> generic = gen;
-        nptr<VariadicProbeValue> self = cast_from_void<VariadicProbeValue*>(generic->GetObject());
+        ptr<asIScriptGeneric> generic {gen};
+        nptr<VariadicProbeValue> self {cast_from_void<VariadicProbeValue*>(generic->GetObject())};
         new (self.get()) VariadicProbeValue();
     }
 
     static void VariadicProbeConstructCopy(asIScriptGeneric* gen)
     {
-        ptr<asIScriptGeneric> generic = gen;
-        nptr<VariadicProbeValue> self = cast_from_void<VariadicProbeValue*>(generic->GetObject());
-        nptr<VariadicProbeValue> other = cast_from_void<VariadicProbeValue*>(generic->GetArgObject(0));
+        ptr<asIScriptGeneric> generic {gen};
+        nptr<VariadicProbeValue> self {cast_from_void<VariadicProbeValue*>(generic->GetObject())};
+        nptr<VariadicProbeValue> other {cast_from_void<VariadicProbeValue*>(generic->GetArgObject(0))};
         new (self.get()) VariadicProbeValue {.Value = other->Value};
     }
 
     static void VariadicProbeConstructVariadic(asIScriptGeneric* gen)
     {
-        ptr<asIScriptGeneric> generic = gen;
-        nptr<VariadicProbeValue> self = cast_from_void<VariadicProbeValue*>(generic->GetObject());
+        ptr<asIScriptGeneric> generic {gen};
+        nptr<VariadicProbeValue> self {cast_from_void<VariadicProbeValue*>(generic->GetObject())};
         new (self.get()) VariadicProbeValue {.Value = numeric_cast<int32_t>(generic->GetArgCount())};
     }
 
     static void VariadicProbeDestruct(asIScriptGeneric* gen)
     {
-        ptr<asIScriptGeneric> generic = gen;
-        nptr<VariadicProbeValue> self = cast_from_void<VariadicProbeValue*>(generic->GetObject());
+        ptr<asIScriptGeneric> generic {gen};
+        nptr<VariadicProbeValue> self {cast_from_void<VariadicProbeValue*>(generic->GetObject())};
         self->~VariadicProbeValue();
     }
 
     static void VariadicProbeAssign(asIScriptGeneric* gen)
     {
-        ptr<asIScriptGeneric> generic = gen;
-        nptr<VariadicProbeValue> self = cast_from_void<VariadicProbeValue*>(generic->GetObject());
-        nptr<VariadicProbeValue> other = cast_from_void<VariadicProbeValue*>(generic->GetArgObject(0));
+        ptr<asIScriptGeneric> generic {gen};
+        nptr<VariadicProbeValue> self {cast_from_void<VariadicProbeValue*>(generic->GetObject())};
+        nptr<VariadicProbeValue> other {cast_from_void<VariadicProbeValue*>(generic->GetArgObject(0))};
         self->Value = other->Value;
         generic->SetReturnAddress(self.get());
     }
 
     static void VariadicProbeEquals(asIScriptGeneric* gen)
     {
-        ptr<asIScriptGeneric> generic = gen;
-        nptr<VariadicProbeValue> self = cast_from_void<VariadicProbeValue*>(generic->GetObject());
-        nptr<VariadicProbeValue> other = cast_from_void<VariadicProbeValue*>(generic->GetArgObject(0));
+        ptr<asIScriptGeneric> generic {gen};
+        nptr<VariadicProbeValue> self {cast_from_void<VariadicProbeValue*>(generic->GetObject())};
+        nptr<VariadicProbeValue> other {cast_from_void<VariadicProbeValue*>(generic->GetArgObject(0))};
         generic->SetReturnByte(self->Value == other->Value ? 1 : 0);
     }
 
     static void VariadicProbeGetValue(asIScriptGeneric* gen)
     {
-        ptr<asIScriptGeneric> generic = gen;
-        nptr<VariadicProbeValue> self = cast_from_void<VariadicProbeValue*>(generic->GetObject());
+        ptr<asIScriptGeneric> generic {gen};
+        nptr<VariadicProbeValue> self {cast_from_void<VariadicProbeValue*>(generic->GetObject())};
         generic->SetReturnDWord(numeric_cast<asDWORD>(self->Value));
     }
 
     static void ReturnVariadicProbe(asIScriptGeneric* gen)
     {
-        ptr<asIScriptGeneric> generic = gen;
+        ptr<asIScriptGeneric> generic {gen};
         VariadicProbeValue value {.Value = 123};
-        int32_t returned = generic->SetReturnObject(&value);
+        int32_t returned {generic->SetReturnObject(&value)};
         FO_VERIFY_AND_THROW(returned >= 0, "Failed to return variadic probe value");
     }
 
-    static int GlobalInt = 0;
+    static int GlobalInt {0};
 
     static void SetGlobalInt(int v)
     {
@@ -344,7 +344,7 @@ namespace
 
     static void IncrementGlobalCounter()
     {
-        auto state = GetTrackerState(GetActiveEngine());
+        auto state {GetTrackerState(GetActiveEngine())};
         state->GlobalCounter++;
     }
 
@@ -352,8 +352,8 @@ namespace
     {
         ignore_unused(param);
 
-        ptr<const asSMessageInfo> message = msg;
-        nptr<const char> section = message->section;
+        ptr<const asSMessageInfo> message {msg};
+        nptr<const char> section {message->section};
 
         if (!section) {
             return;
@@ -371,7 +371,7 @@ namespace
             return;
         }
 
-        nptr<const char> text = message->message;
+        nptr<const char> text {message->message};
         FAIL(section_name << ':' << message->row << ' ' << (text ? text.get() : "<no message>"));
     }
 
@@ -383,11 +383,11 @@ namespace
 
     static void CaptureMessageCallback(const asSMessageInfo* msg, void* param)
     {
-        ptr<const asSMessageInfo> message = msg;
-        auto self = cast_from_void<MsgCapture*>(param);
+        ptr<const asSMessageInfo> message {msg};
+        auto self {cast_from_void<MsgCapture*>(param)};
         FO_VERIFY_AND_THROW(self, "Message callback param must carry capture state");
-        nptr<const char> text = message->message;
-        string message_text = text ? string {text.get()} : string {"<no message>"};
+        nptr<const char> text {message->message};
+        string message_text {text ? string {text.get()} : string {"<no message>"}};
 
         if (message->type == asMSGTYPE_ERROR) {
             self->Errors.emplace_back(message_text);
@@ -448,24 +448,24 @@ namespace
 
     static auto RunScenario(ptr<asIScriptModule> module, ResourceTrackerState& state) -> ScenarioMetrics
     {
-        nptr<asIScriptEngine> engine = module->GetEngine();
+        nptr<asIScriptEngine> engine {module->GetEngine()};
         engine->SetUserData(&state);
 
-        nptr<asIScriptFunction> func = module->GetFunctionByDecl("void RunScenario()");
+        nptr<asIScriptFunction> func {module->GetFunctionByDecl("void RunScenario()")};
         REQUIRE(func);
 
-        nptr<asIScriptContext> ctx = engine->CreateContext();
+        nptr<asIScriptContext> ctx {engine->CreateContext()};
         REQUIRE(ctx);
 
         CHECK(ctx->Prepare(func.get()) >= 0);
-        int32_t exec_result = ctx->Execute();
+        int32_t exec_result {ctx->Execute()};
         if (exec_result != asEXECUTION_FINISHED) {
-            nptr<const char> section;
-            int column = 0;
-            int32_t line = ctx->GetExceptionLineNumber(&column, section.get_pp());
-            nptr<const asIScriptFunction> exception_func = ctx->GetExceptionFunction();
-            nptr<const char> exception_text = ctx->GetExceptionString();
-            string_view exception_decl = exception_func ? string_view {exception_func->GetDeclaration()} : string_view {"<unknown>"};
+            nptr<const char> section {};
+            int column {0};
+            int32_t line {ctx->GetExceptionLineNumber(&column, section.get_pp())};
+            nptr<const asIScriptFunction> exception_func {ctx->GetExceptionFunction()};
+            nptr<const char> exception_text {ctx->GetExceptionString()};
+            string_view exception_decl {exception_func ? string_view {exception_func->GetDeclaration()} : string_view {"<unknown>"}};
 
             FAIL("Execute failed: result=" << exec_result << ", section=" << (section ? section.get() : "<unknown>") << ", line=" << line << ", column=" << column << ", function=" << exception_decl << ", exception=" << (exception_text ? exception_text.get() : "<none>") << ", first_observed=" << state.FirstObservedId << ", last_observed=" << state.LastObservedId);
         }
@@ -474,7 +474,7 @@ namespace
 
         CHECK(engine->GarbageCollect(asGC_FULL_CYCLE) >= 0);
 
-        int leaked_count = 0;
+        int leaked_count {0};
 
         for (const auto& [id, ref_count] : state.ActiveRefs) {
             static_cast<void>(id);
@@ -491,7 +491,7 @@ namespace
         };
     }
 
-    static constexpr string_view TestScript = R"(
+    static constexpr string_view TestScript {R"(
 class Resource
 {
     int Id;
@@ -523,11 +523,11 @@ void RunScenario()
     holder.Value = Resource();
     ObserveResource(holder.Value != null ? 100 : -20);
 }
-)";
+)"};
 
     // Reaches the instruction families the portable format has to normalize: stack-adjusted value types,
     // global property access, mixed-type parameters, and function pointers
-    static constexpr string_view PortableFormatTestScript = R"(
+    static constexpr string_view PortableFormatTestScript {R"(
 class Container
 {
     PtrSizedVal StoredVal;
@@ -593,11 +593,11 @@ void RunScenario()
     IncrementGlobalCounter();
     IncrementGlobalCounter();
 }
-)";
+)"};
 
     // A call whose stack holds several pointer-sized items before the reference parameter, so GETREF offset
     // adjustment must count all of them instead of stopping at the first
-    static constexpr string_view GetRefOffsetTestScript = R"(
+    static constexpr string_view GetRefOffsetTestScript {R"(
 class Lookup
 {
     int Fallback;
@@ -670,9 +670,9 @@ void RunScenario()
     int chained = lk.Get(key5, lk.Get(key1, 0));
     ObserveResource(chained);  // key5==Fallback Ã¢â€ â€™ defVal = lk.Get(key1, 0) = 42+0 = 42
 }
-)";
+)"};
 
-    static constexpr string_view VariadicAbiTestScript = R"(
+    static constexpr string_view VariadicAbiTestScript {R"(
 bool PrimitiveConstructorUsesAlignedCount()
 {
     VariadicProbeValue value = 3.14;
@@ -692,11 +692,11 @@ bool ReturnByValueUsesAlignedCount()
     VariadicProbeValue value = ReturnVariadicProbe(42);
     return value.Value == 123;
 }
-)";
+)"};
 
     static auto BuildModule(ptr<asIScriptEngine> engine, const string& module_name) -> ptr<asIScriptModule>
     {
-        auto built_module = make_nptr(engine->GetModule(module_name.c_str(), asGM_ALWAYS_CREATE));
+        auto built_module {make_nptr(engine->GetModule(module_name.c_str(), asGM_ALWAYS_CREATE))};
         REQUIRE(built_module);
         CHECK(built_module->AddScriptSection("bytecode_test", TestScript.data(), numeric_cast<unsigned>(TestScript.size())) >= 0);
         CHECK(built_module->Build() >= 0);
@@ -705,7 +705,7 @@ bool ReturnByValueUsesAlignedCount()
 
     static auto BuildModuleFromScript(ptr<asIScriptEngine> engine, const string& module_name, string_view script) -> ptr<asIScriptModule>
     {
-        auto built_module = make_nptr(engine->GetModule(module_name.c_str(), asGM_ALWAYS_CREATE));
+        auto built_module {make_nptr(engine->GetModule(module_name.c_str(), asGM_ALWAYS_CREATE))};
         REQUIRE(built_module);
         CHECK(built_module->AddScriptSection("bytecode_test", script.data(), numeric_cast<unsigned>(script.size())) >= 0);
         CHECK(built_module->Build() >= 0);
@@ -717,31 +717,31 @@ TEST_CASE("AngelScriptBytecode", "[angelscript][bytecode]")
 {
     SECTION("SaveLoadPreservesGeneratedScriptCopyBehavior")
     {
-        auto build_engine = MakeScriptEngine();
+        auto build_engine {MakeScriptEngine()};
         REQUIRE(nptr<asIScriptEngine> {build_engine});
         RegisterTestApi(build_engine.get());
 
-        auto build_module = BuildModule(build_engine.get(), "BuildModule");
+        auto build_module {BuildModule(build_engine.get(), "BuildModule")};
 
         ResourceTrackerState build_state {};
-        auto build_metrics = RunScenario(build_module, build_state);
+        auto build_metrics {RunScenario(build_module, build_state)};
 
         vector<asBYTE> bytecode {};
         BytecodeStream writer {bytecode};
         CHECK(build_module->SaveByteCode(&writer) >= 0);
         REQUIRE_FALSE(bytecode.empty());
 
-        auto load_engine = MakeScriptEngine();
+        auto load_engine {MakeScriptEngine()};
         REQUIRE(nptr<asIScriptEngine> {load_engine});
         RegisterTestApi(load_engine.get());
 
-        nptr<asIScriptModule> load_module = load_engine->GetModule("LoadModule", asGM_ALWAYS_CREATE);
+        nptr<asIScriptModule> load_module {load_engine->GetModule("LoadModule", asGM_ALWAYS_CREATE)};
         REQUIRE(load_module);
         BytecodeStream reader {bytecode};
         CHECK(load_module->LoadByteCode(&reader) >= 0);
 
         ResourceTrackerState load_state {};
-        auto load_metrics = RunScenario(load_module, load_state);
+        auto load_metrics {RunScenario(load_module, load_state)};
 
         CHECK(build_metrics.FirstObservedId == 200);
         CHECK(build_metrics.LastObservedId == 100);
@@ -760,14 +760,14 @@ TEST_CASE("AngelScriptBytecode", "[angelscript][bytecode]")
         // Serialization with a registered value type whose size follows the pointer size, which is what the
         // portable format's stack normalization exists for
 
-        auto build_engine = MakeScriptEngine();
+        auto build_engine {MakeScriptEngine()};
         REQUIRE(nptr<asIScriptEngine> {build_engine});
         RegisterTestApi(build_engine.get());
 
-        auto build_module = BuildModuleFromScript(build_engine.get(), "BuildModule", PortableFormatTestScript);
+        auto build_module {BuildModuleFromScript(build_engine.get(), "BuildModule", PortableFormatTestScript)};
 
         ResourceTrackerState build_state {};
-        auto build_metrics = RunScenario(build_module, build_state);
+        auto build_metrics {RunScenario(build_module, build_state)};
 
         // Verify build-time execution produces expected values
         // Sequence: 42, 42, 60, 150, 110, 1, 102
@@ -784,18 +784,18 @@ TEST_CASE("AngelScriptBytecode", "[angelscript][bytecode]")
         REQUIRE_FALSE(bytecode.empty());
 
         // Load in fresh engine
-        auto load_engine = MakeScriptEngine();
+        auto load_engine {MakeScriptEngine()};
         REQUIRE(nptr<asIScriptEngine> {load_engine});
         RegisterTestApi(load_engine.get());
 
-        nptr<asIScriptModule> load_module = load_engine->GetModule("LoadModule", asGM_ALWAYS_CREATE);
+        nptr<asIScriptModule> load_module {load_engine->GetModule("LoadModule", asGM_ALWAYS_CREATE)};
         REQUIRE(load_module);
         BytecodeStream reader {bytecode};
         CHECK(load_module->LoadByteCode(&reader) >= 0);
 
         // Execute loaded bytecode and verify identical results
         ResourceTrackerState load_state {};
-        auto load_metrics = RunScenario(load_module, load_state);
+        auto load_metrics {RunScenario(load_module, load_state)};
 
         CHECK(load_metrics.FirstObservedId == build_metrics.FirstObservedId);
         CHECK(load_metrics.LastObservedId == build_metrics.LastObservedId);
@@ -808,11 +808,11 @@ TEST_CASE("AngelScriptBytecode", "[angelscript][bytecode]")
     {
         // A bare `T` rejects null at runtime: the compiler emits asBC_RefCpyChk for non-nullable destinations and
         // the VM throws when the source handle is null
-        auto engine = MakeScriptEngine();
+        auto engine {MakeScriptEngine()};
         REQUIRE(nptr<asIScriptEngine> {engine});
         RegisterTestApi(engine.get());
 
-        static constexpr string_view NullableScript = R"(
+        static constexpr string_view NullableScript {R"(
 class Resource
 {
     int Id;
@@ -852,9 +852,9 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
 
     ObserveResource(optional !is null ? 4 : -2);
 }
-)";
+)"};
 
-        nptr<asIScriptModule> module = engine->GetModule("NullableModule", asGM_ALWAYS_CREATE);
+        nptr<asIScriptModule> module {engine->GetModule("NullableModule", asGM_ALWAYS_CREATE)};
         REQUIRE(module);
         CHECK(module->AddScriptSection("nullability_test", NullableScript.data(), numeric_cast<unsigned>(NullableScript.size())) >= 0);
         CHECK(module->Build() >= 0);
@@ -864,12 +864,12 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
 
         // Nullable: assignment of null must succeed and the variable observes as null
         {
-            nptr<asIScriptFunction> func = module->GetFunctionByDecl("void AssignNullToNullable()");
+            nptr<asIScriptFunction> func {module->GetFunctionByDecl("void AssignNullToNullable()")};
             REQUIRE(func);
-            nptr<asIScriptContext> ctx = engine->CreateContext();
+            nptr<asIScriptContext> ctx {engine->CreateContext()};
             REQUIRE(ctx);
             CHECK(ctx->Prepare(func.get()) >= 0);
-            int32_t result = ctx->Execute();
+            int32_t result {ctx->Execute()};
             CHECK(result == asEXECUTION_FINISHED);
             ctx->Release();
             CHECK(state.LastObservedId == 1);
@@ -879,14 +879,14 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
         // "Null assignment to non-nullable handle" exception before ObserveResource(-999) runs
         {
             state.LastObservedId = 0;
-            nptr<asIScriptFunction> func = module->GetFunctionByDecl("void AssignNullToNonNullable()");
+            nptr<asIScriptFunction> func {module->GetFunctionByDecl("void AssignNullToNonNullable()")};
             REQUIRE(func);
-            nptr<asIScriptContext> ctx = engine->CreateContext();
+            nptr<asIScriptContext> ctx {engine->CreateContext()};
             REQUIRE(ctx);
             CHECK(ctx->Prepare(func.get()) >= 0);
-            int32_t result = ctx->Execute();
+            int32_t result {ctx->Execute()};
             CHECK(result == asEXECUTION_EXCEPTION);
-            nptr<const char> ex = ctx->GetExceptionString();
+            nptr<const char> ex {ctx->GetExceptionString()};
             REQUIRE(ex);
             CHECK(string_view {ex.get()} == "Null assignment to non-nullable handle");
             // The sentinel ObserveResource(-999) must NOT have been reached
@@ -898,12 +898,12 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
         // leaves scope, even if no later assignment overwrites the slot
         {
             state.LastObservedId = 0;
-            nptr<asIScriptFunction> func = module->GetFunctionByDecl("void NullableLocalReleasedOnScopeExit()");
+            nptr<asIScriptFunction> func {module->GetFunctionByDecl("void NullableLocalReleasedOnScopeExit()")};
             REQUIRE(func);
-            nptr<asIScriptContext> ctx = engine->CreateContext();
+            nptr<asIScriptContext> ctx {engine->CreateContext()};
             REQUIRE(ctx);
             CHECK(ctx->Prepare(func.get()) >= 0);
-            int32_t result = ctx->Execute();
+            int32_t result {ctx->Execute()};
             CHECK(result == asEXECUTION_FINISHED);
             ctx->Release();
             CHECK(state.LastObservedId == 2);
@@ -911,12 +911,12 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
 
         {
             state.LastObservedId = 0;
-            nptr<asIScriptFunction> func = module->GetFunctionByDecl("void NativeOwnedNullableLocalReleasedOnScopeExit()");
+            nptr<asIScriptFunction> func {module->GetFunctionByDecl("void NativeOwnedNullableLocalReleasedOnScopeExit()")};
             REQUIRE(func);
-            nptr<asIScriptContext> ctx = engine->CreateContext();
+            nptr<asIScriptContext> ctx {engine->CreateContext()};
             REQUIRE(ctx);
             CHECK(ctx->Prepare(func.get()) >= 0);
-            int32_t result = ctx->Execute();
+            int32_t result {ctx->Execute()};
             CHECK(result == asEXECUTION_FINISHED);
             ctx->Release();
             CHECK(state.LastObservedId == 4);
@@ -924,7 +924,7 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
 
         engine->SetUserData(nullptr);
         CHECK(engine->GarbageCollect(asGC_FULL_CYCLE) >= 0);
-        int leaked_count = 0;
+        int leaked_count {0};
 
         for (const auto& [id, ref_count] : state.ActiveRefs) {
             static_cast<void>(id);
@@ -938,31 +938,31 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
     {
         // Assigning a nullable source to a non-nullable destination is rejected at build time, whether the source
         // is the null literal or a nullable expression; a guarded expression is allowed, because smart-cast narrows it
-        auto buildScript = [](const char* source, MsgCapture& capture) -> int {
-            auto engine = MakeScriptEngine();
+        auto buildScript {[](const char* source, MsgCapture& capture) -> int {
+            auto engine {MakeScriptEngine()};
             REQUIRE(nptr<asIScriptEngine> {engine});
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->SetEngineProperty(asEP_DISALLOW_NULLABLE_TO_NON_NULLABLE, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
             engine->SetMessageCallback(asFUNCTION(CaptureMessageCallback), &capture, asCALL_CDECL);
-            nptr<asIScriptModule> module = engine->GetModule("RejectModule", asGM_ALWAYS_CREATE);
+            nptr<asIScriptModule> module {engine->GetModule("RejectModule", asGM_ALWAYS_CREATE)};
             REQUIRE(module);
             module->AddScriptSection("reject", source, std::strlen(source));
             return module->Build();
-        };
+        }};
 
         // 1) Bare `null` assigned to a non-nullable handle â€" reject
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 void NullToNonNullable()
                 {
                     Resource r = null;
                 }
             )",
-                cap);
+                cap)};
             CHECK(r < 0);
-            bool found = false;
+            bool found {false};
 
             for (const auto& e : cap.Errors) {
                 if (e.find("Cannot assign 'null' to a non-nullable handle") != string::npos) {
@@ -976,17 +976,17 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
 
         // 2) Nullable handle assigned to non-nullable â€" reject
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 Resource? GetMaybe() { return null; }
                 void NullableToNonNullable()
                 {
                     Resource x = GetMaybe();
                 }
             )",
-                cap);
+                cap)};
             CHECK(r < 0);
-            bool found = false;
+            bool found {false};
 
             for (const auto& e : cap.Errors) {
                 if (e.find("Cannot assign nullable") != string::npos) {
@@ -1000,8 +1000,8 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
 
         // 3) Same shape inside an `if (g != null)` guard â€" smart-cast lets it compile
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 Resource? GetMaybe() { return null; }
                 void GuardedNullableToNonNullable()
                 {
@@ -1011,7 +1011,7 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
                     }
                 }
             )",
-                cap);
+                cap)};
             if (!cap.Errors.empty()) {
                 INFO(cap.Errors.front());
             }
@@ -1022,17 +1022,17 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
         // 4) Conditional with a nullable branch assigned to non-nullable - reject.
         //    (FOnline) `cond ? a : b` is nullable when either branch is nullable
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 Resource? GetMaybe() { return null; }
                 void TernaryNullableToNonNullable(bool c)
                 {
                     Resource x = c ? GetMaybe() : GetMaybe();
                 }
             )",
-                cap);
+                cap)};
             CHECK(r < 0);
-            bool found = false;
+            bool found {false};
 
             for (const auto& e : cap.Errors) {
                 if (e.find("Cannot assign nullable") != string::npos) {
@@ -1046,16 +1046,16 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
 
         // 5) Conditional with a `null` literal branch assigned to non-nullable - reject
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 void TernaryNullLiteralToNonNullable(bool c, Resource res)
                 {
                     Resource x = c ? res : null;
                 }
             )",
-                cap);
+                cap)};
             CHECK(r < 0);
-            bool found = false;
+            bool found {false};
 
             for (const auto& e : cap.Errors) {
                 if (e.find("Cannot assign nullable") != string::npos) {
@@ -1069,15 +1069,15 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
 
         // 6) Conditional with a nullable branch assigned to a nullable destination - allowed
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 Resource? GetMaybe() { return null; }
                 void TernaryNullableToNullable(bool c)
                 {
                     Resource? x = c ? GetMaybe() : GetMaybe();
                 }
             )",
-                cap);
+                cap)};
             if (!cap.Errors.empty()) {
                 INFO(cap.Errors.front());
             }
@@ -1090,36 +1090,36 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
     {
         // An initializer that cannot produce null makes the `?` enable only a dead null-check downstream; a
         // warning rather than an error keeps existing scripts building while authors clean up
-        auto buildScript = [](const char* source, MsgCapture& capture) -> int {
-            auto engine = MakeScriptEngine();
+        auto buildScript {[](const char* source, MsgCapture& capture) -> int {
+            auto engine {MakeScriptEngine()};
             REQUIRE(nptr<asIScriptEngine> {engine});
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
             engine->RegisterGlobalFunction("Resource MakeNonNull()", FO_SCRIPT_FUNC(+[]() -> void* {
-                static int sentinel = 0;
+                static int sentinel {0};
                 return &sentinel;
             }),
                 FO_SCRIPT_FUNC_CONV);
             engine->RegisterGlobalFunction("Resource? MakeMaybe()", FO_SCRIPT_FUNC(+[]() -> void* { return nullptr; }), FO_SCRIPT_FUNC_CONV);
             engine->SetMessageCallback(asFUNCTION(CaptureMessageCallback), &capture, asCALL_CDECL);
-            nptr<asIScriptModule> module = engine->GetModule("RedundantNullableMod", asGM_ALWAYS_CREATE);
+            nptr<asIScriptModule> module {engine->GetModule("RedundantNullableMod", asGM_ALWAYS_CREATE)};
             REQUIRE(module);
             module->AddScriptSection("redundant_nullable", source, std::strlen(source));
             return module->Build();
-        };
+        }};
 
         // 1) `T? x = nonNullExpr;` â€" must produce the "Redundant '?'" warning
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 void RedundantQuestion()
                 {
                     Resource? x = MakeNonNull();
                 }
             )",
-                cap);
+                cap)};
             CHECK(r >= 0); // build succeeds (warning, not error)
-            bool found = false;
+            bool found {false};
 
             for (const auto& w : cap.Warnings) {
                 if (w.find("Redundant '?'") != string::npos) {
@@ -1133,14 +1133,14 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
 
         // 2) `T x = nonNullExpr;` â€" no warning (no `?` at all)
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 void NoQuestion()
                 {
                     Resource x = MakeNonNull();
                 }
             )",
-                cap);
+                cap)};
             CHECK(r >= 0);
 
             for (const auto& w : cap.Warnings) {
@@ -1150,14 +1150,14 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
 
         // 3) `T? x = nullableExpr;` â€" no warning (RHS can really be null)
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 void LegitNullable()
                 {
                     Resource? x = MakeMaybe();
                 }
             )",
-                cap);
+                cap)};
             CHECK(r >= 0);
 
             for (const auto& w : cap.Warnings) {
@@ -1168,14 +1168,14 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
         // 4) `T? x = null;` â€" no warning (the null-literal special case has
         //    its own diagnostic path; widening warning must not double-fire)
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 void NullLiteral()
                 {
                     Resource? x = null;
                 }
             )",
-                cap);
+                cap)};
             CHECK(r >= 0);
 
             for (const auto& w : cap.Warnings) {
@@ -1188,14 +1188,14 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
     {
         // The warning must not fire where the static type is non-null but the runtime value can still be null: a
         // failed cast, a ternary common type, or a const ref to a mutable handle whose default may be null
-        static void* g_resourceCell = nullptr;
-        auto buildScript = [](const char* source, MsgCapture& capture) -> int {
-            auto engine = MakeScriptEngine();
+        static void* g_resourceCell {nullptr};
+        auto buildScript {[](const char* source, MsgCapture& capture) -> int {
+            auto engine {MakeScriptEngine()};
             REQUIRE(nptr<asIScriptEngine> {engine});
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
             engine->RegisterGlobalFunction("Resource MakeNonNull()", FO_SCRIPT_FUNC(+[]() -> void* {
-                static int sentinel = 0;
+                static int sentinel {0};
                 return &sentinel;
             }),
                 FO_SCRIPT_FUNC_CONV);
@@ -1209,13 +1209,13 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
             RegisterAngelScriptDict(engine.get());
             engine->RegisterGlobalFunction("bool Cond()", FO_SCRIPT_FUNC(+[]() -> bool { return true; }), FO_SCRIPT_FUNC_CONV);
             engine->SetMessageCallback(asFUNCTION(CaptureMessageCallback), &capture, asCALL_CDECL);
-            nptr<asIScriptModule> module = engine->GetModule("RuntimeNullableShapesMod", asGM_ALWAYS_CREATE);
+            nptr<asIScriptModule> module {engine->GetModule("RuntimeNullableShapesMod", asGM_ALWAYS_CREATE)};
             REQUIRE(module);
             module->AddScriptSection("runtime_nullability_shapes", source, std::strlen(source));
             return module->Build();
-        };
+        }};
 
-        auto hasRedundantWarning = [](const MsgCapture& cap) -> bool {
+        auto hasRedundantWarning {[](const MsgCapture& cap) -> bool {
             for (const auto& w : cap.Warnings) {
                 if (w.find("Redundant '?'") != string::npos) {
                     return true;
@@ -1223,10 +1223,10 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
             }
 
             return false;
-        };
+        }};
 
-        auto dumpErrors = [](const MsgCapture& cap) -> string {
-            string joined;
+        auto dumpErrors {[](const MsgCapture& cap) -> string {
+            string joined {};
 
             for (const auto& e : cap.Errors) {
                 joined += e;
@@ -1234,12 +1234,12 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
             }
 
             return joined;
-        };
+        }};
 
         // 1) `cast<T>(...)` - failed downcast can return null at runtime
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 class CastBase {}
                 class CastDerived : CastBase {}
                 void CastCase()
@@ -1248,7 +1248,7 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
                     CastDerived? d = cast<CastDerived>(b);
                 }
             )",
-                cap);
+                cap)};
             INFO("cast build errors: " << dumpErrors(cap));
             CHECK(r >= 0);
             CHECK_FALSE(hasRedundantWarning(cap));
@@ -1257,29 +1257,29 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
         // 2) `cond ? a : null` - ternary with a null branch. AS infers the
         //    non-null common type, so `?` is needed to express the result
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 void TernaryCase()
                 {
                     Resource? x = Cond() ? MakeNonNull() : null;
                 }
             )",
-                cap);
+                cap)};
             CHECK(r >= 0);
             CHECK_FALSE(hasRedundantWarning(cap));
         }
 
         // A const ref to a mutable handle, whose looked-up-or-default value can be null at runtime, must not warn
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 void ConstContainerRefCase()
                 {
                     dict<int, Resource> d;
                     Resource? x = d.get(0, null);
                 }
             )",
-                cap);
+                cap)};
             INFO("const-container-ref build errors: " << dumpErrors(cap));
             CHECK(r >= 0);
             CHECK_FALSE(hasRedundantWarning(cap));
@@ -1288,14 +1288,14 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
         // 3b) `T@&` - array[i]-style NON-const reference into a non-nullable
         //     element cell (enforced non-null). The `?` is redundant; must warn
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 void NonConstContainerRefCase()
                 {
                     Resource? x = GetByRef();
                 }
             )",
-                cap);
+                cap)};
             INFO("non-const-container-ref build errors: " << dumpErrors(cap));
             CHECK(r >= 0);
             CHECK(hasRedundantWarning(cap));
@@ -1304,14 +1304,14 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
         // A handle returned by value is no container reference, so the warning must still fire — this pins the
         // `!isTemporary` half of the exemption
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 void ByValueCase()
                 {
                     Resource? x = MakeNonNull();
                 }
             )",
-                cap);
+                cap)};
             CHECK(r >= 0);
             CHECK(hasRedundantWarning(cap));
         }
@@ -1321,20 +1321,20 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
     {
         // Without this guard the implicit conversion silently strips nullability and the caller crashes at
         // runtime on `asBC_RefCpyChk`
-        auto buildScript = [](const char* source, MsgCapture& capture) -> int {
-            auto engine = MakeScriptEngine();
+        auto buildScript {[](const char* source, MsgCapture& capture) -> int {
+            auto engine {MakeScriptEngine()};
             REQUIRE(nptr<asIScriptEngine> {engine});
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
             engine->RegisterGlobalFunction("Resource? MakeMaybe()", FO_SCRIPT_FUNC(+[]() -> void* { return nullptr; }), FO_SCRIPT_FUNC_CONV);
             engine->SetMessageCallback(asFUNCTION(CaptureMessageCallback), &capture, asCALL_CDECL);
-            nptr<asIScriptModule> module = engine->GetModule("ReturnNullableMod", asGM_ALWAYS_CREATE);
+            nptr<asIScriptModule> module {engine->GetModule("ReturnNullableMod", asGM_ALWAYS_CREATE)};
             REQUIRE(module);
             module->AddScriptSection("return_nullable", source, std::strlen(source));
             return module->Build();
-        };
+        }};
 
-        auto hasReturnNullableError = [](const MsgCapture& cap) -> bool {
+        auto hasReturnNullableError {[](const MsgCapture& cap) -> bool {
             for (const auto& e : cap.Errors) {
                 if (e.find("Cannot return nullable value from a non-nullable return type") != string::npos) {
                     return true;
@@ -1342,37 +1342,37 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
             }
 
             return false;
-        };
+        }};
 
         // 1) `return null;` from a non-nullable return type - must error
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 Resource ReturnsNullLiteral() { return null; }
             )",
-                cap);
+                cap)};
             CHECK(r < 0);
             CHECK(hasReturnNullableError(cap));
         }
 
         // 2) `return nullableExpr;` from a non-nullable return type - must error
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 Resource ReturnsNullable() { return MakeMaybe(); }
             )",
-                cap);
+                cap)};
             CHECK(r < 0);
             CHECK(hasReturnNullableError(cap));
         }
 
         // 3) `T? Good() { return null; }` - nullable return type accepts null
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 Resource? ReturnsNullableOk() { return null; }
             )",
-                cap);
+                cap)};
             CHECK(r >= 0);
             CHECK_FALSE(hasReturnNullableError(cap));
         }
@@ -1382,21 +1382,21 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
     {
         // A member access on an unnarrowed `T?` warns rather than errors, because the runtime still traps it, and
         // smart-cast must suppress the warning once a guard narrows the handle
-        auto buildScript = [](const char* source, MsgCapture& capture) -> int {
-            auto engine = MakeScriptEngine();
+        auto buildScript {[](const char* source, MsgCapture& capture) -> int {
+            auto engine {MakeScriptEngine()};
             REQUIRE(nptr<asIScriptEngine> {engine});
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
             engine->RegisterObjectMethod("Resource", "void Touch()", FO_SCRIPT_FUNC_THIS(+[](void*) { }), FO_SCRIPT_FUNC_THIS_CONV);
             engine->RegisterGlobalFunction("Resource? MakeMaybe()", FO_SCRIPT_FUNC(+[]() -> void* { return nullptr; }), FO_SCRIPT_FUNC_CONV);
             engine->SetMessageCallback(asFUNCTION(CaptureMessageCallback), &capture, asCALL_CDECL);
-            nptr<asIScriptModule> module = engine->GetModule("DerefNullableMod", asGM_ALWAYS_CREATE);
+            nptr<asIScriptModule> module {engine->GetModule("DerefNullableMod", asGM_ALWAYS_CREATE)};
             REQUIRE(module);
             module->AddScriptSection("deref_nullable", source, std::strlen(source));
             return module->Build();
-        };
+        }};
 
-        auto hasDerefWarning = [](const MsgCapture& cap) -> bool {
+        auto hasDerefWarning {[](const MsgCapture& cap) -> bool {
             for (const auto& w : cap.Warnings) {
                 if (w.find("Dereference of nullable handle") != string::npos) {
                     return true;
@@ -1404,27 +1404,27 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
             }
 
             return false;
-        };
+        }};
 
         // 1) Member access on an un-narrowed nullable - must warn
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 void Unguarded()
                 {
                     Resource? r = MakeMaybe();
                     r.Touch();
                 }
             )",
-                cap);
+                cap)};
             CHECK(r >= 0); // warning, not error
             CHECK(hasDerefWarning(cap));
         }
 
         // 2) `if (x == null) return;` narrows - no warning afterwards
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 void GuardedByEarlyReturn()
                 {
                     Resource? r = MakeMaybe();
@@ -1434,15 +1434,15 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
                     r.Touch();
                 }
             )",
-                cap);
+                cap)};
             CHECK(r >= 0);
             CHECK_FALSE(hasDerefWarning(cap));
         }
 
         // 3) `if (x != null) { ... }` narrows inside the then-branch
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 void GuardedByIf()
                 {
                     Resource? r = MakeMaybe();
@@ -1451,15 +1451,15 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
                     }
                 }
             )",
-                cap);
+                cap)};
             CHECK(r >= 0);
             CHECK_FALSE(hasDerefWarning(cap));
         }
 
         // 4) Member access on a non-nullable handle - never warns
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 void NonNullable()
                 {
                     Resource? maybe = MakeMaybe();
@@ -1470,7 +1470,7 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
                     sure.Touch();
                 }
             )",
-                cap);
+                cap)};
             CHECK(r >= 0);
             CHECK_FALSE(hasDerefWarning(cap));
         }
@@ -1480,8 +1480,8 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
     {
         // A guard inside a short-circuit or ternary narrows exactly like an `if`, and the narrowing is
         // order-sensitive: dereferencing before the check still warns
-        auto buildScript = [](const char* source, MsgCapture& capture) -> int {
-            auto engine = MakeScriptEngine();
+        auto buildScript {[](const char* source, MsgCapture& capture) -> int {
+            auto engine {MakeScriptEngine()};
             REQUIRE(nptr<asIScriptEngine> {engine});
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
@@ -1490,13 +1490,13 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
             engine->RegisterGlobalFunction("Resource? MakeMaybe()", FO_SCRIPT_FUNC(+[]() -> void* { return nullptr; }), FO_SCRIPT_FUNC_CONV);
             engine->RegisterGlobalFunction("bool Cond()", FO_SCRIPT_FUNC(+[]() -> bool { return true; }), FO_SCRIPT_FUNC_CONV);
             engine->SetMessageCallback(asFUNCTION(CaptureMessageCallback), &capture, asCALL_CDECL);
-            nptr<asIScriptModule> module = engine->GetModule("AndOrNarrowMod", asGM_ALWAYS_CREATE);
+            nptr<asIScriptModule> module {engine->GetModule("AndOrNarrowMod", asGM_ALWAYS_CREATE)};
             REQUIRE(module);
             module->AddScriptSection("andor_narrow", source, std::strlen(source));
             return module->Build();
-        };
+        }};
 
-        auto hasDerefWarning = [](const MsgCapture& cap) -> bool {
+        auto hasDerefWarning {[](const MsgCapture& cap) -> bool {
             for (const auto& w : cap.Warnings) {
                 if (w.find("Dereference of nullable handle") != string::npos) {
                     return true;
@@ -1504,20 +1504,20 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
             }
 
             return false;
-        };
+        }};
 
         // 1) `x != null && x.IsReady()` - `&&` consumes the `!=` check, so the
         //    right operand sees `x` as non-null
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 bool AndNarrows()
                 {
                     Resource? r = MakeMaybe();
                     return r != null && r.IsReady();
                 }
             )",
-                cap);
+                cap)};
             CHECK(r >= 0);
             CHECK_FALSE(hasDerefWarning(cap));
         }
@@ -1525,45 +1525,45 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
         // 2) `x == null || x.IsReady()` - `||` consumes the `==` check, so the
         //    right operand sees `x` as non-null
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 bool OrNarrows()
                 {
                     Resource? r = MakeMaybe();
                     return r == null || r.IsReady();
                 }
             )",
-                cap);
+                cap)};
             CHECK(r >= 0);
             CHECK_FALSE(hasDerefWarning(cap));
         }
 
         // 3) Ternary then-branch narrows when the condition is `x != null`
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 bool TernaryThenNarrows()
                 {
                     Resource? r = MakeMaybe();
                     return r != null ? r.IsReady() : false;
                 }
             )",
-                cap);
+                cap)};
             CHECK(r >= 0);
             CHECK_FALSE(hasDerefWarning(cap));
         }
 
         // 4) Ternary else-branch narrows when the condition is `x == null`
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 bool TernaryElseNarrows()
                 {
                     Resource? r = MakeMaybe();
                     return r == null ? false : r.IsReady();
                 }
             )",
-                cap);
+                cap)};
             CHECK(r >= 0);
             CHECK_FALSE(hasDerefWarning(cap));
         }
@@ -1571,30 +1571,30 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
         // 5) Negative control: dereferencing before the null-check still warns -
         //    the left operand of `&&` is evaluated unconditionally
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 bool DerefBeforeCheckWarns()
                 {
                     Resource? r = MakeMaybe();
                     return r.IsReady() && r != null;
                 }
             )",
-                cap);
+                cap)};
             CHECK(r >= 0);
             CHECK(hasDerefWarning(cap));
         }
 
         // 6) The guarded operand may carry a `!` prefix
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 bool NotPrefixOnGuardedOperand()
                 {
                     Resource? r = MakeMaybe();
                     return r != null && !r.IsReady();
                 }
             )",
-                cap);
+                cap)};
             CHECK(r >= 0);
             CHECK_FALSE(hasDerefWarning(cap));
         }
@@ -1602,15 +1602,15 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
         // 7) The tag propagates across a `&&` chain, so the trailing operand
         //    narrows too - not only the operand immediately after the check
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 bool ChainTailNarrows()
                 {
                     Resource? r = MakeMaybe();
                     return r != null && Cond() && r.IsReady();
                 }
             )",
-                cap);
+                cap)};
             CHECK(r >= 0);
             CHECK_FALSE(hasDerefWarning(cap));
         }
@@ -1618,28 +1618,28 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
         // Parameter stack offsets are negative, so the second parameter is used to make the offset unmistakably
         // negative and pin that it no longer aliases the no-tag sentinel
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 bool NullableSecondParamNarrows(int first, Resource? r)
                 {
                     return first > 0 && r != null && !r.IsReady() && Cond();
                 }
             )",
-                cap);
+                cap)};
             CHECK(r >= 0);
             CHECK_FALSE(hasDerefWarning(cap));
         }
 
         // 9) Property access (get accessor) on the guarded operand narrows
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 bool ParamPropertyNarrows(Resource? r)
                 {
                     return r != null && !r.Ready && Cond();
                 }
             )",
-                cap);
+                cap)};
             CHECK(r >= 0);
             CHECK_FALSE(hasDerefWarning(cap));
         }
@@ -1647,29 +1647,29 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
         // 10) The `if`-condition form (the real-world shape from
         //     AiThreatControl.fos): chain inside an `if` condition
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 void IfConditionChain(Resource? r)
                 {
                     if (r != null && !r.Ready && r.IsReady()) {
                     }
                 }
             )",
-                cap);
+                cap)};
             CHECK(r >= 0);
             CHECK_FALSE(hasDerefWarning(cap));
         }
 
         // The guard narrows across the whole right operand, not just an adjacent term
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 bool CompoundRightOperand(Resource? r)
                 {
                     return r != null && r.Ready == Cond();
                 }
             )",
-                cap);
+                cap)};
             CHECK(r >= 0);
             CHECK_FALSE(hasDerefWarning(cap));
         }
@@ -1677,15 +1677,15 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
         // 12) Compound right operand inside an `if`, with a trailing term
         //     (mirrors `map != null && map.ProtoId == pid` patterns)
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 void CompoundInIf(Resource? r)
                 {
                     if (r != null && r.Ready == Cond() && Cond()) {
                     }
                 }
             )",
-                cap);
+                cap)};
             CHECK(r >= 0);
             CHECK_FALSE(hasDerefWarning(cap));
         }
@@ -1695,8 +1695,8 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
     {
         // Comparing a non-nullable handle to null has a constant result, so the guarded branch is dead code and
         // warns; a narrowed handle warns on a second check, a genuinely nullable one never does
-        auto buildScript = [](const char* source, MsgCapture& capture) -> int {
-            auto engine = MakeScriptEngine();
+        auto buildScript {[](const char* source, MsgCapture& capture) -> int {
+            auto engine {MakeScriptEngine()};
             REQUIRE(nptr<asIScriptEngine> {engine});
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
@@ -1705,13 +1705,13 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
             // Non-nullable return type: the *static* type is non-nullable, but a
             // call result is a temporary (compile-only here, never invoked)
             engine->RegisterGlobalFunction("Resource@ MakeSure()", FO_SCRIPT_FUNC(+[]() -> void* { return nullptr; }), FO_SCRIPT_FUNC_CONV);
-            nptr<asIScriptModule> module = engine->GetModule("RedundantNullCmpMod", asGM_ALWAYS_CREATE);
+            nptr<asIScriptModule> module {engine->GetModule("RedundantNullCmpMod", asGM_ALWAYS_CREATE)};
             REQUIRE(module);
             module->AddScriptSection("redundant_null_cmp", source, std::strlen(source));
             return module->Build();
-        };
+        }};
 
-        auto hasRedundantCmpWarning = [](const MsgCapture& cap) -> bool {
+        auto hasRedundantCmpWarning {[](const MsgCapture& cap) -> bool {
             for (const auto& w : cap.Warnings) {
                 if (w.find("Redundant null comparison") != string::npos) {
                     return true;
@@ -1719,27 +1719,27 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
             }
 
             return false;
-        };
+        }};
 
         // 1) Non-nullable parameter compared to null - must warn
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 void F(Resource r)
                 {
                     if (r == null) {
                     }
                 }
             )",
-                cap);
+                cap)};
             CHECK(r >= 0); // warning, not error
             CHECK(hasRedundantCmpWarning(cap));
         }
 
         // 2) Nullable handle compared to null - legitimate, must NOT warn
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 void F()
                 {
                     Resource? r = MakeMaybe();
@@ -1747,22 +1747,22 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
                     }
                 }
             )",
-                cap);
+                cap)};
             CHECK(r >= 0);
             CHECK_FALSE(hasRedundantCmpWarning(cap));
         }
 
         // 3) `!=` form on a non-nullable parameter - must warn
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 void F(Resource r)
                 {
                     if (r != null) {
                     }
                 }
             )",
-                cap);
+                cap)};
             CHECK(r >= 0);
             CHECK(hasRedundantCmpWarning(cap));
         }
@@ -1770,8 +1770,8 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
         // 4) A nullable handle narrowed to non-null, then compared again - the
         //    second comparison is redundant and must warn
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 void F()
                 {
                     Resource? r = MakeMaybe();
@@ -1782,7 +1782,7 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
                     }
                 }
             )",
-                cap);
+                cap)};
             CHECK(r >= 0);
             CHECK(hasRedundantCmpWarning(cap));
         }
@@ -1790,15 +1790,15 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
         // Temporaries warn too, not just named locals: a source that can genuinely be null has to spell itself
         // nullable instead
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 void F()
                 {
                     if (MakeSure() != null) {
                     }
                 }
             )",
-                cap);
+                cap)};
             CHECK(r >= 0);
             CHECK(hasRedundantCmpWarning(cap));
         }
@@ -1808,8 +1808,8 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
     {
         // A no-return call ends control flow like `return`, so a guard branch using one narrows for the rest of
         // the scope without an explicit return; a normal void call does not
-        auto buildScript = [](const char* source, MsgCapture& capture) -> int {
-            auto engine = MakeScriptEngine();
+        auto buildScript {[](const char* source, MsgCapture& capture) -> int {
+            auto engine {MakeScriptEngine()};
             REQUIRE(nptr<asIScriptEngine> {engine});
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
@@ -1818,8 +1818,8 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
             engine->RegisterGlobalFunction("void Fatal()", FO_SCRIPT_FUNC(+[]() { }), FO_SCRIPT_FUNC_CONV);
             engine->RegisterGlobalFunction("void NormalVoid()", FO_SCRIPT_FUNC(+[]() { }), FO_SCRIPT_FUNC_CONV);
             // Mark Fatal() as no-return
-            for (asUINT i = 0, count = engine->GetGlobalFunctionCount(); i < count; i++) {
-                nptr<asIScriptFunction> func = engine->GetGlobalFunctionByIndex(i);
+            for (asUINT i {0}, count {engine->GetGlobalFunctionCount()}; i < count; i++) {
+                nptr<asIScriptFunction> func {engine->GetGlobalFunctionByIndex(i)};
                 if (func && string_view(func->GetName()) == "Fatal") {
                     func->SetNoReturn();
                     CHECK(func->IsNoReturn());
@@ -1827,13 +1827,13 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
             }
 
             engine->SetMessageCallback(asFUNCTION(CaptureMessageCallback), &capture, asCALL_CDECL);
-            nptr<asIScriptModule> module = engine->GetModule("NoReturnMod", asGM_ALWAYS_CREATE);
+            nptr<asIScriptModule> module {engine->GetModule("NoReturnMod", asGM_ALWAYS_CREATE)};
             REQUIRE(module);
             module->AddScriptSection("noreturn", source, std::strlen(source));
             return module->Build();
-        };
+        }};
 
-        auto hasDerefWarning = [](const MsgCapture& cap) -> bool {
+        auto hasDerefWarning {[](const MsgCapture& cap) -> bool {
             for (const auto& w : cap.Warnings) {
                 if (w.find("Dereference of nullable handle") != string::npos) {
                     return true;
@@ -1841,12 +1841,12 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
             }
 
             return false;
-        };
+        }};
 
         // 1) Guard branch ends in a no-return call - narrows like `return`
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 void GuardedByNoReturn()
                 {
                     Resource? r = MakeMaybe();
@@ -1856,15 +1856,15 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
                     r.Touch();
                 }
             )",
-                cap);
+                cap)};
             CHECK(r >= 0);
             CHECK_FALSE(hasDerefWarning(cap));
         }
 
         // 2) No-return call without braces also narrows
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 void GuardedByNoReturnNoBraces()
                 {
                     Resource? r = MakeMaybe();
@@ -1873,7 +1873,7 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
                     r.Touch();
                 }
             )",
-                cap);
+                cap)};
             CHECK(r >= 0);
             CHECK_FALSE(hasDerefWarning(cap));
         }
@@ -1881,8 +1881,8 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
         // 3) Control: a normal (returning) void call does NOT narrow, so the
         //    later dereference still warns
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 void GuardedByNormalCall()
                 {
                     Resource? r = MakeMaybe();
@@ -1892,7 +1892,7 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
                     r.Touch();
                 }
             )",
-                cap);
+                cap)};
             CHECK(r >= 0);
             CHECK(hasDerefWarning(cap));
         }
@@ -1902,21 +1902,21 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
     {
         // A whole-condition negation narrows like the inverted guard by De Morgan, which is what keeps the
         // `verify(cond, message)` macro narrowing
-        auto buildScript = [](const char* source, MsgCapture& capture) -> int {
-            auto engine = MakeScriptEngine();
+        auto buildScript {[](const char* source, MsgCapture& capture) -> int {
+            auto engine {MakeScriptEngine()};
             REQUIRE(nptr<asIScriptEngine> {engine});
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
             engine->RegisterObjectMethod("Resource", "void Touch()", FO_SCRIPT_FUNC_THIS(+[](void*) { }), FO_SCRIPT_FUNC_THIS_CONV);
             engine->RegisterGlobalFunction("Resource? MakeMaybe()", FO_SCRIPT_FUNC(+[]() -> void* { return nullptr; }), FO_SCRIPT_FUNC_CONV);
             engine->SetMessageCallback(asFUNCTION(CaptureMessageCallback), &capture, asCALL_CDECL);
-            nptr<asIScriptModule> module = engine->GetModule("NegGuardMod", asGM_ALWAYS_CREATE);
+            nptr<asIScriptModule> module {engine->GetModule("NegGuardMod", asGM_ALWAYS_CREATE)};
             REQUIRE(module);
             module->AddScriptSection("neg_guard", source, std::strlen(source));
             return module->Build();
-        };
+        }};
 
-        auto hasDerefWarning = [](const MsgCapture& cap) -> bool {
+        auto hasDerefWarning {[](const MsgCapture& cap) -> bool {
             for (const auto& w : cap.Warnings) {
                 if (w.find("Dereference of nullable handle") != string::npos) {
                     return true;
@@ -1924,12 +1924,12 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
             }
 
             return false;
-        };
+        }};
 
         // 1) `if (!(x != null)) return;` narrows like `if (x == null) return;`
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 void NegSimple()
                 {
                     Resource? r = MakeMaybe();
@@ -1939,15 +1939,15 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
                     r.Touch();
                 }
             )",
-                cap);
+                cap)};
             CHECK(r >= 0);
             CHECK_FALSE(hasDerefWarning(cap));
         }
 
         // 2) De Morgan: `if (!(a != null && b != null)) return;` narrows both
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 void NegCompound()
                 {
                     Resource? a = MakeMaybe();
@@ -1959,7 +1959,7 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
                     b.Touch();
                 }
             )",
-                cap);
+                cap)};
             CHECK(r >= 0);
             CHECK_FALSE(hasDerefWarning(cap));
         }
@@ -1967,8 +1967,8 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
         // 3) Sanity: a partial `!(...)` that is NOT a whole-condition negation
         //    must not be mistaken for one - the unguarded deref still warns
         {
-            MsgCapture cap;
-            auto r = buildScript(R"(
+            MsgCapture cap {};
+            auto r {buildScript(R"(
                 void NotWholeNegation()
                 {
                     Resource? r = MakeMaybe();
@@ -1976,7 +1976,7 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
                     r.Touch();
                 }
             )",
-                cap);
+                cap)};
             CHECK(r >= 0);
             CHECK(hasDerefWarning(cap));
         }
@@ -1986,11 +1986,11 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
     {
         // The three guard shapes narrow a `T?` local for the rest of the guarded region, which is what spares the
         // body an explicit cast
-        auto engine = MakeScriptEngine();
+        auto engine {MakeScriptEngine()};
         REQUIRE(nptr<asIScriptEngine> {engine});
         RegisterTestApi(engine.get());
 
-        static constexpr string_view SmartCastScript = R"(
+        static constexpr string_view SmartCastScript {R"(
 class Resource
 {
     int Id;
@@ -2029,12 +2029,12 @@ void GuardedReadAfterEarlyReturn()
     Resource confirmed = optional;
     ObserveResource(confirmed.GetId());
 }
-)";
+)"};
 
-        nptr<asIScriptModule> module = engine->GetModule("SmartCastModule", asGM_ALWAYS_CREATE);
+        nptr<asIScriptModule> module {engine->GetModule("SmartCastModule", asGM_ALWAYS_CREATE)};
         REQUIRE(module);
         CHECK(module->AddScriptSection("smartcast", SmartCastScript.data(), numeric_cast<unsigned>(SmartCastScript.size())) >= 0);
-        int32_t build_result = module->Build();
+        int32_t build_result {module->Build()};
         if (build_result < 0) {
             FAIL("Smart-cast script failed to build; the narrowed reads should compile without an Assert.");
         }
@@ -2046,12 +2046,12 @@ void GuardedReadAfterEarlyReturn()
 
         // Run guarded reads; neither should throw
         for (string_view decl : {string_view {"void GuardedReadInThenBranch()"}, string_view {"void GuardedReadAfterEarlyReturn()"}}) {
-            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl.data());
+            nptr<asIScriptFunction> func {module->GetFunctionByDecl(decl.data())};
             REQUIRE(func);
-            nptr<asIScriptContext> ctx = engine->CreateContext();
+            nptr<asIScriptContext> ctx {engine->CreateContext()};
             REQUIRE(ctx);
             CHECK(ctx->Prepare(func.get()) >= 0);
-            int32_t result = ctx->Execute();
+            int32_t result {ctx->Execute()};
             CHECK(result == asEXECUTION_FINISHED);
             ctx->Release();
         }
@@ -2064,11 +2064,11 @@ void GuardedReadAfterEarlyReturn()
     {
         // Both conjunction and disjunction guards narrow every local they test, which is what spares the body an
         // explicit cast; assert-based narrowing was dropped in favour of a named recovery action
-        auto engine = MakeScriptEngine();
+        auto engine {MakeScriptEngine()};
         REQUIRE(nptr<asIScriptEngine> {engine});
         RegisterTestApi(engine.get());
 
-        static constexpr string_view CompoundSmartCastScript = R"(
+        static constexpr string_view CompoundSmartCastScript {R"(
 class Resource
 {
     int Id;
@@ -2104,12 +2104,12 @@ void NarrowsCompoundOrAfterReturn()
     Resource cb = b;
     ObserveResource(ca.GetId() + cb.GetId());
 }
-)";
+)"};
 
-        nptr<asIScriptModule> module = engine->GetModule("CompoundSmartCast", asGM_ALWAYS_CREATE);
+        nptr<asIScriptModule> module {engine->GetModule("CompoundSmartCast", asGM_ALWAYS_CREATE)};
         REQUIRE(module);
         CHECK(module->AddScriptSection("compound_smartcast", CompoundSmartCastScript.data(), numeric_cast<unsigned>(CompoundSmartCastScript.size())) >= 0);
-        int32_t build_result = module->Build();
+        int32_t build_result {module->Build()};
         if (build_result < 0) {
             FAIL("Compound smart-cast script failed to build; && / || narrowing should compile without an explicit cast.");
         }
@@ -2120,12 +2120,12 @@ void NarrowsCompoundOrAfterReturn()
         engine->SetUserData(&state);
 
         for (string_view decl : {string_view {"void NarrowsCompoundAnd()"}, string_view {"void NarrowsCompoundOrAfterReturn()"}}) {
-            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl.data());
+            nptr<asIScriptFunction> func {module->GetFunctionByDecl(decl.data())};
             REQUIRE(func);
-            nptr<asIScriptContext> ctx = engine->CreateContext();
+            nptr<asIScriptContext> ctx {engine->CreateContext()};
             REQUIRE(ctx);
             CHECK(ctx->Prepare(func.get()) >= 0);
-            int32_t result = ctx->Execute();
+            int32_t result {ctx->Execute()};
             CHECK(result == asEXECUTION_FINISHED);
             ctx->Release();
         }
@@ -2138,23 +2138,23 @@ void NarrowsCompoundOrAfterReturn()
     {
         // Reassignment restores the declared `T?` type, so the narrowing must drop and the next non-nullable
         // assignment be rejected at compile time
-        auto buildScript = [](const char* source, MsgCapture& capture) -> int {
-            auto engine = MakeScriptEngine();
+        auto buildScript {[](const char* source, MsgCapture& capture) -> int {
+            auto engine {MakeScriptEngine()};
             REQUIRE(nptr<asIScriptEngine> {engine});
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->SetEngineProperty(asEP_DISALLOW_NULLABLE_TO_NON_NULLABLE, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
             engine->SetMessageCallback(asFUNCTION(CaptureMessageCallback), &capture, asCALL_CDECL);
-            nptr<asIScriptModule> module = engine->GetModule("InvalidateMod", asGM_ALWAYS_CREATE);
+            nptr<asIScriptModule> module {engine->GetModule("InvalidateMod", asGM_ALWAYS_CREATE)};
             REQUIRE(module);
             module->AddScriptSection("invalidate", source, std::strlen(source));
             return module->Build();
-        };
+        }};
 
         // After a reassignment to a nullable expression, the narrowed type
         // must reset so the next read produces a `T?`
-        MsgCapture cap;
-        auto r = buildScript(R"(
+        MsgCapture cap {};
+        auto r {buildScript(R"(
             Resource? GetMaybe() { return null; }
             void NarrowingResetsAfterAssign()
             {
@@ -2166,9 +2166,9 @@ void NarrowsCompoundOrAfterReturn()
                 }
             }
         )",
-            cap);
+            cap)};
         CHECK(r < 0);
-        bool found = false;
+        bool found {false};
 
         for (const auto& e : cap.Errors) {
             if (e.find("Cannot assign nullable") != string::npos) {
@@ -2182,8 +2182,8 @@ void NarrowsCompoundOrAfterReturn()
         // A `null` reassignment drops the narrowing and must still compile, because the write goes through the
         // declared nullable type
         {
-            MsgCapture null_cap;
-            auto null_r = buildScript(R"(
+            MsgCapture null_cap {};
+            auto null_r {buildScript(R"(
                 Resource? GetMaybe() { return null; }
                 void NarrowingResetsAfterNullAssign()
                 {
@@ -2195,9 +2195,9 @@ void NarrowsCompoundOrAfterReturn()
                     }
                 }
             )",
-                null_cap);
+                null_cap)};
             CHECK(null_r < 0);
-            bool found_bind_error = false;
+            bool found_bind_error {false};
 
             for (const auto& e : null_cap.Errors) {
                 if (e.find("Cannot assign nullable") != string::npos) {
@@ -2215,14 +2215,14 @@ void NarrowsCompoundOrAfterReturn()
     {
         // Narrowing is a read-time refinement only, so a null write inside the guard is legal and must compile as
         // a plain REFCPY rather than a checked copy
-        auto engine = MakeScriptEngine();
+        auto engine {MakeScriptEngine()};
         REQUIRE(nptr<asIScriptEngine> {engine});
         RegisterTestApi(engine.get());
         // The `Resource? &` inout-parameter flavor needs unsafe references, same as the
         // game backend (AngelScriptBackend.cpp) which enables them for all scripts
         CHECK(engine->SetEngineProperty(asEP_ALLOW_UNSAFE_REFERENCES, true) >= 0);
 
-        static constexpr string_view UnNarrowScript = R"(
+        static constexpr string_view UnNarrowScript {R"(
 class Resource
 {
     int Id;
@@ -2265,9 +2265,9 @@ void NullAssignToNarrowedRefParam()
     ClearSlot(slot);
     ObserveResource(slot == null ? 1 : 0);
 }
-)";
+)"};
 
-        nptr<asIScriptModule> module = engine->GetModule("UnNarrowModule", asGM_ALWAYS_CREATE);
+        nptr<asIScriptModule> module {engine->GetModule("UnNarrowModule", asGM_ALWAYS_CREATE)};
         REQUIRE(module);
         REQUIRE(module->AddScriptSection("un_narrow", UnNarrowScript.data(), numeric_cast<unsigned>(UnNarrowScript.size())) >= 0);
         REQUIRE(module->Build() >= 0);
@@ -2277,12 +2277,12 @@ void NullAssignToNarrowedRefParam()
 
         for (string_view decl : {string_view {"void NullAssignToNarrowedLocal()"}, string_view {"void NullAssignToCompoundNarrowedLocal()"}, string_view {"void NullAssignToNarrowedRefParam()"}}) {
             state.LastObservedId = 0;
-            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl.data());
+            nptr<asIScriptFunction> func {module->GetFunctionByDecl(decl.data())};
             REQUIRE(func);
-            nptr<asIScriptContext> ctx = engine->CreateContext();
+            nptr<asIScriptContext> ctx {engine->CreateContext()};
             REQUIRE(ctx);
             CHECK(ctx->Prepare(func.get()) >= 0);
-            int32_t result = ctx->Execute();
+            int32_t result {ctx->Execute()};
             UNSCOPED_INFO(decl);
 
             if (result == asEXECUTION_EXCEPTION) {
@@ -2303,22 +2303,22 @@ void NullAssignToNarrowedRefParam()
     {
         // Mixed `&&` and `||` at one precedence level is ambiguous without precedence parsing, so the detector
         // narrows nothing and the author is expected to split the `if`
-        auto buildScript = [](const char* source, MsgCapture& capture) -> int {
-            auto engine = MakeScriptEngine();
+        auto buildScript {[](const char* source, MsgCapture& capture) -> int {
+            auto engine {MakeScriptEngine()};
             REQUIRE(nptr<asIScriptEngine> {engine});
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->SetEngineProperty(asEP_DISALLOW_NULLABLE_TO_NON_NULLABLE, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
             engine->RegisterGlobalFunction("bool Flag()", FO_SCRIPT_FUNC(+[]() -> bool { return true; }), FO_SCRIPT_FUNC_CONV);
             engine->SetMessageCallback(asFUNCTION(CaptureMessageCallback), &capture, asCALL_CDECL);
-            nptr<asIScriptModule> module = engine->GetModule("MixedMod", asGM_ALWAYS_CREATE);
+            nptr<asIScriptModule> module {engine->GetModule("MixedMod", asGM_ALWAYS_CREATE)};
             REQUIRE(module);
             module->AddScriptSection("mixed", source, std::strlen(source));
             return module->Build();
-        };
+        }};
 
-        MsgCapture cap;
-        auto r = buildScript(R"(
+        MsgCapture cap {};
+        auto r {buildScript(R"(
             Resource? GetMaybe() { return null; }
             void MixedAndOrDoesNotNarrow()
             {
@@ -2328,9 +2328,9 @@ void NullAssignToNarrowedRefParam()
                 }
             }
         )",
-            cap);
+            cap)};
         CHECK(r < 0);
-        bool found = false;
+        bool found {false};
 
         for (const auto& e : cap.Errors) {
             if (e.find("Cannot assign nullable") != string::npos) {
@@ -2346,11 +2346,11 @@ void NullAssignToNarrowedRefParam()
     {
         // Without `opEquals`, handle comparison falls back to identity, which is what lets the project drop
         // `is` / `!is` from the style guide
-        auto engine = MakeScriptEngine();
+        auto engine {MakeScriptEngine()};
         REQUIRE(nptr<asIScriptEngine> {engine});
         RegisterTestApi(engine.get());
 
-        static constexpr string_view IdentityScript = R"(
+        static constexpr string_view IdentityScript {R"(
 class Node { int Tag; Node(int t) { Tag = t; } }
 
 // Same handle assigned both sides â€" must compare equal
@@ -2371,12 +2371,12 @@ void DistinctHandles()
     ObserveResource(a == b ? 0 : 3);
     ObserveResource(a != b ? 4 : 0);
 }
-)";
+)"};
 
-        nptr<asIScriptModule> module = engine->GetModule("Identity", asGM_ALWAYS_CREATE);
+        nptr<asIScriptModule> module {engine->GetModule("Identity", asGM_ALWAYS_CREATE)};
         REQUIRE(module);
         CHECK(module->AddScriptSection("identity", IdentityScript.data(), numeric_cast<unsigned>(IdentityScript.size())) >= 0);
-        int32_t build_result = module->Build();
+        int32_t build_result {module->Build()};
         if (build_result < 0) {
             FAIL("Handle-identity fallback script failed to build; `==` between two `Node` handles should fall through to asBC_CmpPtr.");
         }
@@ -2388,12 +2388,12 @@ void DistinctHandles()
 
         // Sequence of ObserveResource calls produces 1,2 from SameHandle and 3,4 from DistinctHandles
         for (string_view decl : {string_view {"void SameHandle()"}, string_view {"void DistinctHandles()"}}) {
-            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl.data());
+            nptr<asIScriptFunction> func {module->GetFunctionByDecl(decl.data())};
             REQUIRE(func);
-            nptr<asIScriptContext> ctx = engine->CreateContext();
+            nptr<asIScriptContext> ctx {engine->CreateContext()};
             REQUIRE(ctx);
             CHECK(ctx->Prepare(func.get()) >= 0);
-            int32_t result = ctx->Execute();
+            int32_t result {ctx->Execute()};
             CHECK(result == asEXECUTION_FINISHED);
             ctx->Release();
         }
@@ -2408,11 +2408,11 @@ void DistinctHandles()
     {
         // A registered `opEquals` still wins over the identity fallback, which is why `Critter ==` compares ids
         // while `Gui::Screen ==` compares identity
-        auto engine = MakeScriptEngine();
+        auto engine {MakeScriptEngine()};
         REQUIRE(nptr<asIScriptEngine> {engine});
         RegisterTestApi(engine.get());
 
-        static constexpr string_view OpEqualsScript = R"(
+        static constexpr string_view OpEqualsScript {R"(
 class Tagged
 {
     int Tag;
@@ -2439,12 +2439,12 @@ void TagsDiffer()
     ObserveResource(a == b ? 0 : 13);
     ObserveResource(a != b ? 14 : 0);
 }
-)";
+)"};
 
-        nptr<asIScriptModule> module = engine->GetModule("OpEquals", asGM_ALWAYS_CREATE);
+        nptr<asIScriptModule> module {engine->GetModule("OpEquals", asGM_ALWAYS_CREATE)};
         REQUIRE(module);
         CHECK(module->AddScriptSection("op_equals", OpEqualsScript.data(), numeric_cast<unsigned>(OpEqualsScript.size())) >= 0);
-        int32_t build_result = module->Build();
+        int32_t build_result {module->Build()};
         if (build_result < 0) {
             FAIL("opEquals dispatch script failed to build.");
         }
@@ -2455,12 +2455,12 @@ void TagsDiffer()
         engine->SetUserData(&state);
 
         for (string_view decl : {string_view {"void TagsEqual()"}, string_view {"void TagsDiffer()"}}) {
-            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl.data());
+            nptr<asIScriptFunction> func {module->GetFunctionByDecl(decl.data())};
             REQUIRE(func);
-            nptr<asIScriptContext> ctx = engine->CreateContext();
+            nptr<asIScriptContext> ctx {engine->CreateContext()};
             REQUIRE(ctx);
             CHECK(ctx->Prepare(func.get()) >= 0);
-            int32_t result = ctx->Execute();
+            int32_t result {ctx->Execute()};
             CHECK(result == asEXECUTION_FINISHED);
             ctx->Release();
         }
@@ -2475,11 +2475,11 @@ void TagsDiffer()
     {
         // The `?` suffix parses on return and parameter types alike; funcdef and array shapes are covered by the
         // gameplay suite, where the array add-on is registered
-        auto engine = MakeScriptEngine();
+        auto engine {MakeScriptEngine()};
         REQUIRE(nptr<asIScriptEngine> {engine});
         RegisterTestApi(engine.get());
 
-        static constexpr string_view NullableShapesScript = R"(
+        static constexpr string_view NullableShapesScript {R"(
 class Resource
 {
     int Id;
@@ -2503,12 +2503,12 @@ void NullableParameter()
 {
     RecordsNull(null);
 }
-)";
+)"};
 
-        nptr<asIScriptModule> module = engine->GetModule("NullableShapes", asGM_ALWAYS_CREATE);
+        nptr<asIScriptModule> module {engine->GetModule("NullableShapes", asGM_ALWAYS_CREATE)};
         REQUIRE(module);
         CHECK(module->AddScriptSection("nullability_shapes", NullableShapesScript.data(), numeric_cast<unsigned>(NullableShapesScript.size())) >= 0);
-        int32_t build_result = module->Build();
+        int32_t build_result {module->Build()};
         if (build_result < 0) {
             FAIL("Nullable return / parameter parse test failed to build.");
         }
@@ -2519,12 +2519,12 @@ void NullableParameter()
         engine->SetUserData(&state);
 
         for (string_view decl : {string_view {"void NullableReturn()"}, string_view {"void NullableParameter()"}}) {
-            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl.data());
+            nptr<asIScriptFunction> func {module->GetFunctionByDecl(decl.data())};
             REQUIRE(func);
-            nptr<asIScriptContext> ctx = engine->CreateContext();
+            nptr<asIScriptContext> ctx {engine->CreateContext()};
             REQUIRE(ctx);
             CHECK(ctx->Prepare(func.get()) >= 0);
-            int32_t result = ctx->Execute();
+            int32_t result {ctx->Execute()};
             CHECK(result == asEXECUTION_FINISHED);
             ctx->Release();
         }
@@ -2539,29 +2539,29 @@ void NullableParameter()
     {
         // A non-nullable field with an explicit `= null` initializer must be rejected at compile time, or the slot
         // starts null at constructor time
-        auto buildScript = [](const char* source, MsgCapture& capture) -> int {
-            auto engine = MakeScriptEngine();
+        auto buildScript {[](const char* source, MsgCapture& capture) -> int {
+            auto engine {MakeScriptEngine()};
             REQUIRE(nptr<asIScriptEngine> {engine});
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
             engine->SetMessageCallback(asFUNCTION(CaptureMessageCallback), &capture, asCALL_CDECL);
-            nptr<asIScriptModule> module = engine->GetModule("FieldNull", asGM_ALWAYS_CREATE);
+            nptr<asIScriptModule> module {engine->GetModule("FieldNull", asGM_ALWAYS_CREATE)};
             REQUIRE(module);
             module->AddScriptSection("field_null", source, std::strlen(source));
             return module->Build();
-        };
+        }};
 
         // Field with `= null` on a non-nullable handle â€" must reject
-        MsgCapture cap;
-        auto r = buildScript(R"(
+        MsgCapture cap {};
+        auto r {buildScript(R"(
             class Holder
             {
                 Resource Slot = null;
             }
         )",
-            cap);
+            cap)};
         CHECK(r < 0);
-        bool found = false;
+        bool found {false};
 
         for (const auto& e : cap.Errors) {
             if (e.find("Cannot assign 'null' to a non-nullable handle") != string::npos) {
@@ -2577,11 +2577,11 @@ void NullableParameter()
     {
         // The same field as `T?` accepts the initializer and reads null at runtime; the holder is constructed
         // explicitly to dodge the value-vs-handle ambiguity under implicit-handle mode
-        auto engine = MakeScriptEngine();
+        auto engine {MakeScriptEngine()};
         REQUIRE(nptr<asIScriptEngine> {engine});
         RegisterTestApi(engine.get());
 
-        static constexpr string_view NullableFieldScript = R"(
+        static constexpr string_view NullableFieldScript {R"(
 class Resource
 {
     int Id;
@@ -2605,9 +2605,9 @@ void Run()
     h.Slot = null;
     ObserveResource(h.Slot == null ? 33 : -3);
 }
-)";
+)"};
 
-        nptr<asIScriptModule> module = engine->GetModule("FieldNullable", asGM_ALWAYS_CREATE);
+        nptr<asIScriptModule> module {engine->GetModule("FieldNullable", asGM_ALWAYS_CREATE)};
         REQUIRE(module);
         CHECK(module->AddScriptSection("field_nullable", NullableFieldScript.data(), numeric_cast<unsigned>(NullableFieldScript.size())) >= 0);
         CHECK(module->Build() >= 0);
@@ -2615,9 +2615,9 @@ void Run()
         ResourceTrackerState state {};
         engine->SetUserData(&state);
 
-        nptr<asIScriptFunction> func = module->GetFunctionByDecl("void Run()");
+        nptr<asIScriptFunction> func {module->GetFunctionByDecl("void Run()")};
         REQUIRE(func);
-        nptr<asIScriptContext> ctx = engine->CreateContext();
+        nptr<asIScriptContext> ctx {engine->CreateContext()};
         REQUIRE(ctx);
         CHECK(ctx->Prepare(func.get()) >= 0);
         CHECK(ctx->Execute() == asEXECUTION_FINISHED);
@@ -2632,11 +2632,11 @@ void Run()
     {
         // The runtime check fires on handle assignment, not on script-to-script argument passing, so a non-nullable
         // callee traps only where it copies the parameter into a local
-        auto engine = MakeScriptEngine();
+        auto engine {MakeScriptEngine()};
         REQUIRE(nptr<asIScriptEngine> {engine});
         RegisterTestApi(engine.get());
 
-        static constexpr string_view ParamNullScript = R"(
+        static constexpr string_view ParamNullScript {R"(
 class Resource
 {
     int Id;
@@ -2669,9 +2669,9 @@ void CallCalleeNullableWithNull()
     Resource? maybe = null;
     CalleeNullableParam(maybe);
 }
-)";
+)"};
 
-        nptr<asIScriptModule> module = engine->GetModule("ParamNull", asGM_ALWAYS_CREATE);
+        nptr<asIScriptModule> module {engine->GetModule("ParamNull", asGM_ALWAYS_CREATE)};
         REQUIRE(module);
         CHECK(module->AddScriptSection("param_null", ParamNullScript.data(), numeric_cast<unsigned>(ParamNullScript.size())) >= 0);
         CHECK(module->Build() >= 0);
@@ -2681,13 +2681,13 @@ void CallCalleeNullableWithNull()
 
         // Callee's `Resource local = r;` slot must throw when r is null
         {
-            nptr<asIScriptFunction> func = module->GetFunctionByDecl("void CallCalleeWithNullThroughLocal()");
+            nptr<asIScriptFunction> func {module->GetFunctionByDecl("void CallCalleeWithNullThroughLocal()")};
             REQUIRE(func);
-            nptr<asIScriptContext> ctx = engine->CreateContext();
+            nptr<asIScriptContext> ctx {engine->CreateContext()};
             REQUIRE(ctx);
             CHECK(ctx->Prepare(func.get()) >= 0);
             CHECK(ctx->Execute() == asEXECUTION_EXCEPTION);
-            nptr<const char> ex = ctx->GetExceptionString();
+            nptr<const char> ex {ctx->GetExceptionString()};
             REQUIRE(ex);
             CHECK(string_view {ex.get()} == "Null assignment to non-nullable handle");
             CHECK(state.LastObservedId != -998);
@@ -2698,9 +2698,9 @@ void CallCalleeNullableWithNull()
         // Nullable param accepts null cleanly
         {
             state.LastObservedId = 0;
-            nptr<asIScriptFunction> func = module->GetFunctionByDecl("void CallCalleeNullableWithNull()");
+            nptr<asIScriptFunction> func {module->GetFunctionByDecl("void CallCalleeNullableWithNull()")};
             REQUIRE(func);
-            nptr<asIScriptContext> ctx = engine->CreateContext();
+            nptr<asIScriptContext> ctx {engine->CreateContext()};
             REQUIRE(ctx);
             CHECK(ctx->Prepare(func.get()) >= 0);
             CHECK(ctx->Execute() == asEXECUTION_FINISHED);
@@ -2717,14 +2717,14 @@ void CallCalleeNullableWithNull()
         // GETREF offsets for reference parameters sitting past several pointer-sized stack items, which a 64-bit
         // build once miscalculated when loading on 32-bit
 
-        auto build_engine = MakeScriptEngine();
+        auto build_engine {MakeScriptEngine()};
         REQUIRE(nptr<asIScriptEngine> {build_engine});
         RegisterTestApi(build_engine.get());
 
-        auto build_module = BuildModuleFromScript(build_engine.get(), "BuildModule", GetRefOffsetTestScript);
+        auto build_module {BuildModuleFromScript(build_engine.get(), "BuildModule", GetRefOffsetTestScript)};
 
         ResourceTrackerState build_state {};
-        auto build_metrics = RunScenario(build_module, build_state);
+        auto build_metrics {RunScenario(build_module, build_state)};
 
         // Verify build-time execution produces expected values
         // Sequence: 52, 7, 150, 50, 67, 42
@@ -2741,18 +2741,18 @@ void CallCalleeNullableWithNull()
 
         // Load in fresh engine (same platform, but exercises the full save/load path
         // including AdjustGetOffset normalization and denormalization)
-        auto load_engine = MakeScriptEngine();
+        auto load_engine {MakeScriptEngine()};
         REQUIRE(nptr<asIScriptEngine> {load_engine});
         RegisterTestApi(load_engine.get());
 
-        nptr<asIScriptModule> load_module = load_engine->GetModule("LoadModule", asGM_ALWAYS_CREATE);
+        nptr<asIScriptModule> load_module {load_engine->GetModule("LoadModule", asGM_ALWAYS_CREATE)};
         REQUIRE(load_module);
         BytecodeStream reader {bytecode};
         CHECK(load_module->LoadByteCode(&reader) >= 0);
 
         // Execute loaded bytecode and verify identical results
         ResourceTrackerState load_state {};
-        auto load_metrics = RunScenario(load_module, load_state);
+        auto load_metrics {RunScenario(load_module, load_state)};
 
         CHECK(load_metrics.FirstObservedId == build_metrics.FirstObservedId);
         CHECK(load_metrics.LastObservedId == build_metrics.LastObservedId);
@@ -2762,28 +2762,28 @@ void CallCalleeNullableWithNull()
 
     SECTION("VariadicConstructorsAndReturnByValueUsePlatformUniformSlots")
     {
-        auto run = [](ptr<asIScriptModule> module, const char* declaration) -> asBYTE {
-            nptr<asIScriptEngine> engine = module->GetEngine();
+        auto run {[](ptr<asIScriptModule> module, const char* declaration) -> asBYTE {
+            nptr<asIScriptEngine> engine {module->GetEngine()};
             REQUIRE(engine);
 
-            nptr<asIScriptFunction> func = module->GetFunctionByDecl(declaration);
+            nptr<asIScriptFunction> func {module->GetFunctionByDecl(declaration)};
             REQUIRE(func);
 
-            nptr<asIScriptContext> ctx = engine->CreateContext();
+            nptr<asIScriptContext> ctx {engine->CreateContext()};
             REQUIRE(ctx);
             REQUIRE(ctx->Prepare(func.get()) >= 0);
             REQUIRE(ctx->Execute() == asEXECUTION_FINISHED);
-            asBYTE result = ctx->GetReturnByte();
+            asBYTE result {ctx->GetReturnByte()};
             ctx->Release();
             return result;
-        };
+        }};
 
-        auto build_engine = MakeScriptEngine();
+        auto build_engine {MakeScriptEngine()};
         REQUIRE(nptr<asIScriptEngine> {build_engine});
         RegisterTestApi(build_engine.get());
         RegisterVariadicProbeApi(build_engine.get());
 
-        auto build_module = BuildModuleFromScript(build_engine.get(), "BuildModule", VariadicAbiTestScript);
+        auto build_module {BuildModuleFromScript(build_engine.get(), "BuildModule", VariadicAbiTestScript)};
         CHECK(run(build_module, "bool PrimitiveConstructorUsesAlignedCount()") == 1);
         CHECK(run(build_module, "bool ObjectConstructorUsesAlignedCount()") == 1);
         CHECK(run(build_module, "bool ReturnByValueUsesAlignedCount()") == 1);
@@ -2793,12 +2793,12 @@ void CallCalleeNullableWithNull()
         REQUIRE(build_module->SaveByteCode(&writer) >= 0);
         REQUIRE_FALSE(bytecode.empty());
 
-        auto load_engine = MakeScriptEngine();
+        auto load_engine {MakeScriptEngine()};
         REQUIRE(nptr<asIScriptEngine> {load_engine});
         RegisterTestApi(load_engine.get());
         RegisterVariadicProbeApi(load_engine.get());
 
-        nptr<asIScriptModule> load_module = load_engine->GetModule("LoadModule", asGM_ALWAYS_CREATE);
+        nptr<asIScriptModule> load_module {load_engine->GetModule("LoadModule", asGM_ALWAYS_CREATE)};
         REQUIRE(load_module);
         BytecodeStream reader {bytecode};
         REQUIRE(load_module->LoadByteCode(&reader) >= 0);
@@ -2814,31 +2814,31 @@ TEST_CASE("AngelScriptInitListSubDwordValueType", "[angelscript][bytecode]")
     // three 2-byte elements give a 10-byte buffer whose final 4-byte copy lands at offset 8..11
     using namespace AngelScript;
 
-    auto engine = MakeScriptEngine();
+    auto engine {MakeScriptEngine()};
     RegisterTestApi(engine.get());
     RegisterAngelScriptArray(engine.get());
 
     // 2-byte POD value type (sub-dword) — the trigger condition for the overflow
     CHECK(engine->RegisterObjectType("Word2", 2, asOBJ_VALUE | asOBJ_POD | asOBJ_APP_CLASS | asOBJ_APP_CLASS_ALLINTS) >= 0);
 
-    static constexpr string_view InitListScript = R"(
+    static constexpr string_view InitListScript {R"(
 int RunInitList()
 {
     array<Word2> a = {Word2(), Word2(), Word2()};
     array<Word2> b = {Word2(), Word2(), Word2(), Word2(), Word2()};
     return int(a.length()) + int(b.length());
 }
-)";
+)"};
 
-    nptr<asIScriptModule> module = engine->GetModule("InitListModule", asGM_ALWAYS_CREATE);
+    nptr<asIScriptModule> module {engine->GetModule("InitListModule", asGM_ALWAYS_CREATE)};
     REQUIRE(module);
     CHECK(module->AddScriptSection("initlist_test", InitListScript.data(), numeric_cast<unsigned>(InitListScript.size())) >= 0);
     REQUIRE(module->Build() >= 0);
 
-    nptr<asIScriptFunction> func = module->GetFunctionByDecl("int RunInitList()");
+    nptr<asIScriptFunction> func {module->GetFunctionByDecl("int RunInitList()")};
     REQUIRE(func);
 
-    nptr<asIScriptContext> ctx = engine->CreateContext();
+    nptr<asIScriptContext> ctx {engine->CreateContext()};
     REQUIRE(ctx);
     CHECK(ctx->Prepare(func.get()) >= 0);
     REQUIRE(ctx->Execute() == asEXECUTION_FINISHED);

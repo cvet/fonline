@@ -46,14 +46,14 @@ TEST_CASE("LineTracer")
         constexpr mpos target {8, 5};
         LineTracer tracer {start, target, 0.0f, map_size};
 
-        mpos current = start;
-        int32_t initial_distance = GeometryHelper::GetDistance(start, target);
+        mpos current {start};
+        int32_t initial_distance {GeometryHelper::GetDistance(start, target)};
         REQUIRE(initial_distance > 0);
 
-        for (int32_t step = 0; step < initial_distance; step++) {
-            mpos previous = current;
-            int32_t previous_distance = GeometryHelper::GetDistance(previous, target);
-            auto dir = tracer.GetNextHex(current);
+        for (int32_t step {0}; step < initial_distance; step++) {
+            mpos previous {current};
+            int32_t previous_distance {GeometryHelper::GetDistance(previous, target)};
+            auto dir {tracer.GetNextHex(current)};
 
             REQUIRE(dir.has_value());
             CHECK(map_size.is_valid_pos(current));
@@ -71,13 +71,13 @@ TEST_CASE("LineTracer")
         constexpr mpos target {8, 8};
         LineTracer tracer {start, target, 0.0f, map_size};
 
-        mpos current = start;
-        int32_t distance = GeometryHelper::GetDistance(start, target);
+        mpos current {start};
+        int32_t distance {GeometryHelper::GetDistance(start, target)};
         REQUIRE(distance > 0);
 
-        for (int32_t step = 0; step < distance; step++) {
-            int32_t previous_distance = GeometryHelper::GetDistance(current, target);
-            auto dir = tracer.GetNextHex(current);
+        for (int32_t step {0}; step < distance; step++) {
+            int32_t previous_distance {GeometryHelper::GetDistance(current, target)};
+            auto dir {tracer.GetNextHex(current)};
             REQUIRE(dir.has_value());
             CHECK(map_size.is_valid_pos(current));
             CHECK(GeometryHelper::GetDistance(current, target) == previous_distance - 1);
@@ -92,8 +92,8 @@ TEST_CASE("LineTracer")
         constexpr mpos start {0, 0};
         LineTracer tracer {start, 0.0f, 1, map_size};
 
-        mpos current = start;
-        auto dir = tracer.GetNextHex(current);
+        mpos current {start};
+        auto dir {tracer.GetNextHex(current)};
 
         CHECK(!dir.has_value());
         CHECK(current == start);
@@ -103,25 +103,25 @@ TEST_CASE("LineTracer")
     {
         constexpr msize map_size {20, 20};
         constexpr mpos start {10, 10};
-        constexpr int32_t expected_steps = 4;
-        mdir expected_dir = mdir(hdir::SouthEast);
+        constexpr int32_t expected_steps {4};
+        mdir expected_dir {mdir(hdir::SouthEast)};
 
-        mpos target = start;
+        mpos target {start};
 
-        for (int32_t step = 0; step < expected_steps; step++) {
+        for (int32_t step {0}; step < expected_steps; step++) {
             REQUIRE(GeometryHelper::MoveHexByDir(target, expected_dir, map_size));
         }
 
-        float32_t dir_angle = GeometryHelper::GetDirAngle(start, target);
+        float32_t dir_angle {GeometryHelper::GetDirAngle(start, target)};
         LineTracer tracer {start, dir_angle, expected_steps, map_size};
 
-        mpos current = start;
-        mpos expected = start;
+        mpos current {start};
+        mpos expected {start};
 
-        for (int32_t step = 0; step < expected_steps; step++) {
+        for (int32_t step {0}; step < expected_steps; step++) {
             REQUIRE(GeometryHelper::MoveHexByDir(expected, expected_dir, map_size));
 
-            auto dir = tracer.GetNextHex(current);
+            auto dir {tracer.GetNextHex(current)};
 
             REQUIRE(dir.has_value());
             CHECK(map_size.is_valid_pos(current));
@@ -135,21 +135,21 @@ TEST_CASE("LineTracer")
     {
         constexpr msize map_size {20, 20};
         constexpr mpos start {10, 10};
-        mdir east_dir = mdir(hdir::East);
-        mdir south_east_dir = mdir(hdir::SouthEast);
+        mdir east_dir {mdir(hdir::East)};
+        mdir south_east_dir {mdir(hdir::SouthEast)};
 
-        mpos base_target = start;
-        mpos offset_target = start;
+        mpos base_target {start};
+        mpos offset_target {start};
         REQUIRE(GeometryHelper::MoveHexByDir(base_target, east_dir, map_size));
         REQUIRE(GeometryHelper::MoveHexByDir(offset_target, south_east_dir, map_size));
 
         ipos16 target_offset {};
 
         if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-            float32_t delta_internal_x = numeric_cast<float32_t>(offset_target.x - base_target.x) * 3.0f;
-            float32_t base_odd = numeric_cast<float32_t>(std::abs(base_target.x % 2));
-            float32_t offset_odd = numeric_cast<float32_t>(std::abs(offset_target.x % 2));
-            float32_t delta_internal_y = numeric_cast<float32_t>(offset_target.y - base_target.y) * SQRT3_X2_FLOAT - (offset_odd - base_odd) * SQRT3_FLOAT;
+            float32_t delta_internal_x {numeric_cast<float32_t>(offset_target.x - base_target.x) * 3.0f};
+            float32_t base_odd {numeric_cast<float32_t>(std::abs(base_target.x % 2))};
+            float32_t offset_odd {numeric_cast<float32_t>(std::abs(offset_target.x % 2))};
+            float32_t delta_internal_y {numeric_cast<float32_t>(offset_target.y - base_target.y) * SQRT3_X2_FLOAT - (offset_odd - base_odd) * SQRT3_FLOAT};
 
             target_offset = {
                 numeric_cast<int16_t>(iround<int32_t>(delta_internal_x * numeric_cast<float32_t>(GameSettings::MAP_HEX_WIDTH) / 4.0f)),
@@ -167,13 +167,13 @@ TEST_CASE("LineTracer")
         LineTracer offset_tracer {start, base_target, 0.0f, map_size, {}, target_offset};
         LineTracer reference_tracer {start, offset_target, 0.0f, map_size};
 
-        mpos base_pos = start;
-        mpos offset_pos = start;
-        mpos reference_pos = start;
+        mpos base_pos {start};
+        mpos offset_pos {start};
+        mpos reference_pos {start};
 
-        auto base_step = base_tracer.GetNextHex(base_pos);
-        auto offset_step = offset_tracer.GetNextHex(offset_pos);
-        auto reference_step = reference_tracer.GetNextHex(reference_pos);
+        auto base_step {base_tracer.GetNextHex(base_pos)};
+        auto offset_step {offset_tracer.GetNextHex(offset_pos)};
+        auto reference_step {reference_tracer.GetNextHex(reference_pos)};
 
         REQUIRE(base_step.has_value());
         REQUIRE(offset_step.has_value());
@@ -191,12 +191,12 @@ TEST_CASE("LineTracer")
         constexpr mpos target {3, 3};
         LineTracer tracer {start, target, 0.0f, map_size};
 
-        mpos pos = start;
-        bool moved = false;
+        mpos pos {start};
+        bool moved {false};
 
-        for (size_t i = 0; i < 8; i++) {
-            mpos previous = pos;
-            auto dir = tracer.GetNextHex(pos);
+        for (size_t i {0}; i < 8; i++) {
+            mpos previous {pos};
+            auto dir {tracer.GetNextHex(pos)};
             CHECK(map_size.is_valid_pos(pos));
 
             if (dir.has_value()) {

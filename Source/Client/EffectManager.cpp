@@ -47,26 +47,26 @@ auto EffectManager::LoadEffect(EffectUsage usage, string_view path) -> nptr<Rend
 {
     FO_TRACE_ZONE(Render);
 
-    if (auto it = _loadedEffects.find(path); it != _loadedEffects.end()) {
+    if (auto it {_loadedEffects.find(path)}; it != _loadedEffects.end()) {
         return it->second;
     }
 
     // Load new
-    unique_ptr<RenderEffect> effect = _render->CreateEffect(usage, path, [this](string_view path2) -> string {
-        if (auto file = _resources->ReadFile(path2)) {
+    unique_ptr<RenderEffect> effect {_render->CreateEffect(usage, path, [this](string_view path2) -> string {
+        if (auto file {_resources->ReadFile(path2)}) {
             return file.GetStr();
         }
 
         break_into_debugger();
         logging::write(logging::type::warning, "Effect file '{}' not found", path2);
         return {};
-    });
+    })};
 
     if (effect->IsNeedScriptValueBuf()) {
         effect->ScriptValueBuf = RenderEffect::ScriptValueBuffer();
     }
 
-    auto effect_ptr = effect.as_nptr();
+    auto effect_ptr {effect.as_nptr()};
     _loadedEffects.emplace(path, std::move(effect));
     return effect_ptr;
 }
@@ -74,7 +74,7 @@ auto EffectManager::LoadEffect(EffectUsage usage, string_view path) -> nptr<Rend
 auto EffectManager::ResolveEffect(ptr<RenderEffect> defaultEffect, string_view effectPath) -> ptr<RenderEffect>
 {
     if (!effectPath.empty()) {
-        auto resolved_effect = LoadEffect(defaultEffect->GetUsage(), effectPath);
+        auto resolved_effect {LoadEffect(defaultEffect->GetUsage(), effectPath)};
 
         if (!resolved_effect) {
             throw EffectManagerException("Effect not found or have some errors, see log file");
@@ -103,10 +103,10 @@ void EffectManager::SetEffectScriptValues(ptr<RenderEffect> effect, int32_t valu
         throw EffectManagerException("Effect does not declare ScriptValueBuf");
     }
 
-    auto script_value_buf = GetOrCreateScriptValueBuf(effect);
-    size_t value_start_index = numeric_cast<size_t>(valueStartIndex);
+    auto script_value_buf {GetOrCreateScriptValueBuf(effect)};
+    size_t value_start_index {numeric_cast<size_t>(valueStartIndex)};
 
-    for (size_t i = 0; i < values.size(); i++) {
+    for (size_t i {0}; i < values.size(); i++) {
         script_value_buf->ScriptValue[value_start_index + i] = values[i];
     }
 }
@@ -117,7 +117,7 @@ void EffectManager::ClearEffectScriptValues(ptr<RenderEffect> effect)
         throw EffectManagerException("Effect does not declare ScriptValueBuf");
     }
 
-    auto script_value_buf = GetOrCreateScriptValueBuf(effect);
+    auto script_value_buf {GetOrCreateScriptValueBuf(effect)};
 
     *script_value_buf = RenderEffect::ScriptValueBuffer();
 }
@@ -152,22 +152,22 @@ void EffectManager::UpdateEffects(const GameTimer& game_time)
 void EffectManager::PerFrameEffectUpdate(ptr<RenderEffect> effect, const GameTimer& game_time)
 {
     if (effect->IsNeedTimeBuf()) {
-        auto& time_buf = effect->TimeBuf = RenderEffect::TimeBuffer();
+        auto& time_buf {effect->TimeBuf = RenderEffect::TimeBuffer()};
 
         if (!_shaderTimeEpoch.has_value()) {
             _shaderTimeEpoch = game_time.GetFrameTime();
         }
 
-        constexpr float64_t shader_time_period = 8192.0;
-        float64_t session_seconds = (game_time.GetFrameTime() - _shaderTimeEpoch.value()).to_ms<float64_t>() / 1000.0;
-        float32_t shader_time = numeric_cast<float32_t>(std::fmod(session_seconds, shader_time_period));
+        constexpr float64_t shader_time_period {8192.0};
+        float64_t session_seconds {(game_time.GetFrameTime() - _shaderTimeEpoch.value()).to_ms<float64_t>() / 1000.0};
+        float32_t shader_time {numeric_cast<float32_t>(std::fmod(session_seconds, shader_time_period))};
 
         time_buf->FrameTime[0] = shader_time;
         time_buf->GameTime[0] = shader_time;
     }
 
     if (effect->IsNeedRandomValueBuf()) {
-        auto& random_value_buf = effect->RandomValueBuf = RenderEffect::RandomValueBuffer();
+        auto& random_value_buf {effect->RandomValueBuf = RenderEffect::RandomValueBuffer()};
 
         random_value_buf->RandomValue[0] = numeric_cast<float32_t>(_randomGenerator.next_below(100000)) / 100000.0f;
         random_value_buf->RandomValue[1] = numeric_cast<float32_t>(_randomGenerator.next_below(100000)) / 100000.0f;
@@ -184,7 +184,7 @@ void EffectManager::LoadMinimalEffects()
 {
     FO_TRACE_ZONE(Render);
 
-    int32_t effect_errors = 0;
+    int32_t effect_errors {0};
 
     LOAD_DEFAULT_EFFECT(Effects.ImGui, EffectUsage::ImGui, _settings->Render.ImGuiDefaultEffect);
     LOAD_DEFAULT_EFFECT(Effects.Font, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");
@@ -200,7 +200,7 @@ void EffectManager::LoadDefaultEffects()
 {
     FO_TRACE_ZONE(Render);
 
-    int32_t effect_errors = 0;
+    int32_t effect_errors {0};
 
     LOAD_DEFAULT_EFFECT(Effects.ImGui, EffectUsage::ImGui, _settings->Render.ImGuiDefaultEffect);
     LOAD_DEFAULT_EFFECT(Effects.Font, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");

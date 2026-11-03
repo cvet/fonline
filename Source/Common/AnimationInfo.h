@@ -40,8 +40,8 @@ FO_BEGIN_NAMESPACE
 
 class FileSystem;
 
-constexpr string_view SPRITE_INFO_DIRECTORY = "SpriteInfo";
-constexpr int32_t SPRITE_INFO_VERSION = 1;
+constexpr string_view SPRITE_INFO_DIRECTORY {"SpriteInfo"};
+constexpr int32_t SPRITE_INFO_VERSION {1};
 
 struct SpriteFrameInfo
 {

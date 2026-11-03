@@ -116,9 +116,9 @@ private:
     {
         // Atomic because it carries the cross-thread hand-off; the CAS in Release / AbortPendingWaiters is what
         // disambiguates the abort-races-grant window
-        static constexpr int32_t STATE_WAITING = 0;
-        static constexpr int32_t STATE_GRANTED = 1;
-        static constexpr int32_t STATE_ABORTED = 2;
+        static constexpr int32_t STATE_WAITING {0};
+        static constexpr int32_t STATE_GRANTED {1};
+        static constexpr int32_t STATE_ABORTED {2};
 
         uint64_t Ticket {};
         std::thread::id Waiter {};
@@ -146,7 +146,7 @@ private:
 
         [[nodiscard]] auto operator[](std::thread::id id) -> int32_t&
         {
-            if (auto it = find(id); it != _entries.end()) {
+            if (auto it {find(id)}; it != _entries.end()) {
                 return it->second;
             }
 

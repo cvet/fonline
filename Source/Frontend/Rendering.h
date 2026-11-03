@@ -44,16 +44,16 @@ FO_DECLARE_EXCEPTION(RenderingException);
 
 using WindowInternalHandle = void;
 
-constexpr size_t EFFECT_MAX_PASSES = FO_EFFECT_MAX_PASSES;
-constexpr size_t EFFECT_SCRIPT_VALUES = FO_EFFECT_SCRIPT_VALUES;
-constexpr float32_t ORTHO_DEPTH_DEFAULT_NEAR = -10.0f;
-constexpr float32_t ORTHO_DEPTH_DEFAULT_FAR = 10.0f;
+constexpr size_t EFFECT_MAX_PASSES {FO_EFFECT_MAX_PASSES};
+constexpr size_t EFFECT_SCRIPT_VALUES {FO_EFFECT_SCRIPT_VALUES};
+constexpr float32_t ORTHO_DEPTH_DEFAULT_NEAR {-10.0f};
+constexpr float32_t ORTHO_DEPTH_DEFAULT_FAR {10.0f};
 
 #if FO_ENABLE_3D
-constexpr size_t MODEL_LAYERS_COUNT = FO_MODEL_LAYERS_COUNT;
-constexpr size_t MODEL_MAX_TEXTURES = FO_MODEL_MAX_TEXTURES;
-constexpr size_t MODEL_MAX_BONES = FO_MODEL_MAX_BONES;
-constexpr size_t MODEL_BONES_PER_VERTEX = FO_MODEL_BONES_PER_VERTEX;
+constexpr size_t MODEL_LAYERS_COUNT {FO_MODEL_LAYERS_COUNT};
+constexpr size_t MODEL_MAX_TEXTURES {FO_MODEL_MAX_TEXTURES};
+constexpr size_t MODEL_MAX_BONES {FO_MODEL_MAX_BONES};
+constexpr size_t MODEL_BONES_PER_VERTEX {FO_MODEL_BONES_PER_VERTEX};
 #endif
 
 #if FO_RENDER_32BIT_INDEX
@@ -154,7 +154,7 @@ enum class DepthVariantType : uint8_t
     NoTestNoWrite,
 };
 
-constexpr size_t EFFECT_DEPTH_VARIANTS = 4;
+constexpr size_t EFFECT_DEPTH_VARIANTS {4};
 
 // Which faces a draw discards. Both 3D models and particle content carry this per draw, so it is a property of the draw
 // rather than of the effect's usage; the zero-initialised default draws both faces, which is what a 2D batch wants
@@ -165,7 +165,7 @@ enum class CullModeType : uint8_t
     Front,
 };
 
-constexpr size_t EFFECT_CULL_MODES = 3;
+constexpr size_t EFFECT_CULL_MODES {3};
 
 // The live window geometry a renderer draws into. It is not configuration: the configured entries name the size
 // to ask the platform for, while this follows the window the platform actually handed back and every resize after
@@ -658,7 +658,7 @@ class OpenGL_Renderer final : public Renderer
 public:
     struct Context;
 
-    static constexpr auto RING_BUFFER_LENGTH = 300;
+    static constexpr auto RING_BUFFER_LENGTH {300};
     OpenGL_Renderer();
     ~OpenGL_Renderer() override;
 

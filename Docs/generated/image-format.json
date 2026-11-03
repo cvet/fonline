@@ -103,7 +103,7 @@
           "path": "Source/Tools/ImageBaker-Fofrm.cpp",
           "anchors": [
             "auto Load",
-            "ConfigFile fofrm(reader.GetStr())"
+            "ConfigFile fofrm {reader.GetStr()}"
           ]
         }
       ],
@@ -122,7 +122,7 @@
           "path": "Source/Tools/ImageBaker-Frm.cpp",
           "anchors": [
             "auto Load",
-            "File palette_file = files.FindFileByPath",
+            "File palette_file {files.FindFileByPath",
             "collection.NewName = strvex(fname).starts_with(\"art/critters/\")"
           ]
         },
@@ -385,7 +385,7 @@
             "static auto TgaLoad",
             "if (type != 2 && type != 10)",
             "if (pixel_depth != 24 && pixel_depth != 32)",
-            "size_t result_row = checked_mul(numeric_cast<size_t>(flipped_y), result_row_size);"
+            "size_t result_row {checked_mul(numeric_cast<size_t>(flipped_y), result_row_size)};"
           ]
         }
       ],
@@ -405,7 +405,7 @@
         {
           "path": "Source/Tools/ImageBaker-Fofrm.cpp",
           "anchors": [
-            "int32_t frm_fps = fofrm.GetAsInt(\"\", \"fps\", 10);",
+            "int32_t frm_fps {fofrm.GetAsInt(\"\", \"fps\", 10)};",
             "frm_fps = fofrm.GetAsInt(\"\", \"Fps\", frm_fps);"
           ]
         }
@@ -423,7 +423,7 @@
         {
           "path": "Source/Tools/ImageBaker-Fofrm.cpp",
           "anchors": [
-            "int32_t frm_count = fofrm.GetAsInt(\"\", \"count\", 1);",
+            "int32_t frm_count {fofrm.GetAsInt(\"\", \"count\", 1)};",
             "frm_count = fofrm.GetAsInt(\"\", \"Count\", frm_count);",
             "FO_VERIFY_AND_THROW(frm_count > 0, \"Frame count must be positive\""
           ]
@@ -483,7 +483,7 @@
         {
           "path": "Source/Tools/ImageBaker-Fofrm.cpp",
           "anchors": [
-            "string dir_str = strex(\"dir_{}\", dir);",
+            "string dir_str {static_cast<string&&>(strex(\"dir_{}\", dir))};",
             "throw ImageBakerException(\"FOFRM file invalid apps\", fname);"
           ]
         },
@@ -603,7 +603,7 @@
             "case 'H':",
             "case 'V':",
             "case 'F':",
-            "frm_count_target_wide = checked_add"
+            "frm_count_target_wide {checked_add"
           ]
         }
       ]
@@ -674,7 +674,7 @@
         {
           "path": "Source/Tools/ImageBaker.cpp",
           "anchors": [
-            "bool scan_mode = target_path.empty()",
+            "bool scan_mode {target_path.empty()}",
             "if (!_fileLoaders.contains(ext))",
             "if (_context->BakeChecker && !_context->BakeChecker"
           ]
@@ -735,7 +735,7 @@
         {
           "path": "Source/Tools/ImageBaker.cpp",
           "anchors": [
-            "string output_path = collection.NewName.empty() ? string(fname) : collection.NewName",
+            "string output_path {collection.NewName.empty() ? string(fname) : collection.NewName}",
             "_context->WriteData(output_path, data)"
           ]
         }
@@ -751,8 +751,8 @@
         {
           "path": "Source/Common/SpriteResource.h",
           "anchors": [
-            "SPRITE_RESOURCE_MAGIC = 43",
-            "SPRITE_RESOURCE_VERSION = 2"
+            "SPRITE_RESOURCE_MAGIC {43}",
+            "SPRITE_RESOURCE_VERSION {2}"
           ]
         },
         {
@@ -776,7 +776,7 @@
           "path": "Source/Tools/ImageBaker.cpp",
           "anchors": [
             "collection.HaveDirs ? GameSettings::MAP_DIR_COUNT : 1",
-            "for (int32_t dir = 0; dir < dirs; dir++)",
+            "for (int32_t dir {0}; dir < dirs; dir++)",
             "writer.write<int16_t>(numeric_cast<int16_t>(frame_offset.x))"
           ]
         }
@@ -915,7 +915,7 @@
         {
           "path": "Source/Client/DefaultSprites.cpp",
           "anchors": [
-            "SpriteResourceData resource = ReadSpriteResource",
+            "SpriteResourceData resource {ReadSpriteResource",
             "if (sprite_info.FrameCount > 1 || direction_count > 1)"
           ]
         }
@@ -931,7 +931,7 @@
         {
           "path": "Source/Client/DefaultSprites.cpp",
           "anchors": [
-            "SpriteResourceFrameData& frame = direction.Frames.front()",
+            "SpriteResourceFrameData& frame {direction.Frames.front()}",
             "result = FillAtlas(atlas_type, frame.Size, frame.Offset"
           ]
         }
@@ -1047,7 +1047,7 @@
             "_copyableSpriteCache.find({path, atlas_type})",
             "return it->second->MakeCopy()",
             "_copyableSpriteCache.emplace(pair {path, atlas_type}, spr)",
-            "auto copy = spr->MakeCopy()"
+            "auto copy {spr->MakeCopy()}"
           ]
         },
         {
@@ -1163,7 +1163,7 @@
           "anchors": [
             "Indexed TGA is not supported",
             "TGA support only 24 and 32 bpp",
-            "int32_t flipped_y = checked_sub"
+            "int32_t flipped_y {checked_sub"
           ]
         },
         {
@@ -1229,7 +1229,7 @@
           "anchors": [
             "if (_framesCount == 1 || _wholeTicks == 0)",
             "int32_t ticks_per_frame",
-            "int32_t frames_passed = dt / ticks_per_frame"
+            "int32_t frames_passed {dt / ticks_per_frame}"
           ]
         }
       ]
@@ -1302,5 +1302,5 @@
       "internal": 8
     }
   },
-  "contract_digest": "e56da271209c2413d0d5b4e5b49e709d19a5f19c3e548b09bebd244481cda419"
+  "contract_digest": "37777a23a6dc2ab044c5e32af9a731a28d1119e55f317dcc9248c49f5a92a6a8"
 }

@@ -51,7 +51,7 @@ namespace ImageBakerZar
         ignore_unused(opt);
         ignore_unused(context);
 
-        FrameCollection collection;
+        FrameCollection collection {};
         collection.SequenceSize = 1;
         collection.AnimTicks = 100;
         collection.Main.Frames.emplace_back(ImageBakerZarDecoder::Decode(fname, reader, false));

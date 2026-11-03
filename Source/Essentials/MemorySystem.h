@@ -109,8 +109,8 @@ public:
             memory::report_and_exit("Alloc size overflow");
         }
 
-        size_t size = sizeof(T) * count;
-        nptr<void> mem = allocate_raw(size);
+        size_t size {sizeof(T) * count};
+        nptr<void> mem {allocate_raw(size)};
 
         if (!mem) {
             memory::report_bad_alloc("Safe allocator failed", typeid(T).name(), count, size);
@@ -124,7 +124,7 @@ public:
             }
         }
 
-        auto typed_mem = mem.reinterpret_as<T>();
+        auto typed_mem {mem.reinterpret_as<T>()};
         return typed_mem.get();
     }
 
@@ -175,7 +175,7 @@ public:
         requires(!refcountable<T>)
     [[nodiscard]] static auto make_raw(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> ptr<T>
     {
-        auto alloc = [&]() { return nptr<T>(new (std::nothrow) T(std::forward<Args>(args)...)); };
+        auto alloc {[&]() { return nptr<T>(new (std::nothrow) T(std::forward<Args>(args)...)); }};
         return alloc_with_backup_retry<T>(alloc, "Make raw failed", "Failed to allocate raw from backup pool", 1, sizeof(T));
     }
 
@@ -183,8 +183,8 @@ public:
         requires(!refcountable<T>)
     [[nodiscard]] static auto make_unique(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> unique_ptr<T>
     {
-        auto alloc = [&]() { return nptr<T>(new (std::nothrow) T(std::forward<Args>(args)...)); };
-        auto ptr = alloc_with_backup_retry<T>(alloc, "Make unique failed", "Failed to allocate unique from backup pool", 1, sizeof(T));
+        auto alloc {[&]() { return nptr<T>(new (std::nothrow) T(std::forward<Args>(args)...)); }};
+        auto ptr {alloc_with_backup_retry<T>(alloc, "Make unique failed", "Failed to allocate unique from backup pool", 1, sizeof(T))};
         return adopt_unique_ptr(ptr);
     }
 
@@ -192,8 +192,8 @@ public:
         requires(refcountable<T>)
     [[nodiscard]] static auto make_refcounted(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> refcount_ptr<T>
     {
-        auto alloc = [&]() { return nptr<T>(new (std::nothrow) T(std::forward<Args>(args)...)); };
-        auto ptr = alloc_with_backup_retry<T>(alloc, "Make ref counted failed", "Failed to allocate ref counted from backup pool", 1, sizeof(T));
+        auto alloc {[&]() { return nptr<T>(new (std::nothrow) T(std::forward<Args>(args)...)); }};
+        auto ptr {alloc_with_backup_retry<T>(alloc, "Make ref counted failed", "Failed to allocate ref counted from backup pool", 1, sizeof(T))};
         return refcount_ptr<T>::from_adopted_ref(ptr.get());
     }
 
@@ -201,11 +201,11 @@ public:
         requires(!refcountable<T>)
     [[nodiscard]] static auto make_shared(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> shared_ptr<T>
     {
-        auto alloc = [&]() { return nptr<shared_ptr_storage_block<T>>(new (std::nothrow) shared_ptr_storage_block<T>(std::forward<Args>(args)...)); };
-        auto block = alloc_with_backup_retry<shared_ptr_storage_block<T>>(alloc, "Make shared ptr failed", "Failed to allocate shared ptr from backup pool", 1, sizeof(T));
+        auto alloc {[&]() { return nptr<shared_ptr_storage_block<T>>(new (std::nothrow) shared_ptr_storage_block<T>(std::forward<Args>(args)...)); }};
+        auto block {alloc_with_backup_retry<shared_ptr_storage_block<T>>(alloc, "Make shared ptr failed", "Failed to allocate shared ptr from backup pool", 1, sizeof(T))};
 
-        nptr<T> obj = block->stored_object();
-        shared_ptr<T> result = shared_ptr<T>(block.get(), obj.get());
+        nptr<T> obj {block->stored_object()};
+        shared_ptr<T> result {shared_ptr<T>(block.get(), obj.get())};
         init_shared_from_this_weak(result, obj.get());
         return result;
     }
@@ -219,8 +219,8 @@ public:
             memory::report_and_exit("Alloc raw size overflow");
         }
 
-        auto alloc = [&]() { return nptr<T>(new (std::nothrow) T[count]()); };
-        auto ptr = alloc_with_backup_retry<T>(alloc, "Make raw array failed", "Failed to allocate raw from backup pool", count, count * sizeof(T));
+        auto alloc {[&]() { return nptr<T>(new (std::nothrow) T[count]()); }};
+        auto ptr {alloc_with_backup_retry<T>(alloc, "Make raw array failed", "Failed to allocate raw from backup pool", count, count * sizeof(T))};
         return ptr.get();
     }
 
@@ -245,8 +245,8 @@ public:
             memory::report_and_exit("Alloc unique size overflow");
         }
 
-        auto alloc = [&]() { return nptr<T>(new (std::nothrow) T[count]()); };
-        auto ptr = alloc_with_backup_retry<T>(alloc, "Make unique array failed", "Failed to allocate unique from backup pool", count, count * sizeof(T));
+        auto alloc {[&]() { return nptr<T>(new (std::nothrow) T[count]()); }};
+        auto ptr {alloc_with_backup_retry<T>(alloc, "Make unique array failed", "Failed to allocate unique from backup pool", count, count * sizeof(T))};
         return unique_arr_ptr<T>(ptr.get());
     }
 
@@ -254,7 +254,7 @@ private:
     template<typename T, typename AllocFunc>
     [[nodiscard]] static auto alloc_with_backup_retry(AllocFunc&& alloc, string_view alloc_desc, string_view exhausted_desc, size_t count, size_t size) -> ptr<T>
     {
-        nptr<T> ptr = alloc();
+        nptr<T> ptr {alloc()};
 
         if (!ptr) {
             memory::report_bad_alloc(alloc_desc, typeid(T).name(), count, size);
@@ -307,7 +307,7 @@ namespace memory
     [[nodiscard]] inline auto read_unaligned(nptr<const void> src) noexcept -> T
     {
         static_assert(std::is_trivially_copyable_v<T>);
-        T value;
+        T value {};
         std::memcpy(&value, src.get(), sizeof(T));
         return value;
     }

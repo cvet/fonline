@@ -82,23 +82,23 @@ void MapSprite::Reset() noexcept
 
 auto MapSprite::GetDrawRect() const noexcept -> irect32
 {
-    auto spr = GetSprite();
+    auto spr {GetSprite()};
     FO_VERIFY_AND_RETURN_VALUE(spr, irect32(), "Map sprite has no sprite while computing draw rect", _hex, _drawOrder, _index);
 
-    isize32 spr_size = spr->GetSize();
-    ipos32 root_pos = GetDrawRootPos();
-    ipos32 root_offset = GetSpriteRootOffset();
+    isize32 spr_size {spr->GetSize()};
+    ipos32 root_pos {GetDrawRootPos()};
+    ipos32 root_offset {GetSpriteRootOffset()};
 
     return {ipos32(root_pos.x - root_offset.x, root_pos.y - root_offset.y), spr_size};
 }
 
 auto MapSprite::GetDrawRootPos() const noexcept -> ipos32
 {
-    ipos32 pos = _hexOffset + *_pHexOffset;
+    ipos32 pos {_hexOffset + *_pHexOffset};
 
     if (_elevation != 0) {
-        float32_t elevation = numeric_cast<float32_t>(_elevation);
-        float32_t map_elevation_y = std::cos(GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT) * elevation;
+        float32_t elevation {numeric_cast<float32_t>(_elevation)};
+        float32_t map_elevation_y {std::cos(GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT) * elevation};
         pos.y -= iround<int32_t>(map_elevation_y);
     }
 
@@ -111,7 +111,7 @@ auto MapSprite::GetDrawRootPos() const noexcept -> ipos32
 
 auto MapSprite::GetMapRootOffset() const noexcept -> ipos32
 {
-    ipos32 offset = _hexOffset;
+    ipos32 offset {_hexOffset};
 
     if (_pSprOffset) {
         offset += *_pSprOffset;
@@ -125,27 +125,27 @@ auto MapSprite::GetMapRootOffset() const noexcept -> ipos32
 
 auto MapSprite::GetSpriteRootOffset() const noexcept -> ipos32
 {
-    auto spr = GetSprite();
+    auto spr {GetSprite()};
     FO_VERIFY_AND_RETURN_VALUE(spr, ipos32(), "Map sprite has no sprite while computing sprite root offset", _hex, _drawOrder, _index);
 
-    ipos32 spr_offset = _pSprOffsetOverride && _pSprOffsetOverride->has_value() ? _pSprOffsetOverride->value() : spr->GetOffset();
-    isize32 spr_size = spr->GetSize();
+    ipos32 spr_offset {_pSprOffsetOverride && _pSprOffsetOverride->has_value() ? _pSprOffsetOverride->value() : spr->GetOffset()};
+    isize32 spr_size {spr->GetSize()};
 
     return {spr_size.width / 2 - spr_offset.x, spr_size.height - spr_offset.y};
 }
 
 auto MapSprite::GetViewRect() const noexcept -> irect32
 {
-    auto spr = GetSprite();
+    auto spr {GetSprite()};
     FO_VERIFY_AND_RETURN_VALUE(spr, irect32(), "Map sprite has no sprite while computing view rect", _hex, _drawOrder, _index);
 
-    irect32 rect = GetDrawRect();
+    irect32 rect {GetDrawRect()};
 
-    if (auto view_rect = spr->GetViewSize(); view_rect.has_value()) [[likely]] {
-        int32_t view_ox = view_rect->x;
-        int32_t view_oy = view_rect->y;
-        int32_t view_width = view_rect->width;
-        int32_t view_height = view_rect->height;
+    if (auto view_rect {spr->GetViewSize()}; view_rect.has_value()) [[likely]] {
+        int32_t view_ox {view_rect->x};
+        int32_t view_oy {view_rect->y};
+        int32_t view_width {view_rect->width};
+        int32_t view_height {view_rect->height};
 
         rect.x = rect.x + rect.width / 2 - view_width / 2 + view_ox;
         rect.y = rect.y + rect.height - view_height + view_oy;
@@ -185,16 +185,16 @@ void MapSprite::SetFixedAlpha(uint8_t alpha) noexcept
 void MapSprite::SetLight(CornerType corner, ptr<const ucolor> light, msize size) noexcept
 {
     if (_hex.x >= 1 && _hex.x < size.width - 1 && _hex.y >= 1 && _hex.y < size.height - 1) [[likely]] {
-        size_t width = numeric_cast<size_t>(size.width);
-        size_t height = numeric_cast<size_t>(size.height);
-        size_t light_count = width * height;
-        auto lights = make_span(light, light_count);
-        auto light_at = [&lights](size_t pos) noexcept -> ptr<const ucolor> {
+        size_t width {numeric_cast<size_t>(size.width)};
+        size_t height {numeric_cast<size_t>(size.height)};
+        size_t light_count {width * height};
+        auto lights {make_span(light, light_count)};
+        auto light_at {[&lights](size_t pos) noexcept -> ptr<const ucolor> {
             FO_STRONG_ASSERT(pos < lights.size(), "Light index is out of range");
             return &lights[pos];
-        };
+        }};
 
-        size_t light_index = numeric_cast<size_t>(_hex.y) * width + numeric_cast<size_t>(_hex.x);
+        size_t light_index {numeric_cast<size_t>(_hex.y) * width + numeric_cast<size_t>(_hex.x)};
         _light = light_at(light_index);
 
         switch (corner) {
@@ -265,7 +265,7 @@ void MapSprite::CreateExtraChain(ptr<MapSprite*> mspr)
 void MapSprite::AddToExtraChain(ptr<MapSprite> mspr)
 {
     FO_VERIFY_AND_THROW(_extraChainRoot, "Extra chain root is null");
-    ptr<MapSprite> last_spr = this;
+    ptr<MapSprite> last_spr {this};
 
     while (last_spr->_extraChainChild) {
         last_spr = last_spr->_extraChainChild;
@@ -279,12 +279,13 @@ auto MapSpriteList::MakeDrawOrderPos(DrawOrderType draw_order, mpos hex, int8_t 
 {
     // Bit layout: [group 8][primary 24][layer 8][sub-layer 8][secondary 16]; a standing row is one ground depth, so its
     // critters stand in front of every item of it, and among the items its walls (lowest sub-layer) go first
-    uint64_t group = static_cast<uint64_t>(draw_order < DrawOrderType::NormalBegin || draw_order > DrawOrderType::NormalEnd ? draw_order : DrawOrderType::NormalBegin);
-    bool standing = group == static_cast<uint64_t>(DrawOrderType::NormalBegin);
-    uint64_t primary = standing ? GeometryHelper::GetHexScreenRow(hex) : hex.y;
-    uint64_t secondary = hex.x;
-    uint64_t layer = standing ? static_cast<uint64_t>(draw_order) - static_cast<uint64_t>(DrawOrderType::NormalBegin) : 0;
-    uint64_t sub = numeric_cast<uint64_t>(sub_layer - std::numeric_limits<int8_t>::min());
+    uint64_t group {static_cast<uint64_t>(draw_order < DrawOrderType::NormalBegin || draw_order > DrawOrderType::NormalEnd ? draw_order : DrawOrderType::NormalBegin)};
+    bool standing {group == static_cast<uint64_t>(DrawOrderType::NormalBegin)};
+    // Preserve the packed key's unsigned bit pattern even for signed coordinates outside the map
+    uint64_t primary {std::bit_cast<uint64_t>(safe_numeric_cast<int64_t>(standing ? GeometryHelper::GetHexScreenRow(hex) : hex.y))};
+    uint64_t secondary {std::bit_cast<uint64_t>(safe_numeric_cast<int64_t>(hex.x))};
+    uint64_t layer {standing ? static_cast<uint64_t>(draw_order) - static_cast<uint64_t>(DrawOrderType::NormalBegin) : 0};
+    uint64_t sub {numeric_cast<uint64_t>(sub_layer - std::numeric_limits<int8_t>::min())};
 
     return (group << 56) | (primary << 32) | (layer << 24) | (sub << 16) | secondary;
 }
@@ -295,7 +296,7 @@ void MapSpriteList::GrowPool() noexcept
 
     _spritesPool.reserve(_spritesPool.size() + SPRITES_POOL_GROW_SIZE);
 
-    for (int32_t i = 0; i < SPRITES_POOL_GROW_SIZE; i++) {
+    for (int32_t i {0}; i < SPRITES_POOL_GROW_SIZE; i++) {
         _spritesPool.emplace_back(safe_alloc::make_unique<MapSprite>());
     }
 }
@@ -306,7 +307,7 @@ auto MapSpriteList::AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_off
         GrowPool();
     }
 
-    auto mspr = std::move(_spritesPool.back());
+    auto mspr {std::move(_spritesPool.back())};
     _spritesPool.pop_back();
 
     mspr->_owner = this;
@@ -345,7 +346,7 @@ auto MapSpriteList::AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_off
     _needSort = true;
 
     if (!_orderBroken && _activeSprites.size() >= 2) {
-        auto tail = _activeSprites.back().as_ptr();
+        auto tail {_activeSprites.back().as_ptr()};
 
         if (tail->_drawOrderPos < _activeSprites[_activeSprites.size() - 2]->_drawOrderPos) {
             _orderBroken = true;
@@ -383,7 +384,7 @@ void MapSpriteList::Invalidate(ptr<MapSprite> mspr) noexcept
     FO_STRONG_ASSERT(mspr->_owner, "Map sprite has no owner", mspr->_index);
     mspr->Reset();
 
-    uint32_t index = mspr->_index;
+    uint32_t index {mspr->_index};
     _spritesPool.emplace_back(std::move(_activeSprites[index]));
     _needSort = true;
 
@@ -420,15 +421,15 @@ void MapSpriteList::Sort() noexcept
         });
     }
 
-    uint32_t index = 0;
+    uint32_t index {0};
 
     for (auto& mspr : _activeSprites) {
         mspr->_index = index++;
     }
 
-    uint32_t pos = 0;
+    uint32_t pos {0};
 
-    for (uint32_t order = 0; order < DrawOrderRangeSize - 1; order++) {
+    for (uint32_t order {0}; order < DrawOrderRangeSize - 1; order++) {
         while (pos < _activeSprites.size() && static_cast<uint32_t>(_activeSprites[pos]->GetDrawOrder()) < order) {
             pos++;
         }

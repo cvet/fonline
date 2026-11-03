@@ -90,7 +90,7 @@ public:
     bool try_lock() FO_TSA_TRY_ACQUIRE(true) { return _impl.try_lock(); }
 
 private:
-    std::mutex _impl;
+    std::mutex _impl {};
 };
 
 class FO_TSA_CAPABILITY("shared_mutex") shared_mutex
@@ -111,7 +111,7 @@ public:
     bool try_lock_shared() FO_TSA_TRY_ACQUIRE_SHARED(true) { return _impl.try_lock_shared(); }
 
 private:
-    std::shared_mutex _impl;
+    std::shared_mutex _impl {};
 };
 
 // Exclusive lock for the short critical sections that noexcept accessors run: it owns no OS resource, so unlike
@@ -128,7 +128,7 @@ public:
 
     void lock() noexcept FO_TSA_ACQUIRE()
     {
-        uint32_t free_state = STATE_FREE;
+        uint32_t free_state {STATE_FREE};
 
         if (_state.compare_exchange_strong(free_state, STATE_HELD, std::memory_order_acquire, std::memory_order_relaxed)) {
             return;
@@ -148,9 +148,9 @@ public:
     }
 
 private:
-    static constexpr uint32_t STATE_FREE = 0;
-    static constexpr uint32_t STATE_HELD = 1;
-    static constexpr uint32_t STATE_CONTENDED = 2;
+    static constexpr uint32_t STATE_FREE {0};
+    static constexpr uint32_t STATE_HELD {1};
+    static constexpr uint32_t STATE_CONTENDED {2};
 
     std::atomic<uint32_t> _state {};
 };
@@ -312,8 +312,8 @@ template<typename Func>
         return std::async(std::launch::deferred, std::forward<Func>(task));
     }
 
-    auto packaged = safe_alloc::make_shared<std::packaged_task<result_type()>>(std::forward<Func>(task));
-    auto future = packaged->get_future();
+    auto packaged {safe_alloc::make_shared<std::packaged_task<result_type()>>(std::forward<Func>(task))};
+    auto future {packaged->get_future()};
 
     if (mode.use_deferred) {
         // Mixed launch mode falls back inline when the pool is saturated, avoiding an unbounded queue

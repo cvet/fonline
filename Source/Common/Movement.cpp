@@ -35,7 +35,7 @@
 
 FO_BEGIN_NAMESPACE
 
-static constexpr size_t NEXT_HEX_TIME_SEARCH_ITERATIONS = 20;
+static constexpr size_t NEXT_HEX_TIME_SEARCH_ITERATIONS {20};
 
 MovingContext::MovingContext(msize map_size, uint16_t speed, vector<mdir> steps, vector<uint16_t> control_steps, nanotime start_time, timespan offset_time, mpos start_hex, ipos16 start_hex_offset, ipos16 end_hex_offset) :
     _mapSize {map_size},
@@ -60,7 +60,7 @@ MovingContext::MovingContext(msize map_size, uint16_t speed, vector<mdir> steps,
 
 void MovingContext::RecalculateMetrics()
 {
-    auto metrics = EvaluateMetrics();
+    auto metrics {EvaluateMetrics()};
 
     _endHex = metrics.EndHex;
     _wholeTime = metrics.WholeTime;
@@ -69,7 +69,7 @@ void MovingContext::RecalculateMetrics()
 
 auto MovingContext::GetRuntimeElapsedTime(nanotime current_time) const noexcept -> float32_t
 {
-    float32_t runtime_elapsed = std::max((current_time - _startTime + _offsetTime).to_ms<float32_t>(), 0.0f);
+    float32_t runtime_elapsed {std::max((current_time - _startTime + _offsetTime).to_ms<float32_t>(), 0.0f)};
 
     if (_leaseTime > 0.0f && runtime_elapsed > _leaseTime) {
         return _leaseTime;
@@ -81,7 +81,7 @@ auto MovingContext::GetRuntimeElapsedTime(nanotime current_time) const noexcept 
 // The time a plan spends waiting at its lease is taken out of its clock, so a longer lease resumes it where it stood
 auto MovingContext::HoldAtLease(nanotime current_time) -> float32_t
 {
-    float32_t clock_elapsed = std::max((current_time - _startTime + _offsetTime).to_ms<float32_t>(), 0.0f);
+    float32_t clock_elapsed {std::max((current_time - _startTime + _offsetTime).to_ms<float32_t>(), 0.0f)};
 
     if (_leaseTime > 0.0f && clock_elapsed > _leaseTime) {
         _offsetTime -= timespan {std::chrono::nanoseconds {iround<int64_t>(numeric_cast<float64_t>(clock_elapsed - _leaseTime) * 1000000.0)}};
@@ -98,12 +98,12 @@ void MovingContext::EvaluateSegment(uint16_t control_step_begin, uint16_t contro
 
     segment_end_hex = segment_start_hex;
 
-    for (uint16_t j = control_step_begin; j < control_step_end; j++) {
-        bool move_ok = GeometryHelper::MoveHexByDir(segment_end_hex, _steps[j], _mapSize);
+    for (uint16_t j {control_step_begin}; j < control_step_end; j++) {
+        bool move_ok {GeometryHelper::MoveHexByDir(segment_end_hex, _steps[j], _mapSize)};
         FO_VERIFY_AND_THROW(move_ok, "Hex step moved past the map edge");
     }
 
-    auto&& [ox, oy] = GeometryHelper::GetHexOffset(segment_start_hex, segment_end_hex);
+    auto&& [ox, oy] {GeometryHelper::GetHexOffset(segment_start_hex, segment_end_hex)};
 
     if (control_step_begin == 0) {
         ox -= _startHexOffset.x;
@@ -114,44 +114,44 @@ void MovingContext::EvaluateSegment(uint16_t control_step_begin, uint16_t contro
         oy += _endHexOffset.y;
     }
 
-    float32_t proj_oy = numeric_cast<float32_t>(oy) * GeometryHelper::GetYProj();
+    float32_t proj_oy {numeric_cast<float32_t>(oy) * GeometryHelper::GetYProj()};
     offset = {ox, oy};
     dist = std::sqrt(numeric_cast<float32_t>(ox * ox) + proj_oy * proj_oy);
 }
 
 auto MovingContext::EvaluateRawProgress(float32_t elapsed_time_ms) const -> MovingRawProgress
 {
-    MovingRawProgress raw_progress;
+    MovingRawProgress raw_progress {};
     raw_progress.Hex = _startHex;
 
     if (_steps.empty() || _controlSteps.empty() || _wholeTime <= 0.0f || _wholeDist <= 0.0f) {
         return raw_progress;
     }
 
-    float32_t normalized_time = std::clamp(elapsed_time_ms / _wholeTime, 0.0f, 1.0f);
-    float32_t dist_pos = _wholeDist * normalized_time;
-    float32_t cur_dist = 0.0f;
-    mpos next_start_hex = _startHex;
-    uint16_t control_step_begin = 0;
+    float32_t normalized_time {std::clamp(elapsed_time_ms / _wholeTime, 0.0f, 1.0f)};
+    float32_t dist_pos {_wholeDist * normalized_time};
+    float32_t cur_dist {0.0f};
+    mpos next_start_hex {_startHex};
+    uint16_t control_step_begin {0};
 
-    for (size_t i = 0; i < _controlSteps.size(); i++) {
-        mpos segment_end_hex;
-        ipos32 segment_offset;
-        float32_t dist = 0.0f;
+    for (size_t i {0}; i < _controlSteps.size(); i++) {
+        mpos segment_end_hex {};
+        ipos32 segment_offset {};
+        float32_t dist {0.0f};
         EvaluateSegment(control_step_begin, _controlSteps[i], next_start_hex, i == _controlSteps.size() - 1, segment_end_hex, segment_offset, dist);
-        float32_t clamped_dist = std::max(dist, 0.0001f);
+        float32_t clamped_dist {std::max(dist, 0.0001f)};
 
         if ((normalized_time < 1.0f && dist_pos >= cur_dist && dist_pos <= cur_dist + clamped_dist) || (normalized_time == 1.0f && i == _controlSteps.size() - 1)) {
-            float32_t normalized_dist = std::clamp((dist_pos - cur_dist) / clamped_dist, 0.0f, 1.0f);
+            float32_t normalized_dist {std::clamp((dist_pos - cur_dist) / clamped_dist, 0.0f, 1.0f)};
 
-            int32_t step_index = control_step_begin + iround<int32_t>(normalized_dist * numeric_cast<float32_t>(_controlSteps[i] - control_step_begin));
+            int32_t step_index {control_step_begin + iround<int32_t>(normalized_dist * numeric_cast<float32_t>(_controlSteps[i] - control_step_begin))};
             FO_VERIFY_AND_THROW(step_index >= numeric_cast<int32_t>(control_step_begin), "Interpolated movement step is before the current control-step segment", step_index, control_step_begin, _controlSteps[i], normalized_dist);
             FO_VERIFY_AND_THROW(step_index <= numeric_cast<int32_t>(_controlSteps[i]), "Interpolated movement step is after the current control-step segment", step_index, control_step_begin, _controlSteps[i], normalized_dist);
 
-            mpos current_hex = next_start_hex;
+            mpos current_hex {next_start_hex};
 
-            for (int32_t j = control_step_begin; j < step_index; j++) {
-                bool move_ok = GeometryHelper::MoveHexByDir(current_hex, _steps[j], _mapSize);
+            for (int32_t j {control_step_begin}; j < step_index; j++) {
+                bool move_ok {GeometryHelper::MoveHexByDir(current_hex, _steps[j], _mapSize)};
                 FO_VERIFY_AND_THROW(move_ok, "Hex step moved past the map edge");
             }
 
@@ -177,11 +177,11 @@ void MovingContext::ChangeSpeed(uint16_t speed, nanotime current_time)
 {
     FO_VERIFY_AND_THROW(_speed != 0, "Speed must be non-zero");
 
-    float32_t diff = numeric_cast<float32_t>(speed) / numeric_cast<float32_t>(_speed);
-    float32_t elapsed_time = _elapsedTime;
+    float32_t diff {numeric_cast<float32_t>(speed) / numeric_cast<float32_t>(_speed)};
+    float32_t elapsed_time {_elapsedTime};
 
-    timespan new_offset_time = std::chrono::milliseconds {iround<int32_t>(elapsed_time / diff)};
-    float32_t new_whole_time = std::max(_wholeTime / diff, 0.0001f);
+    timespan new_offset_time {std::chrono::milliseconds {iround<int32_t>(elapsed_time / diff)}};
+    float32_t new_whole_time {std::max(_wholeTime / diff, 0.0001f)};
 
     _wholeTime = new_whole_time;
     _leaseTime = _leaseTime > 0.0f ? _leaseTime / diff : 0.0f;
@@ -234,17 +234,17 @@ void MovingContext::ValidateRuntimeState() const
 
 auto MovingContext::EvaluateMetrics() const -> MovingMetrics
 {
-    MovingMetrics metrics;
+    MovingMetrics metrics {};
     metrics.EndHex = _startHex;
 
-    float32_t base_move_speed = numeric_cast<float32_t>(_speed);
-    mpos next_start_hex = _startHex;
-    uint16_t control_step_begin = 0;
+    float32_t base_move_speed {numeric_cast<float32_t>(_speed)};
+    mpos next_start_hex {_startHex};
+    uint16_t control_step_begin {0};
 
-    for (size_t i = 0; i < _controlSteps.size(); i++) {
-        mpos segment_end_hex;
-        ipos32 segment_offset;
-        float32_t dist = 0.0f;
+    for (size_t i {0}; i < _controlSteps.size(); i++) {
+        mpos segment_end_hex {};
+        ipos32 segment_offset {};
+        float32_t dist {0.0f};
 
         EvaluateSegment(control_step_begin, _controlSteps[i], next_start_hex, i == _controlSteps.size() - 1, segment_end_hex, segment_offset, dist);
         ignore_unused(segment_offset);
@@ -280,18 +280,18 @@ auto MovingContext::EvaluateProjectedHex(float32_t look_ahead_ms) const -> mpos
 
 auto MovingContext::EvaluateNearestPathHex(mpos current_hex, mpos from_hex, mpos fallback_hex) const -> mpos
 {
-    mpos best_hex = fallback_hex;
-    int32_t best_dist = GeometryHelper::GetDistance(from_hex, best_hex);
+    mpos best_hex {fallback_hex};
+    int32_t best_dist {GeometryHelper::GetDistance(from_hex, best_hex)};
 
     if (_steps.empty()) {
-        int32_t end_dist = GeometryHelper::GetDistance(from_hex, _endHex);
+        int32_t end_dist {GeometryHelper::GetDistance(from_hex, _endHex)};
 
         if (end_dist < best_dist) {
             best_hex = _endHex;
             best_dist = end_dist;
         }
 
-        int32_t current_dist = GeometryHelper::GetDistance(from_hex, current_hex);
+        int32_t current_dist {GeometryHelper::GetDistance(from_hex, current_hex)};
 
         if (current_dist < best_dist) {
             best_hex = current_hex;
@@ -300,8 +300,8 @@ auto MovingContext::EvaluateNearestPathHex(mpos current_hex, mpos from_hex, mpos
         return best_hex;
     }
 
-    mpos hex = _startHex;
-    bool use_path_point = hex == current_hex;
+    mpos hex {_startHex};
+    bool use_path_point {hex == current_hex};
 
     for (auto step : _steps) {
         if (!GeometryHelper::MoveHexByDir(hex, step, _mapSize)) {
@@ -313,7 +313,7 @@ auto MovingContext::EvaluateNearestPathHex(mpos current_hex, mpos from_hex, mpos
             continue;
         }
 
-        int32_t dist = GeometryHelper::GetDistance(from_hex, hex);
+        int32_t dist {GeometryHelper::GetDistance(from_hex, hex)};
 
         if (dist < best_dist) {
             best_dist = dist;
@@ -330,7 +330,7 @@ auto MovingContext::EvaluateNearestPathHex(mpos current_hex, mpos from_hex, mpos
 
 auto MovingContext::EvaluatePathHexes(mpos current_hex) const -> vector<mpos>
 {
-    vector<mpos> path_hexes;
+    vector<mpos> path_hexes {};
 
     if (_steps.empty()) {
         if (current_hex != _endHex) {
@@ -341,8 +341,8 @@ auto MovingContext::EvaluatePathHexes(mpos current_hex) const -> vector<mpos>
         return path_hexes;
     }
 
-    mpos hex = _startHex;
-    bool include_hex = hex == current_hex;
+    mpos hex {_startHex};
+    bool include_hex {hex == current_hex};
 
     if (include_hex) {
         path_hexes.emplace_back(hex);
@@ -367,7 +367,7 @@ auto MovingContext::EvaluatePathHexes(mpos current_hex) const -> vector<mpos>
 
 auto MovingContext::EvaluateProgress() const -> MovingProgress
 {
-    auto raw_progress = EvaluateRawProgress(_elapsedTime);
+    auto raw_progress {EvaluateRawProgress(_elapsedTime)};
     return BuildProgress(raw_progress, raw_progress.Hex);
 }
 
@@ -378,7 +378,7 @@ auto MovingContext::EvaluateProgress(mpos current_hex) const -> MovingProgress
 
 auto MovingContext::BuildProgress(const MovingRawProgress& raw_progress, mpos current_hex) const -> MovingProgress
 {
-    MovingProgress progress;
+    MovingProgress progress {};
     progress.Hex = raw_progress.Hex;
     progress.Completed = raw_progress.Completed;
 
@@ -386,16 +386,16 @@ auto MovingContext::BuildProgress(const MovingRawProgress& raw_progress, mpos cu
         return progress;
     }
 
-    auto&& [current_ox, current_oy] = GeometryHelper::GetHexOffset(raw_progress.SegmentStartHex, current_hex);
+    auto&& [current_ox, current_oy] {GeometryHelper::GetHexOffset(raw_progress.SegmentStartHex, current_hex)};
 
     if (raw_progress.SegmentStartHex == _startHex) {
         current_ox -= _startHexOffset.x;
         current_oy -= _startHexOffset.y;
     }
 
-    auto lerp = [](int32_t a, int32_t b, float32_t t) -> float32_t { return numeric_cast<float32_t>(a) * (1.0f - t) + numeric_cast<float32_t>(b) * t; };
-    float32_t offset_x = lerp(0, raw_progress.SegmentOffset.x, raw_progress.NormalizedDist) - numeric_cast<float32_t>(current_ox);
-    float32_t offset_y = lerp(0, raw_progress.SegmentOffset.y, raw_progress.NormalizedDist) - numeric_cast<float32_t>(current_oy);
+    auto lerp {[](int32_t a, int32_t b, float32_t t) -> float32_t { return numeric_cast<float32_t>(a) * (1.0f - t) + numeric_cast<float32_t>(b) * t; }};
+    float32_t offset_x {lerp(0, raw_progress.SegmentOffset.x, raw_progress.NormalizedDist) - numeric_cast<float32_t>(current_ox)};
+    float32_t offset_y {lerp(0, raw_progress.SegmentOffset.y, raw_progress.NormalizedDist) - numeric_cast<float32_t>(current_oy)};
 
     // Do not clamp HexOffset: prediction can leave current_hex a full step behind the smooth position.
     // Rendering preserves current_hex + offset; the light fan bounds its own copy
@@ -411,7 +411,7 @@ void MovingContext::UpdateCurrentTime(nanotime current_time)
 
 void MovingContext::UpdateCurrentTimeToNextHex(nanotime current_time, mpos current_hex)
 {
-    float32_t runtime_elapsed = HoldAtLease(current_time);
+    float32_t runtime_elapsed {HoldAtLease(current_time)};
 
     if (runtime_elapsed <= _elapsedTime) {
         _elapsedTime = runtime_elapsed;
@@ -428,11 +428,11 @@ void MovingContext::UpdateCurrentTimeToNextHex(nanotime current_time, mpos curre
         return;
     }
 
-    float32_t low = _elapsedTime;
-    float32_t high = runtime_elapsed;
+    float32_t low {_elapsedTime};
+    float32_t high {runtime_elapsed};
 
-    for (size_t i = 0; i < NEXT_HEX_TIME_SEARCH_ITERATIONS; i++) {
-        float32_t middle = (low + high) * 0.5f;
+    for (size_t i {0}; i < NEXT_HEX_TIME_SEARCH_ITERATIONS; i++) {
+        float32_t middle {(low + high) * 0.5f};
 
         if (EvaluateRawProgress(middle).Hex == current_hex) {
             low = middle;
@@ -447,10 +447,10 @@ void MovingContext::UpdateCurrentTimeToNextHex(nanotime current_time, mpos curre
 
 auto FindPathPrefixSteps(mpos start_hex, const vector<mdir>& steps, mpos hex, msize map_size, size_t max_steps) -> size_t
 {
-    mpos path_hex = start_hex;
-    size_t limit = std::min(max_steps, steps.size());
+    mpos path_hex {start_hex};
+    size_t limit {std::min(max_steps, steps.size())};
 
-    for (size_t i = 0; i < limit; i++) {
+    for (size_t i {0}; i < limit; i++) {
         if (!GeometryHelper::MoveHexByDir(path_hex, steps[i], map_size)) {
             return 0;
         }
@@ -469,7 +469,7 @@ void DropPathPrefix(vector<mdir>& steps, vector<uint16_t>& control_steps, size_t
 
     steps.erase(steps.begin(), steps.begin() + numeric_cast<ptrdiff_t>(count));
 
-    vector<uint16_t> shifted_steps;
+    vector<uint16_t> shifted_steps {};
     shifted_steps.reserve(control_steps.size());
 
     for (uint16_t control_step : control_steps) {

@@ -40,7 +40,7 @@ FO_BEGIN_NAMESPACE
 
 static auto MakeTempCacheDir(string_view name) -> string
 {
-    auto base = std::filesystem::temp_directory_path() / std::format("lf_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
+    auto base {std::filesystem::temp_directory_path() / std::format("lf_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count())};
     return fs::path_to_string(base);
 }
 
@@ -48,8 +48,8 @@ TEST_CASE("CacheStorage")
 {
     SECTION("PublishedEntriesKeepExistingReadersOnTheirPreviousContents")
     {
-        string temp_dir = MakeTempCacheDir("cache_storage_atomic");
-        auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs::remove_dir_tree(temp_dir); });
+        string temp_dir {MakeTempCacheDir("cache_storage_atomic")};
+        auto cleanup {scope_exit([&temp_dir]() noexcept { (void)fs::remove_dir_tree(temp_dir); })};
         CacheStorage cache {temp_dir};
         cache.SetString("text", "old");
         array<uint8_t, 3> before {'o', 'l', 'd'};
@@ -76,18 +76,18 @@ TEST_CASE("CacheStorage")
 #if FO_WINDOWS
     SECTION("FailedPublicationOnReadonlyDestinationsPreservesPriorValues")
     {
-        string temp_dir = MakeTempCacheDir("cache_storage_readonly");
-        string text_path = strex(temp_dir).combine_path("text").str();
-        string data_path = strex(temp_dir).combine_path("data").str();
+        string temp_dir {MakeTempCacheDir("cache_storage_readonly")};
+        string text_path {strex(temp_dir).combine_path("text").str()};
+        string data_path {strex(temp_dir).combine_path("data").str()};
 
         // Restored before removal: Windows refuses to delete a readonly file
-        auto cleanup = scope_exit([&]() noexcept {
-            std::error_code restore_error;
+        auto cleanup {scope_exit([&]() noexcept {
+            std::error_code restore_error {};
             std::filesystem::permissions(std::filesystem::path {fs::make_path(text_path)}, std::filesystem::perms::owner_write | std::filesystem::perms::group_write | std::filesystem::perms::others_write, std::filesystem::perm_options::add, restore_error);
             std::filesystem::permissions(std::filesystem::path {fs::make_path(data_path)}, std::filesystem::perms::owner_write | std::filesystem::perms::group_write | std::filesystem::perms::others_write, std::filesystem::perm_options::add, restore_error);
 
             (void)fs::remove_dir_tree(temp_dir);
-        });
+        })};
 
         CacheStorage cache {temp_dir};
         cache.SetString("text", "old");
@@ -96,10 +96,10 @@ TEST_CASE("CacheStorage")
         REQUIRE(cache.SetDataChecked("data", before));
         REQUIRE(cache.GetString("text") == "old");
 
-        std::error_code text_error;
+        std::error_code text_error {};
         std::filesystem::permissions(std::filesystem::path {fs::make_path(text_path)}, std::filesystem::perms::owner_write | std::filesystem::perms::group_write | std::filesystem::perms::others_write, std::filesystem::perm_options::remove, text_error);
         REQUIRE_FALSE(text_error);
-        std::error_code data_error;
+        std::error_code data_error {};
         std::filesystem::permissions(std::filesystem::path {fs::make_path(data_path)}, std::filesystem::perms::owner_write | std::filesystem::perms::group_write | std::filesystem::perms::others_write, std::filesystem::perm_options::remove, data_error);
         REQUIRE_FALSE(data_error);
 
@@ -113,8 +113,8 @@ TEST_CASE("CacheStorage")
 
     SECTION("StringAndBinaryEntriesRoundtrip")
     {
-        string temp_dir = MakeTempCacheDir("cache_storage_roundtrip");
-        bool removed_before = fs::remove_dir_tree(temp_dir);
+        string temp_dir {MakeTempCacheDir("cache_storage_roundtrip")};
+        bool removed_before {fs::remove_dir_tree(temp_dir)};
         ignore_unused(removed_before);
 
         CacheStorage cache {temp_dir};
@@ -133,8 +133,8 @@ TEST_CASE("CacheStorage")
 
     SECTION("EntryNamesAreSanitizedForFileBackend")
     {
-        string temp_dir = MakeTempCacheDir("cache_storage_sanitize");
-        bool removed_before = fs::remove_dir_tree(temp_dir);
+        string temp_dir {MakeTempCacheDir("cache_storage_sanitize")};
+        bool removed_before {fs::remove_dir_tree(temp_dir)};
         ignore_unused(removed_before);
 
         CacheStorage cache {temp_dir};
@@ -149,8 +149,8 @@ TEST_CASE("CacheStorage")
 
     SECTION("RemoveEntryAndMissingEntriesBehaveGracefully")
     {
-        string temp_dir = MakeTempCacheDir("cache_storage_remove");
-        bool removed_before = fs::remove_dir_tree(temp_dir);
+        string temp_dir {MakeTempCacheDir("cache_storage_remove")};
+        bool removed_before {fs::remove_dir_tree(temp_dir)};
         ignore_unused(removed_before);
 
         CacheStorage cache {temp_dir};
@@ -171,8 +171,8 @@ TEST_CASE("CacheStorage")
 
     SECTION("MoveConstructionPreservesAccess")
     {
-        string temp_dir = MakeTempCacheDir("cache_storage_move");
-        bool removed_before = fs::remove_dir_tree(temp_dir);
+        string temp_dir {MakeTempCacheDir("cache_storage_move")};
+        bool removed_before {fs::remove_dir_tree(temp_dir)};
         ignore_unused(removed_before);
 
         CacheStorage original {temp_dir};
@@ -188,26 +188,26 @@ TEST_CASE("CacheStorage")
 
     SECTION("BoundedReadClassifiesMissingAndRejectsSparseOversizeBeforeAllocation")
     {
-        string temp_dir = MakeTempCacheDir("cache_storage_bounded");
-        bool removed_before = fs::remove_dir_tree(temp_dir);
+        string temp_dir {MakeTempCacheDir("cache_storage_bounded")};
+        bool removed_before {fs::remove_dir_tree(temp_dir)};
         ignore_unused(removed_before);
 
         CacheStorage cache {temp_dir};
-        auto missing = cache.GetDataBounded("missing", 64);
+        auto missing {cache.GetDataBounded("missing", 64)};
         CHECK(missing.Status == CacheStorageReadStatus::Missing);
         CHECK(missing.Data.empty());
 
         cache.SetData("slot", vector<uint8_t> {1, 2, 3, 4});
-        auto accepted = cache.GetDataBounded("slot", 4);
+        auto accepted {cache.GetDataBounded("slot", 4)};
         CHECK(accepted.Status == CacheStorageReadStatus::Success);
         CHECK(accepted.Data == vector<uint8_t> {1, 2, 3, 4});
 
-        string slot_path = strex(temp_dir).combine_path("slot");
-        std::error_code resize_error;
+        string slot_path {static_cast<string&&>(strex(temp_dir).combine_path("slot"))};
+        std::error_code resize_error {};
         std::filesystem::resize_file(std::filesystem::path {fs::make_path(slot_path)}, 1024ULL * 1024ULL * 1024ULL, resize_error);
         REQUIRE_FALSE(resize_error);
 
-        auto rejected = cache.GetDataBounded("slot", 64);
+        auto rejected {cache.GetDataBounded("slot", 64)};
         CHECK(rejected.Status == CacheStorageReadStatus::TooLarge);
         CHECK(rejected.Data.empty());
 

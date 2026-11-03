@@ -44,7 +44,7 @@ void NetworkServer::Shutdown()
 {
     FO_TRACE_ZONE(Network);
 
-    optional<vector<shared_ptr<NetworkServerConnection>>> connections = _connectionRegistry->BeginShutdown();
+    optional<vector<shared_ptr<NetworkServerConnection>>> connections {_connectionRegistry->BeginShutdown()};
     if (!connections) {
         return;
     }
@@ -74,11 +74,11 @@ auto NetworkServer::ConnectionRegistry::BeginShutdown() -> optional<vector<share
         return {};
     }
 
-    vector<shared_ptr<NetworkServerConnection>> connections;
+    vector<shared_ptr<NetworkServerConnection>> connections {};
     connections.reserve(_connections.size());
 
     for (const auto& weak_connection : _connections) {
-        if (auto connection = weak_connection.lock()) {
+        if (auto connection {weak_connection.lock()}) {
             connections.emplace_back(std::move(connection));
         }
     }
@@ -163,8 +163,8 @@ void NetworkServerConnection::Disconnect()
         _sendCallback = {};
     }
 
-    bool expected = false;
-    bool disconnected_here = _isDisconnected.compare_exchange_strong(expected, true);
+    bool expected {false};
+    bool disconnected_here {_isDisconnected.compare_exchange_strong(expected, true)};
 
     if (disconnected_here) {
         DisconnectImpl();
@@ -179,7 +179,7 @@ void NetworkServerConnection::Disconnect()
     // Only the call that won the flag may take the disconnect callback: a nested call from the
     // transport teardown above would otherwise drop it before the winner reports the disconnect
     if (disconnected_here) {
-        DisconnectCallback disconnect_callback = std::move(_disconnectCallback);
+        DisconnectCallback disconnect_callback {std::move(_disconnectCallback)};
         _disconnectCallback = {};
 
         if (disconnect_callback) {

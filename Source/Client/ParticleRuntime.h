@@ -101,10 +101,10 @@ struct ParticleRuntimeServices
     ptr<EffectManager> EffectMngr;
     ptr<IAppRender> Render;
     ptr<FileSystem> Resources;
-    ParticleTextureLoader TextureLoader;
-    ParticleSceneBackgroundProvider SceneBackgroundProvider;
+    ParticleTextureLoader TextureLoader {};
+    ParticleSceneBackgroundProvider SceneBackgroundProvider {};
     ptr<RenderSettings> Settings;
-    ParticleWireframeQuery DrawWireframe;
+    ParticleWireframeQuery DrawWireframe {};
 };
 
 class ParticleRuntimeSystem

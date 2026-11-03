@@ -47,8 +47,8 @@ FO_BEGIN_NAMESPACE
 
 namespace Color
 {
-    static constexpr auto Neutral = ucolor {128, 128, 128};
-    static constexpr auto TextWhite = ucolor {255, 255, 255};
+    static constexpr auto Neutral {ucolor {128, 128, 128}};
+    static constexpr auto TextWhite {ucolor {255, 255, 255}};
 }
 
 class IAppWindow;
@@ -153,7 +153,7 @@ class SpriteManager final
     friend class Sprite;
 
 public:
-    static constexpr size_t EGG_SLOT_COUNT = 2;
+    static constexpr size_t EGG_SLOT_COUNT {2};
 
     SpriteManager() = delete;
     SpriteManager(ptr<RenderSettings> settings, ptr<IAppWindow> window, ptr<GameTimer> game_time, ptr<EffectManager> effect_mngr, ptr<hash_resolver> hashes);

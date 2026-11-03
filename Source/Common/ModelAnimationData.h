@@ -43,9 +43,9 @@ FO_DECLARE_EXCEPTION(ModelAnimationArchiveException);
 
 // Stable schema-1 wire identifier; preserve its bytes for baked-resource compatibility
 inline constexpr array<uint8_t, 8> MODEL_ANIMATION_ARCHIVE_MAGIC {'L', 'F', 'O', 'Z', 'Z', 'A', 'R', 'C'};
-inline constexpr uint16_t MODEL_ANIMATION_ARCHIVE_SCHEMA_VERSION = 1;
-inline constexpr uint32_t MODEL_ANIMATION_ARCHIVE_SUPPORTED_FLAGS = 0;
-inline constexpr string_view MODEL_ANIMATION_ARCHIVE_PAYLOAD_REVISION = "6cbdc790123aa4731d82e255df187b3a8a808256";
+inline constexpr uint16_t MODEL_ANIMATION_ARCHIVE_SCHEMA_VERSION {1};
+inline constexpr uint32_t MODEL_ANIMATION_ARCHIVE_SUPPORTED_FLAGS {0};
+inline constexpr string_view MODEL_ANIMATION_ARCHIVE_PAYLOAD_REVISION {"6cbdc790123aa4731d82e255df187b3a8a808256"};
 
 enum class ModelAnimationArchiveKind : uint16_t
 {
@@ -87,21 +87,21 @@ void InitializeModelAnimationMemory() noexcept;
 FO_DECLARE_EXCEPTION(ModelAnimationRigDataException);
 
 inline constexpr array<uint8_t, 8> MODEL_DESCRIPTION_MAGIC {'L', 'F', 'M', 'O', 'D', 'I', 'N', 'F'};
-inline constexpr uint16_t MODEL_DESCRIPTION_SCHEMA_VERSION = 3;
-inline constexpr uint16_t MODEL_DESCRIPTION_SUPPORTED_FLAGS = 0;
+inline constexpr uint16_t MODEL_DESCRIPTION_SCHEMA_VERSION {3};
+inline constexpr uint16_t MODEL_DESCRIPTION_SUPPORTED_FLAGS {0};
 
 // Stable schema-1 wire identifiers; preserve their bytes for baked-resource compatibility
 inline constexpr array<uint8_t, 8> MODEL_ANIMATION_RIG_DATA_MAGIC {'L', 'F', 'O', 'Z', 'Z', 'R', 'I', 'G'};
-inline constexpr uint16_t MODEL_ANIMATION_RIG_DATA_SCHEMA_VERSION = 1;
-inline constexpr uint16_t MODEL_ANIMATION_RIG_DATA_SUPPORTED_FLAGS = 0;
-inline constexpr uint32_t MODEL_ANIMATION_RIG_MAX_JOINTS = 1024;
-inline constexpr uint32_t MODEL_ANIMATION_RIG_MAX_CLIPS = std::numeric_limits<uint16_t>::max();
-inline constexpr uint32_t MODEL_ANIMATION_RIG_MAX_BINDINGS = std::numeric_limits<uint16_t>::max();
-inline constexpr float32_t MODEL_ANIMATION_RIG_MATRIX_ABSOLUTE_TOLERANCE = 1.0e-4f;
-inline constexpr float32_t MODEL_ANIMATION_RIG_MATRIX_RELATIVE_TOLERANCE = 1.0e-4f;
+inline constexpr uint16_t MODEL_ANIMATION_RIG_DATA_SCHEMA_VERSION {1};
+inline constexpr uint16_t MODEL_ANIMATION_RIG_DATA_SUPPORTED_FLAGS {0};
+inline constexpr uint32_t MODEL_ANIMATION_RIG_MAX_JOINTS {1024};
+inline constexpr uint32_t MODEL_ANIMATION_RIG_MAX_CLIPS {std::numeric_limits<uint16_t>::max()};
+inline constexpr uint32_t MODEL_ANIMATION_RIG_MAX_BINDINGS {std::numeric_limits<uint16_t>::max()};
+inline constexpr float32_t MODEL_ANIMATION_RIG_MATRIX_ABSOLUTE_TOLERANCE {1.0e-4f};
+inline constexpr float32_t MODEL_ANIMATION_RIG_MATRIX_RELATIVE_TOLERANCE {1.0e-4f};
 
 inline constexpr array<uint8_t, 8> MODEL_ANIMATION_JOINT_REMAP_MAGIC {'L', 'F', 'O', 'Z', 'Z', 'J', 'R', 'M'};
-inline constexpr uint16_t MODEL_ANIMATION_JOINT_REMAP_SCHEMA_VERSION = 1;
+inline constexpr uint16_t MODEL_ANIMATION_JOINT_REMAP_SCHEMA_VERSION {1};
 
 struct ModelAnimationJointRemap
 {

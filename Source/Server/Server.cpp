@@ -54,7 +54,7 @@ thread_local optional<SyncContext> ExternalLockSyncCtx {};
 
 auto GetServerResources(GlobalSettings& settings) -> FileSystem
 {
-    FileSystem resources;
+    FileSystem resources {};
     resources.AddPacksSource(settings.Common.Packaged ? settings.Baking.ServerResources : settings.Baking.BakeOutput, settings.GetServerResourcePacks());
     return resources;
 }
@@ -144,20 +144,20 @@ ServerEngine::~ServerEngine()
 
     // Every server entity borrows this engine (property registrars, protos, hashes, managers), so one that outlives it dangles; the
     // script references and the world registry are gone by now, so a non-zero count is a native reference that was never given back
-    int32_t live_entities = _liveEntityCount.load(std::memory_order_acquire);
+    int32_t live_entities {_liveEntityCount.load(std::memory_order_acquire)};
     FO_VERIFY_AND_CONTINUE(live_entities == 0, "Server entities outlived the server engine", live_entities);
 }
 
 auto ServerEngine::RequireCurrentSyncContext() const -> ptr<SyncContext>
 {
-    auto ctx = GetCurrentSyncContext();
+    auto ctx {GetCurrentSyncContext()};
     FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
     return ctx;
 }
 
 auto ServerEngine::RunScriptContext(const function<void()>& callback) -> timespan
 {
-    ScopedSyncContext nested;
+    ScopedSyncContext nested {};
 
     callback();
     return nested.GetContext().GetLockWaitDuration();
@@ -165,14 +165,14 @@ auto ServerEngine::RunScriptContext(const function<void()>& callback) -> timespa
 
 auto ServerEngine::GetCustomEntity(hstring type_name, ident_t id) -> refcount_nptr<Entity>
 {
-    auto custom_entity = EntityMngr.GetCustomEntity(type_name, id);
+    auto custom_entity {EntityMngr.GetCustomEntity(type_name, id)};
 
     if (!custom_entity) {
         return nullptr;
     }
 
-    auto custom_entity_holder = std::move(custom_entity).take_not_null();
-    refcount_ptr<Entity> entity = std::move(custom_entity_holder);
+    auto custom_entity_holder {std::move(custom_entity).take_not_null()};
+    refcount_ptr<Entity> entity {std::move(custom_entity_holder)};
     return std::move(entity);
 }
 
@@ -185,13 +185,13 @@ auto ServerEngine::FireEvent(const vector<EventCallbackData>& callbacks, FuncCal
     // Engine-wide invariant: a primary SyncContext is always active when an event fires
     FO_STRONG_ASSERT(GetCurrentSyncContext(), "Server event fired without active sync context");
 
-    bool had_exception = false;
+    bool had_exception {false};
 
     // Iterate a copy - callbacks vector may be changed/invalidated during cycle work
-    small_vector<EventCallbackData, 4> callbacks_snapshot(callbacks.begin(), callbacks.end());
+    small_vector<EventCallbackData, 4> callbacks_snapshot {small_vector<EventCallbackData, 4>(callbacks.begin(), callbacks.end())};
 
     for (const auto& cb : callbacks_snapshot) {
-        EventResult result = EventResult::ContinueChain;
+        EventResult result {EventResult::ContinueChain};
 
         try {
             result = cb.Callback(call);
@@ -216,7 +216,7 @@ auto ServerEngine::FireEvent(const vector<EventCallbackData>& callbacks, FuncCal
 auto ServerEngine::WrapJobWithSync(work_thread::job body) -> work_thread::job
 {
     return [body_ = std::move(body)]() FO_DEFERRED -> std::optional<timespan> {
-        ScopedSyncContext sync_ctx;
+        ScopedSyncContext sync_ctx {};
 
         return body_();
     };
@@ -252,15 +252,15 @@ void ServerEngine::FlushExactSyncTime()
     FO_VERIFY_AND_THROW(GameTime.IsTimeSynchronized(), "Game time is not synchronized");
 
     _persistedSyncTimeMark = GameTime.GetSynchronizedTime();
-    ptr<const Property> prop = GetPropertySynchronizedTime();
-    auto value = AnyData::Value {numeric_cast<int64_t>(_persistedSyncTimeMark.milliseconds())};
+    ptr<const Property> prop {GetPropertySynchronizedTime()};
+    auto value {AnyData::Value {numeric_cast<int64_t>(_persistedSyncTimeMark.milliseconds())}};
     DbStorage.Update(GameCollectionName, ident_t {1}, prop->GetName(), value);
 }
 
 void ServerEngine::ScheduleDelayedCallback(timespan delay, function<void()> body)
 {
     _workerPool->Submit(delay, [this, body = std::move(body)]() FO_DEFERRED -> std::optional<timespan> {
-        auto complete_stats_job = scope_exit([this]() noexcept { CountServerStatsJob(); });
+        auto complete_stats_job {scope_exit([this]() noexcept { CountServerStatsJob(); })};
 
         body();
         return std::nullopt;
@@ -275,8 +275,8 @@ auto ServerEngine::InitHealthFileJob() -> std::optional<timespan>
         return std::nullopt;
     }
 
-    auto exe_path = platform::get_exe_path();
-    string health_file_name = strex("{}_Health.txt", exe_path ? strvex(exe_path.value()).extract_file_name().erase_file_extension() : string_view(FO_DEV_NAME)).str();
+    auto exe_path {platform::get_exe_path()};
+    string health_file_name {strex("{}_Health.txt", exe_path ? strvex(exe_path.value()).extract_file_name().erase_file_extension() : string_view(FO_DEV_NAME)).str()};
     _healthFileName = fs::make_writable_path(Settings->Common.UserWritablePath, health_file_name);
 
     if (WriteHealthFile("Starting...")) {
@@ -304,7 +304,7 @@ auto ServerEngine::HealthFileWriteJob(const string& health_info) -> std::optiona
 {
     FO_TRACE_ZONE(FileSystem);
 
-    string buf;
+    string buf {};
     buf.reserve(health_info.size() + 128);
     buf += strex("{} v{}\n\n", Settings->Common.GameName, Settings->Common.GameVersion);
     buf += health_info;
@@ -369,7 +369,7 @@ auto ServerEngine::InitNetworkingJob() -> std::optional<timespan>
     logging::write("Secure channel public key {}", crypto::format_key(_channelIdentity->GetPublicKey()));
 
     if (!Settings->Network.DisableInterthreadCommunication) {
-        unique_ptr<NetworkServer> interthread_server = NetworkServer::StartInterthreadServer(Settings, [this](shared_ptr<NetworkServerConnection> net_connection) FO_DEFERRED { OnNewConnection(std::move(net_connection)); });
+        unique_ptr<NetworkServer> interthread_server {NetworkServer::StartInterthreadServer(Settings, [this](shared_ptr<NetworkServerConnection> net_connection) FO_DEFERRED { OnNewConnection(std::move(net_connection)); })};
         _connectionServers.emplace_back(std::move(interthread_server));
     }
 
@@ -378,7 +378,7 @@ auto ServerEngine::InitNetworkingJob() -> std::optional<timespan>
         return std::nullopt;
     }
 
-    auto on_connection = [this](shared_ptr<NetworkServerConnection> net_connection) FO_DEFERRED { OnNewConnection(std::move(net_connection)); };
+    auto on_connection {[this](shared_ptr<NetworkServerConnection> net_connection) FO_DEFERRED { OnNewConnection(std::move(net_connection)); }};
 
     if (Settings->ServerNetwork.EnableUdp) {
         StartConnectionServer("UDP", [&] { return NetworkServer::StartUdpSocketsServer(Settings, on_connection); });
@@ -398,15 +398,15 @@ auto ServerEngine::InitStorageJob() -> std::optional<timespan>
 {
     FO_TRACE_ZONE(Engine);
 
-    const auto& entity_types = GetEntityTypes();
+    const auto& entity_types {GetEntityTypes()};
 
-    DataBaseCollectionSchemas collection_schemas;
+    DataBaseCollectionSchemas collection_schemas {};
     collection_schemas.reserve(3 + entity_types.size() + Settings->DataBase.CustomCollections.size());
 
     unordered_map<hstring, DataBaseKeyType> registered_collection_types {};
     registered_collection_types.reserve(2 + entity_types.size() + Settings->DataBase.CustomCollections.size());
 
-    auto register_collection = [&collection_schemas, &registered_collection_types](hstring collection_name, DataBaseKeyType key_type) {
+    auto register_collection {[&collection_schemas, &registered_collection_types](hstring collection_name, DataBaseKeyType key_type) {
         FO_VERIFY_AND_THROW(!collection_name.as_str().empty(), "Database collection registration received an empty collection name", key_type, registered_collection_types.size());
 
         if (registered_collection_types.contains(collection_name)) {
@@ -416,23 +416,23 @@ auto ServerEngine::InitStorageJob() -> std::optional<timespan>
         registered_collection_types.emplace(collection_name, key_type);
         collection_schemas.emplace_back(collection_name, key_type);
         return true;
-    };
+    }};
 
-    auto register_custom_collection = [&](string_view entry) {
-        auto separator = entry.find(':');
+    auto register_custom_collection {[&](string_view entry) {
+        auto separator {entry.find(':')};
 
         if (separator == string_view::npos || separator == 0 || separator + 1 >= entry.size() || entry.find(':', separator + 1) != string_view::npos) {
             throw DataBaseException("Invalid database collection setting", entry);
         }
 
-        string collection_name = strex(entry.substr(0, separator)).trim().str();
-        string key_type_name = strex(entry.substr(separator + 1)).trim().str();
+        string collection_name {strex(entry.substr(0, separator)).trim().str()};
+        string key_type_name {strex(entry.substr(separator + 1)).trim().str()};
 
         if (collection_name.empty() || key_type_name.empty()) {
             throw DataBaseException("Invalid database collection setting", entry);
         }
 
-        DataBaseKeyType key_type;
+        DataBaseKeyType key_type {};
 
         if (strex(key_type_name).lower().trim().str() == "int") {
             key_type = DataBaseKeyType::IntId;
@@ -445,7 +445,7 @@ auto ServerEngine::InitStorageJob() -> std::optional<timespan>
         }
 
         register_collection(Hashes.to_hashed_string(collection_name), key_type);
-    };
+    }};
 
     register_collection(GameCollectionName, DataBaseKeyType::IntId);
     register_collection(HistoryCollectionName, DataBaseKeyType::IntId);
@@ -480,32 +480,32 @@ auto ServerEngine::InitMetadataJob() -> std::optional<timespan>
     logging::write("Setup engine");
 
     // Properties that saving to database
-    ptr<const Property> sync_time_prop = GetPropertySynchronizedTime();
-    auto wrap_post_setter = [this](void (ServerEngine::*callback)(ptr<Entity>, ptr<const Property>)) -> PropertyPostSetCallback {
+    ptr<const Property> sync_time_prop {GetPropertySynchronizedTime()};
+    auto wrap_post_setter {[this](void (ServerEngine::*callback)(ptr<Entity>, ptr<const Property>)) -> PropertyPostSetCallback {
         return [this, callback](nptr<Entity> entity, ptr<const Property> prop) FO_DEFERRED {
             FO_VERIFY_AND_THROW(entity, "Missing entity in property post-setter");
-            auto entity_ptr = entity;
+            auto entity_ptr {entity};
             FO_VERIFY_AND_THROW(entity_ptr, "Entity pointer is null");
             (this->*callback)(entity_ptr, prop);
         };
-    };
+    }};
 
-    auto wrap_setter = [this](void (ServerEngine::*callback)(ptr<Entity>, ptr<const Property>, PropertyRawData&)) -> PropertySetCallback {
+    auto wrap_setter {[this](void (ServerEngine::*callback)(ptr<Entity>, ptr<const Property>, PropertyRawData&)) -> PropertySetCallback {
         return [this, callback](nptr<Entity> entity, ptr<const Property> prop, PropertyRawData& data) FO_DEFERRED {
             FO_VERIFY_AND_THROW(entity, "Missing entity in property setter");
-            auto entity_ptr = entity;
+            auto entity_ptr {entity};
             FO_VERIFY_AND_THROW(entity_ptr, "Entity pointer is null");
             (this->*callback)(entity_ptr, prop, data);
         };
-    };
+    }};
 
     sync_time_prop->AddPostSetter(wrap_post_setter(&ServerEngine::OnSaveSynchronizedTime));
 
     for (const auto& type_desc : GetEntityTypes() | std::views::values) {
-        const auto& registrar = type_desc.PropRegistrar;
+        const auto& registrar {type_desc.PropRegistrar};
 
-        for (size_t i = 1; i < registrar->GetPropertiesCount(); i++) {
-            auto prop = registrar->GetPropertyByIndex(numeric_cast<int32_t>(i));
+        for (size_t i {1}; i < registrar->GetPropertiesCount(); i++) {
+            auto prop {registrar->GetPropertyByIndex(numeric_cast<int32_t>(i))};
             FO_VERIFY_AND_THROW(prop, "Property not found by index");
 
             if (prop->IsDisabled()) {
@@ -524,13 +524,13 @@ auto ServerEngine::InitMetadataJob() -> std::optional<timespan>
 
     // Properties that sending to clients
     {
-        auto set_send_callbacks = [&wrap_post_setter](nptr<const PropertyRegistrar> registrar, void (ServerEngine::*callback)(ptr<Entity>, ptr<const Property>)) {
+        auto set_send_callbacks {[&wrap_post_setter](nptr<const PropertyRegistrar> registrar, void (ServerEngine::*callback)(ptr<Entity>, ptr<const Property>)) {
             FO_VERIFY_AND_THROW(registrar, "Missing property registrar");
-            auto registrar_ptr = registrar;
+            auto registrar_ptr {registrar};
             FO_VERIFY_AND_THROW(registrar_ptr, "Property registrar pointer is null");
 
-            for (size_t i = 1; i < registrar_ptr->GetPropertiesCount(); i++) {
-                auto prop = registrar_ptr->GetPropertyByIndex(numeric_cast<int32_t>(i));
+            for (size_t i {1}; i < registrar_ptr->GetPropertiesCount(); i++) {
+                auto prop {registrar_ptr->GetPropertyByIndex(numeric_cast<int32_t>(i))};
                 FO_VERIFY_AND_THROW(prop, "Property not found by index");
 
                 if (prop->IsDisabled()) {
@@ -542,7 +542,7 @@ auto ServerEngine::InitMetadataJob() -> std::optional<timespan>
 
                 prop->AddPostSetter(wrap_post_setter(callback));
             }
-        };
+        }};
 
         set_send_callbacks(GetPropertyRegistrar(GameProperties::ENTITY_TYPE_NAME), &ServerEngine::OnSendGlobalValue);
         set_send_callbacks(GetPropertyRegistrar(PlayerProperties::ENTITY_TYPE_NAME), &ServerEngine::OnSendPlayerValue);
@@ -562,25 +562,25 @@ auto ServerEngine::InitMetadataJob() -> std::optional<timespan>
 
     // Properties with custom behaviours
     {
-        auto set_setter = [](nptr<const PropertyRegistrar> registrar, int32_t prop_index, PropertySetCallback callback) {
+        auto set_setter {[](nptr<const PropertyRegistrar> registrar, int32_t prop_index, PropertySetCallback callback) {
             FO_VERIFY_AND_THROW(registrar, "Missing property registrar");
-            auto registrar_ptr = registrar;
+            auto registrar_ptr {registrar};
             FO_VERIFY_AND_THROW(registrar_ptr, "Property registrar pointer is null");
 
-            auto prop = registrar_ptr->GetPropertyByIndex(prop_index);
+            auto prop {registrar_ptr->GetPropertyByIndex(prop_index)};
             FO_VERIFY_AND_THROW(prop, "Property not found by index");
             prop->AddSetter(std::move(callback));
-        };
+        }};
 
-        auto set_post_setter = [](nptr<const PropertyRegistrar> registrar, int32_t prop_index, PropertyPostSetCallback callback) {
+        auto set_post_setter {[](nptr<const PropertyRegistrar> registrar, int32_t prop_index, PropertyPostSetCallback callback) {
             FO_VERIFY_AND_THROW(registrar, "Missing property registrar");
-            auto registrar_ptr = registrar;
+            auto registrar_ptr {registrar};
             FO_VERIFY_AND_THROW(registrar_ptr, "Property registrar pointer is null");
 
-            auto prop = registrar_ptr->GetPropertyByIndex(prop_index);
+            auto prop {registrar_ptr->GetPropertyByIndex(prop_index)};
             FO_VERIFY_AND_THROW(prop, "Property not found by index");
             prop->AddPostSetter(std::move(callback));
-        };
+        }};
 
         set_post_setter(GetPropertyRegistrar(CritterProperties::ENTITY_TYPE_NAME), Critter::LookDistance_RegIndex, wrap_post_setter(&ServerEngine::OnSetCritterLookDistance));
         // A setter runs before the value is stored, which is what makes the append-only rule a real rejection
@@ -647,16 +647,16 @@ auto ServerEngine::InitGameLogicJob() -> std::optional<timespan>
 
     try {
         // Globals
-        auto globals_doc = DbStorage.Get(GameCollectionName, ident_t {1});
+        auto globals_doc {DbStorage.Get(GameCollectionName, ident_t {1})};
 
         if (globals_doc.Empty()) {
-            AnyData::Document doc;
+            AnyData::Document doc {};
             doc.Emplace("_Name", string("Globals"));
             DbStorage.Insert(GameCollectionName, ident_t {1}, doc);
             SetSynchronizedTime(synctime(std::chrono::milliseconds {1}));
         }
         else {
-            AnyData::Document updates;
+            AnyData::Document updates {};
             (void)PropertiesSerializer::MigrateDocument(GetProperties()->GetRegistrar(), globals_doc, &updates);
 
             for (const auto& [key, value] : updates) {
@@ -688,10 +688,10 @@ auto ServerEngine::InitGameLogicJob() -> std::optional<timespan>
         FrameAdvance();
 
         // Worker pool
-        int32_t worker_threads = Settings->Server.SingleThreadedLogic ? 1 : Settings->Server.WorkerThreads;
+        int32_t worker_threads {Settings->Server.SingleThreadedLogic ? 1 : Settings->Server.WorkerThreads};
         _workerPool.emplace("ServerPool", worker_threads, &_shutdownInProgress, /*start_paused*/ true);
 
-        TimeEventManager::DispatcherHooks hooks;
+        TimeEventManager::DispatcherHooks hooks {};
         hooks.Schedule = [this](refcount_ptr<Entity> entity, uint32_t event_id, timespan delay) { OnTimeEventSchedule(std::move(entity), event_id, delay); };
         hooks.Cancel = [this](uint32_t event_id) { OnTimeEventCancel(event_id); };
         TimeEventMngr.SetDispatcherHooks(std::move(hooks));
@@ -719,7 +719,7 @@ auto ServerEngine::InitGameLogicJob() -> std::optional<timespan>
         else {
             logging::write("Restore world");
 
-            size_t errors = 0;
+            size_t errors {0};
 
             try {
                 EntityMngr.LoadEntities();
@@ -767,8 +767,8 @@ auto ServerEngine::InitDoneJob() -> std::optional<timespan>
 
     logging::write("Start server complete!");
 
-    nanotime stats_begin = nanotime::now();
-    uint64_t completed_jobs = GetCompletedServerJobsCount();
+    nanotime stats_begin {nanotime::now()};
+    uint64_t completed_jobs {GetCompletedServerJobsCount()};
 
     _stats.ServerStartTime = stats_begin;
     _stats.JobCounterBegin = stats_begin;
@@ -792,7 +792,7 @@ auto ServerEngine::InitDoneJob() -> std::optional<timespan>
 
 void ServerEngine::OnTimeEventSchedule(refcount_ptr<Entity> entity, uint32_t event_id, timespan delay)
 {
-    auto key = WorkerJobKey {.Type = WorkerJobType::TimeEvent, .Id = static_cast<size_t>(event_id)};
+    auto key {WorkerJobKey {.Type = WorkerJobType::TimeEvent, .Id = static_cast<size_t>(event_id)}};
 
     _workerPool->Submit(key, delay, [this, entity_hold = std::move(entity), event_id]() mutable -> std::optional<timespan> { return TimeEventJob(entity_hold, event_id); });
 }
@@ -802,8 +802,8 @@ auto ServerEngine::TimeEventJob(ptr<Entity> entity, uint32_t event_id) -> std::o
     FO_TRACE_ZONE(Engine);
 
     if (!entity->IsGlobal()) {
-        auto ctx = RequireCurrentSyncContext();
-        auto server_entity = entity.dyn_cast<ServerEntity>();
+        auto ctx {RequireCurrentSyncContext()};
+        auto server_entity {entity.dyn_cast<ServerEntity>()};
         FO_VERIFY_AND_THROW(server_entity, "Time event entity is not a server entity");
         ctx->SyncEntity(server_entity);
     }
@@ -817,7 +817,7 @@ auto ServerEngine::TimeEventJob(ptr<Entity> entity, uint32_t event_id) -> std::o
 
 void ServerEngine::OnTimeEventCancel(uint32_t event_id)
 {
-    auto key = WorkerJobKey {.Type = WorkerJobType::TimeEvent, .Id = static_cast<size_t>(event_id)};
+    auto key {WorkerJobKey {.Type = WorkerJobType::TimeEvent, .Id = static_cast<size_t>(event_id)}};
     _workerPool->Cancel(key);
 }
 
@@ -838,7 +838,7 @@ auto ServerEngine::SyncPointJob() -> std::optional<timespan>
     _stats.RejectedConnections = _rejectedConnections.load(std::memory_order_relaxed);
     _stats.RejectedByRate = _rejectedByRate.load(std::memory_order_relaxed);
 
-    nanotime cur_time = nanotime::now();
+    nanotime cur_time {nanotime::now()};
     _stats.Uptime = cur_time - _stats.ServerStartTime;
     UpdateJobStats(cur_time);
     UpdateCpuStats(cur_time);
@@ -859,8 +859,8 @@ auto ServerEngine::FrameTimeJob() -> std::optional<timespan>
 
 void ServerEngine::OnPlayerConnected(ptr<Player> not_logged_in_player)
 {
-    auto key = WorkerJobKey {.Type = WorkerJobType::NotLoggedInPlayer, .Id = static_cast<size_t>(not_logged_in_player.as_uintptr())};
-    ScopedSyncContext ctx;
+    auto key {WorkerJobKey {.Type = WorkerJobType::NotLoggedInPlayer, .Id = static_cast<size_t>(not_logged_in_player.as_uintptr())}};
+    ScopedSyncContext ctx {};
 
     // The session is listed but uncovered on the network thread, so its own lock is captured before the
     // connection callback and the worker job can reach it
@@ -886,16 +886,16 @@ auto ServerEngine::NotLoggedInPlayerJob(ptr<Player> not_logged_in_player) -> std
 {
     FO_TRACE_ZONE(Engine);
 
-    auto complete_stats_job = scope_exit([this]() noexcept { CountServerStatsJob(); });
+    auto complete_stats_job {scope_exit([this]() noexcept { CountServerStatsJob(); })};
 
-    auto ctx = RequireCurrentSyncContext();
+    auto ctx {RequireCurrentSyncContext()};
     ctx->SyncEntity(not_logged_in_player);
 
     if (not_logged_in_player->IsDestroyed()) {
         return std::nullopt;
     }
 
-    auto connection = not_logged_in_player->GetConnection();
+    auto connection {not_logged_in_player->GetConnection()};
 
     try {
         ProcessConnection(not_logged_in_player);
@@ -929,16 +929,16 @@ auto ServerEngine::NotLoggedInPlayerJob(ptr<Player> not_logged_in_player) -> std
 void ServerEngine::OnPlayerLoggedIn(ptr<Player> player, nptr<Player> not_logged_in_player)
 {
     if (not_logged_in_player) {
-        auto not_logged_in_key = WorkerJobKey {.Type = WorkerJobType::NotLoggedInPlayer, .Id = static_cast<size_t>(not_logged_in_player.as_uintptr())};
+        auto not_logged_in_key {WorkerJobKey {.Type = WorkerJobType::NotLoggedInPlayer, .Id = static_cast<size_t>(not_logged_in_player.as_uintptr())}};
         _workerPool->Cancel(not_logged_in_key);
     }
 
     if (!not_logged_in_player || !(player == not_logged_in_player)) {
-        auto same_addr_key = WorkerJobKey {.Type = WorkerJobType::NotLoggedInPlayer, .Id = static_cast<size_t>(player.as_uintptr())};
+        auto same_addr_key {WorkerJobKey {.Type = WorkerJobType::NotLoggedInPlayer, .Id = static_cast<size_t>(player.as_uintptr())}};
         _workerPool->Cancel(same_addr_key);
     }
 
-    auto key = WorkerJobKey {.Type = WorkerJobType::Player, .Id = static_cast<size_t>(player->GetId().underlying_value())};
+    auto key {WorkerJobKey {.Type = WorkerJobType::Player, .Id = static_cast<size_t>(player->GetId().underlying_value())}};
 
     player->GetConnection()->SetDataArrivedCallback([this, key]() { _workerPool->Wake(key); });
 
@@ -949,16 +949,16 @@ auto ServerEngine::PlayerJob(ptr<Player> player) -> std::optional<timespan>
 {
     FO_TRACE_ZONE(Engine);
 
-    auto complete_stats_job = scope_exit([this]() noexcept { CountServerStatsJob(); });
+    auto complete_stats_job {scope_exit([this]() noexcept { CountServerStatsJob(); })};
 
-    auto ctx = RequireCurrentSyncContext();
+    auto ctx {RequireCurrentSyncContext()};
     ctx->SyncEntity(player);
 
     if (player->IsDestroyed()) {
         return std::nullopt;
     }
 
-    auto connection = player->GetConnection();
+    auto connection {player->GetConnection()};
 
     try {
         ProcessConnection(player);
@@ -981,7 +981,7 @@ auto ServerEngine::PlayerJob(ptr<Player> player) -> std::optional<timespan>
 
 void ServerEngine::UpdateJobStats(nanotime cur_time)
 {
-    uint64_t completed_jobs = GetCompletedServerJobsCount();
+    uint64_t completed_jobs {GetCompletedServerJobsCount()};
 
     _stats.JobsTotal = completed_jobs;
 
@@ -1010,37 +1010,37 @@ void ServerEngine::UpdateJobStats(nanotime cur_time)
         _stats.JobTimeStamps.pop_front();
     }
 
-    uint64_t minute_begin_jobs = _stats.JobTimeStamps.front().second;
+    uint64_t minute_begin_jobs {_stats.JobTimeStamps.front().second};
     _stats.JobsPerMinute = completed_jobs >= minute_begin_jobs ? completed_jobs - minute_begin_jobs : 0;
 }
 
 void ServerEngine::UpdateCpuStats(nanotime cur_time)
 {
-    constexpr timespan CPU_SAMPLE_INTERVAL = std::chrono::seconds {1};
+    constexpr timespan CPU_SAMPLE_INTERVAL {std::chrono::seconds {1}};
 
     if (_stats.LastCpuUsageSampleTime && cur_time - _stats.LastCpuUsageSampleTime < CPU_SAMPLE_INTERVAL) {
         return;
     }
 
-    platform::cpu_usage_snapshot current_snapshot = platform::get_cpu_usage_snapshot();
+    platform::cpu_usage_snapshot current_snapshot {platform::get_cpu_usage_snapshot()};
 
     if (_stats.LastCpuUsageSnapshot.has_value()) {
-        auto previous_snapshot = make_ptr(&*_stats.LastCpuUsageSnapshot);
-        size_t core_count = std::min(previous_snapshot->cores.size(), current_snapshot.cores.size());
-        size_t logical_core_count = std::max<size_t>(numeric_cast<size_t>(current_snapshot.logical_core_count), 1);
+        auto previous_snapshot {make_ptr(&*_stats.LastCpuUsageSnapshot)};
+        size_t core_count {std::min(previous_snapshot->cores.size(), current_snapshot.cores.size())};
+        size_t logical_core_count {std::max<size_t>(numeric_cast<size_t>(current_snapshot.logical_core_count), 1)};
 
         _stats.CpuCoreLoads.clear();
         _stats.CpuCoreLoads.reserve(core_count);
         _stats.CpuUsageAvailable = core_count != 0;
 
-        uint64_t previous_idle = 0;
-        uint64_t current_idle = 0;
-        uint64_t previous_total = 0;
-        uint64_t current_total = 0;
+        uint64_t previous_idle {0};
+        uint64_t current_idle {0};
+        uint64_t previous_total {0};
+        uint64_t current_total {0};
 
-        for (size_t i = 0; i < core_count; i++) {
-            const platform::cpu_usage_core_snapshot& previous_core = previous_snapshot->cores[i];
-            const platform::cpu_usage_core_snapshot& current_core = current_snapshot.cores[i];
+        for (size_t i {0}; i < core_count; i++) {
+            const platform::cpu_usage_core_snapshot& previous_core {previous_snapshot->cores[i]};
+            const platform::cpu_usage_core_snapshot& current_core {current_snapshot.cores[i]};
 
             _stats.CpuCoreLoads.emplace_back(CalculateBusyCpuLoad(previous_core.idle_time, current_core.idle_time, previous_core.total_time, current_core.total_time));
 
@@ -1053,12 +1053,12 @@ void ServerEngine::UpdateCpuStats(nanotime cur_time)
         _stats.CpuSystemLoad = CalculateBusyCpuLoad(previous_idle, current_idle, previous_total, current_total);
 
         if (_stats.LastCpuUsageSampleTime && current_snapshot.process_time_ns >= previous_snapshot->process_time_ns) {
-            timespan sample_duration = cur_time - _stats.LastCpuUsageSampleTime;
-            int64_t sample_duration_ns = sample_duration.nanoseconds();
+            timespan sample_duration {cur_time - _stats.LastCpuUsageSampleTime};
+            int64_t sample_duration_ns {sample_duration.nanoseconds()};
 
             if (sample_duration_ns > 0) {
-                uint64_t process_delta_ns = current_snapshot.process_time_ns - previous_snapshot->process_time_ns;
-                float64_t process_core_load = std::min(numeric_cast<float64_t>(process_delta_ns) * 100.0 / numeric_cast<float64_t>(sample_duration_ns), numeric_cast<float64_t>(logical_core_count) * 100.0);
+                uint64_t process_delta_ns {current_snapshot.process_time_ns - previous_snapshot->process_time_ns};
+                float64_t process_core_load {std::min(numeric_cast<float64_t>(process_delta_ns) * 100.0 / numeric_cast<float64_t>(sample_duration_ns), numeric_cast<float64_t>(logical_core_count) * 100.0)};
 
                 _stats.CpuProcessCoreLoad = numeric_cast<float32_t>(process_core_load);
                 _stats.CpuProcessLoad = numeric_cast<float32_t>(process_core_load / numeric_cast<float64_t>(logical_core_count));
@@ -1076,10 +1076,10 @@ auto ServerEngine::CalculateBusyCpuLoad(uint64_t previous_idle, uint64_t current
         return 0.0f;
     }
 
-    uint64_t total_delta = current_total - previous_total;
-    uint64_t idle_delta = current_idle >= previous_idle ? current_idle - previous_idle : 0;
-    uint64_t capped_idle_delta = std::min(idle_delta, total_delta);
-    uint64_t busy_delta = total_delta - capped_idle_delta;
+    uint64_t total_delta {current_total - previous_total};
+    uint64_t idle_delta {current_idle >= previous_idle ? current_idle - previous_idle : 0};
+    uint64_t capped_idle_delta {std::min(idle_delta, total_delta)};
+    uint64_t busy_delta {total_delta - capped_idle_delta};
 
     return numeric_cast<float32_t>(numeric_cast<float64_t>(busy_delta) * 100.0 / numeric_cast<float64_t>(total_delta));
 }
@@ -1116,7 +1116,7 @@ void ServerEngine::Shutdown()
 
     // Shutdown runs on a caller thread with no SyncContext, so one is stood up here to satisfy the invariant
     // that any entity touch happens under a primary context
-    ScopedSyncContext shutdown_ctx;
+    ScopedSyncContext shutdown_ctx {};
 
     logging::write("Shutdown stage: willFinishDispatcher");
     _willFinishDispatcher();
@@ -1140,7 +1140,7 @@ void ServerEngine::Shutdown()
 
     // The pool's presence marks that startup reached a running state, so a Shutdown after a failed start must
     // skip the drain and the database flushes below rather than assume either exists
-    bool reached_running_state = _workerPool.has_value();
+    bool reached_running_state {_workerPool.has_value()};
 
     if (reached_running_state) {
         // The dispatcher is cut off before the drain, or an in-flight script starting a repeating time event
@@ -1160,11 +1160,11 @@ void ServerEngine::Shutdown()
         if (!_workerPool->WaitIdle(std::chrono::milliseconds {Settings->Server.ShutdownGraceMs})) {
             logging::write("Shutdown stage: drain exceeded grace, AbortPendingWaiters on entity locks");
 
-            vector<refcount_ptr<ServerEntity>> entities = EntityMngr.GetEntities();
-            size_t aborted_locks = 0;
+            vector<refcount_ptr<ServerEntity>> entities {EntityMngr.GetEntities()};
+            size_t aborted_locks {0};
 
             for (const auto& entity : entities) {
-                if (auto lock = entity->GetEntityLock()) {
+                if (auto lock {entity->GetEntityLock()}) {
                     lock->AbortPendingWaiters();
                     aborted_locks++;
                 }
@@ -1192,7 +1192,7 @@ void ServerEngine::Shutdown()
     logging::write("Shutdown stage: TimeEventMngr.ClearDispatcherHooks");
     TimeEventMngr.ClearDispatcherHooks();
 
-    vector<refcount_ptr<Player>> not_logged_in_players;
+    vector<refcount_ptr<Player>> not_logged_in_players {};
 
     {
         scoped_lock locker {_notLoggedInPlayersLocker};
@@ -1217,15 +1217,15 @@ void ServerEngine::Shutdown()
     ClearAllTimeEvents();
 
     logging::write("Shutdown stage: per-entity unsubscribe (count={})", EntityMngr.GetEntitiesCount());
-    vector<refcount_ptr<ServerEntity>> entities = EntityMngr.GetEntities();
+    vector<refcount_ptr<ServerEntity>> entities {EntityMngr.GetEntities()};
 
-    for (size_t i = 0; i < entities.size(); i++) {
-        auto entity = entities[i].as_ptr();
+    for (size_t i {0}; i < entities.size(); i++) {
+        auto entity {entities[i].as_ptr()};
 
         entity->UnsubscribeAllEvents();
         entity->ClearAllTimeEvents();
 
-        if (auto item = entity.dyn_cast<Item>()) {
+        if (auto item {entity.dyn_cast<Item>()}) {
             item->StaticScriptFunc = {};
             item->TriggerScriptFunc = {};
         }
@@ -1254,10 +1254,10 @@ void ServerEngine::Shutdown()
     // LoggedIn players
     logging::write("Shutdown stage: disconnect logged-in players (count={})", EntityMngr.GetPlayersCount());
 
-    vector<refcount_ptr<Player>> players = EntityMngr.GetPlayers();
+    vector<refcount_ptr<Player>> players {EntityMngr.GetPlayers()};
 
-    for (size_t i = 0; i < players.size(); i++) {
-        auto player = players[i].as_ptr();
+    for (size_t i {0}; i < players.size(); i++) {
+        auto player {players[i].as_ptr()};
         player->GetConnection()->HardDisconnect(DisconnectReason::ServerShutdown);
     }
 
@@ -1329,9 +1329,9 @@ void ServerEngine::SyncWholeWorld(SyncContext& ctx, span<const refcount_ptr<Play
 {
     FO_TRACE_ZONE(Threading);
 
-    vector<refcount_ptr<ServerEntity>> entities = EntityMngr.GetEntities();
+    vector<refcount_ptr<ServerEntity>> entities {EntityMngr.GetEntities()};
 
-    vector<ptr<ServerEntity>> sync_entities;
+    vector<ptr<ServerEntity>> sync_entities {};
     sync_entities.reserve(entities.size() + additional_players.size());
 
     for (auto& entity : entities) {
@@ -1384,7 +1384,7 @@ auto ServerEngine::RunInQuiescence(optional<timespan> max_wait_time, const Quies
         throw ServerQuiescenceException("Server game timer is already paused");
     }
 
-    bool admission_was_open;
+    bool admission_was_open {};
     {
         scoped_lock admission_locker {_connectionAdmissionLocker};
 
@@ -1392,27 +1392,27 @@ auto ServerEngine::RunInQuiescence(optional<timespan> max_wait_time, const Quies
         _connectionAdmissionOpen = false;
     }
 
-    auto restore_admission = scope_exit([this, admission_was_open]() noexcept {
+    auto restore_admission {scope_exit([this, admission_was_open]() noexcept {
         safe_call([this, admission_was_open] {
             scoped_lock admission_locker {_connectionAdmissionLocker};
 
             _connectionAdmissionOpen = admission_was_open;
         });
-    });
+    })};
 
     if (!Lock(max_wait_time)) {
         return false;
     }
 
-    auto unlock = scope_exit([this]() noexcept { safe_call([this] { Unlock(); }); });
+    auto unlock {scope_exit([this]() noexcept { safe_call([this] { Unlock(); }); })};
 
     GameTime.Pause();
-    auto resume_time = scope_exit([this]() noexcept { safe_call([this] { GameTime.Resume(); }); });
+    auto resume_time {scope_exit([this]() noexcept { safe_call([this] { GameTime.Resume(); }); })};
 
     _workerPool->FreezeSchedulingTime();
-    auto resume_scheduling_time = scope_exit([this]() noexcept { safe_call([this] { _workerPool->ResumeSchedulingTime(); }); });
+    auto resume_scheduling_time {scope_exit([this]() noexcept { safe_call([this] { _workerPool->ResumeSchedulingTime(); }); })};
 
-    vector<refcount_ptr<Player>> not_logged_in_players;
+    vector<refcount_ptr<Player>> not_logged_in_players {};
     {
         scoped_lock locker {_notLoggedInPlayersLocker};
 
@@ -1421,7 +1421,7 @@ auto ServerEngine::RunInQuiescence(optional<timespan> max_wait_time, const Quies
 
     SyncWholeWorld(*RequireCurrentSyncContext(), not_logged_in_players);
 
-    ServerQuiescenceState state;
+    ServerQuiescenceState state {};
     state.SynchronizedTime = GameTime.GetSynchronizedTime();
     state.RandomState = CaptureRandomState();
 
@@ -1436,12 +1436,12 @@ auto ServerEngine::CollectSnapshotBlockers() -> vector<ServerSnapshotBlocker>
     FO_VERIFY_AND_THROW(GameTime.IsPaused(), "Snapshot eligibility requires a paused game timer");
     FO_VERIFY_AND_THROW(_workerPool, "Snapshot eligibility requires an initialized worker pool");
 
-    vector<ServerSnapshotBlocker> blockers;
+    vector<ServerSnapshotBlocker> blockers {};
 
 #if FO_ANGELSCRIPT_SCRIPTING
-    if (auto backend = GetBackend<AngelScriptBackend>(ScriptSystemBackend::ANGELSCRIPT_BACKEND_INDEX); backend) {
-        if (auto context_mngr = backend->GetContextMngr(); context_mngr) {
-            auto diagnostics = context_mngr->GetDiagnostics();
+    if (auto backend {GetBackend<AngelScriptBackend>(ScriptSystemBackend::ANGELSCRIPT_BACKEND_INDEX)}; backend) {
+        if (auto context_mngr {backend->GetContextMngr()}; context_mngr) {
+            auto diagnostics {context_mngr->GetDiagnostics()};
 
             if (diagnostics.SuspendedContexts != 0) {
                 blockers.emplace_back(ServerSnapshotBlocker {.Kind = ServerSnapshotBlockerKind::SuspendedScriptContexts, .Count = diagnostics.SuspendedContexts});
@@ -1456,19 +1456,19 @@ auto ServerEngine::CollectSnapshotBlockers() -> vector<ServerSnapshotBlocker>
     }
 #endif
 
-    auto worker_diagnostics = _workerPool->GetDiagnostics();
+    auto worker_diagnostics {_workerPool->GetDiagnostics()};
 
     if (worker_diagnostics.AnonymousScheduledJobs != 0) {
         blockers.emplace_back(ServerSnapshotBlocker {.Kind = ServerSnapshotBlockerKind::DelayedCallbacks, .Count = worker_diagnostics.AnonymousScheduledJobs});
     }
 
-    auto time_event_diagnostics = TimeEventMngr.GetDiagnostics();
+    auto time_event_diagnostics {TimeEventMngr.GetDiagnostics()};
 
     if (time_event_diagnostics.EventCount != 0) {
         blockers.emplace_back(ServerSnapshotBlocker {.Kind = ServerSnapshotBlockerKind::TimeEvents, .Count = time_event_diagnostics.EventCount});
     }
 
-    size_t moving_critters = 0;
+    size_t moving_critters {0};
 
     for (const auto& critter : EntityMngr.GetCritters()) {
         if (!critter->IsDestroyed() && critter->IsMoving()) {
@@ -1487,7 +1487,7 @@ auto ServerEngine::CreateSnapshot(optional<timespan> max_wait_time) -> ServerSna
 {
     FO_TRACE_ZONE(Engine);
 
-    ServerSnapshotCaptureResult result;
+    ServerSnapshotCaptureResult result {};
     result.ReachedQuiescence = RunInQuiescence(max_wait_time, [&](const ServerQuiescenceState& quiescence_state) {
         result.Blockers = CollectSnapshotBlockers();
 
@@ -1498,7 +1498,7 @@ auto ServerEngine::CreateSnapshot(optional<timespan> max_wait_time) -> ServerSna
         EntityMngr.FlushExactEntityId();
         FlushExactSyncTime();
 
-        ServerSnapshotState state;
+        ServerSnapshotState state {};
         state.CompatibilityVersion = Settings->Network.CompatibilityVersion;
         state.MetadataVersion = string {GetMetadataVersion()};
         state.SynchronizedTime = quiescence_state.SynchronizedTime;
@@ -1565,7 +1565,7 @@ void ServerEngine::DrawGui()
     }
 
     if (Settings->Server.LockMaxWaitTime != 0) {
-        timespan max_wait_time = timespan {std::chrono::milliseconds {Settings->Server.LockMaxWaitTime}};
+        timespan max_wait_time {timespan {std::chrono::milliseconds {Settings->Server.LockMaxWaitTime}}};
 
         if (!Lock(max_wait_time)) {
             ImGui::TextUnformatted(strex("Server hanged (no response more than {})", max_wait_time).c_str());
@@ -1577,9 +1577,9 @@ void ServerEngine::DrawGui()
         Lock(std::nullopt);
     }
 
-    auto unlocker = scope_exit([this]() noexcept { safe_call([this] { Unlock(); }); });
+    auto unlocker {scope_exit([this]() noexcept { safe_call([this] { Unlock(); }); })};
 
-    vector<refcount_ptr<Player>> not_logged_in_players;
+    vector<refcount_ptr<Player>> not_logged_in_players {};
 
     {
         scoped_lock locker {_notLoggedInPlayersLocker};
@@ -1589,17 +1589,17 @@ void ServerEngine::DrawGui()
 
     SyncWholeWorld(*RequireCurrentSyncContext(), not_logged_in_players);
 
-    constexpr ImGuiTableFlags table_flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_SizingStretchProp;
+    constexpr ImGuiTableFlags table_flags {ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_SizingStretchProp};
 
-    auto info_row = [](string_view key, string_view value) {
+    auto info_row {[](string_view key, string_view value) {
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         ImGuiTextUnformatted(key);
         ImGui::TableSetColumnIndex(1);
         ImGuiTextUnformatted(value);
-    };
+    }};
 
-    auto begin_info_table = [](string_view id) -> bool {
+    auto begin_info_table {[](string_view id) -> bool {
         if (ImGui::BeginTable(id.data(), 2, table_flags)) {
             ImGui::TableSetupColumn("Property", ImGuiTableColumnFlags_WidthFixed, 220.0f);
             ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
@@ -1607,16 +1607,16 @@ void ServerEngine::DrawGui()
         }
 
         return false;
-    };
+    }};
 
-    auto draw_properties_table = [&info_row, &begin_info_table](ptr<const Entity> entity) {
+    auto draw_properties_table {[&info_row, &begin_info_table](ptr<const Entity> entity) {
         if (begin_info_table("##PropsTable")) {
-            auto props = entity->GetProperties();
-            auto registrar = props->GetRegistrar();
-            size_t props_count = registrar->GetPropertiesCount();
+            auto props {entity->GetProperties()};
+            auto registrar {props->GetRegistrar()};
+            size_t props_count {registrar->GetPropertiesCount()};
 
-            for (size_t i = 1; i < props_count; ++i) {
-                auto prop = registrar->GetPropertyByIndexUnsafe(i);
+            for (size_t i {1}; i < props_count; ++i) {
+                auto prop {registrar->GetPropertyByIndexUnsafe(i)};
 
                 if (prop->IsDisabled()) {
                     continue;
@@ -1631,7 +1631,7 @@ void ServerEngine::DrawGui()
                     continue;
                 }
 
-                string value_str;
+                string value_str {};
 
                 try {
                     value_str = props->SavePropertyToText(prop);
@@ -1648,7 +1648,7 @@ void ServerEngine::DrawGui()
 
             ImGui::EndTable();
         }
-    };
+    }};
 
     if (ImGui::CollapsingHeader("Info", ImGuiTreeNodeFlags_DefaultOpen)) {
         if (begin_info_table("##InfoTable")) {
@@ -1678,11 +1678,11 @@ void ServerEngine::DrawGui()
     }
 
     if (ImGui::CollapsingHeader("Performance details")) {
-        work_thread::diagnostics starter_diagnostics = _starter.get_diagnostics();
-        work_thread::diagnostics main_worker_diagnostics = _mainWorker.get_diagnostics();
-        work_thread::diagnostics health_writer_diagnostics = _healthWriter.get_diagnostics();
-        bool has_worker_pool = !!_workerPool;
-        WorkerPool::Diagnostics worker_pool_diagnostics = has_worker_pool ? _workerPool->GetDiagnostics() : WorkerPool::Diagnostics {};
+        work_thread::diagnostics starter_diagnostics {_starter.get_diagnostics()};
+        work_thread::diagnostics main_worker_diagnostics {_mainWorker.get_diagnostics()};
+        work_thread::diagnostics health_writer_diagnostics {_healthWriter.get_diagnostics()};
+        bool has_worker_pool {!!_workerPool};
+        WorkerPool::Diagnostics worker_pool_diagnostics {has_worker_pool ? _workerPool->GetDiagnostics() : WorkerPool::Diagnostics {}};
 
         if (begin_info_table("##PerformanceDetailsTable")) {
             info_row("Jobs per second", strex("{}", _stats.JobsPerSecond).str());
@@ -1719,12 +1719,12 @@ void ServerEngine::DrawGui()
                 ImGui::TableSetupColumn("Core", ImGuiTableColumnFlags_WidthFixed, 80.0f);
                 ImGui::TableSetupColumn("System load", ImGuiTableColumnFlags_WidthStretch);
 
-                for (size_t i = 0; i < _stats.CpuCoreLoads.size(); i++) {
+                for (size_t i {0}; i < _stats.CpuCoreLoads.size(); i++) {
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
                     ImGui::TextUnformatted(strex("{}", i).c_str());
                     ImGui::TableSetColumnIndex(1);
-                    string load = strex("{:.1f}%", numeric_cast<float64_t>(_stats.CpuCoreLoads[i])).str();
+                    string load {strex("{:.1f}%", numeric_cast<float64_t>(_stats.CpuCoreLoads[i])).str()};
                     ImGuiTextUnformatted(load);
                 }
 
@@ -1735,7 +1735,7 @@ void ServerEngine::DrawGui()
         }
     }
 
-    auto cond_to_str = [](CritterCondition cond) -> string_view {
+    auto cond_to_str {[](CritterCondition cond) -> string_view {
         switch (cond) {
         case CritterCondition::Alive:
             return "Alive";
@@ -1746,14 +1746,14 @@ void ServerEngine::DrawGui()
         }
 
         return "?";
-    };
+    }};
 
-    function<void(ptr<const Item>)> draw_item;
+    function<void(ptr<const Item>)> draw_item {};
 
     draw_item = [&](ptr<const Item> item) {
         ImGui::PushID(make_nptr(item.get()).void_cast());
 
-        string label = strex("{} ({})", item->GetName(), item->GetId()).str();
+        string label {strex("{} ({})", item->GetName(), item->GetId()).str()};
 
         if (ImGui::TreeNode(label.c_str())) {
             if (begin_info_table("##ItemSummary")) {
@@ -1776,7 +1776,7 @@ void ServerEngine::DrawGui()
             }
 
             if (item->HasInnerItems()) {
-                auto inner_items = item->GetAllInnerItems();
+                auto inner_items {item->GetAllInnerItems()};
 
                 if (ImGui::TreeNode(strex("Inner items ({})", inner_items.size()).c_str())) {
                     for (ptr<const Item> inner : inner_items) {
@@ -1793,11 +1793,11 @@ void ServerEngine::DrawGui()
         ImGui::PopID();
     };
 
-    auto draw_critter = [&](ptr<const Critter> cr) {
+    auto draw_critter {[&](ptr<const Critter> cr) {
         ImGui::PushID(make_nptr(cr.get()).void_cast());
 
-        string_view cond_str = cond_to_str(cr->GetCondition());
-        string label = strex("{} ({}) [{}]", cr->GetName(), cr->GetId(), cond_str).str();
+        string_view cond_str {cond_to_str(cr->GetCondition())};
+        string label {strex("{} ({}) [{}]", cr->GetName(), cr->GetId(), cond_str).str()};
 
         if (ImGui::TreeNode(label.c_str())) {
             if (begin_info_table("##CritterSummary")) {
@@ -1827,7 +1827,7 @@ void ServerEngine::DrawGui()
                 ImGui::TreePop();
             }
 
-            vector<ptr<const Item>> inv_items = cr->GetInvItems();
+            vector<ptr<const Item>> inv_items {cr->GetInvItems()};
 
             if (!inv_items.empty()) {
                 if (ImGui::TreeNode(strex("Inventory ({})", inv_items.size()).c_str())) {
@@ -1843,18 +1843,18 @@ void ServerEngine::DrawGui()
         }
 
         ImGui::PopID();
-    };
+    }};
 
-    auto draw_map = [&](ptr<const Map> map) {
+    auto draw_map {[&](ptr<const Map> map) {
         ImGui::PushID(make_nptr(map.get()).void_cast());
 
-        string label = strex("{} ({})", map->GetProtoId(), map->GetId()).str();
+        string label {strex("{} ({})", map->GetProtoId(), map->GetId()).str()};
 
         if (ImGui::TreeNode(label.c_str())) {
-            const_span<ptr<Critter>> critters = map->GetCritters();
-            const_span<ptr<Item>> items = map->GetItems();
-            const_span<ptr<StaticItem>> static_items = map->GetStaticItems();
-            auto map_size = map->GetSize();
+            const_span<ptr<Critter>> critters {map->GetCritters()};
+            const_span<ptr<Item>> items {map->GetItems()};
+            const_span<ptr<StaticItem>> static_items {map->GetStaticItems()};
+            auto map_size {map->GetSize()};
 
             if (begin_info_table("##MapSummary")) {
                 info_row("Id", strex("{}", map->GetId()).str());
@@ -1899,23 +1899,23 @@ void ServerEngine::DrawGui()
         }
 
         ImGui::PopID();
-    };
+    }};
 
     if (ImGui::CollapsingHeader(strex("Players ({})###Players", EntityMngr.GetPlayersCount()).c_str())) {
-        vector<refcount_ptr<Player>> players = EntityMngr.GetPlayers();
+        vector<refcount_ptr<Player>> players {EntityMngr.GetPlayers()};
 
-        for (size_t i = 0; i < players.size(); i++) {
-            auto player = players[i].as_ptr();
+        for (size_t i {0}; i < players.size(); i++) {
+            auto player {players[i].as_ptr()};
             ImGui::PushID(make_nptr(player.get()).void_cast());
 
-            string label = strex("{} ({})", player->GetName(), player->GetId()).str();
+            string label {strex("{} ({})", player->GetName(), player->GetId()).str()};
 
             if (ImGui::TreeNode(label.c_str())) {
-                auto controlled_critter = player->GetControlledCritter();
-                auto connection = player->GetConnection();
+                auto controlled_critter {player->GetControlledCritter()};
+                auto connection {player->GetConnection()};
 
                 if (begin_info_table("##PlayerSummary")) {
-                    auto connection_diagnostics = connection->GetDiagnostics();
+                    auto connection_diagnostics {connection->GetDiagnostics()};
 
                     info_row("Id", strex("{}", player->GetId()).str());
                     info_row("Name", player->GetName());
@@ -1952,7 +1952,7 @@ void ServerEngine::DrawGui()
     }
 
     if (ImGui::CollapsingHeader(strex("NotLoggedIn players ({})###NotLoggedInPlayers", not_logged_in_players.size()).c_str())) {
-        int32_t index = 0;
+        int32_t index {0};
 
         for (const auto& player : not_logged_in_players) {
             if (player->IsDestroyed()) {
@@ -1961,12 +1961,12 @@ void ServerEngine::DrawGui()
 
             ImGui::PushID(index++);
 
-            auto connection = player->GetConnection();
-            string label = strex("{}:{}", connection->GetHost(), connection->GetPort()).str();
+            auto connection {player->GetConnection()};
+            string label {strex("{}:{}", connection->GetHost(), connection->GetPort()).str()};
 
             if (ImGui::TreeNode(label.c_str())) {
                 if (begin_info_table("##NotLoggedInSummary")) {
-                    auto connection_diagnostics = connection->GetDiagnostics();
+                    auto connection_diagnostics {connection->GetDiagnostics()};
 
                     info_row("Host", connection->GetHost());
                     info_row("Port", strex("{}", connection->GetPort()).str());
@@ -1986,13 +1986,13 @@ void ServerEngine::DrawGui()
     }
 
     if (ImGui::CollapsingHeader(strex("Locations ({})###Locations", EntityMngr.GetLocationsCount()).c_str())) {
-        vector<refcount_ptr<Location>> locations = EntityMngr.GetLocations();
+        vector<refcount_ptr<Location>> locations {EntityMngr.GetLocations()};
 
-        for (size_t i = 0; i < locations.size(); i++) {
-            auto loc = locations[i].as_ptr();
+        for (size_t i {0}; i < locations.size(); i++) {
+            auto loc {locations[i].as_ptr()};
             ImGui::PushID(make_nptr(loc.get()).void_cast());
 
-            string label = strex("{} ({})", loc->GetProtoId(), loc->GetId()).str();
+            string label {strex("{} ({})", loc->GetProtoId(), loc->GetId()).str()};
 
             if (ImGui::TreeNode(label.c_str())) {
                 if (begin_info_table("##LocSummary")) {
@@ -2032,7 +2032,7 @@ void ServerEngine::DrawGui()
 
 auto ServerEngine::GetHealthInfo() const -> string
 {
-    string buf;
+    string buf {};
     buf.reserve(2048);
 
     buf += strex("Version: {}\n", Settings->Common.GameVersion);
@@ -2092,9 +2092,9 @@ void ServerEngine::StartConnectionServer(string_view what, const function<unique
     FO_TRACE_ZONE(Engine);
 
     std::chrono::milliseconds retry_delay {std::max(Settings->ServerNetwork.ListenRetryDelay, 1)};
-    nanotime deadline = nanotime::now() + std::chrono::milliseconds {std::max(Settings->ServerNetwork.ListenRetryTime, 0)};
+    nanotime deadline {nanotime::now() + std::chrono::milliseconds {std::max(Settings->ServerNetwork.ListenRetryTime, 0)}};
 
-    for (int32_t attempt = 1;; attempt++) {
+    for (int32_t attempt {1};; attempt++) {
         try {
             _connectionServers.emplace_back(start());
 
@@ -2129,10 +2129,10 @@ void ServerEngine::OnNewConnection(shared_ptr<NetworkServerConnection> net_conne
 
     // Anti-flood: drop bursts from a single source before any per-connection allocation
     if (Settings->ServerNetwork.NewConnectionRatePerSec > 0) {
-        constexpr size_t MAX_CONN_RATE_ENTRIES = 50000;
-        int64_t now_sec = nanotime::now().seconds();
+        constexpr size_t MAX_CONN_RATE_ENTRIES {50000};
+        int64_t now_sec {nanotime::now().seconds()};
         string source_key {net_connection->GetHost()};
-        bool accept_rate;
+        bool accept_rate {};
 
         {
             scoped_lock locker {_connRateLocker};
@@ -2155,8 +2155,8 @@ void ServerEngine::OnNewConnection(shared_ptr<NetworkServerConnection> net_conne
 
     // Population cap: reject when the connection or player ceiling is reached, before creating a player
     if (Settings->ServerNetwork.MaxConnections > 0 || Settings->ServerNetwork.MaxPlayers > 0) {
-        size_t cur_connections;
-        size_t cur_players;
+        size_t cur_connections {};
+        size_t cur_players {};
 
         {
             scoped_lock locker {_notLoggedInPlayersLocker};
@@ -2178,19 +2178,19 @@ void ServerEngine::OnNewConnection(shared_ptr<NetworkServerConnection> net_conne
 
 auto ServerEngine::CreateNotLoggedInPlayer(shared_ptr<NetworkServerConnection> net_connection) -> ptr<Player>
 {
-    ptr<Player> not_logged_in_player = [&]() -> ptr<Player> {
+    ptr<Player> not_logged_in_player {[&]() -> ptr<Player> {
         scoped_lock locker {_notLoggedInPlayersLocker};
 
         FO_VERIFY_AND_THROW(_channelIdentity.has_value(), "Connection accepted before the secure channel identity was loaded");
-        auto connection = safe_alloc::make_unique<ServerConnection>(Settings, std::move(net_connection), _channelIdentity.value());
-        auto new_player = safe_alloc::make_refcounted<Player>(this, ident_t {}, std::move(connection));
+        auto connection {safe_alloc::make_unique<ServerConnection>(Settings, std::move(net_connection), _channelIdentity.value())};
+        auto new_player {safe_alloc::make_refcounted<Player>(this, ident_t {}, std::move(connection))};
         _notLoggedInPlayers.emplace_back(std::move(new_player));
         return _notLoggedInPlayers.back();
-    }();
+    }()};
 
     // Widened so the caller can use the new session without a separate Sync::Lock; it is a creation boundary,
     // hence the trusted fresh capture, and the network thread has no context to widen
-    if (auto outermost = SyncContext::GetOutermostOnThisThread()) {
+    if (auto outermost {SyncContext::GetOutermostOnThisThread()}) {
         outermost->EnsureFreshEntitySynced(not_logged_in_player);
     }
 
@@ -2200,16 +2200,16 @@ auto ServerEngine::CreateNotLoggedInPlayer(shared_ptr<NetworkServerConnection> n
 
 void ServerEngine::ProcessNotLoggedInPlayer(ptr<Player> not_logged_in_player)
 {
-    auto connection = not_logged_in_player->GetConnection();
+    auto connection {not_logged_in_player->GetConnection()};
 
     if (connection->IsHardDisconnected()) {
         ProcessPendingUnresolvedHash(connection);
 
-        auto player_holder = not_logged_in_player.hold_ref();
+        auto player_holder {not_logged_in_player.hold_ref()};
 
         scoped_lock locker {_notLoggedInPlayersLocker};
 
-        auto it = std::ranges::find(_notLoggedInPlayers, player_holder);
+        auto it {std::ranges::find(_notLoggedInPlayers, player_holder)};
 
         if (it != _notLoggedInPlayers.end()) {
             _notLoggedInPlayers.erase(it);
@@ -2225,7 +2225,7 @@ void ServerEngine::ProcessNotLoggedInPlayer(ptr<Player> not_logged_in_player)
         return;
     }
 
-    auto in_buf = connection->ReadBuf();
+    auto in_buf {connection->ReadBuf()};
 
     if (connection->IsGracefulDisconnected()) {
         in_buf->ResetBuf();
@@ -2233,7 +2233,7 @@ void ServerEngine::ProcessNotLoggedInPlayer(ptr<Player> not_logged_in_player)
     }
 
     if (in_buf->NeedProcess()) {
-        auto msg = in_buf->ReadMsg();
+        auto msg {in_buf->ReadMsg()};
 
         in_buf.Unlock();
 
@@ -2263,7 +2263,7 @@ void ServerEngine::ProcessNotLoggedInPlayer(ptr<Player> not_logged_in_player)
                     return;
                 }
 
-                auto updater_backend = make_ptr(&*_updaterBackend);
+                auto updater_backend {make_ptr(&*_updaterBackend)};
                 updater_backend->ProcessUpdateFile(not_logged_in_player, Settings->Network.UpdateFileMaxPortionSize);
                 connection->RegisterLoginProgress(GameTime.GetFrameTime());
                 break;
@@ -2289,7 +2289,7 @@ void ServerEngine::ProcessNotLoggedInPlayer(ptr<Player> not_logged_in_player)
 
 void ServerEngine::ProcessPlayer(ptr<Player> player)
 {
-    auto connection = player->GetConnection();
+    auto connection {player->GetConnection()};
 
     if (connection->IsHardDisconnected()) {
         ProcessPendingUnresolvedHash(connection);
@@ -2298,7 +2298,7 @@ void ServerEngine::ProcessPlayer(ptr<Player> player)
 
         ValidateEntityAccess(player);
 
-        auto cr = player->GetControlledCritter();
+        auto cr {player->GetControlledCritter()};
         ValidateEntityAccess(cr);
 
         // A held direction ends with the session that held it: its renewals and its release can no longer arrive, so a
@@ -2318,7 +2318,7 @@ void ServerEngine::ProcessPlayer(ptr<Player> player)
     }
 
     if (connection->IsGracefulDisconnected()) {
-        auto in_buf = connection->ReadBuf();
+        auto in_buf {connection->ReadBuf()};
 
         in_buf->ResetBuf();
         return;
@@ -2326,22 +2326,22 @@ void ServerEngine::ProcessPlayer(ptr<Player> player)
 
     // Bounded so one flooding connection cannot monopolize a worker thread shared with world jobs; the job
     // reschedules, so leftovers are drained on the next pass
-    int32_t max_per_pass = Settings->ServerNetwork.MaxMessagesPerProcessPass;
-    int32_t processed_msgs = 0;
+    int32_t max_per_pass {Settings->ServerNetwork.MaxMessagesPerProcessPass};
+    int32_t processed_msgs {0};
 
     while (!connection->IsHardDisconnected() && !connection->IsGracefulDisconnected() && !player->IsDestroyed()) {
         if (max_per_pass != 0 && processed_msgs >= max_per_pass) {
             break;
         }
 
-        auto in_buf = connection->ReadBuf();
+        auto in_buf {connection->ReadBuf()};
 
         if (!in_buf->NeedProcess()) {
             break;
         }
 
         in_buf.Unlock();
-        EventResult pre_process_result = OnPlayerPreProcess.Fire(player);
+        EventResult pre_process_result {OnPlayerPreProcess.Fire(player)};
 
         if (player->IsDestroyed() || player->IsDestroying()) {
             return;
@@ -2363,7 +2363,7 @@ void ServerEngine::ProcessPlayer(ptr<Player> player)
             break;
         }
 
-        auto msg = in_buf->ReadMsg();
+        auto msg {in_buf->ReadMsg()};
 
         in_buf.Unlock();
 
@@ -2412,7 +2412,7 @@ void ServerEngine::ProcessPlayer(ptr<Player> player)
 
 void ServerEngine::ProcessConnection(ptr<Player> player)
 {
-    auto connection = player->GetConnection();
+    auto connection {player->GetConnection()};
 
     if (connection->IsHardDisconnected()) {
         return;
@@ -2426,7 +2426,7 @@ void ServerEngine::ProcessConnection(ptr<Player> player)
         return;
     }
 
-    nanotime frame_time = GameTime.GetFrameTime();
+    nanotime frame_time {GameTime.GetFrameTime()};
 
     connection->EnsureActivityTime(frame_time);
 
@@ -2459,8 +2459,8 @@ void ServerEngine::ProcessConnection(ptr<Player> player)
 
 void ServerEngine::HandleOutboundRemoteCall(hstring name, ptr<Entity> caller, const_span<uint8_t> data)
 {
-    nptr<Player> player;
-    auto cr = caller.dyn_cast<Critter>();
+    nptr<Player> player {};
+    auto cr {caller.dyn_cast<Critter>()};
 
     if (cr) {
         player = cr->GetPlayer();
@@ -2483,13 +2483,13 @@ auto ServerEngine::CreateCritter(hstring pid, bool for_player, nptr<const Proper
 
     logging::write(logging::type::info, "Create critter {}", pid);
 
-    auto proto = GetProtoCritter(pid);
+    auto proto {GetProtoCritter(pid)};
 
     if (!proto) {
         throw GenericException("Critter proto not found", pid);
     }
 
-    auto cr = safe_alloc::make_refcounted<Critter>(this, ident_t {}, proto, props);
+    auto cr {safe_alloc::make_refcounted<Critter>(this, ident_t {}, proto, props)};
 
     EntityMngr.RegisterCritter(cr);
 
@@ -2527,22 +2527,22 @@ auto ServerEngine::LoadCritter(ident_t cr_id, bool for_player, nptr<Map> map) ->
     ValidateEntityAccess(map);
     FO_VERIFY_AND_THROW(!map || (!map->IsDestroyed() && !map->IsDestroying()), "Cannot restore critter onto destroyed map", cr_id, map->GetId());
 
-    auto map_holder = map.try_hold_ref();
+    auto map_holder {map.try_hold_ref()};
     ignore_unused(map_holder);
-    ident_t target_map_id = map ? map->GetId() : ident_t {};
+    ident_t target_map_id {map ? map->GetId() : ident_t {}};
 
     if (EntityMngr.GetCritter(cr_id)) {
         throw GenericException("Critter already in game", cr_id);
     }
 
-    bool is_error = false;
+    bool is_error {false};
     ident_t stored_map_id {};
-    auto cr = EntityMngr.LoadCritter(cr_id, for_player, map ? &stored_map_id : nullptr, is_error);
-    bool invalid_map = !is_error && cr && map && (stored_map_id != target_map_id || !map->GetSize().is_valid_pos(cr->GetHex()));
+    auto cr {EntityMngr.LoadCritter(cr_id, for_player, map ? &stored_map_id : nullptr, is_error)};
+    bool invalid_map {!is_error && cr && map && (stored_map_id != target_map_id || !map->GetSize().is_valid_pos(cr->GetHex()))};
 
     if (is_error || invalid_map) {
-        mpos loaded_hex = cr ? cr->GetHex() : mpos {};
-        string_view failure_reason = is_error ? "Critter loading or preload failed" : stored_map_id != target_map_id ? "Stored map differs from target" : "Loaded position is outside target map bounds";
+        mpos loaded_hex {cr ? cr->GetHex() : mpos {}};
+        string_view failure_reason {is_error ? "Critter loading or preload failed" : stored_map_id != target_map_id ? "Stored map differs from target" : "Loaded position is outside target map bounds"};
 
         if (cr) {
             cr->MarkAsDestroying();
@@ -2562,7 +2562,7 @@ auto ServerEngine::LoadCritter(ident_t cr_id, bool for_player, nptr<Map> map) ->
         throw GenericException("Critter removed during loading", cr_id);
     }
 
-    mpos target_hex = cr->GetHex();
+    mpos target_hex {cr->GetHex()};
     EntityMngr.MakePersistent(cr, true, true);
 
     if (map) {
@@ -2650,21 +2650,21 @@ void ServerEngine::UnloadCritter(ptr<Critter> cr)
 
 void ServerEngine::UnloadCritterInnerEntities(ptr<Critter> cr)
 {
-    function<void(ptr<Entity>)> unload_inner_entities;
+    function<void(ptr<Entity>)> unload_inner_entities {};
 
     unload_inner_entities = [this, &unload_inner_entities](ptr<Entity> holder) {
-        auto inner_entities = holder->GetInnerEntities();
+        auto inner_entities {holder->GetInnerEntities()};
         FO_VERIFY_AND_THROW(inner_entities, "Inner entities collection is null");
 
         for (auto& entities : *inner_entities | std::views::values) {
             for (auto& entity : entities) {
-                auto entity_ptr = entity.as_ptr();
+                auto entity_ptr {entity.as_ptr()};
 
                 if (entity_ptr->HasInnerEntities()) {
                     unload_inner_entities(entity_ptr);
                 }
 
-                auto custom_entity_ptr = require_refcount_ptr(entity.dyn_cast<CustomEntity>());
+                auto custom_entity_ptr {require_refcount_ptr(entity.dyn_cast<CustomEntity>())};
 
                 custom_entity_ptr->MarkAsDestroyed();
                 EntityMngr.UnregisterCustomEntity(custom_entity_ptr, false);
@@ -2678,13 +2678,13 @@ void ServerEngine::UnloadCritterInnerEntities(ptr<Critter> cr)
         unload_inner_entities(cr);
     }
 
-    function<void(ptr<Item>)> unload_item;
+    function<void(ptr<Item>)> unload_item {};
 
     unload_item = [&](ptr<Item> item) {
         if (item->HasInnerItems()) {
-            vector<refcount_ptr<Item>> inner_items = item->TakeAllInnerItems();
+            vector<refcount_ptr<Item>> inner_items {item->TakeAllInnerItems()};
 
-            for (size_t i = 0; i < inner_items.size(); i++) {
+            for (size_t i {0}; i < inner_items.size(); i++) {
                 unload_item(inner_items[i]);
             }
         }
@@ -2713,17 +2713,17 @@ void ServerEngine::SwitchPlayerCritter(ptr<Player> player, nptr<Critter> cr)
     EnsureEntitySynced(cr);
 
     if (cr && cr->GetMapId()) {
-        auto map = cr->GetParent<Map>();
+        auto map {cr->GetParent<Map>()};
         FO_VERIFY_AND_THROW(map, "Missing map instance");
         ValidateEntityAccess(map);
 
-        auto loc = map->GetLocation();
+        auto loc {map->GetLocation()};
         FO_VERIFY_AND_THROW(loc, "Missing location instance");
         ValidateEntityAccess(loc);
     }
 
-    auto prev_cr = player->GetControlledCritter();
-    auto prev_cr_holder = prev_cr.try_hold_ref();
+    auto prev_cr {player->GetControlledCritter()};
+    auto prev_cr_holder {prev_cr.try_hold_ref()};
     ignore_unused(prev_cr_holder);
     EnsureEntitySynced(prev_cr);
 
@@ -2743,7 +2743,7 @@ void ServerEngine::SwitchPlayerCritter(ptr<Player> player, nptr<Critter> cr)
 
     FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
 
-    nptr<Critter> target_cr = cr;
+    nptr<Critter> target_cr {cr};
 
     if (prev_cr == target_cr) {
         throw GenericException("Player critter already selected");
@@ -2768,13 +2768,13 @@ void ServerEngine::SwitchPlayerCritter(ptr<Player> player, nptr<Critter> cr)
 
     SendCritterInitialInfo(cr, prev_cr);
 
-    auto controlled_cr = player->GetControlledCritter();
-    nptr<Critter> selected_cr = cr;
-    bool player_controls_critter = controlled_cr == selected_cr;
-    auto controlling_player = cr->GetPlayer();
-    nptr<Player> selected_player = player;
-    bool critter_controls_player = controlling_player == selected_player;
-    bool critter_still_attached = player_controls_critter && critter_controls_player;
+    auto controlled_cr {player->GetControlledCritter()};
+    nptr<Critter> selected_cr {cr};
+    bool player_controls_critter {controlled_cr == selected_cr};
+    auto controlling_player {cr->GetPlayer()};
+    nptr<Player> selected_player {player};
+    bool critter_controls_player {controlling_player == selected_player};
+    bool critter_still_attached {player_controls_critter && critter_controls_player};
 
     if (cr->IsDestroyed() || !critter_still_attached) {
         return;
@@ -2810,7 +2810,7 @@ void ServerEngine::ReturnPlayerFromViewMap(ptr<Player> player)
 {
     FO_TRACE_ZONE(Entity);
     ValidateEntityAccess(player);
-    auto cr = player->GetControlledCritter();
+    auto cr {player->GetControlledCritter()};
     FO_VERIFY_AND_THROW(cr, "Map view return requires a controlled critter", player->GetId());
     ValidateEntityAccess(cr);
     player->ResetViewMap();
@@ -2821,8 +2821,8 @@ void ServerEngine::SendCritterInitialInfo(ptr<Critter> cr, nptr<Critter> prev_cr
 {
     FO_TRACE_ZONE(Entity);
 
-    auto cr_holder = cr.hold_ref();
-    auto prev_cr_holder = prev_cr.try_hold_ref();
+    auto cr_holder {cr.hold_ref()};
+    auto prev_cr_holder {prev_cr.try_hold_ref()};
     ignore_unused(cr_holder);
     ignore_unused(prev_cr_holder);
     ValidateEntityAccess(cr);
@@ -2851,13 +2851,13 @@ void ServerEngine::SendCritterInitialInfo(ptr<Critter> cr, nptr<Critter> prev_cr
 
     cr->Send_TimeSync();
 
-    bool same_map = [&]() {
+    bool same_map {[&]() {
         if (!prev_cr) {
             return false;
         }
 
         return prev_cr->GetMapId() == cr->GetMapId();
-    }();
+    }()};
 
     if (same_map) {
         // Remove entities diff
@@ -2871,7 +2871,7 @@ void ServerEngine::SendCritterInitialInfo(ptr<Critter> cr, nptr<Critter> prev_cr
 
         for (auto item_id : prev_cr->GetVisibleItems()) {
             if (!cr->IsSeeItem(item_id)) {
-                if (auto item = EntityMngr.GetItem(item_id)) {
+                if (auto item {EntityMngr.GetItem(item_id)}) {
                     cr->Send_RemoveItemFromMap(item);
                 }
             }
@@ -2879,7 +2879,7 @@ void ServerEngine::SendCritterInitialInfo(ptr<Critter> cr, nptr<Critter> prev_cr
     }
     else {
         if (map) {
-            auto loc = map->GetLocation();
+            auto loc {map->GetLocation()};
             FO_VERIFY_AND_THROW(loc, "Missing location instance");
             ValidateEntityAccess(loc);
         }
@@ -2910,7 +2910,7 @@ void ServerEngine::SendCritterInitialInfo(ptr<Critter> cr, nptr<Critter> prev_cr
                 }
             }
 
-            if (auto item = EntityMngr.GetItem(item_id)) {
+            if (auto item {EntityMngr.GetItem(item_id)}) {
                 cr->Send_AddItemOnMap(item);
             }
         }
@@ -2928,8 +2928,8 @@ void ServerEngine::SendCritterInitialInfo(ptr<Critter> cr, nptr<Critter> prev_cr
             return;
         }
 
-        auto map_cr = map->GetCritter(cr->GetId());
-        nptr<Critter> expected_cr = cr;
+        auto map_cr {map->GetCritter(cr->GetId())};
+        nptr<Critter> expected_cr {cr};
         if (!(map_cr == expected_cr)) {
             return;
         }
@@ -2940,7 +2940,7 @@ void ServerEngine::SendCritterInitialInfo(ptr<Critter> cr, nptr<Critter> prev_cr
         }
     }
 
-    if (auto player = cr->GetPlayer()) {
+    if (auto player {cr->GetPlayer()}) {
         if (player->GetViewMap()) {
             player->Send_ViewMap();
         }
@@ -2954,21 +2954,21 @@ void ServerEngine::Process_Handshake(ptr<Player> player)
 {
     FO_TRACE_ZONE(Network);
 
-    auto connection = player->GetConnection();
-    auto in_buf = connection->ReadBuf();
+    auto connection {player->GetConnection()};
+    auto in_buf {connection->ReadBuf()};
 
     // Net protocol
-    string comp_version = in_buf->Read<string>();
-    string metadata_version = in_buf->Read<string>();
-    auto updater_version = in_buf->Read<uint32_t>();
-    string requested_binary_target = in_buf->Read<string>();
+    string comp_version {in_buf->Read<string>()};
+    string metadata_version {in_buf->Read<string>()};
+    auto updater_version {in_buf->Read<uint32_t>()};
+    string requested_binary_target {in_buf->Read<string>()};
 
-    bool compatibility_outdated = comp_version != Settings->Network.CompatibilityVersion;
-    bool updater_outdated = updater_version != FO_UPDATER_VERSION;
+    bool compatibility_outdated {comp_version != Settings->Network.CompatibilityVersion};
+    bool updater_outdated {updater_version != FO_UPDATER_VERSION};
 
     // The updater connects before it has any resources of its own, so an empty version means "nothing to
     // compare yet" - it still receives our version in the answer and verifies it once the sync is done
-    bool metadata_outdated = !metadata_version.empty() && metadata_version != GetMetadataVersion();
+    bool metadata_outdated {!metadata_version.empty() && metadata_version != GetMetadataVersion()};
 
     in_buf.Unlock();
 
@@ -2983,7 +2983,7 @@ void ServerEngine::Process_Handshake(ptr<Player> player)
     const_span<uint8_t> update_desc {};
 
     if (_updaterBackend) {
-        auto updater_backend = make_ptr(&*_updaterBackend);
+        auto updater_backend {make_ptr(&*_updaterBackend)};
         update_desc = updater_backend->GetUpdateDescriptor(requested_binary_target);
     }
 
@@ -3008,8 +3008,8 @@ void ServerEngine::LoadReportedHashes()
 {
     FO_TRACE_ZONE(Engine);
 
-    size_t resolved_count = 0;
-    vector<string> loaded;
+    size_t resolved_count {0};
+    vector<string> loaded {};
 
     for (const auto& reported_string : DbStorage.GetAllStringIds(HashReportsCollectionName)) {
         // Now resolvable - developers added the missing string after the report, so stop tracking and broadcasting it
@@ -3023,7 +3023,7 @@ void ServerEngine::LoadReportedHashes()
         loaded.emplace_back(reported_string);
     }
 
-    size_t total;
+    size_t total {};
 
     {
         scoped_lock locker {_reportedHashesLocker};
@@ -3039,9 +3039,9 @@ void ServerEngine::LoadReportedHashes()
 
 void ServerEngine::Process_UnresolvedHash(ptr<ServerConnection> connection)
 {
-    auto in_buf = connection->ReadBuf();
+    auto in_buf {connection->ReadBuf()};
 
-    auto hash = in_buf->Read<hstring::hash_t>();
+    auto hash {in_buf->Read<hstring::hash_t>()};
 
     in_buf.Unlock();
 
@@ -3050,19 +3050,19 @@ void ServerEngine::Process_UnresolvedHash(ptr<ServerConnection> connection)
 
 void ServerEngine::ProcessPendingUnresolvedHash(ptr<ServerConnection> connection)
 {
-    auto in_buf = connection->ReadBuf();
+    auto in_buf {connection->ReadBuf()};
 
     if (!in_buf->NeedProcess()) {
         return;
     }
 
-    auto msg = in_buf->ReadMsg();
+    auto msg {in_buf->ReadMsg()};
 
     if (msg != NetMessage::UnresolvedHash) {
         return;
     }
 
-    auto hash = in_buf->Read<hstring::hash_t>();
+    auto hash {in_buf->Read<hstring::hash_t>()};
 
     in_buf.Unlock();
 
@@ -3077,12 +3077,12 @@ void ServerEngine::RegisterClientReportedHash(ptr<ServerConnection> connection, 
         return;
     }
 
-    bool failed = false;
-    hstring hstr = Hashes.resolve_hash(hash, &failed);
+    bool failed {false};
+    hstring hstr {Hashes.resolve_hash(hash, &failed)};
 
     if (failed) {
         // The server can't resolve it either - a deeper content/version mismatch. Log each one once per session
-        bool first_report;
+        bool first_report {};
         {
             scoped_lock locker {_reportedHashesLocker};
 
@@ -3111,7 +3111,7 @@ void ServerEngine::RegisterClientReportedHash(ptr<ServerConnection> connection, 
     logging::write(logging::type::warning, "Client {} couldn't resolve hash {}: '{}'", connection->GetHost(), hash, reported_string);
 
     // Persist so the list survives a server restart and preloads new clients immediately
-    AnyData::Document doc;
+    AnyData::Document doc {};
     doc.Emplace("_Name", reported_string);
     DbStorage.Insert(HashReportsCollectionName, reported_string, doc);
 
@@ -3121,7 +3121,7 @@ void ServerEngine::RegisterClientReportedHash(ptr<ServerConnection> connection, 
 
 void ServerEngine::SendAllReportedHashes(ptr<Player> player)
 {
-    vector<string> snapshot;
+    vector<string> snapshot {};
 
     {
         scoped_lock locker {_reportedHashesLocker};
@@ -3155,11 +3155,11 @@ void ServerEngine::BroadcastReportedString(string_view reported_string)
 
 void ServerEngine::Process_Ping(ptr<Player> player)
 {
-    auto connection = player->GetConnection();
-    auto in_buf = connection->ReadBuf();
+    auto connection {player->GetConnection()};
+    auto in_buf {connection->ReadBuf()};
 
-    bool answer = in_buf->Read<bool>();
-    auto sender_ms = in_buf->Read<int64_t>();
+    bool answer {in_buf->Read<bool>()};
+    auto sender_ms {in_buf->Read<int64_t>()};
 
     in_buf.Unlock();
 
@@ -3183,7 +3183,7 @@ auto ServerEngine::LoginPlayerToNewRecord(ptr<Player> not_logged_in_player) -> p
 
     RequirePlayerPreLogin(not_logged_in_player);
 
-    auto player_holder = not_logged_in_player.hold_ref();
+    auto player_holder {not_logged_in_player.hold_ref()};
 
     {
         scoped_lock locker {_notLoggedInPlayersLocker};
@@ -3191,9 +3191,9 @@ auto ServerEngine::LoginPlayerToNewRecord(ptr<Player> not_logged_in_player) -> p
         vec_remove_unique_value(_notLoggedInPlayers, player_holder);
     }
 
-    auto player = not_logged_in_player;
-    bool registered_player = false;
-    bool inserted_player_record = false;
+    auto player {not_logged_in_player};
+    bool registered_player {false};
+    bool inserted_player_record {false};
 
     scope_fail disconnect_on_error {[&]() noexcept {
         if (inserted_player_record) {
@@ -3214,7 +3214,7 @@ auto ServerEngine::LoginPlayerToNewRecord(ptr<Player> not_logged_in_player) -> p
     EntityMngr.RegisterPlayer(player, ident_t {});
     registered_player = true;
 
-    auto player_doc = PropertiesSerializer::SaveToDocument(player->GetProperties(), nullptr, Hashes, *this);
+    auto player_doc {PropertiesSerializer::SaveToDocument(player->GetProperties(), nullptr, Hashes, *this)};
     DbStorage.Insert(PlayersCollectionName, player->GetId(), player_doc);
     inserted_player_record = true;
 
@@ -3223,10 +3223,10 @@ auto ServerEngine::LoginPlayerToNewRecord(ptr<Player> not_logged_in_player) -> p
 
     ValidateEntityAccess(player);
 
-    EventResult login_result = OnPlayerLogin.Fire(player, nullptr);
+    EventResult login_result {OnPlayerLogin.Fire(player, nullptr)};
 
     if (login_result == Entity::EventResult::StopChain) {
-        auto connection = player->GetConnection();
+        auto connection {player->GetConnection()};
         player->Send_InfoMessage(EngineInfoMessage::NetLoginScriptFail);
         DbStorage.Delete(PlayersCollectionName, player->GetId());
         inserted_player_record = false;
@@ -3255,7 +3255,7 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> not_logged_in_player,
 
     RequirePlayerPreLogin(not_logged_in_player);
 
-    auto player_holder = not_logged_in_player.hold_ref();
+    auto player_holder {not_logged_in_player.hold_ref()};
 
     {
         scoped_lock locker {_notLoggedInPlayersLocker};
@@ -3265,9 +3265,9 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> not_logged_in_player,
 
     refcount_nptr<Player> player_ref {};
     nptr<Player> player {};
-    bool registered_player = false;
-    bool reconnect_swapped = false;
-    bool destroy_not_logged_in_after_login = false;
+    bool registered_player {false};
+    bool reconnect_swapped {false};
+    bool destroy_not_logged_in_after_login {false};
 
     scope_fail disconnect_on_error {[&]() noexcept {
         if (reconnect_swapped && player) {
@@ -3295,13 +3295,13 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> not_logged_in_player,
         player = not_logged_in_player;
         FO_VERIFY_AND_THROW(player, "Player must resolve to the not-logged-in player when the stored record is absent");
 
-        auto player_doc = DbStorage.Get(PlayersCollectionName, player_id);
+        auto player_doc {DbStorage.Get(PlayersCollectionName, player_id)};
 
         if (player_doc.Empty()) {
             throw GenericException("Player data not found");
         }
 
-        AnyData::Document updates;
+        AnyData::Document updates {};
         (void)PropertiesSerializer::MigrateDocument(player->GetProperties()->GetRegistrar(), player_doc, &updates);
 
         for (const auto& [key, value] : updates) {
@@ -3324,10 +3324,10 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> not_logged_in_player,
 
         ValidateEntityAccess(player);
 
-        EventResult login_result = OnPlayerLogin.Fire(player, nullptr);
+        EventResult login_result {OnPlayerLogin.Fire(player, nullptr)};
 
         if (login_result == Entity::EventResult::StopChain) {
-            auto connection = player->GetConnection();
+            auto connection {player->GetConnection()};
             player->Send_InfoMessage(EngineInfoMessage::NetLoginScriptFail);
             player->SetLoggedIn(false);
             player->DetachCritter();
@@ -3358,10 +3358,10 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> not_logged_in_player,
         ValidateEntityAccess(player);
         ValidateEntityAccess(not_logged_in_player);
 
-        EventResult login_result = OnPlayerLogin.Fire(player, not_logged_in_player);
+        EventResult login_result {OnPlayerLogin.Fire(player, not_logged_in_player)};
 
         if (login_result == Entity::EventResult::StopChain) {
-            auto connection = player->GetConnection();
+            auto connection {player->GetConnection()};
             player->Send_InfoMessage(EngineInfoMessage::NetLoginScriptFail);
             player->SetLoggedIn(false);
             not_logged_in_player->SetLoggedIn(false);
@@ -3371,7 +3371,7 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> not_logged_in_player,
             throw GenericException("Player reconnect rejected by OnPlayerLogin");
         }
 
-        auto cr = player->GetControlledCritter();
+        auto cr {player->GetControlledCritter()};
 
         if (cr) {
             SendCritterInitialInfo(cr, nullptr);
@@ -3400,7 +3400,7 @@ auto ServerEngine::LoginPlayerToTempSession(ptr<Player> not_logged_in_player) ->
 
     RequirePlayerPreLogin(not_logged_in_player);
 
-    auto player_holder = not_logged_in_player.hold_ref();
+    auto player_holder {not_logged_in_player.hold_ref()};
 
     {
         scoped_lock locker {_notLoggedInPlayersLocker};
@@ -3408,8 +3408,8 @@ auto ServerEngine::LoginPlayerToTempSession(ptr<Player> not_logged_in_player) ->
         vec_remove_unique_value(_notLoggedInPlayers, player_holder);
     }
 
-    ptr<Player> player = not_logged_in_player;
-    bool registered_player = false;
+    ptr<Player> player {not_logged_in_player};
+    bool registered_player {false};
 
     scope_fail disconnect_on_error {[&]() noexcept {
         safe_call([&] { player->SetLoggedIn(false); });
@@ -3430,10 +3430,10 @@ auto ServerEngine::LoginPlayerToTempSession(ptr<Player> not_logged_in_player) ->
 
     ValidateEntityAccess(player);
 
-    EventResult login_result = OnPlayerLogin.Fire(player, nullptr);
+    EventResult login_result {OnPlayerLogin.Fire(player, nullptr)};
 
     if (login_result == Entity::EventResult::StopChain) {
-        auto connection = player->GetConnection();
+        auto connection {player->GetConnection()};
         player->Send_InfoMessage(EngineInfoMessage::NetLoginScriptFail);
         player->SetLoggedIn(false);
         player->DetachCritter();
@@ -3454,17 +3454,17 @@ void ServerEngine::RequirePlayerPreLogin(ptr<Player> not_logged_in_player)
 {
     ValidateEntityAccess(not_logged_in_player);
     FO_VERIFY_AND_THROW(!not_logged_in_player->IsDestroyed() && !not_logged_in_player->IsDestroying(), "Cannot admit a destroyed player");
-    auto player_holder = not_logged_in_player.hold_ref();
+    auto player_holder {not_logged_in_player.hold_ref()};
     ignore_unused(player_holder);
 
-    auto connection = not_logged_in_player->GetConnection();
+    auto connection {not_logged_in_player->GetConnection()};
     FO_VERIFY_AND_THROW(!connection->IsHardDisconnected() && !connection->IsGracefulDisconnected(), "Cannot admit a disconnected player");
-    EventResult pre_login_result = OnPlayerPreLogin.Fire(not_logged_in_player);
+    EventResult pre_login_result {OnPlayerPreLogin.Fire(not_logged_in_player)};
 
     if (not_logged_in_player->IsDestroyed()) {
         scoped_lock locker {_notLoggedInPlayersLocker};
 
-        auto it = std::ranges::find(_notLoggedInPlayers, player_holder);
+        auto it {std::ranges::find(_notLoggedInPlayers, player_holder)};
 
         if (it != _notLoggedInPlayers.end()) {
             _notLoggedInPlayers.erase(it);
@@ -3498,52 +3498,52 @@ void ServerEngine::Process_Move(ptr<Player> player)
 {
     FO_TRACE_ZONE(Map);
 
-    auto connection = player->GetConnection();
-    auto in_buf = connection->ReadBuf();
+    auto connection {player->GetConnection()};
+    auto in_buf {connection->ReadBuf()};
 
-    auto map_id = in_buf->Read<ident_t>();
-    auto cr_id = in_buf->Read<ident_t>();
-    auto speed = in_buf->Read<uint16_t>();
-    auto start_hex = in_buf->Read<mpos>();
+    auto map_id {in_buf->Read<ident_t>()};
+    auto cr_id {in_buf->Read<ident_t>()};
+    auto speed {in_buf->Read<uint16_t>()};
+    auto start_hex {in_buf->Read<mpos>()};
 
-    auto steps_count = in_buf->Read<uint16_t>();
-    vector<mdir> steps;
+    auto steps_count {in_buf->Read<uint16_t>()};
+    vector<mdir> steps {};
     steps.resize(steps_count);
 
-    for (uint16_t i = 0; i < steps_count; i++) {
+    for (uint16_t i {0}; i < steps_count; i++) {
         steps[i] = mdir(in_buf->Read<hdir>());
     }
 
-    auto control_steps_count = in_buf->Read<uint16_t>();
-    vector<uint16_t> control_steps;
+    auto control_steps_count {in_buf->Read<uint16_t>()};
+    vector<uint16_t> control_steps {};
     control_steps.resize(control_steps_count);
 
-    for (uint16_t i = 0; i < control_steps_count; i++) {
+    for (uint16_t i {0}; i < control_steps_count; i++) {
         control_steps[i] = in_buf->Read<uint16_t>();
     }
 
-    auto end_hex_offset = in_buf->Read<ipos16>();
-    auto plan_seq = in_buf->Read<uint32_t>();
-    float32_t lease_distance = in_buf->Read<float32_t>();
-    auto sender_ms = in_buf->Read<int64_t>();
+    auto end_hex_offset {in_buf->Read<ipos16>()};
+    auto plan_seq {in_buf->Read<uint32_t>()};
+    float32_t lease_distance {in_buf->Read<float32_t>()};
+    auto sender_ms {in_buf->Read<int64_t>()};
 
     in_buf.Unlock();
 
-    timespan late_time = connection->RegisterSenderTime(sender_ms, nanotime::now());
-    mpos client_start_hex = start_hex;
+    timespan late_time {connection->RegisterSenderTime(sender_ms, nanotime::now())};
+    mpos client_start_hex {start_hex};
     FO_VERIFY_AND_THROW(std::isfinite(lease_distance) && lease_distance >= 0.0f, "Movement lease must name a finite non-negative distance", lease_distance);
     // The lease names progress in the player's path; a bridged or joined copy starts at a different distance
-    vector<mdir> client_steps = lease_distance > 0.0f ? steps : vector<mdir> {};
-    vector<uint16_t> client_control_steps = lease_distance > 0.0f ? control_steps : vector<uint16_t> {};
-    auto map = EntityMngr.GetMap(map_id);
+    vector<mdir> client_steps {lease_distance > 0.0f ? steps : vector<mdir> {}};
+    vector<uint16_t> client_control_steps {lease_distance > 0.0f ? control_steps : vector<uint16_t> {}};
+    auto map {EntityMngr.GetMap(map_id)};
 
     if (!map) {
         logging::write("Process_Move: map not found, player '{}', map_id {}, cr_id {}", player->GetName(), map_id, cr_id);
         return;
     }
 
-    auto cr = EntityMngr.GetCritter(cr_id);
-    auto ctx = RequireCurrentSyncContext();
+    auto cr {EntityMngr.GetCritter(cr_id)};
+    auto ctx {RequireCurrentSyncContext()};
 
     small_vector<ptr<ServerEntity>, 3> sync_entities {player, map};
 
@@ -3562,7 +3562,7 @@ void ServerEngine::Process_Move(ptr<Player> player)
         return;
     }
 
-    nptr<Critter> expected_cr = cr;
+    nptr<Critter> expected_cr {cr};
 
     if (cr->IsDestroyed() || map->GetCritter(cr_id) != expected_cr) {
         logging::write("Process_Move: critter not found, player '{}', map '{}' ({}), cr_id {}", player->GetName(), map->GetName(), map_id, cr_id);
@@ -3582,12 +3582,12 @@ void ServerEngine::Process_Move(ptr<Player> player)
         return;
     }
 
-    int32_t corrected_speed = speed;
+    int32_t corrected_speed {speed};
 
     ValidateEntityAccess(player);
     ValidateEntityAccess(cr);
 
-    EventResult move_result = OnPlayerMoveCritter.Fire(player, cr, corrected_speed);
+    EventResult move_result {OnPlayerMoveCritter.Fire(player, cr, corrected_speed)};
 
     if (connection->IsHardDisconnected() || connection->IsGracefulDisconnected()) {
         return;
@@ -3620,8 +3620,8 @@ void ServerEngine::Process_Move(ptr<Player> player)
         }
     }
 
-    auto cr_hex = cr->GetHex();
-    size_t joined_steps = 0;
+    auto cr_hex {cr->GetHex()};
+    size_t joined_steps {0};
 
     // A plan sent from where the client stood often arrives after the server's critter has walked on along the same
     // way, a transit's worth further: the plan is joined where the critter stands instead of walking back to its start
@@ -3638,10 +3638,10 @@ void ServerEngine::Process_Move(ptr<Player> player)
     }
 
     // Fix async errors
-    size_t bridge_steps = 0;
+    size_t bridge_steps {0};
 
     if (cr_hex != start_hex) {
-        auto find_result = MapMngr.FindPath(map, cr, cr_hex, start_hex, cr->GetMultihex(), 0);
+        auto find_result {MapMngr.FindPath(map, cr, cr_hex, start_hex, cr->GetMultihex(), 0)};
 
         if (find_result.Result != FindPathOutput::ResultType::Ok) {
             logging::write("Process_Move: async fix pathfinding failed, player '{}', critter '{}' ({}) on map '{}', server_hex ({},{}), client_hex ({},{})", player->GetName(), cr->GetName(), cr_id, map->GetName(), cr_hex.x, cr_hex.y, start_hex.x, start_hex.y);
@@ -3653,7 +3653,7 @@ void ServerEngine::Process_Move(ptr<Player> player)
 
         // The bridge is the divergence the client walked while the message travelled, logged past a threshold so the
         // one-hex skew of an ordinary chained move does not drown the live distribution
-        int32_t bridge_report_hexes = Settings->Server.MoveBridgeReportHexes;
+        int32_t bridge_report_hexes {Settings->Server.MoveBridgeReportHexes};
 
         if (bridge_report_hexes > 0 && find_result.Steps.size() >= numeric_cast<size_t>(bridge_report_hexes)) {
             logging::write("Process_Move: async fix bridged a client/server divergence, player '{}', critter '{}' ({}) on map '{}', server_hex ({},{}), client_hex ({},{}), bridge {}, round_trip_ms {}", player->GetName(), cr->GetName(), cr_id, map->GetName(), cr_hex.x, cr_hex.y, start_hex.x, start_hex.y, find_result.Steps.size(), connection->GetRoundTrip().milliseconds());
@@ -3669,23 +3669,23 @@ void ServerEngine::Process_Move(ptr<Player> player)
     }
 
     // Validate path: walk each step and check hex movability
-    bool path_truncated = false;
+    bool path_truncated {false};
 
     {
-        int32_t multihex = cr->GetMultihex();
-        auto validate_hex = cr_hex;
-        size_t valid_step_count = 0;
+        int32_t multihex {cr->GetMultihex()};
+        auto validate_hex {cr_hex};
+        size_t valid_step_count {0};
 
-        auto check_hex = [map](mpos h) -> HexBlockResult { return map->IsHexMovable(h) ? HexBlockResult::Passable : HexBlockResult::Blocked; };
+        auto check_hex {[map](mpos h) -> HexBlockResult { return map->IsHexMovable(h) ? HexBlockResult::Passable : HexBlockResult::Blocked; }};
 
         for (const auto& step : steps) {
-            auto next_hex = validate_hex;
+            auto next_hex {validate_hex};
 
             if (!GeometryHelper::MoveHexByDir(next_hex, step, map->GetSize())) {
                 break;
             }
 
-            auto block = PathFinding::CheckHexWithMultihex(next_hex, step, multihex, map->GetSize(), check_hex);
+            auto block {PathFinding::CheckHexWithMultihex(next_hex, step, multihex, map->GetSize(), check_hex)};
 
             if (block == HexBlockResult::Blocked) {
                 break;
@@ -3724,8 +3724,8 @@ void ServerEngine::Process_Move(ptr<Player> player)
         logging::write("Process_Move: end_hex_offset.y out of range, player '{}', critter '{}' ({}) on map '{}', offset ({},{})", player->GetName(), cr->GetName(), cr_id, map->GetName(), end_hex_offset.x, end_hex_offset.y);
     }
 
-    int16_t clamped_end_hex_ox = std::clamp(end_hex_offset.x, numeric_cast<int16_t>(-GameSettings::MAP_HEX_WIDTH / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_WIDTH / 2));
-    int16_t clamped_end_hex_oy = std::clamp(end_hex_offset.y, numeric_cast<int16_t>(-GameSettings::MAP_HEX_HEIGHT / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_HEIGHT / 2));
+    int16_t clamped_end_hex_ox {std::clamp(end_hex_offset.x, numeric_cast<int16_t>(-GameSettings::MAP_HEX_WIDTH / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_WIDTH / 2))};
+    int16_t clamped_end_hex_oy {std::clamp(end_hex_offset.y, numeric_cast<int16_t>(-GameSettings::MAP_HEX_HEIGHT / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_HEIGHT / 2))};
 
     if (Settings->Network.MoveSyncTrace) {
         TraceMoveSync("move_req", strex("cr={} player={} client_start={},{} server_hex={},{} steps={} bridge={} joined={} truncated={} speed={} late_ms={} rtt_ms={}", cr_id, player->GetName(), client_start_hex.x, client_start_hex.y, cr_hex.x, cr_hex.y, steps.size(), bridge_steps, joined_steps, path_truncated ? 1 : 0, corrected_speed, late_time.milliseconds(), connection->GetRoundTrip().milliseconds()).strv());
@@ -3733,20 +3733,20 @@ void ServerEngine::Process_Move(ptr<Player> player)
 
     // A plan a stall held back is played from where the player has walked it by now rather than from its start:
     // the server then stands where the player does, instead of replaying the way seconds late
-    timespan catch_up_time = EvaluateLateCatchUp(late_time, std::chrono::milliseconds {Settings->Network.MoveLateCatchUpMinMs}, std::chrono::milliseconds {Settings->Network.MoveLateCatchUpMaxMs});
+    timespan catch_up_time {EvaluateLateCatchUp(late_time, std::chrono::milliseconds {Settings->Network.MoveLateCatchUpMinMs}, std::chrono::milliseconds {Settings->Network.MoveLateCatchUpMaxMs})};
 
-    auto server_moving = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(corrected_speed), steps, control_steps, GameTime.GetFrameTime(), catch_up_time, cr_hex, cr->GetHexOffset(), ipos16 {clamped_end_hex_ox, clamped_end_hex_oy});
-    float32_t plan_distance_shift = 0.0f;
+    auto server_moving {safe_alloc::make_refcounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(corrected_speed), steps, control_steps, GameTime.GetFrameTime(), catch_up_time, cr_hex, cr->GetHexOffset(), ipos16 {clamped_end_hex_ox, clamped_end_hex_oy})};
+    float32_t plan_distance_shift {0.0f};
 
     // A held direction runs on the server only as far as the player has confirmed holding it
     // A corrected path replaces the client's held plan; it must finish without renewals for that retired plan
     if (lease_distance > 0.0f && !client_steps.empty() && !path_truncated) {
-        auto client_moving = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(corrected_speed), std::move(client_steps), std::move(client_control_steps), GameTime.GetFrameTime(), timespan {}, client_start_hex, ipos16 {}, ipos16 {clamped_end_hex_ox, clamped_end_hex_oy});
+        auto client_moving {safe_alloc::make_refcounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(corrected_speed), std::move(client_steps), std::move(client_control_steps), GameTime.GetFrameTime(), timespan {}, client_start_hex, ipos16 {}, ipos16 {clamped_end_hex_ox, clamped_end_hex_oy})};
         plan_distance_shift = server_moving->GetWholeDist() - client_moving->GetWholeDist();
         server_moving->SetLeaseTime(std::max((lease_distance + plan_distance_shift) * 1000.0f / numeric_cast<float32_t>(corrected_speed), 0.001f), GameTime.GetFrameTime());
     }
 
-    nptr<const Player> initiator = player;
+    nptr<const Player> initiator {player};
     StartCritterMoving(cr, std::move(server_moving), initiator, plan_seq, plan_distance_shift);
 
     if (path_truncated) {
@@ -3763,26 +3763,26 @@ void ServerEngine::Process_MoveLease(ptr<Player> player)
 {
     FO_TRACE_ZONE(Map);
 
-    auto connection = player->GetConnection();
-    auto in_buf = connection->ReadBuf();
+    auto connection {player->GetConnection()};
+    auto in_buf {connection->ReadBuf()};
 
-    auto map_id = in_buf->Read<ident_t>();
-    auto cr_id = in_buf->Read<ident_t>();
-    auto plan_seq = in_buf->Read<uint32_t>();
-    float32_t lease_distance = in_buf->Read<float32_t>();
-    auto sender_ms = in_buf->Read<int64_t>();
+    auto map_id {in_buf->Read<ident_t>()};
+    auto cr_id {in_buf->Read<ident_t>()};
+    auto plan_seq {in_buf->Read<uint32_t>()};
+    float32_t lease_distance {in_buf->Read<float32_t>()};
+    auto sender_ms {in_buf->Read<int64_t>()};
 
     in_buf.Unlock();
 
-    timespan late_time = connection->RegisterSenderTime(sender_ms, nanotime::now());
-    auto map = EntityMngr.GetMap(map_id);
-    auto cr = EntityMngr.GetCritter(cr_id);
+    timespan late_time {connection->RegisterSenderTime(sender_ms, nanotime::now())};
+    auto map {EntityMngr.GetMap(map_id)};
+    auto cr {EntityMngr.GetCritter(cr_id)};
 
     if (!map || !cr) {
         return;
     }
 
-    auto ctx = RequireCurrentSyncContext();
+    auto ctx {RequireCurrentSyncContext()};
     small_vector<ptr<ServerEntity>, 3> sync_entities {player, map, cr};
     ctx->SyncEntities(sync_entities);
 
@@ -3790,7 +3790,7 @@ void ServerEngine::Process_MoveLease(ptr<Player> player)
         return;
     }
 
-    auto moving = cr->GetPlayerPlanMoving(plan_seq);
+    auto moving {cr->GetPlayerPlanMoving(plan_seq)};
 
     if (!moving) {
         return;
@@ -3803,7 +3803,7 @@ void ServerEngine::Process_MoveLease(ptr<Player> player)
         return;
     }
 
-    float32_t server_lease_time = std::max((lease_distance + cr->GetPlayerPlanDistanceShift()) * 1000.0f / numeric_cast<float32_t>(moving->GetSpeed()), 0.001f);
+    float32_t server_lease_time {std::max((lease_distance + cr->GetPlayerPlanDistanceShift()) * 1000.0f / numeric_cast<float32_t>(moving->GetSpeed()), 0.001f)};
 
     if (server_lease_time <= moving->GetLeaseTime()) {
         return;
@@ -3812,7 +3812,7 @@ void ServerEngine::Process_MoveLease(ptr<Player> player)
     moving->SetLeaseTime(server_lease_time, GameTime.GetFrameTime());
 
     // A renewal a stall held back finds the critter waiting at the old lease while the player walked on
-    timespan catch_up_time = EvaluateLateCatchUp(late_time, std::chrono::milliseconds {Settings->Network.MoveLateCatchUpMinMs}, std::chrono::milliseconds {Settings->Network.MoveLateCatchUpMaxMs});
+    timespan catch_up_time {EvaluateLateCatchUp(late_time, std::chrono::milliseconds {Settings->Network.MoveLateCatchUpMinMs}, std::chrono::milliseconds {Settings->Network.MoveLateCatchUpMaxMs})};
 
     if (catch_up_time > timespan::zero) {
         moving->FastForward(catch_up_time);
@@ -3822,7 +3822,7 @@ void ServerEngine::Process_MoveLease(ptr<Player> player)
         TraceMoveSync("lease_req", strex("cr={} uid={} seq={} lease_ms={} late_ms={} catchup_ms={} elapsed_ms={}", cr_id, cr->GetMovingUid(), plan_seq, iround<int32_t>(server_lease_time), late_time.milliseconds(), catch_up_time.milliseconds(), iround<int32_t>(moving->GetElapsedTime())).strv());
     }
 
-    nptr<const Player> ignore_player = player;
+    nptr<const Player> ignore_player {player};
     cr->SendAndBroadcast(ignore_player, [cr](ptr<Player> p) { p->Send_MovingLease(cr); });
 }
 
@@ -3830,29 +3830,29 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
 {
     FO_TRACE_ZONE(Map);
 
-    auto connection = player->GetConnection();
-    auto in_buf = connection->ReadBuf();
+    auto connection {player->GetConnection()};
+    auto in_buf {connection->ReadBuf()};
 
-    auto map_id = in_buf->Read<ident_t>();
-    auto cr_id = in_buf->Read<ident_t>();
+    auto map_id {in_buf->Read<ident_t>()};
+    auto cr_id {in_buf->Read<ident_t>()};
 
-    auto client_hex = in_buf->Read<mpos>();
-    auto client_hex_offset = in_buf->Read<ipos16>();
-    auto client_dir = in_buf->Read<mdir>();
-    auto sender_ms = in_buf->Read<int64_t>();
+    auto client_hex {in_buf->Read<mpos>()};
+    auto client_hex_offset {in_buf->Read<ipos16>()};
+    auto client_dir {in_buf->Read<mdir>()};
+    auto sender_ms {in_buf->Read<int64_t>()};
 
     in_buf.Unlock();
 
-    timespan late_time = connection->RegisterSenderTime(sender_ms, nanotime::now());
-    auto map = EntityMngr.GetMap(map_id);
+    timespan late_time {connection->RegisterSenderTime(sender_ms, nanotime::now())};
+    auto map {EntityMngr.GetMap(map_id)};
 
     if (!map) {
         logging::write("Process_StopMove: map not found, player '{}', map_id {}, cr_id {}", player->GetName(), map_id, cr_id);
         return;
     }
 
-    auto cr = EntityMngr.GetCritter(cr_id);
-    auto ctx = RequireCurrentSyncContext();
+    auto cr {EntityMngr.GetCritter(cr_id)};
+    auto ctx {RequireCurrentSyncContext()};
 
     small_vector<ptr<ServerEntity>, 3> sync_entities {player, map};
 
@@ -3871,7 +3871,7 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
         return;
     }
 
-    auto expected_cr = cr;
+    auto expected_cr {cr};
 
     if (cr->IsDestroyed() || map->GetCritter(cr_id) != expected_cr) {
         logging::write("Process_StopMove: critter not found, player '{}', map '{}' ({}), cr_id {}", player->GetName(), map->GetName(), map_id, cr_id);
@@ -3892,12 +3892,12 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
         return;
     }
 
-    int32_t zero_speed = 0;
+    int32_t zero_speed {0};
 
     ValidateEntityAccess(player);
     ValidateEntityAccess(cr);
 
-    EventResult move_result = OnPlayerMoveCritter.Fire(player, cr, zero_speed);
+    EventResult move_result {OnPlayerMoveCritter.Fire(player, cr, zero_speed)};
 
     if (connection->IsHardDisconnected() || connection->IsGracefulDisconnected()) {
         return;
@@ -3914,25 +3914,25 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
         return;
     }
 
-    bool was_moving = cr->IsMoving();
-    refcount_nptr<MovingContext> stop_moving = (was_moving ? cr->GetMoving() : cr->GetFinishedPlayerMoving()).try_hold_ref();
+    bool was_moving {cr->IsMoving()};
+    refcount_nptr<MovingContext> stop_moving {(was_moving ? cr->GetMoving() : cr->GetFinishedPlayerMoving()).try_hold_ref()};
 
     if (!stop_moving) {
         player->Send_Moving(cr);
         return;
     }
 
-    uint32_t stop_moving_uid = cr->GetMovingUid();
-    mpos stop_server_hex = cr->GetHex();
+    uint32_t stop_moving_uid {cr->GetMovingUid()};
+    mpos stop_server_hex {cr->GetHex()};
 
     if (!was_moving) {
         cr->StopMoving();
     }
 
-    bool stop_position_reconciled = ReconcileCritterStopPosition("Process_StopMove", player, cr, map, stop_moving, client_hex, client_hex_offset, client_dir);
+    bool stop_position_reconciled {ReconcileCritterStopPosition("Process_StopMove", player, cr, map, stop_moving, client_hex, client_hex_offset, client_dir)};
 
     if (Settings->Network.MoveSyncTrace && !cr->IsDestroyed()) {
-        mpos reconciled_hex = cr->GetHex();
+        mpos reconciled_hex {cr->GetHex()};
 
         TraceMoveSync("stopmove_req", strex("cr={} client_hex={},{} server_hex={},{} reconciled={} final_hex={},{} after_end={} late_ms={} rtt_ms={}", cr_id, client_hex.x, client_hex.y, stop_server_hex.x, stop_server_hex.y, stop_position_reconciled ? 1 : 0, reconciled_hex.x, reconciled_hex.y, was_moving ? 0 : 1, late_time.milliseconds(), connection->GetRoundTrip().milliseconds()).strv());
     }
@@ -3954,7 +3954,7 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
     // Nothing is left to stop after a finished plan: the others learn where the critter now stands, the player
     // already stands there - or, when its point was not on the plan, is corrected like everyone else
     if (!was_moving) {
-        nptr<const Player> ignore_player = stop_position_reconciled ? nptr<const Player> {player} : nptr<const Player> {};
+        nptr<const Player> ignore_player {stop_position_reconciled ? nptr<const Player> {player} : nptr<const Player> {}};
         cr->SendAndBroadcast(ignore_player, [cr](ptr<Player> p) { p->Send_Moving(cr); });
         return;
     }
@@ -3964,7 +3964,7 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
         return;
     }
 
-    nptr<const Player> ignore_player = player;
+    nptr<const Player> ignore_player {player};
     StopCritterMoving(cr, MovingState::Stopped, [ignore_player, cr]() mutable { cr->SendAndBroadcast(ignore_player, [cr](ptr<Player> p) { p->Send_Moving(cr); }); });
 }
 
@@ -3972,27 +3972,27 @@ void ServerEngine::Process_MoveFinished(ptr<Player> player)
 {
     FO_TRACE_ZONE(Map);
 
-    auto connection = player->GetConnection();
-    auto in_buf = connection->ReadBuf();
+    auto connection {player->GetConnection()};
+    auto in_buf {connection->ReadBuf()};
 
-    auto map_id = in_buf->Read<ident_t>();
-    auto cr_id = in_buf->Read<ident_t>();
-    auto reported_end_hex = in_buf->Read<mpos>();
+    auto map_id {in_buf->Read<ident_t>()};
+    auto cr_id {in_buf->Read<ident_t>()};
+    auto reported_end_hex {in_buf->Read<mpos>()};
 
-    auto client_hex = in_buf->Read<mpos>();
-    auto client_hex_offset = in_buf->Read<ipos16>();
-    auto client_dir = in_buf->Read<mdir>();
+    auto client_hex {in_buf->Read<mpos>()};
+    auto client_hex_offset {in_buf->Read<ipos16>()};
+    auto client_dir {in_buf->Read<mdir>()};
 
     in_buf.Unlock();
 
-    auto map = EntityMngr.GetMap(map_id);
+    auto map {EntityMngr.GetMap(map_id)};
 
     if (!map) {
         return;
     }
 
-    auto cr = EntityMngr.GetCritter(cr_id);
-    auto ctx = RequireCurrentSyncContext();
+    auto cr {EntityMngr.GetCritter(cr_id)};
+    auto ctx {RequireCurrentSyncContext()};
 
     small_vector<ptr<ServerEntity>, 3> sync_entities {player, map};
 
@@ -4006,25 +4006,25 @@ void ServerEngine::Process_MoveFinished(ptr<Player> player)
         return;
     }
 
-    nptr<Critter> expected_cr = cr;
+    nptr<Critter> expected_cr {cr};
 
     if (cr->IsDestroyed() || map->GetCritter(cr_id) != expected_cr || player->GetControlledCritter() != expected_cr) {
         return;
     }
 
-    int64_t trace_remaining_ms = -1;
-    int64_t trace_allowed_ms = -1;
+    int64_t trace_remaining_ms {-1};
+    int64_t trace_allowed_ms {-1};
 
     // Every exit past this point is an outcome the analysis tooling counts, so each one says which it was
-    auto trace_finish = [&](string_view outcome) {
+    auto trace_finish {[&](string_view outcome) {
         if (!Settings->Network.MoveSyncTrace || cr->IsDestroyed()) {
             return;
         }
 
-        mpos server_hex = cr->GetHex();
+        mpos server_hex {cr->GetHex()};
 
         TraceMoveSync("finish_req", strex("cr={} reported_end={},{} client_hex={},{} server_hex={},{} remaining_ms={} allowed_ms={} rtt_ms={} outcome={}", cr_id, reported_end_hex.x, reported_end_hex.y, client_hex.x, client_hex.y, server_hex.x, server_hex.y, trace_remaining_ms, trace_allowed_ms, connection->GetRoundTrip().milliseconds(), outcome).strv());
-    };
+    }};
 
     // The server having finished first is the normal outcome rather than a divergence: nothing is left to
     // reconcile, and answering here would snap a client that is already in the right place
@@ -4033,7 +4033,7 @@ void ServerEngine::Process_MoveFinished(ptr<Player> player)
         return;
     }
 
-    auto moving = cr->GetMoving();
+    auto moving {cr->GetMoving()};
     FO_VERIFY_AND_THROW(moving, "Missing active movement state");
 
     // The initiator never receives its own CritterMove and has no movement id to echo, so a report names its plan by
@@ -4043,11 +4043,11 @@ void ServerEngine::Process_MoveFinished(ptr<Player> player)
         return;
     }
 
-    float32_t remaining_time = moving->GetWholeTime() - moving->GetRuntimeElapsedTime(GameTime.GetFrameTime());
+    float32_t remaining_time {moving->GetWholeTime() - moving->GetRuntimeElapsedTime(GameTime.GetFrameTime())};
 
     // A client may fast-forward only what transport plausibly cost it: half the measured round trip, capped, plus the
     // movement job period by which the server's own arrival can lag; a larger claim is refused
-    int64_t allowed_catch_up_ms = std::min<int64_t>(connection->GetRoundTrip().milliseconds() / 2, Settings->Server.MoveFinishCatchUpMaxMs) + Settings->Server.CritterMovingPeriodMs;
+    int64_t allowed_catch_up_ms {std::min<int64_t>(connection->GetRoundTrip().milliseconds() / 2, Settings->Server.MoveFinishCatchUpMaxMs) + Settings->Server.CritterMovingPeriodMs};
 
     trace_remaining_ms = iround<int64_t>(remaining_time);
     trace_allowed_ms = allowed_catch_up_ms;
@@ -4058,8 +4058,8 @@ void ServerEngine::Process_MoveFinished(ptr<Player> player)
         return;
     }
 
-    uint32_t reported_moving_uid = cr->GetMovingUid();
-    bool position_reconciled = ReconcileCritterStopPosition("Process_MoveFinished", player, cr, map, moving, client_hex, client_hex_offset, client_dir);
+    uint32_t reported_moving_uid {cr->GetMovingUid()};
+    bool position_reconciled {ReconcileCritterStopPosition("Process_MoveFinished", player, cr, map, moving, client_hex, client_hex_offset, client_dir)};
 
     if (connection->IsHardDisconnected() || connection->IsGracefulDisconnected()) {
         return;
@@ -4082,7 +4082,7 @@ void ServerEngine::Process_MoveFinished(ptr<Player> player)
         return;
     }
 
-    auto reconciled_moving = cr->GetMoving();
+    auto reconciled_moving {cr->GetMoving()};
     FO_VERIFY_AND_THROW(reconciled_moving, "Missing active movement state");
 
     trace_finish("accepted");
@@ -4101,24 +4101,24 @@ void ServerEngine::Process_Dir(ptr<Player> player)
 {
     FO_TRACE_ZONE(Map);
 
-    auto connection = player->GetConnection();
-    auto in_buf = connection->ReadBuf();
+    auto connection {player->GetConnection()};
+    auto in_buf {connection->ReadBuf()};
 
-    auto map_id = in_buf->Read<ident_t>();
-    auto cr_id = in_buf->Read<ident_t>();
-    auto dir = in_buf->Read<mdir>();
+    auto map_id {in_buf->Read<ident_t>()};
+    auto cr_id {in_buf->Read<ident_t>()};
+    auto dir {in_buf->Read<mdir>()};
 
     in_buf.Unlock();
 
-    auto map = EntityMngr.GetMap(map_id);
+    auto map {EntityMngr.GetMap(map_id)};
 
     if (!map) {
         logging::write("Process_Dir: map not found, player '{}', map_id {}, cr_id {}", player->GetName(), map_id, cr_id);
         return;
     }
 
-    auto cr = EntityMngr.GetCritter(cr_id);
-    auto ctx = RequireCurrentSyncContext();
+    auto cr {EntityMngr.GetCritter(cr_id)};
+    auto ctx {RequireCurrentSyncContext()};
 
     small_vector<ptr<ServerEntity>, 3> sync_entities {player, map};
 
@@ -4137,19 +4137,19 @@ void ServerEngine::Process_Dir(ptr<Player> player)
         return;
     }
 
-    auto expected_cr = cr;
+    auto expected_cr {cr};
 
     if (cr->IsDestroyed() || map->GetCritter(cr_id) != expected_cr) {
         logging::write("Process_Dir: critter not found, player '{}', map '{}' ({}), cr_id {}", player->GetName(), map->GetName(), map_id, cr_id);
         return;
     }
 
-    mdir checked_dir = dir;
+    mdir checked_dir {dir};
 
     ValidateEntityAccess(player);
     ValidateEntityAccess(cr);
 
-    EventResult dir_result = OnPlayerDirCritter.Fire(player, cr, checked_dir);
+    EventResult dir_result {OnPlayerDirCritter.Fire(player, cr, checked_dir)};
 
     if (connection->IsHardDisconnected() || connection->IsGracefulDisconnected()) {
         return;
@@ -4174,19 +4174,19 @@ void ServerEngine::Process_Property(ptr<Player> player)
 {
     FO_TRACE_ZONE(Entity);
 
-    auto connection = player->GetConnection();
-    auto in_buf = connection->ReadBuf();
+    auto connection {player->GetConnection()};
+    auto in_buf {connection->ReadBuf()};
 
-    auto cr = player->GetControlledCritter();
+    auto cr {player->GetControlledCritter()};
 
-    auto data_size = in_buf->Read<uint32_t>();
+    auto data_size {in_buf->Read<uint32_t>()};
 
     if (data_size > 0xFFFF) {
         // For now 64Kb for all
         throw GenericException("Property len > 0xFFFF");
     }
 
-    auto type = in_buf->Read<NetProperty>();
+    auto type {in_buf->Read<NetProperty>()};
 
     ident_t cr_id {};
     ident_t item_id {};
@@ -4209,20 +4209,20 @@ void ServerEngine::Process_Property(ptr<Player> player)
         break;
     }
 
-    auto property_index = in_buf->Read<uint16_t>();
+    auto property_index {in_buf->Read<uint16_t>()};
 
-    PropertyRawData prop_data;
+    PropertyRawData prop_data {};
     in_buf->Pop(prop_data.Alloc(data_size), data_size);
 
     in_buf.Unlock();
 
-    bool is_public = false;
-    nptr<const Property> prop;
-    nptr<Entity> entity;
-    auto get_property = [](nptr<const PropertyRegistrar> registrar, uint16_t property_index_) -> nptr<const Property> {
+    bool is_public {false};
+    nptr<const Property> prop {};
+    nptr<Entity> entity {};
+    auto get_property {[](nptr<const PropertyRegistrar> registrar, uint16_t property_index_) -> nptr<const Property> {
         FO_VERIFY_AND_THROW(registrar, "Missing property registrar");
         return registrar->GetPropertyByIndex(numeric_cast<int32_t>(property_index_));
-    };
+    }};
 
     switch (type) {
     case NetProperty::Game:
@@ -4273,10 +4273,10 @@ void ServerEngine::Process_Property(ptr<Player> player)
         prop = get_property(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), property_index);
 
         if (prop) {
-            auto cr2 = EntityMngr.GetCritter(cr_id);
+            auto cr2 {EntityMngr.GetCritter(cr_id)};
 
             if (cr2) {
-                auto item = cr2->GetInvItem(item_id);
+                auto item {cr2->GetInvItem(item_id)};
 
                 if (item && !item->GetHidden()) {
                     entity = item;
@@ -4290,7 +4290,7 @@ void ServerEngine::Process_Property(ptr<Player> player)
 
         if (prop) {
             if (cr) {
-                auto item = cr->GetInvItem(item_id);
+                auto item {cr->GetInvItem(item_id)};
 
                 if (item && !item->GetHidden()) {
                     entity = item;
@@ -4316,7 +4316,7 @@ void ServerEngine::Process_Property(ptr<Player> player)
 
         if (prop) {
             if (cr) {
-                auto map = cr->GetParent<Map>();
+                auto map {cr->GetParent<Map>()};
 
                 if (map) {
                     entity = map->GetLocation();
@@ -4367,12 +4367,12 @@ void ServerEngine::Process_Property(ptr<Player> player)
 
     {
         player->SetIgnoreSendEntityProperty(entity, prop);
-        auto revert_send_ignore = scope_exit([player]() mutable noexcept { player->SetIgnoreSendEntityProperty(nullptr, nullptr); });
+        auto revert_send_ignore {scope_exit([player]() mutable noexcept { player->SetIgnoreSendEntityProperty(nullptr, nullptr); })};
 
         // Serializes a network-driven write through the same per-property auto-lock as script-side access; for
         // non-engine entities the call is the default no-op virtual
         entity->LockForPropertyAccess();
-        auto unlock = scope_exit([entity]() mutable noexcept { entity->UnlockForPropertyAccess(); });
+        auto unlock {scope_exit([entity]() mutable noexcept { entity->UnlockForPropertyAccess(); })};
 
         entity->SetValueFromData(prop, prop_data);
     }
@@ -4380,9 +4380,9 @@ void ServerEngine::Process_Property(ptr<Player> player)
 
 void ServerEngine::OnSaveEntityValue(ptr<Entity> entity, ptr<const Property> prop)
 {
-    auto server_entity = entity.dyn_cast<ServerEntity>();
+    auto server_entity {entity.dyn_cast<ServerEntity>()};
 
-    ident_t entry_id;
+    ident_t entry_id {};
 
     if (server_entity) {
         if (!server_entity->IsPersistent()) {
@@ -4403,9 +4403,9 @@ void ServerEngine::OnSaveEntityValue(ptr<Entity> entity, ptr<const Property> pro
         entry_id = ident_t {1};
     }
 
-    auto value = PropertiesSerializer::SavePropertyToValue(entity->GetProperties(), prop, Hashes, *this);
+    auto value {PropertiesSerializer::SavePropertyToValue(entity->GetProperties(), prop, Hashes, *this)};
 
-    hstring collection_name;
+    hstring collection_name {};
 
     if (server_entity) {
         collection_name = server_entity->GetTypeNamePlural();
@@ -4417,14 +4417,14 @@ void ServerEngine::OnSaveEntityValue(ptr<Entity> entity, ptr<const Property> pro
     DbStorage.Update(collection_name, entry_id, prop->GetName(), value);
 
     if (prop->IsHistorical()) {
-        auto history_id_num = GetHistoryRecordsId().underlying_value() + 1;
-        ident_t history_id = ident_t {history_id_num};
+        auto history_id_num {GetHistoryRecordsId().underlying_value() + 1};
+        ident_t history_id {ident_t {history_id_num}};
 
         SetHistoryRecordsId(history_id);
 
-        synctime time = GameTime.GetSynchronizedTime();
+        synctime time {GameTime.GetSynchronizedTime()};
 
-        AnyData::Document doc;
+        AnyData::Document doc {};
         doc.Emplace("Time", numeric_cast<int64_t>(time.milliseconds()));
         doc.Emplace("EntityType", string(entity->GetTypeName()));
         doc.Emplace("EntityId", numeric_cast<int64_t>(entry_id.underlying_value()));
@@ -4444,19 +4444,19 @@ void ServerEngine::OnSaveSynchronizedTime(ptr<Entity> entity, ptr<const Property
 
     if (!GameTime.IsTimeSynchronized()) {
         // Init / external pin path: persist the exact property value
-        auto value = PropertiesSerializer::SavePropertyToValue(entity->GetProperties(), prop, Hashes, *this);
+        auto value {PropertiesSerializer::SavePropertyToValue(entity->GetProperties(), prop, Hashes, *this)};
         DbStorage.Update(entity->GetTypeName(), ident_t {1}, prop->GetName(), value);
         return;
     }
 
-    synctime time = GameTime.GetSynchronizedTime();
+    synctime time {GameTime.GetSynchronizedTime()};
 
     if (time < _persistedSyncTimeMark) {
         return;
     }
 
     _persistedSyncTimeMark = time + SyncTimePersistLead;
-    auto ahead_value = AnyData::Value {numeric_cast<int64_t>(_persistedSyncTimeMark.milliseconds())};
+    auto ahead_value {AnyData::Value {numeric_cast<int64_t>(_persistedSyncTimeMark.milliseconds())}};
     DbStorage.Update(entity->GetTypeName(), ident_t {1}, prop->GetName(), ahead_value);
 }
 
@@ -4473,7 +4473,7 @@ void ServerEngine::OnSendGlobalValue(ptr<Entity> entity, ptr<const Property> pro
 
 void ServerEngine::OnSendPlayerValue(ptr<Entity> entity, ptr<const Property> prop)
 {
-    auto player = entity.dyn_cast<Player>();
+    auto player {entity.dyn_cast<Player>()};
     FO_VERIFY_AND_THROW(player, "Missing player instance");
 
     player->Send_Property(NetProperty::Player, prop, player);
@@ -4481,7 +4481,7 @@ void ServerEngine::OnSendPlayerValue(ptr<Entity> entity, ptr<const Property> pro
 
 void ServerEngine::OnSendCritterValue(ptr<Entity> entity, ptr<const Property> prop)
 {
-    auto cr = entity.dyn_cast<Critter>();
+    auto cr {entity.dyn_cast<Critter>()};
     FO_VERIFY_AND_THROW(cr, "Missing critter instance");
 
     if (prop->IsPublicSync() || prop->IsOwnerSync()) {
@@ -4494,7 +4494,7 @@ void ServerEngine::OnSendCritterValue(ptr<Entity> entity, ptr<const Property> pr
 
 void ServerEngine::OnSendItemValue(ptr<Entity> entity, ptr<const Property> prop)
 {
-    auto item = entity.dyn_cast<Item>();
+    auto item {entity.dyn_cast<Item>()};
     FO_VERIFY_AND_THROW(item, "Missing item instance");
 
     if (!item->GetStatic() && item->GetId()) {
@@ -4503,7 +4503,7 @@ void ServerEngine::OnSendItemValue(ptr<Entity> entity, ptr<const Property> prop)
         } break;
         case ItemOwnership::CritterInventory: {
             if (prop->IsPublicSync() || prop->IsOwnerSync()) {
-                auto cr_ptr = require_refcount_ptr(item->GetParent<Critter>());
+                auto cr_ptr {require_refcount_ptr(item->GetParent<Critter>())};
 
                 if (item->CanSendItem(false)) {
                     cr_ptr->Send_Property(NetProperty::ChosenItem, prop, item);
@@ -4518,7 +4518,7 @@ void ServerEngine::OnSendItemValue(ptr<Entity> entity, ptr<const Property> prop)
         } break;
         case ItemOwnership::MapHex: {
             if (prop->IsPublicSync()) {
-                auto map = require_refcount_ptr(item->GetParent<Map>());
+                auto map {require_refcount_ptr(item->GetParent<Map>())};
 
                 if (item->CanSendItem(true)) {
                     map->SendProperty(NetProperty::MapItem, prop, item);
@@ -4534,7 +4534,7 @@ void ServerEngine::OnSendItemValue(ptr<Entity> entity, ptr<const Property> prop)
 void ServerEngine::OnSendMapValue(ptr<Entity> entity, ptr<const Property> prop)
 {
     if (prop->IsPublicSync()) {
-        auto map = entity.dyn_cast<Map>();
+        auto map {entity.dyn_cast<Map>()};
         FO_VERIFY_AND_THROW(map, "Missing map instance");
 
         map->SendProperty(NetProperty::Map, prop, map);
@@ -4544,7 +4544,7 @@ void ServerEngine::OnSendMapValue(ptr<Entity> entity, ptr<const Property> prop)
 void ServerEngine::OnSendLocationValue(ptr<Entity> entity, ptr<const Property> prop)
 {
     if (prop->IsPublicSync()) {
-        auto loc = entity.dyn_cast<Location>();
+        auto loc {entity.dyn_cast<Location>()};
         FO_VERIFY_AND_THROW(loc, "Missing location instance");
 
         for (ptr<Map> map : loc->GetMaps()) {
@@ -4555,7 +4555,7 @@ void ServerEngine::OnSendLocationValue(ptr<Entity> entity, ptr<const Property> p
 
 void ServerEngine::OnSendCustomEntityValue(ptr<Entity> entity, ptr<const Property> prop)
 {
-    auto custom_entity = entity.dyn_cast<CustomEntity>();
+    auto custom_entity {entity.dyn_cast<CustomEntity>()};
     FO_VERIFY_AND_THROW(custom_entity, "Missing custom entity instance");
 
     EntityMngr.ForEachCustomEntityView(custom_entity, [&](ptr<Player> player, bool owner) {
@@ -4567,12 +4567,12 @@ void ServerEngine::OnSendCustomEntityValue(ptr<Entity> entity, ptr<const Propert
 
 void ServerEngine::OnSetCritterLookDistance(ptr<Entity> entity, ptr<const Property> prop)
 {
-    auto cr = entity.dyn_cast<Critter>();
+    auto cr {entity.dyn_cast<Critter>()};
     FO_VERIFY_AND_THROW(cr, "Missing critter instance");
 
     MapMngr.ProcessVisibleCritters(cr);
 
-    ptr<const Property> look_distance_prop = cr->GetPropertyLookDistance();
+    ptr<const Property> look_distance_prop {cr->GetPropertyLookDistance()};
     if (prop == look_distance_prop) {
         MapMngr.ProcessVisibleItems(cr);
     }
@@ -4582,11 +4582,11 @@ void ServerEngine::OnSetMapRemovedStaticItems(ptr<Entity> entity, ptr<const Prop
 {
     ignore_unused(prop);
 
-    auto map = entity.dyn_cast<Map>();
+    auto map {entity.dyn_cast<Map>()};
     FO_VERIFY_AND_THROW(map, "Missing map instance");
     FO_VERIFY_AND_THROW(data.GetSize() % sizeof(ident_t) == 0, "Static item removal list is not aligned to its element size", data.GetSize(), sizeof(ident_t));
 
-    auto new_ids = data.GetPtrAs<ident_t>();
+    auto new_ids {data.GetPtrAs<ident_t>()};
     map->VerifyStaticItemRemovalsOnlyGrow({new_ids.get(), data.GetSize() / sizeof(ident_t)});
 }
 
@@ -4594,7 +4594,7 @@ void ServerEngine::OnPostSetMapRemovedStaticItems(ptr<Entity> entity, ptr<const 
 {
     ignore_unused(prop);
 
-    auto map = entity.dyn_cast<Map>();
+    auto map {entity.dyn_cast<Map>()};
     FO_VERIFY_AND_THROW(map, "Missing map instance");
 
     map->RefreshRemovedStaticItems();
@@ -4604,15 +4604,15 @@ void ServerEngine::OnSetItemHidden(ptr<Entity> entity, ptr<const Property> prop)
 {
     ignore_unused(prop);
 
-    auto item = entity.dyn_cast<Item>();
+    auto item {entity.dyn_cast<Item>()};
     FO_VERIFY_AND_THROW(item, "Missing item instance");
 
     if (item->GetOwnership() == ItemOwnership::MapHex) {
-        auto map = require_refcount_ptr(item->GetParent<Map>());
+        auto map {require_refcount_ptr(item->GetParent<Map>())};
         map->ChangeViewItem(item);
     }
     else if (item->GetOwnership() == ItemOwnership::CritterInventory) {
-        auto cr = require_refcount_ptr(item->GetParent<Critter>());
+        auto cr {require_refcount_ptr(item->GetParent<Critter>())};
 
         if (item->GetHidden()) {
             cr->Send_ChosenRemoveItem(item);
@@ -4630,16 +4630,16 @@ void ServerEngine::OnSetItemRecacheHex(ptr<Entity> entity, ptr<const Property> p
     ignore_unused(prop);
 
     // NoBlock, ShootThru, IsGag, IsTrigger
-    auto item = entity.dyn_cast<Item>();
+    auto item {entity.dyn_cast<Item>()};
     FO_VERIFY_AND_THROW(item, "Missing item instance");
 
     if (item->GetOwnership() == ItemOwnership::MapHex) {
-        auto map = require_refcount_ptr(item->GetParent<Map>());
+        auto map {require_refcount_ptr(item->GetParent<Map>())};
         map->RecacheHexFlags(item->GetHex());
 
         // The item contributes flags at every registered footprint cell, not
         // only its sprite origin. Opening a mesh door must clear them all
-        if (auto entries = item->GetMultihexEntries()) {
+        if (auto entries {item->GetMultihexEntries()}) {
             for (auto hex : *entries) {
                 map->RecacheHexFlags(hex);
             }
@@ -4651,11 +4651,11 @@ void ServerEngine::OnSetItemMultihexLines(ptr<Entity> entity, ptr<const Property
 {
     ignore_unused(prop);
 
-    auto item = entity.dyn_cast<Item>();
+    auto item {entity.dyn_cast<Item>()};
     FO_VERIFY_AND_THROW(item, "Missing item instance");
 
     if (item->GetOwnership() == ItemOwnership::MapHex) {
-        auto map_holder = require_refcount_ptr(item->GetParent<Map>());
+        auto map_holder {require_refcount_ptr(item->GetParent<Map>())};
         ignore_unused(map_holder);
 
         throw NotImplementedException(FO_LINE_STR);
@@ -4665,12 +4665,12 @@ void ServerEngine::OnSetItemMultihexLines(ptr<Entity> entity, ptr<const Property
 void ServerEngine::ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map)
 {
     FO_VERIFY_AND_THROW(cr->IsMoving(), "Critter is not moving");
-    auto moving = cr->GetMoving();
+    auto moving {cr->GetMoving()};
     FO_VERIFY_AND_THROW(moving, "Missing active movement state");
     moving->ValidateRuntimeState();
 
-    auto validate_moving = [this, cr, expected_uid = cr->GetMovingUid(), expected_map_id = cr->GetMapId(), map](mpos expected_hex) -> bool {
-        auto validate_moving_inner = [&]() -> bool {
+    auto validate_moving {[this, cr, expected_uid = cr->GetMovingUid(), expected_map_id = cr->GetMapId(), map](mpos expected_hex) -> bool {
+        auto validate_moving_inner {[&]() -> bool {
             if (cr->IsDestroyed() || map->IsDestroyed()) {
                 return false;
             }
@@ -4685,7 +4685,7 @@ void ServerEngine::ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map)
             }
 
             return true;
-        };
+        }};
 
         if (!validate_moving_inner()) {
             if (!cr->IsDestroyed() && cr->GetMovingUid() == expected_uid) {
@@ -4697,30 +4697,30 @@ void ServerEngine::ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map)
         else {
             return true;
         }
-    };
+    }};
 
-    nanotime current_time = GameTime.GetFrameTime();
-    size_t max_hex_updates = moving->GetSteps().size() + 1;
+    nanotime current_time {GameTime.GetFrameTime()};
+    size_t max_hex_updates {moving->GetSteps().size() + 1};
 
-    for (size_t i = 0; i < max_hex_updates; i++) {
+    for (size_t i {0}; i < max_hex_updates; i++) {
         // A step moves the critter out of the hex field and back in; neither side may be half-destroyed, or the add
         // throws after the remove and leaves a critter on the map but outside its field, which destruction cannot finish
         if (cr->IsDestroying() || map->IsDestroying()) {
             return;
         }
 
-        auto old_hex = cr->GetHex();
+        auto old_hex {cr->GetHex()};
 
         moving->UpdateCurrentTimeToNextHex(current_time, old_hex);
 
-        auto progress = moving->EvaluateProgress();
-        mpos target_hex = progress.Hex;
+        auto progress {moving->EvaluateProgress()};
+        mpos target_hex {progress.Hex};
 
         if (old_hex != target_hex) {
-            mdir dir = mdir(iround<int32_t>(GeometryHelper::GetDirAngle(old_hex, target_hex)));
-            int32_t multihex = cr->GetMultihex();
+            mdir dir {mdir(iround<int32_t>(GeometryHelper::GetDirAngle(old_hex, target_hex)))};
+            int32_t multihex {cr->GetMultihex()};
 
-            auto check_hex = [map](mpos h) -> HexBlockResult { return map->IsHexMovable(h) ? HexBlockResult::Passable : HexBlockResult::Blocked; };
+            auto check_hex {[map](mpos h) -> HexBlockResult { return map->IsHexMovable(h) ? HexBlockResult::Passable : HexBlockResult::Blocked; }};
 
             if (PathFinding::CheckHexWithMultihex(target_hex, dir, multihex, map->GetSize(), check_hex) != HexBlockResult::Blocked) {
                 map->RemoveCritterFromField(cr);
@@ -4777,8 +4777,8 @@ void ServerEngine::ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map)
             }
         }
 
-        auto cr_hex = cr->GetHex();
-        bool moved = cr_hex != old_hex;
+        auto cr_hex {cr->GetHex()};
+        bool moved {cr_hex != old_hex};
 
         if (cr_hex != progress.Hex) {
             progress = moving->EvaluateProgress(cr_hex);
@@ -4801,7 +4801,7 @@ void ServerEngine::ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map)
         }
 
         if (progress.Completed) {
-            bool incorrect_final_position = cr->GetHex() != moving->GetEndHex();
+            bool incorrect_final_position {cr->GetHex() != moving->GetEndHex()};
 
             if (incorrect_final_position) {
                 // Send final position update to client to correct it
@@ -4825,16 +4825,16 @@ auto ServerEngine::ReconcileCritterStopPosition(string_view request_name, ptr<Pl
 {
     moving->ValidateRuntimeState();
 
-    constexpr int32_t max_path_hex_distance = 2;
-    constexpr int32_t max_stop_correction_hex_distance = 4;
+    constexpr int32_t max_path_hex_distance {2};
+    constexpr int32_t max_stop_correction_hex_distance {4};
 
     if (!map->GetSize().is_valid_pos(client_hex)) {
         logging::write("{}: client stop hex is invalid, player '{}', critter '{}' ({}) on map '{}', hex ({},{})", request_name, player->GetName(), cr->GetName(), cr->GetId(), map->GetName(), client_hex.x, client_hex.y);
         return false;
     }
 
-    mpos on_map_hex = client_hex;
-    ipos16 on_map_hex_offset = client_hex_offset;
+    mpos on_map_hex {client_hex};
+    ipos16 on_map_hex_offset {client_hex_offset};
 
     // The guarded normalization below cannot report which of its two rules declined, so the off-map one is taken first
     if (!GeometryHelper::NormalizeHexOffset(on_map_hex, on_map_hex_offset, map->GetSize())) {
@@ -4844,19 +4844,19 @@ auto ServerEngine::ReconcileCritterStopPosition(string_view request_name, ptr<Pl
 
     // Reconciliation paths to the reported hex, so rounding into a blocked neighbour would answer a stop with a
     // correction toward the blocker - the shared guard declines that, keeping the rule identical to the client's
-    auto is_movable = [map](mpos check_hex) { return map->IsHexMovable(check_hex); };
+    auto is_movable {[map](mpos check_hex) { return map->IsHexMovable(check_hex); }};
     (void)GeometryHelper::NormalizeHexOffset(client_hex, client_hex_offset, map->GetSize(), is_movable);
 
-    vector<mpos> path_hexes = moving->EvaluatePathHexes(moving->GetStartHex());
-    auto client_hex_it = std::ranges::find(path_hexes, client_hex);
-    size_t client_hex_index = 0;
-    bool use_movement_path = true;
+    vector<mpos> path_hexes {moving->EvaluatePathHexes(moving->GetStartHex())};
+    auto client_hex_it {std::ranges::find(path_hexes, client_hex)};
+    size_t client_hex_index {0};
+    bool use_movement_path {true};
 
     if (client_hex_it == path_hexes.end()) {
-        int32_t best_distance = std::numeric_limits<int32_t>::max();
+        int32_t best_distance {std::numeric_limits<int32_t>::max()};
 
-        for (size_t i = 0; i < path_hexes.size(); i++) {
-            int32_t dist = GeometryHelper::GetDistance(path_hexes[i], client_hex);
+        for (size_t i {0}; i < path_hexes.size(); i++) {
+            int32_t dist {GeometryHelper::GetDistance(path_hexes[i], client_hex)};
 
             if (dist < best_distance) {
                 best_distance = dist;
@@ -4873,16 +4873,16 @@ auto ServerEngine::ReconcileCritterStopPosition(string_view request_name, ptr<Pl
     }
 
     if (use_movement_path) {
-        auto current_hex_it = std::find(path_hexes.begin(), path_hexes.end(), cr->GetHex());
+        auto current_hex_it {std::find(path_hexes.begin(), path_hexes.end(), cr->GetHex())};
 
         if (current_hex_it == path_hexes.end()) {
             use_movement_path = false;
         }
         else {
-            size_t current_hex_index = numeric_cast<size_t>(std::distance(path_hexes.begin(), current_hex_it));
+            size_t current_hex_index {numeric_cast<size_t>(std::distance(path_hexes.begin(), current_hex_it))};
 
             if (current_hex_index < client_hex_index) {
-                for (size_t i = current_hex_index + 1; i <= client_hex_index; i++) {
+                for (size_t i {current_hex_index + 1}; i <= client_hex_index; i++) {
                     if (!MoveCritterToStopHex(cr, map, path_hexes[i])) {
                         return false;
                     }
@@ -4892,7 +4892,7 @@ auto ServerEngine::ReconcileCritterStopPosition(string_view request_name, ptr<Pl
                 }
             }
             else {
-                for (size_t i = current_hex_index; i > client_hex_index; i--) {
+                for (size_t i {current_hex_index}; i > client_hex_index; i--) {
                     if (!MoveCritterToStopHex(cr, map, path_hexes[i - 1])) {
                         return false;
                     }
@@ -4908,24 +4908,24 @@ auto ServerEngine::ReconcileCritterStopPosition(string_view request_name, ptr<Pl
         return false;
     }
 
-    int16_t clamped_ox = numeric_cast<int16_t>(std::clamp(client_hex_offset.x, numeric_cast<int16_t>(-GameSettings::MAP_HEX_WIDTH / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_WIDTH / 2)));
-    int16_t clamped_oy = numeric_cast<int16_t>(std::clamp(client_hex_offset.y, numeric_cast<int16_t>(-GameSettings::MAP_HEX_HEIGHT / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_HEIGHT / 2)));
+    int16_t clamped_ox {numeric_cast<int16_t>(std::clamp(client_hex_offset.x, numeric_cast<int16_t>(-GameSettings::MAP_HEX_WIDTH / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_WIDTH / 2)))};
+    int16_t clamped_oy {numeric_cast<int16_t>(std::clamp(client_hex_offset.y, numeric_cast<int16_t>(-GameSettings::MAP_HEX_HEIGHT / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_HEIGHT / 2)))};
 
     cr->SetHexOffset({clamped_ox, clamped_oy});
 
-    mdir checked_dir = client_dir;
+    mdir checked_dir {client_dir};
 
     ValidateEntityAccess(player);
     ValidateEntityAccess(cr);
 
-    EventResult dir_result = OnPlayerDirCritter.Fire(player, cr, checked_dir);
+    EventResult dir_result {OnPlayerDirCritter.Fire(player, cr, checked_dir)};
 
     if (player->GetConnection()->IsHardDisconnected() || player->GetConnection()->IsGracefulDisconnected()) {
         return false;
     }
 
-    auto controlled_cr = player->GetControlledCritter();
-    nptr<Critter> expected_cr = cr;
+    auto controlled_cr {player->GetControlledCritter()};
+    nptr<Critter> expected_cr {cr};
 
     if (cr->IsDestroyed() || map->IsDestroyed() || !(controlled_cr == expected_cr)) {
         return false;
@@ -4934,7 +4934,7 @@ auto ServerEngine::ReconcileCritterStopPosition(string_view request_name, ptr<Pl
         return false;
     }
 
-    auto map_cr = map->GetCritter(cr->GetId());
+    auto map_cr {map->GetCritter(cr->GetId())};
     if (!(map_cr == expected_cr)) {
         return false;
     }
@@ -4959,14 +4959,14 @@ auto ServerEngine::ReconcileCritterStopPosition(string_view request_name, ptr<Pl
 
 auto ServerEngine::MoveCritterAlongStopCorrectionPath(string_view request_name, ptr<Player> player, ptr<Critter> cr, ptr<Map> map, mpos target_hex, int32_t max_hex_distance) -> bool
 {
-    int32_t direct_distance = GeometryHelper::GetDistance(cr->GetHex(), target_hex);
+    int32_t direct_distance {GeometryHelper::GetDistance(cr->GetHex(), target_hex)};
 
     if (direct_distance > max_hex_distance) {
         logging::write("{}: client stop hex is too far from server hex, player '{}', critter '{}' ({}) on map '{}', server_hex ({},{}), client_hex ({},{}), distance {}, limit {}", request_name, player->GetName(), cr->GetName(), cr->GetId(), map->GetName(), cr->GetHex().x, cr->GetHex().y, target_hex.x, target_hex.y, direct_distance, max_hex_distance);
         return false;
     }
 
-    auto find_result = MapMngr.FindPath(map, cr, cr->GetHex(), target_hex, cr->GetMultihex(), 0);
+    auto find_result {MapMngr.FindPath(map, cr, cr->GetHex(), target_hex, cr->GetMultihex(), 0)};
 
     if (find_result.Result == FindPathOutput::ResultType::AlreadyHere) {
         return true;
@@ -4980,7 +4980,7 @@ auto ServerEngine::MoveCritterAlongStopCorrectionPath(string_view request_name, 
         return false;
     }
 
-    mpos step_hex = cr->GetHex();
+    mpos step_hex {cr->GetHex()};
 
     for (mdir step : find_result.Steps) {
         if (!GeometryHelper::MoveHexByDir(step_hex, step, map->GetSize())) {
@@ -4999,11 +4999,11 @@ auto ServerEngine::MoveCritterAlongStopCorrectionPath(string_view request_name, 
 
 auto ServerEngine::MoveCritterToStopHex(ptr<Critter> cr, ptr<Map> map, mpos target_hex) -> bool
 {
-    ident_t expected_map_id = map->GetId();
-    ident_t expected_cr_id = cr->GetId();
-    uint32_t expected_moving_uid = cr->GetMovingUid();
+    ident_t expected_map_id {map->GetId()};
+    ident_t expected_cr_id {cr->GetId()};
+    uint32_t expected_moving_uid {cr->GetMovingUid()};
 
-    auto validate_moved_critter = [cr, map, expected_map_id, expected_cr_id, expected_moving_uid, target_hex] {
+    auto validate_moved_critter {[cr, map, expected_map_id, expected_cr_id, expected_moving_uid, target_hex] {
         if (cr->IsDestroyed() || map->IsDestroyed()) {
             return false;
         }
@@ -5015,24 +5015,24 @@ auto ServerEngine::MoveCritterToStopHex(ptr<Critter> cr, ptr<Map> map, mpos targ
         }
 
         return true;
-    };
+    }};
 
-    mpos old_hex = cr->GetHex();
+    mpos old_hex {cr->GetHex()};
 
     if (old_hex == target_hex) {
         return true;
     }
 
-    mdir dir = mdir(iround<int32_t>(GeometryHelper::GetDirAngle(old_hex, target_hex)));
-    int32_t multihex = cr->GetMultihex();
-    auto check_hex = [map](mpos h) -> HexBlockResult { return map->IsHexMovable(h) ? HexBlockResult::Passable : HexBlockResult::Blocked; };
+    mdir dir {mdir(iround<int32_t>(GeometryHelper::GetDirAngle(old_hex, target_hex)))};
+    int32_t multihex {cr->GetMultihex()};
+    auto check_hex {[map](mpos h) -> HexBlockResult { return map->IsHexMovable(h) ? HexBlockResult::Passable : HexBlockResult::Blocked; }};
 
     if (PathFinding::CheckHexWithMultihex(target_hex, dir, multihex, map->GetSize(), check_hex) == HexBlockResult::Blocked) {
         return false;
     }
 
-    auto cr_ref_holder = cr.hold_ref();
-    auto map_ref_holder = map.hold_ref();
+    auto cr_ref_holder {cr.hold_ref()};
+    auto map_ref_holder {map.hold_ref()};
 
     map->RemoveCritterFromField(cr);
     cr->SetHex(target_hex);
@@ -5084,8 +5084,8 @@ void ServerEngine::StartCritterMoving(ptr<Critter> cr, refcount_ptr<MovingContex
         cr->DetachFromCritter();
     }
 
-    bool was_moving = cr->IsMoving();
-    auto movement_key = WorkerJobKey {.Type = WorkerJobType::CritterMovement, .Id = static_cast<size_t>(cr->GetId().underlying_value())};
+    bool was_moving {cr->IsMoving()};
+    auto movement_key {WorkerJobKey {.Type = WorkerJobType::CritterMovement, .Id = static_cast<size_t>(cr->GetId().underlying_value())}};
 
     if (was_moving) {
         _workerPool->Cancel(movement_key);
@@ -5098,15 +5098,15 @@ void ServerEngine::StartCritterMoving(ptr<Critter> cr, refcount_ptr<MovingContex
         cr->MarkMovingStartedByPlayer(plan_seq, plan_distance_shift);
     }
 
-    auto moving_context = cr->GetMoving();
+    auto moving_context {cr->GetMoving()};
     FO_VERIFY_AND_THROW(moving_context, "Missing active movement state");
     moving_context->ValidateRuntimeState();
     cr->SetMovingSpeed(moving_context->GetSpeed());
 
     if (Settings->Network.MoveSyncTrace) {
-        mpos start_hex = moving_context->GetStartHex();
-        mpos end_hex = moving_context->GetEndHex();
-        string_view initiator_name = initiator ? initiator->GetName() : string_view {"none"};
+        mpos start_hex {moving_context->GetStartHex()};
+        mpos end_hex {moving_context->GetEndHex()};
+        string_view initiator_name {initiator ? initiator->GetName() : string_view {"none"}};
 
         TraceMoveSync("move_start", strex("cr={} uid={} start={},{} end={},{} whole_ms={} offset_ms={} lease_ms={} speed={} was_moving={} initiator={}", cr->GetId(), cr->GetMovingUid(), start_hex.x, start_hex.y, end_hex.x, end_hex.y, iround<int32_t>(moving_context->GetWholeTime()), iround<int32_t>(moving_context->GetRuntimeElapsedTime(GameTime.GetFrameTime())), iround<int32_t>(moving_context->GetLeaseTime()), moving_context->GetSpeed(), was_moving ? 1 : 0, initiator_name).strv());
     }
@@ -5123,11 +5123,11 @@ auto ServerEngine::CritterMovingJob(ptr<Critter> cr) -> std::optional<timespan>
 {
     FO_TRACE_ZONE(Engine);
 
-    auto complete_stats_job = scope_exit([this]() noexcept { CountServerStatsJob(); });
+    auto complete_stats_job {scope_exit([this]() noexcept { CountServerStatsJob(); })};
 
-    auto ctx = RequireCurrentSyncContext();
+    auto ctx {RequireCurrentSyncContext()};
 
-    auto parent = cr->GetParentRaw();
+    auto parent {cr->GetParentRaw()};
 
     if (parent) {
         small_vector<ptr<ServerEntity>, 2> sync_entities {parent, cr};
@@ -5149,7 +5149,7 @@ auto ServerEngine::CritterMovingJob(ptr<Critter> cr) -> std::optional<timespan>
         return std::nullopt;
     }
 
-    auto map = parent.dyn_cast<Map>();
+    auto map {parent.dyn_cast<Map>()};
     FO_STRONG_ASSERT(!parent || map, "Critter is on a non-map parent entity during movement job", cr->GetId(), cr->GetMapId(), map ? map->GetId() : ident_t {});
     FO_STRONG_ASSERT((cr->GetMapId() != ident_t {}) == static_cast<bool>(map), "Critter map id and parent map presence disagree during critter synchronization", cr->GetId(), cr->GetMapId(), map ? map->GetId() : ident_t {});
 
@@ -5158,7 +5158,7 @@ auto ServerEngine::CritterMovingJob(ptr<Critter> cr) -> std::optional<timespan>
             ProcessCritterMovingBySteps(cr, map);
         }
         else {
-            auto reason = cr->GetIsAttached() ? MovingState::Attached : MovingState::GenericError;
+            auto reason {cr->GetIsAttached() ? MovingState::Attached : MovingState::GenericError};
             StopCritterMoving(cr, reason);
         }
     }
@@ -5175,9 +5175,9 @@ auto ServerEngine::CritterMovingJob(ptr<Critter> cr) -> std::optional<timespan>
 
 void ServerEngine::StartCritterMoving(ptr<Critter> cr, uint16_t speed, const vector<mdir>& steps, const vector<uint16_t>& control_steps, ipos16 end_hex_offset, nptr<const Player> initiator, timespan offset_time)
 {
-    auto map = require_refcount_ptr(cr->GetParent<Map>());
+    auto map {require_refcount_ptr(cr->GetParent<Map>())};
 
-    auto start_hex = cr->GetHex();
+    auto start_hex {cr->GetHex()};
 
     StartCritterMoving(cr, safe_alloc::make_refcounted<MovingContext>(map->GetSize(), speed, steps, control_steps, GameTime.GetFrameTime(), offset_time, start_hex, cr->GetHexOffset(), end_hex_offset), initiator);
 }
@@ -5191,11 +5191,11 @@ void ServerEngine::StopCritterMoving(ptr<Critter> cr, MovingState reason, functi
         return;
     }
 
-    auto key = WorkerJobKey {.Type = WorkerJobType::CritterMovement, .Id = static_cast<size_t>(cr->GetId().underlying_value())};
+    auto key {WorkerJobKey {.Type = WorkerJobType::CritterMovement, .Id = static_cast<size_t>(cr->GetId().underlying_value())}};
     _workerPool->Cancel(key);
 
     if (Settings->Network.MoveSyncTrace) {
-        mpos hex = cr->GetHex();
+        mpos hex {cr->GetHex()};
 
         TraceMoveSync("stop", strex("cr={} uid={} reason={} hex={},{} broadcast={}", cr->GetId(), cr->GetMovingUid(), static_cast<int32_t>(reason), hex.x, hex.y, customSend ? "custom" : "all").strv());
     }
@@ -5224,7 +5224,7 @@ void ServerEngine::ChangeCritterMovingSpeed(ptr<Critter> cr, uint16_t speed)
         return;
     }
 
-    auto moving_context = cr->GetMoving();
+    auto moving_context {cr->GetMoving()};
     FO_VERIFY_AND_THROW(moving_context, "Missing active movement state");
 
     if (moving_context->GetSpeed() == speed) {
@@ -5236,10 +5236,10 @@ void ServerEngine::ChangeCritterMovingSpeed(ptr<Critter> cr, uint16_t speed)
         return;
     }
 
-    nanotime cur_time = GameTime.GetFrameTime();
-    uint16_t old_speed = moving_context->GetSpeed();
-    float32_t old_elapsed = moving_context->GetElapsedTime();
-    float32_t old_runtime = moving_context->GetRuntimeElapsedTime(cur_time);
+    nanotime cur_time {GameTime.GetFrameTime()};
+    uint16_t old_speed {moving_context->GetSpeed()};
+    float32_t old_elapsed {moving_context->GetElapsedTime()};
+    float32_t old_runtime {moving_context->GetRuntimeElapsedTime(cur_time)};
 
     moving_context->ChangeSpeed(speed, cur_time);
     cr->SetMovingSpeed(speed);
@@ -5247,7 +5247,7 @@ void ServerEngine::ChangeCritterMovingSpeed(ptr<Critter> cr, uint16_t speed)
     // ChangeSpeed rebases the plan on the last stored progress, so the gap between that and the live runtime is
     // progress the change discards; the clients rebase on theirs one delivery later
     if (Settings->Network.MoveSyncTrace) {
-        mpos hex = cr->GetHex();
+        mpos hex {cr->GetHex()};
 
         TraceMoveSync("speed_change", strex("cr={} uid={} old_speed={} speed={} hex={},{} elapsed_ms={} runtime_ms={} rebased_ms={} whole_ms={}", cr->GetId(), cr->GetMovingUid(), old_speed, speed, hex.x, hex.y, iround<int32_t>(old_elapsed), iround<int32_t>(old_runtime), iround<int32_t>(moving_context->GetElapsedTime()), iround<int32_t>(moving_context->GetWholeTime())).strv());
     }
@@ -5262,18 +5262,18 @@ void ServerEngine::Process_RemoteCall(ptr<Player> player)
 {
     FO_TRACE_ZONE(Script);
 
-    auto connection = player->GetConnection();
-    auto in_buf = connection->ReadBuf();
+    auto connection {player->GetConnection()};
+    auto in_buf {connection->ReadBuf()};
 
-    hstring remote_call_name = in_buf->Read<hstring>(Hashes);
-    auto remote_calls = GetInboundRemoteCalls();
-    auto remote_call_it = remote_calls->find(remote_call_name);
+    hstring remote_call_name {in_buf->Read<hstring>(Hashes)};
+    auto remote_calls {GetInboundRemoteCalls()};
+    auto remote_call_it {remote_calls->find(remote_call_name)};
 
     if (remote_call_it == remote_calls->end()) {
         throw GenericException("Invalid remote call", remote_call_name);
     }
 
-    int32_t remote_call_data_size = in_buf->Read<int32_t>();
+    int32_t remote_call_data_size {in_buf->Read<int32_t>()};
 
     // Structural generated bounds are checked before runtime configuration and before allocating. Runtime
     // limits may only narrow a declaration, never enlarge it
@@ -5281,7 +5281,7 @@ void ServerEngine::Process_RemoteCall(ptr<Player> player)
         throw GenericException("Invalid remote call data size", remote_call_data_size);
     }
 
-    size_t remote_call_payload_size = numeric_cast<size_t>(remote_call_data_size);
+    size_t remote_call_payload_size {numeric_cast<size_t>(remote_call_data_size)};
 
     if (remote_call_it->second.MaxPayloadSize != 0 && remote_call_payload_size > remote_call_it->second.MaxPayloadSize) {
         throw GenericException("Remote call data exceeds structural payload limit", remote_call_name, remote_call_payload_size, remote_call_it->second.MaxPayloadSize);
@@ -5290,7 +5290,7 @@ void ServerEngine::Process_RemoteCall(ptr<Player> player)
         throw GenericException("Remote call data exceeds runtime payload limit", remote_call_name, remote_call_payload_size, Settings->ServerNetwork.MaxRemoteCallPayloadSize);
     }
 
-    vector<uint8_t> remote_call_data;
+    vector<uint8_t> remote_call_data {};
     remote_call_data.resize(remote_call_payload_size);
 
     in_buf->Pop(remote_call_data.data(), remote_call_payload_size);
@@ -5299,7 +5299,7 @@ void ServerEngine::Process_RemoteCall(ptr<Player> player)
 
     ValidateInboundRemoteCallData(remote_call_it->second, remote_call_data, *this);
 
-    auto ctx = RequireCurrentSyncContext();
+    auto ctx {RequireCurrentSyncContext()};
     ctx->SyncEntity(player);
 
     HandleInboundRemoteCall(remote_call_name, player, remote_call_data);

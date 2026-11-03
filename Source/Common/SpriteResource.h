@@ -39,8 +39,8 @@
 
 FO_BEGIN_NAMESPACE
 
-constexpr uint8_t SPRITE_RESOURCE_MAGIC = 43;
-constexpr uint8_t SPRITE_RESOURCE_VERSION = 2;
+constexpr uint8_t SPRITE_RESOURCE_MAGIC {43};
+constexpr uint8_t SPRITE_RESOURCE_VERSION {2};
 
 enum class SpriteMeshKind : uint8_t
 {

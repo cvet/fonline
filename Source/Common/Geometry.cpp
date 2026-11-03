@@ -37,7 +37,7 @@ FO_BEGIN_NAMESPACE
 
 mdir::mdir(int32_t angle) noexcept
 {
-    int32_t mod = angle % 360;
+    int32_t mod {angle % 360};
     _value = static_cast<int16_t>(mod < 0 ? mod + 360 : mod);
 }
 
@@ -50,7 +50,7 @@ mdir::mdir(hdir dir) noexcept
         _value = static_cast<int16_t>(dir.value() * 45 + 45);
     }
 
-    int32_t mod = _value % 360;
+    int32_t mod {_value % 360};
     _value = static_cast<int16_t>(mod < 0 ? mod + 360 : mod);
 }
 
@@ -60,28 +60,28 @@ auto mdir::hex() const noexcept -> hdir
         return hdir(_value / 60);
     }
     else {
-        constexpr int32_t step = 360 / GameSettings::MAP_DIR_COUNT;
-        constexpr int32_t half_step = step / 2;
-        int32_t shifted_angle = _value + 360 - half_step;
+        constexpr int32_t step {360 / GameSettings::MAP_DIR_COUNT};
+        constexpr int32_t half_step {step / 2};
+        int32_t shifted_angle {_value + 360 - half_step};
         return hdir(shifted_angle / step);
     }
 }
 
 auto mdir::incHex() const noexcept -> mdir
 {
-    constexpr int32_t step = 360 / GameSettings::MAP_DIR_COUNT;
+    constexpr int32_t step {360 / GameSettings::MAP_DIR_COUNT};
     return mdir(static_cast<int16_t>(_value + step));
 }
 
 auto mdir::decHex() const noexcept -> mdir
 {
-    constexpr int32_t step = 360 / GameSettings::MAP_DIR_COUNT;
+    constexpr int32_t step {360 / GameSettings::MAP_DIR_COUNT};
     return mdir(static_cast<int16_t>(_value - step));
 }
 
 auto mdir::rotateHex(int32_t steps) const noexcept -> mdir
 {
-    constexpr int32_t step = 360 / GameSettings::MAP_DIR_COUNT;
+    constexpr int32_t step {360 / GameSettings::MAP_DIR_COUNT};
     return mdir(static_cast<int16_t>(_value + steps * step));
 }
 
@@ -93,33 +93,33 @@ auto mdir::reverse() const noexcept -> mdir
 auto GeometryHelper::GetDistance(int32_t x1, int32_t y1, int32_t x2, int32_t y2) -> int32_t
 {
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-        int32_t dx = x1 > x2 ? x1 - x2 : x2 - x1;
+        int32_t dx {x1 > x2 ? x1 - x2 : x2 - x1};
 
         if ((x1 % 2) == 0) {
             if (y2 <= y1) {
-                int32_t rx = y1 - y2 - dx / 2;
+                int32_t rx {y1 - y2 - dx / 2};
 
                 return dx + (rx > 0 ? rx : 0);
             }
 
-            int32_t rx = y2 - y1 - (dx + 1) / 2;
+            int32_t rx {y2 - y1 - (dx + 1) / 2};
 
             return dx + (rx > 0 ? rx : 0);
         }
 
         if (y2 >= y1) {
-            int32_t rx = y2 - y1 - dx / 2;
+            int32_t rx {y2 - y1 - dx / 2};
 
             return dx + (rx > 0 ? rx : 0);
         }
 
-        int32_t rx = y1 - y2 - (dx + 1) / 2;
+        int32_t rx {y1 - y2 - (dx + 1) / 2};
 
         return dx + (rx > 0 ? rx : 0);
     }
     else {
-        int32_t dx = std::abs(x2 - x1);
-        int32_t dy = std::abs(y2 - y1);
+        int32_t dx {std::abs(x2 - x1)};
+        int32_t dy {std::abs(y2 - y1)};
 
         return std::max(dx, dy);
     }
@@ -138,13 +138,13 @@ auto GeometryHelper::GetDistance(ipos32 hex1, ipos32 hex2) -> int32_t
 auto GeometryHelper::GetHexDir(int32_t x1, int32_t y1, int32_t x2, int32_t y2) -> hdir
 {
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-        float32_t hx = numeric_cast<float32_t>(x1);
-        float32_t hy = numeric_cast<float32_t>(y1);
-        float32_t tx = numeric_cast<float32_t>(x2);
-        float32_t ty = numeric_cast<float32_t>(y2);
-        float32_t nx = 3 * (tx - hx);
-        float32_t ny = (ty - hy) * SQRT3_X2_FLOAT - (numeric_cast<float32_t>(std::abs(x2 % 2)) - numeric_cast<float32_t>(std::abs(x1 % 2))) * SQRT3_FLOAT;
-        float32_t dir = 180.0f + RAD_TO_DEG_FLOAT * std::atan2(ny, nx);
+        float32_t hx {numeric_cast<float32_t>(x1)};
+        float32_t hy {numeric_cast<float32_t>(y1)};
+        float32_t tx {numeric_cast<float32_t>(x2)};
+        float32_t ty {numeric_cast<float32_t>(y2)};
+        float32_t nx {3 * (tx - hx)};
+        float32_t ny {(ty - hy) * SQRT3_X2_FLOAT - (numeric_cast<float32_t>(std::abs(x2 % 2)) - numeric_cast<float32_t>(std::abs(x1 % 2))) * SQRT3_FLOAT};
+        float32_t dir {180.0f + RAD_TO_DEG_FLOAT * std::atan2(ny, nx)};
 
         if (dir >= 60.0f && dir < 120.0f) {
             return hdir::NorthWest;
@@ -166,7 +166,7 @@ auto GeometryHelper::GetHexDir(int32_t x1, int32_t y1, int32_t x2, int32_t y2) -
     }
 #if FO_GEOMETRY == 2
     else {
-        const auto dir = 180.0f + RAD_TO_DEG_FLOAT * std::atan2(numeric_cast<float32_t>(x2 - x1), numeric_cast<float32_t>(y2 - y1));
+        const auto dir {180.0f + RAD_TO_DEG_FLOAT * std::atan2(numeric_cast<float32_t>(x2 - x1), numeric_cast<float32_t>(y2 - y1))};
 
         if (dir >= 22.5f && dir < 67.5f) {
             return hdir::North;
@@ -198,13 +198,13 @@ auto GeometryHelper::GetHexDir(int32_t x1, int32_t y1, int32_t x2, int32_t y2) -
 auto GeometryHelper::GetHexDir(int32_t x1, int32_t y1, int32_t x2, int32_t y2, float32_t offset) -> hdir
 {
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-        float32_t hx = numeric_cast<float32_t>(x1);
-        float32_t hy = numeric_cast<float32_t>(y1);
-        float32_t tx = numeric_cast<float32_t>(x2);
-        float32_t ty = numeric_cast<float32_t>(y2);
-        float32_t nx = 3 * (tx - hx);
-        float32_t ny = (ty - hy) * SQRT3_X2_FLOAT - (numeric_cast<float32_t>(std::abs(x2 % 2)) - numeric_cast<float32_t>(std::abs(x1 % 2))) * SQRT3_FLOAT;
-        float32_t dir = 180.0f + RAD_TO_DEG_FLOAT * std::atan2(ny, nx) + offset;
+        float32_t hx {numeric_cast<float32_t>(x1)};
+        float32_t hy {numeric_cast<float32_t>(y1)};
+        float32_t tx {numeric_cast<float32_t>(x2)};
+        float32_t ty {numeric_cast<float32_t>(y2)};
+        float32_t nx {3 * (tx - hx)};
+        float32_t ny {(ty - hy) * SQRT3_X2_FLOAT - (numeric_cast<float32_t>(std::abs(x2 % 2)) - numeric_cast<float32_t>(std::abs(x1 % 2))) * SQRT3_FLOAT};
+        float32_t dir {180.0f + RAD_TO_DEG_FLOAT * std::atan2(ny, nx) + offset};
 
         if (dir < 0.0f) {
             dir = 360.0f - std::fmod(-dir, 360.0f);
@@ -233,7 +233,7 @@ auto GeometryHelper::GetHexDir(int32_t x1, int32_t y1, int32_t x2, int32_t y2, f
     }
 #if FO_GEOMETRY == 2
     else {
-        auto dir = 180.0f + RAD_TO_DEG_FLOAT * std::atan2(numeric_cast<float32_t>(x2 - x1), numeric_cast<float32_t>(y2 - y1)) + offset;
+        auto dir {180.0f + RAD_TO_DEG_FLOAT * std::atan2(numeric_cast<float32_t>(x2 - x1), numeric_cast<float32_t>(y2 - y1)) + offset};
 
         if (dir < 0.0f) {
             dir = 360.0f - std::fmod(-dir, 360.0f);
@@ -281,14 +281,14 @@ auto GeometryHelper::GetHexDir(mpos from_hex, mpos to_hex, float32_t offset) -> 
 
 auto GeometryHelper::GetDirAngle(int32_t x1, int32_t y1, int32_t x2, int32_t y2) -> float32_t
 {
-    float32_t hx = numeric_cast<float32_t>(x1);
-    float32_t hy = numeric_cast<float32_t>(y1);
-    float32_t tx = numeric_cast<float32_t>(x2);
-    float32_t ty = numeric_cast<float32_t>(y2);
-    float32_t nx = 3 * (tx - hx);
-    float32_t ny = (ty - hy) * SQRT3_X2_FLOAT - (numeric_cast<float32_t>(std::abs(x2 % 2)) - numeric_cast<float32_t>(std::abs(x1 % 2))) * SQRT3_FLOAT;
+    float32_t hx {numeric_cast<float32_t>(x1)};
+    float32_t hy {numeric_cast<float32_t>(y1)};
+    float32_t tx {numeric_cast<float32_t>(x2)};
+    float32_t ty {numeric_cast<float32_t>(y2)};
+    float32_t nx {3 * (tx - hx)};
+    float32_t ny {(ty - hy) * SQRT3_X2_FLOAT - (numeric_cast<float32_t>(std::abs(x2 % 2)) - numeric_cast<float32_t>(std::abs(x1 % 2))) * SQRT3_FLOAT};
 
-    float32_t r = 180.0f + RAD_TO_DEG_FLOAT * std::atan2(ny, nx);
+    float32_t r {180.0f + RAD_TO_DEG_FLOAT * std::atan2(ny, nx)};
     FO_VERIFY_AND_THROW(r >= 0.0f, "Hex direction angle calculation produced a negative raw angle", x1, y1, x2, y2, r);
     FO_VERIFY_AND_THROW(r <= 360.0f, "Hex direction angle calculation produced a value above 360 degrees before normalization", x1, y1, x2, y2, r);
 
@@ -314,7 +314,7 @@ auto GeometryHelper::GetDirAngle(mpos from_hex, mpos to_hex) -> float32_t
 
 auto GeometryHelper::GetDirAngleDiff(float32_t a1, float32_t a2) -> float32_t
 {
-    float32_t r = 180.0f - std::abs(std::abs(a1 - a2) - 180.0f);
+    float32_t r {180.0f - std::abs(std::abs(a1 - a2) - 180.0f)};
     FO_VERIFY_AND_THROW(r >= 0.0f, "Unsigned direction angle difference calculation produced a negative value", a1, a2, r);
     FO_VERIFY_AND_THROW(r <= 180.0f, "Unsigned direction angle difference exceeded 180 degrees", a1, a2, r);
 
@@ -323,9 +323,9 @@ auto GeometryHelper::GetDirAngleDiff(float32_t a1, float32_t a2) -> float32_t
 
 auto GeometryHelper::GetDirAngleDiffSided(float32_t a1, float32_t a2) -> float32_t
 {
-    float32_t a1_r = a1 * DEG_TO_RAD_FLOAT;
-    float32_t a2_r = a2 * DEG_TO_RAD_FLOAT;
-    float32_t r = std::atan2(std::sin(a2_r - a1_r), std::cos(a2_r - a1_r)) * RAD_TO_DEG_FLOAT;
+    float32_t a1_r {a1 * DEG_TO_RAD_FLOAT};
+    float32_t a2_r {a2 * DEG_TO_RAD_FLOAT};
+    float32_t r {std::atan2(std::sin(a2_r - a1_r), std::cos(a2_r - a1_r)) * RAD_TO_DEG_FLOAT};
     FO_VERIFY_AND_THROW(r >= -180.0f, "Signed direction angle difference is below -180 degrees", a1, a2, r);
     FO_VERIFY_AND_THROW(r <= 180.0f, "Signed direction angle difference exceeded 180 degrees", a1, a2, r);
 
@@ -339,13 +339,13 @@ auto GeometryHelper::CheckDist(mpos hex1, mpos hex2, int32_t dist) -> bool
 
 auto GeometryHelper::HexesInRadius(int32_t radius) noexcept -> int32_t
 {
-    int32_t count = radius % 2 != 0 ? radius * (radius / 2 + 1) : radius * radius / 2 + radius / 2;
+    int32_t count {radius % 2 != 0 ? radius * (radius / 2 + 1) : radius * radius / 2 + radius / 2};
     return 1 + GameSettings::MAP_DIR_COUNT * count;
 }
 
 auto GeometryHelper::MoveHexByDir(mpos& hex, mdir dir, msize map_size) -> bool
 {
-    ipos32 raw_pos = ipos32 {hex.x, hex.y};
+    ipos32 raw_pos {ipos32 {hex.x, hex.y}};
     MoveHexByDirUnsafe(raw_pos, dir);
 
     if (map_size.is_valid_pos(raw_pos)) {
@@ -358,7 +358,7 @@ auto GeometryHelper::MoveHexByDir(mpos& hex, mdir dir, msize map_size) -> bool
 
 void GeometryHelper::MoveHexByDirUnsafe(ipos32& hex, mdir dir) noexcept
 {
-    hdir hex_dir = dir.hex();
+    hdir hex_dir {dir.hex()};
 
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         if (hex_dir == hdir::NorthEast) {
@@ -432,7 +432,7 @@ void GeometryHelper::MoveHexByDirUnsafe(ipos32& hex, mdir dir) noexcept
 
 auto GeometryHelper::MoveHexAroundAway(mpos& hex, int32_t index, msize map_size) -> bool
 {
-    ipos32 raw_hex = {hex.x, hex.y};
+    ipos32 raw_hex {hex.x, hex.y};
     MoveHexAroundAwayUnsafe(raw_hex, index);
 
     if (map_size.is_valid_pos(raw_hex)) {
@@ -453,8 +453,8 @@ void GeometryHelper::MoveHexAroundAwayUnsafe(ipos32& hex, int32_t index)
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         // Hex grid: ring R has 6R cells; HexesInRadius(R) = 1 + 3R(R+1).
         // R = smallest integer with 3R(R+1) >= index
-        float64_t fi = static_cast<float64_t>(index);
-        int32_t round = static_cast<int32_t>(std::ceil((std::sqrt(12.0 * fi + 9.0) - 3.0) / 6.0 - 1e-9));
+        float64_t fi {static_cast<float64_t>(index)};
+        int32_t round {static_cast<int32_t>(std::ceil((std::sqrt(12.0 * fi + 9.0) - 3.0) / 6.0 - 1e-9))};
 
         if (round < 1) {
             round = 1;
@@ -467,12 +467,12 @@ void GeometryHelper::MoveHexAroundAwayUnsafe(ipos32& hex, int32_t index)
             round++;
         }
 
-        int32_t r = index - (1 + 3 * (round - 1) * round); // [0, 6*round - 1]
+        int32_t r {index - (1 + 3 * (round - 1) * round)}; // [0, 6*round - 1]
 
         // Six sides of length `round` walked SE, SW, W, NW, NE, E in doubled-axial deltas; the ranges
         // below overlap at the corners by design, where both side formulas agree
-        int32_t dax;
-        int32_t day;
+        int32_t dax {};
+        int32_t day {};
 
         if (r <= round) {
             dax = round + r;
@@ -501,19 +501,19 @@ void GeometryHelper::MoveHexAroundAwayUnsafe(ipos32& hex, int32_t index)
 
         // Hex directions always give an even (day - dax), so dx stays integer; dy then follows hex.x
         // parity through the same row-shift rule as GetHexPos
-        int32_t dx = (day - dax) / 2;
-        int32_t cx_parity = hex.x & 1;
-        int32_t shift = dx + cx_parity;
-        int32_t adj = (shift < 0 ? shift - 1 : shift) / 2; // floor(shift / 2)
-        int32_t dy = day - adj;
+        int32_t dx {(day - dax) / 2};
+        int32_t cx_parity {hex.x & 1};
+        int32_t shift {dx + cx_parity};
+        int32_t adj {(shift < 0 ? shift - 1 : shift) / 2}; // floor(shift / 2)
+        int32_t dy {day - adj};
 
         hex = ipos32 {hex.x + dx, hex.y + dy};
     }
     else {
         // Square grid: ring R has 8R cells; HexesInRadius(R) = 1 + 4R(R+1).
         // R = smallest integer with 4R(R+1) >= index
-        float64_t fi = static_cast<float64_t>(index);
-        int32_t round = static_cast<int32_t>(std::ceil((std::sqrt(1.0 + fi) - 1.0) / 2.0 - 1e-9));
+        float64_t fi {static_cast<float64_t>(index)};
+        int32_t round {static_cast<int32_t>(std::ceil((std::sqrt(1.0 + fi) - 1.0) / 2.0 - 1e-9))};
 
         if (round < 1) {
             round = 1;
@@ -526,12 +526,12 @@ void GeometryHelper::MoveHexAroundAwayUnsafe(ipos32& hex, int32_t index)
             round++;
         }
 
-        int32_t r = index - (1 + 4 * (round - 1) * round); // [0, 8*round - 1]
+        int32_t r {index - (1 + 4 * (round - 1) * round)}; // [0, 8*round - 1]
 
         // 4 sides of length 2R, walked SE, SW, NW, NE (raw-coord directions).
         // Square geometry has no parity quirk: raw coords ARE the lattice
-        int32_t drx;
-        int32_t dry;
+        int32_t drx {};
+        int32_t dry {};
 
         if (r <= 2 * round) {
             drx = -round;
@@ -561,12 +561,12 @@ auto GeometryHelper::GetYProj() -> float32_t
 
 auto GeometryHelper::GetLineDirAngle(int32_t x1, int32_t y1, int32_t x2, int32_t y2) -> float32_t
 {
-    float32_t x1_f = numeric_cast<float32_t>(x1);
-    float32_t y1_f = numeric_cast<float32_t>(y1) * GetYProj();
-    float32_t x2_f = numeric_cast<float32_t>(x2);
-    float32_t y2_f = numeric_cast<float32_t>(y2) * GetYProj();
+    float32_t x1_f {numeric_cast<float32_t>(x1)};
+    float32_t y1_f {numeric_cast<float32_t>(y1) * GetYProj()};
+    float32_t x2_f {numeric_cast<float32_t>(x2)};
+    float32_t y2_f {numeric_cast<float32_t>(y2) * GetYProj()};
 
-    float32_t angle = 90.0f + RAD_TO_DEG_FLOAT * std::atan2(y2_f - y1_f, x2_f - x1_f);
+    float32_t angle {90.0f + RAD_TO_DEG_FLOAT * std::atan2(y2_f - y1_f, x2_f - x1_f)};
 
     if (angle < 0.0f) {
         angle += 360.0f;
@@ -588,19 +588,19 @@ auto GeometryHelper::GetHexPos(mpos hex) -> ipos32
 
 auto GeometryHelper::GetHexPos(ipos32 raw_hex) -> ipos32
 {
-    constexpr int32_t w = GameSettings::MAP_HEX_WIDTH;
-    constexpr int32_t h = GameSettings::MAP_HEX_LINE_HEIGHT;
+    constexpr int32_t w {GameSettings::MAP_HEX_WIDTH};
+    constexpr int32_t h {GameSettings::MAP_HEX_LINE_HEIGHT};
 
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-        int32_t hx = (raw_hex.x < 0 ? raw_hex.x - 1 : raw_hex.x) / 2;
-        int32_t x = raw_hex.y * (w / 2) - raw_hex.x * w + w / 2 * hx;
-        int32_t y = raw_hex.y * h + h * hx;
+        int32_t hx {(raw_hex.x < 0 ? raw_hex.x - 1 : raw_hex.x) / 2};
+        int32_t x {raw_hex.y * (w / 2) - raw_hex.x * w + w / 2 * hx};
+        int32_t y {raw_hex.y * h + h * hx};
 
         return {x, y};
     }
     else {
-        int32_t x = (raw_hex.y - raw_hex.x) * w / 2;
-        int32_t y = (raw_hex.y + raw_hex.x) * h;
+        int32_t x {(raw_hex.y - raw_hex.x) * w / 2};
+        int32_t y {(raw_hex.y + raw_hex.x) * h};
 
         return {x, y};
     }
@@ -627,8 +627,8 @@ auto GeometryHelper::GetHexWorldPos(ipos32 raw_hex, ipos32 hex_offset, float32_t
 {
     // Anchoring the ground point at z = legacy_y / sin(angle) is what makes ProjectWorldToMap reproduce
     // the legacy GetHexPos position at elevation 0
-    ipos32 hex_pos = GetHexPos(raw_hex);
-    float32_t sin_a = std::sin(GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT);
+    ipos32 hex_pos {GetHexPos(raw_hex)};
+    float32_t sin_a {std::sin(GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT)};
 
     // Hex offsets are authored in legacy map-screen pixels. Treat them as movement along the ground plane:
     // +X stays +X, while +screenY is the camera-foreshortened projection of +worldZ
@@ -642,22 +642,22 @@ auto GeometryHelper::ProjectWorldToMap(vec3 world_pos) -> vec3
 {
     // Reference projection without scroll or zoom, returning map pixels in .x/.y and view depth in .z
     // (larger == nearer)
-    float32_t angle_rad = GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT;
-    float32_t sin_a = std::sin(angle_rad);
-    float32_t cos_a = std::cos(angle_rad);
+    float32_t angle_rad {GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT};
+    float32_t sin_a {std::sin(angle_rad)};
+    float32_t cos_a {std::cos(angle_rad)};
 
-    float32_t screen_x = world_pos.x;
-    float32_t screen_y = sin_a * world_pos.z - cos_a * world_pos.y;
-    float32_t depth = cos_a * world_pos.z + sin_a * world_pos.y;
+    float32_t screen_x {world_pos.x};
+    float32_t screen_y {sin_a * world_pos.z - cos_a * world_pos.y};
+    float32_t depth {cos_a * world_pos.z + sin_a * world_pos.y};
 
     return vec3 {screen_x, screen_y, depth};
 }
 
 auto GeometryHelper::ProjectMapYToGroundDepth(float32_t map_y, float32_t elevation) -> float32_t
 {
-    float32_t angle_rad = GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT;
-    float32_t sin_a = std::sin(angle_rad);
-    float32_t cos_a = std::cos(angle_rad);
+    float32_t angle_rad {GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT};
+    float32_t sin_a {std::sin(angle_rad)};
+    float32_t cos_a {std::cos(angle_rad)};
 
     // Inverse of ProjectWorldToMap on a ground plane, where screen_y = sin(a) * world_z - cos(a) *
     // elevation and depth = cos(a) * world_z + sin(a) * elevation
@@ -666,9 +666,9 @@ auto GeometryHelper::ProjectMapYToGroundDepth(float32_t map_y, float32_t elevati
 
 auto GeometryHelper::ProjectMapYToVerticalDepth(float32_t map_y, float32_t anchor_map_y, float32_t anchor_depth) -> float32_t
 {
-    float32_t angle_rad = GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT;
-    float32_t sin_a = std::sin(angle_rad);
-    float32_t cos_a = std::cos(angle_rad);
+    float32_t angle_rad {GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT};
+    float32_t sin_a {std::sin(angle_rad)};
+    float32_t cos_a {std::cos(angle_rad)};
 
     // Inverse of ProjectWorldToMap on a vertical plane at the anchor's ground Z, where a height delta
     // moves screen_y by -cos(a) and depth by sin(a)
@@ -679,9 +679,9 @@ auto GeometryHelper::MakeMapCameraView(float32_t camera_angle_deg, float32_t yaw
 {
     // The GPU form of ProjectWorldToMap with scroll, zoom, and yaw folded in; yaw == 0 reproduces the fixed
     // isometric view
-    float32_t angle_rad = camera_angle_deg * DEG_TO_RAD_FLOAT;
-    float32_t sin_a = std::sin(angle_rad);
-    float32_t cos_a = std::cos(angle_rad);
+    float32_t angle_rad {camera_angle_deg * DEG_TO_RAD_FLOAT};
+    float32_t sin_a {std::sin(angle_rad)};
+    float32_t cos_a {std::cos(angle_rad)};
 
     // Rigid tilt about X (map Y is down): screen_y = sin*z - cos*y, depth = cos*z + sin*y; screen_x = x
     mat44 tilt {1.0f};
@@ -692,10 +692,10 @@ auto GeometryHelper::MakeMapCameraView(float32_t camera_angle_deg, float32_t yaw
 
     // Yaw about the world up axis (Y), applied before the tilt so the ground orbits under the fixed-elevation
     // camera. The vertical axis is invariant under yaw, so walls/models stay vertical on screen
-    mat44 yaw_mat = glm::rotate(mat44 {1.0f}, yaw_deg * DEG_TO_RAD_FLOAT, vec3 {0.0f, 1.0f, 0.0f});
+    mat44 yaw_mat {glm::rotate(mat44 {1.0f}, yaw_deg * DEG_TO_RAD_FLOAT, vec3 {0.0f, 1.0f, 0.0f})};
 
-    mat44 scroll_zoom = glm::scale(mat44 {1.0f}, vec3 {zoom, zoom, 1.0f}) * //
-        glm::translate(mat44 {1.0f}, vec3 {-scroll_offset.x, -scroll_offset.y, 0.0f});
+    mat44 scroll_zoom {glm::scale(mat44 {1.0f}, vec3 {zoom, zoom, 1.0f}) * //
+        glm::translate(mat44 {1.0f}, vec3 {-scroll_offset.x, -scroll_offset.y, 0.0f})};
 
     return scroll_zoom * tilt * yaw_mat;
 }
@@ -704,11 +704,11 @@ auto GeometryHelper::MakeMapAnchoredProj(const mat44& base_proj, const mat44& ma
 {
     // Shift `base_proj` in clip space so its local origin lands at the map-space anchor encoded by
     // `map_ortho`. This keeps direct-draw models and in-scene particle systems on the same root/depth formula
-    glm::vec4 origin_clip = base_proj * glm::vec4 {0.0f, 0.0f, 0.0f, 1.0f};
-    glm::vec4 anchor_clip = map_ortho * glm::vec4 {anchor_pos.x, anchor_pos.y, anchor_depth, 1.0f};
-    vec3 clip_offset = vec3 {anchor_clip.x / anchor_clip.w - origin_clip.x / origin_clip.w, //
+    glm::vec4 origin_clip {base_proj * glm::vec4 {0.0f, 0.0f, 0.0f, 1.0f}};
+    glm::vec4 anchor_clip {map_ortho * glm::vec4 {anchor_pos.x, anchor_pos.y, anchor_depth, 1.0f}};
+    vec3 clip_offset {vec3 {anchor_clip.x / anchor_clip.w - origin_clip.x / origin_clip.w, //
         anchor_clip.y / anchor_clip.w - origin_clip.y / origin_clip.w, //
-        anchor_clip.z / anchor_clip.w - origin_clip.z / origin_clip.w};
+        anchor_clip.z / anchor_clip.w - origin_clip.z / origin_clip.w}};
 
     return glm::translate(mat44 {1.0f}, clip_offset) * base_proj;
 }
@@ -720,9 +720,9 @@ auto GeometryHelper::GetHexAxialCoord(mpos hex) -> ipos32
 
 auto GeometryHelper::GetHexAxialCoord(ipos32 raw_hex) -> ipos32
 {
-    constexpr int32_t w = GameSettings::MAP_HEX_WIDTH;
-    constexpr int32_t h = GameSettings::MAP_HEX_LINE_HEIGHT;
-    ipos32 hex_pos = GetHexPos(raw_hex);
+    constexpr int32_t w {GameSettings::MAP_HEX_WIDTH};
+    constexpr int32_t h {GameSettings::MAP_HEX_LINE_HEIGHT};
+    ipos32 hex_pos {GetHexPos(raw_hex)};
     FO_VERIFY_AND_THROW(hex_pos.x % (w / 2) == 0, "Raw hex position X is not aligned to the axial coordinate grid", raw_hex, hex_pos, w / 2);
     FO_VERIFY_AND_THROW(hex_pos.y % h == 0, "Raw hex position Y is not aligned to the axial coordinate grid", raw_hex, hex_pos, h);
 
@@ -731,30 +731,30 @@ auto GeometryHelper::GetHexAxialCoord(ipos32 raw_hex) -> ipos32
 
 auto GeometryHelper::GetHexPosCoord(ipos32 pos, nptr<ipos32> hex_offset) -> ipos32
 {
-    constexpr int32_t w = GameSettings::MAP_HEX_WIDTH;
-    constexpr int32_t half_w = w / 2;
-    constexpr int32_t h = GameSettings::MAP_HEX_LINE_HEIGHT;
+    constexpr int32_t w {GameSettings::MAP_HEX_WIDTH};
+    constexpr int32_t half_w {w / 2};
+    constexpr int32_t h {GameSettings::MAP_HEX_LINE_HEIGHT};
 
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         // Hex centers form a lattice with v1 = (half_w, h) along ry and v2 = (w, 0) along -rx, so a
         // pixel is a * v1 + b * v2 with a = py / h and b = (px - a * half_w) / w
-        float32_t fh = numeric_cast<float32_t>(h);
-        float32_t fw = numeric_cast<float32_t>(w);
-        float32_t fhw = numeric_cast<float32_t>(half_w);
+        float32_t fh {numeric_cast<float32_t>(h)};
+        float32_t fw {numeric_cast<float32_t>(w)};
+        float32_t fhw {numeric_cast<float32_t>(half_w)};
 
-        float32_t fa = numeric_cast<float32_t>(pos.y) / fh;
-        float32_t fb = (numeric_cast<float32_t>(pos.x) - fa * fhw) / fw;
-        float32_t fc = -(fa + fb);
+        float32_t fa {numeric_cast<float32_t>(pos.y) / fh};
+        float32_t fb {(numeric_cast<float32_t>(pos.x) - fa * fhw) / fw};
+        float32_t fc {-(fa + fb)};
 
         // Cube coordinate rounding
-        int32_t ra = iround<int32_t>(fa);
-        int32_t rb = iround<int32_t>(fb);
-        int32_t rc = iround<int32_t>(fc);
+        int32_t ra {iround<int32_t>(fa)};
+        int32_t rb {iround<int32_t>(fb)};
+        int32_t rc {iround<int32_t>(fc)};
 
         if (ra + rb + rc != 0) {
-            float32_t da = std::abs(numeric_cast<float32_t>(ra) - fa);
-            float32_t db = std::abs(numeric_cast<float32_t>(rb) - fb);
-            float32_t dc = std::abs(numeric_cast<float32_t>(rc) - fc);
+            float32_t da {std::abs(numeric_cast<float32_t>(ra) - fa)};
+            float32_t db {std::abs(numeric_cast<float32_t>(rb) - fb)};
+            float32_t dc {std::abs(numeric_cast<float32_t>(rc) - fc)};
 
             if (da > db && da > dc) {
                 ra = -(rb + rc);
@@ -768,29 +768,29 @@ auto GeometryHelper::GetHexPosCoord(ipos32 pos, nptr<ipos32> hex_offset) -> ipos
         }
 
         // Hex center from lattice coordinates
-        int32_t cx = ra * half_w + rb * w;
-        int32_t cy = ra * h;
-        int32_t dx = pos.x - cx;
-        int32_t dy = pos.y - cy;
+        int32_t cx {ra * half_w + rb * w};
+        int32_t cy {ra * h};
+        int32_t dx {pos.x - cx};
+        int32_t dy {pos.y - cy};
 
         // Inside test by the three symmetric edge constraints of a pointy-top hex: |dx| <= half_w and
         // |dx * hq ± dy * half_w| <= limit
-        constexpr int32_t hq = GameSettings::MAP_HEX_HEIGHT / 4;
-        constexpr int32_t limit = 2 * half_w * hq;
+        constexpr int32_t hq {GameSettings::MAP_HEX_HEIGHT / 4};
+        constexpr int32_t limit {2 * half_w * hq};
 
-        auto is_inside_hex = [](int32_t lx, int32_t ly) -> bool { return std::abs(lx) <= half_w && std::abs(lx * hq - ly * half_w) <= limit && std::abs(lx * hq + ly * half_w) <= limit; };
+        auto is_inside_hex {[](int32_t lx, int32_t ly) -> bool { return std::abs(lx) <= half_w && std::abs(lx * hq - ly * half_w) <= limit && std::abs(lx * hq + ly * half_w) <= limit; }};
 
         if (!is_inside_hex(dx, dy)) {
             // Check 6 neighbors in lattice space: (±1,0), (0,±1), (+1,-1), (-1,+1)
-            static constexpr ipos32 neighbor_offsets[] = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}, {1, -1}, {-1, 1}};
+            static constexpr ipos32 neighbor_offsets[] {{1, 0}, {-1, 0}, {0, 1}, {0, -1}, {1, -1}, {-1, 1}};
 
             for (const auto& off : neighbor_offsets) {
-                int32_t na = ra + off.x;
-                int32_t nb = rb + off.y;
-                int32_t ncx = na * half_w + nb * w;
-                int32_t ncy = na * h;
-                int32_t ndx = pos.x - ncx;
-                int32_t ndy = pos.y - ncy;
+                int32_t na {ra + off.x};
+                int32_t nb {rb + off.y};
+                int32_t ncx {na * half_w + nb * w};
+                int32_t ncy {na * h};
+                int32_t ndx {pos.x - ncx};
+                int32_t ndy {pos.y - ncy};
 
                 if (is_inside_hex(ndx, ndy)) {
                     ra = na;
@@ -806,9 +806,9 @@ auto GeometryHelper::GetHexPosCoord(ipos32 pos, nptr<ipos32> hex_offset) -> ipos
 
         // Convert lattice (a, b) back to engine hex coordinates (rx, ry)
         // From: a = ry + floor(rx/2), b = -rx
-        int32_t rx = -rb;
-        int32_t ry = ra - (rx < 0 ? rx - 1 : rx) / 2;
-        ipos32 raw_hex = {rx, ry};
+        int32_t rx {-rb};
+        int32_t ry {ra - (rx < 0 ? rx - 1 : rx) / 2};
+        ipos32 raw_hex {rx, ry};
 
         if (hex_offset) {
             *hex_offset = {dx, dy};
@@ -819,16 +819,16 @@ auto GeometryHelper::GetHexPosCoord(ipos32 pos, nptr<ipos32> hex_offset) -> ipos
     else {
         // Oblique transform of the diamond grid, whose cell (rx, ry) centers on ((ry - rx) * half_w,
         // (ry + rx) * h): u = px / half_w + py / h and v = -px / half_w + py / h are 2 * ry and 2 * rx there
-        float32_t u = numeric_cast<float32_t>(pos.x) / numeric_cast<float32_t>(half_w) + numeric_cast<float32_t>(pos.y) / numeric_cast<float32_t>(h);
-        float32_t v = -numeric_cast<float32_t>(pos.x) / numeric_cast<float32_t>(half_w) + numeric_cast<float32_t>(pos.y) / numeric_cast<float32_t>(h);
+        float32_t u {numeric_cast<float32_t>(pos.x) / numeric_cast<float32_t>(half_w) + numeric_cast<float32_t>(pos.y) / numeric_cast<float32_t>(h)};
+        float32_t v {-numeric_cast<float32_t>(pos.x) / numeric_cast<float32_t>(half_w) + numeric_cast<float32_t>(pos.y) / numeric_cast<float32_t>(h)};
 
-        int32_t ry = iround<int32_t>(u * 0.5f);
-        int32_t rx = iround<int32_t>(v * 0.5f);
-        ipos32 raw_hex = {rx, ry};
+        int32_t ry {iround<int32_t>(u * 0.5f)};
+        int32_t rx {iround<int32_t>(v * 0.5f)};
+        ipos32 raw_hex {rx, ry};
 
         if (hex_offset) {
-            int32_t base_x = (ry - rx) * half_w;
-            int32_t base_y = (ry + rx) * h;
+            int32_t base_x {(ry - rx) * half_w};
+            int32_t base_y {(ry + rx) * h};
             *hex_offset = {pos.x - base_x, pos.y - base_y};
         }
 
@@ -848,15 +848,15 @@ auto GeometryHelper::NormalizeHexOffset(mpos& hex, ipos16& hex_offset, msize map
 
 auto GeometryHelper::NormalizeHexOffset(mpos& hex, ipos16& hex_offset, msize map_size, const function<bool(mpos)>& is_movable) -> bool
 {
-    ipos32 world_pos = GetHexPos(hex) + ipos32(hex_offset);
-    ipos32 normalized_offset;
-    ipos32 normalized_raw_hex = GetHexPosCoord(world_pos, &normalized_offset);
+    ipos32 world_pos {GetHexPos(hex) + ipos32(hex_offset)};
+    ipos32 normalized_offset {};
+    ipos32 normalized_raw_hex {GetHexPosCoord(world_pos, &normalized_offset)};
 
     if (!map_size.is_valid_pos(normalized_raw_hex)) {
         return false;
     }
 
-    mpos normalized_hex = map_size.from_raw_pos(normalized_raw_hex);
+    mpos normalized_hex {map_size.from_raw_pos(normalized_raw_hex)};
 
     // Rounding a pixel position back to a hex can land on one its owner could never walk to, and a hex the
     // other side refuses to path to never reconciles, so keeping the accumulated offset is the safer error
@@ -866,7 +866,7 @@ auto GeometryHelper::NormalizeHexOffset(mpos& hex, ipos16& hex_offset, msize map
 
     // Narrow before touching the out params: numeric_cast throws, and a throw between the two writes
     // would leave the caller with a new hex still carrying the old offset
-    ipos16 normalized_hex_offset = {numeric_cast<int16_t>(normalized_offset.x), numeric_cast<int16_t>(normalized_offset.y)};
+    ipos16 normalized_hex_offset {numeric_cast<int16_t>(normalized_offset.x), numeric_cast<int16_t>(normalized_offset.y)};
 
     hex = normalized_hex;
     hex_offset = normalized_hex_offset;
@@ -875,23 +875,23 @@ auto GeometryHelper::NormalizeHexOffset(mpos& hex, ipos16& hex_offset, msize map
 
 auto GeometryHelper::GetHexOffset(ipos32 from_raw_hex, ipos32 to_raw_hex) -> ipos32
 {
-    constexpr int32_t w = GameSettings::MAP_HEX_WIDTH;
-    constexpr int32_t h = GameSettings::MAP_HEX_LINE_HEIGHT;
+    constexpr int32_t w {GameSettings::MAP_HEX_WIDTH};
+    constexpr int32_t h {GameSettings::MAP_HEX_LINE_HEIGHT};
 
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-        int32_t dx = to_raw_hex.x - from_raw_hex.x;
-        int32_t dy = to_raw_hex.y - from_raw_hex.y;
-        int32_t dx2 = ((from_raw_hex.x % 2) != 0 ? (dx > 0 ? dx + 1 : dx) : (dx < 0 ? dx - 1 : dx)) / 2;
-        int32_t x = dy * (w / 2) - dx * w + w / 2 * dx2;
-        int32_t y = dy * h + h * dx2;
+        int32_t dx {to_raw_hex.x - from_raw_hex.x};
+        int32_t dy {to_raw_hex.y - from_raw_hex.y};
+        int32_t dx2 {((from_raw_hex.x % 2) != 0 ? (dx > 0 ? dx + 1 : dx) : (dx < 0 ? dx - 1 : dx)) / 2};
+        int32_t x {dy * (w / 2) - dx * w + w / 2 * dx2};
+        int32_t y {dy * h + h * dx2};
 
         return {x, y};
     }
     else {
-        int32_t dx = to_raw_hex.x - from_raw_hex.x;
-        int32_t dy = to_raw_hex.y - from_raw_hex.y;
-        int32_t x = (dy - dx) * w / 2;
-        int32_t y = (dy + dx) * h;
+        int32_t dx {to_raw_hex.x - from_raw_hex.x};
+        int32_t dy {to_raw_hex.y - from_raw_hex.y};
+        int32_t x {(dy - dx) * w / 2};
+        int32_t y {(dy + dx) * h};
 
         return {x, y};
     }
@@ -901,21 +901,21 @@ auto GeometryHelper::GetAxialHexes(mpos from_hex, mpos to_hex, msize map_size) -
 {
     FO_TRACE_ZONE(Map);
 
-    vector<mpos> hexes;
+    vector<mpos> hexes {};
 
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
-        auto [x, y] = GetHexOffset(from_hex, to_hex);
+        auto [x, y] {GetHexOffset(from_hex, to_hex)};
         x = -x;
 
-        int32_t dx = x / GameSettings::MAP_HEX_WIDTH;
-        int32_t dy = y / GameSettings::MAP_HEX_LINE_HEIGHT;
-        int32_t adx = std::abs(dx);
-        int32_t ady = std::abs(dy);
+        int32_t dx {x / GameSettings::MAP_HEX_WIDTH};
+        int32_t dy {y / GameSettings::MAP_HEX_LINE_HEIGHT};
+        int32_t adx {std::abs(dx)};
+        int32_t ady {std::abs(dy)};
 
-        int32_t hx;
-        int32_t hy;
+        int32_t hx {};
+        int32_t hy {};
 
-        for (int32_t j = 1; j <= ady; j++) {
+        for (int32_t j {1}; j <= ady; j++) {
             if (dy >= 0) {
                 hx = from_hex.x + j / 2 + ((j % 2) != 0 ? 1 : 0);
                 hy = from_hex.y + (j - (hx - from_hex.x - ((from_hex.x % 2) != 0 ? 1 : 0)) / 2);
@@ -925,7 +925,7 @@ auto GeometryHelper::GetAxialHexes(mpos from_hex, mpos to_hex, msize map_size) -
                 hy = from_hex.y - (j - (from_hex.x - hx - ((from_hex.x % 2) != 0 ? 0 : 1)) / 2);
             }
 
-            for (int32_t i = 0; i <= adx; i++) {
+            for (int32_t i {0}; i <= adx; i++) {
                 if (map_size.is_valid_pos(hx, hy)) {
                     hexes.emplace_back(map_size.from_raw_pos(hx, hy));
                 }
@@ -948,7 +948,7 @@ auto GeometryHelper::GetAxialHexes(mpos from_hex, mpos to_hex, msize map_size) -
         }
     }
     else {
-        auto [rw, rh] = GetHexOffset(from_hex, to_hex);
+        auto [rw, rh] {GetHexOffset(from_hex, to_hex)};
 
         if (rw == 0) {
             rw = 1;
@@ -957,14 +957,14 @@ auto GeometryHelper::GetAxialHexes(mpos from_hex, mpos to_hex, msize map_size) -
             rh = 1;
         }
 
-        int32_t hw = std::abs(rw / (GameSettings::MAP_HEX_WIDTH / 2)) + ((rw % (GameSettings::MAP_HEX_WIDTH / 2)) != 0 ? 1 : 0) + (std::abs(rw) >= GameSettings::MAP_HEX_WIDTH / 2 ? 1 : 0); // Hexes width
-        int32_t hh = std::abs(rh / GameSettings::MAP_HEX_LINE_HEIGHT) + ((rh % GameSettings::MAP_HEX_LINE_HEIGHT) != 0 ? 1 : 0) + (std::abs(rh) >= GameSettings::MAP_HEX_LINE_HEIGHT ? 1 : 0); // Hexes height
-        int32_t shx = numeric_cast<int32_t>(from_hex.x);
-        int32_t shy = numeric_cast<int32_t>(from_hex.y);
+        int32_t hw {std::abs(rw / (GameSettings::MAP_HEX_WIDTH / 2)) + ((rw % (GameSettings::MAP_HEX_WIDTH / 2)) != 0 ? 1 : 0) + (std::abs(rw) >= GameSettings::MAP_HEX_WIDTH / 2 ? 1 : 0)}; // Hexes width
+        int32_t hh {std::abs(rh / GameSettings::MAP_HEX_LINE_HEIGHT) + ((rh % GameSettings::MAP_HEX_LINE_HEIGHT) != 0 ? 1 : 0) + (std::abs(rh) >= GameSettings::MAP_HEX_LINE_HEIGHT ? 1 : 0)}; // Hexes height
+        int32_t shx {numeric_cast<int32_t>(from_hex.x)};
+        int32_t shy {numeric_cast<int32_t>(from_hex.y)};
 
-        for (int32_t i = 0; i < hh; i++) {
-            int32_t hx = shx;
-            int32_t hy = shy;
+        for (int32_t i {0}; i < hh; i++) {
+            int32_t hx {shx};
+            int32_t hy {shy};
 
             if (rh > 0) {
                 if (rw > 0) {
@@ -1003,7 +1003,7 @@ auto GeometryHelper::GetAxialHexes(mpos from_hex, mpos to_hex, msize map_size) -
                 }
             }
 
-            for (int32_t j = (i % 2) != 0 ? 1 : 0; j < hw; j += 2) {
+            for (int32_t j {(i % 2) != 0 ? 1 : 0}; j < hw; j += 2) {
                 if (map_size.is_valid_pos(hx, hy)) {
                     hexes.emplace_back(map_size.from_raw_pos(hx, hy));
                 }
@@ -1025,17 +1025,17 @@ auto GeometryHelper::GetAxialHexes(mpos from_hex, mpos to_hex, msize map_size) -
 
 void GeometryHelper::ForEachMultihexLines(const_span<uint8_t> dir_line, mpos hex, msize map_size, const function<void(mpos)>& callback)
 {
-    ipos32 step_raw_hex = ipos32 {hex.x, hex.y};
+    ipos32 step_raw_hex {ipos32 {hex.x, hex.y}};
 
-    for (size_t i = 0; i < dir_line.size() / 2; i++) {
-        hdir dir = hdir(dir_line[i * 2]);
-        auto steps = dir_line[i * 2 + 1];
+    for (size_t i {0}; i < dir_line.size() / 2; i++) {
+        hdir dir {hdir(dir_line[i * 2])};
+        auto steps {dir_line[i * 2 + 1]};
 
-        for (uint8_t j = 0; j < steps; j++) {
+        for (uint8_t j {0}; j < steps; j++) {
             MoveHexByDirUnsafe(step_raw_hex, dir);
 
             if (map_size.is_valid_pos(step_raw_hex)) {
-                mpos step_hex = map_size.from_raw_pos(step_raw_hex);
+                mpos step_hex {map_size.from_raw_pos(step_raw_hex)};
 
                 if (step_hex != hex) {
                     callback(step_hex);
@@ -1047,15 +1047,15 @@ void GeometryHelper::ForEachMultihexLines(const_span<uint8_t> dir_line, mpos hex
 
 auto GeometryHelper::IntersectCircleLine(int32_t cx, int32_t cy, int32_t radius, int32_t x1, int32_t y1, int32_t x2, int32_t y2) noexcept -> bool
 {
-    int32_t x01 = x1 - cx;
-    int32_t y01 = y1 - cy;
-    int32_t x02 = x2 - cx;
-    int32_t y02 = y2 - cy;
-    int32_t dx = x02 - x01;
-    int32_t dy = y02 - y01;
-    int32_t a = dx * dx + dy * dy;
-    int32_t b = 2 * (x01 * dx + y01 * dy);
-    int32_t c = x01 * x01 + y01 * y01 - radius * radius;
+    int32_t x01 {x1 - cx};
+    int32_t y01 {y1 - cy};
+    int32_t x02 {x2 - cx};
+    int32_t y02 {y2 - cy};
+    int32_t dx {x02 - x01};
+    int32_t dy {y02 - y01};
+    int32_t a {dx * dx + dy * dy};
+    int32_t b {2 * (x01 * dx + y01 * dy)};
+    int32_t c {x01 * x01 + y01 * y01 - radius * radius};
 
     if (-b < 0) {
         return c < 0;
@@ -1073,11 +1073,11 @@ auto GeometryHelper::GetStepsCoords(ipos32 from_pos, ipos32 to_pos) noexcept -> 
         return {};
     }
 
-    float32_t dx = numeric_cast<float32_t>(std::abs(to_pos.x - from_pos.x));
-    float32_t dy = numeric_cast<float32_t>(std::abs(to_pos.y - from_pos.y));
+    float32_t dx {numeric_cast<float32_t>(std::abs(to_pos.x - from_pos.x))};
+    float32_t dy {numeric_cast<float32_t>(std::abs(to_pos.y - from_pos.y))};
 
-    float32_t sx = 1.0f;
-    float32_t sy = 1.0f;
+    float32_t sx {1.0f};
+    float32_t sy {1.0f};
 
     if (dx < dy) {
         sx = dx / dy;
@@ -1098,9 +1098,9 @@ auto GeometryHelper::GetStepsCoords(ipos32 from_pos, ipos32 to_pos) noexcept -> 
 
 auto GeometryHelper::ChangeStepsCoords(fpos32 pos, float32_t deq) noexcept -> fpos32
 {
-    float32_t rad = deq * DEG_TO_RAD_FLOAT;
-    float32_t x = pos.x * std::cos(rad) - pos.y * std::sin(rad);
-    float32_t y = pos.x * std::sin(rad) + pos.y * std::cos(rad);
+    float32_t rad {deq * DEG_TO_RAD_FLOAT};
+    float32_t x {pos.x * std::cos(rad) - pos.y * std::sin(rad)};
+    float32_t y {pos.x * std::sin(rad) + pos.y * std::cos(rad)};
 
     return {x, y};
 }

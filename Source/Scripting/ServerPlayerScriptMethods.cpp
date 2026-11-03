@@ -102,7 +102,7 @@ FO_SCRIPT_API void Server_Player_SwitchCritter(ptr<Player> self, FO_REQUIRES_COV
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER nptr<Critter> Server_Player_GetControlledCritter(ptr<Player> self)
 {
-    auto controlled_cr = self->GetControlledCritter();
+    auto controlled_cr {self->GetControlledCritter()};
     return controlled_cr;
 }
 
@@ -118,10 +118,10 @@ FO_SCRIPT_API void Server_Player_RefreshCritterMoving(ptr<Player> self, ptr<Crit
 
     ident_t player_map_id {};
 
-    if (auto controlled_cr = self->GetControlledCritter()) {
+    if (auto controlled_cr {self->GetControlledCritter()}) {
         player_map_id = controlled_cr->GetMapId();
     }
-    else if (auto view_map = self->GetViewMap(); view_map) {
+    else if (auto view_map {self->GetViewMap()}; view_map) {
         player_map_id = view_map->MapId;
     }
 
@@ -156,7 +156,7 @@ FO_SCRIPT_API void Server_Player_ViewMap(ptr<Player> self, ptr<Map> map, mpos he
         throw ScriptException("Invalid hexes args");
     }
 
-    auto loc = map->GetLocation();
+    auto loc {map->GetLocation()};
     FO_VERIFY_AND_THROW(loc, "Missing location instance");
     ValidateEntityAccess(loc);
 
@@ -177,7 +177,7 @@ FO_SCRIPT_API void Server_Player_ViewMapArea(ptr<Player> self, ptr<Map> map, mpo
         throw ScriptException("Invalid bounded map view", self->GetId(), hex, radius);
     }
 
-    auto loc = map->GetLocation();
+    auto loc {map->GetLocation()};
     FO_VERIFY_AND_THROW(loc, "Missing location instance");
     ValidateEntityAccess(loc);
     self->SetViewMap(map, hex, radius);
@@ -191,7 +191,7 @@ FO_SCRIPT_API void Server_Player_ViewMapArea(ptr<Player> self, ptr<Map> map, mpo
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Player_ReturnFromViewMap(ptr<Player> self)
 {
-    auto cr = self->GetControlledCritter();
+    auto cr {self->GetControlledCritter()};
 
     if (!cr) {
         throw ScriptException("Map view return requires a controlled critter", self->GetId());
@@ -212,7 +212,7 @@ FO_SCRIPT_API void Server_Player_ResetViewMap(ptr<Player> self)
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Player_UnloadMap(ptr<Player> self)
 {
-    if (auto controlled_cr = self->GetControlledCritter()) {
+    if (auto controlled_cr {self->GetControlledCritter()}) {
         throw ScriptException("Player controls critter");
     }
 

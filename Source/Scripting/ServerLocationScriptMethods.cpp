@@ -72,7 +72,7 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Map> Server_Location_AddMap(ptr<Location> se
         throw ScriptException("Cannot add a map to a location that is being destroyed", self->GetId());
     }
 
-    auto map = self->GetEngine()->MapMngr.CreateMap(mapPid, self);
+    auto map {self->GetEngine()->MapMngr.CreateMap(mapPid, self)};
     return map;
 }
 
@@ -80,13 +80,13 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Map> Server_Location_AddMap(ptr<Location> se
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER ptr<Map> Server_Location_AddMap(ptr<Location> self, ptr<ProtoMap> mapProto)
 {
-    ptr<const ProtoMap> map_proto_ptr = mapProto;
+    ptr<const ProtoMap> map_proto_ptr {mapProto};
 
     if (self->IsDestroying()) {
         throw ScriptException("Cannot add a map to a location that is being destroyed", self->GetId());
     }
 
-    auto map = self->GetEngine()->MapMngr.CreateMap(map_proto_ptr->GetProtoId(), self);
+    auto map {self->GetEngine()->MapMngr.CreateMap(map_proto_ptr->GetProtoId(), self)};
     return map;
 }
 
@@ -101,7 +101,7 @@ FO_SCRIPT_API int32_t Server_Location_GetMapCount(ptr<Location> self)
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER nptr<Map> Server_Location_GetMap(ptr<Location> self, hstring mapPid)
 {
-    vector<ptr<Map>> maps = self->GetMaps();
+    vector<ptr<Map>> maps {self->GetMaps()};
 
     for (ptr<Map> map : maps) {
         if (map->GetProtoId() == mapPid) {
@@ -116,8 +116,8 @@ FO_SCRIPT_API FO_PROVIDES_COVER nptr<Map> Server_Location_GetMap(ptr<Location> s
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER nptr<Map> Server_Location_GetMap(ptr<Location> self, ptr<ProtoMap> mapProto)
 {
-    ptr<const ProtoMap> map_proto_ptr = mapProto;
-    vector<ptr<Map>> maps = self->GetMaps();
+    ptr<const ProtoMap> map_proto_ptr {mapProto};
+    vector<ptr<Map>> maps {self->GetMaps()};
 
     for (ptr<Map> map : maps) {
         if (map->GetProtoId() == map_proto_ptr->GetProtoId()) {
@@ -132,7 +132,7 @@ FO_SCRIPT_API FO_PROVIDES_COVER nptr<Map> Server_Location_GetMap(ptr<Location> s
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER ptr<Map> Server_Location_GetMapByIndex(ptr<Location> self, int32_t index)
 {
-    auto map = self->GetMapByIndex(index);
+    auto map {self->GetMapByIndex(index)};
     FO_VERIFY_AND_THROW(map, "Map is null");
     return map;
 }
@@ -141,7 +141,7 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Map> Server_Location_GetMapByIndex(ptr<Locat
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Map>> Server_Location_GetMaps(ptr<Location> self)
 {
-    vector<ptr<Map>> maps = self->GetMaps();
+    vector<ptr<Map>> maps {self->GetMaps()};
 
     return maps;
 }
@@ -154,7 +154,7 @@ FO_SCRIPT_API void Server_Location_Regenerate(ptr<Location> self)
         throw ScriptException("Cannot regenerate a location that is being destroyed", self->GetId());
     }
 
-    vector<ptr<Map>> maps = self->GetMaps();
+    vector<ptr<Map>> maps {self->GetMaps()};
 
     for (ptr<Map> map : maps) {
         self->GetEngine()->MapMngr.RegenerateMap(map);

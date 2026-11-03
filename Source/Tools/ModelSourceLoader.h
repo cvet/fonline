@@ -41,8 +41,8 @@
 
 FO_BEGIN_NAMESPACE
 
-inline constexpr float32_t MODEL_ANIMATION_HALF_MAX = 65504.0f;
-inline constexpr float32_t MODEL_ANIMATION_QUATERNION_NORM_TOLERANCE = 1.0e-4f;
+inline constexpr float32_t MODEL_ANIMATION_HALF_MAX {65504.0f};
+inline constexpr float32_t MODEL_ANIMATION_QUATERNION_NORM_TOLERANCE {1.0e-4f};
 
 struct ModelAnimationVec3Track
 {

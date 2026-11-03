@@ -44,11 +44,11 @@ FO_DECLARE_EXCEPTION(CryptographyException);
 // One audited library behind engine types, so every build target runs the same primitives
 namespace crypto
 {
-    constexpr size_t key_size = 32;
-    constexpr size_t hash_size = 64;
-    constexpr size_t hash_block_size = 128;
-    constexpr size_t aead_nonce_size = 12;
-    constexpr size_t aead_tag_size = 16;
+    constexpr size_t key_size {32};
+    constexpr size_t hash_size {64};
+    constexpr size_t hash_block_size {128};
+    constexpr size_t aead_nonce_size {12};
+    constexpr size_t aead_tag_size {16};
 
     using key_bytes = array<uint8_t, key_size>;
     using hash_bytes = array<uint8_t, hash_size>;

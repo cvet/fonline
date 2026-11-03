@@ -43,15 +43,15 @@ struct InterthreadData
 };
 FO_GLOBAL_DATA(InterthreadData, Interthread);
 
-FO_KEEP_DATA_SYMBOL char PACKAGED_BUILD_NAME[128] = "###NotPackaged###"
-                                                    "##############################################################################################################";
+FO_KEEP_DATA_SYMBOL char PACKAGED_BUILD_NAME[128] {"###NotPackaged###"
+                                                   "##############################################################################################################"};
 static auto ReadPackagedBuildName() -> string;
-static const string PackagedBuildName = ReadPackagedBuildName();
+static const string PackagedBuildName {ReadPackagedBuildName()};
 bool IsTestingInProgress {};
 
 ProgramArgs::ProgramArgs(int32_t argc, nptr<char*> argv)
 {
-    optional<vector<string>> platform_args = platform::get_command_line_args();
+    optional<vector<string>> platform_args {platform::get_command_line_args()};
 
     if (platform_args.has_value()) {
         _values = std::move(platform_args.value());
@@ -59,7 +59,7 @@ ProgramArgs::ProgramArgs(int32_t argc, nptr<char*> argv)
     else {
         CommandLineArgs narrow_args {argc, argv};
 
-        for (size_t i = 0; i < narrow_args.size(); i++) {
+        for (size_t i {0}; i < narrow_args.size(); i++) {
             _values.emplace_back(narrow_args.Get(i));
         }
     }
@@ -99,7 +99,7 @@ auto FindInterthreadListener(uint16_t port) -> optional<InterthreadListener>
 {
     scoped_lock locker {Interthread->ListenersLocker};
 
-    auto it = Interthread->Listeners.find(port);
+    auto it {Interthread->Listeners.find(port)};
 
     if (it == Interthread->Listeners.end()) {
         return std::nullopt;
@@ -130,10 +130,10 @@ auto GetRemoteCallSimpleValueMinWireSize(const BaseTypeDesc& type) -> size_t
     if (type.IsStruct) {
         FO_VERIFY_AND_THROW(type.StructLayout, "Remote call struct layout is null", type.Name);
 
-        size_t min_size = 0;
+        size_t min_size {0};
 
         for (const auto& field : type.StructLayout->Fields) {
-            size_t field_min_size = GetRemoteCallSimpleValueMinWireSize(field.Type);
+            size_t field_min_size {GetRemoteCallSimpleValueMinWireSize(field.Type)};
             FO_VERIFY_AND_THROW(field_min_size <= std::numeric_limits<size_t>::max() - min_size, "Remote call struct minimum serialized size overflows", type.Name);
             min_size += field_min_size;
         }
@@ -146,13 +146,13 @@ auto GetRemoteCallSimpleValueMinWireSize(const BaseTypeDesc& type) -> size_t
 
 static auto ReadPackagedBuildName() -> string
 {
-    string raw = strex().assignVolatile(PACKAGED_BUILD_NAME, sizeof(PACKAGED_BUILD_NAME)).str();
+    string raw {strex().assignVolatile(PACKAGED_BUILD_NAME, sizeof(PACKAGED_BUILD_NAME)).str()};
 
     if (raw.find("NotPackaged") != string::npos) {
         return {};
     }
 
-    if (auto null_pos = raw.find('\0'); null_pos != string::npos) {
+    if (auto null_pos {raw.find('\0')}; null_pos != string::npos) {
         raw.resize(null_pos);
     }
 
@@ -187,15 +187,15 @@ void FrameBalancer::EndLoop()
 
     // A frame rate cap outranks the plain per-frame sleep, so a config that keeps Sleep 0 can still be capped
     if (_fixedFps > 0) {
-        timespan target_time = std::chrono::nanoseconds(iround<uint64_t>(1000.0 / numeric_cast<float64_t>(_fixedFps) * 1000000.0));
-        timespan idle_time = target_time - _loopDuration + _idleTimeBalance;
+        timespan target_time {std::chrono::nanoseconds(iround<uint64_t>(1000.0 / numeric_cast<float64_t>(_fixedFps) * 1000000.0))};
+        timespan idle_time {target_time - _loopDuration + _idleTimeBalance};
 
         if (idle_time > timespan::zero) {
-            nanotime sleep_start = nanotime::now();
+            nanotime sleep_start {nanotime::now()};
 
             precise_sleep(idle_time.value());
 
-            timespan sleep_duration = nanotime::now() - sleep_start;
+            timespan sleep_duration {nanotime::now() - sleep_start};
 
             _idleTimeBalance += (target_time - _loopDuration) - sleep_duration;
         }

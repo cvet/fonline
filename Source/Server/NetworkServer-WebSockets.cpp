@@ -121,7 +121,7 @@ auto NetworkServer::StartWebSocketsServer(ptr<ServerNetworkSettings> settings, N
 {
     FO_TRACE_ZONE(Network);
 
-    uint16_t ws_port = numeric_cast<uint16_t>(settings->Network.WebSocketPort);
+    uint16_t ws_port {numeric_cast<uint16_t>(settings->Network.WebSocketPort)};
 
     if (settings->Network.SecuredWebSockets) {
         logging::write("Listen WebSockets (with TLS) connections on port {}", ws_port);
@@ -140,10 +140,10 @@ NetworkServerConnection_WebSockets<Secured>::NetworkServerConnection_WebSockets(
     NetworkServerConnection(settings),
     _connection {connection}
 {
-    auto& raw_socket = connection->get_raw_socket();
+    auto& raw_socket {connection->get_raw_socket()};
 
-    std::error_code endpoint_error;
-    auto endpoint = raw_socket.remote_endpoint(endpoint_error);
+    std::error_code endpoint_error {};
+    auto endpoint {raw_socket.remote_endpoint(endpoint_error)};
 
     if (!endpoint_error) {
         _host = endpoint.address().to_string();
@@ -155,7 +155,7 @@ NetworkServerConnection_WebSockets<Secured>::NetworkServerConnection_WebSockets(
     }
 
     if (settings->Network.DisableTcpNagle) {
-        std::error_code no_delay_error;
+        std::error_code no_delay_error {};
         raw_socket.set_option(asio::ip::tcp::no_delay(true), no_delay_error);
         LogSocketOperationError("set TCP_NODELAY", no_delay_error);
     }
@@ -166,16 +166,16 @@ void NetworkServerConnection_WebSockets<Secured>::Start()
 {
     // The connection outlives this wrapper, so each handler locks the weak ref to keep it alive; a failed lock
     // means the wrapper is gone and the callback is a no-op
-    auto connection = _connection.lock();
+    auto connection {_connection.lock()};
 
     if (!connection) {
         return;
     }
 
-    auto weak_self = weak_from_this();
+    auto weak_self {weak_from_this()};
 
     connection->set_message_handler([weak_self, this](auto&&, auto&& msg) FO_DEFERRED {
-        auto self = weak_self.lock();
+        auto self {weak_self.lock()};
 
         if (self) {
             OnMessage(msg);
@@ -183,7 +183,7 @@ void NetworkServerConnection_WebSockets<Secured>::Start()
     });
 
     connection->set_fail_handler([weak_self, this](auto&& hdl) FO_DEFERRED {
-        auto self = weak_self.lock();
+        auto self {weak_self.lock()};
 
         if (self) {
             OnFail(hdl);
@@ -191,7 +191,7 @@ void NetworkServerConnection_WebSockets<Secured>::Start()
     });
 
     connection->set_close_handler([weak_self, this](auto&& hdl) FO_DEFERRED {
-        auto self = weak_self.lock();
+        auto self {weak_self.lock()};
 
         if (self) {
             OnClose(hdl);
@@ -199,7 +199,7 @@ void NetworkServerConnection_WebSockets<Secured>::Start()
     });
 
     connection->set_http_handler([weak_self, this](auto&& hdl) FO_DEFERRED {
-        auto self = weak_self.lock();
+        auto self {weak_self.lock()};
 
         if (self) {
             OnHttp(hdl);
@@ -238,7 +238,7 @@ void NetworkServerConnection_WebSockets<Secured>::OnMessage(const message_ptr& m
 {
     FO_TRACE_ZONE(Network);
 
-    const auto& payload = msg->get_payload();
+    const auto& payload {msg->get_payload()};
 
     if (!payload.empty()) {
         ReceiveCallback(make_const_span(payload));
@@ -273,16 +273,16 @@ void NetworkServerConnection_WebSockets<Secured>::OnHttp(const websocketpp::conn
 template<bool Secured>
 void NetworkServerConnection_WebSockets<Secured>::DispatchImpl()
 {
-    auto connection = _connection.lock();
+    auto connection {_connection.lock()};
 
     if (!connection) {
         return;
     }
 
-    auto buf = SendCallback();
+    auto buf {SendCallback()};
 
     if (!buf.empty()) {
-        auto error = connection->send(buf.data(), buf.size(), websocketpp::frame::opcode::binary);
+        auto error {connection->send(buf.data(), buf.size(), websocketpp::frame::opcode::binary)};
 
         if (!error) {
             DispatchImpl();
@@ -303,7 +303,7 @@ void NetworkServerConnection_WebSockets<Secured>::DisconnectImpl()
 template<bool Secured>
 void NetworkServerConnection_WebSockets<Secured>::EnqueueClose()
 {
-    auto connection = _connection.lock();
+    auto connection {_connection.lock()};
 
     if (!connection) {
         return;
@@ -312,8 +312,8 @@ void NetworkServerConnection_WebSockets<Secured>::EnqueueClose()
     // terminate() writes the connection close state without the lock close() takes, so the close is queued onto the
     // single io thread that runs terminate(); the closure takes the weak connection only, never this or a strong ref
     asio::post(connection->get_raw_socket().get_executor(), [weak_connection = _connection] {
-        if (auto live_connection = weak_connection.lock()) {
-            std::error_code close_error;
+        if (auto live_connection {weak_connection.lock()}) {
+            std::error_code close_error {};
             live_connection->close(websocketpp::close::status::going_away, "", close_error);
             ignore_unused(close_error);
         }
@@ -347,7 +347,7 @@ NetworkServer_WebSockets<Secured>::NetworkServer_WebSockets(ptr<ServerNetworkSet
         _server.set_tls_init_handler([this](auto&& hdl) FO_DEFERRED { return OnTlsInit(hdl); });
     }
 
-    websocketpp::lib::error_code listen_error;
+    websocketpp::lib::error_code listen_error {};
     _server.listen(asio::ip::tcp::v6(), numeric_cast<uint16_t>(settings->Network.WebSocketPort), listen_error);
 
     if (listen_error) {
@@ -388,10 +388,10 @@ void NetworkServer_WebSockets<Secured>::OnOpen(const websocketpp::connection_hdl
     FO_TRACE_ZONE(Network);
 
     try {
-        auto connection = _server.get_con_from_hdl(hdl);
+        auto connection {_server.get_con_from_hdl(hdl)};
 
         try {
-            auto ws_connection = safe_alloc::make_shared<NetworkServerConnection_WebSockets<Secured>>(_settings, connection);
+            auto ws_connection {safe_alloc::make_shared<NetworkServerConnection_WebSockets<Secured>>(_settings, connection)};
             ws_connection->Start();
 
             if (TrackConnection(ws_connection)) {
@@ -401,7 +401,7 @@ void NetworkServer_WebSockets<Secured>::OnOpen(const websocketpp::connection_hdl
         catch (const std::exception& ex) {
             exceptions::report_and_continue(ex);
 
-            asio::error_code terminate_error;
+            asio::error_code terminate_error {};
             connection->terminate(terminate_error);
         }
     }
@@ -413,16 +413,16 @@ void NetworkServer_WebSockets<Secured>::OnOpen(const websocketpp::connection_hdl
 template<bool Secured>
 void NetworkServer_WebSockets<Secured>::OnFail(const websocketpp::connection_hdl& hdl)
 {
-    auto&& connection = _server.get_con_from_hdl(hdl);
-    const auto& ec = connection->get_ec();
-    auto remote_endpoint = connection->get_remote_endpoint();
+    auto&& connection {_server.get_con_from_hdl(hdl)};
+    const auto& ec {connection->get_ec()};
+    auto remote_endpoint {connection->get_remote_endpoint()};
     logging::write(logging::type::warning, "WebSocket handshake failed from {}: {}", string_view(remote_endpoint), GetAsioErrorText(ec));
 }
 
 template<bool Secured>
 auto NetworkServer_WebSockets<Secured>::OnValidate(const websocketpp::connection_hdl& hdl) -> bool
 {
-    auto&& connection = _server.get_con_from_hdl(hdl);
+    auto&& connection {_server.get_con_from_hdl(hdl)};
 
     if (_settings->ServerNetwork.MaxBufferedInputSize > 0) {
         connection->set_max_message_size(numeric_cast<size_t>(_settings->ServerNetwork.MaxBufferedInputSize));
@@ -439,7 +439,7 @@ auto NetworkServer_WebSockets<Secured>::OnTlsInit(const websocketpp::connection_
 
     ignore_unused(hdl);
 
-    websocketpp::lib::shared_ptr<ssl_context> ctx = websocketpp::lib::make_shared<ssl_context>(ssl_context::tls_server);
+    websocketpp::lib::shared_ptr<ssl_context> ctx {websocketpp::lib::make_shared<ssl_context>(ssl_context::tls_server)};
     ctx->set_options(ssl_context::default_workarounds | ssl_context::no_sslv2 | ssl_context::no_sslv3 | ssl_context::no_tlsv1 | ssl_context::no_tlsv1_1 | ssl_context::single_dh_use);
     SSL_CTX_set_ecdh_auto(ctx->native_handle(), 1);
     ctx->use_certificate_chain_file(std::string(_settings->ServerNetwork.WssCertificate));

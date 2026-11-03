@@ -310,7 +310,7 @@ FO_BEGIN_NAMESPACE
 using float32_t = float;
 using float64_t = double;
 
-inline constexpr size_t MAX_SERIALIZED_ALIGNMENT = 8; // Fixed cross-platform serialized-data alignment contract
+inline constexpr size_t MAX_SERIALIZED_ALIGNMENT {8}; // Fixed cross-platform serialized-data alignment contract
 
 // Check the sizes of base types
 static_assert(sizeof(bool) == 1);
@@ -472,7 +472,7 @@ concept convertible_without_narrowing = requires(From&& x) {
 };
 
 template<typename T>
-inline constexpr bool always_false_v = false;
+inline constexpr bool always_false_v {false};
 
 namespace details
 {
@@ -686,7 +686,7 @@ FO_BEGIN_NAMESPACE
         template<typename FormatContext> \
         auto format(const type& value, FormatContext& ctx) const \
         { \
-            FO_NAMESPACE string buf; \
+            FO_NAMESPACE string buf {}; \
             std::format_to(std::back_inserter(buf), __VA_ARGS__); \
             return formatter<FO_NAMESPACE string_view>::format(buf, ctx); \
         } \
@@ -789,9 +789,9 @@ FO_BEGIN_NAMESPACE
     FO_BEGIN_NAMESPACE
 
 // Math constants
-constexpr auto SQRT3_FLOAT = std::numbers::sqrt3_v<float32_t>;
-constexpr auto SQRT3_X2_FLOAT = std::numbers::sqrt3_v<float32_t> * 2.0f;
-constexpr auto RAD_TO_DEG_FLOAT = 180.0f / std::numbers::pi_v<float32_t>;
-constexpr auto DEG_TO_RAD_FLOAT = std::numbers::pi_v<float32_t> / 180.0f;
+constexpr auto SQRT3_FLOAT {std::numbers::sqrt3_v<float32_t>};
+constexpr auto SQRT3_X2_FLOAT {std::numbers::sqrt3_v<float32_t> * 2.0f};
+constexpr auto RAD_TO_DEG_FLOAT {180.0f / std::numbers::pi_v<float32_t>};
+constexpr auto DEG_TO_RAD_FLOAT {std::numbers::pi_v<float32_t> / 180.0f};
 
 FO_END_NAMESPACE

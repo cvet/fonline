@@ -42,34 +42,34 @@ FO_BEGIN_NAMESPACE
 
 // Preview surface: the same for every effect so silhouettes stay comparable
 // between takes
-static constexpr isize32 PREVIEW_SIZE = {512, 512};
+static constexpr isize32 PREVIEW_SIZE {512, 512};
 
 // Fixed screen point the effect root (its ground anchor) is pinned to. Kept
 // below the middle so an effect that rises from the ground has headroom above
-static constexpr ipos32 ROOT_ANCHOR = {PREVIEW_SIZE.width / 2, PREVIEW_SIZE.height * 2 / 3};
+static constexpr ipos32 ROOT_ANCHOR {PREVIEW_SIZE.width / 2, PREVIEW_SIZE.height * 2 / 3};
 
 // Faint cyan so the ground crosshair reads as a reference without competing with
 // the effect drawn over it
-static constexpr ucolor ROOT_CROSSHAIR_COLOR = {100, 200, 220, 110};
+static constexpr ucolor ROOT_CROSSHAIR_COLOR {100, 200, 220, 110};
 
 // Overlay colour, drawn over the effect so it stays legible
-static constexpr ucolor DRAW_RECT_COLOR = {90, 220, 90, 200}; // full sprite draw frame
+static constexpr ucolor DRAW_RECT_COLOR {90, 220, 90, 200}; // full sprite draw frame
 
-static constexpr float32_t MIN_ZOOM = 0.25f;
-static constexpr float32_t MAX_ZOOM = 8.0f;
-static constexpr float32_t ZOOM_WHEEL_STEP = 1.15f;
+static constexpr float32_t MIN_ZOOM {0.25f};
+static constexpr float32_t MAX_ZOOM {8.0f};
+static constexpr float32_t ZOOM_WHEEL_STEP {1.15f};
 
 // Degrees of effect facing per pixel of held-LMB horizontal drag over the preview
-static constexpr float32_t DIR_DRAG_SENSITIVITY = 0.5f;
+static constexpr float32_t DIR_DRAG_SENSITIVITY {0.5f};
 
 // Ortho depth half-range used while drawing a draw-in-scene effect, wide enough
 // that a magnified effect is not clipped by the near/far planes
-static constexpr float32_t SCENE_DEPTH_HALF = 64.0f;
+static constexpr float32_t SCENE_DEPTH_HALF {64.0f};
 
 template<size_t Size>
 static auto InputBufferView(const array<char, Size>& buffer) -> string_view
 {
-    auto end = std::find(buffer.begin(), buffer.end(), char {0});
+    auto end {std::find(buffer.begin(), buffer.end(), char {0})};
     return {buffer.data(), numeric_cast<size_t>(std::distance(buffer.begin(), end))};
 }
 
@@ -102,7 +102,7 @@ void ParticleViewer::LoadSettings()
 
     // Re-open the last previewed effect, but only if that resource still exists, so a removed/renamed file never
     // surfaces as a selection error on startup
-    string last_path = _settings.GetString("SelectedPath");
+    string last_path {_settings.GetString("SelectedPath")};
 
     if (!last_path.empty()) {
         RefreshResourceList();
@@ -117,10 +117,10 @@ void ParticleViewer::SaveSettings()
 {
     FO_TRACE_ZONE(Editor);
 
-    if (auto ctx = make_nptr(ImGui::GetCurrentContext())) {
-        size_t ini_size = 0;
+    if (auto ctx {make_nptr(ImGui::GetCurrentContext())}) {
+        size_t ini_size {0};
 
-        if (auto ini_data = make_nptr(ImGui::SaveIniSettingsToMemory(&ini_size))) {
+        if (auto ini_data {make_nptr(ImGui::SaveIniSettingsToMemory(&ini_size))}) {
             _settings.SetString("ImGuiLayout", string_view(ini_data.get(), ini_size));
         }
     }
@@ -150,11 +150,11 @@ void ParticleViewer::Draw()
         return;
     }
 
-    ImGuiWindowFlags window_flags = 0;
-    bool keep_open = true;
+    ImGuiWindowFlags window_flags {0};
+    bool keep_open {true};
 
     if (_fillViewport) {
-        auto viewport = make_ptr(ImGui::GetMainViewport());
+        auto viewport {make_ptr(ImGui::GetMainViewport())};
         ImGui::SetNextWindowPos(viewport->WorkPos);
         ImGui::SetNextWindowSize(viewport->WorkSize);
         window_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoSavedSettings;
@@ -203,7 +203,7 @@ void ParticleViewer::RefreshResourceList()
 
     // The list is built from the extensions the sprite factory advertises, so it reflects exactly the
     // runtimes the loaded content can play
-    auto factory = _resMngr->GetSpriteFactory(typeid(ParticleSpriteFactory)).dyn_cast<ParticleSpriteFactory>();
+    auto factory {_resMngr->GetSpriteFactory(typeid(ParticleSpriteFactory)).dyn_cast<ParticleSpriteFactory>()};
 
     if (!factory) {
         return;
@@ -230,14 +230,14 @@ void ParticleViewer::DrawResourceList()
 
     ImGui::SetNextItemWidth(-1.0f);
     ImGui::InputTextWithHint("##Filter", "Filter", _filterBuf.data(), _filterBuf.size());
-    string filter = strex(InputBufferView(_filterBuf)).trim().lower().str();
+    string filter {strex(InputBufferView(_filterBuf)).trim().lower().str()};
 
     for (const string& path : _resourcePaths) {
         if (!filter.empty() && strex(path).lower().str().find(filter) == string::npos) {
             continue;
         }
 
-        bool selected = path == _selectedPath;
+        bool selected {path == _selectedPath};
 
         if (ImGui::Selectable(path.c_str(), selected)) {
             SelectParticle(path);
@@ -267,7 +267,7 @@ void ParticleViewer::DrawPreview()
     ImGui::SetNextItemWidth(140.0f);
     ImGui::SliderFloat("Zoom", &_zoom, MIN_ZOOM, MAX_ZOOM, "%.2fx");
 
-    isize32 sprite_size = _previewSprite->GetSize();
+    isize32 sprite_size {_previewSprite->GetSize()};
     ImGui::SameLine();
     ImGui::Text("Frame: %d x %d px", sprite_size.width, sprite_size.height);
 
@@ -277,9 +277,9 @@ void ParticleViewer::DrawPreview()
     RenderPreview();
 
     if (_renderTarget) {
-        auto draw_list = make_ptr(ImGui::GetWindowDrawList());
-        ImVec2 pos = ImGui::GetCursorScreenPos();
-        ImVec2 end = {pos.x + numeric_cast<float32_t>(PREVIEW_SIZE.width), pos.y + numeric_cast<float32_t>(PREVIEW_SIZE.height)};
+        auto draw_list {make_ptr(ImGui::GetWindowDrawList())};
+        ImVec2 pos {ImGui::GetCursorScreenPos()};
+        ImVec2 end {pos.x + numeric_cast<float32_t>(PREVIEW_SIZE.width), pos.y + numeric_cast<float32_t>(PREVIEW_SIZE.height)};
 
         if (GetApp()->Render.IsRenderTargetFlipped()) {
             draw_list->AddImage(_renderTarget.get(), pos, end, {0.0f, 1.0f}, {1.0f, 0.0f});
@@ -294,12 +294,12 @@ void ParticleViewer::DrawPreview()
 
         if (ImGui::IsItemActive()) {
             if (ImGui::IsMouseDragging(ImGuiMouseButton_Right)) {
-                ImVec2 drag = ImGui::GetIO().MouseDelta;
+                ImVec2 drag {ImGui::GetIO().MouseDelta};
                 PanBy(fpos32 {drag.x, drag.y});
             }
 
             if (ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
-                ImVec2 drag = ImGui::GetIO().MouseDelta;
+                ImVec2 drag {ImGui::GetIO().MouseDelta};
                 _dirAngle += drag.x * DIR_DRAG_SENSITIVITY;
                 _dirAngle -= std::floor(_dirAngle / 360.0f) * 360.0f;
                 ApplyDirection();
@@ -307,7 +307,7 @@ void ParticleViewer::DrawPreview()
         }
 
         if (ImGui::IsItemHovered()) {
-            float32_t wheel = ImGui::GetIO().MouseWheel;
+            float32_t wheel {ImGui::GetIO().MouseWheel};
 
             if (wheel != 0.0f) {
                 _zoom = std::clamp(_zoom * (wheel > 0.0f ? ZOOM_WHEEL_STEP : 1.0f / ZOOM_WHEEL_STEP), MIN_ZOOM, MAX_ZOOM);
@@ -340,8 +340,8 @@ void ParticleViewer::DrawControls()
 
     // Flipping the authored `draw in scene` flag previews the other render path without touching the
     // resource, and the difference shows because the sprite frame clips an atlas effect
-    if (auto particle_sprite = _previewSprite.dyn_cast<ParticleSprite>()) {
-        bool draw_in_scene = particle_sprite->IsDirectDraw();
+    if (auto particle_sprite {_previewSprite.dyn_cast<ParticleSprite>()}) {
+        bool draw_in_scene {particle_sprite->IsDirectDraw()};
 
         ImGui::SameLine();
 
@@ -379,7 +379,7 @@ void ParticleViewer::SelectParticle(string_view path)
 
     // The viewer browses resources the runtime may fail to load, and that throw must not unwind through
     // the ImGui frame, which would corrupt it
-    shared_ptr<Sprite> sprite;
+    shared_ptr<Sprite> sprite {};
 
     try {
         sprite = _resMngr->LoadSprite(_selectedPath, AtlasType::MapSprites);
@@ -413,7 +413,7 @@ void ParticleViewer::PlayCurrent()
         return;
     }
 
-    auto particle_sprite = _previewSprite.dyn_cast<ParticleSprite>();
+    auto particle_sprite {_previewSprite.dyn_cast<ParticleSprite>()};
 
     if (!particle_sprite) {
         return;
@@ -444,11 +444,11 @@ void ParticleViewer::PanBy(fpos32 screen_delta)
 
     // Pass the inverse of the camera move to the effect as emitter motion, so world-space particles trail as if the
     // emitter (a moving critter) had travelled through them instead of the whole view sliding rigidly
-    if (auto particle_sprite = _previewSprite.dyn_cast<ParticleSprite>()) {
-        float32_t px_per_world_unit = _engine->Settings->Render.ModelProjFactor * _zoom;
+    if (auto particle_sprite {_previewSprite.dyn_cast<ParticleSprite>()}) {
+        float32_t px_per_world_unit {_engine->Settings->Render.ModelProjFactor * _zoom};
 
         if (px_per_world_unit > 0.0f) {
-            vec3 world_move = {-screen_delta.x / px_per_world_unit, screen_delta.y / px_per_world_unit, 0.0f};
+            vec3 world_move {-screen_delta.x / px_per_world_unit, screen_delta.y / px_per_world_unit, 0.0f};
             particle_sprite->GetParticle()->RebaseWorldParticles(world_move);
         }
     }
@@ -464,9 +464,9 @@ void ParticleViewer::RenderPreview()
 
     // Scope the wireframe overlay to the preview render only: the particle backends draw quad edges while
     // the renderer is asked to overlay it, and restoring it right after keeps a hosting mapper scene unaffected
-    bool prev_draw_wireframe = _sprMngr->IsDrawWireframe();
+    bool prev_draw_wireframe {_sprMngr->IsDrawWireframe()};
     _sprMngr->SetDrawWireframe(_showWireframe);
-    auto wireframe_guard = scope_exit([&]() noexcept { _sprMngr->SetDrawWireframe(prev_draw_wireframe); });
+    auto wireframe_guard {scope_exit([&]() noexcept { _sprMngr->SetDrawWireframe(prev_draw_wireframe); })};
 
     if (!_renderTarget || _renderTargetSize != PREVIEW_SIZE) {
         // Nearest filtering, because ImGui presents the target scaled by the display's DPI scale and a
@@ -481,13 +481,13 @@ void ParticleViewer::RenderPreview()
         PlayCurrent();
     }
 
-    bool direct = _previewSprite->IsDirectDraw();
+    bool direct {_previewSprite->IsDirectDraw()};
 
     // Scene drawing has no baked frame to magnify, so zoom becomes the effect's own scale; the atlas path
     // must stay at the authored scale or the effect overflows the frame it rasterizes into
-    float32_t effect_scale = direct ? _zoom : 1.0f;
+    float32_t effect_scale {direct ? _zoom : 1.0f};
 
-    if (auto particle_sprite = _previewSprite.dyn_cast<ParticleSprite>(); particle_sprite && _appliedScale != effect_scale) {
+    if (auto particle_sprite {_previewSprite.dyn_cast<ParticleSprite>()}; particle_sprite && _appliedScale != effect_scale) {
         particle_sprite->GetParticle()->SetScale(effect_scale);
         _appliedScale = effect_scale;
     }
@@ -496,15 +496,15 @@ void ParticleViewer::RenderPreview()
     // (drawn below); a draw-in-scene effect is rendered straight into the preview target instead
     _previewSprite->Update();
 
-    float32_t draw_scale = _zoom;
+    float32_t draw_scale {_zoom};
 
-    auto prev_rt = GetApp()->Render.GetRenderTarget();
+    auto prev_rt {GetApp()->Render.GetRenderTarget()};
     GetApp()->Render.SetRenderTarget(_renderTarget);
-    auto rt_guard = scope_fail([&]() noexcept { GetApp()->Render.SetRenderTarget(prev_rt); });
+    auto rt_guard {scope_fail([&]() noexcept { GetApp()->Render.SetRenderTarget(prev_rt); })};
     GetApp()->Render.ClearRenderTarget(ucolor::clear, true);
 
     // Camera pan shifts the whole view (effect + crosshair + overlays) together
-    ipos32 anchor = {ROOT_ANCHOR.x + iround<int32_t>(_pan.x), ROOT_ANCHOR.y + iround<int32_t>(_pan.y)};
+    ipos32 anchor {ROOT_ANCHOR.x + iround<int32_t>(_pan.x), ROOT_ANCHOR.y + iround<int32_t>(_pan.y)};
 
     // Background crosshair through the (panned) root anchor, drawn first so it
     // reads as a ground reference behind the effect
@@ -514,10 +514,10 @@ void ParticleViewer::RenderPreview()
 
     // Anchored by the effect root — the ground point the game pins it to, as MapSprite::GetSpriteRootOffset
     // computes it — rather than by the bounds, so the preview holds still while the effect evolves
-    isize32 sprite_size = _previewSprite->GetSize();
-    ipos32 sprite_offset = _previewSprite->GetOffset();
-    ipos32 root_in_sprite = {sprite_size.width / 2 - sprite_offset.x, sprite_size.height - sprite_offset.y};
-    ipos32 pos = {
+    isize32 sprite_size {_previewSprite->GetSize()};
+    ipos32 sprite_offset {_previewSprite->GetOffset()};
+    ipos32 root_in_sprite {sprite_size.width / 2 - sprite_offset.x, sprite_size.height - sprite_offset.y};
+    ipos32 pos {
         anchor.x - iround<int32_t>(numeric_cast<float32_t>(root_in_sprite.x) * draw_scale),
         anchor.y - iround<int32_t>(numeric_cast<float32_t>(root_in_sprite.y) * draw_scale),
     };
@@ -527,11 +527,11 @@ void ParticleViewer::RenderPreview()
         // scaled effect is not clipped by the near/far planes
         GetApp()->Render.ClearRenderTarget(std::nullopt, true);
         GetApp()->Render.SetOrthoDepthRange(-SCENE_DEPTH_HALF, SCENE_DEPTH_HALF);
-        auto restore_depth = scope_exit([]() noexcept { GetApp()->Render.SetOrthoDepthRange(ORTHO_DEPTH_DEFAULT_NEAR, ORTHO_DEPTH_DEFAULT_FAR); });
+        auto restore_depth {scope_exit([]() noexcept { GetApp()->Render.SetOrthoDepthRange(ORTHO_DEPTH_DEFAULT_NEAR, ORTHO_DEPTH_DEFAULT_FAR); })};
         _previewSprite->DrawInScene(fpos32 {numeric_cast<float32_t>(anchor.x), numeric_cast<float32_t>(anchor.y)}, 0.0f);
     }
     else {
-        isize32 scaled = {iround<int32_t>(numeric_cast<float32_t>(sprite_size.width) * draw_scale), iround<int32_t>(numeric_cast<float32_t>(sprite_size.height) * draw_scale)};
+        isize32 scaled {iround<int32_t>(numeric_cast<float32_t>(sprite_size.width) * draw_scale), iround<int32_t>(numeric_cast<float32_t>(sprite_size.height) * draw_scale)};
         _sprMngr->DrawSpriteSize(_previewSprite.get(), pos, scaled, true, false, Color::Neutral);
         _sprMngr->Flush();
     }
@@ -546,7 +546,7 @@ void ParticleViewer::DrawRootCrosshair(ipos32 anchor)
 {
     // Two full-span segments (LineList draws consecutive point pairs), crossing
     // at the anchor to mark the root
-    array<PrimitivePoint, 4> lines = {
+    array<PrimitivePoint, 4> lines {
         PrimitivePoint {.PointPos = {anchor.x, 0}, .PointColor = ROOT_CROSSHAIR_COLOR},
         PrimitivePoint {.PointPos = {anchor.x, PREVIEW_SIZE.height}, .PointColor = ROOT_CROSSHAIR_COLOR},
         PrimitivePoint {.PointPos = {0, anchor.y}, .PointColor = ROOT_CROSSHAIR_COLOR},
@@ -560,25 +560,25 @@ void ParticleViewer::DrawOverlays(ipos32 sprite_pos, isize32 sprite_size, float3
 {
     // Map a sprite-local pixel to the preview render target (same transform the
     // effect draw uses: top-left at sprite_pos, scaled by the draw scale)
-    auto to_screen = [&](ipos32 sl) -> ipos32 { return {sprite_pos.x + iround<int32_t>(numeric_cast<float32_t>(sl.x) * draw_scale), sprite_pos.y + iround<int32_t>(numeric_cast<float32_t>(sl.y) * draw_scale)}; };
+    auto to_screen {[&](ipos32 sl) -> ipos32 { return {sprite_pos.x + iround<int32_t>(numeric_cast<float32_t>(sl.x) * draw_scale), sprite_pos.y + iround<int32_t>(numeric_cast<float32_t>(sl.y) * draw_scale)}; }};
 
-    vector<PrimitivePoint> lines;
+    vector<PrimitivePoint> lines {};
 
-    auto add_segment = [&](ipos32 a, ipos32 b, ucolor color) {
+    auto add_segment {[&](ipos32 a, ipos32 b, ucolor color) {
         lines.emplace_back(PrimitivePoint {.PointPos = a, .PointColor = color});
         lines.emplace_back(PrimitivePoint {.PointPos = b, .PointColor = color});
-    };
+    }};
 
-    auto add_rect = [&](irect32 sprite_rect, ucolor color) {
-        ipos32 tl = to_screen({sprite_rect.x, sprite_rect.y});
-        ipos32 tr = to_screen({sprite_rect.x + sprite_rect.width, sprite_rect.y});
-        ipos32 br = to_screen({sprite_rect.x + sprite_rect.width, sprite_rect.y + sprite_rect.height});
-        ipos32 bl = to_screen({sprite_rect.x, sprite_rect.y + sprite_rect.height});
+    auto add_rect {[&](irect32 sprite_rect, ucolor color) {
+        ipos32 tl {to_screen({sprite_rect.x, sprite_rect.y})};
+        ipos32 tr {to_screen({sprite_rect.x + sprite_rect.width, sprite_rect.y})};
+        ipos32 br {to_screen({sprite_rect.x + sprite_rect.width, sprite_rect.y + sprite_rect.height})};
+        ipos32 bl {to_screen({sprite_rect.x, sprite_rect.y + sprite_rect.height})};
         add_segment(tl, tr, color);
         add_segment(tr, br, color);
         add_segment(br, bl, color);
         add_segment(bl, tl, color);
-    };
+    }};
 
     // The draw rect is the whole sprite frame the effect rasterizes into - the
     // maximal area it can cover

@@ -36,9 +36,9 @@
 FO_BEGIN_NAMESPACE
 
 // A burst of stamped messages keeps the window bounded even when the window time alone would not
-static constexpr size_t MAX_LINK_DELAY_SAMPLES = 256;
+static constexpr size_t MAX_LINK_DELAY_SAMPLES {256};
 // The transit a link had before it fell silent is still its transit: this many samples outlive the window
-static constexpr size_t MIN_LINK_DELAY_SAMPLES = 8;
+static constexpr size_t MIN_LINK_DELAY_SAMPLES {8};
 
 LinkDelayEstimator::LinkDelayEstimator(timespan window, timespan exceptional, timespan rebase) noexcept :
     _windowMs {window.milliseconds()},
@@ -49,12 +49,12 @@ LinkDelayEstimator::LinkDelayEstimator(timespan window, timespan exceptional, ti
 
 auto LinkDelayEstimator::AddSample(int64_t sender_ms, nanotime receive_time) -> timespan
 {
-    constexpr int64_t max_stamp_ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::nanoseconds::max()).count();
-    constexpr int64_t min_stamp_ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::nanoseconds::min()).count();
+    constexpr int64_t max_stamp_ms {std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::nanoseconds::max()).count()};
+    constexpr int64_t min_stamp_ms {std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::nanoseconds::min()).count()};
 
     FO_VERIFY_AND_THROW(sender_ms >= min_stamp_ms && sender_ms <= max_stamp_ms, "Sender timestamp is outside the native clock range", sender_ms);
 
-    int64_t receive_ms = receive_time.milliseconds();
+    int64_t receive_ms {receive_time.milliseconds()};
     Sample sample {.ReceiveMs = receive_ms, .OffsetMs = receive_ms - sender_ms};
 
     while (_usual.size() > MIN_LINK_DELAY_SAMPLES && (_usual.front().ReceiveMs < receive_ms - _windowMs || _usual.size() >= MAX_LINK_DELAY_SAMPLES)) {
@@ -66,7 +66,7 @@ auto LinkDelayEstimator::AddSample(int64_t sender_ms, nanotime receive_time) -> 
         return timespan::zero;
     }
 
-    int64_t late_ms = sample.OffsetMs - EvaluateUsualOffset();
+    int64_t late_ms {sample.OffsetMs - EvaluateUsualOffset()};
 
     if (late_ms < _exceptionalMs) {
         _exceptionalRun.clear();
@@ -107,13 +107,13 @@ auto LinkDelayEstimator::EvaluateUsualOffset() const -> int64_t
 {
     FO_VERIFY_AND_THROW(!_usual.empty(), "Usual link transit needs a sample");
 
-    small_vector<int64_t, MAX_LINK_DELAY_SAMPLES> offsets;
+    small_vector<int64_t, MAX_LINK_DELAY_SAMPLES> offsets {};
 
     for (const Sample& usual_sample : _usual) {
         offsets.emplace_back(usual_sample.OffsetMs);
     }
 
-    auto middle = offsets.begin() + numeric_cast<ptrdiff_t>(offsets.size() / 2);
+    auto middle {offsets.begin() + numeric_cast<ptrdiff_t>(offsets.size() / 2)};
     std::nth_element(offsets.begin(), middle, offsets.end());
     return *middle;
 }

@@ -69,7 +69,7 @@ public:
     void DisableScissor() override { _renderer.DisableScissor(); }
 
 private:
-    Null_Renderer _renderer;
+    Null_Renderer _renderer {};
     AppScreenState _screen {};
     nptr<RenderTexture> _renderTarget {};
 };
@@ -133,7 +133,7 @@ public:
 private:
     void UpdateModifierState(const InputEvent& ev)
     {
-        auto update_key_state = [this](KeyCode key, bool pressed) {
+        auto update_key_state {[this](KeyCode key, bool pressed) {
             if (key == KeyCode::Lshift || key == KeyCode::Rshift) {
                 _shiftDown = pressed;
             }
@@ -143,7 +143,7 @@ private:
             else if (key == KeyCode::Lmenu || key == KeyCode::Rmenu) {
                 _altDown = pressed;
             }
-        };
+        }};
 
         if (ev.Type == InputEvent::EventType::KeyDownEvent) {
             update_key_state(ev.KeyDown.Code, true);
@@ -233,7 +233,7 @@ public:
     auto ToggleFullscreen(bool enable) -> bool override
     {
         // The interface reports whether the state changed, not the resulting state
-        bool changed = _state.Fullscreen != enable;
+        bool changed {_state.Fullscreen != enable};
         _state.Fullscreen = enable;
         return changed;
     }
@@ -252,7 +252,7 @@ private:
     HeadlessWindowStub _state {};
     StubAppRender _render;
     StubAppInput _input;
-    StubAppAudio _audio;
+    StubAppAudio _audio {};
     bool _grabbed {};
     EventDispatcher<> _onWindowSizeChangedDispatcher {&OnWindowSizeChanged};
     EventDispatcher<> _onScreenSizeChangedDispatcher {&OnScreenSizeChanged};

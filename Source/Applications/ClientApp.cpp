@@ -58,7 +58,7 @@ struct ClientAppData
     refcount_nptr<ClientEngine> Client {};
     bool ResourcesSynced {};
     bool ReloadRequested {};
-    string StagedRuntimePath;
+    string StagedRuntimePath {};
     string WritableRoot {};
     optional<Updater> ResourceUpdater {};
 };
@@ -96,9 +96,9 @@ int main(int argc, char** argv) // Handled by SDL
 
 #if !FO_TESTING_APP
     ProgramArgs program_args {numeric_cast<int32_t>(argc), argv};
-    CommandLineArgs args = program_args.GetArgs();
+    CommandLineArgs args {program_args.GetArgs()};
 #endif
-    bool run_result = RunEmbeddedOrLoadedClient(args);
+    bool run_result {RunEmbeddedOrLoadedClient(args)};
 
     exit_app(run_result);
 }
@@ -111,11 +111,11 @@ static auto RunEmbeddedOrLoadedClient(CommandLineArgs args) -> bool
 
     // The host opens the file for the whole launch and the runtime appends to it, so the two halves of
     // one run read as one log
-    string log_path = fs::make_writable_path(Data->WritableRoot, GetExeLogFileName());
+    string log_path {fs::make_writable_path(Data->WritableRoot, GetExeLogFileName())};
 
     // A crash or a hang is diagnosed from the log the next launch would otherwise truncate
-    string previous_log_path = fs::make_writable_path(Data->WritableRoot, GetExePreviousLogFileName());
-    bool previous_log_kept = !fs::exists(log_path) || fs::rename(log_path, previous_log_path);
+    string previous_log_path {fs::make_writable_path(Data->WritableRoot, GetExePreviousLogFileName())};
+    bool previous_log_kept {!fs::exists(log_path) || fs::rename(log_path, previous_log_path)};
     logging::to_file(log_path, false);
 
     // Another process holding the previous file open makes the rename fail, and that run's log is then lost
@@ -123,19 +123,19 @@ static auto RunEmbeddedOrLoadedClient(CommandLineArgs args) -> bool
         logging::write(logging::type::warning, "Client runtime host: previous log could not be kept as {}", previous_log_path);
     }
 
-    string session_marker = MakeClientSessionMarkerPath(Data->WritableRoot);
-    auto requested_runtime = ResolveRequestedClientRuntime(args);
-    bool can_self_update = CanSelfUpdateNativeModules(GetCurrentUpdatePlatform());
+    string session_marker {MakeClientSessionMarkerPath(Data->WritableRoot)};
+    auto requested_runtime {ResolveRequestedClientRuntime(args)};
+    bool can_self_update {CanSelfUpdateNativeModules(GetCurrentUpdatePlatform())};
 
     logging::write("Client runtime host: bundled DLL {}, compatibility check {}, explicit path {}, force embedded {}, native self-update {} for {}, embedded build {}, embedded compatibility {}", requested_runtime.Path, requested_runtime.CheckCompatibilityVersion ? "enabled" : "disabled", requested_runtime.ExplicitPath ? "yes" : "no", requested_runtime.ForceEmbedded ? "yes" : "no", can_self_update ? "enabled" : "disabled", GetCurrentBinaryUpdateTargetName(), FO_BUILD_HASH, FO_COMPATIBILITY_VERSION);
 
     // The bundled DLL is the authoritative runtime, so it wins wherever self-update exists;
     // RunClientFromLibrary falls back to the embedded engine when it is absent or fails to load
-    bool can_load_bundled_runtime = requested_runtime.ExplicitPath || (!requested_runtime.ForceEmbedded && can_self_update);
+    bool can_load_bundled_runtime {requested_runtime.ExplicitPath || (!requested_runtime.ForceEmbedded && can_self_update)};
 
     if (can_load_bundled_runtime) {
-        auto loaded_runtime_result = RunClientFromLibrary(args, requested_runtime, session_marker);
-        auto loaded_result = RunClientRuntimeHostPass(loaded_runtime_result, PromoteStagedReloadForRestart);
+        auto loaded_runtime_result {RunClientFromLibrary(args, requested_runtime, session_marker)};
+        auto loaded_result {RunClientRuntimeHostPass(loaded_runtime_result, PromoteStagedReloadForRestart)};
 
         if (loaded_result.has_value()) {
             // Recorded rather than cleared: the process teardown that follows can hang too, and the next run tells
@@ -155,8 +155,8 @@ static auto RunEmbeddedOrLoadedClient(CommandLineArgs args) -> bool
         return false;
     }
 
-    auto embedded_runtime_result = RunEmbeddedClient(args);
-    auto embedded_result = RunClientRuntimeHostPass(embedded_runtime_result, PromoteStagedReloadForRestart);
+    auto embedded_runtime_result {RunEmbeddedClient(args)};
+    auto embedded_result {RunClientRuntimeHostPass(embedded_runtime_result, PromoteStagedReloadForRestart)};
 
     FO_VERIFY_AND_THROW(embedded_result.has_value(), "Embedded client runtime pass did not return a result");
     SetClientShutdownStage(session_marker, ClientShutdownStage::ExitRequested);
@@ -178,16 +178,16 @@ static auto RunClientFromLibrary(CommandLineArgs args, const RequestedClientRunt
     }
 
     ClientRuntimeExports exports {};
-    auto runtime_module = TryLoadRuntime(requested_runtime, exports);
+    auto runtime_module {TryLoadRuntime(requested_runtime, exports)};
 
     if (!runtime_module) {
         logging::write(logging::type::warning, "Client runtime host: failed to load DLL {}", requested_runtime.Path);
         return std::nullopt;
     }
 
-    string loaded_runtime_name = exports.Metadata.RuntimeName != nullptr ? string(exports.Metadata.RuntimeName) : string();
-    string loaded_build_hash = exports.Metadata.BuildHash != nullptr ? string(exports.Metadata.BuildHash) : string();
-    string loaded_compat = exports.Metadata.CompatibilityVersion != nullptr ? string(exports.Metadata.CompatibilityVersion) : string();
+    string loaded_runtime_name {exports.Metadata.RuntimeName != nullptr ? string(exports.Metadata.RuntimeName) : string()};
+    string loaded_build_hash {exports.Metadata.BuildHash != nullptr ? string(exports.Metadata.BuildHash) : string()};
+    string loaded_compat {exports.Metadata.CompatibilityVersion != nullptr ? string(exports.Metadata.CompatibilityVersion) : string()};
 
     logging::write("Client runtime host: loaded DLL {}, runtime {}, build {}, compatibility {}, ABI {}", requested_runtime.Path, loaded_runtime_name, loaded_build_hash, loaded_compat, exports.Metadata.HostAbiVersion);
 
@@ -195,9 +195,9 @@ static auto RunClientFromLibrary(CommandLineArgs args, const RequestedClientRunt
     runtime_result.Result.StructSize = numeric_cast<uint32_t>(sizeof(ClientRuntimeResult));
     runtime_result.LoadedBuildHash = loaded_build_hash;
 
-    vector<char*> runtime_args(args.size());
+    vector<char*> runtime_args {args.size()};
 
-    for (size_t index = 0; index < args.size(); ++index) {
+    for (size_t index {0}; index < args.size(); ++index) {
         runtime_args[index] = args[index].get();
     }
 
@@ -227,10 +227,10 @@ static auto PromoteStagedReloadForRestart(string_view runtime_path) -> bool
         return false;
     }
 
-    auto bootstrap_path = MakeClientRuntimeBootstrapPath(Data->WritableRoot);
+    auto bootstrap_path {MakeClientRuntimeBootstrapPath(Data->WritableRoot)};
 
     if (bootstrap_path.has_value()) {
-        string runtime_file_name = GetCurrentClientRuntimeFileName();
+        string runtime_file_name {GetCurrentClientRuntimeFileName()};
 
         if (!WriteClientRuntimeBootstrapTarget(bootstrap_path.value(), runtime_path, runtime_file_name)) {
             logging::write(logging::type::warning, "Client runtime host: failed to persist runtime bootstrap {} -> {}", bootstrap_path.value(), runtime_path);
@@ -282,7 +282,7 @@ static auto RunClientRuntime(CommandLineArgs args) noexcept -> ClientRuntimeResu
         }
 
 #else
-        auto balancer = FrameBalancer(!GetApp()->Settings.Render.VSync, GetApp()->Settings.Render.Sleep, GetApp()->Settings.Render.FixedFPS);
+        auto balancer {FrameBalancer(!GetApp()->Settings.Render.VSync, GetApp()->Settings.Render.Sleep, GetApp()->Settings.Render.FixedFPS)};
 
         while (!GetApp()->IsQuitRequested()) {
             balancer.StartLoop();
@@ -294,7 +294,7 @@ static auto RunClientRuntime(CommandLineArgs args) noexcept -> ClientRuntimeResu
         logging::write("Exit from game");
         logging::write("Client runtime embedded: main loop exited");
 
-        bool quit_success = GetApp()->GetRequestedQuitSuccess();
+        bool quit_success {GetApp()->GetRequestedQuitSuccess()};
         CleanupClientApp();
 
         if (Data->ReloadRequested) {
@@ -363,14 +363,14 @@ static void MainEntry([[maybe_unused]] void* data)
             exceptions::report_and_exit(ex);
         }
 
-        auto end_frame = scope_success([&]() {
+        auto end_frame {scope_success([&]() {
             try {
                 GetApp()->EndFrame();
             }
             catch (const std::exception& ex) {
                 exceptions::report_and_exit(ex);
             }
-        });
+        })};
 
         if (!Data->Client) {
             try {
@@ -389,10 +389,10 @@ static void MainEntry([[maybe_unused]] void* data)
                         return;
                     }
 
-                    auto result = Data->ResourceUpdater->GetResult();
+                    auto result {Data->ResourceUpdater->GetResult()};
                     // The updater stages the new runtime under its own binary dir (the writable root
                     // for an installed client, the exe dir for a portable one); reload that exact path
-                    string staged_runtime_path = Data->ResourceUpdater->GetRuntimeLivePath();
+                    string staged_runtime_path {Data->ResourceUpdater->GetRuntimeLivePath()};
                     Data->ResourceUpdater.reset();
 
                     switch (result) {
@@ -415,10 +415,10 @@ static void MainEntry([[maybe_unused]] void* data)
                 }
 
                 ClientStartupSettingsHook(GetApp()->Settings, 1, false);
-                auto settings = make_ptr(&GetApp()->Settings);
+                auto settings {make_ptr(&GetApp()->Settings)};
                 Data->Client = safe_alloc::make_refcounted<ClientEngine>(settings, GetClientResources(*settings), &GetApp()->MainWindow);
 #if FO_HEADLESS_APP
-                auto client = GetClient();
+                auto client {GetClient()};
                 client->Connect();
 #endif
             }
@@ -428,12 +428,12 @@ static void MainEntry([[maybe_unused]] void* data)
         }
 
         try {
-            auto client = GetClient();
+            auto client {GetClient()};
             client->MainLoop();
         }
         catch (const ResourcesOutdatedException&) {
             Data->ResourcesSynced = false;
-            auto client = GetClient();
+            auto client {GetClient()};
             client->Shutdown();
             Data->Client.reset();
         }
@@ -444,7 +444,7 @@ static void MainEntry([[maybe_unused]] void* data)
             exceptions::report_and_continue(ex);
 
             if (GetApp()->Settings.Render.RecreateClientOnError) {
-                auto client = GetClient();
+                auto client {GetClient()};
                 client->Shutdown();
                 Data->Client.reset();
             }
@@ -463,7 +463,7 @@ static void CleanupClientApp() noexcept
 
     if (Data->Client) {
         safe_call([]() {
-            auto client = GetClient();
+            auto client {GetClient()};
             client->Shutdown();
         });
 
@@ -478,18 +478,18 @@ static auto TryLoadRuntime(const RequestedClientRuntime& requested_runtime, Clie
     // Pinned from the first moment and never unloaded, even when rejected below: the library's static
     // initialization already registered process-wide callbacks into it (the allocator's per-thread cleanup)
     logging::write("Client runtime host: loading DLL {}", requested_runtime.Path);
-    auto runtime_module = platform::load_pinned_module(requested_runtime.Path);
+    auto runtime_module {platform::load_pinned_module(requested_runtime.Path)};
 
     if (!runtime_module) {
-        string load_error = platform::get_last_module_error();
+        string load_error {platform::get_last_module_error()};
         logging::write(logging::type::warning, "Client runtime host: LoadModule failed for {}: {}", requested_runtime.Path, load_error);
         return nullptr;
     }
 
-    auto query_exports = platform::get_func_addr<QueryClientRuntimeExportsFunc>(runtime_module, "FO_QueryClientRuntimeExports");
+    auto query_exports {platform::get_func_addr<QueryClientRuntimeExportsFunc>(runtime_module, "FO_QueryClientRuntimeExports")};
 
     if (query_exports == nullptr) {
-        string lookup_error = platform::get_last_module_error();
+        string lookup_error {platform::get_last_module_error()};
         logging::write(logging::type::warning, "Client runtime host: DLL {} does not export FO_QueryClientRuntimeExports: {}", requested_runtime.Path, lookup_error);
         return nullptr;
     }
@@ -497,9 +497,9 @@ static auto TryLoadRuntime(const RequestedClientRuntime& requested_runtime, Clie
     exports = {};
     exports.StructSize = numeric_cast<uint32_t>(sizeof(ClientRuntimeExports));
 
-    bool query_ok = query_exports(FO_CLIENT_RUNTIME_HOST_ABI_VERSION, &exports);
-    bool exports_valid = query_ok && IsValidClientRuntimeExports(exports);
-    bool abi_supported = exports_valid && IsSupportedClientRuntimeAbi(exports.Metadata.HostAbiVersion);
+    bool query_ok {query_exports(FO_CLIENT_RUNTIME_HOST_ABI_VERSION, &exports)};
+    bool exports_valid {query_ok && IsValidClientRuntimeExports(exports)};
+    bool abi_supported {exports_valid && IsSupportedClientRuntimeAbi(exports.Metadata.HostAbiVersion)};
 
     if (!query_ok || !exports_valid || !abi_supported) {
         logging::write(logging::type::warning, "Client runtime host: DLL {} rejected, export query {}, metadata {}, ABI {}, runtime ABI {}, host ABI {}", requested_runtime.Path, query_ok ? "ok" : "failed", exports_valid ? "valid" : "invalid", abi_supported ? "supported" : "unsupported", exports.Metadata.HostAbiVersion, FO_CLIENT_RUNTIME_HOST_ABI_VERSION);
@@ -507,8 +507,8 @@ static auto TryLoadRuntime(const RequestedClientRuntime& requested_runtime, Clie
     }
 
     if (requested_runtime.CheckCompatibilityVersion && !IsClientRuntimeCompatibilityMatch(exports.Metadata, requested_runtime.CompatibilityVersion)) {
-        string metadata_compat = exports.Metadata.CompatibilityVersion != nullptr ? string(exports.Metadata.CompatibilityVersion) : string();
-        string metadata_build = exports.Metadata.BuildHash != nullptr ? string(exports.Metadata.BuildHash) : string();
+        string metadata_compat {exports.Metadata.CompatibilityVersion != nullptr ? string(exports.Metadata.CompatibilityVersion) : string()};
+        string metadata_build {exports.Metadata.BuildHash != nullptr ? string(exports.Metadata.BuildHash) : string()};
         logging::write(logging::type::warning, "Client runtime host: DLL {} rejected by compatibility check, requested {}, DLL compatibility {}, DLL build {}", requested_runtime.Path, requested_runtime.CompatibilityVersion, metadata_compat, metadata_build);
         return nullptr;
     }
@@ -523,8 +523,8 @@ static auto ApplyStagedBinaryUpdate(string_view runtime_live_path) -> bool
 
     // Staging follows the runtime being loaded: the install-dir base DLL on the initial load, the
     // writable-root DLL on an installed client's reload, and the exe dir for portable clients
-    string staged_path = MakeClientRuntimeStagingPath(runtime_live_path);
-    string binary_dir = strex(runtime_live_path).extract_dir().str();
+    string staged_path {MakeClientRuntimeStagingPath(runtime_live_path)};
+    string binary_dir {strex(runtime_live_path).extract_dir().str()};
 
     if (!fs::exists(staged_path)) {
         logging::write("Client runtime host: no staged DLL at {}", staged_path);
@@ -532,9 +532,9 @@ static auto ApplyStagedBinaryUpdate(string_view runtime_live_path) -> bool
         return true;
     }
 
-    string final_path = string(runtime_live_path);
-    string backup_path = strex("{}{}", final_path, REPLACED_FILE_BACKUP_SUFFIX).str();
-    bool final_exists = fs::exists(final_path);
+    string final_path {string(runtime_live_path)};
+    string backup_path {strex("{}{}", final_path, REPLACED_FILE_BACKUP_SUFFIX).str()};
+    bool final_exists {fs::exists(final_path)};
 
     logging::write("Client runtime host: promoting staged DLL {} to {}, backup {}, live DLL exists {}", staged_path, final_path, backup_path, final_exists ? "yes" : "no");
     (void)fs::remove_file(backup_path);
@@ -574,15 +574,15 @@ static auto ResolveRequestedClientRuntime(CommandLineArgs args) -> RequestedClie
         requested_runtime.Path = ResolveBundledRuntimePath();
     }
 
-    for (size_t index = 1; index < args.size(); index++) {
-        string_view arg = args.Get(index);
+    for (size_t index {1}; index < args.size(); index++) {
+        string_view arg {args.Get(index)};
 
         if (arg.empty()) {
             continue;
         }
 
-        bool has_next_arg = index + 1 < args.size();
-        string_view next_arg = args.Get(index + 1);
+        bool has_next_arg {index + 1 < args.size()};
+        string_view next_arg {args.Get(index + 1)};
 
         if (arg == "--ClientLibPath" && has_next_arg) {
             requested_runtime.ExplicitPath = true;
@@ -595,7 +595,7 @@ static auto ResolveRequestedClientRuntime(CommandLineArgs args) -> RequestedClie
         }
 
         if (arg == "--Client.ForceEmbeddedRuntime" || arg == "-Client.ForceEmbeddedRuntime") {
-            string_view value = has_next_arg && !CommandLineArgs::IsOption(next_arg) ? next_arg : string_view("1");
+            string_view value {has_next_arg && !CommandLineArgs::IsOption(next_arg) ? next_arg : string_view("1")};
             requested_runtime.ForceEmbedded = value != "0" && value != "false" && value != "False";
         }
     }
@@ -605,15 +605,15 @@ static auto ResolveRequestedClientRuntime(CommandLineArgs args) -> RequestedClie
 
 static auto ResolveBundledRuntimePath() -> string
 {
-    string install_runtime_path = GetClientRuntimeLivePath();
-    auto bootstrap_path = MakeClientRuntimeBootstrapPath(Data->WritableRoot);
+    string install_runtime_path {GetClientRuntimeLivePath()};
+    auto bootstrap_path {MakeClientRuntimeBootstrapPath(Data->WritableRoot)};
 
     if (!bootstrap_path.has_value()) {
         return install_runtime_path;
     }
 
-    string runtime_file_name = GetCurrentClientRuntimeFileName();
-    string bootstrap_target = ResolveClientRuntimeBootstrapTarget(bootstrap_path.value(), runtime_file_name, install_runtime_path);
+    string runtime_file_name {GetCurrentClientRuntimeFileName()};
+    string bootstrap_target {ResolveClientRuntimeBootstrapTarget(bootstrap_path.value(), runtime_file_name, install_runtime_path)};
 
     if (bootstrap_target == install_runtime_path) {
         logging::write("Client runtime host: runtime bootstrap {} selected no alternate runtime, using base runtime {}", bootstrap_path.value(), install_runtime_path);

@@ -181,7 +181,7 @@ def _derive_runtime_extensions(header_text: str) -> list[str]:
 
 
 def _derive_baker_identity(header_text: str) -> tuple[str, int]:
-    name = re.search(r'NAME = "([^"]+)"', header_text)
+    name = re.search(r'NAME\s*(?:=|\{)\s*"([^"]+)"', header_text)
     order = re.search(r"GetOrder\(\) const -> int32_t override \{ return (\d+); \}", header_text)
     if name is None or order is None:
         raise ValueError("unable to derive ImageBaker name/order")
@@ -189,8 +189,8 @@ def _derive_baker_identity(header_text: str) -> tuple[str, int]:
 
 
 def _derive_sprite_resource_identity(header_text: str) -> tuple[int, int]:
-    magic = re.search(r"SPRITE_RESOURCE_MAGIC\s*=\s*(\d+)", header_text)
-    version = re.search(r"SPRITE_RESOURCE_VERSION\s*=\s*(\d+)", header_text)
+    magic = re.search(r"SPRITE_RESOURCE_MAGIC\s*(?:=|\{)\s*(\d+)", header_text)
+    version = re.search(r"SPRITE_RESOURCE_VERSION\s*(?:=|\{)\s*(\d+)", header_text)
     if magic is None or version is None:
         raise ValueError("unable to derive sprite resource magic/version")
     return int(magic.group(1)), int(version.group(1))

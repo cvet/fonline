@@ -70,8 +70,8 @@ static void AngelScriptException(AngelScript::asIScriptContext* raw_ctx, void* p
 #if FO_TRACE_CATEGORY_ENABLED(Script)
 struct AngelScriptTracyCallEntry
 {
-    static constexpr size_t FUNC_BUF_SIZE = 64;
-    static constexpr size_t FILE_BUF_SIZE = 128;
+    static constexpr size_t FUNC_BUF_SIZE {64};
+    static constexpr size_t FILE_BUF_SIZE {128};
 
     array<char, FUNC_BUF_SIZE> FuncBuf {};
     size_t FuncBufLen {};
@@ -93,15 +93,15 @@ static void AngelScriptEndCall(AngelScript::asIScriptContext* raw_ctx) noexcept;
 
 static void CleanupScriptContextExtendedData(ptr<AngelScriptContextExtendedData> ctx_ext) noexcept
 {
-    auto owned_ctx_ext = adopt_unique_ptr(ctx_ext);
+    auto owned_ctx_ext {adopt_unique_ptr(ctx_ext)};
     ignore_unused(owned_ctx_ext);
 }
 
 static void CleanupScriptContext(AngelScript::asIScriptContext* raw_ctx)
 {
     FO_VERIFY_AND_THROW(raw_ctx != nullptr, "Missing script execution context");
-    auto ctx = make_ptr(raw_ctx);
-    auto ctx_ext = GetAngelScriptContextData(ctx);
+    auto ctx {make_ptr(raw_ctx)};
+    auto ctx_ext {GetAngelScriptContextData(ctx)};
 
     if (ctx_ext) {
         CleanupScriptContextExtendedData(ctx_ext);
@@ -124,7 +124,7 @@ auto GetAngelScriptContextData(nptr<AngelScript::asIScriptContext> ctx) -> nptr<
         return nullptr;
     }
 
-    ptr<AngelScript::asIScriptContext> checked_ctx = ctx;
+    ptr<AngelScript::asIScriptContext> checked_ctx {ctx};
     return GetAngelScriptContextData(checked_ctx);
 }
 
@@ -134,7 +134,7 @@ auto GetAngelScriptContextData(nptr<const AngelScript::asIScriptContext> ctx) ->
         return nullptr;
     }
 
-    ptr<const AngelScript::asIScriptContext> checked_ctx = ctx;
+    ptr<const AngelScript::asIScriptContext> checked_ctx {ctx};
     return GetAngelScriptContextData(checked_ctx);
 }
 
@@ -146,15 +146,15 @@ AngelScriptContextManager::AngelScriptContextManager(ptr<AngelScript::asIScriptE
 {
     _asEngine->SetContextUserDataCleanupCallback(CleanupScriptContext);
 
-    int32_t as_result = 0;
+    int32_t as_result {0};
     FO_AS_VERIFY(_asEngine->SetTranslateAppExceptionCallback(asFUNCTION(AngelScriptTranslateAppException), nullptr, AngelScript::asCALL_CDECL));
 }
 
 AngelScriptContextManager::~AngelScriptContextManager()
 {
-    auto cleanup_context = [](ptr<AngelScript::asIScriptContext> ctx) {
+    auto cleanup_context {[](ptr<AngelScript::asIScriptContext> ctx) {
         safe_call([&] {
-            auto state = ctx->GetState();
+            auto state {ctx->GetState()};
 
             if (state == AngelScript::asEXECUTION_ACTIVE || state == AngelScript::asEXECUTION_SUSPENDED) {
                 ctx->Abort();
@@ -165,12 +165,12 @@ AngelScriptContextManager::~AngelScriptContextManager()
                 ctx->Unprepare();
             }
         });
-    };
+    }};
 
-    for (size_t i = 0; i < _busyContexts.size(); i++) {
+    for (size_t i {0}; i < _busyContexts.size(); i++) {
         cleanup_context(_busyContexts[i]);
     }
-    for (size_t i = 0; i < _freeContexts.size(); i++) {
+    for (size_t i {0}; i < _freeContexts.size(); i++) {
         cleanup_context(_freeContexts[i]);
     }
 }
@@ -179,27 +179,27 @@ void AngelScriptContextManager::CreateContext()
 {
     FO_TRACE_ZONE(Script);
 
-    nptr<AngelScript::asIScriptContext> ctx = _asEngine->CreateContext();
+    nptr<AngelScript::asIScriptContext> ctx {_asEngine->CreateContext()};
     FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
     _freeContexts.emplace_back(refcount_ptr<AngelScript::asIScriptContext>::from_adopted_ref(ctx.get()));
-    auto ctx_ptr = _freeContexts.back().as_ptr();
+    auto ctx_ptr {_freeContexts.back().as_ptr()};
 
-    auto ctx_ext = safe_alloc::make_unique<AngelScriptContextExtendedData>();
+    auto ctx_ext {safe_alloc::make_unique<AngelScriptContextExtendedData>()};
 #if FO_TRACE_CATEGORY_ENABLED(Script)
     ctx_ext->TracyStackTrace.reserve(128);
     ctx_ext->TracyZones.reserve(128);
 #endif
-    auto released_ctx_ext = ctx_ext.release();
+    auto released_ctx_ext {ctx_ext.release()};
     ctx_ptr->SetUserData(released_ctx_ext.void_cast());
 
 #if FO_TRACE_CATEGORY_ENABLED(Script)
-    auto ctx_impl = ctx_ptr.dyn_cast<AngelScript::asCContext>();
+    auto ctx_impl {ctx_ptr.dyn_cast<AngelScript::asCContext>()};
     FO_VERIFY_AND_THROW(ctx_impl, "Script context implementation cast failed");
     ctx_impl->BeginScriptCall = AngelScriptBeginCall;
     ctx_impl->EndScriptCall = AngelScriptEndCall;
 #endif
 
-    int32_t as_result = 0;
+    int32_t as_result {0};
     FO_AS_VERIFY(ctx_ptr->SetExceptionCallback(asFUNCTION(AngelScriptException), nullptr, AngelScript::asCALL_CDECL));
 
     if (_contextSetupCallback) {
@@ -215,7 +215,7 @@ static void EnsureAngelScriptThreadStorageReleasedOnExit() noexcept
         ~ThreadStorageGuard() noexcept { AngelScript::asThreadCleanup(); }
     };
 
-    static thread_local ThreadStorageGuard guard;
+    static thread_local ThreadStorageGuard guard {};
     ignore_unused(guard);
 }
 
@@ -229,24 +229,24 @@ auto AngelScriptContextManager::RequestContext() -> ptr<AngelScript::asIScriptCo
         CreateContext();
     }
 
-    auto ctx = _freeContexts.back();
-    auto ctx_ptr = ctx.as_ptr();
-    auto ctx_ext = GetAngelScriptContextData(ctx_ptr);
+    auto ctx {_freeContexts.back()};
+    auto ctx_ptr {ctx.as_ptr()};
+    auto ctx_ext {GetAngelScriptContextData(ctx_ptr)};
     FO_VERIFY_AND_THROW(ctx_ext, "Missing extended script execution context");
 
     _freeContexts.pop_back();
     vec_add_unique_value(_busyContexts, ctx);
 
-    auto restore_to_free = scope_fail([&]() FO_TSA_NO_ANALYSIS noexcept {
+    auto restore_to_free {scope_fail([&]() FO_TSA_NO_ANALYSIS noexcept {
         vec_remove_unique_value(_busyContexts, ctx);
         vec_add_unique_value(_freeContexts, ctx);
-    });
+    })};
 
     ctx_ext->Generation++;
 
-    auto parent_ctx = make_nptr(AngelScript::asGetActiveContext());
-    auto parent_ctx_ext = parent_ctx ? GetAngelScriptContextData(parent_ctx) : nullptr;
-    nptr<AngelScript::asIScriptContext> root_ctx = parent_ctx;
+    auto parent_ctx {make_nptr(AngelScript::asGetActiveContext())};
+    auto parent_ctx_ext {parent_ctx ? GetAngelScriptContextData(parent_ctx) : nullptr};
+    nptr<AngelScript::asIScriptContext> root_ctx {parent_ctx};
 
     if (parent_ctx_ext) {
         root_ctx = parent_ctx_ext->Root;
@@ -275,21 +275,21 @@ auto AngelScriptContextManager::GetDiagnostics() const -> Diagnostics
 {
     scoped_lock lock {_poolLocker};
 
-    Diagnostics diagnostics;
+    Diagnostics diagnostics {};
     diagnostics.FreeContexts = _freeContexts.size();
     diagnostics.BusyContexts = _busyContexts.size();
 
     for (const auto& ctx : _busyContexts) {
-        auto ctx_ext = GetAngelScriptContextData(ctx.as_ptr());
+        auto ctx_ext {GetAngelScriptContextData(ctx.as_ptr())};
         FO_VERIFY_AND_THROW(ctx_ext, "Missing extended script execution context");
 
-        bool suspended = ctx_ext->ExecutionSuspended.load();
+        bool suspended {ctx_ext->ExecutionSuspended.load()};
 
         if (suspended) {
             diagnostics.SuspendedContexts++;
         }
 
-        bool active = ctx_ext->ExecutionActive.load();
+        bool active {ctx_ext->ExecutionActive.load()};
 
         if (active) {
             diagnostics.ActiveContexts++;
@@ -305,19 +305,19 @@ auto AngelScriptContextManager::GetDiagnostics() const -> Diagnostics
 void AngelScriptContextManager::ReturnContext(ptr<AngelScript::asIScriptContext> ctx, uint64_t expected_generation) noexcept
 {
     try {
-        function<void(bool)> completion;
-        bool success = false;
+        function<void(bool)> completion {};
+        bool success {false};
 
         {
             scoped_lock lock {_poolLocker};
 
-            auto it = std::ranges::find_if(_busyContexts, [ctx](const auto& busy) { return IsSameScriptContext(busy, ctx); });
+            auto it {std::ranges::find_if(_busyContexts, [ctx](const auto& busy) { return IsSameScriptContext(busy, ctx); })};
 
             if (it == _busyContexts.end()) {
                 return;
             }
 
-            auto ctx_ext = GetAngelScriptContextData(ctx);
+            auto ctx_ext {GetAngelScriptContextData(ctx)};
             FO_VERIFY_AND_THROW(ctx_ext, "Missing extended script execution context");
 
             if (ctx_ext->Generation.load() != expected_generation) {
@@ -328,16 +328,16 @@ void AngelScriptContextManager::ReturnContext(ptr<AngelScript::asIScriptContext>
                 return;
             }
 
-            AngelScript::asEContextState state = ctx->GetState();
+            AngelScript::asEContextState state {ctx->GetState()};
 
             if (state == AngelScript::asEXECUTION_SUSPENDED || state == AngelScript::asEXECUTION_ACTIVE) {
                 return;
             }
 
-            int32_t as_result = 0;
+            int32_t as_result {0};
             FO_AS_VERIFY(ctx->Unprepare());
 
-            auto ctx_holder = refcount_ptr<AngelScript::asIScriptContext>::from_addref(ctx.get());
+            auto ctx_holder {refcount_ptr<AngelScript::asIScriptContext>::from_addref(ctx.get())};
 
             if (_contextSetupCallback) {
                 _contextSetupCallback(ctx_holder, AngelScriptContextSetupReason::Return);
@@ -355,8 +355,8 @@ void AngelScriptContextManager::ReturnContext(ptr<AngelScript::asIScriptContext>
                     continue;
                 }
 
-                auto other_ptr = other.as_ptr();
-                auto other_ext = GetAngelScriptContextData(other_ptr);
+                auto other_ptr {other.as_ptr()};
+                auto other_ext {GetAngelScriptContextData(other_ptr)};
                 FO_VERIFY_AND_THROW(other_ext, "Context extended data is null");
 
                 if (other_ext->Parent == ctx.get()) {
@@ -387,9 +387,9 @@ auto AngelScriptContextManager::PrepareContext(ptr<AngelScript::asIScriptFunctio
 {
     FO_TRACE_ZONE(Script);
 
-    auto ctx = RequestContext();
-    uint64_t ctx_generation = GetContextGeneration(ctx);
-    int32_t as_result = ctx->Prepare(func.get());
+    auto ctx {RequestContext()};
+    uint64_t ctx_generation {GetContextGeneration(ctx)};
+    int32_t as_result {ctx->Prepare(func.get())};
 
     if (as_result < 0) {
         ReturnContext(ctx, ctx_generation);
@@ -401,7 +401,7 @@ auto AngelScriptContextManager::PrepareContext(ptr<AngelScript::asIScriptFunctio
 
 auto AngelScriptContextManager::GetContextGeneration(ptr<AngelScript::asIScriptContext> ctx) const noexcept -> uint64_t
 {
-    auto ctx_ext = GetAngelScriptContextData(ctx);
+    auto ctx_ext {GetAngelScriptContextData(ctx)};
 
     if (!ctx_ext) {
         return 0;
@@ -419,22 +419,22 @@ auto AngelScriptContextManager::RunContext(ptr<AngelScript::asIScriptContext> ct
 {
     FO_TRACE_ZONE(Script);
 
-    auto ctx_ext = GetAngelScriptContextData(ctx);
+    auto ctx_ext {GetAngelScriptContextData(ctx)};
     FO_VERIFY_AND_THROW(ctx_ext, "Missing extended script execution context");
 
     if (execution_reserved) {
-        bool active = ctx_ext->ExecutionActive.load();
+        bool active {ctx_ext->ExecutionActive.load()};
         FO_VERIFY_AND_THROW(active, "Script execution context is not reserved");
     }
     else {
-        bool already_active = ctx_ext->ExecutionActive.exchange(true);
+        bool already_active {ctx_ext->ExecutionActive.exchange(true)};
         FO_VERIFY_AND_THROW(!already_active, "Already active is already set");
     }
 
-    auto execution_active_guard = scope_exit([ctx_ext]() mutable noexcept { ctx_ext->ExecutionActive.store(false); });
+    auto execution_active_guard {scope_exit([ctx_ext]() mutable noexcept { ctx_ext->ExecutionActive.store(false); })};
     ctx_ext->ExecutionSuspended.store(false);
 
-    int32_t exec_result = 0;
+    int32_t exec_result {0};
 
     {
 #if FO_TRACE_CATEGORY_ENABLED(Script)
@@ -447,13 +447,13 @@ auto AngelScriptContextManager::RunContext(ptr<AngelScript::asIScriptContext> ct
                 FO_VERIFY_AND_THROW(entry, "Missing Tracy call stack entry");
 
                 ctx_ext->TracyExecutionCalls++;
-                const auto tracy_srcloc = ___tracy_alloc_srcloc(entry->Line, entry->FileBuf.data(), entry->FileBufLen, entry->FuncBuf.data(), entry->FuncBufLen, 0);
-                const auto tracy_zone = ___tracy_emit_zone_begin_alloc(tracy_srcloc, 1);
+                const auto tracy_srcloc {___tracy_alloc_srcloc(entry->Line, entry->FileBuf.data(), entry->FileBufLen, entry->FuncBuf.data(), entry->FuncBufLen, 0)};
+                const auto tracy_zone {___tracy_emit_zone_begin_alloc(tracy_srcloc, 1)};
                 ctx_ext->TracyZones.emplace_back(tracy_zone);
             }
         }
 
-        auto tracy_after_execution = scope_exit([&]() noexcept {
+        auto tracy_after_execution {scope_exit([&]() noexcept {
             ctx_ext->TracyExecutionActive = false;
 
             while (ctx_ext->TracyExecutionCalls > 0) {
@@ -465,12 +465,12 @@ auto AngelScriptContextManager::RunContext(ptr<AngelScript::asIScriptContext> ct
             if (ctx->GetState() != AngelScript::asEXECUTION_SUSPENDED) {
                 ctx_ext->TracyStackTrace.clear();
             }
-        });
+        })};
 #endif
 
-        auto execution_time = time_meter();
+        auto execution_time {time_meter()};
 
-        auto execute_context = [&exec_result, &ctx] {
+        auto execute_context {[&exec_result, &ctx] {
             try {
                 exec_result = ctx->Execute();
             }
@@ -479,19 +479,19 @@ auto AngelScriptContextManager::RunContext(ptr<AngelScript::asIScriptContext> ct
                 ctx->SetException(ex.what());
                 exec_result = AngelScript::asEXECUTION_EXCEPTION;
             }
-        };
+        }};
 
-        timespan lock_wait_duration = _engine->RunScriptContext(execute_context);
+        timespan lock_wait_duration {_engine->RunScriptContext(execute_context)};
 
         if (_overrunTimeout && !is_run_in_debugger() && !_engine->IsStartingUp()) {
-            timespan total_duration = execution_time.get_duration();
-            timespan execution_duration = total_duration >= lock_wait_duration ? total_duration - lock_wait_duration : timespan::zero;
-            bool execution_overrun = execution_duration >= _overrunTimeout;
-            bool lock_wait_overrun = lock_wait_duration >= _overrunTimeout;
+            timespan total_duration {execution_time.get_duration()};
+            timespan execution_duration {total_duration >= lock_wait_duration ? total_duration - lock_wait_duration : timespan::zero};
+            bool execution_overrun {execution_duration >= _overrunTimeout};
+            bool lock_wait_overrun {lock_wait_duration >= _overrunTimeout};
 
             if (execution_overrun || lock_wait_overrun) {
                 if constexpr (!FO_DEBUG) {
-                    string func_decl = ctx->GetFunction()->GetDeclaration(true, true);
+                    string func_decl {ctx->GetFunction()->GetDeclaration(true, true)};
 
                     _engine->RegisterScriptOverrun(func_decl, execution_duration, lock_wait_duration);
 
@@ -518,24 +518,24 @@ auto AngelScriptContextManager::RunContext(ptr<AngelScript::asIScriptContext> ct
 
     if (exec_result != AngelScript::asEXECUTION_FINISHED) {
         if (exec_result == AngelScript::asEXECUTION_EXCEPTION) {
-            string ex_string = ctx->GetExceptionString();
-            auto exc_ctx_ext = GetAngelScriptContextData(ctx);
+            string ex_string {ctx->GetExceptionString()};
+            auto exc_ctx_ext {GetAngelScriptContextData(ctx)};
             FO_VERIFY_AND_THROW(exc_ctx_ext, "Missing extended script execution context");
-            auto ex = exc_ctx_ext->Exception;
+            auto ex {exc_ctx_ext->Exception};
 
             if (_debuggerStopCallback) {
-                string source_path;
-                optional<uint32_t> source_line;
-                string function_name;
+                string source_path {};
+                optional<uint32_t> source_line {};
+                string function_name {};
 
-                if (auto ex_func = ctx->GetExceptionFunction(); ex_func) {
+                if (auto ex_func {ctx->GetExceptionFunction()}; ex_func) {
                     function_name = ex_func->GetName();
                 }
 
-                if (int32_t ex_line = ctx->GetExceptionLineNumber(); ex_line != 0) {
-                    auto lnt = cast_from_void<const Preprocessor::LineNumberTranslator*>(ctx->GetEngine()->GetUserData(5));
-                    string_view ex_orig_file = Preprocessor::ResolveOriginalFile(ex_line, lnt.get());
-                    auto ex_orig_line = Preprocessor::ResolveOriginalLine(ex_line, lnt.get());
+                if (int32_t ex_line {ctx->GetExceptionLineNumber()}; ex_line != 0) {
+                    auto lnt {cast_from_void<const Preprocessor::LineNumberTranslator*>(ctx->GetEngine()->GetUserData(5))};
+                    string_view ex_orig_file {static_cast<string_view>(Preprocessor::ResolveOriginalFile(ex_line, lnt.get()))};
+                    auto ex_orig_line {Preprocessor::ResolveOriginalLine(ex_line, lnt.get())};
 
                     source_path = string {ex_orig_file};
 
@@ -583,8 +583,8 @@ void AngelScriptContextManager::SuspendScriptContext(ptr<AngelScript::asIScriptC
     }
 
     FO_VERIFY_AND_THROW(_delayedScheduler, "Missing required delayed scheduler");
-    nanotime now = GetGameEngine(_asEngine)->GameTime.GetFrameTime();
-    timespan delay = time > now ? time - now : timespan::zero;
+    nanotime now {GetGameEngine(_asEngine)->GameTime.GetFrameTime()};
+    timespan delay {time > now ? time - now : timespan::zero};
     _delayedScheduler(delay, [this, ctx]() { ResumeSpecificContext(ctx); });
 }
 
@@ -592,18 +592,18 @@ void AngelScriptContextManager::ResumeSpecificContext(ptr<AngelScript::asIScript
 {
     FO_TRACE_ZONE(Script);
 
-    uint64_t ctx_generation = 0;
+    uint64_t ctx_generation {0};
 
     {
         scoped_lock lock {_poolLocker};
 
-        auto it = std::ranges::find_if(_busyContexts, [ctx](const auto& busy) { return IsSameScriptContext(busy, ctx); });
+        auto it {std::ranges::find_if(_busyContexts, [ctx](const auto& busy) { return IsSameScriptContext(busy, ctx); })};
 
         if (it == _busyContexts.end()) {
             return;
         }
 
-        auto ctx_ext = GetAngelScriptContextData(ctx);
+        auto ctx_ext {GetAngelScriptContextData(ctx)};
         FO_STRONG_ASSERT(ctx_ext, "Missing extended script execution context");
 
         if (ctx_ext->ExecutionActive.exchange(true)) {
@@ -621,7 +621,7 @@ void AngelScriptContextManager::ResumeSpecificContext(ptr<AngelScript::asIScript
     }
 
     try {
-        auto return_ctx = scope_exit([&]() noexcept { ReturnContext(ctx, ctx_generation); });
+        auto return_ctx {scope_exit([&]() noexcept { ReturnContext(ctx, ctx_generation); })};
         RunContext(ctx, true, true);
     }
     catch (const std::exception& ex) {
@@ -632,23 +632,23 @@ void AngelScriptContextManager::ResumeSpecificContext(ptr<AngelScript::asIScript
 static auto BuildScriptFrameForContext(ptr<AngelScript::asIScriptContext> ctx, uint32_t stack_level) noexcept -> optional<stack_trace::frame>
 {
     try {
-        auto as_stack_level = numeric_cast<AngelScript::asUINT>(stack_level);
-        nptr<const AngelScript::asIScriptFunction> func = ctx->GetFunction(as_stack_level);
+        auto as_stack_level {numeric_cast<AngelScript::asUINT>(stack_level)};
+        nptr<const AngelScript::asIScriptFunction> func {ctx->GetFunction(as_stack_level)};
 
         if (!func) {
             return std::nullopt;
         }
 
-        int32_t ctx_line = ctx->GetLineNumber(as_stack_level);
-        auto lnt = cast_from_void<const Preprocessor::LineNumberTranslator*>(ctx->GetEngine()->GetUserData(5));
+        int32_t ctx_line {ctx->GetLineNumber(as_stack_level)};
+        auto lnt {cast_from_void<const Preprocessor::LineNumberTranslator*>(ctx->GetEngine()->GetUserData(5))};
 
-        stack_trace::frame frame;
+        stack_trace::frame frame {};
         frame.type = stack_trace::frame::frame_type::script;
 
-        if (auto decl = make_nptr(func->GetDeclaration(true)); decl) {
+        if (auto decl {make_nptr(func->GetDeclaration(true))}; decl) {
             frame.function = decl.get();
         }
-        else if (auto name = make_nptr(func->GetName()); name) {
+        else if (auto name {make_nptr(func->GetName())}; name) {
             frame.function = name.get();
         }
 
@@ -676,17 +676,17 @@ static void CollectScriptStackLayers(const stack_trace::data& st, std::vector<st
         // Register cleanup before the first access
         EnsureAngelScriptThreadStorageReleasedOnExit();
 
-        auto ctx = make_nptr(AngelScript::asGetActiveContext());
+        auto ctx {make_nptr(AngelScript::asGetActiveContext())};
 
         while (ctx) {
-            auto ctx_ext = GetAngelScriptContextData(ctx);
+            auto ctx_ext {GetAngelScriptContextData(ctx)};
 
-            stack_trace::script_layer layer;
-            auto callstack_size = ctx->GetCallstackSize();
+            stack_trace::script_layer layer {};
+            auto callstack_size {ctx->GetCallstackSize()};
             layer.script_frames.reserve(callstack_size);
 
-            for (AngelScript::asUINT i = 0; i < callstack_size; i++) {
-                if (auto frame = BuildScriptFrameForContext(ctx, numeric_cast<uint32_t>(i)); frame.has_value()) {
+            for (AngelScript::asUINT i {0}; i < callstack_size; i++) {
+                if (auto frame {BuildScriptFrameForContext(ctx, numeric_cast<uint32_t>(i))}; frame.has_value()) {
                     layer.script_frames.emplace_back(std::move(*frame));
                 }
             }
@@ -719,12 +719,12 @@ static void AngelScriptTranslateAppException(AngelScript::asIScriptContext* raw_
 {
     ignore_unused(param);
 
-    auto ctx = make_nptr(raw_ctx);
+    auto ctx {make_nptr(raw_ctx)};
     FO_VERIFY_AND_CONTINUE(ctx, "Missing script execution context");
 
     // A context without extended data is not ours (AngelScript runs internal contexts of its own, for example
     // while a module exit destroys global properties), so there is nothing to record into
-    auto ctx_ext = GetAngelScriptContextData(ctx);
+    auto ctx_ext {GetAngelScriptContextData(ctx)};
 
     if (ctx_ext) {
         ctx_ext->Exception = std::current_exception();
@@ -736,25 +736,25 @@ static void AngelScriptException(AngelScript::asIScriptContext* raw_ctx, void* p
     ignore_unused(param);
 
     FO_VERIFY_AND_THROW(raw_ctx != nullptr, "Missing script execution context");
-    auto ctx = make_ptr(raw_ctx);
+    auto ctx {make_ptr(raw_ctx)};
 
     // Count exceptions
-    ptr<AngelScript::asIScriptEngine> as_engine = ctx->GetEngine();
-    auto backend = GetScriptBackend(as_engine);
+    ptr<AngelScript::asIScriptEngine> as_engine {ctx->GetEngine()};
+    auto backend {GetScriptBackend(as_engine)};
     backend->IncreaseExceptionCounter();
 
-    nptr<AngelScript::asIScriptContext> ctx_iter = ctx;
+    nptr<AngelScript::asIScriptContext> ctx_iter {ctx};
 
     while (ctx_iter) {
-        auto ctx_ext = GetAngelScriptContextData(ctx_iter);
+        auto ctx_ext {GetAngelScriptContextData(ctx_iter)};
         FO_VERIFY_AND_THROW(ctx_ext, "Missing extended script execution context");
         ctx_ext->ExceptionCount++;
         ctx_iter = ctx_ext->Parent;
     }
 
-    auto ctx_ext = GetAngelScriptContextData(ctx);
+    auto ctx_ext {GetAngelScriptContextData(ctx)};
     FO_VERIFY_AND_THROW(ctx_ext, "Missing extended script execution context");
-    std::exception_ptr& ex = ctx_ext->Exception;
+    std::exception_ptr& ex {ctx_ext->Exception};
 
     if (ex) {
         return;
@@ -768,43 +768,43 @@ static void AngelScriptException(AngelScript::asIScriptContext* raw_ctx, void* p
 static void AngelScriptBeginCall(AngelScript::asIScriptContext* raw_ctx, AngelScript::asIScriptFunction* raw_func)
 {
     FO_VERIFY_AND_THROW(raw_ctx != nullptr, "Missing script execution context");
-    auto ctx = make_ptr(raw_ctx);
+    auto ctx {make_ptr(raw_ctx)};
     FO_VERIFY_AND_THROW(raw_func != nullptr, "Missing called script function");
-    auto func = make_ptr(raw_func);
-    auto ctx_ext = GetAngelScriptContextData(ctx);
+    auto func {make_ptr(raw_func)};
+    auto ctx_ext {GetAngelScriptContextData(ctx)};
 
     if (!ctx_ext || !ctx_ext->TracyExecutionActive) {
         return;
     }
 
     nptr<AngelScriptTracyCallEntry> entry {};
-    const auto func_key = std::bit_cast<size_t>(func.get());
+    const auto func_key {std::bit_cast<size_t>(func.get())};
 
     {
         scoped_lock lock {AngelScriptTracy->CacheLocker};
 
-        if (const auto it = AngelScriptTracy->CacheEntries.find(func_key); it != AngelScriptTracy->CacheEntries.end()) {
+        if (const auto it {AngelScriptTracy->CacheEntries.find(func_key)}; it != AngelScriptTracy->CacheEntries.end()) {
             entry = &it->second;
         }
     }
 
     if (!entry) {
-        const int32_t ctx_line = ctx->GetLineNumber();
-        ptr<AngelScript::asIScriptEngine> as_engine = ctx->GetEngine();
-        auto lnt = cast_from_void<const Preprocessor::LineNumberTranslator*>(as_engine->GetUserData(5));
-        const string_view orig_file = Preprocessor::ResolveOriginalFile(ctx_line, lnt.get());
-        const auto orig_line = numeric_cast<uint32_t>(Preprocessor::ResolveOriginalLine(ctx_line, lnt.get()));
-        const nptr<const char> func_decl = func->GetDeclaration(true);
+        const int32_t ctx_line {ctx->GetLineNumber()};
+        ptr<AngelScript::asIScriptEngine> as_engine {ctx->GetEngine()};
+        auto lnt {cast_from_void<const Preprocessor::LineNumberTranslator*>(as_engine->GetUserData(5))};
+        const string_view orig_file {static_cast<string_view>(Preprocessor::ResolveOriginalFile(ctx_line, lnt.get()))};
+        const auto orig_line {numeric_cast<uint32_t>(Preprocessor::ResolveOriginalLine(ctx_line, lnt.get()))};
+        const nptr<const char> func_decl {func->GetDeclaration(true)};
 
         scoped_lock lock {AngelScriptTracy->CacheLocker};
 
         entry = &AngelScriptTracy->CacheEntries.emplace(func_key, AngelScriptTracyCallEntry {}).first->second;
 
-        const auto safe_copy = [](auto& to, size_t& len, string_view from) {
+        const auto safe_copy {[](auto& to, size_t& len, string_view from) {
             len = std::min(from.length(), to.size() - 1);
             memory::copy(to.data(), from.data(), len);
             to[len] = 0;
-        };
+        }};
 
         safe_copy(entry->FuncBuf, entry->FuncBufLen, func_decl ? string_view {func_decl.get()} : string_view {});
         safe_copy(entry->FileBuf, entry->FileBufLen, orig_file);
@@ -814,8 +814,8 @@ static void AngelScriptBeginCall(AngelScript::asIScriptContext* raw_ctx, AngelSc
     ctx_ext->TracyExecutionCalls++;
     ctx_ext->TracyStackTrace.emplace_back(entry);
 
-    const auto tracy_srcloc = ___tracy_alloc_srcloc(entry->Line, entry->FileBuf.data(), entry->FileBufLen, entry->FuncBuf.data(), entry->FuncBufLen, 0);
-    const auto tracy_zone = ___tracy_emit_zone_begin_alloc(tracy_srcloc, 1);
+    const auto tracy_srcloc {___tracy_alloc_srcloc(entry->Line, entry->FileBuf.data(), entry->FileBufLen, entry->FuncBuf.data(), entry->FuncBufLen, 0)};
+    const auto tracy_zone {___tracy_emit_zone_begin_alloc(tracy_srcloc, 1)};
     ctx_ext->TracyZones.emplace_back(tracy_zone);
 }
 
@@ -825,8 +825,8 @@ static void AngelScriptEndCall(AngelScript::asIScriptContext* raw_ctx) noexcept
         return;
     }
 
-    auto ctx = make_ptr(raw_ctx);
-    auto ctx_ext = GetAngelScriptContextData(ctx);
+    auto ctx {make_ptr(raw_ctx)};
+    auto ctx_ext {GetAngelScriptContextData(ctx)};
 
     if (!ctx_ext || !ctx_ext->TracyExecutionActive) {
         return;

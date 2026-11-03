@@ -110,13 +110,13 @@ void work_thread::add_job_internal(timespan delay, job next_job, bool no_notify)
     {
         scoped_lock locker {_data_locker};
 
-        nanotime fire_time = nanotime::now() + delay;
+        nanotime fire_time {nanotime::now() + delay};
 
         if (_jobs.empty() || fire_time >= _jobs.back().first) {
             _jobs.emplace_back(fire_time, std::move(next_job));
         }
         else {
-            for (auto it = _jobs.begin(); it != _jobs.end(); ++it) {
+            for (auto it {_jobs.begin()}; it != _jobs.end(); ++it) {
                 if (fire_time < it->first) {
                     _jobs.emplace(it, fire_time, std::move(next_job));
                     break;
@@ -134,7 +134,7 @@ void work_thread::clear()
 {
     FO_TRACE_ZONE(Threading);
 
-    unique_lock locker(_data_locker);
+    unique_lock locker {_data_locker};
 
     _clear_jobs = true;
 
@@ -151,7 +151,7 @@ void work_thread::wait() const
 {
     FO_TRACE_ZONE(Threading);
 
-    unique_lock locker(_data_locker);
+    unique_lock locker {_data_locker};
 
     while (!_jobs.empty() || _job_active) {
         _done_signal.wait(locker);
@@ -162,7 +162,7 @@ void work_thread::pause()
 {
     FO_TRACE_ZONE(Threading);
 
-    unique_lock locker(_data_locker);
+    unique_lock locker {_data_locker};
 
     _paused = true;
 
@@ -188,10 +188,10 @@ void work_thread::thread_entry() noexcept
 
     try {
         while (true) {
-            job next_job;
+            job next_job {};
 
             {
-                unique_lock locker(_data_locker);
+                unique_lock locker {_data_locker};
 
                 _job_active = false;
 
@@ -236,11 +236,11 @@ void work_thread::thread_entry() noexcept
                 }
 
                 if (!_jobs.empty()) {
-                    nanotime cur_time = nanotime::now();
-                    nanotime soonest_fire;
-                    bool has_pending = false;
+                    nanotime cur_time {nanotime::now()};
+                    nanotime soonest_fire {};
+                    bool has_pending {false};
 
-                    for (auto it = _jobs.begin(); it != _jobs.end(); ++it) {
+                    for (auto it {_jobs.begin()}; it != _jobs.end(); ++it) {
                         if (cur_time >= it->first) {
                             next_job = std::move(it->second);
                             _jobs.erase(it);
@@ -265,7 +265,7 @@ void work_thread::thread_entry() noexcept
 
             if (next_job) {
                 try {
-                    auto next_call_delay = next_job();
+                    auto next_call_delay {next_job()};
 
                     // Schedule repeat
                     if (next_call_delay.has_value()) {
@@ -275,7 +275,7 @@ void work_thread::thread_entry() noexcept
                 catch (const std::exception& ex) {
                     // A handler owns the reporting: it knows what the failure means to its owner and when to
                     // say so, and reporting here too would repeat it behind everything the handler set going
-                    bool handled = false;
+                    bool handled {false};
 
                     {
                         scoped_lock locker {_data_locker};

@@ -140,7 +140,7 @@ void SetScriptArgObjectFromHandleSlot(ptr<AngelScript::asIScriptContext> ctx, ui
 template<typename T>
 inline auto GetGenericObjectAs(ptr<AngelScript::asIScriptGeneric> gen) noexcept -> ptr<T>
 {
-    auto object = GetGenericObject(gen);
+    auto object {GetGenericObject(gen)};
 
     if constexpr (std::is_void_v<std::remove_cv_t<T>>) {
         return object;
@@ -159,7 +159,7 @@ inline auto GetGenericAuxiliaryAs(ptr<AngelScript::asIScriptGeneric> gen) noexce
 template<typename T>
 inline auto GetGenericAddressArgAs(ptr<AngelScript::asIScriptGeneric> gen, uint32_t arg_index) noexcept -> ptr<T>
 {
-    auto arg_address = GetGenericAddressArg(gen, arg_index);
+    auto arg_address {GetGenericAddressArg(gen, arg_index)};
 
     if constexpr (std::is_void_v<std::remove_cv_t<T>>) {
         return arg_address;
@@ -172,7 +172,7 @@ inline auto GetGenericAddressArgAs(ptr<AngelScript::asIScriptGeneric> gen, uint3
 template<typename T>
 inline auto GetGenericArgAddressAs(ptr<AngelScript::asIScriptGeneric> gen, uint32_t arg_index) noexcept -> nptr<T>
 {
-    auto arg_address = GetGenericArgAddress(gen, arg_index);
+    auto arg_address {GetGenericArgAddress(gen, arg_index)};
 
     if constexpr (std::is_void_v<std::remove_cv_t<T>>) {
         return arg_address;
@@ -210,7 +210,7 @@ namespace aswrap
     template<typename T>
     inline auto ReadArg(AngelScript::asIScriptGeneric* gen, int index) -> T
     {
-        AngelScript::asUINT arg_index = static_cast<AngelScript::asUINT>(index);
+        AngelScript::asUINT arg_index {static_cast<AngelScript::asUINT>(index)};
 
         if constexpr (std::is_lvalue_reference_v<T>) {
             using BaseType = std::remove_reference_t<T>;
@@ -242,7 +242,7 @@ namespace aswrap
             return *GetGenericObjectAs<BaseType>(gen);
         }
         else if constexpr (std::is_pointer_v<T>) {
-            auto object = GetGenericObject(gen);
+            auto object {GetGenericObject(gen)};
 
             if constexpr (std::is_function_v<std::remove_pointer_t<T>>) {
                 static_assert(sizeof(T) == sizeof(void*));
@@ -292,13 +292,13 @@ namespace aswrap
     inline void StoreReturnValue(AngelScript::asIScriptGeneric* gen, T value)
     {
         if constexpr (std::is_lvalue_reference_v<T>) {
-            const auto as_result = gen->SetReturnAddress(ReferenceReturnValueAsAddress(value));
+            const auto as_result {gen->SetReturnAddress(ReferenceReturnValueAsAddress(value))};
             if (as_result < 0) {
                 ThrowScriptCoreException(__FILE__, __LINE__, as_result);
             }
         }
         else if constexpr (std::is_pointer_v<T>) {
-            const auto as_result = gen->SetReturnAddress(PointerReturnValueAsAddress(value));
+            const auto as_result {gen->SetReturnAddress(PointerReturnValueAsAddress(value))};
             if (as_result < 0) {
                 ThrowScriptCoreException(__FILE__, __LINE__, as_result);
             }
@@ -349,7 +349,7 @@ namespace aswrap
         template<std::size_t... Index>
         static void invoke(AngelScript::asIScriptGeneric* gen, std::index_sequence<Index...>)
         {
-            auto object = GetGenericObjectAs<C>(gen);
+            auto object {GetGenericObjectAs<C>(gen)};
 
             if constexpr (std::is_void_v<R>) {
                 (object->*Method)(ReadArg<Args>(gen, static_cast<int>(Index))...);
@@ -370,7 +370,7 @@ namespace aswrap
         template<std::size_t... Index>
         static void invoke(AngelScript::asIScriptGeneric* gen, std::index_sequence<Index...>)
         {
-            auto object = GetGenericObjectAs<const C>(gen);
+            auto object {GetGenericObjectAs<const C>(gen)};
 
             if constexpr (std::is_void_v<R>) {
                 (object->*Method)(ReadArg<Args>(gen, static_cast<int>(Index))...);

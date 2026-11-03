@@ -41,84 +41,84 @@ TEST_CASE("AnyData")
 {
     SECTION("Int 1")
     {
-        AnyData::Value val = numeric_cast<int64_t>(1234);
+        AnyData::Value val {numeric_cast<int64_t>(1234)};
         CHECK(AnyData::ValueToString(val) == "1234");
         CHECK(val == AnyData::ParseValue(AnyData::ValueToString(val), false, false, AnyData::ValueType::Int64));
     }
 
     SECTION("Float 1")
     {
-        AnyData::Value val = 0.0f;
+        AnyData::Value val {0.0f};
         CHECK(AnyData::ValueToString(val) == "0");
         CHECK(val == AnyData::ParseValue(AnyData::ValueToString(val), false, false, AnyData::ValueType::Float64));
     }
 
     SECTION("Float 2")
     {
-        AnyData::Value val = 0.999999;
+        AnyData::Value val {0.999999};
         CHECK(AnyData::ValueToString(val) == "0.999999");
         CHECK(val == AnyData::ParseValue(AnyData::ValueToString(val), false, false, AnyData::ValueType::Float64));
     }
 
     SECTION("Float 3")
     {
-        AnyData::Value val = 100000000.0;
+        AnyData::Value val {100000000.0};
         CHECK(AnyData::ValueToString(val) == "100000000");
         CHECK(val == AnyData::ParseValue(AnyData::ValueToString(val), false, false, AnyData::ValueType::Float64));
     }
 
     SECTION("Bool True")
     {
-        AnyData::Value val = true;
+        AnyData::Value val {true};
         CHECK(AnyData::ValueToString(val) == "True");
         CHECK(val == AnyData::ParseValue(AnyData::ValueToString(val), false, false, AnyData::ValueType::Bool));
     }
 
     SECTION("Bool False")
     {
-        AnyData::Value val = false;
+        AnyData::Value val {false};
         CHECK(AnyData::ValueToString(val) == "False");
         CHECK(val == AnyData::ParseValue(AnyData::ValueToString(val), false, false, AnyData::ValueType::Bool));
     }
 
     SECTION("String 1")
     {
-        AnyData::Value val = string("ABCD");
+        AnyData::Value val {string("ABCD")};
         CHECK(AnyData::ValueToString(val) == "ABCD");
         CHECK(val == AnyData::ParseValue(AnyData::ValueToString(val), false, false, AnyData::ValueType::String));
     }
 
     SECTION("String 2")
     {
-        AnyData::Value val = string("AB   C D");
+        AnyData::Value val {string("AB   C D")};
         CHECK(AnyData::ValueToString(val) == "AB   C D");
         CHECK(val == AnyData::ParseValue(AnyData::ValueToString(val), false, false, AnyData::ValueType::String));
     }
 
     SECTION("String 3")
     {
-        AnyData::Value val = string("   AB   C D");
+        AnyData::Value val {string("   AB   C D")};
         CHECK(AnyData::ValueToString(val) == "\"   AB   C D\"");
         CHECK(val == AnyData::ParseValue(AnyData::ValueToString(val), false, false, AnyData::ValueType::String));
     }
 
     SECTION("String 4")
     {
-        AnyData::Value val = string("ABCD ");
+        AnyData::Value val {string("ABCD ")};
         CHECK(AnyData::ValueToString(val) == "\"ABCD \"");
         CHECK(val == AnyData::ParseValue(AnyData::ValueToString(val), false, false, AnyData::ValueType::String));
     }
 
     SECTION("String 5")
     {
-        AnyData::Value val = string("\tABCD");
+        AnyData::Value val {string("\tABCD")};
         CHECK(AnyData::ValueToString(val) == "\"\tABCD\"");
         CHECK(val == AnyData::ParseValue(AnyData::ValueToString(val), false, false, AnyData::ValueType::String));
     }
 
     SECTION("Array of ints")
     {
-        AnyData::Array arr;
+        AnyData::Array arr {};
         arr.EmplaceBack(numeric_cast<int64_t>(1));
         arr.EmplaceBack(numeric_cast<int64_t>(2));
         arr.EmplaceBack(numeric_cast<int64_t>(3));
@@ -129,7 +129,7 @@ TEST_CASE("AnyData")
 
     SECTION("Array of strings")
     {
-        AnyData::Array arr;
+        AnyData::Array arr {};
         arr.EmplaceBack(string("one"));
         arr.EmplaceBack(string("two"));
         arr.EmplaceBack(string("three"));
@@ -139,7 +139,7 @@ TEST_CASE("AnyData")
 
     SECTION("Dict with ints")
     {
-        AnyData::Dict dict;
+        AnyData::Dict dict {};
         dict.Emplace("key1", numeric_cast<int64_t>(1));
         dict.Emplace("key2", numeric_cast<int64_t>(2));
         dict.Emplace("key3", numeric_cast<int64_t>(3));
@@ -149,7 +149,7 @@ TEST_CASE("AnyData")
 
     SECTION("Dict with strings")
     {
-        AnyData::Dict dict;
+        AnyData::Dict dict {};
         dict.Emplace("key1", string("value 1"));
         dict.Emplace("key2", string(" value 2 "));
         dict.Emplace("key3", string("value3"));
@@ -159,11 +159,11 @@ TEST_CASE("AnyData")
 
     SECTION("Dict of array 1")
     {
-        AnyData::Array arr1;
+        AnyData::Array arr1 {};
         arr1.EmplaceBack(numeric_cast<int64_t>(1));
         arr1.EmplaceBack(numeric_cast<int64_t>(2));
         arr1.EmplaceBack(numeric_cast<int64_t>(3));
-        AnyData::Dict dict;
+        AnyData::Dict dict {};
         dict.Emplace("key1", std::move(arr1));
 
         CHECK(AnyData::ValueToString(dict.Copy()) == "key1 \"1 2 3\"");
@@ -172,15 +172,15 @@ TEST_CASE("AnyData")
 
     SECTION("Dict of array 2")
     {
-        AnyData::Array arr1;
+        AnyData::Array arr1 {};
         arr1.EmplaceBack(string("one 1"));
         arr1.EmplaceBack(string("two 2"));
         arr1.EmplaceBack(string(" three 3 "));
-        AnyData::Array arr2;
+        AnyData::Array arr2 {};
         arr2.EmplaceBack(string("1"));
         arr2.EmplaceBack(string("2"));
         arr2.EmplaceBack(string("3"));
-        AnyData::Dict dict;
+        AnyData::Dict dict {};
         dict.Emplace("key1", std::move(arr1));
         dict.Emplace("key2", std::move(arr2));
 
@@ -190,15 +190,15 @@ TEST_CASE("AnyData")
 
     SECTION("ArrayCopyIsDeep")
     {
-        AnyData::Dict nested;
+        AnyData::Dict nested {};
         nested.Emplace("k", numeric_cast<int64_t>(42));
 
-        AnyData::Array original;
+        AnyData::Array original {};
         original.EmplaceBack(std::move(nested));
 
-        auto copied = original.Copy();
+        auto copied {original.Copy()};
 
-        auto mutable_nested_copy = copied[0].AsDict().Copy();
+        auto mutable_nested_copy {copied[0].AsDict().Copy()};
         mutable_nested_copy.Assign("k", numeric_cast<int64_t>(100));
 
         CHECK(original[0].AsDict()["k"].AsInt64() == 42);
@@ -207,10 +207,10 @@ TEST_CASE("AnyData")
 
     SECTION("EmptyContainersParsing")
     {
-        auto parsed_arr_value = AnyData::ParseValue("", false, true, AnyData::ValueType::String);
-        auto parsed_dict_value = AnyData::ParseValue("", true, false, AnyData::ValueType::Int64);
-        const auto& parsed_arr = parsed_arr_value.AsArray();
-        const auto& parsed_dict = parsed_dict_value.AsDict();
+        auto parsed_arr_value {AnyData::ParseValue("", false, true, AnyData::ValueType::String)};
+        auto parsed_dict_value {AnyData::ParseValue("", true, false, AnyData::ValueType::Int64)};
+        const auto& parsed_arr {parsed_arr_value.AsArray()};
+        const auto& parsed_dict {parsed_dict_value.AsDict()};
 
         CHECK(parsed_arr.Empty());
         CHECK(parsed_dict.Empty());
@@ -237,7 +237,7 @@ TEST_CASE("AnyData")
         CHECK_THROWS_AS((AnyData::ParseValue("key -inf", true, false, AnyData::ValueType::Float64)), AnyDataException);
         CHECK_THROWS_AS((AnyData::ValueToString(AnyData::Value {std::numeric_limits<float64_t>::quiet_NaN()})), AnyDataException);
 
-        AnyData::Array non_finite_values;
+        AnyData::Array non_finite_values {};
         non_finite_values.EmplaceBack(numeric_cast<int64_t>(1));
         non_finite_values.EmplaceBack(std::numeric_limits<float64_t>::infinity());
         CHECK_THROWS_AS((AnyData::ValueToString(AnyData::Value {std::move(non_finite_values)})), AnyDataException);
@@ -281,18 +281,18 @@ TEST_CASE("AnyData")
 
     SECTION("QuotedStringsRoundTripInContainers")
     {
-        AnyData::Array arr;
+        AnyData::Array arr {};
         arr.EmplaceBack(string(" spaced value "));
         arr.EmplaceBack(string("quote \" value"));
 
-        string encoded_arr = AnyData::ValueToString(arr.Copy());
+        string encoded_arr {AnyData::ValueToString(arr.Copy())};
         CHECK(arr == AnyData::ParseValue(encoded_arr, false, true, AnyData::ValueType::String).AsArray());
 
-        AnyData::Dict dict;
+        AnyData::Dict dict {};
         dict.Emplace("key space", string("value with spaces"));
         dict.Emplace("key_quote", string("value \"quote\""));
 
-        string encoded_dict = AnyData::ValueToString(dict.Copy());
+        string encoded_dict {AnyData::ValueToString(dict.Copy())};
         CHECK(dict == AnyData::ParseValue(encoded_dict, true, false, AnyData::ValueType::String).AsDict());
     }
 
@@ -300,32 +300,32 @@ TEST_CASE("AnyData")
     {
         string text {"line1\rline2\nline3"};
         string normalized_text {"line1line2\nline3"};
-        string encoded = AnyData::ValueToString(AnyData::Value {text});
+        string encoded {AnyData::ValueToString(AnyData::Value {text})};
 
         CHECK(StringEscaping::CodeString(text) == "\"line1line2\\nline3\"");
         CHECK(StringEscaping::DecodeString("\"line1\\rline2\\nline3\"") == normalized_text);
         CHECK(encoded == normalized_text);
         CHECK(AnyData::ParseValue(encoded, false, false, AnyData::ValueType::String).AsString() == normalized_text);
 
-        AnyData::Dict dict;
+        AnyData::Dict dict {};
         dict.Emplace("payload", string {"head\r\ntail"});
 
-        AnyData::Dict normalized_dict;
+        AnyData::Dict normalized_dict {};
         normalized_dict.Emplace("payload", string {"head\ntail"});
 
-        string encoded_dict = AnyData::ValueToString(dict.Copy());
+        string encoded_dict {AnyData::ValueToString(dict.Copy())};
         CHECK(normalized_dict == AnyData::ParseValue(encoded_dict, true, false, AnyData::ValueType::String).AsDict());
     }
 
     SECTION("DictKeysAreDecodedAndDuplicateKeysRejected")
     {
-        AnyData::Dict dict;
+        AnyData::Dict dict {};
         dict.Emplace("key \"quoted\"", string("value1"));
         dict.Emplace("path\\segment", string("value2"));
 
-        string encoded_dict = AnyData::ValueToString(dict.Copy());
-        auto parsed_value = AnyData::ParseValue(encoded_dict, true, false, AnyData::ValueType::String);
-        const auto& parsed_dict = parsed_value.AsDict();
+        string encoded_dict {AnyData::ValueToString(dict.Copy())};
+        auto parsed_value {AnyData::ParseValue(encoded_dict, true, false, AnyData::ValueType::String)};
+        const auto& parsed_dict {parsed_value.AsDict()};
 
         CHECK(parsed_dict.Contains("key \"quoted\""));
         CHECK(parsed_dict.Contains("path\\segment"));

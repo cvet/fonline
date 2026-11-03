@@ -48,10 +48,10 @@ static void CenterMapperViewOnHex(ptr<MapView> map, mpos hex)
     map->InstantScrollTo(hex);
 
     constexpr ipos32 hex_center {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
-    ipos32 hex_screen_pos = map->MapToScreenPos(map->GetHexMapPos(hex) + hex_center);
-    isize32 screen_size = map->GetScreenSize();
+    ipos32 hex_screen_pos {map->MapToScreenPos(map->GetHexMapPos(hex) + hex_center)};
+    isize32 screen_size {map->GetScreenSize()};
     ipos32 screen_center {screen_size.width / 2, screen_size.height / 2};
-    fpos32 correction = fpos32(hex_screen_pos - screen_center) / std::max(map->GetSpritesZoom(), 0.001f);
+    fpos32 correction {fpos32(hex_screen_pos - screen_center) / std::max(map->GetSpritesZoom(), 0.001f)};
 
     map->InstantScroll(correction);
     map->RebuildMap();
@@ -59,16 +59,16 @@ static void CenterMapperViewOnHex(ptr<MapView> map, mpos hex)
 
 static void CenterMapperViewOnRawHex(ptr<MapView> map, ipos32 rawHex)
 {
-    ipos32 new_screen_hex = map->ConvertToScreenRawHex(rawHex);
-    ipos32 offset_to_new_pos = GeometryHelper::GetHexOffset(map->GetScreenRawHex(), new_screen_hex);
+    ipos32 new_screen_hex {map->ConvertToScreenRawHex(rawHex)};
+    ipos32 offset_to_new_pos {GeometryHelper::GetHexOffset(map->GetScreenRawHex(), new_screen_hex)};
     map->InstantScroll(fpos32(offset_to_new_pos));
 
     constexpr ipos32 hex_center {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
-    ipos32 raw_hex_pos = GeometryHelper::GetHexOffset(map->GetScreenRawHex(), rawHex);
-    ipos32 center_screen_pos = map->MapToScreenPos(raw_hex_pos + hex_center);
-    isize32 screen_size = map->GetScreenSize();
+    ipos32 raw_hex_pos {GeometryHelper::GetHexOffset(map->GetScreenRawHex(), rawHex)};
+    ipos32 center_screen_pos {map->MapToScreenPos(raw_hex_pos + hex_center)};
+    isize32 screen_size {map->GetScreenSize()};
     ipos32 screen_center {screen_size.width / 2, screen_size.height / 2};
-    fpos32 correction = fpos32(center_screen_pos - screen_center) / std::max(map->GetSpritesZoom(), 0.001f);
+    fpos32 correction {fpos32(center_screen_pos - screen_center) / std::max(map->GetSpritesZoom(), 0.001f)};
 
     map->InstantScroll(correction);
     map->RebuildMap();
@@ -76,7 +76,7 @@ static void CenterMapperViewOnRawHex(ptr<MapView> map, ipos32 rawHex)
 
 static auto RequireCurMapperMap(ptr<MapperEngine> mapper_ptr) -> ptr<MapView>
 {
-    auto map = mapper_ptr->GetCurMap();
+    auto map {mapper_ptr->GetCurMap()};
 
     if (!map) {
         throw ScriptException("No current map shown in the mapper");
@@ -112,13 +112,13 @@ FO_SCRIPT_API void Mapper_Game_SetMouseScroll(ptr<MapperEngine> mapper, bool inF
 ///@ ExportMethod
 FO_SCRIPT_API ptr<ItemView> Mapper_Game_AddItem(ptr<MapperEngine> mapper, hstring pid, mpos hex)
 {
-    auto map = RequireCurMapperMap(mapper);
+    auto map {RequireCurMapperMap(mapper)};
 
     if (!map->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex args");
     }
 
-    auto item = mapper->CreateItem(pid, hex, nullptr);
+    auto item {mapper->CreateItem(pid, hex, nullptr)};
     return item;
 }
 
@@ -126,13 +126,13 @@ FO_SCRIPT_API ptr<ItemView> Mapper_Game_AddItem(ptr<MapperEngine> mapper, hstrin
 ///@ ExportMethod
 FO_SCRIPT_API ptr<ItemView> Mapper_Game_AddItem(ptr<MapperEngine> mapper, ptr<ProtoItem> proto, mpos hex)
 {
-    auto map = RequireCurMapperMap(mapper);
+    auto map {RequireCurMapperMap(mapper)};
 
     if (!map->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex args");
     }
 
-    auto item = mapper->CreateItem(proto->GetProtoId(), hex, nullptr);
+    auto item {mapper->CreateItem(proto->GetProtoId(), hex, nullptr)};
     return item;
 }
 
@@ -140,13 +140,13 @@ FO_SCRIPT_API ptr<ItemView> Mapper_Game_AddItem(ptr<MapperEngine> mapper, ptr<Pr
 ///@ ExportMethod
 FO_SCRIPT_API ptr<CritterView> Mapper_Game_AddCritter(ptr<MapperEngine> mapper, hstring pid, mpos hex)
 {
-    auto map = RequireCurMapperMap(mapper);
+    auto map {RequireCurMapperMap(mapper)};
 
     if (!map->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex args");
     }
 
-    auto cr = mapper->CreateCritter(pid, hex);
+    auto cr {mapper->CreateCritter(pid, hex)};
     return cr;
 }
 
@@ -154,13 +154,13 @@ FO_SCRIPT_API ptr<CritterView> Mapper_Game_AddCritter(ptr<MapperEngine> mapper, 
 ///@ ExportMethod
 FO_SCRIPT_API ptr<CritterView> Mapper_Game_AddCritter(ptr<MapperEngine> mapper, ptr<ProtoCritter> proto, mpos hex)
 {
-    auto map = RequireCurMapperMap(mapper);
+    auto map {RequireCurMapperMap(mapper)};
 
     if (!map->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex args");
     }
 
-    auto cr = mapper->CreateCritter(proto->GetProtoId(), hex);
+    auto cr {mapper->CreateCritter(proto->GetProtoId(), hex)};
     return cr;
 }
 
@@ -168,8 +168,8 @@ FO_SCRIPT_API ptr<CritterView> Mapper_Game_AddCritter(ptr<MapperEngine> mapper, 
 ///@ ExportMethod
 FO_SCRIPT_API nptr<ItemView> Mapper_Game_GetItemOnHex(ptr<MapperEngine> mapper, mpos hex)
 {
-    auto map = RequireCurMapperMap(mapper);
-    auto item = map->GetItemOnHex(hex, hstring());
+    auto map {RequireCurMapperMap(mapper)};
+    auto item {map->GetItemOnHex(hex, hstring())};
     return item;
 }
 
@@ -177,8 +177,8 @@ FO_SCRIPT_API nptr<ItemView> Mapper_Game_GetItemOnHex(ptr<MapperEngine> mapper, 
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<ItemView>> Mapper_Game_GetItemsOnHex(ptr<MapperEngine> mapper, mpos hex)
 {
-    auto map = RequireCurMapperMap(mapper);
-    span<ptr<ItemHexView>> hex_items = map->GetItemsOnHex(hex);
+    auto map {RequireCurMapperMap(mapper)};
+    span<ptr<ItemHexView>> hex_items {map->GetItemsOnHex(hex)};
     return vector<ptr<ItemView>>(hex_items.begin(), hex_items.end());
 }
 
@@ -186,14 +186,14 @@ FO_SCRIPT_API vector<ptr<ItemView>> Mapper_Game_GetItemsOnHex(ptr<MapperEngine> 
 ///@ ExportMethod
 FO_SCRIPT_API nptr<CritterView> Mapper_Game_GetCritterOnHex(ptr<MapperEngine> mapper, mpos hex, CritterFindType findType)
 {
-    auto map = RequireCurMapperMap(mapper);
-    vector<ptr<CritterHexView>> critters = map->GetCrittersOnHex(hex, findType);
+    auto map {RequireCurMapperMap(mapper)};
+    vector<ptr<CritterHexView>> critters {map->GetCrittersOnHex(hex, findType)};
 
     if (critters.empty()) {
         return nullptr;
     }
 
-    auto cr = critters.front();
+    auto cr {critters.front()};
     return cr;
 }
 
@@ -201,8 +201,8 @@ FO_SCRIPT_API nptr<CritterView> Mapper_Game_GetCritterOnHex(ptr<MapperEngine> ma
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<CritterView>> Mapper_Game_GetCrittersOnHex(ptr<MapperEngine> mapper, mpos hex, CritterFindType findType)
 {
-    auto map = RequireCurMapperMap(mapper);
-    vector<ptr<CritterHexView>> critters = map->GetCrittersOnHex(hex, findType);
+    auto map {RequireCurMapperMap(mapper)};
+    vector<ptr<CritterHexView>> critters {map->GetCrittersOnHex(hex, findType)};
     return vector<ptr<CritterView>>(critters.begin(), critters.end());
 }
 
@@ -214,7 +214,7 @@ FO_SCRIPT_API void Mapper_Game_MoveEntity(ptr<MapperEngine> mapper, nptr<ClientE
         return;
     }
 
-    auto map = RequireCurMapperMap(mapper);
+    auto map {RequireCurMapperMap(mapper)};
 
     if (!map->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex args");
@@ -284,10 +284,10 @@ FO_SCRIPT_API nptr<ClientEntity> Mapper_Game_GetSelectedEntity(ptr<MapperEngine>
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<ClientEntity>> Mapper_Game_GetSelectedEntities(ptr<MapperEngine> mapper)
 {
-    vector<ptr<ClientEntity>> entities;
+    vector<ptr<ClientEntity>> entities {};
     entities.reserve(mapper->SelectedEntities.size());
 
-    for (size_t i = 0; i < mapper->SelectedEntities.size(); i++) {
+    for (size_t i {0}; i < mapper->SelectedEntities.size(); i++) {
         entities.emplace_back(mapper->SelectedEntities[i]);
     }
 
@@ -298,7 +298,7 @@ FO_SCRIPT_API vector<ptr<ClientEntity>> Mapper_Game_GetSelectedEntities(ptr<Mapp
 ///@ ExportMethod
 FO_SCRIPT_API nptr<ClientEntity> Mapper_Game_FindEntityById(ptr<MapperEngine> mapper, ident_t id)
 {
-    auto map = RequireCurMapperMap(mapper);
+    auto map {RequireCurMapperMap(mapper)};
 
     return mapper->FindEntityById(map, id);
 }
@@ -307,7 +307,7 @@ FO_SCRIPT_API nptr<ClientEntity> Mapper_Game_FindEntityById(ptr<MapperEngine> ma
 ///@ ExportMethod
 FO_SCRIPT_API bool Mapper_Game_SetEntityProperty(ptr<MapperEngine> mapper, ptr<ClientEntity> entity, string_view propName, string_view valueText)
 {
-    auto prop = entity->GetProperties()->GetRegistrar()->FindProperty(propName);
+    auto prop {entity->GetProperties()->GetRegistrar()->FindProperty(propName)};
 
     if (!prop) {
         throw ScriptException("Unknown property", propName);
@@ -320,7 +320,7 @@ FO_SCRIPT_API bool Mapper_Game_SetEntityProperty(ptr<MapperEngine> mapper, ptr<C
 ///@ ExportMethod
 FO_SCRIPT_API ptr<ItemView> Mapper_Game_AddTile(ptr<MapperEngine> mapper, hstring pid, mpos hex, int32_t layer, bool roof)
 {
-    auto map = RequireCurMapperMap(mapper);
+    auto map {RequireCurMapperMap(mapper)};
 
     if (!map->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex args");
@@ -329,9 +329,9 @@ FO_SCRIPT_API ptr<ItemView> Mapper_Game_AddTile(ptr<MapperEngine> mapper, hstrin
         throw ScriptException("Invalid item proto", pid);
     }
 
-    auto corrected_layer = numeric_cast<uint8_t>(std::clamp(layer, 0, 4));
+    auto corrected_layer {numeric_cast<uint8_t>(std::clamp(layer, 0, 4))};
 
-    auto tile = map->AddMapperTile(pid, hex, corrected_layer, roof);
+    auto tile {map->AddMapperTile(pid, hex, corrected_layer, roof)};
     return tile;
 }
 
@@ -343,12 +343,12 @@ FO_SCRIPT_API nptr<MapView> Mapper_Game_NewMap(ptr<MapperEngine> mapper, string_
         throw ScriptException("Map name is empty");
     }
 
-    int32_t corrected_width = std::clamp(width, GameSettings::MIN_MAP_SIZE, GameSettings::MAX_MAP_SIZE);
-    int32_t corrected_height = std::clamp(height, GameSettings::MIN_MAP_SIZE, GameSettings::MAX_MAP_SIZE);
+    int32_t corrected_width {std::clamp(width, GameSettings::MIN_MAP_SIZE, GameSettings::MAX_MAP_SIZE)};
+    int32_t corrected_height {std::clamp(height, GameSettings::MIN_MAP_SIZE, GameSettings::MAX_MAP_SIZE)};
 
-    string map_text = strex("[ProtoMap]\nSize = {} {}\nWorkHex = {} {}\n", //
+    string map_text {strex("[ProtoMap]\nSize = {} {}\nWorkHex = {} {}\n", //
         corrected_width, corrected_height, corrected_width / 2, corrected_height / 2)
-                          .str();
+            .str()};
 
     return mapper->LoadMapFromText(name, name, map_text);
 }
@@ -371,7 +371,7 @@ FO_SCRIPT_API nptr<MapView> Mapper_Game_NewMapFromText(ptr<MapperEngine> mapper,
 ///@ ExportMethod
 FO_SCRIPT_API nptr<MapView> Mapper_Game_LoadMap(ptr<MapperEngine> mapper, string_view fileName)
 {
-    auto map = mapper->LoadMap(fileName);
+    auto map {mapper->LoadMap(fileName)};
     return map;
 }
 
@@ -420,18 +420,18 @@ FO_SCRIPT_API vector<ptr<MapView>> Mapper_Game_GetLoadedMaps(ptr<MapperEngine> m
 {
     index = -1;
 
-    auto cur_map = mapper->GetCurMap();
+    auto cur_map {mapper->GetCurMap()};
 
-    for (int32_t i = 0, j = numeric_cast<int32_t>(mapper->LoadedMaps.size()); i < j; i++) {
+    for (int32_t i {0}, j {numeric_cast<int32_t>(mapper->LoadedMaps.size())}; i < j; i++) {
         if (cur_map && mapper->LoadedMaps[i] == cur_map) {
             index = i;
         }
     }
 
-    vector<ptr<MapView>> result;
+    vector<ptr<MapView>> result {};
     result.reserve(mapper->LoadedMaps.size());
 
-    for (size_t i = 0; i < mapper->LoadedMaps.size(); i++) {
+    for (size_t i {0}; i < mapper->LoadedMaps.size(); i++) {
         result.emplace_back(mapper->LoadedMaps[i]);
     }
 
@@ -442,19 +442,19 @@ FO_SCRIPT_API vector<ptr<MapView>> Mapper_Game_GetLoadedMaps(ptr<MapperEngine> m
 ///@ ExportMethod
 FO_SCRIPT_API vector<string> Mapper_Game_GetMapFileNames(ptr<MapperEngine> mapper, string_view dir, bool recursive)
 {
-    vector<string> names;
+    vector<string> names {};
 
-    auto map_files = mapper->MapsFileSys.FilterFiles("", dir, recursive);
+    auto map_files {mapper->MapsFileSys.FilterFiles("", dir, recursive)};
 
     for (const auto& map_file_header : map_files) {
-        string ext = strex(map_file_header.GetPath()).get_file_extension();
+        string ext {static_cast<string&&>(strex(map_file_header.GetPath()).get_file_extension())};
 
         if (std::ranges::find(mapper->Settings->Baking.ProtoFileExtensions, ext) == mapper->Settings->Baking.ProtoFileExtensions.end()) {
             continue;
         }
 
-        File map_file = File::Load(map_file_header);
-        auto declared_maps = MapLoader::EnumerateMaps(map_file.GetPath(), map_file.GetStr());
+        File map_file {File::Load(map_file_header)};
+        auto declared_maps {MapLoader::EnumerateMaps(map_file.GetPath(), map_file.GetStr())};
         names.insert(names.end(), std::make_move_iterator(declared_maps.begin()), std::make_move_iterator(declared_maps.end()));
     }
 
@@ -465,7 +465,7 @@ FO_SCRIPT_API vector<string> Mapper_Game_GetMapFileNames(ptr<MapperEngine> mappe
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_ResizeMap(ptr<MapperEngine> mapper, int32_t width, int32_t height)
 {
-    auto map = RequireCurMapperMap(mapper);
+    auto map {RequireCurMapperMap(mapper)};
     mapper->ResizeMap(map.get(), width, height);
 }
 
@@ -480,8 +480,8 @@ FO_SCRIPT_API vector<hstring> Mapper_Game_TabGetItemPids(ptr<MapperEngine> mappe
         return {};
     }
 
-    vector<hstring> pids;
-    const auto& stab = mapper->Tabs[tab][!subTab.empty() ? string(subTab) : MapperEngine::DEFAULT_SUB_TAB];
+    vector<hstring> pids {};
+    const auto& stab {mapper->Tabs[tab][!subTab.empty() ? string(subTab) : MapperEngine::DEFAULT_SUB_TAB]};
 
     for (ptr<const ProtoItem> proto : stab.ItemProtos) {
         pids.emplace_back(proto->GetProtoId());
@@ -501,8 +501,8 @@ FO_SCRIPT_API vector<hstring> Mapper_Game_TabGetCritterPids(ptr<MapperEngine> ma
         return {};
     }
 
-    vector<hstring> pids;
-    const auto& stab = mapper->Tabs[tab][!subTab.empty() ? string(subTab) : MapperEngine::DEFAULT_SUB_TAB];
+    vector<hstring> pids {};
+    const auto& stab {mapper->Tabs[tab][!subTab.empty() ? string(subTab) : MapperEngine::DEFAULT_SUB_TAB]};
 
     for (ptr<const ProtoCritter> proto : stab.CritterProtos) {
         pids.emplace_back(proto->GetProtoId());
@@ -525,22 +525,22 @@ FO_SCRIPT_API void Mapper_Game_TabSetItemPids(ptr<MapperEngine> mapper, int32_t 
 
     // Add protos to sub tab
     if (!itemPids.empty()) {
-        vector<ptr<const ProtoItem>> protos;
+        vector<ptr<const ProtoItem>> protos {};
 
         for (auto item_pid : itemPids) {
-            auto proto = mapper->GetProtoItem(item_pid);
+            auto proto {mapper->GetProtoItem(item_pid)};
 
             if (proto) {
                 protos.emplace_back(proto);
             }
         }
 
-        auto& stab = mapper->Tabs[tab][string(subTab)];
+        auto& stab {mapper->Tabs[tab][string(subTab)]};
         stab.ItemProtos = protos;
     }
     else {
         // Delete sub tab
-        auto it = mapper->Tabs[tab].find(string(subTab));
+        auto it {mapper->Tabs[tab].find(string(subTab))};
 
         if (it != mapper->Tabs[tab].end()) {
             if (mapper->ActiveSubTabs[tab] == &it->second) {
@@ -552,7 +552,7 @@ FO_SCRIPT_API void Mapper_Game_TabSetItemPids(ptr<MapperEngine> mapper, int32_t 
     }
 
     // Recalculate whole pids
-    auto& stab_default = mapper->Tabs[tab][MapperEngine::DEFAULT_SUB_TAB];
+    auto& stab_default {mapper->Tabs[tab][MapperEngine::DEFAULT_SUB_TAB]};
     stab_default.ItemProtos.clear();
 
     for (auto& stab : mapper->Tabs[tab] | std::views::values) {
@@ -586,22 +586,22 @@ FO_SCRIPT_API void Mapper_Game_TabSetCritterPids(ptr<MapperEngine> mapper, int32
 
     // Add protos to sub tab
     if (!critterPids.empty()) {
-        vector<ptr<const ProtoCritter>> protos;
+        vector<ptr<const ProtoCritter>> protos {};
 
         for (auto pid : critterPids) {
-            auto proto = mapper->GetProtoCritter(pid);
+            auto proto {mapper->GetProtoCritter(pid)};
             FO_VERIFY_AND_THROW(proto, "Unknown critter proto id for sub tab");
             protos.emplace_back(proto);
         }
 
         if (!protos.empty()) {
-            auto& stab = mapper->Tabs[tab][string(subTab)];
+            auto& stab {mapper->Tabs[tab][string(subTab)]};
             stab.CritterProtos = protos;
         }
     }
     else {
         // Delete sub tab
-        auto it = mapper->Tabs[tab].find(string(subTab));
+        auto it {mapper->Tabs[tab].find(string(subTab))};
         if (it != mapper->Tabs[tab].end()) {
             if (mapper->ActiveSubTabs[tab] == &it->second) {
                 mapper->ActiveSubTabs[tab] = nullptr;
@@ -612,16 +612,16 @@ FO_SCRIPT_API void Mapper_Game_TabSetCritterPids(ptr<MapperEngine> mapper, int32
     }
 
     // Recalculate whole pids
-    auto& stab_default = mapper->Tabs[tab][MapperEngine::DEFAULT_SUB_TAB];
+    auto& stab_default {mapper->Tabs[tab][MapperEngine::DEFAULT_SUB_TAB]};
     stab_default.CritterProtos.clear();
 
-    for (auto it = mapper->Tabs[tab].begin(), end = mapper->Tabs[tab].end(); it != end; ++it) {
-        auto& stab = it->second;
+    for (auto it {mapper->Tabs[tab].begin()}, end {mapper->Tabs[tab].end()}; it != end; ++it) {
+        auto& stab {it->second};
         if (&stab == &stab_default) {
             continue;
         }
 
-        for (size_t i = 0; i < stab.CritterProtos.size(); i++) {
+        for (size_t i {0}; i < stab.CritterProtos.size(); i++) {
             stab_default.CritterProtos.emplace_back(stab.CritterProtos[i]);
         }
     }
@@ -643,7 +643,7 @@ FO_SCRIPT_API void Mapper_Game_TabDelete(ptr<MapperEngine> mapper, int32_t tab)
     }
 
     mapper->Tabs[tab].clear();
-    auto& stab_default = mapper->Tabs[tab][MapperEngine::DEFAULT_SUB_TAB];
+    auto& stab_default {mapper->Tabs[tab][MapperEngine::DEFAULT_SUB_TAB]};
     mapper->ActiveSubTabs[tab] = &stab_default;
 }
 
@@ -663,7 +663,7 @@ FO_SCRIPT_API void Mapper_Game_TabSelect(ptr<MapperEngine> mapper, int32_t tab, 
         return;
     }
 
-    auto it = mapper->Tabs[tab].find(!subTab.empty() ? string(subTab) : MapperEngine::DEFAULT_SUB_TAB);
+    auto it {mapper->Tabs[tab].find(!subTab.empty() ? string(subTab) : MapperEngine::DEFAULT_SUB_TAB)};
     if (it != mapper->Tabs[tab].end()) {
         mapper->ActiveSubTabs[tab] = &it->second;
     }
@@ -691,7 +691,7 @@ FO_SCRIPT_API void Mapper_Game_AddMessage(ptr<MapperEngine> mapper, string_view 
 ///@ ExportMethod
 FO_SCRIPT_API msize Mapper_Game_GetCurMapHexSize(ptr<MapperEngine> mapper)
 {
-    auto map = RequireCurMapperMap(mapper);
+    auto map {RequireCurMapperMap(mapper)};
 
     return map->GetSize();
 }
@@ -700,11 +700,11 @@ FO_SCRIPT_API msize Mapper_Game_GetCurMapHexSize(ptr<MapperEngine> mapper)
 ///@ ExportMethod
 FO_SCRIPT_API isize32 Mapper_Game_GetCurMapPixelSize(ptr<MapperEngine> mapper)
 {
-    auto map = RequireCurMapperMap(mapper);
+    auto map {RequireCurMapperMap(mapper)};
 
-    auto hex_size = map->GetSize();
-    int32_t width = numeric_cast<int32_t>(hex_size.width) * GameSettings::MAP_HEX_WIDTH;
-    int32_t height = numeric_cast<int32_t>(hex_size.height) * GameSettings::MAP_HEX_LINE_HEIGHT + (GameSettings::MAP_HEX_HEIGHT - GameSettings::MAP_HEX_LINE_HEIGHT);
+    auto hex_size {map->GetSize()};
+    int32_t width {numeric_cast<int32_t>(hex_size.width) * GameSettings::MAP_HEX_WIDTH};
+    int32_t height {numeric_cast<int32_t>(hex_size.height) * GameSettings::MAP_HEX_LINE_HEIGHT + (GameSettings::MAP_HEX_HEIGHT - GameSettings::MAP_HEX_LINE_HEIGHT)};
     return {width, height};
 }
 
@@ -716,7 +716,7 @@ FO_SCRIPT_API void Mapper_Game_SetMapperViewSize(ptr<MapperEngine> mapper, isize
         throw ScriptException("View size must be positive", size.width, size.height);
     }
 
-    auto map = RequireCurMapperMap(mapper);
+    auto map {RequireCurMapperMap(mapper)};
 
     map->SetScreenSize(size);
 }
@@ -725,19 +725,19 @@ FO_SCRIPT_API void Mapper_Game_SetMapperViewSize(ptr<MapperEngine> mapper, isize
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_CenterMapperOnPlayableArea(ptr<MapperEngine> mapper)
 {
-    auto map = RequireCurMapperMap(mapper);
+    auto map {RequireCurMapperMap(mapper)};
 
-    if (irect32 area = map->GetScrollAxialArea(); !area.is_zero()) {
+    if (irect32 area {map->GetScrollAxialArea()}; !area.is_zero()) {
         // Resolved without clamping to the authored rectangle: the scroll area may extend into
         // negative axial space, and preview captures must align to that editor boundary
-        int32_t axial_cx = area.x + area.width / 2;
-        int32_t axial_cy = area.y + area.height / 2;
+        int32_t axial_cx {area.x + area.width / 2};
+        int32_t axial_cy {area.y + area.height / 2};
         ipos32 pixel_center {axial_cx * (GameSettings::MAP_HEX_WIDTH / 2), axial_cy * GameSettings::MAP_HEX_LINE_HEIGHT};
-        ipos32 raw_hex = GeometryHelper::GetHexPosCoord(pixel_center);
+        ipos32 raw_hex {GeometryHelper::GetHexPosCoord(pixel_center)};
         CenterMapperViewOnRawHex(map, raw_hex);
     }
     else {
-        auto map_size = map->GetSize();
+        auto map_size {map->GetSize()};
         mpos center_hex {numeric_cast<int16_t>(map_size.width / 2), numeric_cast<int16_t>(map_size.height / 2)};
         CenterMapperViewOnHex(map, center_hex);
     }
@@ -747,7 +747,7 @@ FO_SCRIPT_API void Mapper_Game_CenterMapperOnPlayableArea(ptr<MapperEngine> mapp
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_CenterMapperOnHex(ptr<MapperEngine> mapper, mpos hex)
 {
-    auto map = RequireCurMapperMap(mapper);
+    auto map {RequireCurMapperMap(mapper)};
 
     if (!map->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Hex is outside the map", hex.x, hex.y);
@@ -760,7 +760,7 @@ FO_SCRIPT_API void Mapper_Game_CenterMapperOnHex(ptr<MapperEngine> mapper, mpos 
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_CenterMapperOnRawHex(ptr<MapperEngine> mapper, ipos32 rawHex)
 {
-    auto map = RequireCurMapperMap(mapper);
+    auto map {RequireCurMapperMap(mapper)};
 
     CenterMapperViewOnRawHex(map, rawHex);
 }
@@ -769,7 +769,7 @@ FO_SCRIPT_API void Mapper_Game_CenterMapperOnRawHex(ptr<MapperEngine> mapper, ip
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_SetMapperOverlayVisible(ptr<MapperEngine> mapper, bool visible)
 {
-    auto map = RequireCurMapperMap(mapper);
+    auto map {RequireCurMapperMap(mapper)};
 
     map->SetShowMapperOverlay(visible);
 }
@@ -778,7 +778,7 @@ FO_SCRIPT_API void Mapper_Game_SetMapperOverlayVisible(ptr<MapperEngine> mapper,
 ///@ ExportMethod
 FO_SCRIPT_API bool Mapper_Game_IsMapperOverlayVisible(ptr<MapperEngine> mapper)
 {
-    auto map = mapper->GetCurMap();
+    auto map {mapper->GetCurMap()};
 
     if (!map) {
         return false;
@@ -819,30 +819,30 @@ FO_SCRIPT_API vector<int32_t> Mapper_Game_GetMapperTrackOverlayKinds(ptr<MapperE
 ///@ ExportMethod
 FO_SCRIPT_API vector<mpos> Mapper_Game_GetMapperScrollBorderHexes(ptr<MapperEngine> mapper)
 {
-    auto map = mapper->GetCurMap();
+    auto map {mapper->GetCurMap()};
 
     if (!map) {
         return {};
     }
 
-    irect32 scroll_area = map->GetScrollAxialArea();
+    irect32 scroll_area {map->GetScrollAxialArea()};
 
     if (scroll_area.is_zero()) {
         return {};
     }
 
-    msize map_size = map->GetSize();
-    vector<mpos> hexes;
+    msize map_size {map->GetSize()};
+    vector<mpos> hexes {};
 
-    for (int32_t hy = 0; hy < map_size.height; hy++) {
-        for (int32_t hx = 0; hx < map_size.width; hx++) {
-            mpos hex = map_size.from_raw_pos(hx, hy);
+    for (int32_t hy {0}; hy < map_size.height; hy++) {
+        for (int32_t hx {0}; hx < map_size.width; hx++) {
+            mpos hex {map_size.from_raw_pos(hx, hy)};
 
             if (!map->IsHexToDraw(hex)) {
                 continue;
             }
 
-            ipos32 axial_hex = GeometryHelper::GetHexAxialCoord(hex);
+            ipos32 axial_hex {GeometryHelper::GetHexAxialCoord(hex)};
 
             if (axial_hex.x == scroll_area.x || axial_hex.y == scroll_area.y || axial_hex.x == scroll_area.x + scroll_area.width || axial_hex.y == scroll_area.y + scroll_area.height) {
                 hexes.emplace_back(hex);
@@ -857,7 +857,7 @@ FO_SCRIPT_API vector<mpos> Mapper_Game_GetMapperScrollBorderHexes(ptr<MapperEngi
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_SetMapperHiddenSpritesVisible(ptr<MapperEngine> mapper, bool visible)
 {
-    auto map = RequireCurMapperMap(mapper);
+    auto map {RequireCurMapperMap(mapper)};
 
     map->SetShowMapperHiddenSprites(visible);
 }
@@ -866,7 +866,7 @@ FO_SCRIPT_API void Mapper_Game_SetMapperHiddenSpritesVisible(ptr<MapperEngine> m
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_AddMapperIgnoredItemPids(ptr<MapperEngine> mapper, readonly_vector<hstring> itemPids)
 {
-    auto map = RequireCurMapperMap(mapper);
+    auto map {RequireCurMapperMap(mapper)};
 
     for (hstring item_pid : itemPids) {
         map->AddIgnorePid(item_pid);
@@ -879,7 +879,7 @@ FO_SCRIPT_API void Mapper_Game_AddMapperIgnoredItemPids(ptr<MapperEngine> mapper
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_SetMapperScrollCheckEnabled(ptr<MapperEngine> mapper, bool enabled)
 {
-    auto map = RequireCurMapperMap(mapper);
+    auto map {RequireCurMapperMap(mapper)};
 
     map->SetScrollCheck(enabled);
     map->RebuildMap();
@@ -893,24 +893,24 @@ FO_SCRIPT_API float32_t Mapper_Game_CalcMapperFitZoom(ptr<MapperEngine> mapper, 
         throw ScriptException("Viewport size must be positive", viewportSize.width, viewportSize.height);
     }
 
-    auto map = RequireCurMapperMap(mapper);
+    auto map {RequireCurMapperMap(mapper)};
 
     // Same pixel basis as the engine's RefreshMinZoom, so a preview matches the in-game zoom limit
-    int32_t pixel_w;
-    int32_t pixel_h;
+    int32_t pixel_w {};
+    int32_t pixel_h {};
 
-    if (irect32 area = map->GetScrollAxialArea(); !area.is_zero()) {
+    if (irect32 area {map->GetScrollAxialArea()}; !area.is_zero()) {
         pixel_w = area.width * (GameSettings::MAP_HEX_WIDTH / 2);
         pixel_h = area.height * GameSettings::MAP_HEX_LINE_HEIGHT;
     }
     else {
-        auto hex_size = map->GetSize();
+        auto hex_size {map->GetSize()};
         pixel_w = numeric_cast<int32_t>(hex_size.width) * GameSettings::MAP_HEX_WIDTH;
         pixel_h = numeric_cast<int32_t>(hex_size.height) * GameSettings::MAP_HEX_LINE_HEIGHT + (GameSettings::MAP_HEX_HEIGHT - GameSettings::MAP_HEX_LINE_HEIGHT);
     }
 
-    float32_t zoom_x = numeric_cast<float32_t>(viewportSize.width) / numeric_cast<float32_t>(pixel_w);
-    float32_t zoom_y = numeric_cast<float32_t>(viewportSize.height) / numeric_cast<float32_t>(pixel_h);
+    float32_t zoom_x {numeric_cast<float32_t>(viewportSize.width) / numeric_cast<float32_t>(pixel_w)};
+    float32_t zoom_y {numeric_cast<float32_t>(viewportSize.height) / numeric_cast<float32_t>(pixel_h)};
     return std::min(zoom_x, zoom_y);
 }
 
@@ -922,7 +922,7 @@ FO_SCRIPT_API void Mapper_Game_SetMapperZoom(ptr<MapperEngine> mapper, float32_t
         throw ScriptException("Zoom must be positive", zoom);
     }
 
-    auto map = RequireCurMapperMap(mapper);
+    auto map {RequireCurMapperMap(mapper)};
 
     map->SetSpritesZoomTarget(zoom);
     map->InstantZoom(zoom, fpos32(0.0f, 0.0f));
@@ -942,30 +942,30 @@ FO_SCRIPT_API void Mapper_Game_SaveMapperScreenshot(ptr<MapperEngine> mapper, st
     // SpriteManager's intermediate _rtMain: repaint to refresh it, which batch tooling can afford
     mapper->DrawMapperFrame();
 
-    auto main_rt = mapper->SprMngr.GetMainRenderTarget();
+    auto main_rt {mapper->SprMngr.GetMainRenderTarget()};
 
     if (!main_rt) {
         throw ScriptException("SpriteManager has no main render target (FO_DIRECT_SPRITES_DRAW build?)");
     }
 
-    auto texture = main_rt->GetTexture();
-    isize32 size = texture->Size;
-    auto pixels = texture->GetTextureRegion({0, 0}, size);
-    bool flipped = texture->FlippedHeight;
+    auto texture {main_rt->GetTexture()};
+    isize32 size {texture->Size};
+    auto pixels {texture->GetTextureRegion({0, 0}, size)};
+    bool flipped {texture->FlippedHeight};
 
     if (flipped) {
-        auto width = numeric_cast<size_t>(size.width);
+        auto width {numeric_cast<size_t>(size.width)};
 
         if (width != 0) {
-            vector<ucolor> row_buf(width);
-            size_t row_bytes = width * sizeof(ucolor);
+            vector<ucolor> row_buf {vector<ucolor>(width)};
+            size_t row_bytes {width * sizeof(ucolor)};
 
-            for (int32_t y = 0; y < size.height / 2; y++) {
-                auto top = numeric_cast<size_t>(y) * width;
-                auto bottom = numeric_cast<size_t>(size.height - 1 - y) * width;
-                auto row = make_ptr(row_buf.data());
-                auto top_row = make_ptr(pixels.data() + top);
-                auto bottom_row = make_ptr(pixels.data() + bottom);
+            for (int32_t y {0}; y < size.height / 2; y++) {
+                auto top {numeric_cast<size_t>(y) * width};
+                auto bottom {numeric_cast<size_t>(size.height - 1 - y) * width};
+                auto row {make_ptr(row_buf.data())};
+                auto top_row {make_ptr(pixels.data() + top)};
+                auto bottom_row {make_ptr(pixels.data() + bottom)};
                 memory::copy(row, top_row, row_bytes);
                 memory::copy(top_row, bottom_row, row_bytes);
                 memory::copy(bottom_row, row, row_bytes);
@@ -973,7 +973,7 @@ FO_SCRIPT_API void Mapper_Game_SaveMapperScreenshot(ptr<MapperEngine> mapper, st
         }
     }
 
-    string path = fs::make_writable_path(mapper->Settings->Common.UserWritablePath, strex(filePath).format_path());
+    string path {fs::make_writable_path(mapper->Settings->Common.UserWritablePath, strex(filePath).format_path())};
     ImageWriter::WritePng(path, size, pixels);
 }
 

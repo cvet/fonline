@@ -37,8 +37,8 @@ FO_BEGIN_NAMESPACE
 
 static auto ParseValidatedScalarValue(string_view raw_value, AnyData::ValueType value_type) -> AnyData::Value
 {
-    string value_str = string(raw_value);
-    strvex value = strvex(raw_value);
+    string value_str {string(raw_value)};
+    strvex value {strvex(raw_value)};
     value.trim();
 
     switch (value_type) {
@@ -53,7 +53,7 @@ static auto ParseValidatedScalarValue(string_view raw_value, AnyData::ValueType 
             throw AnyDataException("Invalid float64 value", value_str);
         }
 
-        float64_t parsed_value = value.to_float64();
+        float64_t parsed_value {value.to_float64()};
 
         if (!std::isfinite(parsed_value)) {
             throw AnyDataException("Invalid float64 value", value_str);
@@ -67,8 +67,8 @@ static auto ParseValidatedScalarValue(string_view raw_value, AnyData::ValueType 
         }
 
         if (value.is_number()) {
-            int64_t int_value = value.to_int64();
-            float64_t float_value = value.to_float64();
+            int64_t int_value {value.to_int64()};
+            float64_t float_value {value.to_float64()};
 
             if (!is_float_equal(float_value, static_cast<float64_t>(int_value)) || (int_value != 0 && int_value != 1)) {
                 throw AnyDataException("Invalid bool numeric value", raw_value);
@@ -129,7 +129,7 @@ auto AnyData::Value::Copy() const -> Value
 
 auto AnyData::Array::Copy() const -> Array
 {
-    Array arr;
+    Array arr {};
 
     for (const auto& value : _value) {
         arr.EmplaceBack(value.Copy());
@@ -140,7 +140,7 @@ auto AnyData::Array::Copy() const -> Array
 
 auto AnyData::Dict::Copy() const -> Dict
 {
-    Dict dict;
+    Dict dict {};
 
     for (const auto& [key, value] : *this) {
         dict.Emplace(key, value.Copy());
@@ -151,7 +151,7 @@ auto AnyData::Dict::Copy() const -> Dict
 
 auto AnyData::Document::Copy() const -> Document
 {
-    Document doc;
+    Document doc {};
 
     for (const auto& [key, value] : *this) {
         doc.Emplace(key, value.Copy());
@@ -162,13 +162,13 @@ auto AnyData::Document::Copy() const -> Document
 
 auto AnyData::ValueToCodedString(const Value& value) -> string
 {
-    constexpr int32_t default_buf_size = 1024;
+    constexpr int32_t default_buf_size {1024};
 
     switch (value.Type()) {
     case ValueType::Int64:
         return strex("{}", value.AsInt64());
     case ValueType::Float64: {
-        float64_t float_value = value.AsDouble();
+        float64_t float_value {value.AsDouble()};
 
         if (!std::isfinite(float_value)) {
             throw AnyDataException("Cannot serialize non-finite float64 value", float_value);
@@ -181,10 +181,10 @@ auto AnyData::ValueToCodedString(const Value& value) -> string
     case ValueType::String:
         return StringEscaping::CodeString(value.AsString());
     case ValueType::Array: {
-        string arr_str;
+        string arr_str {};
         arr_str.reserve(default_buf_size);
-        const auto& arr = value.AsArray();
-        bool next_iteration = false;
+        const auto& arr {value.AsArray()};
+        bool next_iteration {false};
 
         for (const auto& arr_entry : arr) {
             if (next_iteration) {
@@ -200,10 +200,10 @@ auto AnyData::ValueToCodedString(const Value& value) -> string
         return StringEscaping::CodeString(arr_str);
     }
     case ValueType::Dict: {
-        string dict_str;
+        string dict_str {};
         dict_str.reserve(default_buf_size);
-        const auto& dict = value.AsDict();
-        bool next_iteration = false;
+        const auto& dict {value.AsDict()};
+        bool next_iteration {false};
 
         for (auto&& [dict_key, dict_value] : dict) {
             if (next_iteration) {
@@ -227,7 +227,7 @@ auto AnyData::ValueToCodedString(const Value& value) -> string
 
 auto AnyData::ValueToString(const Value& value) -> string
 {
-    string str = ValueToCodedString(value);
+    string str {ValueToCodedString(value)};
 
     if (str.length() >= 2 && str.front() == '\"' && str.back() == '\"') {
         if (str[1] != ' ' && str[1] != '\t' && str[str.length() - 2] != ' ' && str[str.length() - 2] != '\t') {
@@ -243,11 +243,11 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, ValueTy
     FO_VERIFY_AND_THROW(value_type == ValueType::Int64 || value_type == ValueType::Float64 || value_type == ValueType::Bool || value_type == ValueType::String, "AnyData value type cannot be converted to raw payload");
 
     if (as_dict) {
-        Dict dict;
+        Dict dict {};
 
-        auto s = make_nptr(str.c_str());
-        string dict_key_entry;
-        string dict_value_entry;
+        auto s {make_nptr(str.c_str())};
+        string dict_key_entry {};
+        string dict_value_entry {};
 
         while ((s = ReadToken(s, dict_key_entry))) {
             s = ReadToken(s, dict_value_entry);
@@ -256,14 +256,14 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, ValueTy
                 throw AnyDataException("Invalid dict value, missing entry for key", dict_key_entry);
             }
 
-            string dict_key = StringEscaping::DecodeString(dict_key_entry);
+            string dict_key {StringEscaping::DecodeString(dict_key_entry)};
 
             if (as_array) {
-                Array dict_arr;
+                Array dict_arr {};
 
-                string decoded_dict_value_entry = StringEscaping::DecodeString(dict_value_entry);
-                auto s2 = make_nptr(decoded_dict_value_entry.c_str());
-                string arr_entry;
+                string decoded_dict_value_entry {StringEscaping::DecodeString(dict_value_entry)};
+                auto s2 {make_nptr(decoded_dict_value_entry.c_str())};
+                string arr_entry {};
 
                 while ((s2 = ReadToken(s2, arr_entry))) {
                     dict_arr.EmplaceBack(ParseValidatedScalarValue(arr_entry, value_type));
@@ -289,10 +289,10 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, ValueTy
         return dict;
     }
     else if (as_array) {
-        Array arr;
+        Array arr {};
 
-        auto s = make_nptr(str.c_str());
-        string arr_entry;
+        auto s {make_nptr(str.c_str())};
+        string arr_entry {};
 
         while ((s = ReadToken(s, arr_entry))) {
             arr.EmplaceBack(ParseValidatedScalarValue(arr_entry, value_type));
@@ -311,13 +311,13 @@ auto AnyData::ReadToken(nptr<const char> str, string& result) -> nptr<const char
         return nullptr;
     }
 
-    auto decode_char = [str](size_t char_pos, size_t& char_len) {
+    auto decode_char {[str](size_t char_pos, size_t& char_len) {
         char_len = utf8::decode_str_nt_len(&str[char_pos]);
         (void)utf8::decode(&str[char_pos], char_len);
-    };
+    }};
 
-    size_t pos = 0;
-    size_t length = 0;
+    size_t pos {0};
+    size_t length {0};
     decode_char(pos, length);
 
     while (length == 1 && (str[pos] == ' ' || str[pos] == '\t')) {
@@ -330,10 +330,10 @@ auto AnyData::ReadToken(nptr<const char> str, string& result) -> nptr<const char
         return nullptr;
     }
 
-    size_t begin;
+    size_t begin {};
 
     if (length == 1 && str[pos] == '"') {
-        bool quote_closed = false;
+        bool quote_closed {false};
         pos++;
         begin = pos;
 
@@ -394,22 +394,22 @@ auto AnyData::ReadToken(nptr<const char> str, string& result) -> nptr<const char
         }
     }
 
-    auto next_token = make_ptr(&str[pos + (str[pos] != 0 ? 1 : 0)]);
+    auto next_token {make_ptr(&str[pos + (str[pos] != 0 ? 1 : 0)])};
     result.assign(&str[begin], pos - begin);
     return next_token;
 }
 
 void StringEscaping::AppendCodeString(string& result, string_view str)
 {
-    bool protect = str.empty() || str.find_first_of(" \t\r\n\\\"") != string::npos;
+    bool protect {str.empty() || str.find_first_of(" \t\r\n\\\"") != string::npos};
 
     if (protect) {
         result.append(1, '\"');
     }
 
-    for (size_t i = 0; i < str.length();) {
-        auto s = make_ptr(str.data()).offset(i);
-        size_t length = str.length() - i;
+    for (size_t i {0}; i < str.length();) {
+        auto s {make_ptr(str.data()).offset(i)};
+        size_t length {str.length() - i};
         (void)utf8::decode(s, length);
 
         if (length == 1) {
@@ -444,7 +444,7 @@ void StringEscaping::AppendCodeString(string& result, string_view str)
 
 auto StringEscaping::CodeString(string_view str) -> string
 {
-    string result;
+    string result {};
     result.reserve(str.length() * 2);
     AppendCodeString(result, str);
 
@@ -457,17 +457,17 @@ auto StringEscaping::DecodeString(string_view str) -> string
         return {};
     }
 
-    string result;
+    string result {};
     result.reserve(str.length());
 
-    auto s = make_ptr(str.data());
-    size_t length = str.length();
+    auto s {make_ptr(str.data())};
+    size_t length {str.length()};
     (void)utf8::decode(s, length);
 
-    bool is_protected = length == 1 && *s == '\"';
-    bool closing_quote_found = false;
+    bool is_protected {length == 1 && *s == '\"'};
+    bool closing_quote_found {false};
 
-    for (size_t i = is_protected ? 1 : 0; i < str.length();) {
+    for (size_t i {is_protected ? 1u : 0u}; i < str.length();) {
         s = make_ptr(str.data()).offset(i);
         length = str.length() - i;
         (void)utf8::decode(s, length);

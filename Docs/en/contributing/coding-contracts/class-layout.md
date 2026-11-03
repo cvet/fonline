@@ -16,7 +16,8 @@ Third-party code retains its upstream conventions.
 Use `struct` only for passive records of public data. Do not declare constructors,
 destructors, methods or member operators, including explicitly defaulted special
 members and comparisons. They do not inherit behavior, enforce invariants or use
-`final`. Default member initializers may describe the record's initial data.
+`final`. Initialize record fields with braces, using `{}` for the intended default
+state; see [braced initialization](local-variables.md#braced-initialization).
 Place functions that create, inspect, compare or modify records outside the
 record as free functions; use nonmember operators where appropriate.
 

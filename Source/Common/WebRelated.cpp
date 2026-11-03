@@ -330,7 +330,7 @@ extern "C"
 
     EMSCRIPTEN_KEEPALIVE void Emscripten_ClipboardSet(const char* text)
     {
-        const FO_NAMESPACE nptr<const char> text_ptr = text;
+        const FO_NAMESPACE nptr<const char> text_ptr {text};
         FO_NAMESPACE GetApp() -> Input.SetClipboardText(text_ptr ? std::string_view {text_ptr.get()} : std::string_view {});
     }
 
@@ -339,8 +339,8 @@ extern "C"
         using FO_NAMESPACE InputEvent;
         using FO_NAMESPACE KeyCode;
 
-        const FO_NAMESPACE nptr<const char> text_ptr = text;
-        FO_NAMESPACE string paste_text = text_ptr ? FO_NAMESPACE string {text_ptr.get()} : FO_NAMESPACE string {};
+        const FO_NAMESPACE nptr<const char> text_ptr {text};
+        FO_NAMESPACE string paste_text {text_ptr ? FO_NAMESPACE string {text_ptr.get()} : FO_NAMESPACE string {}};
 
         FO_NAMESPACE GetApp() -> Input.SetClipboardText(paste_text);
         FO_NAMESPACE GetApp() -> Input.PushEvent(FO_NAMESPACE MakeInputEvent(InputEvent::KeyDownEvent({KeyCode::Text, std::move(paste_text)})), false);
@@ -363,15 +363,15 @@ extern "C"
             return;
         }
 
-        auto& settings = FO_NAMESPACE GetApp() -> Settings;
+        auto& settings {FO_NAMESPACE GetApp()->Settings};
 
         if (settings.Web.AutoResize) {
-            auto& screen_state = FO_NAMESPACE GetApp() -> ScreenState;
+            auto& screen_state {FO_NAMESPACE GetApp()->ScreenState};
             FO_NAMESPACE WebRelated::ApplyWindowSettings(settings, screen_state);
 
-            const auto screen_width = screen_state.Size.width;
-            const auto screen_height = screen_state.Size.height;
-            const auto screen_size = FO_NAMESPACE GetApp() -> MainWindow.GetScreenSize();
+            const auto screen_width {screen_state.Size.width};
+            const auto screen_height {screen_state.Size.height};
+            const auto screen_size {FO_NAMESPACE GetApp()->MainWindow.GetScreenSize()};
 
             if (screen_size.width != screen_width || screen_size.height != screen_height) {
                 FO_NAMESPACE GetApp() -> MainWindow.SetScreenSize({screen_width, screen_height});
@@ -400,7 +400,7 @@ extern "C"
             return -EFAULT;
         }
 
-        const char* release = FO_STRINGIFY(__EMSCRIPTEN_MAJOR__) "." FO_STRINGIFY(__EMSCRIPTEN_MINOR__) "." FO_STRINGIFY(__EMSCRIPTEN_TINY__);
+        const char* release {FO_STRINGIFY(__EMSCRIPTEN_MAJOR__) "." FO_STRINGIFY(__EMSCRIPTEN_MINOR__) "." FO_STRINGIFY(__EMSCRIPTEN_TINY__)};
 
         std::strcpy(buf->sysname, "Emscripten");
         std::strcpy(buf->nodename, "emscripten");
@@ -426,20 +426,20 @@ namespace WebRelated
 #if FO_WEB
     static auto CalcAdaptiveScreenSize(int32_t page_width, int32_t page_height, bool fullscreen, WebSettings& settings) noexcept -> isize32
     {
-        const auto safe_page_width = std::max(page_width, 1);
-        const auto safe_page_height = std::max(page_height, 1);
+        const auto safe_page_width {std::max(page_width, 1)};
+        const auto safe_page_height {std::max(page_height, 1)};
 
-        const auto min_width = std::max(settings.Web.MinWidth, 1);
-        const auto min_height = std::max(settings.Web.MinHeight, 1);
-        const auto max_width = std::max(settings.Web.MaxWidth, min_width);
-        const auto max_height = std::max(settings.Web.MaxHeight, min_height);
+        const auto min_width {std::max(settings.Web.MinWidth, 1)};
+        const auto min_height {std::max(settings.Web.MinHeight, 1)};
+        const auto max_width {std::max(settings.Web.MaxWidth, min_width)};
+        const auto max_height {std::max(settings.Web.MaxHeight, min_height)};
 
-        const auto height_percent = fullscreen ? 100 : std::clamp(settings.Web.ScreenHeightPercent, 1, 100);
-        auto screen_height = numeric_cast<int32_t>(std::clamp((numeric_cast<int64_t>(safe_page_height) * height_percent + 50) / 100, numeric_cast<int64_t>(min_height), numeric_cast<int64_t>(max_height)));
+        const auto height_percent {fullscreen ? 100 : std::clamp(settings.Web.ScreenHeightPercent, 1, 100)};
+        auto screen_height {numeric_cast<int32_t>(std::clamp((numeric_cast<int64_t>(safe_page_height) * height_percent + 50) / 100, numeric_cast<int64_t>(min_height), numeric_cast<int64_t>(max_height)))};
         screen_height = std::min(screen_height, safe_page_height);
 
-        const auto aspect_factor = std::max(settings.Web.AspectFactor, 0.001f);
-        auto screen_width = iround<int32_t>(std::clamp(numeric_cast<float32_t>(screen_height) / aspect_factor, numeric_cast<float32_t>(min_width), numeric_cast<float32_t>(max_width)));
+        const auto aspect_factor {std::max(settings.Web.AspectFactor, 0.001f)};
+        auto screen_width {iround<int32_t>(std::clamp(numeric_cast<float32_t>(screen_height) / aspect_factor, numeric_cast<float32_t>(min_width), numeric_cast<float32_t>(max_width)))};
 
         if (screen_width > safe_page_width) {
             screen_width = safe_page_width;
@@ -453,7 +453,7 @@ namespace WebRelated
     {
 #if FO_WEB
         SDL_SetHint(SDL_HINT_EMSCRIPTEN_ASYNCIFY, "0");
-        auto canvas_selector = make_ptr(CanvasSelector.c_str());
+        auto canvas_selector {make_ptr(CanvasSelector.c_str())};
         SDL_SetHint(SDL_HINT_EMSCRIPTEN_CANVAS_SELECTOR, canvas_selector.get());
 #endif
     }
@@ -463,15 +463,15 @@ namespace WebRelated
 #if FO_WEB
         WebInstallResizeHandlerImpl();
 
-        const auto window_w = WebGetWindowWidth();
-        const auto window_h = WebGetWindowHeight();
-        const auto fullscreen = WebIsFullscreenImpl() != 0;
-        const auto adaptive_size = CalcAdaptiveScreenSize(window_w, window_h, fullscreen, settings);
+        const auto window_w {WebGetWindowWidth()};
+        const auto window_h {WebGetWindowHeight()};
+        const auto fullscreen {WebIsFullscreenImpl() != 0};
+        const auto adaptive_size {CalcAdaptiveScreenSize(window_w, window_h, fullscreen, settings)};
         screen.Size = adaptive_size;
         screen.Fullscreen = fullscreen;
 
-        const auto fixed_w = WebGetFixedWidth();
-        const auto fixed_h = WebGetFixedHeight();
+        const auto fixed_w {WebGetFixedWidth()};
+        const auto fixed_h {WebGetFixedHeight()};
 
         if (fixed_w != 0) {
             screen.Size.width = fixed_w;
@@ -489,8 +489,8 @@ namespace WebRelated
     void ApplyCanvasLayout(WebSettings& settings, const AppScreenState& screen) noexcept
     {
 #if FO_WEB
-        const auto horizontal_pos_factor = screen.Fullscreen ? 0.5f : settings.Web.HorizontalPosFactor;
-        const auto vertical_pos_factor = screen.Fullscreen ? 0.5f : settings.Web.VerticalPosFactor;
+        const auto horizontal_pos_factor {screen.Fullscreen ? 0.5f : settings.Web.HorizontalPosFactor};
+        const auto vertical_pos_factor {screen.Fullscreen ? 0.5f : settings.Web.VerticalPosFactor};
         WebApplyCanvasLayoutImpl(screen.Size.width, screen.Size.height, horizontal_pos_factor, vertical_pos_factor);
 #else
         ignore_unused(settings, screen);
@@ -500,7 +500,7 @@ namespace WebRelated
     void SetupClipboard()
     {
 #if FO_WEB
-        auto canvas_selector = make_ptr(CanvasSelector.c_str());
+        auto canvas_selector {make_ptr(CanvasSelector.c_str())};
         WebSetupClipboardImpl(canvas_selector.get());
 #endif
     }
@@ -508,8 +508,8 @@ namespace WebRelated
     void SyncClipboardToSystem(string_view text)
     {
 #if FO_WEB
-        const string clipboard_text = string(text);
-        auto text_ptr = make_ptr(clipboard_text.c_str());
+        const string clipboard_text {string(text)};
+        auto text_ptr {make_ptr(clipboard_text.c_str())};
         WebSyncClipboardToSystemImpl(text_ptr.get());
 #else
         ignore_unused(text);
@@ -572,10 +572,10 @@ namespace WebRelated
     void ShowError(string_view title, string_view text)
     {
 #if FO_WEB
-        const auto title_str = string(title);
-        const auto text_str = string(text);
-        auto title_ptr = make_ptr(title_str.c_str());
-        auto text_ptr = make_ptr(text_str.c_str());
+        const auto title_str {string(title)};
+        const auto text_str {string(text)};
+        auto title_ptr {make_ptr(title_str.c_str())};
+        auto text_ptr {make_ptr(text_str.c_str())};
         WebShowErrorImpl(title_ptr.get(), text_ptr.get());
 #else
         ignore_unused(title);

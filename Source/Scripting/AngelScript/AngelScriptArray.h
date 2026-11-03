@@ -56,8 +56,8 @@ class ScriptArray final
     friend class safe_alloc;
 
     template<typename T>
-    static constexpr bool IsHandleAtType = std::is_void_v<std::remove_cv_t<T>> || std::is_same_v<std::remove_cv_t<T>, Entity> || //
-        std::is_same_v<std::remove_cv_t<T>, DynamicRefTypeInstance> || std::is_same_v<std::remove_cv_t<T>, ScriptArray> || std::is_same_v<std::remove_cv_t<T>, ScriptDict>;
+    static constexpr bool IsHandleAtType {std::is_void_v<std::remove_cv_t<T>> || std::is_same_v<std::remove_cv_t<T>, Entity> || //
+        std::is_same_v<std::remove_cv_t<T>, DynamicRefTypeInstance> || std::is_same_v<std::remove_cv_t<T>, ScriptArray> || std::is_same_v<std::remove_cv_t<T>, ScriptDict>};
 
 public:
     static auto Create(ptr<AngelScript::asITypeInfo> ti) -> refcount_ptr<ScriptArray>;
@@ -97,7 +97,7 @@ public:
         requires(!IsHandleAtType<T>)
     [[nodiscard]] auto AtAs(Index index) const -> ptr<T>
     {
-        ptr<void> value = At(numeric_cast<int32_t>(index));
+        ptr<void> value {At(numeric_cast<int32_t>(index))};
 
         return cast_from_void<T*>(value.get());
     }

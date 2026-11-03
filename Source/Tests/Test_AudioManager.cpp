@@ -43,11 +43,11 @@ FO_BEGIN_NAMESPACE
 
 static auto MakeStereoBuffer(const vector<int16_t>& samples) -> vector<uint8_t>
 {
-    vector<uint8_t> buf;
+    vector<uint8_t> buf {};
     buf.resize(samples.size() * sizeof(int16_t));
 
-    for (size_t i = 0; i < samples.size(); i++) {
-        auto target = make_ptr(buf.data()).reinterpret_as<int16_t>();
+    for (size_t i {0}; i < samples.size(); i++) {
+        auto target {make_ptr(buf.data()).reinterpret_as<int16_t>()};
         *target.offset(i) = samples[i];
     }
 
@@ -56,7 +56,7 @@ static auto MakeStereoBuffer(const vector<int16_t>& samples) -> vector<uint8_t>
 
 static auto ReadSample(const vector<uint8_t>& buf, size_t index) -> int16_t
 {
-    auto source = make_ptr(buf.data()).reinterpret_as<const int16_t>();
+    auto source {make_ptr(buf.data()).reinterpret_as<const int16_t>()};
     return *source.offset(index);
 }
 
@@ -64,7 +64,7 @@ TEST_CASE("AudioManagerPan")
 {
     SECTION("PanningLeavesTheBufferTheSameSize")
     {
-        vector<uint8_t> buf = MakeStereoBuffer({1000, -2000, 3000, -4000});
+        vector<uint8_t> buf {MakeStereoBuffer({1000, -2000, 3000, -4000})};
         AudioManager::ApplyPan(buf, -1.0f);
 
         CHECK(buf.size() == 4 * sizeof(int16_t));
@@ -72,7 +72,7 @@ TEST_CASE("AudioManagerPan")
 
     SECTION("ACentredSoundPassesThroughUntouched")
     {
-        vector<uint8_t> buf = MakeStereoBuffer({10000, -9000});
+        vector<uint8_t> buf {MakeStereoBuffer({10000, -9000})};
         AudioManager::ApplyPan(buf, 0.0f);
 
         CHECK(ReadSample(buf, 0) == 10000);
@@ -81,7 +81,7 @@ TEST_CASE("AudioManagerPan")
 
     SECTION("HardLeftSilencesTheRightChannelAndKeepsTheLeftWhole")
     {
-        vector<uint8_t> buf = MakeStereoBuffer({10000, 10000});
+        vector<uint8_t> buf {MakeStereoBuffer({10000, 10000})};
         AudioManager::ApplyPan(buf, -1.0f);
 
         CHECK(ReadSample(buf, 0) == 10000);
@@ -90,7 +90,7 @@ TEST_CASE("AudioManagerPan")
 
     SECTION("HardRightIsTheMirrorOfHardLeft")
     {
-        vector<uint8_t> buf = MakeStereoBuffer({10000, 10000});
+        vector<uint8_t> buf {MakeStereoBuffer({10000, 10000})};
         AudioManager::ApplyPan(buf, 1.0f);
 
         CHECK(ReadSample(buf, 0) == 0);
@@ -99,7 +99,7 @@ TEST_CASE("AudioManagerPan")
 
     SECTION("PartialPanFadesTheFarChannelWithoutEmptyingIt")
     {
-        vector<uint8_t> buf = MakeStereoBuffer({10000, 10000});
+        vector<uint8_t> buf {MakeStereoBuffer({10000, 10000})};
         AudioManager::ApplyPan(buf, -0.5f);
 
         CHECK(ReadSample(buf, 0) == 10000);
@@ -108,7 +108,7 @@ TEST_CASE("AudioManagerPan")
 
     SECTION("NoGainEverRisesAboveUnitySoALoudSampleCannotClip")
     {
-        vector<uint8_t> buf = MakeStereoBuffer({32767, -32768, 32767, -32768});
+        vector<uint8_t> buf {MakeStereoBuffer({32767, -32768, 32767, -32768})};
         AudioManager::ApplyPan(buf, -1.0f);
 
         CHECK(ReadSample(buf, 0) == 32767);
@@ -119,7 +119,7 @@ TEST_CASE("AudioManagerPan")
 
     SECTION("EveryFrameIsPannedNotJustTheFirst")
     {
-        vector<uint8_t> buf = MakeStereoBuffer({8000, 8000, 6000, 6000, 4000, 4000});
+        vector<uint8_t> buf {MakeStereoBuffer({8000, 8000, 6000, 6000, 4000, 4000})};
         AudioManager::ApplyPan(buf, 1.0f);
 
         CHECK(ReadSample(buf, 0) == 0);
@@ -130,7 +130,7 @@ TEST_CASE("AudioManagerPan")
 
     SECTION("AnEmptyBufferStaysEmpty")
     {
-        vector<uint8_t> buf;
+        vector<uint8_t> buf {};
         AudioManager::ApplyPan(buf, -1.0f);
 
         CHECK(buf.empty());
@@ -139,10 +139,10 @@ TEST_CASE("AudioManagerPan")
 
 namespace AudioManagerDynamicTests
 {
-    constexpr int32_t SAMPLE_RATE = 22050;
-    constexpr size_t FRAME_COUNT = 2205;
-    constexpr size_t MIX_BUFFER_SIZE = 4096;
-    constexpr int32_t MAX_PULLS = 64;
+    constexpr int32_t SAMPLE_RATE {22050};
+    constexpr size_t FRAME_COUNT {2205};
+    constexpr size_t MIX_BUFFER_SIZE {4096};
+    constexpr int32_t MAX_PULLS {64};
 
     static void AppendLe16(vector<uint8_t>& buf, uint16_t value)
     {
@@ -167,17 +167,17 @@ namespace AudioManagerDynamicTests
     // channel falling quiet while the other keeps its energy
     static auto MakeStereoToneWav() -> vector<uint8_t>
     {
-        vector<uint8_t> samples;
+        vector<uint8_t> samples {};
 
-        for (size_t frame = 0; frame < FRAME_COUNT; frame++) {
-            float64_t phase = 2.0 * std::numbers::pi * 440.0 * numeric_cast<float64_t>(frame) / numeric_cast<float64_t>(SAMPLE_RATE);
-            int16_t value = numeric_cast<int16_t>(iround<int32_t>(std::sin(phase) * 20000.0));
+        for (size_t frame {0}; frame < FRAME_COUNT; frame++) {
+            float64_t phase {2.0 * std::numbers::pi * 440.0 * numeric_cast<float64_t>(frame) / numeric_cast<float64_t>(SAMPLE_RATE)};
+            int16_t value {numeric_cast<int16_t>(iround<int32_t>(std::sin(phase) * 20000.0))};
 
             AppendLe16(samples, std::bit_cast<uint16_t>(value));
             AppendLe16(samples, std::bit_cast<uint16_t>(value));
         }
 
-        vector<uint8_t> body;
+        vector<uint8_t> body {};
         AppendFourcc(body, "WAVE");
         AppendFourcc(body, "fmt ");
         AppendLe32(body, 16);
@@ -191,7 +191,7 @@ namespace AudioManagerDynamicTests
         AppendLe32(body, numeric_cast<uint32_t>(samples.size()));
         body.insert(body.end(), samples.begin(), samples.end());
 
-        vector<uint8_t> wav;
+        vector<uint8_t> wav {};
         AppendFourcc(wav, "RIFF");
         AppendLe32(wav, numeric_cast<uint32_t>(body.size()));
         wav.insert(wav.end(), body.begin(), body.end());
@@ -203,10 +203,10 @@ namespace AudioManagerDynamicTests
     // rather than through a hand-written stream
     static auto BakeToVorbis(const vector<uint8_t>& wav) -> vector<uint8_t>
     {
-        BakerTests::TestRig rig;
+        BakerTests::TestRig rig {};
         rig.AddSourceFile("Sfx/Test_Tone.wav", wav);
 
-        AudioBaker baker(rig.MakeContext());
+        AudioBaker baker {rig.MakeContext()};
         baker.BakeFiles(rig.GetAllSourceFiles(), "");
 
         REQUIRE(rig.Outputs.contains("Sfx/Test_Tone.wav"));
@@ -216,11 +216,11 @@ namespace AudioManagerDynamicTests
 
     static auto ChannelEnergy(const vector<uint8_t>& buf, size_t channel) -> int64_t
     {
-        size_t frame_count = buf.size() / (sizeof(int16_t) * 2);
-        auto samples = make_ptr(buf.data()).reinterpret_as<const int16_t>();
-        int64_t energy = 0;
+        size_t frame_count {buf.size() / (sizeof(int16_t) * 2)};
+        auto samples {make_ptr(buf.data()).reinterpret_as<const int16_t>()};
+        int64_t energy {0};
 
-        for (size_t i = 0; i < frame_count; i++) {
+        for (size_t i {0}; i < frame_count; i++) {
             energy += std::abs(numeric_cast<int64_t>(*samples.offset(i * 2 + channel)));
         }
 
@@ -263,7 +263,7 @@ namespace AudioManagerDynamicTests
             Mixed.clear();
             MixedVolume = 0;
 
-            vector<uint8_t> output;
+            vector<uint8_t> output {};
             output.resize(MIX_BUFFER_SIZE);
             _streamCallback(uint8_t {0}, span<uint8_t> {output.data(), output.size()});
 
@@ -282,23 +282,23 @@ TEST_CASE("AudioManagerDynamicPlacement")
 {
     using namespace AudioManagerDynamicTests;
 
-    GlobalSettings settings(false);
+    GlobalSettings settings {false};
     settings.ApplyDefaultSettings();
 
-    FileSystem resources;
-    auto data_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("AudioManagerResources");
+    FileSystem resources {};
+    auto data_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("AudioManagerResources")};
     data_source->AddFile("Sfx/Test_Tone.wav", BakeToVorbis(MakeStereoToneWav()));
     resources.AddCustomSource(std::move(data_source));
 
-    TestAudioDevice device;
-    AudioManager audio(&settings, &resources, &device);
+    TestAudioDevice device {};
+    AudioManager audio {&settings, &resources, &device};
 
-    uint32_t sound_id = audio.PlaySound("Sfx/Test_Tone.wav", 1.0f, -1.0f);
+    uint32_t sound_id {audio.PlaySound("Sfx/Test_Tone.wav", 1.0f, -1.0f)};
     REQUIRE(sound_id != 0);
 
     SECTION("APlacedSoundIsMixedWhereItWasPlaced")
     {
-        vector<uint8_t> mixed = device.PullMixedBuffer();
+        vector<uint8_t> mixed {device.PullMixedBuffer()};
 
         REQUIRE(!mixed.empty());
         CHECK(ChannelEnergy(mixed, 0) > 0);
@@ -311,7 +311,7 @@ TEST_CASE("AudioManagerDynamicPlacement")
         // camera: this is the mirror of the placement above, taken from the same sound
         CHECK(audio.UpdateSound(sound_id, 1.0f, 1.0f));
 
-        vector<uint8_t> mixed = device.PullMixedBuffer();
+        vector<uint8_t> mixed {device.PullMixedBuffer()};
 
         REQUIRE(!mixed.empty());
         CHECK(ChannelEnergy(mixed, 0) == 0);
@@ -328,9 +328,9 @@ TEST_CASE("AudioManagerDynamicPlacement")
 
     SECTION("AFinishedSoundStopsAnsweringItsHandle")
     {
-        bool still_playing = true;
+        bool still_playing {true};
 
-        for (int32_t i = 0; i < MAX_PULLS && still_playing; i++) {
+        for (int32_t i {0}; i < MAX_PULLS && still_playing; i++) {
             (void)device.PullMixedBuffer();
             still_playing = audio.UpdateSound(sound_id, 1.0f, 0.0f);
         }
