@@ -46,16 +46,16 @@ int main(int argc, char** argv)
 {
 #if !FO_TESTING_APP
     ProgramArgs program_args {numeric_cast<int32_t>(argc), argv};
-    CommandLineArgs args = program_args.GetArgs();
+    CommandLineArgs args {program_args.GetArgs()};
 #endif
 
     try {
         InitApp(args, AppInitFlags::DisableLogTags);
 
-        bool baking_result;
+        bool baking_result {};
 
         {
-            auto baker = MasterBaker(&GetApp()->Settings);
+            auto baker {MasterBaker(&GetApp()->Settings)};
             baking_result = baker.BakeAll();
         }
 

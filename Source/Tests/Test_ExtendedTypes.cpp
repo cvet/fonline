@@ -88,7 +88,7 @@ TEST_CASE("ExtendedTypes")
         CHECK(irect32 {}.is_zero());
 
         irect32 other {ipos32 {10, 2}, isize32 {5, 5}};
-        irect32 expanded = r.expanded(other);
+        irect32 expanded {r.expanded(other)};
         CHECK(expanded == irect32(3, 2, 12, 22));
 
         irect32 expanded_in_place {r};

@@ -41,11 +41,11 @@ FO_BEGIN_NAMESPACE
 
 class EngineMetadata;
 
-constexpr int32_t MANAGED_ABI_GENERATOR_IDENTITY = 9;
-constexpr int32_t MANAGED_ABI_SCALAR_FRAME_CAPACITY = 256;
-constexpr size_t MANAGED_ABI_PROPERTY_ADAPTER_STORAGE = 32;
+constexpr int32_t MANAGED_ABI_GENERATOR_IDENTITY {9};
+constexpr int32_t MANAGED_ABI_SCALAR_FRAME_CAPACITY {256};
+constexpr size_t MANAGED_ABI_PROPERTY_ADAPTER_STORAGE {32};
 // An entity or native ref-type handle travels as a zero-extended 64-bit slot on every pointer width
-constexpr uint16_t MANAGED_ABI_HANDLE_SLOT_SIZE = 8;
+constexpr uint16_t MANAGED_ABI_HANDLE_SLOT_SIZE {8};
 
 enum class ManagedAbiValueKind : uint8_t
 {

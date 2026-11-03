@@ -60,7 +60,6 @@ public:
     auto operator=(strvex&&) noexcept -> strvex& = delete;
     constexpr ~strvex() = default;
 
-    // ReSharper disable once CppNonExplicitConversionOperator
     constexpr operator string_view() const noexcept { return _sv; }
 
     constexpr auto operator==(const strvex& other) const noexcept -> bool { return _sv == other._sv; }
@@ -114,7 +113,7 @@ static_assert(!std::is_polymorphic_v<strvex>);
 class strex : protected strvex
 {
 public:
-    static constexpr size_t MAX_NUMBER_STRING_LENGTH = 80;
+    static constexpr size_t MAX_NUMBER_STRING_LENGTH {80};
 
     struct safe_format_tag
     {
@@ -195,15 +194,12 @@ public:
     auto operator=(strex&&) noexcept -> strex& = delete;
     constexpr ~strex() = default;
 
-    // ReSharper disable once CppNonExplicitConversionOperator
     operator string&&() noexcept;
-    // ReSharper disable once CppNonExplicitConversionOperator
     constexpr operator string_view() const noexcept { return _sv; }
 
     constexpr auto operator==(const strex& other) const noexcept -> bool { return _sv == other._sv; }
     constexpr auto operator==(string_view other) const noexcept -> bool { return _sv == other; }
 
-    // ReSharper disable once CppInconsistentNaming
     [[nodiscard]] auto c_str() noexcept -> const char*;
     [[nodiscard]] auto str() noexcept -> string&&;
     [[nodiscard]] auto strv() const noexcept -> string_view { return strvex::strv(); }
@@ -278,16 +274,14 @@ private:
 };
 static_assert(!std::is_polymorphic_v<strex>);
 
-// ReSharper restore CppInconsistentNaming
-
 namespace utf8
 {
-    auto is_valid(uint32_t ucs) noexcept -> bool;
-    auto decode_str_nt_len(ptr<const char> str) noexcept -> size_t;
-    auto decode(ptr<const char> str, size_t& length) noexcept -> uint32_t;
-    auto encode(uint32_t ucs, char (&buf)[4]) noexcept -> size_t;
-    auto lower(uint32_t ucs) noexcept -> uint32_t;
-    auto upper(uint32_t ucs) noexcept -> uint32_t;
+    [[nodiscard]] auto is_valid(uint32_t ucs) noexcept -> bool;
+    [[nodiscard]] auto decode_str_nt_len(ptr<const char> str) noexcept -> size_t;
+    [[nodiscard]] auto decode(ptr<const char> str, size_t& length) noexcept -> uint32_t;
+    [[nodiscard]] auto encode(uint32_t ucs, char (&buf)[4]) noexcept -> size_t;
+    [[nodiscard]] auto lower(uint32_t ucs) noexcept -> uint32_t;
+    [[nodiscard]] auto upper(uint32_t ucs) noexcept -> uint32_t;
 }
 
 FO_END_NAMESPACE
@@ -296,7 +290,6 @@ template<>
 struct std::formatter<FO_NAMESPACE strvex> : formatter<FO_NAMESPACE string_view>
 {
     template<typename FormatContext>
-    // ReSharper disable once CppInconsistentNaming
     auto format(const FO_NAMESPACE strvex& value, FormatContext& ctx) const
     {
         return formatter<FO_NAMESPACE string_view>::format(value.strv(), ctx);
@@ -307,7 +300,6 @@ template<>
 struct std::formatter<FO_NAMESPACE strex> : formatter<FO_NAMESPACE string_view>
 {
     template<typename FormatContext>
-    // ReSharper disable once CppInconsistentNaming
     auto format(const FO_NAMESPACE strex& value, FormatContext& ctx) const
     {
         return formatter<FO_NAMESPACE string_view>::format(value.strv(), ctx);

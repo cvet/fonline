@@ -43,7 +43,7 @@ static auto ResolveItemMap(ptr<Item> item) -> refcount_nptr<Map>;
 static auto ResolveItemMapPosition(ptr<Item> item, mpos& hex) -> refcount_nptr<Map>;
 static auto ResolveItemCritter(ptr<Item> item) -> refcount_nptr<Critter>;
 
-// SyncScope: requires self; init callback runs under the same cover and must widen before touching other entities
+// Run the init callback and store its name as the init script
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Item_SetupScript(ptr<Item> self, ScriptFunc<void, ptr<Item>, bool> initFunc)
 {
@@ -58,7 +58,7 @@ FO_SCRIPT_API void Server_Item_SetupScript(ptr<Item> self, ScriptFunc<void, ptr<
     self->SetInitScript(initFunc.GetName().first);
 }
 
-// SyncScope: requires self; init callback runs under the same cover and must widen before touching other entities
+// Run the named init script and store its name
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Item_SetupScriptEx(ptr<Item> self, hstring initFunc)
 {
@@ -69,7 +69,7 @@ FO_SCRIPT_API void Server_Item_SetupScriptEx(ptr<Item> self, hstring initFunc)
     self->SetInitScript(initFunc);
 }
 
-// SyncScope: requires self; creates and attaches a new inner item under the container cover
+// Create an item from a prototype id and add it to a container
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Item_AddItem(ptr<Item> self, hstring pid, any_t stackId = any_t {})
 {
@@ -80,11 +80,11 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Item_AddItem(ptr<Item> self, hs
         throw ScriptException("Invalid proto", pid);
     }
 
-    auto item = self->GetEngine()->ItemMngr.CreateItem(pid, nullptr);
+    auto item {self->GetEngine()->ItemMngr.CreateItem(pid, nullptr)};
     return self->AddItemToContainer(item, stackId);
 }
 
-// SyncScope: requires self; creates and attaches a new inner item under the container cover
+// Create an item from a prototype descriptor and add it to a container
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Item_AddItem(ptr<Item> self, ptr<ProtoItem> proto, any_t stackId = any_t {})
 {
@@ -92,52 +92,52 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Item_AddItem(ptr<Item> self, pt
         throw ScriptException("Cannot add an item to a container that is being destroyed", self->GetId());
     }
 
-    auto item = self->GetEngine()->ItemMngr.CreateItem(proto->GetProtoId(), nullptr);
+    auto item {self->GetEngine()->ItemMngr.CreateItem(proto->GetProtoId(), nullptr)};
     return self->AddItemToContainer(item, stackId);
 }
 
-// SyncScope: requires self; returns inner item handles covered by self while the cover remains
+// Return inner items of this container, optionally limited to a stack id
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER vector<ptr<Item>> Server_Item_GetItems(ptr<Item> self, any_t stackId = any_t {})
 {
-    vector<ptr<Item>> items = self->GetInnerItems(stackId);
+    vector<ptr<Item>> items {self->GetInnerItems(stackId)};
 
     return items;
 }
 
-// SyncScope: requires self; may also read holder critter/map parent chain, returned map is not covered for later reads
+// Resolve the map containing this item through its critter or container ownership chain
 ///@ ExportMethod PassOwnership
 FO_SCRIPT_API FO_RETURNS_ANCESTOR nptr<Map> Server_Item_GetMap(ptr<Item> self)
 {
-    auto map = ResolveItemMap(self);
+    auto map {ResolveItemMap(self)};
 
     return map ? map.take_not_null().release_ownership() : nullptr;
 }
 
-// SyncScope: requires self; may also read holder critter/map parent chain, returned map is not covered for later reads
+// Resolve the containing map and write the item's map hex through the output argument
 ///@ ExportMethod PassOwnership
 FO_SCRIPT_API FO_RETURNS_ANCESTOR nptr<Map> Server_Item_GetMapPosition(ptr<Item> self, mpos& hex)
 {
-    auto map = ResolveItemMapPosition(self, hex);
+    auto map {ResolveItemMapPosition(self, hex)};
 
     return map ? map.take_not_null().release_ownership() : nullptr;
 }
 
-// SyncScope: requires self; returns holder critter when item is in critter inventory, not a new cover
+// Resolve the critter holding this item through container ownership, or null when map-owned
 ///@ ExportMethod PassOwnership
 FO_SCRIPT_API FO_RETURNS_ANCESTOR nptr<Critter> Server_Item_GetCritter(ptr<Item> self)
 {
-    auto cr = ResolveItemCritter(self);
+    auto cr {ResolveItemCritter(self)};
 
     return cr ? cr.take_not_null().release_ownership() : nullptr;
 }
 
-// SyncScope: requires self + current map when map-owned; refreshes map visibility/blocking caches
+// Refresh map visibility and blocking caches for an item owned by a map hex
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Item_RefreshVisibility(ptr<Item> self)
 {
     if (self->GetOwnership() == ItemOwnership::MapHex) {
-        auto map = self->GetParent<Map>();
+        auto map {self->GetParent<Map>()};
         FO_VERIFY_AND_THROW(map, "Map ownership without a map instance");
         ValidateEntityAccess(map);
         map->ChangeViewItem(self);
@@ -148,7 +148,7 @@ FO_SCRIPT_API void Server_Item_RefreshVisibility(ptr<Item> self)
 template<typename TParent, typename TEntity>
 static auto RequireParent(ptr<TEntity> entity, string_view error_message) -> refcount_ptr<TParent>
 {
-    auto parent = entity->template GetParent<TParent>();
+    auto parent {entity->template GetParent<TParent>()};
 
     if (!parent) {
         throw ScriptException(error_message);
@@ -162,17 +162,17 @@ static auto ResolveItemMap(ptr<Item> item) -> refcount_nptr<Map>
 {
     switch (item->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
-        auto cr = RequireParent<Critter>(item, "Critter ownership, critter not found");
+        auto cr {RequireParent<Critter>(item, "Critter ownership, critter not found")};
 
         if (!cr->GetMapId()) {
             return nullptr;
         }
 
-        auto map = RequireParent<Map, Critter>(cr, "Critter ownership, map not found");
+        auto map {RequireParent<Map, Critter>(cr, "Critter ownership, map not found")};
         return map;
     } break;
     case ItemOwnership::MapHex: {
-        auto map = RequireParent<Map>(item, "Hex ownership, map not found");
+        auto map {RequireParent<Map>(item, "Hex ownership, map not found")};
         return map;
     } break;
     case ItemOwnership::ItemContainer: {
@@ -180,7 +180,7 @@ static auto ResolveItemMap(ptr<Item> item) -> refcount_nptr<Map>
             throw ScriptException("Container ownership, crosslink");
         }
 
-        auto cont = RequireParent<Item>(item, "Container ownership, container not found");
+        auto cont {RequireParent<Item>(item, "Container ownership, container not found")};
         return ResolveItemMap(cont);
     } break;
     default:
@@ -192,19 +192,19 @@ static auto ResolveItemMapPosition(ptr<Item> item, mpos& hex) -> refcount_nptr<M
 {
     switch (item->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
-        auto cr = RequireParent<Critter>(item, "Critter ownership, critter not found");
+        auto cr {RequireParent<Critter>(item, "Critter ownership, critter not found")};
 
         if (!cr->GetMapId()) {
             hex = {};
             return nullptr;
         }
 
-        auto map = RequireParent<Map, Critter>(cr, "Critter ownership, map not found");
+        auto map {RequireParent<Map, Critter>(cr, "Critter ownership, map not found")};
         hex = cr->GetHex();
         return map;
     } break;
     case ItemOwnership::MapHex: {
-        auto map = RequireParent<Map>(item, "Hex ownership, map not found");
+        auto map {RequireParent<Map>(item, "Hex ownership, map not found")};
         hex = item->GetHex();
         return map;
     } break;
@@ -213,7 +213,7 @@ static auto ResolveItemMapPosition(ptr<Item> item, mpos& hex) -> refcount_nptr<M
             throw ScriptException("Container ownership, crosslink");
         }
 
-        auto cont = RequireParent<Item>(item, "Container ownership, container not found");
+        auto cont {RequireParent<Item>(item, "Container ownership, container not found")};
         return ResolveItemMapPosition(cont, hex);
     } break;
     default:
@@ -225,7 +225,7 @@ static auto ResolveItemCritter(ptr<Item> item) -> refcount_nptr<Critter>
 {
     switch (item->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
-        auto cr = RequireParent<Critter>(item, "Critter ownership, critter not found");
+        auto cr {RequireParent<Critter>(item, "Critter ownership, critter not found")};
         return std::move(cr);
     } break;
     case ItemOwnership::MapHex:
@@ -235,7 +235,7 @@ static auto ResolveItemCritter(ptr<Item> item) -> refcount_nptr<Critter>
             throw ScriptException("Container ownership, crosslink");
         }
 
-        auto cont = RequireParent<Item>(item, "Container ownership, container not found");
+        auto cont {RequireParent<Item>(item, "Container ownership, container not found")};
         return ResolveItemCritter(cont);
     } break;
     default:

@@ -62,9 +62,6 @@ public:
     [[nodiscard]] auto IsPersistent() const noexcept -> bool;
     [[nodiscard]] auto IsExplicitlyPersistent() const noexcept -> bool;
     [[nodiscard]] auto GetEntityLock() const noexcept -> nptr<EntityLock>;
-
-    void ValidateAccess() const override;
-
     [[nodiscard]] auto GetParent() -> refcount_nptr<ServerEntity>;
     [[nodiscard]] auto GetParent() const -> refcount_nptr<const ServerEntity>;
 
@@ -74,6 +71,7 @@ public:
         FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
         return GetParentRaw().dyn_cast<T>();
     }
+
     template<typename T>
     [[nodiscard]] auto GetParent() const -> refcount_nptr<const T>
     {
@@ -88,6 +86,8 @@ public:
     // one, outside of the parent-chain. Owning, because the caller reads the link before covering its target
     [[nodiscard]] virtual auto GetSyncWidenEntity() noexcept -> refcount_nptr<ServerEntity>;
     [[nodiscard]] virtual auto GetSyncWidenEntity() const noexcept -> refcount_nptr<const ServerEntity>;
+
+    void ValidateAccess() const override;
 
     void SetInitCalled() noexcept;
     void SetEntityLock(nptr<EntityLock> lock) noexcept;

@@ -43,7 +43,7 @@ FO_DECLARE_EXCEPTION_EXT(UnknownMessageException, NetBufferException);
 class NetBuffer
 {
 public:
-    static constexpr uint32_t NETMSG_SIGNATURE = 0x011E9422;
+    static constexpr uint32_t NETMSG_SIGNATURE {0x011E9422};
 
     explicit NetBuffer(size_t buf_len);
     NetBuffer(const NetBuffer&) = delete;
@@ -95,7 +95,7 @@ public:
         requires(std::same_as<T, string_view> || std::same_as<T, string>)
     void Write(const T& value)
     {
-        auto len = numeric_cast<uint32_t>(value.length());
+        auto len {numeric_cast<uint32_t>(value.length())};
 
         Push(&len, sizeof(len));
         Push(value.data(), len);
@@ -155,23 +155,23 @@ public:
 
     template<typename T>
         requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || some_property_plain_type<T> || some_strong_type<T>)
-    [[nodiscard]] auto Read() -> T
+    auto Read() -> T
     {
-        T result = {};
+        T result {};
         Pop(&result, sizeof(T));
         return result;
     }
 
     template<typename T>
         requires(std::same_as<T, string>)
-    [[nodiscard]] auto Read() -> string
+    auto Read() -> string
     {
-        string result;
-        uint32_t len = 0;
+        string result {};
+        uint32_t len {0};
         Pop(&len, sizeof(len));
 
         // A declared string can never be longer than the bytes still buffered; reject before allocating
-        size_t unread = GetUnreadSize();
+        size_t unread {GetUnreadSize()};
 
         if (len > unread) {
             ResetBuf();
@@ -185,7 +185,7 @@ public:
 
     template<typename T>
         requires(std::same_as<T, hstring>)
-    [[nodiscard]] auto Read(const hash_resolver& hashes) -> hstring
+    auto Read(const hash_resolver& hashes) -> hstring
     {
         return ReadHashedString(hashes);
     }
@@ -195,8 +195,8 @@ public:
     auto ReadMsg() -> NetMessage;
 
 private:
-    [[nodiscard]] auto ReadHashedString(const hash_resolver& hashes) -> hstring;
-    [[nodiscard]] auto GetReadLimit() const noexcept -> size_t { return _msgEndPos != 0 ? _msgEndPos : _bufEndPos; }
+    auto ReadHashedString(const hash_resolver& hashes) -> hstring;
+    auto GetReadLimit() const noexcept -> size_t { return _msgEndPos != 0 ? _msgEndPos : _bufEndPos; }
     void FinishMessageRead();
 
     size_t _bufReadPos {};

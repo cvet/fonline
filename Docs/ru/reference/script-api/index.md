@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-api-index","locale":"ru","source_path":"Docs/en/reference/script-api/index.md","source_sha256":"764c9a6be6ae0ef41a8ac4cf22b929f526c862375ad01137c4f5e9c9b3e34d73"} -->
+<!-- docs-translation: {"document_id":"generated-api-index","locale":"ru","source_path":"Docs/en/reference/script-api/index.md","source_sha256":"311e01392c0dc3a0bbeb2d3f8a50a096f68dadcf5cf9e6e9dfb49265e508b64d"} -->
 
 # Сгенерированный справочник API
 
@@ -48,7 +48,7 @@ generated: true
 
 Поверхность native-codegen предлагается только для оценки и остаётся привязанной к ревизии до появления поддерживаемых веток выпусков.<br>SymbolCount и InventorySha256 требуют проверки владельцем каждого добавления, удаления или изменения стабильного ID.
 
-Исходник контракта: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47)
+Исходник контракта: [Source/Common/Common.h:45](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L45)
 
 ## Область
 

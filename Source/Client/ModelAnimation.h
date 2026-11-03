@@ -81,7 +81,6 @@ public:
     auto operator=(ModelAnimationController&&) noexcept = delete;
     ~ModelAnimationController() = default;
 
-    [[nodiscard]] auto Copy() const -> ModelAnimationController;
     [[nodiscard]] auto GetAnimDuration(int32_t index) const -> timespan;
     [[nodiscard]] auto GetTrackEnable(int32_t track) const -> bool;
     [[nodiscard]] auto GetTrackPosition(int32_t track) const -> timespan;
@@ -90,6 +89,7 @@ public:
     [[nodiscard]] auto IsTrackBoneEnabled(int32_t track, hstring bone_name) const -> bool;
     [[nodiscard]] auto GetAnimationsCount() const -> int32_t;
 
+    auto Copy() const -> ModelAnimationController;
     auto RegisterAnimation(uint32_t clip_index, timespan duration, bool reversed, unordered_set<hstring> bound_bones) -> int32_t;
     void SetTrackAnimation(int32_t track, int32_t anim_index, nptr<const unordered_set<hstring>> allowed_bones);
     void ResetBonesTransition(int32_t skip_track, const vector<hstring>& bone_names);
@@ -241,7 +241,7 @@ private:
 class ModelAnimationRuntimePose final
 {
 public:
-    static constexpr size_t MAX_PROCEDURAL_ROTATIONS = 2;
+    static constexpr size_t MAX_PROCEDURAL_ROTATIONS {2};
 
     struct TrackInput
     {

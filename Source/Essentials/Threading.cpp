@@ -44,7 +44,7 @@
 FO_BEGIN_NAMESPACE
 
 // Lazily filled with a numeric default the first time a thread that never named itself reads it
-static thread_local string thread_name;
+static thread_local string thread_name {};
 
 struct threading_data
 {
@@ -54,8 +54,8 @@ FO_GLOBAL_DATA(threading_data, threading_state);
 
 struct pool_task
 {
-    string name;
-    function<void()> body;
+    string name {};
+    function<void()> body {};
 };
 
 struct thread_pool
@@ -78,7 +78,7 @@ static void park_until(std::chrono::steady_clock::time_point deadline) noexcept;
 
 // The OS wait overshoots its deadline by a few hundred microseconds, so the tail of a sleep is spun out
 // instead. Also the cutoff under which a whole sleep is spun, since parking that briefly is not possible
-static constexpr std::chrono::nanoseconds PRECISE_SLEEP_SPIN_BUDGET = std::chrono::milliseconds {1};
+static constexpr std::chrono::nanoseconds PRECISE_SLEEP_SPIN_BUDGET {std::chrono::milliseconds {1}};
 
 struct global_pools
 {
@@ -119,14 +119,14 @@ static auto submit_impl(thread_pool& pool, string_view task_name, function<void(
     }
 
     {
-        std::lock_guard locker(pool.locker);
+        std::lock_guard locker {pool.locker};
 
         if (pool.stopping) {
             throw GenericException("threading pool called after shutdown");
         }
 
-        bool has_idle_worker = pool.idle_count > 0;
-        bool can_spawn_worker = pool.workers.size() < pool.max_workers;
+        bool has_idle_worker {pool.idle_count > 0};
+        bool can_spawn_worker {pool.workers.size() < pool.max_workers};
 
         if (!has_idle_worker && !can_spawn_worker && !can_queue) {
             // thread_pool saturated and caller asked for try-only — let them fall back to sync
@@ -178,14 +178,14 @@ static void worker_loop(thread_pool* pool) noexcept
 {
     // Tasks transiently rename the thread so Tracy and debugger lists stay informative, so keep an
     // owning copy of the spawn name to restore afterwards
-    string_view base_name = get_this_thread_name();
+    string_view base_name {get_this_thread_name()};
     string base_thread_name {base_name.data(), base_name.size()};
 
     while (true) {
-        pool_task task;
+        pool_task task {};
 
         {
-            std::unique_lock locker(pool->locker);
+            std::unique_lock locker {pool->locker};
 
             ++pool->idle_count;
             pool->work_signal.wait(locker, [pool] { return pool->stopping || !pool->pending.empty(); });
@@ -225,10 +225,10 @@ static void worker_loop(thread_pool* pool) noexcept
 
 static void internal_shutdown(thread_pool& pool) noexcept
 {
-    vector<std::thread> workers_to_join;
+    vector<std::thread> workers_to_join {};
 
     {
-        std::lock_guard locker(pool.locker);
+        std::lock_guard locker {pool.locker};
 
         if (pool.stopping) {
             return;
@@ -258,16 +258,16 @@ static void internal_shutdown(thread_pool& pool) noexcept
 
 static auto hardware_concurrency_or_one() noexcept -> size_t
 {
-    auto hw = std::thread::hardware_concurrency();
+    auto hw {std::thread::hardware_concurrency()};
     return hw != 0 ? static_cast<size_t>(hw) : size_t {1};
 }
 
 static void submit_run_thread(string_view task_name, function<void()> task)
 {
-    auto& pool = pools->run_pool;
+    thread_pool& pool {pools->run_pool};
 
     {
-        std::lock_guard locker(pool.locker);
+        std::lock_guard locker {pool.locker};
         // Unbounded — every submit either reuses an idle worker or spawns a new one
         ensure_initialized_locked(pool, std::numeric_limits<size_t>::max(), "run_pool");
     }
@@ -293,7 +293,7 @@ void set_this_thread_name(const string& name) noexcept
 auto get_this_thread_name() noexcept -> string_view
 {
     if (thread_name.empty()) {
-        static std::atomic_int32_t thread_counter = 0;
+        static std::atomic_int32_t thread_counter {0};
 
         try {
             thread_name = strex("{}", ++thread_counter);
@@ -322,7 +322,7 @@ void precise_sleep(std::chrono::nanoseconds duration) noexcept
         return;
     }
 
-    auto deadline = std::chrono::steady_clock::now() + duration;
+    auto deadline {std::chrono::steady_clock::now() + duration};
 
     if (duration > PRECISE_SLEEP_SPIN_BUDGET) {
         park_until(deadline - PRECISE_SLEEP_SPIN_BUDGET);
@@ -339,11 +339,11 @@ auto run_thread(string_view task_name, function<void()> task) -> thread
 
     // A promise rather than `std::packaged_task`: the latter swallows the body's exception into the
     // future, where `worker_loop` can no longer report it and a caller that never joins loses it
-    auto promise = safe_alloc::make_shared<std::promise<void>>();
+    auto promise {safe_alloc::make_shared<std::promise<void>>()};
     // Shared with the body below, which fills the slot at entry and clears it at exit, so `get_id()`
     // reports an id only while the task actually runs
-    auto running_thread_id = safe_alloc::make_shared<std::atomic<std::thread::id>>();
-    auto handle = thread {promise->get_future(), running_thread_id};
+    auto running_thread_id {safe_alloc::make_shared<std::atomic<std::thread::id>>()};
+    auto handle {thread {promise->get_future(), running_thread_id}};
 
     submit_run_thread(task_name, [body = std::move(task), promise = std::move(promise), running_thread_id = std::move(running_thread_id)]() mutable {
         running_thread_id->store(std::this_thread::get_id(), std::memory_order_release);
@@ -360,6 +360,7 @@ auto run_thread(string_view task_name, function<void()> task) -> thread
             }
             catch (...) {
             }
+
             exceptions::report_and_continue(ex);
             return;
         }
@@ -370,6 +371,7 @@ auto run_thread(string_view task_name, function<void()> task) -> thread
             }
             catch (...) {
             }
+
             FO_UNKNOWN_EXCEPTION();
             return;
         }
@@ -389,10 +391,10 @@ auto try_submit_async(string_view task_name, function<void()> task) -> bool
 {
     FO_TRACE_ZONE(Threading);
 
-    auto& pool = pools->async_pool;
+    thread_pool& pool {pools->async_pool};
 
     {
-        std::lock_guard locker(pool.locker);
+        std::lock_guard locker {pool.locker};
         // Capped at hardware concurrency — many short async tasks shouldn't be allowed to
         // grow the thread count past what the host can actually run in parallel
         ensure_initialized_locked(pool, hardware_concurrency_or_one(), "async_pool");
@@ -405,10 +407,10 @@ void submit_async(string_view task_name, function<void()> task)
 {
     FO_TRACE_ZONE(Threading);
 
-    auto& pool = pools->async_pool;
+    thread_pool& pool {pools->async_pool};
 
     {
-        std::lock_guard locker(pool.locker);
+        std::lock_guard locker {pool.locker};
         ensure_initialized_locked(pool, hardware_concurrency_or_one(), "async_pool");
     }
 
@@ -420,7 +422,7 @@ void thread::join()
     FO_TRACE_ZONE(Threading);
 
     if (_future.valid()) {
-        auto future = std::move(_future);
+        auto future {std::move(_future)};
         _running_thread_id.reset();
         future.get();
     }
@@ -434,7 +436,7 @@ void thread::detach() noexcept
 
 static void park_until(std::chrono::steady_clock::time_point deadline) noexcept
 {
-    auto remaining = deadline - std::chrono::steady_clock::now();
+    auto remaining {deadline - std::chrono::steady_clock::now()};
 
     if (remaining <= std::chrono::steady_clock::duration::zero()) {
         return;
@@ -442,14 +444,14 @@ static void park_until(std::chrono::steady_clock::time_point deadline) noexcept
 
 #if FO_WINDOWS
     // std::this_thread::sleep_for rounds up to the timer tick, so the wait goes through a waitable timer
-    nptr<void> timer = winapi::create_high_resolution_timer();
+    nptr<void> timer {winapi::create_high_resolution_timer()};
 
     if (!timer) {
         std::this_thread::sleep_for(remaining);
         return;
     }
 
-    int64_t delay_100ns = std::chrono::duration_cast<std::chrono::nanoseconds>(remaining).count() / 100;
+    int64_t delay_100ns {std::chrono::duration_cast<std::chrono::nanoseconds>(remaining).count() / 100};
 
     if (winapi::set_relative_timer(timer, delay_100ns)) {
         winapi::wait_for_object(timer);

@@ -46,7 +46,7 @@ FO_BEGIN_NAMESPACE
     logging::write_base(message);
     logging::write_base("\n\n");
 
-    stack_trace::data st;
+    stack_trace::data st {};
     stack_trace::capture_native_frames(st.native_frames, st.native_frame_count, st.native_truncated, 1);
     logging::safe_write_stack_trace(st);
 
@@ -58,7 +58,7 @@ FO_BEGIN_NAMESPACE
 {
     logging::suspend_async_writing();
 
-    char line_buf[64] = {};
+    char line_buf[64] {};
 
     logging::write_base("\nSTRONG ASSERTION FAILED!\n");
     logging::write_base("Expression: ");
@@ -69,7 +69,7 @@ FO_BEGIN_NAMESPACE
     logging::write_base(itoa(line, line_buf, 10));
     logging::write_base("\n\n");
 
-    stack_trace::data st;
+    stack_trace::data st {};
     stack_trace::capture_native_frames(st.native_frames, st.native_frame_count, st.native_truncated, 1);
     logging::safe_write_stack_trace(st);
 

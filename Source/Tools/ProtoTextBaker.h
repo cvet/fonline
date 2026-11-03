@@ -49,7 +49,7 @@ class ProtoEntity;
 class ProtoTextBaker final : public BaseBaker
 {
 public:
-    static constexpr string_view_nt NAME = "ProtoText";
+    static constexpr string_view_nt NAME {"ProtoText"};
 
     explicit ProtoTextBaker(shared_ptr<BakingContext> ctx);
     ProtoTextBaker(const ProtoTextBaker&) = delete;

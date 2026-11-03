@@ -68,9 +68,9 @@ auto ItemView::CreateRefClone() -> refcount_ptr<ItemView>
 {
     FO_TRACE_ZONE(Entity);
 
-    auto proto = require_refcount_ptr(_proto.dyn_cast<const ProtoItem>());
+    auto proto {require_refcount_ptr(_proto.dyn_cast<const ProtoItem>())};
 
-    auto ref_item = safe_alloc::make_refcounted<ItemView>(_engine, ident_t {}, proto, GetProperties());
+    auto ref_item {safe_alloc::make_refcounted<ItemView>(_engine, ident_t {}, proto, GetProperties())};
 
     ref_item->SetId(GetId(), false);
 
@@ -81,7 +81,7 @@ auto ItemView::AddMapperInnerItem(ident_t id, ptr<const ProtoItem> proto, const 
 {
     FO_TRACE_ZONE(Entity);
 
-    auto item = safe_alloc::make_refcounted<ItemView>(_engine, id, proto, props);
+    auto item {safe_alloc::make_refcounted<ItemView>(_engine, id, proto, props)};
 
     item->SetStatic(false);
     item->SetOwnership(ItemOwnership::ItemContainer);
@@ -97,7 +97,7 @@ auto ItemView::AddReceivedInnerItem(ident_t id, ptr<const ProtoItem> proto, cons
 {
     FO_TRACE_ZONE(Entity);
 
-    auto item = safe_alloc::make_refcounted<ItemView>(_engine, id, proto, nullptr);
+    auto item {safe_alloc::make_refcounted<ItemView>(_engine, id, proto, nullptr)};
 
     item->RestoreData(props_data);
     item->SetContainerStack(stack_id);
@@ -118,7 +118,7 @@ auto ItemView::AddRawInnerItem(ptr<ItemView> item) -> ptr<ItemView>
 
 void ItemView::DestroyInnerItem(ptr<ItemView> item)
 {
-    auto item_ref_holder = item.hold_ref();
+    auto item_ref_holder {item.hold_ref()};
     vec_remove_unique_value(_innerItems, item_ref_holder);
 
     item->DestroySelf();

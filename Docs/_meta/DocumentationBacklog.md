@@ -337,9 +337,9 @@ Docs added after the initial 2026-05-18 backlog slice, covering native C++ vocab
     systems.
 - `verified` - manifest-backed documentation site navigation and search
   - `BuildTools/docs_site.py` generates `Docs/Site/Data/docs-site.json` for locale-aware Jekyll navigation plus `Docs/Site/Assets/docs-search.json` and `Docs/Site/Assets/docs-search.ru.json` for browser-local search from the same stable document IDs and Markdown corpus.
-  - Navigation covers every public current human top-level page exactly once while generated detail pages remain searchable behind their indexes. Each locale artifact has its own reviewed hard 1.75 MiB budget, raised explicitly when the 163-page Russian mirror exceeded the former 1.25 MiB ceiling; Russian results contain only current Russian routes, and generation still fails instead of dropping documents.
+  - Navigation covers every public current human top-level page exactly once while generated detail pages remain searchable behind their indexes. Locale artifacts have no byte-size limit and retain every eligible document; Russian results contain only current Russian routes.
   - The custom default layout provides responsive desktop/mobile navigation, rolling `master` identity, stable-ID language switching, localized labels, page-local table of contents, source links, code-copy controls, and persisted light/dark preference without a remote application or asset dependency.
-  - Focused generator and layout/static tests, standalone freshness validation, and CI wiring reject missing/duplicate navigation IDs, stale/oversized locale indexes, cross-locale results, missing local assets, and rendering-contract drift. ADR 0004 owns the boundary.
+  - Focused generator and layout/static tests, standalone freshness validation, and CI wiring reject missing/duplicate navigation IDs, stale locale indexes, cross-locale results, missing local assets, and rendering-contract drift. ADR 0004 owns the boundary.
 
 - `verified` - rendered GitHub Pages artifact gate
   - `BuildTools/docs_site_artifact.py` validates the actual Jekyll `_site` output against the manifest, route catalog, search model, and generated static endpoints, then preserves a machine-readable report in CI.

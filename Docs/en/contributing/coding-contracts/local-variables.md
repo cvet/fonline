@@ -8,12 +8,36 @@ permalink: /Docs/en/contributing/coding-contracts/local-variables.html
 
 # Local Variables
 
-This document owns the narrow first-party C++ rules for local type spelling,
-redundant top-level `const`, and use-after-move diagnostics.
+This document owns the first-party C++ rules for variable initialization, local type
+spelling, redundant top-level `const`, and use-after-move diagnostics.
 
 There is no engine-specific immutability-by-default rule. Local variables and
 function or method parameters follow normal C++ mutation semantics and require
 no annotation when they are written.
+
+## Braced initialization
+
+Initialize every variable definition with direct-list initialization wherever an
+initializer is permitted: `T name {expression};`. This applies to locals, fields,
+globals and static/thread-local variables. Use empty braces for the intended
+default state, including class-type objects: `int32_t count {};`, `string text {};`.
+
+There are two exceptions to an initializer at the declaration:
+
+- A class field initialized by its constructors may omit an in-class initializer.
+  Ensure every applicable constructor initializes it before use.
+- A local may deliberately defer initialization. Every control-flow path must
+  assign its value before the first read; keep this guarantee visible in the code.
+
+Preserve constructor selection, container contents and size, deduced types and
+conversion checks. Braces can select an `initializer_list` overload: replacing
+`vector<int32_t> values(count)` with `vector<int32_t> values {count}` changes a
+size into an element. Construct the intended value explicitly and use it as the
+braced initializer. Use `auto value {expression};` for retained deduction;
+`auto value = {expression};` deduces an initializer list.
+
+Review this rule and its two exceptions in source review. The analyzer checks
+described below retain their existing type, constness and use-after-move scope.
 
 ## Redundant local `const`
 
@@ -21,17 +45,17 @@ Do not add top-level `const` to an automatic local when removing it leaves the
 type contract unchanged:
 
 ```cpp
-int32_t count = GetCount();
-item_ptr item = FindItem();
+int32_t count {GetCount()};
+item_ptr item {FindItem()};
 ```
 
 Preserve constness that is part of the value's actual type or semantics:
 
 ```cpp
-const Item* item = FindItem();       // const pointee
-const Item& item = GetItem();        // const referent
-const int32_t values[] = {1, 2};     // const elements
-constexpr int32_t limit = 10;        // required by constexpr
+const Item* item {FindItem()};       // const pointee
+const Item& item {GetItem()};        // const referent
+const int32_t values[] {1, 2};       // const elements
+constexpr int32_t limit {10};        // required by constexpr
 ```
 
 `int32_t* const pointer` has removable top-level const and is diagnosed.
@@ -41,7 +65,7 @@ The rare intentional top-level local qualifier can be suppressed on the
 diagnostic line or the preceding line:
 
 ```cpp
-const int32_t value = SelectOverload(); // FO_REDUNDANT_CONST_SUPPRESS: const is required for overload selection
+const int32_t value {SelectOverload()}; // FO_REDUNDANT_CONST_SUPPRESS: const is required for overload selection
 ```
 
 The reason is mandatory and must contain at least eight characters.
@@ -65,19 +89,19 @@ without admitting library-internal names such as `iterator` or `value_type`.
 Examples:
 
 ```cpp
-int32_t count = GetCount();
-float32_t factor = GetFactor();
-hstring name = GetName();
+int32_t count {GetCount()};
+float32_t factor {GetFactor()};
+hstring name {GetName()};
 ```
 
 Keep `auto` for cases such as:
 
 ```cpp
-auto values = vector<int32_t> {};
-auto iter = values.begin();                  // nested iterator type
-auto handle = MakeHandle<void>();            // template spelling
-auto pointer = GetRawPointer();               // explicit target may convert
-auto [left, right] = Split(value);            // structured binding
+auto values {vector<int32_t> {}};
+auto iter {values.begin()};                  // nested iterator type
+auto handle {MakeHandle<void>()};            // template spelling
+auto pointer {GetRawPointer()};              // explicit target may convert
+auto [left, right] {Split(value)};           // structured binding
 ```
 
 When an eligible deduced numeric primitive is written explicitly, use the
@@ -101,7 +125,7 @@ independent `bugprone-use-after-move` gate rejects subsequent use until a valid
 reinitialization:
 
 ```cpp
-value_type value = BuildValue();
+value_type value {BuildValue()};
 Consume(std::move(value));
 ```
 
@@ -115,7 +139,7 @@ The reason is mandatory and must contain at least eight characters.
 
 ## Enforcement
 
-These rules are intended for a Clang 20+ `compile_commands.json` analyzer:
+The type, constness and use-after-move rules use a Clang 20+ `compile_commands.json` analyzer:
 an explicit-type checker plus `clang-query` / `clang-tidy` checks for redundant
 local constness and use after move. The engine owns only the rules above and the
 `FO_REDUNDANT_CONST_SUPPRESS` / `FO_USE_AFTER_MOVE_SUPPRESS` markers. An

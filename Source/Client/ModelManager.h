@@ -90,8 +90,8 @@ private:
     ptr<IAppRender> _render;
     ptr<GameTimer> _gameTime;
     ptr<AnimationResolver> _animNameResolver;
-    TextureLoader _textureLoader;
-    ParticleSceneBackgroundProvider _sceneBackgroundProvider;
+    TextureLoader _textureLoader {};
+    ParticleSceneBackgroundProvider _sceneBackgroundProvider {};
     bool _directSceneDraw {};
     ParticleManager _particleMngr;
     set<hstring> _processedFiles {};

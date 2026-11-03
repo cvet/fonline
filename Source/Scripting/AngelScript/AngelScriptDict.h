@@ -55,15 +55,18 @@ class ScriptDict
     friend class safe_alloc;
 
     template<typename T>
-    static constexpr bool IsHandleAsType = std::is_same_v<T, void> || std::is_same_v<std::remove_cv_t<T>, Entity> || //
-        std::is_same_v<std::remove_cv_t<T>, DynamicRefTypeInstance> || std::is_same_v<std::remove_cv_t<T>, ScriptArray> || std::is_same_v<std::remove_cv_t<T>, ScriptDict>;
+    static constexpr bool IsHandleAsType {std::is_same_v<T, void> || std::is_same_v<std::remove_cv_t<T>, Entity> || //
+        std::is_same_v<std::remove_cv_t<T>, DynamicRefTypeInstance> || std::is_same_v<std::remove_cv_t<T>, ScriptArray> || std::is_same_v<std::remove_cv_t<T>, ScriptDict>};
 
 public:
-    struct ScriptDictComparator
+    class ScriptDictComparator
     {
+    public:
         explicit ScriptDictComparator(ptr<ScriptDict> owner);
         auto operator()(ptr<void> a, ptr<void> b) const -> bool;
-        ptr<ScriptDict> Owner;
+
+    private:
+        ptr<ScriptDict> _owner;
     };
 
     static auto Create(ptr<AngelScript::asITypeInfo> ti) -> refcount_ptr<ScriptDict>;
@@ -73,37 +76,15 @@ public:
     auto operator=(ScriptDict&&) noexcept -> ScriptDict& = delete;
 
     auto operator=(const ScriptDict& other) -> ScriptDict&;
-    auto operator==(const ScriptDict& other) const -> bool;
 
-    void AddRef() const;
-    void Release() const;
-
-    auto GetDictObjectType() -> ptr<AngelScript::asITypeInfo> { return _typeInfo; }
-    auto GetDictObjectType() const -> ptr<const AngelScript::asITypeInfo> { return _typeInfo; }
-    auto GetDictTypeId() const -> int32_t;
-    auto GetMap() const -> ptr<const map<void*, void*, ScriptDictComparator>> { return &_data; }
-    auto IsEmpty() const -> bool;
-    auto GetSize() const -> int32_t;
-    auto Get(ptr<void> key) const -> ptr<void>;
-    auto GetOrCreate(ptr<void> key) -> ptr<void>;
-    auto GetDefault(ptr<void> key, ptr<void> def_val) const -> ptr<void>;
-    auto GetKey(int32_t index) const -> ptr<void>;
-    auto GetValue(int32_t index) const -> ptr<void>;
-    auto GetKeys() const -> refcount_ptr<ScriptArray>;
-    auto GetValues() const -> refcount_ptr<ScriptArray>;
-    auto Exists(ptr<void> key) const -> bool;
-
-    void Set(ptr<void> key, ptr<void> value);
-    void SetIfNotExist(ptr<void> key, ptr<void> value);
-    auto Remove(ptr<void> key) -> bool;
-    auto RemoveValues(ptr<void> value) -> int32_t;
-    void Clear();
-
-    auto GetRefCount() const -> int32_t;
-    void SetFlag() const;
-    auto GetFlag() const -> bool;
-    void EnumReferences(ptr<AngelScript::asIScriptEngine> engine) const;
-    void ReleaseAllHandles();
+    [[nodiscard]] auto GetDictObjectType() -> ptr<AngelScript::asITypeInfo> { return _typeInfo; }
+    [[nodiscard]] auto GetDictObjectType() const -> ptr<const AngelScript::asITypeInfo> { return _typeInfo; }
+    [[nodiscard]] auto GetDictTypeId() const -> int32_t;
+    [[nodiscard]] auto GetMap() const -> ptr<const map<void*, void*, ScriptDictComparator>> { return &_data; }
+    [[nodiscard]] auto IsEmpty() const -> bool;
+    [[nodiscard]] auto GetSize() const -> int32_t;
+    [[nodiscard]] auto GetRefCount() const -> int32_t;
+    [[nodiscard]] auto GetFlag() const -> bool;
 
     template<typename T>
         requires(IsHandleAsType<T>)
@@ -180,6 +161,30 @@ public:
     {
         return ValueAs<T>(GetValue(numeric_cast<int32_t>(index)).get());
     }
+
+    auto operator==(const ScriptDict& other) const -> bool;
+
+    void AddRef() const;
+    void Release() const;
+
+    auto Get(ptr<void> key) const -> ptr<void>;
+    auto GetOrCreate(ptr<void> key) -> ptr<void>;
+    auto GetDefault(ptr<void> key, ptr<void> def_val) const -> ptr<void>;
+    auto GetKey(int32_t index) const -> ptr<void>;
+    auto GetValue(int32_t index) const -> ptr<void>;
+    auto GetKeys() const -> refcount_ptr<ScriptArray>;
+    auto GetValues() const -> refcount_ptr<ScriptArray>;
+    auto Exists(ptr<void> key) const -> bool;
+
+    void Set(ptr<void> key, ptr<void> value);
+    void SetIfNotExist(ptr<void> key, ptr<void> value);
+    auto Remove(ptr<void> key) -> bool;
+    auto RemoveValues(ptr<void> value) -> int32_t;
+    void Clear();
+
+    void SetFlag() const;
+    void EnumReferences(ptr<AngelScript::asIScriptEngine> engine) const;
+    void ReleaseAllHandles();
 
 private:
     explicit ScriptDict(ptr<AngelScript::asITypeInfo> ti);

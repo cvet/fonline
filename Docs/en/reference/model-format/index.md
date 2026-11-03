@@ -20,7 +20,7 @@ This reference describes the reusable Engine-owned `.fo3d` language and the mode
 | Stability | <code>experimental</code> |
 | Support policy | The contract is generated for a pinned Engine revision. Projects own model catalogs, layer meanings, animation enums, visual policy, and concrete assets. |
 | Source manifest | [BuildTools/ModelFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/ModelFormatInterface.json) |
-| Contract digest | <code>496eb2ea2d6b5150b06217723895efce2ad6ef5d0b1a2c65d26da299f0c91b68</code> |
+| Contract digest | <code>bc460bb8956347d91d204d8e435742b2847bb99fd0c87424307602d636d6b626</code> |
 | Source extension | <code>.fo3d</code> |
 | Mesh inputs | <code>.fbx</code>, <code>.obj</code> |
 | Runtime side | <code>client</code> |

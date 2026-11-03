@@ -65,7 +65,7 @@ public:
     auto Draw() -> bool;
 
 private:
-    struct Impl;
+    class Impl;
 
     void DrawContent();
     void DiscardChanges();

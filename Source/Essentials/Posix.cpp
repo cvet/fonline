@@ -109,9 +109,9 @@ static auto parse_counter(string_view text, uint64_t& value) noexcept -> bool
         return false;
     }
 
-    auto text_begin = make_nptr(text.data());
-    ptr<const char> text_end = text_begin.offset(text.size());
-    auto parse_result = std::from_chars(text_begin.get(), text_end.get(), value);
+    auto text_begin {make_nptr(text.data())};
+    ptr<const char> text_end {text_begin.offset(text.size())};
+    auto parse_result {std::from_chars(text_begin.get(), text_end.get(), value)};
 
     return parse_result.ec == std::errc {} && text_end == parse_result.ptr;
 }
@@ -134,26 +134,26 @@ auto posix::get_running_process_start_time(int32_t pid) noexcept -> optional<uin
     }
 
 #if FO_LINUX || FO_ANDROID
-    string stat_path = strex("/proc/{}/stat", pid).str();
+    string stat_path {strex("/proc/{}/stat", pid).str()};
     std::ifstream file {stat_path.c_str()};
 
     if (!file) {
         return std::nullopt;
     }
 
-    string text;
+    string text {};
     getline(file, text);
 
     // The command name is parenthesized and may itself contain spaces, so the fields start after its close:
     // the state is the first of them and the start time in clock ticks the twentieth
-    size_t comm_end = text.rfind(')');
+    size_t comm_end {text.rfind(')')};
 
     if (comm_end == string::npos || comm_end + 2 >= text.size()) {
         return std::nullopt;
     }
 
-    vector<string_view> fields = strvex(string_view {text}.substr(comm_end + 2)).split(' ');
-    uint64_t start_time = 0;
+    vector<string_view> fields {static_cast<string_view>(strvex(string_view {text}.substr(comm_end + 2)).split(' '))};
+    uint64_t start_time {0};
 
     if (fields.size() <= 19 || fields[0] == "Z" || fields[0] == "X" || !parse_counter(fields[19], start_time)) {
         return std::nullopt;
@@ -163,7 +163,7 @@ auto posix::get_running_process_start_time(int32_t pid) noexcept -> optional<uin
 
 #elif FO_MAC
     proc_bsdinfo info {};
-    auto info_data = make_ptr(&info);
+    auto info_data {make_ptr(&info)};
 
     if (::proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, info_data.get(), PROC_PIDTBSDINFO_SIZE) != PROC_PIDTBSDINFO_SIZE || info.pbi_status == SZOMB) {
         return std::nullopt;
@@ -183,8 +183,8 @@ auto posix::get_home_dir() noexcept -> optional<string>
 #if !FO_WEB
     // The reentrant form: the shared one returns a pointer into storage another caller may replace
     passwd pwd {};
-    passwd* result = nullptr;
-    vector<char> buffer;
+    passwd* result {nullptr};
+    vector<char> buffer {};
     buffer.resize(4096);
 
     if (::getpwuid_r(::getuid(), &pwd, buffer.data(), buffer.size(), &result) != 0 || result == nullptr) {
@@ -205,9 +205,9 @@ auto posix::get_home_dir() noexcept -> optional<string>
 auto posix::get_executable_path() noexcept -> optional<string>
 {
 #if FO_LINUX
-    char path[FILENAME_MAX];
-    auto path_data = make_ptr(path);
-    ssize_t size = ::readlink("/proc/self/exe", path_data.get(), sizeof(path) - 1);
+    char path[FILENAME_MAX] {};
+    auto path_data {make_ptr(path)};
+    ssize_t size {::readlink("/proc/self/exe", path_data.get(), sizeof(path) - 1)};
 
     if (size == -1) {
         return std::nullopt;
@@ -217,10 +217,10 @@ auto posix::get_executable_path() noexcept -> optional<string>
     return string {path_data.get()};
 
 #elif FO_MAC
-    char path[PROC_PIDPATHINFO_MAXSIZE];
-    auto path_data = make_ptr(path);
+    char path[PROC_PIDPATHINFO_MAXSIZE] {};
+    auto path_data {make_ptr(path)};
 
-    auto pid = ::getpid();
+    auto pid {::getpid()};
 
     if (::proc_pidpath(pid, path_data.get(), sizeof(path)) <= 0) {
         return std::nullopt;
@@ -236,7 +236,7 @@ auto posix::get_executable_path() noexcept -> optional<string>
 auto posix::fork_into_background() noexcept -> bool // NOLINT(clang-diagnostic-missing-noreturn)
 {
 #if FO_LINUX || FO_MAC
-    pid_t pid = ::fork();
+    pid_t pid {::fork()};
 
     if (pid < 0) {
         return false;
@@ -263,22 +263,22 @@ auto posix::get_process_resident_size() noexcept -> size_t
 
 #if FO_LINUX || FO_ANDROID
     // /proc/self/statm: size resident shared text lib data dt, in pages
-    auto file = make_nptr(std::fopen("/proc/self/statm", "r"));
+    auto file {make_nptr(std::fopen("/proc/self/statm", "r"))};
 
     if (!file) {
         return 0;
     }
 
-    unsigned long size_pages = 0;
-    unsigned long rss_pages = 0;
-    int matched = std::fscanf(file.get(), "%lu %lu", &size_pages, &rss_pages);
+    unsigned long size_pages {0};
+    unsigned long rss_pages {0};
+    int matched {std::fscanf(file.get(), "%lu %lu", &size_pages, &rss_pages)};
     std::fclose(file.get());
 
     if (matched != 2) {
         return 0;
     }
 
-    long page_size = ::sysconf(_SC_PAGESIZE);
+    long page_size {::sysconf(_SC_PAGESIZE)};
 
     if (page_size <= 0) {
         return 0;
@@ -288,8 +288,8 @@ auto posix::get_process_resident_size() noexcept -> size_t
 
 #elif FO_MAC
     mach_task_basic_info_data_t info {};
-    mach_msg_type_number_t count = MACH_TASK_BASIC_INFO_COUNT;
-    auto task_info_data = make_ptr(&info).reinterpret_as<integer_t>();
+    mach_msg_type_number_t count {MACH_TASK_BASIC_INFO_COUNT};
+    auto task_info_data {make_ptr(&info).reinterpret_as<integer_t>()};
 
     if (::task_info(::mach_task_self(), MACH_TASK_BASIC_INFO, task_info_data.get(), &count) == KERN_SUCCESS) {
         return static_cast<size_t>(info.resident_size);
@@ -307,17 +307,17 @@ auto posix::get_process_private_size() noexcept -> size_t
     FO_TRACE_ZONE(Core);
 
 #if FO_LINUX || FO_ANDROID
-    auto file = make_nptr(std::fopen("/proc/self/status", "r"));
+    auto file {make_nptr(std::fopen("/proc/self/status", "r"))};
 
     if (!file) {
         return 0;
     }
 
     char line[256] {};
-    size_t result = 0;
+    size_t result {0};
 
     while (std::fgets(line, sizeof(line), file.get()) != nullptr) {
-        size_t value_kib = 0;
+        size_t value_kib {0};
 
         if (std::sscanf(line, "VmData:%zu kB", &value_kib) == 1) {
             result = value_kib * 1024;
@@ -344,31 +344,31 @@ auto posix::get_process_cpu_time_ns() noexcept -> optional<uint64_t>
         return std::nullopt;
     }
 
-    string text;
+    string text {};
     getline(file, text);
 
     // The command name is parenthesized and may itself contain spaces, so the fields start after its close
-    size_t comm_end = text.rfind(')');
+    size_t comm_end {text.rfind(')')};
 
     if (comm_end == string::npos || comm_end + 2 >= text.size()) {
         return std::nullopt;
     }
 
-    string_view fields_text = string_view {text}.substr(comm_end + 2);
-    vector<string_view> fields = strvex(fields_text).split(' ');
+    string_view fields_text {static_cast<string_view>(string_view {text}.substr(comm_end + 2))};
+    vector<string_view> fields {static_cast<string_view>(strvex(fields_text).split(' '))};
 
     if (fields.size() <= 12) {
         return std::nullopt;
     }
 
-    uint64_t user_ticks = 0;
-    uint64_t system_ticks = 0;
+    uint64_t user_ticks {0};
+    uint64_t system_ticks {0};
 
     if (!parse_counter(fields[11], user_ticks) || !parse_counter(fields[12], system_ticks)) {
         return std::nullopt;
     }
 
-    long ticks_per_second = ::sysconf(_SC_CLK_TCK);
+    long ticks_per_second {::sysconf(_SC_CLK_TCK)};
 
     if (ticks_per_second <= 0) {
         return std::nullopt;
@@ -378,8 +378,8 @@ auto posix::get_process_cpu_time_ns() noexcept -> optional<uint64_t>
 
 #elif FO_MAC
     mach_task_basic_info_data_t info {};
-    mach_msg_type_number_t count = MACH_TASK_BASIC_INFO_COUNT;
-    auto task_info_data = make_ptr(&info).reinterpret_as<integer_t>();
+    mach_msg_type_number_t count {MACH_TASK_BASIC_INFO_COUNT};
+    auto task_info_data {make_ptr(&info).reinterpret_as<integer_t>()};
 
     if (::task_info(::mach_task_self(), MACH_TASK_BASIC_INFO, task_info_data.get(), &count) != KERN_SUCCESS) {
         return std::nullopt;
@@ -396,7 +396,7 @@ auto posix::get_process_cpu_time_ns() noexcept -> optional<uint64_t>
 auto posix::get_logical_core_count() noexcept -> uint32_t
 {
 #if FO_LINUX || FO_MAC || FO_ANDROID
-    long core_count = ::sysconf(_SC_NPROCESSORS_ONLN);
+    long core_count {::sysconf(_SC_NPROCESSORS_ONLN)};
 
     return core_count > 0 ? static_cast<uint32_t>(core_count) : 1U;
 #else
@@ -408,15 +408,15 @@ auto posix::get_system_cpu_times() noexcept -> vector<posix::cpu_core_times>
 {
     FO_TRACE_ZONE(Core);
 
-    vector<posix::cpu_core_times> result;
+    vector<posix::cpu_core_times> result {};
 
 #if FO_LINUX || FO_ANDROID
     // /proc/stat per-CPU counters appear in kernel order:
     //   user nice system idle iowait irq softirq steal guest guest_nice
-    constexpr size_t MAX_CPU_FIELDS = 10;
-    constexpr size_t IDLE_FIELD_INDEX = 3;
-    constexpr size_t IOWAIT_FIELD_INDEX = 4;
-    constexpr size_t TOTAL_TIME_FIELD_COUNT = 8; // user..steal; guest/guest_nice are folded into user/nice
+    constexpr size_t MAX_CPU_FIELDS {10};
+    constexpr size_t IDLE_FIELD_INDEX {3};
+    constexpr size_t IOWAIT_FIELD_INDEX {4};
+    constexpr size_t TOTAL_TIME_FIELD_COUNT {8}; // user..steal; guest/guest_nice are folded into user/nice
 
     std::ifstream stat_file {"/proc/stat"};
 
@@ -424,7 +424,7 @@ auto posix::get_system_cpu_times() noexcept -> vector<posix::cpu_core_times>
         return result;
     }
 
-    string line;
+    string line {};
 
     while (getline(stat_file, line)) {
         string_view line_view {line};
@@ -433,23 +433,23 @@ auto posix::get_system_cpu_times() noexcept -> vector<posix::cpu_core_times>
             continue;
         }
 
-        size_t fields_pos = line_view.find(' ');
+        size_t fields_pos {line_view.find(' ')};
 
         if (fields_pos == string_view::npos) {
             continue;
         }
 
         uint64_t values[MAX_CPU_FIELDS] {};
-        size_t values_count = 0;
-        bool parse_failed = false;
-        vector<string_view> fields = strvex(line_view.substr(fields_pos + 1)).split(' ');
+        size_t values_count {0};
+        bool parse_failed {false};
+        vector<string_view> fields {static_cast<string_view>(strvex(line_view.substr(fields_pos + 1)).split(' '))};
 
         for (string_view field : fields) {
             if (values_count == std::size(values)) {
                 break;
             }
 
-            uint64_t value = 0;
+            uint64_t value {0};
 
             if (!parse_counter(field, value)) {
                 parse_failed = true;
@@ -464,10 +464,10 @@ auto posix::get_system_cpu_times() noexcept -> vector<posix::cpu_core_times>
             continue;
         }
 
-        uint64_t total_time = 0;
-        size_t total_field_count = std::min<size_t>(values_count, TOTAL_TIME_FIELD_COUNT);
+        uint64_t total_time {0};
+        size_t total_field_count {std::min<size_t>(values_count, TOTAL_TIME_FIELD_COUNT)};
 
-        for (size_t i = 0; i < total_field_count; i++) {
+        for (size_t i {0}; i < total_field_count; i++) {
             total_time += values[i];
         }
 
@@ -478,24 +478,24 @@ auto posix::get_system_cpu_times() noexcept -> vector<posix::cpu_core_times>
     }
 
 #elif FO_MAC
-    natural_t processor_count = 0;
+    natural_t processor_count {0};
     processor_info_array_t raw_processor_info {};
-    mach_msg_type_number_t processor_info_count = 0;
+    mach_msg_type_number_t processor_info_count {0};
 
     if (::host_processor_info(::mach_host_self(), PROCESSOR_CPU_LOAD_INFO, &processor_count, &raw_processor_info, &processor_info_count) == KERN_SUCCESS) {
         FO_BASIC_STRONG_ASSERT(raw_processor_info != nullptr);
-        auto processor_info = make_ptr(raw_processor_info);
-        auto load_info_data = processor_info.reinterpret_as<const processor_cpu_load_info_data_t>();
+        auto processor_info {make_ptr(raw_processor_info)};
+        auto load_info_data {processor_info.reinterpret_as<const processor_cpu_load_info_data_t>()};
         const_span<processor_cpu_load_info_data_t> load_info {load_info_data.get(), static_cast<size_t>(processor_count)};
 
         result.reserve(static_cast<size_t>(processor_count));
 
-        for (natural_t i = 0; i < processor_count; i++) {
-            const processor_cpu_load_info_data_t& info = load_info[i];
-            uint64_t user_time = static_cast<uint64_t>(info.cpu_ticks[CPU_STATE_USER]);
-            uint64_t system_time = static_cast<uint64_t>(info.cpu_ticks[CPU_STATE_SYSTEM]);
-            uint64_t idle_time = static_cast<uint64_t>(info.cpu_ticks[CPU_STATE_IDLE]);
-            uint64_t nice_time = static_cast<uint64_t>(info.cpu_ticks[CPU_STATE_NICE]);
+        for (natural_t i {0}; i < processor_count; i++) {
+            const processor_cpu_load_info_data_t& info {load_info[i]};
+            uint64_t user_time {static_cast<uint64_t>(info.cpu_ticks[CPU_STATE_USER])};
+            uint64_t system_time {static_cast<uint64_t>(info.cpu_ticks[CPU_STATE_SYSTEM])};
+            uint64_t idle_time {static_cast<uint64_t>(info.cpu_ticks[CPU_STATE_IDLE])};
+            uint64_t nice_time {static_cast<uint64_t>(info.cpu_ticks[CPU_STATE_NICE])};
 
             result.emplace_back(posix::cpu_core_times {
                 .idle_time = idle_time,
@@ -522,11 +522,11 @@ auto posix::fill_system_random(span<uint8_t> buf) noexcept -> bool
 
 #else
     // getentropy refuses a request above 256 bytes
-    constexpr size_t max_request_size = 256;
-    size_t offset = 0;
+    constexpr size_t max_request_size {256};
+    size_t offset {0};
 
     while (offset < buf.size()) {
-        size_t request_size = std::min(buf.size() - offset, max_request_size);
+        size_t request_size {std::min(buf.size() - offset, max_request_size)};
 
         if (::getentropy(buf.data() + offset, request_size) != 0) {
             return false;
@@ -542,10 +542,10 @@ auto posix::fill_system_random(span<uint8_t> buf) noexcept -> bool
 // Pack offsets are 64-bit, so the file calls must be too. A 32-bit Android ABI keeps off_t at 32 bits and is
 // reached by the wide names; every other platform we build already has a wide off_t, which the assert proves
 #if FO_ANDROID
-static constexpr int32_t LARGE_FILE_OPEN_FLAG = O_LARGEFILE;
+static constexpr int32_t LARGE_FILE_OPEN_FLAG {O_LARGEFILE};
 #else
 static_assert(sizeof(off_t) == 8, "off_t must carry a 64-bit file offset, or the wide calls must be named here");
-static constexpr int32_t LARGE_FILE_OPEN_FLAG = 0;
+static constexpr int32_t LARGE_FILE_OPEN_FLAG {0};
 #endif
 
 static auto seek_file(int32_t fd, int64_t offset, int32_t whence) noexcept -> int64_t
@@ -581,7 +581,7 @@ auto posix::open_exclusive_file(const string& path) noexcept -> int32_t
 {
     FO_TRACE_ZONE(FileSystem);
 
-    int32_t fd = ::open(path.c_str(), O_RDWR | O_CREAT | O_CLOEXEC | LARGE_FILE_OPEN_FLAG, 0666);
+    int32_t fd {::open(path.c_str(), O_RDWR | O_CREAT | O_CLOEXEC | LARGE_FILE_OPEN_FLAG, 0666)};
 
     if (fd < 0) {
         return -1;
@@ -643,7 +643,7 @@ auto posix::sync_file(int32_t fd) noexcept -> bool
 
 auto posix::lock_directory(const string& path) noexcept -> int32_t
 {
-    int32_t fd = ::open(path.empty() ? "." : path.c_str(), O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+    int32_t fd {::open(path.empty() ? "." : path.c_str(), O_RDONLY | O_DIRECTORY | O_CLOEXEC)};
 
 #if !FO_WEB
     if (fd >= 0 && ::flock(fd, LOCK_EX | LOCK_NB) != 0) {
@@ -661,13 +661,13 @@ auto posix::sync_directory(const string& path) noexcept -> bool
     ignore_unused(path);
     return true;
 #else
-    int32_t fd = ::open(path.empty() ? "." : path.c_str(), O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+    int32_t fd {::open(path.empty() ? "." : path.c_str(), O_RDONLY | O_DIRECTORY | O_CLOEXEC)};
 
     if (fd < 0) {
         return false;
     }
 
-    bool synced = ::fsync(fd) == 0;
+    bool synced {::fsync(fd) == 0};
     ::close(fd);
     return synced;
 #endif
@@ -680,8 +680,8 @@ auto posix::open_shared_read_file(const string& path) noexcept -> int32_t
 
 auto posix::open_new_write_file(const string& path, bool append, bool exclusive) noexcept -> int32_t
 {
-    int32_t flags = O_WRONLY | O_CREAT | O_CLOEXEC | LARGE_FILE_OPEN_FLAG | (exclusive ? O_EXCL : 0);
-    int32_t fd = ::open(path.c_str(), flags, 0666);
+    int32_t flags {O_WRONLY | O_CREAT | O_CLOEXEC | LARGE_FILE_OPEN_FLAG | (exclusive ? O_EXCL : 0)};
+    int32_t fd {::open(path.c_str(), flags, 0666)};
 
     if (fd < 0) {
         return -1;
@@ -754,16 +754,16 @@ auto posix::run_process_capturing_output(const string& command, const function<v
 {
     FO_TRACE_ZONE(Core);
 
-    auto command_cstr = make_ptr(command.c_str());
-    auto in = make_nptr(::popen(command_cstr.get(), "r"));
+    auto command_cstr {make_ptr(command.c_str())};
+    auto in {make_nptr(::popen(command_cstr.get(), "r"))};
 
     if (!in) {
         return -1;
     }
 
-    auto pipe_guard = scope_fail([&in]() noexcept { (void)::pclose(in.get()); });
+    auto pipe_guard {scope_fail([&in]() noexcept { (void)::pclose(in.get()); })};
 
-    char buf[4096];
+    char buf[4096] {};
 
     while (std::fgets(buf, sizeof(buf), in.get()) != nullptr) {
         on_output(string_view {buf});
@@ -779,7 +779,7 @@ auto posix::load_library(const string& path) noexcept -> nptr<void>
 {
     FO_TRACE_ZONE(Core);
 
-    auto path_cstr = make_ptr(path.c_str());
+    auto path_cstr {make_ptr(path.c_str())};
     return ::dlopen(path_cstr.get(), RTLD_LAZY | RTLD_LOCAL);
 }
 
@@ -787,7 +787,7 @@ auto posix::load_pinned_library(const string& path) noexcept -> nptr<void>
 {
     FO_TRACE_ZONE(Core);
 
-    auto path_cstr = make_ptr(path.c_str());
+    auto path_cstr {make_ptr(path.c_str())};
     return ::dlopen(path_cstr.get(), RTLD_LAZY | RTLD_LOCAL | RTLD_NODELETE);
 }
 
@@ -800,13 +800,13 @@ void posix::free_library(nptr<void> module_handle) noexcept
 
 auto posix::get_symbol_address(nptr<void> module_handle, const string& symbol_name) noexcept -> nptr<void>
 {
-    auto symbol_cstr = make_ptr(symbol_name.c_str());
+    auto symbol_cstr {make_ptr(symbol_name.c_str())};
     return ::dlsym(module_handle ? module_handle.get() : RTLD_DEFAULT, symbol_cstr.get());
 }
 
 auto posix::get_last_library_error() noexcept -> string
 {
-    auto error = make_nptr(::dlerror());
+    auto error {make_nptr(::dlerror())};
     return error ? string(error.get()) : string();
 }
 #endif
@@ -831,7 +831,7 @@ void posix::install_crash_signal_handlers(crash_signal_handler handler) noexcept
 #if FO_LINUX || FO_MAC
     installed_crash_signal_handler.store(handler);
 
-    constexpr std::array CRASH_SIGNALS = {
+    constexpr std::array CRASH_SIGNALS {
         SIGABRT,
         SIGBUS,
         SIGFPE,
@@ -866,11 +866,11 @@ void posix::install_crash_signal_stack() noexcept
 #if FO_LINUX || FO_MAC
     // 2 MiB is well above what the crash handler (unwinding + symbol resolution) needs; the pages are
     // touched only during a crash, so the reservation stays lazily committed for a thread that never faults
-    constexpr size_t stack_size = size_t {2} * 1024 * 1024;
+    constexpr size_t stack_size {size_t {2} * 1024 * 1024};
 
     // The kernel drops the sigaltstack registration only when the thread ends — later than this destructor — so
     // the releaser retires it before the pages go back; std::unique_ptr, not the engine alias, supports array storage
-    static thread_local std::unique_ptr<uint8_t[], alt_signal_stack_releaser> alt_stack_buffer;
+    static thread_local std::unique_ptr<uint8_t[], alt_signal_stack_releaser> alt_stack_buffer {};
 
     if (alt_stack_buffer) {
         return; // already installed on this thread
@@ -896,9 +896,9 @@ void posix::install_crash_signal_stack() noexcept
 #if FO_LINUX || FO_MAC
 static void on_crash_signal(int32_t signum, siginfo_t* info, void* context)
 {
-    if (posix::crash_signal_handler handler = installed_crash_signal_handler.load()) {
-        int32_t code = 0;
-        nptr<const void> address;
+    if (posix::crash_signal_handler handler {installed_crash_signal_handler.load()}) {
+        int32_t code {0};
+        nptr<const void> address {};
 
         if (info != nullptr) {
             code = info->si_code;

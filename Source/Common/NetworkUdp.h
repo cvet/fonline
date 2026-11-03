@@ -93,7 +93,7 @@ public:
     auto MakeDisconnectPacket() const -> vector<uint8_t>;
 
 private:
-    struct PendingPacket final
+    struct PendingPacket
     {
         uint32_t Sequence {};
         vector<uint8_t> Payload {};
@@ -101,8 +101,8 @@ private:
         uint32_t SendCount {};
     };
 
-    [[nodiscard]] auto IsPacketAcknowledged(uint32_t sequence, uint32_t ack_sequence, uint32_t ack_bits) const noexcept -> bool;
-    [[nodiscard]] auto MakePacket(UdpPacketType type, uint32_t sequence, const_span<uint8_t> payload, uint32_t value = 0) const -> vector<uint8_t>;
+    auto IsPacketAcknowledged(uint32_t sequence, uint32_t ack_sequence, uint32_t ack_bits) const noexcept -> bool;
+    auto MakePacket(UdpPacketType type, uint32_t sequence, const_span<uint8_t> payload, uint32_t value = 0) const -> vector<uint8_t>;
 
     void ApplyAcknowledgements(uint32_t ack_sequence, uint32_t ack_bits);
     void EmitPendingPacket(const PendingPacket& packet, vector<vector<uint8_t>>& packets) const;
@@ -122,8 +122,8 @@ private:
     vector<uint8_t> _readyData {};
 };
 
-[[nodiscard]] auto MakeUdpConnectPacket(uint32_t client_salt) -> vector<uint8_t>;
-[[nodiscard]] auto MakeUdpAcceptPacket(uint32_t session_id, uint32_t client_salt) -> vector<uint8_t>;
-[[nodiscard]] auto TryParseUdpPacket(const_span<uint8_t> data, UdpPacketInfo& packet) -> bool;
+auto MakeUdpConnectPacket(uint32_t client_salt) -> vector<uint8_t>;
+auto MakeUdpAcceptPacket(uint32_t session_id, uint32_t client_salt) -> vector<uint8_t>;
+auto TryParseUdpPacket(const_span<uint8_t> data, UdpPacketInfo& packet) -> bool;
 
 FO_END_NAMESPACE

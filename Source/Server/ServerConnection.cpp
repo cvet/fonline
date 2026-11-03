@@ -87,7 +87,7 @@ public:
     {
         scoped_lock locker {_locker};
 
-        Diagnostics result;
+        Diagnostics result {};
         result.PendingRemoteCalls = _tracker.GetPendingCount();
         result.BufferedInputBytes = _tracker.GetBufferedInputSize();
         result.InputArrivalSegments = _tracker.GetArrivalSegmentCount();
@@ -105,10 +105,10 @@ public:
             return {false, {}};
         }
 
-        RpcRuntimeStart started = _tracker.Begin(name, caller_id, now);
+        RpcRuntimeStart started {_tracker.Begin(name, caller_id, now)};
 
         if (started.Accepted && started.Id) {
-            MethodCounters& counters = _methods[string {name}];
+            MethodCounters& counters {_methods[string {name}]};
             counters.Started++;
             counters.Pending++;
             _lastDispatch = string {name};
@@ -125,7 +125,7 @@ public:
             return;
         }
 
-        auto counters = _methods.find(string {name});
+        auto counters {_methods.find(string {name})};
         FO_STRONG_ASSERT(counters != _methods.end() && counters->second.Pending != 0, "RPC method completion lost its pending call", name, id);
         _tracker.Finish(id);
         counters->second.Finished++;
@@ -169,22 +169,22 @@ public:
 
     auto RecordDisconnectReason(DisconnectReason reason) -> bool
     {
-        DisconnectReason expected = DisconnectReason::None;
+        DisconnectReason expected {DisconnectReason::None};
         return _reason.compare_exchange_strong(expected, reason, std::memory_order_relaxed);
     }
 
     void Check(nanotime now)
     {
-        auto connection = _connection.lock();
+        auto connection {_connection.lock()};
 
         if (!connection || connection->IsDisconnected()) {
             return;
         }
 
-        RpcRuntimeReport report;
-        string last_dispatch;
-        string counters_call;
-        MethodCounters counters;
+        RpcRuntimeReport report {};
+        string last_dispatch {};
+        string counters_call {};
+        MethodCounters counters {};
         size_t arrival_segments {};
 
         {
@@ -203,7 +203,7 @@ public:
             last_dispatch = _lastDispatch;
             counters_call = report.CallName.empty() ? last_dispatch : report.CallName;
             arrival_segments = _tracker.GetArrivalSegmentCount();
-            auto method = _methods.find(counters_call);
+            auto method {_methods.find(counters_call)};
 
             if (method != _methods.end()) {
                 counters = method->second;
@@ -214,7 +214,7 @@ public:
             }
         }
 
-        bool disconnect = report.Action == RpcRuntimeAction::Disconnect;
+        bool disconnect {report.Action == RpcRuntimeAction::Disconnect};
 
         if (disconnect && !RecordDisconnectReason(DisconnectReason::RpcRuntimeLimit)) {
             return;
@@ -227,11 +227,11 @@ public:
                 _disconnects++;
             }
 
-            auto stop = scope_exit([this]() noexcept { Stop(); });
+            auto stop {scope_exit([this]() noexcept { Stop(); })};
             connection->RequestDisconnect();
         }
 
-        string_view cause = report.Cause == RpcRuntimeCause::InputQueue ? "input-queue" : report.Cause == RpcRuntimeCause::PendingLimit ? "pending-limit" : "pending-call";
+        string_view cause {report.Cause == RpcRuntimeCause::InputQueue ? "input-queue" : report.Cause == RpcRuntimeCause::PendingLimit ? "pending-limit" : "pending-call"};
         logging::write(logging::type::warning, "RPC runtime {}: peer={}:{}, caller={}, call={}, id={}, cause={}, age_ms={}, pending={}, buffered_bytes={}, queued_call_hash={}, started={}, finished={}, last_dispatch={}, stats_call={}, method_pending={}, method_started={}, method_finished={}, arrival_segments={}", disconnect ? "disconnect" : "warning", _host, _port, report.CallerId, report.CallName, report.Id, cause, report.Age.milliseconds(), report.PendingCalls, report.BufferedBytes, report.QueuedCallHash, report.StartedCalls, report.FinishedCalls, last_dispatch, counters_call, counters.Pending, counters.Started, counters.Finished, arrival_segments);
     }
 
@@ -378,14 +378,14 @@ ServerConnection::ServerConnection(ptr<ServerNetworkSettings> settings, shared_p
     _uplinkDelay {std::chrono::milliseconds {_settings->Network.LinkDelayWindowMs}, std::chrono::milliseconds {_settings->Network.MoveLateCatchUpMinMs}, std::chrono::milliseconds {_settings->Network.LinkDelayRebaseMs}},
     _runtimeState {safe_alloc::make_shared<RuntimeState>(RpcRuntimeLimits {_settings->ServerNetwork.RemoteCallWarningTimeMs, _settings->ServerNetwork.RemoteCallDisconnectTimeMs, _settings->ServerNetwork.RemoteCallWarningIntervalMs, numeric_cast<size_t>(_settings->ServerNetwork.MaxPendingRemoteCalls)}, _netConnection)}
 {
-    auto send = [this]() FO_DEFERRED -> vector<uint8_t> { return AsyncSendData(); };
-    auto receive = [this](const_span<uint8_t> buf) FO_DEFERRED { AsyncReceiveData(buf); };
-    auto disconnect = [this]() FO_DEFERRED {
+    auto send {[this]() FO_DEFERRED -> vector<uint8_t> { return AsyncSendData(); }};
+    auto receive {[this](const_span<uint8_t> buf) FO_DEFERRED { AsyncReceiveData(buf); }};
+    auto disconnect {[this]() FO_DEFERRED {
         RecordDisconnectReason(DisconnectReason::ClientClosed);
         _runtimeState->Stop();
         logging::write("Closed connection from {}:{} ({})", _netConnection->GetHost(), _netConnection->GetPort(), GetDisconnectReasonName(GetDisconnectReason()));
         AsyncReceiveData({});
-    };
+    }};
 
     if (_settings->ServerNetwork.MaxMessageSize != 0) {
         _inBuf.SetMaxMsgLen(numeric_cast<size_t>(_settings->ServerNetwork.MaxMessageSize));
@@ -452,7 +452,7 @@ void ServerConnection::RecordDisconnectReason(DisconnectReason reason) noexcept
 
 auto ServerConnection::GetDiagnostics() const -> Diagnostics
 {
-    Diagnostics result = GetRuntimeDiagnostics(_runtimeState);
+    Diagnostics result {GetRuntimeDiagnostics(_runtimeState)};
     result.HandshakeComplete = _activity.HandshakeComplete;
     result.LastActivityTime = _activity.LastActivityTime;
     result.LastLoginProgressTime = _activity.LastLoginProgressTime;
@@ -489,7 +489,7 @@ auto ServerConnection::IsRuntimeStateActive(ptr<const RuntimeState> state) -> bo
 
 auto ServerConnection::BeginRemoteCall(hstring name, ident_t caller_id) -> InboundCall
 {
-    RpcRuntimeStart started = _runtimeState->Begin(name.as_str(), caller_id, nanotime::now());
+    RpcRuntimeStart started {_runtimeState->Begin(name.as_str(), caller_id, nanotime::now())};
 
     if (!started.Accepted) {
         _runtimeState->Check(nanotime::now());
@@ -499,7 +499,7 @@ auto ServerConnection::BeginRemoteCall(hstring name, ident_t caller_id) -> Inbou
         return {};
     }
 
-    auto completion = safe_alloc::make_shared<ScriptCallCompletion>([state = _runtimeState, id = started.Id, call_name = string {name.as_str()}]() mutable noexcept { state->Finish(id, call_name); });
+    auto completion {safe_alloc::make_shared<ScriptCallCompletion>([state = _runtimeState, id = started.Id, call_name = string {name.as_str()}]() mutable noexcept { state->Finish(id, call_name); })};
     return {true, std::move(completion)};
 }
 
@@ -510,9 +510,9 @@ void ServerConnection::CheckRuntimeState(ptr<RuntimeState> state, nanotime now)
 
 void ServerConnection::UpdateInputDiagnostics(size_t added_bytes)
 {
-    size_t unread = _inBuf.GetBufferedUnreadSize();
+    size_t unread {_inBuf.GetBufferedUnreadSize()};
     FO_STRONG_ASSERT(_accountedInputBytes <= std::numeric_limits<size_t>::max() - added_bytes, "Input accounting overflow");
-    size_t available = _accountedInputBytes + added_bytes;
+    size_t available {_accountedInputBytes + added_bytes};
     FO_STRONG_ASSERT(unread <= available, "Input accounting lost received bytes", unread, available);
     _runtimeState->UpdateInput(available - unread, added_bytes, _inBuf.PeekQueuedMessage(), unread, nanotime::now());
     _accountedInputBytes = unread;
@@ -603,7 +603,7 @@ void ServerConnection::RegisterPingAnswer(nanotime time) noexcept
     // A sample carries the client's frame time on top of the transport delay, so it is smoothed into an upper
     // bound one late answer cannot move far; an unpaired answer is ignored outright
     if (_activity.PingRequestTime && time > _activity.PingRequestTime) {
-        timespan sample = time - _activity.PingRequestTime;
+        timespan sample {time - _activity.PingRequestTime};
 
         if (_activity.RoundTrip) {
             _activity.RoundTrip = timespan {(_activity.RoundTrip.nanoseconds() * 3 + sample.nanoseconds()) / 4};
@@ -627,11 +627,11 @@ auto ServerConnection::PullUpdateFilePortion(size_t file_size, size_t max_portio
     FO_VERIFY_AND_THROW(_updateFileTransfer.PendingFileIndex, "Updater file portion requested without an active pending file", _updateFileTransfer.PortionIndex, file_size, max_portion_size);
     FO_VERIFY_AND_THROW(max_portion_size != 0, "Max portion size must be non-zero", max_portion_size);
 
-    size_t offset = _updateFileTransfer.PortionIndex * max_portion_size;
+    size_t offset {_updateFileTransfer.PortionIndex * max_portion_size};
     FO_VERIFY_AND_THROW(offset <= file_size, "Updater file transfer portion offset is outside the file bounds", _updateFileTransfer.PendingFileIndex.value(), _updateFileTransfer.PortionIndex, max_portion_size, offset, file_size);
 
-    size_t remaining_size = file_size - offset;
-    auto portion_size = std::min(remaining_size, max_portion_size);
+    size_t remaining_size {file_size - offset};
+    auto portion_size {std::min(remaining_size, max_portion_size)};
 
     if (offset + portion_size < file_size) {
         _updateFileTransfer.PortionIndex++;
@@ -654,9 +654,10 @@ auto ServerConnection::AsyncSendData() -> vector<uint8_t>
     FO_TRACE_ZONE(Network);
 
     scoped_lock locker {_outBufLocker};
+
     scoped_lock channel_locker {_channelLocker};
 
-    vector<uint8_t> send_buf;
+    vector<uint8_t> send_buf {};
 
     // The one plaintext a connection ever sends, and all that a client from before the channel receives
     if (_preChannelRefusalPending) {
@@ -675,7 +676,7 @@ auto ServerConnection::AsyncSendData() -> vector<uint8_t>
 
     // Messages written before the client's channel stands wait in the buffer rather than leave in the clear
     if (_channel.IsEstablished() && !_outBuf.IsEmpty()) {
-        auto raw_buf = _outBuf.GetData();
+        auto raw_buf {_outBuf.GetData()};
 
         if (!_settings->Network.DisableZlibCompression) {
             _compressor.compress(raw_buf, _compressedBuf);
@@ -693,8 +694,8 @@ auto ServerConnection::AsyncSendData() -> vector<uint8_t>
 
 void ServerConnection::AsyncReceiveData(const_span<uint8_t> buf)
 {
-    DataArrivedCallback callback;
-    bool has_handshake_output = false;
+    DataArrivedCallback callback {};
+    bool has_handshake_output {false};
 
     {
         scoped_lock locker {_inBufLocker};

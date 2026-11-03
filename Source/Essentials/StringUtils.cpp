@@ -47,7 +47,7 @@ FO_BEGIN_NAMESPACE
 
 struct str_global_data
 {
-    unordered_set<char> tok_sym = {'`', '~', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', //
+    unordered_set<char> tok_sym {'`', '~', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', //
         '+', '-', '=', '|', '\\', '/', '.', ',', '\'', ';', '[', ']', ']', '{', '}', ':', '>', '<', '"'};
 };
 FO_GLOBAL_DATA(str_global_data, str_data);
@@ -70,7 +70,6 @@ auto strex::str() noexcept -> string&&
     return std::move(_s);
 }
 
-// ReSharper disable once CppInconsistentNaming
 auto strex::c_str() noexcept -> const char*
 {
     own_storage();
@@ -80,9 +79,9 @@ auto strex::c_str() noexcept -> const char*
 
 void strex::own_storage() noexcept
 {
-    auto view_begin = make_nptr(_sv.data());
-    auto storage_begin = make_nptr(_s.data());
-    nptr<const char> storage_end = storage_begin.offset(_s.size());
+    auto view_begin {make_nptr(_sv.data())};
+    auto storage_begin {make_nptr(_s.data())};
+    nptr<const char> storage_end {storage_begin.offset(_s.size())};
 
     if (view_begin < storage_begin || !(view_begin < storage_end)) {
         _s = _sv;
@@ -116,7 +115,7 @@ auto strvex::compare_ignore_case(string_view other) const noexcept -> bool
         return false;
     }
 
-    for (size_t i = 0; i < _sv.length(); i++) {
+    for (size_t i {0}; i < _sv.length(); i++) {
         if (std::tolower(_sv[i]) != std::tolower(other[i])) {
             return false;
         }
@@ -135,13 +134,13 @@ auto strvex::compare_ignore_case_utf8(string_view other) const noexcept -> bool
         return true;
     }
 
-    for (size_t i = 0; i < _sv.length();) {
-        size_t length = _sv.length() - i;
-        auto text_pos = make_ptr(_sv.data() + i);
-        uint32_t ucs = utf8::decode(text_pos, length);
-        size_t other_length = other.length() - i;
-        auto other_pos = make_ptr(other.data() + i);
-        uint32_t other_ucs = utf8::decode(other_pos, other_length);
+    for (size_t i {0}; i < _sv.length();) {
+        size_t length {_sv.length() - i};
+        auto text_pos {make_ptr(_sv.data() + i)};
+        uint32_t ucs {utf8::decode(text_pos, length)};
+        size_t other_length {other.length() - i};
+        auto other_pos {make_ptr(other.data() + i)};
+        uint32_t other_ucs {utf8::decode(other_pos, other_length)};
 
         if (!utf8::is_valid(ucs) || !utf8::is_valid(other_ucs)) {
             return false;
@@ -185,10 +184,10 @@ auto strvex::is_valid_utf8() const noexcept -> bool
         return true;
     }
 
-    for (size_t i = 0; i < _sv.length();) {
-        size_t length = _sv.length() - i;
-        auto text_pos = make_ptr(_sv.data() + i);
-        uint32_t ucs = utf8::decode(text_pos, length);
+    for (size_t i {0}; i < _sv.length();) {
+        size_t length {_sv.length() - i};
+        auto text_pos {make_ptr(_sv.data() + i)};
+        uint32_t ucs {utf8::decode(text_pos, length)};
 
         if (!utf8::is_valid(ucs)) {
             return false;
@@ -202,9 +201,9 @@ auto strvex::is_valid_utf8() const noexcept -> bool
 
 auto strvex::length_utf8() const noexcept -> size_t
 {
-    size_t length = 0;
+    size_t length {0};
 
-    for (size_t i = 0; i < _sv.length(); i++) {
+    for (size_t i {0}; i < _sv.length(); i++) {
         length += (_sv[i] & 0xC0) != 0x80 ? 1u : 0u;
     }
 
@@ -213,7 +212,7 @@ auto strvex::length_utf8() const noexcept -> size_t
 
 auto strvex::substring_until(char separator) noexcept -> strvex&
 {
-    auto pos = _sv.find(separator);
+    auto pos {_sv.find(separator)};
 
     if (pos != string::npos) {
         _sv = _sv.substr(0, pos);
@@ -231,7 +230,7 @@ auto strex::substring_until(char separator) noexcept -> strex&
 
 auto strvex::substring_until(string_view separator) noexcept -> strvex&
 {
-    auto pos = _sv.find(separator);
+    auto pos {_sv.find(separator)};
 
     if (pos != string::npos) {
         _sv = _sv.substr(0, pos);
@@ -249,7 +248,7 @@ auto strex::substring_until(string_view separator) noexcept -> strex&
 
 auto strvex::substring_after(char separator) noexcept -> strvex&
 {
-    auto pos = _sv.find(separator);
+    auto pos {_sv.find(separator)};
 
     if (pos != string::npos) {
         _sv = _sv.substr(pos + 1);
@@ -270,7 +269,7 @@ auto strex::substring_after(char separator) noexcept -> strex&
 
 auto strvex::substring_after(string_view separator) noexcept -> strvex&
 {
-    auto pos = _sv.find(separator);
+    auto pos {_sv.find(separator)};
 
     if (pos != string::npos) {
         _sv = _sv.substr(pos + separator.length());
@@ -320,7 +319,7 @@ auto strex::trim(string_view chars) noexcept -> strex&
 
 auto strvex::ltrim(string_view chars) noexcept -> strvex&
 {
-    auto l = _sv.find_first_not_of(chars);
+    auto l {_sv.find_first_not_of(chars)};
 
     if (l == string::npos) {
         _sv = {};
@@ -341,7 +340,7 @@ auto strex::ltrim(string_view chars) noexcept -> strex&
 
 auto strvex::rtrim(string_view chars) noexcept -> strvex&
 {
-    auto r = _sv.find_last_not_of(chars);
+    auto r {_sv.find_last_not_of(chars)};
 
     if (r < _sv.length() - 1) {
         _sv = _sv.substr(0, r + 1);
@@ -373,13 +372,13 @@ auto strex::erase(char begin, char end) noexcept -> strex&
     own_storage();
 
     while (true) {
-        auto begin_pos = _s.find(begin);
+        auto begin_pos {_s.find(begin)};
 
         if (begin_pos == string::npos) {
             break;
         }
 
-        auto end_pos = _s.find(end, begin_pos + 1);
+        auto end_pos {_s.find(end, begin_pos + 1)};
 
         if (end_pos == string::npos) {
             break;
@@ -395,15 +394,15 @@ auto strex::erase(char begin, char end) noexcept -> strex&
 
 auto strex::replace(char from, char to) noexcept -> strex&
 {
-    auto pos = _sv.find(from);
+    auto pos {_sv.find(from)};
 
     if (pos != string::npos) {
         own_storage();
 
-        auto text_begin = make_nptr(_s.data());
-        ptr<char> range_begin = text_begin.offset(pos);
-        ptr<char> range_end = text_begin.offset(_s.length());
-        auto range = std::ranges::subrange(range_begin.get(), range_end.get());
+        auto text_begin {make_nptr(_s.data())};
+        ptr<char> range_begin {text_begin.offset(pos)};
+        ptr<char> range_end {text_begin.offset(_s.length())};
+        auto range {std::ranges::subrange(range_begin.get(), range_end.get())};
         std::ranges::replace(range, from, to);
     }
 
@@ -412,8 +411,8 @@ auto strex::replace(char from, char to) noexcept -> strex&
 
 auto strex::replace(char from1, char from2, char to) noexcept -> strex&
 {
-    const char from_buf[3] = {from1, from2, 0};
-    const char to_buf[2] = {to, 0};
+    const char from_buf[3] {from1, from2, 0};
+    const char to_buf[2] {to, 0};
 
     replace(from_buf, to_buf);
 
@@ -422,7 +421,7 @@ auto strex::replace(char from1, char from2, char to) noexcept -> strex&
 
 auto strex::replace(string_view from, string_view to) noexcept -> strex&
 {
-    auto pos = _sv.find(from);
+    auto pos {_sv.find(from)};
 
     if (pos != string::npos) {
         own_storage();
@@ -461,16 +460,16 @@ auto strex::lower_utf8() noexcept -> strex&
 {
     own_storage();
 
-    for (size_t i = 0; i < _s.length();) {
-        size_t length = _s.length() - i;
-        auto text_begin = make_ptr(_s.c_str());
-        ptr<const char> text_pos = text_begin.offset(i);
-        uint32_t ucs = utf8::decode(text_pos, length);
+    for (size_t i {0}; i < _s.length();) {
+        size_t length {_s.length() - i};
+        auto text_begin {make_ptr(_s.c_str())};
+        ptr<const char> text_pos {text_begin.offset(i)};
+        uint32_t ucs {utf8::decode(text_pos, length)};
 
         ucs = utf8::lower(ucs);
 
-        char buf[4];
-        size_t new_length = utf8::encode(ucs, buf);
+        char buf[4] {};
+        size_t new_length {utf8::encode(ucs, buf)};
 
         _s.replace(i, length, buf, new_length);
 
@@ -486,16 +485,16 @@ auto strex::upper_utf8() noexcept -> strex&
 {
     own_storage();
 
-    for (size_t i = 0; i < _s.length();) {
-        size_t length = _s.length() - i;
-        auto text_begin = make_ptr(_s.c_str());
-        ptr<const char> text_pos = text_begin.offset(i);
-        uint32_t ucs = utf8::decode(text_pos, length);
+    for (size_t i {0}; i < _s.length();) {
+        size_t length {_s.length() - i};
+        auto text_begin {make_ptr(_s.c_str())};
+        ptr<const char> text_pos {text_begin.offset(i)};
+        uint32_t ucs {utf8::decode(text_pos, length)};
 
         ucs = utf8::upper(ucs);
 
-        char buf[4];
-        size_t new_length = utf8::encode(ucs, buf);
+        char buf[4] {};
+        size_t new_length {utf8::encode(ucs, buf)};
 
         _s.replace(i, length, buf, new_length);
 
@@ -511,7 +510,7 @@ auto strex::assignVolatile(const volatile char* str, size_t len) noexcept -> str
 {
     _s.resize(len);
 
-    for (size_t i = 0; i < len; i++) {
+    for (size_t i {0}; i < len; i++) {
         _s[i] = str[i];
     }
 
@@ -522,16 +521,16 @@ auto strex::assignVolatile(const volatile char* str, size_t len) noexcept -> str
 
 auto strex::join(const_span<string_view> parts) noexcept -> strex&
 {
-    size_t total_length = _sv.length() * parts.size();
+    size_t total_length {_sv.length() * parts.size()};
 
     for (const auto& part : parts) {
         total_length += part.length();
     }
 
-    string result_str;
+    string result_str {};
     result_str.reserve(total_length);
 
-    for (size_t i = 0; i < parts.size(); i++) {
+    for (size_t i {0}; i < parts.size(); i++) {
         if (i > 0) {
             result_str.append(_sv);
         }
@@ -547,16 +546,16 @@ auto strex::join(const_span<string_view> parts) noexcept -> strex&
 
 auto strex::join(const_span<string> parts) noexcept -> strex&
 {
-    size_t total_length = _sv.length() * parts.size();
+    size_t total_length {_sv.length() * parts.size()};
 
     for (const auto& part : parts) {
         total_length += part.length();
     }
 
-    string result_str;
+    string result_str {};
     result_str.reserve(total_length);
 
-    for (size_t i = 0; i < parts.size(); i++) {
+    for (size_t i {0}; i < parts.size(); i++) {
         if (i > 0) {
             result_str.append(_sv);
         }
@@ -572,11 +571,11 @@ auto strex::join(const_span<string> parts) noexcept -> strex&
 
 auto strvex::split(char delimiter) const noexcept -> vector<string_view>
 {
-    vector<string_view> result;
+    vector<string_view> result {};
 
-    for (size_t pos = 0;;) {
-        size_t end_pos = _sv.find(delimiter, pos);
-        string_view entry = _sv.substr(pos, end_pos != string::npos ? end_pos - pos : string::npos);
+    for (size_t pos {0};;) {
+        size_t end_pos {_sv.find(delimiter, pos)};
+        string_view entry {_sv.substr(pos, end_pos != string::npos ? end_pos - pos : string::npos)};
 
         if (!entry.empty()) {
             entry = strvex(entry).trim().strv();
@@ -599,9 +598,9 @@ auto strvex::split(char delimiter) const noexcept -> vector<string_view>
 
 auto strex::split(char delimiter) const noexcept -> vector<string>
 {
-    auto vec = strvex::split(delimiter);
+    auto vec {strvex::split(delimiter)};
 
-    vector<string> result;
+    vector<string> result {};
     result.reserve(result.size());
     std::ranges::transform(vec, std::back_inserter(result), [](auto&& sv) -> string { return string(sv); });
 
@@ -610,11 +609,11 @@ auto strex::split(char delimiter) const noexcept -> vector<string>
 
 auto strvex::split_to_int32(char delimiter) const noexcept -> vector<int32_t>
 {
-    vector<int32_t> result;
+    vector<int32_t> result {};
 
-    for (size_t pos = 0;;) {
-        size_t end_pos = _sv.find(delimiter, pos);
-        string_view entry = _sv.substr(pos, end_pos != string::npos ? end_pos - pos : string::npos);
+    for (size_t pos {0};;) {
+        size_t end_pos {_sv.find(delimiter, pos)};
+        string_view entry {_sv.substr(pos, end_pos != string::npos ? end_pos - pos : string::npos)};
 
         if (!entry.empty()) {
             entry = strvex(entry).trim().strv();
@@ -637,20 +636,20 @@ auto strvex::split_to_int32(char delimiter) const noexcept -> vector<int32_t>
 
 auto strvex::tokenize() const noexcept -> vector<string_view>
 {
-    vector<string_view> result;
+    vector<string_view> result {};
 
-    string_view trimmed_text = strvex(_sv).trim();
-    size_t cur_tok_pos = 0;
-    size_t cur_tok_len = 0;
+    string_view trimmed_text {static_cast<string_view>(strvex(_sv).trim())};
+    size_t cur_tok_pos {0};
+    size_t cur_tok_len {0};
 
-    auto flush_tok_if_exists = [&]() noexcept {
+    auto flush_tok_if_exists {[&]() noexcept {
         if (cur_tok_len != 0) {
-            string_view tok = trimmed_text.substr(cur_tok_pos, cur_tok_len);
+            string_view tok {trimmed_text.substr(cur_tok_pos, cur_tok_len)};
             result.emplace_back(tok);
             cur_tok_pos += cur_tok_len;
             cur_tok_len = 0;
         }
-    };
+    }};
 
     for (char ch : trimmed_text) {
         if (str_data->tok_sym.contains(ch)) {
@@ -673,9 +672,9 @@ auto strvex::tokenize() const noexcept -> vector<string_view>
 
 auto strex::tokenize() const noexcept -> vector<string>
 {
-    auto vec = strvex::tokenize();
+    auto vec {strvex::tokenize()};
 
-    vector<string> result;
+    vector<string> result {};
     result.reserve(result.size());
     std::ranges::transform(vec, std::back_inserter(result), [](auto&& sv) -> string { return string(sv); });
 
@@ -685,7 +684,7 @@ auto strex::tokenize() const noexcept -> vector<string>
 template<typename T>
 static auto convert_to_number(string_view sv, T& value) noexcept -> bool
 {
-    size_t len = sv.length();
+    size_t len {sv.length()};
 
     if (len == 0) {
         return false;
@@ -697,9 +696,9 @@ static auto convert_to_number(string_view sv, T& value) noexcept -> bool
     if constexpr (std::integral<T>) {
         static_assert(std::signed_integral<T>);
 
-        string_view parse_sv = sv;
-        int32_t base = 10;
-        bool negative = false;
+        string_view parse_sv {sv};
+        int32_t base {10};
+        bool negative {false};
 
         if (sv[0] == '-') {
             if (len >= 2 && sv[1] == '-') {
@@ -725,12 +724,12 @@ static auto convert_to_number(string_view sv, T& value) noexcept -> bool
             return false;
         }
 
-        std::make_unsigned_t<T> uvalue;
-        auto parse_begin = make_nptr(parse_sv.data());
-        ptr<const char> parse_end = parse_begin.offset(parse_sv.size());
-        auto result = std::from_chars(parse_begin.get(), parse_end.get(), uvalue, base);
-        bool success = result.ec == std::errc() && result.ptr == parse_end.get();
-        bool out_of_range = result.ec == std::errc::result_out_of_range;
+        std::make_unsigned_t<T> uvalue {};
+        auto parse_begin {make_nptr(parse_sv.data())};
+        ptr<const char> parse_end {parse_begin.offset(parse_sv.size())};
+        auto result {std::from_chars(parse_begin.get(), parse_end.get(), uvalue, base)};
+        bool success {result.ec == std::errc() && result.ptr == parse_end.get()};
+        bool out_of_range {result.ec == std::errc::result_out_of_range};
 
         if (success) {
             if (negative) {
@@ -762,7 +761,7 @@ static auto convert_to_number(string_view sv, T& value) noexcept -> bool
 
             // Try read as float
             if (base == 10) {
-                if (float64_t fvalue; convert_to_number(sv, fvalue)) {
+                if (float64_t fvalue {}; convert_to_number(sv, fvalue)) {
                     value = static_cast<T>(std::clamp(fvalue, static_cast<float64_t>(std::numeric_limits<T>::min()), static_cast<float64_t>(std::numeric_limits<T>::max())));
 
                     return true;
@@ -775,7 +774,7 @@ static auto convert_to_number(string_view sv, T& value) noexcept -> bool
     else {
         if (((len >= 2 && sv[0] == '0' && (sv[1] == 'x' || sv[1] == 'X')) || (len >= 3 && sv[0] == '-' && sv[1] == '0' && (sv[2] == 'x' || sv[2] == 'X')))) {
             // Try read as hex integer
-            if (int64_t ivalue; convert_to_number(sv, ivalue)) {
+            if (int64_t ivalue {}; convert_to_number(sv, ivalue)) {
                 value = static_cast<T>(ivalue);
 
                 return true;
@@ -785,7 +784,7 @@ static auto convert_to_number(string_view sv, T& value) noexcept -> bool
             }
         }
         else {
-            string_view parse_sv = sv;
+            string_view parse_sv {sv};
 
             if (parse_sv.back() == 'f') {
                 parse_sv.remove_suffix(1);
@@ -795,9 +794,9 @@ static auto convert_to_number(string_view sv, T& value) noexcept -> bool
                 return false;
             }
 
-            auto parse_begin = make_nptr(parse_sv.data());
-            ptr<const char> parse_end = parse_begin.offset(parse_sv.size());
-            auto result = std::from_chars(parse_begin.get(), parse_end.get(), value);
+            auto parse_begin {make_nptr(parse_sv.data())};
+            ptr<const char> parse_end {parse_begin.offset(parse_sv.size())};
+            auto result {std::from_chars(parse_begin.get(), parse_end.get(), value)};
             return result.ec == std::errc() && parse_end == result.ptr && std::isfinite(value);
         }
     }
@@ -809,8 +808,8 @@ auto strvex::is_number() const noexcept -> bool
         return false;
     }
 
-    float64_t value;
-    bool success = convert_to_number(strvex(_sv).trim(), value);
+    float64_t value {};
+    bool success {convert_to_number(strvex(_sv).trim(), value)};
     ignore_unused(value);
 
     return success;
@@ -818,7 +817,7 @@ auto strvex::is_number() const noexcept -> bool
 
 auto strvex::is_non_finite_number() const noexcept -> bool
 {
-    string_view parse_sv = strvex(_sv).trim();
+    string_view parse_sv {static_cast<string_view>(strvex(_sv).trim())};
 
     if (parse_sv.empty()) {
         return false;
@@ -853,12 +852,12 @@ auto strvex::is_explicit_bool() const noexcept -> bool
 
 auto strvex::to_int32() const noexcept -> int32_t
 {
-    int64_t value;
-    bool success = convert_to_number(strvex(_sv).trim(), value);
+    int64_t value {};
+    bool success {convert_to_number(strvex(_sv).trim(), value)};
 
     if (success) {
-        constexpr int64_t min = static_cast<int64_t>(std::numeric_limits<int32_t>::min());
-        constexpr int64_t max = static_cast<int64_t>(std::numeric_limits<int32_t>::max());
+        constexpr int64_t min {static_cast<int64_t>(std::numeric_limits<int32_t>::min())};
+        constexpr int64_t max {static_cast<int64_t>(std::numeric_limits<int32_t>::max())};
         return static_cast<int32_t>(std::clamp(value, min, max));
     }
     else {
@@ -868,12 +867,12 @@ auto strvex::to_int32() const noexcept -> int32_t
 
 auto strvex::to_uint32() const noexcept -> uint32_t
 {
-    int64_t value;
-    bool success = convert_to_number(strvex(_sv).trim(), value);
+    int64_t value {};
+    bool success {convert_to_number(strvex(_sv).trim(), value)};
 
     if (success) {
-        constexpr int64_t min = static_cast<int64_t>(std::numeric_limits<uint32_t>::min());
-        constexpr int64_t max = static_cast<int64_t>(std::numeric_limits<uint32_t>::max());
+        constexpr int64_t min {static_cast<int64_t>(std::numeric_limits<uint32_t>::min())};
+        constexpr int64_t max {static_cast<int64_t>(std::numeric_limits<uint32_t>::max())};
         return static_cast<uint32_t>(std::clamp(value, min, max));
     }
     else {
@@ -883,24 +882,24 @@ auto strvex::to_uint32() const noexcept -> uint32_t
 
 auto strvex::to_int64() const noexcept -> int64_t
 {
-    int64_t value;
-    bool success = convert_to_number(strvex(_sv).trim(), value);
+    int64_t value {};
+    bool success {convert_to_number(strvex(_sv).trim(), value)};
 
     return success ? value : 0;
 }
 
 auto strvex::to_float32() const noexcept -> float32_t
 {
-    float64_t value;
-    bool success = convert_to_number(strvex(_sv).trim(), value);
+    float64_t value {};
+    bool success {convert_to_number(strvex(_sv).trim(), value)};
 
     return success ? static_cast<float32_t>(value) : 0.0f;
 }
 
 auto strvex::to_float64() const noexcept -> float64_t
 {
-    float64_t value;
-    bool success = convert_to_number(strvex(_sv).trim(), value);
+    float64_t value {};
+    bool success {convert_to_number(strvex(_sv).trim(), value)};
 
     return success ? value : 0.0;
 }
@@ -930,7 +929,7 @@ auto strex::format_path() noexcept -> strex&
     }
 
     // Skip first '../'
-    uint32_t back_count = 0;
+    uint32_t back_count {0};
 
     while (_s.length() >= 3 && _s[0] == '.' && _s[1] == '.' && _s[2] == '/') {
         back_count++;
@@ -939,7 +938,7 @@ auto strex::format_path() noexcept -> strex&
 
     // Replace '/./' to '/'
     while (true) {
-        auto pos = _s.find("/./");
+        auto pos {_s.find("/./")};
 
         if (pos == string::npos) {
             break;
@@ -950,13 +949,13 @@ auto strex::format_path() noexcept -> strex&
 
     // Replace 'folder/../' to '/'
     while (true) {
-        auto pos = _s.find("/../");
+        auto pos {_s.find("/../")};
 
         if (pos == string::npos || pos == 0) {
             break;
         }
 
-        auto pos2 = _s.rfind('/', pos - 1);
+        auto pos2 {_s.rfind('/', pos - 1)};
 
         if (pos2 == string::npos) {
             _s.erase(0, pos + 4);
@@ -967,7 +966,7 @@ auto strex::format_path() noexcept -> strex&
     }
 
     // Apply skipped '../'
-    for (uint32_t i = 0; i < back_count; i++) {
+    for (uint32_t i {0}; i < back_count; i++) {
         _s.insert(0, "../");
     }
 
@@ -980,7 +979,7 @@ auto strex::extract_dir() noexcept -> strex&
 {
     format_path();
 
-    auto pos = _sv.find_last_of('/');
+    auto pos {_sv.find_last_of('/')};
 
     if (pos != string::npos) {
         _sv = _sv.substr(0, pos);
@@ -994,7 +993,7 @@ auto strex::extract_dir() noexcept -> strex&
 
 auto strvex::extract_file_name() noexcept -> strvex&
 {
-    auto pos = _sv.find_last_of("/\\");
+    auto pos {_sv.find_last_of("/\\")};
 
     if (pos != string::npos) {
         _sv = _sv.substr(pos + 1);
@@ -1012,7 +1011,7 @@ auto strex::extract_file_name() noexcept -> strex&
 
 auto strex::get_file_extension() noexcept -> strex&
 {
-    auto dot = _sv.find_last_of('.');
+    auto dot {_sv.find_last_of('.')};
     _sv = dot != string::npos ? _sv.substr(dot + 1) : "";
     lower();
 
@@ -1021,7 +1020,7 @@ auto strex::get_file_extension() noexcept -> strex&
 
 auto strvex::erase_file_extension() noexcept -> strvex&
 {
-    auto dot = _sv.find_last_of('.');
+    auto dot {_sv.find_last_of('.')};
 
     if (dot != string::npos) {
         _sv = _sv.substr(0, dot);
@@ -1041,10 +1040,10 @@ auto strex::change_file_name(string_view new_name) -> strex&
 {
     own_storage();
 
-    string ext = strex(_s).get_file_extension().str();
+    string ext {strex(_s).get_file_extension().str()};
 
     if (!ext.empty()) {
-        strex new_name_with_ext = strex("{}.{}", new_name, ext);
+        strex new_name_with_ext {strex("{}.{}", new_name, ext)};
         _s = strex(_s).extract_dir().combine_path(new_name_with_ext);
     }
     else {
@@ -1110,24 +1109,24 @@ auto strex::parse_wide_char(ptr<const wchar_t> str) noexcept -> strex&
 {
     own_storage();
 
-    size_t wide_len = ::wcslen(str.get());
+    size_t wide_len {::wcslen(str.get())};
 
     if (wide_len > static_cast<size_t>(std::numeric_limits<int32_t>::max())) {
         _sv = _s;
         return *this;
     }
 
-    int32_t len = static_cast<int32_t>(wide_len);
+    int32_t len {static_cast<int32_t>(wide_len)};
 
     if (len != 0) {
-        int32_t output_size = ::WideCharToMultiByte(CP_UTF8, 0, str.get(), len, nullptr, 0, nullptr, nullptr);
+        int32_t output_size {::WideCharToMultiByte(CP_UTF8, 0, str.get(), len, nullptr, 0, nullptr, nullptr)};
 
         if (output_size > 0) {
-            auto mem = make_nptr(_malloca(static_cast<size_t>(output_size)));
-            auto buf = mem.reinterpret_as<char>();
+            auto mem {make_nptr(_malloca(static_cast<size_t>(output_size)))};
+            auto buf {mem.reinterpret_as<char>()};
 
             if (buf) {
-                int32_t written_size = ::WideCharToMultiByte(CP_UTF8, 0, str.get(), len, buf.get(), output_size, nullptr, nullptr);
+                int32_t written_size {::WideCharToMultiByte(CP_UTF8, 0, str.get(), len, buf.get(), output_size, nullptr, nullptr)};
 
                 if (written_size > 0) {
                     _s += string(buf.get(), written_size);
@@ -1152,18 +1151,18 @@ auto strex::to_wide_char() const noexcept -> wstring
         return {};
     }
 
-    auto source = make_nptr(_sv.data());
-    int32_t input_len = static_cast<int32_t>(_sv.length());
-    int32_t wide_len = ::MultiByteToWideChar(CP_UTF8, 0, source.get(), input_len, nullptr, 0);
+    auto source {make_nptr(_sv.data())};
+    int32_t input_len {static_cast<int32_t>(_sv.length())};
+    int32_t wide_len {::MultiByteToWideChar(CP_UTF8, 0, source.get(), input_len, nullptr, 0)};
 
     if (wide_len <= 0) {
         return {};
     }
 
-    wstring result;
+    wstring result {};
     result.resize(static_cast<size_t>(wide_len));
 
-    int32_t written_len = ::MultiByteToWideChar(CP_UTF8, 0, source.get(), input_len, result.data(), wide_len);
+    int32_t written_len {::MultiByteToWideChar(CP_UTF8, 0, source.get(), input_len, result.data(), wide_len)};
 
     if (written_len <= 0) {
         return {};
@@ -1176,10 +1175,8 @@ auto strex::to_wide_char() const noexcept -> wstring
 }
 #endif
 
-// ReSharper restore CppInconsistentNaming
-
 // 0xFFFD - Unicode REPLACEMENT CHARACTER
-static constexpr uint32_t UNICODE_BAD_CHAR = 0xFFFD;
+static constexpr uint32_t UNICODE_BAD_CHAR {0xFFFD};
 
 auto utf8::is_valid(uint32_t ucs) noexcept -> bool
 {
@@ -1188,7 +1185,7 @@ auto utf8::is_valid(uint32_t ucs) noexcept -> bool
 
 auto utf8::decode_str_nt_len(ptr<const char> str) noexcept -> size_t
 {
-    size_t length = 0;
+    size_t length {0};
 
     if (str[0] != 0) {
         length++;
@@ -1215,18 +1212,18 @@ auto utf8::decode(ptr<const char> str, size_t& length) noexcept -> uint32_t
         return UNICODE_BAD_CHAR;
     }
 
-    auto make_result = [&length](uint32_t ch, size_t ch_lenght) noexcept -> uint32_t {
+    auto make_result {[&length](uint32_t ch, size_t ch_lenght) noexcept -> uint32_t {
         length = ch_lenght;
         return ch;
-    };
+    }};
 
-    auto make_error = [&length]() noexcept -> uint32_t {
+    auto make_error {[&length]() noexcept -> uint32_t {
         length = 1;
         return UNICODE_BAD_CHAR;
-    };
+    }};
 
-    auto bytes = str.reinterpret_as<const uint8_t>();
-    uint8_t c = bytes[0];
+    auto bytes {str.reinterpret_as<const uint8_t>()};
+    uint8_t c {bytes[0]};
 
     if (c < 0x80) {
         return make_result(c, 1);
@@ -1349,11 +1346,12 @@ auto utf8::encode(uint32_t ucs, char (&buf)[4]) noexcept -> size_t
 
 auto utf8::lower(uint32_t ucs) noexcept -> uint32_t
 {
-    uint32_t ret;
+    uint32_t ret {};
 
     if (ucs <= 0x02B6) {
         if (ucs >= 0x0041) {
             ret = UCS_TABLE_0041[ucs - 0x0041];
+
             if (ret > 0) {
                 return ret;
             }
@@ -1365,6 +1363,7 @@ auto utf8::lower(uint32_t ucs) noexcept -> uint32_t
     if (ucs <= 0x0556) {
         if (ucs >= 0x0386) {
             ret = UCS_TABLE_0386[ucs - 0x0386];
+
             if (ret > 0) {
                 return ret;
             }
@@ -1376,6 +1375,7 @@ auto utf8::lower(uint32_t ucs) noexcept -> uint32_t
     if (ucs <= 0x10C5) {
         if (ucs >= 0x10A0) {
             ret = UCS_TABLE_10_A0[ucs - 0x10A0];
+
             if (ret > 0) {
                 return ret;
             }
@@ -1387,6 +1387,7 @@ auto utf8::lower(uint32_t ucs) noexcept -> uint32_t
     if (ucs <= 0x1FFC) {
         if (ucs >= 0x1E00) {
             ret = UCS_TABLE_1_E00[ucs - 0x1E00];
+
             if (ret > 0) {
                 return ret;
             }
@@ -1398,6 +1399,7 @@ auto utf8::lower(uint32_t ucs) noexcept -> uint32_t
     if (ucs <= 0x2133) {
         if (ucs >= 0x2102) {
             ret = UCS_TABLE_2102[ucs - 0x2102];
+
             if (ret > 0) {
                 return ret;
             }
@@ -1409,6 +1411,7 @@ auto utf8::lower(uint32_t ucs) noexcept -> uint32_t
     if (ucs <= 0x24CF) {
         if (ucs >= 0x24B6) {
             ret = UCS_TABLE_24_B6[ucs - 0x24B6];
+
             if (ret > 0) {
                 return ret;
             }
@@ -1420,6 +1423,7 @@ auto utf8::lower(uint32_t ucs) noexcept -> uint32_t
     if (ucs <= 0x33CE) {
         if (ucs >= 0x33CE) {
             ret = UCS_TABLE_33_CE[ucs - 0x33CE];
+
             if (ret > 0) {
                 return ret;
             }
@@ -1431,6 +1435,7 @@ auto utf8::lower(uint32_t ucs) noexcept -> uint32_t
     if (ucs <= 0xFF3A) {
         if (ucs >= 0xFF21) {
             ret = UCS_TABLE_FF21[ucs - 0xFF21];
+
             if (ret > 0) {
                 return ret;
             }
@@ -1450,12 +1455,12 @@ struct utf8_data
 
         upper_table.resize(0x10000);
 
-        for (uint32_t i = 0; i < 0x10000; i++) {
+        for (uint32_t i {0}; i < 0x10000; i++) {
             upper_table[i] = static_cast<uint16_t>(i);
         }
 
-        for (uint32_t i = 0; i < 0x10000; i++) {
-            uint32_t l = utf8::lower(i);
+        for (uint32_t i {0}; i < 0x10000; i++) {
+            uint32_t l {utf8::lower(i)};
 
             if (l != i) {
                 upper_table[l] = static_cast<uint16_t>(i);

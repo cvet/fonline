@@ -43,10 +43,10 @@ namespace AnimationMovement
 
     auto AccumulateFrameOffsets(const_span<ipos32> offsets, int32_t frame) -> ipos32
     {
-        int64_t x = 0;
-        int64_t y = 0;
+        int64_t x {0};
+        int64_t y {0};
 
-        for (int32_t i = 0; i <= frame; i++) {
+        for (int32_t i {0}; i <= frame; i++) {
             x += offsets[i].x;
             y += offsets[i].y;
         }
@@ -56,14 +56,14 @@ namespace AnimationMovement
 
     auto TransferWalkPhase(const_span<ipos32> previous_offsets, ipos32 pos, ipos32 anchor, ipos32 total) -> ipos32
     {
-        ipos32 old_total = AccumulateFrameOffsets(previous_offsets, numeric_cast<int32_t>(previous_offsets.size()) - 1);
-        int64_t old_length = ProjectAnimationOffset(old_total, old_total);
+        ipos32 old_total {AccumulateFrameOffsets(previous_offsets, numeric_cast<int32_t>(previous_offsets.size()) - 1)};
+        int64_t old_length {ProjectAnimationOffset(old_total, old_total)};
 
         if (old_length == 0) {
             return {};
         }
 
-        int64_t old_phase = WrapWalkPhase(ProjectAnimationOffset(pos - anchor, old_total), old_length);
+        int64_t old_phase {WrapWalkPhase(ProjectAnimationOffset(pos - anchor, old_total), old_length)};
         return {ScaleWalkPhase(old_phase, old_length, total.x), ScaleWalkPhase(old_phase, old_length, total.y)};
     }
 
@@ -72,23 +72,23 @@ namespace AnimationMovement
         frame_index = 0;
         offset = {};
 
-        int64_t length = ProjectAnimationOffset(total, total);
+        int64_t length {ProjectAnimationOffset(total, total)};
 
         if (length != 0) {
-            int64_t projection = ProjectAnimationOffset(pos - anchor, total);
-            int64_t phase = WrapWalkPhase(projection, length);
-            uint64_t best_diff = std::numeric_limits<uint64_t>::max();
-            int64_t x = 0;
-            int64_t y = 0;
+            int64_t projection {ProjectAnimationOffset(pos - anchor, total)};
+            int64_t phase {WrapWalkPhase(projection, length)};
+            uint64_t best_diff {std::numeric_limits<uint64_t>::max()};
+            int64_t x {0};
+            int64_t y {0};
             ipos32 frame_offset {};
-            int32_t frames_count = numeric_cast<int32_t>(offsets.size());
+            int32_t frames_count {numeric_cast<int32_t>(offsets.size())};
 
-            for (int32_t i = 0; i < frames_count; i++) {
+            for (int32_t i {0}; i < frames_count; i++) {
                 x += offsets[i].x;
                 y += offsets[i].y;
                 ipos32 accum {numeric_cast<int32_t>(x), numeric_cast<int32_t>(y)};
-                int64_t frame_projection = ProjectAnimationOffset(accum, total);
-                uint64_t diff = frame_projection >= phase ? numeric_cast<uint64_t>(frame_projection - phase) : numeric_cast<uint64_t>(phase) - static_cast<uint64_t>(frame_projection);
+                int64_t frame_projection {ProjectAnimationOffset(accum, total)};
+                uint64_t diff {frame_projection >= phase ? numeric_cast<uint64_t>(frame_projection - phase) : numeric_cast<uint64_t>(phase) - static_cast<uint64_t>(frame_projection)};
 
                 if (diff < best_diff) {
                     best_diff = diff;
@@ -97,7 +97,7 @@ namespace AnimationMovement
                 }
             }
 
-            int64_t cycle = projection / length;
+            int64_t cycle {projection / length};
 
             if (projection % length < 0) {
                 cycle--;
@@ -111,8 +111,8 @@ namespace AnimationMovement
 
     static auto ProjectAnimationOffset(ipos32 offset, ipos32 axis) -> int64_t
     {
-        int64_t x = numeric_cast<int64_t>(offset.x) * axis.x;
-        int64_t y = numeric_cast<int64_t>(offset.y) * axis.y;
+        int64_t x {numeric_cast<int64_t>(offset.x) * axis.x};
+        int64_t y {numeric_cast<int64_t>(offset.y) * axis.y};
         FO_VERIFY_AND_THROW(y <= 0 || x <= std::numeric_limits<int64_t>::max() - y, "Animation offset projection overflow");
         FO_VERIFY_AND_THROW(y >= 0 || x >= std::numeric_limits<int64_t>::min() - y, "Animation offset projection overflow");
         return x + y;
@@ -120,20 +120,20 @@ namespace AnimationMovement
 
     static auto WrapWalkPhase(int64_t projection, int64_t length) -> int64_t
     {
-        int64_t phase = projection % length;
+        int64_t phase {projection % length};
         return phase < 0 ? phase + length : phase;
     }
 
     // Multiply a proper nonnegative fraction by a signed component without overflowing its numerator
     static auto ScaleWalkPhase(int64_t phase, int64_t length, int32_t component) -> int32_t
     {
-        uint64_t numerator = numeric_cast<uint64_t>(phase);
-        uint64_t denominator = numeric_cast<uint64_t>(length);
-        uint64_t magnitude = numeric_cast<uint64_t>(component < 0 ? -numeric_cast<int64_t>(component) : component);
-        uint64_t quotient = 0;
-        uint64_t remainder = 0;
+        uint64_t numerator {numeric_cast<uint64_t>(phase)};
+        uint64_t denominator {numeric_cast<uint64_t>(length)};
+        uint64_t magnitude {numeric_cast<uint64_t>(component < 0 ? -numeric_cast<int64_t>(component) : component)};
+        uint64_t quotient {0};
+        uint64_t remainder {0};
 
-        for (int32_t bit = 31; bit >= 0; bit--) {
+        for (int32_t bit {31}; bit >= 0; bit--) {
             quotient *= 2;
             remainder *= 2;
 
@@ -156,7 +156,7 @@ namespace AnimationMovement
             quotient++;
         }
 
-        int64_t result = numeric_cast<int64_t>(quotient);
+        int64_t result {numeric_cast<int64_t>(quotient)};
         return numeric_cast<int32_t>(component < 0 ? -result : result);
     }
 }

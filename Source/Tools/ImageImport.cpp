@@ -42,8 +42,8 @@ auto ImageImport::GetDirectionCount(const FrameCollection& collection) -> uint8_
 {
     FO_VERIFY_AND_THROW(!collection.Main.Frames.empty(), "Image collection requires a main sequence");
 
-    uint8_t count = 1;
-    bool gap = false;
+    uint8_t count {1};
+    bool gap {false};
 
     for (const auto& sequence : collection.Dirs) {
         if (sequence.Frames.empty()) {
@@ -79,22 +79,22 @@ void ImageImport::SetFrameSequenceDuration(FrameSequence& sequence, timespan dur
 {
     FO_VERIFY_AND_THROW(!sequence.Frames.empty() && sequence.Frames.size() <= 65535, "Image sequence requires 1..65535 frames", sequence.Frames.size());
 
-    uint32_t duration_ms = GetSpriteDurationMilliseconds(duration);
+    uint32_t duration_ms {GetSpriteDurationMilliseconds(duration)};
 
     FO_VERIFY_AND_THROW(duration_ms >= sequence.Frames.size(), "Image sequence duration must provide at least one millisecond per frame", duration_ms, sequence.Frames.size());
 
-    uint64_t count = sequence.Frames.size();
+    uint64_t count {sequence.Frames.size()};
 
-    for (size_t index = 0; index < sequence.Frames.size(); index++) {
-        uint64_t begin = numeric_cast<uint64_t>(index) * duration_ms / count;
-        uint64_t end = numeric_cast<uint64_t>(index + 1) * duration_ms / count;
+    for (size_t index {0}; index < sequence.Frames.size(); index++) {
+        uint64_t begin {numeric_cast<uint64_t>(index) * duration_ms / count};
+        uint64_t end {numeric_cast<uint64_t>(index + 1) * duration_ms / count};
         sequence.Frames[index].Duration = std::chrono::milliseconds {end - begin};
     }
 }
 
 void ImageImport::CheckEnabled(string_view fname)
 {
-    string ext = strex(fname).get_file_extension();
+    string ext {static_cast<string&&>(strex(fname).get_file_extension())};
     ignore_unused(ext);
 
 #if !FO_IMAGE_FRM

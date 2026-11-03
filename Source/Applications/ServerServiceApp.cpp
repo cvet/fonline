@@ -47,7 +47,7 @@ FO_USING_NAMESPACE();
 
 #if FO_WINDOWS
 static constexpr std::chrono::milliseconds SERVICE_STOP_POLL_INTERVAL {1};
-static wchar_t ServiceName[32] = L"FOnlineServer";
+static wchar_t ServiceName[32] {L"FOnlineServer"};
 #endif
 
 struct ServerServiceAppData
@@ -76,9 +76,9 @@ static auto GetServiceServer() -> ptr<ServerEngine>
 static void ServerEntry()
 {
     try {
-        auto settings = make_ptr(&GetApp()->Settings);
+        auto settings {make_ptr(&GetApp()->Settings)};
         Data->Server = safe_alloc::make_refcounted<ServerEngine>(settings, GetServerResources(*settings));
-        auto server = GetServiceServer();
+        auto server {GetServiceServer()};
         GetApp()->WaitForRequestedQuit();
         server->Shutdown();
         Data->Server.reset();
@@ -97,19 +97,19 @@ static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
     FO_TRACE_ZONE(App);
 
     try {
-        size_t arg_count = numeric_cast<size_t>(argc);
-        auto service_argv = make_nptr(argv);
+        size_t arg_count {numeric_cast<size_t>(argc)};
+        auto service_argv {make_nptr(argv)};
         FO_VERIFY_AND_THROW(arg_count == 0 || service_argv, "Service argument vector is null with a non-zero argument count");
 
-        vector<string> arg_storage(arg_count);
+        vector<string> arg_storage {vector<string>(arg_count)};
 
-        for (size_t i = 0; i < arg_count; ++i) {
-            auto service_arg = make_nptr(service_argv[i]);
+        for (size_t i {0}; i < arg_count; ++i) {
+            auto service_arg {make_nptr(service_argv[i])};
             FO_VERIFY_AND_THROW(service_arg, "Service argument string is null");
             arg_storage[i] = strex().parse_wide_char(service_arg);
         }
 
-        vector<CommandLineArg> arg_pointers;
+        vector<CommandLineArg> arg_pointers {};
         arg_pointers.reserve(arg_count);
 
         for (string& arg : arg_storage) {
@@ -131,7 +131,7 @@ static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
 
         while (true) {
             if (Data->Server) {
-                auto server = GetServiceServer();
+                auto server {GetServiceServer()};
 
                 if (server->IsStarted() || server->IsStartingError()) {
                     break;
@@ -141,7 +141,7 @@ static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
             coarse_sleep(SERVICE_STOP_POLL_INTERVAL);
         }
 
-        auto server = GetServiceServer();
+        auto server {GetServiceServer()};
         if (server->IsStarted()) {
             SetFOServiceStatus(SERVICE_RUNNING);
         }
@@ -166,7 +166,7 @@ int main(int argc, char** argv)
 {
 #if !FO_TESTING_APP
     ProgramArgs program_args {numeric_cast<int32_t>(argc), argv};
-    CommandLineArgs args = program_args.GetArgs();
+    CommandLineArgs args {program_args.GetArgs()};
 #endif
 
     try {
@@ -175,24 +175,24 @@ int main(int argc, char** argv)
 #if FO_WINDOWS
         if (args.GetSettingValue(CommandLineSettings::ServerServiceStart).has_value()) {
             // Start
-            constexpr SERVICE_TABLE_ENTRY dispatch_table[] = {{ServiceName, FOServiceStart}, {nullptr, nullptr}};
+            constexpr SERVICE_TABLE_ENTRY dispatch_table[] {{ServiceName, FOServiceStart}, {nullptr, nullptr}};
             ::StartServiceCtrlDispatcherW(dispatch_table);
         }
         else if (args.GetSettingValue(CommandLineSettings::ServerServiceDelete).has_value()) {
             // Delete
-            SC_HANDLE manager = ::OpenSCManagerW(nullptr, nullptr, SC_MANAGER_ALL_ACCESS);
+            SC_HANDLE manager {::OpenSCManagerW(nullptr, nullptr, SC_MANAGER_ALL_ACCESS)};
             if (manager == nullptr) {
                 ::MessageBoxW(nullptr, L"Can't open service manager", ServiceName, MB_OK | MB_ICONHAND);
                 return 1;
             }
 
-            SC_HANDLE service = ::OpenServiceW(manager, ServiceName, DELETE);
+            SC_HANDLE service {::OpenServiceW(manager, ServiceName, DELETE)};
             if (service == nullptr) {
                 ::CloseServiceHandle(manager);
                 return 0;
             }
 
-            bool error = (::DeleteService(service) == FALSE);
+            bool error {(::DeleteService(service) == FALSE)};
             if (!error) {
                 ::MessageBoxW(nullptr, L"Service deleted", ServiceName, MB_OK | MB_ICONASTERISK);
             }
@@ -209,32 +209,31 @@ int main(int argc, char** argv)
         }
         else {
             // Register or manage service
-            SC_HANDLE manager = ::OpenSCManagerW(nullptr, nullptr, SC_MANAGER_ALL_ACCESS);
+            SC_HANDLE manager {::OpenSCManagerW(nullptr, nullptr, SC_MANAGER_ALL_ACCESS)};
             if (manager == nullptr) {
                 ::MessageBoxW(nullptr, L"Can't open service manager", ServiceName, MB_OK | MB_ICONHAND);
                 return 1;
             }
 
             // Manage service
-            SC_HANDLE service = ::OpenServiceW(manager, ServiceName, SERVICE_QUERY_CONFIG | SERVICE_CHANGE_CONFIG | SERVICE_QUERY_STATUS | SERVICE_START);
-            bool error = false;
+            SC_HANDLE service {::OpenServiceW(manager, ServiceName, SERVICE_QUERY_CONFIG | SERVICE_CHANGE_CONFIG | SERVICE_QUERY_STATUS | SERVICE_START)};
+            bool error {false};
 
             // Evaluate service path
-            constexpr DWORD buf_len = 4096 * 2;
-            wchar_t buf[buf_len];
+            constexpr DWORD buf_len {4096 * 2};
+            wchar_t buf[buf_len] {};
             ::GetModuleFileNameW(nullptr, buf, buf_len);
-            wstring service_start_arg = strex(" --{}", CommandLineSettings::ServerServiceStart).to_wide_char();
-            wstring path = wstring(L"\"").append(buf).append(L"\" ").append(::GetCommandLineW()).append(service_start_arg);
-            auto path_cstr = make_ptr(path.c_str());
+            wstring service_start_arg {strex(" --{}", CommandLineSettings::ServerServiceStart).to_wide_char()};
+            wstring path {wstring(L"\"").append(buf).append(L"\" ").append(::GetCommandLineW()).append(service_start_arg)};
+            auto path_cstr {make_ptr(path.c_str())};
 
             // Change executable path, if changed
             if (service != nullptr) {
-                // ReSharper disable once CppLocalVariableMayBeConst
-                alignas(QUERY_SERVICE_CONFIGW) uint8_t service_cfg_buf[8192] = {};
-                auto service_cfg_storage = make_ptr(service_cfg_buf);
-                auto service_cfg = service_cfg_storage.reinterpret_as<QUERY_SERVICE_CONFIGW>();
+                alignas(QUERY_SERVICE_CONFIGW) uint8_t service_cfg_buf[8192] {};
+                auto service_cfg_storage {make_ptr(service_cfg_buf)};
+                auto service_cfg {service_cfg_storage.reinterpret_as<QUERY_SERVICE_CONFIGW>()};
 
-                if (DWORD dw = 0; ::QueryServiceConfigW(service, service_cfg.get(), 8192, &dw) == 0) {
+                if (DWORD dw {0}; ::QueryServiceConfigW(service, service_cfg.get(), 8192, &dw) == 0) {
                     error = true;
                 }
                 else if (path != service_cfg->lpBinaryPathName) {
@@ -264,6 +263,7 @@ int main(int argc, char** argv)
             if (service != nullptr) {
                 ::CloseServiceHandle(service);
             }
+
             ::CloseServiceHandle(manager);
 
             if (error) {
@@ -320,7 +320,7 @@ static void SetFOServiceStatus(uint32_t state)
         Data->LastState = state;
     }
 
-    SERVICE_STATUS status;
+    SERVICE_STATUS status {};
     status.dwServiceType = SERVICE_WIN32_OWN_PROCESS;
     status.dwCurrentState = state;
     status.dwWin32ExitCode = 0;

@@ -73,25 +73,49 @@ in versioned docs; sanitize evidence.
   lower-layer dependencies. Run `BuildTools/check_native_source_layout.py` and
   `BuildTools/check_native_modules.py`; [source layout](Docs/en/contributing/source-tree/#native-module-layout)
   owns exact scope and exceptions.
-- **Types/names:** passive structs have no user constructors, methods, invariants or
-  `final`; behavioral types are encapsulated classes. Static-only utilities are
+- **Types/names:** `struct` is exclusively a passive record of public data: no declared
+  constructors, destructors, methods or member operators, including defaulted ones,
+  inherited behavior, invariants or `final`. Operations on records are free functions.
+  Essentials is exempt from the passive-record restriction: its structs may have
+  constructors, methods and member operators. Preserve the natural API of its
+  value types, data records and adapters. Settings types (including generated groups
+  and their base/aggregate settings) and all `ExportValueType` types are also exempt,
+  in any native layer or project extension: retain their struct methods, constructors,
+  member operators and natural data API. Do not convert existing classes to structs
+  merely because they qualify for an exception.
+  Types needing behavior, controlled state or a custom lifetime protocol are encapsulated
+  classes with private representation and a deliberate public interface; changing
+  only the keyword and leaving public state is insufficient. Static-only utilities are
   namespaces unless class identity is required (`friend class safe_alloc`). Essentials
   uses snake_case, higher layers PascalCase; preserve documented exceptions/module filenames.
   Namespace helpers follow declaration order; moving a static-only class to a
   namespace may require forward declarations, and namespaces cannot be friends.
 - **Layout:** class declarations/forward declarations precede implementations;
   high-level orchestration precedes helpers. Within a class: construction/destruction,
-  `[[nodiscard]]` informational accessors, then mutators ordered from initialization to teardown.
-  Keep existing dedicated families together. Do not hoist unrelated declarations
-  or put implementation into a forward-declaration block.
+  a public block of object-state/data queries, then operations ordered from
+  initialization to teardown. Keep dedicated families within the appropriate block.
+  Preserve the existing relative order within each block; move only what grouping requires.
+  Do not hoist unrelated declarations or put implementation into a forward-declaration block.
+- **`[[nodiscard]]`:** in Essentials, annotate meaningful result-use contracts,
+  including free functions, factories and failure statuses. Elsewhere, annotate only
+  public instance methods in the upper information block. Queries may search, read
+  storage, return copies, lock or maintain an internal cache; these implementation
+  details do not disqualify an information request. Preserve existing query attributes
+  unless the method's purpose gives a concrete reason to change them. Mutations,
+  consuming reads, resource creation and substantial processing as the main purpose
+  belong below without the attribute. Judge purpose and logical side effects, not
+  just cost, `const` or a `Get` name. No attributes on free/static/nonpublic functions or types outside
+  Essentials. See [class layout](Docs/en/contributing/coding-contracts/class-layout.md).
 - **Spacing:** separate semantic stages inside functions and lambdas with blank lines.
   Validation, resource acquisition, ownership transfer, conversion, callbacks and
   result handling form separate groups. Keep a declaration with its immediate
   initialization/validation; a formatter cannot infer these groups.
   Surround complete control-flow statements with blank lines; adjacent statements
   of the same construct may form a run. Preprocessor directives do not change this
-  spacing. Put a blank line before a comment and none between it and its following
-  block. Native source ends with exactly one newline (`text\n`, or `text\r\n`),
+  spacing. A comment never requires a preceding blank line, in any context, including
+  function/lambda bodies, enums and struct/class member lists. Choose blank lines
+  from the semantic grouping of the code; keep comments attached to what they describe.
+  Native source ends with exactly one newline (`text\n`, or `text\r\n`),
   without trailing spaces or an additional empty line.
   Reuse MIT headers and `#pragma once`.
   Manually review changed semantic groups and control-flow blocks in the final diff;
@@ -108,9 +132,25 @@ in versioned docs; sanitize evidence.
   metadata follow [metadata ownership](Docs/en/reference/metadata/index.md#source-owned-symbol-descriptions).
 - **Locals:** fixed-width numeric aliases and `size_t`; explicit types for primitives,
   `string`, `hstring` and other simple values. No redundant top-level local `const`;
-  pointee/referent constness and `constexpr` remain. Use `numeric_cast` for numeric
-  conversions. See [local variables](Docs/en/contributing/coding-contracts/local-variables.md)
+  pointee/referent constness and `constexpr` remain. Align numeric types first:
+  counts, lengths, dimensions and their arithmetic use signed integers, normally
+  `int32_t`, with wider fixed-width signed intermediates when required. Use `size_t`
+  only where the target container, buffer or external API requires it; retain unsigned
+  types for bit patterns, identities and external formats. Use `numeric_cast` for
+  every transition between different numeric types, including widening and container
+  indices; do not replace it with implicit conversion or an unchecked cast.
+  See [local variables](Docs/en/contributing/coding-contracts/local-variables.md)
   for justified suppression and use-after-move checks.
+- **Initialization:** initialize every variable definition with braces where an
+  initializer is permitted: `T value {expression};`, or `T value {};` for its intended
+  default state. This includes locals, fields, globals and static/thread-local variables.
+  Class fields initialized by constructors may omit an in-class initializer; locals
+  may defer initialization only when every path assigns a value before its first read.
+  Preserve constructor selection, container semantics and deduced types; see
+  [braced initialization](Docs/en/contributing/coding-contracts/local-variables.md#braced-initialization).
+- **Arithmetic:** use `checked_add/sub/mul/div` where script input or decoded data
+  affects sizes, offsets or other important calculations. Check before mutation;
+  `numeric_cast` cannot detect an overflow that already happened in its argument.
 - **Pointers:** Engine `ptr`/`nptr` borrows, `unique_*`/`refcount_*` owners and own
   `shared_ptr`/`weak_ptr`; no `std::` owners. Entities use pointers, not references.
   Informal “raw pointer” means a borrow; literal `T*` needs an explicit documented

@@ -53,21 +53,21 @@ namespace ImageBakerPng
         ignore_unused(opt);
         ignore_unused(context);
 
-        int32_t width = 0;
-        int32_t height = 0;
-        const_span<uint8_t> png_data = reader.GetDataSpan();
+        int32_t width {0};
+        int32_t height {0};
+        const_span<uint8_t> png_data {reader.GetDataSpan()};
         FO_VERIFY_AND_THROW(!png_data.empty(), "PNG file has no data to load");
-        auto png_data_ptr = make_ptr(png_data.data());
-        auto data = PngLoad(png_data_ptr, width, height);
+        auto png_data_ptr {make_ptr(png_data.data())};
+        auto data {PngLoad(png_data_ptr, width, height)};
 
-        FrameCollection collection;
-        uint16_t sequence_size {};
+        FrameCollection collection {};
+        int32_t sequence_size {};
         uint32_t duration_ms {};
         bool have_dirs {};
         sequence_size = 1;
         duration_ms = 100;
 
-        collection.Main.Frames.resize(sequence_size);
+        collection.Main.Frames.resize(numeric_cast<size_t>(sequence_size));
         collection.Main.Frames[0].Size = {width, height};
         collection.Main.Frames[0].Data = std::move(data);
 
@@ -79,11 +79,11 @@ namespace ImageBakerPng
             }
         }
 
-        for (uint8_t direction = 0; direction < ImageImport::GetDirectionCount(collection); direction++) {
-            auto& sequence = direction == 0 ? collection.Main : collection.Dirs[direction - 1];
+        for (uint8_t direction {0}; direction < ImageImport::GetDirectionCount(collection); direction++) {
+            auto& sequence {direction == 0 ? collection.Main : collection.Dirs[direction - 1]};
 
             if (std::all_of(sequence.Frames.begin(), sequence.Frames.end(), [](const ImageImport::FrameShot& frame) { return frame.Duration == timespan::zero; })) {
-                uint32_t count = numeric_cast<uint32_t>(sequence.Frames.size());
+                uint32_t count {numeric_cast<uint32_t>(sequence.Frames.size())};
                 ImageImport::SetFrameSequenceDuration(sequence, std::chrono::milliseconds {duration_ms == 0 ? count * 100 : std::max(duration_ms, count)});
             }
 
@@ -105,62 +105,57 @@ namespace ImageBakerPng
         safe_alloc::free_raw(mem);
     }
 
+    [[noreturn]] static void PngError(png_structp png_ptr, png_const_charp error_msg)
+    {
+        ignore_unused(png_ptr);
+        throw ImageBakerException("PNG loading error", error_msg);
+    }
+
+    static void PngWarning(png_structp png_ptr, png_const_charp error_msg)
+    {
+        ignore_unused(png_ptr);
+        ignore_unused(error_msg);
+    }
+
+    static void PngRead(png_structp png_ptr, png_bytep png_data, png_size_t length)
+    {
+        if (length == 0) {
+            return;
+        }
+
+        auto io_ptr {cast_from_void<const uint8_t**>(png_get_io_ptr(png_ptr))};
+        FO_VERIFY_AND_THROW(io_ptr, "PNG read cursor is null");
+        auto source {make_ptr(*io_ptr)};
+        auto target {make_ptr(png_data)};
+        memory::copy(target, source, length);
+        auto next_source {source.offset(length)};
+        *io_ptr = next_source.get();
+    }
+
     static auto PngLoad(ptr<const uint8_t> data, int32_t& result_width, int32_t& result_height) -> vector<uint8_t>
     {
         // Created through the _2 form so libpng allocates from the engine memory system rather than the CRT heap
-        auto png_ptr = make_nptr(png_create_read_struct_2(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr, nullptr, &PngMalloc, &PngFree));
+        auto png_ptr {make_nptr(png_create_read_struct_2(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr, nullptr, &PngMalloc, &PngFree))};
         FO_VERIFY_AND_THROW(png_ptr, "Failed to create PNG read structure");
-        nptr<png_info> info_ptr;
+        nptr<png_info> info_ptr {};
 
         try {
-            struct PngMessage
-            {
-                [[noreturn]] static void Error(png_structp png_ptr, png_const_charp error_msg)
-                {
-                    ignore_unused(png_ptr);
-                    throw ImageBakerException("PNG loading error", error_msg);
-                }
-
-                static void Warning(png_structp png_ptr, png_const_charp error_msg)
-                {
-                    ignore_unused(png_ptr);
-                    ignore_unused(error_msg);
-                }
-            };
-
-            png_set_error_fn(png_ptr.get(), png_get_error_ptr(png_ptr.get()), &PngMessage::Error, &PngMessage::Warning);
+            png_set_error_fn(png_ptr.get(), png_get_error_ptr(png_ptr.get()), &PngError, &PngWarning);
 
             info_ptr = png_create_info_struct(png_ptr.get());
             FO_VERIFY_AND_THROW(info_ptr, "Failed to create PNG info structure");
 
-            struct PngReader
-            {
-                static void Read(png_structp png_ptr, png_bytep png_data, png_size_t length)
-                {
-                    if (length == 0) {
-                        return;
-                    }
-
-                    auto io_ptr = cast_from_void<const uint8_t**>(png_get_io_ptr(png_ptr));
-                    FO_VERIFY_AND_THROW(io_ptr, "PNG read cursor is null");
-                    auto source = make_ptr(*io_ptr);
-                    auto target = make_ptr(png_data);
-                    memory::copy(target, source, length);
-                    auto next_source = source.offset(length);
-                    *io_ptr = next_source.get();
-                }
-            };
-
             // Get info
-            nptr<const uint8_t> png_data_cursor = data;
-            png_set_read_fn(png_ptr.get(), make_nptr(png_data_cursor.get_pp()).void_cast(), &PngReader::Read);
+            nptr<const uint8_t> png_data_cursor {data};
+            png_set_read_fn(png_ptr.get(), make_nptr(png_data_cursor.get_pp()).void_cast(), &PngRead);
             png_read_info(png_ptr.get(), info_ptr.get());
 
-            png_uint_32 width = 0;
-            png_uint_32 height = 0;
-            int32_t bit_depth = 0;
-            int32_t color_type = 0;
+            png_uint_32 width {0};
+            png_uint_32 height {0};
+            int32_t bit_depth {0};
+            int32_t color_type {0};
             png_get_IHDR(png_ptr.get(), info_ptr.get(), &width, &height, &bit_depth, &color_type, nullptr, nullptr, nullptr);
+            FO_VERIFY_AND_THROW(width > 0 && height > 0 && width <= numeric_cast<png_uint_32>(std::numeric_limits<int32_t>::max()) && height <= numeric_cast<png_uint_32>(std::numeric_limits<int32_t>::max()), "PNG dimensions are outside the import range", width, height);
 
             // Settings
             png_set_strip_16(png_ptr.get());
@@ -180,18 +175,21 @@ namespace ImageBakerPng
             png_read_update_info(png_ptr.get(), info_ptr.get());
 
             // Read
-            vector<png_bytep> row_pointers;
-            row_pointers.resize(height);
+            int64_t row_size {checked_mul(numeric_cast<int64_t>(width), int64_t {4})};
+            int64_t data_size {checked_mul(row_size, numeric_cast<int64_t>(height))};
+            vector<png_bytep> row_pointers {};
+            row_pointers.resize(numeric_cast<size_t>(height));
 
-            vector<uint8_t> result;
-            result.resize(numeric_cast<size_t>(width) * height * 4);
+            vector<uint8_t> result {};
+            result.resize(numeric_cast<size_t>(data_size));
 
-            for (png_uint_32 i = 0; i < height; i++) {
-                auto row = make_ptr(result.data() + numeric_cast<size_t>(i) * numeric_cast<size_t>(width) * 4);
-                row_pointers[i] = row.get();
+            for (png_uint_32 i {0}; i < height; i++) {
+                int64_t row_offset {checked_mul(numeric_cast<int64_t>(i), row_size)};
+                auto row {make_ptr(result.data() + row_offset)};
+                row_pointers[numeric_cast<size_t>(i)] = row.get();
             }
 
-            auto rows = make_ptr(row_pointers.data());
+            auto rows {make_ptr(row_pointers.data())};
             png_read_image(png_ptr.get(), rows.get());
             png_read_end(png_ptr.get(), info_ptr.get());
             png_destroy_read_struct(png_ptr.get_pp(), info_ptr.get_pp(), static_cast<png_infopp>(nullptr));

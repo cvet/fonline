@@ -9446,6 +9446,18 @@
       "owner": "engine-project-policy-boundary"
     },
     {
+      "domain": "font-format",
+      "change_id": "font-format-change.modified.f60c10cb3cb286d9",
+      "baseline_contract_sha256": "bdd50435c0731979b81c40553f5fb0ea36ae88fba0a73ac621a88039a883a693",
+      "current_contract_sha256": "03d9de5fff26cca67799f7289c73061cd5cc7d7d53dd0d38ce7b741ecbc5b4c3",
+      "classification": "breaking",
+      "rationale": "The requirement now names FileReader::ReadLEUInt16 after the consuming native FileReader methods were renamed from Get* to Read*. The comparator records a requirement-shape change; only the source API spelling changes, and the documented unsigned BMFont metric limitation remains.",
+      "migration": "Native callers replace GetStrNT, GetUInt8/GetInt8 and the BE/LE UInt16/Int16/UInt32/Int32 FileReader names with their Read* equivalents. Update source-bound font documentation and regenerate its model/reference. Existing binary fonts require no conversion; see Docs/en/how-to/content/font-format.md and Source/Common/FileSystem.h.",
+      "release_note": "Native API release preparation owns the consuming FileReader Get* to Read* migration note. The maintained English and Russian font-format guides now use ReadLEUInt16.",
+      "compatibility": "Binary font layout, metric signedness, decoded values, cursor advancement and exception behavior are preserved. Native source consumers must use the current Read* names; there are no compatibility aliases or binary resource migrations.",
+      "owner": "native FileReader API and font-format documentation"
+    },
+    {
       "domain": "gui-runtime",
       "change_id": "gui-runtime-change.model-contract.32cefaa43610c637",
       "baseline_contract_sha256": "bf25499b3282fe0c434c45ac4960f89d7a7e04e49ea35b55c1e7089cc4c8d273",

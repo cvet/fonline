@@ -90,7 +90,7 @@ public:
     bool try_lock() FO_TSA_TRY_ACQUIRE(true) { return _impl.try_lock(); }
 
 private:
-    std::mutex _impl;
+    std::mutex _impl {};
 };
 
 class FO_TSA_CAPABILITY("shared_mutex") shared_mutex
@@ -111,7 +111,7 @@ public:
     bool try_lock_shared() FO_TSA_TRY_ACQUIRE_SHARED(true) { return _impl.try_lock_shared(); }
 
 private:
-    std::shared_mutex _impl;
+    std::shared_mutex _impl {};
 };
 
 // Exclusive lock for the short critical sections that noexcept accessors run: it owns no OS resource, so unlike
@@ -128,7 +128,7 @@ public:
 
     void lock() noexcept FO_TSA_ACQUIRE()
     {
-        uint32_t free_state = STATE_FREE;
+        uint32_t free_state {STATE_FREE};
 
         if (_state.compare_exchange_strong(free_state, STATE_HELD, std::memory_order_acquire, std::memory_order_relaxed)) {
             return;
@@ -148,9 +148,9 @@ public:
     }
 
 private:
-    static constexpr uint32_t STATE_FREE = 0;
-    static constexpr uint32_t STATE_HELD = 1;
-    static constexpr uint32_t STATE_CONTENDED = 2;
+    static constexpr uint32_t STATE_FREE {0};
+    static constexpr uint32_t STATE_HELD {1};
+    static constexpr uint32_t STATE_CONTENDED {2};
 
     std::atomic<uint32_t> _state {};
 };
@@ -238,7 +238,7 @@ private:
 
 // Set or query the calling thread's Tracy, OS, and log name
 void set_this_thread_name(const string& name) noexcept;
-auto get_this_thread_name() noexcept -> string_view;
+[[nodiscard]] auto get_this_thread_name() noexcept -> string_view;
 
 // Sleep without std::this_thread::sleep_for, which rounds up to the OS timer tick and parks a sub-millisecond wait
 // for a full one. coarse_sleep parks and spends no CPU; precise_sleep hits the deadline by spinning the tail out
@@ -297,7 +297,7 @@ inline constexpr async_launch_mode launch_async_and_deferred {.use_async = true,
 
 // submit_async always queues; try_submit_async returns false at a fully busy cap for inline fallback
 void submit_async(string_view task_name, function<void()> task);
-auto try_submit_async(string_view task_name, function<void()> task) -> bool;
+[[nodiscard]] auto try_submit_async(string_view task_name, function<void()> task) -> bool;
 
 // Run under the selected launch mode and propagate task exceptions through future.get().
 // The bounded pool is for short jobs; use run_thread for long-lived loops
@@ -312,8 +312,8 @@ template<typename Func>
         return std::async(std::launch::deferred, std::forward<Func>(task));
     }
 
-    auto packaged = safe_alloc::make_shared<std::packaged_task<result_type()>>(std::forward<Func>(task));
-    auto future = packaged->get_future();
+    auto packaged {safe_alloc::make_shared<std::packaged_task<result_type()>>(std::forward<Func>(task))};
+    auto future {packaged->get_future()};
 
     if (mode.use_deferred) {
         // Mixed launch mode falls back inline when the pool is saturated, avoiding an unbounded queue

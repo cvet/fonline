@@ -57,7 +57,7 @@ protected:
     void DisconnectImpl() noexcept override;
 
 private:
-    [[nodiscard]] auto MakeOptions() const -> UdpTransportOptions;
+    auto MakeOptions() const -> UdpTransportOptions;
     void PumpInput();
     void SendPackets(const vector<vector<uint8_t>>& packets);
     void ServiceConnect(nanotime now);
@@ -93,14 +93,14 @@ NetworkClientConnection_UdpSockets::NetworkClientConnection_UdpSockets(ptr<Clien
     _remoteHost = _requestHost;
     _remotePort = numeric_cast<uint16_t>(_settings->Network.ServerPort + _settings->Network.UdpPortOffset);
 
-    random_generator salt_generator;
+    random_generator salt_generator {};
     _clientSalt = (numeric_cast<uint32_t>(salt_generator.next_between(1, 255)) << 24) | //
         (numeric_cast<uint32_t>(salt_generator.next_between(1, 255)) << 16) | //
         (numeric_cast<uint32_t>(salt_generator.next_between(1, 255)) << 8) | //
         (numeric_cast<uint32_t>(salt_generator.next_between(1, 255)) << 0);
 
-    auto packet_capacity = numeric_cast<size_t>(std::max(_settings->Network.UdpPacketSize, 0)) * 2;
-    auto net_capacity = numeric_cast<size_t>(std::max(_settings->Network.NetBufferSize, 0));
+    auto packet_capacity {numeric_cast<size_t>(std::max(_settings->Network.UdpPacketSize, 0)) * 2};
+    auto net_capacity {numeric_cast<size_t>(std::max(_settings->Network.NetBufferSize, 0))};
     _packetBuf.resize(std::max(packet_capacity, net_capacity));
 
     if (!_socket.bind("0.0.0.0", 0, false)) {
@@ -120,7 +120,7 @@ auto NetworkClientConnection_UdpSockets::CheckStatusImpl(bool for_write) -> bool
 {
     FO_TRACE_ZONE(Network);
 
-    nanotime now = nanotime::now();
+    nanotime now {nanotime::now()};
 
     PumpInput();
 
@@ -141,7 +141,7 @@ auto NetworkClientConnection_UdpSockets::CheckStatusImpl(bool for_write) -> bool
     }
 
     if (_channel.NeedSend(now) && _socket.can_write()) {
-        vector<vector<uint8_t>> packets;
+        vector<vector<uint8_t>> packets {};
         _channel.PrepareOutput({}, packets, now);
         SendPackets(packets);
     }
@@ -163,8 +163,8 @@ auto NetworkClientConnection_UdpSockets::SendDataImpl(const_span<uint8_t> buf) -
         return 0;
     }
 
-    vector<vector<uint8_t>> packets;
-    size_t consumed = _channel.PrepareOutput(buf, packets, nanotime::now());
+    vector<vector<uint8_t>> packets {};
+    size_t consumed {_channel.PrepareOutput(buf, packets, nanotime::now())};
     SendPackets(packets);
     return consumed;
 }
@@ -175,7 +175,7 @@ auto NetworkClientConnection_UdpSockets::ReceiveDataImpl(vector<uint8_t>& buf) -
 
     PumpInput();
 
-    size_t ready_size = _channel.ExtractReadyData(_readyBuf);
+    size_t ready_size {_channel.ExtractReadyData(_readyBuf)};
 
     if (ready_size == 0) {
         return 0;
@@ -194,8 +194,8 @@ void NetworkClientConnection_UdpSockets::DisconnectImpl() noexcept
     FO_TRACE_ZONE(Network);
 
     if (_socket.is_valid() && _channel.HasSession() && _socket.can_write()) {
-        auto packet = _channel.MakeDisconnectPacket();
-        _socket.send_to(_remoteHost, _remotePort, packet);
+        auto packet {_channel.MakeDisconnectPacket()};
+        (void)_socket.send_to(_remoteHost, _remotePort, packet);
     }
 
     _channel.Reset();
@@ -208,7 +208,7 @@ void NetworkClientConnection_UdpSockets::DisconnectImpl() noexcept
 
 auto NetworkClientConnection_UdpSockets::MakeOptions() const -> UdpTransportOptions
 {
-    UdpTransportOptions options;
+    UdpTransportOptions options {};
     options.MaxPayload = numeric_cast<size_t>(std::max(_settings->Network.UdpPacketSize, 256));
     options.MaxPendingBytes = std::max(numeric_cast<size_t>(std::max(_settings->Network.UdpWindowSize, 0)), options.MaxPayload);
     options.ResendTimeout = std::chrono::milliseconds {std::max(_settings->Network.UdpResendTimeout, 1)};
@@ -220,17 +220,17 @@ auto NetworkClientConnection_UdpSockets::MakeOptions() const -> UdpTransportOpti
 void NetworkClientConnection_UdpSockets::PumpInput()
 {
     while (_socket.can_read()) {
-        string host;
-        uint16_t port = 0;
-        auto packet_buf = make_span(_packetBuf);
-        int32_t received = _socket.receive_from(packet_buf, host, port);
+        string host {};
+        uint16_t port {0};
+        auto packet_buf {make_span(_packetBuf)};
+        int32_t received {_socket.receive_from(packet_buf, host, port)};
 
         if (received <= 0) {
             break;
         }
 
-        UdpPacketInfo packet;
-        auto received_packet = make_const_span(_packetBuf.data(), numeric_cast<size_t>(received));
+        UdpPacketInfo packet {};
+        auto received_packet {make_const_span(_packetBuf.data(), numeric_cast<size_t>(received))};
 
         if (!TryParseUdpPacket(received_packet, packet)) {
             continue;
@@ -273,7 +273,7 @@ void NetworkClientConnection_UdpSockets::SendPackets(const vector<vector<uint8_t
             break;
         }
 
-        int32_t sent = _socket.send_to(_remoteHost, _remotePort, packet);
+        int32_t sent {_socket.send_to(_remoteHost, _remotePort, packet)};
 
         if (sent <= 0) {
             throw NetworkClientException("UDP send error");
@@ -283,7 +283,7 @@ void NetworkClientConnection_UdpSockets::SendPackets(const vector<vector<uint8_t
 
 void NetworkClientConnection_UdpSockets::ServiceConnect(nanotime now)
 {
-    uint32_t connect_timeout_ms = numeric_cast<uint32_t>(std::max(_settings->Network.UdpConnectTimeout, _settings->Network.UdpConnectRetry));
+    uint32_t connect_timeout_ms {numeric_cast<uint32_t>(std::max(_settings->Network.UdpConnectTimeout, _settings->Network.UdpConnectRetry))};
 
     if (_connectStartTime != nanotime::zero && now - _connectStartTime >= std::chrono::milliseconds {connect_timeout_ms}) {
         logging::write(logging::type::warning, "UDP connect timeout to server '{}:{}'", _requestHost, _remotePort);
@@ -296,7 +296,7 @@ void NetworkClientConnection_UdpSockets::ServiceConnect(nanotime now)
     }
 
     if (_socket.can_write()) {
-        auto packet = MakeUdpConnectPacket(_clientSalt);
+        auto packet {MakeUdpConnectPacket(_clientSalt)};
 
         if (_socket.send_to(_requestHost, _remotePort, packet) <= 0) {
             throw NetworkClientException("Can't send UDP connect packet");

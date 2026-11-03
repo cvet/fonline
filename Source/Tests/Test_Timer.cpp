@@ -54,7 +54,7 @@ TEST_CASE("GameTimer")
     SECTION("FrameAdvanceUpdatesTimeAndDelta")
     {
         GameTimer timer {&settings};
-        nanotime initial_time = timer.GetFrameTime();
+        nanotime initial_time {timer.GetFrameTime()};
 
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
         timer.FrameAdvance(false);
@@ -90,8 +90,8 @@ TEST_CASE("GameTimer")
         CHECK(timer.IsPaused());
         CHECK_THROWS_AS(timer.Pause(), VerificationException);
 
-        nanotime paused_frame_time = timer.GetFrameTime();
-        synctime paused_sync_time = timer.GetSynchronizedTime();
+        nanotime paused_frame_time {timer.GetFrameTime()};
+        synctime paused_sync_time {timer.GetSynchronizedTime()};
 
         std::this_thread::sleep_for(std::chrono::milliseconds(20));
         timer.FrameAdvance(false);
@@ -119,7 +119,7 @@ TEST_CASE("GameTimer")
         std::this_thread::sleep_for(std::chrono::milliseconds(20));
         timer.FrameAdvance(false);
 
-        synctime current_time = timer.GetSynchronizedTime();
+        synctime current_time {timer.GetSynchronizedTime()};
         synctime older_time {current_time.milliseconds() - 100};
 
         timer.SetSynchronizedTimeMonotonic(older_time);

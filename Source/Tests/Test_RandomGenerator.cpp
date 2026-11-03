@@ -63,9 +63,9 @@ TEST_CASE("RandomGenerator")
         CHECK(generator.next() == 0x968D9F004E50DE7DULL);
 
         random_generator bounded {42};
-        vector<uint32_t> drawn;
+        vector<uint32_t> drawn {};
 
-        for (int32_t i = 0; i < 8; i++) {
+        for (int32_t i {0}; i < 8; i++) {
             drawn.emplace_back(bounded.next_below(100));
         }
 
@@ -77,7 +77,7 @@ TEST_CASE("RandomGenerator")
         random_generator first {12345};
         random_generator second {12345};
 
-        for (int32_t i = 0; i < 100; i++) {
+        for (int32_t i {0}; i < 100; i++) {
             CHECK(first.next() == second.next());
         }
 
@@ -90,9 +90,9 @@ TEST_CASE("RandomGenerator")
     {
         random_generator first {1};
         random_generator second {2};
-        int32_t equal_draws = 0;
+        int32_t equal_draws {0};
 
-        for (int32_t i = 0; i < 64; i++) {
+        for (int32_t i {0}; i < 64; i++) {
             if (first.next() == second.next()) {
                 equal_draws++;
             }
@@ -105,11 +105,11 @@ TEST_CASE("RandomGenerator")
     {
         random_generator generator {7};
 
-        for (int32_t i = 0; i < 20000; i++) {
-            uint32_t below = generator.next_below(37);
+        for (int32_t i {0}; i < 20000; i++) {
+            uint32_t below {generator.next_below(37)};
             CHECK(below < 37);
 
-            int32_t between = generator.next_between(-5, 5);
+            int32_t between {generator.next_between(-5, 5)};
             CHECK(between >= -5);
             CHECK(between <= 5);
         }
@@ -123,7 +123,7 @@ TEST_CASE("RandomGenerator")
         random_generator generator {99};
         std::array<int32_t, 10> buckets {};
 
-        for (int32_t i = 0; i < 200000; i++) {
+        for (int32_t i {0}; i < 200000; i++) {
             buckets[static_cast<size_t>(generator.next_between(0, 9))]++;
         }
 
@@ -136,10 +136,10 @@ TEST_CASE("RandomGenerator")
     SECTION("NormalizedDrawStaysInsideTheUnitInterval")
     {
         random_generator generator {3};
-        float64_t sum = 0.0;
+        float64_t sum {0.0};
 
-        for (int32_t i = 0; i < 100000; i++) {
-            float64_t value = generator.next_normalized();
+        for (int32_t i {0}; i < 100000; i++) {
+            float64_t value {generator.next_normalized()};
 
             REQUIRE(value >= 0.0);
             REQUIRE(value < 1.0);
@@ -161,8 +161,8 @@ TEST_CASE("RandomGenerator")
 
     SECTION("DefaultConstructedGeneratorsDiverge")
     {
-        random_generator first;
-        random_generator second;
+        random_generator first {};
+        random_generator second {};
 
         CHECK(first.next() != second.next());
     }
@@ -173,10 +173,11 @@ TEST_CASE("RandomGeneratorStateCaptureAndRestore")
     SECTION("Restored state replays the exact sequence")
     {
         random_generator generator {2026};
-        random_generator::state_data state = generator.capture_state();
+        random_generator::state_data state {generator.capture_state()};
 
-        vector<uint64_t> expected;
-        for (size_t i = 0; i < 16; i++) {
+        vector<uint64_t> expected {};
+
+        for (size_t i {0}; i < 16; i++) {
             expected.emplace_back(generator.next());
         }
 
@@ -191,7 +192,7 @@ TEST_CASE("RandomGeneratorStateCaptureAndRestore")
     SECTION("Capture reflects consumption")
     {
         random_generator generator {7};
-        random_generator::state_data before = generator.capture_state();
+        random_generator::state_data before {generator.capture_state()};
         (void)generator.next();
 
         CHECK(generator.capture_state() != before);
@@ -200,7 +201,7 @@ TEST_CASE("RandomGeneratorStateCaptureAndRestore")
     SECTION("All-zero state is rejected and leaves the generator untouched")
     {
         random_generator generator {11};
-        random_generator::state_data before = generator.capture_state();
+        random_generator::state_data before {generator.capture_state()};
 
         CHECK_THROWS(generator.restore_state(random_generator::state_data {}));
         CHECK(generator.capture_state() == before);

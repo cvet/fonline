@@ -67,13 +67,13 @@ public:
     [[nodiscard]] auto HasInnerItems() const noexcept -> bool;
     [[nodiscard]] auto GetAllInnerItems() -> vector<ptr<Item>>;
     [[nodiscard]] auto GetAllInnerItems() const -> vector<ptr<const Item>>;
-    [[nodiscard]] auto TakeAllInnerItems() -> vector<refcount_ptr<Item>>;
     [[nodiscard]] auto CanSendItem(bool as_public) const noexcept -> bool;
     [[nodiscard]] auto HasMultihexEntries() const noexcept -> bool;
     [[nodiscard]] auto GetMultihexEntries() const noexcept -> nptr<const vector<mpos>>;
     [[nodiscard]] auto GetOwnedLock() noexcept -> ptr<EntityLock>;
     [[nodiscard]] auto IsInsideContainer(ptr<const Item> container) -> bool;
 
+    auto TakeAllInnerItems() -> vector<refcount_ptr<Item>>;
     auto AddItemToContainer(ptr<Item> item, const any_t& stack_id) -> ptr<Item>;
     void RemoveItemFromContainer(ptr<Item> item);
     void SetItemToContainer(ptr<Item> item);

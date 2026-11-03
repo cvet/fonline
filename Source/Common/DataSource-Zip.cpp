@@ -81,7 +81,7 @@ ZipFile::ZipFile(string_view fname) :
 
     scoped_lock locker {_zipHandleLocker};
 
-    zlib_filefunc_def ffunc;
+    zlib_filefunc_def ffunc {};
 
     if (!*_fileStream) {
         throw DataSourceException("Can't open zip file", _fileName);
@@ -90,28 +90,34 @@ ZipFile::ZipFile(string_view fname) :
     _writeTime = fs::last_write_time(_fileName);
 
     ffunc.zopen_file = [](voidpf opaque, const char*, int32_t) -> voidpf {
-        nptr<void> stream = opaque;
+        nptr<void> stream {opaque};
         FO_VERIFY_AND_THROW(stream, "Zip open callback received a null stream handle");
         return opaque;
     };
+
     ffunc.zread_file = [](voidpf, voidpf stream, void* buf, uLong size) -> uLong {
-        auto file = cast_from_void<std::ifstream*>(stream);
+        auto file {cast_from_void<std::ifstream*>(stream)};
         FO_VERIFY_AND_THROW(file, "Zip read callback received a null file stream");
+
         if (size == 0) {
             return 0;
         }
+
         FO_VERIFY_AND_THROW(buf != nullptr, "Zip read callback received a null output buffer");
         return fs::stream_read_exact(*file, make_span(buf, size)) ? size : 0;
     };
+
     ffunc.zwrite_file = [](voidpf, voidpf, const void*, uLong) -> uLong { return 0; };
     ffunc.ztell_file = [](voidpf, voidpf stream) -> long {
-        auto file = cast_from_void<std::ifstream*>(stream);
+        auto file {cast_from_void<std::ifstream*>(stream)};
         FO_VERIFY_AND_THROW(file, "Zip tell callback received a null file stream");
         return numeric_cast<long>(fs::stream_get_read_pos(*file));
     };
+
     ffunc.zseek_file = [](voidpf, voidpf stream, uLong offset, int32_t origin) -> long {
-        auto file = cast_from_void<std::ifstream*>(stream);
+        auto file {cast_from_void<std::ifstream*>(stream)};
         FO_VERIFY_AND_THROW(file, "Zip seek callback received a null file stream");
+
         switch (origin) {
         case ZLIB_FILEFUNC_SEEK_SET:
             return fs::stream_set_read_pos(*file, numeric_cast<int32_t>(offset), std::ios_base::beg) ? 0 : -1;
@@ -123,35 +129,38 @@ ZipFile::ZipFile(string_view fname) :
             return -1;
         }
     };
+
     ffunc.zclose_file = [](voidpf, voidpf) -> int32_t {
         // The ifstream is owned by the ZipFile object (_fileStream), not by zlib, so closing the zip must
         // not delete it. This keeps ownership RAII-safe when the constructor throws on a malformed zip
         return 0;
     };
+
     ffunc.zerror_file = [](voidpf, voidpf stream) -> int32_t {
         if (!stream) {
             return 1;
         }
+
         return 0;
     };
 
     ffunc.opaque = _fileStream.void_cast();
 
-    auto zip_handle = make_nptr(unzOpen2(string(_fileName).c_str(), &ffunc));
-    auto close_on_fail = scope_fail([&zip_handle]() noexcept {
+    auto zip_handle {make_nptr(unzOpen2(string(_fileName).c_str(), &ffunc))};
+    auto close_on_fail {scope_fail([&zip_handle]() noexcept {
         if (zip_handle) {
             unzClose(zip_handle.get());
             zip_handle = nullptr;
         }
-    });
+    })};
 
     if (!zip_handle) {
         throw DataSourceException("Can't read zip file", _fileName);
     }
 
-    unz_global_info gi;
+    unz_global_info gi {};
 
-    int32_t global_info_result = unzGetGlobalInfo(zip_handle.get(), &gi);
+    int32_t global_info_result {unzGetGlobalInfo(zip_handle.get(), &gi)};
 
     if (global_info_result != UNZ_OK) {
         throw DataSourceException("Read zip file tree failed (unzGetGlobalInfo)", _fileName, global_info_result);
@@ -160,19 +169,19 @@ ZipFile::ZipFile(string_view fname) :
         throw DataSourceException("ZIP archive has no entries", _fileName);
     }
 
-    ZipFileInfo zip_info;
-    unz_file_pos pos;
-    unz_file_info info;
-    char name_buf[4096];
+    ZipFileInfo zip_info {};
+    unz_file_pos pos {};
+    unz_file_info info {};
+    char name_buf[4096] {};
 
-    for (uLong i = 0; i < gi.number_entry; i++) {
-        int32_t file_pos_result = unzGetFilePos(zip_handle.get(), &pos);
+    for (uLong i {0}; i < gi.number_entry; i++) {
+        int32_t file_pos_result {unzGetFilePos(zip_handle.get(), &pos)};
 
         if (file_pos_result != UNZ_OK) {
             throw DataSourceException("Read zip file tree failed (unzGetFilePos)", _fileName, i, file_pos_result);
         }
 
-        int32_t file_info_result = unzGetCurrentFileInfo(zip_handle.get(), &info, name_buf, sizeof(name_buf), nullptr, 0, nullptr, 0);
+        int32_t file_info_result {unzGetCurrentFileInfo(zip_handle.get(), &info, name_buf, sizeof(name_buf), nullptr, 0, nullptr, 0)};
 
         if (file_info_result != UNZ_OK) {
             throw DataSourceException("Read zip file tree failed (unzGetCurrentFileInfo)", _fileName, i, file_info_result);
@@ -182,7 +191,7 @@ ZipFile::ZipFile(string_view fname) :
         }
 
         if ((info.external_fa & 0x10) == 0) { // Not folder
-            string name = strex(name_buf).normalize_path_slashes();
+            string name {static_cast<string&&>(strex(name_buf).normalize_path_slashes())};
 
             if (info.uncompressed_size > numeric_cast<uLong>(std::numeric_limits<int32_t>::max())) {
                 throw DataSourceException("ZIP entry exceeds the supported decoded size", _fileName, name, info.uncompressed_size);
@@ -195,7 +204,7 @@ ZipFile::ZipFile(string_view fname) :
         }
 
         if (i + 1 < gi.number_entry) {
-            int32_t next_result = unzGoToNextFile(zip_handle.get());
+            int32_t next_result {unzGoToNextFile(zip_handle.get())};
 
             if (next_result != UNZ_OK) {
                 throw DataSourceException("Read zip file tree failed (unzGoToNextFile)", _fileName, i, next_result);
@@ -217,7 +226,7 @@ ZipFile::~ZipFile()
 
 auto ZipFile::IsFileExists(string_view path) const -> bool
 {
-    auto it = _filesTree.find(path);
+    auto it {_filesTree.find(path)};
 
     if (it == _filesTree.end()) {
         return false;
@@ -228,13 +237,13 @@ auto ZipFile::IsFileExists(string_view path) const -> bool
 
 auto ZipFile::GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool
 {
-    auto it = _filesTree.find(path);
+    auto it {_filesTree.find(path)};
 
     if (it == _filesTree.end()) {
         return false;
     }
 
-    const auto& info = it->second;
+    const auto& info {it->second};
     write_time = _writeTime;
     size = info.UncompressedSize;
     return true;
@@ -244,7 +253,7 @@ auto ZipFile::GetIndexSnapshot() const -> optional<vector<IndexedFile>>
 {
     FO_TRACE_ZONE(FileSystem);
 
-    vector<IndexedFile> files;
+    vector<IndexedFile> files {};
     files.reserve(_filesTree.size());
 
     for (const auto& [path, info] : _filesTree) {
@@ -258,7 +267,7 @@ auto ZipFile::OpenFile(string_view path, size_t& size, uint64_t& write_time) con
 {
     FO_TRACE_ZONE(FileSystem);
 
-    auto it = _filesTree.find(path);
+    auto it {_filesTree.find(path)};
 
     if (it == _filesTree.end()) {
         return nullptr;
@@ -266,24 +275,24 @@ auto ZipFile::OpenFile(string_view path, size_t& size, uint64_t& write_time) con
 
     scoped_lock locker {_zipHandleLocker};
 
-    const auto& info = it->second;
-    unz_file_pos pos = info.Pos;
+    const auto& info {it->second};
+    unz_file_pos pos {info.Pos};
 
-    int32_t file_pos_result = unzGoToFilePos(_zipHandle.get(), &pos);
+    int32_t file_pos_result {unzGoToFilePos(_zipHandle.get(), &pos)};
 
     if (file_pos_result != UNZ_OK) {
         throw DataSourceException("Can't read file from zip (unzGoToFilePos)", _fileName, path, file_pos_result);
     }
 
-    int32_t open_result = unzOpenCurrentFile(_zipHandle.get());
+    int32_t open_result {unzOpenCurrentFile(_zipHandle.get())};
 
     if (open_result != UNZ_OK) {
         throw DataSourceException("Can't read file from zip (unzOpenCurrentFile)", _fileName, path, open_result);
     }
 
-    auto buf = safe_alloc::make_unique_arr<uint8_t>(numeric_cast<size_t>(info.UncompressedSize));
-    int32_t read = unzReadCurrentFile(_zipHandle.get(), buf.get(), info.UncompressedSize);
-    int32_t close_result = unzCloseCurrentFile(_zipHandle.get());
+    auto buf {safe_alloc::make_unique_arr<uint8_t>(numeric_cast<size_t>(info.UncompressedSize))};
+    int32_t read {unzReadCurrentFile(_zipHandle.get(), buf.get(), info.UncompressedSize)};
+    int32_t close_result {unzCloseCurrentFile(_zipHandle.get())};
 
     if (read != info.UncompressedSize) {
         throw DataSourceException("Can't read file from zip (unzReadCurrentFile)", _fileName, path, info.UncompressedSize, read, close_result);

@@ -47,7 +47,7 @@ struct ImageSourceId
     string Path {};
 };
 
-[[nodiscard]] constexpr auto operator==(const ImageSourceId& lhs, const ImageSourceId& rhs) noexcept -> bool
+constexpr auto operator==(const ImageSourceId& lhs, const ImageSourceId& rhs) noexcept -> bool
 {
     return lhs.Mount == rhs.Mount && lhs.Path == rhs.Path;
 }
@@ -55,10 +55,11 @@ struct ImageSourceId
 class ImageSourceCatalog
 {
 public:
+    [[nodiscard]] auto Find(string_view path) const -> nptr<const FileHeader>;
+    [[nodiscard]] auto Snapshot() const -> FileCollection;
+    [[nodiscard]] auto Identify(string_view path) const -> ImageSourceId;
+
     void AddFiles(const FileCollection& files);
-    auto Find(string_view path) const -> nptr<const FileHeader>;
-    auto Snapshot() const -> FileCollection;
-    auto Identify(string_view path) const -> ImageSourceId;
 
 private:
     map<string, FileHeader> _files {};
@@ -79,7 +80,7 @@ struct ImageOutputPlan
 
 struct ImageDependencyGraph
 {
-    static constexpr size_t MAX_FOFRM_DEPTH = 64;
+    static constexpr size_t MAX_FOFRM_DEPTH {64};
     ImageSourceCatalog Sources {};
     FileCollection Files {};
     vector<ImageOutputCandidate> Candidates {};

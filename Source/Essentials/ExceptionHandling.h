@@ -48,7 +48,7 @@ namespace exceptions
     [[noreturn]] void report_and_exit(const std::exception& ex) noexcept;
     void report_and_continue(const std::exception& ex) noexcept;
     void set_callback(callback handler) noexcept;
-    auto get_callback() noexcept -> callback;
+    [[nodiscard]] auto get_callback() noexcept -> callback;
     void install_crash_handler_stack() noexcept;
 
     // What the crash handlers record and write, open so the report can be checked without a crash

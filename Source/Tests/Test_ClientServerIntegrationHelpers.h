@@ -258,7 +258,6 @@ namespace ClientServerIntegrationServer
         return WorldSteps;
     }
 
-
     int EveryArgCalls = 0;
     int EveryArgMismatch = 0;
 
@@ -293,7 +292,6 @@ namespace ClientServerIntegrationServer
         return EveryArgMismatch;
     }
 
-
     int SwitchedCritters = 0;
 
     int UnitTestGetSwitchedCritters()
@@ -315,7 +313,7 @@ namespace ClientServerIntegrationServer
 )"},
             },
             [](string_view message) {
-                string message_str = string(message);
+                string message_str {string(message)};
 
                 if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
                     throw ScriptSystemException(message_str);
@@ -767,7 +765,7 @@ namespace ClientServerIntegrationClient
 )"},
             },
             [](string_view message) {
-                string message_str = string(message);
+                string message_str {string(message)};
 
                 if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
                     throw ScriptSystemException(message_str);
@@ -778,7 +776,7 @@ namespace ClientServerIntegrationClient
 
     inline auto MakeServerTestSettings(uint16_t port) -> GlobalSettings
     {
-        auto settings = GlobalSettings(false);
+        auto settings {GlobalSettings(false)};
 
         settings.ApplyDefaultSettings();
         settings.ApplyAutoSettings();
@@ -791,7 +789,7 @@ namespace ClientServerIntegrationClient
 
     inline auto MakeClientTestSettings(uint16_t port) -> GlobalSettings
     {
-        auto settings = GlobalSettings(false);
+        auto settings {GlobalSettings(false)};
 
         settings.ApplyDefaultSettings();
         settings.ApplyAutoSettings();
@@ -804,20 +802,20 @@ namespace ClientServerIntegrationClient
 
     inline auto MakeTempClientUpdaterBakeDir(string_view name) -> string
     {
-        std::chrono::steady_clock::rep suffix = std::chrono::steady_clock::now().time_since_epoch().count();
-        string dir_name = strex("lf_client_updater_{}_{}", name, suffix).str();
-        std::filesystem::path base = std::filesystem::temp_directory_path() / std::filesystem::path {fs::make_path(dir_name)};
+        std::chrono::steady_clock::rep suffix {std::chrono::steady_clock::now().time_since_epoch().count()};
+        string dir_name {strex("lf_client_updater_{}_{}", name, suffix).str()};
+        std::filesystem::path base {std::filesystem::temp_directory_path() / std::filesystem::path {fs::make_path(dir_name)}};
         return fs::path_to_string(base);
     }
 
     inline auto PrepareClientUpdaterBakeOutput() -> string
     {
-        string bake_dir = MakeTempClientUpdaterBakeDir("resources");
-        string fonts_dir = strex(bake_dir).combine_path("Embedded/Fonts").str();
+        string bake_dir {MakeTempClientUpdaterBakeDir("resources")};
+        string fonts_dir {strex(bake_dir).combine_path("Embedded/Fonts").str()};
 
         REQUIRE(fs::create_directories(fonts_dir));
 
-        constexpr string_view default_font = R"(Version 2
+        constexpr string_view default_font {R"(Version 2
 Image Default.png
 YAdvance 1
 
@@ -829,14 +827,14 @@ Letter ' '
   XAdvance 1
 
 End
-)";
+)"};
 
         REQUIRE(fs::write_file(strex(fonts_dir).combine_path("Default.fofnt").str(), default_font));
 
-        vector<uint8_t> default_font_sprite = BakerTests::MakeMinimalBakedSprite();
+        vector<uint8_t> default_font_sprite {BakerTests::MakeMinimalBakedSprite()};
         REQUIRE(fs::write_file(strex(fonts_dir).combine_path("Default.png").str(), default_font_sprite));
 
-        string effects_dir = strex(bake_dir).combine_path("Embedded/Effects").str();
+        string effects_dir {strex(bake_dir).combine_path("Embedded/Effects").str()};
         REQUIRE(fs::create_directories(effects_dir));
 
         for (string_view name : {"ImGui_Default", "2D_Default", "Flush_RenderTarget"}) {
@@ -852,12 +850,12 @@ End
     template<typename TEngine>
     inline auto MakeStaticItemPropsBlob(TEngine& engine) -> vector<uint8_t>
     {
-        auto registrar = engine.GetPropertyRegistrar(engine.Hashes.to_hashed_string("Item"));
+        auto registrar {engine.GetPropertyRegistrar(engine.Hashes.to_hashed_string("Item"))};
         REQUIRE(static_cast<bool>(registrar));
 
-        auto static_prop = registrar->FindProperty("Static");
-        auto ownership_prop = registrar->FindProperty("Ownership");
-        auto hex_prop = registrar->FindProperty("Hex");
+        auto static_prop {registrar->FindProperty("Static")};
+        auto ownership_prop {registrar->FindProperty("Ownership")};
+        auto hex_prop {registrar->FindProperty("Hex")};
         REQUIRE(static_cast<bool>(static_prop));
         REQUIRE(static_cast<bool>(ownership_prop));
         REQUIRE(static_cast<bool>(hex_prop));
@@ -867,8 +865,8 @@ End
         props.SetValue<ItemOwnership>(ownership_prop, ItemOwnership::MapHex);
         props.SetValue<mpos>(hex_prop, STATIC_ITEM_HEX);
 
-        vector<uint8_t> props_data;
-        set<hstring> str_hashes;
+        vector<uint8_t> props_data {};
+        set<hstring> str_hashes {};
         props.StoreAllData(props_data, str_hashes);
         return props_data;
     }
@@ -878,27 +876,27 @@ End
     template<typename TEngine>
     inline auto MakeStaticServerMapBlob(TEngine& engine) -> vector<uint8_t>
     {
-        hstring critter_pid = engine.Hashes.to_hashed_string("UnitTestSharedCritter");
-        hstring item_pid = engine.Hashes.to_hashed_string("UnitTestSharedItem");
+        hstring critter_pid {engine.Hashes.to_hashed_string("UnitTestSharedCritter")};
+        hstring item_pid {engine.Hashes.to_hashed_string("UnitTestSharedItem")};
 
         // A default-constructed property set still serializes to a non-empty blob, so it is produced here
         // rather than writing a zero size the reader cannot restore from
-        auto make_default_props_blob = [&engine](string_view type_name) {
-            auto registrar = engine.GetPropertyRegistrar(engine.Hashes.to_hashed_string(type_name));
+        auto make_default_props_blob {[&engine](string_view type_name) {
+            auto registrar {engine.GetPropertyRegistrar(engine.Hashes.to_hashed_string(type_name))};
             REQUIRE(static_cast<bool>(registrar));
 
             Properties props {registrar};
-            vector<uint8_t> props_data;
-            set<hstring> str_hashes;
+            vector<uint8_t> props_data {};
+            set<hstring> str_hashes {};
             props.StoreAllData(props_data, str_hashes);
             return props_data;
-        };
+        }};
 
-        vector<uint8_t> critter_props = make_default_props_blob("Critter");
-        vector<uint8_t> item_props = make_default_props_blob("Item");
+        vector<uint8_t> critter_props {make_default_props_blob("Critter")};
+        vector<uint8_t> item_props {make_default_props_blob("Item")};
 
-        vector<uint8_t> map_data;
-        auto writer = data_writer(map_data);
+        vector<uint8_t> map_data {};
+        data_writer writer {data_writer(map_data)};
 
         writer.write<uint32_t>(BAKED_MAP_FILE_MAGIC);
         writer.write<uint32_t>(BAKED_MAP_FILE_VERSION);
@@ -920,7 +918,7 @@ End
             writer.write_bytes({critter_props.data(), critter_props.size()});
         }
 
-        vector<uint8_t> static_item_props = MakeStaticItemPropsBlob(engine);
+        vector<uint8_t> static_item_props {MakeStaticItemPropsBlob(engine)};
 
         writer.write<uint32_t>(uint32_t {2});
         writer.write<ident_t::underlying_type>(ident_t::underlying_type {5002});
@@ -942,11 +940,11 @@ End
     template<typename TEngine>
     inline auto MakeStaticClientMapBlob(TEngine& engine) -> vector<uint8_t>
     {
-        hstring item_pid = engine.Hashes.to_hashed_string("UnitTestSharedItem");
-        vector<uint8_t> static_item_props = MakeStaticItemPropsBlob(engine);
+        hstring item_pid {engine.Hashes.to_hashed_string("UnitTestSharedItem")};
+        vector<uint8_t> static_item_props {MakeStaticItemPropsBlob(engine)};
 
-        vector<uint8_t> map_data;
-        auto writer = data_writer(map_data);
+        vector<uint8_t> map_data {};
+        data_writer writer {data_writer(map_data)};
         writer.write<uint32_t>(BAKED_MAP_FILE_MAGIC);
         writer.write<uint32_t>(BAKED_MAP_FILE_VERSION);
 
@@ -966,18 +964,18 @@ End
     template<typename TEngine>
     inline auto MakeMapProtoBlob(TEngine& proto_engine, hstring type_name, string_view proto_name, msize map_size) -> vector<uint8_t>
     {
-        vector<uint8_t> props_data;
-        set<hstring> str_hashes;
+        vector<uint8_t> props_data {};
+        set<hstring> str_hashes {};
 
-        auto registrar = proto_engine.GetPropertyRegistrar(type_name);
+        auto registrar {proto_engine.GetPropertyRegistrar(type_name)};
         REQUIRE(static_cast<bool>(registrar));
 
         ProtoMap proto {proto_engine.Hashes.to_hashed_string(proto_name), registrar};
         proto.SetSize(map_size);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
-        vector<uint8_t> protos_data;
-        auto writer = data_writer(protos_data);
+        vector<uint8_t> protos_data {};
+        data_writer writer {data_writer(protos_data)};
 
         writer.write<uint32_t>(uint32_t {0});
         ignore_unused(str_hashes);
@@ -1000,7 +998,7 @@ End
     {
         // The login handshake is a remote call, so both sides declare it: inbound on the server, outbound on
         // the client. The subsystem hint is the owning script file, whose stem becomes the handler namespace
-        auto metadata_blob = BakerTests::MakeMetadataBlob({
+        auto metadata_blob {BakerTests::MakeMetadataBlob({
             {"Property",
                 {
                     {"Player", "Server", "int32", "UnitTestLoginMark", "Mutable", "Persistent"},
@@ -1021,33 +1019,33 @@ End
                     {"UnitTestEveryArgToServer", "ClientServerIntegrationServer.fos", "In", "int8", "", "i8", "int16", "", "i16", "int32", "", "i32", "int64", "", "i64", "uint8", "", "u8", "uint16", "", "u16", "uint32", "", "u32", "uint64", "", "u64", "float32", "", "f32", "float64", "", "f64", "bool", "", "flag", "string", "", "text", "hstring", "", "hash", "ident", "", "id", "timespan", "", "span", "ucolor", "", "color", "mpos", "", "hex", "ipos", "", "offset", "int32 [ ]", "", "ints", "string [ ]", "", "texts", "hstring [ ]", "", "hashes", "Limits", "0", "0"},
                     {"UnitTestEveryArgToClient", "ClientServerIntegrationServer.fos", "Out", "int8", "", "i8", "int16", "", "i16", "int32", "", "i32", "int64", "", "i64", "uint8", "", "u8", "uint16", "", "u16", "uint32", "", "u32", "uint64", "", "u64", "float32", "", "f32", "float64", "", "f64", "bool", "", "flag", "string", "", "text", "hstring", "", "hash", "ident", "", "id", "timespan", "", "span", "ucolor", "", "color", "mpos", "", "hex", "ipos", "", "offset", "int32 [ ]", "", "ints", "string [ ]", "", "texts", "hstring [ ]", "", "hashes", "Limits", "0", "0"},
                 }},
-        });
+        })};
 
-        auto compiler_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ClientServerServerCompilerResources");
+        auto compiler_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("ClientServerServerCompilerResources")};
         compiler_source->AddFile("Metadata.fometa-server", metadata_blob);
 
-        FileSystem compiler_resources;
+        FileSystem compiler_resources {};
         compiler_resources.AddCustomSource(std::move(compiler_source));
 
         BakerServerEngine proto_engine {compiler_resources};
-        hstring critter_type = proto_engine.Hashes.to_hashed_string("Critter");
-        auto proto_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "UnitTestSharedCritter");
+        hstring critter_type {proto_engine.Hashes.to_hashed_string("Critter")};
+        auto proto_blob {BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "UnitTestSharedCritter")};
 
         // A location plus its map lets the logged-in critter enter the world, which is what drives the
         // client through the load-map / add-critter / property-sync protocol
-        hstring location_type = proto_engine.Hashes.to_hashed_string("Location");
-        hstring map_type = proto_engine.Hashes.to_hashed_string("Map");
-        hstring item_type = proto_engine.Hashes.to_hashed_string("Item");
-        auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "UnitTestSharedLocation");
-        auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "UnitTestSharedItem");
-        auto map_blob = MakeMapProtoBlob(proto_engine, map_type, "UnitTestSharedMap", msize {50, 50});
-        auto fomap_blob = MakeStaticServerMapBlob(proto_engine);
+        hstring location_type {proto_engine.Hashes.to_hashed_string("Location")};
+        hstring map_type {proto_engine.Hashes.to_hashed_string("Map")};
+        hstring item_type {proto_engine.Hashes.to_hashed_string("Item")};
+        auto location_blob {BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "UnitTestSharedLocation")};
+        auto item_blob {BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "UnitTestSharedItem")};
+        auto map_blob {MakeMapProtoBlob(proto_engine, map_type, "UnitTestSharedMap", msize {50, 50})};
+        auto fomap_blob {MakeStaticServerMapBlob(proto_engine)};
 
 #if FO_ANGELSCRIPT_SCRIPTING
-        auto script_blob = MakeServerScriptBinary(compiler_resources);
+        auto script_blob {MakeServerScriptBinary(compiler_resources)};
 #endif
 
-        auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ClientServerServerRuntimeResources");
+        auto runtime_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("ClientServerServerRuntimeResources")};
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
         runtime_source->AddFile("ClientServerIntegration.fopro-bin-server", proto_blob);
         runtime_source->AddFile("ClientServerIntegrationLocation.fopro-bin-server", location_blob);
@@ -1058,14 +1056,14 @@ End
         runtime_source->AddFile("ClientServerIntegration.fos-bin-server", script_blob);
 #endif
 
-        FileSystem resources;
+        FileSystem resources {};
         resources.AddCustomSource(std::move(runtime_source));
         return resources;
     }
 
     inline auto MakeClientTestResources() -> FileSystem
     {
-        auto metadata_blob = BakerTests::MakeMetadataBlob({
+        auto metadata_blob {BakerTests::MakeMetadataBlob({
             {"Property",
                 {
                     {"Player", "Server", "int32", "UnitTestLoginMark", "Mutable", "Persistent"},
@@ -1084,31 +1082,31 @@ End
                     {"UnitTestEveryArgToServer", "ClientServerIntegrationClient.fos", "Out", "int8", "", "i8", "int16", "", "i16", "int32", "", "i32", "int64", "", "i64", "uint8", "", "u8", "uint16", "", "u16", "uint32", "", "u32", "uint64", "", "u64", "float32", "", "f32", "float64", "", "f64", "bool", "", "flag", "string", "", "text", "hstring", "", "hash", "ident", "", "id", "timespan", "", "span", "ucolor", "", "color", "mpos", "", "hex", "ipos", "", "offset", "int32 [ ]", "", "ints", "string [ ]", "", "texts", "hstring [ ]", "", "hashes", "Limits", "0", "0"},
                     {"UnitTestEveryArgToClient", "ClientServerIntegrationClient.fos", "In", "int8", "", "i8", "int16", "", "i16", "int32", "", "i32", "int64", "", "i64", "uint8", "", "u8", "uint16", "", "u16", "uint32", "", "u32", "uint64", "", "u64", "float32", "", "f32", "float64", "", "f64", "bool", "", "flag", "string", "", "text", "hstring", "", "hash", "ident", "", "id", "timespan", "", "span", "ucolor", "", "color", "mpos", "", "hex", "ipos", "", "offset", "int32 [ ]", "", "ints", "string [ ]", "", "texts", "hstring [ ]", "", "hashes", "Limits", "0", "0"},
                 }},
-        });
+        })};
 
-        auto compiler_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ClientServerClientCompilerResources");
+        auto compiler_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("ClientServerClientCompilerResources")};
         compiler_source->AddFile("Metadata.fometa-client", metadata_blob);
 
-        FileSystem compiler_resources;
+        FileSystem compiler_resources {};
         compiler_resources.AddCustomSource(std::move(compiler_source));
 
         BakerClientEngine proto_engine {compiler_resources};
-        hstring critter_type = proto_engine.Hashes.to_hashed_string("Critter");
-        auto proto_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "UnitTestSharedCritter");
+        hstring critter_type {proto_engine.Hashes.to_hashed_string("Critter")};
+        auto proto_blob {BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "UnitTestSharedCritter")};
 
-        hstring location_type = proto_engine.Hashes.to_hashed_string("Location");
-        hstring map_type = proto_engine.Hashes.to_hashed_string("Map");
-        hstring item_type = proto_engine.Hashes.to_hashed_string("Item");
-        auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "UnitTestSharedLocation");
-        auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "UnitTestSharedItem");
-        auto map_blob = MakeMapProtoBlob(proto_engine, map_type, "UnitTestSharedMap", msize {50, 50});
-        auto fomap_blob = MakeStaticClientMapBlob(proto_engine);
+        hstring location_type {proto_engine.Hashes.to_hashed_string("Location")};
+        hstring map_type {proto_engine.Hashes.to_hashed_string("Map")};
+        hstring item_type {proto_engine.Hashes.to_hashed_string("Item")};
+        auto location_blob {BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "UnitTestSharedLocation")};
+        auto item_blob {BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "UnitTestSharedItem")};
+        auto map_blob {MakeMapProtoBlob(proto_engine, map_type, "UnitTestSharedMap", msize {50, 50})};
+        auto fomap_blob {MakeStaticClientMapBlob(proto_engine)};
 
 #if FO_ANGELSCRIPT_SCRIPTING
-        auto script_blob = MakeClientScriptBinary(compiler_resources);
+        auto script_blob {MakeClientScriptBinary(compiler_resources)};
 #endif
 
-        auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ClientServerClientRuntimeResources");
+        auto runtime_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("ClientServerClientRuntimeResources")};
         runtime_source->AddFile("Metadata.fometa-client", metadata_blob);
         runtime_source->AddFile("ClientServerIntegration.fopro-bin-client", proto_blob);
         runtime_source->AddFile("ClientServerIntegrationLocation.fopro-bin-client", location_blob);
@@ -1124,7 +1122,7 @@ End
             runtime_source->AddFile(strex("Effects/{}.fofx-1-info", name).str(), "[EffectInfo]\n");
         }
 
-        FileSystem resources;
+        FileSystem resources {};
         resources.AddCustomSource(std::move(runtime_source));
         return resources;
     }
@@ -1141,7 +1139,7 @@ End
 
     inline auto WaitForServerStart(ptr<ServerEngine> server) -> string
     {
-        for (int32_t i = 0; i < 6000; i++) {
+        for (int32_t i {0}; i < 6000; i++) {
             if (server->IsStarted()) {
                 return {};
             }
@@ -1158,19 +1156,19 @@ End
     inline auto GetServerConnectionCount(ptr<ServerEngine> server) -> size_t
     {
         REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
-        auto unlock = scope_exit([server]() noexcept { safe_call([server] { server.get_no_const()->Unlock(); }); });
+        auto unlock {scope_exit([server]() noexcept { safe_call([server] { server.get_no_const()->Unlock(); }); })};
 
-        string health_info = server->GetHealthInfo();
+        string health_info {server->GetHealthInfo()};
         constexpr string_view prefix {"Connections: "};
-        auto pos = health_info.find(prefix);
+        auto pos {health_info.find(prefix)};
         REQUIRE(pos != string::npos);
 
-        auto begin = pos + prefix.length();
-        auto end = health_info.find('\n', begin);
-        auto value_sv = string_view {health_info}.substr(begin, end == string::npos ? string::npos : end - begin);
+        size_t begin {pos + prefix.length()};
+        auto end {health_info.find('\n', begin)};
+        auto value_sv {string_view {health_info}.substr(begin, end == string::npos ? string::npos : end - begin)};
 
-        size_t value = 0;
-        const auto [ptr, ec] = std::from_chars(value_sv.data(), value_sv.data() + value_sv.size(), value);
+        size_t value {0};
+        const auto [ptr, ec] {std::from_chars(value_sv.data(), value_sv.data() + value_sv.size(), value)};
         REQUIRE(ec == std::errc {});
         REQUIRE(ptr == value_sv.data() + value_sv.size());
 
@@ -1179,7 +1177,7 @@ End
 
     inline auto WaitForServerConnectionCount(ptr<ServerEngine> server, size_t expected_connections) -> bool
     {
-        for (int32_t i = 0; i < 2000; i++) {
+        for (int32_t i {0}; i < 2000; i++) {
             if (GetServerConnectionCount(server) == expected_connections) {
                 return true;
             }
@@ -1212,7 +1210,7 @@ End
                 }
             });
 
-            vector<uint8_t> offer;
+            vector<uint8_t> offer {};
             _channel->TakeHandshakeOutput(offer);
             _send(offer);
         }
@@ -1227,7 +1225,7 @@ End
         // Everything the server has sent so far, decrypted
         [[nodiscard]] auto GetPlaintext() -> vector<uint8_t>
         {
-            vector<uint8_t> received;
+            vector<uint8_t> received {};
 
             {
                 scoped_lock locker {_state->Locker};
@@ -1245,7 +1243,7 @@ End
             (void)GetPlaintext();
             REQUIRE(_channel->IsEstablished());
 
-            vector<uint8_t> sealed;
+            vector<uint8_t> sealed {};
             _channel->Seal(plaintext, sealed);
             _send(sealed);
         }
@@ -1269,7 +1267,7 @@ End
     // The handshake a compatible client opens with, so the raw connection stays on the server as a not logged in session
     inline void SendCompatibleHandshake(RawChannelClient& client, ptr<ServerEngine> server)
     {
-        auto handshake = NetOutBuffer(128);
+        auto handshake {NetOutBuffer(128)};
         handshake.StartMsg(NetMessage::Handshake);
         handshake.Write(server->Settings->Network.CompatibilityVersion);
         handshake.Write(server->GetMetadataVersion());
@@ -1282,10 +1280,10 @@ End
     // Counts what the server has written so far; the stream is unpacked only when compression is off
     inline auto CountServerMessages(RawChannelClient& client, NetMessage message) -> size_t
     {
-        vector<uint8_t> stream = client.GetPlaintext();
-        constexpr size_t header_size = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(NetMessage);
-        size_t count = 0;
-        size_t offset = 0;
+        vector<uint8_t> stream {client.GetPlaintext()};
+        constexpr size_t header_size {sizeof(uint32_t) + sizeof(uint32_t) + sizeof(NetMessage)};
+        size_t count {0};
+        size_t offset {0};
 
         while (stream.size() - offset >= header_size) {
             uint32_t message_size {};
@@ -1309,7 +1307,7 @@ End
 
     inline auto WaitForServerMessageCount(RawChannelClient& client, NetMessage message, size_t expected_count) -> bool
     {
-        for (int32_t i = 0; i < 2000; i++) {
+        for (int32_t i {0}; i < 2000; i++) {
             if (CountServerMessages(client, message) >= expected_count) {
                 return true;
             }
@@ -1322,7 +1320,7 @@ End
 
     inline auto WaitForConnected(ptr<ClientEngine> client, ptr<ServerEngine> server, size_t expected_connections = 1) -> bool
     {
-        for (int32_t i = 0; i < 2000; i++) {
+        for (int32_t i {0}; i < 2000; i++) {
             client->MainLoop();
 
             if (client->IsConnected() && client->GetCurPlayer() && GetServerConnectionCount(server) == expected_connections) {
@@ -1337,7 +1335,7 @@ End
 
     inline auto WaitForDisconnected(ptr<ClientEngine> client, ptr<ServerEngine> server) -> bool
     {
-        for (int32_t i = 0; i < 2000; i++) {
+        for (int32_t i {0}; i < 2000; i++) {
             client->MainLoop();
 
             if (!client->IsConnecting() && !client->IsConnected() && !client->GetCurPlayer() && GetServerConnectionCount(server) == 0) {
@@ -1352,13 +1350,13 @@ End
 
     inline auto WaitForLearnedHash(ptr<ClientEngine> client, hstring::hash_t hash, string_view expected_string) -> bool
     {
-        constexpr int32_t max_attempts = 15000;
+        constexpr int32_t max_attempts {15000};
 
-        for (int32_t i = 0; i < max_attempts; i++) {
+        for (int32_t i {0}; i < max_attempts; i++) {
             client->MainLoop();
 
-            bool failed = false;
-            hstring resolved = client->Hashes.resolve_hash(hash, &failed);
+            bool failed {false};
+            hstring resolved {client->Hashes.resolve_hash(hash, &failed)};
 
             if (!failed && string_view {resolved.as_str()} == expected_string) {
                 return true;
@@ -1372,7 +1370,7 @@ End
 
     inline auto WaitForUpdaterResult(Updater& updater) -> bool
     {
-        for (int32_t i = 0; i < 2000; i++) {
+        for (int32_t i {0}; i < 2000; i++) {
             if (updater.Process()) {
                 return true;
             }

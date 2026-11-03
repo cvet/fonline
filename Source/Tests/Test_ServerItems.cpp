@@ -41,42 +41,42 @@ using namespace ServerItemsTests;
 
 TEST_CASE("ServerItemDetachedMoves")
 {
-    auto settings = ServerItemsTests::MakeSettings();
-    auto server = ServerItemsTests::MakeServerEngine(settings);
+    auto settings {ServerItemsTests::MakeSettings()};
+    auto server {ServerItemsTests::MakeServerEngine(settings)};
 
-    auto shutdown = scope_exit([&server]() noexcept {
+    auto shutdown {scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
                 server->Shutdown();
             }
         });
-    });
+    })};
 
-    string startup_error = ServerItemsTests::WaitForStart(server);
+    string startup_error {ServerItemsTests::WaitForStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
 
-    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
 
-    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
+    auto fn {[&server](string_view name) { return server->Hashes.to_hashed_string(name); }};
 
-    hstring critter_pid = fn("TestCritter");
-    hstring item_pid = fn("TestItem");
+    hstring critter_pid {fn("TestCritter")};
+    hstring item_pid {fn("TestItem")};
 
-    auto owner = server->CreateCritter(critter_pid, false);
-    auto receiver = server->CreateCritter(critter_pid, false);
-    auto source = server->CrMngr.AddItemToCritter(owner, server->ItemMngr.CreateItem(item_pid, nullptr), true);
+    auto owner {server->CreateCritter(critter_pid, false)};
+    auto receiver {server->CreateCritter(critter_pid, false)};
+    auto source {server->CrMngr.AddItemToCritter(owner, server->ItemMngr.CreateItem(item_pid, nullptr), true)};
 
     SECTION("CloneIsDetachedCopyPlacedByMove")
     {
-        auto clone = server->ItemMngr.CloneItem(source);
+        auto clone {server->ItemMngr.CloneItem(source)};
         CHECK(clone->GetId() != source->GetId());
         CHECK(clone->GetProtoId() == item_pid);
         CHECK(clone->GetOwnership() == ItemOwnership::Nowhere);
 
-        auto moved = server->ItemMngr.MoveItem(clone, receiver);
+        auto moved {server->ItemMngr.MoveItem(clone, receiver)};
         REQUIRE(static_cast<bool>(moved));
         CHECK(moved->GetId() == clone->GetId());
         CHECK(clone->GetOwnership() == ItemOwnership::CritterInventory);
@@ -86,10 +86,10 @@ TEST_CASE("ServerItemDetachedMoves")
 
     SECTION("DetachedItemIsPlacedByMove")
     {
-        auto detached = server->ItemMngr.CreateItem(item_pid, nullptr);
+        auto detached {server->ItemMngr.CreateItem(item_pid, nullptr)};
         CHECK(detached->GetOwnership() == ItemOwnership::Nowhere);
 
-        auto moved = server->ItemMngr.MoveItem(detached, receiver);
+        auto moved {server->ItemMngr.MoveItem(detached, receiver)};
         REQUIRE(static_cast<bool>(moved));
         CHECK(moved->GetId() == detached->GetId());
         CHECK(static_cast<bool>(receiver->GetInvItem(detached->GetId())));
@@ -97,8 +97,8 @@ TEST_CASE("ServerItemDetachedMoves")
 
     SECTION("AbandonedCloneIsDestroyedByCreator")
     {
-        auto clone = server->ItemMngr.CloneItem(source);
-        ident_t clone_id = clone->GetId();
+        auto clone {server->ItemMngr.CloneItem(source)};
+        ident_t clone_id {clone->GetId()};
         server->ItemMngr.DestroyItem(clone);
         CHECK_FALSE(static_cast<bool>(server->EntityMngr.GetItem(clone_id)));
         CHECK(static_cast<bool>(owner->GetInvItem(source->GetId())));
@@ -116,29 +116,29 @@ TEST_CASE("ServerItemDetachedMoves")
 
 TEST_CASE("ServerEntityManagerQueries")
 {
-    auto settings = ServerItemsTests::MakeSettings();
-    auto server = ServerItemsTests::MakeServerEngine(settings);
+    auto settings {ServerItemsTests::MakeSettings()};
+    auto server {ServerItemsTests::MakeServerEngine(settings)};
 
-    auto shutdown = scope_exit([&server]() noexcept {
+    auto shutdown {scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
                 server->Shutdown();
             }
         });
-    });
+    })};
 
-    string startup_error = ServerItemsTests::WaitForStart(server);
+    string startup_error {ServerItemsTests::WaitForStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
 
-    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
 
-    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
+    auto fn {[&server](string_view name) { return server->Hashes.to_hashed_string(name); }};
 
-    hstring critter_pid = fn("TestCritter");
-    hstring item_pid = fn("TestItem");
+    hstring critter_pid {fn("TestCritter")};
+    hstring item_pid {fn("TestItem")};
 
     // Initial entity counts
     CHECK(server->EntityMngr.GetLocationsCount() == 0);
@@ -146,33 +146,33 @@ TEST_CASE("ServerEntityManagerQueries")
     CHECK(server->EntityMngr.GetPlayersCount() == 0);
 
     // Entities collection
-    vector<refcount_ptr<ServerEntity>> entities = server->EntityMngr.GetEntities();
-    auto entities_before = entities.size();
+    vector<refcount_ptr<ServerEntity>> entities {server->EntityMngr.GetEntities()};
+    auto entities_before {entities.size()};
 
     // Items collection access
-    vector<refcount_ptr<Item>> items = server->EntityMngr.GetItems();
-    auto items_before = items.size();
+    vector<refcount_ptr<Item>> items {server->EntityMngr.GetItems()};
+    auto items_before {items.size()};
 
-    auto item = server->ItemMngr.CreateItem(item_pid, nullptr);
+    auto item {server->ItemMngr.CreateItem(item_pid, nullptr)};
     CHECK(server->EntityMngr.GetItems().size() == items_before + 1);
 
     // Critters collection access
-    vector<refcount_ptr<Critter>> critters = server->EntityMngr.GetCritters();
-    auto cr_before = critters.size();
+    vector<refcount_ptr<Critter>> critters {server->EntityMngr.GetCritters()};
+    auto cr_before {critters.size()};
 
-    auto cr = server->CreateCritter(critter_pid, false);
+    auto cr {server->CreateCritter(critter_pid, false)};
     CHECK(server->EntityMngr.GetCritters().size() == cr_before + 1);
 
     // Locations collection (should be empty in this test)
-    vector<refcount_ptr<Location>> locations = server->EntityMngr.GetLocations();
+    vector<refcount_ptr<Location>> locations {server->EntityMngr.GetLocations()};
     CHECK(locations.empty());
 
     // Maps collection (should be empty)
-    vector<refcount_ptr<Map>> maps = server->EntityMngr.GetMaps();
+    vector<refcount_ptr<Map>> maps {server->EntityMngr.GetMaps()};
     CHECK(maps.empty());
 
     // Players collection (no players connected)
-    vector<refcount_ptr<Player>> players = server->EntityMngr.GetPlayers();
+    vector<refcount_ptr<Player>> players {server->EntityMngr.GetPlayers()};
     CHECK(players.empty());
 
     // Entities grew after creating item and critter

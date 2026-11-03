@@ -95,7 +95,7 @@ public:
     private:
         ptr<ServerConnection> _owner;
         nptr<NetOutBuffer> _outBuf {};
-        optional<NetMessage> _msg;
+        optional<NetMessage> _msg {};
         stack_unwind_detector _isStackUnwinding {};
     };
 
@@ -158,9 +158,6 @@ public:
     [[nodiscard]] auto GetDisconnectReason() const noexcept -> DisconnectReason;
     [[nodiscard]] auto GetDiagnostics() const -> Diagnostics;
     [[nodiscard]] auto GetRuntimeState() const -> shared_ptr<RuntimeState>;
-    [[nodiscard]] static auto GetRuntimeDisconnectReason(ptr<const RuntimeState> state) -> DisconnectReason;
-    [[nodiscard]] static auto GetRuntimeDiagnostics(ptr<const RuntimeState> state) -> Diagnostics;
-    [[nodiscard]] static auto IsRuntimeStateActive(ptr<const RuntimeState> state) -> bool;
     [[nodiscard]] auto IsHandshakeComplete() const noexcept -> bool;
     [[nodiscard]] auto IsInactive(nanotime time) const noexcept -> bool;
     [[nodiscard]] auto IsLoginTimedOut(nanotime time) const noexcept -> bool;
@@ -171,6 +168,9 @@ public:
     [[nodiscard]] auto GetUpdateFileTransferIndex() const noexcept -> optional<size_t>;
 
     auto BeginRemoteCall(hstring name, ident_t caller_id) -> InboundCall;
+    static auto GetRuntimeDisconnectReason(ptr<const RuntimeState> state) -> DisconnectReason;
+    static auto GetRuntimeDiagnostics(ptr<const RuntimeState> state) -> Diagnostics;
+    static auto IsRuntimeStateActive(ptr<const RuntimeState> state) -> bool;
     static void CheckRuntimeState(ptr<RuntimeState> state, nanotime now);
 
     void SetDataArrivedCallback(DataArrivedCallback callback);
@@ -220,7 +220,7 @@ private:
     void UpdateInputDiagnostics(size_t added_bytes = 0) FO_TSA_REQUIRES(_inBufLocker);
 
     ptr<ServerNetworkSettings> _settings;
-    shared_ptr<NetworkServerConnection> _netConnection;
+    shared_ptr<NetworkServerConnection> _netConnection {};
     mutex _inBufLocker {};
     NetInBuffer _inBuf;
     mutex _outBufLocker {};
@@ -242,7 +242,7 @@ private:
     DataArrivedCallback _dataArrivedCallback {};
     bool _gracefulDisconnected {};
     std::atomic<bool> _inputRejected {};
-    shared_ptr<RuntimeState> _runtimeState;
+    shared_ptr<RuntimeState> _runtimeState {};
     size_t _accountedInputBytes FO_TSA_GUARDED_BY(_inBufLocker) {};
 };
 

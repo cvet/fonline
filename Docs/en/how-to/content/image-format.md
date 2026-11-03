@@ -265,6 +265,12 @@ Other types/depths fail; the importer does not honor the origin bit or skip IDs.
 Prefer PNG unless the exporter has a tested TGA preset. See the
 [source-format reference](../../reference/image-format/formats.md).
 
+Wire dimensions are unsigned 16-bit values widened to `int32_t`, including values
+above 32767. Byte counts and available payload are checked before allocation.
+Truncated packets and run packets exceeding the remaining image are rejected.
+The established final raw-packet behavior is preserved: consume the complete
+encoded packet and keep only the pixels remaining in the image.
+
 ### Fallout FRM and FR0
 
 FRM/FR0 palette, animated-color, split-direction and output-name rules are in the

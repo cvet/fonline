@@ -202,7 +202,7 @@ private:
 
     ptr<const ProtoMap> _protoMap;
     ptr<StaticMap> _staticMap;
-    msize _mapSize;
+    msize _mapSize {};
     unique_ptr<TwoDimensionalGrid<Field, mpos, msize>> _hexField;
     vector<ptr<Critter>> _critters {};
     unordered_map<ident_t, ptr<Critter>> _crittersMap {};

@@ -39,7 +39,7 @@ FO_BEGIN_NAMESPACE
 
 TEST_CASE("BasicCore")
 {
-    char buf[64];
+    char buf[64] {};
 
     SECTION("ItoaDecimal")
     {
@@ -71,12 +71,12 @@ TEST_CASE("ScopeSuccessExceptionSpecification", "[scope-success]")
 
 TEST_CASE("ScopeSuccess", "[scope-success]")
 {
-    int32_t calls = 0;
+    int32_t calls {0};
 
     SECTION("RunsOnNormalExit")
     {
         {
-            auto guard = scope_success([&]() noexcept { ++calls; });
+            auto guard {scope_success([&]() noexcept { ++calls; })};
             CHECK(calls == 0);
         }
         CHECK(calls == 1);
@@ -84,35 +84,38 @@ TEST_CASE("ScopeSuccess", "[scope-success]")
 
     SECTION("RunsOnEarlyReturn")
     {
-        auto operation = [&]() {
-            auto guard = scope_success([&]() noexcept { ++calls; });
+        auto operation {[&]() {
+            auto guard {scope_success([&]() noexcept { ++calls; })};
             return 42;
-        };
+        }};
+
         CHECK(operation() == 42);
         CHECK(calls == 1);
     }
 
     SECTION("SkipsCallbackDuringUnwind")
     {
-        auto operation = [&]() {
-            auto guard = scope_success([&]() {
+        auto operation {[&]() {
+            auto guard {scope_success([&]() {
                 ++calls;
                 throw std::runtime_error("Success callback failed");
-            });
+            })};
             throw std::runtime_error("Operation failed");
-        };
+        }};
+
         CHECK_THROWS_WITH(operation(), "Operation failed");
         CHECK(calls == 0);
     }
 
     SECTION("PropagatesCallbackException")
     {
-        auto operation = [&]() {
-            auto guard = scope_success([&]() {
+        auto operation {[&]() {
+            auto guard {scope_success([&]() {
                 ++calls;
                 throw std::runtime_error("Success callback failed");
-            });
-        };
+            })};
+        }};
+
         CHECK_THROWS_WITH(operation(), "Success callback failed");
         CHECK(calls == 1);
     }
@@ -120,7 +123,7 @@ TEST_CASE("ScopeSuccess", "[scope-success]")
     SECTION("ReleaseSkipsCallback")
     {
         {
-            auto guard = scope_success([&]() noexcept { ++calls; });
+            auto guard {scope_success([&]() noexcept { ++calls; })};
             guard.release();
         }
         CHECK(calls == 0);

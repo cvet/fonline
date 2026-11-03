@@ -50,7 +50,7 @@ static void InitTestMapLoaderMetadata(EngineMetadata& meta)
 
 static auto GetTestMapLoaderRegistrar(EngineMetadata& meta, string_view type_name) -> ptr<const PropertyRegistrar>
 {
-    auto registrar = meta.GetPropertyRegistrar(type_name);
+    auto registrar {meta.GetPropertyRegistrar(type_name)};
     REQUIRE(static_cast<bool>(registrar));
     return registrar;
 }
@@ -71,19 +71,19 @@ TEST_CASE("MapLoader")
         EngineMetadata meta {[] { }};
         hash_storage hashes {};
 
-        string map_buf = "[ProtoMap]\n"
-                         "$Name = TestMap\n"
-                         "[Critter]\n"
-                         "$Id = 1\n"
-                         "$Proto = CritterOne\n";
+        string map_buf {"[ProtoMap]\n"
+                        "$Name = TestMap\n"
+                        "[Critter]\n"
+                        "$Id = 1\n"
+                        "$Proto = CritterOne\n"};
 
         CHECK_THROWS_AS(MapLoader::Load("TestMap", "TestMap.fomap", map_buf, meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) { }, [](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>>) { }), MapLoaderException);
 
-        string bare_slash_map_buf = "[ProtoMap]\n"
-                                    "$Name = TestMap\n"
-                                    "[/Item]\n"
-                                    "$Id = 1\n"
-                                    "$Proto = ItemOne\n";
+        string bare_slash_map_buf {"[ProtoMap]\n"
+                                   "$Name = TestMap\n"
+                                   "[/Item]\n"
+                                   "$Id = 1\n"
+                                   "$Proto = ItemOne\n"};
 
         CHECK_THROWS_AS(MapLoader::Load("TestMap", "TestMap.fomap", bare_slash_map_buf, meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) { }, [](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>>) { }), MapLoaderException);
     }
@@ -93,11 +93,11 @@ TEST_CASE("MapLoader")
         EngineMetadata meta {[] { }};
         hash_storage hashes {};
 
-        string map_buf = "[ProtoMap]\n"
-                         "$Name = TestMap\n"
-                         "[OtherMap/Item]\n"
-                         "$Id = 1\n"
-                         "$Proto = ItemOne\n";
+        string map_buf {"[ProtoMap]\n"
+                        "$Name = TestMap\n"
+                        "[OtherMap/Item]\n"
+                        "$Id = 1\n"
+                        "$Proto = ItemOne\n"};
 
         CHECK_THROWS_AS(MapLoader::Load("TestMap", "TestMap.fomap", map_buf, meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) { }, [](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>>) { }), MapLoaderException);
     }
@@ -107,10 +107,10 @@ TEST_CASE("MapLoader")
         EngineMetadata meta {[] { }};
         hash_storage hashes {};
 
-        string map_buf = "[ProtoMap]\n"
-                         "$Name = TestMap\n"
-                         "[$Name/Tile]\n"
-                         "$Id = 1\n";
+        string map_buf {"[ProtoMap]\n"
+                        "$Name = TestMap\n"
+                        "[$Name/Tile]\n"
+                        "$Id = 1\n"};
 
         CHECK_THROWS_AS(MapLoader::Load("TestMap", "TestMap.fomap", map_buf, meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) { }, [](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>>) { }), MapLoaderException);
     }
@@ -120,8 +120,8 @@ TEST_CASE("MapLoader")
         EngineMetadata meta {[] { }};
         hash_storage hashes {};
 
-        string map_buf = "[ProtoMap]\n"
-                         "$Name = TestMap\n";
+        string map_buf {"[ProtoMap]\n"
+                        "$Name = TestMap\n"};
 
         CHECK_THROWS_AS(MapLoader::Load("AnotherMap", "AnotherMap.fomap", map_buf, meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) { }, [](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>>) { }), MapLoaderException);
     }
@@ -130,29 +130,29 @@ TEST_CASE("MapLoader")
     {
         EngineMetadata meta {[] { }};
         InitTestMapLoaderMetadata(meta);
-        auto item_proto = safe_alloc::make_refcounted<ProtoItem>(meta.Hashes.to_hashed_string("TestItem"), GetTestMapLoaderRegistrar(meta, "Item"));
+        auto item_proto {safe_alloc::make_refcounted<ProtoItem>(meta.Hashes.to_hashed_string("TestItem"), GetTestMapLoaderRegistrar(meta, "Item"))};
         meta.RegisterProto(meta.Hashes.to_hashed_string("Item"), item_proto);
 
         hash_storage hashes {};
 
-        string map_buf = "[ProtoMap]\n"
-                         "Outside = True\n"
-                         "[$Name/Item]\n"
-                         "$Id = 1\n"
-                         "$Proto = TestItem\n"
-                         "Kind = FromStemMap\n"
-                         "[ProtoMap]\n"
-                         "$Name = ZoneB\n"
-                         "[$Name/Item]\n"
-                         "$Id = 1\n"
-                         "$Proto = TestItem\n"
-                         "Kind = FromZoneB\n";
+        string map_buf {"[ProtoMap]\n"
+                        "Outside = True\n"
+                        "[$Name/Item]\n"
+                        "$Id = 1\n"
+                        "$Proto = TestItem\n"
+                        "Kind = FromStemMap\n"
+                        "[ProtoMap]\n"
+                        "$Name = ZoneB\n"
+                        "[$Name/Item]\n"
+                        "$Id = 1\n"
+                        "$Proto = TestItem\n"
+                        "Kind = FromZoneB\n"};
 
-        vector<string> loaded_kinds;
-        auto load_map = [&](string_view map_name) {
+        vector<string> loaded_kinds {};
+        auto load_map {[&](string_view map_name) {
             loaded_kinds.clear();
             CHECK_NOTHROW(MapLoader::Load(map_name, "Maps/Zones.fomap", map_buf, meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) {}, [&](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>> kv) { loaded_kinds.emplace_back(kv->at("Kind")); }));
-        };
+        }};
 
         load_map("Zones");
         CHECK(loaded_kinds == vector<string> {"FromStemMap"});
@@ -165,17 +165,17 @@ TEST_CASE("MapLoader")
     {
         EngineMetadata meta {[] { }};
         hash_storage hashes {};
-        size_t critter_calls = 0;
-        size_t item_calls = 0;
+        size_t critter_calls {0};
+        size_t item_calls {0};
 
-        string map_buf = "[ProtoMap]\n"
-                         "$Name = TestMap\n"
-                         "[$Name/Critter]\n"
-                         "$Id = 1\n"
-                         "$Proto = MissingCritter\n"
-                         "[$Name/Item]\n"
-                         "$Id = 2\n"
-                         "$Proto = MissingItem\n";
+        string map_buf {"[ProtoMap]\n"
+                        "$Name = TestMap\n"
+                        "[$Name/Critter]\n"
+                        "$Id = 1\n"
+                        "$Proto = MissingCritter\n"
+                        "[$Name/Item]\n"
+                        "$Id = 2\n"
+                        "$Proto = MissingItem\n"};
 
         CHECK_THROWS_AS(MapLoader::Load("TestMap", "TestMap.fomap", map_buf, meta, hashes, [&](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) { critter_calls++; }, [&](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>>) { item_calls++; }), MapLoaderException);
 
@@ -188,12 +188,12 @@ TEST_CASE("MapLoader")
         EngineMetadata meta {[] { }};
         hash_storage hashes {};
 
-        string map_buf = "[ProtoMap]\n"
-                         "$Name = TestMap\n"
-                         "[$Name/Critter]\n"
-                         "$Id = 1\n"
-                         "[$Name/Item]\n"
-                         "$Id = 2\n";
+        string map_buf {"[ProtoMap]\n"
+                        "$Name = TestMap\n"
+                        "[$Name/Critter]\n"
+                        "$Id = 1\n"
+                        "[$Name/Item]\n"
+                        "$Id = 2\n"};
 
         CHECK_THROWS_AS(MapLoader::Load("TestMap", "TestMap.fomap", map_buf, meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) { }, [](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>>) { }), MapLoaderException);
     }
@@ -202,35 +202,35 @@ TEST_CASE("MapLoader")
     {
         EngineMetadata meta {[] { }};
         InitTestMapLoaderMetadata(meta);
-        auto critter_proto = safe_alloc::make_refcounted<ProtoCritter>(meta.Hashes.to_hashed_string("TestCritter"), GetTestMapLoaderRegistrar(meta, "Critter"));
-        auto item_proto = safe_alloc::make_refcounted<ProtoItem>(meta.Hashes.to_hashed_string("TestItem"), GetTestMapLoaderRegistrar(meta, "Item"));
+        auto critter_proto {safe_alloc::make_refcounted<ProtoCritter>(meta.Hashes.to_hashed_string("TestCritter"), GetTestMapLoaderRegistrar(meta, "Critter"))};
+        auto item_proto {safe_alloc::make_refcounted<ProtoItem>(meta.Hashes.to_hashed_string("TestItem"), GetTestMapLoaderRegistrar(meta, "Item"))};
         meta.RegisterProto(meta.Hashes.to_hashed_string("Critter"), critter_proto);
         meta.RegisterProto(meta.Hashes.to_hashed_string("Item"), item_proto);
 
         hash_storage hashes {};
-        vector<ident_t> critter_ids;
-        vector<ident_t> item_ids;
-        vector<string> critter_proto_names;
-        vector<string> item_proto_names;
+        vector<ident_t> critter_ids {};
+        vector<ident_t> item_ids {};
+        vector<string> critter_proto_names {};
+        vector<string> item_proto_names {};
 
-        string map_buf = "[ProtoMap]\n"
-                         "$Name = TestMap\n"
-                         "[$Name/Critter]\n"
-                         "$Id = 0\n"
-                         "$Proto = TestCritter\n"
-                         "Name = One\n"
-                         "[$Name/Critter]\n"
-                         "$Id = 0\n"
-                         "$Proto = TestCritter\n"
-                         "Name = Two\n"
-                         "[$Name/Item]\n"
-                         "$Id = 2\n"
-                         "$Proto = TestItem\n"
-                         "Kind = Alpha\n"
-                         "[TestMap/Item]\n"
-                         "$Id = 2\n"
-                         "$Proto = TestItem\n"
-                         "Kind = Beta\n";
+        string map_buf {"[ProtoMap]\n"
+                        "$Name = TestMap\n"
+                        "[$Name/Critter]\n"
+                        "$Id = 0\n"
+                        "$Proto = TestCritter\n"
+                        "Name = One\n"
+                        "[$Name/Critter]\n"
+                        "$Id = 0\n"
+                        "$Proto = TestCritter\n"
+                        "Name = Two\n"
+                        "[$Name/Item]\n"
+                        "$Id = 2\n"
+                        "$Proto = TestItem\n"
+                        "Kind = Alpha\n"
+                        "[TestMap/Item]\n"
+                        "$Id = 2\n"
+                        "$Proto = TestItem\n"
+                        "Kind = Beta\n"};
 
         CHECK_NOTHROW(MapLoader::Load(
             "TestMap", "TestMap.fomap", map_buf, meta, hashes,
@@ -255,33 +255,33 @@ TEST_CASE("MapLoader")
     {
         EngineMetadata meta {[] { }};
         InitTestMapLoaderMetadata(meta);
-        auto item_proto = safe_alloc::make_refcounted<ProtoItem>(meta.Hashes.to_hashed_string("TestItem"), GetTestMapLoaderRegistrar(meta, "Item"));
+        auto item_proto {safe_alloc::make_refcounted<ProtoItem>(meta.Hashes.to_hashed_string("TestItem"), GetTestMapLoaderRegistrar(meta, "Item"))};
         meta.RegisterProto(meta.Hashes.to_hashed_string("Item"), item_proto);
 
         hash_storage hashes {};
 
-        string map_buf = "[ProtoMap]\n"
-                         "$Name = MapOne\n"
-                         "[$Name/Item]\n"
-                         "$Id = 1\n"
-                         "$Proto = TestItem\n"
-                         "Kind = FromOne\n"
-                         "[ProtoMap]\n"
-                         "$Name = MapTwo\n"
-                         "[$Name/Item]\n"
-                         "$Id = 1\n"
-                         "$Proto = TestItem\n"
-                         "Kind = FromTwo\n"
-                         "[$Name/Item]\n"
-                         "$Id = 2\n"
-                         "$Proto = TestItem\n"
-                         "Kind = FromTwoAsWell\n";
+        string map_buf {"[ProtoMap]\n"
+                        "$Name = MapOne\n"
+                        "[$Name/Item]\n"
+                        "$Id = 1\n"
+                        "$Proto = TestItem\n"
+                        "Kind = FromOne\n"
+                        "[ProtoMap]\n"
+                        "$Name = MapTwo\n"
+                        "[$Name/Item]\n"
+                        "$Id = 1\n"
+                        "$Proto = TestItem\n"
+                        "Kind = FromTwo\n"
+                        "[$Name/Item]\n"
+                        "$Id = 2\n"
+                        "$Proto = TestItem\n"
+                        "Kind = FromTwoAsWell\n"};
 
-        vector<string> loaded_kinds;
-        auto load_map = [&](string_view map_name) {
+        vector<string> loaded_kinds {};
+        auto load_map {[&](string_view map_name) {
             loaded_kinds.clear();
             CHECK_NOTHROW(MapLoader::Load(map_name, "Multi.fomap", map_buf, meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) {}, [&](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>> kv) { loaded_kinds.emplace_back(kv->at("Kind")); }));
-        };
+        }};
 
         load_map("MapOne");
         CHECK(loaded_kinds == vector<string> {"FromOne"});
@@ -292,31 +292,31 @@ TEST_CASE("MapLoader")
 
     SECTION("EnumerateMapsResolvesAnchorNames")
     {
-        string multi_buf = "[ProtoMap]\n"
-                           "$Name = MapOne\n"
-                           "[$Name/Item]\n"
-                           "$Id = 1\n"
-                           "[ProtoMap]\n"
-                           "$Name = MapTwo\n";
+        string multi_buf {"[ProtoMap]\n"
+                          "$Name = MapOne\n"
+                          "[$Name/Item]\n"
+                          "$Id = 1\n"
+                          "[ProtoMap]\n"
+                          "$Name = MapTwo\n"};
 
         CHECK(MapLoader::EnumerateMaps("Multi.fomap", multi_buf) == vector<string> {"MapOne", "MapTwo"});
 
-        string anonymous_buf = "[ProtoMap]\n"
-                               "Outside = True\n";
+        string anonymous_buf {"[ProtoMap]\n"
+                              "Outside = True\n"};
 
         CHECK(MapLoader::EnumerateMaps("Maps/StemMap.fomap", anonymous_buf) == vector<string> {"StemMap"});
 
-        string anonymous_multi_buf = "[ProtoMap]\n"
-                                     "$Name = MapOne\n"
-                                     "[ProtoMap]\n"
-                                     "Outside = True\n";
+        string anonymous_multi_buf {"[ProtoMap]\n"
+                                    "$Name = MapOne\n"
+                                    "[ProtoMap]\n"
+                                    "Outside = True\n"};
 
         CHECK(MapLoader::EnumerateMaps("Multi.fomap", anonymous_multi_buf) == vector<string> {"MapOne", "Multi"});
 
-        string colliding_anonymous_buf = "[ProtoMap]\n"
-                                         "Outside = True\n"
-                                         "[ProtoMap]\n"
-                                         "Outside = False\n";
+        string colliding_anonymous_buf {"[ProtoMap]\n"
+                                        "Outside = True\n"
+                                        "[ProtoMap]\n"
+                                        "Outside = False\n"};
 
         // Both anchors resolve to the stem; the id enumerates once and the duplicate
         // itself is reported by the generic proto collision check on bake
@@ -331,17 +331,17 @@ TEST_CASE("MapLoader")
     {
         EngineMetadata meta {[] { }};
         InitTestMapLoaderMetadata(meta);
-        auto item_proto = safe_alloc::make_refcounted<ProtoItem>(meta.Hashes.to_hashed_string("TestItem"), GetTestMapLoaderRegistrar(meta, "Item"));
+        auto item_proto {safe_alloc::make_refcounted<ProtoItem>(meta.Hashes.to_hashed_string("TestItem"), GetTestMapLoaderRegistrar(meta, "Item"))};
         meta.RegisterProto(meta.Hashes.to_hashed_string("Item"), item_proto);
 
         hash_storage hashes {};
-        size_t item_calls = 0;
+        size_t item_calls {0};
 
-        string map_buf = "[ProtoMap]\n"
-                         "Outside = True\n"
-                         "[$Name/Item]\n"
-                         "$Id = 1\n"
-                         "$Proto = TestItem\n";
+        string map_buf {"[ProtoMap]\n"
+                        "Outside = True\n"
+                        "[$Name/Item]\n"
+                        "$Id = 1\n"
+                        "$Proto = TestItem\n"};
 
         CHECK_NOTHROW(MapLoader::Load("StemMap", "StemMap.fomap", map_buf, meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) {}, [&](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>>) { item_calls++; }));
 
@@ -350,35 +350,35 @@ TEST_CASE("MapLoader")
 
     SECTION("RejectsBakedMapFileThatIsNotCurrentFormat")
     {
-        auto make_baked_map_header = [](uint32_t magic, uint32_t version) {
-            vector<uint8_t> data;
-            auto writer = data_writer(data);
+        auto make_baked_map_header {[](uint32_t magic, uint32_t version) {
+            vector<uint8_t> data {};
+            data_writer writer {data_writer(data)};
             writer.write<uint32_t>(magic);
             writer.write<uint32_t>(version);
             writer.write<uint32_t>(uint32_t {7});
             return data;
-        };
+        }};
 
-        vector<uint8_t> current = make_baked_map_header(BAKED_MAP_FILE_MAGIC, BAKED_MAP_FILE_VERSION);
-        auto current_reader = data_reader {current};
+        vector<uint8_t> current {make_baked_map_header(BAKED_MAP_FILE_MAGIC, BAKED_MAP_FILE_VERSION)};
+        data_reader current_reader {data_reader {current}};
         CHECK_NOTHROW(MapLoader::ReadBakedFileHeader(current_reader, "TestMap"));
         CHECK(current_reader.read<uint32_t>() == 7);
 
-        vector<uint8_t> future = make_baked_map_header(BAKED_MAP_FILE_MAGIC, BAKED_MAP_FILE_VERSION + 1);
-        auto future_reader = data_reader {future};
+        vector<uint8_t> future {make_baked_map_header(BAKED_MAP_FILE_MAGIC, BAKED_MAP_FILE_VERSION + 1)};
+        data_reader future_reader {data_reader {future}};
         CHECK_THROWS_AS(MapLoader::ReadBakedFileHeader(future_reader, "TestMap"), MapLoaderException);
 
         // The pre-header layout opened with the hash count, so a stale resource file is caught by the magic
-        vector<uint8_t> headerless;
-        auto headerless_writer = data_writer(headerless);
+        vector<uint8_t> headerless {};
+        data_writer headerless_writer {data_writer(headerless)};
         headerless_writer.write<uint32_t>(uint32_t {2});
         headerless_writer.write<uint32_t>(uint32_t {4});
         headerless_writer.write_string_bytes("Item");
-        auto headerless_reader = data_reader {headerless};
+        data_reader headerless_reader {data_reader {headerless}};
         CHECK_THROWS_AS(MapLoader::ReadBakedFileHeader(headerless_reader, "TestMap"), MapLoaderException);
 
-        vector<uint8_t> truncated;
-        auto truncated_reader = data_reader {truncated};
+        vector<uint8_t> truncated {};
+        data_reader truncated_reader {data_reader {truncated}};
         CHECK_THROWS(MapLoader::ReadBakedFileHeader(truncated_reader, "TestMap"));
     }
 }

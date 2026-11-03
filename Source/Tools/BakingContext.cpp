@@ -133,7 +133,7 @@ auto BakingContext::IsImageOutputOwned(string_view path) const -> bool
         return true;
     }
 
-    const auto& image_outputs = GetRootOutputs(_imageDependencies->Outputs, _packName);
+    const auto& image_outputs {GetRootOutputs(_imageDependencies->Outputs, _packName)};
 
     return std::ranges::any_of(image_outputs, [path](const ImageOutputCandidate& output) { return output.ResourcePath == path; });
 }
@@ -141,18 +141,18 @@ auto BakingContext::IsImageOutputOwned(string_view path) const -> bool
 auto BakingContext::CheckOutput(string_view path, uint64_t write_time, optional<bool> required) const -> bool
 {
     if (_usage) {
-        shared_ptr<ResourceUsage> usage = _usage;
+        shared_ptr<ResourceUsage> usage {_usage};
         usage->RegisterOutput(_packName, path, _bakerName, _outputKind);
     }
 
-    bool scheduled = !_bakeChecker || _bakeChecker(path, write_time);
+    bool scheduled {!_bakeChecker || _bakeChecker(path, write_time)};
 
     if (required.has_value()) {
         scheduled = *required;
     }
 
     if (_report) {
-        shared_ptr<BakingReport> report = _report;
+        shared_ptr<BakingReport> report {_report};
         report->RecordOutputCheck(_packName, _bakerName, path, scheduled);
     }
 
@@ -161,15 +161,15 @@ auto BakingContext::CheckOutput(string_view path, uint64_t write_time, optional<
 
 auto BakingContext::WriteData(string_view path, const_span<uint8_t> data) const -> BakingWriteResult
 {
-    BakingWriteResult result = _writeData(path, data);
+    BakingWriteResult result {_writeData(path, data)};
 
     if (_usage) {
-        shared_ptr<ResourceUsage> usage = _usage;
+        shared_ptr<ResourceUsage> usage {_usage};
         usage->RegisterOutput(_packName, path, _bakerName, _outputKind);
     }
 
     if (_report) {
-        shared_ptr<BakingReport> report = _report;
+        shared_ptr<BakingReport> report {_report};
         report->RecordOutputSubmission(_packName, _bakerName, path, data.size(), result);
     }
 
@@ -179,7 +179,7 @@ auto BakingContext::WriteData(string_view path, const_span<uint8_t> data) const 
 void BakingContext::AddBakingReportCounter(string_view name, uint64_t value) const
 {
     if (_report) {
-        shared_ptr<BakingReport> report = _report;
+        shared_ptr<BakingReport> report {_report};
         report->AddCounter(_packName, _bakerName, name, value);
     }
 }
@@ -187,7 +187,7 @@ void BakingContext::AddBakingReportCounter(string_view name, uint64_t value) con
 void BakingContext::AddBakingReportHistogramValue(string_view name, string_view value, uint64_t count) const
 {
     if (_report) {
-        shared_ptr<BakingReport> report = _report;
+        shared_ptr<BakingReport> report {_report};
         report->AddHistogramValue(_packName, _bakerName, name, value, count);
     }
 }
@@ -195,7 +195,7 @@ void BakingContext::AddBakingReportHistogramValue(string_view name, string_view 
 void BakingContext::RecordSpriteMeshBakingSettings(const SpriteMeshBakingReportSettings& settings) const
 {
     if (_report) {
-        shared_ptr<BakingReport> report = _report;
+        shared_ptr<BakingReport> report {_report};
         report->RecordSpriteMeshSettings(_packName, _bakerName, settings);
     }
 }
@@ -203,7 +203,7 @@ void BakingContext::RecordSpriteMeshBakingSettings(const SpriteMeshBakingReportS
 void BakingContext::RecordSpriteMeshBakingFrame(const SpriteMeshBakingFrameReport& frame) const
 {
     if (_report) {
-        shared_ptr<BakingReport> report = _report;
+        shared_ptr<BakingReport> report {_report};
         report->RecordSpriteMeshFrame(_packName, _bakerName, frame);
     }
 }
@@ -211,7 +211,7 @@ void BakingContext::RecordSpriteMeshBakingFrame(const SpriteMeshBakingFrameRepor
 void BakingContext::RecordSharedSpriteMeshBakingFrames(uint64_t count) const
 {
     if (_report) {
-        shared_ptr<BakingReport> report = _report;
+        shared_ptr<BakingReport> report {_report};
         report->RecordSharedSpriteMeshFrames(_packName, _bakerName, count);
     }
 }
@@ -219,7 +219,7 @@ void BakingContext::RecordSharedSpriteMeshBakingFrames(uint64_t count) const
 void BakingContext::KeepOutput(string_view path) const
 {
     if (_usage) {
-        shared_ptr<ResourceUsage> usage = _usage;
+        shared_ptr<ResourceUsage> usage {_usage};
         usage->RegisterOutput(_packName, path, _bakerName, BakingOutputKind::Required);
     }
 }

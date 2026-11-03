@@ -85,12 +85,12 @@ void ClientEntity::DestroySelf()
 
     MarkAsDestroying();
 
-    auto ensure_unregister = scope_exit([this]() noexcept {
+    auto ensure_unregister {scope_exit([this]() noexcept {
         if (_registered) {
             safe_call([this]() { _engine->UnregisterEntity(this); });
             _registered = false;
         }
-    });
+    })};
 
     OnDestroySelf();
 
@@ -100,12 +100,12 @@ void ClientEntity::DestroySelf()
     }
 
     if (HasInnerEntities()) {
-        auto inner_entities = GetInnerEntities();
+        auto inner_entities {GetInnerEntities()};
         FO_VERIFY_AND_THROW(inner_entities, "Inner entities collection is null");
 
         for (auto& entities : *inner_entities | std::views::values) {
             for (auto& entity : entities) {
-                auto custom_entity = require_refcount_ptr(entity.dyn_cast<CustomEntityView>());
+                auto custom_entity {require_refcount_ptr(entity.dyn_cast<CustomEntityView>())};
                 custom_entity->DestroySelf();
             }
         }

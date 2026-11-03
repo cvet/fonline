@@ -145,7 +145,7 @@ protected:
     virtual void ShutdownImpl() = 0;
 
 private:
-    shared_ptr<ConnectionRegistry> _connectionRegistry;
+    shared_ptr<ConnectionRegistry> _connectionRegistry {};
 };
 
 FO_END_NAMESPACE

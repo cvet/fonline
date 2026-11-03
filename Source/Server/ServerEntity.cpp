@@ -56,7 +56,7 @@ ServerEntity::~ServerEntity()
     // Release any leftover parent ref. Destroy sites are expected to call SetParent(nullptr)
     // explicitly before MarkAsDestroyed (so the containment cycle breaks before refcount drop),
     // but if something slipped through, this destructor still releases cleanly
-    nptr<ServerEntity> parent;
+    nptr<ServerEntity> parent {};
 
     {
         scoped_lock locker {_parentLinkLocker};
@@ -146,7 +146,7 @@ void ServerEntity::SetPersistent(bool persistent) noexcept
 auto ServerEntity::IsExplicitlyPersistent() const noexcept -> bool
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    auto& props = const_cast<Properties&>(*GetProperties());
+    auto& props {const_cast<Properties&>(*GetProperties())};
     return EntityProperties(props).GetExplicitlyPersistent();
 }
 
@@ -193,8 +193,8 @@ void ServerEntity::SetParent(nptr<ServerEntity> parent) noexcept
     FO_VALIDATE_ENTITY(NONE);
 
     if (_parent.load(std::memory_order_relaxed) != nullptr) {
-        auto ctx = SyncContext::GetCurrentOnThisThread();
-        auto lock = GetEntityLock();
+        auto ctx {SyncContext::GetCurrentOnThisThread()};
+        auto lock {GetEntityLock()};
         // Reparenting needs the entity's own lock directly, because ancestor coverage is a read-path right only;
         // the exemptions are single-threaded logic, which takes no locks at all, and a thread with no sync context
         FO_VERIFY_AND_CONTINUE(IsSingleThreadedLogic(this) || !ctx || (lock && lock->IsLockedByCurrentThread()), "Reparent of a live entity without holding its own lock", GetName(), GetId());
@@ -206,7 +206,7 @@ void ServerEntity::SetParent(nptr<ServerEntity> parent) noexcept
 
     // The replacement is published under the link lock and the old ref dropped after it, so no reader can be
     // holding the old pointer without having already pinned it
-    nptr<ServerEntity> old;
+    nptr<ServerEntity> old {};
 
     {
         scoped_lock locker {_parentLinkLocker};

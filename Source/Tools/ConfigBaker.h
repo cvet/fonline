@@ -45,7 +45,7 @@ FO_DECLARE_EXCEPTION(ConfigBakerException);
 class ConfigBaker : public BaseBaker
 {
 public:
-    static constexpr string_view_nt NAME = "Config";
+    static constexpr string_view_nt NAME {"Config"};
 
     explicit ConfigBaker(shared_ptr<BakingContext> ctx);
     ConfigBaker(const ConfigBaker&) = delete;
@@ -68,7 +68,7 @@ protected:
 class ClientConfigBaker final : public ConfigBaker
 {
 public:
-    static constexpr string_view_nt NAME = "ClientConfig";
+    static constexpr string_view_nt NAME {"ClientConfig"};
 
     explicit ClientConfigBaker(shared_ptr<BakingContext> ctx);
     ClientConfigBaker(const ClientConfigBaker&) = delete;

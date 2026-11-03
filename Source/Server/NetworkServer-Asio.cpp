@@ -124,8 +124,8 @@ NetworkServerConnection_Asio::NetworkServerConnection_Asio(ptr<ServerNetworkSett
     NetworkServerConnection(settings),
     _socket {std::move(*socket)}
 {
-    std::error_code endpoint_error;
-    auto endpoint = _socket.remote_endpoint(endpoint_error);
+    std::error_code endpoint_error {};
+    auto endpoint {_socket.remote_endpoint(endpoint_error)};
 
     if (!endpoint_error) {
         _host = endpoint.address().to_string();
@@ -137,7 +137,7 @@ NetworkServerConnection_Asio::NetworkServerConnection_Asio(ptr<ServerNetworkSett
     }
 
     if (settings->Network.DisableTcpNagle) {
-        std::error_code no_delay_error;
+        std::error_code no_delay_error {};
         _socket.set_option(asio::ip::tcp::no_delay(true), no_delay_error);
         LogSocketOperationError("set TCP_NODELAY", no_delay_error);
     }
@@ -182,7 +182,7 @@ void NetworkServerConnection_Asio::AsyncReadComplete(std::error_code error, size
 
     if (!error) {
         FO_STRONG_ASSERT(bytes <= _inBufData.size(), "Received byte count exceeds the receive buffer size");
-        auto received_data = make_const_span(_inBufData.data(), bytes);
+        auto received_data {make_const_span(_inBufData.data(), bytes)};
         ReceiveCallback(received_data);
         NextAsyncRead();
     }
@@ -193,17 +193,17 @@ void NetworkServerConnection_Asio::AsyncReadComplete(std::error_code error, size
 
 void NetworkServerConnection_Asio::NextAsyncRead()
 {
-    auto read_handler = [lifetime = shared_from_this(), this](std::error_code error, size_t bytes) FO_DEFERRED {
+    auto read_handler {[lifetime = shared_from_this(), this](std::error_code error, size_t bytes) FO_DEFERRED {
         ignore_unused(lifetime);
         AsyncReadComplete(error, bytes);
-    };
+    }};
 
     async_read(_socket, asio::buffer(_inBufData), asio::transfer_at_least(1), read_handler);
 }
 
 void NetworkServerConnection_Asio::StartAsyncWrite()
 {
-    bool expected = false;
+    bool expected {false};
 
     if (_writePending.compare_exchange_strong(expected, true)) {
         NextAsyncWrite();
@@ -225,15 +225,15 @@ void NetworkServerConnection_Asio::AsyncWriteComplete(std::error_code error, siz
 
 void NetworkServerConnection_Asio::NextAsyncWrite()
 {
-    auto write_guard = scope_fail([this]() noexcept { _writePending = false; });
+    auto write_guard {scope_fail([this]() noexcept { _writePending = false; })};
 
     _sendBuf = SendCallback();
 
     if (!_sendBuf.empty()) {
-        auto write_handler = [lifetime = shared_from_this(), this](std::error_code error, size_t bytes) FO_DEFERRED {
+        auto write_handler {[lifetime = shared_from_this(), this](std::error_code error, size_t bytes) FO_DEFERRED {
             ignore_unused(lifetime);
             AsyncWriteComplete(error, bytes);
-        };
+        }};
 
         // A member, unlike the other transports: the write reads the bytes after this returns, and
         // _writePending admits one chain at a time so the next assignment comes from AsyncWriteComplete
@@ -251,11 +251,11 @@ void NetworkServerConnection_Asio::DispatchImpl()
 
 void NetworkServerConnection_Asio::DisconnectImpl()
 {
-    std::error_code shutdown_error;
+    std::error_code shutdown_error {};
     _socket.shutdown(asio::ip::tcp::socket::shutdown_both, shutdown_error);
     LogSocketOperationError("shutdown", shutdown_error);
 
-    std::error_code close_error;
+    std::error_code close_error {};
     _socket.close(close_error);
     LogSocketOperationError("close", close_error);
 }
@@ -292,8 +292,8 @@ void NetworkServer_Asio::Run()
 
 void NetworkServer_Asio::AcceptNext()
 {
-    auto socket = safe_alloc::make_unique<asio::ip::tcp::socket>(_context);
-    auto socket_ptr = socket.as_ptr();
+    auto socket {safe_alloc::make_unique<asio::ip::tcp::socket>(_context)};
+    auto socket_ptr {socket.as_ptr()};
     _acceptor.async_accept(*socket_ptr, [this, socket = std::move(socket)](std::error_code error) mutable FO_DEFERRED { AcceptConnection(error, std::move(socket)); });
 }
 
@@ -301,15 +301,15 @@ void NetworkServer_Asio::AcceptConnection(std::error_code error, unique_ptr<asio
 {
     FO_TRACE_ZONE(Network);
 
-    auto rearm_accept = [this] {
+    auto rearm_accept {[this] {
         if (!_context.stopped()) {
             AcceptNext();
         }
-    };
+    }};
 
     if (!error) {
         try {
-            auto connection = safe_alloc::make_shared<NetworkServerConnection_Asio>(_settings, std::move(socket));
+            auto connection {safe_alloc::make_shared<NetworkServerConnection_Asio>(_settings, std::move(socket))};
             connection->StartAsyncRead(); // shared_from_this() is not available in constructor so StartRead/NextAsyncRead is called after
 
             if (TrackConnection(connection)) {
@@ -317,7 +317,7 @@ void NetworkServer_Asio::AcceptConnection(std::error_code error, unique_ptr<asio
             }
         }
         catch (const std::exception&) {
-            auto exception = std::current_exception();
+            auto exception {std::current_exception()};
             safe_call(rearm_accept);
 
             run_thread("Network-Asio-Reporter", [exception = std::move(exception)] {

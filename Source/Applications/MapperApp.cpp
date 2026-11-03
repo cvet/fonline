@@ -72,9 +72,9 @@ static void MapperEntry([[maybe_unused]] void* data)
 
         if (!Data->Mapper) {
             try {
-                auto settings = make_ptr(&GetApp()->Settings);
+                auto settings {make_ptr(&GetApp()->Settings)};
                 Data->Mapper = safe_alloc::make_refcounted<MapperEngine>(settings, GetMapperResources(*settings), &GetApp()->MainWindow);
-                auto mapper = GetMapper();
+                auto mapper {GetMapper()};
                 mapper->SetInputLocked(GetApp()->Settings.Render.HeadlessWindow);
             }
             catch (const std::exception& ex) {
@@ -83,7 +83,7 @@ static void MapperEntry([[maybe_unused]] void* data)
         }
 
         try {
-            auto mapper = GetMapper();
+            auto mapper {GetMapper()};
             mapper->MapperMainLoop();
         }
         catch (const std::exception& ex) {
@@ -127,7 +127,7 @@ int main(int argc, char** argv) // Handled by SDL
         }
 
 #else
-        auto balancer = FrameBalancer(!GetApp()->Settings.Render.VSync, GetApp()->Settings.Render.Sleep, GetApp()->Settings.Render.FixedFPS);
+        auto balancer {FrameBalancer(!GetApp()->Settings.Render.VSync, GetApp()->Settings.Render.Sleep, GetApp()->Settings.Render.FixedFPS)};
 
         while (!GetApp()->IsQuitRequested()) {
             balancer.StartLoop();
@@ -137,7 +137,7 @@ int main(int argc, char** argv) // Handled by SDL
 #endif
 
         if (Data->Mapper) {
-            auto mapper = GetMapper();
+            auto mapper {GetMapper()};
             mapper->Shutdown();
             Data->Mapper.reset();
         }
@@ -155,13 +155,13 @@ int main(int argc, char** argv) // Handled by SDL
 static auto GetMapperResources(GlobalSettings& settings) -> FileSystem
 {
     if (settings.Common.Packaged) {
-        FileSystem resources;
+        FileSystem resources {};
         resources.AddPacksSource(settings.Baking.ClientResources, settings.GetClientResourcePacks());
         resources.AddPacksSource(settings.Baking.ClientResources, settings.GetMapperResourcePacks());
         return resources;
     }
     else {
-        FileSystem resources;
+        FileSystem resources {};
         resources.AddCustomSource(safe_alloc::make_unique<BakerDataSource>(&settings));
         return resources;
     }

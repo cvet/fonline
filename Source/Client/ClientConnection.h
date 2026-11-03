@@ -138,7 +138,7 @@ private:
     nanotime _lastReceiveTime {};
     size_t _msgCount {};
 #if FO_DEBUG
-    static constexpr size_t NET_MESSAGE_HISTORY_LIMIT = 1024;
+    static constexpr size_t NET_MESSAGE_HISTORY_LIMIT {1024};
     deque<NetMessage> _msgHistory {};
 #endif
 };

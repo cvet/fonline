@@ -83,7 +83,7 @@ auto Location::GetProtoLoc() const noexcept -> ptr<const ProtoLocation>
 auto Location::GetMaps() const -> vector<ptr<const Map>>
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    vector<ptr<const Map>> result;
+    vector<ptr<const Map>> result {};
     result.reserve(_locMaps.size());
 
     for (const auto& map : _locMaps) {
@@ -96,7 +96,7 @@ auto Location::GetMaps() const -> vector<ptr<const Map>>
 auto Location::GetMaps() -> vector<ptr<Map>>
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    vector<ptr<Map>> result;
+    vector<ptr<Map>> result {};
     result.reserve(_locMaps.size());
 
     for (auto& map : _locMaps) {
@@ -145,7 +145,7 @@ auto Location::GetMapByPid(hstring map_pid) noexcept -> nptr<Map>
 auto Location::GetMapIndex(hstring map_pid) const -> size_t
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
-    size_t index = 0;
+    size_t index {0};
 
     for (const auto& map : _locMaps) {
         if (map->GetProtoId() == map_pid) {
@@ -166,7 +166,7 @@ void Location::RestoreMap(ptr<Map> map)
     FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Cannot add an already destroyed map to a location", map->GetId());
     FO_VERIFY_AND_THROW(!map->IsDestroying(), "Cannot add a map that is being destroyed to a location", map->GetId());
 
-    size_t maps_count = _locMaps.size();
+    size_t maps_count {_locMaps.size()};
     vec_add_unique_value(_locMaps, map.hold_ref());
     FO_VERIFY_AND_THROW(_locMaps.size() == maps_count + 1, "Restored map was not added to the location map list");
     map->SetLocation(this);
@@ -176,7 +176,7 @@ void Location::AddMap(ptr<Map> map)
 {
     vec_add_unique_value(_locMaps, map.hold_ref());
 
-    auto map_ids = GetMapIds();
+    auto map_ids {GetMapIds()};
     vec_add_unique_value(map_ids, map->GetId());
     SetMapIds(map_ids);
 
@@ -194,7 +194,7 @@ void Location::RemoveMap(ptr<Map> map)
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     vec_remove_unique_value(_locMaps, map.hold_ref());
 
-    auto map_ids = GetMapIds();
+    auto map_ids {GetMapIds()};
     vec_remove_unique_value(map_ids, map->GetId());
     SetMapIds(map_ids);
 
@@ -202,7 +202,7 @@ void Location::RemoveMap(ptr<Map> map)
     map->SetLocMapIndex({});
     map->SetLocation(nullptr);
 
-    for (size_t index = 0; index < _locMaps.size(); index++) {
+    for (size_t index {0}; index < _locMaps.size(); index++) {
         _locMaps[index]->SetLocMapIndex(numeric_cast<int32_t>(index));
     }
 

@@ -12,7 +12,26 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-11-02
+## Current - 2026-11-03
+
+### Changed
+
+- Remove the byte-size limit from documentation search indexes. Generate the complete English and Russian indexes without a capacity gate; retain document membership, token rules and search validation.
+
+- Reconcile the published native-refactoring branch with master `ac37c9d217b314b3f3a1f567f67be535cfe15cac` (`2026.1.98-dev`). Keep sprite resource v3, independent per-direction timelines, FOFRM transforms/dependencies, configurable map coordinates, packaged client configuration and the Managed no-result event-fault behavior introduced by master.
+- Deduce `checked_add/sub/mul/div` from equal operand types, align internal counts/dimensions/shared indices to signed fixed-width integers, and retain checked conversion at container, external and serialized boundaries. Check arithmetic before buffer mutation, allocation, drawing and division.
+- Keep ordinary native records passive and move their operations to free functions; encapsulate behavior and lifetime owners in classes. Essentials, settings and `ExportValueType` retain their struct APIs. Clarify the upper public query block and meaningful `[[nodiscard]]` annotations, semantic spacing and synchronization descriptions. Initialize variable definitions with braces while preserving overload selection, container cardinality and types.
+
+### Migration
+
+- This is the `2026.1.98-dev` to `2026.1.99-dev` source integration step. Rebuild Server, Client, Mapper, Baker, tests and custom native extensions, regenerate metadata and rebake a matching resource set. The retained incoming v3 sprite/FOFRM/configuration changes require the migrations in versions 64–98 below when updating from the old feature checkout; do not combine old binaries or metadata with new resources. The integration adds no save conversion, property/identity renumbering, wire format, Managed ABI or resource schema beyond master's changes; `MigrationRule Version` remains `0.0.86` and Managed ABI remains `9`. Roll back the complete matching executable/resource set.
+- Replace `checked_mul<int64_t>(a, b)` with `checked_mul(a, b)` after converting both operands to `int64_t`; apply the same rule to add/sub/div. Explicit arithmetic template arguments and mixed operand types fail deduction (MSVC C2672). A cast after an unchecked operation cannot repair overflow. Search custom native roots for `checked_(add|sub|mul|div)\s*<` and retain `numeric_cast` for differing numeric types. Integer overflow and non-finite floating results throw `OverflowException`; zero division throws `DivisionByZeroException`, including `Game.DivRem`. Finite underflow and valid units/results remain unchanged.
+- Replace consuming `FileReader::GetStrNT/GetUInt8/GetInt8/GetBEUInt16/GetBEInt16/GetLEUInt16/GetLEInt16/GetBEUInt32/GetBEInt32/GetLEUInt32/GetLEInt32` calls with the corresponding `Read*` names. The old names no longer compile; reader advancement, bounds checks and returned byte interpretation remain unchanged. Retain unrelated information queries such as `GetCurDataSpan`.
+- Rebuild consumers of sprite/import records and use signed `int32_t` for native quantities and shared indices; keep `Size`, `Offset`, `Motion`, typed per-frame `Duration` and per-direction frame arrays from sprite v3. Counts stay 1–65535, dimensions positive 16-bit, and a shared index must be nonnegative and reference an earlier frame. Whole sequence milliseconds use v3's uint32 range, with positive per-frame durations; the old v2 uint16 duration rejection and ART saturation no longer apply. Check wide pixel/byte products before allocation. Apply final wire limits and exact RGBA validation after FOFRM transformations: raw frames may acquire their canvas, motion and timing there, and a wide PNG may be resized into the output range. TGA unsigned wire dimensions retain their high bit correctly.
+- Replace record member operations with their declared free-function counterparts and stop depending on newly private implementation fields; compile affected native consumers to find each old member use. Settings/value-type APIs, script-visible types and event signatures remain intact. Braced initialization must retain selected constructors: a vector/string count constructor is preserved explicitly when a direct list would select `initializer_list`, and JSON copies remain object copies. Existing `Get` queries retain `[[nodiscard]]`; consuming/mutating methods remain in the operation block.
+- Validate `SafeArithmetics`, buffers, image import/resource/animation tests, ordinary and AngelScript native builds, generated contracts and documentation, then bake and exercise the affected project. Native Windows checks do not establish another platform or renderer's runtime acceptance.
+
+## 2026.1.98-dev - 2026-11-02
 
 ### Fixed
 

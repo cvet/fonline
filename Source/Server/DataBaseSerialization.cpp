@@ -47,7 +47,7 @@ namespace DataBaseSerialization
         case AnyData::ValueType::Int64:
             return value.AsInt64();
         case AnyData::ValueType::Float64: {
-            float64_t double_value = value.AsDouble();
+            float64_t double_value {value.AsDouble()};
 
             if (!std::isfinite(double_value)) {
                 throw DataBaseException("ValueToJson non-finite double", double_value);
@@ -60,7 +60,8 @@ namespace DataBaseSerialization
         case AnyData::ValueType::String:
             return string(value.AsString());
         case AnyData::ValueType::Array: {
-            auto arr_json = nlohmann::json::array();
+            nlohmann::json arr_json {};
+            arr_json = nlohmann::json::array();
 
             for (const auto& arr_entry : value.AsArray()) {
                 arr_json.emplace_back(ValueToJson(arr_entry, depth + 1));
@@ -69,7 +70,8 @@ namespace DataBaseSerialization
             return arr_json;
         }
         case AnyData::ValueType::Dict: {
-            auto dict_json = nlohmann::json::object();
+            nlohmann::json dict_json {};
+            dict_json = nlohmann::json::object();
 
             for (auto&& [dict_key, dict_value] : value.AsDict()) {
                 dict_json[nlohmann::json::string_t(dict_key.data(), dict_key.size())] = ValueToJson(dict_value, depth + 1);
@@ -93,7 +95,7 @@ namespace DataBaseSerialization
             return value.get<int64_t>();
         }
         if (value.is_number_float()) {
-            float64_t double_value = value.get<float64_t>();
+            float64_t double_value {value.get<float64_t>()};
 
             if (!std::isfinite(double_value)) {
                 throw DataBaseException("ValueFromJson non-finite double", double_value);
@@ -108,7 +110,7 @@ namespace DataBaseSerialization
             return value.get<string>();
         }
         if (value.is_array()) {
-            AnyData::Array arr;
+            AnyData::Array arr {};
 
             for (const auto& arr_entry : value) {
                 arr.EmplaceBack(ValueFromJson(arr_entry, depth + 1));
@@ -117,7 +119,7 @@ namespace DataBaseSerialization
             return std::move(arr);
         }
         if (value.is_object()) {
-            AnyData::Dict dict;
+            AnyData::Dict dict {};
 
             for (auto&& [dict_key, dict_value] : value.items()) {
                 dict.Emplace(string(dict_key), ValueFromJson(dict_value, depth + 1));
@@ -131,7 +133,8 @@ namespace DataBaseSerialization
 
     auto ToJson(const AnyData::Document& doc) -> nlohmann::json
     {
-        auto doc_json = nlohmann::json::object();
+        nlohmann::json doc_json {};
+        doc_json = nlohmann::json::object();
 
         for (auto&& [doc_key, doc_value] : doc) {
             doc_json[nlohmann::json::string_t(doc_key.data(), doc_key.size())] = ValueToJson(doc_value, 1);
@@ -146,7 +149,7 @@ namespace DataBaseSerialization
             throw DataBaseException("Invalid database JSON document");
         }
 
-        AnyData::Document doc;
+        AnyData::Document doc {};
 
         for (auto&& [doc_key, doc_value] : doc_json.items()) {
             doc.Emplace(string(doc_key), ValueFromJson(doc_value, 1));
@@ -160,10 +163,10 @@ namespace DataBaseSerialization
         FO_TRACE_ZONE(Database);
 
         FO_VERIFY_AND_THROW(text.size() <= MAX_DOCUMENT_BYTES, "Database document size limit exceeded", text.size());
-        auto check_depth = [](int32_t depth, nlohmann::json::parse_event_t, nlohmann::json&) -> bool {
+        auto check_depth {[](int32_t depth, nlohmann::json::parse_event_t, nlohmann::json&) -> bool {
             FO_VERIFY_AND_THROW(depth >= 0 && numeric_cast<size_t>(depth) <= MAX_DOCUMENT_DEPTH, "Database document nesting limit exceeded", depth);
             return true;
-        };
+        }};
 
         return FromJson(nlohmann::json::parse(text.begin(), text.end(), check_depth));
     }
@@ -217,7 +220,7 @@ namespace DataBaseSerialization
     {
         FO_TRACE_ZONE(Database);
 
-        vector<uint8_t> data;
+        vector<uint8_t> data {};
         nlohmann::json::to_cbor(ToJson(doc), data);
         FO_VERIFY_AND_THROW(data.size() <= MAX_DOCUMENT_BYTES, "Database document size limit exceeded", data.size());
         return data;
@@ -229,7 +232,7 @@ namespace DataBaseSerialization
 
         FO_VERIFY_AND_THROW(data.size() <= MAX_DOCUMENT_BYTES, "Database document size limit exceeded", data.size());
         CborValidator validator {data.size()};
-        bool valid = nlohmann::json::sax_parse(data.begin(), data.end(), &validator, nlohmann::json::input_format_t::cbor);
+        bool valid {nlohmann::json::sax_parse(data.begin(), data.end(), &validator, nlohmann::json::input_format_t::cbor)};
         FO_VERIFY_AND_THROW(valid, "Invalid database CBOR document");
 
         return FromJson(nlohmann::json::from_cbor(data.begin(), data.end()));

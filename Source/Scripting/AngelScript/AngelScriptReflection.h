@@ -56,6 +56,19 @@ class ScriptType
 public:
     explicit ScriptType(ptr<AngelScript::asITypeInfo> ti);
 
+    [[nodiscard]] auto GetSize() const -> int;
+    [[nodiscard]] auto IsGlobal() const -> bool;
+    [[nodiscard]] auto IsClass() const -> bool;
+    [[nodiscard]] auto IsInterface() const -> bool;
+    [[nodiscard]] auto IsEnum() const -> bool;
+    [[nodiscard]] auto IsFunction() const -> bool;
+    [[nodiscard]] auto IsShared() const -> bool;
+    [[nodiscard]] auto GetInterfaceCount() const -> int;
+    [[nodiscard]] auto Equals(const ScriptType* other) const -> bool;
+    [[nodiscard]] auto GetMethodsCount() const -> int;
+    [[nodiscard]] auto GetPropertiesCount() const -> int;
+    [[nodiscard]] auto GetEnumLength() const -> int;
+
     void AddRef() const;
     void Release() const;
 
@@ -63,24 +76,12 @@ public:
     auto GetNameWithoutNamespace() const -> string;
     auto GetNamespace() const -> string;
     auto GetModule() const -> string;
-    auto GetSize() const -> int;
-    auto IsGlobal() const -> bool;
-    auto IsClass() const -> bool;
-    auto IsInterface() const -> bool;
-    auto IsEnum() const -> bool;
-    auto IsFunction() const -> bool;
-    auto IsShared() const -> bool;
     auto GetBaseType() const -> refcount_nptr<ScriptType>;
-    auto GetInterfaceCount() const -> int;
     auto GetInterface(int index) const -> refcount_nptr<ScriptType>;
     auto Implements(const ScriptType* other) const -> bool;
-    auto Equals(const ScriptType* other) const -> bool;
     auto DerivesFrom(const ScriptType* other) const -> bool;
-    auto GetMethodsCount() const -> int;
     auto GetMethodDeclaration(int index, bool include_object_name, bool include_namespace, bool include_param_names) const -> string;
-    auto GetPropertiesCount() const -> int;
     auto GetPropertyDeclaration(int index, bool include_namespace) const -> string;
-    auto GetEnumLength() const -> int;
     auto GetEnumNames() const -> refcount_ptr<ScriptArray>;
     auto GetEnumValues() const -> refcount_ptr<ScriptArray>;
 

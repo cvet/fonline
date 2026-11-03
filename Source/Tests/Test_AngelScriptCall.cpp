@@ -57,16 +57,17 @@ FO_BEGIN_NAMESPACE
 // Exact checksums pin values and aliasing while UBSan pins alignment
 namespace
 {
-    struct ManagedCallDataAccessor final : DataAccessor
+    class ManagedCallDataAccessor final : public DataAccessor
     {
+    public:
         [[nodiscard]] auto GetBackendIndex() const noexcept -> int32_t override { return ScriptSystemBackend::MANAGED_BACKEND_INDEX; }
     };
 
-    struct CallTestRig
+    namespace CallTestRig
     {
         static auto MakeSettings() -> GlobalSettings
         {
-            auto settings = GlobalSettings(false);
+            auto settings {GlobalSettings(false)};
 
             settings.ApplyDefaultSettings();
             settings.ApplyAutoSettings();
@@ -340,7 +341,7 @@ namespace CallTest
 )"},
                 },
                 [](string_view message) {
-                    string message_str = string(message);
+                    string message_str {string(message)};
 
                     if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
                         throw ScriptSystemException(message_str);
@@ -350,23 +351,23 @@ namespace CallTest
 
         static auto MakeResources() -> FileSystem
         {
-            auto metadata_blob = BakerTests::MakeMetadataBlob({
+            auto metadata_blob {BakerTests::MakeMetadataBlob({
                 {"RefType", {{"CallReturnProbe", "Value", "int32", "0"}}},
-            });
+            })};
 
-            auto compiler_resources_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("CallTestCompilerResources");
+            auto compiler_resources_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("CallTestCompilerResources")};
             compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
 
-            FileSystem compiler_resources;
+            FileSystem compiler_resources {};
             compiler_resources.AddCustomSource(std::move(compiler_resources_source));
 
-            auto script_blob = MakeScriptBinary(compiler_resources);
+            auto script_blob {MakeScriptBinary(compiler_resources)};
 
-            auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("CallTestRuntimeResources");
+            auto runtime_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("CallTestRuntimeResources")};
             runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
             runtime_source->AddFile("CallTest.fos-bin-server", script_blob);
 
-            FileSystem resources;
+            FileSystem resources {};
             resources.AddCustomSource(std::move(runtime_source));
 
             return resources;
@@ -374,7 +375,7 @@ namespace CallTest
 
         static auto WaitForStart(ptr<ServerEngine> server) -> string
         {
-            for (int32_t i = 0; i < 6000; i++) {
+            for (int32_t i {0}; i < 6000; i++) {
                 if (server->IsStarted()) {
                     return {};
                 }
@@ -388,53 +389,56 @@ namespace CallTest
             return "ServerEngine startup timed out";
         }
 
-        static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine> { return safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources()); }
-    };
+        static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
+        {
+            return safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources());
+        }
+    }
 }
 
 TEST_CASE("AngelScriptCallShapes")
 {
-    auto settings = CallTestRig::MakeSettings();
-    auto server = CallTestRig::MakeServerEngine(settings);
+    auto settings {CallTestRig::MakeSettings()};
+    auto server {CallTestRig::MakeServerEngine(settings)};
 
-    auto shutdown = scope_exit([&server]() noexcept {
+    auto shutdown {scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
                 server->Shutdown();
             }
         });
-    });
+    })};
 
-    string startup_error = CallTestRig::WaitForStart(server);
+    string startup_error {CallTestRig::WaitForStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
 
-    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
 
-    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
+    auto fn {[&server](string_view name) { return server->Hashes.to_hashed_string(name); }};
 
-    auto call_and_check = [&](string_view func_name, int64_t expected) {
+    auto call_and_check {[&](string_view func_name, int64_t expected) {
         INFO(func_name);
-        auto func = server->FindFunc<int64_t>(fn(func_name));
+        auto func {server->FindFunc<int64_t>(fn(func_name))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == expected);
-    };
+    }};
 
     {
-        int32_t baseline_refs = server->GetRefCount();
+        int32_t baseline_refs {server->GetRefCount()};
 
         {
-            auto echo = server->FindFunc<nptr<Entity>, nptr<Entity>, bool>(fn("CallTest::EchoEntity"));
+            auto echo {server->FindFunc<nptr<Entity>, nptr<Entity>, bool>(fn("CallTest::EchoEntity"))};
             REQUIRE(echo);
-            int32_t completions = 0;
-            bool completed_successfully = false;
-            auto completion = [&](bool success) {
+            int32_t completions {0};
+            bool completed_successfully {false};
+            auto completion {[&](bool success) {
                 completions++;
                 completed_successfully = success;
-            };
+            }};
 
             REQUIRE(echo.CallWithCompletion(completion, server, false));
             CHECK(echo.GetResult() == server);
@@ -458,13 +462,13 @@ TEST_CASE("AngelScriptCallShapes")
             CHECK(server->GetRefCount() == baseline_refs);
             REQUIRE(echo.Call(server, false));
 
-            auto moved = std::move(echo);
+            auto moved {std::move(echo)};
             CHECK_FALSE(echo); // FO_USE_AFTER_MOVE_SUPPRESS: test verifies the moved-from function contract
             CHECK(moved.GetResult() == server);
             moved = ScriptFunc<nptr<Entity>, nptr<Entity>, bool> {};
             CHECK(server->GetRefCount() == baseline_refs);
 
-            auto non_null_echo = server->FindFunc<ptr<Entity>, ptr<Entity>>(fn("CallTest::EchoNonNullEntity"));
+            auto non_null_echo {server->FindFunc<ptr<Entity>, ptr<Entity>>(fn("CallTest::EchoNonNullEntity"))};
             REQUIRE(non_null_echo);
             REQUIRE(non_null_echo.Call(server));
             CHECK(non_null_echo.GetResult() == server);
@@ -484,20 +488,20 @@ TEST_CASE("AngelScriptCallShapes")
     call_and_check("CallTest::UseMixedParams", 22);
 
     {
-        auto candidates = server->FindFuncCandidates(fn("CallTest::MakeManagedReturnProbe"));
+        auto candidates {server->FindFuncCandidates(fn("CallTest::MakeManagedReturnProbe"))};
         REQUIRE(candidates.size() == 1);
-        ptr<ScriptFuncDesc> func_desc = candidates.front();
+        ptr<ScriptFuncDesc> func_desc {candidates.front()};
         REQUIRE(func_desc->Call);
 
-        ManagedCallDataAccessor accessor;
-        DynamicRefTypeInstance* return_handle = nullptr;
-        refcount_nptr<DynamicRefTypeInstance> retained;
+        ManagedCallDataAccessor accessor {};
+        DynamicRefTypeInstance* return_handle {nullptr};
+        refcount_nptr<DynamicRefTypeInstance> retained {};
 
         {
             FuncCallData call {.Accessor = &accessor, .RetData = make_nptr(&return_handle).void_cast()};
             func_desc->Call(call);
 
-            nptr<DynamicRefTypeInstance> returned = return_handle;
+            nptr<DynamicRefTypeInstance> returned {return_handle};
             REQUIRE(returned);
             retained = refcount_nptr<DynamicRefTypeInstance>::from_addref(returned.get_no_const());
             CHECK(returned->get_refcount() == 2);
@@ -508,14 +512,14 @@ TEST_CASE("AngelScriptCallShapes")
     }
 
     {
-        auto func = server->FindFunc<vector<int32_t>>(fn("CallTest::ReturnIntArray"));
+        auto func {server->FindFunc<vector<int32_t>>(fn("CallTest::ReturnIntArray"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == vector<int32_t> {4, 5, 6});
     }
 
     {
-        auto func = server->FindFunc<map<int32_t, int32_t>>(fn("CallTest::ReturnIntDict"));
+        auto func {server->FindFunc<map<int32_t, int32_t>>(fn("CallTest::ReturnIntDict"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == map<int32_t, int32_t> {{2, 7}, {3, 9}});
@@ -524,7 +528,7 @@ TEST_CASE("AngelScriptCallShapes")
     // The vector<ptr<T>>-returning call is about the generated cast, not the value: with the
     // test-side server lock held the sync context may legitimately hold entities
     {
-        auto func = server->FindFunc<int64_t>(fn("CallTest::CallVectorReturningApi"));
+        auto func {server->FindFunc<int64_t>(fn("CallTest::CallVectorReturningApi"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() >= 0);
@@ -533,31 +537,33 @@ TEST_CASE("AngelScriptCallShapes")
 
 TEST_CASE("AngelScriptTimeEventWaitsForContextCompletion", "[scripting][time-events]")
 {
-    auto settings = CallTestRig::MakeSettings();
-    auto server = CallTestRig::MakeServerEngine(settings);
-    auto shutdown = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
-    string startup_error = CallTestRig::WaitForStart(server);
+    auto settings {CallTestRig::MakeSettings()};
+    auto server {CallTestRig::MakeServerEngine(settings)};
+    auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
+    string startup_error {CallTestRig::WaitForStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
-    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
-    auto backend = GetScriptBackend(ptr<BaseEngine>(server.get()));
-    auto context_manager = backend->GetContextMngr();
-    function<void()> resume;
-    int32_t scheduled_contexts = 0;
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
+    auto backend {GetScriptBackend(ptr<BaseEngine>(server.get()))};
+    auto context_manager {backend->GetContextMngr()};
+    function<void()> resume {};
+    int32_t scheduled_contexts {0};
     // Each invocation reaches one Yield, so scheduler submissions count actual script starts
     context_manager->SetDelayedScheduler([&](timespan, function<void()> body) {
         scheduled_contexts++;
         resume = std::move(body);
     });
+
     server->TimeEventMngr.SetDispatcherHooks({});
-    auto clear_hooks = scope_exit([&]() noexcept {
+    auto clear_hooks {scope_exit([&]() noexcept {
         context_manager->SetDelayedScheduler({});
         server->TimeEventMngr.ClearDispatcherHooks();
-    });
-    bool cancel = false;
-    bool shutdown_pending = false;
-    bool fault = false;
+    })};
+
+    bool cancel {false};
+    bool shutdown_pending {false};
+    bool fault {false};
     SECTION("ShutdownDuringYield")
     {
         shutdown_pending = true;
@@ -574,14 +580,14 @@ TEST_CASE("AngelScriptTimeEventWaitsForContextCompletion", "[scripting][time-eve
         cancel = true;
     }
 
-    auto start = server->FindFunc<uint32_t>(server->Hashes.to_hashed_string(fault ? "CallTest::StartFaultTimer" : "CallTest::StartTimer"));
+    auto start {server->FindFunc<uint32_t>(server->Hashes.to_hashed_string(fault ? "CallTest::StartFaultTimer" : "CallTest::StartTimer"))};
     REQUIRE(start);
     REQUIRE(start.Call());
-    uint32_t id = start.GetResult();
-    auto events = server->GetTimeEvents();
+    uint32_t id {start.GetResult()};
+    auto events {server->GetTimeEvents()};
     REQUIRE(events);
     REQUIRE(events->size() == 1);
-    auto event = events->front();
+    auto event {events->front()};
     event->FireTime = server->GameTime.GetFrameTime();
     CHECK_FALSE(server->TimeEventMngr.FireAndAdvance(server, id).has_value());
     REQUIRE(resume);
@@ -592,7 +598,7 @@ TEST_CASE("AngelScriptTimeEventWaitsForContextCompletion", "[scripting][time-eve
     event->FireTime = server->GameTime.GetFrameTime();
     CHECK_FALSE(server->TimeEventMngr.FireAndAdvance(server, id).has_value());
     server->TimeEventMngr.ProcessTimeEvents();
-    optional<timespan> next;
+    optional<timespan> next {};
     CHECK(server->TimeEventMngr.CollectReadyTimeEvents(next).empty());
     CHECK(scheduled_contexts == 1);
 
@@ -615,10 +621,10 @@ TEST_CASE("AngelScriptTimeEventWaitsForContextCompletion", "[scripting][time-eve
         server->TimeEventMngr.StopTimeEvent(server, {}, id);
     }
 
-    nanotime completed_at = server->GameTime.GetFrameTime();
+    nanotime completed_at {server->GameTime.GetFrameTime()};
     resume();
     resume = {};
-    auto delay = server->TimeEventMngr.FireAndAdvance(server, id);
+    auto delay {server->TimeEventMngr.FireAndAdvance(server, id)};
     CHECK(delay.has_value() == !cancel);
     CHECK(server->TimeEventMngr.CountTimeEvent(server, {}, id, false) == (cancel ? 0 : 1));
 
@@ -632,39 +638,40 @@ TEST_CASE("AngelScriptTimeEventWaitsForContextCompletion", "[scripting][time-eve
 
 TEST_CASE("AngelScriptTypeIdsAreLazilyAssignedAcrossThreads")
 {
-    nptr<AngelScript::asIScriptEngine> as_engine = AngelScript::asCreateScriptEngine(ANGELSCRIPT_VERSION);
+    nptr<AngelScript::asIScriptEngine> as_engine {AngelScript::asCreateScriptEngine(ANGELSCRIPT_VERSION)};
     REQUIRE(as_engine);
-    auto release_engine = scope_exit([&as_engine]() noexcept {
+    auto release_engine {scope_exit([&as_engine]() noexcept {
         safe_call([&as_engine] {
             if (as_engine) {
                 as_engine->ShutDownAndRelease();
             }
         });
-    });
-    constexpr size_t THREAD_COUNT = 16;
-    constexpr size_t TYPE_COUNT = 128;
+    })};
 
-    vector<nptr<AngelScript::asITypeInfo>> probe_types;
+    constexpr size_t THREAD_COUNT {16};
+    constexpr size_t TYPE_COUNT {128};
+
+    vector<nptr<AngelScript::asITypeInfo>> probe_types {};
     probe_types.reserve(TYPE_COUNT);
 
-    for (size_t type_index = 0; type_index < TYPE_COUNT; type_index++) {
-        string type_name = strex("ConcurrentTypeIdProbe{}", type_index);
+    for (size_t type_index {0}; type_index < TYPE_COUNT; type_index++) {
+        string type_name {static_cast<string&&>(strex("ConcurrentTypeIdProbe{}", type_index))};
         REQUIRE(as_engine->RegisterObjectType(type_name.c_str(), 0, AngelScript::asOBJ_REF | AngelScript::asOBJ_NOCOUNT) >= 0);
-        nptr<AngelScript::asITypeInfo> type_info = as_engine->GetTypeInfoByName(type_name.c_str());
+        nptr<AngelScript::asITypeInfo> type_info {as_engine->GetTypeInfoByName(type_name.c_str())};
         REQUIRE(type_info);
         probe_types.emplace_back(type_info);
     }
 
-    vector<vector<int32_t>> results(THREAD_COUNT, vector<int32_t>(TYPE_COUNT, -1));
-    std::atomic<size_t> ready_count = 0;
-    std::atomic<size_t> completed_count = 0;
-    std::atomic<size_t> phase = 0;
-    vector<thread> workers;
+    vector<vector<int32_t>> results {vector<vector<int32_t>>(THREAD_COUNT, vector<int32_t>(TYPE_COUNT, -1))};
+    std::atomic<size_t> ready_count {0};
+    std::atomic<size_t> completed_count {0};
+    std::atomic<size_t> phase {0};
+    vector<thread> workers {};
     workers.reserve(THREAD_COUNT);
 
-    for (size_t thread_index = 0; thread_index < THREAD_COUNT; thread_index++) {
+    for (size_t thread_index {0}; thread_index < THREAD_COUNT; thread_index++) {
         workers.emplace_back(run_thread("AngelScriptTypeIdProbe", [&, thread_index] {
-            for (size_t type_index = 0; type_index < TYPE_COUNT; type_index++) {
+            for (size_t type_index {0}; type_index < TYPE_COUNT; type_index++) {
                 ready_count.fetch_add(1, std::memory_order_release);
 
                 while (phase.load(std::memory_order_acquire) <= type_index) {
@@ -677,8 +684,8 @@ TEST_CASE("AngelScriptTypeIdsAreLazilyAssignedAcrossThreads")
         }));
     }
 
-    for (size_t type_index = 0; type_index < TYPE_COUNT; type_index++) {
-        size_t expected_count = (type_index + 1) * THREAD_COUNT;
+    for (size_t type_index {0}; type_index < TYPE_COUNT; type_index++) {
+        size_t expected_count {(type_index + 1) * THREAD_COUNT};
 
         while (ready_count.load(std::memory_order_acquire) < expected_count) {
             std::this_thread::yield();
@@ -695,12 +702,12 @@ TEST_CASE("AngelScriptTypeIdsAreLazilyAssignedAcrossThreads")
         worker.join();
     }
 
-    for (size_t type_index = 0; type_index < TYPE_COUNT; type_index++) {
-        int32_t expected_type_id = results[0][type_index];
+    for (size_t type_index {0}; type_index < TYPE_COUNT; type_index++) {
+        int32_t expected_type_id {results[0][type_index]};
         REQUIRE(expected_type_id > AngelScript::asTYPEID_DOUBLE);
         REQUIRE(as_engine->GetTypeInfoById(expected_type_id));
 
-        for (size_t thread_index = 1; thread_index < THREAD_COUNT; thread_index++) {
+        for (size_t thread_index {1}; thread_index < THREAD_COUNT; thread_index++) {
             CHECK(results[thread_index][type_index] == expected_type_id);
         }
     }
@@ -711,20 +718,21 @@ TEST_CASE("ScriptFuncCleansStoredReturnHandle")
     ScriptFunc<nptr<void>> empty_func {unique_del_nptr<ScriptFuncDesc> {}};
     CHECK_FALSE(empty_func);
 
-    int32_t release_count = 0;
-    nptr<void> returned_obj = std::addressof(release_count);
+    int32_t release_count {0};
+    nptr<void> returned_obj {std::addressof(release_count)};
 
-    ScriptFunc<nptr<void>> moved;
+    ScriptFunc<nptr<void>> moved {};
 
     {
-        ScriptFunc<nptr<void>> func;
-        ScriptFuncDesc func_desc;
+        ScriptFunc<nptr<void>> func {};
+        ScriptFuncDesc func_desc {};
         func_desc.Call = [returned_obj](FuncCallData& call) {
             FO_VERIFY_AND_THROW(call.RetData, "Missing return storage");
             NativeDataProvider::WriteHandleSlot(call.RetData, returned_obj);
         };
+
         func_desc.ReturnValueCleaner = [&release_count, returned_obj](ptr<void> ret_data) {
-            nptr<void> stored_obj = NativeDataProvider::ReadHandleSlot(ret_data);
+            nptr<void> stored_obj {NativeDataProvider::ReadHandleSlot(ret_data)};
 
             if (stored_obj == returned_obj) {
                 release_count++;
@@ -753,31 +761,32 @@ TEST_CASE("VoidScriptFuncDoesNotRetainReturnCleanerAcrossDeferredLifetime")
 {
     CHECK(sizeof(ScriptFunc<void>) < sizeof(ScriptFunc<nptr<void>>));
 
-    constexpr size_t CALLBACK_COUNT = 64;
+    constexpr size_t CALLBACK_COUNT {64};
 
-    int32_t call_count = 0;
-    int32_t failed_call_count = 0;
-    auto cleanup_token = safe_alloc::make_shared<int32_t>(1);
-    weak_ptr<int32_t> cleanup_token_weak = cleanup_token;
+    int32_t call_count {0};
+    int32_t failed_call_count {0};
+    auto cleanup_token {safe_alloc::make_shared<int32_t>(1)};
+    weak_ptr<int32_t> cleanup_token_weak {cleanup_token};
 
-    ScriptFuncDesc func_desc;
+    ScriptFuncDesc func_desc {};
     func_desc.Call = [&call_count](FuncCallData& call) {
         ignore_unused(call);
         call_count++;
     };
+
     func_desc.ReturnValueCleaner = [cleanup_token](ptr<void> ret_data) {
         ignore_unused(cleanup_token, ret_data);
         FO_UNREACHABLE_PLACE();
     };
 
-    vector<function<void()>> deferred_callbacks;
+    vector<function<void()>> deferred_callbacks {};
     deferred_callbacks.reserve(CALLBACK_COUNT);
 
-    for (size_t i = 0; i < CALLBACK_COUNT; i++) {
-        ScriptFunc<void> callback_func;
+    for (size_t i {0}; i < CALLBACK_COUNT; i++) {
+        ScriptFunc<void> callback_func {};
         callback_func = ScriptFunc<void> {&func_desc};
 
-        auto stored_func = safe_alloc::make_shared<ScriptFunc<void>>(std::move(callback_func));
+        auto stored_func {safe_alloc::make_shared<ScriptFunc<void>>(std::move(callback_func))};
         deferred_callbacks.emplace_back([stored_func, &failed_call_count]() mutable {
             if (!stored_func->Call()) {
                 failed_call_count++;

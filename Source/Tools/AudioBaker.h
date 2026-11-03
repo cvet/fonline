@@ -48,8 +48,8 @@ FO_DECLARE_EXCEPTION(AudioBakerException);
 class AudioBaker final : public BaseBaker
 {
 public:
-    static constexpr string_view_nt NAME = "Audio";
-    static constexpr string_view NATIVE_EXTENSION = "ogg";
+    static constexpr string_view_nt NAME {"Audio"};
+    static constexpr string_view NATIVE_EXTENSION {"ogg"};
 
     struct PcmAudio
     {
@@ -81,10 +81,10 @@ private:
         size_t OutputBytes {};
     };
 
-    [[nodiscard]] auto IsBakeableExtension(string_view path) const -> bool;
-    [[nodiscard]] auto BakeFile(const File& file) const -> BakedAudioInfo;
-    [[nodiscard]] auto LoadWav(string_view fname, FileReader reader) const -> PcmAudio;
-    [[nodiscard]] auto EncodeVorbis(string_view fname, const PcmAudio& pcm) const -> vector<uint8_t>;
+    auto IsBakeableExtension(string_view path) const -> bool;
+    auto BakeFile(const File& file) const -> BakedAudioInfo;
+    auto LoadWav(string_view fname, FileReader reader) const -> PcmAudio;
+    auto EncodeVorbis(string_view fname, const PcmAudio& pcm) const -> vector<uint8_t>;
 
     unordered_map<string, LoadFunc> _fileLoaders {};
 };

@@ -131,7 +131,7 @@ private:
     void WorkerEntry(int32_t worker_index) noexcept;
     void StopWorkers() noexcept;
 
-    string _name;
+    string _name {};
     ptr<const std::atomic<bool>> _shutdownFlag;
     vector<thread> _workers {};
     mutable mutex _mutex {};

@@ -65,10 +65,10 @@ void ResourceUsage::RegisterOutput(string_view pack, string_view path, string_vi
 {
     ValidateUsagePath(pack);
     ValidateUsagePath(path);
-    string key = strex(pack).combine_path(path);
+    string key {static_cast<string&&>(strex(pack).combine_path(path))};
     scoped_lock lock {_locker};
     _packs.emplace(pack);
-    auto [it, inserted] = _outputs.try_emplace(key, ResourceOutput {string {pack}, string {path}, string {baker}, kind});
+    auto [it, inserted] {_outputs.try_emplace(key, ResourceOutput {string {pack}, string {path}, string {baker}, kind})};
 
     if (!inserted) {
         FO_VERIFY_AND_THROW(it->second.Baker == baker, "Resource output has multiple baking owners", key, it->second.Baker, baker);
@@ -92,16 +92,16 @@ void ResourceUsage::AddReference(string_view path, string_view reason)
 
 void ResourceUsage::AddProperties(const Properties& properties, string_view owner)
 {
-    auto registrar = properties.GetRegistrar();
+    auto registrar {properties.GetRegistrar()};
 
-    for (size_t i = 1; i < registrar->GetPropertiesCount(); i++) {
-        auto property = registrar->GetPropertyByIndexUnsafe(i);
+    for (size_t i {1}; i < registrar->GetPropertiesCount(); i++) {
+        auto property {registrar->GetPropertyByIndexUnsafe(i)};
 
         if (property->IsDisabled() || !property->IsBaseTypeResource()) {
             continue;
         }
 
-        string reason = strex("{} property {}", owner, property->GetName());
+        string reason {static_cast<string&&>(strex("{} property {}", owner, property->GetName()))};
 
         if (property->IsPlainData()) {
             AddReference(properties.GetValue<hstring>(property).as_str(), reason);
@@ -121,14 +121,14 @@ static void CollectUsageMap(ResourceUsage& usage, EngineMetadata& metadata, cons
 {
     data_reader reader {file.GetDataSpan()};
     MapLoader::ReadBakedFileHeader(reader, file.GetPath());
-    uint32_t hash_count = reader.read<uint32_t>();
+    uint32_t hash_count {reader.read<uint32_t>()};
     reader.verify_payload_count(hash_count, sizeof(uint32_t));
 
-    for (uint32_t i = 0; i < hash_count; i++) {
+    for (uint32_t i {0}; i < hash_count; i++) {
         (void)metadata.Hashes.to_hashed_string(reader.read_string());
     }
 
-    vector<hstring> types;
+    vector<hstring> types {};
 
     if (!client) {
         types.emplace_back(metadata.Hashes.to_hashed_string("Critter"));
@@ -137,16 +137,16 @@ static void CollectUsageMap(ResourceUsage& usage, EngineMetadata& metadata, cons
     types.emplace_back(metadata.Hashes.to_hashed_string("Item"));
 
     for (hstring type : types) {
-        uint32_t count = reader.read<uint32_t>();
+        uint32_t count {reader.read<uint32_t>()};
         reader.verify_payload_count(count, sizeof(ident_t::underlying_type) + sizeof(hstring::hash_t) + sizeof(uint32_t));
 
-        for (uint32_t i = 0; i < count; i++) {
+        for (uint32_t i {0}; i < count; i++) {
             (void)reader.read<ident_t::underlying_type>();
-            hstring pid = metadata.Hashes.resolve_hash(reader.read<hstring::hash_t>());
-            auto proto = metadata.GetProtoEntity(type, pid);
+            hstring pid {metadata.Hashes.resolve_hash(reader.read<hstring::hash_t>())};
+            auto proto {metadata.GetProtoEntity(type, pid)};
             FO_VERIFY_AND_THROW(proto, "Resource usage map prototype is missing", file.GetPath(), type, pid);
-            uint32_t size = reader.read<uint32_t>();
-            const_span<uint8_t> data = reader.read_bytes(size);
+            uint32_t size {reader.read<uint32_t>()};
+            const_span<uint8_t> data {reader.read_bytes(size)};
             Properties properties {proto->GetProperties()->GetRegistrar()};
             properties.RestoreAllData(vector<uint8_t> {data.begin(), data.end()});
             usage.AddProperties(properties, strex("Map {} {}", file.GetPath(), type));
@@ -179,7 +179,7 @@ void ResourceUsage::CollectReferences(const FileSystem& resources)
     }
 
     for (const FileHeader& header : resources.FilterFiles("fomain-client")) {
-        File file = File::Load(header);
+        File file {File::Load(header)};
         ConfigFile config {file.GetStr()};
 
         for (string_view setting : {"Render.ImGuiDefaultEffect", "Render.CritterStubSpriteName", "Render.ItemStubSpriteName"}) {
@@ -205,7 +205,7 @@ void ResourceUsage::CollectReferences(const FileSystem& resources)
 auto ResourceUsage::GetOutputs() const -> vector<ResourceOutput>
 {
     scoped_lock lock {_locker};
-    vector<ResourceOutput> result;
+    vector<ResourceOutput> result {};
     result.reserve(_outputs.size());
 
     for (const auto& output : _outputs | std::views::values) {
@@ -217,9 +217,9 @@ auto ResourceUsage::GetOutputs() const -> vector<ResourceOutput>
 
 auto ResourceUsage::CreateManifest(string_view build_hash, string_view config_hash, bool filter_resources, const OutputAvailable& available, const Dependencies& dependencies) const -> string
 {
-    map<string, ResourceOutput> outputs;
-    map<string, set<string>> references;
-    set<string> packs;
+    map<string, ResourceOutput> outputs {};
+    map<string, set<string>> references {};
+    set<string> packs {};
 
     {
         scoped_lock lock {_locker};
@@ -228,7 +228,7 @@ auto ResourceUsage::CreateManifest(string_view build_hash, string_view config_ha
         packs = _packs;
     }
 
-    map<string, vector<string>> providers;
+    map<string, vector<string>> providers {};
 
     for (const auto& [key, output] : outputs) {
         if (available(output)) {
@@ -236,25 +236,25 @@ auto ResourceUsage::CreateManifest(string_view build_hash, string_view config_ha
         }
     }
 
-    set<string> selected;
-    map<string, set<string>> reasons;
-    deque<string> pending;
+    set<string> selected {};
+    map<string, set<string>> reasons {};
+    deque<string> pending {};
 
-    auto select = [&](const string& key, string_view reason) {
+    auto select {[&](const string& key, string_view reason) {
         reasons[key].emplace(reason);
 
         if (selected.emplace(key).second) {
             pending.emplace_back(key);
         }
-    };
-    auto reference = [&](const string& path, string_view reason) {
-        auto it = providers.find(path);
+    }};
+    auto reference {[&](const string& path, string_view reason) {
+        auto it {providers.find(path)};
         FO_VERIFY_AND_THROW(it != providers.end(), "Referenced resource has no baked output", path, reason);
 
         for (const string& key : it->second) {
             select(key, reason);
         }
-    };
+    }};
 
     for (const auto& [key, output] : outputs) {
         if (output.Kind == BakingOutputKind::Required) {
@@ -271,7 +271,7 @@ auto ResourceUsage::CreateManifest(string_view build_hash, string_view config_ha
         }
 
         while (!pending.empty()) {
-            string key = std::move(pending.front());
+            string key {std::move(pending.front())};
             pending.pop_front();
 
             for (const string& path : dependencies(outputs.at(key))) {
@@ -289,7 +289,7 @@ auto ResourceUsage::CreateManifest(string_view build_hash, string_view config_ha
         }
     }
 
-    nlohmann::ordered_json manifest;
+    nlohmann::ordered_json manifest {};
     manifest["Version"] = 1;
     manifest["BuildHash"] = build_hash;
     manifest["BakingConfigHash"] = config_hash;
@@ -301,9 +301,9 @@ auto ResourceUsage::CreateManifest(string_view build_hash, string_view config_ha
     }
 
     for (const string& key : selected) {
-        const ResourceOutput& output = outputs.at(key);
+        const ResourceOutput& output {outputs.at(key)};
         manifest["Packs"][string_view {output.Pack}].push_back(string_view {output.Path});
-        auto& entry = manifest["Reasons"][string_view {key}];
+        auto& entry {manifest["Reasons"][string_view {key}]};
         entry = nlohmann::ordered_json::array();
 
         for (const string& reason : reasons.at(key)) {

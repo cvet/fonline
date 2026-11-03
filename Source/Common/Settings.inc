@@ -31,8 +31,6 @@
 // SOFTWARE.
 //
 
-// ReSharper disable CppMissingIncludeGuard
-
 #if !defined(SETTING) || !defined(SETTING_GROUP) || !defined(SETTING_GROUP_END)
 #error SETTING or SETTING_GROUP or SETTING_GROUP_END not defined
 #endif

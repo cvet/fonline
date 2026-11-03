@@ -44,7 +44,7 @@ void NetworkServer::Shutdown()
 {
     FO_TRACE_ZONE(Network);
 
-    optional<vector<shared_ptr<NetworkServerConnection>>> connections = _connectionRegistry->BeginShutdown();
+    optional<vector<shared_ptr<NetworkServerConnection>>> connections {_connectionRegistry->BeginShutdown()};
     if (!connections) {
         return;
     }
@@ -74,11 +74,11 @@ auto NetworkServer::ConnectionRegistry::BeginShutdown() -> optional<vector<share
         return {};
     }
 
-    vector<shared_ptr<NetworkServerConnection>> connections;
+    vector<shared_ptr<NetworkServerConnection>> connections {};
     connections.reserve(_connections.size());
 
     for (const auto& weak_connection : _connections) {
-        if (auto connection = weak_connection.lock()) {
+        if (auto connection {weak_connection.lock()}) {
             connections.emplace_back(std::move(connection));
         }
     }
@@ -157,15 +157,15 @@ void NetworkServerConnection::RequestDisconnect()
 {
     FO_TRACE_ZONE(Network);
 
-    bool expected = false;
+    bool expected {false};
 
     if (_isDisconnected.compare_exchange_strong(expected, true)) {
         _transportCloseThread.store(std::this_thread::get_id());
 
-        auto complete = scope_exit([this]() noexcept {
+        auto complete {scope_exit([this]() noexcept {
             _transportCloseComplete.store(true);
             _transportCloseThread.store(std::thread::id {});
-        });
+        })};
 
         DisconnectImpl();
     }
@@ -198,7 +198,7 @@ void NetworkServerConnection::Disconnect()
     // A previous transport-only request leaves notification for the next ordinary disconnect.
     // Nested closure must finish before its pending callback can be consumed
     if (_transportCloseComplete.load()) {
-        DisconnectCallback disconnect_callback = std::move(_disconnectCallback);
+        DisconnectCallback disconnect_callback {std::move(_disconnectCallback)};
         _disconnectCallback = {};
 
         if (disconnect_callback) {

@@ -45,7 +45,7 @@ FO_DECLARE_EXCEPTION(TextBakerException);
 class TextBaker final : public BaseBaker
 {
 public:
-    static constexpr string_view_nt NAME = "Text";
+    static constexpr string_view_nt NAME {"Text"};
 
     explicit TextBaker(shared_ptr<BakingContext> ctx);
     TextBaker(const TextBaker&) = delete;

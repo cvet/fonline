@@ -81,9 +81,9 @@ public:
     void SetDataArray(readonly_vector<any_t> data);
 
 private:
-    uint32_t _id;
-    timespan _repeat;
-    vector<any_t> _data;
+    uint32_t _id {};
+    timespan _repeat {};
+    vector<any_t> _data {};
     bool _stopped {};
     bool _repeatChanged {};
     bool _dataChanged {};

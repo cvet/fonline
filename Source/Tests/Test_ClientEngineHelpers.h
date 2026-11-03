@@ -102,7 +102,7 @@ namespace ClientEngineTests
 
         void DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, optional<size_t> indices_to_draw, nptr<const RenderTexture> custom_tex) override
         {
-            RecordedQuadDraw draw;
+            RecordedQuadDraw draw {};
             draw.Vertices.assign(dbuf->Vertices.begin(), dbuf->Vertices.begin() + numeric_cast<ptrdiff_t>(dbuf->VertCount));
             draw.Indices.assign(dbuf->Indices.begin(), dbuf->Indices.begin() + numeric_cast<ptrdiff_t>(dbuf->IndCount));
             draw.StartIndex = start_index;
@@ -116,7 +116,7 @@ namespace ClientEngineTests
 
     inline auto MakeClientTestSettings() -> GlobalSettings
     {
-        auto settings = GlobalSettings(false);
+        auto settings {GlobalSettings(false)};
 
         settings.ApplyDefaultSettings();
         settings.ApplyAutoSettings();
@@ -128,7 +128,7 @@ namespace ClientEngineTests
 
     inline auto MakeTempClientResourceDir(string_view name) -> string
     {
-        std::filesystem::path base = std::filesystem::temp_directory_path() / std::format("lf_client_resources_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
+        std::filesystem::path base {std::filesystem::temp_directory_path() / std::format("lf_client_resources_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count())};
         return fs::path_to_string(base);
     }
 
@@ -1509,7 +1509,7 @@ namespace ClientEngineTest
 )"},
             },
             [](string_view message) {
-                string message_str = string(message);
+                string message_str {string(message)};
 
                 if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
                     throw ScriptSystemException(message_str);
@@ -1522,7 +1522,7 @@ namespace ClientEngineTest
     // ASCII letter so the measurement paths behave the same as with the text descriptor
     inline auto MakeUnitTestBmfFont(string_view image_name) -> vector<uint8_t>
     {
-        vector<uint8_t> data;
+        vector<uint8_t> data {};
         data_writer writer {data};
 
         writer.write<uint8_t>(uint8_t {'B'});
@@ -1531,7 +1531,7 @@ namespace ClientEngineTest
         writer.write<uint8_t>(uint8_t {3});
 
         // Info block: everything up to the padding quad is skipped, the padding itself must read as 1/1/1/1
-        string font_name = "UnitTest";
+        string font_name {"UnitTest"};
         writer.write<uint8_t>(uint8_t {1});
         writer.write<uint32_t>(numeric_cast<uint32_t>(14 + font_name.size() + 1));
         writer.write<uint16_t>(uint16_t {8}); // Font size
@@ -1578,7 +1578,7 @@ namespace ClientEngineTest
         writer.write<uint8_t>(uint8_t {0});
 
         // Chars block: 20 bytes per glyph
-        string glyphs = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .,!?-";
+        string glyphs {"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .,!?-"};
         writer.write<uint8_t>(uint8_t {4});
         writer.write<uint32_t>(numeric_cast<uint32_t>(glyphs.size() * 20));
 
@@ -1601,7 +1601,7 @@ namespace ClientEngineTest
     // measurement, wrapping and draw paths to run end to end without a real bitmap font
     inline auto MakeUnitTestFontResources() -> vector<pair<string, vector<uint8_t>>>
     {
-        string descriptor = "Version 2\n";
+        string descriptor {"Version 2\n"};
         descriptor += "Image UnitTestFont.png\n";
         descriptor += "LineHeight 8\n";
         descriptor += "YAdvance 1\n";
@@ -1612,9 +1612,9 @@ namespace ClientEngineTest
 
         descriptor += "End\n";
 
-        vector<uint8_t> descriptor_bytes(descriptor.begin(), descriptor.end());
+        vector<uint8_t> descriptor_bytes {descriptor.begin(), descriptor.end()};
 
-        vector<pair<string, vector<uint8_t>>> resources;
+        vector<pair<string, vector<uint8_t>>> resources {};
         resources.emplace_back("UnitTestFont.fofnt", std::move(descriptor_bytes));
         resources.emplace_back("UnitTestFont.png", BakerTests::MakeMinimalBakedSprite(16, 16));
         resources.emplace_back("UnitTestFont.fnt", MakeUnitTestBmfFont("UnitTestFont.png"));
@@ -1623,27 +1623,27 @@ namespace ClientEngineTest
 
     inline auto MakeClientTestResources(vector<pair<string, vector<uint8_t>>> extra_resources = {}) -> FileSystem
     {
-        auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
+        auto metadata_blob {BakerTests::MakeEmptyMetadataBlob()};
 
-        auto compiler_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ClientEngineCompilerResources");
+        auto compiler_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("ClientEngineCompilerResources")};
         compiler_source->AddFile("Metadata.fometa-client", metadata_blob);
 
-        FileSystem compiler_resources;
+        FileSystem compiler_resources {};
         compiler_resources.AddCustomSource(std::move(compiler_source));
 
         BakerClientEngine proto_engine {compiler_resources};
-        hstring critter_type = proto_engine.Hashes.to_hashed_string("Critter");
+        hstring critter_type {proto_engine.Hashes.to_hashed_string("Critter")};
         // The model-backed proto lets the animation viewer build a real preview instead of stopping at a
         // missing model
-        vector<pair<string, function<void(ProtoCritter&)>>> critter_protos;
+        vector<pair<string, function<void(ProtoCritter&)>>> critter_protos {};
         critter_protos.emplace_back(string {"UnitTestClientCritter"}, [](ProtoCritter&) { });
         critter_protos.emplace_back(string {"UnitTestModelCritter"}, [&proto_engine](ProtoCritter& proto) { proto.SetModelName(proto_engine.Hashes.to_hashed_string("Models/RuntimeInstance.fo3d")); });
-        auto proto_blob = BakerTests::MakeMultiProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, critter_protos);
+        auto proto_blob {BakerTests::MakeMultiProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, critter_protos)};
 #if FO_ANGELSCRIPT_SCRIPTING
-        auto script_blob = MakeClientScriptBinary(compiler_resources);
+        auto script_blob {MakeClientScriptBinary(compiler_resources)};
 #endif
 
-        auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ClientEngineRuntimeResources");
+        auto runtime_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("ClientEngineRuntimeResources")};
         runtime_source->AddFile("Metadata.fometa-client", metadata_blob);
         runtime_source->AddFile("ClientEngineTest.fopro-bin-client", proto_blob);
 #if FO_ANGELSCRIPT_SCRIPTING
@@ -1659,7 +1659,7 @@ namespace ClientEngineTest
             runtime_source->AddFile(resource_path, std::move(resource_data));
         }
 
-        FileSystem resources;
+        FileSystem resources {};
         resources.AddCustomSource(std::move(runtime_source));
         return resources;
     }
@@ -1678,7 +1678,7 @@ namespace ClientEngineTest
     // offscreen effect is what makes the offscreen surface bindings usable at all
     inline auto MakeBakedEffectResources(string_view effect_path) -> vector<pair<string, vector<uint8_t>>>
     {
-        constexpr string_view EFFECT_SOURCE = R"EFFECT(
+        constexpr string_view EFFECT_SOURCE {R"EFFECT(
 [Effect]
 
 [VertexShader]
@@ -1706,15 +1706,15 @@ void main(void)
 {
     FragColor = texture(MainTex, TexCoord);
 }
-)EFFECT";
+)EFFECT"};
 
-        BakerTests::TestRig rig;
+        BakerTests::TestRig rig {};
         rig.AddSourceFile(effect_path, EFFECT_SOURCE, 10);
 
-        EffectBaker baker(rig.MakeContext());
+        EffectBaker baker {rig.MakeContext()};
         baker.BakeFiles(rig.GetAllSourceFiles(), "");
 
-        vector<pair<string, vector<uint8_t>>> resources;
+        vector<pair<string, vector<uint8_t>>> resources {};
 
         for (const auto& [output_path, output_data] : rig.Outputs) {
             resources.emplace_back(output_path, output_data);
@@ -1734,7 +1734,7 @@ void main(void)
 
     inline auto MakeRuntimeModelMesh(const function<void(data_writer&)>& write_root) -> vector<uint8_t>
     {
-        vector<uint8_t> data;
+        vector<uint8_t> data {};
         data_writer writer {data};
         WriteModelMeshHeader(writer);
         write_root(writer);
@@ -1752,13 +1752,13 @@ void main(void)
             writer.write_string({});
             writer.write<uint32_t>(skin_bones_count);
 
-            for (uint32_t i = 0; i < skin_bones_count; i++) {
+            for (uint32_t i {0}; i < skin_bones_count; i++) {
                 writer.write_string({});
             }
 
             writer.write<uint32_t>(skin_bones_count);
 
-            for (uint32_t i = 0; i < skin_bones_count; i++) {
+            for (uint32_t i {0}; i < skin_bones_count; i++) {
                 writer.write<mat44>(mat44 {1.0f});
             }
 
@@ -1803,21 +1803,21 @@ void main(void)
     // silhouette is genuinely skeleton-driven
     inline auto MakeSkinnedRuntimeModelMesh() -> vector<uint8_t>
     {
-        auto root_bone = safe_alloc::make_unique<ModelMeshBoneData>();
+        auto root_bone {safe_alloc::make_unique<ModelMeshBoneData>()};
         root_bone->Name = "Root";
         root_bone->TransformationMatrix = mat44 {1.0f};
         root_bone->GlobalTransformationMatrix = mat44 {1.0f};
 
-        auto limb_bone = safe_alloc::make_unique<ModelMeshBoneData>();
+        auto limb_bone {safe_alloc::make_unique<ModelMeshBoneData>()};
         limb_bone->Name = "Limb";
         limb_bone->TransformationMatrix = glm::translate(mat44 {1.0f}, vec3 {0.35f, 0.7f, 0.0f});
         limb_bone->GlobalTransformationMatrix = limb_bone->TransformationMatrix;
 
-        ModelMeshGeometryData geometry;
+        ModelMeshGeometryData geometry {};
         geometry.SkinBoneNames = {"Root", "Limb"};
         geometry.SkinBoneOffsets = {mat44 {1.0f}, mat44 {1.0f}};
 
-        for (uint32_t corner = 0; corner < 8; corner++) {
+        for (uint32_t corner {0}; corner < 8; corner++) {
             ModelMeshVertexData vertex {};
 
             vertex.Position = {
@@ -1840,10 +1840,10 @@ void main(void)
         root_bone->AttachedMesh = std::move(geometry);
         root_bone->Children.emplace_back(std::move(limb_bone));
 
-        ModelMeshData data;
+        ModelMeshData data {};
         data.RootBone = std::move(root_bone);
 
-        vector<uint8_t> blob;
+        vector<uint8_t> blob {};
         data_writer writer {blob};
         WriteModelMeshData(writer, data, "SkinnedSpriteBoundsModel");
         return blob;
@@ -1873,7 +1873,7 @@ void main(void)
         writer.write_string({});
         writer.write<uint8_t>(uint8_t {0});
 
-        for (size_t i = 0; i < 10; i++) {
+        for (size_t i {0}; i < 10; i++) {
             writer.write<float32_t>(0.0f);
         }
 
@@ -1894,7 +1894,7 @@ void main(void)
     // name, carrying the bounds version, the twelve model/view bounds keys and one duration record
     inline auto MakeUnitTestModelAnimationInfo(string_view model_path) -> vector<uint8_t>
     {
-        string anim_info = strex(R"([{}]
+        string anim_info {strex(R"([{}]
 BoundsVersion = 2
 ModelBoundsMinX = -1
 ModelBoundsMinY = -1
@@ -1921,7 +1921,7 @@ BoundsMaxY = 1 1 1 1
 BoundsMaxZ = 1 1 1 1
 )",
             model_path)
-                               .str();
+                .str()};
 
         return vector<uint8_t>(anim_info.begin(), anim_info.end());
     }
@@ -1930,41 +1930,41 @@ BoundsMaxZ = 1 1 1 1
     // source asset directly through the loader callback, so no source-file format has to be reproduced
     inline auto MakeRuntimeModelDescription(string_view model_path, string_view mesh_path, const vector<uint8_t>& mesh_blob, string_view default_link_extra = {}, string_view attached_mesh_path = {}, nptr<const vector<uint8_t>> attached_mesh_blob = nullptr, bool use_two_bone_rig = false, const vector<pair<string, vector<uint8_t>>>& texture_resources = {}, float32_t end_translation = 0.0f, nptr<vector<uint8_t>> animation_info = nullptr) -> vector<uint8_t>
     {
-        BakerTests::TestRig rig;
+        BakerTests::TestRig rig {};
         // A one-line description leaves the layer machinery unreachable, so the caller's extra is inserted right
         // after the model line — where the description's own default link is authored
-        string mesh_name = strex(mesh_path).extract_file_name().str();
-        string description = strex("Model {}\n"
-                                   "{}"
-                                   "Anim 1 1 {} Base\n"
-                                   "Anim 1 3 {} Base\n"
-                                   "Anim 1 5 {} Base\n"
-                                   "Anim 1 17 {} Base\n"
-                                   "AnimSpeed 1 1 1.5\n"
-                                   "AnimSpeed 1 3 0.5\n"
-                                   "AnimLayerValue 1 1 1 1\n"
-                                   "AnimLayerValue 1 3 1 2\n"
-                                   "Layer 1\n"
-                                   "Value 1\n"
-                                   "Root\n"
-                                   "Link Root\n"
-                                   "Scale 1.5\n"
-                                   "RotX+ 15.0\n"
-                                   "MoveY* 2.0\n"
-                                   "ScaleZ+ 0.25\n"
-                                   "Speed* 1.25\n"
-                                   "Value 2\n"
-                                   "Root\n"
-                                   "Link Root\n"
-                                   "DisableLayer 2\n"
-                                   "DisableMesh All\n"
-                                   "Layer 2\n"
-                                   "Value 1\n"
-                                   "Root\n"
-                                   "Link Root\n"
-                                   "Scale* 0.5\n",
+        string mesh_name {strex(mesh_path).extract_file_name().str()};
+        string description {strex("Model {}\n"
+                                  "{}"
+                                  "Anim 1 1 {} Base\n"
+                                  "Anim 1 3 {} Base\n"
+                                  "Anim 1 5 {} Base\n"
+                                  "Anim 1 17 {} Base\n"
+                                  "AnimSpeed 1 1 1.5\n"
+                                  "AnimSpeed 1 3 0.5\n"
+                                  "AnimLayerValue 1 1 1 1\n"
+                                  "AnimLayerValue 1 3 1 2\n"
+                                  "Layer 1\n"
+                                  "Value 1\n"
+                                  "Root\n"
+                                  "Link Root\n"
+                                  "Scale 1.5\n"
+                                  "RotX+ 15.0\n"
+                                  "MoveY* 2.0\n"
+                                  "ScaleZ+ 0.25\n"
+                                  "Speed* 1.25\n"
+                                  "Value 2\n"
+                                  "Root\n"
+                                  "Link Root\n"
+                                  "DisableLayer 2\n"
+                                  "DisableMesh All\n"
+                                  "Layer 2\n"
+                                  "Value 1\n"
+                                  "Root\n"
+                                  "Link Root\n"
+                                  "Scale* 0.5\n",
             mesh_name, default_link_extra, mesh_name, mesh_name, mesh_name, mesh_name)
-                                 .str();
+                .str()};
 
         rig.AddSourceFile(model_path, description, 1);
 
@@ -1990,59 +1990,59 @@ BoundsMaxZ = 1 1 1 1
                     {"CritterActionAnim", "", "TestAction", "1", "TestActionA", "3", "TestActionB", "5", "TestActionC", "17", "PolicyAction", "509"},
                 }}}));
 
-        ModelInfoBaker info_baker(rig.MakeContext(), [mesh_path, use_two_bone_rig, end_translation](string_view path, const File& file) -> ModelSourceAsset {
-            ModelSourceAsset asset;
-            asset.FileName = path;
-            asset.WriteTime = file.GetWriteTime();
-            asset.Skeleton.FileName = path;
-            asset.Skeleton.Joints.emplace_back(ModelSkeletonJoint {.Name = "Root", .Hierarchy = {"Root"}, .RestLocalTransform = mat44 {1.0f}});
+        ModelInfoBaker info_baker {rig.MakeContext(), [mesh_path, use_two_bone_rig, end_translation](string_view path, const File& file) -> ModelSourceAsset {
+                                       ModelSourceAsset asset {};
+                                       asset.FileName = path;
+                                       asset.WriteTime = file.GetWriteTime();
+                                       asset.Skeleton.FileName = path;
+                                       asset.Skeleton.Joints.emplace_back(ModelSkeletonJoint {.Name = "Root", .Hierarchy = {"Root"}, .RestLocalTransform = mat44 {1.0f}});
 
-            if (use_two_bone_rig) {
-                asset.Skeleton.Joints.emplace_back(ModelSkeletonJoint {.Name = "Limb", .Hierarchy = {"Root", "Limb"}, .RestLocalTransform = mat44 {1.0f}});
-            }
+                                       if (use_two_bone_rig) {
+                                           asset.Skeleton.Joints.emplace_back(ModelSkeletonJoint {.Name = "Limb", .Hierarchy = {"Root", "Limb"}, .RestLocalTransform = mat44 {1.0f}});
+                                       }
 
-            // One real clip, so the runtime rig carries a timeline the instance can actually play
-            ModelAnimationSource animation;
-            animation.FileName = path;
-            animation.Name = "Base";
-            animation.Duration = 1.0f;
+                                       // One real clip, so the runtime rig carries a timeline the instance can actually play
+                                       ModelAnimationSource animation {};
+                                       animation.FileName = path;
+                                       animation.Name = "Base";
+                                       animation.Duration = 1.0f;
 
-            ModelAnimationJointSource joint;
-            joint.OutputName = "Root";
-            joint.Hierarchy = {"Root"};
-            joint.Translation.Times = {0.0f, 0.5f, 1.0f};
-            joint.Translation.Values = {vec3 {0.0f, 0.0f, 0.0f}, vec3 {0.0f, 1.0f, 0.0f}, vec3 {0.0f, end_translation, 0.0f}};
-            joint.Rotation.Times = {0.0f, 1.0f};
-            joint.Rotation.Values = {quaternion {1.0f, 0.0f, 0.0f, 0.0f}, quaternion {1.0f, 0.0f, 0.0f, 0.0f}};
-            joint.Scale.Times = {0.0f, 1.0f};
-            joint.Scale.Values = {vec3 {1.0f, 1.0f, 1.0f}, vec3 {1.0f, 1.0f, 1.0f}};
-            animation.Joints.emplace_back(std::move(joint));
+                                       ModelAnimationJointSource joint {};
+                                       joint.OutputName = "Root";
+                                       joint.Hierarchy = {"Root"};
+                                       joint.Translation.Times = {0.0f, 0.5f, 1.0f};
+                                       joint.Translation.Values = {vec3 {0.0f, 0.0f, 0.0f}, vec3 {0.0f, 1.0f, 0.0f}, vec3 {0.0f, end_translation, 0.0f}};
+                                       joint.Rotation.Times = {0.0f, 1.0f};
+                                       joint.Rotation.Values = {quaternion {1.0f, 0.0f, 0.0f, 0.0f}, quaternion {1.0f, 0.0f, 0.0f, 0.0f}};
+                                       joint.Scale.Times = {0.0f, 1.0f};
+                                       joint.Scale.Values = {vec3 {1.0f, 1.0f, 1.0f}, vec3 {1.0f, 1.0f, 1.0f}};
+                                       animation.Joints.emplace_back(std::move(joint));
 
-            if (use_two_bone_rig) {
-                ModelAnimationJointSource limb_joint;
-                limb_joint.OutputName = "Limb";
-                limb_joint.Hierarchy = {"Root", "Limb"};
-                limb_joint.Translation.Times = {0.0f, 1.0f};
-                limb_joint.Translation.Values = {vec3 {}, vec3 {}};
+                                       if (use_two_bone_rig) {
+                                           ModelAnimationJointSource limb_joint {};
+                                           limb_joint.OutputName = "Limb";
+                                           limb_joint.Hierarchy = {"Root", "Limb"};
+                                           limb_joint.Translation.Times = {0.0f, 1.0f};
+                                           limb_joint.Translation.Values = {vec3 {}, vec3 {}};
 
-                if (end_translation != 0.0f) {
-                    limb_joint.Translation.Times = {0.0f, 0.5f, 1.0f};
-                    limb_joint.Translation.Values = {vec3 {}, vec3 {0.0f, 1.0f, 0.0f}, vec3 {0.0f, end_translation, 0.0f}};
-                }
+                                           if (end_translation != 0.0f) {
+                                               limb_joint.Translation.Times = {0.0f, 0.5f, 1.0f};
+                                               limb_joint.Translation.Values = {vec3 {}, vec3 {0.0f, 1.0f, 0.0f}, vec3 {0.0f, end_translation, 0.0f}};
+                                           }
 
-                limb_joint.Rotation.Times = {0.0f, 1.0f};
-                limb_joint.Rotation.Values = {quaternion {1.0f, 0.0f, 0.0f, 0.0f}, quaternion {1.0f, 0.0f, 0.0f, 0.0f}};
-                limb_joint.Scale.Times = {0.0f, 1.0f};
-                limb_joint.Scale.Values = {vec3 {1.0f}, vec3 {1.0f}};
-                animation.Joints.emplace_back(std::move(limb_joint));
-            }
+                                           limb_joint.Rotation.Times = {0.0f, 1.0f};
+                                           limb_joint.Rotation.Values = {quaternion {1.0f, 0.0f, 0.0f, 0.0f}, quaternion {1.0f, 0.0f, 0.0f, 0.0f}};
+                                           limb_joint.Scale.Times = {0.0f, 1.0f};
+                                           limb_joint.Scale.Values = {vec3 {1.0f}, vec3 {1.0f}};
+                                           animation.Joints.emplace_back(std::move(limb_joint));
+                                       }
 
-            if (path == mesh_path) {
-                asset.Animations.emplace_back(std::move(animation));
-            }
+                                       if (path == mesh_path) {
+                                           asset.Animations.emplace_back(std::move(animation));
+                                       }
 
-            return asset;
-        });
+                                       return asset;
+                                   }};
 
         info_baker.BakeFiles(rig.GetAllSourceFiles(), "");
 

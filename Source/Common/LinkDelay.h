@@ -59,11 +59,11 @@ private:
         int64_t OffsetMs {};
     };
 
-    [[nodiscard]] auto EvaluateUsualOffset() const -> int64_t;
+    auto EvaluateUsualOffset() const -> int64_t;
 
-    timespan _window;
-    timespan _exceptional;
-    timespan _rebase;
+    timespan _window {};
+    timespan _exceptional {};
+    timespan _rebase {};
     // A stall's burst stays out of what the link usually takes, or it would hide how late its own later messages were
     deque<Sample> _usual {};
     deque<Sample> _exceptionalRun {};
@@ -72,6 +72,6 @@ private:
 
 // How far ahead a late movement plan is played: not at all below the lateness an ordinary jittery link produces, the
 // lateness itself above it, never more than the upper bound
-[[nodiscard]] auto EvaluateLateCatchUp(timespan late_time, timespan min_time, timespan max_time) noexcept -> timespan;
+auto EvaluateLateCatchUp(timespan late_time, timespan min_time, timespan max_time) noexcept -> timespan;
 
 FO_END_NAMESPACE

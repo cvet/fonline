@@ -60,12 +60,13 @@ public:
     using OutputAvailable = function<bool(const ResourceOutput&)>;
     using Dependencies = function<vector<string>(const ResourceOutput&)>;
 
+    [[nodiscard]] auto GetOutputs() const -> vector<ResourceOutput>;
+
     void RegisterPack(string_view pack);
     void RegisterOutput(string_view pack, string_view path, string_view baker, BakingOutputKind kind);
     void AddReference(string_view path, string_view reason);
     void AddProperties(const Properties& properties, string_view owner);
     void CollectReferences(const FileSystem& resources);
-    auto GetOutputs() const -> vector<ResourceOutput>;
     auto CreateManifest(string_view build_hash, string_view config_hash, bool filter_resources, const OutputAvailable& available, const Dependencies& dependencies) const -> string;
 
 private:

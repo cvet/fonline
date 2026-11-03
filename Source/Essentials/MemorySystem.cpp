@@ -67,8 +67,8 @@ static void mem_free(nptr<void> ptr) noexcept;
 static auto mem_aligned_malloc(size_t size, size_t alignment) noexcept -> nptr<void>;
 static void mem_aligned_free(nptr<void> ptr) noexcept;
 
-static constexpr size_t BACKUP_MEMORY_CHUNKS = 100;
-static constexpr size_t BACKUP_MEMORY_CHUNK_SIZE = 100000; // 100 chunks x 100kb = 10mb
+static constexpr size_t BACKUP_MEMORY_CHUNKS {100};
+static constexpr size_t BACKUP_MEMORY_CHUNK_SIZE {100000}; // 100 chunks x 100kb = 10mb
 
 // Replace memory allocator
 #if FO_HAVE_RPMALLOC
@@ -138,7 +138,7 @@ void CRTDECL operator delete[](void* p) noexcept
 
 void* CRTDECL operator new(std::size_t size) noexcept(false)
 {
-    void* p = rpmalloc(size);
+    void* p {rpmalloc(size)};
     TrackAlloc(p, size);
 
     if (p == nullptr) {
@@ -150,7 +150,7 @@ void* CRTDECL operator new(std::size_t size) noexcept(false)
 
 void* CRTDECL operator new[](std::size_t size) noexcept(false)
 {
-    void* p = rpmalloc(size);
+    void* p {rpmalloc(size)};
     TrackAlloc(p, size);
 
     if (p == nullptr) {
@@ -162,14 +162,14 @@ void* CRTDECL operator new[](std::size_t size) noexcept(false)
 
 void* CRTDECL operator new(std::size_t size, const std::nothrow_t& /*tag*/) noexcept
 {
-    void* p = rpmalloc(size);
+    void* p {rpmalloc(size)};
     TrackAlloc(p, size);
     return p;
 }
 
 void* CRTDECL operator new[](std::size_t size, const std::nothrow_t& /*tag*/) noexcept
 {
-    void* p = rpmalloc(size);
+    void* p {rpmalloc(size)};
     TrackAlloc(p, size);
     return p;
 }
@@ -212,7 +212,7 @@ void CRTDECL operator delete[](void* p, std::size_t /*size*/, std::align_val_t /
 
 void* CRTDECL operator new(std::size_t size, std::align_val_t align) noexcept(false)
 {
-    void* p = rpaligned_alloc(static_cast<size_t>(align), size);
+    void* p {rpaligned_alloc(static_cast<size_t>(align), size)};
     TrackAlloc(p, size);
 
     if (p == nullptr) {
@@ -224,7 +224,7 @@ void* CRTDECL operator new(std::size_t size, std::align_val_t align) noexcept(fa
 
 void* CRTDECL operator new[](std::size_t size, std::align_val_t align) noexcept(false)
 {
-    void* p = rpaligned_alloc(static_cast<size_t>(align), size);
+    void* p {rpaligned_alloc(static_cast<size_t>(align), size)};
     TrackAlloc(p, size);
 
     if (p == nullptr) {
@@ -236,14 +236,14 @@ void* CRTDECL operator new[](std::size_t size, std::align_val_t align) noexcept(
 
 void* CRTDECL operator new(std::size_t size, std::align_val_t align, const std::nothrow_t& /*tag*/) noexcept
 {
-    void* p = rpaligned_alloc(static_cast<size_t>(align), size);
+    void* p {rpaligned_alloc(static_cast<size_t>(align), size)};
     TrackAlloc(p, size);
     return p;
 }
 
 void* CRTDECL operator new[](std::size_t size, std::align_val_t align, const std::nothrow_t& /*tag*/) noexcept
 {
-    void* p = rpaligned_alloc(static_cast<size_t>(align), size);
+    void* p {rpaligned_alloc(static_cast<size_t>(align), size)};
     TrackAlloc(p, size);
     return p;
 }
@@ -255,7 +255,7 @@ FO_BEGIN_NAMESPACE
 
 auto safe_alloc::malloc_raw(size_t size) noexcept -> nptr<void>
 {
-    nptr<void> mem = mem_malloc(size);
+    nptr<void> mem {mem_malloc(size)};
 
     if (!mem && size != 0) {
         memory::report_bad_alloc("Raw malloc failed", "byte", 1, size);
@@ -279,7 +279,7 @@ auto safe_alloc::calloc_raw(size_t num, size_t size) noexcept -> nptr<void>
         memory::report_and_exit("Raw calloc size overflow");
     }
 
-    nptr<void> mem = mem_calloc(num, size);
+    nptr<void> mem {mem_calloc(num, size)};
 
     if (!mem && num != 0 && size != 0) {
         memory::report_bad_alloc("Raw calloc failed", "byte", num, size);
@@ -298,7 +298,7 @@ auto safe_alloc::calloc_raw(size_t num, size_t size) noexcept -> nptr<void>
 
 auto safe_alloc::realloc_raw(nptr<void> ptr, size_t size) noexcept -> nptr<void>
 {
-    nptr<void> mem = mem_realloc(ptr, size);
+    nptr<void> mem {mem_realloc(ptr, size)};
 
     if (!mem && size != 0) {
         memory::report_bad_alloc("Raw realloc failed", "byte", 1, size);
@@ -327,7 +327,7 @@ auto safe_alloc::malloc_aligned_raw(size_t size, size_t alignment) noexcept -> n
         memory::report_and_exit("Raw aligned allocation alignment is invalid");
     }
 
-    nptr<void> mem = mem_aligned_malloc(size, alignment);
+    nptr<void> mem {mem_aligned_malloc(size, alignment)};
 
     if (!mem && size != 0) {
         memory::report_bad_alloc("Raw aligned malloc failed", "byte", alignment, size);
@@ -352,7 +352,7 @@ void safe_alloc::free_aligned_raw(nptr<void> ptr) noexcept
 static auto mem_malloc(size_t size) noexcept -> nptr<void>
 {
 #if FO_HAVE_RPMALLOC
-    void* p = rpmalloc(size);
+    void* p {rpmalloc(size)};
     TrackAlloc(p, size);
     return p;
 #else
@@ -363,7 +363,7 @@ static auto mem_malloc(size_t size) noexcept -> nptr<void>
 static auto mem_calloc(size_t num, size_t size) noexcept -> nptr<void>
 {
 #if FO_HAVE_RPMALLOC
-    void* p = rpcalloc(num, size);
+    void* p {rpcalloc(num, size)};
 
     // A null result may come from an overflowing product, which is no size to account
     if (p != nullptr) {
@@ -380,7 +380,7 @@ static auto mem_realloc(nptr<void> ptr, size_t size) noexcept -> nptr<void>
 {
 #if FO_HAVE_RPMALLOC
     TrackFree(ptr.get());
-    void* p = rprealloc(ptr.get(), size);
+    void* p {rprealloc(ptr.get(), size)};
     TrackAlloc(p, size);
     return p;
 #else
@@ -401,15 +401,15 @@ static void mem_free(nptr<void> ptr) noexcept
 static auto mem_aligned_malloc(size_t size, size_t alignment) noexcept -> nptr<void>
 {
 #if FO_HAVE_RPMALLOC
-    void* p = rpaligned_alloc(alignment, size);
+    void* p {rpaligned_alloc(alignment, size)};
     TrackAlloc(p, size);
     return p;
 #elif FO_WINDOWS
     return _aligned_malloc(size, alignment);
 #else
-    void* p = nullptr;
+    void* p {nullptr};
     // posix_memalign rejects alignments below sizeof(void*); over-aligning is always safe
-    size_t effective_alignment = std::max(alignment, sizeof(void*));
+    size_t effective_alignment {std::max(alignment, sizeof(void*))};
 
     if (::posix_memalign(&p, effective_alignment, size) != 0) {
         return nullptr;
@@ -472,8 +472,8 @@ auto memory::get_allocator_statistics() noexcept -> allocator_statistics
     result.thread_reusable_block_bytes = thread.sizecache;
     result.thread_free_committed_page_bytes = thread.spancache;
 
-    for (size_t i = 0; i < result.thread_size_classes.size(); i++) {
-        const auto& source = thread.size_use[i];
+    for (size_t i {0}; i < result.thread_size_classes.size(); i++) {
+        const auto& source {thread.size_use[i]};
         result.thread_size_classes[i] = {source.block_size, source.alloc_current, source.reusable_count};
         result.thread_size_class_allocated_bytes += source.block_size * source.alloc_current;
     }
@@ -495,7 +495,7 @@ auto memory::free_backup_chunk() noexcept -> bool
     }
 
     while (true) {
-        size_t cur_size = memory_system->backup_memory_chunks_count.load();
+        size_t cur_size {memory_system->backup_memory_chunks_count.load()};
 
         if (cur_size == 0) {
             return false;
@@ -519,11 +519,11 @@ void memory::report_bad_alloc(string_view message, string_view type_str, size_t 
 
     // Reports are serialized so threads failing together do not interleave their lines, and a report that fails an
     // allocation of its own writes its header without a second stack trace instead of recursing into one
-    bool serialized = memory_system.is_created();
-    bool nested = false;
+    bool serialized {memory_system.is_created()};
+    bool nested {false};
 
     if (serialized) {
-        std::thread::id this_thread = std::this_thread::get_id();
+        std::thread::id this_thread {std::this_thread::get_id()};
         std::thread::id expected {};
 
         while (!memory_system->reporting_thread.compare_exchange_weak(expected, this_thread)) {
@@ -538,7 +538,7 @@ void memory::report_bad_alloc(string_view message, string_view type_str, size_t 
         }
     }
 
-    char itoa_buf[64] = {};
+    char itoa_buf[64] {};
 
     logging::write_base("\nBAD ALLOC!\n\n");
     logging::write_base(message);
@@ -577,7 +577,7 @@ static void fill_backup_memory_chunks(memory_system_data& data)
 
     unique_arr_ptr<unique_arr_ptr<uint8_t>> new_chunks {new unique_arr_ptr<uint8_t>[BACKUP_MEMORY_CHUNKS]()};
 
-    for (size_t i = 0; i < BACKUP_MEMORY_CHUNKS; i++) {
+    for (size_t i {0}; i < BACKUP_MEMORY_CHUNKS; i++) {
         new_chunks[i] = unique_arr_ptr<uint8_t> {new uint8_t[BACKUP_MEMORY_CHUNK_SIZE]()};
     }
 

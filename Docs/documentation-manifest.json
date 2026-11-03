@@ -226,7 +226,6 @@
         "en": "Docs/Site/Assets/docs-search.json",
         "ru": "Docs/Site/Assets/docs-search.ru.json"
       },
-      "max_bytes": 1867776,
       "minimum_query_length": 2
     },
     "browser_validation": {
@@ -424,6 +423,7 @@
           "exception-safety",
           "thread-safety-analysis",
           "local-variables",
+          "class-layout",
           "third-party-maintenance"
         ]
       },
@@ -11230,6 +11230,14 @@
         "Source",
         "Docs/en/contributing/coding-contracts/local-variables.md"
       ]
+    },
+    "Docs/en/contributing/coding-contracts/class-layout.md": {
+      "id": "class-layout",
+      "title": "Class Layout and Result Use",
+      "audiences": ["engine-contributor", "native-extension-developer"],
+      "classification": {"diataxis": "explanation", "visibility": "public", "human": true, "translation": "required"},
+      "owner": "quality", "state": "current", "disposition": "retain", "target": "Docs/en/contributing/coding-contracts/class-layout.md",
+      "sources": ["Source", "AGENTS.md", "Docs/en/contributing/coding-contracts/class-layout.md"]
     },
     "Docs/LocalVariables.md": {
       "id": "legacy-local-variables-route",

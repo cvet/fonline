@@ -31,8 +31,6 @@
 // SOFTWARE.
 //
 
-// ReSharper disable CppClangTidyCppcoreguidelinesMacroUsage
-
 #pragma once
 
 #ifndef FO_PRECOMPILED_HEADER_GUARD
@@ -99,13 +97,13 @@ using CommandLineArg = nptr<char>;
 
 namespace CommandLineSettings
 {
-    inline constexpr string_view ApplyConfig = "ApplyConfig";
-    inline constexpr string_view ApplySubConfig = "ApplySubConfig";
-    inline constexpr string_view ClientLibPath = "ClientLibPath";
-    inline constexpr string_view ClientLibCompatibilityVersion = "ClientLibCompatibilityVersion";
-    inline constexpr string_view Fork = "fork";
-    inline constexpr string_view ServerServiceStart = "server-service-start";
-    inline constexpr string_view ServerServiceDelete = "server-service-delete";
+    inline constexpr string_view ApplyConfig {"ApplyConfig"};
+    inline constexpr string_view ApplySubConfig {"ApplySubConfig"};
+    inline constexpr string_view ClientLibPath {"ClientLibPath"};
+    inline constexpr string_view ClientLibCompatibilityVersion {"ClientLibCompatibilityVersion"};
+    inline constexpr string_view Fork {"fork"};
+    inline constexpr string_view ServerServiceStart {"server-service-start"};
+    inline constexpr string_view ServerServiceDelete {"server-service-delete"};
 }
 
 // One named command-line entry with the dashes removed from Name; a missing Value means an implicit
@@ -122,12 +120,12 @@ public:
     CommandLineArgs() = default;
     explicit CommandLineArgs(int32_t argc, nptr<char*> argv)
     {
-        size_t arg_count = numeric_cast<size_t>(argc);
+        size_t arg_count {numeric_cast<size_t>(argc)};
         FO_VERIFY_AND_THROW(arg_count == 0 || argv, "Command line argument vector is null while argument count is non-zero");
 
         _args.resize(arg_count);
 
-        for (size_t i = 0; i < arg_count; ++i) {
+        for (size_t i {0}; i < arg_count; ++i) {
             FO_VERIFY_AND_THROW(argv[i] != nullptr, "Command line argument string is null");
             _args[i] = argv[i];
         }
@@ -140,30 +138,31 @@ public:
         }
     }
 
-    // An option names a setting, so its name starts with a letter; a dash before anything else opens a value such as -1
-    [[nodiscard]] static auto IsOption(string_view arg) noexcept -> bool
-    {
-        if (!arg.starts_with('-')) {
-            return false;
-        }
-
-        string_view name = arg.substr(arg.starts_with("--") ? 2 : 1);
-
-        if (name.empty()) {
-            return false;
-        }
-
-        char first = name.front();
-        return (first >= 'A' && first <= 'Z') || (first >= 'a' && first <= 'z');
-    }
-    [[nodiscard]] auto Get(size_t index) const noexcept -> string_view { return index < _args.size() ? string_view(_args[index].get()) : string_view(); }
     [[nodiscard]] auto GetSettingValue(string_view name, optional<string_view> implicit_value = string_view("1")) const -> optional<string_view>;
     [[nodiscard]] auto GetSettings(string_view name = {}) const -> vector<CommandLineSetting>;
+    [[nodiscard]] auto Get(size_t index) const noexcept -> string_view { return index < _args.size() ? string_view(_args[index].get()) : string_view(); }
     [[nodiscard]] auto size() const noexcept -> size_t { return _args.size(); }
     [[nodiscard]] auto empty() const noexcept -> bool { return _args.empty(); }
     [[nodiscard]] auto operator[](size_t index) const -> CommandLineArg { return _args[index]; }
     [[nodiscard]] auto begin() const noexcept { return _args.begin(); }
     [[nodiscard]] auto end() const noexcept { return _args.end(); }
+
+    // An option names a setting, so its name starts with a letter; a dash before anything else opens a value such as -1
+    static auto IsOption(string_view arg) noexcept -> bool
+    {
+        if (!arg.starts_with('-')) {
+            return false;
+        }
+
+        string_view name {arg.substr(arg.starts_with("--") ? 2 : 1)};
+
+        if (name.empty()) {
+            return false;
+        }
+
+        char first {name.front()};
+        return (first >= 'A' && first <= 'Z') || (first >= 'a' && first <= 'z');
+    }
 
 private:
     auto GetSetting(size_t index) const noexcept -> optional<CommandLineSetting>;
@@ -203,8 +202,9 @@ public:
 
 FO_END_NAMESPACE
 template<>
-struct std::formatter<FO_NAMESPACE any_t> : formatter<FO_NAMESPACE string_view>
+class std::formatter<FO_NAMESPACE any_t> : public formatter<FO_NAMESPACE string_view>
 {
+public:
     template<typename FormatContext>
     auto format(const FO_NAMESPACE any_t& value, FormatContext& ctx) const
     {
@@ -241,8 +241,9 @@ concept some_atomic = specialization_of<T, std::atomic>;
 FO_END_NAMESPACE
 template<typename T>
     requires(FO_NAMESPACE some_atomic<T>)
-struct std::formatter<T> : formatter<decltype(std::declval<T>().load())> // NOLINT(cert-dcl58-cpp)
+class std::formatter<T> : public formatter<decltype(std::declval<T>().load())> // NOLINT(cert-dcl58-cpp)
 {
+public:
     template<typename FormatContext>
     auto format(const T& value, FormatContext& ctx) const
     {
@@ -296,7 +297,7 @@ public:
 
     void Unsubscribe() noexcept
     {
-        auto callbacks = std::move(_unsubscribeCallbacks);
+        auto callbacks {std::move(_unsubscribeCallbacks)};
         _unsubscribeCallbacks.clear();
 
         for (const auto& cb : callbacks) {
@@ -342,9 +343,9 @@ public:
         }
     }
 
-    [[nodiscard]] auto operator+=(Callback cb) noexcept -> EventUnsubscriberCallback
+    auto operator+=(Callback cb) noexcept -> EventUnsubscriberCallback
     {
-        auto it = _subscriberCallbacks.insert(_subscriberCallbacks.end(), std::move(cb));
+        auto it {_subscriberCallbacks.insert(_subscriberCallbacks.end(), std::move(cb))};
         return EventUnsubscriberCallback([this, it]() FO_DEFERRED { _subscriberCallbacks.erase(it); });
     }
 
@@ -376,6 +377,7 @@ public:
                 cb(args...);
             }
         }
+
         return *this;
     }
 
@@ -394,7 +396,7 @@ static_assert(!some_property_plain_type<hstring>);
 static_assert(!some_property_plain_type<any_t>);
 
 // Generic constants
-static constexpr string_view_nt LOCAL_CONFIG_NAME = "LocalSettings.focfg";
+static constexpr string_view_nt LOCAL_CONFIG_NAME {"LocalSettings.focfg"};
 
 // Property type in network interaction
 enum class NetProperty : uint8_t
@@ -423,30 +425,30 @@ using mcoord_t = int16_t;
 struct GameSettings
 {
 #if FO_GEOMETRY == 1
-    static constexpr bool HEXAGONAL_GEOMETRY = true;
-    static constexpr bool SQUARE_GEOMETRY = false;
-    static constexpr int32_t MAP_DIR_COUNT = 6;
+    static constexpr bool HEXAGONAL_GEOMETRY {true};
+    static constexpr bool SQUARE_GEOMETRY {false};
+    static constexpr int32_t MAP_DIR_COUNT {6};
 #elif FO_GEOMETRY == 2
-    static constexpr bool HEXAGONAL_GEOMETRY = false;
-    static constexpr bool SQUARE_GEOMETRY = true;
-    static constexpr int32_t MAP_DIR_COUNT = 8;
+    static constexpr bool HEXAGONAL_GEOMETRY {false};
+    static constexpr bool SQUARE_GEOMETRY {true};
+    static constexpr int32_t MAP_DIR_COUNT {8};
 #else
 #error FO_GEOMETRY not specified
 #endif
-    static constexpr int32_t MAP_HEX_WIDTH = FO_MAP_HEX_WIDTH;
-    static constexpr int32_t MAP_HEX_HEIGHT = FO_MAP_HEX_HEIGHT;
-    static constexpr int32_t MAP_HEX_LINE_HEIGHT = HEXAGONAL_GEOMETRY ? (MAP_HEX_HEIGHT * 3) / 4 : MAP_HEX_HEIGHT / 2;
-    static constexpr float32_t MAP_CAMERA_ANGLE = const_numeric_cast<float32_t>(FO_MAP_CAMERA_ANGLE);
-    static constexpr float32_t MIN_ZOOM = 0.05f;
-    static constexpr float32_t MAX_ZOOM = 20.0f;
-    static constexpr int32_t DEFAULT_MAP_SIZE = 200;
-    static constexpr int32_t MIN_MAP_SIZE = 10;
-    static constexpr int32_t MAX_MAP_SIZE = FO_MAP_MAX_SIZE;
+    static constexpr int32_t MAP_HEX_WIDTH {FO_MAP_HEX_WIDTH};
+    static constexpr int32_t MAP_HEX_HEIGHT {FO_MAP_HEX_HEIGHT};
+    static constexpr int32_t MAP_HEX_LINE_HEIGHT {HEXAGONAL_GEOMETRY ? (MAP_HEX_HEIGHT * 3) / 4 : MAP_HEX_HEIGHT / 2};
+    static constexpr float32_t MAP_CAMERA_ANGLE {const_numeric_cast<float32_t>(FO_MAP_CAMERA_ANGLE)};
+    static constexpr float32_t MIN_ZOOM {0.05f};
+    static constexpr float32_t MAX_ZOOM {20.0f};
+    static constexpr int32_t DEFAULT_MAP_SIZE {200};
+    static constexpr int32_t MIN_MAP_SIZE {10};
+    static constexpr int32_t MAX_MAP_SIZE {FO_MAP_MAX_SIZE};
     // Widest map side the engine orders at any coordinate width: the client sprite draw-order key holds a cell X in
     // 22 bits and a screen row, at most twice a side, in 24 bits (MapSpriteList::MakeDrawOrderPos)
-    static constexpr int32_t MAP_SIZE_LIMIT = 4194304;
-    static constexpr size_t CLIENT_MAP_CHUNK_SIDE = 16;
-    static constexpr size_t SERVER_MAP_CHUNK_SIDE = 16;
+    static constexpr int32_t MAP_SIZE_LIMIT {4194304};
+    static constexpr size_t CLIENT_MAP_CHUNK_SIDE {16};
+    static constexpr size_t SERVER_MAP_CHUNK_SIDE {16};
 };
 
 // Pixel positions add a hex-size bound where they are computed
@@ -500,7 +502,7 @@ enum class EngineInfoMessage : uint16_t
     ServerLog = 5001, // Identifies a server-log message whose reader-facing payload is carried in extraText
 };
 
-static constexpr uint32_t FO_UPDATER_VERSION = 5;
+static constexpr uint32_t FO_UPDATER_VERSION {5};
 
 enum class UpdatePlatform : uint8_t
 {
@@ -573,7 +575,7 @@ enum class EngineSideKind : uint8_t
     MapperSide,
 };
 
-static constexpr size_t MAX_CALL_ARGS = 16;
+static constexpr size_t MAX_CALL_ARGS {16};
 
 struct StructLayoutDesc;
 struct RefTypeDesc;
@@ -581,7 +583,6 @@ class PropertyRegistrar;
 
 struct BaseTypeDesc
 {
-    auto operator==(const BaseTypeDesc& other) const noexcept -> bool { return Name == other.Name; }
     string Name {};
     hstring HashedName {};
     bool IsObject {}; // entity, string, hstring, any, structs, ref types
@@ -619,6 +620,11 @@ struct BaseTypeDesc
     size_t Size {};
 };
 
+inline auto operator==(const BaseTypeDesc& left, const BaseTypeDesc& right) noexcept -> bool
+{
+    return left.Name == right.Name;
+}
+
 enum class ComplexTypeKind : uint8_t
 {
     None = 0,
@@ -631,14 +637,22 @@ enum class ComplexTypeKind : uint8_t
 
 struct ComplexTypeDesc
 {
-    explicit operator bool() const noexcept { return Kind != ComplexTypeKind::None; }
-    auto operator==(const ComplexTypeDesc&) const noexcept -> bool = default;
     ComplexTypeKind Kind {};
     BaseTypeDesc BaseType {};
     optional<BaseTypeDesc> KeyType {};
     shared_ptr<vector<ComplexTypeDesc>> CallbackArgs {};
     bool IsMutable {};
 };
+
+inline auto IsTypeDefined(const ComplexTypeDesc& type) noexcept -> bool
+{
+    return type.Kind != ComplexTypeKind::None;
+}
+
+inline auto operator==(const ComplexTypeDesc& left, const ComplexTypeDesc& right) noexcept -> bool
+{
+    return left.Kind == right.Kind && left.BaseType == right.BaseType && left.KeyType == right.KeyType && left.CallbackArgs == right.CallbackArgs && left.IsMutable == right.IsMutable;
+}
 
 // Synchronization-cover markers for script exports. All expand to nothing: the compiler never sees them, codegen
 // does
@@ -952,7 +966,7 @@ decltype(auto) VisitBaseTypePrimitive(ptr<const void> a, ptr<const void> b, cons
         return VisitBaseTypePrimitive(a, b, *type.EnumUnderlyingType, std::forward<Fn>(fn));
     }
     else if (type.IsSimpleStruct) {
-        const auto& field = type.StructLayout->Fields.front();
+        const auto& field {type.StructLayout->Fields.front()};
         return VisitBaseTypePrimitive(a, b, field.Type, std::forward<Fn>(fn));
     }
 
@@ -974,6 +988,7 @@ public:
     [[nodiscard]] virtual auto ResolveEnumValueName(string_view enum_name, int32_t value, nptr<bool> failed = nullptr) const -> string_view = 0;
     [[nodiscard]] virtual auto CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const noexcept -> optional<hstring> = 0;
     [[nodiscard]] virtual auto GetProtoEntity(hstring type_name, hstring proto_id) const noexcept -> nptr<const ProtoEntity> = 0;
+
     virtual ~NameResolver() = default;
 };
 
@@ -1177,6 +1192,7 @@ class AnimationResolver
 public:
     [[nodiscard]] virtual auto ResolveCritterAnimationSprite(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim) -> shared_ptr<SpriteSheet> = 0;
     [[nodiscard]] virtual auto ResolveCritterAnimationSubstitute(hstring base_model_name, CritterStateAnim base_state_anim, CritterActionAnim base_action_anim, hstring& model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim) -> bool = 0;
+
     virtual ~AnimationResolver() = default;
 };
 

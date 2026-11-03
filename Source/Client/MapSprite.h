@@ -39,7 +39,7 @@
 
 FO_BEGIN_NAMESPACE
 
-constexpr auto SPRITES_POOL_GROW_SIZE = 2000;
+constexpr auto SPRITES_POOL_GROW_SIZE {2000};
 
 class RenderEffect;
 class Sprite;
@@ -225,7 +225,7 @@ private:
     uint32_t _globalCounter {};
     bool _needSort {};
     bool _orderBroken {};
-    static constexpr size_t DrawOrderRangeSize = static_cast<size_t>(DrawOrderType::Last) + 2;
+    static constexpr size_t DrawOrderRangeSize {static_cast<size_t>(DrawOrderType::Last) + 2};
     array<uint32_t, DrawOrderRangeSize> _drawOrderRangeBegin {};
 };
 

@@ -46,8 +46,9 @@ struct ThrowingFormatValue
 FO_END_NAMESPACE
 
 template<>
-struct std::formatter<FO_NAMESPACE ThrowingFormatValue> : formatter<FO_NAMESPACE string_view> // NOLINT(cert-dcl58-cpp)
+class std::formatter<FO_NAMESPACE ThrowingFormatValue> : public formatter<FO_NAMESPACE string_view> // NOLINT(cert-dcl58-cpp)
 {
+public:
     // The return type has to be spelled out: the body only throws, so deduction would pick void and the
     // type would stop satisfying the formattable concept
     template<typename FormatContext>
@@ -136,13 +137,13 @@ TEST_CASE("StringUtils")
 
     SECTION("Utf8")
     {
-        constexpr string_view hello_lower = " \xD0\xBF\xD1\x80\xD0\xB8\xD0\xB2\xD0\xB5\xD1\x82   ";
-        constexpr string_view hello_mixed = " \xD0\x9F\xD1\x80\xD0\xB8\xD0\xB2\xD0\xB5\xD1\x82   ";
-        constexpr string_view hello_upper = " \xD0\x9F\xD0\xA0\xD0\x98\xD0\x92\xD0\x95\xD0\xA2   ";
-        constexpr string_view other_word = " \xD1\x82\xD1\x82\xD1\x82\xD0\xB2\xD0\xB2\xD0\xB2   ";
-        constexpr string_view three_e = "\xD0\xB5\xD0\xB5\xD0\xB5";
-        constexpr string_view upper_source = " \xD0\x9F\xD1\x80\xD0\xB8\xD0\x92\xD0\x95\xD0\xA2   ";
-        constexpr string_view upper_mixed = " \xD0\x9F\xD1\x80\xD0\xB8\xD0\x92\xD0\xB5\xD1\x82   ";
+        constexpr string_view hello_lower {" \xD0\xBF\xD1\x80\xD0\xB8\xD0\xB2\xD0\xB5\xD1\x82   "};
+        constexpr string_view hello_mixed {" \xD0\x9F\xD1\x80\xD0\xB8\xD0\xB2\xD0\xB5\xD1\x82   "};
+        constexpr string_view hello_upper {" \xD0\x9F\xD0\xA0\xD0\x98\xD0\x92\xD0\x95\xD0\xA2   "};
+        constexpr string_view other_word {" \xD1\x82\xD1\x82\xD1\x82\xD0\xB2\xD0\xB2\xD0\xB2   "};
+        constexpr string_view three_e {"\xD0\xB5\xD0\xB5\xD0\xB5"};
+        constexpr string_view upper_source {" \xD0\x9F\xD1\x80\xD0\xB8\xD0\x92\xD0\x95\xD0\xA2   "};
+        constexpr string_view upper_mixed {" \xD0\x9F\xD1\x80\xD0\xB8\xD0\x92\xD0\xB5\xD1\x82   "};
 
         CHECK(strex("").is_valid_utf8());
         CHECK_FALSE(strex(string(1, static_cast<char>(200))).is_valid_utf8());
@@ -357,14 +358,15 @@ TEST_CASE("StringUtils")
 
 TEST_CASE("StringUtilsUtf8Validation")
 {
-    auto check_valid = [](string_view text) {
+    auto check_valid {[](string_view text) {
         CHECK(strvex(text).is_valid_utf8());
         CHECK(strex(string(text.data(), text.size())).is_valid_utf8());
-    };
-    auto check_invalid = [](string_view text) {
+    }};
+
+    auto check_invalid {[](string_view text) {
         CHECK_FALSE(strvex(text).is_valid_utf8());
         CHECK_FALSE(strex(string(text.data(), text.size())).is_valid_utf8());
-    };
+    }};
 
     SECTION("AcceptsScalarBoundaries")
     {

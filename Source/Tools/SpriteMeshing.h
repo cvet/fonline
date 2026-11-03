@@ -41,8 +41,8 @@ FO_BEGIN_NAMESPACE
 
 struct BakingSettings;
 
-constexpr int32_t SPRITE_MESH_DILATION = 1;
-constexpr int32_t SPRITE_MESH_MAXIMUM_PADDING = 20;
+constexpr int32_t SPRITE_MESH_DILATION {1};
+constexpr int32_t SPRITE_MESH_MAXIMUM_PADDING {20};
 
 struct SpriteMeshBakeConfig
 {

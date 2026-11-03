@@ -22,8 +22,8 @@ class ReleaseSafetyFoundationsDocumentationTests(unittest.TestCase):
         server = self._read("Source/Server/Server.cpp")
         guide = " ".join(self._read(OPERATIONS_GUIDE).split())
 
-        self.assertIn('wstring path = wstring(L"\\\"").append(buf)', service)
-        self.assertIn('ServerServiceStart = "server-service-start"', common)
+        self.assertIn("wstring path {wstring(L\"\\\"\").append(buf)", service)
+        self.assertIn("ServerServiceStart {\"server-service-start\"}", common)
         self.assertIn('args.GetSettingValue(CommandLineSettings::ServerServiceStart).has_value()', service)
         self.assertIn('strex(" --{}", CommandLineSettings::ServerServiceStart).to_wide_char()', service)
         self.assertIn('.append(service_start_arg)', service)
@@ -52,7 +52,7 @@ class ReleaseSafetyFoundationsDocumentationTests(unittest.TestCase):
         ):
             self.assertIn(connection, database)
         self.assertIn('connection_info = strvex(connection_info).trim();', database)
-        self.assertIn('string_view storage_dir = strvex(connection_info.substr(options.front().size())).trim();', database)
+        self.assertIn('string_view storage_dir {static_cast<string_view>(strvex(connection_info.substr(options.front().size())).trim())};', database)
         for provider in ("DataBaseJson", "DataBaseSQLite"):
             self.assertIn(f'{provider}::Create(db_settings, storage_dir, std::move(panic_callback))', database)
         self.assertIn('Execute("PRAGMA journal_mode = WAL"', sqlite)

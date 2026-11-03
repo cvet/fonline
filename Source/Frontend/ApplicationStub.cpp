@@ -48,12 +48,13 @@ public:
     }
 
     [[nodiscard]] auto GetRenderTarget() -> nptr<RenderTexture> override { return _renderTarget; }
-    [[nodiscard]] auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override { return _renderer.CreateTexture(size, linear_filtered, with_depth); }
-    [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override { return _renderer.CreateDrawBuffer(is_static); }
-    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override { return _renderer.CreateEffect(usage, name, loader); }
-    [[nodiscard]] auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override { return _renderer.CreateOrthoMatrix(left, right, bottom, top, nearp, farp); }
     [[nodiscard]] auto IsRenderTargetFlipped() const -> bool override { return _renderer.IsRenderTargetFlipped(); }
     [[nodiscard]] auto GetProjMatrix() const -> mat44 override { return _renderer.GetProjMatrix(); }
+
+    auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override { return _renderer.CreateTexture(size, linear_filtered, with_depth); }
+    auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override { return _renderer.CreateDrawBuffer(is_static); }
+    auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override { return _renderer.CreateEffect(usage, name, loader); }
+    auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override { return _renderer.CreateOrthoMatrix(left, right, bottom, top, nearp, farp); }
 
     void SetRenderTarget(nptr<RenderTexture> tex) override
     {
@@ -70,7 +71,7 @@ public:
     void DisableScissor() override { _renderer.DisableScissor(); }
 
 private:
-    Null_Renderer _renderer;
+    Null_Renderer _renderer {};
     AppScreenState _screen {};
     nptr<RenderTexture> _renderTarget {};
 };
@@ -134,7 +135,7 @@ public:
 private:
     void UpdateModifierState(const InputEvent& ev)
     {
-        auto update_key_state = [this](KeyCode key, bool pressed) {
+        auto update_key_state {[this](KeyCode key, bool pressed) {
             if (key == KeyCode::Lshift || key == KeyCode::Rshift) {
                 _shiftDown = pressed;
             }
@@ -144,7 +145,7 @@ private:
             else if (key == KeyCode::Lmenu || key == KeyCode::Rmenu) {
                 _altDown = pressed;
             }
-        };
+        }};
 
         if (ev.Type == InputEvent::EventType::KeyDownEvent) {
             update_key_state(ev.KeyDown.Code, true);
@@ -234,7 +235,7 @@ public:
     auto ToggleFullscreen(bool enable) -> bool override
     {
         // The interface reports whether the state changed, not the resulting state
-        bool changed = _state.Fullscreen != enable;
+        bool changed {_state.Fullscreen != enable};
         _state.Fullscreen = enable;
         return changed;
     }
@@ -253,7 +254,7 @@ private:
     HeadlessWindowStub _state {};
     StubAppRender _render;
     StubAppInput _input;
-    StubAppAudio _audio;
+    StubAppAudio _audio {};
     bool _grabbed {};
     EventDispatcher<> _onWindowSizeChangedDispatcher {&OnWindowSizeChanged};
     EventDispatcher<> _onScreenSizeChangedDispatcher {&OnScreenSizeChanged};

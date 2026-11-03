@@ -62,17 +62,17 @@ FO_BEGIN_NAMESPACE
 
 namespace MapperTests
 {
-    constexpr auto TILE_PICTURE = "MapperTile.png";
-    constexpr auto CRITTER_A = "MapperCoverageCritter";
-    constexpr auto SCENERY_A = "MapperCoverageScenery";
-    constexpr auto WALL_A = "MapperCoverageWall";
-    constexpr auto TILE_A = "MapperMergeTileA"; // SameSibling (spatial, adjacency-based merge)
-    constexpr auto TILE_B = "MapperMergeTileB"; // SameSibling
-    constexpr auto TILE_U = "MapperMergeTileU"; // AnyUnique (position-independent same-proto+same-data merge)
+    constexpr auto TILE_PICTURE {"MapperTile.png"};
+    constexpr auto CRITTER_A {"MapperCoverageCritter"};
+    constexpr auto SCENERY_A {"MapperCoverageScenery"};
+    constexpr auto WALL_A {"MapperCoverageWall"};
+    constexpr auto TILE_A {"MapperMergeTileA"}; // SameSibling (spatial, adjacency-based merge)
+    constexpr auto TILE_B {"MapperMergeTileB"}; // SameSibling
+    constexpr auto TILE_U {"MapperMergeTileU"}; // AnyUnique (position-independent same-proto+same-data merge)
 
     inline auto MakeMapperTestSettings() -> GlobalSettings
     {
-        auto settings = GlobalSettings(false);
+        auto settings {GlobalSettings(false)};
 
         settings.ApplyDefaultSettings();
         settings.ApplyAutoSettings();
@@ -81,7 +81,7 @@ namespace MapperTests
 
         // The maps come from LoadMapFromText, so one named pack with no input dirs is all the constructor needs
         // to seed its file system
-        auto pack_config = ConfigFile("[ResourcePack]\nName = MapperMergeTestPack\n");
+        auto pack_config {ConfigFile("[ResourcePack]\nName = MapperMergeTestPack\n")};
         settings.ApplyConfigFile(pack_config, "");
 
         return settings;
@@ -609,7 +609,7 @@ namespace MapperMergeTest
 )"},
             },
             [](string_view message) {
-                string message_str = string(message);
+                string message_str {string(message)};
 
                 if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
                     throw ScriptSystemException(message_str);
@@ -620,11 +620,11 @@ namespace MapperMergeTest
 
     inline void AddMinimalFont(BakerTests::MemoryDataSource& source, string_view font_name)
     {
-        string fofnt_path = strex("Fonts/{}.fofnt", font_name).str();
-        string image_name = strex("{}.png", font_name).str();
-        string image_path = strex("Fonts/{}", image_name).str();
+        string fofnt_path {strex("Fonts/{}.fofnt", font_name).str()};
+        string image_name {strex("{}.png", font_name).str()};
+        string image_path {strex("Fonts/{}", image_name).str()};
 
-        string fofnt_text = strex("Version 2\nImage {}\nYAdvance 1\n\nLetter ' '\n  PositionX 1\n  PositionY 1\n  XAdvance 5\n\nEnd\n", image_name).str();
+        string fofnt_text {strex("Version 2\nImage {}\nYAdvance 1\n\nLetter ' '\n  PositionX 1\n  PositionY 1\n  XAdvance 5\n\nEnd\n", image_name).str()};
 
         source.AddFile(fofnt_path, fofnt_text);
         source.AddFile(image_path, BakerTests::MakeMinimalBakedSprite());
@@ -634,7 +634,7 @@ namespace MapperMergeTest
 
     // The SPARK asset below names this effect on its renderer, and the runtime refuses to build the system
     // unless the effect resolves, so the editor fixture bakes it alongside the particle
-    static constexpr string_view MAPPER_TEST_PARTICLE_EFFECT = R"EFFECT(
+    static constexpr string_view MAPPER_TEST_PARTICLE_EFFECT {R"EFFECT(
     [Effect]
 
     [VertexShader]
@@ -662,9 +662,9 @@ namespace MapperMergeTest
     {
         FragColor = texture(MainTex, TexCoord);
     }
-    )EFFECT";
+    )EFFECT"};
 
-    static constexpr string_view MAPPER_TEST_SPARK_ASSET = R"PARTICLE(
+    static constexpr string_view MAPPER_TEST_SPARK_ASSET {R"PARTICLE(
     <SPARK>
       <System name="MapperEditorParticle">
         <attrib id="groups">
@@ -759,31 +759,31 @@ namespace MapperMergeTest
         </attrib>
       </System>
     </SPARK>
-    )PARTICLE";
+    )PARTICLE"};
 
     // Bakes the test particle plus the effect family and texture the SPARK runtime resolves, so a fixture can
     // serve real particle resources without a build step
     inline auto MakeBakedParticleResources(string_view asset_path, string_view asset_text, string_view effect_text, string_view texture_name) -> vector<pair<string, vector<uint8_t>>>
     {
-        BakerTests::TestRig particle_rig;
+        BakerTests::TestRig particle_rig {};
         particle_rig.AddSourceFile(asset_path, asset_text, 10);
 
-        ParticleBaker particle_baker(particle_rig.MakeContext());
+        ParticleBaker particle_baker {particle_rig.MakeContext()};
         particle_baker.BakeFiles(particle_rig.GetAllSourceFiles(), "");
 
-        string baked_path = strex(asset_path).change_file_extension("spk").str();
+        string baked_path {strex(asset_path).change_file_extension("spk").str()};
         REQUIRE(particle_rig.Outputs.contains(baked_path));
 
-        BakerTests::TestRig effect_rig;
+        BakerTests::TestRig effect_rig {};
 
         for (string_view effect_name : {"Effects/Particles_ColorAdd.fofx", "Effects/Particles_ColorAddAtlas.fofx", "Effects/Particles_ColorMulAtlas.fofx", "Effects/Particles_ColorSubAtlas.fofx", "Effects/Particles_DistortionAtlas.fofx", "Effects/Particles_DistortionAddAtlas.fofx"}) {
             effect_rig.AddSourceFile(effect_name, effect_text, 10);
         }
 
-        EffectBaker effect_baker(effect_rig.MakeContext());
+        EffectBaker effect_baker {effect_rig.MakeContext()};
         effect_baker.BakeFiles(effect_rig.GetAllSourceFiles(), "");
 
-        vector<pair<string, vector<uint8_t>>> resources;
+        vector<pair<string, vector<uint8_t>>> resources {};
         resources.emplace_back(baked_path, particle_rig.Outputs.at(baked_path));
 
         for (const auto& [output_path, output_data] : effect_rig.Outputs) {
@@ -798,7 +798,7 @@ namespace MapperMergeTest
 
     inline auto MakeMapperTestResources(string_view critter_model = {}) -> FileSystem
     {
-        auto metadata_blob = BakerTests::MakeMetadataBlob({{"Property",
+        auto metadata_blob {BakerTests::MakeMetadataBlob({{"Property",
             {
                 {"Item", "Common", "int32", "AuthoringNumber"},
                 {"Item", "Common", "bool", "AuthoringFlag"},
@@ -808,66 +808,68 @@ namespace MapperMergeTest
                 {"Item", "Common", "int32", "AuthoringOwner", "Mutable", "OwnerSync", "Persistent"},
                 {"Item", "Server", "int32", "AuthoringServer", "Mutable", "Persistent"},
                 {"Item", "Common", "int32", "AuthoringPrivate", "Mutable", "NoSync", "Persistent"},
-            }}});
+            }}})};
 
-        auto compiler_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("MapperMergeCompilerResources");
+        auto compiler_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("MapperMergeCompilerResources")};
         compiler_source->AddFile("Metadata.fometa-mapper", metadata_blob);
 
-        FileSystem compiler_resources;
+        FileSystem compiler_resources {};
         compiler_resources.AddCustomSource(std::move(compiler_source));
 
         BakerMapperEngine proto_engine {compiler_resources};
-        hstring item_type = proto_engine.Hashes.to_hashed_string("Item");
+        hstring item_type {proto_engine.Hashes.to_hashed_string("Item")};
 
         // A real map picture gives placed items sprite geometry, without which the editor's screen hit tests
         // can never find anything under the cursor
-        hstring tile_pic = proto_engine.Hashes.to_hashed_string(TILE_PICTURE);
+        hstring tile_pic {proto_engine.Hashes.to_hashed_string(TILE_PICTURE)};
 
-        auto configure_tile = [tile_pic](ProtoItem& proto) {
+        auto configure_tile {[tile_pic](ProtoItem& proto) {
             proto.SetStatic(true);
             proto.SetMultihexGeneration(MultihexGenerationType::SameSibling);
             proto.SetDrawMultihexMesh(true);
             proto.SetPicMap(tile_pic);
-        };
-        auto configure_unique = [tile_pic](ProtoItem& proto) {
+        }};
+
+        auto configure_unique {[tile_pic](ProtoItem& proto) {
             proto.SetStatic(true);
             proto.SetMultihexGeneration(MultihexGenerationType::AnyUnique);
             proto.SetDrawMultihexMesh(true);
             proto.SetPicMap(tile_pic);
-        };
+        }};
 
         // Selection, drawing and the workspace lists all branch on what kind of item is placed, so the
         // fixture carries one proto of each kind rather than tiles alone
-        auto configure_scenery = [tile_pic](ProtoItem& proto) {
+        auto configure_scenery {[tile_pic](ProtoItem& proto) {
             proto.SetIsScenery(true);
             proto.SetPicMap(tile_pic);
             proto.GetPropertiesForEdit()->ApplyFromText(map<string, string> {{"AuthoringNumber", "20"}, {"AuthoringFlag", "True"}, {"AuthoringText", "base"}, {"AuthoringList", "7 9"}, {"AuthoringClient", "20"}});
-        };
-        auto configure_wall = [tile_pic](ProtoItem& proto) {
+        }};
+
+        auto configure_wall {[tile_pic](ProtoItem& proto) {
             proto.SetIsWall(true);
             proto.SetPicMap(tile_pic);
-        };
+        }};
 
-        vector<pair<string, function<void(ProtoItem&)>>> tile_protos;
+        vector<pair<string, function<void(ProtoItem&)>>> tile_protos {};
         tile_protos.emplace_back(string(TILE_A), configure_tile);
         tile_protos.emplace_back(string(TILE_B), configure_tile);
         tile_protos.emplace_back(string(TILE_U), configure_unique);
         tile_protos.emplace_back(string(SCENERY_A), configure_scenery);
         tile_protos.emplace_back(string(WALL_A), configure_wall);
 
-        auto proto_blob = BakerTests::MakeMultiProtoResourceBlob<ProtoItem>(proto_engine, item_type, tile_protos);
+        auto proto_blob {BakerTests::MakeMultiProtoResourceBlob<ProtoItem>(proto_engine, item_type, tile_protos)};
 
         // A critter proto makes the client-side critter view surface reachable from mapper scripts
-        hstring critter_type = proto_engine.Hashes.to_hashed_string("Critter");
-        vector<pair<string, function<void(ProtoCritter&)>>> critter_protos;
+        hstring critter_type {proto_engine.Hashes.to_hashed_string("Critter")};
+        vector<pair<string, function<void(ProtoCritter&)>>> critter_protos {};
         critter_protos.emplace_back(string(CRITTER_A), [&](ProtoCritter& proto) { proto.SetModelName(proto_engine.Hashes.to_hashed_string(critter_model)); });
-        auto critter_proto_blob = BakerTests::MakeMultiProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, critter_protos);
+        auto critter_proto_blob {BakerTests::MakeMultiProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, critter_protos)};
 
 #if FO_ANGELSCRIPT_SCRIPTING
-        auto script_blob = MakeMapperScriptBinary(compiler_resources);
+        auto script_blob {MakeMapperScriptBinary(compiler_resources)};
 #endif
 
-        auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("MapperMergeRuntimeResources");
+        auto runtime_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("MapperMergeRuntimeResources")};
         runtime_source->AddFile("Metadata.fometa-mapper", metadata_blob);
         runtime_source->AddFile("MapperMergeTiles.fopro-bin-mapper", proto_blob);
         runtime_source->AddFile("MapperMergeCritters.fopro-bin-mapper", critter_proto_blob);
@@ -898,7 +900,7 @@ namespace MapperMergeTest
 
 #endif
 
-        FileSystem resources;
+        FileSystem resources {};
         resources.AddCustomSource(std::move(runtime_source));
         return resources;
     }
@@ -925,7 +927,7 @@ namespace MapperMergeTest
 
     inline auto CollectMeshHexes(ptr<const ItemHexView> item) -> vector<mpos>
     {
-        vector<mpos> hexes;
+        vector<mpos> hexes {};
         hexes.emplace_back(item->GetHex());
 
         for (auto hex : item->GetMultihexMesh()) {
@@ -938,7 +940,7 @@ namespace MapperMergeTest
 
     inline auto CountItemsOfProto(ptr<MapView> map, hstring proto_id) -> int32_t
     {
-        int32_t count = 0;
+        int32_t count {0};
 
         for (const auto& item : map->GetItems()) {
             if (item->GetProtoId() == proto_id) {
@@ -953,17 +955,20 @@ namespace MapperMergeTest
     // fingerprints which item won the path-dependent race and the id pins which one survived
     struct SurvivorDesc
     {
-        int64_t Id;
-        mpos Origin;
-        vector<mpos> Covered;
-        int32_t LightDistance;
-
-        auto operator==(const SurvivorDesc& other) const -> bool { return Id == other.Id && Origin == other.Origin && Covered == other.Covered && LightDistance == other.LightDistance; }
+        int64_t Id {};
+        mpos Origin {};
+        vector<mpos> Covered {};
+        int32_t LightDistance {};
     };
+
+    inline auto operator==(const SurvivorDesc& left, const SurvivorDesc& right) -> bool
+    {
+        return left.Id == right.Id && left.Origin == right.Origin && left.Covered == right.Covered && left.LightDistance == right.LightDistance;
+    }
 
     inline auto CollectSurvivors(ptr<MapView> map, hstring proto_id) -> vector<SurvivorDesc>
     {
-        vector<SurvivorDesc> survivors;
+        vector<SurvivorDesc> survivors {};
 
         for (const auto& item : map->GetItems()) {
             if (item->GetProtoId() == proto_id) {

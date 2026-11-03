@@ -46,7 +46,7 @@ The complete current inventory is <code>experimental</code> since <code>2022.1.0
 
 The native-codegen surface is offered for evaluation only, and stays revision-pinned until supported release lines exist.<br>SymbolCount and InventorySha256 force owner review of every addition, removal or stable-ID change
 
-Contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47)
+Contract source: [Source/Common/Common.h:45](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L45)
 
 ## Scope
 

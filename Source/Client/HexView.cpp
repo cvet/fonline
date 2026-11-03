@@ -49,8 +49,8 @@ auto HexView::AddSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex,
 {
     FO_VERIFY_AND_THROW(!_mapSprValid, "Map spr valid is already set");
 
-    ipos32 hex_offset = ipos32 {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
-    auto mspr = list.AddSprite(draw_order, hex, hex_offset, phex_offset, nullptr, _spr.get_pp(), &_sprOffset, &_rootOffset, &_curAlpha, _drawEffect.get_pp(), &_mapSprValid, sub_layer);
+    ipos32 hex_offset {ipos32 {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2}};
+    auto mspr {list.AddSprite(draw_order, hex, hex_offset, phex_offset, nullptr, _spr.get_pp(), &_sprOffset, &_rootOffset, &_curAlpha, _drawEffect.get_pp(), &_mapSprValid, sub_layer)};
 
     _mapSpr = mspr;
     SetupSprite(mspr);
@@ -68,12 +68,12 @@ auto HexView::AddExtraSprite(MapSpriteList& list, DrawOrderType draw_order, mpos
     }
 
     _extraMapSpr->remove_if([](auto&& entry) { return !entry.second; });
-    auto& entry = _extraMapSpr->emplace_back();
+    auto& entry {_extraMapSpr->emplace_back()};
 
-    ipos32 hex_offset = ipos32 {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
+    ipos32 hex_offset {ipos32 {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2}};
     entry.first = list.AddSprite(draw_order, hex, hex_offset, phex_offset, nullptr, _spr.get_pp(), &_sprOffset, &_rootOffset, &_curAlpha, _drawEffect.get_pp(), &entry.second, sub_layer);
 
-    auto map_spr = entry.first;
+    auto map_spr {entry.first};
     FO_VERIFY_AND_THROW(map_spr, "Map sprite is null");
     SetupSprite(map_spr);
     return map_spr;
@@ -124,7 +124,7 @@ void HexView::InheritAlphaFrom(ptr<const HexView> prev)
 
 void HexView::StartFade(uint8_t from_alpha)
 {
-    nanotime time = _map->GetEngine()->GameTime.GetFrameTime();
+    nanotime time {_map->GetEngine()->GameTime.GetFrameTime()};
 
     _fadingTime = time + std::chrono::milliseconds {_map->GetEngine()->Settings->View.FadingDuration};
     _fadeFromAlpha = from_alpha;
@@ -136,10 +136,10 @@ void HexView::StartFade(uint8_t from_alpha)
 void HexView::EvaluateCurAlpha()
 {
     if (_fading) {
-        nanotime time = _map->GetEngine()->GameTime.GetFrameTime();
+        nanotime time {_map->GetEngine()->GameTime.GetFrameTime()};
         timespan fading_duration {std::chrono::milliseconds {_map->GetEngine()->Settings->View.FadingDuration}};
-        timespan fading_remaining = time < _fadingTime ? _fadingTime - time : timespan::zero;
-        float32_t t = fading_duration <= timespan::zero ? 1.0f : 1.0f - fading_remaining.div<float32_t>(fading_duration);
+        timespan fading_remaining {time < _fadingTime ? _fadingTime - time : timespan::zero};
+        float32_t t {fading_duration <= timespan::zero ? 1.0f : 1.0f - fading_remaining.div<float32_t>(fading_duration)};
 
         if (t >= 1.0f) {
             _fading = false;
@@ -160,7 +160,7 @@ void HexView::SetTargetAlpha(uint8_t alpha)
         return;
     }
 
-    uint8_t from_alpha = _curAlpha;
+    uint8_t from_alpha {_curAlpha};
     _targetAlpha = alpha;
     StartFade(from_alpha);
 }
@@ -224,7 +224,7 @@ void HexView::InvalidateSprite()
     if (_extraMapSpr) {
         for (auto&& [mspr, valid] : *_extraMapSpr) {
             if (valid) {
-                auto map_spr = mspr;
+                auto map_spr {mspr};
                 FO_VERIFY_AND_THROW(map_spr, "Map sprite is null");
                 map_spr->Invalidate();
             }
@@ -236,7 +236,7 @@ void HexView::InvalidateSprite()
 
 void HexView::SetSpriteVisiblity(bool enabled)
 {
-    bool hidden = !enabled;
+    bool hidden {!enabled};
 
     if (_mapSprHidden == hidden) {
         return;

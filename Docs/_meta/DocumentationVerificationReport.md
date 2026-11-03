@@ -1,5 +1,67 @@
 # Documentation Verification Report
 
+## 2026-11-03 - Reconcile native refactoring with published master 98
+
+Reconcile published feature `7fe60ec242fd184c7fb6ebc300954417f7322ea7`
+with master `ac37c9d217b314b3f3a1f567f67be535cfe15cac`. Audit the full
+40-commit incoming Engine range and its embedding integration. Prepare
+`2026.1.99-dev` through the version owner; retain the complete historical
+English/Russian release and migration notes. Runtime migration marker 0.0.86,
+Managed ABI 9 and master's sprite v3/resource contracts remain unchanged.
+Preserve the unpublished formatting commit for rebasing after the history merge.
+
+Resolve the arithmetic/type, consuming FileReader Read names, passive record,
+class encapsulation, query/nodiscard, spacing and brace-initialization changes
+against the actual incoming owners. Preserve selected constructors, JSON object
+copies, container cardinality and structured-binding types. Qualify the late
+JSON/SQLite and Script-tracing branches with actual compiler arguments. Validate
+image output after FOFRM transforms, including an oversized source PNG resized
+to a valid output; reject invalid concrete/shared payloads before publication.
+Split the former giant ImageBaker test into independent cases while preserving
+all original section bodies and format guards, removing its Windows stack overflow.
+
+Windows builds pass UnitTests, Client, Mapper and headless Server without
+compiler warnings. The default native suite passes 747486 assertions in 863
+cases, with one explicit fixture skip for its unregistered named timer callback.
+The build with both scripting backends, every image importer and JSON/SQLite
+passes all 1043 cases and 764764 assertions without skips. An earlier default
+run under concurrent compilation/AST load reached its 120-second total sync-test
+deadline while still making progress. Preserve that failed run; the unchanged
+focused test and subsequent full run pass without changing deadlines or checks.
+
+Pointer, allocator, synchronization, native source layout/module and explicit-local
+audits pass. The explicit-type/redundant-const gate has no remaining findings;
+use-after-move qualification passes. Reconcile 7657 exception-safety entries with
+both histories and preserve their guarantees/provenance. Refresh 109 later
+syntax-only or checked-widening deltas against exact source snapshots and AST
+proof, without changing levels, statuses or reasons.
+
+Regenerate the owning contract/reference models and complete EN/RU mirrors:
+196/196 current document translations and 5002/5002 generated descriptions.
+The aggregate comparison with master passes 322 changes across 17 domains,
+one required disposition and none missing. All 585 documentation tests pass;
+the validator accepts 414 Markdown entries. Prepare the 15 ignored delivery
+outputs in dependency order, with all 317 normative snippets valid and
+185 external-parser checks passing. The version owner's regression suite passes.
+
+The owner explicitly removes the documentation search byte-size limit. Remove
+the manifest field, generator gate, obsolete budget tests and current EN/RU
+policy claims; retain token rules, locale membership, complete corpus and
+search validation. A regression generates both locale indexes above 2 MB,
+checks every expected document and finds the final corpus token. Preserve
+the original failure and successful corrected fixture run separately.
+
+The pinned Ruby 3.3.4/Bundler 2.5.11/github-pages 232 production build passes;
+use the existing matching gem installation without changing the dependency
+manifest. The rendered artifact passes all 596 routes, 41 static endpoints and
+87379 local references. Pinned Chromium 151.0.7922.34/Playwright 1.62.0/axe-core 4.12.1
+passes all 1788 page checks and 16 interaction profiles, retaining 23 screenshots.
+Directly review the desktop/Russian and 200-percent reflow captures; automated
+checks cover every desktop/mobile/reflow route. Reconcile the ADR badge description
+with the unchanged master layout, which reads VERSION while routing stays rolling. These checks do not publish the site or
+qualify another native platform. The embedding plan owns final gitlink/history,
+Managed compilation, resource baking and project runtime qualification.
+
 ## 2026-10-24 - Prepare FOFRM rework against published master 61
 
 Integrate published feature `a0489ef02bc71b2c5caab53b19d1524bc0e2b381`

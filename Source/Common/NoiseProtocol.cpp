@@ -48,14 +48,14 @@ NoiseCipherState::~NoiseCipherState()
 
 void NoiseCipherState::EncryptWithAd(const_span<uint8_t> ad, const_span<uint8_t> plaintext, vector<uint8_t>& ciphertext)
 {
-    size_t offset = ciphertext.size();
+    size_t offset {ciphertext.size()};
 
     if (!_hasKey) {
         ciphertext.insert(ciphertext.end(), plaintext.begin(), plaintext.end());
         return;
     }
 
-    crypto::aead_nonce nonce = MakeNonce();
+    crypto::aead_nonce nonce {MakeNonce()};
     ciphertext.resize(offset + plaintext.size() + crypto::aead_tag_size);
     crypto::aead_seal(_key, nonce, ad, plaintext, span<uint8_t> {ciphertext}.subspan(offset));
     _nonce++;
@@ -63,7 +63,7 @@ void NoiseCipherState::EncryptWithAd(const_span<uint8_t> ad, const_span<uint8_t>
 
 auto NoiseCipherState::DecryptWithAd(const_span<uint8_t> ad, const_span<uint8_t> ciphertext, vector<uint8_t>& plaintext) -> bool
 {
-    size_t offset = plaintext.size();
+    size_t offset {plaintext.size()};
 
     if (!_hasKey) {
         plaintext.insert(plaintext.end(), ciphertext.begin(), ciphertext.end());
@@ -74,7 +74,7 @@ auto NoiseCipherState::DecryptWithAd(const_span<uint8_t> ad, const_span<uint8_t>
         return false;
     }
 
-    crypto::aead_nonce nonce = MakeNonce();
+    crypto::aead_nonce nonce {MakeNonce()};
     plaintext.resize(offset + ciphertext.size() - crypto::aead_tag_size);
 
     if (!crypto::aead_open(_key, nonce, ad, ciphertext, span<uint8_t> {plaintext}.subspan(offset))) {
@@ -96,7 +96,7 @@ auto NoiseCipherState::MakeNonce() const -> crypto::aead_nonce
     // Four zero bytes, then the counter in little-endian order
     crypto::aead_nonce nonce {};
 
-    for (size_t i = 0; i < sizeof(uint64_t); i++) {
+    for (size_t i {0}; i < sizeof(uint64_t); i++) {
         nonce[4 + i] = numeric_cast<uint8_t>((_nonce >> (i * 8)) & 0xFF);
     }
 
@@ -148,8 +148,8 @@ void NoiseHandshakeNK::WriteMessage(const_span<uint8_t> payload, vector<uint8_t>
     MixHash(_ephemeralPublicKey);
 
     // The first message mixes es, the answer mixes ee
-    const crypto::key_bytes& remote_key = _messageIndex == 0 ? _responderPublicKey : _remoteEphemeralKey;
-    crypto::key_bytes shared_secret = crypto::x25519(_ephemeralSecretKey, remote_key);
+    const crypto::key_bytes& remote_key {_messageIndex == 0 ? _responderPublicKey : _remoteEphemeralKey};
+    crypto::key_bytes shared_secret {crypto::x25519(_ephemeralSecretKey, remote_key)};
     MixKey(shared_secret);
     crypto::wipe(shared_secret);
 
@@ -169,8 +169,8 @@ auto NoiseHandshakeNK::ReadMessage(const_span<uint8_t> message, vector<uint8_t>&
     memory::copy(_remoteEphemeralKey.data(), message.data(), crypto::key_size);
     MixHash(_remoteEphemeralKey);
 
-    const crypto::key_bytes& local_key = _messageIndex == 0 ? _staticSecretKey : _ephemeralSecretKey;
-    crypto::key_bytes shared_secret = crypto::x25519(local_key, _remoteEphemeralKey);
+    const crypto::key_bytes& local_key {_messageIndex == 0 ? _staticSecretKey : _ephemeralSecretKey};
+    crypto::key_bytes shared_secret {crypto::x25519(local_key, _remoteEphemeralKey)};
     MixKey(shared_secret);
     crypto::wipe(shared_secret);
 
@@ -187,11 +187,11 @@ auto NoiseHandshakeNK::Split() -> TransportCiphers
 {
     FO_VERIFY_AND_THROW(IsComplete() && !_split, "Noise handshake split before both messages were exchanged or split twice", _messageIndex, _split);
 
-    crypto::hash_bytes temp_key = crypto::hmac(_chainingKey, {});
-    constexpr uint8_t first_index = 1;
-    crypto::hash_bytes first_output = crypto::hmac(temp_key, {make_const_span(&first_index, 1)});
-    constexpr uint8_t second_index = 2;
-    crypto::hash_bytes second_output = crypto::hmac(temp_key, {first_output, make_const_span(&second_index, 1)});
+    crypto::hash_bytes temp_key {crypto::hmac(_chainingKey, {})};
+    constexpr uint8_t first_index {1};
+    crypto::hash_bytes first_output {crypto::hmac(temp_key, {make_const_span(&first_index, 1)})};
+    constexpr uint8_t second_index {2};
+    crypto::hash_bytes second_output {crypto::hmac(temp_key, {first_output, make_const_span(&second_index, 1)})};
 
     // Keys are truncated to the cipher's length when the hash is longer
     crypto::key_bytes first_key {};
@@ -199,7 +199,7 @@ auto NoiseHandshakeNK::Split() -> TransportCiphers
     memory::copy(first_key.data(), first_output.data(), first_key.size());
     memory::copy(second_key.data(), second_output.data(), second_key.size());
 
-    TransportCiphers ciphers;
+    TransportCiphers ciphers {};
     ciphers.Send = NoiseCipherState(_initiator ? first_key : second_key);
     ciphers.Receive = NoiseCipherState(_initiator ? second_key : first_key);
 
@@ -220,11 +220,11 @@ void NoiseHandshakeNK::MixHash(const_span<uint8_t> data) noexcept
 
 void NoiseHandshakeNK::MixKey(const_span<uint8_t> input_key_material)
 {
-    crypto::hash_bytes temp_key = crypto::hmac(_chainingKey, {input_key_material});
-    constexpr uint8_t first_index = 1;
+    crypto::hash_bytes temp_key {crypto::hmac(_chainingKey, {input_key_material})};
+    constexpr uint8_t first_index {1};
     _chainingKey = crypto::hmac(temp_key, {make_const_span(&first_index, 1)});
-    constexpr uint8_t second_index = 2;
-    crypto::hash_bytes second_output = crypto::hmac(temp_key, {_chainingKey, make_const_span(&second_index, 1)});
+    constexpr uint8_t second_index {2};
+    crypto::hash_bytes second_output {crypto::hmac(temp_key, {_chainingKey, make_const_span(&second_index, 1)})};
 
     crypto::key_bytes cipher_key {};
     memory::copy(cipher_key.data(), second_output.data(), cipher_key.size());
@@ -237,7 +237,7 @@ void NoiseHandshakeNK::MixKey(const_span<uint8_t> input_key_material)
 
 void NoiseHandshakeNK::EncryptAndHash(const_span<uint8_t> plaintext, vector<uint8_t>& ciphertext)
 {
-    size_t offset = ciphertext.size();
+    size_t offset {ciphertext.size()};
     _cipher.EncryptWithAd(_handshakeHash, plaintext, ciphertext);
     MixHash(const_span<uint8_t> {ciphertext}.subspan(offset));
 }

@@ -45,7 +45,7 @@ FO_DECLARE_EXCEPTION(MapBakerException);
 class MapBaker final : public BaseBaker
 {
 public:
-    static constexpr string_view_nt NAME = "Map";
+    static constexpr string_view_nt NAME {"Map"};
 
     explicit MapBaker(shared_ptr<BakingContext> ctx);
     MapBaker(const MapBaker&) = delete;

@@ -49,15 +49,15 @@ TEST_CASE("FreshProportionalStretchTableHasFiniteLayout", "[imgui][tables]")
     REQUIRE(ImGui::GetCurrentContext() == nullptr);
     ImGuiExt::Init();
 
-    auto destroy_context = FO_NAMESPACE scope_exit([]() noexcept {
+    auto destroy_context {FO_NAMESPACE scope_exit([]() noexcept {
         FO_NAMESPACE safe_call([] {
             if (ImGui::GetCurrentContext() != nullptr) {
                 ImGui::DestroyContext();
             }
         });
-    });
+    })};
 
-    ImGuiIO& io = ImGui::GetIO();
+    ImGuiIO& io {ImGui::GetIO()};
     io.DisplaySize = ImVec2 {800.0f, 600.0f};
     io.DeltaTime = 1.0f / 60.0f;
     io.IniFilename = nullptr;
@@ -77,7 +77,7 @@ TEST_CASE("FreshProportionalStretchTableHasFiniteLayout", "[imgui][tables]")
     ImGui::End();
     ImGui::Render();
 
-    FO_NAMESPACE nptr<ImGuiWindow> window = FO_NAMESPACE ImGuiTestHarness::FindWindow("ProportionalTableWindow");
+    FO_NAMESPACE nptr<ImGuiWindow> window {FO_NAMESPACE ImGuiTestHarness::FindWindow("ProportionalTableWindow")};
     REQUIRE(window);
     CHECK(std::isfinite(window->DC.IdealMaxPos.x));
 }
@@ -89,26 +89,26 @@ TEST_CASE("ImGuiTestHarnessPressesWidgetsByLabel", "[imgui][harness]")
     REQUIRE(ImGui::GetCurrentContext() == nullptr);
     ImGuiExt::Init();
 
-    auto destroy_context = FO_NAMESPACE scope_exit([]() noexcept {
+    auto destroy_context {FO_NAMESPACE scope_exit([]() noexcept {
         FO_NAMESPACE safe_call([] {
             if (ImGui::GetCurrentContext() != nullptr) {
                 ImGui::DestroyContext();
             }
         });
-    });
+    })};
 
-    ImGuiIO& io = ImGui::GetIO();
+    ImGuiIO& io {ImGui::GetIO()};
     io.DisplaySize = ImVec2 {800.0f, 600.0f};
     io.DeltaTime = 1.0f / 60.0f;
     io.IniFilename = nullptr;
     io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
 
-    int32_t first_presses = 0;
-    int32_t second_presses = 0;
-    bool checked = false;
-    bool section_body_drawn = false;
+    int32_t first_presses {0};
+    int32_t second_presses {0};
+    bool checked {false};
+    bool section_body_drawn {false};
 
-    auto draw_frame = [&] {
+    auto draw_frame {[&] {
         ImGui::NewFrame();
 
         if (ImGui::Begin("HarnessWindow", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
@@ -129,7 +129,7 @@ TEST_CASE("ImGuiTestHarnessPressesWidgetsByLabel", "[imgui][harness]")
 
         ImGui::End();
         ImGui::Render();
-    };
+    }};
 
     draw_frame();
     CHECK(first_presses == 0);

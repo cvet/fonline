@@ -156,7 +156,7 @@
       "source": [
         {
           "path": "Source/Tools/AudioBaker.h",
-          "anchors": ["class AudioBaker", "NATIVE_EXTENSION = \"ogg\"", "GetOrder() const"]
+          "anchors": ["class AudioBaker", "NATIVE_EXTENSION {\"ogg\"}", "GetOrder() const"]
         },
         {
           "path": "Source/Tools/AudioBaker.cpp",
@@ -186,11 +186,11 @@
       "source": [
         {
           "path": "Source/Tools/AudioBaker.cpp",
-          "anchors": ["string_view path = file.GetPath()", "_context->WriteData(path"]
+          "anchors": ["string_view path {file.GetPath()}", "_context->WriteData(path"]
         },
         {
           "path": "Source/Client/AudioManager.cpp",
-          "anchors": ["return Load(name, false", "auto file = _resources->ReadFile(fname)"]
+          "anchors": ["return Load(name, false", "auto file {_resources->ReadFile(fname)}"]
         }
       ]
     },
@@ -331,7 +331,7 @@
         {
           "path": "Source/Tools/AudioBaker-Acm.cpp",
           "anchors": [
-            "MUSIC_DIR = \"sound/music/\"",
+            "MUSIC_DIR {\"sound/music/\"}",
             "pcm.Channels = is_music ? 2 : 1",
             "pcm.SampleRate = decoder.GetSampleRate()",
             "ACM stream declares no sample rate",

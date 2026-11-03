@@ -62,10 +62,10 @@ public:
     [[nodiscard]] auto GetAtlas() -> nptr<TextureAtlas> { return _atlas; }
     [[nodiscard]] auto GetBatchTexture() const -> nptr<const RenderTexture> override;
     [[nodiscard]] auto IsCopyable() const -> bool override { return true; }
-    [[nodiscard]] auto MakeCopy() const -> shared_ptr<Sprite> override;
     [[nodiscard]] auto GetAtlasRect() const noexcept -> frect32 { return _atlasRect; }
     [[nodiscard]] auto ResolveRegion(fpos32 uv0, fpos32 uv1, const frect32& pos) const -> optional<AtlasSpriteRegion>;
 
+    auto MakeCopy() const -> shared_ptr<Sprite> override;
     auto FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override;
     auto FillRegionData(ptr<RenderDrawBuffer> dbuf, fpos32 uv0, fpos32 uv1, const frect32& pos, ucolor color) const -> size_t;
 
@@ -95,7 +95,7 @@ public:
     [[nodiscard]] auto IsHitTest(ipos32 pos) const -> bool override;
     [[nodiscard]] auto GetBatchTexture() const -> nptr<const RenderTexture> override;
     [[nodiscard]] auto IsCopyable() const -> bool override { return true; }
-    [[nodiscard]] auto MakeCopy() const -> shared_ptr<Sprite> override;
+
     [[nodiscard]] auto GetCurrentSprite() const -> ptr<const Sprite>;
     [[nodiscard]] auto GetCurrentSprite() -> ptr<Sprite>;
     [[nodiscard]] auto GetSprite(int32_t num_frm) const -> ptr<const Sprite>;
@@ -114,6 +114,7 @@ public:
     [[nodiscard]] auto GetFrameDurations() const noexcept -> const_span<timespan> { return GetCurrentDirection()->_frameDurations; }
     [[nodiscard]] auto GetFrameIndexAtPhase(float64_t phase, bool reversed = false) const -> int32_t;
 
+    auto MakeCopy() const -> shared_ptr<Sprite> override;
     auto FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override;
     void SetFrame(int32_t index, shared_ptr<Sprite> sprite, ipos32 offset, ipos32 motion);
     void Prewarm() override;

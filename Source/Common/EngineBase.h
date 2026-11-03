@@ -56,8 +56,8 @@ public:
 
     struct ProtoMigrator
     {
-        string Name;
-        function<optional<hstring>(hstring, const AnyData::Document&)> Callback;
+        string Name {};
+        function<optional<hstring>(hstring, const AnyData::Document&)> Callback {};
     };
 
     explicit EngineMetadata(const MetadataRegistrar& registrar);

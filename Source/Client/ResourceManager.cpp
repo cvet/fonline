@@ -55,7 +55,7 @@ void ResourceManager::UnsubscribeEvents() noexcept
 
 void ResourceManager::UpdateFactories()
 {
-    for (size_t i = 0; i < _spriteFactories.size(); ++i) {
+    for (size_t i {0}; i < _spriteFactories.size(); ++i) {
         _spriteFactories[i]->Update();
     }
 }
@@ -71,9 +71,9 @@ void ResourceManager::RegisterSpriteFactory(unique_ptr<SpriteFactory> factory)
 
 auto ResourceManager::GetSpriteFactory(std::type_index ti) -> nptr<SpriteFactory>
 {
-    for (size_t i = 0; i != _spriteFactories.size(); ++i) {
-        auto factory = _spriteFactories[i].as_ptr();
-        SpriteFactory& factory_ref = *factory;
+    for (size_t i {0}; i != _spriteFactories.size(); ++i) {
+        auto factory {_spriteFactories[i].as_ptr()};
+        SpriteFactory& factory_ref {*factory};
 
         if (std::type_index(typeid(factory_ref)) == ti) {
             return factory;
@@ -85,7 +85,7 @@ auto ResourceManager::GetSpriteFactory(std::type_index ti) -> nptr<SpriteFactory
 
 auto ResourceManager::LoadSpriteAsQuad(hstring path, AtlasType atlas_type) -> shared_ptr<AtlasSprite>
 {
-    auto factory = GetSpriteFactory(typeid(DefaultSpriteFactory)).dyn_cast<DefaultSpriteFactory>();
+    auto factory {GetSpriteFactory(typeid(DefaultSpriteFactory)).dyn_cast<DefaultSpriteFactory>()};
     FO_VERIFY_AND_THROW(factory, "Default sprite factory is not registered", path);
     return factory->LoadSpriteAsQuad(path, atlas_type);
 }
@@ -94,16 +94,16 @@ void ResourceManager::LoadDefaultSprites(const RenderSettings& settings)
 {
     FO_TRACE_ZONE(Render);
 
-    auto any_spr = !settings.Render.CritterStubSpriteName.empty() ? LoadSprite(settings.Render.CritterStubSpriteName, AtlasType::MapSprites, true) : shared_ptr<Sprite> {};
+    auto any_spr {!settings.Render.CritterStubSpriteName.empty() ? LoadSprite(settings.Render.CritterStubSpriteName, AtlasType::MapSprites, true) : shared_ptr<Sprite> {}};
 
     if (!any_spr) {
         any_spr = DefaultSpriteFactory::CreateDummySprite(_sprMngr, AtlasType::MapSprites);
     }
 
-    auto atlas_spr = any_spr.dyn_cast<AtlasSprite>();
+    auto atlas_spr {any_spr.dyn_cast<AtlasSprite>()};
     FO_VERIFY_AND_THROW(atlas_spr, "Missing required atlas sprite");
     _critterDummyAnimFrames = safe_alloc::make_shared<SpriteSheet>(_sprMngr, 1, DUMMY_ANIMATION_FRAME_DURATION, 1);
-    ipos32 dummy_offset = atlas_spr->GetOffset();
+    ipos32 dummy_offset {atlas_spr->GetOffset()};
 
     _critterDummyAnimFrames->SetFrame(0, std::move(atlas_spr), dummy_offset, ipos32 {});
     FO_VERIFY_AND_THROW(_critterDummyAnimFrames, "Critter dummy animation frames are null");
@@ -140,7 +140,7 @@ auto ResourceManager::LoadSprite(hstring path, AtlasType atlas_type, bool no_war
         return nullptr;
     }
 
-    if (auto it = _copyableSpriteCache.find({path, atlas_type}); it != _copyableSpriteCache.end()) {
+    if (auto it {_copyableSpriteCache.find({path, atlas_type})}; it != _copyableSpriteCache.end()) {
         return it->second->MakeCopy();
     }
 
@@ -148,7 +148,7 @@ auto ResourceManager::LoadSprite(hstring path, AtlasType atlas_type, bool no_war
         return nullptr;
     }
 
-    string ext = strex(path).get_file_extension();
+    string ext {static_cast<string&&>(strex(path).get_file_extension())};
 
     if (ext.empty()) {
         break_into_debugger();
@@ -157,7 +157,7 @@ auto ResourceManager::LoadSprite(hstring path, AtlasType atlas_type, bool no_war
         return nullptr;
     }
 
-    auto it = _spriteFactoryMap.find(ext);
+    auto it {_spriteFactoryMap.find(ext)};
 
     if (it == _spriteFactoryMap.end()) {
         break_into_debugger();
@@ -166,7 +166,7 @@ auto ResourceManager::LoadSprite(hstring path, AtlasType atlas_type, bool no_war
         return nullptr;
     }
 
-    auto spr = it->second->LoadSprite(path, atlas_type);
+    auto spr {it->second->LoadSprite(path, atlas_type)};
 
     if (!spr) {
         if (!no_warn_if_not_exists) {
@@ -179,7 +179,7 @@ auto ResourceManager::LoadSprite(hstring path, AtlasType atlas_type, bool no_war
     }
 
     if (spr->IsCopyable()) {
-        auto copy = spr->MakeCopy();
+        auto copy {spr->MakeCopy()};
         _copyableSpriteCache.emplace(pair {path, atlas_type}, spr);
         return copy;
     }
@@ -196,10 +196,10 @@ void ResourceManager::InvalidateSpriteResource(string_view path)
 {
     FO_TRACE_ZONE(Render);
 
-    hstring hashed_path = _sprMngr->ToHashedString(path);
+    hstring hashed_path {_sprMngr->ToHashedString(path)};
     _nonFoundSprites.erase(hashed_path);
 
-    for (auto it = _copyableSpriteCache.begin(); it != _copyableSpriteCache.end();) {
+    for (auto it {_copyableSpriteCache.begin()}; it != _copyableSpriteCache.end();) {
         if (it->first.first == hashed_path) {
             it = _copyableSpriteCache.erase(it);
         }
@@ -224,11 +224,11 @@ void ResourceManager::CleanupSpriteCache()
 {
     FO_TRACE_ZONE(Render);
 
-    for (size_t i = 0; i != _spriteFactories.size(); ++i) {
+    for (size_t i {0}; i != _spriteFactories.size(); ++i) {
         _spriteFactories[i]->ClenupCache();
     }
 
-    for (auto it = _copyableSpriteCache.begin(); it != _copyableSpriteCache.end();) {
+    for (auto it {_copyableSpriteCache.begin()}; it != _copyableSpriteCache.end();) {
         if (it->second.use_count() == 1) {
             it = _copyableSpriteCache.erase(it);
         }

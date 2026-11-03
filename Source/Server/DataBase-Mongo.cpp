@@ -47,7 +47,7 @@ FO_CLANG_IGNORE_WARNINGS_PUSH("-Walign-mismatch")
 FO_GCC_IGNORE_WARNINGS_PUSH("-Wignored-attributes")
 
 // Upper bound on the ids one batch read sends in a single $in filter, keeping the query document far below the 16 MB limit
-static constexpr size_t MONGO_BATCH_READ_SIZE = 1000;
+static constexpr size_t MONGO_BATCH_READ_SIZE {1000};
 
 static void InitializeMongoRuntime();
 static void InitializeBsonMemory() noexcept;
@@ -76,64 +76,65 @@ public:
 
         InitializeMongoRuntime();
 
-        bson_error_t error;
-        string uri_text = string(uri);
-        auto uri_ptr = make_ptr(uri_text.c_str());
-        auto mongo_uri = make_nptr(mongoc_uri_new_with_error(uri_ptr.get(), &error));
+        bson_error_t error {};
+        string uri_text {string(uri)};
+        auto uri_ptr {make_ptr(uri_text.c_str())};
+        auto mongo_uri {make_nptr(mongoc_uri_new_with_error(uri_ptr.get(), &error))};
 
         if (!mongo_uri) {
             throw DataBaseException("DbMongo Failed to parse URI", uri, error.message);
         }
 
-        auto client = make_nptr(mongoc_client_new_from_uri(mongo_uri.get()));
+        auto client {make_nptr(mongoc_client_new_from_uri(mongo_uri.get()))};
 
         if (!client) {
             mongoc_uri_destroy(mongo_uri.get());
             throw DataBaseException("DbMongo Can't create client");
         }
 
-        auto client_guard = scope_fail([&]() noexcept { mongoc_client_destroy(client.get()); });
+        auto client_guard {scope_fail([&]() noexcept { mongoc_client_destroy(client.get()); })};
 
         mongoc_uri_destroy(mongo_uri.get());
         mongoc_client_set_appname(client.get(), FO_DEV_NAME);
 
-        string db_name_text = string(db_name);
-        auto db_name_ptr = make_ptr(db_name_text.c_str());
-        auto database = make_nptr(mongoc_client_get_database(client.get(), db_name_ptr.get()));
+        string db_name_text {string(db_name)};
+        auto db_name_ptr {make_ptr(db_name_text.c_str())};
+        auto database {make_nptr(mongoc_client_get_database(client.get(), db_name_ptr.get()))};
 
         if (!database) {
             throw DataBaseException("DbMongo Can't get database", db_name);
         }
 
-        auto database_guard = scope_fail([&]() noexcept { mongoc_database_destroy(database.get()); });
-        auto collections_guard = scope_fail([&]() noexcept {
+        auto database_guard {scope_fail([&]() noexcept { mongoc_database_destroy(database.get()); })};
+        auto collections_guard {scope_fail([&]() noexcept {
             scoped_lock locker {_storageLocker};
+
             for (auto& value : _collections | std::views::values) {
                 mongoc_collection_destroy(value.get());
             }
-        });
+        })};
 
         {
             scoped_lock locker {_storageLocker};
 
-            auto collections_cursor = make_nptr(mongoc_database_find_collections_with_opts(database.get(), nullptr));
+            auto collections_cursor {make_nptr(mongoc_database_find_collections_with_opts(database.get(), nullptr))};
             FO_VERIFY_AND_THROW(collections_cursor, "Failed to obtain collections cursor");
-            auto cursor_guard = scope_fail([&]() noexcept { mongoc_cursor_destroy(collections_cursor.get()); });
-            nptr<const bson_t> collection_doc;
+            auto cursor_guard {scope_fail([&]() noexcept { mongoc_cursor_destroy(collections_cursor.get()); })};
+            nptr<const bson_t> collection_doc {};
 
             while (mongoc_cursor_next(collections_cursor.get(), collection_doc.get_pp())) {
                 FO_VERIFY_AND_THROW(collection_doc, "Cursor returned a null collection document");
-                bson_iter_t collection_iter;
-                auto aligned_collection_doc = std::assume_aligned<BSON_ALIGN_OF_PTR>(collection_doc.get());
+                bson_iter_t collection_iter {};
+                auto aligned_collection_doc {std::assume_aligned<BSON_ALIGN_OF_PTR>(collection_doc.get())};
 
                 if (bson_iter_init_find(&collection_iter, aligned_collection_doc, "name")) {
-                    auto collection_name = make_nptr(bson_iter_utf8(&collection_iter, nullptr));
+                    auto collection_name {make_nptr(bson_iter_utf8(&collection_iter, nullptr))};
 
                     if (!collection_name) {
                         throw DataBaseException("DbMongo invalid collection name");
                     }
 
-                    auto collection = make_nptr(mongoc_database_get_collection(database.get(), collection_name.get()));
+                    auto collection {make_nptr(mongoc_database_get_collection(database.get(), collection_name.get()))};
 
                     if (!collection) {
                         throw DataBaseException("DbMongo Can't get collection", collection_name.get());
@@ -150,15 +151,16 @@ public:
             mongoc_cursor_destroy(collections_cursor.get());
         }
 
-        auto ping_doc = make_nptr(BCON_NEW("ping", BCON_INT32(1)));
+        auto ping_doc {make_nptr(BCON_NEW("ping", BCON_INT32(1)))};
         FO_VERIFY_AND_THROW(ping_doc, "Failed to build ping command document");
-        auto ping = make_unique_del_ptr(ping_doc, [](ptr<bson_t> doc) FO_DEFERRED {
-            auto aligned_doc = std::assume_aligned<BSON_ALIGN_OF_PTR>(doc.get());
+        auto ping {make_unique_del_ptr(ping_doc, [](ptr<bson_t> doc) FO_DEFERRED {
+            auto aligned_doc {std::assume_aligned<BSON_ALIGN_OF_PTR>(doc.get())};
             bson_destroy(aligned_doc);
-        });
-        ptr<const bson_t> ping_ptr = ping.get();
-        bson_t reply;
-        auto aligned_ping = std::assume_aligned<BSON_ALIGN_OF_PTR>(ping_ptr.get());
+        })};
+
+        ptr<const bson_t> ping_ptr {ping.get()};
+        bson_t reply {};
+        auto aligned_ping {std::assume_aligned<BSON_ALIGN_OF_PTR>(ping_ptr.get())};
 
         if (!mongoc_client_command_simple(client.get(), "admin", aligned_ping, nullptr, &reply, &error)) {
             throw DataBaseException("DbMongo Can't ping database", error.message);
@@ -189,7 +191,7 @@ public:
     }
 
 protected:
-    [[nodiscard]] auto GetStringKeyEscaping() const noexcept -> DataBaseStringKeyEscaping override { return DataBaseStringKeyEscaping::Raw; }
+    auto GetStringKeyEscaping() const noexcept -> DataBaseStringKeyEscaping override { return DataBaseStringKeyEscaping::Raw; }
 
     void EnsureCollection(hstring collection_name, DataBaseKeyType key_type) override
     {
@@ -197,12 +199,12 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        auto it = _collections.find(collection_name.as_str());
+        auto it {_collections.find(collection_name.as_str())};
 
         if (it == _collections.end()) {
-            bson_error_t error;
-            auto collection_name_ptr = make_ptr(collection_name.c_str());
-            auto collection = make_nptr(mongoc_database_create_collection(_database.get(), collection_name_ptr.get(), nullptr, &error));
+            bson_error_t error {};
+            auto collection_name_ptr {make_ptr(collection_name.c_str())};
+            auto collection {make_nptr(mongoc_database_create_collection(_database.get(), collection_name_ptr.get(), nullptr, &error))};
 
             if (!collection) {
                 collection = mongoc_database_get_collection(_database.get(), collection_name_ptr.get());
@@ -216,40 +218,41 @@ protected:
         }
     }
 
-    [[nodiscard]] auto GetAllRecordIds(hstring collection_name) const -> vector<DataBaseKey> override
+    auto GetAllRecordIds(hstring collection_name) const -> vector<DataBaseKey> override
     {
         FO_TRACE_ZONE(Database);
 
         scoped_lock locker {_storageLocker};
 
-        auto key_type = GetCollectionKeyType(collection_name);
+        auto key_type {GetCollectionKeyType(collection_name)};
 
-        ptr<mongoc_collection_t> collection = GetCollection(collection_name);
+        ptr<mongoc_collection_t> collection {GetCollection(collection_name)};
 
-        bson_t filter;
+        bson_t filter {};
         bson_init(&filter);
 
-        auto opts_doc = make_nptr(BCON_NEW("projection", "{", "_id", BCON_BOOL(true), "}"));
+        auto opts_doc {make_nptr(BCON_NEW("projection", "{", "_id", BCON_BOOL(true), "}"))};
         FO_VERIFY_AND_THROW(opts_doc, "Failed to build query options document");
-        auto opts = make_unique_del_ptr(opts_doc, [](ptr<bson_t> doc) FO_DEFERRED {
-            auto aligned_doc = std::assume_aligned<BSON_ALIGN_OF_PTR>(doc.get());
+        auto opts {make_unique_del_ptr(opts_doc, [](ptr<bson_t> doc) FO_DEFERRED {
+            auto aligned_doc {std::assume_aligned<BSON_ALIGN_OF_PTR>(doc.get())};
             bson_destroy(aligned_doc);
-        });
-        ptr<const bson_t> opts_ptr = opts.get();
-        auto aligned_opts = std::assume_aligned<BSON_ALIGN_OF_PTR>(opts_ptr.get());
-        auto cursor = make_nptr(mongoc_collection_find_with_opts(collection.get(), &filter, aligned_opts, nullptr));
+        })};
+
+        ptr<const bson_t> opts_ptr {opts.get()};
+        auto aligned_opts {std::assume_aligned<BSON_ALIGN_OF_PTR>(opts_ptr.get())};
+        auto cursor {make_nptr(mongoc_collection_find_with_opts(collection.get(), &filter, aligned_opts, nullptr))};
 
         if (!cursor) {
             throw DataBaseException("DbMongo mongoc_collection_find", collection_name);
         }
 
-        vector<DataBaseKey> ids;
-        nptr<const bson_t> document;
+        vector<DataBaseKey> ids {};
+        nptr<const bson_t> document {};
 
         while (mongoc_cursor_next(cursor.get(), document.get_pp())) {
             FO_VERIFY_AND_THROW(document, "Cursor returned a null document");
-            bson_iter_t iter;
-            auto aligned_document = std::assume_aligned<BSON_ALIGN_OF_PTR>(document.get());
+            bson_iter_t iter {};
+            auto aligned_document {std::assume_aligned<BSON_ALIGN_OF_PTR>(document.get())};
 
             if (!bson_iter_init(&iter, aligned_document)) {
                 throw DataBaseException("DbMongo bson_iter_init", collection_name);
@@ -269,8 +272,8 @@ protected:
                     throw DataBaseException("DbMongo invalid key type in collection", collection_name, MongoDbKeyTypeName(key_type));
                 }
 
-                uint32_t len = 0;
-                auto value = make_nptr(bson_iter_utf8(&iter, &len));
+                uint32_t len {0};
+                auto value {make_nptr(bson_iter_utf8(&iter, &len))};
 
                 if (!value || len == 0) {
                     throw DataBaseException("DbMongo invalid string key", collection_name);
@@ -283,7 +286,7 @@ protected:
             }
         }
 
-        bson_error_t error;
+        bson_error_t error {};
 
         if (mongoc_cursor_error(cursor.get(), &error)) {
             throw DataBaseException("DbMongo mongoc_cursor_error", collection_name, error.message);
@@ -296,33 +299,33 @@ protected:
     }
 
 protected:
-    [[nodiscard]] auto GetRecord(hstring collection_name, const DataBaseKey& id) const -> AnyData::Document override
+    auto GetRecord(hstring collection_name, const DataBaseKey& id) const -> AnyData::Document override
     {
         FO_TRACE_ZONE(Database);
 
         scoped_lock locker {_storageLocker};
 
-        ptr<mongoc_collection_t> collection = GetCollection(collection_name);
+        ptr<mongoc_collection_t> collection {GetCollection(collection_name)};
 
-        bson_t filter;
+        bson_t filter {};
         bson_init(&filter);
 
         AppendMongoDbKey(&filter, id, collection_name);
 
-        bson_t opts;
+        bson_t opts {};
         bson_init(&opts);
 
         if (!bson_append_int32(&opts, "limit", 5, 1)) {
             throw DataBaseException("DbMongo bson_append_int32", collection_name, FormatMongoDbKey(id));
         }
 
-        auto cursor = make_nptr(mongoc_collection_find_with_opts(collection.get(), &filter, &opts, nullptr));
+        auto cursor {make_nptr(mongoc_collection_find_with_opts(collection.get(), &filter, &opts, nullptr))};
 
         if (!cursor) {
             throw DataBaseException("DbMongo mongoc_collection_find", collection_name, FormatMongoDbKey(id));
         }
 
-        nptr<const bson_t> bson;
+        nptr<const bson_t> bson {};
 
         if (!mongoc_cursor_next(cursor.get(), bson.get_pp())) {
             mongoc_cursor_destroy(cursor.get());
@@ -332,7 +335,7 @@ protected:
         }
 
         FO_VERIFY_AND_THROW(bson, "Cursor returned a null document");
-        AnyData::Document doc;
+        AnyData::Document doc {};
         BsonToDocument(bson, doc, _escapeDot);
 
         mongoc_cursor_destroy(cursor.get());
@@ -341,42 +344,42 @@ protected:
         return doc;
     }
 
-    [[nodiscard]] auto GetRecords(hstring collection_name, const vector<DataBaseKey>& ids) const -> vector<AnyData::Document> override
+    auto GetRecords(hstring collection_name, const vector<DataBaseKey>& ids) const -> vector<AnyData::Document> override
     {
         FO_TRACE_ZONE(Database);
 
-        vector<AnyData::Document> docs(ids.size());
-        unordered_map<DataBaseKey, size_t> index_by_id;
+        vector<AnyData::Document> docs {vector<AnyData::Document>(ids.size())};
+        unordered_map<DataBaseKey, size_t> index_by_id {};
 
-        for (size_t i = 0; i < ids.size(); i++) {
-            bool first_request = index_by_id.emplace(ids[i], i).second;
+        for (size_t i {0}; i < ids.size(); i++) {
+            bool first_request {index_by_id.emplace(ids[i], i).second};
             FO_VERIFY_AND_THROW(first_request, "Batch read requested the same record twice", collection_name, FormatMongoDbKey(ids[i]));
         }
 
         scoped_lock locker {_storageLocker};
 
-        ptr<mongoc_collection_t> collection = GetCollection(collection_name);
+        ptr<mongoc_collection_t> collection {GetCollection(collection_name)};
 
-        for (size_t chunk_start = 0; chunk_start < ids.size(); chunk_start += MONGO_BATCH_READ_SIZE) {
-            size_t chunk_end = std::min(chunk_start + MONGO_BATCH_READ_SIZE, ids.size());
+        for (size_t chunk_start {0}; chunk_start < ids.size(); chunk_start += MONGO_BATCH_READ_SIZE) {
+            size_t chunk_end {std::min(chunk_start + MONGO_BATCH_READ_SIZE, ids.size())};
 
-            bson_t filter;
+            bson_t filter {};
             bson_init(&filter);
-            auto destroy_filter = scope_exit([&filter]() noexcept { bson_destroy(&filter); });
+            auto destroy_filter {scope_exit([&filter]() noexcept { bson_destroy(&filter); })};
 
-            bson_t id_filter;
+            bson_t id_filter {};
 
             if (!bson_append_document_begin(&filter, "_id", 3, &id_filter)) {
                 throw DataBaseException("DbMongo bson_append_document_begin", collection_name);
             }
 
-            bson_t id_list;
+            bson_t id_list {};
 
             if (!bson_append_array_unsafe_begin(&id_filter, "$in", 3, &id_list)) {
                 throw DataBaseException("DbMongo bson_append_array_unsafe_begin", collection_name);
             }
 
-            for (size_t i = chunk_start; i < chunk_end; i++) {
+            for (size_t i {chunk_start}; i < chunk_end; i++) {
                 AppendMongoDbValue(&id_list, strex("{}", i - chunk_start).str(), ids[i], collection_name);
             }
 
@@ -387,36 +390,36 @@ protected:
                 throw DataBaseException("DbMongo bson_append_document_end", collection_name);
             }
 
-            bson_t opts;
+            bson_t opts {};
             bson_init(&opts);
-            auto destroy_opts = scope_exit([&opts]() noexcept { bson_destroy(&opts); });
+            auto destroy_opts {scope_exit([&opts]() noexcept { bson_destroy(&opts); })};
 
             // The server answers a find with 101 documents unless told otherwise, and each further batch is one more round
             // trip; the limit closes the cursor with the last record instead of leaving an empty getMore to find the end
-            int32_t chunk_size = numeric_cast<int32_t>(chunk_end - chunk_start);
+            int32_t chunk_size {numeric_cast<int32_t>(chunk_end - chunk_start)};
 
             if (!bson_append_int32(&opts, "batchSize", 9, chunk_size) || !bson_append_int32(&opts, "limit", 5, chunk_size)) {
                 throw DataBaseException("DbMongo bson_append_int32", collection_name);
             }
 
-            auto cursor = make_nptr(mongoc_collection_find_with_opts(collection.get(), &filter, &opts, nullptr));
+            auto cursor {make_nptr(mongoc_collection_find_with_opts(collection.get(), &filter, &opts, nullptr))};
 
             if (!cursor) {
                 throw DataBaseException("DbMongo mongoc_collection_find", collection_name);
             }
 
-            auto destroy_cursor = scope_exit([&cursor]() noexcept { mongoc_cursor_destroy(cursor.get()); });
-            nptr<const bson_t> bson;
+            auto destroy_cursor {scope_exit([&cursor]() noexcept { mongoc_cursor_destroy(cursor.get()); })};
+            nptr<const bson_t> bson {};
 
             while (mongoc_cursor_next(cursor.get(), bson.get_pp())) {
                 FO_VERIFY_AND_THROW(bson, "Cursor returned a null document");
-                DataBaseKey id = ReadMongoDbKey(bson, collection_name);
-                auto it = index_by_id.find(id);
+                DataBaseKey id {ReadMongoDbKey(bson, collection_name)};
+                auto it {index_by_id.find(id)};
                 FO_VERIFY_AND_THROW(it != index_by_id.end(), "Batch read returned a record that was not requested", collection_name, FormatMongoDbKey(id));
                 BsonToDocument(bson, docs[it->second], _escapeDot);
             }
 
-            bson_error_t error;
+            bson_error_t error {};
 
             if (mongoc_cursor_error(cursor.get(), &error)) {
                 throw DataBaseException("DbMongo mongoc_cursor_error", collection_name, error.message);
@@ -434,16 +437,16 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        ptr<mongoc_collection_t> collection = GetCollection(collection_name);
+        ptr<mongoc_collection_t> collection {GetCollection(collection_name)};
 
-        bson_t insert;
+        bson_t insert {};
         bson_init(&insert);
 
         AppendMongoDbKey(&insert, id, collection_name);
 
         DocumentToBson(doc, &insert, _escapeDot);
 
-        bson_error_t error;
+        bson_error_t error {};
 
         if (!mongoc_collection_insert(collection.get(), MONGOC_INSERT_NONE, &insert, nullptr, &error)) {
             throw DataBaseException("DbMongo mongoc_collection_insert", collection_name, id, error.message);
@@ -460,17 +463,17 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        ptr<mongoc_collection_t> collection = GetCollection(collection_name);
+        ptr<mongoc_collection_t> collection {GetCollection(collection_name)};
 
-        bson_t selector;
+        bson_t selector {};
         bson_init(&selector);
 
         AppendMongoDbKey(&selector, id, collection_name);
 
-        bson_t update;
+        bson_t update {};
         bson_init(&update);
 
-        bson_t update_set;
+        bson_t update_set {};
 
         if (!bson_append_document_begin(&update, "$set", 4, &update_set)) {
             throw DataBaseException("DbMongo bson_append_document_begin", collection_name, FormatMongoDbKey(id));
@@ -482,7 +485,7 @@ protected:
             throw DataBaseException("DbMongo bson_append_document_end", collection_name, FormatMongoDbKey(id));
         }
 
-        bson_error_t error;
+        bson_error_t error {};
 
         if (!mongoc_collection_update_one(collection.get(), &selector, &update, nullptr, nullptr, &error)) {
             throw DataBaseException("DbMongo mongoc_collection_update_one", collection_name, id, error.message);
@@ -498,14 +501,14 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        ptr<mongoc_collection_t> collection = GetCollection(collection_name);
+        ptr<mongoc_collection_t> collection {GetCollection(collection_name)};
 
-        bson_t selector;
+        bson_t selector {};
         bson_init(&selector);
 
         AppendMongoDbKey(&selector, id, collection_name);
 
-        bson_error_t error;
+        bson_error_t error {};
 
         if (!mongoc_collection_delete_one(collection.get(), &selector, nullptr, nullptr, &error)) {
             throw DataBaseException("DbMongo mongoc_collection_delete_one", collection_name, id, error.message);
@@ -520,17 +523,18 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        auto ping_doc = make_nptr(BCON_NEW("ping", BCON_INT32(1)));
+        auto ping_doc {make_nptr(BCON_NEW("ping", BCON_INT32(1)))};
         FO_VERIFY_AND_THROW(ping_doc, "Failed to build ping command document");
-        auto ping = make_unique_del_ptr(ping_doc, [](ptr<bson_t> doc) FO_DEFERRED {
-            auto aligned_doc = std::assume_aligned<BSON_ALIGN_OF_PTR>(doc.get());
+        auto ping {make_unique_del_ptr(ping_doc, [](ptr<bson_t> doc) FO_DEFERRED {
+            auto aligned_doc {std::assume_aligned<BSON_ALIGN_OF_PTR>(doc.get())};
             bson_destroy(aligned_doc);
-        });
-        ptr<const bson_t> ping_ptr = ping.get();
-        bson_t reply;
-        bson_error_t error;
-        auto aligned_ping = std::assume_aligned<BSON_ALIGN_OF_PTR>(ping_ptr.get());
-        bool ok = mongoc_client_command_simple(_client.get(), "admin", aligned_ping, nullptr, &reply, &error);
+        })};
+
+        ptr<const bson_t> ping_ptr {ping.get()};
+        bson_t reply {};
+        bson_error_t error {};
+        auto aligned_ping {std::assume_aligned<BSON_ALIGN_OF_PTR>(ping_ptr.get())};
+        bool ok {mongoc_client_command_simple(_client.get(), "admin", aligned_ping, nullptr, &reply, &error)};
 
         if (ok) {
             bson_destroy(&reply);
@@ -545,7 +549,7 @@ protected:
 private:
     ptr<mongoc_collection_t> GetCollection(hstring collection_name) const FO_TSA_REQUIRES(_storageLocker)
     {
-        auto it = _collections.find(collection_name.as_str());
+        auto it {_collections.find(collection_name.as_str())};
 
         if (it == _collections.end()) {
             throw DataBaseException("DbMongo Collection not found", collection_name);
@@ -586,10 +590,10 @@ private:
 
     static void AppendMongoDbValue(ptr<bson_t> bson, string_view field_name, const DataBaseKey& key, hstring collection_name)
     {
-        auto aligned_bson = std::assume_aligned<BSON_ALIGN_OF_PTR>(bson.get());
+        auto aligned_bson {std::assume_aligned<BSON_ALIGN_OF_PTR>(bson.get())};
         string field_name_str {field_name};
-        auto field_name_ptr = make_ptr(field_name_str.c_str());
-        int32_t field_name_len = numeric_cast<int32_t>(field_name_str.length());
+        auto field_name_ptr {make_ptr(field_name_str.c_str())};
+        int32_t field_name_len {numeric_cast<int32_t>(field_name_str.length())};
 
         std::visit(
             [&, aligned_bson](const auto& value) {
@@ -601,7 +605,7 @@ private:
                     }
                 }
                 else {
-                    auto key_value = make_ptr(value.c_str());
+                    auto key_value {make_ptr(value.c_str())};
                     if (!bson_append_utf8(aligned_bson, field_name_ptr.get(), field_name_len, key_value.get(), numeric_cast<int32_t>(value.length()))) {
                         throw DataBaseException("DbMongo bson_append_utf8", collection_name, value);
                     }
@@ -612,8 +616,8 @@ private:
 
     static auto ReadMongoDbKey(ptr<const bson_t> bson, hstring collection_name) -> DataBaseKey
     {
-        bson_iter_t iter;
-        auto aligned_bson = std::assume_aligned<BSON_ALIGN_OF_PTR>(bson.get());
+        bson_iter_t iter {};
+        auto aligned_bson {std::assume_aligned<BSON_ALIGN_OF_PTR>(bson.get())};
 
         if (!bson_iter_init_find(&iter, aligned_bson, "_id")) {
             throw DataBaseException("DbMongo record without _id", collection_name);
@@ -624,8 +628,8 @@ private:
         }
 
         if (bson_iter_type(&iter) == BSON_TYPE_UTF8) {
-            uint32_t len = 0;
-            auto value = make_nptr(bson_iter_utf8(&iter, &len));
+            uint32_t len {0};
+            auto value {make_nptr(bson_iter_utf8(&iter, &len))};
 
             if (!value || len == 0) {
                 throw DataBaseException("DbMongo invalid string key", collection_name);
@@ -654,7 +658,7 @@ auto DataBaseMongo::Create(ptr<DataBaseSettings> db_settings, string_view uri, s
 // handshake data and its lock, and no later init restores them, so a second database would run on freed state
 static void InitializeMongoRuntime()
 {
-    static std::once_flag once;
+    static std::once_flag once {};
     std::call_once(once, [] {
         mongoc_init();
         mongoc_log_set_handler(&MongoLogHandler, nullptr);
@@ -665,10 +669,10 @@ static void MongoLogHandler(mongoc_log_level_t log_level, const char* log_domain
 {
     ignore_unused(user_data);
 
-    auto domain_text = make_nptr(log_domain);
-    auto message_text = make_nptr(message);
-    string_view domain = domain_text ? string_view(domain_text.get()) : string_view("mongoc");
-    string_view text = message_text ? string_view(message_text.get()) : string_view();
+    auto domain_text {make_nptr(log_domain)};
+    auto message_text {make_nptr(message)};
+    string_view domain {domain_text ? string_view(domain_text.get()) : string_view("mongoc")};
+    string_view text {message_text ? string_view(message_text.get()) : string_view()};
 
     safe_call([&] {
         switch (log_level) {
@@ -724,7 +728,7 @@ static auto BsonAlignedAlloc(size_t alignment, size_t size) noexcept -> void*
 
 static void InitializeBsonMemory() noexcept
 {
-    static std::once_flag once;
+    static std::once_flag once {};
     std::call_once(once, [] {
         bson_mem_vtable_t vtable {};
         vtable.malloc = &BsonMalloc;
@@ -738,12 +742,12 @@ static void InitializeBsonMemory() noexcept
 
 static void ValueToBson(string_view key, const AnyData::Value& value, ptr<bson_t> bson, char escape_dot)
 {
-    strex key_buf = strex(key);
-    string_view escaped_key = escape_dot != 0 ? key_buf.replace('.', escape_dot).strv() : key;
-    string_view key_data = escaped_key;
-    int32_t key_len = numeric_cast<int32_t>(escaped_key.length());
-    auto key_ptr = make_nptr(key_data.data());
-    auto aligned_bson = std::assume_aligned<BSON_ALIGN_OF_PTR>(bson.get());
+    strex key_buf {strex(key)};
+    string_view escaped_key {escape_dot != 0 ? key_buf.replace('.', escape_dot).strv() : key};
+    string_view key_data {escaped_key};
+    int32_t key_len {numeric_cast<int32_t>(escaped_key.length())};
+    auto key_ptr {make_nptr(key_data.data())};
+    auto aligned_bson {std::assume_aligned<BSON_ALIGN_OF_PTR>(bson.get())};
 
     if (value.Type() == AnyData::ValueType::Int64) {
         if (!bson_append_int64(aligned_bson, key_ptr.get(), key_len, value.AsInt64())) {
@@ -751,7 +755,7 @@ static void ValueToBson(string_view key, const AnyData::Value& value, ptr<bson_t
         }
     }
     else if (value.Type() == AnyData::ValueType::Float64) {
-        float64_t double_value = value.AsDouble();
+        float64_t double_value {value.AsDouble()};
 
         if (!std::isfinite(double_value)) {
             throw DataBaseException("ValueToBson non-finite double", key, double_value);
@@ -766,24 +770,24 @@ static void ValueToBson(string_view key, const AnyData::Value& value, ptr<bson_t
         }
     }
     else if (value.Type() == AnyData::ValueType::String) {
-        string_view value_str = value.AsString();
+        string_view value_str {value.AsString()};
 
         if (!bson_append_utf8(aligned_bson, key_ptr.get(), key_len, value_str.data(), numeric_cast<int32_t>(value_str.length()))) {
             throw DataBaseException("ValueToBson bson_append_utf8", key, value_str);
         }
     }
     else if (value.Type() == AnyData::ValueType::Array) {
-        bson_t bson_arr;
+        bson_t bson_arr {};
 
         if (!bson_append_array_unsafe_begin(aligned_bson, key_ptr.get(), key_len, &bson_arr)) {
             throw DataBaseException("ValueToBson bson_append_array_unsafe_begin", key);
         }
 
-        const auto& arr = value.AsArray();
-        size_t arr_index = 0;
+        const auto& arr {value.AsArray()};
+        size_t arr_index {0};
 
         for (const auto& arr_entry : arr) {
-            string arr_key = strex("{}", arr_index++);
+            string arr_key {static_cast<string&&>(strex("{}", arr_index++))};
             ValueToBson(arr_key, arr_entry, &bson_arr, escape_dot);
         }
 
@@ -792,13 +796,13 @@ static void ValueToBson(string_view key, const AnyData::Value& value, ptr<bson_t
         }
     }
     else if (value.Type() == AnyData::ValueType::Dict) {
-        bson_t bson_doc;
+        bson_t bson_doc {};
 
         if (!bson_append_document_begin(aligned_bson, key_ptr.get(), key_len, &bson_doc)) {
             throw DataBaseException("ValueToBson bson_append_bool", key);
         }
 
-        const auto& dict = value.AsDict();
+        const auto& dict {value.AsDict()};
 
         for (auto&& [dict_key, dict_value] : dict) {
             ValueToBson(dict_key, dict_value, &bson_doc, escape_dot);
@@ -822,7 +826,7 @@ static void DocumentToBson(const AnyData::Document& doc, ptr<bson_t> bson, char 
 
 static auto BsonToValue(ptr<bson_iter_t> iter, char escape_dot) -> AnyData::Value
 {
-    auto value = make_ptr(bson_iter_value(iter.get()));
+    auto value {make_ptr(bson_iter_value(iter.get()))};
 
     if (value->value_type == BSON_TYPE_INT32) {
         return numeric_cast<int64_t>(value->value.v_int32);
@@ -831,7 +835,7 @@ static auto BsonToValue(ptr<bson_iter_t> iter, char escape_dot) -> AnyData::Valu
         return value->value.v_int64;
     }
     else if (value->value_type == BSON_TYPE_DOUBLE) {
-        float64_t double_value = value->value.v_double;
+        float64_t double_value {value->value.v_double};
 
         if (!std::isfinite(double_value)) {
             throw DataBaseException("BsonToValue non-finite double", bson_iter_key(iter.get()), double_value);
@@ -846,34 +850,34 @@ static auto BsonToValue(ptr<bson_iter_t> iter, char escape_dot) -> AnyData::Valu
         return string(value->value.v_utf8.str, value->value.v_utf8.len);
     }
     else if (value->value_type == BSON_TYPE_ARRAY) {
-        bson_iter_t arr_iter;
+        bson_iter_t arr_iter {};
 
         if (!bson_iter_recurse(iter.get(), &arr_iter)) {
             throw DataBaseException("BsonToValue bson_iter_recurse");
         }
 
-        AnyData::Array arr;
+        AnyData::Array arr {};
 
         while (bson_iter_next(&arr_iter)) {
-            auto arr_entry = BsonToValue(&arr_iter, escape_dot);
+            auto arr_entry {BsonToValue(&arr_iter, escape_dot)};
             arr.EmplaceBack(std::move(arr_entry));
         }
 
         return std::move(arr);
     }
     else if (value->value_type == BSON_TYPE_DOCUMENT) {
-        bson_iter_t doc_iter;
+        bson_iter_t doc_iter {};
 
         if (!bson_iter_recurse(iter.get(), &doc_iter)) {
             throw DataBaseException("BsonToValue bson_iter_recurse");
         }
 
-        AnyData::Dict dict;
+        AnyData::Dict dict {};
 
         while (bson_iter_next(&doc_iter)) {
-            auto key = make_ptr(bson_iter_key(&doc_iter));
-            string unescaped_key = escape_dot != 0 ? strex(key.get()).replace(escape_dot, '.') : string(key.get());
-            auto dict_value = BsonToValue(&doc_iter, escape_dot);
+            auto key {make_ptr(bson_iter_key(&doc_iter))};
+            string unescaped_key {escape_dot != 0 ? strex(key.get()).replace(escape_dot, '.') : string(key.get())};
+            auto dict_value {BsonToValue(&doc_iter, escape_dot)};
             dict.Emplace(std::move(unescaped_key), std::move(dict_value));
         }
 
@@ -886,23 +890,23 @@ static auto BsonToValue(ptr<bson_iter_t> iter, char escape_dot) -> AnyData::Valu
 
 static void BsonToDocument(ptr<const bson_t> bson, AnyData::Document& doc, char escape_dot)
 {
-    bson_iter_t iter;
-    auto aligned_bson = std::assume_aligned<BSON_ALIGN_OF_PTR>(bson.get());
+    bson_iter_t iter {};
+    auto aligned_bson {std::assume_aligned<BSON_ALIGN_OF_PTR>(bson.get())};
 
     if (!bson_iter_init(&iter, aligned_bson)) {
         throw DataBaseException("BsonToDocument bson_iter_init");
     }
 
     while (bson_iter_next(&iter)) {
-        auto key = make_ptr(bson_iter_key(&iter));
+        auto key {make_ptr(bson_iter_key(&iter))};
         string_view key_text {key.get()};
 
         if (key_text == "_id") {
             continue;
         }
 
-        auto value = BsonToValue(&iter, escape_dot);
-        string unescaped_key = escape_dot != 0 ? strex(key_text).replace(escape_dot, '.').str() : string(key_text);
+        auto value {BsonToValue(&iter, escape_dot)};
+        string unescaped_key {escape_dot != 0 ? strex(key_text).replace(escape_dot, '.').str() : string(key_text)};
         doc.Emplace(std::move(unescaped_key), std::move(value));
     }
 }

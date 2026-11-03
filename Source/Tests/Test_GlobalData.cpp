@@ -79,24 +79,25 @@ namespace
 
     void RecordTeardown(void* context, const char* set_name) noexcept
     {
-        auto observed = static_cast<vector<ObservedTeardown>*>(context);
+        auto observed {static_cast<vector<ObservedTeardown>*>(context)};
         observed->emplace_back(ObservedTeardown {.Name = string(set_name), .DeletedBefore = DeleteCallCount});
     }
 
-    struct GlobalDataCallbacksGuard final
+    class GlobalDataCallbacksGuard final
     {
-        std::array<global_data::callback, global_data::MAX_CALLBACKS> SavedCreate {};
-        std::array<global_data::callback, global_data::MAX_CALLBACKS> SavedDelete {};
-        std::array<const char*, global_data::MAX_CALLBACKS> SavedNames {};
-        int32_t SavedCount {};
-
+    public:
         GlobalDataCallbacksGuard()
         {
-            std::copy(std::begin(global_data::create_callbacks), std::end(global_data::create_callbacks), SavedCreate.begin());
-            std::copy(std::begin(global_data::delete_callbacks), std::end(global_data::delete_callbacks), SavedDelete.begin());
-            std::copy(std::begin(global_data::callback_names), std::end(global_data::callback_names), SavedNames.begin());
-            SavedCount = global_data::callbacks_count;
+            std::copy(std::begin(global_data::create_callbacks), std::end(global_data::create_callbacks), _savedCreate.begin());
+            std::copy(std::begin(global_data::delete_callbacks), std::end(global_data::delete_callbacks), _savedDelete.begin());
+            std::copy(std::begin(global_data::callback_names), std::end(global_data::callback_names), _savedNames.begin());
+            _savedCount = global_data::callbacks_count;
         }
+
+        GlobalDataCallbacksGuard(const GlobalDataCallbacksGuard&) = delete;
+        GlobalDataCallbacksGuard(GlobalDataCallbacksGuard&&) = delete;
+        auto operator=(const GlobalDataCallbacksGuard&) -> GlobalDataCallbacksGuard& = delete;
+        auto operator=(GlobalDataCallbacksGuard&&) -> GlobalDataCallbacksGuard& = delete;
 
         ~GlobalDataCallbacksGuard()
         {
@@ -105,17 +106,23 @@ namespace
             global_data::callbacks_count = 0;
             (void)global_data::create();
 
-            std::copy(SavedCreate.begin(), SavedCreate.end(), std::begin(global_data::create_callbacks));
-            std::copy(SavedDelete.begin(), SavedDelete.end(), std::begin(global_data::delete_callbacks));
-            std::copy(SavedNames.begin(), SavedNames.end(), std::begin(global_data::callback_names));
-            global_data::callbacks_count = SavedCount;
+            std::copy(_savedCreate.begin(), _savedCreate.end(), std::begin(global_data::create_callbacks));
+            std::copy(_savedDelete.begin(), _savedDelete.end(), std::begin(global_data::delete_callbacks));
+            std::copy(_savedNames.begin(), _savedNames.end(), std::begin(global_data::callback_names));
+            global_data::callbacks_count = _savedCount;
         }
+
+    private:
+        std::array<global_data::callback, global_data::MAX_CALLBACKS> _savedCreate {};
+        std::array<global_data::callback, global_data::MAX_CALLBACKS> _savedDelete {};
+        std::array<const char*, global_data::MAX_CALLBACKS> _savedNames {};
+        int32_t _savedCount {};
     };
 }
 
 TEST_CASE("GlobalData")
 {
-    GlobalDataCallbacksGuard callbacks_guard;
+    GlobalDataCallbacksGuard callbacks_guard {};
 
     CreateCallCount.store(0, std::memory_order_relaxed);
     DeleteCallCount = 0;
@@ -151,7 +158,7 @@ TEST_CASE("GlobalData")
         global_data::callback_names[1] = "SetB";
         global_data::callback_names[2] = nullptr;
 
-        vector<ObservedTeardown> observed;
+        vector<ObservedTeardown> observed {};
         global_data::destroy(&RecordTeardown, &observed);
 
         REQUIRE(observed.size() == 3);
@@ -233,11 +240,11 @@ TEST_CASE("GlobalData")
 
         global_data::destroy();
 
-        vector<std::thread> racers;
+        vector<std::thread> racers {};
         racers.reserve(8);
         std::atomic<int32_t> builders {};
 
-        for (size_t i = 0; i < 8; i++) {
+        for (size_t i {0}; i < 8; i++) {
             racers.emplace_back([&builders] {
                 if (global_data::create()) {
                     builders.fetch_add(1, std::memory_order_relaxed);
@@ -259,9 +266,9 @@ TEST_CASE("GlobalDataRegisteredSetsCarryTheirNames")
 {
     // The names are what a stuck teardown is reported by, so every set the macro registered must have one
     REQUIRE(global_data::callbacks_count > 0);
-    bool has_pools = false;
+    bool has_pools {false};
 
-    for (int32_t i = 0; i < global_data::callbacks_count; i++) {
+    for (int32_t i {0}; i < global_data::callbacks_count; i++) {
         REQUIRE(global_data::callback_names[i] != nullptr);
         CHECK(string_view(global_data::callback_names[i]).size() != 0);
         has_pools = has_pools || string_view(global_data::callback_names[i]) == "global_pools";

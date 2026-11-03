@@ -217,8 +217,15 @@ public:
     [[nodiscard]] auto IsLayerVisible(MapLayers layer) const noexcept -> bool { return is_enum_set(_visibleLayers, layer); }
     [[nodiscard]] auto IsAutoScrolling() const noexcept -> bool { return _autoScrollActive; }
     [[nodiscard]] auto GetHexContentSize(mpos hex) -> isize32;
-    [[nodiscard]] auto GenTempEntityId() -> ident_t;
     [[nodiscard]] auto CheckGagItem(mpos hex, const function<bool(ptr<const ItemHexView>)>& gag_callback) const -> bool;
+    [[nodiscard]] auto GetScreenRawHex() const -> ipos32;
+    [[nodiscard]] auto GetScrollOffset() const noexcept -> fpos32 { return _scrollOffset; }
+    [[nodiscard]] auto GetCritters() -> span<refcount_ptr<CritterHexView>> { return _critters; }
+    [[nodiscard]] auto GetCritters() const -> const_span<refcount_ptr<CritterHexView>> { return _critters; }
+    [[nodiscard]] auto GetItems() -> span<refcount_ptr<ItemHexView>> { return _items; }
+    [[nodiscard]] auto GetItems() const -> const_span<refcount_ptr<ItemHexView>> { return _items; }
+
+    auto GenTempEntityId() -> ident_t;
 
     void EnableMapperMode();
     void SetScrollCheck(bool enabled);
@@ -241,7 +248,6 @@ public:
     void SetScreenSize(isize32 size);
     auto ScreenToMapPos(ipos32 screen_pos) const -> ipos32;
     auto MapToScreenPos(ipos32 map_pos) const -> ipos32;
-    auto GetScreenRawHex() const -> ipos32;
     auto GetCenterRawHex() const -> ipos32;
     auto ConvertToScreenRawHex(ipos32 center_raw_hex) const -> ipos32;
     auto GetHexMapPos(mpos hex) const -> ipos32;
@@ -259,7 +265,6 @@ public:
     void ChangeZoom(float32_t new_zoom, fpos32 anchor);
     void InstantZoom(float32_t new_zoom, fpos32 anchor);
 
-    auto GetScrollOffset() const noexcept -> fpos32 { return _scrollOffset; }
     void SetDayColors(ucolor map_color, int32_t map_light_capacity, ucolor global_color, int32_t global_light_capacity);
     void ScrollToHex(mpos hex, ipos16 hex_offset, int32_t speed, bool can_stop);
     void ApplyScrollOffset(ipos32 offset, int32_t speed, bool can_stop);
@@ -276,8 +281,6 @@ public:
     auto AddMapperCritter(hstring pid, mpos hex, mdir dir, nptr<const Properties> props, ident_t id = {}) -> ptr<CritterHexView>;
     auto GetCritter(ident_t id) -> nptr<CritterHexView>;
     auto GetNonDeadCritter(mpos hex) -> nptr<CritterHexView>;
-    auto GetCritters() -> span<refcount_ptr<CritterHexView>> { return _critters; }
-    auto GetCritters() const -> const_span<refcount_ptr<CritterHexView>> { return _critters; }
     auto GetCrittersOnHex(mpos hex, CritterFindType find_type) -> vector<ptr<CritterHexView>>;
     auto GetCrittersOnHex(mpos hex, CritterFindType find_type) const -> vector<ptr<const CritterHexView>>;
     auto GetCrittersInRadius(mpos hex, int32_t radius, CritterFindType find_type) -> vector<ptr<CritterHexView>>;
@@ -293,8 +296,6 @@ public:
     auto GetItem(ident_t id) -> nptr<ItemHexView>;
     auto GetItemOnHex(mpos hex) -> nptr<ItemHexView>;
     auto GetItemOnHex(mpos hex, hstring pid) -> nptr<ItemHexView>;
-    auto GetItems() -> span<refcount_ptr<ItemHexView>> { return _items; }
-    auto GetItems() const -> const_span<refcount_ptr<ItemHexView>> { return _items; }
     auto GetItemsOnHex(mpos hex) -> span<ptr<ItemHexView>>;
     auto GetItemsOnHex(mpos hex) const -> const_span<ptr<ItemHexView>>;
     void RefreshItem(ptr<ItemHexView> item, bool deferred = false);
@@ -358,7 +359,7 @@ private:
     void SetMultihexCritter(ptr<CritterHexView> cr, bool set);
     void DrawHexCritter(ptr<CritterHexView> cr, ptr<Field> field, mpos hex);
 
-    [[nodiscard]] auto CollectRemovedStaticItemIds() const -> unordered_set<ident_t>;
+    auto CollectRemovedStaticItemIds() const -> unordered_set<ident_t>;
 
     auto AddItemInternal(ptr<ItemHexView> item) -> ptr<ItemHexView>;
     void AddItemToField(ptr<ItemHexView> item);
@@ -468,7 +469,7 @@ private:
     int32_t _hVisible {};
     vector<ViewField> _viewField {};
 
-    static constexpr size_t FOG_SLOT_COUNT = static_cast<size_t>(DrawOrderType::Last) + 1;
+    static constexpr size_t FOG_SLOT_COUNT {static_cast<size_t>(DrawOrderType::Last) + 1};
     array<vector<refcount_ptr<FogLayer>>, FOG_SLOT_COUNT> _fogs {};
 
     vector<ucolor> _hexLight {};

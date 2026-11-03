@@ -47,7 +47,7 @@ FO_DECLARE_EXCEPTION(ModelMeshBakerException);
 class ModelMeshBaker final : public BaseBaker
 {
 public:
-    static constexpr string_view_nt NAME = "ModelMesh";
+    static constexpr string_view_nt NAME {"ModelMesh"};
 
     explicit ModelMeshBaker(shared_ptr<BakingContext> ctx);
     ModelMeshBaker(const ModelMeshBaker&) = delete;

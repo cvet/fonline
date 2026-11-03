@@ -63,7 +63,7 @@ namespace EntityLifecycleTests
         {
             _host = "Test";
 
-            vector<uint8_t> offer;
+            vector<uint8_t> offer {};
             _clientChannel.TakeHandshakeOutput(offer);
             ReceiveCallback(offer);
         }
@@ -73,9 +73,41 @@ namespace EntityLifecycleTests
         auto operator=(TestNetworkConnection&&) noexcept = delete;
         ~TestNetworkConnection() override = default;
 
+        [[nodiscard]] auto GetSentPacketCount() const noexcept -> size_t { return _sentPacketCount.load(std::memory_order_relaxed); }
+
+        [[nodiscard]] auto GetSentMessageCount(NetMessage msg) const noexcept -> size_t
+        {
+            switch (msg) {
+            case NetMessage::AddCritter:
+                return _sentAddCritterCount.load(std::memory_order_relaxed);
+            case NetMessage::RemoveCritter:
+                return _sentRemoveCritterCount.load(std::memory_order_relaxed);
+            case NetMessage::Disconnect:
+                return _sentDisconnectCount.load(std::memory_order_relaxed);
+            case NetMessage::TimeSync:
+                return _sentTimeSyncCount.load(std::memory_order_relaxed);
+            case NetMessage::CritterDir:
+                return _sentCritterDirCount.load(std::memory_order_acquire);
+            default:
+                return 0;
+            }
+        }
+
+        [[nodiscard]] auto GetLastSentCritterDirId() const noexcept -> ident_t { return _lastSentCritterDirId.load(std::memory_order_relaxed); }
+        [[nodiscard]] auto GetLastSentCritterDir() const noexcept -> mdir { return _lastSentCritterDir.load(std::memory_order_relaxed); }
+        [[nodiscard]] auto GetSentTrackedMessageCount() const noexcept -> size_t { return _sentTrackedMessageCount.load(std::memory_order_relaxed); }
+        [[nodiscard]] auto GetSentInfoMessageCount() const noexcept -> size_t { return _sentInfoMessageCount.load(std::memory_order_relaxed); }
+        [[nodiscard]] auto GetLastSentInfoMessage() const noexcept -> EngineInfoMessage { return _lastSentInfoMessage.load(std::memory_order_relaxed); }
+
+        [[nodiscard]] auto GetSentTrackedMessage(size_t index) const -> NetMessage
+        {
+            FO_VERIFY_AND_THROW(index < 2, "Invalid tracked outgoing message index", index);
+            return index == 0 ? _firstSentTrackedMessage.load(std::memory_order_relaxed) : _secondSentTrackedMessage.load(std::memory_order_relaxed);
+        }
+
         void Receive(const_span<uint8_t> buf)
         {
-            vector<uint8_t> sealed;
+            vector<uint8_t> sealed {};
 
             {
                 scoped_lock locker {_clientChannelLocker};
@@ -101,49 +133,13 @@ namespace EntityLifecycleTests
             _sentTrackedMessageCount.store(0, std::memory_order_relaxed);
         }
 
-        [[nodiscard]] auto GetSentPacketCount() const noexcept -> size_t { return _sentPacketCount.load(std::memory_order_relaxed); }
-
-        [[nodiscard]] auto GetSentMessageCount(NetMessage msg) const noexcept -> size_t
-        {
-            switch (msg) {
-            case NetMessage::AddCritter:
-                return _sentAddCritterCount.load(std::memory_order_relaxed);
-            case NetMessage::RemoveCritter:
-                return _sentRemoveCritterCount.load(std::memory_order_relaxed);
-            case NetMessage::Disconnect:
-                return _sentDisconnectCount.load(std::memory_order_relaxed);
-            case NetMessage::TimeSync:
-                return _sentTimeSyncCount.load(std::memory_order_relaxed);
-            case NetMessage::CritterDir:
-                return _sentCritterDirCount.load(std::memory_order_acquire);
-            default:
-                return 0;
-            }
-        }
-
-        [[nodiscard]] auto GetLastSentCritterDirId() const noexcept -> ident_t { return _lastSentCritterDirId.load(std::memory_order_relaxed); }
-
-        [[nodiscard]] auto GetLastSentCritterDir() const noexcept -> mdir { return _lastSentCritterDir.load(std::memory_order_relaxed); }
-
-        [[nodiscard]] auto GetSentTrackedMessageCount() const noexcept -> size_t { return _sentTrackedMessageCount.load(std::memory_order_relaxed); }
-
-        [[nodiscard]] auto GetSentInfoMessageCount() const noexcept -> size_t { return _sentInfoMessageCount.load(std::memory_order_relaxed); }
-
-        [[nodiscard]] auto GetLastSentInfoMessage() const noexcept -> EngineInfoMessage { return _lastSentInfoMessage.load(std::memory_order_relaxed); }
-
-        [[nodiscard]] auto GetSentTrackedMessage(size_t index) const -> NetMessage
-        {
-            FO_VERIFY_AND_THROW(index < 2, "Invalid tracked outgoing message index", index);
-            return index == 0 ? _firstSentTrackedMessage.load(std::memory_order_relaxed) : _secondSentTrackedMessage.load(std::memory_order_relaxed);
-        }
-
     protected:
         void DispatchImpl() override
         {
             // Held across the pull and the decode, so frames are opened in the order the server sealed them
             scoped_lock locker {_clientChannelLocker};
 
-            vector<uint8_t> encoded_data = SendCallback();
+            vector<uint8_t> encoded_data {SendCallback()};
             _plainData.clear();
 
             if (!encoded_data.empty()) {
@@ -153,14 +149,15 @@ namespace EntityLifecycleTests
             if (!_plainData.empty()) {
                 _sentPacketCount.fetch_add(1, std::memory_order_relaxed);
 
-                const_span<uint8_t> data = _plainData;
+                const_span<uint8_t> data {_plainData};
+
                 if (!_settings->Network.DisableZlibCompression) {
                     _decompressor.decompress(_plainData, _unpackedData);
                     data = _unpackedData;
                 }
 
-                constexpr size_t header_size = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(NetMessage);
-                size_t offset = 0;
+                constexpr size_t header_size {sizeof(uint32_t) + sizeof(uint32_t) + sizeof(NetMessage)};
+                size_t offset {0};
 
                 while (offset < data.size()) {
                     FO_VERIFY_AND_THROW(data.size() - offset >= header_size, "Truncated outgoing network message header", data.size(), offset);
@@ -208,7 +205,7 @@ namespace EntityLifecycleTests
                     }
 
                     if (message == NetMessage::AddCritter || message == NetMessage::RemoveCritter) {
-                        size_t tracked_index = _sentTrackedMessageCount.fetch_add(1, std::memory_order_relaxed);
+                        size_t tracked_index {_sentTrackedMessageCount.fetch_add(1, std::memory_order_relaxed)};
                         if (tracked_index == 0) {
                             _firstSentTrackedMessage.store(message, std::memory_order_relaxed);
                         }
@@ -247,7 +244,7 @@ namespace EntityLifecycleTests
 
     inline auto MakeSettings() -> GlobalSettings
     {
-        auto settings = GlobalSettings(false);
+        auto settings {GlobalSettings(false)};
 
         settings.ApplyDefaultSettings();
         settings.ApplyAutoSettings();
@@ -574,7 +571,7 @@ namespace EntityLifecycle
 )"},
             },
             [](string_view message) {
-                string message_str = string(message);
+                string message_str {string(message)};
 
                 if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
                     throw ScriptSystemException(message_str);
@@ -585,8 +582,8 @@ namespace EntityLifecycle
 
     inline auto MakeEmptyMapBlob() -> vector<uint8_t>
     {
-        vector<uint8_t> map_data;
-        auto writer = data_writer(map_data);
+        vector<uint8_t> map_data {};
+        data_writer writer {data_writer(map_data)};
         writer.write<uint32_t>(BAKED_MAP_FILE_MAGIC);
         writer.write<uint32_t>(BAKED_MAP_FILE_VERSION);
         writer.write<uint32_t>(uint32_t {0}); // hashes_count
@@ -597,18 +594,18 @@ namespace EntityLifecycle
 
     inline auto MakeMapProtoBlob(BakerServerEngine& proto_engine, hstring type_name, string_view proto_name, msize map_size) -> vector<uint8_t>
     {
-        vector<uint8_t> props_data;
-        set<hstring> str_hashes;
+        vector<uint8_t> props_data {};
+        set<hstring> str_hashes {};
 
-        auto registrar = proto_engine.GetPropertyRegistrar(type_name);
+        auto registrar {proto_engine.GetPropertyRegistrar(type_name)};
         REQUIRE(static_cast<bool>(registrar));
 
         ProtoMap proto {proto_engine.Hashes.to_hashed_string(proto_name), registrar};
         proto.SetSize(map_size);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
-        vector<uint8_t> protos_data;
-        auto writer = data_writer(protos_data);
+        vector<uint8_t> protos_data {};
+        data_writer writer {data_writer(protos_data)};
 
         writer.write<uint32_t>(uint32_t {0});
         ignore_unused(str_hashes);
@@ -619,6 +616,7 @@ namespace EntityLifecycle
         writer.write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
         writer.write_string_bytes(proto_name);
         writer.write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
+
         if (!props_data.empty()) {
             writer.write_bytes({props_data.data(), props_data.size()});
         }
@@ -628,29 +626,29 @@ namespace EntityLifecycle
 
     inline auto MakeResources() -> FileSystem
     {
-        auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
+        auto metadata_blob {BakerTests::MakeEmptyMetadataBlob()};
 
-        auto compiler_resources_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("EntityLifecycleCompilerResources");
+        auto compiler_resources_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("EntityLifecycleCompilerResources")};
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
 
-        FileSystem compiler_resources;
+        FileSystem compiler_resources {};
         compiler_resources.AddCustomSource(std::move(compiler_resources_source));
 
         BakerServerEngine proto_engine {compiler_resources};
-        hstring critter_type = proto_engine.Hashes.to_hashed_string("Critter");
-        hstring item_type = proto_engine.Hashes.to_hashed_string("Item");
-        hstring location_type = proto_engine.Hashes.to_hashed_string("Location");
-        hstring map_type = proto_engine.Hashes.to_hashed_string("Map");
-        auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestCritter");
-        auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
-        auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "TestLocation");
-        auto map_blob = MakeMapProtoBlob(proto_engine, map_type, "TestMap", msize {200, 200});
-        auto fomap_blob = MakeEmptyMapBlob();
+        hstring critter_type {proto_engine.Hashes.to_hashed_string("Critter")};
+        hstring item_type {proto_engine.Hashes.to_hashed_string("Item")};
+        hstring location_type {proto_engine.Hashes.to_hashed_string("Location")};
+        hstring map_type {proto_engine.Hashes.to_hashed_string("Map")};
+        auto critter_blob {BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestCritter")};
+        auto item_blob {BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem")};
+        auto location_blob {BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "TestLocation")};
+        auto map_blob {MakeMapProtoBlob(proto_engine, map_type, "TestMap", msize {200, 200})};
+        auto fomap_blob {MakeEmptyMapBlob()};
 #if FO_ANGELSCRIPT_SCRIPTING
-        auto script_blob = MakeScriptBinary(compiler_resources);
+        auto script_blob {MakeScriptBinary(compiler_resources)};
 #endif
 
-        auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("EntityLifecycleRuntimeResources");
+        auto runtime_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("EntityLifecycleRuntimeResources")};
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
         runtime_source->AddFile("EntityLifecycleCritter.fopro-bin-server", critter_blob);
         runtime_source->AddFile("EntityLifecycleItem.fopro-bin-server", item_blob);
@@ -661,7 +659,7 @@ namespace EntityLifecycle
         runtime_source->AddFile("EntityLifecycle.fos-bin-server", script_blob);
 #endif
 
-        FileSystem resources;
+        FileSystem resources {};
         resources.AddCustomSource(std::move(runtime_source));
 
         return resources;
@@ -669,7 +667,7 @@ namespace EntityLifecycle
 
     inline auto WaitForStart(ptr<ServerEngine> server) -> string
     {
-        for (int32_t i = 0; i < 6000; i++) {
+        for (int32_t i {0}; i < 6000; i++) {
             if (server->IsStarted()) {
                 return {};
             }
@@ -690,7 +688,7 @@ namespace EntityLifecycle
 
     inline auto CreatePreparedNotLoggedInPlayer(ptr<ServerEngine> server, shared_ptr<NetworkServerConnection> net_connection, string_view name) -> ptr<Player>
     {
-        auto not_logged_in_player = server->CreateNotLoggedInPlayer(std::move(net_connection));
+        auto not_logged_in_player {server->CreateNotLoggedInPlayer(std::move(net_connection))};
 
         not_logged_in_player->SetName(name);
         not_logged_in_player->SetLastControlledCritterId(ident_t {1});
@@ -700,7 +698,7 @@ namespace EntityLifecycle
 
     inline auto CreatePreparedNotLoggedInPlayer(ptr<ServerEngine> server, string_view name) -> ptr<Player>
     {
-        shared_ptr<NetworkServerConnection> net_connection = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
+        shared_ptr<NetworkServerConnection> net_connection {NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected)};
         return CreatePreparedNotLoggedInPlayer(server, std::move(net_connection), name);
     }
 
@@ -708,8 +706,8 @@ namespace EntityLifecycle
     // login. The caller covers the returned player explicitly through its own SyncEntities call
     inline auto MakeSpectatorPlayer(ptr<ServerEngine> server) -> refcount_ptr<Player>
     {
-        shared_ptr<NetworkServerConnection> net_connection = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
-        auto connection = safe_alloc::make_unique<ServerConnection>(server->Settings, std::move(net_connection), BakerTests::MakeTestChannelIdentity());
+        shared_ptr<NetworkServerConnection> net_connection {NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected)};
+        auto connection {safe_alloc::make_unique<ServerConnection>(server->Settings, std::move(net_connection), BakerTests::MakeTestChannelIdentity())};
 
         return safe_alloc::make_refcounted<Player>(server, ident_t {}, std::move(connection));
     }
@@ -718,7 +716,7 @@ namespace EntityLifecycle
 
     inline auto CreateLoggedPlayer(ptr<ServerEngine> server, string_view name) -> ptr<Player>
     {
-        shared_ptr<NetworkServerConnection> net_connection = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
+        shared_ptr<NetworkServerConnection> net_connection {NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected)};
         return CreateLoggedPlayer(server, std::move(net_connection), name);
     }
 
@@ -726,10 +724,10 @@ namespace EntityLifecycle
     {
         FO_VERIFY_AND_THROW(net_connection, "Missing required net connection");
 
-        auto not_logged_in_player = server->CreateNotLoggedInPlayer(std::move(net_connection));
+        auto not_logged_in_player {server->CreateNotLoggedInPlayer(std::move(net_connection))};
         not_logged_in_player->SetName(name);
         not_logged_in_player->SetLastControlledCritterId(ident_t {1});
-        auto player = server->LoginPlayerToNewRecord(not_logged_in_player);
+        auto player {server->LoginPlayerToNewRecord(not_logged_in_player)};
 
         return player;
     }
@@ -756,7 +754,7 @@ namespace EntityLifecycle
         server->Unlock();
         locked = false;
 
-        auto deadline = std::chrono::steady_clock::now() + timeout;
+        auto deadline {std::chrono::steady_clock::now() + timeout};
 
         while (std::chrono::steady_clock::now() < deadline) {
             std::this_thread::sleep_for(std::chrono::milliseconds {5});

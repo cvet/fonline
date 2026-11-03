@@ -133,7 +133,7 @@ private:
     void FillPendingCallReport(RpcRuntimeReport& report, RpcRuntimeCallId id, nanotime now) const;
     void FillInputQueueReport(RpcRuntimeReport& report, nanotime now) const;
 
-    RpcRuntimeLimits _limits;
+    RpcRuntimeLimits _limits {};
     unordered_map<RpcRuntimeCallId, Call> _calls {};
     deque<Arrival> _arrivals {};
     size_t _inputBytes {};

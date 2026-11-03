@@ -45,7 +45,7 @@ TEST_CASE("Logging")
 
     SECTION("CallbackReceivesFormattedMessage")
     {
-        vector<string> captured;
+        vector<string> captured {};
 
         logging::set_callback("capture", [&](logging::type, string_view message, nptr<const stack_trace::catched_data>) { captured.emplace_back(message); });
         logging::write("Hello {}", 42);
@@ -59,8 +59,8 @@ TEST_CASE("Logging")
 
     SECTION("CallbackReplacementUsesLastRegisteredHandler")
     {
-        int32_t first_count = 0;
-        int32_t second_count = 0;
+        int32_t first_count {0};
+        int32_t second_count {0};
 
         logging::set_callback("replace", [&](logging::type, string_view, nptr<const stack_trace::catched_data>) { first_count++; });
         logging::set_callback("replace", [&](logging::type, string_view, nptr<const stack_trace::catched_data>) { second_count++; });
@@ -74,7 +74,7 @@ TEST_CASE("Logging")
 
     SECTION("CallbackCanBeClearedByEmptyKey")
     {
-        int32_t callback_count = 0;
+        int32_t callback_count {0};
 
         logging::set_callback("clear-me", [&](logging::type, string_view, nptr<const stack_trace::catched_data>) { callback_count++; });
         logging::set_callback("", {});
@@ -85,7 +85,7 @@ TEST_CASE("Logging")
 
     SECTION("CallbackReentrancyIsPrevented")
     {
-        vector<string> captured;
+        vector<string> captured {};
 
         logging::set_callback("reentrant", [&](logging::type, string_view message, nptr<const stack_trace::catched_data>) {
             captured.emplace_back(message);
@@ -105,11 +105,11 @@ TEST_CASE("Logging")
 
     SECTION("StringViewOverloadDeliversRawText")
     {
-        vector<string> captured;
+        vector<string> captured {};
 
         logging::set_callback("sv", [&](logging::type, string_view message, nptr<const stack_trace::catched_data>) { captured.emplace_back(message); });
 
-        string raw = "raw {} payload"; // Curly braces should NOT be interpreted as format placeholders
+        string raw {"raw {} payload"}; // Curly braces should NOT be interpreted as format placeholders
         logging::write(string_view {raw});
 
         REQUIRE(captured.size() == 1);
@@ -120,7 +120,7 @@ TEST_CASE("Logging")
 
     SECTION("LogTypePreservesMessageContent")
     {
-        vector<string> captured;
+        vector<string> captured {};
 
         logging::set_callback("type", [&](logging::type, string_view message, nptr<const stack_trace::catched_data>) { captured.emplace_back(message); });
 
@@ -140,7 +140,7 @@ TEST_CASE("Logging")
 
     SECTION("RepeatedMessagesAreCollapsedUntilDifferentMessage")
     {
-        vector<string> captured;
+        vector<string> captured {};
 
         logging::set_callback("repeat", [&](logging::type, string_view message, nptr<const stack_trace::catched_data>) { captured.emplace_back(message); });
 
@@ -162,15 +162,16 @@ TEST_CASE("Logging")
 
     SECTION("MultipleCallbacksFireForEachMessage")
     {
-        int32_t first_count = 0;
-        int32_t second_count = 0;
-        string last_first;
-        string last_second;
+        int32_t first_count {0};
+        int32_t second_count {0};
+        string last_first {};
+        string last_second {};
 
         logging::set_callback("first", [&](logging::type, string_view message, nptr<const stack_trace::catched_data>) {
             first_count++;
             last_first = string(message);
         });
+
         logging::set_callback("second", [&](logging::type, string_view message, nptr<const stack_trace::catched_data>) {
             second_count++;
             last_second = string(message);
@@ -196,7 +197,7 @@ TEST_CASE("Logging")
 
     SECTION("MessageHasTimestampPrefix")
     {
-        vector<string> captured;
+        vector<string> captured {};
 
         logging::set_callback("tag", [&](logging::type, string_view message, nptr<const stack_trace::catched_data>) { captured.emplace_back(message); });
         logging::write("tagged");

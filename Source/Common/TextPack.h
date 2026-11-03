@@ -41,7 +41,7 @@ FO_DECLARE_EXCEPTION(TextPackException);
 
 class FileSystem;
 
-struct BakeLanguageConfig final
+struct BakeLanguageConfig
 {
     vector<string> Languages {};
     map<string, string> Fallbacks {};
@@ -97,23 +97,25 @@ static_assert(std::is_standard_layout_v<TextPackKey>);
 
 FO_END_NAMESPACE
 template<>
-struct FO_NAMESPACE hashing::hash<FO_NAMESPACE TextPackKey>
+class FO_NAMESPACE hashing::hash<FO_NAMESPACE TextPackKey>
 {
+public:
     using is_avalanching = void;
 
     auto operator()(const FO_NAMESPACE TextPackKey& v) const noexcept
     {
-        const FO_NAMESPACE hstring::hash_t hashes[] = {v.Collection.underlying_value().as_hash(), v.Key1.as_hash(), v.Key2.as_hash(), v.Key3.as_hash()};
+        const FO_NAMESPACE hstring::hash_t hashes[] {v.Collection.underlying_value().as_hash(), v.Key1.as_hash(), v.Key2.as_hash(), v.Key3.as_hash()};
         return FO_NAMESPACE hash_storage::default_hash(FO_NAMESPACE make_span(hashes));
     }
 };
 template<>
-struct std::formatter<FO_NAMESPACE TextPackKey> : formatter<FO_NAMESPACE string_view>
+class std::formatter<FO_NAMESPACE TextPackKey> : public formatter<FO_NAMESPACE string_view>
 {
+public:
     template<typename FormatContext>
     auto format(const FO_NAMESPACE TextPackKey& value, FormatContext& ctx) const
     {
-        string result;
+        string result {};
         std::format_to(std::back_inserter(result), "{{{}}}{{{}}}{{{}}}{{{}}}", value.Collection, value.Key1, value.Key2, value.Key3);
         return formatter<FO_NAMESPACE string_view>::format(result, ctx);
     }

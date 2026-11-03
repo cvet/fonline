@@ -50,7 +50,7 @@ FO_DECLARE_EXCEPTION(EffectBakerException);
 class EffectBaker final : public BaseBaker
 {
 public:
-    static constexpr string_view_nt NAME = "Effect";
+    static constexpr string_view_nt NAME {"Effect"};
 
     struct SdlStageSlots;
 

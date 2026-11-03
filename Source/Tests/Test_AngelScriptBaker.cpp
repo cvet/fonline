@@ -48,7 +48,7 @@ FO_BEGIN_NAMESPACE
 #if FO_ANGELSCRIPT_SCRIPTING
 static void AddAngelScriptMetadataForAllSides(BakerTests::TestRig& rig)
 {
-    auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
+    auto metadata_blob {BakerTests::MakeEmptyMetadataBlob()};
     rig.AddBakedFile("Metadata.fometa-server", metadata_blob);
     rig.AddBakedFile("Metadata.fometa-client", metadata_blob);
     rig.AddBakedFile("Metadata.fometa-mapper", metadata_blob);
@@ -60,8 +60,8 @@ TEST_CASE("AngelScriptBaker")
 #if FO_ANGELSCRIPT_SCRIPTING
     using namespace BakerTests;
 
-    TestRig rig;
-    auto bakers = MakeRequestedBakers({string(AngelScriptBaker::NAME)}, rig);
+    TestRig rig {};
+    auto bakers {MakeRequestedBakers({string(AngelScriptBaker::NAME)}, rig)};
 
     REQUIRE(bakers.size() == 1);
     CHECK(bakers.front()->GetName() == AngelScriptBaker::NAME);
@@ -70,25 +70,25 @@ TEST_CASE("AngelScriptBaker")
 
     SECTION("IgnoresNonScriptSourceFiles")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         local_rig.AddSourceFile("Scripts/Readme.txt", "not a script");
 
-        AngelScriptBaker baker(local_rig.MakeContext("ScriptsIgnored"));
+        AngelScriptBaker baker {local_rig.MakeContext("ScriptsIgnored")};
         REQUIRE_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
         CHECK(local_rig.Outputs.empty());
     }
 
     SECTION("BakeCheckerCanSkipAllScriptTargets")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         AddAngelScriptMetadataForAllSides(local_rig);
         local_rig.AddSourceFile("Scripts/Skip.fos", "namespace BakerScriptSkip { void Touch() {} }\n", 77);
 
-        vector<pair<string, uint64_t>> checks;
-        AngelScriptBaker baker(local_rig.MakeContext("ScriptsSkip", [&checks](string_view path, uint64_t write_time) {
+        vector<pair<string, uint64_t>> checks {};
+        AngelScriptBaker baker {local_rig.MakeContext("ScriptsSkip", [&checks](string_view path, uint64_t write_time) {
             checks.emplace_back(string(path), write_time);
             return false;
-        }));
+        })};
         REQUIRE_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
 
         CHECK(local_rig.Outputs.empty());
@@ -101,11 +101,11 @@ TEST_CASE("AngelScriptBaker")
 
     SECTION("BakesSelectedScriptTargets")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         AddAngelScriptMetadataForAllSides(local_rig);
         local_rig.AddSourceFile("Scripts/Selected.fos", "namespace BakerScriptSelected { void Touch() {} }\n");
 
-        AngelScriptBaker baker(local_rig.MakeContext("ScriptsSelected", [](string_view path, uint64_t) { return path.ends_with(".fos-bin-client") || path.ends_with(".fos-bin-mapper"); }));
+        AngelScriptBaker baker {local_rig.MakeContext("ScriptsSelected", [](string_view path, uint64_t) { return path.ends_with(".fos-bin-client") || path.ends_with(".fos-bin-mapper"); })};
         REQUIRE_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
 
         CHECK_FALSE(local_rig.Outputs.contains("ScriptsSelected.fos-bin-server"));
@@ -116,7 +116,7 @@ TEST_CASE("AngelScriptBaker")
 
     SECTION("RegistersVerifyMacroWithoutCoreScripts")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         local_rig.AddBakedFile("Metadata.fometa-server", MakeEmptyMetadataBlob());
 
         BakerServerEngine compiler_engine {local_rig.BakedFiles};
@@ -134,29 +134,29 @@ namespace VerifyMacro
 
     SECTION("RejectsIncompatibleOrOversizedBytecodeContainers")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         AddAngelScriptMetadataForAllSides(local_rig);
         BakerServerEngine compiler_engine {local_rig.BakedFiles};
-        vector<uint8_t> valid = CompileInlineScripts(&compiler_engine, "ContainerTest", {{"Scripts/Container.fos", "namespace Container { void Touch() {} }"}}, [](string_view) { });
+        vector<uint8_t> valid {CompileInlineScripts(&compiler_engine, "ContainerTest", {{"Scripts/Container.fos", "namespace Container { void Touch() {} }"}}, [](string_view) { })};
         REQUIRE(valid.size() > 11);
 
         for (bool incompatible : {true, false}) {
-            vector<uint8_t> malformed = valid;
+            vector<uint8_t> malformed {valid};
 
             if (incompatible) {
                 malformed[0] ^= 0xff;
             }
             else {
-                uint32_t oversized = std::numeric_limits<uint32_t>::max();
+                uint32_t oversized {std::numeric_limits<uint32_t>::max()};
                 memory::copy(malformed.data() + sizeof(uint32_t) + 3 * sizeof(uint8_t), &oversized, sizeof(oversized));
             }
 
-            auto source = safe_alloc::make_unique<MemoryDataSource>("MalformedBytecode");
+            auto source {safe_alloc::make_unique<MemoryDataSource>("MalformedBytecode")};
             source->AddFile("ContainerTest.fos-bin-server", malformed);
-            FileSystem resources;
+            FileSystem resources {};
             resources.AddCustomSource(std::move(source));
-            AngelScriptSettings settings;
-            AngelScriptBackend backend(&settings);
+            AngelScriptSettings settings {};
+            AngelScriptBackend backend {&settings};
             backend.RegisterMetadata(&compiler_engine);
             CHECK_THROWS(backend.LoadBinaryScripts(resources));
         }
@@ -164,59 +164,59 @@ namespace VerifyMacro
 
     SECTION("RejectsBrokenScripts")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         AddAngelScriptMetadataForAllSides(local_rig);
         local_rig.AddSourceFile("Scripts/Broken.fos", "namespace BakerScriptBroken { void Broken() { int value = ; } }\n");
 
-        AngelScriptBaker baker(local_rig.MakeContext("ScriptsBroken", [](string_view path, uint64_t) { return path.ends_with(".fos-bin-server"); }));
+        AngelScriptBaker baker {local_rig.MakeContext("ScriptsBroken", [](string_view path, uint64_t) { return path.ends_with(".fos-bin-server"); })};
         CHECK_THROWS_AS(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), AngelScriptBakerException);
     }
 
     SECTION("DeduplicatesCompileMessagesAcrossTargets")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         AddAngelScriptMetadataForAllSides(local_rig);
         local_rig.AddSourceFile("Scripts/DuplicateDiagnostic.fos", "namespace BakerScriptDuplicateDiagnostic { void Broken() { int value = ; } }\n");
 
-        AngelScriptBaker baker(local_rig.MakeContext("ScriptsDuplicateDiagnostic", [](string_view path, uint64_t) { return path.ends_with(".fos-bin-client") || path.ends_with(".fos-bin-mapper"); }));
+        AngelScriptBaker baker {local_rig.MakeContext("ScriptsDuplicateDiagnostic", [](string_view path, uint64_t) { return path.ends_with(".fos-bin-client") || path.ends_with(".fos-bin-mapper"); })};
         CHECK_THROWS_AS(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), AngelScriptBakerException);
     }
 
     SECTION("RethrowsUnexpectedErrorsInSyncMode")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         local_rig.AddSourceFile("Scripts/MissingMetadata.fos", "namespace BakerScriptMissingMetadata { void Touch() {} }\n");
 
-        AngelScriptBaker baker(local_rig.MakeContext("ScriptsMissingMetadataSync", [](string_view path, uint64_t) { return path.ends_with(".fos-bin-server"); }));
+        AngelScriptBaker baker {local_rig.MakeContext("ScriptsMissingMetadataSync", [](string_view path, uint64_t) { return path.ends_with(".fos-bin-server"); })};
         CHECK_THROWS(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
     }
 
     SECTION("AggregatesUnexpectedErrorsOutsideSyncMode")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         local_rig.AddSourceFile("Scripts/MissingMetadata.fos", "namespace BakerScriptMissingMetadata { void Touch() {} }\n");
 
-        auto context = local_rig.MakeContext("ScriptsMissingMetadataAsync", [](string_view path, uint64_t) { return path.ends_with(".fos-bin-server"); });
+        auto context {local_rig.MakeContext("ScriptsMissingMetadataAsync", [](string_view path, uint64_t) { return path.ends_with(".fos-bin-server"); })};
         context->SetForceSyncMode(false);
 
-        AngelScriptBaker baker(std::move(context));
+        AngelScriptBaker baker {std::move(context)};
         CHECK_THROWS_AS(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), AngelScriptBakerException);
     }
 
     SECTION("CompilerDiagnosticsUseSourceFileNameOnly")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         local_rig.AddBakedFile("Metadata.fometa-server", MakeEmptyMetadataBlob());
 
         BakerServerEngine compiler_engine {local_rig.BakedFiles};
-        vector<pair<string, string>> script_files = {{"Scripts/Nested/BrokenScript.fos", "namespace BrokenScript\n{\nvoid Broken()\n{\n    int value = ;\n}\n}\n"}};
-        vector<string> messages;
+        vector<pair<string, string>> script_files {{"Scripts/Nested/BrokenScript.fos", "namespace BrokenScript\n{\nvoid Broken()\n{\n    int value = ;\n}\n}\n"}};
+        vector<string> messages {};
 
         CHECK_THROWS_AS(CompileInlineScripts(&compiler_engine, "DiagnosticScripts", script_files, [&messages](string_view message) { messages.emplace_back(message); }), ScriptCompilerException);
 
         REQUIRE(!messages.empty());
 
-        auto first_error = std::ranges::find_if(messages, [](const string& message) { return message.find("error") != string::npos; });
+        auto first_error {std::ranges::find_if(messages, [](const string& message) { return message.find("error") != string::npos; })};
 
         REQUIRE(first_error != messages.end());
         CHECK(first_error->starts_with("BrokenScript.fos("));
@@ -232,16 +232,16 @@ TEST_CASE("AngelScript mutable globals are disallowed")
 
     // Defaults: AngelScriptSettings::MutableGlobalsAllowedNamespaces is empty, so no namespace is exempt.
     // The gate must fire for any non-const module-level global
-    TestRig rig;
+    TestRig rig {};
     rig.AddBakedFile("Metadata.fometa-server", MakeEmptyMetadataBlob());
 
     {
-        BakerServerEngine compiler_engine(rig.BakedFiles);
+        BakerServerEngine compiler_engine {rig.BakedFiles};
         REQUIRE_THROWS_WITH(CompileInlineScripts(&compiler_engine, rig.Settings, "MutableGlobalScripts", {{"Scripts/MutableGlobal.fos", "namespace MutableGlobal\n{\nint Value = 1;\n}\n"}}, [](string_view) { }), Catch::Matchers::ContainsSubstring("mutable global variable"));
     }
 
     {
-        BakerServerEngine compiler_engine(rig.BakedFiles);
+        BakerServerEngine compiler_engine {rig.BakedFiles};
         REQUIRE_NOTHROW(CompileInlineScripts(&compiler_engine, rig.Settings, "ConstGlobalScripts", {{"Scripts/ConstGlobal.fos", "namespace ConstGlobal\n{\nconst int Value = 1;\nconst int[] Values = {1, 2, 3};\n}\n"}}, [](string_view) { }));
     }
 #endif
@@ -251,8 +251,8 @@ TEST_CASE("AngelScriptNestedSettingsBake")
 {
     using namespace BakerTests;
 
-    TestRig rig;
-    auto metadata = MakeMetadataBlob({{"Setting", {{"Example.Value", "int32", "7"}, {"Android.GradleDependency.Sample", "string", "sample:dependency:1"}, {"Android.ManifestMetaData.Value", "string", "metadata"}, {"Example.Deep.Level.Enabled", "bool", "true"}, {"Ungrouped", "string", "legacy"}}}});
+    TestRig rig {};
+    auto metadata {MakeMetadataBlob({{"Setting", {{"Example.Value", "int32", "7"}, {"Android.GradleDependency.Sample", "string", "sample:dependency:1"}, {"Android.ManifestMetaData.Value", "string", "metadata"}, {"Example.Deep.Level.Enabled", "bool", "true"}, {"Ungrouped", "string", "legacy"}}}})};
 
     for (string_view side : {"server", "client", "mapper"}) {
         rig.AddBakedFile(strex("Metadata.fometa-{}", side).str(), metadata);
@@ -269,7 +269,7 @@ namespace NestedSettings
     }
 }
 )");
-    AngelScriptBaker baker(rig.MakeContext("NestedSettings"));
+    AngelScriptBaker baker {rig.MakeContext("NestedSettings")};
     REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 
     for (string_view side : {"server", "client", "mapper"}) {
@@ -281,15 +281,15 @@ TEST_CASE("AngelScriptNestedSettingsDistinctGroupPaths")
 {
     using namespace BakerTests;
 
-    TestRig rig;
-    auto metadata = MakeMetadataBlob({{"Setting", {{"SettingsPath.A_B.Value", "string", "flat"}, {"SettingsPath.A.B.Value", "string", "nested"}}}});
+    TestRig rig {};
+    auto metadata {MakeMetadataBlob({{"Setting", {{"SettingsPath.A_B.Value", "string", "flat"}, {"SettingsPath.A.B.Value", "string", "nested"}}}})};
 
     for (string_view side : {"server", "client", "mapper"}) {
         rig.AddBakedFile(strex("Metadata.fometa-{}", side).str(), metadata);
     }
 
     rig.AddSourceFile("Scripts/Distinct.fos", "bool Distinct() { return Settings.SettingsPath.A_B.Value != Settings.SettingsPath.A.B.Value; }\n");
-    AngelScriptBaker baker(rig.MakeContext("DistinctSettings"));
+    AngelScriptBaker baker {rig.MakeContext("DistinctSettings")};
     REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
     CHECK(rig.Outputs.size() == 3);
 }
@@ -298,12 +298,12 @@ TEST_CASE("AngelScriptNestedSettingsRejectsEmptySegments")
 {
     using namespace BakerTests;
 
-    string name = GENERATE(string {".Android.Name"}, string {"Android..Name"}, string {"Android.Name."}, string {});
+    string name {GENERATE(string {".Android.Name"}, string {"Android..Name"}, string {"Android.Name."}, string {})};
     CAPTURE(name);
-    TestRig rig;
+    TestRig rig {};
     rig.AddBakedFile("Metadata.fometa-server", MakeMetadataBlob({{"Setting", {{name, "string", "value"}}}}));
     rig.AddSourceFile("Scripts/Invalid.fos", "void Read() {}\n");
-    AngelScriptBaker baker(rig.MakeContext("InvalidSettings", [](string_view path, uint64_t) { return path.ends_with(".fos-bin-server"); }));
+    AngelScriptBaker baker {rig.MakeContext("InvalidSettings", [](string_view path, uint64_t) { return path.ends_with(".fos-bin-server"); })};
     CHECK_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("Setting path"));
 }
 
@@ -311,12 +311,12 @@ TEST_CASE("AngelScriptNestedSettingsRejectsPropertyGroupCollision")
 {
     using namespace BakerTests;
 
-    string nested_setting = GENERATE(string {"Android.Group.Name"}, string {"Network.ServerPort.Name"});
+    string nested_setting {GENERATE(string {"Android.Group.Name"}, string {"Network.ServerPort.Name"})};
     CAPTURE(nested_setting);
-    TestRig rig;
+    TestRig rig {};
     rig.AddBakedFile("Metadata.fometa-server", MakeMetadataBlob({{"Setting", {{"Android.Group", "string", "leaf"}, {nested_setting, "string", "nested"}}}}));
     rig.AddSourceFile("Scripts/Collision.fos", "void Read() {}\n");
-    AngelScriptBaker baker(rig.MakeContext("CollisionSettings", [](string_view path, uint64_t) { return path.ends_with(".fos-bin-server"); }));
+    AngelScriptBaker baker {rig.MakeContext("CollisionSettings", [](string_view path, uint64_t) { return path.ends_with(".fos-bin-server"); })};
     CHECK_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("both a property and a group"));
 }
 
@@ -324,10 +324,10 @@ TEST_CASE("AngelScriptNestedSettingsKeepsBuiltinsReadOnly")
 {
     using namespace BakerTests;
 
-    TestRig rig;
+    TestRig rig {};
     AddAngelScriptMetadataForAllSides(rig);
     rig.AddSourceFile("Scripts/ReadOnly.fos", "void Write() { Settings.Network.ServerPort = 1234; }\n");
-    AngelScriptBaker baker(rig.MakeContext("ReadOnlySettings"));
+    AngelScriptBaker baker {rig.MakeContext("ReadOnlySettings")};
     CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), ""), AngelScriptBakerException);
 }
 
@@ -335,10 +335,10 @@ TEST_CASE("AngelScriptNestedSettingsRejectsOldGroupTypeNames")
 {
     using namespace BakerTests;
 
-    TestRig rig;
+    TestRig rig {};
     rig.AddBakedFile("Metadata.fometa-server", MakeMetadataBlob({{"Setting", {{"Android.GradleDependency.Sample", "string", "dependency"}}}}));
     rig.AddSourceFile("Scripts/OldType.fos", "string Hold() { GlobalSettingsGroup_Android_GradleDependency value = Settings.Android.GradleDependency; return value.Sample; }\n");
-    AngelScriptBaker baker(rig.MakeContext("OldGroupType", [](string_view path, uint64_t) { return path.ends_with(".fos-bin-server"); }));
+    AngelScriptBaker baker {rig.MakeContext("OldGroupType", [](string_view path, uint64_t) { return path.ends_with(".fos-bin-server"); })};
     CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), ""), AngelScriptBakerException);
 }
 

@@ -44,18 +44,18 @@ FO_BEGIN_NAMESPACE
 
 static auto MakeMapProtoBlob(EngineMetadata& proto_engine, hstring type_name, string_view proto_name) -> vector<uint8_t>
 {
-    vector<uint8_t> props_data;
-    set<hstring> str_hashes;
+    vector<uint8_t> props_data {};
+    set<hstring> str_hashes {};
 
-    auto registrar = proto_engine.GetPropertyRegistrar(type_name);
+    auto registrar {proto_engine.GetPropertyRegistrar(type_name)};
     REQUIRE(static_cast<bool>(registrar));
 
     ProtoMap proto {proto_engine.Hashes.to_hashed_string(proto_name), registrar};
     proto.SetSize(msize {50, 50});
     proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
-    vector<uint8_t> protos_data;
-    auto writer = data_writer(protos_data);
+    vector<uint8_t> protos_data {};
+    data_writer writer {data_writer(protos_data)};
 
     writer.write<uint32_t>(uint32_t {0});
     ignore_unused(str_hashes);
@@ -66,6 +66,7 @@ static auto MakeMapProtoBlob(EngineMetadata& proto_engine, hstring type_name, st
     writer.write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
     writer.write_string_bytes(proto_name);
     writer.write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
+
     if (!props_data.empty()) {
         writer.write_bytes({props_data.data(), props_data.size()});
     }
@@ -75,26 +76,26 @@ static auto MakeMapProtoBlob(EngineMetadata& proto_engine, hstring type_name, st
 
 static void AddMapBakerMetadataAndProto(BakerTests::TestRig& rig, string_view proto_name)
 {
-    vector<uint8_t> metadata_blob = BakerTests::MakeEmptyMetadataBlob();
+    vector<uint8_t> metadata_blob {BakerTests::MakeEmptyMetadataBlob()};
     rig.AddBakedFile("Metadata.fometa-server", metadata_blob);
     rig.AddBakedFile("Metadata.fometa-client", metadata_blob);
 
     BakerServerEngine server_proto_engine {rig.BakedFiles};
     BakerClientEngine client_proto_engine {rig.BakedFiles};
-    hstring server_map_type = server_proto_engine.Hashes.to_hashed_string("Map");
-    hstring client_map_type = client_proto_engine.Hashes.to_hashed_string("Map");
+    hstring server_map_type {server_proto_engine.Hashes.to_hashed_string("Map")};
+    hstring client_map_type {client_proto_engine.Hashes.to_hashed_string("Map")};
 
     rig.AddBakedFile("MapBakerTest.fopro-bin-server", MakeMapProtoBlob(server_proto_engine, server_map_type, proto_name));
     rig.AddBakedFile("MapBakerTest.fopro-bin-client", MakeMapProtoBlob(client_proto_engine, client_map_type, proto_name));
 
 #if FO_ANGELSCRIPT_SCRIPTING
-    vector<uint8_t> script_blob = BakerTests::CompileInlineScripts(&server_proto_engine, "MapBakerScripts", {{"Scripts/MapBakerScripts.fos", "namespace MapBakerScripts\n{\nvoid Dummy()\n{\n}\n}\n"}}, [](string_view message) {
-        string message_str = string(message);
+    vector<uint8_t> script_blob {BakerTests::CompileInlineScripts(&server_proto_engine, "MapBakerScripts", {{"Scripts/MapBakerScripts.fos", "namespace MapBakerScripts\n{\nvoid Dummy()\n{\n}\n}\n"}}, [](string_view message) {
+        string message_str {string(message)};
 
         if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
             throw ScriptSystemException(message_str);
         }
-    });
+    })};
 
     rig.AddBakedFile("MapBakerScripts.fos-bin-server", script_blob);
 #endif
@@ -107,17 +108,17 @@ static void AddMapBakerMetadataAndEntityProtos(BakerTests::TestRig& rig, string_
     BakerServerEngine server_proto_engine {rig.BakedFiles};
     BakerClientEngine client_proto_engine {rig.BakedFiles};
 
-    hstring server_critter_type = server_proto_engine.Hashes.to_hashed_string("Critter");
-    hstring server_item_type = server_proto_engine.Hashes.to_hashed_string("Item");
-    hstring client_item_type = client_proto_engine.Hashes.to_hashed_string("Item");
+    hstring server_critter_type {server_proto_engine.Hashes.to_hashed_string("Critter")};
+    hstring server_item_type {server_proto_engine.Hashes.to_hashed_string("Item")};
+    hstring client_item_type {client_proto_engine.Hashes.to_hashed_string("Item")};
 
-    vector<pair<string, function<void(ProtoCritter&)>>> critter_protos;
+    vector<pair<string, function<void(ProtoCritter&)>>> critter_protos {};
     critter_protos.emplace_back(string(critter_proto_name), [&server_proto_engine](ProtoCritter& proto) { proto.SetModelName(server_proto_engine.Hashes.to_hashed_string("MapBakerCritterModel")); });
 
     rig.AddBakedFile("MapBakerCritters.fopro-bin-server", BakerTests::MakeMultiProtoResourceBlob<ProtoCritter>(server_proto_engine, server_critter_type, critter_protos));
 
-    auto make_item_protos = [visible_item_static](auto& proto_engine, hstring item_type, string_view visible_proto, string_view hidden_proto, bool set_hidden) {
-        vector<pair<string, function<void(ProtoItem&)>>> item_protos;
+    auto make_item_protos {[visible_item_static](auto& proto_engine, hstring item_type, string_view visible_proto, string_view hidden_proto, bool set_hidden) {
+        vector<pair<string, function<void(ProtoItem&)>>> item_protos {};
         item_protos.emplace_back(string(visible_proto), [&proto_engine, set_hidden, visible_item_static](ProtoItem& proto) {
             proto.SetStatic(visible_item_static);
 
@@ -127,6 +128,7 @@ static void AddMapBakerMetadataAndEntityProtos(BakerTests::TestRig& rig, string_
 
             proto.SetPicMap(proto_engine.Hashes.to_hashed_string("MapBakerVisibleItemPic"));
         });
+
         item_protos.emplace_back(string(hidden_proto), [&proto_engine, set_hidden](ProtoItem& proto) {
             proto.SetStatic(true);
 
@@ -138,7 +140,7 @@ static void AddMapBakerMetadataAndEntityProtos(BakerTests::TestRig& rig, string_
         });
 
         return BakerTests::MakeMultiProtoResourceBlob<ProtoItem>(proto_engine, item_type, item_protos);
-    };
+    }};
 
     rig.AddBakedFile("MapBakerItems.fopro-bin-server", make_item_protos(server_proto_engine, server_item_type, visible_item_proto_name, hidden_item_proto_name, true));
     rig.AddBakedFile("MapBakerItems.fopro-bin-client", make_item_protos(client_proto_engine, client_item_type, visible_item_proto_name, hidden_item_proto_name, false));
@@ -167,26 +169,26 @@ struct BakedMapClientSummary
 
 static void SkipBakedMapStrings(data_reader& reader, uint32_t count)
 {
-    for (uint32_t i = 0; i < count; i++) {
-        uint32_t len = reader.read<uint32_t>();
+    for (uint32_t i {0}; i < count; i++) {
+        uint32_t len {reader.read<uint32_t>()};
         (void)reader.read_bytes(len);
     }
 }
 
 static void SkipBakedMapEntities(data_reader& reader, uint32_t count)
 {
-    for (uint32_t i = 0; i < count; i++) {
+    for (uint32_t i {0}; i < count; i++) {
         (void)reader.read<ident_t::underlying_type>();
         (void)reader.read<hstring::hash_t>();
-        uint32_t props_size = reader.read<uint32_t>();
+        uint32_t props_size {reader.read<uint32_t>()};
         (void)reader.read_bytes(props_size);
     }
 }
 
 static auto ReadBakedMapServerSummary(const vector<uint8_t>& data, string_view map_name) -> BakedMapServerSummary
 {
-    auto reader = data_reader {data};
-    auto summary = BakedMapServerSummary {};
+    data_reader reader {data_reader {data}};
+    auto summary {BakedMapServerSummary {}};
 
     MapLoader::ReadBakedFileHeader(reader, map_name);
     summary.Hashes = reader.read<uint32_t>();
@@ -202,18 +204,18 @@ static auto ReadBakedMapServerSummary(const vector<uint8_t>& data, string_view m
 
 static auto ReadBakedMapClientSummary(const vector<uint8_t>& data, string_view map_name) -> BakedMapClientSummary
 {
-    auto reader = data_reader {data};
-    auto summary = BakedMapClientSummary {};
+    data_reader reader {data_reader {data}};
+    auto summary {BakedMapClientSummary {}};
 
     MapLoader::ReadBakedFileHeader(reader, map_name);
     summary.Hashes = reader.read<uint32_t>();
     SkipBakedMapStrings(reader, summary.Hashes);
     summary.Items = reader.read<uint32_t>();
 
-    for (uint32_t i = 0; i < summary.Items; i++) {
+    for (uint32_t i {0}; i < summary.Items; i++) {
         summary.ItemIds.emplace_back(reader.read<ident_t::underlying_type>());
         (void)reader.read<hstring::hash_t>();
-        uint32_t props_size = reader.read<uint32_t>();
+        uint32_t props_size {reader.read<uint32_t>()};
         (void)reader.read_bytes(props_size);
     }
 
@@ -224,13 +226,13 @@ static auto ReadBakedMapClientSummary(const vector<uint8_t>& data, string_view m
 
 static auto ReadBakedMapClientStrings(const vector<uint8_t>& data, string_view map_name) -> set<string>
 {
-    auto reader = data_reader {data};
-    set<string> strings;
+    data_reader reader {data_reader {data}};
+    set<string> strings {};
 
     MapLoader::ReadBakedFileHeader(reader, map_name);
-    uint32_t count = reader.read<uint32_t>();
+    uint32_t count {reader.read<uint32_t>()};
 
-    for (uint32_t i = 0; i < count; i++) {
+    for (uint32_t i {0}; i < count; i++) {
         strings.emplace(reader.read_string());
     }
 
@@ -246,8 +248,8 @@ TEST_CASE("MapBaker")
 {
     using namespace BakerTests;
 
-    TestRig rig;
-    auto bakers = MakeRequestedBakers({string(MapBaker::NAME)}, rig);
+    TestRig rig {};
+    auto bakers {MakeRequestedBakers({string(MapBaker::NAME)}, rig)};
 
     REQUIRE(bakers.size() == 1);
     CHECK(bakers.front()->GetName() == MapBaker::NAME);
@@ -257,18 +259,18 @@ TEST_CASE("MapBaker")
 
     SECTION("SkipsNonMapSourcesAndCheckerRejectedMaps")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         ConfigureMapSourceExtensions(local_rig);
         local_rig.AddSourceFile("Nested/Readme.txt", "not a map");
         local_rig.AddSourceFile("Nested/SkippedMap.fomap",
             "[ProtoMap]\n"
             "$Name = SkippedMap\n");
 
-        vector<pair<string, uint64_t>> checks;
-        MapBaker baker(local_rig.MakeContext("Maps", [&checks](string_view path, uint64_t write_time) {
+        vector<pair<string, uint64_t>> checks {};
+        MapBaker baker {local_rig.MakeContext("Maps", [&checks](string_view path, uint64_t write_time) {
             checks.emplace_back(string(path), write_time);
             return false;
-        }));
+        })};
         CHECK_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
 
         CHECK(local_rig.Outputs.empty());
@@ -280,27 +282,27 @@ TEST_CASE("MapBaker")
 #if FO_MANAGED_SCRIPTING
     SECTION("InMemoryFixturesIgnoreForeignManagedAssembliesUntilExplicitlyEnabled")
     {
-        std::filesystem::path previous_dir = std::filesystem::current_path();
-        std::filesystem::path temp_dir = std::filesystem::temp_directory_path() / fs::make_path(strex("FOnlineMapBakerIsolation_{}", std::chrono::steady_clock::now().time_since_epoch().count()));
+        std::filesystem::path previous_dir {std::filesystem::current_path()};
+        std::filesystem::path temp_dir {std::filesystem::temp_directory_path() / fs::make_path(strex("FOnlineMapBakerIsolation_{}", std::chrono::steady_clock::now().time_since_epoch().count()))};
         REQUIRE(std::filesystem::create_directory(temp_dir));
-        auto restore = scope_exit([&]() noexcept {
-            std::error_code error;
+        auto restore {scope_exit([&]() noexcept {
+            std::error_code error {};
             std::filesystem::current_path(previous_dir, error);
             std::filesystem::remove_all(temp_dir, error);
-        });
+        })};
 
         // The fixture asks for the directory the backend will scan instead of spelling it: the naming moved
         // to MakeManagedAssemblyResourceDir once already, and a hand-written path went quietly stale
-        std::filesystem::path foreign_assembly = temp_dir / "Baking" / "ForeignPack" / fs::make_path(MakeManagedAssemblyResourceDir("Server")) / "Foreign.Server.dll";
+        std::filesystem::path foreign_assembly {temp_dir / "Baking" / "ForeignPack" / fs::make_path(MakeManagedAssemblyResourceDir("Server")) / "Foreign.Server.dll"};
         std::filesystem::create_directories(foreign_assembly.parent_path());
         REQUIRE(fs::write_file(fs::path_to_string(foreign_assembly), string_view {"unrelated managed output"}));
         std::filesystem::current_path(temp_dir);
 
-        TestRig local_rig;
+        TestRig local_rig {};
         ConfigureMapSourceExtensions(local_rig);
         AddMapBakerMetadataAndProto(local_rig, "IsolatedMap");
         local_rig.AddSourceFile("IsolatedMap.fomap", "[ProtoMap]\n$Name = IsolatedMap\n");
-        MapBaker baker(local_rig.MakeContext("Maps"));
+        MapBaker baker {local_rig.MakeContext("Maps")};
         REQUIRE_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
         CHECK(local_rig.Outputs.contains("IsolatedMap.fomap-bin-server"));
         CHECK(local_rig.Outputs.contains("IsolatedMap.fomap-bin-client"));
@@ -308,7 +310,7 @@ TEST_CASE("MapBaker")
         // The poisoned entry is observable when a disk-backed fixture deliberately opts in
         OverrideSetting(local_rig.Settings.Baking.BakeOutput, string {"Baking"});
         CHECK_THROWS_WITH(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("Managed load-context host assembly not found"));
-        optional<string> foreign_data = fs::read_file(fs::path_to_string(foreign_assembly));
+        optional<string> foreign_data {fs::read_file(fs::path_to_string(foreign_assembly))};
         REQUIRE(foreign_data.has_value());
         CHECK(*foreign_data == "unrelated managed output");
     }
@@ -316,18 +318,18 @@ TEST_CASE("MapBaker")
 
     SECTION("RechecksSkippedServerSideWhenClientSideNeedsBake")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         ConfigureMapSourceExtensions(local_rig);
         AddMapBakerMetadataAndProto(local_rig, "UnitTestMap");
         local_rig.AddSourceFile("Nested/UnitTestMap.fomap",
             "[ProtoMap]\n"
             "$Name = UnitTestMap\n");
 
-        vector<string> checked_paths;
-        MapBaker baker(local_rig.MakeContext("Maps", [&checked_paths](string_view path, uint64_t) {
+        vector<string> checked_paths {};
+        MapBaker baker {local_rig.MakeContext("Maps", [&checked_paths](string_view path, uint64_t) {
             checked_paths.emplace_back(path);
             return path.ends_with("-client");
-        }));
+        })};
         REQUIRE_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
 
         CHECK(local_rig.Outputs.contains("UnitTestMap.fomap-bin-server"));
@@ -338,18 +340,18 @@ TEST_CASE("MapBaker")
 
     SECTION("RechecksSkippedClientSideWhenServerSideNeedsBake")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         ConfigureMapSourceExtensions(local_rig);
         AddMapBakerMetadataAndProto(local_rig, "UnitTestMap");
         local_rig.AddSourceFile("Nested/UnitTestMap.fomap",
             "[ProtoMap]\n"
             "$Name = UnitTestMap\n");
 
-        vector<string> checked_paths;
-        MapBaker baker(local_rig.MakeContext("Maps", [&checked_paths](string_view path, uint64_t) {
+        vector<string> checked_paths {};
+        MapBaker baker {local_rig.MakeContext("Maps", [&checked_paths](string_view path, uint64_t) {
             checked_paths.emplace_back(path);
             return path.ends_with("-server");
-        }));
+        })};
         REQUIRE_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
 
         CHECK(local_rig.Outputs.contains("UnitTestMap.fomap-bin-server"));
@@ -360,20 +362,20 @@ TEST_CASE("MapBaker")
 
     SECTION("UsesMapNameForBakedOutputAndIncrementalTracking")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         ConfigureMapSourceExtensions(local_rig);
         AddMapBakerMetadataAndProto(local_rig, "UnitTestMap");
         local_rig.AddSourceFile("Nested/UnitTestMap.fomap",
             "[ProtoMap]\n"
             "$Name = UnitTestMap\n");
 
-        vector<string> checked_paths;
-        auto bake_checker = [&](string_view path, uint64_t) {
+        vector<string> checked_paths {};
+        auto bake_checker {[&](string_view path, uint64_t) {
             checked_paths.emplace_back(path);
             return true;
-        };
+        }};
 
-        MapBaker baker(local_rig.MakeContext("Maps", bake_checker));
+        MapBaker baker {local_rig.MakeContext("Maps", bake_checker)};
         REQUIRE_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
         CHECK(local_rig.Outputs.contains("UnitTestMap.fomap-bin-server"));
         CHECK(local_rig.Outputs.contains("UnitTestMap.fomap-bin-client"));
@@ -385,14 +387,14 @@ TEST_CASE("MapBaker")
 
     SECTION("FindsExactSourceMapForTargetedRuntimeBake")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         ConfigureMapSourceExtensions(local_rig);
         AddMapBakerMetadataAndProto(local_rig, "ExactMap");
         local_rig.AddSourceFile("ExactMap.fomap",
             "[ProtoMap]\n"
             "$Name = ExactMap\n");
 
-        MapBaker baker(local_rig.MakeContext("Maps"));
+        MapBaker baker {local_rig.MakeContext("Maps")};
         REQUIRE_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), "ExactMap.fomap-bin-client"));
         CHECK(local_rig.Outputs.contains("ExactMap.fomap-bin-server"));
         CHECK(local_rig.Outputs.contains("ExactMap.fomap-bin-client"));
@@ -400,14 +402,14 @@ TEST_CASE("MapBaker")
 
     SECTION("FindsSourceMapInSubdirectoryForTargetedRuntimeBake")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         ConfigureMapSourceExtensions(local_rig);
         AddMapBakerMetadataAndProto(local_rig, "UnitTestMap");
         local_rig.AddSourceFile("Nested/UnitTestMap.fomap",
             "[ProtoMap]\n"
             "$Name = UnitTestMap\n");
 
-        MapBaker baker(local_rig.MakeContext("Maps"));
+        MapBaker baker {local_rig.MakeContext("Maps")};
         REQUIRE_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), "UnitTestMap.fomap-bin-server"));
         CHECK(local_rig.Outputs.contains("UnitTestMap.fomap-bin-server"));
         CHECK(local_rig.Outputs.contains("UnitTestMap.fomap-bin-client"));
@@ -415,7 +417,7 @@ TEST_CASE("MapBaker")
 
     SECTION("BakesCrittersAndStaticItems")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         ConfigureMapSourceExtensions(local_rig);
         AddMapBakerMetadataAndEntityProtos(local_rig, "RichMap", "MapBakerCritter", "MapBakerVisibleItem", "MapBakerHiddenItem");
         local_rig.AddSourceFile("RichMap.fomap",
@@ -437,14 +439,14 @@ TEST_CASE("MapBaker")
             "Hex = 14 15\n"
             "PicMap = MapBakerHiddenItemOverride\n");
 
-        MapBaker baker(local_rig.MakeContext("Maps"));
+        MapBaker baker {local_rig.MakeContext("Maps")};
         REQUIRE_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
 
         REQUIRE(local_rig.Outputs.contains("RichMap.fomap-bin-server"));
         REQUIRE(local_rig.Outputs.contains("RichMap.fomap-bin-client"));
 
-        auto server_summary = ReadBakedMapServerSummary(local_rig.Outputs.at("RichMap.fomap-bin-server"), "RichMap");
-        auto client_summary = ReadBakedMapClientSummary(local_rig.Outputs.at("RichMap.fomap-bin-client"), "RichMap");
+        auto server_summary {ReadBakedMapServerSummary(local_rig.Outputs.at("RichMap.fomap-bin-server"), "RichMap")};
+        auto client_summary {ReadBakedMapClientSummary(local_rig.Outputs.at("RichMap.fomap-bin-client"), "RichMap")};
 
         CHECK(server_summary.Hashes >= 3);
         CHECK(server_summary.Critters == 1);
@@ -454,7 +456,7 @@ TEST_CASE("MapBaker")
 
         // A critter never reaches the client map-bin, yet the strings of its map-instance values do: script code
         // copies them into synced data, and the client resolves a hash only against its own pool
-        auto client_strings = ReadBakedMapClientStrings(local_rig.Outputs.at("RichMap.fomap-bin-client"), "RichMap");
+        auto client_strings {ReadBakedMapClientStrings(local_rig.Outputs.at("RichMap.fomap-bin-client"), "RichMap")};
         CHECK(client_strings.contains("MapBakerCritterOverride"));
         CHECK(client_strings.contains("MapBakerVisibleItemOverride"));
         CHECK(client_strings.contains("MapBakerHiddenItemOverride"));
@@ -462,7 +464,7 @@ TEST_CASE("MapBaker")
 
     SECTION("ItemPlacementOverridesControlClientStaticItems")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         ConfigureMapSourceExtensions(local_rig);
         AddMapBakerMetadataAndEntityProtos(local_rig, "OverrideMap", "MapBakerCritter", "MapBakerDynamicItem", "MapBakerHiddenItem", false);
         local_rig.AddSourceFile("OverrideMap.fomap",
@@ -495,10 +497,10 @@ TEST_CASE("MapBaker")
             "Static = True\n"
             "Hidden = True\n");
 
-        MapBaker baker(local_rig.MakeContext("Maps"));
+        MapBaker baker {local_rig.MakeContext("Maps")};
         REQUIRE_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
-        auto server_summary = ReadBakedMapServerSummary(local_rig.Outputs.at("OverrideMap.fomap-bin-server"), "OverrideMap");
-        auto client_summary = ReadBakedMapClientSummary(local_rig.Outputs.at("OverrideMap.fomap-bin-client"), "OverrideMap");
+        auto server_summary {ReadBakedMapServerSummary(local_rig.Outputs.at("OverrideMap.fomap-bin-server"), "OverrideMap")};
+        auto client_summary {ReadBakedMapClientSummary(local_rig.Outputs.at("OverrideMap.fomap-bin-client"), "OverrideMap")};
         CHECK(server_summary.Items == 4);
         REQUIRE(client_summary.Items == 2);
         CHECK(client_summary.ItemIds[0] == ident_t {21});
@@ -507,7 +509,7 @@ TEST_CASE("MapBaker")
 
     SECTION("RejectsValidationErrors")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         ConfigureMapSourceExtensions(local_rig);
         AddMapBakerMetadataAndEntityProtos(local_rig, "InvalidResourceMap", "MapBakerCritter", "MapBakerVisibleItem", "MapBakerHiddenItem");
         local_rig.AddSourceFile("InvalidResourceMap.fomap",
@@ -519,38 +521,38 @@ TEST_CASE("MapBaker")
             "Hex = 12 13\n"
             "PicMap = MissingMapBakerPic\n");
 
-        MapBaker baker(local_rig.MakeContext("Maps"));
+        MapBaker baker {local_rig.MakeContext("Maps")};
         CHECK_THROWS_AS(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), MapBakerException);
     }
 
     SECTION("SkipsMissingTargetedRuntimeBake")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         ConfigureMapSourceExtensions(local_rig);
         local_rig.AddSourceFile("Nested/Readme.txt", "not a map");
         local_rig.AddSourceFile("Nested/UnitTestMap.fomap",
             "[ProtoMap]\n"
             "$Name = UnitTestMap\n");
 
-        MapBaker baker(local_rig.MakeContext("Maps"));
+        MapBaker baker {local_rig.MakeContext("Maps")};
         CHECK_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), "MissingMap.fomap-bin-client"));
         CHECK(local_rig.Outputs.empty());
     }
 
     SECTION("BakeCheckerCanSkipTargetedRuntimeBake")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         ConfigureMapSourceExtensions(local_rig);
         local_rig.AddSourceFile("UnitTestMap.fomap",
             "[ProtoMap]\n"
             "$Name = UnitTestMap\n",
             123);
 
-        vector<pair<string, uint64_t>> checks;
-        MapBaker baker(local_rig.MakeContext("Maps", [&checks](string_view path, uint64_t write_time) {
+        vector<pair<string, uint64_t>> checks {};
+        MapBaker baker {local_rig.MakeContext("Maps", [&checks](string_view path, uint64_t write_time) {
             checks.emplace_back(string(path), write_time);
             return false;
-        }));
+        })};
         CHECK_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), "UnitTestMap.fomap-bin-client"));
 
         CHECK(local_rig.Outputs.empty());
@@ -561,7 +563,7 @@ TEST_CASE("MapBaker")
 
     SECTION("BakesEveryMapFromMultiMapFile")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         ConfigureMapSourceExtensions(local_rig);
         AddMapBakerMetadataAndProto(local_rig, "MultiMapOne");
         local_rig.AddSourceFile("Nested/MultiMaps.fomap",
@@ -570,7 +572,7 @@ TEST_CASE("MapBaker")
             "[ProtoMap]\n"
             "$Name = MultiMapTwo\n");
 
-        MapBaker baker(local_rig.MakeContext("Maps"));
+        MapBaker baker {local_rig.MakeContext("Maps")};
         REQUIRE_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
 
         CHECK(local_rig.Outputs.contains("MultiMapOne.fomap-bin-server"));
@@ -581,7 +583,7 @@ TEST_CASE("MapBaker")
 
     SECTION("FindsMapInsideMultiMapFileForTargetedRuntimeBake")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         ConfigureMapSourceExtensions(local_rig);
         AddMapBakerMetadataAndProto(local_rig, "MultiMapOne");
         local_rig.AddSourceFile("Nested/MultiMaps.fomap",
@@ -590,7 +592,7 @@ TEST_CASE("MapBaker")
             "[ProtoMap]\n"
             "$Name = MultiMapTwo\n");
 
-        MapBaker baker(local_rig.MakeContext("Maps"));
+        MapBaker baker {local_rig.MakeContext("Maps")};
         REQUIRE_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), "MultiMapTwo.fomap-bin-server"));
 
         CHECK(local_rig.Outputs.contains("MultiMapTwo.fomap-bin-server"));
@@ -601,27 +603,27 @@ TEST_CASE("MapBaker")
 
     SECTION("SkipsProtoFilesWithoutMapAnchors")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         ConfigureMapSourceExtensions(local_rig);
         local_rig.AddSourceFile("Items/Plain.fopro",
             "[ProtoItem]\n"
             "$Name = PlainItem\n");
 
-        MapBaker baker(local_rig.MakeContext("Maps"));
+        MapBaker baker {local_rig.MakeContext("Maps")};
         CHECK_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
         CHECK(local_rig.Outputs.empty());
     }
 
     SECTION("BakesMapsFromAnyProtoExtensionContainer")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         ConfigureMapSourceExtensions(local_rig);
         AddMapBakerMetadataAndProto(local_rig, "FoproDeclaredMap");
         local_rig.AddSourceFile("Protos/MixedContainer.fopro",
             "[ProtoMap]\n"
             "$Name = FoproDeclaredMap\n");
 
-        MapBaker baker(local_rig.MakeContext("Maps"));
+        MapBaker baker {local_rig.MakeContext("Maps")};
         REQUIRE_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
 
         CHECK(local_rig.Outputs.contains("FoproDeclaredMap.fomap-bin-server"));
@@ -630,7 +632,7 @@ TEST_CASE("MapBaker")
 
     SECTION("AnonymousAnchorBakesUnderFileStemAlongsideNamedOnes")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         ConfigureMapSourceExtensions(local_rig);
         AddMapBakerMetadataAndProto(local_rig, "MixedMaps");
         local_rig.AddSourceFile("Nested/MixedMaps.fomap",
@@ -639,7 +641,7 @@ TEST_CASE("MapBaker")
             "[ProtoMap]\n"
             "$Name = MixedMapTwo\n");
 
-        MapBaker baker(local_rig.MakeContext("Maps"));
+        MapBaker baker {local_rig.MakeContext("Maps")};
         REQUIRE_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
 
         CHECK(local_rig.Outputs.contains("MixedMaps.fomap-bin-server"));
@@ -653,18 +655,18 @@ TEST_CASE("MapBakerDynamicItemOverridesRequireClientDelivery")
 {
     using namespace BakerTests;
 
-    string_view override_text = GENERATE("AuthoringNumber = 0", "DrawFlatten = True", "MultihexLines = 5 1", "AuthoringClient = 0", "AuthoringClient = 0\nHidden = True");
+    string_view override_text {GENERATE("AuthoringNumber = 0", "DrawFlatten = True", "MultihexLines = 5 1", "AuthoringClient = 0", "AuthoringClient = 0\nHidden = True")};
 
-    TestRig rig;
+    TestRig rig {};
     ConfigureMapSourceExtensions(rig);
     AddMapBakerMetadataAndProto(rig, "DynamicValidation");
-    auto metadata = MakeMetadataBlob({{"Property", {{"Item", "Common", "int32", "AuthoringNumber"}, {"Item", "Client", "int32", "AuthoringClient"}}}});
+    auto metadata {MakeMetadataBlob({{"Property", {{"Item", "Common", "int32", "AuthoringNumber"}, {"Item", "Client", "int32", "AuthoringClient"}}}})};
     rig.AddBakedFile("Metadata.fometa-server", metadata);
     rig.AddBakedFile("Metadata.fometa-client", metadata);
 
     BakerServerEngine server {rig.BakedFiles};
     BakerClientEngine client {rig.BakedFiles};
-    vector<pair<string, function<void(ProtoItem&)>>> protos;
+    vector<pair<string, function<void(ProtoItem&)>>> protos {};
     protos.emplace_back("ValidationItem", [](ProtoItem& proto) { proto.GetPropertiesForEdit()->ApplyFromText(map<string, string> {{"AuthoringNumber", "20"}, {"AuthoringClient", "20"}}); });
     rig.AddBakedFile("Items.fopro-bin-server", MakeMultiProtoResourceBlob<ProtoItem>(server, server.Hashes.to_hashed_string("Item"), protos));
     rig.AddBakedFile("Items.fopro-bin-client", MakeMultiProtoResourceBlob<ProtoItem>(client, client.Hashes.to_hashed_string("Item"), protos));

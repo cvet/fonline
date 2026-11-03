@@ -35,6 +35,6 @@
 
 FO_BEGIN_NAMESPACE
 
-const ucolor ucolor::clear;
+const ucolor ucolor::clear {};
 
 FO_END_NAMESPACE

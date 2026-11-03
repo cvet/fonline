@@ -6,7 +6,7 @@ document_id: image-format-guide
 permalink: /Docs/ru/how-to/content/image-format.html
 ---
 
-<!-- docs-translation: {"document_id":"image-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/image-format.md","source_sha256":"0d9a2bea61ded922c83e7c7d701b203a708e89c298243533058907a521b0a89a"} -->
+<!-- docs-translation: {"document_id":"image-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/image-format.md","source_sha256":"3f07da120da300c5bd8ae046b7c181db2e0ce86c4062b349c39e277186eef023"} -->
 
 # Форматы изображений и спрайтов
 
@@ -275,6 +275,12 @@ PNG преобразует palette/grayscale, `tRNS`, 16-битные канал
 слева. Другие типы/разрядность запрещены; importer не учитывает origin bit и не
 пропускает ID. Предпочитайте PNG без проверенного TGA preset экспортёра. См.
 [справочник исходных форматов](../../reference/image-format/formats.md).
+
+Исходные размеры — unsigned 16-bit значения, расширяемые до `int32_t`, включая
+значения выше 32767. Число байтов и доступные данные проверяются до выделения памяти.
+Обрезанные пакеты и run-пакеты, превышающие оставшуюся часть изображения, отвергаются.
+Прежнее поведение последнего raw-пакета сохраняется: полностью потребить его
+закодированные данные и оставить только недостающие изображению пиксели.
 
 ### Fallout FRM и FR0
 

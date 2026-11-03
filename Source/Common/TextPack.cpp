@@ -39,16 +39,16 @@ FO_BEGIN_NAMESPACE
 
 static auto ExtractBraceToken(string& line, size_t& offset, string& token, bool allow_multiline, nptr<istringstream> sstr) -> bool
 {
-    auto first = line.find('{', offset);
+    auto first {line.find('{', offset)};
 
     if (first == string::npos) {
         return false;
     }
 
-    auto last = line.find('}', first);
+    auto last {line.find('}', first)};
 
     if (last == string::npos && allow_multiline && sstr) {
-        string additional_line;
+        string additional_line {};
 
         while (last == string::npos && getline(*sstr, additional_line, '\n')) {
             line += "\n" + additional_line;
@@ -67,10 +67,10 @@ static auto ExtractBraceToken(string& line, size_t& offset, string& token, bool 
 
 auto TextPackKey::FromParts(hash_resolver& hashes, string_view collection, string_view key1, string_view key2, string_view key3) -> TextPackKey
 {
-    hstring hcollection = hashes.to_hashed_string(collection);
-    hstring hkey1 = hashes.to_hashed_string(key1);
-    hstring hkey2 = hashes.to_hashed_string(key2);
-    hstring hkey3 = hashes.to_hashed_string(key3);
+    hstring hcollection {hashes.to_hashed_string(collection)};
+    hstring hkey1 {hashes.to_hashed_string(key1)};
+    hstring hkey2 {hashes.to_hashed_string(key2)};
+    hstring hkey3 {hashes.to_hashed_string(key3)};
     return TextPackKey {TextPackName {hcollection}, hkey1, hkey2, hkey3};
 }
 
@@ -82,8 +82,8 @@ auto TextPackKey::FromPack(hash_resolver& hashes, string_view collection, string
 auto TextPackKey::Parse(hash_resolver& hashes, string_view str, TextPackKey& result) -> bool
 {
     string source {str};
-    size_t offset = 0;
-    string tokens[4];
+    size_t offset {0};
+    string tokens[4] {};
 
     for (auto& token : tokens) {
         if (!ExtractBraceToken(source, offset, token, false, nullptr)) {
@@ -122,7 +122,7 @@ auto TextPack::IsTextPresent(TextPackKey key) const -> bool
 
 auto TextPack::GetStr(TextPackKey key) const -> string_view
 {
-    const_span<pair<TextPackKey, string>> entries = FindEntries(key);
+    const_span<pair<TextPackKey, string>> entries {FindEntries(key)};
 
     if (entries.empty()) {
         return _emptyStr;
@@ -137,7 +137,7 @@ auto TextPack::GetStr(TextPackKey key) const -> string_view
 
 auto TextPack::GetStr(TextPackKey key, size_t text_index) const -> string_view
 {
-    const_span<pair<TextPackKey, string>> entries = FindEntries(key);
+    const_span<pair<TextPackKey, string>> entries {FindEntries(key)};
 
     if (text_index >= entries.size()) {
         return _emptyStr;
@@ -160,13 +160,13 @@ auto TextPack::CheckIntersections(TextPack& other) -> bool
 {
     FO_TRACE_ZONE(Core);
 
-    bool result = false;
+    bool result {false};
 
     EnsureSorted();
     other.EnsureSorted();
 
     for (auto&& [key, value] : SortedEntries()) {
-        const_span<pair<TextPackKey, string>> other_entries = other.FindEntries(key);
+        const_span<pair<TextPackKey, string>> other_entries {other.FindEntries(key)};
 
         if (!other_entries.empty()) {
             logging::write("Intersection of key {} (count {}) value 1 '{}', value 2 '{}'", key, other_entries.size(), value, other_entries.front().second);
@@ -181,12 +181,12 @@ auto TextPack::GetBinaryData() -> vector<uint8_t>
 {
     FO_TRACE_ZONE(Core);
 
-    vector<uint8_t> data;
-    auto writer = data_writer {data};
+    vector<uint8_t> data {};
+    data_writer writer {data_writer {data}};
 
     EnsureSorted();
 
-    const_span<pair<TextPackKey, string>> entries = SortedEntries();
+    const_span<pair<TextPackKey, string>> entries {SortedEntries()};
 
     writer.write<uint32_t>(numeric_cast<uint32_t>(entries.size()));
 
@@ -215,21 +215,21 @@ void TextPack::AppendBinaryData(const_span<uint8_t> data, string_view collection
 {
     FO_TRACE_ZONE(Core);
 
-    auto reader = data_reader {data};
-    auto collection_key = TextPackName {MakeKeyPart(collection)};
+    data_reader reader {data_reader {data}};
+    auto collection_key {TextPackName {MakeKeyPart(collection)}};
 
-    auto count = reader.read<uint32_t>();
+    auto count {reader.read<uint32_t>()};
 
     // Each entry has four key-part lengths and one value length, even when all strings are empty
     reader.verify_payload_count(count, 5 * sizeof(uint32_t));
-    size_t required_size = _strData.size() + count;
+    size_t required_size {_strData.size() + count};
 
     if (_strData.capacity() < required_size) {
         _strData.reserve(std::max(required_size, std::min(_strData.capacity() * 2, _strData.max_size())));
     }
 
-    for (uint32_t i = 0; i < count; i++) {
-        TextPackKey key;
+    for (uint32_t i {0}; i < count; i++) {
+        TextPackKey key {};
 
         key.Collection = TextPackName {ReadKeyPart(reader)};
         key.Key1 = ReadKeyPart(reader);
@@ -240,7 +240,7 @@ void TextPack::AppendBinaryData(const_span<uint8_t> data, string_view collection
             key.Collection = collection_key;
         }
 
-        string str = reader.read_string();
+        string str {reader.read_string()};
         AddStr(key, std::move(str));
     }
 }
@@ -249,17 +249,17 @@ auto TextPack::LoadFromString(const string& str, string_view collection) -> bool
 {
     FO_TRACE_ZONE(Core);
 
-    bool failed = false;
+    bool failed {false};
 
-    istringstream sstr(make_stream_string(str));
-    string line;
+    istringstream sstr {make_stream_string(str)};
+    string line {};
 
     while (getline(sstr, line, '\n')) {
-        size_t offset = 0;
+        size_t offset {0};
 
-        string token1;
-        string token2;
-        string token3;
+        string token1 {};
+        string token2 {};
+        string token3 {};
 
         if (!ExtractBraceToken(line, offset, token1, false, nullptr)) {
             continue;
@@ -291,7 +291,7 @@ void TextPack::LoadFromMap(const map<string, string>& kv, string_view collection
     FO_TRACE_ZONE(Core);
 
     for (auto&& [key, value] : kv) {
-        TextPackKey text_key;
+        TextPackKey text_key {};
 
         if (strvex(key).starts_with('{')) {
             if (TextPackKey::Parse(*_hashResolver, key, text_key)) {
@@ -312,16 +312,16 @@ void TextPack::LoadFromResources(FileSystem& resources, string_view language)
 {
     FO_TRACE_ZONE(Core);
 
-    auto text_files = resources.FilterFiles("fotxt-bin");
+    auto text_files {resources.FilterFiles("fotxt-bin")};
 
     for (const auto& text_file_header : text_files) {
-        auto text_file = File::Load(text_file_header);
-        string_view file_name = text_file.GetNameNoExt();
+        auto text_file {File::Load(text_file_header)};
+        string_view file_name {text_file.GetNameNoExt()};
 
-        auto name_triplet = strvex(file_name).split('.');
+        auto name_triplet {strvex(file_name).split('.')};
         FO_VERIFY_AND_THROW(name_triplet.size() == 3, "Baked text filename must contain pack prefix, text pack name and language suffix", text_file_header.GetPath(), file_name, name_triplet.size());
-        const auto& pack_name_str = name_triplet[1];
-        const auto& lang_name = name_triplet[2];
+        const auto& pack_name_str {name_triplet[1]};
+        const auto& lang_name {name_triplet[2]};
         FO_VERIFY_AND_THROW(!pack_name_str.empty(), "Baked text filename has an empty text pack name segment", text_file_header.GetPath(), file_name);
         FO_VERIFY_AND_THROW(!lang_name.empty(), "Baked text filename has an empty language segment", text_file_header.GetPath(), file_name);
 
@@ -349,7 +349,7 @@ void TextPack::AddStr(TextPackKey key, string&& str)
 
 void TextPack::EraseStr(TextPackKey key)
 {
-    pair<size_t, size_t> range = EqualRange(key);
+    pair<size_t, size_t> range {EqualRange(key)};
 
     _strData.erase(_strData.begin() + static_cast<ptrdiff_t>(range.first), _strData.begin() + static_cast<ptrdiff_t>(range.second));
 }
@@ -374,8 +374,8 @@ void TextPack::FixStr(TextPack& base_pack)
 
     // The base pack is in key order, so its several strings under one key arrive adjacently and only the
     // first of them is taken, which is what the node tree did when its own insert was visible to the next check
-    vector<pair<TextPackKey, string>> missing;
-    TextPackKey last_key;
+    vector<pair<TextPackKey, string>> missing {};
+    TextPackKey last_key {};
 
     for (auto&& [key, value] : base_pack.SortedEntries()) {
         if (key == last_key) {
@@ -426,7 +426,7 @@ auto TextPack::SortedEntries() const -> const_span<pair<TextPackKey, string>>
 
 auto TextPack::FindEntries(TextPackKey key) const -> const_span<pair<TextPackKey, string>>
 {
-    pair<size_t, size_t> range = EqualRange(key);
+    pair<size_t, size_t> range {EqualRange(key)};
 
     return {_strData.data() + range.first, range.second - range.first};
 }
@@ -434,10 +434,10 @@ auto TextPack::FindEntries(TextPackKey key) const -> const_span<pair<TextPackKey
 // One binary search, then a walk over the duplicates, of which a key has one or two
 auto TextPack::EqualRange(TextPackKey key) const -> pair<size_t, size_t>
 {
-    const_span<pair<TextPackKey, string>> entries = SortedEntries();
+    const_span<pair<TextPackKey, string>> entries {SortedEntries()};
 
-    auto first = std::lower_bound(entries.begin(), entries.end(), key, [](const pair<TextPackKey, string>& entry, const TextPackKey& probe) { return entry.first < probe; });
-    auto last = first;
+    auto first {std::lower_bound(entries.begin(), entries.end(), key, [](const pair<TextPackKey, string>& entry, const TextPackKey& probe) { return entry.first < probe; })};
+    auto last {first};
 
     while (last != entries.end() && last->first == key) {
         ++last;
@@ -452,18 +452,18 @@ auto TextPack::ParseBakeLanguages(const_span<string> declarations) -> BakeLangua
 
     FO_VERIFY_AND_THROW(!declarations.empty(), "BakeLanguages must contain at least one language declaration");
 
-    BakeLanguageConfig result;
+    BakeLanguageConfig result {};
 
     for (const string& declaration : declarations) {
-        size_t separator = declaration.find(':');
-        bool has_fallback = separator != string::npos;
+        size_t separator {declaration.find(':')};
+        bool has_fallback {separator != string::npos};
         FO_VERIFY_AND_THROW(!declaration.empty() && (!has_fallback || (separator != 0 && separator + 1 < declaration.size() && declaration.find(':', separator + 1) == string::npos)), "Bake language declaration must use language or language:parent format", declaration);
 
-        string language = has_fallback ? declaration.substr(0, separator) : declaration;
+        string language {has_fallback ? declaration.substr(0, separator) : declaration};
         FO_VERIFY_AND_THROW(std::ranges::find(result.Languages, language) == result.Languages.end(), "Bake language is declared more than once", language);
 
         if (has_fallback) {
-            string parent_language = declaration.substr(separator + 1);
+            string parent_language {declaration.substr(separator + 1)};
             FO_VERIFY_AND_THROW(std::ranges::find(result.Languages, parent_language) != result.Languages.end(), "Bake language fallback parent must be declared before its child", language, parent_language);
             result.Fallbacks.emplace(language, parent_language);
         }
@@ -493,7 +493,7 @@ void TextPack::FixPacks(const BakeLanguageConfig& bake_languages, vector<pair<st
     }
 
     // Remove unsupported languages
-    for (auto it = lang_packs.begin(); it != lang_packs.end();) {
+    for (auto it {lang_packs.begin()}; it != lang_packs.end();) {
         if (std::ranges::find_if(bake_languages.Languages, [&](auto&& l) { return l == it->first; }) == bake_languages.Languages.end()) {
             it = lang_packs.erase(it);
         }
@@ -503,21 +503,21 @@ void TextPack::FixPacks(const BakeLanguageConfig& bake_languages, vector<pair<st
     }
 
     // Normalize language packs
-    auto find_language_pack = [&](string_view language) -> ptr<map<string, TextPack>> {
-        auto lang_it = std::ranges::find_if(lang_packs, [&](const auto& lang_pack) { return lang_pack.first == language; });
+    auto find_language_pack {[&](string_view language) -> ptr<map<string, TextPack>> {
+        auto lang_it {std::ranges::find_if(lang_packs, [&](const auto& lang_pack) { return lang_pack.first == language; })};
         FO_VERIFY_AND_THROW(lang_it != lang_packs.end(), "Bake language pack is missing during normalization", language);
         return make_ptr(&lang_it->second);
-    };
+    }};
 
-    for (size_t i = 1; i < bake_languages.Languages.size(); i++) {
-        const string& language = bake_languages.Languages[i];
-        auto fallback_it = bake_languages.Fallbacks.find(language);
-        const string& fallback_language = fallback_it != bake_languages.Fallbacks.end() ? fallback_it->second : bake_languages.Languages.front();
-        auto fallback_lang_pack = find_language_pack(fallback_language);
-        auto lang_pack = find_language_pack(language);
+    for (size_t i {1}; i < bake_languages.Languages.size(); i++) {
+        const string& language {bake_languages.Languages[i]};
+        auto fallback_it {bake_languages.Fallbacks.find(language)};
+        const string& fallback_language {fallback_it != bake_languages.Fallbacks.end() ? fallback_it->second : bake_languages.Languages.front()};
+        auto fallback_lang_pack {find_language_pack(fallback_language)};
+        auto lang_pack {find_language_pack(language)};
 
         // Remove packs that are not in the base language pack
-        for (auto it = lang_pack->begin(); it != lang_pack->end();) {
+        for (auto it {lang_pack->begin()}; it != lang_pack->end();) {
             if (fallback_lang_pack->count(it->first) == 0) {
                 it = lang_pack->erase(it);
             }
@@ -537,7 +537,7 @@ void TextPack::FixPacks(const BakeLanguageConfig& bake_languages, vector<pair<st
 
         // Normalize texts to the base language
         for (auto&& [pack_name, text_pack] : *lang_pack) {
-            auto it = fallback_lang_pack->find(pack_name);
+            auto it {fallback_lang_pack->find(pack_name)};
             FO_VERIFY_AND_THROW(it != fallback_lang_pack->end(), "Lookup failed in fallback lang pack");
             text_pack.FixStr(it->second);
         }
@@ -551,7 +551,7 @@ auto TextPack::MakeKeyPart(string_view value) -> hstring
 
 void TextPack::WriteKeyPart(data_writer& writer, hstring part) const
 {
-    string_view str = part.as_str();
+    string_view str {part.as_str()};
     writer.write<uint32_t>(numeric_cast<uint32_t>(str.length()));
 
     if (!str.empty()) {
@@ -561,7 +561,7 @@ void TextPack::WriteKeyPart(data_writer& writer, hstring part) const
 
 auto TextPack::ReadKeyPart(data_reader& reader) -> hstring
 {
-    uint32_t str_len = reader.read<uint32_t>();
+    uint32_t str_len {reader.read<uint32_t>()};
     return MakeKeyPart(reader.read_string_view(str_len));
 }
 

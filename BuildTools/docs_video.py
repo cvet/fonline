@@ -239,7 +239,7 @@ def _derive_outputs(root: Path, sources: dict[str, object]) -> dict[str, object]
     )
 
     read_chunk = re.search(r"read_bytes = std::min\((\d+), read_bytes\)", video)
-    stream_count = re.search(r"static constexpr size_t COUNT = (\d+)", video)
+    stream_count = re.search(r"static constexpr size_t COUNT\s*(?:=|\{)\s*(\d+)", video)
     if read_chunk is None or stream_count is None:
         raise ValueError("unable to derive Ogg read chunk or logical stream limit")
 

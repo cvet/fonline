@@ -41,8 +41,8 @@
 
 FO_BEGIN_NAMESPACE
 
-inline constexpr float32_t MODEL_ANIMATION_HALF_MAX = 65504.0f;
-inline constexpr float32_t MODEL_ANIMATION_QUATERNION_NORM_TOLERANCE = 1.0e-4f;
+inline constexpr float32_t MODEL_ANIMATION_HALF_MAX {65504.0f};
+inline constexpr float32_t MODEL_ANIMATION_QUATERNION_NORM_TOLERANCE {1.0e-4f};
 
 struct ModelAnimationVec3Track
 {
@@ -104,7 +104,7 @@ struct ModelSourceAsset
     vector<ModelAnimationSource> Animations {};
 };
 
-[[nodiscard]] auto LoadModelSourceAsset(string_view path, const File& file) -> ModelSourceAsset;
+auto LoadModelSourceAsset(string_view path, const File& file) -> ModelSourceAsset;
 void ValidateModelSourceAsset(const ModelSourceAsset& asset);
 
 // One cache belongs to one immutable FileCollection/bake pass. Concurrent Get()

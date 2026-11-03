@@ -75,7 +75,7 @@ auto RpcRuntimeTracker::GetInputReadyTime(size_t prefix_bytes) const -> optional
         return {};
     }
 
-    size_t remaining_bytes = prefix_bytes;
+    size_t remaining_bytes {prefix_bytes};
 
     for (const Arrival& arrival : _arrivals) {
         if (remaining_bytes <= arrival.Bytes) {
@@ -100,7 +100,7 @@ auto RpcRuntimeTracker::Begin(string_view name, ident_t caller_id, nanotime now)
 
     if (_limits.MaxPendingCalls != 0 && _calls.size() >= _limits.MaxPendingCalls) {
         if (!_limitHit) {
-            Call rejected;
+            Call rejected {};
 
             if (!name.empty()) {
                 rejected.Name.assign(name.data(), name.size());
@@ -115,7 +115,7 @@ auto RpcRuntimeTracker::Begin(string_view name, ident_t caller_id, nanotime now)
         return {false, {}};
     }
 
-    Call call;
+    Call call {};
 
     if (!name.empty()) {
         call.Name.assign(name.data(), name.size());
@@ -124,7 +124,7 @@ auto RpcRuntimeTracker::Begin(string_view name, ident_t caller_id, nanotime now)
     call.CallerId = caller_id;
     call.StartedAt = now;
 
-    RpcRuntimeCallId id = AllocateCallId();
+    RpcRuntimeCallId id {AllocateCallId()};
     _calls.emplace(id, std::move(call));
     ++_startedCalls;
 
@@ -133,7 +133,7 @@ auto RpcRuntimeTracker::Begin(string_view name, ident_t caller_id, nanotime now)
 
 void RpcRuntimeTracker::Finish(RpcRuntimeCallId id)
 {
-    auto call = _calls.find(id);
+    auto call {_calls.find(id)};
 
     if (call == _calls.end()) {
         return;
@@ -149,7 +149,7 @@ void RpcRuntimeTracker::AddInput(size_t bytes, nanotime now)
         return;
     }
 
-    size_t max_bytes = std::numeric_limits<size_t>::max();
+    size_t max_bytes {std::numeric_limits<size_t>::max()};
 
     if (bytes > max_bytes - _inputBytes) {
         throw std::overflow_error("RpcRuntimeTracker input byte count overflow");
@@ -160,7 +160,7 @@ void RpcRuntimeTracker::AddInput(size_t bytes, nanotime now)
     }
     else {
         if (_arrivals.size() >= MaxArrivalSegments) {
-            size_t oldest_bytes = _arrivals.front().Bytes;
+            size_t oldest_bytes {_arrivals.front().Bytes};
             _arrivals.pop_front();
             _arrivals.front().Bytes += oldest_bytes;
         }
@@ -181,10 +181,10 @@ void RpcRuntimeTracker::ConsumeInput(size_t bytes)
         return;
     }
 
-    size_t remaining_bytes = bytes;
+    size_t remaining_bytes {bytes};
 
     while (remaining_bytes != 0) {
-        Arrival& arrival = _arrivals.front();
+        Arrival& arrival {_arrivals.front()};
 
         if (remaining_bytes < arrival.Bytes) {
             arrival.Bytes -= remaining_bytes;
@@ -217,7 +217,7 @@ void RpcRuntimeTracker::SetQueuedMessage(optional<nanotime> ready_at, size_t byt
 
 auto RpcRuntimeTracker::Evaluate(nanotime now) -> RpcRuntimeReport
 {
-    RpcRuntimeReport report;
+    RpcRuntimeReport report {};
     report.PendingCalls = _calls.size();
     report.BufferedBytes = _bufferedBytes;
     report.StartedCalls = _startedCalls;
@@ -242,9 +242,9 @@ auto RpcRuntimeTracker::Evaluate(nanotime now) -> RpcRuntimeReport
         return report;
     }
 
-    optional<CallTarget> oldest_call = FindOldestCall();
-    bool queued_message_ready = IsQueuedMessageReady();
-    bool target_is_queue = false;
+    optional<CallTarget> oldest_call {FindOldestCall()};
+    bool queued_message_ready {IsQueuedMessageReady()};
+    bool target_is_queue {false};
     nanotime target_time {};
 
     if (oldest_call.has_value()) {
@@ -256,7 +256,7 @@ auto RpcRuntimeTracker::Evaluate(nanotime now) -> RpcRuntimeReport
         target_time = *_queuedReadyAt;
     }
 
-    bool has_target = oldest_call.has_value() || queued_message_ready;
+    bool has_target {oldest_call.has_value() || queued_message_ready};
 
     if (has_target && _limits.DisconnectTimeMs > 0) {
         timespan disconnect_age {std::chrono::milliseconds {_limits.DisconnectTimeMs}};
@@ -277,7 +277,7 @@ auto RpcRuntimeTracker::Evaluate(nanotime now) -> RpcRuntimeReport
         }
     }
 
-    bool warning_violation = false;
+    bool warning_violation {false};
 
     if (has_target && _limits.WarningTimeMs > 0) {
         timespan warning_age {std::chrono::milliseconds {_limits.WarningTimeMs}};
@@ -290,7 +290,7 @@ auto RpcRuntimeTracker::Evaluate(nanotime now) -> RpcRuntimeReport
         return report;
     }
 
-    bool emit_warning = !_lastWarningAt.has_value();
+    bool emit_warning {!_lastWarningAt.has_value()};
 
     if (!emit_warning && _limits.WarningIntervalMs > 0) {
         timespan warning_interval {std::chrono::milliseconds {_limits.WarningIntervalMs}};
@@ -322,10 +322,10 @@ auto RpcRuntimeTracker::IsQueuedMessageReady() const -> bool
 
 auto RpcRuntimeTracker::FindOldestCall() const -> optional<CallTarget>
 {
-    optional<CallTarget> oldest_call;
+    optional<CallTarget> oldest_call {};
 
     for (const auto& call_entry : _calls) {
-        const Call& call = call_entry.second;
+        const Call& call {call_entry.second};
 
         if (!oldest_call.has_value() || call.StartedAt < oldest_call->StartedAt || (call.StartedAt == oldest_call->StartedAt && call_entry.first < oldest_call->Id)) {
             oldest_call = CallTarget {call_entry.first, call.StartedAt};
@@ -337,7 +337,7 @@ auto RpcRuntimeTracker::FindOldestCall() const -> optional<CallTarget>
 
 auto RpcRuntimeTracker::AllocateCallId() -> RpcRuntimeCallId
 {
-    uint64_t id = _lastId.underlying_value();
+    uint64_t id {_lastId.underlying_value()};
 
     do {
         ++id;
@@ -354,7 +354,7 @@ auto RpcRuntimeTracker::AllocateCallId() -> RpcRuntimeCallId
 
 void RpcRuntimeTracker::FillPendingCallReport(RpcRuntimeReport& report, RpcRuntimeCallId id, nanotime now) const
 {
-    auto call = _calls.find(id);
+    auto call {_calls.find(id)};
 
     if (call == _calls.end()) {
         return;

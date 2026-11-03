@@ -46,7 +46,7 @@ FO_BEGIN_NAMESPACE
 
 static auto MakeTempSettingsDir(string_view name) -> string
 {
-    auto base = std::filesystem::temp_directory_path() / std::format("lf_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
+    auto base {std::filesystem::temp_directory_path() / std::format("lf_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count())};
     return fs::path_to_string(base);
 }
 
@@ -67,7 +67,7 @@ TEST_CASE("CommandLineArgsSettingLookup")
     SECTION("SettingNameNormalizationMatchesTheSettingsParser")
     {
         vector<string> values {"lf_tests", "--Render.Sleep ", "-1"};
-        vector<CommandLineArg> argv;
+        vector<CommandLineArg> argv {};
 
         for (string& value : values) {
             argv.emplace_back(value.data());
@@ -85,7 +85,7 @@ TEST_CASE("CommandLineArgsSettingLookup")
     SECTION("LastOccurrenceAndExplicitText")
     {
         vector<string> values {"lf_tests", "--Probe.Mode", "False", "-Probe.Mode", "True", "--Probe.Number", "-1", "--Probe.Empty", "", "--Probe.Text", " C:\\path\\\"quoted\" "};
-        vector<CommandLineArg> argv;
+        vector<CommandLineArg> argv {};
 
         for (string& value : values) {
             argv.emplace_back(value.data());
@@ -105,7 +105,7 @@ TEST_CASE("CommandLineArgsSettingLookup")
     SECTION("ImplicitValuesBeforeAnotherOptionAndAtEnd")
     {
         vector<string> values {"lf_tests", "--Probe.Flag", "--Probe.Other", "value", "-Probe.Last"};
-        vector<CommandLineArg> argv;
+        vector<CommandLineArg> argv {};
 
         for (string& value : values) {
             argv.emplace_back(value.data());
@@ -123,7 +123,7 @@ TEST_CASE("CommandLineArgsSettingLookup")
     SECTION("EarlyBooleanMatchesFinalCommandLineOverride")
     {
         vector<string> values {"lf_tests", "--Common.NonInteractive", "False", "-Common.NonInteractive"};
-        vector<CommandLineArg> argv;
+        vector<CommandLineArg> argv {};
 
         for (string& value : values) {
             argv.emplace_back(value.data());
@@ -144,7 +144,7 @@ TEST_CASE("CommandLineArgsSettingLookup")
         // A bare flag after an explicit path must not answer the explicit-only getter: the earlier
         // value is the one the caller asked for, while the ordinary policy still takes the last entry
         vector<string> values {"lf_tests", "--ClientLibPath", "old.dll", "--ClientLibPath"};
-        vector<CommandLineArg> argv;
+        vector<CommandLineArg> argv {};
 
         for (string& value : values) {
             argv.emplace_back(value.data());
@@ -156,7 +156,7 @@ TEST_CASE("CommandLineArgsSettingLookup")
         CHECK(args.GetSettingValue(CommandLineSettings::ClientLibPath) == "1");
 
         vector<string> empty_values {"lf_tests", "--ClientLibPath", ""};
-        vector<CommandLineArg> empty_argv;
+        vector<CommandLineArg> empty_argv {};
 
         for (string& value : empty_values) {
             empty_argv.emplace_back(value.data());
@@ -171,7 +171,7 @@ TEST_CASE("CommandLineArgsSettingLookup")
     SECTION("GetSettingsKeepsOrderDuplicatesAndValueKinds")
     {
         vector<string> values {"lf_tests", "--ApplySubConfig", "First", "--ApplySubConfig", "Second", "--Probe.Flag", "--Probe.Next", "", "--Probe.Raw", " C:\\path\\\"quoted\" "};
-        vector<CommandLineArg> argv;
+        vector<CommandLineArg> argv {};
 
         for (string& value : values) {
             argv.emplace_back(value.data());
@@ -179,7 +179,7 @@ TEST_CASE("CommandLineArgsSettingLookup")
 
         CommandLineArgs args {argv};
 
-        vector<CommandLineSetting> sub_configs = args.GetSettings(CommandLineSettings::ApplySubConfig);
+        vector<CommandLineSetting> sub_configs {args.GetSettings(CommandLineSettings::ApplySubConfig)};
 
         REQUIRE(sub_configs.size() == 2);
         CHECK(sub_configs[0].Name == CommandLineSettings::ApplySubConfig);
@@ -189,7 +189,7 @@ TEST_CASE("CommandLineArgsSettingLookup")
 
         // The whole enumeration keeps every distinct entry in command-line order, with raw borrowed
         // values and implicit flags told apart from explicit empty strings
-        vector<CommandLineSetting> all = args.GetSettings();
+        vector<CommandLineSetting> all {args.GetSettings()};
 
         REQUIRE(all.size() == 5);
         CHECK(all[0].Name == CommandLineSettings::ApplySubConfig);
@@ -211,7 +211,7 @@ TEST_CASE("CommandLineArgsSettingLookup")
     SECTION("FlagPresenceMatchesWholeOptionNames")
     {
         vector<string> values {"lf_tests", "--Probe.Path", "C:\\tmp\\--server-service-start", "--server-service-delete-extra", "--fork", "False"};
-        vector<CommandLineArg> argv;
+        vector<CommandLineArg> argv {};
 
         for (string& value : values) {
             argv.emplace_back(value.data());
@@ -232,7 +232,7 @@ TEST_CASE("Settings")
     {
         GlobalSettings settings {false};
 
-        for (const string name : {"View.GlobalDayColorTime", "View.GlobalDayColor"}) {
+        for (string name : {"View.GlobalDayColorTime", "View.GlobalDayColor"}) {
             CAPTURE(name);
             CHECK_NOTHROW(settings.SetRuntimeSetting(name, "project-owned"));
             CHECK(settings.GetCustomSetting(name) == "project-owned");
@@ -310,7 +310,7 @@ TEST_CASE("Settings")
         CHECK(settings.GetCustomSetting("Mode") == "child");
         CHECK(settings.GetCustomSetting("Leaf") == "extra");
 
-        auto packs = settings.GetResourcePacks();
+        auto packs {settings.GetResourcePacks()};
         REQUIRE(packs.size() == 2);
         CHECK(packs[0].Name == "CommonPack");
         REQUIRE(packs[0].InputDirs.size() == 2);
@@ -347,9 +347,9 @@ TEST_CASE("Settings")
                            "[ResourcePack]\n"
                            "Name = ArtPack\n"
                            "InputDirs = art\n"};
-        string scripts_dir = strex("cfg").combine_path("scripts").str();
-        string tests_dir = strex("cfg").combine_path("scripts/tests").str();
-        string art_dir = strex("cfg").combine_path("art").str();
+        string scripts_dir {strex("cfg").combine_path("scripts").str()};
+        string tests_dir {strex("cfg").combine_path("scripts/tests").str()};
+        string art_dir {strex("cfg").combine_path("art").str()};
 
         GlobalSettings development {false};
         development.ApplyDefaultSettings();
@@ -438,11 +438,11 @@ TEST_CASE("Settings")
     SECTION("ApplyCommandLineSetsCustomValuesAndImplicitFlags")
     {
         GlobalSettings settings {false};
-        char arg0[] = "lf_tests";
-        char arg1[] = "--CustomCli";
-        char arg2[] = "123";
-        char arg3[] = "--FlagOnly";
-        vector<CommandLineArg> argv = {arg0, arg1, arg2, arg3};
+        char arg0[] {"lf_tests"};
+        char arg1[] {"--CustomCli"};
+        char arg2[] {"123"};
+        char arg3[] {"--FlagOnly"};
+        vector<CommandLineArg> argv {arg0, arg1, arg2, arg3};
 
         settings.ApplyCommandLine(CommandLineArgs {argv});
 
@@ -474,17 +474,17 @@ TEST_CASE("Settings")
         GlobalSettings settings {false};
         settings.ApplyDefaultSettings();
 
-        char arg0[] = "lf_tests";
-        char arg1[] = "--Render.FixedFPS";
-        char arg2[] = "60";
-        char arg3[] = "--Render.Sleep";
-        char arg4[] = "-1";
-        char arg5[] = "--Probe.Offset";
-        char arg6[] = "-0.5";
-        char arg7[] = "--Probe.Area";
-        char arg8[] = "-5 5 10 10";
-        char arg9[] = "--Probe.Flag";
-        vector<CommandLineArg> argv = {arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9};
+        char arg0[] {"lf_tests"};
+        char arg1[] {"--Render.FixedFPS"};
+        char arg2[] {"60"};
+        char arg3[] {"--Render.Sleep"};
+        char arg4[] {"-1"};
+        char arg5[] {"--Probe.Offset"};
+        char arg6[] {"-0.5"};
+        char arg7[] {"--Probe.Area"};
+        char arg8[] {"-5 5 10 10"};
+        char arg9[] {"--Probe.Flag"};
+        vector<CommandLineArg> argv {arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9};
 
         settings.ApplyCommandLine(CommandLineArgs {argv});
 
@@ -507,18 +507,18 @@ TEST_CASE("Settings")
 
     SECTION("ProgramArgsKeepTheArgumentsInUtf8")
     {
-        char arg0[] = "lf_tests";
-        char arg1[] = "--Common.UserWritablePath";
-        char arg2[] = "\xD0\xA2\xD0\xB5\xD1\x81\xD1\x82";
-        char* argv[] = {arg0, arg1, arg2};
+        char arg0[] {"lf_tests"};
+        char arg1[] {"--Common.UserWritablePath"};
+        char arg2[] {"\xD0\xA2\xD0\xB5\xD1\x81\xD1\x82"};
+        char* argv[] {arg0, arg1, arg2};
 
         ProgramArgs program_args {3, argv};
-        CommandLineArgs args = program_args.GetArgs();
+        CommandLineArgs args {program_args.GetArgs()};
 
 #if FO_WINDOWS
         // The console argv is not trusted there: the arguments come from the wide command line of this process
         REQUIRE_FALSE(args.empty());
-        auto exe_path = platform::get_exe_path();
+        auto exe_path {platform::get_exe_path()};
         REQUIRE(exe_path.has_value());
         CHECK(strex(args.Get(0)).extract_file_name().erase_file_extension().lower().str() == strex(exe_path.value()).extract_file_name().erase_file_extension().lower().str());
 #else
@@ -531,21 +531,21 @@ TEST_CASE("Settings")
     SECTION("ApplyCommandLineMasksSecretValuesInLog")
     {
         // Capture the "Set <name> to <value>" lines emitted by the logging pass
-        string captured;
+        string captured {};
         logging::set_callback("settings_secret_redaction_test", [&captured](logging::type, string_view message, nptr<const stack_trace::catched_data>) { captured += message; });
-        auto remove_callback = scope_exit([]() noexcept { logging::set_callback("settings_secret_redaction_test", nullptr); });
+        auto remove_callback {scope_exit([]() noexcept { logging::set_callback("settings_secret_redaction_test", nullptr); })};
 
         GlobalSettings settings {false};
         // Real flow logs command-line overrides only after defaults (and the config) are applied, so the
         // Common.SecretSettingTokens list (default includes "token") is populated by then
         settings.ApplyDefaultSettings();
 
-        char arg0[] = "lf_tests";
-        char arg1[] = "--Probe.AccessToken";
-        char arg2[] = "super-secret-value";
-        char arg3[] = "--Common.GameName";
-        char arg4[] = "RedactionProbe";
-        char* argv[] = {arg0, arg1, arg2, arg3, arg4};
+        char arg0[] {"lf_tests"};
+        char arg1[] {"--Probe.AccessToken"};
+        char arg2[] {"super-secret-value"};
+        char arg3[] {"--Common.GameName"};
+        char arg4[] {"RedactionProbe"};
+        char* argv[] {arg0, arg1, arg2, arg3, arg4};
 
         settings.ApplyCommandLine(CommandLineArgs {5, argv});
 
@@ -565,10 +565,10 @@ TEST_CASE("Settings")
         // '+'-prefixed overrides append, so applying one command line twice doubles the result — the hazard the
         // single-application flow exists to avoid
         GlobalSettings settings {false};
-        char arg0[] = "lf_tests";
-        char arg1[] = "--Common.GameName";
-        char arg2[] = "+Tag";
-        char* argv[] = {arg0, arg1, arg2};
+        char arg0[] {"lf_tests"};
+        char arg1[] {"--Common.GameName"};
+        char arg2[] {"+Tag"};
+        char* argv[] {arg0, arg1, arg2};
 
         settings.ApplyCommandLine(CommandLineArgs {3, argv});
         CHECK(settings.Common.GameName == "Tag");
@@ -581,13 +581,13 @@ TEST_CASE("Settings")
     SECTION("StringSettingsKeepBackslashesAsWritten")
     {
         // Each path holds a sequence the AnyData coded-string grammar rewrites: \n, \r and a doubled backslash
-        string unc_path = R"(\\server\share\none\runs\Baking)";
-        string drive_path = R"(C:\work\none\Baking)";
+        string unc_path {R"(\\server\share\none\runs\Baking)"};
+        string drive_path {R"(C:\work\none\Baking)"};
 
         GlobalSettings from_command_line {false};
         from_command_line.ApplyDefaultSettings();
-        string path_arg = unc_path;
-        std::array<char*, 3> argv = {const_cast<char*>("app"), const_cast<char*>("--Baking.BakeOutput"), path_arg.data()};
+        string path_arg {unc_path};
+        std::array<char*, 3> argv {const_cast<char*>("app"), const_cast<char*>("--Baking.BakeOutput"), path_arg.data()};
         from_command_line.ApplyCommandLine(CommandLineArgs {numeric_cast<int32_t>(argv.size()), argv.data()});
 
         CHECK(from_command_line.Baking.BakeOutput == unc_path);
@@ -605,13 +605,13 @@ TEST_CASE("Settings")
     {
         // The config baker writes Save() as key=value lines that a packaged application parses back, so a value
         // rewritten on read would drift further with every bake
-        string unc_path = R"(\\server\share\none\runs\Baking)";
+        string unc_path {R"(\\server\share\none\runs\Baking)"};
 
         GlobalSettings baking {true};
         baking.ApplyDefaultSettings();
         ConfigFile authored {strex("Baking.BakeOutput = {}\nManagedScript.Dirs = {} Scripts\n", unc_path, unc_path).str()};
         baking.ApplyConfigFile(authored, "");
-        auto saved = baking.Save();
+        auto saved {baking.Save()};
 
         GlobalSettings packaged {false};
         packaged.ApplyDefaultSettings();
@@ -624,8 +624,8 @@ TEST_CASE("Settings")
 
     SECTION("ApplyConfigAtPathResolvesFileVariables")
     {
-        string temp_dir = MakeTempSettingsDir("settings_config");
-        bool removed_before = fs::remove_dir_tree(temp_dir);
+        string temp_dir {MakeTempSettingsDir("settings_config")};
+        bool removed_before {fs::remove_dir_tree(temp_dir)};
         ignore_unused(removed_before);
 
         REQUIRE(fs::write_file(strex(temp_dir).combine_path("payload.txt").str(), string_view {"  loaded value  "}));
@@ -651,12 +651,12 @@ TEST_CASE("Settings")
     {
         GlobalSettings settings {false};
 
-        auto missing = settings.FindCustomSetting("Missing");
+        auto missing {settings.FindCustomSetting("Missing")};
         CHECK_FALSE(static_cast<bool>(missing));
         CHECK(settings.GetCustomSetting("Missing").empty());
 
         settings.SetCustomSetting("Present", any_t(string("value")));
-        auto present = settings.FindCustomSetting("Present");
+        auto present {settings.FindCustomSetting("Present")};
 
         REQUIRE(static_cast<bool>(present));
         CHECK(*present == "value");
@@ -670,7 +670,7 @@ TEST_CASE("Settings")
 
         // Every engine setting is read-only at runtime: a configured value is a knob someone turned, and the
         // system that owns a value which changes while the game runs keeps that value itself
-        bool original_scroll = settings.Hex.WindowedMouseScroll;
+        bool original_scroll {settings.Hex.WindowedMouseScroll};
         CHECK_THROWS_AS(settings.SetRuntimeSetting(string(SettingNames::Hex_WindowedMouseScroll), "True"), SettingsException);
         CHECK(settings.Hex.WindowedMouseScroll == original_scroll);
         CHECK_FALSE(static_cast<bool>(settings.FindCustomSetting(SettingNames::Hex_WindowedMouseScroll)));
@@ -684,7 +684,7 @@ TEST_CASE("Settings")
 
         // A custom write moves the generation, a rejected engine write does not: the managed typed-setting cell
         // re-parses a custom value only when this counter moved
-        uint64_t generation_before = settings.GetCustomSettingsGeneration();
+        uint64_t generation_before {settings.GetCustomSettingsGeneration()};
         settings.SetRuntimeSetting("Project.RuntimeValue", "value");
         CHECK(settings.GetCustomSetting("Project.RuntimeValue") == "value");
         CHECK(settings.GetCustomSettingsGeneration() == generation_before + 1);
@@ -693,12 +693,12 @@ TEST_CASE("Settings")
         settings.SetCustomSetting("Project.RuntimeValue", any_t("other"));
         CHECK(settings.GetCustomSettingsGeneration() == generation_before + 2);
 
-        string original_game_name = settings.Common.GameName;
+        string original_game_name {settings.Common.GameName};
         CHECK_THROWS_AS(settings.SetRuntimeSetting(string(SettingNames::Common_GameName), "Changed"), SettingsException);
         CHECK(settings.Common.GameName == original_game_name);
         CHECK_FALSE(static_cast<bool>(settings.FindCustomSetting(SettingNames::Common_GameName)));
 
-        string name_collision = "Common.GameName";
+        string name_collision {"Common.GameName"};
         name_collision.push_back('\0');
         name_collision += "Custom";
         REQUIRE(const_hash(name_collision.c_str()) == const_hash(SettingNames::Common_GameName.data()));
@@ -735,8 +735,8 @@ TEST_CASE("Settings")
 
         settings.ApplyConfigFile(config, "");
 
-        auto saved = settings.Save();
-        auto it = saved.find("CustomSaved");
+        auto saved {settings.Save()};
+        auto it {saved.find("CustomSaved")};
         REQUIRE(it != saved.end());
         CHECK(it->second == "value");
     }
@@ -767,12 +767,12 @@ TEST_CASE("Settings")
     {
         // An explicit path on the command line is the one source that outranks everything, because it is
         // the only one available before any file has been read
-        string root = MakeTempSettingsDir("settings_writable_root");
+        string root {MakeTempSettingsDir("settings_writable_root")};
         ignore_unused(fs::remove_dir_tree(root));
 
-        string root_arg = root;
-        std::array<char*, 3> argv = {const_cast<char*>("app"), const_cast<char*>("--Common.UserWritablePath"), root_arg.data()};
-        string resolved = ResolveWritableRoot(CommandLineArgs {numeric_cast<int32_t>(argv.size()), argv.data()});
+        string root_arg {root};
+        std::array<char*, 3> argv {const_cast<char*>("app"), const_cast<char*>("--Common.UserWritablePath"), root_arg.data()};
+        string resolved {ResolveWritableRoot(CommandLineArgs {numeric_cast<int32_t>(argv.size()), argv.data()})};
 
         CHECK(resolved == fs::resolve_path(root));
         CHECK(fs::is_dir(resolved));
@@ -787,10 +787,10 @@ TEST_CASE("Settings")
         settings.ApplyDefaultSettings();
         settings.ApplyWritableRoot("/home/player/.local/share/Game");
 
-        char arg0[] = "app";
-        char arg1[] = "--Common.UserWritablePath";
-        char arg2[] = "*";
-        char* argv[] = {arg0, arg1, arg2};
+        char arg0[] {"app"};
+        char arg1[] {"--Common.UserWritablePath"};
+        char arg2[] {"*"};
+        char* argv[] {arg0, arg1, arg2};
         settings.ApplyCommandLine(CommandLineArgs {3, argv});
 
         CHECK(settings.Common.UserWritablePath == "/home/player/.local/share/Game");
@@ -799,7 +799,7 @@ TEST_CASE("Settings")
     SECTION("WritableRootWithoutMarkerStaysInTheWorkingDirectory")
     {
         // No path argument and no installer marker next to the test exe: everything stays relative
-        std::array<char*, 1> argv = {const_cast<char*>("app")};
+        std::array<char*, 1> argv {const_cast<char*>("app")};
 
         CHECK(ResolveWritableRoot(CommandLineArgs {numeric_cast<int32_t>(argv.size()), argv.data()}).empty());
     }
@@ -808,13 +808,13 @@ TEST_CASE("Settings")
     {
         // A root whose parent is a regular file can't be created: the resolver must fail safe rather than
         // brick startup
-        string temp_dir = MakeTempSettingsDir("settings_writable_blocker");
+        string temp_dir {MakeTempSettingsDir("settings_writable_blocker")};
         ignore_unused(fs::remove_dir_tree(temp_dir));
-        string blocker = strex(temp_dir).combine_path("blocker").str();
+        string blocker {strex(temp_dir).combine_path("blocker").str()};
         REQUIRE(fs::write_file(blocker, string_view {"x"}));
 
-        string blocked_root = strex(blocker).combine_path("sub").str();
-        std::array<char*, 3> argv = {const_cast<char*>("app"), const_cast<char*>("--Common.UserWritablePath"), blocked_root.data()};
+        string blocked_root {strex(blocker).combine_path("sub").str()};
+        std::array<char*, 3> argv {const_cast<char*>("app"), const_cast<char*>("--Common.UserWritablePath"), blocked_root.data()};
 
         CHECK(ResolveWritableRoot(CommandLineArgs {numeric_cast<int32_t>(argv.size()), argv.data()}).empty());
 
@@ -825,20 +825,20 @@ TEST_CASE("Settings")
     {
         // Valueless and empty occurrences are skipped, and the first explicit path that survives wins,
         // even when a later occurrence is valid too
-        string temp_dir = MakeTempSettingsDir("settings_writable_first");
-        auto cleanup = scope_exit([temp_dir]() noexcept { ignore_unused(fs::remove_dir_tree(temp_dir)); });
+        string temp_dir {MakeTempSettingsDir("settings_writable_first")};
+        auto cleanup {scope_exit([temp_dir]() noexcept { ignore_unused(fs::remove_dir_tree(temp_dir)); })};
         REQUIRE(fs::create_directories(temp_dir));
 
-        string root_a = strex(temp_dir).combine_path("root_a").str();
-        string root_b = strex(temp_dir).combine_path("root_b").str();
+        string root_a {strex(temp_dir).combine_path("root_a").str()};
+        string root_b {strex(temp_dir).combine_path("root_b").str()};
         vector<string> values {"app", "--Common.UserWritablePath", "--Common.UserWritablePath", "", "--Common.UserWritablePath", root_a, "--Common.UserWritablePath", root_b};
-        vector<CommandLineArg> argv;
+        vector<CommandLineArg> argv {};
 
         for (string& value : values) {
             argv.emplace_back(value.data());
         }
 
-        string resolved = ResolveWritableRoot(CommandLineArgs {argv});
+        string resolved {ResolveWritableRoot(CommandLineArgs {argv})};
 
         CHECK(resolved == fs::resolve_path(root_a));
         CHECK(fs::is_dir(root_a));
@@ -847,11 +847,11 @@ TEST_CASE("Settings")
 
     SECTION("LoadAppSettingsAppliesSubConfigsInCommandLineOrder")
     {
-        string temp_dir = MakeTempSettingsDir("settings_load_app_order");
-        auto cleanup = scope_exit([temp_dir]() noexcept { ignore_unused(fs::remove_dir_tree(temp_dir)); });
+        string temp_dir {MakeTempSettingsDir("settings_load_app_order")};
+        auto cleanup {scope_exit([temp_dir]() noexcept { ignore_unused(fs::remove_dir_tree(temp_dir)); })};
         REQUIRE(fs::create_directories(temp_dir));
 
-        string config_path = strex(temp_dir).combine_path("main.fomain").str();
+        string config_path {strex(temp_dir).combine_path("main.fomain").str()};
         REQUIRE(fs::write_file(config_path,
             string_view {"Common.GameName = Base\n"
                          "[SubConfig]\n"
@@ -861,47 +861,47 @@ TEST_CASE("Settings")
                          "Name = Second\n"
                          "Common.GameName = Second\n"}));
 
-        string writable_ordered = strex(temp_dir).combine_path("writable_ordered").str();
+        string writable_ordered {strex(temp_dir).combine_path("writable_ordered").str()};
         vector<string> ordered_values {"app", "--ApplyConfig", config_path, "--ApplySubConfig", "First", "--ApplySubConfig", "Second", "--Common.UserWritablePath", writable_ordered};
-        vector<CommandLineArg> ordered_argv;
+        vector<CommandLineArg> ordered_argv {};
 
         for (string& value : ordered_values) {
             ordered_argv.emplace_back(value.data());
         }
 
-        GlobalSettings ordered = LoadAppSettings(CommandLineArgs {ordered_argv});
+        GlobalSettings ordered {LoadAppSettings(CommandLineArgs {ordered_argv})};
 
         CHECK(ordered.Common.GameName == "Second");
 
-        string writable_reversed = strex(temp_dir).combine_path("writable_reversed").str();
+        string writable_reversed {strex(temp_dir).combine_path("writable_reversed").str()};
         vector<string> reversed_values {"app", "--ApplyConfig", config_path, "--ApplySubConfig", "Second", "--ApplySubConfig", "First", "--Common.UserWritablePath", writable_reversed};
-        vector<CommandLineArg> reversed_argv;
+        vector<CommandLineArg> reversed_argv {};
 
         for (string& value : reversed_values) {
             reversed_argv.emplace_back(value.data());
         }
 
-        GlobalSettings reversed = LoadAppSettings(CommandLineArgs {reversed_argv});
+        GlobalSettings reversed {LoadAppSettings(CommandLineArgs {reversed_argv})};
 
         CHECK(reversed.Common.GameName == "First");
     }
 
     SECTION("LoadAppSettingsThrowsForBareConfigNameBeforeLaterValidOccurrence")
     {
-        string temp_dir = MakeTempSettingsDir("settings_load_app_bare_config");
-        auto cleanup = scope_exit([temp_dir]() noexcept { ignore_unused(fs::remove_dir_tree(temp_dir)); });
+        string temp_dir {MakeTempSettingsDir("settings_load_app_bare_config")};
+        auto cleanup {scope_exit([temp_dir]() noexcept { ignore_unused(fs::remove_dir_tree(temp_dir)); })};
         REQUIRE(fs::create_directories(temp_dir));
 
-        string config_path = strex(temp_dir).combine_path("main.fomain").str();
+        string config_path {strex(temp_dir).combine_path("main.fomain").str()};
         REQUIRE(fs::write_file(config_path,
             string_view {"Common.GameName = Base\n"
                          "[SubConfig]\n"
                          "Name = First\n"
                          "Common.GameName = First\n"}));
 
-        string writable = strex(temp_dir).combine_path("writable").str();
+        string writable {strex(temp_dir).combine_path("writable").str()};
         vector<string> values {"app", "--ApplyConfig", "--ApplyConfig", config_path, "--Common.UserWritablePath", writable};
-        vector<CommandLineArg> argv;
+        vector<CommandLineArg> argv {};
 
         for (string& value : values) {
             argv.emplace_back(value.data());
@@ -912,20 +912,20 @@ TEST_CASE("Settings")
 
     SECTION("LoadAppSettingsThrowsForBareSubConfigNameBeforeLaterValidOccurrence")
     {
-        string temp_dir = MakeTempSettingsDir("settings_load_app_bare_subconfig");
-        auto cleanup = scope_exit([temp_dir]() noexcept { ignore_unused(fs::remove_dir_tree(temp_dir)); });
+        string temp_dir {MakeTempSettingsDir("settings_load_app_bare_subconfig")};
+        auto cleanup {scope_exit([temp_dir]() noexcept { ignore_unused(fs::remove_dir_tree(temp_dir)); })};
         REQUIRE(fs::create_directories(temp_dir));
 
-        string config_path = strex(temp_dir).combine_path("main.fomain").str();
+        string config_path {strex(temp_dir).combine_path("main.fomain").str()};
         REQUIRE(fs::write_file(config_path,
             string_view {"Common.GameName = Base\n"
                          "[SubConfig]\n"
                          "Name = First\n"
                          "Common.GameName = First\n"}));
 
-        string writable = strex(temp_dir).combine_path("writable").str();
+        string writable {strex(temp_dir).combine_path("writable").str()};
         vector<string> values {"app", "--ApplyConfig", config_path, "--ApplySubConfig", "--ApplySubConfig", "First", "--Common.UserWritablePath", writable};
-        vector<CommandLineArg> argv;
+        vector<CommandLineArg> argv {};
 
         for (string& value : values) {
             argv.emplace_back(value.data());
@@ -941,24 +941,24 @@ TEST_CASE("Settings")
         GlobalSettings settings {false};
         settings.ApplyDefaultSettings();
 
-        char arg0[] = "lf_tests";
-        char arg1[] = "--Common.SecretSettingTokens";
-        char arg2[] = "base";
-        char arg3[] = "-Common.SecretSettingTokens";
-        char arg4[] = "+tail";
-        char arg5[] = "--Common.SecretSettingTokens";
-        char arg6[] = "+last";
-        char* argv[] = {arg0, arg1, arg2, arg3, arg4, arg5, arg6};
+        char arg0[] {"lf_tests"};
+        char arg1[] {"--Common.SecretSettingTokens"};
+        char arg2[] {"base"};
+        char arg3[] {"-Common.SecretSettingTokens"};
+        char arg4[] {"+tail"};
+        char arg5[] {"--Common.SecretSettingTokens"};
+        char arg6[] {"+last"};
+        char* argv[] {arg0, arg1, arg2, arg3, arg4, arg5, arg6};
 
         settings.ApplyCommandLine(CommandLineArgs {7, argv});
 
         CHECK(settings.Common.SecretSettingTokens == vector<string> {"base", "tail", "last"});
 
-        char arg7[] = "--Probe.Scalar";
-        char arg8[] = "first";
-        char arg9[] = "-Probe.Scalar";
-        char arg10[] = "second";
-        char* last_argv[] = {arg0, arg7, arg8, arg9, arg10};
+        char arg7[] {"--Probe.Scalar"};
+        char arg8[] {"first"};
+        char arg9[] {"-Probe.Scalar"};
+        char arg10[] {"second"};
+        char* last_argv[] {arg0, arg7, arg8, arg9, arg10};
 
         settings.ApplyCommandLine(CommandLineArgs {5, last_argv});
 
@@ -992,16 +992,16 @@ TEST_CASE("WritableRootConfigCannotReplaceStartupResolution")
 
 TEST_CASE("ApplicationWritableRootRejectsLateConfigSources")
 {
-    string root = MakeTempSettingsDir("application_writable_root");
-    auto cleanup = scope_exit([&root]() noexcept { (void)fs::remove_dir_tree(root); });
-    string config_path = strex(root).combine_path("Startup.fomain").str();
-    string config = "Render.Sleep = 7\n";
-    char program[] = "settings_test";
-    char apply_config[] = "--ApplyConfig";
-    char writable_path[] = "--Common.UserWritablePath";
-    char apply_subconfig[] = "--ApplySubConfig";
-    char subconfig_name[] = "Late";
-    vector<CommandLineArg> args = {program, apply_config, config_path.data(), writable_path, root.data()};
+    string root {MakeTempSettingsDir("application_writable_root")};
+    auto cleanup {scope_exit([&root]() noexcept { (void)fs::remove_dir_tree(root); })};
+    string config_path {strex(root).combine_path("Startup.fomain").str()};
+    string config {"Render.Sleep = 7\n"};
+    char program[] {"settings_test"};
+    char apply_config[] {"--ApplyConfig"};
+    char writable_path[] {"--Common.UserWritablePath"};
+    char apply_subconfig[] {"--ApplySubConfig"};
+    char subconfig_name[] {"Late"};
+    vector<CommandLineArg> args {program, apply_config, config_path.data(), writable_path, root.data()};
 
     SECTION("MainConfig")
     {
@@ -1027,9 +1027,9 @@ TEST_CASE("ApplicationWritableRootRejectsLateConfigSources")
 
 TEST_CASE("ApplicationSettings")
 {
-    string root = MakeTempSettingsDir("application_settings");
-    auto cleanup = scope_exit([&root]() noexcept { (void)fs::remove_dir_tree(root); });
-    string config_path = strex(root).combine_path("Startup.fomain").str();
+    string root {MakeTempSettingsDir("application_settings")};
+    auto cleanup {scope_exit([&root]() noexcept { (void)fs::remove_dir_tree(root); })};
+    string config_path {strex(root).combine_path("Startup.fomain").str()};
     REQUIRE(fs::write_file(config_path,
         string_view {"Render.Sleep = 7\n"
                      "Network.NetBufferSize = 8192\n"
@@ -1037,12 +1037,12 @@ TEST_CASE("ApplicationSettings")
                      "Name = Override\n"
                      "Render.Sleep = 11\n"}));
 
-    char program[] = "settings_test";
-    char apply_config[] = "--ApplyConfig";
-    char writable_path[] = "--Common.UserWritablePath";
-    vector<CommandLineArg> args = {program, apply_config, config_path.data(), writable_path, root.data()};
+    char program[] {"settings_test"};
+    char apply_config[] {"--ApplyConfig"};
+    char writable_path[] {"--Common.UserWritablePath"};
+    vector<CommandLineArg> args {program, apply_config, config_path.data(), writable_path, root.data()};
 
-    auto configured = LoadAppSettings(CommandLineArgs {args});
+    auto configured {LoadAppSettings(CommandLineArgs {args})};
     CHECK(configured.SpriteMesh.MaxTriangles == 4096);
     CHECK(configured.ServerNetwork.ClientPingTime == 10000);
     CHECK(configured.Baking.CacheResources == "Cache");
@@ -1051,29 +1051,29 @@ TEST_CASE("ApplicationSettings")
     CHECK(configured.Render.Sleep == 7);
     CHECK(configured.Common.UserWritablePath == fs::resolve_path(root));
 
-    char apply_subconfig[] = "--ApplySubConfig";
-    char subconfig_name[] = "Override";
+    char apply_subconfig[] {"--ApplySubConfig"};
+    char subconfig_name[] {"Override"};
     args.emplace_back(apply_subconfig);
     args.emplace_back(subconfig_name);
-    auto overlaid = LoadAppSettings(CommandLineArgs {args});
+    auto overlaid {LoadAppSettings(CommandLineArgs {args})};
     CHECK(overlaid.Render.Sleep == 11);
     CHECK(overlaid.SpriteMesh.MaxTriangles == 4096);
 
     {
-        CacheStorage cache(strex(root).combine_path("Cache").str());
+        CacheStorage cache {strex(root).combine_path("Cache").str()};
         cache.SetString(LOCAL_CONFIG_NAME, "Render.Sleep = 13\nCommon.UserWritablePath =\n");
     }
 
-    auto cached = LoadAppSettings(CommandLineArgs {args});
+    auto cached {LoadAppSettings(CommandLineArgs {args})};
     CHECK(cached.Render.Sleep == 13);
     CHECK(cached.Common.UserWritablePath == fs::resolve_path(root));
     CHECK(cached.ServerNetwork.ClientPingTime == 10000);
 
-    char sleep_setting[] = "--Render.Sleep";
-    char zero[] = "0";
+    char sleep_setting[] {"--Render.Sleep"};
+    char zero[] {"0"};
     args.emplace_back(sleep_setting);
     args.emplace_back(zero);
-    auto command_line = LoadAppSettings(CommandLineArgs {args});
+    auto command_line {LoadAppSettings(CommandLineArgs {args})};
     CHECK(command_line.Render.Sleep == 0);
     CHECK(command_line.Network.NetBufferSize == 8192);
     CHECK(command_line.SpriteMesh.MaxTriangles == 4096);
@@ -1085,28 +1085,28 @@ TEST_CASE("PackagedApplicationSettings", "[.][settings]")
         SKIP("Requires a packaged unit-test binary with a Metadata bootstrap pack");
     }
 
-    string root = MakeTempSettingsDir("packaged_application_settings");
-    auto cleanup = scope_exit([&root]() noexcept { safe_call([&root] { (void)fs::remove_dir_tree(root); }); });
-    char program[] = "settings_test";
-    char writable_path[] = "--Common.UserWritablePath";
-    char append_setting[] = "--Common.SecretSettingTokens";
-    char append_value[] = "+startup-probe";
-    char direct_draw[] = "--View.MapDirectDraw";
-    char enabled[] = "1";
-    char compatibility[] = "--Network.ForceCompatibilityVersion";
-    char compatibility_value[] = "startup-probe-version";
+    string root {MakeTempSettingsDir("packaged_application_settings")};
+    auto cleanup {scope_exit([&root]() noexcept { safe_call([&root] { (void)fs::remove_dir_tree(root); }); })};
+    char program[] {"settings_test"};
+    char writable_path[] {"--Common.UserWritablePath"};
+    char append_setting[] {"--Common.SecretSettingTokens"};
+    char append_value[] {"+startup-probe"};
+    char direct_draw[] {"--View.MapDirectDraw"};
+    char enabled[] {"1"};
+    char compatibility[] {"--Network.ForceCompatibilityVersion"};
+    char compatibility_value[] {"startup-probe-version"};
     vector<CommandLineArg> args {program, writable_path, root.data(), append_setting, append_value, direct_draw, enabled, compatibility, compatibility_value};
-    size_t append_logs = 0;
+    size_t append_logs {0};
     logging::set_callback("packaged_settings_once_test", [&append_logs](logging::type, string_view message, nptr<const stack_trace::catched_data>) {
         if (message.find("Set Common.SecretSettingTokens to ") != string_view::npos) {
             append_logs++;
         }
     });
-    auto remove_callback = scope_exit([]() noexcept { logging::set_callback("packaged_settings_once_test", nullptr); });
+    auto remove_callback {scope_exit([]() noexcept { logging::set_callback("packaged_settings_once_test", nullptr); })};
 
     SECTION("MissingResourceAppliesCommandLineOnce")
     {
-        auto settings = LoadAppSettings(CommandLineArgs {args});
+        auto settings {LoadAppSettings(CommandLineArgs {args})};
         CHECK_FALSE(settings.GetResourceConfigContent());
         CHECK(std::ranges::count(settings.Common.SecretSettingTokens, "startup-probe") == 1);
         CHECK(append_logs == 1);
@@ -1118,36 +1118,36 @@ TEST_CASE("PackagedApplicationSettings", "[.][settings]")
 
     SECTION("ResourceLocationOverrideAndFinalPrecedence")
     {
-        string resources = strex(root).combine_path("AlternateResources").str();
+        string resources {strex(root).combine_path("AlternateResources").str()};
         REQUIRE(fs::create_directories(resources));
-        string content = "Common.GameVersion=resource-version\n"
-                         "Client.Language=russ\nCommon.SecretSettingTokens=resource-secret\n"
-                         "Baking.CacheResources=ResourceCache\n"
-                         "[ResourcePack]\nName=Metadata\n";
+        string content {"Common.GameVersion=resource-version\n"
+                        "Client.Language=russ\nCommon.SecretSettingTokens=resource-secret\n"
+                        "Baking.CacheResources=ResourceCache\n"
+                        "[ResourcePack]\nName=Metadata\n"};
         {
             ResourcePackWriter writer {strex(resources).combine_path("Metadata.fores").str()};
             writer.AddFile("Selected.fomain-client", make_const_span(content));
             // The reader filters by config suffix and never parses the metadata payload
-            string metadata_content = "metadata-bytes";
+            string metadata_content {"metadata-bytes"};
             writer.AddFile("Metadata.fometa-client", make_const_span(metadata_content));
             writer.Finish();
         }
-        string cache_path = strex(root).combine_path("SelectedCache").str();
+        string cache_path {strex(root).combine_path("SelectedCache").str()};
         {
-            CacheStorage cache(cache_path);
+            CacheStorage cache {cache_path};
             cache.SetString(LOCAL_CONFIG_NAME, "Client.Language=ru18\nCommon.SecretSettingTokens=local-secret\n");
         }
-        char resource_path[] = "--Baking.ClientResources";
-        char cache_setting[] = "--Baking.CacheResources";
-        char language[] = "--Client.Language";
-        char language_value[] = "en18";
+        char resource_path[] {"--Baking.ClientResources"};
+        char cache_setting[] {"--Baking.CacheResources"};
+        char language[] {"--Client.Language"};
+        char language_value[] {"en18"};
         args.emplace_back(resource_path);
         args.emplace_back(resources.data());
         args.emplace_back(cache_setting);
         args.emplace_back(cache_path.data());
         args.emplace_back(language);
         args.emplace_back(language_value);
-        auto settings = LoadAppSettings(CommandLineArgs {args});
+        auto settings {LoadAppSettings(CommandLineArgs {args})};
         REQUIRE(settings.GetResourceConfigContent());
         CHECK(*settings.GetResourceConfigContent() == content);
         CHECK(settings.Common.GameVersion == "resource-version");
@@ -1169,16 +1169,16 @@ TEST_CASE("PackagedServerApplicationSettings", "[.][settings]")
         SKIP("Requires a packaged unit-test binary with a Metadata bootstrap pack");
     }
 
-    string root = MakeTempSettingsDir("packaged_server_settings");
-    auto cleanup = scope_exit([&root]() noexcept { safe_call([&root] { (void)fs::remove_dir_tree(root); }); });
-    string server_resources = strex(root).combine_path("ServerResources").str();
-    string client_resources = strex(root).combine_path("ClientResources").str();
-    char program[] = "settings_test";
-    char writable_path[] = "--Common.UserWritablePath";
-    char server_path[] = "--Baking.ServerResources";
-    char client_path[] = "--Baking.ClientResources";
-    char append_setting[] = "--Common.SecretSettingTokens";
-    char append_value[] = "+server-startup-probe";
+    string root {MakeTempSettingsDir("packaged_server_settings")};
+    auto cleanup {scope_exit([&root]() noexcept { safe_call([&root] { (void)fs::remove_dir_tree(root); }); })};
+    string server_resources {strex(root).combine_path("ServerResources").str()};
+    string client_resources {strex(root).combine_path("ClientResources").str()};
+    char program[] {"settings_test"};
+    char writable_path[] {"--Common.UserWritablePath"};
+    char server_path[] {"--Baking.ServerResources"};
+    char client_path[] {"--Baking.ClientResources"};
+    char append_setting[] {"--Common.SecretSettingTokens"};
+    char append_value[] {"+server-startup-probe"};
     vector<CommandLineArg> args {program, writable_path, root.data(), server_path, server_resources.data(), client_path, client_resources.data(), append_setting, append_value};
 
     SECTION("ReadsServerResourceAndKeepsServerSettings")
@@ -1186,32 +1186,32 @@ TEST_CASE("PackagedServerApplicationSettings", "[.][settings]")
         REQUIRE(fs::create_directories(server_resources));
         REQUIRE(fs::create_directories(client_resources));
         {
-            string content = "Common.GameVersion=server-resource-version\nServer.DbStorage=JSON\nServer.AutoStartClientOnServer=2\n"
-                             "[ResourcePack]\nName=Metadata\n";
+            string content {"Common.GameVersion=server-resource-version\nServer.DbStorage=JSON\nServer.AutoStartClientOnServer=2\n"
+                            "[ResourcePack]\nName=Metadata\n"};
             ResourcePackWriter writer {strex(server_resources).combine_path("Metadata.fores").str()};
             writer.AddFile("Selected.fomain-server", make_const_span(content));
             // The reader filters by config suffix and never parses the metadata payload
-            string metadata_content = "metadata-bytes";
+            string metadata_content {"metadata-bytes"};
             writer.AddFile("Metadata.fometa-server", make_const_span(metadata_content));
             writer.Finish();
         }
         {
-            string content = "Common.GameVersion=client-resource-version\n[ResourcePack]\nName=Metadata\n";
+            string content {"Common.GameVersion=client-resource-version\n[ResourcePack]\nName=Metadata\n"};
             ResourcePackWriter writer {strex(client_resources).combine_path("Metadata.fores").str()};
             writer.AddFile("Selected.fomain-client", make_const_span(content));
-            string metadata_content = "metadata-bytes";
+            string metadata_content {"metadata-bytes"};
             writer.AddFile("Metadata.fometa-client", make_const_span(metadata_content));
             writer.Finish();
         }
         {
-            CacheStorage cache(strex(root).combine_path("Cache").str());
+            CacheStorage cache {strex(root).combine_path("Cache").str()};
             cache.SetString(LOCAL_CONFIG_NAME, "Server.ServerHeight=600\n");
         }
-        char height[] = "--Server.ServerHeight";
-        char height_value[] = "720";
+        char height[] {"--Server.ServerHeight"};
+        char height_value[] {"720"};
         args.emplace_back(height);
         args.emplace_back(height_value);
-        auto settings = LoadAppSettings(CommandLineArgs {args});
+        auto settings {LoadAppSettings(CommandLineArgs {args})};
         CHECK(settings.Common.GameVersion == "server-resource-version");
         CHECK(settings.Server.DbStorage == "JSON");
         CHECK(settings.Server.AutoStartClientOnServer == 2);
@@ -1224,15 +1224,15 @@ TEST_CASE("PackagedServerApplicationSettings", "[.][settings]")
     SECTION("MissingServerConfigurationFallsBackToClient")
     {
         REQUIRE(fs::create_directories(client_resources));
-        string content = "Common.GameVersion=client-fallback-version\n[ResourcePack]\nName=Metadata\n";
+        string content {"Common.GameVersion=client-fallback-version\n[ResourcePack]\nName=Metadata\n"};
         {
             ResourcePackWriter writer {strex(client_resources).combine_path("Metadata.fores").str()};
             writer.AddFile("Selected.fomain-client", make_const_span(content));
-            string metadata_content = "metadata-bytes";
+            string metadata_content {"metadata-bytes"};
             writer.AddFile("Metadata.fometa-client", make_const_span(metadata_content));
             writer.Finish();
         }
-        auto settings = LoadAppSettings(CommandLineArgs {args});
+        auto settings {LoadAppSettings(CommandLineArgs {args})};
         CHECK(settings.Common.GameVersion == "client-fallback-version");
         CHECK(settings.GetResourceConfigContent() == content);
         CHECK(std::ranges::count(settings.Common.SecretSettingTokens, "server-startup-probe") == 1);
@@ -1240,7 +1240,7 @@ TEST_CASE("PackagedServerApplicationSettings", "[.][settings]")
 
     SECTION("MissingResourcesKeepBootstrap")
     {
-        auto settings = LoadAppSettings(CommandLineArgs {args});
+        auto settings {LoadAppSettings(CommandLineArgs {args})};
         CHECK_FALSE(settings.GetResourceConfigContent());
         CHECK(settings.Common.GameVersion == "bootstrap-version");
         CHECK(std::ranges::count(settings.Common.SecretSettingTokens, "server-startup-probe") == 1);
@@ -1249,21 +1249,21 @@ TEST_CASE("PackagedServerApplicationSettings", "[.][settings]")
 
 TEST_CASE("ResourceConfigurationPriority")
 {
-    string root = MakeTempSettingsDir("resource_config_priority");
-    auto cleanup = scope_exit([&root]() noexcept { safe_call([&root] { (void)fs::remove_dir_tree(root); }); });
-    auto settings = GlobalSettings(false);
+    string root {MakeTempSettingsDir("resource_config_priority")};
+    auto cleanup {scope_exit([&root]() noexcept { safe_call([&root] { (void)fs::remove_dir_tree(root); }); })};
+    auto settings {GlobalSettings(false)};
     settings.ApplyDefaultSettings();
     ConfigFile declarations {"[ResourcePack]\nName=Metadata\n"};
     settings.ApplyConfigFile(declarations, "");
-    string server_content = "Common.GameVersion=server-version\nServer.DbStorage=JSON\n";
-    string client_content = "Common.GameVersion=client-version\n";
+    string server_content {"Common.GameVersion=server-version\nServer.DbStorage=JSON\n"};
+    string client_content {"Common.GameVersion=client-version\n"};
 
     SECTION("ServerConfigurationPrecedesClientInTheSamePack")
     {
         settings.SetSettingValue("Baking.BakeOutput", root);
-        string directory = strex(root).combine_path("Metadata").str();
+        string directory {strex(root).combine_path("Metadata").str()};
         REQUIRE(fs::create_directories(directory));
-        string server_path = strex(directory).combine_path("Selected.fomain-server").str();
+        string server_path {strex(directory).combine_path("Selected.fomain-server").str()};
         REQUIRE(fs::write_file(server_path, string_view {server_content}));
         REQUIRE(fs::write_file(strex(directory).combine_path("Selected.fomain-client").str(), string_view {client_content}));
         CHECK(ReadResourceConfig(settings, true) == server_content);
@@ -1276,7 +1276,7 @@ TEST_CASE("ResourceConfigurationPriority")
         // The pack carries its metadata payload but no baked configuration of either role:
         // the reader ignores the metadata files and reports the configuration as absent
         settings.SetSettingValue("Baking.BakeOutput", root);
-        string directory = strex(root).combine_path("Metadata").str();
+        string directory {strex(root).combine_path("Metadata").str()};
         REQUIRE(fs::create_directories(directory));
         REQUIRE(fs::write_file(strex(directory).combine_path("Metadata.fometa-server").str(), string_view {"metadata-bytes"}));
         REQUIRE(fs::write_file(strex(directory).combine_path("Metadata.fometa-client").str(), string_view {"metadata-bytes"}));
@@ -1288,9 +1288,9 @@ TEST_CASE("ResourceConfigurationPriority")
 // Requires a test-binary copy with its internal config patched and its unpackaged marker retained.
 TEST_CASE("ServerConfiguration", "[.][settings]")
 {
-    string content = "Common.GameVersion=server-resource-version\nServer.DbStorage=JSON\nServer.AutoStartClientOnServer=2\n"
-                     "[ResourcePack]\nName=Metadata\n";
-    auto settings = GlobalSettings(false);
+    string content {"Common.GameVersion=server-resource-version\nServer.DbStorage=JSON\nServer.AutoStartClientOnServer=2\n"
+                    "[ResourcePack]\nName=Metadata\n"};
+    auto settings {GlobalSettings(false)};
     settings.ApplyResourceConfig(content);
 
     SECTION("ReplacesServerSnapshot")
@@ -1313,18 +1313,18 @@ TEST_CASE("ServerConfiguration", "[.][settings]")
 
     SECTION("PrefersServerAndRejectsMultipleServerConfigurations")
     {
-        string root = MakeTempSettingsDir("server_resource_config");
-        auto cleanup = scope_exit([&root]() noexcept { safe_call([&root] { (void)fs::remove_dir_tree(root); }); });
+        string root {MakeTempSettingsDir("server_resource_config")};
+        auto cleanup {scope_exit([&root]() noexcept { safe_call([&root] { (void)fs::remove_dir_tree(root); }); })};
         settings.SetSettingValue("Baking.BakeOutput", root);
         CHECK_FALSE(ReadResourceConfig(settings, false));
         CHECK_THROWS_AS(ReadResourceConfig(settings, true), BaseEngineException);
-        string directory = strex(root).combine_path("Metadata").str();
+        string directory {strex(root).combine_path("Metadata").str()};
         REQUIRE(fs::create_directories(directory));
         REQUIRE(fs::write_file(strex(directory).combine_path("Selected.fomain-server").str(), string_view {content}));
         CHECK(ReadResourceConfig(settings, true) == content);
         REQUIRE(fs::write_file(strex(directory).combine_path("Other.fomain-server").str(), string_view {content}));
         CHECK_THROWS_AS(ReadResourceConfig(settings, true), BaseEngineException);
-        bool removed = fs::remove_file(strex(directory).combine_path("Other.fomain-server").str());
+        bool removed {fs::remove_file(strex(directory).combine_path("Other.fomain-server").str())};
         REQUIRE(removed);
         REQUIRE(fs::write_file(strex(directory).combine_path("Selected.fomain-client").str(), string_view {content}));
         CHECK(ReadResourceConfig(settings, true) == content);
@@ -1333,19 +1333,19 @@ TEST_CASE("ServerConfiguration", "[.][settings]")
 
 TEST_CASE("ClientConfiguration", "[.][settings]")
 {
-    string content = "Common.GameVersion=0.3.1482\n"
-                     "Client.Language=russ\nRender.ForceOpenGL=0\nClient.DirectMoveRetargetMinMs=0\nClient.DirectMoveSlide=0\nGame.Enabled=false\nGame.Caption=\n"
-                     "[ResourcePack]\nName=Metadata\n";
-    auto build_settings = [](string_view text) {
-        auto result = GlobalSettings(false);
+    string content {"Common.GameVersion=0.3.1482\n"
+                    "Client.Language=russ\nRender.ForceOpenGL=0\nClient.DirectMoveRetargetMinMs=0\nClient.DirectMoveSlide=0\nGame.Enabled=false\nGame.Caption=\n"
+                    "[ResourcePack]\nName=Metadata\n"};
+    auto build_settings {[](string_view text) {
+        auto result {GlobalSettings(false)};
         result.SetSettingValue("Game.Removed", "old");
         result.ApplyResourceConfig(text);
         return result;
-    };
+    }};
 
     SECTION("ReplacesBootstrap")
     {
-        auto updated = build_settings(content);
+        auto updated {build_settings(content)};
         CHECK(updated.Common.GameVersion == "0.3.1482");
         CHECK(updated.Client.Language == "russ");
         CHECK_FALSE(updated.Render.ForceOpenGL);
@@ -1359,14 +1359,14 @@ TEST_CASE("ClientConfiguration", "[.][settings]")
 
     SECTION("UserConfigurationAndCommandLineRemainHigherPriority")
     {
-        auto updated = build_settings(content);
+        auto updated {build_settings(content)};
         ConfigFile preferences {"Client.Language=engl\nRender.ForceOpenGL=0\n"};
         updated.ApplyConfigFile(preferences, "");
         CHECK(updated.Client.Language == "engl");
         CHECK_FALSE(updated.Render.ForceOpenGL);
-        char program[] = "lf_tests";
-        char option[] = "--Client.Language";
-        char value[] = "ru18";
+        char program[] {"lf_tests"};
+        char option[] {"--Client.Language"};
+        char value[] {"ru18"};
         vector<CommandLineArg> argv {program, option, value};
         updated.ApplyCommandLine(CommandLineArgs {argv});
         CHECK(updated.Client.Language == "ru18");
@@ -1374,18 +1374,18 @@ TEST_CASE("ClientConfiguration", "[.][settings]")
 
     SECTION("ChangingCacheDirectoryPreservesPreferencesAndExistingDestinationWins")
     {
-        string directory = MakeTempSettingsDir("client_preferences");
-        auto cleanup = scope_exit([&directory]() noexcept { safe_call([&directory] { (void)fs::remove_dir_tree(directory); }); });
-        auto previous = build_settings(content);
+        string directory {MakeTempSettingsDir("client_preferences")};
+        auto cleanup {scope_exit([&directory]() noexcept { safe_call([&directory] { (void)fs::remove_dir_tree(directory); }); })};
+        auto previous {build_settings(content)};
         previous.ApplyWritableRoot(directory);
         previous.SetSettingValue("Baking.CacheResources", "old-cache");
-        auto updated = build_settings(content);
+        auto updated {build_settings(content)};
         updated.ApplyWritableRoot(directory);
         updated.SetSettingValue("Baking.CacheResources", "new-cache");
-        auto old_cache = CacheStorage(fs::make_writable_path(directory, previous.Baking.CacheResources));
+        auto old_cache {CacheStorage(fs::make_writable_path(directory, previous.Baking.CacheResources))};
         old_cache.SetString(LOCAL_CONFIG_NAME, "Client.Language=ru18\n");
         PreserveLocalConfig(previous, updated);
-        auto new_cache = CacheStorage(fs::make_writable_path(directory, updated.Baking.CacheResources));
+        auto new_cache {CacheStorage(fs::make_writable_path(directory, updated.Baking.CacheResources))};
         CHECK(new_cache.GetString(LOCAL_CONFIG_NAME) == "Client.Language=ru18\n");
         new_cache.SetString(LOCAL_CONFIG_NAME, "Client.Language=en18\n");
         PreserveLocalConfig(previous, updated);
@@ -1394,30 +1394,30 @@ TEST_CASE("ClientConfiguration", "[.][settings]")
 
     SECTION("ResourceProfileAndSecondStartup")
     {
-        string directory = MakeTempSettingsDir("client_config");
-        auto cleanup = scope_exit([&directory]() noexcept { safe_call([&directory] { (void)fs::remove_dir_tree(directory); }); });
-        auto settings = build_settings(content);
+        string directory {MakeTempSettingsDir("client_config")};
+        auto cleanup {scope_exit([&directory]() noexcept { safe_call([&directory] { (void)fs::remove_dir_tree(directory); }); })};
+        auto settings {build_settings(content)};
         settings.SetSettingValue("Baking.BakeOutput", directory);
         CHECK_FALSE(ReadResourceConfig(settings, false));
         CHECK_THROWS_AS(ReadResourceConfig(settings, true), BaseEngineException);
-        string pack_directory = strex(directory).combine_path("Metadata").str();
+        string pack_directory {strex(directory).combine_path("Metadata").str()};
         REQUIRE(fs::create_directories(pack_directory));
-        string path = strex(pack_directory).combine_path("Test.fomain-client").str();
+        string path {strex(pack_directory).combine_path("Test.fomain-client").str()};
         REQUIRE(fs::write_file(path, string_view {content}));
-        auto applied = ReadResourceConfig(settings, true);
+        auto applied {ReadResourceConfig(settings, true)};
         REQUIRE(applied);
-        auto running = build_settings(*applied);
+        auto running {build_settings(*applied)};
         CHECK(running.GetResourceConfigContent() == applied);
 
-        string next = content;
+        string next {content};
         next.replace(next.find("0.3.1482"), 8, "0.3.1483");
         REQUIRE(fs::write_file(path, string_view {next}));
-        auto downloaded = ReadResourceConfig(settings, true);
+        auto downloaded {ReadResourceConfig(settings, true)};
         REQUIRE(downloaded);
         CHECK(*downloaded == next);
         CHECK(running.GetResourceConfigContent() != downloaded);
         CHECK(running.Common.GameVersion == "0.3.1482");
-        auto relaunched = build_settings(*downloaded);
+        auto relaunched {build_settings(*downloaded)};
         CHECK(relaunched.Common.GameVersion == "0.3.1483");
         CHECK(relaunched.GetResourceConfigContent() == ReadResourceConfig(settings, true));
         CHECK_FALSE(fs::exists(strex(directory).combine_path(".client-config").str()));
@@ -1427,8 +1427,8 @@ TEST_CASE("ClientConfiguration", "[.][settings]")
 
     SECTION("ProfileMemorySurvivesCopyAndPreferenceOverrides")
     {
-        auto applied = build_settings(content);
-        auto copied = GlobalSettings(false);
+        auto applied {build_settings(content)};
+        auto copied {GlobalSettings(false)};
         CHECK_FALSE(copied.GetResourceConfigContent());
         copied.CopyFrom(applied);
         copied.SetSettingValue("Client.Language", "en18");
@@ -1439,7 +1439,7 @@ TEST_CASE("ClientConfiguration", "[.][settings]")
 
     SECTION("RejectsRelocatedConfigurationWithoutChangingAppliedSettings")
     {
-        auto applied = build_settings(content);
+        auto applied {build_settings(content)};
         CHECK_THROWS_AS(applied.ApplyResourceConfig("Baking.ClientResources=OtherResources\n" + content), BaseEngineException);
         CHECK(applied.Common.GameVersion == "0.3.1482");
         REQUIRE(applied.GetResourceConfigContent());
@@ -1453,16 +1453,16 @@ TEST_CASE("PackagedResourceConfiguration", "[.][settings]")
         SKIP("Requires a packaged test binary with a patched internal config");
     }
 
-    auto bootstrap = GlobalSettings(false);
+    auto bootstrap {GlobalSettings(false)};
     bootstrap.ApplyDefaultSettings();
     bootstrap.ApplyInternalConfig();
     CHECK(bootstrap.Common.GameVersion == "bootstrap-version");
     CHECK(bootstrap.GetCustomSetting("Game.Removed") == "old");
     CHECK(bootstrap.Render.ForceOpenGL);
 
-    string content = "Common.GameVersion=resource-version\nRender.ForceOpenGL=0\n"
-                     "[ResourcePack]\nName=Metadata\n";
-    auto updated = GlobalSettings(false);
+    string content {"Common.GameVersion=resource-version\nRender.ForceOpenGL=0\n"
+                    "[ResourcePack]\nName=Metadata\n"};
+    auto updated {GlobalSettings(false)};
     updated.ApplyResourceConfig(content);
     CHECK(updated.Common.GameVersion == "resource-version");
     CHECK_FALSE(updated.Render.ForceOpenGL);
@@ -1471,9 +1471,9 @@ TEST_CASE("PackagedResourceConfiguration", "[.][settings]")
     CHECK(*updated.GetResourceConfigContent() == content);
     CHECK(bootstrap.Common.GameVersion == "bootstrap-version");
 
-    string next = "Common.GameVersion=next-version\nRender.ForceOpenGL=0\n"
-                  "[ResourcePack]\nName=Metadata\n";
-    auto relaunched = GlobalSettings(false);
+    string next {"Common.GameVersion=next-version\nRender.ForceOpenGL=0\n"
+                 "[ResourcePack]\nName=Metadata\n"};
+    auto relaunched {GlobalSettings(false)};
     relaunched.ApplyResourceConfig(next);
     CHECK(relaunched.Common.GameVersion == "next-version");
     CHECK_FALSE(relaunched.Render.ForceOpenGL);

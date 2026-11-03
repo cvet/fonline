@@ -183,9 +183,9 @@ auto Map::GetCritters(CritterFindType find_type) -> vector<ptr<Critter>>
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
-    bool find_players = is_enum_set(find_type, CritterFindType::Players);
-    bool find_npc = is_enum_set(find_type, CritterFindType::Npc);
-    span<ptr<Critter>> source = _critters;
+    bool find_players {is_enum_set(find_type, CritterFindType::Players)};
+    bool find_npc {is_enum_set(find_type, CritterFindType::Npc)};
+    span<ptr<Critter>> source {_critters};
 
     if (find_players && !find_npc) {
         source = _playerCritters;
@@ -194,7 +194,7 @@ auto Map::GetCritters(CritterFindType find_type) -> vector<ptr<Critter>>
         source = _nonPlayerCritters;
     }
 
-    vector<ptr<Critter>> critters;
+    vector<ptr<Critter>> critters {};
     critters.reserve(source.size());
 
     for (ptr<Critter> cr : source) {
@@ -282,7 +282,7 @@ void Map::SetSpectatorArea(ptr<Player> player, mpos hex, int32_t radius, nptr<En
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
 
-    auto area = safe_alloc::make_shared<SpectatorArea>();
+    auto area {safe_alloc::make_shared<SpectatorArea>()};
     area->Hex = hex;
     area->Radius = radius;
     area->Context = context.try_hold_ref();
@@ -292,7 +292,7 @@ void Map::SetSpectatorArea(ptr<Player> player, mpos hex, int32_t radius, nptr<En
     }
 
     for (auto cr : copy_hold_ref(_critters)) {
-        CritterVisibilityMode mode = GetSpectatorCritterVisibility(*area, cr);
+        CritterVisibilityMode mode {GetSpectatorCritterVisibility(*area, cr)};
 
         if (mode != CritterVisibilityMode::None) {
             area->VisibleEntities.emplace(cr->GetId());
@@ -314,12 +314,12 @@ void Map::RefreshSpectatorVisibility(ptr<Player> player)
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
 
-    shared_ptr<SpectatorArea> area;
+    shared_ptr<SpectatorArea> area {};
 
     {
         shared_lock lock {_spectatorLock};
 
-        auto it = _spectatorAreas.find(player->GetId());
+        auto it {_spectatorAreas.find(player->GetId())};
         FO_VERIFY_AND_THROW(it != _spectatorAreas.end(), "Map view subscription is missing", GetId(), player->GetId());
         area = it->second;
     }
@@ -335,11 +335,11 @@ auto Map::GetSpectatorAreas() -> vector<pair<refcount_ptr<Player>, shared_ptr<Sp
 {
     shared_lock lock {_spectatorLock};
 
-    vector<pair<refcount_ptr<Player>, shared_ptr<SpectatorArea>>> areas;
+    vector<pair<refcount_ptr<Player>, shared_ptr<SpectatorArea>>> areas {};
     areas.reserve(_spectatorPlayers.size());
 
     for (auto player : _spectatorPlayers) {
-        auto it = _spectatorAreas.find(player->GetId());
+        auto it {_spectatorAreas.find(player->GetId())};
 
         if (it != _spectatorAreas.end()) {
             areas.emplace_back(player.hold_ref(), it->second);
@@ -355,7 +355,7 @@ bool Map::IsSpectatorEntityVisible(ident_t player_id, ident_t entity_id)
 
     shared_lock lock {_spectatorLock};
 
-    auto area = _spectatorAreas.find(player_id);
+    auto area {_spectatorAreas.find(player_id)};
     return area != _spectatorAreas.end() && IsMapViewContextAvailable(area->second->Context) && area->second->VisibleEntities.contains(entity_id);
 }
 
@@ -365,13 +365,13 @@ auto Map::GetSpectatorCritterVisibility(ident_t player_id, ident_t critter_id) -
 
     shared_lock lock {_spectatorLock};
 
-    auto area = _spectatorAreas.find(player_id);
+    auto area {_spectatorAreas.find(player_id)};
 
     if (area == _spectatorAreas.end() || !IsMapViewContextAvailable(area->second->Context)) {
         return CritterVisibilityMode::None;
     }
 
-    auto mode = area->second->CritterModes.find(critter_id);
+    auto mode {area->second->CritterModes.find(critter_id)};
     return mode != area->second->CritterModes.end() ? mode->second : CritterVisibilityMode::None;
 }
 
@@ -381,10 +381,10 @@ auto Map::GetSpectatorPlayersForSend(ident_t entity_id, mpos hex) -> vector<refc
 
     shared_lock lock {_spectatorLock};
 
-    vector<refcount_ptr<Player>> recipients;
+    vector<refcount_ptr<Player>> recipients {};
 
     for (auto player : _spectatorPlayers) {
-        auto area = _spectatorAreas.find(player->GetId());
+        auto area {_spectatorAreas.find(player->GetId())};
 
         if (area != _spectatorAreas.end() && IsMapViewContextAvailable(area->second->Context) && area->second->VisibleEntities.contains(entity_id) && (area->second->Radius == 0 || GeometryHelper::GetDistance(area->second->Hex, hex) <= area->second->Radius)) {
             recipients.emplace_back(player.hold_ref());
@@ -432,7 +432,7 @@ auto Map::HasSpectatorContextCover(const SpectatorArea& area) const -> bool
         return true;
     }
 
-    auto server_context = area.Context.dyn_cast<const ServerEntity>();
+    auto server_context {area.Context.dyn_cast<const ServerEntity>()};
     return !server_context || IsEntityAccessValid(server_context, false);
 }
 
@@ -459,7 +459,7 @@ void Map::ScheduleSpectatorRefresh(ptr<Player> player, shared_ptr<SpectatorArea>
     {
         scoped_lock lock {_spectatorLock};
 
-        auto current = _spectatorAreas.find(player->GetId());
+        auto current {_spectatorAreas.find(player->GetId())};
 
         if (current == _spectatorAreas.end() || current->second != area || area->RefreshPending) {
             return;
@@ -468,21 +468,21 @@ void Map::ScheduleSpectatorRefresh(ptr<Player> player, shared_ptr<SpectatorArea>
         area->RefreshPending = true;
     }
 
-    bool submitted = false;
-    auto clear_pending_on_failure = scope_exit([&]() noexcept {
+    bool submitted {false};
+    auto clear_pending_on_failure {scope_exit([&]() noexcept {
         if (!submitted) {
             scoped_lock lock {_spectatorLock};
 
             area->RefreshPending = false;
         }
-    });
+    })};
 
     // A fresh dispatcher acquires the complete cover without releasing the mutating caller's locks
     _engine->ScheduleDelayedCallback(timespan::zero, [map = refcount_ptr<Map>::from_addref(this), recipient = player.hold_ref(), area]() mutable FO_DEFERRED {
-        ScopedSyncContext sync;
+        ScopedSyncContext sync {};
         vector<ptr<ServerEntity>> roots {map, recipient};
 
-        if (auto context = area->Context.dyn_cast<ServerEntity>()) {
+        if (auto context {area->Context.dyn_cast<ServerEntity>()}) {
             roots.emplace_back(context);
         }
 
@@ -503,7 +503,7 @@ void Map::RefreshSpectatorVisibility(ptr<Player> player, shared_ptr<SpectatorAre
     {
         scoped_lock lock {_spectatorLock};
 
-        auto current = _spectatorAreas.find(player->GetId());
+        auto current {_spectatorAreas.find(player->GetId())};
 
         if (current == _spectatorAreas.end() || current->second != area) {
             return;
@@ -512,11 +512,11 @@ void Map::RefreshSpectatorVisibility(ptr<Player> player, shared_ptr<SpectatorAre
         area->RefreshPending = true;
     }
 
-    auto finish_refresh = scope_exit([&]() noexcept {
+    auto finish_refresh {scope_exit([&]() noexcept {
         scoped_lock lock {_spectatorLock};
 
         area->RefreshPending = false;
-    });
+    })};
 
     for (auto cr : copy_hold_ref(_critters)) {
         RefreshSpectatorCritter(player, area, cr, false, false);
@@ -528,18 +528,18 @@ void Map::RefreshSpectatorVisibility(ptr<Player> player, shared_ptr<SpectatorAre
 
 void Map::RefreshSpectatorCritter(ptr<Player> player, shared_ptr<SpectatorArea> area, ptr<const Critter> cr, bool removed, bool send_movement)
 {
-    CritterVisibilityMode mode = removed ? CritterVisibilityMode::None : GetSpectatorCritterVisibility(*area, cr);
+    CritterVisibilityMode mode {removed ? CritterVisibilityMode::None : GetSpectatorCritterVisibility(*area, cr)};
 
     scoped_lock lock {_spectatorLock};
 
-    auto current = _spectatorAreas.find(player->GetId());
+    auto current {_spectatorAreas.find(player->GetId())};
 
     if (current == _spectatorAreas.end() || current->second != area) {
         return;
     }
 
-    auto previous = area->CritterModes.find(cr->GetId());
-    CritterVisibilityMode old_mode = previous != area->CritterModes.end() ? previous->second : CritterVisibilityMode::None;
+    auto previous {area->CritterModes.find(cr->GetId())};
+    CritterVisibilityMode old_mode {previous != area->CritterModes.end() ? previous->second : CritterVisibilityMode::None};
 
     if (mode == CritterVisibilityMode::None) {
         if (old_mode != CritterVisibilityMode::None) {
@@ -566,17 +566,17 @@ void Map::RefreshSpectatorCritter(ptr<Player> player, shared_ptr<SpectatorArea> 
 
 void Map::RefreshSpectatorItem(ptr<Player> player, shared_ptr<SpectatorArea> area, ptr<const Item> item, bool removed)
 {
-    bool visible = !removed && IsSpectatorItemVisible(*area, item);
+    bool visible {!removed && IsSpectatorItemVisible(*area, item)};
 
     scoped_lock lock {_spectatorLock};
 
-    auto current = _spectatorAreas.find(player->GetId());
+    auto current {_spectatorAreas.find(player->GetId())};
 
     if (current == _spectatorAreas.end() || current->second != area) {
         return;
     }
 
-    bool known = area->VisibleEntities.contains(item->GetId());
+    bool known {area->VisibleEntities.contains(item->GetId())};
 
     if (visible && !known) {
         area->VisibleEntities.emplace(item->GetId());
@@ -594,7 +594,7 @@ auto Map::GetSpectatorPlayersForSend() -> vector<refcount_ptr<Player>>
 
     shared_lock lock {_spectatorLock};
 
-    vector<refcount_ptr<Player>> recipients;
+    vector<refcount_ptr<Player>> recipients {};
     recipients.reserve(_spectatorPlayers.size());
 
     for (auto player : _spectatorPlayers) {
@@ -624,9 +624,9 @@ auto Map::FindStartHex(mpos hex, int32_t multihex, int32_t seek_radius, bool ski
         return std::nullopt;
     }
 
-    int32_t hexes_around = GeometryHelper::HexesInRadius(seek_radius);
-    int32_t pos = GetEngine()->Random(1, hexes_around);
-    int32_t iterations = 0;
+    int32_t hexes_around {GeometryHelper::HexesInRadius(seek_radius)};
+    int32_t pos {GetEngine()->Random(1, hexes_around)};
+    int32_t iterations {0};
 
     while (true) {
         if (++iterations > hexes_around) {
@@ -636,7 +636,7 @@ auto Map::FindStartHex(mpos hex, int32_t multihex, int32_t seek_radius, bool ski
             pos = 1;
         }
 
-        mpos check_hex = hex;
+        mpos check_hex {hex};
 
         if (!GeometryHelper::MoveHexAroundAway(check_hex, pos, _mapSize)) {
             continue;
@@ -651,7 +651,7 @@ auto Map::FindStartHex(mpos hex, int32_t multihex, int32_t seek_radius, bool ski
         break;
     }
 
-    mpos result_hex = hex;
+    mpos result_hex {hex};
     GeometryHelper::MoveHexAroundAway(result_hex, pos, _mapSize);
     return result_hex;
 }
@@ -685,7 +685,7 @@ void Map::AddCritter(ptr<Critter> cr)
 void Map::RemoveCritter(ptr<Critter> cr)
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    auto it = _crittersMap.find(cr->GetId());
+    auto it {_crittersMap.find(cr->GetId())};
     FO_VERIFY_AND_THROW(it != _crittersMap.end(), "Lookup failed in critters map");
     _crittersMap.erase(it);
 
@@ -712,11 +712,11 @@ void Map::RefreshCritterPlayerState(ptr<Critter> cr)
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
     FO_VERIFY_AND_THROW(_crittersMap.count(cr->GetId()), "Server map is refreshing a critter that is absent from the map critter lookup", GetId(), cr->GetId(), _crittersMap.size());
 
-    bool removed_from_players = vec_safe_remove_unique_value(_playerCritters, cr);
-    bool removed_from_non_players = vec_safe_remove_unique_value(_nonPlayerCritters, cr);
+    bool removed_from_players {vec_safe_remove_unique_value(_playerCritters, cr)};
+    bool removed_from_non_players {vec_safe_remove_unique_value(_nonPlayerCritters, cr)};
     FO_VERIFY_AND_THROW(removed_from_players || removed_from_non_players, "Critter was not removed from any map critter bucket");
 
-    auto cr_ids = GetCritterIds();
+    auto cr_ids {GetCritterIds()};
     vec_safe_remove_unique_value(cr_ids, cr->GetId());
 
     if (!cr->GetControlledByPlayer()) {
@@ -736,10 +736,10 @@ void Map::RefreshCritterPlayerState(ptr<Critter> cr)
 void Map::AddCritterToField(ptr<Critter> cr)
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
-    auto hex = cr->GetHex();
+    auto hex {cr->GetHex()};
     FO_VERIFY_AND_THROW(_mapSize.is_valid_pos(hex), "Server map cannot add critter to a field outside map bounds", GetId(), cr->GetId(), hex, _mapSize);
 
-    auto field = _hexField->GetCellForWriting(hex);
+    auto field {_hexField->GetCellForWriting(hex)};
 
     vec_add_unique_value(field->Critters, cr);
     RecacheHexFlags(field);
@@ -749,10 +749,10 @@ void Map::AddCritterToField(ptr<Critter> cr)
 void Map::RemoveCritterFromField(ptr<Critter> cr)
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    auto hex = cr->GetHex();
+    auto hex {cr->GetHex()};
     FO_VERIFY_AND_THROW(_mapSize.is_valid_pos(hex), "Server map cannot remove critter from a field outside map bounds", GetId(), cr->GetId(), hex, _mapSize);
 
-    auto field = _hexField->GetCellForWriting(hex);
+    auto field {_hexField->GetCellForWriting(hex)};
 
     vec_remove_unique_value(field->Critters, cr);
     RecacheHexFlags(field);
@@ -762,15 +762,15 @@ void Map::RemoveCritterFromField(ptr<Critter> cr)
 void Map::SetMultihexCritter(ptr<Critter> cr, bool set)
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    int32_t multihex = cr->GetMultihex();
+    int32_t multihex {cr->GetMultihex()};
 
     if (multihex != 0) {
-        auto hex = cr->GetHex();
-        int32_t hexes_around = GeometryHelper::HexesInRadius(multihex);
+        auto hex {cr->GetHex()};
+        int32_t hexes_around {GeometryHelper::HexesInRadius(multihex)};
 
-        for (int32_t i = 1; i < hexes_around; i++) {
-            if (auto hex_around = hex; GeometryHelper::MoveHexAroundAway(hex_around, i, _mapSize)) {
-                auto field = _hexField->GetCellForWriting(hex_around);
+        for (int32_t i {1}; i < hexes_around; i++) {
+            if (auto hex_around {hex}; GeometryHelper::MoveHexAroundAway(hex_around, i, _mapSize)) {
+                auto field {_hexField->GetCellForWriting(hex_around)};
 
                 if (set) {
                     vec_add_unique_value(field->Critters, cr);
@@ -793,8 +793,8 @@ void Map::AddItem(ptr<Item> item, mpos hex, nptr<Critter> dropper)
     FO_VERIFY_AND_THROW(!item->GetStatic(), "Item is static and cannot be attached here");
     FO_VERIFY_AND_THROW(_mapSize.is_valid_pos(hex), "Server map cannot place item on a hex outside map bounds", GetId(), item->GetId(), item->GetProtoId(), hex, _mapSize);
     EnsureEntitySynced(item);
-    auto map_holder = refcount_ptr<Map>::from_addref(this);
-    auto item_holder = item.hold_ref();
+    auto map_holder {refcount_ptr<Map>::from_addref(this)};
+    auto item_holder {item.hold_ref()};
     ignore_unused(map_holder);
     ignore_unused(item_holder);
 
@@ -804,7 +804,7 @@ void Map::AddItem(ptr<Item> item, mpos hex, nptr<Critter> dropper)
 
     SetItem(item);
 
-    auto item_ids = GetItemIds();
+    auto item_ids {GetItemIds()};
     vec_add_unique_value(item_ids, item->GetId());
     SetItemIds(item_ids);
 
@@ -812,8 +812,8 @@ void Map::AddItem(ptr<Item> item, mpos hex, nptr<Critter> dropper)
         _engine->EntityMngr.MakePersistent(item, true);
     }
 
-    ident_t initial_item_map_id = item->GetMapId();
-    mpos initial_item_hex = item->GetHex();
+    ident_t initial_item_map_id {item->GetMapId()};
+    mpos initial_item_hex {item->GetHex()};
 
     // Process critters view
     for (auto cr : copy_hold_ref(_critters)) {
@@ -851,21 +851,21 @@ void Map::SetItem(ptr<Item> item)
     vec_add_unique_value(_items, item);
     item->SetParent(this);
 
-    auto hex = item->GetHex();
-    auto field = _hexField->GetCellForWriting(hex);
+    auto hex {item->GetHex()};
+    auto field {_hexField->GetCellForWriting(hex)};
 
     vec_add_unique_value(field->Items, item);
 
     RecacheHexFlags(field);
 
     if (item->IsNonEmptyMultihexLines() || item->IsNonEmptyMultihexMesh()) {
-        vector<mpos> multihex_entries;
-        auto multihex_lines = item->GetMultihexLines();
-        auto multihex_mesh = item->GetMultihexMesh();
+        vector<mpos> multihex_entries {};
+        auto multihex_lines {item->GetMultihexLines()};
+        auto multihex_mesh {item->GetMultihexMesh()};
         multihex_entries.reserve(multihex_lines.size() + multihex_mesh.size());
 
         GeometryHelper::ForEachMultihexLines(multihex_lines, hex, _mapSize, [&](mpos multihex) {
-            auto multihex_field = _hexField->GetCellForWriting(multihex);
+            auto multihex_field {_hexField->GetCellForWriting(multihex)};
 
             if (vec_safe_add_unique_value(multihex_field->Items, item)) {
                 RecacheHexFlags(multihex_field);
@@ -875,7 +875,7 @@ void Map::SetItem(ptr<Item> item)
 
         for (auto multihex : multihex_mesh) {
             if (multihex != hex && _mapSize.is_valid_pos(multihex)) {
-                auto multihex_field = _hexField->GetCellForWriting(multihex);
+                auto multihex_field {_hexField->GetCellForWriting(multihex)};
 
                 if (vec_safe_add_unique_value(multihex_field->Items, item)) {
                     RecacheHexFlags(multihex_field);
@@ -883,7 +883,7 @@ void Map::SetItem(ptr<Item> item)
                 }
 
                 GeometryHelper::ForEachMultihexLines(multihex_lines, multihex, _mapSize, [&](mpos line_hex) {
-                    auto line_field = _hexField->GetCellForWriting(line_hex);
+                    auto line_field {_hexField->GetCellForWriting(line_hex)};
 
                     if (vec_safe_add_unique_value(line_field->Items, item)) {
                         RecacheHexFlags(line_field);
@@ -905,20 +905,20 @@ void Map::RemoveItem(ident_t item_id)
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     FO_VERIFY_AND_THROW(item_id, "Missing required item id");
-    auto it = _itemsMap.find(item_id);
+    auto it {_itemsMap.find(item_id)};
     FO_VERIFY_AND_THROW(it != _itemsMap.end(), "Lookup failed in items map");
-    auto item = it->second;
+    auto item {it->second};
     EnsureEntitySynced(item);
-    auto map_holder = refcount_ptr<Map>::from_addref(this);
-    auto item_holder = item.hold_ref();
+    auto map_holder {refcount_ptr<Map>::from_addref(this)};
+    auto item_holder {item.hold_ref()};
     ignore_unused(map_holder);
     ignore_unused(item_holder);
     _itemsMap.erase(it);
 
     vec_remove_unique_value(_items, item);
 
-    auto hex = item->GetHex();
-    auto field = _hexField->GetCellForWriting(hex);
+    auto hex {item->GetHex()};
+    auto field {_hexField->GetCellForWriting(hex)};
 
     vec_remove_unique_value(field->Items, item);
 
@@ -927,7 +927,7 @@ void Map::RemoveItem(ident_t item_id)
     item->SetMapId(ident_t {});
     item->SetHex({});
 
-    auto item_ids = GetItemIds();
+    auto item_ids {GetItemIds()};
     vec_remove_unique_value(item_ids, item->GetId());
     SetItemIds(item_ids);
     RefreshAreaSpectators(item, true);
@@ -939,11 +939,11 @@ void Map::RemoveItem(ident_t item_id)
     RecacheHexFlags(field);
 
     if (item->HasMultihexEntries()) {
-        auto multihex_entries = item->GetMultihexEntries();
+        auto multihex_entries {item->GetMultihexEntries()};
         FO_VERIFY_AND_THROW(multihex_entries, "Multihex entries collection is null");
 
         for (auto multihex : *multihex_entries) {
-            auto multihex_field = _hexField->GetCellForWriting(multihex);
+            auto multihex_field {_hexField->GetCellForWriting(multihex)};
             vec_remove_unique_value(multihex_field->Items, item);
             RecacheHexFlags(multihex_field);
         }
@@ -978,11 +978,11 @@ void Map::SendProperty(NetProperty type, ptr<const Property> prop, ptr<ServerEnt
 
     if (type == NetProperty::Map || type == NetProperty::Location) {
         if (type == NetProperty::Map) {
-            auto map = entity.dyn_cast<Map>();
+            auto map {entity.dyn_cast<Map>()};
             FO_VERIFY_AND_THROW(map == this, "Map callback was invoked for a different map instance");
         }
         else {
-            auto loc = entity.dyn_cast<Location>();
+            auto loc {entity.dyn_cast<Location>()};
             FO_VERIFY_AND_THROW(loc, "Missing location instance");
             FO_VERIFY_AND_THROW(GetLocation() == loc, "Location callback was invoked for a map outside the location");
         }
@@ -990,7 +990,7 @@ void Map::SendProperty(NetProperty type, ptr<const Property> prop, ptr<ServerEnt
         // Pure fan-out to every map critter's player plus the spectators (both resolved lock-free, pinned).
         // Send_Property validates the subject (this map) and reads its data live; the map is in sync here
         for (auto cr : _critters) {
-            if (auto player = cr->GetPlayerForSend()) {
+            if (auto player {cr->GetPlayerForSend()}) {
                 player->Send_Property(type, prop, entity);
             }
         }
@@ -1000,19 +1000,19 @@ void Map::SendProperty(NetProperty type, ptr<const Property> prop, ptr<ServerEnt
         }
     }
     else if (type == NetProperty::MapItem) {
-        auto item = entity.dyn_cast<Item>();
+        auto item {entity.dyn_cast<Item>()};
         FO_VERIFY_AND_THROW(item, "Missing item instance");
 
         FO_VERIFY_AND_THROW(item->GetOwnership() == ItemOwnership::MapHex, "Item is not placed on map hex");
         FO_VERIFY_AND_THROW(item->GetMapId() == GetId(), "Item belongs to a different map");
         FO_VERIFY_AND_THROW(GetItem(item->GetId()) == item, "Map item index returned a different item instance");
-        auto map_holder = refcount_ptr<Map>::from_addref(this);
-        auto item_holder = item.hold_ref();
+        auto map_holder {refcount_ptr<Map>::from_addref(this)};
+        auto item_holder {item.hold_ref()};
         ignore_unused(map_holder);
         ignore_unused(item_holder);
 
-        ident_t initial_item_map_id = item->GetMapId();
-        mpos initial_item_hex = item->GetHex();
+        ident_t initial_item_map_id {item->GetMapId()};
+        mpos initial_item_hex {item->GetHex()};
 
         for (auto cr : copy_hold_ref(_critters)) {
             if (cr->CheckVisibleItem(item->GetId())) {
@@ -1028,6 +1028,7 @@ void Map::SendProperty(NetProperty type, ptr<const Property> prop, ptr<ServerEnt
         }
 
         RefreshAreaSpectators(item);
+
         for (refcount_ptr<Player> player : GetSpectatorPlayersForSend(item->GetId(), item->GetHex())) {
             player->Send_Property(type, prop, entity);
         }
@@ -1041,8 +1042,8 @@ auto Map::IsHexMovable(mpos hex) const noexcept -> bool
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
-    const auto& field = _hexField->GetCellForReading(hex);
-    const auto& static_field = GetStaticField(hex);
+    const auto& field {_hexField->GetCellForReading(hex)};
+    const auto& static_field {GetStaticField(hex)};
 
     return !field.MoveBlocked && !static_field.MoveBlocked;
 }
@@ -1051,8 +1052,8 @@ auto Map::IsHexShootable(mpos hex) const noexcept -> bool
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
-    const auto& field = _hexField->GetCellForReading(hex);
-    const auto& static_field = GetStaticField(hex);
+    const auto& field {_hexField->GetCellForReading(hex)};
+    const auto& static_field {GetStaticField(hex)};
 
     return !field.ShootBlocked && !static_field.ShootBlocked;
 }
@@ -1060,10 +1061,10 @@ auto Map::IsHexShootable(mpos hex) const noexcept -> bool
 auto Map::IsHexesMovable(mpos hex, int32_t radius) const -> bool
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    int32_t hexes_around = GeometryHelper::HexesInRadius(radius);
+    int32_t hexes_around {GeometryHelper::HexesInRadius(radius)};
 
-    for (int32_t i = 0; i < hexes_around; i++) {
-        if (mpos check_hex = hex; GeometryHelper::MoveHexAroundAway(check_hex, i, _mapSize)) {
+    for (int32_t i {0}; i < hexes_around; i++) {
+        if (mpos check_hex {hex}; GeometryHelper::MoveHexAroundAway(check_hex, i, _mapSize)) {
             if (!IsHexMovable(check_hex)) {
                 return false;
             }
@@ -1080,29 +1081,29 @@ auto Map::GetMovableHexesInSight(mpos origin, int32_t radius) const -> vector<mp
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     FO_VERIFY_AND_THROW(radius >= 0, "Sight radius must not be negative", radius);
 
-    msize map_size = GetSize();
+    msize map_size {GetSize()};
     FO_VERIFY_AND_THROW(map_size.is_valid_pos(origin), "Sight origin is outside map bounds", origin, map_size);
 
     // Cap only the rectangle expansion; the original radius still filters true distance
-    int32_t expansion_radius = std::min(radius, numeric_cast<int32_t>(std::max(map_size.width, map_size.height)));
-    int32_t origin_x = numeric_cast<int32_t>(origin.x);
-    int32_t origin_y = numeric_cast<int32_t>(origin.y);
-    int32_t min_x = std::max(origin_x - expansion_radius, 0);
-    int32_t min_y = std::max(origin_y - expansion_radius, 0);
-    int32_t max_x = std::min(origin_x + expansion_radius, numeric_cast<int32_t>(map_size.width) - 1);
-    int32_t max_y = std::min(origin_y + expansion_radius, numeric_cast<int32_t>(map_size.height) - 1);
+    int32_t expansion_radius {std::min(radius, numeric_cast<int32_t>(std::max(map_size.width, map_size.height)))};
+    int32_t origin_x {numeric_cast<int32_t>(origin.x)};
+    int32_t origin_y {numeric_cast<int32_t>(origin.y)};
+    int32_t min_x {std::max(origin_x - expansion_radius, 0)};
+    int32_t min_y {std::max(origin_y - expansion_radius, 0)};
+    int32_t max_x {std::min(origin_x + expansion_radius, numeric_cast<int32_t>(map_size.width) - 1)};
+    int32_t max_y {std::min(origin_y + expansion_radius, numeric_cast<int32_t>(map_size.height) - 1)};
 
-    TraceLineInput trace_input;
+    TraceLineInput trace_input {};
     trace_input.StartHex = origin;
     trace_input.MapSize = map_size;
     trace_input.IsHexBlocked = [this](mpos hex) { return !IsHexShootable(hex); };
 
-    vector<mpos> hexes;
+    vector<mpos> hexes {};
 
-    for (int32_t x = min_x; x <= max_x; x++) {
-        for (int32_t y = min_y; y <= max_y; y++) {
+    for (int32_t x {min_x}; x <= max_x; x++) {
+        for (int32_t y {min_y}; y <= max_y; y++) {
             mpos probe {numeric_cast<mcoord_t>(x), numeric_cast<mcoord_t>(y)};
-            int32_t distance = GeometryHelper::GetDistance(origin, probe);
+            int32_t distance {GeometryHelper::GetDistance(origin, probe)};
 
             if (distance > radius) {
                 continue;
@@ -1113,7 +1114,7 @@ auto Map::GetMovableHexesInSight(mpos origin, int32_t radius) const -> vector<mp
             if (distance > 0) {
                 trace_input.TargetHex = probe;
                 trace_input.MaxDist = distance;
-                TraceLineOutput trace = PathFinding::TraceLine(trace_input);
+                TraceLineOutput trace {PathFinding::TraceLine(trace_input)};
 
                 if (trace.PreBlock != probe) {
                     continue;
@@ -1131,10 +1132,10 @@ auto Map::HasPathfindingObstacle(mpos hex, nptr<const Critter> ignore_cr) const 
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
-    const auto& field = _hexField->GetCellForReading(hex);
+    const auto& field {_hexField->GetCellForReading(hex)};
 
     for (auto cr : field.Critters) {
-        auto field_cr = cr;
+        auto field_cr {cr};
 
         if (field_cr->GetPathfindingObstacle() && !(field_cr == ignore_cr)) {
             return true;
@@ -1152,13 +1153,13 @@ void Map::ChangeViewItem(ptr<Item> item)
     FO_VERIFY_AND_THROW(item->GetOwnership() == ItemOwnership::MapHex, "Item is not placed on map hex");
     FO_VERIFY_AND_THROW(item->GetMapId() == GetId(), "Item belongs to a different map");
     FO_VERIFY_AND_THROW(GetItem(item->GetId()) == item, "Map item index returned a different item instance");
-    auto map_holder = refcount_ptr<Map>::from_addref(this);
-    auto item_holder = item.hold_ref();
+    auto map_holder {refcount_ptr<Map>::from_addref(this)};
+    auto item_holder {item.hold_ref()};
     ignore_unused(map_holder);
     ignore_unused(item_holder);
 
-    ident_t initial_item_map_id = item->GetMapId();
-    mpos initial_item_hex = item->GetHex();
+    ident_t initial_item_map_id {item->GetMapId()};
+    mpos initial_item_hex {item->GetHex()};
     RefreshAreaSpectators(item);
 
     for (auto cr : copy_hold_ref(_critters)) {
@@ -1206,7 +1207,7 @@ auto Map::IsMapItemContextChanged(ptr<const Item> item, ident_t map_id, mpos hex
         return true;
     }
 
-    auto it = _itemsMap.find(item->GetId());
+    auto it {_itemsMap.find(item->GetId())};
 
     if (it == _itemsMap.end() || !(it->second == item)) {
         return true;
@@ -1219,7 +1220,7 @@ auto Map::IsBlockItemOnHex(mpos hex) const noexcept -> bool
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
-    const auto& field = _hexField->GetCellForReading(hex);
+    const auto& field {_hexField->GetCellForReading(hex)};
 
     return field.HasNoMoveItem;
 }
@@ -1228,7 +1229,7 @@ auto Map::IsTriggerItemOnHex(mpos hex) const noexcept -> bool
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
-    const auto& field = _hexField->GetCellForReading(hex);
+    const auto& field {_hexField->GetCellForReading(hex)};
 
     return field.HasTriggerItem;
 }
@@ -1237,7 +1238,7 @@ auto Map::GetItem(ident_t item_id) noexcept -> nptr<Item>
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
-    auto it = _itemsMap.find(item_id);
+    auto it {_itemsMap.find(item_id)};
 
     if (it != _itemsMap.end()) {
         return it->second;
@@ -1249,13 +1250,13 @@ auto Map::GetItem(ident_t item_id) noexcept -> nptr<Item>
 auto Map::GetItemOnHex(mpos hex, hstring item_pid, nptr<const Critter> picker) -> nptr<Item>
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    const auto& field = _hexField->GetCellForReading(hex);
+    const auto& field {_hexField->GetCellForReading(hex)};
 
     if (field.Items.empty()) {
         return nullptr;
     }
 
-    auto field2 = _hexField->GetCellForWriting(hex);
+    auto field2 {_hexField->GetCellForWriting(hex)};
 
     for (auto item : field2->Items) {
         if ((!item_pid || item->GetProtoId() == item_pid) && (!picker || picker->CanSeeItemOnMap(item))) {
@@ -1270,32 +1271,32 @@ auto Map::GetItemsOnHex(mpos hex) noexcept -> vector<ptr<Item>>
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
-    const auto& field = _hexField->GetCellForReading(hex);
+    const auto& field {_hexField->GetCellForReading(hex)};
 
     if (field.Items.empty()) {
         return {};
     }
 
-    auto field2 = _hexField->GetCellForWriting(hex);
+    auto field2 {_hexField->GetCellForWriting(hex)};
     return field2->Items;
 }
 
 auto Map::GetItemsInRadius(mpos hex, int32_t radius) -> vector<ptr<Item>>
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    vector<ptr<Item>> items;
+    vector<ptr<Item>> items {};
 
-    int32_t hexes_around = GeometryHelper::HexesInRadius(radius);
-    unordered_set<ident_t> seen;
+    int32_t hexes_around {GeometryHelper::HexesInRadius(radius)};
+    unordered_set<ident_t> seen {};
     seen.reserve(numeric_cast<size_t>(hexes_around));
     items.reserve(numeric_cast<size_t>(hexes_around));
 
-    for (int32_t i = 0; i < hexes_around; i++) {
-        if (mpos hex_around = hex; GeometryHelper::MoveHexAroundAway(hex_around, i, _mapSize)) {
-            const auto& field = _hexField->GetCellForReading(hex_around);
+    for (int32_t i {0}; i < hexes_around; i++) {
+        if (mpos hex_around {hex}; GeometryHelper::MoveHexAroundAway(hex_around, i, _mapSize)) {
+            const auto& field {_hexField->GetCellForReading(hex_around)};
 
             if (!field.Items.empty()) {
-                auto field2 = _hexField->GetCellForWriting(hex_around);
+                auto field2 {_hexField->GetCellForWriting(hex_around)};
 
                 for (auto item : field2->Items) {
                     if (seen.insert(item->GetId()).second) {
@@ -1313,14 +1314,14 @@ auto Map::GetTriggerItemsOnHex(mpos hex) noexcept -> vector<ptr<Item>>
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
-    const auto& field = _hexField->GetCellForReading(hex);
+    const auto& field {_hexField->GetCellForReading(hex)};
 
     if (field.Items.empty()) {
         return {};
     }
 
-    auto field2 = _hexField->GetCellForWriting(hex);
-    vector<ptr<Item>> triggers;
+    auto field2 {_hexField->GetCellForWriting(hex)};
+    vector<ptr<Item>> triggers {};
 
     for (auto item : field2->Items) {
         if (item->GetIsTrigger()) {
@@ -1339,7 +1340,7 @@ auto Map::IsValidPlaceForItem(mpos hex, ptr<const ProtoItem> proto_item) const -
         return false;
     }
 
-    bool is_critter = false;
+    bool is_critter {false};
     GeometryHelper::ForEachMultihexLines(proto_item->GetMultihexLines(), hex, _mapSize, [this, &is_critter](mpos multihex) { is_critter |= IsCritterOnHex(multihex, CritterFindType::Any); });
     return !is_critter;
 }
@@ -1347,7 +1348,7 @@ auto Map::IsValidPlaceForItem(mpos hex, ptr<const ProtoItem> proto_item) const -
 void Map::RecacheHexFlags(mpos hex)
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
-    auto field = _hexField->GetCellForWriting(hex);
+    auto field {_hexField->GetCellForWriting(hex)};
 
     RecacheHexFlags(field);
 }
@@ -1387,7 +1388,7 @@ void Map::RecacheHexFlags(ptr<Field> field)
 void Map::SetHexManualBlock(mpos hex, bool enable, bool full)
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
-    auto field = _hexField->GetCellForWriting(hex);
+    auto field {_hexField->GetCellForWriting(hex)};
 
     field->ManualBlock = enable;
     field->ManualBlockFull = full;
@@ -1398,7 +1399,7 @@ void Map::SetHexManualBlock(mpos hex, bool enable, bool full)
 auto Map::IsCritterOnHex(mpos hex, CritterFindType find_type) const -> bool
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    const auto& field = _hexField->GetCellForReading(hex);
+    const auto& field {_hexField->GetCellForReading(hex)};
 
     if (field.HasCritter) {
         if (find_type == CritterFindType::Any) {
@@ -1419,7 +1420,7 @@ auto Map::IsCritterOnHex(mpos hex, ptr<const Critter> cr) const -> bool
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
-    const auto& field = _hexField->GetCellForReading(hex);
+    const auto& field {_hexField->GetCellForReading(hex)};
 
     if (field.HasCritter) {
         for (auto field_cr : field.Critters) {
@@ -1436,7 +1437,7 @@ auto Map::GetCritter(ident_t cr_id) noexcept -> nptr<Critter>
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
-    if (auto it = _crittersMap.find(cr_id); it != _crittersMap.end()) {
+    if (auto it {_crittersMap.find(cr_id)}; it != _crittersMap.end()) {
         return it->second;
     }
 
@@ -1447,10 +1448,10 @@ auto Map::GetCritterOnHex(mpos hex, CritterFindType find_type) noexcept -> nptr<
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
-    const auto& field = _hexField->GetCellForReading(hex);
+    const auto& field {_hexField->GetCellForReading(hex)};
 
     if (field.HasCritter) {
-        auto field2 = _hexField->GetCellForWriting(hex);
+        auto field2 {_hexField->GetCellForWriting(hex)};
 
         for (auto cr : field2->Critters) {
             if (cr->CheckFind(find_type)) {
@@ -1465,11 +1466,11 @@ auto Map::GetCritterOnHex(mpos hex, CritterFindType find_type) noexcept -> nptr<
 auto Map::GetCrittersOnHex(mpos hex, CritterFindType find_type) -> vector<ptr<Critter>>
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    vector<ptr<Critter>> critters;
-    const auto& field = _hexField->GetCellForReading(hex);
+    vector<ptr<Critter>> critters {};
+    const auto& field {_hexField->GetCellForReading(hex)};
 
     if (field.HasCritter) {
-        auto field2 = _hexField->GetCellForWriting(hex);
+        auto field2 {_hexField->GetCellForWriting(hex)};
 
         for (auto cr : field2->Critters) {
             if (cr->CheckFind(find_type)) {
@@ -1484,8 +1485,8 @@ auto Map::GetCrittersOnHex(mpos hex, CritterFindType find_type) -> vector<ptr<Cr
 auto Map::GetCrittersOnHex(mpos hex, CritterFindType find_type) const -> vector<ptr<const Critter>>
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    vector<ptr<const Critter>> critters;
-    const auto& field = _hexField->GetCellForReading(hex);
+    vector<ptr<const Critter>> critters {};
+    const auto& field {_hexField->GetCellForReading(hex)};
 
     if (field.HasCritter) {
         for (auto cr : field.Critters) {
@@ -1501,23 +1502,23 @@ auto Map::GetCrittersOnHex(mpos hex, CritterFindType find_type) const -> vector<
 auto Map::GetCrittersInRadius(mpos hex, int32_t radius, CritterFindType find_type) -> vector<ptr<Critter>>
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    vector<ptr<Critter>> critters;
+    vector<ptr<Critter>> critters {};
 
-    int32_t hexes_in_radius = GeometryHelper::HexesInRadius(radius);
+    int32_t hexes_in_radius {GeometryHelper::HexesInRadius(radius)};
 
     if (numeric_cast<size_t>(hexes_in_radius) < _critters.size()) {
-        unordered_set<ident_t> seen;
+        unordered_set<ident_t> seen {};
         seen.reserve(numeric_cast<size_t>(hexes_in_radius));
 
-        for (int32_t i = 0; i < hexes_in_radius; i++) {
-            if (mpos cur_hex = hex; GeometryHelper::MoveHexAroundAway(cur_hex, numeric_cast<int32_t>(i), _mapSize)) {
-                const auto& field = _hexField->GetCellForReading(cur_hex);
+        for (int32_t i {0}; i < hexes_in_radius; i++) {
+            if (mpos cur_hex {hex}; GeometryHelper::MoveHexAroundAway(cur_hex, numeric_cast<int32_t>(i), _mapSize)) {
+                const auto& field {_hexField->GetCellForReading(cur_hex)};
 
                 if (!field.HasCritter) {
                     continue;
                 }
 
-                auto field2 = _hexField->GetCellForWriting(cur_hex);
+                auto field2 {_hexField->GetCellForWriting(cur_hex)};
 
                 for (auto cr : field2->Critters) {
                     if (seen.insert(cr->GetId()).second && cr->CheckFind(find_type)) {
@@ -1531,7 +1532,7 @@ auto Map::GetCrittersInRadius(mpos hex, int32_t radius, CritterFindType find_typ
         critters.reserve(_critters.size());
 
         for (auto cr : _critters) {
-            int32_t distance = GeometryHelper::GetDistance(hex, cr->GetHex()) - cr->GetMultihex();
+            int32_t distance {GeometryHelper::GetDistance(hex, cr->GetHex()) - cr->GetMultihex()};
 
             if (distance <= radius && cr->CheckFind(find_type)) {
                 critters.emplace_back(cr);
@@ -1545,7 +1546,7 @@ auto Map::GetCrittersInRadius(mpos hex, int32_t radius, CritterFindType find_typ
 auto Map::IsTriggerStaticItemOnHex(mpos hex) const noexcept -> bool
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    const auto& static_field = GetStaticField(hex);
+    const auto& static_field {GetStaticField(hex)};
 
     return !static_field.TriggerItems.empty();
 }
@@ -1564,7 +1565,7 @@ auto Map::GetStaticItem(ident_t id) const noexcept -> nptr<StaticItem>
 auto Map::GetStaticItemOnHex(mpos hex, hstring pid) const noexcept -> nptr<StaticItem>
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    const auto& static_field = GetStaticField(hex);
+    const auto& static_field {GetStaticField(hex)};
 
     if (static_field.StaticItems.empty()) {
         return nullptr;
@@ -1582,7 +1583,7 @@ auto Map::GetStaticItemOnHex(mpos hex, hstring pid) const noexcept -> nptr<Stati
 auto Map::GetStaticItems(hstring pid) const -> vector<ptr<StaticItem>>
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    vector<ptr<StaticItem>> items;
+    vector<ptr<StaticItem>> items {};
 
     for (auto static_item : GetStaticItems()) {
         if (!pid || static_item->GetProtoId() == pid) {
@@ -1598,7 +1599,7 @@ auto Map::GetStaticItemsOnHex(mpos hex) const noexcept -> const_span<ptr<StaticI
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     // Reuse the guaranteed shared prototype cell without invoking mutating GetCellForWriting.
     // Runtime-map locks do not serialize this cross-map static grid
-    const auto& static_field = GetStaticField(hex);
+    const auto& static_field {GetStaticField(hex)};
 
     if (static_field.StaticItems.empty()) {
         return {};
@@ -1610,15 +1611,15 @@ auto Map::GetStaticItemsOnHex(mpos hex) const noexcept -> const_span<ptr<StaticI
 auto Map::GetStaticItemsInRadius(mpos hex, int32_t radius, hstring pid) const -> vector<ptr<StaticItem>>
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    vector<ptr<StaticItem>> items;
+    vector<ptr<StaticItem>> items {};
 
-    int32_t hexes_in_radius = GeometryHelper::HexesInRadius(radius);
-    unordered_set<ptr<const StaticItem>> seen;
+    int32_t hexes_in_radius {GeometryHelper::HexesInRadius(radius)};
+    unordered_set<ptr<const StaticItem>> seen {};
     seen.reserve(numeric_cast<size_t>(hexes_in_radius));
 
-    for (int32_t i = 0; i < hexes_in_radius; i++) {
-        if (mpos cur_hex = hex; GeometryHelper::MoveHexAroundAway(cur_hex, i, _mapSize)) {
-            const auto& static_field = GetStaticField(cur_hex);
+    for (int32_t i {0}; i < hexes_in_radius; i++) {
+        if (mpos cur_hex {hex}; GeometryHelper::MoveHexAroundAway(cur_hex, i, _mapSize)) {
+            const auto& static_field {GetStaticField(cur_hex)};
 
             if (static_field.StaticItems.empty()) {
                 continue;
@@ -1638,7 +1639,7 @@ auto Map::GetStaticItemsInRadius(mpos hex, int32_t radius, hstring pid) const ->
 auto Map::GetTriggerStaticItemsOnHex(mpos hex) const noexcept -> const_span<ptr<StaticItem>>
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    const auto& static_field = GetStaticField(hex);
+    const auto& static_field {GetStaticField(hex)};
 
     if (static_field.TriggerItems.empty()) {
         return {};
@@ -1670,7 +1671,7 @@ void Map::VerifyStaticItemRemovalsOnlyGrow(const_span<ident_t> new_ids) const
         return;
     }
 
-    unordered_set<ident_t> new_removed;
+    unordered_set<ident_t> new_removed {};
     new_removed.reserve(new_ids.size());
 
     for (ident_t static_item_id : new_ids) {
@@ -1693,7 +1694,7 @@ auto Map::RemoveStaticItem(ident_t static_item_id) -> bool
         return false;
     }
 
-    vector<ident_t> removed_ids = GetRemovedStaticItemIds();
+    vector<ident_t> removed_ids {GetRemovedStaticItemIds()};
     removed_ids.emplace_back(static_item_id);
     SetRemovedStaticItemIds(removed_ids);
     RefreshRemovedStaticItems();
@@ -1705,10 +1706,10 @@ void Map::RefreshRemovedStaticItems()
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
-    unordered_set<ident_t> removed;
+    unordered_set<ident_t> removed {};
 
     if (IsNonEmptyRemovedStaticItemIds()) {
-        vector<ident_t> removed_ids = GetRemovedStaticItemIds();
+        vector<ident_t> removed_ids {GetRemovedStaticItemIds()};
         removed.reserve(removed_ids.size());
 
         for (ident_t static_item_id : removed_ids) {
@@ -1733,7 +1734,7 @@ auto Map::GetStaticField(mpos hex) const noexcept -> const StaticMap::Field&
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
     if (!_staticFieldOverrides.empty()) {
-        if (auto it = _staticFieldOverrides.find(hex); it != _staticFieldOverrides.end()) {
+        if (auto it {_staticFieldOverrides.find(hex)}; it != _staticFieldOverrides.end()) {
             return it->second;
         }
     }
@@ -1752,7 +1753,7 @@ void Map::RebuildStaticOverlay()
         return;
     }
 
-    const_span<ptr<StaticItem>> baked_items = _staticMap->GetStaticItems();
+    const_span<ptr<StaticItem>> baked_items {_staticMap->GetStaticItems()};
     _visibleStaticItems.reserve(baked_items.size());
 
     for (ptr<StaticItem> static_item : baked_items) {
@@ -1761,7 +1762,7 @@ void Map::RebuildStaticOverlay()
         }
     }
 
-    unordered_set<mpos> dirty_hexes;
+    unordered_set<mpos> dirty_hexes {};
 
     for (ident_t static_item_id : _removedStaticItems) {
         _staticMap->ForEachItemHex(static_item_id, [&dirty_hexes](mpos item_hex) { dirty_hexes.emplace(item_hex); });
@@ -1775,10 +1776,10 @@ void Map::RebuildStaticOverlay()
 auto Map::IsOutsideArea(mpos hex) const noexcept -> bool
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    irect32 scroll_area = GetScrollAxialArea();
+    irect32 scroll_area {GetScrollAxialArea()};
 
     if (!scroll_area.is_zero()) {
-        ipos32 axial_hex = GeometryHelper::GetHexAxialCoord(hex);
+        ipos32 axial_hex {GeometryHelper::GetHexAxialCoord(hex)};
 
         if (axial_hex.x < scroll_area.x || axial_hex.x > scroll_area.x + scroll_area.width || //
             axial_hex.y < scroll_area.y || axial_hex.y > scroll_area.y + scroll_area.height) {
@@ -1793,25 +1794,26 @@ void Map::VerifyTrigger(ptr<Critter> cr, mpos from_hex, mpos to_hex, mdir dir)
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
 
-    ident_t initial_cr_map_id = cr->GetMapId();
-    mpos initial_cr_hex = cr->GetHex();
+    ident_t initial_cr_map_id {cr->GetMapId()};
+    mpos initial_cr_hex {cr->GetHex()};
 
-    auto is_trigger_context_changed = [this, cr, initial_cr_map_id, initial_cr_hex]() noexcept -> bool {
+    auto is_trigger_context_changed {[this, cr, initial_cr_map_id, initial_cr_hex]() noexcept -> bool {
         if (IsDestroyed() || cr->IsDestroyed()) {
             return true;
         }
         if (cr->GetMapId() != initial_cr_map_id || cr->GetHex() != initial_cr_hex) {
             return true;
         }
-        nptr<Critter> trigger_cr = cr;
-        auto map_cr = GetCritter(cr->GetId());
+
+        nptr<Critter> trigger_cr {cr};
+        auto map_cr {GetCritter(cr->GetId())};
 
         if (initial_cr_map_id == GetId() && !(map_cr == trigger_cr)) {
             return true;
         }
 
         return false;
-    };
+    }};
 
     if (is_trigger_context_changed()) {
         return;
@@ -1820,7 +1822,7 @@ void Map::VerifyTrigger(ptr<Critter> cr, mpos from_hex, mpos to_hex, mdir dir)
     if (IsTriggerStaticItemOnHex(from_hex)) {
         // Own the list: a callback below may call RemoveStaticItem(), which rebuilds the very field the
         // returned span borrows from
-        auto from_triggers = to_vector(GetTriggerStaticItemsOnHex(from_hex));
+        auto from_triggers {to_vector(GetTriggerStaticItemsOnHex(from_hex))};
 
         for (auto static_item : from_triggers) {
             if (static_item->TriggerScriptFunc) {
@@ -1842,7 +1844,7 @@ void Map::VerifyTrigger(ptr<Critter> cr, mpos from_hex, mpos to_hex, mdir dir)
     }
 
     if (IsTriggerStaticItemOnHex(to_hex)) {
-        auto to_triggers = to_vector(GetTriggerStaticItemsOnHex(to_hex));
+        auto to_triggers {to_vector(GetTriggerStaticItemsOnHex(to_hex))};
 
         for (auto static_item : to_triggers) {
             if (static_item->TriggerScriptFunc) {
@@ -1899,10 +1901,10 @@ void Map::VerifyTrigger(ptr<Critter> cr, mpos from_hex, mpos to_hex, mdir dir)
 auto Map::CheckGagItems(mpos hex, int32_t radius, const function<bool(ptr<const Item>)>& gag_callback) const -> bool
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    int32_t hexes_around = GeometryHelper::HexesInRadius(radius);
+    int32_t hexes_around {GeometryHelper::HexesInRadius(radius)};
 
-    for (int32_t i = 0; i < hexes_around; i++) {
-        if (mpos check_hex = hex; GeometryHelper::MoveHexAroundAway(check_hex, i, _mapSize)) {
+    for (int32_t i {0}; i < hexes_around; i++) {
+        if (mpos check_hex {hex}; GeometryHelper::MoveHexAroundAway(check_hex, i, _mapSize)) {
             if (IsHexMovable(check_hex)) {
                 continue;
             }
@@ -1918,13 +1920,13 @@ auto Map::CheckGagItems(mpos hex, int32_t radius, const function<bool(ptr<const 
 auto Map::CheckGagItem(mpos hex, const function<bool(ptr<const Item>)>& gag_callback) const -> bool
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    const auto& static_field = GetStaticField(hex);
+    const auto& static_field {GetStaticField(hex)};
 
     if (static_field.MoveBlocked) {
         return false;
     }
 
-    const auto& field = _hexField->GetCellForReading(hex);
+    const auto& field {_hexField->GetCellForReading(hex)};
 
     if (!field.MovableWithGag) {
         return false;

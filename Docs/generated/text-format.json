@@ -127,7 +127,7 @@
         {
           "path": "Source/Common/TextPack.cpp",
           "anchors": [
-            "auto first = line.find('{', offset);",
+            "auto first {line.find('{', offset)};",
             "if (first == string::npos)",
             "continue;"
           ]
@@ -197,7 +197,7 @@
         {
           "path": "Source/Common/TextPack.cpp",
           "anchors": [
-            "auto last = line.find('}', first);",
+            "auto last {line.find('}', first)};",
             "token = line.substr(first + 1, last - first - 1);"
           ]
         }
@@ -215,7 +215,7 @@
         {
           "path": "Source/Tools/TextBaker.cpp",
           "anchors": [
-            "auto name_pair = strex(file_header.GetNameNoExt()).split('.');",
+            "auto name_pair {strex(file_header.GetNameNoExt()).split('.')};",
             "name_pair.size() == 2",
             "Text filename must contain pack name and language suffix"
           ]
@@ -247,8 +247,8 @@
         {
           "path": "Source/Tools/TextBaker.cpp",
           "anchors": [
-            "BakeLanguageConfig bake_languages = TextPack::ParseBakeLanguages(_context->GetSettings()->Baking.BakeLanguages);",
-            "const string& default_lang = bake_languages.Languages.front();"
+            "BakeLanguageConfig bake_languages {TextPack::ParseBakeLanguages(_context->GetSettings()->Baking.BakeLanguages)};",
+            "const string& default_lang {bake_languages.Languages.front()};"
           ]
         },
         {
@@ -403,8 +403,8 @@
           "path": "Source/Tools/ProtoTextBaker.cpp",
           "anchors": [
             "Prototype text key has too many tokens",
-            "string_view key2 = key_tok.size() >= 3",
-            "string_view key3 = key_tok.size() >= 4"
+            "string_view key2 {key_tok.size() >= 3",
+            "string_view key3 {key_tok.size() >= 4"
           ]
         }
       ]
@@ -419,7 +419,7 @@
         {
           "path": "Source/Tools/ProtoTextBaker.cpp",
           "anchors": [
-            "string lang = key_tok.size() >= 2 ? key_tok[1] : default_lang;"
+            "string lang {key_tok.size() >= 2 ? key_tok[1] : default_lang};"
           ]
         }
       ]
@@ -931,5 +931,5 @@
       "internal": 1
     }
   },
-  "contract_digest": "44aac53fcc587155564320a81c23293c42ccd9a3416d468cc79e4e0bdf56d0d8"
+  "contract_digest": "95ad7ed2ce3a75f27fa445af83c6727e057447ba7ada8ad859f99a8cbd8618cd"
 }

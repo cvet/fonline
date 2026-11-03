@@ -46,8 +46,8 @@ FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(ResourceBakingException);
 
-inline constexpr string_view BAKER_CACHE_DIR = ".baker-cache";
-inline constexpr string_view REPORT_FILE_SUFFIX = ".report.json";
+inline constexpr string_view BAKER_CACHE_DIR {".baker-cache"};
+inline constexpr string_view REPORT_FILE_SUFFIX {".report.json"};
 
 class Properties;
 class ScriptSystem;
@@ -86,7 +86,7 @@ protected:
     void RecordSpriteMeshBakingFrame(const SpriteMeshBakingFrameReport& frame) const;
     void RecordSharedSpriteMeshBakingFrames(uint64_t count) const;
 
-    shared_ptr<BakingContext> _context;
+    shared_ptr<BakingContext> _context {};
 
 private:
     // Fallback for a property script func the AngelScript-only bake script system can't resolve: a managed func
@@ -162,9 +162,9 @@ private:
         vector<unique_ptr<BaseBaker>> Bakers {};
     };
 
-    [[nodiscard]] auto MakeOutputPath(string_view res_pack_name, string_view path) const -> string;
-    [[nodiscard]] auto ResolveFilePath(string_view path, uint64_t& write_time) const -> optional<string>;
-    [[nodiscard]] auto FindFile(string_view path, size_t& size, uint64_t& write_time) const -> bool;
+    auto MakeOutputPath(string_view res_pack_name, string_view path) const -> string;
+    auto ResolveFilePath(string_view path, uint64_t& write_time) const -> optional<string>;
+    auto FindFile(string_view path, size_t& size, uint64_t& write_time) const -> bool;
 
     auto CheckData(string_view res_pack_name, string_view path, uint64_t write_time) -> bool;
     void WriteData(string_view res_pack_name, string_view path, span<const uint8_t> data);

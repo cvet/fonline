@@ -116,7 +116,7 @@ struct std::formatter<T> : formatter<FO_NAMESPACE string_view> // NOLINT(cert-dc
     template<typename FormatContext>
     auto format(const T& value, FormatContext& ctx) const
     {
-        FO_NAMESPACE string result;
+        FO_NAMESPACE string result {};
 
         for (const auto& e : value) {
             if constexpr (std::same_as<T, FO_NAMESPACE vector<FO_NAMESPACE string>>) {

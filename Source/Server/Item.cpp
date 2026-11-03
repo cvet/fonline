@@ -97,7 +97,7 @@ auto Item::IsInsideContainer(ptr<const Item> container) -> bool
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
-    for (auto current = make_nptr(this).try_hold_ref(); current;) {
+    for (auto current {make_nptr(this).try_hold_ref()}; current;) {
         if (current == container.get()) {
             return true;
         }
@@ -132,7 +132,7 @@ auto Item::GetInnerItem(ident_t item_id) noexcept -> nptr<Item>
 auto Item::GetInnerItems(const any_t& stack_id) -> vector<ptr<Item>>
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    vector<ptr<Item>> result;
+    vector<ptr<Item>> result {};
 
     if (!_innerItems) {
         return result;
@@ -160,7 +160,7 @@ auto Item::GetAllInnerItems() -> vector<ptr<Item>>
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     FO_VERIFY_AND_THROW(_innerItems, "Item inner container storage is missing");
 
-    vector<ptr<Item>> result;
+    vector<ptr<Item>> result {};
     result.reserve(_innerItems->size());
 
     for (auto& item : *_innerItems) {
@@ -175,7 +175,7 @@ auto Item::GetAllInnerItems() const -> vector<ptr<const Item>>
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     FO_VERIFY_AND_THROW(_innerItems, "Item inner container storage is missing");
 
-    vector<ptr<const Item>> result;
+    vector<ptr<const Item>> result {};
     result.reserve(_innerItems->size());
 
     for (const auto& item : *_innerItems) {
@@ -190,7 +190,7 @@ auto Item::TakeAllInnerItems() -> vector<refcount_ptr<Item>>
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     FO_VERIFY_AND_THROW(_innerItems, "Item inner container storage is missing");
 
-    vector<refcount_ptr<Item>> result = std::move(*_innerItems);
+    vector<refcount_ptr<Item>> result {std::move(*_innerItems)};
     _innerItems.reset();
 
     return result;
@@ -228,7 +228,7 @@ auto Item::AddItemToContainer(ptr<Item> item, const any_t& stack_id) -> ptr<Item
     item->SetContainerStack(stack_id);
     SetItemToContainer(item);
 
-    auto inner_item_ids = GetInnerItemIds();
+    auto inner_item_ids {GetInnerItemIds()};
     vec_add_unique_value(inner_item_ids, item->GetId());
     SetInnerItemIds(inner_item_ids);
 
@@ -256,7 +256,7 @@ void Item::RemoveItemFromContainer(ptr<Item> item)
         _innerItems.reset();
     }
 
-    auto inner_item_ids = GetInnerItemIds();
+    auto inner_item_ids {GetInnerItemIds()};
     vec_remove_unique_value(inner_item_ids, item->GetId());
     SetInnerItemIds(inner_item_ids);
 
@@ -271,8 +271,8 @@ auto Item::CanSendItem(bool as_public) const noexcept -> bool
 
     switch (GetOwnership()) {
     case ItemOwnership::CritterInventory: {
-        auto slot = GetCritterSlot();
-        size_t slot_num = static_cast<size_t>(slot);
+        auto slot {GetCritterSlot()};
+        size_t slot_num {static_cast<size_t>(slot)};
 
         if (slot_num >= _engine->Settings->Critter.CritterSlotEnabled.size() || !_engine->Settings->Critter.CritterSlotEnabled[slot_num]) {
             return false;

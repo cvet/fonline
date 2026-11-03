@@ -43,7 +43,7 @@ FO_BEGIN_NAMESPACE
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Item_IsVisible(ptr<ItemView> self)
 {
-    auto hex_item = self.dyn_cast<ItemHexView>();
+    auto hex_item {self.dyn_cast<ItemHexView>()};
 
     if (!hex_item) {
         throw ScriptException("Item is not on map");
@@ -56,7 +56,7 @@ FO_SCRIPT_API bool Client_Item_IsVisible(ptr<ItemView> self)
 ///@ ExportMethod
 FO_SCRIPT_API ipos32 Client_Item_GetSpriteOffset(ptr<ItemView> self)
 {
-    auto hex_item = self.dyn_cast<ItemHexView>();
+    auto hex_item {self.dyn_cast<ItemHexView>()};
 
     if (!hex_item) {
         throw ScriptException("Item is not on map");
@@ -69,14 +69,14 @@ FO_SCRIPT_API ipos32 Client_Item_GetSpriteOffset(ptr<ItemView> self)
 ///@ ExportMethod PassOwnership
 FO_SCRIPT_API ptr<ItemView> Client_Item_Clone(ptr<ItemView> self)
 {
-    auto cloned_item = self->CreateRefClone();
+    auto cloned_item {self->CreateRefClone()};
     cloned_item->AddRef();
     return cloned_item;
 }
 
 static void ItemGetMapPos(ptr<ItemView> item, mpos& hex)
 {
-    auto map = item->GetEngine()->GetCurMap();
+    auto map {item->GetEngine()->GetCurMap()};
 
     if (!map) {
         throw ScriptException("Map is not loaded");
@@ -84,7 +84,7 @@ static void ItemGetMapPos(ptr<ItemView> item, mpos& hex)
 
     switch (item->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
-        auto cr = map->GetCritter(item->GetCritterId());
+        auto cr {map->GetCritter(item->GetCritterId())};
         if (!cr) {
             throw ScriptException("Invalid critter ownership, critter not found");
         }
@@ -99,7 +99,7 @@ static void ItemGetMapPos(ptr<ItemView> item, mpos& hex)
             throw ScriptException("Invalid container ownership, crosslinks");
         }
 
-        auto cont = map->GetItem(item->GetContainerId());
+        auto cont {map->GetItem(item->GetContainerId())};
         if (!cont) {
             throw ScriptException("Invalid container ownership, container not found");
         }
@@ -127,7 +127,7 @@ FO_SCRIPT_API void Client_Item_GetMapPos(ptr<ItemView> self, mpos& hex)
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Item_IsAnimPlaying(ptr<ItemView> self)
 {
-    if (auto hex_item = self.dyn_cast<const ItemHexView>()) {
+    if (auto hex_item {self.dyn_cast<const ItemHexView>()}) {
         return hex_item->GetAnim()->IsPlaying();
     }
 
@@ -138,7 +138,7 @@ FO_SCRIPT_API bool Client_Item_IsAnimPlaying(ptr<ItemView> self)
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Item_PlayAnim(ptr<ItemView> self, hstring animName, bool looped, bool reversed)
 {
-    if (auto hex_item = self.dyn_cast<ItemHexView>()) {
+    if (auto hex_item {self.dyn_cast<ItemHexView>()}) {
         hex_item->PlayAnim(animName, looped, reversed);
     }
 }
@@ -147,7 +147,7 @@ FO_SCRIPT_API void Client_Item_PlayAnim(ptr<ItemView> self, hstring animName, bo
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Item_StopAnim(ptr<ItemView> self)
 {
-    if (auto hex_item = self.dyn_cast<ItemHexView>()) {
+    if (auto hex_item {self.dyn_cast<ItemHexView>()}) {
         hex_item->StopAnim();
     }
 }
@@ -156,7 +156,7 @@ FO_SCRIPT_API void Client_Item_StopAnim(ptr<ItemView> self)
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Item_SetAnimTime(ptr<ItemView> self, float32_t normalizedTime)
 {
-    if (auto hex_item = self.dyn_cast<ItemHexView>()) {
+    if (auto hex_item {self.dyn_cast<ItemHexView>()}) {
         hex_item->SetAnimTime(normalizedTime);
     }
 }
@@ -165,7 +165,7 @@ FO_SCRIPT_API void Client_Item_SetAnimTime(ptr<ItemView> self, float32_t normali
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Item_SetAnimDir(ptr<ItemView> self, mdir dir)
 {
-    if (auto hex_item = self.dyn_cast<ItemHexView>()) {
+    if (auto hex_item {self.dyn_cast<ItemHexView>()}) {
         hex_item->SetAnimDir(dir);
     }
 }
@@ -174,7 +174,7 @@ FO_SCRIPT_API void Client_Item_SetAnimDir(ptr<ItemView> self, mdir dir)
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Item_IsMoving(ptr<ItemView> self)
 {
-    if (auto hex_item = self.dyn_cast<const ItemHexView>()) {
+    if (auto hex_item {self.dyn_cast<const ItemHexView>()}) {
         return hex_item->IsMoving();
     }
 
@@ -185,7 +185,7 @@ FO_SCRIPT_API bool Client_Item_IsMoving(ptr<ItemView> self)
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Item_MoveToHex(ptr<ItemView> self, mpos hex, float32_t speed)
 {
-    if (auto hex_item = self.dyn_cast<ItemHexView>()) {
+    if (auto hex_item {self.dyn_cast<ItemHexView>()}) {
         hex_item->MoveToHex(hex, speed);
     }
 }
@@ -194,12 +194,12 @@ FO_SCRIPT_API void Client_Item_MoveToHex(ptr<ItemView> self, mpos hex, float32_t
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<ItemView>> Client_Item_GetInnerItems(ptr<ItemView> self)
 {
-    span<refcount_ptr<ItemView>> inner_items = self->GetInnerItems();
+    span<refcount_ptr<ItemView>> inner_items {self->GetInnerItems()};
 
-    vector<ptr<ItemView>> items;
+    vector<ptr<ItemView>> items {};
     items.reserve(inner_items.size());
 
-    for (size_t i = 0; i < inner_items.size(); i++) {
+    for (size_t i {0}; i < inner_items.size(); i++) {
         items.emplace_back(inner_items[i]);
     }
 
@@ -210,7 +210,7 @@ FO_SCRIPT_API vector<ptr<ItemView>> Client_Item_GetInnerItems(ptr<ItemView> self
 ///@ ExportMethod
 FO_SCRIPT_API uint8_t Client_Item_GetAlpha(ptr<ItemView> self)
 {
-    auto hex_item = self.dyn_cast<ItemHexView>();
+    auto hex_item {self.dyn_cast<ItemHexView>()};
     if (!hex_item) {
         return 0xFF;
     }
@@ -222,7 +222,7 @@ FO_SCRIPT_API uint8_t Client_Item_GetAlpha(ptr<ItemView> self)
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Item_SetAlpha(ptr<ItemView> self, uint8_t alpha)
 {
-    if (auto hex_item = self.dyn_cast<ItemHexView>()) {
+    if (auto hex_item {self.dyn_cast<ItemHexView>()}) {
         hex_item->SetTargetAlpha(alpha);
     }
 }
@@ -231,7 +231,7 @@ FO_SCRIPT_API void Client_Item_SetAlpha(ptr<ItemView> self, uint8_t alpha)
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Item_Finish(ptr<ItemView> self)
 {
-    if (auto hex_item = self.dyn_cast<ItemHexView>()) {
+    if (auto hex_item {self.dyn_cast<ItemHexView>()}) {
         if (!hex_item->IsFinishing()) {
             hex_item->Finish();
         }

@@ -108,7 +108,7 @@ private:
     struct UpdateFile
     {
         int32_t Index {};
-        string Name;
+        string Name {};
         uint64_t Size {};
         uint64_t RemaningSize {};
         uint64_t Hash {};
@@ -143,9 +143,9 @@ private:
     // What one verified file was when it was proved intact, so a later run can skip reading it again
     struct VerifiedFileIdentity
     {
-        uint64_t Size;
-        uint64_t WriteTime;
-        uint64_t Content;
+        uint64_t Size {};
+        uint64_t WriteTime {};
+        uint64_t Content {};
     };
 
     struct PackVerification
@@ -202,9 +202,9 @@ private:
     ptr<GlobalSettings> _settings;
     ClientConnection _conn;
     CacheStorage _cache;
-    string _binaryDir;
+    string _binaryDir {};
     string _serverMetadataVersion {};
-    optional<UpdaterResult> _result;
+    optional<UpdaterResult> _result {};
     Stage _stage {Stage::WaitingForDirectory};
     nanotime _nextDirectoryAttempt {};
     bool _binariesMode {};

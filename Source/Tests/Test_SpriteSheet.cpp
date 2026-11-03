@@ -60,23 +60,23 @@ namespace
     // placement/motion, deliberately different from the pixel-owner frame it references
     static auto MakeSpriteSheetTestResource(bool shared_frame) -> vector<uint8_t>
     {
-        vector<uint8_t> data;
+        vector<uint8_t> data {};
         data_writer writer {data};
         writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
         writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);
         writer.write<uint8_t>(numeric_cast<uint8_t>(GameSettings::MAP_DIR_COUNT));
 
-        for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
+        for (int32_t dir {0}; dir < GameSettings::MAP_DIR_COUNT; dir++) {
             writer.write<uint16_t>(uint16_t {3});
             writer.write<uint32_t>(uint32_t {120});
 
-            for (int32_t frame = 0; frame < 3; frame++) {
-                bool shared = shared_frame && frame == 1;
-                int32_t source = shared ? 0 : frame;
-                int32_t placement_x = dir + source;
-                int32_t placement_y = -dir - source;
-                int32_t motion_x = (dir + 1) * (source + 1);
-                int32_t motion_y = -(dir + 1) * (source + 1);
+            for (int32_t frame {0}; frame < 3; frame++) {
+                bool shared {shared_frame && frame == 1};
+                int32_t source {shared ? 0 : frame};
+                int32_t placement_x {dir + source};
+                int32_t placement_y {-dir - source};
+                int32_t motion_x {(dir + 1) * (source + 1)};
+                int32_t motion_y {-(dir + 1) * (source + 1)};
 
                 if (shared) {
                     placement_x = 100 + dir;
@@ -100,7 +100,7 @@ namespace
                 writer.write<uint16_t>(uint16_t {5});
                 writer.write<uint16_t>(uint16_t {7});
 
-                for (size_t pixel = 0; pixel < 35; pixel++) {
+                for (size_t pixel {0}; pixel < 35; pixel++) {
                     writer.write<ucolor>(ucolor {255, 255, 255, 255});
                 }
 
@@ -145,18 +145,18 @@ namespace
 
     static auto MakeTimelineTestResource(const vector<vector<uint32_t>>& timelines) -> vector<uint8_t>
     {
-        vector<uint8_t> data;
+        vector<uint8_t> data {};
         data_writer writer {data};
         writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
         writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);
         writer.write<uint8_t>(numeric_cast<uint8_t>(timelines.size()));
 
-        for (size_t dir = 0; dir < timelines.size(); dir++) {
-            uint64_t total = std::accumulate(timelines[dir].begin(), timelines[dir].end(), uint64_t {});
+        for (size_t dir {0}; dir < timelines.size(); dir++) {
+            uint64_t total {std::accumulate(timelines[dir].begin(), timelines[dir].end(), uint64_t {})};
             writer.write<uint16_t>(numeric_cast<uint16_t>(timelines[dir].size()));
             writer.write<uint32_t>(numeric_cast<uint32_t>(total));
 
-            for (size_t frame = 0; frame < timelines[dir].size(); frame++) {
+            for (size_t frame {0}; frame < timelines[dir].size(); frame++) {
                 writer.write<uint32_t>(timelines[dir][frame]);
                 writer.write<int32_t>(numeric_cast<int32_t>(frame));
                 writer.write<int32_t>(numeric_cast<int32_t>(dir));
@@ -196,25 +196,16 @@ namespace
         }
     };
 
-    struct SpriteSheetFixture
+    class SpriteSheetFixture
     {
-        GlobalSettings Settings {MakeSpriteSheetTestSettings()};
-        unique_ptr<IAppWindow> Window {GetAppWindowStub(Settings)};
-        FileSystem Resources {};
-        GameTimer Timer {&Settings};
-        hash_storage Hashes {};
-        EffectManager Effects {&Settings, &Resources, Window->GetRender()};
-        SpriteManager Sprites {&Settings, Window, &Timer, &Effects, &Hashes};
-        ResourceManager Assets {&Resources, &Sprites};
-        nptr<RecordingSpriteSheetFactory> Factory {};
-
+    public:
         explicit SpriteSheetFixture(bool shared_frame = false) { InitializeResources(MakeSpriteSheetTestResource(shared_frame)); }
 
         explicit SpriteSheetFixture(const vector<vector<uint32_t>>& timelines) { InitializeResources(MakeTimelineTestResource(timelines)); }
 
         void InitializeResources(vector<uint8_t> sheet)
         {
-            auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("SpriteSheetTest");
+            auto source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("SpriteSheetTest")};
             source->AddFile("Sheet.fofrm", sheet);
             source->AddFile("art/critters/Testaa.fofrm", sheet);
             source->AddFile("art/critters/Testab.fofrm", std::move(sheet));
@@ -225,12 +216,35 @@ namespace
                 source->AddFile(strex("Effects/{}.fofx-1-info", name).str(), "[EffectInfo]\n");
             }
 
-            Resources.AddCustomSource(std::move(source));
-            Effects.LoadDefaultEffects();
-            auto factory = safe_alloc::make_unique<RecordingSpriteSheetFactory>(&Sprites, &Assets);
-            Factory = factory.as_nptr();
-            Assets.RegisterSpriteFactory(std::move(factory));
+            _resources.AddCustomSource(std::move(source));
+            _effects.LoadDefaultEffects();
+            auto factory {safe_alloc::make_unique<RecordingSpriteSheetFactory>(&_sprites, &_assets)};
+            _factory = factory.as_nptr();
+            _assets.RegisterSpriteFactory(std::move(factory));
         }
+
+        SpriteSheetFixture(const SpriteSheetFixture&) = delete;
+        SpriteSheetFixture(SpriteSheetFixture&&) = delete;
+        auto operator=(const SpriteSheetFixture&) -> SpriteSheetFixture& = delete;
+        auto operator=(SpriteSheetFixture&&) -> SpriteSheetFixture& = delete;
+
+        [[nodiscard]] auto GetAssets() -> ResourceManager& { return _assets; }
+        [[nodiscard]] auto GetSprites() -> SpriteManager& { return _sprites; }
+        [[nodiscard]] auto GetHashes() -> hash_storage& { return _hashes; }
+        [[nodiscard]] auto GetFactory() const noexcept -> nptr<RecordingSpriteSheetFactory> { return _factory; }
+        [[nodiscard]] auto GetWindow() -> ptr<IAppWindow> { return _window; }
+        [[nodiscard]] auto GetResources() -> FileSystem& { return _resources; }
+
+    private:
+        GlobalSettings _settings {MakeSpriteSheetTestSettings()};
+        unique_ptr<IAppWindow> _window {GetAppWindowStub(_settings)};
+        FileSystem _resources {};
+        GameTimer _timer {&_settings};
+        hash_storage _hashes {};
+        EffectManager _effects {&_settings, &_resources, _window->GetRender()};
+        SpriteManager _sprites {&_settings, _window, &_timer, &_effects, &_hashes};
+        ResourceManager _assets {&_resources, &_sprites};
+        nptr<RecordingSpriteSheetFactory> _factory {};
     };
 
     class SpriteSheetTestResolver final : public AnimationResolver
@@ -247,7 +261,7 @@ namespace
                 return nullptr;
             }
 
-            auto sprite = Frames->MakeCopy();
+            auto sprite {Frames->MakeCopy()};
             return sprite.dyn_cast<SpriteSheet>();
         }
 
@@ -265,11 +279,11 @@ TEST_CASE("SpriteManagerDoesNotOwnResourceLoading", "[sprite]")
 
 TEST_CASE("ResourceManagerReturnsIndependentSheetsFromTheFirstLoad", "[sprite]")
 {
-    SpriteSheetFixture fixture;
-    auto first = fixture.Assets.LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>();
+    SpriteSheetFixture fixture {};
+    auto first {fixture.GetAssets().LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>()};
     REQUIRE(first);
-    CHECK(first != fixture.Factory->Prototype);
-    auto second = fixture.Assets.LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>();
+    CHECK(first != fixture.GetFactory()->Prototype);
+    auto second {fixture.GetAssets().LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>()};
     REQUIRE(second);
     CHECK(first != second);
     CHECK(first->GetSize() == isize32 {5, 7});
@@ -283,7 +297,7 @@ TEST_CASE("ResourceManagerReturnsIndependentSheetsFromTheFirstLoad", "[sprite]")
     CHECK(second->GetTime() == 0.0f);
     CHECK(second->GetCurrentSprite() == second->GetSprite(0));
 
-    auto third = fixture.Assets.LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>();
+    auto third {fixture.GetAssets().LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>()};
     REQUIRE(third);
     CHECK(third->GetTime() == 0.0f);
     CHECK_FALSE(third->IsPlaying());
@@ -291,30 +305,30 @@ TEST_CASE("ResourceManagerReturnsIndependentSheetsFromTheFirstLoad", "[sprite]")
     CHECK(third->GetOffset() == ipos32 {});
     CHECK(third->GetFramesCount() == 3);
     CHECK(third->GetDuration() == std::chrono::milliseconds {120});
-    CHECK(fixture.Factory->LoadCount == 1);
+    CHECK(fixture.GetFactory()->LoadCount == 1);
 
-    auto other_atlas = fixture.Assets.LoadSprite("Sheet.fofrm", AtlasType::IfaceSprites).dyn_cast<SpriteSheet>();
+    auto other_atlas {fixture.GetAssets().LoadSprite("Sheet.fofrm", AtlasType::IfaceSprites).dyn_cast<SpriteSheet>()};
     REQUIRE(other_atlas);
     CHECK(other_atlas->GetSprite(0)->GetBatchTexture() != first->GetSprite(0)->GetBatchTexture());
     // AtlasSprite retains its shared pixel/geometry owner; sheet playback and frame tables are independent
-    auto quad = fixture.Assets.LoadSprite("Quad.png", AtlasType::MapSprites);
+    auto quad {fixture.GetAssets().LoadSprite("Quad.png", AtlasType::MapSprites)};
     REQUIRE(quad);
-    CHECK(quad == fixture.Assets.LoadSprite("Quad.png", AtlasType::MapSprites));
+    CHECK(quad == fixture.GetAssets().LoadSprite("Quad.png", AtlasType::MapSprites));
 }
 
 TEST_CASE("CritterFramesCacheCachesProjectOwnedDirectionalSequences", "[sprite]")
 {
     SpriteSheetFixture fixture {true};
-    SpriteSheetTestResolver resolver;
-    resolver.Frames = fixture.Assets.LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>();
+    SpriteSheetTestResolver resolver {};
+    resolver.Frames = fixture.GetAssets().LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>();
     REQUIRE(resolver.Frames);
     CritterFramesCache resources {&resolver};
-    hstring model = fixture.Hashes.to_hashed_string("art/critters/ProjectOwned");
-    CritterStateAnim state = static_cast<CritterStateAnim>(1);
-    CritterActionAnim action = static_cast<CritterActionAnim>(1);
+    hstring model {fixture.GetHashes().to_hashed_string("art/critters/ProjectOwned")};
+    CritterStateAnim state {static_cast<CritterStateAnim>(1)};
+    CritterActionAnim action {static_cast<CritterActionAnim>(1)};
 
-    for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
-        auto frames = resources.GetCritterAnimFrames(model, state, action, hdir {dir});
+    for (int32_t dir {0}; dir < GameSettings::MAP_DIR_COUNT; dir++) {
+        auto frames {resources.GetCritterAnimFrames(model, state, action, hdir {dir})};
         REQUIRE(frames);
         CHECK(frames->GetFramesCount() == 3);
         CHECK(frames->GetSpriteMotion()[2] == ipos32 {(dir + 1) * 3, -(dir + 1) * 3});
@@ -339,14 +353,14 @@ TEST_CASE("CritterFramesCacheCachesProjectOwnedDirectionalSequences", "[sprite]"
 TEST_CASE("SpriteSheetSharedFrameMetadataIsRecordSpecific", "[sprite]")
 {
     SpriteSheetFixture fixture {true};
-    auto sheet = fixture.Assets.LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>();
+    auto sheet {fixture.GetAssets().LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>()};
     REQUIRE(sheet);
-    auto copy = sheet->MakeCopy().dyn_cast<SpriteSheet>();
+    auto copy {sheet->MakeCopy().dyn_cast<SpriteSheet>()};
     REQUIRE(copy);
 
-    for (int32_t dir = 0; dir < 2; dir++) {
-        auto source_direction = sheet->GetDirection(hdir {numeric_cast<int8_t>(dir)});
-        auto copy_direction = copy->GetDirection(hdir {numeric_cast<int8_t>(dir)});
+    for (int32_t dir {0}; dir < 2; dir++) {
+        auto source_direction {sheet->GetDirection(hdir {numeric_cast<int8_t>(dir)})};
+        auto copy_direction {copy->GetDirection(hdir {numeric_cast<int8_t>(dir)})};
         REQUIRE(source_direction);
         REQUIRE(copy_direction);
 
@@ -369,8 +383,8 @@ TEST_CASE("SpriteSheetSharedFrameMetadataIsRecordSpecific", "[sprite]")
     CHECK(sheet->GetCurrentSprite() == sheet->GetSprite(1));
     CHECK(sheet->GetOffset() == ipos32 {101, -101});
 
-    auto copy_direction_zero = copy->GetDirection(hdir {0});
-    auto copy_direction_one = copy->GetDirection(hdir {1});
+    auto copy_direction_zero {copy->GetDirection(hdir {0})};
+    auto copy_direction_one {copy->GetDirection(hdir {1})};
     REQUIRE(copy_direction_zero);
     REQUIRE(copy_direction_one);
     copy_direction_one->SetFrame(1, copy_direction_one->GetSprite(0)->MakeCopy(), ipos32 {300, -301}, ipos32 {70, -71});
@@ -390,8 +404,8 @@ TEST_CASE("SpriteSheetSharedFrameMetadataIsRecordSpecific", "[sprite]")
 
 TEST_CASE("SpriteSheetSharedCroppedFramesKeepLogicalAnchors", "[sprite]")
 {
-    SpriteSheetFixture fixture;
-    vector<uint8_t> data;
+    SpriteSheetFixture fixture {};
+    vector<uint8_t> data {};
     data_writer writer {data};
     writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
     writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);
@@ -399,7 +413,7 @@ TEST_CASE("SpriteSheetSharedCroppedFramesKeepLogicalAnchors", "[sprite]")
     writer.write<uint16_t>(uint16_t {3});
     writer.write<uint32_t>(uint32_t {300});
 
-    for (int32_t frame = 0; frame < 3; frame++) {
+    for (int32_t frame {0}; frame < 3; frame++) {
         writer.write<uint32_t>(uint32_t {100});
         writer.write<int32_t>(7 + frame * 10);
         writer.write<int32_t>(-11 - frame * 10);
@@ -415,7 +429,7 @@ TEST_CASE("SpriteSheetSharedCroppedFramesKeepLogicalAnchors", "[sprite]")
         writer.write<uint16_t>(uint16_t {5});
         writer.write<uint16_t>(uint16_t {7});
 
-        for (size_t pixel = 0; pixel < 35; pixel++) {
+        for (size_t pixel {0}; pixel < 35; pixel++) {
             writer.write<ucolor>(ucolor {255, 255, 255, 255});
         }
 
@@ -438,12 +452,12 @@ TEST_CASE("SpriteSheetSharedCroppedFramesKeepLogicalAnchors", "[sprite]")
     }
 
     writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
-    auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("SharedCroppedSprite");
+    auto source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("SharedCroppedSprite")};
     source->AddFile("SharedCropped.fofrm", std::move(data));
-    fixture.Resources.AddCustomSource(std::move(source));
-    auto sheet = fixture.Assets.LoadSprite("SharedCropped.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>();
+    fixture.GetResources().AddCustomSource(std::move(source));
+    auto sheet {fixture.GetAssets().LoadSprite("SharedCropped.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>()};
     REQUIRE(sheet);
-    auto copy = sheet->MakeCopy().dyn_cast<SpriteSheet>();
+    auto copy {sheet->MakeCopy().dyn_cast<SpriteSheet>()};
     REQUIRE(copy);
 
     for (auto candidate : {sheet, copy}) {
@@ -460,12 +474,12 @@ TEST_CASE("SpriteSheetSharedCroppedFramesKeepLogicalAnchors", "[sprite]")
 
 TEST_CASE("SpriteSheetUntimedSequencesKeepManualFrameSelection", "[sprite]")
 {
-    SpriteSheetFixture fixture;
-    auto source = fixture.Assets.LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>();
+    SpriteSheetFixture fixture {};
+    auto source {fixture.GetAssets().LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>()};
     REQUIRE(source);
-    SpriteSheet sheet {&fixture.Sprites, 3, timespan::zero, 1};
+    SpriteSheet sheet {&fixture.GetSprites(), 3, timespan::zero, 1};
 
-    for (int32_t frame = 0; frame < 3; frame++) {
+    for (int32_t frame {0}; frame < 3; frame++) {
         sheet.SetFrame(frame, source->GetSprite(frame)->MakeCopy(), source->GetSpriteOffset(frame), source->GetSpriteMotion()[frame]);
     }
 
@@ -480,7 +494,7 @@ TEST_CASE("SpriteSheetUntimedSequencesKeepManualFrameSelection", "[sprite]")
     sheet.SetTime(1.0f);
     CHECK(sheet.GetCurrentSprite() == sheet.GetSprite(2));
 
-    auto copy = sheet.MakeCopy().dyn_cast<SpriteSheet>();
+    auto copy {sheet.MakeCopy().dyn_cast<SpriteSheet>()};
     REQUIRE(copy);
     CHECK(copy->GetDuration() == timespan::zero);
     CHECK(copy->GetCurrentSprite() == copy->GetSprite(0));
@@ -493,13 +507,13 @@ TEST_CASE("SpriteSheetUntimedSequencesKeepManualFrameSelection", "[sprite]")
 
 TEST_CASE("SpriteSheetFrameAssignmentKeepsMetadataAndChecksBounds", "[sprite]")
 {
-    SpriteSheetFixture fixture;
-    auto source = fixture.Assets.LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>();
+    SpriteSheetFixture fixture {};
+    auto source {fixture.GetAssets().LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>()};
     REQUIRE(source);
-    auto atlas = source->GetSprite(2).dyn_cast<const AtlasSprite>();
+    auto atlas {source->GetSprite(2).dyn_cast<const AtlasSprite>()};
     REQUIRE(atlas);
-    auto atlas_owner = atlas->shared_from_this().cast_no_const();
-    SpriteSheet output {&fixture.Sprites, 1, std::chrono::milliseconds {120}, 1};
+    auto atlas_owner {atlas->shared_from_this().cast_no_const()};
+    SpriteSheet output {&fixture.GetSprites(), 1, std::chrono::milliseconds {120}, 1};
     output.SetFrame(0, atlas_owner, ipos32 {42, -17}, ipos32 {5, -9});
     CHECK(output.GetSprite(0) == atlas);
     CHECK(output.GetSpriteOffset(0) == ipos32 {42, -17});
@@ -508,7 +522,7 @@ TEST_CASE("SpriteSheetFrameAssignmentKeepsMetadataAndChecksBounds", "[sprite]")
     CHECK(output.GetSpriteMotion()[0] == ipos32 {5, -9});
     CHECK(source->GetSprite(2)->GetOffset() == ipos32 {2, -2});
 
-    SpriteSheet other {&fixture.Sprites, 1, std::chrono::milliseconds {60}, 1};
+    SpriteSheet other {&fixture.GetSprites(), 1, std::chrono::milliseconds {60}, 1};
     other.SetFrame(0, atlas_owner, ipos32 {7, -3}, ipos32 {1, -1});
     CHECK(other.GetSprite(0) == atlas);
     CHECK(other.GetOffset() == ipos32 {7, -3});
@@ -516,7 +530,7 @@ TEST_CASE("SpriteSheetFrameAssignmentKeepsMetadataAndChecksBounds", "[sprite]")
     CHECK(output.GetSpriteOffset(0) == ipos32 {42, -17});
     CHECK(output.GetSpriteMotion()[0] == ipos32 {5, -9});
 
-    auto copied = output.MakeCopy().dyn_cast<SpriteSheet>();
+    auto copied {output.MakeCopy().dyn_cast<SpriteSheet>()};
     REQUIRE(copied);
     CHECK(copied->GetSprite(0) == atlas);
     CHECK(copied->GetSpriteOffset(0) == ipos32 {42, -17});
@@ -544,18 +558,18 @@ TEST_CASE("SpriteSheetFrameAssignmentKeepsMetadataAndChecksBounds", "[sprite]")
     CHECK_THROWS(output.SetFrame(1, source->GetSprite(0)->MakeCopy(), {}, {}));
     CHECK_THROWS(output.SetFrame(0, nullptr, {}, {}));
     CHECK(output.GetOffset() == ipos32 {42, -17});
-    SpriteSheet short_duration {&fixture.Sprites, 2, std::chrono::milliseconds {1}, 1};
+    SpriteSheet short_duration {&fixture.GetSprites(), 2, std::chrono::milliseconds {1}, 1};
     short_duration.SetFrame(0, atlas_owner, {}, {});
     short_duration.SetFrame(1, atlas_owner, {}, {});
     short_duration.Play({}, true, false);
     CHECK(short_duration.Update());
 
     // The original frame and its metadata survive the source sheet and the resource cache
-    auto weak_atlas = atlas->weak_from_this();
+    auto weak_atlas {atlas->weak_from_this()};
     source = nullptr;
-    fixture.Factory->Prototype = nullptr;
+    fixture.GetFactory()->Prototype = nullptr;
     atlas_owner = nullptr;
-    fixture.Assets.InvalidateSpriteResource("Sheet.fofrm");
+    fixture.GetAssets().InvalidateSpriteResource("Sheet.fofrm");
     REQUIRE(weak_atlas.lock());
     CHECK(output.GetSprite(0) == atlas);
     CHECK(atlas->GetOffset() == ipos32 {2, -2});
@@ -565,10 +579,10 @@ TEST_CASE("SpriteSheetFrameAssignmentKeepsMetadataAndChecksBounds", "[sprite]")
 
 TEST_CASE("MapSpriteDrawOffsetOverrideSteersOnlyTheSpriteRoot", "[sprite]")
 {
-    SpriteSheetFixture fixture;
-    auto source = fixture.Assets.LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>();
+    SpriteSheetFixture fixture {};
+    auto source {fixture.GetAssets().LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>()};
     REQUIRE(source);
-    auto frame = source->GetSprite(2);
+    auto frame {source->GetSprite(2)};
     CHECK(frame->GetOffset() == ipos32 {2, -2});
     CHECK(frame->GetSize() == isize32 {5, 7});
 
@@ -578,19 +592,19 @@ TEST_CASE("MapSpriteDrawOffsetOverrideSteersOnlyTheSpriteRoot", "[sprite]")
     ipos32 spr_offset {3, 4};
     ipos32 root_offset {5, 6};
     uint8_t alpha {0xFF};
-    RenderEffect* effect = nullptr;
-    bool valid = false;
-    bool extra_valid = false;
+    RenderEffect* effect {nullptr};
+    bool valid {false};
+    bool extra_valid {false};
 
-    MapSpriteList sprites;
-    auto mspr = sprites.AddSprite(DrawOrderType::Critter, mpos {1, 1}, hex_offset, &extra_hex_offset, frame, nullptr, &spr_offset, &root_offset, &alpha, &effect, &valid, 0);
+    MapSpriteList sprites {};
+    auto mspr {sprites.AddSprite(DrawOrderType::Critter, mpos {1, 1}, hex_offset, &extra_hex_offset, frame, nullptr, &spr_offset, &root_offset, &alpha, &effect, &valid, 0)};
     REQUIRE(valid);
     mspr->SetSpriteOffsetOverride(&draw_offset);
 
     // Without an override the sprite root follows the frame's own offset
     CHECK(mspr->GetSpriteRootOffset() == ipos32 {0, 9});
-    ipos32 draw_root = mspr->GetDrawRootPos();
-    ipos32 map_root = mspr->GetMapRootOffset();
+    ipos32 draw_root {mspr->GetDrawRootPos()};
+    ipos32 map_root {mspr->GetMapRootOffset()};
 
     draw_offset = ipos32 {42, -17};
     CHECK(mspr->GetSpriteRootOffset() == ipos32 {-40, 24});
@@ -607,12 +621,12 @@ TEST_CASE("MapSpriteDrawOffsetOverrideSteersOnlyTheSpriteRoot", "[sprite]")
     draw_offset = ipos32 {42, -17};
     mspr->Invalidate();
     CHECK_FALSE(valid);
-    auto reused = sprites.AddSprite(DrawOrderType::Critter, mpos {1, 1}, hex_offset, &extra_hex_offset, frame, nullptr, &spr_offset, &root_offset, &alpha, &effect, &valid, 0);
+    auto reused {sprites.AddSprite(DrawOrderType::Critter, mpos {1, 1}, hex_offset, &extra_hex_offset, frame, nullptr, &spr_offset, &root_offset, &alpha, &effect, &valid, 0)};
     REQUIRE(valid);
     CHECK(reused->GetSpriteRootOffset() == ipos32 {0, 9});
 
     // Both sprites borrow the same long-lived optional and follow its current value
-    auto extra = sprites.AddSprite(DrawOrderType::Critter, mpos {1, 1}, hex_offset, &extra_hex_offset, frame, nullptr, &spr_offset, &root_offset, &alpha, &effect, &extra_valid, 0);
+    auto extra {sprites.AddSprite(DrawOrderType::Critter, mpos {1, 1}, hex_offset, &extra_hex_offset, frame, nullptr, &spr_offset, &root_offset, &alpha, &effect, &extra_valid, 0)};
     REQUIRE(extra_valid);
     extra->SetSpriteOffsetOverride(&draw_offset);
     reused->SetSpriteOffsetOverride(&draw_offset);
@@ -628,117 +642,118 @@ TEST_CASE("MapSpriteDrawOffsetOverrideSteersOnlyTheSpriteRoot", "[sprite]")
 
 TEST_CASE("ResourceManagerInvalidatesEveryAtlasAndRetainsLiveSheets", "[sprite]")
 {
-    SpriteSheetFixture fixture;
-    auto first = fixture.Assets.LoadSprite("Sheet.fofrm", AtlasType::MapSprites);
-    auto other = fixture.Assets.LoadSprite("Sheet.fofrm", AtlasType::IfaceSprites);
+    SpriteSheetFixture fixture {};
+    auto first {fixture.GetAssets().LoadSprite("Sheet.fofrm", AtlasType::MapSprites)};
+    auto other {fixture.GetAssets().LoadSprite("Sheet.fofrm", AtlasType::IfaceSprites)};
     REQUIRE(first);
     REQUIRE(other);
-    CHECK(fixture.Factory->LoadCount == 2);
-    REQUIRE(fixture.Assets.LoadSprite("Sheet.fofrm", AtlasType::MapSprites));
-    CHECK(fixture.Factory->LoadCount == 2);
-    fixture.Assets.InvalidateSpriteResource("Sheet.fofrm");
-    CHECK(fixture.Factory->InvalidationCount == 1);
-    REQUIRE(fixture.Assets.LoadSprite("Sheet.fofrm", AtlasType::MapSprites));
-    REQUIRE(fixture.Assets.LoadSprite("Sheet.fofrm", AtlasType::IfaceSprites));
-    CHECK(fixture.Factory->LoadCount == 4);
+    CHECK(fixture.GetFactory()->LoadCount == 2);
+    REQUIRE(fixture.GetAssets().LoadSprite("Sheet.fofrm", AtlasType::MapSprites));
+    CHECK(fixture.GetFactory()->LoadCount == 2);
+    fixture.GetAssets().InvalidateSpriteResource("Sheet.fofrm");
+    CHECK(fixture.GetFactory()->InvalidationCount == 1);
+    REQUIRE(fixture.GetAssets().LoadSprite("Sheet.fofrm", AtlasType::MapSprites));
+    REQUIRE(fixture.GetAssets().LoadSprite("Sheet.fofrm", AtlasType::IfaceSprites));
+    CHECK(fixture.GetFactory()->LoadCount == 4);
     CHECK(first->GetSize() == isize32 {5, 7});
     CHECK(other->GetSize() == isize32 {5, 7});
 }
 
 TEST_CASE("ResourceManagerSuppressesMissingLoadsUntilExplicitRetry", "[sprite]")
 {
-    SpriteSheetFixture fixture;
-    CHECK_FALSE(fixture.Assets.LoadSprite("Missing.png", AtlasType::MapSprites, true));
-    CHECK_FALSE(fixture.Assets.LoadSprite("Missing.png", AtlasType::IfaceSprites, true));
-    CHECK(fixture.Factory->LoadCount == 1);
-    fixture.Assets.CleanupSpriteCache();
-    CHECK_FALSE(fixture.Assets.LoadSprite("Missing.png", AtlasType::MapSprites, true));
-    CHECK(fixture.Factory->LoadCount == 1);
-    fixture.Assets.ForgetFailedSprite("Missing.png");
-    CHECK_FALSE(fixture.Assets.LoadSprite("Missing.png", AtlasType::MapSprites, true));
-    CHECK(fixture.Factory->LoadCount == 2);
-    fixture.Assets.InvalidateSpriteResource("Missing.png");
-    CHECK_FALSE(fixture.Assets.LoadSprite("Missing.png", AtlasType::MapSprites, true));
-    CHECK(fixture.Factory->LoadCount == 3);
-    fixture.Assets.RetryFailedSpriteLoads();
-    CHECK(fixture.Factory->RetryCount == 1);
+    SpriteSheetFixture fixture {};
+    CHECK_FALSE(fixture.GetAssets().LoadSprite("Missing.png", AtlasType::MapSprites, true));
+    CHECK_FALSE(fixture.GetAssets().LoadSprite("Missing.png", AtlasType::IfaceSprites, true));
+    CHECK(fixture.GetFactory()->LoadCount == 1);
+    fixture.GetAssets().CleanupSpriteCache();
+    CHECK_FALSE(fixture.GetAssets().LoadSprite("Missing.png", AtlasType::MapSprites, true));
+    CHECK(fixture.GetFactory()->LoadCount == 1);
+    fixture.GetAssets().ForgetFailedSprite("Missing.png");
+    CHECK_FALSE(fixture.GetAssets().LoadSprite("Missing.png", AtlasType::MapSprites, true));
+    CHECK(fixture.GetFactory()->LoadCount == 2);
+    fixture.GetAssets().InvalidateSpriteResource("Missing.png");
+    CHECK_FALSE(fixture.GetAssets().LoadSprite("Missing.png", AtlasType::MapSprites, true));
+    CHECK(fixture.GetFactory()->LoadCount == 3);
+    fixture.GetAssets().RetryFailedSpriteLoads();
+    CHECK(fixture.GetFactory()->RetryCount == 1);
 }
 
 TEST_CASE("ResourceManagerLowMemoryReleasesUnusedFramesAndKeepsLiveSheets", "[sprite]")
 {
-    SpriteSheetFixture fixture;
-    auto unused = fixture.Assets.LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>();
+    SpriteSheetFixture fixture {};
+    auto unused {fixture.GetAssets().LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>()};
     REQUIRE(unused);
-    auto frame = fixture.Factory->Prototype.dyn_cast<SpriteSheet>()->GetSprite(0)->weak_from_this();
+    auto frame {fixture.GetFactory()->Prototype.dyn_cast<SpriteSheet>()->GetSprite(0)->weak_from_this()};
     unused = nullptr;
-    auto active = fixture.Assets.LoadSprite("Sheet.fofrm", AtlasType::IfaceSprites).dyn_cast<SpriteSheet>();
+    auto active {fixture.GetAssets().LoadSprite("Sheet.fofrm", AtlasType::IfaceSprites).dyn_cast<SpriteSheet>()};
     REQUIRE(active);
-    fixture.Factory->Prototype = nullptr;
+    fixture.GetFactory()->Prototype = nullptr;
     REQUIRE(frame.lock());
-    EventDispatcher<> {fixture.Window->GetOnLowMemory()}();
-    CHECK(fixture.Factory->CleanupCount == 1);
+    EventDispatcher<> {fixture.GetWindow()->GetOnLowMemory()}();
+    CHECK(fixture.GetFactory()->CleanupCount == 1);
     CHECK_FALSE(frame.lock());
     CHECK(active->GetSprite(0)->GetSize() == isize32 {5, 7});
 }
 
 TEST_CASE("ResourceManagerUpdatesFactoriesBeforeSpriteInstances", "[sprite]")
 {
-    SpriteSheetFixture fixture;
-    int32_t phase = 0;
-    fixture.Factory->OnUpdate = [&phase] { phase = 1; };
-    auto sprite = safe_alloc::make_shared<UpdatingTestSprite>(&fixture.Sprites, isize32 {1, 1}, ipos32 {});
+    SpriteSheetFixture fixture {};
+    int32_t phase {0};
+    fixture.GetFactory()->OnUpdate = [&phase] { phase = 1; };
+    auto sprite {safe_alloc::make_shared<UpdatingTestSprite>(&fixture.GetSprites(), isize32 {1, 1}, ipos32 {})};
     sprite->OnUpdate = [&phase] {
         CHECK(phase == 1);
         phase = 2;
     };
+
     sprite->StartUpdate();
-    fixture.Sprites.BeginScene();
-    fixture.Sprites.EndScene();
+    fixture.GetSprites().BeginScene();
+    fixture.GetSprites().EndScene();
     CHECK(phase == 2);
 }
 
 TEST_CASE("ResourceManagerFactoryFailurePreservesSceneRollback", "[sprite]")
 {
-    SpriteSheetFixture fixture;
-    fixture.Factory->OnUpdate = [] { throw InvalidCallException("Factory update failed"); };
-    CHECK_THROWS_AS(fixture.Sprites.BeginScene(), InvalidCallException);
-    CHECK(fixture.Sprites.GetRtMngr().GetRenderTargetStack().empty());
-    fixture.Factory->OnUpdate = nullptr;
-    fixture.Sprites.BeginScene();
-    fixture.Sprites.EndScene();
+    SpriteSheetFixture fixture {};
+    fixture.GetFactory()->OnUpdate = [] { throw InvalidCallException("Factory update failed"); };
+    CHECK_THROWS_AS(fixture.GetSprites().BeginScene(), InvalidCallException);
+    CHECK(fixture.GetSprites().GetRtMngr().GetRenderTargetStack().empty());
+    fixture.GetFactory()->OnUpdate = nullptr;
+    fixture.GetSprites().BeginScene();
+    fixture.GetSprites().EndScene();
 }
 
 TEST_CASE("ResourceManagerDetachesCallbacksAtShutdownAndDestruction", "[sprite]")
 {
-    SpriteSheetFixture fixture;
-    size_t updates = 0;
+    SpriteSheetFixture fixture {};
+    size_t updates {0};
     {
-        ResourceManager resources {&fixture.Resources, &fixture.Sprites};
-        auto factory = safe_alloc::make_unique<RecordingSpriteSheetFactory>(&fixture.Sprites, &resources);
+        ResourceManager resources {&fixture.GetResources(), &fixture.GetSprites()};
+        auto factory {safe_alloc::make_unique<RecordingSpriteSheetFactory>(&fixture.GetSprites(), &resources)};
         factory->OnUpdate = [&updates] { updates++; };
         resources.RegisterSpriteFactory(std::move(factory));
-        fixture.Sprites.BeginScene();
-        fixture.Sprites.EndScene();
+        fixture.GetSprites().BeginScene();
+        fixture.GetSprites().EndScene();
         CHECK(updates == 1);
 
         SECTION("DestructorDetaches")
         {
-            EventDispatcher<> {fixture.Window->GetOnLowMemory()}();
+            EventDispatcher<> {fixture.GetWindow()->GetOnLowMemory()}();
         }
 
         SECTION("ExplicitShutdownIsIdempotent")
         {
             resources.UnsubscribeEvents();
             resources.UnsubscribeEvents();
-            fixture.Sprites.BeginScene();
-            fixture.Sprites.EndScene();
+            fixture.GetSprites().BeginScene();
+            fixture.GetSprites().EndScene();
             CHECK(updates == 1);
         }
     }
 
-    fixture.Sprites.BeginScene();
-    fixture.Sprites.EndScene();
-    EventDispatcher<> {fixture.Window->GetOnLowMemory()}();
+    fixture.GetSprites().BeginScene();
+    fixture.GetSprites().EndScene();
+    EventDispatcher<> {fixture.GetWindow()->GetOnLowMemory()}();
     CHECK(updates == 1);
 }
 
@@ -746,9 +761,9 @@ TEST_CASE("SpriteSheetVariableTimelines", "[sprite]")
 {
     SECTION("DistributesNativeNanosecondDurationsExactly")
     {
-        SpriteSheetFixture fixture;
-        SpriteSheet sheet {&fixture.Sprites, 3, std::chrono::nanoseconds {10}, 1};
-        const_span<timespan> durations = sheet.GetFrameDurations();
+        SpriteSheetFixture fixture {};
+        SpriteSheet sheet {&fixture.GetSprites(), 3, std::chrono::nanoseconds {10}, 1};
+        const_span<timespan> durations {sheet.GetFrameDurations()};
         REQUIRE(durations.size() == 3);
         CHECK(durations[0] == std::chrono::nanoseconds {3});
         CHECK(durations[1] == std::chrono::nanoseconds {3});
@@ -758,10 +773,10 @@ TEST_CASE("SpriteSheetVariableTimelines", "[sprite]")
 
     SECTION("DistributesMaximumDurationWithoutIntermediateOverflow")
     {
-        SpriteSheetFixture fixture;
+        SpriteSheetFixture fixture {};
         timespan maximum {std::chrono::milliseconds {std::numeric_limits<uint32_t>::max()}};
-        SpriteSheet sheet {&fixture.Sprites, 65535, maximum, 1};
-        const_span<timespan> durations = sheet.GetFrameDurations();
+        SpriteSheet sheet {&fixture.GetSprites(), 65535, maximum, 1};
+        const_span<timespan> durations {sheet.GetFrameDurations()};
         REQUIRE(durations.size() == 65535);
         CHECK(std::ranges::all_of(durations, [](timespan duration) { return duration == std::chrono::milliseconds {65537}; }));
         CHECK(std::accumulate(durations.begin(), durations.end(), timespan::zero) == maximum);
@@ -771,18 +786,18 @@ TEST_CASE("SpriteSheetVariableTimelines", "[sprite]")
 
     SECTION("RejectsInvalidNativeDurationsBeforeAccumulation")
     {
-        SpriteSheetFixture fixture;
-        timespan invalid = GENERATE(timespan::zero, timespan {std::chrono::nanoseconds {-1}});
-        CHECK_THROWS(SpriteSheet(&fixture.Sprites, vector<vector<timespan>> {{invalid, std::chrono::nanoseconds {1}}}));
-        CHECK_THROWS(SpriteSheet(&fixture.Sprites, 3, std::chrono::nanoseconds {2}, 1));
+        SpriteSheetFixture fixture {};
+        timespan invalid {GENERATE(timespan::zero, timespan {std::chrono::nanoseconds {-1}})};
+        CHECK_THROWS(SpriteSheet(&fixture.GetSprites(), vector<vector<timespan>> {{invalid, std::chrono::nanoseconds {1}}}));
+        CHECK_THROWS(SpriteSheet(&fixture.GetSprites(), 3, std::chrono::nanoseconds {2}, 1));
         timespan maximum {std::chrono::milliseconds {std::numeric_limits<uint32_t>::max()}};
-        CHECK_THROWS(SpriteSheet(&fixture.Sprites, vector<vector<timespan>> {{maximum, std::chrono::nanoseconds {1}}}));
+        CHECK_THROWS(SpriteSheet(&fixture.GetSprites(), vector<vector<timespan>> {{maximum, std::chrono::nanoseconds {1}}}));
     }
 
     SECTION("AccumulatesSubMillisecondElapsedTime")
     {
         SpriteSheetFixture fixture {vector<vector<uint32_t>> {{1, 1}}};
-        auto sheet = fixture.Assets.LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>();
+        auto sheet {fixture.GetAssets().LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>()};
         REQUIRE(sheet);
         sheet->Play({}, true, false);
         CHECK(sheet->AdvanceTime(std::chrono::microseconds {500}));
@@ -795,7 +810,7 @@ TEST_CASE("SpriteSheetVariableTimelines", "[sprite]")
     SECTION("PlaysUnequalFrameDurations")
     {
         SpriteSheetFixture fixture {vector<vector<uint32_t>> {{100, 300, 100}}};
-        auto sheet = fixture.Assets.LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>();
+        auto sheet {fixture.GetAssets().LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>()};
         REQUIRE(sheet);
         CHECK(sheet->GetDuration() == std::chrono::milliseconds {500});
         sheet->Play({}, true, false);
@@ -815,7 +830,7 @@ TEST_CASE("SpriteSheetVariableTimelines", "[sprite]")
     SECTION("QueriesTimelineWithoutMutatingPlayback")
     {
         SpriteSheetFixture fixture {vector<vector<uint32_t>> {{100, 300, 100}}};
-        auto sheet = fixture.Assets.LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>();
+        auto sheet {fixture.GetAssets().LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>()};
         REQUIRE(sheet);
         CHECK(sheet->GetFrameIndexAtPhase(0.199) == 0);
         CHECK(sheet->GetFrameIndexAtPhase(0.2) == 1);
@@ -830,10 +845,10 @@ TEST_CASE("SpriteSheetVariableTimelines", "[sprite]")
 
     SECTION("SwitchesUnequalDirectionCountsByPhase")
     {
-        vector<vector<uint32_t>> timelines(numeric_cast<size_t>(GameSettings::MAP_DIR_COUNT), {100, 100});
+        vector<vector<uint32_t>> timelines {vector<vector<uint32_t>>(numeric_cast<size_t>(GameSettings::MAP_DIR_COUNT), {100, 100})};
         timelines[0] = {100, 300, 100};
         SpriteSheetFixture fixture {timelines};
-        auto sheet = fixture.Assets.LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>();
+        auto sheet {fixture.GetAssets().LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>()};
         REQUIRE(sheet);
         sheet->SetTime(0.9f);
         CHECK(sheet->GetCurrentSprite() == sheet->GetDirection(hdir {0})->GetSprite(2));
@@ -846,7 +861,7 @@ TEST_CASE("SpriteSheetVariableTimelines", "[sprite]")
         sheet->SetDirection(hdir {0});
         CHECK(sheet->GetFramesCount() == 3);
         CHECK(sheet->GetCurrentSprite() == sheet->GetSprite(2));
-        auto copy = sheet->MakeCopy().dyn_cast<SpriteSheet>();
+        auto copy {sheet->MakeCopy().dyn_cast<SpriteSheet>()};
         REQUIRE(copy);
         CHECK(copy->GetTime() == 0.0f);
         CHECK(copy->GetDirection(hdir {1})->GetFramesCount() == 2);
@@ -855,7 +870,7 @@ TEST_CASE("SpriteSheetVariableTimelines", "[sprite]")
     SECTION("ReverseCompletesAtZeroAndLoopingNeverSelectsNegativeFrames")
     {
         SpriteSheetFixture fixture {vector<vector<uint32_t>> {{100, 300, 100}}};
-        auto sheet = fixture.Assets.LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>();
+        auto sheet {fixture.GetAssets().LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>()};
         REQUIRE(sheet);
         sheet->SetTime(1.0f);
         sheet->Play({}, false, true);
@@ -872,7 +887,7 @@ TEST_CASE("SpriteSheetVariableTimelines", "[sprite]")
     SECTION("ShortAndUint32MaximumDurationsNeverDivideByZero")
     {
         SpriteSheetFixture fixture {vector<vector<uint32_t>> {{1, 1, 1}}};
-        auto sheet = fixture.Assets.LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>();
+        auto sheet {fixture.GetAssets().LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>()};
         REQUIRE(sheet);
         sheet->Play({}, false, false);
         CHECK(sheet->AdvanceTime(std::chrono::milliseconds {1}));
@@ -880,7 +895,7 @@ TEST_CASE("SpriteSheetVariableTimelines", "[sprite]")
         CHECK_FALSE(sheet->AdvanceTime(std::chrono::milliseconds {2}));
         CHECK(sheet->GetCurrentSprite() == sheet->GetSprite(2));
         SpriteSheetFixture long_fixture {vector<vector<uint32_t>> {{4294967294u, 1u}}};
-        auto long_sheet = long_fixture.Assets.LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>();
+        auto long_sheet {long_fixture.GetAssets().LoadSprite("Sheet.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>()};
         REQUIRE(long_sheet);
         CHECK(long_sheet->GetDuration() == std::chrono::milliseconds {4294967295u});
         long_sheet->Play({}, false, false);
