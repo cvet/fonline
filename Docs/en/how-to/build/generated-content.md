@@ -8,7 +8,7 @@ permalink: /Docs/en/how-to/build/generated-content.html
 
 # Generated Content Workflow
 
-This guide explains what to regenerate after changing Engine or game sources, what is authoritative, and how to review generated output without editing it by hand.
+Regenerate from authoritative sources after Engine/game changes; review outputs without hand-editing them.
 
 ## Source paths inspected
 
@@ -69,11 +69,13 @@ BuildPackages()
 FinalizeProjectGeneration()
 ```
 
-`SetupCodeGeneration()` consumes Engine and project native sources, code-generation tags, templates, and project options. `ForceCodeGeneration` is the dependency used by script compilation and baking targets, so stale native metadata cannot be hidden behind an unrelated incremental resource bake.
+`SetupCodeGeneration()` reads Engine/project native sources, tags, templates and options. Script compilation and baking depend on `ForceCodeGeneration`; incremental baking cannot bypass native metadata generation.
 
 Reconfigure after changing CMake options, source registration, stage hooks, generated templates, or the Engine pin. Build the smallest target that compiles the affected generated source.
 
-Engine `VERSION` also feeds configuration and code generation. Its CalVer identifier and exact Engine revision become `FO_ENGINE_VERSION` and `FO_ENGINE_REVISION` in `EngineConfig.gen.h`; the embedding-project build hash retains its separate meaning. Changing `VERSION` automatically invalidates configuration/code generation. See [Engine versioning](../release/versioning.md) and the [changelog](../../reference/changelog.md).
+`VERSION` invalidates configure/codegen and supplies CalVer `FO_ENGINE_VERSION` plus exact `FO_ENGINE_REVISION` in `EngineConfig.gen.h`, separately from the project hash. See [versioning](../release/versioning.md) and [changelog](../../reference/changelog.md).
+
+Project HEAD/ref dependencies cover packed refs and worktrees independently of Engine. The next build updates `FO_BUILD_HASH`; Baker markers use that compiled identity, never a later source hash. Source archives retain the random-hash fallback.
 
 ## Compile scripts
 
@@ -99,7 +101,7 @@ For Managed C# projects:
 cmake --build <build-dir> --config RelWithDebInfo --target CompileManagedScripts
 ```
 
-This runs the standalone `ManagedScriptBaker` after `ForceCodeGeneration`, emits target API files plus `.gen.csproj`/`.gen.sln`, and compiles the configured assemblies without performing a full resource bake. The real delivery gate remains `BakeResources` or `ForceBakeResources`: the `Managed` baker writes target-specific assemblies and the prepared `ManagedRuntime/` payload into the selected pack. Fix generated C# at its C++ metadata, configuration, CoreScripts, analyzer, or baker owner and regenerate; do not hand-edit `.gen.cs`. See [Managed C# Scripting](../scripting/managed-csharp.md).
+`ManagedScriptBaker` follows `ForceCodeGeneration`, generates target API/`.gen.csproj`/`.gen.sln` and compiles assemblies without full baking. Delivery still requires `BakeResources`/`ForceBakeResources`: the `Managed` baker packs target assemblies and `ManagedRuntime/`. Fix generated C# at its native metadata, config, CoreScripts, analyzer or baker owner, then regenerate; see [Managed C#](../scripting/managed-csharp.md).
 
 ## Bake resources
 

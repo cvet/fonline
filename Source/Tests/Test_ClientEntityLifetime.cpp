@@ -510,7 +510,7 @@ TEST_CASE("ClientLargeMapFieldsStayWithinMemoryBudget")
     REQUIRE(map->GetField(mpos {200, 200}).IsView);
     ptr<const MapView::Field> first_field = &map->GetField(mpos {200, 200});
 
-    for (mpos center : {mpos {500, 500}, mpos {900, 900}, mpos {1100, 1100}}) {
+    for (mpos center : {mpos {500, 500}, mpos {900, 900}, mpos {1100, 1100}, mpos {900, 1100}, mpos {1100, 900}, mpos {900, 700}}) {
         map->InstantScrollTo(center);
         CHECK(map->GetField(center).IsView);
         CHECK(&map->GetField(mpos {200, 200}) == first_field);

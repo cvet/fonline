@@ -93,6 +93,7 @@ namespace EntityLifecycleTests
             _sentRemoveCritterCount.store(0, std::memory_order_relaxed);
             _sentInfoMessageCount.store(0, std::memory_order_relaxed);
             _sentDisconnectCount.store(0, std::memory_order_relaxed);
+            _sentTimeSyncCount.store(0, std::memory_order_relaxed);
             _sentCritterDirCount.store(0, std::memory_order_relaxed);
             _lastSentCritterDirId.store(ident_t {}, std::memory_order_relaxed);
             _lastSentCritterDir.store(mdir {}, std::memory_order_relaxed);
@@ -111,6 +112,8 @@ namespace EntityLifecycleTests
                 return _sentRemoveCritterCount.load(std::memory_order_relaxed);
             case NetMessage::Disconnect:
                 return _sentDisconnectCount.load(std::memory_order_relaxed);
+            case NetMessage::TimeSync:
+                return _sentTimeSyncCount.load(std::memory_order_relaxed);
             case NetMessage::CritterDir:
                 return _sentCritterDirCount.load(std::memory_order_acquire);
             default:
@@ -200,6 +203,9 @@ namespace EntityLifecycleTests
                     else if (message == NetMessage::Disconnect) {
                         _sentDisconnectCount.fetch_add(1, std::memory_order_relaxed);
                     }
+                    else if (message == NetMessage::TimeSync) {
+                        _sentTimeSyncCount.fetch_add(1, std::memory_order_relaxed);
+                    }
 
                     if (message == NetMessage::AddCritter || message == NetMessage::RemoveCritter) {
                         size_t tracked_index = _sentTrackedMessageCount.fetch_add(1, std::memory_order_relaxed);
@@ -224,6 +230,7 @@ namespace EntityLifecycleTests
         std::atomic<size_t> _sentRemoveCritterCount {};
         std::atomic<size_t> _sentInfoMessageCount {};
         std::atomic<size_t> _sentDisconnectCount {};
+        std::atomic<size_t> _sentTimeSyncCount {};
         std::atomic<size_t> _sentCritterDirCount {};
         std::atomic<ident_t> _lastSentCritterDirId {};
         std::atomic<mdir> _lastSentCritterDir {};

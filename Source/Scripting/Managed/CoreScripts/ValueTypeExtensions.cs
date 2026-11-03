@@ -188,7 +188,8 @@ public partial struct synctime
     public static bool operator >=(synctime a, synctime b) => a.value >= b.value;
     public static synctime operator +(synctime a, timespan b) => new synctime(a.value + b.milliseconds);
     public static synctime operator -(synctime a, timespan b) => new synctime(a.value - b.milliseconds);
-    public static timespan operator -(synctime a, synctime b) => new timespan(a.value - b.value, TimePlace.Milliseconds);
+    public static timespan operator -(synctime a, synctime b) => new timespan(a.value - b.value,
+                                                                              TimePlace.Milliseconds);
 
     public long milliseconds => value;
     public long seconds => value / 1_000L;
@@ -391,8 +392,8 @@ public partial struct mpos
     public mpos(string text)
     {
         string[] parts = text.Split(' ', System.StringSplitOptions.RemoveEmptyEntries);
-        x = short.Parse(parts[0], System.Globalization.CultureInfo.InvariantCulture);
-        y = short.Parse(parts[1], System.Globalization.CultureInfo.InvariantCulture);
+        this = new mpos(int.Parse(parts[0], System.Globalization.CultureInfo.InvariantCulture),
+                        int.Parse(parts[1], System.Globalization.CultureInfo.InvariantCulture));
     }
 
     public static bool operator<(mpos a, mpos b) => a.x != b.x ? a.x < b.x : a.y < b.y;

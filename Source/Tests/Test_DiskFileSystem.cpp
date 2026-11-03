@@ -981,26 +981,27 @@ TEST_CASE("DiskFilePrimitives")
     }
 }
 
-static_assert(noexcept(fs::try_lock_file("")));
-static_assert(noexcept(fs::exists("")) && noexcept(fs::is_dir("")));
-static_assert(noexcept(fs::is_absolute_path("")) && noexcept(fs::is_relative_path("")) && noexcept(fs::is_contained_relative_path("")));
-static_assert(noexcept(fs::create_directories("")) && noexcept(fs::last_write_time("")));
-static_assert(noexcept(fs::file_size("")) && noexcept(fs::available_space("")));
+// Ready argument types isolate the function contract from potentially throwing string_view conversions
+static_assert(noexcept(fs::try_lock_file(std::declval<string_view>())));
+static_assert(noexcept(fs::exists(std::declval<string_view>())) && noexcept(fs::is_dir(std::declval<string_view>())));
+static_assert(noexcept(fs::is_absolute_path(std::declval<string_view>())) && noexcept(fs::is_relative_path(std::declval<string_view>())) && noexcept(fs::is_contained_relative_path(std::declval<string_view>())));
+static_assert(noexcept(fs::create_directories(std::declval<string_view>())) && noexcept(fs::last_write_time(std::declval<string_view>())));
+static_assert(noexcept(fs::file_size(std::declval<string_view>())) && noexcept(fs::available_space(std::declval<string_view>())));
 static_assert(noexcept(fs::hash_data(const_span<uint8_t> {})));
-static_assert(noexcept(fs::write_file("", string_view {})) && noexcept(fs::write_file("", const_span<uint8_t> {})));
-static_assert(noexcept(fs::write_file_durable_new("", const_span<uint8_t> {})));
-static_assert(noexcept(fs::remove_file("")) && noexcept(fs::remove_dir_tree("")) && noexcept(fs::touch_file("")));
-static_assert(noexcept(fs::sync_parent("")) && noexcept(fs::rename("", "")) && noexcept(fs::rename_durable("", "")) && noexcept(fs::replace_file("", "")));
-static_assert(noexcept(fs::list_dir_file_names("")));
+static_assert(noexcept(fs::write_file(std::declval<string_view>(), string_view {})) && noexcept(fs::write_file(std::declval<string_view>(), const_span<uint8_t> {})));
+static_assert(noexcept(fs::write_file_durable_new(std::declval<string_view>(), const_span<uint8_t> {})));
+static_assert(noexcept(fs::remove_file(std::declval<string_view>())) && noexcept(fs::remove_dir_tree(std::declval<string_view>())) && noexcept(fs::touch_file(std::declval<string_view>())));
+static_assert(noexcept(fs::sync_parent(std::declval<string_view>())) && noexcept(fs::rename(std::declval<string_view>(), std::declval<string_view>())) && noexcept(fs::rename_durable(std::declval<string_view>(), std::declval<string_view>())) && noexcept(fs::replace_file(std::declval<string_view>(), std::declval<string_view>())));
+static_assert(noexcept(fs::list_dir_file_names(std::declval<string_view>())));
 static_assert(std::is_nothrow_destructible_v<fs::exclusive_file_lock> && std::is_nothrow_destructible_v<fs::disk_read_file> && std::is_nothrow_destructible_v<fs::disk_write_file> && std::is_nothrow_destructible_v<fs::disk_directory_lock>);
 static_assert(std::is_nothrow_constructible_v<fs::disk_read_file, string_view> && std::is_nothrow_constructible_v<fs::disk_read_file, string_view, uint64_t, uint64_t>);
 static_assert(std::is_nothrow_constructible_v<fs::disk_write_file, string_view> && std::is_nothrow_constructible_v<fs::disk_directory_lock, string_view>);
-static_assert(!noexcept(fs::make_path("")) && !noexcept(fs::path_to_string(std::declval<const std::filesystem::path&>())));
-static_assert(!noexcept(fs::resolve_path("")) && !noexcept(fs::make_io_path("")) && !noexcept(fs::make_writable_path("", "")));
-static_assert(noexcept(fs::read_file("")) && noexcept(fs::read_file_bounded("", 0)) && noexcept(fs::compare_file_content("", const_span<uint8_t> {})));
-static_assert(noexcept(fs::hash_file("")));
-static_assert(!noexcept(fs::open_ifstream("")));
-static_assert(!noexcept(fs::iterate_dir("", false, std::declval<const fs::file_visitor&>())));
+static_assert(!noexcept(fs::make_path(std::declval<string_view>())) && !noexcept(fs::path_to_string(std::declval<const std::filesystem::path&>())));
+static_assert(!noexcept(fs::resolve_path(std::declval<string_view>())) && !noexcept(fs::make_io_path(std::declval<string_view>())) && !noexcept(fs::make_writable_path(std::declval<string_view>(), std::declval<string_view>())));
+static_assert(noexcept(fs::read_file(std::declval<string_view>())) && noexcept(fs::read_file_bounded(std::declval<string_view>(), 0)) && noexcept(fs::compare_file_content(std::declval<string_view>(), const_span<uint8_t> {})));
+static_assert(noexcept(fs::hash_file(std::declval<string_view>())));
+static_assert(!noexcept(fs::open_ifstream(std::declval<string_view>())));
+static_assert(!noexcept(fs::iterate_dir(std::declval<string_view>(), false, std::declval<const fs::file_visitor&>())));
 static_assert(!noexcept(fs::stream_read_exact(std::declval<std::istream&>(), span<uint8_t> {})));
 static_assert(!noexcept(fs::stream_get_size(std::declval<std::istream&>())) && !noexcept(fs::stream_get_read_pos(std::declval<std::istream&>())));
 static_assert(!noexcept(fs::stream_set_read_pos(std::declval<std::istream&>(), 0, std::ios_base::beg)));
@@ -1126,7 +1127,7 @@ TEST_CASE("DiskFileSystemPathContracts")
         CHECK(fs::compare_file_content(file, bytes));
         CHECK_FALSE(fs::write_file(bad_file, bytes));
         CHECK(fs::compare_file_content(file, bytes));
-        auto before_touch = fs::last_write_time(file);
+        uint64_t before_touch = fs::last_write_time(file);
         CHECK_FALSE(fs::touch_file(bad_file));
         CHECK(fs::last_write_time(file) == before_touch);
         CHECK_FALSE(fs::remove_file(bad_file));

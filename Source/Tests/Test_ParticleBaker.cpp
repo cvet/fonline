@@ -92,7 +92,7 @@ TEST_CASE("ParticleBaker preserves Effekseer model dependency names", "[particle
         usage.AddReference("Particles/Nested/Dependency.efk", "Particle dependency fixture");
 
         string manifest;
-        REQUIRE_NOTHROW(manifest = usage.CreateManifest("build", "config",
+        REQUIRE_NOTHROW(manifest = usage.CreateManifest("build", "config", true,
             [&](const ResourceOutput& output) { return rig.BakedFiles.IsFileExists(output.Path); },
             [&](const ResourceOutput& output) {
                 return output.Baker == "Particle" ? dependencies.CollectResourceDependencies(rig.GetAllSourceFiles(), output.Path) : vector<string> {};
@@ -141,7 +141,7 @@ TEST_CASE("ParticleBaker requires full Effekseer model provider identity", "[par
         usage.AddReference(descriptor_path, "Particle dependency fixture");
 
         string manifest;
-        REQUIRE_NOTHROW(manifest = usage.CreateManifest("build", "config",
+        REQUIRE_NOTHROW(manifest = usage.CreateManifest("build", "config", true,
             [&](const ResourceOutput& output) { return rig.BakedFiles.IsFileExists(output.Path); },
             [&](const ResourceOutput& output) {
                 return output.Baker == "Particle" ? dependencies.CollectResourceDependencies(rig.GetAllSourceFiles(), output.Path) : vector<string> {};
@@ -167,7 +167,7 @@ TEST_CASE("ParticleBaker requires full Effekseer model provider identity", "[par
         usage.RegisterOutput("Visual", alias_model_path, "RawCopy", BakingOutputKind::Resource);
         usage.AddReference(descriptor_path, "Particle dependency fixture");
 
-        CHECK_THROWS_WITH(usage.CreateManifest("build", "config",
+        CHECK_THROWS_WITH(usage.CreateManifest("build", "config", true,
             [&](const ResourceOutput& output) { return rig.BakedFiles.IsFileExists(output.Path); },
             [&](const ResourceOutput& output) {
                 return output.Baker == "Particle" ? dependencies.CollectResourceDependencies(rig.GetAllSourceFiles(), output.Path) : vector<string> {};

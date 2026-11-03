@@ -43,6 +43,9 @@
 
 FO_BEGIN_NAMESPACE
 
+auto CheckViewMapCritterVisibilityHook(ptr<const ServerEngine>, ptr<const Map>, nptr<const Entity>, mpos, ptr<const Critter>) -> CritterVisibilityMode;
+auto CheckViewMapItemVisibilityHook(ptr<const ServerEngine>, ptr<const Map>, nptr<const Entity>, mpos, ptr<const Item>) -> bool;
+
 static auto MakeServerEntityLifetimeSettings() -> GlobalSettings
 {
     GlobalSettings settings(false);
@@ -137,6 +140,48 @@ static auto MakeServerEntityLifetimeOwners(ptr<ServerEngine> server, ptr<StaticM
     auto connection = safe_alloc::make_unique<ServerConnection>(server->Settings, std::move(network), BakerTests::MakeTestChannelIdentity());
     entities.emplace_back(safe_alloc::make_refcounted<Player>(server, ident_t {5}, std::move(connection)));
     return entities;
+}
+
+static void ClearServerEntityLifetimeViewOwners(ptr<ServerEngine> server, vector<refcount_ptr<ServerEntity>>& owners, nptr<Critter> observer)
+{
+    if (owners.empty()) {
+        return;
+    }
+
+    (void)server->RunInQuiescence(std::chrono::seconds {10}, [&](const ServerQuiescenceState&) {
+        ptr<Critter> target = owners[0].dyn_cast<Critter>();
+        ptr<Item> item = owners[1].dyn_cast<Item>();
+        ptr<Map> map = owners[2].dyn_cast<Map>();
+        ptr<Player> player = owners[4].dyn_cast<Player>();
+        ScopedSyncContext sync;
+        vector<ptr<ServerEntity>> roots {map, player, target, item};
+
+        if (observer) {
+            roots.emplace_back(observer);
+        }
+
+        sync.GetContext().SyncEntities(roots);
+
+        for (auto cr : map->GetCritters()) {
+            roots.emplace_back(cr);
+        }
+        for (auto map_item : map->GetItems()) {
+            roots.emplace_back(map_item);
+        }
+
+        sync.GetContext().WidenEntities(roots);
+        player->ResetViewMap();
+
+        for (auto cr : copy_hold_ref(map->GetCritters())) {
+            map->RemoveCritter(cr);
+        }
+        for (auto map_item : copy_hold_ref(map->GetItems())) {
+            map->RemoveItem(map_item->GetId());
+        }
+        if (observer) {
+            observer->ClearAllAssociations();
+        }
+    });
 }
 
 TEST_CASE("ServerMapGridSelectionPreservesFieldBehavior", "[server][map][grid]")
@@ -1341,11 +1386,352 @@ TEST_CASE("BoundedMapSpectatorsTrackVisibility", "[server][map][observation]")
         CHECK(map->IsSpectatorEntityVisible(bounded->GetId(), cr->GetId()));
         item->SetHidden(true);
         map->RefreshAreaSpectators(item);
-        CHECK_FALSE(map->IsSpectatorEntityVisible(bounded->GetId(), item->GetId()));
+        CHECK(map->IsSpectatorEntityVisible(bounded->GetId(), item->GetId()));
         item->SetHidden(false);
         map->RefreshAreaSpectators(item);
         CHECK(map->IsSpectatorEntityVisible(bounded->GetId(), item->GetId()));
     }));
+}
+
+TEST_CASE("MapViewContextControlsBothSubjectKinds", "[server][map][observation]")
+{
+    GlobalSettings settings = MakeServerEntityLifetimeSettings();
+    StaticMap static_map {msize {32, 32}, "Dynamic"};
+    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources(false, msize {32, 32}));
+    auto shutdown = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+    REQUIRE(WaitForServerEntityLifetimeStartup(server));
+
+    bool prepared = server->RunInQuiescence(std::chrono::seconds {10}, [&](const ServerQuiescenceState&) {
+        auto owners = MakeServerEntityLifetimeOwners(server, &static_map);
+        ptr<Critter> target = owners[0].dyn_cast<Critter>();
+        ptr<Item> item = owners[1].dyn_cast<Item>();
+        ptr<Map> map = owners[2].dyn_cast<Map>();
+        ptr<Player> player = owners[4].dyn_cast<Player>();
+        auto observer = safe_alloc::make_refcounted<Critter>(server, ident_t {6}, server->GetProtoCritter(server->Hashes.to_hashed_string("LifetimeCritter")));
+        auto other_map = safe_alloc::make_refcounted<Map>(server, ident_t {7}, map->GetProtoMap(), nullptr, &static_map);
+        ScopedSyncContext sync;
+        vector<ptr<ServerEntity>> roots {map, player, target, item, observer, other_map};
+        sync.GetContext().SyncEntities(roots);
+        observer->GetRawGlobalMapGroup() = safe_alloc::make_shared<GlobalMapGroup>();
+        observer->GetRawGlobalMapGroup()->AddMember(observer);
+        observer->SetLookDistance(2);
+        observer->SetHex(mpos {0, 0});
+        ipos32 subject_hex {10, 10};
+
+        for (int32_t step = 0; step < 3; step++) {
+            GeometryHelper::MoveHexByDirUnsafe(subject_hex, hdir::East);
+        }
+
+        mpos subject_pos = map->GetSize().from_raw_pos(subject_hex);
+        target->SetHex(subject_pos);
+        map->AddCritter(target);
+        map->AddItem(item, subject_pos, nullptr);
+        auto clear = scope_exit([&]() noexcept {
+            safe_call([&] {
+                player->ResetViewMap();
+                observer->ClearAllAssociations();
+                map->RemoveCritter(target);
+                map->RemoveItem(item->GetId());
+            });
+        });
+
+        player->SetViewMap(map, mpos {10, 10}, 5, observer);
+        CHECK(map->GetSpectatorCritterVisibility(player->GetId(), target->GetId()) == CheckViewMapCritterVisibilityHook(server, map, observer, mpos {10, 10}, target));
+        CHECK(map->IsSpectatorEntityVisible(player->GetId(), item->GetId()) == CheckViewMapItemVisibilityHook(server, map, observer, mpos {10, 10}, item));
+
+        observer->SetLookDistance(4);
+        player->RefreshViewMapVisibility(map);
+        CHECK(map->IsSpectatorEntityVisible(player->GetId(), item->GetId()) == CheckViewMapItemVisibilityHook(server, map, observer, mpos {10, 10}, item));
+        item->SetHidden(true);
+        map->RefreshAreaSpectators(item);
+        CHECK(map->IsSpectatorEntityVisible(player->GetId(), item->GetId()) == CheckViewMapItemVisibilityHook(server, map, observer, mpos {10, 10}, item));
+
+        player->SetViewMap(map, mpos {10, 10}, 5, map);
+        CHECK(map->GetSpectatorCritterVisibility(player->GetId(), target->GetId()) == CheckViewMapCritterVisibilityHook(server, map, map, mpos {10, 10}, target));
+        CHECK(map->IsSpectatorEntityVisible(player->GetId(), item->GetId()) == CheckViewMapItemVisibilityHook(server, map, map, mpos {10, 10}, item));
+
+        player->SetViewMap(map, mpos {10, 10}, 5, nullptr);
+        CHECK(map->IsSpectatorEntityVisible(player->GetId(), target->GetId()));
+        CHECK(map->IsSpectatorEntityVisible(player->GetId(), item->GetId()));
+        CHECK_THROWS(player->RefreshViewMapVisibility(other_map));
+        CHECK_THROWS(player->SetViewMap(map, mpos {10, 10}, 32768, observer));
+        CHECK_THROWS(player->SetViewMap(map, mpos {9999, 9999}, 5, observer));
+        CHECK(map->IsSpectatorEntityVisible(player->GetId(), item->GetId()));
+
+        player->SetViewMap(map, mpos {10, 10}, 5, observer);
+        observer->MarkAsDestroying();
+        player->RefreshViewMapVisibility(map);
+        CHECK_FALSE(map->IsSpectatorEntityVisible(player->GetId(), target->GetId()));
+        CHECK_FALSE(map->IsSpectatorEntityVisible(player->GetId(), item->GetId()));
+        observer->MarkAsDestroyed();
+        CHECK_THROWS(player->SetViewMap(map, mpos {10, 10}, 5, observer));
+        player->ResetViewMap();
+        CHECK_FALSE(player->GetViewMapTarget());
+        CHECK_THROWS(player->RefreshViewMapVisibility(map));
+        CHECK_FALSE(map->IsSpectatorEntityVisible(player->GetId(), item->GetId()));
+    });
+    REQUIRE(prepared);
+}
+
+TEST_CASE("MapViewDeferredRefreshCannotChangeReplacementSubscription", "[server][map][observation]")
+{
+    GlobalSettings settings = MakeServerEntityLifetimeSettings();
+    StaticMap static_map {msize {32, 32}, "Dynamic"};
+    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources(false, msize {32, 32}));
+    auto shutdown = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+    REQUIRE(WaitForServerEntityLifetimeStartup(server));
+    vector<refcount_ptr<ServerEntity>> owners;
+    refcount_nptr<Critter> observer;
+    vector<uint8_t> replacement_output;
+    auto drained = safe_alloc::make_shared<std::atomic_bool>(false);
+    auto clear = scope_exit([&]() noexcept { safe_call([&] { ClearServerEntityLifetimeViewOwners(server, owners, observer); }); });
+
+    bool prepared = server->RunInQuiescence(std::chrono::seconds {10}, [&](const ServerQuiescenceState&) {
+        owners = MakeServerEntityLifetimeOwners(server, &static_map);
+        ptr<Critter> target = owners[0].dyn_cast<Critter>();
+        ptr<Item> item = owners[1].dyn_cast<Item>();
+        ptr<Map> map = owners[2].dyn_cast<Map>();
+        ptr<Player> player = owners[4].dyn_cast<Player>();
+        observer = safe_alloc::make_refcounted<Critter>(server, ident_t {6}, server->GetProtoCritter(server->Hashes.to_hashed_string("LifetimeCritter")));
+        ScopedSyncContext sync;
+        vector<ptr<ServerEntity>> roots {map, player, target, item, observer};
+        sync.GetContext().SyncEntities(roots);
+        observer->GetRawGlobalMapGroup() = safe_alloc::make_shared<GlobalMapGroup>();
+        observer->GetRawGlobalMapGroup()->AddMember(observer);
+        observer->SetLookDistance(10);
+        map->AddItem(item, mpos {10, 10}, nullptr);
+        player->SetViewMap(map, mpos {10, 10}, 3, observer);
+
+        sync.Sync(map);
+        map->RefreshAreaSpectators(item);
+        CHECK_FALSE(map->IsSpectatorEntityVisible(player->GetId(), item->GetId()));
+
+        sync.GetContext().SyncEntities(roots);
+        player->SetViewMap(map, mpos {25, 25}, 1, nullptr);
+        CHECK_FALSE(map->IsSpectatorEntityVisible(player->GetId(), item->GetId()));
+        player->Send_ViewMap();
+
+        {
+            auto output = player->GetConnection()->WriteBuf();
+            auto bytes = output->GetData();
+            replacement_output.assign(bytes.begin(), bytes.end());
+            REQUIRE_FALSE(replacement_output.empty());
+        }
+
+        server->ScheduleDelayedCallback(timespan::zero, [drained]() mutable FO_DEFERRED { drained->store(true); });
+    });
+    REQUIRE(prepared);
+
+    nanotime deadline = nanotime::now() + std::chrono::seconds {10};
+
+    while (!drained->load() && nanotime::now() < deadline) {
+        coarse_sleep(std::chrono::milliseconds {1});
+    }
+
+    REQUIRE(drained->load());
+    bool verified = server->RunInQuiescence(std::chrono::seconds {10}, [&](const ServerQuiescenceState&) {
+        ptr<Item> item = owners[1].dyn_cast<Item>();
+        ptr<Map> map = owners[2].dyn_cast<Map>();
+        ptr<Player> player = owners[4].dyn_cast<Player>();
+        ScopedSyncContext sync;
+        vector<ptr<ServerEntity>> roots {map, player, item, observer};
+        sync.GetContext().SyncEntities(roots);
+        CHECK_FALSE(map->IsSpectatorEntityVisible(player->GetId(), item->GetId()));
+        REQUIRE(player->GetViewMap());
+        CHECK(player->GetViewMap()->Hex == mpos {25, 25});
+
+        {
+            auto output = player->GetConnection()->WriteBuf();
+            auto bytes = output->GetData();
+            vector<uint8_t> actual_output(bytes.begin(), bytes.end());
+            CHECK(actual_output == replacement_output);
+        }
+
+        player->ResetViewMap();
+        map->RemoveItem(item->GetId());
+    });
+    REQUIRE(verified);
+}
+
+TEST_CASE("MapViewDeferredRefreshSendsCurrentPosition", "[server][map][observation]")
+{
+    GlobalSettings settings = MakeServerEntityLifetimeSettings();
+    StaticMap static_map {msize {32, 32}, "Dynamic"};
+    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources(false, msize {32, 32}));
+    auto shutdown = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+    REQUIRE(WaitForServerEntityLifetimeStartup(server));
+    vector<refcount_ptr<ServerEntity>> owners;
+    refcount_nptr<Critter> observer;
+    auto drained = safe_alloc::make_shared<std::atomic_bool>(false);
+    auto clear = scope_exit([&]() noexcept { safe_call([&] { ClearServerEntityLifetimeViewOwners(server, owners, observer); }); });
+
+    bool prepared = server->RunInQuiescence(std::chrono::seconds {10}, [&](const ServerQuiescenceState&) {
+        owners = MakeServerEntityLifetimeOwners(server, &static_map);
+        ptr<Critter> target = owners[0].dyn_cast<Critter>();
+        ptr<Map> map = owners[2].dyn_cast<Map>();
+        ptr<Player> player = owners[4].dyn_cast<Player>();
+        observer = safe_alloc::make_refcounted<Critter>(server, ident_t {6}, server->GetProtoCritter(server->Hashes.to_hashed_string("LifetimeCritter")));
+        ScopedSyncContext sync;
+        vector<ptr<ServerEntity>> roots {map, player, target, observer};
+        sync.GetContext().SyncEntities(roots);
+        observer->GetRawGlobalMapGroup() = safe_alloc::make_shared<GlobalMapGroup>();
+        observer->GetRawGlobalMapGroup()->AddMember(observer);
+        observer->SetLookDistance(10);
+        target->SetHex(mpos {10, 10});
+        map->AddCritter(target);
+        player->SetViewMap(map, mpos {10, 10}, 3, observer);
+        REQUIRE(map->IsSpectatorEntityVisible(player->GetId(), target->GetId()));
+
+        {
+            auto output = player->GetConnection()->WriteBuf();
+            CHECK(output->GetData().empty());
+        }
+
+        map->RemoveCritterFromField(target);
+        target->SetHex(mpos {11, 10});
+        map->AddCritterToField(target);
+
+        sync.Sync(map);
+        map->RefreshAreaSpectators(target);
+        CHECK(map->GetSpectatorPlayersForSend(target->GetId(), target->GetHex()).empty());
+        target->SetCondition(CritterCondition::Dead);
+        server->ScheduleDelayedCallback(timespan::zero, [drained]() mutable FO_DEFERRED { drained->store(true); });
+    });
+    REQUIRE(prepared);
+
+    nanotime deadline = nanotime::now() + std::chrono::seconds {10};
+
+    while (!drained->load() && nanotime::now() < deadline) {
+        coarse_sleep(std::chrono::milliseconds {1});
+    }
+
+    REQUIRE(drained->load());
+    bool verified = server->RunInQuiescence(std::chrono::seconds {10}, [&](const ServerQuiescenceState&) {
+        ptr<Critter> target = owners[0].dyn_cast<Critter>();
+        ptr<Map> map = owners[2].dyn_cast<Map>();
+        ptr<Player> player = owners[4].dyn_cast<Player>();
+        ScopedSyncContext sync;
+        vector<ptr<ServerEntity>> roots {map, player, target, observer};
+        sync.GetContext().SyncEntities(roots);
+        CHECK(map->IsSpectatorEntityVisible(player->GetId(), target->GetId()));
+
+        {
+            auto output = player->GetConnection()->WriteBuf();
+            auto bytes = output->GetData();
+            NetInBuffer input {128};
+            input.AddData(bytes);
+            REQUIRE(input.NeedProcess());
+            CHECK(input.ReadMsg() == NetMessage::RemoveCritter);
+            CHECK(input.Read<ident_t>() == target->GetId());
+            REQUIRE(input.NeedProcess());
+            CHECK(input.ReadMsg() == NetMessage::AddCritter);
+            CHECK(input.Read<ident_t>() == target->GetId());
+            CHECK(input.Read<hstring>(server->Hashes) == target->GetProtoId());
+            CHECK(input.Read<mpos>() == mpos {11, 10});
+            (void)input.Read<decltype(target->GetHexOffset())>();
+            (void)input.Read<mdir>();
+            CHECK(input.Read<CritterCondition>() == CritterCondition::Dead);
+        }
+
+        player->ResetViewMap();
+        map->RemoveCritter(target);
+    });
+    REQUIRE(verified);
+}
+
+TEST_CASE("MapViewDeferredRefreshRestoresItemPropertiesWithoutBlockingOtherSubjects", "[server][map][observation]")
+{
+    GlobalSettings settings = MakeServerEntityLifetimeSettings();
+    StaticMap static_map {msize {32, 32}, "Dynamic"};
+    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources(false, msize {32, 32}));
+    auto shutdown = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+    REQUIRE(WaitForServerEntityLifetimeStartup(server));
+    vector<refcount_ptr<ServerEntity>> owners;
+    refcount_nptr<Critter> observer;
+    refcount_nptr<Item> other_item;
+    auto drained = safe_alloc::make_shared<std::atomic_bool>(false);
+    auto clear = scope_exit([&]() noexcept { safe_call([&] { ClearServerEntityLifetimeViewOwners(server, owners, observer); }); });
+
+    bool prepared = server->RunInQuiescence(std::chrono::seconds {10}, [&](const ServerQuiescenceState&) {
+        owners = MakeServerEntityLifetimeOwners(server, &static_map);
+        ptr<Critter> target = owners[0].dyn_cast<Critter>();
+        ptr<Item> item = owners[1].dyn_cast<Item>();
+        ptr<Map> map = owners[2].dyn_cast<Map>();
+        ptr<Player> player = owners[4].dyn_cast<Player>();
+        observer = safe_alloc::make_refcounted<Critter>(server, ident_t {6}, server->GetProtoCritter(server->Hashes.to_hashed_string("LifetimeCritter")));
+        other_item = safe_alloc::make_refcounted<Item>(server, ident_t {7}, server->GetProtoItem(server->Hashes.to_hashed_string("LifetimeItem")));
+        ScopedSyncContext sync;
+        vector<ptr<ServerEntity>> roots {map, player, target, item, observer, other_item};
+        sync.GetContext().SyncEntities(roots);
+        observer->GetRawGlobalMapGroup() = safe_alloc::make_shared<GlobalMapGroup>();
+        observer->GetRawGlobalMapGroup()->AddMember(observer);
+        observer->SetLookDistance(10);
+        target->SetHex(mpos {10, 12});
+        item->SetNoBlock(false);
+        other_item->SetNoBlock(false);
+        map->AddCritter(target);
+        map->AddItem(item, mpos {10, 10}, nullptr);
+        map->AddItem(other_item, mpos {11, 10}, nullptr);
+        player->SetViewMap(map, mpos {10, 10}, 5, observer);
+        REQUIRE(map->IsSpectatorEntityVisible(player->GetId(), item->GetId()));
+        REQUIRE(map->IsSpectatorEntityVisible(player->GetId(), other_item->GetId()));
+
+        sync.Sync(map);
+        item->SetNoBlock(true);
+        map->RefreshAreaSpectators(item);
+        other_item->SetNoBlock(true);
+        map->RefreshAreaSpectators(other_item);
+        CHECK_FALSE(map->IsSpectatorEntityVisible(player->GetId(), item->GetId()));
+        CHECK_FALSE(map->IsSpectatorEntityVisible(player->GetId(), other_item->GetId()));
+        CHECK(map->GetSpectatorPlayersForSend(target->GetId(), target->GetHex()).size() == 1);
+        server->ScheduleDelayedCallback(timespan::zero, [drained]() mutable FO_DEFERRED { drained->store(true); });
+    });
+    REQUIRE(prepared);
+
+    nanotime deadline = nanotime::now() + std::chrono::seconds {10};
+
+    while (!drained->load() && nanotime::now() < deadline) {
+        coarse_sleep(std::chrono::milliseconds {1});
+    }
+
+    REQUIRE(drained->load());
+    bool verified = server->RunInQuiescence(std::chrono::seconds {10}, [&](const ServerQuiescenceState&) {
+        ptr<Item> item = owners[1].dyn_cast<Item>();
+        ptr<Map> map = owners[2].dyn_cast<Map>();
+        ptr<Player> player = owners[4].dyn_cast<Player>();
+        ScopedSyncContext sync;
+        vector<ptr<ServerEntity>> roots {map, player, item, other_item, observer};
+        sync.GetContext().SyncEntities(roots);
+        CHECK(map->IsSpectatorEntityVisible(player->GetId(), item->GetId()));
+        CHECK(map->IsSpectatorEntityVisible(player->GetId(), other_item->GetId()));
+        auto output = player->GetConnection()->WriteBuf();
+        NetInBuffer input {128};
+        input.AddData(output->GetData());
+        vector<ident_t> expected_ids {item->GetId(), other_item->GetId()};
+
+        for (ident_t expected_id : expected_ids) {
+            REQUIRE(input.NeedProcess());
+            CHECK(input.ReadMsg() == NetMessage::RemoveItemFromMap);
+            CHECK(input.Read<ident_t>() == expected_id);
+        }
+        for (ident_t expected_id : expected_ids) {
+            REQUIRE(input.NeedProcess());
+            CHECK(input.ReadMsg() == NetMessage::AddItemOnMap);
+            (void)input.Read<mpos>();
+            CHECK(input.Read<ident_t>() == expected_id);
+            (void)input.Read<hstring>(server->Hashes);
+            vector<vector<uint8_t>> data;
+            input.ReadPropsData(data);
+            auto registrar = server->GetPropertyRegistrar(Item::ENTITY_TYPE_NAME);
+            Properties decoded {registrar};
+            decoded.RestoreData(data);
+            CHECK(decoded.GetValue<bool>(registrar->FindProperty("NoBlock")));
+            CHECK(input.Read<uint16_t>() == 0);
+        }
+
+        CHECK_FALSE(input.NeedProcess());
+    });
+    REQUIRE(verified);
 }
 
 FO_END_NAMESPACE

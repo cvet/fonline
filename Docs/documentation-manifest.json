@@ -203,7 +203,6 @@
     },
     "full_context": {
       "path": "llms-full.txt",
-      "max_bytes": 2400256,
       "generated_pages": "indexes-only",
       "exclude_document_ids": [
         "tools",
@@ -227,7 +226,7 @@
         "en": "Docs/Site/Assets/docs-search.json",
         "ru": "Docs/Site/Assets/docs-search.ru.json"
       },
-      "max_bytes": 1900544,
+      "max_bytes": 1933312,
       "minimum_query_length": 2
     },
     "browser_validation": {

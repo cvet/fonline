@@ -47,6 +47,10 @@ constexpr string_view EMBEDDED_PACK_NAME = "Embedded";
 // window up before the game resource set exists
 constexpr string_view CORE_PACK_NAME = "Core";
 
+// The pack with the baked metadata and the packaged application config, which settings read before the frontend
+// starts and the updater checks after each resource update
+constexpr string_view METADATA_PACK_NAME = "Metadata";
+
 // Shared by the pack sources: the name filter every source applies, and the deleter-carrying holder that hands
 // a decoded file buffer to the caller
 auto GetFileNamesGeneric(const vector<string>& fnames, string_view dir, bool recursive, string_view ext) -> vector<string>;

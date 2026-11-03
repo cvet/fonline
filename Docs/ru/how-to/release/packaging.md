@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/release/packaging.html
 ---
 
 # Упаковка и выпуск
-<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"67a53cc17f4edfe11a27de77f07628b8ad1b400b0003ef12b3dbc09cbae166e5"} -->
+<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"3494ef16034db8f8813026128ac9a6f0fd28107441f1b9b32eaa43d5b6dd1b03"} -->
 Точная текущая grammar, совместимость target/platform, pack tokens, payloads и
 command-line arguments находятся в сгенерированном
 [package interface](../../reference/packages/index.md). Перед тем как
@@ -143,7 +143,7 @@ BINARY <target> <platform> <architecture> <pack+tokens> [POSTFIX <variant>]
 ```
 
 `CONFIG` выбирает baked sub-config. Для resource-bearing client и server
-packages baking должен создать `Baking/Configs/<config>.fomain-client` или
+packages baking должен создать `Baking/Metadata/<config>.fomain-client` или
 `...-server` через baker `Config`. Package target не создаёт незаметно
 отсутствующие application binaries или baked resources.
 
@@ -223,9 +223,7 @@ setting. Checked-in `FOnlinePackagingMatrix.fomain` детерминирован
 из `Source/Common/Settings.inc`; `generate_config.py --check` завершается
 ошибкой при расхождении settings и fixture.
 
-Эта fixture и `Examples/MinimalMultiplayer` получают значения по умолчанию из
-текущих объявлений `SETTING(...)`. После изменения схемы настроек пересоздайте
-конфигурации обоих примеров, затем проверьте их актуальность.
+Все три генератора примеров исключают заполняемые runtime ключи `SettingNames`. После изменения схемы пересоздайте конфигурации и выполните `--check`.
 
 В отдельном checkout `Examples/PackagingMatrix` с инициализированным submodule
 `Engine` сконфигурируйте host build и соберите принадлежащую fixture цель
@@ -302,7 +300,6 @@ evidence. Для Linux support и immutable example-release evidence необх�
   service; любая другая ошибка linker/ICE и failed fallback остаются
   фатальными. На POSIX packaging host требуется `wixl` версии
   0.102 или новее.
-- `OGL` добавляет отдельно собранный OpenGL runtime variant.
 - `Lib` выбирает library form там, где target её поддерживает.
 - `POSTFIX` не даёт независимо собранным variants, например depot-specific
   client, конфликтовать.
@@ -581,7 +578,7 @@ compatibility или безопасный rollback.
 
 | Симптом | Сначала проверьте |
 |---|---|
-| `Config file not found` | Baker `Config`, package `CONFIG`, `Baking/Configs` и fresh bake output |
+| `Config file not found` | Baker `Config`, package `CONFIG`, `Baking/Metadata` и fresh bake output |
 | Отсутствует binary input | Built target/variant, platform architecture key, `POSTFIX` и общий `FO_OUTPUT_PATH` |
 | Unknown или invalid pack token | Generated package matrix, а не запомненные комбинации |
 | Package успешен, но requested artifact отсутствует | Output-producing pack token и final package output path |

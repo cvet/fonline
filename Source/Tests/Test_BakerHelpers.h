@@ -35,6 +35,7 @@
 
 #include "Common.h"
 
+#include "AngelScriptBaker.h"
 #include "AngelScriptScripting.h"
 #include "Baker.h"
 #include "DataSerialization.h"
@@ -621,25 +622,6 @@ namespace BakerTests
         nptr<MemoryDataSource> _bakedData {};
     };
 
-#if FO_ANGELSCRIPT_SCRIPTING
-    // ProtoBaker's server path initializes AngelScript, which requires exactly one real server bytecode; callers opt
-    // in after their metadata exists so compilation sees the rig's actual baked metadata
-    inline void PrepareResourceUsageServerBytecode(TestRig& rig)
-    {
-        BakerServerEngine compiler {rig.BakedFiles};
-        auto bytecode = CompileInlineScripts(&compiler, rig.Settings, "ResourceUsageFixture", {{"Noop.fos", "void ResourceUsageFixtureNoop() {}\n"}}, [](string_view message) {
-            string text {message};
-
-            if (text.find("error") != string::npos || text.find("Error") != string::npos || text.find("fatal") != string::npos || text.find("Fatal") != string::npos) {
-                throw ScriptSystemException(text);
-            }
-        });
-
-        REQUIRE_FALSE(bytecode.empty());
-        rig.AddBakedFile("ResourceUsageFixture.fos-bin-server", std::move(bytecode));
-    }
-#endif
-
     inline void AddTestBakedImage(TestRig& rig, string_view path, const vector<uint8_t>& data)
     {
         auto sprite = ReadSpriteResource(data);
@@ -648,6 +630,26 @@ namespace BakerTests
         rig.AddBakedFile(path, data);
         rig.AddBakedFile(strex("SpriteInfo/TestImages/{}.foinfo", path), WriteSpriteInfoFile({entry}));
     }
+
+#if FO_ANGELSCRIPT_SCRIPTING
+    // A server proto bake loads real script bytecode, so in-memory resource fixtures compile their own role outputs
+    // before the next MakeContext resets Outputs
+    inline void AddBakedScriptBytecode(TestRig& rig)
+    {
+        rig.AddSourceFile("Scripts/Fixture.fos", "namespace SharedDiagnostics { int Value() { return 42; } }\n");
+
+        AngelScriptBaker baker {rig.MakeContext("Scripts")};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "");
+
+        REQUIRE(rig.Outputs.size() == 3);
+
+        for (const auto& [path, bytes] : rig.Outputs) {
+            REQUIRE(strex(path).get_file_extension().starts_with("fos-bin-"));
+            REQUIRE(!bytes.empty());
+            rig.AddBakedFile(path, bytes);
+        }
+    }
+#endif
 
     inline auto MakeRequestedBakers(const vector<string>& request_bakers, TestRig& rig, string_view pack_name = "TestPack") -> vector<unique_ptr<BaseBaker>>
     {

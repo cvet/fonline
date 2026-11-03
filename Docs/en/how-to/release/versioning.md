@@ -105,4 +105,4 @@ An upgrade without project migration either preserves all used contracts or fail
 - `BuildTools/cmake/helpers/EngineVersion.cmake`, `BuildTools/cmake/stages/Codegen.cmake`, `BuildTools/codegen.py`, `Source/Frontend/ApplicationInit.cpp`
 - `.github/workflows/validate.yml`, `AGENTS.md`, `Docs/documentation-manifest.json`, `BuildTools/docs_site.py`, `BuildTools/docs_ai_delivery.py`
 
-CMake uses file-only Git dependencies; `CONFIGURE_DEPENDS` detects packed-to-loose refs, tested by `test_engine_version.py`.
+CMake exports file-only Engine/project Git dependencies. The nearest existing ref-directory watch detects packed-to-loose transitions before Visual Studio loads targets; `CONFIGURE_DEPENDS` supports other generators. Tests: `test_engine_version.py`, `test_cmake_build_hash.py`.

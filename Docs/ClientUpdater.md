@@ -93,3 +93,7 @@ Continue with the [canonical English explanation](en/explanation/runtime/client-
 ## See Also
 
 Continue with the [canonical English explanation](en/explanation/runtime/client-updater.md#see-also).
+
+## Complete configuration updates
+
+Continue with the [canonical English explanation](en/explanation/runtime/client-updater.md#complete-configuration-updates).

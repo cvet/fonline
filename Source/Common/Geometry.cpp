@@ -608,6 +608,9 @@ auto GeometryHelper::GetHexPos(mpos hex) -> ipos32
     return GetHexPos(ipos32(hex));
 }
 
+// Pixel positions of every admitted map cell leave half of the int32 range for offsets added on top
+static_assert(int64_t {GameSettings::MAX_MAP_SIZE} * std::max(GameSettings::MAP_HEX_WIDTH, GameSettings::MAP_HEX_HEIGHT * 2) * 2 <= std::numeric_limits<int32_t>::max(), "FO_MAP_MAX_SIZE exceeds the int32 pixel range for this hex size");
+
 auto GeometryHelper::GetHexPos(ipos32 raw_hex) -> ipos32
 {
     constexpr int32_t w = GameSettings::MAP_HEX_WIDTH;

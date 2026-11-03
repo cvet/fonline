@@ -101,6 +101,28 @@ class ConfigurationAndToolsDocumentationTests(unittest.TestCase):
         self.assertIn("defaults before reading project input", english)
         self.assertIn("defaults движка применяются до чтения входов проекта", russian)
 
+    def test_writable_root_flag_is_documented_only_by_its_accepted_spelling(self) -> None:
+        startup = self._text("Source/Frontend/ApplicationInit.cpp")
+        resolver = startup[startup.index("auto ResolveWritableRoot(CommandLineArgs args) -> string") :]
+        resolver = resolver[: resolver.index("\n}\n")]
+
+        # The resolver matches the fully qualified setting name, so no unqualified alias exists
+        self.assertIn("args.GetSettings(SettingNames::Common_UserWritablePath)", resolver)
+        for guide in (self._text(CONFIG_EN), self._text(CONFIG_RU)):
+            self.assertIn("`--Common.UserWritablePath <path>`", guide)
+
+        unqualified_flag = re.compile(r"(?<![\w.])--?UserWritablePath\b")
+        documents = [
+            path
+            for locale in ("en", "ru")
+            for path in sorted((ENGINE_ROOT / "Docs" / locale).rglob("*.md"))
+            if path.name != "changelog.md"
+        ]
+        documents.append(ENGINE_ROOT / "Docs" / "contract-change-dispositions.json")
+
+        for path in documents:
+            self.assertIsNone(unqualified_flag.search(path.read_text(encoding="utf-8")), path.relative_to(ENGINE_ROOT).as_posix())
+
     def test_tools_reference_covers_every_registered_builtin_baker(self) -> None:
         baker_source = self._text("Source/Tools/Baker.cpp")
         registered = set(re.findall(r"safe_alloc::make_unique<([A-Za-z]+Baker)>", baker_source))
@@ -108,6 +130,7 @@ class ConfigurationAndToolsDocumentationTests(unittest.TestCase):
             "AngelScriptBaker",
             "AudioBaker",
             "ConfigBaker",
+            "ClientConfigBaker",
             "EffectBaker",
             "ImageBaker",
             "MapBaker",
@@ -126,8 +149,9 @@ class ConfigurationAndToolsDocumentationTests(unittest.TestCase):
         english = self._text(TOOLS_EN)
         russian = self._text(TOOLS_RU)
         for baker in sorted(expected):
-            self.assertIn(f"`Source/Tools/{baker}.*`", english)
-            self.assertIn(f"`Source/Tools/{baker}.*`", russian)
+            module = "ConfigBaker" if baker == "ClientConfigBaker" else baker
+            self.assertIn(f"`Source/Tools/{module}.*`", english)
+            self.assertIn(f"`Source/Tools/{module}.*`", russian)
 
         mapper_bindings = self._text("Source/Scripting/MapperGlobalScriptMethods.cpp")
         self.assertIn("Mapper_Game_SaveMapperScreenshot", mapper_bindings)

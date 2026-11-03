@@ -1174,7 +1174,7 @@ TEST_CASE("ModelSpriteHitTestReadsItsMaskFromTheAtlas")
 
         ptr<RenderTexture> atlas_tex = model_spr->GetAtlas()->GetTexture();
         ipos32 origin {iround<int32_t>(atlas_tex->SizeData[0] * model_spr->GetAtlasRect().x), iround<int32_t>(atlas_tex->SizeData[1] * model_spr->GetAtlasRect().y)};
-        vector<ucolor> pixels(size.square(), ucolor {0, 0, 0, 0});
+        vector<ucolor> pixels(size.square<size_t>(), ucolor {0, 0, 0, 0});
         pixels[numeric_cast<size_t>(opaque_pos.y) * numeric_cast<size_t>(size.width) + numeric_cast<size_t>(opaque_pos.x)] = ucolor {255, 255, 255, 255};
         atlas_tex->UpdateTextureRegion(origin, size, pixels);
 
@@ -2106,6 +2106,7 @@ TEST_CASE("ClientEngineAnimationResolverReportsCleanupExceptions")
         return resolved ? Entity::EventResult::ContinueChain : Entity::EventResult::StopChain;
     };
     callback.SubscriptionPtr = reinterpret_cast<uintptr_t>(&spr_id);
+    callback.HasExplicitResult = true;
     client->OnCritterAnimationSprite.Subscribe(std::move(callback));
     auto unsubscribe = scope_exit([&client, &spr_id]() noexcept { client->OnCritterAnimationSprite.Unsubscribe(reinterpret_cast<uintptr_t>(&spr_id)); });
     auto resolve = [&] { return client->ResolveCritterAnimationSprite(client->Hashes.to_hashed_string("ThrowingStop"), CritterStateAnim {}, CritterActionAnim {}); };
@@ -2249,7 +2250,7 @@ TEST_CASE("CritterFramesCacheReentrantResolutionUsesCachedResult")
     auto unsubscribe = scope_exit([&client]() noexcept { client->OnCritterAnimationSprite.UnsubscribeAll(); });
     auto result = client->CritterFrames.GetCritterAnimFrames(model_name, state_anim, action_anim, mdir {0});
 
-    // Keep the rejected outer copy alive so the wrong implementation fails without dereferencing freed memory.
+    // Keep the rejected outer copy alive so the wrong implementation fails without dereferencing freed memory
     REQUIRE(observed_outer_copy);
     CHECK(result == nested);
     CHECK(client->CritterFrames.GetCritterAnimFrames(model_name, state_anim, action_anim, mdir {0}) == nested);
@@ -2372,7 +2373,7 @@ TEST_CASE("ModelAnimationUsesProjectLocomotionAndFrozenPose")
         model->SetLookDir(mdir {120});
         nanotime turn_deadline = client->GameTime.GetFrameTime() + std::chrono::seconds {3};
 
-        // Bone positions include world facing; settle the turn before comparing frozen animation samples.
+        // Bone positions include world facing; settle the turn before comparing frozen animation samples
         while (!is_float_equal(model->GetMoveDirAngle(), 60.0f) && client->GameTime.GetFrameTime() < turn_deadline) {
             pose();
         }

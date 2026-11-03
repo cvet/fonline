@@ -737,7 +737,7 @@ FO_SCRIPT_API void Mapper_Game_CenterMapperOnPlayableArea(ptr<MapperEngine> mapp
     }
     else {
         auto map_size = map->GetSize();
-        mpos center_hex {numeric_cast<int16_t>(map_size.width / 2), numeric_cast<int16_t>(map_size.height / 2)};
+        mpos center_hex {numeric_cast<mcoord_t>(map_size.width / 2), numeric_cast<mcoord_t>(map_size.height / 2)};
         CenterMapperViewOnHex(map, center_hex);
     }
 }

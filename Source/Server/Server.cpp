@@ -50,12 +50,40 @@ FO_BEGIN_NAMESPACE
 
 void ServerInitHook(ptr<ServerEngine>);
 
+class FO_TSA_SCOPED_CAPABILITY ServerQuiescenceGuard final
+{
+public:
+    ServerQuiescenceGuard(mutex& target, bool try_only) FO_TSA_ACQUIRE(target) :
+        _target {&target}
+    {
+        if (try_only) {
+            if (!_target->try_lock()) {
+                throw VerificationException("Simulation control is busy; retry after releasing the external lock");
+            }
+        }
+        else {
+            _target->lock();
+        }
+    }
+
+    ServerQuiescenceGuard(const ServerQuiescenceGuard&) = delete;
+    ServerQuiescenceGuard(ServerQuiescenceGuard&&) noexcept = delete;
+    auto operator=(const ServerQuiescenceGuard&) -> ServerQuiescenceGuard& = delete;
+    auto operator=(ServerQuiescenceGuard&&) noexcept -> ServerQuiescenceGuard& = delete;
+    ~ServerQuiescenceGuard() FO_TSA_RELEASE() { _target->unlock(); }
+
+private:
+    ptr<mutex> _target;
+};
+
 static constexpr timespan JOB_STATS_SAMPLE_INTERVAL {std::chrono::seconds {1}};
 static constexpr timespan JOB_STATS_ROLLING_WINDOW {std::chrono::minutes {1}};
 
 // An off-thread caller that Locks to pause the main worker still mutates engine state on its own thread, and
 // the engine-wide invariant requires an active SyncContext there
 thread_local optional<SyncContext> ExternalLockSyncCtx {};
+thread_local nptr<ServerEngine> ExternalLockOwner {};
+thread_local bool ExternalLockQuiescenceCallback {};
 
 auto GetServerResources(GlobalSettings& settings) -> FileSystem
 {
@@ -64,7 +92,6 @@ auto GetServerResources(GlobalSettings& settings) -> FileSystem
     return resources;
 }
 
-static void ValidateServerSnapshotState(const ServerSnapshotState& state);
 ServerEngine::ServerEngine(ptr<GlobalSettings> settings, FileSystem&& resources, optional<ServerSnapshotRestore> restore_snapshot) :
     BaseEngine(settings, std::move(resources), [&] { RegisterServerMetadata(this, &resources); }),
     EntityMngr(make_ptr(this)),
@@ -156,32 +183,7 @@ auto ServerEngine::FireEvent(const vector<EventCallbackData>& callbacks, FuncCal
     // Engine-wide invariant: a primary SyncContext is always active when an event fires
     FO_STRONG_ASSERT(GetCurrentSyncContext(), "Server event fired without active sync context");
 
-    bool had_exception = false;
-
-    // Iterate a copy - callbacks vector may be changed/invalidated during cycle work
-    small_vector<EventCallbackData, 4> callbacks_snapshot(callbacks.begin(), callbacks.end());
-
-    for (const auto& cb : callbacks_snapshot) {
-        EventResult result = EventResult::ContinueChain;
-
-        try {
-            result = cb.Callback(call);
-        }
-        catch (const std::exception& ex) {
-            exceptions::report_and_continue(ex);
-            had_exception = true;
-
-            if (cb.HasExplicitResult) {
-                return EventResult::StopChain;
-            }
-        }
-
-        if (result == EventResult::StopChain) {
-            return EventResult::StopChain;
-        }
-    }
-
-    return had_exception ? EventResult::StopChain : EventResult::ContinueChain;
+    return Entity::FireEvent(callbacks, call);
 }
 
 auto ServerEngine::WrapJobWithSync(work_thread::job body) -> work_thread::job
@@ -933,14 +935,7 @@ auto ServerEngine::NotLoggedInPlayerJob(ptr<Player> not_logged_in_player) -> std
         connection->HardDisconnect(DisconnectReason::ProtocolError);
     }
     catch (const NetBufferException& ex) {
-        if (!connection->IsHandshakeComplete()) {
-            logging::write(logging::type::warning, "Invalid handshake data from host {}:{}", connection->GetHost(), connection->GetPort());
-        }
-        else {
-            exceptions::report_and_continue(ex);
-        }
-
-        connection->HardDisconnect(DisconnectReason::ProtocolError);
+        RejectMalformedInput(connection, ex);
     }
     catch (const std::exception& ex) {
         exceptions::report_and_continue(ex);
@@ -992,8 +987,7 @@ auto ServerEngine::PlayerJob(ptr<Player> player) -> std::optional<timespan>
         ProcessPlayer(player);
     }
     catch (const NetBufferException& ex) {
-        exceptions::report_and_continue(ex);
-        connection->HardDisconnect(DisconnectReason::ProtocolError);
+        RejectMalformedInput(connection, ex);
     }
     catch (const std::exception& ex) {
         exceptions::report_and_continue(ex);
@@ -1004,6 +998,16 @@ auto ServerEngine::PlayerJob(ptr<Player> player) -> std::optional<timespan>
     }
 
     return std::chrono::milliseconds {Settings->Server.ConnectionProcessPeriodMs};
+}
+
+// A peer's broken framing is dropped with its connection, not reported: headless reports end the whole application
+void ServerEngine::RejectMalformedInput(ptr<ServerConnection> connection, const NetBufferException& ex)
+{
+    string_view stage = connection->IsHandshakeComplete() ? "network" : "handshake";
+
+    logging::write(logging::type::warning, "Invalid {} data from host {}:{}: {} ({})", stage, connection->GetHost(), connection->GetPort(), ex.message(), strex(", ").join(ex.params()).str());
+
+    connection->HardDisconnect(DisconnectReason::ProtocolError);
 }
 
 void ServerEngine::UpdateJobStats(nanotime cur_time)
@@ -1353,6 +1357,7 @@ auto ServerEngine::Lock(optional<timespan> max_wait_time) -> bool
     // active context for its own Sync/Ensure calls
     ExternalLockSyncCtx.emplace();
     ExternalLockSyncCtx->Activate();
+    ExternalLockOwner = this;
 
     return true;
 }
@@ -1380,9 +1385,11 @@ void ServerEngine::SyncWholeWorld(SyncContext& ctx, span<const refcount_ptr<Play
 void ServerEngine::Unlock()
 {
     FO_VERIFY_AND_THROW(ExternalLockSyncCtx, "Missing required external lock sync context");
+    FO_VERIFY_AND_THROW(ExternalLockOwner == this, "External lock belongs to another server");
     ExternalLockSyncCtx->Release();
     ExternalLockSyncCtx->Deactivate();
     ExternalLockSyncCtx.reset();
+    ExternalLockOwner = nullptr;
 
     if (std::this_thread::get_id() != _mainWorker.get_thread_id()) {
         unique_lock locker {_syncLocker};
@@ -1460,6 +1467,8 @@ auto ServerEngine::RunInQuiescence(optional<timespan> max_wait_time, const Quies
     state.SynchronizedTime = GameTime.GetSynchronizedTime();
     state.RandomState = CaptureRandomState();
 
+    ExternalLockQuiescenceCallback = true;
+    auto clear_callback = scope_exit([]() noexcept { ExternalLockQuiescenceCallback = false; });
     callback(state);
     return true;
 }
@@ -1769,58 +1778,69 @@ void ServerEngine::ResumeSimulation()
 auto ServerEngine::HoldSimulation(string_view reason) -> bool
 {
     bool startup_context = !_started && std::this_thread::get_id() == _starter.get_thread_id();
-    FO_VERIFY_AND_THROW(startup_context || !GetCurrentSyncContext(), "Simulation control must be requested outside a server execution context");
-    optional<scoped_lock<mutex>> quiescence_locker;
-    if (!startup_context) {
-        quiescence_locker.emplace(_quiescenceLocker);
+    bool drained_context = ExternalLockOwner == this && !ExternalLockQuiescenceCallback && std::this_thread::get_id() != _mainWorker.get_thread_id();
+    FO_VERIFY_AND_THROW(startup_context || !GetCurrentSyncContext() || drained_context, "Simulation control requires an outside, startup or drained external-lock context");
+
+    auto hold_simulation = [&]() -> bool {
+        FO_VERIFY_AND_THROW(_started || startup_context, "Simulation hold during startup requires the starter thread");
+        FO_VERIFY_AND_THROW(!reason.empty(), "Simulation hold requires a reason");
+        FO_VERIFY_AND_THROW(_workerPool && !_shutdownInProgress, "Simulation hold requires an initialized server");
+
+        auto [hold, inserted] = _simulationHolds.emplace(reason);
+
+        if (!inserted) {
+            return false;
+        }
+
+        auto remove_on_error = scope_fail([this, hold]() noexcept { _simulationHolds.erase(hold); });
+
+        if (!_simulationPaused) {
+            SuspendSimulationWork();
+        }
+
+        remove_on_error.release();
+        return true;
+    };
+
+    if (startup_context) {
+        return hold_simulation();
     }
 
-    FO_VERIFY_AND_THROW(_started || startup_context, "Simulation hold during startup requires the starter thread");
-    FO_VERIFY_AND_THROW(!reason.empty(), "Simulation hold requires a reason");
-    FO_VERIFY_AND_THROW(_workerPool && !_shutdownInProgress, "Simulation hold requires an initialized server");
-
-    auto [hold, inserted] = _simulationHolds.emplace(reason);
-
-    if (!inserted) {
-        return false;
-    }
-
-    auto remove_on_error = scope_fail([this, hold]() noexcept { _simulationHolds.erase(hold); });
-
-    if (!_simulationPaused) {
-        SuspendSimulationWork();
-    }
-
-    remove_on_error.release();
-    return true;
+    // A drained external lock must not wait for a controller that is waiting for that lock
+    ServerQuiescenceGuard guard {_quiescenceLocker, drained_context};
+    return hold_simulation();
 }
 
 auto ServerEngine::ReleaseSimulationHold(string_view reason) -> bool
 {
     bool startup_context = !_started && std::this_thread::get_id() == _starter.get_thread_id();
-    FO_VERIFY_AND_THROW(startup_context || !GetCurrentSyncContext(), "Simulation control must be requested outside a server execution context");
+    bool drained_context = ExternalLockOwner == this && !ExternalLockQuiescenceCallback && std::this_thread::get_id() != _mainWorker.get_thread_id();
+    FO_VERIFY_AND_THROW(startup_context || !GetCurrentSyncContext() || drained_context, "Simulation control requires an outside, startup or drained external-lock context");
 
-    optional<scoped_lock<mutex>> quiescence_locker;
+    auto release_hold = [&]() -> bool {
+        FO_VERIFY_AND_THROW(_started || startup_context, "Simulation hold release during startup requires the starter thread");
+        FO_VERIFY_AND_THROW(_workerPool && !_shutdownInProgress, "Simulation hold release requires an initialized server");
 
-    if (!startup_context) {
-        quiescence_locker.emplace(_quiescenceLocker);
+        auto hold = _simulationHolds.find(string {reason});
+
+        if (hold == _simulationHolds.end()) {
+            return false;
+        }
+
+        if (_simulationHolds.size() == 1 && !_manualSimulationPause && !_startupSimulationPause) {
+            RestoreSimulationWork();
+        }
+
+        _simulationHolds.erase(hold);
+        return true;
+    };
+
+    if (startup_context) {
+        return release_hold();
     }
 
-    FO_VERIFY_AND_THROW(_started || startup_context, "Simulation hold release during startup requires the starter thread");
-    FO_VERIFY_AND_THROW(_workerPool && !_shutdownInProgress, "Simulation hold release requires an initialized server");
-
-    auto hold = _simulationHolds.find(string {reason});
-
-    if (hold == _simulationHolds.end()) {
-        return false;
-    }
-
-    if (_simulationHolds.size() == 1 && !_manualSimulationPause && !_startupSimulationPause) {
-        RestoreSimulationWork();
-    }
-
-    _simulationHolds.erase(hold);
-    return true;
+    ServerQuiescenceGuard guard {_quiescenceLocker, drained_context};
+    return release_hold();
 }
 
 void ServerEngine::SuspendSimulationWork()
@@ -1832,7 +1852,7 @@ void ServerEngine::SuspendSimulationWork()
         }
     });
 
-    if (_started) {
+    if (_started && ExternalLockOwner != this) {
         locked = Lock(std::nullopt);
         FO_VERIFY_AND_THROW(locked, "Failed to drain simulation before pausing");
     }
@@ -2481,13 +2501,13 @@ void ServerEngine::StartConnectionServer(string_view what, const function<unique
 
             break;
         }
-        catch (const std::exception&) {
+        catch (const std::exception& ex) {
             if (nanotime::now() >= deadline) {
                 logging::write("Listener {} did not start within {} ms of retries", what, std::max(Settings->ServerNetwork.ListenRetryTime, 0));
                 throw;
             }
 
-            logging::write("Listener {} did not start on attempt {}, retrying in {} ms", what, attempt, retry_delay.count());
+            logging::write("Listener {} did not start on attempt {}, retrying in {} ms: {}", what, attempt, retry_delay.count(), ex.what());
             coarse_sleep(retry_delay);
         }
     }
@@ -2626,7 +2646,9 @@ void ServerEngine::ProcessNotLoggedInPlayer(ptr<Player> not_logged_in_player)
                 Process_Handshake(not_logged_in_player);
             }
             else {
-                throw GenericException("Expected handshake message", msg);
+                in_buf.Lock();
+                in_buf->ResetBuf();
+                throw NetBufferException("Expected handshake message", msg);
             }
         }
         else {
@@ -5725,7 +5747,7 @@ auto ServerEngine::CanRestoreSnapshotEntity(ptr<const ServerEntity> entity) cons
     return false;
 }
 
-static void ValidateServerSnapshotState(const ServerSnapshotState& state)
+void ServerEngine::ValidateServerSnapshotState(const ServerSnapshotState& state)
 {
     if (state.FormatVersion != ServerSnapshotState::FORMAT_VERSION) {
         throw ServerSnapshotException("Unsupported server snapshot format version", state.FormatVersion);

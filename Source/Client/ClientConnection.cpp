@@ -503,6 +503,9 @@ void ClientConnection::Net_OnHandshakeAnswer()
 
     _wasHandshake = true;
 
+    // The server session exists from here on, and a TCP connection would be another one
+    _connectingOverUdp = false;
+
     if (updater_outdated) {
         _connectCallback(ConnectResult::UpdaterOutdated);
     }

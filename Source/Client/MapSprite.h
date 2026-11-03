@@ -230,7 +230,7 @@ private:
 };
 
 // Script-configured holder for a client-local map sprite added by Map.DrawMapSprite and kept alive until invalidated or stopped
-///@ ExportRefType Client RefCounted HasFactory Export = Valid, SprId, Hex, ProtoId, Offset, IsFlat, NoLight, DrawOrder, DrawOrderSubLayer, Corner, DisableEgg, Color, IsTweakOffs, TweakOffset, IsTweakAlpha, TweakAlpha, Angle, MapProjected, StopDraw
+///@ ExportRefType Client RefCounted HasFactory Export = Valid, SprId, Hex, ProtoId, Offset, Elevation, IsFlat, NoLight, DrawOrder, DrawOrderSubLayer, Corner, DisableEgg, Color, IsTweakOffs, TweakOffset, IsTweakAlpha, TweakAlpha, Angle, MapProjected, StopDraw
 class MapSpriteHolder : public refcounted<MapSpriteHolder>
 {
 public:
@@ -254,6 +254,8 @@ public:
     hstring ProtoId {};
     // Base map-pixel offset applied when the sprite is attached
     ipos32 Offset {};
+    // Vertical map elevation applied at attachment, independently of the sprite pixel offset
+    int16_t Elevation {};
     // Manual flat-sprite selection used when ProtoId is empty
     bool IsFlat {};
     // Manual lighting bypass used when ProtoId is empty

@@ -94,21 +94,27 @@ def test_unit_target_requires_and_executes_pipeline_first(tmp_path: Path, angels
 def test_producer_fixture_content_tracks_angelscript_mode(tmp_path: Path, angelscript: bool) -> None:
     pipeline = load_pipeline_module()
     config, _, _ = pipeline.create_fixture(tmp_path, angelscript=angelscript)
-    noop = tmp_path / "inputs/definitions/Noop.fos"
-    assert noop.is_file() == angelscript
+    fixture = tmp_path / "inputs/definitions/Fixture.fos"
+    assert fixture.is_file() == angelscript
 
     if angelscript:
-        assert noop.read_text(encoding="utf-8") == "void ResourceUsageFixtureNoop() {}\n"
+        assert fixture.read_text(encoding="utf-8") == "namespace SharedDiagnostics { int Value() { return 42; } }\n"
 
     config_text = config.read_text(encoding="utf-8")
-    expected_bakers = "Metadata Proto AngelScript" if angelscript else "Metadata Proto"
+    expected_bakers = "Metadata AngelScript Proto" if angelscript else "Metadata Proto"
     assert f"Bakers = {expected_bakers}\n" in config_text
     assert ("AngelScript" in config_text) == angelscript
 
+    font = (tmp_path / "inputs/art/Fonts/Test.fofnt").read_text(encoding="utf-8")
+    assert font == "Version 2\nImage Ignored.tga\nImage#page\nAtlas.tga*\nEnd\nImage Unreachable.tga\n"
+    assert "Fonts/Ignored.tga" in pipeline.FULL
+    assert "Fonts/Ignored.tga" not in pipeline.EXPECTED
 
+
+@pytest.mark.parametrize("angelscript", [False, True])
 @pytest.mark.parametrize("settings", [{"unit_tests": False}, {"baker": False}, {"cross": True}])
-def test_unavailable_native_pipeline_does_not_change_other_profiles(tmp_path: Path, settings: dict) -> None:
-    build = wiring_project(tmp_path, **settings)
+def test_unavailable_native_pipeline_does_not_change_other_profiles(tmp_path: Path, settings: dict, angelscript: bool) -> None:
+    build = wiring_project(tmp_path, angelscript=angelscript, **settings)
     assert "RunResourceUsageIntegrationTests" not in (build / "dependencies.txt").read_text()
 
 

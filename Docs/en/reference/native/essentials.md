@@ -140,7 +140,20 @@ Immediately after failed module load/symbol lookup, `platform::get_last_module_e
 
 `WinApi.*` and `Posix.*` own OS calls under `winapi::` and `posix::`. Public boundaries use engine strings, optionals, fixed-width integers and `nptr<void>`, hiding `HANDLE`, `pid_t` and other OS types. `Platform` dispatches to them; ordinary consumers extend/call wrappers rather than include `<Windows.h>` or POSIX headers. Exceptions are lower Essentials implementations unable to depend on these modules (`BasicCore.cpp`, `BaseLogging.cpp`, `StringUtils.cpp`), plus OS wrappers `NetSockets.*` and `ServerServiceApp.cpp`.
 
-Darwin SDK signal-set operations may be function-like macros. In `Posix.cpp`, call `sigfillset`, `sigdelset`, `sigemptyset` and `sigaddset` without `::` so macros expand; Linux still resolves global functions. Crash-handler masks, flags, alternate stack and default-signal re-raise are unchanged. Ordinary consumers use `posix::` wrappers, not OS headers/calls.
+`WinApiUndef.inc` removes Windows macro aliases after platform and third-party
+headers. Its commented `// #undef Name` entries form the generator-preserved
+allowlist for later headers in the same Unity translation unit. Windows SDK socket
+headers need `CopyMemory` and `ZeroMemory`, including their `RtlCopyMemory` and
+`RtlZeroMemory` expansions, even when `<Windows.h>` was included and cleaned up
+earlier. Qualify allowlist changes with the real SDK and compiler in that header
+order; preserving only the outer aliases leaves their expansions undefined.
+
+Darwin SDK signal-set operations can be function-like macros. Inside `Posix.cpp`,
+call `sigfillset`, `sigdelset`, `sigemptyset` and `sigaddset` without a `::`
+qualifier so those definitions expand correctly; Linux still resolves its global
+functions. The crash handler's masks, flags, alternate stack and default-signal
+re-raise keep their existing behavior. Ordinary consumers continue using the
+`posix::` wrappers rather than accessing OS headers or calls directly.
 
 Windows retains `_WIN32_WINNT=0x0601`. One build-platform registry owns CMake architecture, toolset and canonical packaging architecture for regular, `-clang` and `-win7` variants. Win7 pins MSVC 14.44; `FO_BINARY_OUTPUT_POSTFIX` remains independent. Each package-DSL `BINARY` may choose its own postfix, e.g. `BINARY Client Windows win32-win7 Raw+Zip+Wix POSTFIX Win7`, without affecting siblings. Compatibility checks stay outside application targets.
 
@@ -282,7 +295,7 @@ Use existing `strex` / `strvex` formatting/parsing operations. Repeated missing 
 
 `StringObject.*` owns engine `basic_string`, following `std::basic_string`. `FO_STRING_INLINE_CAPACITY` sets both `string` and `wstring` inline buffers: a build-wide ABI choice, not per-call optimization. Three standard boundaries need adapters: copy text into standard streams via `make_stream_string`, build `std::filesystem::path` with `fs::make_path`, and call `getline` unqualified for ADL to select the engine overload. String growth follows deterministic terminate-on-OOM like other engine storage.
 
-`DataSerialization.*` supplies binary I/O for networking, persistence, resources and tests. `data_reader::read<T>()` / `data_writer::write<T>()` byte-copy standard-layout values, independent of buffer alignment. Zero-copy `read_ptr<T>(size)` accepts only raw byte/string views (`uint8_t`, `char`, `void`); aligned typed values use `read<T>()` or `read_ptr(destination, size)`. `StringUtils.*`, `HashedString.*`, `StrongType.*`, `ExtendedTypes.*`, `SafeArithmetics.*` and `TimeRelated.*` supply reusable primitive-like values. `iround` rejects non-finite/out-of-int64-range floats before rounding, protecting `std::llround` from undefined inputs. `hash_storage::set_resolve_hash_failure_handler` exposes failed resolution in throwing and flagged no-throw lookups without imposing recovery policy on essentials.
+`DataSerialization.*` supplies binary network/persistence/resource/test I/O. `data_reader::read<T>()` and `data_writer::write<T>()` copy standard-layout bytes independently of alignment. Zero-copy `read_ptr<T>(size)` accepts only raw byte/string views (`uint8_t`, `char`, `void`); aligned typed values use `read<T>()` or `read_ptr(destination, size)`. `StringUtils.*`, `HashedString.*`, `StrongType.*`, `ExtendedTypes.*`, `SafeArithmetics.*` and `TimeRelated.*` own primitive values. `synctime` stores signed int64 milliseconds; its ms/seconds getters avoid nanosecond overflow. `iround` rejects non-finite/out-of-int64 input before `std::llround`. `hash_storage::set_resolve_hash_failure_handler` observes unresolved hashes on throwing and flagged no-throw paths; higher layers own recovery.
 
 `timespan::to_ms/to_sec` preserve fractions for floating T; integers truncate toward zero. Use `div<T>` for ratios and explicit adapters for numeric file/config/wire units. Explicit zero durations use existing `timespan::zero`; normal field/local initialization may keep `{}`.
 

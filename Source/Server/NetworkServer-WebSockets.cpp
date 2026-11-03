@@ -47,6 +47,8 @@
 #define _WEBSOCKETPP_CPP11_MEMORY_ // NOLINT(clang-diagnostic-reserved-macro-identifier, bugprone-reserved-identifier)
 #define _WEBSOCKETPP_CPP11_STL_ // NOLINT(clang-diagnostic-reserved-macro-identifier, bugprone-reserved-identifier)
 // ReSharper restore CppInconsistentNaming
+// LibreSSL intentionally replaces overlapping WinCrypt names, including after Windows.h in a unity batch
+#define LIBRESSL_DISABLE_OVERRIDE_WINCRYPT_DEFINES_WARNING
 FO_DISABLE_WARNINGS_PUSH()
 #include "websocketpp/config/asio.hpp"
 #include "websocketpp/server.hpp"
@@ -347,6 +349,12 @@ NetworkServer_WebSockets<Secured>::NetworkServer_WebSockets(ptr<ServerNetworkSet
     if constexpr (Secured) {
         _server.set_tls_init_handler([this](auto&& hdl) FO_DEFERRED { return OnTlsInit(hdl); });
     }
+
+#if !FO_WINDOWS
+    // POSIX holds a closed connection's port in TIME_WAIT, so a restart rebinds only with SO_REUSEADDR (a live listener still refuses).
+    // Windows keeps the default because there the option lets a second process share a live listener's port
+    _server.set_reuse_addr(true);
+#endif
 
     websocketpp::lib::error_code listen_error;
     _server.listen(asio::ip::tcp::v6(), numeric_cast<uint16_t>(settings->Network.WebSocketPort), listen_error);

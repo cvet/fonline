@@ -217,7 +217,7 @@ Do not queue managed thread-pool work in the browser. This Mono runtime routes i
 
 ### Persistent data
 
-The runtime creates `/PersistentData`, mounts IDBFS, calls `FS.syncfs(true)`, and delays normal startup until initial browser-to-virtual-filesystem hydration completes. The callback currently marks readiness even when `err` is non-null. The audited generic path does not prove automatic write-back after every later modification.
+The runtime creates `/PersistentData`, mounts IDBFS, calls `FS.syncfs(true)`, and delays application initialization until initial browser-to-virtual-filesystem hydration succeeds. Load and flush errors abort the Web runtime instead of reporting readiness. A changed configuration resource calls `FS.syncfs(false)` after resource synchronization and holds the main loop until the write succeeds, before the user reloads to apply the resource profile; this does not establish automatic write-back for every other virtual-filesystem modification.
 
 Therefore do not promise durable saves merely because IDBFS mounted. The project must define what data belongs there, when writes are flushed, quota/eviction behavior, private/incognito behavior, schema/version migration, corruption recovery, user data deletion, and multi-tab conflict policy. Test cold reload and browser restart using the exact production origin; storage is origin-scoped.
 

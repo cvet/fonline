@@ -437,7 +437,7 @@ TEST_CASE("EffectBakerKeepsDefaultEffectsWithoutBakeChecker")
         }
 
         const BaseBaker& dependencies = baker;
-        string manifest_data = usage->CreateManifest("build", "config", [&](const ResourceOutput& output) { return rig.Outputs.contains(output.Path); }, [&](const ResourceOutput& output) { return dependencies.CollectResourceDependencies(rig.GetAllSourceFiles(), output.Path); });
+        string manifest_data = usage->CreateManifest("build", "config", true, [&](const ResourceOutput& output) { return rig.Outputs.contains(output.Path); }, [&](const ResourceOutput& output) { return dependencies.CollectResourceDependencies(rig.GetAllSourceFiles(), output.Path); });
         nlohmann::json manifest = nlohmann::json::parse(manifest_data);
 
         CHECK(manifest.at("Packs").at("Effects") == nlohmann::json::array({

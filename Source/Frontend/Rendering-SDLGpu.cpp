@@ -300,7 +300,7 @@ static auto ConvertBlendFactor(BlendFuncType blend, bool is_alpha) -> SDL_GPUBle
     FO_UNREACHABLE_PLACE();
 }
 
-static auto ConvertBlendOp(BlendEquationType blend_op) -> SDL_GPUBlendOp
+static auto ConvertBlendOpToSdlGpu(BlendEquationType blend_op) -> SDL_GPUBlendOp
 {
     switch (blend_op) {
     case BlendEquationType::FuncAdd:
@@ -318,7 +318,7 @@ static auto ConvertBlendOp(BlendEquationType blend_op) -> SDL_GPUBlendOp
     FO_UNREACHABLE_PLACE();
 }
 
-static auto ConvertCullMode(CullModeType cull_mode) -> SDL_GPUCullMode
+static auto ConvertCullModeToSdlGpu(CullModeType cull_mode) -> SDL_GPUCullMode
 {
     switch (cull_mode) {
     case CullModeType::None:
@@ -1243,7 +1243,7 @@ auto SDLGpu_Texture::RequestTextureRegion(ipos32 pos, isize32 size) const -> uni
 
     SDL_GPUTransferBufferCreateInfo transfer_buf_info = {};
     transfer_buf_info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD;
-    transfer_buf_info.size = numeric_cast<uint32_t>(size.square() * sizeof(ucolor));
+    transfer_buf_info.size = numeric_cast<uint32_t>(size.square<size_t>() * sizeof(ucolor));
 
     auto transfer_buf = make_nptr(SDL_CreateGPUTransferBuffer(_ctx->Device.get(), &transfer_buf_info));
     FO_VERIFY_AND_THROW(transfer_buf, "SDL_CreateGPUTransferBuffer failed for a texture readback", SDL_GetError(), size);
@@ -1346,9 +1346,9 @@ auto SDLGpu_TextureReadback::TakePixels() -> optional<vector<ucolor>>
         return std::nullopt;
     }
 
-    size_t data_size = _size.square() * sizeof(ucolor);
+    size_t data_size = _size.square<size_t>() * sizeof(ucolor);
     vector<ucolor> pixels;
-    pixels.resize(_size.square());
+    pixels.resize(_size.square<size_t>());
 
     auto mapped = MapTransferBuffer(_ctx, _transferBuf, false);
     memory::copy(pixels.data(), mapped, data_size);
@@ -1641,7 +1641,7 @@ auto SDLGpu_Effect::GetOrCreatePipeline(size_t pass, SDL_GPUPrimitiveType topolo
     pipeline_info.rasterizer_state.front_face = SDL_GPU_FRONTFACE_COUNTER_CLOCKWISE;
     pipeline_info.rasterizer_state.enable_depth_clip = true;
 
-    pipeline_info.rasterizer_state.cull_mode = ConvertCullMode(cull_mode);
+    pipeline_info.rasterizer_state.cull_mode = ConvertCullModeToSdlGpu(cull_mode);
 
     pipeline_info.multisample_state.sample_count = SDL_GPU_SAMPLECOUNT_1;
 
@@ -1666,10 +1666,10 @@ auto SDLGpu_Effect::GetOrCreatePipeline(size_t pass, SDL_GPUPrimitiveType topolo
         color_target_desc.blend_state.enable_blend = true;
         color_target_desc.blend_state.src_color_blendfactor = ConvertBlendFactor(_srcBlendFunc[pass], false);
         color_target_desc.blend_state.dst_color_blendfactor = ConvertBlendFactor(_destBlendFunc[pass], false);
-        color_target_desc.blend_state.color_blend_op = ConvertBlendOp(_blendEquation[pass]);
+        color_target_desc.blend_state.color_blend_op = ConvertBlendOpToSdlGpu(_blendEquation[pass]);
         color_target_desc.blend_state.src_alpha_blendfactor = ConvertBlendFactor(_srcBlendFunc[pass], true);
         color_target_desc.blend_state.dst_alpha_blendfactor = ConvertBlendFactor(_destBlendFunc[pass], true);
-        color_target_desc.blend_state.alpha_blend_op = ConvertBlendOp(_blendEquation[pass]);
+        color_target_desc.blend_state.alpha_blend_op = ConvertBlendOpToSdlGpu(_blendEquation[pass]);
     }
 
     pipeline_info.target_info.color_target_descriptions = &color_target_desc;

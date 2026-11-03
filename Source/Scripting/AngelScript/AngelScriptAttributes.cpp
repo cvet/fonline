@@ -43,7 +43,7 @@
 
 FO_BEGIN_NAMESPACE
 
-static constexpr AngelScript::asPWORD AS_PREPROCESSOR_LNT_USER_DATA = 5;
+static constexpr AngelScript::asPWORD AS_ATTRIBUTES_PREPROCESSOR_LNT_USER_DATA = 5;
 
 static auto IsSameScriptFunction(nptr<AngelScript::asIScriptFunction> lhs, ptr<AngelScript::asIScriptFunction> rhs) noexcept -> bool
 {
@@ -656,7 +656,7 @@ static auto FindModuleObjectType(ptr<AngelScript::asIScriptModule> mod, string_v
     return nullptr;
 }
 
-static auto ResolveDeclaredFunctionSourceLocation(nptr<const AngelScript::asIScriptFunction> func, nptr<const Preprocessor::LineNumberTranslator> lnt) -> optional<pair<string, uint32_t>>
+static auto ResolveAttributesFunctionSourceLocation(nptr<const AngelScript::asIScriptFunction> func, nptr<const Preprocessor::LineNumberTranslator> lnt) -> optional<pair<string, uint32_t>>
 {
     if (!func) {
         return std::nullopt;
@@ -708,7 +708,7 @@ static auto FindAttribute(nptr<const ScriptFunctionAttributeUserData> user_data,
     return nullptr;
 }
 
-static auto GetFunctionDeclarationString(nptr<const AngelScript::asIScriptFunction> func) -> string
+static auto GetAttributesFunctionDeclarationString(nptr<const AngelScript::asIScriptFunction> func) -> string
 {
     if (!func) {
         return "<unknown>";
@@ -784,8 +784,8 @@ static auto ShouldSkipAttributedUsageValidation(ptr<const AngelScript::asIScript
 
 static auto MakeAttributedUsageError(ptr<const AngelScript::asIScriptFunction> caller, ptr<const AngelScript::asIScriptFunction> callee, ptr<const AngelScript::asDWORD> instruction, nptr<const Preprocessor::LineNumberTranslator> lnt) -> string
 {
-    string caller_decl = GetFunctionDeclarationString(caller);
-    string callee_decl = GetFunctionDeclarationString(callee);
+    string caller_decl = GetAttributesFunctionDeclarationString(caller);
+    string callee_decl = GetAttributesFunctionDeclarationString(callee);
     string message = strex("Attributed function '{}' cannot be called from function '{}'", callee_decl, caller_decl).str();
 
     if (auto location = ResolveInstructionLocation(caller, instruction); location.has_value()) {
@@ -797,8 +797,8 @@ static auto MakeAttributedUsageError(ptr<const AngelScript::asIScriptFunction> c
 
 static auto MakeMarkerPropagationError(ptr<const AngelScript::asIScriptFunction> caller, ptr<const AngelScript::asIScriptFunction> callee, string_view marker_name, ptr<const AngelScript::asDWORD> instruction, nptr<const Preprocessor::LineNumberTranslator> lnt) -> string
 {
-    string caller_decl = GetFunctionDeclarationString(caller);
-    string callee_decl = GetFunctionDeclarationString(callee);
+    string caller_decl = GetAttributesFunctionDeclarationString(caller);
+    string callee_decl = GetAttributesFunctionDeclarationString(callee);
     string message = strex("Function '{}' is marked [[{}]] but is called from '{}' which does not carry the same marker; add [[{}]] to the caller to propagate it", callee_decl, marker_name, caller_decl, marker_name).str();
 
     if (auto location = ResolveInstructionLocation(caller, instruction); location.has_value()) {
@@ -1073,7 +1073,7 @@ auto BindFunctionAttributeRecords(ptr<AngelScript::asIScriptModule> mod, const v
     }
 
     ptr<AngelScript::asIScriptEngine> engine = mod->GetEngine();
-    auto lnt = cast_from_void<const Preprocessor::LineNumberTranslator*>(engine->GetUserData(AS_PREPROCESSOR_LNT_USER_DATA));
+    auto lnt = cast_from_void<const Preprocessor::LineNumberTranslator*>(engine->GetUserData(AS_ATTRIBUTES_PREPROCESSOR_LNT_USER_DATA));
 
     for (const auto& record : records) {
         nptr<AngelScript::asIScriptFunction> target_func {};
@@ -1141,7 +1141,7 @@ auto BindFunctionAttributeRecords(ptr<AngelScript::asIScriptModule> mod, const v
                     continue;
                 }
 
-                auto location = ResolveDeclaredFunctionSourceLocation(func, lnt);
+                auto location = ResolveAttributesFunctionSourceLocation(func, lnt);
 
                 if (!location.has_value() || location->first != record.SourceFile || location->second != record.SourceLine) {
                     continue;
@@ -1295,10 +1295,10 @@ static auto TryParseAttributePriority(string_view raw_attribute, string_view att
 
 static auto MakeSpecialAttributeError(ptr<const AngelScript::asIScriptFunction> func, string_view raw_attribute, string_view details, nptr<const Preprocessor::LineNumberTranslator> lnt) -> string
 {
-    string func_decl = GetFunctionDeclarationString(func);
+    string func_decl = GetAttributesFunctionDeclarationString(func);
     string message = strex("Invalid attribute '[[{}]]' on function '{}': {}", raw_attribute, func_decl, details).str();
 
-    if (auto location = ResolveDeclaredFunctionSourceLocation(func, lnt); location.has_value()) {
+    if (auto location = ResolveAttributesFunctionSourceLocation(func, lnt); location.has_value()) {
         return strex("{}({},1): error : {}", location->first, location->second, message).str();
     }
 
@@ -1529,8 +1529,8 @@ static auto IsDelegateFactoryFunction(nptr<const AngelScript::asIScriptFunction>
 
 static auto MakeRestrictedCallbackUsageError(ptr<const AngelScript::asIScriptFunction> caller, ptr<const AngelScript::asIScriptFunction> callback, const optional<ScriptBytecodeLocation>& location, const CallbackAttributeRule& rule, nptr<const Preprocessor::LineNumberTranslator> lnt) -> string
 {
-    string callback_decl = GetFunctionDeclarationString(callback);
-    string caller_decl = GetFunctionDeclarationString(caller);
+    string callback_decl = GetAttributesFunctionDeclarationString(callback);
+    string caller_decl = GetAttributesFunctionDeclarationString(caller);
     string message = strex("Functions marked [[{}]] can only be passed to {}, '{}' is used outside of {} in script function '{}'", rule.AttributeName, rule.UsageName, callback_decl, rule.UsageName, caller_decl).str();
 
     if (location.has_value()) {
@@ -1542,8 +1542,8 @@ static auto MakeRestrictedCallbackUsageError(ptr<const AngelScript::asIScriptFun
 
 static auto MakeMissingCallbackAttributeError(ptr<const AngelScript::asIScriptFunction> caller, ptr<const AngelScript::asIScriptFunction> callback, const optional<ScriptBytecodeLocation>& location, const CallbackAttributeRule& rule, nptr<const Preprocessor::LineNumberTranslator> lnt) -> string
 {
-    string callback_decl = GetFunctionDeclarationString(callback);
-    string caller_decl = GetFunctionDeclarationString(caller);
+    string callback_decl = GetAttributesFunctionDeclarationString(callback);
+    string caller_decl = GetAttributesFunctionDeclarationString(caller);
     string message = strex("Functions passed to {} must be marked [[{}]], '{}' is used without [[{}]] in script function '{}'", rule.UsageName, rule.AttributeName, callback_decl, rule.AttributeName, caller_decl).str();
 
     if (location.has_value()) {

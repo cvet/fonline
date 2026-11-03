@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/release/security-and-secrets.html
 ---
 
 # Безопасность и секреты
-<!-- docs-translation: {"document_id":"security-and-secrets","locale":"ru","source_path":"Docs/en/how-to/release/security-and-secrets.md","source_sha256":"c4858ed05219baff94348576dff827a6acb90ea388489c22fe08c317100deb87"} -->
+<!-- docs-translation: {"document_id":"security-and-secrets","locale":"ru","source_path":"Docs/en/how-to/release/security-and-secrets.md","source_sha256":"cacb051e1c1dd92b31ed7f82061556cc8d03209b4126d116c6fde8bd1d2cf6af"} -->
 Это руководство определяет переиспользуемые границы FOnline для credentials, подстановки конфигурации, подписи пакетов, CI, диагностики и incident response. Оно не выбирает secret manager, поставщика сертификатов, production account, срок хранения или incident policy для подключающей игры.
 
 Используйте [Project Configuration](../build/project-configuration.md) для общего precedence `.fomain`, [Packaging and Release](packaging.md) для производства артефактов и [Client Updater](../../explanation/runtime/client-updater.md) для границы загружаемого native runtime.
@@ -176,7 +176,7 @@ python BuildTools/docs_validate.py
 Затем квалифицируйте затронутую project lane с непроизводственными credentials:
 
 1. проверьте authored `.fomain` и выбранный sub-config на literals;
-2. выполните bake и убедитесь, что runtime secrets остаются directives `$TARGET_*` в `Baking/Configs`, а package credentials отсутствуют;
+2. выполните bake и убедитесь, что runtime secrets остаются directives `$TARGET_*` в `Baking/Metadata`, а package credentials отсутствуют;
 3. создайте development package и проверьте generated tree, raw package, archives, logs и manifest;
 4. убедитесь, что Windows signing hook получает credentials из своей защищённой среды, либо проверьте project-owned Android signing stage без помещения секретов в Engine config;
 5. установите или разверните, запустите packaged application и проверьте updater/network behavior;
@@ -190,7 +190,7 @@ python BuildTools/docs_validate.py
 
 | Симптом | Что проверить сначала |
 |---|---|
-| Конкретный credential появился в `Baking/Configs` | замените `$ENV`/`$FILE` на target form и повторите bake из чистого output |
+| Конкретный credential появился в `Baking/Metadata` | замените `$ENV`/`$FILE` на target form и повторите bake из чистого output |
 | Command-line log показывает credential | имя setting и `Common.SecretSettingTokens`; замените значение, поскольку сохраняются другие пути раскрытия arguments |
 | Packaging сообщает об отсутствующем path/file | baked target config или root project config, выбранный sub-config и permissions файла; не помещайте туда secret |
 | Android release использует debug key | полный signing tuple из четырёх полей и выбранный package config |

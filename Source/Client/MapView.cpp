@@ -102,6 +102,7 @@ MapView::MapView(ptr<ClientEngine> engine, ident_t id, ptr<const ProtoMap> proto
 
     _mapSize = GetSize();
     FO_VERIFY_AND_THROW(_mapSize.width > 0 && _mapSize.height > 0, "Map size must be positive", _mapSize.width, _mapSize.height);
+    FO_VERIFY_AND_THROW(_mapSize.width <= GameSettings::MAX_MAP_SIZE && _mapSize.height <= GameSettings::MAX_MAP_SIZE, "Map size exceeds the engine maximum", _mapSize.width, _mapSize.height, GameSettings::MAX_MAP_SIZE);
 
     {
         const ipos32 corners[] = {{0, 0}, {numeric_cast<int32_t>(_mapSize.width) - 1, 0}, //
@@ -128,7 +129,7 @@ MapView::MapView(ptr<ClientEngine> engine, ident_t id, ptr<const ProtoMap> proto
         _mapDepthHalf = std::max(std::abs(near_bound), std::abs(far_bound));
     }
 
-    _hexLight.resize(_mapSize.square() * 3);
+    _hexLight.resize(_mapSize.square<size_t>());
     _hexField.emplace(_mapSize);
 
     _lightPoints.resize(1);
@@ -458,7 +459,30 @@ void MapView::LoadStaticData()
 
     reader.verify_end();
 
-    // Index roof
+    EnsureRoofNums();
+    RebuildMapNow();
+}
+
+void MapView::EnsureRoofNums()
+{
+    FO_TRACE_ZONE(Map);
+
+    if (!_roofNumsDirty) {
+        return;
+    }
+
+    _roofNumsDirty = false;
+
+    for (mcoord_t hx = 0; hx < _mapSize.width; hx++) {
+        for (mcoord_t hy = 0; hy < _mapSize.height; hy++) {
+            mpos hex(hx, hy);
+
+            if (_hexField->GetCellForReading(hex).RoofNum != 0) {
+                _hexField->GetCellForWriting(hex)->RoofNum = 0;
+            }
+        }
+    }
+
     auto mark_roof_num = [this](ipos32 raw_hex, int32_t num) {
         std::stack<ipos32, vector<ipos32>> next_raw_hexes;
         next_raw_hexes.push(raw_hex);
@@ -489,8 +513,8 @@ void MapView::LoadStaticData()
 
     int32_t roof_num = 1;
 
-    for (int16_t hx = 0; hx < _mapSize.width; hx++) {
-        for (int16_t hy = 0; hy < _mapSize.height; hy++) {
+    for (mcoord_t hx = 0; hx < _mapSize.width; hx++) {
+        for (mcoord_t hy = 0; hy < _mapSize.height; hy++) {
             const auto& field = _hexField->GetCellForReading(mpos(hx, hy));
 
             if (field.RoofNum == 0 && field.HasRoof) {
@@ -502,7 +526,11 @@ void MapView::LoadStaticData()
         }
     }
 
-    RebuildMapNow();
+    if (_hiddenRoofHex) {
+        SetHiddenRoof(*_hiddenRoofHex);
+    }
+
+    RebuildMap();
 }
 
 void MapView::ApplyStaticItemRemovals()
@@ -539,6 +567,8 @@ void MapView::ApplyStaticItemRemovals()
 void MapView::Process()
 {
     FO_TRACE_ZONE(Map);
+
+    EnsureRoofNums();
 
     // Critters
     {
@@ -1168,6 +1198,8 @@ auto MapView::RunSpritePattern(string_view name, size_t count) -> nptr<SpritePat
 void MapView::RebuildMapNow()
 {
     FO_TRACE_ZONE(Map);
+
+    EnsureRoofNums();
 
     HideHexLines(0, _hVisible);
     FO_VERIFY_AND_THROW(!_mapSprites.HasActiveSprites(), "Map sprites must be cleared before reinitializing the view");
@@ -1856,7 +1888,7 @@ void MapView::MarkLightColor(ptr<LightSource> ls, mpos hex, ucolor light_color)
 
 void MapView::CalculateHexLight(mpos hex, ptr<const Field> field)
 {
-    auto& hex_light = _hexLight[hex.y * _mapSize.width + hex.x];
+    auto& hex_light = _hexLight[numeric_cast<size_t>(safe_numeric_cast<int64_t>(hex.y) * _mapSize.width + hex.x)];
 
     hex_light = {};
 
@@ -1930,8 +1962,17 @@ void MapView::LightFanToPrimitves(ptr<const LightSource> ls, vector<PrimitivePoi
     FO_VERIFY_AND_THROW(points.size() % 3 == 0, "Client map border polygon points must be grouped into render triangles", GetId(), points.size(), 3);
 }
 
+auto MapView::GetHiddenRoofNum() -> int32_t
+{
+    EnsureRoofNums();
+    return _hiddenRoofNum;
+}
+
 void MapView::SetHiddenRoof(mpos hex)
 {
+    _hiddenRoofHex = hex;
+    EnsureRoofNums();
+
     // The lattice may be authored on any parity, so instead of the even-snapped hex this scans the
     // MapTileStep block below-and-left, which contains the covering hex whichever parity was used
     int32_t step = _engine->Settings->Geometry.MapTileStep;
@@ -1997,6 +2038,7 @@ void MapView::RecacheHexFlags(mpos hex)
 
 void MapView::RecacheHexFlags(ptr<Field> field)
 {
+    bool had_roof = field->HasRoof;
     field->HasWall = false;
     field->HasTransparentWall = false;
     field->HasScenery = false;
@@ -2052,6 +2094,7 @@ void MapView::RecacheHexFlags(ptr<Field> field)
     }
 
     field->MovableWithGag = field->MovableWithGag && field->MoveBlocked;
+    _roofNumsDirty = _roofNumsDirty || had_roof != field->HasRoof;
 }
 
 void MapView::RecacheScrollBlocks()
@@ -2061,8 +2104,8 @@ void MapView::RecacheScrollBlocks()
     irect32 scroll_area = GetScrollAxialArea();
     int32_t scroll_block_size = _engine->Settings->Hex.ScrollBlockSize;
 
-    for (int16_t hx = 0; hx < _mapSize.width; hx++) {
-        for (int16_t hy = 0; hy < _mapSize.height; hy++) {
+    for (mcoord_t hx = 0; hx < _mapSize.width; hx++) {
+        for (mcoord_t hy = 0; hy < _mapSize.height; hy++) {
             mpos hex = {hx, hy};
             const auto& field = _hexField->GetCellForReading(hex);
             ipos32 axial_hex = GeometryHelper::GetHexAxialCoord(hex);
@@ -2097,6 +2140,8 @@ void MapView::Resize(msize size)
     FO_VERIFY_AND_THROW(size.height >= GameSettings::MIN_MAP_SIZE, "Map resize height is smaller than the engine minimum", size.height, GameSettings::MIN_MAP_SIZE);
     FO_VERIFY_AND_THROW(size.height <= GameSettings::MAX_MAP_SIZE, "Map resize height is larger than the engine maximum", size.height, GameSettings::MAX_MAP_SIZE);
 
+    size_t hex_count = size.square<size_t>();
+
     for (const auto& vf : _viewField) {
         if (_mapSize.is_valid_pos(vf.RawHex)) {
             auto field = _hexField->GetCellForWriting(_mapSize.from_raw_pos(vf.RawHex));
@@ -2106,8 +2151,8 @@ void MapView::Resize(msize size)
     }
 
     // Remove objects on shrink
-    for (int16_t hy = 0; hy < std::max(size.height, _mapSize.height); hy++) {
-        for (int16_t hx = 0; hx < std::max(size.width, _mapSize.width); hx++) {
+    for (mcoord_t hy = 0; hy < std::max(size.height, _mapSize.height); hy++) {
+        for (mcoord_t hx = 0; hx < std::max(size.width, _mapSize.width); hx++) {
             if (hx >= size.width || hy >= size.height) {
                 const auto& field = _hexField->GetCellForReading({hx, hy});
 
@@ -2134,11 +2179,11 @@ void MapView::Resize(msize size)
 
     SetWorkHex(_mapSize.clamp_pos(GetWorkHex()));
 
-    _hexLight.resize(_mapSize.square() * 3);
+    _hexLight.resize(hex_count);
     _hexField->Resize(_mapSize);
 
-    for (int16_t hy = 0; hy < _mapSize.height; hy++) {
-        for (int16_t hx = 0; hx < _mapSize.width; hx++) {
+    for (mcoord_t hy = 0; hy < _mapSize.height; hy++) {
+        for (mcoord_t hx = 0; hx < _mapSize.width; hx++) {
             CalculateHexLight(mpos(hx, hy), &_hexField->GetCellForReading(mpos(hx, hy)));
         }
     }

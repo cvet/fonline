@@ -2518,6 +2518,25 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
         CHECK(*critter->GetMapSprite()->GetPSprOffset() == ipos32 {5, -4});
     }
 
+    SECTION("VisualOffsetShiftsTheSpriteWithoutTouchingTheLogicalOffset")
+    {
+        critter->StopMoving();
+        flags = CritterAnimationFlags::Freeze;
+        normalized_time = 0.5f;
+        critter->RefreshView();
+        ipos32 baseline = *critter->GetMapSprite()->GetPSprOffset();
+        // The client engine refreshes the offsets from the property's post-setter; the mapper engine has none
+        critter->SetVisualOffset(ipos32 {7, -5});
+        critter->RefreshOffs();
+        CHECK(*critter->GetMapSprite()->GetPSprOffset() == ipos32 {baseline.x + 7, baseline.y - 5});
+        CHECK(critter->GetHexOffset() == ipos16 {});
+        critter->AddExtraOffs({3, -4});
+        CHECK(*critter->GetMapSprite()->GetPSprOffset() == ipos32 {baseline.x + 10, baseline.y - 9});
+        critter->SetVisualOffset(ipos32 {});
+        critter->RefreshOffs();
+        CHECK(*critter->GetMapSprite()->GetPSprOffset() == ipos32 {baseline.x + 3, baseline.y - 4});
+    }
+
     SECTION("FrameAlignmentProjectsBothAxesAndFloorsNegativeCycles")
     {
         auto aligned = sprite->MakeCopy().dyn_cast<SpriteSheet>();
@@ -2535,7 +2554,7 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
         auto frames = mapper->CritterFrames.GetCritterAnimFrames(critter->GetModelName(), static_cast<CritterStateAnim>(401), selected_action, critter->GetDir());
         REQUIRE(frames);
 
-        // T=(8,4), cumulative projections 20,40,80; expected positions include complete cycles.
+        // T=(8,4), cumulative projections 20,40,80; expected positions include complete cycles
         const tuple<ipos16, int32_t, ipos32> cases[] = {
             {{3, 1}, 0, {2, 1}},
             {{3, 2}, 1, {4, 2}},
@@ -2563,7 +2582,7 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
         critter->RefreshView();
         critter->SetHexOffset(ipos16 {3, 0});
         critter->RefreshView();
-        // Positions 2 and 4 are equally close; retain the first pose, not the later one.
+        // Positions 2 and 4 are equally close; retain the first pose, not the later one
         CHECK(*critter->GetMapSprite()->GetPSprOffset() == ipos32 {2, 0});
         CHECK(critter->GetMapSprite()->GetSpriteRootOffset() == ipos32 {-39, 19});
     }
@@ -2646,7 +2665,7 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
         spr_id = mapper->AnimAdd(turned);
         selected_action = static_cast<CritterActionAnim>(515);
         critter->RefreshView();
-        // 32767/1e9 of the new cycle rounds to (-65534,65534); the naive numerator exceeds int64_t.
+        // 32767/1e9 of the new cycle rounds to (-65534,65534); the naive numerator exceeds int64_t
         CHECK(*critter->GetMapSprite()->GetPSprOffset() == ipos32 {-1999901700, 1999934467});
         CHECK(critter->GetHexOffset() == ipos16 {32767, 0});
     }
@@ -2795,8 +2814,6 @@ TEST_CASE("MapperPropertyTextEditHandlesReentrantPostSetters")
     auto map = mapper->LoadMapFromText("PropertyCallbacks", "PropertyCallbacks.fomap", MakeMapText(body));
     REQUIRE(map);
 
-    refcount_ptr<MapView> retained_map = map.hold_ref();
-
     mapper->ShowMap(map);
     REQUIRE_FALSE(mapper->IsMapDirty(map));
 
@@ -2820,6 +2837,8 @@ TEST_CASE("MapperPropertyTextEditHandlesReentrantPostSetters")
 
     SECTION("UnloadingTheEditedMapDoesNotLeaveDeadTargetsOrDirtyEntries")
     {
+        // Retain the map while checking its terminal state after the callback unloads it
+        auto held_map = map.hold_ref();
         ptr<CritterHexView> critter = map->GetCritters().front();
         auto prop = critter->GetPropertyCondition();
         bool callback_ran = false;
@@ -2830,8 +2849,8 @@ TEST_CASE("MapperPropertyTextEditHandlesReentrantPostSetters")
         });
         CHECK(mapper->ApplyEntityPropertyText(critter, prop, "Dead"));
         CHECK(callback_ran);
-        CHECK(retained_map->IsDestroyed());
-        CHECK_FALSE(mapper->IsMapDirty(map));
+        CHECK(held_map->IsDestroyed());
+        CHECK_FALSE(mapper->IsMapDirty(held_map));
         CHECK_FALSE(mapper->GetCurMap());
     }
 
@@ -2888,6 +2907,7 @@ TEST_CASE("MapperPropertyTextEditHandlesReentrantPostSetters")
 
     SECTION("InspectorEditCanUnloadItsMapDuringPostSetter")
     {
+        auto held_map = map.hold_ref();
         ptr<CritterHexView> critter = map->GetCritters().front();
         auto prop = critter->GetPropertyCondition();
         mapper->ShowProps = {prop};
@@ -2896,13 +2916,14 @@ TEST_CASE("MapperPropertyTextEditHandlesReentrantPostSetters")
         mapper->InspectorSelectedLineValue = "Dead";
         prop->AddPostSetter([&](nptr<Entity>, ptr<const Property>) { mapper->UnloadMap(map); });
         CHECK_NOTHROW(mapper->ApplyInspectorPropertyEdit(critter));
-        CHECK(retained_map->IsDestroyed());
+        CHECK(held_map->IsDestroyed());
         CHECK_FALSE(mapper->GetCurMap());
-        CHECK_FALSE(mapper->IsMapDirty(map));
+        CHECK_FALSE(mapper->IsMapDirty(held_map));
     }
 
     SECTION("UndoCanUnloadTheEditedMapFromItsPostSetter")
     {
+        auto held_map = map.hold_ref();
         auto primary = map->GetItem(ident_t {20});
         REQUIRE(primary);
         auto prop = primary->GetProperties()->GetRegistrar()->FindProperty("AuthoringNumber");
@@ -2915,13 +2936,14 @@ TEST_CASE("MapperPropertyTextEditHandlesReentrantPostSetters")
         REQUIRE(mapper->CanUndo());
         prop->AddPostSetter([&](nptr<Entity>, ptr<const Property>) { mapper->UnloadMap(map); });
         CHECK_FALSE(mapper->ExecuteUndo());
-        CHECK(retained_map->IsDestroyed());
+        CHECK(held_map->IsDestroyed());
         CHECK_FALSE(mapper->GetCurMap());
-        CHECK_FALSE(mapper->IsMapDirty(map));
+        CHECK_FALSE(mapper->IsMapDirty(held_map));
     }
 
     SECTION("RedoCanUnloadTheEditedMapFromItsPostSetter")
     {
+        auto held_map = map.hold_ref();
         auto primary = map->GetItem(ident_t {20});
         REQUIRE(primary);
         auto prop = primary->GetProperties()->GetRegistrar()->FindProperty("AuthoringNumber");
@@ -2935,9 +2957,9 @@ TEST_CASE("MapperPropertyTextEditHandlesReentrantPostSetters")
         REQUIRE(mapper->CanRedo());
         prop->AddPostSetter([&](nptr<Entity>, ptr<const Property>) { mapper->UnloadMap(map); });
         CHECK_FALSE(mapper->ExecuteRedo());
-        CHECK(retained_map->IsDestroyed());
+        CHECK(held_map->IsDestroyed());
         CHECK_FALSE(mapper->GetCurMap());
-        CHECK_FALSE(mapper->IsMapDirty(map));
+        CHECK_FALSE(mapper->IsMapDirty(held_map));
     }
 }
 

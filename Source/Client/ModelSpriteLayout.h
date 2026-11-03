@@ -44,6 +44,11 @@ FO_BEGIN_NAMESPACE
 
 constexpr int32_t MODEL_SPRITE_FRAME_SCALE = 2;
 
+// Keep in sync with the default 3D_Skinned shadow pass
+constexpr float32_t SHADOW_CAMERA_ANGLE_COS = 0.9010770213221f;
+constexpr float32_t SHADOW_CAMERA_ANGLE_SIN = 0.4336590845875f;
+constexpr float32_t SHADOW_ANGLE_TAN = 0.2548968037538f;
+
 // Bake-host MAX_ATLAS_WIDTH is not the game device. MIN_ATLAS_SIZE is the portable GPU floor, and the model renders at 2x
 constexpr int32_t MODEL_SPRITE_MAX_LOGICAL_FRAME_DIMENSION = AppRender::MIN_ATLAS_SIZE / MODEL_SPRITE_FRAME_SCALE;
 

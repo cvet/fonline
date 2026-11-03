@@ -391,7 +391,7 @@ static auto MakeTestBakedModelWithMismatchedSkinOffsets(string_view root_bone, s
 
 static void AddModelInfoMetadata(BakerTests::TestRig& rig)
 {
-    // Animation identifiers belong to the fixture project, including ordinary numeric aliases and preview IDs.
+    // Animation identifiers belong to the fixture project, including ordinary numeric aliases and preview IDs
     rig.AddBakedFile("Metadata.fometa-client",
         BakerTests::MakeMetadataBlob({{"Enum",
             {

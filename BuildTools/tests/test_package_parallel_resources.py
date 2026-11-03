@@ -119,9 +119,9 @@ Name = Beta
         source(tmp_path, name, "payload", (name.encode() * 3000) + bytes(range(256)))
     baked = tmp_path / "Baking"
     (baked / "Resources.build-hash").write_text("fixture", encoding="utf-8")
-    (baked / "Configs").mkdir()
+    (baked / "Metadata").mkdir()
     for target in ("server", "client"):
-        (baked / f"Configs/LocalTest.fomain-{target}").write_text(text, encoding="utf-8")
+        (baked / f"Metadata/LocalTest.fomain-{target}").write_text(text, encoding="utf-8")
     (baked / "Resources.baking-config-hash").write_text("fixture-config", encoding="utf-8")
     (baked / "Resources.usage.json").write_text(json.dumps({
         "Version": 1,
@@ -129,7 +129,7 @@ Name = Beta
         "BakingConfigHash": "fixture-config",
         "Packs": {
             "Embedded": ["payload"], "Alpha": ["payload"], "Beta": ["payload"],
-            "Configs": ["LocalTest.fomain-client", "LocalTest.fomain-server"],
+            "Metadata": ["LocalTest.fomain-client", "LocalTest.fomain-server"],
         },
     }), encoding="utf-8")
     binaries = tmp_path / "Binaries/Server-Linux-x64"

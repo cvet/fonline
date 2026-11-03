@@ -28,19 +28,19 @@
     "declared interface default"
   ],
   "summary": {
-    "option_count": 58,
+    "option_count": 62,
     "required_option_count": 8,
-    "optional_option_count": 50,
+    "optional_option_count": 54,
     "options_by_cache_type": {
-      "BOOL": 35,
-      "STRING": 23
+      "BOOL": 37,
+      "STRING": 25
     },
     "options_by_category": {
       "capacity": 2,
       "dependency": 17,
       "diagnostics": 1,
       "feature": 3,
-      "geometry": 4,
+      "geometry": 6,
       "model-shape": 4,
       "native-interface": 1,
       "output": 2,
@@ -51,7 +51,7 @@
       "rendering-shape": 2,
       "scripting": 3,
       "target": 5,
-      "toolchain": 3,
+      "toolchain": 5,
       "tooling": 1
     },
     "stage_count": 10,
@@ -140,6 +140,28 @@
       "id": "cmake.option.FO_MAP_CAMERA_ANGLE"
     },
     {
+      "name": "FO_MAP_WIDE_COORDS",
+      "cache_type": "BOOL",
+      "value_kind": "boolean",
+      "required": false,
+      "default": "OFF",
+      "category": "geometry",
+      "description": "Use signed 32-bit mpos and msize components instead of signed 16-bit ones.",
+      "affects_baking": true,
+      "id": "cmake.option.FO_MAP_WIDE_COORDS"
+    },
+    {
+      "name": "FO_MAP_MAX_SIZE",
+      "cache_type": "STRING",
+      "value_kind": "integer",
+      "required": false,
+      "default": "4000",
+      "category": "geometry",
+      "description": "Largest map width and height in cells: from 200 to 32767, or to 4194304 with FO_MAP_WIDE_COORDS, the widest side the sprite draw-order key orders.",
+      "affects_baking": true,
+      "id": "cmake.option.FO_MAP_MAX_SIZE"
+    },
+    {
       "name": "FO_APP_ICON",
       "cache_type": "STRING",
       "value_kind": "path",
@@ -171,6 +193,17 @@
       "description": "C++ language standard used for project compilation; values below 20 are unsupported.",
       "affects_baking": false,
       "id": "cmake.option.FO_CXX_STANDARD"
+    },
+    {
+      "name": "FO_UNITY_BUILD_BATCH_SIZE",
+      "cache_type": "STRING",
+      "value_kind": "integer",
+      "required": false,
+      "default": "32",
+      "category": "toolchain",
+      "description": "Maximum number of first-party C++ sources combined into each unity build batch; must be a positive integer.",
+      "affects_baking": false,
+      "id": "cmake.option.FO_UNITY_BUILD_BATCH_SIZE"
     },
     {
       "name": "FO_BINARY_OUTPUT_POSTFIX",
@@ -611,6 +644,17 @@
       "description": "Disable the SDL_GPU rendering backend.",
       "affects_baking": false,
       "id": "cmake.option.FO_DISABLE_SDL_GPU"
+    },
+    {
+      "name": "FO_UNITY_BUILD",
+      "cache_type": "BOOL",
+      "value_kind": "boolean",
+      "required": false,
+      "default": "OFF",
+      "category": "toolchain",
+      "description": "Combine first-party C++ sources into CMake unity build batches; third-party targets are excluded.",
+      "affects_baking": false,
+      "id": "cmake.option.FO_UNITY_BUILD"
     },
     {
       "name": "FO_VERBOSE_BUILD",

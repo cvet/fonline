@@ -158,7 +158,7 @@ public static class ManagedRuntimeProbe
     [ServerRemoteCall]
     internal static Task UnitTestRuntimeRpc(Player player)
     {
-        // An ownerless nested RPC must not inherit or release this invocation's completion.
+        // An ownerless nested RPC must not inherit or release this invocation's completion
         RemoteCall.Loopback(null, "UnitTestRuntimeGenericRpc");
         PendingRemoteCall = new TaskCompletionSource();
         return PendingRemoteCall.Task;
@@ -384,6 +384,19 @@ public static class ManagedRuntimeProbe
 
     [CallableFromNative]
     internal static long GetCritterId(Critter critter) => critter.Id.value;
+
+    [CallableFromNative]
+    internal static Critter? EchoCritter(Critter? critter, bool fail)
+    {
+        if (fail) {
+            throw new InvalidOperationException("Expected entity-return failure");
+        }
+
+        return critter;
+    }
+
+    [CallableFromNative]
+    internal static Critter EchoNonNullCritter(Critter critter) => critter;
 
     [CallableFromNative]
     internal static bool IsItemNull(Item? item) => item == null;

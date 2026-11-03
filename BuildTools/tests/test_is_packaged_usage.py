@@ -12,8 +12,9 @@ ALLOWED_OCCURRENCES = {
     "Source/Common/Common.cpp": 1,
     "Source/Common/FileSystem.cpp": 1,
     "Source/Common/Settings.cpp": 1,
-    "Source/Frontend/ApplicationInit.cpp": 2,
+    "Source/Frontend/ApplicationInit.cpp": 3,
     "Source/Tests/Test_Common.cpp": 1,
+    "Source/Tests/Test_Settings.cpp": 3,
     "Source/Tests/Test_ServerEngine.cpp": 1,
 }
 

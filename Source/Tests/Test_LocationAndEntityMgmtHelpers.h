@@ -865,8 +865,8 @@ namespace LocEntity
 }
 
 #define MAKE_LEM_SERVER() \
-    auto settings = MakeSettings(); \
-    refcount_ptr<ServerEngine> server = MakeServerEngine(settings); \
+    auto settings = LocationAndEntityMgmtTests::MakeSettings(); \
+    refcount_ptr<ServerEngine> server = LocationAndEntityMgmtTests::MakeServerEngine(settings); \
     auto shutdown = scope_exit([&server]() noexcept { \
         safe_call([&server] { \
             if (server->IsStarted()) { \
@@ -874,7 +874,7 @@ namespace LocEntity
             } \
         }); \
     }); \
-    string startup_error = WaitForStart(server); \
+    string startup_error = LocationAndEntityMgmtTests::WaitForStart(server); \
     INFO(startup_error); \
     REQUIRE(startup_error.empty()); \
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}})); \

@@ -23,11 +23,15 @@ internal static class Native
         FallbackCalls++;
         return false;
     }
+    public static string LastLog = "";
     public static void Log(string text)
     {
+        LastLog = text;
     }
+    public static int ReportedExceptions;
     public static void ReportException(Exception exception)
     {
+        System.Threading.Interlocked.Increment(ref ReportedExceptions);
     }
     public static int ContinuationSignals;
     public static void SignalContinuationsReady() => ContinuationSignals++;
@@ -167,6 +171,11 @@ public partial struct irect
 public partial struct mpos
 {
     public short x, y;
+    public mpos(int x, int y)
+    {
+        this.x = (short)x;
+        this.y = (short)y;
+    }
 }
 public partial struct msize
 {

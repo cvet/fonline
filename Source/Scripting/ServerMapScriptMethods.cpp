@@ -912,6 +912,13 @@ FO_SCRIPT_API void Server_Map_GetWallHexInPath(ptr<Map> self, mpos fromHex, mpos
     }
 }
 
+// SyncScope: requires self; reads current static/map blockers
+///@ ExportMethod
+FO_SCRIPT_API vector<mpos> Server_Map_GetMovableHexesInSight(ptr<Map> self, mpos origin, int32_t radius)
+{
+    return self->GetMovableHexesInSight(origin, radius);
+}
+
 // SyncScope: requires self; pathing reads map blockers and optional gag callback items
 ///@ ExportMethod
 FO_SCRIPT_API int32_t Server_Map_GetPathLength(ptr<Map> self, mpos fromHex, mpos toHex, int32_t cut, ScriptFunc<bool, ptr<Item>> gagCallabck)

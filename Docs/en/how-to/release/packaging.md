@@ -132,7 +132,7 @@ Each `BINARY` clause has this shape:
 BINARY <target> <platform> <architecture> <pack+tokens> [POSTFIX <variant>]
 ```
 
-`CONFIG` selects a baked sub-config. For resource-bearing client and server packages, baking must have produced `Baking/Configs/<config>.fomain-client` or `...-server` through the `Config` baker. The package target does not silently create missing application binaries or baked resources.
+`CONFIG` selects a baked sub-config. For resource-bearing client and server packages, baking must have produced `Baking/Metadata/<config>.fomain-client` or `...-server` through the `Config` baker. The package target does not silently create missing application binaries or baked resources.
 
 Use `POSTFIX` when a separately built binary variant has `FO_BINARY_OUTPUT_POSTFIX`. The declaration value must match the build output. This keeps package input selection, packaged runtime identity, and server-staged updater payload names aligned. Do not use a package name as an implicit variant selector.
 
@@ -175,7 +175,7 @@ Each embedded-data or configuration patch locates the first matching marker, che
 
 `Examples/PackagingMatrix` is the executable Engine-owned baseline for native package mechanics. It is intentionally separate from the readable starter and multiplayer tutorials because `ConfigBaker` requires every server/client runtime setting to be initialized. Its checked-in `FOnlinePackagingMatrix.fomain` is deterministically generated from `Source/Common/Settings.inc`; `generate_config.py --check` fails when settings and the fixture diverge.
 
-Both this fixture and `Examples/MinimalMultiplayer` derive defaults from the current `SETTING(...)` declarations. After changing the settings schema, regenerate both example configurations before running their freshness checks.
+Example generators exclude runtime-owned `SettingNames` keys. Regenerate and `--check` after schema changes.
 
 In a standalone checkout of `Examples/PackagingMatrix` with its `Engine`
 submodule initialized, configure the host build and build the fixture-owned
@@ -227,7 +227,6 @@ green landed job and a reviewed external repository commit/tag.
 - `Raw` retains the staged portable directory.
 - `Zip` emits a portable archive from that directory.
 - `Wix` emits a per-user MSI. On Windows, prepare the Engine-pinned portable WiX v3 toolset with `buildtools.py prepare-workspace wix`; `package.py` finds `FO_WIX_ROOT`, a sibling `wix3` workspace, or finally `candle`/`light` on `PATH`. It passes the selected directory to `createmsi.py --wix-dir`; direct invocations accept the same option, including paths with spaces as one argument. Omitting it uses the tools on `PATH`. `light` runs ICE validation first and retries once with `-sval` only when the Windows Installer service is unavailable; every other linker/ICE failure and a failed fallback remain fatal. POSIX package hosts require `wixl` 0.102 or newer.
-- `OGL` adds the separately built OpenGL runtime variant.
 - `Lib` selects the library form where the target supports it.
 - `POSTFIX` keeps independently built variants, such as a depot-specific client, from colliding.
 
@@ -398,7 +397,7 @@ Promote a package row to project-qualified only when the named lane is versioned
 
 | Symptom | Inspect first |
 |---|---|
-| `Config file not found` | `Config` baker, package `CONFIG`, `Baking/Configs`, and fresh bake output |
+| `Config file not found` | `Config` baker, package `CONFIG`, `Baking/Metadata`, and fresh bake output |
 | Missing binary input | built target/variant, platform architecture key, `POSTFIX`, and shared `FO_OUTPUT_PATH` |
 | Unknown or invalid pack token | generated package matrix rather than remembered combinations |
 | Package succeeds but requested artifact is absent | output-producing pack token and final package output path |

@@ -647,11 +647,11 @@ TEST_CASE("PersistedCustomInnerEntitiesAreReloadedFromDisk")
     ident_t custom_id;
 
     {
-        auto settings = MakeSettings();
+        auto settings = LocationAndEntityMgmtTests::MakeSettings();
         BakerTests::OverrideSetting(settings.Server.DbStorage, storage_option);
 
-        refcount_ptr<ServerEngine> server = MakeServerEngine(settings);
-        string startup_error = WaitForStart(server.as_ptr());
+        refcount_ptr<ServerEngine> server = LocationAndEntityMgmtTests::MakeServerEngine(settings);
+        string startup_error = LocationAndEntityMgmtTests::WaitForStart(server.as_ptr());
         INFO(startup_error);
         REQUIRE(startup_error.empty());
 
@@ -673,10 +673,10 @@ TEST_CASE("PersistedCustomInnerEntitiesAreReloadedFromDisk")
     }
 
     {
-        auto settings = MakeSettings();
+        auto settings = LocationAndEntityMgmtTests::MakeSettings();
         BakerTests::OverrideSetting(settings.Server.DbStorage, storage_option);
 
-        refcount_ptr<ServerEngine> server = MakeServerEngine(settings);
+        refcount_ptr<ServerEngine> server = LocationAndEntityMgmtTests::MakeServerEngine(settings);
 
         auto shutdown = scope_exit([&server]() noexcept {
             safe_call([&server] {
@@ -686,7 +686,7 @@ TEST_CASE("PersistedCustomInnerEntitiesAreReloadedFromDisk")
             });
         });
 
-        string startup_error = WaitForStart(server.as_ptr());
+        string startup_error = LocationAndEntityMgmtTests::WaitForStart(server.as_ptr());
         INFO(startup_error);
         REQUIRE(startup_error.empty());
 

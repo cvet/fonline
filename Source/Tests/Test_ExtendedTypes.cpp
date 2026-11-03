@@ -63,11 +63,20 @@ TEST_CASE("ExtendedTypes")
         CHECK((p + 3) == ipos32 {14, 25});
 
         isize32 sz {5, 6};
-        CHECK(sz.square() == 30);
+        CHECK(sz.square<int32_t>() == 30);
         CHECK(sz.is_valid_pos(0, 0));
         CHECK(sz.is_valid_pos(4, 5));
         CHECK_FALSE(sz.is_valid_pos(5, 0));
         CHECK_FALSE(sz.is_valid_pos(-1, 0));
+
+        // The caller names the area type: int64 keeps areas past the 32-bit range, a narrower type rejects them
+        isize32 huge_size {70000, 70000};
+        isize32 negative_size {-1, 5};
+        CHECK(huge_size.square<int64_t>() == int64_t {4900000000});
+        CHECK(negative_size.square<int64_t>() == -5);
+        CHECK_THROWS_AS(huge_size.square<int32_t>(), OverflowException);
+        CHECK_THROWS_AS(huge_size.square<uint32_t>(), OverflowException);
+        CHECK_THROWS_AS(negative_size.square<size_t>(), OverflowException);
     }
 
     SECTION("IRect")

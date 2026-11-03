@@ -100,7 +100,7 @@ auto fs::try_lock_file(string_view path) noexcept -> exclusive_file_lock
         return {};
     }
 
-    auto lock_path = fs_native_path_to_string(fs_path, ec);
+    string lock_path = fs_native_path_to_string(fs_path, ec);
 
     if (ec) {
         return {};
@@ -506,7 +506,7 @@ auto fs::write_file_durable_new(string_view path, const_span<uint8_t> content) n
         return false;
     }
 
-    auto parent = fs_native_path_to_string(native_parent, ec);
+    string parent = fs_native_path_to_string(native_parent, ec);
 
     if (ec) {
         return false;
@@ -645,7 +645,7 @@ auto fs::sync_parent(string_view path) noexcept -> bool
         return false;
     }
 
-    auto dir = fs_native_path_to_string(native_parent, ec);
+    string dir = fs_native_path_to_string(native_parent, ec);
 
     if (ec) {
         return false;

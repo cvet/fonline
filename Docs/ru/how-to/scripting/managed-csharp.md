@@ -7,8 +7,15 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"e7ae72c5af263ddcbdec28d6384fdd874af79a4031ae6f8fac6fa61d6a07e588"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"ea1ef53525d914a797a0f1878e8e57e0197470d670274200bd563260f3ce1501"} -->
 > Принадлежащее движку руководство Managed C#; игровые модули и политика принадлежат подключающему проекту.
+
+
+Managed-обёртки native ref-type с `HasFactory` имеют открытый пустой конструктор, вызывающий native-фабрику; у типов без фабрики доступно только внутреннее создание по указателю. Поэтому `new MapSpriteHolder()` возвращает действительный native-держатель до обращения к полям. Сохраняйте держатель до последнего отрисованного кадра, затем вызовите `StopDraw()` и `Dispose()` в клиентском потоке. Текущий Managed-механизм владения также позволяет сборке мусора освобождать native-ссылку, но время этого освобождения не определено; детерминированная очистка отрисовки использует `Dispose()` или правильно ограниченный `using`. Его `Elevation` применяется при прикреплении спрайта независимо от `Offset`.
+
+`Game.CreateItem(protoId, properties)` принимает `Dictionary<ItemProperty, any>` и применяет переопределения к копии прототипа через `Properties::SetValueAsAnyProps` до `OnItemInit` и `InitScript`. Каждый ключ должен обозначать включённое хранимое свойство с Mutable; неизменяемые, отключённые и виртуальные свойства отклоняются до регистрации предмета. Значения разбираются существующим текстовым парсером свойств, включая составные значения вроде `Offset`. Создание сбрасывает native-поля размещения и владения; разместите предмет через `MoveItem`. Прежние целочисленные перегрузки сохраняют семантику. Для выбора перегрузки указывайте тип значения словаря явно.
+
+Начальный снимок предмета соблюдает обычный объявленный фильтр синхронизации. `PicMap` и `Offset` имеют Mutable PublicSync и приходят до создания спрайта. Неизменяемые Common, Common NoSync и серверные значения не передаются; OwnerSync остаётся только владельцу. `CreateItem` не меняет эти правила: синхронизируемые значения экземпляра задаются при создании, а общая несинхронизируемая структура — в прототипе предмета.
 
 ## Статус контракта
 
@@ -395,6 +402,10 @@ Web использует Mono interpreter и Engine JavaScript glue планир
 Исключение C++ не должно проходить сквозь кадр internal call Mono: иначе обходятся managed `catch`/`finally`, а после продолжения с `await` может остаться активной вложенная запись скрипта. Поэтому `RegisterInternalCalls` принимает только указатели на `noexcept` функции. Потенциально ошибочная операция сохраняет native failure через `CaptureNativeError`, возвращает его в `CoreScripts/Native.cs` и выбрасывает `NativeCallException` уже после возврата в managed-код. Ошибку можно поймать в C# в том числе после `await`; действительно неошибающиеся вызовы остаются `noexcept` и при нарушении контракта детерминированно завершают процесс.
 
 Managed backend передаёт фиксированный native context, managed exception text и stack information в общий script error path. `ScriptExceptions.GlobalCount` считает ошибки всего процесса; тестовый harness может вызвать `ScriptExceptions.OpenScope()` и прочитать `Count` закрытого scope для ошибок своего логического async-потока, включая продолжения на другом OS thread. Вложенные scope учитывают ошибку также в родительских. Отложенные ошибки Task при наблюдении учитываются глобально, но не как синхронные ошибки scope. Факт создания assemblies не доказывает startup или callback dispatch. Для qualification client/device/browser, где нельзя запустить native test suite, задайте `ManagedScript.InteropProbeOnStart = True`: startup логирует строку `INTEROP-TRANSPORT` для каждого условия и финальный summary.
+
+Managed-обработчик события, который бросает исключение, один раз регистрируется в `Native.InvokeEvent` или сгенерированном `AdaptInvoke`. Обработчик, возвращающий `EventResult`, после этого останавливает цепочку через `StopChain`. Обработчик без результата возвращает `ContinueChain`, поэтому все подписчики с меньшим приоритетом выполняются, а сбой не меняет результат события; обработчик, который должен уметь отказать событию, возвращает `EventResult`.
+
+`ScriptExceptions.OpenCaptureScope()` позволяет harness проверять намеренно зарегистрированные ошибки без native-уведомления и завершения unattended-приложения. Текст исключения по-прежнему записывается в лог; все охватывающие scope и `GlobalCount` учитывают ошибку. Harness обязан проверить и подтвердить точное число наблюдаемых ошибок. Перехват действует только в своём логическом async-потоке, прекращается при Dispose даже у сохранившего его дочернего потока и не перехватывает отложенные ошибки Task. Обычный `OpenScope()` и регистрация вне перехвата сохраняют поведение.
 
 Оба script backend хранят не более 32 разных имён overrun entry на каждый Engine, считают повторы и независимо сохраняют максимальные execution и lock-wait times. `TakeScriptOverruns()` забирает буфер. Клиент забирает его перед `OnLoop` и отправляет `OnScriptOverrun(entry, execution, lockWait, count)` вне lock буфера; server и mapper не публикуют event в своих циклах. Overrun из subscriber попадёт в следующую отправку. Прежние suppression по threshold и debugger сохраняются.
 

@@ -88,6 +88,20 @@ namespace CallTest
 {
     funcdef int64 UnaryOp(int8);
 
+    Entity? EchoEntity(Entity? value, bool fail)
+    {
+        if (fail) {
+            throw("Expected entity-return failure");
+        }
+
+        return value;
+    }
+
+    Entity EchoNonNullEntity(Entity value)
+    {
+        return value;
+    }
+
     [[Async]]
     [[TimeEvent]]
     void WaitTimer(TimeEventContext context)
@@ -408,6 +422,57 @@ TEST_CASE("AngelScriptCallShapes")
         REQUIRE(func.Call());
         CHECK(func.GetResult() == expected);
     };
+
+    {
+        int32_t baseline_refs = server->GetRefCount();
+
+        {
+            auto echo = server->FindFunc<nptr<Entity>, nptr<Entity>, bool>(fn("CallTest::EchoEntity"));
+            REQUIRE(echo);
+            int32_t completions = 0;
+            bool completed_successfully = false;
+            auto completion = [&](bool success) {
+                completions++;
+                completed_successfully = success;
+            };
+
+            REQUIRE(echo.CallWithCompletion(completion, server, false));
+            CHECK(echo.GetResult() == server);
+            CHECK(echo.GetResult() == server);
+            CHECK(server->GetRefCount() == baseline_refs + 1);
+            CHECK(completions == 1);
+            CHECK(completed_successfully);
+
+            REQUIRE(echo.Call(server, false));
+            CHECK(echo.GetResult() == server);
+            CHECK(server->GetRefCount() == baseline_refs + 1);
+
+            CHECK_FALSE(echo.CallWithCompletion(completion, server, true));
+            CHECK(echo.GetResult() == server);
+            CHECK(server->GetRefCount() == baseline_refs + 1);
+            CHECK(completions == 2);
+            CHECK_FALSE(completed_successfully);
+
+            REQUIRE(echo.Call(nullptr, false));
+            CHECK_FALSE(echo.GetResult());
+            CHECK(server->GetRefCount() == baseline_refs);
+            REQUIRE(echo.Call(server, false));
+
+            auto moved = std::move(echo);
+            CHECK_FALSE(echo); // FO_USE_AFTER_MOVE_SUPPRESS: test verifies the moved-from function contract
+            CHECK(moved.GetResult() == server);
+            moved = ScriptFunc<nptr<Entity>, nptr<Entity>, bool> {};
+            CHECK(server->GetRefCount() == baseline_refs);
+
+            auto non_null_echo = server->FindFunc<ptr<Entity>, ptr<Entity>>(fn("CallTest::EchoNonNullEntity"));
+            REQUIRE(non_null_echo);
+            REQUIRE(non_null_echo.Call(server));
+            CHECK(non_null_echo.GetResult() == server);
+            CHECK(server->GetRefCount() == baseline_refs + 1);
+        }
+
+        CHECK(server->GetRefCount() == baseline_refs);
+    }
 
     call_and_check("CallTest::Chain1", 13);
     call_and_check("CallTest::UseMethodCall", 44);

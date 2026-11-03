@@ -57,7 +57,7 @@ LineTracer::LineTracer(mpos start_hex, float32_t dir_angle, int32_t dist, msize 
     float32_t pixel_dist = numeric_cast<float32_t>(std::max(GameSettings::MAP_HEX_WIDTH, GameSettings::MAP_HEX_HEIGHT) * dist);
     ipos32 target_pos = ipos32 {iround<int32_t>(start_pos_x + ray_dx * pixel_dist), iround<int32_t>(start_pos_y + ray_dy * pixel_dist)};
     ipos32 raw_target_hex = GeometryHelper::GetHexPosCoord(target_pos);
-    mpos target_hex = mpos {numeric_cast<int16_t>(raw_target_hex.x), numeric_cast<int16_t>(raw_target_hex.y)};
+    mpos target_hex = mpos {numeric_cast<mcoord_t>(raw_target_hex.x), numeric_cast<mcoord_t>(raw_target_hex.y)};
 
     TraceInit(start_hex, target_hex, 0.0f, start_offset, target_offset);
 }

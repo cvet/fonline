@@ -49,10 +49,6 @@
 FO_BEGIN_NAMESPACE
 
 static constexpr int32_t SPRITE_BOUNDS_GUARD_PADDING = 2;
-// Keep in sync with the default 3D_Skinned shadow pass
-static constexpr float32_t SHADOW_CAMERA_ANGLE_COS = 0.9010770213221f;
-static constexpr float32_t SHADOW_CAMERA_ANGLE_SIN = 0.4336590845875f;
-static constexpr float32_t SHADOW_ANGLE_TAN = 0.2548968037538f;
 static constexpr timespan ANIMATION_END_EXCLUSION {std::chrono::nanoseconds {1}};
 static constexpr timespan MOVE_TRACK_TRANSITION_TIME {std::chrono::milliseconds {1}};
 
@@ -856,7 +852,7 @@ void ModelInstance::RefreshMoveAnimation()
         return;
     }
 
-    // Frozen body poses own the whole skeleton. A standing one-shot also releases the movement layer until it ends.
+    // Frozen body poses own the whole skeleton. A standing one-shot also releases the movement layer until it ends
     if (is_enum_set(_playbackFlags, ModelAnimFlags::Freeze) || (!_isMoving && _playOnceAnimPlaying)) {
         _moveAnimController->ResetEvents();
         _moveAnimController->SetTrackEnable(0, false);
@@ -925,7 +921,7 @@ void ModelInstance::RefreshMoveAnimation()
 
     if (!context_changed && anim_index == _curMovingAnimIndex && flags == _movementFlags && is_float_equal(normalized_time, _movementNormalizedTime)) {
         if (anim_index != -1 && !is_float_equal(_moveAnimController->GetTrackSpeed(_curMoveTrack), speed)) {
-            // Retiming must not seek, and pending speed/completion events must not restore the previous selection.
+            // Retiming must not seek, and pending speed/completion events must not restore the previous selection
             _moveAnimController->ResetEvents();
 
             int32_t previous_track = _curMoveTrack == 0 ? 1 : 0;
@@ -1950,7 +1946,7 @@ auto ModelInstance::CanBatchCombinedMesh(ptr<const CombinedMesh> combined_mesh, 
             return false;
         }
 
-        // Diffuse UVs are baked per vertex; auxiliary slots use one atlas rectangle per batch.
+        // Diffuse UVs are baked per vertex; auxiliary slots use one atlas rectangle per batch
         if (i != 0 && combined_mesh->Textures[i] && mesh_instance->CurTexures[i] && combined_mesh->Textures[i]->AtlasOffsetData != mesh_instance->CurTexures[i]->AtlasOffsetData) {
             return false;
         }

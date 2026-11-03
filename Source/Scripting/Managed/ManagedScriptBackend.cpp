@@ -618,7 +618,7 @@ static auto DispatchManagedEventInContext(shared_ptr<ManagedEventSubscription> s
 
 // Remote-call argument marshaling
 static auto SerializeManagedRemoteCallArgs(ptr<ManagedScriptBackend> backend, const vector<ArgDesc>& call_args, MonoArray* args_array, string_view name) -> vector<uint8_t>;
-static void AppendRawBytes(vector<uint8_t>& data, const_span<uint8_t> bytes);
+static void AppendManagedRawBytes(vector<uint8_t>& data, const_span<uint8_t> bytes);
 static void AppendAlignedRawBytes(vector<uint8_t>& data, const_span<uint8_t> bytes, size_t alignment);
 template<typename T>
 static void AppendRawValue(vector<uint8_t>& data, const T& value);
@@ -2923,12 +2923,12 @@ static void NativeProbeTransportScenario(void* backend_ptr, MonoObject* handler,
             int32_t mode_value = static_cast<int32_t>(ManagedProbeCallbackMode::UnmanagedCallersOnly);
             uint8_t flag = 1;
             int64_t wide = 0x1122334455667788;
-            array<int16_t, 2> hex {7, -9};
+            mpos hex {7, -9};
             hstring tag = meta->Hashes.to_hashed_string("InteropProbeTag");
             memory::copy(frame.data(), &mode_value, sizeof(mode_value));
             memory::copy(frame.data() + 4, &flag, sizeof(flag));
             memory::copy(frame.data() + 8, &wide, sizeof(wide));
-            memory::copy(frame.data() + 16, hex.data(), sizeof(hex));
+            memory::copy(frame.data() + 16, &hex, sizeof(hex));
             memory::copy(frame.data() + 24, &tag, sizeof(tag));
             frame_size = 32;
         }
@@ -5971,7 +5971,7 @@ static auto SerializeManagedRemoteCallArgs(ptr<ManagedScriptBackend> backend, co
     return data;
 }
 
-static void AppendRawBytes(vector<uint8_t>& data, const_span<uint8_t> bytes)
+static void AppendManagedRawBytes(vector<uint8_t>& data, const_span<uint8_t> bytes)
 {
     if (bytes.empty()) {
         return;
@@ -5988,13 +5988,13 @@ static void AppendAlignedRawBytes(vector<uint8_t>& data, const_span<uint8_t> byt
         data.resize(align_up(data.size(), alignment));
     }
 
-    AppendRawBytes(data, bytes);
+    AppendManagedRawBytes(data, bytes);
 }
 
 template<typename T>
 static void AppendRawValue(vector<uint8_t>& data, const T& value)
 {
-    AppendRawBytes(data, const_span<uint8_t> {reinterpret_cast<const uint8_t*>(std::addressof(value)), sizeof(value)});
+    AppendManagedRawBytes(data, const_span<uint8_t> {reinterpret_cast<const uint8_t*>(std::addressof(value)), sizeof(value)});
 }
 
 template<typename T>
@@ -7141,7 +7141,7 @@ static auto ConvertManagedObjectToPropertyData(ptr<ManagedScriptBackend> backend
                     if (prop->IsDictOfArrayOfString()) {
                         uint32_t item_size = numeric_cast<uint32_t>(item_data.GetSize());
                         AppendAlignedRawValue(data, item_size, sizeof(uint32_t));
-                        AppendRawBytes(data, const_span<uint8_t> {reinterpret_cast<const uint8_t*>(item_data.GetPtr().get()), item_data.GetSize()});
+                        AppendManagedRawBytes(data, const_span<uint8_t> {reinterpret_cast<const uint8_t*>(item_data.GetPtr().get()), item_data.GetSize()});
                     }
                     else {
                         if (item_data.GetSize() != base_type.Size) {
@@ -7185,7 +7185,7 @@ static auto ConvertManagedObjectToPropertyData(ptr<ManagedScriptBackend> backend
             string text = ToStringAndFree(reinterpret_cast<MonoString*>(item));
             uint32_t text_size = numeric_cast<uint32_t>(text.size());
             AppendAlignedRawValue(data, text_size, sizeof(uint32_t));
-            AppendRawBytes(data, const_span<uint8_t> {reinterpret_cast<const uint8_t*>(text.data()), text.size()});
+            AppendManagedRawBytes(data, const_span<uint8_t> {reinterpret_cast<const uint8_t*>(text.data()), text.size()});
         }
     }
     else if (prop->IsBaseTypeRefType()) {
@@ -7221,7 +7221,7 @@ static auto ConvertManagedObjectToPropertyData(ptr<ManagedScriptBackend> backend
                 throw ScriptSystemException("Managed property array item size mismatch", prop->GetName());
             }
 
-            AppendRawBytes(data, const_span<uint8_t> {reinterpret_cast<const uint8_t*>(item_data.GetPtr().get()), item_data.GetSize()});
+            AppendManagedRawBytes(data, const_span<uint8_t> {reinterpret_cast<const uint8_t*>(item_data.GetPtr().get()), item_data.GetSize()});
         }
     }
 

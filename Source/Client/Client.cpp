@@ -254,6 +254,7 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
         set_callback(GetPropertyRegistrar(CritterProperties::ENTITY_TYPE_NAME), CritterView::HideSprite_RegIndex, wrap_post_setter(&ClientEngine::OnSetCritterHideSprite));
         set_callback(GetPropertyRegistrar(CritterProperties::ENTITY_TYPE_NAME), CritterView::Elevation_RegIndex, wrap_post_setter(&ClientEngine::OnSetCritterElevation));
         set_callback(GetPropertyRegistrar(CritterProperties::ENTITY_TYPE_NAME), CritterView::DrawFlatten_RegIndex, wrap_post_setter(&ClientEngine::OnSetCritterDrawFlatten));
+        set_callback(GetPropertyRegistrar(CritterProperties::ENTITY_TYPE_NAME), CritterView::VisualOffset_RegIndex, wrap_post_setter(&ClientEngine::OnSetCritterVisualOffset));
         set_callback(GetPropertyRegistrar(CritterProperties::ENTITY_TYPE_NAME), CritterView::LightSource_RegIndex, wrap_post_setter(&ClientEngine::OnSetCritterLight));
         set_callback(GetPropertyRegistrar(CritterProperties::ENTITY_TYPE_NAME), CritterView::LightIntensity_RegIndex, wrap_post_setter(&ClientEngine::OnSetCritterLight));
         set_callback(GetPropertyRegistrar(CritterProperties::ENTITY_TYPE_NAME), CritterView::LightDistance_RegIndex, wrap_post_setter(&ClientEngine::OnSetCritterLight));
@@ -2710,6 +2711,15 @@ void ClientEngine::OnSetCritterElevation(ptr<Entity> entity, ptr<const Property>
 
     if (auto cr = entity.dyn_cast<CritterHexView>()) {
         cr->RefreshSprite();
+    }
+}
+
+void ClientEngine::OnSetCritterVisualOffset(ptr<Entity> entity, ptr<const Property> prop)
+{
+    ignore_unused(prop);
+
+    if (auto cr = entity.dyn_cast<CritterHexView>()) {
+        cr->RefreshOffs();
     }
 }
 

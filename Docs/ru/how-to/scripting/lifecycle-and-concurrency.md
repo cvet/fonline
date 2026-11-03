@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/lifecycle-and-concurrency.html
 ---
 
 # Жизненный цикл и конкурентность скриптов
-<!-- docs-translation: {"document_id":"script-lifecycle-concurrency","locale":"ru","source_path":"Docs/en/how-to/scripting/lifecycle-and-concurrency.md","source_sha256":"48471945de25c990db38f2525696d88db6ddfdaa67463806333af884473833e9"} -->
+<!-- docs-translation: {"document_id":"script-lifecycle-concurrency","locale":"ru","source_path":"Docs/en/how-to/scripting/lifecycle-and-concurrency.md","source_sha256":"0fee6c129f783d2b7ddb2f69dc8214106a77155ec4ef857ccfb056085f40dd9b"} -->
 > Документация движка. Это руководство описывает переиспользуемое поведение lifecycle и concurrency, общее для AngelScript и Managed C#, а затем явно называет правила каждого языка. Модули проекта, gameplay policies и проектные synchronization helpers принадлежат подключающей игре.
 
 ## Назначение
@@ -390,6 +390,8 @@ Managed C# входит в те же независимые от backend кон�
 Не используйте `Game.OnFinish` только для повторения этих действий владельцев. Используйте его для функционального project teardown: сброса project service, завершения external session или отмены работы, которая принадлежит внешнему относительно обычного entity lifetime владельцу.
 
 Script expression temporaries, возвращаемые object handles, delegates, arrays и dictionaries принадлежат runtime согласно зарегистрированным behaviours AngelScript. Unsafe-reference expressions могут отложить очистку receiver и arguments до безопасной точки выражения; native/script call bridges удерживают скопированный результат и освобождают заменённые объекты и объекты exception path. Проектные скрипты не должны добавлять ручные reference-count или shutdown registries для компенсации этих деталей. Сохранившийся object graph указывает на отсутствующий owner release или GC-enumeration contract в типе-владельце.
+
+`ScriptFunc` записывает handle результата в собственный nullable slot отдельно от нормализованных аргументов. `GetResult()` восстанавливает объявленный тип, создавая non-nullable pointer при чтении. Результат — borrow без cover. AngelScript удерживает cached reference до замены/cleanup через тот же slot; move переносит cleanup. Managed wrappers сохраняют прежний lifetime без дополнительной native-ссылки.
 
 Suspended continuation может пережить gameplay assumptions, при которых началась. После resumption destroyed handle следует считать невалидным, даже если local variable остаётся non-null на уровне языка скриптов; обычная защита entity access должна отклонить destroyed access. Когда destruction является нормальным исходом, предпочитайте явное разрешение и nullable narrowing.
 

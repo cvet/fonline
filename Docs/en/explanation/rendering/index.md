@@ -136,7 +136,15 @@ Server, mapper, editor, testing and package flows share frontend initialization 
 
 Unattended graphical launchers should explicitly pass `--Common.NonInteractive True`. Initialization reads it before config, preventing missing/invalid config dialogs. During startup hooks, reporting reads live settings, protecting failures inside hooks when enabled. Every hook exit retains the final mode and clears the temporary settings borrow before move or unwind. Later fatal errors still exit with failure; nonfatal errors request ordinary shutdown under that resolved policy.
 
-After initialization, clients log OS/version, CPU count, memory, SDL video driver, display mode and window metrics once; browser builds add user agent. Renderers name the device/driver and warn about degraded capabilities. These describe the environment, not GPU/platform release acceptance.
+`AppInitFlags::StandaloneClient` identifies the standalone player-client application,
+including its runtime DLL. Client engines embedded in a server window leave this
+flag unset. It controls the standalone window's native-cursor policy, screen saver,
+clear color, initial fullscreen and always-on-top behavior. Resource configuration
+loads before frontend creation, preferring a server config and otherwise a client
+config. The flag describes the application that owns these services; client
+engines are created later and their presence alone does not set it.
+
+After initialization, the client records the OS/version, CPU count, memory, SDL video driver, display mode and window metrics once in its log; a browser build also records its user agent. Each renderer names its selected device and driver, while degraded capabilities are warnings. These diagnostics describe the environment, not a guarantee that a particular GPU or platform passed release acceptance.
 
 ## Application services
 
@@ -688,3 +696,5 @@ Atlas sprites, region quads and glyphs share pure `WritePreparedSpriteGeometry`.
 ## Parallel map preparation
 
 Light/fog workers produce only passive CPU results. `MapView` publishes source marks/ordered fans after its light barrier; `FogShape` binds draw/base offsets after sector completion, retaining transition state on the owner. Target selection, primitive assembly, upload and compositing keep application-thread order. [Client multithreading](../runtime/client-multithreading.md#light-and-fog-batches) owns direct bypass, immutable obstacles, failure/retry and provisional thresholds. Native equality is separate from visible backend/GPU validation.
+
+Roof groups are rebuilt lazily after roof coverage changes, including dynamic insertion, removal and movement. Queries and map rebuilding call `EnsureRoofNums`; unchanged frames do not scan the entire map. The last hex passed to `SetHiddenRoof` is retained and resolved again after renumbering, so splitting or merging a group does not hide an unrelated roof. Roof lattices start at each actual tile anchor, including odd coordinates.

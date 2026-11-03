@@ -501,13 +501,16 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                 vector<string> ctor_args;
                 size_t ctor_args_length = 0;
 
+                // Map coordinate constructors take int at either FO_MAP_WIDE_COORDS width; the scripts' checked arithmetic guards the narrowing
+                bool int_coord_ctor = type->Name == "mpos" || type->Name == "msize";
+
                 for (const FieldDesc& field : type->StructLayout->Fields) {
                     string field_name = EscapeCsIdentifier(field.Name);
                     string field_type = MakeCsTypeName(field.Type);
 
                     out << CS_INDENT << "public " << field_type << " " << field_name << ";\n";
 
-                    string ctor_arg = strex("{} {}", field_type, field_name).str();
+                    string ctor_arg = strex("{} {}", int_coord_ctor ? "int" : field_type, field_name).str();
                     ctor_args_length += ctor_arg.length();
                     ctor_args.emplace_back(std::move(ctor_arg));
                 }
@@ -543,7 +546,14 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
 
                     for (const FieldDesc& field : type->StructLayout->Fields) {
                         string field_name = EscapeCsIdentifier(field.Name);
-                        out << CS_INDENT << "    this." << field_name << " = " << field_name << ";\n";
+                        string field_type = MakeCsTypeName(field.Type);
+
+                        if (int_coord_ctor && field_type != "int") {
+                            out << CS_INDENT << "    this." << field_name << " = (" << field_type << ")" << field_name << ";\n";
+                        }
+                        else {
+                            out << CS_INDENT << "    this." << field_name << " = " << field_name << ";\n";
+                        }
                     }
 
                     out << CS_INDENT << "}\n";
@@ -965,7 +975,7 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                     out << CS_INDENT << "    catch (Exception ex)\n";
                     out << CS_INDENT << "    {\n";
                     out << CS_INDENT << "        global::FOnline.ScriptExceptions.Record(ex, true);\n";
-                    out << CS_INDENT << "        result = (int)EventResult.StopChain;\n";
+                    out << CS_INDENT << "        result = (int)(hasExplicitResult ? EventResult.StopChain : EventResult.ContinueChain);\n";
                     out << CS_INDENT << "    }\n";
                     out << CS_INDENT << "}\n";
                 }

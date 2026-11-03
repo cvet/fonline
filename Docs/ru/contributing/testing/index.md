@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/testing/
 ---
 
 # Тестирование
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"fb7277353743d1917ebdc7ab5545cb62d7397172935848c72e3afbc147edaba1"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"f97c0cdfcaa3d117356ff132173fcd3a5734ac49f45abb9f5d30edac1342721a"} -->
 > Test executable движка, сгенерированные test/coverage targets и все текущие suites `Source/Tests/Test_*.cpp`.
 
 ## Назначение
@@ -146,12 +146,14 @@ Packager должен перечитать manifest и обновить архи
 python3 BuildTools/tests/check_resource_usage_pipeline.py --baker /absolute/path/to/Project_Baker
 ```
 
+При включённом `FO_ANGELSCRIPT_SCRIPTING` CMake передаёт этому runner флаг `--angelscript`. Изолированный пакет Metadata тогда использует `Metadata AngelScript Proto` и минимальный модуль `.fos`, создавая bytecode, необходимый для запекания прототипов. При прямой проверке AngelScript Baker добавляйте тот же флаг; для остальных бэкендов по умолчанию сохраняется фикстура только с данными.
+
 ## Запуск тестов
 
 Задача CI `engine-update` также выполняет
-`python3 -m pytest -q BuildTools/tests/test_codegen_default_args.py` с
-`python3-pytest`. Эти проверки исходников охватывают сгенерированную конфигурацию,
-аргументы по умолчанию и метаданные привязок. Заготовка конфигурации только из
+`python3 -m pytest -q BuildTools/tests/test_codegen_default_args.py BuildTools/tests/test_codegen_value_type_layouts.py BuildTools/tests/test_cmake_map_size_options.py`
+с `python3-pytest` и CMake. Эти проверки исходников охватывают сгенерированную конфигурацию,
+аргументы по умолчанию, метаданные привязок, layout value-типов, выбранный при сборке, и пределы размера карты при конфигурации. Заготовка конфигурации только из
 макросов использует фиксированные версию и ревизию Engine и проверяет
 `FO_ENGINE_VERSION` и `FO_ENGINE_REVISION` независимо от текущей рабочей копии.
 
@@ -294,6 +296,12 @@ configure command требует `-A`, validator отклоняет cached gener
 Linux-specific. `BuildTools/tests/test_native_unit_validation.py` покрывает
 platform resolution, передачу configure, проверки generator cache и
 неподдерживаемые hosts.
+
+Обычная job `unit-tests` в CI остаётся независимой от CMake Unity-сборки. Отдельная job `unity` в `validate.yml` задаёт `FO_UNITY_BUILD=ON` и `FO_UNITY_BUILD_BATCH_SIZE=32`, запускает `BuildTools/tests/test_unity_build.py`, а затем повторяет тот же validator `unit-tests` с пакетами first-party исходников. Она выполняется при `all` и доступна вручную через `job: unity`; bundled third-party targets не объединяются.
+
+Job `wide-coords` повторяет validator `unit-tests` с `FO_MAP_WIDE_COORDS=ON`, чтобы нативный код, AngelScript и тесты собирались и проходили и с 32-битными координатами карты. Она выполняется при `all` и доступна вручную через `job: wide-coords`. Тесты, зависящие от ширины координат, ветвятся по `mcoord_t`, а не предполагают 16-битные значения.
+
+Различайте имена внутренних helper’ов разных единиц трансляции и явно указывайте пространства имён общих фикстур, если Unity lookup может выбрать другого владельца. Макросы, принадлежащие тестовому файлу, также получают отдельные имена; не исключайте тестовые исходники и не меняйте проверки ради компиляции Unity batch.
 
 Начинайте с минимального focused test и добавляйте общий target, когда изменение
 пересекает границы подсистем.

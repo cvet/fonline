@@ -33,6 +33,7 @@
 
 #include "Common.h"
 
+#include "ScriptSystem.h"
 #include "Server.h"
 
 FO_BEGIN_NAMESPACE
@@ -169,9 +170,9 @@ FO_SCRIPT_API void Server_Player_ViewMap(ptr<Player> self, ptr<Map> map, mpos he
     self->Send_PlaceToGameComplete();
 }
 
-// SyncScope: requires self + map + its location; a controlled critter must remain on the global map
+// SyncScope: requires self + map + its location + context; a controlled critter remains on the global map
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Player_ViewMapArea(ptr<Player> self, ptr<Map> map, mpos hex, int32_t radius)
+FO_SCRIPT_API void Server_Player_ViewMapArea(ptr<Player> self, ptr<Map> map, mpos hex, int32_t radius, nptr<ServerEntity> context)
 {
     ValidateEntityAccess(map);
 
@@ -182,11 +183,20 @@ FO_SCRIPT_API void Server_Player_ViewMapArea(ptr<Player> self, ptr<Map> map, mpo
     auto loc = map->GetLocation();
     FO_VERIFY_AND_THROW(loc, "Missing location instance");
     ValidateEntityAccess(loc);
-    self->SetViewMap(map, hex, radius);
+    self->SetViewMap(map, hex, radius, context);
     self->Send_LoadMap(map);
     self->GetEngine()->MapMngr.ViewMap(self, map);
     self->Send_ViewMap();
     self->Send_PlaceToGameComplete();
+}
+
+///@ ApiContract script.method.server.Player.RefreshViewMapVisibility experimental Since=2026.1.83-dev
+// SyncScope: requires self + map + the retained view context; recomputes subjects without reloading the map
+///@ ExportMethod
+FO_SCRIPT_API void Server_Player_RefreshViewMapVisibility(ptr<Player> self, ptr<Map> map)
+{
+    ValidateEntityAccess(map);
+    self->RefreshViewMapVisibility(map);
 }
 
 // SyncScope: requires self + the controlled critter's initial-info graph; restores its ordinary display

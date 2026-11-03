@@ -5,7 +5,7 @@ permalink: /Source/Tests/README.ru.html
 locale: ru
 document_id: unit-tests-readme
 ---
-<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"53cb589ac992e73fc535f29e8d1ce05381b9a30ac8ec7ce14f5b92ce5b41d694"} -->
+<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"bf15a43faa0ca1ea9f73e996cb08995004fcf0f2f258b7ffd295b026acc52f65"} -->
 # Модульные тесты
 
 Детерминированные suites; [Тестирование](../../Docs/ru/contributing/testing/) описывает проверки, покрытие и полную карту.
@@ -17,13 +17,13 @@ document_id: unit-tests-readme
 - Владелец списка исходных файлов тестов: `BuildTools/cmake/stages/EngineSources.cmake` (`FO_TESTS_SOURCE`)
 - Формат имени генерируемого исполняемого файла: `<ProjectDevName>_UnitTests`
 - Генерируемая цель запуска: `RunUnitTests`
-- Формат имени генерируемой цели покрытия: `<ProjectDevName>_CodeCoverage`, а также `RunCodeCoverage`, `GenerateCodeCoverageReport` и `AnalyzeCodeCoverage`, когда покрытие включено
+- Переключатель покрытия: `FO_CODE_COVERAGE`; цели ниже.
 
 Проект задаёт `<ProjectDevName>`; `RunUnitTests` — его сгенерированная цель запуска.
 
 ## Текущие наборы тестов
 
-Полный список имён файлов и их количество, полученные из исходного кода, генерируются в [source-inventory.json](https://fonline.ru/Docs/generated/source-inventory.json). В разделе [Тестирование](../../Docs/ru/contributing/testing/) приведены актуальные группы владения и маршрутизация проверок.
+Генерируемые имена и количество файлов: [source-inventory.json](https://fonline.ru/Docs/generated/source-inventory.json); владение и проверки: [Тестирование](../../Docs/ru/contributing/testing/).
 
 `Test_ClientEntityLifetime.cpp` выполняется с любым scripting backend. Он проверяет, что результат поиска в registry остаётся живым при освобождении последней другой ссылки из другого потока и что старая сущность не может удалить регистрацию новой сущности с тем же id.
 
@@ -53,13 +53,13 @@ python BuildTools/docs_inventory.py --check
 
 ## Запуск тестов
 
-Предпочтительно запускайте генерируемую цель из настроенного каталога сборки:
+Из настроенного каталога сборки:
 
 ```bash
 cmake --build . --config RelWithDebInfo --target RunUnitTests
 ```
 
-Запускайте исполняемую цель напрямую, когда требуются аргументы Catch2. Генерируемые тестовые файлы обычно размещаются в `Binaries/Tests-*`, например:
+Передавайте аргументы Catch2 напрямую исполняемому файлу в `Binaries/Tests-*`:
 
 - Windows: `Binaries/Tests-Windows-win64/<ProjectDevName>_UnitTests.exe`
 - Linux: `Binaries/Tests-Linux-x64/<ProjectDevName>_UnitTests`
@@ -88,6 +88,8 @@ Geometry equations использует 128 частиц по умолчанию
 - `GenerateCodeCoverageReport`
 - `AnalyzeCodeCoverage`
 
+Исполняемая цель: `<ProjectDevName>_CodeCoverage`.
+
 Отчёты о покрытии создаются в `CodeCoverage/<Toolchain>/<Platform-Config>/`,
 а `Source/Tests/` исключается из знаменателя покрытия исходного кода.
 
@@ -98,7 +100,9 @@ Geometry equations использует 128 частиц по умолчанию
 `Test_ClientEngineHelpers.h`, `Test_ClientServerIntegrationHelpers.h`, `Test_EntityLifecycleHelpers.h`, `Test_LocationAndEntityMgmtHelpers.h`, `Test_MapperHelpers.h`, `Test_ServerEngineHelpers.h`, `Test_ServerItemsHelpers.h` и `Test_ServerMapOperationsHelpers.h` разделяют построение native-ресурсов с наборами AngelScript. Компиляция для конкретного бэкенда остаётся под guards внутри этих фикстур.
 
 - `Source/Tests/Test_BakerHelpers.h` содержит fixtures запечённых ресурсов (спрайтов, прототипов и metadata) и
-  `TestRig`, который запускает настоящие bakers поверх источников в памяти.
+  `TestRig` для настоящих bakers в памяти. AS-фикстуры ресурсов вызывают `AddBakedScriptBytecode` перед
+  выпечкой server proto: реальные выходы трёх ролей копируются в `BakedFiles` до очистки `Outputs`
+  следующим `MakeContext`. Дисковые фикстуры включают AngelScript вместе с Metadata перед Proto.
 - `Source/Tests/Test_ParticleFixtures.h` содержит fixtures ресурсов частиц.
 - `Source/Tests/Test_ImGuiHarness.h` нажимает виджеты ImGui по label, чтобы ветвь за кнопкой,
   checkbox, selectable или свёрнутой секцией выполнялась в headless-кадре. Контракт закреплён

@@ -47,7 +47,7 @@ FO_BEGIN_NAMESPACE
 
 namespace
 {
-    static auto MakeSettings() -> GlobalSettings
+    static auto AngelScriptEntityOpsMakeSettings() -> GlobalSettings
     {
         auto settings = GlobalSettings(false);
 
@@ -91,7 +91,7 @@ namespace
         });
     }
 
-    static auto MakeScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
+    static auto AngelScriptEntityOpsMakeScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
     {
         BakerServerEngine compiler_engine {metadata_resources};
 
@@ -1932,7 +1932,7 @@ namespace EntityOps
             });
     }
 
-    static auto MakeResources() -> FileSystem
+    static auto AngelScriptEntityOpsMakeResources() -> FileSystem
     {
         auto metadata_blob = MakeEntityOpsMetadataBlob();
 
@@ -1952,7 +1952,7 @@ namespace EntityOps
         auto item2_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem2");
         auto coverage_proto_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCustomEntity>(proto_engine, coverage_proto_type, "CoverageProtoOne");
         auto coverage_fixed_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCustomEntity>(proto_engine, coverage_fixed_type, "CoverageFixedOne");
-        auto script_blob = MakeScriptBinary(compiler_resources);
+        auto script_blob = AngelScriptEntityOpsMakeScriptBinary(compiler_resources);
 
         auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("EntityOpsRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
@@ -2020,7 +2020,7 @@ namespace EntityOps
         return resources;
     }
 
-    static auto WaitForStart(ptr<ServerEngine> server) -> string
+    static auto AngelScriptEntityOpsWaitForStart(ptr<ServerEngine> server) -> string
     {
         for (int32_t i = 0; i < 6000; i++) {
             if (server->IsStarted()) {
@@ -2036,15 +2036,15 @@ namespace EntityOps
         return "ServerEngine startup timed out";
     }
 
-    static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
+    static auto AngelScriptEntityOpsMakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
     {
-        return safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources());
+        return safe_alloc::make_refcounted<ServerEngine>(&settings, AngelScriptEntityOpsMakeResources());
     }
 }
 
 #define MAKE_SERVER() \
-    auto settings = MakeSettings(); \
-    refcount_ptr<ServerEngine> server = MakeServerEngine(settings); \
+    auto settings = AngelScriptEntityOpsMakeSettings(); \
+    refcount_ptr<ServerEngine> server = AngelScriptEntityOpsMakeServerEngine(settings); \
     auto shutdown = scope_exit([&server]() noexcept { \
         safe_call([&server] { \
             if (server->IsStarted()) { \
@@ -2052,7 +2052,7 @@ namespace EntityOps
             } \
         }); \
     }); \
-    string startup_error = WaitForStart(server); \
+    string startup_error = AngelScriptEntityOpsWaitForStart(server); \
     INFO(startup_error); \
     REQUIRE(startup_error.empty()); \
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}})); \
@@ -2078,7 +2078,7 @@ namespace EntityOps
 
 TEST_CASE("AngelScriptEntityConstGlobalStartupFailures")
 {
-    auto settings = MakeSettings();
+    auto settings = AngelScriptEntityOpsMakeSettings();
     string message;
     std::mutex message_locker;
 
@@ -2104,7 +2104,7 @@ TEST_CASE("AngelScriptEntityConstGlobalStartupFailures")
         });
     });
 
-    string startup_error = WaitForStart(server.get());
+    string startup_error = AngelScriptEntityOpsWaitForStart(server.get());
     INFO(startup_error);
     CHECK_FALSE(startup_error.empty());
     CHECK(server->IsStartingError());

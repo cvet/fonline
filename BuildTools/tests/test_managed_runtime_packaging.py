@@ -246,7 +246,7 @@ def test_server_payload_accepts_windows_build(tmp_path: Path, monkeypatch) -> No
     packager.package_all_client_runtime_update_payloads()
 
     payloads = Path(packager.target_output_path) / 'PlatformBinaries' / 'Windows-win64'
-    assert {path.name for path in payloads.glob('*.dll')} == {'Game.dll', 'Game_OpenGL.dll'}
+    assert {path.name for path in payloads.glob('*.dll')} == {'Game.dll'}
     assert all(path.read_bytes() == b'native runtime' for path in payloads.glob('*.dll'))
 
 

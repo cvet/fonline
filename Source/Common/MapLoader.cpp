@@ -51,7 +51,7 @@ auto MapLoader::CanOverrideItemProperty(bool is_static, ptr<const Property> prop
     }
 
     // Placement context supplies these values outside the synchronized property payload
-    const array<uint16_t, 8> placement_property_indices {ItemProperties::Static_RegIndex, ItemProperties::Ownership_RegIndex, ItemProperties::MapId_RegIndex, ItemProperties::Hex_RegIndex, ItemProperties::CritterId_RegIndex, ItemProperties::CritterSlot_RegIndex, ItemProperties::ContainerId_RegIndex, ItemProperties::ContainerStack_RegIndex};
+    array<uint16_t, 8> placement_property_indices {ItemProperties::Static_RegIndex, ItemProperties::Ownership_RegIndex, ItemProperties::MapId_RegIndex, ItemProperties::Hex_RegIndex, ItemProperties::CritterId_RegIndex, ItemProperties::CritterSlot_RegIndex, ItemProperties::ContainerId_RegIndex, ItemProperties::ContainerStack_RegIndex};
     return std::ranges::find(placement_property_indices, prop->GetRegIndex()) != placement_property_indices.end();
 }
 
@@ -59,7 +59,7 @@ void MapLoader::ValidateItemProperties(const Properties& props, const Properties
 {
     auto registrar = props.GetRegistrar();
     FO_VERIFY_AND_THROW(registrar == proto_props.GetRegistrar(), "Map item and prototype registrars differ", proto_name, id);
-    const ItemProperties item_props {const_cast<Properties&>(props)};
+    ItemProperties item_props {const_cast<Properties&>(props)};
 
     if (item_props.GetStatic()) {
         return;

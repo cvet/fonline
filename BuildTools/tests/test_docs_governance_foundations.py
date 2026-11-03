@@ -101,7 +101,8 @@ class DocumentationGovernanceFoundationsTests(unittest.TestCase):
 
         delivery = manifest["ai_delivery"]
         self.assertEqual(delivery["source_ref"], "master")
-        self.assertIn("`ai_delivery.full_context.max_bytes`", adr3)
+        self.assertNotIn("max_bytes", delivery["full_context"])
+        self.assertIn("no byte-size limit", adr3)
         for path in ("llms.txt", "llms-full.txt", "docs-manifest.json"):
             self.assertIn(f"`{path}`", adr3)
         self.assertEqual(
@@ -110,12 +111,12 @@ class DocumentationGovernanceFoundationsTests(unittest.TestCase):
         )
 
         search = manifest["site_delivery"]["search"]
-        self.assertEqual(search["max_bytes"], 1_900_544)
+        self.assertEqual(search["max_bytes"], 1_933_312)
         self.assertEqual(
             search["locale_paths"],
             {"en": "Docs/Site/Assets/docs-search.json", "ru": "Docs/Site/Assets/docs-search.ru.json"},
         )
-        self.assertIn("1.8125 MiB (1,900,544 byte)", adr4)
+        self.assertIn("1.84375 MiB (1,933,312 byte)", adr4)
         self.assertIn("authoritative coverage snapshot", adr6)
         self.assertNotIn("first two linked tutorials", adr4)
         self.assertNotIn("Five README-style", adr6)

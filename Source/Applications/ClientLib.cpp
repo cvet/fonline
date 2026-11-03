@@ -160,7 +160,7 @@ static void RunClientRuntime(CommandLineArgs args, nptr<ClientRuntimeResult> run
     try {
         logging::write("Client runtime DLL: starting, build {}, compatibility {}", FO_BUILD_HASH, FO_COMPATIBILITY_VERSION);
 
-        InitApp(args, combine_enum(AppInitFlags::ClientMode, AppInitFlags::ShowMessageOnException, AppInitFlags::PrebakeResources, AppInitFlags::AppendLogFile));
+        InitApp(args, combine_enum(AppInitFlags::StandaloneClient, AppInitFlags::ShowMessageOnException, AppInitFlags::PrebakeResources, AppInitFlags::AppendLogFile));
         logging::write("Client runtime DLL: compatibility version: {}", GetApp()->Settings.Network.CompatibilityVersion);
 
         // The crash reporter is alive only from here, and a run that hung on the way out could report
@@ -291,6 +291,10 @@ static void MainEntry([[maybe_unused]] void* data)
                         logging::write("Client runtime DLL: updater finished, resources ready");
                         Data->ResourcesSynced = true;
                         break;
+                    case UpdaterResult::SettingsRestartRequired:
+                        logging::write("Client runtime DLL: exiting for configuration restart");
+                        GetApp()->RequestQuit();
+                        return;
                     case UpdaterResult::BinariesStaged:
                         Data->StagedRuntimePath = staged_runtime_path;
                         Data->ReloadRequested = true;

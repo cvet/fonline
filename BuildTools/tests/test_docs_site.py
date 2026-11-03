@@ -64,7 +64,7 @@ class DocumentationSiteTests(unittest.TestCase):
             outputs[docs_site.DEFAULT_RUSSIAN_SEARCH_OUTPUT].encode("utf-8")
         )
 
-        self.assertEqual(max_bytes, 1_867_776)
+        self.assertEqual(max_bytes, 1_933_312)
         self.assertLessEqual(output_bytes, max_bytes)
         self.assertLessEqual(russian_output_bytes, max_bytes)
 
@@ -214,7 +214,6 @@ class DocumentationSiteTests(unittest.TestCase):
                 },
                 "full_context": {
                     "path": docs_ai_delivery.DEFAULT_FULL_CONTEXT_OUTPUT,
-                    "max_bytes": 65536,
                     "generated_pages": "indexes-only",
                 },
                 "public_manifest": {"path": docs_ai_delivery.DEFAULT_PUBLIC_MANIFEST_OUTPUT},

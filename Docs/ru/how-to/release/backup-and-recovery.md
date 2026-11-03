@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/release/backup-and-recovery.html
 ---
 
 # Резервное копирование и восстановление
-<!-- docs-translation: {"document_id":"backup-and-recovery","locale":"ru","source_path":"Docs/en/how-to/release/backup-and-recovery.md","source_sha256":"2f323d2fe8527b4e54199c1b78586a12881f669a3057409e55afec8c0fbfd94a"} -->
+<!-- docs-translation: {"document_id":"backup-and-recovery","locale":"ru","source_path":"Docs/en/how-to/release/backup-and-recovery.md","source_sha256":"8e5fca208155069d6861913436177500159033adb07903f415171595307e8a4b"} -->
 Этот runbook определяет переиспользуемую границу резервного копирования, восстановления и disaster recovery для сервера FOnline. Используйте его вместе с [Persistence](../../explanation/persistence/) для механики хранилища, [Release Operations](operations.md) для управления процессом и [Engine Upgrade Guide](../migration/engine-upgrade.md), когда долговечные данные переходят между ревизиями Engine или игры.
 
 ## Решение о восстановлении
@@ -56,7 +56,7 @@ Engine предоставляет согласованные байтовые с
 | `DbSQLite <directory>` | `<directory>/Storage.sqlite` и активные SQLite WAL sidecars | Engine открывает WAL mode с `synchronous=NORMAL`; отдельные записи выполняются с autocommit. Не копируйте только `Storage.sqlite` во время работы сервера. Используйте согласованный с provider/SQLite online backup либо остановите сервер и сохраните весь каталог хранилища. Engine не предоставляет команду online backup или checkpoint. |
 | `Mongo <URI> <database>` | Именованная база Mongo в настроенном deployment | URI и provider определяют write concern, репликацию, snapshot, dump и point-in-time возможности; Engine их не переопределяет. Используйте нативный согласованный метод провайдера и запишите его гарантии. |
 
-Для JSON и SQLite каталогом хранения служит весь остаток строки после имени провайдера без пробелов по краям. Внутренние пробелы сохраняются; буквальные кавычки parser не удаляет. Каталог не может быть пустым. Mongo по-прежнему принимает ровно два токена — URI и имя базы, а Memory не принимает аргументов.
+JSON/SQLite сохраняют внутренние пробелы каталога. См. [грамматику подключения](../../explanation/persistence/).
 
 Записи JSON теперь используют обычный JSON, записи SQLite — CBOR. Для обоих провайдеров нужно новое хранилище; reader и автоматической миграции исторических BSON-хранилищ нет. Перед выбором или восстановлением backup смотрите [форматы хранения и границу обновления](../../explanation/persistence/#storage-formats-and-upgrade-boundary).
 

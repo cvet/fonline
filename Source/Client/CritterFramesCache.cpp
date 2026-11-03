@@ -49,7 +49,7 @@ void CritterFramesCache::CleanupCritterFrames()
 
 auto CritterFramesCache::GetCritterAnimFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, mdir dir) -> nptr<const SpriteSheet>
 {
-    // Substitutions keep the original request as the cache key.
+    // Substitutions keep the original request as the cache key
     auto key = tuple {model_name, state_anim, action_anim};
 
     if (auto it = _critterFrames.find(key); it != _critterFrames.end()) {

@@ -34,13 +34,17 @@ class ClientUpdaterDocumentationTests(unittest.TestCase):
         host = self._read("Source/Applications/ClientApp.cpp")
         guide = self._read(GUIDE_PATH)
 
-        for switch in (
-            "--ClientLibPath",
-            "--ClientLibCompatibilityVersion",
-            "--Client.ForceEmbeddedRuntime",
-        ):
-            self.assertIn(switch, host)
-            self.assertIn(f"`{switch}`", guide)
+        common = self._read("Source/Common/Common.h")
+        settings = self._read("Source/Common/Settings.inc")
+
+        for name in ("ClientLibPath", "ClientLibCompatibilityVersion"):
+            self.assertIn(f'CommandLineSettings::{name}', host)
+            self.assertIn(f'{name} = "{name}"', common)
+            self.assertIn(f"`--{name}`", guide)
+
+        self.assertIn("SettingNames::Client_ForceEmbeddedRuntime", host)
+        self.assertIn("SETTING(bool, Client, ForceEmbeddedRuntime, false)", settings)
+        self.assertIn("`--Client.ForceEmbeddedRuntime`", guide)
 
         for marker in (
             "PromoteStagedReloadForRestart",

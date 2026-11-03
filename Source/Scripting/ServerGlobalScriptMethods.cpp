@@ -339,6 +339,25 @@ FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Game_CreateItem(ptr<ServerEngin
     return server->ItemMngr.CreateItem(protoId, &item_props);
 }
 
+// Creates an item with mutable property overrides applied before OnItemInit and returns it with synchronization cover
+///@ ExportMethod
+FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Game_CreateItem(ptr<ServerEngine> server, hstring protoId, readonly_map<ItemProperty, any_t> props)
+{
+    auto proto = server->GetProtoItem(protoId);
+
+    if (!proto) {
+        throw ScriptException("Invalid item proto id arg", protoId);
+    }
+
+    Properties item_props = proto->GetProperties()->Copy();
+
+    for (const auto& [key, value] : props) {
+        item_props.SetValueAsAnyProps(static_cast<int32_t>(key), value);
+    }
+
+    return server->ItemMngr.CreateItem(protoId, &item_props);
+}
+
 // Clones the complete live item and returns the new item with synchronization cover
 ///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER ptr<Item> Server_Game_CloneItem(ptr<ServerEngine> server, ptr<Item> item)

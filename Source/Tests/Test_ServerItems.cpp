@@ -41,8 +41,8 @@ using namespace ServerItemsTests;
 
 TEST_CASE("ServerItemDetachedMoves")
 {
-    auto settings = MakeSettings();
-    auto server = MakeServerEngine(settings);
+    auto settings = ServerItemsTests::MakeSettings();
+    auto server = ServerItemsTests::MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -52,7 +52,7 @@ TEST_CASE("ServerItemDetachedMoves")
         });
     });
 
-    string startup_error = WaitForStart(server);
+    string startup_error = ServerItemsTests::WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -116,8 +116,8 @@ TEST_CASE("ServerItemDetachedMoves")
 
 TEST_CASE("ServerEntityManagerQueries")
 {
-    auto settings = MakeSettings();
-    auto server = MakeServerEngine(settings);
+    auto settings = ServerItemsTests::MakeSettings();
+    auto server = ServerItemsTests::MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -127,7 +127,7 @@ TEST_CASE("ServerEntityManagerQueries")
         });
     });
 
-    string startup_error = WaitForStart(server);
+    string startup_error = ServerItemsTests::WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 

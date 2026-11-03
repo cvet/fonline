@@ -2692,6 +2692,90 @@ TEST_CASE("PropertiesOverlayDataStaysAlignedThroughRepack")
     }
 }
 
+TEST_CASE("PropertiesSnapshotNeverTransmitsUnsyncedProperties")
+{
+    hash_storage hashes {};
+    TestNameResolver resolver;
+    PropertyRegistrar registrar("ItemSnapshotEntity", EngineSideKind::ServerSide, &hashes, &resolver);
+    auto roof = registrar.RegisterProperty({"Common", "bool", "Roof", "Persistent", "CoreProperty"});
+    auto picture = registrar.RegisterProperty({"Common", "string", "Picture", "Persistent", "CoreProperty"});
+    auto local = registrar.RegisterProperty({"Common", "int32", "Local", "Mutable", "Persistent", "NoSync"});
+    auto count = registrar.RegisterProperty({"Common", "int32", "Count", "Mutable", "Persistent", "PublicSync"});
+    auto pic_map = registrar.RegisterProperty({"Common", "string", "PicMap", "Mutable", "Persistent", "PublicSync"});
+    auto owned = registrar.RegisterProperty({"Common", "int32", "Owned", "Mutable", "Persistent", "OwnerSync"});
+    auto secret = registrar.RegisterProperty({"Server", "string", "Secret", "Mutable", "Persistent"});
+
+    Properties base(&registrar);
+    base.SetValue<string>(picture, "static-base");
+    base.SetValue<int32_t>(local, 5);
+    base.SetValue<int32_t>(count, 3);
+    base.SetValue<string>(pic_map, "base-pic.png");
+    base.SetValue<int32_t>(owned, 7);
+    base.SetValue<string>(secret, "server-secret");
+
+    Properties source(&registrar, &base);
+    source.SetValue<bool>(roof, true);
+    source.SetValue<string>(picture, "server-picture.png");
+    source.SetValue<int32_t>(local, 99);
+    source.SetValue<int32_t>(count, 7);
+    source.SetValue<string>(pic_map, "changed-pic.png");
+    source.SetValue<int32_t>(owned, 42);
+    source.SetValue<string>(secret, "changed-secret");
+
+    // Expected literals are written independently of the StoreData flags, so a snapshot that carries any
+    // unsynced override fails the restore instead of blessing the current flag behavior
+    auto check_snapshot = [&](const Properties& data_source, bool with_protected) {
+        auto snapshot_chunks = MakeOwnedStoreData(data_source.StoreData(with_protected));
+
+        Properties target(&registrar, &base);
+        target.RestoreData(snapshot_chunks);
+
+        CHECK_FALSE(target.GetValue<bool>(roof));
+        CHECK(target.GetValue<string>(picture) == "static-base");
+        CHECK(target.GetValue<int32_t>(local) == 5);
+        CHECK(target.GetValue<int32_t>(count) == 7);
+        CHECK(target.GetValue<string>(pic_map) == "changed-pic.png");
+        CHECK(target.GetValue<int32_t>(owned) == (with_protected ? 42 : 7));
+        CHECK(target.GetValue<string>(secret) == "server-secret");
+    };
+
+    Properties full_source(&registrar);
+    full_source.CopyFrom(source);
+    CHECK_FALSE(full_source.HasBaseProperties());
+
+    // Alternate public and owner visibility through both cache slots per representation
+    for (bool with_protected : {false, true, false}) {
+        check_snapshot(source, with_protected);
+        check_snapshot(full_source, with_protected);
+    }
+
+    // The prototype keeps its own literals after every snapshot above
+    CHECK_FALSE(base.GetValue<bool>(roof));
+    CHECK(base.GetValue<string>(picture) == "static-base");
+    CHECK(base.GetValue<int32_t>(local) == 5);
+    CHECK(base.GetValue<int32_t>(count) == 3);
+    CHECK(base.GetValue<string>(pic_map) == "base-pic.png");
+    CHECK(base.GetValue<int32_t>(owned) == 7);
+    CHECK(base.GetValue<string>(secret) == "server-secret");
+
+    // The server source still holds the unsynced overrides it changed
+    CHECK(source.GetValue<bool>(roof));
+    CHECK(source.GetValue<string>(picture) == "server-picture.png");
+
+    // A synchronized string mutated after its snapshot was cached must appear in the next snapshot
+    auto cached_chunks = MakeOwnedStoreData(source.StoreData(false));
+    Properties cached_target(&registrar, &base);
+    cached_target.RestoreData(cached_chunks);
+    CHECK(cached_target.GetValue<string>(pic_map) == "changed-pic.png");
+
+    source.SetValue<string>(pic_map, "revised-pic.png");
+
+    auto revised_chunks = MakeOwnedStoreData(source.StoreData(false));
+    Properties revised_target(&registrar, &base);
+    revised_target.RestoreData(revised_chunks);
+    CHECK(revised_target.GetValue<string>(pic_map) == "revised-pic.png");
+}
+
 TEST_CASE("PropertiesFullRestoreAndStoreDataEdges")
 {
     hash_storage hashes {};

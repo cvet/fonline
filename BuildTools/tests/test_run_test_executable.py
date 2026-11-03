@@ -16,6 +16,7 @@ SKIPPED_SUMMARY = (
 @pytest.mark.parametrize(('output', 'exit_code', 'accepted'), [
     ('All tests passed (1 assertion in 1 test case)\n', 0, True),
     (SKIPPED_SUMMARY, 0, True),
+    ('test cases:    770 |    769 passed | 1 skipped\nassertions: 745228 | 745228 passed\n', 0, True),
     (SKIPPED_SUMMARY.replace('\n', '\r\n'), 0, True),
     ('test cases: 2 | 1 passed | 1 failed\nassertions: 2 | 1 passed | 1 failed\n', 0, False),
     ('test cases: 2 | 2 skipped\nassertions: - none -\n', 0, False),

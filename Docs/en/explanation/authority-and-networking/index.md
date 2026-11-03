@@ -119,7 +119,7 @@ The server treats all inbound bytes as hostile. Several complementary layers gua
 - **Remote-call runtime ceiling.** `ServerNetwork.MaxRemoteCallPayloadSize` (default 1 MiB) is the server-wide decoded-RPC ceiling. The effective payload ceiling is the smaller nonzero value of this setting and per-call `MaxBytes`; the structural call limit is the semantic protocol boundary, not a replacement for the global hostile-input limit.
 - **Per-pass message budget.** The server drains at most `ServerNetwork.MaxMessagesPerProcessPass` messages per connection per worker-job pass, then yields; the periodic player job reschedules, so leftover buffered messages drain on the next pass and one flooding connection cannot monopolize a worker thread shared with world jobs.
 - **UDP reorder window.** `UdpTransportOptions.MaxReorderAhead` (server: `ServerNetwork.MaxUdpReorderAhead`) bounds how far ahead of the next expected sequence the out-of-order reassembly map (`_receivedPackets`) buffers; payloads beyond the window are dropped (the sender retransmits), so a peer that never sends the in-order packet cannot grow the map without limit.
-- **Pre-handshake parse failures stay operational noise.** A malformed payload that raises `NetBufferException` before `ServerConnection::IsHandshakeComplete()` is logged once as an invalid-handshake warning with the remote host/port and hard-disconnected without invoking the global exception reporter. The same exception after a completed handshake still follows normal exception reporting. `ServerRejectsMalformedPreHandshakePayloadWithoutExceptionReport` in `Source/Tests/Test_ClientServerIntegration.cpp` pins the distinction.
+- **Malformed peer frames stay operational noise at every stage of a session.** A `NetBufferException` (including `UnknownMessageException`) raised while `NotLoggedInPlayerJob()` or `PlayerJob()` reads its connection's input means the peer broke the framing, whether that happens before the handshake, after it, or after login. The job logs one warning with the remote host/port plus the exception's message and context values, hard-disconnects that connection with `ProtocolError`, and does not invoke the global exception reporter. In non-interactive mode the reporter ends the application on any report, and the public handshake is enough to reach these jobs, so a reported frame fault would let one peer end a headless server for every other connection. A first application message other than `Handshake` is also rejected as a protocol error: the incomplete input is discarded before the peer is disconnected. Other exception types, including internal verification failures, still reach the reporter. A `Ping` is exactly the answer flag and the sender clock; a shorter or longer frame is rejected this way, so the same-length rule for every fixed-layout message is enforced by `NetInBuffer` and not by the handler. The `NetBufferException` context values are captured before the buffer is reset, so the warning shows the real read position, frame end and buffered end. `ServerRejectsMalformedPreHandshakePayloadWithoutExceptionReport`, `ServerRejectsNonHandshakeFirstMessageWithoutExceptionReport` and `ServerRejectsMalformedPingAfterHandshakeWithoutExceptionReport` in `Source/Tests/Test_ClientServerIntegration.cpp` and `PlayerMalformedPingDisconnectsOnlyThatPlayerWithoutExceptionReport` in `Source/Tests/Test_EntityLifecycle.cpp` pin the rule.
 
 The per-type *content* validator (`ClientDataValidation.*`, invoked for client property writes and inbound remote-call payloads) is the complementary layer: it enforces finite floats, valid UTF-8, rejection of embedded NUL bytes in strings (a NUL is valid UTF-8 but never legitimate client text and is dangerous for C-string/log/DB consumers), non-negative sizes, count-to-payload consistency, enum/hash/proto resolution, and the declared remote-call collection ceiling. Absolute input and flood ceilings still live in the buffer/transport layer above.
 
@@ -380,6 +380,12 @@ connection wrapper's lifetime must be disciplined:
 accepted TCP connection, and a real websocketpp client that sends a frame then relies on server shutdown to
 disconnect it). `NetworkServerWebSocketsQueuesCloseAcrossPeerAbortAndRetainedWrapper` also covers peer
 abort, repeated disconnect, exactly one notification and a wrapper retained after endpoint destruction.
+`NetworkServerWebSocketsRebindsPortLeftInTimeWaitByPreviousServer` makes an old listener close a real
+connection first, proves with an independent bind probe that a POSIX kernel still reserves the port, and
+then starts the real WebSocket server on that port; `NetworkServerWebSocketsRefusesPortHeldByIndependentListener`
+keeps a live listener with and without `SO_REUSEADDR` as the owner that must still refuse it. The probe
+precondition is POSIX-only because Windows never reserves the port, so on Windows the first case guards the
+unchanged policy.
 Run these tests and the unchanged `SecureChannelRunsOverWebSockets` under ThreadSanitizer and
 AddressSanitizer to check state serialization and lifetime separately.
 
@@ -444,6 +450,8 @@ Relevant property flags from [Entity Model](../entity-and-property-model/):
 - `ModifiableByClient`
 - `ModifiableByAnyClient`
 
+Initial dynamic-item snapshots transfer only declared synchronized properties. Common availability alone never enables network transfer; immutable and NoSync values remain local or come from the shared prototype. The [Entity Model](../entity-and-property-model/) owns the synchronization and owner/private filtering rules.
+
 A network change that affects property replication should be reviewed together with entity/property docs and tests.
 
 ## Transport selection
@@ -472,6 +480,20 @@ Past the deadline the original exception is rethrown and the startup fails, beca
 can reach is not a started server — the retries buy the losing side of the race some time, they do
 not turn a dead port into an acceptable state. The interthread transport is not part of this: it
 binds nothing another process could hold, so a failure there is a defect rather than a race.
+Every retry line names the failure it follows, so a refusal that changes between attempts is visible in the log.
+
+The retries cannot outwait a port that the previous process left in `TIME_WAIT`. A POSIX kernel keeps the
+local port of a connection the old server closed first reserved for tens of seconds and refuses a bind
+without `SO_REUSEADDR` with `Address already in use`, although no process owns the port. The plain TCP
+listener's acceptor already sets the option, and the WebSocket listener sets it before `listen` on every
+platform except Windows. A socket still in `LISTEN` keeps refusing the bind whatever options its owner
+chose, so an occupied port stays an error. Windows never blocks a bind on `TIME_WAIT`, and there two
+sockets that both set `SO_REUSEADDR` share the port of a live listener, so the WebSocket listener keeps
+the default option on that platform.
+
+A predecessor built without this rule leaves `TIME_WAIT` sockets that carry no `SO_REUSEADDR`, and one
+new listener with the option does not bypass them. The first restart over such a predecessor may still
+wait for those sockets to expire; neither a different port nor an unbounded retry is a remedy.
 
 ## Tests to inspect
 

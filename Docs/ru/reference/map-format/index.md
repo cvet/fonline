@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-map-format-index","locale":"ru","source_path":"Docs/en/reference/map-format/index.md","source_sha256":"7429345c44d7c7e8202447c9c4497edbe9d9b0215324bf25f62f0f8f768e8bbb"} -->
+<!-- docs-translation: {"document_id":"generated-map-format-index","locale":"ru","source_path":"Docs/en/reference/map-format/index.md","source_sha256":"e804387b0f242476dd7a6fff14bde924950f751e54ded75d5cf02eb68fc46e16"} -->
 
 # Справочник формата карт
 
@@ -22,12 +22,12 @@ generated: true
 | Стабильность | <code>experimental</code> |
 | Политика поддержки | Контракт генерируется для закреплённой ревизии движка. Каталоги карт проекта, пользовательские метаданные, игровая семантика и правила композиции остаются во владении проекта. |
 | Исходный манифест | [BuildTools/MapFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/MapFormatInterface.json) |
-| Дайджест контракта | <code>9203d5c77cb09012f1aa56bfefcb06a7133afc2e4d91398598136a7e70edf1f7</code> |
+| Дайджест контракта | <code>33cff9ca326954b7a0aa383df5362edea092e31219011fc04eda74474494146e</code> |
 
 | Справочник | Записей | Назначение |
 | --- | --- | --- |
 | [Синтаксис](syntax.md) | 8 | Секции и управляющие директивы. |
-| [Свойства](properties.md) | 108 | Свойства Map, Critter и Item, которыми владеет движок. |
+| [Свойства](properties.md) | 109 | Свойства Map, Critter и Item, которыми владеет движок. |
 | [Запекание](baking.md) | 4 | Владение и материализация на сервере и клиенте. |
 | [Валидация](validation.md) | 20 | Требования и ограничения, подтверждённые исходным кодом. |
 

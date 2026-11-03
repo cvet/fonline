@@ -38,10 +38,6 @@
 FO_BEGIN_NAMESPACE
 
 static constexpr float32_t MODEL_SPRITE_LAYOUT_GUARD = 2.0f;
-// Keep in sync with the default 3D_Skinned shadow pass
-static constexpr float32_t SHADOW_CAMERA_ANGLE_COS = 0.9010770213221f;
-static constexpr float32_t SHADOW_CAMERA_ANGLE_SIN = 0.4336590845875f;
-static constexpr float32_t SHADOW_ANGLE_TAN = 0.2548968037538f;
 
 struct ProjectedLayoutBounds
 {

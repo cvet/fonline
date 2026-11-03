@@ -22,7 +22,16 @@ public static class ScriptExceptions
     // deferred Task fault completes on a foreign thread and counts only globally
     public static Scope OpenScope()
     {
-        Scope scope = new Scope(CurrentScope.Value);
+        Scope scope = new Scope(CurrentScope.Value, false);
+        CurrentScope.Value = scope;
+        return scope;
+    }
+
+    // Captures deliberate reports in this logical flow without invoking native error notification; counters and
+    // textual diagnostics remain intact. Unrelated flows, deferred faults and reports after disposal are unaffected
+    public static Scope OpenCaptureScope()
+    {
+        Scope scope = new Scope(CurrentScope.Value, true);
         CurrentScope.Value = scope;
         return scope;
     }
@@ -90,11 +99,17 @@ public static class ScriptExceptions
     internal static void Record(Exception ex, bool log)
     {
         // Nested scopes all see the fault: an outer harness keeps its own total while an inner one measures a part
+        bool captured = false;
         for (Scope? scope = CurrentScope.Value; scope != null; scope = scope.Parent) {
             scope.Increment();
+            captured |= scope.CapturesReports;
         }
 
-        RecordGlobal(ex, log);
+        RecordGlobal(ex, log && !captured);
+
+        if (log && captured) {
+            Native.Log("Captured script exception: " + ex);
+        }
     }
 
     private static void RecordGlobal(Exception ex, bool log)
@@ -109,16 +124,21 @@ public static class ScriptExceptions
     // The faults one logical flow recorded since the scope was opened. Disposing closes it for the rest of the flow
     public sealed class Scope : IDisposable
     {
+        private readonly bool CaptureReports;
+        private int Disposed;
         private int RecordedCount;
 
-        internal Scope(Scope? parent)
+        internal Scope(Scope? parent, bool captureReports)
         {
             Parent = parent;
+            CaptureReports = captureReports;
         }
 
         public int Count => Volatile.Read(ref RecordedCount);
 
         internal Scope? Parent { get; }
+
+        internal bool CapturesReports => CaptureReports && Volatile.Read(ref Disposed) == 0;
 
         internal void Increment()
         {
@@ -127,6 +147,8 @@ public static class ScriptExceptions
 
         public void Dispose()
         {
+            Interlocked.Exchange(ref Disposed, 1);
+
             if (CurrentScope.Value == this) {
                 CurrentScope.Value = Parent;
             }

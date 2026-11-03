@@ -37,7 +37,7 @@ class PackageSecurityTests(unittest.TestCase):
     def test_android_client_metadata_comes_from_matching_server_bake_without_embedding_it(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             baking = Path(temp_dir)
-            configs = baking / "Configs"
+            configs = baking / "Metadata"
             configs.mkdir()
             client_data = b"Client.Multithreading=1\nNetwork.ServerPort=31825\n"
             (configs / "Parallel.fomain-client").write_bytes(client_data)
@@ -63,7 +63,7 @@ class PackageSecurityTests(unittest.TestCase):
 
     def test_android_client_missing_matching_server_bake_fails_before_packaging(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
-            configs = Path(temp_dir) / "Configs"
+            configs = Path(temp_dir) / "Metadata"
             configs.mkdir()
             (configs / "Parallel.fomain-client").write_text("Network.ServerPort=31825\n", encoding="utf-8")
             (configs / "Serial.fomain-server").write_text("Android.PackageName=com.fonline.serial\n", encoding="utf-8")

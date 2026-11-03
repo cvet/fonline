@@ -377,7 +377,7 @@ void ScriptGenericCall(ptr<AngelScript::asIScriptGeneric> gen, bool add_obj, con
             FO_VERIFY_AND_THROW(as_ret_type, "Missing AngelScript return type info");
             bool is_ref_type = (as_ret_type->GetFlags() & AngelScript::asOBJ_REF) != 0;
 
-            // Value returns live in the generic call's ABI storage; only handle returns own an object here.
+            // Value returns live in the generic call's ABI storage; only handle returns own an object here
             if (is_ref_type) {
                 if (auto ret_obj = NativeDataProvider::ReadHandleSlot(call.RetData)) {
                     as_engine->ReleaseScriptObject(ret_obj.get(), as_ret_type.get());

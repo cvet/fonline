@@ -12,11 +12,11 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-10-26
+## Current - 2026-11-03
 
 ### Added
 
-- Client workers on `2026.1.70-dev` share a client-owned `WorkScheduler` for model poses, sprite/glyph geometry, text layout, dirty light/fog and eligible particle CPU updates. GPU work, resource access, script callbacks and ordered publication stay on the application thread. Unsupported, small and zero-worker loads stay direct. `Client.Multithreading` defaults to false; enablement qualifies neither performance nor platforms.
+- Client workers from published feature revision `4f4b7fa873a19a9e139ff26e313953e030a4138c` share a client-owned `WorkScheduler` for model poses, sprite/glyph geometry, text layout, dirty light/fog and eligible particle CPU updates. GPU work, resource access, script callbacks and ordered publication stay on the application thread. Unsupported, small and zero-worker loads stay direct. `Client.Multithreading` defaults to false; enablement qualifies neither performance nor platforms.
 - Add `Game.PrepareTextLayouts`, `Game.CanPrepareTextLayoutsInParallel` and passive `TextLayoutResult` with `Width`, `Height` and `Lines`. Measurement/drawing remains; reuse bounds with identical text/font/format/color only. Warm layouts submit no jobs.
 - Add bounded static-map preparation on the same pool. `ResourceManager` owns acquisition, factories, caches, generation/epoch cancellation, optional decoding and shutdown drain. Workers decode owning passive buffers; the owner replays sprite/atlas publication and failures in order. Exact custom-factory dispatch and independent sheet playback remain.
 - Fix HEX/SQUARE fixtures, six-to-eight Fallout directions and Clang 24 RTTI warnings. Runtime/formats stay unchanged; no migration.
@@ -45,10 +45,10 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Migration
 
-- Base: `fa15b0b7c57535af600b4212e39e2c20fa2abe4d` (`2026.1.69-dev`); next version: `2026.1.70-dev`. Preserve both published histories. Apply skipped master migrations in order, especially project-owned animation/resource splitting in version 58 and admission/restore in version 60.
-- Reconfigure/rebuild all enabled native consumers, regenerate both scripting backends' bindings and bake matching server/client metadata, assemblies and resources: added types, methods and settings change generated API metadata. Marker `81`, Managed ABI `9`, wire layouts, sprite v3, resource schemas and persisted property IDs stay unchanged. Package/roll back matching native/runtime/resource sets; no saved-data conversion.
+- Master base: `ac37c9d217b314b3f3a1f567f67be535cfe15cac` (`2026.1.98-dev`); the other published parent is `4f4b7fa873a19a9e139ff26e313953e030a4138c` (feature branch `2026.1.70-dev`, distinct from master version 70). This integration is `2026.1.99-dev`. Feature-branch users must apply skipped master migrations 70 through 98 in order.
+- Reconfigure/rebuild all enabled native consumers, regenerate both scripting backends' bindings and bake matching server/client metadata, assemblies and resources: added types, methods and settings change generated API metadata. Relative to master `2026.1.98-dev`, marker `0.0.86` and Managed ABI `9` remain unchanged by this integration. Review master versions 70–98 for their own wire, resource and migration changes. Package/roll back matching native/runtime/resource sets; no saved-data conversion.
 - Explicit-setting projects add `Client.Multithreading = False`, `Client.MultithreadingMaxWorkers = 8`, `Client.MultithreadingMaxMobileWorkers = 2`, `Client.MultithreadingHeadroomMinCores = 4`, `Render.ParallelSpriteUpdateMinCount = 4` and `Render.ParallelSpriteGeometryMinCount = 128`: direct defaults and provisional thresholds. Caps accept `0..64`; zero mobile cap and threadless Web stay serial. Config baking rejects omitted required settings; `ChooseWorkerCount` rejects invalid caps/headroom before worker startup.
-- No script callable is removed/reinterpreted relative to version 69; text-layout methods are optional. Rebuild native interfaces/layouts. Replace `SpriteManager sprites {settings, window, timer, effects, hashes};` with `SpriteManager sprites {settings, window, timer, effects, hashes, nullptr};` for direct-only use, or pass an `nptr<WorkScheduler>` borrow. The old five-argument constructor fails compilation. The scheduler outlives all sprite/resource/model/particle consumers; the client declares it first. `FogShape::Input` derives from passive `CalculationInput`; native `Prepare` callers use current scheduler/obstacle-reader parameters or documented defaults.
+- The client-worker changes do not remove or reinterpret script callables; text-layout methods are optional. Rebuild native interfaces/layouts. Replace `SpriteManager sprites {settings, window, timer, effects, hashes};` with `SpriteManager sprites {settings, window, timer, effects, hashes, nullptr};` for direct-only use, or pass an `nptr<WorkScheduler>` borrow. The old five-argument constructor fails compilation. The scheduler outlives all sprite/resource/model/particle consumers; the client declares it first. `FogShape::Input` derives from passive `CalculationInput`; native `Prepare` callers use current scheduler/obstacle-reader parameters or documented defaults.
 - Detect with `rg -n "SpriteManager|ResourceManager|ModelManager|ParticleRuntimeServices|FogShape|ParallelSprite|Multithreading|PrepareTextLayouts|TextLayoutResult" <project-source-paths>`. Use current headers; do not mix old libraries or restore retired version-58 loading/animation APIs. `ResourceManager` owns resource operations; `SpriteManager` retains rendering and its scheduler borrow.
 - Test direct, zero-worker and enabled modes with native geometry, font-layout, light/fog, preparation, pose and particle suites; then exercise ordinary visible map/UI/load/unload/shutdown and measure actual workloads. Timeline preparation may expose changes to an already prepared model next frame: see the [ownership guide](../explanation/runtime/client-multithreading.md). Native pose equality does not qualify callback order/visual equivalence. Keep the switch off until intended workloads/platforms pass.
 
@@ -66,11 +66,385 @@ Rebuild custom native particle backends/model consumers for current `ParticleRun
 
 No separate particle pool. See [particle CPU contract](../explanation/runtime/client-multithreading.md#particle-cpu-updates), [vendored maintenance](../contributing/third-party/index.md#particle-cpu-extensions) and [native input fixtures](../../../Source/Tests/README.md). Storage diagnostics, source checks and headless runs do not prove peak RSS, GPU equivalence, Android acceptance or frame-time improvement.
 
+## 2026.1.98-dev - 2026-11-02
+
+### Fixed
+
+- Recover a corrupted native updater payload within the current launch: a temporary file with a wrong size, hash or prefix is removed and requested once from offset zero, a valid prefix still resumes, and a refused removal or second failure aborts without promotion. Reject `///@ Enum <Name> <Entry> = -`.
+
+### Migration
+
+- Baseline `d6742fb78664773f64f09d497243db08106aed35` (`2026.1.97-dev`) to `2026.1.98-dev`: no conversion is required. The protocol, `MigrationRule Version` `0.0.86`, Managed ABI `9` and resource schemas are unchanged.
+
+## 2026.1.97-dev - 2026-11-02
+
+### Added
+
+- `ClientConfigBaker`, derived from `ConfigBaker` in the same module, writes complete client settings to the existing `.fomain-client` outputs. A paired `Metadata` pack has no duplicate compact client outputs.
+
+### Changed
+
+- Remove the `OGL` package token. Windows client packages and server-staged runtime payloads no longer include `_OpenGL` binaries; `package.py` rejects every pack token absent from `BuildTools/PackageInterface.json`.
+- Rename the application startup flag to `AppInitFlags::StandaloneClient`. It distinguishes the player-client application, including its runtime DLL, from client engines embedded in a server; window policy and startup behavior are unchanged.
+
+### Fixed
+
+- Verify multiple external source snapshots from the two repository checkouts using their pinned commits. Current HEAD and dirty files do not replace pinned content; unsupported repositories and missing commits or sources remain errors.
+- Load the selected client or server settings from `Metadata` before application initialization; no new profile selector or configuration cache.
+
+### Migration
+
+- Base `efefc47f3ace19b4e45428a20c2a1b12fc7f7666` (`2026.1.96-dev`); update `2026.1.97-dev`.
+- Native startup and early-hook callers must replace `AppInitFlags::ClientMode` with `AppInitFlags::StandaloneClient`. The flag retains bit `0x01`; there is no old-name alias or additional ABI/network change.
+- Keep `InitApp(args, flags)`: all applications prefer a resource `.fomain-server`, then `.fomain-client` when the server config is absent.
+- Use a shared `Metadata` pack with `Bakers=Metadata Config ClientConfig`, rebuild native roles, and rebake/repackage server and client resources together. Config outputs now live in `Baking/Metadata`; each archive retains its role metadata alongside the selected config. Retain the existing package `--config`: only its selected `.fomain-client` belongs in client resources and only its selected `.fomain-server` in server resources. Missing configs leave the startup bootstrap active; after updater synchronization a declared config is required. Multiple files of the preferred suffix fail loading. Ordinary `Bakers=Config` retains its outputs. No new config setting, sub-config selection or saved-data conversion is required.
+- Remove `OGL` from package declarations and select OpenGL with `--Render.ForceOpenGL 1` or a local setting; packaging no longer patches per-binary settings into the embedded config. An installed `_OpenGL` client finds no staged runtime update and must be replaced by the regular client.
+- Runtime compatibility advances from `0.0.85` to `0.0.86` for startup/configuration consumers. Host ABI and updater wire layout are unchanged. Preserve user preferences and CLI precedence; CLI and auto settings apply once. Builtin settings stay read-only. Changed downloaded client settings require a restart before gameplay; unchanged text proceeds directly.
+- Validate matching embedded/resource sub-configs, false/zero/empty values, removed settings, precedence, first launch, changed-config restart and subsequent launch. Web/mobile acceptance must prove persistent writes and relaunch independently.
+
+## 2026.1.96-dev - 2026-11-02
+
+### Fixed
+
+- Release a partially created Vulkan buffer and its allocated memory when memory-type selection, memory allocation or buffer binding fails. Leave caller output handles unchanged on failure and transfer ownership only after successful binding.
+
+### Migration
+
+- Baseline `1ab76a88f25c1ee9116275768e227896c5d21039` (`2026.1.95-dev`) to `2026.1.96-dev`: no project source, settings, saved-data or resource conversion is required. Rebuild Client, Mapper and other targets that include the Vulkan renderer. The successful allocation path, deferred destruction of completed resources, ABI, wire protocol, compatibility marker and resource schemas are unchanged. Normal version/metadata regeneration still applies when selecting the new Engine revision; keep clients, servers and resources on one matching revision.
+
+## 2026.1.95-dev - 2026-11-01
+
+### Fixed
+
+- Update the CMake project-interface test to expect the 62 options declared by the current interface, including `FO_MAP_MAX_SIZE` and `FO_MAP_WIDE_COORDS`. Keep exact stage/helper counts and the declaration and baking-impact checks.
+- Update the native-extension interface test to expect all 10 hooks, including the two existing map-view visibility hooks. Preserve role routing and rejection of incomplete role/path pairs.
+
+### Migration
+
+- Baseline `c1b3f7114d8c7ec7299ab936fe3c36ee20726dd1` (`2026.1.94-dev`) to `2026.1.95-dev`: no project source, settings, saved-data or resource conversion is required. These test corrections change no runtime contract, ABI, wire protocol, compatibility marker or resource schema. Run `cmake -P BuildTools/tests/validate_project_interface.cmake` and `cmake -P BuildTools/tests/validate_native_extension_interface.cmake` to verify the current interfaces. Normal version/metadata regeneration still applies when selecting the new Engine revision; keep clients, servers and resources on one matching revision.
+
+## 2026.1.94-dev - 2026-11-01
+
+### Fixed
+
+- Use scoped mutex ownership for named simulation hold control so Clang can verify every acquisition and release. Preserve startup control, non-blocking control under a drained external lock, and `VerificationException` when that control is busy.
+- Regenerate the ContentShowcase and PackagingMatrix configurations from the current Engine settings.
+- Initialize the standalone web/database option test through the real CMake helpers and provide the map-size defaults required by the project-options stage. Restore canonical formatting in the Managed `mpos(string)` constructor.
+
+- Reject an overflowing map/grid resize before changing map state; publish static-grid dimensions only with the replacement cells.
+
+### Migration
+
+- Baseline `27553fd71d553bb46c47d0c8e7de6b8e8e4301ca` (`2026.1.93-dev`) to `2026.1.94-dev`: no project source, setting, persisted-data or resource conversion is required. Rebuild every affected native role (Server, Client, Mapper, Baker and tests), because the grid template is shared. Simulation hold reasons, pause ownership, startup behavior, exception type and retry rules keep their existing meanings; a failed non-blocking acquisition leaves all holds unchanged. The example configuration defaults remain unchanged. The central `MigrationRule Version` marker, Managed ABI, wire protocol and resource schemas are unchanged by these fixes. All clients, servers and baked resources must still use the same configured Engine revision as required by the preceding map-coordinate update.
+
+## 2026.1.93-dev - 2026-11-01
+
+### Added
+
+- Add the `FO_MAP_WIDE_COORDS` CMake option (baking, default `OFF`). When it is `ON`, `mpos` and `msize` components are signed 32-bit instead of signed 16-bit. Native code names the component type `mcoord_t`. Both `ExportValueType` layouts declare the field type `mcoord`; `codegen.py` resolves it to `int16` or `int32` from the `FO_MAP_WIDE_COORDS` engine define and hashes the resolved layouts into `FO_COMPATIBILITY_VERSION`. AngelScript registers the `mpos`/`msize` fields from that metadata layout, and generated Managed C# structs follow it (`short`/`int`).
+- Add the `FO_MAP_MAX_SIZE` CMake option (baking, default `4000`) as the source of `GameSettings::MAX_MAP_SIZE`. It must be from `200` to `32767`, the `int16` coordinate range, or to `4194304` with wide coordinates. `4194304` is `GameSettings::MAP_SIZE_LIMIT`, the widest map side the client sprite draw-order key orders: the key holds a cell X in 22 bits and a screen row, at most twice a side, in 24 bits. Configure rejects a value outside the range with `FO_MAP_MAX_SIZE must be an integer from 200 to <limit> (<reason>)`, and static assertions in `Common.h` and `MapSprite.cpp` repeat the bounds; another assertion keeps pixel positions within half of the `int32` range for the configured hex size.
+- Add the `wide-coords` CI job, which runs the `unit-tests` validator with `FO_MAP_WIDE_COORDS=ON`, and run `BuildTools/tests/test_codegen_value_type_layouts.py` in the `engine-update` job.
+
+### Changed
+
+- Generated Managed `mpos` and `msize` constructors take `int` arguments at either width. 16-bit fields are narrowed under the scripts' `CheckForOverflowUnderflow` arithmetic, so an out-of-range argument throws `OverflowException`; `mpos(string)` parses through the same constructor.
+- Map area and per-map storage no longer overflow `int32` or a 32-bit `size_t`: `isize::square()` becomes `square<R>()`: the caller names the result type, and the area, multiplied as `int64_t` with `checked_mul`, converts to it with `numeric_cast<R>`, so `square<int64_t>()` keeps an area past the 32-bit range on every target and a narrower type rejects it. Allocation sites call `square<size_t>()`: static and chunked two-dimensional grids, the client hex-light buffer, the path-search block index (`checked_mul<int64_t>`), `Map.GetVisibleHexes` and the renderer readback buffers throw `OverflowException` for a size that `size_t` cannot hold instead of wrapping, and every two-dimensional grid constructor (`DynamicTwoDimensionalGrid`, `StaticTwoDimensionalGrid`, `ChunkedTwoDimensionalGrid`) is no longer `noexcept`: a negative size now throws instead of logging and leaving an empty grid. Native callers name the type they need. Cell indices derived from coordinates (grid cells and chunks, hex light, path-search blocks) are computed in `int64_t` and converted with `numeric_cast<size_t>`, so a coordinate range that a 32-bit `size_t` cannot index is detected instead of wrapping. The client hex-light buffer holds one entry per hex instead of three, of which only the first third was read. The path-goal deviation uses 64-bit arithmetic. The sprite draw-order key keeps 64 bits but is packed as `[group 6][primary 24][layer 4][sub-layer 8][secondary 22]` instead of `[8][24][8][8][16]`; the relative order of every key the engine produced before is unchanged.
+- Server static-map loading and client `MapView` construction reject a map whose `Size` is not positive (`Map size must be positive`) or exceeds `GameSettings::MAX_MAP_SIZE` (`Map size exceeds the engine maximum`). Previously only Mapper resizing enforced the limit.
+
+### Migration
+
+- Baseline `50e1ddb1ea7405d9b52ef44ec338fa4d473e4cac` (`2026.1.92-dev`); this unpublished working change is `2026.1.93-dev`. Affected roles: native Server, Client, Mapper, Baker and unit tests, `codegen.py`, the AngelScript and Managed backends and the CMake project interface.
+- Default builds keep 16-bit coordinates. Native layout, network message bytes, baked property data, database documents and resource schemas are unchanged. `FO_COMPATIBILITY_VERSION` still changes because the declared layout text is hashed: rebuild and deploy clients, servers and resources from the same revision; mixed old/new builds fail the compatibility check. The `MigrationRule Version` marker stays `0.0.85` and Managed ABI `9` is unchanged. No data conversion or `MigrationRule` is required, and rollback restores the complete matching baseline artifact set.
+- Map size limit: a map larger than 4000 cells per side that was authored outside the Mapper used to load; it now stops server startup or client map loading with `Map size exceeds the engine maximum`. Detect it with `rg -n "^Size\s*=" --glob "*.fomap"` and compare both numbers with the limit. To keep such maps, add `SetOption(FO_MAP_MAX_SIZE <largest side>)` to the project `CMakeLists.txt` before `StartProjectGeneration()`, reconfigure, rebuild and rebake. A value outside the allowed range fails compilation with `FO_MAP_MAX_SIZE is out of range`, `FO_MAP_MAX_SIZE exceeds the sprite draw-order key range` or `FO_MAP_MAX_SIZE exceeds the int32 pixel range for this hex size`.
+- Native code: `GameSettings::MAX_MAP_SIZE` keeps its name and default value. Use `mcoord_t` instead of `int16_t` for map coordinates and for loop counters over map dimensions, `numeric_cast<mcoord_t>` instead of `numeric_cast<int16_t>` when narrowing into `mpos`/`msize`, and `sizeof(mcoord_t) * 2` instead of a literal `4` for their size. Detect candidates with `rg -n "int16_t" SourceExt` (or the project's native source roots) near `mpos`, `msize`, `GetHex` and `GetSize`. Default builds keep compiling the old code; with `FO_MAP_WIDE_COORDS=ON` narrowing a component into `int16_t` is reported by the compiler.
+- Native code: replace `size.square()` with `size.square<size_t>()` where the area sizes a container or buffer, and with `size.square<int64_t>()` where it is a value; inside a template on the size type write `size.template square<size_t>()`. The old call no longer compiles because the result type cannot be deduced (MSVC `C2783`, GCC/Clang "couldn't deduce template parameter"), and the conversion throws `OverflowException` for a negative area or one the named type cannot hold. Detect callers with `rg -n "\.square\(\)"`. Grid constructors (`DynamicTwoDimensionalGrid`, `StaticTwoDimensionalGrid`, `ChunkedTwoDimensionalGrid`) are no longer `noexcept` and throw for a negative size; construct them where an exception can propagate.
+- Managed scripts: `new mpos((short)x, (short)y)` and `new msize((short)w, (short)h)` keep compiling with the same meaning; the casts are no longer required, and `new mpos(x, y)` with `int` arguments now compiles and throws `OverflowException` for a value the component type cannot hold. Reading a field into `int` works at both widths; storing it in `short` or passing it to a `short` parameter compiles only with 16-bit coordinates (`CS0266` otherwise). `mpos(string)` keeps throwing `FormatException` for non-numeric text and `OverflowException` for an out-of-range value.
+- AngelScript scripts see `int16` or `int32` fields as selected; the `mpos(int x, int y)` constructor keeps its signature and range check. Use `int` locals for components to stay width-independent.
+- Enabling wide coordinates: add `SetOption(FO_MAP_WIDE_COORDS ON)`, reconfigure, rebuild every native and Managed role and rebake all resources; the option is part of the baking configuration hash, so the Baker rebuilds the complete set. Network messages and baked property data grow by four bytes per position; per-hex grids do not grow. Database documents store coordinates as numbers and load unchanged. Switching back to 16-bit fails to load any stored coordinate above 32767, so keep the pre-switch database backup for rollback.
+- Acceptance owners are `Map coordinates use the configured component width`, `MapManagerRejectsMapLargerThanEngineMaximum`, the generated-type checks in `Test_ManagedScriptBaker.cpp`, `test_codegen_value_type_layouts.py`, and the complete unit-test suite in both the ordinary `unit-tests` and the `wide-coords` CI jobs.
+
+## 2026.1.92-dev - 2026-11-01
+
+### Added
+
+- Add the client-only `Critter.VisualOffset` (`ipos`, pixels): a mutable, unsynchronized, non-persistent offset that `CritterHexView::RefreshOffs` adds to the movement, extra and animation offsets of the critter's map sprite; the client refreshes the offsets from the property's post-setter. A client script can now draw a critter off its logical position, for example along a smooth flight curve over a hex path, without changing logical state. Zero draws exactly as before.
+
+### Migration
+
+- Base `680c444d1d54d5120e1cb87b080cbe14dd81a081` (`2026.1.91-dev`) to `2026.1.92-dev`: additive; no source/data conversion. Rebuild all native roles/tests and Baker, then rebake all metadata and managed roles together. The new Critter property is registered after `LightColor`, so the registry index of every Critter property declared after it, including all embedding-project Critter properties, advances by one; the manual compatibility marker advances from `0.0.84` to `0.0.85`, and mixed old/new executables and resources are refused. Existing scripts, prototypes, maps and saves are unaffected: the property is client-only, not persisted and not synchronized, defaults to zero and changes no rendering until a script sets it. Managed ABI `9` is unchanged. Roll back matching executables and resources together.
+
+## 2026.1.91-dev - 2026-10-31
+
+### Fixed
+
+- Keep an event chain running after a Managed handler without a result faults. `Native.InvokeEvent` and the generated `AdaptInvoke` reported the fault and handed `StopChain` back for every handler, so `Entity::FireEvent` took a failed `void` or `Task` handler for a decision and skipped every lower-priority subscriber. On a client the first faulting `Game.OnStart` handler kept back the subscriber that connects to the server, and the player stayed on a black screen. A handler without an explicit result now returns `ContinueChain` after its fault is reported once; a handler that returns `EventResult` still ends the chain with `StopChain`. `Entity::FireEvent` reports a `StopChain` from a callback without an explicit result as a contract violation, and `ServerEngine::FireEvent` and `ServerEntity::FireEvent` delegate to it instead of repeating the loop. See [exception safety](../contributing/coding-contracts/exception-safety.md).
+
+### Migration
+
+- Base `56683c4737ebbb1386ae3365be49416ac1678432` (`2026.1.90-dev`) to `2026.1.91-dev`: no setting, data, resource or save conversion is required. Rebuild every native role and rebake the managed scripts, because the generated event adapters change. A Managed handler declared without a result can no longer refuse an event by faulting: its fault is reported once and the event result stays `ContinueChain`, so login, load and startup gates proceed. A handler that must be able to refuse returns `EventResult` or `Task<EventResult>`. A native C++ subscriber that returns `StopChain` must set `EventCallbackData::HasExplicitResult`; without it `Entity::FireEvent` reports a contract violation and still stops the chain. AngelScript handlers keep their behavior, because their exceptions still reach `Entity::FireEvent`. The central migration marker, Managed ABI, event frame layout and resource schemas are unchanged. Acceptance: run `EventChainStopsOnlyForCallbacksWithExplicitResult` and the ManagedScriptBaker event tests natively, then start a client whose `Game.OnStart` handler throws and check that the connecting subscriber still runs.
+
+## 2026.1.90-dev - 2026-10-30
+
+### Changed
+
+- Make `ServerEngine::ValidateServerSnapshotState` a public static preflight. An embedder can apply the restore constructor's structural snapshot checks to a stored `ServerSnapshotState` before it stops a live session; the check reads no world and does not decide compatibility or content identity, which remain the caller's checks. `CreateSnapshot()` and snapshot restore keep calling the same validator.
+
+### Fixed
+
+- Permit named `HoldSimulation(reason)` / `ReleaseSimulationHold(reason)` from the same server's drained off-main external `Lock()`. Busy control under that lock throws `Simulation control is busy; retry after releasing the external lock` before any hold changes instead of waiting for a controller that may itself wait for the lock; outside callers still wait. Quiescence callbacks, the main worker's own `Lock()` and ordinary job/script contexts still refuse before mutex acquisition. `Unlock()` now verifies that the external lock belongs to the calling server, and the first hold under a matching external lock drains through it instead of locking again. See [calling contexts and busy retries](../explanation/runtime/server.md).
+- Reject a requested sub config in a packaged build without an unconditional-throw loop, removing MSVC C4702 from `LoadAppSettings`; the first requested name is still reported.
+
+### Migration
+
+Base `f2a8756706384c0dfe5aa77cb03caf3a7ec04475` (`2026.1.89-dev`) to `2026.1.90-dev`: rebuild native roles and the unit-test target. No settings, data, resource or save conversion is required. Callers outside `ServerEngine` use `ServerEngine::ValidateServerSnapshotState(state)` and catch `ServerSnapshotException`; there was no earlier public spelling. A controller that held an external `Lock()` used to receive `Simulation control must be requested outside a server execution context` for named hold changes; it may now change holds under the lock, but must handle the busy exception by unlocking, then retrying or reconciling its own earlier mutations. Existing outside, startup and refused contexts keep their behavior. Network protocol, the `MigrationRule Version` compatibility marker `0.0.84`, Managed ABI `9`, updater generation and resource schema are unchanged; deploy and roll back matching native binaries together.
+
+## 2026.1.89-dev - 2026-10-30
+
+### Fixed
+
+- Reject a non-handshake first application message as a protocol error without reporting an engine exception or affecting other connections.
+- Qualify the integration test server helper so its call remains unambiguous in Unity builds. Check snippet corpus coverage without fixing the test to one documentation revision, and regenerate the snippet report for the current corpus.
+
+### Migration
+
+- Base `522d825ef32dfdcd3889ffdba664f9f0dfee5293` (`2026.1.88-dev`) to `2026.1.89-dev`: rebuild native server roles to apply the invalid-input handling change. Valid messages, project source, settings, data, saves, ABI, wire protocol and resource formats remain unchanged; no conversion or deployment pairing is required.
+
+## 2026.1.88-dev - 2026-10-30
+
+### Fixed
+
+- Let a restarted server reopen its WebSocket port on POSIX while the previous process's closed connections still hold it in `TIME_WAIT`. `NetworkServer_WebSockets` now sets `SO_REUSEADDR` before `listen` on every platform except Windows, so a normal stop followed by a fast start no longer spends `ServerNetwork.ListenRetryTime` on `Address already in use (system:98)`. A live listener, with or without the option, still refuses the bind; Windows keeps its default because there the option would let a second process share a live port. Each `ServerEngine::StartConnectionServer` retry line now ends with the failure it follows. See [listener retries](../explanation/authority-and-networking/index.md#a-listener-that-cannot-bind-is-retried-before-the-startup-gives-up).
+
+### Migration
+
+- Base `e8eb12f279b70c73852bdc0fb1a24ae51b5927bc` (`2026.1.87-dev`) to `2026.1.88-dev`: no project source, setting, script, content or saved-data conversion is required: no API, setting, message or file format is added, removed or reinterpreted. Rebuild every native server role with the matching Engine revision. The retry log lines gain a trailing `: <reason>` suffix after the existing text, so match them by their prefix. The central migration marker stays `0.0.84`, Managed ABI `9` and every resource schema are unchanged, and the listener option is not part of the wire protocol, so deployment order and rollback need no pairing. A server built before this step leaves `TIME_WAIT` sockets without `SO_REUSEADDR` when it closes connections first, and one new listener with the option does not bypass them: the first restart over such a build may still wait for them to expire, and neither a different port nor an unbounded retry is a remedy. Acceptance: run the `NetworkServerWebSockets*` cases and `SecureChannelRunsOverWebSockets` natively on Linux as well as Windows, because the `TIME_WAIT` regression can fail only where the kernel reserves the port.
+
+## 2026.1.87-dev - 2026-10-29
+
+### Added
+
+- Add the `Game.CreateItem(protoId, properties)` overload for `Dictionary<ItemProperty, any>`. It uses `SetValueAsAnyProps` to apply mutable overrides, including complex values, to a prototype copy before `OnItemInit` and `InitScript`. Immutable, disabled and virtual keys are rejected before item registration; an unknown prototype fails before creation.
+- Expose `MapSpriteHolder.Elevation`, applied when attaching the client-local sprite independently of `Offset`.
+
+### Fixed
+
+- Remove the unpublished Common-property snapshot bypass. Initial item packets again use ordinary PublicSync/OwnerSync filtering and two visibility caches; immutable Common and NoSync values are excluded.
+- Rebuild dynamic roof groups after coverage changes and preserve the selected hidden-roof hex. Clearing old groups reads absent chunked-map cells without allocating their storage.
+
+### Migration
+
+- Baseline `f116c907c192b1ca3e243d1538705c831a7dd362` (`2026.1.86-dev`); this unpublished working change is `2026.1.87-dev`. Existing integer-property `CreateItem` overloads and `StoreData(with_protected)` retain their semantics. Replace the unpublished `CreateItemWithInitialProperties` name with `Game.CreateItem(pid, new Dictionary<ItemProperty, any> { [ItemProperty.Offset] = "7 -11" })`; the old callable is removed. This overload enforces Mutable through the ordinary property setter: define immutable structure in the shared prototype. Keep ordinary mutable integer overrides on the existing integer overload. Native item initialization still resets ownership and placement fields; call `MoveItem` to place the returned item. Existing prefab/save-layout business transformations remain project-owned.
+- `Entity::StoreData(with_protected)` and `Properties::StoreData(with_protected)` retain their ordinary signature and synchronization semantics. Drop the unpublished second inclusion argument and any reliance on unsynchronized Common transport. `PicMap`/`Offset` already have PublicSync; unsynchronized structure must match shared prototypes. The working compatibility gate advances from the published `0.0.83` to `0.0.84`; rebuild and deploy the matching artifact set rather than mixing earlier local experiments with this corrected build.
+- Regenerate API models/references and metadata; rebuild native Baker, server, client, Mapper and tests, then rebake all affected script/resource roles and package the matching set. The new public field changes the private/native holder layout: do not mix old object files and new headers. Deploy matching binaries/resources together; old/new mixed artifacts must fail compatibility. Managed ABI `9` and database/resource schemas stay unchanged; no saved-data conversion is required for these additions. Rollback restores the complete matching baseline artifact set and the project's previous compatible snapshot/layout data when project migrations changed it.
+- Retain the current `HasFactory`/`NativeRefTypeLifetime` implementation from published `.29` and later fixes: `new MapSpriteHolder()` uses the native factory, and drawing cleanup is `StopDraw()` followed by `Dispose()`. Do not restore public `__Factory`, `__AddRef`, `__Release` or the superseded temporary-wrapper constructor. This reconciliation adds no new ownership API.
+- Acceptance owners are `ServerItemCreationAnyPropertiesRespectMutability` (mutable scalar/complex overrides, prototype and sibling isolation, immutable-input rejection before registration), `PropertiesSnapshotNeverTransmitsUnsyncedProperties` (public/owner filtering, immutable Common and NoSync exclusion, prototype-backed/full storage, cache alternation and invalidation), `PropertiesOverlayFiltersAndCopies`, `MapViewDynamicRoofGroupsFollowCoverageChanges`, Managed ref-type constructor/lifetime tests, and the embedding project's item-init, preview, migration and restore routes.
+
+## 2026.1.86-dev - 2026-10-29
+
+### Fixed
+
+- Correct the migration record of the `Client.UserWritablePath` replacement in `Docs/contract-change-dispositions.json`. It told projects to supply `--UserWritablePath <path>`, a spelling `ResolveWritableRoot` never recognized: the early writable-root scan matches only the fully qualified `Common.UserWritablePath` option, so the unqualified flag was accepted as an unrelated custom setting and the process kept the portable working-directory layout. The record now names `--Common.UserWritablePath <path>`, as the configuration reference, the release operations guide and the client updater guide already did. No unqualified alias is added; the supported spellings, `*`, the installer marker and the portable fallback are unchanged. A documentation test now ties the supported spelling to `ResolveWritableRoot` and rejects the unqualified spelling in the English and Russian guides and in the ledger.
+
+### Migration
+
+Base `47f2e992cd0dbbb1c3bad0f8ba52140d50a0c8c4` (`2026.1.85-dev`) to `2026.1.86-dev`: documentation correction only. No source, settings, data or save conversion is required. Search launch scripts, service registrations, Android launchers and CI for the unqualified spelling with `rg -n --pcre2 '(?<![\w.])--?UserWritablePath\b'` and replace every hit with `--Common.UserWritablePath <path>` (or `-Common.UserWritablePath <path>`); `*` as the path still selects the per-user directory. A process that was started with the unqualified flag has been using the working-directory layout, so data it wrote there stays there: move it deliberately before the switch, otherwise the process starts on an empty writable root. Network protocol, the `MigrationRule Version` compatibility marker, Managed ABI, updater generation and resource schema are unchanged, so mixed deployments remain compatible and rollback restores the previous text only.
+
+## 2026.1.85-dev - 2026-10-29
+
+### Fixed
+
+- Drop only the offending connection when a peer sends a malformed or truncated frame after the handshake or after login, instead of reporting it as an engine exception. `NotLoggedInPlayerJob()` and `PlayerJob()` now treat every `NetBufferException` (including `UnknownMessageException`) as a protocol fault of that peer: one warning with the remote host/port and the exception's message and context values, then a `ProtocolError` hard disconnect. In non-interactive and headless mode a reported exception requests application quit, so a single `Ping` frame with a missing sender clock used to stop the whole server; other connections and other exception types are unaffected, and the application exception policy is unchanged.
+- Report the real read position, frame end and buffered end in `NetBufferException` context values. `NetInBuffer` and `NetOutBuffer` captured them after `ResetBuf()` had zeroed them, so `Invalid read length`, `Invalid shrink pos`, `Invalid discard length`, `Incoming network message extends past buffered data` and `Property data count exceeds remaining buffer` printed zeros.
+
+### Migration
+
+Base `843a470bb47c20cb7be609e40c461646dbfdab66` (`2026.1.84-dev`) to `2026.1.85-dev`: server-side handling of malformed peer frames and exception context values. Rebuild the server roles and the unit-test target; no client, source, settings, data, resource or save conversion is required, and no scripting API changes. A malformed `Ping` (or any other `NetBufferException` raised while a not-logged-in or logged-in player's input is read) no longer reaches the exception reporter, so log monitors that count `NetBufferException` console records for peer framing faults will instead see the `Invalid network data from host <host>:<port>: <message> (<context>)` warning (`Invalid handshake data` before the handshake completes); internal exceptions keep their reports. Detection: search server logs for those warnings; to prove the project does not depend on the old behavior, search custom monitors for the exception name. Network compatibility marker, runtime `0.0.82` and Managed ABI `9` remain unchanged; client and server builds of the same compatibility set interoperate in either order and roll back independently.
+
+## 2026.1.84-dev - 2026-10-29
+
+### Fixed
+
+- Correct the BuildTools README for the current documentation pipeline. It named 20 generated contract models for `docs_description_translations.py`, which inventories the 19 models of `MODEL_PATHS`; it promised a later switch of the description catalog from `registered-translations-current` to `complete`, although the committed catalog already enforces `complete`; and it said that all generated JSON and Markdown is checked in, although the `llms` endpoints, shared manifest, navigation/search indexes and validation catalogs are ignored outputs that `docs_prepare.py` rebuilds, with the public root endpoints under `Workspace/Documentation/`. Both language editions now state the actual model count and separate the versioned contract models, references, images and translations from those build outputs. `test_docs_description_translations.py` compares the model count stated in both READMEs with `MODEL_PATHS`, and the Russian README carries the translation hash of the new English text. The strict localization check, which rejects any stale hash, is unchanged.
+
+### Migration
+
+Base `c80e173595deea1853b93d70304e2c1c6d729162` (`2026.1.83-dev`) to `2026.1.84-dev`: documentation and documentation-test correction only. No source, settings, data or save conversion is required and no rebuild or redeployment is needed. Network protocol, runtime `0.0.82`, Managed ABI `9`, updater generation and resource schema are unchanged, so mixed deployments remain compatible and rollback restores the previous text.
+
+## 2026.1.83-dev - 2026-10-29
+
+### Added
+
+- Add separate `CheckViewMapCritterVisibilityHook` and `CheckViewMapItemVisibilityHook` native hooks with opaque nullable Entity context and view center. Initial and live dynamic-subject admission share the hooks; critter visibility modes are retained and sent. Projects define null policy; generated fallbacks allow all subjects within Engine lifetime/radius bounds. Add `Player.RefreshViewMapVisibility(map)` for policy changes without map reload. See [bounded views](../explanation/runtime/server.md#bounded-map-views).
+
+### Migration
+
+- This step follows `629ea6f569f7af460a41fc1d582dd948fdcc6a97` (`2026.1.82-dev`) in `2026.1.83-dev`. Update every `ViewMapArea(map, hex, radius)` call to `ViewMapArea(map, hex, radius, context)` on Managed C# and AngelScript; use null only when the project's hooks intend an unrestricted view. `ViewMap(map, hex)` remains the detached full-map entry and supplies null internally. Remove the unpublished `ViewMapAreaFilteredItems` / `RefreshViewMapItemFilter` integration: context-aware hooks and `RefreshViewMapVisibility` replace its property selector and ID lists, with no aliases. Native `Player::SetViewMap` / `Map::SetSpectatorArea` take `nptr<Entity>` context after radius. Cover the live context for opening and explicit refresh. Hooks must synchronously read covered state without mutations, callbacks, yielding or lock acquisition; deferred native dispatch owns missing independent cover and validates subscription identity.
+- Rebuild all affected native roles, regenerate both scripting backends and bake matching server/client metadata and assemblies. Hook presence and changed API shape change the automatic runtime digest; the current change's central migration marker is `0.0.83`, Managed ABI remains `9`. No network message or resource schema changes. Mixed preceding binaries/resources are unsupported; rollback restores a matching set together. Context and subscriptions are runtime-only, so no persisted-data conversion is needed. Full-map subjects now pass the same hooks; projects that override them must explicitly choose null behavior.
+
+## 2026.1.82-dev - 2026-10-28
+
+### Fixed
+
+- Regenerate the MinimalMultiplayer distribution config with the declared native `Baking.FilterResources = False` default. The generated example stays current with the settings source and retains its full-output packaging policy.
+
+- Explicitly select the client/server integration fixture's server factory in the two new UDP regressions, avoiding ambiguous helper lookup when Unity batches include other server fixtures. Test names, assertions and runtime behavior remain unchanged.
+
+- Bound the UDP updater resume fixture's client silence timeout within its polling window, so losing the best-effort disconnect datagram does not outlast the test. Production timeouts, polling bounds and all partial-file/resume assertions remain unchanged.
+
+### Migration
+
+Base `59deea3d01c8ca7d306c83e7c65967bcc57d0270` (`2026.1.81-dev`) to `2026.1.82-dev`: no project source, settings or save conversion is required. The example now explicitly records the existing native default; embedding projects retain their chosen resource-filtering policy. Check the generated example with `python Examples/MinimalMultiplayer/generate_config.py --check` and run `python BuildTools/tests/test_minimal_multiplayer_package.py`. Rebuild the native test target and run the complete `RunUnitTests` target in ordinary and Unity configurations, including both UDP regressions. Reconfigure, rebuild and rebake the example with its matching Engine revision before packaging; generated metadata carries the Engine version. Runtime `0.0.82`, Managed ABI `9` and resource-usage manifest `1` remain unchanged. Deploy and roll back matching configuration, binaries and bakes together.
+
+## 2026.1.81-dev - 2026-10-28
+
+### Fixed
+
+- End an established UDP session as a lost connection when the transport fails after the server answered the handshake. `ClientConnection` used to keep treating that session as still connecting, so a UDP send error in the middle of a download or of play opened a new TCP connection over it; the server saw a second session, the game client raised "Cur player is already set", and the updater was rejected with "Update file list was already received" and ended as `Failed`. The UDP-to-TCP fallback now covers only the connection phase, from the UDP connect until the handshake answer. A later transport failure takes the ordinary disconnect route: the updater reports `ConnectionFailed`, keeps the confirmed bytes of its temporary file and resumes from them on the next launch. The updater's own once-per-session file-list check is unchanged.
+
+### Migration
+
+Base `fcac7eb0824ea23a67fa4e2bd8804d4e03fdda98` (`2026.1.80-dev`) to `2026.1.81-dev`: client-side connection behavior fix. No source, settings, data or save conversion is required. Rebuild and redeploy client roles; a client without the fix keeps working against a fixed server and the other way round. Network protocol, runtime `0.0.82`, Managed ABI `9`, updater generation and resource schema are unchanged, so mixed deployments remain compatible and rollback restores the previous behavior.
+
+## 2026.1.80-dev - 2026-10-28
+
+### Fixed
+
+- Give the AngelScript attribute validator distinct translation-unit-local names for its preprocessor user-data slot and diagnostic helpers, allowing it to share a Unity batch with the backend and remote-call implementation. The slot value, script declaration text and source-location mapping retain their meanings.
+
+- Give translation-unit-local AngelScript test helpers distinct names and explicitly select shared fixture owners in Unity batches. Keep test names, assertions and embedded script sources unchanged; give the advanced-operation test macros distinct names as well.
+
+- Preserve the Windows SDK socket-header memory macros and their transitive expansions across macro cleanup, so late Asio includes compile in Unity batches.
+
+### Migration
+
+Base `28c84c5d9d21f5a33b2122977314383842dfe414` (`2026.1.79-dev`) to `2026.1.80-dev`: rebuild affected AngelScript native targets in both ordinary and Unity configurations. Run the complete `RunUnitTests` target in ordinary and Unity builds so both the full test source list and its resource-usage dependency exercise the matching backend. Rebuild Windows targets and compile the real SDK socket headers after Windows macro cleanup, including Unity builds with late Asio includes. No project source, settings, save or resource-schema conversion is required; the changes affect private C++ names and Windows header macro availability. Runtime `0.0.82` and Managed ABI `9` remain unchanged; deploy and roll back the matching native revision and build configuration together.
+
+## 2026.1.79-dev - 2026-10-28
+
+### Changed
+
+- `Baking.FilterResources` defaults to `False`: package all available current
+  outputs without root catalogs. `True` retains typed-root/dependency filtering.
+  Both retain manifest/required-output validation and target/pack-role exclusions.
+
+### Fixed
+
+- Normalize WinAPI generator header fixtures before explicit CRLF conversion so continued-comment tests exercise valid LF and CRLF headers on either checkout line ending.
+
+### Migration
+
+- Base `a015f258b6e4cfe1c35e53f5439d7d6bf438276d` (`2026.1.78-dev`). Reconfigure,
+  rebuild/rebake. Set `Baking.FilterResources = True` for the previous selection;
+  omit it or use `False` for all outputs, removing filtering-only catalogs.
+  FixedType uses `.foinfo`. No save conversion; manifest `1`, runtime `0.0.82`
+  and Managed ABI `9` unchanged. Roll back matching config/binaries/bakes.
+- Native `ResourceUsage::CreateManifest` now takes `filter_resources` after
+  `build_hash, config_hash`, before callbacks; `true` preserves old selection.
+
+## 2026.1.78-dev - 2026-10-28
+
+### Fixed
+
+- Preserve the FOFRM grammar and script-owned critter animation fragment IDs in the Russian image guide, restoring links from the changelog and sprite root motion guide.
+- Record the published movement-clock compatibility transition from runtime `0.0.81` to `0.0.82` in the aggregate contract ledger, including coordinated rebuild, deployment and rollback requirements.
+
+- Isolate Unity fixtures from inherited CI overrides, supply the web/database option fixture with the required valid batch size, update the reviewed snippet-corpus counts for the new build example, normalize the new test comment punctuation, and qualify the added Map visibility test helpers for Unity compilation.
+
+- Exclude managed build-tool bin/obj output from the rendered documentation site and reject it in the artifact audit while retaining authored tool sources.
+
+- Discover SDK macro definitions through continued lines, comments and C/C++ literals without admitting directive-like documentation or losing genuine commented-prefix directives. Preserve raw-string line pairs and numeric separators, and run the registry/header regressions in the Engine update CI job. Macro selection, allowlists and output formatting retain their existing contracts.
+
+### Migration
+
+Base `248465a278cadec22004b9c461c2f3be41659a5e` (`2026.1.77-dev`) to `2026.1.78-dev`: SDK-header discovery, CI regression-fixture and documentation corrections. Rebuild the generator and run its registry/header tests; regenerate the documentation site and AI delivery, then rerun the focused Unity, temporary-compatibility and snippet checks. Refresh any SDK inventory only against pinned metadata and SDK inputs, preserving the existing allowlist. No source, settings, data or save conversion is required. Runtime `0.0.82` and Managed ABI `9` remain unchanged; matching deployment and rollback sets remain compatible.
+
+## 2026.1.77-dev - 2026-10-28
+
+### Added
+
+- Add server `Map.GetMovableHexesInSight(origin, radius)`; see the [query contract](../explanation/maps-and-movement.md#line-tracing).
+
+### Migration
+
+- Base `9f07d5b17eb54b0f3b6adceffabbefddaeb603e5` (`2026.1.76-dev`) → `2026.1.77-dev`. Additive API; existing values and saves are unchanged. Regenerate bindings/metadata, rebuild native roles and rebake matching resources. The inherited runtime `0.0.82` and Managed ABI `9` remain; adopt/roll back binaries, assemblies and resources together.
+
+## 2026.1.76-dev - 2026-10-28
+
+### Added
+
+- Add registry-backed generation of `Source/Essentials/WinApiUndef.inc` through `BuildTools/WinApiUndefGenerator/WinApiUndefGenerator.Cli.csproj`. The generator reads the official `Windows.Win32.winmd` and installed SDK headers, adds only actual macro aliases with PInvoke evidence or a generic A/W alias, preserves macro-only entries and the compile-proven allowlist, and removes allowlisted active `#undef` lines. Repeated generation is byte-identical. Pin the metadata package version and record its hash.
+- Add a dedicated `unity` job to `validate.yml` for independent validation of CMake Unity compilation. The job sets `FO_UNITY_BUILD=ON` and `FO_UNITY_BUILD_BATCH_SIZE=32`, runs the Unity configure/build fixtures, and then runs the ordinary `unit-tests` validator. It runs for `all` and can be selected manually with `job: unity`. The existing `unit-tests` job retains independent translation units, and bundled third-party targets remain excluded from Unity compilation.
+- Add opt-in CMake Unity builds for first-party core libraries and applications. `FO_UNITY_BUILD=ON` selects `BATCH` mode; `FO_UNITY_BUILD_BATCH_SIZE` defaults to `32` and accepts only positive decimal integers. Ordinary independent translation units remain the default, and bundled third-party targets are not combined. Resolve duplicate internal identifiers and cross-source macro leakage in their owning sources rather than excluding whole subsystems.
+
+### Migration
+
+- Base `6946ad2d1dc7b39487206d2015d1e24f63dea882` (`2026.1.75-dev`) to `2026.1.76-dev`: reconfigure affected build directories. Existing configurations retain `FO_UNITY_BUILD=OFF`; to opt in, configure with `-DFO_UNITY_BUILD=ON` and optionally a positive `-DFO_UNITY_BUILD_BATCH_SIZE=<N>`, then rebuild affected targets. Use the generator when maintaining the Win32 macro inventory, review the generated file and run both Unity and ordinary Windows builds. No callable API, persisted data, resource schema, runtime compatibility marker, Managed ABI or baking configuration hash changes are introduced; no source, saved-data or runtime migration is required. Rollback restores the preceding Engine revision, generated inventory inputs, CI and build configuration together.
+
+## 2026.1.75-dev - 2026-10-27
+
+### Fixed
+
+- Derive runtime-owned settings from native `SettingNames` constants in all three example configuration generators. The native lexical masker excludes comments and literals, so generated defaults no longer assign values supplied by runtime initialization.
+- Keep unloaded Mapper test maps alive through terminal inspector, undo and redo assertions, avoiding reads through destroyed map references.
+- Add `ScriptExceptions.OpenCaptureScope()` for deliberate failure-injection tests. Captured reports retain their original text and every enclosing/global exception count while avoiding native error notification and unattended application shutdown. Capture follows the logical async flow and ends on disposal; unrelated flows and deferred Task faults keep ordinary native reporting.
+- Check the shared service-start flag in registration/documentation regressions and normalize source-comment punctuation and regression-test layout without changing the affected executable code.
+
+### Migration
+
+Base `56287b1974adcedd3d0a3ec641e9a9eb49ff5247` (`2026.1.74-dev`) to `2026.1.75-dev`: regenerate each example with its `generate_config.py`, then run `--check`. Existing callers require no source or saved-data conversion; harnesses may explicitly capture deliberate reported failures with the new CoreScripts helper and must retain exact exception assertions and acknowledgements. Rebuild native roles and rebake managed scripts/resources as a matching deployment set. Runtime `0.0.82`, Managed ABI `9`, existing APIs and data formats remain unchanged from this base; roll back matching binaries and resources together.
+
+## 2026.1.74-dev - 2026-10-27
+
+### Fixed
+
+- Stamp movement packets with monotonic send time instead of frame time, preventing false catch-up that made NPCs teleport to route endpoints.
+- Remove the full-context AI documentation byte limit so complete changelogs and owning guides remain available without abbreviation.
+
+### Migration
+
+Base `497af3a8d718fd7cd9074ac278a0021411c63bb6` (`2026.1.73-dev`) to `2026.1.74-dev`: rebuild native roles/tests and regenerate documentation outputs; no source/data conversion. The generated documentation manifest no longer publishes `full_context.max_bytes`; consumers must not require it. Native/script APIs and data layouts are unchanged; runtime advances from `0.0.81` to `0.0.82`, while Managed ABI `9` stays unchanged. Deploy matching artifacts.
+
+## 2026.1.73-dev - 2026-10-26
+
+### Migration
+
+Base `00c3c4cf5207ec7080179e4c9d455221ff1149d4` (`2026.1.72-dev`) to `2026.1.73-dev`: comment-only change; no migration is required.
+
+## 2026.1.72-dev - 2026-10-26
+
+### Fixed
+
+- Fix full-range synctime getters; repair test bytecode/lifetime/service assertions.
+
+### Migration
+
+- Base `3cc3a490b8f5700a6370a4192f526bcaa1d04ab1` (`2026.1.71-dev`). Rebuild/rebake; no source/data conversion. Units, APIs, formats, runtime `0.0.81` and Managed ABI `9` unchanged. Roll back matching artifacts.
+
+## 2026.1.71-dev - 2026-10-26
+
+### Fixed
+
+- Fix libc++ noexcept checks, local types, search focus/selection and backup links; refresh example defaults.
+
+### Migration
+
+- Base `4dc5c55f59240f45e0e2d9f9f2564261b3ffa471` (`2026.1.70-dev`). APIs/settings/values/formats, runtime `0.0.81` and Managed ABI `9` unchanged; no conversion. Rebuild/regenerate docs; rollback matching artifacts.
+
+## 2026.1.70-dev - 2026-10-26
+
+### Fixed
+
+- Correct square camera shifts, typed `ScriptFunc` handle storage/cleanup and project Git build-hash dependencies, including packed refs/worktrees. Snapshot fixtures use runtime metadata; retain upstream isolation and shutdown checks.
+
+### Migration
+
+- Base `fa15b0b7c57535af600b4212e39e2c20fa2abe4d` (`2026.1.69-dev`) → `2026.1.70-dev`: reconfigure, rebuild native/extensions and rebake. No source/save conversion: borrowed results, cover, coordinates and compiled Baker identity retain meaning. Runtime `0.0.81`, Managed ABI `9`, persisted formats and RPC wire arguments are unchanged.
+
 ## 2026.1.69-dev - 2026-10-26
 
 ### Migration
 
-Base `6cff188c9b644732ab4e330c47a6cbdf739fcbcc` (`2026.1.68-dev`) to `2026.1.69-dev`: combine the published FOFRM/resource/time branch with master. Runtime compatibility becomes `0.0.81`; Managed ABI remains `9`. Regenerate bindings/metadata, rebuild extensions/all roles and force-rebake. Deploy/roll back matching binaries, assemblies, sources and packs together; mixed generations fail. Saved values/network units keep meaning. Validation: Windows only.
+Base `6cff188c9b644732ab4e330c47a6cbdf739fcbcc` (`2026.1.68-dev`) to `2026.1.69-dev`: integrate FOFRM/resources/time. Runtime compatibility becomes `0.0.81`; Managed ABI remains `9`. Rebuild/rebake all roles and deploy matching artifacts. Saved values/network units keep meaning.
 
 - Image import frames replace Width/Height with `isize32 Size` and NextX/NextY with `ipos32 Motion`. Placement remains `Offset`: BAM signed centers and SPR bbox/center anchors, including shared frames, are placement; FRM/ART deltas remain motion. FOFRM Move/FrameMoves become Motion/FrameMotions; obsolete keys fail before dependency resolution. Checked narrowing and SpriteResource v3 layout remain.
 - Native sprite renames: GetCurSpr → GetCurrentSprite, GetSpr → GetSprite, GetDir → GetDirection, GetDirCount → GetDirectionCount, GetStateAnim/GetActionAnim → GetStateAnimation/GetActionAnimation, GetSprOffset(frame) → GetSpriteOffset(frame), RefreshParams → RefreshParameters, Sprite::SetDir and overrides → SetDirection. Update callers; GetCurrentDirection and entity/model direction APIs keep their names. Motion uses GetSpriteMotion().
@@ -233,6 +607,7 @@ Base `6cff188c9b644732ab4e330c47a6cbdf739fcbcc` (`2026.1.68-dev`) to `2026.1.69-
 
 - Base `57424cb5d2ac132b1fa8ba83e353d07cb6ca75e0` (`2026.1.60-dev`) to `2026.1.61-dev`. The published master API is unchanged; the withdrawal affects only users of earlier PR #227 heads `9c8237b0520041e3de78d878829c25c59ed5e030` and `6f31a6404207310332a39703ef784f26b054e644`. Remove client/mapper calls to `Map.BlockHex` and `Map.UnblockHex` in AngelScript/managed sources, and native uses of `MapView::SetHexManualBlock` or its `Field::ManualBlock` / `ManualBlockFull` flags. No replacement client API is provided: a future server-driven mechanism must synchronize initial state and updates before it can be exposed. The existing server methods retain their behavior and are not substitutes for client calls.
 - Detect affected sources with `rg -n 'BlockHex|UnblockHex|SetHexManualBlock|ManualBlockFull' <project-source-dirs>` and review each side: client/mapper script calls fail compilation against regenerated bindings; native uses fail compilation because the declarations are absent. Regenerate metadata, rebuild affected binaries and rebake matching client/mapper resources together. Ordinary item/map obstacles and their property synchronization are unchanged. No persisted-data or resource-format conversion is required; the runtime marker remains `0.0.77`, Managed ABI `9` and sprite container v2 are unchanged. Roll back binaries and baked resources together; earlier PR builds reintroduce the unsynchronized API.
+
 
 ## 2026.1.60-dev - 2026-10-23
 

@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-native-extension-index","locale":"ru","source_path":"Docs/en/reference/native-extension/index.md","source_sha256":"9da6f418b358e01404a192834ac6d27168b0e155cff3a9b59d56f47f09436af6"} -->
+<!-- docs-translation: {"document_id":"generated-native-extension-index","locale":"ru","source_path":"Docs/en/reference/native-extension/index.md","source_sha256":"0ba0db5b2094912eedc634acaf7f37af40b8fafc6cb6595387589a9339791860"} -->
 
 # Сгенерированный интерфейс нативных расширений
 
@@ -22,12 +22,12 @@ generated: true
 | Стабильность | <code>experimental</code> |
 | Политика поддержки | Использование с совместимостью исходного кода документировано для закреплённой ревизии движка; бинарная совместимость независимо собранных компонентов не обещается. |
 | Исходный манифест | [BuildTools/NativeExtensionInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/NativeExtensionInterface.json) |
-| Дайджест контракта | <code>3053b7c8875d54e7a525abafd5f2e2790052fed851904a0c98de211c5e1a609d</code> |
+| Дайджест контракта | <code>82ed3091d89d8d525261b4709039af09214f49fa40c074bb31d80a6ce0563e57</code> |
 
 | Справочник | Записей | Назначение |
 | --- | --- | --- |
 | [Роли](roles.md) | 6 | Маршрутизация исходников CMake, библиотеки, заголовки и потребители. |
-| [Хуки](hooks.md) | 8 | Необязательные объявления, места вызова, значения по умолчанию и состояние совместимости. |
+| [Хуки](hooks.md) | 10 | Необязательные объявления, места вызова, значения по умолчанию и состояние совместимости. |
 | [Биндинги](bindings.md) | 6 | Правила регистрации, пространства имён, указателей и зависимостей. |
 
 ## Граница

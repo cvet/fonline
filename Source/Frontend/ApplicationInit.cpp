@@ -313,8 +313,8 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
     else {
         // A packaged build carries one resolved config and no sub-config table, so a requested sub config cannot be
         // honoured; refusing it keeps a launch from silently running with settings the caller did not get
-        for (const CommandLineSetting& setting : args.GetSettings(CommandLineSettings::ApplySubConfig)) {
-            throw AppInitException("Sub configs are not available in a packaged build", setting.Value.value_or(string_view {}));
+        if (const auto sub_configs = args.GetSettings(CommandLineSettings::ApplySubConfig); !sub_configs.empty()) {
+            throw AppInitException("Sub configs are not available in a packaged build", sub_configs.front().Value.value_or(string_view {}));
         }
 
         settings.ApplyInternalConfig();
@@ -323,6 +323,31 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
     // Resolved before the config was even found, so the local-config cache below - and every later
     // cache, log and update write - lands where this process is allowed to write
     settings.ApplyWritableRoot(ResolveWritableRoot(args));
+
+    if (IsPackaged()) {
+        auto resource_settings = GlobalSettings(false);
+        resource_settings.CopyFrom(settings);
+        resource_settings.SetSettingValue(SettingNames::Common_Packaged, "1");
+
+        // Only location overrides belong here; the full command line follows the resource and local configs
+        for (const CommandLineSetting& setting : args.GetSettings()) {
+            if (setting.Name == SettingNames::Baking_ClientResources || setting.Name == SettingNames::Baking_ServerResources || setting.Name == SettingNames::Baking_CacheResources) {
+                string value = strex(setting.Value.value_or("1")).trim().str();
+                resource_settings.SetSettingValue(string(setting.Name), value);
+            }
+        }
+
+        auto content = ReadResourceConfig(resource_settings, false);
+
+        if (content) {
+            auto updated = GlobalSettings(false);
+            updated.ApplyResourceConfig(*content);
+            updated.ApplyWritableRoot(settings.Common.UserWritablePath);
+            PreserveLocalConfig(resource_settings, updated);
+            settings.CopyFrom(updated);
+            logging::write("Resource configuration loaded before application initialization");
+        }
+    }
 
     if (!settings.Common.UserWritablePath.empty()) {
         // Pre-create the writable cache and resource-overlay subdirs so the cache and the self-update

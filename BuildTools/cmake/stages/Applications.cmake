@@ -248,6 +248,14 @@ if(FO_UNIT_TESTS OR FO_CODE_COVERAGE)
         endif()
     endif()
 
+    # Test hosts combine entry points and test helpers with incompatible global aliases
+    AppendSourceProperty("${FO_ENGINE_ROOT}/Source/Applications/MapperApp.cpp" SKIP_UNITY_BUILD_INCLUSION ON)
+    AppendSourceProperty("${FO_ENGINE_ROOT}/Source/Applications/ServerServiceApp.cpp" SKIP_UNITY_BUILD_INCLUSION ON)
+    AppendSourceProperty("${FO_ENGINE_ROOT}/Source/Applications/ServerDaemonApp.cpp" SKIP_UNITY_BUILD_INCLUSION ON)
+    AppendSourceProperty("${FO_ENGINE_ROOT}/Source/Applications/ServerHeadlessApp.cpp" SKIP_UNITY_BUILD_INCLUSION ON)
+    AppendSourceProperty("${FO_ENGINE_ROOT}/Source/Applications/ClientApp.cpp" SKIP_UNITY_BUILD_INCLUSION ON)
+    AppendSourceProperty("${FO_ENGINE_ROOT}/Source/Tests/Test_ServerEngine.cpp" SKIP_UNITY_BUILD_INCLUSION ON)
+
     macro(SetupTestBuild name)
         SetValue(target ${FO_DEV_NAME}_${name})
         SetValue(testBuildSources

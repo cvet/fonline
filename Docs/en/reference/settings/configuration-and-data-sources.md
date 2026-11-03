@@ -340,3 +340,41 @@ ZIP/embedded ZIP failures include the pack, entry or index and minizip status. R
 `DataSource.cpp` owns dispatch; adjacent `DataSource-Directory` and `DataSource-Embedded` pairs are mandatory, `DataSource-Dat` requires `FO_DATA_SOURCE_DAT`, `DataSource-Zip` requires `FO_DATA_SOURCE_ZIP`. Registration/includes are unconditional, guards internal. [Component selection](../../how-to/build/project-configuration.md#optional-native-components) owns roles/dependencies.
 
 Priority remains Embedded / `.fores` / `.zip` / `.bos` / `.dat`. Present disabled archives report their path/option even with `maybe_not_available=true`; only absent optional packs return empty sources. Corrupt priority packs never fall back. Embedded/APK retain bundled minizip with external ZIP OFF; `.fores` and updater patches remain baseline.
+
+## Packaged application configuration
+
+Each sub-config produces `.fomain-client` and `.fomain-server`. Packaging `--config`
+selects one file for native embedding and for the `Metadata` archive of each role;
+server and client archives stay separate.
+
+`METADATA_PACK_NAME` in `DataSource.h`, mirrored by `package.py`, names the pack. Declare
+`Bakers=Metadata Config ClientConfig` in it; the archive keeps target metadata/sidecars
+and only the selected config. `ClientConfigBaker` inherits `ConfigBaker` in the same
+module and writes complete client settings, including false, zero, empty and declared
+game settings. `ConfigBaker` keeps server outputs; `Bakers=Config` alone keeps both.
+
+Before frontend creation, `ReadResourceConfig` looks for `.fomain-server` first,
+then `.fomain-client` if no server configuration exists. Packaged applications
+check `Baking.ServerResources` before client resources with writable overlays;
+unpackaged consumers use `Baking.BakeOutput`. One loader serves every application
+through `InitApp(args, flags)`. Multiple files of the preferred suffix are an error.
+
+`GlobalSettings::ApplyResourceConfig(content)` replaces the snapshot with defaults
+plus resource settings; no embedded value survives it. Server/client resource
+directories must match the embedded bootstrap. Resource lookup uses a temporary packaged
+snapshot with only CLI resource/cache paths. Cache changes preserve preferences.
+Full CLI and auto settings run once, after resource and local configs, including
+`+` additions and diagnostics. Builtin settings remain read-only at runtime.
+
+### Downloaded client configuration
+
+No configuration on the first launch leaves the embedded bootstrap active; after
+synchronization a declared `Metadata` pack must contain an unambiguous configuration.
+`BaseSettings::GetResourceConfigContent` retains the applied text in memory for
+updater comparison. Changed text requires a restart before gameplay; the next
+launch reads the updated file. Unchanged text requires no restart.
+
+The configuration stays in its resource pack; no configuration cache is written.
+Rebuild/repackage native applications for first adoption. Qualify client download,
+persistent writes, restart and subsequent launch on every shipped platform, and
+verify the server's selected resource config before accepting its startup.

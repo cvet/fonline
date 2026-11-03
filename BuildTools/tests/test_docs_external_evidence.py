@@ -8,6 +8,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 BUILDTOOLS_DIR = Path(__file__).resolve().parents[1]
@@ -28,7 +29,11 @@ class ExternalProjectEvidenceTests(unittest.TestCase):
             docs_external_evidence.generate_model(ENGINE_ROOT),
         )
         self.assertEqual(self.model["summary"]["snapshot_count"], 3)
-        self.assertEqual(self.model["summary"]["record_count"], 31)
+        self.assertEqual(self.model["summary"]["record_count"], 32)
+        self.assertIn(
+            "private-item-policy-and-map-spectators",
+            {record["id"] for record in self.model["records"]},
+        )
         self.assertEqual(
             set(self.model["summary"]["records_by_disposition"]),
             docs_external_evidence.VALID_DISPOSITIONS,
@@ -154,6 +159,7 @@ class ExternalProjectEvidenceTests(unittest.TestCase):
                 ],
             }
             for root in roots.values():
+                self._create_repository(root, "Docs/NewerOnly.md")
                 (root / "Docs/Guide.md").write_text(
                     "dirty worktree overlay\n", encoding="utf-8"
                 )
@@ -164,7 +170,18 @@ class ExternalProjectEvidenceTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "pinned source is missing"):
                 docs_external_evidence.verify_external_sources(missing_model, roots)
 
-    def test_external_verification_rejects_wrong_head(self) -> None:
+            missing_model["records"][0]["sources"][0]["path"] = "Docs/NewerOnly.md"
+            with self.assertRaisesRegex(ValueError, "pinned source is missing"):
+                docs_external_evidence.verify_external_sources(missing_model, roots)
+
+            for wrong_roots in (
+                {"last-frontier": roots["last-frontier"]},
+                {**roots, "extra": roots["last-frontier"]},
+            ):
+                with self.assertRaisesRegex(ValueError, "must match snapshots exactly"):
+                    docs_external_evidence.verify_external_sources(model, wrong_roots)
+
+    def test_external_verification_rejects_missing_pinned_commit(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             temporary_root = Path(temporary_directory)
             roots = {
@@ -183,8 +200,62 @@ class ExternalProjectEvidenceTests(unittest.TestCase):
                 "records": [],
             }
             model["snapshots"]["fonline-tla"]["revision"] = "0" * 40
-            with self.assertRaisesRegex(ValueError, "checkout HEAD must be"):
+            with self.assertRaises(ValueError) as failure:
                 docs_external_evidence.verify_external_sources(model, roots)
+            self.assertIn("0" * 40, str(failure.exception))
+
+            model["snapshots"]["fonline-tla"]["revision"] = docs_external_evidence._git_output(
+                roots["fonline-tla"], "rev-parse", f"{revisions['fonline-tla']}:Docs/Guide.md"
+            )
+            with self.assertRaisesRegex(ValueError, "pinned revision must name a commit"):
+                docs_external_evidence.verify_external_sources(model, roots)
+
+    def test_cli_verifies_multiple_pins_from_one_checkout(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            temporary_root = Path(temporary_directory)
+            lf_root = temporary_root / "last-frontier"
+            tla_root = temporary_root / "fonline-tla"
+            first = self._create_repository(lf_root, "Docs/First.md")
+            second = self._create_repository(lf_root, "Docs/Second.md")
+            latest = self._create_repository(lf_root, "Docs/HeadOnly.md")
+            tla = self._create_repository(tla_root, "Docs/Guide.md")
+            dirty_path = lf_root / "Docs/First.md"
+            dirty_path.write_text("dirty overlay\n", encoding="utf-8")
+            model = {
+                "snapshots": {
+                    "last-frontier": {"repository": "lastfrontierdev/lf", "revision": first},
+                    "last-frontier-map-acceptance": {"repository": "lastfrontierdev/lf", "revision": second},
+                    "fonline-tla": {"repository": "cvet/fonline-tla", "revision": tla},
+                },
+                "records": [{"sources": [
+                    {"snapshot": "last-frontier", "path": "Docs/First.md"},
+                    {"snapshot": "last-frontier-map-acceptance", "path": "Docs/Second.md"},
+                    {"snapshot": "fonline-tla", "path": "Docs/Guide.md"},
+                ]}],
+            }
+            with mock.patch.object(docs_external_evidence, "generate_model", return_value=model), mock.patch.object(
+                docs_external_evidence, "_write_or_check", return_value=0
+            ), contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                result = docs_external_evidence.main([
+                    "--check", "--verify-sources", "--last-frontier-root", str(lf_root), "--tla-root", str(tla_root)
+                ])
+
+            self.assertEqual(result, 0)
+            self.assertEqual(docs_external_evidence._git_output(lf_root, "rev-parse", "HEAD"), latest)
+            self.assertEqual(dirty_path.read_text(encoding="utf-8"), "dirty overlay\n")
+
+    def test_cli_rejects_unsupported_snapshot_repository(self) -> None:
+        model = {"snapshots": {"other": {"repository": "unknown/repository", "revision": "0" * 40}}, "records": []}
+        errors = io.StringIO()
+        with mock.patch.object(docs_external_evidence, "generate_model", return_value=model), mock.patch.object(
+            docs_external_evidence, "_write_or_check", return_value=0
+        ), contextlib.redirect_stderr(errors):
+            result = docs_external_evidence.main([
+                "--check", "--verify-sources", "--last-frontier-root", str(ENGINE_ROOT), "--tla-root", str(ENGINE_ROOT)
+            ])
+
+        self.assertEqual(result, 1)
+        self.assertIn("unsupported external repository", errors.getvalue())
 
     def test_ci_checks_generator_and_test(self) -> None:
         workflow = (ENGINE_ROOT / ".github/workflows/validate.yml").read_text(

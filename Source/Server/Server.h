@@ -221,6 +221,8 @@ public:
     void Unlock();
     auto RunInQuiescence(optional<timespan> max_wait_time, const QuiescenceCallback& callback) -> bool;
     auto CreateSnapshot(optional<timespan> max_wait_time) -> ServerSnapshotCaptureResult;
+    // Structural restore preflight without a world; compatibility and content identity remain the caller's checks
+    static void ValidateServerSnapshotState(const ServerSnapshotState& state);
     void RegisterSnapshotEligibilityCheck(SnapshotEligibilityCheck check);
     void PauseSimulation();
     void ResumeSimulation();
@@ -412,8 +414,8 @@ private:
     void RestoreSimulationWork();
     void RestoreSnapshotTimeEvents();
     void RestoreSnapshotCritterMovements();
-    [[nodiscard]] auto CaptureCritterMovements() -> vector<SerializableCritterMovement>;
-    [[nodiscard]] auto CanRestoreSnapshotEntity(ptr<const ServerEntity> entity) const -> bool;
+    auto CaptureCritterMovements() -> vector<SerializableCritterMovement>;
+    auto CanRestoreSnapshotEntity(ptr<const ServerEntity> entity) const -> bool;
     auto CollectSnapshotBlockers() -> vector<ServerSnapshotBlocker>;
 
     void StartConnectionServer(string_view what, const function<unique_ptr<NetworkServer>()>& start);
@@ -494,6 +496,7 @@ private:
     auto NotLoggedInPlayerJob(ptr<Player> not_logged_in_player) -> std::optional<timespan>;
     void OnPlayerLoggedIn(ptr<Player> player, nptr<Player> not_logged_in_player);
     auto PlayerJob(ptr<Player> player) -> std::optional<timespan>;
+    void RejectMalformedInput(ptr<ServerConnection> connection, const NetBufferException& ex);
     auto CritterMovingJob(ptr<Critter> cr) -> std::optional<timespan>;
     auto WrapJobWithSync(work_thread::job body) -> work_thread::job;
     void CountServerStatsJob() noexcept;

@@ -79,11 +79,14 @@ void MapManager::LoadFromResources()
             ScopedSyncContext sync_ctx;
 
             auto map_file = File::Load(map_file_header_copy);
-            auto reader = data_reader(map_file.GetDataSpan());
+            data_reader reader = data_reader(map_file.GetDataSpan());
 
             MapLoader::ReadBakedFileHeader(reader, map_proto->GetName());
 
             auto map_size = map_proto->GetSize();
+            FO_VERIFY_AND_THROW(map_size.width > 0 && map_size.height > 0, "Map size must be positive", map_proto->GetName(), map_size);
+            FO_VERIFY_AND_THROW(map_size.width <= GameSettings::MAX_MAP_SIZE && map_size.height <= GameSettings::MAX_MAP_SIZE, "Map size exceeds the engine maximum", map_proto->GetName(), map_size, GameSettings::MAX_MAP_SIZE);
+
             auto static_map = safe_alloc::make_unique<StaticMap>(map_size, _engine->Settings->Server.ProtoMapGridType);
 
             // Read hashes
@@ -232,8 +235,8 @@ void MapManager::LoadFromResources()
             int32_t scroll_block_size = _engine->Settings->Hex.ScrollBlockSize;
 
             if (!scroll_area.is_zero()) {
-                for (int16_t hx = 0; hx < map_size.width; hx++) {
-                    for (int16_t hy = 0; hy < map_size.height; hy++) {
+                for (mcoord_t hx = 0; hx < map_size.width; hx++) {
+                    for (mcoord_t hy = 0; hy < map_size.height; hy++) {
                         mpos hex = {hx, hy};
                         ipos32 axial_hex = GeometryHelper::GetHexAxialCoord(hex);
 
@@ -1144,14 +1147,6 @@ void MapManager::AddCritterToMap(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir 
 
         // Notify spectators
         map->RefreshAreaSpectators(cr);
-
-        if (map->HasSpectatorPlayers()) {
-            for (ptr<Player> player : copy_hold_ref(map->GetSpectatorPlayers())) {
-                if (!player->IsAreaView()) {
-                    player->Send_AddCritter(cr);
-                }
-            }
-        }
     }
     else {
         auto& cr_group = cr->GetRawGlobalMapGroup();
@@ -1262,13 +1257,6 @@ void MapManager::RemoveCritterFromMap(ptr<Critter> cr, nptr<Map> map)
 
         // Notify spectators
         map->RefreshAreaSpectators(cr, true);
-        if (map->HasSpectatorPlayers()) {
-            for (ptr<Player> player : copy_hold_ref(map->GetSpectatorPlayers())) {
-                if (!player->IsAreaView()) {
-                    player->Send_RemoveCritter(cr);
-                }
-            }
-        }
 
         map->RemoveCritter(cr);
         cr->SetMapId({});
@@ -1575,16 +1563,16 @@ void MapManager::ViewMap(ptr<Player> view_player, ptr<Map> map)
     ValidateEntityAccess(view_player);
     ValidateEntityAccess(map);
 
-    // Critters: spectator sees every non-destroyed critter on the map
     for (ptr<const Critter> cr : copy_hold_ref(map->GetCritters())) {
-        if (cr->IsDestroyed() || !map->IsSpectatorEntityVisible(view_player->GetId(), cr->GetId())) {
+        CritterVisibilityMode mode = map->GetSpectatorCritterVisibility(view_player->GetId(), cr->GetId());
+
+        if (cr->IsDestroyed() || mode == CritterVisibilityMode::None) {
             continue;
         }
 
-        view_player->Send_AddObservedCritter(cr);
+        view_player->Send_AddObservedCritter(cr, mode);
     }
 
-    // Items: spectator sees every non-destroyed item on the map
     for (ptr<const Item> item : copy_hold_ref(map->GetItems())) {
         if (item->IsDestroyed() || !map->IsSpectatorEntityVisible(view_player->GetId(), item->GetId())) {
             continue;
