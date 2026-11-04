@@ -124,7 +124,7 @@ TEST_CASE("MapLoadsAndUnloadsContentOfOtherMaps")
     CHECK_FALSE(server->MapMngr.IsStaticMapLoaded(content_proto));
 
     // Id offsets derive from the placement, as a project would make them
-    auto id_offset {[](mpos dest_offset) -> int64_t { return (int64_t {1} << 50) + int64_t {dest_offset.x} * 1000000 + int64_t {dest_offset.y} * 1000; }};
+    auto id_offset {[](mpos dest_hex) -> int64_t { return (int64_t {1} << 50) + int64_t {dest_hex.x} * 1000000 + int64_t {dest_hex.y} * 1000; }};
 
     vector<hstring> map_pids {server->Hashes.to_hashed_string("TestMap"), static_map_pid};
     auto location {server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("TestLocation"), map_pids)};

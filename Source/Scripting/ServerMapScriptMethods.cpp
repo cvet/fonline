@@ -493,9 +493,9 @@ FO_SCRIPT_API bool Server_Map_RemoveStaticItem(ptr<Map> self, ptr<StaticItem> st
     return self->RemoveStaticItem(staticItem->GetId());
 }
 
-// Copy the static items of a prototype map moved by `destOffset`, with baked ids plus `idOffset`, and return those ids
+// Copy the static items of a prototype map so that its first hex lands at `destHex`, with baked ids plus `idOffset`, and return those ids
 ///@ ExportMethod
-FO_SCRIPT_API vector<ident_t> Server_Map_LoadStaticItems(ptr<Map> self, hstring mapPid, mpos destOffset, int64_t idOffset)
+FO_SCRIPT_API vector<ident_t> Server_Map_LoadStaticItems(ptr<Map> self, hstring mapPid, mpos destHex, int64_t idOffset)
 {
     if (self->IsDestroying()) {
         throw ScriptException("Cannot load static items into a map that is being destroyed", self->GetId());
@@ -507,12 +507,12 @@ FO_SCRIPT_API vector<ident_t> Server_Map_LoadStaticItems(ptr<Map> self, hstring 
         throw ScriptException("Map proto not found", mapPid);
     }
 
-    return self->GetEngine()->MapMngr.LoadStaticItems(self, source_proto, destOffset, idOffset);
+    return self->GetEngine()->MapMngr.LoadStaticItems(self, source_proto, destHex, idOffset);
 }
 
-// Copy the static items of a prototype map area whose first hex lands at `destOffset`, with baked ids plus `idOffset`, and return those ids
+// Copy the static items of a prototype map area whose first hex lands at `destHex`, with baked ids plus `idOffset`, and return those ids
 ///@ ExportMethod
-FO_SCRIPT_API vector<ident_t> Server_Map_LoadStaticItems(ptr<Map> self, hstring mapPid, mpos destOffset, mpos sourceHex, msize sourceSize, int64_t idOffset)
+FO_SCRIPT_API vector<ident_t> Server_Map_LoadStaticItems(ptr<Map> self, hstring mapPid, mpos destHex, mpos sourceHex, msize sourceSize, int64_t idOffset)
 {
     if (self->IsDestroying()) {
         throw ScriptException("Cannot load static items into a map that is being destroyed", self->GetId());
@@ -524,7 +524,7 @@ FO_SCRIPT_API vector<ident_t> Server_Map_LoadStaticItems(ptr<Map> self, hstring 
         throw ScriptException("Map proto not found", mapPid);
     }
 
-    return self->GetEngine()->MapMngr.LoadStaticItems(self, source_proto, destOffset, sourceHex, sourceSize, idOffset);
+    return self->GetEngine()->MapMngr.LoadStaticItems(self, source_proto, destHex, sourceHex, sourceSize, idOffset);
 }
 
 // Remove static items that `LoadStaticItems` added to the map
@@ -534,9 +534,9 @@ FO_SCRIPT_API void Server_Map_UnloadStaticItems(ptr<Map> self, readonly_vector<i
     self->GetEngine()->MapMngr.UnloadStaticItems(self, staticItemIds);
 }
 
-// Create the critters and dynamic items of a prototype map moved by `destOffset` and return the created critter and map item ids
+// Create the critters and dynamic items of a prototype map so that its first hex lands at `destHex` and return the created critter and map item ids
 ///@ ExportMethod
-FO_SCRIPT_API vector<ident_t> Server_Map_GenerateContent(ptr<Map> self, hstring mapPid, mpos destOffset)
+FO_SCRIPT_API vector<ident_t> Server_Map_GenerateContent(ptr<Map> self, hstring mapPid, mpos destHex)
 {
     if (self->IsDestroying()) {
         throw ScriptException("Cannot generate content on a map that is being destroyed", self->GetId());
@@ -548,7 +548,7 @@ FO_SCRIPT_API vector<ident_t> Server_Map_GenerateContent(ptr<Map> self, hstring 
         throw ScriptException("Map proto not found", mapPid);
     }
 
-    return self->GetEngine()->MapMngr.GenerateContent(self, source_proto, destOffset);
+    return self->GetEngine()->MapMngr.GenerateContent(self, source_proto, destHex);
 }
 
 // Return a static map item by id

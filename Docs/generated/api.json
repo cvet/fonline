@@ -11,7 +11,7 @@
       "stability": "experimental",
       "since": "2022.1.0.wip",
       "symbol_count": 2604,
-      "inventory_sha256": "d544ddfb9a7f190429f9c2d0409f7ac8f566e524c735aae9039782147864a56d",
+      "inventory_sha256": "0c95d304ea1e201a745b0c859c0869e44304290c7d774b3c5a2b6fbf99f5a009",
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
@@ -51402,7 +51402,7 @@
       "arguments": []
     },
     {
-      "id": "script.method.client.Map.LoadStaticItems#6e8589667529e68d",
+      "id": "script.method.client.Map.LoadStaticItems#0971edd694992850",
       "family_id": "script.method.client.Map.LoadStaticItems",
       "kind": "method",
       "name": "LoadStaticItems",
@@ -51411,70 +51411,8 @@
         "mapper"
       ],
       "receiver": "Map",
-      "signature": "ident[] Map.LoadStaticItems(hstring mapPid, mpos destOffset, int64 idOffset)",
-      "description": "Copy the static items of a prototype map's client bake moved by `destOffset`, with baked ids plus `idOffset`, and return those ids",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 166
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 45
-        },
-        "notes": ""
-      },
-      "declared_target": "client",
-      "receivers": [
-        "Map"
-      ],
-      "return": {
-        "type": "ident[]",
-        "nullable": false
-      },
-      "arguments": [
-        {
-          "name": "mapPid",
-          "type": "hstring",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "destOffset",
-          "type": "mpos",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "idOffset",
-          "type": "int64",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.method.client.Map.LoadStaticItems#a4cfb1e34e9335f9",
-      "family_id": "script.method.client.Map.LoadStaticItems",
-      "kind": "method",
-      "name": "LoadStaticItems",
-      "runtime_sides": [
-        "client",
-        "mapper"
-      ],
-      "receiver": "Map",
-      "signature": "ident[] Map.LoadStaticItems(hstring mapPid, mpos destOffset, mpos sourceHex, msize sourceSize, int64 idOffset)",
-      "description": "Copy the static items of a prototype map area from its client bake so that the area's first hex lands at `destOffset`, with baked ids plus `idOffset`, and return those ids",
+      "signature": "ident[] Map.LoadStaticItems(hstring mapPid, mpos destHex, mpos sourceHex, msize sourceSize, int64 idOffset)",
+      "description": "Copy the static items of a prototype map area from its client bake so that the area's first hex lands at `destHex`, with baked ids plus `idOffset`, and return those ids",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -51510,7 +51448,7 @@
           "default": null
         },
         {
-          "name": "destOffset",
+          "name": "destHex",
           "type": "mpos",
           "nullable": false,
           "by_reference": false,
@@ -51526,6 +51464,68 @@
         {
           "name": "sourceSize",
           "type": "msize",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "idOffset",
+          "type": "int64",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.client.Map.LoadStaticItems#7af3f0c56f49e919",
+      "family_id": "script.method.client.Map.LoadStaticItems",
+      "kind": "method",
+      "name": "LoadStaticItems",
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "receiver": "Map",
+      "signature": "ident[] Map.LoadStaticItems(hstring mapPid, mpos destHex, int64 idOffset)",
+      "description": "Copy the static items of a prototype map's client bake so that its first hex lands at `destHex`, with baked ids plus `idOffset`, and return those ids",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ClientMapScriptMethods.cpp",
+        "line": 166
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 45
+        },
+        "notes": ""
+      },
+      "declared_target": "client",
+      "receivers": [
+        "Map"
+      ],
+      "return": {
+        "type": "ident[]",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "mapPid",
+          "type": "hstring",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "destHex",
+          "type": "mpos",
           "nullable": false,
           "by_reference": false,
           "default": null
@@ -86594,8 +86594,8 @@
         "server"
       ],
       "receiver": "Map",
-      "signature": "ident[] Map.GenerateContent(hstring mapPid, mpos destOffset)",
-      "description": "Create the critters and dynamic items of a prototype map moved by `destOffset` and return the created critter and map item ids",
+      "signature": "ident[] Map.GenerateContent(hstring mapPid, mpos destHex)",
+      "description": "Create the critters and dynamic items of a prototype map so that its first hex lands at `destHex` and return the created critter and map item ids",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -86631,7 +86631,7 @@
           "default": null
         },
         {
-          "name": "destOffset",
+          "name": "destHex",
           "type": "mpos",
           "nullable": false,
           "by_reference": false,
@@ -89736,7 +89736,7 @@
       ]
     },
     {
-      "id": "script.method.server.Map.LoadStaticItems#6e8589667529e68d",
+      "id": "script.method.server.Map.LoadStaticItems#0971edd694992850",
       "family_id": "script.method.server.Map.LoadStaticItems",
       "kind": "method",
       "name": "LoadStaticItems",
@@ -89744,69 +89744,8 @@
         "server"
       ],
       "receiver": "Map",
-      "signature": "ident[] Map.LoadStaticItems(hstring mapPid, mpos destOffset, int64 idOffset)",
-      "description": "Copy the static items of a prototype map moved by `destOffset`, with baked ids plus `idOffset`, and return those ids",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 497
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 45
-        },
-        "notes": ""
-      },
-      "declared_target": "server",
-      "receivers": [
-        "Map"
-      ],
-      "return": {
-        "type": "ident[]",
-        "nullable": false
-      },
-      "arguments": [
-        {
-          "name": "mapPid",
-          "type": "hstring",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "destOffset",
-          "type": "mpos",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "idOffset",
-          "type": "int64",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.method.server.Map.LoadStaticItems#a4cfb1e34e9335f9",
-      "family_id": "script.method.server.Map.LoadStaticItems",
-      "kind": "method",
-      "name": "LoadStaticItems",
-      "runtime_sides": [
-        "server"
-      ],
-      "receiver": "Map",
-      "signature": "ident[] Map.LoadStaticItems(hstring mapPid, mpos destOffset, mpos sourceHex, msize sourceSize, int64 idOffset)",
-      "description": "Copy the static items of a prototype map area whose first hex lands at `destOffset`, with baked ids plus `idOffset`, and return those ids",
+      "signature": "ident[] Map.LoadStaticItems(hstring mapPid, mpos destHex, mpos sourceHex, msize sourceSize, int64 idOffset)",
+      "description": "Copy the static items of a prototype map area whose first hex lands at `destHex`, with baked ids plus `idOffset`, and return those ids",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -89842,7 +89781,7 @@
           "default": null
         },
         {
-          "name": "destOffset",
+          "name": "destHex",
           "type": "mpos",
           "nullable": false,
           "by_reference": false,
@@ -89858,6 +89797,67 @@
         {
           "name": "sourceSize",
           "type": "msize",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "idOffset",
+          "type": "int64",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.server.Map.LoadStaticItems#7af3f0c56f49e919",
+      "family_id": "script.method.server.Map.LoadStaticItems",
+      "kind": "method",
+      "name": "LoadStaticItems",
+      "runtime_sides": [
+        "server"
+      ],
+      "receiver": "Map",
+      "signature": "ident[] Map.LoadStaticItems(hstring mapPid, mpos destHex, int64 idOffset)",
+      "description": "Copy the static items of a prototype map so that its first hex lands at `destHex`, with baked ids plus `idOffset`, and return those ids",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ServerMapScriptMethods.cpp",
+        "line": 497
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 45
+        },
+        "notes": ""
+      },
+      "declared_target": "server",
+      "receivers": [
+        "Map"
+      ],
+      "return": {
+        "type": "ident[]",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "mapPid",
+          "type": "hstring",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "destHex",
+          "type": "mpos",
           "nullable": false,
           "by_reference": false,
           "default": null

@@ -14811,9 +14811,9 @@
     },
     {
       "domain": "api",
-      "change_id": "api-change.model-scope.3d43f0195f330ee6",
+      "change_id": "api-change.model-scope.4cabf75c72a1a084",
       "baseline_contract_sha256": "66ec5cd868143ae94ea942a651896758226aed1241f50388435df68c21ccd5be",
-      "current_contract_sha256": "cff61c207e7134893648e11cffc7ed634fa49f9716eea71ffdcaa580f1c46423",
+      "current_contract_sha256": "8837e8d06c97de7b97eac254a2a861851ad070b10b8662a8aeadf11a70853a27",
       "classification": "breaking",
       "rationale": "The native-codegen inventory gains the runtime map content surface: the server Map.LoadStaticItems (whole map and source-area overloads), Map.UnloadStaticItems and Map.GenerateContent methods, Game.LoadStaticMap, Game.LoadStaticMapsAsync, Game.IsStaticMapLoaded and Game.UnloadStaticMap, and the client Map.LoadStaticItems (both overloads) and Map.UnloadStaticItems methods; LoadStaticItems takes an int64 id offset added to the baked ids. SymbolCount and InventorySha256 are updated for owner review; existing symbols keep their identities.",
       "migration": "Docs/en/reference/changelog.md#current---2026-11-04: additive surface; no source, data or resource conversion is required. Rebuild every native role and regenerate both scripting backends from the same revision.",

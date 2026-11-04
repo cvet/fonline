@@ -418,7 +418,7 @@ void MapView::LoadStaticData()
     RebuildMapNow();
 }
 
-auto MapView::LoadStaticItems(hstring map_pid, mpos dest_offset, int64_t id_offset) -> vector<ident_t>
+auto MapView::LoadStaticItems(hstring map_pid, mpos dest_hex, int64_t id_offset) -> vector<ident_t>
 {
     auto source_proto {_engine->GetProtoMap(map_pid)};
 
@@ -426,10 +426,10 @@ auto MapView::LoadStaticItems(hstring map_pid, mpos dest_offset, int64_t id_offs
         throw MapViewLoadException("Map proto not found", map_pid);
     }
 
-    return LoadStaticItems(map_pid, dest_offset, mpos {}, source_proto->GetSize(), id_offset);
+    return LoadStaticItems(map_pid, dest_hex, mpos {}, source_proto->GetSize(), id_offset);
 }
 
-auto MapView::LoadStaticItems(hstring map_pid, mpos dest_offset, mpos source_hex, msize source_size, int64_t id_offset) -> vector<ident_t>
+auto MapView::LoadStaticItems(hstring map_pid, mpos dest_hex, mpos source_hex, msize source_size, int64_t id_offset) -> vector<ident_t>
 {
     FO_TRACE_ZONE(Map);
 
@@ -481,13 +481,13 @@ auto MapView::LoadStaticItems(hstring map_pid, mpos dest_offset, mpos source_hex
     unique_ids.reserve(items_count);
     vector<uint8_t> props_data {};
 
-    // The source area's first hex lands at dest_offset
-    auto move_hex {[dest_offset, source_hex, map_size = _mapSize, map_pid](mpos hex) -> mpos {
-        int64_t x {safe_numeric_cast<int64_t>(hex.x) - source_hex.x + dest_offset.x};
-        int64_t y {safe_numeric_cast<int64_t>(hex.y) - source_hex.y + dest_offset.y};
+    // The source area's first hex lands at dest_hex
+    auto move_hex {[dest_hex, source_hex, map_size = _mapSize, map_pid](mpos hex) -> mpos {
+        int64_t x {safe_numeric_cast<int64_t>(hex.x) - source_hex.x + dest_hex.x};
+        int64_t y {safe_numeric_cast<int64_t>(hex.y) - source_hex.y + dest_hex.y};
 
         if (x < 0 || y < 0 || x >= map_size.width || y >= map_size.height) {
-            throw MapViewLoadException("Loaded static item lands outside the map", map_pid, hex, dest_offset, map_size);
+            throw MapViewLoadException("Loaded static item lands outside the map", map_pid, hex, dest_hex, map_size);
         }
 
         return mpos {numeric_cast<mcoord_t>(x), numeric_cast<mcoord_t>(y)};

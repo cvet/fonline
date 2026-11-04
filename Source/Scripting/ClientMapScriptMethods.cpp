@@ -162,18 +162,18 @@ FO_SCRIPT_API bool Client_Map_DrawEntitySprite(ptr<MapView> self, ptr<ClientEnti
     return self->DrawEntitySprite(entity, effect, color, padding);
 }
 
-// Copy the static items of a prototype map's client bake moved by `destOffset`, with baked ids plus `idOffset`, and return those ids
+// Copy the static items of a prototype map's client bake so that its first hex lands at `destHex`, with baked ids plus `idOffset`, and return those ids
 ///@ ExportMethod
-FO_SCRIPT_API vector<ident_t> Client_Map_LoadStaticItems(ptr<MapView> self, hstring mapPid, mpos destOffset, int64_t idOffset)
+FO_SCRIPT_API vector<ident_t> Client_Map_LoadStaticItems(ptr<MapView> self, hstring mapPid, mpos destHex, int64_t idOffset)
 {
-    return self->LoadStaticItems(mapPid, destOffset, idOffset);
+    return self->LoadStaticItems(mapPid, destHex, idOffset);
 }
 
-// Copy the static items of a prototype map area from its client bake so that the area's first hex lands at `destOffset`, with baked ids plus `idOffset`, and return those ids
+// Copy the static items of a prototype map area from its client bake so that the area's first hex lands at `destHex`, with baked ids plus `idOffset`, and return those ids
 ///@ ExportMethod
-FO_SCRIPT_API vector<ident_t> Client_Map_LoadStaticItems(ptr<MapView> self, hstring mapPid, mpos destOffset, mpos sourceHex, msize sourceSize, int64_t idOffset)
+FO_SCRIPT_API vector<ident_t> Client_Map_LoadStaticItems(ptr<MapView> self, hstring mapPid, mpos destHex, mpos sourceHex, msize sourceSize, int64_t idOffset)
 {
-    return self->LoadStaticItems(mapPid, destOffset, sourceHex, sourceSize, idOffset);
+    return self->LoadStaticItems(mapPid, destHex, sourceHex, sourceSize, idOffset);
 }
 
 // Remove static items that `LoadStaticItems` added to the map view and release the field blocks they leave empty

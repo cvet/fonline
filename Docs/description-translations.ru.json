@@ -10963,8 +10963,8 @@
           "translation": "Освободить кэшированное запечённое содержимое прототипа карты и вернуть, выгружено ли оно; оно остаётся, пока читается или используется картой"
         },
         "/symbols/@id=script.method.server.Map.GenerateContent/description": {
-          "source_sha256": "c8c14c4f6cb189c0bfb1e3d3c1d70d10794635a8deb1bf3b8f04ca0518fa6962",
-          "translation": "Создать криттеров и динамические предметы прототипа карты со сдвигом на `destOffset` и вернуть идентификаторы созданных криттеров и предметов карты"
+          "source_sha256": "182ba1bf365dcd142d22952cde840d9eac542f05ca939862dd40049d671d3b20",
+          "translation": "Создать криттеров и динамические предметы прототипа карты так, чтобы её первый гекс попал в `destHex`, и вернуть идентификаторы созданных криттеров и предметов карты"
         },
         "/symbols/@id=script.method.server.Map.UnloadStaticItems/description": {
           "source_sha256": "d9877e9ce847aa8b5539f9b6f44aca09ddbf6d38cfbaa99a96790422e88fabd5",
@@ -10978,21 +10978,21 @@
           "source_sha256": "dfa5689e0708cea18d6f8446d42bb9bc1e5823831d192d6519cbf090a07b0b81",
           "translation": "Начать чтение запечённого содержимого прототипов карт в рабочих потоках; запрос одного из них ждёт его чтения"
         },
-        "/symbols/@id=script.method.client.Map.LoadStaticItems%236e8589667529e68d/description": {
-          "source_sha256": "dddb0145f4973485cfeac977c0c3999c291e8ee71b89c1fb190224ac911dfcef",
-          "translation": "Скопировать статические предметы клиентской выпечки прототипа карты со сдвигом на `destOffset`, с запечёнными идентификаторами плюс `idOffset`, и вернуть эти идентификаторы"
+        "/symbols/@id=script.method.client.Map.LoadStaticItems%230971edd694992850/description": {
+          "source_sha256": "1376a4f6bd439da3581bb787c3ac662da3aebf7179665a6defbb0c107367962e",
+          "translation": "Скопировать статические предметы области прототипа карты из её клиентской выпечки так, чтобы первый гекс области попал в `destHex`, с запечёнными идентификаторами плюс `idOffset`, и вернуть эти идентификаторы"
         },
-        "/symbols/@id=script.method.client.Map.LoadStaticItems%23a4cfb1e34e9335f9/description": {
-          "source_sha256": "c4bcebe964ce8c96e401dc6d4efc1903ff5f7fe2eead05beaa36600572637d01",
-          "translation": "Скопировать статические предметы области прототипа карты из её клиентской выпечки так, чтобы первый гекс области попал в `destOffset`, с запечёнными идентификаторами плюс `idOffset`, и вернуть эти идентификаторы"
+        "/symbols/@id=script.method.client.Map.LoadStaticItems%237af3f0c56f49e919/description": {
+          "source_sha256": "a7fb4d7c3b56d0fc8927e1ba810b6c62008ae77fa59ce855619c1322e948d4e2",
+          "translation": "Скопировать статические предметы клиентской выпечки прототипа карты так, чтобы её первый гекс попал в `destHex`, с запечёнными идентификаторами плюс `idOffset`, и вернуть эти идентификаторы"
         },
-        "/symbols/@id=script.method.server.Map.LoadStaticItems%236e8589667529e68d/description": {
-          "source_sha256": "6a680d3ad263531fb9ad3060ea3a89efe6884a1c3094a0caa1ee55c59395ad77",
-          "translation": "Скопировать статические предметы прототипа карты со сдвигом на `destOffset`, с запечёнными идентификаторами плюс `idOffset`, и вернуть эти идентификаторы"
+        "/symbols/@id=script.method.server.Map.LoadStaticItems%230971edd694992850/description": {
+          "source_sha256": "a804d79389aade21191369f041de3b6bd8ed1bcaf50ee9b5f439a759eb5c709e",
+          "translation": "Скопировать статические предметы области прототипа карты, первый гекс которой попадает в `destHex`, с запечёнными идентификаторами плюс `idOffset`, и вернуть эти идентификаторы"
         },
-        "/symbols/@id=script.method.server.Map.LoadStaticItems%23a4cfb1e34e9335f9/description": {
-          "source_sha256": "255aec465211c8dff27260fa1163a195e8569ebe38fbe5e1f8d2420662461db3",
-          "translation": "Скопировать статические предметы области прототипа карты, первый гекс которой попадает в `destOffset`, с запечёнными идентификаторами плюс `idOffset`, и вернуть эти идентификаторы"
+        "/symbols/@id=script.method.server.Map.LoadStaticItems%237af3f0c56f49e919/description": {
+          "source_sha256": "1759e20569bf7d088cef080bc7dec9d1e6a9b86ed2fa6ea2fc5e1e5afae4fba3",
+          "translation": "Скопировать статические предметы прототипа карты так, чтобы её первый гекс попал в `destHex`, с запечёнными идентификаторами плюс `idOffset`, и вернуть эти идентификаторы"
         }
       }
     },
