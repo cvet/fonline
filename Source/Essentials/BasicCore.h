@@ -383,6 +383,11 @@ struct fixed_string
 // Mechanical process termination only; failure callers own any diagnostics they require
 [[noreturn]] void exit_app(bool success) noexcept;
 
+#if !FO_WEB
+// Skip exit callbacks and static teardown when cleanup itself is unsafe
+[[noreturn]] void exit_app_immediately(bool success) noexcept;
+#endif
+
 auto is_run_in_debugger() noexcept -> bool;
 auto break_into_debugger() noexcept -> bool;
 
