@@ -385,12 +385,12 @@ auto MapManager::IsStaticMapLoaded(ptr<const ProtoMap> proto) const -> bool
     return it != _staticMaps.end() && IsStaticMapReady(it->second.Data);
 }
 
-auto MapManager::LoadStaticItems(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos offset) -> vector<ident_t>
+auto MapManager::LoadStaticItems(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos offset, int64_t id_offset) -> vector<ident_t>
 {
-    return LoadStaticItems(map, source_proto, offset, mpos {}, source_proto->GetSize());
+    return LoadStaticItems(map, source_proto, offset, mpos {}, source_proto->GetSize(), id_offset);
 }
 
-auto MapManager::LoadStaticItems(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos offset, mpos source_hex, msize source_size) -> vector<ident_t>
+auto MapManager::LoadStaticItems(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos offset, mpos source_hex, msize source_size, int64_t id_offset) -> vector<ident_t>
 {
     FO_TRACE_ZONE(Map);
 
@@ -420,40 +420,27 @@ auto MapManager::LoadStaticItems(ptr<Map> map, ptr<const ProtoMap> source_proto,
 
     vector<ptr<StaticItem>> source_items {};
     vector<ident_t> item_ids {};
+    unordered_set<ident_t> unique_ids {};
 
     for (ptr<StaticItem> source_item : source->GetStaticItems()) {
         mpos hex {source_item->GetHex()};
 
         if (hex.x >= source_hex.x && hex.y >= source_hex.y && hex.x - source_hex.x < source_size.width && hex.y - source_hex.y < source_size.height) {
             (void)move_hex(hex);
+            ident_t item_id {checked_add(source_item->GetId().underlying_value(), id_offset)};
+
+            if (!item_id) {
+                throw MapManagerException("Loaded static item id is zero", source_proto->GetName(), source_item->GetId(), id_offset);
+            }
+            if (map->HasStaticItem(item_id)) {
+                throw MapManagerException("Loaded static item id is already used on the map", source_proto->GetName(), item_id);
+            }
+            if (!unique_ids.emplace(item_id).second) {
+                throw MapManagerException("Loaded static item id repeats", source_proto->GetName(), item_id);
+            }
+
             source_items.emplace_back(source_item);
-            item_ids.emplace_back(source_item->GetId());
-        }
-    }
-
-    // Project code chooses the ids, so a client loading the same content can give its copies the same ones
-    _engine->OnGenerateStaticItemIds.Fire(map, source_proto->GetProtoId(), offset, item_ids);
-    ValidateEntityAccess(map);
-
-    if (map->IsDestroyed() || map->IsDestroying()) {
-        throw MapManagerException("Map was destroyed while static item ids were generated", source_proto->GetName());
-    }
-    if (item_ids.size() != source_items.size()) {
-        throw MapManagerException("Static item id generation changed the number of ids", source_proto->GetName(), source_items.size(), item_ids.size());
-    }
-
-    unordered_set<ident_t> unique_ids {};
-    unique_ids.reserve(item_ids.size());
-
-    for (ident_t item_id : item_ids) {
-        if (!item_id) {
-            throw MapManagerException("Generated static item id is zero", source_proto->GetName());
-        }
-        if (!unique_ids.emplace(item_id).second) {
-            throw MapManagerException("Generated static item id repeats", source_proto->GetName(), item_id);
-        }
-        if (map->HasStaticItem(item_id)) {
-            throw MapManagerException("Generated static item id is already used on the map", source_proto->GetName(), item_id);
+            item_ids.emplace_back(item_id);
         }
     }
 

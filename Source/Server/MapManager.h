@@ -105,8 +105,9 @@ public:
     void LoadStaticMapsAsync(const_span<ptr<const ProtoMap>> protos);
     auto UnloadStaticMap(ptr<const ProtoMap> proto) -> bool;
     void ClearStaticMaps() noexcept;
-    auto LoadStaticItems(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos offset) -> vector<ident_t>;
-    auto LoadStaticItems(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos offset, mpos source_hex, msize source_size) -> vector<ident_t>;
+    // Copy ids are baked ids plus id_offset; an id already on the map rejects the whole load
+    auto LoadStaticItems(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos offset, int64_t id_offset) -> vector<ident_t>;
+    auto LoadStaticItems(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos offset, mpos source_hex, msize source_size, int64_t id_offset) -> vector<ident_t>;
     void UnloadStaticItems(ptr<Map> map, const_span<ident_t> static_item_ids);
     // Creates the critters and dynamic items of another proto map on a map at offset; returns the critter and hex item ids
     auto GenerateContent(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos offset) -> vector<ident_t>;

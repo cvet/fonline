@@ -123,25 +123,8 @@ TEST_CASE("MapLoadsAndUnloadsContentOfOtherMaps")
     // Baked content is read on first use, never at startup
     CHECK_FALSE(server->MapMngr.IsStaticMapLoaded(content_proto));
 
-    // Ids derive from the offset and the baked id, as a project would make them
-    bool repeat_ids {false};
-    Entity::EventCallbackData callback {};
-    callback.Callback = [&repeat_ids](FuncCallData& call) {
-        // Arrays reach native handlers through the call's data accessor
-        mpos offset {*cast_from_void<mpos*>(call.ArgsData[2])};
-        size_t count {call.Accessor->GetArraySize(call.ArgsData[3])};
-
-        for (size_t i {0}; i < count; i++) {
-            auto& id {*cast_from_void<ident_t*>(call.Accessor->GetArrayElement(call.ArgsData[3], i).get())};
-            id = ident_t {repeat_ids ? int64_t {1} << 50 : (int64_t {1} << 50) + int64_t {offset.x} * 1000000 + int64_t {offset.y} * 1000 + id.underlying_value()};
-        }
-
-        return Entity::EventResult::ContinueChain;
-    };
-    callback.SubscriptionPtr = reinterpret_cast<uintptr_t>(&repeat_ids);
-    callback.HasExplicitResult = true;
-    server->OnGenerateStaticItemIds.Subscribe(std::move(callback));
-    auto unsubscribe {scope_exit([&server, &repeat_ids]() noexcept { server->OnGenerateStaticItemIds.Unsubscribe(reinterpret_cast<uintptr_t>(&repeat_ids)); })};
+    // Id offsets derive from the placement, as a project would make them
+    auto id_offset {[](mpos offset) -> int64_t { return (int64_t {1} << 50) + int64_t {offset.x} * 1000000 + int64_t {offset.y} * 1000; }};
 
     vector<hstring> map_pids {server->Hashes.to_hashed_string("TestMap"), static_map_pid};
     auto location {server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("TestLocation"), map_pids)};
@@ -150,8 +133,8 @@ TEST_CASE("MapLoadsAndUnloadsContentOfOtherMaps")
     ptr<Map> baked_map {location->GetMaps().back()};
     REQUIRE(map->GetStaticItems().empty());
 
-    vector<ident_t> first_ids {server->MapMngr.LoadStaticItems(map, content_proto, mpos {100, 120})};
-    vector<ident_t> second_ids {server->MapMngr.LoadStaticItems(map, content_proto, mpos {20, 20})};
+    vector<ident_t> first_ids {server->MapMngr.LoadStaticItems(map, content_proto, mpos {100, 120}, id_offset(mpos {100, 120}))};
+    vector<ident_t> second_ids {server->MapMngr.LoadStaticItems(map, content_proto, mpos {20, 20}, id_offset(mpos {20, 20}))};
     CHECK(server->MapMngr.IsStaticMapLoaded(content_proto));
     REQUIRE(first_ids.size() == 2);
     REQUIRE(second_ids.size() == 2);
@@ -180,28 +163,29 @@ TEST_CASE("MapLoadsAndUnloadsContentOfOtherMaps")
     CHECK(map->GetStaticItems().size() == 2);
     CHECK_THROWS(server->MapMngr.UnloadStaticItems(map, first_ids));
 
-    // A failed load leaves the map as it was: repeated ids, ids in use, content outside the map
-    repeat_ids = true;
-    CHECK_THROWS(server->MapMngr.LoadStaticItems(map, content_proto, mpos {40, 40}));
-    repeat_ids = false;
-    CHECK_THROWS(server->MapMngr.LoadStaticItems(map, content_proto, mpos {20, 20}));
-    CHECK_THROWS(server->MapMngr.LoadStaticItems(map, content_proto, mpos {190, 190}));
+    // A failed load leaves the map as it was: ids in use, a zero or overflowing id, content outside the map
+    CHECK_THROWS(server->MapMngr.LoadStaticItems(map, content_proto, mpos {20, 20}, id_offset(mpos {20, 20})));
+    CHECK_THROWS(server->MapMngr.LoadStaticItems(map, content_proto, mpos {40, 40}, id_offset(mpos {20, 20})));
+    CHECK_THROWS(server->MapMngr.LoadStaticItems(map, content_proto, mpos {40, 40}, -31));
+    CHECK_THROWS(server->MapMngr.LoadStaticItems(map, content_proto, mpos {40, 40}, std::numeric_limits<int64_t>::max()));
+    CHECK_THROWS(server->MapMngr.LoadStaticItems(map, content_proto, mpos {190, 190}, id_offset(mpos {190, 190})));
     CHECK(map->GetStaticItems().size() == 2);
 
     // An area of the source map lands with its first hex at offset and must lie inside the source map
-    vector<ident_t> area_ids {server->MapMngr.LoadStaticItems(map, content_proto, mpos {40, 40}, mpos {2, 3}, msize {1, 1})};
+    vector<ident_t> area_ids {server->MapMngr.LoadStaticItems(map, content_proto, mpos {40, 40}, mpos {2, 3}, msize {1, 1}, id_offset(mpos {40, 40}))};
     REQUIRE(area_ids.size() == 1);
     REQUIRE(map->GetStaticItem(area_ids.front()));
+    CHECK(area_ids.front() == ident_t {(int64_t {1} << 50) + 40040031});
     CHECK(map->GetStaticItem(area_ids.front())->GetHex() == mpos {40, 40});
     CHECK_FALSE(map->IsHexMovable(mpos {40, 40}));
-    CHECK(server->MapMngr.LoadStaticItems(map, content_proto, mpos {50, 50}, mpos {5, 5}, msize {3, 3}).empty());
-    CHECK_THROWS(server->MapMngr.LoadStaticItems(map, content_proto, mpos {60, 60}, mpos {10, 10}, msize {7, 1}));
-    CHECK_THROWS(server->MapMngr.LoadStaticItems(map, content_proto, mpos {60, 60}, mpos {0, 0}, msize {0, 1}));
+    CHECK(server->MapMngr.LoadStaticItems(map, content_proto, mpos {50, 50}, mpos {5, 5}, msize {3, 3}, id_offset(mpos {50, 50})).empty());
+    CHECK_THROWS(server->MapMngr.LoadStaticItems(map, content_proto, mpos {60, 60}, mpos {10, 10}, msize {7, 1}, id_offset(mpos {60, 60})));
+    CHECK_THROWS(server->MapMngr.LoadStaticItems(map, content_proto, mpos {60, 60}, mpos {0, 0}, msize {0, 1}, id_offset(mpos {60, 60})));
     server->MapMngr.UnloadStaticItems(map, area_ids);
     CHECK(map->GetStaticItems().size() == 2);
 
     // Loaded items merge with baked ones on a shared hex and leave the baked one when unloaded
-    vector<ident_t> merged_ids {server->MapMngr.LoadStaticItems(baked_map, content_proto, mpos {10, 10})};
+    vector<ident_t> merged_ids {server->MapMngr.LoadStaticItems(baked_map, content_proto, mpos {10, 10}, id_offset(mpos {10, 10}))};
     CHECK(baked_map->GetStaticItemsOnHex(mpos {12, 13}).size() == 2);
     CHECK(baked_map->GetStaticItems().size() == 4);
     CHECK_FALSE(baked_map->IsHexMovable(mpos {12, 13}));
@@ -278,7 +262,7 @@ TEST_CASE("MapLoadsAndUnloadsContentOfOtherMaps")
     auto preloaded {server->MapMngr.GetStaticMap(content_proto)};
     CHECK(preloaded->GetStaticItems().size() == 2);
     CHECK(server->MapMngr.IsStaticMapLoaded(content_proto));
-    vector<ident_t> preloaded_ids {server->MapMngr.LoadStaticItems(map, content_proto, mpos {60, 60})};
+    vector<ident_t> preloaded_ids {server->MapMngr.LoadStaticItems(map, content_proto, mpos {60, 60}, id_offset(mpos {60, 60}))};
     CHECK(preloaded_ids.size() == 2);
     server->MapMngr.UnloadStaticItems(map, preloaded_ids);
 }

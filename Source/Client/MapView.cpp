@@ -418,7 +418,7 @@ void MapView::LoadStaticData()
     RebuildMapNow();
 }
 
-auto MapView::LoadStaticItems(hstring map_pid, mpos offset) -> vector<ident_t>
+auto MapView::LoadStaticItems(hstring map_pid, mpos offset, int64_t id_offset) -> vector<ident_t>
 {
     auto source_proto {_engine->GetProtoMap(map_pid)};
 
@@ -426,10 +426,10 @@ auto MapView::LoadStaticItems(hstring map_pid, mpos offset) -> vector<ident_t>
         throw MapViewLoadException("Map proto not found", map_pid);
     }
 
-    return LoadStaticItems(map_pid, offset, mpos {}, source_proto->GetSize());
+    return LoadStaticItems(map_pid, offset, mpos {}, source_proto->GetSize(), id_offset);
 }
 
-auto MapView::LoadStaticItems(hstring map_pid, mpos offset, mpos source_hex, msize source_size) -> vector<ident_t>
+auto MapView::LoadStaticItems(hstring map_pid, mpos offset, mpos source_hex, msize source_size, int64_t id_offset) -> vector<ident_t>
 {
     FO_TRACE_ZONE(Map);
 
@@ -475,8 +475,10 @@ auto MapView::LoadStaticItems(hstring map_pid, mpos offset, mpos source_hex, msi
 
     vector<LoadedItem> loaded_items {};
     vector<ident_t> item_ids {};
+    unordered_set<ident_t> unique_ids {};
     loaded_items.reserve(items_count);
     item_ids.reserve(items_count);
+    unique_ids.reserve(items_count);
     vector<uint8_t> props_data {};
 
     // The source area's first hex lands at offset
@@ -514,6 +516,18 @@ auto MapView::LoadStaticItems(hstring map_pid, mpos offset, mpos source_hex, msi
             continue;
         }
 
+        ident_t item_id {checked_add(baked_id.underlying_value(), id_offset)};
+
+        if (!item_id) {
+            throw MapViewLoadException("Loaded static item id is zero", map_pid, baked_id, id_offset);
+        }
+        if (_itemsMap.contains(item_id)) {
+            throw MapViewLoadException("Loaded static item id is already used on the map", map_pid, item_id);
+        }
+        if (!unique_ids.emplace(item_id).second) {
+            throw MapViewLoadException("Loaded static item id repeats", map_pid, item_id);
+        }
+
         item_view.SetHex(move_hex(hex));
 
         if (item_view.IsNonEmptyMultihexMesh()) {
@@ -527,35 +541,10 @@ auto MapView::LoadStaticItems(hstring map_pid, mpos offset, mpos source_hex, msi
         }
 
         loaded_items.emplace_back(LoadedItem {.Proto = item_proto, .Props = std::move(item_props)});
-        item_ids.emplace_back(baked_id);
+        item_ids.emplace_back(item_id);
     }
 
     reader.verify_end();
-
-    // Project code chooses the ids; they must match the server's copies so both sides name one item alike
-    _engine->OnGenerateStaticItemIds.Fire(this, map_pid, offset, item_ids);
-
-    if (IsDestroyed()) {
-        throw MapViewLoadException("Map was destroyed while static item ids were generated", map_pid);
-    }
-    if (item_ids.size() != loaded_items.size()) {
-        throw MapViewLoadException("Static item id generation changed the number of ids", map_pid, loaded_items.size(), item_ids.size());
-    }
-
-    unordered_set<ident_t> unique_ids {};
-    unique_ids.reserve(item_ids.size());
-
-    for (ident_t item_id : item_ids) {
-        if (!item_id) {
-            throw MapViewLoadException("Generated static item id is zero", map_pid);
-        }
-        if (!unique_ids.emplace(item_id).second) {
-            throw MapViewLoadException("Generated static item id repeats", map_pid, item_id);
-        }
-        if (_itemsMap.contains(item_id)) {
-            throw MapViewLoadException("Generated static item id is already used on the map", map_pid, item_id);
-        }
-    }
 
     {
         bool was_loading {_mapLoading};

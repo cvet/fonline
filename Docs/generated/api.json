@@ -10,8 +10,8 @@
       "selector": "scope:native-codegen",
       "stability": "experimental",
       "since": "2022.1.0.wip",
-      "symbol_count": 2606,
-      "inventory_sha256": "fadd381cbdb03bed4f8e5bf6d6996c8a92f19d391bf9fd7bae28d4162e77badb",
+      "symbol_count": 2604,
+      "inventory_sha256": "cc65184e334091e214683c455245113144e6b3dd0e693415ba2b28b307f42bd4",
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
@@ -72,12 +72,12 @@
     "api_contract_scope_selector": "scope:native-codegen"
   },
   "summary": {
-    "symbol_count": 2606,
+    "symbol_count": 2604,
     "symbols_by_kind": {
       "entity": 7,
       "enum": 60,
       "enum-value": 770,
-      "event": 123,
+      "event": 121,
       "method": 1028,
       "migration-rule": 27,
       "property": 134,
@@ -89,17 +89,17 @@
       "value-type": 22
     },
     "symbols_by_stability": {
-      "experimental": 2605,
+      "experimental": 2603,
       "internal": 1
     },
     "explicit_contract_declaration_count": 4,
-    "explicit_contract_symbol_count": 2606,
+    "explicit_contract_symbol_count": 2604,
     "default_contract_symbol_count": 0,
     "explicit_contracts_by_stability": {
-      "experimental": 2605,
+      "experimental": 2603,
       "internal": 1
     },
-    "described_symbol_count": 2606,
+    "described_symbol_count": 2604,
     "missing_description_count": 0,
     "symbols_without_source_count": 14,
     "metadata_source_file_count": 43,
@@ -31265,7 +31265,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 325
+        "line": 322
       },
       "contract": {
         "explicit": true,
@@ -31334,7 +31334,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 328
+        "line": 325
       },
       "contract": {
         "explicit": true,
@@ -31431,7 +31431,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 331
+        "line": 328
       },
       "contract": {
         "explicit": true,
@@ -31500,7 +31500,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 334
+        "line": 331
       },
       "contract": {
         "explicit": true,
@@ -31562,7 +31562,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 337
+        "line": 334
       },
       "contract": {
         "explicit": true,
@@ -31896,68 +31896,6 @@
       },
       "declared_target": "client",
       "arguments": []
-    },
-    {
-      "id": "script.event.client.Game.OnGenerateStaticItemIds",
-      "family_id": "script.event.client.Game.OnGenerateStaticItemIds",
-      "kind": "event",
-      "name": "OnGenerateStaticItemIds",
-      "runtime_sides": [
-        "client",
-        "mapper"
-      ],
-      "receiver": "Game",
-      "signature": "event Game.OnGenerateStaticItemIds(Map map, hstring mapPid, mpos offset, ident[]& itemIds)",
-      "description": "Runs while `Map.LoadStaticItems` copies the static items of proto map `mapPid` into `map` at `offset`; `itemIds` holds their baked ids, and handlers replace each with the id its copy gets: nonzero, unused on the map and the same id the server gives that item",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Client/Client.h",
-        "line": 310
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 45
-        },
-        "notes": ""
-      },
-      "declared_target": "client",
-      "arguments": [
-        {
-          "name": "map",
-          "type": "Map",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "mapPid",
-          "type": "hstring",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "offset",
-          "type": "mpos",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "itemIds",
-          "type": "ident[]&",
-          "nullable": false,
-          "by_reference": true,
-          "default": null
-        }
-      ]
     },
     {
       "id": "script.event.client.Game.OnInfoMessage",
@@ -32378,7 +32316,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 313
+        "line": 310
       },
       "contract": {
         "explicit": true,
@@ -32411,7 +32349,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 316
+        "line": 313
       },
       "contract": {
         "explicit": true,
@@ -32444,7 +32382,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 319
+        "line": 316
       },
       "contract": {
         "explicit": true,
@@ -32477,7 +32415,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 343
+        "line": 340
       },
       "contract": {
         "explicit": true,
@@ -32696,7 +32634,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 322
+        "line": 319
       },
       "contract": {
         "explicit": true,
@@ -33475,7 +33413,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 340
+        "line": 337
       },
       "contract": {
         "explicit": true,
@@ -34739,7 +34677,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 320
+        "line": 317
       },
       "contract": {
         "explicit": true,
@@ -34779,7 +34717,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 317
+        "line": 314
       },
       "contract": {
         "explicit": true,
@@ -34826,7 +34764,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 332
+        "line": 329
       },
       "contract": {
         "explicit": true,
@@ -34880,7 +34818,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 323
+        "line": 320
       },
       "contract": {
         "explicit": true,
@@ -34920,7 +34858,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 278
+        "line": 275
       },
       "contract": {
         "explicit": true,
@@ -34967,7 +34905,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 314
+        "line": 311
       },
       "contract": {
         "explicit": true,
@@ -35007,7 +34945,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 329
+        "line": 326
       },
       "contract": {
         "explicit": true,
@@ -35047,7 +34985,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 281
+        "line": 278
       },
       "contract": {
         "explicit": true,
@@ -35094,7 +35032,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 284
+        "line": 281
       },
       "contract": {
         "explicit": true,
@@ -35134,7 +35072,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 287
+        "line": 284
       },
       "contract": {
         "explicit": true,
@@ -35181,7 +35119,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 326
+        "line": 323
       },
       "contract": {
         "explicit": true,
@@ -35236,67 +35174,6 @@
       "arguments": []
     },
     {
-      "id": "script.event.server.Game.OnGenerateStaticItemIds",
-      "family_id": "script.event.server.Game.OnGenerateStaticItemIds",
-      "kind": "event",
-      "name": "OnGenerateStaticItemIds",
-      "runtime_sides": [
-        "server"
-      ],
-      "receiver": "Game",
-      "signature": "event Game.OnGenerateStaticItemIds(Map map, hstring mapPid, mpos offset, ident[]& itemIds)",
-      "description": "Runs while `Map.LoadStaticItems` copies the static items of proto map `mapPid` into `map` at `offset`; `itemIds` holds their baked ids, and handlers replace each with the id its copy gets: nonzero, unused on the map and derived from the baked id and offset, so a client loading the same content gives its copies the same ids",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Server/Server.h",
-        "line": 275
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 45
-        },
-        "notes": ""
-      },
-      "declared_target": "server",
-      "arguments": [
-        {
-          "name": "map",
-          "type": "Map",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "mapPid",
-          "type": "hstring",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "offset",
-          "type": "mpos",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "itemIds",
-          "type": "ident[]&",
-          "nullable": false,
-          "by_reference": true,
-          "default": null
-        }
-      ]
-    },
-    {
       "id": "script.event.server.Game.OnGenerateWorld",
       "family_id": "script.event.server.Game.OnGenerateWorld",
       "kind": "event",
@@ -35346,7 +35223,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 290
+        "line": 287
       },
       "contract": {
         "explicit": true,
@@ -35386,7 +35263,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 293
+        "line": 290
       },
       "contract": {
         "explicit": true,
@@ -35458,7 +35335,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 338
+        "line": 335
       },
       "contract": {
         "explicit": true,
@@ -35498,7 +35375,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 335
+        "line": 332
       },
       "contract": {
         "explicit": true,
@@ -35545,7 +35422,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 299
+        "line": 296
       },
       "contract": {
         "explicit": true,
@@ -35585,7 +35462,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 296
+        "line": 293
       },
       "contract": {
         "explicit": true,
@@ -35632,7 +35509,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 308
+        "line": 305
       },
       "contract": {
         "explicit": true,
@@ -35679,7 +35556,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 311
+        "line": 308
       },
       "contract": {
         "explicit": true,
@@ -35726,7 +35603,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 305
+        "line": 302
       },
       "contract": {
         "explicit": true,
@@ -35766,7 +35643,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 302
+        "line": 299
       },
       "contract": {
         "explicit": true,
@@ -36094,7 +35971,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 341
+        "line": 338
       },
       "contract": {
         "explicit": true,
@@ -51525,7 +51402,7 @@
       "arguments": []
     },
     {
-      "id": "script.method.client.Map.LoadStaticItems#03425f8a5f227e36",
+      "id": "script.method.client.Map.LoadStaticItems#10abe3f7bb930d9f",
       "family_id": "script.method.client.Map.LoadStaticItems",
       "kind": "method",
       "name": "LoadStaticItems",
@@ -51534,63 +51411,8 @@
         "mapper"
       ],
       "receiver": "Map",
-      "signature": "ident[] Map.LoadStaticItems(hstring mapPid, mpos offset)",
-      "description": "Copy the static items of a prototype map's client bake moved by the offset, with ids from `Game.OnGenerateStaticItemIds`, and return those ids",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 166
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 45
-        },
-        "notes": ""
-      },
-      "declared_target": "client",
-      "receivers": [
-        "Map"
-      ],
-      "return": {
-        "type": "ident[]",
-        "nullable": false
-      },
-      "arguments": [
-        {
-          "name": "mapPid",
-          "type": "hstring",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "offset",
-          "type": "mpos",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.method.client.Map.LoadStaticItems#aa117f69739fd959",
-      "family_id": "script.method.client.Map.LoadStaticItems",
-      "kind": "method",
-      "name": "LoadStaticItems",
-      "runtime_sides": [
-        "client",
-        "mapper"
-      ],
-      "receiver": "Map",
-      "signature": "ident[] Map.LoadStaticItems(hstring mapPid, mpos offset, mpos sourceHex, msize sourceSize)",
-      "description": "Copy the static items of a prototype map area from its client bake so that the area's first hex lands at the offset, and return their ids",
+      "signature": "ident[] Map.LoadStaticItems(hstring mapPid, mpos offset, mpos sourceHex, msize sourceSize, int64 idOffset)",
+      "description": "Copy the static items of a prototype map area from its client bake so that the area's first hex lands at the offset, with baked ids plus `idOffset`, and return those ids",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -51642,6 +51464,75 @@
         {
           "name": "sourceSize",
           "type": "msize",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "idOffset",
+          "type": "int64",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.client.Map.LoadStaticItems#28e048c046613bee",
+      "family_id": "script.method.client.Map.LoadStaticItems",
+      "kind": "method",
+      "name": "LoadStaticItems",
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "receiver": "Map",
+      "signature": "ident[] Map.LoadStaticItems(hstring mapPid, mpos offset, int64 idOffset)",
+      "description": "Copy the static items of a prototype map's client bake moved by the offset, with baked ids plus `idOffset`, and return those ids",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ClientMapScriptMethods.cpp",
+        "line": 166
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 45
+        },
+        "notes": ""
+      },
+      "declared_target": "client",
+      "receivers": [
+        "Map"
+      ],
+      "return": {
+        "type": "ident[]",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "mapPid",
+          "type": "hstring",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "offset",
+          "type": "mpos",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "idOffset",
+          "type": "int64",
           "nullable": false,
           "by_reference": false,
           "default": null
@@ -89845,7 +89736,7 @@
       ]
     },
     {
-      "id": "script.method.server.Map.LoadStaticItems#03425f8a5f227e36",
+      "id": "script.method.server.Map.LoadStaticItems#10abe3f7bb930d9f",
       "family_id": "script.method.server.Map.LoadStaticItems",
       "kind": "method",
       "name": "LoadStaticItems",
@@ -89853,62 +89744,8 @@
         "server"
       ],
       "receiver": "Map",
-      "signature": "ident[] Map.LoadStaticItems(hstring mapPid, mpos offset)",
-      "description": "Copy the static items of a prototype map moved by the offset, with ids from `Game.OnGenerateStaticItemIds`, and return those ids",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 497
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 45
-        },
-        "notes": ""
-      },
-      "declared_target": "server",
-      "receivers": [
-        "Map"
-      ],
-      "return": {
-        "type": "ident[]",
-        "nullable": false
-      },
-      "arguments": [
-        {
-          "name": "mapPid",
-          "type": "hstring",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "offset",
-          "type": "mpos",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.method.server.Map.LoadStaticItems#aa117f69739fd959",
-      "family_id": "script.method.server.Map.LoadStaticItems",
-      "kind": "method",
-      "name": "LoadStaticItems",
-      "runtime_sides": [
-        "server"
-      ],
-      "receiver": "Map",
-      "signature": "ident[] Map.LoadStaticItems(hstring mapPid, mpos offset, mpos sourceHex, msize sourceSize)",
-      "description": "Copy the static items of a prototype map area whose first hex lands at the offset, with ids from `Game.OnGenerateStaticItemIds`, and return those ids",
+      "signature": "ident[] Map.LoadStaticItems(hstring mapPid, mpos offset, mpos sourceHex, msize sourceSize, int64 idOffset)",
+      "description": "Copy the static items of a prototype map area whose first hex lands at the offset, with baked ids plus `idOffset`, and return those ids",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -89960,6 +89797,74 @@
         {
           "name": "sourceSize",
           "type": "msize",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "idOffset",
+          "type": "int64",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.server.Map.LoadStaticItems#28e048c046613bee",
+      "family_id": "script.method.server.Map.LoadStaticItems",
+      "kind": "method",
+      "name": "LoadStaticItems",
+      "runtime_sides": [
+        "server"
+      ],
+      "receiver": "Map",
+      "signature": "ident[] Map.LoadStaticItems(hstring mapPid, mpos offset, int64 idOffset)",
+      "description": "Copy the static items of a prototype map moved by the offset, with baked ids plus `idOffset`, and return those ids",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ServerMapScriptMethods.cpp",
+        "line": 497
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 45
+        },
+        "notes": ""
+      },
+      "declared_target": "server",
+      "receivers": [
+        "Map"
+      ],
+      "return": {
+        "type": "ident[]",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "mapPid",
+          "type": "hstring",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "offset",
+          "type": "mpos",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "idOffset",
+          "type": "int64",
           "nullable": false,
           "by_reference": false,
           "default": null

@@ -232,10 +232,10 @@ public:
     void LoadFromFile(string_view map_name, string_view file_name, const string& str);
     void LoadStaticData();
     void ApplyStaticItemRemovals();
-    // Adds the static items of another proto map's client bake at offset, with ids from OnGenerateStaticItemIds,
-    // and returns those ids; UnloadStaticItems removes them again and releases the field blocks they leave empty
-    auto LoadStaticItems(hstring map_pid, mpos offset) -> vector<ident_t>;
-    auto LoadStaticItems(hstring map_pid, mpos offset, mpos source_hex, msize source_size) -> vector<ident_t>;
+    // Adds the static items of another proto map's client bake at offset with baked ids plus id_offset and returns
+    // those ids; UnloadStaticItems removes them again and releases the field blocks they leave empty
+    auto LoadStaticItems(hstring map_pid, mpos offset, int64_t id_offset) -> vector<ident_t>;
+    auto LoadStaticItems(hstring map_pid, mpos offset, mpos source_hex, msize source_size, int64_t id_offset) -> vector<ident_t>;
     void UnloadStaticItems(const_span<ident_t> static_item_ids);
     [[nodiscard]] auto IsRuntimeStaticItem(ident_t static_item_id) const noexcept -> bool { return _runtimeStaticItems.contains(static_item_id); }
     void Process();

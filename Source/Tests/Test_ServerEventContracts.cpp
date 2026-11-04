@@ -78,7 +78,6 @@ namespace
         {"Source/Server/Map.cpp", "item->OnCritterWalk.Fire(cr, false, dir);", 1, "walk trigger guarded"},
         {"Source/Server/Map.cpp", "item->OnCritterWalk.Fire(cr, true, dir);", 1, "walk trigger guarded"},
         {"Source/Server/MapManager.cpp", "loc->OnMapAdded.Fire(map);", 1, "post-create map add"},
-        {"Source/Server/MapManager.cpp", "_engine->OnGenerateStaticItemIds.Fire(map, source_proto->GetProtoId(), offset, item_ids);", 1, "pre-copy static item id generation"},
         {"Source/Server/MapManager.cpp", "_engine->OnLocationFinish.Fire(loc);", 1, "pre-teardown location finish"},
         {"Source/Server/MapManager.cpp", "_engine->OnMapFinish.Fire(map);", 1, "pre-teardown map finish in location"},
         {"Source/Server/MapManager.cpp", "_engine->OnMapFinish.Fire(map);", 2, "pre-teardown map finish"},

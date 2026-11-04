@@ -493,9 +493,9 @@ FO_SCRIPT_API bool Server_Map_RemoveStaticItem(ptr<Map> self, ptr<StaticItem> st
     return self->RemoveStaticItem(staticItem->GetId());
 }
 
-// Copy the static items of a prototype map moved by the offset, with ids from `Game.OnGenerateStaticItemIds`, and return those ids
+// Copy the static items of a prototype map moved by the offset, with baked ids plus `idOffset`, and return those ids
 ///@ ExportMethod
-FO_SCRIPT_API vector<ident_t> Server_Map_LoadStaticItems(ptr<Map> self, hstring mapPid, mpos offset)
+FO_SCRIPT_API vector<ident_t> Server_Map_LoadStaticItems(ptr<Map> self, hstring mapPid, mpos offset, int64_t idOffset)
 {
     if (self->IsDestroying()) {
         throw ScriptException("Cannot load static items into a map that is being destroyed", self->GetId());
@@ -507,12 +507,12 @@ FO_SCRIPT_API vector<ident_t> Server_Map_LoadStaticItems(ptr<Map> self, hstring 
         throw ScriptException("Map proto not found", mapPid);
     }
 
-    return self->GetEngine()->MapMngr.LoadStaticItems(self, source_proto, offset);
+    return self->GetEngine()->MapMngr.LoadStaticItems(self, source_proto, offset, idOffset);
 }
 
-// Copy the static items of a prototype map area whose first hex lands at the offset, with ids from `Game.OnGenerateStaticItemIds`, and return those ids
+// Copy the static items of a prototype map area whose first hex lands at the offset, with baked ids plus `idOffset`, and return those ids
 ///@ ExportMethod
-FO_SCRIPT_API vector<ident_t> Server_Map_LoadStaticItems(ptr<Map> self, hstring mapPid, mpos offset, mpos sourceHex, msize sourceSize)
+FO_SCRIPT_API vector<ident_t> Server_Map_LoadStaticItems(ptr<Map> self, hstring mapPid, mpos offset, mpos sourceHex, msize sourceSize, int64_t idOffset)
 {
     if (self->IsDestroying()) {
         throw ScriptException("Cannot load static items into a map that is being destroyed", self->GetId());
@@ -524,7 +524,7 @@ FO_SCRIPT_API vector<ident_t> Server_Map_LoadStaticItems(ptr<Map> self, hstring 
         throw ScriptException("Map proto not found", mapPid);
     }
 
-    return self->GetEngine()->MapMngr.LoadStaticItems(self, source_proto, offset, sourceHex, sourceSize);
+    return self->GetEngine()->MapMngr.LoadStaticItems(self, source_proto, offset, sourceHex, sourceSize, idOffset);
 }
 
 // Remove static items that `LoadStaticItems` added to the map
