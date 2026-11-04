@@ -50,8 +50,11 @@
 #include "VisualParticles.h"
 
 #if FO_EFFEKSEER_PARTICLES
+FO_DISABLE_WARNINGS_PUSH()
+#include "Effekseer/Effekseer.InstanceGlobal.h"
 #include "Effekseer/SIMD/Mat43f.h"
 #include "Effekseer/Utils/Effekseer.CustomAllocator.h"
+FO_DISABLE_WARNINGS_POP()
 #endif
 
 FO_BEGIN_NAMESPACE
@@ -3792,6 +3795,123 @@ TEST_CASE("ModelChildPoseParticleRegressionChildRemovalAndParentReuse", "[model-
     REQUIRE(child_live.Particles.size() == 1);
     REQUIRE(child_live.ParticleAttachment);
     CHECK(child_live.ParticleAttachment->BoneName == child_bone);
+}
+
+enum class EffekseerManagerFailureMode
+{
+    Observe,
+    WrongAlignment,
+    BadAlloc,
+    Unexpected,
+};
+
+static void RunEffekseerManagerFailureCase(EffekseerManagerFailureMode mode, const char* label)
+{
+    EffekseerRuntimeTestRig rig;
+    unique_ptr<ParticleRuntimeSystem> system = rig.CreateSystem();
+    system->Setup(MakeEffekseerIdentitySetup());
+    system->Update(1.0f / 60.0f);
+    REQUIRE(system->IsActive());
+    rig.ClearDraws();
+    system->Draw();
+    REQUIRE_FALSE(rig.GetDraws().empty());
+
+    using AlignedFunction = void* (*)(uint32_t, uint32_t);
+    Effekseer::AlignedMallocFunc original = Effekseer::GetAlignedMallocFunc();
+    auto original_target = original.target<AlignedFunction>();
+    REQUIRE(original_target != nullptr);
+    AlignedFunction original_function = *original_target;
+    uint32_t target_size = numeric_cast<uint32_t>(sizeof(Effekseer::InstanceGlobal));
+    uint32_t target_alignment = mode == EffekseerManagerFailureMode::WrongAlignment ? 17u : 16u;
+    uint32_t size_calls = 0;
+    uint32_t matched_calls = 0;
+    uint32_t throws = 0;
+
+    std::fprintf(stderr, "EFFEKSEER_MANAGER_FAILURE ready mode=%s active=1 draws=%zu size=%u target_align=%u\n", label, rig.GetDraws().size(), target_size, target_alignment);
+    std::fflush(stderr);
+
+    {
+        auto restore = scope_exit([original_function, label, &size_calls, &matched_calls, &throws]() noexcept {
+            Effekseer::SetAlignedMallocFunc(original_function);
+            Effekseer::AlignedMallocFunc restored = Effekseer::GetAlignedMallocFunc();
+            auto restored_target = restored.target<AlignedFunction>();
+            bool same = restored_target != nullptr && *restored_target == original_function;
+            std::fprintf(stderr, "EFFEKSEER_MANAGER_FAILURE restore mode=%s same=%u size_calls=%u matched=%u throws=%u\n", label, same ? 1u : 0u, size_calls, matched_calls, throws);
+            std::fflush(stderr);
+        });
+
+        Effekseer::SetAlignedMallocFunc([&](uint32_t size, uint32_t alignment) -> void* {
+            if (size == target_size) {
+                size_calls++;
+                std::fprintf(stderr, "EFFEKSEER_MANAGER_FAILURE hook mode=%s size=%u align=%u ordinal=%u\n", label, size, alignment, size_calls);
+                std::fflush(stderr);
+
+                if (alignment == target_alignment) {
+                    matched_calls++;
+
+                    if (mode == EffekseerManagerFailureMode::BadAlloc || mode == EffekseerManagerFailureMode::Unexpected) {
+                        throws++;
+                        std::fprintf(stderr, "EFFEKSEER_MANAGER_FAILURE throwing mode=%s matched=%u throws=%u\n", label, matched_calls, throws);
+                        std::fflush(stderr);
+
+                        if (mode == EffekseerManagerFailureMode::BadAlloc) {
+                            throw std::bad_alloc {};
+                        }
+
+                        throw std::runtime_error {"Controlled Effekseer manager failure"};
+                    }
+                }
+            }
+
+            return original_function(size, alignment);
+        });
+
+        std::fprintf(stderr, "EFFEKSEER_MANAGER_FAILURE before_respawn mode=%s\n", label);
+        std::fflush(stderr);
+        system->Respawn(811);
+        std::fprintf(stderr, "EFFEKSEER_MANAGER_FAILURE after_respawn mode=%s\n", label);
+        std::fflush(stderr);
+    }
+
+    REQUIRE(size_calls == 1);
+    REQUIRE(throws == 0);
+    REQUIRE(matched_calls == (mode == EffekseerManagerFailureMode::WrongAlignment ? 0u : 1u));
+    REQUIRE((mode == EffekseerManagerFailureMode::Observe || mode == EffekseerManagerFailureMode::WrongAlignment));
+
+    Effekseer::AlignedMallocFunc restored = Effekseer::GetAlignedMallocFunc();
+    auto restored_target = restored.target<AlignedFunction>();
+    REQUIRE(restored_target != nullptr);
+    REQUIRE(*restored_target == original_function);
+    REQUIRE(system->IsActive());
+    system->Update(1.0f / 60.0f);
+    rig.ClearDraws();
+    system->Draw();
+    REQUIRE_FALSE(rig.GetDraws().empty());
+    std::fprintf(stderr, "EFFEKSEER_MANAGER_FAILURE completed mode=%s active=1 draws=%zu restored=1\n", label, rig.GetDraws().size());
+    std::fflush(stderr);
+}
+
+TEST_CASE("EffekseerManagerFailurePolicy", "[.effekseer-manager-failure]")
+{
+    SECTION("ordinary_respawn")
+    {
+        RunEffekseerManagerFailureCase(EffekseerManagerFailureMode::Observe, "ordinary");
+    }
+
+    SECTION("wrong_alignment_control")
+    {
+        RunEffekseerManagerFailureCase(EffekseerManagerFailureMode::WrongAlignment, "wrong_alignment");
+    }
+
+    SECTION("throw_bad_alloc")
+    {
+        RunEffekseerManagerFailureCase(EffekseerManagerFailureMode::BadAlloc, "bad_alloc");
+    }
+
+    SECTION("throw_unexpected")
+    {
+        RunEffekseerManagerFailureCase(EffekseerManagerFailureMode::Unexpected, "unexpected");
+    }
 }
 
 #endif

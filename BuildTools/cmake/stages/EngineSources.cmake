@@ -680,6 +680,7 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_MapModelPose.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelLayoutException.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelMeshGenerationException.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_MapperFrameAbort.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ClientServerIntegration.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_EntityLifecycle.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_LocationAndEntityMgmt.cpp"

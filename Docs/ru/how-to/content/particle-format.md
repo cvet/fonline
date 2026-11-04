@@ -5,7 +5,7 @@ locale: ru
 document_id: particle-format-guide
 permalink: /Docs/ru/how-to/content/particle-format.html
 ---
-<!-- docs-translation: {"document_id":"particle-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/particle-format.md","source_sha256":"d821074005ec2b7e82de62197b396750672c7dda9ec5c5ae740d6b2226894c23"} -->
+<!-- docs-translation: {"document_id":"particle-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/particle-format.md","source_sha256":"882ecc5e97e8ee42025c22295d2ced88254572f6041483c2928df06ddd4f4978"} -->
 # Авторинг и runtime частиц
 
 FOnline предоставляет два опциональных backend частиц за единым
@@ -394,6 +394,14 @@ python BuildTools\docs_contract_diff.py --base-ref <base>
 После изменения native-кода частиц сконфигурируйте обе соответствующие feature lane
 и запустите сфокусированные native-тесты, включая `Test_ParticleBaker.cpp`, а для
 изменений runtime Effekseer — `Test_EffekseerParticleRuntime.cpp`.
+
+Каждый скрытый раздел `EffekseerManagerFailurePolicy` запускайте отдельным native
+test-процессом. `ordinary_respawn` и `wrong_alignment_control` должны завершиться
+с кодом 0; `throw_bad_alloc` и `throw_unexpected` — с кодом 1 и соответствующей
+фатальной диагностикой Engine. Эти контроли подменяют общий для процесса allocator
+callback, поэтому их нельзя исполнять одновременно в одном процессе. Внутренние
+операции manager не имеют rollback-контракта; валидация ресурсов, loader и
+render-callback сохраняют прежнюю обработку ошибок вне этой фатальной границы.
 
 Затем встраивающий проект должен:
 

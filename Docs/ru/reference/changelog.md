@@ -7,7 +7,7 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"1773b5d85abb428030c2a94ad1772e58fd5ad85a2c198c2dff8a4f73d13cab5c"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"167f671b029fe9c88f188d418bfba05b4533e0b494cde9c20cf494d54f04b113"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
@@ -30,6 +30,10 @@ permalink: /Docs/ru/reference/changelog.html
   время движения проверяется до замены принятых дорожек и событий завершения.
   Неудачная перестройка meshes отбрасывает частичные batches и допускает повтор
   через `StartMeshGeneration`.
+- После ошибки кадра Mapper очищает сцену перед возвратом в application frame.
+  Неожиданные исключения операций manager в runtime Effekseer завершают процесс,
+  исключая продолжение незавершённой операции. Прежняя обработка ошибок ресурсов
+  и render-callback сохраняется.
 - Полная очередь запуска сервера формируется до исполнения: после ошибки стадии
   больше не запускаются задания, добавленные вслед за очисткой очереди.
 - Выпечка границ Effekseer не зависит от случайного состояния процесса и порядка

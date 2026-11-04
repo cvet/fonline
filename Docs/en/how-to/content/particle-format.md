@@ -384,6 +384,14 @@ After changing native particle code, configure both relevant feature lanes and
 run the focused native tests, including `Test_ParticleBaker.cpp` and, for
 Effekseer runtime changes, `Test_EffekseerParticleRuntime.cpp`.
 
+Run each hidden `EffekseerManagerFailurePolicy` section in a separate native test
+process. `ordinary_respawn` and `wrong_alignment_control` must exit 0;
+`throw_bad_alloc` and `throw_unexpected` must exit 1 with their Engine fatal
+diagnostic. These controls replace a process-wide allocator callback and must
+not run concurrently in one process. Internal manager operations have no rollback
+contract; resource validation, loaders and render callbacks retain their existing
+failure behavior outside that fatal boundary.
+
 An embedding project must then:
 
 1. rebake the affected resources;

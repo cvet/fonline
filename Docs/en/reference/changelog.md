@@ -29,6 +29,10 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
   and validate movement timing before replacing accepted tracks or completion
   events. A failed mesh rebuild discards partial batches and remains retryable
   through `StartMeshGeneration`.
+- Abort failed Mapper frames before returning to the application frame, and stop
+  on unexpected exceptions in the Effekseer runtime manager instead of resuming an
+  incomplete operation. Resource and render callbacks retain their existing
+  recovery contracts.
 - Publish the complete server startup queue before execution so a failed stage
   cannot be followed by jobs submitted after its failure handler cleared the queue.
 - Make Effekseer bounds baking independent of process random state and effect
