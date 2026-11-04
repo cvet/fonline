@@ -14808,42 +14808,6 @@
       "owner": "scripting-client-input",
       "rationale": "The reviewed native-codegen inventory grows from2592 to2593 through the additive Game.SimulateTouchScroll method; the strict scope pin changes intentionally. Existing symbols retain their contracts.",
       "release_note": "Engine2026.1.101-dev documents input injection, the updated inventory and the ordinary client input path in the bilingual changelog and client-runtime guide."
-    },
-    {
-      "domain": "api",
-      "change_id": "api-change.model-scope.f763a07011d2ed3c",
-      "baseline_contract_sha256": "ece4a27dd1921e4859623cbd1e03ab98eb14c26644fa2ac1597cd94a45191710",
-      "current_contract_sha256": "1a09da83f4d6fe77cf44db5b75fa6dbcca3e45b9c42697e6713c2e97ac3199ac",
-      "classification": "breaking",
-      "rationale": "The native-codegen inventory gains the runtime map content surface: the server Map.LoadStaticItems, Map.UnloadStaticItems and Map.GenerateContent methods, Game.LoadStaticMap, Game.LoadStaticMapsAsync, Game.IsStaticMapLoaded and Game.UnloadStaticMap, the client Map.LoadStaticItems and Map.UnloadStaticItems methods, and the server and client Game.OnGenerateStaticItemIds events. SymbolCount and InventorySha256 are updated for owner review; existing symbols keep their identities.",
-      "migration": "Docs/en/reference/changelog.md#current---2026-11-03: additive surface; no source, data or resource conversion is required. Rebuild every native role and regenerate both scripting backends from the same revision.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-03",
-      "compatibility": "No property, protocol or resource change: MigrationRule Version 0.0.86 and Managed ABI 9 are unchanged. Baked map content is now read on first use instead of at startup. Deploy matching binaries and scripts; rollback restores the preceding complete set.",
-      "owner": "Engine map, scripting and compatibility maintainers"
-    },
-    {
-      "domain": "api",
-      "change_id": "api-change.model-scope.a988e090e632c0ae",
-      "baseline_contract_sha256": "ece4a27dd1921e4859623cbd1e03ab98eb14c26644fa2ac1597cd94a45191710",
-      "current_contract_sha256": "453df6bbdacc244cfc2b98fcc3d1ebd9311360bcf209af6ce8b38ee10ba2bb7a",
-      "classification": "breaking",
-      "rationale": "The native-codegen inventory gains the runtime map content surface: the server Map.LoadStaticItems (whole map and source-area overloads), Map.UnloadStaticItems and Map.GenerateContent methods, Game.LoadStaticMap, Game.LoadStaticMapsAsync, Game.IsStaticMapLoaded and Game.UnloadStaticMap, the client Map.LoadStaticItems (both overloads) and Map.UnloadStaticItems methods, and the server and client Game.OnGenerateStaticItemIds events. SymbolCount and InventorySha256 are updated for owner review; existing symbols keep their identities.",
-      "migration": "Docs/en/reference/changelog.md#current---2026-11-03: additive surface; no source, data or resource conversion is required. Rebuild every native role and regenerate both scripting backends from the same revision.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-03",
-      "compatibility": "No property, protocol or resource change: MigrationRule Version 0.0.86 and Managed ABI 9 are unchanged. Baked map content is now read on first use instead of at startup. Deploy matching binaries and scripts; rollback restores the preceding complete set.",
-      "owner": "Engine map, scripting and compatibility maintainers"
-    },
-    {
-      "domain": "api",
-      "change_id": "api-change.model-scope.3113aabb79fb111a",
-      "baseline_contract_sha256": "1bef2a7ab7d7902bc3dc01dabf713874e83e66cfd2201fcc3a791634d9a9c1db",
-      "current_contract_sha256": "593c1e765983fab484be18107c986c2a5049b7c13c283ad79472e80dc11f3eb4",
-      "classification": "breaking",
-      "rationale": "The native-codegen inventory gains the runtime map content surface: the server Map.LoadStaticItems (whole map and source-area overloads), Map.UnloadStaticItems and Map.GenerateContent methods, Game.LoadStaticMap, Game.LoadStaticMapsAsync, Game.IsStaticMapLoaded and Game.UnloadStaticMap, the client Map.LoadStaticItems (both overloads) and Map.UnloadStaticItems methods, and the server and client Game.OnGenerateStaticItemIds events. SymbolCount and InventorySha256 are updated for owner review; existing symbols keep their identities.",
-      "migration": "Docs/en/reference/changelog.md#current---2026-11-03: additive surface; no source, data or resource conversion is required. Rebuild every native role and regenerate both scripting backends from the same revision.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-03",
-      "compatibility": "No property, protocol or resource change: MigrationRule Version 0.0.86 and Managed ABI 9 are unchanged. Baked map content is now read on first use instead of at startup. Deploy matching binaries and scripts; rollback restores the preceding complete set.",
-      "owner": "Engine map, scripting and compatibility maintainers"
     }
   ]
 }

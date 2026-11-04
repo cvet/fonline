@@ -75,9 +75,7 @@ public:
     auto operator=(MapManager&&) noexcept = delete;
     ~MapManager() = default;
 
-    // Baked content of a proto map, read on first use and kept until UnloadStaticMap
     [[nodiscard]] auto GetStaticMap(ptr<const ProtoMap> proto) -> ptr<StaticMap>;
-    [[nodiscard]] auto IsStaticMapLoaded(ptr<const ProtoMap> proto) const -> bool;
     [[nodiscard]] auto GetLocationByPid(hstring loc_pid, int32_t skip_count) noexcept -> refcount_nptr<Location>;
     [[nodiscard]] auto GetMapByPid(hstring map_pid, int32_t skip_count) noexcept -> refcount_nptr<Map>;
 
@@ -101,41 +99,19 @@ public:
     void ProcessVisibleCritters(ptr<Critter> cr);
     void ProcessVisibleItems(ptr<Critter> cr);
     void ViewMap(ptr<Player> view_player, ptr<Map> map);
-    void LoadStaticMap(ptr<const ProtoMap> proto);
-    void LoadStaticMapsAsync(const_span<ptr<const ProtoMap>> protos);
-    auto UnloadStaticMap(ptr<const ProtoMap> proto) -> bool;
     void ClearStaticMaps() noexcept;
-    auto LoadStaticItems(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos offset) -> vector<ident_t>;
-    auto LoadStaticItems(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos offset, mpos source_hex, msize source_size) -> vector<ident_t>;
-    void UnloadStaticItems(ptr<Map> map, const_span<ident_t> static_item_ids);
-    // Creates the critters and dynamic items of another proto map on a map at offset; returns the critter and hex item ids
-    auto GenerateContent(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos offset) -> vector<ident_t>;
 
 private:
-    using PendingStaticMap = std::shared_future<shared_ptr<StaticMap>>;
-
-    struct StaticMapEntry
-    {
-        PendingStaticMap Data {};
-        uintptr_t ReadToken {};
-    };
-
     auto IsCritterSeeCritter(ptr<const Map> map, ptr<const Critter> cr, ptr<const Critter> target) const -> CritterVisibilityMode;
+
     void ProcessCritterLook(ptr<Map> map, ptr<Critter> cr, ptr<Critter> target);
     void Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, optional<int32_t> safe_radius, ident_t global_cr_id);
     void GenerateMapContent(ptr<Map> map);
-    auto GenerateContent(ptr<Map> map, ptr<const StaticMap> source, mpos offset, bool fresh_map) -> vector<ident_t>;
-    static auto IsStaticMapReady(const PendingStaticMap& static_map) -> bool;
-    auto ReadStaticMap(ptr<const ProtoMap> map_proto) -> shared_ptr<StaticMap>;
-    void BindStaticItemScripts(string_view map_name, ptr<StaticItem> item);
-    auto RequestStaticMap(ptr<const ProtoMap> proto, bool in_background) -> PendingStaticMap;
-    auto AcquireStaticMap(ptr<const ProtoMap> proto) -> shared_ptr<StaticMap>;
     void DestroyMapContent(ptr<Map> map);
     void DestroyMapInternal(ptr<Map> map);
 
     ptr<ServerEngine> _engine;
-    mutable mutex _staticMapsLock {};
-    unordered_map<ptr<const ProtoMap>, StaticMapEntry> _staticMaps FO_TSA_GUARDED_BY(_staticMapsLock) {};
+    unordered_map<ptr<const ProtoMap>, unique_ptr<StaticMap>> _staticMaps {};
 };
 
 FO_END_NAMESPACE

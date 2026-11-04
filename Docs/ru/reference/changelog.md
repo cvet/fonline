@@ -7,12 +7,22 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"81b97973455d84a845bfa29e3f1c2a69dedeeb246865fc2cec5017bafa4f8dd4"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"7c9fbcc84231c42d02dce457430bf163d2b1b30bc9b72e830c5665e1078b79db"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
 ## Current - 2026-11-04
+
+### Изменено
+
+- Откачена интеграция больших карт, опубликованная как `2026.1.102-dev` (`82ac7d57fe`..`72c1be91a0`): она попала в master без ревью и возвращается pull request'ом. Исходники, скрипты, сгенерированные модели и документация снова соответствуют `2026.1.101-dev`.
+
+### Миграция
+
+- Базовая ревизия `72c1be91a0` (`2026.1.102-dev`) → `2026.1.103-dev`. Код, собранный на `2026.1.102-dev` и использующий `Map.LoadStaticItems`, `Map.UnloadStaticItems`, `Map.GenerateContent`, `Game.LoadStaticMap`, `Game.LoadStaticMapsAsync`, `Game.IsStaticMapLoaded`, `Game.UnloadStaticMap`, `Game.OnGenerateStaticItemIds`, `TwoDimensionalGrid::ClearArea` или `MapView::SetupSpriteLight`, не компилируется до принятия pull request; заметки `2026.1.101-dev` действуют без изменений. Пересоберите все нативные роли, перегенерируйте оба скриптовых бэкенда и перепеките ресурсы вместе; `MigrationRule Version` остаётся `0.0.86`, Managed ABI — `9`.
+
+## 2026.1.102-dev - 2026-11-04
 
 ### Изменено
 

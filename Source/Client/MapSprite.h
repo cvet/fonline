@@ -142,7 +142,7 @@ public:
     void SetColor(ucolor color) noexcept;
     void SetAlpha(nptr<const uint8_t> alpha) noexcept;
     void SetFixedAlpha(uint8_t alpha) noexcept;
-    void SetLight(nptr<const ucolor> light, nptr<const ucolor> light_right, nptr<const ucolor> light_left) noexcept;
+    void SetLight(CornerType corner, ptr<const ucolor> light, msize size) noexcept;
     void SetHidden(bool hidden) noexcept;
     void SetElevation(int16_t elevation) noexcept;
     void SetAngle(int16_t angle) noexcept;

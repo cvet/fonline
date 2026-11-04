@@ -82,7 +82,7 @@ void ItemHexView::SetupSprite(ptr<MapSprite> mspr)
     mspr->SetEggStructure(GetIsWall() || (GetIsTile() && GetIsRoofTile()));
 
     if (!GetNoLightInfluence()) {
-        _map->SetupSpriteLight(mspr, GetCorner());
+        mspr->SetLight(GetCorner(), _map->GetLightData(), _map->GetSize());
     }
 
     if (!mspr->IsHidden() && GetHideSprite()) {

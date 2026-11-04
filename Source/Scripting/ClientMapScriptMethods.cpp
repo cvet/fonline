@@ -108,7 +108,7 @@ FO_SCRIPT_API void Client_Map_DrawMapSprite(ptr<MapView> self, ptr<MapSpriteHold
         mspr->SetMapProjected(true);
     }
     if (!no_light) {
-        self->SetupSpriteLight(mspr, corner);
+        mspr->SetLight(corner, self->GetLightData(), self->GetSize());
     }
 
     if (!is_flat && !disable_egg) {
@@ -160,27 +160,6 @@ FO_SCRIPT_API bool Client_Map_DrawEntitySprite(ptr<MapView> self, ptr<ClientEnti
 
     auto effect {engine->GetOffscreenEffect(effectSubtype)};
     return self->DrawEntitySprite(entity, effect, color, padding);
-}
-
-// Copy the static items of a prototype map's client bake moved by the offset, with ids from `Game.OnGenerateStaticItemIds`, and return those ids
-///@ ExportMethod
-FO_SCRIPT_API vector<ident_t> Client_Map_LoadStaticItems(ptr<MapView> self, hstring mapPid, mpos offset)
-{
-    return self->LoadStaticItems(mapPid, offset);
-}
-
-// Copy the static items of a prototype map area from its client bake so that the area's first hex lands at the offset, and return their ids
-///@ ExportMethod
-FO_SCRIPT_API vector<ident_t> Client_Map_LoadStaticItems(ptr<MapView> self, hstring mapPid, mpos offset, mpos sourceHex, msize sourceSize)
-{
-    return self->LoadStaticItems(mapPid, offset, sourceHex, sourceSize);
-}
-
-// Remove static items that `LoadStaticItems` added to the map view and release the field blocks they leave empty
-///@ ExportMethod
-FO_SCRIPT_API void Client_Map_UnloadStaticItems(ptr<MapView> self, readonly_vector<ident_t> staticItemIds)
-{
-    self->UnloadStaticItems(staticItemIds);
 }
 
 // Rebuilds this map view's fog geometry and rendering state from its current fog layers

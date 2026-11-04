@@ -58,9 +58,6 @@ Continue with the [canonical reference](../../en/reference/script-api/events.md)
 <a id="symbol-script-event-client-game-onfinish-fad510d7ad"></a>
 - [`symbol-script-event-client-game-onfinish-fad510d7ad`](../../en/reference/script-api/events.md#symbol-script-event-client-game-onfinish-fad510d7ad)
 
-<a id="symbol-script-event-client-game-ongeneratestaticitemids-605a1e6ec7"></a>
-- [`symbol-script-event-client-game-ongeneratestaticitemids-605a1e6ec7`](../../en/reference/script-api/events.md#symbol-script-event-client-game-ongeneratestaticitemids-605a1e6ec7)
-
 <a id="symbol-script-event-client-game-oninfomessage-21c3d47956"></a>
 - [`symbol-script-event-client-game-oninfomessage-21c3d47956`](../../en/reference/script-api/events.md#symbol-script-event-client-game-oninfomessage-21c3d47956)
 
@@ -309,9 +306,6 @@ Continue with the [canonical reference](../../en/reference/script-api/events.md)
 
 <a id="symbol-script-event-server-game-onfinish-75f2676c6d"></a>
 - [`symbol-script-event-server-game-onfinish-75f2676c6d`](../../en/reference/script-api/events.md#symbol-script-event-server-game-onfinish-75f2676c6d)
-
-<a id="symbol-script-event-server-game-ongeneratestaticitemids-6023d36d9e"></a>
-- [`symbol-script-event-server-game-ongeneratestaticitemids-6023d36d9e`](../../en/reference/script-api/events.md#symbol-script-event-server-game-ongeneratestaticitemids-6023d36d9e)
 
 <a id="symbol-script-event-server-game-ongenerateworld-dcedb49e02"></a>
 - [`symbol-script-event-server-game-ongenerateworld-dcedb49e02`](../../en/reference/script-api/events.md#symbol-script-event-server-game-ongenerateworld-dcedb49e02)

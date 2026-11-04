@@ -183,11 +183,45 @@ void MapSprite::SetFixedAlpha(uint8_t alpha) noexcept
     _alpha = &_color.comp.a;
 }
 
-void MapSprite::SetLight(nptr<const ucolor> light, nptr<const ucolor> light_right, nptr<const ucolor> light_left) noexcept
+void MapSprite::SetLight(CornerType corner, ptr<const ucolor> light, msize size) noexcept
 {
-    _light = light;
-    _lightRight = light_right;
-    _lightLeft = light_left;
+    if (_hex.x >= 1 && _hex.x < size.width - 1 && _hex.y >= 1 && _hex.y < size.height - 1) [[likely]] {
+        size_t width {numeric_cast<size_t>(size.width)};
+        size_t light_count {size.square<size_t>()};
+        auto lights {make_span(light, light_count)};
+        auto light_at {[&lights](size_t pos) noexcept -> ptr<const ucolor> {
+            FO_STRONG_ASSERT(pos < lights.size(), "Light index is out of range");
+            return &lights[pos];
+        }};
+        size_t light_index {numeric_cast<size_t>(safe_numeric_cast<int64_t>(_hex.y) * size.width + _hex.x)};
+        _light = light_at(light_index);
+
+        switch (corner) {
+        case CornerType::EastWest:
+        case CornerType::East:
+            _lightRight = light_at(light_index - 1);
+            _lightLeft = light_at(light_index + 1);
+            break;
+        case CornerType::NorthSouth:
+        case CornerType::West:
+            _lightRight = light_at(light_index + width);
+            _lightLeft = light_at(light_index - width);
+            break;
+        case CornerType::South:
+            _lightRight = light_at(light_index - 1);
+            _lightLeft = light_at(light_index - width);
+            break;
+        case CornerType::North:
+            _lightRight = light_at(light_index + width);
+            _lightLeft = light_at(light_index + 1);
+            break;
+        }
+    }
+    else {
+        _light = nullptr;
+        _lightRight = nullptr;
+        _lightLeft = nullptr;
+    }
 }
 
 void MapSprite::SetHidden(bool hidden) noexcept

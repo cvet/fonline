@@ -1426,32 +1426,6 @@ TEST_CASE("PathFinding::AStar")
     }
 }
 
-TEST_CASE("PathFinding::RoutesMatchOnContinentSizedMaps")
-{
-    // A search on a map past the dense block-index limit uses the sparse index and must find the same route,
-    // shifted, as on a small map
-    if constexpr (std::numeric_limits<mcoord_t>::max() < 128000) {
-        SKIP("Map coordinates are 16-bit in this build");
-    }
-    else {
-        constexpr int32_t shift {120000};
-        auto wall_at {[](int32_t x, int32_t y) -> bool { return x == 12 && y >= 3 && y <= 16; }};
-
-        FindPathInput small {MakeBlockedSettings(mpos {5, 10}, mpos {18, 10}, [&wall_at](mpos hex) -> bool { return wall_at(hex.x, hex.y); })};
-        small.MapSize = msize {40, 40};
-        FindPathInput huge {MakeBlockedSettings(mpos {numeric_cast<mcoord_t>(5 + shift), numeric_cast<mcoord_t>(10 + shift)}, mpos {numeric_cast<mcoord_t>(18 + shift), numeric_cast<mcoord_t>(10 + shift)}, [&wall_at, shift](mpos hex) -> bool { return wall_at(hex.x - shift, hex.y - shift); })};
-        huge.MapSize = msize {128000, 128000};
-
-        auto small_output {PathFinding::FindPath(small)};
-        auto huge_output {PathFinding::FindPath(huge)};
-
-        REQUIRE(small_output.Result == FindPathOutput::ResultType::Ok);
-        REQUIRE(huge_output.Result == FindPathOutput::ResultType::Ok);
-        CHECK(huge_output.Steps == small_output.Steps);
-        CHECK(huge_output.Steps.size() > 13);
-    }
-}
-
 TEST_CASE("PathFinding::FindReachable")
 {
     auto blocked_at {[](const vector<uint8_t>& blocked, mpos hex) -> bool { return blocked[numeric_cast<size_t>(hex.y) * numeric_cast<size_t>(RANDOM_MAP_SIZE.width) + numeric_cast<size_t>(hex.x)] != 0; }};

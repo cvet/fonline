@@ -16,6 +16,16 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Changed
 
+- Revert the large-map integration published as `2026.1.102-dev` (`82ac7d57fe`..`72c1be91a0`): it reached master without review and returns as a pull request. Sources, scripts, generated models and documentation are again those of `2026.1.101-dev`.
+
+### Migration
+
+- Baseline `72c1be91a0` (`2026.1.102-dev`) to `2026.1.103-dev`. Code built on `2026.1.102-dev` that uses `Map.LoadStaticItems`, `Map.UnloadStaticItems`, `Map.GenerateContent`, `Game.LoadStaticMap`, `Game.LoadStaticMapsAsync`, `Game.IsStaticMapLoaded`, `Game.UnloadStaticMap`, `Game.OnGenerateStaticItemIds`, `TwoDimensionalGrid::ClearArea` or `MapView::SetupSpriteLight` no longer compiles until the pull request lands; the `2026.1.101-dev` notes apply unchanged. Rebuild every native role, regenerate both scripting backends and rebake together; `MigrationRule Version` stays `0.0.86` and Managed ABI stays `9`.
+
+## 2026.1.102-dev - 2026-11-04
+
+### Changed
+
 - Index `ChunkedTwoDimensionalGrid` blocks through a two-level table: the top level holds one owner per 32x32 block slots, and a slot table is allocated on the first write inside it. A grid at the maximum map size no longer allocates a map-sized block index (512 MB for 128,000 cells per side with 16-cell blocks). Field addresses, empty-cell reads and resize semantics are unchanged.
 - Store each client map field's applied light in `MapView::Field::Light` instead of a dense per-map colour buffer. `MapView::SetupSpriteLight(mspr, corner)` resolves the sprite's hex and corner neighbours and writes those fields; `MapSprite::SetLight` now takes the three resolved light pointers. Mapper resize needs no per-cell light pass.
 - Number client roof groups from the tracked set of roof fields in the former x-major, y-minor order, clear scroll blocks of a map without a scroll axial area from the previously blocked fields only, and destroy views outside a resized map from the view lists. Group numbers and blocked cells are unchanged.

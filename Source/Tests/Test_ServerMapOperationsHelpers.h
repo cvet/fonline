@@ -4894,61 +4894,6 @@ namespace MapOpsTest
         return std::move(rig.Outputs.at("StaticMap.fomap-bin-server"));
     }
 
-    // A 16x16 map to load into other maps: critter 11 at 6 7, blocking static item 31 at 2 3, hidden static item 32 at
-    // 15 15 and dynamic item 33 at 4 5
-    inline auto MakeContentMapBlob(const vector<uint8_t>& metadata_blob, const vector<uint8_t>& critter_blob, const vector<uint8_t>& server_item_blob, const vector<uint8_t>& client_item_blob, const vector<uint8_t>& server_static_item_blob, const vector<uint8_t>& client_static_item_blob, const vector<uint8_t>& server_map_blob, const vector<uint8_t>& client_map_blob) -> vector<uint8_t>
-    {
-        BakerTests::TestRig rig {};
-        BakerTests::OverrideSetting(rig.Settings.Baking.ProtoFileExtensions, vector<string> {"fopro", "fomap"});
-        rig.AddBakedFile("Metadata.fometa-server", metadata_blob);
-        rig.AddBakedFile("Metadata.fometa-client", metadata_blob);
-        rig.AddBakedFile("ContentMapCritter.fopro-bin-server", critter_blob);
-        rig.AddBakedFile("ContentMapItem.fopro-bin-server", server_item_blob);
-        rig.AddBakedFile("ContentMapItem.fopro-bin-client", client_item_blob);
-        rig.AddBakedFile("ContentMapStaticItems.fopro-bin-server", server_static_item_blob);
-        rig.AddBakedFile("ContentMapStaticItems.fopro-bin-client", client_static_item_blob);
-        rig.AddBakedFile("ContentMap.fopro-bin-server", server_map_blob);
-        rig.AddBakedFile("ContentMap.fopro-bin-client", client_map_blob);
-
-#if FO_ANGELSCRIPT_SCRIPTING
-        BakerServerEngine script_engine {rig.BakedFiles};
-        vector<uint8_t> script_blob {BakerTests::CompileInlineScripts(&script_engine, "ContentMapScripts", {{"Scripts/ContentMapScripts.fos", "namespace ContentMapScripts\n{\nvoid Dummy()\n{\n}\n}\n"}}, [](string_view message) {
-            string message_str {string(message)};
-
-            if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
-                throw ScriptSystemException(message_str);
-            }
-        })};
-
-        rig.AddBakedFile("ContentMapScripts.fos-bin-server", script_blob);
-#endif
-        rig.AddSourceFile("ContentMap.fomap",
-            "[ProtoMap]\n"
-            "$Name = ContentMap\n"
-            "[$Name/Critter]\n"
-            "$Id = 11\n"
-            "$Proto = TestStaticCritter\n"
-            "Hex = 6 7\n"
-            "[$Name/Item]\n"
-            "$Id = 31\n"
-            "$Proto = TestStaticItem\n"
-            "Hex = 2 3\n"
-            "[$Name/Item]\n"
-            "$Id = 32\n"
-            "$Proto = TestStaticHiddenItem\n"
-            "Hex = 15 15\n"
-            "[$Name/Item]\n"
-            "$Id = 33\n"
-            "$Proto = TestItem\n"
-            "Hex = 4 5\n");
-
-        MapBaker baker {rig.MakeContext("Maps")};
-        baker.BakeFiles(rig.GetAllSourceFiles(), "ContentMap.fomap-bin-server");
-
-        FO_VERIFY_AND_THROW(rig.Outputs.contains("ContentMap.fomap-bin-server"), "Content map was not baked");
-        return std::move(rig.Outputs.at("ContentMap.fomap-bin-server"));
-    }
-
     inline auto MakeResources(msize test_map_size = msize {200, 200}) -> FileSystem
     {
         auto metadata_blob {BakerTests::MakeEmptyMetadataBlob()};
@@ -4992,6 +4937,7 @@ namespace MapOpsTest
             proto.SetNoBlock(false);
             proto.SetShootThru(true);
         });
+
         auto multihex_item_blob {BakerTests::MakeMultiProtoResourceBlob<ProtoItem>(proto_engine, item_type, multihex_items)};
         auto static_item_blob {MakeStaticItemProtoBlob(proto_engine, item_type, true)};
         auto static_item_client_blob {MakeStaticItemProtoBlob(client_proto_engine, client_item_type, false)};
@@ -5001,10 +4947,6 @@ namespace MapOpsTest
         auto static_map_client_proto_blob {MakeMapProtoBlob(client_proto_engine, client_map_type, "StaticMap", msize {50, 50})};
         auto fomap_blob {MakeEmptyMapBlob()};
         auto static_fomap_blob {MakeStaticMapBlob(metadata_blob, static_critter_blob, static_item_blob, static_item_client_blob, static_map_proto_blob, static_map_client_proto_blob)};
-        auto content_map_proto_blob {MakeMapProtoBlob(proto_engine, map_type, "ContentMap", msize {16, 16})};
-        auto content_map_client_proto_blob {MakeMapProtoBlob(client_proto_engine, client_map_type, "ContentMap", msize {16, 16})};
-        auto item_client_blob {BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(client_proto_engine, client_item_type, "TestItem")};
-        auto content_fomap_blob {MakeContentMapBlob(metadata_blob, static_critter_blob, item_blob, item_client_blob, static_item_blob, static_item_client_blob, content_map_proto_blob, content_map_client_proto_blob)};
 #if FO_ANGELSCRIPT_SCRIPTING
         auto script_blob {MakeScriptBinary(compiler_resources)};
 #endif
@@ -5022,8 +4964,6 @@ namespace MapOpsTest
         runtime_source->AddFile("StaticMap.fopro-bin-server", static_map_proto_blob);
         runtime_source->AddFile("TestMap.fomap-bin-server", fomap_blob);
         runtime_source->AddFile("StaticMap.fomap-bin-server", static_fomap_blob);
-        runtime_source->AddFile("ContentMap.fopro-bin-server", content_map_proto_blob);
-        runtime_source->AddFile("ContentMap.fomap-bin-server", content_fomap_blob);
 #if FO_ANGELSCRIPT_SCRIPTING
         runtime_source->AddFile("MapOpsTest.fos-bin-server", script_blob);
 #endif

@@ -131,19 +131,15 @@ server startup before loading maps, naming the setting and supplied value.
 
 Chunk side is the compile-time `GameSettings::SERVER_MAP_CHUNK_SIDE` constant
 (16), supplied as the grid's required template argument. It must be a nonzero
-power of two and requires a native rebuild to change. A two-level, directly
-indexed owner table (32x32 block slots per lazily allocated slot table)
-allocates a dense `ChunkSide * ChunkSide` block on first write; reading an
-absent block allocates nothing, so the index follows the touched area even at
-the maximum map size. Every grid implements `ClearArea(origin, size)`, which
-resets a clipped rectangle; the chunked grid also releases the blocks and slot
-tables it empties. Populated cell addresses remain stable when
+power of two and requires a native rebuild to change. A directly indexed owner
+table allocates a dense `ChunkSide * ChunkSide` block on first write; reading an
+absent block allocates nothing. Populated cell addresses remain stable when
 other blocks are allocated. Chunks can allocate more unused fields than hash
 storage on widely scattered content; qualify memory and access cost on the
 intended server workload before choosing the mode.
 
 Clearing a field's occupants or manual block does not remove its `Dynamic`
-cell or release its `Chunked` block; only `ClearArea` does. Storage therefore reflects write history
+cell or release its `Chunked` block. Storage therefore reflects write history
 as well as current population. The hidden runtime-memory fixtures described
 in [testing](../../contributing/testing/) distinguish these stages.
 
