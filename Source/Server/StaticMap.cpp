@@ -185,6 +185,38 @@ void StaticMap::ShrinkToFit()
     _staticItems.shrink_to_fit();
 }
 
+void StaticMap::RemoveStaticItems(const unordered_set<ident_t>& static_item_ids)
+{
+    unordered_set<mpos> dirty_hexes {};
+
+    for (ident_t static_item_id : static_item_ids) {
+        auto it {_staticItemsById.find(static_item_id)};
+        FO_VERIFY_AND_THROW(it != _staticItemsById.end(), "Static item to remove is missing from the static map", static_item_id);
+
+        ForEachItemHex(it->second, [&dirty_hexes](mpos item_hex) { dirty_hexes.emplace(item_hex); });
+    }
+
+    // Fields are rebuilt while the removed items are still owned, since a field holds plain pointers to them
+    for (mpos hex : dirty_hexes) {
+        Field field {BuildFieldWithout(hex, static_item_ids)};
+
+        if (field.StaticItems.empty() && !field.ScrollBlocked) {
+            _hexField->ClearArea(hex, msize {1, 1});
+        }
+        else {
+            *_hexField->GetCellForWriting(hex) = std::move(field);
+        }
+    }
+
+    std::erase_if(_staticItems, [&static_item_ids](ptr<StaticItem> item) { return static_item_ids.count(item->GetId()) != 0; });
+
+    for (ident_t static_item_id : static_item_ids) {
+        _staticItemsById.erase(static_item_id);
+    }
+
+    std::erase_if(_ownedItemBillets, [&static_item_ids](const OwnedItemBillet& billet) { return static_item_ids.count(billet.first) != 0; });
+}
+
 auto StaticMap::CreateHexField(msize map_size, string_view grid_type) -> unique_ptr<TwoDimensionalGrid<Field, mpos, msize>>
 {
     if (grid_type == "Static") {

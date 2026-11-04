@@ -306,6 +306,9 @@ public:
     // Runs before a local map view is created; handlers may replace `screenSize` for that map
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnPreLoadMap, hstring /*locPid*/, hstring /*mapPid*/, isize32& /*screenSize*/);
+    // Runs while `Map.LoadStaticItems` copies the static items of proto map `mapPid` into `map` at `offset`; `itemIds` holds their baked ids, and handlers replace each with the id its copy gets: nonzero, unused on the map and the same id the server gives that item
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnGenerateStaticItemIds, ptr<MapView> /*map*/, hstring /*mapPid*/, mpos /*offset*/, vector<ident_t>& /*itemIds*/);
     // Runs after a local or global map-load message has established the new client map context
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnMapLoad);

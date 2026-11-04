@@ -10,8 +10,8 @@
       "selector": "scope:native-codegen",
       "stability": "experimental",
       "since": "2022.1.0.wip",
-      "symbol_count": 2593,
-      "inventory_sha256": "601f2c9b93a6f3bb3ccda9e3d01660a790b300d8ec7317ed5c1d6a4480e7e174",
+      "symbol_count": 2606,
+      "inventory_sha256": "fadd381cbdb03bed4f8e5bf6d6996c8a92f19d391bf9fd7bae28d4162e77badb",
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
@@ -72,13 +72,13 @@
     "api_contract_scope_selector": "scope:native-codegen"
   },
   "summary": {
-    "symbol_count": 2593,
+    "symbol_count": 2606,
     "symbols_by_kind": {
       "entity": 7,
       "enum": 60,
       "enum-value": 770,
-      "event": 121,
-      "method": 1017,
+      "event": 123,
+      "method": 1028,
       "migration-rule": 27,
       "property": 134,
       "ref-field": 42,
@@ -89,17 +89,17 @@
       "value-type": 22
     },
     "symbols_by_stability": {
-      "experimental": 2592,
+      "experimental": 2605,
       "internal": 1
     },
     "explicit_contract_declaration_count": 4,
-    "explicit_contract_symbol_count": 2593,
+    "explicit_contract_symbol_count": 2606,
     "default_contract_symbol_count": 0,
     "explicit_contracts_by_stability": {
-      "experimental": 2592,
+      "experimental": 2605,
       "internal": 1
     },
-    "described_symbol_count": 2593,
+    "described_symbol_count": 2606,
     "missing_description_count": 0,
     "symbols_without_source_count": 14,
     "metadata_source_file_count": 43,
@@ -31265,7 +31265,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 322
+        "line": 325
       },
       "contract": {
         "explicit": true,
@@ -31334,7 +31334,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 325
+        "line": 328
       },
       "contract": {
         "explicit": true,
@@ -31431,7 +31431,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 328
+        "line": 331
       },
       "contract": {
         "explicit": true,
@@ -31500,7 +31500,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 331
+        "line": 334
       },
       "contract": {
         "explicit": true,
@@ -31562,7 +31562,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 334
+        "line": 337
       },
       "contract": {
         "explicit": true,
@@ -31896,6 +31896,68 @@
       },
       "declared_target": "client",
       "arguments": []
+    },
+    {
+      "id": "script.event.client.Game.OnGenerateStaticItemIds",
+      "family_id": "script.event.client.Game.OnGenerateStaticItemIds",
+      "kind": "event",
+      "name": "OnGenerateStaticItemIds",
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "receiver": "Game",
+      "signature": "event Game.OnGenerateStaticItemIds(Map map, hstring mapPid, mpos offset, ident[]& itemIds)",
+      "description": "Runs while `Map.LoadStaticItems` copies the static items of proto map `mapPid` into `map` at `offset`; `itemIds` holds their baked ids, and handlers replace each with the id its copy gets: nonzero, unused on the map and the same id the server gives that item",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Client/Client.h",
+        "line": 310
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 45
+        },
+        "notes": ""
+      },
+      "declared_target": "client",
+      "arguments": [
+        {
+          "name": "map",
+          "type": "Map",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "mapPid",
+          "type": "hstring",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "offset",
+          "type": "mpos",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "itemIds",
+          "type": "ident[]&",
+          "nullable": false,
+          "by_reference": true,
+          "default": null
+        }
+      ]
     },
     {
       "id": "script.event.client.Game.OnInfoMessage",
@@ -32316,7 +32378,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 310
+        "line": 313
       },
       "contract": {
         "explicit": true,
@@ -32349,7 +32411,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 313
+        "line": 316
       },
       "contract": {
         "explicit": true,
@@ -32382,7 +32444,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 316
+        "line": 319
       },
       "contract": {
         "explicit": true,
@@ -32415,7 +32477,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 340
+        "line": 343
       },
       "contract": {
         "explicit": true,
@@ -32634,7 +32696,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 319
+        "line": 322
       },
       "contract": {
         "explicit": true,
@@ -33413,7 +33475,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 337
+        "line": 340
       },
       "contract": {
         "explicit": true,
@@ -34677,7 +34739,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 317
+        "line": 320
       },
       "contract": {
         "explicit": true,
@@ -34717,7 +34779,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 314
+        "line": 317
       },
       "contract": {
         "explicit": true,
@@ -34764,7 +34826,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 329
+        "line": 332
       },
       "contract": {
         "explicit": true,
@@ -34818,7 +34880,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 320
+        "line": 323
       },
       "contract": {
         "explicit": true,
@@ -34858,7 +34920,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 275
+        "line": 278
       },
       "contract": {
         "explicit": true,
@@ -34905,7 +34967,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 311
+        "line": 314
       },
       "contract": {
         "explicit": true,
@@ -34945,7 +35007,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 326
+        "line": 329
       },
       "contract": {
         "explicit": true,
@@ -34985,7 +35047,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 278
+        "line": 281
       },
       "contract": {
         "explicit": true,
@@ -35032,7 +35094,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 281
+        "line": 284
       },
       "contract": {
         "explicit": true,
@@ -35072,7 +35134,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 284
+        "line": 287
       },
       "contract": {
         "explicit": true,
@@ -35119,7 +35181,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 323
+        "line": 326
       },
       "contract": {
         "explicit": true,
@@ -35174,6 +35236,67 @@
       "arguments": []
     },
     {
+      "id": "script.event.server.Game.OnGenerateStaticItemIds",
+      "family_id": "script.event.server.Game.OnGenerateStaticItemIds",
+      "kind": "event",
+      "name": "OnGenerateStaticItemIds",
+      "runtime_sides": [
+        "server"
+      ],
+      "receiver": "Game",
+      "signature": "event Game.OnGenerateStaticItemIds(Map map, hstring mapPid, mpos offset, ident[]& itemIds)",
+      "description": "Runs while `Map.LoadStaticItems` copies the static items of proto map `mapPid` into `map` at `offset`; `itemIds` holds their baked ids, and handlers replace each with the id its copy gets: nonzero, unused on the map and derived from the baked id and offset, so a client loading the same content gives its copies the same ids",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Server/Server.h",
+        "line": 275
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 45
+        },
+        "notes": ""
+      },
+      "declared_target": "server",
+      "arguments": [
+        {
+          "name": "map",
+          "type": "Map",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "mapPid",
+          "type": "hstring",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "offset",
+          "type": "mpos",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "itemIds",
+          "type": "ident[]&",
+          "nullable": false,
+          "by_reference": true,
+          "default": null
+        }
+      ]
+    },
+    {
       "id": "script.event.server.Game.OnGenerateWorld",
       "family_id": "script.event.server.Game.OnGenerateWorld",
       "kind": "event",
@@ -35223,7 +35346,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 287
+        "line": 290
       },
       "contract": {
         "explicit": true,
@@ -35263,7 +35386,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 290
+        "line": 293
       },
       "contract": {
         "explicit": true,
@@ -35335,7 +35458,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 335
+        "line": 338
       },
       "contract": {
         "explicit": true,
@@ -35375,7 +35498,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 332
+        "line": 335
       },
       "contract": {
         "explicit": true,
@@ -35422,7 +35545,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 296
+        "line": 299
       },
       "contract": {
         "explicit": true,
@@ -35462,7 +35585,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 293
+        "line": 296
       },
       "contract": {
         "explicit": true,
@@ -35509,7 +35632,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 305
+        "line": 308
       },
       "contract": {
         "explicit": true,
@@ -35556,7 +35679,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 308
+        "line": 311
       },
       "contract": {
         "explicit": true,
@@ -35603,7 +35726,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 302
+        "line": 305
       },
       "contract": {
         "explicit": true,
@@ -35643,7 +35766,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 299
+        "line": 302
       },
       "contract": {
         "explicit": true,
@@ -35971,7 +36094,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 338
+        "line": 341
       },
       "contract": {
         "explicit": true,
@@ -36230,7 +36353,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Map.h",
-        "line": 154
+        "line": 157
       },
       "contract": {
         "explicit": true,
@@ -36277,7 +36400,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Map.h",
-        "line": 157
+        "line": 160
       },
       "contract": {
         "explicit": true,
@@ -36324,7 +36447,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Map.h",
-        "line": 151
+        "line": 154
       },
       "contract": {
         "explicit": true,
@@ -48715,7 +48838,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 994
+        "line": 1015
       },
       "contract": {
         "explicit": true,
@@ -48777,7 +48900,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 1008
+        "line": 1029
       },
       "contract": {
         "explicit": true,
@@ -48839,7 +48962,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 732
+        "line": 753
       },
       "contract": {
         "explicit": true,
@@ -48901,7 +49024,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 783
+        "line": 804
       },
       "contract": {
         "explicit": true,
@@ -48949,7 +49072,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 885
+        "line": 906
       },
       "contract": {
         "explicit": true,
@@ -48997,7 +49120,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 1045
+        "line": 1066
       },
       "contract": {
         "explicit": true,
@@ -49209,7 +49332,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 314
+        "line": 335
       },
       "contract": {
         "explicit": true,
@@ -49257,7 +49380,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 901
+        "line": 922
       },
       "contract": {
         "explicit": true,
@@ -49312,7 +49435,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 350
+        "line": 371
       },
       "contract": {
         "explicit": true,
@@ -49374,7 +49497,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 326
+        "line": 347
       },
       "contract": {
         "explicit": true,
@@ -49429,7 +49552,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 394
+        "line": 415
       },
       "contract": {
         "explicit": true,
@@ -49484,7 +49607,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 374
+        "line": 395
       },
       "contract": {
         "explicit": true,
@@ -49532,7 +49655,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 412
+        "line": 433
       },
       "contract": {
         "explicit": true,
@@ -49587,7 +49710,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 469
+        "line": 490
       },
       "contract": {
         "explicit": true,
@@ -49663,7 +49786,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 450
+        "line": 471
       },
       "contract": {
         "explicit": true,
@@ -49725,7 +49848,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 431
+        "line": 452
       },
       "contract": {
         "explicit": true,
@@ -49780,7 +49903,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 485
+        "line": 506
       },
       "contract": {
         "explicit": true,
@@ -49870,7 +49993,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 914
+        "line": 935
       },
       "contract": {
         "explicit": true,
@@ -49925,7 +50048,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 845
+        "line": 866
       },
       "contract": {
         "explicit": true,
@@ -49987,7 +50110,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 838
+        "line": 859
       },
       "contract": {
         "explicit": true,
@@ -50042,7 +50165,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 1038
+        "line": 1059
       },
       "contract": {
         "explicit": true,
@@ -50090,7 +50213,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 501
+        "line": 522
       },
       "contract": {
         "explicit": true,
@@ -50159,7 +50282,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 813
+        "line": 834
       },
       "contract": {
         "explicit": true,
@@ -50207,7 +50330,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 800
+        "line": 821
       },
       "contract": {
         "explicit": true,
@@ -50255,7 +50378,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 824
+        "line": 845
       },
       "contract": {
         "explicit": true,
@@ -50303,7 +50426,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 1082
+        "line": 1103
       },
       "contract": {
         "explicit": true,
@@ -50343,7 +50466,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 243
+        "line": 264
       },
       "contract": {
         "explicit": true,
@@ -50391,7 +50514,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 892
+        "line": 913
       },
       "contract": {
         "explicit": true,
@@ -50439,7 +50562,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 260
+        "line": 281
       },
       "contract": {
         "explicit": true,
@@ -50487,7 +50610,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 277
+        "line": 298
       },
       "contract": {
         "explicit": true,
@@ -50527,7 +50650,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 294
+        "line": 315
       },
       "contract": {
         "explicit": true,
@@ -50575,7 +50698,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 208
+        "line": 229
       },
       "contract": {
         "explicit": true,
@@ -50615,7 +50738,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 517
+        "line": 538
       },
       "contract": {
         "explicit": true,
@@ -50677,7 +50800,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 597
+        "line": 618
       },
       "contract": {
         "explicit": true,
@@ -50746,7 +50869,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 556
+        "line": 577
       },
       "contract": {
         "explicit": true,
@@ -50808,7 +50931,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 640
+        "line": 661
       },
       "contract": {
         "explicit": true,
@@ -50870,7 +50993,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 675
+        "line": 696
       },
       "contract": {
         "explicit": true,
@@ -50932,7 +51055,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 1069
+        "line": 1090
       },
       "contract": {
         "explicit": true,
@@ -50980,7 +51103,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 180
+        "line": 201
       },
       "contract": {
         "explicit": true,
@@ -51020,7 +51143,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 929
+        "line": 950
       },
       "contract": {
         "explicit": true,
@@ -51060,7 +51183,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 222
+        "line": 243
       },
       "contract": {
         "explicit": true,
@@ -51100,7 +51223,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 739
+        "line": 760
       },
       "contract": {
         "explicit": true,
@@ -51140,7 +51263,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 961
+        "line": 982
       },
       "contract": {
         "explicit": true,
@@ -51188,7 +51311,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 972
+        "line": 993
       },
       "contract": {
         "explicit": true,
@@ -51236,7 +51359,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 922
+        "line": 943
       },
       "contract": {
         "explicit": true,
@@ -51284,7 +51407,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 950
+        "line": 971
       },
       "contract": {
         "explicit": true,
@@ -51332,7 +51455,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 983
+        "line": 1004
       },
       "contract": {
         "explicit": true,
@@ -51380,7 +51503,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 194
+        "line": 215
       },
       "contract": {
         "explicit": true,
@@ -51402,6 +51525,130 @@
       "arguments": []
     },
     {
+      "id": "script.method.client.Map.LoadStaticItems#03425f8a5f227e36",
+      "family_id": "script.method.client.Map.LoadStaticItems",
+      "kind": "method",
+      "name": "LoadStaticItems",
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "receiver": "Map",
+      "signature": "ident[] Map.LoadStaticItems(hstring mapPid, mpos offset)",
+      "description": "Copy the static items of a prototype map's client bake moved by the offset, with ids from `Game.OnGenerateStaticItemIds`, and return those ids",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ClientMapScriptMethods.cpp",
+        "line": 166
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 45
+        },
+        "notes": ""
+      },
+      "declared_target": "client",
+      "receivers": [
+        "Map"
+      ],
+      "return": {
+        "type": "ident[]",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "mapPid",
+          "type": "hstring",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "offset",
+          "type": "mpos",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.client.Map.LoadStaticItems#aa117f69739fd959",
+      "family_id": "script.method.client.Map.LoadStaticItems",
+      "kind": "method",
+      "name": "LoadStaticItems",
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "receiver": "Map",
+      "signature": "ident[] Map.LoadStaticItems(hstring mapPid, mpos offset, mpos sourceHex, msize sourceSize)",
+      "description": "Copy the static items of a prototype map area from its client bake so that the area's first hex lands at the offset, and return their ids",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ClientMapScriptMethods.cpp",
+        "line": 173
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 45
+        },
+        "notes": ""
+      },
+      "declared_target": "client",
+      "receivers": [
+        "Map"
+      ],
+      "return": {
+        "type": "ident[]",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "mapPid",
+          "type": "hstring",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "offset",
+          "type": "mpos",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "sourceHex",
+          "type": "mpos",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "sourceSize",
+          "type": "msize",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
       "id": "script.method.client.Map.MoveHexByDir#62392271e1b42030",
       "family_id": "script.method.client.Map.MoveHexByDir",
       "kind": "method",
@@ -51420,7 +51667,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 746
+        "line": 767
       },
       "contract": {
         "explicit": true,
@@ -51475,7 +51722,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 758
+        "line": 779
       },
       "contract": {
         "explicit": true,
@@ -51537,7 +51784,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 713
+        "line": 734
       },
       "contract": {
         "explicit": true,
@@ -51606,7 +51853,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 166
+        "line": 187
       },
       "contract": {
         "explicit": true,
@@ -51646,7 +51893,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 776
+        "line": 797
       },
       "contract": {
         "explicit": true,
@@ -51686,7 +51933,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 1026
+        "line": 1047
       },
       "contract": {
         "explicit": true,
@@ -51741,7 +51988,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 173
+        "line": 194
       },
       "contract": {
         "explicit": true,
@@ -51810,7 +52057,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 236
+        "line": 257
       },
       "contract": {
         "explicit": true,
@@ -51858,7 +52105,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 1062
+        "line": 1083
       },
       "contract": {
         "explicit": true,
@@ -51906,7 +52153,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 215
+        "line": 236
       },
       "contract": {
         "explicit": true,
@@ -51954,7 +52201,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 187
+        "line": 208
       },
       "contract": {
         "explicit": true,
@@ -52002,7 +52249,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 201
+        "line": 222
       },
       "contract": {
         "explicit": true,
@@ -52050,7 +52297,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 852
+        "line": 873
       },
       "contract": {
         "explicit": true,
@@ -52126,7 +52373,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 859
+        "line": 880
       },
       "contract": {
         "explicit": true,
@@ -52181,7 +52428,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 229
+        "line": 250
       },
       "contract": {
         "explicit": true,
@@ -52204,6 +52451,54 @@
         {
           "name": "layers",
           "type": "MapLayers",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.client.Map.UnloadStaticItems",
+      "family_id": "script.method.client.Map.UnloadStaticItems",
+      "kind": "method",
+      "name": "UnloadStaticItems",
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "receiver": "Map",
+      "signature": "void Map.UnloadStaticItems(ident[] staticItemIds)",
+      "description": "Remove static items that `LoadStaticItems` added to the map view and release the field blocks they leave empty",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ClientMapScriptMethods.cpp",
+        "line": 180
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 45
+        },
+        "notes": ""
+      },
+      "declared_target": "client",
+      "receivers": [
+        "Map"
+      ],
+      "return": {
+        "type": "void",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "staticItemIds",
+          "type": "ident[]",
           "nullable": false,
           "by_reference": false,
           "default": null
@@ -80992,7 +81287,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1866
+        "line": 1925
       },
       "contract": {
         "explicit": true,
@@ -81080,7 +81375,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1903
+        "line": 1962
       },
       "contract": {
         "explicit": true,
@@ -81649,7 +81944,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1875
+        "line": 1934
       },
       "contract": {
         "explicit": true,
@@ -81688,7 +81983,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1823
+        "line": 1882
       },
       "contract": {
         "explicit": true,
@@ -81776,7 +82071,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1910
+        "line": 1969
       },
       "contract": {
         "explicit": true,
@@ -81815,7 +82110,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1917
+        "line": 1976
       },
       "contract": {
         "explicit": true,
@@ -82071,7 +82366,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1889
+        "line": 1948
       },
       "contract": {
         "explicit": true,
@@ -82466,7 +82761,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1896
+        "line": 1955
       },
       "contract": {
         "explicit": true,
@@ -82728,7 +83023,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1882
+        "line": 1941
       },
       "contract": {
         "explicit": true,
@@ -82767,7 +83062,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1857
+        "line": 1916
       },
       "contract": {
         "explicit": true,
@@ -82806,7 +83101,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1586
+        "line": 1645
       },
       "contract": {
         "explicit": true,
@@ -82892,7 +83187,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1577
+        "line": 1636
       },
       "contract": {
         "explicit": true,
@@ -82939,7 +83234,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1611
+        "line": 1670
       },
       "contract": {
         "explicit": true,
@@ -82986,7 +83281,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1832
+        "line": 1891
       },
       "contract": {
         "explicit": true,
@@ -83016,6 +83311,53 @@
       ]
     },
     {
+      "id": "script.method.server.Game.IsStaticMapLoaded",
+      "family_id": "script.method.server.Game.IsStaticMapLoaded",
+      "kind": "method",
+      "name": "IsStaticMapLoaded",
+      "runtime_sides": [
+        "server"
+      ],
+      "receiver": "Game",
+      "signature": "bool Game.IsStaticMapLoaded(hstring mapPid)",
+      "description": "Return whether the baked content of a prototype map is cached",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
+        "line": 1610
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 45
+        },
+        "notes": ""
+      },
+      "declared_target": "server",
+      "receivers": [
+        "Game"
+      ],
+      "return": {
+        "type": "bool",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "mapPid",
+          "type": "hstring",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
       "id": "script.method.server.Game.IsTextPresent",
       "family_id": "script.method.server.Game.IsTextPresent",
       "kind": "method",
@@ -83033,7 +83375,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1604
+        "line": 1663
       },
       "contract": {
         "explicit": true,
@@ -83178,6 +83520,100 @@
       ]
     },
     {
+      "id": "script.method.server.Game.LoadStaticMap",
+      "family_id": "script.method.server.Game.LoadStaticMap",
+      "kind": "method",
+      "name": "LoadStaticMap",
+      "runtime_sides": [
+        "server"
+      ],
+      "receiver": "Game",
+      "signature": "void Game.LoadStaticMap(hstring mapPid)",
+      "description": "Read the baked content of a prototype map into the cache now",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
+        "line": 1577
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 45
+        },
+        "notes": ""
+      },
+      "declared_target": "server",
+      "receivers": [
+        "Game"
+      ],
+      "return": {
+        "type": "void",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "mapPid",
+          "type": "hstring",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.server.Game.LoadStaticMapsAsync",
+      "family_id": "script.method.server.Game.LoadStaticMapsAsync",
+      "kind": "method",
+      "name": "LoadStaticMapsAsync",
+      "runtime_sides": [
+        "server"
+      ],
+      "receiver": "Game",
+      "signature": "void Game.LoadStaticMapsAsync(hstring[] mapPids)",
+      "description": "Start reading the baked content of prototype maps on worker threads; a request for one of them waits for its read",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
+        "line": 1590
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 45
+        },
+        "notes": ""
+      },
+      "declared_target": "server",
+      "receivers": [
+        "Game"
+      ],
+      "return": {
+        "type": "void",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "mapPids",
+          "type": "hstring[]",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
       "id": "script.method.server.Game.Lock",
       "family_id": "script.method.server.Game.Lock",
       "kind": "method",
@@ -83195,7 +83631,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1841
+        "line": 1900
       },
       "contract": {
         "explicit": true,
@@ -83783,7 +84219,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1704
+        "line": 1763
       },
       "contract": {
         "explicit": true,
@@ -83833,7 +84269,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1736
+        "line": 1795
       },
       "contract": {
         "explicit": true,
@@ -83897,7 +84333,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1758
+        "line": 1817
       },
       "contract": {
         "explicit": true,
@@ -83947,7 +84383,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1718
+        "line": 1777
       },
       "contract": {
         "explicit": true,
@@ -84001,7 +84437,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1807
+        "line": 1866
       },
       "contract": {
         "explicit": true,
@@ -84043,7 +84479,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1783
+        "line": 1842
       },
       "contract": {
         "explicit": true,
@@ -84092,7 +84528,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1815
+        "line": 1874
       },
       "contract": {
         "explicit": true,
@@ -84131,7 +84567,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1670
+        "line": 1729
       },
       "contract": {
         "explicit": true,
@@ -84185,7 +84621,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1660
+        "line": 1719
       },
       "contract": {
         "explicit": true,
@@ -84234,7 +84670,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1687
+        "line": 1746
       },
       "contract": {
         "explicit": true,
@@ -84311,6 +84747,53 @@
       ]
     },
     {
+      "id": "script.method.server.Game.UnloadStaticMap",
+      "family_id": "script.method.server.Game.UnloadStaticMap",
+      "kind": "method",
+      "name": "UnloadStaticMap",
+      "runtime_sides": [
+        "server"
+      ],
+      "receiver": "Game",
+      "signature": "bool Game.UnloadStaticMap(hstring mapPid)",
+      "description": "Free the cached baked content of a prototype map and return whether it is unloaded; it stays while being read or used by a map",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
+        "line": 1623
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 45
+        },
+        "notes": ""
+      },
+      "declared_target": "server",
+      "receivers": [
+        "Game"
+      ],
+      "return": {
+        "type": "bool",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "mapPid",
+          "type": "hstring",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
       "id": "script.method.server.Game.Unlock",
       "family_id": "script.method.server.Game.Unlock",
       "kind": "method",
@@ -84328,7 +84811,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerGlobalScriptMethods.cpp",
-        "line": 1849
+        "line": 1908
       },
       "contract": {
         "explicit": true,
@@ -85232,7 +85715,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1167
+        "line": 1231
       },
       "contract": {
         "explicit": true,
@@ -85300,7 +85783,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1119
+        "line": 1183
       },
       "contract": {
         "explicit": true,
@@ -85368,7 +85851,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1062
+        "line": 1126
       },
       "contract": {
         "explicit": true,
@@ -85429,7 +85912,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1077
+        "line": 1141
       },
       "contract": {
         "explicit": true,
@@ -85490,7 +85973,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1092
+        "line": 1156
       },
       "contract": {
         "explicit": true,
@@ -85558,7 +86041,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1140
+        "line": 1204
       },
       "contract": {
         "explicit": true,
@@ -85856,7 +86339,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1262
+        "line": 1326
       },
       "contract": {
         "explicit": true,
@@ -85910,7 +86393,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1242
+        "line": 1306
       },
       "contract": {
         "explicit": true,
@@ -85964,7 +86447,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1255
+        "line": 1319
       },
       "contract": {
         "explicit": true,
@@ -86018,7 +86501,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1006
+        "line": 1070
       },
       "contract": {
         "explicit": true,
@@ -86093,7 +86576,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 972
+        "line": 1036
       },
       "contract": {
         "explicit": true,
@@ -86168,7 +86651,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1039
+        "line": 1103
       },
       "contract": {
         "explicit": true,
@@ -86212,6 +86695,60 @@
       ]
     },
     {
+      "id": "script.method.server.Map.GenerateContent",
+      "family_id": "script.method.server.Map.GenerateContent",
+      "kind": "method",
+      "name": "GenerateContent",
+      "runtime_sides": [
+        "server"
+      ],
+      "receiver": "Map",
+      "signature": "ident[] Map.GenerateContent(hstring mapPid, mpos offset)",
+      "description": "Create the critters and dynamic items of a prototype map moved by the offset and return the created critter and map item ids",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ServerMapScriptMethods.cpp",
+        "line": 538
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 45
+        },
+        "notes": ""
+      },
+      "declared_target": "server",
+      "receivers": [
+        "Map"
+      ],
+      "return": {
+        "type": "ident[]",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "mapPid",
+          "type": "hstring",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "offset",
+          "type": "mpos",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
       "id": "script.method.server.Map.GetCritter#beaf90ce99481bb9",
       "family_id": "script.method.server.Map.GetCritter",
       "kind": "method",
@@ -86229,7 +86766,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 657
+        "line": 721
       },
       "contract": {
         "explicit": true,
@@ -86276,7 +86813,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 682
+        "line": 746
       },
       "contract": {
         "explicit": true,
@@ -86337,7 +86874,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 665
+        "line": 729
       },
       "contract": {
         "explicit": true,
@@ -86384,7 +86921,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 753
+        "line": 817
       },
       "contract": {
         "explicit": true,
@@ -86431,7 +86968,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 770
+        "line": 834
       },
       "contract": {
         "explicit": true,
@@ -86485,7 +87022,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 806
+        "line": 870
       },
       "contract": {
         "explicit": true,
@@ -86546,7 +87083,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 788
+        "line": 852
       },
       "contract": {
         "explicit": true,
@@ -86600,7 +87137,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 825
+        "line": 889
       },
       "contract": {
         "explicit": true,
@@ -86675,7 +87212,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 834
+        "line": 898
       },
       "contract": {
         "explicit": true,
@@ -86764,7 +87301,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 716
+        "line": 780
       },
       "contract": {
         "explicit": true,
@@ -86825,7 +87362,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 697
+        "line": 761
       },
       "contract": {
         "explicit": true,
@@ -86879,7 +87416,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 845
+        "line": 909
       },
       "contract": {
         "explicit": true,
@@ -86933,7 +87470,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 860
+        "line": 924
       },
       "contract": {
         "explicit": true,
@@ -86994,7 +87531,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 875
+        "line": 939
       },
       "contract": {
         "explicit": true,
@@ -87055,7 +87592,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 892
+        "line": 956
       },
       "contract": {
         "explicit": true,
@@ -88107,7 +88644,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 914
+        "line": 978
       },
       "contract": {
         "explicit": true,
@@ -88161,7 +88698,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 947
+        "line": 1011
       },
       "contract": {
         "explicit": true,
@@ -88229,7 +88766,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 921
+        "line": 985
       },
       "contract": {
         "explicit": true,
@@ -88297,7 +88834,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 745
+        "line": 809
       },
       "contract": {
         "explicit": true,
@@ -88336,7 +88873,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 760
+        "line": 824
       },
       "contract": {
         "explicit": true,
@@ -88375,7 +88912,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 491
+        "line": 555
       },
       "contract": {
         "explicit": true,
@@ -88422,7 +88959,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 511
+        "line": 575
       },
       "contract": {
         "explicit": true,
@@ -88476,7 +89013,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 499
+        "line": 563
       },
       "contract": {
         "explicit": true,
@@ -88530,7 +89067,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 630
+        "line": 694
       },
       "contract": {
         "explicit": true,
@@ -88584,7 +89121,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 622
+        "line": 686
       },
       "contract": {
         "explicit": true,
@@ -88631,7 +89168,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 614
+        "line": 678
       },
       "contract": {
         "explicit": true,
@@ -88678,7 +89215,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 649
+        "line": 713
       },
       "contract": {
         "explicit": true,
@@ -88717,7 +89254,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 550
+        "line": 614
       },
       "contract": {
         "explicit": true,
@@ -88778,7 +89315,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 535
+        "line": 599
       },
       "contract": {
         "explicit": true,
@@ -88839,7 +89376,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 588
+        "line": 652
       },
       "contract": {
         "explicit": true,
@@ -88907,7 +89444,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 523
+        "line": 587
       },
       "contract": {
         "explicit": true,
@@ -88954,7 +89491,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 565
+        "line": 629
       },
       "contract": {
         "explicit": true,
@@ -89015,7 +89552,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 900
+        "line": 964
       },
       "contract": {
         "explicit": true,
@@ -89083,7 +89620,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1195
+        "line": 1259
       },
       "contract": {
         "explicit": true,
@@ -89130,7 +89667,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1220
+        "line": 1284
       },
       "contract": {
         "explicit": true,
@@ -89177,7 +89714,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1188
+        "line": 1252
       },
       "contract": {
         "explicit": true,
@@ -89224,7 +89761,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1206
+        "line": 1270
       },
       "contract": {
         "explicit": true,
@@ -89278,7 +89815,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1231
+        "line": 1295
       },
       "contract": {
         "explicit": true,
@@ -89308,6 +89845,128 @@
       ]
     },
     {
+      "id": "script.method.server.Map.LoadStaticItems#03425f8a5f227e36",
+      "family_id": "script.method.server.Map.LoadStaticItems",
+      "kind": "method",
+      "name": "LoadStaticItems",
+      "runtime_sides": [
+        "server"
+      ],
+      "receiver": "Map",
+      "signature": "ident[] Map.LoadStaticItems(hstring mapPid, mpos offset)",
+      "description": "Copy the static items of a prototype map moved by the offset, with ids from `Game.OnGenerateStaticItemIds`, and return those ids",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ServerMapScriptMethods.cpp",
+        "line": 497
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 45
+        },
+        "notes": ""
+      },
+      "declared_target": "server",
+      "receivers": [
+        "Map"
+      ],
+      "return": {
+        "type": "ident[]",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "mapPid",
+          "type": "hstring",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "offset",
+          "type": "mpos",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.server.Map.LoadStaticItems#aa117f69739fd959",
+      "family_id": "script.method.server.Map.LoadStaticItems",
+      "kind": "method",
+      "name": "LoadStaticItems",
+      "runtime_sides": [
+        "server"
+      ],
+      "receiver": "Map",
+      "signature": "ident[] Map.LoadStaticItems(hstring mapPid, mpos offset, mpos sourceHex, msize sourceSize)",
+      "description": "Copy the static items of a prototype map area whose first hex lands at the offset, with ids from `Game.OnGenerateStaticItemIds`, and return those ids",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ServerMapScriptMethods.cpp",
+        "line": 514
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 45
+        },
+        "notes": ""
+      },
+      "declared_target": "server",
+      "receivers": [
+        "Map"
+      ],
+      "return": {
+        "type": "ident[]",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "mapPid",
+          "type": "hstring",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "offset",
+          "type": "mpos",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "sourceHex",
+          "type": "mpos",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "sourceSize",
+          "type": "msize",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
       "id": "script.method.server.Map.MoveHexByDir#62392271e1b42030",
       "family_id": "script.method.server.Map.MoveHexByDir",
       "kind": "method",
@@ -89325,7 +89984,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1297
+        "line": 1361
       },
       "contract": {
         "explicit": true,
@@ -89379,7 +90038,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1309
+        "line": 1373
       },
       "contract": {
         "explicit": true,
@@ -89440,7 +90099,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1290
+        "line": 1354
       },
       "contract": {
         "explicit": true,
@@ -89526,7 +90185,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 480
+        "line": 483
       },
       "contract": {
         "explicit": true,
@@ -89667,7 +90326,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1276
+        "line": 1340
       },
       "contract": {
         "explicit": true,
@@ -89697,6 +90356,53 @@
       ]
     },
     {
+      "id": "script.method.server.Map.UnloadStaticItems",
+      "family_id": "script.method.server.Map.UnloadStaticItems",
+      "kind": "method",
+      "name": "UnloadStaticItems",
+      "runtime_sides": [
+        "server"
+      ],
+      "receiver": "Map",
+      "signature": "void Map.UnloadStaticItems(ident[] staticItemIds)",
+      "description": "Remove static items that `LoadStaticItems` added to the map",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ServerMapScriptMethods.cpp",
+        "line": 531
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 45
+        },
+        "notes": ""
+      },
+      "declared_target": "server",
+      "receivers": [
+        "Map"
+      ],
+      "return": {
+        "type": "void",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "staticItemIds",
+          "type": "ident[]",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
       "id": "script.method.server.Map.VerifyTrigger",
       "family_id": "script.method.server.Map.VerifyTrigger",
       "kind": "method",
@@ -89714,7 +90420,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1327
+        "line": 1391
       },
       "contract": {
         "explicit": true,

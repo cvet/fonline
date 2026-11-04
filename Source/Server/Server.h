@@ -271,6 +271,9 @@ public:
     // Validates a player direction request; handlers may replace `dir`, and `StopChain` rejects the request
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnPlayerDirCritter, ptr<Player> /*player*/, ptr<Critter> /*cr*/, mdir& /*dir*/);
+    // Runs while `Map.LoadStaticItems` copies the static items of proto map `mapPid` into `map` at `offset`; `itemIds` holds their baked ids, and handlers replace each with the id its copy gets: nonzero, unused on the map and derived from the baked id and offset, so a client loading the same content gives its copies the same ids
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnGenerateStaticItemIds, ptr<Map> /*map*/, hstring /*mapPid*/, mpos /*offset*/, vector<ident_t>& /*itemIds*/);
     // Runs after a critter changes map hex and reports the previous hex in `oldHex`
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterMoved, ptr<Critter> /*cr*/, mpos /*oldHex*/);

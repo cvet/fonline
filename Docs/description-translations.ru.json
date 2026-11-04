@@ -10949,6 +10949,58 @@
         "/symbols/@id=script.method.client.Game.SimulateTouchScroll/description": {
           "source_sha256": "925fc3bcc97a0e01e405d9023343a9b28dc43312b3f7a97e2b2201f6d0678518",
           "translation": "Передаёт событие прокрутки касанием в заданной позиции клиента со знаковым смещением в пикселях"
+        },
+        "/symbols/@id=script.event.client.Game.OnGenerateStaticItemIds/description": {
+          "source_sha256": "5a2a953aa2c00f3e2cd7a5a8817f8608c81d2076c81b2e4ee49f306199bd5c5b",
+          "translation": "Вызывается, пока `Map.LoadStaticItems` копирует статические предметы proto-карты `mapPid` в `map` со сдвигом `offset`; `itemIds` содержит их запечённые идентификаторы, и обработчики заменяют каждый на идентификатор копии: ненулевой, не занятый на карте и тот же, что дал этому предмету сервер"
+        },
+        "/symbols/@id=script.event.server.Game.OnGenerateStaticItemIds/description": {
+          "source_sha256": "8d551d9a51652d4f06d70931d45471254a1e6256b2161530482cb5aeb13bc6f5",
+          "translation": "Вызывается, пока `Map.LoadStaticItems` копирует статические предметы proto-карты `mapPid` в `map` со сдвигом `offset`; `itemIds` содержит их запечённые идентификаторы, и обработчики заменяют каждый на идентификатор копии: ненулевой, не занятый на карте и выведенный из запечённого идентификатора и сдвига, чтобы клиент, загружающий то же содержимое, дал своим копиям те же идентификаторы"
+        },
+        "/symbols/@id=script.method.client.Map.UnloadStaticItems/description": {
+          "source_sha256": "72bd8379902cca5c5936606b8c55b6506ee40cd689c06ecb1292e64d8642c214",
+          "translation": "Удалить статические предметы, добавленные в представление карты через `LoadStaticItems`, и освободить оставшиеся пустыми блоки полей"
+        },
+        "/symbols/@id=script.method.server.Game.LoadStaticMap/description": {
+          "source_sha256": "7e1a0ac4a375ead1e5b86957ea20f67c8af7447c00ab8cc625de6f16b8a4f2e3",
+          "translation": "Прочитать запечённое содержимое прототипа карты в кэш сейчас"
+        },
+        "/symbols/@id=script.method.server.Game.UnloadStaticMap/description": {
+          "source_sha256": "356c0f0b3fc7a0650e10952431c82171d9a0ab9d01f53ec530418ed118fbe052",
+          "translation": "Освободить кэшированное запечённое содержимое прототипа карты и вернуть, выгружено ли оно; оно остаётся, пока читается или используется картой"
+        },
+        "/symbols/@id=script.method.server.Map.GenerateContent/description": {
+          "source_sha256": "f01adadbd990d7dd4b593ebc0d3586325c1e2f66ec7234eca3ea928d18ae7a09",
+          "translation": "Создать криттеров и динамические предметы прототипа карты со сдвигом на offset и вернуть идентификаторы созданных криттеров и предметов карты"
+        },
+        "/symbols/@id=script.method.server.Map.UnloadStaticItems/description": {
+          "source_sha256": "d9877e9ce847aa8b5539f9b6f44aca09ddbf6d38cfbaa99a96790422e88fabd5",
+          "translation": "Удалить статические предметы, добавленные в карту через `LoadStaticItems`"
+        },
+        "/symbols/@id=script.method.server.Game.IsStaticMapLoaded/description": {
+          "source_sha256": "2a0c98334e5eef32635c4198c60bfe72156c02892b4e89807aecec9ba0150eca",
+          "translation": "Вернуть, кэшировано ли запечённое содержимое прототипа карты"
+        },
+        "/symbols/@id=script.method.server.Game.LoadStaticMapsAsync/description": {
+          "source_sha256": "dfa5689e0708cea18d6f8446d42bb9bc1e5823831d192d6519cbf090a07b0b81",
+          "translation": "Начать чтение запечённого содержимого прототипов карт в рабочих потоках; запрос одного из них ждёт его чтения"
+        },
+        "/symbols/@id=script.method.client.Map.LoadStaticItems%2303425f8a5f227e36/description": {
+          "source_sha256": "0ef8451360931d99678099155583a4935277e8e55cd4afb07499e5d348b886e2",
+          "translation": "Скопировать статические предметы клиентской выпечки прототипа карты со сдвигом на offset, с идентификаторами из `Game.OnGenerateStaticItemIds`, и вернуть эти идентификаторы"
+        },
+        "/symbols/@id=script.method.server.Map.LoadStaticItems%2303425f8a5f227e36/description": {
+          "source_sha256": "d3d9ffd50d1bf674513db61423b037ec08765e9bf26f000cbc1a2e01bbf7870b",
+          "translation": "Скопировать статические предметы прототипа карты со сдвигом на offset, с идентификаторами из `Game.OnGenerateStaticItemIds`, и вернуть эти идентификаторы"
+        },
+        "/symbols/@id=script.method.client.Map.LoadStaticItems%23aa117f69739fd959/description": {
+          "source_sha256": "6dbe204c063c65c1675ccfdee568447566772d216bfc361dd6972e863d41d7a8",
+          "translation": "Скопировать статические предметы области прототипа карты из её клиентской выпечки так, чтобы первый гекс области попал в offset, и вернуть их идентификаторы"
+        },
+        "/symbols/@id=script.method.server.Map.LoadStaticItems%23aa117f69739fd959/description": {
+          "source_sha256": "825524d1126e4d0f2f188df1c58de07f538525c51b4df8d3dd28df5829c922d6",
+          "translation": "Скопировать статические предметы области прототипа карты, первый гекс которой попадает в offset, с идентификаторами из `Game.OnGenerateStaticItemIds`, и вернуть эти идентификаторы"
         }
       }
     },
