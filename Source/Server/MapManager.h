@@ -106,11 +106,11 @@ public:
     auto UnloadStaticMap(ptr<const ProtoMap> proto) -> bool;
     void ClearStaticMaps() noexcept;
     // Copy ids are baked ids plus id_offset; an id already on the map rejects the whole load
-    auto LoadStaticItems(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos offset, int64_t id_offset) -> vector<ident_t>;
-    auto LoadStaticItems(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos offset, mpos source_hex, msize source_size, int64_t id_offset) -> vector<ident_t>;
+    auto LoadStaticItems(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos dest_offset, int64_t id_offset) -> vector<ident_t>;
+    auto LoadStaticItems(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos dest_offset, mpos source_hex, msize source_size, int64_t id_offset) -> vector<ident_t>;
     void UnloadStaticItems(ptr<Map> map, const_span<ident_t> static_item_ids);
-    // Creates the critters and dynamic items of another proto map on a map at offset; returns the critter and hex item ids
-    auto GenerateContent(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos offset) -> vector<ident_t>;
+    // Creates the critters and dynamic items of another proto map on a map at dest_offset; returns the critter and hex item ids
+    auto GenerateContent(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos dest_offset) -> vector<ident_t>;
 
 private:
     using PendingStaticMap = std::shared_future<shared_ptr<StaticMap>>;
@@ -125,7 +125,7 @@ private:
     void ProcessCritterLook(ptr<Map> map, ptr<Critter> cr, ptr<Critter> target);
     void Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, optional<int32_t> safe_radius, ident_t global_cr_id);
     void GenerateMapContent(ptr<Map> map);
-    auto GenerateContent(ptr<Map> map, ptr<const StaticMap> source, mpos offset, bool fresh_map) -> vector<ident_t>;
+    auto GenerateContent(ptr<Map> map, ptr<const StaticMap> source, mpos dest_offset, bool fresh_map) -> vector<ident_t>;
     static auto IsStaticMapReady(const PendingStaticMap& static_map) -> bool;
     auto ReadStaticMap(ptr<const ProtoMap> map_proto) -> shared_ptr<StaticMap>;
     void BindStaticItemScripts(string_view map_name, ptr<StaticItem> item);

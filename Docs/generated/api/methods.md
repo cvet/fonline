@@ -885,11 +885,11 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-client-map-isscrollcheck-c07a9030bd"></a>
 - [`symbol-script-method-client-map-isscrollcheck-c07a9030bd`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-isscrollcheck-c07a9030bd)
 
-<a id="symbol-script-method-client-map-loadstaticitems-10abe3f7bb930d9f-c67f1f27c0"></a>
-- [`symbol-script-method-client-map-loadstaticitems-10abe3f7bb930d9f-c67f1f27c0`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-loadstaticitems-10abe3f7bb930d9f-c67f1f27c0)
+<a id="symbol-script-method-client-map-loadstaticitems-6e8589667529e68d-313e3be061"></a>
+- [`symbol-script-method-client-map-loadstaticitems-6e8589667529e68d-313e3be061`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-loadstaticitems-6e8589667529e68d-313e3be061)
 
-<a id="symbol-script-method-client-map-loadstaticitems-28e048c046613bee-aac88b7ac6"></a>
-- [`symbol-script-method-client-map-loadstaticitems-28e048c046613bee-aac88b7ac6`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-loadstaticitems-28e048c046613bee-aac88b7ac6)
+<a id="symbol-script-method-client-map-loadstaticitems-a4cfb1e34e9335f9-9e8ab17540"></a>
+- [`symbol-script-method-client-map-loadstaticitems-a4cfb1e34e9335f9-9e8ab17540`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-loadstaticitems-a4cfb1e34e9335f9-9e8ab17540)
 
 <a id="symbol-script-method-client-map-movehexbydir-62392271e1b42030-ef2c0aced3"></a>
 - [`symbol-script-method-client-map-movehexbydir-62392271e1b42030-ef2c0aced3`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-movehexbydir-62392271e1b42030-ef2c0aced3)
@@ -3111,11 +3111,11 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-server-map-isoutsidearea-a52ec2438d"></a>
 - [`symbol-script-method-server-map-isoutsidearea-a52ec2438d`](../../en/reference/script-api/methods.md#symbol-script-method-server-map-isoutsidearea-a52ec2438d)
 
-<a id="symbol-script-method-server-map-loadstaticitems-10abe3f7bb930d9f-a3a7834cc6"></a>
-- [`symbol-script-method-server-map-loadstaticitems-10abe3f7bb930d9f-a3a7834cc6`](../../en/reference/script-api/methods.md#symbol-script-method-server-map-loadstaticitems-10abe3f7bb930d9f-a3a7834cc6)
+<a id="symbol-script-method-server-map-loadstaticitems-6e8589667529e68d-c93b529f2d"></a>
+- [`symbol-script-method-server-map-loadstaticitems-6e8589667529e68d-c93b529f2d`](../../en/reference/script-api/methods.md#symbol-script-method-server-map-loadstaticitems-6e8589667529e68d-c93b529f2d)
 
-<a id="symbol-script-method-server-map-loadstaticitems-28e048c046613bee-a5d81c0f78"></a>
-- [`symbol-script-method-server-map-loadstaticitems-28e048c046613bee-a5d81c0f78`](../../en/reference/script-api/methods.md#symbol-script-method-server-map-loadstaticitems-28e048c046613bee-a5d81c0f78)
+<a id="symbol-script-method-server-map-loadstaticitems-a4cfb1e34e9335f9-6882524606"></a>
+- [`symbol-script-method-server-map-loadstaticitems-a4cfb1e34e9335f9-6882524606`](../../en/reference/script-api/methods.md#symbol-script-method-server-map-loadstaticitems-a4cfb1e34e9335f9-6882524606)
 
 <a id="symbol-script-method-server-map-movehexbydir-62392271e1b42030-e470a3bcdb"></a>
 - [`symbol-script-method-server-map-movehexbydir-62392271e1b42030-e470a3bcdb`](../../en/reference/script-api/methods.md#symbol-script-method-server-map-movehexbydir-62392271e1b42030-e470a3bcdb)

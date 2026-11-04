@@ -385,12 +385,12 @@ auto MapManager::IsStaticMapLoaded(ptr<const ProtoMap> proto) const -> bool
     return it != _staticMaps.end() && IsStaticMapReady(it->second.Data);
 }
 
-auto MapManager::LoadStaticItems(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos offset, int64_t id_offset) -> vector<ident_t>
+auto MapManager::LoadStaticItems(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos dest_offset, int64_t id_offset) -> vector<ident_t>
 {
-    return LoadStaticItems(map, source_proto, offset, mpos {}, source_proto->GetSize(), id_offset);
+    return LoadStaticItems(map, source_proto, dest_offset, mpos {}, source_proto->GetSize(), id_offset);
 }
 
-auto MapManager::LoadStaticItems(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos offset, mpos source_hex, msize source_size, int64_t id_offset) -> vector<ident_t>
+auto MapManager::LoadStaticItems(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos dest_offset, mpos source_hex, msize source_size, int64_t id_offset) -> vector<ident_t>
 {
     FO_TRACE_ZONE(Map);
 
@@ -406,13 +406,13 @@ auto MapManager::LoadStaticItems(ptr<Map> map, ptr<const ProtoMap> source_proto,
     shared_ptr<StaticMap> source {AcquireStaticMap(source_proto)};
     msize map_size {map->GetSize()};
 
-    // The source area's first hex lands at offset
-    auto move_hex {[offset, source_hex, map_size, source_proto](mpos hex) -> mpos {
-        int64_t x {safe_numeric_cast<int64_t>(hex.x) - source_hex.x + offset.x};
-        int64_t y {safe_numeric_cast<int64_t>(hex.y) - source_hex.y + offset.y};
+    // The source area's first hex lands at dest_offset
+    auto move_hex {[dest_offset, source_hex, map_size, source_proto](mpos hex) -> mpos {
+        int64_t x {safe_numeric_cast<int64_t>(hex.x) - source_hex.x + dest_offset.x};
+        int64_t y {safe_numeric_cast<int64_t>(hex.y) - source_hex.y + dest_offset.y};
 
         if (x < 0 || y < 0 || x >= map_size.width || y >= map_size.height) {
-            throw MapManagerException("Loaded static item lands outside the map", source_proto->GetName(), hex, offset, map_size);
+            throw MapManagerException("Loaded static item lands outside the map", source_proto->GetName(), hex, dest_offset, map_size);
         }
 
         return mpos {numeric_cast<mcoord_t>(x), numeric_cast<mcoord_t>(y)};
@@ -528,7 +528,7 @@ void MapManager::GenerateMapContent(ptr<Map> map)
     (void)GenerateContent(map, map->GetStaticMap(), mpos {}, true);
 }
 
-auto MapManager::GenerateContent(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos offset) -> vector<ident_t>
+auto MapManager::GenerateContent(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos dest_offset) -> vector<ident_t>
 {
     FO_TRACE_ZONE(Map);
 
@@ -536,21 +536,21 @@ auto MapManager::GenerateContent(ptr<Map> map, ptr<const ProtoMap> source_proto,
     FO_VERIFY_AND_THROW(!map->IsDestroying(), "Cannot generate content on a map that is being destroyed", map->GetId());
 
     shared_ptr<StaticMap> source {AcquireStaticMap(source_proto)};
-    return GenerateContent(map, make_ptr(source.get()), offset, false);
+    return GenerateContent(map, make_ptr(source.get()), dest_offset, false);
 }
 
-auto MapManager::GenerateContent(ptr<Map> map, ptr<const StaticMap> source, mpos offset, bool fresh_map) -> vector<ident_t>
+auto MapManager::GenerateContent(ptr<Map> map, ptr<const StaticMap> source, mpos dest_offset, bool fresh_map) -> vector<ident_t>
 {
     FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
 
     msize map_size {map->GetSize()};
 
-    auto move_hex {[offset, map_size](mpos hex) -> mpos {
-        int64_t x {safe_numeric_cast<int64_t>(hex.x) + offset.x};
-        int64_t y {safe_numeric_cast<int64_t>(hex.y) + offset.y};
+    auto move_hex {[dest_offset, map_size](mpos hex) -> mpos {
+        int64_t x {safe_numeric_cast<int64_t>(hex.x) + dest_offset.x};
+        int64_t y {safe_numeric_cast<int64_t>(hex.y) + dest_offset.y};
 
         if (x < 0 || y < 0 || x >= map_size.width || y >= map_size.height) {
-            throw MapManagerException("Generated map content lands outside the map", hex, offset, map_size);
+            throw MapManagerException("Generated map content lands outside the map", hex, dest_offset, map_size);
         }
 
         return mpos {numeric_cast<mcoord_t>(x), numeric_cast<mcoord_t>(y)};
@@ -583,7 +583,7 @@ auto MapManager::GenerateContent(ptr<Map> map, ptr<const StaticMap> source, mpos
         optional<Properties> moved_props {};
 
         // A mesh lists map hexes, so it moves with the item
-        if (offset != mpos {} && base_item->IsNonEmptyMultihexMesh()) {
+        if (dest_offset != mpos {} && base_item->IsNonEmptyMultihexMesh()) {
             moved_props.emplace(base_item->GetProperties()->Copy());
             ItemProperties item_view {*moved_props};
             vector<mpos> mesh {item_view.GetMultihexMesh()};
