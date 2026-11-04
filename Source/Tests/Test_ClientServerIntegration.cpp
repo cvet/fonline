@@ -1075,7 +1075,7 @@ TEST_CASE("ClientUpdaterRepairsAStalePartialNativeDownloadBeforeResourcesReady")
     BakerTests::OverrideSetting(server_settings.ServerNetwork.UpdateFilesInMemory, in_memory);
     auto server_pack_config {ConfigFile("[ResourcePack]\nName = TestMetadata\nClientOnly = True\n")};
     server_settings.ApplyConfigFile(server_pack_config, "");
-    auto server {MakeServerEngine(server_settings)};
+    auto server {TestClientServerIntegration::MakeServerEngine(server_settings)};
     auto shutdown {scope_exit([&]() noexcept { safe_call([&] { server->Shutdown(); }); })};
     string error {WaitForServerStart(server)};
     INFO(error);

@@ -357,7 +357,7 @@ auto ImageBaker::BakeCollection(string_view fname, const ImageImport::FrameColle
     writer.write<uint8_t>(numeric_cast<uint8_t>(dirs));
 
     for (int32_t dir {0}; dir < dirs; dir++) {
-        const auto& sequence {dir == 0 ? collection.Main : collection.Dirs[dir - 1]};
+        const auto& sequence {dir == 0 ? collection.Main : collection.Dirs[numeric_cast<size_t>(dir - 1)]};
         SpriteDirInfo& direction_info {sprite_info_entry.Info.Directions[dir]};
         uint32_t duration {GetSpriteDurationMilliseconds(ImageImport::GetDuration(sequence))};
         writer.write<uint16_t>(numeric_cast<uint16_t>(sequence.Frames.size()));

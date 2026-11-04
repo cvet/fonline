@@ -10,8 +10,8 @@
       "selector": "scope:native-codegen",
       "stability": "experimental",
       "since": "2022.1.0.wip",
-      "symbol_count": 2592,
-      "inventory_sha256": "d30863c773f528b16887e5cc24af643562f35daef626b0a7c71be2c6a7c84bee",
+      "symbol_count": 2593,
+      "inventory_sha256": "601f2c9b93a6f3bb3ccda9e3d01660a790b300d8ec7317ed5c1d6a4480e7e174",
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
@@ -72,13 +72,13 @@
     "api_contract_scope_selector": "scope:native-codegen"
   },
   "summary": {
-    "symbol_count": 2592,
+    "symbol_count": 2593,
     "symbols_by_kind": {
       "entity": 7,
       "enum": 60,
       "enum-value": 770,
       "event": 121,
-      "method": 1016,
+      "method": 1017,
       "migration-rule": 27,
       "property": 134,
       "ref-field": 42,
@@ -89,17 +89,17 @@
       "value-type": 22
     },
     "symbols_by_stability": {
-      "experimental": 2591,
+      "experimental": 2592,
       "internal": 1
     },
     "explicit_contract_declaration_count": 4,
-    "explicit_contract_symbol_count": 2592,
+    "explicit_contract_symbol_count": 2593,
     "default_contract_symbol_count": 0,
     "explicit_contracts_by_stability": {
-      "experimental": 2591,
+      "experimental": 2592,
       "internal": 1
     },
-    "described_symbol_count": 2592,
+    "described_symbol_count": 2593,
     "missing_description_count": 0,
     "symbols_without_source_count": 14,
     "metadata_source_file_count": 43,
@@ -40312,7 +40312,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1744
+        "line": 1751
       },
       "contract": {
         "explicit": true,
@@ -40502,7 +40502,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1953
+        "line": 1960
       },
       "contract": {
         "explicit": true,
@@ -40550,7 +40550,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2109
+        "line": 2116
       },
       "contract": {
         "explicit": true,
@@ -40695,7 +40695,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2102
+        "line": 2109
       },
       "contract": {
         "explicit": true,
@@ -40735,7 +40735,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2125
+        "line": 2132
       },
       "contract": {
         "explicit": true,
@@ -40775,7 +40775,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1205
+        "line": 1212
       },
       "contract": {
         "explicit": true,
@@ -41041,7 +41041,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2132
+        "line": 2139
       },
       "contract": {
         "explicit": true,
@@ -41081,7 +41081,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1553
+        "line": 1560
       },
       "contract": {
         "explicit": true,
@@ -41199,7 +41199,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1565
+        "line": 1572
       },
       "contract": {
         "explicit": true,
@@ -41365,7 +41365,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1531
+        "line": 1538
       },
       "contract": {
         "explicit": true,
@@ -41420,7 +41420,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1391
+        "line": 1398
       },
       "contract": {
         "explicit": true,
@@ -41489,7 +41489,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1433
+        "line": 1440
       },
       "contract": {
         "explicit": true,
@@ -41558,7 +41558,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1416
+        "line": 1423
       },
       "contract": {
         "explicit": true,
@@ -41620,7 +41620,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1450
+        "line": 1457
       },
       "contract": {
         "explicit": true,
@@ -41703,7 +41703,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1469
+        "line": 1476
       },
       "contract": {
         "explicit": true,
@@ -41779,7 +41779,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1486
+        "line": 1493
       },
       "contract": {
         "explicit": true,
@@ -41862,7 +41862,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1503
+        "line": 1510
       },
       "contract": {
         "explicit": true,
@@ -42040,7 +42040,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2116
+        "line": 2123
       },
       "contract": {
         "explicit": true,
@@ -42080,7 +42080,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1244
+        "line": 1251
       },
       "contract": {
         "explicit": true,
@@ -42128,7 +42128,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2026
+        "line": 2033
       },
       "contract": {
         "explicit": true,
@@ -42176,7 +42176,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2040
+        "line": 2047
       },
       "contract": {
         "explicit": true,
@@ -42950,7 +42950,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1673
+        "line": 1680
       },
       "contract": {
         "explicit": true,
@@ -43260,7 +43260,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1162
+        "line": 1169
       },
       "contract": {
         "explicit": true,
@@ -43308,7 +43308,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1172
+        "line": 1179
       },
       "contract": {
         "explicit": true,
@@ -43356,7 +43356,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1152
+        "line": 1159
       },
       "contract": {
         "explicit": true,
@@ -43404,7 +43404,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1193
+        "line": 1200
       },
       "contract": {
         "explicit": true,
@@ -43466,7 +43466,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1182
+        "line": 1189
       },
       "contract": {
         "explicit": true,
@@ -43528,7 +43528,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1251
+        "line": 1258
       },
       "contract": {
         "explicit": true,
@@ -43782,7 +43782,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1375
+        "line": 1382
       },
       "contract": {
         "explicit": true,
@@ -43858,7 +43858,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1384
+        "line": 1391
       },
       "contract": {
         "explicit": true,
@@ -44121,7 +44121,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2047
+        "line": 2054
       },
       "contract": {
         "explicit": true,
@@ -44329,7 +44329,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1264
+        "line": 1271
       },
       "contract": {
         "explicit": true,
@@ -44472,7 +44472,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1096
+        "line": 1103
       },
       "contract": {
         "explicit": true,
@@ -44520,7 +44520,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1103
+        "line": 1110
       },
       "contract": {
         "explicit": true,
@@ -44568,7 +44568,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1110
+        "line": 1117
       },
       "contract": {
         "explicit": true,
@@ -44616,7 +44616,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1117
+        "line": 1124
       },
       "contract": {
         "explicit": true,
@@ -44664,7 +44664,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1082
+        "line": 1089
       },
       "contract": {
         "explicit": true,
@@ -44712,7 +44712,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1089
+        "line": 1096
       },
       "contract": {
         "explicit": true,
@@ -44897,7 +44897,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1336
+        "line": 1343
       },
       "contract": {
         "explicit": true,
@@ -45062,7 +45062,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1323
+        "line": 1330
       },
       "contract": {
         "explicit": true,
@@ -45193,7 +45193,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1718
+        "line": 1725
       },
       "contract": {
         "explicit": true,
@@ -45281,7 +45281,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1842
+        "line": 1849
       },
       "contract": {
         "explicit": true,
@@ -45385,7 +45385,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1797
+        "line": 1804
       },
       "contract": {
         "explicit": true,
@@ -45447,7 +45447,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1814
+        "line": 1821
       },
       "contract": {
         "explicit": true,
@@ -45537,7 +45537,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1787
+        "line": 1794
       },
       "contract": {
         "explicit": true,
@@ -45585,7 +45585,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1355
+        "line": 1362
       },
       "contract": {
         "explicit": true,
@@ -45633,7 +45633,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1711
+        "line": 1718
       },
       "contract": {
         "explicit": true,
@@ -45688,7 +45688,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2054
+        "line": 2061
       },
       "contract": {
         "explicit": true,
@@ -45860,7 +45860,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1930
+        "line": 1937
       },
       "contract": {
         "explicit": true,
@@ -45908,7 +45908,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1978
+        "line": 1985
       },
       "contract": {
         "explicit": true,
@@ -46053,7 +46053,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2013
+        "line": 2020
       },
       "contract": {
         "explicit": true,
@@ -46115,7 +46115,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2006
+        "line": 2013
       },
       "contract": {
         "explicit": true,
@@ -46170,7 +46170,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2033
+        "line": 2040
       },
       "contract": {
         "explicit": true,
@@ -46439,7 +46439,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2094
+        "line": 2101
       },
       "contract": {
         "explicit": true,
@@ -46487,7 +46487,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2087
+        "line": 2094
       },
       "contract": {
         "explicit": true,
@@ -46583,7 +46583,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1303
+        "line": 1310
       },
       "contract": {
         "explicit": true,
@@ -46693,7 +46693,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2139
+        "line": 2146
       },
       "contract": {
         "explicit": true,
@@ -46789,7 +46789,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1290
+        "line": 1297
       },
       "contract": {
         "explicit": true,
@@ -46844,7 +46844,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2074
+        "line": 2081
       },
       "contract": {
         "explicit": true,
@@ -46892,7 +46892,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 2061
+        "line": 2068
       },
       "contract": {
         "explicit": true,
@@ -46940,7 +46940,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1034
+        "line": 1041
       },
       "contract": {
         "explicit": true,
@@ -46980,7 +46980,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1025
+        "line": 1032
       },
       "contract": {
         "explicit": true,
@@ -47020,7 +47020,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1041
+        "line": 1048
       },
       "contract": {
         "explicit": true,
@@ -47075,7 +47075,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1048
+        "line": 1055
       },
       "contract": {
         "explicit": true,
@@ -47130,7 +47130,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1060
+        "line": 1067
       },
       "contract": {
         "explicit": true,
@@ -47511,6 +47511,61 @@
       ]
     },
     {
+      "id": "script.method.client.Game.SimulateTouchScroll",
+      "family_id": "script.method.client.Game.SimulateTouchScroll",
+      "kind": "method",
+      "name": "SimulateTouchScroll",
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "receiver": "Game",
+      "signature": "void Game.SimulateTouchScroll(ipos pos, ipos offsetPos)",
+      "description": "Injects a touch-scroll event at the supplied client position with the signed pixel offset",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+        "line": 1025
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 45
+        },
+        "notes": ""
+      },
+      "declared_target": "client",
+      "receivers": [
+        "Game"
+      ],
+      "return": {
+        "type": "void",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "pos",
+          "type": "ipos",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "offsetPos",
+          "type": "ipos",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
       "id": "script.method.client.Game.SimulateTouchTap",
       "family_id": "script.method.client.Game.SimulateTouchTap",
       "kind": "method",
@@ -47680,7 +47735,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1277
+        "line": 1284
       },
       "contract": {
         "explicit": true,

@@ -45,7 +45,7 @@ static auto TransformFixture() -> ImageImport::FrameCollection
     ImageImport::FrameCollection result {};
 
     for (int32_t dir {0}; dir < GameSettings::MAP_DIR_COUNT; dir++) {
-        auto& sequence {dir == 0 ? result.Main : result.Dirs[dir - 1]};
+        auto& sequence {dir == 0 ? result.Main : result.Dirs[numeric_cast<size_t>(dir - 1)]};
         sequence.OffsX = 10;
         auto& shot {sequence.Frames.emplace_back()};
         shot.Size = {3, 2};
@@ -110,9 +110,9 @@ TEST_CASE("FofrmSelection")
         REQUIRE(collection.Main.Frames.size() == 2);
 
         for (int32_t dir {1}; dir < GameSettings::MAP_DIR_COUNT; dir++) {
-            REQUIRE(collection.Dirs[dir - 1].Frames.size() == 2);
-            CHECK(collection.Dirs[dir - 1].Frames[0].Data[0] == 5 + dir * 10);
-            CHECK(collection.Dirs[dir - 1].Frames[1].Data[0] == 2 + dir * 10);
+            REQUIRE(collection.Dirs[numeric_cast<size_t>(dir - 1)].Frames.size() == 2);
+            CHECK(collection.Dirs[numeric_cast<size_t>(dir - 1)].Frames[0].Data[0] == 5 + dir * 10);
+            CHECK(collection.Dirs[numeric_cast<size_t>(dir - 1)].Frames[1].Data[0] == 2 + dir * 10);
         }
     }
 

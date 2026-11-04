@@ -2058,7 +2058,8 @@
           "anchors": [
             "isize32 Size",
             "timespan Duration",
-            "int32_t SharedIndex"
+            "int32_t SharedIndex",
+            "array<FrameSequence, MAX_DIRS_MINUS_ONE> Dirs"
           ]
         },
         {
@@ -2127,5 +2128,5 @@
       "internal": 8
     }
   },
-  "contract_digest": "6215313ec354fb3367e5020ae45f91080d138b1b5378a254ff56a457cb77e496"
+  "contract_digest": "b10de0842ed9d07c548eaa4e5625251a276f19be11e3bbe95d8bc53a05095249"
 }

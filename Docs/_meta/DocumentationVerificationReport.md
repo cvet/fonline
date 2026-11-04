@@ -1,5 +1,43 @@
 # Documentation Verification Report
 
+## 2026-11-03 - Image importer and input simulation update 101
+
+Prepare `2026.1.101-dev` from published master
+`1ad91af9998feab93c63d6abc9932bcc4db21fdc` (`2026.1.100-dev`). The actual
+FOFRM and FRM translation units reproduce a GCC 13.3 compiler crash when the
+passive collection contains its raw sequence array; replacing that storage
+with Engine `array` compiles. All thirteen affected image importer/coordinator/
+transform units compile with the optional importers enabled. Preserve the
+seven additional directions, empty defaults, order and serialized v3 fields;
+convert signed indices explicitly at the container boundary. A real two-source
+unity test consumer rejects the unqualified integration server factory and
+compiles with its intended namespace qualified.
+
+Add `Game.SimulateTouchScroll` beside the existing simulated touch operations.
+It uses the ordinary native input path and retains signed pixel coordinates,
+MousePos updates and OnTouchScroll delivery. The inventory generator reports
+one added symbol and the updated scope pin; review the exact-digest disposition,
+regenerated API/image references and complete bilingual migration records.
+Generated dense ABI tables, metadata and script assemblies must be rebaked as
+one set; no manual protocol/ABI marker or image container version changes.
+
+The Linux Managed native suite passes: 864 cases, 863 passed and one skipped,
+with all 747284 assertions passing. Full/incremental resource selection, archive
+readback and both negative controls pass. Client, Mapper and ServerHeadless
+build without warnings. GCC checks qualify the actual translation units, not a
+complete GCC runtime/platform matrix. The embedding-project rebake and visible
+minimap probe remain separate pending integration checks.
+
+Source layout/modules/format, pointer checks on twenty changed files, complete
+allocator coverage and explicit-type/const/use-after-move checks pass without
+suppressions. Re-derive fifteen exception body hashes while preserving their
+classifications and classify the new fixed-value forwarding operation; the
+complete audit passes 7658 functions. Preserve failed compiler/tool controls
+separately. API contract comparison passes two changes across seventeen domains
+with its required disposition present. Documentation preparation, validation of
+414 pages, fifty validator tests, image-format tests and version checks pass.
+
+
 ## 2026-11-03 - Native portability repairs for development update 100
 
 Prepare `2026.1.100-dev` from published master

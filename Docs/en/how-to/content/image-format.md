@@ -461,6 +461,14 @@ PNG/TGA/FOFRM are mandatory. Other importers require individual `FO_IMAGE_*` [op
 
 Native callbacks use `ImageImport::FrameShot`, `FrameSequence`, `FrameCollection`, `LoadFunc` and `(string_view name, string_view options, FileReader reader, const ImageImport::Context& context)`. Use `context.Files` for sibling assets, `context.Resolve(path)` for nesting, and the third `AddLoader` argument for output-name mapping. Scheduling, meshes and serialization stay in the coordinator. Stock clients still read baked containers without source decoders; runtime extensions/container version are unchanged.
 
+`FrameCollection::Main` holds direction zero; `Dirs` is Engine
+`array<FrameSequence, MAX_DIRS_MINUS_ONE>` with seven additional sequences in
+direction order, initially empty. Use `numeric_cast<size_t>(direction - 1)`
+when indexing it from a signed nonzero direction. Range iteration and element
+references retain their meaning. Custom loaders that previously relied on
+C-array pointer decay must pass `Dirs.data()` only at a final foreign-API
+boundary, or use a span for a sized view. See the [migration record](../../reference/changelog.md).
+
 Native frame data uses `isize32 Size`, `ipos32 Offset` for independent draw placement,
 and `ipos32 Motion` for per-frame animation deltas accumulated during playback. FRM/FRx frame deltas and
 ART DeltaX/DeltaY populate Motion. BAM signed centers and SPR bbox/center placement

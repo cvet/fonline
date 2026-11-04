@@ -67,7 +67,7 @@ namespace ImageImport
     struct FrameCollection
     {
         FrameSequence Main {};
-        FrameSequence Dirs[MAX_DIRS_MINUS_ONE] {};
+        array<FrameSequence, MAX_DIRS_MINUS_ONE> Dirs {};
         string NewName {};
     };
 

@@ -274,9 +274,9 @@ namespace ImageBakerFofrm
 
         for (int32_t direction {0}; direction < directions; direction++) {
             string section {direction == 0 ? string {} : strex("{} {}", prefix, direction).str()};
-            auto& sequence {direction == 0 ? collection.Main : collection.Dirs[direction - 1]};
+            auto& sequence {direction == 0 ? collection.Main : collection.Dirs[numeric_cast<size_t>(direction - 1)]};
             auto transform {ReadImageTransforms(fofrm, section, 1, fname, true)[0]};
-            const auto& input {transform.InputDir && !root_transform.InputDir ? SelectImageSequence(original, transform.InputDir, fname) : direction == 0 ? original.Main : original.Dirs[direction - 1]};
+            const auto& input {transform.InputDir && !root_transform.InputDir ? SelectImageSequence(original, transform.InputDir, fname) : direction == 0 ? original.Main : original.Dirs[numeric_cast<size_t>(direction - 1)]};
             sequence = input;
 
             ipos32 offset {ReadOffset(fofrm, section, root_offset, fname)};
@@ -307,7 +307,7 @@ namespace ImageBakerFofrm
 
         for (int32_t direction {0}; direction < directions; direction++) {
             string section {direction == 0 ? string {} : strex("{} {}", prefix, direction).str()};
-            ApplySequenceTimeline(direction == 0 ? collection.Main : collection.Dirs[direction - 1], fofrm, section, fname, true);
+            ApplySequenceTimeline(direction == 0 ? collection.Main : collection.Dirs[numeric_cast<size_t>(direction - 1)], fofrm, section, fname, true);
         }
 
         return collection;
@@ -364,7 +364,7 @@ namespace ImageBakerFofrm
             auto offsets {ReadFrameOffsets(fofrm, section, names.size(), fname)};
             auto sizes {ReadFrameSizes(fofrm, section, names.size(), common_size, fname)};
             auto transforms {ReadImageTransforms(fofrm, section, names.size(), fname, false)};
-            auto& sequence {dir == 0 ? collection.Main : collection.Dirs[dir - 1]};
+            auto& sequence {dir == 0 ? collection.Main : collection.Dirs[numeric_cast<size_t>(dir - 1)]};
             sequence.OffsX = numeric_cast<int16_t>(offset.x);
             sequence.OffsY = numeric_cast<int16_t>(offset.y);
 

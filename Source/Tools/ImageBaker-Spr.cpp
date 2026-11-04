@@ -367,7 +367,7 @@ namespace ImageBakerSpr
                 have_dirs = true;
             }
 
-            auto& sequence {dir == 0 ? collection.Main : collection.Dirs[dir - 1]};
+            auto& sequence {dir == 0 ? collection.Main : collection.Dirs[numeric_cast<size_t>(dir - 1)]};
             sequence.Frames.resize(anim_frames.size());
 
             for (auto& frame : sequence.Frames) {
@@ -579,7 +579,7 @@ namespace ImageBakerSpr
         }
 
         for (uint8_t direction {0}; direction < ImageImport::GetDirectionCount(collection); direction++) {
-            auto& sequence {direction == 0 ? collection.Main : collection.Dirs[direction - 1]};
+            auto& sequence {direction == 0 ? collection.Main : collection.Dirs[numeric_cast<size_t>(direction - 1)]};
 
             if (std::all_of(sequence.Frames.begin(), sequence.Frames.end(), [](const ImageImport::FrameShot& frame) { return frame.Duration == timespan::zero; })) {
                 uint32_t count {numeric_cast<uint32_t>(sequence.Frames.size())};

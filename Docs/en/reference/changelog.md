@@ -16,6 +16,24 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Fixed
 
+- Store native image-import direction sequences in Engine `array` to avoid the GCC 13.3 aggregate-initialization compiler crash in FOFRM/FRM and their Baker/Mapper consumers. Preserve seven additional directions, empty defaults, direction order, frame data and SpriteResource v3 serialization.
+- Qualify the updater fixture's server factory so ordinary and unity native test builds select the same integration resources.
+
+### Added
+
+- `Game.SimulateTouchScroll(pos, offsetPos)` injects an aggregated scroll gesture through the ordinary client input path, updating `MousePos` and delivering `OnTouchScroll` with signed pixel coordinates. Client/Mapper scripts can use it in both scripting backends; built-in engine events retain subscription-only script surfaces.
+
+### Migration
+
+- Baseline `1ad91af9998feab93c63d6abc9932bcc4db21fdc` (`2026.1.100-dev`); target `2026.1.101-dev`. This replaces the native `ImageImport::FrameCollection::Dirs` field type `FrameSequence[MAX_DIRS_MINUS_ONE]` with `array<FrameSequence, MAX_DIRS_MINUS_ONE>`. `Main` remains direction zero; the seven additional sequences retain their ordering, independent durations, motion/placement, shared-frame indices, copy/move ownership and empty initial state. The direction-storage migration requires no script API or authored asset changes. The additive scroll simulation operation extends the source-owned API inventory; regenerate bindings and metadata together with both scripting backends.
+- Search custom native loaders for `FrameCollection`, `.Dirs`, C-array references and implicit pointer conversions. Keep range iteration and element access; for a signed nonzero direction use `collection.Dirs[numeric_cast<size_t>(direction - 1)]`. Replace `FrameSequence* first = collection.Dirs;` with a sized span where possible, or `FrameSequence* first {collection.Dirs.data()};` only at the final foreign-API boundary. A C-array-only overload or old implicit pointer conversion now fails compilation; no compatibility conversion is supplied. Recompile custom loaders against the selected headers, including ones loaded through `ImageBaker::AddLoader`.
+- Reconfigure and rebuild Baker, Mapper, native tests and affected extensions, regenerate metadata, then bake one matching client/server resource set before packaging. Native record layout is revision-specific: rebuild binary extensions and replace their host together. There is no persisted-data conversion, renamed property/identity, network protocol change, Managed ABI marker bump or SpriteResource schema change; `MigrationRule Version` stays `0.0.86`, Managed ABI stays `9`, and the image container stays v3. The generated dense method inventory and ABI content hash change with the addition; metadata, bindings and assemblies must come from one bake. Back up the executable/resource set and roll it back together.
+- Validate the affected Fofrm/Frm translation units with GCC 13.3, native image import/transform/dependency and invalid-loader cases, then ordinary/unity native tests and the embedding-project bake. Compiler checks do not establish another platform's runtime or project visual acceptance.
+
+## 2026.1.100-dev - 2026-11-03
+
+### Fixed
+
 - Construct native network buffer guards directly so Clang Thread Safety Analysis associates braced initialization with lock acquisition. Keep message IDs, payload operations, explicit unlock/relock and the original named or full-expression temporary lifetime.
 - Declare the DNS lookup scoped lock directly for annotated libc++ builds. Use explicit `data_writer` locals in two AngelScript test helpers and refresh generated API source-line references after the formatter include correction.
 - Use Engine `array` for Vulkan in-flight frame slots to avoid the GCC 13.3 compiler crash when constructing the aggregate renderer context. Preserve the slot count, default state and cyclic indexing. Complete braced initialization of the platform-specific null log path in native logging tests.

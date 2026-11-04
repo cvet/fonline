@@ -130,7 +130,7 @@ static_assert(sizeof(FoPalette) == 1024);
         const uint8_t blinking_red_vals[10] {254, 210, 165, 120, 75, 45, 90, 135, 180, 225};
 
         for (int32_t dir {0}; dir < GameSettings::MAP_DIR_COUNT; dir++) {
-            auto& sequence {dir == 0 ? collection.Main : collection.Dirs[dir - 1]};
+            auto& sequence {dir == 0 ? collection.Main : collection.Dirs[numeric_cast<size_t>(dir - 1)]};
             int32_t dir_frm {dir};
 
             if constexpr (GameSettings::SQUARE_GEOMETRY) {
@@ -374,7 +374,7 @@ static_assert(sizeof(FoPalette) == 1024);
         }
 
         for (uint8_t direction {0}; direction < ImageImport::GetDirectionCount(collection); direction++) {
-            auto& sequence {direction == 0 ? collection.Main : collection.Dirs[direction - 1]};
+            auto& sequence {direction == 0 ? collection.Main : collection.Dirs[numeric_cast<size_t>(direction - 1)]};
 
             if (std::all_of(sequence.Frames.begin(), sequence.Frames.end(), [](const ImageImport::FrameShot& frame) { return frame.Duration == timespan::zero; })) {
                 uint32_t count {numeric_cast<uint32_t>(sequence.Frames.size())};
@@ -424,7 +424,7 @@ static_assert(sizeof(FoPalette) == 1024);
         const uint8_t blinking_red_vals[10] {254, 210, 165, 120, 75, 45, 90, 135, 180, 225};
 
         for (int32_t dir {0}; dir < GameSettings::MAP_DIR_COUNT; dir++) {
-            auto& sequence {dir == 0 ? collection.Main : collection.Dirs[dir - 1]};
+            auto& sequence {dir == 0 ? collection.Main : collection.Dirs[numeric_cast<size_t>(dir - 1)]};
             int32_t dir_frm {dir};
 
             if constexpr (GameSettings::SQUARE_GEOMETRY) {
@@ -683,7 +683,7 @@ static_assert(sizeof(FoPalette) == 1024);
         }
 
         for (uint8_t direction {0}; direction < ImageImport::GetDirectionCount(collection); direction++) {
-            auto& sequence {direction == 0 ? collection.Main : collection.Dirs[direction - 1]};
+            auto& sequence {direction == 0 ? collection.Main : collection.Dirs[numeric_cast<size_t>(direction - 1)]};
 
             if (std::all_of(sequence.Frames.begin(), sequence.Frames.end(), [](const ImageImport::FrameShot& frame) { return frame.Duration == timespan::zero; })) {
                 uint32_t count {numeric_cast<uint32_t>(sequence.Frames.size())};

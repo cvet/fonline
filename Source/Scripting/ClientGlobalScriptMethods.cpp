@@ -1021,6 +1021,13 @@ FO_SCRIPT_API void Client_Game_SimulateTouchTap(ptr<ClientEngine> client, ipos32
     client->ProcessInputEvent(MakeInputEvent(InputEvent::TouchTapEvent {pos.x, pos.y}));
 }
 
+// Injects a touch-scroll event at the supplied client position with the signed pixel offset
+///@ ExportMethod
+FO_SCRIPT_API void Client_Game_SimulateTouchScroll(ptr<ClientEngine> client, ipos32 pos, ipos32 offsetPos)
+{
+    client->ProcessInputEvent(MakeInputEvent(InputEvent::TouchScrollEvent {pos.x, pos.y, offsetPos.x, offsetPos.y}));
+}
+
 // Raises the disconnect notification without touching the connection itself
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SimulateDisconnect(ptr<ClientEngine> client)

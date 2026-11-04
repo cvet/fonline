@@ -14796,6 +14796,18 @@
       "release_note": "Docs/en/reference/changelog.md#current---2026-11-02 and Docs/ru/reference/changelog.md#current---2026-11-02: selected resource configuration, ClientConfigBaker, AppInitFlags::StandaloneClient and removal of the OGL package token.",
       "compatibility": "Runtime 0.0.85 -> 0.0.86 rejects mixed native and metadata sets. Managed ABI 9, client host ABI, updater wire layout and saved-data meanings are unchanged. Deploy or roll back matching binaries, metadata, assemblies and resources together.",
       "owner": "Engine application startup and resource configuration"
+    },
+    {
+      "baseline_contract_sha256": "1bef2a7ab7d7902bc3dc01dabf713874e83e66cfd2201fcc3a791634d9a9c1db",
+      "change_id": "api-change.model-scope.4dc5238e37616421",
+      "classification": "breaking",
+      "compatibility": "No save conversion, wire protocol, Managed ABI marker or sprite container version changes. Regenerated dense ABI metadata and assemblies must match; rebuild and roll back hosts, extensions and resources together.",
+      "current_contract_sha256": "66ec5cd868143ae94ea942a651896758226aed1241f50388435df68c21ccd5be",
+      "domain": "api",
+      "migration": "Regenerate Client/Mapper bindings and one matching metadata/resource set for both scripting backends. Use Game.SimulateTouchScroll(pos, offsetPos) for aggregated gestures; built-in OnTouchScroll remains subscription-only to scripts.",
+      "owner": "scripting-client-input",
+      "rationale": "The reviewed native-codegen inventory grows from2592 to2593 through the additive Game.SimulateTouchScroll method; the strict scope pin changes intentionally. Existing symbols retain their contracts.",
+      "release_note": "Engine2026.1.101-dev documents input injection, the updated inventory and the ordinary client input path in the bilingual changelog and client-runtime guide."
     }
   ]
 }

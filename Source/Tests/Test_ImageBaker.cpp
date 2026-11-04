@@ -936,12 +936,12 @@ static auto BakeAlphaMask(BakerTests::TestRig& rig, const vector<string>& rows, 
             }
             else {
                 for (int32_t direction {GameSettings::MAP_DIR_COUNT - 1}; direction < ImageImport::MAX_DIRS_MINUS_ONE; direction++) {
-                    collection.Dirs[direction].Frames.clear();
+                    collection.Dirs[numeric_cast<size_t>(direction)].Frames.clear();
                 }
             }
 
             for (int32_t direction {0}; direction < (have_dirs ? GameSettings::MAP_DIR_COUNT : 1); direction++) {
-                auto& frames {direction == 0 ? collection.Main : collection.Dirs[direction - 1]};
+                auto& frames {direction == 0 ? collection.Main : collection.Dirs[numeric_cast<size_t>(direction - 1)]};
 
                 for (size_t index {0}; index < frames.Frames.size(); index++) {
                     auto& shot {frames.Frames[index]};
@@ -1576,12 +1576,12 @@ TEST_CASE("ImageBakerForwardsAliasOptionsThroughRegisteredLoader")
                 }
                 else {
                     for (int32_t direction {GameSettings::MAP_DIR_COUNT - 1}; direction < ImageImport::MAX_DIRS_MINUS_ONE; direction++) {
-                        collection.Dirs[direction].Frames.clear();
+                        collection.Dirs[numeric_cast<size_t>(direction)].Frames.clear();
                     }
                 }
 
                 for (int32_t direction {0}; direction < (have_dirs ? GameSettings::MAP_DIR_COUNT : 1); direction++) {
-                    auto& frames {direction == 0 ? collection.Main : collection.Dirs[direction - 1]};
+                    auto& frames {direction == 0 ? collection.Main : collection.Dirs[numeric_cast<size_t>(direction - 1)]};
 
                     for (size_t index {0}; index < frames.Frames.size(); index++) {
                         auto& shot {frames.Frames[index]};
@@ -2525,12 +2525,12 @@ TEST_CASE("ImageBakerSpriteMeshSharedFrameHasNoDuplicatePayload")
                 }
                 else {
                     for (int32_t direction {GameSettings::MAP_DIR_COUNT - 1}; direction < ImageImport::MAX_DIRS_MINUS_ONE; direction++) {
-                        collection.Dirs[direction].Frames.clear();
+                        collection.Dirs[numeric_cast<size_t>(direction)].Frames.clear();
                     }
                 }
 
                 for (int32_t direction {0}; direction < (have_dirs ? GameSettings::MAP_DIR_COUNT : 1); direction++) {
-                    auto& frames {direction == 0 ? collection.Main : collection.Dirs[direction - 1]};
+                    auto& frames {direction == 0 ? collection.Main : collection.Dirs[numeric_cast<size_t>(direction - 1)]};
 
                     for (size_t index {0}; index < frames.Frames.size(); index++) {
                         auto& shot {frames.Frames[index]};
@@ -2610,12 +2610,12 @@ TEST_CASE("ImageBakerSpriteMeshRejectsInvalidSettings")
                 }
                 else {
                     for (int32_t direction {GameSettings::MAP_DIR_COUNT - 1}; direction < ImageImport::MAX_DIRS_MINUS_ONE; direction++) {
-                        collection.Dirs[direction].Frames.clear();
+                        collection.Dirs[numeric_cast<size_t>(direction)].Frames.clear();
                     }
                 }
 
                 for (int32_t direction {0}; direction < (have_dirs ? GameSettings::MAP_DIR_COUNT : 1); direction++) {
-                    auto& frames {direction == 0 ? collection.Main : collection.Dirs[direction - 1]};
+                    auto& frames {direction == 0 ? collection.Main : collection.Dirs[numeric_cast<size_t>(direction - 1)]};
 
                     for (size_t index {0}; index < frames.Frames.size(); index++) {
                         auto& shot {frames.Frames[index]};
@@ -3964,12 +3964,12 @@ Frame = dir1.tga
                         }
                         else {
                             for (int32_t direction {GameSettings::MAP_DIR_COUNT - 1}; direction < ImageImport::MAX_DIRS_MINUS_ONE; direction++) {
-                                collection.Dirs[direction].Frames.clear();
+                                collection.Dirs[numeric_cast<size_t>(direction)].Frames.clear();
                             }
                         }
 
                         for (int32_t direction {0}; direction < (have_dirs ? GameSettings::MAP_DIR_COUNT : 1); direction++) {
-                            auto& frames {direction == 0 ? collection.Main : collection.Dirs[direction - 1]};
+                            auto& frames {direction == 0 ? collection.Main : collection.Dirs[numeric_cast<size_t>(direction - 1)]};
 
                             for (size_t index {0}; index < frames.Frames.size(); index++) {
                                 auto& shot {frames.Frames[index]};
@@ -4111,7 +4111,7 @@ TEST_CASE("ImageBakerCustomLoaderBakesDirsSharedFramesAndNewName")
                 };
 
                 for (int32_t dir {0}; dir < ImageImport::MAX_DIRS_MINUS_ONE; dir++) {
-                    auto& sequence {collection.Dirs[dir]};
+                    auto& sequence {collection.Dirs[numeric_cast<size_t>(dir)]};
                     sequence.OffsX = numeric_cast<int16_t>(10 + dir);
                     sequence.OffsY = numeric_cast<int16_t>(20 + dir);
                     sequence.Frames = {
@@ -4127,12 +4127,12 @@ TEST_CASE("ImageBakerCustomLoaderBakesDirsSharedFramesAndNewName")
                 }
                 else {
                     for (int32_t direction {GameSettings::MAP_DIR_COUNT - 1}; direction < ImageImport::MAX_DIRS_MINUS_ONE; direction++) {
-                        collection.Dirs[direction].Frames.clear();
+                        collection.Dirs[numeric_cast<size_t>(direction)].Frames.clear();
                     }
                 }
 
                 for (int32_t direction {0}; direction < (have_dirs ? GameSettings::MAP_DIR_COUNT : 1); direction++) {
-                    auto& frames {direction == 0 ? collection.Main : collection.Dirs[direction - 1]};
+                    auto& frames {direction == 0 ? collection.Main : collection.Dirs[numeric_cast<size_t>(direction - 1)]};
 
                     for (size_t index {0}; index < frames.Frames.size(); index++) {
                         auto& shot {frames.Frames[index]};
@@ -4589,12 +4589,12 @@ TEST_CASE("FofrmResizing")
                 }
                 else {
                     for (int32_t direction {GameSettings::MAP_DIR_COUNT - 1}; direction < ImageImport::MAX_DIRS_MINUS_ONE; direction++) {
-                        collection.Dirs[direction].Frames.clear();
+                        collection.Dirs[numeric_cast<size_t>(direction)].Frames.clear();
                     }
                 }
 
                 for (int32_t direction {0}; direction < (have_dirs ? GameSettings::MAP_DIR_COUNT : 1); direction++) {
-                    auto& frames {direction == 0 ? collection.Main : collection.Dirs[direction - 1]};
+                    auto& frames {direction == 0 ? collection.Main : collection.Dirs[numeric_cast<size_t>(direction - 1)]};
 
                     for (size_t index {0}; index < frames.Frames.size(); index++) {
                         auto& shot {frames.Frames[index]};
@@ -4781,7 +4781,7 @@ TEST_CASE("FofrmSourceCollection")
             have_dirs = true;
 
             for (int32_t direction {0}; direction < GameSettings::MAP_DIR_COUNT; direction++) {
-                auto& sequence {direction == 0 ? collection.Main : collection.Dirs[direction - 1]};
+                auto& sequence {direction == 0 ? collection.Main : collection.Dirs[numeric_cast<size_t>(direction - 1)]};
                 sequence.OffsX = numeric_cast<int16_t>(10 + direction);
                 sequence.OffsY = numeric_cast<int16_t>(20 + direction);
                 sequence.Frames = {
@@ -4797,12 +4797,12 @@ TEST_CASE("FofrmSourceCollection")
             }
             else {
                 for (int32_t direction {GameSettings::MAP_DIR_COUNT - 1}; direction < ImageImport::MAX_DIRS_MINUS_ONE; direction++) {
-                    collection.Dirs[direction].Frames.clear();
+                    collection.Dirs[numeric_cast<size_t>(direction)].Frames.clear();
                 }
             }
 
             for (int32_t direction {0}; direction < (have_dirs ? GameSettings::MAP_DIR_COUNT : 1); direction++) {
-                auto& frames {direction == 0 ? collection.Main : collection.Dirs[direction - 1]};
+                auto& frames {direction == 0 ? collection.Main : collection.Dirs[numeric_cast<size_t>(direction - 1)]};
 
                 for (size_t index {0}; index < frames.Frames.size(); index++) {
                     auto& shot {frames.Frames[index]};
@@ -4867,12 +4867,12 @@ TEST_CASE("FofrmFlattenedDefaultTimingUsesFinalFrames")
             }
             else {
                 for (int32_t direction {GameSettings::MAP_DIR_COUNT - 1}; direction < ImageImport::MAX_DIRS_MINUS_ONE; direction++) {
-                    collection.Dirs[direction].Frames.clear();
+                    collection.Dirs[numeric_cast<size_t>(direction)].Frames.clear();
                 }
             }
 
             for (int32_t direction {0}; direction < (have_dirs ? GameSettings::MAP_DIR_COUNT : 1); direction++) {
-                auto& frames {direction == 0 ? collection.Main : collection.Dirs[direction - 1]};
+                auto& frames {direction == 0 ? collection.Main : collection.Dirs[numeric_cast<size_t>(direction - 1)]};
 
                 for (size_t index {0}; index < frames.Frames.size(); index++) {
                     auto& shot {frames.Frames[index]};

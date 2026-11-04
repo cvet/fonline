@@ -639,6 +639,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-client-game-simulatetouchmove-73f9cbe3f2"></a>
 - [`symbol-script-method-client-game-simulatetouchmove-73f9cbe3f2`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-simulatetouchmove-73f9cbe3f2)
 
+<a id="symbol-script-method-client-game-simulatetouchscroll-11fdc447bc"></a>
+- [`symbol-script-method-client-game-simulatetouchscroll-11fdc447bc`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-simulatetouchscroll-11fdc447bc)
+
 <a id="symbol-script-method-client-game-simulatetouchtap-622b0a5899"></a>
 - [`symbol-script-method-client-game-simulatetouchtap-622b0a5899`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-simulatetouchtap-622b0a5899)
 

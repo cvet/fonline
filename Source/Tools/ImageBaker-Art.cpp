@@ -275,7 +275,7 @@ namespace ImageBakerArt
         int32_t dir_count {have_dirs ? GameSettings::MAP_DIR_COUNT : 1};
 
         for (int32_t dir {0}; dir < dir_count; dir++) {
-            FrameSequence& sequence {dir == 0 ? collection.Main : collection.Dirs[dir - 1]};
+            FrameSequence& sequence {dir == 0 ? collection.Main : collection.Dirs[numeric_cast<size_t>(dir - 1)]};
             sequence.Frames.resize(numeric_cast<size_t>(sequence_size));
 
             // ART rotations run clockwise from north; square Engine directions start north-east
@@ -439,7 +439,7 @@ namespace ImageBakerArt
         }
 
         for (uint8_t direction {0}; direction < ImageImport::GetDirectionCount(collection); direction++) {
-            auto& sequence {direction == 0 ? collection.Main : collection.Dirs[direction - 1]};
+            auto& sequence {direction == 0 ? collection.Main : collection.Dirs[numeric_cast<size_t>(direction - 1)]};
 
             if (std::all_of(sequence.Frames.begin(), sequence.Frames.end(), [](const ImageImport::FrameShot& frame) { return frame.Duration == timespan::zero; })) {
                 uint32_t count {numeric_cast<uint32_t>(sequence.Frames.size())};

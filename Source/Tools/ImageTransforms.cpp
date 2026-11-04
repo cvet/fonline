@@ -205,7 +205,7 @@ auto SelectImageSequence(const ImageImport::FrameCollection& source, optional<in
     int32_t dir {direction.value_or(0)};
     FO_VERIFY_AND_THROW(dir >= 0 && dir < GameSettings::MAP_DIR_COUNT && dir < ImageImport::GetDirectionCount(source), "FOFRM InputDir requires an existing source direction", fname, dir);
 
-    return dir == 0 ? source.Main : source.Dirs[dir - 1];
+    return dir == 0 ? source.Main : source.Dirs[numeric_cast<size_t>(dir - 1)];
 }
 
 static auto CropImageFrame(const ImageImport::FrameShot& source, array<int32_t, 4> crop, string_view fname) -> ImageImport::FrameShot

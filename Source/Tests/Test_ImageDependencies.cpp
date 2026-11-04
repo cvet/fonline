@@ -254,12 +254,12 @@ TEST_CASE("ImageDependencySnapshots")
             }
             else {
                 for (int32_t direction {GameSettings::MAP_DIR_COUNT - 1}; direction < ImageImport::MAX_DIRS_MINUS_ONE; direction++) {
-                    collection.Dirs[direction].Frames.clear();
+                    collection.Dirs[numeric_cast<size_t>(direction)].Frames.clear();
                 }
             }
 
             for (int32_t direction {0}; direction < (have_dirs ? GameSettings::MAP_DIR_COUNT : 1); direction++) {
-                auto& frames {direction == 0 ? collection.Main : collection.Dirs[direction - 1]};
+                auto& frames {direction == 0 ? collection.Main : collection.Dirs[numeric_cast<size_t>(direction - 1)]};
 
                 for (size_t index {0}; index < frames.Frames.size(); index++) {
                     auto& shot {frames.Frames[index]};

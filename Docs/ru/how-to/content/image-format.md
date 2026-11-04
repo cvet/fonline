@@ -6,7 +6,7 @@ document_id: image-format-guide
 permalink: /Docs/ru/how-to/content/image-format.html
 ---
 
-<!-- docs-translation: {"document_id":"image-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/image-format.md","source_sha256":"3f07da120da300c5bd8ae046b7c181db2e0ce86c4062b349c39e277186eef023"} -->
+<!-- docs-translation: {"document_id":"image-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/image-format.md","source_sha256":"cefb6c26b892ae90262d7443b0120366a6b7ae9dfe042fdd8538d7bb0c982495"} -->
 
 # Форматы изображений и спрайтов
 
@@ -501,6 +501,15 @@ clickability или воспринимаемое скольжение ног.
 PNG/TGA/FOFRM обязательны. Другие importers требуют отдельных `FO_IMAGE_*` [опций](../build/project-configuration.md#optional-native-components). Известный выключенный вход, включая nested FOFRM, сообщает путь и опцию. Соседние `ImageBaker-*.h/.cpp` закрывают палитры/helpers вместе; `ImageBaker-ZarDecoder` разделяют ZAR/TIL при включении любого из них.
 
 Native callbacks используют `ImageImport::FrameShot`, `FrameSequence`, `FrameCollection`, `LoadFunc` и `(string_view name, string_view options, FileReader reader, const ImageImport::Context& context)`. `context.Files` предоставляет соседние assets, `context.Resolve(path)` — nesting, третий аргумент `AddLoader` — выходное имя. Scheduling, meshes и serialization остаются у координатора. Stock client читает baked containers без source-декодеров; runtime extensions/container version сохраняются.
+
+`FrameCollection::Main` содержит нулевое направление; `Dirs` — Engine
+`array<FrameSequence, MAX_DIRS_MINUS_ONE>` из семи дополнительных последовательностей
+в порядке направлений, изначально пустых. При индексации знаковым ненулевым
+направлением используйте `numeric_cast<size_t>(direction - 1)`.
+Обход диапазона и ссылки на элементы сохраняют смысл. Собственные loader,
+полагавшиеся на неявное преобразование C-массива в указатель, должны передавать
+`Dirs.data()` только на конечной границе внешнего API либо использовать span
+как представление с размером. См. [запись миграции](../../reference/changelog.md).
 
 Кадр native-импорта содержит `isize32 Size`, независимую привязку `ipos32 Offset`
 и покадровую дельту движения анимации `ipos32 Motion`, накапливаемую при проигрывании. Дельты FRM/FRx и DeltaX/DeltaY

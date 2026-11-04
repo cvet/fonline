@@ -2057,7 +2057,8 @@
           "anchors": [
             "isize32 Size",
             "timespan Duration",
-            "int32_t SharedIndex"
+            "int32_t SharedIndex",
+            "array<FrameSequence, MAX_DIRS_MINUS_ONE> Dirs"
           ]
         },
         {
