@@ -142,6 +142,8 @@ public:
     void DrawSpriteFrame();
     void DrawSpriteFrameLit();
     void DrawUnlitParticles();
+    auto PrepareSceneFrame(float32_t scale) -> bool;
+    void DrawPreparedInScene(const mat44& proj);
     void DrawInScene(const mat44& proj, float32_t scale);
     void AddMoveOffset(ipos32 offset);
     void SetMovementState(bool movement_enabled, bool moving, int32_t moving_speed);
@@ -195,6 +197,7 @@ private:
     auto GetSpeed() const -> float32_t;
     auto GetMovementSpeed() const -> float32_t;
     auto GetTime() const -> nanotime;
+    auto IsWorldPoseReady() const -> bool;
     auto FindPoseJoint(hstring bone_name) const noexcept -> optional<PoseJointBinding>;
     auto GetPoseJointIndex(ptr<const ModelBone> bone) const -> uint32_t;
     auto GetWorldMatrix(uint32_t joint_index) const -> const mat44&;
@@ -213,6 +216,7 @@ private:
     void InitializePendingParticles();
     void UpdateModelParticle(ModelParticleSystem& model_particle, timespan elapsed);
     void StartParticle(string_view particle_name, hstring bone_name, vec3 move, bool unlit);
+    void InvalidateSceneFrame() noexcept;
     void Pose(float32_t scale, bool advance_animation);
     void DrawPosed(bool draw_particles);
     void FillAnimationTrackInputs(nptr<const ModelAnimationController> controller, bool active, array<vector<uint8_t>, 2>& joint_masks, array<ModelAnimationRuntimePose::TrackInput, 2>& track_inputs) const;
@@ -221,6 +225,7 @@ private:
     void DrawCombinedMesh(ptr<CombinedMesh> combined_mesh, bool shadow_disabled);
     void DrawAllParticles();
     void DrawParticles(optional<bool> unlit);
+    void RefreshSceneParticleTransforms(const mat44& proj);
     void SetAnimData(ModelAnimationData& data, bool clear);
     void ApplyDisabledMeshes(const vector<hstring>& disabled_meshes);
     void RefreshMoveAnimation();
@@ -300,6 +305,11 @@ private:
     bool _frameLayoutDirty {};
     bool _spriteBoundsPoseReady {};
     bool _directSceneDraw {};
+    bool _scenePoseReady {};
+    bool _preparingScenePose {};
+    bool _scenePoseMutated {};
+    nanotime _scenePoseTime {};
+    float32_t _scenePoseScale {};
     vector<ModelAnimationCallback> _animationCallbacks {};
 
     // Derived animations

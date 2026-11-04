@@ -42,6 +42,7 @@
 #include "FileSystem.h"
 #if FO_ENABLE_3D
 #include "ModelManager.h"
+#include "Test_ClientEngineHelpers.h"
 #endif
 #include "Rendering.h"
 #include "Test_BakerHelpers.h"
@@ -50,6 +51,7 @@
 
 #if FO_EFFEKSEER_PARTICLES
 #include "Effekseer/SIMD/Mat43f.h"
+#include "Effekseer/Utils/Effekseer.CustomAllocator.h"
 #endif
 
 FO_BEGIN_NAMESPACE
@@ -75,6 +77,7 @@ struct CapturedEffekseerDraw final
     RenderPrimitiveType PrimitiveType {};
     bool HasMainTexture {};
     bool HasProjection {};
+    optional<array<float32_t, 16>> Projection {};
     optional<array<float32_t, 4>> AtlasSubRect {};
     optional<array<float32_t, 4>> Sampling {};
     CullModeType CullMode {};
@@ -215,6 +218,13 @@ void CapturingRenderEffect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_
     vector<vindex_t> captured_indices(indices.begin(), indices.end());
     optional<array<float32_t, 4>> captured_sub_rect;
     optional<array<float32_t, 4>> captured_sampling;
+    optional<array<float32_t, 16>> captured_projection;
+
+    if (ProjBuf.has_value()) {
+        static_assert(sizeof(RenderEffect::ProjBuffer {}.ProjMatrix) == sizeof(array<float32_t, 16>));
+        captured_projection.emplace();
+        std::copy_n(ProjBuf->ProjMatrix, captured_projection->size(), captured_projection->begin());
+    }
 
     if (SpriteBorderBuf.has_value()) {
         captured_sub_rect = array<float32_t, 4> {SpriteBorderBuf->SpriteBorder[0], SpriteBorderBuf->SpriteBorder[1], SpriteBorderBuf->SpriteBorder[2], SpriteBorderBuf->SpriteBorder[3]};
@@ -232,6 +242,7 @@ void CapturingRenderEffect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_
         .PrimitiveType = dbuf->PrimType,
         .HasMainTexture = !!MainTex,
         .HasProjection = ProjBuf.has_value(),
+        .Projection = captured_projection,
         .AtlasSubRect = captured_sub_rect,
         .Sampling = captured_sampling,
         .CullMode = CullMode,
@@ -2457,6 +2468,47 @@ static auto DrawAndCompareEffekseerPair(EffekseerRuntimeTestRig& queried_rig, Ef
     return queried_draws;
 }
 
+TEST_CASE("Effekseer render refresh publishes exact projection without advancing age", "[particle][effekseer-runtime][effekseer-projection-contract]")
+{
+    unique_ptr<EffekseerRuntimeTestRig> rig = MakeModelTrailFixture(6, 4, 2.0f);
+    optional<ParticleSystem> system = rig->CreateManagedSystem();
+    REQUIRE(system);
+
+    ParticleRuntimeSetup setup = MakeEffekseerIdentitySetup();
+    setup.TiltInProjection = true;
+    system->Setup(setup.Projection, setup.World, setup.PositionOffset, setup.LookDirectionAngle, setup.ViewOffset, setup.TiltInProjection);
+    REQUIRE(system->Respawn(733));
+    system->Update(timespan {std::chrono::milliseconds {17}});
+
+    timespan elapsed = system->GetElapsedTime();
+    optional<array<float32_t, 16>> previous_projection;
+
+    for (mat44 projection : {mat44 {1.0f}, glm::translate(mat44 {1.0f}, vec3 {12.0f, -4.0f, 7.0f}) * glm::scale(mat44 {1.0f}, vec3 {1.5f, 0.5f, 2.0f})}) {
+        array<float32_t, 16> expected {};
+        std::copy_n(glm::value_ptr(projection), expected.size(), expected.begin());
+
+        system->Setup(projection, setup.World, setup.PositionOffset, setup.LookDirectionAngle, setup.ViewOffset, true);
+        system->RefreshRenderTransform();
+        rig->ClearDraws();
+        system->Draw();
+
+        const auto& draws = rig->GetDraws();
+        REQUIRE(!draws.empty());
+
+        for (const CapturedEffekseerDraw& draw : draws) {
+            REQUIRE(draw.Projection);
+            CHECK(draw.Projection.value() == expected);
+
+            if (previous_projection) {
+                CHECK(draw.Projection.value() != previous_projection.value());
+            }
+        }
+
+        CHECK(system->GetElapsedTime() == elapsed);
+        previous_projection = expected;
+    }
+}
+
 TEST_CASE("Effekseer unchanged repeated refresh preserves seeded draws and expiration", "[particle][effekseer-runtime][model-particle-integration][effekseer-refresh-contract]")
 {
     unique_ptr<EffekseerRuntimeTestRig> queried_rig = MakeModelTrailFixture(6, 4, 2.0f);
@@ -3050,6 +3102,696 @@ TEST_CASE("Effekseer singular SRT decomposition retains invalid surviving basis 
         CHECK(has_nonfinite_component(decomposed_rotation));
         CHECK(has_nonfinite_component(direct_rotation));
     }
+}
+
+#endif
+
+#if FO_ENABLE_3D && FO_EFFEKSEER_PARTICLES
+
+static constexpr string_view ModelChildPoseParticleMeshPath = "Models/ChildProjection.fbx";
+static constexpr string_view ModelChildPoseParticleChildMeshPath = "Models/ChildProjectionEquipment.fbx";
+static constexpr string_view ModelChildPoseParticleModelPath = "Models/ChildProjection.fo3d";
+static constexpr string_view ModelChildPoseParticleParticlePath = "Particles/ChildProjection.efk";
+static constexpr string_view ModelChildPoseParticleParticleShader = "Effects/Particles_ColorMulAtlas.fofx";
+static constexpr float32_t ModelChildPoseParticleCallbackPhase = 0.25f;
+static constexpr std::chrono::milliseconds ModelChildPoseParticleAdvanceInterval {400};
+
+struct ModelChildPoseParticlePacketFrame
+{
+    vec3 Center {};
+    vec3 Right {};
+    vec3 Up {};
+};
+
+struct ModelChildPoseParticleDrawSnapshot
+{
+    vector<CapturedEffekseerDraw> Draws {};
+    vector<CapturedEffekseerDraw> Particles {};
+    vector<CapturedEffekseerDraw> Meshes {};
+    vector<ModelAttachPoint> AttachPoints {};
+    optional<ModelAttachPoint> ParticleAttachment {};
+    optional<ipos32> Anchor {};
+    vec3 PacketCenter {};
+    vec3 PacketRight {};
+    vec3 PacketUp {};
+    float32_t ModelDirection {};
+    float32_t AnimAbsoluteTime {};
+    float32_t AnimNormalizedTime {};
+    size_t MeshVertexCount {};
+    size_t MeshIndexCount {};
+    int32_t ParticleAttachmentCount {};
+    int32_t CallbackCount {};
+    bool HasUnlitParticles {};
+};
+
+static auto GetModelChildPoseParticlePacketFrame(const CapturedEffekseerDraw& draw) -> ModelChildPoseParticlePacketFrame
+{
+    REQUIRE(draw.Vertices.size() == 4);
+    REQUIRE(draw.Indices.size() == 6);
+
+    ModelChildPoseParticlePacketFrame frame;
+
+    for (const Vertex2D& vertex : draw.Vertices) {
+        frame.Center += vec3 {vertex.PosX, vertex.PosY, vertex.PosZ};
+    }
+
+    frame.Center /= 4.0f;
+    frame.Right = vec3 {draw.Vertices[1].PosX, draw.Vertices[1].PosY, draw.Vertices[1].PosZ} - vec3 {draw.Vertices[0].PosX, draw.Vertices[0].PosY, draw.Vertices[0].PosZ};
+    frame.Up = vec3 {draw.Vertices[2].PosX, draw.Vertices[2].PosY, draw.Vertices[2].PosZ} - vec3 {draw.Vertices[0].PosX, draw.Vertices[0].PosY, draw.Vertices[0].PosZ};
+    return frame;
+}
+
+static void CheckModelChildPoseParticlePacketFramesEqual(const ModelChildPoseParticlePacketFrame& left, const ModelChildPoseParticlePacketFrame& right)
+{
+    CHECK(left.Center.x == right.Center.x);
+    CHECK(left.Center.y == right.Center.y);
+    CHECK(left.Center.z == right.Center.z);
+    CHECK(left.Right.x == right.Right.x);
+    CHECK(left.Right.y == right.Right.y);
+    CHECK(left.Right.z == right.Right.z);
+    CHECK(left.Up.x == right.Up.x);
+    CHECK(left.Up.y == right.Up.y);
+    CHECK(left.Up.z == right.Up.z);
+}
+
+static auto CountModelChildPoseParticleParticleAttachments(const ModelInstance& instance) -> int32_t
+{
+    int32_t count = 0;
+
+    for (const ModelAttachPoint& attach : instance.GetAttachPoints()) {
+        if (attach.Kind == ModelAttachKind::Particle) {
+            count++;
+        }
+    }
+
+    return count;
+}
+
+static void AddModelChildPoseParticleFixtureResources(BakerTests::MemoryDataSource& source, vector<pair<string, vector<uint8_t>>>& resources)
+{
+    constexpr string_view particle_project = R"EFK(<?xml version="1.0" encoding="utf-8"?>
+<EffekseerProject>
+  <Root>
+    <Name>Root</Name>
+    <Children>
+      <Node>
+        <Name>Instant</Name>
+        <CommonValues>
+          <MaxGeneration>
+            <Value>1</Value>
+            <Infinite>False</Infinite>
+          </MaxGeneration>
+          <Life>
+            <Min>5</Min>
+            <Max>5</Max>
+          </Life>
+          <Generation>
+            <GenerationTime>
+              <Min>0</Min>
+              <Max>0</Max>
+            </GenerationTime>
+          </Generation>
+        </CommonValues>
+        <RendererCommonValues>
+          <AlphaBlend>1</AlphaBlend>
+          <ZTest>False</ZTest>
+          <ZWrite>False</ZWrite>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <R>255</R>
+              <G>255</G>
+              <B>255</B>
+              <A>255</A>
+            </Fixed>
+          </ColorAll>
+          <Sprite>
+            <Billboard>0</Billboard>
+          </Sprite>
+        </DrawingValues>
+        <Children />
+      </Node>
+    </Children>
+  </Root>
+  <ToolVersion>1.80.5</ToolVersion>
+  <Version>3</Version>
+  <StartFrame>0</StartFrame>
+  <EndFrame>5</EndFrame>
+  <IsLoop>False</IsLoop>
+</EffekseerProject>
+)EFK";
+
+    auto project_bytes = const_span<uint8_t> {reinterpret_cast<const uint8_t*>(particle_project.data()), particle_project.size()};
+    EffekseerCompilerOutput particle = CompileEffekseerProject("Particles/ChildProjection.efkproj", project_bytes);
+    REQUIRE(particle.Dependencies.empty());
+    AddEffekseerRuntimeTestResources(source, ModelChildPoseParticleParticlePath, std::move(particle.Binary));
+
+    // Real baked skinned meshes, the Layer3 child link and the explicit model clock reflection stay in one fixture
+    vector<uint8_t> mesh = ClientEngineTests::MakeSkinnedRuntimeModelMesh();
+    vector<uint8_t> child_mesh = ClientEngineTests::MakeSkinnedRuntimeModelMesh();
+    vector<uint8_t> animation_info;
+    resources.emplace_back(string {ModelChildPoseParticleMeshPath}, mesh);
+    resources.emplace_back(string {ModelChildPoseParticleChildMeshPath}, child_mesh);
+    resources.emplace_back(string {ModelChildPoseParticleModelPath}, ClientEngineTests::MakeRuntimeModelDescription(ModelChildPoseParticleModelPath,
+        ModelChildPoseParticleMeshPath, mesh, {}, ModelChildPoseParticleChildMeshPath, &child_mesh, true, {}, 2.0f, &animation_info,
+        "Model ChildProjection.fbx\nAnim 1 1 ModelFile Base\nLayer 3\nValue 1 Attach ChildProjectionEquipment.fbx MoveX 3\n"));
+    resources.emplace_back("ModelAnimationInfo.foinfo", std::move(animation_info));
+    source.AddFile("Effects/3D_Skinned.fofx-1-info", "[EffectInfo]\nProjBuf = 0\nModelBuf = 1\nModelAnimBuf = 2\n");
+}
+
+static auto CaptureModelChildPoseParticleDraw(CapturingAppRender& render, EffectManager& effects, string_view model_shader, ptr<ModelInstance> instance,
+    const mat44& projection, hstring anchor_bone, vec3 anchor_offset, int32_t callback_count) -> ModelChildPoseParticleDrawSnapshot
+{
+    array<float32_t, 16> expected {};
+
+    for (size_t i = 0; i < expected.size(); i++) {
+        expected[i] = glm::value_ptr(projection)[i];
+    }
+
+    ModelChildPoseParticleDrawSnapshot snapshot;
+    render.ClearDraws();
+    instance->DrawPreparedInScene(projection);
+    snapshot.Draws = render.GetDraws();
+
+    for (const CapturedEffekseerDraw& draw : snapshot.Draws) {
+        REQUIRE(draw.HasProjection);
+        REQUIRE(draw.Projection);
+
+        for (size_t i = 0; i < expected.size(); i++) {
+            CHECK((*draw.Projection)[i] == expected[i]);
+        }
+
+        if (draw.EffectName == ModelChildPoseParticleParticleShader) {
+            snapshot.Particles.emplace_back(draw);
+        }
+        else if (draw.EffectName == model_shader) {
+            snapshot.Meshes.emplace_back(draw);
+        }
+    }
+
+    CHECK(snapshot.Draws.size() == snapshot.Particles.size() + snapshot.Meshes.size());
+    REQUIRE(!snapshot.Meshes.empty());
+
+    for (const CapturedEffekseerDraw& mesh : snapshot.Meshes) {
+        snapshot.MeshVertexCount += mesh.Vertices3D.size();
+        snapshot.MeshIndexCount += mesh.Indices.size();
+    }
+
+    REQUIRE(snapshot.MeshVertexCount != 0);
+    REQUIRE(snapshot.MeshIndexCount != 0);
+
+    if (!snapshot.Particles.empty()) {
+        ModelChildPoseParticlePacketFrame packet_frame = GetModelChildPoseParticlePacketFrame(snapshot.Particles.front());
+        snapshot.PacketCenter = packet_frame.Center;
+        snapshot.PacketRight = packet_frame.Right;
+        snapshot.PacketUp = packet_frame.Up;
+    }
+
+    snapshot.AttachPoints = instance->GetAttachPoints();
+
+    for (const ModelAttachPoint& attach : snapshot.AttachPoints) {
+        if (attach.Kind == ModelAttachKind::Particle) {
+            snapshot.ParticleAttachmentCount++;
+
+            if (!snapshot.ParticleAttachment) {
+                snapshot.ParticleAttachment = attach;
+            }
+        }
+    }
+
+    snapshot.HasUnlitParticles = instance->HasUnlitParticles();
+    snapshot.Anchor = instance->GetBonePos(anchor_bone, anchor_offset);
+    snapshot.ModelDirection = instance->GetMoveDirAngle();
+
+    REQUIRE(effects.Effects.SkinnedModel);
+    REQUIRE(effects.Effects.SkinnedModel->ModelAnimBuf);
+    snapshot.AnimAbsoluteTime = effects.Effects.SkinnedModel->ModelAnimBuf->AnimAbsoluteTime[0];
+    snapshot.AnimNormalizedTime = effects.Effects.SkinnedModel->ModelAnimBuf->AnimNormalizedTime[0];
+    snapshot.CallbackCount = callback_count;
+    return snapshot;
+}
+
+TEST_CASE("ModelChildPoseParticleRegressionCallbackBirthReplayAndFiniteRetirement", "[model-child-pose-particles]")
+{
+    using namespace ClientEngineTests;
+    bool unlit = GENERATE(false, true);
+    CAPTURE(unlit);
+
+    auto settings = MakeClientTestSettings();
+    BakerTests::OverrideSetting(settings.Render.ModelProjFactor, 32.0f);
+
+    auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ChildProjectionRegressionLifecycle");
+    vector<pair<string, vector<uint8_t>>> resources;
+    AddModelChildPoseParticleFixtureResources(*source, resources);
+
+    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(resources)));
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    client->Resources.AddCustomSource(std::move(source));
+
+    CapturingAppRender render {&settings};
+    EffectManager effects {&settings, &client->Resources, &render};
+    effects.LoadDefaultEffects();
+    REQUIRE(effects.Effects.SkinnedModel);
+    REQUIRE(effects.Effects.SkinnedModel->IsNeedProjBuf());
+    REQUIRE(effects.Effects.SkinnedModel->IsNeedModelBuf());
+    REQUIRE(effects.Effects.SkinnedModel->IsNeedModelAnimBuf());
+
+    auto texture = render.CreateTexture({8, 8}, true, false);
+    ModelManager manager {&settings, &client->Resources, client.get(), &effects, &render, &client->GameTime,
+        client.get(), [&texture](string_view) -> pair<nptr<RenderTexture>, frect32> {
+            return {texture.as_nptr(), EffekseerFixtureAtlasRect};
+        }, []() { return false; }};
+
+    hstring parent_bone = client->Hashes.to_hashed_string(ModelChildPoseParticleMeshPath);
+    hstring child_bone = client->Hashes.to_hashed_string(ModelChildPoseParticleChildMeshPath);
+    auto state = static_cast<CritterStateAnim>(1);
+    auto action = static_cast<CritterActionAnim>(1);
+    vec3 offset {4.0f, 0.0f, 0.0f};
+    array<int32_t, MODEL_LAYERS_COUNT> child_layers {};
+    child_layers[3] = 1;
+
+    int32_t child_callbacks = 0;
+    int32_t control_callbacks = 0;
+    int32_t parent_control_callbacks = 0;
+    auto model = manager.CreateModel(ModelChildPoseParticleModelPath);
+    auto control = manager.CreateModel(ModelChildPoseParticleModelPath);
+    auto parent_control = manager.CreateModel(ModelChildPoseParticleModelPath);
+    REQUIRE(model);
+    REQUIRE(control);
+    REQUIRE(parent_control);
+
+    auto prepare_fixture_model = [&](ptr<ModelInstance> instance) {
+        instance->StartMeshGeneration();
+        instance->PrepareFrameLayout();
+        REQUIRE_FALSE(instance->FindBone(child_bone));
+        (void)instance->PlayAnim(state, action, child_layers.data(), 0.0f, ModelAnimFlags::Freeze);
+        instance->SetupFrame(isize32 {512, 512}, ipos32 {256, 384});
+        instance->PoseSpriteFrame(false);
+        REQUIRE(instance->FindBone(child_bone));
+
+        auto parent_point = instance->GetBonePos(parent_bone, offset);
+        auto child_point = instance->GetBonePos(child_bone, offset);
+        REQUIRE(parent_point);
+        REQUIRE(child_point);
+        CAPTURE(parent_point->x, parent_point->y, child_point->x, child_point->y);
+        REQUIRE(child_point != parent_point);
+    };
+
+    prepare_fixture_model(model.get());
+    prepare_fixture_model(control.get());
+    prepare_fixture_model(parent_control.get());
+
+    // All instances consume their construction interval on the same real timer frame
+    client->GameTime.FrameAdvance(false);
+    model->PoseSpriteFrame(true);
+    control->PoseSpriteFrame(true);
+    parent_control->PoseSpriteFrame(true);
+
+    model->AddAnimationCallback(ModelAnimationCallback {
+        .StateAnim = state,
+        .ActionAnim = action,
+        .NormalizedTime = ModelChildPoseParticleCallbackPhase,
+        .Callback = [&model, &child_callbacks, unlit, child_bone, offset] {
+            child_callbacks++;
+
+            if (unlit) {
+                model->RunUnlitParticle(ModelChildPoseParticleParticlePath, child_bone, offset);
+            }
+            else {
+                model->RunParticle(ModelChildPoseParticleParticlePath, child_bone, offset);
+            }
+        },
+    });
+    control->AddAnimationCallback(ModelAnimationCallback {
+        .StateAnim = state,
+        .ActionAnim = action,
+        .NormalizedTime = ModelChildPoseParticleCallbackPhase,
+        .Callback = [&control, &control_callbacks, unlit, child_bone, offset] {
+            control_callbacks++;
+
+            if (unlit) {
+                control->RunUnlitParticle(ModelChildPoseParticleParticlePath, child_bone, offset);
+            }
+            else {
+                control->RunParticle(ModelChildPoseParticleParticlePath, child_bone, offset);
+            }
+        },
+    });
+    parent_control->AddAnimationCallback(ModelAnimationCallback {
+        .StateAnim = state,
+        .ActionAnim = action,
+        .NormalizedTime = ModelChildPoseParticleCallbackPhase,
+        .Callback = [&parent_control, &parent_control_callbacks, unlit, parent_bone, offset] {
+            parent_control_callbacks++;
+
+            if (unlit) {
+                parent_control->RunUnlitParticle(ModelChildPoseParticleParticlePath, parent_bone, offset);
+            }
+            else {
+                parent_control->RunParticle(ModelChildPoseParticleParticlePath, parent_bone, offset);
+            }
+        },
+    });
+
+    auto play_once = [&](ptr<ModelInstance> instance) {
+        (void)instance->PlayAnim(state, action, child_layers.data(), 0.0f, combine_enum(ModelAnimFlags::PlayOnce, ModelAnimFlags::NoSmooth), 1.0f);
+        instance->SetupFrame(isize32 {512, 512}, ipos32 {256, 384});
+        instance->PoseSpriteFrame(true);
+    };
+    play_once(model.get());
+    play_once(control.get());
+    play_once(parent_control.get());
+
+    // The pre-birth interval is longer than the five-frame effect life; the callback still births at zero age
+    coarse_sleep(ModelChildPoseParticleAdvanceInterval);
+    client->GameTime.FrameAdvance(false);
+    REQUIRE(model->PrepareSceneFrame(1.0f));
+    REQUIRE(control->PrepareSceneFrame(1.0f));
+    REQUIRE(parent_control->PrepareSceneFrame(1.0f));
+    REQUIRE(child_callbacks == 1);
+    REQUIRE(control_callbacks == 1);
+    REQUIRE(parent_control_callbacks == 1);
+
+    string model_shader {effects.Effects.SkinnedModel->GetName()};
+    mat44 first_projection = render.CreateOrthoMatrix(-50.0f, 200.0f, -75.0f, 175.0f, -10.0f, 10.0f);
+    mat44 second_projection = render.CreateOrthoMatrix(-20.0f, 300.0f, -35.0f, 225.0f, -15.0f, 20.0f);
+
+    auto first = CaptureModelChildPoseParticleDraw(render, effects, model_shader, model.get(), first_projection, child_bone, offset, child_callbacks);
+    auto control_first = CaptureModelChildPoseParticleDraw(render, effects, model_shader, control.get(), first_projection, child_bone, offset, control_callbacks);
+    auto parent_control_first = CaptureModelChildPoseParticleDraw(render, effects, model_shader, parent_control.get(), first_projection, parent_bone, offset, parent_control_callbacks);
+    REQUIRE(first.Particles.size() == 1);
+    REQUIRE(control_first.Particles.size() == 1);
+    REQUIRE(parent_control_first.Particles.size() == 1);
+    CHECK(first.ParticleAttachmentCount == 1);
+    CHECK(control_first.ParticleAttachmentCount == 1);
+    CHECK(parent_control_first.ParticleAttachmentCount == 1);
+    CHECK(first.CallbackCount == 1);
+    CHECK(control_first.CallbackCount == 1);
+    CHECK(parent_control_first.CallbackCount == 1);
+    CHECK(first.HasUnlitParticles == unlit);
+    CHECK(control_first.HasUnlitParticles == unlit);
+    CHECK(parent_control_first.HasUnlitParticles == unlit);
+    REQUIRE(first.ParticleAttachment);
+    REQUIRE(control_first.ParticleAttachment);
+    REQUIRE(parent_control_first.ParticleAttachment);
+    CHECK(first.ParticleAttachment->Name == ModelChildPoseParticleParticlePath);
+    CHECK(control_first.ParticleAttachment->Name == ModelChildPoseParticleParticlePath);
+    CHECK(parent_control_first.ParticleAttachment->Name == ModelChildPoseParticleParticlePath);
+    CHECK(first.ParticleAttachment->BoneName == child_bone);
+    CHECK(control_first.ParticleAttachment->BoneName == child_bone);
+    CHECK(parent_control_first.ParticleAttachment->BoneName == parent_bone);
+    CHECK(first.ParticleAttachment->Move.x == offset.x);
+    CHECK(control_first.ParticleAttachment->Move.x == offset.x);
+    CHECK(parent_control_first.ParticleAttachment->Move.x == offset.x);
+    REQUIRE(first.Anchor);
+    REQUIRE(control_first.Anchor);
+    REQUIRE(parent_control_first.Anchor);
+    CAPTURE(first.PacketCenter.x, first.PacketCenter.y, first.PacketCenter.z,
+        parent_control_first.PacketCenter.x, parent_control_first.PacketCenter.y, parent_control_first.PacketCenter.z);
+    REQUIRE(glm::length(first.PacketCenter - parent_control_first.PacketCenter) > 0.01f);
+
+    REQUIRE(first.Particles.front().Projection);
+    bool first_matches_second = true;
+
+    for (size_t i = 0; i < first.Particles.front().Projection->size(); i++) {
+        first_matches_second = first_matches_second && (*first.Particles.front().Projection)[i] == glm::value_ptr(second_projection)[i];
+    }
+
+    CHECK_FALSE(first_matches_second);
+
+    float32_t animation_duration = model->GetAnimDuration().to_sec<float32_t>();
+    REQUIRE(animation_duration > 0.0f);
+    CHECK(animation_duration == Catch::Approx(1.0f));
+    CHECK(control->GetAnimDuration() == model->GetAnimDuration());
+    CHECK(parent_control->GetAnimDuration() == model->GetAnimDuration());
+    CHECK(first.AnimAbsoluteTime > 0.0f);
+    CHECK(first.AnimAbsoluteTime < animation_duration);
+    CHECK(first.AnimNormalizedTime > 0.0f);
+    CHECK(first.AnimNormalizedTime < 1.0f);
+    CHECK(first.AnimAbsoluteTime == control_first.AnimAbsoluteTime);
+    CHECK(first.AnimNormalizedTime == control_first.AnimNormalizedTime);
+    CHECK(first.AnimAbsoluteTime == parent_control_first.AnimAbsoluteTime);
+    CHECK(first.AnimNormalizedTime == parent_control_first.AnimNormalizedTime);
+
+    auto second = CaptureModelChildPoseParticleDraw(render, effects, model_shader, model.get(), second_projection, child_bone, offset, child_callbacks);
+    auto third = CaptureModelChildPoseParticleDraw(render, effects, model_shader, model.get(), first_projection, child_bone, offset, child_callbacks);
+    REQUIRE(second.Particles.size() == 1);
+    REQUIRE(third.Particles.size() == 1);
+    CheckEffekseerDrawsEqual(first.Particles, second.Particles);
+    CheckEffekseerDrawsEqual(first.Particles, third.Particles);
+    CHECK(first.Particles.front().AtlasSubRect == second.Particles.front().AtlasSubRect);
+    CHECK(first.Particles.front().AtlasSubRect == third.Particles.front().AtlasSubRect);
+    CHECK(first.Particles.front().Sampling == second.Particles.front().Sampling);
+    CHECK(first.Particles.front().Sampling == third.Particles.front().Sampling);
+    CHECK(first.Particles.front().CullMode == second.Particles.front().CullMode);
+    CHECK(first.Particles.front().CullMode == third.Particles.front().CullMode);
+    CheckModelChildPoseParticlePacketFramesEqual(
+        ModelChildPoseParticlePacketFrame {.Center = first.PacketCenter, .Right = first.PacketRight, .Up = first.PacketUp},
+        ModelChildPoseParticlePacketFrame {.Center = second.PacketCenter, .Right = second.PacketRight, .Up = second.PacketUp});
+    CheckModelChildPoseParticlePacketFramesEqual(
+        ModelChildPoseParticlePacketFrame {.Center = first.PacketCenter, .Right = first.PacketRight, .Up = first.PacketUp},
+        ModelChildPoseParticlePacketFrame {.Center = third.PacketCenter, .Right = third.PacketRight, .Up = third.PacketUp});
+    CHECK(first.Particles.front().Projection.value() != second.Particles.front().Projection.value());
+    CHECK(first.Particles.front().Projection.value() == third.Particles.front().Projection.value());
+    CHECK(second.AnimAbsoluteTime == first.AnimAbsoluteTime);
+    CHECK(second.AnimNormalizedTime == first.AnimNormalizedTime);
+    CHECK(third.AnimAbsoluteTime == first.AnimAbsoluteTime);
+    CHECK(third.AnimNormalizedTime == first.AnimNormalizedTime);
+    CHECK(second.ParticleAttachmentCount == 1);
+    CHECK(third.ParticleAttachmentCount == 1);
+    CHECK(second.CallbackCount == 1);
+    CHECK(third.CallbackCount == 1);
+    CHECK(second.HasUnlitParticles == unlit);
+    CHECK(third.HasUnlitParticles == unlit);
+    CHECK(second.Anchor == first.Anchor);
+    CHECK(third.Anchor == first.Anchor);
+    CHECK(second.ModelDirection == first.ModelDirection);
+    CHECK(third.ModelDirection == first.ModelDirection);
+    CHECK(second.MeshVertexCount == first.MeshVertexCount);
+    CHECK(third.MeshVertexCount == first.MeshVertexCount);
+    CHECK(second.MeshIndexCount == first.MeshIndexCount);
+    CHECK(third.MeshIndexCount == first.MeshIndexCount);
+    REQUIRE(second.ParticleAttachment);
+    REQUIRE(third.ParticleAttachment);
+    CHECK(second.ParticleAttachment->BoneName == child_bone);
+    CHECK(third.ParticleAttachment->BoneName == child_bone);
+
+    // The attached numeric age has no public getter; a later advancing preparation retires the repeated and control effects
+    coarse_sleep(ModelChildPoseParticleAdvanceInterval);
+    client->GameTime.FrameAdvance(false);
+    REQUIRE(model->PrepareSceneFrame(1.0f));
+    REQUIRE(control->PrepareSceneFrame(1.0f));
+    REQUIRE(parent_control->PrepareSceneFrame(1.0f));
+    auto retired = CaptureModelChildPoseParticleDraw(render, effects, model_shader, model.get(), first_projection, child_bone, offset, child_callbacks);
+    auto control_retired = CaptureModelChildPoseParticleDraw(render, effects, model_shader, control.get(), first_projection, child_bone, offset, control_callbacks);
+    auto parent_control_retired = CaptureModelChildPoseParticleDraw(render, effects, model_shader, parent_control.get(), first_projection, parent_bone, offset, parent_control_callbacks);
+    REQUIRE(retired.Particles.empty());
+    REQUIRE(control_retired.Particles.empty());
+    REQUIRE(parent_control_retired.Particles.empty());
+    CHECK(retired.ParticleAttachmentCount == 0);
+    CHECK(control_retired.ParticleAttachmentCount == 0);
+    CHECK(parent_control_retired.ParticleAttachmentCount == 0);
+    CHECK(retired.CallbackCount == 1);
+    CHECK(control_retired.CallbackCount == 1);
+    CHECK(parent_control_retired.CallbackCount == 1);
+    CHECK_FALSE(retired.HasUnlitParticles);
+    CHECK_FALSE(control_retired.HasUnlitParticles);
+    CHECK_FALSE(parent_control_retired.HasUnlitParticles);
+    CHECK(retired.AnimAbsoluteTime > first.AnimAbsoluteTime);
+    CHECK(control_retired.AnimAbsoluteTime > control_first.AnimAbsoluteTime);
+    CHECK(parent_control_retired.AnimAbsoluteTime > parent_control_first.AnimAbsoluteTime);
+    CHECK(retired.AnimNormalizedTime > first.AnimNormalizedTime);
+    CHECK(retired.AnimAbsoluteTime <= animation_duration);
+    CHECK(retired.AnimAbsoluteTime == control_retired.AnimAbsoluteTime);
+    CHECK(retired.AnimAbsoluteTime == parent_control_retired.AnimAbsoluteTime);
+    CHECK(retired.AnimNormalizedTime == control_retired.AnimNormalizedTime);
+    CHECK(retired.AnimNormalizedTime == parent_control_retired.AnimNormalizedTime);
+    CHECK(retired.MeshVertexCount == first.MeshVertexCount);
+    CHECK(control_retired.MeshVertexCount == control_first.MeshVertexCount);
+    CHECK(parent_control_retired.MeshVertexCount == parent_control_first.MeshVertexCount);
+    REQUIRE(retired.Anchor);
+    REQUIRE(control_retired.Anchor);
+    REQUIRE(parent_control_retired.Anchor);
+    REQUIRE(model->FindBone(parent_bone));
+    REQUIRE(model->FindBone(child_bone));
+    REQUIRE(control->FindBone(parent_bone));
+    REQUIRE(control->FindBone(child_bone));
+    REQUIRE(parent_control->FindBone(parent_bone));
+    REQUIRE(parent_control->FindBone(child_bone));
+
+    model->ClearAnimationCallbacks();
+    control->ClearAnimationCallbacks();
+    parent_control->ClearAnimationCallbacks();
+}
+
+TEST_CASE("ModelChildPoseParticleRegressionChildRemovalAndParentReuse", "[model-child-pose-particles]")
+{
+    using namespace ClientEngineTests;
+    bool unlit = GENERATE(false, true);
+    CAPTURE(unlit);
+
+    auto settings = MakeClientTestSettings();
+    BakerTests::OverrideSetting(settings.Render.ModelProjFactor, 32.0f);
+
+    auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ChildProjectionRegressionRemoval");
+    vector<pair<string, vector<uint8_t>>> resources;
+    AddModelChildPoseParticleFixtureResources(*source, resources);
+
+    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(resources)));
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    client->Resources.AddCustomSource(std::move(source));
+
+    CapturingAppRender render {&settings};
+    EffectManager effects {&settings, &client->Resources, &render};
+    effects.LoadDefaultEffects();
+    REQUIRE(effects.Effects.SkinnedModel);
+    REQUIRE(effects.Effects.SkinnedModel->IsNeedProjBuf());
+    REQUIRE(effects.Effects.SkinnedModel->IsNeedModelBuf());
+    REQUIRE(effects.Effects.SkinnedModel->IsNeedModelAnimBuf());
+
+    auto texture = render.CreateTexture({8, 8}, true, false);
+    ModelManager manager {&settings, &client->Resources, client.get(), &effects, &render, &client->GameTime,
+        client.get(), [&texture](string_view) -> pair<nptr<RenderTexture>, frect32> {
+            return {texture.as_nptr(), EffekseerFixtureAtlasRect};
+        }, []() { return false; }};
+
+    hstring parent_bone = client->Hashes.to_hashed_string(ModelChildPoseParticleMeshPath);
+    hstring child_bone = client->Hashes.to_hashed_string(ModelChildPoseParticleChildMeshPath);
+    auto state = static_cast<CritterStateAnim>(1);
+    auto action = static_cast<CritterActionAnim>(1);
+    vec3 offset {4.0f, 0.0f, 0.0f};
+    array<int32_t, MODEL_LAYERS_COUNT> child_layers {};
+    array<int32_t, MODEL_LAYERS_COUNT> no_layers {};
+    child_layers[3] = 1;
+
+    int32_t callbacks = 0;
+    auto model = manager.CreateModel(ModelChildPoseParticleModelPath);
+    REQUIRE(model);
+    model->StartMeshGeneration();
+    model->PrepareFrameLayout();
+    REQUIRE_FALSE(model->FindBone(child_bone));
+    (void)model->PlayAnim(state, action, child_layers.data(), 0.0f, ModelAnimFlags::Freeze);
+    model->SetupFrame(isize32 {512, 512}, ipos32 {256, 384});
+    model->PoseSpriteFrame(false);
+    REQUIRE(model->FindBone(child_bone));
+    auto parent_point = model->GetBonePos(parent_bone, offset);
+    auto child_point = model->GetBonePos(child_bone, offset);
+    REQUIRE(parent_point);
+    REQUIRE(child_point);
+    REQUIRE(child_point != parent_point);
+
+    client->GameTime.FrameAdvance(false);
+    model->PoseSpriteFrame(true);
+
+    string model_shader {effects.Effects.SkinnedModel->GetName()};
+    mat44 first_projection = render.CreateOrthoMatrix(-50.0f, 200.0f, -75.0f, 175.0f, -10.0f, 10.0f);
+
+    CHECK(CountModelChildPoseParticleParticleAttachments(*model) == 0);
+    CHECK_FALSE(model->HasUnlitParticles());
+    model->RunParticle(ModelChildPoseParticleParticlePath, client->Hashes.to_hashed_string("MissingChildProjectionBone"), offset);
+    CHECK(CountModelChildPoseParticleParticleAttachments(*model) == 0);
+    CHECK_FALSE(model->HasUnlitParticles());
+
+    REQUIRE(model->PrepareSceneFrame(1.0f));
+    auto missing = CaptureModelChildPoseParticleDraw(render, effects, model_shader, model.get(), first_projection, child_bone, offset, callbacks);
+    CHECK(missing.ParticleAttachmentCount == 0);
+    CHECK(missing.Particles.empty());
+    CHECK_FALSE(missing.HasUnlitParticles);
+
+    // The next ordinary RunParticle is the one-shot callback below and must add exactly the accepted child effect
+    model->AddAnimationCallback(ModelAnimationCallback {
+        .StateAnim = state,
+        .ActionAnim = action,
+        .NormalizedTime = ModelChildPoseParticleCallbackPhase,
+        .Callback = [&model, &callbacks, unlit, child_bone, offset] {
+            callbacks++;
+
+            if (unlit) {
+                model->RunUnlitParticle(ModelChildPoseParticleParticlePath, child_bone, offset);
+            }
+            else {
+                model->RunParticle(ModelChildPoseParticleParticlePath, child_bone, offset);
+            }
+        },
+    });
+    (void)model->PlayAnim(state, action, child_layers.data(), 0.0f, combine_enum(ModelAnimFlags::PlayOnce, ModelAnimFlags::NoSmooth), 1.0f);
+    model->SetupFrame(isize32 {512, 512}, ipos32 {256, 384});
+    model->PoseSpriteFrame(true);
+
+    coarse_sleep(ModelChildPoseParticleAdvanceInterval);
+    client->GameTime.FrameAdvance(false);
+    REQUIRE(model->PrepareSceneFrame(1.0f));
+    REQUIRE(callbacks == 1);
+
+    auto live = CaptureModelChildPoseParticleDraw(render, effects, model_shader, model.get(), first_projection, child_bone, offset, callbacks);
+    REQUIRE(live.Particles.size() == 1);
+    CHECK(live.ParticleAttachmentCount == 1);
+    CHECK(live.CallbackCount == 1);
+    CHECK(live.HasUnlitParticles == unlit);
+    REQUIRE(live.ParticleAttachment);
+    CHECK(live.ParticleAttachment->Name == ModelChildPoseParticleParticlePath);
+    CHECK(live.ParticleAttachment->BoneName == child_bone);
+
+    // Drop the one-shot callback before the intentional layer switch so it cannot create a second effect
+    model->ClearAnimationCallbacks();
+    CHECK(model->TakeAnimationCallbacks().empty());
+    (void)model->PlayAnim(state, action, no_layers.data(), 0.0f, ModelAnimFlags::Freeze);
+    model->SetupFrame(isize32 {512, 512}, ipos32 {256, 384});
+    REQUIRE(model->PrepareSceneFrame(1.0f));
+    auto removed = CaptureModelChildPoseParticleDraw(render, effects, model_shader, model.get(), first_projection, parent_bone, offset, callbacks);
+    CHECK_FALSE(model->FindBone(child_bone));
+    CHECK_FALSE(model->GetBonePos(child_bone, offset));
+    CHECK(removed.AttachPoints.empty());
+    CHECK(removed.ParticleAttachmentCount == 0);
+    CHECK(removed.Particles.empty());
+    CHECK(removed.CallbackCount == 1);
+    CHECK_FALSE(removed.HasUnlitParticles);
+    REQUIRE(removed.Anchor);
+    REQUIRE(model->FindBone(parent_bone));
+
+    model->RunParticle(ModelChildPoseParticleParticlePath, parent_bone, offset);
+    REQUIRE(model->PrepareSceneFrame(1.0f));
+    auto reused = CaptureModelChildPoseParticleDraw(render, effects, model_shader, model.get(), first_projection, parent_bone, offset, callbacks);
+    REQUIRE(reused.Particles.size() == 1);
+    CHECK(reused.ParticleAttachmentCount == 1);
+    CHECK(reused.CallbackCount == 1);
+    CHECK_FALSE(reused.HasUnlitParticles);
+    REQUIRE(reused.ParticleAttachment);
+    CHECK(reused.ParticleAttachment->Name == ModelChildPoseParticleParticlePath);
+    CHECK(reused.ParticleAttachment->BoneName == parent_bone);
+    CHECK(reused.ParticleAttachment->Move.x == offset.x);
+    REQUIRE(reused.Anchor);
+    CHECK_FALSE(model->FindBone(child_bone));
+    CHECK_FALSE(model->GetBonePos(child_bone, offset));
+    CHECK(reused.MeshVertexCount != 0);
+    CHECK(reused.MeshIndexCount != 0);
+
+    // Direct child-target control on an independent instance; no callback is armed on this probe
+    auto child_probe = manager.CreateModel(ModelChildPoseParticleModelPath);
+    REQUIRE(child_probe);
+    child_probe->StartMeshGeneration();
+    child_probe->PrepareFrameLayout();
+    REQUIRE_FALSE(child_probe->FindBone(child_bone));
+    (void)child_probe->PlayAnim(state, action, child_layers.data(), 0.0f, ModelAnimFlags::Freeze);
+    child_probe->SetupFrame(isize32 {512, 512}, ipos32 {256, 384});
+    child_probe->PoseSpriteFrame(false);
+    REQUIRE(child_probe->FindBone(child_bone));
+    CHECK(CountModelChildPoseParticleParticleAttachments(*child_probe) == 0);
+    child_probe->RunParticle(ModelChildPoseParticleParticlePath, client->Hashes.to_hashed_string("MissingChildProjectionBone"), offset);
+    CHECK(CountModelChildPoseParticleParticleAttachments(*child_probe) == 0);
+    REQUIRE(child_probe->PrepareSceneFrame(1.0f));
+    auto empty_probe = CaptureModelChildPoseParticleDraw(render, effects, model_shader, child_probe.get(), first_projection, child_bone, offset, 0);
+    CHECK(empty_probe.ParticleAttachmentCount == 0);
+    CHECK(empty_probe.Particles.empty());
+
+    child_probe->RunParticle(ModelChildPoseParticleParticlePath, child_bone, offset);
+    REQUIRE(child_probe->PrepareSceneFrame(1.0f));
+    auto child_live = CaptureModelChildPoseParticleDraw(render, effects, model_shader, child_probe.get(), first_projection, child_bone, offset, 0);
+    CHECK(child_live.ParticleAttachmentCount == 1);
+    REQUIRE(child_live.Particles.size() == 1);
+    REQUIRE(child_live.ParticleAttachment);
+    CHECK(child_live.ParticleAttachment->BoneName == child_bone);
 }
 
 #endif

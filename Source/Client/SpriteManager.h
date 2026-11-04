@@ -188,6 +188,7 @@ public:
     [[nodiscard]] auto CheckHitTest(int32_t value) const -> bool { return value > _settings->Render.SpriteHitValue; }
     [[nodiscard]] auto SpriteHitTest(ptr<const Sprite> spr, ipos32 pos) const -> bool;
     [[nodiscard]] auto IsEggTransp(ipos32 pos, ptr<const MapSprite> mspr) const -> bool;
+    [[nodiscard]] auto GetMapSpriteDrawRect(ptr<const MapSprite> mspr, irect32 draw_area) const -> optional<irect32>;
     [[nodiscard]] auto GetMapSpritePointAnchor(ptr<const MapSprite> mspr, ipos32 local_point) const -> optional<pair<ipos32, float32_t>>;
     [[nodiscard]] auto GetOnBeginScene() noexcept -> ptr<EventObserver<>> { return &_onBeginScene; }
 

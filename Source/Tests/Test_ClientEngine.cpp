@@ -2307,6 +2307,88 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
         ignore_unused(model->NeedDraw());
     }
 
+    SECTION("ScenePreparationIncludesPoseChangesRequestedByAnimationCallbacks")
+    {
+        auto state = static_cast<CritterStateAnim>(1);
+        auto action = static_cast<CritterActionAnim>(1);
+        (void)model->PlayAnim(state, action, nullptr, 0.0f, ModelAnimFlags::Freeze);
+        model->StartMeshGeneration();
+        model->SetDir(mdir {int16_t {180}}, false);
+        client->GameTime.FrameAdvance(false);
+        model->PoseSpriteFrame(true);
+
+        int32_t callbacks = 0;
+        model->AddAnimationCallback(ModelAnimationCallback {
+            .StateAnim = state,
+            .ActionAnim = action,
+            .NormalizedTime = 0.5f,
+            .Callback = [&model, &callbacks] {
+                callbacks++;
+                model->SetDir(mdir {int16_t {90}}, false);
+            },
+        });
+        model->SetSpeed(10.0f);
+        (void)model->PlayAnim(state, action, nullptr, 0.0f, combine_enum(ModelAnimFlags::PlayOnce, ModelAnimFlags::NoSmooth));
+        model->PoseSpriteFrame(true);
+
+        coarse_sleep(std::chrono::milliseconds {200});
+        client->GameTime.FrameAdvance(false);
+        REQUIRE(model->PrepareSceneFrame(1.0f));
+        REQUIRE(callbacks == 1);
+
+        hstring root_bone = client->Hashes.to_hashed_string(MESH_PATH);
+        auto point = vec3 {4.0f, 2.0f, 1.0f};
+        auto prepared = model->GetBonePos(root_bone, point);
+        REQUIRE(prepared);
+
+        model->PoseSpriteFrame(false);
+        auto settled = model->GetBonePos(root_bone, point);
+        REQUIRE(settled);
+
+        CAPTURE(prepared->x, prepared->y, settled->x, settled->y);
+        CHECK(prepared == settled);
+        CHECK(callbacks == 1);
+    }
+
+    SECTION("RepeatedDirectSceneDrawKeepsTheDisplayedBonePose")
+    {
+        BakerTests::OverrideSetting(settings.Render.ModelDirectDraw, true);
+
+        auto sprite = factory->LoadSprite(client->Hashes.to_hashed_string(MODEL_PATH), AtlasType::OneImage).dyn_cast<ModelSprite>();
+        REQUIRE(sprite);
+        REQUIRE(sprite->IsDirectDraw());
+
+        auto instance = sprite->GetModel();
+        instance->StartMeshGeneration();
+        instance->SetDir(mdir {int16_t {0}}, false);
+        CHECK(sprite->Update());
+
+        instance->SetDir(mdir {int16_t {90}}, true);
+        coarse_sleep(std::chrono::milliseconds {50});
+        client->GameTime.FrameAdvance(false);
+        CHECK(sprite->Update());
+
+        sprite->DrawInScene(fpos32 {64.0f, 64.0f}, 0.0f);
+
+        hstring root_bone = client->Hashes.to_hashed_string(MESH_PATH);
+        auto point = vec3 {4.0f, 2.0f, 1.0f};
+        auto submitted_anchor = instance->GetBonePos(root_bone, point);
+        REQUIRE(submitted_anchor);
+
+        float32_t submitted_angle = instance->GetMoveDirAngle();
+
+        for (fpos32 scene_pos : {fpos32 {160.0f, 96.0f}, fpos32 {240.0f, 128.0f}}) {
+            sprite->DrawInScene(scene_pos, 0.0f);
+
+            auto drawn_anchor = instance->GetBonePos(root_bone, point);
+            REQUIRE(drawn_anchor);
+            CAPTURE(submitted_anchor->x, submitted_anchor->y, drawn_anchor->x, drawn_anchor->y, submitted_angle, instance->GetMoveDirAngle());
+
+            CHECK(drawn_anchor == submitted_anchor);
+            CHECK(instance->GetMoveDirAngle() == submitted_angle);
+        }
+    }
+
     SECTION("BoneOffsetsKeepSpriteCoordinatesAfterDirectSceneDraw")
     {
         // ModelManager names the physical root after the loaded mesh resource.
@@ -4099,6 +4181,447 @@ TEST_CASE("ModelAnimationUsesProjectLocomotionAndFrozenPose")
         CHECK(end_callbacks == 1);
 
         model->ClearAnimationCallbacks();
+    }
+
+    SECTION("TurnSelectionExceptionRecoveryMatchesCleanModel")
+    {
+        auto reference = factory->GetModelMngr()->CreateModel(model_path);
+        REQUIRE(reference);
+        REQUIRE(reference.as_ptr() != model.as_ptr());
+        reference->SetupFrame(isize32 {128, 128}, ipos32 {64, 96});
+        REQUIRE(reference->HasAnimation(state, action));
+        REQUIRE(reference->FindBone(root));
+
+        constexpr float32_t tiny_speed = 1.0e-12f;
+        constexpr float32_t normal_speed = 2.0f;
+        REQUIRE(std::isfinite(tiny_speed));
+        REQUIRE(tiny_speed > std::numeric_limits<float32_t>::min());
+
+        timespan duration = model->GetAnimDuration(state, action);
+        REQUIRE(duration == timespan {std::chrono::seconds {1}});
+        REQUIRE(reference->GetAnimDuration(state, action) == duration);
+        timespan remaining {duration.nanoseconds() / 2};
+        float64_t completion_nanoseconds = numeric_cast<float64_t>(remaining.nanoseconds()) / numeric_cast<float64_t>(tiny_speed);
+        REQUIRE(std::isfinite(completion_nanoseconds));
+        REQUIRE(completion_nanoseconds >= numeric_cast<float64_t>(std::numeric_limits<int64_t>::max()));
+        REQUIRE_THROWS_AS(ScaleModelAnimationTime(remaining, 1.0 / numeric_cast<float64_t>(tiny_speed)), OverflowException);
+        CHECK(ScaleModelAnimationTime(remaining, 1.0 / numeric_cast<float64_t>(normal_speed)) == timespan {std::chrono::milliseconds {250}});
+
+        float32_t selected_speed = normal_speed;
+        int32_t turn_callbacks = 0;
+        int32_t reference_turn_callbacks = 0;
+        model->SetAnimInitCallback([&](CritterAnimationContext context, int32_t, CritterStateAnim& selected_state, CritterActionAnim& selected_action, CritterAnimationFlags& flags, float32_t& normalized_time, float32_t& playback_speed) {
+            selected_state = state;
+            selected_action = action;
+            flags = CritterAnimationFlags::None;
+            normalized_time = context == CritterAnimationContext::TurnRight ? 0.5f : 0.0f;
+            playback_speed = context == CritterAnimationContext::TurnRight ? selected_speed : 1.0f;
+
+            if (context == CritterAnimationContext::TurnRight) {
+                turn_callbacks++;
+            }
+        });
+        reference->SetAnimInitCallback([&](CritterAnimationContext context, int32_t, CritterStateAnim& selected_state, CritterActionAnim& selected_action, CritterAnimationFlags& flags, float32_t& normalized_time, float32_t& playback_speed) {
+            selected_state = state;
+            selected_action = action;
+            flags = CritterAnimationFlags::None;
+            normalized_time = context == CritterAnimationContext::TurnRight ? 0.5f : 0.0f;
+            playback_speed = context == CritterAnimationContext::TurnRight ? normal_speed : 1.0f;
+
+            if (context == CritterAnimationContext::TurnRight) {
+                reference_turn_callbacks++;
+            }
+        });
+
+        client->GameTime.FrameAdvance(false);
+        client->GameTime.Pause();
+        auto resume_clock = scope_exit([&]() noexcept {
+            if (client->GameTime.IsPaused()) {
+                safe_call([&]() { client->GameTime.Resume(); });
+            }
+        });
+
+        (void)model->PlayAnim(state, action, nullptr, 0.0f, ModelAnimFlags::NoSmooth);
+        (void)reference->PlayAnim(state, action, nullptr, 0.0f, ModelAnimFlags::NoSmooth);
+        model->SetDir(mdir {0}, false);
+        reference->SetDir(mdir {0}, false);
+        model->SetMovementState(true, false, 0);
+        reference->SetMovementState(true, false, 0);
+        model->PoseSpriteFrame(true);
+        reference->PoseSpriteFrame(true);
+
+        REQUIRE(model->GetMovingContext() == CritterAnimationContext::Default);
+        REQUIRE(reference->GetMovingContext() == CritterAnimationContext::Default);
+        REQUIRE(turn_callbacks == 0);
+        REQUIRE(reference_turn_callbacks == 0);
+        auto initial = model->GetBonePos(root);
+        auto reference_initial = reference->GetBonePos(root);
+        REQUIRE(initial);
+        REQUIRE(reference_initial);
+        REQUIRE(initial == reference_initial);
+
+        selected_speed = tiny_speed;
+        REQUIRE_THROWS_MATCHES(model->SetLookDir(mdir {120}), OverflowException, Catch::Matchers::MessageMatches(Catch::Matchers::ContainsSubstring("Floating point rounding received value out of integer range")));
+        REQUIRE(turn_callbacks == 1);
+        CHECK(model->GetMovingContext() == CritterAnimationContext::Default);
+        REQUIRE_NOTHROW(reference->SetLookDir(mdir {120}));
+        REQUIRE(reference_turn_callbacks == 1);
+
+        // Evaluate the partial selection without advancing its clock, then retry through the ordinary caller
+        REQUIRE_NOTHROW(model->PoseSpriteFrame(false));
+        REQUIRE_NOTHROW(reference->PoseSpriteFrame(false));
+        auto after_throw = model->GetBonePos(root);
+        REQUIRE(after_throw);
+
+        selected_speed = normal_speed;
+        REQUIRE_NOTHROW(model->SetMovementState(true, false, 0));
+        REQUIRE_NOTHROW(reference->SetMovementState(true, false, 0));
+        REQUIRE(turn_callbacks == 2);
+        REQUIRE(reference_turn_callbacks == 2);
+        model->PoseSpriteFrame(false);
+        reference->PoseSpriteFrame(false);
+
+        nanotime recovery_start = client->GameTime.GetFrameTime();
+        client->GameTime.Resume();
+        coarse_sleep(std::chrono::milliseconds {20});
+        client->GameTime.FrameAdvance(false);
+        client->GameTime.Pause();
+        timespan recovery_elapsed = client->GameTime.GetFrameTime() - recovery_start;
+        INFO("RETIMING_RECOVERY_ELAPSED_NS=" << recovery_elapsed.nanoseconds());
+        REQUIRE(recovery_elapsed > timespan {std::chrono::milliseconds {1}});
+        REQUIRE(recovery_elapsed < timespan {std::chrono::milliseconds {100}});
+        REQUIRE_NOTHROW(model->PoseSpriteFrame(true));
+        REQUIRE_NOTHROW(reference->PoseSpriteFrame(true));
+
+        auto recovered = model->GetBonePos(root);
+        auto reference_recovered = reference->GetBonePos(root);
+        REQUIRE(recovered);
+        REQUIRE(reference_recovered);
+        CAPTURE(initial->x, initial->y, after_throw->x, after_throw->y, recovered->x, recovered->y, reference_recovered->x, reference_recovered->y);
+        CHECK(model->GetStateAnim() == reference->GetStateAnim());
+        CHECK(model->GetActionAnim() == reference->GetActionAnim());
+        CHECK(model->GetMoveDirAngle() == reference->GetMoveDirAngle());
+        CHECK(model->GetMovingContext() == CritterAnimationContext::TurnRight);
+        CHECK(reference->GetMovingContext() == CritterAnimationContext::TurnRight);
+        CHECK(recovered == reference_recovered);
+
+        // A deliberate context reset distinguishes a failed retry from an unusable model
+        model->SetMovementState(false, false, 0);
+        reference->SetMovementState(false, false, 0);
+        model->SetDir(mdir {0}, false);
+        reference->SetDir(mdir {0}, false);
+        model->SetMovementState(true, false, 0);
+        reference->SetMovementState(true, false, 0);
+        model->SetLookDir(mdir {120});
+        reference->SetLookDir(mdir {120});
+
+        nanotime reset_start = client->GameTime.GetFrameTime();
+        client->GameTime.Resume();
+        coarse_sleep(std::chrono::milliseconds {20});
+        client->GameTime.FrameAdvance(false);
+        client->GameTime.Pause();
+        timespan reset_elapsed = client->GameTime.GetFrameTime() - reset_start;
+        INFO("RETIMING_RESET_ELAPSED_NS=" << reset_elapsed.nanoseconds());
+        REQUIRE(reset_elapsed > timespan {std::chrono::milliseconds {1}});
+        REQUIRE(reset_elapsed < timespan {std::chrono::milliseconds {100}});
+        REQUIRE_NOTHROW(model->PoseSpriteFrame(true));
+        REQUIRE_NOTHROW(reference->PoseSpriteFrame(true));
+
+        auto reset = model->GetBonePos(root);
+        auto reference_reset = reference->GetBonePos(root);
+        REQUIRE(reset);
+        REQUIRE(reference_reset);
+        CAPTURE(reset->x, reset->y, reference_reset->x, reference_reset->y);
+        CHECK(model->GetMovingContext() == CritterAnimationContext::TurnRight);
+        CHECK(reference->GetMovingContext() == CritterAnimationContext::TurnRight);
+        CHECK(model->GetMoveDirAngle() == reference->GetMoveDirAngle());
+        CHECK(reset == reference_reset);
+    }
+
+    SECTION("SameTurnRetimingFailurePreservesPhaseAndCompletionBeforeRetry")
+    {
+        auto reference = factory->GetModelMngr()->CreateModel(model_path);
+        REQUIRE(reference);
+        REQUIRE(reference.as_ptr() != model.as_ptr());
+        reference->SetupFrame(isize32 {128, 128}, ipos32 {64, 96});
+        REQUIRE(reference->HasAnimation(state, action));
+        REQUIRE(model->HasBodyRotation());
+        REQUIRE(reference->HasBodyRotation());
+        REQUIRE(reference->FindBone(root));
+
+        constexpr float32_t normal_speed = 0.125f;
+        constexpr float32_t tiny_speed = 1.0e-12f;
+        REQUIRE(std::isfinite(tiny_speed));
+        REQUIRE(tiny_speed > std::numeric_limits<float32_t>::min());
+        REQUIRE(model->GetAnimDuration(state, action) == timespan {std::chrono::seconds {1}});
+        REQUIRE(reference->GetAnimDuration(state, action) == timespan {std::chrono::seconds {1}});
+        float32_t selected_speed = normal_speed;
+        int32_t turn_callbacks = 0;
+        int32_t reference_turn_callbacks = 0;
+        model->SetAnimInitCallback([&](CritterAnimationContext context, int32_t, CritterStateAnim& selected_state, CritterActionAnim& selected_action, CritterAnimationFlags& flags, float32_t& normalized_time, float32_t& playback_speed) {
+            selected_state = state;
+            selected_action = action;
+            flags = CritterAnimationFlags::None;
+            normalized_time = context == CritterAnimationContext::TurnRight ? 0.5f : 0.0f;
+            playback_speed = context == CritterAnimationContext::TurnRight ? selected_speed : 1.0f;
+
+            if (context == CritterAnimationContext::TurnRight) {
+                turn_callbacks++;
+            }
+        });
+        reference->SetAnimInitCallback([&](CritterAnimationContext context, int32_t, CritterStateAnim& selected_state, CritterActionAnim& selected_action, CritterAnimationFlags& flags, float32_t& normalized_time, float32_t& playback_speed) {
+            selected_state = state;
+            selected_action = action;
+            flags = CritterAnimationFlags::None;
+            normalized_time = context == CritterAnimationContext::TurnRight ? 0.5f : 0.0f;
+            playback_speed = context == CritterAnimationContext::TurnRight ? normal_speed : 1.0f;
+
+            if (context == CritterAnimationContext::TurnRight) {
+                reference_turn_callbacks++;
+            }
+        });
+
+        client->GameTime.FrameAdvance(false);
+        client->GameTime.Pause();
+        auto resume_clock = scope_exit([&]() noexcept {
+            if (client->GameTime.IsPaused()) {
+                safe_call([&]() { client->GameTime.Resume(); });
+            }
+        });
+        auto advance_pair = [&](std::chrono::milliseconds wait) -> timespan {
+            nanotime before = client->GameTime.GetFrameTime();
+            client->GameTime.Resume();
+            coarse_sleep(wait);
+            client->GameTime.FrameAdvance(true);
+            client->GameTime.Pause();
+            timespan elapsed = client->GameTime.GetFrameTime() - before;
+            INFO("SAME_TURN_FRAME_NS=" << elapsed.nanoseconds());
+            REQUIRE(elapsed > timespan {std::chrono::milliseconds {1}});
+            REQUIRE(elapsed < timespan {std::chrono::milliseconds {700}});
+            REQUIRE_NOTHROW(model->PoseSpriteFrame(true));
+            REQUIRE_NOTHROW(reference->PoseSpriteFrame(true));
+            model->PoseSpriteFrame(false);
+            reference->PoseSpriteFrame(false);
+            return elapsed;
+        };
+
+        (void)model->PlayAnim(state, action, nullptr, 0.0f, ModelAnimFlags::NoSmooth);
+        (void)reference->PlayAnim(state, action, nullptr, 0.0f, ModelAnimFlags::NoSmooth);
+        model->SetDir(mdir {0}, false);
+        reference->SetDir(mdir {0}, false);
+        model->SetMovementState(true, false, 0);
+        reference->SetMovementState(true, false, 0);
+        model->PoseSpriteFrame(true);
+        reference->PoseSpriteFrame(true);
+        model->SetLookDir(mdir {120});
+        reference->SetLookDir(mdir {120});
+        nanotime selected_at = client->GameTime.GetFrameTime();
+        REQUIRE(turn_callbacks == 1);
+        REQUIRE(reference_turn_callbacks == 1);
+
+        // Finish the speed ramp and settle facing before measuring translation on the offset limb point
+        advance_pair(std::chrono::milliseconds {100});
+        REQUIRE(is_float_equal(model->GetMoveDirAngle(), 60.0f));
+        REQUIRE(model->GetMoveDirAngle() == reference->GetMoveDirAngle());
+        vec3 local_offset {4.0f, 2.0f, 1.0f};
+        auto settled = model->GetBonePos(root, local_offset);
+        auto reference_settled = reference->GetBonePos(root, local_offset);
+        auto zero_offset = model->GetBonePos(root);
+        REQUIRE(settled);
+        REQUIRE(reference_settled);
+        REQUIRE(zero_offset);
+        REQUIRE(settled == reference_settled);
+        REQUIRE(settled != zero_offset);
+
+        advance_pair(std::chrono::milliseconds {500});
+        advance_pair(std::chrono::milliseconds {500});
+        auto before_failure = model->GetBonePos(root, local_offset);
+        auto reference_before_failure = reference->GetBonePos(root, local_offset);
+        REQUIRE(before_failure);
+        REQUIRE(reference_before_failure);
+        REQUIRE(before_failure == reference_before_failure);
+        REQUIRE(reference_before_failure != reference_settled);
+        REQUIRE(model->GetMoveDirAngle() == 60.0f);
+        REQUIRE(model->GetMovingContext() == CritterAnimationContext::TurnRight);
+        REQUIRE(reference->GetMovingContext() == CritterAnimationContext::TurnRight);
+
+        selected_speed = tiny_speed;
+        REQUIRE_THROWS_MATCHES(model->SetMovementState(true, false, 0), OverflowException, Catch::Matchers::MessageMatches(Catch::Matchers::ContainsSubstring("Floating point rounding received value out of integer range")));
+        REQUIRE(turn_callbacks == 2);
+        REQUIRE(reference_turn_callbacks == 1);
+        CHECK(model->GetMovingContext() == CritterAnimationContext::TurnRight);
+        model->PoseSpriteFrame(false);
+        reference->PoseSpriteFrame(false);
+        CHECK(model->GetBonePos(root, local_offset) == reference->GetBonePos(root, local_offset));
+
+        // Observe the prior speed and its original completion event before making any successful retry
+        advance_pair(std::chrono::milliseconds {500});
+        advance_pair(std::chrono::milliseconds {500});
+        auto after_failure = model->GetBonePos(root, local_offset);
+        auto reference_after_failure = reference->GetBonePos(root, local_offset);
+        REQUIRE(after_failure);
+        REQUIRE(reference_after_failure);
+        REQUIRE(reference_after_failure != reference_before_failure);
+        CAPTURE(before_failure->x, before_failure->y, after_failure->x, after_failure->y, reference_after_failure->x, reference_after_failure->y);
+        CHECK(after_failure == reference_after_failure);
+        CHECK(model->GetMoveDirAngle() == reference->GetMoveDirAngle());
+        CHECK(model->GetStateAnim() == reference->GetStateAnim());
+        CHECK(model->GetActionAnim() == reference->GetActionAnim());
+        CHECK(model->GetMovingContext() == CritterAnimationContext::TurnRight);
+        CHECK(reference->GetMovingContext() == CritterAnimationContext::TurnRight);
+        CHECK(turn_callbacks == 2);
+        CHECK(reference_turn_callbacks == 1);
+
+        timespan completion {std::chrono::seconds {4}};
+        int32_t completion_frames = 0;
+
+        while (client->GameTime.GetFrameTime() - selected_at < completion + std::chrono::milliseconds {200}) {
+            REQUIRE(completion_frames < 8);
+            advance_pair(std::chrono::milliseconds {500});
+            completion_frames++;
+        }
+
+        CAPTURE(completion_frames, turn_callbacks, reference_turn_callbacks);
+        CHECK(reference->GetMovingContext() == CritterAnimationContext::Default);
+        CHECK(model->GetMovingContext() == CritterAnimationContext::Default);
+        CHECK(model->GetMoveDirAngle() == reference->GetMoveDirAngle());
+        auto completed = model->GetBonePos(root, local_offset);
+        auto reference_completed = reference->GetBonePos(root, local_offset);
+        REQUIRE(completed);
+        REQUIRE(reference_completed);
+        CHECK(completed == reference_completed);
+        CHECK(turn_callbacks == 2);
+        CHECK(reference_turn_callbacks == 1);
+
+        selected_speed = normal_speed;
+        REQUIRE_NOTHROW(model->SetMovementState(true, false, 0));
+        REQUIRE_NOTHROW(reference->SetMovementState(true, false, 0));
+        model->PoseSpriteFrame(false);
+        reference->PoseSpriteFrame(false);
+        CHECK(model->GetMovingContext() == reference->GetMovingContext());
+        CHECK(model->GetBonePos(root, local_offset) == reference->GetBonePos(root, local_offset));
+    }
+
+    SECTION("NestedInitializerDirectionWinsOverTheOuterSelection")
+    {
+        float32_t turn_threshold = client->Settings->Render.CritterTurnAngle;
+        CAPTURE(turn_threshold);
+        REQUIRE(std::isfinite(turn_threshold));
+        REQUIRE(turn_threshold >= 0.0f);
+        REQUIRE(turn_threshold < 120.0f);
+
+        auto reference = factory->GetModelMngr()->CreateModel(model_path);
+        REQUIRE(reference);
+        REQUIRE(reference.as_ptr() != model.as_ptr());
+        reference->SetupFrame(isize32 {128, 128}, ipos32 {64, 96});
+        REQUIRE(reference->HasAnimation(state, action));
+        REQUIRE(reference->FindBone(root));
+
+        bool arm_reentry = false;
+        bool reentry_requested = false;
+        bool inside_reentry = false;
+        int32_t outer_callbacks = 0;
+        int32_t nested_callbacks = 0;
+        int32_t reference_turn_callbacks = 0;
+        model->SetAnimInitCallback([&](CritterAnimationContext context, int32_t, CritterStateAnim& selected_state, CritterActionAnim& selected_action, CritterAnimationFlags& flags, float32_t& normalized_time, float32_t& playback_speed) {
+            selected_state = state;
+            selected_action = action;
+            flags = CritterAnimationFlags::None;
+            normalized_time = context == CritterAnimationContext::TurnRight ? 0.25f : 0.0f;
+            playback_speed = context == CritterAnimationContext::TurnRight ? 0.125f : 1.0f;
+
+            if (context == CritterAnimationContext::TurnRight && inside_reentry) {
+                nested_callbacks++;
+            }
+
+            if (context == CritterAnimationContext::TurnRight && arm_reentry && !reentry_requested) {
+                outer_callbacks++;
+                reentry_requested = true;
+                inside_reentry = true;
+                model->SetLookDir(mdir {150});
+                inside_reentry = false;
+
+                // This valid stale result must not replace the nested target and its quarter-clip selection
+                normalized_time = 0.75f;
+            }
+        });
+        reference->SetAnimInitCallback([&](CritterAnimationContext context, int32_t, CritterStateAnim& selected_state, CritterActionAnim& selected_action, CritterAnimationFlags& flags, float32_t& normalized_time, float32_t& playback_speed) {
+            selected_state = state;
+            selected_action = action;
+            flags = CritterAnimationFlags::None;
+            normalized_time = context == CritterAnimationContext::TurnRight ? 0.25f : 0.0f;
+            playback_speed = context == CritterAnimationContext::TurnRight ? 0.125f : 1.0f;
+
+            if (context == CritterAnimationContext::TurnRight) {
+                reference_turn_callbacks++;
+            }
+        });
+
+        client->GameTime.FrameAdvance(false);
+        client->GameTime.Pause();
+        auto resume_clock = scope_exit([&]() noexcept {
+            if (client->GameTime.IsPaused()) {
+                safe_call([&]() { client->GameTime.Resume(); });
+            }
+        });
+        (void)model->PlayAnim(state, action, nullptr, 0.0f, ModelAnimFlags::NoSmooth);
+        (void)reference->PlayAnim(state, action, nullptr, 0.0f, ModelAnimFlags::NoSmooth);
+        model->SetDir(mdir {0}, false);
+        reference->SetDir(mdir {0}, false);
+        model->SetMovementState(true, false, 0);
+        reference->SetMovementState(true, false, 0);
+        model->PoseSpriteFrame(true);
+        reference->PoseSpriteFrame(true);
+        vec3 local_offset {4.0f, 2.0f, 1.0f};
+        auto initial = model->GetBonePos(root, local_offset);
+        auto reference_initial = reference->GetBonePos(root, local_offset);
+        REQUIRE(initial);
+        REQUIRE(reference_initial);
+        REQUIRE(initial == reference_initial);
+
+        arm_reentry = true;
+        REQUIRE_NOTHROW(model->SetLookDir(mdir {120}));
+        REQUIRE_NOTHROW(reference->SetLookDir(mdir {150}));
+        REQUIRE(reentry_requested);
+        REQUIRE_FALSE(inside_reentry);
+        REQUIRE(outer_callbacks == 1);
+        REQUIRE(nested_callbacks == 1);
+        REQUIRE(reference_turn_callbacks == 1);
+        CHECK(model->GetMovingContext() == CritterAnimationContext::TurnRight);
+        CHECK(model->GetMovingContext() == reference->GetMovingContext());
+
+        nanotime selected_at = client->GameTime.GetFrameTime();
+        client->GameTime.Resume();
+        coarse_sleep(std::chrono::milliseconds {150});
+        client->GameTime.FrameAdvance(true);
+        client->GameTime.Pause();
+        timespan elapsed = client->GameTime.GetFrameTime() - selected_at;
+        INFO("INITIALIZER_REENTRY_FRAME_NS=" << elapsed.nanoseconds());
+        REQUIRE(elapsed > timespan {std::chrono::milliseconds {100}});
+        REQUIRE(elapsed < timespan {std::chrono::milliseconds {700}});
+        REQUIRE_NOTHROW(model->PoseSpriteFrame(true));
+        REQUIRE_NOTHROW(reference->PoseSpriteFrame(true));
+        model->PoseSpriteFrame(false);
+        reference->PoseSpriteFrame(false);
+
+        auto nested_pose = model->GetBonePos(root, local_offset);
+        auto reference_pose = reference->GetBonePos(root, local_offset);
+        auto zero_offset = model->GetBonePos(root);
+        REQUIRE(nested_pose);
+        REQUIRE(reference_pose);
+        REQUIRE(zero_offset);
+        REQUIRE(nested_pose != zero_offset);
+        REQUIRE(reference_pose != reference_initial);
+        CAPTURE(nested_pose->x, nested_pose->y, reference_pose->x, reference_pose->y, outer_callbacks, nested_callbacks);
+        CHECK(model->GetMoveDirAngle() == reference->GetMoveDirAngle());
+        CHECK(is_float_equal(model->GetMoveDirAngle(), 30.0f));
+        CHECK(model->GetMovingContext() == reference->GetMovingContext());
+        CHECK(model->GetStateAnim() == reference->GetStateAnim());
+        CHECK(model->GetActionAnim() == reference->GetActionAnim());
+        CHECK(nested_pose == reference_pose);
+        CHECK(outer_callbacks == 1);
+        CHECK(nested_callbacks == 1);
+        CHECK(reference_turn_callbacks == 1);
     }
 
     SECTION("TurnLifetimeUsesRemainingClipTimeAndCurrentSpeed")

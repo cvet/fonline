@@ -70,7 +70,7 @@ ModelInstance::ModelInstance(ptr<ModelManager> model_mngr, ptr<ModelInformation>
         joint_mask.assign(_worldMatrices.size(), 0);
     }
 
-    _forceDraw = true;
+    RequestRedraw();
     _lastDrawTime = GetTime();
     SetupFrame({4, 4}, {2, 2});
     _frameLayoutDirty = true;
@@ -110,6 +110,8 @@ void ModelInstance::PrewarmParticles()
         return;
     }
 
+    InvalidateSceneFrame();
+
     // Reset on the next animation advance, not here: a prepared model may wait off-screen, and feeding that wall
     // time to the emitters as one frame would expire the warmed distribution into a detached clump
     _resetDrawTimeOnNextAnimationAdvance = true;
@@ -121,12 +123,14 @@ void ModelInstance::PrewarmParticles()
 
 void ModelInstance::AddMoveOffset(ipos32 offset)
 {
+    InvalidateSceneFrame();
+
     vec3 pos_zero = Convert2dTo3d({0, 0});
     vec3 pos = Convert2dTo3d(offset);
     vec3 diff = pos - pos_zero;
 
     _moveOffset += diff;
-    _forceDraw = true;
+    RequestRedraw();
 }
 
 void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
@@ -336,6 +340,7 @@ void ModelInstance::SetLookDir(mdir dir)
 
     if (!_noRotate) {
         if (!is_float_equal(new_angle, _lookDirAngle)) {
+            InvalidateSceneFrame();
             _lookDirAngle = new_angle;
             RefreshMoveAnimation();
         }
@@ -350,6 +355,7 @@ void ModelInstance::SetMoveDir(mdir dir, bool smooth_rotation)
     float32_t new_angle = numeric_cast<float32_t>(180 - dir.angle());
 
     if (!is_float_equal(new_angle, _targetMoveDirAngle) || (!smooth_rotation && !is_float_equal(new_angle, _moveDirAngle))) {
+        InvalidateSceneFrame();
         _targetMoveDirAngle = new_angle;
 
         if (!smooth_rotation) {
@@ -367,6 +373,8 @@ void ModelInstance::SetMoveDir(mdir dir, bool smooth_rotation)
 
 void ModelInstance::SetRotation(float32_t rx, float32_t ry, float32_t rz)
 {
+    InvalidateSceneFrame();
+
     mat44 mx = glm::rotate(mat44 {1.0f}, rx, vec3 {1.0f, 0.0f, 0.0f});
     mat44 my = glm::rotate(mat44 {1.0f}, ry, vec3 {0.0f, 1.0f, 0.0f});
     mat44 mz = glm::rotate(mat44 {1.0f}, rz, vec3 {0.0f, 0.0f, 1.0f});
@@ -377,6 +385,8 @@ void ModelInstance::SetRotation(float32_t rx, float32_t ry, float32_t rz)
 
 void ModelInstance::SetScale(float32_t sx, float32_t sy, float32_t sz)
 {
+    InvalidateSceneFrame();
+
     _matScale = glm::scale(mat44 {1.0f}, vec3 {sx, sy, sz});
     RefreshFrameLayout();
 }
@@ -389,13 +399,15 @@ void ModelInstance::EnableShadow(bool enabled)
         return;
     }
 
+    InvalidateSceneFrame();
     _shadowDisabled = shadow_disabled;
     RefreshFrameLayout();
-    _forceDraw = true;
+    RequestRedraw();
 }
 
 void ModelInstance::SetSpeed(float32_t speed)
 {
+    InvalidateSceneFrame();
     _speedAdjustBase = speed;
 }
 
@@ -481,6 +493,8 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
     FO_VERIFY_AND_THROW(std::isfinite(ntime) && ntime >= 0.0f && ntime <= 1.0f, "Invalid normalized model animation time", ntime);
     FO_VERIFY_AND_THROW(std::isfinite(playback_speed) && playback_speed > 0.0f, "Invalid model playback speed", playback_speed);
 
+    InvalidateSceneFrame();
+
     auto prev_state_anim = _curStateAnim;
     auto prev_action_anim = _curActionAnim;
 
@@ -535,7 +549,7 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
         if (!is_float_equal(playback_speed, _playbackSpeed)) {
             _playbackSpeed = playback_speed;
             _speedAdjustCur = speed * playback_speed;
-            _forceDraw = true;
+            RequestRedraw();
 
             for (auto& child : _children) {
                 (void)child->PlayAnim(state_anim, action_anim, layers, ntime, flags, playback_speed);
@@ -825,7 +839,7 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
         }
 
         // Force redraw
-        _forceDraw = true;
+        RequestRedraw();
     }
 
     // Set animation for children
@@ -853,6 +867,10 @@ void ModelInstance::SetMovementState(bool movement_enabled, bool moving, int32_t
 {
     FO_VERIFY_AND_THROW(moving_speed >= 0, "Invalid movement speed", moving_speed);
 
+    if (_movementEnabled != movement_enabled || _isMoving != (movement_enabled && moving) || _movingSpeed != moving_speed) {
+        InvalidateSceneFrame();
+    }
+
     _movementEnabled = movement_enabled;
     _isMoving = movement_enabled && moving;
 
@@ -864,7 +882,7 @@ void ModelInstance::SetMovementState(bool movement_enabled, bool moving, int32_t
             _moveAnimController->SetTrackEnable(0, false);
             _moveAnimController->SetTrackEnable(1, false);
             _curMovingAnimIndex = -1;
-            _forceDraw = true;
+            RequestRedraw();
         }
 
         _turnAnimPlaying = false;
@@ -898,32 +916,63 @@ void ModelInstance::RefreshMoveAnimation()
         return;
     }
 
+    // A nested initializer may resolve a newer request; do not publish stale intent over its result
+    auto selection_unchanged = [this,
+                                  enabled = _movementEnabled,
+                                  moving = _isMoving,
+                                  moving_speed = _movingSpeed,
+                                  look_angle = _lookDirAngle,
+                                  move_angle = _moveDirAngle,
+                                  target_angle = _targetMoveDirAngle,
+                                  moving_back = _isMovingBack,
+                                  turning = _turnAnimPlaying,
+                                  state = _curStateAnim,
+                                  action = _curActionAnim,
+                                  playback_flags = _playbackFlags,
+                                  context = _movingContext,
+                                  movement_flags = _movementFlags,
+                                  normalized_time = _movementNormalizedTime,
+                                  anim_index = _curMovingAnimIndex,
+                                  track = _curMoveTrack,
+                                  track_speed = _moveAnimController->GetTrackSpeed(_curMoveTrack)] {
+        return _movementEnabled == enabled && _isMoving == moving && _movingSpeed == moving_speed &&
+            _lookDirAngle == look_angle && _moveDirAngle == move_angle && _targetMoveDirAngle == target_angle &&
+            _isMovingBack == moving_back && _turnAnimPlaying == turning && _curStateAnim == state &&
+            _curActionAnim == action && _playbackFlags == playback_flags && _movingContext == context &&
+            _movementFlags == movement_flags && _movementNormalizedTime == normalized_time &&
+            _curMovingAnimIndex == anim_index && _curMoveTrack == track &&
+            _moveAnimController->GetTrackSpeed(_curMoveTrack) == track_speed;
+    };
+
     auto state_anim = CritterStateAnim::None;
     auto action_anim = CritterActionAnim::None;
     auto context = CritterAnimationContext::Default;
+    bool moving_back = _isMovingBack;
+    bool turning = _turnAnimPlaying;
+    float32_t move_angle = _moveDirAngle;
+    float32_t target_angle = _targetMoveDirAngle;
 
     if (_isMoving) {
         context = GetMovingContext();
-        _isMovingBack = context == CritterAnimationContext::MovingBack;
-        _turnAnimPlaying = false;
+        moving_back = context == CritterAnimationContext::MovingBack;
+        turning = false;
     }
     else {
-        if (_isMovingBack) {
-            _moveDirAngle = _targetMoveDirAngle = _lookDirAngle;
+        if (moving_back) {
+            move_angle = target_angle = _lookDirAngle;
         }
 
         state_anim = _curStateAnim;
-        _isMovingBack = false;
+        moving_back = false;
 
-        float32_t angle_diff = GeometryHelper::GetDirAngleDiffSided(_targetMoveDirAngle, _lookDirAngle);
+        float32_t angle_diff = GeometryHelper::GetDirAngleDiffSided(target_angle, _lookDirAngle);
 
         if (std::abs(angle_diff) > _modelMngr->_settings->Render.CritterTurnAngle) {
-            _targetMoveDirAngle = _lookDirAngle;
-
+            target_angle = _lookDirAngle;
             context = angle_diff < 0.0f ? CritterAnimationContext::TurnRight : CritterAnimationContext::TurnLeft;
-            _turnAnimPlaying = true;
+            turning = true;
         }
-        else if (_turnAnimPlaying) {
+        else if (turning) {
             context = _movingContext;
         }
     }
@@ -936,14 +985,20 @@ void ModelInstance::RefreshMoveAnimation()
         _animInitCallback(context, _movingSpeed, state_anim, action_anim, flags, normalized_time, playback_speed);
     }
 
+    if (!selection_unchanged()) {
+        return;
+    }
+
     FO_VERIFY_AND_THROW(std::isfinite(normalized_time) && normalized_time >= 0.0f && normalized_time <= 1.0f, "Invalid normalized movement animation time", normalized_time);
     FO_VERIFY_AND_THROW(std::isfinite(playback_speed) && playback_speed > 0.0f, "Invalid movement playback speed", playback_speed);
 
     bool context_changed = _movingContext != context;
-    _movingContext = context;
-
     float32_t speed = 1.0f;
     int32_t anim_index = _modelInfo->GetAnimationIndex(state_anim, action_anim, &speed);
+
+    if (!selection_unchanged()) {
+        return;
+    }
 
     speed *= playback_speed;
 
@@ -953,8 +1008,45 @@ void ModelInstance::RefreshMoveAnimation()
         speed = 0.0f;
     }
 
-    if (!context_changed && anim_index == _curMovingAnimIndex && flags == _movementFlags && is_float_equal(normalized_time, _movementNormalizedTime)) {
-        if (anim_index != -1 && !is_float_equal(_moveAnimController->GetTrackSpeed(_curMoveTrack), speed)) {
+    if (anim_index != -1) {
+        FO_VERIFY_AND_THROW(std::isfinite(speed), "Effective movement animation speed is not finite", speed);
+    }
+
+    bool same_selection = !context_changed && anim_index == _curMovingAnimIndex && flags == _movementFlags && is_float_equal(normalized_time, _movementNormalizedTime);
+    bool retime = same_selection && anim_index != -1 && !is_float_equal(_moveAnimController->GetTrackSpeed(_curMoveTrack), speed);
+    timespan smooth_time = frozen ? timespan::zero : MOVE_TRACK_TRANSITION_TIME;
+    timespan start_time {};
+    optional<timespan> completion_time;
+
+    if (retime && turning && !frozen) {
+        timespan remaining = std::max(_moveAnimController->GetAnimDuration(anim_index) - _moveAnimController->GetTrackPosition(_curMoveTrack), timespan::zero);
+        completion_time = ScaleModelAnimationTime(remaining, 1.0 / speed);
+    }
+    else if (!same_selection && anim_index != -1) {
+        timespan duration = _moveAnimController->GetAnimDuration(anim_index);
+        start_time = ScaleModelAnimationTime(duration, normalized_time);
+
+        if (!frozen && !turning) {
+            start_time = std::min(start_time, std::max(duration - ANIMATION_END_EXCLUSION, timespan::zero));
+        }
+
+        if (turning && !frozen) {
+            completion_time = ScaleModelAnimationTime(duration - start_time, 1.0 / speed);
+        }
+    }
+
+    if (completion_time) {
+        FO_VERIFY_AND_THROW(*completion_time >= timespan::zero, "Movement animation completion time is negative", *completion_time);
+    }
+
+    _isMovingBack = moving_back;
+    _turnAnimPlaying = turning;
+    _moveDirAngle = move_angle;
+    _targetMoveDirAngle = target_angle;
+    _movingContext = context;
+
+    if (same_selection) {
+        if (retime) {
             // Retiming must not seek, and pending speed/completion events must not restore the previous selection
             _moveAnimController->ResetEvents();
 
@@ -966,12 +1058,11 @@ void ModelInstance::RefreshMoveAnimation()
             _moveAnimController->AddEventWeight(_curMoveTrack, 1.0f, {}, MOVE_TRACK_TRANSITION_TIME);
             _moveAnimController->SetTrackSpeed(_curMoveTrack, speed);
 
-            if (_turnAnimPlaying && !frozen) {
-                timespan remaining = std::max(_moveAnimController->GetAnimDuration(anim_index) - _moveAnimController->GetTrackPosition(_curMoveTrack), timespan::zero);
-                _moveAnimController->AddEventEnable(_curMoveTrack, false, ScaleModelAnimationTime(remaining, 1.0 / speed));
+            if (completion_time) {
+                _moveAnimController->AddEventEnable(_curMoveTrack, false, *completion_time);
             }
 
-            _forceDraw = true;
+            RequestRedraw();
         }
 
         return;
@@ -981,9 +1072,7 @@ void ModelInstance::RefreshMoveAnimation()
     _movementNormalizedTime = normalized_time;
     _curMovingAnimIndex = anim_index;
     _frameLayoutDirty = true;
-    _forceDraw = true;
-
-    timespan smooth_time = frozen ? timespan::zero : MOVE_TRACK_TRANSITION_TIME;
+    RequestRedraw();
 
     if (anim_index != -1) {
         int32_t new_track = _curMoveTrack == 0 ? 1 : 0;
@@ -996,22 +1085,14 @@ void ModelInstance::RefreshMoveAnimation()
 
         _moveAnimController->SetTrackEnable(new_track, true);
         _moveAnimController->SetTrackAnimation(new_track, anim_index, &_modelMngr->_legBones);
-        _moveAnimController->SetTrackLooping(new_track, !frozen && !_turnAnimPlaying);
-
-        timespan duration = _moveAnimController->GetAnimDuration(anim_index);
-        timespan start_time = ScaleModelAnimationTime(duration, normalized_time);
-
-        if (!frozen && !_turnAnimPlaying) {
-            start_time = std::min(start_time, std::max(duration - ANIMATION_END_EXCLUSION, timespan::zero));
-        }
-
+        _moveAnimController->SetTrackLooping(new_track, !frozen && !turning);
         _moveAnimController->SetTrackPosition(new_track, start_time);
 
         _moveAnimController->AddEventSpeed(new_track, speed, {}, smooth_time);
         _moveAnimController->AddEventWeight(new_track, 1.0f, {}, smooth_time);
 
-        if (_turnAnimPlaying && !frozen) {
-            _moveAnimController->AddEventEnable(new_track, false, ScaleModelAnimationTime(duration - start_time, 1.0 / speed));
+        if (completion_time) {
+            _moveAnimController->AddEventEnable(new_track, false, *completion_time);
         }
 
         _curMoveTrack = new_track;
@@ -1461,6 +1542,34 @@ auto ModelInstance::GetTime() const -> nanotime
     return _modelMngr->_gameTime->GetFrameTime();
 }
 
+auto ModelInstance::IsWorldPoseReady() const -> bool
+{
+    if (!_worldPoseReady) {
+        return false;
+    }
+
+    for (const auto& child : _children) {
+        if (!child->IsWorldPoseReady()) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+void ModelInstance::InvalidateSceneFrame() noexcept
+{
+    _scenePoseReady = false;
+
+    if (_preparingScenePose) {
+        _scenePoseMutated = true;
+    }
+
+    if (_parent) {
+        _parent->InvalidateSceneFrame();
+    }
+}
+
 auto ModelInstance::GetPoseJointIndex(ptr<const ModelBone> bone) const -> uint32_t
 {
     auto it = _modelInfo->_poseBoneJointIndexes.find(bone);
@@ -1798,6 +1907,11 @@ void ModelInstance::GenerateCombinedMeshes()
     if (!_allowMeshGeneration) {
         return;
     }
+
+    auto discard_failed_generation = scope_fail([this]() noexcept {
+        _allowMeshGeneration = false;
+        InvalidateCombinedMeshes();
+    });
 
     // Clean up buffers
     for (size_t i = 0; i != _combinedMeshes.size(); ++i) {
@@ -2370,26 +2484,50 @@ void ModelInstance::SetupFrame(isize32 draw_size, ipos32 frame_pivot)
     FO_VERIFY_AND_THROW(draw_size.width > 0 && draw_size.width <= max_draw_width, "3D model frame width is out of range", _modelInfo->_fileName, draw_size.width, max_draw_width);
     FO_VERIFY_AND_THROW(draw_size.height > 0 && draw_size.height <= max_draw_height, "3D model frame height is out of range", _modelInfo->_fileName, draw_size.height, max_draw_height);
 
+    isize32 frame_size = {draw_size.width * FRAME_SCALE, draw_size.height * FRAME_SCALE};
+
+    // Resolve each root against its own layout, because the committed projection remains authoritative on failure
+    auto unproject_frame_pos = [this](ipos32 pos, isize32 viewport_size, const mat44& frame_proj) -> vec3 {
+        const int32_t viewport[4] = {0, 0, viewport_size.width, viewport_size.height};
+        float32_t xf = numeric_cast<float32_t>(pos.x) * const_numeric_cast<float32_t>(FRAME_SCALE);
+        float32_t yf = numeric_cast<float32_t>(pos.y) * const_numeric_cast<float32_t>(FRAME_SCALE);
+        vec3 out {};
+        mat44 identity {1.0f};
+
+        if (!UnprojectPoint(vec3 {xf, numeric_cast<float32_t>(viewport_size.height) - yf, 0.0f}, identity, frame_proj, viewport, out)) {
+            return {};
+        }
+
+        out.z = 0.0f;
+        return out;
+    };
+
     optional<vec3> old_root_pos;
 
     if (_frameSize.width > 0 && _frameSize.height > 0 && _frameSize.width % FRAME_SCALE == 0 && _frameSize.height % FRAME_SCALE == 0) {
-        old_root_pos = Convert2dTo3d(_framePivot);
+        old_root_pos = unproject_frame_pos(_framePivot, _frameSize, _frameProj);
+    }
+
+    // Projection
+    float32_t frame_ratio = numeric_cast<float32_t>(frame_size.width) / numeric_cast<float32_t>(frame_size.height);
+    float32_t proj_height = numeric_cast<float32_t>(frame_size.height) * (1.0f / _modelMngr->_settings->Render.ModelProjFactor);
+    float32_t proj_width = proj_height * frame_ratio;
+    mat44 frame_proj = _modelMngr->_render->CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
+
+    vec3 new_root_pos {};
+
+    if (old_root_pos) {
+        new_root_pos = unproject_frame_pos(frame_pivot, frame_size, frame_proj);
     }
 
     _spriteBoundsPoseReady = false;
     _worldPoseReady = false;
-    _frameSize.width = draw_size.width * FRAME_SCALE;
-    _frameSize.height = draw_size.height * FRAME_SCALE;
-
-    // Projection
-    float32_t frame_ratio = numeric_cast<float32_t>(_frameSize.width) / numeric_cast<float32_t>(_frameSize.height);
-    float32_t proj_height = numeric_cast<float32_t>(_frameSize.height) * (1.0f / _modelMngr->_settings->Render.ModelProjFactor);
-    float32_t proj_width = proj_height * frame_ratio;
-
-    _frameProj = _modelMngr->_render->CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
+    InvalidateSceneFrame();
+    _frameSize = frame_size;
+    _frameProj = frame_proj;
+    _framePivot = frame_pivot;
 
     if (old_root_pos) {
-        vec3 new_root_pos = Convert2dTo3d(frame_pivot);
         vec3 rebase_delta = new_root_pos - *old_root_pos;
         auto rebase_particles = [&rebase_delta](ptr<ModelInstance> model, const auto& recurse) noexcept -> void {
             for (auto& model_particle : model->_modelParticles) {
@@ -2402,8 +2540,6 @@ void ModelInstance::SetupFrame(isize32 draw_size, ipos32 frame_pivot)
         };
         rebase_particles(this, rebase_particles);
     }
-
-    _framePivot = frame_pivot;
 }
 
 void ModelInstance::PrepareFrameLayout()
@@ -2416,11 +2552,18 @@ void ModelInstance::PrepareFrameLayout()
 void ModelInstance::RequestRedraw() noexcept
 {
     _forceDraw = true;
+
+    for (nptr<ModelInstance> current = this; current; current = current->_parent) {
+        current->_scenePoseReady = false;
+    }
 }
 
 void ModelInstance::RefreshFrameLayout()
 {
     FO_TRACE_ZONE(Model);
+
+    // Keep recovery pending through every fallible step, so ordinary PrepareFrameLayout can retry a failed layout
+    _frameLayoutDirty = true;
 
     mat44 post_direction_transform = _matTransBase * _matRot;
     mat44 pre_direction_transform = _matRotBase * _matScale * _matScaleBase;
@@ -2428,30 +2571,33 @@ void ModelInstance::RefreshFrameLayout()
     ModelBounds3D draw_bounds = CollectActiveAnimationBounds();
     optional<ModelSpriteLayout> draw_layout = CalculateModelSpriteLayout(draw_bounds, post_direction_transform, pre_direction_transform, _modelMngr->_settings->Render.ModelProjFactor, !_shadowDisabled && !_modelInfo->_shadowDisabled, true, max_logical_frame);
     FO_STRONG_ASSERT(draw_layout, "Model sprite layout could not be calculated", _modelInfo->_fileName, draw_bounds.Min.x, draw_bounds.Min.y, draw_bounds.Min.z, draw_bounds.Max.x, draw_bounds.Max.y, draw_bounds.Max.z);
-    _layoutDrawSize = draw_layout->DrawSize;
-    _drawRect = draw_layout->DrawRect;
+    isize32 layout_draw_size = draw_layout->DrawSize;
+    irect32 draw_rect = draw_layout->DrawRect;
 
     // Lighting uses the aggregate envelope, not the current clip. A zoom that misses the texture cap is cropped to
     // that cap rather than terminating, so what is left here is bounds the bake gate already rejects
     const ModelBounds3D& lighting_bounds = _modelInfo->_modelBounds;
     optional<ModelSpriteLayout> lighting_layout = CalculateModelSpriteLayout(lighting_bounds, post_direction_transform, pre_direction_transform, _modelMngr->_settings->Render.ModelProjFactor, false, true, max_logical_frame);
     FO_STRONG_ASSERT(lighting_layout, "Model sprite lighting layout could not be calculated", _modelInfo->_fileName, lighting_bounds.Min.x, lighting_bounds.Min.y, lighting_bounds.Min.z, lighting_bounds.Max.x, lighting_bounds.Max.y, lighting_bounds.Max.z);
-    _lightingDrawSize = lighting_layout->DrawSize;
+    isize32 lighting_draw_size = lighting_layout->DrawSize;
 
     // Origin is the projected root inside the tight frame. A tight frame may legitimately lie entirely on one side of
     // that root, so the anchor stays signed; only a texture-cap crop pulls it back onto the smaller scratch RT
-    ipos32 frame_pivot = {-_drawRect.x, -_drawRect.y};
+    ipos32 frame_pivot = {-draw_rect.x, -draw_rect.y};
 
-    if (_layoutDrawSize.width < _drawRect.width || _layoutDrawSize.height < _drawRect.height) {
-        frame_pivot.x = std::clamp(frame_pivot.x, 0, _layoutDrawSize.width);
-        frame_pivot.y = std::clamp(frame_pivot.y, 0, _layoutDrawSize.height);
+    if (layout_draw_size.width < draw_rect.width || layout_draw_size.height < draw_rect.height) {
+        frame_pivot.x = std::clamp(frame_pivot.x, 0, layout_draw_size.width);
+        frame_pivot.y = std::clamp(frame_pivot.y, 0, layout_draw_size.height);
     }
 
-    if (_frameSize.width != _layoutDrawSize.width * FRAME_SCALE || _frameSize.height != _layoutDrawSize.height * FRAME_SCALE) {
-        SetupFrame(_layoutDrawSize, frame_pivot);
-        _forceDraw = true;
+    if (_frameSize.width != layout_draw_size.width * FRAME_SCALE || _frameSize.height != layout_draw_size.height * FRAME_SCALE) {
+        SetupFrame(layout_draw_size, frame_pivot);
+        RequestRedraw();
     }
 
+    _layoutDrawSize = layout_draw_size;
+    _drawRect = draw_rect;
+    _lightingDrawSize = lighting_draw_size;
     _framePivot = frame_pivot;
     _frameLayoutDirty = false;
 }
@@ -2588,6 +2734,8 @@ auto ModelInstance::NeedDraw() const -> bool
 
 void ModelInstance::PoseSpriteFrame(bool advance_animation)
 {
+    InvalidateSceneFrame();
+
     // GetSpriteBounds derives the extent from the posed skeleton and the baked particle box rather than from pixels,
     // so the atlas path sizes the frame from this pose and draws only once, at the final size
     _drawProj = _frameProj;
@@ -2612,9 +2760,56 @@ void ModelInstance::DrawUnlitParticles()
     DrawParticles(true);
 }
 
-void ModelInstance::DrawInScene(const mat44& proj, float32_t scale)
+auto ModelInstance::PrepareSceneFrame(float32_t scale) -> bool
 {
     FO_TRACE_ZONE(Model);
+
+    nanotime time = GetTime();
+
+    if (_scenePoseReady && _scenePoseTime == time && _scenePoseScale == scale) {
+        return true;
+    }
+
+    if (_preparingScenePose) {
+        return false;
+    }
+
+    _scenePoseReady = false;
+    _preparingScenePose = true;
+    auto finish_preparation = scope_exit([this]() noexcept { _preparingScenePose = false; });
+
+    _drawProj = _frameProj;
+    _directSceneDraw = true;
+    bool previous_manager_direct_scene = _modelMngr->_directSceneDraw;
+    _modelMngr->_directSceneDraw = true;
+    auto restore_direct_scene = scope_exit([this, previous_manager_direct_scene]() noexcept {
+        _directSceneDraw = false;
+        _modelMngr->_directSceneDraw = previous_manager_direct_scene;
+    });
+
+    for (int32_t pass = 0; pass < 3; pass++) {
+        isize32 frame_size = _frameSize;
+        ipos32 frame_pivot = _framePivot;
+        _scenePoseMutated = false;
+        Pose(scale, pass == 0);
+
+        if (!_scenePoseMutated && IsWorldPoseReady() && _frameSize == frame_size && _framePivot == frame_pivot) {
+            _scenePoseReady = true;
+            break;
+        }
+    }
+
+    _scenePoseTime = time;
+    _scenePoseScale = scale;
+
+    return _scenePoseReady;
+}
+
+void ModelInstance::DrawPreparedInScene(const mat44& proj)
+{
+    FO_TRACE_ZONE(Model);
+
+    FO_VERIFY_AND_THROW(_scenePoseReady && _scenePoseTime == GetTime(), "Direct scene draw requires a current prepared pose");
 
     _drawProj = proj;
     _directSceneDraw = true;
@@ -2625,8 +2820,15 @@ void ModelInstance::DrawInScene(const mat44& proj, float32_t scale)
         _modelMngr->_directSceneDraw = previous_manager_direct_scene;
     });
 
-    Pose(scale, true);
+    RefreshSceneParticleTransforms(proj);
     DrawPosed(true);
+}
+
+void ModelInstance::DrawInScene(const mat44& proj, float32_t scale)
+{
+    if (PrepareSceneFrame(scale)) {
+        DrawPreparedInScene(proj);
+    }
 }
 
 auto ModelInstance::GetMeshTexture(size_t mesh_index, size_t slot) const -> nptr<const MeshTexture>
@@ -2775,6 +2977,36 @@ void ModelInstance::DrawParticles(optional<bool> unlit)
 
     for (size_t i = 0; i != _children.size(); ++i) {
         _children[i]->DrawParticles(unlit);
+    }
+}
+
+void ModelInstance::RefreshSceneParticleTransforms(const mat44& proj)
+{
+    for (auto& model_particle : _modelParticles) {
+        if (!model_particle.Initialized) {
+            continue;
+        }
+
+        FO_VERIFY_AND_THROW(model_particle.Owner, "Model particle has no pose owner", model_particle.Id);
+
+        const mat44& world = model_particle.Owner->GetWorldMatrix(model_particle.JointIndex);
+        float32_t rotation = model_particle.Id == 0 ? model_particle.Rot : model_particle.Rot + _lookDirAngle;
+
+        model_particle.Particle->Setup(proj, world, model_particle.Move, rotation, vec3 {}, true);
+        model_particle.Particle->RefreshRenderTransform();
+    }
+
+    for (auto it = _modelParticles.begin(); it != _modelParticles.end();) {
+        if (it->Initialized && !it->Particle->IsActive()) {
+            it = _modelParticles.erase(it);
+        }
+        else {
+            ++it;
+        }
+    }
+
+    for (auto& child : _children) {
+        child->RefreshSceneParticleTransforms(proj);
     }
 }
 

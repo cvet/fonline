@@ -984,23 +984,15 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
 
     for (uint32_t i = range_begin; i < range_end; i++) {
         const auto& mspr = sprites[i];
-        FO_VERIFY_AND_THROW(mspr->IsValid(), "Map sprite is invalid");
+        auto visible_rect = GetMapSpriteDrawRect(mspr, draw_area);
 
-        if (mspr->IsHidden()) {
+        if (!visible_rect) {
             continue;
         }
 
         auto spr = mspr->GetSprite();
         FO_VERIFY_AND_THROW(spr, "Missing required sprite");
-
-        irect32 mspr_rect = mspr->GetDrawRect();
-        mspr_rect.x -= draw_area.x;
-        mspr_rect.y -= draw_area.y;
-
-        // Skip not visible
-        if (mspr_rect.x > draw_area.width || mspr_rect.x + mspr_rect.width < 0 || mspr_rect.y > draw_area.height || mspr_rect.y + mspr_rect.height < 0) {
-            continue;
-        }
+        irect32 mspr_rect = *visible_rect;
 
         if (spr->IsDirectDraw()) {
             vec3 map_proj = mspr->GetMapRootProjection();
@@ -1196,6 +1188,28 @@ auto SpriteManager::SpriteHitTest(ptr<const Sprite> spr, ipos32 pos) const -> bo
     }
 
     return spr->IsHitTest(pos);
+}
+
+auto SpriteManager::GetMapSpriteDrawRect(ptr<const MapSprite> mspr, irect32 draw_area) const -> optional<irect32>
+{
+    FO_VERIFY_AND_THROW(mspr->IsValid(), "Map sprite is invalid");
+
+    if (mspr->IsHidden()) {
+        return std::nullopt;
+    }
+
+    auto spr = mspr->GetSprite();
+    FO_VERIFY_AND_THROW(spr, "Missing required sprite");
+
+    irect32 rect = mspr->GetDrawRect();
+    rect.x -= draw_area.x;
+    rect.y -= draw_area.y;
+
+    if (rect.x > draw_area.width || rect.x + rect.width < 0 || rect.y > draw_area.height || rect.y + rect.height < 0) {
+        return std::nullopt;
+    }
+
+    return rect;
 }
 
 // Converts a draw-root-relative logical sprite point into holder map pixels and a depth-only correction for the submitted plane.

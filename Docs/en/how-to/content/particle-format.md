@@ -319,6 +319,13 @@ and plane in atlas mode and the physical point in direct scene mode. It returns
 or invalid anchors. The physical query retains its existing meaning. Both queries
 use authored bone-local units and require reattachment after movement or rebuild.
 
+Update a following holder in `Game.OnRenderMap_BeforeSprites` when it must meet
+the pose drawn in that map pass. Visible direct-scene critters are prepared before
+this event; atlas poses have already been updated. Earlier loop callbacks can read
+the preceding retained pose. Bone queries do not advance animation. Replayed direct
+draws keep the prepared pose and only rebind particle projection, without advancing
+particle time. Hidden or offscreen critters are not advanced by this preparation pass.
+
 `Item.GetSpriteMapAnchor(hex, localOffset, mapOffset, depthOffset)` resolves the
 visible bitmap copy at `hex`. `localOffset` is in logical sprite pixels relative
 to its draw root before rotation and map projection. Set a holder's `Hex` to that

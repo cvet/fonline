@@ -5,7 +5,7 @@ locale: ru
 document_id: particle-format-guide
 permalink: /Docs/ru/how-to/content/particle-format.html
 ---
-<!-- docs-translation: {"document_id":"particle-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/particle-format.md","source_sha256":"6997095ca950f09e9c19d22cdfbe362b318e77db9e07f0df2c3604308d2a2512"} -->
+<!-- docs-translation: {"document_id":"particle-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/particle-format.md","source_sha256":"d821074005ec2b7e82de62197b396750672c7dda9ec5c5ae740d6b2226894c23"} -->
 # Авторинг и runtime частиц
 
 FOnline предоставляет два опциональных backend частиц за единым
@@ -329,6 +329,14 @@ NaN/бесконечность дают исключение до любой о�
 спрайта и нулевой глубиной. Физический запрос сохраняет прежний смысл. Оба запроса
 принимают авторские локальные единицы кости и требуют повторного прикрепления
 после движения или перестроения карты.
+
+Обновляйте следующий за костью holder в `Game.OnRenderMap_BeforeSprites`, если
+он должен совпадать с позой текущего прохода карты. Видимые direct-криттеры
+подготовлены до события, atlas-позы уже обновлены. Ранний loop callback может
+читать предыдущую сохранённую позу; запрос кости не продвигает анимацию.
+Повторный direct draw сохраняет подготовленную позу и меняет только projection
+частиц, без продвижения их времени. Этот проход не продвигает скрытых криттеров
+и криттеров вне области отрисовки.
 
 `Item.GetSpriteMapAnchor(hex, localOffset, mapOffset, depthOffset)` выбирает
 видимую bitmap-копию на гексе `hex`. `localOffset` измеряется в логических пикселях

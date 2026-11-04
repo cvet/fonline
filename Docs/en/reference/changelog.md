@@ -22,6 +22,13 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Fixed
 
+- Prepare visible direct-scene critters before `OnRenderMap_BeforeSprites` and
+  reuse their pose across repeated draws. Independent bone followers can use
+  that event; particle projection refresh does not advance simulation time.
+- Keep the committed model frame and projection coherent after a layout failure,
+  and validate movement timing before replacing accepted tracks or completion
+  events. A failed mesh rebuild discards partial batches and remains retryable
+  through `StartMeshGeneration`.
 - Publish the complete server startup queue before execution so a failed stage
   cannot be followed by jobs submitted after its failure handler cleared the queue.
 - Make Effekseer bounds baking independent of process random state and effect
@@ -36,6 +43,11 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Migration
 
+- For independent sprites following a changing bone, update and reattach the
+  holder in `OnRenderMap_BeforeSprites`. Bone queries remain non-advancing reads
+  of the retained pose; hidden/offscreen model timing is preserved. Rebuild native
+  roles and verify atlas/direct rendering. No saved-data or resource-format
+  conversion is introduced by this render-phase correction.
 - From Engine `56683c4737ebbb1386ae3365be49416ac1678432` (`2026.1.90-dev`),
   regenerate script bindings and metadata, rebuild matching server, client,
   Mapper, Baker and tools, force a matching resource bake, and package all roles

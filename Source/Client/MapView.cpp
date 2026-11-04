@@ -2642,6 +2642,13 @@ void MapView::DrawMap()
             _engine->OnRenderMap_AfterFlatSprites.Fire(this, draw_area);
 
             // Other sprites, with fog layers interleaved by their draw order
+#if FO_ENABLE_3D
+            if (_engine->Settings->Render.ModelDirectDraw) {
+                PrepareCritterSceneFrames(draw_area);
+                FO_VERIFY_AND_THROW(!IsDestroyed(), "Map was destroyed during critter scene preparation");
+            }
+#endif
+
             _engine->OnRenderMap_BeforeSprites.Fire(this, draw_area);
             DrawSpritesWithFog(draw_area);
             _engine->OnRenderMap_AfterSprites.Fire(this, draw_area);
@@ -2767,6 +2774,74 @@ void MapView::DrawSpritesWithFog(const irect32& draw_area)
             _engine->SprMngr.DrawSprites(_mapSprites, draw_area, true, static_cast<DrawOrderType>(sprite_segment_begin), segment.To, day_color, segment.Effect);
         }
     }
+}
+
+void MapView::PrepareCritterSceneFrames(const irect32& draw_area)
+{
+#if FO_ENABLE_3D
+    FO_TRACE_ZONE(Model);
+
+    for (ptr<CritterHexView> cr : copy_hold_ref(GetCritters())) {
+        for (int32_t pass = 0; pass < 3; pass++) {
+            if (IsDestroyed()) {
+                return;
+            }
+
+            if (cr->IsDestroyed() || cr->GetMap() != this || !cr->IsMapSpriteValid()) {
+                break;
+            }
+
+            auto mspr = cr->GetMapSprite();
+            auto visible_rect = _engine->SprMngr.GetMapSpriteDrawRect(mspr, draw_area);
+
+            if (!visible_rect) {
+                break;
+            }
+
+            auto spr = mspr->GetSprite();
+
+            if (!spr->IsDirectDraw()) {
+                break;
+            }
+
+            auto model = cr->GetModel();
+
+            if (!model) {
+                break;
+            }
+
+            // Model callbacks may replace this carrier's sprite or remove it from the map
+            auto sprite_owner = spr->shared_from_this();
+
+            bool prepared = model->PrepareSceneFrame(_engine->Settings->Render.ModelProjFactor);
+            ignore_unused(sprite_owner);
+
+            if (IsDestroyed()) {
+                return;
+            }
+
+            if (cr->IsDestroyed() || cr->GetMap() != this || !cr->IsMapSpriteValid()) {
+                break;
+            }
+
+            auto current_sprite = cr->GetMapSprite()->GetSprite();
+            auto current_model = cr->GetModel();
+
+            if (current_sprite == spr && current_model == model) {
+                FO_VERIFY_AND_THROW(prepared, "Critter scene pose did not stabilize", cr->GetId());
+                break;
+            }
+
+            if (!current_sprite || !current_sprite->IsDirectDraw() || !current_model) {
+                break;
+            }
+
+            FO_VERIFY_AND_THROW(pass < 2, "Critter model kept changing during scene preparation", cr->GetId());
+        }
+    }
+#else
+    ignore_unused(draw_area);
+#endif
 }
 
 void MapView::DrawFogSlot(const irect32& draw_area, DrawOrderType draw_order)
