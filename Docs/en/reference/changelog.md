@@ -16,6 +16,16 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Fixed
 
+- Reconcile the generated-description translation test with the existing `Game.SimulateTouchScroll` description: 5003 translated entries across nineteen domains, including 2596 API descriptions. Preserve strict completeness, stable-locator and missing-translation checks.
+
+### Migration
+
+- Baseline `4375450b39` (`2026.1.105-dev`) → `2026.1.106-dev`. No project source, content, generated-model or persisted-data migration is required: this update changes only stale test expectations and release notes. The translated description already exists in the source-owned catalog. Runtime declarations, existing values, ownership, network protocol, `MigrationRule Version`, Managed ABI and resource schemas remain unchanged; there is no additional rebuild or bake boundary.
+
+## 2026.1.105-dev - 2026-11-04
+
+### Fixed
+
 - Load the real CMake command wrappers in the isolated coverage-companion fixture before including the Applications stage. `AppendSourceProperty` now has the same implementation as in normal configuration; the fixture retains its library-reuse, quick-exit profile, and resource-pack hash instrumentation checks.
 
 ### Migration
