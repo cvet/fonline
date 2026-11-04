@@ -16,6 +16,16 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Fixed
 
+- Load the real CMake command wrappers in the isolated coverage-companion fixture before including the Applications stage. `AppendSourceProperty` now has the same implementation as in normal configuration; the fixture retains its library-reuse, quick-exit profile, and resource-pack hash instrumentation checks.
+
+### Migration
+
+- Baseline `28b3a9b22a` (`2026.1.104-dev`) → `2026.1.105-dev`. No project source, content, generated API or persisted-data migration is required: only a test fixture and its documentation change. Production CMake behavior, runtime declarations, existing values, ownership, network protocol, `MigrationRule Version`, Managed ABI and resource schemas remain unchanged. Run `python -m pytest BuildTools/tests/test_codecoverage_llvm_objects.py`; its five platform configurations exercise the actual CMake stage on the host and do not establish runtime acceptance on another platform. There is no additional rebuild or bake boundary.
+
+## 2026.1.104-dev - 2026-11-04
+
+### Fixed
+
 - Reconcile the API model test's fixed inventory expectations with the existing `Game.SimulateTouchScroll` export: 2593 source-owned symbols, including 2592 experimental symbols and one internal symbol. Keep the independent source-inventory and model checks intact.
 
 ### Migration

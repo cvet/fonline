@@ -7,12 +7,22 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"4b058fa8ef09196c876fa830daca51a542571046c98191d0ce4236a29ccd1b44"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"4ca92d444217bdc33a47599d7babdf83eb2cb35a32b86fb3148cf4fa4c729453"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
 ## Current - 2026-11-04
+
+### Исправлено
+
+- Изолированная фикстура coverage-companion загружает настоящие обёртки команд CMake перед стадией Applications. `AppendSourceProperty` теперь имеет ту же реализацию, что при обычной конфигурации; проверки повторного использования библиотек, профилей quick exit и instrumentation помощника хеширования пакетов ресурсов сохранены.
+
+### Миграция
+
+- Базовая ревизия `28b3a9b22a` (`2026.1.104-dev`) → `2026.1.105-dev`. Миграция исходников проекта, контента, генерируемого API и сохранённых данных не требуется: меняются только тестовая фикстура и её документация. Production-поведение CMake, runtime-декларации, существующие значения, владение, сетевой протокол, `MigrationRule Version`, Managed ABI и схемы ресурсов остаются прежними. Выполните `python -m pytest BuildTools/tests/test_codecoverage_llvm_objects.py`; пять конфигураций платформ упражняют настоящую стадию CMake на хосте и не подтверждают runtime другой платформы. Дополнительной границы пересборки или выпечки нет.
+
+## 2026.1.104-dev - 2026-11-04
 
 ### Исправлено
 

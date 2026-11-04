@@ -315,7 +315,9 @@ When `FO_CODE_COVERAGE` is enabled, `BuildTools/cmake/stages/Init.cmake` selects
 
 Coverage output is rooted under `CodeCoverage/<Toolchain>/<Platform-Config>/`.
 The isolated Applications-stage fixtures in
-`BuildTools/tests/test_codecoverage_llvm_objects.py` include the real resource-pack
+`BuildTools/tests/test_codecoverage_llvm_objects.py` load the real
+`BuildTools/cmake/helpers/Commands.cmake` before the stage, including its
+`AppendSourceProperty` wrapper. They include the real resource-pack
 hash helper sources and prove that native host platforms build the helper without
 LLVM coverage flags. They also retain actual instrumented-process collection, core
 library reuse and quick-exit flush assertions.
