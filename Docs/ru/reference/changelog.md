@@ -7,12 +7,22 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"7c9fbcc84231c42d02dce457430bf163d2b1b30bc9b72e830c5665e1078b79db"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"4b058fa8ef09196c876fa830daca51a542571046c98191d0ce4236a29ccd1b44"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
 ## Current - 2026-11-04
+
+### Исправлено
+
+- Фиксированные ожидания API-теста согласованы с существующим экспортом `Game.SimulateTouchScroll`: 2593 source-owned символа, включая 2592 experimental и один internal. Независимая сверка inventory исходников и модели сохранена.
+
+### Миграция
+
+- Базовая ревизия `0bd0702354` (`2026.1.103-dev`) → `2026.1.104-dev`. Миграция исходников проекта, контента и сохранённых данных не требуется: обновление меняет только ожидания теста и заметки о выпуске. Runtime-декларации, генерируемые модели API, значения по умолчанию, единицы, идентификаторы, владение, сетевой протокол, `MigrationRule Version`, Managed ABI и схемы ресурсов остаются прежними; дополнительной границы пересборки или выпечки нет. Миграции предыдущих обновлений по-прежнему выполняются по порядку.
+
+## 2026.1.103-dev - 2026-11-04
 
 ### Изменено
 

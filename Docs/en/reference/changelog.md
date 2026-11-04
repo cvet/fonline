@@ -14,6 +14,16 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-11-04
 
+### Fixed
+
+- Reconcile the API model test's fixed inventory expectations with the existing `Game.SimulateTouchScroll` export: 2593 source-owned symbols, including 2592 experimental symbols and one internal symbol. Keep the independent source-inventory and model checks intact.
+
+### Migration
+
+- Baseline `0bd0702354` (`2026.1.103-dev`) → `2026.1.104-dev`. No project source, content or persisted-data migration is required: this update changes only test expectations and release notes. Runtime declarations, generated API models, defaults, units, IDs, ownership, network protocol, `MigrationRule Version`, Managed ABI and resource schemas remain unchanged; there is no additional rebuild or bake boundary. Earlier update migrations still apply in order.
+
+## 2026.1.103-dev - 2026-11-04
+
 ### Changed
 
 - Revert the large-map integration published as `2026.1.102-dev` (`82ac7d57fe`..`72c1be91a0`): it reached master without review and returns as a pull request. Sources, scripts, generated models and documentation are again those of `2026.1.101-dev`.
