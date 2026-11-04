@@ -190,6 +190,7 @@ def test_cmake_coverage_companions_reuse_libraries_and_scope_quick_exit(tmp_path
     cmake = r'''
 cmake_minimum_required(VERSION 3.22)
 project(CoverageCompanions C CXX)
+include("@COMMANDS@")
 add_compile_options(-O0 -fprofile-instr-generate -fcoverage-mapping -Wall -Wextra -Werror)
 add_link_options(-fprofile-instr-generate)
 add_library(Core STATIC core.cpp)
@@ -228,7 +229,9 @@ if(TARGET Probe_BakerLib OR TARGET Probe_Server)
 endif()
 '''
     stage = BUILD_TOOLS / "cmake/stages/Applications.cmake"
-    (root / "CMakeLists.txt").write_text(cmake.replace("@PLATFORM@", platform).replace("@STAGE@", str(stage)))
+    commands = BUILD_TOOLS / "cmake/helpers/Commands.cmake"
+    (root / "CMakeLists.txt").write_text(
+        cmake.replace("@PLATFORM@", platform).replace("@STAGE@", str(stage)).replace("@COMMANDS@", str(commands)))
     build = root / "build"
     run(["cmake", "-S", str(root), "-B", str(build), "-G", "Ninja",
          "-DCMAKE_C_COMPILER=clang-20", "-DCMAKE_CXX_COMPILER=clang++-20",

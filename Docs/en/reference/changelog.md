@@ -29,7 +29,7 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Migration
 
-- Baseline `0bd0702354` (`2026.1.103-dev`) to `2026.1.104-dev`; this reapplies the large-map work that `2026.1.103-dev` reverted. Settings, wire protocol, the `MigrationRule Version` marker, Managed ABI, saved data and resource schemas are unchanged; no content or save conversion is required. The script API only gains the methods listed above. Rebuild every native role (Server, Client, Mapper, Baker and tests) and regenerate both scripting backends, because the grid template and the `MapView` and `Map` layouts change.
+- Baseline `3d56c1f3f9` (`2026.1.106-dev`) to `2026.1.107-dev`; this reapplies the large-map work that `2026.1.103-dev` reverted. Settings, wire protocol, the `MigrationRule Version` marker, Managed ABI, saved data and resource schemas are unchanged; no content or save conversion is required. The script API only gains the methods listed above. Rebuild every native role (Server, Client, Mapper, Baker and tests) and regenerate both scripting backends, because the grid template and the `MapView` and `Map` layouts change.
 - Baked maps are no longer read at startup: the first instance of a map reads its file on the creating thread, and an error in a map nobody creates goes unreported. A project that relied on startup to validate every baked map can call `Game.LoadStaticMap(mapPid)` for each one in a check. Native code that called `MapManager::GetStaticMap()` for a missing file got a failed lookup before and gets a `MapManagerException` now.
 - Native code: replace `mspr->SetLight(corner, map->GetLightData(), map->GetSize())` with `map->SetupSpriteLight(mspr, corner)`; `MapView::GetLightData()` is removed and its old dense-buffer call no longer compiles. Detect callers with `rg -n "GetLightData|SetLight\(" SourceExt` (or the project's native source roots). A custom `TwoDimensionalGrid` subclass must implement `ClearArea`; the pure virtual reports a missing override at compile time.
 - Acceptance owners are the `TwoDimensionalGrid` cases (continent-sized index, area release, bounded load/unload cycles, dynamic/static `ClearArea`), `ClientMaximumSizeMapLoadsWithoutMapSizedWork`, `PathFinding::RoutesMatchOnContinentSizedMaps`, `MapLoadsAndUnloadsContentOfOtherMaps`, `ClientMapLoadsAndUnloadsStaticItemsOfOtherMaps`, and the existing static map, removal, roof, light, scroll and hit-test cases.
@@ -37,6 +37,37 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 
 
+
+
+## 2026.1.106-dev - 2026-11-04
+
+### Fixed
+
+- Reconcile the generated-description translation test with the existing `Game.SimulateTouchScroll` description: 5003 translated entries across nineteen domains, including 2596 API descriptions. Preserve strict completeness, stable-locator and missing-translation checks.
+
+### Migration
+
+- Baseline `4375450b39` (`2026.1.105-dev`) → `2026.1.106-dev`. No project source, content, generated-model or persisted-data migration is required: this update changes only stale test expectations and release notes. The translated description already exists in the source-owned catalog. Runtime declarations, existing values, ownership, network protocol, `MigrationRule Version`, Managed ABI and resource schemas remain unchanged; there is no additional rebuild or bake boundary.
+
+## 2026.1.105-dev - 2026-11-04
+
+### Fixed
+
+- Load the real CMake command wrappers in the isolated coverage-companion fixture before including the Applications stage. `AppendSourceProperty` now has the same implementation as in normal configuration; the fixture retains its library-reuse, quick-exit profile, and resource-pack hash instrumentation checks.
+
+### Migration
+
+- Baseline `28b3a9b22a` (`2026.1.104-dev`) → `2026.1.105-dev`. No project source, content, generated API or persisted-data migration is required: only a test fixture and its documentation change. Production CMake behavior, runtime declarations, existing values, ownership, network protocol, `MigrationRule Version`, Managed ABI and resource schemas remain unchanged. Run `python -m pytest BuildTools/tests/test_codecoverage_llvm_objects.py`; its five platform configurations exercise the actual CMake stage on the host and do not establish runtime acceptance on another platform. There is no additional rebuild or bake boundary.
+
+## 2026.1.104-dev - 2026-11-04
+
+### Fixed
+
+- Reconcile the API model test's fixed inventory expectations with the existing `Game.SimulateTouchScroll` export: 2593 source-owned symbols, including 2592 experimental symbols and one internal symbol. Keep the independent source-inventory and model checks intact.
+
+### Migration
+
+- Baseline `0bd0702354` (`2026.1.103-dev`) → `2026.1.104-dev`. No project source, content or persisted-data migration is required: this update changes only test expectations and release notes. Runtime declarations, generated API models, defaults, units, IDs, ownership, network protocol, `MigrationRule Version`, Managed ABI and resource schemas remain unchanged; there is no additional rebuild or bake boundary. Earlier update migrations still apply in order.
 
 ## 2026.1.103-dev - 2026-11-04
 

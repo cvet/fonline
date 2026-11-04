@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/testing/
 ---
 
 # Тестирование
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"0cd3e28d71aa3de9497c135847193d53a0ae0dd13ff130f463253c55f4ae8cf7"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"514d79c46813399c4818d5aad818aa10d77b6ab4373f62562e6570990f42f411"} -->
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
 > `Source/Tests/Test_*.cpp`.
@@ -372,7 +372,9 @@ containers освобождаются при shutdown. Новые утечки �
 `AnalyzeCodeCoverage`. Результат находится под
 `CodeCoverage/<Toolchain>/<Platform-Config>/`.
 Изолированные фикстуры стадии Applications в
-`BuildTools/tests/test_codecoverage_llvm_objects.py` включают настоящие исходники
+`BuildTools/tests/test_codecoverage_llvm_objects.py` загружают перед стадией настоящий
+`BuildTools/cmake/helpers/Commands.cmake`, включая его обёртку `AppendSourceProperty`.
+Они включают настоящие исходники
 помощника хеширования пакетов ресурсов и проверяют его сборку без флагов LLVM
 coverage на нативных платформах хоста. Они также сохраняют сбор профилей реально
 инструментированных процессов, повторное использование core library и проверки
