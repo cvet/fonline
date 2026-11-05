@@ -688,7 +688,7 @@ TEST_CASE("ClientMapLoadsAndUnloadsStaticItemsOfOtherMaps")
     ident_t blocker_id {ident_t {(int64_t {1} << 50) + 320256031}};
     ident_t far_id {ident_t {(int64_t {1} << 50) + 320256032}};
 
-    vector<ident_t> ids {map->LoadStaticItems(content_pid, dest_hex, id_offset(dest_hex))};
+    vector<ident_t> ids {map->LoadRuntimeStaticItems(content_pid, dest_hex, id_offset(dest_hex))};
     REQUIRE(ids.size() == 2);
     REQUIRE(map->GetItem(blocker_id));
     CHECK(map->GetItem(blocker_id)->GetHex() == mpos {322, 259});
@@ -699,35 +699,35 @@ TEST_CASE("ClientMapLoadsAndUnloadsStaticItemsOfOtherMaps")
     CHECK_FALSE(map->GetField(mpos {2, 3}).MoveBlocked);
 
     // Ids must be nonzero and unused, and content must fit the map
-    CHECK_THROWS(map->LoadStaticItems(content_pid, dest_hex, id_offset(dest_hex)));
-    CHECK_THROWS(map->LoadStaticItems(content_pid, mpos {100, 100}, id_offset(dest_hex)));
-    CHECK_THROWS(map->LoadStaticItems(content_pid, mpos {100, 100}, -31));
-    CHECK_THROWS(map->LoadStaticItems(content_pid, mpos {100, 100}, std::numeric_limits<int64_t>::max()));
-    CHECK_THROWS(map->LoadStaticItems(content_pid, mpos {590, 590}, id_offset(mpos {590, 590})));
-    CHECK_THROWS(map->LoadStaticItems(client->Hashes.to_hashed_string("ClientMissingMap"), dest_hex, id_offset(dest_hex)));
+    CHECK_THROWS(map->LoadRuntimeStaticItems(content_pid, dest_hex, id_offset(dest_hex)));
+    CHECK_THROWS(map->LoadRuntimeStaticItems(content_pid, mpos {100, 100}, id_offset(dest_hex)));
+    CHECK_THROWS(map->LoadRuntimeStaticItems(content_pid, mpos {100, 100}, -31));
+    CHECK_THROWS(map->LoadRuntimeStaticItems(content_pid, mpos {100, 100}, std::numeric_limits<int64_t>::max()));
+    CHECK_THROWS(map->LoadRuntimeStaticItems(content_pid, mpos {590, 590}, id_offset(mpos {590, 590})));
+    CHECK_THROWS(map->LoadRuntimeStaticItems(client->Hashes.to_hashed_string("ClientMissingMap"), dest_hex, id_offset(dest_hex)));
     CHECK(map->GetItems().size() == 2);
 
     // Unloading destroys the views and releases the empty field blocks they covered
-    map->UnloadStaticItems(ids);
+    map->UnloadRuntimeStaticItems(ids);
     CHECK_FALSE(map->GetItem(blocker_id));
     CHECK_FALSE(map->IsRuntimeStaticItem(blocker_id));
     CHECK_FALSE(map->GetField(mpos {322, 259}).MoveBlocked);
     CHECK(map->GetField(mpos {322, 259}).Items.empty());
-    CHECK_THROWS(map->UnloadStaticItems(ids));
+    CHECK_THROWS(map->UnloadRuntimeStaticItems(ids));
 
     // Loading again gives the same ids
-    CHECK(map->LoadStaticItems(content_pid, dest_hex, id_offset(dest_hex)) == ids);
+    CHECK(map->LoadRuntimeStaticItems(content_pid, dest_hex, id_offset(dest_hex)) == ids);
     CHECK(map->GetItem(blocker_id));
 
     // An area of the source map lands with its first hex at dest_hex and must lie inside the source map
-    vector<ident_t> area_ids {map->LoadStaticItems(content_pid, mpos {100, 100}, mpos {20, 20}, msize {12, 12}, id_offset(mpos {100, 100}))};
+    vector<ident_t> area_ids {map->LoadRuntimeStaticItems(content_pid, mpos {100, 100}, mpos {20, 20}, msize {12, 12}, id_offset(mpos {100, 100}))};
     REQUIRE(area_ids.size() == 1);
     REQUIRE(map->GetItem(area_ids.front()));
     CHECK(area_ids.front() == ident_t {(int64_t {1} << 50) + 100100032});
     CHECK(map->GetItem(area_ids.front())->GetHex() == mpos {100, 100});
-    CHECK_THROWS(map->LoadStaticItems(content_pid, mpos {200, 200}, mpos {20, 20}, msize {13, 1}, id_offset(mpos {200, 200})));
-    CHECK_THROWS(map->LoadStaticItems(content_pid, mpos {200, 200}, mpos {32, 0}, msize {1, 1}, id_offset(mpos {200, 200})));
-    map->UnloadStaticItems(area_ids);
+    CHECK_THROWS(map->LoadRuntimeStaticItems(content_pid, mpos {200, 200}, mpos {20, 20}, msize {13, 1}, id_offset(mpos {200, 200})));
+    CHECK_THROWS(map->LoadRuntimeStaticItems(content_pid, mpos {200, 200}, mpos {32, 0}, msize {1, 1}, id_offset(mpos {200, 200})));
+    map->UnloadRuntimeStaticItems(area_ids);
     CHECK_FALSE(map->GetItem(area_ids.front()));
 
     map->DestroySelf();

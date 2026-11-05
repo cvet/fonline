@@ -473,7 +473,7 @@ FO_SCRIPT_API bool Server_Map_RemoveStaticItem(ptr<Map> self, ident_t staticItem
         throw ScriptException("Static item not found on map", staticItemId);
     }
     if (self->IsRuntimeStaticItem(staticItemId)) {
-        throw ScriptException("Static item was loaded at runtime; unload it with UnloadStaticItems", staticItemId);
+        throw ScriptException("Static item is a runtime static item; unload it with UnloadRuntimeStaticItems", staticItemId);
     }
 
     return self->RemoveStaticItem(staticItemId);
@@ -487,15 +487,15 @@ FO_SCRIPT_API bool Server_Map_RemoveStaticItem(ptr<Map> self, ptr<StaticItem> st
         throw ScriptException("Static item belongs to another map", staticItem->GetId(), staticItem->GetProtoId());
     }
     if (self->IsRuntimeStaticItem(staticItem->GetId())) {
-        throw ScriptException("Static item was loaded at runtime; unload it with UnloadStaticItems", staticItem->GetId());
+        throw ScriptException("Static item is a runtime static item; unload it with UnloadRuntimeStaticItems", staticItem->GetId());
     }
 
     return self->RemoveStaticItem(staticItem->GetId());
 }
 
-// Copy the static items of a prototype map so that its first hex lands at `destHex`, with baked ids plus `idOffset`, and return those ids
+// Load the static items of a prototype map as runtime static items so that its first hex lands at `destHex`, with baked ids plus `idOffset`, and return their ids
 ///@ ExportMethod
-FO_SCRIPT_API vector<ident_t> Server_Map_LoadStaticItems(ptr<Map> self, hstring mapPid, mpos destHex, int64_t idOffset)
+FO_SCRIPT_API vector<ident_t> Server_Map_LoadRuntimeStaticItems(ptr<Map> self, hstring mapPid, mpos destHex, int64_t idOffset)
 {
     if (self->IsDestroying()) {
         throw ScriptException("Cannot load static items into a map that is being destroyed", self->GetId());
@@ -507,12 +507,12 @@ FO_SCRIPT_API vector<ident_t> Server_Map_LoadStaticItems(ptr<Map> self, hstring 
         throw ScriptException("Map proto not found", mapPid);
     }
 
-    return self->GetEngine()->MapMngr.LoadStaticItems(self, source_proto, destHex, idOffset);
+    return self->GetEngine()->MapMngr.LoadRuntimeStaticItems(self, source_proto, destHex, idOffset);
 }
 
-// Copy the static items of a prototype map area whose first hex lands at `destHex`, with baked ids plus `idOffset`, and return those ids
+// Load the static items of a prototype map area as runtime static items so that the area's first hex lands at `destHex`, with baked ids plus `idOffset`, and return their ids
 ///@ ExportMethod
-FO_SCRIPT_API vector<ident_t> Server_Map_LoadStaticItems(ptr<Map> self, hstring mapPid, mpos destHex, mpos sourceHex, msize sourceSize, int64_t idOffset)
+FO_SCRIPT_API vector<ident_t> Server_Map_LoadRuntimeStaticItems(ptr<Map> self, hstring mapPid, mpos destHex, mpos sourceHex, msize sourceSize, int64_t idOffset)
 {
     if (self->IsDestroying()) {
         throw ScriptException("Cannot load static items into a map that is being destroyed", self->GetId());
@@ -524,14 +524,14 @@ FO_SCRIPT_API vector<ident_t> Server_Map_LoadStaticItems(ptr<Map> self, hstring 
         throw ScriptException("Map proto not found", mapPid);
     }
 
-    return self->GetEngine()->MapMngr.LoadStaticItems(self, source_proto, destHex, sourceHex, sourceSize, idOffset);
+    return self->GetEngine()->MapMngr.LoadRuntimeStaticItems(self, source_proto, destHex, sourceHex, sourceSize, idOffset);
 }
 
-// Remove static items that `LoadStaticItems` added to the map
+// Remove runtime static items that `LoadRuntimeStaticItems` added to the map
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Map_UnloadStaticItems(ptr<Map> self, readonly_vector<ident_t> staticItemIds)
+FO_SCRIPT_API void Server_Map_UnloadRuntimeStaticItems(ptr<Map> self, readonly_vector<ident_t> runtimeStaticItemIds)
 {
-    self->GetEngine()->MapMngr.UnloadStaticItems(self, staticItemIds);
+    self->GetEngine()->MapMngr.UnloadRuntimeStaticItems(self, runtimeStaticItemIds);
 }
 
 // Create the critters and dynamic items of a prototype map so that its first hex lands at `destHex` and return the created critter and map item ids

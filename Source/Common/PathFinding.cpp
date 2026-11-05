@@ -93,7 +93,6 @@ public:
 
     [[nodiscard]] auto IsInside(mpos hex) const -> bool { return hex.x >= _left && hex.y >= _top && hex.x - _left < _width && hex.y - _top < _height; }
     [[nodiscard]] auto FindCell(mpos hex) const -> nptr<const PathSearchCell>;
-    // An index stays valid for the whole search, a reference only until a new block is touched
     [[nodiscard]] auto GetCellIndex(mpos hex) -> int32_t;
     [[nodiscard]] auto GetCell(int32_t index) -> PathSearchCell& { return _cells[index]; }
     [[nodiscard]] auto GetCell(mpos hex) -> PathSearchCell& { return _cells[GetCellIndex(hex)]; }
@@ -136,7 +135,6 @@ private:
 
     ptr<const FindPathInput> _input;
     PathSearchGrid _grid;
-    // Hexes the enclosure probe floods outside the search window, which the search itself never reaches
     unordered_set<mpos> _probedOutside {};
     function<HexBlockResult(mpos)> _checkHexOnce;
     PathOpenList _open {};

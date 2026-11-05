@@ -385,12 +385,12 @@ auto MapManager::IsStaticMapLoaded(ptr<const ProtoMap> proto) const -> bool
     return it != _staticMaps.end() && IsStaticMapReady(it->second.Data);
 }
 
-auto MapManager::LoadStaticItems(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos dest_hex, int64_t id_offset) -> vector<ident_t>
+auto MapManager::LoadRuntimeStaticItems(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos dest_hex, int64_t id_offset) -> vector<ident_t>
 {
-    return LoadStaticItems(map, source_proto, dest_hex, mpos {}, source_proto->GetSize(), id_offset);
+    return LoadRuntimeStaticItems(map, source_proto, dest_hex, mpos {}, source_proto->GetSize(), id_offset);
 }
 
-auto MapManager::LoadStaticItems(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos dest_hex, mpos source_hex, msize source_size, int64_t id_offset) -> vector<ident_t>
+auto MapManager::LoadRuntimeStaticItems(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos dest_hex, mpos source_hex, msize source_size, int64_t id_offset) -> vector<ident_t>
 {
     FO_TRACE_ZONE(Map);
 
@@ -412,7 +412,7 @@ auto MapManager::LoadStaticItems(ptr<Map> map, ptr<const ProtoMap> source_proto,
         int64_t y {safe_numeric_cast<int64_t>(hex.y) - source_hex.y + dest_hex.y};
 
         if (x < 0 || y < 0 || x >= map_size.width || y >= map_size.height) {
-            throw MapManagerException("Loaded static item lands outside the map", source_proto->GetName(), hex, dest_hex, map_size);
+            throw MapManagerException("Runtime static item lands outside the map", source_proto->GetName(), hex, dest_hex, map_size);
         }
 
         return mpos {numeric_cast<mcoord_t>(x), numeric_cast<mcoord_t>(y)};
@@ -430,13 +430,13 @@ auto MapManager::LoadStaticItems(ptr<Map> map, ptr<const ProtoMap> source_proto,
             ident_t item_id {checked_add(source_item->GetId().underlying_value(), id_offset)};
 
             if (!item_id) {
-                throw MapManagerException("Loaded static item id is zero", source_proto->GetName(), source_item->GetId(), id_offset);
+                throw MapManagerException("Runtime static item id is zero", source_proto->GetName(), source_item->GetId(), id_offset);
             }
             if (map->HasStaticItem(item_id)) {
-                throw MapManagerException("Loaded static item id is already used on the map", source_proto->GetName(), item_id);
+                throw MapManagerException("Runtime static item id is already used on the map", source_proto->GetName(), item_id);
             }
             if (!unique_ids.emplace(item_id).second) {
-                throw MapManagerException("Loaded static item id repeats", source_proto->GetName(), item_id);
+                throw MapManagerException("Runtime static item id repeats", source_proto->GetName(), item_id);
             }
 
             source_items.emplace_back(source_item);
@@ -478,21 +478,21 @@ auto MapManager::LoadStaticItems(ptr<Map> map, ptr<const ProtoMap> source_proto,
     return item_ids;
 }
 
-void MapManager::UnloadStaticItems(ptr<Map> map, const_span<ident_t> static_item_ids)
+void MapManager::UnloadRuntimeStaticItems(ptr<Map> map, const_span<ident_t> runtime_static_item_ids)
 {
     FO_TRACE_ZONE(Map);
 
     ValidateEntityAccess(map);
 
     unordered_set<ident_t> ids {};
-    ids.reserve(static_item_ids.size());
+    ids.reserve(runtime_static_item_ids.size());
 
-    for (ident_t static_item_id : static_item_ids) {
-        if (!map->IsRuntimeStaticItem(static_item_id)) {
-            throw MapManagerException("Static item was not loaded into this map at runtime", map->GetName(), static_item_id);
+    for (ident_t runtime_static_item_id : runtime_static_item_ids) {
+        if (!map->IsRuntimeStaticItem(runtime_static_item_id)) {
+            throw MapManagerException("Static item is not a runtime static item of this map", map->GetName(), runtime_static_item_id);
         }
-        if (!ids.emplace(static_item_id).second) {
-            throw MapManagerException("Static item id to unload repeats", map->GetName(), static_item_id);
+        if (!ids.emplace(runtime_static_item_id).second) {
+            throw MapManagerException("Runtime static item id to unload repeats", map->GetName(), runtime_static_item_id);
         }
     }
 

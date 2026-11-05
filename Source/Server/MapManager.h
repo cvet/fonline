@@ -104,9 +104,9 @@ public:
     void LoadStaticMapsAsync(const_span<ptr<const ProtoMap>> protos);
     auto UnloadStaticMap(ptr<const ProtoMap> proto) -> bool;
     void ClearStaticMaps() noexcept;
-    auto LoadStaticItems(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos dest_hex, int64_t id_offset) -> vector<ident_t>;
-    auto LoadStaticItems(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos dest_hex, mpos source_hex, msize source_size, int64_t id_offset) -> vector<ident_t>;
-    void UnloadStaticItems(ptr<Map> map, const_span<ident_t> static_item_ids);
+    auto LoadRuntimeStaticItems(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos dest_hex, int64_t id_offset) -> vector<ident_t>;
+    auto LoadRuntimeStaticItems(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos dest_hex, mpos source_hex, msize source_size, int64_t id_offset) -> vector<ident_t>;
+    void UnloadRuntimeStaticItems(ptr<Map> map, const_span<ident_t> runtime_static_item_ids);
     auto GenerateContent(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos dest_hex) -> vector<ident_t>;
 
 private:

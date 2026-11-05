@@ -65,7 +65,7 @@ public:
 
 protected:
     // Clips an area to the grid as inclusive-exclusive int64 bounds {x0, y0, x1, y1}, or nothing when empty
-    [[nodiscard]] auto ClipArea(TPos origin, TSize area) const noexcept -> optional<array<int64_t, 4>>
+    auto ClipArea(TPos origin, TSize area) const noexcept -> optional<array<int64_t, 4>>
     {
         int64_t x0 {std::max<int64_t>(origin.x, 0)};
         int64_t y0 {std::max<int64_t>(origin.y, 0)};
@@ -313,9 +313,9 @@ public:
     [[nodiscard]] auto GetAllocatedChunkCount() const noexcept -> size_t { return _chunkCount; }
 
 private:
-    [[nodiscard]] auto GetSuperIndex(int64_t cx, int64_t cy) const noexcept -> size_t { return numeric_cast<size_t>(cy / SUPER_SIDE * _superPerRow + cx / SUPER_SIDE); }
-    [[nodiscard]] static auto GetSlotIndex(int64_t cx, int64_t cy) noexcept -> size_t { return numeric_cast<size_t>(cy % SUPER_SIDE * SUPER_SIDE + cx % SUPER_SIDE); }
-    [[nodiscard]] static auto GetCellIndex(TPos pos) noexcept -> size_t { return numeric_cast<size_t>(safe_numeric_cast<int64_t>(pos.y) % CHUNK_SIDE * CHUNK_SIDE + safe_numeric_cast<int64_t>(pos.x) % CHUNK_SIDE); }
+    auto GetSuperIndex(int64_t cx, int64_t cy) const noexcept -> size_t { return numeric_cast<size_t>(cy / SUPER_SIDE * _superPerRow + cx / SUPER_SIDE); }
+    static auto GetSlotIndex(int64_t cx, int64_t cy) noexcept -> size_t { return numeric_cast<size_t>(cy % SUPER_SIDE * SUPER_SIDE + cx % SUPER_SIDE); }
+    static auto GetCellIndex(TPos pos) noexcept -> size_t { return numeric_cast<size_t>(safe_numeric_cast<int64_t>(pos.y) % CHUNK_SIDE * CHUNK_SIDE + safe_numeric_cast<int64_t>(pos.x) % CHUNK_SIDE); }
 
     template<typename TCallback>
     void ForEachChunk(TCallback&& callback)

@@ -10950,10 +10950,6 @@
           "source_sha256": "925fc3bcc97a0e01e405d9023343a9b28dc43312b3f7a97e2b2201f6d0678518",
           "translation": "Передаёт событие прокрутки касанием в заданной позиции клиента со знаковым смещением в пикселях"
         },
-        "/symbols/@id=script.method.client.Map.UnloadStaticItems/description": {
-          "source_sha256": "72bd8379902cca5c5936606b8c55b6506ee40cd689c06ecb1292e64d8642c214",
-          "translation": "Удалить статические предметы, добавленные в представление карты через `LoadStaticItems`, и освободить оставшиеся пустыми блоки полей"
-        },
         "/symbols/@id=script.method.server.Game.LoadStaticMap/description": {
           "source_sha256": "7e1a0ac4a375ead1e5b86957ea20f67c8af7447c00ab8cc625de6f16b8a4f2e3",
           "translation": "Прочитать запечённое содержимое прототипа карты в кэш сейчас"
@@ -10966,10 +10962,6 @@
           "source_sha256": "182ba1bf365dcd142d22952cde840d9eac542f05ca939862dd40049d671d3b20",
           "translation": "Создать криттеров и динамические предметы прототипа карты так, чтобы её первый гекс попал в `destHex`, и вернуть идентификаторы созданных криттеров и предметов карты"
         },
-        "/symbols/@id=script.method.server.Map.UnloadStaticItems/description": {
-          "source_sha256": "d9877e9ce847aa8b5539f9b6f44aca09ddbf6d38cfbaa99a96790422e88fabd5",
-          "translation": "Удалить статические предметы, добавленные в карту через `LoadStaticItems`"
-        },
         "/symbols/@id=script.method.server.Game.IsStaticMapLoaded/description": {
           "source_sha256": "2a0c98334e5eef32635c4198c60bfe72156c02892b4e89807aecec9ba0150eca",
           "translation": "Вернуть, кэшировано ли запечённое содержимое прототипа карты"
@@ -10978,21 +10970,29 @@
           "source_sha256": "dfa5689e0708cea18d6f8446d42bb9bc1e5823831d192d6519cbf090a07b0b81",
           "translation": "Начать чтение запечённого содержимого прототипов карт в рабочих потоках; запрос одного из них ждёт его чтения"
         },
-        "/symbols/@id=script.method.client.Map.LoadStaticItems%230971edd694992850/description": {
-          "source_sha256": "1376a4f6bd439da3581bb787c3ac662da3aebf7179665a6defbb0c107367962e",
-          "translation": "Скопировать статические предметы области прототипа карты из её клиентской выпечки так, чтобы первый гекс области попал в `destHex`, с запечёнными идентификаторами плюс `idOffset`, и вернуть эти идентификаторы"
+        "/symbols/@id=script.method.client.Map.LoadRuntimeStaticItems%230971edd694992850/description": {
+          "source_sha256": "74bf8007d1c46e1800c3d58588eefef0b0e439427aef63aef9970c795076ce29",
+          "translation": "Загрузить статические предметы области прототипа карты из её клиентской выпечки как статические предметы времени выполнения так, чтобы первый гекс области попал в `destHex`, с запечёнными идентификаторами плюс `idOffset`, и вернуть их идентификаторы"
         },
-        "/symbols/@id=script.method.client.Map.LoadStaticItems%237af3f0c56f49e919/description": {
-          "source_sha256": "a7fb4d7c3b56d0fc8927e1ba810b6c62008ae77fa59ce855619c1322e948d4e2",
-          "translation": "Скопировать статические предметы клиентской выпечки прототипа карты так, чтобы её первый гекс попал в `destHex`, с запечёнными идентификаторами плюс `idOffset`, и вернуть эти идентификаторы"
+        "/symbols/@id=script.method.client.Map.LoadRuntimeStaticItems%237af3f0c56f49e919/description": {
+          "source_sha256": "cdefc1d21ff4c438707cb9b0766caf07968afb34cacfc6065243948cfb719eb1",
+          "translation": "Загрузить статические предметы клиентской выпечки прототипа карты как статические предметы времени выполнения так, чтобы её первый гекс попал в `destHex`, с запечёнными идентификаторами плюс `idOffset`, и вернуть их идентификаторы"
         },
-        "/symbols/@id=script.method.server.Map.LoadStaticItems%230971edd694992850/description": {
-          "source_sha256": "a804d79389aade21191369f041de3b6bd8ed1bcaf50ee9b5f439a759eb5c709e",
-          "translation": "Скопировать статические предметы области прототипа карты, первый гекс которой попадает в `destHex`, с запечёнными идентификаторами плюс `idOffset`, и вернуть эти идентификаторы"
+        "/symbols/@id=script.method.client.Map.UnloadRuntimeStaticItems/description": {
+          "source_sha256": "20d4c22d77c7c152de0b91cb6410121adc9fb054c6a429a71148238734e66a1c",
+          "translation": "Удалить статические предметы времени выполнения, добавленные в представление карты через `LoadRuntimeStaticItems`, и освободить оставшиеся пустыми блоки полей"
         },
-        "/symbols/@id=script.method.server.Map.LoadStaticItems%237af3f0c56f49e919/description": {
-          "source_sha256": "1759e20569bf7d088cef080bc7dec9d1e6a9b86ed2fa6ea2fc5e1e5afae4fba3",
-          "translation": "Скопировать статические предметы прототипа карты так, чтобы её первый гекс попал в `destHex`, с запечёнными идентификаторами плюс `idOffset`, и вернуть эти идентификаторы"
+        "/symbols/@id=script.method.server.Map.LoadRuntimeStaticItems%230971edd694992850/description": {
+          "source_sha256": "8aa96ba2c5245e828d249939e326fed372c1bd399d01616bfed930f96744ef46",
+          "translation": "Загрузить статические предметы области прототипа карты как статические предметы времени выполнения так, чтобы первый гекс области попал в `destHex`, с запечёнными идентификаторами плюс `idOffset`, и вернуть их идентификаторы"
+        },
+        "/symbols/@id=script.method.server.Map.LoadRuntimeStaticItems%237af3f0c56f49e919/description": {
+          "source_sha256": "4b2a8fdca3fa15d9beae675ab7f368a95d5f91d388f4e6515d4c922e01536d8f",
+          "translation": "Загрузить статические предметы прототипа карты как статические предметы времени выполнения так, чтобы её первый гекс попал в `destHex`, с запечёнными идентификаторами плюс `idOffset`, и вернуть их идентификаторы"
+        },
+        "/symbols/@id=script.method.server.Map.UnloadRuntimeStaticItems/description": {
+          "source_sha256": "621ddfb90e2ab8cd8dd2c547a0fcae48a47f5f5df66423b829aef204baf8a93d",
+          "translation": "Удалить статические предметы времени выполнения, добавленные в карту через `LoadRuntimeStaticItems`"
         }
       }
     },

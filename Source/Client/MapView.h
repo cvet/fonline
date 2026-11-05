@@ -224,6 +224,7 @@ public:
     [[nodiscard]] auto GetCritters() const -> const_span<refcount_ptr<CritterHexView>> { return _critters; }
     [[nodiscard]] auto GetItems() -> span<refcount_ptr<ItemHexView>> { return _items; }
     [[nodiscard]] auto GetItems() const -> const_span<refcount_ptr<ItemHexView>> { return _items; }
+    [[nodiscard]] auto IsRuntimeStaticItem(ident_t static_item_id) const noexcept -> bool { return _runtimeStaticItems.contains(static_item_id); }
 
     auto GenTempEntityId() -> ident_t;
 
@@ -232,12 +233,9 @@ public:
     void LoadFromFile(string_view map_name, string_view file_name, const string& str);
     void LoadStaticData();
     void ApplyStaticItemRemovals();
-    // Adds the static items of another proto map's client bake at dest_hex with baked ids plus id_offset and returns
-    // those ids; UnloadStaticItems removes them again and releases the field blocks they leave empty
-    auto LoadStaticItems(hstring map_pid, mpos dest_hex, int64_t id_offset) -> vector<ident_t>;
-    auto LoadStaticItems(hstring map_pid, mpos dest_hex, mpos source_hex, msize source_size, int64_t id_offset) -> vector<ident_t>;
-    void UnloadStaticItems(const_span<ident_t> static_item_ids);
-    [[nodiscard]] auto IsRuntimeStaticItem(ident_t static_item_id) const noexcept -> bool { return _runtimeStaticItems.contains(static_item_id); }
+    auto LoadRuntimeStaticItems(hstring map_pid, mpos dest_hex, int64_t id_offset) -> vector<ident_t>;
+    auto LoadRuntimeStaticItems(hstring map_pid, mpos dest_hex, mpos source_hex, msize source_size, int64_t id_offset) -> vector<ident_t>;
+    void UnloadRuntimeStaticItems(const_span<ident_t> runtime_static_item_ids);
     void Process();
 
     void DrawMap();
@@ -320,7 +318,6 @@ public:
     void UpdateHexLightSources(mpos hex);
 
     void SetHiddenRoof(mpos hex);
-    // Points the sprite at the light of its hex and two corner neighbours, allocating those fields
     void SetupSpriteLight(ptr<MapSprite> mspr, CornerType corner);
     auto GetHiddenRoofNum() -> int32_t;
     void EnsureRoofNums();
@@ -367,17 +364,15 @@ private:
     void SetMultihexCritter(ptr<CritterHexView> cr, bool set);
     void DrawHexCritter(ptr<CritterHexView> cr, ptr<Field> field, mpos hex);
 
-    auto CollectRemovedStaticItemIds() const -> unordered_set<ident_t>;
-
-    void ReleaseEmptyFields(mpos origin, msize size);
-
     auto AddItemInternal(ptr<ItemHexView> item) -> ptr<ItemHexView>;
     void AddItemToField(ptr<ItemHexView> item);
     void RemoveItemFromField(ptr<ItemHexView> item);
     void DrawHexItem(ptr<ItemHexView> item, ptr<Field> field, mpos hex, bool extra_draw);
+    auto CollectRemovedStaticItemIds() const -> unordered_set<ident_t>;
 
     void RecacheHexFlags(mpos hex, ptr<Field> field);
     void RecacheScrollBlocks();
+    void ReleaseEmptyFields(mpos origin, msize size);
 
     void RebuildMapNow();
     void RebuildMapOffset(ipos32 axial_hex_offset);

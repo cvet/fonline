@@ -418,7 +418,7 @@ void MapView::LoadStaticData()
     RebuildMapNow();
 }
 
-auto MapView::LoadStaticItems(hstring map_pid, mpos dest_hex, int64_t id_offset) -> vector<ident_t>
+auto MapView::LoadRuntimeStaticItems(hstring map_pid, mpos dest_hex, int64_t id_offset) -> vector<ident_t>
 {
     auto source_proto {_engine->GetProtoMap(map_pid)};
 
@@ -426,10 +426,10 @@ auto MapView::LoadStaticItems(hstring map_pid, mpos dest_hex, int64_t id_offset)
         throw MapViewLoadException("Map proto not found", map_pid);
     }
 
-    return LoadStaticItems(map_pid, dest_hex, mpos {}, source_proto->GetSize(), id_offset);
+    return LoadRuntimeStaticItems(map_pid, dest_hex, mpos {}, source_proto->GetSize(), id_offset);
 }
 
-auto MapView::LoadStaticItems(hstring map_pid, mpos dest_hex, mpos source_hex, msize source_size, int64_t id_offset) -> vector<ident_t>
+auto MapView::LoadRuntimeStaticItems(hstring map_pid, mpos dest_hex, mpos source_hex, msize source_size, int64_t id_offset) -> vector<ident_t>
 {
     FO_TRACE_ZONE(Map);
 
@@ -487,7 +487,7 @@ auto MapView::LoadStaticItems(hstring map_pid, mpos dest_hex, mpos source_hex, m
         int64_t y {safe_numeric_cast<int64_t>(hex.y) - source_hex.y + dest_hex.y};
 
         if (x < 0 || y < 0 || x >= map_size.width || y >= map_size.height) {
-            throw MapViewLoadException("Loaded static item lands outside the map", map_pid, hex, dest_hex, map_size);
+            throw MapViewLoadException("Runtime static item lands outside the map", map_pid, hex, dest_hex, map_size);
         }
 
         return mpos {numeric_cast<mcoord_t>(x), numeric_cast<mcoord_t>(y)};
@@ -519,13 +519,13 @@ auto MapView::LoadStaticItems(hstring map_pid, mpos dest_hex, mpos source_hex, m
         ident_t item_id {checked_add(baked_id.underlying_value(), id_offset)};
 
         if (!item_id) {
-            throw MapViewLoadException("Loaded static item id is zero", map_pid, baked_id, id_offset);
+            throw MapViewLoadException("Runtime static item id is zero", map_pid, baked_id, id_offset);
         }
         if (_itemsMap.contains(item_id)) {
-            throw MapViewLoadException("Loaded static item id is already used on the map", map_pid, item_id);
+            throw MapViewLoadException("Runtime static item id is already used on the map", map_pid, item_id);
         }
         if (!unique_ids.emplace(item_id).second) {
-            throw MapViewLoadException("Loaded static item id repeats", map_pid, item_id);
+            throw MapViewLoadException("Runtime static item id repeats", map_pid, item_id);
         }
 
         item_view.SetHex(move_hex(hex));
@@ -569,29 +569,29 @@ auto MapView::LoadStaticItems(hstring map_pid, mpos dest_hex, mpos source_hex, m
     return item_ids;
 }
 
-void MapView::UnloadStaticItems(const_span<ident_t> static_item_ids)
+void MapView::UnloadRuntimeStaticItems(const_span<ident_t> runtime_static_item_ids)
 {
     FO_TRACE_ZONE(Map);
 
     vector<ptr<ItemHexView>> items {};
-    items.reserve(static_item_ids.size());
+    items.reserve(runtime_static_item_ids.size());
     unordered_set<ident_t> ids {};
-    ids.reserve(static_item_ids.size());
+    ids.reserve(runtime_static_item_ids.size());
     int64_t x0 {std::numeric_limits<int64_t>::max()};
     int64_t y0 {std::numeric_limits<int64_t>::max()};
     int64_t x1 {std::numeric_limits<int64_t>::min()};
     int64_t y1 {std::numeric_limits<int64_t>::min()};
 
-    for (ident_t static_item_id : static_item_ids) {
-        if (!_runtimeStaticItems.contains(static_item_id)) {
-            throw GenericException("Static item was not loaded into this map at runtime", GetProtoId(), static_item_id);
+    for (ident_t runtime_static_item_id : runtime_static_item_ids) {
+        if (!_runtimeStaticItems.contains(runtime_static_item_id)) {
+            throw GenericException("Static item is not a runtime static item of this map", GetProtoId(), runtime_static_item_id);
         }
-        if (!ids.emplace(static_item_id).second) {
-            throw GenericException("Static item id to unload repeats", GetProtoId(), static_item_id);
+        if (!ids.emplace(runtime_static_item_id).second) {
+            throw GenericException("Runtime static item id to unload repeats", GetProtoId(), runtime_static_item_id);
         }
 
         // A removal the server recorded may have destroyed the view already
-        auto it {_itemsMap.find(static_item_id)};
+        auto it {_itemsMap.find(runtime_static_item_id)};
 
         if (it == _itemsMap.end()) {
             continue;
@@ -616,8 +616,8 @@ void MapView::UnloadStaticItems(const_span<ident_t> static_item_ids)
         }
     }
 
-    for (ident_t static_item_id : ids) {
-        _runtimeStaticItems.erase(static_item_id);
+    for (ident_t runtime_static_item_id : ids) {
+        _runtimeStaticItems.erase(runtime_static_item_id);
     }
 
     if (items.empty()) {

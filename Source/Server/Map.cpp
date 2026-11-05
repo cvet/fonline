@@ -1710,8 +1710,8 @@ auto Map::RemoveStaticItem(ident_t static_item_id) -> bool
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
     FO_VERIFY_AND_THROW(HasStaticItem(static_item_id), "Map has no static item with this id", GetId(), GetProtoId(), static_item_id);
 
-    // The removal list persists baked ids only; a loaded item leaves through RemoveRuntimeStaticItems
-    FO_VERIFY_AND_THROW(!IsRuntimeStaticItem(static_item_id), "Runtime-loaded static item cannot join the removal list", GetId(), GetProtoId(), static_item_id);
+    // The removal list persists baked ids only; a runtime static item leaves through RemoveRuntimeStaticItems
+    FO_VERIFY_AND_THROW(!IsRuntimeStaticItem(static_item_id), "Runtime static item cannot join the removal list", GetId(), GetProtoId(), static_item_id);
 
     if (_removedStaticItems.count(static_item_id) != 0) {
         return false;

@@ -885,11 +885,11 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-client-map-isscrollcheck-c07a9030bd"></a>
 - [`symbol-script-method-client-map-isscrollcheck-c07a9030bd`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-isscrollcheck-c07a9030bd)
 
-<a id="symbol-script-method-client-map-loadstaticitems-0971edd694992850-b33b00940a"></a>
-- [`symbol-script-method-client-map-loadstaticitems-0971edd694992850-b33b00940a`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-loadstaticitems-0971edd694992850-b33b00940a)
+<a id="symbol-script-method-client-map-loadruntimestaticitems-0971edd694992850-9febab4d71"></a>
+- [`symbol-script-method-client-map-loadruntimestaticitems-0971edd694992850-9febab4d71`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-loadruntimestaticitems-0971edd694992850-9febab4d71)
 
-<a id="symbol-script-method-client-map-loadstaticitems-7af3f0c56f49e919-c800de3c08"></a>
-- [`symbol-script-method-client-map-loadstaticitems-7af3f0c56f49e919-c800de3c08`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-loadstaticitems-7af3f0c56f49e919-c800de3c08)
+<a id="symbol-script-method-client-map-loadruntimestaticitems-7af3f0c56f49e919-b09ce221fe"></a>
+- [`symbol-script-method-client-map-loadruntimestaticitems-7af3f0c56f49e919-b09ce221fe`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-loadruntimestaticitems-7af3f0c56f49e919-b09ce221fe)
 
 <a id="symbol-script-method-client-map-movehexbydir-62392271e1b42030-ef2c0aced3"></a>
 - [`symbol-script-method-client-map-movehexbydir-62392271e1b42030-ef2c0aced3`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-movehexbydir-62392271e1b42030-ef2c0aced3)
@@ -936,8 +936,8 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-client-map-setvisiblelayers-876540cf37"></a>
 - [`symbol-script-method-client-map-setvisiblelayers-876540cf37`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-setvisiblelayers-876540cf37)
 
-<a id="symbol-script-method-client-map-unloadstaticitems-9636f6e24c"></a>
-- [`symbol-script-method-client-map-unloadstaticitems-9636f6e24c`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-unloadstaticitems-9636f6e24c)
+<a id="symbol-script-method-client-map-unloadruntimestaticitems-4460dc2897"></a>
+- [`symbol-script-method-client-map-unloadruntimestaticitems-4460dc2897`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-unloadruntimestaticitems-4460dc2897)
 
 <a id="group-method-common-game-ab04446c71"></a>
 - [`group-method-common-game-ab04446c71`](../../en/reference/script-api/methods.md#group-method-common-game-ab04446c71)
@@ -3111,11 +3111,11 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-server-map-isoutsidearea-a52ec2438d"></a>
 - [`symbol-script-method-server-map-isoutsidearea-a52ec2438d`](../../en/reference/script-api/methods.md#symbol-script-method-server-map-isoutsidearea-a52ec2438d)
 
-<a id="symbol-script-method-server-map-loadstaticitems-0971edd694992850-6367014437"></a>
-- [`symbol-script-method-server-map-loadstaticitems-0971edd694992850-6367014437`](../../en/reference/script-api/methods.md#symbol-script-method-server-map-loadstaticitems-0971edd694992850-6367014437)
+<a id="symbol-script-method-server-map-loadruntimestaticitems-0971edd694992850-9600dca837"></a>
+- [`symbol-script-method-server-map-loadruntimestaticitems-0971edd694992850-9600dca837`](../../en/reference/script-api/methods.md#symbol-script-method-server-map-loadruntimestaticitems-0971edd694992850-9600dca837)
 
-<a id="symbol-script-method-server-map-loadstaticitems-7af3f0c56f49e919-184ba05e2c"></a>
-- [`symbol-script-method-server-map-loadstaticitems-7af3f0c56f49e919-184ba05e2c`](../../en/reference/script-api/methods.md#symbol-script-method-server-map-loadstaticitems-7af3f0c56f49e919-184ba05e2c)
+<a id="symbol-script-method-server-map-loadruntimestaticitems-7af3f0c56f49e919-09816edb40"></a>
+- [`symbol-script-method-server-map-loadruntimestaticitems-7af3f0c56f49e919-09816edb40`](../../en/reference/script-api/methods.md#symbol-script-method-server-map-loadruntimestaticitems-7af3f0c56f49e919-09816edb40)
 
 <a id="symbol-script-method-server-map-movehexbydir-62392271e1b42030-e470a3bcdb"></a>
 - [`symbol-script-method-server-map-movehexbydir-62392271e1b42030-e470a3bcdb`](../../en/reference/script-api/methods.md#symbol-script-method-server-map-movehexbydir-62392271e1b42030-e470a3bcdb)
@@ -3141,8 +3141,8 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-server-map-unblockhex-63bc03334d"></a>
 - [`symbol-script-method-server-map-unblockhex-63bc03334d`](../../en/reference/script-api/methods.md#symbol-script-method-server-map-unblockhex-63bc03334d)
 
-<a id="symbol-script-method-server-map-unloadstaticitems-ac725d0ec2"></a>
-- [`symbol-script-method-server-map-unloadstaticitems-ac725d0ec2`](../../en/reference/script-api/methods.md#symbol-script-method-server-map-unloadstaticitems-ac725d0ec2)
+<a id="symbol-script-method-server-map-unloadruntimestaticitems-724dc512f7"></a>
+- [`symbol-script-method-server-map-unloadruntimestaticitems-724dc512f7`](../../en/reference/script-api/methods.md#symbol-script-method-server-map-unloadruntimestaticitems-724dc512f7)
 
 <a id="symbol-script-method-server-map-verifytrigger-ea7e6159e4"></a>
 - [`symbol-script-method-server-map-verifytrigger-ea7e6159e4`](../../en/reference/script-api/methods.md#symbol-script-method-server-map-verifytrigger-ea7e6159e4)
