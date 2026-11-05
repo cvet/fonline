@@ -287,6 +287,8 @@ A map instance can take in the content of other proto maps while it runs and giv
 
 ## Line tracing
 
+`LineTracer` works in float coordinates relative to its start hex, and its angle-and-distance form finds the ray's end from a hex at the map origin with the start's column parity, then moves it back by whole cells. Rounding therefore never depends on where a line lies, and a line far out on a continent-sized map takes the same steps as near the origin.
+
 `TraceLineInput`: `StartHex` toward `TargetHex`; `MaxDist` limits length (`0`: start/target distance), `Angle` sets direction, `CheckLastMovable` requests the last movable hex, `IsHexBlocked` stops tracing, optional `IsHexMovable` records move-valid cells. `TraceLineOutput`: completion, last-movable presence, pre-block/block/last-movable hexes. Uses: movement/pathfinding, visibility, shooting.
 
 Under caller-held map cover, native `Map::GetMovableHexesInSight` / script `Map.GetMovableHexesInSight(origin, radius)` returns movable cells by ascending x/y with `GeometryHelper::GetDistance <= radius`. Negative radii or out-of-bounds origins throw. The origin skips tracing; others match scalar `TracePath(..., distance, 0.0f).PreBlock` via `PathFinding::TraceLine` + `Map::IsHexShootable`. Dynamic/manual/instance-static blockers are read anew, without caching. Visibility/vision/friendliness/sneak/privacy remain project-owned.

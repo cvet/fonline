@@ -75,7 +75,6 @@ public:
     auto operator=(MapManager&&) noexcept = delete;
     ~MapManager() = default;
 
-    // Baked content of a proto map, read on first use and kept until UnloadStaticMap
     [[nodiscard]] auto GetStaticMap(ptr<const ProtoMap> proto) -> ptr<StaticMap>;
     [[nodiscard]] auto IsStaticMapLoaded(ptr<const ProtoMap> proto) const -> bool;
     [[nodiscard]] auto GetLocationByPid(hstring loc_pid, int32_t skip_count) noexcept -> refcount_nptr<Location>;
@@ -105,11 +104,9 @@ public:
     void LoadStaticMapsAsync(const_span<ptr<const ProtoMap>> protos);
     auto UnloadStaticMap(ptr<const ProtoMap> proto) -> bool;
     void ClearStaticMaps() noexcept;
-    // Copy ids are baked ids plus id_offset; an id already on the map rejects the whole load
     auto LoadStaticItems(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos dest_hex, int64_t id_offset) -> vector<ident_t>;
     auto LoadStaticItems(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos dest_hex, mpos source_hex, msize source_size, int64_t id_offset) -> vector<ident_t>;
     void UnloadStaticItems(ptr<Map> map, const_span<ident_t> static_item_ids);
-    // Creates the critters and dynamic items of another proto map on a map at dest_hex; returns the critter and hex item ids
     auto GenerateContent(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos dest_hex) -> vector<ident_t>;
 
 private:
@@ -126,7 +123,7 @@ private:
     void Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, optional<int32_t> safe_radius, ident_t global_cr_id);
     void GenerateMapContent(ptr<Map> map);
     auto GenerateContent(ptr<Map> map, ptr<const StaticMap> source, mpos dest_hex, bool fresh_map) -> vector<ident_t>;
-    static auto IsStaticMapReady(const PendingStaticMap& static_map) -> bool;
+    auto IsStaticMapReady(const PendingStaticMap& static_map) const -> bool;
     auto ReadStaticMap(ptr<const ProtoMap> map_proto) -> shared_ptr<StaticMap>;
     void BindStaticItemScripts(string_view map_name, ptr<StaticItem> item);
     auto RequestStaticMap(ptr<const ProtoMap> proto, bool in_background) -> PendingStaticMap;

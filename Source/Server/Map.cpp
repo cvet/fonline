@@ -1818,12 +1818,12 @@ void Map::RefreshStaticFieldOverride(mpos hex)
         return;
     }
 
-    StaticMap::Field field {baked_removed ? _staticMap->BuildFieldWithout(hex, _removedStaticItems) : baked_field};
+    // Both maps hand their items to the override from their own fields; the baked cell holds content here, so taking
+    // it for writing allocates nothing in the grid other instances share
+    StaticMap::Field field {_staticMap->BuildFieldWithout(hex, _removedStaticItems)};
 
     if (has_runtime) {
-        for (ptr<StaticItem> runtime_item : runtime_field->StaticItems) {
-            StaticMap::ApplyItemToField(runtime_item, make_ptr(&field));
-        }
+        _runtimeStatics->MergeFieldInto(hex, make_ptr(&field));
     }
 
     _staticFieldOverrides.insert_or_assign(hex, std::move(field));

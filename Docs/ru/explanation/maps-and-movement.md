@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/maps-and-movement.html
 ---
 
 # Карты, движение и геометрия
-<!-- docs-translation: {"document_id":"maps-movement-geometry","locale":"ru","source_path":"Docs/en/explanation/maps-and-movement.md","source_sha256":"3f41097182ddefe09b85ae1f2f022957c241236ce21d8f548a03ea2066d4606e"} -->
+<!-- docs-translation: {"document_id":"maps-movement-geometry","locale":"ru","source_path":"Docs/en/explanation/maps-and-movement.md","source_sha256":"a73d3c3139d2b00251123b30810dcfaf17e492e7667ff14d351e33bb4713e79f"} -->
 Владельцы геометрии/движения Engine: `Source/Common/Geometry.*`, `LineTracer.*`, `Movement.*`, `PathFinding.*`, `MapLoader.*`, map bakers и тесты.
 
 Разделы `.fomap`, identity/владение размещением, Mapper round-trip, side-specific baking и материализация runtime описаны в [формате карт](../how-to/content/map-format.md).
@@ -264,6 +264,8 @@ callback проход через gag-предметы, но не занятос�
 Контракт закрепляют `MapLoadsAndUnloadsContentOfOtherMaps` и `ClientMapLoadsAndUnloadsStaticItemsOfOtherMaps`.
 
 ## Трассировка линий
+
+`LineTracer` считает во float-координатах относительно своего стартового гекса, а форма с углом и расстоянием находит конец луча от гекса в начале карты с той же чётностью столбца, что у старта, и затем сдвигает его обратно на целое число клеток. Поэтому округление не зависит от того, где лежит линия, и линия далеко на карте размером с континент проходит те же шаги, что и у начала координат.
 
 `TraceLineInput` трассирует от `StartHex` к `TargetHex`: `MaxDist` ограничивает длину (`0`: расстояние между ними), `Angle` задаёт направление, `CheckLastMovable` запрашивает последний проходимый гекс, `IsHexBlocked` останавливает линию, необязательный `IsHexMovable` отмечает допустимые кандидаты движения. `TraceLineOutput` сообщает полноту прохода, наличие последнего проходимого гекса, гекс перед блокировкой, заблокированный и последний проходимый гексы. Применения: движение/поиск пути, видимость и стрельба.
 

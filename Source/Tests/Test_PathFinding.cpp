@@ -2221,10 +2221,9 @@ TEST_CASE("PathFindingCost", "[.]")
     vector<Placement> placements {};
     placements.emplace_back(Placement {.Name = "settlement map", .MapSize = MAP_SIZE, .Shift = 0});
 
-    // The settlement keeps its coordinates in the corner of a continent-sized map, because straightened lines
-    // round differently elsewhere; everything around it is blocked
+    // An even shift keeps the hex rows of the settlement aligned; everything around it is blocked
     if constexpr (std::numeric_limits<mcoord_t>::max() >= 128000) {
-        placements.emplace_back(Placement {.Name = "inside a continent", .MapSize = msize {128000, 128000}, .Shift = 0});
+        placements.emplace_back(Placement {.Name = "inside a continent", .MapSize = msize {128000, 128000}, .Shift = 120000});
     }
 
     auto place {[&](const Request& request, const Placement& placement) -> FindPathInput {

@@ -104,22 +104,32 @@ void StaticMap::ForEachItemHex(ident_t static_item_id, const function<void(mpos)
     ForEachItemHex(it->second, callback);
 }
 
-auto StaticMap::BuildFieldWithout(mpos hex, const unordered_set<ident_t>& removed_ids) const -> Field
+auto StaticMap::BuildFieldWithout(mpos hex, const unordered_set<ident_t>& removed_ids) -> Field
 {
-    const auto& shared_field {_hexField->GetCellForReading(hex)};
+    auto shared_field {_hexField->GetCellForWriting(hex)};
     Field field {};
 
     // Seeded from the baked scroll block, which owns no item and would otherwise be lost here
-    field.ScrollBlocked = shared_field.ScrollBlocked;
-    field.MoveBlocked = shared_field.ScrollBlocked;
+    field.ScrollBlocked = shared_field->ScrollBlocked;
+    field.MoveBlocked = shared_field->ScrollBlocked;
 
-    for (ptr<StaticItem> static_item : shared_field.StaticItems) {
+    for (ptr<StaticItem> static_item : shared_field->StaticItems) {
         if (removed_ids.count(static_item->GetId()) == 0) {
             ApplyItemToField(static_item, make_ptr(&field));
         }
     }
 
     return field;
+}
+
+// Adds this map's items on a hex to another field, which takes over their blocking and triggers
+void StaticMap::MergeFieldInto(mpos hex, ptr<Field> field)
+{
+    auto own_field {_hexField->GetCellForWriting(hex)};
+
+    for (ptr<StaticItem> static_item : own_field->StaticItems) {
+        ApplyItemToField(static_item, field);
+    }
 }
 
 void StaticMap::ReserveCritters(size_t critter_count)

@@ -48,7 +48,11 @@ LineTracer::LineTracer(mpos start_hex, float32_t dir_angle, int32_t dist, msize 
 
     _mapSize = map_size;
 
-    ipos32 start_pos {GeometryHelper::GetHexPos(start_hex)};
+    // The ray is cast from a hex at the map origin with the start's column parity, whose pixel lattice is the start's
+    // moved by whole cells, so float rounding does not depend on where the start is
+    ipos32 local_start {GameSettings::HEXAGONAL_GEOMETRY ? start_hex.x % 2 : 0, 0};
+    ipos32 shift {start_hex.x - local_start.x, start_hex.y - local_start.y};
+    ipos32 start_pos {GeometryHelper::GetHexPos(local_start)};
     float32_t start_pos_x {numeric_cast<float32_t>(start_pos.x + start_offset.x)};
     float32_t start_pos_y {numeric_cast<float32_t>(start_pos.y + start_offset.y)};
     float32_t angle_rad {(dir_angle - 90.0f) * DEG_TO_RAD_FLOAT};
@@ -57,17 +61,18 @@ LineTracer::LineTracer(mpos start_hex, float32_t dir_angle, int32_t dist, msize 
     float32_t pixel_dist {numeric_cast<float32_t>(std::max(GameSettings::MAP_HEX_WIDTH, GameSettings::MAP_HEX_HEIGHT) * dist)};
     ipos32 target_pos {ipos32 {iround<int32_t>(start_pos_x + ray_dx * pixel_dist), iround<int32_t>(start_pos_y + ray_dy * pixel_dist)}};
     ipos32 raw_target_hex {GeometryHelper::GetHexPosCoord(target_pos)};
-    mpos target_hex {mpos {numeric_cast<mcoord_t>(raw_target_hex.x), numeric_cast<mcoord_t>(raw_target_hex.y)}};
+    mpos target_hex {mpos {numeric_cast<mcoord_t>(checked_add(raw_target_hex.x, shift.x)), numeric_cast<mcoord_t>(checked_add(raw_target_hex.y, shift.y))}};
 
     TraceInit(start_hex, target_hex, 0.0f, start_offset, target_offset);
 }
 
 void LineTracer::TraceInit(mpos start_hex, mpos target_hex, float32_t dir_angle_offset, ipos16 start_offset, ipos16 target_offset)
 {
-    float32_t sx {numeric_cast<float32_t>(start_hex.x)};
-    float32_t sy {numeric_cast<float32_t>(start_hex.y)};
-    float32_t tx {numeric_cast<float32_t>(target_hex.x)};
-    float32_t ty {numeric_cast<float32_t>(target_hex.y)};
+    // The start hex is the origin, so the target and every traced hex are offsets from it
+    _origin = start_hex;
+
+    float32_t tx {numeric_cast<float32_t>(target_hex.x - _origin.x)};
+    float32_t ty {numeric_cast<float32_t>(target_hex.y - _origin.y)};
 
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         constexpr float32_t bias {0.02f};
@@ -82,14 +87,14 @@ void LineTracer::TraceInit(mpos start_hex, mpos target_hex, float32_t dir_angle_
         float32_t to_x {numeric_cast<float32_t>(target_offset.x) * offset_scale_x};
         float32_t to_y {numeric_cast<float32_t>(target_offset.y) * offset_scale_y};
 
-        float32_t sx_odd {numeric_cast<float32_t>(std::abs(start_hex.x % 2))};
-        float32_t tx_odd {numeric_cast<float32_t>(std::abs(target_hex.x % 2))};
+        // Column parity shifts a hex by half a row, counted relative to the start column like GetTracePos does
+        float32_t parity {numeric_cast<float32_t>(std::abs(target_hex.x % 2) - std::abs(start_hex.x % 2))};
 
-        _xStart = sx * 3.0f + bias + so_x;
-        _yStart = sy * SQRT3_X2_FLOAT - sx_odd * SQRT3_FLOAT + bias + so_y;
+        _xStart = bias + so_x;
+        _yStart = bias + so_y;
 
         float32_t x_end {tx * 3.0f + bias + to_x};
-        float32_t y_end {ty * SQRT3_X2_FLOAT - tx_odd * SQRT3_FLOAT + bias + to_y};
+        float32_t y_end {ty * SQRT3_X2_FLOAT - parity * SQRT3_FLOAT + bias + to_y};
 
         if (!is_float_equal(dir_angle_offset, 0.0f)) {
             x_end -= _xStart;
@@ -106,8 +111,8 @@ void LineTracer::TraceInit(mpos start_hex, mpos target_hex, float32_t dir_angle_
         _dx = x_end - _xStart;
         _dy = y_end - _yStart;
 
-        float32_t nx {(tx - sx) * 3.0f + (to_x - so_x) + bias};
-        float32_t ny {(ty - sy) * SQRT3_X2_FLOAT - (tx_odd - sx_odd) * SQRT3_FLOAT + (to_y - so_y) + bias};
+        float32_t nx {tx * 3.0f + (to_x - so_x) + bias};
+        float32_t ny {ty * SQRT3_X2_FLOAT - parity * SQRT3_FLOAT + (to_y - so_y) + bias};
         float32_t angle {180.0f + std::atan2(ny, nx) * RAD_TO_DEG_FLOAT - dir_angle_offset};
         angle = angle < 0.0f ? 360.0f - std::fmod(-angle, 360.0f) : std::fmod(angle, 360.0f);
 
@@ -150,13 +155,13 @@ void LineTracer::TraceInit(mpos start_hex, mpos target_hex, float32_t dir_angle_
         float32_t to_x {numeric_cast<float32_t>(target_offset.x) * offset_scale_x};
         float32_t to_y {numeric_cast<float32_t>(target_offset.y) * offset_scale_y};
 
-        float32_t nx {(tx - sx) + (to_x - so_x)};
-        float32_t ny {(ty - sy) + (to_y - so_y)};
+        float32_t nx {tx + (to_x - so_x)};
+        float32_t ny {ty + (to_y - so_y)};
         float32_t angle {std::atan2(ny, nx) * RAD_TO_DEG_FLOAT};
         angle = angle < 0.0f ? 360.0f - std::fmod(-angle, 360.0f) : std::fmod(angle, 360.0f);
 
-        _xStart = sx + 0.5f + so_x;
-        _yStart = sy + 0.5f + so_y;
+        _xStart = 0.5f + so_x;
+        _yStart = 0.5f + so_y;
 
         _dx = std::cos(angle * DEG_TO_RAD_FLOAT);
         _dy = std::sin(angle * DEG_TO_RAD_FLOAT);
@@ -177,6 +182,16 @@ void LineTracer::TraceInit(mpos start_hex, mpos target_hex, float32_t dir_angle_
 
     _x = _xStart;
     _y = _yStart;
+}
+
+// Hex centre in trace coordinates relative to the origin; an odd column sits half a row up from an even one
+auto LineTracer::GetTracePos(mpos hex) const -> fpos32
+{
+    int32_t rel_x {hex.x - _origin.x};
+    int32_t rel_y {hex.y - _origin.y};
+    int32_t parity {std::abs(hex.x % 2) - std::abs(_origin.x % 2)};
+
+    return fpos32 {numeric_cast<float32_t>(rel_x) * 3.0f, numeric_cast<float32_t>(rel_y) * SQRT3_X2_FLOAT - numeric_cast<float32_t>(parity) * SQRT3_FLOAT};
 }
 
 auto LineTracer::GetNextHex(mpos& hex) -> optional<mdir>
@@ -204,10 +219,10 @@ auto LineTracer::GetNextHex(mpos& hex) -> optional<mdir>
             return mdir(_dirLeft);
         }
 
-        fpos32 left_hex_f {fpos32(left_hex)};
-        fpos32 right_hex_f {fpos32(right_hex)};
-        float32_t dist_left {std::abs(_dx * (_yStart - (left_hex_f.y * SQRT3_X2_FLOAT - numeric_cast<float32_t>(std::abs(left_hex.x % 2)) * SQRT3_FLOAT)) - _dy * (_xStart - 3.0f * left_hex_f.x))};
-        float32_t dist_right {std::abs(_dx * (_yStart - (right_hex_f.y * SQRT3_X2_FLOAT - numeric_cast<float32_t>(std::abs(right_hex.x % 2)) * SQRT3_FLOAT)) - _dy * (_xStart - 3.0f * right_hex_f.x))};
+        fpos32 left_hex_f {GetTracePos(left_hex)};
+        fpos32 right_hex_f {GetTracePos(right_hex)};
+        float32_t dist_left {std::abs(_dx * (_yStart - left_hex_f.y) - _dy * (_xStart - left_hex_f.x))};
+        float32_t dist_right {std::abs(_dx * (_yStart - right_hex_f.y) - _dy * (_xStart - right_hex_f.x))};
 
         // Left hand biased
         if (dist_left <= dist_right) {
@@ -223,7 +238,7 @@ auto LineTracer::GetNextHex(mpos& hex) -> optional<mdir>
         _x += _dx;
         _y += _dy;
 
-        mpos next_hex {_mapSize.clamp_pos(iround<int32_t>(std::floor(_x)), iround<int32_t>(std::floor(_y)))};
+        mpos next_hex {_mapSize.clamp_pos(_origin.x + iround<int32_t>(std::floor(_x)), _origin.y + iround<int32_t>(std::floor(_y)))};
 
         if (next_hex == cur_hex) {
             return std::nullopt;

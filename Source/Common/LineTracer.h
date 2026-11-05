@@ -54,8 +54,10 @@ public:
 
 private:
     void TraceInit(mpos start_hex, mpos target_hex, float32_t dir_angle_offset, ipos16 start_offset, ipos16 target_offset);
+    auto GetTracePos(mpos hex) const -> fpos32;
 
     msize _mapSize {};
+    mpos _origin {};
     float32_t _dirAngle {};
     hdir _dirLeft {};
     hdir _dirRight {};

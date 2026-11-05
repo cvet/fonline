@@ -186,6 +186,55 @@ TEST_CASE("LineTracer")
         CHECK(base_pos != offset_pos);
     }
 
+    SECTION("TraceIsTheSameAnywhereOnTheMap")
+    {
+        // A line is traced relative to its start hex, so the same line far out on a continent-sized map takes the same
+        // steps as near the origin; an even shift keeps hex columns of the same parity
+        if constexpr (std::numeric_limits<mcoord_t>::max() < 128000) {
+            SKIP("Map coordinates are 16-bit in this build");
+        }
+        else {
+            constexpr msize near_map {400, 400};
+            constexpr msize far_map {128000, 128000};
+            constexpr int32_t shift {120000};
+            random_generator rnd {5112026};
+            auto shifted {[](mpos hex) -> mpos { return mpos {numeric_cast<mcoord_t>(hex.x + shift), numeric_cast<mcoord_t>(hex.y + shift)}; }};
+
+            for (int32_t round {0}; round < 300; round++) {
+                mpos start {near_map.from_raw_pos(rnd.next_between(150, 250), rnd.next_between(150, 250))};
+                mpos target {near_map.from_raw_pos(start.x + rnd.next_between(-80, 80), start.y + rnd.next_between(-80, 80))};
+                float32_t angle_offset {round % 3 == 0 ? numeric_cast<float32_t>(rnd.next_between(-30, 30)) : 0.0f};
+                ipos16 start_offset {numeric_cast<int16_t>(rnd.next_between(-8, 8)), numeric_cast<int16_t>(rnd.next_between(-8, 8))};
+                ipos16 target_offset {numeric_cast<int16_t>(rnd.next_between(-8, 8)), numeric_cast<int16_t>(rnd.next_between(-8, 8))};
+                float32_t dir_angle {numeric_cast<float32_t>(rnd.next_between(0, 359))};
+                int32_t dist {rnd.next_between(1, 90)};
+
+                LineTracer near_tracer {start, target, angle_offset, near_map, start_offset, target_offset};
+                LineTracer far_tracer {shifted(start), shifted(target), angle_offset, far_map, start_offset, target_offset};
+                LineTracer near_ray {start, dir_angle, dist, near_map, start_offset};
+                LineTracer far_ray {shifted(start), dir_angle, dist, far_map, start_offset};
+
+                mpos near_hex {start};
+                mpos far_hex {shifted(start)};
+                mpos near_ray_hex {start};
+                mpos far_ray_hex {shifted(start)};
+
+                for (int32_t step {0}; step < 120; step++) {
+                    INFO("round " << round << " step " << step);
+                    auto near_dir {near_tracer.GetNextHex(near_hex)};
+                    auto far_dir {far_tracer.GetNextHex(far_hex)};
+                    REQUIRE(near_dir.has_value() == far_dir.has_value());
+                    CHECK(far_hex == shifted(near_hex));
+
+                    auto near_ray_dir {near_ray.GetNextHex(near_ray_hex)};
+                    auto far_ray_dir {far_ray.GetNextHex(far_ray_hex)};
+                    REQUIRE(near_ray_dir.has_value() == far_ray_dir.has_value());
+                    CHECK(far_ray_hex == shifted(near_ray_hex));
+                }
+            }
+        }
+    }
+
     SECTION("TraceRemainsWithinBoundsWhenContinuingPastTarget")
     {
         constexpr msize map_size {4, 4};

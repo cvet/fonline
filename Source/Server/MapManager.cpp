@@ -271,7 +271,7 @@ auto MapManager::ReadStaticMap(ptr<const ProtoMap> map_proto) -> shared_ptr<Stat
     return static_map;
 }
 
-auto MapManager::IsStaticMapReady(const PendingStaticMap& static_map) -> bool
+auto MapManager::IsStaticMapReady(const PendingStaticMap& static_map) const -> bool
 {
     return static_map.wait_for(std::chrono::seconds {0}) == std::future_status::ready;
 }

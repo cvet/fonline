@@ -82,7 +82,9 @@ public:
     [[nodiscard]] auto GetChildItemBillets() const noexcept -> const_span<ItemBillet>;
 
     void ForEachItemHex(ident_t static_item_id, const function<void(mpos)>& callback) const;
-    auto BuildFieldWithout(mpos hex, const unordered_set<ident_t>& removed_ids) const -> Field;
+    // These two hand out this map's items as mutable, so they take the items' fields for writing
+    auto BuildFieldWithout(mpos hex, const unordered_set<ident_t>& removed_ids) -> Field;
+    void MergeFieldInto(mpos hex, ptr<Field> field);
     void ReserveCritters(size_t critter_count);
     void ReserveItems(size_t item_count);
     void AddCritterBillet(ident_t critter_id, refcount_ptr<Critter> cr);
@@ -93,9 +95,9 @@ public:
     void MarkScrollBlocked(mpos hex);
     void ShrinkToFit();
     void RemoveStaticItems(const unordered_set<ident_t>& static_item_ids);
-    static void ApplyItemToField(ptr<StaticItem> item, ptr<Field> field);
 
 private:
+    void ApplyItemToField(ptr<StaticItem> item, ptr<Field> field);
     static auto CreateHexField(msize map_size, string_view grid_type) -> unique_ptr<TwoDimensionalGrid<Field, mpos, msize>>;
 
     void ForEachItemHex(ptr<const StaticItem> item, const function<void(mpos)>& callback) const;
