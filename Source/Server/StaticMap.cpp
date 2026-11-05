@@ -41,7 +41,7 @@ FO_BEGIN_NAMESPACE
 
 StaticMap::StaticMap(msize map_size, string_view grid_type) :
     _mapSize {map_size},
-    _hexField {CreateHexField(map_size, grid_type)}
+    _hexField {CreateHexField(grid_type)}
 {
 }
 
@@ -227,16 +227,16 @@ void StaticMap::RemoveStaticItems(const unordered_set<ident_t>& static_item_ids)
     std::erase_if(_ownedItemBillets, [&static_item_ids](const OwnedItemBillet& billet) { return static_item_ids.count(billet.first) != 0; });
 }
 
-auto StaticMap::CreateHexField(msize map_size, string_view grid_type) -> unique_ptr<TwoDimensionalGrid<Field, mpos, msize>>
+auto StaticMap::CreateHexField(string_view grid_type) -> unique_ptr<TwoDimensionalGrid<Field, mpos, msize>>
 {
     if (grid_type == "Static") {
-        return safe_alloc::make_unique<StaticTwoDimensionalGrid<Field, mpos, msize>>(map_size);
+        return safe_alloc::make_unique<StaticTwoDimensionalGrid<Field, mpos, msize>>(_mapSize);
     }
     if (grid_type == "Chunked") {
-        return safe_alloc::make_unique<ChunkedTwoDimensionalGrid<Field, mpos, msize, GameSettings::SERVER_MAP_CHUNK_SIDE>>(map_size);
+        return safe_alloc::make_unique<ChunkedTwoDimensionalGrid<Field, mpos, msize, GameSettings::SERVER_MAP_CHUNK_SIDE>>(_mapSize);
     }
     if (grid_type == "Dynamic") {
-        return safe_alloc::make_unique<DynamicTwoDimensionalGrid<Field, mpos, msize>>(map_size);
+        return safe_alloc::make_unique<DynamicTwoDimensionalGrid<Field, mpos, msize>>(_mapSize);
     }
 
     throw SettingsException("Unknown server map grid type; expected Static, Chunked or Dynamic", SettingNames::Server_ProtoMapGridType, grid_type);

@@ -186,8 +186,7 @@ private:
         bool ManualBlockFull {};
     };
 
-    static auto CreateHexField(msize map_size, string_view grid_type) -> unique_ptr<TwoDimensionalGrid<Field, mpos, msize>>;
-
+    auto CreateHexField(string_view grid_type) -> unique_ptr<TwoDimensionalGrid<Field, mpos, msize>>;
     auto GetStaticField(mpos hex) const noexcept -> const StaticMap::Field&;
     void RebuildStaticOverlay();
     void RefreshStaticFieldOverride(mpos hex);

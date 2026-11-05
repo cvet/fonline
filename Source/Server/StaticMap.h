@@ -97,8 +97,7 @@ public:
 
 private:
     void ApplyItemToField(ptr<StaticItem> item, ptr<Field> field);
-    static auto CreateHexField(msize map_size, string_view grid_type) -> unique_ptr<TwoDimensionalGrid<Field, mpos, msize>>;
-
+    auto CreateHexField(string_view grid_type) -> unique_ptr<TwoDimensionalGrid<Field, mpos, msize>>;
     void ForEachItemHex(ptr<const StaticItem> item, const function<void(mpos)>& callback) const;
 
     msize _mapSize;
