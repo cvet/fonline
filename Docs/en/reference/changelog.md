@@ -16,6 +16,16 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Changed
 
+- Repair test fixtures for fresh metadata settings, packaged viewer resource mounts and embedded profile line endings across Windows and Linux.
+
+### Migration
+
+- No project migration is required: these changes affect tests only and preserve runtime, resource, ABI and network contracts.
+
+## 2026.1.107-dev - 2026-11-05
+
+### Changed
+
 - Separate initial `SetupConfigAtPath`, `SetupInternalConfig`, `SetupResourceConfig` and `SetupDefaultSettings` from partial `Apply*` overlays. Each setup requires a fresh zero snapshot; repeated/mixed setup rejects before mutation, and failed file/profile setup permits retry. Successful setup adds no clear/default pass.
 - The packaged marker is private to application initialization. Runtime reads packaged mode and runtime identity from settings; C++ pack mounts take an explicit mode as their first argument, and auto settings take the runtime identity. No config/metadata format changes.
 - Restart after a resource configuration update only when effective Engine settings or pack declarations change. Refresh custom/game settings, removed values and typed caches in place before ClientEngine creation; preserve local/CLI/auto precedence and native settings storage.

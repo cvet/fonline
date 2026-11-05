@@ -7,12 +7,22 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"201830d71fb41df06c1cec0de54363c0f325bd3cb57f73bb29c99ba58481b61d"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"154859af3566d306de0b06ac62005775c439f633ca06faf72b51de5691f7e97a"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
 ## Current - 2026-11-05
+
+### Изменено
+
+- Исправлены тестовые фикстуры для чистых настроек metadata, монтирования ресурсов packaged viewer и переводов строк встроенного профиля в Windows и Linux.
+
+### Миграция
+
+- Миграция проекта не требуется: изменения затрагивают только тесты и сохраняют runtime, resource, ABI и сетевые контракты.
+
+## 2026.1.107-dev - 2026-11-05
 
 ### Изменено
 

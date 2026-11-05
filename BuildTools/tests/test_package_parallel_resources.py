@@ -101,7 +101,7 @@ def test_parallel_cache_unavailable_state_reaches_the_parent(tmp_path: Path, mon
     assert packager.run_resource_archive_cache_helper("restore", "unused", "unused") is None
 
 
-def raw_fixture(tmp_path: Path) -> list[str]:
+def raw_fixture(tmp_path: Path, newline: str = "\n") -> list[str]:
     config = tmp_path / "Game.fomain"
     text = """Baking.BakeOutput = Baking
 Common.ResourcesPath = Resources
@@ -130,7 +130,7 @@ Name = Beta
             embedded_text += "Server.DbStorage = Memory\nServer.BootstrapSecret = embedded-server\n"
         else:
             embedded_text += "Client.BootstrapTitle = embedded-client\n"
-        (baked / f"Metadata/LocalTest.fomain-embedded-{target}").write_text(embedded_text, encoding="utf-8")
+        (baked / f"Metadata/LocalTest.fomain-embedded-{target}").write_bytes(embedded_text.replace("\n", newline).encode("utf-8"))
     (baked / "Resources.baking-config-hash").write_text("fixture-config", encoding="utf-8")
     (baked / "Resources.usage.json").write_text(json.dumps({
         "Version": 1,
@@ -161,8 +161,9 @@ def read_internal_config(path: Path) -> bytes:
 
 
 @pytest.mark.parametrize("warm_cache", [False, True])
-def test_raw_cli_parallel_package_matches_serial_package(tmp_path: Path, warm_cache: bool) -> None:
-    arguments = raw_fixture(tmp_path)
+@pytest.mark.parametrize("newline", ["\n", "\r\n"])
+def test_raw_cli_parallel_package_matches_serial_package(tmp_path: Path, warm_cache: bool, newline: str) -> None:
+    arguments = raw_fixture(tmp_path, newline)
     env = os.environ.copy()
     env.pop(package.RESOURCE_ARCHIVE_CACHE_HELPER_ENV, None)
     if warm_cache:
@@ -206,7 +207,7 @@ elif action == 'store':
     full_config = (tmp_path / "Baking/Metadata/LocalTest.fomain-server").read_bytes()
     patched_config = read_internal_config(packaged_binary)
     assert full_config != embedded_config
-    assert patched_config == embedded_config
+    assert patched_config == embedded_config.replace(b"\r\n", b"\n")
     assert b"Server.PrivateSecret" not in patched_config
     assert b"Server.BootstrapSecret" in patched_config
 

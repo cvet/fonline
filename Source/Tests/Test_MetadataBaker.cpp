@@ -226,16 +226,16 @@ namespace TestManagedMetadata
         string config_path {strex(temp_dir).combine_path("Test.fomain").str()};
         REQUIRE(fs::write_file(config_path, "Coverage.Enabled = true\n"));
 
-        rig.Settings.SetupConfigAtPath("Test.fomain", temp_dir);
-        rig.AddSourceFile("Scripts/TestSetting.fos", "///@ Setting Client bool Coverage.Enabled", 1);
+        TestRig configured_rig {"Test.fomain", temp_dir};
+        configured_rig.AddSourceFile("Scripts/TestSetting.fos", "///@ Setting Client bool Coverage.Enabled", 1);
 
         vector<uint64_t> checked_write_times {};
-        MetadataBaker baker {rig.MakeContext("MetaPack", [&checked_write_times](string_view, uint64_t write_time) {
+        MetadataBaker baker {configured_rig.MakeContext("MetaPack", [&checked_write_times](string_view, uint64_t write_time) {
             checked_write_times.emplace_back(write_time);
             return false;
         })};
 
-        REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+        REQUIRE_NOTHROW(baker.BakeFiles(configured_rig.GetAllSourceFiles(), ""));
         REQUIRE(checked_write_times.size() == 3);
         CHECK(std::ranges::all_of(checked_write_times, [&](uint64_t write_time) { return write_time == fs::last_write_time(config_path); }));
         CHECK(fs::remove_dir_tree(temp_dir));
