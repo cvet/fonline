@@ -108,7 +108,7 @@ FO_SCRIPT_API void Client_Map_DrawMapSprite(ptr<MapView> self, ptr<MapSpriteHold
         mspr->SetMapProjected(true);
     }
     if (!no_light) {
-        mspr->SetLight(corner, self->GetLightData(), self->GetSize());
+        self->SetupSpriteLight(mspr, corner);
     }
 
     if (!is_flat && !disable_egg) {
@@ -160,6 +160,27 @@ FO_SCRIPT_API bool Client_Map_DrawEntitySprite(ptr<MapView> self, ptr<ClientEnti
 
     auto effect {engine->GetOffscreenEffect(effectSubtype)};
     return self->DrawEntitySprite(entity, effect, color, padding);
+}
+
+// Load the static items of a prototype map's client bake as runtime static items so that its first hex lands at `destHex`, with baked ids plus `idOffset`, and return their ids
+///@ ExportMethod
+FO_SCRIPT_API vector<ident_t> Client_Map_LoadRuntimeStaticItems(ptr<MapView> self, hstring mapPid, mpos destHex, int64_t idOffset)
+{
+    return self->LoadRuntimeStaticItems(mapPid, destHex, idOffset);
+}
+
+// Load the static items of a prototype map area from its client bake as runtime static items so that the area's first hex lands at `destHex`, with baked ids plus `idOffset`, and return their ids
+///@ ExportMethod
+FO_SCRIPT_API vector<ident_t> Client_Map_LoadRuntimeStaticItems(ptr<MapView> self, hstring mapPid, mpos destHex, mpos sourceHex, msize sourceSize, int64_t idOffset)
+{
+    return self->LoadRuntimeStaticItems(mapPid, destHex, sourceHex, sourceSize, idOffset);
+}
+
+// Remove runtime static items that `LoadRuntimeStaticItems` added to the map view and release the field blocks they leave empty
+///@ ExportMethod
+FO_SCRIPT_API void Client_Map_UnloadRuntimeStaticItems(ptr<MapView> self, readonly_vector<ident_t> runtimeStaticItemIds)
+{
+    self->UnloadRuntimeStaticItems(runtimeStaticItemIds);
 }
 
 // Rebuilds this map view's fog geometry and rendering state from its current fog layers

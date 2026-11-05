@@ -98,22 +98,185 @@ TEST_CASE("MapManagerLoadsStaticMapEntities")
     CHECK(hidden_field.ShootBlocked);
 }
 
+TEST_CASE("MapLoadsAndUnloadsContentOfOtherMaps")
+{
+    auto settings {ServerMapOperationsTests::MakeSettings()};
+    auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, ServerMapOperationsTests::MakeResources())};
+    auto shutdown {scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    })};
+    string startup_error {ServerMapOperationsTests::WaitForStart(server.get())};
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
+
+    hstring content_pid {server->Hashes.to_hashed_string("ContentMap")};
+    hstring static_map_pid {server->Hashes.to_hashed_string("StaticMap")};
+    auto content_proto {server->GetProtoMap(content_pid)};
+    REQUIRE(content_proto);
+
+    // Baked content is read on first use, never at startup
+    CHECK_FALSE(server->MapMngr.IsStaticMapLoaded(content_proto));
+
+    // Id offsets derive from the placement, as a project would make them
+    auto id_offset {[](mpos dest_hex) -> int64_t { return (int64_t {1} << 50) + int64_t {dest_hex.x} * 1000000 + int64_t {dest_hex.y} * 1000; }};
+
+    vector<hstring> map_pids {server->Hashes.to_hashed_string("TestMap"), static_map_pid};
+    auto location {server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("TestLocation"), map_pids)};
+    REQUIRE(location->GetMaps().size() == 2);
+    ptr<Map> map {location->GetMaps().front()};
+    ptr<Map> baked_map {location->GetMaps().back()};
+    REQUIRE(map->GetStaticItems().empty());
+
+    vector<ident_t> first_ids {server->MapMngr.LoadRuntimeStaticItems(map, content_proto, mpos {100, 120}, id_offset(mpos {100, 120}))};
+    vector<ident_t> second_ids {server->MapMngr.LoadRuntimeStaticItems(map, content_proto, mpos {20, 20}, id_offset(mpos {20, 20}))};
+    CHECK(server->MapMngr.IsStaticMapLoaded(content_proto));
+    REQUIRE(first_ids.size() == 2);
+    REQUIRE(second_ids.size() == 2);
+
+    ident_t first_blocker_id {ident_t {(int64_t {1} << 50) + 100120031}};
+    ident_t second_blocker_id {ident_t {(int64_t {1} << 50) + 20020031}};
+    CHECK(std::ranges::find(first_ids, first_blocker_id) != first_ids.end());
+    REQUIRE(map->GetStaticItem(first_blocker_id));
+    REQUIRE(map->GetStaticItem(second_blocker_id));
+    CHECK(map->GetStaticItem(first_blocker_id)->GetHex() == mpos {102, 123});
+    CHECK(map->GetStaticItem(second_blocker_id)->GetHex() == mpos {22, 23});
+    CHECK(map->IsRuntimeStaticItem(first_blocker_id));
+    CHECK(map->GetStaticItems().size() == 4);
+    CHECK(map->GetStaticItemsOnHex(mpos {102, 123}).size() == 1);
+    CHECK_FALSE(map->IsHexMovable(mpos {102, 123}));
+    CHECK_FALSE(map->IsHexMovable(mpos {22, 23}));
+    CHECK(map->IsHexMovable(mpos {101, 123}));
+    CHECK(map->IsHexMovable(mpos {2, 3}));
+
+    // Runtime items leave through UnloadRuntimeStaticItems, not the persisted removal list
+    CHECK_THROWS(map->RemoveStaticItem(first_blocker_id));
+    server->MapMngr.UnloadRuntimeStaticItems(map, first_ids);
+    CHECK_FALSE(map->GetStaticItem(first_blocker_id));
+    CHECK_FALSE(map->HasStaticItem(first_blocker_id));
+    CHECK(map->IsHexMovable(mpos {102, 123}));
+    CHECK(map->GetStaticItems().size() == 2);
+    CHECK_THROWS(server->MapMngr.UnloadRuntimeStaticItems(map, first_ids));
+
+    // A failed load leaves the map as it was: ids in use, a zero or overflowing id, content outside the map
+    CHECK_THROWS(server->MapMngr.LoadRuntimeStaticItems(map, content_proto, mpos {20, 20}, id_offset(mpos {20, 20})));
+    CHECK_THROWS(server->MapMngr.LoadRuntimeStaticItems(map, content_proto, mpos {40, 40}, id_offset(mpos {20, 20})));
+    CHECK_THROWS(server->MapMngr.LoadRuntimeStaticItems(map, content_proto, mpos {40, 40}, -31));
+    CHECK_THROWS(server->MapMngr.LoadRuntimeStaticItems(map, content_proto, mpos {40, 40}, std::numeric_limits<int64_t>::max()));
+    CHECK_THROWS(server->MapMngr.LoadRuntimeStaticItems(map, content_proto, mpos {190, 190}, id_offset(mpos {190, 190})));
+    CHECK(map->GetStaticItems().size() == 2);
+
+    // An area of the source map lands with its first hex at offset and must lie inside the source map
+    vector<ident_t> area_ids {server->MapMngr.LoadRuntimeStaticItems(map, content_proto, mpos {40, 40}, mpos {2, 3}, msize {1, 1}, id_offset(mpos {40, 40}))};
+    REQUIRE(area_ids.size() == 1);
+    REQUIRE(map->GetStaticItem(area_ids.front()));
+    CHECK(area_ids.front() == ident_t {(int64_t {1} << 50) + 40040031});
+    CHECK(map->GetStaticItem(area_ids.front())->GetHex() == mpos {40, 40});
+    CHECK_FALSE(map->IsHexMovable(mpos {40, 40}));
+    CHECK(server->MapMngr.LoadRuntimeStaticItems(map, content_proto, mpos {50, 50}, mpos {5, 5}, msize {3, 3}, id_offset(mpos {50, 50})).empty());
+    CHECK_THROWS(server->MapMngr.LoadRuntimeStaticItems(map, content_proto, mpos {60, 60}, mpos {10, 10}, msize {7, 1}, id_offset(mpos {60, 60})));
+    CHECK_THROWS(server->MapMngr.LoadRuntimeStaticItems(map, content_proto, mpos {60, 60}, mpos {0, 0}, msize {0, 1}, id_offset(mpos {60, 60})));
+    server->MapMngr.UnloadRuntimeStaticItems(map, area_ids);
+    CHECK(map->GetStaticItems().size() == 2);
+
+    // Loaded items merge with baked ones on a shared hex and leave the baked one when unloaded
+    vector<ident_t> merged_ids {server->MapMngr.LoadRuntimeStaticItems(baked_map, content_proto, mpos {10, 10}, id_offset(mpos {10, 10}))};
+    CHECK(baked_map->GetStaticItemsOnHex(mpos {12, 13}).size() == 2);
+    CHECK(baked_map->GetStaticItems().size() == 4);
+    CHECK_FALSE(baked_map->IsHexMovable(mpos {12, 13}));
+    REQUIRE(baked_map->RemoveStaticItem(ident_t {21}));
+    CHECK(baked_map->GetStaticItemsOnHex(mpos {12, 13}).size() == 1);
+    CHECK_FALSE(baked_map->IsHexMovable(mpos {12, 13}));
+    server->MapMngr.UnloadRuntimeStaticItems(baked_map, merged_ids);
+    CHECK(baked_map->GetStaticItemsOnHex(mpos {12, 13}).empty());
+    CHECK(baked_map->IsHexMovable(mpos {12, 13}));
+    CHECK(baked_map->GetStaticItems().size() == 1);
+
+    // Critters and dynamic items come as entities of the map
+    vector<ident_t> entity_ids {server->MapMngr.GenerateContent(map, content_proto, mpos {50, 60})};
+    REQUIRE(entity_ids.size() == 2);
+    auto critter {map->GetCritter(entity_ids[0])};
+    auto item {map->GetItem(entity_ids[1])};
+    REQUIRE(critter);
+    REQUIRE(item);
+    CHECK(critter->GetHex() == mpos {56, 67});
+    CHECK(item->GetHex() == mpos {54, 65});
+    CHECK_THROWS(server->MapMngr.GenerateContent(map, content_proto, mpos {195, 0}));
+
+    // Cached content is released on request unless a map instance of that proto exists
+    CHECK(server->MapMngr.UnloadStaticMap(content_proto));
+    CHECK_FALSE(server->MapMngr.IsStaticMapLoaded(content_proto));
+    CHECK(server->MapMngr.UnloadStaticMap(content_proto));
+    CHECK_FALSE(server->MapMngr.UnloadStaticMap(baked_map->GetProtoMap()));
+    server->MapMngr.LoadStaticMap(content_proto, false);
+    CHECK(server->MapMngr.IsStaticMapLoaded(content_proto));
+    REQUIRE(server->MapMngr.UnloadStaticMap(content_proto));
+    server->MapMngr.LoadStaticMaps(vector<ptr<const ProtoMap>> {content_proto}, false);
+    CHECK(server->MapMngr.IsStaticMapLoaded(content_proto));
+    server->MapMngr.UnloadRuntimeStaticItems(map, second_ids);
+    CHECK(map->GetStaticItems().empty());
+
+    // Concurrent first requests for one map wait for a single read and share its result
+    REQUIRE(server->MapMngr.UnloadStaticMap(content_proto));
+    constexpr size_t request_count {8};
+    vector<nptr<StaticMap>> results(request_count);
+    vector<string> errors(request_count);
+    std::atomic_bool start {};
+    vector<std::thread> requests {};
+
+    for (size_t i {0}; i < request_count; i++) {
+        requests.emplace_back([&, i] {
+            while (!start.load()) {
+                std::this_thread::yield();
+            }
+
+            try {
+                results[i] = server->MapMngr.GetStaticMap(content_proto);
+            }
+            catch (const std::exception& ex) {
+                errors[i] = ex.what();
+            }
+        });
+    }
+
+    start.store(true);
+
+    for (auto& request : requests) {
+        request.join();
+    }
+
+    for (size_t i {0}; i < request_count; i++) {
+        INFO(errors[i]);
+        REQUIRE(results[i]);
+        CHECK(results[i] == results.front());
+    }
+
+    CHECK(server->MapMngr.IsStaticMapLoaded(content_proto));
+    CHECK(results.front()->GetStaticItems().size() == 2);
+
+    // A background load returns at once; a request before it finishes waits for the same read
+    REQUIRE(server->MapMngr.UnloadStaticMap(content_proto));
+    server->MapMngr.LoadStaticMap(content_proto, true);
+    CHECK(server->MapMngr.GetStaticMap(content_proto)->GetStaticItems().size() == 2);
+    REQUIRE(server->MapMngr.UnloadStaticMap(content_proto));
+    server->MapMngr.LoadStaticMaps(vector<ptr<const ProtoMap>> {content_proto, baked_map->GetProtoMap()}, true);
+    auto preloaded {server->MapMngr.GetStaticMap(content_proto)};
+    CHECK(preloaded->GetStaticItems().size() == 2);
+    CHECK(server->MapMngr.IsStaticMapLoaded(content_proto));
+    vector<ident_t> preloaded_ids {server->MapMngr.LoadRuntimeStaticItems(map, content_proto, mpos {60, 60}, id_offset(mpos {60, 60}))};
+    CHECK(preloaded_ids.size() == 2);
+    server->MapMngr.UnloadRuntimeStaticItems(map, preloaded_ids);
+}
+
 TEST_CASE("MapManagerRejectsMapLargerThanEngineMaximum")
 {
     if constexpr (GameSettings::MAX_MAP_SIZE < std::numeric_limits<mcoord_t>::max()) {
         auto settings {ServerMapOperationsTests::MakeSettings()};
-        string message {};
-        std::mutex message_locker {};
-
-        auto prev_callback {exceptions::get_callback()};
-        exceptions::set_callback([&](string_view msg, const stack_trace::catched_data&, bool) {
-            std::scoped_lock locker {message_locker};
-
-            message += msg;
-            message += '\n';
-        });
-        auto restore_callback {scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); })};
-
         msize oversized {numeric_cast<mcoord_t>(GameSettings::MAX_MAP_SIZE + 1), 10};
         auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, ServerMapOperationsTests::MakeResources(oversized))};
         auto shutdown {scope_exit([&server]() noexcept {
@@ -124,17 +287,22 @@ TEST_CASE("MapManagerRejectsMapLargerThanEngineMaximum")
             });
         })};
 
+        // Baked map content is read on first use, so the oversized map fails there instead of at startup
         string startup_error {ServerMapOperationsTests::WaitForStart(server.get())};
-        CHECK(startup_error == "ServerEngine startup failed");
+        INFO(startup_error);
+        REQUIRE(startup_error.empty());
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+        auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
 
-        string message_snapshot {};
-        {
-            std::scoped_lock locker {message_locker};
-            message_snapshot = message;
-        }
+        auto map_proto {server->GetProtoMap(server->Hashes.to_hashed_string("TestMap"))};
+        REQUIRE(map_proto);
+        CHECK_THROWS_WITH(server->MapMngr.GetStaticMap(map_proto), Catch::Matchers::ContainsSubstring("Map size exceeds the engine maximum"));
+        CHECK_FALSE(server->MapMngr.IsStaticMapLoaded(map_proto));
 
-        INFO(message_snapshot);
-        CHECK(message_snapshot.find("Map size exceeds the engine maximum") != string::npos);
+        // A failed background read reaches the next request, which reads the map again
+        server->MapMngr.LoadStaticMaps(vector<ptr<const ProtoMap>> {map_proto}, true);
+        CHECK_THROWS_WITH(server->MapMngr.GetStaticMap(map_proto), Catch::Matchers::ContainsSubstring("Map size exceeds the engine maximum"));
+        CHECK_FALSE(server->MapMngr.IsStaticMapLoaded(map_proto));
     }
 }
 

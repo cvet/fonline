@@ -132,7 +132,6 @@ MapView::MapView(ptr<ClientEngine> engine, ident_t id, ptr<const ProtoMap> proto
         _mapDepthHalf = std::max(std::abs(near_bound), std::abs(far_bound));
     }
 
-    _hexLight.resize(_mapSize.square<size_t>());
     _hexField.emplace(_mapSize);
 
     _lightPoints.resize(1);
@@ -192,7 +191,6 @@ void MapView::OnDestroySelf()
     _hexField.reset();
     decltype(_viewField) {}.swap(_viewField);
     _fogs = {};
-    decltype(_hexLight) {}.swap(_hexLight);
     decltype(_hexTargetLight) {}.swap(_hexTargetLight);
     decltype(_visibleLightSources) {}.swap(_visibleLightSources);
     decltype(_lightPoints) {}.swap(_lightPoints);
@@ -420,6 +418,267 @@ void MapView::LoadStaticData()
     RebuildMapNow();
 }
 
+auto MapView::LoadRuntimeStaticItems(hstring map_pid, mpos dest_hex, int64_t id_offset) -> vector<ident_t>
+{
+    auto source_proto {_engine->GetProtoMap(map_pid)};
+
+    if (!source_proto) {
+        throw MapViewLoadException("Map proto not found", map_pid);
+    }
+
+    return LoadRuntimeStaticItems(map_pid, dest_hex, mpos {}, source_proto->GetSize(), id_offset);
+}
+
+auto MapView::LoadRuntimeStaticItems(hstring map_pid, mpos dest_hex, mpos source_hex, msize source_size, int64_t id_offset) -> vector<ident_t>
+{
+    FO_TRACE_ZONE(Map);
+
+    auto source_proto {_engine->GetProtoMap(map_pid)};
+
+    if (!source_proto) {
+        throw MapViewLoadException("Map proto not found", map_pid);
+    }
+
+    msize source_map_size {source_proto->GetSize()};
+
+    if (source_size.width <= 0 || source_size.height <= 0 || !source_map_size.is_valid_pos(source_hex) || safe_numeric_cast<int64_t>(source_hex.x) + source_size.width > source_map_size.width || safe_numeric_cast<int64_t>(source_hex.y) + source_size.height > source_map_size.height) {
+        throw MapViewLoadException("Source area is outside the source map", map_pid, source_hex, source_size, source_map_size);
+    }
+
+    auto file {_engine->Resources.ReadFile(strex("{}.fomap-bin-client", map_pid))};
+
+    if (!file) {
+        throw MapViewLoadException("Map file not found", map_pid);
+    }
+
+    data_reader reader {file.GetDataSpan()};
+    MapLoader::ReadBakedFileHeader(reader, map_pid);
+
+    {
+        uint32_t hashes_count {reader.read<uint32_t>()};
+        reader.verify_payload_count(hashes_count, sizeof(uint32_t));
+
+        for (uint32_t i {0}; i < hashes_count; i++) {
+            string str {reader.read_string()};
+            (void)_engine->Hashes.to_hashed_string(str);
+        }
+    }
+
+    uint32_t items_count {reader.read<uint32_t>()};
+    reader.verify_payload_count(items_count, sizeof(ident_t::underlying_type) + sizeof(hstring::hash_t) + sizeof(uint32_t));
+
+    struct LoadedItem
+    {
+        ptr<const ProtoItem> Proto;
+        Properties Props;
+    };
+
+    vector<LoadedItem> loaded_items {};
+    vector<ident_t> item_ids {};
+    unordered_set<ident_t> unique_ids {};
+    loaded_items.reserve(items_count);
+    item_ids.reserve(items_count);
+    unique_ids.reserve(items_count);
+    vector<uint8_t> props_data {};
+
+    // The source area's first hex lands at dest_hex
+    auto move_hex {[dest_hex, source_hex, map_size = _mapSize, map_pid](mpos hex) -> mpos {
+        int64_t x {safe_numeric_cast<int64_t>(hex.x) - source_hex.x + dest_hex.x};
+        int64_t y {safe_numeric_cast<int64_t>(hex.y) - source_hex.y + dest_hex.y};
+
+        if (x < 0 || y < 0 || x >= map_size.width || y >= map_size.height) {
+            throw MapViewLoadException("Runtime static item lands outside the map", map_pid, hex, dest_hex, map_size);
+        }
+
+        return mpos {numeric_cast<mcoord_t>(x), numeric_cast<mcoord_t>(y)};
+    }};
+
+    for (uint32_t i {0}; i < items_count; i++) {
+        ident_t baked_id {ident_t {reader.read<ident_t::underlying_type>()}};
+        hstring item_pid {_engine->Hashes.resolve_hash(reader.read<hstring::hash_t>())};
+        auto item_proto {_engine->GetProtoItem(item_pid)};
+        FO_VERIFY_AND_THROW(item_proto, "Missing required item prototype", item_pid);
+
+        uint32_t props_data_size {reader.read<uint32_t>()};
+        reader.verify_payload_count(props_data_size, sizeof(uint8_t));
+        props_data.resize(props_data_size);
+        span<uint8_t> props_data_span {props_data};
+        reader.read_bytes(props_data_span);
+
+        Properties item_props {item_proto->GetProperties()->GetRegistrar()};
+        item_props.RestoreAllData(props_data);
+
+        // Positions move on the plain property set before the view exists, so no entity setter observes them
+        ItemProperties item_view {item_props};
+        mpos hex {item_view.GetHex()};
+
+        if (hex.x < source_hex.x || hex.y < source_hex.y || hex.x - source_hex.x >= source_size.width || hex.y - source_hex.y >= source_size.height) {
+            continue;
+        }
+
+        ident_t item_id {checked_add(baked_id.underlying_value(), id_offset)};
+
+        if (!item_id) {
+            throw MapViewLoadException("Runtime static item id is zero", map_pid, baked_id, id_offset);
+        }
+        if (_itemsMap.contains(item_id)) {
+            throw MapViewLoadException("Runtime static item id is already used on the map", map_pid, item_id);
+        }
+        if (!unique_ids.emplace(item_id).second) {
+            throw MapViewLoadException("Runtime static item id repeats", map_pid, item_id);
+        }
+
+        item_view.SetHex(move_hex(hex));
+
+        if (item_view.IsNonEmptyMultihexMesh()) {
+            vector<mpos> mesh {item_view.GetMultihexMesh()};
+
+            for (mpos& mesh_hex : mesh) {
+                mesh_hex = move_hex(mesh_hex);
+            }
+
+            item_view.SetMultihexMesh(mesh);
+        }
+
+        loaded_items.emplace_back(LoadedItem {.Proto = item_proto, .Props = std::move(item_props)});
+        item_ids.emplace_back(item_id);
+    }
+
+    reader.verify_end();
+
+    {
+        bool was_loading {_mapLoading};
+        _mapLoading = true;
+        auto reset_loading {scope_exit([this, was_loading]() noexcept { _mapLoading = was_loading; })};
+
+        _items.reserve(_items.size() + loaded_items.size());
+        _staticItems.reserve(_staticItems.size() + loaded_items.size());
+
+        for (size_t i {0}; i < loaded_items.size(); i++) {
+            auto static_item {safe_alloc::make_refcounted<ItemHexView>(this, item_ids[i], loaded_items[i].Proto, make_nptr(&loaded_items[i].Props))};
+            static_item->SetStatic(true);
+            AddItemInternal(static_item);
+            _runtimeStaticItems.emplace(item_ids[i]);
+        }
+    }
+
+    if (!_mapLoading) {
+        RebuildMap();
+    }
+
+    return item_ids;
+}
+
+void MapView::UnloadRuntimeStaticItems(const_span<ident_t> runtime_static_item_ids)
+{
+    FO_TRACE_ZONE(Map);
+
+    vector<ptr<ItemHexView>> items {};
+    items.reserve(runtime_static_item_ids.size());
+    unordered_set<ident_t> ids {};
+    ids.reserve(runtime_static_item_ids.size());
+    int64_t x0 {std::numeric_limits<int64_t>::max()};
+    int64_t y0 {std::numeric_limits<int64_t>::max()};
+    int64_t x1 {std::numeric_limits<int64_t>::min()};
+    int64_t y1 {std::numeric_limits<int64_t>::min()};
+
+    for (ident_t runtime_static_item_id : runtime_static_item_ids) {
+        if (!_runtimeStaticItems.contains(runtime_static_item_id)) {
+            throw GenericException("Static item is not a runtime static item of this map", GetProtoId(), runtime_static_item_id);
+        }
+        if (!ids.emplace(runtime_static_item_id).second) {
+            throw GenericException("Runtime static item id to unload repeats", GetProtoId(), runtime_static_item_id);
+        }
+
+        // A removal the server recorded may have destroyed the view already
+        auto it {_itemsMap.find(runtime_static_item_id)};
+
+        if (it == _itemsMap.end()) {
+            continue;
+        }
+
+        ptr<ItemHexView> item {it->second};
+        items.emplace_back(item);
+
+        auto extend {[&](mpos hex) {
+            x0 = std::min<int64_t>(x0, hex.x);
+            y0 = std::min<int64_t>(y0, hex.y);
+            x1 = std::max<int64_t>(x1, hex.x);
+            y1 = std::max<int64_t>(y1, hex.y);
+        }};
+
+        extend(item->GetHex());
+
+        if (item->IsNonEmptyMultihexMesh()) {
+            for (mpos mesh_hex : item->GetMultihexMesh()) {
+                extend(mesh_hex);
+            }
+        }
+    }
+
+    for (ident_t runtime_static_item_id : ids) {
+        _runtimeStaticItems.erase(runtime_static_item_id);
+    }
+
+    if (items.empty()) {
+        return;
+    }
+
+    DestroyItems(items);
+
+    ReleaseEmptyFields(mpos {numeric_cast<mcoord_t>(x0), numeric_cast<mcoord_t>(y0)}, msize {numeric_cast<mcoord_t>(x1 - x0 + 1), numeric_cast<mcoord_t>(y1 - y0 + 1)});
+
+    if (!_mapLoading) {
+        RebuildMap();
+    }
+}
+
+void MapView::ReleaseEmptyFields(mpos origin, msize size)
+{
+    FO_TRACE_ZONE(Map);
+
+    constexpr int32_t side {numeric_cast<int32_t>(GameSettings::CLIENT_MAP_CHUNK_SIDE)};
+
+    // Sprites keep pointers to the light of their hex and its neighbours, so blocks next to the view stay allocated
+    int64_t view_x0 {std::numeric_limits<int64_t>::max()};
+    int64_t view_y0 {std::numeric_limits<int64_t>::max()};
+    int64_t view_x1 {std::numeric_limits<int64_t>::min()};
+    int64_t view_y1 {std::numeric_limits<int64_t>::min()};
+
+    for (const auto& vf : _viewField) {
+        view_x0 = std::min<int64_t>(view_x0, vf.RawHex.x);
+        view_y0 = std::min<int64_t>(view_y0, vf.RawHex.y);
+        view_x1 = std::max<int64_t>(view_x1, vf.RawHex.x);
+        view_y1 = std::max<int64_t>(view_y1, vf.RawHex.y);
+    }
+
+    auto is_releasable {[](const Field& field) -> bool { return field.Items.empty() && field.Critters.empty() && field.OriginItems.empty() && field.OriginCritters.empty() && field.MultihexItems.empty() && field.LightSources.empty() && !field.SpriteChain && !field.IsView && !field.ScrollBlock && field.RoofNum == 0 && !field.HasRoof; }};
+
+    int64_t x_end {safe_numeric_cast<int64_t>(origin.x) + size.width};
+    int64_t y_end {safe_numeric_cast<int64_t>(origin.y) + size.height};
+
+    // Only blocks wholly inside the area are candidates; a partly covered block may still hold other content
+    for (int64_t cy {(origin.y + side - 1) / side * side}; cy + side <= y_end; cy += side) {
+        for (int64_t cx {(origin.x + side - 1) / side * side}; cx + side <= x_end; cx += side) {
+            if (cx + side + side > view_x0 && cx - side <= view_x1 && cy + side + side > view_y0 && cy - side <= view_y1) {
+                continue;
+            }
+
+            bool releasable {true};
+
+            for (int64_t y {cy}; y < cy + side && releasable; y++) {
+                for (int64_t x {cx}; x < cx + side && releasable; x++) {
+                    releasable = is_releasable(_hexField->GetCellForReading(mpos {numeric_cast<mcoord_t>(x), numeric_cast<mcoord_t>(y)}));
+                }
+            }
+
+            if (releasable) {
+                _hexField->ClearArea(mpos {numeric_cast<mcoord_t>(cx), numeric_cast<mcoord_t>(cy)}, msize {numeric_cast<mcoord_t>(side), numeric_cast<mcoord_t>(side)});
+            }
+        }
+    }
+}
+
 void MapView::EnsureRoofNums()
 {
     FO_TRACE_ZONE(Map);
@@ -430,15 +689,14 @@ void MapView::EnsureRoofNums()
 
     _roofNumsDirty = false;
 
-    for (mcoord_t hx {0}; hx < _mapSize.width; hx++) {
-        for (mcoord_t hy {0}; hy < _mapSize.height; hy++) {
-            mpos hex {hx, hy};
-
-            if (_hexField->GetCellForReading(hex).RoofNum != 0) {
-                _hexField->GetCellForWriting(hex)->RoofNum = 0;
-            }
+    // Roof numbers live only on roof cells, so only the previously numbered cells need a reset
+    for (mpos hex : _numberedRoofHexes) {
+        if (_hexField->GetCellForReading(hex).RoofNum != 0) {
+            _hexField->GetCellForWriting(hex)->RoofNum = 0;
         }
     }
+
+    _numberedRoofHexes.clear();
 
     auto mark_roof_num {[this](ipos32 raw_hex, int32_t num) {
         std::stack<ipos32, vector<ipos32>> next_raw_hexes {};
@@ -460,6 +718,7 @@ void MapView::EnsureRoofNums()
             }
 
             _hexField->GetCellForWriting(next_hex)->RoofNum = num;
+            _numberedRoofHexes.emplace_back(next_hex);
 
             next_raw_hexes.emplace(next_raw_hex.x + _engine->Settings->Geometry.MapTileStep, next_raw_hex.y);
             next_raw_hexes.emplace(next_raw_hex.x - _engine->Settings->Geometry.MapTileStep, next_raw_hex.y);
@@ -470,16 +729,18 @@ void MapView::EnsureRoofNums()
 
     int32_t roof_num {1};
 
-    for (mcoord_t hx {0}; hx < _mapSize.width; hx++) {
-        for (mcoord_t hy {0}; hy < _mapSize.height; hy++) {
-            const auto& field {_hexField->GetCellForReading(mpos(hx, hy))};
+    // Visit roof cells in the former whole-map order (x major, y minor), so group numbers do not change
+    vector<mpos> roof_hexes {_roofHexes.begin(), _roofHexes.end()};
+    std::ranges::sort(roof_hexes, [](mpos a, mpos b) { return a.x != b.x ? a.x < b.x : a.y < b.y; });
 
-            if (field.RoofNum == 0 && field.HasRoof) {
-                // From the roof tile's own hex rather than one snapped to even: the lattice origin carries
-                // whatever parity the author placed it on, and a snapped start misses odd-parity roofs entirely
-                mark_roof_num(ipos32 {hx, hy}, roof_num);
-                roof_num++;
-            }
+    for (mpos hex : roof_hexes) {
+        const auto& field {_hexField->GetCellForReading(hex)};
+
+        if (field.RoofNum == 0 && field.HasRoof) {
+            // From the roof tile's own hex rather than one snapped to even: the lattice origin carries
+            // whatever parity the author placed it on, and a snapped start misses odd-parity roofs entirely
+            mark_roof_num(ipos32 {hex.x, hex.y}, roof_num);
+            roof_num++;
         }
     }
 
@@ -620,7 +881,7 @@ void MapView::AddItemToField(ptr<ItemHexView> item)
 
     vec_add_unique_value(field->OriginItems, item);
     vec_add_unique_value(field->Items, item);
-    RecacheHexFlags(field);
+    RecacheHexFlags(hex, field);
 
     if (item->IsNonEmptyMultihexLines() || item->IsNonEmptyMultihexMesh()) {
         vector<mpos> multihex_entries {};
@@ -633,7 +894,7 @@ void MapView::AddItemToField(ptr<ItemHexView> item)
 
             if (vec_safe_add_unique_value(multihex_field->Items, item)) {
                 vec_add_unique_value(multihex_field->MultihexItems, pair(item, item->GetDrawMultihexLines()));
-                RecacheHexFlags(multihex_field);
+                RecacheHexFlags(multihex, multihex_field);
                 multihex_entries.emplace_back(multihex);
             }
         });
@@ -644,7 +905,7 @@ void MapView::AddItemToField(ptr<ItemHexView> item)
 
                 if (vec_safe_add_unique_value(multihex_field->Items, item)) {
                     vec_add_unique_value(multihex_field->MultihexItems, pair(item, item->GetDrawMultihexMesh()));
-                    RecacheHexFlags(multihex_field);
+                    RecacheHexFlags(multihex, multihex_field);
                     multihex_entries.emplace_back(multihex);
                 }
 
@@ -654,7 +915,7 @@ void MapView::AddItemToField(ptr<ItemHexView> item)
 
                         if (vec_safe_add_unique_value(multihex_field2->Items, item)) {
                             vec_add_unique_value(multihex_field2->MultihexItems, pair(item, item->GetDrawMultihexLines()));
-                            RecacheHexFlags(multihex_field2);
+                            RecacheHexFlags(multihex2, multihex_field2);
                             multihex_entries.emplace_back(multihex2);
                         }
                     });
@@ -705,7 +966,7 @@ void MapView::RemoveItemFromField(ptr<ItemHexView> item)
 
     vec_remove_unique_value(field->OriginItems, item);
     vec_remove_unique_value(field->Items, item);
-    RecacheHexFlags(field);
+    RecacheHexFlags(hex, field);
 
     if (item->HasMultihexEntries()) {
         auto multihex_entries {item->GetMultihexEntries()};
@@ -715,7 +976,7 @@ void MapView::RemoveItemFromField(ptr<ItemHexView> item)
             auto multihex_field {_hexField->GetCellForWriting(multihex)};
             vec_remove_unique_value(multihex_field->Items, item);
             vec_remove_unique_value_if(multihex_field->MultihexItems, [item](auto&& i) { return i.first == item; });
-            RecacheHexFlags(multihex_field);
+            RecacheHexFlags(multihex, multihex_field);
         }
 
         item->SetMultihexEntries({});
@@ -1791,7 +2052,7 @@ void MapView::CleanLightFan(ptr<LightSource> ls)
         auto field {_hexField->GetCellForWriting(hex)};
 
         field->LightSources.erase(ls);
-        CalculateHexLight(hex, field);
+        CalculateHexLight(field);
 
         if constexpr (FO_DEBUG) {
             if (field->IsView) {
@@ -2022,7 +2283,7 @@ void MapView::MarkLight(ptr<LightSource> ls, mpos hex, int32_t raw_intensity)
     if (it == field->LightSources.end()) {
         field->LightSources.emplace(ls, light_color);
         ls->MarkedHexes.emplace_back(hex);
-        CalculateHexLight(hex, field);
+        CalculateHexLight(field);
 
         if (field->IsView) {
             _visibleLightSources[ls]++;
@@ -2033,14 +2294,14 @@ void MapView::MarkLight(ptr<LightSource> ls, mpos hex, int32_t raw_intensity)
 
         if (light_color.comp.r > cur_color.comp.r || light_color.comp.g > cur_color.comp.g || light_color.comp.b > cur_color.comp.b) {
             cur_color = light_color;
-            CalculateHexLight(hex, field);
+            CalculateHexLight(field);
         }
     }
 }
 
-void MapView::CalculateHexLight(mpos hex, ptr<const Field> field)
+void MapView::CalculateHexLight(ptr<Field> field)
 {
-    auto& hex_light {_hexLight[numeric_cast<size_t>(safe_numeric_cast<int64_t>(hex.y) * _mapSize.width + hex.x)]};
+    auto& hex_light {field->Light};
 
     hex_light = {};
 
@@ -2048,6 +2309,39 @@ void MapView::CalculateHexLight(mpos hex, ptr<const Field> field)
         hex_light.comp.r = std::max(hex_light.comp.r, value.comp.r);
         hex_light.comp.g = std::max(hex_light.comp.g, value.comp.g);
         hex_light.comp.b = std::max(hex_light.comp.b, value.comp.b);
+    }
+}
+
+void MapView::SetupSpriteLight(ptr<MapSprite> mspr, CornerType corner)
+{
+    mpos hex {mspr->GetHex()};
+
+    if (hex.x < 1 || hex.x >= _mapSize.width - 1 || hex.y < 1 || hex.y >= _mapSize.height - 1) {
+        mspr->SetLight(nullptr, nullptr, nullptr);
+        return;
+    }
+
+    // Fields are written here so that the sprite keeps the addresses a later light change updates
+    auto light_at {[this, hex](int32_t ox, int32_t oy) -> ptr<const ucolor> {
+        mpos light_hex {numeric_cast<mcoord_t>(hex.x + ox), numeric_cast<mcoord_t>(hex.y + oy)};
+        return &_hexField->GetCellForWriting(light_hex)->Light;
+    }};
+
+    switch (corner) {
+    case CornerType::EastWest:
+    case CornerType::East:
+        mspr->SetLight(light_at(0, 0), light_at(-1, 0), light_at(1, 0));
+        break;
+    case CornerType::NorthSouth:
+    case CornerType::West:
+        mspr->SetLight(light_at(0, 0), light_at(0, 1), light_at(0, -1));
+        break;
+    case CornerType::South:
+        mspr->SetLight(light_at(0, 0), light_at(-1, 0), light_at(0, -1));
+        break;
+    case CornerType::North:
+        mspr->SetLight(light_at(0, 0), light_at(0, 1), light_at(1, 0));
+        break;
     }
 }
 
@@ -2185,10 +2479,10 @@ void MapView::RecacheHexFlags(mpos hex)
 
     auto field {_hexField->GetCellForWriting(hex)};
 
-    RecacheHexFlags(field);
+    RecacheHexFlags(hex, field);
 }
 
-void MapView::RecacheHexFlags(ptr<Field> field)
+void MapView::RecacheHexFlags(mpos hex, ptr<Field> field)
 {
     bool had_roof {field->HasRoof};
     field->HasWall = false;
@@ -2246,7 +2540,17 @@ void MapView::RecacheHexFlags(ptr<Field> field)
     }
 
     field->MovableWithGag = field->MovableWithGag && field->MoveBlocked;
-    _roofNumsDirty = _roofNumsDirty || had_roof != field->HasRoof;
+
+    if (had_roof != field->HasRoof) {
+        _roofNumsDirty = true;
+
+        if (field->HasRoof) {
+            _roofHexes.emplace(hex);
+        }
+        else {
+            _roofHexes.erase(hex);
+        }
+    }
 }
 
 void MapView::RecacheScrollBlocks()
@@ -2255,6 +2559,20 @@ void MapView::RecacheScrollBlocks()
 
     irect32 scroll_area {GetScrollAxialArea()};
     int32_t scroll_block_size {_engine->Settings->Hex.ScrollBlockSize};
+
+    // Without a scroll area no cell is blocked; clearing the earlier blocked cells avoids a whole-map pass
+    if (scroll_area.is_zero()) {
+        for (mpos hex : std::exchange(_scrollBlockHexes, {})) {
+            if (_mapSize.is_valid_pos(hex)) {
+                _hexField->GetCellForWriting(hex)->ScrollBlock = false;
+                RecacheHexFlags(hex);
+            }
+        }
+
+        return;
+    }
+
+    _scrollBlockHexes.clear();
 
     for (mcoord_t hx {0}; hx < _mapSize.width; hx++) {
         for (mcoord_t hy {0}; hy < _mapSize.height; hy++) {
@@ -2272,6 +2590,10 @@ void MapView::RecacheScrollBlocks()
                     (axial_hex.y >= scroll_area.y + scroll_area.height - scroll_block_size && axial_hex.y <= scroll_area.y + scroll_area.height + scroll_block_size)) {
                     is_on_scroll_block = true;
                 }
+            }
+
+            if (is_on_scroll_block) {
+                _scrollBlockHexes.emplace_back(hex);
             }
 
             if (is_on_scroll_block != field.ScrollBlock) {
@@ -2292,8 +2614,6 @@ void MapView::Resize(msize size)
     FO_VERIFY_AND_THROW(size.height >= GameSettings::MIN_MAP_SIZE, "Map resize height is smaller than the engine minimum", size.height, GameSettings::MIN_MAP_SIZE);
     FO_VERIFY_AND_THROW(size.height <= GameSettings::MAX_MAP_SIZE, "Map resize height is larger than the engine maximum", size.height, GameSettings::MAX_MAP_SIZE);
 
-    size_t hex_count {size.square<size_t>()};
-
     for (const auto& vf : _viewField) {
         if (_mapSize.is_valid_pos(vf.RawHex)) {
             auto field {_hexField->GetCellForWriting(_mapSize.from_raw_pos(vf.RawHex))};
@@ -2302,28 +2622,26 @@ void MapView::Resize(msize size)
         }
     }
 
-    // Remove objects on shrink
-    for (mcoord_t hy {0}; hy < std::max(size.height, _mapSize.height); hy++) {
-        for (mcoord_t hx {0}; hx < std::max(size.width, _mapSize.width); hx++) {
-            if (hx >= size.width || hy >= size.height) {
-                const auto& field {_hexField->GetCellForReading({hx, hy})};
+    // Remove objects on shrink; every critter and item view is in the view lists, so no cell scan is needed
+    vector<ptr<CritterHexView>> outside_critters {};
+    vector<ptr<ItemHexView>> outside_items {};
 
-                if (!field.OriginCritters.empty()) {
-                    for (ptr<CritterHexView> cr : copy(field.OriginCritters)) {
-                        DestroyCritter(cr);
-                    }
-                }
-                if (!field.OriginItems.empty()) {
-                    for (ptr<ItemHexView> item : copy(field.OriginItems)) {
-                        DestroyItem(item);
-                    }
-                }
-
-                FO_VERIFY_AND_THROW(field.OriginCritters.empty(), "Field origin critters must be empty before this operation");
-                FO_VERIFY_AND_THROW(field.OriginItems.empty(), "Field origin items must be empty before this operation");
-                FO_VERIFY_AND_THROW(!field.SpriteChain, "Field sprite chain is already set");
-            }
+    for (auto& cr : _critters) {
+        if (!size.is_valid_pos(cr->GetHex())) {
+            outside_critters.emplace_back(cr.as_ptr());
         }
+    }
+    for (auto& item : _items) {
+        if (!size.is_valid_pos(item->GetHex())) {
+            outside_items.emplace_back(item.as_ptr());
+        }
+    }
+
+    for (ptr<CritterHexView> cr : outside_critters) {
+        DestroyCritter(cr);
+    }
+    for (ptr<ItemHexView> item : outside_items) {
+        DestroyItem(item);
     }
 
     SetSize(size);
@@ -2331,14 +2649,8 @@ void MapView::Resize(msize size)
 
     SetWorkHex(_mapSize.clamp_pos(GetWorkHex()));
 
-    _hexLight.resize(hex_count);
+    // Field light moves with its cell, so no per-cell light pass is needed
     _hexField->Resize(_mapSize);
-
-    for (mcoord_t hy {0}; hy < _mapSize.height; hy++) {
-        for (mcoord_t hx {0}; hx < _mapSize.width; hx++) {
-            CalculateHexLight(mpos(hx, hy), &_hexField->GetCellForReading(mpos(hx, hy)));
-        }
-    }
 
     RecacheScrollBlocks();
     RebuildMapNow();
@@ -3402,7 +3714,7 @@ void MapView::AddCritterToField(ptr<CritterHexView> cr)
 
     vec_add_unique_value(field->OriginCritters, cr);
     vec_add_unique_value(field->Critters, cr);
-    RecacheHexFlags(field);
+    RecacheHexFlags(hex, field);
     SetMultihexCritter(cr, true);
     UpdateCritterLightSource(cr);
 
@@ -3419,7 +3731,7 @@ void MapView::RemoveCritterFromField(ptr<CritterHexView> cr)
 
     vec_remove_unique_value(field->OriginCritters, cr);
     vec_remove_unique_value(field->Critters, cr);
-    RecacheHexFlags(field);
+    RecacheHexFlags(hex, field);
     SetMultihexCritter(cr, false);
     FinishLightSource(cr->GetId());
     cr->InvalidateSprite();
@@ -3675,7 +3987,7 @@ void MapView::SetMultihexCritter(ptr<CritterHexView> cr, bool set)
                     vec_remove_unique_value(field->Critters, cr);
                 }
 
-                RecacheHexFlags(field);
+                RecacheHexFlags(multihex_hex, field);
             }
         }
     }

@@ -1573,6 +1573,65 @@ FO_SCRIPT_API bool Server_Game_CallStaticItemFunction(ptr<ServerEngine> server, 
     return staticItem->StaticScriptFunc.Call(cr, staticItem, used_item, param) && staticItem->StaticScriptFunc.GetResult();
 }
 
+// Read the baked content of a prototype map into the cache, now or on a worker thread; a request before that read ends waits for it
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_LoadStaticMap(ptr<ServerEngine> server, hstring mapPid, bool asyncLoad)
+{
+    auto proto {server->GetProtoMap(mapPid)};
+
+    if (!proto) {
+        throw ScriptException("Map proto not found", mapPid);
+    }
+
+    server->MapMngr.LoadStaticMap(proto, asyncLoad);
+}
+
+// Read the baked content of prototype maps into the cache, now or on worker threads; a request for one of them waits for its read
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_LoadStaticMaps(ptr<ServerEngine> server, readonly_vector<hstring> mapPids, bool asyncLoad)
+{
+    vector<ptr<const ProtoMap>> protos {};
+    protos.reserve(mapPids.size());
+
+    for (hstring map_pid : mapPids) {
+        auto proto {server->GetProtoMap(map_pid)};
+
+        if (!proto) {
+            throw ScriptException("Map proto not found", map_pid);
+        }
+
+        protos.emplace_back(proto);
+    }
+
+    server->MapMngr.LoadStaticMaps(protos, asyncLoad);
+}
+
+// Return whether the baked content of a prototype map is cached
+///@ ExportMethod
+FO_SCRIPT_API bool Server_Game_IsStaticMapLoaded(ptr<ServerEngine> server, hstring mapPid)
+{
+    auto proto {server->GetProtoMap(mapPid)};
+
+    if (!proto) {
+        throw ScriptException("Map proto not found", mapPid);
+    }
+
+    return server->MapMngr.IsStaticMapLoaded(proto);
+}
+
+// Free the cached baked content of a prototype map and return whether it is unloaded; it stays while being read or used by a map
+///@ ExportMethod
+FO_SCRIPT_API bool Server_Game_UnloadStaticMap(ptr<ServerEngine> server, hstring mapPid)
+{
+    auto proto {server->GetProtoMap(mapPid)};
+
+    if (!proto) {
+        throw ScriptException("Map proto not found", mapPid);
+    }
+
+    return server->MapMngr.UnloadStaticMap(proto);
+}
+
 // Return the static items of a prototype map
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<StaticItem>> Server_Game_GetStaticItemsForProtoMap(ptr<ServerEngine> server, ptr<ProtoMap> proto)

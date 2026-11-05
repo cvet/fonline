@@ -57,6 +57,14 @@ template<typename T>
     return float_abs(f1 - f2) <= epsilon * std::max(float_abs(f1), float_abs(f2));
 }
 
+// Angle in degrees wrapped by whole turns into [0, 360]; a negative whole turn gives 360
+template<typename T>
+    requires(std::floating_point<T>)
+[[nodiscard]] auto wrap_angle(T angle) noexcept -> T
+{
+    return angle < T {0} ? T {360} - std::fmod(-angle, T {360}) : std::fmod(angle, T {360});
+}
+
 // Alignment, alignment must be a power of two
 template<typename T>
     requires(std::is_unsigned_v<T>)

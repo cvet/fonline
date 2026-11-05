@@ -54,17 +54,17 @@ public:
 
 private:
     void TraceInit(mpos start_hex, mpos target_hex, float32_t dir_angle_offset, ipos16 start_offset, ipos16 target_offset);
+    auto GetLineDistance(mpos hex) const -> float64_t;
 
     msize _mapSize {};
-    float32_t _dirAngle {};
+    mpos _origin {};
     hdir _dirLeft {};
     hdir _dirRight {};
-    float32_t _xStart {};
-    float32_t _yStart {};
-    float32_t _x {};
-    float32_t _y {};
-    float32_t _dx {};
-    float32_t _dy {};
+    float64_t _xStart {};
+    float64_t _yStart {};
+    float64_t _dx {};
+    float64_t _dy {};
+    int64_t _step {};
 };
 
 FO_END_NAMESPACE

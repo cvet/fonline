@@ -1426,6 +1426,87 @@ TEST_CASE("PathFinding::AStar")
     }
 }
 
+TEST_CASE("PathFinding::RoutesMatchOnContinentSizedMaps")
+{
+    // A search on a continent-sized map indexes only the window its length limit allows and must find the same
+    // route, shifted, as on a small map
+    if constexpr (std::numeric_limits<mcoord_t>::max() < 128000) {
+        SKIP("Map coordinates are 16-bit in this build");
+    }
+    else {
+        constexpr int32_t shift {120000};
+        auto wall_at {[](int32_t x, int32_t y) -> bool { return x == 12 && y >= 3 && y <= 16; }};
+
+        FindPathInput small {MakeBlockedSettings(mpos {5, 10}, mpos {18, 10}, [&wall_at](mpos hex) -> bool { return wall_at(hex.x, hex.y); })};
+        small.MapSize = msize {40, 40};
+        FindPathInput huge {MakeBlockedSettings(mpos {numeric_cast<mcoord_t>(5 + shift), numeric_cast<mcoord_t>(10 + shift)}, mpos {numeric_cast<mcoord_t>(18 + shift), numeric_cast<mcoord_t>(10 + shift)}, [&wall_at, shift](mpos hex) -> bool { return wall_at(hex.x - shift, hex.y - shift); })};
+        huge.MapSize = msize {128000, 128000};
+
+        auto small_output {PathFinding::FindPath(small)};
+        auto huge_output {PathFinding::FindPath(huge)};
+
+        REQUIRE(small_output.Result == FindPathOutput::ResultType::Ok);
+        REQUIRE(huge_output.Result == FindPathOutput::ResultType::Ok);
+        CHECK(huge_output.Steps == small_output.Steps);
+        CHECK(huge_output.Steps.size() > 13);
+    }
+}
+
+TEST_CASE("PathFinding::SearchWindow")
+{
+    SECTION("RandomRequestsStayInsideTheWindow")
+    {
+        // The window is sized from MaxLength, Multihex and Cut; any hex a search asks about outside it throws
+        random_generator rnd {4112026};
+        size_t ok_total {0};
+
+        for (int32_t round {0}; round < 600; round++) {
+            vector<uint8_t> blocked {MakeRandomBlocks(rnd, RANDOM_MAP_SIZE, rnd.next_between(0, 35))};
+            mpos from {RANDOM_MAP_SIZE.from_raw_pos(rnd.next_between(0, RANDOM_MAP_SIZE.width - 1), rnd.next_between(0, RANDOM_MAP_SIZE.height - 1))};
+            mpos to {RANDOM_MAP_SIZE.from_raw_pos(rnd.next_between(0, RANDOM_MAP_SIZE.width - 1), rnd.next_between(0, RANDOM_MAP_SIZE.height - 1))};
+
+            FindPathInput input {MakeClearSettings(from, to, rnd.next_between(0, 3))};
+            input.MapSize = RANDOM_MAP_SIZE;
+            input.MaxLength = rnd.next_between(1, 25);
+            input.Multihex = rnd.next_between(0, 2);
+            input.FreeMovement = rnd.next_between(0, 1) == 1;
+            input.EnclosureProbeLimit = rnd.next_between(0, 1) == 1 ? 64 : 0;
+            input.CheckHex = [&blocked](mpos hex) -> HexBlockResult {
+                uint8_t value {blocked[numeric_cast<size_t>(hex.y) * numeric_cast<size_t>(RANDOM_MAP_SIZE.width) + numeric_cast<size_t>(hex.x)]};
+                return value != 0 ? HexBlockResult::Blocked : HexBlockResult::Passable;
+            };
+
+            INFO("round " << round);
+            FindPathOutput output {};
+            REQUIRE_NOTHROW(output = PathFinding::FindPath(input));
+            ok_total += output.Result == FindPathOutput::ResultType::Ok ? 1 : 0;
+        }
+
+        CHECK(ok_total > 100);
+    }
+
+    SECTION("EnclosureProbeFloodsPastTheWindow")
+    {
+        // A long closed pocket around the target reaches far beyond the window of a short search, and the probe still
+        // proves it walled off rather than leaving the search to run out of length
+        auto pocket_wall {[](mpos hex) -> bool {
+            bool inside_box {hex.x >= 35 && hex.x <= 110 && hex.y >= 58 && hex.y <= 62};
+            bool on_edge {hex.x == 35 || hex.x == 110 || hex.y == 58 || hex.y == 62};
+            return inside_box && on_edge;
+        }};
+
+        FindPathInput input {MakeBlockedSettings(mpos {30, 60}, mpos {45, 60}, pocket_wall)};
+        input.MapSize = WIDE_MAP_SIZE;
+        input.MaxLength = 40;
+        input.EnclosureProbeLimit = 300;
+
+        CHECK(PathFinding::FindPath(input).Result == FindPathOutput::ResultType::NoWay);
+
+        input.EnclosureProbeLimit = 0;
+        CHECK(PathFinding::FindPath(input).Result == FindPathOutput::ResultType::TooFar);
+    }
+}
+
 TEST_CASE("PathFinding::FindReachable")
 {
     auto blocked_at {[](const vector<uint8_t>& blocked, mpos hex) -> bool { return blocked[numeric_cast<size_t>(hex.y) * numeric_cast<size_t>(RANDOM_MAP_SIZE.width) + numeric_cast<size_t>(hex.x)] != 0; }};
@@ -1931,7 +2012,8 @@ TEST_CASE("PathFinding::TraceLine")
 }
 
 // Hidden: what one search costs on a settlement-sized map, per kind of request, with every answer folded into a
-// fingerprint so two builds can be compared on the same requests. A measurement, so it runs only by name
+// fingerprint so two builds can be compared on the same requests. The same requests run again on the settlement
+// placed inside a continent-sized map, whose answers must match. A measurement, so it runs only by name
 TEST_CASE("PathFindingCost", "[.]")
 {
     constexpr int16_t SIDE {600};
@@ -2032,25 +2114,23 @@ TEST_CASE("PathFindingCost", "[.]")
         }
     }};
 
-    auto make_request {[&](mpos from, mpos to) -> FindPathInput {
-        FindPathInput input {};
-        input.FromHex = from;
-        input.ToHex = to;
-        input.MapSize = MAP_SIZE;
-        input.MaxLength = 500;
-        input.EnclosureProbeLimit = 1024;
-        input.FreeMovement = true;
-        input.CheckHex = [&check_calls, &is_blocked](mpos hex) -> HexBlockResult {
-            check_calls++;
-            return is_blocked(hex) ? HexBlockResult::Blocked : HexBlockResult::Passable;
-        };
-        return input;
-    }};
+    // Requests are described on the settlement map and built for a placement when they run
+    struct Request
+    {
+        mpos From {};
+        mpos To {};
+        bool FreeMovement {};
+        int32_t EnclosureProbeLimit {};
+        int32_t Multihex {};
+        vector<mpos> Targets {};
+    };
+
+    auto make_request {[](mpos from, mpos to) -> Request { return Request {.From = from, .To = to, .FreeMovement = true, .EnclosureProbeLimit = 1024, .Multihex = 0, .Targets = {}}; }};
 
     struct Scenario
     {
         string Name {};
-        vector<FindPathInput> Requests {};
+        vector<Request> Requests {};
     };
 
     vector<Scenario> scenarios {};
@@ -2061,7 +2141,7 @@ TEST_CASE("PathFindingCost", "[.]")
         mpos from {pick_open()};
         mpos to {pick_open_near(from, 3, 15)};
         scenarios[0].Requests.emplace_back(make_request(from, to));
-        FindPathInput hex_steps_request {make_request(from, to)};
+        Request hex_steps_request {make_request(from, to)};
         hex_steps_request.FreeMovement = false;
         scenarios[1].Requests.emplace_back(std::move(hex_steps_request));
     }
@@ -2096,7 +2176,7 @@ TEST_CASE("PathFindingCost", "[.]")
     scenarios.emplace_back(Scenario {.Name = "sealed target, not probed", .Requests = {}});
 
     for (size_t i {0}; i < 4; i++) {
-        FindPathInput request {make_request(pick_open_near(sealed_centers[i], 30, 80), sealed_centers[i])};
+        Request request {make_request(pick_open_near(sealed_centers[i], 30, 80), sealed_centers[i])};
         request.EnclosureProbeLimit = 0;
         scenarios.back().Requests.emplace_back(std::move(request));
     }
@@ -2105,7 +2185,7 @@ TEST_CASE("PathFindingCost", "[.]")
 
     for (int32_t i {0}; i < 100; i++) {
         mpos from {pick_open()};
-        FindPathInput request {make_request(from, pick_open_near(from, 3, 15))};
+        Request request {make_request(from, pick_open_near(from, 3, 15))};
         request.Multihex = 1;
         scenarios.back().Requests.emplace_back(std::move(request));
     }
@@ -2126,52 +2206,126 @@ TEST_CASE("PathFindingCost", "[.]")
             }
         }
 
-        FindPathInput request {make_request(from, mpos {})};
-        request.CheckTarget = [targets](mpos hex) -> bool { return std::ranges::find(targets, hex) != targets.end(); };
+        Request request {make_request(from, mpos {})};
+        request.Targets = std::move(targets);
         scenarios.back().Requests.emplace_back(std::move(request));
     }
 
-    auto elapsed_ms {[](auto started) { return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count(); }};
-    string report {};
+    struct Placement
+    {
+        string Name {};
+        msize MapSize {};
+        int32_t Shift {};
+    };
 
-    for (const auto& scenario : scenarios) {
-        size_t ok {0};
-        size_t too_far {0};
-        size_t no_way {0};
-        size_t other {0};
-        size_t steps {0};
-        uint64_t route_hash {14695981039346656037ull};
-        double best_ms {0.0};
-        check_calls = 0;
+    vector<Placement> placements {};
+    placements.emplace_back(Placement {.Name = "settlement map", .MapSize = MAP_SIZE, .Shift = 0});
 
-        for (int32_t rep {0}; rep < REPEATS; rep++) {
-            auto started {std::chrono::steady_clock::now()};
+    // An even shift keeps the hex rows of the settlement aligned; everything around it is blocked
+    if constexpr (std::numeric_limits<mcoord_t>::max() >= 128000) {
+        placements.emplace_back(Placement {.Name = "inside a continent", .MapSize = msize {128000, 128000}, .Shift = 120000});
+    }
 
-            for (const auto& request : scenario.Requests) {
-                auto output {PathFinding::FindPath(request)};
+    auto place {[&](const Request& request, const Placement& placement) -> FindPathInput {
+        int32_t shift {placement.Shift};
+        auto shift_hex {[shift](mpos hex) -> mpos { return mpos {numeric_cast<mcoord_t>(hex.x + shift), numeric_cast<mcoord_t>(hex.y + shift)}; }};
+        auto local {[shift](mpos hex) -> ipos32 { return ipos32 {hex.x - shift, hex.y - shift}; }};
 
-                if (rep != 0) {
-                    continue;
-                }
+        FindPathInput input {};
+        input.FromHex = shift_hex(request.From);
+        input.ToHex = shift_hex(request.To);
+        input.MapSize = placement.MapSize;
+        input.MaxLength = 500;
+        input.EnclosureProbeLimit = request.EnclosureProbeLimit;
+        input.FreeMovement = request.FreeMovement;
+        input.Multihex = request.Multihex;
+        input.CheckHex = [&check_calls, &is_blocked, local](mpos hex) -> HexBlockResult {
+            check_calls++;
+            ipos32 raw_hex {local(hex)};
 
-                ok += output.Result == FindPathOutput::ResultType::Ok ? 1 : 0;
-                too_far += output.Result == FindPathOutput::ResultType::TooFar ? 1 : 0;
-                no_way += output.Result == FindPathOutput::ResultType::NoWay ? 1 : 0;
-                other += output.Result != FindPathOutput::ResultType::Ok && output.Result != FindPathOutput::ResultType::TooFar && output.Result != FindPathOutput::ResultType::NoWay ? 1 : 0;
-                steps += output.Steps.size();
-                route_hash = (route_hash ^ numeric_cast<uint64_t>(static_cast<uint8_t>(output.Result))) * 1099511628211ull;
-
-                for (mdir step : output.Steps) {
-                    route_hash = (route_hash ^ numeric_cast<uint64_t>(step.hex().value())) * 1099511628211ull;
-                }
+            if (!MAP_SIZE.is_valid_pos(raw_hex)) {
+                return HexBlockResult::Blocked;
             }
 
-            double ms {elapsed_ms(started)};
-            best_ms = rep == 0 ? ms : std::min(best_ms, ms);
+            return is_blocked(MAP_SIZE.from_raw_pos(raw_hex)) ? HexBlockResult::Blocked : HexBlockResult::Passable;
+        };
+
+        if (!request.Targets.empty()) {
+            vector<mpos> targets {};
+
+            for (mpos target : request.Targets) {
+                targets.emplace_back(shift_hex(target));
+            }
+
+            input.CheckTarget = [targets = std::move(targets)](mpos hex) -> bool { return std::ranges::find(targets, hex) != targets.end(); };
         }
 
-        double requests {numeric_cast<double>(scenario.Requests.size())};
-        report += strex("{:<28} {:>4} requests  {:>9.3f} ms each  {:>9.0f} CheckHex each  ok {} too far {} no way {} other {}  steps {}  route hash {:016x}\n", scenario.Name, scenario.Requests.size(), best_ms / requests, numeric_cast<double>(check_calls) / (requests * REPEATS), ok, too_far, no_way, other, steps, route_hash).str();
+        return input;
+    }};
+
+    auto elapsed_ms {[](auto started) { return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count(); }};
+    string report {};
+    vector<uint64_t> first_hashes {};
+
+    for (const auto& placement : placements) {
+        report += strex("{}:\n", placement.Name).str();
+        size_t scenario_index {0};
+
+        for (const auto& scenario : scenarios) {
+            vector<FindPathInput> requests {};
+
+            for (const auto& request : scenario.Requests) {
+                requests.emplace_back(place(request, placement));
+            }
+
+            size_t ok {0};
+            size_t too_far {0};
+            size_t no_way {0};
+            size_t other {0};
+            size_t steps {0};
+            uint64_t route_hash {14695981039346656037ull};
+            double best_ms {0.0};
+            check_calls = 0;
+
+            for (int32_t rep {0}; rep < REPEATS; rep++) {
+                auto started {std::chrono::steady_clock::now()};
+
+                for (const auto& request : requests) {
+                    auto output {PathFinding::FindPath(request)};
+
+                    if (rep != 0) {
+                        continue;
+                    }
+
+                    ok += output.Result == FindPathOutput::ResultType::Ok ? 1 : 0;
+                    too_far += output.Result == FindPathOutput::ResultType::TooFar ? 1 : 0;
+                    no_way += output.Result == FindPathOutput::ResultType::NoWay ? 1 : 0;
+                    other += output.Result != FindPathOutput::ResultType::Ok && output.Result != FindPathOutput::ResultType::TooFar && output.Result != FindPathOutput::ResultType::NoWay ? 1 : 0;
+                    steps += output.Steps.size();
+                    route_hash = (route_hash ^ numeric_cast<uint64_t>(static_cast<uint8_t>(output.Result))) * 1099511628211ull;
+
+                    for (mdir step : output.Steps) {
+                        route_hash = (route_hash ^ numeric_cast<uint64_t>(step.hex().value())) * 1099511628211ull;
+                    }
+                }
+
+                double ms {elapsed_ms(started)};
+                best_ms = rep == 0 ? ms : std::min(best_ms, ms);
+            }
+
+            double request_count {numeric_cast<double>(scenario.Requests.size())};
+            report += strex("{:<28} {:>4} requests  {:>9.3f} ms each  {:>9.0f} CheckHex each  ok {} too far {} no way {} other {}  steps {}  route hash {:016x}\n", scenario.Name, scenario.Requests.size(), best_ms / request_count, numeric_cast<double>(check_calls) / (request_count * REPEATS), ok, too_far, no_way, other, steps, route_hash).str();
+
+            if (scenario_index == first_hashes.size()) {
+                first_hashes.emplace_back(route_hash);
+            }
+            else {
+                INFO(placement.Name << ": " << scenario.Name);
+                CHECK(route_hash == first_hashes[scenario_index]);
+            }
+
+            scenario_index++;
+        }
     }
 
     WARN(report);

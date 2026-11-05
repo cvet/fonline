@@ -793,5 +793,9 @@ constexpr auto SQRT3_FLOAT {std::numbers::sqrt3_v<float32_t>};
 constexpr auto SQRT3_X2_FLOAT {std::numbers::sqrt3_v<float32_t> * 2.0f};
 constexpr auto RAD_TO_DEG_FLOAT {180.0f / std::numbers::pi_v<float32_t>};
 constexpr auto DEG_TO_RAD_FLOAT {std::numbers::pi_v<float32_t> / 180.0f};
+constexpr auto SQRT3_FLOAT64 {std::numbers::sqrt3_v<float64_t>};
+constexpr auto SQRT3_X2_FLOAT64 {std::numbers::sqrt3_v<float64_t> * 2.0};
+constexpr auto RAD_TO_DEG_FLOAT64 {180.0 / std::numbers::pi_v<float64_t>};
+constexpr auto DEG_TO_RAD_FLOAT64 {std::numbers::pi_v<float64_t> / 180.0};
 
 FO_END_NAMESPACE

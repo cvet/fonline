@@ -16,6 +16,36 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Changed
 
+- Index `ChunkedTwoDimensionalGrid` blocks through a two-level table: the top level holds one owner per 32x32 block slots, and a slot table is allocated on the first write inside it. A grid at the maximum map size no longer allocates a map-sized block index (512 MB for 128,000 cells per side with 16-cell blocks). Field addresses, empty-cell reads and resize semantics are unchanged.
+- Store each client map field's applied light in `MapView::Field::Light` instead of a dense per-map colour buffer. `MapView::SetupSpriteLight(mspr, corner)` resolves the sprite's hex and corner neighbours and writes those fields; `MapSprite::SetLight` now takes the three resolved light pointers. Mapper resize needs no per-cell light pass.
+- Number client roof groups from the tracked set of roof fields in the former x-major, y-minor order, clear scroll blocks of a map without a scroll axial area from the previously blocked fields only, and destroy views outside a resized map from the view lists. Group numbers and blocked cells are unchanged.
+- Size the block index of a path search by the window its length limit allows around the start (`MaxLength` plus the multihex footprint and the goal ring, clipped to the map) instead of by the whole map, so a search costs the same on a continent-sized map as on a small one; the enclosure probe tracks hexes it floods outside the window separately. Routes are unchanged.
+- Read a proto map's baked server content when it is first needed instead of at server startup. `MapManager::LoadFromResources()` only checks that every `.fomap-bin-server` has its proto map; `MapManager::GetStaticMap()` reads the content on first use (a map instance, `Map.LoadRuntimeStaticItems`, `Map.GenerateContent` or `Game.GetStaticItemsForProtoMap`) and caches it; concurrent first requests for one map share a single read. A damaged or missing map file is reported then, as a `MapManagerException`, instead of failing startup.
+- Trace `LineTracer` lines in `float64_t` relative to their start hex, take each square-geometry position from the step count instead of summing steps, and cast the ray of the angle-and-distance form from a hex at the map origin with the start's column parity. Rounding no longer depends on where a line lies on the map or on how long it is: a line far out on a continent-sized map takes the same steps as the same line near the origin, and a square line tens of thousands of cells long stays on the cells nearest its exact course. Before, a `FreeMovement` route straightened around coordinate 120,000 could drift by a fraction of a hex. Anywhere on a map, a straightened route may now pick the other of two nearly equal hexes; results, reachability and route lengths of path searches are otherwise unchanged.
+
+### Added
+
+- Add the `float64_t` math constants `SQRT3_FLOAT64`, `SQRT3_X2_FLOAT64`, `RAD_TO_DEG_FLOAT64` and `DEG_TO_RAD_FLOAT64` beside their `float32_t` counterparts in `BasicCore.h`, and `wrap_angle(angle)` in `SafeArithmetics.h`, which wraps an angle in degrees of any floating-point type by whole turns into [0, 360] (a negative whole turn gives 360).
+- Add `TwoDimensionalGrid::ClearArea(origin, size)`, implemented by the static, chunked and dynamic grids. It resets every cell of the clipped rectangle; the chunked grid releases blocks the area covers completely and slot tables it empties. `ChunkedTwoDimensionalGrid::GetAllocatedChunkCount()` reports allocated blocks.
+- Add runtime loading of other maps' content into a map instance. Server and client `Map.LoadRuntimeStaticItems(mapPid, destHex, idOffset)` copy the static items of proto map `mapPid` into the map as runtime static items, with the source's first hex landing at `destHex` and return the copies' ids, each the baked id plus `idOffset` (an overload with `sourceHex` and `sourceSize` before `idOffset` copies only the items of that area, its first hex landing at `destHex`); an id that overflows, is zero, repeats or is already used on the map rejects the whole load; `Map.UnloadRuntimeStaticItems(runtimeStaticItemIds)` removes them again, and the client releases the field blocks they leave empty. Server `Map.GenerateContent(mapPid, destHex)` creates the proto map's critters and dynamic items as entities of the map and returns their ids. Runtime static items take part in every static query, blocking and triggers like baked ones, are not persisted and cannot join `RemovedStaticItemIds`. Server `Game.LoadStaticMap(mapPid, asyncLoad)` and `Game.LoadStaticMaps(mapPids, asyncLoad)` read one or several proto maps' content ahead, on the calling thread or on worker threads returning at once, `Game.UnloadStaticMap(mapPid)` frees it when no map instance uses it, and `Game.IsStaticMapLoaded(mapPid)` reports a finished read.
+
+### Migration
+
+- Baseline `90061a40d4` (`2026.1.108-dev`) to `2026.1.109-dev`; this reapplies the large-map work that `2026.1.103-dev` reverted. Settings, wire protocol, the `MigrationRule Version` marker, Managed ABI, saved data and resource schemas are unchanged; no content or save conversion is required. The script API only gains the methods listed above. Rebuild every native role (Server, Client, Mapper, Baker and tests) and regenerate both scripting backends, because the grid template and the `MapView` and `Map` layouts change. `StaticMap::ApplyItemToField()` becomes a private member, `StaticMap::MergeFieldInto(hex, field)` adds a map's items on a hex to another field, and `StaticMap::BuildFieldWithout()` is no longer `const`, because both hand out the map's items as mutable.
+- Baked maps are no longer read at startup: the first instance of a map reads its file on the creating thread, and an error in a map nobody creates goes unreported. A project that relied on startup to validate every baked map can call `Game.LoadStaticMap(mapPid, false)` for each one in a check. Native code that called `MapManager::GetStaticMap()` for a missing file got a failed lookup before and gets a `MapManagerException` now.
+- Native code: replace `mspr->SetLight(corner, map->GetLightData(), map->GetSize())` with `map->SetupSpriteLight(mspr, corner)`; `MapView::GetLightData()` is removed and its old dense-buffer call no longer compiles. Detect callers with `rg -n "GetLightData|SetLight\(" SourceExt` (or the project's native source roots). A custom `TwoDimensionalGrid` subclass must implement `ClearArea`; the pure virtual reports a missing override at compile time.
+- Acceptance owners are the `TwoDimensionalGrid` cases (continent-sized index, area release, bounded load/unload cycles, dynamic/static `ClearArea`), `ClientMaximumSizeMapLoadsWithoutMapSizedWork`, `PathFinding::RoutesMatchOnContinentSizedMaps`, `MapLoadsAndUnloadsContentOfOtherMaps`, `ClientMapLoadsAndUnloadsStaticItemsOfOtherMaps`, and the existing static map, removal, roof, light, scroll and hit-test cases.
+
+
+
+
+
+
+
+## 2026.1.108-dev - 2026-11-05
+
+### Changed
+
 - Repair test fixtures for fresh metadata settings, packaged viewer resource mounts and embedded profile line endings across Windows and Linux.
 
 ### Migration

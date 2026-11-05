@@ -38,6 +38,7 @@
 #include "Application.h"
 #include "Client.h"
 #include "ItemHexView.h"
+#include "MapLoader.h"
 #include "MapView.h"
 #include "ModelInfoBaker.h"
 #include "ModelMeshData.h"
@@ -563,6 +564,173 @@ TEST_CASE("ClientLargeMapScrollBoundsStayWithinMemoryBudget")
     // Scroll-block lines must not materialize the rest of a large, empty map
     INFO("Scroll-bounded map private memory: " << map_memory << "; initial: " << initial_memory);
     CHECK(map_memory < initial_memory + 64 * 1024 * 1024);
+}
+
+TEST_CASE("ClientMaximumSizeMapLoadsWithoutMapSizedWork")
+{
+    // A map at the configured maximum (up to a 128,000-cell continent with wide coordinates) must construct, scroll,
+    // light and unload with storage and time that follow the touched area rather than the map size
+    auto settings {MakeClientLifetimeSettings()};
+    BakerTests::OverrideSetting(settings.View.DisableLighting, false);
+    auto client {MakeClientLifetimeEngine(settings)};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+    auto proto {safe_alloc::make_refcounted<ProtoMap>(client->Hashes.to_hashed_string("MaximumSizeMap"), client->GetPropertyRegistrar("Map"))};
+    auto side {numeric_cast<mcoord_t>(std::min<int32_t>(GameSettings::MAX_MAP_SIZE, 128000))};
+    auto far_coord {numeric_cast<mcoord_t>(side - 200)};
+    proto->SetSize(msize {side, side});
+    proto->SetWorkHex(mpos {far_coord, far_coord});
+
+    size_t initial_memory {platform::get_process_private_memory_usage()};
+    auto start_time {nanotime::now()};
+    auto map {safe_alloc::make_refcounted<MapView>(client, ident_t {9001}, proto, isize32 {320, 200})};
+    auto destroy_map {scope_exit([&map]() noexcept {
+        safe_call([&map] {
+            if (!map->IsDestroyed()) {
+                map->DestroySelf();
+            }
+        });
+    })};
+    map->SetScrollCheck(false);
+    map->InstantScrollTo(mpos {200, 200});
+    map->InstantScrollTo(mpos {far_coord, far_coord});
+    auto elapsed {(nanotime::now() - start_time).to_ms<int64_t>()};
+    size_t map_memory {platform::get_process_private_memory_usage()};
+
+    INFO("Map side " << side << ", construction and two far scrolls took " << elapsed << " ms");
+    CHECK(elapsed < 5000);
+    CHECK(map->GetField(mpos {far_coord, far_coord}).IsView);
+    CHECK_FALSE(map->GetField(mpos {200, 200}).IsView);
+    CHECK(map->GetField(mpos {numeric_cast<mcoord_t>(side - 1), numeric_cast<mcoord_t>(side - 1)}).Items.empty());
+
+    if (initial_memory != 0 && map_memory != 0) {
+        INFO("Maximum-size map private memory: " << map_memory << "; initial: " << initial_memory);
+        CHECK(map_memory < initial_memory + 64 * 1024 * 1024);
+    }
+
+    map->DestroySelf();
+    CHECK_FALSE(client->GetEntity(map->GetId()));
+}
+
+TEST_CASE("ClientMapLoadsAndUnloadsStaticItemsOfOtherMaps")
+{
+    // Prototypes and the baked map come from a baker engine over the same empty metadata the client uses
+    vector<uint8_t> metadata {BakerTests::MakeEmptyMetadataBlob()};
+    auto compiler_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("ClientContentProtos")};
+    compiler_source->AddFile("Metadata.fometa-client", metadata);
+    FileSystem compiler_resources {};
+    compiler_resources.AddCustomSource(std::move(compiler_source));
+    BakerClientEngine proto_engine {compiler_resources};
+
+    hstring item_type {proto_engine.Hashes.to_hashed_string("Item")};
+    hstring map_type {proto_engine.Hashes.to_hashed_string("Map")};
+    hstring blocker_pid {proto_engine.Hashes.to_hashed_string("ClientContentBlocker")};
+
+    vector<pair<string, function<void(ProtoItem&)>>> item_protos;
+    item_protos.emplace_back("ClientContentBlocker", [](ProtoItem& proto) {
+        proto.SetStatic(true);
+        proto.SetNoBlock(false);
+    });
+    vector<pair<string, function<void(ProtoMap&)>>> map_protos;
+    map_protos.emplace_back("ClientContentMap", [](ProtoMap& proto) { proto.SetSize(msize {32, 32}); });
+
+    auto item_registrar {proto_engine.GetPropertyRegistrar(item_type)};
+    REQUIRE(static_cast<bool>(item_registrar));
+    vector<uint8_t> content_map {};
+    {
+        auto writer {data_writer(content_map)};
+        writer.write<uint32_t>(BAKED_MAP_FILE_MAGIC);
+        writer.write<uint32_t>(BAKED_MAP_FILE_VERSION);
+        writer.write<uint32_t>(uint32_t {1});
+        writer.write<uint32_t>(numeric_cast<uint32_t>(blocker_pid.as_str().length()));
+        writer.write_string_bytes(blocker_pid.as_str());
+        writer.write<uint32_t>(uint32_t {2});
+
+        for (auto&& [baked_id, hex] : {pair {int64_t {31}, mpos {2, 3}}, pair {int64_t {32}, mpos {20, 20}}}) {
+            Properties props {item_registrar};
+            props.SetValue<bool>(item_registrar->FindProperty("Static"), true);
+            props.SetValue<ItemOwnership>(item_registrar->FindProperty("Ownership"), ItemOwnership::MapHex);
+            props.SetValue<mpos>(item_registrar->FindProperty("Hex"), hex);
+            vector<uint8_t> props_data {};
+            set<hstring> str_hashes {};
+            props.StoreAllData(props_data, str_hashes);
+            writer.write<ident_t::underlying_type>(baked_id);
+            writer.write<hstring::hash_t>(blocker_pid.as_hash());
+            writer.write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
+            writer.write_bytes({props_data.data(), props_data.size()});
+        }
+    }
+
+    vector<pair<string, vector<uint8_t>>> extra {};
+    extra.emplace_back("ClientContentItems.fopro-bin-client", BakerTests::MakeMultiProtoResourceBlob<ProtoItem>(proto_engine, item_type, item_protos));
+    extra.emplace_back("ClientContentMap.fopro-bin-client", BakerTests::MakeMultiProtoResourceBlob<ProtoMap>(proto_engine, map_type, map_protos));
+    extra.emplace_back("ClientContentMap.fomap-bin-client", std::move(content_map));
+
+    auto settings {MakeClientLifetimeSettings()};
+    auto client {MakeClientLifetimeEngine(settings, std::move(extra))};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+    auto proto {safe_alloc::make_refcounted<ProtoMap>(client->Hashes.to_hashed_string("ClientContentHost"), client->GetPropertyRegistrar("Map"))};
+    proto->SetSize(msize {600, 600});
+    proto->SetWorkHex(mpos {50, 50});
+    auto map {safe_alloc::make_refcounted<MapView>(client, ident_t {9001}, proto, isize32 {320, 200})};
+    auto destroy_map {scope_exit([&map]() noexcept {
+        safe_call([&map] {
+            if (!map->IsDestroyed()) {
+                map->DestroySelf();
+            }
+        });
+    })};
+
+    // The same id offsets as on the server side, derived from the placement
+    auto id_offset {[](mpos dest_hex) -> int64_t { return (int64_t {1} << 50) + int64_t {dest_hex.x} * 1000000 + int64_t {dest_hex.y} * 1000; }};
+
+    hstring content_pid {client->Hashes.to_hashed_string("ClientContentMap")};
+    const mpos dest_hex {320, 256};
+    ident_t blocker_id {ident_t {(int64_t {1} << 50) + 320256031}};
+    ident_t far_id {ident_t {(int64_t {1} << 50) + 320256032}};
+
+    vector<ident_t> ids {map->LoadRuntimeStaticItems(content_pid, dest_hex, id_offset(dest_hex))};
+    REQUIRE(ids.size() == 2);
+    REQUIRE(map->GetItem(blocker_id));
+    CHECK(map->GetItem(blocker_id)->GetHex() == mpos {322, 259});
+    CHECK(map->GetItem(far_id)->GetHex() == mpos {340, 276});
+    CHECK(map->GetItem(blocker_id)->GetStatic());
+    CHECK(map->IsRuntimeStaticItem(blocker_id));
+    CHECK(map->GetField(mpos {322, 259}).MoveBlocked);
+    CHECK_FALSE(map->GetField(mpos {2, 3}).MoveBlocked);
+
+    // Ids must be nonzero and unused, and content must fit the map
+    CHECK_THROWS(map->LoadRuntimeStaticItems(content_pid, dest_hex, id_offset(dest_hex)));
+    CHECK_THROWS(map->LoadRuntimeStaticItems(content_pid, mpos {100, 100}, id_offset(dest_hex)));
+    CHECK_THROWS(map->LoadRuntimeStaticItems(content_pid, mpos {100, 100}, -31));
+    CHECK_THROWS(map->LoadRuntimeStaticItems(content_pid, mpos {100, 100}, std::numeric_limits<int64_t>::max()));
+    CHECK_THROWS(map->LoadRuntimeStaticItems(content_pid, mpos {590, 590}, id_offset(mpos {590, 590})));
+    CHECK_THROWS(map->LoadRuntimeStaticItems(client->Hashes.to_hashed_string("ClientMissingMap"), dest_hex, id_offset(dest_hex)));
+    CHECK(map->GetItems().size() == 2);
+
+    // Unloading destroys the views and releases the empty field blocks they covered
+    map->UnloadRuntimeStaticItems(ids);
+    CHECK_FALSE(map->GetItem(blocker_id));
+    CHECK_FALSE(map->IsRuntimeStaticItem(blocker_id));
+    CHECK_FALSE(map->GetField(mpos {322, 259}).MoveBlocked);
+    CHECK(map->GetField(mpos {322, 259}).Items.empty());
+    CHECK_THROWS(map->UnloadRuntimeStaticItems(ids));
+
+    // Loading again gives the same ids
+    CHECK(map->LoadRuntimeStaticItems(content_pid, dest_hex, id_offset(dest_hex)) == ids);
+    CHECK(map->GetItem(blocker_id));
+
+    // An area of the source map lands with its first hex at dest_hex and must lie inside the source map
+    vector<ident_t> area_ids {map->LoadRuntimeStaticItems(content_pid, mpos {100, 100}, mpos {20, 20}, msize {12, 12}, id_offset(mpos {100, 100}))};
+    REQUIRE(area_ids.size() == 1);
+    REQUIRE(map->GetItem(area_ids.front()));
+    CHECK(area_ids.front() == ident_t {(int64_t {1} << 50) + 100100032});
+    CHECK(map->GetItem(area_ids.front())->GetHex() == mpos {100, 100});
+    CHECK_THROWS(map->LoadRuntimeStaticItems(content_pid, mpos {200, 200}, mpos {20, 20}, msize {13, 1}, id_offset(mpos {200, 200})));
+    CHECK_THROWS(map->LoadRuntimeStaticItems(content_pid, mpos {200, 200}, mpos {32, 0}, msize {1, 1}, id_offset(mpos {200, 200})));
+    map->UnloadRuntimeStaticItems(area_ids);
+    CHECK_FALSE(map->GetItem(area_ids.front()));
+
+    map->DestroySelf();
 }
 
 TEST_CASE("ClientMapConstructionFailureReleasesRenderTargets")

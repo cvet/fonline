@@ -43,7 +43,6 @@ static constexpr int32_t OPEN_BUCKETS {16};
 static constexpr int32_t SEARCH_BLOCK_SHIFT {4};
 static constexpr int32_t SEARCH_BLOCK_SIDE {1 << SEARCH_BLOCK_SHIFT};
 static constexpr int32_t SEARCH_BLOCK_CELLS {SEARCH_BLOCK_SIDE * SEARCH_BLOCK_SIDE};
-
 static_assert(1 + GAG_DETOUR_STEPS + 1 < OPEN_BUCKETS);
 
 // One hex of a search, zeroed when its block is first touched
@@ -85,24 +84,28 @@ private:
     uint32_t _order {};
 };
 
-// Search state for the hexes a search touches, allocated in square blocks on first touch, so a search along
-// a corridor pays for the corridor rather than for the whole map
+// Search state for the hexes within reach of the start along both axes, the most a search can touch, so its block index
+// follows the route length rather than the map size. Cells are allocated in square blocks on first touch
 class PathSearchGrid
 {
 public:
-    explicit PathSearchGrid(msize map_size);
+    PathSearchGrid(msize map_size, mpos start, int64_t reach);
 
+    [[nodiscard]] auto IsInside(mpos hex) const -> bool { return hex.x >= _left && hex.y >= _top && hex.x - _left < _width && hex.y - _top < _height; }
     [[nodiscard]] auto FindCell(mpos hex) const -> nptr<const PathSearchCell>;
-    // An index stays valid for the whole search, a reference only until a new block is touched
     [[nodiscard]] auto GetCellIndex(mpos hex) -> int32_t;
     [[nodiscard]] auto GetCell(int32_t index) -> PathSearchCell& { return _cells[index]; }
     [[nodiscard]] auto GetCell(mpos hex) -> PathSearchCell& { return _cells[GetCellIndex(hex)]; }
 
 private:
-    auto GetBlockSlot(mpos hex) const -> size_t { return numeric_cast<size_t>(safe_numeric_cast<int64_t>(hex.y >> SEARCH_BLOCK_SHIFT) * _blocksPerRow + (hex.x >> SEARCH_BLOCK_SHIFT)); }
-    static auto GetCellSlot(int32_t block, mpos hex) -> int32_t { return block * SEARCH_BLOCK_CELLS + (hex.y & (SEARCH_BLOCK_SIDE - 1)) * SEARCH_BLOCK_SIDE + (hex.x & (SEARCH_BLOCK_SIDE - 1)); }
+    auto GetBlockSlot(mpos hex) const -> size_t { return numeric_cast<size_t>(((hex.y - _top) >> SEARCH_BLOCK_SHIFT) * _blocksPerRow + ((hex.x - _left) >> SEARCH_BLOCK_SHIFT)); }
+    auto GetCellSlot(int32_t block, mpos hex) const -> int32_t { return block * SEARCH_BLOCK_CELLS + ((hex.y - _top) & (SEARCH_BLOCK_SIDE - 1)) * SEARCH_BLOCK_SIDE + ((hex.x - _left) & (SEARCH_BLOCK_SIDE - 1)); }
 
-    int64_t _blocksPerRow;
+    int32_t _left;
+    int32_t _top;
+    int32_t _width;
+    int32_t _height;
+    int32_t _blocksPerRow;
     vector<int32_t> _blockIndex {};
     vector<PathSearchCell> _cells {};
 };
@@ -132,6 +135,7 @@ private:
 
     ptr<const FindPathInput> _input;
     PathSearchGrid _grid;
+    unordered_set<mpos> _probedOutside {};
     function<HexBlockResult(mpos)> _checkHexOnce;
     PathOpenList _open {};
     ipos32 _lineStart {};
@@ -144,6 +148,7 @@ private:
 
 static auto IsPathGoal(const FindPathInput& input, mpos hex) -> bool;
 static auto GetStepsToGoal(const FindPathInput& input, mpos hex) -> int32_t;
+static auto GetSearchReach(const FindPathInput& input) -> int64_t;
 static auto GetEntryCost(const FindPathInput& input, HexBlockResult block) -> int64_t;
 static auto GetPlanePos(mpos hex) -> ipos32;
 static auto GetBucket(int64_t estimate) -> size_t;
@@ -423,7 +428,8 @@ auto PathFinding::FindReachable(const FindReachableInput& input) -> vector<mpos>
         }
     }
 
-    PathSearchGrid grid {map_size};
+    // The flood expands hexes fewer than MaxLength steps out, so it touches none past MaxLength
+    PathSearchGrid grid {map_size, input.FromHex, numeric_cast<int64_t>(std::max(input.MaxLength, 0))};
     vector<mpos> flood {};
     flood.emplace_back(input.FromHex);
     grid.GetCell(input.FromHex).Reached = true;
@@ -627,7 +633,7 @@ auto PathFinding::EvaluateFreeMovementEndOffset(mpos new_to_hex, mpos to_hex, ip
 
 PathSearch::PathSearch(const FindPathInput& input) :
     _input {&input},
-    _grid {input.MapSize},
+    _grid {input.MapSize, input.FromHex, GetSearchReach(input)},
     _checkHexOnce {[this](mpos hex) -> HexBlockResult { return CheckHexOnce(hex); }},
     _lineStart {GetPlanePos(input.FromHex)}
 {
@@ -945,6 +951,14 @@ auto PathSearch::IsTargetWalledOff() -> bool
 // Answers false when the hex was reached by the search, which proves the goal side is not closed off
 auto PathSearch::VisitProbeHex(mpos hex, vector<mpos>& region) -> bool
 {
+    if (!_grid.IsInside(hex)) {
+        if (_probedOutside.emplace(hex).second && _input->CheckHex(hex) != HexBlockResult::Blocked) {
+            region.emplace_back(hex);
+        }
+
+        return true;
+    }
+
     PathSearchCell& cell {_grid.GetCell(hex)};
 
     if (cell.Reached) {
@@ -1020,15 +1034,30 @@ void PathOpenList::AdmitLater()
     }
 }
 
-PathSearchGrid::PathSearchGrid(msize map_size) :
-    _blocksPerRow {(safe_numeric_cast<int64_t>(map_size.width) + SEARCH_BLOCK_SIDE - 1) >> SEARCH_BLOCK_SHIFT}
+PathSearchGrid::PathSearchGrid(msize map_size, mpos start, int64_t reach)
 {
-    int64_t block_rows {(safe_numeric_cast<int64_t>(map_size.height) + SEARCH_BLOCK_SIDE - 1) >> SEARCH_BLOCK_SHIFT};
-    _blockIndex.assign(numeric_cast<size_t>(checked_mul(_blocksPerRow, block_rows)), -1);
+    FO_VERIFY_AND_THROW(reach >= 0, "Path search reach is negative", reach);
+
+    int64_t left {std::max(numeric_cast<int64_t>(start.x) - reach, int64_t {0})};
+    int64_t top {std::max(numeric_cast<int64_t>(start.y) - reach, int64_t {0})};
+    int64_t right {std::min(numeric_cast<int64_t>(start.x) + reach, numeric_cast<int64_t>(map_size.width) - 1)};
+    int64_t bottom {std::min(numeric_cast<int64_t>(start.y) + reach, numeric_cast<int64_t>(map_size.height) - 1)};
+    _left = numeric_cast<int32_t>(left);
+    _top = numeric_cast<int32_t>(top);
+    _width = numeric_cast<int32_t>(right - left + 1);
+    _height = numeric_cast<int32_t>(bottom - top + 1);
+    _blocksPerRow = (_width + SEARCH_BLOCK_SIDE - 1) >> SEARCH_BLOCK_SHIFT;
+
+    int32_t block_rows {(_height + SEARCH_BLOCK_SIDE - 1) >> SEARCH_BLOCK_SHIFT};
+    _blockIndex.assign(numeric_cast<size_t>(checked_mul(numeric_cast<int64_t>(_blocksPerRow), numeric_cast<int64_t>(block_rows))), -1);
 }
 
 auto PathSearchGrid::FindCell(mpos hex) const -> nptr<const PathSearchCell>
 {
+    if (!IsInside(hex)) {
+        return nullptr;
+    }
+
     int32_t block {_blockIndex[GetBlockSlot(hex)]};
 
     if (block < 0) {
@@ -1040,6 +1069,8 @@ auto PathSearchGrid::FindCell(mpos hex) const -> nptr<const PathSearchCell>
 
 auto PathSearchGrid::GetCellIndex(mpos hex) -> int32_t
 {
+    FO_VERIFY_AND_THROW(IsInside(hex), "Path search left the window its reach allows", hex, _left, _top, _width, _height);
+
     int32_t& block {_blockIndex[GetBlockSlot(hex)]};
 
     if (block < 0) {
@@ -1048,6 +1079,17 @@ auto PathSearchGrid::GetCellIndex(mpos hex) -> int32_t
     }
 
     return GetCellSlot(block, hex);
+}
+
+// A step moves each coordinate by at most one; past MaxLength a search looks one expansion and one straightened-line hex
+// further, three multihex radii around an entered hex (reach plus perimeter) and two cuts around the goal
+static auto GetSearchReach(const FindPathInput& input) -> int64_t
+{
+    int64_t max_length {numeric_cast<int64_t>(std::max(input.MaxLength, 0))};
+    int64_t footprint {numeric_cast<int64_t>(std::max(input.Multihex, 0)) * 3};
+    int64_t goal_ring {numeric_cast<int64_t>(std::max(input.Cut, 0)) * 2};
+
+    return max_length + 2 + std::max(footprint, goal_ring);
 }
 
 static auto IsPathGoal(const FindPathInput& input, mpos hex) -> bool

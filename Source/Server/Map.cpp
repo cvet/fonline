@@ -59,7 +59,7 @@ Map::Map(ptr<ServerEngine> engine, ident_t id, ptr<const ProtoMap> proto, nptr<L
     _protoMap {proto},
     _staticMap {static_map},
     _mapSize {GetSize()},
-    _hexField {CreateHexField(_mapSize, engine->Settings->Server.MapInstanceGridType)},
+    _hexField {CreateHexField(engine->Settings->Server.MapInstanceGridType)},
     _mapLocation {location}
 {
     FO_VALIDATE_ENTITY(NONE);
@@ -99,17 +99,18 @@ void Map::ClearAllAssociations() noexcept
     _itemsMap.clear();
 }
 
-auto Map::CreateHexField(msize map_size, string_view grid_type) -> unique_ptr<TwoDimensionalGrid<Field, mpos, msize>>
+auto Map::CreateHexField(string_view grid_type) -> unique_ptr<TwoDimensionalGrid<Field, mpos, msize>>
 {
     if (grid_type == "Static") {
-        return safe_alloc::make_unique<StaticTwoDimensionalGrid<Field, mpos, msize>>(map_size);
+        return safe_alloc::make_unique<StaticTwoDimensionalGrid<Field, mpos, msize>>(_mapSize);
     }
     if (grid_type == "Chunked") {
-        return safe_alloc::make_unique<ChunkedTwoDimensionalGrid<Field, mpos, msize, GameSettings::SERVER_MAP_CHUNK_SIDE>>(map_size);
+        return safe_alloc::make_unique<ChunkedTwoDimensionalGrid<Field, mpos, msize, GameSettings::SERVER_MAP_CHUNK_SIDE>>(_mapSize);
     }
     if (grid_type == "Dynamic") {
-        return safe_alloc::make_unique<DynamicTwoDimensionalGrid<Field, mpos, msize>>(map_size);
+        return safe_alloc::make_unique<DynamicTwoDimensionalGrid<Field, mpos, msize>>(_mapSize);
     }
+
     throw SettingsException("Unknown server map grid type; expected Static, Chunked or Dynamic", SettingNames::Server_MapInstanceGridType, grid_type);
 }
 
@@ -252,11 +253,18 @@ auto Map::GetStaticItems() const noexcept -> const_span<ptr<StaticItem>>
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
-    if (!_removedStaticItems.empty()) {
-        return _visibleStaticItems;
+    bool has_runtime {_runtimeStatics && !_runtimeStatics->GetStaticItems().empty()};
+
+    if (_removedStaticItems.empty()) {
+        if (!has_runtime) {
+            return _staticMap->GetStaticItems();
+        }
+        if (_staticMap->GetStaticItems().empty()) {
+            return _runtimeStatics->GetStaticItems();
+        }
     }
 
-    return _staticMap->GetStaticItems();
+    return _visibleStaticItems;
 }
 
 void Map::AddSpectatorPlayer(ptr<Player> player)
@@ -1555,6 +1563,12 @@ auto Map::GetStaticItem(ident_t id) const noexcept -> nptr<StaticItem>
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
+    if (_runtimeStatics) {
+        if (auto runtime_item {_runtimeStatics->GetStaticItem(id)}) {
+            return runtime_item;
+        }
+    }
+
     if (_removedStaticItems.count(id) != 0) {
         return nullptr;
     }
@@ -1653,7 +1667,14 @@ auto Map::HasStaticItem(ident_t static_item_id) const noexcept -> bool
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
     // Asks the baked map, so a removed item still answers true. GetStaticItem() is the query that hides it
-    return _staticMap->HasStaticItem(static_item_id);
+    return _staticMap->HasStaticItem(static_item_id) || IsRuntimeStaticItem(static_item_id);
+}
+
+auto Map::IsRuntimeStaticItem(ident_t static_item_id) const noexcept -> bool
+{
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+
+    return _runtimeStatics && _runtimeStatics->HasStaticItem(static_item_id);
 }
 
 auto Map::HasRemovedStaticItems() const noexcept -> bool
@@ -1689,6 +1710,9 @@ auto Map::RemoveStaticItem(ident_t static_item_id) -> bool
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
     FO_VERIFY_AND_THROW(HasStaticItem(static_item_id), "Map has no static item with this id", GetId(), GetProtoId(), static_item_id);
+
+    // The removal list persists baked ids only; a runtime static item leaves through RemoveRuntimeStaticItems
+    FO_VERIFY_AND_THROW(!IsRuntimeStaticItem(static_item_id), "Runtime static item cannot join the removal list", GetId(), GetProtoId(), static_item_id);
 
     if (_removedStaticItems.count(static_item_id) != 0) {
         return false;
@@ -1739,6 +1763,15 @@ auto Map::GetStaticField(mpos hex) const noexcept -> const StaticMap::Field&
         }
     }
 
+    // Where both static maps hold content an override merges them, so a non-empty runtime field here stands alone
+    if (_runtimeStatics) {
+        const auto& runtime_field {_runtimeStatics->GetField(hex)};
+
+        if (!runtime_field.StaticItems.empty()) {
+            return runtime_field;
+        }
+    }
+
     return _staticMap->GetField(hex);
 }
 
@@ -1747,20 +1780,6 @@ void Map::RebuildStaticOverlay()
     FO_TRACE_ZONE(Map);
 
     _staticFieldOverrides.clear();
-    _visibleStaticItems.clear();
-
-    if (_removedStaticItems.empty()) {
-        return;
-    }
-
-    const_span<ptr<StaticItem>> baked_items {_staticMap->GetStaticItems()};
-    _visibleStaticItems.reserve(baked_items.size());
-
-    for (ptr<StaticItem> static_item : baked_items) {
-        if (_removedStaticItems.count(static_item->GetId()) == 0) {
-            _visibleStaticItems.emplace_back(static_item);
-        }
-    }
 
     unordered_set<mpos> dirty_hexes {};
 
@@ -1768,9 +1787,145 @@ void Map::RebuildStaticOverlay()
         _staticMap->ForEachItemHex(static_item_id, [&dirty_hexes](mpos item_hex) { dirty_hexes.emplace(item_hex); });
     }
 
-    for (mpos hex : dirty_hexes) {
-        _staticFieldOverrides.emplace(hex, _staticMap->BuildFieldWithout(hex, _removedStaticItems));
+    if (_runtimeStatics) {
+        for (ptr<StaticItem> runtime_item : _runtimeStatics->GetStaticItems()) {
+            _runtimeStatics->ForEachItemHex(runtime_item->GetId(), [this, &dirty_hexes](mpos item_hex) {
+                const auto& baked_field {_staticMap->GetField(item_hex)};
+
+                if (!baked_field.StaticItems.empty() || baked_field.ScrollBlocked) {
+                    dirty_hexes.emplace(item_hex);
+                }
+            });
+        }
     }
+
+    for (mpos hex : dirty_hexes) {
+        RefreshStaticFieldOverride(hex);
+    }
+
+    RebuildVisibleStaticItems();
+}
+
+void Map::RefreshStaticFieldOverride(mpos hex)
+{
+    const auto& baked_field {_staticMap->GetField(hex)};
+    bool baked_removed {!_removedStaticItems.empty() && std::ranges::any_of(baked_field.StaticItems, [this](ptr<StaticItem> item) { return _removedStaticItems.count(item->GetId()) != 0; })};
+    nptr<const StaticMap::Field> runtime_field {_runtimeStatics ? nptr<const StaticMap::Field> {&_runtimeStatics->GetField(hex)} : nullptr};
+    bool has_runtime {runtime_field && !runtime_field->StaticItems.empty()};
+    bool has_baked {!baked_field.StaticItems.empty() || baked_field.ScrollBlocked};
+
+    if (!baked_removed && !(has_runtime && has_baked)) {
+        _staticFieldOverrides.erase(hex);
+        return;
+    }
+
+    // Both maps hand their items to the override from their own fields; the baked cell holds content here, so taking
+    // it for writing allocates nothing in the grid other instances share
+    StaticMap::Field field {_staticMap->BuildFieldWithout(hex, _removedStaticItems)};
+
+    if (has_runtime) {
+        _runtimeStatics->MergeFieldInto(hex, make_ptr(&field));
+    }
+
+    _staticFieldOverrides.insert_or_assign(hex, std::move(field));
+}
+
+void Map::RebuildVisibleStaticItems()
+{
+    _visibleStaticItems.clear();
+
+    bool has_runtime {_runtimeStatics && !_runtimeStatics->GetStaticItems().empty()};
+
+    // GetStaticItems() reads a single source directly when nothing needs filtering or joining
+    if (_removedStaticItems.empty() && (!has_runtime || _staticMap->GetStaticItems().empty())) {
+        return;
+    }
+
+    const_span<ptr<StaticItem>> baked_items {_staticMap->GetStaticItems()};
+    _visibleStaticItems.reserve(baked_items.size() + (has_runtime ? _runtimeStatics->GetStaticItems().size() : 0));
+
+    for (ptr<StaticItem> static_item : baked_items) {
+        if (_removedStaticItems.count(static_item->GetId()) == 0) {
+            _visibleStaticItems.emplace_back(static_item);
+        }
+    }
+
+    if (has_runtime) {
+        for (ptr<StaticItem> runtime_item : _runtimeStatics->GetStaticItems()) {
+            _visibleStaticItems.emplace_back(runtime_item);
+        }
+    }
+}
+
+void Map::AddRuntimeStaticItems(span<refcount_ptr<StaticItem>> static_items)
+{
+    FO_TRACE_ZONE(Map);
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
+
+    for (const auto& static_item : static_items) {
+        FO_VERIFY_AND_THROW(!HasStaticItem(static_item->GetId()), "Map already has a static item with this id", GetId(), GetProtoId(), static_item->GetId());
+        FO_VERIFY_AND_THROW(_mapSize.is_valid_pos(static_item->GetHex()), "Runtime static item is outside the map", GetId(), GetProtoId(), static_item->GetId(), static_item->GetHex());
+    }
+
+    if (!_runtimeStatics) {
+        _runtimeStatics = safe_alloc::make_unique<StaticMap>(_mapSize, _engine->Settings->Server.MapInstanceGridType);
+    }
+
+    for (auto& static_item : static_items) {
+        ident_t static_item_id {static_item->GetId()};
+        _runtimeStatics->AddOwnedItemBillet(static_item_id, static_item);
+        _runtimeStatics->AddStaticItem(static_item_id, static_item);
+    }
+
+    unordered_set<mpos> merged_hexes {};
+
+    for (const auto& static_item : static_items) {
+        _runtimeStatics->ForEachItemHex(static_item->GetId(), [this, &merged_hexes](mpos item_hex) {
+            const auto& baked_field {_staticMap->GetField(item_hex)};
+
+            if (!baked_field.StaticItems.empty() || baked_field.ScrollBlocked) {
+                merged_hexes.emplace(item_hex);
+            }
+        });
+    }
+
+    for (mpos hex : merged_hexes) {
+        RefreshStaticFieldOverride(hex);
+    }
+
+    RebuildVisibleStaticItems();
+}
+
+void Map::RemoveRuntimeStaticItems(const unordered_set<ident_t>& static_item_ids)
+{
+    FO_TRACE_ZONE(Map);
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+
+    if (static_item_ids.empty()) {
+        return;
+    }
+
+    FO_VERIFY_AND_THROW(_runtimeStatics, "Map has no runtime static items", GetId(), GetProtoId());
+
+    unordered_set<mpos> merged_hexes {};
+
+    for (ident_t static_item_id : static_item_ids) {
+        FO_VERIFY_AND_THROW(_runtimeStatics->HasStaticItem(static_item_id), "Map has no runtime static item with this id", GetId(), GetProtoId(), static_item_id);
+
+        _runtimeStatics->ForEachItemHex(static_item_id, [this, &merged_hexes](mpos item_hex) {
+            if (_staticFieldOverrides.count(item_hex) != 0) {
+                merged_hexes.emplace(item_hex);
+            }
+        });
+    }
+
+    _runtimeStatics->RemoveStaticItems(static_item_ids);
+
+    for (mpos hex : merged_hexes) {
+        RefreshStaticFieldOverride(hex);
+    }
+
+    RebuildVisibleStaticItems();
 }
 
 auto Map::IsOutsideArea(mpos hex) const noexcept -> bool

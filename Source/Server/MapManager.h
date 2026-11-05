@@ -76,6 +76,7 @@ public:
     ~MapManager() = default;
 
     [[nodiscard]] auto GetStaticMap(ptr<const ProtoMap> proto) -> ptr<StaticMap>;
+    [[nodiscard]] auto IsStaticMapLoaded(ptr<const ProtoMap> proto) const -> bool;
     [[nodiscard]] auto GetLocationByPid(hstring loc_pid, int32_t skip_count) noexcept -> refcount_nptr<Location>;
     [[nodiscard]] auto GetMapByPid(hstring map_pid, int32_t skip_count) noexcept -> refcount_nptr<Map>;
 
@@ -99,19 +100,40 @@ public:
     void ProcessVisibleCritters(ptr<Critter> cr);
     void ProcessVisibleItems(ptr<Critter> cr);
     void ViewMap(ptr<Player> view_player, ptr<Map> map);
+    void LoadStaticMap(ptr<const ProtoMap> proto, bool async_load);
+    void LoadStaticMaps(const_span<ptr<const ProtoMap>> protos, bool async_load);
+    auto UnloadStaticMap(ptr<const ProtoMap> proto) -> bool;
     void ClearStaticMaps() noexcept;
+    auto LoadRuntimeStaticItems(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos dest_hex, int64_t id_offset) -> vector<ident_t>;
+    auto LoadRuntimeStaticItems(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos dest_hex, mpos source_hex, msize source_size, int64_t id_offset) -> vector<ident_t>;
+    void UnloadRuntimeStaticItems(ptr<Map> map, const_span<ident_t> runtime_static_item_ids);
+    auto GenerateContent(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos dest_hex) -> vector<ident_t>;
 
 private:
-    auto IsCritterSeeCritter(ptr<const Map> map, ptr<const Critter> cr, ptr<const Critter> target) const -> CritterVisibilityMode;
+    using PendingStaticMap = std::shared_future<shared_ptr<StaticMap>>;
 
+    struct StaticMapEntry
+    {
+        PendingStaticMap Data {};
+        uintptr_t ReadToken {};
+    };
+
+    auto IsCritterSeeCritter(ptr<const Map> map, ptr<const Critter> cr, ptr<const Critter> target) const -> CritterVisibilityMode;
     void ProcessCritterLook(ptr<Map> map, ptr<Critter> cr, ptr<Critter> target);
     void Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, optional<int32_t> safe_radius, ident_t global_cr_id);
     void GenerateMapContent(ptr<Map> map);
+    auto GenerateContent(ptr<Map> map, ptr<const StaticMap> source, mpos dest_hex, bool fresh_map) -> vector<ident_t>;
+    auto IsStaticMapReady(const PendingStaticMap& static_map) const -> bool;
+    auto ReadStaticMap(ptr<const ProtoMap> map_proto) -> shared_ptr<StaticMap>;
+    void BindStaticItemScripts(string_view map_name, ptr<StaticItem> item);
+    auto RequestStaticMap(ptr<const ProtoMap> proto, bool in_background) -> PendingStaticMap;
+    auto AcquireStaticMap(ptr<const ProtoMap> proto) -> shared_ptr<StaticMap>;
     void DestroyMapContent(ptr<Map> map);
     void DestroyMapInternal(ptr<Map> map);
 
     ptr<ServerEngine> _engine;
-    unordered_map<ptr<const ProtoMap>, unique_ptr<StaticMap>> _staticMaps {};
+    mutable mutex _staticMapsLock {};
+    unordered_map<ptr<const ProtoMap>, StaticMapEntry> _staticMaps FO_TSA_GUARDED_BY(_staticMapsLock) {};
 };
 
 FO_END_NAMESPACE

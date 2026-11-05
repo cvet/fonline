@@ -108,6 +108,20 @@ TEST_CASE("SafeArithmetics")
         CHECK_FALSE(is_float_equal(1.0f, 1.1f));
     }
 
+    SECTION("WrapAngle")
+    {
+        // Whole turns wrap away in both directions; a negative whole turn lands on 360, not 0
+        CHECK(is_float_equal(wrap_angle(370.0f), 10.0f));
+        CHECK(is_float_equal(wrap_angle(-10.0f), 350.0f));
+        CHECK(is_float_equal(wrap_angle(725.5f), 5.5f));
+        CHECK(is_float_equal(wrap_angle(0.0f), 0.0f));
+        CHECK(is_float_equal(wrap_angle(-360.0f), 360.0f));
+        CHECK(is_float_equal(wrap_angle(370.25), 10.25));
+        CHECK(is_float_equal(wrap_angle(-1070.0), 10.0));
+        static_assert(std::same_as<decltype(wrap_angle(1.0)), float64_t>);
+        static_assert(std::same_as<decltype(wrap_angle(1.0f)), float32_t>);
+    }
+
     SECTION("NumericCast")
     {
         CHECK(numeric_cast<int32_t>(uint16_t {123}) == 123);

@@ -357,29 +357,44 @@ The reusable map presentation API includes `SetExtraScrollOffset()` for script-o
 
 ### Client map field storage
 
-`MapView` stores fields in `ChunkedTwoDimensionalGrid`: a directly indexed
-table of nullable owners of dense blocks. The grid's `ChunkSide` template
+`MapView` stores fields in `ChunkedTwoDimensionalGrid`: a two-level, directly
+indexed table of nullable owners of dense blocks. The grid's `ChunkSide` template
 parameter must be a nonzero power of two. `MapView` supplies
 `GameSettings::CLIENT_MAP_CHUNK_SIDE`, currently 16, so its blocks are 16x16.
 Changing this compile-time setting requires rebuilding native consumers;
-it is not a runtime configuration key. The first write to a block constructs
-its `ChunkSide * ChunkSide` default fields. Reading a missing block returns the
-shared empty field without allocating. Access uses coordinate division/remainder
-by the compile-time block side and array indexing; it does not hash coordinates or allocate per-field
-nodes. Existing field addresses survive allocations of other blocks. Mapper
-resize preserves overlapping coordinates, discards removed fields, and may
-invalidate field addresses. Unload releases the table and every block.
+it is not a runtime configuration key. The top level holds one owner per
+32x32 block slots; a slot table is allocated on the first write inside it.
+The first write to a block constructs its `ChunkSide * ChunkSide` default
+fields. Reading a missing block returns the shared empty field without
+allocating. Access uses coordinate division/remainder by compile-time sides and
+two array lookups; it does not hash coordinates or allocate per-field nodes.
+Existing field addresses survive allocations of other blocks.
+`ClearArea(origin, size)` resets every field of a clipped rectangle, releases
+blocks it covers completely, and releases a slot table when its last block goes;
+callers remove the views those fields own first. Mapper resize preserves
+overlapping coordinates, discards removed fields, and may invalidate field
+addresses. Unload releases the tables and every block.
 
-This removes the single full-map field allocation. With the current side of
-16, a 1200x1200 map initially
-needs 5625 owner entries rather than 1440000 field slots; each field allocation
-is bounded to `256 * sizeof(MapView::Field)`. Populated blocks consume their
-full capacity, so a map with writes in every block can still approach dense
-field storage. Light and view buffers retain their existing representations.
+Each field carries its own `Light`, the strongest colour of the light sources
+applied to it. `MapView::SetupSpriteLight()` points a map sprite at the light of
+its hex and the two neighbours its corner type reads, writing those fields so
+that later light changes reach the stored addresses. Light storage therefore
+follows the touched fields instead of the map area.
+
+No map-sized allocation or whole-map pass remains on construction, scrolling or
+lighting. Roof groups are numbered from the tracked set of roof fields, in the
+former x-major, y-minor order, so group numbers are unchanged. A map without a
+scroll axial area clears only the fields it blocked before; a map with one still
+visits every cell to mark its lines. Mapper resize destroys the views outside the
+new size from the view lists. Populated blocks consume their full capacity, so a
+map with writes in every block can still approach dense field storage.
 
 `ClientLargeMapFieldsStayWithinMemoryBudget` and
 `ClientLargeMapScrollBoundsStayWithinMemoryBudget` measure the real constructor
-on an empty 1200x1200 map, including its view/light buffers and scroll bounds.
+on an empty 1200x1200 map, including its view buffers and scroll bounds.
+`ClientMaximumSizeMapLoadsWithoutMapSizedWork` constructs a map at the configured
+`FO_MAP_MAX_SIZE` (up to 128,000 cells per side), scrolls across it and checks
+time and private memory.
 The hidden `ClientMapFieldAccessCost` compares actual field reads/writes with
 dense and hash-based storage. Its timings qualify only those workloads, not
 whole-game FPS or a fragmented 32-bit long session; see [Testing](../../contributing/testing/).

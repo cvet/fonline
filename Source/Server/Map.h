@@ -117,11 +117,14 @@ public:
     [[nodiscard]] auto GetStaticItemsInRadius(mpos hex, int32_t radius, hstring pid) const -> vector<ptr<StaticItem>>;
     [[nodiscard]] auto GetTriggerStaticItemsOnHex(mpos hex) const noexcept -> const_span<ptr<StaticItem>>;
     [[nodiscard]] auto HasStaticItem(ident_t static_item_id) const noexcept -> bool;
+    [[nodiscard]] auto IsRuntimeStaticItem(ident_t static_item_id) const noexcept -> bool;
     [[nodiscard]] auto HasRemovedStaticItems() const noexcept -> bool;
     [[nodiscard]] auto IsOutsideArea(mpos hex) const noexcept -> bool;
 
     void SetLocation(nptr<Location> loc) noexcept;
     auto RemoveStaticItem(ident_t static_item_id) -> bool;
+    void AddRuntimeStaticItems(span<refcount_ptr<StaticItem>> static_items);
+    void RemoveRuntimeStaticItems(const unordered_set<ident_t>& static_item_ids);
     void RefreshRemovedStaticItems();
     void VerifyStaticItemRemovalsOnlyGrow(const_span<ident_t> new_ids) const;
     void AddCritter(ptr<Critter> cr);
@@ -183,10 +186,11 @@ private:
         bool ManualBlockFull {};
     };
 
-    static auto CreateHexField(msize map_size, string_view grid_type) -> unique_ptr<TwoDimensionalGrid<Field, mpos, msize>>;
-
+    auto CreateHexField(string_view grid_type) -> unique_ptr<TwoDimensionalGrid<Field, mpos, msize>>;
     auto GetStaticField(mpos hex) const noexcept -> const StaticMap::Field&;
     void RebuildStaticOverlay();
+    void RefreshStaticFieldOverride(mpos hex);
+    void RebuildVisibleStaticItems();
 
     void SetMultihexCritter(ptr<Critter> cr, bool set);
     void RecacheHexFlags(ptr<Field> field);
@@ -210,16 +214,12 @@ private:
     vector<ptr<Critter>> _nonPlayerCritters {};
     vector<ptr<Item>> _items {};
     unordered_map<ident_t, ptr<Item>> _itemsMap {};
-    // Per-instance view over the proto-shared StaticMap. All three stay empty while the map keeps
-    // every baked static item, and the accessors then read the shared data with no extra indirection
     unordered_set<ident_t> _removedStaticItems {};
     unordered_map<mpos, StaticMap::Field> _staticFieldOverrides {};
     vector<ptr<StaticItem>> _visibleStaticItems {};
+    unique_nptr<StaticMap> _runtimeStatics {};
     nptr<Location> _mapLocation {};
-    // Declared before _spectatorPlayers so it outlives the data it guards
     shared_mutex _spectatorLock {};
-    // _spectatorLock protects lock-free snapshots and mutations outside entity cover.
-    // Entity-covered getters and teardown use FO_TSA_NO_ANALYSIS
     vector<ptr<Player>> _spectatorPlayers FO_TSA_GUARDED_BY(_spectatorLock) {};
     unordered_map<ident_t, shared_ptr<SpectatorArea>> _spectatorAreas FO_TSA_GUARDED_BY(_spectatorLock) {};
     EntityLock _ownedLock {};
