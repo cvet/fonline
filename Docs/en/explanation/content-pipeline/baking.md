@@ -1324,3 +1324,12 @@ Use the smallest test that matches the baker you changed. If CMake target names 
    project's real FBX files instead of only synthetic unit-test assets.
 6. Inspect generated output only as output, not as hand-authored source.
 7. Update this document and [BuildTools Pipeline](../../reference/cmake-and-buildtools/pipeline.md) if stage responsibilities change.
+
+
+`Common.ResourcesPath` owns application placement (default `Resources`). A Server
+package separates its own packs at this root from client distribution in `Client`.
+The config bakers omit typed zeros after author completeness checks. Metadata
+Setting stores name/type only (file version 6). Compatibility `0.0.87` requires
+rebuilding native roles and one matching rebake before distributing these profiles.
+
+The Config baker writes two profiles per role and sub-config: `.fomain-server/client` contains the full resource configuration; `.fomain-embedded-server/client` contains only Engine settings and the explicitly listed `Baking.BootstrapGameSettings`. Both carry resource-pack declarations and omit typed zeros. The packager embeds the smaller profile into executables and runtime libraries, while keeping the full selected profile in Metadata. Package-time settings are resolved from the full profile. Missing embedded profiles fail packaging; they do not fall back to embedding gameplay settings. Startup still applies exactly one selected main profile.

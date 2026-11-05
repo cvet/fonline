@@ -285,7 +285,7 @@ TEST_CASE("AudioManagerDynamicPlacement")
     using namespace AudioManagerDynamicTests;
 
     GlobalSettings settings {false};
-    settings.ApplyDefaultSettings();
+    settings.SetupDefaultSettings();
 
     FileSystem resources {};
     auto data_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("AudioManagerResources")};

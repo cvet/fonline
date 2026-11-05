@@ -58,10 +58,10 @@
   "packager": {
     "source": "BuildTools/package.py",
     "entrypoint": "main",
-    "description": "Stage one declared binary payload, patch runtime data, and emit selected artifacts. Resource collection requires Resources.usage.json matching the baked build/configuration markers and intersects its exact per-pack file lists with target suffix restrictions. Baking.FilterResources defaults to False, listing all available current baker outputs; True opts into typed-root and runtime-dependency filtering."
+    "description": "Stage one declared binary payload, patch runtime data, and emit selected artifacts. The selected baked profile sets Common.ResourcesPath; own packs use that root and Server client-distribution packs use its Client child. Resource collection requires Resources.usage.json matching the baked build/configuration markers and intersects its exact per-pack file lists with target suffix restrictions. Baking.FilterResources defaults to False, listing all available current baker outputs; True opts into typed-root and runtime-dependency filtering. Binaries and updater runtime modules embed the matching engine/bootstrap-only profile; resource loading and package options use the full selected profile, and both baked profiles are required. The main-section Common.ResourcesPath line is written first in every embedded profile; its value, all other line ordering and full resource profiles are preserved."
   },
   "targets": [
-    {"name": "Server", "resource_mode": "server-and-client", "required_packs": [], "description": "Server binary plus server resources and client update resource packs."},
+    {"name": "Server", "resource_mode": "server-and-client", "required_packs": [], "description": "Server binary with own packs in Common.ResourcesPath and client-distribution packs in its Client child."},
     {"name": "Client", "resource_mode": "client", "required_packs": [], "description": "Client host/runtime binary and client resources."},
     {"name": "Mapper", "resource_mode": "none", "required_packs": ["NoRes"], "description": "Mapper binary without packaged game resources."},
     {"name": "Baker", "resource_mode": "none", "required_packs": ["NoRes"], "description": "Baker executable or library without packaged game resources."},

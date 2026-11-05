@@ -176,7 +176,7 @@ private:
 EffekseerRuntimeTestSettings::EffekseerRuntimeTestSettings() :
     GlobalSettings {false}
 {
-    ApplyDefaultSettings();
+    SetupDefaultSettings();
     BakerTests::ApplySelfContainedClientSettings(*this);
 }
 

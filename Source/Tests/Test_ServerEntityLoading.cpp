@@ -43,8 +43,8 @@ FO_BEGIN_NAMESPACE
 static auto MakeEntityLoadingSettings() -> GlobalSettings
 {
     GlobalSettings settings {false};
-    settings.ApplyDefaultSettings();
-    settings.ApplyAutoSettings();
+    settings.SetupDefaultSettings();
+    settings.ApplyAutoSettings({});
     BakerTests::ApplySelfContainedServerSettings(settings);
     BakerTests::OverrideSetting(settings.Server.DbStorage, string {"Memory"});
     BakerTests::OverrideSetting(settings.Server.WriteHealthFile, false);

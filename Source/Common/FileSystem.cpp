@@ -40,7 +40,7 @@ FO_BEGIN_NAMESPACE
 
 auto GetClientPackDirs(const ClientSettings& settings) -> vector<string>
 {
-    vector<string> pack_dirs {settings.Common.Packaged ? settings.Baking.ClientResources : settings.Baking.BakeOutput};
+    vector<string> pack_dirs {settings.Common.Packaged ? settings.Common.ResourcesPath : settings.Baking.BakeOutput};
 
     // Downloaded packs land under the writable root, so for an installed client they are the current ones
     // and must win over the install-dir copies
@@ -57,12 +57,17 @@ auto GetClientPackDirs(const ClientSettings& settings) -> vector<string>
 
 auto GetClientWritableResourceDir(const ClientSettings& settings) -> string
 {
-    if (settings.Common.UserWritablePath.empty()) {
-        return string(settings.Baking.ClientResources);
+    return GetClientWritableResourceDir(settings.Common.UserWritablePath, settings.Common.ResourcesPath);
+}
+
+auto GetClientWritableResourceDir(string_view writable_root, string_view resources_dir) -> string
+{
+    if (writable_root.empty()) {
+        return string(resources_dir);
     }
 
-    string relative {fs::is_absolute_path(settings.Baking.ClientResources) ? "Resources" : string(settings.Baking.ClientResources)};
-    return fs::make_writable_path(settings.Common.UserWritablePath, relative);
+    string relative {fs::is_absolute_path(resources_dir) ? "Resources" : string(resources_dir)};
+    return fs::make_writable_path(writable_root, relative);
 }
 
 auto GetClientResourcePackPath(const ClientSettings& settings, string_view pack_name) -> string
@@ -93,26 +98,41 @@ void AddClientPackSource(FileSystem& resources, const ClientSettings& settings, 
 {
     FO_TRACE_ZONE(FileSystem);
 
-    vector<string> dirs {GetClientPackDirs(settings)};
-
     if (settings.Common.Packaged && pack_name != EMBEDDED_PACK_NAME) {
-        string base_path {GetClientResourcePackPath(settings, pack_name)};
-
-        if (optional && !OpenResourcePackFile(base_path)) {
-            return;
-        }
-
-        resources.AddCustomSource(safe_alloc::make_unique<ResourcePackSource>(base_path, GetClientResourcePatchPath(settings, pack_name)));
+        AddClientPackSource(resources, settings.Common.ResourcesPath, settings.Common.UserWritablePath, pack_name, optional);
         return;
     }
 
-    resources.AddPackSource(dirs.front(), pack_name, optional);
+    vector<string> dirs {GetClientPackDirs(settings)};
+
+    resources.AddPackSource(settings.Common.Packaged, dirs.front(), pack_name, optional);
 
     if (pack_name != EMBEDDED_PACK_NAME) {
         for (size_t i {1}; i < dirs.size(); ++i) {
-            resources.AddPackSource(dirs[i], pack_name, true);
+            resources.AddPackSource(settings.Common.Packaged, dirs[i], pack_name, true);
         }
     }
+}
+
+void AddClientPackSource(FileSystem& resources, string_view resources_dir, string_view writable_root, string_view pack_name, bool optional)
+{
+    FO_TRACE_ZONE(FileSystem);
+
+    vector<string> dirs {string(resources_dir)};
+    string writable_dir {GetClientWritableResourceDir(writable_root, resources_dir)};
+
+    if (writable_dir != dirs.front()) {
+        dirs.emplace_back(std::move(writable_dir));
+    }
+
+    string base_path {ResolveResourcePackPath(dirs, pack_name)};
+
+    if (optional && !OpenResourcePackFile(base_path)) {
+        return;
+    }
+
+    string patch_path {strex(dirs.back()).combine_path(strex("{}.patch.fores", pack_name)).str()};
+    resources.AddCustomSource(safe_alloc::make_unique<ResourcePackSource>(base_path, patch_path));
 }
 
 FileHeader::FileHeader(string_view path, size_t size, uint64_t write_time, ptr<const DataSource> ds) :
@@ -561,11 +581,11 @@ void FileSystem::AddDirSource(string_view dir, bool recursive, bool non_cached, 
     _dataSources.emplace(_dataSources.begin(), std::move(ds));
 }
 
-void FileSystem::AddPackSource(string_view dir, string_view pack, bool maybe_not_available)
+void FileSystem::AddPackSource(bool packaged, string_view dir, string_view pack, bool maybe_not_available)
 {
     FO_TRACE_ZONE(FileSystem);
 
-    if (IsPackaged()) {
+    if (packaged) {
         auto ds {DataSource::MountPack(dir, pack, maybe_not_available)};
         IndexMountedSource(ds);
         _dataSources.emplace(_dataSources.begin(), std::move(ds));
@@ -577,12 +597,12 @@ void FileSystem::AddPackSource(string_view dir, string_view pack, bool maybe_not
     }
 }
 
-void FileSystem::AddPacksSource(string_view dir, const vector<string>& packs)
+void FileSystem::AddPacksSource(bool packaged, string_view dir, const vector<string>& packs)
 {
     FO_TRACE_ZONE(FileSystem);
 
     for (const auto& pack : packs) {
-        AddPackSource(dir, pack);
+        AddPackSource(packaged, dir, pack);
     }
 }
 

@@ -73,6 +73,7 @@ RESOURCE_TARGET_EXCLUDED_SUFFIXES = {
 	'Client': ('-server', '-mapper'),
 	'Mapper': ('-server',),
 }
+CLIENT_RESOURCE_DIRECTORY = 'Client'
 PACKAGED_BUILD_NAME_MARKER = b'###NotPackaged###'
 PACKAGED_BUILD_NAME_CAPACITY = 128
 WEB_ASSET_BUNDLE_LIMIT = 256 * 1024 * 1024
@@ -369,7 +370,7 @@ def resolve_android_abi(arch: str) -> str:
 
 # Compiled into the executable rather than shipped as a pack; DataSource.h owns the same name
 EMBEDDED_PACK_NAME = 'Embedded'
-# Carries the baked metadata and the one packaged application config; DataSource.h owns the same name
+# Carries the baked metadata and the packaged full/embedded application configs; DataSource.h owns the same name
 METADATA_PACK_NAME = 'Metadata'
 
 RESOURCE_PACK_MAGIC = 0x53524F46
@@ -916,8 +917,7 @@ class Packager:
 	pack_args: set[str] = field(init=False)
 	output_path: str = field(init=False)
 	build_tools_path: str = field(init=False)
-	server_res_dir: str = field(init=False)
-	client_res_dir: str = field(init=False)
+	resources_dir: str = field(init=False)
 	platform_binaries_dir: str = field(init=False)
 	resource_pack_compress_level: int = field(init=False)
 	resource_pack_jobs: int = field(init=False, default=1)
@@ -942,9 +942,8 @@ class Packager:
 		# A removed or misspelled token would otherwise silently select nothing
 		unknown_packs = sorted(self.pack_args - load_package_pack_names(self.build_tools_path))
 		assert not unknown_packs, 'Unknown package pack token: ' + ', '.join(unknown_packs)
-		self.server_res_dir = self.fomain.mainSection().getStr('Baking.ServerResources')
-		self.client_res_dir = self.fomain.mainSection().getStr('Baking.ClientResources')
-		self.platform_binaries_dir = self.fomain.mainSection().getStr('Baking.PlatformBinaries')
+		self.resources_dir = self.fomain.mainSection().getStr('Common.ResourcesPath')
+		self.platform_binaries_dir = self.fomain.mainSection().getStr('Common.PlatformBinariesPath')
 		self.resource_pack_compress_level = self.args.resource_pack_compress_level if getattr(self.args, 'resource_pack_compress_level', None) is not None else self.fomain.mainSection().getInt('Baking.ResourcePackCompressLevel')
 		self.resource_pack_jobs = self.args.resource_pack_jobs
 		self.resource_pack_hash_library = resource_pack_hash.discover_library(self.args.input, getattr(self.args, 'resource_pack_hash_library', None))
@@ -954,6 +953,11 @@ class Packager:
 
 	def has_pack(self, name: str) -> bool:
 		return name in self.pack_args
+
+	def client_resources_dir(self) -> str:
+		if self.args.target == 'Server':
+			return os.path.join(self.resources_dir, CLIENT_RESOURCE_DIRECTORY)
+		return self.resources_dir
 
 	def build_target_output_path(self) -> str:
 		path = os.path.join(self.output_path, self.args.devname + '-' + self.args.target)
@@ -1131,7 +1135,7 @@ class Packager:
 		# are verified before the package is called done
 		skipped_entries: list[str] = []
 		client_embedded_data = self.make_embedded_data_for_target('Client')
-		_, client_config_data = self.read_config_data('Client')
+		_, client_embedded_config_data = self.read_config_data('Client', embedded=True)
 		managed_runtime_pack = self.find_managed_runtime_pack('Client')
 
 		for input_dir in self.args.input:
@@ -1239,7 +1243,7 @@ class Packager:
 					old_config_data = self.config_data
 					try:
 						self.embedded_data = client_embedded_data
-						self.config_data = client_config_data
+						self.config_data = client_embedded_config_data
 						self.patch_packaged_binary(output_path, output_name)
 					finally:
 						self.embedded_data = old_embedded_data
@@ -1470,7 +1474,7 @@ class Packager:
 
 		selected_paths = sorted(used_paths)
 		if selected_config_relative_path is not None:
-			# Every baked profile is listed as used; Metadata ships only the package-selected config
+			# Every baked profile is listed as used; Metadata ships only the package-selected full config
 			selected_paths = [
 				relative_path for relative_path in selected_paths
 				if relative_path == selected_config_relative_path or not PurePosixPath(relative_path).suffix.startswith('.fomain-')
@@ -1487,14 +1491,27 @@ class Packager:
 				return self.make_embedded_pack(files, os.path.join(self.baking_path, pack_name))
 		raise AssertionError('Embedded resource pack not found for ' + target)
 
-	def read_config_data(self, target: str) -> tuple[str, bytes]:
+	def read_config_data(self, target: str, embedded: bool = False) -> tuple[str, bytes]:
 		assert self.baking_path, 'Baking path is not initialized'
 		config_suffix = 'client' if target == 'Client' else 'server'
-		config_name = (self.args.config if self.args.config else '(Root)') + '.fomain-' + config_suffix
+		config_name = (self.args.config if self.args.config else '(Root)') + '.fomain-'
+		if embedded:
+			config_name += 'embedded-'
+		config_name += config_suffix
 		config_path = os.path.join(self.baking_path, METADATA_PACK_NAME, config_name)
 		assert os.path.isfile(config_path), 'Config file not found'
 		with open(config_path, 'r', encoding='utf-8-sig') as file:
-			return config_name, file.read().encode()
+			config_data = file.read()
+		if embedded:
+			lines = config_data.split('\n')
+			for index, line in enumerate(lines):
+				if line.startswith('['):
+					break
+				if line.startswith('Common.ResourcesPath='):
+					lines.insert(0, lines.pop(index))
+					break
+			config_data = '\n'.join(lines)
+		return config_name, config_data.encode('utf-8')
 
 	def write_resource_pack_files(self, archive_path: str, base_path: str, files: Sequence[str]) -> None:
 		entries = sorted((os.path.relpath(file_path, base_path).replace(os.sep, '/'), file_path) for file_path in files)
@@ -1680,8 +1697,7 @@ class Packager:
 			packaged_runtime_dir = runtime_dir
 
 		assert packaged_runtime_dir is not None, f'{target} package has no managed runtime source architecture'
-		resource_dir = self.client_res_dir if target == 'Client' else self.server_res_dir
-		archive_path = os.path.join(self.target_output_path, resource_dir, managed_runtime_pack + '.fores')
+		archive_path = os.path.join(self.target_output_path, self.resources_dir, managed_runtime_pack + '.fores')
 		log(f'Replace baked managed runtime with {target.lower()} platform payload', archive_path)
 		self.write_resource_pack_with_runtime(
 			archive_path,
@@ -1710,10 +1726,10 @@ class Packager:
 
 	def ensure_resource_dirs(self) -> None:
 		if self.args.target == 'Server':
-			os.makedirs(os.path.join(self.target_output_path, self.server_res_dir), exist_ok=True)
-			os.makedirs(os.path.join(self.target_output_path, self.client_res_dir), exist_ok=True)
+			os.makedirs(os.path.join(self.target_output_path, self.resources_dir), exist_ok=True)
+			os.makedirs(os.path.join(self.target_output_path, self.client_resources_dir()), exist_ok=True)
 		elif self.args.target == 'Client':
-			os.makedirs(os.path.join(self.target_output_path, self.client_res_dir), exist_ok=True)
+			os.makedirs(os.path.join(self.target_output_path, self.resources_dir), exist_ok=True)
 
 	def package_resource_pack(self, pack_name: str, files: Sequence[str], base_res_name: str) -> None:
 		assert self.baking_path, 'Baking path is not initialized'
@@ -1776,10 +1792,13 @@ class Packager:
 					self.resource_archive_cache_unavailable = True
 
 	def load_config_data(self) -> None:
-		config_name, self.config_data = self.read_config_data(self.args.target)
-		self.target_config = load_config_from_data(self.config_data)
+		# Binaries carry the embedded profile while package options keep the full selected profile
+		config_name, full_config_data = self.read_config_data(self.args.target)
+		embedded_config_name, self.config_data = self.read_config_data(self.args.target, embedded=True)
+		self.target_config = load_config_from_data(full_config_data)
+		self.resources_dir = self.target_config.mainSection().getStr('Common.ResourcesPath', '')
 		log('Config', config_name)
-		log('Embedded data length', len(self.embedded_data))
+		log('Embedded config', embedded_config_name)
 		log('Embedded config length', len(self.config_data))
 
 	def get_effective_config_section(self) -> foconfig.ConfigSection:
@@ -1789,6 +1808,7 @@ class Packager:
 		bake_output = self.fomain.mainSection().getStr('Baking.BakeOutput')
 		self.baking_path = self.get_input(bake_output, 'Resources')
 		log('Baking input', self.baking_path)
+		self.load_config_data()
 
 		self.ensure_resource_dirs()
 		packs: list[tuple[str, Sequence[str], str]] = []
@@ -1799,18 +1819,18 @@ class Packager:
 				log('Make pack', pack_name, '=>', 'embed to executable', '(' + str(len(files)) + ')')
 				self.embedded_data = self.make_embedded_pack(files, os.path.join(self.baking_path, pack_name))
 			else:
-				base_res_name = self.server_res_dir if self.args.target == 'Server' else self.client_res_dir
-				packs.append((pack_name, files, base_res_name))
+				packs.append((pack_name, files, self.resources_dir))
 
 		if self.args.target == 'Server':
+			client_resources_dir = self.client_resources_dir()
 			for pack_name in self.get_target_resource_packs('Client'):
 				if pack_name == EMBEDDED_PACK_NAME:
 					continue
 				files = self.collect_resource_files(pack_name, 'Client')
-				packs.append((pack_name, files, self.client_res_dir))
+				packs.append((pack_name, files, client_resources_dir))
 
 		self.package_resource_packs(packs)
-		self.load_config_data()
+		log('Embedded data length', len(self.embedded_data))
 
 	def patch_embedded(self, file_path: str) -> None:
 		assert self.embedded_data, 'Embedded data is not prepared'
@@ -2005,7 +2025,7 @@ class Packager:
 		assert os.path.isfile(file_packager_path), 'No emscripten tools/file_packager.py found'
 
 		preload_roots = [
-			(Path(self.target_output_path) / self.client_res_dir, self.client_res_dir),
+			(Path(self.target_output_path) / self.resources_dir, self.resources_dir),
 		]
 		preload_files = [
 			(file_path, '/' + virtual_root + '/' + file_path.relative_to(root).as_posix())
@@ -2014,7 +2034,7 @@ class Packager:
 		]
 		package_web_resources(Path(self.target_output_path), Path(file_packager_path), preload_files)
 
-		shutil.rmtree(os.path.join(self.target_output_path, self.client_res_dir), True)
+		shutil.rmtree(os.path.join(self.target_output_path, self.resources_dir), True)
 
 		patch_file(index_path, '$TITLE$', self.args.nicename)
 		patch_file(index_path, '$LOADING$', self.args.nicename)
@@ -2045,8 +2065,7 @@ class Packager:
 		activity_path = os.path.join(output_java_dir, ANDROID_ACTIVITY_CLASS + '.java')
 		shutil.copy(template_activity_path, activity_path)
 		patch_file(activity_path, '$PACKAGE$', package_name)
-		patch_file(activity_path, '$CONFIG$', self.args.config)
-		patch_file(activity_path, '$RESOURCE_DIRECTORY$', json.dumps(self.client_res_dir.replace('\\', '/')))
+		patch_file(activity_path, '$RESOURCE_DIRECTORY$', json.dumps(self.resources_dir.replace('\\', '/')))
 
 		shutil.rmtree(os.path.join(self.target_output_path, 'app', 'src', 'main', 'java-template'), True)
 		log('Android activity', activity_path)
@@ -2135,9 +2154,9 @@ class Packager:
 		# Move baked resources into assets directory
 		assets_dir = os.path.join(self.target_output_path, 'app', 'src', 'main', 'assets')
 		os.makedirs(assets_dir, exist_ok=True)
-		client_res_source = os.path.join(self.target_output_path, self.client_res_dir)
+		client_res_source = os.path.join(self.target_output_path, self.resources_dir)
 		if os.path.isdir(client_res_source):
-			assets_res_dir = os.path.join(assets_dir, self.client_res_dir)
+			assets_res_dir = os.path.join(assets_dir, self.resources_dir)
 			shutil.move(client_res_source, assets_res_dir)
 			log('Resources moved to', assets_res_dir)
 

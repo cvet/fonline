@@ -52,8 +52,8 @@ namespace ServerMapOperationsTests
     {
         auto settings {GlobalSettings(false)};
 
-        settings.ApplyDefaultSettings();
-        settings.ApplyAutoSettings();
+        settings.SetupDefaultSettings();
+        settings.ApplyAutoSettings({});
 
         BakerTests::ApplySelfContainedServerSettings(settings);
 

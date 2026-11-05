@@ -5,7 +5,7 @@ document_id: baking-pipeline
 locale: ru
 permalink: /Docs/ru/explanation/content-pipeline/baking.html
 ---
-<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"91e3c720280eea4407269dfbcc0eb92dd2d04e6d3dc412bceabf3c8ebffa1322"} -->
+<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"0d46e5473afd678d8f3dd8acd2d6db42fc1bb82d717258d9d178cc08c5f42d5c"} -->
 # Конвейер запекания ресурсов
 
 Bake выдаёт loose outputs для каждого target. Затем packaging фильтрует логический pack по target и пишет детерминированную базу `.fores`; Embedded внутри executable остаётся ZIP. Клиентское обновление может соединить базу с одним append-only writable `.patch.fores`, а удаляемый `Resources.foindex` ускоряет общий поиск. Бинарный формат, хеши, проверки и восстановление описаны в [формате пакетов ресурсов](../../../ResourcePackFormat.md), синхронизация клиента — в [разделении client runtime и updater](../runtime/client-updater.md). `BuildTools/measure_resource_packs.py` сравнивает реальные форматы baked tree с необязательным readback; `analyze_resource_corpus.py` оценивает распределение исходников и стоимость индекса без записи packs.
@@ -702,3 +702,12 @@ Focused coverage находится в `Source/Tests/`:
 5. После model source или Ozz conversion выполнить `ForceBakeResources`: это positive integration gate на реальных FBX проекта, а не только synthetic fixtures.
 6. Рассматривать generated output только как результат, не как authored source.
 7. При изменении responsibilities обновить этот документ и [BuildTools Pipeline](../../reference/cmake-and-buildtools/pipeline.md).
+
+
+`Common.ResourcesPath` задаёт каталог приложения (default `Resources`). Server
+package отделяет собственные паки в корне от клиентской раздачи в `Client`.
+Config bakers опускают типизированные нули после проверки полноты авторского конфига.
+Metadata Setting содержит только имя/тип (file version 6). Совместимость `0.0.87`
+требует пересборки native-ролей и одного согласованного rebake перед раздачей профилей.
+
+Config baker пишет два профиля для каждой роли и sub-config: `.fomain-server/client` содержит полную конфигурацию ресурсов; `.fomain-embedded-server/client` — только настройки движка и явно перечисленные `Baking.BootstrapGameSettings`. Оба содержат объявления resource packs и пропускают типизированные нули. Упаковщик встраивает меньший профиль в executable и runtime libraries, а полный выбранный профиль оставляет в Metadata. Настройки самой упаковки разрешаются из полного профиля. Отсутствие embedded-профиля прерывает упаковку; игровые значения вместо него не встраиваются. Startup по-прежнему применяет ровно один выбранный основной профиль.

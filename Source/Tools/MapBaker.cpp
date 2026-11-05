@@ -188,7 +188,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
     InitAngelScriptScripting(&server_engine, *_context->GetSettings(), *_context->GetBakedFiles());
 #endif
 #if FO_MANAGED_SCRIPTING
-    InitManagedScripting(&server_engine, _context->GetBakedFiles(), _context->GetSettings()->Baking.CacheResources, _context->GetSettings()->Baking.BakeOutput);
+    InitManagedScripting(&server_engine, _context->GetBakedFiles(), _context->GetSettings()->Common.CachePath, _context->GetSettings()->Baking.BakeOutput);
 #endif
 
     // Bake maps

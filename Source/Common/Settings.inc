@@ -45,6 +45,9 @@ SETTING(bool, Common, AsyncLogWrite, false); // If true, log messages are writte
 SETTING(bool, Common, NonInteractive, false); // If true, system error dialogs log the error and request a failed exit without waiting for user input
 SETTING(vector<string>, Common, SecretSettingTokens, "secret", "token", "password", "apikey"); // Case-insensitive substrings that mark a setting name as a credential whose value is masked as "***" in command-line override logs
 SETTING(string, Common, UserWritablePath); // Read only. Writable data root for everything written at runtime - log, cache, resource overlay, self-updated binaries, server database. Resolved at startup before anything is read from disk and therefore NOT settable from a config file: the command line names it, otherwise an INSTALLED marker beside the executable selects the per-OS user data dir plus the project name (Windows %LOCALAPPDATA% else %APPDATA%; macOS/iOS ~/Library/Application Support; Linux/Android $XDG_DATA_HOME else ~/.local/share), and without a marker everything stays relative to the working directory. Read-only base resources stay where they are with this dir layered on top
+SETTING(string, Common, ResourcesPath, "Resources"); // Application resources directory; server client-distribution packs use its Client subdirectory
+SETTING(string, Common, CachePath, "Cache"); // Cache directory
+SETTING(string, Common, PlatformBinariesPath, "PlatformBinaries"); // Per-platform client runtime binaries directory served by the updater
 SETTING_GROUP_END(Common);
 
 ///@ ExportSettings Common
@@ -306,7 +309,7 @@ SETTING(int32_t, Timer, DeltaTimeCap, 100); // Frame delta time cap in milliseco
 SETTING_GROUP_END(Timer);
 
 ///@ ExportSettings Common
-SETTING_GROUP(Baking, virtual AngelScriptSettings, virtual ManagedScriptSettings, virtual SpriteMeshSettings, virtual AnimationSettings, virtual BaseSettings)
+SETTING_GROUP(Baking, virtual CommonSettings, virtual AngelScriptSettings, virtual ManagedScriptSettings, virtual SpriteMeshSettings, virtual AnimationSettings, virtual BaseSettings)
 SETTING(bool, Baking, ForceBaking, false); // If true, baking of all packs are forced
 SETTING(bool, Baking, FilterResources, false); // If true, resource packs contain only outputs reachable from authored resource references instead of every baked output
 SETTING(bool, Baking, SingleThreadBaking, false); // If true, single-threaded baking is enabled
@@ -323,10 +326,6 @@ SETTING(vector<string>, Baking, ProtoFileExtensions, "fopro"); // Authored proto
 SETTING(bool, Baking, AllowRepeatedProtoParents, true); // If false, a prototype reaching one ancestor through several $Parent entries fails baking; when allowed, a repeated ancestor contributes its fields only where it is first reached
 SETTING(vector<string>, Baking, BakeLanguages, "engl"); // Bake languages
 SETTING(string, Baking, BakeOutput, "Baking"); // Bake output directory
-SETTING(string, Baking, ServerResources, "ServerResources"); // Server resources directory
-SETTING(string, Baking, ClientResources, "Resources"); // Client resources directory
-SETTING(string, Baking, PlatformBinaries, "PlatformBinaries"); // Per-platform client runtime binaries directory served by the updater
-SETTING(string, Baking, CacheResources, "Cache"); // Cache resources directory
 SETTING(int32_t, Baking, ResourcePackCompressLevel, 1); // Compression level of the resource packs, on the zlib scale whatever the codec: 0 stores, 9 is the strongest
 SETTING(int32_t, Baking, ResourcePackMinCompressGain, 5); // Percent a blob must give back before it is deflated rather than stored as it is
 SETTING(int32_t, Baking, BundleCompressLevel, 1); // Compression level of the distribution bundles and the executable's Embedded resource pack, on the zlib scale whatever the codec: 0 stores, 9 is the strongest

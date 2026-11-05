@@ -394,7 +394,7 @@ TEST_CASE("AngelScriptDocumentMigrationSignatures", "[angelscript][migration]")
 TEST_CASE("AngelScriptDocumentMigrations", "[angelscript][migration]")
 {
     auto settings {BakerTests::MakeScriptCompilerSettings()};
-    settings.ApplyAutoSettings();
+    settings.ApplyAutoSettings({});
     BakerTests::ApplySelfContainedServerSettings(settings);
     auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, MakeMigrationResources())};
     auto shutdown {scope_exit([&]() noexcept {

@@ -778,8 +778,8 @@ namespace ClientServerIntegrationClient
     {
         auto settings {GlobalSettings(false)};
 
-        settings.ApplyDefaultSettings();
-        settings.ApplyAutoSettings();
+        settings.SetupDefaultSettings();
+        settings.ApplyAutoSettings({});
 
         BakerTests::ApplySelfContainedServerSettings(settings);
         BakerTests::OverrideSetting(settings.Network.ServerPort, port);
@@ -791,11 +791,12 @@ namespace ClientServerIntegrationClient
     {
         auto settings {GlobalSettings(false)};
 
-        settings.ApplyDefaultSettings();
-        settings.ApplyAutoSettings();
+        settings.SetupDefaultSettings();
+        settings.ApplyAutoSettings({});
 
         BakerTests::ApplySelfContainedClientSettings(settings);
         BakerTests::OverrideSetting(settings.Network.ServerPort, port);
+        BakerTests::OverrideSetting(settings.Client.DefaultSplashPack, string {"TestUpdaterUi"});
 
         return settings;
     }
@@ -841,6 +842,19 @@ End
             REQUIRE(fs::write_file(strex(effects_dir).combine_path(strex("{}.fofx", name).str()).str(), "[Effect]\nPasses = 1\n"));
             REQUIRE(fs::write_file(strex(effects_dir).combine_path(strex("{}.fofx-1-info", name).str()).str(), "[EffectInfo]\n"));
         }
+
+        FileSystem ui_resources {};
+        ui_resources.AddDirSource(strex(bake_dir).combine_path("Embedded").str(), true);
+        auto ui_files {ui_resources.GetAllFiles()};
+        ResourcePackWriter ui_pack {strex(bake_dir).combine_path("TestUpdaterUi.fores").str()};
+
+        for (size_t i {0}; i < ui_files.GetFilesCount(); i++) {
+            auto file {ui_resources.ReadFile(ui_files.GetFileByIndex(i).GetPath())};
+            REQUIRE(file);
+            ui_pack.AddFile(file.GetPath(), file.GetDataSpan());
+        }
+
+        ui_pack.Finish();
 
         return bake_dir;
     }

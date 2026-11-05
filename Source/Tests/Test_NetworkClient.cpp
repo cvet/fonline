@@ -122,8 +122,8 @@ namespace
     {
         auto settings {GlobalSettings(false)};
 
-        settings.ApplyDefaultSettings();
-        settings.ApplyAutoSettings();
+        settings.SetupDefaultSettings();
+        settings.ApplyAutoSettings({});
 
         return settings;
     }
@@ -240,7 +240,7 @@ TEST_CASE("ClientConnectionRequiredInterthreadNeverFallsBackToSockets")
 
     size_t connect_call_count {0};
     optional<ClientConnection::ConnectResult> connect_result {};
-    ClientConnection client {&settings};
+    ClientConnection client {&settings, ClientConnection::ResourceMode::Platform};
 
     client.SetConnectHandler([&](ClientConnection::ConnectResult result) {
         connect_call_count++;
@@ -280,7 +280,7 @@ TEST_CASE("ClientConnectionRequiredInterthreadUsesAvailableListener")
 
         size_t connect_call_count {0};
         optional<ClientConnection::ConnectResult> connect_result {};
-        ClientConnection client {&settings};
+        ClientConnection client {&settings, ClientConnection::ResourceMode::Platform};
 
         client.SetConnectHandler([&](ClientConnection::ConnectResult result) {
             connect_call_count++;
@@ -334,7 +334,7 @@ TEST_CASE("ClientConnectionInterthreadNotRequiredKeepsSocketAttempt")
 
     size_t connect_call_count {0};
     optional<ClientConnection::ConnectResult> connect_result {};
-    ClientConnection client {&settings};
+    ClientConnection client {&settings, ClientConnection::ResourceMode::Platform};
 
     client.SetConnectHandler([&](ClientConnection::ConnectResult result) {
         connect_call_count++;
@@ -384,7 +384,7 @@ TEST_CASE("ClientConnectionDisconnectsOnMalformedCompressedInput")
     auto cleanup {scope_exit([port]() noexcept { safe_call([port] { (void)RemoveInterthreadListener(port); }); })};
 
     optional<ClientConnection::ConnectResult> connect_result {};
-    ClientConnection client {&settings};
+    ClientConnection client {&settings, ClientConnection::ResourceMode::Platform};
     client.SetConnectHandler([&](ClientConnection::ConnectResult result) { connect_result = result; });
     client.Connect();
     REQUIRE(server_send_to_client);

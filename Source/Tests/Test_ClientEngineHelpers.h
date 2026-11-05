@@ -118,8 +118,8 @@ namespace ClientEngineTests
     {
         auto settings {GlobalSettings(false)};
 
-        settings.ApplyDefaultSettings();
-        settings.ApplyAutoSettings();
+        settings.SetupDefaultSettings();
+        settings.ApplyAutoSettings({});
 
         BakerTests::ApplySelfContainedClientSettings(settings);
 
@@ -130,11 +130,6 @@ namespace ClientEngineTests
     {
         std::filesystem::path base {std::filesystem::temp_directory_path() / std::format("lf_client_resources_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count())};
         return fs::path_to_string(base);
-    }
-
-    inline auto CanUseDirectoryBackedClientResourceFixtures() noexcept -> bool
-    {
-        return !IsPackaged();
     }
 
     inline void WriteClientTestPack(string_view directory, string_view name, const vector<pair<string, string>>& files)

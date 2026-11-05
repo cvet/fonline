@@ -7,12 +7,12 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"d0f235057b2e6c8e5dacb106ecfce753db42a0f9e78ab4f8f8ee5df791df2b13"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"39f15801d5340913ea2e4122117636601df1fc94d20a8de22f922852b48a5339"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
-## Current - 2026-11-04
+## Current - 2026-11-05
 
 ### Изменено
 
@@ -31,7 +31,7 @@ permalink: /Docs/ru/reference/changelog.html
 
 ### Миграция
 
-- Базовая ревизия `3d56c1f3f9` (`2026.1.106-dev`) → `2026.1.107-dev`; возвращается работа по большим картам, откаченная в `2026.1.103-dev`. Настройки, сетевой протокол, маркер `MigrationRule Version`, Managed ABI, сохранённые данные и схемы ресурсов не меняются; конвертация контента и сохранений не требуется. Скриптовый API только получает перечисленные выше методы. Пересоберите все нативные роли (Server, Client, Mapper, Baker и тесты) и перегенерируйте оба скриптовых бэкенда, потому что меняются шаблон сетки и раскладки `MapView` и `Map`. `StaticMap::ApplyItemToField()` становится приватным членом, `StaticMap::MergeFieldInto(hex, field)` добавляет предметы карты на гексе в другое поле, а `StaticMap::BuildFieldWithout()` больше не `const`, потому что оба отдают предметы карты как изменяемые.
+- Базовая ревизия `90061a40d4` (`2026.1.108-dev`) → `2026.1.109-dev`; возвращается работа по большим картам, откаченная в `2026.1.103-dev`. Настройки, сетевой протокол, маркер `MigrationRule Version`, Managed ABI, сохранённые данные и схемы ресурсов не меняются; конвертация контента и сохранений не требуется. Скриптовый API только получает перечисленные выше методы. Пересоберите все нативные роли (Server, Client, Mapper, Baker и тесты) и перегенерируйте оба скриптовых бэкенда, потому что меняются шаблон сетки и раскладки `MapView` и `Map`. `StaticMap::ApplyItemToField()` становится приватным членом, `StaticMap::MergeFieldInto(hex, field)` добавляет предметы карты на гексе в другое поле, а `StaticMap::BuildFieldWithout()` больше не `const`, потому что оба отдают предметы карты как изменяемые.
 - Запечённые карты больше не читаются при старте: первый экземпляр карты читает свой файл в создающем потоке, а ошибка в карте, которую никто не создаёт, остаётся незамеченной. Проект, полагавшийся на проверку всех запечённых карт при старте, может вызвать `Game.LoadStaticMap(mapPid, false)` для каждой из них в отдельной проверке. Нативный код, вызывавший `MapManager::GetStaticMap()` для отсутствующего файла, раньше получал проваленный поиск, теперь — `MapManagerException`.
 - Нативный код: замените `mspr->SetLight(corner, map->GetLightData(), map->GetSize())` на `map->SetupSpriteLight(mspr, corner)`; `MapView::GetLightData()` удалён, и прежний вызов плотного буфера больше не компилируется. Найдите вызовы через `rg -n "GetLightData|SetLight\(" SourceExt` (или нативные корни проекта). Собственный наследник `TwoDimensionalGrid` должен реализовать `ClearArea`; чисто виртуальный метод сообщит об отсутствующем переопределении при компиляции.
 - Владельцы приёмки: случаи `TwoDimensionalGrid` (индекс размером с континент, освобождение области, ограниченные циклы загрузки/выгрузки, `ClearArea` динамической и статической сеток), `ClientMaximumSizeMapLoadsWithoutMapSizedWork`, `PathFinding::RoutesMatchOnContinentSizedMaps`, `MapLoadsAndUnloadsContentOfOtherMaps`, `ClientMapLoadsAndUnloadsStaticItemsOfOtherMaps` и существующие случаи статических карт, удаления, крыш, света, прокрутки и hit-test.
@@ -40,6 +40,46 @@ permalink: /Docs/ru/reference/changelog.html
 
 
 
+
+
+## 2026.1.108-dev - 2026-11-05
+
+### Изменено
+
+- Исправлены тестовые фикстуры для чистых настроек metadata, монтирования ресурсов packaged viewer и переводов строк встроенного профиля в Windows и Linux.
+
+### Миграция
+
+- Миграция проекта не требуется: изменения затрагивают только тесты и сохраняют runtime, resource, ABI и сетевые контракты.
+
+## 2026.1.107-dev - 2026-11-05
+
+### Изменено
+
+- Отделены начальные `SetupConfigAtPath`, `SetupInternalConfig`, `SetupResourceConfig` и `SetupDefaultSettings` от частичных `Apply*` overlays. Каждый setup требует чистого нулевого snapshot; повторный/смешанный setup отвергается до изменения, ошибка file/profile setup допускает повтор. Успешный setup не добавляет clear/default-проход.
+- Packaged marker закрыт в application initialization. Runtime читает режим и identity из settings; C++ pack mounts получают явный режим первым аргументом, auto settings — runtime identity. Форматы config/metadata не меняются.
+- После обновления ресурсного конфига перезапуск требуется только при изменении итоговых движковых настроек или объявлений пакетов. Игровые/custom значения, удалённые настройки и typed caches обновляются до создания ClientEngine; приоритет local/CLI/auto и storage native-полей сохраняются.
+- Адресный отказ для прежних `Baking.ResourcesDir`, `Baking.CacheResources`, `Baking.PlatformBinaries`, `Baking.ClientResources` и `Baking.ServerResources` отмечен `FO_TEMPORARY_COMPAT(RetiredBakingDirectorySettings, "2026-12-31")` в реализации и проверках отказа. Маркер задаёт срок удаления этой диагностики и не добавляет runtime-работы или aliases старых имён.
+- Упаковщик переносит строку `Common.ResourcesPath` главной секции в первую строку каждого встроенного профиля, чтобы bootstrap находил её сразу. Значение и порядок остальных строк сохраняются; полные ресурсные профили и исходные baked-файлы не меняются.
+- Игровые interthread-клиенты запрашивают common resource descriptor своей общей раздачи; updater-соединения и сетевые игровые клиенты сохраняют выбор platform-specific payload. Проверки хешей и metadata остаются строгими.
+- Разделены полные ресурсные профили (`.fomain-server/client`) и встроенные профили движка/bootstrap (`.fomain-embedded-server/client`). Executables и updater runtime modules получают embedded-профиль; загрузка ресурсов и настройки упаковки используют полный профиль. Для упаковки нужны оба выхода.
+- Запуск применяет один полный профиль на нулевой объект: ресурсный при наличии, иначе бинарный. Bootstrap сканирует только зашитую `Common.ResourcesPath`; невыбранный профиль не разбирается и не применяется. Unpackaged-запуск применяет авторские config/sub-config без reference defaults. Local preferences, CLI и auto сохраняют порядок; CLI и auto вызываются по одному разу. Packaged sub-config сообщает `FO_VERIFY_AND_CONTINUE`.
+- Config/ClientConfig bakers опускают типизированные нули и сохраняют все ненулевые объявленные game values. Resource config инициализирует чистые settings до overlays; повторные или неверные вызовы запрещены, debug полностью проверяет нулевые поля. Флаг чистоты и replacement copy/allocation успешной загрузки удалены; неудачный частичный Apply восстанавливает нулевой snapshot. Обычные Apply сохраняют overlay-семантику. Updater сравнивает исходный текст до валидации, проверяет изменённый профиль один раз и переносит preferences перед restart при смене cache path.
+- Вместо `Baking.ServerResources` / `Baking.ClientResources` используется runtime-настройка `Common.ResourcesPath=Resources`. Server package хранит собственные паки в корне, клиентскую раздачу — в `Client`. CLI overrides и Android APK asset URI сохраняются. CMake-параметров каталога ресурсов нет.
+- Metadata Setting содержит только имя/тип; удалены initial-value storage и применение в BaseEngine. Проверка полноты авторских значений сохраняется, включая явно пустые значения. Metadata file version повышена с 5 до 6.
+- Резерв встроенного конфига увеличен с 20000 до 40000 байт; packager проверяет реальную ёмкость каждого бинарника.
+
+### Миграция
+
+- Переименуйте C++ `ApplyConfigAtPath`, `ApplyInternalConfig`, `ApplyResourceConfig` и `ApplyDefaultSettings` в соответствующие `Setup*`. Выбирайте один базовый источник до overlays; `ApplyConfigFile` остаётся для preferences и частичного ввода. Fixtures, читавшие root поверх defaults, должны сразу создаваться из root. Состояние полноты различает fresh/initialized/complete при прежнем смысле `HasCompleteConfig`. Пересоберите native consumers; смена API не добавляет metadata/serialized/network migration.
+- Основной загрузчик использует существующий StandaloneClient для клиентских writable overlays; server/tool profiles читаются из base packs. Packaged embedded-клоны указывают на дочерний Client серверной раздачи. Диапазоны game integers и разрешение enum проверяются до фильтрации нулей.
+- Baked-профили содержат комментарий native-совместимости. После native-first restart standalone-клиент откладывает прежние/несовместимые optional profiles и применяет embedded fallback с engine/bootstrap-настройками без разбора старых ключей; следующая синхронизация устанавливает соответствующий профиль. Aliases прежних имён и дополнительных Apply нет. При первом внедрении сохраните расположение кэша либо явно перенесите preferences до native-only перехода.
+- Перенесите настройки каталогов в Common: `Common.ResourcesPath`, `Common.CachePath` (прежняя `Baking.CacheResources`) и `Common.PlatformBinariesPath`. Обновите авторские конфиги, generated/native readers, упаковку и CLI flags; прежние Baking keys отвергаются.
+- База `3d56c1f3f9` (`2026.1.106-dev`) → `2026.1.107-dev`; центральный `MigrationRule Version` `0.0.86` → `0.0.87`. Повторите configure, пересоберите все native-роли/client runtime libraries, выполните один rebake metadata/config/scripts и переупакуйте все поставляемые targets. Metadata v5/трёхколоночный Setting отвергается. Конверсия persisted entities/properties не нужна; Managed ABI остаётся 9.
+- Замените обе старые настройки и native/generated/CLI consumers на `Common.ResourcesPath`. Создайте серверную поставку заново: `<ResourcesPath>/` и `<ResourcesPath>/Client/`; обновляйте deployment/smoke paths совместно из одного bake. Content Showcase сохраняет `Resources-Baked` в авторском конфиге. Для rollback храните согласованный прежний native/resource комплект.
+- Resource reader получает `ReadResourceConfig(const FileSystem& metadata, bool required)`. Caller монтирует Metadata view перед чтением. ApplicationInit сканирует каноническую строку embedded ResourcesPath перед поиском ресурсов; ResourceApply не читает binary. При переносе каталога обновите встроенный locator либо задайте CLI override. Выбранный профиль владеет всеми значениями, включая прежние metadata values.
+- Задавайте все обязательные настройки, включая намеренные нули; фильтруйте только baked profiles. Строки `0`/`false`, непустые массивы и runtime directives сохраняют смысл. BootstrapGameSettings выбирает единственные игровые значения, включаемые в embedded config. Обновите fixtures, ожидающие неявные unpackaged defaults или metadata values; явные defaults применяйте только при необходимости fixture.
+- Поставляйте совместимый native runtime до zero-based ресурсов. Native promotion/restart предшествует resource synchronization/restart; платформам без native self-update нужен новый bundle. Не выдавайте эти профили runtime, восстанавливающему defaults или metadata baseline. Offline-смена cache path требует явного переноса preferences; live updater сохраняет существующий destination.
 
 ## 2026.1.106-dev - 2026-11-04
 

@@ -107,7 +107,7 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
         return info;
     }};
 
-    auto client_resources_dir {std::filesystem::path {fs::make_path(settings.Baking.ClientResources)}};
+    auto client_resources_dir {std::filesystem::path {fs::make_path(strex(settings.Common.ResourcesPath).combine_path(CLIENT_RESOURCE_PACKS_SUBDIR).str())}};
 
     for (const auto& resource_entry : settings.GetClientResourcePacks()) {
         if (resource_entry != EMBEDDED_PACK_NAME) {
@@ -121,7 +121,7 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
 
     VerifyClientResourcesMetadata(settings, server_metadata_version);
 
-    auto platform_binaries_dir {std::filesystem::path {fs::make_path(settings.Baking.PlatformBinaries)}};
+    auto platform_binaries_dir {std::filesystem::path {fs::make_path(settings.Common.PlatformBinariesPath)}};
     string platform_binaries_path {fs::path_to_string(platform_binaries_dir)};
 
     if (std::filesystem::exists(platform_binaries_dir)) {
@@ -204,7 +204,7 @@ void UpdaterBackend::VerifyClientResourcesMetadata(const GlobalSettings& setting
 
     for (const string& name : settings.GetClientResourcePacks()) {
         if (name != EMBEDDED_PACK_NAME) {
-            client_resources.AddCustomSource(safe_alloc::make_unique<ResourcePackSource>(strex(settings.Baking.ClientResources).combine_path(strex("{}.fores", name)).str()));
+            client_resources.AddCustomSource(safe_alloc::make_unique<ResourcePackSource>(strex(strex(settings.Common.ResourcesPath).combine_path(CLIENT_RESOURCE_PACKS_SUBDIR).str()).combine_path(strex("{}.fores", name)).str()));
         }
     }
 
@@ -212,7 +212,7 @@ void UpdaterBackend::VerifyClientResourcesMetadata(const GlobalSettings& setting
     string client_metadata_version {ReadMetadataVersion(metadata_bin)};
 
     if (client_metadata_version != server_metadata_version) {
-        throw UpdaterException("Distributed client resources were baked apart from the server resources", settings.Baking.ClientResources, client_metadata_version, settings.Baking.ServerResources, server_metadata_version);
+        throw UpdaterException("Distributed client resources were baked apart from the server resources", strex(settings.Common.ResourcesPath).combine_path(CLIENT_RESOURCE_PACKS_SUBDIR).str(), client_metadata_version, settings.Common.ResourcesPath, server_metadata_version);
     }
 
     logging::write("Client data packs match the server metadata version {}", client_metadata_version);

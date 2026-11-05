@@ -223,10 +223,6 @@ TEST_CASE("ServerShutdownDoesNotDeadlockWithLateStartupSimulationControl")
 
 TEST_CASE("ServerResourcesFollowPackagedSetting")
 {
-    if (IsPackaged()) {
-        SKIP("Baked directory mounting is only used by unpackaged test binaries");
-    }
-
     string temp_dir {MakeTempServerResourceDir("baked_entries")};
     bool removed_before {fs::remove_dir_tree(temp_dir)};
     ignore_unused(removed_before);
@@ -238,11 +234,18 @@ TEST_CASE("ServerResourcesFollowPackagedSetting")
 
     REQUIRE(fs::write_file(strex(baked_dir).combine_path("ServerPack/payload.txt").str(), string_view {"baked-server"}));
     REQUIRE(fs::write_file(strex(baked_dir).combine_path("ClientPack/client-only.txt").str(), string_view {"client"}));
-    REQUIRE(fs::write_file(strex(packaged_dir).combine_path("ServerPack/payload.txt").str(), string_view {"packaged-server"}));
+    REQUIRE(fs::write_file(strex(packaged_dir).combine_path("ServerPack/payload.txt").str(), string_view {"wrong-directory"}));
+
+    {
+        string content {"packaged-server"};
+        ResourcePackWriter writer {strex(packaged_dir).combine_path("ServerPack.fores").str()};
+        writer.AddFile("payload.txt", make_const_span(content));
+        writer.Finish();
+    }
 
     auto settings {MakeServerTestSettings()};
     BakerTests::OverrideSetting(settings.Baking.BakeOutput, baked_dir);
-    BakerTests::OverrideSetting(settings.Baking.ServerResources, packaged_dir);
+    BakerTests::OverrideSetting(settings.Common.ResourcesPath, packaged_dir);
     auto pack_config {ConfigFile("[ResourcePack]\nName = ServerPack\nServerOnly = True\n")};
     settings.ApplyConfigFile(pack_config, "");
 
@@ -3529,22 +3532,52 @@ TEST_CASE("ServerEngineDrawsDiagnosticGuiHeadlessly")
     CHECK(drawn_text.find("NotLoggedIn players (1)") != string::npos);
 }
 
-TEST_CASE("EngineAppliesGameSettingMetadataOnlyToUnconfiguredValues")
+TEST_CASE("CompleteConfigKeepsMissingGameSettingsZero")
+{
+    auto profile_source {MakeServerTestSettings()};
+    string profile {};
+
+#define SETTING(type, group, name, ...) profile += strex("{}={}\n", SettingNames::group##_##name, profile_source.group.name).str()
+#define SETTING_GROUP(group, ...)
+#define SETTING_GROUP_END(group)
+#include "Settings.inc"
+
+    GlobalSettings settings {false};
+    settings.SetupResourceConfig(profile);
+    REQUIRE(settings.HasCompleteConfig());
+    auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, ServerEngineTests::MakeServerTestResources(ServerTestScriptMode::Default, BakerTests::MakeMetadataBlob({{"Setting", {{"TestSettings.Int64Value", "int64"}, {"TestSettings.BoolValue", "bool"}, {"TestSettings.StringValue", "string"}}}})))};
+    auto shutdown {scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    })};
+    string startup_error {ServerEngineTests::WaitForServerStart(server)};
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+    CHECK(settings.GetCustomSetting("TestSettings.Int64Value").empty());
+    CHECK(settings.GetCustomSetting("TestSettings.BoolValue").empty());
+    CHECK(settings.GetCustomSetting("TestSettings.StringValue").empty());
+}
+
+TEST_CASE("EngineLeavesUnconfiguredGameSettingsEmpty")
 {
     auto settings {MakeServerTestSettings()};
 
     ConfigFile runtime_config {"TestSettings.Int32Value = 7\nUngroupedTestSetting = 9\n"};
     settings.ApplyConfigFile(runtime_config, "");
+    REQUIRE_FALSE(settings.HasCompleteConfig());
 
     auto server {safe_alloc::make_refcounted<ServerEngine>(&settings,
         ServerEngineTests::MakeServerTestResources(ServerTestScriptMode::Default,
             BakerTests::MakeMetadataBlob({{"Setting",
                 {
-                    {"TestSettings.Int32Value", "int32", "0"},
-                    {"UngroupedTestSetting", "int32", "0"},
-                    {"TestSettings.Int64Value", "int64", "0"},
-                    {"TestSettings.StringValue", "string", "0"},
-                    {"TestSettings.BoolValue", "bool", "0"},
+                    {"TestSettings.Int32Value", "int32"},
+                    {"UngroupedTestSetting", "int32"},
+                    {"TestSettings.Int64Value", "int64"},
+                    {"TestSettings.StringValue", "string"},
+                    {"TestSettings.BoolValue", "bool"},
                 }}})))};
 
     auto shutdown {scope_exit([&server]() noexcept {
@@ -3559,15 +3592,17 @@ TEST_CASE("EngineAppliesGameSettingMetadataOnlyToUnconfiguredValues")
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
-    // The configuration named these before the engine existed, so the metadata baseline of "0" must not
-    // have replaced them; the ungrouped one proves the bare spelling matches the same way
+    // An ordinary settings object keeps the values the author configured and gains no metadata baseline
     CHECK(settings.GetCustomSetting("TestSettings.Int32Value") == "7");
     CHECK(settings.GetCustomSetting("UngroupedTestSetting") == "9");
+    CHECK(settings.GetCustomSetting("TestSettings.Int64Value").empty());
+    CHECK(settings.GetCustomSetting("TestSettings.StringValue").empty());
+    CHECK(settings.GetCustomSetting("TestSettings.BoolValue").empty());
 
-    // The configuration never named these, so they arrive from the metadata baseline
-    CHECK(settings.GetCustomSetting("TestSettings.Int64Value") == "0");
-    CHECK(settings.GetCustomSetting("TestSettings.StringValue") == "0");
-    CHECK(settings.GetCustomSetting("TestSettings.BoolValue") == "0");
+    // Declared types remain available to scripts and the ConfigBaker even though no value is stored
+    CHECK(server->GetGameSettings().contains("TestSettings.Int64Value"));
+    CHECK(server->GetGameSetting("TestSettings.Int32Value").Name == "int32");
+    CHECK(server->GetGameSetting("TestSettings.BoolValue").Name == "bool");
 }
 
 TEST_CASE("ServerItemCreationAnyPropertiesRespectMutability")

@@ -10106,14 +10106,6 @@
           "source_sha256": "6ac0ec394437e5145700bab5f90f9eaf6dca5edd134e5a7cfd5125242cfc9791",
           "translation": "Уровень сжатия дистрибутивов и встроенного в исполняемый файл пакета Embedded по шкале zlib для любого кодека: 0 без сжатия, 9 максимально"
         },
-        "/symbols/@id=setting.common.Baking.CacheResources/description": {
-          "source_sha256": "b73a2fe61ba6dd64d06526898296c8f00b854b8a246968335211b76fc4e4000a",
-          "translation": "Каталог кеша ресурсов"
-        },
-        "/symbols/@id=setting.common.Baking.ClientResources/description": {
-          "source_sha256": "dc13e0a37be9983970e884a4a1e6734f64ea8329b275c48e048cb0ccc98607d0",
-          "translation": "Каталог ресурсов клиента"
-        },
         "/symbols/@id=setting.common.Baking.Direct3DLevel9Shaders/description": {
           "source_sha256": "c5f0bcdce449a6108e365ad6a097523424836f7fc952d408a832cef7b52b0d7b",
           "translation": "Если true, эффекты Direct3D, кроме модельных, также содержат код для уровня 9.3, а сборка без 3D принимает устройства feature level 9.3; эффект, не укладывающийся в уровень 9.3, прерывает запекание"
@@ -10142,10 +10134,6 @@
           "source_sha256": "d6cb08b61f6ec170195e8646b85c2ba32bd0eaf76c7004342263e5ebe29d6d0e",
           "translation": "Наименьший мировой размер напрямую присоединённой модели; ниже него экспорт использует пространство единиц меньшего масштаба, чем движок."
         },
-        "/symbols/@id=setting.common.Baking.PlatformBinaries/description": {
-          "source_sha256": "f6c416bd17d29f1a813c4eae79e270cccb6d9f9030937919e9fc15f3cb63f4fb",
-          "translation": "Каталог runtime-бинарных файлов клиента для каждой платформы, предоставляемых updater-ом"
-        },
         "/symbols/@id=setting.common.Baking.PrebakeOnStartup/description": {
           "source_sha256": "937bb52fe511828480b24b13c2bc63e438ecb5b466f2fa2fb4b96fca3e2d3d65",
           "translation": "Если false, непакетированное приложение использует уже запечённые ресурсы вместо запуска baker; применяется при запуске нескольких процессов из одного только что запечённого checkout"
@@ -10169,10 +10157,6 @@
         "/symbols/@id=setting.common.Baking.ResourcePackMinCompressGain/description": {
           "source_sha256": "1121119449f0a3a821492bc433765e465befe0c69c14be557d7fa808edac656f",
           "translation": "Минимальный процент уменьшения размера блока, при котором он сжимается вместо хранения без сжатия"
-        },
-        "/symbols/@id=setting.common.Baking.ServerResources/description": {
-          "source_sha256": "6adc8d3d036c22236ced92bf4220e2208b7ce1cd338009818220607f67ac2c43",
-          "translation": "Каталог ресурсов сервера"
         },
         "/symbols/@id=setting.common.Baking.SingleThreadBaking/description": {
           "source_sha256": "512a88fdecba368e21484023c0027693dde8b95bef2435c3c0f6c5506109502d",
@@ -10950,21 +10934,17 @@
           "source_sha256": "925fc3bcc97a0e01e405d9023343a9b28dc43312b3f7a97e2b2201f6d0678518",
           "translation": "Передаёт событие прокрутки касанием в заданной позиции клиента со знаковым смещением в пикселях"
         },
-        "/symbols/@id=script.method.server.Game.LoadStaticMap/description": {
-          "source_sha256": "3a361908396a2839a54c8d58bbd24f94f499d09c9a5ebe35e9168f3e5804bfb5",
-          "translation": "Прочитать запечённое содержимое прототипа карты в кэш сейчас или в рабочем потоке; запрос до конца этого чтения ждёт его"
+        "/symbols/@id=setting.common.Common.CachePath/description": {
+          "source_sha256": "1143f80ae15a2e775c416766d73a40ac6bde20c9950de5065a48a61efcd08fc4",
+          "translation": "Каталог кэша"
         },
-        "/symbols/@id=script.method.server.Game.UnloadStaticMap/description": {
-          "source_sha256": "356c0f0b3fc7a0650e10952431c82171d9a0ab9d01f53ec530418ed118fbe052",
-          "translation": "Освободить кэшированное запечённое содержимое прототипа карты и вернуть, выгружено ли оно; оно остаётся, пока читается или используется картой"
+        "/symbols/@id=setting.common.Common.PlatformBinariesPath/description": {
+          "source_sha256": "f6c416bd17d29f1a813c4eae79e270cccb6d9f9030937919e9fc15f3cb63f4fb",
+          "translation": "Каталог клиентских runtime binaries по платформам, раздаваемых updater"
         },
-        "/symbols/@id=script.method.server.Map.GenerateContent/description": {
-          "source_sha256": "182ba1bf365dcd142d22952cde840d9eac542f05ca939862dd40049d671d3b20",
-          "translation": "Создать криттеров и динамические предметы прототипа карты так, чтобы её первый гекс попал в `destHex`, и вернуть идентификаторы созданных криттеров и предметов карты"
-        },
-        "/symbols/@id=script.method.server.Game.IsStaticMapLoaded/description": {
-          "source_sha256": "2a0c98334e5eef32635c4198c60bfe72156c02892b4e89807aecec9ba0150eca",
-          "translation": "Вернуть, кэшировано ли запечённое содержимое прототипа карты"
+        "/symbols/@id=setting.common.Common.ResourcesPath/description": {
+          "source_sha256": "ac191455e235e9d8922aa87d48485d267c19696be5d620947888efbf03622eb7",
+          "translation": "Каталог ресурсов приложения; клиентская раздача сервера находится в его дочернем Client"
         },
         "/symbols/@id=script.method.client.Map.LoadRuntimeStaticItems%230971edd694992850/description": {
           "source_sha256": "74bf8007d1c46e1800c3d58588eefef0b0e439427aef63aef9970c795076ce29",
@@ -10978,6 +10958,26 @@
           "source_sha256": "20d4c22d77c7c152de0b91cb6410121adc9fb054c6a429a71148238734e66a1c",
           "translation": "Удалить статические предметы времени выполнения, добавленные в представление карты через `LoadRuntimeStaticItems`, и освободить оставшиеся пустыми блоки полей"
         },
+        "/symbols/@id=script.method.server.Game.IsStaticMapLoaded/description": {
+          "source_sha256": "2a0c98334e5eef32635c4198c60bfe72156c02892b4e89807aecec9ba0150eca",
+          "translation": "Вернуть, кэшировано ли запечённое содержимое прототипа карты"
+        },
+        "/symbols/@id=script.method.server.Game.LoadStaticMap/description": {
+          "source_sha256": "3a361908396a2839a54c8d58bbd24f94f499d09c9a5ebe35e9168f3e5804bfb5",
+          "translation": "Прочитать запечённое содержимое прототипа карты в кэш сейчас или в рабочем потоке; запрос до конца этого чтения ждёт его"
+        },
+        "/symbols/@id=script.method.server.Game.LoadStaticMaps/description": {
+          "source_sha256": "939de09b3a046d2dafe1799af0bf780ce4e47bee720b3670b091ee561d2a3c64",
+          "translation": "Прочитать запечённое содержимое прототипов карт в кэш сейчас или в рабочих потоках; запрос одного из них ждёт его чтения"
+        },
+        "/symbols/@id=script.method.server.Game.UnloadStaticMap/description": {
+          "source_sha256": "356c0f0b3fc7a0650e10952431c82171d9a0ab9d01f53ec530418ed118fbe052",
+          "translation": "Освободить кэшированное запечённое содержимое прототипа карты и вернуть, выгружено ли оно; оно остаётся, пока читается или используется картой"
+        },
+        "/symbols/@id=script.method.server.Map.GenerateContent/description": {
+          "source_sha256": "182ba1bf365dcd142d22952cde840d9eac542f05ca939862dd40049d671d3b20",
+          "translation": "Создать криттеров и динамические предметы прототипа карты так, чтобы её первый гекс попал в `destHex`, и вернуть идентификаторы созданных криттеров и предметов карты"
+        },
         "/symbols/@id=script.method.server.Map.LoadRuntimeStaticItems%230971edd694992850/description": {
           "source_sha256": "8aa96ba2c5245e828d249939e326fed372c1bd399d01616bfed930f96744ef46",
           "translation": "Загрузить статические предметы области прототипа карты как статические предметы времени выполнения так, чтобы первый гекс области попал в `destHex`, с запечёнными идентификаторами плюс `idOffset`, и вернуть их идентификаторы"
@@ -10989,10 +10989,6 @@
         "/symbols/@id=script.method.server.Map.UnloadRuntimeStaticItems/description": {
           "source_sha256": "621ddfb90e2ab8cd8dd2c547a0fcae48a47f5f5df66423b829aef204baf8a93d",
           "translation": "Удалить статические предметы времени выполнения, добавленные в карту через `LoadRuntimeStaticItems`"
-        },
-        "/symbols/@id=script.method.server.Game.LoadStaticMaps/description": {
-          "source_sha256": "939de09b3a046d2dafe1799af0bf780ce4e47bee720b3670b091ee561d2a3c64",
-          "translation": "Прочитать запечённое содержимое прототипов карт в кэш сейчас или в рабочих потоках; запрос одного из них ждёт его чтения"
         }
       }
     },
@@ -16753,8 +16749,8 @@
           "translation": "Выбирает соответствующий бинарный вход с суффиксом и изолирует для этой записи каталог цели, имя упакованной сборки, содержимое runtime-обновления и имя MSI, не затрагивая соседние записи BINARY."
         },
         "/packager/description": {
-          "source_sha256": "d2fc888609a73750c051ad5faf0e21af87584a214dd7fd0480a0b8c6d52bf73f",
-          "translation": "Подготавливает содержимое одного объявленного бинарного файла, изменяет runtime-данные и выпускает выбранные артефакты. Сбор ресурсов требует Resources.usage.json, согласованного с маркерами ревизии и конфигурации bake, и пересекает его точные списки файлов пакетов с ограничениями суффиксов сторон. Baking.FilterResources по умолчанию равен False: перечисляются все доступные выходы текущих baker-ов; True включает отбор по типизированным корням и runtime-зависимостям."
+          "source_sha256": "f32fda45ee37444844eb61ee4070552049daff5d77b84eda9ccee50bad238e8f",
+          "translation": "Разместить объявленный binary payload, пропатчить runtime data и создать выбранные artifacts. Выбранный baked profile задаёт Common.ResourcesPath: собственные паки находятся в этом корне, клиентская раздача Server — в дочернем Client. Сбор ресурсов требует Resources.usage.json, соответствующий baked build/configuration markers, и пересекает точные списки файлов пакетов с target suffix restrictions. Baking.FilterResources по умолчанию False включает все текущие baker outputs; True включает typed-root и runtime-dependency filtering. Бинарники и updater runtime modules получают соответствующий профиль только с настройками движка/bootstrap; загрузка ресурсов и опции упаковки используют полный выбранный профиль, и нужны оба запечённых профиля. Строка Common.ResourcesPath главной секции записывается первой в каждом встроенном профиле; значение, порядок остальных строк и полные ресурсные профили сохраняются."
         },
         "/packs/@id=package.pack.Apk/description": {
           "source_sha256": "a7a41e65c179cf5862f67e7b01096bf86b7f502ac65bfcbc96a27adcc17bfdcc",
@@ -16901,8 +16897,8 @@
           "translation": "Автономный инструмент предварительного просмотра частиц без упакованных игровых ресурсов."
         },
         "/targets/@id=package.target.Server/description": {
-          "source_sha256": "ac2fbf7b5c04cc2d40e2e9baff95c0215face32135be84e404c85062520ac3ae",
-          "translation": "Бинарный файл сервера, ресурсы сервера и наборы ресурсов обновления клиента."
+          "source_sha256": "bc03638ccc08c96f41538bdcb0c2a636b7b188646914ea59bf1cddedd90eea9f",
+          "translation": "Серверный бинарник, собственные ресурсы в Common.ResourcesPath и клиентская раздача в его дочернем Client."
         }
       }
     },

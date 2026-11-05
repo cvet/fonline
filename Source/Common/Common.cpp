@@ -46,10 +46,6 @@ struct InterthreadData
 };
 FO_GLOBAL_DATA(InterthreadData, Interthread);
 
-FO_KEEP_DATA_SYMBOL char PACKAGED_BUILD_NAME[128] {"###NotPackaged###"
-                                                   "##############################################################################################################"};
-static auto ReadPackagedBuildName() -> string;
-static const string PackagedBuildName {ReadPackagedBuildName()};
 bool IsTestingInProgress {};
 
 auto CommandLineArgs::GetSettingValue(string_view name, optional<string_view> implicit_value) const -> optional<string_view>
@@ -133,16 +129,6 @@ ProgramArgs::ProgramArgs(int32_t argc, nptr<char*> argv)
     }
 }
 
-auto IsPackaged() -> bool
-{
-    return !PackagedBuildName.empty();
-}
-
-auto GetPackagedRuntimeName() -> string
-{
-    return PackagedBuildName;
-}
-
 auto AddInterthreadListener(uint16_t port, InterthreadListener listener) -> bool
 {
     scoped_lock locker {Interthread->ListenersLocker};
@@ -204,21 +190,6 @@ auto GetRemoteCallSimpleValueMinWireSize(const BaseTypeDesc& type) -> size_t
     }
 
     throw NotSupportedException("Unsupported simple remote call argument type", type.Name);
-}
-
-static auto ReadPackagedBuildName() -> string
-{
-    string raw {strex().assignVolatile(PACKAGED_BUILD_NAME, sizeof(PACKAGED_BUILD_NAME)).str()};
-
-    if (raw.find("NotPackaged") != string::npos) {
-        return {};
-    }
-
-    if (auto null_pos {raw.find('\0')}; null_pos != string::npos) {
-        raw.resize(null_pos);
-    }
-
-    return raw;
 }
 
 FrameBalancer::FrameBalancer(bool enabled, int32_t sleep, int32_t fixed_fps) :

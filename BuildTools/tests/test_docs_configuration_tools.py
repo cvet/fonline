@@ -69,10 +69,10 @@ class ConfigurationAndToolsDocumentationTests(unittest.TestCase):
         for marker in (
             "ResourcePackInfo",
             "SubConfigInfo",
-            "ApplyConfigAtPath",
+            "SetupConfigAtPath",
             "ApplyCommandLine",
             "ApplySubConfigSection",
-            "ApplyDefaultSettings",
+            "SetupDefaultSettings",
             "ApplyAutoSettings",
             "FindCustomSetting",
             "GetCustomSetting",
@@ -92,14 +92,16 @@ class ConfigurationAndToolsDocumentationTests(unittest.TestCase):
         load_settings = startup[startup.index("auto LoadAppSettings") :]
         self.assertLess(
             load_settings.index("auto settings {GlobalSettings(false)};"),
-            load_settings.index("if (!IsPackaged())"),
+            load_settings.index("if (!packaged)"),
         )
         self.assertLess(
             load_settings.index("settings.ApplyCommandLine(args);"),
-            load_settings.index("settings.ApplyAutoSettings();"),
+            load_settings.index("settings.ApplyAutoSettings(PackagedBuildName);"),
         )
-        self.assertIn("defaults before reading project input", english)
-        self.assertIn("defaults движка применяются до чтения входов проекта", russian)
+        bootstrap_body = load_settings[:load_settings.index("void ApplyAppSettingsOverrides(")]
+        self.assertNotIn("SetupDefaultSettings", bootstrap_body)
+        self.assertIn("Exactly one main Setup", english)
+        self.assertIn("ровно один основной Setup", russian)
 
     def test_writable_root_flag_is_documented_only_by_its_accepted_spelling(self) -> None:
         startup = self._text("Source/Frontend/ApplicationInit.cpp")

@@ -74,8 +74,8 @@ namespace MapperTests
     {
         auto settings {GlobalSettings(false)};
 
-        settings.ApplyDefaultSettings();
-        settings.ApplyAutoSettings();
+        settings.SetupDefaultSettings();
+        settings.ApplyAutoSettings({});
 
         BakerTests::ApplySelfContainedClientSettings(settings);
 

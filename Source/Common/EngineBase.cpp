@@ -532,13 +532,12 @@ void EngineMetadata::RegisterInboundRemoteCall(RemoteCallDesc&& remote_call)
     _inboundRemoteCalls.emplace(remote_call.Name, std::move(remote_call));
 }
 
-void EngineMetadata::RegisterGameSetting(string_view name, const BaseTypeDesc& type, string_view initial_value)
+void EngineMetadata::RegisterGameSetting(string_view name, const BaseTypeDesc& type)
 {
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
     FO_VERIFY_AND_THROW(!_gameSettings.contains(name), "Game setting is already registered", name);
 
     _gameSettings.emplace(name, &type);
-    _gameSettingsInitialValues.emplace(name, initial_value);
 }
 
 void EngineMetadata::RegisterMigrationRules(unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>&& migration_rules)
@@ -1244,14 +1243,6 @@ BaseEngine::BaseEngine(ptr<GlobalSettings> settings, FileSystem&& resources, con
     _imgui {safe_alloc::make_refcounted<ScriptImGui>(make_ptr(this))}
 {
     FO_TRACE_ZONE(Engine);
-
-    // Metadata is the baseline for game settings: it fills only what the applied configuration never set,
-    // so a config, sub-config or command-line override, all applied before the engine exists, still wins
-    for (const auto& [name, value] : GetGameSettingsInitialValues()) {
-        if (!Settings->FindSettingValue(name)) {
-            Settings->SetSettingValue(name, value);
-        }
-    }
 
     RegisterProtos(Resources);
     RegisterAnimationInfo(Resources);

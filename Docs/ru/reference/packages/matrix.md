@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-package-matrix","locale":"ru","source_path":"Docs/en/reference/packages/matrix.md","source_sha256":"9685c881fe3464e9831891b71c1e3d758f44662790a2701d39a7bc4e90887f21"} -->
+<!-- docs-translation: {"document_id":"generated-package-matrix","locale":"ru","source_path":"Docs/en/reference/packages/matrix.md","source_sha256":"d84213768018084f1b3bf783802c99ea9e8a799e97362c40a40b1ef134ada36d"} -->
 
 # Цели, платформы и наборы пакетов
 
@@ -17,7 +17,7 @@ generated: true
 
 | Стабильный ID | Цель | Ресурсы | Обязательные наборы | Назначение |
 | --- | --- | --- | --- | --- |
-| <a id="entry-package-target-server-aa345c8bbf"></a><code>package.target.Server</code> | <code>Server</code> | <code>server-and-client</code> | - | Бинарный файл сервера, ресурсы сервера и наборы ресурсов обновления клиента. |
+| <a id="entry-package-target-server-aa345c8bbf"></a><code>package.target.Server</code> | <code>Server</code> | <code>server-and-client</code> | - | Серверный бинарник, собственные ресурсы в Common.ResourcesPath и клиентская раздача в его дочернем Client. |
 | <a id="entry-package-target-client-6dc545ee39"></a><code>package.target.Client</code> | <code>Client</code> | <code>client</code> | - | Бинарный файл хоста/runtime клиента и ресурсы клиента. |
 | <a id="entry-package-target-mapper-2b4270f627"></a><code>package.target.Mapper</code> | <code>Mapper</code> | <code>none</code> | <code>NoRes</code> | Бинарный файл Mapper без упакованных игровых ресурсов. |
 | <a id="entry-package-target-baker-a25eccc9ba"></a><code>package.target.Baker</code> | <code>Baker</code> | <code>none</code> | <code>NoRes</code> | Исполняемый файл или библиотека Baker без упакованных игровых ресурсов. |

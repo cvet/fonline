@@ -293,7 +293,7 @@ The Engine build lane intentionally does not supply this browser/release evidenc
 | Configure uses the wrong compiler | BuildTools `web` platform, workspace toolchain path, `emsdk_env`, and stale build directory |
 | Link fails only for Web | strict undefined/unimplemented syscall output, unsupported native dependency, Web platform guards, and exception flags |
 | Package is absent | successful bake/build, exact dev name/config, project git revision, `FO_OUTPUT`, and `package-web-debug` log |
-| Package rejects resources | current effective config, `Baking.ClientResources`, fresh metadata, no `NoRes`, and loading-image path |
+| Package rejects resources | current effective config, `Common.ResourcesPath`, fresh metadata, no `NoRes`, and loading-image path |
 | `index.html` loads but wasm/data does not | served package directory, status/MIME, HTML fallback, proxy rewrite, compression, and cache |
 | Browser shows old code | exact origin/path, service worker or CDN added by project, entry-point cache, versioned artifact, and package hash |
 | WebGL2 context cannot start | browser/WebGL2 availability, GPU/driver/blocklist, software-rendering policy, console, and context attributes |

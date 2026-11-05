@@ -9035,7 +9035,7 @@ auto ManagedScriptBackend::ReadClientScriptsImage() -> vector<uint8_t>
     FileSystem distributed {};
 
     for (const string& pack : settings->GetClientResourcePacks()) {
-        distributed.AddPackSource(settings->Baking.ClientResources, pack, true);
+        distributed.AddPackSource(settings->Common.Packaged, strex(settings->Common.ResourcesPath).combine_path(CLIENT_RESOURCE_PACKS_SUBDIR).str(), pack, true);
     }
 
     for (ManagedAssemblyResource& resource : CollectAssemblyResources(distributed, "Client")) {
@@ -9052,7 +9052,7 @@ auto ManagedScriptBackend::ReadClientScriptsImage() -> vector<uint8_t>
         }
     }
 
-    throw ScriptSystemException("Managed client scripts image is not available", settings->Baking.ClientResources, settings->Baking.BakeOutput);
+    throw ScriptSystemException("Managed client scripts image is not available", strex(settings->Common.ResourcesPath).combine_path(CLIENT_RESOURCE_PACKS_SUBDIR).str(), settings->Baking.BakeOutput);
 }
 
 void ManagedScriptBackend::BindRequiredStuff()

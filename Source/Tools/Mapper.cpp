@@ -91,7 +91,7 @@ MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     InitAngelScriptScripting(this, *Settings, Resources);
 #endif
 #if FO_MANAGED_SCRIPTING
-    InitManagedScripting(this, &Resources, fs::make_writable_path(Settings->Common.UserWritablePath, Settings->Baking.CacheResources));
+    InitManagedScripting(this, &Resources, fs::make_writable_path(Settings->Common.UserWritablePath, Settings->Common.CachePath));
 #endif
 
     FullscreenMouseScroll = Settings->Hex.FullscreenMouseScroll;

@@ -39,7 +39,7 @@ ENGINE_HOOK_NAMES = (
     'CheckViewMapCritterVisibilityHook',
     'CheckViewMapItemVisibilityHook',
 )
-INTERNAL_CONFIG_CAPACITY = 20000
+INTERNAL_CONFIG_CAPACITY = 40000
 
 
 @dataclass(slots=True)

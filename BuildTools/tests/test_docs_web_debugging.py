@@ -141,7 +141,7 @@ class WebDebuggingDocumentationTests(unittest.TestCase):
             "bundle_name = f'Resources-{index}'",
             "'--js-output=' + bundle_loader_path.as_posix()",
             "'--lz4'",
-            "shutil.rmtree(os.path.join(self.target_output_path, self.client_res_dir), True)",
+            "shutil.rmtree(os.path.join(self.target_output_path, self.resources_dir), True)",
         ):
             self.assertIn(contract, package)
 

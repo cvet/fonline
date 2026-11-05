@@ -37,8 +37,9 @@
 
 FO_BEGIN_NAMESPACE
 
-ClientConnection::ClientConnection(ptr<ClientNetworkSettings> settings) :
+ClientConnection::ClientConnection(ptr<ClientNetworkSettings> settings, ResourceMode resource_mode) :
     _settings {settings},
+    _resourceMode {resource_mode},
     _netIn(_settings->Network.NetBufferSize),
     _netOut(_settings->Network.NetBufferSize),
     _downlinkDelay {std::chrono::milliseconds {_settings->Network.LinkDelayWindowMs}, std::chrono::milliseconds {_settings->Network.MoveLateCatchUpMinMs}, std::chrono::milliseconds {_settings->Network.LinkDelayRebaseMs}}
@@ -73,6 +74,7 @@ void ClientConnection::CreateNetworkConnection(bool use_udp)
     auto connection {use_udp ? NetworkClientConnection::CreateUdpSocketsConnection(_settings) : NetworkClientConnection::CreateSocketsConnection(_settings)};
 
     _connectingOverUdp = use_udp;
+    _connectingOverInterthread = false;
     _netConnection = std::move(connection);
 }
 
@@ -88,6 +90,7 @@ void ClientConnection::Connect()
 
         if (HasInterthreadListener(port)) {
             _netConnection = NetworkClientConnection::CreateInterthreadConnection(_settings);
+            _connectingOverInterthread = true;
             _connectingOverUdp = false;
             _udpFallbackTried = false;
         }
@@ -286,6 +289,7 @@ void ClientConnection::Disconnect()
     _netConnection.reset();
 
     _connectingOverUdp = false;
+    _connectingOverInterthread = false;
     _connectingHandled = false;
     _udpFallbackTried = false;
     ResetConnectionState();
@@ -482,7 +486,8 @@ void ClientConnection::SetMetadataVersion(string_view version)
 void ClientConnection::Net_SendHandshake()
 {
     uint32_t updater_version {FO_UPDATER_VERSION};
-    string binary_update_target_name {GetCurrentBinaryUpdateTargetName()};
+    // Embedded game clients mount the common distribution; updater connections still request platform payloads
+    string_view binary_update_target_name {_resourceMode == ResourceMode::CommonForInterthread && _connectingOverInterthread ? string_view {} : GetCurrentBinaryUpdateTargetName()};
 
     _netOut.StartMsg(NetMessage::Handshake);
     _netOut.Write(_settings->Network.CompatibilityVersion);

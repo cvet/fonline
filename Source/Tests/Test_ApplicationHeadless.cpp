@@ -327,7 +327,7 @@ TEST_CASE("StubAppWindowServesAsAnEmbedderFrontend")
     // The stub frontend is engine surface an embedding project plugs in through GetAppWindowStub; nothing
     // inside the engine calls it, so it only runs when a test does
     auto settings {GlobalSettings(false)};
-    settings.ApplyDefaultSettings();
+    settings.SetupDefaultSettings();
     BakerTests::ApplySelfContainedClientSettings(settings);
 
     unique_ptr<IAppWindow> window {GetAppWindowStub(settings)};

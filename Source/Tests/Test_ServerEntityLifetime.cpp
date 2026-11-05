@@ -49,8 +49,8 @@ auto CheckViewMapItemVisibilityHook(ptr<const ServerEngine>, ptr<const Map>, npt
 static auto MakeServerEntityLifetimeSettings() -> GlobalSettings
 {
     GlobalSettings settings {false};
-    settings.ApplyDefaultSettings();
-    settings.ApplyAutoSettings();
+    settings.SetupDefaultSettings();
+    settings.ApplyAutoSettings({});
     BakerTests::ApplySelfContainedServerSettings(settings);
     BakerTests::OverrideSetting(settings.Server.DbStorage, string {"Memory"});
     BakerTests::OverrideSetting(settings.Server.WriteHealthFile, false);

@@ -37,6 +37,7 @@
 
 #include "DiskFileSystem.h"
 #include "FileSystem.h"
+#include "ResourcePack.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -420,6 +421,138 @@ TEST_CASE("FileSystem")
         CHECK_FALSE(fs.IsFileExists("second.txt"));
         CHECK_FALSE(fs.ReindexDataSources());
         CHECK(fs::remove_dir_tree(temp_dir));
+    }
+
+    // The explicit mode decides which artifact answers: a directory and an archive of one logical pack
+    // may sit side by side, so neither layout may be selected by what the host binary happens to be
+    SECTION("PackSourceModeSelectsDirectoryOrArchive")
+    {
+        string temp_dir {MakeTempMountedDir("filesystem_pack_mode")};
+        bool removed_before {fs::remove_dir_tree(temp_dir)};
+        ignore_unused(removed_before);
+
+        auto cleanup {scope_exit([&temp_dir]() noexcept { (void)fs::remove_dir_tree(temp_dir); })};
+
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("MountPack/layout.txt").str(), string_view {"directory-layout"}));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("MountPack/directory-only.txt").str(), string_view {"directory-only"}));
+
+        {
+            string layout_payload {"archive-layout"};
+            string archive_only_payload {"archive-only"};
+            ResourcePackWriter writer {strex(temp_dir).combine_path("MountPack.fores").str()};
+            writer.AddFile("layout.txt", make_const_span(layout_payload));
+            writer.AddFile("archive-only.txt", make_const_span(archive_only_payload));
+            writer.Finish();
+        }
+
+        FileSystem directory_resources {};
+        directory_resources.AddPackSource(false, temp_dir, "MountPack");
+
+        CHECK(directory_resources.ReadFileText("layout.txt") == "directory-layout");
+        CHECK(directory_resources.ReadFileText("directory-only.txt") == "directory-only");
+        CHECK_FALSE(directory_resources.IsFileExists("archive-only.txt"));
+
+        FileHeader directory_header {directory_resources.ReadFileHeader("layout.txt")};
+        REQUIRE(directory_header);
+        CHECK(directory_header.GetDataSource()->IsDiskDir());
+
+        FileSystem archive_resources {};
+        archive_resources.AddPackSource(true, temp_dir, "MountPack");
+
+        CHECK(archive_resources.ReadFileText("layout.txt") == "archive-layout");
+        CHECK(archive_resources.ReadFileText("archive-only.txt") == "archive-only");
+        CHECK_FALSE(archive_resources.IsFileExists("directory-only.txt"));
+
+        FileHeader archive_header {archive_resources.ReadFileHeader("layout.txt")};
+        REQUIRE(archive_header);
+        CHECK_FALSE(archive_header.GetDataSource()->IsDiskDir());
+    }
+
+    // The bulk mount forwards the mode to every pack and keeps precedence: a pack added later sits in
+    // front of the earlier ones, so it owns the paths both packs hold
+    SECTION("AddPacksSourceForwardsModeAndLaterPackWins")
+    {
+        string temp_dir {MakeTempMountedDir("filesystem_packs_mode")};
+        bool removed_before {fs::remove_dir_tree(temp_dir)};
+        ignore_unused(removed_before);
+
+        auto cleanup {scope_exit([&temp_dir]() noexcept { (void)fs::remove_dir_tree(temp_dir); })};
+
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("FirstPack/shared.txt").str(), string_view {"directory-first"}));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("FirstPack/first-only.txt").str(), string_view {"directory-first-only"}));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("SecondPack/shared.txt").str(), string_view {"directory-second"}));
+
+        {
+            string first_payload {"archive-first"};
+            string first_only_payload {"archive-first-only"};
+            ResourcePackWriter writer {strex(temp_dir).combine_path("ArchiveFirst.fores").str()};
+            writer.AddFile("shared.txt", make_const_span(first_payload));
+            writer.AddFile("first-only.txt", make_const_span(first_only_payload));
+            writer.Finish();
+        }
+        {
+            string second_payload {"archive-second"};
+            ResourcePackWriter writer {strex(temp_dir).combine_path("ArchiveSecond.fores").str()};
+            writer.AddFile("shared.txt", make_const_span(second_payload));
+            writer.Finish();
+        }
+
+        FileSystem directory_resources {};
+        vector<string> directory_packs {"FirstPack", "SecondPack"};
+        directory_resources.AddPacksSource(false, temp_dir, directory_packs);
+
+        CHECK(directory_resources.ReadFileText("shared.txt") == "directory-second");
+        CHECK(directory_resources.ReadFileText("first-only.txt") == "directory-first-only");
+
+        FileSystem archive_resources {};
+        vector<string> archive_packs {"ArchiveFirst", "ArchiveSecond"};
+        archive_resources.AddPacksSource(true, temp_dir, archive_packs);
+
+        CHECK(archive_resources.ReadFileText("shared.txt") == "archive-second");
+        CHECK(archive_resources.ReadFileText("first-only.txt") == "archive-first-only");
+    }
+
+    // A selected layout without its own source fails instead of taking the other layout that is present;
+    // the optional form of the same miss yields an empty source
+    SECTION("PackSourceRejectsWrongLayoutAndOptionalMissingStaysEmpty")
+    {
+        string temp_dir {MakeTempMountedDir("filesystem_pack_layout")};
+        bool removed_before {fs::remove_dir_tree(temp_dir)};
+        ignore_unused(removed_before);
+
+        auto cleanup {scope_exit([&temp_dir]() noexcept { (void)fs::remove_dir_tree(temp_dir); })};
+
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("DirectoryOnly/payload.txt").str(), string_view {"directory-without-archive"}));
+
+        {
+            string archive_payload {"archive-without-directory"};
+            ResourcePackWriter writer {strex(temp_dir).combine_path("ArchiveOnly.fores").str()};
+            writer.AddFile("payload.txt", make_const_span(archive_payload));
+            writer.Finish();
+        }
+
+        FileSystem directory_required {};
+        CHECK_THROWS_AS(directory_required.AddPackSource(false, temp_dir, "ArchiveOnly"), DataSourceException);
+        CHECK(directory_required.GetAllFiles().GetFilesCount() == 0);
+
+        FileSystem archive_required {};
+        CHECK_THROWS_AS(archive_required.AddPackSource(true, temp_dir, "DirectoryOnly"), DataSourceException);
+        CHECK(archive_required.GetAllFiles().GetFilesCount() == 0);
+
+        FileSystem absent_required {};
+        CHECK_THROWS_AS(absent_required.AddPackSource(false, temp_dir, "MissingPack"), DataSourceException);
+        CHECK_THROWS_AS(absent_required.AddPackSource(true, temp_dir, "MissingPack"), DataSourceException);
+        CHECK(absent_required.GetAllFiles().GetFilesCount() == 0);
+
+        FileSystem directory_optional {};
+        CHECK_NOTHROW(directory_optional.AddPackSource(false, temp_dir, "ArchiveOnly", true));
+        CHECK_FALSE(directory_optional.IsFileExists("payload.txt"));
+        CHECK(directory_optional.GetAllFiles().GetFilesCount() == 0);
+
+        FileSystem archive_optional {};
+        CHECK_NOTHROW(archive_optional.AddPackSource(true, temp_dir, "DirectoryOnly", true));
+        CHECK_FALSE(archive_optional.IsFileExists("payload.txt"));
+        CHECK(archive_optional.GetAllFiles().GetFilesCount() == 0);
     }
 }
 

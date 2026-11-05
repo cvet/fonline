@@ -538,7 +538,9 @@ TEST_CASE("ClientUpdaterKeepsConfirmedBytesWhenTheUdpServerDropsAndResumesOnTheN
     using namespace TestClientServerIntegration;
 
     string install {PrepareClientUpdaterBakeOutput()};
-    string published {MakeTempClientUpdaterBakeDir("published")};
+    string published_root {MakeTempClientUpdaterBakeDir("published")};
+    string published {strex(published_root).combine_path("Client").str()};
+    auto cleanup_published_root {scope_exit([&]() noexcept { (void)fs::remove_dir_tree(published_root); })};
     string writable {MakeTempClientUpdaterBakeDir("writable")};
     auto cleanup {scope_exit([&]() noexcept {
         (void)fs::remove_dir_tree(install);
@@ -592,16 +594,15 @@ TEST_CASE("ClientUpdaterKeepsConfirmedBytesWhenTheUdpServerDropsAndResumesOnTheN
         return std::ranges::count_if(log_lines, [part](const string& line) { return line.find(part) != string::npos; });
     }};
 
-    // One run of the player's client against a server that stops after the given number of iterations of
-    // the transfer, or never when the count is zero
-    auto synchronize {[&](int32_t stop_server_after) -> UpdaterResult {
+    // Interrupt only after a prefix reaches disk, so slow UDP startup cannot turn a resume check into an empty download
+    auto synchronize {[&](bool interrupt_transfer) -> UpdaterResult {
         uint16_t port {IntegrationTestPort.fetch_add(1)};
         GlobalSettings server_settings {MakeServerTestSettings(port)};
         BakerTests::OverrideSetting(server_settings.Common.Packaged, true);
-        BakerTests::OverrideSetting(server_settings.Baking.ClientResources, published);
+        BakerTests::OverrideSetting(server_settings.Common.ResourcesPath, published_root);
         auto server_pack_config {ConfigFile("[ResourcePack]\nName = TestMetadata\nClientOnly = True\n[ResourcePack]\nName = Art\nClientOnly = True\n")};
         server_settings.ApplyConfigFile(server_pack_config, "");
-        BakerTests::OverrideSetting(server_settings.Baking.PlatformBinaries, strex(published).combine_path("NoBinaries").str());
+        BakerTests::OverrideSetting(server_settings.Common.PlatformBinariesPath, strex(published).combine_path("NoBinaries").str());
         BakerTests::OverrideSetting(server_settings.Network.DisableInterthreadCommunication, true);
         BakerTests::OverrideSetting(server_settings.ServerNetwork.DisableNetworking, false);
         BakerTests::OverrideSetting(server_settings.ServerNetwork.EnableUdp, true);
@@ -620,7 +621,7 @@ TEST_CASE("ClientUpdaterKeepsConfirmedBytesWhenTheUdpServerDropsAndResumesOnTheN
 
         GlobalSettings client_settings {MakeClientTestSettings(port)};
         BakerTests::OverrideSetting(client_settings.Common.Packaged, true);
-        BakerTests::OverrideSetting(client_settings.Baking.ClientResources, install);
+        BakerTests::OverrideSetting(client_settings.Common.ResourcesPath, install);
         BakerTests::OverrideSetting(client_settings.ClientNetwork.ServerHost, string {"127.0.0.1"});
         BakerTests::OverrideSetting(client_settings.ClientNetwork.ProxyType, 0);
         BakerTests::OverrideSetting(client_settings.ClientNetwork.UseUdp, true);
@@ -631,17 +632,24 @@ TEST_CASE("ClientUpdaterKeepsConfirmedBytesWhenTheUdpServerDropsAndResumesOnTheN
         auto client_pack_config {ConfigFile("[ResourcePack]\nName = Embedded\nClientOnly = True\n[ResourcePack]\nName = TestMetadata\nClientOnly = True\n[ResourcePack]\nName = Art\nClientOnly = True\n")};
         client_settings.ApplyConfigFile(client_pack_config, "");
         client_settings.ApplyWritableRoot(writable);
-        REQUIRE_FALSE(ReadResourceConfig(client_settings, true));
+        FileSystem metadata_source {};
+        AddClientPackSource(metadata_source, client_settings, METADATA_PACK_NAME, true);
+        REQUIRE_FALSE(ReadResourceConfig(metadata_source, false));
 
         Updater updater {&client_settings, &GetApp()->MainWindow};
-        int32_t transfer_iterations {0};
+        bool server_stopped {false};
         bool finished {false};
 
         for (int32_t i {0}; i < 6000 && !finished; i++) {
             finished = updater.Process();
 
-            if (!finished && stop_server_after != 0 && count_log_lines("Client updater: requesting file Art.fores") != 0 && ++transfer_iterations == stop_server_after) {
-                server->Shutdown();
+            if (!finished && interrupt_transfer && !server_stopped) {
+                auto confirmed_size {fs::file_size(temp_pack)};
+
+                if (confirmed_size && *confirmed_size > 0 && *confirmed_size < numeric_cast<uint64_t>(published_bytes->size())) {
+                    server->Shutdown();
+                    server_stopped = true;
+                }
             }
 
             if (!finished) {
@@ -650,11 +658,12 @@ TEST_CASE("ClientUpdaterKeepsConfirmedBytesWhenTheUdpServerDropsAndResumesOnTheN
         }
 
         REQUIRE(finished);
+        CHECK(server_stopped == interrupt_transfer);
         return updater.GetResult();
     }};
 
     // The server goes away in the middle of the pack: the player sees a lost connection, not a broken client
-    CHECK(synchronize(10) == UpdaterResult::ConnectionFailed);
+    CHECK(synchronize(true) == UpdaterResult::ConnectionFailed);
     CHECK(count_log_lines("Update file list was already received") == 0);
     CHECK_FALSE(fs::exists(final_pack));
 
@@ -666,7 +675,7 @@ TEST_CASE("ClientUpdaterKeepsConfirmedBytesWhenTheUdpServerDropsAndResumesOnTheN
     CHECK(published_bytes->starts_with(*kept));
 
     // An ordinary new run continues from those bytes instead of starting over
-    CHECK(synchronize(0) == UpdaterResult::ResourcesReady);
+    CHECK(synchronize(false) == UpdaterResult::ResourcesReady);
     CHECK(count_log_lines("Client updater: resuming temp file") == 1);
     CHECK(fs::read_file(final_pack) == published_bytes);
     CHECK_FALSE(fs::exists(temp_pack));
@@ -777,7 +786,9 @@ TEST_CASE("ClientUpdaterResourcePatchLifecycle")
     using namespace TestClientServerIntegration;
 
     string install {PrepareClientUpdaterBakeOutput()};
-    string published {MakeTempClientUpdaterBakeDir("published")};
+    string published_root {MakeTempClientUpdaterBakeDir("published")};
+    string published {strex(published_root).combine_path("Client").str()};
+    auto cleanup_published_root {scope_exit([&]() noexcept { (void)fs::remove_dir_tree(published_root); })};
     string writable {MakeTempClientUpdaterBakeDir("writable")};
     auto cleanup {scope_exit([&]() noexcept {
         (void)fs::remove_dir_tree(install);
@@ -821,10 +832,10 @@ TEST_CASE("ClientUpdaterResourcePatchLifecycle")
         uint16_t port {IntegrationTestPort.fetch_add(1)};
         GlobalSettings server_settings {MakeServerTestSettings(port)};
         BakerTests::OverrideSetting(server_settings.Common.Packaged, true);
-        BakerTests::OverrideSetting(server_settings.Baking.ClientResources, published);
+        BakerTests::OverrideSetting(server_settings.Common.ResourcesPath, published_root);
         auto server_pack_config {ConfigFile("[ResourcePack]\nName = TestMetadata\nClientOnly = True\n[ResourcePack]\nName = Art\nClientOnly = True\n")};
         server_settings.ApplyConfigFile(server_pack_config, "");
-        BakerTests::OverrideSetting(server_settings.Baking.PlatformBinaries, strex(published).combine_path("NoBinaries").str());
+        BakerTests::OverrideSetting(server_settings.Common.PlatformBinariesPath, strex(published).combine_path("NoBinaries").str());
         BakerTests::OverrideSetting(server_settings.ServerNetwork.UpdateFilesInMemory, in_memory);
         auto server {TestClientServerIntegration::MakeServerEngine(server_settings)};
         auto shutdown {scope_exit([&]() noexcept { safe_call([&] { server->Shutdown(); }); })};
@@ -843,11 +854,13 @@ TEST_CASE("ClientUpdaterResourcePatchLifecycle")
 
         GlobalSettings client_settings {MakeClientTestSettings(port)};
         BakerTests::OverrideSetting(client_settings.Common.Packaged, true);
-        BakerTests::OverrideSetting(client_settings.Baking.ClientResources, install);
+        BakerTests::OverrideSetting(client_settings.Common.ResourcesPath, install);
         auto client_pack_config {ConfigFile("[ResourcePack]\nName = Embedded\nClientOnly = True\n[ResourcePack]\nName = TestMetadata\nClientOnly = True\n[ResourcePack]\nName = Art\nClientOnly = True\n")};
         client_settings.ApplyConfigFile(client_pack_config, "");
         client_settings.ApplyWritableRoot(writable);
-        REQUIRE_FALSE(ReadResourceConfig(client_settings, true));
+        FileSystem metadata_source {};
+        AddClientPackSource(metadata_source, client_settings, METADATA_PACK_NAME, true);
+        REQUIRE_FALSE(ReadResourceConfig(metadata_source, false));
         Updater updater {&client_settings, &GetApp()->MainWindow};
         REQUIRE(WaitForUpdaterResult(updater));
         REQUIRE(updater.GetResult() == UpdaterResult::ResourcesReady);
@@ -971,7 +984,9 @@ TEST_CASE("ClientUpdaterRepairsAStalePartialNativeDownloadBeforeResourcesReady")
 
     bool in_memory {GENERATE(false, true)};
     string install {PrepareClientUpdaterBakeOutput()};
-    string published {MakeTempClientUpdaterBakeDir("native-published")};
+    string published_root {MakeTempClientUpdaterBakeDir("native-published")};
+    string published {strex(published_root).combine_path("Client").str()};
+    auto cleanup_published_root {scope_exit([&]() noexcept { (void)fs::remove_dir_tree(published_root); })};
     string writable {MakeTempClientUpdaterBakeDir("native-writable")};
     auto cleanup {scope_exit([&]() noexcept {
         (void)fs::remove_dir_tree(install);
@@ -993,7 +1008,9 @@ TEST_CASE("ClientUpdaterRepairsAStalePartialNativeDownloadBeforeResourcesReady")
     string platform_dir {strex(binary_dir).combine_path(GetCurrentBinaryUpdateTargetName()).str()};
     REQUIRE(fs::create_directories(platform_dir));
     string pdb_name {strex("{}.pdb", GetCurrentClientRuntimeLibraryName()).str()};
-    string server_prefix {GetPackagedRuntimeName()};
+    uint16_t port {IntegrationTestPort.fetch_add(1)};
+    GlobalSettings client_settings {MakeClientTestSettings(port)};
+    string server_prefix {client_settings.GetPackagedRuntimeName()};
 
     if (server_prefix.empty()) {
         server_prefix = GetCurrentClientRuntimeLibraryName();
@@ -1067,11 +1084,10 @@ TEST_CASE("ClientUpdaterRepairsAStalePartialNativeDownloadBeforeResourcesReady")
     }
 #endif
 
-    uint16_t port {IntegrationTestPort.fetch_add(1)};
     GlobalSettings server_settings {MakeServerTestSettings(port)};
     BakerTests::OverrideSetting(server_settings.Common.Packaged, true);
-    BakerTests::OverrideSetting(server_settings.Baking.ClientResources, published);
-    BakerTests::OverrideSetting(server_settings.Baking.PlatformBinaries, binary_dir);
+    BakerTests::OverrideSetting(server_settings.Common.ResourcesPath, published_root);
+    BakerTests::OverrideSetting(server_settings.Common.PlatformBinariesPath, binary_dir);
     BakerTests::OverrideSetting(server_settings.ServerNetwork.UpdateFilesInMemory, in_memory);
     auto server_pack_config {ConfigFile("[ResourcePack]\nName = TestMetadata\nClientOnly = True\n")};
     server_settings.ApplyConfigFile(server_pack_config, "");
@@ -1091,13 +1107,14 @@ TEST_CASE("ClientUpdaterRepairsAStalePartialNativeDownloadBeforeResourcesReady")
     }
 #endif
 
-    GlobalSettings client_settings {MakeClientTestSettings(port)};
     BakerTests::OverrideSetting(client_settings.Common.Packaged, true);
-    BakerTests::OverrideSetting(client_settings.Baking.ClientResources, install);
+    BakerTests::OverrideSetting(client_settings.Common.ResourcesPath, install);
     auto client_pack_config {ConfigFile("[ResourcePack]\nName = Embedded\nClientOnly = True\n[ResourcePack]\nName = TestMetadata\nClientOnly = True\n")};
     client_settings.ApplyConfigFile(client_pack_config, "");
     client_settings.ApplyWritableRoot(writable);
-    REQUIRE_FALSE(ReadResourceConfig(client_settings, true));
+    FileSystem metadata_source {};
+    AddClientPackSource(metadata_source, client_settings, METADATA_PACK_NAME, true);
+    REQUIRE_FALSE(ReadResourceConfig(metadata_source, false));
     Updater updater {&client_settings, &GetApp()->MainWindow};
     REQUIRE(WaitForUpdaterResult(updater));
 

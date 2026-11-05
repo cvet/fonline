@@ -49,6 +49,7 @@ public:
     static auto MakeProbeMetadata(string_view target) -> vector<uint8_t>
     {
         return target == "server" ? BakerTests::MakeMetadataBlob({
+                                        {"Setting", {{"PackagedProbe.Value", "int64"}}},
                                         {"Property",
                                             {
                                                 {"Critter", "Server", "string", "RuntimeStoredText", "Mutable"},
@@ -75,28 +76,28 @@ public:
 
         std::filesystem::path engine_root {std::filesystem::path {fs::make_path(__FILE__)}.parent_path().parent_path().parent_path()};
         std::filesystem::path config_path {Root / "Runtime.fomain"};
-        bool config_written {fs::write_file(fs::path_to_string(config_path), string_view {})};
+        bool config_written {fs::write_file(fs::path_to_string(config_path), BakerTests::MakeCompleteConfigBakerConfig())};
         REQUIRE(config_written);
 
-        Rig.Settings.ApplyConfigAtPath("Runtime.fomain", fs::path_to_string(Root));
-        BakerTests::OverrideSetting(Rig.Settings.Baking.BakeOutput, fs::path_to_string(Root / "Baking"));
-        BakerTests::OverrideSetting(Rig.Settings.ManagedScript.GeneratedDir, fs::path_to_string(Root / "Generated"));
-        BakerTests::OverrideSetting(Rig.Settings.ManagedScript.ProjectName, string {"RuntimeProbe"});
-        BakerTests::OverrideSetting(Rig.Settings.ManagedScript.Dirs,
+        Rig.emplace("Runtime.fomain", fs::path_to_string(Root));
+        BakerTests::OverrideSetting(Rig->Settings.Baking.BakeOutput, fs::path_to_string(Root / "Baking"));
+        BakerTests::OverrideSetting(Rig->Settings.ManagedScript.GeneratedDir, fs::path_to_string(Root / "Generated"));
+        BakerTests::OverrideSetting(Rig->Settings.ManagedScript.ProjectName, string {"RuntimeProbe"});
+        BakerTests::OverrideSetting(Rig->Settings.ManagedScript.Dirs,
             vector<string> {
                 fs::path_to_string(engine_root / "Source/Scripting/Managed/CoreScripts"),
                 fs::path_to_string(engine_root / "Source/Tests/Fixtures"),
             });
 
         for (string_view target : {"server", "client", "mapper"}) {
-            Rig.AddBakedFile(strex("Metadata.fometa-{}", target).str(), MakeProbeMetadata(target));
+            Rig->AddBakedFile(strex("Metadata.fometa-{}", target).str(), MakeProbeMetadata(target));
         }
 
-        ManagedScriptBaker baker {Rig.MakeContext("RuntimeProbe")};
+        ManagedScriptBaker baker {Rig->MakeContext("RuntimeProbe")};
         baker.BakeFiles(BakerTests::TestRig::MakeEmptyFiles(), "");
-        REQUIRE(Rig.Outputs.contains("Assemblies/Assemblies-server/RuntimeProbe.Server.dll"));
-        REQUIRE(Rig.Outputs.contains("Assemblies/Assemblies-client/RuntimeProbe.Client.dll"));
-        REQUIRE(Rig.Outputs.contains("Assemblies/Assemblies-mapper/RuntimeProbe.Mapper.dll"));
+        REQUIRE(Rig->Outputs.contains("Assemblies/Assemblies-server/RuntimeProbe.Server.dll"));
+        REQUIRE(Rig->Outputs.contains("Assemblies/Assemblies-client/RuntimeProbe.Client.dll"));
+        REQUIRE(Rig->Outputs.contains("Assemblies/Assemblies-mapper/RuntimeProbe.Mapper.dll"));
     }
     ManagedRuntimeTestResources(const ManagedRuntimeTestResources&) = delete;
     ManagedRuntimeTestResources(ManagedRuntimeTestResources&&) noexcept = delete;
@@ -110,7 +111,7 @@ public:
 
         source->AddFile("Metadata.fometa-server", MakeProbeMetadata("server"));
 
-        for (const auto& [path, bytes] : Rig.Outputs) {
+        for (const auto& [path, bytes] : Rig->Outputs) {
             source->AddFile(path, bytes);
         }
 
@@ -119,15 +120,26 @@ public:
 
 private:
     std::filesystem::path Root;
-    BakerTests::TestRig Rig {};
+    optional<BakerTests::TestRig> Rig {};
 };
 
 TEST_CASE("ManagedScriptRuntime", "[managed][scripting]")
 {
     ManagedRuntimeTestResources assemblies {};
-    auto settings {ServerEngineTests::MakeServerTestSettings()};
-    BakerTests::OverrideSetting(settings.Network.DisableInterthreadCommunication, true);
-    BakerTests::OverrideSetting(settings.DataBase.CustomCollections, vector<string> {"test_collection:Int", "test_strings:Str"});
+    auto profile_source {ServerEngineTests::MakeServerTestSettings()};
+    BakerTests::OverrideSetting(profile_source.Network.DisableInterthreadCommunication, true);
+    BakerTests::OverrideSetting(profile_source.DataBase.CustomCollections, vector<string> {"test_collection:Int", "test_strings:Str"});
+    string profile {};
+
+#define SETTING(type, group, name, ...) profile += strex("{}={}\n", SettingNames::group##_##name, profile_source.group.name).str()
+#define SETTING_GROUP(group, ...)
+#define SETTING_GROUP_END(group)
+#include "Settings.inc"
+
+    GlobalSettings settings {false};
+    settings.SetupResourceConfig(profile);
+    auto complete_snapshot {GlobalSettings(false)};
+    complete_snapshot.CopyFrom(settings);
     auto resources {ServerEngineTests::MakeServerTestResources(ServerEngineTests::ServerTestScriptMode::Default, ManagedRuntimeTestResources::MakeProbeMetadata("server"))};
     assemblies.AddTo(resources);
     auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, std::move(resources))};
@@ -138,6 +150,16 @@ TEST_CASE("ManagedScriptRuntime", "[managed][scripting]")
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
     auto name {[&server](string_view method) { return server->Hashes.to_hashed_string(strex("ManagedRuntimeProbe::{}", method).str()); }};
+
+    int64_t packaged_value {-1};
+    REQUIRE(server->CallFunc(name("ReadPackagedSetting"), packaged_value));
+    CHECK(packaged_value == 0);
+    settings.SetRuntimeSetting("PackagedProbe.Value", "17");
+    REQUIRE(server->CallFunc(name("ReadPackagedSetting"), packaged_value));
+    CHECK(packaged_value == 17);
+    settings.CopyFrom(complete_snapshot);
+    REQUIRE(server->CallFunc(name("ReadPackagedSetting"), packaged_value));
+    CHECK(packaged_value == 0);
 
     int32_t init_calls {0};
     REQUIRE(server->CallFunc(name("GetInitCalls"), init_calls));

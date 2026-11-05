@@ -1367,7 +1367,7 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
         REQUIRE(fs::write_file(source_path, ValidParticle));
 
         GlobalSettings settings {true};
-        settings.ApplyDefaultSettings();
+        settings.SetupDefaultSettings();
 
         auto config {ConfigFile(strex(R"(Baking.BakeOutput = {}
 Baking.SingleThreadBaking = true
@@ -1433,7 +1433,7 @@ Bakers = Particle
         REQUIRE(fs::write_file(source_path, ParticleTests::SimpleGeneratingPositionProject));
 
         GlobalSettings settings {true};
-        settings.ApplyDefaultSettings();
+        settings.SetupDefaultSettings();
 
         auto config {ConfigFile(strex(R"(Baking.BakeOutput = {}
 Baking.SingleThreadBaking = true

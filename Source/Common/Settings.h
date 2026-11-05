@@ -40,6 +40,7 @@ FO_BEGIN_NAMESPACE
 FO_DECLARE_EXCEPTION(SettingsException);
 
 class ConfigFile;
+class FileSystem;
 
 struct ResourcePackInfo
 {
@@ -124,21 +125,22 @@ public:
 
     [[nodiscard]] auto GetCustomSetting(string_view name) const -> const any_t&;
     [[nodiscard]] auto FindCustomSetting(string_view name) const -> nptr<const any_t>;
-    // Bumped by every write into the custom-setting map, so a reader that parsed a custom value once can keep the
-    // parsed copy and re-read the text only after the map changed
     [[nodiscard]] auto GetCustomSettingsGeneration() const noexcept -> uint64_t { return _customSettingsGeneration; }
-    [[nodiscard]] auto Save() const -> map<string, string>;
+    [[nodiscard]] auto GetCommandLineArgs() const -> CommandLineArgs;
+    [[nodiscard]] auto GetPackagedRuntimeName() const noexcept -> const string& { return _packagedRuntimeName; }
+    [[nodiscard]] auto HasEngineSettingsChanges(const GlobalSettings& other) const -> bool;
+    [[nodiscard]] auto HasCompleteConfig() const noexcept -> bool { return _setupState == SetupState::Complete; }
 
-    void ApplyConfigAtPath(string_view config_name, string_view config_dir);
+    void SetupConfigAtPath(string_view config_name, string_view config_dir);
+    void SetupInternalConfig();
+    void SetupResourceConfig(string_view content);
+    void SetupDefaultSettings();
     void ApplyConfigFile(ConfigFile& config, string_view config_dir);
-    void ApplyCommandLine(::fo::CommandLineArgs args);
-    void ApplyInternalConfig();
-    void ApplyResourceConfig(string_view content);
+    void ApplyCommandLine(CommandLineArgs args);
+    void ApplyGameSettings(const GlobalSettings& other);
+    void ApplyStartupOverrides(const GlobalSettings& source);
     void ApplySubConfigSection(string_view name);
-    void ApplyDefaultSettings();
-    void ApplyAutoSettings();
-    // The resolved writable root: the application works it out before any config is read, and every
-    // consumer reads it back from here, so it is read-only like the other engine-filled values
+    void ApplyAutoSettings(string_view packaged_runtime_name);
     void ApplyWritableRoot(string_view root);
     void CopyFrom(const GlobalSettings& other);
     void SetSettingValue(string_view name, string_view value);
@@ -146,24 +148,38 @@ public:
     auto GetRuntimeSetting(const string& name) const -> string;
     void SetRuntimeSetting(const string& name, const string& value);
     void Draw(bool editable);
+    auto Save() const -> map<string, string>;
 
 private:
+    enum class SetupState : uint8_t
+    {
+        Fresh,
+        Initialized,
+        Complete,
+    };
+
+    void VerifyFreshSettings() const;
     bool IsSecretSettingName(string_view name) const;
     void SetValue(const string& setting_name, const string& setting_value, string_view config_dir = "");
     void AddResourcePacks(const vector<ptr<map<string_view, string_view>>>& res_packs, string_view config_dir);
     void AddSubConfigs(const vector<ptr<map<string_view, string_view>>>& sub_configs, string_view config_dir);
     void ApplyIgnoreInputDirs();
 
-    // As the configs declare them; the packs in effect are these minus Baking.IgnoreInputDirs
-    vector<ResourcePackInfo> _declaredResourcePacks {};
     bool _bakingMode {};
+    SetupState _setupState {SetupState::Fresh};
+    vector<ResourcePackInfo> _declaredResourcePacks {};
     unordered_map<string, any_t> _customSettings {};
     uint64_t _customSettingsGeneration {};
+    string _packagedRuntimeName {};
+    vector<string> _commandLineArgs {};
+    vector<pair<string, string>> _startupOverrides {};
     any_t _emptySetting {};
 };
 
-auto ReadResourceConfig(const GlobalSettings& settings, bool required) -> optional<string>;
+auto ReadInternalConfigValue(string_view name) -> string;
+auto ReadResourceConfig(const FileSystem& resources, bool required) -> optional<string>;
 void PreserveLocalConfig(const GlobalSettings& previous, const GlobalSettings& updated);
+auto ResolveSettingValue(string_view name, const string& value, string_view config_dir, bool baking_mode) -> optional<string>;
 
 // Typed read of one builtin numeric or bool setting, so the managed bridge skips the format/parse round trip.
 // Settings are immutable, so there is no write half; exactly one Read* member is set, by the declared type

@@ -51,7 +51,7 @@ namespace
     static auto MakeSpriteSheetTestSettings() -> GlobalSettings
     {
         GlobalSettings settings {false};
-        settings.ApplyDefaultSettings();
+        settings.SetupDefaultSettings();
         BakerTests::ApplySelfContainedClientSettings(settings);
         return settings;
     }

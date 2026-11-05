@@ -5,7 +5,7 @@ locale: ru
 document_id: web-debugging
 permalink: /Docs/ru/how-to/platforms/web-debugging.html
 ---
-<!-- docs-translation: {"document_id":"web-debugging","locale":"ru","source_path":"Docs/en/how-to/platforms/web-debugging.md","source_sha256":"3a572a9673e872665da3a02cf8280c4553ad34f11e7739b0e31451a212a1bfc7"} -->
+<!-- docs-translation: {"document_id":"web-debugging","locale":"ru","source_path":"Docs/en/how-to/platforms/web-debugging.md","source_sha256":"fc3b619b9a4afc905d662b2a5edb5da42aca35460011231929635c372541c51f"} -->
 # Сборка, упаковка и отладка FOnline в браузере
 
 Это принадлежащая Engine инструкция по подготовке закреплённого Emscripten toolchain, сборке и упаковке WebAssembly-клиента, его локальной раздаче для диагностики, подключению к серверу проекта и квалификации браузерного deployment. Она следует текущим BuildTools, package shell, Web runtime, networking, renderer, updater, модели поддержки и проверенным project evidence. Встраивающий проект отвечает за bake контента, серверный профиль, аутентификацию, публичный origin, матрицу браузеров, deployment, мониторинг и решение о выпуске.
@@ -293,7 +293,7 @@ Engine build lane намеренно не предоставляет эти brow
 | Configure выбирает не тот compiler | BuildTools platform `web`, путь workspace toolchain, `emsdk_env` и stale build directory |
 | Link падает только на Web | strict undefined/unimplemented syscall output, unsupported native dependency, Web platform guards и exception flags |
 | Package отсутствует | успешные bake/build, точные dev name/config, project git revision, `FO_OUTPUT` и log `package-web-debug` |
-| Package отклоняет ресурсы | current effective config, `Baking.ClientResources`, свежие metadata, отсутствие `NoRes` и loading-image path |
+| Package отклоняет ресурсы | current effective config, `Common.ResourcesPath`, свежие metadata, отсутствие `NoRes` и loading-image path |
 | `index.html` загружается, а wasm/data нет | раздаваемый package directory, status/MIME, HTML fallback, proxy rewrite, compression и cache |
 | Браузер показывает старый код | точный origin/path, добавленный проектом service worker или CDN, entry-point cache, versioned artifact и package hash |
 | WebGL2 context не запускается | наличие browser/WebGL2, GPU/driver/blocklist, software-rendering policy, console и context attributes |

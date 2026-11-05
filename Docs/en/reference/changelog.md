@@ -12,7 +12,7 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-11-04
+## Current - 2026-11-05
 
 ### Changed
 
@@ -31,7 +31,7 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Migration
 
-- Baseline `3d56c1f3f9` (`2026.1.106-dev`) to `2026.1.107-dev`; this reapplies the large-map work that `2026.1.103-dev` reverted. Settings, wire protocol, the `MigrationRule Version` marker, Managed ABI, saved data and resource schemas are unchanged; no content or save conversion is required. The script API only gains the methods listed above. Rebuild every native role (Server, Client, Mapper, Baker and tests) and regenerate both scripting backends, because the grid template and the `MapView` and `Map` layouts change. `StaticMap::ApplyItemToField()` becomes a private member, `StaticMap::MergeFieldInto(hex, field)` adds a map's items on a hex to another field, and `StaticMap::BuildFieldWithout()` is no longer `const`, because both hand out the map's items as mutable.
+- Baseline `90061a40d4` (`2026.1.108-dev`) to `2026.1.109-dev`; this reapplies the large-map work that `2026.1.103-dev` reverted. Settings, wire protocol, the `MigrationRule Version` marker, Managed ABI, saved data and resource schemas are unchanged; no content or save conversion is required. The script API only gains the methods listed above. Rebuild every native role (Server, Client, Mapper, Baker and tests) and regenerate both scripting backends, because the grid template and the `MapView` and `Map` layouts change. `StaticMap::ApplyItemToField()` becomes a private member, `StaticMap::MergeFieldInto(hex, field)` adds a map's items on a hex to another field, and `StaticMap::BuildFieldWithout()` is no longer `const`, because both hand out the map's items as mutable.
 - Baked maps are no longer read at startup: the first instance of a map reads its file on the creating thread, and an error in a map nobody creates goes unreported. A project that relied on startup to validate every baked map can call `Game.LoadStaticMap(mapPid, false)` for each one in a check. Native code that called `MapManager::GetStaticMap()` for a missing file got a failed lookup before and gets a `MapManagerException` now.
 - Native code: replace `mspr->SetLight(corner, map->GetLightData(), map->GetSize())` with `map->SetupSpriteLight(mspr, corner)`; `MapView::GetLightData()` is removed and its old dense-buffer call no longer compiles. Detect callers with `rg -n "GetLightData|SetLight\(" SourceExt` (or the project's native source roots). A custom `TwoDimensionalGrid` subclass must implement `ClearArea`; the pure virtual reports a missing override at compile time.
 - Acceptance owners are the `TwoDimensionalGrid` cases (continent-sized index, area release, bounded load/unload cycles, dynamic/static `ClearArea`), `ClientMaximumSizeMapLoadsWithoutMapSizedWork`, `PathFinding::RoutesMatchOnContinentSizedMaps`, `MapLoadsAndUnloadsContentOfOtherMaps`, `ClientMapLoadsAndUnloadsStaticItemsOfOtherMaps`, and the existing static map, removal, roof, light, scroll and hit-test cases.
@@ -40,6 +40,46 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 
 
+
+
+## 2026.1.108-dev - 2026-11-05
+
+### Changed
+
+- Repair test fixtures for fresh metadata settings, packaged viewer resource mounts and embedded profile line endings across Windows and Linux.
+
+### Migration
+
+- No project migration is required: these changes affect tests only and preserve runtime, resource, ABI and network contracts.
+
+## 2026.1.107-dev - 2026-11-05
+
+### Changed
+
+- Separate initial `SetupConfigAtPath`, `SetupInternalConfig`, `SetupResourceConfig` and `SetupDefaultSettings` from partial `Apply*` overlays. Each setup requires a fresh zero snapshot; repeated/mixed setup rejects before mutation, and failed file/profile setup permits retry. Successful setup adds no clear/default pass.
+- The packaged marker is private to application initialization. Runtime reads packaged mode and runtime identity from settings; C++ pack mounts take an explicit mode as their first argument, and auto settings take the runtime identity. No config/metadata format changes.
+- Restart after a resource configuration update only when effective Engine settings or pack declarations change. Refresh custom/game settings, removed values and typed caches in place before ClientEngine creation; preserve local/CLI/auto precedence and native settings storage.
+- The targeted refusal of retired `Baking.ResourcesDir`, `Baking.CacheResources`, `Baking.PlatformBinaries`, `Baking.ClientResources` and `Baking.ServerResources` is marked `FO_TEMPORARY_COMPAT(RetiredBakingDirectorySettings, "2026-12-31")` in the implementation and its rejection tests. The dated marker tracks removal of this diagnostic and adds no runtime work or old-name aliases.
+- The packager moves the main-section `Common.ResourcesPath` line to the first line of each embedded profile so bootstrap finds it immediately. Its value and all other line ordering are preserved; full resource profiles and baked source files are unchanged.
+- Interthread game clients request the common resource descriptor matching their shared client distribution; updater connections and network game clients retain platform-specific payload selection. Resource hash and metadata checks remain strict.
+- Produce separate full resource profiles (`.fomain-server/client`) and embedded Engine/bootstrap profiles (`.fomain-embedded-server/client`). Package executables and updater runtime modules from the embedded profile, retain full profiles for resource loading and package-time settings, and require both outputs.
+- Startup applies one main profile to zero: resource config when present, otherwise the binary config. Bootstrap scans only embedded `Common.ResourcesPath`; the unselected profile is not parsed or applied. Unpackaged startup applies authored config/sub-configs without reference defaults. Local preferences, CLI and auto keep their order; CLI and auto run once. Packaged sub-config requests use `FO_VERIFY_AND_CONTINUE`.
+- Config/ClientConfig bakers omit typed zeros and retain all nonzero declared game values. Resource config initializes fresh settings before overlays; repeated or misplaced calls are rejected, with full zero checks in debug. The clean-state flag and successful replacement copy/allocation are removed; failed partial Apply restores a zero snapshot. Ordinary Apply operations retain overlay semantics. Updater compares raw config before validation, validates changed text once and preserves preferences before a cache-path restart.
+- Replace `Baking.ServerResources` / `Baking.ClientResources` with one runtime `Common.ResourcesPath=Resources`. Server packages keep own packs at that root and client distribution in `Client`. CLI path overrides and Android APK asset URIs remain supported. No resource-directory CMake option is introduced.
+- Metadata Setting records contain only name/type; remove metadata initial-value storage and BaseEngine application. Author completeness checks remain, including explicit empty values. Metadata file version advances from 5 to 6.
+- Increase the generated internal-config reservation from 20000 to 40000 bytes; the packager enforces each binary's actual capacity.
+
+### Migration
+
+- Rename C++ `ApplyConfigAtPath`, `ApplyInternalConfig`, `ApplyResourceConfig` and `ApplyDefaultSettings` to their `Setup*` counterparts. Select one base before overlays; keep `ApplyConfigFile` for preferences and partial input. Migrate fixtures that loaded a root after defaults to construct directly from the root. Existing completeness state now distinguishes fresh/initialized/complete without changing `HasCompleteConfig` meaning. Rebuild native consumers; this API change adds no metadata, serialized or network migration.
+- Main loading uses the existing StandaloneClient flag for client-only writable overlays; server/tool profiles use their base packs. Packaged embedded-client clones point to the server distribution's Client child. Game integer ranges and enum resolution are validated before zero filtering.
+- Baked profiles carry a native compatibility comment. During a standalone client's native-first restart, optional older/incompatible profiles defer to the embedded engine/bootstrap fallback before any obsolete keys are parsed; the following resource synchronization installs the matching profile. No old-name aliases or extra Apply are introduced. Keep the cache location unchanged for first adoption, or move preferences explicitly before a native-only transition.
+- Move directory settings into Common: `Common.ResourcesPath`, `Common.CachePath` (renamed from `Baking.CacheResources`) and `Common.PlatformBinariesPath`. Update authored configs, generated/native readers, package integration and CLI flags; the old Baking keys are rejected.
+- Baseline `3d56c1f3f9` (`2026.1.106-dev`) → `2026.1.107-dev`; central `MigrationRule Version` `0.0.86` → `0.0.87`. Reconfigure, rebuild all native roles/client runtime libraries, rebake metadata/config/scripts together and repackage every distributed target. Metadata v5/three-column Setting input is rejected. No persisted entity/property conversion is required; Managed ABI remains 9.
+- Replace both old resource settings and their native/generated/CLI consumers with `Common.ResourcesPath`. Recreate server delivery as `<ResourcesPath>/` plus `<ResourcesPath>/Client/`; update deployment/smoke paths together from one bake. Content Showcase retains `Resources-Baked` in its authored config. Keep a coherent previous native/resource set for rollback.
+- Resource reader callers use `ReadResourceConfig(const FileSystem& metadata, bool required)`. Caller mounts the Metadata view before reading it. ApplicationInit scans the canonical embedded ResourcesPath line before resource lookup; ResourceApply never reads the binary. Directory relocation must update the embedded locator or supply a CLI override. The chosen profile owns all values, including those formerly carried by metadata.
+- Author every required setting, including intentional zeros; filter only baked profiles. Strings `0`/`false`, nonempty arrays and runtime directives keep their meanings. BootstrapGameSettings selects the only game values included in the embedded config. Update fixtures expecting implicit unpackaged defaults or metadata values; use explicit defaults only where the fixture requires them.
+- Deploy compatible native runtimes before zero-based resources. Native promotion/restart precedes resource synchronization/restart; platforms without native self-update need a new bundle. Never deliver these profiles to runtimes restoring defaults or metadata baselines. Offline cache-path changes require an explicit preference move; live updater migration keeps an existing destination.
 
 ## 2026.1.106-dev - 2026-11-04
 

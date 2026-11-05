@@ -140,7 +140,7 @@ TEST_CASE("ClientResourcesRecoverOutdatedInstalledMetadataFromWritableBase")
 
     GlobalSettings settings {MakeClientTestSettings()};
     BakerTests::OverrideSetting(settings.Common.Packaged, true);
-    BakerTests::OverrideSetting(settings.Baking.ClientResources, unique_name);
+    BakerTests::OverrideSetting(settings.Common.ResourcesPath, unique_name);
     auto pack_config {ConfigFile(strex("[ResourcePack]\nName = {}\nClientOnly = True\n", pack_name).str())};
     settings.ApplyConfigFile(pack_config, "");
     settings.ApplyWritableRoot(writable_root);
@@ -155,12 +155,8 @@ TEST_CASE("ClientResourcesRecoverOutdatedInstalledMetadataFromWritableBase")
     CHECK_NOTHROW(RegisterDynamicMetadata(&metadata, recovered_metadata));
 }
 
-TEST_CASE("ClientResourceIndexPreservesEmbeddedAndWritablePrecedence")
+TEST_CASE("ClientResourceIndexPreservesBootstrapPacksAndWritablePrecedence")
 {
-    if (!CanUseDirectoryBackedClientResourceFixtures()) {
-        SKIP("Directory-backed prefix and overlay fixtures require an unpackaged test binary");
-    }
-
     string dir {MakeTempClientResourceDir("merged_index")};
     string install {strex("lf_client_index_{}", std::chrono::steady_clock::now().time_since_epoch().count()).str()};
     auto cleanup {scope_exit([&dir, &install]() noexcept {
@@ -171,10 +167,10 @@ TEST_CASE("ClientResourceIndexPreservesEmbeddedAndWritablePrecedence")
     string writable {strex(dir).combine_path("Writable").str()};
     string overlay {fs::make_writable_path(writable, install)};
 
-    WriteClientTestPack(install, "Before", {{"Shared.txt", "before"}});
+    WriteClientTestPack(install, "Before", {{"Shared.txt", "before"}, {"Bootstrap.txt", "bootstrap"}});
     REQUIRE(fs::write_file(strex(install).combine_path("Embedded/Shared.txt").str(), string_view {"embedded"}));
-    REQUIRE(fs::write_file(strex(install).combine_path("Embedded/Bootstrap.txt").str(), string_view {"bootstrap"}));
-    WriteClientTestPack(overlay, "Before", {{"Shared.txt", "before"}, {"Overlay.txt", "writable"}});
+    REQUIRE(fs::write_file(strex(install).combine_path("Embedded/Bootstrap.txt").str(), string_view {"wrong-directory-bootstrap"}));
+    WriteClientTestPack(overlay, "Before", {{"Shared.txt", "before"}, {"Bootstrap.txt", "bootstrap"}, {"Overlay.txt", "writable"}});
 
     {
         ResourcePackWriter writer {strex(install).combine_path("Art.fores").str()};
@@ -186,7 +182,7 @@ TEST_CASE("ClientResourceIndexPreservesEmbeddedAndWritablePrecedence")
 
     GlobalSettings settings {MakeClientTestSettings()};
     BakerTests::OverrideSetting(settings.Common.Packaged, true);
-    BakerTests::OverrideSetting(settings.Baking.ClientResources, install);
+    BakerTests::OverrideSetting(settings.Common.ResourcesPath, install);
     auto pack_config {ConfigFile("[ResourcePack]\nName = Before\nClientOnly = True\n[ResourcePack]\nName = Embedded\nClientOnly = True\n[ResourcePack]\nName = Art\nClientOnly = True\n")};
     settings.ApplyConfigFile(pack_config, "");
     settings.ApplyWritableRoot(writable);
@@ -204,6 +200,7 @@ TEST_CASE("ClientResourceIndexPreservesEmbeddedAndWritablePrecedence")
         FileSystem resources {GetClientResources(settings)};
         CHECK(resources.ReadFileText("Shared.txt") == "art");
         CHECK(resources.ReadFileText("Bootstrap.txt") == "bootstrap");
+        CHECK_FALSE(resources.ReadFileHeader("Bootstrap.txt").GetDataSource()->IsDiskDir());
         CHECK(resources.ReadFileText("Overlay.txt") == "art");
         CHECK(resources.ReadFileHeader("Shared.txt").GetDataSource()->GetPackName() == index_path);
     }
@@ -219,6 +216,7 @@ TEST_CASE("ClientResourceIndexPreservesEmbeddedAndWritablePrecedence")
         FileSystem resources {GetClientResources(settings)};
         CHECK(resources.ReadFileText("Shared.txt") == "art");
         CHECK(resources.ReadFileText("Bootstrap.txt") == "bootstrap");
+        CHECK_FALSE(resources.ReadFileHeader("Bootstrap.txt").GetDataSource()->IsDiskDir());
         CHECK_FALSE(fs::exists(index_path));
     }
 }
@@ -244,7 +242,7 @@ TEST_CASE("InstalledClientResourcesSelectWritableBaseWithoutOldCatalogLayering")
 
     GlobalSettings settings {MakeClientTestSettings()};
     BakerTests::OverrideSetting(settings.Common.Packaged, true);
-    BakerTests::OverrideSetting(settings.Baking.ClientResources, unique_name);
+    BakerTests::OverrideSetting(settings.Common.ResourcesPath, unique_name);
     auto pack_config {ConfigFile("[ResourcePack]\nName = Main\nClientOnly = True\n[ResourcePack]\nName = Fallback\nClientOnly = True\n")};
     settings.ApplyConfigFile(pack_config, "");
     settings.ApplyWritableRoot(writable_root);
