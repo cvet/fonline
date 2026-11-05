@@ -82,7 +82,6 @@ public:
     [[nodiscard]] auto GetChildItemBillets() const noexcept -> const_span<ItemBillet>;
 
     void ForEachItemHex(ident_t static_item_id, const function<void(mpos)>& callback) const;
-    // These two hand out this map's items as mutable, so they take the items' fields for writing
     auto BuildFieldWithout(mpos hex, const unordered_set<ident_t>& removed_ids) -> Field;
     void MergeFieldInto(mpos hex, ptr<Field> field);
     void ReserveCritters(size_t critter_count);

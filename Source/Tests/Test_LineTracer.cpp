@@ -235,6 +235,118 @@ TEST_CASE("LineTracer")
         }
     }
 
+    SECTION("VeryLongTracesReachTheirTargetAndStayInvariant")
+    {
+        // Lines tens of thousands of cells long close in on their target by one cell every step and arrive exactly, and
+        // the same lines and rays far out on the map take the same steps; an even shift keeps hex columns aligned
+        constexpr bool wide {std::numeric_limits<mcoord_t>::max() >= 128000};
+        constexpr msize map_size {wide ? msize {128000, 128000} : msize {32000, 32000}};
+        constexpr int32_t span {wide ? 30000 : 7000};
+        constexpr int32_t shift {wide ? 60000 : 16000};
+        random_generator rnd {5112027};
+        auto shifted {[](mpos hex) -> mpos { return mpos {numeric_cast<mcoord_t>(hex.x + shift), numeric_cast<mcoord_t>(hex.y + shift)}; }};
+
+        for (int32_t round {0}; round < 24; round++) {
+            mpos start {map_size.from_raw_pos(span + rnd.next_between(-50, 50), span + rnd.next_between(-50, 50))};
+            mpos target {map_size.from_raw_pos(start.x + rnd.next_between(-span + 100, span - 100), start.y + rnd.next_between(-span + 100, span - 100))};
+            int32_t distance {GeometryHelper::GetDistance(start, target)};
+
+            LineTracer tracer {start, target, 0.0f, map_size};
+            LineTracer far_tracer {shifted(start), shifted(target), 0.0f, map_size};
+            mpos current {start};
+            mpos far_current {shifted(start)};
+
+            for (int32_t step {0}; step < distance; step++) {
+                int32_t previous_distance {GeometryHelper::GetDistance(current, target)};
+                auto dir {tracer.GetNextHex(current)};
+                auto far_dir {far_tracer.GetNextHex(far_current)};
+
+                INFO("round " << round << " step " << step << " of " << distance);
+                REQUIRE(dir.has_value());
+                REQUIRE(far_dir.has_value());
+                REQUIRE(GeometryHelper::GetDistance(current, target) == previous_distance - 1);
+                REQUIRE(far_current == shifted(current));
+            }
+
+            CHECK(current == target);
+
+            float32_t dir_angle {numeric_cast<float32_t>(rnd.next_between(0, 3599)) / 10.0f};
+            // A ray of n cells may cross up to 2n cells on an isometric square map
+            int32_t ray_dist {rnd.next_between(span / 8, span / 4)};
+            LineTracer ray {start, dir_angle, ray_dist, map_size};
+            LineTracer far_ray {shifted(start), dir_angle, ray_dist, map_size};
+            mpos ray_hex {start};
+            mpos far_ray_hex {shifted(start)};
+
+            for (int32_t step {0}; step < ray_dist; step++) {
+                mpos previous {ray_hex};
+                auto ray_dir {ray.GetNextHex(ray_hex)};
+                auto far_ray_dir {far_ray.GetNextHex(far_ray_hex)};
+
+                INFO("round " << round << " ray step " << step << " of " << ray_dist);
+                REQUIRE(ray_dir.has_value() == far_ray_dir.has_value());
+
+                if (!ray_dir.has_value()) {
+                    break;
+                }
+
+                REQUIRE(GeometryHelper::GetDistance(previous, ray_hex) == 1);
+                REQUIRE(far_ray_hex == shifted(ray_hex));
+            }
+        }
+    }
+
+    SECTION("VeryLongSquareTracesFollowTheExactLine")
+    {
+        // A square trace steps one cell along its main axis and rounds the other to the nearest cell of the exact line,
+        // which integer arithmetic gives without error; only an exact tie may round either way
+        if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
+            SKIP("Square geometry only");
+        }
+        else {
+            constexpr bool wide {std::numeric_limits<mcoord_t>::max() >= 128000};
+            constexpr msize map_size {wide ? msize {128000, 128000} : msize {32000, 32000}};
+            constexpr int32_t span {wide ? 60000 : 15000};
+            random_generator rnd {5112028};
+
+            for (int32_t round {0}; round < 40; round++) {
+                mpos start {map_size.from_raw_pos(span + rnd.next_between(-20, 20), span + rnd.next_between(-20, 20))};
+                mpos target {map_size.from_raw_pos(start.x + rnd.next_between(-span + 50, span - 50), start.y + rnd.next_between(-span + 50, span - 50))};
+                int64_t tx {target.x - start.x};
+                int64_t ty {target.y - start.y};
+                bool x_main {std::abs(tx) > std::abs(ty)};
+                int64_t main_total {x_main ? std::abs(tx) : std::abs(ty)};
+                int64_t main_sign {(x_main ? tx : ty) > 0 ? 1 : -1};
+                int64_t side_total {x_main ? ty : tx};
+
+                if (main_total == 0) {
+                    continue;
+                }
+
+                LineTracer tracer {start, target, 0.0f, map_size};
+                mpos current {start};
+
+                for (int64_t step {1}; step <= main_total; step++) {
+                    REQUIRE(tracer.GetNextHex(current).has_value());
+
+                    // floor(0.5 + step * side_total / main_total), exactly: a tie lands on a whole number
+                    int64_t numerator {main_total + 2 * step * side_total};
+                    int64_t denominator {2 * main_total};
+                    int64_t side {numerator >= 0 ? numerator / denominator : -((-numerator + denominator - 1) / denominator)};
+                    bool tie {numerator % denominator == 0};
+                    int64_t main {main_sign * step};
+                    mpos expected {x_main ? map_size.from_raw_pos(numeric_cast<int32_t>(start.x + main), numeric_cast<int32_t>(start.y + side)) : map_size.from_raw_pos(numeric_cast<int32_t>(start.x + side), numeric_cast<int32_t>(start.y + main))};
+                    mpos tie_low {x_main ? map_size.from_raw_pos(numeric_cast<int32_t>(start.x + main), numeric_cast<int32_t>(start.y + side - 1)) : map_size.from_raw_pos(numeric_cast<int32_t>(start.x + side - 1), numeric_cast<int32_t>(start.y + main))};
+
+                    INFO("round " << round << " step " << step << " of " << main_total);
+                    CHECK((current == expected || (tie && current == tie_low)));
+                }
+
+                CHECK(current == target);
+            }
+        }
+    }
+
     SECTION("TraceRemainsWithinBoundsWhenContinuingPastTarget")
     {
         constexpr msize map_size {4, 4};
