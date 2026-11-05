@@ -111,7 +111,7 @@ namespace BakerTests
     {
         ApplyTestChannelKeys(settings);
         OverrideSetting(settings.Baking.BakeOutput, string {});
-        OverrideSetting(settings.Baking.CacheResources, GetTestCacheDir());
+        OverrideSetting(settings.Common.CachePath, GetTestCacheDir());
         OverrideSetting(settings.View.ScreenWidth, 320);
         OverrideSetting(settings.View.ScreenHeight, 200);
         OverrideSetting(settings.Audio.DisableAudio, true);
@@ -165,10 +165,58 @@ namespace BakerTests
         OverrideSetting(settings.AngelScript.MutableGlobalsAllowedNamespaces, GetTestMutableGlobalsAllowedNamespaces());
     }
 
+    template<typename T>
+    inline auto FormatConfigBakerScalarValue(const T& value) -> string
+    {
+        return strex("{}", value);
+    }
+
+    template<typename T>
+    inline auto FormatConfigBakerSettingValue(const vector<T>& value) -> string
+    {
+        string result {};
+
+        for (T entry : value) {
+            if (!result.empty()) {
+                result += " ";
+            }
+
+            result += FormatConfigBakerScalarValue(entry);
+        }
+
+        return result;
+    }
+
+    template<typename T>
+    inline auto FormatConfigBakerSettingValue(const T& value) -> string
+    {
+        return FormatConfigBakerScalarValue(value);
+    }
+
+    template<typename T>
+    inline void AppendConfigBakerSetting(string& config, string_view name, const T& value)
+    {
+        config += strex("{} = {}\n", name, FormatConfigBakerSettingValue(value));
+    }
+
+    // Writes every declared setting, so a root config fixture carries the native reference values instead of
+    // inheriting them from defaults
+    inline auto MakeCompleteConfigBakerConfig() -> string
+    {
+        string config {};
+
+#define SETTING(type, group, name, ...) AppendConfigBakerSetting(config, SettingNames::group##_##name, type {__VA_ARGS__})
+#define SETTING_GROUP(group, ...)
+#define SETTING_GROUP_END(group)
+#include "Settings.inc"
+
+        return config;
+    }
+
     inline auto MakeScriptCompilerSettings() -> GlobalSettings
     {
         auto settings {GlobalSettings(false)};
-        settings.ApplyDefaultSettings();
+        settings.SetupDefaultSettings();
         OverrideSetting(settings.AngelScript.MutableGlobalsAllowedNamespaces, GetTestMutableGlobalsAllowedNamespaces());
         return settings;
     }
@@ -517,7 +565,7 @@ namespace BakerTests
         // be safely moved out of a lambda. Construct in place and initialize once via call_once
         static GlobalSettings instance {true};
         static std::once_flag once {};
-        std::call_once(once, [] { instance.ApplyDefaultSettings(); });
+        std::call_once(once, [] { instance.SetupDefaultSettings(); });
         return &instance;
     }
 
@@ -550,17 +598,22 @@ namespace BakerTests
     class TestRig final
     {
     public:
-        TestRig() :
+        explicit TestRig(string_view config_name = {}, string_view config_dir = {}) :
             Settings(true)
         {
-            Settings.ApplyDefaultSettings();
+            if (!config_name.empty()) {
+                Settings.SetupConfigAtPath(config_name, config_dir);
+            }
+            else {
+                Settings.SetupDefaultSettings();
 
-            // In-memory fixtures must not load assemblies or caches from the working directory
-            OverrideSetting(Settings.Baking.BakeOutput, string {});
-            OverrideSetting(Settings.Baking.ProtoFileExtensions, vector<string> {"fopro", "fomap"});
-            // The gate fires again when the engine loads bytecode, so the runtime settings need the same allowlist
-            // as the compile-time ones; the gate-test re-overrides this on its own rig
-            OverrideSetting(Settings.AngelScript.MutableGlobalsAllowedNamespaces, GetTestMutableGlobalsAllowedNamespaces());
+                // In-memory fixtures must not load assemblies or caches from the working directory
+                OverrideSetting(Settings.Baking.BakeOutput, string {});
+                OverrideSetting(Settings.Baking.ProtoFileExtensions, vector<string> {"fopro", "fomap"});
+                // The gate fires again when the engine loads bytecode, so the runtime settings need the same allowlist
+                // as the compile-time ones; the gate-test re-overrides this on its own rig
+                OverrideSetting(Settings.AngelScript.MutableGlobalsAllowedNamespaces, GetTestMutableGlobalsAllowedNamespaces());
+            }
 
             auto source_ds {safe_alloc::make_unique<MemoryDataSource>("Tests")};
             _sourceData = source_ds.get();

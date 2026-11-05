@@ -148,6 +148,11 @@ int main(int argc, char** argv) // Handled by SDL
                 int32_t client_index {numeric_cast<int32_t>(clients.size()) + 1};
                 auto settings {safe_alloc::make_unique<GlobalSettings>(false)};
                 settings->CopyFrom(GetApp()->Settings);
+
+                if (settings->Common.Packaged) {
+                    settings->SetSettingValue(SettingNames::Common_ResourcesPath, strex(settings->Common.ResourcesPath).combine_path(CLIENT_RESOURCE_PACKS_SUBDIR).str());
+                }
+
                 ClientStartupSettingsHook(*settings, client_index, true);
 
                 ptr<GlobalSettings> settings_ptr {settings.get()};

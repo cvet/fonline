@@ -44,10 +44,12 @@ class FileSystem;
 
 auto GetClientPackDirs(const ClientSettings& settings) -> vector<string>;
 auto GetClientWritableResourceDir(const ClientSettings& settings) -> string;
+auto GetClientWritableResourceDir(string_view writable_root, string_view resources_dir) -> string;
 auto GetClientResourcePackPath(const ClientSettings& settings, string_view pack_name) -> string;
 auto GetClientResourcePatchPath(const ClientSettings& settings, string_view pack_name) -> string;
 auto IsClientResourcePackCurrent(const ClientSettings& settings, string_view pack_name, uint64_t content_hash) -> bool;
 void AddClientPackSource(FileSystem& resources, const ClientSettings& settings, string_view pack_name, bool optional = false);
+void AddClientPackSource(FileSystem& resources, string_view resources_dir, string_view writable_root, string_view pack_name, bool optional = false);
 
 FO_DECLARE_EXCEPTION(FileSystemExeption);
 
@@ -205,8 +207,8 @@ public:
     [[nodiscard]] auto ReadFileHeader(string_view path) const -> FileHeader;
 
     void AddDirSource(string_view dir, bool recursive = false, bool non_cached = false, bool maybe_not_available = false);
-    void AddPackSource(string_view dir, string_view pack, bool maybe_not_available = false);
-    void AddPacksSource(string_view dir, const vector<string>& packs);
+    void AddPackSource(bool packaged, string_view dir, string_view pack, bool maybe_not_available = false);
+    void AddPacksSource(bool packaged, string_view dir, const vector<string>& packs);
     void AddCustomSource(unique_ptr<DataSource> data_source);
     auto ReindexDataSources() -> bool;
     void CleanDataSources();

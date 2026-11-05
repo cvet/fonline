@@ -88,7 +88,7 @@ thread_local bool ExternalLockQuiescenceCallback {};
 auto GetServerResources(GlobalSettings& settings) -> FileSystem
 {
     FileSystem resources {};
-    resources.AddPacksSource(settings.Common.Packaged ? settings.Baking.ServerResources : settings.Baking.BakeOutput, settings.GetServerResourcePacks());
+    resources.AddPacksSource(settings.Common.Packaged, settings.Common.Packaged ? settings.Common.ResourcesPath : settings.Baking.BakeOutput, settings.GetServerResourcePacks());
     return resources;
 }
 
@@ -369,7 +369,7 @@ auto ServerEngine::InitScriptSystemJob() -> std::optional<timespan>
     InitAngelScriptScripting(this, *Settings, Resources);
 #endif
 #if FO_MANAGED_SCRIPTING
-    InitManagedScripting(this, &Resources, fs::make_writable_path(Settings->Common.UserWritablePath, Settings->Baking.CacheResources));
+    InitManagedScripting(this, &Resources, fs::make_writable_path(Settings->Common.UserWritablePath, Settings->Common.CachePath));
 #endif
 
     return std::nullopt;

@@ -51,8 +51,8 @@ namespace LocationAndEntityMgmtTests
     {
         auto settings {GlobalSettings(false)};
 
-        settings.ApplyDefaultSettings();
-        settings.ApplyAutoSettings();
+        settings.SetupDefaultSettings();
+        settings.ApplyAutoSettings({});
 
         BakerTests::ApplySelfContainedServerSettings(settings);
         BakerTests::OverrideSetting(settings.DataBase.CustomCollections, vector<string> {"TestCollection:Int"});

@@ -444,3 +444,14 @@ Promote a package row to project-qualified only when the named lane is versioned
 - [Client Runtime Split and Updater](../../explanation/runtime/client-updater.md)
 - [Release Operations](operations.md)
 - [Engine Upgrade Guide](../migration/engine-upgrade.md)
+
+
+`Common.ResourcesPath` owns application placement (default `Resources`). A Server
+package separates its own packs at this root from client distribution in `Client`.
+The config bakers omit typed zeros after author completeness checks. Metadata
+Setting stores name/type only (file version 6). Compatibility `0.0.87` requires
+rebuilding native roles and one matching rebake before distributing these profiles.
+
+The Config baker writes two profiles per role and sub-config: `.fomain-server/client` contains the full resource configuration; `.fomain-embedded-server/client` contains only Engine settings and the explicitly listed `Baking.BootstrapGameSettings`. Both carry resource-pack declarations and omit typed zeros. The packager embeds the smaller profile into executables and runtime libraries, while keeping the full selected profile in Metadata. Package-time settings are resolved from the full profile. Missing embedded profiles fail packaging; they do not fall back to embedding gameplay settings. Startup still applies exactly one selected main profile.
+
+The packager moves the main-section `Common.ResourcesPath` line to the first line of each embedded profile so bootstrap finds it immediately. Its value and all other line ordering are preserved; full resource profiles and baked source files are unchanged.

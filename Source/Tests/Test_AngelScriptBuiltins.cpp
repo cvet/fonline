@@ -366,8 +366,8 @@ namespace
     {
         auto settings {GlobalSettings(false)};
 
-        settings.ApplyDefaultSettings();
-        settings.ApplyAutoSettings();
+        settings.SetupDefaultSettings();
+        settings.ApplyAutoSettings({});
 
         BakerTests::ApplySelfContainedServerSettings(settings);
 
@@ -3259,7 +3259,7 @@ namespace ScriptBuiltins
         settings.reserve(GAME_SETTING_TYPES.size());
 
         for (const auto& [setting_name, setting_type] : GAME_SETTING_TYPES) {
-            settings.emplace_back(vector<string_view> {setting_name, setting_type, "0"});
+            settings.emplace_back(vector<string_view> {setting_name, setting_type});
         }
 
         vector<vector<string_view>> properties {};
@@ -4704,9 +4704,6 @@ TEST_CASE("ScriptBuiltinsNestedSettingsRoundTrip")
     CHECK_FALSE(settings.FindCustomSetting("Text"));
     CHECK_FALSE(settings.FindCustomSetting("NestedSettings_Deep_Text"));
 }
-
-// Lives here because this rig is the one that declares game settings in its metadata blob. Pins
-// BaseEngine's own precedence rule, so dropping the guard in its constructor fails a test
 
 TEST_CASE("ScriptBuiltinsReflectionOperations")
 {

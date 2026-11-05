@@ -366,12 +366,11 @@ static void RegisterDynamicMetadataSettings(ptr<EngineMetadata> meta, const vect
     FO_TRACE_ZONE(Engine);
 
     for (const auto& tokens : engine_data) {
-        FO_VERIFY_AND_THROW(tokens.size() == 3, "Setting metadata record must contain setting name, value type, and initial value", tokens.size());
+        FO_VERIFY_AND_THROW(tokens.size() == 2, "Setting metadata record must contain setting name and value type", tokens.size());
         auto name {tokens[0]};
         const auto& type {meta->GetBaseType(tokens[1])};
-        auto initial_value {tokens[2]};
 
-        meta->RegisterGameSetting(name, type, initial_value);
+        meta->RegisterGameSetting(name, type);
     }
 }
 

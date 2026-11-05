@@ -76,8 +76,8 @@ private:
 static auto MakeClientLifetimeSettings() -> GlobalSettings
 {
     GlobalSettings settings {false};
-    settings.ApplyDefaultSettings();
-    settings.ApplyAutoSettings();
+    settings.SetupDefaultSettings();
+    settings.ApplyAutoSettings({});
     BakerTests::ApplySelfContainedClientSettings(settings);
     BakerTests::OverrideSetting(settings.Common.Packaged, false);
     BakerTests::OverrideSetting(settings.Baking.BakeOutput, string {});

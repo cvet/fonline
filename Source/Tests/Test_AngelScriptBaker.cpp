@@ -252,7 +252,7 @@ TEST_CASE("AngelScriptNestedSettingsBake")
     using namespace BakerTests;
 
     TestRig rig {};
-    auto metadata {MakeMetadataBlob({{"Setting", {{"Example.Value", "int32", "7"}, {"Android.GradleDependency.Sample", "string", "sample:dependency:1"}, {"Android.ManifestMetaData.Value", "string", "metadata"}, {"Example.Deep.Level.Enabled", "bool", "true"}, {"Ungrouped", "string", "legacy"}}}})};
+    auto metadata {MakeMetadataBlob({{"Setting", {{"Example.Value", "int32"}, {"Android.GradleDependency.Sample", "string"}, {"Android.ManifestMetaData.Value", "string"}, {"Example.Deep.Level.Enabled", "bool"}, {"Ungrouped", "string"}}}})};
 
     for (string_view side : {"server", "client", "mapper"}) {
         rig.AddBakedFile(strex("Metadata.fometa-{}", side).str(), metadata);
@@ -282,7 +282,7 @@ TEST_CASE("AngelScriptNestedSettingsDistinctGroupPaths")
     using namespace BakerTests;
 
     TestRig rig {};
-    auto metadata {MakeMetadataBlob({{"Setting", {{"SettingsPath.A_B.Value", "string", "flat"}, {"SettingsPath.A.B.Value", "string", "nested"}}}})};
+    auto metadata {MakeMetadataBlob({{"Setting", {{"SettingsPath.A_B.Value", "string"}, {"SettingsPath.A.B.Value", "string"}}}})};
 
     for (string_view side : {"server", "client", "mapper"}) {
         rig.AddBakedFile(strex("Metadata.fometa-{}", side).str(), metadata);
@@ -301,7 +301,7 @@ TEST_CASE("AngelScriptNestedSettingsRejectsEmptySegments")
     string name {GENERATE(string {".Android.Name"}, string {"Android..Name"}, string {"Android.Name."}, string {})};
     CAPTURE(name);
     TestRig rig {};
-    rig.AddBakedFile("Metadata.fometa-server", MakeMetadataBlob({{"Setting", {{name, "string", "value"}}}}));
+    rig.AddBakedFile("Metadata.fometa-server", MakeMetadataBlob({{"Setting", {{name, "string"}}}}));
     rig.AddSourceFile("Scripts/Invalid.fos", "void Read() {}\n");
     AngelScriptBaker baker {rig.MakeContext("InvalidSettings", [](string_view path, uint64_t) { return path.ends_with(".fos-bin-server"); })};
     CHECK_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("Setting path"));
@@ -314,7 +314,7 @@ TEST_CASE("AngelScriptNestedSettingsRejectsPropertyGroupCollision")
     string nested_setting {GENERATE(string {"Android.Group.Name"}, string {"Network.ServerPort.Name"})};
     CAPTURE(nested_setting);
     TestRig rig {};
-    rig.AddBakedFile("Metadata.fometa-server", MakeMetadataBlob({{"Setting", {{"Android.Group", "string", "leaf"}, {nested_setting, "string", "nested"}}}}));
+    rig.AddBakedFile("Metadata.fometa-server", MakeMetadataBlob({{"Setting", {{"Android.Group", "string"}, {nested_setting, "string"}}}}));
     rig.AddSourceFile("Scripts/Collision.fos", "void Read() {}\n");
     AngelScriptBaker baker {rig.MakeContext("CollisionSettings", [](string_view path, uint64_t) { return path.ends_with(".fos-bin-server"); })};
     CHECK_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("both a property and a group"));
@@ -336,7 +336,7 @@ TEST_CASE("AngelScriptNestedSettingsRejectsOldGroupTypeNames")
     using namespace BakerTests;
 
     TestRig rig {};
-    rig.AddBakedFile("Metadata.fometa-server", MakeMetadataBlob({{"Setting", {{"Android.GradleDependency.Sample", "string", "dependency"}}}}));
+    rig.AddBakedFile("Metadata.fometa-server", MakeMetadataBlob({{"Setting", {{"Android.GradleDependency.Sample", "string"}}}}));
     rig.AddSourceFile("Scripts/OldType.fos", "string Hold() { GlobalSettingsGroup_Android_GradleDependency value = Settings.Android.GradleDependency; return value.Sample; }\n");
     AngelScriptBaker baker {rig.MakeContext("OldGroupType", [](string_view path, uint64_t) { return path.ends_with(".fos-bin-server"); })};
     CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), ""), AngelScriptBakerException);

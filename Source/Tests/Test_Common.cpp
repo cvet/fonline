@@ -83,7 +83,7 @@ public:
 TEST_CASE("EngineFramePumpsOnlyItsOwnScriptBackends")
 {
     GlobalSettings settings {false};
-    settings.ApplyDefaultSettings();
+    settings.SetupDefaultSettings();
 
     for (EngineSideKind side : {EngineSideKind::ServerSide, EngineSideKind::ClientSide, EngineSideKind::MapperSide}) {
         FramePumpTestEngine first {&settings, side};
@@ -114,7 +114,7 @@ TEST_CASE("EngineFramePumpsOnlyItsOwnScriptBackends")
 TEST_CASE("ScriptOverrunsAreBoundedAndEngineLocal")
 {
     GlobalSettings settings {false};
-    settings.ApplyDefaultSettings();
+    settings.SetupDefaultSettings();
     FramePumpTestEngine first {&settings, EngineSideKind::ClientSide};
     FramePumpTestEngine second {&settings, EngineSideKind::ClientSide};
     first.RegisterScriptOverrun("Entry", timespan {std::chrono::milliseconds {120}}, timespan {std::chrono::milliseconds {5}});
@@ -228,15 +228,20 @@ TEST_CASE("CommonUtilities")
 {
     SECTION("PackagedBuildAccessorsAreConsistent")
     {
-        // An unpackaged test build reports no runtime name; a packaged one must name it
-        CHECK(IsPackaged() == !GetPackagedRuntimeName().empty());
+        GlobalSettings settings {false};
+        settings.ApplyAutoSettings("SnapshotRuntime_Headless");
+        CHECK(settings.Common.Packaged);
+        CHECK(settings.GetPackagedRuntimeName() == "SnapshotRuntime_Headless");
+        settings.ApplyAutoSettings({});
+        CHECK_FALSE(settings.Common.Packaged);
+        CHECK(settings.GetPackagedRuntimeName().empty());
     }
 }
 
 TEST_CASE("CommonScriptArithmetic")
 {
     GlobalSettings settings {false};
-    settings.ApplyDefaultSettings();
+    settings.SetupDefaultSettings();
     FramePumpTestEngine engine {&settings, EngineSideKind::ClientSide};
 
     SECTION("DivisionByZeroPreservesRemainder")

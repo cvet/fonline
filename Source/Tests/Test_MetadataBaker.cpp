@@ -158,12 +158,10 @@ namespace TestManagedMetadata
         REQUIRE(server_tags.contains("Setting"));
         REQUIRE(client_tags.contains("Setting"));
 
-        auto server_flag_value {rig.Settings.FindSettingValue("ManagedMetadata.ServerFlag")};
-        auto client_flag_value {rig.Settings.FindSettingValue("ManagedMetadata.ClientFlag")};
-        REQUIRE(server_flag_value);
-        REQUIRE(client_flag_value);
-        CHECK(std::ranges::count(server_tags.at("Setting"), vector<string> {"ManagedMetadata.ServerFlag", "bool", *server_flag_value}) == 1);
-        CHECK(std::ranges::count(client_tags.at("Setting"), vector<string> {"ManagedMetadata.ClientFlag", "bool", *client_flag_value}) == 1);
+        REQUIRE(rig.Settings.FindSettingValue("ManagedMetadata.ServerFlag"));
+        REQUIRE(rig.Settings.FindSettingValue("ManagedMetadata.ClientFlag"));
+        CHECK(std::ranges::count(server_tags.at("Setting"), vector<string> {"ManagedMetadata.ServerFlag", "bool"}) == 1);
+        CHECK(std::ranges::count(client_tags.at("Setting"), vector<string> {"ManagedMetadata.ClientFlag", "bool"}) == 1);
         CHECK((!mapper_tags.contains("Setting") || mapper_tags.at("Setting").empty()));
 
         REQUIRE(server_tags.contains("Enum"));
@@ -221,14 +219,14 @@ namespace TestManagedMetadata
         CHECK(std::ranges::count(enum_it->second, vector<string> {"CoverageSide", "uint8", "First", "1", "Second", "2"}) == 1);
     }
 
-    SECTION("uses the applied config write time for setting values")
+    SECTION("uses the applied config write time for setting declarations")
     {
         string temp_dir {fs::path_to_string(std::filesystem::temp_directory_path() / std::format("metadata_setting_config_{}", std::chrono::steady_clock::now().time_since_epoch().count()))};
         REQUIRE(fs::create_directories(temp_dir));
         string config_path {strex(temp_dir).combine_path("Test.fomain").str()};
         REQUIRE(fs::write_file(config_path, "Coverage.Enabled = true\n"));
 
-        rig.Settings.ApplyConfigAtPath("Test.fomain", temp_dir);
+        rig.Settings.SetupConfigAtPath("Test.fomain", temp_dir);
         rig.AddSourceFile("Scripts/TestSetting.fos", "///@ Setting Client bool Coverage.Enabled", 1);
 
         vector<uint64_t> checked_write_times {};
@@ -660,7 +658,7 @@ namespace TestOffTargetMetadataStubs
         REQUIRE_THROWS_WITH(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("Errors during preparing of metadata"));
     }
 
-    SECTION("resolves setting groups and serializes their configured values")
+    SECTION("resolves setting groups and serializes their names and types")
     {
         ConfigFile config {"Project.DebugBuild = true\nProject.DebugFlag = false\n"};
         rig.Settings.ApplyConfigFile(config, "");
@@ -715,12 +713,11 @@ namespace TestSettings
 
         reader.verify_end();
 
-        auto debug_build_value {rig.Settings.FindSettingValue("Project.DebugBuild")};
-        auto debug_flag_value {rig.Settings.FindSettingValue("Project.DebugFlag")};
-        REQUIRE(debug_build_value);
-        REQUIRE(debug_flag_value);
-        CHECK(std::ranges::count(settings_entries, vector<string> {"Project.DebugBuild", "bool", *debug_build_value}) == 2);
-        CHECK(std::ranges::count(settings_entries, vector<string> {"Project.DebugFlag", "bool", *debug_flag_value}) == 1);
+        REQUIRE(rig.Settings.FindSettingValue("Project.DebugBuild"));
+        REQUIRE(rig.Settings.FindSettingValue("Project.DebugFlag"));
+        CHECK(std::ranges::all_of(settings_entries, [](const vector<string>& entry) { return entry.size() == 2; }));
+        CHECK(std::ranges::count(settings_entries, vector<string> {"Project.DebugBuild", "bool"}) == 2);
+        CHECK(std::ranges::count(settings_entries, vector<string> {"Project.DebugFlag", "bool"}) == 1);
     }
 
     SECTION("rejects a setting declaration that names no group")
@@ -734,7 +731,7 @@ namespace TestSettings
         ExpectMetadataBakerError("///@ Setting Client bool Missing.Value", "setting has no configured value");
     }
 
-    SECTION("serializes and applies initial game setting values")
+    SECTION("serializes setting names and registers their types")
     {
         ConfigFile bake_config {"Common.GameName = MetadataGame\n"};
         rig.Settings.ApplyConfigFile(bake_config, "");
@@ -750,66 +747,40 @@ namespace TestSettings
         auto setting_it {tags.find("Setting")};
 
         REQUIRE(setting_it != tags.end());
-        CHECK(std::ranges::count(setting_it->second, vector<string> {"Common.GameName", "string", "MetadataGame"}) == 1);
-        CHECK(std::ranges::count(setting_it->second, vector<string> {"Daylight.SunriseMinute", "int32", "540"}) == 1);
+        CHECK(std::ranges::all_of(setting_it->second, [](const vector<string>& entry) { return entry.size() == 2; }));
+        CHECK(std::ranges::count(setting_it->second, vector<string> {"Common.GameName", "string"}) == 1);
+        CHECK(std::ranges::count(setting_it->second, vector<string> {"Daylight.SunriseMinute", "int32"}) == 1);
 
         EngineMetadata meta {[] { }};
         meta.RegisterSide(EngineSideKind::ClientSide);
         REQUIRE_NOTHROW(RegisterDynamicMetadata(&meta, output));
-        // Mirrors what BaseEngine does with the registered values
-        auto apply_metadata_settings {[&](GlobalSettings& settings) {
-            for (const auto& [name, value] : meta.GetGameSettingsInitialValues()) {
-                if (!settings.FindSettingValue(name)) {
-                    settings.SetSettingValue(name, value);
-                }
-            }
-        }};
-
-        GlobalSettings unconfigured_runtime_settings {false};
-        unconfigured_runtime_settings.ApplyDefaultSettings();
-        apply_metadata_settings(unconfigured_runtime_settings);
-        CHECK(unconfigured_runtime_settings.Common.GameName == "MetadataGame");
-        CHECK_FALSE(unconfigured_runtime_settings.FindCustomSetting(SettingNames::Common_GameName));
-        REQUIRE(unconfigured_runtime_settings.FindCustomSetting("Daylight.SunriseMinute"));
-        CHECK(unconfigured_runtime_settings.GetCustomSetting("Daylight.SunriseMinute") == "540");
-
-        // The applied configuration is the operator's explicit override, so a sub-config, local config or
-        // command-line value survives the metadata baseline
-        GlobalSettings overridden_runtime_settings {false};
-        overridden_runtime_settings.ApplyDefaultSettings();
-        ConfigFile runtime_config {"Common.GameName = LocalGame\n"};
-        overridden_runtime_settings.ApplyConfigFile(runtime_config, "");
-        overridden_runtime_settings.SetCustomSetting("Daylight.SunriseMinute", any_t(string("600")));
-        apply_metadata_settings(overridden_runtime_settings);
-        CHECK(overridden_runtime_settings.Common.GameName == "LocalGame");
-        CHECK(overridden_runtime_settings.GetCustomSetting("Daylight.SunriseMinute") == "600");
-
-        auto missing_value_output {MakeMetadataBlob({{"Setting", {{"Invalid.WithoutValue", "bool"}}}})};
-        EngineMetadata invalid_meta {[] { }};
-        invalid_meta.RegisterSide(EngineSideKind::ClientSide);
-        REQUIRE_THROWS_WITH(RegisterDynamicMetadata(&invalid_meta, missing_value_output), Catch::Matchers::ContainsSubstring("Setting metadata record must contain setting name, value type, and initial value"));
+        REQUIRE(meta.GetGameSettings().size() == 2);
+        CHECK(meta.GetGameSettings().contains("Common.GameName"));
+        CHECK(meta.GetGameSettings().contains("Daylight.SunriseMinute"));
+        CHECK(meta.GetGameSetting("Common.GameName").Name == "string");
+        CHECK(meta.GetGameSetting("Daylight.SunriseMinute").Name == "int32");
     }
 
     SECTION("refuses a pack written in an older file layout")
     {
-        // Layout 1 wrote the Setting record without its configured value, and a token layout change leaves the
+        // Version 5 stored an initial value in every Setting record, and a token layout change leaves the
         // metadata version untouched, so only the file layout version can stop such a pack from being read
-        constexpr uint16_t settings_without_value_layout {1};
-        STATIC_REQUIRE(METADATA_FILE_VERSION > settings_without_value_layout);
+        constexpr uint16_t value_carrying_layout {5};
+        STATIC_REQUIRE(METADATA_FILE_VERSION == value_carrying_layout + 1);
 
         vector<uint8_t> outdated_metadata {};
         auto writer {data_writer(outdated_metadata)};
         writer.write<uint32_t>(METADATA_FILE_MAGIC);
-        writer.write<uint16_t>(settings_without_value_layout);
+        writer.write<uint16_t>(value_carrying_layout);
         writer.write<uint16_t>(numeric_cast<uint16_t>(TEST_METADATA_VERSION.length()));
         writer.write_string_bytes(TEST_METADATA_VERSION);
         writer.write<uint16_t>(const_numeric_cast<uint16_t>(1));
         writer.write<uint16_t>(numeric_cast<uint16_t>(METADATA_SETTING_SECTION.length()));
         writer.write_string_bytes(METADATA_SETTING_SECTION);
         writer.write<uint32_t>(const_numeric_cast<uint32_t>(1));
-        writer.write<uint32_t>(const_numeric_cast<uint32_t>(2));
+        writer.write<uint32_t>(const_numeric_cast<uint32_t>(3));
 
-        for (string_view token : {string_view("Common.GameName"), string_view("string")}) {
+        for (string_view token : {string_view("Common.GameName"), string_view("string"), string_view("FOnline")}) {
             writer.write<uint16_t>(numeric_cast<uint16_t>(token.length()));
             writer.write_string_bytes(token);
         }
@@ -1361,6 +1332,104 @@ namespace TestValueTypePropertyOwner
         REQUIRE_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("only RefType supports script metadata properties"));
     }
 #endif
+}
+
+TEST_CASE("MetadataBakerSettingRecordsCarryOnlyNameAndType")
+{
+    using namespace BakerTests;
+
+    constexpr string_view marker_value {"metadata-setting-value-marker"};
+    string marker_token {marker_value};
+
+    TestRig rig {};
+    rig.Settings.SetCustomSetting("Probe.Value", any_t(string("540")));
+    rig.Settings.SetCustomSetting("Probe.Note", any_t(string(marker_token)));
+    rig.Settings.SetCustomSetting("Probe.Empty", any_t(string("")));
+    REQUIRE(rig.Settings.FindSettingValue("Probe.Value"));
+    REQUIRE(rig.Settings.FindSettingValue("Probe.Note"));
+    REQUIRE(rig.Settings.FindSettingValue("Probe.Empty"));
+    CHECK(rig.Settings.FindSettingValue("Probe.Empty")->empty());
+    rig.AddSourceFile("Scripts/ProbeSettings.cs", R"(
+///@ Setting Common int32 Probe.Value
+///@ Setting Common string Probe.Note
+///@ Setting Common string Probe.Empty
+)");
+
+    MetadataBaker baker {rig.MakeContext()};
+    REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+    REQUIRE(rig.Outputs.contains("TestPack.fometa-client"));
+
+    const auto& output {rig.Outputs.at("TestPack.fometa-client")};
+    auto tags {ReadMetadataTags(output)};
+    auto setting_it {tags.find("Setting")};
+
+    REQUIRE(setting_it != tags.end());
+    const auto& settings {setting_it->second};
+    REQUIRE(settings.size() == 3);
+    CHECK(std::ranges::all_of(settings, [](const vector<string>& entry) { return entry.size() == 2; }));
+    CHECK(std::ranges::count(settings, vector<string> {"Probe.Value", "int32"}) == 1);
+    CHECK(std::ranges::count(settings, vector<string> {"Probe.Note", "string"}) == 1);
+    CHECK(std::ranges::count(settings, vector<string> {"Probe.Empty", "string"}) == 1);
+    CHECK(std::ranges::none_of(settings, [&marker_token](const vector<string>& entry) { return std::ranges::find(entry, marker_token) != entry.end(); }));
+    CHECK(std::ranges::none_of(settings, [](const vector<string>& entry) { return std::ranges::find(entry, string {"540"}) != entry.end(); }));
+
+    string raw_output {output.begin(), output.end()};
+    CHECK(raw_output.find(marker_token) == string::npos);
+
+    EngineMetadata meta {[] { }};
+    meta.RegisterSide(EngineSideKind::ClientSide);
+    REQUIRE_NOTHROW(RegisterDynamicMetadata(&meta, output));
+    REQUIRE(meta.GetGameSettings().size() == 3);
+    CHECK(meta.GetGameSetting("Probe.Value").Name == "int32");
+    CHECK(meta.GetGameSetting("Probe.Note").Name == "string");
+    CHECK(meta.GetGameSetting("Probe.Empty").Name == "string");
+
+    TestRig missing_rig {};
+    missing_rig.AddSourceFile("Scripts/MissingSetting.cs", "///@ Setting Common bool Missing.Value\n");
+    MetadataBaker missing_baker {missing_rig.MakeContext()};
+    REQUIRE_THROWS_WITH(missing_baker.BakeFiles(missing_rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("setting has no configured value"));
+
+    const vector<vector<string_view>> invalid_settings {
+        {},
+        {"Probe.Value"},
+        {"Probe.Value", "int32", "540"},
+        {"Probe.Value", "int32", "540", "extra"},
+    };
+
+    for (const auto& tokens : invalid_settings) {
+        vector<pair<string_view, vector<vector<string_view>>>> sections {};
+        sections.emplace_back(string_view {"Setting"}, vector<vector<string_view>> {tokens});
+        auto invalid_output {MakeMetadataBlob(sections)};
+        EngineMetadata invalid_meta {[] { }};
+        invalid_meta.RegisterSide(EngineSideKind::ClientSide);
+        CHECK_THROWS_WITH(RegisterDynamicMetadata(&invalid_meta, invalid_output), Catch::Matchers::ContainsSubstring("must contain setting name and value type"));
+    }
+
+    constexpr uint16_t value_carrying_layout {5};
+    STATIC_REQUIRE(METADATA_FILE_VERSION == value_carrying_layout + 1);
+
+    vector<uint8_t> outdated_metadata {};
+    auto writer {data_writer(outdated_metadata)};
+    writer.write<uint32_t>(METADATA_FILE_MAGIC);
+    writer.write<uint16_t>(value_carrying_layout);
+    writer.write<uint16_t>(numeric_cast<uint16_t>(TEST_METADATA_VERSION.length()));
+    writer.write_string_bytes(TEST_METADATA_VERSION);
+    writer.write<uint16_t>(const_numeric_cast<uint16_t>(1));
+    writer.write<uint16_t>(numeric_cast<uint16_t>(METADATA_SETTING_SECTION.length()));
+    writer.write_string_bytes(METADATA_SETTING_SECTION);
+    writer.write<uint32_t>(const_numeric_cast<uint32_t>(1));
+    writer.write<uint32_t>(const_numeric_cast<uint32_t>(3));
+
+    for (string_view token : {string_view("Probe.Value"), string_view("int32"), string_view("540")}) {
+        writer.write<uint16_t>(numeric_cast<uint16_t>(token.length()));
+        writer.write_string_bytes(token);
+    }
+
+    CHECK_THROWS_WITH(ReadMetadataVersion(outdated_metadata), Catch::Matchers::ContainsSubstring("resources must be rebaked"));
+
+    EngineMetadata outdated_meta {[] { }};
+    outdated_meta.RegisterSide(EngineSideKind::ClientSide);
+    CHECK_THROWS_AS(RegisterDynamicMetadata(&outdated_meta, outdated_metadata), MetadataOutdatedException);
 }
 
 TEST_CASE("MetadataBakerCarriesPropertyRenameRules")

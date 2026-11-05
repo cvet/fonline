@@ -68,8 +68,8 @@ namespace
     {
         auto settings {GlobalSettings(false)};
 
-        settings.ApplyDefaultSettings();
-        settings.ApplyAutoSettings();
+        settings.SetupDefaultSettings();
+        settings.ApplyAutoSettings({});
 
         return settings;
     }
@@ -533,7 +533,7 @@ namespace
         BakerTests::OverrideSetting(client_settings.ClientNetwork.ChannelServerKeys, vector<string> {crypto::format_key(pinned_key)});
 
         optional<ClientConnection::ConnectResult> connect_result {};
-        ClientConnection client {&client_settings};
+        ClientConnection client {&client_settings, ClientConnection::ResourceMode::Platform};
         client.SetConnectHandler([&](ClientConnection::ConnectResult result) { connect_result = result; });
         client.Connect();
 
@@ -632,7 +632,7 @@ TEST_CASE("SecureChannelClientWithoutPinsNeverConnects")
     BakerTests::OverrideSetting(client_settings.ClientNetwork.UseUdp, true);
 
     optional<ClientConnection::ConnectResult> connect_result {};
-    ClientConnection client {&client_settings};
+    ClientConnection client {&client_settings, ClientConnection::ResourceMode::Platform};
     client.SetConnectHandler([&](ClientConnection::ConnectResult result) { connect_result = result; });
     client.Connect();
 

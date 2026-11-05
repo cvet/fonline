@@ -68,8 +68,8 @@ class ViewerToolsDocumentationTests(unittest.TestCase):
             for marker in (
                 "safe_alloc::make_refcounted<ClientEngine>",
                 "BakerDataSource",
-                "AddPacksSource(settings.Baking.ClientResources",
-                "AddPacksSource(settings.Baking.ClientResources, "
+                "AddPacksSource(settings.Common.ResourcesPath",
+                "AddPacksSource(settings.Common.ResourcesPath, "
                 "settings.GetMapperResourcePacks())",
                 "FrameAdvance()",
                 "SetFillViewport(true)",

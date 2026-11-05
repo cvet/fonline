@@ -1577,18 +1577,13 @@ void MetadataBaker::ParseSetting(TagsParsingContext& ctx) const
             throw MetadataBakerException("Invalid Setting codegen tag: type must be primitive or enum or string or any", tag_desc.SourceFile, tag_desc.LineNumber, type.Name);
         }
 
-        vector<string> tag_tokens {};
-        tag_tokens.emplace_back(std::move(name));
-        tag_tokens.emplace_back(type_str);
-
-        auto setting_value {_context->GetSettings()->FindSettingValue(tag_tokens.front())};
-
-        if (!setting_value) {
-            throw MetadataBakerException("Invalid Setting codegen tag: setting has no configured value", tag_desc.SourceFile, tag_desc.LineNumber, tag_tokens.front());
+        // Completeness is validated against the author's configuration, while the record itself carries only
+        // the type because runtime profiles own every nonzero value
+        if (auto setting_value {_context->GetSettings()->FindSettingValue(name)}; !setting_value) {
+            throw MetadataBakerException("Invalid Setting codegen tag: setting has no configured value", tag_desc.SourceFile, tag_desc.LineNumber, name);
         }
 
-        tag_tokens.emplace_back(*setting_value);
-        result_tag_setting.emplace_back(std::move(tag_tokens));
+        result_tag_setting.emplace_back(vector<string> {std::move(name), string(type_str)});
     }
 
     ctx.ResultTags[METADATA_SETTING_SECTION] = std::move(result_tag_setting);

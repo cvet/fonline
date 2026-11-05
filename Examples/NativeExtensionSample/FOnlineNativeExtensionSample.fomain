@@ -1,5 +1,8 @@
 Common.GameName = FOnline Native Extension Sample
 Common.GameVersion = 0.1.0
+Common.ResourcesPath = Resources
+Common.PlatformBinariesPath = PlatformBinaries
+Common.CachePath = Cache
 
 Network.ServerPort = 4000
 Network.WebSocketPort = 4001
@@ -16,10 +19,6 @@ Baking.RawCopyFileExtensions = fofnt bmfc fnt acm ogg wav ogv json ini
 Baking.ProtoFileExtensions = fopro fomap
 Baking.BakeLanguages = engl
 Baking.BakeOutput = Baking
-Baking.ServerResources = ServerResources
-Baking.ClientResources = Resources
-Baking.PlatformBinaries = PlatformBinaries
-Baking.CacheResources = Cache
 Baking.ResourcePackCompressLevel = 1
 Baking.BundleCompressLevel = 1
 

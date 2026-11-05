@@ -828,11 +828,10 @@ TEST_CASE("ManagedScriptBaker")
 
     std::filesystem::path work_dir {temp_dir.Path() / "Work"};
     std::filesystem::create_directories(work_dir);
-    WriteTextFile(temp_dir.Path() / "ManagedRoot.fomain", "");
+    WriteTextFile(temp_dir.Path() / "ManagedRoot.fomain", MakeCompleteConfigBakerConfig());
     ScopedCurrentPath current_path {work_dir};
 
-    TestRig rig {};
-    rig.Settings.ApplyConfigAtPath("ManagedRoot.fomain", temp_dir.Path().string());
+    TestRig rig {"ManagedRoot.fomain", temp_dir.Path().string()};
     OverrideSetting(rig.Settings.Baking.BakeOutput, string {"Baking"});
     OverrideSetting(rig.Settings.ManagedScript.BakerDryRun, true);
     OverrideSetting(rig.Settings.ManagedScript.Dirs, vector<string> {"ManagedSupport/CoreScripts", "Scripts/Managed"});
@@ -864,7 +863,7 @@ TEST_CASE("ManagedScriptBaker")
             {"RefType", {{"ManagedRoute", "Step", "int32", "0", "Note", "string", "0", "Values", "int32[]", "0", "Checkpoint", "bool", "1", "Component", "Checkpoint.Index", "int32", "0", "Checkpoint.Label", "string", "0"}}},
             {"RemoteCall", {{"ManagedMoveProbe", "UnitManaged.cs", "In", "int32", "", "step", "mpos", "", "hex", "Limits", "0", "0"}, {"ManagedMoveProbeTwin", "UnitManaged.cs", "In", "int32", "", "step", "mpos", "", "hex", "Limits", "0", "0"}, {"ManagedTextProbe", "UnitManaged.cs", "In", "string", "", "text", "Limits", "0", "0"}}},
         }));
-    rig.AddBakedFile("Metadata.fometa-client", MakeMetadataBlob({{"Setting", {{"Android.GradleDependency.Sample", "string", "sample:dependency:1"}, {"Android.ManifestMetaData.class", "string", "metadata"}}}}));
+    rig.AddBakedFile("Metadata.fometa-client", MakeMetadataBlob({{"Setting", {{"Android.GradleDependency.Sample", "string"}, {"Android.ManifestMetaData.class", "string"}}}}));
     rig.AddBakedFile("Metadata.fometa-mapper", MakeEmptyMetadataBlob());
 
     ManagedScriptBaker baker {rig.MakeContext()};
@@ -1454,7 +1453,7 @@ TEST_CASE("ManagedScriptBaker rejects invalid nested setting names")
     OverrideSetting(rig.Settings.ManagedScript.ProjectName, "UnitSettings");
     string setting_name {GENERATE(string {}, string {"Ungrouped"}, string {"Android..Name"}, string {".Android.Name"}, string {"Android.Name."}, string {"Android.Group"}, string {"Game.Game.Value"}, string {"Android.Android"}, string {"Settings.Name"}, string {"Example._1.1.Flag"})};
     CAPTURE(setting_name);
-    rig.AddBakedFile("Metadata.fometa-server", MakeMetadataBlob({{"Setting", {{setting_name, "string", "value"}, {"Android.Group.Name", "string", "nested"}}}}));
+    rig.AddBakedFile("Metadata.fometa-server", MakeMetadataBlob({{"Setting", {{setting_name, "string"}, {"Android.Group.Name", "string"}}}}));
     rig.AddBakedFile("Metadata.fometa-client", MakeEmptyMetadataBlob());
     rig.AddBakedFile("Metadata.fometa-mapper", MakeEmptyMetadataBlob());
     ManagedScriptBaker baker {rig.MakeContext()};
@@ -1484,7 +1483,7 @@ TEST_CASE("ManagedScriptBaker rejects escaped nested namespace collisions")
     OverrideSetting(rig.Settings.ManagedScript.ProjectName, "UnitSettings");
     string second_setting {GENERATE(string {"Example._1.Other"})};
     CAPTURE(second_setting);
-    rig.AddBakedFile("Metadata.fometa-server", MakeMetadataBlob({{"Setting", {{"Example.1.Flag", "string", "first"}, {second_setting, "string", "second"}}}}));
+    rig.AddBakedFile("Metadata.fometa-server", MakeMetadataBlob({{"Setting", {{"Example.1.Flag", "string"}, {second_setting, "string"}}}}));
     rig.AddBakedFile("Metadata.fometa-client", MakeEmptyMetadataBlob());
     rig.AddBakedFile("Metadata.fometa-mapper", MakeEmptyMetadataBlob());
     ManagedScriptBaker baker {rig.MakeContext()};
@@ -1515,7 +1514,7 @@ TEST_CASE("ManagedScriptBaker rejects escaped nested namespace and property coll
     OverrideSetting(rig.Settings.ManagedScript.ProjectName, "UnitSettings");
     string second_setting {GENERATE(string {"Example._1"})};
     CAPTURE(second_setting);
-    rig.AddBakedFile("Metadata.fometa-server", MakeMetadataBlob({{"Setting", {{"Example.1.Flag", "string", "first"}, {second_setting, "string", "second"}}}}));
+    rig.AddBakedFile("Metadata.fometa-server", MakeMetadataBlob({{"Setting", {{"Example.1.Flag", "string"}, {second_setting, "string"}}}}));
     rig.AddBakedFile("Metadata.fometa-client", MakeEmptyMetadataBlob());
     rig.AddBakedFile("Metadata.fometa-mapper", MakeEmptyMetadataBlob());
     ManagedScriptBaker baker {rig.MakeContext()};
@@ -1546,7 +1545,7 @@ TEST_CASE("ManagedScriptBaker rejects escaped root namespace collisions")
     OverrideSetting(rig.Settings.ManagedScript.ProjectName, "UnitSettings");
     string second_setting {GENERATE(string {"_1.Group.Other"})};
     CAPTURE(second_setting);
-    rig.AddBakedFile("Metadata.fometa-server", MakeMetadataBlob({{"Setting", {{"1.Group.Flag", "string", "first"}, {second_setting, "string", "second"}}}}));
+    rig.AddBakedFile("Metadata.fometa-server", MakeMetadataBlob({{"Setting", {{"1.Group.Flag", "string"}, {second_setting, "string"}}}}));
     rig.AddBakedFile("Metadata.fometa-client", MakeEmptyMetadataBlob());
     rig.AddBakedFile("Metadata.fometa-mapper", MakeEmptyMetadataBlob());
     ManagedScriptBaker baker {rig.MakeContext()};
@@ -1577,7 +1576,7 @@ TEST_CASE("ManagedScriptBaker rejects escaped setting property collisions")
     OverrideSetting(rig.Settings.ManagedScript.ProjectName, "UnitSettings");
     string second_setting {GENERATE(string {"Example._1"})};
     CAPTURE(second_setting);
-    rig.AddBakedFile("Metadata.fometa-server", MakeMetadataBlob({{"Setting", {{"Example.1", "string", "first"}, {second_setting, "string", "second"}}}}));
+    rig.AddBakedFile("Metadata.fometa-server", MakeMetadataBlob({{"Setting", {{"Example.1", "string"}, {second_setting, "string"}}}}));
     rig.AddBakedFile("Metadata.fometa-client", MakeEmptyMetadataBlob());
     rig.AddBakedFile("Metadata.fometa-mapper", MakeEmptyMetadataBlob());
     ManagedScriptBaker baker {rig.MakeContext()};
@@ -1606,7 +1605,7 @@ TEST_CASE("ManagedScriptBaker preserves duplicate canonical settings from metada
     OverrideSetting(rig.Settings.ManagedScript.GeneratedDir, script_dir.string());
     OverrideSetting(rig.Settings.ManagedScript.Assemblies, vector<string> {"UnitManaged"});
     OverrideSetting(rig.Settings.ManagedScript.ProjectName, "UnitSettings");
-    rig.AddBakedFile("Metadata.fometa-server", MakeMetadataBlob({{"Setting", {{"Common.GameName", "string", "UnitManaged"}}}}));
+    rig.AddBakedFile("Metadata.fometa-server", MakeMetadataBlob({{"Setting", {{"Common.GameName", "string"}}}}));
     rig.AddBakedFile("Metadata.fometa-client", MakeEmptyMetadataBlob());
     rig.AddBakedFile("Metadata.fometa-mapper", MakeEmptyMetadataBlob());
     ManagedScriptBaker baker {rig.MakeContext()};

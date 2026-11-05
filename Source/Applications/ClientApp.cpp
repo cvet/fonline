@@ -449,6 +449,10 @@ static void MainEntry([[maybe_unused]] void* data)
                     }
                 }
 
+                if (!WebRelated::IsPersistentDataReady()) {
+                    return;
+                }
+
                 ClientStartupSettingsHook(GetApp()->Settings, 1, false);
                 auto settings {make_ptr(&GetApp()->Settings)};
                 Data->Client = safe_alloc::make_refcounted<ClientEngine>(settings, GetClientResources(*settings), &GetApp()->MainWindow);

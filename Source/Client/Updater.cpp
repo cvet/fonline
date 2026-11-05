@@ -79,8 +79,8 @@ static auto IsResumablePackPrefix(string_view temp_path, const ResourcePackHeade
 
 Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
     _settings {settings},
-    _conn(settings),
-    _cache(fs::make_writable_path(settings->Common.UserWritablePath, settings->Baking.CacheResources)),
+    _conn(settings, ClientConnection::ResourceMode::Platform),
+    _cache(fs::make_writable_path(settings->Common.UserWritablePath, settings->Common.CachePath)),
     _binaryDir {GetClientBinaryDir(settings->Common.UserWritablePath)},
     _gameTime(settings),
     _effectMngr(settings, make_ptr(&_resources), window->GetRender()),
@@ -90,12 +90,12 @@ Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
 {
     FO_TRACE_ZONE(Engine);
 
-    logging::write("Client updater: created for {}:{}, compatibility {}, binary dir {}, resources {}", _settings->ClientNetwork.ServerHost, _settings->Network.ServerPort, _settings->Network.CompatibilityVersion, _binaryDir, _settings->Baking.ClientResources);
+    logging::write("Client updater: created for {}:{}, compatibility {}, binary dir {}, resources {}", _settings->ClientNetwork.ServerHost, _settings->Network.ServerPort, _settings->Network.CompatibilityVersion, _binaryDir, _settings->Common.ResourcesPath);
 
     _startTime = nanotime::now();
 
-    _resources.AddPackSource(settings->Common.Packaged ? settings->Baking.ClientResources : settings->Baking.BakeOutput, EMBEDDED_PACK_NAME);
-    _resources.AddDirSource(_settings->Baking.ClientResources, false, true, true);
+    _resources.AddPackSource(settings->Common.Packaged, settings->Common.Packaged ? settings->Common.ResourcesPath : settings->Baking.BakeOutput, EMBEDDED_PACK_NAME);
+    _resources.AddDirSource(_settings->Common.ResourcesPath, false, true, true);
 
     if (!settings->Common.UserWritablePath.empty()) {
         _resources.AddDirSource(GetClientWritableResourceDir(*settings), false, true, true);
@@ -502,26 +502,29 @@ void Updater::FinishResourcesUpdate()
     string local_metadata_version {ReadLocalMetadataVersion()};
 
     if (local_metadata_version != _serverMetadataVersion) {
-        logging::write(logging::type::warning, "Client updater: synced resources run metadata version {} while the server runs {}, resources {}", local_metadata_version, _serverMetadataVersion, _settings->Common.Packaged ? _settings->Baking.ClientResources : _settings->Baking.BakeOutput);
+        logging::write(logging::type::warning, "Client updater: synced resources run metadata version {} while the server runs {}, resources {}", local_metadata_version, _serverMetadataVersion, _settings->Common.Packaged ? _settings->Common.ResourcesPath : _settings->Baking.BakeOutput);
         _result = UpdaterResult::MetadataMismatch;
         return;
     }
 
     RebuildResourceIndex();
 
-    if (_settings->Common.Packaged) {
-        auto content {ReadResourceConfig(*_settings, true)};
+    if (_settings->Common.Packaged && std::ranges::any_of(_settings->GetResourcePacks(), [](const ResourcePackInfo& pack) { return pack.Name == METADATA_PACK_NAME; })) {
+        FileSystem metadata_source {};
+        AddClientPackSource(metadata_source, *_settings, METADATA_PACK_NAME);
+        auto content {ReadResourceConfig(metadata_source, true)};
 
-        if (content) {
+        if (content && _settings->GetResourceConfigContent() != content) {
             auto checked {GlobalSettings(false)};
-            checked.ApplyResourceConfig(*content);
+            checked.SetupResourceConfig(*content);
             checked.ApplyWritableRoot(_settings->Common.UserWritablePath);
-            bool changed {_settings->GetResourceConfigContent() != content};
+            ApplyAppSettingsOverrides(checked, _settings->GetCommandLineArgs());
+            checked.ApplyStartupOverrides(*_settings);
 
-            if (changed) {
+            if (_settings->HasEngineSettingsChanges(checked)) {
                 PreserveLocalConfig(*_settings, checked);
                 WebRelated::FlushPersistentData();
-                logging::write("Client updater: configuration changed, restart required before gameplay");
+                logging::write("Client updater: engine configuration changed, restart required before gameplay");
                 _result = UpdaterResult::SettingsRestartRequired;
 
                 if (!GetApp()->IsHeadless()) {
@@ -531,6 +534,10 @@ void Updater::FinishResourcesUpdate()
 
                 return;
             }
+
+            _settings->ApplyGameSettings(checked);
+            WebRelated::FlushPersistentData();
+            logging::write("Client updater: game configuration refreshed before gameplay");
         }
     }
 
@@ -1048,7 +1055,7 @@ void Updater::Net_OnInitData()
     string runtime_server_prefix {};
 
     if (accept_binaries) {
-        runtime_server_prefix = GetPackagedRuntimeName();
+        runtime_server_prefix = _settings->GetPackagedRuntimeName();
 
         if (runtime_server_prefix.empty()) {
             runtime_server_prefix = runtime_local_prefix;

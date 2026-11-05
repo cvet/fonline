@@ -14808,6 +14808,78 @@
       "owner": "scripting-client-input",
       "rationale": "The reviewed native-codegen inventory grows from2592 to2593 through the additive Game.SimulateTouchScroll method; the strict scope pin changes intentionally. Existing symbols retain their contracts.",
       "release_note": "Engine2026.1.101-dev documents input injection, the updated inventory and the ordinary client input path in the bilingual changelog and client-runtime guide."
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.f3b7710deb317719",
+      "baseline_contract_sha256": "66ec5cd868143ae94ea942a651896758226aed1241f50388435df68c21ccd5be",
+      "current_contract_sha256": "93aa140312021195787e9c7847916bb074d4b44c3b21269346157f15a1ae59ca",
+      "classification": "breaking",
+      "rationale": "The owner replaces role-specific directory settings with Common.ResourcesPath and moves cache/platform directories into Common and requires zero-based profiles with one selected main Apply. The reviewed native inventory removes old Baking keys and adds the Common directory keys; the compatibility marker advances.",
+      "migration": "Docs/en/reference/changelog.md#current---2026-11-04: replace Baking.ServerResources/ClientResources with Common.ResourcesPath; migrate Baking.CacheResources to Common.CachePath and Baking.PlatformBinaries to Common.PlatformBinariesPath; rebuild all roles, rebake metadata/config/scripts together and repackage server own-root/Client-child delivery. Metadata Setting is name/type only, file version 6.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-04",
+      "compatibility": "MigrationRule Version 0.0.86 -> 0.0.87; deploy compatible native before zero-based resources, reject metadata v5 and use one coherent bake. No saved entity/property conversion; Managed ABI remains 9.",
+      "owner": "Engine configuration, metadata and package maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.4b3c7d672bb10a80",
+      "baseline_contract_sha256": "66ec5cd868143ae94ea942a651896758226aed1241f50388435df68c21ccd5be",
+      "current_contract_sha256": "93aa140312021195787e9c7847916bb074d4b44c3b21269346157f15a1ae59ca",
+      "classification": "breaking",
+      "rationale": "The owner replaces role-specific directory settings with Common.ResourcesPath and moves cache/platform directories into Common and requires zero-based profiles with one selected main Apply. The reviewed native inventory removes old Baking keys and adds the Common directory keys; the compatibility marker advances.",
+      "migration": "Docs/en/reference/changelog.md#current---2026-11-04: replace Baking.ServerResources/ClientResources with Common.ResourcesPath; migrate Baking.CacheResources to Common.CachePath and Baking.PlatformBinaries to Common.PlatformBinariesPath; rebuild all roles, rebake metadata/config/scripts together and repackage server own-root/Client-child delivery. Metadata Setting is name/type only, file version 6.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-04",
+      "compatibility": "MigrationRule Version 0.0.86 -> 0.0.87; deploy compatible native before zero-based resources, reject metadata v5 and use one coherent bake. No saved entity/property conversion; Managed ABI remains 9.",
+      "owner": "Engine configuration, metadata and package maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.removed.9e4b116a9f6f7c6a",
+      "baseline_contract_sha256": "66ec5cd868143ae94ea942a651896758226aed1241f50388435df68c21ccd5be",
+      "current_contract_sha256": "93aa140312021195787e9c7847916bb074d4b44c3b21269346157f15a1ae59ca",
+      "classification": "breaking",
+      "rationale": "The owner replaces role-specific directory settings with Common.ResourcesPath and moves cache/platform directories into Common and requires zero-based profiles with one selected main Apply. The reviewed native inventory removes old Baking keys and adds the Common directory keys; the compatibility marker advances.",
+      "migration": "Docs/en/reference/changelog.md#current---2026-11-04: replace Baking.ServerResources/ClientResources with Common.ResourcesPath; migrate Baking.CacheResources to Common.CachePath and Baking.PlatformBinaries to Common.PlatformBinariesPath; rebuild all roles, rebake metadata/config/scripts together and repackage server own-root/Client-child delivery. Metadata Setting is name/type only, file version 6.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-04",
+      "compatibility": "MigrationRule Version 0.0.86 -> 0.0.87; deploy compatible native before zero-based resources, reject metadata v5 and use one coherent bake. No saved entity/property conversion; Managed ABI remains 9.",
+      "owner": "Engine configuration, metadata and package maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.removed.7976569316330e26",
+      "baseline_contract_sha256": "66ec5cd868143ae94ea942a651896758226aed1241f50388435df68c21ccd5be",
+      "current_contract_sha256": "93aa140312021195787e9c7847916bb074d4b44c3b21269346157f15a1ae59ca",
+      "classification": "breaking",
+      "rationale": "The owner replaces role-specific directory settings with Common.ResourcesPath and moves cache/platform directories into Common and requires zero-based profiles with one selected main Apply. The reviewed native inventory removes old Baking keys and adds the Common directory keys; the compatibility marker advances.",
+      "migration": "Docs/en/reference/changelog.md#current---2026-11-04: replace Baking.ServerResources/ClientResources with Common.ResourcesPath; migrate Baking.CacheResources to Common.CachePath and Baking.PlatformBinaries to Common.PlatformBinariesPath; rebuild all roles, rebake metadata/config/scripts together and repackage server own-root/Client-child delivery. Metadata Setting is name/type only, file version 6.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-04",
+      "compatibility": "MigrationRule Version 0.0.86 -> 0.0.87; deploy compatible native before zero-based resources, reject metadata v5 and use one coherent bake. No saved entity/property conversion; Managed ABI remains 9.",
+      "owner": "Engine configuration, metadata and package maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.removed.2b1dc34135bff550",
+      "baseline_contract_sha256": "66ec5cd868143ae94ea942a651896758226aed1241f50388435df68c21ccd5be",
+      "current_contract_sha256": "93aa140312021195787e9c7847916bb074d4b44c3b21269346157f15a1ae59ca",
+      "classification": "breaking",
+      "rationale": "The owner replaces role-specific directory settings with Common.ResourcesPath and moves cache/platform directories into Common and requires zero-based profiles with one selected main Apply. The reviewed native inventory removes old Baking keys and adds the Common directory keys; the compatibility marker advances.",
+      "migration": "Docs/en/reference/changelog.md#current---2026-11-04: replace Baking.ServerResources/ClientResources with Common.ResourcesPath; migrate Baking.CacheResources to Common.CachePath and Baking.PlatformBinaries to Common.PlatformBinariesPath; rebuild all roles, rebake metadata/config/scripts together and repackage server own-root/Client-child delivery. Metadata Setting is name/type only, file version 6.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-04",
+      "compatibility": "MigrationRule Version 0.0.86 -> 0.0.87; deploy compatible native before zero-based resources, reject metadata v5 and use one coherent bake. No saved entity/property conversion; Managed ABI remains 9.",
+      "owner": "Engine configuration, metadata and package maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.removed.f9bd18af19f717df",
+      "baseline_contract_sha256": "66ec5cd868143ae94ea942a651896758226aed1241f50388435df68c21ccd5be",
+      "current_contract_sha256": "93aa140312021195787e9c7847916bb074d4b44c3b21269346157f15a1ae59ca",
+      "classification": "breaking",
+      "rationale": "The owner replaces role-specific directory settings with Common.ResourcesPath and moves cache/platform directories into Common and requires zero-based profiles with one selected main Apply. The reviewed native inventory removes old Baking keys and adds the Common directory keys; the compatibility marker advances.",
+      "migration": "Docs/en/reference/changelog.md#current---2026-11-04: replace Baking.ServerResources/ClientResources with Common.ResourcesPath; migrate Baking.CacheResources to Common.CachePath and Baking.PlatformBinaries to Common.PlatformBinariesPath; rebuild all roles, rebake metadata/config/scripts together and repackage server own-root/Client-child delivery. Metadata Setting is name/type only, file version 6.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-04",
+      "compatibility": "MigrationRule Version 0.0.86 -> 0.0.87; deploy compatible native before zero-based resources, reject metadata v5 and use one coherent bake. No saved entity/property conversion; Managed ABI remains 9.",
+      "owner": "Engine configuration, metadata and package maintainers"
     }
   ]
 }

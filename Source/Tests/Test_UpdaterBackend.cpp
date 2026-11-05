@@ -65,7 +65,7 @@ TEST_CASE("UpdaterBackendUsesPlatformSpecificResourcePackInsteadOfCommonPack")
     using namespace UpdaterBackendTests;
 
     string root_dir {MakeTempDir("platform_resource")};
-    string client_resources_dir {strex(root_dir).combine_path("ClientResources").str()};
+    string client_resources_dir {strex(root_dir).combine_path("Resources").combine_path("Client").str()};
     string platform_binaries_dir {strex(root_dir).combine_path("PlatformBinaries").str()};
     string windows_target_dir {strex(platform_binaries_dir).combine_path("Windows-win64").str()};
     auto cleanup {scope_exit([&root_dir]() noexcept { (void)fs::remove_dir_tree(root_dir); })};
@@ -100,9 +100,9 @@ TEST_CASE("UpdaterBackendUsesPlatformSpecificResourcePackInsteadOfCommonPack")
     REQUIRE(ReadResourcePackHeader(windows_pack_path, windows_header));
 
     auto settings {GlobalSettings(false)};
-    settings.ApplyDefaultSettings();
-    BakerTests::OverrideSetting(settings.Baking.ClientResources, client_resources_dir);
-    BakerTests::OverrideSetting(settings.Baking.PlatformBinaries, platform_binaries_dir);
+    settings.SetupDefaultSettings();
+    BakerTests::OverrideSetting(settings.Common.ResourcesPath, strex(root_dir).combine_path("Resources").str());
+    BakerTests::OverrideSetting(settings.Common.PlatformBinariesPath, platform_binaries_dir);
     auto pack_config {ConfigFile("[ResourcePack]\nName = Scripts\nClientOnly = True\n")};
     settings.ApplyConfigFile(pack_config, "");
     BakerTests::OverrideSetting(settings.ServerNetwork.UpdateFilesInMemory, true);

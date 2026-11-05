@@ -6,7 +6,7 @@ document_id: resource-pack-format
 permalink: /Docs/ru/reference/resource-pack-format.html
 ---
 
-<!-- docs-translation: {"document_id":"resource-pack-format","locale":"ru","source_path":"Docs/en/reference/resource-pack-format.md","source_sha256":"44fcd41b22a878e0e53490d7085648317acf5c8791201c0f2e38487802543422"} -->
+<!-- docs-translation: {"document_id":"resource-pack-format","locale":"ru","source_path":"Docs/en/reference/resource-pack-format.md","source_sha256":"5c2f5204e4d58eed6d8a26d24929dad94ce38437858a8df55a1fedfd247d92b8"} -->
 # Формат пакета ресурсов
 
 Логический пакет состоит из полного `Pack.fores` и, при необходимости, изменяемого `Pack.patch.fores`. Патч содержит новые данные и полный актуальный каталог: каждая запись ссылается на данные в базе или патче, а удалённые пути просто отсутствуют. Цепочек патчей, файлов наборов ресурсов и частей пакетов нет. `Resources.foindex` — удаляемый кеш объединённого поиска по выбранным парам.
@@ -147,7 +147,7 @@ Python-packager проверяет каждый декодированный б�
 
 ## Платформы и API
 
-Android помещает `.fores` в APK без внешнего ZIP-сжатия. Activity передаёт `<installed APK>!/assets/<configured client resource directory>` как `Baking.ClientResources`, а каталог private files как `Common.UserWritablePath`. `OpenResourcePackFile` находит Stored-запись APK ZIP и открывает ограниченный 64-битный позиционный диапазон `fs::disk_read_file` поверх APK. Записи с внешним сжатием или шифрованием запрещены. Разделитель `!/` распознаёт архив только если перед ним существует файл; обычный каталог вроде `Bob!` не превращается в архив. Полные пакеты и дерево ресурсов не копируются в память и не распаковываются в app storage для mount. Заменённые базы и патчи хранятся в приватном каталоге `Resources`.
+Android помещает `.fores` в APK без внешнего ZIP-сжатия. Activity передаёт `<installed APK>!/assets/<configured client resource directory>` как `Common.ResourcesPath`, а каталог private files как `Common.UserWritablePath`. `OpenResourcePackFile` находит Stored-запись APK ZIP и открывает ограниченный 64-битный позиционный диапазон `fs::disk_read_file` поверх APK. Записи с внешним сжатием или шифрованием запрещены. Разделитель `!/` распознаёт архив только если перед ним существует файл; обычный каталог вроде `Bob!` не превращается в архив. Полные пакеты и дерево ресурсов не копируются в память и не распаковываются в app storage для mount. Заменённые базы и патчи хранятся в приватном каталоге `Resources`.
 
 Web использует предварительно загруженную in-memory filesystem и может обновлять пары в рамках сеанса. Обновления не переживают перезагрузку страницы, объединённый кеш не создаётся.
 

@@ -100,7 +100,7 @@ TEST_CASE("ImageDependencyPipeline")
     }
 
     GlobalSettings settings {true};
-    settings.ApplyDefaultSettings();
+    settings.SetupDefaultSettings();
     ConfigFile config {strex("Baking.BakeOutput = {}\nBaking.SingleThreadBaking = True\nBaking.FilterResources = True\n[ResourcePack]\nName = Art\nInputDirs = input\n{}Bakers = Image\n", output_dir, output_filter).str()};
     settings.ApplyConfigFile(config, temp_dir);
 
@@ -169,7 +169,7 @@ TEST_CASE("ImageDependenciesAcrossPacks")
     REQUIRE(fs::write_file(strex(temp_dir).combine_path("upper/Source.tga"), pixels));
     REQUIRE(fs::write_file(strex(temp_dir).combine_path("recipes/Root.fofrm"), string_view {"Frame = Source.tga\n"}));
     GlobalSettings settings {true};
-    settings.ApplyDefaultSettings();
+    settings.SetupDefaultSettings();
     ConfigFile config {strex(R"(Baking.BakeOutput = {}
 Baking.SingleThreadBaking = True
 Baking.FilterResources = True
@@ -329,7 +329,7 @@ TEST_CASE("ImageDependencyLazyMatchesFull")
     REQUIRE(fs::write_file(source_path, pixels));
     REQUIRE(fs::write_file(recipe_path, string_view {"Frame = Source.tga\nSize = 1 1\n"}));
     GlobalSettings settings {true};
-    settings.ApplyDefaultSettings();
+    settings.SetupDefaultSettings();
     ConfigFile config {strex("Baking.BakeOutput = {}\nBaking.SingleThreadBaking = True\n[ResourcePack]\nName = Art\nInputDirs = input\nBakers = Image\n", output_dir).str()};
     settings.ApplyConfigFile(config, temp_dir);
     MasterBaker initial {&settings};
@@ -384,7 +384,7 @@ TEST_CASE("ImageDependenciesExposeTextureMetadataBeforeModelBaking")
     REQUIRE(fs::write_file(strex(input_dir).combine_path("Body.obj"), string_view {"o Body\nv 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n"}));
     REQUIRE(fs::write_file(strex(input_dir).combine_path("Model.fo3d"), string_view {"Model Body.obj\nTexture 0 Root.fofrm\n"}));
     GlobalSettings settings {true};
-    settings.ApplyDefaultSettings();
+    settings.SetupDefaultSettings();
     ConfigFile config {strex("Baking.BakeOutput = {}\nBaking.SingleThreadBaking = True\nBaking.FilterResources = True\n[ResourcePack]\nName = Metadata\nInputDirs = metadata\nBakers = Metadata\n[ResourcePack]\nName = Art\nInputDirs = input\nBakers = Image ModelMesh ModelInfo\n", output_dir).str()};
     settings.ApplyConfigFile(config, temp_dir);
     MasterBaker baker {&settings};
@@ -420,7 +420,7 @@ TEST_CASE("ImageDependenciesPreserveIndependentModelTexturesWhenSourceIsConsumed
 #endif
 
     GlobalSettings settings {true};
-    settings.ApplyDefaultSettings();
+    settings.SetupDefaultSettings();
     ConfigFile config {strex("Baking.BakeOutput = {}\nBaking.SingleThreadBaking = True\nBaking.FilterResources = True\n[ResourcePack]\nName = Metadata\nInputDirs = metadata\nBakers = {}\n[ResourcePack]\nName = Art\nInputDirs = art\nBakers = Image\n[ResourcePack]\nName = Recipes\nInputDirs = recipes\nIncludePatterns = Root.fofrm\nBakers = Image\n[ResourcePack]\nName = Models\nInputDirs = models\nBakers = ModelMesh ModelInfo\n[ResourcePack]\nName = Protos\nInputDirs = protos\nBakers = Proto\n", output_dir, metadata_bakers).str()};
     settings.ApplyConfigFile(config, temp_dir);
     MasterBaker initial {&settings};
@@ -486,7 +486,7 @@ TEST_CASE("ResourceUsagePreservesPhysicalModelProviders")
 #endif
 
     GlobalSettings settings {true};
-    settings.ApplyDefaultSettings();
+    settings.SetupDefaultSettings();
     ConfigFile config {strex("Baking.BakeOutput = {}\nBaking.SingleThreadBaking = True\nBaking.FilterResources = True\nBaking.ProtoFileExtensions = fopro\n[ResourcePack]\nName = Metadata\nInputDirs = metadata\nBakers = {}\n[ResourcePack]\nName = ClientArt\nInputDirs = client\nClientOnly = True\nBakers = Image ModelMesh ModelInfo\n[ResourcePack]\nName = ServerArt\nInputDirs = server\nServerOnly = True\nBakers = Image ModelMesh ModelInfo\n{}\n[ResourcePack]\nName = Protos\nInputDirs = protos\nBakers = Proto\n", output_dir, metadata_bakers, common_pack).str()};
     settings.ApplyConfigFile(config, temp_dir);
     MasterBaker baker {&settings};

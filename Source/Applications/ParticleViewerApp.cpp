@@ -201,8 +201,8 @@ static auto GetViewerResources(GlobalSettings& settings) -> FileSystem
 {
     if (settings.Common.Packaged) {
         FileSystem resources {};
-        resources.AddPacksSource(settings.Baking.ClientResources, settings.GetClientResourcePacks());
-        resources.AddPacksSource(settings.Baking.ClientResources, settings.GetMapperResourcePacks());
+        resources.AddPacksSource(settings.Common.Packaged, settings.Common.ResourcesPath, settings.GetClientResourcePacks());
+        resources.AddPacksSource(settings.Common.Packaged, settings.Common.ResourcesPath, settings.GetMapperResourcePacks());
         return resources;
     }
     else {

@@ -59,7 +59,7 @@ enum class UpdaterResult : uint8_t
     Failed = 5, // Any other failure of this client: disk, bad data, etc
     MetadataMismatch = 6, // Resources are in sync with the descriptor, yet the server runs another metadata version
     ConnectionFailed = 7, // Server unreachable or the connection dropped mid-update; an environment state, not a client defect
-    SettingsRestartRequired = 8, // Resources and client configuration are synchronized; restart before creating game subsystems
+    SettingsRestartRequired = 8, // Resources are synchronized; changed engine settings require restart before creating game subsystems
 };
 
 auto GetCurrentUpdatePlatform() noexcept -> UpdatePlatform;

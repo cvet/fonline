@@ -396,7 +396,7 @@ TEST_CASE("BakerDataSource")
     REQUIRE(fs::last_write_time(stale_input_path) > fs::last_write_time(stale_output_path));
 
     GlobalSettings settings {true};
-    settings.ApplyDefaultSettings();
+    settings.SetupDefaultSettings();
 
     auto config {ConfigFile(strex(R"(Baking.BakeOutput = {}
 Baking.SingleThreadBaking = true
@@ -498,7 +498,7 @@ TEST_CASE("BakerDataSourceRegistersPackOutputsInDependencyOrder")
     SetBakerSetupFileWriteTime(metadata_output_path, source_time + std::chrono::minutes {1});
 
     GlobalSettings settings {true};
-    settings.ApplyDefaultSettings();
+    settings.SetupDefaultSettings();
 
     auto config {ConfigFile(strex(R"(Baking.BakeOutput = {}
 Baking.SingleThreadBaking = true
@@ -558,7 +558,7 @@ TEST_CASE("BakerDataSourceResolvesMetadataReadDuringModelInfoDiscovery")
     }
 
     GlobalSettings settings {true};
-    settings.ApplyDefaultSettings();
+    settings.SetupDefaultSettings();
 
     auto config {ConfigFile(strex(R"(Baking.BakeOutput = {}
 Baking.SingleThreadBaking = true
@@ -613,7 +613,7 @@ TEST_CASE("BakerDataSourcePrefersLaterResourcePack")
     SetBakerSetupFileWriteTime(override_output_path, base_time + std::chrono::minutes {2});
 
     GlobalSettings settings {true};
-    settings.ApplyDefaultSettings();
+    settings.SetupDefaultSettings();
 
     auto config {ConfigFile(strex(R"(Baking.BakeOutput = {}
 Baking.SingleThreadBaking = true
@@ -668,7 +668,7 @@ TEST_CASE("BakerMasterRawCopy")
     REQUIRE(fs::write_file(outdated_path, string_view {"obsolete"}));
 
     GlobalSettings settings {true};
-    settings.ApplyDefaultSettings();
+    settings.SetupDefaultSettings();
 
     auto config {ConfigFile(strex(R"(Baking.BakeOutput = {}
 Baking.SingleThreadBaking = true
@@ -812,7 +812,7 @@ TEST_CASE("BakerMasterRenamesStaleCasedOutputAfterCaseOnlyInputRename")
     REQUIRE(fs::write_file(lower_source_path, string_view {"before-rename"}));
 
     GlobalSettings settings {true};
-    settings.ApplyDefaultSettings();
+    settings.SetupDefaultSettings();
 
     auto config {ConfigFile(strex(R"(Baking.BakeOutput = {}
 Baking.SingleThreadBaking = true
@@ -882,7 +882,7 @@ TEST_CASE("BakerMasterRenamesStaleCasedOutputDirAfterCaseOnlyInputDirRename")
     REQUIRE(fs::write_file(lower_source_path, string_view {"before-rename"}));
 
     GlobalSettings settings {true};
-    settings.ApplyDefaultSettings();
+    settings.SetupDefaultSettings();
 
     auto config {ConfigFile(strex(R"(Baking.BakeOutput = {}
 Baking.SingleThreadBaking = true
@@ -950,7 +950,7 @@ TEST_CASE("BakerResourcePacksCanSplitSharedInputDirectoryByGlob")
     REQUIRE(fs::write_file(strex(input_dir).combine_path("Data/private/secret.json").str(), string_view {"secret"}));
 
     GlobalSettings settings {true};
-    settings.ApplyDefaultSettings();
+    settings.SetupDefaultSettings();
 
     auto config {ConfigFile(strex(R"(Baking.BakeOutput = {}
 Baking.SingleThreadBaking = true
@@ -991,7 +991,7 @@ TEST_CASE("BakerMasterAngelScriptMultiplePacks")
     REQUIRE(fs::write_file(strex(temp_dir).combine_path("scripts/Shared.fos").str(), "namespace SharedDiagnostics { int Value() { return 42; } }\n"));
 
     GlobalSettings settings {true};
-    settings.ApplyDefaultSettings();
+    settings.SetupDefaultSettings();
     auto config {ConfigFile(strex(R"(Baking.BakeOutput = {}
 Baking.ForceBaking = true
 Baking.SingleThreadBaking = false
@@ -1050,7 +1050,7 @@ TEST_CASE("BakerMasterImageReport")
     REQUIRE(fs::write_file(source_path, {source_data.data(), source_data.size()}));
 
     GlobalSettings settings {true};
-    settings.ApplyDefaultSettings();
+    settings.SetupDefaultSettings();
 
     auto config {ConfigFile(strex(R"(Baking.BakeOutput = {}
 Baking.ForceBaking = True
@@ -1193,7 +1193,7 @@ TEST_CASE("BakerMasterRawCopyEdges")
         REQUIRE(fs::write_file(outdated_path, string_view {"outdated"}));
 
         GlobalSettings settings {true};
-        settings.ApplyDefaultSettings();
+        settings.SetupDefaultSettings();
 
         auto config {ConfigFile(strex(R"(Baking.BakeOutput = {}
 Baking.ForceBaking = true
@@ -1243,7 +1243,7 @@ Bakers = {}
         REQUIRE(fs::write_file(build_hash_path, string_view {"old-build"}));
 
         GlobalSettings settings {true};
-        settings.ApplyDefaultSettings();
+        settings.SetupDefaultSettings();
 
         auto config {ConfigFile(strex(R"(Baking.BakeOutput = {}
 Baking.SingleThreadBaking = true
@@ -1278,7 +1278,7 @@ Bakers = {}
         ignore_unused(fs::remove_dir_tree(temp_dir));
 
         GlobalSettings settings {true};
-        settings.ApplyDefaultSettings();
+        settings.SetupDefaultSettings();
 
         auto config {ConfigFile(strex(R"(Baking.BakeOutput = {}
 Baking.SingleThreadBaking = true
@@ -1330,7 +1330,7 @@ TEST_CASE("BakerMasterRawCopyPackInputs")
         REQUIRE(fs::write_file(pack_path, MakeBakerSetupStoredZip("Data/from_pack.json", "packed-source")));
 
         GlobalSettings settings {true};
-        settings.ApplyDefaultSettings();
+        settings.SetupDefaultSettings();
 
         auto config {ConfigFile(strex(R"(Baking.BakeOutput = {}
 Baking.SingleThreadBaking = false
@@ -1375,7 +1375,7 @@ Bakers = {}
         REQUIRE(fs::write_file(pack_path, MakeBakerSetupStoredZip("Data/broken.json", "tiny", 32)));
 
         GlobalSettings settings {true};
-        settings.ApplyDefaultSettings();
+        settings.SetupDefaultSettings();
 
         auto config {ConfigFile(strex(R"(Baking.BakeOutput = {}
 Baking.SingleThreadBaking = true
@@ -1407,7 +1407,7 @@ TEST_CASE("BakerConfigChangesInvalidateOutputsWithoutChangingRevision")
     REQUIRE(fs::write_file(strex(input_dir).combine_path("Data/source.json").str(), string_view {"source"}));
 
     GlobalSettings settings {true};
-    settings.ApplyDefaultSettings();
+    settings.SetupDefaultSettings();
     ConfigFile config {strex(R"(Baking.BakeOutput = {}
 Baking.SingleThreadBaking = true
 [ResourcePack]
@@ -1470,7 +1470,7 @@ TEST_CASE("BakerMasterResourceUsageRebuildsCompleteManifest")
 
     scope_exit cleanup {[&]() noexcept { (void)fs::remove_dir_tree(temp_dir); }};
     GlobalSettings settings {true};
-    settings.ApplyDefaultSettings();
+    settings.SetupDefaultSettings();
     ConfigFile config {strex(R"(Baking.BakeOutput = {}
 Baking.SingleThreadBaking = True
 Baking.FilterResources = True
@@ -1522,7 +1522,7 @@ TEST_CASE("BakerMasterResourceFilteringModes")
     REQUIRE(fs::write_file(unused_path, string_view {"unused"}));
 
     GlobalSettings settings {true};
-    settings.ApplyDefaultSettings();
+    settings.SetupDefaultSettings();
     CHECK_FALSE(settings.Baking.FilterResources);
 
     ConfigFile config {strex(R"(Baking.BakeOutput = {}

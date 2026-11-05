@@ -32,7 +32,7 @@ Use this cross-contract sequence:
 | Support policy | No versioned package support line is declared; embedding projects must pin an engine revision. |
 | Manifest | [BuildTools/PackageInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/PackageInterface.json) |
 | Packager | [BuildTools/package.py](https://github.com/cvet/fonline/blob/master/BuildTools/package.py) |
-| Contract digest | <code>7c255cadeb4dd744b470ffdf984c85e4a887b18f43a07f7d2707f94d7c1d8554</code> |
+| Contract digest | <code>dd1d44b27a2629b29c7bde73bc2e2ed144e18f95e95fe34064a09370a7a51902</code> |
 
 ## Coverage
 

@@ -109,8 +109,8 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     CritterFrames(this),
     FontMngr(make_ptr(&SprMngr), make_ptr(&ResMngr)),
     AudioMngr(Settings, make_ptr(&Resources), window->GetAudio()),
-    Cache(fs::make_writable_path(settings->Common.UserWritablePath, settings->Baking.CacheResources)),
-    _conn(Settings)
+    Cache(fs::make_writable_path(settings->Common.UserWritablePath, settings->Common.CachePath)),
+    _conn(Settings, ClientConnection::ResourceMode::CommonForInterthread)
 {
     FO_TRACE_ZONE(Engine);
 
@@ -141,7 +141,7 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     InitAngelScriptScripting(this, *settings, Resources);
 #endif
 #if FO_MANAGED_SCRIPTING
-    InitManagedScripting(this, &Resources, fs::make_writable_path(Settings->Common.UserWritablePath, Settings->Baking.CacheResources));
+    InitManagedScripting(this, &Resources, fs::make_writable_path(Settings->Common.UserWritablePath, Settings->Common.CachePath));
 #endif
 
     logging::write("Client compatibility version: {}", Settings->Network.CompatibilityVersion);
@@ -287,8 +287,8 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     CritterFrames(this),
     FontMngr(make_ptr(&SprMngr), make_ptr(&ResMngr)),
     AudioMngr(Settings, make_ptr(&Resources), window->GetAudio()),
-    Cache(fs::make_writable_path(settings->Common.UserWritablePath, settings->Baking.CacheResources)),
-    _conn(Settings)
+    Cache(fs::make_writable_path(settings->Common.UserWritablePath, settings->Common.CachePath)),
+    _conn(Settings, ClientConnection::ResourceMode::CommonForInterthread)
 {
     auto registrar {GetPropertyRegistrar(CritterProperties::ENTITY_TYPE_NAME)};
     FO_VERIFY_AND_THROW(registrar, "Missing property registrar");
