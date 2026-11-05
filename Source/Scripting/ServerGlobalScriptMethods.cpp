@@ -1573,9 +1573,9 @@ FO_SCRIPT_API bool Server_Game_CallStaticItemFunction(ptr<ServerEngine> server, 
     return staticItem->StaticScriptFunc.Call(cr, staticItem, used_item, param) && staticItem->StaticScriptFunc.GetResult();
 }
 
-// Read the baked content of a prototype map into the cache now
+// Read the baked content of a prototype map into the cache, now or on a worker thread; a request before that read ends waits for it
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_LoadStaticMap(ptr<ServerEngine> server, hstring mapPid)
+FO_SCRIPT_API void Server_Game_LoadStaticMap(ptr<ServerEngine> server, hstring mapPid, bool asyncLoad)
 {
     auto proto {server->GetProtoMap(mapPid)};
 
@@ -1583,12 +1583,12 @@ FO_SCRIPT_API void Server_Game_LoadStaticMap(ptr<ServerEngine> server, hstring m
         throw ScriptException("Map proto not found", mapPid);
     }
 
-    server->MapMngr.LoadStaticMap(proto);
+    server->MapMngr.LoadStaticMap(proto, asyncLoad);
 }
 
-// Start reading the baked content of prototype maps on worker threads; a request for one of them waits for its read
+// Read the baked content of prototype maps into the cache, now or on worker threads; a request for one of them waits for its read
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_LoadStaticMapsAsync(ptr<ServerEngine> server, readonly_vector<hstring> mapPids)
+FO_SCRIPT_API void Server_Game_LoadStaticMaps(ptr<ServerEngine> server, readonly_vector<hstring> mapPids, bool asyncLoad)
 {
     vector<ptr<const ProtoMap>> protos {};
     protos.reserve(mapPids.size());
@@ -1603,7 +1603,7 @@ FO_SCRIPT_API void Server_Game_LoadStaticMapsAsync(ptr<ServerEngine> server, rea
         protos.emplace_back(proto);
     }
 
-    server->MapMngr.LoadStaticMapsAsync(protos);
+    server->MapMngr.LoadStaticMaps(protos, asyncLoad);
 }
 
 // Return whether the baked content of a prototype map is cached

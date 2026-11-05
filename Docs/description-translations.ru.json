@@ -10951,8 +10951,8 @@
           "translation": "Передаёт событие прокрутки касанием в заданной позиции клиента со знаковым смещением в пикселях"
         },
         "/symbols/@id=script.method.server.Game.LoadStaticMap/description": {
-          "source_sha256": "7e1a0ac4a375ead1e5b86957ea20f67c8af7447c00ab8cc625de6f16b8a4f2e3",
-          "translation": "Прочитать запечённое содержимое прототипа карты в кэш сейчас"
+          "source_sha256": "3a361908396a2839a54c8d58bbd24f94f499d09c9a5ebe35e9168f3e5804bfb5",
+          "translation": "Прочитать запечённое содержимое прототипа карты в кэш сейчас или в рабочем потоке; запрос до конца этого чтения ждёт его"
         },
         "/symbols/@id=script.method.server.Game.UnloadStaticMap/description": {
           "source_sha256": "356c0f0b3fc7a0650e10952431c82171d9a0ab9d01f53ec530418ed118fbe052",
@@ -10965,10 +10965,6 @@
         "/symbols/@id=script.method.server.Game.IsStaticMapLoaded/description": {
           "source_sha256": "2a0c98334e5eef32635c4198c60bfe72156c02892b4e89807aecec9ba0150eca",
           "translation": "Вернуть, кэшировано ли запечённое содержимое прототипа карты"
-        },
-        "/symbols/@id=script.method.server.Game.LoadStaticMapsAsync/description": {
-          "source_sha256": "dfa5689e0708cea18d6f8446d42bb9bc1e5823831d192d6519cbf090a07b0b81",
-          "translation": "Начать чтение запечённого содержимого прототипов карт в рабочих потоках; запрос одного из них ждёт его чтения"
         },
         "/symbols/@id=script.method.client.Map.LoadRuntimeStaticItems%230971edd694992850/description": {
           "source_sha256": "74bf8007d1c46e1800c3d58588eefef0b0e439427aef63aef9970c795076ce29",
@@ -10993,6 +10989,10 @@
         "/symbols/@id=script.method.server.Map.UnloadRuntimeStaticItems/description": {
           "source_sha256": "621ddfb90e2ab8cd8dd2c547a0fcae48a47f5f5df66423b829aef204baf8a93d",
           "translation": "Удалить статические предметы времени выполнения, добавленные в карту через `LoadRuntimeStaticItems`"
+        },
+        "/symbols/@id=script.method.server.Game.LoadStaticMaps/description": {
+          "source_sha256": "939de09b3a046d2dafe1799af0bf780ce4e47bee720b3670b091ee561d2a3c64",
+          "translation": "Прочитать запечённое содержимое прототипов карт в кэш сейчас или в рабочих потоках; запрос одного из них ждёт его чтения"
         }
       }
     },

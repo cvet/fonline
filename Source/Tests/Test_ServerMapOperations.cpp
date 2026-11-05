@@ -213,7 +213,10 @@ TEST_CASE("MapLoadsAndUnloadsContentOfOtherMaps")
     CHECK_FALSE(server->MapMngr.IsStaticMapLoaded(content_proto));
     CHECK(server->MapMngr.UnloadStaticMap(content_proto));
     CHECK_FALSE(server->MapMngr.UnloadStaticMap(baked_map->GetProtoMap()));
-    server->MapMngr.LoadStaticMap(content_proto);
+    server->MapMngr.LoadStaticMap(content_proto, false);
+    CHECK(server->MapMngr.IsStaticMapLoaded(content_proto));
+    REQUIRE(server->MapMngr.UnloadStaticMap(content_proto));
+    server->MapMngr.LoadStaticMaps(vector<ptr<const ProtoMap>> {content_proto}, false);
     CHECK(server->MapMngr.IsStaticMapLoaded(content_proto));
     server->MapMngr.UnloadRuntimeStaticItems(map, second_ids);
     CHECK(map->GetStaticItems().empty());
@@ -258,7 +261,10 @@ TEST_CASE("MapLoadsAndUnloadsContentOfOtherMaps")
 
     // A background load returns at once; a request before it finishes waits for the same read
     REQUIRE(server->MapMngr.UnloadStaticMap(content_proto));
-    server->MapMngr.LoadStaticMapsAsync(vector<ptr<const ProtoMap>> {content_proto, baked_map->GetProtoMap()});
+    server->MapMngr.LoadStaticMap(content_proto, true);
+    CHECK(server->MapMngr.GetStaticMap(content_proto)->GetStaticItems().size() == 2);
+    REQUIRE(server->MapMngr.UnloadStaticMap(content_proto));
+    server->MapMngr.LoadStaticMaps(vector<ptr<const ProtoMap>> {content_proto, baked_map->GetProtoMap()}, true);
     auto preloaded {server->MapMngr.GetStaticMap(content_proto)};
     CHECK(preloaded->GetStaticItems().size() == 2);
     CHECK(server->MapMngr.IsStaticMapLoaded(content_proto));
@@ -294,7 +300,7 @@ TEST_CASE("MapManagerRejectsMapLargerThanEngineMaximum")
         CHECK_FALSE(server->MapMngr.IsStaticMapLoaded(map_proto));
 
         // A failed background read reaches the next request, which reads the map again
-        server->MapMngr.LoadStaticMapsAsync(vector<ptr<const ProtoMap>> {map_proto});
+        server->MapMngr.LoadStaticMaps(vector<ptr<const ProtoMap>> {map_proto}, true);
         CHECK_THROWS_WITH(server->MapMngr.GetStaticMap(map_proto), Catch::Matchers::ContainsSubstring("Map size exceeds the engine maximum"));
         CHECK_FALSE(server->MapMngr.IsStaticMapLoaded(map_proto));
     }

@@ -2739,8 +2739,8 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-server-game-loadstaticmap-1db1c5d0ad"></a>
 - [`symbol-script-method-server-game-loadstaticmap-1db1c5d0ad`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-loadstaticmap-1db1c5d0ad)
 
-<a id="symbol-script-method-server-game-loadstaticmapsasync-a2f06ab227"></a>
-- [`symbol-script-method-server-game-loadstaticmapsasync-a2f06ab227`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-loadstaticmapsasync-a2f06ab227)
+<a id="symbol-script-method-server-game-loadstaticmaps-6644b1ed2b"></a>
+- [`symbol-script-method-server-game-loadstaticmaps-6644b1ed2b`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-loadstaticmaps-6644b1ed2b)
 
 <a id="symbol-script-method-server-game-lock-d5ecb3244a"></a>
 - [`symbol-script-method-server-game-lock-d5ecb3244a`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-lock-d5ecb3244a)

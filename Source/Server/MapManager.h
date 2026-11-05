@@ -100,8 +100,8 @@ public:
     void ProcessVisibleCritters(ptr<Critter> cr);
     void ProcessVisibleItems(ptr<Critter> cr);
     void ViewMap(ptr<Player> view_player, ptr<Map> map);
-    void LoadStaticMap(ptr<const ProtoMap> proto);
-    void LoadStaticMapsAsync(const_span<ptr<const ProtoMap>> protos);
+    void LoadStaticMap(ptr<const ProtoMap> proto, bool async_load);
+    void LoadStaticMaps(const_span<ptr<const ProtoMap>> protos, bool async_load);
     auto UnloadStaticMap(ptr<const ProtoMap> proto) -> bool;
     void ClearStaticMaps() noexcept;
     auto LoadRuntimeStaticItems(ptr<Map> map, ptr<const ProtoMap> source_proto, mpos dest_hex, int64_t id_offset) -> vector<ident_t>;

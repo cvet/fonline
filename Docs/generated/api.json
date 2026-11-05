@@ -11,7 +11,7 @@
       "stability": "experimental",
       "since": "2022.1.0.wip",
       "symbol_count": 2604,
-      "inventory_sha256": "bcb430130ab3dd33b18c2a9afa5eda3f623bb69b9c60a6256f22c1e2c38e85d3",
+      "inventory_sha256": "3ad050643ef1bca5bf583801c4387e90d36f978a51a65c8ff60cdd827ed261db",
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
@@ -83419,8 +83419,8 @@
         "server"
       ],
       "receiver": "Game",
-      "signature": "void Game.LoadStaticMap(hstring mapPid)",
-      "description": "Read the baked content of a prototype map into the cache now",
+      "signature": "void Game.LoadStaticMap(hstring mapPid, bool asyncLoad)",
+      "description": "Read the baked content of a prototype map into the cache, now or on a worker thread; a request before that read ends waits for it",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -83454,20 +83454,27 @@
           "nullable": false,
           "by_reference": false,
           "default": null
+        },
+        {
+          "name": "asyncLoad",
+          "type": "bool",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
         }
       ]
     },
     {
-      "id": "script.method.server.Game.LoadStaticMapsAsync",
-      "family_id": "script.method.server.Game.LoadStaticMapsAsync",
+      "id": "script.method.server.Game.LoadStaticMaps",
+      "family_id": "script.method.server.Game.LoadStaticMaps",
       "kind": "method",
-      "name": "LoadStaticMapsAsync",
+      "name": "LoadStaticMaps",
       "runtime_sides": [
         "server"
       ],
       "receiver": "Game",
-      "signature": "void Game.LoadStaticMapsAsync(hstring[] mapPids)",
-      "description": "Start reading the baked content of prototype maps on worker threads; a request for one of them waits for its read",
+      "signature": "void Game.LoadStaticMaps(hstring[] mapPids, bool asyncLoad)",
+      "description": "Read the baked content of prototype maps into the cache, now or on worker threads; a request for one of them waits for its read",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -83498,6 +83505,13 @@
         {
           "name": "mapPids",
           "type": "hstring[]",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "asyncLoad",
+          "type": "bool",
           "nullable": false,
           "by_reference": false,
           "default": null

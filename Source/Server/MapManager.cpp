@@ -333,17 +333,24 @@ auto MapManager::GetStaticMap(ptr<const ProtoMap> proto) -> ptr<StaticMap>
     return AcquireStaticMap(proto).get();
 }
 
-void MapManager::LoadStaticMap(ptr<const ProtoMap> proto)
+void MapManager::LoadStaticMap(ptr<const ProtoMap> proto, bool async_load)
 {
     FO_TRACE_ZONE(Map);
 
-    (void)AcquireStaticMap(proto);
+    if (async_load) {
+        (void)RequestStaticMap(proto, true);
+    }
+    else {
+        (void)AcquireStaticMap(proto);
+    }
 }
 
-void MapManager::LoadStaticMapsAsync(const_span<ptr<const ProtoMap>> protos)
+void MapManager::LoadStaticMaps(const_span<ptr<const ProtoMap>> protos, bool async_load)
 {
+    FO_TRACE_ZONE(Map);
+
     for (ptr<const ProtoMap> proto : protos) {
-        (void)RequestStaticMap(proto, true);
+        LoadStaticMap(proto, async_load);
     }
 }
 
