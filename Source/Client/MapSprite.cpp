@@ -248,14 +248,19 @@ static_assert((GameSettings::MAP_SIZE_LIMIT - 1) * 2 < (1 << 24), "Draw order pr
 
 auto MapSpriteList::MakeDrawOrderPos(DrawOrderType draw_order, mpos hex, int8_t sub_layer) noexcept -> uint64_t
 {
-    // Bit layout: [group 6][primary 24][layer 4][sub-layer 8][secondary 22]; a standing row is one ground depth, so its
-    // critters stand in front of every item of it, and among the items its walls (lowest sub-layer) go first
+    // Standing: [group 6][screen row 24][layer 4][sub-layer 8][hex X 22], a row is one ground depth, so its critters stand in front of its items and walls go first.
+    // Flat: [group 6][sub-layer 8][gap 4][hex Y 24][hex X 22], a flat sprite has no depth, so its sub-layer is a paint layer that outranks the row
     uint64_t group {static_cast<uint64_t>(draw_order < DrawOrderType::NormalBegin || draw_order > DrawOrderType::NormalEnd ? draw_order : DrawOrderType::NormalBegin)};
     bool standing {group == static_cast<uint64_t>(DrawOrderType::NormalBegin)};
     uint64_t primary {std::bit_cast<uint64_t>(safe_numeric_cast<int64_t>(standing ? GeometryHelper::GetHexScreenRow(hex) : hex.y))};
     uint64_t secondary {std::bit_cast<uint64_t>(safe_numeric_cast<int64_t>(hex.x))};
-    uint64_t layer {standing ? static_cast<uint64_t>(draw_order) - static_cast<uint64_t>(DrawOrderType::NormalBegin) : 0};
     uint64_t sub {numeric_cast<uint64_t>(sub_layer - std::numeric_limits<int8_t>::min())};
+
+    if (!standing) {
+        return (group << 58) | (sub << 50) | (primary << 22) | secondary;
+    }
+
+    uint64_t layer {static_cast<uint64_t>(draw_order) - static_cast<uint64_t>(DrawOrderType::NormalBegin)};
 
     return (group << 58) | (primary << 34) | (layer << 30) | (sub << 22) | secondary;
 }

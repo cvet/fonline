@@ -16,6 +16,16 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Fixed
 
+- Order flat map sprites by their sub-layer before their row. A flat sprite has no ground depth, so below `DrawOrderType::NormalBegin` the draw-order key is now `[group 6][sub-layer 8][gap 4][hex Y 24][hex X 22]`: `Item.DrawOrderSubLayer` is a paint layer that outranks the hex row, and rows and X order only sprites of one sub-layer. Before, a flat decal on a later row covered a flat marker with a higher sub-layer on an earlier row, so ground decals showed through a marker strip wherever their hex happened to sort after the strip's cell. The standing key is unchanged. `Test_MapSprite.cpp` pins both orders.
+
+### Migration
+
+- Baseline `6ea95ac28d` (`2026.1.111-dev`) → `2026.1.112-dev`. No project source, generated-model or persisted-data migration is required, and no stored property, network protocol, `MigrationRule Version`, Managed ABI or resource schema changes. Rebuild the client and the Mapper; a bake is needed only to apply project content that now relies on the order. Flat sprites whose sub-layers differ may paint in a different order than before: a flat sprite with a higher `DrawOrderSubLayer` now covers a lower one on any row, whereas it used to do so only on the same row. Sprites with equal sub-layers keep their row-then-X order. Check flat decals that carry a non-zero sub-layer (for example a flat carryable at `+1`).
+
+## 2026.1.111-dev - 2026-11-06
+
+### Fixed
+
 - Measure map scene depth from the view's top pixel row instead of absolute map depth. `GeometryHelper::GetHexMapDepth(rawHex, hexOffset, elevation, originY)` gives a sprite's depth relative to that row with the row difference in integers, `SpriteManager::DrawSprites` takes the origin row, and `MapView::DrawMap` sizes the ortho depth range per frame from the view instead of from the map corners. Far from the origin of a continent-sized map, depths of millions rounded away the layer bias and the standing-sprite depth slope, so direct-draw models and particles z-fought against walls; depths now keep the precision of a small map.
 - Resolve screen and map pixels to cells in `GeometryHelper::GetHexPosCoord` exactly: square geometry solves its diamond lattice in integers, so a pixel on a cell edge rounds the same way everywhere, and hexagonal geometry finds its lattice coordinates in `float64_t`. Pixels millions away from the origin of a large map no longer resolve to a neighbouring cell near its edges.
 - Take the vector difference in integers before scaling in `GeometryHelper::GetLineDirAngle`, so a short vector between far map positions keeps its angle.

@@ -869,6 +869,7 @@ The map render target (`MapView::_rtMap`) is created `with_depth`, giving the wo
   `Item.DrawOrderSubLayer` is mutable and publicly synchronized; a client
   property update refreshes the item's map sprites so their sort keys change
   without reloading the map.
+- A flat sprite has no ground depth, so below `NormalBegin` the key is `[group 6][sub-layer 8][gap 4][hex Y 24][hex X 22]`: the sub-layer is a paint layer that outranks the row, and rows and X only order sprites of one sub-layer. A map marker that must cover other flat decals (an exit strip over snow drifts) carries a higher `Item.DrawOrderSubLayer` instead of relying on where its hex lies. Pinned by `Test_MapSprite.cpp`.
 - A flattened dead critter stays in the lower draw-order group than upright
   items and critters even when their screen row differs. Same-row door flaps
   and frames still follow sub-layer before X within the item layer. `Test_MapSprite.cpp` pins both

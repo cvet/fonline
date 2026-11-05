@@ -76,6 +76,7 @@ TEST_CASE("MapSpriteListDrawOrder")
     constexpr mpos NEARER_ROW {100, 101};
     constexpr int8_t WALL_SUB_LAYER {-1};
     constexpr int8_t SCENERY_SUB_LAYER {0};
+    constexpr int8_t MARKER_SUB_LAYER {1};
 
     SECTION("LowerSubLayerDrawsFirstOnOneHex")
     {
@@ -201,6 +202,32 @@ TEST_CASE("MapSpriteListDrawOrder")
 
         CHECK(flat_low < flat_high);
         CHECK(flat_high < standing);
+    }
+
+    SECTION("FlatSubLayerOutranksTheRow")
+    {
+        // A flat ground sprite has no depth: the paint layer decides, so a higher sub-layer covers a lower one on any row
+        for (DrawOrderType layer : {DrawOrderType::FlatItemPreLight, DrawOrderType::FlatItemAfterLight}) {
+            uint64_t decal_nearer {MapSpriteList::MakeDrawOrderPos(layer, NEARER_ROW, SCENERY_SUB_LAYER)};
+            uint64_t marker_farther {MapSpriteList::MakeDrawOrderPos(layer, WALL_CELL, MARKER_SUB_LAYER)};
+            uint64_t under_everything {MapSpriteList::MakeDrawOrderPos(layer, mpos {0, 1000}, std::numeric_limits<int8_t>::min())};
+            uint64_t decal_farther {MapSpriteList::MakeDrawOrderPos(layer, WALL_CELL, SCENERY_SUB_LAYER)};
+
+            CHECK(decal_nearer < marker_farther);
+            CHECK(decal_farther < marker_farther);
+            CHECK(under_everything < decal_farther);
+            CHECK(decal_farther < decal_nearer);
+        }
+    }
+
+    SECTION("FlatLayerKeepsRowThenXWithinOneSubLayer")
+    {
+        uint64_t same_row {MapSpriteList::MakeDrawOrderPos(DrawOrderType::FlatItemPreLight, WALL_CELL, SCENERY_SUB_LAYER)};
+        uint64_t same_row_right {MapSpriteList::MakeDrawOrderPos(DrawOrderType::FlatItemPreLight, mpos {101, 100}, SCENERY_SUB_LAYER)};
+        uint64_t nearer {MapSpriteList::MakeDrawOrderPos(DrawOrderType::FlatItemPreLight, NEARER_ROW, SCENERY_SUB_LAYER)};
+
+        CHECK(same_row < same_row_right);
+        CHECK(same_row_right < nearer);
     }
 
     SECTION("OpenDoorStaysBehindItsSameRowFrame")
