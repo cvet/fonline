@@ -7,12 +7,23 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"39f15801d5340913ea2e4122117636601df1fc94d20a8de22f922852b48a5339"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"374b6c1a88270c2fa12c3e500f00ac27b1f3d5b2208e14ebee6469c0bffdd78c"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
-## Current - 2026-11-05
+## Current - 2026-11-06
+
+### Изменено
+
+- Тесты больших карт собираются с 16-битными координатами карты: `TraceIsTheSameAnywhereOnTheMap`, `VeryLongTracesReachTheirTargetAndStayInvariant`, `VeryLongSquareTracesFollowTheExactLine` и `PathFinding::RoutesMatchOnContinentSizedMaps` больше не подставляют в размер карты литерал за пределами диапазона `mcoord_t` в пропускаемой ветке широких координат, поэтому `LF_UnitTests` компилируется без `FO_MAP_WIDE_COORDS`.
+- Ожидающее чтение запечённой карты в серверном кэше статических карт определяется по общему обещанию, а не по целому значению его адреса. Поведение не меняется.
+
+### Миграция
+
+- Базовая ревизия `9e096e8f6f` (`2026.1.109-dev`) → `2026.1.110-dev`. Меняются только тесты и внутренний токен кэша: настройки, API скриптов, сетевой протокол, маркер `MigrationRule Version`, Managed ABI, сохранённые данные и схемы ресурсов не затронуты, поэтому миграция проекта не требуется. Проекты с 16-битными координатами карты (`FO_MAP_WIDE_COORDS` выключен) собирают тесты `2026.1.109-dev` только с этим шагом; пересоберите все native-роли и тесты.
+
+## 2026.1.109-dev - 2026-11-05
 
 ### Изменено
 
@@ -35,12 +46,6 @@ permalink: /Docs/ru/reference/changelog.html
 - Запечённые карты больше не читаются при старте: первый экземпляр карты читает свой файл в создающем потоке, а ошибка в карте, которую никто не создаёт, остаётся незамеченной. Проект, полагавшийся на проверку всех запечённых карт при старте, может вызвать `Game.LoadStaticMap(mapPid, false)` для каждой из них в отдельной проверке. Нативный код, вызывавший `MapManager::GetStaticMap()` для отсутствующего файла, раньше получал проваленный поиск, теперь — `MapManagerException`.
 - Нативный код: замените `mspr->SetLight(corner, map->GetLightData(), map->GetSize())` на `map->SetupSpriteLight(mspr, corner)`; `MapView::GetLightData()` удалён, и прежний вызов плотного буфера больше не компилируется. Найдите вызовы через `rg -n "GetLightData|SetLight\(" SourceExt` (или нативные корни проекта). Собственный наследник `TwoDimensionalGrid` должен реализовать `ClearArea`; чисто виртуальный метод сообщит об отсутствующем переопределении при компиляции.
 - Владельцы приёмки: случаи `TwoDimensionalGrid` (индекс размером с континент, освобождение области, ограниченные циклы загрузки/выгрузки, `ClearArea` динамической и статической сеток), `ClientMaximumSizeMapLoadsWithoutMapSizedWork`, `PathFinding::RoutesMatchOnContinentSizedMaps`, `MapLoadsAndUnloadsContentOfOtherMaps`, `ClientMapLoadsAndUnloadsStaticItemsOfOtherMaps` и существующие случаи статических карт, удаления, крыш, света, прокрутки и hit-test.
-
-
-
-
-
-
 
 ## 2026.1.108-dev - 2026-11-05
 

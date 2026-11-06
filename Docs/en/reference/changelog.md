@@ -12,7 +12,18 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-11-05
+## Current - 2026-11-06
+
+### Changed
+
+- Build the large-map tests with 16-bit map coordinates: `TraceIsTheSameAnywhereOnTheMap`, `VeryLongTracesReachTheirTargetAndStayInvariant`, `VeryLongSquareTracesFollowTheExactLine` and `PathFinding::RoutesMatchOnContinentSizedMaps` no longer put a literal above the `mcoord_t` range into a map size on the skipped wide-coordinate branch, so `LF_UnitTests` compiles without `FO_MAP_WIDE_COORDS`.
+- Identify a pending baked-map read in the server static-map cache by its shared promise instead of the integer value of the promise address. No behavior changes.
+
+### Migration
+
+- Baseline `9e096e8f6f` (`2026.1.109-dev`) to `2026.1.110-dev`. Tests and an internal cache token only: settings, script API, wire protocol, the `MigrationRule Version` marker, Managed ABI, saved data and resource schemas are unchanged, so no project migration is required. Projects built with 16-bit map coordinates (`FO_MAP_WIDE_COORDS` off) can compile `2026.1.109-dev` tests only with this step; rebuild every native role and the tests.
+
+## 2026.1.109-dev - 2026-11-05
 
 ### Changed
 
@@ -35,12 +46,6 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 - Baked maps are no longer read at startup: the first instance of a map reads its file on the creating thread, and an error in a map nobody creates goes unreported. A project that relied on startup to validate every baked map can call `Game.LoadStaticMap(mapPid, false)` for each one in a check. Native code that called `MapManager::GetStaticMap()` for a missing file got a failed lookup before and gets a `MapManagerException` now.
 - Native code: replace `mspr->SetLight(corner, map->GetLightData(), map->GetSize())` with `map->SetupSpriteLight(mspr, corner)`; `MapView::GetLightData()` is removed and its old dense-buffer call no longer compiles. Detect callers with `rg -n "GetLightData|SetLight\(" SourceExt` (or the project's native source roots). A custom `TwoDimensionalGrid` subclass must implement `ClearArea`; the pure virtual reports a missing override at compile time.
 - Acceptance owners are the `TwoDimensionalGrid` cases (continent-sized index, area release, bounded load/unload cycles, dynamic/static `ClearArea`), `ClientMaximumSizeMapLoadsWithoutMapSizedWork`, `PathFinding::RoutesMatchOnContinentSizedMaps`, `MapLoadsAndUnloadsContentOfOtherMaps`, `ClientMapLoadsAndUnloadsStaticItemsOfOtherMaps`, and the existing static map, removal, roof, light, scroll and hit-test cases.
-
-
-
-
-
-
 
 ## 2026.1.108-dev - 2026-11-05
 

@@ -111,11 +111,12 @@ public:
 
 private:
     using PendingStaticMap = std::shared_future<shared_ptr<StaticMap>>;
+    using StaticMapRead = std::promise<shared_ptr<StaticMap>>;
 
     struct StaticMapEntry
     {
         PendingStaticMap Data {};
-        uintptr_t ReadToken {};
+        shared_ptr<StaticMapRead> Read {};
     };
 
     auto IsCritterSeeCritter(ptr<const Map> map, ptr<const Critter> cr, ptr<const Critter> target) const -> CritterVisibilityMode;

@@ -1440,7 +1440,7 @@ TEST_CASE("PathFinding::RoutesMatchOnContinentSizedMaps")
         FindPathInput small {MakeBlockedSettings(mpos {5, 10}, mpos {18, 10}, [&wall_at](mpos hex) -> bool { return wall_at(hex.x, hex.y); })};
         small.MapSize = msize {40, 40};
         FindPathInput huge {MakeBlockedSettings(mpos {numeric_cast<mcoord_t>(5 + shift), numeric_cast<mcoord_t>(10 + shift)}, mpos {numeric_cast<mcoord_t>(18 + shift), numeric_cast<mcoord_t>(10 + shift)}, [&wall_at, shift](mpos hex) -> bool { return wall_at(hex.x - shift, hex.y - shift); })};
-        huge.MapSize = msize {128000, 128000};
+        huge.MapSize = msize {numeric_cast<mcoord_t>(128000), numeric_cast<mcoord_t>(128000)};
 
         auto small_output {PathFinding::FindPath(small)};
         auto huge_output {PathFinding::FindPath(huge)};
@@ -2223,7 +2223,7 @@ TEST_CASE("PathFindingCost", "[.]")
 
     // An even shift keeps the hex rows of the settlement aligned; everything around it is blocked
     if constexpr (std::numeric_limits<mcoord_t>::max() >= 128000) {
-        placements.emplace_back(Placement {.Name = "inside a continent", .MapSize = msize {128000, 128000}, .Shift = 120000});
+        placements.emplace_back(Placement {.Name = "inside a continent", .MapSize = msize {numeric_cast<mcoord_t>(128000), numeric_cast<mcoord_t>(128000)}, .Shift = 120000});
     }
 
     auto place {[&](const Request& request, const Placement& placement) -> FindPathInput {

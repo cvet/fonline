@@ -278,8 +278,7 @@ auto MapManager::IsStaticMapReady(const PendingStaticMap& static_map) const -> b
 
 auto MapManager::RequestStaticMap(ptr<const ProtoMap> proto, bool in_background) -> PendingStaticMap
 {
-    auto read_promise {safe_alloc::make_shared<std::promise<shared_ptr<StaticMap>>>()};
-    uintptr_t read_token {reinterpret_cast<uintptr_t>(read_promise.get())};
+    auto read_promise {safe_alloc::make_shared<StaticMapRead>()};
     PendingStaticMap static_map {};
 
     {
@@ -292,10 +291,10 @@ auto MapManager::RequestStaticMap(ptr<const ProtoMap> proto, bool in_background)
         // The pending read is cached at once, so a concurrent request for the same map, from another logic thread or
         // a background load, waits for this read instead of reading the file again
         static_map = read_promise->get_future().share();
-        _staticMaps.emplace(proto, StaticMapEntry {.Data = static_map, .ReadToken = read_token});
+        _staticMaps.emplace(proto, StaticMapEntry {.Data = static_map, .Read = read_promise});
     }
 
-    auto read {[this, proto, read_promise, read_token]() mutable FO_DEFERRED {
+    auto read {[this, proto, read_promise]() mutable FO_DEFERRED {
         try {
             read_promise->set_value(ReadStaticMap(proto));
         }
@@ -304,7 +303,7 @@ auto MapManager::RequestStaticMap(ptr<const ProtoMap> proto, bool in_background)
             {
                 scoped_lock lock {_staticMapsLock};
 
-                if (auto it {_staticMaps.find(proto)}; it != _staticMaps.end() && it->second.ReadToken == read_token) {
+                if (auto it {_staticMaps.find(proto)}; it != _staticMaps.end() && it->second.Read == read_promise) {
                     _staticMaps.erase(it);
                 }
             }

@@ -190,12 +190,15 @@ TEST_CASE("LineTracer")
     {
         // A line is traced relative to its start hex, so the same line far out on a continent-sized map takes the same
         // steps as near the origin; an even shift keeps hex columns of the same parity
-        if constexpr (std::numeric_limits<mcoord_t>::max() < 128000) {
+        constexpr bool wide {std::numeric_limits<mcoord_t>::max() >= 128000};
+
+        if constexpr (!wide) {
             SKIP("Map coordinates are 16-bit in this build");
         }
         else {
+            constexpr mcoord_t far_side {wide ? 128000 : 32000};
             constexpr msize near_map {400, 400};
-            constexpr msize far_map {128000, 128000};
+            constexpr msize far_map {far_side, far_side};
             constexpr int32_t shift {120000};
             random_generator rnd {5112026};
             auto shifted {[](mpos hex) -> mpos { return mpos {numeric_cast<mcoord_t>(hex.x + shift), numeric_cast<mcoord_t>(hex.y + shift)}; }};
@@ -240,7 +243,8 @@ TEST_CASE("LineTracer")
         // Lines tens of thousands of cells long close in on their target by one cell every step and arrive exactly, and
         // the same lines and rays far out on the map take the same steps; an even shift keeps hex columns aligned
         constexpr bool wide {std::numeric_limits<mcoord_t>::max() >= 128000};
-        constexpr msize map_size {wide ? msize {128000, 128000} : msize {32000, 32000}};
+        constexpr mcoord_t map_side {wide ? 128000 : 32000};
+        constexpr msize map_size {map_side, map_side};
         constexpr int32_t span {wide ? 30000 : 7000};
         constexpr int32_t shift {wide ? 60000 : 16000};
         random_generator rnd {5112027};
@@ -305,7 +309,8 @@ TEST_CASE("LineTracer")
         }
         else {
             constexpr bool wide {std::numeric_limits<mcoord_t>::max() >= 128000};
-            constexpr msize map_size {wide ? msize {128000, 128000} : msize {32000, 32000}};
+            constexpr mcoord_t map_side {wide ? 128000 : 32000};
+            constexpr msize map_size {map_side, map_side};
             constexpr int32_t span {wide ? 60000 : 15000};
             random_generator rnd {5112028};
 
