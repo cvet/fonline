@@ -261,10 +261,13 @@ TEST_CASE("ServerNonPersistentCustomEntityDoesNotLeaveRestoreDependency", "[serv
     auto holder_prop {server->GetEntityHolderIdsProp(cr, record_entry)};
     REQUIRE(temporary->IsPersistent());
 
-    server->EntityMngr.MakePersistent(temporary, false, false);
+    server->EntityMngr.MakePersistent(temporary, false, true);
     server->DbStorage.WaitCommitChanges();
 
     CHECK_FALSE(temporary->IsPersistent());
+    CHECK_FALSE(temporary->IsExplicitlyPersistent());
+    auto nested_prop {server->GetEntityHolderIdsProp(temporary, server->Hashes.to_hashed_string("NestedRecords"))};
+    CHECK(temporary->GetProperties()->GetValueFast<vector<ident_t>>(nested_prop.get()).empty());
     CHECK(server->DbStorage.Get(records_collection, temporary_id).Empty());
     CHECK(CollectCustomEntityIds(cr, record_entry) == vector<ident_t> {kept_id, temporary_id});
     CHECK(cr->GetProperties()->GetValueFast<vector<ident_t>>(holder_prop.get()) == vector<ident_t> {kept_id});
@@ -283,8 +286,10 @@ TEST_CASE("ServerNonPersistentCustomEntityDoesNotLeaveRestoreDependency", "[serv
 TEST_CASE("ServerNonPersistentGameHeldEntityDoesNotLeaveRestoreDependency", "[server][entity][database]")
 {
     MAKE_ENTITY_LOADING_SERVER();
-    server->LockForPropertyAccess();
-    auto unlock_singleton {scope_exit([&server]() noexcept { server->UnlockForPropertyAccess(); })};
+    auto ctx {server->RequireCurrentSyncContext()};
+    auto engine_lock {server->GetEntityLock()};
+    ctx->LockSingleton(engine_lock);
+    auto unlock_singleton {scope_exit([&]() noexcept { safe_call([&] { ctx->UnlockSingleton(engine_lock); }); })};
 
     hstring records_collection {server->Hashes.to_hashed_string("LoadingRecords")};
     hstring game_entry {server->Hashes.to_hashed_string("PersistentRecords")};
@@ -294,10 +299,20 @@ TEST_CASE("ServerNonPersistentGameHeldEntityDoesNotLeaveRestoreDependency", "[se
     REQUIRE(game_record->IsPersistent());
     REQUIRE(server->GetProperties()->GetValueFast<vector<ident_t>>(game_prop.get()) == vector<ident_t> {game_record_id});
 
-    server->EntityMngr.MakePersistent(game_record, false, false);
+    server->EntityMngr.MakePersistent(game_record, false, true);
     server->DbStorage.WaitCommitChanges();
 
+    CHECK_FALSE(game_record->IsExplicitlyPersistent());
     CHECK(server->DbStorage.Get(records_collection, game_record_id).Empty());
+    CHECK(server->GetProperties()->GetValueFast<vector<ident_t>>(game_prop.get()).empty());
+
+    server->EntityMngr.MakePersistent(game_record, true, true);
+    server->DbStorage.WaitCommitChanges();
+
+    CHECK(game_record->IsExplicitlyPersistent());
+    CHECK_FALSE(server->DbStorage.Get(records_collection, game_record_id).Empty());
+    CHECK(server->GetProperties()->GetValueFast<vector<ident_t>>(game_prop.get()) == vector<ident_t> {game_record_id});
+    REQUIRE_NOTHROW(server->EntityMngr.DestroyCustomEntity(game_record));
     CHECK(server->GetProperties()->GetValueFast<vector<ident_t>>(game_prop.get()).empty());
 }
 

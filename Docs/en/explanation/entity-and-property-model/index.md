@@ -199,7 +199,7 @@ Entities can hold other entities under named entries. Holder metadata lives in `
 
 `Persistent` entries store children of persistent holders or Game; other entries stay temporary. Validate children and membership through unload/load. Critter children restore before `OnCritterPreLoad`; game callbacks restore or finish state.
 
-The common persistent fields `CustomHolderId` and `CustomHolderEntry` let custom entities record holder relationships. `EntityManagerApi` provides custom-entity creation, lookup, and destruction hooks:
+The common persistent fields `CustomHolderId` and `CustomHolderEntry` let custom entities record holder relationships. Custom types register all three common fields at the same indices as exported types, so `MakePersistent()` records explicit persistence on a custom entity like on any other entity. `EntityManagerApi` provides custom-entity creation, lookup, and destruction hooks:
 
 - `CreateCustomInnerEntity()`
 - `CreateCustomEntity()`

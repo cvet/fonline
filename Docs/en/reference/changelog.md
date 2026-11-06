@@ -16,6 +16,17 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Fixed
 
+- Register the shared `ExplicitlyPersistent` core property for custom entity types as well. Custom types registered only `CustomHolderId` and `CustomHolderEntry`, so `MakePersistent()` with an explicit request, including the script `Entity.MakePersistent(bool)`, wrote the flag into the custom type's next property and failed or corrupted it.
+- Regenerate the API, image-format, map-format and prototype-format references, whose source anchors went stale with the SPDX header change.
+
+### Migration
+
+- Baseline `320c982767` (`2026.1.113-dev`) to `2026.1.114-dev`; central `MigrationRule Version` `0.0.87` to `0.0.88`. Every custom type gains the persistent `bool ExplicitlyPersistent` core property right after `CustomHolderEntry`, which moves the registration index of each later custom-type property by one. Reconfigure, rebuild every native role and rebake metadata and scripts together; mixed builds and resource sets are rejected by the compatibility check. Stored documents keep their named fields and need no conversion: a missing `ExplicitlyPersistent` reads as `false`. Scripts that call `Entity.MakePersistent(bool)` on custom entities now work instead of failing. Roll back the binaries and resources together.
+
+## 2026.1.113-dev - 2026-11-06
+
+### Fixed
+
 - Keep every holder's restore index equal to the held entities that have their own records: map, critter-inventory and nested-container lists for items, `Map.CritterIds` for critters that are not player-controlled, `Location.MapIds` for maps and persistent holder entries for custom entities. Attaching or detaching a persistent entity, promotion and demotion change the listing strictly; a temporary entity leaves it untouched. Promotion records children before their holder and demotion removes a holder's record before its children's, so an interrupted change leaves unreferenced records rather than references to missing ones.
 - Validate the holder of the entity's restore index before changing persistence flags, storage or restore membership. Cover rejection in both directions with two workers, and real removal, destruction and unload/load of items, critters, maps and custom entities.
 

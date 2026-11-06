@@ -194,8 +194,10 @@ auto EngineMetadata::RegisterEntityType(string_view name, bool exported, bool is
     if (!exported) {
         RegisterEnumGroup(strex("{}Property", name), "uint16", {{"None", 0}});
 
+        // Custom types carry every shared core property at the indices EntityProperties uses for exported types
         entry.first->second.PropRegistrar->RegisterProperty({"Common", "ident", "CustomHolderId", "Persistent", "CoreProperty", "SharedProperty"});
         entry.first->second.PropRegistrar->RegisterProperty({"Common", "hstring", "CustomHolderEntry", "Persistent", "CoreProperty", "SharedProperty"});
+        entry.first->second.PropRegistrar->RegisterProperty({"Common", "bool", "ExplicitlyPersistent", "Persistent", "CoreProperty", "SharedProperty"});
     }
 
     auto type {RegisterBaseType(name)};

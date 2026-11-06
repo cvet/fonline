@@ -7,12 +7,23 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"b4aec5d5ef01e02dc329ab2ff3ec90e0236e5ba491eb53c9616b2d96d0f6531e"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"34eed156123a3bde362498542b52284c248d981ac895a778cef2c32b4d550a4d"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
 ## Current - 2026-11-06
+
+### Исправлено
+
+- Общее core-свойство `ExplicitlyPersistent` теперь регистрируется и для custom-типов сущностей. Custom-типы регистрировали только `CustomHolderId` и `CustomHolderEntry`, поэтому `MakePersistent()` с явным запросом, включая скриптовый `Entity.MakePersistent(bool)`, записывал флаг в следующее свойство custom-типа и падал или портил его.
+- Перегенерированы справочники API, image-format, map-format и prototype-format, чьи ссылки на исходники устарели после замены лицензионных заголовков на SPDX.
+
+### Миграция
+
+- База `320c982767` (`2026.1.113-dev`) → `2026.1.114-dev`; центральный `MigrationRule Version` `0.0.87` → `0.0.88`. Каждый custom-тип получает persistent core-свойство `bool ExplicitlyPersistent` сразу после `CustomHolderEntry`, поэтому индекс регистрации каждого следующего свойства custom-типа сдвигается на единицу. Переконфигурируйте, пересоберите все native-роли и перезапеките метаданные и скрипты вместе; смешанные сборки и наборы ресурсов отклоняются проверкой совместимости. Сохранённые документы хранят поля по именам и конвертации не требуют: отсутствующее `ExplicitlyPersistent` читается как `false`. Скрипты, вызывающие `Entity.MakePersistent(bool)` для custom entities, теперь работают вместо отказа. Откатывайте бинарники и ресурсы вместе.
+
+## 2026.1.113-dev - 2026-11-06
 
 ### Исправлено
 
