@@ -239,21 +239,22 @@ internal static class Program
                  Check(ScriptEntryNames.Describe(ExampleGame.DispatchProbe.MakeLambda()) == "DispatchProbe::MakeLambda",
                        "A lambda is not named after the script method that wrote it");
              }),
-            ("an async remote call is named after its handler, not the adapter that wraps it",
+            ("an async remote call is named after its own method",
              () =>
              {
                  Native.RegisteredRemoteCalls.Clear();
                  Native.RegisteredRemoteCallHandlers.Clear();
+                 Native.RegisteredRemoteCallParameterCounts.Clear();
                  RemoteCallScriptFuncs.RegisterRemoteCalls();
                  int asyncCall = Native.RegisteredRemoteCalls.IndexOf("AsyncRemote");
                  int voidCall = Native.RegisteredRemoteCalls.IndexOf("VoidRemote");
                  Check(asyncCall >= 0 && voidCall >= 0, "The remote call probes were not registered");
                  string asyncName = ScriptEntryNames.Describe(Native.RegisteredRemoteCallHandlers[asyncCall]);
                  string voidName = ScriptEntryNames.Describe(Native.RegisteredRemoteCallHandlers[voidCall]);
-                 Check(asyncName == "DispatchProbe::AsyncRemote (via RemoteCallScriptFuncs::ObserveTaskHandler)",
-                       "An async remote call is named after the adapter instead of its handler: " + asyncName);
+                 Check(asyncName == "DispatchProbe::AsyncRemote",
+                       "An async remote call is not named after its own method: " + asyncName);
                  Check(voidName == "DispatchProbe::VoidRemote",
-                       "A remote call that needs no adapter is not named after its own method: " + voidName);
+                       "A void remote call is not named after its own method: " + voidName);
                  Action callback = ExampleGame.DispatchProbe.NoArgs;
                  string capturingName =
                      ScriptEntryNames.Describe(ExampleGame.DispatchProbe.MakeCapturingLambda(callback));
@@ -261,6 +262,50 @@ internal static class Program
                        "A lambda holding a callback beside its own state was renamed after that callback: " +
                            capturingName);
              }),
+            ("snapshot work accounting follows task completion and cancellation",
+             () =>
+             {
+                 PropertyInfo? pending =
+                     typeof(ScriptExceptions)
+                         .GetProperty("PendingTaskCount", BindingFlags.Static | BindingFlags.NonPublic);
+                 Check(pending != null, "Snapshot eligibility cannot observe unfinished managed tasks");
+                 int ReadPending() => (int)pending!.GetValue(null)!;
+                 int before = ReadPending();
+                 TaskCompletionSource completion = new TaskCompletionSource();
+                 ScriptExceptions.ObserveTask(completion.Task);
+                 Check(ReadPending() == before + 1, "An unfinished managed task did not block snapshot capture");
+                 completion.SetResult();
+                 Check(ReadPending() == before, "A completed managed task left a snapshot blocker");
+                 TaskCompletionSource cancelled = new TaskCompletionSource();
+                 ScriptExceptions.ObserveTask(cancelled.Task);
+                 Check(ReadPending() == before + 1, "A second unfinished task was not observed");
+                 cancelled.SetCanceled();
+                 Check(ReadPending() == before, "Cancellation left a permanent snapshot blocker");
+             }),
+            ("snapshot work accounting sees queued continuations",
+             () =>
+             {
+                 PropertyInfo? pending =
+                     typeof(ScriptSynchronizationContext)
+                         .GetProperty("PendingWorkCount", BindingFlags.Static | BindingFlags.NonPublic);
+                 Check(pending != null, "Snapshot eligibility cannot observe queued managed continuations");
+                 long ReadPending() => (long)pending!.GetValue(null)!;
+                 long before = ReadPending();
+                 bool invoked = false;
+
+                 using (ScriptSynchronizationContext context = ScriptSynchronizationContext.Enter())
+                 {
+                     context.Post(
+                         _ => invoked = true,
+                         null);
+                 }
+
+                 Check(ReadPending() == before + 1, "A queued continuation did not block snapshot capture");
+                 ScriptSynchronizationContext.Pump();
+                 Check(invoked, "The queued callback was not executed");
+                 Check(ReadPending() == before, "A completed continuation left a snapshot blocker");
+             }),
+            ("remote call registration exposes direct Task and Action handlers", RemoteCallCompletionScenarios.Run),
             ("a resumed await is named after its async method",
              () =>
              {
@@ -392,6 +437,44 @@ internal static class Program
                  Check(ExampleGame.DispatchProbe.EnumValue == CritterProperty.Strength,
                        "An any argument did not reach an enum parameter");
              }),
+            ("engine delay retains typed duration and synchronous callback guard",
+             () =>
+             {
+                 var delay = ScriptTask.Delay(new timespan(1));
+                 Check(Game.LastTimerDuration.nanoseconds == 1 && !delay.IsCompleted,
+                       "A typed delay was rounded or completed before the engine callback");
+                 Game.LastTimerCallback!();
+                 Check(delay.IsCompletedSuccessfully, "The engine callback did not complete the delay");
+                 var millisecondDelay = ScriptTask.Delay(17);
+                 Check(Game.LastTimerDuration.nanoseconds == 17_000_000, "The integer overload lost millisecond units");
+                 Game.LastTimerCallback!();
+                 Check(millisecondDelay.IsCompletedSuccessfully, "The millisecond adapter lost completion");
+                 using (ScriptSynchronizationContext.Enter(synchronous: true))
+                 {
+                     ExpectThrows<InvalidOperationException>(() => _ = ScriptTask.Delay(new timespan(1)),
+                                                             "A synchronous callback yielded a typed timer");
+                 }
+             }),
+            ("time constructors reject overflow at unit boundaries",
+             () =>
+             {
+                 Check(new timespan(long.MaxValue / 1000, 1).nanoseconds == long.MaxValue / 1000 * 1000,
+                       "A valid large microsecond duration was narrowed");
+                 Check(new synctime(long.MaxValue, 2).milliseconds == long.MaxValue,
+                       "A valid millisecond clock value was scaled again");
+                 Check(new synctime(long.MinValue, 0).milliseconds == long.MinValue / 1_000_000,
+                       "Sub-millisecond clock conversion did not truncate toward zero");
+                 ExpectThrows<OverflowException>(() => _ = new timespan(long.MaxValue, 1),
+                                                 "Microsecond overflow was accepted");
+                 ExpectThrows<OverflowException>(() => _ = new timespan(long.MinValue, 2),
+                                                 "Millisecond underflow was accepted");
+                 ExpectThrows<OverflowException>(() => _ = new timespan(long.MaxValue, 3),
+                                                 "Second overflow was accepted");
+                 ExpectThrows<OverflowException>(() => _ = new synctime(long.MaxValue, 3),
+                                                 "Clock second overflow was accepted");
+                 ExpectThrows<ArgumentException>(() => _ = new timespan(1, 99),
+                                                 "An invalid duration unit was accepted");
+             }),
             ("duration formatting across signs and extremes",
              () =>
              {
@@ -443,7 +526,16 @@ internal static class Program
             Console.WriteLine("FAIL exception scope follows its logical flow: " + ex.Message);
         }
 
-        Console.WriteLine($"{cases.Length + 2 - failures}/{cases.Length + 2} passed");
+        try {
+            await ExceptionReportCaptureIsBounded();
+            Console.WriteLine("PASS exception report capture is bounded to its logical flow");
+        }
+        catch (Exception ex) {
+            failures++;
+            Console.WriteLine("FAIL exception report capture is bounded to its logical flow: " + ex.Message);
+        }
+
+        Console.WriteLine($"{cases.Length + 3 - failures}/{cases.Length + 3} passed");
         return failures == 0 ? 0 : 1;
     }
 
@@ -473,6 +565,65 @@ internal static class Program
         }
 
         return innerCount == 1 && outer.Count == 2;
+    }
+
+    private static async Task ExceptionReportCaptureIsBounded()
+    {
+        int globalBefore = ScriptExceptions.GlobalCount;
+        int reportsBefore = Native.ReportedExceptions;
+        using ScriptExceptions.Scope outer = ScriptExceptions.OpenScope();
+        ScriptExceptions.Report(new InvalidOperationException("ordinary report"));
+        Check(Native.ReportedExceptions == reportsBefore + 1, "Ordinary reports must reach native notification");
+
+        using ScriptExceptions.Scope capture = ScriptExceptions.OpenCaptureScope();
+        await Task.Yield();
+        ScriptExceptions.Report(new InvalidOperationException("captured report"));
+        Check(Native.ReportedExceptions == reportsBefore + 1,
+              "Captured reports must not request native error handling");
+        Check(Native.LastLog.Contains("System.InvalidOperationException: captured report", StringComparison.Ordinal),
+              "Capture must preserve the reported exception's type and message in the text log");
+        using (ScriptExceptions.Scope nested = ScriptExceptions.OpenScope())
+        {
+            ScriptExceptions.Report(new InvalidOperationException("nested report"));
+            Check(nested.Count == 1, "An ordinary nested scope must retain its own count");
+        }
+        Check(capture.Count == 2 && outer.Count == 3, "Captured reports must remain in all accounting scopes");
+
+        var foreign =
+            new System.Threading.Thread(() => ScriptExceptions.Report(new InvalidOperationException("foreign report")));
+        using (System.Threading.ExecutionContext.SuppressFlow())
+        {
+            foreign.Start();
+        }
+        foreign.Join();
+        Check(Native.ReportedExceptions == reportsBefore + 2 && capture.Count == 2,
+              "Capturing one flow must not hide an unrelated flow's report");
+
+        TaskCompletionSource release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Task lateReport =
+            Task.Run(async () =>
+                     {
+                         await release.Task;
+                         ScriptExceptions.Report(new InvalidOperationException("report after capture disposal"));
+                     });
+        capture.Dispose();
+        release.SetResult();
+        await lateReport;
+        ScriptExceptions.Report(new InvalidOperationException("ordinary report after capture"));
+        Check(Native.ReportedExceptions == reportsBefore + 4,
+              "Disposed captures must not suppress parent or retained child-flow reports");
+
+        using (ScriptExceptions.Scope deferredCapture = ScriptExceptions.OpenCaptureScope())
+        {
+            TaskCompletionSource pending = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            ScriptExceptions.ObserveTask(pending.Task, deferred: true);
+            pending.SetException(new InvalidOperationException("deferred report"));
+            Check(System.Threading.SpinWait.SpinUntil(() => ScriptExceptions.PendingTaskCount == 0, 10000),
+                  "Deferred failure accounting must complete");
+            Check(deferredCapture.Count == 0 && Native.ReportedExceptions == reportsBefore + 5,
+                  "Deferred faults must retain global-only accounting and native notification");
+        }
+        Check(ScriptExceptions.GlobalCount == globalBefore + 7, "Capture must not remove any global fault");
     }
 
     private static void Check(bool condition, string message)
@@ -603,10 +754,72 @@ public static class DispatchProbe
     public static void VoidRemote()
     {
     }
+    public static TaskCompletionSource? RemoteCompletionSource { get; set; }
+
     [ServerRemoteCall]
     public static async Task AsyncRemote()
     {
+        TaskCompletionSource? source = RemoteCompletionSource;
+
+        if (source != null) {
+            await source.Task;
+            return;
+        }
+
         await Task.Yield();
+    }
+    internal static TaskCompletionSource? ZeroParameterRemoteSource;
+    [ServerRemoteCall]
+    public static Task ZeroParameterRemote() => ZeroParameterRemoteSource!.Task;
+
+    internal static TaskCompletionSource? TwoParameterRemoteSource;
+    internal static int RemoteNumber;
+    internal static string RemoteText = "";
+    [ServerRemoteCall]
+    public static Task TwoParameterRemote(int number, string text)
+    {
+        RemoteNumber = number;
+        RemoteText = text;
+        return TwoParameterRemoteSource!.Task;
+    }
+
+    internal static TaskCompletionSource? SixteenParameterRemoteSource;
+    internal static int RemoteWideValue;
+    [ServerRemoteCall]
+    public static Task SixteenParameterRemote(int a, int b, int c, int d, int e, int f, int g, int h, int i, int j,
+                                              int k, int l, int m, int n, int o, int p)
+    {
+        RemoteWideValue = a + 2 * b + 3 * c + 4 * d + 5 * e + 6 * f + 7 * g + 8 * h + 9 * i + 10 * j + 11 * k + 12 * l +
+                          13 * m + 14 * n + 15 * o + 16 * p;
+        return SixteenParameterRemoteSource!.Task;
+    }
+
+    internal static TaskCompletionSource<int>? GenericRemoteSource;
+    [ServerRemoteCall]
+    public static Task<int> GenericRemote() => GenericRemoteSource!.Task;
+
+    [ServerRemoteCall]
+    public static void VoidTwoRemote(int number, string text)
+    {
+        RemoteNumber = number;
+        RemoteText = text;
+    }
+
+    internal static void ResetRemoteCallProbes()
+    {
+        ZeroParameterRemoteSource?.TrySetResult();
+        ZeroParameterRemoteSource = null;
+        TwoParameterRemoteSource?.TrySetResult();
+        TwoParameterRemoteSource = null;
+        SixteenParameterRemoteSource?.TrySetResult();
+        SixteenParameterRemoteSource = null;
+        GenericRemoteSource?.TrySetResult(0);
+        GenericRemoteSource = null;
+        RemoteCompletionSource?.TrySetResult();
+        RemoteCompletionSource = null;
+        RemoteNumber = 0;
+        RemoteText = "";
+        RemoteWideValue = 0;
     }
     public static Action MakeCapturingLambda(Action callback)
     {

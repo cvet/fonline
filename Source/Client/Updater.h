@@ -59,6 +59,7 @@ enum class UpdaterResult : uint8_t
     Failed = 5, // Any other failure of this client: disk, bad data, etc
     MetadataMismatch = 6, // Resources are in sync with the descriptor, yet the server runs another metadata version
     ConnectionFailed = 7, // Server unreachable or the connection dropped mid-update; an environment state, not a client defect
+    SettingsRestartRequired = 8, // Resources are synchronized; changed engine settings require restart before creating game subsystems
 };
 
 auto GetCurrentUpdatePlatform() noexcept -> UpdatePlatform;
@@ -107,11 +108,12 @@ private:
     struct UpdateFile
     {
         int32_t Index {};
-        string Name;
+        string Name {};
         uint64_t Size {};
         uint64_t RemaningSize {};
         uint64_t Hash {};
         bool IsClientBinary {};
+        bool RetriedWholeFile {};
         bool TryPatch {true};
         ResourcePackHeader PackHeader {};
     };
@@ -141,9 +143,9 @@ private:
     // What one verified file was when it was proved intact, so a later run can skip reading it again
     struct VerifiedFileIdentity
     {
-        uint64_t Size;
-        uint64_t WriteTime;
-        uint64_t Content;
+        uint64_t Size {};
+        uint64_t WriteTime {};
+        uint64_t Content {};
     };
 
     struct PackVerification
@@ -197,12 +199,12 @@ private:
     static auto GetUpdateWriteSize(uint64_t remaining_size, size_t received_size) -> size_t;
     static auto ReplaceFileSafely(string_view temp_path, string_view final_path) -> bool;
 
-    ptr<ClientSettings> _settings;
+    ptr<GlobalSettings> _settings;
     ClientConnection _conn;
     CacheStorage _cache;
-    string _binaryDir;
+    string _binaryDir {};
     string _serverMetadataVersion {};
-    optional<UpdaterResult> _result;
+    optional<UpdaterResult> _result {};
     Stage _stage {Stage::WaitingForDirectory};
     nanotime _nextDirectoryAttempt {};
     bool _binariesMode {};
@@ -239,4 +241,3 @@ private:
 };
 
 FO_END_NAMESPACE
-

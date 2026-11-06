@@ -41,13 +41,13 @@ FO_BEGIN_NAMESPACE
 // cannot predict, so a test records the set present up front and drops only what its own run produced
 namespace TexDumpArtifacts
 {
-    [[nodiscard]] inline auto CollectDumpDirs() -> set<string>
+    inline auto CollectDumpDirs() -> set<string>
     {
-        set<string> dirs;
-        std::error_code ec;
+        set<string> dirs {};
+        std::error_code ec {};
 
         for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator(".", ec)) {
-            string name = fs::path_to_string(entry.path().filename());
+            string name {fs::path_to_string(entry.path().filename())};
 
             if (name.starts_with("TexDump_") && entry.is_directory(ec)) {
                 dirs.emplace(std::move(name));

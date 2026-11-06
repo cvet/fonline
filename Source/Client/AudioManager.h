@@ -89,7 +89,7 @@ private:
     int32_t _streamingPortion {};
     uint32_t _soundIdCounter {};
     vector<string> _soundNames {};
-    vector<unique_ptr<Sound>> _playingSounds;
+    vector<unique_ptr<Sound>> _playingSounds {};
     vector<uint8_t> _outputBuf {};
 };
 

@@ -90,7 +90,7 @@ automation, and script helper details.
 
 The baking family is the most mature batch tool group. `Source/Tools/Baker.h` / `.cpp` define the common infrastructure:
 
-- `BakingContext` carries settings, pack name, write callback, existing baked files, and sync/async mode hints.
+- `BakingContext` in `Source/Tools/BakingContext.h/.cpp` encapsulates shared configuration, output checks and writes, image ownership, report attribution, and sync/async mode selection.
 - `BaseBaker` defines `GetName()`, `GetOrder()`, and `BakeFiles()`.
 - `BaseBaker::SetupBakers()` constructs requested built-in bakers and exposes `SetupBakersHook()` for project/external extension.
 - `MasterBaker::BakeAll()` coordinates full resource-pack baking.
@@ -99,7 +99,7 @@ The baking family is the most mature batch tool group. `Source/Tools/Baker.h` / 
 Built-in baker implementations:
 
 - `Source/Tools/MetadataBaker.*` — parses metadata tags and produces metadata resources used by runtime registration.
-- `Source/Tools/ConfigBaker.*` — bakes configuration resources.
+- `Source/Tools/ConfigBaker.*` — bakes configuration resources; the same module contains `ClientConfigBaker : ConfigBaker`, which writes complete `.fomain-client` settings.
 - `Source/Tools/RawCopyBaker.*` — copies selected resources without transformation.
 - `Source/Tools/AudioBaker.*` — validates Ogg/Vorbis and converts supported WAV inputs to the common runtime Vorbis payload while preserving authored paths.
 - `Source/Tools/ImageBaker.*` — imports image/sprite/frame formats including classic Fallout-family formats and PNG/TGA.

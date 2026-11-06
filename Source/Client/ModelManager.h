@@ -45,6 +45,8 @@
 
 FO_BEGIN_NAMESPACE
 
+inline constexpr timespan MODEL_DEFAULT_MOVE_TRANSITION_TIME {std::chrono::milliseconds {250}};
+
 class IAppRender;
 class EngineMetadata;
 struct ModelBone;
@@ -88,17 +90,17 @@ private:
     ptr<IAppRender> _render;
     ptr<GameTimer> _gameTime;
     ptr<AnimationResolver> _animNameResolver;
-    TextureLoader _textureLoader;
-    ParticleSceneBackgroundProvider _sceneBackgroundProvider;
+    TextureLoader _textureLoader {};
+    ParticleSceneBackgroundProvider _sceneBackgroundProvider {};
     bool _directSceneDraw {};
     ParticleManager _particleMngr;
     set<hstring> _processedFiles {};
     vector<unique_ptr<ModelBone>> _loadedModels {};
     vector<unique_ptr<ModelInformation>> _allModelInfos {};
     vector<unique_ptr<ModelHierarchy>> _hierarchyFiles {};
-    float32_t _moveTransitionTime {0.25f};
+    timespan _moveTransitionTime {MODEL_DEFAULT_MOVE_TRANSITION_TIME};
     float32_t _globalSpeedAdjust {1.0f};
-    int32_t _animUpdateThreshold {};
+    timespan _animUpdateThreshold {};
     color4 _lightColor {};
     hstring _headBone {};
     unordered_set<hstring> _legBones {};

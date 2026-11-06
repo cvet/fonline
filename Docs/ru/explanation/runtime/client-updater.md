@@ -5,7 +5,7 @@ locale: ru
 document_id: client-updater
 permalink: /Docs/ru/explanation/runtime/client-updater.html
 ---
-<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"890f5da56c0c61d9675016ac14a9e4db0cf6ff32451f2e6111bab575705dd959"} -->
+<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"51e5e915b8b9c5c70da7be9d77dcbbbe3ff39cee81c412db1efacdf5c8f19349"} -->
 # Разделение клиентской среды выполнения и обновление
 
 > Документация движка по переиспользуемому ABI между клиентским host и runtime,
@@ -404,7 +404,7 @@ Backward-compatible fallback отсутствует. Старый протоко
 state, file index и portion counter удалён при введении `FO_UPDATER_VERSION`.
 Client и server обязаны использовать одно поколение.
 
-Updater держит lock writable resource directory на протяжении всего запуска. Второй клиент с тем же каталогом ждёт и повторяет попытку, не соревнуясь за запись. Под lock восстанавливаются прерванные замены `.fobackup`; полная база продвигается только после проверки physical hash и каталога, а patch удаляется только после успешного продвижения. Append записывает и flush-ит payload и полный каталог до commit footer, поэтому ошибка оставляет прежний commit читаемым. Перед `ResourcesReady` повторно сверяются все объявленные ресурсы, затем — metadata. Packs фиксируются независимо; частичный набор не допускается в игру, но общего atomic switch и rollback всех packs нет. Ошибка обработчика обновления означает `Failed`, даже если вызванный ею disconnect случился при наличии ожидаемых файлов; действительно молчащий сервер ограничен `ClientNetwork.PingTimeout` и даёт `ConnectionFailed`.
+Updater держит lock writable resource directory на протяжении всего запуска. Второй клиент с тем же каталогом ждёт и повторяет попытку, не соревнуясь за запись. Под lock восстанавливаются прерванные замены `.fobackup`; полная база продвигается только после проверки physical hash и каталога, а patch удаляется только после успешного продвижения. Append записывает и flush-ит payload и полный каталог до commit footer, поэтому ошибка оставляет прежний commit читаемым. Перед `ResourcesReady` повторно сверяются все объявленные ресурсы, затем — metadata. Packs фиксируются независимо; частичный набор не допускается в игру, но общего atomic switch и rollback всех packs нет. Ошибка обработчика обновления означает `Failed`, даже если вызванный ею disconnect случился при наличии ожидаемых файлов; действительно молчащий сервер ограничен `ClientNetwork.PingTimeout` и даёт `ConnectionFailed`. Сбой транспорта после ответа сервера на рукопожатие, например ошибка отправки UDP посреди скачивания, идёт тем же путём: `ClientConnection` не открывает сессию заново по TCP, потому что новое соединение — это новая серверная сессия, список обновления которой этот updater уже принял. Updater завершается с `ConnectionFailed`, подтверждённые байты временного файла остаются на диске, а следующий запуск докачивает их с обычными проверками докачки.
 
 ## Серверная сторона: `UpdaterBackend`
 
@@ -446,7 +446,7 @@ version с версией, загруженной server. Server исполня�
 | `Network.UpdateFileMaxPortionSize` | top-level | максимум bytes в одном `UpdateFileData`; влияет на throughput и память message, default 1 000 000 |
 | `ServerNetwork.UpdateFilesInMemory` | top-level и `[SubConfig]` | `True` держит packaged payload в RAM, `False` читает portions с disk; default `False` |
 | `Network.ForceMetadataVersion` | top-level | только для tests: переопределяет metadata version, сообщаемую client, чтобы смоделировать mismatch без второй bake; в shipped configs должна быть empty |
-| `Baking.PlatformBinaries` | top-level | каталог чтения и package staging target-specific runtime, default `PlatformBinaries` |
+| `Common.PlatformBinariesPath` | top-level | каталог чтения и package staging target-specific runtime, default `PlatformBinaries` |
 | `Common.UserWritablePath` | common | **Read-only** writable root для всех runtime-записей: logs, cache, resource overlay, self-updated binaries и server database. Он разрешается до чтения config и не задаётся в нём: `--Common.UserWritablePath <path>` указывает путь; иначе marker `INSTALLED` рядом с executable выбирает per-OS user-data directory плюс имя проекта; при отсутствии обоих значение остаётся пустым и пути считаются от working directory. |
 
 Автоматического выбора memory/disk mode в C++ нет. Проект задаёт режим явно для
@@ -465,9 +465,9 @@ Portable build хранит cache, log и self-update относительно w
 Resolution идемпотентен и создаёт выбранный root. После загрузки имён settings `LoadAppSettings` также создаёт cache и client-resource-overlay subdirectories. Если root нельзя определить или создать, записывается warning и процесс безопасно возвращается к working directory. Разрешённое значение доступно всем приложениям, включая server, как read-only `Common.UserWritablePath`.
 
 Через `fs::make_writable_path(UserWritablePath, relative)` в writable root попадают cache, log, resource patches и self-updated native runtime. `GetClientResources()` выбирает для каждого логического pack один effective source: writable полную базу при её наличии, иначе read-only installed/APK базу, и только привязанный к ней writable `Pack.patch.fores`. Порядок настроенных packs сохраняется. Gameplay и updater проверяют одинаковую metadata version из этого вида. Splash выбирается с тем же writable-first правилом; повреждённый splash журналируется и пропускается, но не останавливает обновление, которое должно его исправить. Packaged-режим и выбор resource root
-в updater читают уже загруженный снимок `Common.Packaged`; прямые проверки marker
-исполняемого файла остаются только в bootstrap до настроек и в физическом выборе
-архива против каталога в файловой системе.
+в updater читают уже загруженный снимок `Common.Packaged`; из него же caller передаёт
+явный режим монтирования в файловую систему. Прямые проверки marker исполняемого
+файла остаются только в application bootstrap.
 
 Этот же precedence является путём восстановления после смены `METADATA_FILE_VERSION`:
 новый runtime считает нечитаемый старый install pack не имеющим локальной metadata
@@ -530,13 +530,13 @@ Packaging может передать reuse детерминированных r
 получает операции `restore`, `store` и `release` с ключом содержимого и
 compression и минимального выигрыша; miss или явно недоступный optional cache переходят к локальному созданию. Восстановленный `.fores` всё равно проходит полную проверку payload, поэтому caching не ослабляет проверку updater.
 
-Internal config patch area имеет фиксированную движком ёмкость 20000 bytes;
+Internal config patch area имеет фиксированную движком ёмкость 40000 bytes;
 подключаемые проекты не могут менять её размер. Перед записью bootstrap config
 `package.py` читает реальный reserved marker из binary.
 
 `build_runtime_update_target_name` образует `Windows-win64`, `Linux-x64`,
 `Linux-arm64`, `macOS-arm64`, `Android-arm64` и другие targets. Profiling получает
-`_Profiling`; OGL staged отдельно с `ForceOpenGL=1`. Для
+`_Profiling`. Для
 `FO_BINARY_OUTPUT_POSTFIX`, например `Steam`, каждый payload получает `_Steam`,
 чтобы варианты не перезаписывались. `extract_binary_entry_postfix` сначала
 удаляет как порядок packager (`-Profiling_X-Debug`), так и фактическое имя
@@ -708,3 +708,56 @@ server missing payload, repeated outdated launches, selector на каждой
 - [Архитектура движка](../architecture/) - владение engine, application и build layers.
 - [Нативная отладка и отладка AngelScript](../../troubleshooting/debugging.md) - выбор host/runtime binary для debugger.
 - Release-документация встраивающего проекта - его package profiles и альтернативные distribution channels.
+
+## Обновление полной конфигурации
+
+Перед инициализацией упакованный клиент читает выбранный `.fomain-client`
+из `Metadata`. Прежний `--config` выбирает соответствующий профиль движка/bootstrap `.fomain-embedded-client` для встраивания в бинарник.
+Архив сохраняет метаданные своей стороны, общие файлы и один конфиг. Серверная
+поставка разделяет ресурсы запуска с `.fomain-server` и раздачи с `.fomain-client`.
+[Конфигурация и источники данных](../../reference/settings/configuration-and-data-sources.md#скачиваемая-конфигурация-клиента)
+определяют файл, приоритеты и проверки.
+
+После проверки ресурсов и metadata `Updater::FinishResourcesUpdate` сравнивает
+скачанный файл с сохранённым ресурсным текстом. Неизменный текст повторно не
+разбирается. Изменённый профиль один раз применяется к чистому кандидату;
+`ApplyAppSettingsOverrides` восстанавливает local preferences, сохранённые CLI
+operations и auto в обычном порядке запуска.
+
+`GlobalSettings::HasEngineSettingsChanges` сравнивает типизированные поля движка и
+объявления resource packs. Отличие возвращает `UpdaterResult::SettingsRestartRequired`:
+экран ждёт закрытия, headless-клиент завершается. Перед выходом
+`PreserveLocalConfig` переносит preferences при смене cache path, если в новом
+каталоге их ещё нет, затем persistent writes сбрасываются. Native-модули не
+продвигаются; этот успешный переход конфигурации не считается падением.
+
+При равных движковых настройках `ApplyGameSettings` заменяет только custom/game
+values, удаляет отсутствующие значения, увеличивает generation custom settings и
+сохраняет новый ресурсный текст. Storage существующих native-полей не меняется.
+Updater возвращает `ResourcesReady`; persistent writes сбрасываются, а Web ждёт
+завершения flush до создания ClientEngine с новыми игровыми настройками в том же процессе. Комментарии, порядок строк и эквивалентные native
+literals не вызывают restart. CLI сохраняет приоритет над preferences и ресурсами.
+
+Replay arguments владеют строками, сохраняют повторные/append operations и живут
+независимо от исходного argv. Явные native startup overrides сохраняются без
+повторного вызова проектных initialization hooks. Уже созданные такими hooks
+службы сохраняют свои экземпляры; позднее создаваемый движок читает обновлённые
+игровые настройки. Пересоберите и переупакуйте согласованные native-клиенты и
+runtime libraries, затем проверьте game-only и native-change пути на каждой
+поставляемой платформе. Новых wire, metadata или resource formats нет.
+
+Только живой updater знает прежний cache path; ручная offline-замена ресурсов
+по-прежнему требует явного переноса preferences. При абсолютном installed
+resource path writable overlay остаётся в `<UserWritablePath>/Resources`.
+
+Профили относительно нуля требуют native compatibility `0.0.87`: пересоберите все
+native-роли и выполните общий rebake. Новый native runtime должен поступить раньше
+этих ресурсов; платформам без native self-update нужен новый bundle. Не сочетайте
+новые профили с runtime, восстанавливающим defaults или game metadata baseline.
+
+Optional bootstrap standalone-клиента проверяет комментарий native-совместимости
+профиля до разбора настроек. Поэтому native-first update может перезапуститься
+на embedded fallback, пока старые ресурсные настройки ожидают синхронизации.
+Серверный bootstrap читает base packs без клиентских writable replacements.
+
+Встроенные игровые клиенты при interthread-соединении используют общую клиентскую раздачу, включая её managed runtime pack. Их handshake запрашивает общее описание обновлений; обычные сетевые игровые клиенты и все updater-соединения сохраняют платформенное описание. В обоих случаях хеши ресурсов проверяются относительно выбранного описания.

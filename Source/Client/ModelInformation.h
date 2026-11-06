@@ -81,7 +81,7 @@ struct ModelAnimationData
     float32_t SpeedAjust {};
     vector<int32_t> DisabledLayer {};
     vector<hstring> DisabledMesh {};
-    vector<tuple<string, hstring, int32_t>> TextureInfo {}; // Name, mesh, num
+    vector<tuple<string, hstring, int32_t>> TextureInfo {}; // Name, mesh, slot
     vector<tuple<string, hstring>> EffectInfo {}; // Name, mesh
     vector<ptr<ModelCutData>> CutInfo {};
     optional<ModelBounds3D> Bounds {};
@@ -147,21 +147,21 @@ private:
         int32_t LayerValue {};
     };
 
-    [[nodiscard]] auto Load(string_view name) -> bool;
-    [[nodiscard]] auto LoadBaked(string_view name, data_reader& reader) -> bool;
-    [[nodiscard]] auto ReadBakedModelDescriptionLink(data_reader& reader, string_view context) const -> BakedModelDescriptionLink;
-    [[nodiscard]] auto ReadBakedModelDescriptionCutInfo(data_reader& reader) const -> BakedModelDescriptionCutInfo;
-    [[nodiscard]] auto ReadBakedModelDescriptionAnimationEntry(data_reader& reader) const -> BakedModelDescriptionAnimationEntry;
-    [[nodiscard]] auto ReadBakedModelDescriptionAnimLayerValue(data_reader& reader) const -> BakedModelDescriptionAnimLayerValue;
+    auto Load(string_view name) -> bool;
+    auto LoadBaked(string_view name, data_reader& reader) -> bool;
+    auto ReadBakedModelDescriptionLink(data_reader& reader, string_view context) const -> BakedModelDescriptionLink;
+    auto ReadBakedModelDescriptionCutInfo(data_reader& reader) const -> BakedModelDescriptionCutInfo;
+    auto ReadBakedModelDescriptionAnimationEntry(data_reader& reader) const -> BakedModelDescriptionAnimationEntry;
+    auto ReadBakedModelDescriptionAnimLayerValue(data_reader& reader) const -> BakedModelDescriptionAnimLayerValue;
 
     void IndexDirectPoseJoints();
     void IndexAnimationPoseJoints(const ModelAnimationRuntimeRig& rig);
     void IndexPoseJointLookups();
-    [[nodiscard]] auto CalculateHierarchyBounds() const -> optional<ModelBounds3D>;
-    [[nodiscard]] auto CreateCutShape(ptr<const MeshData> mesh) const -> ModelCutData::Shape;
-    [[nodiscard]] auto GetAnimationIndex(CritterStateAnim& state_anim, CritterActionAnim& action_anim, nptr<float32_t> speed) -> int32_t;
-    [[nodiscard]] auto GetAnimationIndexEx(CritterStateAnim state_anim, CritterActionAnim action_anim, nptr<float32_t> speed) const -> int32_t;
-    [[nodiscard]] auto CreateInstance() -> unique_ptr<ModelInstance>;
+    auto CalculateHierarchyBounds() const -> optional<ModelBounds3D>;
+    auto CreateCutShape(ptr<const MeshData> mesh) const -> ModelCutData::Shape;
+    auto GetAnimationIndex(CritterStateAnim& state_anim, CritterActionAnim& action_anim, nptr<float32_t> speed) -> int32_t;
+    auto GetAnimationIndexEx(CritterStateAnim state_anim, CritterActionAnim action_anim, nptr<float32_t> speed) const -> int32_t;
+    auto CreateInstance() -> unique_ptr<ModelInstance>;
 
     ptr<ModelManager> _modelMngr;
     string _fileName {};

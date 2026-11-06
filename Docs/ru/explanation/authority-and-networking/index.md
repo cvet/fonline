@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/authority-and-networking/
 ---
 
 # Сеть и авторитетность
-<!-- docs-translation: {"document_id":"networking","locale":"ru","source_path":"Docs/en/explanation/authority-and-networking/index.md","source_sha256":"11e1e462e60cc761de6ff39334c130c50dbb80e80e94249c5d40fd8e1e24527b"} -->
+<!-- docs-translation: {"document_id":"networking","locale":"ru","source_path":"Docs/en/explanation/authority-and-networking/index.md","source_sha256":"525b69bdfe1d14f5fc12dbc3ba00855c5fc512a5b9590ce84851fa8fabb4a8e4"} -->
 Этот документ описывает переиспользуемые сетевые слои движка: защищённый канал, буферы сообщений, обработку хешей, клиентские и серверные соединения и упорядоченный UDP-транспорт.
 
 Используйте его при изменении `Source/Common/SecureChannel.*`, `NoiseProtocol.*`, `NetBuffer.*`, `NetworkUdp.*`, клиентских и серверных соединений или сетевых тестов.
@@ -17,6 +17,8 @@ permalink: /Docs/ru/explanation/authority-and-networking/
 Движок владеет защищённым каналом, транспортами, framing сообщений, упорядоченным UDP и интерфейсами соединений. Подключающий проект владеет топологией развёртывания, закреплёнными боевыми ключами, ротацией, эксплуатационной политикой и проектным использованием команд.
 
 Не документируйте здесь хосты, порты или инфраструктуру релиза конкретного проекта.
+
+Начальные снимки динамических предметов передают только свойства с объявленной синхронизацией. Доступность Common сама по себе не разрешает передачу; неизменяемые значения и NoSync остаются локальными либо берутся из общего прототипа. Правила синхронизации и фильтрации владельческих/частных данных определяет [Entity Model](../entity-and-property-model/).
 
 ## Проверенные пути исходного кода
 
@@ -106,6 +108,8 @@ permalink: /Docs/ru/explanation/authority-and-networking/
 
 Синхронизация свойств и передача состояния сущностей должны использовать эти помощники, а не самодельные бинарные раскладки.
 
+`NetBuffer::GrowBuf` проверяет запрошенную итоговую длину в байтах и каждое удвоение ёмкости через `checked_*` до изменения размера. Буфер с нулевым начальным размером растёт обычным образом; арифметическое переполнение даёт `OverflowException`, сохраняя накопленные байты и позиции. Описанные ниже проверки длины от другой стороны и границ текущего frame по-прежнему выполняются до выделения памяти или декодирования.
+
 <a id="inbound-hardening-untrusted-client-server"></a>
 
 ## Защита входящего потока (недоверенный клиент → сервер)
@@ -119,7 +123,7 @@ permalink: /Docs/ru/explanation/authority-and-networking/
 - **Runtime-предел remote call.** `ServerNetwork.MaxRemoteCallPayloadSize` (по умолчанию 1 МиБ) задаёт общий серверный предел decoded RPC. Эффективный предел payload — меньшее ненулевое значение этой настройки и per-call `MaxBytes`; структурный предел вызова является семантической границей протокола, но не заменяет общий предел для враждебного input.
 - **Бюджет сообщений одного прохода.** Сервер извлекает не более `ServerNetwork.MaxMessagesPerProcessPass` сообщений одного соединения за один проход worker-задания и затем уступает выполнение. Периодическое задание игрока планируется снова, а остаток буфера обрабатывается следующим проходом; одно флудящее соединение не монополизирует поток, общий с заданиями мира.
 - **Окно переупорядочивания UDP.** `UdpTransportOptions.MaxReorderAhead`, на сервере задаваемый `ServerNetwork.MaxUdpReorderAhead`, ограничивает, насколько далеко вперёд от ожидаемого sequence карта переупорядочивания `_receivedPackets` хранит пакеты. Пакеты вне окна отбрасываются и повторно отправляются отправителем, поэтому peer, не присылающий следующий пакет по порядку, не может неограниченно увеличивать карту.
-- **Ошибки разбора до рукопожатия остаются эксплуатационным шумом.** Неверный payload, вызвавший `NetBufferException` до `ServerConnection::IsHandshakeComplete()`, один раз записывается как предупреждение invalid-handshake с remote host/port и приводит к жёсткому отключению без глобального exception reporter. После завершённого рукопожатия то же исключение следует обычному пути отчёта. Различие закрепляет `ServerRejectsMalformedPreHandshakePayloadWithoutExceptionReport` из `Source/Tests/Test_ClientServerIntegration.cpp`.
+- **Нарушения формата кадра пиром остаются эксплуатационным шумом на любой стадии сессии.** `NetBufferException` (включая `UnknownMessageException`), возникшее при чтении входа соединения в `NotLoggedInPlayerJob()` или `PlayerJob()`, означает, что пир нарушил формат кадра: до рукопожатия, после него или после входа. Задание один раз пишет предупреждение с remote host/port, сообщением и контекстными значениями исключения, жёстко отключает это соединение с `ProtocolError` и не вызывает глобальный exception reporter. В неинтерактивном режиме reporter завершает приложение при любом отчёте, а публичного рукопожатия достаточно, чтобы дойти до этих заданий, поэтому отчёт о нарушении кадра позволил бы одному пиру завершить headless-сервер для всех остальных соединений. Первое сообщение приложения с типом, отличным от `Handshake`, тоже отклоняется как нарушение протокола: незавершённый вход сбрасывается до отключения пира. Исключения других типов, включая внутренние сбои verification, по-прежнему доходят до reporter. `Ping` — это ровно флаг ответа и часы отправителя; более короткий или длинный кадр отклоняется этим путём, то есть равенство длины для каждого сообщения с фиксированной раскладкой обеспечивает `NetInBuffer`, а не обработчик. Контекстные значения `NetBufferException` фиксируются до сброса буфера, поэтому предупреждение показывает настоящую позицию чтения, конец кадра и конец буферизованных данных. Правило закрепляют `ServerRejectsMalformedPreHandshakePayloadWithoutExceptionReport`, `ServerRejectsNonHandshakeFirstMessageWithoutExceptionReport` и `ServerRejectsMalformedPingAfterHandshakeWithoutExceptionReport` из `Source/Tests/Test_ClientServerIntegration.cpp`, а также `PlayerMalformedPingDisconnectsOnlyThatPlayerWithoutExceptionReport` из `Source/Tests/Test_EntityLifecycle.cpp`.
 
 Посимвольный валидатор содержимого `ClientDataValidation.*`, вызываемый для клиентских записей свойств и входящих remote-call payload, дополняет эти слои. Он требует конечные float, корректный UTF-8, отсутствие встроенного NUL в строках — NUL допустим в UTF-8, но неприемлем в клиентском тексте и опасен для C-строк, журналов и БД, — неотрицательные размеры, согласованность count и payload, разрешаемые enum, hash и proto, а также соблюдение объявленного предела коллекций remote call. Абсолютные пределы input и флуда принадлежат верхнему слою буфера и транспорта.
 
@@ -198,11 +202,25 @@ incremental collection приведены в [Запекании](../content-pip
 
 - `SetAsyncCallbacks(send, receive, disconnect)`;
 - `Dispatch()`;
+- `RequestDisconnect()`;
 - `Disconnect()`;
 - `GetHost()` / `GetPort()`;
 - `IsDisconnected()`.
 
 Send callback возвращает outgoing bytes **по значению**, и каждый transport владеет buffer, переданным socket. Borrowed sender buffer может быть перезаполнен другим dispatch или освобождён при disconnect, пока I/O thread ещё выполняет compression/send. `Disconnect()` очищает callback под тем же lock, который защищает invocation, поэтому teardown ждёт in-flight pull, а последующие transport ticks не достигают исчезающего sender.
+
+`RequestDisconnect()` отмечает соединение отключённым и запрашивает закрытие
+транспорта без блокировок send/receive callbacks. Независимый
+[watchdog RPC](../../reference/scripting/remote-calls.md#мониторинг-времени-выполнения-и-отключение)
+использует его, поскольку callback может ждать выходной буфер, владелец которого
+заблокирован на entity cover скрипта. Обычный `Disconnect()` по-прежнему ждёт
+callbacks и однократно забирает ожидающее уведомление после завершения закрытия
+транспорта. Повторный вход из `DisconnectImpl()` в том же потоке оставляет это
+внешнему закрытию. После запроса только транспорта уведомление может отложиться
+до обычной очистки; interthread peer не гарантирует встречное уведомление о разрыве.
+Владелец по-прежнему обязан дождаться callbacks до уничтожения.
+`NetworkTransportClosureDoesNotWaitForCallbacks` проверяет заблокированные
+send/receive, вложенное закрытие, ожидание полной очистки и единственное уведомление.
 
 `NetworkServer` хранит слабые ссылки на каждое принятое соединение. `Shutdown()` сначала закрывает регистрацию относительно конкурентных accept, делает снимок всех ещё живых соединений и отключает их, затем выполняет зависящую от транспорта остановку listener/io-context и присоединение потока. Соединение, принятое одновременно с остановкой, либо входит в снимок, либо отклоняется и отключается `TrackConnection()`; оно не может потеряться между accept callback и завершением io-thread. Повторный `Shutdown()` ничего не делает.
 
@@ -256,6 +274,7 @@ MOVESYNC side=<srv|cl> ev=<event> t=<monotonic µs> st=<synchronized ms> [viewer
 | `ScriptRequest` | вызов `Player.HardDisconnect()` из script |
 | `LoginFailed` | login откатился после server-side failure |
 | `ReplacedByReconnect` | новый login того же account заменил session |
+| `RpcRuntimeLimit` | незавершённый входящий RPC, готовая входная очередь или число pending-обработчиков достигли настроенного предела |
 
 Побеждает первая записанная причина: поздний generic callback `ClientClosed` от transport не перезаписывает конкретное основание. Причина входит в log закрытого соединения и доступна handlers `OnPlayerLogout` через `Player.GetDisconnectReason()`. Контракт закреплён `ServerConnectionRecordsWhyItWasDisconnected`.
 
@@ -298,7 +317,7 @@ Socket-соединения сервера Asio и WebSockets выполняют
 - **Состояние закрытия транспорта меняется в его I/O-потоке.** В обоих путях — отключении и уничтожении обёртки — WebSockets ставит `connection->close()` в очередь через `asio::post(connection->get_raw_socket().get_executor(), ...)`. Сейчас backend имеет один выделенный I/O-поток, поэтому close не выполняется одновременно с обработчиками чтения и завершения. Прямой `close()` из потока движка небезопасен: его state-lock не защищает от записи в то же состояние внутри `terminate()` без этого lock. Задача захватывает только слабую ссылку на backend-соединение и блокирует её при выполнении, не удерживая обёртку или сильную ссылку на backend.
 - **Обёртка не должна продлевать lifetime нижележащего соединения за lifetime владеющего io_context.** Asio-таймеры и незавершённые операции backend-соединения привязаны к io_context endpoint. Поэтому обёртка хранит слабую ссылку и блокирует её на каждый вызов. Сохранённая сильная ссылка позволила бы уничтожить backend уже после этого context, создавая use-after-free при остановке.
 
-`Test_NetworkServer.cpp` проверяет каждый транспорт end-to-end: interthread, повторный accept Asio и остановку с принятым TCP-соединением, а также настоящий websocketpp-клиент, отправляющий frame и полагающийся на остановку сервера для отключения. `NetworkServerWebSocketsQueuesCloseAcrossPeerAbortAndRetainedWrapper` дополнительно проверяет обрыв peer, повторный disconnect, однократное уведомление и обёртку, пережившую уничтожение endpoint. Запускайте эти тесты и неизменённый `SecureChannelRunsOverWebSockets` под ThreadSanitizer и AddressSanitizer, отдельно проверяя сериализацию состояния и lifetime.
+`Test_NetworkServer.cpp` проверяет каждый транспорт end-to-end: interthread, повторный accept Asio и остановку с принятым TCP-соединением, а также настоящий websocketpp-клиент, отправляющий frame и полагающийся на остановку сервера для отключения. `NetworkServerWebSocketsQueuesCloseAcrossPeerAbortAndRetainedWrapper` дополнительно проверяет обрыв peer, повторный disconnect, однократное уведомление и обёртку, пережившую уничтожение endpoint. `NetworkServerWebSocketsRebindsPortLeftInTimeWaitByPreviousServer` заставляет прежний listener первым закрыть настоящее соединение, независимой пробой bind доказывает, что ядро POSIX всё ещё держит порт, и затем запускает на нём настоящий WebSocket-сервер; `NetworkServerWebSocketsRefusesPortHeldByIndependentListener` оставляет владельцем живой listener с `SO_REUSEADDR` и без него, который обязан по-прежнему отказывать. Предусловие пробы действует только на POSIX, потому что Windows порт не удерживает, поэтому на Windows первый случай охраняет неизменную политику. Запускайте эти тесты и неизменённый `SecureChannelRunsOverWebSockets` под ThreadSanitizer и AddressSanitizer, отдельно проверяя сериализацию состояния и lifetime.
 
 ## Упорядоченный UDP-транспорт
 
@@ -317,8 +336,8 @@ Socket-соединения сервера Asio и WebSockets выполняют
 - `MaxPayload`
 - `MaxPendingBytes`
 - `MaxReorderAhead`
-- `ResendTimeoutMs`
-- `ConnectRetryMs`
+- `ResendTimeout` (`timespan`)
+- `ConnectRetry` (`timespan`)
 - `Redundancy`
 
 `UdpPacketInfo` содержит разобранные данные пакета:
@@ -389,6 +408,20 @@ Socket-соединения сервера Asio и WebSockets выполняют
 никто не достучится, — не запущенный сервер: повторы дают проигравшей стороне гонки немного времени,
 но не превращают мёртвый порт в приемлемое состояние. Межпоточный транспорт сюда не входит: он не
 занимает ничего, что мог бы держать другой процесс, поэтому отказ там — дефект, а не гонка.
+Каждая строка повтора называет отказ, за которым следует, поэтому причина, меняющаяся между попытками, видна в журнале.
+
+Повторы не могут переждать порт, который предыдущий процесс оставил в `TIME_WAIT`. Ядро POSIX десятки секунд
+удерживает локальный порт соединения, которое старый сервер закрыл первым, и отклоняет bind без
+`SO_REUSEADDR` ошибкой `Address already in use`, хотя порт не принадлежит ни одному процессу. Acceptor
+обычного TCP-слушателя уже ставит эту опцию, а WebSocket-слушатель ставит её перед `listen` на всех платформах,
+кроме Windows. Сокет в состоянии `LISTEN` продолжает отклонять bind независимо от опций владельца,
+поэтому занятый порт остаётся ошибкой. Windows никогда не блокирует bind из-за `TIME_WAIT`, а два сокета с
+`SO_REUSEADDR` делят порт живого слушателя, поэтому на этой платформе WebSocket-слушатель сохраняет опцию
+по умолчанию.
+
+Предшественник, собранный без этого правила, оставляет сокеты `TIME_WAIT` без `SO_REUSEADDR`, и один новый
+слушатель с опцией их не обходит. Первый перезапуск поверх такого предшественника может по-прежнему ждать
+истечения этих сокетов; ни другой порт, ни неограниченный повтор не являются решением.
 
 ## Тесты для проверки
 

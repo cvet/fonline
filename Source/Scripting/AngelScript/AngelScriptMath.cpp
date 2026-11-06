@@ -43,7 +43,7 @@ FO_BEGIN_NAMESPACE
 
 static auto FractionF(float32_t v) -> float32_t
 {
-    float32_t int_part;
+    float32_t int_part {};
     return std::modf(v, &int_part);
 }
 
@@ -61,7 +61,7 @@ void RegisterAngelScriptMath(ptr<AngelScript::asIScriptEngine> as_engine)
 {
     FO_TRACE_ZONE(Script);
 
-    int32_t as_result = 0;
+    int32_t as_result {0};
     FO_AS_VERIFY(as_engine->SetDefaultNamespace("math"));
 
     FO_AS_VERIFY(as_engine->RegisterGlobalFunction("bool closeTo(float, float, float = 0.00001f)", FO_SCRIPT_FUNC_EXT(CloseTo, (float32_t, float32_t, float32_t), bool), FO_SCRIPT_FUNC_CONV));

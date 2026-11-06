@@ -31,11 +31,34 @@
 // SOFTWARE.
 //
 
-#include "catch_amalgamated.hpp"
-
 #include "Common.h"
 
+#include "catch_amalgamated.hpp"
+
 FO_BEGIN_NAMESPACE
+
+struct ScopedTestResource
+{
+    int32_t Initialized {};
+    nptr<int32_t> Cleared {};
+    nptr<int32_t> ClearCount {};
+};
+
+static void InitScopedTestResource(ScopedTestResource* value) noexcept
+{
+    value->Initialized = 37;
+}
+
+static void ClearScopedTestResource(ScopedTestResource* value) noexcept
+{
+    if (value->Cleared) {
+        *value->Cleared = value->Initialized;
+    }
+
+    if (value->ClearCount) {
+        ++*value->ClearCount;
+    }
+}
 
 namespace
 {
@@ -70,7 +93,7 @@ TEST_CASE("CommonHelpers")
 {
     SECTION("SafeCall")
     {
-        bool called = false;
+        bool called {false};
         CHECK_NOTHROW(safe_call([&]() {
             called = true;
             throw std::runtime_error("test");
@@ -80,27 +103,27 @@ TEST_CASE("CommonHelpers")
 
     SECTION("DynamicPtrCastShared")
     {
-        auto derived = safe_alloc::make_shared<TestDerived>(77);
-        shared_ptr<TestBase> base = derived;
+        auto derived {safe_alloc::make_shared<TestDerived>(77)};
+        shared_ptr<TestBase> base {derived};
 
-        auto casted = base.dyn_cast<TestDerived>();
+        auto casted {base.dyn_cast<TestDerived>()};
         REQUIRE(casted);
         CHECK(casted->Value == 77);
     }
 
     SECTION("RequireRefcountPtr")
     {
-        TestRefCounter value;
+        TestRefCounter value {};
 
-        refcount_nptr<TestRefCounter> missing;
+        refcount_nptr<TestRefCounter> missing {};
         CHECK_THROWS_AS(require_refcount_ptr(std::move(missing)), VerificationException);
         CHECK(value.RefCount == 0);
 
-        refcount_nptr<TestRefCounter> nullable = refcount_nptr<TestRefCounter>::from_addref(&value);
+        refcount_nptr<TestRefCounter> nullable {refcount_nptr<TestRefCounter>::from_addref(&value)};
         CHECK(value.RefCount == 1);
 
         {
-            auto present = require_refcount_ptr(std::move(nullable));
+            auto present {require_refcount_ptr(std::move(nullable))};
             CHECK_FALSE(nullable);
             CHECK(value.RefCount == 1);
         }
@@ -110,7 +133,7 @@ TEST_CASE("CommonHelpers")
 
     SECTION("VectorSafeHelpers")
     {
-        vector<int32_t> values = {1, 2};
+        vector<int32_t> values {1, 2};
 
         CHECK(vec_safe_add_unique_value(values, 3));
         CHECK_FALSE(vec_safe_add_unique_value(values, 3));
@@ -124,22 +147,22 @@ TEST_CASE("CommonHelpers")
 
     SECTION("VectorAlgorithms")
     {
-        vector<int32_t> values = {5, 1, 3, 2};
+        vector<int32_t> values {5, 1, 3, 2};
 
-        auto filtered = vec_filter(values, [](int32_t v) { return v % 2 == 1; });
+        auto filtered {vec_filter(values, [](int32_t v) { return v % 2 == 1; })};
         CHECK(filtered == vector<int32_t> {5, 1, 3});
 
-        auto transformed = vec_transform(values, [](int32_t v) -> int32_t { return v * 10; });
+        auto transformed {vec_transform(values, [](int32_t v) -> int32_t { return v * 10; })};
         CHECK(transformed == vector<int32_t> {50, 10, 30, 20});
 
-        auto sorted = vec_sorted(values, [](int32_t l, int32_t r) { return l < r; });
+        auto sorted {vec_sorted(values, [](int32_t l, int32_t r) { return l < r; })};
         CHECK(sorted == vector<int32_t> {1, 2, 3, 5});
 
         CHECK(vec_exists(values, 3));
         CHECK_FALSE(vec_exists(values, 7));
 
-        set<int32_t> uniq = {9, 8, 7};
-        auto copied = to_vector(uniq);
+        set<int32_t> uniq {9, 8, 7};
+        auto copied {to_vector(uniq)};
         CHECK(copied.size() == 3);
     }
 
@@ -153,50 +176,50 @@ TEST_CASE("CommonHelpers")
         STATIC_REQUIRE(std::same_as<rebind_vector_t<set<int32_t>, int64_t>, vector<int64_t>>);
 
         // A small_vector input keeps its kind (and inline capacity) through every producing helper
-        small_vector<int32_t, 4> values = {5, 1, 3, 2};
+        small_vector<int32_t, 4> values {5, 1, 3, 2};
 
-        auto filtered = vec_filter(values, [](int32_t v) { return v % 2 == 1; });
+        auto filtered {vec_filter(values, [](int32_t v) { return v % 2 == 1; })};
         STATIC_REQUIRE(std::same_as<std::remove_const_t<decltype(filtered)>, small_vector<int32_t, 4>>);
         CHECK(filtered == small_vector<int32_t, 4> {5, 1, 3});
 
-        auto transformed = vec_transform(values, [](int32_t v) -> int64_t { return v * 10; });
+        auto transformed {vec_transform(values, [](int32_t v) -> int64_t { return v * 10; })};
         STATIC_REQUIRE(std::same_as<std::remove_const_t<decltype(transformed)>, small_vector<int64_t, 4>>);
         CHECK(transformed == small_vector<int64_t, 4> {50, 10, 30, 20});
 
-        auto sorted = vec_sorted(values, [](int32_t l, int32_t r) { return l < r; });
+        auto sorted {vec_sorted(values, [](int32_t l, int32_t r) { return l < r; })};
         STATIC_REQUIRE(std::same_as<std::remove_const_t<decltype(sorted)>, small_vector<int32_t, 4>>);
         CHECK(sorted == small_vector<int32_t, 4> {1, 2, 3, 5});
 
         // A plain vector input still yields a vector (backward compatible)
-        vector<int32_t> vec_values = {5, 1, 3, 2};
-        auto vec_filtered = vec_filter(vec_values, [](int32_t v) { return v % 2 == 1; });
+        vector<int32_t> vec_values {5, 1, 3, 2};
+        auto vec_filtered {vec_filter(vec_values, [](int32_t v) { return v % 2 == 1; })};
         STATIC_REQUIRE(std::same_as<std::remove_const_t<decltype(vec_filtered)>, vector<int32_t>>);
 
         // A non-vector range materializes as a plain vector
-        set<int32_t> set_values = {5, 1, 3, 2};
-        auto set_sorted = vec_sorted(set_values, [](int32_t l, int32_t r) { return l < r; });
+        set<int32_t> set_values {5, 1, 3, 2};
+        auto set_sorted {vec_sorted(set_values, [](int32_t l, int32_t r) { return l < r; })};
         STATIC_REQUIRE(std::same_as<std::remove_const_t<decltype(set_sorted)>, vector<int32_t>>);
         CHECK(set_sorted == vector<int32_t> {1, 2, 3, 5});
     }
 
     SECTION("VecTransformSupportsPointerLikeValues")
     {
-        vector<unique_ptr<TestDerived>> values;
+        vector<unique_ptr<TestDerived>> values {};
         values.emplace_back(safe_alloc::make_unique<TestDerived>(4));
         values.emplace_back(safe_alloc::make_unique<TestDerived>(9));
 
-        auto transformed = vec_transform(values, [](const auto& entry) -> int32_t { return entry->Value; });
+        auto transformed {vec_transform(values, [](const auto& entry) -> int32_t { return entry->Value; })};
         CHECK(transformed == vector<int32_t> {4, 9});
     }
 
     SECTION("CopyHoldRefPreservesPointerVector")
     {
-        TestRefCounter first;
-        TestRefCounter second;
-        vector<ptr<TestRefCounter>> refs = {&first, &second};
+        TestRefCounter first {};
+        TestRefCounter second {};
+        vector<ptr<TestRefCounter>> refs {&first, &second};
 
         {
-            auto held = copy_hold_ref(refs);
+            auto held {copy_hold_ref(refs)};
 
             CHECK(refs.size() == 2);
             CHECK(refs[0] == &first);
@@ -208,6 +231,68 @@ TEST_CASE("CommonHelpers")
         CHECK(refs.size() == 2);
         CHECK(first.RefCount == 0);
         CHECK(second.RefCount == 0);
+    }
+
+    SECTION("ScopedInitClearNormalExit")
+    {
+        int32_t initialized {0};
+        int32_t cleared {0};
+        int32_t clear_count {0};
+
+        {
+            scoped_init_clear<ScopedTestResource, InitScopedTestResource, ClearScopedTestResource> resource {};
+            resource.get().Cleared = &cleared;
+            resource.get().ClearCount = &clear_count;
+
+            initialized = resource.get().Initialized;
+            CHECK(initialized == 37);
+
+            const auto& const_resource {resource};
+            CHECK(const_resource.get().Initialized == 37);
+
+            resource.get().Initialized = 41;
+            CHECK(const_resource.get().Initialized == 41);
+            resource.get().Initialized = initialized;
+
+            CHECK(cleared == 0);
+            CHECK(clear_count == 0);
+        }
+
+        CHECK(cleared == 37);
+        CHECK(clear_count == 1);
+    }
+
+    SECTION("ScopedInitClearExceptionUnwind")
+    {
+        int32_t cleared {0};
+        int32_t clear_count {0};
+
+        auto operation {[&]() {
+            scoped_init_clear<ScopedTestResource, InitScopedTestResource, ClearScopedTestResource> resource {};
+            resource.get().Cleared = &cleared;
+            resource.get().ClearCount = &clear_count;
+
+            throw std::runtime_error("Scoped init clear unwind");
+        }};
+
+        CHECK_THROWS_WITH(operation(), "Scoped init clear unwind");
+
+        CHECK(cleared == 37);
+        CHECK(clear_count == 1);
+    }
+
+    SECTION("ScopedInitClearContracts")
+    {
+        using resource_type = scoped_init_clear<ScopedTestResource, InitScopedTestResource, ClearScopedTestResource>;
+
+        STATIC_REQUIRE(std::is_nothrow_default_constructible_v<resource_type>);
+        STATIC_REQUIRE(std::is_nothrow_destructible_v<resource_type>);
+        STATIC_REQUIRE(!std::is_copy_constructible_v<resource_type>);
+        STATIC_REQUIRE(!std::is_move_constructible_v<resource_type>);
+        STATIC_REQUIRE(!std::is_copy_assignable_v<resource_type>);
+        STATIC_REQUIRE(!std::is_move_assignable_v<resource_type>);
+        STATIC_REQUIRE(std::same_as<decltype(std::declval<resource_type&>().get()), ScopedTestResource&>);
+        STATIC_REQUIRE(std::same_as<decltype(std::declval<const resource_type&>().get()), const ScopedTestResource&>);
     }
 }
 

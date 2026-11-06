@@ -39,8 +39,8 @@
 
 FO_BEGIN_NAMESPACE
 
-constexpr uint8_t SPRITE_RESOURCE_MAGIC = 43;
-constexpr uint8_t SPRITE_RESOURCE_VERSION = 2;
+constexpr uint8_t SPRITE_RESOURCE_MAGIC {43};
+constexpr uint8_t SPRITE_RESOURCE_VERSION {3};
 
 enum class SpriteMeshKind : uint8_t
 {
@@ -59,10 +59,11 @@ struct SpriteMeshData
 
 struct SpriteResourceFrameData
 {
-    optional<uint16_t> SharedFrameIndex {};
+    optional<int32_t> SharedFrameIndex {};
     ipos32 Offset {};
     isize32 Size {};
     ipos32 NextOffset {};
+    timespan Duration {};
     vector<ucolor> Pixels {};
     optional<SpriteMeshData> Mesh {};
 };

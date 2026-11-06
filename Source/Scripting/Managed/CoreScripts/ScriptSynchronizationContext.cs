@@ -15,6 +15,16 @@ internal sealed class ScriptSynchronizationContext : SynchronizationContext, IDi
         new HashSet<ScriptSynchronizationContext>();
     private static bool Closed;
 
+    internal static long PendingWorkCount
+    {
+        get {
+            lock (SchedulerGate)
+            {
+                return Closed ? 0 : ReadyContexts.Count + SynchronousContexts.Count;
+            }
+        }
+    }
+
     // Created on the first post: most entries finish without an await and never need it
     private Queue<PostedContinuation>? Continuations;
 

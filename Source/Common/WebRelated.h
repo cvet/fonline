@@ -42,7 +42,7 @@ struct WebSettings;
 
 namespace WebRelated
 {
-    inline constexpr string_view_nt CanvasSelector = "#canvas";
+    inline constexpr string_view_nt CanvasSelector {"#canvas"};
 
     void ApplyApplicationHints() noexcept;
     void ApplyWindowSettings(WebSettings& settings, AppScreenState& screen);
@@ -50,6 +50,7 @@ namespace WebRelated
     void SetupClipboard();
     void SyncClipboardToSystem(string_view text);
     void InitializePersistentData();
+    void FlushPersistentData();
     auto IsPersistentDataReady() noexcept -> bool;
     void StartMainLoop(void (*entry)(void*), void* data) noexcept;
     void StopMainLoop() noexcept;

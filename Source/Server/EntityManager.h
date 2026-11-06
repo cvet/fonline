@@ -87,7 +87,8 @@ public:
     {
         static_assert(std::is_base_of_v<ServerEntity, T>);
         shared_lock lock {_registryLock};
-        auto it = _allEntities.find(id);
+
+        auto it {_allEntities.find(id)};
 
         if (it == _allEntities.end()) {
             return nullptr;
@@ -101,7 +102,8 @@ public:
     {
         static_assert(std::is_base_of_v<ServerEntity, T>);
         shared_lock lock {_registryLock};
-        auto it = _allEntities.find(id);
+
+        auto it {_allEntities.find(id)};
 
         if (it == _allEntities.end()) {
             return nullptr;
@@ -158,6 +160,7 @@ private:
 
     void LoadInnerEntities(ptr<Entity> holder, bool& is_error) noexcept;
     void LoadInnerEntitiesEntry(ptr<Entity> holder, hstring entry, bool& is_error) noexcept;
+    void PruneRestoredEntityIds(ptr<ServerEntity> entity, bool is_error, const function<void()>& prune_ids);
     auto RestoreItem(ident_t item_id, const AnyData::Document& item_doc, hstring item_pid, bool& is_error) noexcept -> refcount_nptr<Item>;
     auto RestoreCustomEntity(ptr<Entity> holder, hstring type_name, ident_t id, const AnyData::Document& doc, hstring pid, bool& is_error) noexcept -> refcount_nptr<CustomEntity>;
     auto LoadEntityDoc(hstring type_name, hstring collection_name, ident_t id, bool expect_proto, bool& is_error) noexcept -> tuple<AnyData::Document, hstring>;
@@ -200,4 +203,3 @@ private:
 };
 
 FO_END_NAMESPACE
-

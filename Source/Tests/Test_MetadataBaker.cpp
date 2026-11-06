@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
 #include "Test_BakerHelpers.h"
@@ -45,34 +47,40 @@ FO_BEGIN_NAMESPACE
 
 static auto ReadMetadataTags(const vector<uint8_t>& output) -> map<string, vector<vector<string>>>
 {
-    data_reader reader(output);
+    data_reader reader {output};
     REQUIRE(reader.read<uint32_t>() == METADATA_FILE_MAGIC);
     REQUIRE(reader.read<uint16_t>() == METADATA_FILE_VERSION);
-    uint16_t version_size = reader.read<uint16_t>();
+    uint16_t version_size {reader.read<uint16_t>()};
     (void)reader.read_string_view(version_size);
-    uint16_t tag_count = reader.read<uint16_t>();
-    auto read_string = [&reader](uint16_t size) -> string {
-        string value;
+    uint16_t tag_count {reader.read<uint16_t>()};
+    auto read_string {[&reader](uint16_t size) -> string {
+        string value {};
         value.resize(size);
         reader.read_string_bytes(value);
         return value;
-    };
-    map<string, vector<vector<string>>> tags;
-    for (uint16_t i = 0; i < tag_count; i++) {
-        uint16_t tag_name_len = reader.read<uint16_t>();
-        string tag_name = read_string(tag_name_len);
-        uint32_t tag_value_count = reader.read<uint32_t>();
-        for (uint32_t j = 0; j < tag_value_count; j++) {
-            uint32_t value_parts_count = reader.read<uint32_t>();
-            vector<string> value_parts;
+    }};
+
+    map<string, vector<vector<string>>> tags {};
+
+    for (uint16_t i {0}; i < tag_count; i++) {
+        uint16_t tag_name_len {reader.read<uint16_t>()};
+        string tag_name {read_string(tag_name_len)};
+        uint32_t tag_value_count {reader.read<uint32_t>()};
+
+        for (uint32_t j {0}; j < tag_value_count; j++) {
+            uint32_t value_parts_count {reader.read<uint32_t>()};
+            vector<string> value_parts {};
             value_parts.reserve(value_parts_count);
-            for (uint32_t k = 0; k < value_parts_count; k++) {
-                uint16_t part_len = reader.read<uint16_t>();
+
+            for (uint32_t k {0}; k < value_parts_count; k++) {
+                uint16_t part_len {reader.read<uint16_t>()};
                 value_parts.emplace_back(read_string(part_len));
             }
+
             tags[tag_name].emplace_back(std::move(value_parts));
         }
     }
+
     reader.verify_end();
     return tags;
 }
@@ -80,10 +88,10 @@ static auto ReadMetadataTags(const vector<uint8_t>& output) -> map<string, vecto
 #if FO_ANGELSCRIPT_SCRIPTING
 static void ExpectMetadataBakerError(string_view script, string_view message)
 {
-    BakerTests::TestRig local_rig;
+    BakerTests::TestRig local_rig {};
     local_rig.AddSourceFile("Scripts/BrokenMetadata.fos", string(script));
 
-    MetadataBaker baker(local_rig.MakeContext());
+    MetadataBaker baker {local_rig.MakeContext()};
     REQUIRE_THROWS_WITH(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring(std::string(message)));
 }
 #endif
@@ -93,25 +101,27 @@ TEST_CASE("MetadataBaker")
 #if FO_ANGELSCRIPT_SCRIPTING
     using namespace BakerTests;
 
-    TestRig rig;
-    auto bakers = MakeRequestedBakers({string(MetadataBaker::NAME)}, rig);
-    auto skip_baked_header = [](data_reader& reader) {
+    TestRig rig {};
+    auto bakers {MakeRequestedBakers({string(MetadataBaker::NAME)}, rig)};
+    auto skip_baked_header {[](data_reader& reader) {
         ignore_unused(reader.read<uint32_t>());
         ignore_unused(reader.read<uint16_t>());
-        auto version_size = reader.read<uint16_t>();
+        auto version_size {reader.read<uint16_t>()};
         ignore_unused(reader.read_string_view(version_size));
-    };
-    auto read_baked_header = [](const vector<uint8_t>& output) {
-        data_reader reader(output);
+    }};
+
+    auto read_baked_header {[](const vector<uint8_t>& output) {
+        data_reader reader {output};
         CHECK(reader.read<uint32_t>() == METADATA_FILE_MAGIC);
         CHECK(reader.read<uint16_t>() == METADATA_FILE_VERSION);
-        auto version_size = reader.read<uint16_t>();
-        string version;
+        auto version_size {reader.read<uint16_t>()};
+        string version {};
         version.resize(version_size);
         reader.read_string_bytes(version);
         return version;
-    };
-    auto read_baked_tags = [](const vector<uint8_t>& output) { return ReadMetadataTags(output); };
+    }};
+
+    auto read_baked_tags {[](const vector<uint8_t>& output) { return ReadMetadataTags(output); }};
 
     REQUIRE(bakers.size() == 1);
     CHECK(bakers.front()->GetName() == MetadataBaker::NAME);
@@ -135,25 +145,23 @@ namespace TestManagedMetadata
 }
 )");
 
-        MetadataBaker baker(rig.MakeContext());
+        MetadataBaker baker {rig.MakeContext()};
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
         REQUIRE(rig.Outputs.contains("TestPack.fometa-server"));
         REQUIRE(rig.Outputs.contains("TestPack.fometa-client"));
         REQUIRE(rig.Outputs.contains("TestPack.fometa-mapper"));
 
-        const auto server_tags = read_baked_tags(rig.Outputs.at("TestPack.fometa-server"));
-        const auto client_tags = read_baked_tags(rig.Outputs.at("TestPack.fometa-client"));
-        const auto mapper_tags = read_baked_tags(rig.Outputs.at("TestPack.fometa-mapper"));
+        const auto server_tags {read_baked_tags(rig.Outputs.at("TestPack.fometa-server"))};
+        const auto client_tags {read_baked_tags(rig.Outputs.at("TestPack.fometa-client"))};
+        const auto mapper_tags {read_baked_tags(rig.Outputs.at("TestPack.fometa-mapper"))};
 
         REQUIRE(server_tags.contains("Setting"));
         REQUIRE(client_tags.contains("Setting"));
 
-        auto server_flag_value = rig.Settings.FindSettingValue("ManagedMetadata.ServerFlag");
-        auto client_flag_value = rig.Settings.FindSettingValue("ManagedMetadata.ClientFlag");
-        REQUIRE(server_flag_value);
-        REQUIRE(client_flag_value);
-        CHECK(std::ranges::count(server_tags.at("Setting"), vector<string> {"ManagedMetadata.ServerFlag", "bool", *server_flag_value}) == 1);
-        CHECK(std::ranges::count(client_tags.at("Setting"), vector<string> {"ManagedMetadata.ClientFlag", "bool", *client_flag_value}) == 1);
+        REQUIRE(rig.Settings.FindSettingValue("ManagedMetadata.ServerFlag"));
+        REQUIRE(rig.Settings.FindSettingValue("ManagedMetadata.ClientFlag"));
+        CHECK(std::ranges::count(server_tags.at("Setting"), vector<string> {"ManagedMetadata.ServerFlag", "bool"}) == 1);
+        CHECK(std::ranges::count(client_tags.at("Setting"), vector<string> {"ManagedMetadata.ClientFlag", "bool"}) == 1);
         CHECK((!mapper_tags.contains("Setting") || mapper_tags.at("Setting").empty()));
 
         REQUIRE(server_tags.contains("Enum"));
@@ -170,7 +178,7 @@ namespace TestManagedMetadata
     {
         rig.AddSourceFile("Scripts/Broken.fos", "///@ Unknown Tag");
 
-        MetadataBaker baker(rig.MakeContext());
+        MetadataBaker baker {rig.MakeContext()};
         CHECK_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), "metadata.bin"));
         CHECK(rig.Outputs.empty());
     }
@@ -179,7 +187,7 @@ namespace TestManagedMetadata
     {
         rig.AddSourceFile("Docs/Notes.txt", "///@ Enum Ignored Value = 1");
 
-        MetadataBaker baker(rig.MakeContext());
+        MetadataBaker baker {rig.MakeContext()};
         CHECK_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
         CHECK(rig.Outputs.empty());
     }
@@ -189,11 +197,11 @@ namespace TestManagedMetadata
         rig.AddSourceFile("Scripts/01_Enum.fos", "///@ Enum CoverageSide First = 1", 11);
         rig.AddSourceFile("Scripts/02_Enum.fos", "///@ Enum CoverageSide Second = 2", 42);
 
-        vector<pair<string, uint64_t>> checks;
-        MetadataBaker baker(rig.MakeContext("MetaPack", [&checks](string_view path, uint64_t write_time) {
+        vector<pair<string, uint64_t>> checks {};
+        MetadataBaker baker {rig.MakeContext("MetaPack", [&checks](string_view path, uint64_t write_time) {
             checks.emplace_back(string(path), write_time);
             return path.ends_with(".fometa-client");
-        }));
+        })};
 
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 
@@ -204,30 +212,30 @@ namespace TestManagedMetadata
         REQUIRE(rig.Outputs.size() == 1);
         REQUIRE(rig.Outputs.contains("MetaPack.fometa-client"));
 
-        auto tags = read_baked_tags(rig.Outputs.at("MetaPack.fometa-client"));
-        auto enum_it = tags.find("Enum");
+        auto tags {read_baked_tags(rig.Outputs.at("MetaPack.fometa-client"))};
+        auto enum_it {tags.find("Enum")};
 
         REQUIRE(enum_it != tags.end());
         CHECK(std::ranges::count(enum_it->second, vector<string> {"CoverageSide", "uint8", "First", "1", "Second", "2"}) == 1);
     }
 
-    SECTION("uses the applied config write time for setting values")
+    SECTION("uses the applied config write time for setting declarations")
     {
-        string temp_dir = fs::path_to_string(std::filesystem::temp_directory_path() / std::format("metadata_setting_config_{}", std::chrono::steady_clock::now().time_since_epoch().count()));
+        string temp_dir {fs::path_to_string(std::filesystem::temp_directory_path() / std::format("metadata_setting_config_{}", std::chrono::steady_clock::now().time_since_epoch().count()))};
         REQUIRE(fs::create_directories(temp_dir));
-        string config_path = strex(temp_dir).combine_path("Test.fomain").str();
+        string config_path {strex(temp_dir).combine_path("Test.fomain").str()};
         REQUIRE(fs::write_file(config_path, "Coverage.Enabled = true\n"));
 
-        rig.Settings.ApplyConfigAtPath("Test.fomain", temp_dir);
-        rig.AddSourceFile("Scripts/TestSetting.fos", "///@ Setting Client bool Coverage.Enabled", 1);
+        TestRig configured_rig {"Test.fomain", temp_dir};
+        configured_rig.AddSourceFile("Scripts/TestSetting.fos", "///@ Setting Client bool Coverage.Enabled", 1);
 
-        vector<uint64_t> checked_write_times;
-        MetadataBaker baker(rig.MakeContext("MetaPack", [&checked_write_times](string_view, uint64_t write_time) {
+        vector<uint64_t> checked_write_times {};
+        MetadataBaker baker {configured_rig.MakeContext("MetaPack", [&checked_write_times](string_view, uint64_t write_time) {
             checked_write_times.emplace_back(write_time);
             return false;
-        }));
+        })};
 
-        REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+        REQUIRE_NOTHROW(baker.BakeFiles(configured_rig.GetAllSourceFiles(), ""));
         REQUIRE(checked_write_times.size() == 3);
         CHECK(std::ranges::all_of(checked_write_times, [&](uint64_t write_time) { return write_time == fs::last_write_time(config_path); }));
         CHECK(fs::remove_dir_tree(temp_dir));
@@ -237,11 +245,11 @@ namespace TestManagedMetadata
     {
         rig.AddSourceFile("Scripts/TestEnum.fos", "///@ Enum CoverageDisabled Value = 1", 7);
 
-        vector<pair<string, uint64_t>> checks;
-        MetadataBaker baker(rig.MakeContext("MetaPack", [&checks](string_view path, uint64_t write_time) {
+        vector<pair<string, uint64_t>> checks {};
+        MetadataBaker baker {rig.MakeContext("MetaPack", [&checks](string_view path, uint64_t write_time) {
             checks.emplace_back(string(path), write_time);
             return false;
-        }));
+        })};
 
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 
@@ -262,33 +270,33 @@ namespace TestMetadataVersion
 }
 )");
 
-        MetadataBaker baker(rig.MakeContext());
+        MetadataBaker baker {rig.MakeContext()};
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 
-        auto read_metadata_version = [&](string_view target) -> string {
-            string output_name = strex("TestPack.fometa-{}", target).str();
+        auto read_metadata_version {[&](string_view target) -> string {
+            string output_name {strex("TestPack.fometa-{}", target).str()};
             REQUIRE(rig.Outputs.contains(output_name));
 
             return read_baked_header(rig.Outputs.at(output_name));
-        };
+        }};
 
         // Client and server resolve wire property indices through their own metadata, so a target-dependent
         // version would leave the mismatch it exists to catch undetectable
-        string client_version = read_metadata_version("client");
+        string client_version {read_metadata_version("client")};
         CHECK_FALSE(client_version.empty());
         CHECK(read_metadata_version("server") == client_version);
         CHECK(read_metadata_version("mapper") == client_version);
 
-        auto bake_version_of = [&](string_view script) -> string {
-            TestRig changed_rig;
+        auto bake_version_of {[&](string_view script) -> string {
+            TestRig changed_rig {};
             changed_rig.AddSourceFile("Scripts/TestMetadataVersion.fos", string(script));
 
-            MetadataBaker changed_baker(changed_rig.MakeContext());
+            MetadataBaker changed_baker {changed_rig.MakeContext()};
             REQUIRE_NOTHROW(changed_baker.BakeFiles(changed_rig.GetAllSourceFiles(), ""));
             REQUIRE(changed_rig.Outputs.contains("TestPack.fometa-client"));
 
             return read_baked_header(changed_rig.Outputs.at("TestPack.fometa-client"));
-        };
+        }};
 
         // Inserting a property shifts every reg index below it, which is exactly the desync being versioned
         CHECK(bake_version_of(R"(
@@ -314,32 +322,32 @@ namespace TestMetadataVersion
 
     SECTION("keeps the metadata version apart when a token repeats the tag name")
     {
-        auto bake_version_of = [&](string_view script) -> string {
-            TestRig local_rig;
+        auto bake_version_of {[&](string_view script) -> string {
+            TestRig local_rig {};
             local_rig.AddSourceFile("Scripts/TestMetadataVersionCollision.fos", string(script));
 
-            MetadataBaker baker(local_rig.MakeContext());
+            MetadataBaker baker {local_rig.MakeContext()};
             REQUIRE_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
             REQUIRE(local_rig.Outputs.contains("TestPack.fometa-client"));
 
             return read_baked_header(local_rig.Outputs.at("TestPack.fometa-client"));
-        };
+        }};
 
         // Two tags versus one tag whose trailing tokens spell out the second one. ParseEnum reads the first entry
         // and ignores the tail, so these are genuinely different metadata, and the version has to say so
-        string two_tags = bake_version_of(R"(
+        string two_tags {bake_version_of(R"(
 namespace TestMetadataVersionCollision
 {
 ///@ Enum CoverageAlpha Key = 1
 ///@ Enum CoverageBeta Key = 2
 }
-)");
-        string one_tag = bake_version_of(R"(
+)")};
+        string one_tag {bake_version_of(R"(
 namespace TestMetadataVersionCollision
 {
 ///@ Enum CoverageAlpha Key = 1 Enum CoverageBeta Key = 2
 }
-)");
+)")};
 
         CHECK_FALSE(two_tags.empty());
         CHECK(two_tags != one_tag);
@@ -357,12 +365,12 @@ namespace TestContinuation
 }
 )");
 
-        MetadataBaker baker(rig.MakeContext());
+        MetadataBaker baker {rig.MakeContext()};
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
         REQUIRE(rig.Outputs.contains("TestPack.fometa-client"));
 
-        auto tags = read_baked_tags(rig.Outputs.at("TestPack.fometa-client"));
-        auto enum_it = tags.find("Enum");
+        auto tags {read_baked_tags(rig.Outputs.at("TestPack.fometa-client"))};
+        auto enum_it {tags.find("Enum")};
 
         REQUIRE(enum_it != tags.end());
         CHECK(std::ranges::count(enum_it->second, vector<string> {"ContinuedCoverage", "uint8", "Value", "5"}) == 1);
@@ -381,12 +389,12 @@ namespace TestEnumEdges
 }
 )");
 
-        MetadataBaker baker(rig.MakeContext());
+        MetadataBaker baker {rig.MakeContext()};
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
         REQUIRE(rig.Outputs.contains("TestPack.fometa-client"));
 
-        auto tags = read_baked_tags(rig.Outputs.at("TestPack.fometa-client"));
-        auto enum_it = tags.find("Enum");
+        auto tags {read_baked_tags(rig.Outputs.at("TestPack.fometa-client"))};
+        auto enum_it {tags.find("Enum")};
 
         REQUIRE(enum_it != tags.end());
         CHECK(std::ranges::count(enum_it->second, vector<string> {"CoverageSigned", "int32", "Negative", "-2", "Auto", "0"}) == 1);
@@ -404,17 +412,17 @@ namespace TestEngineEnumEdges
 }
 )");
 
-        MetadataBaker baker(rig.MakeContext());
+        MetadataBaker baker {rig.MakeContext()};
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
         REQUIRE(rig.Outputs.contains("TestPack.fometa-server"));
 
-        auto tags = read_baked_tags(rig.Outputs.at("TestPack.fometa-server"));
-        auto enum_it = tags.find("Enum");
+        auto tags {read_baked_tags(rig.Outputs.at("TestPack.fometa-server"))};
+        auto enum_it {tags.find("Enum")};
 
         REQUIRE(enum_it != tags.end());
         CHECK(std::ranges::any_of(enum_it->second, [](const vector<string>& entry) { return entry.size() == 4 && entry[0] == "CritterProperty" && entry[1].empty() && entry[2] == "MetadataBakerCoverageExtra"; }));
 
-        vector<pair<string_view, string_view>> cases = {
+        vector<pair<string_view, string_view>> cases {
             {"///@ Enum CritterProperty None", "cannot override engine enum value"},
             {"///@ Enum CritterProperty MetadataBakerCoverageCollision = 0", "duplicate enum value in engine enum"},
         };
@@ -426,7 +434,7 @@ namespace TestEngineEnumEdges
 
     SECTION("rejects invalid enum declarations")
     {
-        vector<pair<string_view, string_view>> cases = {
+        vector<pair<string_view, string_view>> cases {
             {"///@ Enum BadOnly", "insufficient parameters"},
             {"///@ Enum Bad Entry\n///@ Enum Bad Entry", "duplicate enum entry"},
             {"///@ Enum Bad Entry =", "expected value after '='"},
@@ -443,7 +451,7 @@ namespace TestEngineEnumEdges
 
     SECTION("rejects invalid entity declarations")
     {
-        vector<pair<string_view, string_view>> cases = {
+        vector<pair<string_view, string_view>> cases {
             {"///@ Entity Server", "insufficient parameters"},
             {"///@ Entity Server ProtoBad", "entity name cannot start with 'Proto'"},
             {"///@ Entity Server AbstractBad", "entity name cannot start with 'Abstract'"},
@@ -467,12 +475,12 @@ namespace TestValueType
 }
 )");
 
-        MetadataBaker baker(rig.MakeContext());
+        MetadataBaker baker {rig.MakeContext()};
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
         REQUIRE(rig.Outputs.contains("TestPack.fometa-client"));
 
-        auto tags = read_baked_tags(rig.Outputs.at("TestPack.fometa-client"));
-        auto value_type_it = tags.find("ValueType");
+        auto tags {read_baked_tags(rig.Outputs.at("TestPack.fometa-client"))};
+        auto value_type_it {tags.find("ValueType")};
 
         REQUIRE(value_type_it != tags.end());
         CHECK(std::ranges::count(value_type_it->second, vector<string> {"CoverageValue", "Label", "hstring", "Count", "int32", "Enabled", "bool", "Visible", "bool", "Order", "int16"}) == 1);
@@ -485,7 +493,7 @@ namespace TestValueType
 
     SECTION("rejects invalid value type declarations")
     {
-        vector<pair<string_view, string_view>> cases = {
+        vector<pair<string_view, string_view>> cases {
             {"///@ ValueType Common Bad Layout =", "insufficient parameters"},
             {"///@ ValueType Mapper Bad Layout = int32 - Value", "invalid target"},
             {"///@ ValueType Common Bad Wrong = int32 - Value", "expected 'Layout ='"},
@@ -517,13 +525,13 @@ namespace TestEntityFlagsAndHolders
 }
 )");
 
-        MetadataBaker baker(rig.MakeContext());
+        MetadataBaker baker {rig.MakeContext()};
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
         REQUIRE(rig.Outputs.contains("TestPack.fometa-server"));
 
-        auto tags = read_baked_tags(rig.Outputs.at("TestPack.fometa-server"));
-        auto entity_it = tags.find("Entity");
-        auto holder_it = tags.find("EntityHolder");
+        auto tags {read_baked_tags(rig.Outputs.at("TestPack.fometa-server"))};
+        auto entity_it {tags.find("Entity")};
+        auto holder_it {tags.find("EntityHolder")};
 
         REQUIRE(entity_it != tags.end());
         CHECK(std::ranges::count(entity_it->second, vector<string> {"CoverageHolder", "Global", "HasProtos", "HasStatics", "HasAbstract"}) == 1);
@@ -547,22 +555,22 @@ namespace TestOffTargetMetadataStubs
 }
 )");
 
-        MetadataBaker baker(rig.MakeContext());
+        MetadataBaker baker {rig.MakeContext()};
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
         REQUIRE(rig.Outputs.contains("TestPack.fometa-server"));
 
-        auto tags = read_baked_tags(rig.Outputs.at("TestPack.fometa-server"));
-        auto holder_it = tags.find("EntityHolder");
+        auto tags {read_baked_tags(rig.Outputs.at("TestPack.fometa-server"))};
+        auto holder_it {tags.find("EntityHolder")};
 
         REQUIRE(holder_it != tags.end());
         CHECK(std::ranges::count(holder_it->second, vector<string> {"Stub", "Critter", "", "ClientEntries", "PublicSync"}) == 1);
 
-        auto entity_it = tags.find("Entity");
+        auto entity_it {tags.find("Entity")};
         if (entity_it != tags.end()) {
             CHECK(std::ranges::none_of(entity_it->second, [](const vector<string>& entry) { return !entry.empty() && entry.front() == "ClientHeld"; }));
         }
 
-        auto fixed_type_it = tags.find("FixedType");
+        auto fixed_type_it {tags.find("FixedType")};
         if (fixed_type_it != tags.end()) {
             CHECK(std::ranges::none_of(fixed_type_it->second, [](const vector<string>& entry) { return !entry.empty() && entry.front() == "ClientFixed"; }));
         }
@@ -570,7 +578,7 @@ namespace TestOffTargetMetadataStubs
 
     SECTION("rejects invalid entity holder declarations")
     {
-        vector<pair<string_view, string_view>> cases = {
+        vector<pair<string_view, string_view>> cases {
             {"///@ EntityHolder Server Holder Target", "insufficient parameters"},
             {"///@ EntityHolder Server MissingHolder MissingTarget Entry", "unknown holder entity type"},
             {R"(
@@ -606,7 +614,7 @@ namespace TestOffTargetMetadataStubs
 
     SECTION("rejects invalid fixed type declarations")
     {
-        vector<pair<string_view, string_view>> cases = {
+        vector<pair<string_view, string_view>> cases {
             {"///@ FixedType Server", "insufficient parameters"},
             {"///@ FixedType Server CoverageFixed ExtraFlag", "flags are not supported"},
             {"///@ FixedType Server CoverageFixed\n///@ FixedType Server CoverageFixed", "duplicate fixed type"},
@@ -622,34 +630,35 @@ namespace TestOffTargetMetadataStubs
     SECTION("reports empty and unknown codegen tags")
     {
         {
-            TestRig local_rig;
+            TestRig local_rig {};
             local_rig.AddSourceFile("Scripts/EmptyTag.fos", "///@ // comment only");
 
-            MetadataBaker baker(local_rig.MakeContext());
+            MetadataBaker baker {local_rig.MakeContext()};
             REQUIRE_THROWS_WITH(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("empty tag"));
         }
+
         {
-            TestRig local_rig;
+            TestRig local_rig {};
             local_rig.AddSourceFile("Scripts/UnknownTag.fos", "///@ Unknown Tag");
 
-            MetadataBaker baker(local_rig.MakeContext());
+            MetadataBaker baker {local_rig.MakeContext()};
             REQUIRE_THROWS_WITH(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("unknown tag name"));
         }
     }
 
     SECTION("aggregates async metadata errors when sync mode is disabled")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         local_rig.AddSourceFile("Scripts/BrokenAsync.fos", "///@ Unknown Tag");
 
-        auto context = local_rig.MakeContext();
-        context->ForceSyncMode = false;
+        auto context {local_rig.MakeContext()};
+        context->SetForceSyncMode(false);
 
-        MetadataBaker baker(context);
+        MetadataBaker baker {context};
         REQUIRE_THROWS_WITH(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("Errors during preparing of metadata"));
     }
 
-    SECTION("resolves setting groups and serializes their configured values")
+    SECTION("resolves setting groups and serializes their names and types")
     {
         ConfigFile config {"Project.DebugBuild = true\nProject.DebugFlag = false\n"};
         rig.Settings.ApplyConfigFile(config, "");
@@ -664,35 +673,35 @@ namespace TestSettings
 }
 )");
 
-        MetadataBaker baker(rig.MakeContext());
+        MetadataBaker baker {rig.MakeContext()};
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
         REQUIRE(rig.Outputs.contains("TestPack.fometa-client"));
 
-        const auto& output = rig.Outputs.at("TestPack.fometa-client");
-        data_reader reader(output);
+        const auto& output {rig.Outputs.at("TestPack.fometa-client")};
+        data_reader reader {output};
         skip_baked_header(reader);
-        auto tag_count = reader.read<uint16_t>();
-        auto read_string = [&reader](uint16_t size) -> string {
-            string value;
+        auto tag_count {reader.read<uint16_t>()};
+        auto read_string {[&reader](uint16_t size) -> string {
+            string value {};
             value.resize(size);
             reader.read_string_bytes(value);
             return value;
-        };
+        }};
 
-        vector<vector<string>> settings_entries;
+        vector<vector<string>> settings_entries {};
 
-        for (uint16_t i = 0; i < tag_count; i++) {
-            auto tag_name_len = reader.read<uint16_t>();
-            string tag_name = read_string(tag_name_len);
-            auto tag_value_count = reader.read<uint32_t>();
+        for (uint16_t i {0}; i < tag_count; i++) {
+            auto tag_name_len {reader.read<uint16_t>()};
+            string tag_name {read_string(tag_name_len)};
+            auto tag_value_count {reader.read<uint32_t>()};
 
-            for (uint32_t j = 0; j < tag_value_count; j++) {
-                auto value_parts_count = reader.read<uint32_t>();
-                vector<string> value_parts;
+            for (uint32_t j {0}; j < tag_value_count; j++) {
+                auto value_parts_count {reader.read<uint32_t>()};
+                vector<string> value_parts {};
                 value_parts.reserve(value_parts_count);
 
-                for (uint32_t k = 0; k < value_parts_count; k++) {
-                    auto part_len = reader.read<uint16_t>();
+                for (uint32_t k {0}; k < value_parts_count; k++) {
+                    auto part_len {reader.read<uint16_t>()};
                     value_parts.emplace_back(read_string(part_len));
                 }
 
@@ -704,12 +713,11 @@ namespace TestSettings
 
         reader.verify_end();
 
-        auto debug_build_value = rig.Settings.FindSettingValue("Project.DebugBuild");
-        auto debug_flag_value = rig.Settings.FindSettingValue("Project.DebugFlag");
-        REQUIRE(debug_build_value);
-        REQUIRE(debug_flag_value);
-        CHECK(std::ranges::count(settings_entries, vector<string> {"Project.DebugBuild", "bool", *debug_build_value}) == 2);
-        CHECK(std::ranges::count(settings_entries, vector<string> {"Project.DebugFlag", "bool", *debug_flag_value}) == 1);
+        REQUIRE(rig.Settings.FindSettingValue("Project.DebugBuild"));
+        REQUIRE(rig.Settings.FindSettingValue("Project.DebugFlag"));
+        CHECK(std::ranges::all_of(settings_entries, [](const vector<string>& entry) { return entry.size() == 2; }));
+        CHECK(std::ranges::count(settings_entries, vector<string> {"Project.DebugBuild", "bool"}) == 2);
+        CHECK(std::ranges::count(settings_entries, vector<string> {"Project.DebugFlag", "bool"}) == 1);
     }
 
     SECTION("rejects a setting declaration that names no group")
@@ -723,82 +731,56 @@ namespace TestSettings
         ExpectMetadataBakerError("///@ Setting Client bool Missing.Value", "setting has no configured value");
     }
 
-    SECTION("serializes and applies initial game setting values")
+    SECTION("serializes setting names and registers their types")
     {
         ConfigFile bake_config {"Common.GameName = MetadataGame\n"};
         rig.Settings.ApplyConfigFile(bake_config, "");
         rig.Settings.SetCustomSetting("Daylight.SunriseMinute", any_t(string("540")));
         rig.AddSourceFile("Scripts/TestSettingValue.fos", "///@ Setting Common string Common.GameName\n///@ Setting Client int32 Daylight.SunriseMinute");
 
-        MetadataBaker baker(rig.MakeContext());
+        MetadataBaker baker {rig.MakeContext()};
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
         REQUIRE(rig.Outputs.contains("TestPack.fometa-client"));
 
-        const auto& output = rig.Outputs.at("TestPack.fometa-client");
-        auto tags = read_baked_tags(output);
-        auto setting_it = tags.find("Setting");
+        const auto& output {rig.Outputs.at("TestPack.fometa-client")};
+        auto tags {read_baked_tags(output)};
+        auto setting_it {tags.find("Setting")};
 
         REQUIRE(setting_it != tags.end());
-        CHECK(std::ranges::count(setting_it->second, vector<string> {"Common.GameName", "string", "MetadataGame"}) == 1);
-        CHECK(std::ranges::count(setting_it->second, vector<string> {"Daylight.SunriseMinute", "int32", "540"}) == 1);
+        CHECK(std::ranges::all_of(setting_it->second, [](const vector<string>& entry) { return entry.size() == 2; }));
+        CHECK(std::ranges::count(setting_it->second, vector<string> {"Common.GameName", "string"}) == 1);
+        CHECK(std::ranges::count(setting_it->second, vector<string> {"Daylight.SunriseMinute", "int32"}) == 1);
 
         EngineMetadata meta {[] { }};
         meta.RegisterSide(EngineSideKind::ClientSide);
         REQUIRE_NOTHROW(RegisterDynamicMetadata(&meta, output));
-        // Mirrors what BaseEngine does with the registered values
-        auto apply_metadata_settings = [&](GlobalSettings& settings) {
-            for (const auto& [name, value] : meta.GetGameSettingsInitialValues()) {
-                if (!settings.FindSettingValue(name)) {
-                    settings.SetSettingValue(name, value);
-                }
-            }
-        };
-
-        GlobalSettings unconfigured_runtime_settings {false};
-        unconfigured_runtime_settings.ApplyDefaultSettings();
-        apply_metadata_settings(unconfigured_runtime_settings);
-        CHECK(unconfigured_runtime_settings.Common.GameName == "MetadataGame");
-        CHECK_FALSE(unconfigured_runtime_settings.FindCustomSetting("Common.GameName"));
-        REQUIRE(unconfigured_runtime_settings.FindCustomSetting("Daylight.SunriseMinute"));
-        CHECK(unconfigured_runtime_settings.GetCustomSetting("Daylight.SunriseMinute") == "540");
-
-        // The applied configuration is the operator's explicit override, so a sub-config, local config or
-        // command-line value survives the metadata baseline
-        GlobalSettings overridden_runtime_settings {false};
-        overridden_runtime_settings.ApplyDefaultSettings();
-        ConfigFile runtime_config {"Common.GameName = LocalGame\n"};
-        overridden_runtime_settings.ApplyConfigFile(runtime_config, "");
-        overridden_runtime_settings.SetCustomSetting("Daylight.SunriseMinute", any_t(string("600")));
-        apply_metadata_settings(overridden_runtime_settings);
-        CHECK(overridden_runtime_settings.Common.GameName == "LocalGame");
-        CHECK(overridden_runtime_settings.GetCustomSetting("Daylight.SunriseMinute") == "600");
-
-        auto missing_value_output = MakeMetadataBlob({{"Setting", {{"Invalid.WithoutValue", "bool"}}}});
-        EngineMetadata invalid_meta {[] { }};
-        invalid_meta.RegisterSide(EngineSideKind::ClientSide);
-        REQUIRE_THROWS_WITH(RegisterDynamicMetadata(&invalid_meta, missing_value_output), Catch::Matchers::ContainsSubstring("Setting metadata record must contain setting name, value type, and initial value"));
+        REQUIRE(meta.GetGameSettings().size() == 2);
+        CHECK(meta.GetGameSettings().contains("Common.GameName"));
+        CHECK(meta.GetGameSettings().contains("Daylight.SunriseMinute"));
+        CHECK(meta.GetGameSetting("Common.GameName").Name == "string");
+        CHECK(meta.GetGameSetting("Daylight.SunriseMinute").Name == "int32");
     }
 
     SECTION("refuses a pack written in an older file layout")
     {
-        // Layout 1 wrote the Setting record without its configured value, and a token layout change leaves the
+        // Version 5 stored an initial value in every Setting record, and a token layout change leaves the
         // metadata version untouched, so only the file layout version can stop such a pack from being read
-        constexpr uint16_t settings_without_value_layout = 1;
-        STATIC_REQUIRE(METADATA_FILE_VERSION > settings_without_value_layout);
+        constexpr uint16_t value_carrying_layout {5};
+        STATIC_REQUIRE(METADATA_FILE_VERSION == value_carrying_layout + 1);
 
-        vector<uint8_t> outdated_metadata;
-        auto writer = data_writer(outdated_metadata);
+        vector<uint8_t> outdated_metadata {};
+        auto writer {data_writer(outdated_metadata)};
         writer.write<uint32_t>(METADATA_FILE_MAGIC);
-        writer.write<uint16_t>(settings_without_value_layout);
+        writer.write<uint16_t>(value_carrying_layout);
         writer.write<uint16_t>(numeric_cast<uint16_t>(TEST_METADATA_VERSION.length()));
         writer.write_string_bytes(TEST_METADATA_VERSION);
         writer.write<uint16_t>(const_numeric_cast<uint16_t>(1));
         writer.write<uint16_t>(numeric_cast<uint16_t>(METADATA_SETTING_SECTION.length()));
         writer.write_string_bytes(METADATA_SETTING_SECTION);
         writer.write<uint32_t>(const_numeric_cast<uint32_t>(1));
-        writer.write<uint32_t>(const_numeric_cast<uint32_t>(2));
+        writer.write<uint32_t>(const_numeric_cast<uint32_t>(3));
 
-        for (string_view token : {string_view("Common.GameName"), string_view("string")}) {
+        for (string_view token : {string_view("Common.GameName"), string_view("string"), string_view("FOnline")}) {
             writer.write<uint16_t>(numeric_cast<uint16_t>(token.length()));
             writer.write_string_bytes(token);
         }
@@ -822,13 +804,13 @@ namespace TestEventsAndRemoteCalls
 }
 )");
 
-        MetadataBaker baker(rig.MakeContext());
+        MetadataBaker baker {rig.MakeContext()};
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
         REQUIRE(rig.Outputs.contains("TestPack.fometa-server"));
 
-        auto tags = read_baked_tags(rig.Outputs.at("TestPack.fometa-server"));
-        auto event_it = tags.find("Event");
-        auto remote_call_it = tags.find("RemoteCall");
+        auto tags {read_baked_tags(rig.Outputs.at("TestPack.fometa-server"))};
+        auto event_it {tags.find("Event")};
+        auto remote_call_it {tags.find("RemoteCall")};
 
         REQUIRE(event_it != tags.end());
         CHECK(std::ranges::count(event_it->second, vector<string> {"Critter", "CoverageEvent"}) == 1);
@@ -841,7 +823,7 @@ namespace TestEventsAndRemoteCalls
 
     SECTION("rejects invalid event declarations")
     {
-        vector<pair<string_view, string_view>> cases = {
+        vector<pair<string_view, string_view>> cases {
             {"///@ Event Server Critter CoverageEvent", "insufficient parameters"},
             {"///@ Event Server MissingEntity CoverageEvent ( )", "invalid entity type"},
             {"///@ Event Server Critter CoverageEvent ) trailing", "expected '(' after event name"},
@@ -858,7 +840,7 @@ namespace TestEventsAndRemoteCalls
 
     SECTION("rejects invalid remote call declarations")
     {
-        vector<pair<string_view, string_view>> cases = {
+        vector<pair<string_view, string_view>> cases {
             {"///@ RemoteCall Server CoverageCall", "insufficient parameters"},
             {"///@ RemoteCall Mapper CoverageCall ( )", "expected 'Server' or 'Client' as target"},
             {"///@ RemoteCall Server CoverageCall ) trailing", "expected '(' after remote call name"},
@@ -878,7 +860,7 @@ namespace TestEventsAndRemoteCalls
 
     SECTION("rejects invalid setting declarations")
     {
-        vector<pair<string_view, string_view>> cases = {
+        vector<pair<string_view, string_view>> cases {
             {"///@ Setting Server bool", "insufficient parameters"},
             {"///@ Setting Mapper bool Coverage.Setting", "expected 'Common', 'Server' or 'Client' as target"},
             {"///@ Setting Server MissingType Coverage.Setting", "invalid type"},
@@ -892,7 +874,7 @@ namespace TestEventsAndRemoteCalls
 
     SECTION("rejects malformed migration rules")
     {
-        vector<pair<string_view, string_view>> cases = {
+        vector<pair<string_view, string_view>> cases {
             {"///@ MigrationRule Property Item Rename OnlyOneArg", "insufficient parameters"},
             {"///@ MigrationRule Property Item Rename . _", "insufficient parameters"},
             {"///@ MigrationRule Property Item Rename . Bad _", "malformed dotted name"},
@@ -902,6 +884,11 @@ namespace TestEventsAndRemoteCalls
             {"///@ MigrationRule Property Item Transform Identity Migrations:::Rewrite", "too many rule arguments"},
             {"///@ MigrationRule Property Item Transform Identity Migrations::", "too many rule arguments"},
             {"///@ MigrationRule Property Item Rename Old Migrations::New", "too many rule arguments"},
+            {"///@ MigrationRule Proto Modifier Rename Local knowledge LocalKnowledge", "too many rule arguments"},
+            {"///@ MigrationRule Proto Modifier Remove Old New", "too many rule arguments"},
+            {"///@ MigrationRule Proto Modifier Rename \"Local knowledge LocalKnowledge", "malformed quoted rule argument"},
+            {"///@ MigrationRule Proto Modifier Rename \"\" LocalKnowledge", "empty rule argument"},
+            {"///@ MigrationRule Proto Modifier Rename Old \"New Name\"", "rule replacement must not contain whitespace"},
         };
 
         for (const auto& [script, message] : cases) {
@@ -909,48 +896,51 @@ namespace TestEventsAndRemoteCalls
         }
     }
 
-    SECTION("serializes migration rules with dotted names")
+    SECTION("serializes migration rules with dotted names and quoted spaces")
     {
         rig.AddSourceFile("Scripts/TestMigration.fos", R"(
 namespace TestMigration
 {
+///@ Entity Client Modifier HasProtos
 ///@ Property Item Common bool Weapon Component
 ///@ Property Item Common hstring Weapon.Ammo Mutable Persistent PublicSync
 ///@ MigrationRule Property Item Rename Weapon.AmmoPid Weapon.Ammo
-///@ MigrationRule Proto Modifier Remove LegacyAchvO9tCm0
+///@ MigrationRule Proto Modifier Remove "Legacy achievement"
+///@ MigrationRule Proto Modifier Transform "Conditional legacy" GameMigrations.RewriteProto
+///@ MigrationRule Proto Modifier Rename "Local knowledge" LocalKnowledge // legacy identifier with a space
 }
 )");
 
-        MetadataBaker baker(rig.MakeContext());
+        MetadataBaker baker {rig.MakeContext()};
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
         REQUIRE(rig.Outputs.contains("TestPack.fometa-client"));
 
-        const auto& output = rig.Outputs.at("TestPack.fometa-client");
-        data_reader reader(output);
+        const auto& output {rig.Outputs.at("TestPack.fometa-client")};
+        data_reader reader {output};
         skip_baked_header(reader);
-        auto tag_count = reader.read<uint16_t>();
-        auto read_string = [&reader](uint16_t size) -> string {
-            string value;
+        auto tag_count {reader.read<uint16_t>()};
+        auto read_string {[&reader](uint16_t size) -> string {
+            string value {};
             value.resize(size);
             reader.read_string_bytes(value);
             return value;
-        };
+        }};
 
-        vector<vector<string>> migration_entries;
-        vector<vector<string>> settings_entries;
+        vector<vector<string>> migration_entries {};
+        vector<vector<string>> settings_entries {};
 
-        for (uint16_t i = 0; i < tag_count; i++) {
-            auto tag_name_len = reader.read<uint16_t>();
-            string tag_name = read_string(tag_name_len);
-            auto tag_value_count = reader.read<uint32_t>();
+        for (uint16_t i {0}; i < tag_count; i++) {
+            auto tag_name_len {reader.read<uint16_t>()};
+            string tag_name {read_string(tag_name_len)};
+            auto tag_value_count {reader.read<uint32_t>()};
 
-            for (uint32_t j = 0; j < tag_value_count; j++) {
-                auto value_parts_count = reader.read<uint32_t>();
-                vector<string> value_parts;
+            for (uint32_t j {0}; j < tag_value_count; j++) {
+                auto value_parts_count {reader.read<uint32_t>()};
+                vector<string> value_parts {};
                 value_parts.reserve(value_parts_count);
 
-                for (uint32_t k = 0; k < value_parts_count; k++) {
-                    auto part_len = reader.read<uint16_t>();
+                for (uint32_t k {0}; k < value_parts_count; k++) {
+                    auto part_len {reader.read<uint16_t>()};
                     value_parts.emplace_back(read_string(part_len));
                 }
 
@@ -966,7 +956,9 @@ namespace TestMigration
         reader.verify_end();
 
         CHECK(std::ranges::count(migration_entries, vector<string> {"Property", "Item", "Rename", "Weapon.AmmoPid", "Weapon.Ammo"}) == 1);
-        CHECK(std::ranges::count(migration_entries, vector<string> {"Proto", "Modifier", "Remove", "LegacyAchvO9tCm0"}) == 1);
+        CHECK(std::ranges::count(migration_entries, vector<string> {"Proto", "Modifier", "Remove", "Legacy achievement"}) == 1);
+        CHECK(std::ranges::count(migration_entries, vector<string> {"Proto", "Modifier", "Transform", "Conditional legacy", "GameMigrations.RewriteProto"}) == 1);
+        CHECK(std::ranges::count(migration_entries, vector<string> {"Proto", "Modifier", "Rename", "Local knowledge", "LocalKnowledge"}) == 1);
         CHECK(settings_entries.empty());
 
         EngineMetadata meta {[] { }};
@@ -976,14 +968,19 @@ namespace TestMigration
         meta.RegisterEntityType("Item", true, false, true, true, true);
         meta.RegisterEnumGroup("ItemProperty", "int32", {});
         REQUIRE_NOTHROW(RegisterDynamicMetadata(&meta, output));
+        REQUIRE(meta.GetEntityType(meta.Hashes.to_hashed_string("Modifier")).HasProtos);
 
-        auto property_rule = meta.CheckMigrationRule(meta.Hashes.to_hashed_string("Property"), meta.Hashes.to_hashed_string("Item"), meta.Hashes.to_hashed_string("Weapon.AmmoPid"));
+        auto property_rule {meta.CheckMigrationRule(meta.Hashes.to_hashed_string("Property"), meta.Hashes.to_hashed_string("Item"), meta.Hashes.to_hashed_string("Weapon.AmmoPid"))};
         REQUIRE(property_rule.has_value());
         CHECK(property_rule.value() == meta.Hashes.to_hashed_string("Weapon.Ammo"));
 
-        auto proto_rule = meta.CheckMigrationRule(meta.Hashes.to_hashed_string("Proto"), meta.Hashes.to_hashed_string("Modifier"), meta.Hashes.to_hashed_string("LegacyAchvO9tCm0"));
+        auto proto_rule {meta.CheckMigrationRule(meta.Hashes.to_hashed_string("Proto"), meta.Hashes.to_hashed_string("Modifier"), meta.Hashes.to_hashed_string("Legacy achievement"))};
         REQUIRE(proto_rule.has_value());
         CHECK_FALSE(static_cast<bool>(proto_rule.value()));
+
+        auto legacy_proto_rule {meta.CheckMigrationRule(meta.Hashes.to_hashed_string("Proto"), meta.Hashes.to_hashed_string("Modifier"), meta.Hashes.to_hashed_string("Local knowledge"))};
+        REQUIRE(legacy_proto_rule.has_value());
+        CHECK(legacy_proto_rule.value() == meta.Hashes.to_hashed_string("LocalKnowledge"));
     }
 
     SECTION("serializes ref type fields declared via property tags")
@@ -998,18 +995,18 @@ namespace TestRefTypeProps
 }
 )");
 
-        MetadataBaker baker(rig.MakeContext());
+        MetadataBaker baker {rig.MakeContext()};
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
         REQUIRE(rig.Outputs.contains("TestPack.fometa-client"));
 
-        const auto& output = rig.Outputs.at("TestPack.fometa-client");
-        auto tags = read_baked_tags(output);
-        auto ref_type_it = tags.find("RefType");
+        const auto& output {rig.Outputs.at("TestPack.fometa-client")};
+        auto tags {read_baked_tags(output)};
+        auto ref_type_it {tags.find("RefType")};
 
         REQUIRE(ref_type_it != tags.end());
         CHECK(std::ranges::count(ref_type_it->second, vector<string> {"RouteSnapshot", "Steps", "int32[]", "0", "Tags", "hstring[]", "0", "Note", "string", "0"}) == 1);
 
-        auto property_it = tags.find("Property");
+        auto property_it {tags.find("Property")};
         if (property_it != tags.end()) {
             CHECK(std::ranges::none_of(property_it->second, [](const auto& entry) { return !entry.empty() && entry.front() == "RouteSnapshot"; }));
         }
@@ -1018,13 +1015,13 @@ namespace TestRefTypeProps
         meta.RegisterSide(EngineSideKind::ClientSide);
         REQUIRE_NOTHROW(RegisterDynamicMetadata(&meta, output));
 
-        const auto& route_snapshot_type = meta.GetBaseType("RouteSnapshot");
+        const auto& route_snapshot_type {meta.GetBaseType("RouteSnapshot")};
         REQUIRE(route_snapshot_type.IsRefType);
         REQUIRE(route_snapshot_type.RefType);
         REQUIRE(route_snapshot_type.RefType->FieldsRegistrar);
-        auto steps_prop = route_snapshot_type.RefType->FieldsRegistrar->FindProperty("Steps");
-        auto tags_prop = route_snapshot_type.RefType->FieldsRegistrar->FindProperty("Tags");
-        auto note_prop = route_snapshot_type.RefType->FieldsRegistrar->FindProperty("Note");
+        auto steps_prop {route_snapshot_type.RefType->FieldsRegistrar->FindProperty("Steps")};
+        auto tags_prop {route_snapshot_type.RefType->FieldsRegistrar->FindProperty("Tags")};
+        auto note_prop {route_snapshot_type.RefType->FieldsRegistrar->FindProperty("Note")};
         REQUIRE(static_cast<bool>(steps_prop));
         REQUIRE(static_cast<bool>(tags_prop));
         REQUIRE(static_cast<bool>(note_prop));
@@ -1046,13 +1043,13 @@ namespace TestRefTypeEntityProps
 }
 )");
 
-        MetadataBaker baker(rig.MakeContext());
+        MetadataBaker baker {rig.MakeContext()};
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
         REQUIRE(rig.Outputs.contains("TestPack.fometa-server"));
 
-        const auto& output = rig.Outputs.at("TestPack.fometa-server");
-        auto tags = read_baked_tags(output);
-        auto property_it = tags.find("Property");
+        const auto& output {rig.Outputs.at("TestPack.fometa-server")};
+        auto tags {read_baked_tags(output)};
+        auto property_it {tags.find("Property")};
 
         REQUIRE(property_it != tags.end());
         CHECK(std::ranges::count(property_it->second, vector<string> {"Critter", "Server", "RouteSnapshot", "Snapshot", "Mutable", "Persistent"}) == 1);
@@ -1064,11 +1061,11 @@ namespace TestRefTypeEntityProps
         meta.RegisterEnumGroup("CritterProperty", "uint16", {{"None", 0}});
         REQUIRE_NOTHROW(RegisterDynamicMetadata(&meta, output));
 
-        auto critter_registrar = meta.GetPropertyRegistrar("Critter");
+        auto critter_registrar {meta.GetPropertyRegistrar("Critter")};
         REQUIRE(static_cast<bool>(critter_registrar));
 
-        auto snapshot_prop = critter_registrar->FindProperty("Snapshot");
-        auto snapshots_prop = critter_registrar->FindProperty("Snapshots");
+        auto snapshot_prop {critter_registrar->FindProperty("Snapshot")};
+        auto snapshots_prop {critter_registrar->FindProperty("Snapshots")};
 
         REQUIRE(static_cast<bool>(snapshot_prop));
         REQUIRE(static_cast<bool>(snapshots_prop));
@@ -1092,12 +1089,12 @@ namespace TestEntityComponentProps
 }
 )");
 
-        MetadataBaker baker(rig.MakeContext());
+        MetadataBaker baker {rig.MakeContext()};
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
         REQUIRE(rig.Outputs.contains("TestPack.fometa-server"));
 
-        auto tags = read_baked_tags(rig.Outputs.at("TestPack.fometa-server"));
-        auto property_it = tags.find("Property");
+        auto tags {read_baked_tags(rig.Outputs.at("TestPack.fometa-server"))};
+        auto property_it {tags.find("Property")};
 
         REQUIRE(property_it != tags.end());
         CHECK(std::ranges::count(property_it->second, vector<string> {"Critter", "Server", "bool", "Marker", "Component"}) == 1);
@@ -1106,7 +1103,7 @@ namespace TestEntityComponentProps
 
     SECTION("rejects invalid entity properties")
     {
-        vector<pair<string_view, string_view>> cases = {
+        vector<pair<string_view, string_view>> cases {
             {"///@ Property Critter Server int32", "insufficient parameters"},
             {"///@ Property MissingEntity Server int32 Value", "unknown entity type"},
             {"///@ Property Critter Mapper int32 Value", "invalid target"},
@@ -1149,13 +1146,13 @@ namespace TestNestedRefTypeProps
 }
 )");
 
-        MetadataBaker baker(rig.MakeContext());
+        MetadataBaker baker {rig.MakeContext()};
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
         REQUIRE(rig.Outputs.contains("TestPack.fometa-client"));
 
-        const auto& output = rig.Outputs.at("TestPack.fometa-client");
-        auto tags = read_baked_tags(output);
-        auto ref_type_it = tags.find("RefType");
+        const auto& output {rig.Outputs.at("TestPack.fometa-client")};
+        auto tags {read_baked_tags(output)};
+        auto ref_type_it {tags.find("RefType")};
 
         REQUIRE(ref_type_it != tags.end());
         REQUIRE(ref_type_it->second.size() == 2);
@@ -1166,8 +1163,8 @@ namespace TestNestedRefTypeProps
         meta.RegisterSide(EngineSideKind::ClientSide);
         REQUIRE_NOTHROW(RegisterDynamicMetadata(&meta, output));
 
-        const auto& alpha_type = meta.GetBaseType("Alpha");
-        const auto& beta_type = meta.GetBaseType("Beta");
+        const auto& alpha_type {meta.GetBaseType("Alpha")};
+        const auto& beta_type {meta.GetBaseType("Beta")};
         REQUIRE(alpha_type.IsRefType);
         REQUIRE(beta_type.IsRefType);
         REQUIRE(alpha_type.RefType);
@@ -1175,7 +1172,7 @@ namespace TestNestedRefTypeProps
         REQUIRE(alpha_type.RefType->FieldsRegistrar);
         REQUIRE(beta_type.RefType->FieldsRegistrar);
 
-        auto dependency_prop = alpha_type.RefType->FieldsRegistrar->FindProperty("Dependency");
+        auto dependency_prop {alpha_type.RefType->FieldsRegistrar->FindProperty("Dependency")};
         REQUIRE(static_cast<bool>(dependency_prop));
         CHECK(dependency_prop->GetViewTypeName() == "Beta");
         CHECK(dependency_prop->IsBaseTypeRefType());
@@ -1191,13 +1188,13 @@ namespace TestLegacyRefType
 }
 )");
 
-        MetadataBaker baker(rig.MakeContext());
+        MetadataBaker baker {rig.MakeContext()};
         REQUIRE_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("Layout is no longer supported"));
     }
 
     SECTION("rejects invalid ref type declarations")
     {
-        vector<pair<string_view, string_view>> cases = {
+        vector<pair<string_view, string_view>> cases {
             {"///@ RefType Server", "insufficient parameters"},
             {"///@ RefType Mapper BadRef", "invalid target"},
             {"///@ RefType Server BadRef Extra", "unexpected parameters"},
@@ -1217,7 +1214,7 @@ namespace TestLegacyRefType
 
     SECTION("rejects invalid ref type field declarations")
     {
-        vector<pair<string_view, string_view>> cases = {
+        vector<pair<string_view, string_view>> cases {
             {R"(
 ///@ RefType Server BadRef
 ///@ Property BadRef Client int32 Value
@@ -1277,7 +1274,7 @@ namespace TestRefTypeFlags
 }
 )");
 
-        MetadataBaker baker(rig.MakeContext());
+        MetadataBaker baker {rig.MakeContext()};
         REQUIRE_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("RefType fields only allow the 'Component' flag"));
     }
 
@@ -1293,14 +1290,14 @@ namespace TestRefTypeComponent
 }
 )");
 
-        MetadataBaker baker(rig.MakeContext());
+        MetadataBaker baker {rig.MakeContext()};
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 
         REQUIRE(rig.Outputs.contains("TestPack.fometa-server"));
 
-        const auto& output = rig.Outputs.at("TestPack.fometa-server");
-        auto tags = read_baked_tags(output);
-        auto ref_type_it = tags.find("RefType");
+        const auto& output {rig.Outputs.at("TestPack.fometa-server")};
+        auto tags {read_baked_tags(output)};
+        auto ref_type_it {tags.find("RefType")};
 
         REQUIRE(ref_type_it != tags.end());
         // Encoded as: name, "<field> <type> <flag-count> <flag*>" repeating
@@ -1317,7 +1314,7 @@ namespace TestRefTypeComponentMissing
 }
 )");
 
-        MetadataBaker baker(rig.MakeContext());
+        MetadataBaker baker {rig.MakeContext()};
         REQUIRE_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("RefType component is not declared"));
     }
 
@@ -1331,20 +1328,118 @@ namespace TestValueTypePropertyOwner
 }
 )");
 
-        MetadataBaker baker(rig.MakeContext());
+        MetadataBaker baker {rig.MakeContext()};
         REQUIRE_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("only RefType supports script metadata properties"));
     }
 #endif
 }
 
+TEST_CASE("MetadataBakerSettingRecordsCarryOnlyNameAndType")
+{
+    using namespace BakerTests;
+
+    constexpr string_view marker_value {"metadata-setting-value-marker"};
+    string marker_token {marker_value};
+
+    TestRig rig {};
+    rig.Settings.SetCustomSetting("Probe.Value", any_t(string("540")));
+    rig.Settings.SetCustomSetting("Probe.Note", any_t(string(marker_token)));
+    rig.Settings.SetCustomSetting("Probe.Empty", any_t(string("")));
+    REQUIRE(rig.Settings.FindSettingValue("Probe.Value"));
+    REQUIRE(rig.Settings.FindSettingValue("Probe.Note"));
+    REQUIRE(rig.Settings.FindSettingValue("Probe.Empty"));
+    CHECK(rig.Settings.FindSettingValue("Probe.Empty")->empty());
+    rig.AddSourceFile("Scripts/ProbeSettings.cs", R"(
+///@ Setting Common int32 Probe.Value
+///@ Setting Common string Probe.Note
+///@ Setting Common string Probe.Empty
+)");
+
+    MetadataBaker baker {rig.MakeContext()};
+    REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+    REQUIRE(rig.Outputs.contains("TestPack.fometa-client"));
+
+    const auto& output {rig.Outputs.at("TestPack.fometa-client")};
+    auto tags {ReadMetadataTags(output)};
+    auto setting_it {tags.find("Setting")};
+
+    REQUIRE(setting_it != tags.end());
+    const auto& settings {setting_it->second};
+    REQUIRE(settings.size() == 3);
+    CHECK(std::ranges::all_of(settings, [](const vector<string>& entry) { return entry.size() == 2; }));
+    CHECK(std::ranges::count(settings, vector<string> {"Probe.Value", "int32"}) == 1);
+    CHECK(std::ranges::count(settings, vector<string> {"Probe.Note", "string"}) == 1);
+    CHECK(std::ranges::count(settings, vector<string> {"Probe.Empty", "string"}) == 1);
+    CHECK(std::ranges::none_of(settings, [&marker_token](const vector<string>& entry) { return std::ranges::find(entry, marker_token) != entry.end(); }));
+    CHECK(std::ranges::none_of(settings, [](const vector<string>& entry) { return std::ranges::find(entry, string {"540"}) != entry.end(); }));
+
+    string raw_output {output.begin(), output.end()};
+    CHECK(raw_output.find(marker_token) == string::npos);
+
+    EngineMetadata meta {[] { }};
+    meta.RegisterSide(EngineSideKind::ClientSide);
+    REQUIRE_NOTHROW(RegisterDynamicMetadata(&meta, output));
+    REQUIRE(meta.GetGameSettings().size() == 3);
+    CHECK(meta.GetGameSetting("Probe.Value").Name == "int32");
+    CHECK(meta.GetGameSetting("Probe.Note").Name == "string");
+    CHECK(meta.GetGameSetting("Probe.Empty").Name == "string");
+
+    TestRig missing_rig {};
+    missing_rig.AddSourceFile("Scripts/MissingSetting.cs", "///@ Setting Common bool Missing.Value\n");
+    MetadataBaker missing_baker {missing_rig.MakeContext()};
+    REQUIRE_THROWS_WITH(missing_baker.BakeFiles(missing_rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("setting has no configured value"));
+
+    const vector<vector<string_view>> invalid_settings {
+        {},
+        {"Probe.Value"},
+        {"Probe.Value", "int32", "540"},
+        {"Probe.Value", "int32", "540", "extra"},
+    };
+
+    for (const auto& tokens : invalid_settings) {
+        vector<pair<string_view, vector<vector<string_view>>>> sections {};
+        sections.emplace_back(string_view {"Setting"}, vector<vector<string_view>> {tokens});
+        auto invalid_output {MakeMetadataBlob(sections)};
+        EngineMetadata invalid_meta {[] { }};
+        invalid_meta.RegisterSide(EngineSideKind::ClientSide);
+        CHECK_THROWS_WITH(RegisterDynamicMetadata(&invalid_meta, invalid_output), Catch::Matchers::ContainsSubstring("must contain setting name and value type"));
+    }
+
+    constexpr uint16_t value_carrying_layout {5};
+    STATIC_REQUIRE(METADATA_FILE_VERSION == value_carrying_layout + 1);
+
+    vector<uint8_t> outdated_metadata {};
+    auto writer {data_writer(outdated_metadata)};
+    writer.write<uint32_t>(METADATA_FILE_MAGIC);
+    writer.write<uint16_t>(value_carrying_layout);
+    writer.write<uint16_t>(numeric_cast<uint16_t>(TEST_METADATA_VERSION.length()));
+    writer.write_string_bytes(TEST_METADATA_VERSION);
+    writer.write<uint16_t>(const_numeric_cast<uint16_t>(1));
+    writer.write<uint16_t>(numeric_cast<uint16_t>(METADATA_SETTING_SECTION.length()));
+    writer.write_string_bytes(METADATA_SETTING_SECTION);
+    writer.write<uint32_t>(const_numeric_cast<uint32_t>(1));
+    writer.write<uint32_t>(const_numeric_cast<uint32_t>(3));
+
+    for (string_view token : {string_view("Probe.Value"), string_view("int32"), string_view("540")}) {
+        writer.write<uint16_t>(numeric_cast<uint16_t>(token.length()));
+        writer.write_string_bytes(token);
+    }
+
+    CHECK_THROWS_WITH(ReadMetadataVersion(outdated_metadata), Catch::Matchers::ContainsSubstring("resources must be rebaked"));
+
+    EngineMetadata outdated_meta {[] { }};
+    outdated_meta.RegisterSide(EngineSideKind::ClientSide);
+    CHECK_THROWS_AS(RegisterDynamicMetadata(&outdated_meta, outdated_metadata), MetadataOutdatedException);
+}
+
 TEST_CASE("MetadataBakerCarriesPropertyRenameRules")
 {
-    BakerTests::TestRig rig;
+    BakerTests::TestRig rig {};
     rig.AddSourceFile("Scripts/RenamedMetadata.cs", R"(
 ///@ Property Critter Common int16 Step Mutable Persistent PublicSync
 ///@ MigrationRule Property Critter Rename OldStep Step
 )");
-    MetadataBaker baker(rig.MakeContext());
+    MetadataBaker baker {rig.MakeContext()};
     REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 
     for (auto target : {"server", "client", "mapper"}) {
@@ -1352,12 +1447,12 @@ TEST_CASE("MetadataBakerCarriesPropertyRenameRules")
         meta.RegisterSide(target == string_view {"server"} ? EngineSideKind::ServerSide : EngineSideKind::ClientSide);
         meta.RegisterEntityType("Critter", true, false, true, true, true);
         meta.RegisterEnumGroup("CritterProperty", "int32", {});
-        const auto& output = rig.Outputs.at(strex("TestPack.fometa-{}", target));
+        const auto& output {rig.Outputs.at(strex("TestPack.fometa-{}", target))};
         REQUIRE_NOTHROW(RegisterDynamicMetadata(&meta, output));
-        auto registrar = meta.GetPropertyRegistrar("Critter");
+        auto registrar {meta.GetPropertyRegistrar("Critter")};
         REQUIRE(registrar);
-        Properties props(registrar);
-        AnyData::Document doc;
+        Properties props {registrar};
+        AnyData::Document doc {};
         doc.Emplace("OldStep", int64_t {7});
         REQUIRE(PropertiesSerializer::LoadFromDocument(&props, doc, meta.Hashes, meta));
         CHECK(props.GetValue<int16_t>(registrar->FindProperty("Step").as_ptr()) == 7);
@@ -1367,16 +1462,16 @@ TEST_CASE("MetadataBakerCarriesPropertyRenameRules")
 TEST_CASE("MetadataBakerRejectsPropertyRuleRetiringLiveName")
 {
     for (auto rule : {"Property Critter Rename Step LegacyStep", "Property Critter Rename Step LegacyStep BeforeVersion DataVersion 3270", "Property Critter Remove Step"}) {
-        BakerTests::TestRig rig;
+        BakerTests::TestRig rig {};
         rig.AddSourceFile("Scripts/ReusedMetadata.cs", strex("///@ Property Critter Common int32 LegacyStep Mutable Persistent PublicSync\n///@ Property Critter Common int16 Step Mutable Persistent PublicSync\n///@ MigrationRule {}\n", rule));
-        MetadataBaker baker(rig.MakeContext());
+        MetadataBaker baker {rig.MakeContext()};
         CHECK_THROWS(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
     }
 }
 
 TEST_CASE("MetadataBakerPropertyTransformRoundTripsAndValidates")
 {
-    BakerTests::TestRig rig;
+    BakerTests::TestRig rig {};
     rig.AddSourceFile("Scripts/DocumentMigration.cs", R"(
 ///@ Property Critter Common hstring MigrationIdentity Mutable Persistent PublicSync
 ///@ Entity Server ServerOnlyRecord
@@ -1396,8 +1491,9 @@ TEST_CASE("MetadataBakerPropertyTransformRoundTripsAndValidates")
 ///@ MigrationRule Proto Critter Transform AngelScriptLegacy Migrations::Nested::RewriteProto
 )");
 
-    MetadataBaker baker(rig.MakeContext());
+    MetadataBaker baker {rig.MakeContext()};
     REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+
     for (auto target : {"server", "client", "mapper"}) {
         EngineMetadata meta {[] { }};
         meta.RegisterSide(target == string_view {"server"} ? EngineSideKind::ServerSide : EngineSideKind::ClientSide);
@@ -1406,34 +1502,34 @@ TEST_CASE("MetadataBakerPropertyTransformRoundTripsAndValidates")
         meta.RegisterEntityType("Critter", true, false, true, true, true);
         meta.RegisterEnumGroup("CritterProperty", "int32", {});
         REQUIRE_NOTHROW(RegisterDynamicMetadata(&meta, rig.Outputs.at(strex("TestPack.fometa-{}", target))));
-        auto registrar = meta.GetPropertyRegistrar("Critter");
+        auto registrar {meta.GetPropertyRegistrar("Critter")};
         REQUIRE(registrar);
-        auto prop = registrar->FindProperty("MigrationIdentity");
+        auto prop {registrar->FindProperty("MigrationIdentity")};
         REQUIRE(prop);
         CHECK(meta.GetProtoMigrators().at(meta.Hashes.to_hashed_string("Critter")).at(meta.Hashes.to_hashed_string("LegacyIdentity")).Name == "GameMigrations.RewriteProto");
-        auto removed = meta.CheckMigrationRule(meta.Hashes.to_hashed_string("Proto"), meta.Hashes.to_hashed_string("Critter"), meta.Hashes.to_hashed_string("Removed.Identity"));
+        auto removed {meta.CheckMigrationRule(meta.Hashes.to_hashed_string("Proto"), meta.Hashes.to_hashed_string("Critter"), meta.Hashes.to_hashed_string("Removed.Identity"))};
         REQUIRE(removed.has_value());
         CHECK_FALSE(*removed);
         CHECK(prop->GetMigratorName() == "GameMigrations.RewriteIdentity");
         CHECK(registrar->FindProperty("AngelScriptIdentity")->GetMigratorName() == "Migrations::RewriteIdentity");
         CHECK(meta.GetProtoMigrators().at(meta.Hashes.to_hashed_string("Critter")).at(meta.Hashes.to_hashed_string("AngelScriptLegacy")).Name == "Migrations::Nested::RewriteProto");
         CHECK(registrar->FindPersistedProperty("OldIdentity") == prop);
-        auto removed_property = meta.CheckMigrationRule(meta.Hashes.to_hashed_string("Property"), meta.Hashes.to_hashed_string("Critter"), meta.Hashes.to_hashed_string("Removed.Identity"));
+        auto removed_property {meta.CheckMigrationRule(meta.Hashes.to_hashed_string("Property"), meta.Hashes.to_hashed_string("Critter"), meta.Hashes.to_hashed_string("Removed.Identity"))};
         REQUIRE(removed_property.has_value());
         CHECK_FALSE(*removed_property);
         CHECK_FALSE(registrar->FindPersistedProperty("Removed.Identity"));
     }
     for (auto rule : {"Property Critter Transform Missing Rewrite", "Property Critter Transform Transient Rewrite", "Property Critter Rename Old Missing", "Property Critter MigrationIdentity Rewrite", "Property Critter Remove", "Property Critter Remove Old New", "Property Critter Rename Old __remove__", "Property Missing Remove Old", "Proto Critter Old New", "Proto Critter Remove Old New", "Proto Critter Unknown Old New", "Proto Critter Rename Old __remove__"}) {
-        BakerTests::TestRig invalid;
+        BakerTests::TestRig invalid {};
         invalid.AddSourceFile("Scripts/InvalidMigration.cs", strex("///@ Property Critter Common hstring Transient Mutable PublicSync\n///@ MigrationRule {}\n", rule));
-        MetadataBaker invalid_baker(invalid.MakeContext());
+        MetadataBaker invalid_baker {invalid.MakeContext()};
         CHECK_THROWS(invalid_baker.BakeFiles(invalid.GetAllSourceFiles(), ""));
     }
 }
 
 TEST_CASE("MetadataBakerEntityHolderScopes")
 {
-    BakerTests::TestRig rig;
+    BakerTests::TestRig rig {};
     rig.AddSourceFile("Scripts/SideSpecificHolders.cs", R"(
 ///@ Entity Server ScopeServerHolder
 ///@ Entity Server ScopeServerChild
@@ -1448,19 +1544,21 @@ TEST_CASE("MetadataBakerEntityHolderScopes")
 ///@ EntityHolder Mapper Game ScopeMapperHolder MapperRoot NoSync
 ///@ EntityHolder Mapper ScopeMapperHolder ScopeMapperChild Children NoSync
 )");
-    MetadataBaker baker(rig.MakeContext());
+    MetadataBaker baker {rig.MakeContext()};
     REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 
     for (const auto& [target, side] : {pair<string_view, string_view> {"server", "Server"}, {"client", "Client"}, {"mapper", "Mapper"}}) {
-        auto tags = ReadMetadataTags(rig.Outputs.at(strex("TestPack.fometa-{}", target)));
+        auto tags {ReadMetadataTags(rig.Outputs.at(strex("TestPack.fometa-{}", target)))};
         REQUIRE(tags.contains("Entity"));
         REQUIRE(tags.contains("EntityHolder"));
-        const auto& entities = tags.at("Entity");
-        const auto& holders = tags.at("EntityHolder");
+        const auto& entities {tags.at("Entity")};
+        const auto& holders {tags.at("EntityHolder")};
+
         for (string_view candidate : {"Server", "Client", "Mapper"}) {
-            string holder = strex("Scope{}Holder", candidate);
-            string child = strex("Scope{}Child", candidate);
-            string flag = candidate == "Server" ? "Persistent" : "NoSync";
+            string holder {static_cast<string&&>(strex("Scope{}Holder", candidate))};
+            string child {static_cast<string&&>(strex("Scope{}Child", candidate))};
+            string flag {candidate == "Server" ? "Persistent" : "NoSync"};
+
             if (candidate == side) {
                 CHECK(std::ranges::count(entities, vector<string> {holder}) == 1);
                 CHECK(std::ranges::count(entities, vector<string> {child}) == 1);
@@ -1477,10 +1575,26 @@ TEST_CASE("MetadataBakerEntityHolderScopes")
 
     SECTION("still rejects an unknown holder on its declared side")
     {
-        BakerTests::TestRig invalid_rig;
+        BakerTests::TestRig invalid_rig {};
         invalid_rig.AddSourceFile("Scripts/UnknownHolder.cs", "///@ Entity Server ScopeTarget\n///@ EntityHolder Server MissingHolder ScopeTarget Children Persistent\n");
-        MetadataBaker invalid_baker(invalid_rig.MakeContext());
+        MetadataBaker invalid_baker {invalid_rig.MakeContext()};
         REQUIRE_THROWS_WITH(invalid_baker.BakeFiles(invalid_rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("unknown holder entity type"));
+    }
+}
+
+TEST_CASE("MetadataBakerRejectsTruncatedNegativeEnum")
+{
+    for (auto extension : {"cs", "fos"}) {
+        for (auto suffix : {"", "\n", " // unfinished value\n"}) {
+            BakerTests::TestRig rig {};
+            rig.AddSourceFile(std::format("Scripts/TruncatedEnum.{}", extension), std::format("///@ Enum TruncatedEnum Entry = -{}", suffix));
+            auto context {rig.MakeContext()};
+            context->SetForceSyncMode(true);
+            MetadataBaker baker {context};
+
+            REQUIRE_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("expected number after '-'"));
+            CHECK(rig.Outputs.empty());
+        }
     }
 }
 

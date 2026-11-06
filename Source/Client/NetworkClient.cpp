@@ -64,7 +64,7 @@ auto NetworkClientConnection::SendData(const_span<uint8_t> buf) -> size_t
     }
 
     try {
-        size_t send_len = SendDataImpl(buf);
+        size_t send_len {SendDataImpl(buf)};
         _bytesSend += send_len;
         return send_len;
     }
@@ -81,7 +81,7 @@ auto NetworkClientConnection::ReceiveData() -> const_span<uint8_t>
     }
 
     try {
-        size_t recv_len = ReceiveDataImpl(_incomeBuf);
+        size_t recv_len {ReceiveDataImpl(_incomeBuf)};
         _bytesReceived += recv_len;
 
         if (recv_len == 0) {

@@ -46,16 +46,16 @@ TEST_CASE("AngelScriptScriptDebuggerEndpointServesItsTcpPort")
 {
     // The debugger was assumed to need an attached debugger client, but the endpoint server is ordinary
     // engine code: it binds a loopback port and runs its worker threads without anyone connecting
-    auto settings = MakeClientTestSettings();
-    auto client = MakeClientEngine(settings);
+    auto settings {MakeClientTestSettings()};
+    auto client {MakeClientEngine(settings)};
 
-    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
 
-    auto backend = GetScriptBackend(client.as_ptr());
+    auto backend {GetScriptBackend(client.as_ptr())};
 
     DebuggerEndpointServer debugger {backend};
 
-    auto stop_debugger = scope_exit([&debugger]() noexcept { safe_call([&debugger] { debugger.Stop(); }); });
+    auto stop_debugger {scope_exit([&debugger]() noexcept { safe_call([&debugger] { debugger.Stop(); }); })};
 
     CHECK_FALSE(debugger.IsPaused());
 
@@ -67,16 +67,16 @@ TEST_CASE("AngelScriptScriptDebuggerEndpointServesItsTcpPort")
     // listener picks its port from the process id inside a fixed span, so the same arithmetic finds it
     REQUIRE(net_sockets::startup());
 
-    constexpr uint16_t DEBUGGER_BASE_PORT = 43000;
-    constexpr uint16_t DEBUGGER_PORT_SPAN = 2000;
-    int32_t pid_num = strvex(platform::get_current_process_id_str()).to_int32();
-    uint16_t start_offset = pid_num > 0 ? numeric_cast<uint16_t>(pid_num % DEBUGGER_PORT_SPAN) : uint16_t {0};
+    constexpr uint16_t DEBUGGER_BASE_PORT {43000};
+    constexpr uint16_t DEBUGGER_PORT_SPAN {2000};
+    int32_t pid_num {strvex(platform::get_current_process_id_str()).to_int32()};
+    uint16_t start_offset {pid_num > 0 ? numeric_cast<uint16_t>(pid_num % DEBUGGER_PORT_SPAN) : uint16_t {0}};
 
-    tcp_socket client_sock;
-    bool attached = false;
+    tcp_socket client_sock {};
+    bool attached {false};
 
-    for (uint16_t i = 0; i < 8 && !attached; i++) {
-        uint16_t candidate = numeric_cast<uint16_t>(DEBUGGER_BASE_PORT + (start_offset + i) % DEBUGGER_PORT_SPAN);
+    for (uint16_t i {0}; i < 8 && !attached; i++) {
+        uint16_t candidate {numeric_cast<uint16_t>(DEBUGGER_BASE_PORT + (start_offset + i) % DEBUGGER_PORT_SPAN)};
         attached = client_sock.connect("127.0.0.1", candidate);
     }
 
@@ -103,7 +103,7 @@ TEST_CASE("AngelScriptScriptDebuggerEndpointServesItsTcpPort")
         };
 
         for (const string& request_body : requests) {
-            string request = request_body;
+            string request {request_body};
             request += "\n";
             ignore_unused(client_sock.send({reinterpret_cast<const uint8_t*>(request.data()), request.size()}));
             std::this_thread::sleep_for(std::chrono::milliseconds {40});
@@ -120,7 +120,7 @@ TEST_CASE("AngelScriptScriptDebuggerEndpointServesItsTcpPort")
             std::this_thread::sleep_for(std::chrono::milliseconds {40});
         }
 
-        string disconnect_request = R"({"seq":99,"type":"request","command":"disconnect"})";
+        string disconnect_request {R"({"seq":99,"type":"request","command":"disconnect"})"};
         disconnect_request += "\n";
         ignore_unused(client_sock.send({reinterpret_cast<const uint8_t*>(disconnect_request.data()), disconnect_request.size()}));
 
@@ -142,16 +142,16 @@ TEST_CASE("AngelScriptScriptDebuggerEndpointServesItsTcpPort")
 
 TEST_CASE("AngelScriptClientEngineScriptModuleInitAndLoopAreCallable")
 {
-    auto settings = MakeClientTestSettings();
-    auto client = MakeClientEngine(settings);
+    auto settings {MakeClientTestSettings()};
+    auto client {MakeClientEngine(settings)};
 
-    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
 
-    auto get_func_name = [&client](string_view name) { return client->Hashes.to_hashed_string(name); };
+    auto get_func_name {[&client](string_view name) { return client->Hashes.to_hashed_string(name); }};
 
-    int start_calls = 0;
-    int loop_calls = 0;
-    int manual_calls = 0;
+    int start_calls {0};
+    int loop_calls {0};
+    int manual_calls {0};
 
     REQUIRE(client->CallFunc(get_func_name("ClientEngineTest::UnitTestGetStartCalls"), start_calls));
     REQUIRE(client->CallFunc(get_func_name("ClientEngineTest::UnitTestGetLoopCalls"), loop_calls));
@@ -174,43 +174,43 @@ TEST_CASE("AngelScriptClientEngineScriptModuleInitAndLoopAreCallable")
 
 TEST_CASE("AngelScriptClientEngineMethodRefTypeOps")
 {
-    auto settings = MakeClientTestSettings();
-    auto client = MakeClientEngine(settings);
+    auto settings {MakeClientTestSettings()};
+    auto client {MakeClientEngine(settings)};
 
-    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
 
-    auto get_func_name = [&client](string_view name) { return client->Hashes.to_hashed_string(name); };
+    auto get_func_name {[&client](string_view name) { return client->Hashes.to_hashed_string(name); }};
 
-    int32_t result = 0;
+    int32_t result {0};
     REQUIRE(client->CallFunc(get_func_name("ClientEngineTest::UnitTestMapSpriteHolderRefType"), result));
     CHECK(result == 0);
 }
 
 TEST_CASE("AngelScriptClientEngineGlobalScriptBindings")
 {
-    auto settings = MakeClientTestSettings();
-    auto client_resources = MakeUnitTestFontResources();
+    auto settings {MakeClientTestSettings()};
+    auto client_resources {MakeUnitTestFontResources()};
     client_resources.emplace_back("Quad.png", BakerTests::MakeMinimalBakedSprite(2, 2));
-    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(client_resources)));
+    auto client {MakeClientEngine(settings, MakeClientTestResources(std::move(client_resources)))};
 
-    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
 
     // The sweep below dumps the atlases, so the directories it writes are cleared once the case is done
-    set<string> tex_dumps_before = TexDumpArtifacts::CollectDumpDirs();
+    set<string> tex_dumps_before {TexDumpArtifacts::CollectDumpDirs()};
 
-    auto remove_tex_dumps = scope_exit([&tex_dumps_before]() noexcept { safe_call([&tex_dumps_before] { TexDumpArtifacts::RemoveNewDumpDirs(tex_dumps_before); }); });
+    auto remove_tex_dumps {scope_exit([&tex_dumps_before]() noexcept { safe_call([&tex_dumps_before] { TexDumpArtifacts::RemoveNewDumpDirs(tex_dumps_before); }); })};
 
     // The scripts below change the resolution, which writes through to the process-global app window and would
     // otherwise leave every later test computing ratios against the changed size
-    isize32 saved_screen_size = GetApp()->MainWindow.GetScreenSize();
-    auto restore_screen_size = scope_exit([saved_screen_size]() noexcept { safe_call([saved_screen_size] { GetApp()->MainWindow.SetScreenSize(saved_screen_size); }); });
+    isize32 saved_screen_size {GetApp()->MainWindow.GetScreenSize()};
+    auto restore_screen_size {scope_exit([saved_screen_size]() noexcept { safe_call([saved_screen_size] { GetApp()->MainWindow.SetScreenSize(saved_screen_size); }); })};
 
-    auto run_script = [&client](string_view name) {
-        int32_t result = -1;
+    auto run_script {[&client](string_view name) {
+        int32_t result {-1};
         INFO(name);
         REQUIRE(client->CallFunc(client->Hashes.to_hashed_string(name), result));
         CHECK(result == 0);
-    };
+    }};
 
     run_script("ClientEngineTest::UnitTestClientStateQueries");
 
@@ -222,7 +222,7 @@ TEST_CASE("AngelScriptClientEngineGlobalScriptBindings")
     run_script("ClientEngineTest::UnitTestClientWindowAndConfig");
     run_script("ClientEngineTest::UnitTestClientRejectsBadArguments");
 
-    int32_t rejection_count = 0;
+    int32_t rejection_count {0};
     REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientEngineTest::UnitTestGetClientRejectionCount"), rejection_count));
     // Only five probes must reject; the rest legitimately answer instead of throwing, reporting a bool or a zero
     // sound handle, queueing nothing, or accepting a pack that resolves to no entries
@@ -235,8 +235,8 @@ TEST_CASE("AngelScriptClientEngineRunsMainLoopHeadlessly")
     // from, and `ImGui::LogToFile` asserts on a file it cannot open — aborting the frame mid-sweep
     (void)fs::create_directories("Workspace");
 
-    auto settings = MakeClientTestSettings();
-    auto client_resources = MakeUnitTestFontResources();
+    auto settings {MakeClientTestSettings()};
+    auto client_resources {MakeUnitTestFontResources()};
     client_resources.emplace_back("Quad.png", BakerTests::MakeMinimalBakedSprite(2, 2));
 
     for (auto& [effect_path, effect_data] : MakeBakedEffectResources("Effects/UnitTestOffscreen.fofx")) {
@@ -245,27 +245,27 @@ TEST_CASE("AngelScriptClientEngineRunsMainLoopHeadlessly")
 
 #if FO_ENABLE_3D
     // The baked model makes the 3D critter draw bindings reachable from the render pass
-    vector<uint8_t> model_mesh = MakeRuntimeModelTriangleMesh();
+    vector<uint8_t> model_mesh {MakeRuntimeModelTriangleMesh()};
     client_resources.emplace_back("Models/RuntimeInstance.fbx", model_mesh);
     client_resources.emplace_back("Models/RuntimeInstance.fo3d", MakeRuntimeModelDescription("Models/RuntimeInstance.fo3d", "Models/RuntimeInstance.fbx", model_mesh));
     client_resources.emplace_back("ModelAnimationInfo.foinfo", MakeUnitTestModelAnimationInfo("Models/RuntimeInstance.fo3d"));
 #endif
-    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(client_resources)));
+    auto client {MakeClientEngine(settings, MakeClientTestResources(std::move(client_resources)))};
 
-    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
 
     REQUIRE(ImGui::GetCurrentContext() == nullptr);
     ImGuiExt::Init();
 
-    auto destroy_context = scope_exit([]() noexcept {
+    auto destroy_context {scope_exit([]() noexcept {
         safe_call([] {
             if (ImGui::GetCurrentContext() != nullptr) {
                 ImGui::DestroyContext();
             }
         });
-    });
+    })};
 
-    ImGuiIO& io = ImGui::GetIO();
+    ImGuiIO& io {ImGui::GetIO()};
     io.DisplaySize = ImVec2 {1280.0f, 720.0f};
     io.DeltaTime = 1.0f / 60.0f;
     io.IniFilename = nullptr;
@@ -273,24 +273,24 @@ TEST_CASE("AngelScriptClientEngineRunsMainLoopHeadlessly")
 
     // A disconnected client still runs its whole frame: timers, scheduled callbacks, script loop
     // events and the interface render pass
-    for (int32_t frame = 0; frame < 3; frame++) {
+    for (int32_t frame {0}; frame < 3; frame++) {
         ImGui::NewFrame();
         REQUIRE_NOTHROW(client->MainLoop());
         ImGui::Render();
     }
 
-    int32_t loop_calls = 0;
+    int32_t loop_calls {0};
     REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientEngineTest::UnitTestGetLoopCalls"), loop_calls));
     CHECK(loop_calls > 0);
 
-    int32_t render_calls = 0;
+    int32_t render_calls {0};
     REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientEngineTest::UnitTestGetRenderCalls"), render_calls));
     CHECK(render_calls > 0);
 
     // Re-run with script drawing enabled so the render-pass-only draw bindings execute
     REQUIRE(client->CallFunc<void>(client->Hashes.to_hashed_string("ClientEngineTest::UnitTestEnableRenderDrawing")));
 
-    for (int32_t frame = 0; frame < 2; frame++) {
+    for (int32_t frame {0}; frame < 2; frame++) {
         ImGui::NewFrame();
         REQUIRE_NOTHROW(client->MainLoop());
         ImGui::Render();
@@ -298,42 +298,42 @@ TEST_CASE("AngelScriptClientEngineRunsMainLoopHeadlessly")
 
     // An empty label must surface as a script exception rather than an unaddressable widget; the sweep runs inside
     // the render pass because the accessor exists only while a frame is open
-    int32_t probe_count = 0;
-    int32_t rejections = 0;
+    int32_t probe_count {0};
+    int32_t rejections {0};
     REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientEngineTest::UnitTestImGuiEmptyIdProbeCount"), probe_count));
     REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientEngineTest::UnitTestGetImGuiEmptyIdRejections"), rejections));
     CHECK(probe_count > 0);
     CHECK(rejections > 0);
     CHECK(rejections % probe_count == 0);
 
-    int32_t sprite_rejections = 0;
+    int32_t sprite_rejections {0};
     REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientEngineTest::UnitTestGetImGuiSpriteRejections"), sprite_rejections));
     CHECK(sprite_rejections == 4);
 
     // The surface guard keeps ImGui balanced when a probe throws, but a throw still means a binding
     // misbehaved - the engine swallows it inside the event, so it is only visible through this counter
-    int32_t surface_failures = 0;
+    int32_t surface_failures {0};
     REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientEngineTest::UnitTestGetImGuiSurfaceFailures"), surface_failures));
 
-    string failed_stage;
+    string failed_stage {};
     REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientEngineTest::UnitTestGetImGuiFailedStage"), failed_stage));
     INFO("last ImGui stage entered before the throw: " << failed_stage);
     CHECK(surface_failures == 0);
 
     // Input events must be safe to feed outside of a session too
-    InputEvent move;
+    InputEvent move {};
     move.Type = InputEvent::EventType::MouseMoveEvent;
     move.MouseMove.MouseX = 40;
     move.MouseMove.MouseY = 40;
     REQUIRE_NOTHROW(client->ProcessInputEvent(move));
 
-    InputEvent key_down;
+    InputEvent key_down {};
     key_down.Type = InputEvent::EventType::KeyDownEvent;
     key_down.KeyDown.Code = KeyCode::A;
     key_down.KeyDown.Text = "a";
     REQUIRE_NOTHROW(client->ProcessInputEvent(key_down));
 
-    InputEvent key_up;
+    InputEvent key_up {};
     key_up.Type = InputEvent::EventType::KeyUpEvent;
     key_up.KeyUp.Code = KeyCode::A;
     REQUIRE_NOTHROW(client->ProcessInputEvent(key_up));
@@ -341,33 +341,33 @@ TEST_CASE("AngelScriptClientEngineRunsMainLoopHeadlessly")
 
 TEST_CASE("AngelScriptResourceManagerResolvesProjectSpriteHandles")
 {
-    auto settings = MakeClientTestSettings();
-    auto client = MakeClientEngine(settings, MakeClientTestResources({{"Sequence.fofrm", BakerTests::MakeMultiFrameBakedSprite(3, 2, 2, 120)}}));
-    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
-    CritterStateAnim state = static_cast<CritterStateAnim>(1);
-    CritterActionAnim action = static_cast<CritterActionAnim>(1);
+    auto settings {MakeClientTestSettings()};
+    auto client {MakeClientEngine(settings, MakeClientTestResources({{"Sequence.fofrm", BakerTests::MakeMultiFrameBakedSprite(3, 2, 2, 120)}}))};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+    CritterStateAnim state {static_cast<CritterStateAnim>(1)};
+    CritterActionAnim action {static_cast<CritterActionAnim>(1)};
 
     for (string_view name : {"ScriptSequence", "art/critters/ScriptSequence"}) {
-        hstring model = client->Hashes.to_hashed_string(name);
-        auto first = client->CritterFrames.GetCritterAnimFrames(model, state, action, mdir {0});
+        hstring model {client->Hashes.to_hashed_string(name)};
+        auto first {client->CritterFrames.GetCritterAnimFrames(model, state, action, mdir {0})};
         REQUIRE(first);
         CHECK(first->GetFramesCount() == 3);
         CHECK(first == client->CritterFrames.GetCritterAnimFrames(model, state, action, mdir {0}));
-        int32_t handle = 0;
+        int32_t handle {0};
         REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientEngineTest::GetLastResolvedSprite"), handle));
         CHECK_FALSE(client->AnimGetSpr(numeric_cast<uint32_t>(handle)));
     }
 
-    hstring missing = client->Hashes.to_hashed_string("art/critters/NoProjectResolver");
+    hstring missing {client->Hashes.to_hashed_string("art/critters/NoProjectResolver")};
     CHECK_FALSE(client->CritterFrames.GetCritterAnimFrames(missing, state, action, mdir {0}));
-    int32_t result = -1;
+    int32_t result {-1};
     REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientEngineTest::UnitTestSpriteSequencePrimitives"), result));
     CHECK(result == 0);
 
-    uint32_t iface_id = client->AnimLoad(client->Hashes.to_hashed_string("Sequence.fofrm"), AtlasType::IfaceSprites);
-    auto iface_texture = client->AnimGetSpr(iface_id)->GetBatchTexture();
+    uint32_t iface_id {client->AnimLoad(client->Hashes.to_hashed_string("Sequence.fofrm"), AtlasType::IfaceSprites)};
+    auto iface_texture {client->AnimGetSpr(iface_id)->GetBatchTexture()};
     client->AnimFree(iface_id);
-    uint32_t map_id = client->AnimLoad(client->Hashes.to_hashed_string("Sequence.fofrm"), AtlasType::MapSprites);
+    uint32_t map_id {client->AnimLoad(client->Hashes.to_hashed_string("Sequence.fofrm"), AtlasType::MapSprites)};
     CHECK(client->AnimGetSpr(map_id)->GetBatchTexture() != iface_texture);
     client->AnimFree(map_id);
 }
@@ -375,4 +375,3 @@ TEST_CASE("AngelScriptResourceManagerResolvesProjectSpriteHandles")
 FO_END_NAMESPACE
 
 #endif
-

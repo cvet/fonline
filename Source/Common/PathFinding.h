@@ -167,4 +167,3 @@ namespace PathFinding
 }
 
 FO_END_NAMESPACE
-

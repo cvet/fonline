@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
 #include "TextureAtlas.h"
@@ -41,8 +43,8 @@ TEST_CASE("TextureAtlasLayoutPacksOverlappingMaximalFreeRectangles")
 {
     TextureAtlasLayout layout {{10, 10}};
 
-    auto square = layout.Allocate({6, 6});
-    auto tall = layout.Allocate({4, 10});
+    auto square {layout.Allocate({6, 6})};
+    auto tall {layout.Allocate({4, 10})};
 
     REQUIRE(square);
     REQUIRE(tall);
@@ -55,15 +57,15 @@ TEST_CASE("TextureAtlasLayoutPacksOverlappingMaximalFreeRectangles")
 TEST_CASE("TextureAtlasLayoutRestoresReleasedCrossingSpace")
 {
     TextureAtlasLayout layout {{10, 10}};
-    auto square = layout.Allocate({6, 6});
-    auto tall = layout.Allocate({4, 10});
+    auto square {layout.Allocate({6, 6})};
+    auto tall {layout.Allocate({4, 10})};
 
     REQUIRE(square);
     REQUIRE(tall);
-    ipos32 stable_square_position = square->GetPosition();
+    ipos32 stable_square_position {square->GetPosition()};
     tall.reset();
 
-    auto bottom = layout.Allocate({10, 4});
+    auto bottom {layout.Allocate({10, 4})};
 
     REQUIRE(bottom);
     CHECK(bottom->GetPosition() == ipos32 {0, 6});
@@ -74,22 +76,22 @@ TEST_CASE("TextureAtlasLayoutRestoresReleasedCrossingSpace")
 TEST_CASE("TextureAtlasLayoutReusesInteriorSpaceAfterChurn")
 {
     TextureAtlasLayout layout {{6, 6}};
-    vector<unique_del_nptr<TextureAtlasLayout::Allocation>> allocations;
+    vector<unique_del_nptr<TextureAtlasLayout::Allocation>> allocations {};
 
-    for (size_t i = 0; i < 9; i++) {
-        auto allocation = layout.Allocate({2, 2});
+    for (size_t i {0}; i < 9; i++) {
+        auto allocation {layout.Allocate({2, 2})};
         REQUIRE(allocation);
         allocations.emplace_back(std::move(allocation));
     }
 
-    auto center_it = std::find_if(allocations.begin(), allocations.end(), [](const auto& allocation) noexcept { return allocation->GetPosition() == ipos32 {2, 2}; });
+    auto center_it {std::find_if(allocations.begin(), allocations.end(), [](const auto& allocation) noexcept { return allocation->GetPosition() == ipos32 {2, 2}; })};
     REQUIRE(center_it != allocations.end());
-    SpriteMeshData mesh;
+    SpriteMeshData mesh {};
     (*center_it)->SetSpriteMesh(&mesh);
-    nptr<TextureAtlasLayout::Allocation> released_record = center_it->as_nptr();
+    nptr<TextureAtlasLayout::Allocation> released_record {center_it->as_nptr()};
     center_it->reset();
 
-    auto replacement = layout.Allocate({2, 2});
+    auto replacement {layout.Allocate({2, 2})};
 
     REQUIRE(replacement);
     CHECK(replacement.as_nptr() == released_record);
@@ -99,11 +101,11 @@ TEST_CASE("TextureAtlasLayoutReusesInteriorSpaceAfterChurn")
 
 TEST_CASE("TextureAtlasLayoutReleaseOrderIsDeterministic")
 {
-    auto run = [](bool reverse_release) -> ipos32 {
+    auto run {[](bool reverse_release) -> ipos32 {
         TextureAtlasLayout layout {{10, 10}};
-        auto first = layout.Allocate({4, 4});
-        auto second = layout.Allocate({6, 4});
-        auto live = layout.Allocate({10, 6});
+        auto first {layout.Allocate({4, 4})};
+        auto second {layout.Allocate({6, 4})};
+        auto live {layout.Allocate({10, 6})};
 
         FO_STRONG_ASSERT(first && second && live, "Texture atlas determinism fixture must fit");
 
@@ -116,10 +118,10 @@ TEST_CASE("TextureAtlasLayoutReleaseOrderIsDeterministic")
             second.reset();
         }
 
-        auto replacement = layout.Allocate({10, 4});
+        auto replacement {layout.Allocate({10, 4})};
         FO_STRONG_ASSERT(replacement, "Texture atlas determinism replacement must fit");
         return replacement->GetPosition();
-    };
+    }};
 
     CHECK(run(false) == ipos32 {0, 0});
     CHECK(run(true) == ipos32 {0, 0});
@@ -128,8 +130,8 @@ TEST_CASE("TextureAtlasLayoutReleaseOrderIsDeterministic")
 TEST_CASE("TextureAtlasLayoutFullyRestoresReleasedAtlas")
 {
     TextureAtlasLayout layout {{10, 10}};
-    auto first = layout.Allocate({6, 6});
-    auto second = layout.Allocate({4, 10});
+    auto first {layout.Allocate({6, 6})};
+    auto second {layout.Allocate({4, 10})};
 
     REQUIRE(first);
     REQUIRE(second);
@@ -138,7 +140,7 @@ TEST_CASE("TextureAtlasLayoutFullyRestoresReleasedAtlas")
     CHECK(layout.IsEmpty());
     CHECK(layout.GetUsedArea() == 0);
 
-    auto full = layout.Allocate({10, 10});
+    auto full {layout.Allocate({10, 10})};
 
     REQUIRE(full);
     CHECK(full->GetPosition() == ipos32 {0, 0});
@@ -148,31 +150,31 @@ TEST_CASE("TextureAtlasLayoutFullyRestoresReleasedAtlas")
 TEST_CASE("TextureAtlasLayoutNeverOverlapsLiveAllocations")
 {
     TextureAtlasLayout layout {{16, 16}};
-    const isize32 sizes[] = {{5, 7}, {4, 9}, {7, 3}, {3, 6}, {2, 8}, {5, 4}, {4, 4}, {2, 5}};
-    vector<unique_del_nptr<TextureAtlasLayout::Allocation>> allocations;
+    const isize32 sizes[] {{5, 7}, {4, 9}, {7, 3}, {3, 6}, {2, 8}, {5, 4}, {4, 4}, {2, 5}};
+    vector<unique_del_nptr<TextureAtlasLayout::Allocation>> allocations {};
     nptr<TextureAtlasLayout::Allocation> first_observer {};
     ipos32 first_position {};
 
-    auto validate = [&layout, &allocations] {
-        vector<uint8_t> occupancy(16 * 16);
-        size_t live_area = 0;
+    auto validate {[&layout, &allocations] {
+        vector<uint8_t> occupancy {vector<uint8_t>(16 * 16)};
+        size_t live_area {0};
 
         for (const auto& allocation : allocations) {
             if (!allocation) {
                 continue;
             }
 
-            ipos32 pos = allocation->GetPosition();
-            isize32 size = allocation->GetSize();
+            ipos32 pos {allocation->GetPosition()};
+            isize32 size {allocation->GetSize()};
             REQUIRE(pos.x >= 0);
             REQUIRE(pos.y >= 0);
             REQUIRE(pos.x + size.width <= layout.GetSize().width);
             REQUIRE(pos.y + size.height <= layout.GetSize().height);
             live_area += numeric_cast<size_t>(size.width) * numeric_cast<size_t>(size.height);
 
-            for (int32_t y = pos.y; y < pos.y + size.height; y++) {
-                for (int32_t x = pos.x; x < pos.x + size.width; x++) {
-                    size_t index = numeric_cast<size_t>(y) * layout.GetSize().width + x;
+            for (int32_t y {pos.y}; y < pos.y + size.height; y++) {
+                for (int32_t x {pos.x}; x < pos.x + size.width; x++) {
+                    size_t index {numeric_cast<size_t>(y) * layout.GetSize().width + x};
                     CHECK(occupancy[index] == 0);
                     occupancy[index] = 1;
                 }
@@ -180,16 +182,18 @@ TEST_CASE("TextureAtlasLayoutNeverOverlapsLiveAllocations")
         }
 
         CHECK(layout.GetUsedArea() == live_area);
-    };
+    }};
 
     for (isize32 size : sizes) {
-        auto allocation = layout.Allocate(size);
+        auto allocation {layout.Allocate(size)};
         if (allocation) {
             allocations.emplace_back(std::move(allocation));
+
             if (!first_observer) {
                 first_observer = allocations.back().as_nptr();
                 first_position = first_observer->GetPosition();
             }
+
             validate();
             CHECK(first_observer == allocations.front().as_nptr());
             CHECK(first_observer->GetPosition() == first_position);
@@ -202,7 +206,7 @@ TEST_CASE("TextureAtlasLayoutNeverOverlapsLiveAllocations")
     allocations[3].reset();
     validate();
 
-    if (auto replacement = layout.Allocate({4, 6})) {
+    if (auto replacement {layout.Allocate({4, 6})}) {
         allocations.emplace_back(std::move(replacement));
     }
 
@@ -214,10 +218,10 @@ TEST_CASE("TextureAtlasLayoutNeverOverlapsLiveAllocations")
 TEST_CASE("TextureAtlasLayoutClearsReleasedMeshObserver")
 {
     TextureAtlasLayout layout {{6, 6}};
-    auto allocation = layout.Allocate({6, 6});
+    auto allocation {layout.Allocate({6, 6})};
     REQUIRE(allocation);
-    nptr<TextureAtlasLayout::Allocation> observer = allocation.as_nptr();
-    SpriteMeshData mesh;
+    nptr<TextureAtlasLayout::Allocation> observer {allocation.as_nptr()};
+    SpriteMeshData mesh {};
 
     allocation->SetSpriteMesh(&mesh);
     REQUIRE(allocation->GetSpriteMesh());
@@ -229,11 +233,11 @@ TEST_CASE("TextureAtlasLayoutClearsReleasedMeshObserver")
 
 TEST_CASE("TextureAtlasLayoutDumpOverlayDrawsMeshGeometry")
 {
-    isize32 atlas_size = {6, 6};
+    isize32 atlas_size {6, 6};
     ucolor background {0, 0, 0, 255};
-    vector<ucolor> pixels(numeric_cast<size_t>(atlas_size.width) * atlas_size.height, background);
+    vector<ucolor> pixels {vector<ucolor>(numeric_cast<size_t>(atlas_size.width) * atlas_size.height, background)};
     TextureAtlasLayout layout {atlas_size};
-    auto allocation = layout.Allocate(atlas_size);
+    auto allocation {layout.Allocate(atlas_size)};
     REQUIRE(allocation);
     SpriteMeshData mesh {
         .Vertices = {{0, 0}, {4, 0}, {0, 4}},
@@ -243,7 +247,7 @@ TEST_CASE("TextureAtlasLayoutDumpOverlayDrawsMeshGeometry")
 
     layout.DrawDumpOverlay(pixels);
 
-    auto pixel = [&pixels, atlas_size](int32_t x, int32_t y) -> ucolor { return pixels[numeric_cast<size_t>(y) * atlas_size.width + x]; };
+    auto pixel {[&pixels, atlas_size](int32_t x, int32_t y) -> ucolor { return pixels[numeric_cast<size_t>(y) * atlas_size.width + x]; }};
     CHECK(pixel(1, 1) == ucolor {0, 255, 255, 255});
     CHECK(pixel(5, 1) == ucolor {0, 255, 255, 255});
     CHECK(pixel(1, 5) == ucolor {0, 255, 255, 255});
@@ -254,23 +258,23 @@ TEST_CASE("TextureAtlasLayoutDumpOverlayDrawsMeshGeometry")
 
 TEST_CASE("TextureAtlasLayoutDumpOverlayDistinguishesQuadAndEmptyGeometry")
 {
-    isize32 atlas_size = {6, 6};
+    isize32 atlas_size {6, 6};
     ucolor background {0, 0, 0, 255};
 
     TextureAtlasLayout quad_layout {atlas_size};
-    auto quad = quad_layout.Allocate(atlas_size);
+    auto quad {quad_layout.Allocate(atlas_size)};
     REQUIRE(quad);
-    vector<ucolor> quad_pixels(numeric_cast<size_t>(atlas_size.width) * atlas_size.height, background);
+    vector<ucolor> quad_pixels {vector<ucolor>(numeric_cast<size_t>(atlas_size.width) * atlas_size.height, background)};
     quad_layout.DrawDumpOverlay(quad_pixels);
     CHECK(quad_pixels[1 * atlas_size.width + 3] == ucolor {255, 255, 0, 255});
     CHECK(quad_pixels[3 * atlas_size.width + 3] == background);
 
     TextureAtlasLayout empty_layout {atlas_size};
-    auto empty = empty_layout.Allocate(atlas_size);
+    auto empty {empty_layout.Allocate(atlas_size)};
     REQUIRE(empty);
-    SpriteMeshData empty_mesh;
+    SpriteMeshData empty_mesh {};
     empty->SetSpriteMesh(&empty_mesh);
-    vector<ucolor> empty_pixels(numeric_cast<size_t>(atlas_size.width) * atlas_size.height, background);
+    vector<ucolor> empty_pixels {vector<ucolor>(numeric_cast<size_t>(atlas_size.width) * atlas_size.height, background)};
     empty_layout.DrawDumpOverlay(empty_pixels);
     CHECK(empty_pixels[3 * atlas_size.width + 3] == ucolor {255, 0, 0, 255});
     CHECK(empty_pixels[1 * atlas_size.width + 3] == background);
@@ -279,15 +283,15 @@ TEST_CASE("TextureAtlasLayoutDumpOverlayDistinguishesQuadAndEmptyGeometry")
 // Representative runtime sprite corpus, shared by the always-on packing efficiency gate and the hidden benchmark
 static auto MakeAtlasCorpus() -> vector<isize32>
 {
-    vector<isize32> corpus;
+    vector<isize32> corpus {};
     corpus.reserve(768);
-    uint32_t random_state = 0x7A11A5u;
+    uint32_t random_state {0x7A11A5u};
 
-    for (size_t i = 0; i < 768; i++) {
+    for (size_t i {0}; i < 768; i++) {
         random_state = random_state * 1664525u + 1013904223u;
-        int32_t width = 24 + numeric_cast<int32_t>(random_state % 489u);
+        int32_t width {24 + numeric_cast<int32_t>(random_state % 489u)};
         random_state = random_state * 1664525u + 1013904223u;
-        int32_t height = 24 + numeric_cast<int32_t>(random_state % 745u);
+        int32_t height {24 + numeric_cast<int32_t>(random_state % 745u)};
         corpus.emplace_back(width + 2, height + 2);
     }
 
@@ -297,27 +301,28 @@ static auto MakeAtlasCorpus() -> vector<isize32>
 // Packs the corpus the way the runtime atlas filler does and returns the resulting atlas page count
 static auto RunAtlasCorpus(const vector<isize32>& corpus, bool churn) -> size_t
 {
-    constexpr isize32 atlas_size = {2048, 8192};
-    vector<unique_ptr<TextureAtlasLayout>> layouts;
-    vector<unique_del_nptr<TextureAtlasLayout::Allocation>> allocations;
+    constexpr isize32 atlas_size {2048, 8192};
+    vector<unique_ptr<TextureAtlasLayout>> layouts {};
+    vector<unique_del_nptr<TextureAtlasLayout::Allocation>> allocations {};
 
-    auto allocate = [&layouts, &allocations, atlas_size](isize32 size) {
+    auto allocate {[&layouts, &allocations, atlas_size](isize32 size) {
         nptr<TextureAtlasLayout> best_layout {};
-        optional<TextureAtlasLayout::FitScore> best_fit;
+        optional<TextureAtlasLayout::FitScore> best_fit {};
 
         for (auto& layout : layouts) {
-            optional<TextureAtlasLayout::FitScore> fit = layout->FindBestFitScore(size);
+            optional<TextureAtlasLayout::FitScore> fit {layout->FindBestFitScore(size)};
             if (!fit) {
                 continue;
             }
 
-            auto fit_key = std::tie(fit->ShortSideFit, fit->LongSideFit, fit->AreaWaste);
+            auto fit_key {std::tie(fit->ShortSideFit, fit->LongSideFit, fit->AreaWaste)};
+
             if (!best_fit) {
                 best_layout = layout;
                 best_fit = fit;
             }
             else {
-                auto best_key = std::tie(best_fit->ShortSideFit, best_fit->LongSideFit, best_fit->AreaWaste);
+                auto best_key {std::tie(best_fit->ShortSideFit, best_fit->LongSideFit, best_fit->AreaWaste)};
                 if (fit_key < best_key) {
                     best_layout = layout;
                     best_fit = fit;
@@ -330,20 +335,20 @@ static auto RunAtlasCorpus(const vector<isize32>& corpus, bool churn) -> size_t
             best_layout = layouts.back();
         }
 
-        auto allocation = best_layout->Allocate(size);
+        auto allocation {best_layout->Allocate(size)};
         FO_STRONG_ASSERT(allocation, "Texture atlas corpus rectangle must fit a new page", size);
         allocations.emplace_back(std::move(allocation));
-    };
+    }};
 
     for (isize32 size : corpus) {
         allocate(size);
     }
 
     if (churn) {
-        for (size_t i = 0; i < allocations.size(); i += 3) {
+        for (size_t i {0}; i < allocations.size(); i += 3) {
             allocations[i].reset();
         }
-        for (size_t i = 0; i < corpus.size() / 3; i++) {
+        for (size_t i {0}; i < corpus.size() / 3; i++) {
             allocate({corpus[i].height, corpus[i].width});
         }
     }
@@ -355,23 +360,23 @@ static auto RunAtlasCorpus(const vector<isize32>& corpus, bool churn) -> size_t
 // cost scales with the per-page working set, so a setting can win on the corpus above and lose here
 static auto RunAtlasProductionChurn(size_t churn_allocations) -> size_t
 {
-    constexpr isize32 atlas_size = {2048, 2048};
-    constexpr size_t live_target = 1000;
+    constexpr isize32 atlas_size {2048, 2048};
+    constexpr size_t live_target {1000};
 
-    auto layout = safe_alloc::make_unique<TextureAtlasLayout>(atlas_size);
-    vector<unique_del_nptr<TextureAtlasLayout::Allocation>> live;
-    uint32_t random_state = 0x5EED17u;
+    auto layout {safe_alloc::make_unique<TextureAtlasLayout>(atlas_size)};
+    vector<unique_del_nptr<TextureAtlasLayout::Allocation>> live {};
+    uint32_t random_state {0x5EED17u};
 
-    auto next_size = [&random_state]() -> isize32 {
+    auto next_size {[&random_state]() -> isize32 {
         random_state = random_state * 1664525u + 1013904223u;
-        int32_t width = 32 + numeric_cast<int32_t>(random_state % 32u);
+        int32_t width {32 + numeric_cast<int32_t>(random_state % 32u)};
         random_state = random_state * 1664525u + 1013904223u;
-        int32_t height = 32 + numeric_cast<int32_t>(random_state % 32u);
+        int32_t height {32 + numeric_cast<int32_t>(random_state % 32u)};
         return {width, height};
-    };
+    }};
 
     while (live.size() < live_target) {
-        auto allocation = layout->Allocate(next_size());
+        auto allocation {layout->Allocate(next_size())};
 
         if (!allocation) {
             break;
@@ -382,9 +387,9 @@ static auto RunAtlasProductionChurn(size_t churn_allocations) -> size_t
 
     FO_STRONG_ASSERT(live.size() == live_target, "Production churn fixture must reach its working set", live.size());
 
-    for (size_t i = 0; i < churn_allocations; i++) {
+    for (size_t i {0}; i < churn_allocations; i++) {
         random_state = random_state * 1664525u + 1013904223u;
-        size_t victim = random_state % live.size();
+        size_t victim {random_state % live.size()};
         live[victim].reset();
         live[victim] = layout->Allocate(next_size());
         FO_STRONG_ASSERT(live[victim], "Production churn fixture must keep its working set placed", i);
@@ -397,24 +402,24 @@ static auto RunAtlasProductionChurn(size_t churn_allocations) -> size_t
 // rather than tuning, so a failure reads as the trigger no longer making progress
 TEST_CASE("TextureAtlasLayoutPruningStaysRareUnderProductionChurn", "[texture-atlas]")
 {
-    constexpr size_t churn_allocations = 4000;
+    constexpr size_t churn_allocations {4000};
 
-    size_t prune_count = RunAtlasProductionChurn(churn_allocations);
+    size_t prune_count {RunAtlasProductionChurn(churn_allocations)};
     CAPTURE(prune_count);
     CHECK(prune_count * 2 < churn_allocations);
 }
 
 TEST_CASE("TextureAtlasLayoutPackingEfficiency", "[texture-atlas]")
 {
-    vector<isize32> corpus = MakeAtlasCorpus();
+    vector<isize32> corpus {MakeAtlasCorpus()};
 
-    size_t packed_pages = RunAtlasCorpus(corpus, false);
+    size_t packed_pages {RunAtlasCorpus(corpus, false)};
     CAPTURE(packed_pages);
     CHECK(packed_pages <= 6);
 
     // Churn must not cost a page: releases do not coalesce, so placements come from a list drifted off the exact
     // maximal set
-    size_t churned_pages = RunAtlasCorpus(corpus, true);
+    size_t churned_pages {RunAtlasCorpus(corpus, true)};
     CAPTURE(churned_pages);
     CHECK(churned_pages <= 6);
 }
@@ -423,27 +428,27 @@ TEST_CASE("TextureAtlasLayoutPackingEfficiency", "[texture-atlas]")
 // the churn runs far past where a leak would show, pinning both page growth and space recovery
 TEST_CASE("TextureAtlasLayoutSustainedChurnDoesNotDegrade", "[texture-atlas]")
 {
-    constexpr isize32 atlas_size = {2048, 2048};
-    constexpr size_t rounds = 400;
-    constexpr size_t live_target = 96;
+    constexpr isize32 atlas_size {2048, 2048};
+    constexpr size_t rounds {400};
+    constexpr size_t live_target {96};
 
-    auto layout = safe_alloc::make_unique<TextureAtlasLayout>(atlas_size);
-    vector<unique_del_nptr<TextureAtlasLayout::Allocation>> live;
-    uint32_t random_state = 0xC0FFEEu;
-    size_t rejected = 0;
+    auto layout {safe_alloc::make_unique<TextureAtlasLayout>(atlas_size)};
+    vector<unique_del_nptr<TextureAtlasLayout::Allocation>> live {};
+    uint32_t random_state {0xC0FFEEu};
+    size_t rejected {0};
 
-    auto next_size = [&random_state]() -> isize32 {
+    auto next_size {[&random_state]() -> isize32 {
         random_state = random_state * 1664525u + 1013904223u;
-        int32_t width = 24 + numeric_cast<int32_t>(random_state % 200u);
+        int32_t width {24 + numeric_cast<int32_t>(random_state % 200u)};
         random_state = random_state * 1664525u + 1013904223u;
-        int32_t height = 24 + numeric_cast<int32_t>(random_state % 200u);
+        int32_t height {24 + numeric_cast<int32_t>(random_state % 200u)};
         return {width, height};
-    };
+    }};
 
     // Fill to the working set, then churn: release a slot and allocate a differently sized replacement,
     // which is the pattern that fragments the free list without changing the live count
     while (live.size() < live_target) {
-        auto allocation = layout->Allocate(next_size());
+        auto allocation {layout->Allocate(next_size())};
 
         if (!allocation) {
             break;
@@ -453,14 +458,14 @@ TEST_CASE("TextureAtlasLayoutSustainedChurnDoesNotDegrade", "[texture-atlas]")
     }
 
     REQUIRE(live.size() == live_target);
-    size_t live_after_fill = live.size();
+    size_t live_after_fill {live.size()};
 
-    for (size_t round = 0; round < rounds; round++) {
+    for (size_t round {0}; round < rounds; round++) {
         random_state = random_state * 1664525u + 1013904223u;
-        size_t victim = random_state % live.size();
+        size_t victim {random_state % live.size()};
         live[victim].reset();
 
-        auto replacement = layout->Allocate(next_size());
+        auto replacement {layout->Allocate(next_size())};
 
         if (replacement) {
             live[victim] = std::move(replacement);
@@ -476,7 +481,7 @@ TEST_CASE("TextureAtlasLayoutSustainedChurnDoesNotDegrade", "[texture-atlas]")
     CAPTURE(rejected);
     CHECK(rejected == 0);
 
-    size_t live_after_churn = 0;
+    size_t live_after_churn {0};
 
     for (const auto& allocation : live) {
         if (allocation) {
@@ -492,13 +497,13 @@ TEST_CASE("TextureAtlasLayoutSustainedChurnDoesNotDegrade", "[texture-atlas]")
     // which only holds if the freed slots were genuinely reclaimed and coalesced rather than lost
     live.clear();
 
-    auto whole_page = layout->Allocate(atlas_size);
+    auto whole_page {layout->Allocate(atlas_size)};
     CHECK(whole_page);
 }
 
 TEST_CASE("TextureAtlasLayoutPerformance", "[!benchmark][texture-atlas]")
 {
-    vector<isize32> corpus = MakeAtlasCorpus();
+    vector<isize32> corpus {MakeAtlasCorpus()};
 
     BENCHMARK("Pack representative runtime sprite corpus")
     {

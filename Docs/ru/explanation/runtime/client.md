@@ -5,7 +5,8 @@ locale: ru
 document_id: client-runtime
 permalink: /Docs/ru/explanation/runtime/client.html
 ---
-<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"e483d1bb3eddabbd35760558d2d2e8b740aedffc1d2b356d31e8a74eaa6ad1ba"} -->
+<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"d5688fae9569e202a98d5b7e24f4a99b658a534c15f7c1a733f0d16f5723e02a"} -->
+)
 # Клиентская среда выполнения
 
 > Документация движка. Эта страница описывает переиспользуемое поведение клиентского runtime в `Source/Client/`; политика игрового интерфейса, игровые правила и конкретный контент принадлежат встраиваемому проекту.
@@ -131,7 +132,7 @@ permalink: /Docs/ru/explanation/runtime/client.html
 - `CreateNetworkConnection(bool use_udp)` выбирает socket или UDP socket transport;
 - `Process()` продвигает connect, receive, dispatch и send;
 - `Disconnect()` завершает активный transport и вызывает настроенный disconnect handler;
-- `TryFallbackToTcp()` предоставляет fallback при ошибке настройки UDP;
+- `TryFallbackToTcp()` предоставляет fallback, пока соединение ещё устанавливается: от подключения по UDP до ответа сервера на рукопожатие. Сбой транспорта после этого ответа завершает сессию через обработчик отключения: соединение по TCP стало бы новой серверной сессией, и состояние, построенное на первой, на ней продолжиться не может;
 - `Net_SendHandshake()`, `Net_OnHandshakeAnswer()` и `Net_OnPing()` обрабатывают protocol messages уровня соединения;
 - `AddMessageHandler(NetMessage, MessageCallback)` связывает protocol messages с handlers `ClientEngine::Net_On...`.
 
@@ -235,7 +236,7 @@ Particle resources идут через отдельный backend-neutral factor
 
 ## Root motion 2D-sprite
 
-Движущиеся 2D-персонажи сохраняют логический progress path/hex в `MovingContext`, а `CritterHexView` проецирует текущее integer-pixel displacement на накопленный цикл `NextX` / `NextY` выбранного walk/run sheet. Полученные frame и `_offsAnim` выравнивают визуальную походку без изменения authoritative movement. Смена direction-specific sheet сохраняет wrapped phase цикла; начало и остановка движения сбрасывают anchor. Полный контракт данных и математики описан в [Sprite Root Motion](../../how-to/content/sprite-root-motion.md).
+Движущиеся 2D-персонажи сохраняют логический progress path/hex в `MovingContext`, а `CritterHexView` проецирует текущее integer-pixel displacement на накопленный цикл `Motion` выбранного walk/run sheet. Полученные frame и `_offsAnim` выравнивают визуальную походку без изменения authoritative movement. Смена direction-specific sheet сохраняет wrapped phase цикла; начало и остановка движения сбрасывают anchor. Полный контракт данных и математики описан в [Sprite Root Motion](../../how-to/content/sprite-root-motion.md).
 
 ## `MapView`: представление карты и локальное пространственное состояние
 
@@ -281,33 +282,47 @@ C#; режимы ввода, включающие опцию, принадлеж
 
 ### Хранение полей клиентской карты
 
-`MapView` хранит поля в `ChunkedTwoDimensionalGrid`: таблице с прямой
-индексацией nullable-владельцев плотных блоков. Параметр шаблона `ChunkSide`
-должен быть ненулевой степенью двойки. `MapView` передаёт
+`MapView` хранит поля в `ChunkedTwoDimensionalGrid`: двухуровневой таблице с
+прямой индексацией nullable-владельцев плотных блоков. Параметр шаблона
+`ChunkSide` должен быть ненулевой степенью двойки. `MapView` передаёт
 `GameSettings::CLIENT_MAP_CHUNK_SIDE`, сейчас 16, поэтому его блоки имеют размер
 16x16. Изменение этой константы времени компиляции требует пересборки нативных
-потребителей; ключа runtime-конфигурации для неё нет. Первая запись в блок
-создаёт `ChunkSide * ChunkSide` полей со значениями по умолчанию. Чтение
-отсутствующего блока возвращает общее пустое поле без выделения памяти.
-Доступ использует деление координат и остаток от деления на константную сторону
-блока, затем индексацию массивов; хеширования
+потребителей; ключа runtime-конфигурации для неё нет. Верхний уровень хранит
+по одному владельцу на 32x32 слота блоков; таблица слотов выделяется при первой
+записи внутри неё. Первая запись в блок создаёт `ChunkSide * ChunkSide` полей
+со значениями по умолчанию. Чтение отсутствующего блока возвращает общее пустое
+поле без выделения памяти. Доступ использует деление координат и остаток от
+деления на константные стороны и два обращения к массивам; хеширования
 координат и отдельных узлов для каждого поля нет. Адрес существующего поля
-сохраняется при создании других блоков. Resize Mapper сохраняет пересечение
+сохраняется при создании других блоков. `ClearArea(origin, size)` сбрасывает все
+поля обрезанного прямоугольника, освобождает полностью покрытые блоки и таблицу
+слотов, когда из неё уходит последний блок; представления, которыми владеют эти
+поля, вызывающий код удаляет заранее. Resize Mapper сохраняет пересечение
 координат, удаляет вышедшие за границы поля и может менять их адреса. Unload
-освобождает таблицу и все блоки.
+освобождает таблицы и все блоки.
 
-Единый массив полей всей карты больше не выделяется. При текущей стороне
-блока 16 для карты 1200x1200
-начальная таблица содержит 5625 владельцев вместо 1440000 слотов полей;
-каждый запрос памяти для полей ограничен `256 * sizeof(MapView::Field)`.
-Созданный блок занимает всю свою ёмкость, поэтому запись в каждый блок карты
-может приблизить расход памяти к плотному хранению. Представления буферов
-освещения и видимой области сохраняются.
+Каждое поле хранит собственный `Light` — самый сильный цвет применённых к нему
+источников света. `MapView::SetupSpriteLight()` направляет спрайт карты на свет
+его гекса и двух соседей, которых читает его тип угла, записывая эти поля, чтобы
+последующие изменения света попадали по сохранённым адресам. Поэтому хранение
+света следует за затронутыми полями, а не за площадью карты.
+
+На создании, прокрутке и освещении не остаётся ни выделений размером с карту,
+ни проходов по всей карте. Группы крыш нумеруются по отслеживаемому множеству
+полей с крышами в прежнем порядке (сначала x, затем y), поэтому номера групп не
+меняются. Карта без осевой области прокрутки очищает только поля, которые
+блокировала раньше; карта с такой областью по-прежнему обходит все ячейки, чтобы
+отметить её линии. Resize Mapper удаляет представления за пределами нового
+размера по спискам представлений. Созданный блок занимает всю свою ёмкость,
+поэтому запись в каждый блок карты может приблизить расход памяти к плотному
+хранению.
 
 `ClientLargeMapFieldsStayWithinMemoryBudget` и
 `ClientLargeMapScrollBoundsStayWithinMemoryBudget` измеряют реальный конструктор
-пустой карты 1200x1200 с буферами видимой области, освещения и границами
-прокрутки. Скрытый `ClientMapFieldAccessCost` сравнивает чтение/запись настоящих
+пустой карты 1200x1200 с буферами видимой области и границами прокрутки.
+`ClientMaximumSizeMapLoadsWithoutMapSizedWork` создаёт карту настроенного
+размера `FO_MAP_MAX_SIZE` (до 128 000 ячеек по стороне), прокручивает её и
+проверяет время и приватную память. Скрытый `ClientMapFieldAccessCost` сравнивает чтение/запись настоящих
 полей с плотным и хешированным хранением. Его время относится только к этим
 нагрузкам, а не к FPS всей игры или долгому 32-битному сеансу с фрагментацией;
 см. [тестирование](../../contributing/testing/).
@@ -379,7 +394,7 @@ Input semantics задаются в `Source/Frontend/Application.h`; game-specif
 
 `ProcessInputEvent()` является правильным местом, поскольку через него проходят все input sources: SDL events из `ProcessInputEvents()`, scripted calls `Game.Simulate*` и automation bridge встраиваемого проекта. Filter во frontend/SDL-слое покрыл бы только OS path и был бы невидим simulated-input tests.
 
-Клиентские скрипты могут синтезировать локальный ввод через тот же runtime path для automation и embedded-client probes. `Game.SimulateMouseMove(pos)`, `Game.SimulateMouseDown(pos, button)` и `Game.SimulateMouseUp(pos, button)` сохраняют held-button state на протяжении raw mouse gesture, включая позиции вне render window; `Game.SimulateMouseClick(pos, button)` отправляет полный mouse click или wheel event. `Game.SimulateTouchDown(fingerId, pos)`, `Game.SimulateTouchMove(fingerId, pos, offsetPos)` и `Game.SimulateTouchUp(fingerId, pos)` отправляют raw touch streams, `Game.SimulateTouchTap(pos)` - completed tap event, `Game.SimulateKeyPress(key, text)` - одну pair key down/up, а `Game.SimulateKeyboardPress(key1, key2, key1Text, key2Text)` остаётся доступным для two-key sequences. Тем же путём синтезируются два сетевых уведомления: `Game.SimulateDisconnect()` доставляет уведомление `OnDisconnected`, которым заканчивается настоящий разрыв связи, а `Game.SimulateInfoMessage(infoMessage, extraText)` доставляет `OnInfoMessage`. Само соединение оба оставляют нетронутым — проба, проверяющая реакцию на потерянную сессию, не должна обрывать сессию, через которую об этом сообщает.
+Клиентские скрипты могут синтезировать локальный ввод через тот же runtime path для automation и embedded-client probes. `Game.SimulateMouseMove(pos)`, `Game.SimulateMouseDown(pos, button)` и `Game.SimulateMouseUp(pos, button)` сохраняют held-button state на протяжении raw mouse gesture, включая позиции вне render window; `Game.SimulateMouseClick(pos, button)` отправляет полный mouse click или wheel event. `Game.SimulateTouchDown(fingerId, pos)`, `Game.SimulateTouchMove(fingerId, pos, offsetPos)` и `Game.SimulateTouchUp(fingerId, pos)` отправляют raw touch streams, `Game.SimulateTouchTap(pos)` - completed tap event, `Game.SimulateTouchScroll(pos, offsetPos)` - агрегированный жест прокрутки со знаковым смещением в пикселях, `Game.SimulateKeyPress(key, text)` - одну pair key down/up, а `Game.SimulateKeyboardPress(key1, key2, key1Text, key2Text)` остаётся доступным для two-key sequences. Тем же путём синтезируются два сетевых уведомления: `Game.SimulateDisconnect()` доставляет уведомление `OnDisconnected`, которым заканчивается настоящий разрыв связи, а `Game.SimulateInfoMessage(infoMessage, extraText)` доставляет `OnInfoMessage`. Само соединение оба оставляют нетронутым — проба, проверяющая реакцию на потерянную сессию, не должна обрывать сессию, через которую об этом сообщает.
 
 Для локального prediction движения персонажа `ClientEngine::CritterMoveTo()` синхронизирует активный `MovingContext` с текущим client frame до начала нового движения или отправки stop request. Затем он нормализует локальную pair hex/offset до следующего request, поэтому быстрый start/stop input не сообщает серверу stale на один frame или чрезмерный offset.
 

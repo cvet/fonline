@@ -76,6 +76,7 @@ public:
     [[nodiscard]] auto GetModel() noexcept -> nptr<ModelInstance> { return _model; }
     [[nodiscard]] auto GetModel() const noexcept -> nptr<const ModelInstance> { return _model; }
 #endif
+    [[nodiscard]] auto GetNameTextPos(ipos32& pos) const -> bool;
 
     void Init();
     void ChangeDir(mdir dir);
@@ -90,7 +91,6 @@ public:
     void NormalizeHexOffset();
     void AddExtraOffs(ipos32 offset);
     void RefreshOffs();
-    auto GetNameTextPos(ipos32& pos) const -> bool;
     void SetMoving(refcount_ptr<MovingContext> moving);
     // The current plan runs faster than its speed until it has made up the given time
     void SetMovingCatchUp(timespan time);
@@ -104,8 +104,6 @@ public:
 private:
     struct CritterAnim
     {
-        [[nodiscard]] auto GetContextItem() noexcept -> nptr<Entity> { return ContextItem; }
-
         CritterStateAnim StateAnim {};
         CritterActionAnim ActionAnim {};
         CritterAnimationFlags Flags {};
@@ -131,7 +129,7 @@ private:
 
     // Integer-pixel displacement from the current MovingContext start to the linear position.
     // Hex snaps preserve it by shifting cur_hex and hex_offset in opposite directions
-    [[nodiscard]] auto EvaluateMovementDisplacement() const -> ipos32;
+    auto EvaluateMovementDisplacement() const -> ipos32;
 
     refcount_nptr<MovingContext> _moving {};
     timespan _movingCatchUpLeft {};
@@ -166,4 +164,3 @@ private:
 };
 
 FO_END_NAMESPACE
-

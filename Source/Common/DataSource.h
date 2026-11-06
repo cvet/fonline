@@ -41,11 +41,18 @@ FO_DECLARE_EXCEPTION(DataSourceException);
 
 // The pack compiled into the executable rather than shipped as a file, so it is mounted by this name instead
 // of found on disk, and packaging embeds it instead of writing an artifact
-constexpr string_view EMBEDDED_PACK_NAME = "Embedded";
+constexpr string_view EMBEDDED_PACK_NAME {"Embedded"};
 
 // The engine own base resources. The bootstrap mounts it by name beside the embedded pack, to bring the
 // window up before the game resource set exists
-constexpr string_view CORE_PACK_NAME = "Core";
+constexpr string_view CORE_PACK_NAME {"Core"};
+
+// The pack with the baked metadata and the packaged application config, which settings read before the frontend
+// starts and the updater checks after each resource update
+constexpr string_view METADATA_PACK_NAME {"Metadata"};
+
+// The server distributes client packs separately from its own resource packs
+constexpr string_view CLIENT_RESOURCE_PACKS_SUBDIR {"Client"};
 
 // Shared by the pack sources: the name filter every source applies, and the deleter-carrying holder that hands
 // a decoded file buffer to the caller
@@ -72,9 +79,6 @@ public:
     auto operator=(DataSource&&) noexcept = delete;
     virtual ~DataSource() = default;
 
-    static auto MountDir(string_view dir, bool recursive, bool non_cached, bool maybe_not_available) -> unique_ptr<DataSource>;
-    static auto MountPack(string_view dir, string_view name, bool maybe_not_available) -> unique_ptr<DataSource>;
-
     [[nodiscard]] virtual auto IsDiskDir() const -> bool = 0;
     [[nodiscard]] virtual auto GetPackName() const -> string_view = 0;
     [[nodiscard]] virtual auto IsFileExists(string_view path) const -> bool = 0;
@@ -82,6 +86,9 @@ public:
     [[nodiscard]] virtual auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t> = 0;
     [[nodiscard]] virtual auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> = 0;
     [[nodiscard]] virtual auto GetIndexSnapshot() const -> optional<vector<IndexedFile>> { return std::nullopt; }
+
+    static auto MountDir(string_view dir, bool recursive, bool non_cached, bool maybe_not_available) -> unique_ptr<DataSource>;
+    static auto MountPack(string_view dir, string_view name, bool maybe_not_available) -> unique_ptr<DataSource>;
 
     virtual auto Reindex() -> bool { return false; }
 };

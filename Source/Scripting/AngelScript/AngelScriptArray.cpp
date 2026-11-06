@@ -41,7 +41,7 @@
 
 FO_BEGIN_NAMESPACE
 
-constexpr AngelScript::asPWORD AS_TYPE_ARRAY_CACHE = 1000;
+constexpr AngelScript::asPWORD AS_TYPE_ARRAY_CACHE {1000};
 
 struct ScriptArrayTypeData
 {
@@ -53,14 +53,14 @@ struct ScriptArrayTypeData
 
 static void CleanupScriptArrayTypeData(ptr<ScriptArrayTypeData> cache) noexcept
 {
-    auto owned_cache = adopt_unique_ptr(cache);
+    auto owned_cache {adopt_unique_ptr(cache)};
     ignore_unused(owned_cache);
 }
 
 static void CleanupTypeInfoArrayCache(AngelScript::asITypeInfo* type)
 {
-    ptr<AngelScript::asITypeInfo> type_info = type;
-    auto cache = cast_from_void<ScriptArrayTypeData*>(type_info->GetUserData(AS_TYPE_ARRAY_CACHE));
+    ptr<AngelScript::asITypeInfo> type_info {type};
+    auto cache {cast_from_void<ScriptArrayTypeData*>(type_info->GetUserData(AS_TYPE_ARRAY_CACHE))};
 
     if (cache) {
         CleanupScriptArrayTypeData(cache);
@@ -71,25 +71,25 @@ static void CleanupTypeInfoArrayCache(AngelScript::asITypeInfo* type)
 
 static auto ScriptArrayTemplateCallback(AngelScript::asITypeInfo* ti, bool& dont_garbage_collect) -> bool
 {
-    ptr<AngelScript::asITypeInfo> type_info = ti;
-    ptr<AngelScript::asIScriptEngine> engine = type_info->GetEngine();
-    int32_t type_id = type_info->GetSubTypeId();
+    ptr<AngelScript::asITypeInfo> type_info {ti};
+    ptr<AngelScript::asIScriptEngine> engine {type_info->GetEngine()};
+    int32_t type_id {type_info->GetSubTypeId()};
 
     if (type_id == AngelScript::asTYPEID_VOID) {
         return false;
     }
 
     if ((type_id & AngelScript::asTYPEID_MASK_OBJECT) != 0 && (type_id & AngelScript::asTYPEID_OBJHANDLE) == 0) {
-        nptr<AngelScript::asITypeInfo> sub_type = engine->GetTypeInfoById(type_id);
+        nptr<AngelScript::asITypeInfo> sub_type {engine->GetTypeInfoById(type_id)};
         FO_VERIFY_AND_THROW(sub_type, "Array sub-type info not found");
-        auto flags = sub_type->GetFlags();
+        auto flags {sub_type->GetFlags()};
 
         if ((flags & AngelScript::asOBJ_VALUE) != 0 && (flags & AngelScript::asOBJ_POD) == 0) {
-            bool has_default_ctor = false;
+            bool has_default_ctor {false};
 
-            for (AngelScript::asUINT i = 0; i < sub_type->GetBehaviourCount(); i++) {
-                AngelScript::asEBehaviours beh;
-                nptr<const AngelScript::asIScriptFunction> func = sub_type->GetBehaviourByIndex(i, &beh);
+            for (AngelScript::asUINT i {0}; i < sub_type->GetBehaviourCount(); i++) {
+                AngelScript::asEBehaviours beh {};
+                nptr<const AngelScript::asIScriptFunction> func {sub_type->GetBehaviourByIndex(i, &beh)};
 
                 if (!func || beh != AngelScript::asBEHAVE_CONSTRUCT) {
                     continue;
@@ -120,9 +120,9 @@ static auto ScriptArrayTemplateCallback(AngelScript::asITypeInfo* ti, bool& dont
         dont_garbage_collect = true;
     }
     else {
-        nptr<AngelScript::asITypeInfo> sub_type = engine->GetTypeInfoById(type_id);
+        nptr<AngelScript::asITypeInfo> sub_type {engine->GetTypeInfoById(type_id)};
         FO_VERIFY_AND_THROW(sub_type, "Array sub-type info not found");
-        auto flags = sub_type->GetFlags();
+        auto flags {sub_type->GetFlags()};
 
         if ((flags & AngelScript::asOBJ_GC) == 0) {
             if ((flags & AngelScript::asOBJ_SCRIPT_OBJECT) != 0) {
@@ -141,47 +141,47 @@ static auto ScriptArrayTemplateCallback(AngelScript::asITypeInfo* ti, bool& dont
 
 static auto ScriptArray_Create(AngelScript::asITypeInfo* ti) -> ScriptArray*
 {
-    nptr<AngelScript::asITypeInfo> type_info = ti;
+    nptr<AngelScript::asITypeInfo> type_info {ti};
     FO_VERIFY_AND_THROW(type_info, "Array type info is null");
-    auto arr = ScriptArray::Create(type_info);
+    auto arr {ScriptArray::Create(type_info)};
     return arr.release_ownership();
 }
 
 static auto ScriptArray_CreateWithLength(AngelScript::asITypeInfo* ti, int32_t length) -> ScriptArray*
 {
-    nptr<AngelScript::asITypeInfo> type_info = ti;
+    nptr<AngelScript::asITypeInfo> type_info {ti};
     FO_VERIFY_AND_THROW(type_info, "Array type info is null");
-    auto arr = ScriptArray::Create(type_info, length);
+    auto arr {ScriptArray::Create(type_info, length)};
     return arr.release_ownership();
 }
 
 static auto ScriptArray_CreateList(AngelScript::asITypeInfo* ti, void* init_list) -> ScriptArray*
 {
-    nptr<AngelScript::asITypeInfo> type_info = ti;
+    nptr<AngelScript::asITypeInfo> type_info {ti};
     FO_VERIFY_AND_THROW(type_info, "Array type info is null");
-    nptr<void> init_list_ptr = init_list;
+    nptr<void> init_list_ptr {init_list};
     FO_VERIFY_AND_THROW(init_list_ptr, "Array init list is null");
-    auto arr = ScriptArray::Create(type_info, init_list_ptr);
+    auto arr {ScriptArray::Create(type_info, init_list_ptr)};
     return arr.release_ownership();
 }
 
 static auto ScriptArray_CreateWithDefault(AngelScript::asITypeInfo* ti, int32_t length, void* def_val) -> ScriptArray*
 {
-    nptr<AngelScript::asITypeInfo> type_info = ti;
+    nptr<AngelScript::asITypeInfo> type_info {ti};
     FO_VERIFY_AND_THROW(type_info, "Array type info is null");
-    nptr<void> def_val_ptr = def_val;
+    nptr<void> def_val_ptr {def_val};
 
     if (length == 0) {
-        auto arr = ScriptArray::Create(type_info, length);
+        auto arr {ScriptArray::Create(type_info, length)};
         return arr.release_ownership();
     }
 
     FO_VERIFY_AND_THROW(def_val_ptr, "Array default value is null");
-    auto arr = ScriptArray::Create(type_info, length, def_val_ptr);
+    auto arr {ScriptArray::Create(type_info, length, def_val_ptr)};
     return arr.release_ownership();
 }
 
-[[nodiscard]] static auto RequireScriptArrayValue(nptr<void> value) -> ptr<void>
+static auto RequireScriptArrayValue(nptr<void> value) -> ptr<void>
 {
     FO_VERIFY_AND_THROW(value, "Array value is null");
     return value;
@@ -213,7 +213,7 @@ ScriptArray::ScriptArray(ptr<AngelScript::asITypeInfo> ti, ptr<void> init_list) 
 {
     FO_VERIFY_AND_THROW(string_view(ti->GetName()) == "array", "AngelScript type info is not an array type");
 
-    ptr<AngelScript::asIScriptEngine> engine = ti->GetEngine();
+    ptr<AngelScript::asIScriptEngine> engine {ti->GetEngine()};
 
     if ((_subTypeId & AngelScript::asTYPEID_MASK_OBJECT) != 0) {
         _elementSize = sizeof(void*);
@@ -226,15 +226,15 @@ ScriptArray::ScriptArray(ptr<AngelScript::asITypeInfo> ti, ptr<void> init_list) 
     PrecacheSubTypeData();
 
     // The init list buffer starts with an int32 length header; elements follow with 4/8-byte alignment
-    auto init_bytes = init_list.reinterpret_as<AngelScript::asBYTE>();
-    int32_t length = *init_list.reinterpret_as<const int32_t>();
+    auto init_bytes {init_list.reinterpret_as<AngelScript::asBYTE>()};
+    int32_t length {*init_list.reinterpret_as<const int32_t>()};
     CheckArraySize(length);
 
     if ((_subTypeId & AngelScript::asTYPEID_MASK_OBJECT) == 0) {
         CreateBuffer(length);
 
         if (length != 0) {
-            ptr<AngelScript::asBYTE> init_payload = init_bytes.offset(_elementSize >= 8 ? sizeof(int64_t) : sizeof(int32_t));
+            ptr<AngelScript::asBYTE> init_payload {init_bytes.offset(_elementSize >= 8 ? sizeof(int64_t) : sizeof(int32_t))};
             memory::copy(At(0), init_payload, numeric_cast<size_t>(length * _elementSize));
         }
     }
@@ -242,7 +242,7 @@ ScriptArray::ScriptArray(ptr<AngelScript::asITypeInfo> ti, ptr<void> init_list) 
         CreateBuffer(length);
 
         if (length != 0) {
-            ptr<AngelScript::asBYTE> init_payload = init_bytes.offset(sizeof(int32_t));
+            ptr<AngelScript::asBYTE> init_payload {init_bytes.offset(sizeof(int32_t))};
             memory::copy(At(0), init_payload, numeric_cast<size_t>(length * _elementSize));
             memory::fill(init_payload, 0, numeric_cast<size_t>(length * _elementSize));
         }
@@ -250,17 +250,17 @@ ScriptArray::ScriptArray(ptr<AngelScript::asITypeInfo> ti, ptr<void> init_list) 
     else {
         CreateBuffer(length);
 
-        nptr<AngelScript::asITypeInfo> sub_type = ti->GetSubType();
+        nptr<AngelScript::asITypeInfo> sub_type {ti->GetSubType()};
         FO_VERIFY_AND_THROW(sub_type, "Array sub-type info not found");
 
-        int32_t sub_size = sub_type->GetSize();
-        size_t elem_align = sub_size >= 8 ? 8u : 4u;
-        size_t header = elem_align; // The int32 length header padded to the element alignment
-        size_t stride = sub_size >= 4 ? align_up(numeric_cast<size_t>(sub_size), elem_align) : numeric_cast<size_t>(sub_size);
+        int32_t sub_size {numeric_cast<int32_t>(sub_type->GetSize())};
+        size_t elem_align {sub_size >= 8 ? 8u : 4u};
+        size_t header {elem_align}; // The int32 length header padded to the element alignment
+        size_t stride {sub_size >= 4 ? align_up(numeric_cast<size_t>(sub_size), elem_align) : numeric_cast<size_t>(sub_size)};
 
-        for (int32_t i = 0; i < length; i++) {
-            auto obj = At(i);
-            ptr<AngelScript::asBYTE> src_obj = init_bytes.offset(header + numeric_cast<size_t>(i) * stride);
+        for (int32_t i {0}; i < length; i++) {
+            auto obj {At(i)};
+            ptr<AngelScript::asBYTE> src_obj {init_bytes.offset(header + numeric_cast<size_t>(i) * stride)};
             engine->AssignScriptObject(obj.get(), src_obj.get(), sub_type.get());
         }
     }
@@ -276,7 +276,7 @@ ScriptArray::ScriptArray(int32_t length, ptr<AngelScript::asITypeInfo> ti) :
 {
     FO_VERIFY_AND_THROW(string_view(ti->GetName()) == "array", "AngelScript type info is not an array type");
 
-    ptr<AngelScript::asIScriptEngine> engine = ti->GetEngine();
+    ptr<AngelScript::asIScriptEngine> engine {ti->GetEngine()};
 
     if ((_subTypeId & AngelScript::asTYPEID_MASK_OBJECT) != 0) {
         _elementSize = sizeof(void*);
@@ -301,7 +301,7 @@ ScriptArray::ScriptArray(int32_t length, ptr<void> def_val, ptr<AngelScript::asI
 {
     FO_VERIFY_AND_THROW(string(ti->GetName()) == "array", "AngelScript type info is not an array type");
 
-    ptr<AngelScript::asIScriptEngine> engine = ti->GetEngine();
+    ptr<AngelScript::asIScriptEngine> engine {ti->GetEngine()};
 
     if ((_subTypeId & AngelScript::asTYPEID_MASK_OBJECT) != 0) {
         _elementSize = sizeof(void*);
@@ -319,7 +319,7 @@ ScriptArray::ScriptArray(int32_t length, ptr<void> def_val, ptr<AngelScript::asI
         engine->NotifyGarbageCollectorOfNewObject(this, _typeInfo.get());
     }
 
-    for (int32_t i = 0; i < GetSize(); i++) {
+    for (int32_t i {0}; i < GetSize(); i++) {
         SetValue(i, def_val);
     }
 }
@@ -334,7 +334,7 @@ ScriptArray::ScriptArray(const ScriptArray& other) :
     PrecacheSubTypeData();
 
     if ((_typeInfo->GetFlags() & AngelScript::asOBJ_GC) != 0) {
-        ptr<AngelScript::asIScriptEngine> engine = _typeInfo->GetEngine();
+        ptr<AngelScript::asIScriptEngine> engine {_typeInfo->GetEngine()};
         engine->NotifyGarbageCollectorOfNewObject(this, _typeInfo.get());
     }
 
@@ -363,22 +363,22 @@ ScriptArray::~ScriptArray()
 
 void ScriptArray::SetValue(int32_t index, ptr<void> value)
 {
-    auto dst = At(index);
+    auto dst {At(index)};
 
     if ((_subTypeId & ~AngelScript::asTYPEID_MASK_SEQNBR) != 0 && (_subTypeId & AngelScript::asTYPEID_OBJHANDLE) == 0) {
-        ptr<AngelScript::asIScriptEngine> engine = _typeInfo->GetEngine();
-        nptr<AngelScript::asITypeInfo> sub_type = _typeInfo->GetSubType();
+        ptr<AngelScript::asIScriptEngine> engine {_typeInfo->GetEngine()};
+        nptr<AngelScript::asITypeInfo> sub_type {_typeInfo->GetSubType()};
         FO_VERIFY_AND_THROW(sub_type, "Array sub-type info not found");
         engine->AssignScriptObject(dst.get(), value.get(), sub_type.get());
     }
     else if ((_subTypeId & AngelScript::asTYPEID_OBJHANDLE) != 0) {
-        ptr<AngelScript::asIScriptEngine> engine = _typeInfo->GetEngine();
-        nptr<AngelScript::asITypeInfo> sub_type = _typeInfo->GetSubType();
+        ptr<AngelScript::asIScriptEngine> engine {_typeInfo->GetEngine()};
+        nptr<AngelScript::asITypeInfo> sub_type {_typeInfo->GetSubType()};
         FO_VERIFY_AND_THROW(sub_type, "Array sub-type info not found");
         // dst (array element) and value (incoming AngelScript stack slot) are only asDWORD-aligned, so read/
         // write the handles through aligned locals to avoid a misaligned 8-byte pointer access (UBSan)
-        nptr<void> old_obj = memory::read_unaligned<void*>(dst);
-        nptr<void> new_obj = memory::read_unaligned<void*>(value);
+        nptr<void> old_obj {memory::read_unaligned<void*>(dst)};
+        nptr<void> new_obj {memory::read_unaligned<void*>(value)};
         memory::write_unaligned<void*>(dst, new_obj.get_no_const());
 
         if (new_obj) {
@@ -463,7 +463,7 @@ void ScriptArray::CheckArraySize(int32_t num_elements) const
     }
 
     FO_VERIFY_AND_THROW(_elementSize != 0, "Element size must be non-zero", _elementSize);
-    int32_t max_size = 0x7FFFFFFF / _elementSize;
+    int32_t max_size {0x7FFFFFFF / _elementSize};
 
     if (num_elements > max_size) {
         throw ScriptException("Array size is too large", num_elements, max_size);
@@ -509,22 +509,22 @@ void ScriptArray::InsertAt(int32_t index, const ScriptArray& other)
         throw ScriptException("Mismatching array types");
     }
 
-    int32_t num_elements = other.GetSize();
+    int32_t num_elements {other.GetSize()};
     Resize(num_elements, index);
 
     if (&other != this) {
-        for (int32_t i = 0; i < other.GetSize(); i++) {
-            ptr<void> value = other.At(i);
+        for (int32_t i {0}; i < other.GetSize(); i++) {
+            ptr<void> value {other.At(i)};
             SetValue(index + i, value);
         }
     }
     else {
-        for (int32_t i = 0; i < index; i++) {
-            ptr<void> value = other.At(i);
+        for (int32_t i {0}; i < index; i++) {
+            ptr<void> value {other.At(i)};
             SetValue(index + i, value);
         }
-        for (int32_t i = index + num_elements, j = 0; i < other.GetSize(); i++, j++) {
-            ptr<void> value = other.At(i);
+        for (int32_t i {index + num_elements}, j {0}; i < other.GetSize(); i++, j++) {
+            ptr<void> value {other.At(i)};
             SetValue(index + index + j, value);
         }
     }
@@ -556,7 +556,7 @@ auto ScriptArray::At(int32_t index) const -> ptr<void>
     }
 
     if ((_subTypeId & AngelScript::asTYPEID_MASK_OBJECT) != 0 && (_subTypeId & AngelScript::asTYPEID_OBJHANDLE) == 0) {
-        auto object = NativeDataProvider::ReadHandleSlot(GetArrayItemPointer(index));
+        auto object {NativeDataProvider::ReadHandleSlot(GetArrayItemPointer(index))};
         FO_VERIFY_AND_THROW(object, "Array element object is null");
         return object;
     }
@@ -590,17 +590,17 @@ void ScriptArray::Construct(int32_t start, int32_t end)
         _buffer.reserve(std::max(_buffer.capacity(), numeric_cast<size_t>(10 * _elementSize)));
     }
 
-    auto it_start = _buffer.begin() + numeric_cast<ptrdiff_t>(start * _elementSize);
-    auto count = numeric_cast<size_t>((end - start) * _elementSize);
+    auto it_start {_buffer.begin() + numeric_cast<ptrdiff_t>(start * _elementSize)};
+    auto count {numeric_cast<size_t>((end - start) * _elementSize)};
     _buffer.insert(it_start, count, {});
 
     if ((_subTypeId & AngelScript::asTYPEID_MASK_OBJECT) != 0 && (_subTypeId & AngelScript::asTYPEID_OBJHANDLE) == 0) {
-        ptr<AngelScript::asIScriptEngine> engine = _typeInfo->GetEngine();
-        nptr<AngelScript::asITypeInfo> sub_type = _typeInfo->GetSubType();
+        ptr<AngelScript::asIScriptEngine> engine {_typeInfo->GetEngine()};
+        nptr<AngelScript::asITypeInfo> sub_type {_typeInfo->GetSubType()};
         FO_VERIFY_AND_THROW(sub_type, "Array sub-type info not found");
 
-        for (int32_t index = start; index < end; index++) {
-            nptr<void> new_obj = engine->CreateScriptObject(sub_type.get());
+        for (int32_t index {start}; index < end; index++) {
+            nptr<void> new_obj {engine->CreateScriptObject(sub_type.get())};
             NativeDataProvider::WriteHandleSlot(GetArrayItemPointer(index), new_obj);
 
             if (!new_obj) {
@@ -613,12 +613,12 @@ void ScriptArray::Construct(int32_t start, int32_t end)
 void ScriptArray::Destruct(int32_t start, int32_t end)
 {
     if ((_subTypeId & AngelScript::asTYPEID_MASK_OBJECT) != 0) {
-        ptr<AngelScript::asIScriptEngine> engine = _typeInfo->GetEngine();
-        nptr<AngelScript::asITypeInfo> sub_type = _typeInfo->GetSubType();
+        ptr<AngelScript::asIScriptEngine> engine {_typeInfo->GetEngine()};
+        nptr<AngelScript::asITypeInfo> sub_type {_typeInfo->GetSubType()};
         FO_VERIFY_AND_THROW(sub_type, "Array sub-type info not found");
 
-        for (int32_t index = start; index < end; index++) {
-            auto obj = NativeDataProvider::ReadHandleSlot(GetArrayItemPointer(index));
+        for (int32_t index {start}; index < end; index++) {
+            auto obj {NativeDataProvider::ReadHandleSlot(GetArrayItemPointer(index))};
 
             if (obj) {
                 engine->ReleaseScriptObject(obj.get_no_const(), sub_type.get());
@@ -626,8 +626,8 @@ void ScriptArray::Destruct(int32_t start, int32_t end)
         }
     }
 
-    auto it_start = _buffer.begin() + numeric_cast<ptrdiff_t>(start * _elementSize);
-    auto it_end = _buffer.begin() + numeric_cast<ptrdiff_t>(end * _elementSize);
+    auto it_start {_buffer.begin() + numeric_cast<ptrdiff_t>(start * _elementSize)};
+    auto it_end {_buffer.begin() + numeric_cast<ptrdiff_t>(end * _elementSize)};
     _buffer.erase(it_start, it_end);
 }
 
@@ -671,7 +671,7 @@ auto ScriptArray::Equals(ptr<void> a, ptr<void> b, nptr<AngelScript::asIScriptCo
         }
     }
     else {
-        int32_t as_result = 0;
+        int32_t as_result {0};
         FO_VERIFY_AND_THROW(ctx, "Script execution context is null");
 
         if ((_subTypeId & AngelScript::asTYPEID_OBJHANDLE) != 0) {
@@ -770,7 +770,7 @@ auto ScriptArray::Less(ptr<void> a, ptr<void> b, bool asc, nptr<AngelScript::asI
         }
     }
     else {
-        int32_t as_result = 0;
+        int32_t as_result {0};
         FO_VERIFY_AND_THROW(ctx, "Script execution context is null");
         nptr<void> lhs_obj {};
         nptr<void> rhs_obj {};
@@ -812,12 +812,12 @@ auto ScriptArray::Less(ptr<void> a, ptr<void> b, bool asc, nptr<AngelScript::asI
 
 void ScriptArray::Reverse()
 {
-    int32_t size = GetSize();
+    int32_t size {GetSize()};
 
     if (size >= 2) {
-        AngelScript::asBYTE temp[16];
+        AngelScript::asBYTE temp[16] {};
 
-        for (int32_t i = 0; i < size / 2; i++) {
+        for (int32_t i {0}; i < size / 2; i++) {
             Copy(temp, GetArrayItemPointer(i));
             Copy(GetArrayItemPointer(i), GetArrayItemPointer(size - i - 1));
             Copy(GetArrayItemPointer(size - i - 1), temp);
@@ -836,8 +836,8 @@ auto ScriptArray::operator==(const ScriptArray& other) const -> bool
 
     if (_subTypeData) {
         if (!_subTypeData->CmpFunc && !_subTypeData->EqFunc && (_subTypeId & AngelScript::asTYPEID_OBJHANDLE) == 0) {
-            ptr<AngelScript::asIScriptEngine> engine = _typeInfo->GetEngine();
-            nptr<const AngelScript::asITypeInfo> sub_type = engine->GetTypeInfoById(_subTypeId);
+            ptr<AngelScript::asIScriptEngine> engine {_typeInfo->GetEngine()};
+            nptr<const AngelScript::asITypeInfo> sub_type {engine->GetTypeInfoById(_subTypeId)};
             FO_VERIFY_AND_THROW(sub_type, "Array sub-type info not found");
 
             if (_subTypeData->EqFuncReturnCode == AngelScript::asMULTIPLE_FUNCTIONS) {
@@ -849,21 +849,21 @@ auto ScriptArray::operator==(const ScriptArray& other) const -> bool
         }
     }
 
-    nptr<AngelScript::asIScriptContext> ctx;
+    nptr<AngelScript::asIScriptContext> ctx {};
 
     if (_subTypeData) {
         ctx = AngelScript::asGetActiveContext();
         FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
         FO_VERIFY_AND_THROW(ctx->GetEngine() == _typeInfo->GetEngine(), "AngelScript array context belongs to a different engine");
 
-        int32_t as_result = 0;
+        int32_t as_result {0};
         FO_AS_VERIFY(ctx->PushState());
     }
 
-    auto release_ctx = scope_exit([&]() noexcept {
+    auto release_ctx {scope_exit([&]() noexcept {
         if (ctx) {
             safe_call([&] {
-                auto state = ctx->GetState();
+                auto state {ctx->GetState()};
                 ctx->PopState();
 
                 if (state == AngelScript::asEXECUTION_ABORTED) {
@@ -871,11 +871,11 @@ auto ScriptArray::operator==(const ScriptArray& other) const -> bool
                 }
             });
         }
-    });
+    })};
 
-    bool is_equal = true;
+    bool is_equal {true};
 
-    for (int32_t i = 0; i < GetSize(); i++) {
+    for (int32_t i {0}; i < GetSize(); i++) {
         if (!Equals(At(i), other.At(i), ctx)) {
             is_equal = false;
             break;
@@ -892,19 +892,19 @@ auto ScriptArray::FindByRef(ptr<void> ref) const -> int32_t
 
 auto ScriptArray::FindByRef(int32_t start_at, ptr<void> ref) const -> int32_t
 {
-    int32_t size = GetSize();
+    int32_t size {GetSize()};
 
     if ((_subTypeId & AngelScript::asTYPEID_OBJHANDLE) != 0) {
-        auto handle = NativeDataProvider::ReadHandleSlot(ref);
+        auto handle {NativeDataProvider::ReadHandleSlot(ref)};
 
-        for (int32_t i = start_at; i < size; i++) {
+        for (int32_t i {start_at}; i < size; i++) {
             if (NativeDataProvider::ReadHandleSlot(At(i)) == handle) {
                 return i;
             }
         }
     }
     else {
-        for (int32_t i = start_at; i < size; i++) {
+        for (int32_t i {start_at}; i < size; i++) {
             if (At(i) == ref) {
                 return i;
             }
@@ -923,8 +923,8 @@ auto ScriptArray::Find(int32_t start_at, ptr<void> value) const -> int32_t
 {
     if (_subTypeData) {
         if (!_subTypeData->CmpFunc && !_subTypeData->EqFunc && (_subTypeId & AngelScript::asTYPEID_OBJHANDLE) == 0) {
-            ptr<AngelScript::asIScriptEngine> engine = _typeInfo->GetEngine();
-            nptr<const AngelScript::asITypeInfo> sub_type = engine->GetTypeInfoById(_subTypeId);
+            ptr<AngelScript::asIScriptEngine> engine {_typeInfo->GetEngine()};
+            nptr<const AngelScript::asITypeInfo> sub_type {engine->GetTypeInfoById(_subTypeId)};
             FO_VERIFY_AND_THROW(sub_type, "Array sub-type info not found");
 
             if (_subTypeData->EqFuncReturnCode == AngelScript::asMULTIPLE_FUNCTIONS) {
@@ -936,21 +936,21 @@ auto ScriptArray::Find(int32_t start_at, ptr<void> value) const -> int32_t
         }
     }
 
-    nptr<AngelScript::asIScriptContext> ctx;
+    nptr<AngelScript::asIScriptContext> ctx {};
 
     if (_subTypeData) {
         ctx = AngelScript::asGetActiveContext();
         FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
         FO_VERIFY_AND_THROW(ctx->GetEngine() == _typeInfo->GetEngine(), "AngelScript array context belongs to a different engine");
 
-        int32_t as_result = 0;
+        int32_t as_result {0};
         FO_AS_VERIFY(ctx->PushState());
     }
 
-    auto release_ctx = scope_exit([&]() noexcept {
+    auto release_ctx {scope_exit([&]() noexcept {
         if (ctx) {
             safe_call([&] {
-                auto state = ctx->GetState();
+                auto state {ctx->GetState()};
                 ctx->PopState();
 
                 if (state == AngelScript::asEXECUTION_ABORTED) {
@@ -958,12 +958,12 @@ auto ScriptArray::Find(int32_t start_at, ptr<void> value) const -> int32_t
                 }
             });
         }
-    });
+    })};
 
-    int32_t ret = -1;
-    int32_t size = GetSize();
+    int32_t ret {-1};
+    int32_t size {GetSize()};
 
-    for (int32_t i = start_at; i < size; i++) {
+    for (int32_t i {start_at}; i < size; i++) {
         if (Equals(At(i), value, ctx)) {
             ret = i;
             break;
@@ -980,32 +980,34 @@ void ScriptArray::Copy(ptr<void> dst, ptr<void> src) const
 
 auto ScriptArray::GetBuffer() -> nptr<void>
 {
-    auto buffer = make_nptr(_buffer.data());
+    auto buffer {make_nptr(_buffer.data())};
     if (!buffer) {
         return nullptr;
     }
+
     return buffer.void_cast();
 }
 
 auto ScriptArray::GetBuffer() const -> nptr<void>
 {
-    auto buffer = make_nptr(_buffer.data());
+    auto buffer {make_nptr(_buffer.data())};
     if (!buffer) {
         return nullptr;
     }
+
     return buffer.void_cast();
 }
 
 auto ScriptArray::GetArrayItemPointer(int32_t index) -> ptr<void>
 {
-    auto buffer = GetBuffer();
+    auto buffer {GetBuffer()};
     FO_VERIFY_AND_THROW(buffer, "Array buffer is null");
     return buffer.reinterpret_as<uint8_t>().offset(numeric_cast<size_t>(index * _elementSize)).void_cast();
 }
 
 auto ScriptArray::GetArrayItemPointer(int32_t index) const -> ptr<void>
 {
-    auto buffer = GetBuffer();
+    auto buffer {GetBuffer()};
     FO_VERIFY_AND_THROW(buffer, "Array buffer is null");
     return buffer.reinterpret_as<uint8_t>().offset(numeric_cast<size_t>(index * _elementSize)).void_cast();
 }
@@ -1013,7 +1015,7 @@ auto ScriptArray::GetArrayItemPointer(int32_t index) const -> ptr<void>
 auto ScriptArray::GetDataPointer(ptr<void> buf) const -> ptr<void>
 {
     if ((_subTypeId & AngelScript::asTYPEID_MASK_OBJECT) != 0 && (_subTypeId & AngelScript::asTYPEID_OBJHANDLE) == 0) {
-        auto object = NativeDataProvider::ReadHandleSlot(buf);
+        auto object {NativeDataProvider::ReadHandleSlot(buf)};
         FO_VERIFY_AND_THROW(object, "Array element object is null");
         return object;
     }
@@ -1048,8 +1050,8 @@ void ScriptArray::Sort(int32_t start_at, int32_t count, bool asc)
 
     if (_subTypeData) {
         if (!_subTypeData->CmpFunc) {
-            ptr<AngelScript::asIScriptEngine> engine = _typeInfo->GetEngine();
-            nptr<const AngelScript::asITypeInfo> sub_type = engine->GetTypeInfoById(_subTypeId);
+            ptr<AngelScript::asIScriptEngine> engine {_typeInfo->GetEngine()};
+            nptr<const AngelScript::asITypeInfo> sub_type {engine->GetTypeInfoById(_subTypeId)};
             FO_VERIFY_AND_THROW(sub_type, "Array sub-type info not found");
 
             if (_subTypeData->CmpFuncReturnCode == AngelScript::asMULTIPLE_FUNCTIONS) {
@@ -1065,28 +1067,28 @@ void ScriptArray::Sort(int32_t start_at, int32_t count, bool asc)
         return;
     }
 
-    int32_t start = start_at;
-    int32_t end = start_at + count;
+    int32_t start {start_at};
+    int32_t end {start_at + count};
 
     if (start < 0 || end < 0 || start >= GetSize() || end > GetSize()) {
         throw ScriptException("Index out of bounds", start, end, GetSize());
     }
 
-    nptr<AngelScript::asIScriptContext> ctx;
+    nptr<AngelScript::asIScriptContext> ctx {};
 
     if (_subTypeData) {
         ctx = AngelScript::asGetActiveContext();
         FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
         FO_VERIFY_AND_THROW(ctx->GetEngine() == _typeInfo->GetEngine(), "AngelScript array context belongs to a different engine");
 
-        int32_t as_result = 0;
+        int32_t as_result {0};
         FO_AS_VERIFY(ctx->PushState());
     }
 
-    auto release_ctx = scope_exit([&]() noexcept {
+    auto release_ctx {scope_exit([&]() noexcept {
         if (ctx) {
             safe_call([&] {
-                auto state = ctx->GetState();
+                auto state {ctx->GetState()};
                 ctx->PopState();
 
                 if (state == AngelScript::asEXECUTION_ABORTED) {
@@ -1094,16 +1096,16 @@ void ScriptArray::Sort(int32_t start_at, int32_t count, bool asc)
                 }
             });
         }
-    });
+    })};
 
     // Insertion sort
-    for (int32_t i = start + 1; i < end; i++) {
-        AngelScript::asBYTE tmp[16];
+    for (int32_t i {start + 1}; i < end; i++) {
+        AngelScript::asBYTE tmp[16] {};
         Copy(tmp, GetArrayItemPointer(i));
 
-        int32_t j = i - 1;
+        int32_t j {i - 1};
 
-        auto restore_hole = scope_fail([&]() noexcept { safe_call([&] { Copy(GetArrayItemPointer(j + 1), tmp); }); });
+        auto restore_hole {scope_fail([&]() noexcept { safe_call([&] { Copy(GetArrayItemPointer(j + 1), tmp); }); })};
 
         while (j >= start && Less(GetDataPointer(tmp), At(j), asc, ctx)) {
             Copy(GetArrayItemPointer(j + 1), GetArrayItemPointer(j));
@@ -1116,17 +1118,17 @@ void ScriptArray::Sort(int32_t start_at, int32_t count, bool asc)
 
 void ScriptArray::CopyBuffer(const ScriptArray& src)
 {
-    ptr<AngelScript::asIScriptEngine> engine = _typeInfo->GetEngine();
-    int32_t count = std::min(GetSize(), src.GetSize());
+    ptr<AngelScript::asIScriptEngine> engine {_typeInfo->GetEngine()};
+    int32_t count {std::min(GetSize(), src.GetSize())};
 
     if ((_subTypeId & AngelScript::asTYPEID_OBJHANDLE) != 0) {
         if (count != 0) {
-            nptr<AngelScript::asITypeInfo> sub_type = _typeInfo->GetSubType();
+            nptr<AngelScript::asITypeInfo> sub_type {_typeInfo->GetSubType()};
             FO_VERIFY_AND_THROW(sub_type, "Array sub-type info not found");
 
-            for (int32_t index = 0; index < count; index++) {
-                nptr<void> old_obj = NativeDataProvider::ReadHandleSlot(GetArrayItemPointer(index));
-                nptr<void> new_obj = NativeDataProvider::ReadHandleSlot(src.GetArrayItemPointer(index));
+            for (int32_t index {0}; index < count; index++) {
+                nptr<void> old_obj {NativeDataProvider::ReadHandleSlot(GetArrayItemPointer(index))};
+                nptr<void> new_obj {NativeDataProvider::ReadHandleSlot(src.GetArrayItemPointer(index))};
                 NativeDataProvider::WriteHandleSlot(GetArrayItemPointer(index), new_obj);
 
                 if (new_obj) {
@@ -1141,20 +1143,20 @@ void ScriptArray::CopyBuffer(const ScriptArray& src)
     }
     else if ((_subTypeId & AngelScript::asTYPEID_MASK_OBJECT) != 0) {
         if (count != 0) {
-            nptr<AngelScript::asITypeInfo> sub_type = _typeInfo->GetSubType();
+            nptr<AngelScript::asITypeInfo> sub_type {_typeInfo->GetSubType()};
             FO_VERIFY_AND_THROW(sub_type, "Array sub-type info not found");
 
-            for (int32_t index = 0; index < count; index++) {
-                nptr<void> dst_obj = NativeDataProvider::ReadHandleSlot(GetArrayItemPointer(index));
-                nptr<void> src_obj = NativeDataProvider::ReadHandleSlot(src.GetArrayItemPointer(index));
+            for (int32_t index {0}; index < count; index++) {
+                nptr<void> dst_obj {NativeDataProvider::ReadHandleSlot(GetArrayItemPointer(index))};
+                nptr<void> src_obj {NativeDataProvider::ReadHandleSlot(src.GetArrayItemPointer(index))};
                 engine->AssignScriptObject(dst_obj.get_no_const(), src_obj.get_no_const(), sub_type.get());
             }
         }
     }
     else if (count != 0) {
-        auto dst_buffer = GetBuffer();
+        auto dst_buffer {GetBuffer()};
         FO_VERIFY_AND_THROW(dst_buffer, "Destination buffer is null");
-        auto src_buffer = src.GetBuffer();
+        auto src_buffer {src.GetBuffer()};
         FO_VERIFY_AND_THROW(src_buffer, "Source buffer is null");
         memory::copy(dst_buffer, src_buffer, numeric_cast<size_t>(count * _elementSize));
     }
@@ -1173,7 +1175,7 @@ void ScriptArray::PrecacheSubTypeData()
     }
 
     AngelScript::asAcquireExclusiveLock();
-    auto release_lock = scope_exit([]() noexcept { AngelScript::asReleaseExclusiveLock(); });
+    auto release_lock {scope_exit([]() noexcept { AngelScript::asReleaseExclusiveLock(); })};
 
     _subTypeData = cast_from_void<ScriptArrayTypeData*>(_typeInfo->GetUserData(AS_TYPE_ARRAY_CACHE));
 
@@ -1181,26 +1183,26 @@ void ScriptArray::PrecacheSubTypeData()
         return;
     }
 
-    auto sub_type_data = safe_alloc::make_unique<ScriptArrayTypeData>();
+    auto sub_type_data {safe_alloc::make_unique<ScriptArrayTypeData>()};
 
-    bool must_be_const = (_subTypeId & AngelScript::asTYPEID_HANDLETOCONST) != 0;
-    ptr<AngelScript::asIScriptEngine> engine = _typeInfo->GetEngine();
-    nptr<AngelScript::asITypeInfo> sub_type = engine->GetTypeInfoById(_subTypeId);
+    bool must_be_const {(_subTypeId & AngelScript::asTYPEID_HANDLETOCONST) != 0};
+    ptr<AngelScript::asIScriptEngine> engine {_typeInfo->GetEngine()};
+    nptr<AngelScript::asITypeInfo> sub_type {engine->GetTypeInfoById(_subTypeId)};
 
     if (sub_type) {
-        for (AngelScript::asUINT i = 0; i < sub_type->GetMethodCount(); i++) {
-            nptr<AngelScript::asIScriptFunction> func = sub_type->GetMethodByIndex(i);
+        for (AngelScript::asUINT i {0}; i < sub_type->GetMethodCount(); i++) {
+            nptr<AngelScript::asIScriptFunction> func {sub_type->GetMethodByIndex(i)};
 
             if (func && func->GetParamCount() == 1 && (!must_be_const || func->IsReadOnly())) {
-                AngelScript::asDWORD flags = 0;
-                int32_t return_type_id = func->GetReturnTypeId(&flags);
+                AngelScript::asDWORD flags {0};
+                int32_t return_type_id {func->GetReturnTypeId(&flags)};
 
                 if (flags != AngelScript::asTM_NONE) {
                     continue;
                 }
 
-                bool is_cmp = false;
-                bool is_eq = false;
+                bool is_cmp {false};
+                bool is_eq {false};
 
                 if (return_type_id == AngelScript::asTYPEID_INT32 && string_view(func->GetName()) == "opCmp") {
                     is_cmp = true;
@@ -1213,7 +1215,7 @@ void ScriptArray::PrecacheSubTypeData()
                     continue;
                 }
 
-                int32_t param_type_id;
+                int32_t param_type_id {};
                 func->GetParam(0, &param_type_id, &flags);
 
                 if ((param_type_id & ~(AngelScript::asTYPEID_OBJHANDLE | AngelScript::asTYPEID_HANDLETOCONST)) != (_subTypeId & ~(AngelScript::asTYPEID_OBJHANDLE | AngelScript::asTYPEID_HANDLETOCONST))) {
@@ -1270,8 +1272,8 @@ void ScriptArray::PrecacheSubTypeData()
 void ScriptArray::EnumReferences(ptr<AngelScript::asIScriptEngine> engine)
 {
     if ((_subTypeId & AngelScript::asTYPEID_MASK_OBJECT) != 0) {
-        for (int32_t i = 0; i < GetSize(); i++) {
-            nptr<void> obj = NativeDataProvider::ReadHandleSlot(GetArrayItemPointer(i));
+        for (int32_t i {0}; i < GetSize(); i++) {
+            nptr<void> obj {NativeDataProvider::ReadHandleSlot(GetArrayItemPointer(i))};
 
             if (obj) {
                 engine->GCEnumCallback(obj.get_no_const());
@@ -1317,22 +1319,22 @@ auto ScriptArray::GetFlag() const -> bool
 
 static auto ScriptArray_InsertFirst(ScriptArray& arr, void* value) -> void
 {
-    nptr<void> value_arg = value;
-    auto value_ptr = RequireScriptArrayValue(value_arg);
+    nptr<void> value_arg {value};
+    auto value_ptr {RequireScriptArrayValue(value_arg)};
     arr.InsertAt(0, value_ptr);
 }
 
 static auto ScriptArray_InsertAt(ScriptArray& arr, int32_t index, void* value) -> void
 {
-    nptr<void> value_arg = value;
-    auto value_ptr = RequireScriptArrayValue(value_arg);
+    nptr<void> value_arg {value};
+    auto value_ptr {RequireScriptArrayValue(value_arg)};
     arr.InsertAt(index, value_ptr);
 }
 
 static auto ScriptArray_InsertLast(ScriptArray& arr, void* value) -> void
 {
-    nptr<void> value_arg = value;
-    auto value_ptr = RequireScriptArrayValue(value_arg);
+    nptr<void> value_arg {value};
+    auto value_ptr {RequireScriptArrayValue(value_arg)};
     arr.InsertLast(value_ptr);
 }
 
@@ -1356,7 +1358,7 @@ static auto ScriptArray_Reduce(ScriptArray& arr, int32_t count) -> void
         return;
     }
 
-    int32_t size = numeric_cast<int32_t>(arr.GetSize());
+    int32_t size {numeric_cast<int32_t>(arr.GetSize())};
 
     if (count > size) {
         throw ScriptException("Array size is less than reduce count", count, size);
@@ -1367,19 +1369,19 @@ static auto ScriptArray_Reduce(ScriptArray& arr, int32_t count) -> void
 
 static auto ScriptArray_First(ScriptArray& arr) -> void*
 {
-    ptr<void> value = arr.At(0);
+    ptr<void> value {arr.At(0)};
     return value.get();
 }
 
 static auto ScriptArray_Last(ScriptArray& arr) -> void*
 {
-    ptr<void> value = arr.At(arr.GetSize() - 1);
+    ptr<void> value {arr.At(arr.GetSize() - 1)};
     return value.get();
 }
 
 static auto ScriptArray_At(ScriptArray& arr, int32_t index) -> void*
 {
-    ptr<void> value = arr.At(index);
+    ptr<void> value {arr.At(index)};
     return value.get();
 }
 
@@ -1392,16 +1394,16 @@ static void ScriptArray_Clear(ScriptArray& arr)
 
 static auto ScriptArray_Exists(const ScriptArray& arr, void* value) -> bool
 {
-    nptr<void> value_arg = value;
-    auto value_ptr = RequireScriptArrayValue(value_arg);
+    nptr<void> value_arg {value};
+    auto value_ptr {RequireScriptArrayValue(value_arg)};
     return arr.Find(0, value_ptr) != -1;
 }
 
 static auto ScriptArray_Remove(ScriptArray& arr, void* value) -> bool
 {
-    nptr<void> value_arg = value;
-    auto value_ptr = RequireScriptArrayValue(value_arg);
-    int32_t index = arr.Find(0, value_ptr);
+    nptr<void> value_arg {value};
+    auto value_ptr {RequireScriptArrayValue(value_arg)};
+    int32_t index {arr.Find(0, value_ptr)};
 
     if (index != -1) {
         arr.RemoveAt(index);
@@ -1413,10 +1415,10 @@ static auto ScriptArray_Remove(ScriptArray& arr, void* value) -> bool
 
 static auto ScriptArray_RemoveAll(ScriptArray& arr, void* value) -> int32_t
 {
-    nptr<void> value_arg = value;
-    auto value_ptr = RequireScriptArrayValue(value_arg);
-    int32_t count = 0;
-    int32_t index = 0;
+    nptr<void> value_arg {value};
+    auto value_ptr {RequireScriptArrayValue(value_arg)};
+    int32_t count {0};
+    int32_t index {0};
 
     while (index < numeric_cast<int32_t>(arr.GetSize())) {
         index = arr.Find(index, value_ptr);
@@ -1435,72 +1437,72 @@ static auto ScriptArray_RemoveAll(ScriptArray& arr, void* value) -> int32_t
 
 static auto ScriptArray_Find(const ScriptArray& arr, void* value) -> int32_t
 {
-    nptr<void> value_arg = value;
-    auto value_ptr = RequireScriptArrayValue(value_arg);
+    nptr<void> value_arg {value};
+    auto value_ptr {RequireScriptArrayValue(value_arg)};
     return arr.Find(value_ptr);
 }
 
 static auto ScriptArray_FindFrom(const ScriptArray& arr, int32_t start_at, void* value) -> int32_t
 {
-    nptr<void> value_arg = value;
-    auto value_ptr = RequireScriptArrayValue(value_arg);
+    nptr<void> value_arg {value};
+    auto value_ptr {RequireScriptArrayValue(value_arg)};
     return arr.Find(start_at, value_ptr);
 }
 
 static auto ScriptArray_FindByRef(const ScriptArray& arr, void* value) -> int32_t
 {
-    nptr<void> value_arg = value;
-    auto value_ptr = RequireScriptArrayValue(value_arg);
+    nptr<void> value_arg {value};
+    auto value_ptr {RequireScriptArrayValue(value_arg)};
     return arr.FindByRef(value_ptr);
 }
 
 static auto ScriptArray_FindByRefFrom(const ScriptArray& arr, int32_t start_at, void* value) -> int32_t
 {
-    nptr<void> value_arg = value;
-    auto value_ptr = RequireScriptArrayValue(value_arg);
+    nptr<void> value_arg {value};
+    auto value_ptr {RequireScriptArrayValue(value_arg)};
     return arr.FindByRef(start_at, value_ptr);
 }
 
 static auto ScriptArray_Factory(AngelScript::asITypeInfo* ti, const ScriptArray* other) -> ScriptArray*
 {
-    nptr<AngelScript::asITypeInfo> type_info = ti;
+    nptr<AngelScript::asITypeInfo> type_info {ti};
     FO_VERIFY_AND_THROW(type_info, "Array type info is null");
-    nptr<const ScriptArray> other_ptr = other;
+    nptr<const ScriptArray> other_ptr {other};
 
     if (!other_ptr) {
         throw ScriptException("Array arg is null");
     }
 
-    auto clone = ScriptArray::Create(type_info);
+    auto clone {ScriptArray::Create(type_info)};
     *clone = *other_ptr;
     return clone.release_ownership();
 }
 
 static auto ScriptArray_Clone(const ScriptArray& arr) -> ScriptArray*
 {
-    auto type_info = make_ptr(const_cast<AngelScript::asITypeInfo*>(std::addressof(*arr.GetArrayObjectType())));
-    auto clone = ScriptArray::Create(type_info);
+    auto type_info {make_ptr(const_cast<AngelScript::asITypeInfo*>(std::addressof(*arr.GetArrayObjectType())))};
+    auto clone {ScriptArray::Create(type_info)};
     *clone = arr;
     return clone.release_ownership();
 }
 
 static void ScriptArray_EnumReferences(ScriptArray& arr, AngelScript::asIScriptEngine* engine)
 {
-    nptr<AngelScript::asIScriptEngine> engine_arg = engine;
+    nptr<AngelScript::asIScriptEngine> engine_arg {engine};
     FO_VERIFY_AND_THROW(engine_arg, "Script engine is null");
     arr.EnumReferences(engine_arg);
 }
 
 static void ScriptArray_ReleaseAllHandles(ScriptArray& arr, AngelScript::asIScriptEngine* engine)
 {
-    nptr<AngelScript::asIScriptEngine> engine_arg = engine;
+    nptr<AngelScript::asIScriptEngine> engine_arg {engine};
     FO_VERIFY_AND_THROW(engine_arg, "Script engine is null");
     arr.ReleaseAllHandles();
 }
 
 static void ScriptArray_Set(ScriptArray& arr, const ScriptArray* other)
 {
-    nptr<const ScriptArray> other_ptr = other;
+    nptr<const ScriptArray> other_ptr {other};
 
     if (!other_ptr) {
         throw ScriptException("Array arg is null");
@@ -1515,7 +1517,7 @@ static void ScriptArray_InsertArrAt(ScriptArray& arr, int32_t index, const Scrip
         return;
     }
 
-    nptr<const ScriptArray> other_ptr = other;
+    nptr<const ScriptArray> other_ptr {other};
 
     if (!other_ptr) {
         throw ScriptException("Array arg is null");
@@ -1526,7 +1528,7 @@ static void ScriptArray_InsertArrAt(ScriptArray& arr, int32_t index, const Scrip
 
 static void ScriptArray_InsertArrFirst(ScriptArray& arr, const ScriptArray* other)
 {
-    nptr<const ScriptArray> other_ptr = other;
+    nptr<const ScriptArray> other_ptr {other};
 
     if (!other_ptr) {
         throw ScriptException("Array arg is null");
@@ -1537,7 +1539,7 @@ static void ScriptArray_InsertArrFirst(ScriptArray& arr, const ScriptArray* othe
 
 static void ScriptArray_InsertArrLast(ScriptArray& arr, const ScriptArray* other)
 {
-    nptr<const ScriptArray> other_ptr = other;
+    nptr<const ScriptArray> other_ptr {other};
 
     if (!other_ptr) {
         throw ScriptException("Array arg is null");
@@ -1548,7 +1550,7 @@ static void ScriptArray_InsertArrLast(ScriptArray& arr, const ScriptArray* other
 
 static auto ScriptArray_Equals(ScriptArray& arr, const ScriptArray* other) -> bool
 {
-    nptr<const ScriptArray> other_ptr = other;
+    nptr<const ScriptArray> other_ptr {other};
 
     if (!other_ptr) {
         throw ScriptException("Array arg is null");
@@ -1563,7 +1565,7 @@ void RegisterAngelScriptArray(ptr<AngelScript::asIScriptEngine> as_engine)
 
     as_engine->SetTypeInfoUserDataCleanupCallback(CleanupTypeInfoArrayCache, AS_TYPE_ARRAY_CACHE);
 
-    int32_t as_result = 0;
+    int32_t as_result {0};
     FO_AS_VERIFY(as_engine->RegisterObjectType("array<class T>", 0, AngelScript::asOBJ_REF | AngelScript::asOBJ_GC | AngelScript::asOBJ_TEMPLATE));
 
     FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("array<T>", AngelScript::asBEHAVE_TEMPLATE_CALLBACK, "bool f(int&in, bool&out)", FO_SCRIPT_FUNC(ScriptArrayTemplateCallback), FO_SCRIPT_FUNC_CONV));

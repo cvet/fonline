@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-prototype-format-index","locale":"ru","source_path":"Docs/en/reference/prototype-format/index.md","source_sha256":"7ffc2e8ad2445ebfc0a8314434de738b4fa1abd1cd9f7ae396ad5e806a408b01"} -->
+<!-- docs-translation: {"document_id":"generated-prototype-format-index","locale":"ru","source_path":"Docs/en/reference/prototype-format/index.md","source_sha256":"55a0f22760621610a70ef894d843aeb76b122dd7584c95f1b02d6d71ff3dcb0e"} -->
 
 # Справочник формата прототипов
 
@@ -22,12 +22,12 @@ generated: true
 | Стабильность | <code>experimental</code> |
 | Политика поддержки | Грамматика документируется для закреплённой ревизии движка. Конкретные типы сущностей, свойства, расширения файлов, ID и игровая семантика принадлежат проекту. |
 | Исходный манифест | [BuildTools/PrototypeFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/PrototypeFormatInterface.json) |
-| Дайджест контракта | <code>49d6dc22521678e715611881c052edb080897d822ff81e9db4c2f070b6b16c7f</code> |
+| Дайджест контракта | <code>83a6de770444ae8efacd24145107a4e872c91a2445d79eb6395fe8692307b6fe</code> |
 
 | Справочник | Записей | Назначение |
 | --- | --- | --- |
 | [Синтаксис](syntax.md) | 5 | Обнаружение, секции, идентичность и наследование. |
-| [Свойства](properties.md) | 113 | Встроенные типы `HasProtos` и принадлежащие движку ключи свойств. |
+| [Свойства](properties.md) | 114 | Встроенные типы `HasProtos` и принадлежащие движку ключи свойств. |
 | [Валидация](validation.md) | 15 | Основанные на исходниках требования baking и миграции. |
 
 ## Граница

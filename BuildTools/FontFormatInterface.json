@@ -31,6 +31,7 @@
     "settings": "Source/Common/Settings.inc",
     "raw_copy_baker": "Source/Tools/RawCopyBaker.cpp",
     "updater": "Source/Client/Updater.cpp",
+    "resource_defaults": "Source/Common/ResourceDefaults.h",
     "file_reader_header": "Source/Common/FileSystem.h",
     "font_resources": "Resources/Core/Fonts",
     "tests": [
@@ -268,7 +269,7 @@
       "stability": "experimental",
       "requirement": "Export exactly one texture page.",
       "rationale": "The Common block page count must be one; multi-page BMFont descriptors are rejected.",
-      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["Font must have exactly one texture", "reader.GetLEUInt16() != 1"]}]
+      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["Font must have exactly one texture", "reader.ReadLEUInt16() != 1"]}]
     },
     {
       "id": "font-format.bmfont.relative-page-image",
@@ -276,7 +277,7 @@
       "stability": "experimental",
       "requirement": "Store a NUL-terminated page filename resolvable relative to the .fnt descriptor directory.",
       "rationale": "The Pages payload is read as one string and combined with the descriptor directory before sprite loading.",
-      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["reader.GetStrNT()", "extract_dir().combine_path(image_name)"]}]
+      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["reader.ReadStrNT()", "extract_dir().combine_path(image_name)"]}]
     },
     {
       "id": "font-format.bmfont.char-records",
@@ -285,8 +286,8 @@
       "requirement": "Encode each Chars record in the 20-byte BMFont v3 layout. The format defines signed xoffset, yoffset, and xadvance fields, but the current loader reads all three as unsigned little-endian uint16 values; avoid negative metrics until that runtime defect is fixed separately.",
       "rationale": "Bundled fonts contain negative bearings, so this source-backed limitation must remain visible instead of being documented as correct signed decoding.",
       "source": [
-        {"path": "Source/Client/FontManager.cpp", "anchors": ["reader.GetLEUInt32() / 20", "uint16_t ox = reader.GetLEUInt16()", "uint16_t oy = reader.GetLEUInt16()", "uint16_t xa = reader.GetLEUInt16()"]},
-        {"path": "Source/Common/FileSystem.h", "anchors": ["GetLEUInt16()"]}
+        {"path": "Source/Client/FontManager.cpp", "anchors": ["reader.ReadLEUInt32() / 20", "uint16_t ox {reader.ReadLEUInt16()}", "uint16_t oy {reader.ReadLEUInt16()}", "uint16_t xa {reader.ReadLEUInt16()}"]},
+        {"path": "Source/Common/FileSystem.h", "anchors": ["ReadLEUInt16()"]}
       ]
     },
     {
@@ -380,7 +381,7 @@
       "stability": "experimental",
       "requirement": "Keep Fonts/Default.fofnt available for the built-in updater path unless the host replaces that resource contract deliberately.",
       "rationale": "Updater binds the Default slot from that exact path with skip-if-loaded behavior.",
-      "source": [{"path": "Source/Client/Updater.cpp", "anchors": ["Fonts/Default.fofnt", "AtlasType::IfaceSprites", "true"]}]
+      "source": [{"path": "Source/Client/Updater.cpp", "anchors": ["FontDefaults::Updater", "AtlasType::IfaceSprites", "true"]}, {"path": "Source/Common/ResourceDefaults.h", "anchors": ["Fonts/Default.fofnt"]}]
     }
   ],
   "layout_rules": [
@@ -518,7 +519,7 @@
       "stability": "internal",
       "requirement": "Do not depend on cached layout identity or lifetime; the cache key includes text, font, flags, skips, rectangle size, color, and mode and expires after three unused frames.",
       "rationale": "The cache is a client implementation detail and is cleared whenever fonts are stored or cleared.",
-      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["CACHE_INVALIDATION_FRAME_COUNT = 3", "key_parts", "LastUsedFrame", "_formatCache.clear()"]}]
+      "source": [{"path": "Source/Client/FontManager.cpp", "anchors": ["CACHE_INVALIDATION_FRAME_COUNT {3}", "key_parts", "LastUsedFrame", "_formatCache.clear()"]}]
     }
   ],
   "validation_rules": [
@@ -550,11 +551,11 @@
       "id": "font-format.validation.signed-bmfont-metrics",
       "name": "Unsigned BMFont metric limitation",
       "stability": "experimental",
-      "requirement": "Track that the current loader reads xoffset, yoffset, and xadvance with GetLEUInt16 even though bundled binary fonts contain negative bearings.",
+      "requirement": "Track that the current loader reads xoffset, yoffset, and xadvance with ReadLEUInt16 even though bundled binary fonts contain negative bearings.",
       "rationale": "Values such as -2 are currently reinterpreted as 65534 and can move rendered glyphs far outside their intended position; the runtime fix belongs in a separate code change.",
       "source": [
-        {"path": "Source/Client/FontManager.cpp", "anchors": ["uint16_t ox = reader.GetLEUInt16()", "uint16_t oy = reader.GetLEUInt16()", "uint16_t xa = reader.GetLEUInt16()"]},
-        {"path": "Source/Common/FileSystem.h", "anchors": ["auto GetLEUInt16() -> uint16_t"]}
+        {"path": "Source/Client/FontManager.cpp", "anchors": ["uint16_t ox {reader.ReadLEUInt16()}", "uint16_t oy {reader.ReadLEUInt16()}", "uint16_t xa {reader.ReadLEUInt16()}"]},
+        {"path": "Source/Common/FileSystem.h", "anchors": ["auto ReadLEUInt16() -> uint16_t"]}
       ]
     },
     {

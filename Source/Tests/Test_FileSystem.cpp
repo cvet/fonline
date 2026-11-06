@@ -31,16 +31,19 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
 #include "DiskFileSystem.h"
 #include "FileSystem.h"
+#include "ResourcePack.h"
 
 FO_BEGIN_NAMESPACE
 
 static auto MakeTempMountedDir(string_view name) -> string
 {
-    auto base = std::filesystem::temp_directory_path() / std::format("lf_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
+    auto base {std::filesystem::temp_directory_path() / std::format("lf_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count())};
     return fs::path_to_string(base);
 }
 
@@ -65,7 +68,7 @@ public:
 
     [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool override
     {
-        auto it = _files.find(path);
+        auto it {_files.find(path)};
 
         if (it == _files.end()) {
             return false;
@@ -78,7 +81,7 @@ public:
 
     [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t> override
     {
-        auto it = _files.find(path);
+        auto it {_files.find(path)};
 
         if (it == _files.end()) {
             return nullptr;
@@ -87,10 +90,10 @@ public:
         size = it->second.size();
         write_time = 1000;
 
-        auto buf = safe_alloc::make_unique_arr<uint8_t>(size);
+        auto buf {safe_alloc::make_unique_arr<uint8_t>(size)};
         memory::copy(buf.get(), it->second.data(), size);
 
-        auto released_buf = make_ptr<const uint8_t*>(buf.release());
+        auto released_buf {make_ptr<const uint8_t*>(buf.release())};
         return make_unique_del_ptr(released_buf, [](const uint8_t* raw_buf) noexcept {
             unique_arr_ptr<const uint8_t> owned_buf {raw_buf};
             ignore_unused(owned_buf);
@@ -101,7 +104,7 @@ public:
     {
         ignore_unused(dir, recursive, ext);
 
-        vector<string> names;
+        vector<string> names {};
 
         for (const auto& [path, content] : _files) {
             names.emplace_back(path);
@@ -112,7 +115,7 @@ public:
 
     [[nodiscard]] auto GetIndexSnapshot() const -> optional<vector<IndexedFile>> override
     {
-        vector<IndexedFile> files;
+        vector<IndexedFile> files {};
 
         for (const auto& [path, content] : _files) {
             files.emplace_back(IndexedFile {path, content.size(), 1000});
@@ -132,7 +135,7 @@ TEST_CASE("FileSystem")
     // others, so it takes every path it shares with them
     SECTION("IndexedLookupsFollowTheProbeOrder")
     {
-        FileSystem resources;
+        FileSystem resources {};
         resources.AddCustomSource(safe_alloc::make_unique<SnapshotTestSource>("Lower", map<string, string> {{"shared.txt", "lower"}, {"only-lower.txt", "kept"}}));
         resources.AddCustomSource(safe_alloc::make_unique<SnapshotTestSource>("Upper", map<string, string> {{"shared.txt", "upper-wins"}, {"only-upper.txt", "kept"}}));
 
@@ -145,13 +148,13 @@ TEST_CASE("FileSystem")
         CHECK(resources.ReadFileText("only-lower.txt") == "kept");
         CHECK(resources.ReadFileText("missing.txt").empty());
 
-        auto shared_header = resources.ReadFileHeader("shared.txt");
+        auto shared_header {resources.ReadFileHeader("shared.txt")};
         REQUIRE(shared_header);
         CHECK(shared_header.GetSize() == 10);
         CHECK(shared_header.GetDataSource()->GetPackName() == "Upper");
         CHECK_FALSE(resources.ReadFileHeader("missing.txt"));
 
-        auto lower_header = resources.ReadFileHeader("only-lower.txt");
+        auto lower_header {resources.ReadFileHeader("only-lower.txt")};
         REQUIRE(lower_header);
         CHECK(lower_header.GetDataSource()->GetPackName() == "Lower");
     }
@@ -160,13 +163,13 @@ TEST_CASE("FileSystem")
     // live directory mounted beside packs would answer from a snapshot taken before it changed
     SECTION("ALiveSourceDropsTheFileSystemBackToProbing")
     {
-        string temp_dir = MakeTempMountedDir("file_system_mixed_sources");
-        bool removed_before = fs::remove_dir_tree(temp_dir);
+        string temp_dir {MakeTempMountedDir("file_system_mixed_sources")};
+        bool removed_before {fs::remove_dir_tree(temp_dir)};
         ignore_unused(removed_before);
 
         REQUIRE(fs::write_file(strex(temp_dir).combine_path("on-disk.txt").str(), string_view {"disk"}));
 
-        FileSystem resources;
+        FileSystem resources {};
         resources.AddCustomSource(safe_alloc::make_unique<SnapshotTestSource>("Pack", map<string, string> {{"in-pack.txt", "pack"}}));
         resources.AddDirSource(temp_dir, true);
 
@@ -186,7 +189,7 @@ TEST_CASE("FileSystem")
 
     SECTION("ReindexKeepsTheIndexAgreeingWithTheSources")
     {
-        FileSystem resources;
+        FileSystem resources {};
         resources.AddCustomSource(safe_alloc::make_unique<SnapshotTestSource>("Lower", map<string, string> {{"shared.txt", "lower"}}));
         resources.AddCustomSource(safe_alloc::make_unique<SnapshotTestSource>("Upper", map<string, string> {{"shared.txt", "upper"}}));
 
@@ -194,14 +197,14 @@ TEST_CASE("FileSystem")
 
         CHECK(resources.ReadFileText("shared.txt") == "upper");
 
-        auto header = resources.ReadFileHeader("shared.txt");
+        auto header {resources.ReadFileHeader("shared.txt")};
         REQUIRE(header);
         CHECK(header.GetDataSource()->GetPackName() == "Upper");
     }
 
     SECTION("CleanedFileSystemAnswersNothing")
     {
-        FileSystem resources;
+        FileSystem resources {};
         resources.AddCustomSource(safe_alloc::make_unique<SnapshotTestSource>("Pack", map<string, string> {{"in-pack.txt", "pack"}}));
 
         CHECK(resources.IsFileExists("in-pack.txt"));
@@ -215,8 +218,8 @@ TEST_CASE("FileSystem")
 
     SECTION("MountedDirectorySupportsFilteringAndReading")
     {
-        string temp_dir = MakeTempMountedDir("filesystem_mount");
-        bool removed_before = fs::remove_dir_tree(temp_dir);
+        string temp_dir {MakeTempMountedDir("filesystem_mount")};
+        bool removed_before {fs::remove_dir_tree(temp_dir)};
         ignore_unused(removed_before);
 
         REQUIRE(fs::write_file(strex(temp_dir).combine_path("texts/a.txt").str(), string_view {"alpha"}));
@@ -227,64 +230,64 @@ TEST_CASE("FileSystem")
         REQUIRE(fs::write_file(strex(temp_dir).combine_path("maps/Generated/Authored.fomap").str(), string_view {"authored"}));
         REQUIRE(fs::write_file(strex(temp_dir).combine_path("root.txt").str(), string_view {"root"}));
 
-        FileSystem fs;
+        FileSystem fs {};
         fs.AddDirSource(temp_dir, true);
 
         CHECK(fs.IsFileExists("texts/a.txt"));
         CHECK_FALSE(fs.IsFileExists("missing.txt"));
         CHECK(fs.ReadFileText("texts/a.txt") == "alpha");
 
-        FileHeader header = fs.ReadFileHeader("texts/a.txt");
+        FileHeader header {fs.ReadFileHeader("texts/a.txt")};
         REQUIRE(header);
         CHECK(header.GetNameNoExt() == "a");
         CHECK(header.GetPath() == "texts/a.txt");
         CHECK(header.GetSize() == 5);
         CHECK(header.GetDataSource()->IsDiskDir());
 
-        File file = fs.ReadFile("texts/b.bin");
+        File file {fs.ReadFile("texts/b.bin")};
         REQUIRE(file);
         CHECK(file.GetStr() == "beta");
 
-        FileCollection txt_files = fs.FilterFiles("txt");
+        FileCollection txt_files {fs.FilterFiles("txt")};
         CHECK(txt_files.GetFilesCount() == 4);
         CHECK(txt_files.FindFileByName("a").GetStr() == "alpha");
         CHECK(txt_files.FindFileByPath("root.txt").GetStr() == "root");
 
-        FileCollection text_dir_files = fs.FilterFiles("", "texts", false);
+        FileCollection text_dir_files {fs.FilterFiles("", "texts", false)};
         CHECK(text_dir_files.GetFilesCount() == 3);
 
-        FileCollection all_files = fs.GetAllFiles();
+        FileCollection all_files {fs.GetAllFiles()};
         CHECK(all_files.GetFilesCount() == 7);
 
-        vector<string> no_patterns;
-        vector<string> root_txt_patterns = {"*.txt"};
-        FileCollection root_txt_files = fs.FilterFiles(root_txt_patterns, no_patterns);
+        vector<string> no_patterns {};
+        vector<string> root_txt_patterns {"*.txt"};
+        FileCollection root_txt_files {fs.FilterFiles(root_txt_patterns, no_patterns)};
         REQUIRE(root_txt_files.GetFilesCount() == 1);
         CHECK(root_txt_files.FindFileByPath("root.txt"));
 
-        vector<string> recursive_txt_patterns = {"**/*.txt"};
-        FileCollection recursive_txt_files = fs.FilterFiles(recursive_txt_patterns, no_patterns);
+        vector<string> recursive_txt_patterns {"**/*.txt"};
+        FileCollection recursive_txt_files {fs.FilterFiles(recursive_txt_patterns, no_patterns)};
         CHECK(recursive_txt_files.GetFilesCount() == 4);
         CHECK(recursive_txt_files.FindFileByPath("texts/nested/c.txt"));
 
-        vector<string> direct_text_patterns = {"texts/*.txt"};
-        FileCollection direct_text_files = fs.FilterFiles(direct_text_patterns, no_patterns);
+        vector<string> direct_text_patterns {"texts/*.txt"};
+        FileCollection direct_text_files {fs.FilterFiles(direct_text_patterns, no_patterns)};
         REQUIRE(direct_text_files.GetFilesCount() == 2);
         CHECK(direct_text_files.FindFileByPath("texts/a.txt"));
 
-        vector<string> root_name_patterns = {"**/root.txt"};
-        FileCollection root_name_files = fs.FilterFiles(root_name_patterns, no_patterns);
+        vector<string> root_name_patterns {"**/root.txt"};
+        FileCollection root_name_files {fs.FilterFiles(root_name_patterns, no_patterns)};
         REQUIRE(root_name_files.GetFilesCount() == 1);
         CHECK(root_name_files.FindFileByPath("root.txt"));
 
-        vector<string> map_patterns = {"maps\\**\\*.fomap"};
-        vector<string> scratch_map_patterns = {"**/_*.fomap"};
-        FileCollection authored_maps = fs.FilterFiles(map_patterns, scratch_map_patterns);
+        vector<string> map_patterns {"maps\\**\\*.fomap"};
+        vector<string> scratch_map_patterns {"**/_*.fomap"};
+        FileCollection authored_maps {fs.FilterFiles(map_patterns, scratch_map_patterns)};
         REQUIRE(authored_maps.GetFilesCount() == 1);
         CHECK(authored_maps.FindFileByPath("maps/Generated/Authored.fomap"));
 
-        vector<string> single_character_patterns = {"**/?.txt"};
-        FileCollection single_character_names = fs.FilterFiles(single_character_patterns, no_patterns);
+        vector<string> single_character_patterns {"**/?.txt"};
+        FileCollection single_character_names {fs.FilterFiles(single_character_patterns, no_patterns)};
         CHECK(single_character_names.GetFilesCount() == 2);
 
         CHECK(fs::remove_dir_tree(temp_dir));
@@ -296,11 +299,11 @@ TEST_CASE("FileSystem")
 
         FileReader reader {{data.data(), data.size()}};
 
-        CHECK(reader.GetUInt8() == 0x01);
-        CHECK(reader.GetBEUInt16() == 0x0203);
-        CHECK(reader.GetLEUInt16() == 0x0504);
-        CHECK(reader.GetBEUInt32() == 0x06070809);
-        CHECK(reader.GetLEUInt32() == 0x0D0C0B0A);
+        CHECK(reader.ReadUInt8() == 0x01);
+        CHECK(reader.ReadBEUInt16() == 0x0203);
+        CHECK(reader.ReadLEUInt16() == 0x0504);
+        CHECK(reader.ReadBEUInt32() == 0x06070809);
+        CHECK(reader.ReadLEUInt32() == 0x0D0C0B0A);
         CHECK(reader.GetCurPos() == 13);
         CHECK(reader.SeekFragment("O"));
         CHECK(reader.GetCurPos() == 13);
@@ -319,9 +322,9 @@ TEST_CASE("FileSystem")
 
         FileReader reader {{data.data(), data.size()}};
 
-        CHECK(reader.GetStrNT() == "Hi");
+        CHECK(reader.ReadStrNT() == "Hi");
         CHECK(reader.GetCurPos() == 3);
-        CHECK(reader.GetStrNT() == "Bye");
+        CHECK(reader.ReadStrNT() == "Bye");
         CHECK(reader.GetCurPos() == 7);
         CHECK(reader.SeekFragment("OK!!"));
         CHECK(reader.GetCurPos() == 7);
@@ -338,7 +341,7 @@ TEST_CASE("FileSystem")
         FileReader reader {{data.data(), data.size()}};
         reader.SetCurPos(2);
 
-        auto check_read_error = [&](const auto& read, size_t requested) {
+        auto check_read_error {[&](const auto& read, size_t requested) {
             try {
                 read();
                 FAIL("Out-of-bounds read succeeded");
@@ -352,16 +355,16 @@ TEST_CASE("FileSystem")
             }
 
             CHECK(reader.GetCurPos() == 2);
-        };
+        }};
 
-        check_read_error([&] { (void)reader.GetLEUInt16(); }, 2);
-        check_read_error([&] { (void)reader.GetBEUInt32(); }, 4);
+        check_read_error([&] { (void)reader.ReadLEUInt16(); }, 2);
+        check_read_error([&] { (void)reader.ReadBEUInt32(); }, 4);
         check_read_error([&] { (void)reader.GetCurDataSpan(5); }, 5);
         array<uint8_t, 4> output {};
         // FO_FILE_READER_COPY_DATA_NEGATIVE_TEST: Exercises CopyData bounds failure and unchanged reader position
         check_read_error([&] { reader.CopyData(output); }, 4);
 
-        CHECK_THROWS(reader.GetStrNT());
+        CHECK_THROWS(reader.ReadStrNT());
         CHECK(reader.GetCurPos() == 2);
         CHECK_THROWS(reader.GoForward(std::numeric_limits<size_t>::max()));
         CHECK(reader.GetCurPos() == 2);
@@ -369,16 +372,16 @@ TEST_CASE("FileSystem")
 
     SECTION("FileCollectionReportsMissingEntriesWithoutThrowing")
     {
-        string temp_dir = MakeTempMountedDir("filesystem_missing_lookup");
-        bool removed_before = fs::remove_dir_tree(temp_dir);
+        string temp_dir {MakeTempMountedDir("filesystem_missing_lookup")};
+        bool removed_before {fs::remove_dir_tree(temp_dir)};
         ignore_unused(removed_before);
 
         REQUIRE(fs::write_file(strex(temp_dir).combine_path("entries/one.txt").str(), string_view {"one"}));
 
-        FileSystem fs;
+        FileSystem fs {};
         fs.AddDirSource(temp_dir, true);
 
-        FileCollection files = fs.GetAllFiles();
+        FileCollection files {fs.GetAllFiles()};
         REQUIRE(files.GetFilesCount() == 1);
         CHECK(files.GetFileByIndex(0).GetNameNoExt() == "one");
         CHECK_FALSE(files.FindFileByName("missing"));
@@ -389,13 +392,13 @@ TEST_CASE("FileSystem")
 
     SECTION("CachedDirectoryCanRefreshItsFileIndex")
     {
-        string temp_dir = MakeTempMountedDir("filesystem_refresh");
-        bool removed_before = fs::remove_dir_tree(temp_dir);
+        string temp_dir {MakeTempMountedDir("filesystem_refresh")};
+        bool removed_before {fs::remove_dir_tree(temp_dir)};
         ignore_unused(removed_before);
 
         REQUIRE(fs::write_file(strex(temp_dir).combine_path("first.txt").str(), string_view {"first"}));
 
-        FileSystem fs;
+        FileSystem fs {};
         fs.AddDirSource(temp_dir, true);
 
         REQUIRE(fs.IsFileExists("first.txt"));
@@ -418,6 +421,138 @@ TEST_CASE("FileSystem")
         CHECK_FALSE(fs.IsFileExists("second.txt"));
         CHECK_FALSE(fs.ReindexDataSources());
         CHECK(fs::remove_dir_tree(temp_dir));
+    }
+
+    // The explicit mode decides which artifact answers: a directory and an archive of one logical pack
+    // may sit side by side, so neither layout may be selected by what the host binary happens to be
+    SECTION("PackSourceModeSelectsDirectoryOrArchive")
+    {
+        string temp_dir {MakeTempMountedDir("filesystem_pack_mode")};
+        bool removed_before {fs::remove_dir_tree(temp_dir)};
+        ignore_unused(removed_before);
+
+        auto cleanup {scope_exit([&temp_dir]() noexcept { (void)fs::remove_dir_tree(temp_dir); })};
+
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("MountPack/layout.txt").str(), string_view {"directory-layout"}));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("MountPack/directory-only.txt").str(), string_view {"directory-only"}));
+
+        {
+            string layout_payload {"archive-layout"};
+            string archive_only_payload {"archive-only"};
+            ResourcePackWriter writer {strex(temp_dir).combine_path("MountPack.fores").str()};
+            writer.AddFile("layout.txt", make_const_span(layout_payload));
+            writer.AddFile("archive-only.txt", make_const_span(archive_only_payload));
+            writer.Finish();
+        }
+
+        FileSystem directory_resources {};
+        directory_resources.AddPackSource(false, temp_dir, "MountPack");
+
+        CHECK(directory_resources.ReadFileText("layout.txt") == "directory-layout");
+        CHECK(directory_resources.ReadFileText("directory-only.txt") == "directory-only");
+        CHECK_FALSE(directory_resources.IsFileExists("archive-only.txt"));
+
+        FileHeader directory_header {directory_resources.ReadFileHeader("layout.txt")};
+        REQUIRE(directory_header);
+        CHECK(directory_header.GetDataSource()->IsDiskDir());
+
+        FileSystem archive_resources {};
+        archive_resources.AddPackSource(true, temp_dir, "MountPack");
+
+        CHECK(archive_resources.ReadFileText("layout.txt") == "archive-layout");
+        CHECK(archive_resources.ReadFileText("archive-only.txt") == "archive-only");
+        CHECK_FALSE(archive_resources.IsFileExists("directory-only.txt"));
+
+        FileHeader archive_header {archive_resources.ReadFileHeader("layout.txt")};
+        REQUIRE(archive_header);
+        CHECK_FALSE(archive_header.GetDataSource()->IsDiskDir());
+    }
+
+    // The bulk mount forwards the mode to every pack and keeps precedence: a pack added later sits in
+    // front of the earlier ones, so it owns the paths both packs hold
+    SECTION("AddPacksSourceForwardsModeAndLaterPackWins")
+    {
+        string temp_dir {MakeTempMountedDir("filesystem_packs_mode")};
+        bool removed_before {fs::remove_dir_tree(temp_dir)};
+        ignore_unused(removed_before);
+
+        auto cleanup {scope_exit([&temp_dir]() noexcept { (void)fs::remove_dir_tree(temp_dir); })};
+
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("FirstPack/shared.txt").str(), string_view {"directory-first"}));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("FirstPack/first-only.txt").str(), string_view {"directory-first-only"}));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("SecondPack/shared.txt").str(), string_view {"directory-second"}));
+
+        {
+            string first_payload {"archive-first"};
+            string first_only_payload {"archive-first-only"};
+            ResourcePackWriter writer {strex(temp_dir).combine_path("ArchiveFirst.fores").str()};
+            writer.AddFile("shared.txt", make_const_span(first_payload));
+            writer.AddFile("first-only.txt", make_const_span(first_only_payload));
+            writer.Finish();
+        }
+        {
+            string second_payload {"archive-second"};
+            ResourcePackWriter writer {strex(temp_dir).combine_path("ArchiveSecond.fores").str()};
+            writer.AddFile("shared.txt", make_const_span(second_payload));
+            writer.Finish();
+        }
+
+        FileSystem directory_resources {};
+        vector<string> directory_packs {"FirstPack", "SecondPack"};
+        directory_resources.AddPacksSource(false, temp_dir, directory_packs);
+
+        CHECK(directory_resources.ReadFileText("shared.txt") == "directory-second");
+        CHECK(directory_resources.ReadFileText("first-only.txt") == "directory-first-only");
+
+        FileSystem archive_resources {};
+        vector<string> archive_packs {"ArchiveFirst", "ArchiveSecond"};
+        archive_resources.AddPacksSource(true, temp_dir, archive_packs);
+
+        CHECK(archive_resources.ReadFileText("shared.txt") == "archive-second");
+        CHECK(archive_resources.ReadFileText("first-only.txt") == "archive-first-only");
+    }
+
+    // A selected layout without its own source fails instead of taking the other layout that is present;
+    // the optional form of the same miss yields an empty source
+    SECTION("PackSourceRejectsWrongLayoutAndOptionalMissingStaysEmpty")
+    {
+        string temp_dir {MakeTempMountedDir("filesystem_pack_layout")};
+        bool removed_before {fs::remove_dir_tree(temp_dir)};
+        ignore_unused(removed_before);
+
+        auto cleanup {scope_exit([&temp_dir]() noexcept { (void)fs::remove_dir_tree(temp_dir); })};
+
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("DirectoryOnly/payload.txt").str(), string_view {"directory-without-archive"}));
+
+        {
+            string archive_payload {"archive-without-directory"};
+            ResourcePackWriter writer {strex(temp_dir).combine_path("ArchiveOnly.fores").str()};
+            writer.AddFile("payload.txt", make_const_span(archive_payload));
+            writer.Finish();
+        }
+
+        FileSystem directory_required {};
+        CHECK_THROWS_AS(directory_required.AddPackSource(false, temp_dir, "ArchiveOnly"), DataSourceException);
+        CHECK(directory_required.GetAllFiles().GetFilesCount() == 0);
+
+        FileSystem archive_required {};
+        CHECK_THROWS_AS(archive_required.AddPackSource(true, temp_dir, "DirectoryOnly"), DataSourceException);
+        CHECK(archive_required.GetAllFiles().GetFilesCount() == 0);
+
+        FileSystem absent_required {};
+        CHECK_THROWS_AS(absent_required.AddPackSource(false, temp_dir, "MissingPack"), DataSourceException);
+        CHECK_THROWS_AS(absent_required.AddPackSource(true, temp_dir, "MissingPack"), DataSourceException);
+        CHECK(absent_required.GetAllFiles().GetFilesCount() == 0);
+
+        FileSystem directory_optional {};
+        CHECK_NOTHROW(directory_optional.AddPackSource(false, temp_dir, "ArchiveOnly", true));
+        CHECK_FALSE(directory_optional.IsFileExists("payload.txt"));
+        CHECK(directory_optional.GetAllFiles().GetFilesCount() == 0);
+
+        FileSystem archive_optional {};
+        CHECK_NOTHROW(archive_optional.AddPackSource(true, temp_dir, "DirectoryOnly", true));
+        CHECK_FALSE(archive_optional.IsFileExists("payload.txt"));
+        CHECK(archive_optional.GetAllFiles().GetFilesCount() == 0);
     }
 }
 

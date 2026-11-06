@@ -221,7 +221,7 @@ pairs are mounted. Rebuild writes a temporary cache and replaces the old one.
 ## Platforms and API
 
 Android packages `.fores` without outer ZIP compression. The activity passes
-`<installed APK>!/assets/<configured client resource directory>` as `Baking.ClientResources`, and its private files directory as
+`<installed APK>!/assets/<configured client resource directory>` as `Common.ResourcesPath`, and its private files directory as
 `Common.UserWritablePath`. `OpenResourcePackFile` locates the stored APK ZIP entry and returns a bounded,
 64-bit positional `fs::disk_read_file` region over the APK. Compressed or encrypted outer entries are rejected.
 `!/` separates an archive only where the text before it names an existing file, so an ordinary directory whose

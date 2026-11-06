@@ -32,6 +32,7 @@
 //
 
 #include "Player.h"
+
 #include "Critter.h"
 #include "CritterManager.h"
 #include "Item.h"
@@ -166,7 +167,7 @@ void Player::DetachCritter()
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
 
-    if (auto controlled_cr = _controlledCr.load(std::memory_order_acquire)) {
+    if (auto controlled_cr {_controlledCr.load(std::memory_order_acquire)}) {
         controlled_cr->DetachPlayer();
     }
 }
@@ -192,13 +193,26 @@ void Player::SetIgnoreSendEntityProperty(nptr<const Entity> entity, nptr<const P
     _sendIgnoreProperty.store(prop.get(), std::memory_order_release);
 }
 
-void Player::SetViewMap(ptr<Map> map, mpos hex, int32_t radius)
+void Player::SetViewMap(ptr<Map> map, mpos hex, int32_t radius, nptr<Entity> context)
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
-    auto controlled_cr = GetControlledCritter();
+    auto controlled_cr {GetControlledCritter()};
     FO_VERIFY_AND_THROW(!controlled_cr || (radius > 0 && !controlled_cr->GetMapId()), "Map view requires a detached or global-map critter");
     ValidateEntityAccess(map);
     FO_VERIFY_AND_THROW(!map->IsDestroyed() && !map->IsDestroying(), "Cannot view an unavailable map", map->GetId());
+
+    FO_VERIFY_AND_THROW(radius >= 0 && radius <= std::numeric_limits<int16_t>::max() && map->GetSize().is_valid_pos(hex), "Invalid map view area", hex, radius);
+
+    if (context) {
+        context->ValidateAccess();
+        FO_VERIFY_AND_THROW(!context->IsDestroyed() && !context->IsDestroying(), "Map view context is unavailable");
+
+        if (auto server_context {context.dyn_cast<ServerEntity>()}) {
+            FO_VERIFY_AND_THROW(server_context->GetEngine() == _engine, "Map view context belongs to another engine");
+        }
+    }
+
+    map->SetSpectatorArea(this, hex, radius, context);
 
     if (_viewMapTarget != map) {
         if (_viewMapTarget) {
@@ -209,7 +223,6 @@ void Player::SetViewMap(ptr<Map> map, mpos hex, int32_t radius)
         _viewMapTarget->AddSpectatorPlayer(this);
     }
 
-    map->SetSpectatorArea(this, hex, radius);
     _viewMap.emplace(ViewMapContext {.MapId = map->GetId(), .Hex = hex, .Radius = radius});
     _viewMapRadius.store(radius, std::memory_order_release);
 }
@@ -218,6 +231,17 @@ bool Player::IsAreaView() const noexcept
 {
     FO_VALIDATE_ENTITY(NONE);
     return _viewMapRadius.load(std::memory_order_acquire) > 0;
+}
+
+void Player::RefreshViewMapVisibility(ptr<Map> map)
+{
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
+
+    FO_VERIFY_AND_THROW(_viewMap.has_value() && static_cast<bool>(_viewMapTarget), "Map view visibility refresh requires an active view", GetId());
+    FO_VERIFY_AND_THROW(_viewMapTarget == map && _viewMap->MapId == map->GetId(), "Map view visibility refresh targets another map", GetId(), map->GetId());
+
+    ValidateEntityAccess(map);
+    map->RefreshSpectatorVisibility(this);
 }
 
 void Player::ResetViewMap() noexcept
@@ -239,19 +263,19 @@ void Player::Send_LoginSuccess()
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
 
-    auto player_data = StoreData(true);
+    auto player_data {StoreData(true)};
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf = _connection->WriteMsg(NetMessage::LoginSuccess);
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::LoginSuccess};
 
     out_buf->Write(GetId());
 
     {
         _engine->LockForPropertyAccess();
-        auto unlock_global_vars = scope_exit([this]() noexcept { _engine->UnlockForPropertyAccess(); });
+        auto unlock_global_vars {scope_exit([this]() noexcept { _engine->UnlockForPropertyAccess(); })};
 
-        auto global_vars_data = _engine->StoreData(false);
+        auto global_vars_data {_engine->StoreData(false)};
         out_buf->WritePropsData(*global_vars_data.Data, *global_vars_data.Sizes);
     }
 
@@ -266,19 +290,19 @@ void Player::Send_AddCritter(ptr<const Critter> cr)
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
     FO_VALIDATE_ENTITY_ACCESS_VALUE(cr);
 
-    auto controlled_cr = GetControlledCritter();
-    nptr<const Critter> cr_lookup = cr;
-    bool is_chosen = controlled_cr == cr_lookup;
+    auto controlled_cr {GetControlledCritter()};
+    nptr<const Critter> cr_lookup {cr};
+    bool is_chosen {controlled_cr == cr_lookup};
 
-    CritterVisibilityMode vis_mode = controlled_cr ? controlled_cr->GetVisibleCritterMode(cr->GetId()) : CritterVisibilityMode::Full;
+    CritterVisibilityMode vis_mode {controlled_cr ? controlled_cr->GetVisibleCritterMode(cr->GetId()) : CritterVisibilityMode::Full};
     SendCritter(cr, is_chosen, vis_mode != CritterVisibilityMode::None ? vis_mode : CritterVisibilityMode::Full, true);
 }
 
-void Player::Send_AddObservedCritter(ptr<const Critter> cr)
+void Player::Send_AddObservedCritter(ptr<const Critter> cr, CritterVisibilityMode mode)
 {
     FO_VALIDATE_ENTITY(NONE);
     FO_VALIDATE_ENTITY_ACCESS_VALUE(cr);
-    SendCritter(cr, false, CritterVisibilityMode::Full, !IsAreaView());
+    SendCritter(cr, false, mode, !IsAreaView());
 }
 
 void Player::SendCritter(ptr<const Critter> cr, bool is_chosen, CritterVisibilityMode vis_mode, bool send_movement)
@@ -286,10 +310,10 @@ void Player::SendCritter(ptr<const Critter> cr, bool is_chosen, CritterVisibilit
     FO_VALIDATE_ENTITY(NONE);
     FO_VALIDATE_ENTITY_ACCESS_VALUE(cr);
 
-    auto cr_data = cr->StoreData(is_chosen);
+    auto cr_data {cr->StoreData(is_chosen)};
 
-    auto inv_items = cr->GetInvItems();
-    vector<ptr<const Item>> send_items;
+    auto inv_items {cr->GetInvItems()};
+    vector<ptr<const Item>> send_items {};
     send_items.reserve(inv_items.size());
 
     for (ptr<const Item> item : inv_items) {
@@ -300,7 +324,7 @@ void Player::SendCritter(ptr<const Critter> cr, bool is_chosen, CritterVisibilit
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf = _connection->WriteMsg(NetMessage::AddCritter);
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::AddCritter};
 
     out_buf->Write(cr->GetId());
     out_buf->Write(cr->GetProtoId());
@@ -323,7 +347,7 @@ void Player::SendCritter(ptr<const Critter> cr, bool is_chosen, CritterVisibilit
 
     out_buf->Write(vis_mode);
 
-    auto cr_attached = cr->GetAttachedCritters();
+    auto cr_attached {cr->GetAttachedCritters()};
 
     out_buf->Write(cr->GetIsAttached());
     out_buf->Write(numeric_cast<uint16_t>(cr_attached.size()));
@@ -348,7 +372,7 @@ void Player::Send_RemoveCritter(ptr<const Critter> cr)
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf = _connection->WriteMsg(NetMessage::RemoveCritter);
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::RemoveCritter};
 
     out_buf->Write(cr->GetId());
 }
@@ -360,7 +384,7 @@ void Player::Send_CritterVisibilityMode(ptr<const Critter> cr, CritterVisibility
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf = _connection->WriteMsg(NetMessage::CritterVisibilityMode);
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::CritterVisibilityMode};
 
     out_buf->Write(cr->GetId());
     out_buf->Write(mode);
@@ -373,12 +397,12 @@ void Player::Send_LoadMap(nptr<const Map> map)
     FO_VALIDATE_ENTITY(NONE);
     FO_VALIDATE_ENTITY_ACCESS_VALUE(map);
 
-    nptr<const Location> loc;
-    hstring pid_map;
-    hstring pid_loc;
+    nptr<const Location> loc {};
+    hstring pid_map {};
+    hstring pid_loc {};
     ident_t loc_id {};
     ident_t map_id {};
-    int32_t map_index_in_loc = 0;
+    int32_t map_index_in_loc {0};
 
     if (map) {
         loc = map->GetLocation();
@@ -394,7 +418,7 @@ void Player::Send_LoadMap(nptr<const Map> map)
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf = _connection->WriteMsg(NetMessage::LoadMap);
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::LoadMap};
 
     out_buf->Write(loc_id);
     out_buf->Write(map_id);
@@ -405,8 +429,8 @@ void Player::Send_LoadMap(nptr<const Map> map)
     if (map) {
         FO_VERIFY_AND_THROW(loc, "Map has no owning location");
 
-        auto map_data = map->StoreData(false);
-        auto loc_data = loc->StoreData(false);
+        auto map_data {map->StoreData(false)};
+        auto loc_data {loc->StoreData(false)};
         out_buf->WritePropsData(*map_data.Data, *map_data.Sizes);
         out_buf->WritePropsData(*loc_data.Data, *loc_data.Sizes);
         SendInnerEntities(*out_buf, loc, false);
@@ -423,43 +447,43 @@ void Player::Send_Property(NetProperty type, ptr<const Property> prop, ptr<const
         return;
     }
 
-    auto props = entity->GetProperties();
+    auto props {entity->GetProperties()};
     props->ValidateForRawData(prop);
-    auto prop_raw_data = props->GetRawData(prop);
+    auto prop_raw_data {props->GetRawData(prop)};
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf = _connection->WriteMsg(NetMessage::Property);
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::Property};
 
     out_buf->Write(numeric_cast<uint32_t>(prop_raw_data.size()));
     out_buf->Write(type);
 
     switch (type) {
     case NetProperty::CritterItem: {
-        auto item = entity.dyn_cast<Item>();
-        auto server_entity = entity.dyn_cast<ServerEntity>();
+        auto item {entity.dyn_cast<Item>()};
+        auto server_entity {entity.dyn_cast<ServerEntity>()};
         FO_VERIFY_AND_THROW(item, "Missing item instance");
         FO_VERIFY_AND_THROW(server_entity, "Missing server entity instance");
         out_buf->Write(item->GetCritterId());
         out_buf->Write(server_entity->GetId());
     } break;
     case NetProperty::Critter: {
-        auto server_entity = entity.dyn_cast<ServerEntity>();
+        auto server_entity {entity.dyn_cast<ServerEntity>()};
         FO_VERIFY_AND_THROW(server_entity, "Missing server entity instance");
         out_buf->Write(server_entity->GetId());
     } break;
     case NetProperty::MapItem: {
-        auto server_entity = entity.dyn_cast<ServerEntity>();
+        auto server_entity {entity.dyn_cast<ServerEntity>()};
         FO_VERIFY_AND_THROW(server_entity, "Missing server entity instance");
         out_buf->Write(server_entity->GetId());
     } break;
     case NetProperty::ChosenItem: {
-        auto server_entity = entity.dyn_cast<ServerEntity>();
+        auto server_entity {entity.dyn_cast<ServerEntity>()};
         FO_VERIFY_AND_THROW(server_entity, "Missing server entity instance");
         out_buf->Write(server_entity->GetId());
     } break;
     case NetProperty::CustomEntity: {
-        auto custom_entity = entity.dyn_cast<CustomEntity>();
+        auto custom_entity {entity.dyn_cast<CustomEntity>()};
         FO_VERIFY_AND_THROW(custom_entity, "Missing custom entity instance");
         out_buf->Write(custom_entity->GetId());
     } break;
@@ -479,14 +503,14 @@ void Player::Send_Moving(ptr<const Critter> from_cr)
     // Identity alone tells a correction of the recipient's own critter from an observer update, as every recipient
     // send does, so no recipient state is read
     if (_engine->Settings->Network.MoveSyncTrace) {
-        bool is_own_critter = _controlledCr.load(std::memory_order_acquire) == from_cr.get();
-        mpos hex = from_cr->GetHex();
-        auto moving = from_cr->GetMoving();
+        bool is_own_critter {_controlledCr.load(std::memory_order_acquire) == from_cr.get()};
+        mpos hex {from_cr->GetHex()};
+        auto moving {from_cr->GetMoving()};
 
         if (moving) {
-            mpos end_hex = moving->GetEndHex();
+            mpos end_hex {moving->GetEndHex()};
 
-            _engine->TraceMoveSync("send", strex("cr={} to={} own={} kind=move hex={},{} end={},{} offset_ms={}", from_cr->GetId(), GetName(), is_own_critter ? 1 : 0, hex.x, hex.y, end_hex.x, end_hex.y, iround<int32_t>(moving->GetRuntimeElapsedTime(_engine->GameTime.GetFrameTime()))).strv());
+            _engine->TraceMoveSync("send", strex("cr={} to={} own={} kind=move hex={},{} end={},{} offset_ms={}", from_cr->GetId(), GetName(), is_own_critter ? 1 : 0, hex.x, hex.y, end_hex.x, end_hex.y, iround<int32_t>(moving->GetRuntimeElapsedTime(_engine->GameTime.GetFrameTime()).to_ms<float64_t>())).strv());
         }
         else {
             _engine->TraceMoveSync("send", strex("cr={} to={} own={} kind=pos hex={},{}", from_cr->GetId(), GetName(), is_own_critter ? 1 : 0, hex.x, hex.y).strv());
@@ -496,13 +520,13 @@ void Player::Send_Moving(ptr<const Critter> from_cr)
     scoped_lock conn_lock {_connectionLock};
 
     if (!IsAreaView() && from_cr->IsMoving()) {
-        auto out_buf = _connection->WriteMsg(NetMessage::CritterMove);
+        ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::CritterMove};
 
         out_buf->Write(from_cr->GetId());
         SendCritterMoving(*out_buf, from_cr);
     }
     else {
-        auto out_buf = _connection->WriteMsg(NetMessage::CritterPos);
+        ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::CritterPos};
 
         out_buf->Write(from_cr->GetId());
         out_buf->Write(from_cr->GetHex());
@@ -522,11 +546,11 @@ void Player::Send_MovingSpeed(ptr<const Critter> from_cr)
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf = _connection->WriteMsg(NetMessage::CritterMoveSpeed);
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::CritterMoveSpeed};
 
     out_buf->Write(from_cr->GetId());
 
-    auto moving = from_cr->GetMoving();
+    auto moving {from_cr->GetMoving()};
     FO_VERIFY_AND_THROW(moving, "Critter has no active movement state");
     out_buf->Write(moving->GetSpeed());
 }
@@ -540,7 +564,7 @@ void Player::Send_MovingLease(ptr<const Critter> from_cr)
         return;
     }
 
-    auto moving = from_cr->GetMoving();
+    auto moving {from_cr->GetMoving()};
 
     if (!moving) {
         return;
@@ -548,12 +572,12 @@ void Player::Send_MovingLease(ptr<const Critter> from_cr)
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf = _connection->WriteMsg(NetMessage::CritterMoveLease);
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::CritterMoveLease};
 
     out_buf->Write(from_cr->GetId());
     out_buf->Write(from_cr->GetMovingUid());
-    out_buf->Write(moving->GetLeaseTime() * numeric_cast<float32_t>(moving->GetSpeed()) / 1000.0f);
-    out_buf->Write(_engine->GameTime.GetFrameTime().milliseconds());
+    out_buf->Write(moving->GetLeaseTime().to_sec<float32_t>() * numeric_cast<float32_t>(moving->GetSpeed()));
+    out_buf->Write(nanotime::now().milliseconds());
 }
 
 void Player::Send_Dir(ptr<const Critter> from_cr)
@@ -563,7 +587,7 @@ void Player::Send_Dir(ptr<const Critter> from_cr)
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf = _connection->WriteMsg(NetMessage::CritterDir);
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::CritterDir};
 
     out_buf->Write(from_cr->GetId());
     out_buf->Write(from_cr->GetDir());
@@ -574,13 +598,13 @@ void Player::Send_Action(ptr<const Critter> from_cr, CritterAction action, int32
     FO_VALIDATE_ENTITY(NONE);
     FO_VALIDATE_ENTITY_ACCESS_VALUE(from_cr);
 
-    auto controlled_cr = GetControlledCritter();
-    nptr<const Critter> source_cr = from_cr;
-    bool is_chosen = controlled_cr == source_cr;
+    auto controlled_cr {GetControlledCritter()};
+    nptr<const Critter> source_cr {from_cr};
+    bool is_chosen {controlled_cr == source_cr};
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf = _connection->WriteMsg(NetMessage::CritterAction);
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::CritterAction};
 
     out_buf->Write(from_cr->GetId());
     out_buf->Write(action);
@@ -599,14 +623,14 @@ void Player::Send_MoveItem(ptr<const Critter> from_cr, nptr<const Item> moved_it
     FO_VALIDATE_ENTITY(NONE);
     FO_VALIDATE_ENTITY_ACCESS_VALUE(from_cr);
 
-    auto controlled_cr = GetControlledCritter();
-    nptr<const Critter> source_cr = from_cr;
-    bool is_chosen = controlled_cr == source_cr;
+    auto controlled_cr {GetControlledCritter()};
+    nptr<const Critter> source_cr {from_cr};
+    bool is_chosen {controlled_cr == source_cr};
 
-    vector<ptr<const Item>> send_items;
+    vector<ptr<const Item>> send_items {};
 
     if (!is_chosen) {
-        auto inv_items = from_cr->GetInvItems();
+        auto inv_items {from_cr->GetInvItems()};
         send_items.reserve(inv_items.size());
 
         for (ptr<const Item> item : inv_items) {
@@ -618,9 +642,9 @@ void Player::Send_MoveItem(ptr<const Critter> from_cr, nptr<const Item> moved_it
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf = _connection->WriteMsg(NetMessage::CritterMoveItem);
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::CritterMoveItem};
 
-    CritterItemSlot moved_item_slot = CritterItemSlot::Inventory;
+    CritterItemSlot moved_item_slot {CritterItemSlot::Inventory};
 
     if (moved_item) {
         moved_item_slot = moved_item->GetCritterSlot();
@@ -650,7 +674,7 @@ void Player::Send_AddItemOnMap(ptr<const Item> item)
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf = _connection->WriteMsg(NetMessage::AddItemOnMap);
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::AddItemOnMap};
 
     out_buf->Write(item->GetHex());
     SendItem(*out_buf, item, false, false, true);
@@ -663,7 +687,7 @@ void Player::Send_RemoveItemFromMap(ptr<const Item> item)
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf = _connection->WriteMsg(NetMessage::RemoveItemFromMap);
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::RemoveItemFromMap};
 
     out_buf->Write(item->GetId());
 }
@@ -675,7 +699,7 @@ void Player::Send_ChosenAddItem(ptr<const Item> item)
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf = _connection->WriteMsg(NetMessage::ChosenAddItem);
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::ChosenAddItem};
 
     SendItem(*out_buf, item, true, true, true);
 }
@@ -687,7 +711,7 @@ void Player::Send_ChosenRemoveItem(ptr<const Item> item)
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf = _connection->WriteMsg(NetMessage::ChosenRemoveItem);
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::ChosenRemoveItem};
 
     out_buf->Write(item->GetId());
 }
@@ -698,14 +722,14 @@ void Player::Send_Teleport(ptr<const Critter> cr, mpos to_hex)
     FO_VALIDATE_ENTITY_ACCESS_VALUE(cr);
 
     if (_engine->Settings->Network.MoveSyncTrace) {
-        bool is_own_critter = _controlledCr.load(std::memory_order_acquire) == cr.get();
+        bool is_own_critter {_controlledCr.load(std::memory_order_acquire) == cr.get()};
 
         _engine->TraceMoveSync("send", strex("cr={} to={} own={} kind=teleport hex={},{} moving={}", cr->GetId(), GetName(), is_own_critter ? 1 : 0, to_hex.x, to_hex.y, cr->IsMoving() ? 1 : 0).strv());
     }
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf = _connection->WriteMsg(NetMessage::CritterTeleport);
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::CritterTeleport};
 
     out_buf->Write(cr->GetId());
     out_buf->Write(to_hex);
@@ -717,7 +741,7 @@ void Player::Send_TimeSync()
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf = _connection->WriteMsg(NetMessage::TimeSync);
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::TimeSync};
 
     out_buf->Write(_engine->GameTime.GetSynchronizedTime());
 }
@@ -728,7 +752,7 @@ void Player::Send_InfoMessage(EngineInfoMessage info_message, string_view extra_
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf = _connection->WriteMsg(NetMessage::InfoMessage);
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::InfoMessage};
 
     out_buf->Write(info_message);
     out_buf->Write(extra_text);
@@ -744,7 +768,7 @@ void Player::Send_HashList(const_span<string> hash_strings)
         return;
     }
 
-    auto out_buf = _connection->WriteMsg(NetMessage::HashList);
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::HashList};
 
     out_buf->Write(numeric_cast<uint32_t>(hash_strings.size()));
 
@@ -759,7 +783,7 @@ void Player::Send_RemoteCall(hstring rpc_name, const_span<uint8_t> rpc_data)
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf = _connection->WriteMsg(NetMessage::RemoteCall);
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::RemoteCall};
 
     out_buf->Write<hstring>(rpc_name);
     out_buf->Write<int32_t>(numeric_cast<int32_t>(rpc_data.size()));
@@ -772,7 +796,7 @@ void Player::Send_Ping(bool answer)
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf = _connection->WriteMsg(NetMessage::Ping);
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::Ping};
 
     out_buf->Write(answer);
     out_buf->Write(nanotime::now().milliseconds());
@@ -784,7 +808,7 @@ void Player::Send_HandshakeAnswer(bool compatibility_outdated, bool updater_outd
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf = _connection->WriteMsg(NetMessage::HandshakeAnswer);
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::HandshakeAnswer};
 
     out_buf->Write(compatibility_outdated);
     out_buf->Write(updater_outdated);
@@ -800,16 +824,16 @@ void Player::Send_InitData(const_span<uint8_t> update_desc)
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf = _connection->WriteMsg(NetMessage::InitData);
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::InitData};
 
     out_buf->Write(numeric_cast<uint32_t>(update_desc.size()));
     out_buf->Push(update_desc);
 
     {
         _engine->LockForPropertyAccess();
-        auto unlock_global_vars = scope_exit([this]() noexcept { _engine->UnlockForPropertyAccess(); });
+        auto unlock_global_vars {scope_exit([this]() noexcept { _engine->UnlockForPropertyAccess(); })};
 
-        auto global_vars_data = _engine->StoreData(false);
+        auto global_vars_data {_engine->StoreData(false)};
         out_buf->WritePropsData(*global_vars_data.Data, *global_vars_data.Sizes);
     }
 
@@ -822,7 +846,7 @@ void Player::Send_UpdateFileData(const_span<uint8_t> update_data)
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf = _connection->WriteMsg(NetMessage::UpdateFileData);
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::UpdateFileData};
 
     out_buf->Write(numeric_cast<int32_t>(update_data.size()));
 
@@ -835,10 +859,11 @@ void Player::Send_ViewMap()
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
     FO_VERIFY_AND_THROW(_viewMap, "Player has no visible map");
-    auto view_map = make_ptr(&*_viewMap);
+    auto view_map {make_ptr(&*_viewMap)};
 
     scoped_lock conn_lock {_connectionLock};
-    auto out_buf = _connection->WriteMsg(NetMessage::ViewMap);
+
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::ViewMap};
 
     out_buf->Write(view_map->Hex);
     out_buf->Write(view_map->Radius);
@@ -850,7 +875,7 @@ void Player::Send_PlaceToGameComplete()
 
     scoped_lock conn_lock {_connectionLock};
 
-    _connection->WriteMsg(NetMessage::PlaceToGameComplete);
+    ServerConnection::OutBufAccessor {_connection, NetMessage::PlaceToGameComplete};
 }
 
 void Player::Send_SomeItems(const_span<ptr<const Item>> items, bool owned, bool with_inner_entities, const any_t& context_param)
@@ -861,7 +886,7 @@ void Player::Send_SomeItems(const_span<ptr<const Item>> items, bool owned, bool 
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf = _connection->WriteMsg(NetMessage::SomeItems);
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::SomeItems};
 
     out_buf->Write(string(context_param));
     out_buf->Write(numeric_cast<uint32_t>(items.size()));
@@ -878,14 +903,14 @@ void Player::Send_Attachments(ptr<const Critter> from_cr)
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf = _connection->WriteMsg(NetMessage::CritterAttachments);
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::CritterAttachments};
 
     out_buf->Write(from_cr->GetId());
 
     out_buf->Write(from_cr->GetIsAttached());
     out_buf->Write(from_cr->GetAttachMaster());
 
-    auto from_cr_attached = from_cr->GetAttachedCritters();
+    auto from_cr_attached {from_cr->GetAttachedCritters()};
     out_buf->Write(numeric_cast<uint16_t>(from_cr_attached.size()));
 
     for (const auto& attached_cr : from_cr_attached) {
@@ -898,17 +923,17 @@ void Player::Send_AddCustomEntity(ptr<CustomEntity> entity, bool owned)
     FO_VALIDATE_ENTITY(NONE);
     FO_VALIDATE_ENTITY_ACCESS_VALUE(entity);
 
-    auto data = entity->StoreData(owned);
+    auto data {entity->StoreData(owned)};
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf = _connection->WriteMsg(NetMessage::AddCustomEntity);
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::AddCustomEntity};
 
     out_buf->Write(entity->GetCustomHolderId());
     out_buf->Write(entity->GetCustomHolderEntry());
     out_buf->Write(entity->GetId());
 
-    auto entity_with_proto = entity.dyn_cast<CustomEntityWithProto>();
+    auto entity_with_proto {entity.dyn_cast<CustomEntityWithProto>()};
     if (entity_with_proto) {
         FO_VERIFY_AND_THROW(_engine->GetEntityType(entity->GetTypeName()).HasProtos, "Entity type has no prototypes but a proto entity was requested");
         out_buf->Write(entity_with_proto->GetProtoId());
@@ -927,7 +952,7 @@ void Player::Send_RemoveCustomEntity(ident_t id)
 
     scoped_lock conn_lock {_connectionLock};
 
-    auto out_buf = _connection->WriteMsg(NetMessage::RemoveCustomEntity);
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::RemoveCustomEntity};
 
     out_buf->Write(id);
 }
@@ -944,7 +969,7 @@ void Player::SendItem(NetOutBuffer& out_buf, ptr<const Item> item, bool owned, b
         out_buf.Write(item->GetCritterSlot());
     }
 
-    auto item_data = item->StoreData(owned);
+    auto item_data {item->StoreData(owned)};
     out_buf.WritePropsData(*item_data.Data, *item_data.Sizes);
 
     if (with_inner_entities) {
@@ -965,12 +990,12 @@ void Player::SendInnerEntities(NetOutBuffer& out_buf, ptr<const Entity> holder, 
         return;
     }
 
-    auto entries_entities = holder->GetInnerEntities();
+    auto entries_entities {holder->GetInnerEntities()};
     FO_VERIFY_AND_THROW(entries_entities, "Entry entities collection is null");
-    uint16_t entries_count = 0;
+    uint16_t entries_count {0};
 
     for (const auto& entry : *entries_entities | std::views::keys) {
-        auto entry_sync = _engine->GetEntityType(holder->GetTypeName()).HolderEntries.at(entry).Sync;
+        auto entry_sync {_engine->GetEntityType(holder->GetTypeName()).HolderEntries.at(entry).Sync};
 
         if (entry_sync == EntityHolderEntrySync::PublicSync || (entry_sync == EntityHolderEntrySync::OwnerSync && owned)) {
             entries_count++;
@@ -984,7 +1009,7 @@ void Player::SendInnerEntities(NetOutBuffer& out_buf, ptr<const Entity> holder, 
     }
 
     for (auto&& [entry, entities] : *entries_entities) {
-        auto entry_sync = _engine->GetEntityType(holder->GetTypeName()).HolderEntries.at(entry).Sync;
+        auto entry_sync {_engine->GetEntityType(holder->GetTypeName()).HolderEntries.at(entry).Sync};
 
         if (entry_sync == EntityHolderEntrySync::NoSync || (entry_sync == EntityHolderEntrySync::OwnerSync && !owned)) {
             continue;
@@ -994,13 +1019,13 @@ void Player::SendInnerEntities(NetOutBuffer& out_buf, ptr<const Entity> holder, 
         out_buf.Write(numeric_cast<uint32_t>(entities.size()));
 
         for (const auto& entity : entities) {
-            auto custom_entity = require_refcount_ptr(entity.dyn_cast<CustomEntity>());
+            auto custom_entity {require_refcount_ptr(entity.dyn_cast<CustomEntity>())};
 
-            auto data = custom_entity->StoreData(owned);
+            auto data {custom_entity->StoreData(owned)};
 
             out_buf.Write(custom_entity->GetId());
 
-            auto custom_entity_with_proto = (nptr<const CustomEntity> {custom_entity}).dyn_cast<CustomEntityWithProto>();
+            auto custom_entity_with_proto {(nptr<const CustomEntity> {custom_entity}).dyn_cast<CustomEntityWithProto>()};
             if (custom_entity_with_proto) {
                 out_buf.Write(custom_entity_with_proto->GetProtoId());
             }
@@ -1022,11 +1047,11 @@ void Player::SendCritterMoving(NetOutBuffer& out_buf, ptr<const Critter> cr)
 
     FO_VERIFY_AND_THROW(cr->IsMoving(), "Critter is not moving");
 
-    auto moving = cr->GetMoving();
+    auto moving {cr->GetMoving()};
     FO_VERIFY_AND_THROW(moving, "Missing active movement state");
 
-    out_buf.Write(iround<int32_t>(std::ceil(moving->GetWholeTime())));
-    out_buf.Write(iround<int32_t>(moving->GetRuntimeElapsedTime(_engine->GameTime.GetFrameTime())));
+    out_buf.Write(iround<int32_t>(std::ceil(moving->GetWholeTime().to_ms<float64_t>())));
+    out_buf.Write(iround<int32_t>(moving->GetRuntimeElapsedTime(_engine->GameTime.GetFrameTime()).to_ms<float64_t>()));
     out_buf.Write(moving->GetSpeed());
     out_buf.Write(moving->GetStartHex());
     out_buf.Write(numeric_cast<uint16_t>(moving->GetSteps().size()));
@@ -1044,10 +1069,10 @@ void Player::SendCritterMoving(NetOutBuffer& out_buf, ptr<const Critter> cr)
     out_buf.Write(moving->GetEndHexOffset());
     // Which plan of the critter this is, so a later lease update finds it, and how far it may run
     out_buf.Write(cr->GetMovingUid());
-    out_buf.Write(moving->GetLeaseTime() * numeric_cast<float32_t>(moving->GetSpeed()) / 1000.0f);
-    // The frame the elapsed time above was taken at, by the server's clock: the receiver tells from it how much
+    out_buf.Write(moving->GetLeaseTime().to_sec<float32_t>() * numeric_cast<float32_t>(moving->GetSpeed()));
+    // The actual send time by the server's monotonic clock: the receiver tells from it how much
     // later than usual the plan reached it
-    out_buf.Write(_engine->GameTime.GetFrameTime().milliseconds());
+    out_buf.Write(nanotime::now().milliseconds());
 }
 
 FO_END_NAMESPACE

@@ -518,12 +518,12 @@ inline void ImGuiTextUnformatted(string_view text)
         return;
     }
 
-    auto text_begin = make_nptr(text.data());
-    auto text_end = text_begin.offset(text.size());
+    auto text_begin {make_nptr(text.data())};
+    auto text_end {text_begin.offset(text.size())};
     ImGui::TextUnformatted(text_begin.get(), text_end.get());
 }
 
-[[nodiscard]] inline auto ToImU32(ucolor color) noexcept -> ImU32
+inline auto ToImU32(ucolor color) noexcept -> ImU32
 {
     return IM_COL32(color.comp.r, color.comp.g, color.comp.b, color.comp.a);
 }

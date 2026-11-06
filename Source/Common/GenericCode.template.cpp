@@ -31,16 +31,6 @@
 // SOFTWARE.
 //
 
-// ReSharper disable CppInconsistentNaming
-// ReSharper disable CppCStyleCast
-// ReSharper disable CppLocalVariableMayBeConst
-// ReSharper disable CppClangTidyReadabilityQualifiedAuto
-// ReSharper disable CppClangTidyModernizeUseNodiscard
-// ReSharper disable CppClangTidyClangDiagnosticExtraSemiStmt
-// ReSharper disable CppUseAuto
-// ReSharper disable CppMemberFunctionMayBeConst
-// ReSharper disable CppClangTidyClangDiagnosticOldStyleCast
-
 ///@ CodeGen Template GenericCode
 
 #include "Common.h"

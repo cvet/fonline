@@ -35,22 +35,22 @@
 
 FO_BEGIN_NAMESPACE
 
-constexpr uint32_t UDP_PACKET_MAGIC = 0x31445055;
-constexpr uint16_t UDP_PACKET_VERSION = 1;
-constexpr size_t UDP_PACKET_HEADER_SIZE = sizeof(uint32_t) + sizeof(uint16_t) + sizeof(uint8_t) + sizeof(uint8_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint16_t) + sizeof(uint16_t);
+constexpr uint32_t UDP_PACKET_MAGIC {0x31445055};
+constexpr uint16_t UDP_PACKET_VERSION {1};
+constexpr size_t UDP_PACKET_HEADER_SIZE {sizeof(uint32_t) + sizeof(uint16_t) + sizeof(uint8_t) + sizeof(uint8_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint16_t) + sizeof(uint16_t)};
 
 static auto MakeRawPacket(UdpPacketType type, uint32_t session_id, uint32_t sequence, uint32_t ack_sequence, uint32_t ack_bits, uint32_t value, const_span<uint8_t> payload) -> vector<uint8_t>
 {
-    vector<uint8_t> data;
+    vector<uint8_t> data {};
     data.reserve(UDP_PACKET_HEADER_SIZE + payload.size());
 
-    auto append_scalar = [&data](auto scalar) {
+    auto append_scalar {[&data](auto scalar) {
         static_assert(std::is_trivially_copyable_v<decltype(scalar)>);
         array<uint8_t, sizeof(scalar)> scalar_bytes {};
-        auto source = make_ptr(&scalar).template reinterpret_as<const uint8_t>();
+        auto source {make_ptr(&scalar).template reinterpret_as<const uint8_t>()};
         memory::copy(scalar_bytes.data(), source, sizeof(scalar));
         data.insert(data.end(), scalar_bytes.begin(), scalar_bytes.end());
-    };
+    }};
 
     append_scalar(UDP_PACKET_MAGIC);
     append_scalar(UDP_PACKET_VERSION);
@@ -118,7 +118,7 @@ auto UdpOrderedChannel::NeedSend(nanotime now) const noexcept -> bool
     }
 
     for (const auto& packet : _pendingPackets) {
-        if (packet.SendCount == 0 || now - packet.LastSend >= std::chrono::milliseconds {_options.ResendTimeoutMs}) {
+        if (packet.SendCount == 0 || now - packet.LastSend >= _options.ResendTimeout) {
             return true;
         }
     }
@@ -130,27 +130,27 @@ auto UdpOrderedChannel::PrepareOutput(const_span<uint8_t> new_data, vector<vecto
 {
     FO_TRACE_ZONE(Network);
 
-    size_t consumed = 0;
+    size_t consumed {0};
 
     for (auto& packet : _pendingPackets) {
-        if (packet.SendCount == 0 || now - packet.LastSend >= std::chrono::milliseconds {_options.ResendTimeoutMs}) {
+        if (packet.SendCount == 0 || now - packet.LastSend >= _options.ResendTimeout) {
             packet.LastSend = now;
             packet.SendCount++;
             EmitPendingPacket(packet, packets);
         }
     }
 
-    uint32_t first_new_sequence = _nextOutgoingSequence;
+    uint32_t first_new_sequence {_nextOutgoingSequence};
 
     while (consumed < new_data.size() && _pendingBytes < _options.MaxPendingBytes) {
-        size_t free_window = _options.MaxPendingBytes - _pendingBytes;
-        auto chunk_size = std::min({new_data.size() - consumed, _options.MaxPayload, free_window});
+        size_t free_window {_options.MaxPendingBytes - _pendingBytes};
+        auto chunk_size {std::min({new_data.size() - consumed, _options.MaxPayload, free_window})};
 
         if (chunk_size == 0) {
             break;
         }
 
-        PendingPacket packet;
+        PendingPacket packet {};
         packet.Sequence = _nextOutgoingSequence;
         packet.Payload.assign(new_data.begin() + consumed, new_data.begin() + consumed + chunk_size);
         packet.LastSend = now;
@@ -198,7 +198,7 @@ void UdpOrderedChannel::HandleIncomingPayload(const UdpPacketInfo& packet)
         _nextIncomingSequence++;
 
         while (true) {
-            auto it = _receivedPackets.find(_nextIncomingSequence);
+            auto it {_receivedPackets.find(_nextIncomingSequence)};
 
             if (it == _receivedPackets.end()) {
                 break;
@@ -239,7 +239,7 @@ auto UdpOrderedChannel::MakeDisconnectPacket() const -> vector<uint8_t>
 
 void UdpOrderedChannel::ApplyAcknowledgements(uint32_t ack_sequence, uint32_t ack_bits)
 {
-    for (auto it = _pendingPackets.begin(); it != _pendingPackets.end();) {
+    for (auto it {_pendingPackets.begin()}; it != _pendingPackets.end();) {
         if (IsPacketAcknowledged(it->Sequence, ack_sequence, ack_bits)) {
             FO_VERIFY_AND_THROW(_pendingBytes >= it->Payload.size(), "UDP ordered channel pending byte counter is smaller than an acknowledged packet payload", _pendingBytes, it->Payload.size(), it->Sequence, ack_sequence, ack_bits);
             _pendingBytes -= it->Payload.size();
@@ -270,7 +270,7 @@ void UdpOrderedChannel::RebuildAckBits() noexcept
             continue;
         }
 
-        auto diff = sequence - _nextIncomingSequence;
+        auto diff {sequence - _nextIncomingSequence};
 
         if (diff < 32U) {
             _ackBits |= 1U << diff;
@@ -280,9 +280,9 @@ void UdpOrderedChannel::RebuildAckBits() noexcept
 
 void UdpOrderedChannel::QueueTailRedundancy(vector<vector<uint8_t>>& packets, uint32_t first_new_sequence) const
 {
-    uint32_t resent = 0;
+    uint32_t resent {0};
 
-    for (auto it = _pendingPackets.rbegin(); it != _pendingPackets.rend() && resent < _options.Redundancy; ++it) {
+    for (auto it {_pendingPackets.rbegin()}; it != _pendingPackets.rend() && resent < _options.Redundancy; ++it) {
         if (it->Sequence >= first_new_sequence) {
             continue;
         }
@@ -302,7 +302,7 @@ auto UdpOrderedChannel::IsPacketAcknowledged(uint32_t sequence, uint32_t ack_seq
         return true;
     }
 
-    uint32_t diff = sequence - ack_sequence - 1;
+    uint32_t diff {sequence - ack_sequence - 1};
     return diff < 32U && (ack_bits & (1U << diff)) != 0;
 }
 
@@ -323,15 +323,15 @@ auto MakeUdpAcceptPacket(uint32_t session_id, uint32_t client_salt) -> vector<ui
 
 auto TryParseUdpPacket(const_span<uint8_t> data, UdpPacketInfo& packet) -> bool
 {
-    size_t pos = 0;
-    uint32_t magic = 0;
-    uint16_t version = 0;
-    uint8_t type = 0;
-    uint8_t flags = 0;
-    uint16_t payload_size = 0;
-    uint16_t reserved = 0;
+    size_t pos {0};
+    uint32_t magic {0};
+    uint16_t version {0};
+    uint8_t type {0};
+    uint8_t flags {0};
+    uint16_t payload_size {0};
+    uint16_t reserved {0};
 
-    auto read_scalar = [&data, &pos](auto& scalar) {
+    auto read_scalar {[&data, &pos](auto& scalar) {
         using ScalarType = std::remove_reference_t<decltype(scalar)>;
         static_assert(std::is_trivially_copyable_v<ScalarType>);
 
@@ -339,13 +339,13 @@ auto TryParseUdpPacket(const_span<uint8_t> data, UdpPacketInfo& packet) -> bool
             return false;
         }
 
-        auto scalar_ptr = make_ptr(&scalar);
-        auto target = scalar_ptr.template reinterpret_as<uint8_t>();
-        auto source = make_ptr(data.data() + pos);
+        auto scalar_ptr {make_ptr(&scalar)};
+        auto target {scalar_ptr.template reinterpret_as<uint8_t>()};
+        auto source {make_ptr(data.data() + pos)};
         memory::copy(target, source, sizeof(ScalarType));
         pos += sizeof(ScalarType);
         return true;
-    };
+    }};
 
     if (!read_scalar(magic) || magic != UDP_PACKET_MAGIC) {
         return false;
@@ -382,7 +382,7 @@ auto TryParseUdpPacket(const_span<uint8_t> data, UdpPacketInfo& packet) -> bool
         return false;
     }
 
-    bool payload_flag_set = (flags & 0x01) != 0;
+    bool payload_flag_set {(flags & 0x01) != 0};
 
     if (payload_flag_set != (payload_size != 0)) {
         return false;
@@ -395,7 +395,7 @@ auto TryParseUdpPacket(const_span<uint8_t> data, UdpPacketInfo& packet) -> bool
     }
     else {
         FO_STRONG_ASSERT(pos < data.size(), "UDP buffer offset is past the end of the data");
-        auto payload_begin = make_ptr(data.data() + pos);
+        auto payload_begin {make_ptr(data.data() + pos)};
         packet.Payload = {payload_begin.get(), payload_size};
     }
 

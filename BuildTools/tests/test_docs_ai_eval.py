@@ -78,7 +78,6 @@ class DocumentationAiEvaluationTests(unittest.TestCase):
                 "llms": {"path": "llms.txt", "start_document_ids": ["guide"]},
                 "full_context": {
                     "path": "llms-full.txt",
-                    "max_bytes": 65536,
                     "generated_pages": "indexes-only",
                 },
                 "public_manifest": {"path": "docs-manifest.json"},

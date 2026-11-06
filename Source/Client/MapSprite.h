@@ -39,7 +39,7 @@
 
 FO_BEGIN_NAMESPACE
 
-constexpr auto SPRITES_POOL_GROW_SIZE = 2000;
+constexpr auto SPRITES_POOL_GROW_SIZE {2000};
 
 class RenderEffect;
 class Sprite;
@@ -142,7 +142,7 @@ public:
     void SetColor(ucolor color) noexcept;
     void SetAlpha(nptr<const uint8_t> alpha) noexcept;
     void SetFixedAlpha(uint8_t alpha) noexcept;
-    void SetLight(CornerType corner, ptr<const ucolor> light, msize size) noexcept;
+    void SetLight(nptr<const ucolor> light, nptr<const ucolor> light_right, nptr<const ucolor> light_left) noexcept;
     void SetHidden(bool hidden) noexcept;
     void SetElevation(int16_t elevation) noexcept;
     void SetAngle(int16_t angle) noexcept;
@@ -225,12 +225,12 @@ private:
     uint32_t _globalCounter {};
     bool _needSort {};
     bool _orderBroken {};
-    static constexpr size_t DrawOrderRangeSize = static_cast<size_t>(DrawOrderType::Last) + 2;
+    static constexpr size_t DrawOrderRangeSize {static_cast<size_t>(DrawOrderType::Last) + 2};
     array<uint32_t, DrawOrderRangeSize> _drawOrderRangeBegin {};
 };
 
 // Script-configured holder for a client-local map sprite added by Map.DrawMapSprite and kept alive until invalidated or stopped
-///@ ExportRefType Client RefCounted HasFactory Export = Valid, SprId, Hex, ProtoId, Offset, IsFlat, NoLight, DrawOrder, DrawOrderSubLayer, Corner, DisableEgg, Color, IsTweakOffs, TweakOffset, IsTweakAlpha, TweakAlpha, Angle, MapProjected, StopDraw
+///@ ExportRefType Client RefCounted HasFactory Export = Valid, SprId, Hex, ProtoId, Offset, Elevation, IsFlat, NoLight, DrawOrder, DrawOrderSubLayer, Corner, DisableEgg, Color, IsTweakOffs, TweakOffset, IsTweakAlpha, TweakAlpha, Angle, MapProjected, StopDraw
 class MapSpriteHolder : public refcounted<MapSpriteHolder>
 {
 public:
@@ -254,6 +254,8 @@ public:
     hstring ProtoId {};
     // Base map-pixel offset applied when the sprite is attached
     ipos32 Offset {};
+    // Vertical map elevation applied at attachment, independently of the sprite pixel offset
+    int16_t Elevation {};
     // Manual flat-sprite selection used when ProtoId is empty
     bool IsFlat {};
     // Manual lighting bypass used when ProtoId is empty
@@ -284,4 +286,3 @@ public:
 };
 
 FO_END_NAMESPACE
-

@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
 #include "ClientConnection.h"
@@ -52,6 +54,8 @@ namespace
         {
         }
 
+        [[nodiscard]] auto GetDisconnectCount() const noexcept -> size_t { return _disconnectCount; }
+
         void SetConnectingState() noexcept
         {
             _isConnecting = true;
@@ -67,8 +71,6 @@ namespace
         void ThrowOnCheck() noexcept { _throwOnCheck = true; }
         void ThrowOnSend() noexcept { _throwOnSend = true; }
         void ThrowOnReceive() noexcept { _throwOnReceive = true; }
-
-        [[nodiscard]] auto GetDisconnectCount() const noexcept -> size_t { return _disconnectCount; }
 
     protected:
         auto CheckStatusImpl(bool for_write) -> bool override
@@ -118,10 +120,10 @@ namespace
 
     static auto MakeClientNetworkSettings() -> GlobalSettings
     {
-        auto settings = GlobalSettings(false);
+        auto settings {GlobalSettings(false)};
 
-        settings.ApplyDefaultSettings();
-        settings.ApplyAutoSettings();
+        settings.SetupDefaultSettings();
+        settings.ApplyAutoSettings({});
 
         return settings;
     }
@@ -129,13 +131,13 @@ namespace
 
 TEST_CASE("NetworkClientInterthreadSendReceiveAndDisconnect")
 {
-    auto settings = MakeClientNetworkSettings();
-    auto port = TestClientPort.fetch_add(1);
+    auto settings {MakeClientNetworkSettings()};
+    auto port {TestClientPort.fetch_add(1)};
     BakerTests::OverrideSetting(settings.Network.ServerPort, port);
 
-    InterthreadDataCallback server_send_to_client;
-    vector<uint8_t> server_received;
-    size_t client_disconnect_count = 0;
+    InterthreadDataCallback server_send_to_client {};
+    vector<uint8_t> server_received {};
+    size_t client_disconnect_count {0};
 
     REQUIRE(AddInterthreadListener(port, [&](InterthreadDataCallback client_receive) -> InterthreadDataCallback {
         server_send_to_client = std::move(client_receive);
@@ -150,9 +152,9 @@ TEST_CASE("NetworkClientInterthreadSendReceiveAndDisconnect")
         };
     }));
 
-    auto cleanup = scope_exit([port]() noexcept { safe_call([port] { (void)RemoveInterthreadListener(port); }); });
+    auto cleanup {scope_exit([port]() noexcept { safe_call([port] { (void)RemoveInterthreadListener(port); }); })};
 
-    auto conn = NetworkClientConnection::CreateInterthreadConnection(&settings);
+    auto conn {NetworkClientConnection::CreateInterthreadConnection(&settings)};
     REQUIRE(server_send_to_client);
 
     CHECK_FALSE(conn->IsConnecting());
@@ -165,7 +167,7 @@ TEST_CASE("NetworkClientInterthreadSendReceiveAndDisconnect")
 
     CHECK(conn->CheckStatus(false));
 
-    auto recv_data = conn->ReceiveData();
+    auto recv_data {conn->ReceiveData()};
     CHECK(vector<uint8_t>(recv_data.begin(), recv_data.end()) == incoming_data);
     CHECK(conn->GetBytesReceived() == incoming_data.size());
 
@@ -189,11 +191,11 @@ TEST_CASE("NetworkClientInterthreadSendReceiveAndDisconnect")
 
 TEST_CASE("NetworkClientInterthreadHandlesServerDisconnect")
 {
-    auto settings = MakeClientNetworkSettings();
-    auto port = TestClientPort.fetch_add(1);
+    auto settings {MakeClientNetworkSettings()};
+    auto port {TestClientPort.fetch_add(1)};
     BakerTests::OverrideSetting(settings.Network.ServerPort, port);
 
-    InterthreadDataCallback server_send_to_client;
+    InterthreadDataCallback server_send_to_client {};
 
     REQUIRE(AddInterthreadListener(port, [&](InterthreadDataCallback client_receive) -> InterthreadDataCallback {
         server_send_to_client = std::move(client_receive);
@@ -201,9 +203,9 @@ TEST_CASE("NetworkClientInterthreadHandlesServerDisconnect")
         return [](const_span<uint8_t>) { };
     }));
 
-    auto cleanup = scope_exit([port]() noexcept { safe_call([port] { (void)RemoveInterthreadListener(port); }); });
+    auto cleanup {scope_exit([port]() noexcept { safe_call([port] { (void)RemoveInterthreadListener(port); }); })};
 
-    auto conn = NetworkClientConnection::CreateInterthreadConnection(&settings);
+    auto conn {NetworkClientConnection::CreateInterthreadConnection(&settings)};
     REQUIRE(server_send_to_client);
 
     server_send_to_client({});
@@ -220,8 +222,8 @@ TEST_CASE("ClientConnectionRequiredInterthreadNeverFallsBackToSockets")
     // failure would otherwise fake the expected immediate Failed callback and hide the missing check
     REQUIRE(net_sockets::startup());
 
-    auto settings = MakeClientNetworkSettings();
-    uint16_t port = TestClientPort.fetch_add(1);
+    auto settings {MakeClientNetworkSettings()};
+    uint16_t port {TestClientPort.fetch_add(1)};
     BakerTests::OverrideSetting(settings.Network.ServerPort, port);
     BakerTests::OverrideSetting(settings.ClientNetwork.RequireInterthreadTransport, true);
     REQUIRE_FALSE(HasInterthreadListener(port));
@@ -236,9 +238,9 @@ TEST_CASE("ClientConnectionRequiredInterthreadNeverFallsBackToSockets")
         BakerTests::OverrideSetting(settings.ClientNetwork.UseUdp, true);
     }
 
-    size_t connect_call_count = 0;
-    optional<ClientConnection::ConnectResult> connect_result;
-    ClientConnection client {&settings};
+    size_t connect_call_count {0};
+    optional<ClientConnection::ConnectResult> connect_result {};
+    ClientConnection client {&settings, ClientConnection::ResourceMode::Platform};
 
     client.SetConnectHandler([&](ClientConnection::ConnectResult result) {
         connect_call_count++;
@@ -259,13 +261,13 @@ TEST_CASE("ClientConnectionRequiredInterthreadNeverFallsBackToSockets")
 
 TEST_CASE("ClientConnectionRequiredInterthreadUsesAvailableListener")
 {
-    auto settings = MakeClientNetworkSettings();
-    uint16_t port = TestClientPort.fetch_add(1);
+    auto settings {MakeClientNetworkSettings()};
+    uint16_t port {TestClientPort.fetch_add(1)};
     BakerTests::OverrideSetting(settings.Network.ServerPort, port);
     BakerTests::OverrideSetting(settings.ClientNetwork.RequireInterthreadTransport, true);
     BakerTests::OverrideSetting(settings.ClientNetwork.UseUdp, true);
 
-    size_t accept_count = 0;
+    size_t accept_count {0};
 
     REQUIRE(AddInterthreadListener(port, [&](InterthreadDataCallback) -> InterthreadDataCallback {
         accept_count++;
@@ -274,11 +276,11 @@ TEST_CASE("ClientConnectionRequiredInterthreadUsesAvailableListener")
     }));
 
     {
-        auto cleanup = scope_exit([port]() noexcept { safe_call([port] { (void)RemoveInterthreadListener(port); }); });
+        auto cleanup {scope_exit([port]() noexcept { safe_call([port] { (void)RemoveInterthreadListener(port); }); })};
 
-        size_t connect_call_count = 0;
-        optional<ClientConnection::ConnectResult> connect_result;
-        ClientConnection client {&settings};
+        size_t connect_call_count {0};
+        optional<ClientConnection::ConnectResult> connect_result {};
+        ClientConnection client {&settings, ClientConnection::ResourceMode::Platform};
 
         client.SetConnectHandler([&](ClientConnection::ConnectResult result) {
             connect_call_count++;
@@ -307,8 +309,8 @@ TEST_CASE("ClientConnectionInterthreadNotRequiredKeepsSocketAttempt")
 {
     REQUIRE(net_sockets::startup());
 
-    auto settings = MakeClientNetworkSettings();
-    uint16_t port = TestClientPort.fetch_add(1);
+    auto settings {MakeClientNetworkSettings()};
+    uint16_t port {TestClientPort.fetch_add(1)};
     BakerTests::OverrideSetting(settings.Network.ServerPort, port);
     BakerTests::OverrideSetting(settings.ClientNetwork.ServerHost, string {"127.0.0.1"});
     BakerTests::OverrideSetting(settings.ClientNetwork.ProxyType, 0);
@@ -330,9 +332,9 @@ TEST_CASE("ClientConnectionInterthreadNotRequiredKeepsSocketAttempt")
         BakerTests::OverrideSetting(settings.ClientNetwork.UseUdp, true);
     }
 
-    size_t connect_call_count = 0;
-    optional<ClientConnection::ConnectResult> connect_result;
-    ClientConnection client {&settings};
+    size_t connect_call_count {0};
+    optional<ClientConnection::ConnectResult> connect_result {};
+    ClientConnection client {&settings, ClientConnection::ResourceMode::Platform};
 
     client.SetConnectHandler([&](ClientConnection::ConnectResult result) {
         connect_call_count++;
@@ -353,8 +355,8 @@ TEST_CASE("ClientConnectionInterthreadNotRequiredKeepsSocketAttempt")
 
 TEST_CASE("ClientConnectionDisconnectsOnMalformedCompressedInput")
 {
-    auto settings = MakeClientNetworkSettings();
-    auto port = TestClientPort.fetch_add(1);
+    auto settings {MakeClientNetworkSettings()};
+    auto port {TestClientPort.fetch_add(1)};
     BakerTests::ApplyTestChannelKeys(settings);
     BakerTests::OverrideSetting(settings.Network.ServerPort, port);
     BakerTests::OverrideSetting(settings.Network.DisableZlibCompression, false);
@@ -362,8 +364,8 @@ TEST_CASE("ClientConnectionDisconnectsOnMalformedCompressedInput")
     // The garbage has to arrive inside a valid channel, or the channel rejects it before any decompression
     SecureChannelIdentity server_identity {ParseSecureChannelKey(BakerTests::TEST_CHANNEL_SECRET_KEY, "Test")};
     SecureChannel server_channel {server_identity};
-    InterthreadDataCallback server_send_to_client;
-    size_t client_disconnect_count = 0;
+    InterthreadDataCallback server_send_to_client {};
+    size_t client_disconnect_count {0};
 
     REQUIRE(AddInterthreadListener(port, [&](InterthreadDataCallback client_receive) -> InterthreadDataCallback {
         server_send_to_client = std::move(client_receive);
@@ -373,16 +375,16 @@ TEST_CASE("ClientConnectionDisconnectsOnMalformedCompressedInput")
                 client_disconnect_count++;
             }
             else {
-                vector<uint8_t> plaintext;
+                vector<uint8_t> plaintext {};
                 server_channel.Receive(buf, plaintext);
             }
         };
     }));
 
-    auto cleanup = scope_exit([port]() noexcept { safe_call([port] { (void)RemoveInterthreadListener(port); }); });
+    auto cleanup {scope_exit([port]() noexcept { safe_call([port] { (void)RemoveInterthreadListener(port); }); })};
 
-    optional<ClientConnection::ConnectResult> connect_result;
-    ClientConnection client {&settings};
+    optional<ClientConnection::ConnectResult> connect_result {};
+    ClientConnection client {&settings, ClientConnection::ResourceMode::Platform};
     client.SetConnectHandler([&](ClientConnection::ConnectResult result) { connect_result = result; });
     client.Connect();
     REQUIRE(server_send_to_client);
@@ -390,7 +392,7 @@ TEST_CASE("ClientConnectionDisconnectsOnMalformedCompressedInput")
     CHECK_NOTHROW(client.Process());
     REQUIRE(server_channel.IsEstablished());
 
-    vector<uint8_t> answer_and_invalid;
+    vector<uint8_t> answer_and_invalid {};
     server_channel.Seal(vector<uint8_t> {0x00, 0x00}, answer_and_invalid);
     server_send_to_client(answer_and_invalid);
 
@@ -403,7 +405,7 @@ TEST_CASE("ClientConnectionDisconnectsOnMalformedCompressedInput")
 
 TEST_CASE("NetworkClientWrapperDisconnectsAndRethrowsOnImplExceptions")
 {
-    auto settings = MakeClientNetworkSettings();
+    auto settings {MakeClientNetworkSettings()};
     ThrowingNetworkClientConnection conn {settings};
 
     SECTION("CheckStatusWhileConnecting")
@@ -448,16 +450,16 @@ TEST_CASE("NetworkClientSocketsTalksToARealServer")
     // the client dials 127.0.0.1 and the whole connect / send / receive / disconnect path runs for real
     REQUIRE(net_sockets::startup());
 
-    auto server_settings = MakeClientNetworkSettings();
-    auto client_settings = MakeClientNetworkSettings();
+    auto server_settings {MakeClientNetworkSettings()};
+    auto client_settings {MakeClientNetworkSettings()};
 
-    std::mutex accepted_locker;
-    vector<shared_ptr<NetworkServerConnection>> accepted;
+    std::mutex accepted_locker {};
+    vector<shared_ptr<NetworkServerConnection>> accepted {};
 
-    uint16_t port = 0;
-    string startup_error;
-    auto start_server = [&]() -> unique_ptr<NetworkServer> {
-        for (int32_t attempt = 0; attempt != 64; ++attempt) {
+    uint16_t port {0};
+    string startup_error {};
+    auto start_server {[&]() -> unique_ptr<NetworkServer> {
+        for (int32_t attempt {0}; attempt != 64; ++attempt) {
             port = TestClientPort.fetch_add(1);
             BakerTests::OverrideSetting(server_settings.Network.ServerPort, port);
 
@@ -473,31 +475,31 @@ TEST_CASE("NetworkClientSocketsTalksToARealServer")
         }
 
         throw std::runtime_error(startup_error.empty() ? "NetworkServer ASIO start failed" : startup_error.c_str());
-    };
+    }};
 
-    unique_ptr<NetworkServer> server = start_server();
+    unique_ptr<NetworkServer> server {start_server()};
 
     // Declaration order would destroy these after the io_context their asio objects reference, so they are
     // released here while it is still alive
-    auto shutdown_server = scope_exit([&]() noexcept {
+    auto shutdown_server {scope_exit([&]() noexcept {
         safe_call([&] {
             std::scoped_lock locker {accepted_locker};
             accepted.clear();
         });
 
         safe_call([&server] { server->Shutdown(); });
-    });
+    })};
 
     BakerTests::OverrideSetting(client_settings.ClientNetwork.ServerHost, string {"127.0.0.1"});
     BakerTests::OverrideSetting(client_settings.Network.ServerPort, port);
     BakerTests::OverrideSetting(client_settings.ClientNetwork.ProxyType, 0);
 
-    auto conn = NetworkClientConnection::CreateSocketsConnection(&client_settings);
+    auto conn {NetworkClientConnection::CreateSocketsConnection(&client_settings)};
 
     // The connect is asynchronous and completes on writability, so the write-side status is what settles it
-    bool connected = false;
+    bool connected {false};
 
-    for (int32_t i = 0; i < 500 && !connected; i++) {
+    for (int32_t i {0}; i < 500 && !connected; i++) {
         (void)conn->CheckStatus(true);
         connected = conn->IsConnected();
 
@@ -509,9 +511,9 @@ TEST_CASE("NetworkClientSocketsTalksToARealServer")
     CHECK(connected);
 
     if (connected) {
-        shared_ptr<NetworkServerConnection> server_conn;
+        shared_ptr<NetworkServerConnection> server_conn {};
 
-        for (int32_t i = 0; i < 500 && !server_conn; i++) {
+        for (int32_t i {0}; i < 500 && !server_conn; i++) {
             {
                 std::scoped_lock locker {accepted_locker};
 
@@ -547,7 +549,7 @@ TEST_CASE("NetworkClientSocketsTalksToARealServer")
             },
             [&server_received](const_span<uint8_t> buf) { server_received.fetch_add(buf.size()); }, []() {});
 
-        for (int32_t i = 0; i < 500 && server_received.load() == 0; i++) {
+        for (int32_t i {0}; i < 500 && server_received.load() == 0; i++) {
             server_conn->Dispatch();
             std::this_thread::sleep_for(std::chrono::milliseconds {10});
         }
@@ -555,9 +557,9 @@ TEST_CASE("NetworkClientSocketsTalksToARealServer")
         CHECK(server_received.load() > 0);
 
         // The downstream payload travels back on the same socket, so the client receive path runs for real
-        size_t client_received = 0;
+        size_t client_received {0};
 
-        for (int32_t i = 0; i < 500 && client_received == 0; i++) {
+        for (int32_t i {0}; i < 500 && client_received == 0; i++) {
             server_conn->Dispatch();
 
             if (conn->CheckStatus(false)) {
@@ -583,16 +585,16 @@ TEST_CASE("NetworkClientUdpSocketsTalksToARealServer")
 {
     REQUIRE(net_sockets::startup());
 
-    auto server_settings = MakeClientNetworkSettings();
-    auto client_settings = MakeClientNetworkSettings();
+    auto server_settings {MakeClientNetworkSettings()};
+    auto client_settings {MakeClientNetworkSettings()};
 
-    std::mutex accepted_locker;
-    vector<shared_ptr<NetworkServerConnection>> accepted;
+    std::mutex accepted_locker {};
+    vector<shared_ptr<NetworkServerConnection>> accepted {};
 
-    uint16_t port = 0;
-    string startup_error;
-    auto start_server = [&]() -> unique_ptr<NetworkServer> {
-        for (int32_t attempt = 0; attempt != 64; ++attempt) {
+    uint16_t port {0};
+    string startup_error {};
+    auto start_server {[&]() -> unique_ptr<NetworkServer> {
+        for (int32_t attempt {0}; attempt != 64; ++attempt) {
             port = TestClientPort.fetch_add(1);
             BakerTests::OverrideSetting(server_settings.Network.ServerPort, port);
 
@@ -608,30 +610,30 @@ TEST_CASE("NetworkClientUdpSocketsTalksToARealServer")
         }
 
         throw std::runtime_error(startup_error.empty() ? "NetworkServer UDP start failed" : startup_error.c_str());
-    };
+    }};
 
-    unique_ptr<NetworkServer> server = start_server();
+    unique_ptr<NetworkServer> server {start_server()};
 
     // Declaration order would destroy these after the io_context their asio objects reference, so they are
     // released here while it is still alive
-    auto shutdown_server = scope_exit([&]() noexcept {
+    auto shutdown_server {scope_exit([&]() noexcept {
         safe_call([&] {
             std::scoped_lock locker {accepted_locker};
             accepted.clear();
         });
 
         safe_call([&server] { server->Shutdown(); });
-    });
+    })};
 
     BakerTests::OverrideSetting(client_settings.ClientNetwork.ServerHost, string {"127.0.0.1"});
     BakerTests::OverrideSetting(client_settings.Network.ServerPort, port);
 
-    auto conn = NetworkClientConnection::CreateUdpSocketsConnection(&client_settings);
+    auto conn {NetworkClientConnection::CreateUdpSocketsConnection(&client_settings)};
 
     // The UDP transport performs its own handshake, so it needs pumping on both sides before it settles
-    bool connected = false;
+    bool connected {false};
 
-    for (int32_t i = 0; i < 800 && !connected; i++) {
+    for (int32_t i {0}; i < 800 && !connected; i++) {
         (void)conn->CheckStatus(false);
         connected = conn->IsConnected();
 
@@ -650,4 +652,3 @@ TEST_CASE("NetworkClientUdpSocketsTalksToARealServer")
 }
 
 FO_END_NAMESPACE
-

@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
 #include "Containers.h"
@@ -44,7 +46,7 @@ namespace
     // A capacity of its own keeps the behavioural assertions readable and independent of the tuned build value
     using test_string = basic_string<char, 7>;
 
-    [[nodiscard]] auto MakeFilled(size_t count, char ch) -> test_string
+    auto MakeFilled(size_t count, char ch) -> test_string
     {
         return test_string(count, ch);
     }
@@ -73,7 +75,7 @@ TEST_CASE("StringObject")
 
     SECTION("EmptyStringIsInlinedAndNullTerminated")
     {
-        test_string str;
+        test_string str {};
 
         CHECK(str.empty());
         CHECK(str.size() == 0);
@@ -85,7 +87,7 @@ TEST_CASE("StringObject")
 
     SECTION("ShortTargetStaysInsideTheObject")
     {
-        test_string str = "1234567";
+        test_string str {"1234567"};
 
         CHECK(str.size() == 7);
         CHECK(str.is_inlined());
@@ -96,7 +98,7 @@ TEST_CASE("StringObject")
 
     SECTION("OneCharacterOverTheBudgetMovesToTheHeap")
     {
-        test_string str = "12345678";
+        test_string str {"12345678"};
 
         CHECK(str.size() == 8);
         CHECK_FALSE(str.is_inlined());
@@ -107,9 +109,9 @@ TEST_CASE("StringObject")
 
     SECTION("GrowthKeepsContentAndTerminator")
     {
-        test_string str;
+        test_string str {};
 
-        for (int32_t i = 0; i < 200; i++) {
+        for (int32_t i {0}; i < 200; i++) {
             str.push_back(static_cast<char>('a' + i % 26));
             REQUIRE(str.size() == static_cast<size_t>(i) + 1);
             REQUIRE(str.c_str()[str.size()] == '\0');
@@ -124,9 +126,9 @@ TEST_CASE("StringObject")
 
     SECTION("ReserveDoesNotShrinkAndClearKeepsCapacity")
     {
-        test_string str = "abc";
+        test_string str {"abc"};
         str.reserve(100);
-        size_t reserved = str.capacity();
+        size_t reserved {str.capacity()};
 
         CHECK(reserved >= 100);
         CHECK(str == "abc");
@@ -141,7 +143,7 @@ TEST_CASE("StringObject")
 
     SECTION("ShrinkToFitReturnsAShortStringToTheObject")
     {
-        test_string str;
+        test_string str {};
         str.reserve(100);
         (void)str.assign("abc");
 
@@ -152,7 +154,7 @@ TEST_CASE("StringObject")
         CHECK(str.is_inlined());
         CHECK(str == "abc");
 
-        test_string long_str = MakeFilled(100, 'x');
+        test_string long_str {MakeFilled(100, 'x')};
         long_str.reserve(400);
         long_str.shrink_to_fit();
 
@@ -177,16 +179,16 @@ TEST_CASE("StringObject")
 
     SECTION("MoveLeavesTheSourceEmptyForBothTiers")
     {
-        test_string inlined = "abc";
-        test_string moved_inlined = std::move(inlined);
+        test_string inlined {"abc"};
+        test_string moved_inlined {std::move(inlined)};
 
         CHECK(moved_inlined == "abc");
         CHECK(inlined.empty()); // NOLINT(bugprone-use-after-move)
         CHECK(inlined.is_inlined()); // NOLINT(bugprone-use-after-move)
 
-        test_string heaped = MakeFilled(100, 'q');
-        const char* heap_data = heaped.data();
-        test_string moved_heaped = std::move(heaped);
+        test_string heaped {MakeFilled(100, 'q')};
+        const char* heap_data {heaped.data()};
+        test_string moved_heaped {std::move(heaped)};
 
         CHECK(moved_heaped.data() == heap_data);
         CHECK(moved_heaped.size() == 100);
@@ -196,37 +198,37 @@ TEST_CASE("StringObject")
 
     SECTION("SelfAssignmentAndSelfAppendKeepTheContent")
     {
-        test_string str = "abcdefghij";
+        test_string str {"abcdefghij"};
         str = str; // NOLINT(clang-diagnostic-self-assign-overloaded)
         CHECK(str == "abcdefghij");
 
-        test_string short_str = "ab";
+        test_string short_str {"ab"};
         (void)short_str.append(short_str);
         CHECK(short_str == "abab");
 
-        test_string growing = "abcdefg";
+        test_string growing {"abcdefg"};
         (void)growing.append(growing);
         CHECK(growing == "abcdefgabcdefg");
 
-        test_string self_slice = "abcdef";
+        test_string self_slice {"abcdef"};
         (void)self_slice.assign(self_slice.data() + 2, 3);
         CHECK(self_slice == "cde");
     }
 
     SECTION("SelfReferencingInsertAndReplaceAreDetached")
     {
-        test_string str = "abcdef";
+        test_string str {"abcdef"};
         (void)str.insert(0, str.data() + 3, 3);
         CHECK(str == "defabcdef");
 
-        test_string replaced = "abcdefgh";
+        test_string replaced {"abcdefgh"};
         (void)replaced.replace(0, 2, replaced.data() + 4, 4);
         CHECK(replaced == "efghcdefgh");
     }
 
     SECTION("InsertEraseAndReplaceMatchTheStandardShapes")
     {
-        test_string str = "hello world";
+        test_string str {"hello world"};
 
         (void)str.insert(5, ",");
         CHECK(str == "hello, world");
@@ -240,7 +242,7 @@ TEST_CASE("StringObject")
         (void)str.replace(0, 5, 3, 'y');
         CHECK(str == "yyy there");
 
-        auto it = str.erase(str.begin(), str.begin() + 4);
+        auto it {str.erase(str.begin(), str.begin() + 4)};
         CHECK(it == str.begin());
         CHECK(str == "there");
 
@@ -253,7 +255,7 @@ TEST_CASE("StringObject")
 
     SECTION("ResizeGrowsWithFillAndTruncates")
     {
-        test_string str = "ab";
+        test_string str {"ab"};
 
         str.resize(5, '-');
         CHECK(str == "ab---");
@@ -269,7 +271,7 @@ TEST_CASE("StringObject")
 
     SECTION("SearchAndCompareDelegateToTheView")
     {
-        test_string str = "the quick brown fox";
+        test_string str {"the quick brown fox"};
 
         CHECK(str.find("quick") == 4);
         CHECK(str.find('q') == 4);
@@ -289,8 +291,8 @@ TEST_CASE("StringObject")
 
     SECTION("ComparisonsCoverStringViewAndLiterals")
     {
-        test_string abc = "abc";
-        test_string abd = "abd";
+        test_string abc {"abc"};
+        test_string abd {"abd"};
 
         CHECK(abc == test_string {"abc"});
         CHECK(abc != abd);
@@ -305,8 +307,8 @@ TEST_CASE("StringObject")
 
     SECTION("ConcatenationCoversTheStandardOverloads")
     {
-        test_string abc = "abc";
-        test_string def = "def";
+        test_string abc {"abc"};
+        test_string def {"def"};
 
         CHECK(abc + def == "abcdef");
         CHECK(abc + "def" == "abcdef");
@@ -315,13 +317,14 @@ TEST_CASE("StringObject")
         CHECK('d' + abc == "dabc");
         CHECK(test_string {"abc"} + def == "abcdef");
         CHECK(abc + test_string {"def"} == "abcdef");
+        CHECK('a' + test_string {"bc"} == "abc");
         CHECK(test_string {"abc"} + test_string {"def"} == "abcdef");
     }
 
     SECTION("SwapExchangesEveryTierCombination")
     {
-        test_string inlined = "abc";
-        test_string heaped = MakeFilled(100, 'z');
+        test_string inlined {"abc"};
+        test_string heaped {MakeFilled(100, 'z')};
 
         inlined.swap(heaped);
 
@@ -330,8 +333,8 @@ TEST_CASE("StringObject")
         CHECK(heaped == "abc");
         CHECK(heaped.is_inlined());
 
-        test_string first = "one";
-        test_string second = "two";
+        test_string first {"one"};
+        test_string second {"two"};
         swap(first, second);
 
         CHECK(first == "two");
@@ -340,7 +343,7 @@ TEST_CASE("StringObject")
 
     SECTION("IteratorsWalkTheWholeContent")
     {
-        test_string str = "abcdefghijkl";
+        test_string str {"abcdefghijkl"};
 
         CHECK(static_cast<size_t>(str.end() - str.begin()) == str.size());
         CHECK(*str.begin() == 'a');
@@ -348,7 +351,7 @@ TEST_CASE("StringObject")
         CHECK(*str.rbegin() == 'l');
         CHECK(std::distance(str.rbegin(), str.rend()) == static_cast<ptrdiff_t>(str.size()));
 
-        test_string reversed(str.rbegin(), str.rend());
+        test_string reversed {str.rbegin(), str.rend()};
         CHECK(reversed == "lkjihgfedcba");
 
         std::ranges::sort(reversed);
@@ -357,7 +360,7 @@ TEST_CASE("StringObject")
 
     SECTION("OutOfRangeAccessThrows")
     {
-        test_string str = "abc";
+        test_string str {"abc"};
 
         CHECK_THROWS_AS((void)str.at(3), std::out_of_range);
         CHECK_THROWS_AS((void)str.substr(4), std::out_of_range);
@@ -366,51 +369,51 @@ TEST_CASE("StringObject")
 
     SECTION("FormattingAndHashingSeeTheContent")
     {
-        string str = "formatted";
+        string str {"formatted"};
 
         CHECK(strex("{}", str).str() == "formatted");
         CHECK(strex("[{:>12}]", str).str() == "[   formatted]");
         CHECK(hashing::hash<string> {}(str) == hashing::hash<string_view> {}(string_view {"formatted"}));
         CHECK(std::hash<string> {}(str) == std::hash<string_view> {}(string_view {"formatted"}));
 
-        unordered_map<string, int32_t> by_name;
+        unordered_map<string, int32_t> by_name {};
         by_name.emplace("key", 7);
         CHECK(by_name.at("key") == 7);
         CHECK(by_name.find(string_view {"key"}) != by_name.end());
 
-        map<string, int32_t> ordered;
+        map<string, int32_t> ordered {};
         ordered.emplace("key", 7);
         CHECK(ordered.find(string_view {"key"}) != ordered.end());
     }
 
     SECTION("StreamsReadAndWriteTheContent")
     {
-        ostringstream out;
+        ostringstream out {};
         out << string {"written"};
         CHECK(out.str() == "written");
 
-        istringstream in(make_stream_string("first second\nthird line"));
-        string token;
+        istringstream in {make_stream_string("first second\nthird line")};
+        string token {};
         in >> token;
         CHECK(token == "first");
 
-        string rest;
+        string rest {};
         (void)getline(in, rest);
         CHECK(rest == " second");
 
-        string next_line;
+        string next_line {};
         (void)getline(in, next_line, '\n');
         CHECK(next_line == "third line");
     }
 
     SECTION("ConstantEvaluationWorksForTheInlineTier")
     {
-        constexpr auto make_inline = []() constexpr {
-            test_string str;
+        constexpr auto make_inline {[]() constexpr {
+            test_string str {};
             (void)str.append("abc");
             str.push_back('d');
             return str.size();
-        };
+        }};
 
         STATIC_REQUIRE(make_inline() == 4);
         STATIC_REQUIRE(test_string {}.empty());
@@ -419,7 +422,7 @@ TEST_CASE("StringObject")
 
     SECTION("WideStringHoldsWideCharacters")
     {
-        wstring wide = L"wide";
+        wstring wide {L"wide"};
 
         CHECK(wide.size() == 4);
         CHECK(wide == L"wide");

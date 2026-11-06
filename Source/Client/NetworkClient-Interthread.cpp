@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "NetworkClient.h"
 
 FO_BEGIN_NAMESPACE
@@ -73,16 +75,16 @@ NetworkClientConnection_Interthread::NetworkClientConnection_Interthread(ptr<Cli
 {
     FO_TRACE_ZONE(Network);
 
-    uint16_t port = numeric_cast<uint16_t>(_settings->Network.ServerPort);
+    uint16_t port {numeric_cast<uint16_t>(_settings->Network.ServerPort)};
 
-    optional<InterthreadListener> listener = FindInterthreadListener(port);
+    optional<InterthreadListener> listener {FindInterthreadListener(port)};
 
     if (!listener.has_value()) {
         throw NetworkClientException("Interthread listener is not available", port);
     }
 
     _interthreadState = safe_alloc::make_shared<NetworkClientInterthreadState>();
-    auto state = _interthreadState;
+    auto state {_interthreadState};
 
     _interthreadSend = (*listener)([state](const_span<uint8_t> buf) mutable FO_DEFERRED {
         if (!state->Alive.load()) {
@@ -114,7 +116,7 @@ auto NetworkClientConnection_Interthread::CheckStatusImpl(bool for_write) -> boo
 {
     FO_TRACE_ZONE(Network);
 
-    auto state = _interthreadState;
+    auto state {_interthreadState};
 
     if (state->RequestDisconnect) {
         Disconnect();
@@ -139,12 +141,12 @@ auto NetworkClientConnection_Interthread::ReceiveDataImpl(vector<uint8_t>& buf) 
 {
     FO_TRACE_ZONE(Network);
 
-    auto state = _interthreadState;
+    auto state {_interthreadState};
 
     scoped_lock locker {state->ReceivedLocker};
 
     FO_VERIFY_AND_THROW(!state->Received.empty(), "Interthread client receive was called without a pending packet", buf.size());
-    size_t recv_size = state->Received.size();
+    size_t recv_size {state->Received.size()};
 
     while (buf.size() < recv_size) {
         buf.resize(buf.size() * 2);
@@ -160,8 +162,8 @@ void NetworkClientConnection_Interthread::DisconnectImpl() noexcept
 {
     FO_TRACE_ZONE(Network);
 
-    InterthreadDataCallback interthread_send;
-    auto state = _interthreadState;
+    InterthreadDataCallback interthread_send {};
+    auto state {_interthreadState};
 
     state->Alive = false;
 

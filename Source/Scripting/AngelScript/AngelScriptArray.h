@@ -56,8 +56,8 @@ class ScriptArray final
     friend class safe_alloc;
 
     template<typename T>
-    static constexpr bool IsHandleAtType = std::is_void_v<std::remove_cv_t<T>> || std::is_same_v<std::remove_cv_t<T>, Entity> || //
-        std::is_same_v<std::remove_cv_t<T>, DynamicRefTypeInstance> || std::is_same_v<std::remove_cv_t<T>, ScriptArray> || std::is_same_v<std::remove_cv_t<T>, ScriptDict>;
+    static constexpr bool IsHandleAtType {std::is_void_v<std::remove_cv_t<T>> || std::is_same_v<std::remove_cv_t<T>, Entity> || //
+        std::is_same_v<std::remove_cv_t<T>, DynamicRefTypeInstance> || std::is_same_v<std::remove_cv_t<T>, ScriptArray> || std::is_same_v<std::remove_cv_t<T>, ScriptDict>};
 
 public:
     static auto Create(ptr<AngelScript::asITypeInfo> ti) -> refcount_ptr<ScriptArray>;
@@ -69,22 +69,46 @@ public:
     auto operator=(ScriptArray&&) noexcept -> ScriptArray& = delete;
 
     auto operator=(const ScriptArray& other) -> ScriptArray&;
+
+    [[nodiscard]] auto GetArrayObjectType() -> ptr<AngelScript::asITypeInfo>;
+    [[nodiscard]] auto GetArrayObjectType() const -> ptr<const AngelScript::asITypeInfo>;
+    [[nodiscard]] auto GetArrayTypeId() const -> int32_t;
+    [[nodiscard]] auto GetElementTypeId() const -> int32_t;
+    [[nodiscard]] auto GetSize() const -> int32_t { return static_cast<int32_t>(_buffer.size() / _elementSize); }
+    [[nodiscard]] auto GetCapacity() const -> int32_t { return static_cast<int32_t>(_buffer.capacity() / _elementSize); }
+    [[nodiscard]] auto IsEmpty() const -> bool { return _buffer.empty(); }
+    [[nodiscard]] auto At(int32_t index) const -> ptr<void>;
+    [[nodiscard]] auto GetRefCount() const -> int32_t;
+    [[nodiscard]] auto GetFlag() const -> bool;
+
+    template<typename T, typename Index>
+        requires(IsHandleAtType<T>)
+    [[nodiscard]] auto AtAs(Index index) const -> nptr<T>
+    {
+        if constexpr (std::is_void_v<std::remove_cv_t<T>>) {
+            return NativeDataProvider::ReadHandleSlot(At(numeric_cast<int32_t>(index)));
+        }
+        else {
+            return NativeDataProvider::ReadTypedHandleSlot<std::remove_const_t<T>>(At(numeric_cast<int32_t>(index)));
+        }
+    }
+
+    template<typename T, typename Index>
+        requires(!IsHandleAtType<T>)
+    [[nodiscard]] auto AtAs(Index index) const -> ptr<T>
+    {
+        ptr<void> value {At(numeric_cast<int32_t>(index))};
+
+        return cast_from_void<T*>(value.get());
+    }
+
     auto operator==(const ScriptArray& other) const -> bool;
 
     void AddRef() const;
     void Release() const;
 
-    auto GetArrayObjectType() -> ptr<AngelScript::asITypeInfo>;
-    auto GetArrayObjectType() const -> ptr<const AngelScript::asITypeInfo>;
-    auto GetArrayTypeId() const -> int32_t;
-    auto GetElementTypeId() const -> int32_t;
-
-    auto GetSize() const -> int32_t { return static_cast<int32_t>(_buffer.size() / _elementSize); }
-    auto GetCapacity() const -> int32_t { return static_cast<int32_t>(_buffer.capacity() / _elementSize); }
-    auto IsEmpty() const -> bool { return _buffer.empty(); }
     void Reserve(int32_t max_elements);
     void Resize(int32_t num_elements);
-    auto At(int32_t index) const -> ptr<void>;
     void SetValue(int32_t index, ptr<void> value);
     void InsertAt(int32_t index, ptr<void> value);
     void InsertAt(int32_t index, const ScriptArray& other);
@@ -105,32 +129,9 @@ public:
     auto GetBuffer() -> nptr<void>;
     auto GetBuffer() const -> nptr<void>;
 
-    auto GetRefCount() const -> int32_t;
     void SetFlag() const;
-    auto GetFlag() const -> bool;
     void EnumReferences(ptr<AngelScript::asIScriptEngine> engine);
     void ReleaseAllHandles();
-
-    template<typename T, typename Index>
-        requires(IsHandleAtType<T>)
-    [[nodiscard]] auto AtAs(Index index) const -> nptr<T>
-    {
-        if constexpr (std::is_void_v<std::remove_cv_t<T>>) {
-            return NativeDataProvider::ReadHandleSlot(At(numeric_cast<int32_t>(index)));
-        }
-        else {
-            return NativeDataProvider::ReadTypedHandleSlot<std::remove_const_t<T>>(At(numeric_cast<int32_t>(index)));
-        }
-    }
-
-    template<typename T, typename Index>
-        requires(!IsHandleAtType<T>)
-    [[nodiscard]] auto AtAs(Index index) const -> ptr<T>
-    {
-        ptr<void> value = At(numeric_cast<int32_t>(index));
-
-        return cast_from_void<T*>(value.get());
-    }
 
 private:
     explicit ScriptArray(ptr<AngelScript::asITypeInfo> ti, ptr<void> init_list);

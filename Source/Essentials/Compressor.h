@@ -44,11 +44,11 @@ FO_DECLARE_EXCEPTION(DecompressException);
 
 namespace compressor
 {
-    auto calculate_max_compressed_buf_size(size_t initial_size) noexcept -> size_t;
-    auto compress(const_span<uint8_t> data) -> vector<uint8_t>;
-    auto compress(const_span<uint8_t> data, int32_t level) -> vector<uint8_t>;
-    auto decompress(const_span<uint8_t> data, size_t mul_approx) -> vector<uint8_t>;
-    auto decompress_exact(const_span<uint8_t> data, size_t decoded_size) -> vector<uint8_t>;
+    [[nodiscard]] auto calculate_max_compressed_buf_size(size_t initial_size) noexcept -> size_t;
+    [[nodiscard]] auto compress(const_span<uint8_t> data) -> vector<uint8_t>;
+    [[nodiscard]] auto compress(const_span<uint8_t> data, int32_t level) -> vector<uint8_t>;
+    [[nodiscard]] auto decompress(const_span<uint8_t> data, size_t mul_approx) -> vector<uint8_t>;
+    [[nodiscard]] auto decompress_exact(const_span<uint8_t> data, size_t decoded_size) -> vector<uint8_t>;
 }
 
 class stream_compressor final

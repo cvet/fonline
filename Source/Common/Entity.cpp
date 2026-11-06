@@ -47,13 +47,13 @@ Entity::Entity(ptr<const PropertyRegistrar> registrar, nptr<const Properties> in
 
 void Entity::AddRef() const noexcept
 {
-    auto old = _refCounter.fetch_add(1, std::memory_order_relaxed);
+    auto old {_refCounter.fetch_add(1, std::memory_order_relaxed)};
     FO_STRONG_ASSERT(old > 0, "AddRef called for expired entity", old);
 }
 
 void Entity::Release() const noexcept
 {
-    int32_t old = _refCounter.fetch_sub(1, std::memory_order_acq_rel);
+    int32_t old {_refCounter.fetch_sub(1, std::memory_order_acq_rel)};
     FO_STRONG_ASSERT(old > 0, "Release called for expired entity", old);
 
     if (old == 1) {
@@ -63,7 +63,7 @@ void Entity::Release() const noexcept
 
 auto Entity::TryAddRef() const noexcept -> bool
 {
-    int32_t count = _refCounter.load(std::memory_order_relaxed);
+    int32_t count {_refCounter.load(std::memory_order_relaxed)};
 
     while (count > 0) {
         if (_refCounter.compare_exchange_weak(count, count + 1, std::memory_order_acquire, std::memory_order_relaxed)) {
@@ -77,7 +77,7 @@ auto Entity::TryAddRef() const noexcept -> bool
 auto Entity::HasEventCallbacks(string_view event_name) const noexcept -> bool
 {
     if (_events) {
-        if (auto it = _events->find(event_name); it != _events->end() && !it->second.empty()) {
+        if (auto it {_events->find(event_name)}; it != _events->end() && !it->second.empty()) {
             return true;
         }
     }
@@ -87,10 +87,10 @@ auto Entity::HasEventCallbacks(string_view event_name) const noexcept -> bool
 
 auto Entity::GetEventSubscriptions(string_view event_name, uintptr_t subscription_owner) const -> small_vector<uintptr_t, 4>
 {
-    small_vector<uintptr_t, 4> subscriptions;
+    small_vector<uintptr_t, 4> subscriptions {};
 
     if (_events) {
-        if (auto it = _events->find(event_name); it != _events->end()) {
+        if (auto it {_events->find(event_name)}; it != _events->end()) {
             for (const EventCallbackData& cb : it->second) {
                 if (cb.SubscriptionOwner == subscription_owner) {
                     subscriptions.emplace_back(cb.SubscriptionPtr);
@@ -105,7 +105,7 @@ auto Entity::GetEventSubscriptions(string_view event_name, uintptr_t subscriptio
 auto Entity::FindEventCallbacks(string_view event_name) noexcept -> nptr<vector<EventCallbackData>>
 {
     if (_events) {
-        if (auto it = _events->find(event_name); it != _events->end()) {
+        if (auto it {_events->find(event_name)}; it != _events->end()) {
             return &it->second;
         }
     }
@@ -121,7 +121,7 @@ auto Entity::EnsureEventCallbacks(string_view event_name) -> ptr<vector<EventCal
         _events.emplace();
     }
 
-    if (auto it = _events->find(event_name); it != _events->end()) {
+    if (auto it {_events->find(event_name)}; it != _events->end()) {
         return &it->second;
     }
 
@@ -132,14 +132,14 @@ void Entity::SubscribeEvent(string_view event_name, EventCallbackData&& callback
 {
     FO_VERIFY_AND_THROW(!IsDestroyed(), "Object is already destroyed");
 
-    auto callbacks = EnsureEventCallbacks(event_name);
+    auto callbacks {EnsureEventCallbacks(event_name)};
     SubscribeEvent(callbacks, std::move(callback), event_name);
 }
 
 void Entity::UnsubscribeEvent(string_view event_name, uintptr_t subscription_ptr) noexcept
 {
     if (_events) {
-        if (auto it = _events->find(event_name); it != _events->end()) {
+        if (auto it {_events->find(event_name)}; it != _events->end()) {
             UnsubscribeEvent(&it->second, subscription_ptr);
         }
     }
@@ -148,7 +148,7 @@ void Entity::UnsubscribeEvent(string_view event_name, uintptr_t subscription_ptr
 void Entity::UnsubscribeAllEvent(string_view event_name) noexcept
 {
     if (_events) {
-        if (auto it = _events->find(event_name); it != _events->end()) {
+        if (auto it {_events->find(event_name)}; it != _events->end()) {
             it->second.clear();
         }
     }
@@ -169,7 +169,7 @@ auto Entity::FireEvent(string_view event_name, FuncCallData& call) noexcept -> E
     FO_VERIFY_AND_RETURN_VALUE(!IsDestroyed(), EventResult::ContinueChain, "Destroyed entity tried to fire an event", GetName(), GetTypeName(), GetId(), event_name);
 
     if (_events) {
-        if (auto it = _events->find(event_name); it != _events->end()) {
+        if (auto it {_events->find(event_name)}; it != _events->end()) {
             return FireEvent(it->second, call);
         }
     }
@@ -199,7 +199,7 @@ void Entity::SubscribeEvent(ptr<vector<EventCallbackData>> callbacks, EventCallb
 
 void Entity::UnsubscribeEvent(ptr<vector<EventCallbackData>> callbacks, uintptr_t subscription_ptr) noexcept
 {
-    if (auto it = std::ranges::find_if(*callbacks, [subscription_ptr](const auto& cb) { return cb.SubscriptionPtr == subscription_ptr; }); it != callbacks->end()) {
+    if (auto it {std::ranges::find_if(*callbacks, [subscription_ptr](const auto& cb) { return cb.SubscriptionPtr == subscription_ptr; })}; it != callbacks->end()) {
         callbacks->erase(it);
     }
 }
@@ -212,12 +212,12 @@ auto Entity::FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData&
         return EventResult::ContinueChain;
     }
 
-    bool had_exception = false;
+    bool had_exception {false};
 
-    small_vector<EventCallbackData, 4> callbacks_snapshot(callbacks.begin(), callbacks.end());
+    small_vector<EventCallbackData, 4> callbacks_snapshot {small_vector<EventCallbackData, 4>(callbacks.begin(), callbacks.end())};
 
     for (const auto& cb : callbacks_snapshot) {
-        EventResult result = EventResult::ContinueChain;
+        EventResult result {EventResult::ContinueChain};
 
         try {
             result = cb.Callback(call);
@@ -233,6 +233,8 @@ auto Entity::FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData&
         }
 
         if (result == EventResult::StopChain) {
+            // Only a callback with an explicit result decides the chain; one without a result always continues it
+            FO_VERIFY_AND_CONTINUE(cb.HasExplicitResult, "Event callback without an explicit result returned StopChain", GetName(), GetTypeName(), GetId());
             return EventResult::StopChain;
         }
     }
@@ -332,7 +334,7 @@ auto Entity::GetInnerEntities(hstring entry) const noexcept -> nptr<const vector
         return nullptr;
     }
 
-    auto it_entry = _innerEntities->find(entry);
+    auto it_entry {_innerEntities->find(entry)};
 
     if (it_entry == _innerEntities->end()) {
         return nullptr;
@@ -347,7 +349,7 @@ auto Entity::GetInnerEntities(hstring entry) noexcept -> nptr<vector<refcount_pt
         return nullptr;
     }
 
-    auto it_entry = _innerEntities->find(entry);
+    auto it_entry {_innerEntities->find(entry)};
 
     if (it_entry == _innerEntities->end()) {
         return nullptr;
@@ -358,7 +360,7 @@ auto Entity::GetInnerEntities(hstring entry) noexcept -> nptr<vector<refcount_pt
 
 auto Entity::GetInnerEntitiesCount() const noexcept -> size_t
 {
-    size_t count = 0;
+    size_t count {0};
 
     if (_innerEntities) {
         for (const auto& entities : *_innerEntities | std::views::values) {
@@ -379,9 +381,9 @@ void Entity::AddInnerEntity(hstring entry, ptr<Entity> entity)
         _innerEntities.emplace();
     }
 
-    auto entity_ref_holder = entity.hold_ref();
+    auto entity_ref_holder {entity.hold_ref()};
 
-    if (auto it = _innerEntities->find(entry); it == _innerEntities->end()) {
+    if (auto it {_innerEntities->find(entry)}; it == _innerEntities->end()) {
         _innerEntities->emplace(entry, vector<refcount_ptr<Entity>> {entity_ref_holder});
     }
     else {
@@ -397,9 +399,9 @@ void Entity::RemoveInnerEntity(hstring entry, ptr<Entity> entity)
     FO_VERIFY_AND_THROW(!entity->IsDestroyed(), "Entity is already destroyed");
     FO_VERIFY_AND_THROW(_innerEntities->count(entry), "Inner entity entry is not registered in holder index");
 
-    auto& entities = _innerEntities->at(entry);
+    auto& entities {_innerEntities->at(entry)};
 
-    auto entity_ref_holder = entity.hold_ref();
+    auto entity_ref_holder {entity.hold_ref()};
     vec_remove_unique_value(entities, entity_ref_holder);
 
     if (entities.empty()) {
@@ -442,7 +444,7 @@ auto EntityEvent::FireEvent(FuncCallData& call) noexcept -> Entity::EventResult
 {
     FO_VERIFY_AND_RETURN_VALUE(!_entity->IsDestroyed(), Entity::EventResult::ContinueChain, "Destroyed entity tried to fire an entity event", _entity->GetName(), _entity->GetTypeName(), _entity->GetId(), _callbackName);
 
-    nptr<vector<Entity::EventCallbackData>> callbacks = _callbacks.load(std::memory_order_acquire);
+    nptr<vector<Entity::EventCallbackData>> callbacks {_callbacks.load(std::memory_order_acquire)};
     FO_STRONG_ASSERT(callbacks, "Entity event fired without cached callbacks", _callbackName);
     return _entity->FireEvent(*callbacks, call);
 }
@@ -451,11 +453,11 @@ auto EntityEvent::CheckCallbacks() -> bool
 {
     FO_VERIFY_AND_RETURN_VALUE(!_entity->IsDestroyed(), false, "Destroyed entity tried to check callbacks for an event", _entity->GetName(), _entity->GetTypeName(), _entity->GetId(), _callbackName);
 
-    if (auto callbacks = _callbacks.load(std::memory_order_acquire); callbacks) {
+    if (auto callbacks {_callbacks.load(std::memory_order_acquire)}; callbacks) {
         return !callbacks->empty();
     }
 
-    if (auto callbacks = _entity->FindEventCallbacks(_callbackName)) {
+    if (auto callbacks {_entity->FindEventCallbacks(_callbackName)}) {
         _callbacks.store(callbacks.get(), std::memory_order_release);
         return !callbacks->empty();
     }

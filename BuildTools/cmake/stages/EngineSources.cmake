@@ -4,8 +4,12 @@ cmake_minimum_required(VERSION 3.22)
 
 # App icon
 SetValue(FO_RC_FILE "${CMAKE_CURRENT_BINARY_DIR}/${FO_DEV_NAME}.rc")
-GetFilenameComponent(FO_APP_ICON ${FO_APP_ICON} REALPATH)
-SetValue(FO_GEN_FILE_CONTENT "101 ICON \"${FO_APP_ICON}\"")
+if(FO_APP_ICON)
+    GetFilenameComponent(FO_APP_ICON ${FO_APP_ICON} REALPATH)
+    SetValue(FO_GEN_FILE_CONTENT "101 ICON \"${FO_APP_ICON}\"")
+else()
+    SetValue(FO_GEN_FILE_CONTENT "")
+endif()
 configure_file(
     "${FO_ENGINE_ROOT}/BuildTools/blank.cmake.txt"
     ${FO_RC_FILE}
@@ -134,6 +138,8 @@ AppendList(FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/LineTracer.h"
     "${FO_ENGINE_ROOT}/Source/Common/LinkDelay.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/LinkDelay.h"
+    "${FO_ENGINE_ROOT}/Source/Common/RpcRuntimeTracker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Common/RpcRuntimeTracker.h"
     "${FO_ENGINE_ROOT}/Source/Common/Movement.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/Movement.h"
     "${FO_ENGINE_ROOT}/Source/Common/MapLoader.cpp"
@@ -158,6 +164,8 @@ AppendList(FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/ProtoManager.h"
     "${FO_ENGINE_ROOT}/Source/Common/RemoteCallWire.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/RemoteCallWire.h"
+    "${FO_ENGINE_ROOT}/Source/Common/ResourceDefaults.cpp"
+    "${FO_ENGINE_ROOT}/Source/Common/ResourceDefaults.h"
     "${FO_ENGINE_ROOT}/Source/Common/ScriptSystem.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/ScriptSystem.h"
     "${FO_ENGINE_ROOT}/Source/Common/SecureChannel.cpp"
@@ -393,6 +401,10 @@ AppendList(FO_BAKER_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tools/AngelScriptBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/Baker.h"
     "${FO_ENGINE_ROOT}/Source/Tools/Baker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tools/ResourceUsage.h"
+    "${FO_ENGINE_ROOT}/Source/Tools/ResourceUsage.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tools/BakingContext.h"
+    "${FO_ENGINE_ROOT}/Source/Tools/BakingContext.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/BakingReport.h"
     "${FO_ENGINE_ROOT}/Source/Tools/BakingReport.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/AudioBaker.h"
@@ -435,6 +447,14 @@ AppendList(FO_BAKER_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tools/ImageBaker-Tga.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/ImageImport.h"
     "${FO_ENGINE_ROOT}/Source/Tools/ImageImport.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tools/ImageRecipe.h"
+    "${FO_ENGINE_ROOT}/Source/Tools/ImageRecipe.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tools/ImageTransforms.h"
+    "${FO_ENGINE_ROOT}/Source/Tools/ImageTransforms.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tools/ImageDependencyGraph.h"
+    "${FO_ENGINE_ROOT}/Source/Tools/ImageDependencyGraph.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tools/ImageDependencyCache.h"
+    "${FO_ENGINE_ROOT}/Source/Tools/ImageDependencyCache.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/SpriteMeshing.h"
     "${FO_ENGINE_ROOT}/Source/Tools/SpriteMeshing.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/MapBaker.h"
@@ -464,6 +484,11 @@ AppendList(FO_BAKER_SOURCE
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-ServerStub.gen.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-ClientStub.gen.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-MapperStub.gen.cpp")
+
+# Role stubs intentionally repeat internal registration helpers
+AppendSourceProperty("${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-ServerStub.gen.cpp" SKIP_UNITY_BUILD_INCLUSION ON)
+AppendSourceProperty("${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-ClientStub.gen.cpp" SKIP_UNITY_BUILD_INCLUSION ON)
+AppendSourceProperty("${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-MapperStub.gen.cpp" SKIP_UNITY_BUILD_INCLUSION ON)
 
 if(FO_MANAGED_SCRIPTING)
     AppendList(FO_BAKER_SOURCE
@@ -567,6 +592,8 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_HashedString.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ImGui.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ImageBaker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ImageDependencies.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ImageTransforms.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_LineTracer.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Logging.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_MapLoader.cpp"
@@ -588,6 +615,7 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelSourceLoader.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_OzzAnimation.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_LinkDelay.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_RpcRuntimeTracker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Movement.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_NetBuffer.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_PathFinding.cpp"

@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
 #include "Movement.h"
@@ -40,7 +42,7 @@ FO_BEGIN_NAMESPACE
 namespace
 {
     constexpr msize TEST_MAP_SIZE {40, 40};
-    constexpr uint16_t TEST_SPEED = 100;
+    constexpr uint16_t TEST_SPEED {100};
     const vector<mdir> TEST_STEPS {hdir::NorthEast, hdir::NorthEast, hdir::East, hdir::East, hdir::SouthEast};
     const vector<uint16_t> TEST_CONTROL_STEPS {2, 4, 5};
     constexpr mpos TEST_START_HEX {20, 20};
@@ -49,7 +51,7 @@ namespace
 
     static auto MakeMovingContext() -> refcount_ptr<MovingContext>
     {
-        return safe_alloc::make_refcounted<MovingContext>(TEST_MAP_SIZE, TEST_SPEED, TEST_STEPS, TEST_CONTROL_STEPS, nanotime {}, timespan {}, TEST_START_HEX, ipos16 {}, ipos16 {});
+        return safe_alloc::make_refcounted<MovingContext>(TEST_MAP_SIZE, TEST_SPEED, TEST_STEPS, TEST_CONTROL_STEPS, nanotime {}, timespan::zero, TEST_START_HEX, ipos16 {}, ipos16 {});
     }
 
     static auto MakeTimePoint(int32_t milliseconds) -> nanotime
@@ -59,11 +61,11 @@ namespace
 
     static auto FindExpectedNearestHex(const vector<mpos>& path_hexes, mpos from_hex, mpos fallback_hex) -> mpos
     {
-        mpos best_hex = fallback_hex;
-        int32_t best_dist = GeometryHelper::GetDistance(from_hex, best_hex);
+        mpos best_hex {fallback_hex};
+        int32_t best_dist {GeometryHelper::GetDistance(from_hex, best_hex)};
 
         for (auto hex : path_hexes) {
-            int32_t dist = GeometryHelper::GetDistance(from_hex, hex);
+            int32_t dist {GeometryHelper::GetDistance(from_hex, hex)};
             if (dist < best_dist) {
                 best_dist = dist;
                 best_hex = hex;
@@ -76,60 +78,132 @@ namespace
 
 TEST_CASE("MovingContext")
 {
+    SECTION("RetainsNanosecondsAfterLongElapsedTime")
+    {
+        auto moving {MakeMovingContext()};
+        timespan elapsed {timespan {std::chrono::hours {24}} + timespan {1}};
+
+        moving->UpdateCurrentTime(nanotime {elapsed});
+
+        CHECK(moving->GetElapsedTime() == elapsed);
+        CHECK(moving->GetRuntimeElapsedTime(nanotime {elapsed}) == elapsed);
+        CHECK(moving->EvaluateProjectedHex(timespan {std::numeric_limits<int64_t>::max()}) == moving->GetEndHex());
+    }
+
+    SECTION("LongFrameDelayKeepsNextHexBoundary")
+    {
+        auto moving {MakeMovingContext()};
+        mpos next_hex {moving->GetStartHex()};
+        REQUIRE(GeometryHelper::MoveHexByDir(next_hex, moving->GetSteps().front(), moving->GetMapSize()));
+
+        moving->UpdateCurrentTimeToNextHex(nanotime {timespan {std::chrono::hours {24 * 30}}}, moving->GetStartHex());
+
+        CHECK(moving->EvaluateProgress().Hex == next_hex);
+    }
+
+    SECTION("SpeedScalingPreservesLargeIntegralDurations")
+    {
+        auto moving {MakeMovingContext()};
+        timespan lease {std::numeric_limits<int64_t>::max() - 1};
+        moving->SetLeaseTime(lease, nanotime {});
+        moving->ChangeSpeed(TEST_SPEED, nanotime {});
+
+        CHECK(moving->GetLeaseTime() == lease);
+
+        moving->ChangeSpeed(TEST_SPEED * 2, nanotime {});
+
+        CHECK(moving->GetLeaseTime() == timespan {4611686018427387903});
+    }
+
+    SECTION("SpeedScalingOverflowPreservesContext")
+    {
+        auto moving {MakeMovingContext()};
+        timespan whole {moving->GetWholeTime()};
+        timespan lease {std::numeric_limits<int64_t>::max()};
+        moving->SetLeaseTime(lease, nanotime {});
+
+        CHECK_THROWS(moving->ChangeSpeed(TEST_SPEED / 2, nanotime {}));
+        CHECK(moving->GetSpeed() == TEST_SPEED);
+        CHECK(moving->GetWholeTime() == whole);
+        CHECK(moving->GetLeaseTime() == lease);
+        CHECK(moving->GetElapsedTime() == timespan::zero);
+    }
+
+    SECTION("SubMillisecondLeaseSettlesOnlyWaitingTime")
+    {
+        auto moving {MakeMovingContext()};
+        moving->SetLeaseTime(timespan {500}, nanotime {});
+        moving->UpdateCurrentTime(nanotime {timespan {1000}});
+
+        CHECK(moving->GetElapsedTime() == timespan {500});
+        CHECK(moving->IsHeldByLease());
+
+        moving->SetLeaseTime(timespan {1000}, nanotime {timespan {1000}});
+        moving->UpdateCurrentTime(nanotime {timespan {1250}});
+
+        CHECK(moving->GetElapsedTime() == timespan {750});
+        CHECK_FALSE(moving->IsHeldByLease());
+
+        moving->SetLeaseTime(timespan::zero, nanotime {timespan {1250}});
+        moving->UpdateCurrentTime(nanotime {timespan {2000}});
+
+        CHECK(moving->GetElapsedTime() == timespan {1500});
+    }
+
     SECTION("EvaluateMetricsMatchesPathEndAndLengths")
     {
-        auto moving = MakeMovingContext();
-        auto metrics = moving->EvaluateMetrics();
+        auto moving {MakeMovingContext()};
+        auto metrics {moving->EvaluateMetrics()};
 
         CHECK(metrics.EndHex == moving->GetEndHex());
-        CHECK(metrics.WholeTime == moving->GetWholeTime());
+        CHECK(metrics.WholeTime.to_ms<float64_t>() == moving->GetWholeTime().to_ms<float64_t>());
         CHECK(metrics.WholeDist == moving->GetWholeDist());
-        CHECK(metrics.WholeTime > 0.0f);
+        CHECK(metrics.WholeTime.to_ms<float64_t>() > 0.0f);
         CHECK(metrics.WholeDist > 0.0f);
     }
 
     SECTION("UpdateCurrentTimeUsesRuntimeElapsedTime")
     {
-        auto moving = MakeMovingContext();
+        auto moving {MakeMovingContext()};
 
         moving->UpdateCurrentTime(MakeTimePoint(250));
 
-        CHECK(moving->GetRuntimeElapsedTime(MakeTimePoint(250)) == moving->GetElapsedTime());
+        CHECK(moving->GetRuntimeElapsedTime(MakeTimePoint(250)).to_ms<float64_t>() == moving->GetElapsedTime().to_ms<float64_t>());
     }
 
     SECTION("EvaluateProjectedHexMatchesCurrentProgressForZeroLookAhead")
     {
-        auto moving = MakeMovingContext();
-        int32_t current_time_ms = iround<int32_t>(moving->GetWholeTime() * 0.75f);
+        auto moving {MakeMovingContext()};
+        int32_t current_time_ms {iround<int32_t>(moving->GetWholeTime().to_ms<float64_t>() * 0.75f)};
 
         moving->UpdateCurrentTime(MakeTimePoint(current_time_ms));
 
-        CHECK(moving->EvaluateProjectedHex(0.0f) == moving->EvaluateProgress().Hex);
+        CHECK(moving->EvaluateProjectedHex(timespan {std::chrono::duration<float64_t, std::milli> {0.0f}}) == moving->EvaluateProgress().Hex);
     }
 
     SECTION("EvaluateProjectedHexMatchesFutureProgressAcrossControlSegments")
     {
-        auto moving = MakeMovingContext();
-        auto future_moving = MakeMovingContext();
-        int32_t current_time_ms = iround<int32_t>(moving->GetWholeTime() * 0.2f);
-        float32_t look_ahead_ms = moving->GetWholeTime() * 0.65f;
-        int32_t future_time_ms = current_time_ms + iround<int32_t>(look_ahead_ms);
+        auto moving {MakeMovingContext()};
+        auto future_moving {MakeMovingContext()};
+        int32_t current_time_ms {iround<int32_t>(moving->GetWholeTime().to_ms<float64_t>() * 0.2f)};
+        float64_t look_ahead_ms {moving->GetWholeTime().to_ms<float64_t>() * 0.65f};
+        int32_t future_time_ms {current_time_ms + iround<int32_t>(look_ahead_ms)};
 
         moving->UpdateCurrentTime(MakeTimePoint(current_time_ms));
         future_moving->UpdateCurrentTime(MakeTimePoint(future_time_ms));
 
-        CHECK(moving->EvaluateProjectedHex(look_ahead_ms) == future_moving->EvaluateProgress().Hex);
+        CHECK(moving->EvaluateProjectedHex(timespan {std::chrono::duration<float64_t, std::milli> {look_ahead_ms}}) == future_moving->EvaluateProgress().Hex);
     }
 
     SECTION("EvaluateProgressOverloadsStayConsistentForCurrentHex")
     {
-        auto moving = MakeMovingContext();
-        int32_t current_time_ms = iround<int32_t>(moving->GetWholeTime() * 0.45f);
+        auto moving {MakeMovingContext()};
+        int32_t current_time_ms {iround<int32_t>(moving->GetWholeTime().to_ms<float64_t>() * 0.45f)};
 
         moving->UpdateCurrentTime(MakeTimePoint(current_time_ms));
 
-        auto progress = moving->EvaluateProgress();
-        auto same_hex_progress = moving->EvaluateProgress(progress.Hex);
+        auto progress {moving->EvaluateProgress()};
+        auto same_hex_progress {moving->EvaluateProgress(progress.Hex)};
 
         CHECK(same_hex_progress.Hex == progress.Hex);
         CHECK(same_hex_progress.HexOffset == progress.HexOffset);
@@ -139,13 +213,13 @@ TEST_CASE("MovingContext")
 
     SECTION("EvaluatePathHexesReturnsTailFromCurrentHex")
     {
-        auto moving = MakeMovingContext();
-        int32_t current_time_ms = iround<int32_t>(moving->GetWholeTime() * 0.45f);
+        auto moving {MakeMovingContext()};
+        int32_t current_time_ms {iround<int32_t>(moving->GetWholeTime().to_ms<float64_t>() * 0.45f)};
 
         moving->UpdateCurrentTime(MakeTimePoint(current_time_ms));
 
-        auto progress = moving->EvaluateProgress();
-        auto path_hexes = moving->EvaluatePathHexes(progress.Hex);
+        auto progress {moving->EvaluateProgress()};
+        auto path_hexes {moving->EvaluatePathHexes(progress.Hex)};
 
         REQUIRE(!path_hexes.empty());
         CHECK(path_hexes.front() == progress.Hex);
@@ -154,21 +228,21 @@ TEST_CASE("MovingContext")
 
     SECTION("EvaluateNearestPathHexMatchesPathTailSearch")
     {
-        auto moving = MakeMovingContext();
-        int32_t current_time_ms = iround<int32_t>(moving->GetWholeTime() * 0.45f);
+        auto moving {MakeMovingContext()};
+        int32_t current_time_ms {iround<int32_t>(moving->GetWholeTime().to_ms<float64_t>() * 0.45f)};
 
         moving->UpdateCurrentTime(MakeTimePoint(current_time_ms));
 
-        auto progress = moving->EvaluateProgress();
-        auto path_hexes = moving->EvaluatePathHexes(progress.Hex);
-        mpos expected_hex = FindExpectedNearestHex(path_hexes, moving->GetEndHex(), TEST_FALLBACK_HEX);
+        auto progress {moving->EvaluateProgress()};
+        auto path_hexes {moving->EvaluatePathHexes(progress.Hex)};
+        mpos expected_hex {FindExpectedNearestHex(path_hexes, moving->GetEndHex(), TEST_FALLBACK_HEX)};
 
         CHECK(moving->EvaluateNearestPathHex(progress.Hex, moving->GetEndHex(), TEST_FALLBACK_HEX) == expected_hex);
     }
 
     SECTION("PathTailHelpersReturnFallbackForUnknownHex")
     {
-        auto moving = MakeMovingContext();
+        auto moving {MakeMovingContext()};
 
         CHECK(moving->EvaluatePathHexes(TEST_UNKNOWN_HEX).empty());
         CHECK(moving->EvaluateNearestPathHex(TEST_UNKNOWN_HEX, moving->GetEndHex(), TEST_FALLBACK_HEX) == TEST_FALLBACK_HEX);
@@ -176,18 +250,18 @@ TEST_CASE("MovingContext")
 
     SECTION("ChangeSpeedPreservesCurrentProgress")
     {
-        auto moving = MakeMovingContext();
-        int32_t current_time_ms = iround<int32_t>(moving->GetWholeTime() * 0.45f);
-        float32_t before_whole_time = moving->GetWholeTime();
+        auto moving {MakeMovingContext()};
+        int32_t current_time_ms {iround<int32_t>(moving->GetWholeTime().to_ms<float64_t>() * 0.45f)};
+        float64_t before_whole_time {moving->GetWholeTime().to_ms<float64_t>()};
 
         moving->UpdateCurrentTime(MakeTimePoint(current_time_ms));
 
-        auto before_progress = moving->EvaluateProgress();
+        auto before_progress {moving->EvaluateProgress()};
         moving->ChangeSpeed(TEST_SPEED * 2, MakeTimePoint(current_time_ms));
-        auto after_progress = moving->EvaluateProgress();
+        auto after_progress {moving->EvaluateProgress()};
 
         CHECK(moving->GetSpeed() == TEST_SPEED * 2);
-        CHECK(moving->GetWholeTime() < before_whole_time);
+        CHECK(moving->GetWholeTime().to_ms<float64_t>() < before_whole_time);
         CHECK(after_progress.Hex == before_progress.Hex);
         CHECK(after_progress.HexOffset == before_progress.HexOffset);
         CHECK(after_progress.Dir == before_progress.Dir);
@@ -195,7 +269,7 @@ TEST_CASE("MovingContext")
 
     SECTION("SetBlockHexesStoresProvidedHexes")
     {
-        auto moving = MakeMovingContext();
+        auto moving {MakeMovingContext()};
         mpos pre_block_hex {21, 20};
         mpos block_hex {22, 20};
 
@@ -207,47 +281,57 @@ TEST_CASE("MovingContext")
 
     SECTION("CompleteSuccessMarksCompletedAndClampsElapsedTime")
     {
-        auto moving = MakeMovingContext();
-        int32_t current_time_ms = iround<int32_t>(moving->GetWholeTime() * 0.3f);
+        auto moving {MakeMovingContext()};
+        int32_t current_time_ms {iround<int32_t>(moving->GetWholeTime().to_ms<float64_t>() * 0.3f)};
 
         moving->UpdateCurrentTime(MakeTimePoint(current_time_ms));
         moving->Complete(MovingState::Success);
 
         CHECK(moving->IsCompleted());
         CHECK(moving->GetCompleteReason() == MovingState::Success);
-        CHECK(moving->GetElapsedTime() >= moving->GetWholeTime());
+        CHECK(moving->GetElapsedTime().to_ms<float64_t>() >= moving->GetWholeTime().to_ms<float64_t>());
     }
 
     SECTION("CompleteStoppedMarksCompletedWithoutReachingEnd")
     {
-        auto moving = MakeMovingContext();
-        int32_t current_time_ms = iround<int32_t>(moving->GetWholeTime() * 0.3f);
+        auto moving {MakeMovingContext()};
+        int32_t current_time_ms {iround<int32_t>(moving->GetWholeTime().to_ms<float64_t>() * 0.3f)};
 
         moving->UpdateCurrentTime(MakeTimePoint(current_time_ms));
-        float32_t elapsed_before_complete = moving->GetElapsedTime();
+        float64_t elapsed_before_complete {moving->GetElapsedTime().to_ms<float64_t>()};
         moving->Complete(MovingState::Stopped);
 
         CHECK(moving->IsCompleted());
         CHECK(moving->GetCompleteReason() == MovingState::Stopped);
-        CHECK(moving->GetElapsedTime() == elapsed_before_complete);
+        CHECK(moving->GetElapsedTime().to_ms<float64_t>() == elapsed_before_complete);
     }
 
     SECTION("UpdateCurrentTimeToNextHexStopsAtNextPathHex")
     {
-        auto moving = MakeMovingContext();
-        mpos expected_next_hex = moving->GetStartHex();
+        auto moving {MakeMovingContext()};
+        mpos expected_next_hex {moving->GetStartHex()};
         REQUIRE(GeometryHelper::MoveHexByDir(expected_next_hex, moving->GetSteps().front(), moving->GetMapSize()));
 
-        moving->UpdateCurrentTimeToNextHex(MakeTimePoint(iround<int32_t>(moving->GetWholeTime())), moving->GetStartHex());
+        moving->UpdateCurrentTimeToNextHex(MakeTimePoint(iround<int32_t>(moving->GetWholeTime().to_ms<float64_t>())), moving->GetStartHex());
 
         CHECK(moving->EvaluateProgress().Hex == expected_next_hex);
         CHECK(moving->EvaluateProgress().Hex != moving->GetEndHex());
     }
 }
 
+TEST_CASE("MovementLeaseDurationBoundary")
+{
+    CHECK(EvaluateMovementLeaseDuration(0.05, 100) == timespan {std::chrono::microseconds {500}});
+    CHECK(EvaluateMovementLeaseDuration(0.0, 100) == timespan {std::chrono::microseconds {1}});
+    CHECK(EvaluateMovementLeaseDuration(-1.0, 100) == timespan {std::chrono::microseconds {1}});
+    CHECK_THROWS(EvaluateMovementLeaseDuration(1.0, 0));
+    CHECK_THROWS(EvaluateMovementLeaseDuration(std::numeric_limits<float64_t>::infinity(), 100));
+    CHECK_THROWS(EvaluateMovementLeaseDuration(std::numeric_limits<float64_t>::max(), 1));
+}
+
 TEST_CASE("MovingPathJoin")
 {
-    mpos second_hex = TEST_START_HEX;
+    mpos second_hex {TEST_START_HEX};
     REQUIRE(GeometryHelper::MoveHexByDir(second_hex, TEST_STEPS[0], TEST_MAP_SIZE));
     REQUIRE(GeometryHelper::MoveHexByDir(second_hex, TEST_STEPS[1], TEST_MAP_SIZE));
 
@@ -261,27 +345,27 @@ TEST_CASE("MovingPathJoin")
 
     SECTION("DroppedPrefixKeepsControlStepsOnTheirHexes")
     {
-        vector<mdir> steps = TEST_STEPS;
-        vector<uint16_t> control_steps = TEST_CONTROL_STEPS;
+        vector<mdir> steps {TEST_STEPS};
+        vector<uint16_t> control_steps {TEST_CONTROL_STEPS};
         DropPathPrefix(steps, control_steps, 3);
 
         CHECK(steps == vector<mdir> {TEST_STEPS[3], TEST_STEPS[4]});
         CHECK(control_steps == vector<uint16_t> {1, 2});
 
-        vector<mdir> joined_steps = TEST_STEPS;
-        vector<uint16_t> joined_control_steps = TEST_CONTROL_STEPS;
+        vector<mdir> joined_steps {TEST_STEPS};
+        vector<uint16_t> joined_control_steps {TEST_CONTROL_STEPS};
         DropPathPrefix(joined_steps, joined_control_steps, 2);
 
         CHECK(joined_control_steps == vector<uint16_t> {2, 3});
 
-        auto moving = safe_alloc::make_refcounted<MovingContext>(TEST_MAP_SIZE, TEST_SPEED, joined_steps, joined_control_steps, nanotime {}, timespan {}, second_hex, ipos16 {}, ipos16 {});
+        auto moving {safe_alloc::make_refcounted<MovingContext>(TEST_MAP_SIZE, TEST_SPEED, joined_steps, joined_control_steps, nanotime {}, timespan::zero, second_hex, ipos16 {}, ipos16 {})};
         CHECK(moving->GetEndHex() == MakeMovingContext()->GetEndHex());
     }
 
     SECTION("DroppingEveryStepIsRejected")
     {
-        vector<mdir> steps = TEST_STEPS;
-        vector<uint16_t> control_steps = TEST_CONTROL_STEPS;
+        vector<mdir> steps {TEST_STEPS};
+        vector<uint16_t> control_steps {TEST_CONTROL_STEPS};
         CHECK_THROWS(DropPathPrefix(steps, control_steps, TEST_STEPS.size()));
         CHECK(steps == TEST_STEPS);
     }
@@ -289,27 +373,27 @@ TEST_CASE("MovingPathJoin")
 
 TEST_CASE("MovingContextLease")
 {
-    auto moving = MakeMovingContext();
-    moving->SetLeaseTime(100.0f, MakeTimePoint(0));
+    auto moving {MakeMovingContext()};
+    moving->SetLeaseTime(timespan {std::chrono::duration<float64_t, std::milli> {100.0f}}, MakeTimePoint(0));
 
     SECTION("PlanWaitsAtTheLeaseWithItsClockStopped")
     {
         moving->UpdateCurrentTime(MakeTimePoint(500));
-        CHECK(moving->GetElapsedTime() == 100.0f);
+        CHECK(moving->GetElapsedTime().to_ms<float64_t>() == 100.0f);
         CHECK(moving->IsHeldByLease());
-        CHECK(moving->GetRuntimeElapsedTime(MakeTimePoint(900)) == 100.0f);
+        CHECK(moving->GetRuntimeElapsedTime(MakeTimePoint(900)).to_ms<float64_t>() == 100.0f);
 
         // A longer lease resumes the plan from where it waited, not from where its clock would be
-        moving->SetLeaseTime(400.0f, MakeTimePoint(1000));
+        moving->SetLeaseTime(timespan {std::chrono::duration<float64_t, std::milli> {400.0f}}, MakeTimePoint(1000));
         moving->UpdateCurrentTime(MakeTimePoint(1050));
-        CHECK(std::abs(moving->GetElapsedTime() - 150.0f) < 0.5f);
+        CHECK(std::abs(moving->GetElapsedTime().to_ms<float64_t>() - 150.0f) < 0.5f);
         CHECK_FALSE(moving->IsHeldByLease());
     }
 
     SECTION("LeaseBeyondTheEndDoesNotHold")
     {
-        moving->SetLeaseTime(moving->GetWholeTime() * 2.0f, MakeTimePoint(0));
-        moving->UpdateCurrentTime(MakeTimePoint(iround<int32_t>(moving->GetWholeTime()) + 10));
+        moving->SetLeaseTime(timespan {std::chrono::duration<float64_t, std::milli> {moving->GetWholeTime().to_ms<float64_t>() * 2.0f}}, MakeTimePoint(0));
+        moving->UpdateCurrentTime(MakeTimePoint(iround<int32_t>(moving->GetWholeTime().to_ms<float64_t>()) + 10));
         CHECK_FALSE(moving->IsHeldByLease());
         CHECK(moving->EvaluateProgress().Completed);
     }
@@ -317,29 +401,29 @@ TEST_CASE("MovingContextLease")
     SECTION("ZeroLiftsTheLease")
     {
         moving->UpdateCurrentTime(MakeTimePoint(500));
-        moving->SetLeaseTime(0.0f, MakeTimePoint(500));
+        moving->SetLeaseTime(timespan {std::chrono::duration<float64_t, std::milli> {0.0f}}, MakeTimePoint(500));
         moving->UpdateCurrentTime(MakeTimePoint(600));
-        CHECK(std::abs(moving->GetElapsedTime() - 200.0f) < 0.5f);
+        CHECK(std::abs(moving->GetElapsedTime().to_ms<float64_t>() - 200.0f) < 0.5f);
     }
 
     SECTION("FastForwardStopsAtTheLease")
     {
         moving->FastForward(std::chrono::milliseconds {5000});
         moving->UpdateCurrentTime(MakeTimePoint(10));
-        CHECK(moving->GetElapsedTime() == 100.0f);
+        CHECK(moving->GetElapsedTime().to_ms<float64_t>() == 100.0f);
     }
 
-    CHECK_THROWS(moving->SetLeaseTime(-1.0f, MakeTimePoint(0)));
+    CHECK_THROWS(moving->SetLeaseTime(timespan {std::chrono::duration<float64_t, std::milli> {-1.0f}}, MakeTimePoint(0)));
 }
 
 TEST_CASE("MovingContextFastForward")
 {
-    auto moving = MakeMovingContext();
+    auto moving {MakeMovingContext()};
     moving->FastForward(std::chrono::milliseconds {250});
     moving->UpdateCurrentTime(MakeTimePoint(100));
 
-    CHECK(moving->GetElapsedTime() == moving->GetRuntimeElapsedTime(MakeTimePoint(100)));
-    CHECK(std::abs(moving->GetElapsedTime() - 350.0f) < 0.5f);
+    CHECK(moving->GetElapsedTime().to_ms<float64_t>() == moving->GetRuntimeElapsedTime(MakeTimePoint(100)).to_ms<float64_t>());
+    CHECK(std::abs(moving->GetElapsedTime().to_ms<float64_t>() - 350.0f) < 0.5f);
     CHECK_THROWS(moving->FastForward(std::chrono::milliseconds {-1}));
 }
 

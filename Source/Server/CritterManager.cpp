@@ -32,6 +32,7 @@
 //
 
 #include "CritterManager.h"
+
 #include "EntityManager.h"
 #include "ItemManager.h"
 #include "MapManager.h"
@@ -52,8 +53,8 @@ auto CritterManager::AddItemToCritter(ptr<Critter> cr, ptr<Item> item, bool send
 
     FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Cannot add an item to an already destroyed critter", cr->GetId());
     FO_VERIFY_AND_THROW(!cr->IsDestroying(), "Cannot add an item to a critter that is being destroyed", cr->GetId());
-    auto cr_holder = cr.hold_ref();
-    auto item_holder = item.hold_ref();
+    auto cr_holder {cr.hold_ref()};
+    auto item_holder {item.hold_ref()};
     ignore_unused(cr_holder);
     ignore_unused(item_holder);
     ValidateEntityAccess(cr);
@@ -68,7 +69,7 @@ auto CritterManager::AddItemToCritter(ptr<Critter> cr, ptr<Item> item, bool send
 
     cr->SetItem(item);
 
-    auto item_ids = cr->GetItemIds();
+    auto item_ids {cr->GetItemIds()};
     vec_add_unique_value(item_ids, item->GetId());
     cr->SetItemIds(item_ids);
 
@@ -105,7 +106,7 @@ void CritterManager::RemoveItemFromCritter(ptr<Critter> cr, ptr<Item> item, bool
 
     cr->RemoveItem(item);
 
-    auto item_ids = cr->GetItemIds();
+    auto item_ids {cr->GetItemIds()};
 
     if (item->IsPersistent()) {
         vec_remove_unique_value(item_ids, item->GetId());
@@ -125,7 +126,7 @@ void CritterManager::RemoveItemFromCritter(ptr<Critter> cr, ptr<Item> item, bool
         cr->SendAndBroadcast_MoveItem(item, CritterAction::Refresh, CritterItemSlot::Inventory);
     }
 
-    auto prev_slot = item->GetCritterSlot();
+    auto prev_slot {item->GetCritterSlot()};
 
     item->SetCritterId(ident_t {});
     item->SetCritterSlot(CritterItemSlot::Inventory);
@@ -143,22 +144,22 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, nptr<const Properties>
 {
     FO_TRACE_ZONE(Entity);
 
-    auto map_holder = map.hold_ref();
+    auto map_holder {map.hold_ref()};
     ignore_unused(map_holder);
     ValidateEntityAccess(map);
     FO_VERIFY_AND_THROW(map->GetSize().is_valid_pos(hex), "Critter creation hex is outside target map bounds", proto_id, map->GetId(), hex, map->GetSize());
 
-    auto proto = _engine->GetProtoCritter(proto_id);
+    auto proto {_engine->GetProtoCritter(proto_id)};
 
     if (!proto) {
         throw CritterManagerException("Critter proto not found", proto_id);
     }
 
-    int32_t multihex;
+    int32_t multihex {};
 
     if (props) {
-        auto props_copy = props->Copy();
-        auto cr_props = CritterProperties(props_copy);
+        auto props_copy {props->Copy()};
+        auto cr_props {CritterProperties(props_copy)};
         multihex = cr_props.GetMultihex();
     }
     else {
@@ -166,14 +167,14 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, nptr<const Properties>
     }
 
     // Find better place if target hex busy
-    mpos final_hex = hex;
+    mpos final_hex {hex};
 
     if (!map->IsHexesMovable(hex, multihex)) {
-        int32_t hexes_around = GeometryHelper::HexesInRadius(2);
-        auto map_size = map->GetSize();
+        int32_t hexes_around {GeometryHelper::HexesInRadius(2)};
+        auto map_size {map->GetSize()};
 
-        for (int32_t i = 1; i <= hexes_around; i++) {
-            mpos check_hex = hex;
+        for (int32_t i {1}; i <= hexes_around; i++) {
+            mpos check_hex {hex};
 
             if (!GeometryHelper::MoveHexAroundAway(check_hex, i, map_size)) {
                 continue;
@@ -188,14 +189,14 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, nptr<const Properties>
     }
 
     // Create critter
-    auto cr = safe_alloc::make_refcounted<Critter>(_engine, ident_t {}, proto, props);
+    auto cr {safe_alloc::make_refcounted<Critter>(_engine, ident_t {}, proto, props)};
 
     _engine->EntityMngr.RegisterCritter(cr);
 
-    auto loc = map->GetLocation();
+    auto loc {map->GetLocation()};
     FO_VERIFY_AND_THROW(loc, "Missing location instance");
 
-    ident_t target_map_id = map->GetId();
+    ident_t target_map_id {map->GetId()};
 
     _engine->MapMngr.AddCritterToMap(cr, map, final_hex, dir, ident_t {});
 
@@ -215,7 +216,8 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, nptr<const Properties>
     if (map->IsDestroyed()) {
         throw CritterManagerException("Critter map add event destroyed the target map", proto_id);
     }
-    auto map_cr = map->GetCritter(cr->GetId());
+
+    auto map_cr {map->GetCritter(cr->GetId())};
 
     if (cr->GetMapId() != target_map_id || cr->GetHex() != final_hex || !(map_cr == cr)) {
         throw CritterManagerException("Critter map add event moved the committed critter", proto_id);
@@ -228,7 +230,7 @@ void CritterManager::DestroyCritter(ptr<Critter> cr)
 {
     FO_TRACE_ZONE(Entity);
 
-    auto cr_holder = cr.hold_ref();
+    auto cr_holder {cr.hold_ref()};
     ignore_unused(cr_holder);
 
     EnsureEntitySynced(cr);
@@ -248,15 +250,15 @@ void CritterManager::DestroyCritter(ptr<Critter> cr)
     // Tear off from environment
     {
         cr->LockMapTransfers();
-        auto restore_transfers = scope_exit([cr]() mutable noexcept { cr->UnlockMapTransfers(); });
+        auto restore_transfers {scope_exit([cr]() mutable noexcept { cr->UnlockMapTransfers(); })};
 
         if (cr->GetMapId()) {
-            auto map = cr->GetParent<Map>();
+            auto map {cr->GetParent<Map>()};
             FO_VERIFY_AND_THROW(map, "Missing map instance");
             ValidateEntityAccess(map);
         }
 
-        for (size_t prev_deps = std::numeric_limits<size_t>::max(); cr->GetMapId() || cr->GetRawGlobalMapGroup() || cr->HasItems() || cr->HasInnerEntities() || cr->GetIsAttached() || cr->HasAttachedCritters();) {
+        for (size_t prev_deps {std::numeric_limits<size_t>::max()}; cr->GetMapId() || cr->GetRawGlobalMapGroup() || cr->HasItems() || cr->HasInnerEntities() || cr->GetIsAttached() || cr->HasAttachedCritters();) {
             try {
                 DestroyInventory(cr);
 
@@ -275,7 +277,7 @@ void CritterManager::DestroyCritter(ptr<Critter> cr)
                 }
 
                 if (cr->GetMapId()) {
-                    auto map = cr->GetParent<Map>();
+                    auto map {cr->GetParent<Map>()};
                     FO_VERIFY_AND_THROW(map, "Missing map instance");
                     ValidateEntityAccess(map);
                     _engine->MapMngr.RemoveCritterFromMap(cr, map);
@@ -290,7 +292,7 @@ void CritterManager::DestroyCritter(ptr<Critter> cr)
 
             // A pass that does not strictly reduce the remaining dependencies can never converge, so this exits
             // deterministically rather than leaving an undead critter in the registry
-            size_t remaining_deps = (cr->GetMapId() ? 1 : 0) + (cr->GetRawGlobalMapGroup() ? 1 : 0) + cr->GetInvItems().size() + cr->GetInnerEntitiesCount() + (cr->GetIsAttached() ? 1 : 0) + cr->GetAttachedCritters().size();
+            size_t remaining_deps {(cr->GetMapId() ? 1 : 0) + (cr->GetRawGlobalMapGroup() ? 1 : 0) + cr->GetInvItems().size() + cr->GetInnerEntitiesCount() + (cr->GetIsAttached() ? 1 : 0) + cr->GetAttachedCritters().size()};
             FO_STRONG_ASSERT(remaining_deps < prev_deps, "Critter destruction made no progress", cr->GetId(), remaining_deps, prev_deps);
             prev_deps = remaining_deps;
         }
@@ -308,12 +310,12 @@ void CritterManager::DestroyInventory(ptr<Critter> cr)
 
     ValidateEntityAccess(cr);
 
-    for (size_t prev_deps = std::numeric_limits<size_t>::max(); cr->HasItems();) {
-        ptr<Item> item = cr->GetInvItems().front();
+    for (size_t prev_deps {std::numeric_limits<size_t>::max()}; cr->HasItems();) {
+        ptr<Item> item {cr->GetInvItems().front()};
         ValidateEntityAccess(item);
         _engine->ItemMngr.DestroyItem(item);
 
-        size_t remaining_deps = cr->GetInvItems().size();
+        size_t remaining_deps {cr->GetInvItems().size()};
         FO_STRONG_ASSERT(remaining_deps < prev_deps, "Critter inventory destruction made no progress", cr->GetId(), remaining_deps, prev_deps);
         prev_deps = remaining_deps;
     }
@@ -321,8 +323,8 @@ void CritterManager::DestroyInventory(ptr<Critter> cr)
 
 auto CritterManager::GetNonPlayerCritters() -> vector<refcount_ptr<Critter>>
 {
-    vector<refcount_ptr<Critter>> all_critters = _engine->EntityMngr.GetCritters();
-    vector<refcount_ptr<Critter>> result;
+    vector<refcount_ptr<Critter>> all_critters {_engine->EntityMngr.GetCritters()};
+    vector<refcount_ptr<Critter>> result {};
     result.reserve(all_critters.size());
 
     for (auto& cr : all_critters) {
@@ -336,9 +338,9 @@ auto CritterManager::GetNonPlayerCritters() -> vector<refcount_ptr<Critter>>
 
 auto CritterManager::GetPlayerCritters() -> vector<refcount_ptr<Critter>>
 {
-    vector<refcount_ptr<Critter>> all_critters = _engine->EntityMngr.GetCritters();
+    vector<refcount_ptr<Critter>> all_critters {_engine->EntityMngr.GetCritters()};
 
-    vector<refcount_ptr<Critter>> result;
+    vector<refcount_ptr<Critter>> result {};
     result.reserve(all_critters.size());
 
     for (auto& cr : all_critters) {

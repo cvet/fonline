@@ -32,6 +32,7 @@
 //
 
 #include "TextBaker.h"
+
 #include "ConfigFile.h"
 #include "TextPack.h"
 
@@ -40,7 +41,7 @@ FO_BEGIN_NAMESPACE
 TextBaker::TextBaker(shared_ptr<BakingContext> ctx) :
     BaseBaker(std::move(ctx), NAME)
 {
-    if (_context->Settings->Baking.BakeLanguages.empty()) {
+    if (_context->GetSettings()->Baking.BakeLanguages.empty()) {
         throw TextBakerException("No bake languages specified");
     }
 }
@@ -57,26 +58,26 @@ void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) 
         return;
     }
 
-    BakeLanguageConfig bake_languages = TextPack::ParseBakeLanguages(_context->Settings->Baking.BakeLanguages);
+    BakeLanguageConfig bake_languages {TextPack::ParseBakeLanguages(_context->GetSettings()->Baking.BakeLanguages)};
 
     // Collect files
-    vector<File> filtered_files;
-    set<string> filtered_paths;
-    set<string> packs_to_complete;
+    vector<File> filtered_files {};
+    set<string> filtered_paths {};
+    set<string> packs_to_complete {};
 
     for (const auto& file_header : files) {
-        string ext = strex(file_header.GetPath()).get_file_extension();
+        string ext {static_cast<string&&>(strex(file_header.GetPath()).get_file_extension())};
 
         if (ext != "fotxt") {
             continue;
         }
 
-        auto name_pair = strex(file_header.GetNameNoExt()).split('.');
+        auto name_pair {strex(file_header.GetNameNoExt()).split('.')};
         FO_VERIFY_AND_THROW(name_pair.size() == 2, "Text filename must contain pack name and language suffix", file_header.GetPath(), file_header.GetNameNoExt(), name_pair.size());
-        const auto& text_pack_name = name_pair[0];
-        const auto& lang_name = name_pair[1];
+        const auto& text_pack_name {name_pair[0]};
+        const auto& lang_name {name_pair[1]};
 
-        if (_context->BakeChecker && !_context->BakeChecker(strex("{}.{}.{}.fotxt-bin", _context->PackName, text_pack_name, lang_name), file_header.GetWriteTime())) {
+        if (_context->HasBakeChecker() && !_context->CheckOutput(strex("{}.{}.{}.fotxt-bin", _context->GetPackName(), text_pack_name, lang_name), file_header.GetWriteTime())) {
             continue;
         }
 
@@ -87,16 +88,16 @@ void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) 
 
     // Ensure full language set for changed text packs
     for (const auto& file_header : files) {
-        string ext = strex(file_header.GetPath()).get_file_extension();
+        string ext {static_cast<string&&>(strex(file_header.GetPath()).get_file_extension())};
 
         if (ext != "fotxt") {
             continue;
         }
 
-        auto name_pair = strex(file_header.GetNameNoExt()).split('.');
+        auto name_pair {strex(file_header.GetNameNoExt()).split('.')};
         FO_VERIFY_AND_THROW(name_pair.size() == 2, "Text filename must contain pack name and language suffix", file_header.GetPath(), file_header.GetNameNoExt(), name_pair.size());
-        const auto& text_pack_name = name_pair[0];
-        const auto& lang_name = name_pair[1];
+        const auto& text_pack_name {name_pair[0]};
+        const auto& lang_name {name_pair[1]};
 
         if (!packs_to_complete.contains(text_pack_name)) {
             continue;
@@ -117,14 +118,14 @@ void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) 
     }
 
     // Find languages
-    const string& default_lang = bake_languages.Languages.front();
-    set<string> languages;
-    set<string> all_languages;
+    const string& default_lang {bake_languages.Languages.front()};
+    set<string> languages {};
+    set<string> all_languages {};
 
     for (const auto& file : filtered_files) {
-        auto name_pair = strex(file.GetNameNoExt()).split('.');
+        auto name_pair {strex(file.GetNameNoExt()).split('.')};
         FO_VERIFY_AND_THROW(name_pair.size() == 2, "Text filename must contain pack name and language suffix", file.GetPath(), file.GetNameNoExt(), name_pair.size());
-        const auto& lang_name = name_pair[1];
+        const auto& lang_name {name_pair[1]};
 
         if (all_languages.emplace(lang_name).second) {
             if (std::ranges::find(bake_languages.Languages, lang_name) == bake_languages.Languages.end()) {
@@ -141,17 +142,17 @@ void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) 
     }
 
     // Parse texts
-    vector<pair<string, map<string, TextPack>>> lang_packs;
+    vector<pair<string, map<string, TextPack>>> lang_packs {};
     hash_storage hashes {};
 
     for (const auto& target_lang : languages) {
-        map<string, TextPack> lang_pack;
+        map<string, TextPack> lang_pack {};
 
         for (const auto& file : filtered_files) {
-            auto name_pair = strex(file.GetNameNoExt()).split('.');
+            auto name_pair {strex(file.GetNameNoExt()).split('.')};
             FO_VERIFY_AND_THROW(name_pair.size() == 2, "Text filename must contain pack name and language suffix", file.GetPath(), file.GetNameNoExt(), name_pair.size());
-            const auto& text_pack_name = name_pair[0];
-            const auto& lang_name = name_pair[1];
+            const auto& text_pack_name {name_pair[0]};
+            const auto& lang_name {name_pair[1]};
 
             if (lang_name == target_lang) {
                 TextPack text_pack {&hashes};
@@ -178,7 +179,7 @@ void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) 
     // Save parsed packs
     for (auto&& [lang_name, lang_pack] : lang_packs) {
         for (auto&& [pack_name, text_pack] : lang_pack) {
-            _context->WriteData(strex("{}.{}.{}.fotxt-bin", _context->PackName, pack_name, lang_name), text_pack.GetBinaryData());
+            _context->WriteData(strex("{}.{}.{}.fotxt-bin", _context->GetPackName(), pack_name, lang_name), text_pack.GetBinaryData());
         }
     }
 }

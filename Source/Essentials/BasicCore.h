@@ -310,7 +310,7 @@ FO_BEGIN_NAMESPACE
 using float32_t = float;
 using float64_t = double;
 
-inline constexpr size_t MAX_SERIALIZED_ALIGNMENT = 8; // Fixed cross-platform serialized-data alignment contract
+inline constexpr size_t MAX_SERIALIZED_ALIGNMENT {8}; // Fixed cross-platform serialized-data alignment contract
 
 // Check the sizes of base types
 static_assert(sizeof(bool) == 1);
@@ -344,13 +344,11 @@ namespace hashing_ex = ankerl::unordered_dense::detail::wyhash;
 class string_view_nt : public string_view
 {
 public:
-    // ReSharper disable once CppNonExplicitConvertingConstructor
     constexpr string_view_nt(const char* str) noexcept :
         string_view(str)
     {
     }
 
-    // ReSharper disable once CppInconsistentNaming
     [[nodiscard]] auto c_str() const noexcept -> const char* { return data(); }
 };
 
@@ -371,10 +369,9 @@ FO_BEGIN_NAMESPACE
 template<size_t N>
 struct fixed_string
 {
-    // ReSharper disable once CppNonExplicitConvertingConstructor
     constexpr fixed_string(const char (&s)[N]) noexcept { std::copy_n(s, N, data); }
     constexpr auto operator<=>(const fixed_string&) const noexcept = default;
-    constexpr auto c_str() const noexcept -> const char* { return data; }
+    [[nodiscard]] constexpr auto c_str() const noexcept -> const char* { return data; }
     char data[N] {};
 };
 
@@ -383,10 +380,10 @@ struct fixed_string
 // Mechanical process termination only; failure callers own any diagnostics they require
 [[noreturn]] void exit_app(bool success) noexcept;
 
-auto is_run_in_debugger() noexcept -> bool;
+[[nodiscard]] auto is_run_in_debugger() noexcept -> bool;
 auto break_into_debugger() noexcept -> bool;
 
-auto itoa(int64_t num, char buf[64], int32_t base) noexcept -> const char*;
+[[nodiscard]] auto itoa(int64_t num, char buf[64], int32_t base) noexcept -> const char*;
 
 template<typename... T>
 FO_FORCE_INLINE constexpr void ignore_unused(const T&... /*unused*/)
@@ -414,7 +411,7 @@ FO_FORCE_INLINE void tsan_release(void* addr) noexcept
 // Explicit copying
 template<typename T>
     requires(std::is_copy_constructible_v<std::remove_cvref_t<T>>)
-constexpr auto copy(T&& value) noexcept(std::is_nothrow_copy_constructible_v<std::remove_cvref_t<T>>) -> std::remove_cvref_t<T> // NOLINT(cppcoreguidelines-missing-std-forward)
+[[nodiscard]] constexpr auto copy(T&& value) noexcept(std::is_nothrow_copy_constructible_v<std::remove_cvref_t<T>>) -> std::remove_cvref_t<T> // NOLINT(cppcoreguidelines-missing-std-forward)
 {
     if (std::is_rvalue_reference_v<T>) {
         return std::move(value); // NOLINT(bugprone-move-forwarding-reference)
@@ -425,7 +422,7 @@ constexpr auto copy(T&& value) noexcept(std::is_nothrow_copy_constructible_v<std
 }
 
 // C-strings literal helpers
-constexpr auto const_hash(const char* input) noexcept -> uint32_t
+[[nodiscard]] constexpr auto const_hash(const char* input) noexcept -> uint32_t
 {
     return *input != 0 ? static_cast<uint32_t>(*input) + 33 * const_hash(input + 1) : 5381;
 }
@@ -475,7 +472,7 @@ concept convertible_without_narrowing = requires(From&& x) {
 };
 
 template<typename T>
-inline constexpr bool always_false_v = false;
+inline constexpr bool always_false_v {false};
 
 namespace details
 {
@@ -644,7 +641,7 @@ private:
 // Enum operation helpers
 template<typename T>
     requires(std::is_enum_v<T>)
-constexpr auto is_enum_set(T value, T check) noexcept -> bool
+[[nodiscard]] constexpr auto is_enum_set(T value, T check) noexcept -> bool
 {
     using U = std::underlying_type_t<T>;
     return (static_cast<U>(value) & static_cast<U>(check)) != 0;
@@ -652,7 +649,7 @@ constexpr auto is_enum_set(T value, T check) noexcept -> bool
 
 template<typename T, typename... Args>
     requires(std::is_enum_v<T> && (std::is_same_v<T, Args> && ...))
-constexpr auto combine_enum(T first, Args... rest) noexcept -> T
+[[nodiscard]] constexpr auto combine_enum(T first, Args... rest) noexcept -> T
 {
     using U = std::underlying_type_t<T>;
     return static_cast<T>((static_cast<U>(first) | ... | static_cast<U>(rest)));
@@ -660,7 +657,7 @@ constexpr auto combine_enum(T first, Args... rest) noexcept -> T
 
 template<typename T, typename... Args>
     requires(std::is_enum_v<T> && (std::is_same_v<T, Args> && ...))
-constexpr auto exclude_enum(T first, Args... rest) noexcept -> T
+[[nodiscard]] constexpr auto exclude_enum(T first, Args... rest) noexcept -> T
 {
     using U = std::underlying_type_t<T>;
     return static_cast<T>(static_cast<U>(first) & ~(static_cast<U>(rest) | ...));
@@ -689,7 +686,7 @@ FO_BEGIN_NAMESPACE
         template<typename FormatContext> \
         auto format(const type& value, FormatContext& ctx) const \
         { \
-            FO_NAMESPACE string buf; \
+            FO_NAMESPACE string buf {}; \
             std::format_to(std::back_inserter(buf), __VA_ARGS__); \
             return formatter<FO_NAMESPACE string_view>::format(buf, ctx); \
         } \
@@ -792,9 +789,13 @@ FO_BEGIN_NAMESPACE
     FO_BEGIN_NAMESPACE
 
 // Math constants
-constexpr auto SQRT3_FLOAT = std::numbers::sqrt3_v<float32_t>;
-constexpr auto SQRT3_X2_FLOAT = std::numbers::sqrt3_v<float32_t> * 2.0f;
-constexpr auto RAD_TO_DEG_FLOAT = 180.0f / std::numbers::pi_v<float32_t>;
-constexpr auto DEG_TO_RAD_FLOAT = std::numbers::pi_v<float32_t> / 180.0f;
+constexpr auto SQRT3_FLOAT {std::numbers::sqrt3_v<float32_t>};
+constexpr auto SQRT3_X2_FLOAT {std::numbers::sqrt3_v<float32_t> * 2.0f};
+constexpr auto RAD_TO_DEG_FLOAT {180.0f / std::numbers::pi_v<float32_t>};
+constexpr auto DEG_TO_RAD_FLOAT {std::numbers::pi_v<float32_t> / 180.0f};
+constexpr auto SQRT3_FLOAT64 {std::numbers::sqrt3_v<float64_t>};
+constexpr auto SQRT3_X2_FLOAT64 {std::numbers::sqrt3_v<float64_t> * 2.0};
+constexpr auto RAD_TO_DEG_FLOAT64 {180.0 / std::numbers::pi_v<float64_t>};
+constexpr auto DEG_TO_RAD_FLOAT64 {std::numbers::pi_v<float64_t> / 180.0};
 
 FO_END_NAMESPACE

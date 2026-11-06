@@ -34,21 +34,23 @@
 #pragma once
 
 #include "Common.h"
+
 #include "ModelBounds.h"
 
 FO_BEGIN_NAMESPACE
 
 class FileSystem;
 
-constexpr string_view SPRITE_INFO_DIRECTORY = "SpriteInfo";
-constexpr int32_t SPRITE_INFO_VERSION = 1;
+constexpr string_view SPRITE_INFO_DIRECTORY {"SpriteInfo"};
+constexpr int32_t SPRITE_INFO_VERSION {2};
 
 struct SpriteFrameInfo
 {
-    optional<uint16_t> SharedFrameIndex {};
+    optional<int32_t> SharedFrameIndex {};
     ipos32 Offset {};
     isize32 Size {};
     ipos32 NextOffset {};
+    timespan Duration {};
 };
 
 struct SpriteDirInfo
@@ -56,10 +58,11 @@ struct SpriteDirInfo
     vector<SpriteFrameInfo> Frames {};
 };
 
+auto GetSpriteDirDuration(const SpriteDirInfo& direction) -> timespan;
+auto GetSpriteDurationMilliseconds(timespan duration) -> uint32_t;
+
 struct SpriteInfo
 {
-    uint16_t FrameCount {};
-    timespan Duration {};
     vector<SpriteDirInfo> Directions {};
 };
 

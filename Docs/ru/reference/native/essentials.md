@@ -5,7 +5,7 @@ locale: ru
 document_id: native-essentials
 permalink: /Docs/ru/reference/native/essentials.html
 ---
-<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"ea12efb6d1da41d1e3a1624d29d024920385c22d6d8936afe240bfa2a4473c96"} -->
+<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"7384c0a1fbb9c512ca91ccd4a71d07cc19b7aa313ee0f029d6e6d54b1e84935c"} -->
 # Базовый слой Essentials
 
 > Документация движка. Эта страница описывает низкоуровневый слой `Source/Essentials/`: требования к платформе и компилятору, вспомогательные средства жизненного цикла процесса, журналирование, память, строки, сериализацию, файловую систему, сокеты и базовые типы, используемые всеми вышележащими слоями движка.
@@ -193,6 +193,15 @@ test Essentials не обходит contract-change gate.
 реализации Essentials, которые не могут зависеть от этих модулей из-за порядка
 слоёв (`BasicCore.cpp`, `BaseLogging.cpp`, `StringUtils.cpp`), а также
 `NetSockets.*` и `ServerServiceApp.cpp`, сами являющиеся OS wrappers.
+
+`WinApiUndef.inc` удаляет макросы Windows после платформенных и сторонних
+заголовков. Закомментированные записи `// #undef Name` задают сохраняемый
+генератором allowlist для поздних заголовков в той же единице трансляции Unity.
+Заголовкам сокетов Windows SDK нужны `CopyMemory` и `ZeroMemory` вместе с их
+раскрытиями `RtlCopyMemory` и `RtlZeroMemory`, даже если `<Windows.h>` уже был
+подключён и очищен ранее. Изменения allowlist проверяйте настоящими SDK и
+компилятором с таким порядком заголовков; сохранение только внешних псевдонимов
+оставляет их раскрытия неопределёнными.
 
 В Darwin SDK операции над наборами сигналов могут быть функциональными макросами.
 Внутри `Posix.cpp` вызывайте `sigfillset`, `sigdelset`, `sigemptyset` и `sigaddset`
@@ -401,9 +410,22 @@ standard stream копируется через `make_stream_string`,
 без квалификатора, чтобы ADL выбрал overload движка. Рост строки следует тому же
 детерминированному terminate-on-OOM contract, что и остальные engine storage.
 
-`DataSerialization.*` содержит binary read/write helpers, используемые сетью, persistence, ресурсами и тестами. `data_reader::read<T>()` и `data_writer::write<T>()` копируют standard-layout values через byte copies, поэтому serialized streams не зависят от выравнивания buffer. Zero-copy overload `read_ptr<T>(size)` предназначен только для raw byte/string views (`uint8_t`, `char` или `void`); типизированные значения, которым нужно alignment, должны использовать `read<T>()` или `read_ptr(destination, size)`.
+`DataSerialization.*` предоставляет бинарный I/O для сети, persistence, ресурсов и тестов. `data_reader::read<T>()` и `data_writer::write<T>()` копируют standard-layout bytes независимо от alignment. Zero-copy `read_ptr<T>(size)` принимает только raw byte/string views (`uint8_t`, `char`, `void`); выровненные типизированные значения используют `read<T>()` или `read_ptr(destination, size)`.
 
-`StringUtils.*`, `HashedString.*`, `StrongType.*`, `ExtendedTypes.*`, `SafeArithmetics.*` и `TimeRelated.*` предоставляют небольшие переиспользуемые значения, которые вышележащие слои считают примитивами. `iround` отвергает non-finite и выходящие за диапазон int64 floating-point values до округления, чтобы ни одно значение с неопределённым для `std::llround` поведением не достигло функции. `hash_storage::set_resolve_hash_failure_handler` позволяет вышележащему слою наблюдать неудачное разрешение hash как в throwing, так и во flagged no-throw lookup path, не обучая Essentials конкретной recovery policy.
+`StringUtils.*`, `HashedString.*`, `StrongType.*`, `ExtendedTypes.*`, `SafeArithmetics.*` и `TimeRelated.*` владеют примитивными значениями. `synctime` хранит signed int64 milliseconds; getters миллисекунд/секунд избегают переполнения наносекунд. `iround` отвергает non-finite/out-of-int64 input перед `std::llround`. `hash_storage::set_resolve_hash_failure_handler` наблюдает unresolved hashes в throwing и flagged no-throw paths; восстановлением владеют вышележащие слои.
+
+`timespan::to_ms/to_sec` сохраняют дробь для floating T; целые усекают к нулю.
+Для отношений — `div<T>`. Числовым единицам файлов/конфигов/сети нужны явные адаптеры.
+Для явного нулевого интервала используйте существующую `timespan::zero`;
+обычная инициализация полей и переменных сохраняет `{}`.
+
+Используйте `checked_add`, `checked_sub`, `checked_mul` и `checked_div` для важных вычислений, зависящих от скриптов или декодированных данных, до выделения памяти, индексирования или наблюдаемого изменения состояния. `numeric_cast` не обнаружит переполнение, уже произошедшее в его аргументе. Проверяемые функции отвергают переполнение целых, знаковое `min / -1`, неконечные операнды floating point и неконечные результаты через `OverflowException`. `checked_div` выдаёт `DivisionByZeroException` для нулевого целочисленного делителя или floating-point делителя с модулем меньше epsilon его типа. Потеря слишком малого конечного floating-point результата до нуля остаётся допустимой.
+
+Вызывайте проверяемую арифметику как `checked_add(left, right)` (аналогично `checked_sub`, `checked_mul` и `checked_div`): общий тип операндов выводится автоматически, результат имеет ровно этот тип. Оба операнда должны иметь один арифметический тип; `bool`, разные ширины/знаки и неявные пользовательские преобразования отвергаются. Явные template type arguments тоже запрещены, чтобы через них нельзя было скрыто преобразовать операнд. Для широкого произведения используйте `checked_mul(numeric_cast<int64_t>(width), numeric_cast<int64_t>(height))`; одна лишь принимающая переменная `int64_t` не расширяет операцию над двумя `int32_t`. Прежние целочисленные constant expressions сохраняются; floating constant evaluation зависит от выбранной стандартной библиотеки.
+
+Сначала согласуйте числовые типы. Количества, длины, размеры и их индексы обычно используют `int32_t`; для полного промежуточного диапазона при необходимости выбирайте более широкий знаковый тип фиксированной ширины. Оставляйте `size_t` только там, где именно его ожидает целевой контейнер, байтовый буфер или внешний API, unsigned-типы — для идентичностей, битовых представлений и сериализованных/внешних полей. Каждый переход между разными числовыми типами проводите через `numeric_cast`, включая расширение, индексы контейнеров и длины буферов. Важную арифметику выполняйте с одинаковыми фиксированными типами, затем преобразуйте результат на целевой границе. Проверяйте отрицательные величины до выделения памяти/индексирования и сохраняйте checked-арифметику при согласовании типов.
+
+`span_align_pos` проверяет арифметику выравнивания до изменения позиции. `data_writer` проверяет итоговую длину в байтах и вычисляет полный целевой размер геометрического роста до резервирования памяти, включая рост из нулевой ёмкости; размеры массивов объектов в байтах используют проверяемое умножение. Форматы сериализации и обычные размеры в байтах сохраняются.
 
 ### Файловая система, сжатие, сокеты и рабочие потоки
 

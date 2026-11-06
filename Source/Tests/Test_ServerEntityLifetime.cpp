@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
 #include "MapLoader.h"
@@ -41,11 +43,14 @@
 
 FO_BEGIN_NAMESPACE
 
+auto CheckViewMapCritterVisibilityHook(ptr<const ServerEngine>, ptr<const Map>, nptr<const Entity>, mpos, ptr<const Critter>) -> CritterVisibilityMode;
+auto CheckViewMapItemVisibilityHook(ptr<const ServerEngine>, ptr<const Map>, nptr<const Entity>, mpos, ptr<const Item>) -> bool;
+
 static auto MakeServerEntityLifetimeSettings() -> GlobalSettings
 {
-    GlobalSettings settings(false);
-    settings.ApplyDefaultSettings();
-    settings.ApplyAutoSettings();
+    GlobalSettings settings {false};
+    settings.SetupDefaultSettings();
+    settings.ApplyAutoSettings({});
     BakerTests::ApplySelfContainedServerSettings(settings);
     BakerTests::OverrideSetting(settings.Server.DbStorage, string {"Memory"});
     BakerTests::OverrideSetting(settings.Server.WriteHealthFile, false);
@@ -57,15 +62,15 @@ static auto MakeServerEntityLifetimeSettings() -> GlobalSettings
 
 static auto MakeServerEntityLifetimeResources(bool load_map = false, optional<msize> requested_size = std::nullopt) -> FileSystem
 {
-    vector<uint8_t> metadata = BakerTests::MakeEmptyMetadataBlob();
-    auto compiler_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ServerEntityLifetimeCompiler");
+    vector<uint8_t> metadata {BakerTests::MakeEmptyMetadataBlob()};
+    auto compiler_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("ServerEntityLifetimeCompiler")};
     compiler_source->AddFile("Metadata.fometa-server", metadata);
 
-    FileSystem compiler_resources;
+    FileSystem compiler_resources {};
     compiler_resources.AddCustomSource(std::move(compiler_source));
     BakerServerEngine proto_engine {compiler_resources};
 
-    auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ServerEntityLifetimeRuntime");
+    auto source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("ServerEntityLifetimeRuntime")};
     source->AddFile("Metadata.fometa-server", metadata);
 #if FO_ANGELSCRIPT_SCRIPTING
     source->AddFile("ServerEntityLifetime.fos-bin-server", BakerTests::CompileInlineScripts(&proto_engine, "ServerEntityLifetimeScripts", {{"Scripts/ServerEntityLifetime.fos", "void LifetimeFixtureEntry() {}"}}, [](string_view message) { FAIL(message); }));
@@ -73,15 +78,15 @@ static auto MakeServerEntityLifetimeResources(bool load_map = false, optional<ms
     source->AddFile("LifetimeCritter.fopro-bin-server", BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, proto_engine.Hashes.to_hashed_string("Critter"), "LifetimeCritter"));
     source->AddFile("LifetimeItem.fopro-bin-server", BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, proto_engine.Hashes.to_hashed_string("Item"), "LifetimeItem"));
     source->AddFile("LifetimeLocation.fopro-bin-server", BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, proto_engine.Hashes.to_hashed_string("Location"), "LifetimeLocation"));
-    vector<pair<string, function<void(ProtoMap&)>>> map_protos;
-    constexpr int32_t side = const_numeric_cast<int32_t>(GameSettings::SERVER_MAP_CHUNK_SIDE);
-    msize map_size = requested_size.value_or(load_map ? msize {side * 3 + 3, side * 3 + 3} : msize {2, 2});
+    vector<pair<string, function<void(ProtoMap&)>>> map_protos {};
+    constexpr int32_t side {const_numeric_cast<int32_t>(GameSettings::SERVER_MAP_CHUNK_SIDE)};
+    msize map_size {requested_size.value_or(load_map ? msize {side * 3 + 3, side * 3 + 3} : msize {2, 2})};
     map_protos.emplace_back("LifetimeMap", [map_size](ProtoMap& proto) { proto.SetSize(map_size); });
     source->AddFile("LifetimeMap.fopro-bin-server", BakerTests::MakeMultiProtoResourceBlob<ProtoMap>(proto_engine, proto_engine.Hashes.to_hashed_string("Map"), map_protos));
 
     if (load_map) {
-        vector<uint8_t> map_data;
-        auto writer = data_writer(map_data);
+        vector<uint8_t> map_data {};
+        data_writer writer {data_writer(map_data)};
         writer.write<uint32_t>(BAKED_MAP_FILE_MAGIC);
         writer.write<uint32_t>(BAKED_MAP_FILE_VERSION);
         writer.write<uint32_t>(uint32_t {0}); // Hashes
@@ -90,14 +95,14 @@ static auto MakeServerEntityLifetimeResources(bool load_map = false, optional<ms
         source->AddFile("LifetimeMap.fomap-bin-server", map_data);
     }
 
-    FileSystem resources;
+    FileSystem resources {};
     resources.AddCustomSource(std::move(source));
     return resources;
 }
 
 static auto WaitForServerEntityLifetimeStartup(ptr<ServerEngine> server) -> bool
 {
-    nanotime deadline = nanotime::now() + std::chrono::seconds {30};
+    nanotime deadline {nanotime::now() + std::chrono::seconds {30}};
 
     while (nanotime::now() < deadline) {
         if (server->IsStartingError()) {
@@ -116,57 +121,99 @@ static auto WaitForServerEntityLifetimeStartup(ptr<ServerEngine> server) -> bool
 static auto MakeServerEntityLifetimeOwners(ptr<ServerEngine> server, ptr<StaticMap> static_map) -> vector<refcount_ptr<ServerEntity>>
 {
     // The caller quiesces the server after complete startup; registrar setup and hash interning cannot race it
-    auto critter_proto = server->GetProtoCritter(server->Hashes.to_hashed_string("LifetimeCritter"));
-    auto item_proto = server->GetProtoItem(server->Hashes.to_hashed_string("LifetimeItem"));
-    auto map_proto = server->GetProtoMap(server->Hashes.to_hashed_string("LifetimeMap"));
-    auto location_proto = server->GetProtoLocation(server->Hashes.to_hashed_string("LifetimeLocation"));
+    auto critter_proto {server->GetProtoCritter(server->Hashes.to_hashed_string("LifetimeCritter"))};
+    auto item_proto {server->GetProtoItem(server->Hashes.to_hashed_string("LifetimeItem"))};
+    auto map_proto {server->GetProtoMap(server->Hashes.to_hashed_string("LifetimeMap"))};
+    auto location_proto {server->GetProtoLocation(server->Hashes.to_hashed_string("LifetimeLocation"))};
     REQUIRE(critter_proto);
     REQUIRE(item_proto);
     REQUIRE(map_proto);
     REQUIRE(location_proto);
 
-    vector<refcount_ptr<ServerEntity>> entities;
+    vector<refcount_ptr<ServerEntity>> entities {};
     entities.emplace_back(safe_alloc::make_refcounted<Critter>(server, ident_t {1}, critter_proto));
     entities.emplace_back(safe_alloc::make_refcounted<Item>(server, ident_t {2}, item_proto));
     entities.emplace_back(safe_alloc::make_refcounted<Map>(server, ident_t {3}, map_proto, nullptr, static_map));
     entities.emplace_back(safe_alloc::make_refcounted<Location>(server, ident_t {4}, location_proto));
 
-    auto network = NetworkServer::CreateDummyConnection(server->Settings);
-    auto connection = safe_alloc::make_unique<ServerConnection>(server->Settings, std::move(network), BakerTests::MakeTestChannelIdentity());
+    auto network {NetworkServer::CreateDummyConnection(server->Settings)};
+    auto connection {safe_alloc::make_unique<ServerConnection>(server->Settings, std::move(network), BakerTests::MakeTestChannelIdentity())};
     entities.emplace_back(safe_alloc::make_refcounted<Player>(server, ident_t {5}, std::move(connection)));
     return entities;
 }
 
+static void ClearServerEntityLifetimeViewOwners(ptr<ServerEngine> server, vector<refcount_ptr<ServerEntity>>& owners, nptr<Critter> observer)
+{
+    if (owners.empty()) {
+        return;
+    }
+
+    (void)server->RunInQuiescence(std::chrono::seconds {10}, [&](const ServerQuiescenceState&) {
+        ptr<Critter> target {owners[0].dyn_cast<Critter>()};
+        ptr<Item> item {owners[1].dyn_cast<Item>()};
+        ptr<Map> map {owners[2].dyn_cast<Map>()};
+        ptr<Player> player {owners[4].dyn_cast<Player>()};
+        ScopedSyncContext sync {};
+        vector<ptr<ServerEntity>> roots {map, player, target, item};
+
+        if (observer) {
+            roots.emplace_back(observer);
+        }
+
+        sync.GetContext().SyncEntities(roots);
+
+        for (auto cr : map->GetCritters()) {
+            roots.emplace_back(cr);
+        }
+        for (auto map_item : map->GetItems()) {
+            roots.emplace_back(map_item);
+        }
+
+        sync.GetContext().WidenEntities(roots);
+        player->ResetViewMap();
+
+        for (auto cr : copy_hold_ref(map->GetCritters())) {
+            map->RemoveCritter(cr);
+        }
+        for (auto map_item : copy_hold_ref(map->GetItems())) {
+            map->RemoveItem(map_item->GetId());
+        }
+        if (observer) {
+            observer->ClearAllAssociations();
+        }
+    });
+}
+
 TEST_CASE("ServerMapGridSelectionPreservesFieldBehavior", "[server][map][grid]")
 {
-    string proto_grid = GENERATE(string {"Static"}, string {"Chunked"}, string {"Dynamic"});
-    string instance_grid = GENERATE(string {"Static"}, string {"Chunked"}, string {"Dynamic"});
+    string proto_grid {GENERATE(string {"Static"}, string {"Chunked"}, string {"Dynamic"})};
+    string instance_grid {GENERATE(string {"Static"}, string {"Chunked"}, string {"Dynamic"})};
     CAPTURE(proto_grid, instance_grid);
 
-    GlobalSettings settings = MakeServerEntityLifetimeSettings();
+    GlobalSettings settings {MakeServerEntityLifetimeSettings()};
     BakerTests::OverrideSetting(settings.Server.ProtoMapGridType, proto_grid);
     BakerTests::OverrideSetting(settings.Server.MapInstanceGridType, instance_grid);
-    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources(true));
-    auto shutdown = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+    auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources(true))};
+    auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
     REQUIRE(WaitForServerEntityLifetimeStartup(server));
 
-    bool completed = server->RunInQuiescence(std::chrono::seconds {10}, [&](const ServerQuiescenceState&) {
-        hstring map_pid = server->Hashes.to_hashed_string("LifetimeMap");
-        auto loc = server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("LifetimeLocation"), vector<hstring> {map_pid, map_pid});
-        auto map = loc->GetMapByIndex(0);
-        auto other_map = loc->GetMapByIndex(1);
+    bool completed {server->RunInQuiescence(std::chrono::seconds {10}, [&](const ServerQuiescenceState&) {
+        hstring map_pid {server->Hashes.to_hashed_string("LifetimeMap")};
+        auto loc {server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("LifetimeLocation"), vector<hstring> {map_pid, map_pid})};
+        auto map {loc->GetMapByIndex(0)};
+        auto other_map {loc->GetMapByIndex(1)};
         REQUIRE(map);
         REQUIRE(other_map);
-        auto static_map = server->MapMngr.GetStaticMap(map->GetProtoMap());
+        auto static_map {server->MapMngr.GetStaticMap(map->GetProtoMap())};
         CHECK(map->GetStaticMap() == other_map->GetStaticMap());
-        constexpr int32_t side = const_numeric_cast<int32_t>(GameSettings::SERVER_MAP_CHUNK_SIDE);
+        constexpr int32_t side {const_numeric_cast<int32_t>(GameSettings::SERVER_MAP_CHUNK_SIDE)};
         mpos anchor {side - 1, side - 1};
         static_map->MarkScrollBlocked(anchor);
-        ptr<const StaticMap::Field> anchor_field = &static_map->GetField(anchor);
+        ptr<const StaticMap::Field> anchor_field {&static_map->GetField(anchor)};
 
         if constexpr (side > 1) {
-            ptr<const StaticMap::Field> nearby_empty = &static_map->GetField({side - 2, side - 1});
-            ptr<const StaticMap::Field> distant_empty = &static_map->GetField({side * 2, side * 2});
+            ptr<const StaticMap::Field> nearby_empty {&static_map->GetField({side - 2, side - 1})};
+            ptr<const StaticMap::Field> distant_empty {&static_map->GetField({side * 2, side * 2})};
             CHECK((nearby_empty != distant_empty) == (proto_grid == "Chunked"));
         }
 
@@ -191,7 +238,7 @@ TEST_CASE("ServerMapGridSelectionPreservesFieldBehavior", "[server][map][grid]")
         }
 
         mpos entity_hex {side * 2 + 1, side * 2 + 1};
-        auto item = server->ItemMngr.CreateItemOnHex(map, entity_hex, server->Hashes.to_hashed_string("LifetimeItem"), nullptr);
+        auto item {server->ItemMngr.CreateItemOnHex(map, entity_hex, server->Hashes.to_hashed_string("LifetimeItem"), nullptr)};
         CHECK(map->GetItem(item->GetId()) == item);
         CHECK(map->GetItemsOnHex(entity_hex).size() == 1);
         CHECK_FALSE(other_map->GetItem(item->GetId()));
@@ -202,50 +249,53 @@ TEST_CASE("ServerMapGridSelectionPreservesFieldBehavior", "[server][map][grid]")
         CHECK(other_map->IsHexMovable(entity_hex));
         CHECK(other_map->IsHexShootable(entity_hex));
         mpos critter_hex {side * 2 + 2, side * 2 + 1};
-        auto cr = server->CrMngr.CreateCritterOnMap(server->Hashes.to_hashed_string("LifetimeCritter"), nullptr, map, critter_hex, mdir {0});
+        auto cr {server->CrMngr.CreateCritterOnMap(server->Hashes.to_hashed_string("LifetimeCritter"), nullptr, map, critter_hex, mdir {0})};
         CHECK(map->GetCritterOnHex(critter_hex, CritterFindType::Any) == cr);
         CHECK_FALSE(other_map->GetCritterOnHex(critter_hex, CritterFindType::Any));
         server->MapMngr.DestroyLocation(loc);
-    });
+    })};
+
     REQUIRE(completed);
 }
 
 TEST_CASE("ServerMapGridTypesRejectInvalidSettings", "[server][map][grid]")
 {
-    bool prototype_setting = GENERATE(false, true);
-    string invalid_type = GENERATE(string {}, string {"static"}, string {"chunked"}, string {"Hash"}, string {"Unknown"});
+    bool prototype_setting {GENERATE(false, true)};
+    string invalid_type {GENERATE(string {}, string {"static"}, string {"chunked"}, string {"Hash"}, string {"Unknown"})};
     CAPTURE(prototype_setting, invalid_type);
-    GlobalSettings settings = MakeServerEntityLifetimeSettings();
+    GlobalSettings settings {MakeServerEntityLifetimeSettings()};
     CHECK(settings.Server.ProtoMapGridType == "Dynamic");
     CHECK(settings.Server.MapInstanceGridType == "Dynamic");
+
     if (prototype_setting) {
         BakerTests::OverrideSetting(settings.Server.ProtoMapGridType, invalid_type);
     }
     else {
         BakerTests::OverrideSetting(settings.Server.MapInstanceGridType, invalid_type);
     }
+
     CHECK_THROWS_AS(StaticMap(msize {2, 2}, invalid_type), SettingsException);
-    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources());
-    auto shutdown = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+    auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources())};
+    auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
     REQUIRE_FALSE(WaitForServerEntityLifetimeStartup(server));
     CHECK(server->IsStartingError());
 }
 
 TEST_CASE("ServerMapInvalidGridConstructionUnwindsEntityOwner", "[server][map][grid][lifetime]")
 {
-    GlobalSettings settings = MakeServerEntityLifetimeSettings();
+    GlobalSettings settings {MakeServerEntityLifetimeSettings()};
     StaticMap static_map {msize {2, 2}, "Dynamic"};
-    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources());
-    auto shutdown = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+    auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources())};
+    auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
     REQUIRE(WaitForServerEntityLifetimeStartup(server));
     REQUIRE(server->RunInQuiescence(std::chrono::seconds {10}, [&](const ServerQuiescenceState&) {
-        auto proto = server->GetProtoMap(server->Hashes.to_hashed_string("LifetimeMap"));
+        auto proto {server->GetProtoMap(server->Hashes.to_hashed_string("LifetimeMap"))};
         REQUIRE(proto);
         BakerTests::OverrideSetting(settings.Server.MapInstanceGridType, string {"Unknown"});
         CHECK_THROWS_AS(safe_alloc::make_refcounted<Map>(server, ident_t {}, proto, nullptr, &static_map), SettingsException);
         BakerTests::OverrideSetting(settings.Server.MapInstanceGridType, string {"Dynamic"});
-        auto map = safe_alloc::make_refcounted<Map>(server, ident_t {}, proto, nullptr, &static_map);
-        auto ctx = SyncContext::GetCurrentOnThisThread();
+        auto map {safe_alloc::make_refcounted<Map>(server, ident_t {}, proto, nullptr, &static_map)};
+        auto ctx {SyncContext::GetCurrentOnThisThread()};
         REQUIRE(ctx);
         ctx->WidenEntities(vector<ptr<ServerEntity>> {map});
         CHECK(map->GetSize() == msize {2, 2});
@@ -254,84 +304,97 @@ TEST_CASE("ServerMapInvalidGridConstructionUnwindsEntityOwner", "[server][map][g
 
 static void MeasureServerMapGridMemory(string_view grid_type)
 {
-    constexpr int32_t side = 600;
-    constexpr int32_t map_count = 16;
-    constexpr int32_t items_per_map = 1024;
-    constexpr int32_t critters_per_map = 256;
+    constexpr int32_t side {600};
+    constexpr int32_t map_count {16};
+    constexpr int32_t items_per_map {1024};
+    constexpr int32_t critters_per_map {256};
     msize map_size {side, side};
-    GlobalSettings settings = MakeServerEntityLifetimeSettings();
+    GlobalSettings settings {MakeServerEntityLifetimeSettings()};
     BakerTests::OverrideSetting(settings.Server.ProtoMapGridType, string {"Dynamic"});
     BakerTests::OverrideSetting(settings.Server.MapInstanceGridType, string {grid_type});
-    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources(true, map_size));
-    bool shutdown_done = false;
-    auto shutdown = scope_exit([&server, &shutdown_done]() noexcept {
+    auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources(true, map_size))};
+    bool shutdown_done {false};
+    auto shutdown {scope_exit([&server, &shutdown_done]() noexcept {
         if (!shutdown_done) {
             safe_call([&server] { server->Shutdown(); });
         }
-    });
+    })};
+
     REQUIRE(WaitForServerEntityLifetimeStartup(server));
+
     if (platform::get_process_private_memory_usage() == 0) {
         SKIP("Process-private-memory measurement is unavailable on this platform");
     }
 
-    auto measure = [&](string_view stage) {
+    auto measure {[&](string_view stage) {
         array<size_t, 5> private_samples {};
         array<size_t, 5> allocator_samples {};
-        for (size_t index = 0; index < private_samples.size(); index++) {
+
+        for (size_t index {0}; index < private_samples.size(); index++) {
             coarse_sleep(std::chrono::milliseconds {100});
             private_samples[index] = platform::get_process_private_memory_usage();
             allocator_samples[index] = memory::get_in_use_bytes();
         }
+
         std::sort(private_samples.begin(), private_samples.end());
         std::sort(allocator_samples.begin(), allocator_samples.end());
         WARN(strex("SERVER_GRID_MEMORY_CSV,{},{},{},{}", grid_type, stage, private_samples[2], allocator_samples[2]).str());
-    };
-    auto hex_for_index = [&](int32_t index) -> mpos {
-        int32_t cell = numeric_cast<int32_t>(numeric_cast<int64_t>(index) * 104729 % (side * side));
+    }};
+
+    auto hex_for_index {[&](int32_t index) -> mpos {
+        int32_t cell {numeric_cast<int32_t>(numeric_cast<int64_t>(index) * 104729 % (side * side))};
         return map_size.from_raw_pos(cell % side, cell / side);
-    };
+    }};
 
     measure("baseline");
     REQUIRE(server->RunInQuiescence(std::chrono::seconds {120}, [&](const ServerQuiescenceState&) {
-        hstring map_pid = server->Hashes.to_hashed_string("LifetimeMap");
-        auto location = server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("LifetimeLocation"), vector<hstring>(map_count, map_pid));
-        vector<ptr<Map>> maps;
-        for (int32_t index = 0; index < map_count; index++) {
-            auto map = location->GetMapByIndex(index);
+        hstring map_pid {server->Hashes.to_hashed_string("LifetimeMap")};
+        auto location {server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("LifetimeLocation"), vector<hstring>(map_count, map_pid))};
+        vector<ptr<Map>> maps {};
+
+        for (int32_t index {0}; index < map_count; index++) {
+            auto map {location->GetMapByIndex(index)};
             REQUIRE(map);
             maps.emplace_back(map);
         }
+
         measure("empty_maps");
 
         for (auto map : maps) {
-            for (int32_t index = 0; index < items_per_map; index++) {
-                auto item = server->ItemMngr.CreateItemOnHex(map, hex_for_index(index), server->Hashes.to_hashed_string("LifetimeItem"), nullptr);
+            for (int32_t index {0}; index < items_per_map; index++) {
+                auto item {server->ItemMngr.CreateItemOnHex(map, hex_for_index(index), server->Hashes.to_hashed_string("LifetimeItem"), nullptr)};
                 item->SetNoBlock(true);
                 item->SetShootThru(true);
             }
-            for (int32_t index = 0; index < critters_per_map; index++) {
+            for (int32_t index {0}; index < critters_per_map; index++) {
                 (void)server->CrMngr.CreateCritterOnMap(server->Hashes.to_hashed_string("LifetimeCritter"), nullptr, map, hex_for_index(items_per_map + index), mdir {0});
             }
+
             CHECK(map->GetItems().size() == items_per_map);
             CHECK(map->GetCritters().size() == critters_per_map);
         }
+
         measure("populated_1280_fields");
 
         // Toggle then clear the same fields to measure retained storage after activity, with no extra live entities
         for (int32_t percent : {10, 90}) {
-            int32_t touched = side * side * percent / 100;
+            int32_t touched {side * side * percent / 100};
+
             for (auto map : maps) {
-                for (int32_t index = 0; index < touched; index++) {
-                    mpos hex = hex_for_index(index);
+                for (int32_t index {0}; index < touched; index++) {
+                    mpos hex {hex_for_index(index)};
                     map->SetHexManualBlock(hex, true, true);
                     map->SetHexManualBlock(hex, false, true);
                 }
+
                 CHECK(map->GetItems().size() == items_per_map);
                 CHECK(map->GetCritters().size() == critters_per_map);
                 CHECK(map->IsHexMovable(hex_for_index(touched - 1)));
             }
+
             measure(percent == 10 ? "touched_10_percent" : "touched_90_percent");
         }
+
         server->MapMngr.DestroyLocation(location);
     }));
     measure("after_destroy_and_cover_release");
@@ -352,102 +415,117 @@ TEST_CASE("ServerMapGridMemoryChunked", "[.][server][map][grid][memory]")
 
 TEST_CASE("ServerMapGridOperationsCost", "[.][server][map][grid][benchmark]")
 {
-    constexpr int32_t side = 600;
+    constexpr int32_t side {600};
     constexpr msize map_size {side, side};
-    constexpr int32_t samples = 5;
-    vector<uint8_t> blocked(numeric_cast<size_t>(side * side), 0);
+    constexpr int32_t samples {5};
+    vector<uint8_t> blocked {vector<uint8_t>(numeric_cast<size_t>(side * side), 0)};
     random_generator random {20261009};
-    auto cell = [&](int32_t x, int32_t y) -> uint8_t& { return blocked[numeric_cast<size_t>(y * side + x)]; };
-    auto outline = [&](int32_t x, int32_t y, int32_t width, int32_t height) {
-        for (int32_t dx = 0; dx < width; dx++) {
+    auto cell {[&](int32_t x, int32_t y) -> uint8_t& { return blocked[numeric_cast<size_t>(y * side + x)]; }};
+    auto outline {[&](int32_t x, int32_t y, int32_t width, int32_t height) {
+        for (int32_t dx {0}; dx < width; dx++) {
             cell(x + dx, y) = 1;
             cell(x + dx, y + height - 1) = 1;
         }
-        for (int32_t dy = 0; dy < height; dy++) {
+        for (int32_t dy {0}; dy < height; dy++) {
             cell(x, y + dy) = 1;
             cell(x + width - 1, y + dy) = 1;
         }
-    };
-    for (int32_t i = 0; i < side * side / 33; i++) {
+    }};
+
+    for (int32_t i {0}; i < side * side / 33; i++) {
         cell(random.next_between(1, side - 2), random.next_between(1, side - 2)) = 1;
     }
-    for (int32_t i = 0; i < 900; i++) {
-        int32_t width = random.next_between(6, 18);
-        int32_t height = random.next_between(6, 18);
-        int32_t x = random.next_between(1, side - width - 1);
-        int32_t y = random.next_between(1, side - height - 1);
+    for (int32_t i {0}; i < 900; i++) {
+        int32_t width {random.next_between(6, 18)};
+        int32_t height {random.next_between(6, 18)};
+        int32_t x {random.next_between(1, side - width - 1)};
+        int32_t y {random.next_between(1, side - height - 1)};
         outline(x, y, width, height);
-        int32_t door_x = random.next_between(x + 1, x + width - 3);
+        int32_t door_x {random.next_between(x + 1, x + width - 3)};
         cell(door_x, y) = 0;
         cell(door_x + 1, y) = 0;
     }
-    vector<mpos> sealed_centers;
-    for (int32_t i = 0; i < 16; i++) {
-        int32_t x = 20 + (i % 4) * 150;
-        int32_t y = 20 + (i / 4) * 150;
-        for (int32_t dy = 0; dy < 11; dy++) {
-            for (int32_t dx = 0; dx < 11; dx++) {
+
+    vector<mpos> sealed_centers {};
+
+    for (int32_t i {0}; i < 16; i++) {
+        int32_t x {20 + (i % 4) * 150};
+        int32_t y {20 + (i / 4) * 150};
+
+        for (int32_t dy {0}; dy < 11; dy++) {
+            for (int32_t dx {0}; dx < 11; dx++) {
                 cell(x + dx, y + dy) = 0;
             }
         }
+
         outline(x, y, 11, 11);
         sealed_centers.emplace_back(map_size.from_raw_pos(x + 5, y + 5));
     }
-    auto pick_open = [&]() -> mpos {
+
+    auto pick_open {[&]() -> mpos {
         for (;;) {
-            mpos hex = map_size.from_raw_pos(random.next_between(2, side - 3), random.next_between(2, side - 3));
+            mpos hex {map_size.from_raw_pos(random.next_between(2, side - 3), random.next_between(2, side - 3))};
             if (cell(hex.x, hex.y) == 0) {
                 return hex;
             }
         }
-    };
-    auto pick_near = [&](mpos from, int32_t min_distance, int32_t max_distance) -> mpos {
+    }};
+
+    auto pick_near {[&](mpos from, int32_t min_distance, int32_t max_distance) -> mpos {
         for (;;) {
             ipos32 raw {from.x + random.next_between(-max_distance, max_distance), from.y + random.next_between(-max_distance, max_distance)};
             if (map_size.is_valid_pos(raw)) {
-                mpos hex = map_size.from_raw_pos(raw);
-                int32_t distance = GeometryHelper::GetDistance(from, hex);
+                mpos hex {map_size.from_raw_pos(raw)};
+                int32_t distance {GeometryHelper::GetDistance(from, hex)};
                 if (distance >= min_distance && distance <= max_distance && cell(hex.x, hex.y) == 0) {
                     return hex;
                 }
             }
         }
-    };
+    }};
+
     struct Route
     {
-        mpos From;
-        mpos To;
+        mpos From {};
+        mpos To {};
         vector<mpos> Targets {};
     };
-    vector<vector<Route>> routes(5);
-    for (size_t scenario = 0; scenario < 4; scenario++) {
-        int32_t count = scenario == 2 ? 40 : 200;
-        int32_t minimum = scenario == 1 ? 20 : scenario == 2 ? 100 : 3;
-        int32_t maximum = scenario == 1 ? 60 : scenario == 2 ? 300 : 15;
-        for (int32_t i = 0; i < count; i++) {
-            mpos from = pick_open();
-            mpos to = pick_near(from, minimum, maximum);
+    vector<vector<Route>> routes {vector<vector<Route>>(5)};
+
+    for (size_t scenario {0}; scenario < 4; scenario++) {
+        int32_t count {scenario == 2 ? 40 : 200};
+        int32_t minimum {scenario == 1 ? 20 : scenario == 2 ? 100 : 3};
+        int32_t maximum {scenario == 1 ? 60 : scenario == 2 ? 300 : 15};
+
+        for (int32_t i {0}; i < count; i++) {
+            mpos from {pick_open()};
+            mpos to {pick_near(from, minimum, maximum)};
             Route route {.From = from, .To = to};
-            for (int32_t direction = 0; direction < GameSettings::MAP_DIR_COUNT; direction++) {
-                mpos target = to;
+
+            for (int32_t direction {0}; direction < GameSettings::MAP_DIR_COUNT; direction++) {
+                mpos target {to};
                 if (GeometryHelper::MoveHexByDir(target, hdir {direction}, map_size)) {
                     route.Targets.emplace_back(target);
                 }
             }
+
             routes[scenario].emplace_back(std::move(route));
         }
     }
     for (mpos center : sealed_centers) {
         routes[4].emplace_back(Route {.From = pick_near(center, 30, 80), .To = center});
     }
-    vector<mpos> scattered;
-    vector<mpos> clustered;
-    vector<mpos> writable;
-    vector<mpos> critter_hexes;
-    vector<mpos> item_hexes;
-    for (int32_t i = 0; i < 8192; i++) {
+
+    vector<mpos> scattered {};
+    vector<mpos> clustered {};
+    vector<mpos> writable {};
+    vector<mpos> critter_hexes {};
+    vector<mpos> item_hexes {};
+
+    for (int32_t i {0}; i < 8192; i++) {
         scattered.emplace_back(map_size.from_raw_pos(random.next_between(0, side - 1), random.next_between(0, side - 1)));
         clustered.emplace_back(map_size.from_raw_pos(250 + i % 96, 250 + (i / 96) % 64));
+
         if (i < 1024) {
             writable.emplace_back(pick_open());
             item_hexes.emplace_back(pick_open());
@@ -456,52 +534,59 @@ TEST_CASE("ServerMapGridOperationsCost", "[.][server][map][grid][benchmark]")
             critter_hexes.emplace_back(pick_open());
         }
     }
-    auto mix = [](uint64_t hash, uint64_t value) -> uint64_t { return (hash ^ value) * 1099511628211ull; };
-    auto hash_hex = [&](uint64_t hash, mpos hex) -> uint64_t { return mix(hash, numeric_cast<uint64_t>(hex.y * side + hex.x)); };
-    auto hash_path = [&](uint64_t hash, const FindPathOutput& output) -> uint64_t {
+
+    auto mix {[](uint64_t hash, uint64_t value) -> uint64_t { return (hash ^ value) * 1099511628211ull; }};
+    auto hash_hex {[&](uint64_t hash, mpos hex) -> uint64_t { return mix(hash, numeric_cast<uint64_t>(hex.y * side + hex.x)); }};
+    auto hash_path {[&](uint64_t hash, const FindPathOutput& output) -> uint64_t {
         hash = mix(hash, numeric_cast<uint64_t>(static_cast<uint8_t>(output.Result)));
         hash = hash_hex(hash, output.NewToHex);
         hash = mix(hash, numeric_cast<uint64_t>(static_cast<uint16_t>(output.EndHexOffset.x)));
         hash = mix(hash, numeric_cast<uint64_t>(static_cast<uint16_t>(output.EndHexOffset.y)));
+
         for (mdir step : output.Steps) {
             hash = mix(hash, numeric_cast<uint64_t>(step.angle()));
         }
         for (uint16_t step : output.ControlSteps) {
             hash = mix(hash, step);
         }
+
         return hash;
-    };
-    vector<int32_t> iterations;
-    vector<uint64_t> reference_hashes;
-    vector<string> report;
+    }};
+
+    vector<int32_t> iterations {};
+    vector<uint64_t> reference_hashes {};
+    vector<string> report {};
     std::array<string_view, 3> modes {"dense", "chunked", "hash"};
     array<string, 3> grid_types {"Static", "Chunked", "Dynamic"};
-    for (int32_t sample = 0; sample < samples; sample++) {
-        for (int32_t order = 0; order < 9; order++) {
+
+    for (int32_t sample {0}; sample < samples; sample++) {
+        for (int32_t order {0}; order < 9; order++) {
             // Rotate and reverse the matrix so host load and cache history cannot always favour one mode
-            int32_t combination = (sample * 4 + (sample % 2 == 0 ? order : 8 - order)) % 9;
-            int32_t proto_mode = combination / 3;
-            int32_t instance_mode = combination % 3;
+            int32_t combination {(sample * 4 + (sample % 2 == 0 ? order : 8 - order)) % 9};
+            int32_t proto_mode {combination / 3};
+            int32_t instance_mode {combination % 3};
             CAPTURE(sample, proto_mode, instance_mode);
-            GlobalSettings settings = MakeServerEntityLifetimeSettings();
+            GlobalSettings settings {MakeServerEntityLifetimeSettings()};
             BakerTests::OverrideSetting(settings.Server.ProtoMapGridType, grid_types[numeric_cast<size_t>(proto_mode)]);
             BakerTests::OverrideSetting(settings.Server.MapInstanceGridType, grid_types[numeric_cast<size_t>(instance_mode)]);
             BakerTests::OverrideSetting(settings.Geometry.MapFreeMovement, true);
             BakerTests::OverrideSetting(settings.Geometry.MaxPathFindLength, int32_t {500});
-            auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources(true, map_size));
-            auto shutdown = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+            auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources(true, map_size))};
+            auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
             REQUIRE(WaitForServerEntityLifetimeStartup(server));
             REQUIRE(server->RunInQuiescence(std::chrono::seconds {30}, [&](const ServerQuiescenceState&) {
-                auto location = server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("LifetimeLocation"), vector<hstring> {server->Hashes.to_hashed_string("LifetimeMap")});
-                auto map = location->GetMapByIndex(0);
+                auto location {server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("LifetimeLocation"), vector<hstring> {server->Hashes.to_hashed_string("LifetimeMap")})};
+                auto map {location->GetMapByIndex(0)};
                 REQUIRE(map);
-                auto static_map = server->MapMngr.GetStaticMap(map->GetProtoMap());
-                size_t wall_count = 0;
-                for (int32_t y = 0; y < side; y++) {
-                    for (int32_t x = 0; x < side; x++) {
+                auto static_map {server->MapMngr.GetStaticMap(map->GetProtoMap())};
+                size_t wall_count {0};
+
+                for (int32_t y {0}; y < side; y++) {
+                    for (int32_t x {0}; x < side; x++) {
                         if (cell(x, y) != 0) {
-                            mpos hex = map_size.from_raw_pos(x, y);
+                            mpos hex {map_size.from_raw_pos(x, y)};
                             static_map->MarkScrollBlocked(hex);
+
                             if (wall_count++ % 32 == 0) {
                                 map->SetHexManualBlock(hex, true, true);
                             }
@@ -509,104 +594,127 @@ TEST_CASE("ServerMapGridOperationsCost", "[.][server][map][grid][benchmark]")
                     }
                 }
                 for (mpos hex : item_hexes) {
-                    auto item = server->ItemMngr.CreateItemOnHex(map, hex, server->Hashes.to_hashed_string("LifetimeItem"), nullptr);
+                    auto item {server->ItemMngr.CreateItemOnHex(map, hex, server->Hashes.to_hashed_string("LifetimeItem"), nullptr)};
                     item->SetNoBlock(true);
                     item->SetShootThru(true);
                 }
                 for (mpos hex : critter_hexes) {
                     (void)server->CrMngr.CreateCritterOnMap(server->Hashes.to_hashed_string("LifetimeCritter"), nullptr, map, hex, mdir {0});
                 }
+
                 REQUIRE(map->GetItems().size() == item_hexes.size());
                 REQUIRE(map->GetCritters().size() == critter_hexes.size());
-                vector<Route> reachable_routes;
-                for (size_t index = 0; index < 16; index++) {
-                    const Route& route = routes[0][index];
+                vector<Route> reachable_routes {};
+
+                for (size_t index {0}; index < 16; index++) {
+                    const Route& route {routes[0][index]};
                     Route reachable_route {.From = route.From, .To = route.To};
+
                     for (mpos target : route.Targets) {
-                        auto path = server->MapMngr.FindPath(map, nullptr, route.From, target, 0, 0);
+                        auto path {server->MapMngr.FindPath(map, nullptr, route.From, target, 0, 0)};
                         if (path.Result == FindPathOutput::ResultType::Ok || path.Result == FindPathOutput::ResultType::AlreadyHere) {
                             reachable_route.Targets.emplace_back(target);
                         }
                     }
+
                     if (!reachable_route.Targets.empty()) {
                         reachable_routes.emplace_back(std::move(reachable_route));
                     }
                 }
+
                 REQUIRE_FALSE(reachable_routes.empty());
+
                 if (sample == 0 && order == 0) {
                     WARN(strex("Server grid fixture: {} walls, {} items, {} critters, {} reachable requests", wall_count, map->GetItems().size(), map->GetCritters().size(), reachable_routes.size()).str());
-                    for (size_t index = 0; index < routes.size(); index++) {
-                        size_t ok = 0;
-                        size_t no_way = 0;
-                        size_t busy = 0;
-                        size_t too_far = 0;
+
+                    for (size_t index {0}; index < routes.size(); index++) {
+                        size_t ok {0};
+                        size_t no_way {0};
+                        size_t busy {0};
+                        size_t too_far {0};
+
                         for (const Route& route : routes[index]) {
-                            auto path = server->MapMngr.FindPath(map, nullptr, route.From, route.To, index == 3 ? 1 : 0, 0);
+                            auto path {server->MapMngr.FindPath(map, nullptr, route.From, route.To, index == 3 ? 1 : 0, 0)};
                             ok += path.Result == FindPathOutput::ResultType::Ok ? 1 : 0;
                             no_way += path.Result == FindPathOutput::ResultType::NoWay ? 1 : 0;
                             busy += path.Result == FindPathOutput::ResultType::HexBusy ? 1 : 0;
                             too_far += path.Result == FindPathOutput::ResultType::TooFar ? 1 : 0;
                         }
+
                         WARN(strex("Server grid paths {}: {} requests, {} ok, {} no way, {} busy, {} too far", index, routes[index].size(), ok, no_way, busy, too_far).str());
                     }
                 }
+
                 struct Workload
                 {
-                    string Name;
-                    size_t Operations;
-                    function<uint64_t()> Run;
+                    string Name {};
+                    size_t Operations {};
+                    function<uint64_t()> Run {};
                 };
-                vector<Workload> workloads;
+                vector<Workload> workloads {};
                 std::array<string_view, 5> names {"path_near", "path_medium", "path_long", "path_multihex", "path_sealed"};
-                for (size_t index = 0; index < routes.size(); index++) {
+
+                for (size_t index {0}; index < routes.size(); index++) {
                     workloads.emplace_back(Workload {string {names[index]}, routes[index].size(), [&, index] {
-                                                         uint64_t hash = 14695981039346656037ull;
+                                                         uint64_t hash {14695981039346656037ull};
+
                                                          for (const Route& route : routes[index]) {
                                                              hash = hash_path(hash, server->MapMngr.FindPath(map, nullptr, route.From, route.To, index == 3 ? 1 : 0, 0));
                                                          }
+
                                                          return hash;
                                                      }});
                 }
+
                 workloads.emplace_back(Workload {"path_to_any", routes[0].size(), [&] {
-                                                     uint64_t hash = 14695981039346656037ull;
+                                                     uint64_t hash {14695981039346656037ull};
+
                                                      for (const Route& route : routes[0]) {
                                                          hash = hash_path(hash, server->MapMngr.FindPathToAny(map, nullptr, route.From, route.Targets, 0));
                                                      }
+
                                                      return hash;
                                                  }});
                 workloads.emplace_back(Workload {"reachable_near", reachable_routes.size(), [&] {
-                                                     uint64_t hash = 14695981039346656037ull;
+                                                     uint64_t hash {14695981039346656037ull};
+
                                                      for (const Route& route : reachable_routes) {
-                                                         auto hexes = server->MapMngr.FindReachableHexes(map, route.From, route.Targets);
+                                                         auto hexes {server->MapMngr.FindReachableHexes(map, route.From, route.Targets)};
                                                          hash = mix(hash, hexes.size());
+
                                                          for (mpos hex : hexes) {
                                                              hash = hash_hex(hash, hex);
                                                          }
                                                      }
+
                                                      return hash;
                                                  }});
                 workloads.emplace_back(Workload {"reachable_sealed", 1, [&] {
-                                                     auto hexes = server->MapMngr.FindReachableHexes(map, routes[4][0].From, const_span<mpos> {sealed_centers.data(), 1});
-                                                     uint64_t hash = mix(14695981039346656037ull, hexes.size());
+                                                     auto hexes {server->MapMngr.FindReachableHexes(map, routes[4][0].From, const_span<mpos> {sealed_centers.data(), 1})};
+                                                     uint64_t hash {mix(14695981039346656037ull, hexes.size())};
+
                                                      for (mpos hex : hexes) {
                                                          hash = hash_hex(hash, hex);
                                                      }
+
                                                      return hash;
                                                  }});
                 workloads.emplace_back(Workload {"trace", routes[2].size(), [&] {
-                                                     uint64_t hash = 14695981039346656037ull;
+                                                     uint64_t hash {14695981039346656037ull};
+
                                                      for (const Route& route : routes[2]) {
-                                                         auto trace = server->MapMngr.TracePath(map, route.From, route.To, 0, 0.0f, nullptr, CritterFindType::Any, true, true);
+                                                         auto trace {server->MapMngr.TracePath(map, route.From, route.To, 0, 0.0f, nullptr, CritterFindType::Any, true, true)};
                                                          hash = mix(hash, static_cast<uint64_t>(trace.FullyTraced) | (static_cast<uint64_t>(trace.HasLastMovable) << 1) | (static_cast<uint64_t>(trace.IsCritterFound) << 2));
                                                          hash = hash_hex(hash_hex(hash_hex(hash, trace.Block), trace.PreBlock), trace.LastMovable);
                                                          hash = mix(hash, trace.Critters.size());
                                                      }
+
                                                      return hash;
                                                  }});
 
                 for (bool local : {true, false}) {
                     workloads.emplace_back(Workload {local ? "fields_clustered" : "fields_scattered", scattered.size(), [&, local] {
-                                                         uint64_t hash = 14695981039346656037ull;
+                                                         uint64_t hash {14695981039346656037ull};
 
                                                          for (mpos hex : local ? clustered : scattered) {
                                                              hash = mix(hash, static_cast<uint64_t>(map->IsHexMovable(hex)) | (static_cast<uint64_t>(map->IsHexShootable(hex)) << 1) | (static_cast<uint64_t>(map->HasPathfindingObstacle(hex, nullptr)) << 2));
@@ -617,7 +725,7 @@ TEST_CASE("ServerMapGridOperationsCost", "[.][server][map][grid][benchmark]")
                 }
 
                 workloads.emplace_back(Workload {"multihex_checks", writable.size(), [&] {
-                                                     uint64_t hash = 14695981039346656037ull;
+                                                     uint64_t hash {14695981039346656037ull};
 
                                                      for (mpos hex : writable) {
                                                          hash = mix(hash, map->IsHexesMovable(hex, 2));
@@ -626,58 +734,72 @@ TEST_CASE("ServerMapGridOperationsCost", "[.][server][map][grid][benchmark]")
                                                      return hash;
                                                  }});
                 workloads.emplace_back(Workload {"items_on_hex", item_hexes.size(), [&] {
-                                                     uint64_t hash = 14695981039346656037ull;
+                                                     uint64_t hash {14695981039346656037ull};
+
                                                      for (mpos hex : item_hexes) {
                                                          hash = mix(hash, map->GetItemsOnHex(hex).size());
                                                      }
+
                                                      return hash;
                                                  }});
                 workloads.emplace_back(Workload {"manual_block_toggle", writable.size(), [&] {
-                                                     uint64_t hash = 14695981039346656037ull;
+                                                     uint64_t hash {14695981039346656037ull};
+
                                                      for (mpos hex : writable) {
                                                          map->SetHexManualBlock(hex, true, true);
                                                          hash = mix(hash, static_cast<uint64_t>(map->IsHexMovable(hex)) | (static_cast<uint64_t>(map->IsHexShootable(hex)) << 1));
                                                          map->SetHexManualBlock(hex, false, true);
                                                      }
+
                                                      return hash;
                                                  }});
                 if (iterations.empty()) {
                     iterations.resize(workloads.size());
                     reference_hashes.resize(workloads.size());
                 }
-                for (size_t index = 0; index < workloads.size(); index++) {
-                    const auto& workload = workloads[index];
-                    auto warm_started = std::chrono::steady_clock::now();
-                    uint64_t warm_hash = workload.Run();
-                    double warm_ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - warm_started).count();
+
+                for (size_t index {0}; index < workloads.size(); index++) {
+                    const auto& workload {workloads[index]};
+                    auto warm_started {std::chrono::steady_clock::now()};
+                    uint64_t warm_hash {workload.Run()};
+                    double warm_ms {std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - warm_started).count()};
+
                     if (sample == 0 && order == 0) {
                         iterations[index] = iround<int32_t>(std::clamp(std::ceil(200.0 / std::max(warm_ms, 0.01)), 1.0, 4096.0));
                         reference_hashes[index] = warm_hash;
                     }
+
                     REQUIRE(warm_hash == reference_hashes[index]);
-                    uint64_t expected_hash = 14695981039346656037ull;
-                    for (int32_t iteration = 0; iteration < iterations[index]; iteration++) {
+                    uint64_t expected_hash {14695981039346656037ull};
+
+                    for (int32_t iteration {0}; iteration < iterations[index]; iteration++) {
                         expected_hash = mix(expected_hash, warm_hash);
                     }
-                    uint64_t hash = 14695981039346656037ull;
-                    auto cpu_before = platform::get_cpu_usage_snapshot();
-                    auto started = std::chrono::steady_clock::now();
-                    for (int32_t iteration = 0; iteration < iterations[index]; iteration++) {
+
+                    uint64_t hash {14695981039346656037ull};
+                    auto cpu_before {platform::get_cpu_usage_snapshot()};
+                    auto started {std::chrono::steady_clock::now()};
+
+                    for (int32_t iteration {0}; iteration < iterations[index]; iteration++) {
                         hash = mix(hash, workload.Run());
                     }
-                    double wall_ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count();
-                    auto cpu_after = platform::get_cpu_usage_snapshot();
-                    double cpu_ms = numeric_cast<double>(cpu_after.process_time_ns - cpu_before.process_time_ns) / 1000000.0;
+
+                    double wall_ms {std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count()};
+                    auto cpu_after {platform::get_cpu_usage_snapshot()};
+                    double cpu_ms {numeric_cast<double>(cpu_after.process_time_ns - cpu_before.process_time_ns) / 1000000.0};
                     REQUIRE(hash == expected_hash);
-                    size_t operations = workload.Operations * numeric_cast<size_t>(iterations[index]);
+                    size_t operations {workload.Operations * numeric_cast<size_t>(iterations[index])};
                     report.emplace_back(strex("SERVER_GRID_CSV,{},{},{},{},{},{},{:.6f},{:.6f},{:016x}", sample, modes[numeric_cast<size_t>(proto_mode)], modes[numeric_cast<size_t>(instance_mode)], workload.Name, iterations[index], operations, wall_ms, cpu_ms, hash).str());
                 }
+
                 server->MapMngr.DestroyLocation(location);
             }));
             WARN(strex("Server grid sample {} prototype {} instance {} complete", sample, modes[numeric_cast<size_t>(proto_mode)], modes[numeric_cast<size_t>(instance_mode)]).str());
+
             for (const string& line : report) {
                 WARN(line);
             }
+
             report.clear();
         }
     }
@@ -691,7 +813,7 @@ public:
         _clientChannel {vector<crypto::key_bytes> {ParseSecureChannelKey(BakerTests::TEST_CHANNEL_PUBLIC_KEY, "Test")}}
     {
         _host = "Test";
-        vector<uint8_t> offer;
+        vector<uint8_t> offer {};
         _clientChannel.TakeHandshakeOutput(offer);
         ReceiveCallback(offer);
     }
@@ -701,21 +823,25 @@ public:
     auto operator=(AttachmentTeardownConnection&&) noexcept = delete;
     ~AttachmentTeardownConnection() override = default;
 
-    void ResetAttachmentCount() noexcept { _attachmentCount.store(0, std::memory_order_relaxed); }
     [[nodiscard]] auto GetAttachmentCount() const noexcept -> size_t { return _attachmentCount.load(std::memory_order_relaxed); }
+
+    void ResetAttachmentCount() noexcept { _attachmentCount.store(0, std::memory_order_relaxed); }
 
 protected:
     void DispatchImpl() override
     {
         scoped_lock locker {_channelLocker};
-        vector<uint8_t> encoded_data = SendCallback();
-        vector<uint8_t> plain_data;
+
+        vector<uint8_t> encoded_data {SendCallback()};
+        vector<uint8_t> plain_data {};
+
         if (!encoded_data.empty()) {
             _clientChannel.Receive(encoded_data, plain_data);
         }
 
-        constexpr size_t header_size = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(NetMessage);
-        size_t offset = 0;
+        constexpr size_t header_size {sizeof(uint32_t) + sizeof(uint32_t) + sizeof(NetMessage)};
+        size_t offset {0};
+
         while (offset < plain_data.size()) {
             FO_VERIFY_AND_THROW(plain_data.size() - offset >= header_size, "Truncated outgoing network message header");
             uint32_t signature {};
@@ -726,9 +852,11 @@ protected:
             memory::copy(&message, plain_data.data() + offset + sizeof(signature) + sizeof(message_size), sizeof(message));
             FO_VERIFY_AND_THROW(signature == NetBuffer::NETMSG_SIGNATURE, "Invalid outgoing network message signature", signature);
             FO_VERIFY_AND_THROW(message_size >= header_size && message_size <= plain_data.size() - offset, "Invalid outgoing network message size", message_size);
+
             if (message == NetMessage::CritterAttachments) {
                 _attachmentCount.fetch_add(1, std::memory_order_relaxed);
             }
+
             offset += message_size;
         }
     }
@@ -743,34 +871,34 @@ private:
 
 TEST_CASE("CritterAttachmentTeardown", "[server][entity][attachments]")
 {
-    GlobalSettings settings = MakeServerEntityLifetimeSettings();
+    GlobalSettings settings {MakeServerEntityLifetimeSettings()};
     BakerTests::OverrideSetting(settings.Network.DisableZlibCompression, true);
-    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources());
-    auto shutdown = scope_exit([&server]() noexcept {
+    auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources())};
+    auto shutdown {scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
                 server->Shutdown();
             }
         });
-    });
+    })};
 
     REQUIRE(WaitForServerEntityLifetimeStartup(server));
     REQUIRE_FALSE(server->IsStartingError());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
-    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
 
-    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
-    auto test_connection = safe_alloc::make_shared<AttachmentTeardownConnection>(server->Settings);
-    auto not_logged_in_player = server->CreateNotLoggedInPlayer(test_connection);
+    auto fn {[&server](string_view name) { return server->Hashes.to_hashed_string(name); }};
+    auto test_connection {safe_alloc::make_shared<AttachmentTeardownConnection>(server->Settings)};
+    auto not_logged_in_player {server->CreateNotLoggedInPlayer(test_connection)};
     not_logged_in_player->SetName("AttachmentTeardown");
     not_logged_in_player->SetLastControlledCritterId(ident_t {1});
-    auto player = server->LoginPlayerToNewRecord(not_logged_in_player);
-    auto master = server->CreateCritter(fn("LifetimeCritter"), false).hold_ref();
-    auto peer = server->CreateCritter(fn("LifetimeCritter"), true).hold_ref();
-    auto other_peer = server->CreateCritter(fn("LifetimeCritter"), false).hold_ref();
-    ident_t master_id = master->GetId();
-    ident_t peer_id = peer->GetId();
-    auto ctx = server->RequireCurrentSyncContext();
+    auto player {server->LoginPlayerToNewRecord(not_logged_in_player)};
+    auto master {server->CreateCritter(fn("LifetimeCritter"), false).hold_ref()};
+    auto peer {server->CreateCritter(fn("LifetimeCritter"), true).hold_ref()};
+    auto other_peer {server->CreateCritter(fn("LifetimeCritter"), false).hold_ref()};
+    ident_t master_id {master->GetId()};
+    ident_t peer_id {peer->GetId()};
+    auto ctx {server->RequireCurrentSyncContext()};
     small_vector<ptr<ServerEntity>, 4> cover {player, master, peer, other_peer};
     ctx->SyncEntities(cover);
     peer->AttachToCritter(master);
@@ -780,14 +908,16 @@ TEST_CASE("CritterAttachmentTeardown", "[server][entity][attachments]")
     test_connection->ResetAttachmentCount();
 
     std::atomic<size_t> native_reports {};
-    auto previous_exception_callback = exceptions::get_callback();
+    auto previous_exception_callback {exceptions::get_callback()};
     exceptions::set_callback([&native_reports, previous_exception_callback](string_view message, const stack_trace::catched_data& trace, bool fatal) {
         native_reports.fetch_add(1, std::memory_order_relaxed);
+
         if (previous_exception_callback) {
             previous_exception_callback(message, trace, fatal);
         }
     });
-    auto restore_exception_callback = scope_exit([previous = std::move(previous_exception_callback)]() mutable noexcept { exceptions::set_callback(std::move(previous)); });
+
+    auto restore_exception_callback {scope_exit([previous = std::move(previous_exception_callback)]() mutable noexcept { exceptions::set_callback(std::move(previous)); })};
 
     SECTION("LiveDetachKeepsTheOtherAttachment")
     {
@@ -833,22 +963,28 @@ TEST_CASE("CritterAttachmentTeardown", "[server][entity][attachments]")
     CHECK(native_reports.load(std::memory_order_relaxed) == 0);
 
     server->SwitchPlayerCritter(player, nullptr);
+
     if (other_peer->GetIsAttached()) {
         other_peer->DetachFromCritter();
     }
+
     server->CrMngr.DestroyCritter(other_peer);
+
     if (!peer->IsDestroyed()) {
         if (peer->GetControlledByPlayer()) {
             peer->UnmarkIsForPlayer();
         }
+
         server->CrMngr.DestroyCritter(peer);
     }
     if (!master->IsDestroyed()) {
         if (master->GetControlledByPlayer()) {
             master->UnmarkIsForPlayer();
         }
+
         server->CrMngr.DestroyCritter(master);
     }
+
     CHECK(native_reports.load(std::memory_order_relaxed) == 0);
 }
 
@@ -856,20 +992,20 @@ TEST_CASE("CritterAttachmentTeardown", "[server][entity][attachments]")
 // every entity borrows the engine's registrars, protos and interned hashes, so ~ServerEngine asserts the count
 TEST_CASE("ServerEntityOwnersReleasedAfterShutdownOnAnotherThread", "[server][entity][lifetime]")
 {
-    GlobalSettings settings = MakeServerEntityLifetimeSettings();
+    GlobalSettings settings {MakeServerEntityLifetimeSettings()};
     StaticMap static_map {msize {2, 2}, "Dynamic"};
-    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources());
-    bool shutdown_done = false;
-    auto shutdown_guard = scope_exit([&]() noexcept {
+    auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources())};
+    bool shutdown_done {false};
+    auto shutdown_guard {scope_exit([&]() noexcept {
         if (!shutdown_done) {
             safe_call([&server] { server->Shutdown(); });
         }
-    });
+    })};
 
     REQUIRE(WaitForServerEntityLifetimeStartup(server));
     REQUIRE_FALSE(server->IsStartingError());
 
-    vector<refcount_ptr<ServerEntity>> retained;
+    vector<refcount_ptr<ServerEntity>> retained {};
     REQUIRE(server->RunInQuiescence(std::chrono::seconds {10}, [&](const ServerQuiescenceState&) { retained = MakeServerEntityLifetimeOwners(server, &static_map); }));
     REQUIRE(retained.size() == 5);
 
@@ -882,16 +1018,17 @@ TEST_CASE("ServerEntityOwnersReleasedAfterShutdownOnAnotherThread", "[server][en
     REQUIRE(server->IsShutdownInProgress());
 
     std::atomic_size_t released {0};
-    std::thread::id releasing_thread;
-    std::thread::id owning_thread = std::this_thread::get_id();
-    std::jthread finalizer([entities = std::move(retained), &released, &releasing_thread]() mutable {
+    std::thread::id releasing_thread {};
+    std::thread::id owning_thread {std::this_thread::get_id()};
+    std::jthread finalizer {[entities = std::move(retained), &released, &releasing_thread]() mutable {
         releasing_thread = std::this_thread::get_id();
 
         while (!entities.empty()) {
             entities.pop_back();
             released.fetch_add(1, std::memory_order_relaxed);
         }
-    });
+    }};
+
     finalizer.join();
 
     CHECK(releasing_thread != owning_thread);
@@ -905,15 +1042,15 @@ TEST_CASE("ServerEntityOwnersReleasedAfterShutdownOnAnotherThread", "[server][en
 // items, so a generated world has to start above them exactly as a restored one does
 TEST_CASE("ServerGeneratedWorldDrawsEntityIdsAboveTheConfiguredStart", "[server][entity][lifetime]")
 {
-    GlobalSettings settings = MakeServerEntityLifetimeSettings();
-    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources());
-    auto shutdown_guard = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+    GlobalSettings settings {MakeServerEntityLifetimeSettings()};
+    auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources())};
+    auto shutdown_guard {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
 
     REQUIRE(WaitForServerEntityLifetimeStartup(server));
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
 
-    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
-    ptr<Critter> cr = server->CreateCritter(server->Hashes.to_hashed_string("LifetimeCritter"), false);
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
+    ptr<Critter> cr {server->CreateCritter(server->Hashes.to_hashed_string("LifetimeCritter"), false)};
 
     CHECK(cr->GetId().underlying_value() > settings.Server.EntityStartId);
     CHECK(server->GetLastEntityId().underlying_value() >= cr->GetId().underlying_value());
@@ -921,20 +1058,20 @@ TEST_CASE("ServerGeneratedWorldDrawsEntityIdsAboveTheConfiguredStart", "[server]
 
 TEST_CASE("ServerEntityOwnersReleaseBeforeShutdown", "[server][entity][lifetime]")
 {
-    GlobalSettings settings = MakeServerEntityLifetimeSettings();
+    GlobalSettings settings {MakeServerEntityLifetimeSettings()};
     StaticMap static_map {msize {2, 2}, "Dynamic"};
-    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources());
-    bool shutdown_done = false;
-    auto shutdown_guard = scope_exit([&]() noexcept {
+    auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources())};
+    bool shutdown_done {false};
+    auto shutdown_guard {scope_exit([&]() noexcept {
         if (!shutdown_done) {
             safe_call([&server] { server->Shutdown(); });
         }
-    });
+    })};
 
     REQUIRE(WaitForServerEntityLifetimeStartup(server));
     REQUIRE_FALSE(server->IsShutdownInProgress());
     REQUIRE(server->RunInQuiescence(std::chrono::seconds {10}, [&](const ServerQuiescenceState&) {
-        vector<refcount_ptr<ServerEntity>> entities = MakeServerEntityLifetimeOwners(server, &static_map);
+        vector<refcount_ptr<ServerEntity>> entities {MakeServerEntityLifetimeOwners(server, &static_map)};
         REQUIRE(entities.size() == 5);
 
         for (const auto& entity : entities) {
@@ -955,21 +1092,21 @@ TEST_CASE("ServerEntityOwnersReleaseBeforeShutdown", "[server][entity][lifetime]
 // that job had finished; the queued waiter below takes the map exactly when this context lets it go
 TEST_CASE("ServerSyncWidenOfCoveredEntityKeepsHeldLocks", "[server][sync]")
 {
-    GlobalSettings settings = MakeServerEntityLifetimeSettings();
+    GlobalSettings settings {MakeServerEntityLifetimeSettings()};
     StaticMap static_map {msize {2, 2}, "Dynamic"};
-    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources());
-    auto shutdown_guard = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+    auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources())};
+    auto shutdown_guard {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
 
     REQUIRE(WaitForServerEntityLifetimeStartup(server));
 
     // Unregistered owners are enough: the widen reads only each entity's own lock and its parent chain
-    refcount_nptr<Map> map;
-    refcount_nptr<Critter> holder;
-    refcount_nptr<Critter> neighbour;
+    refcount_nptr<Map> map {};
+    refcount_nptr<Critter> holder {};
+    refcount_nptr<Critter> neighbour {};
 
     REQUIRE(server->RunInQuiescence(std::chrono::seconds {10}, [&](const ServerQuiescenceState&) {
-        auto critter_proto = server->GetProtoCritter(server->Hashes.to_hashed_string("LifetimeCritter"));
-        auto map_proto = server->GetProtoMap(server->Hashes.to_hashed_string("LifetimeMap"));
+        auto critter_proto {server->GetProtoCritter(server->Hashes.to_hashed_string("LifetimeCritter"))};
+        auto map_proto {server->GetProtoMap(server->Hashes.to_hashed_string("LifetimeMap"))};
         REQUIRE(critter_proto);
         REQUIRE(map_proto);
         map = safe_alloc::make_refcounted<Map>(server, ident_t {1}, map_proto, nullptr, &static_map);
@@ -979,15 +1116,15 @@ TEST_CASE("ServerSyncWidenOfCoveredEntityKeepsHeldLocks", "[server][sync]")
         neighbour->SetParent(map);
     }));
 
-    auto map_lock = map->GetEntityLock();
+    auto map_lock {map->GetEntityLock()};
     REQUIRE(static_cast<bool>(map_lock));
 
-    SyncContext ctx;
+    SyncContext ctx {};
     ctx.Activate();
-    auto deactivate = scope_exit([&ctx]() noexcept {
+    auto deactivate {scope_exit([&ctx]() noexcept {
         ctx.Release();
         ctx.Deactivate();
-    });
+    })};
 
     vector<ptr<ServerEntity>> held {holder, map};
     ctx.SyncEntities(held);
@@ -995,19 +1132,20 @@ TEST_CASE("ServerSyncWidenOfCoveredEntityKeepsHeldLocks", "[server][sync]")
 
     std::atomic_bool waiter_took_map {false};
 
-    std::thread waiter([&]() {
-        SyncContext waiter_ctx;
+    std::thread waiter {[&]() {
+        SyncContext waiter_ctx {};
         waiter_ctx.Activate();
         vector<ptr<ServerEntity>> wanted {map};
         waiter_ctx.SyncEntities(wanted);
         waiter_took_map.store(true);
         waiter_ctx.Release();
         waiter_ctx.Deactivate();
-    });
-    auto join_waiter = scope_exit([&ctx, &waiter]() noexcept {
+    }};
+
+    auto join_waiter {scope_exit([&ctx, &waiter]() noexcept {
         ctx.Release();
         waiter.join();
-    });
+    })};
 
     while (map_lock->WaiterCount() == 0) {
         coarse_sleep(std::chrono::milliseconds {1});
@@ -1038,20 +1176,20 @@ TEST_CASE("ServerSyncWidenOfCoveredEntityKeepsHeldLocks", "[server][sync]")
 // A finish handler runs on the thread destroying its subject, so a widen inside it keeps that subject held
 TEST_CASE("ServerSyncWidenKeepsHeldEntityBeingDestroyed", "[server][sync]")
 {
-    GlobalSettings settings = MakeServerEntityLifetimeSettings();
+    GlobalSettings settings {MakeServerEntityLifetimeSettings()};
     StaticMap static_map {msize {2, 2}, "Dynamic"};
-    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources());
-    auto shutdown_guard = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+    auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources())};
+    auto shutdown_guard {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
 
     REQUIRE(WaitForServerEntityLifetimeStartup(server));
 
-    refcount_nptr<Map> map;
-    refcount_nptr<Critter> dying;
-    refcount_nptr<Critter> neighbour;
+    refcount_nptr<Map> map {};
+    refcount_nptr<Critter> dying {};
+    refcount_nptr<Critter> neighbour {};
 
     REQUIRE(server->RunInQuiescence(std::chrono::seconds {10}, [&](const ServerQuiescenceState&) {
-        auto critter_proto = server->GetProtoCritter(server->Hashes.to_hashed_string("LifetimeCritter"));
-        auto map_proto = server->GetProtoMap(server->Hashes.to_hashed_string("LifetimeMap"));
+        auto critter_proto {server->GetProtoCritter(server->Hashes.to_hashed_string("LifetimeCritter"))};
+        auto map_proto {server->GetProtoMap(server->Hashes.to_hashed_string("LifetimeMap"))};
         REQUIRE(critter_proto);
         REQUIRE(map_proto);
         map = safe_alloc::make_refcounted<Map>(server, ident_t {1}, map_proto, nullptr, &static_map);
@@ -1061,12 +1199,12 @@ TEST_CASE("ServerSyncWidenKeepsHeldEntityBeingDestroyed", "[server][sync]")
         neighbour->SetParent(map);
     }));
 
-    SyncContext ctx;
+    SyncContext ctx {};
     ctx.Activate();
-    auto deactivate = scope_exit([&ctx]() noexcept {
+    auto deactivate {scope_exit([&ctx]() noexcept {
         ctx.Release();
         ctx.Deactivate();
-    });
+    })};
 
     vector<ptr<ServerEntity>> held {dying};
     ctx.SyncEntities(held);
@@ -1089,20 +1227,20 @@ TEST_CASE("ServerSyncWidenKeepsHeldEntityBeingDestroyed", "[server][sync]")
 
 TEST_CASE("ServerSyncYieldHandsTheWholeThreadCoverToWaitersAndTakesItBack", "[server][sync]")
 {
-    GlobalSettings settings = MakeServerEntityLifetimeSettings();
+    GlobalSettings settings {MakeServerEntityLifetimeSettings()};
     StaticMap static_map {msize {2, 2}, "Dynamic"};
-    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources());
-    auto shutdown_guard = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+    auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources())};
+    auto shutdown_guard {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
 
     REQUIRE(WaitForServerEntityLifetimeStartup(server));
 
-    refcount_nptr<Map> map;
-    refcount_nptr<Critter> holder;
-    refcount_nptr<Critter> neighbour;
+    refcount_nptr<Map> map {};
+    refcount_nptr<Critter> holder {};
+    refcount_nptr<Critter> neighbour {};
 
     REQUIRE(server->RunInQuiescence(std::chrono::seconds {10}, [&](const ServerQuiescenceState&) {
-        auto critter_proto = server->GetProtoCritter(server->Hashes.to_hashed_string("LifetimeCritter"));
-        auto map_proto = server->GetProtoMap(server->Hashes.to_hashed_string("LifetimeMap"));
+        auto critter_proto {server->GetProtoCritter(server->Hashes.to_hashed_string("LifetimeCritter"))};
+        auto map_proto {server->GetProtoMap(server->Hashes.to_hashed_string("LifetimeMap"))};
         REQUIRE(critter_proto);
         REQUIRE(map_proto);
         map = safe_alloc::make_refcounted<Map>(server, ident_t {1}, map_proto, nullptr, &static_map);
@@ -1112,52 +1250,53 @@ TEST_CASE("ServerSyncYieldHandsTheWholeThreadCoverToWaitersAndTakesItBack", "[se
         neighbour->SetParent(map);
     }));
 
-    auto map_lock = map->GetEntityLock();
-    auto neighbour_lock = neighbour->GetEntityLock();
+    auto map_lock {map->GetEntityLock()};
+    auto neighbour_lock {neighbour->GetEntityLock()};
     REQUIRE(static_cast<bool>(map_lock));
     REQUIRE(static_cast<bool>(neighbour_lock));
 
     // The outer context stands for the job's own cover, which a nested Sync cannot give away
-    SyncContext outer;
+    SyncContext outer {};
     outer.Activate();
-    auto deactivate_outer = scope_exit([&outer]() noexcept {
+    auto deactivate_outer {scope_exit([&outer]() noexcept {
         outer.Release();
         outer.Deactivate();
-    });
+    })};
 
     vector<ptr<ServerEntity>> job_cover {holder, map};
     outer.SyncEntities(job_cover);
 
-    SyncContext nested;
+    SyncContext nested {};
     nested.Activate();
-    auto deactivate_nested = scope_exit([&nested]() noexcept {
+    auto deactivate_nested {scope_exit([&nested]() noexcept {
         nested.Release();
         nested.Deactivate();
-    });
+    })};
 
     vector<ptr<ServerEntity>> nested_cover {neighbour};
     nested.SyncEntities(nested_cover);
 
-    int32_t map_recursion = map_lock->GetExclusiveRecursionForCurrentThread();
+    int32_t map_recursion {map_lock->GetExclusiveRecursionForCurrentThread()};
     REQUIRE(map_recursion > 0);
     REQUIRE(neighbour_lock->IsLockedByCurrentThread());
 
     std::atomic_bool waiter_took_map {false};
 
-    std::thread waiter([&]() {
-        SyncContext waiter_ctx;
+    std::thread waiter {[&]() {
+        SyncContext waiter_ctx {};
         waiter_ctx.Activate();
         vector<ptr<ServerEntity>> wanted {map};
         waiter_ctx.SyncEntities(wanted);
         waiter_took_map.store(true);
         waiter_ctx.Release();
         waiter_ctx.Deactivate();
-    });
-    auto join_waiter = scope_exit([&outer, &nested, &waiter]() noexcept {
+    }};
+
+    auto join_waiter {scope_exit([&outer, &nested, &waiter]() noexcept {
         nested.Release();
         outer.Release();
         waiter.join();
-    });
+    })};
 
     while (map_lock->WaiterCount() == 0) {
         coarse_sleep(std::chrono::milliseconds {1});
@@ -1179,18 +1318,18 @@ TEST_CASE("ServerSyncYieldHandsTheWholeThreadCoverToWaitersAndTakesItBack", "[se
 
 TEST_CASE("ServerSyncYieldRefusesWhileTheSingletonIsHeld", "[server][sync]")
 {
-    GlobalSettings settings = MakeServerEntityLifetimeSettings();
-    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources());
-    auto shutdown_guard = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+    GlobalSettings settings {MakeServerEntityLifetimeSettings()};
+    auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources())};
+    auto shutdown_guard {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
 
     REQUIRE(WaitForServerEntityLifetimeStartup(server));
 
-    SyncContext ctx;
+    SyncContext ctx {};
     ctx.Activate();
-    auto deactivate = scope_exit([&ctx]() noexcept {
+    auto deactivate {scope_exit([&ctx]() noexcept {
         ctx.Release();
         ctx.Deactivate();
-    });
+    })};
 
     // Nothing held is nothing to hand on
     CHECK_NOTHROW(ctx.YieldLocks());
@@ -1202,20 +1341,20 @@ TEST_CASE("ServerSyncYieldRefusesWhileTheSingletonIsHeld", "[server][sync]")
 
 TEST_CASE("ServerSyncRetainedCoverRefreshesReparentedAncestors", "[server][sync]")
 {
-    GlobalSettings settings = MakeServerEntityLifetimeSettings();
+    GlobalSettings settings {MakeServerEntityLifetimeSettings()};
     StaticMap static_map {msize {2, 2}, "Dynamic"};
-    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources());
-    auto shutdown_guard = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+    auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources())};
+    auto shutdown_guard {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
 
     REQUIRE(WaitForServerEntityLifetimeStartup(server));
 
-    refcount_nptr<Map> old_map;
-    refcount_nptr<Map> new_map;
-    refcount_nptr<Critter> cr;
+    refcount_nptr<Map> old_map {};
+    refcount_nptr<Map> new_map {};
+    refcount_nptr<Critter> cr {};
 
     REQUIRE(server->RunInQuiescence(std::chrono::seconds {10}, [&](const ServerQuiescenceState&) {
-        auto critter_proto = server->GetProtoCritter(server->Hashes.to_hashed_string("LifetimeCritter"));
-        auto map_proto = server->GetProtoMap(server->Hashes.to_hashed_string("LifetimeMap"));
+        auto critter_proto {server->GetProtoCritter(server->Hashes.to_hashed_string("LifetimeCritter"))};
+        auto map_proto {server->GetProtoMap(server->Hashes.to_hashed_string("LifetimeMap"))};
         REQUIRE(critter_proto);
         REQUIRE(map_proto);
         old_map = safe_alloc::make_refcounted<Map>(server, ident_t {1}, map_proto, nullptr, &static_map);
@@ -1224,24 +1363,25 @@ TEST_CASE("ServerSyncRetainedCoverRefreshesReparentedAncestors", "[server][sync]
         cr->SetParent(old_map);
     }));
 
-    SyncContext ctx;
+    SyncContext ctx {};
     ctx.Activate();
-    auto deactivate = scope_exit([&ctx]() noexcept {
+    auto deactivate {scope_exit([&ctx]() noexcept {
         ctx.Release();
         ctx.Deactivate();
-    });
+    })};
 
     ctx.SyncEntity(cr);
     REQUIRE(old_map->GetEntityLock()->GetDescendantHoldCountForCurrentThread() == 1);
 
     // A nested transfer changes the parent while the outer context still records the old ancestor mark
     {
-        SyncContext transfer_ctx;
+        SyncContext transfer_ctx {};
         transfer_ctx.Activate();
-        auto release_transfer = scope_exit([&transfer_ctx]() noexcept {
+        auto release_transfer {scope_exit([&transfer_ctx]() noexcept {
             transfer_ctx.Release();
             transfer_ctx.Deactivate();
-        });
+        })};
+
         vector<ptr<ServerEntity>> transfer {cr, old_map, new_map};
         transfer_ctx.SyncEntities(transfer);
         cr->SetParent(new_map);
@@ -1267,46 +1407,48 @@ TEST_CASE("ServerSyncRetainedCoverRefreshesReparentedAncestors", "[server][sync]
 
     // Probe from another thread without blocking: the new map must exclude a foreign exclusive acquisition
     std::atomic_bool took_map {false};
-    std::thread probe([&]() {
+    std::thread probe {[&]() {
         if (new_map->GetEntityLock()->TryAcquire()) {
             took_map.store(true);
             new_map->GetEntityLock()->Release();
         }
-    });
+    }};
+
     probe.join();
     CHECK_FALSE(took_map.load());
 }
 
 TEST_CASE("BoundedMapSpectatorsTrackVisibility", "[server][map][observation]")
 {
-    GlobalSettings settings = MakeServerEntityLifetimeSettings();
+    GlobalSettings settings {MakeServerEntityLifetimeSettings()};
     StaticMap static_map {msize {32, 32}, "Dynamic"};
-    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources(false, msize {32, 32}));
-    auto shutdown_guard = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+    auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources(false, msize {32, 32}))};
+    auto shutdown_guard {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
     REQUIRE(WaitForServerEntityLifetimeStartup(server));
 
     REQUIRE(server->RunInQuiescence(std::chrono::seconds {10}, [&](const ServerQuiescenceState&) {
-        auto owners = MakeServerEntityLifetimeOwners(server, &static_map);
-        ptr<Critter> cr = owners[0].dyn_cast<Critter>();
-        ptr<Item> item = owners[1].dyn_cast<Item>();
-        ptr<Map> map = owners[2].dyn_cast<Map>();
-        ptr<Player> full = owners[4].dyn_cast<Player>();
-        auto network = NetworkServer::CreateDummyConnection(server->Settings);
-        auto connection = safe_alloc::make_unique<ServerConnection>(server->Settings, std::move(network), BakerTests::MakeTestChannelIdentity());
-        auto bounded = safe_alloc::make_refcounted<Player>(server, ident_t {6}, std::move(connection));
-        auto second = safe_alloc::make_refcounted<Player>(server, ident_t {7}, safe_alloc::make_unique<ServerConnection>(server->Settings, NetworkServer::CreateDummyConnection(server->Settings), BakerTests::MakeTestChannelIdentity()));
-        SyncContext ctx;
+        auto owners {MakeServerEntityLifetimeOwners(server, &static_map)};
+        ptr<Critter> cr {owners[0].dyn_cast<Critter>()};
+        ptr<Item> item {owners[1].dyn_cast<Item>()};
+        ptr<Map> map {owners[2].dyn_cast<Map>()};
+        ptr<Player> full {owners[4].dyn_cast<Player>()};
+        auto network {NetworkServer::CreateDummyConnection(server->Settings)};
+        auto connection {safe_alloc::make_unique<ServerConnection>(server->Settings, std::move(network), BakerTests::MakeTestChannelIdentity())};
+        auto bounded {safe_alloc::make_refcounted<Player>(server, ident_t {6}, std::move(connection))};
+        auto second {safe_alloc::make_refcounted<Player>(server, ident_t {7}, safe_alloc::make_unique<ServerConnection>(server->Settings, NetworkServer::CreateDummyConnection(server->Settings), BakerTests::MakeTestChannelIdentity()))};
+        SyncContext ctx {};
         ctx.Activate();
-        auto release = scope_exit([&ctx]() noexcept {
+        auto release {scope_exit([&ctx]() noexcept {
             ctx.Release();
             ctx.Deactivate();
-        });
+        })};
+
         vector<ptr<ServerEntity>> roots {cr, item, map, full, bounded, second};
         ctx.SyncEntities(roots);
         cr->SetHex(mpos {10, 10});
         map->AddCritter(cr);
         map->AddItem(item, mpos {10, 10}, nullptr);
-        auto clear = scope_exit([&]() noexcept {
+        auto clear {scope_exit([&]() noexcept {
             safe_call([&] {
                 full->ResetViewMap();
                 bounded->ResetViewMap();
@@ -1314,7 +1456,8 @@ TEST_CASE("BoundedMapSpectatorsTrackVisibility", "[server][map][observation]")
                 map->RemoveCritter(cr);
                 map->RemoveItem(item->GetId());
             });
-        });
+        })};
+
         full->SetViewMap(map, mpos {10, 10});
         bounded->SetViewMap(map, mpos {10, 10}, 3);
         second->SetViewMap(map, mpos {20, 20}, 2);
@@ -1322,9 +1465,11 @@ TEST_CASE("BoundedMapSpectatorsTrackVisibility", "[server][map][observation]")
         CHECK(map->IsSpectatorEntityVisible(bounded->GetId(), item->GetId()));
         CHECK_FALSE(map->IsSpectatorEntityVisible(second->GetId(), cr->GetId()));
         ipos32 edge {10, 10};
-        for (int32_t i = 0; i < 3; i++) {
+
+        for (int32_t i {0}; i < 3; i++) {
             GeometryHelper::MoveHexByDirUnsafe(edge, hdir::East);
         }
+
         cr->SetHex(map->GetSize().from_raw_pos(edge));
         map->RefreshAreaSpectators(cr);
         CHECK(map->GetSpectatorPlayersForSend(cr->GetId(), cr->GetHex()).size() == 2);
@@ -1339,12 +1484,352 @@ TEST_CASE("BoundedMapSpectatorsTrackVisibility", "[server][map][observation]")
         CHECK(map->IsSpectatorEntityVisible(bounded->GetId(), cr->GetId()));
         item->SetHidden(true);
         map->RefreshAreaSpectators(item);
-        CHECK_FALSE(map->IsSpectatorEntityVisible(bounded->GetId(), item->GetId()));
+        CHECK(map->IsSpectatorEntityVisible(bounded->GetId(), item->GetId()));
         item->SetHidden(false);
         map->RefreshAreaSpectators(item);
         CHECK(map->IsSpectatorEntityVisible(bounded->GetId(), item->GetId()));
     }));
 }
 
-FO_END_NAMESPACE
+TEST_CASE("MapViewContextControlsBothSubjectKinds", "[server][map][observation]")
+{
+    GlobalSettings settings {MakeServerEntityLifetimeSettings()};
+    StaticMap static_map {msize {32, 32}, "Dynamic"};
+    auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources(false, msize {32, 32}))};
+    auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
+    REQUIRE(WaitForServerEntityLifetimeStartup(server));
 
+    bool prepared {server->RunInQuiescence(std::chrono::seconds {10}, [&](const ServerQuiescenceState&) {
+        auto owners {MakeServerEntityLifetimeOwners(server, &static_map)};
+        ptr<Critter> target {owners[0].dyn_cast<Critter>()};
+        ptr<Item> item {owners[1].dyn_cast<Item>()};
+        ptr<Map> map {owners[2].dyn_cast<Map>()};
+        ptr<Player> player {owners[4].dyn_cast<Player>()};
+        auto observer {safe_alloc::make_refcounted<Critter>(server, ident_t {6}, server->GetProtoCritter(server->Hashes.to_hashed_string("LifetimeCritter")))};
+        auto other_map {safe_alloc::make_refcounted<Map>(server, ident_t {7}, map->GetProtoMap(), nullptr, &static_map)};
+        ScopedSyncContext sync {};
+        vector<ptr<ServerEntity>> roots {map, player, target, item, observer, other_map};
+        sync.GetContext().SyncEntities(roots);
+        observer->GetRawGlobalMapGroup() = safe_alloc::make_shared<GlobalMapGroup>();
+        observer->GetRawGlobalMapGroup()->AddMember(observer);
+        observer->SetLookDistance(2);
+        observer->SetHex(mpos {0, 0});
+        ipos32 subject_hex {10, 10};
+
+        for (int32_t step {0}; step < 3; step++) {
+            GeometryHelper::MoveHexByDirUnsafe(subject_hex, hdir::East);
+        }
+
+        mpos subject_pos {map->GetSize().from_raw_pos(subject_hex)};
+        target->SetHex(subject_pos);
+        map->AddCritter(target);
+        map->AddItem(item, subject_pos, nullptr);
+        auto clear {scope_exit([&]() noexcept {
+            safe_call([&] {
+                player->ResetViewMap();
+                observer->ClearAllAssociations();
+                map->RemoveCritter(target);
+                map->RemoveItem(item->GetId());
+            });
+        })};
+
+        player->SetViewMap(map, mpos {10, 10}, 5, observer);
+        CHECK(map->GetSpectatorCritterVisibility(player->GetId(), target->GetId()) == CheckViewMapCritterVisibilityHook(server, map, observer, mpos {10, 10}, target));
+        CHECK(map->IsSpectatorEntityVisible(player->GetId(), item->GetId()) == CheckViewMapItemVisibilityHook(server, map, observer, mpos {10, 10}, item));
+
+        observer->SetLookDistance(4);
+        player->RefreshViewMapVisibility(map);
+        CHECK(map->IsSpectatorEntityVisible(player->GetId(), item->GetId()) == CheckViewMapItemVisibilityHook(server, map, observer, mpos {10, 10}, item));
+        item->SetHidden(true);
+        map->RefreshAreaSpectators(item);
+        CHECK(map->IsSpectatorEntityVisible(player->GetId(), item->GetId()) == CheckViewMapItemVisibilityHook(server, map, observer, mpos {10, 10}, item));
+
+        player->SetViewMap(map, mpos {10, 10}, 5, map);
+        CHECK(map->GetSpectatorCritterVisibility(player->GetId(), target->GetId()) == CheckViewMapCritterVisibilityHook(server, map, map, mpos {10, 10}, target));
+        CHECK(map->IsSpectatorEntityVisible(player->GetId(), item->GetId()) == CheckViewMapItemVisibilityHook(server, map, map, mpos {10, 10}, item));
+
+        player->SetViewMap(map, mpos {10, 10}, 5, nullptr);
+        CHECK(map->IsSpectatorEntityVisible(player->GetId(), target->GetId()));
+        CHECK(map->IsSpectatorEntityVisible(player->GetId(), item->GetId()));
+        CHECK_THROWS(player->RefreshViewMapVisibility(other_map));
+        CHECK_THROWS(player->SetViewMap(map, mpos {10, 10}, 32768, observer));
+        CHECK_THROWS(player->SetViewMap(map, mpos {9999, 9999}, 5, observer));
+        CHECK(map->IsSpectatorEntityVisible(player->GetId(), item->GetId()));
+
+        player->SetViewMap(map, mpos {10, 10}, 5, observer);
+        observer->MarkAsDestroying();
+        player->RefreshViewMapVisibility(map);
+        CHECK_FALSE(map->IsSpectatorEntityVisible(player->GetId(), target->GetId()));
+        CHECK_FALSE(map->IsSpectatorEntityVisible(player->GetId(), item->GetId()));
+        observer->MarkAsDestroyed();
+        CHECK_THROWS(player->SetViewMap(map, mpos {10, 10}, 5, observer));
+        player->ResetViewMap();
+        CHECK_FALSE(player->GetViewMapTarget());
+        CHECK_THROWS(player->RefreshViewMapVisibility(map));
+        CHECK_FALSE(map->IsSpectatorEntityVisible(player->GetId(), item->GetId()));
+    })};
+    REQUIRE(prepared);
+}
+
+TEST_CASE("MapViewDeferredRefreshCannotChangeReplacementSubscription", "[server][map][observation]")
+{
+    GlobalSettings settings {MakeServerEntityLifetimeSettings()};
+    StaticMap static_map {msize {32, 32}, "Dynamic"};
+    auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources(false, msize {32, 32}))};
+    auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
+    REQUIRE(WaitForServerEntityLifetimeStartup(server));
+    vector<refcount_ptr<ServerEntity>> owners {};
+    refcount_nptr<Critter> observer {};
+    vector<uint8_t> replacement_output {};
+    auto drained {safe_alloc::make_shared<std::atomic_bool>(false)};
+    auto clear {scope_exit([&]() noexcept { safe_call([&] { ClearServerEntityLifetimeViewOwners(server, owners, observer); }); })};
+
+    bool prepared {server->RunInQuiescence(std::chrono::seconds {10}, [&](const ServerQuiescenceState&) {
+        owners = MakeServerEntityLifetimeOwners(server, &static_map);
+        ptr<Critter> target {owners[0].dyn_cast<Critter>()};
+        ptr<Item> item {owners[1].dyn_cast<Item>()};
+        ptr<Map> map {owners[2].dyn_cast<Map>()};
+        ptr<Player> player {owners[4].dyn_cast<Player>()};
+        observer = safe_alloc::make_refcounted<Critter>(server, ident_t {6}, server->GetProtoCritter(server->Hashes.to_hashed_string("LifetimeCritter")));
+        ScopedSyncContext sync {};
+        vector<ptr<ServerEntity>> roots {map, player, target, item, observer};
+        sync.GetContext().SyncEntities(roots);
+        observer->GetRawGlobalMapGroup() = safe_alloc::make_shared<GlobalMapGroup>();
+        observer->GetRawGlobalMapGroup()->AddMember(observer);
+        observer->SetLookDistance(10);
+        map->AddItem(item, mpos {10, 10}, nullptr);
+        player->SetViewMap(map, mpos {10, 10}, 3, observer);
+
+        sync.Sync(map);
+        map->RefreshAreaSpectators(item);
+        CHECK_FALSE(map->IsSpectatorEntityVisible(player->GetId(), item->GetId()));
+
+        sync.GetContext().SyncEntities(roots);
+        player->SetViewMap(map, mpos {25, 25}, 1, nullptr);
+        CHECK_FALSE(map->IsSpectatorEntityVisible(player->GetId(), item->GetId()));
+        player->Send_ViewMap();
+
+        {
+            ServerConnection::OutBufAccessor output {player->GetConnection(), std::nullopt};
+            auto bytes {output->GetData()};
+            replacement_output.assign(bytes.begin(), bytes.end());
+            REQUIRE_FALSE(replacement_output.empty());
+        }
+
+        server->ScheduleDelayedCallback(timespan::zero, [drained]() mutable FO_DEFERRED { drained->store(true); });
+    })};
+    REQUIRE(prepared);
+
+    nanotime deadline {nanotime::now() + std::chrono::seconds {10}};
+
+    while (!drained->load() && nanotime::now() < deadline) {
+        coarse_sleep(std::chrono::milliseconds {1});
+    }
+
+    REQUIRE(drained->load());
+    bool verified {server->RunInQuiescence(std::chrono::seconds {10}, [&](const ServerQuiescenceState&) {
+        ptr<Item> item {owners[1].dyn_cast<Item>()};
+        ptr<Map> map {owners[2].dyn_cast<Map>()};
+        ptr<Player> player {owners[4].dyn_cast<Player>()};
+        ScopedSyncContext sync {};
+        vector<ptr<ServerEntity>> roots {map, player, item, observer};
+        sync.GetContext().SyncEntities(roots);
+        CHECK_FALSE(map->IsSpectatorEntityVisible(player->GetId(), item->GetId()));
+        REQUIRE(player->GetViewMap());
+        CHECK(player->GetViewMap()->Hex == mpos {25, 25});
+
+        {
+            ServerConnection::OutBufAccessor output {player->GetConnection(), std::nullopt};
+            auto bytes {output->GetData()};
+            vector<uint8_t> actual_output {vector<uint8_t>(bytes.begin(), bytes.end())};
+            CHECK(actual_output == replacement_output);
+        }
+
+        player->ResetViewMap();
+        map->RemoveItem(item->GetId());
+    })};
+    REQUIRE(verified);
+}
+
+TEST_CASE("MapViewDeferredRefreshSendsCurrentPosition", "[server][map][observation]")
+{
+    GlobalSettings settings {MakeServerEntityLifetimeSettings()};
+    StaticMap static_map {msize {32, 32}, "Dynamic"};
+    auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources(false, msize {32, 32}))};
+    auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
+    REQUIRE(WaitForServerEntityLifetimeStartup(server));
+    vector<refcount_ptr<ServerEntity>> owners {};
+    refcount_nptr<Critter> observer {};
+    auto drained {safe_alloc::make_shared<std::atomic_bool>(false)};
+    auto clear {scope_exit([&]() noexcept { safe_call([&] { ClearServerEntityLifetimeViewOwners(server, owners, observer); }); })};
+
+    bool prepared {server->RunInQuiescence(std::chrono::seconds {10}, [&](const ServerQuiescenceState&) {
+        owners = MakeServerEntityLifetimeOwners(server, &static_map);
+        ptr<Critter> target {owners[0].dyn_cast<Critter>()};
+        ptr<Map> map {owners[2].dyn_cast<Map>()};
+        ptr<Player> player {owners[4].dyn_cast<Player>()};
+        observer = safe_alloc::make_refcounted<Critter>(server, ident_t {6}, server->GetProtoCritter(server->Hashes.to_hashed_string("LifetimeCritter")));
+        ScopedSyncContext sync {};
+        vector<ptr<ServerEntity>> roots {map, player, target, observer};
+        sync.GetContext().SyncEntities(roots);
+        observer->GetRawGlobalMapGroup() = safe_alloc::make_shared<GlobalMapGroup>();
+        observer->GetRawGlobalMapGroup()->AddMember(observer);
+        observer->SetLookDistance(10);
+        target->SetHex(mpos {10, 10});
+        map->AddCritter(target);
+        player->SetViewMap(map, mpos {10, 10}, 3, observer);
+        REQUIRE(map->IsSpectatorEntityVisible(player->GetId(), target->GetId()));
+
+        {
+            ServerConnection::OutBufAccessor output {player->GetConnection(), std::nullopt};
+            CHECK(output->GetData().empty());
+        }
+
+        map->RemoveCritterFromField(target);
+        target->SetHex(mpos {11, 10});
+        map->AddCritterToField(target);
+
+        sync.Sync(map);
+        map->RefreshAreaSpectators(target);
+        CHECK(map->GetSpectatorPlayersForSend(target->GetId(), target->GetHex()).empty());
+        target->SetCondition(CritterCondition::Dead);
+        server->ScheduleDelayedCallback(timespan::zero, [drained]() mutable FO_DEFERRED { drained->store(true); });
+    })};
+    REQUIRE(prepared);
+
+    nanotime deadline {nanotime::now() + std::chrono::seconds {10}};
+
+    while (!drained->load() && nanotime::now() < deadline) {
+        coarse_sleep(std::chrono::milliseconds {1});
+    }
+
+    REQUIRE(drained->load());
+    bool verified {server->RunInQuiescence(std::chrono::seconds {10}, [&](const ServerQuiescenceState&) {
+        ptr<Critter> target {owners[0].dyn_cast<Critter>()};
+        ptr<Map> map {owners[2].dyn_cast<Map>()};
+        ptr<Player> player {owners[4].dyn_cast<Player>()};
+        ScopedSyncContext sync {};
+        vector<ptr<ServerEntity>> roots {map, player, target, observer};
+        sync.GetContext().SyncEntities(roots);
+        CHECK(map->IsSpectatorEntityVisible(player->GetId(), target->GetId()));
+
+        {
+            ServerConnection::OutBufAccessor output {player->GetConnection(), std::nullopt};
+            auto bytes {output->GetData()};
+            NetInBuffer input {128};
+            input.AddData(bytes);
+            REQUIRE(input.NeedProcess());
+            CHECK(input.ReadMsg() == NetMessage::RemoveCritter);
+            CHECK(input.Read<ident_t>() == target->GetId());
+            REQUIRE(input.NeedProcess());
+            CHECK(input.ReadMsg() == NetMessage::AddCritter);
+            CHECK(input.Read<ident_t>() == target->GetId());
+            CHECK(input.Read<hstring>(server->Hashes) == target->GetProtoId());
+            CHECK(input.Read<mpos>() == mpos {11, 10});
+            (void)input.Read<decltype(target->GetHexOffset())>();
+            (void)input.Read<mdir>();
+            CHECK(input.Read<CritterCondition>() == CritterCondition::Dead);
+        }
+
+        player->ResetViewMap();
+        map->RemoveCritter(target);
+    })};
+    REQUIRE(verified);
+}
+
+TEST_CASE("MapViewDeferredRefreshRestoresItemPropertiesWithoutBlockingOtherSubjects", "[server][map][observation]")
+{
+    GlobalSettings settings {MakeServerEntityLifetimeSettings()};
+    StaticMap static_map {msize {32, 32}, "Dynamic"};
+    auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources(false, msize {32, 32}))};
+    auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
+    REQUIRE(WaitForServerEntityLifetimeStartup(server));
+    vector<refcount_ptr<ServerEntity>> owners {};
+    refcount_nptr<Critter> observer {};
+    refcount_nptr<Item> other_item {};
+    auto drained {safe_alloc::make_shared<std::atomic_bool>(false)};
+    auto clear {scope_exit([&]() noexcept { safe_call([&] { ClearServerEntityLifetimeViewOwners(server, owners, observer); }); })};
+
+    bool prepared {server->RunInQuiescence(std::chrono::seconds {10}, [&](const ServerQuiescenceState&) {
+        owners = MakeServerEntityLifetimeOwners(server, &static_map);
+        ptr<Critter> target {owners[0].dyn_cast<Critter>()};
+        ptr<Item> item {owners[1].dyn_cast<Item>()};
+        ptr<Map> map {owners[2].dyn_cast<Map>()};
+        ptr<Player> player {owners[4].dyn_cast<Player>()};
+        observer = safe_alloc::make_refcounted<Critter>(server, ident_t {6}, server->GetProtoCritter(server->Hashes.to_hashed_string("LifetimeCritter")));
+        other_item = safe_alloc::make_refcounted<Item>(server, ident_t {7}, server->GetProtoItem(server->Hashes.to_hashed_string("LifetimeItem")));
+        ScopedSyncContext sync {};
+        vector<ptr<ServerEntity>> roots {map, player, target, item, observer, other_item};
+        sync.GetContext().SyncEntities(roots);
+        observer->GetRawGlobalMapGroup() = safe_alloc::make_shared<GlobalMapGroup>();
+        observer->GetRawGlobalMapGroup()->AddMember(observer);
+        observer->SetLookDistance(10);
+        target->SetHex(mpos {10, 12});
+        item->SetNoBlock(false);
+        other_item->SetNoBlock(false);
+        map->AddCritter(target);
+        map->AddItem(item, mpos {10, 10}, nullptr);
+        map->AddItem(other_item, mpos {11, 10}, nullptr);
+        player->SetViewMap(map, mpos {10, 10}, 5, observer);
+        REQUIRE(map->IsSpectatorEntityVisible(player->GetId(), item->GetId()));
+        REQUIRE(map->IsSpectatorEntityVisible(player->GetId(), other_item->GetId()));
+
+        sync.Sync(map);
+        item->SetNoBlock(true);
+        map->RefreshAreaSpectators(item);
+        other_item->SetNoBlock(true);
+        map->RefreshAreaSpectators(other_item);
+        CHECK_FALSE(map->IsSpectatorEntityVisible(player->GetId(), item->GetId()));
+        CHECK_FALSE(map->IsSpectatorEntityVisible(player->GetId(), other_item->GetId()));
+        CHECK(map->GetSpectatorPlayersForSend(target->GetId(), target->GetHex()).size() == 1);
+        server->ScheduleDelayedCallback(timespan::zero, [drained]() mutable FO_DEFERRED { drained->store(true); });
+    })};
+    REQUIRE(prepared);
+
+    nanotime deadline {nanotime::now() + std::chrono::seconds {10}};
+
+    while (!drained->load() && nanotime::now() < deadline) {
+        coarse_sleep(std::chrono::milliseconds {1});
+    }
+
+    REQUIRE(drained->load());
+    bool verified {server->RunInQuiescence(std::chrono::seconds {10}, [&](const ServerQuiescenceState&) {
+        ptr<Item> item {owners[1].dyn_cast<Item>()};
+        ptr<Map> map {owners[2].dyn_cast<Map>()};
+        ptr<Player> player {owners[4].dyn_cast<Player>()};
+        ScopedSyncContext sync {};
+        vector<ptr<ServerEntity>> roots {map, player, item, other_item, observer};
+        sync.GetContext().SyncEntities(roots);
+        CHECK(map->IsSpectatorEntityVisible(player->GetId(), item->GetId()));
+        CHECK(map->IsSpectatorEntityVisible(player->GetId(), other_item->GetId()));
+        ServerConnection::OutBufAccessor output {player->GetConnection(), std::nullopt};
+        NetInBuffer input {128};
+        input.AddData(output->GetData());
+        vector<ident_t> expected_ids {item->GetId(), other_item->GetId()};
+
+        for (ident_t expected_id : expected_ids) {
+            REQUIRE(input.NeedProcess());
+            CHECK(input.ReadMsg() == NetMessage::RemoveItemFromMap);
+            CHECK(input.Read<ident_t>() == expected_id);
+        }
+        for (ident_t expected_id : expected_ids) {
+            REQUIRE(input.NeedProcess());
+            CHECK(input.ReadMsg() == NetMessage::AddItemOnMap);
+            (void)input.Read<mpos>();
+            CHECK(input.Read<ident_t>() == expected_id);
+            (void)input.Read<hstring>(server->Hashes);
+            vector<vector<uint8_t>> data {};
+            input.ReadPropsData(data);
+            auto registrar {server->GetPropertyRegistrar(Item::ENTITY_TYPE_NAME)};
+            Properties decoded {registrar};
+            decoded.RestoreData(data);
+            CHECK(decoded.GetValue<bool>(registrar->FindProperty("NoBlock")));
+            CHECK(input.Read<uint16_t>() == 0);
+        }
+
+        CHECK_FALSE(input.NeedProcess());
+    })};
+    REQUIRE(verified);
+}
+
+FO_END_NAMESPACE

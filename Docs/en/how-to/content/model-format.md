@@ -350,26 +350,28 @@ Effect Effects/Armor.fofx
 ### Textures
 
 ```text
-Texture <slot> <name>
+Texture 0 Diffuse.fofrm
 ```
 
-The slot must be in `[0, FO_MODEL_MAX_TEXTURES)`.
+Slots are in `[0, FO_MODEL_MAX_TEXTURES)`; `Mesh` selects drawable targets. Paths
+are relative to the mesh. Unconditional slot-0 `Texture` replaces imported diffuse,
+whose source may be consumed. Baker validates effective defaults; runtime loads
+them for enabled meshes after overrides and attachment links.
 
-For a normal texture name:
+A texture requires a published SpriteInfo output with one direction and one frame.
+Use FOFRM `Size` to bake a smaller image from a large source; only the root output
+is shipped. Select a direction explicitly with FOFRM `InputDir`. Cropped sprite
+meshes restore the full logical canvas before upload, preserving the image's UVs.
+`TextureAnimation` is unsupported and fails as an unknown directive; multi-frame
+texture resources fail validation at both bake time and runtime.
 
-- the target `Mesh` must exist and be drawable;
-- the texture path is resolved relative to the current target mesh file;
-- the texture must exist in baked resources.
+In an attachment, `Parent` or `Parent_<mesh>` inherits the parent's current static
+texture at the same slot. Use an explicit mesh suffix when the parent has several
+meshes. Root `Parent` fails.
 
-An imported material's diffuse texture is the default for slot `0`. All other slots start empty unless assigned.
-
-Inside an attached child, `Parent` copies the first matching parent's current texture at the same slot. `Parent_<mesh>` copies it from the named parent mesh:
-
-```text
-Texture 0 Parent_Torso
-```
-
-Do not use `Parent` on a root description. When a parent has several meshes, prefer the explicit suffix.
+Rebuild matching binaries and force-rebake model descriptions and metadata for
+LFMODINF schema 5/runtime 0.0.76: overrides no longer store an animation flag.
+Earlier descriptions are rejected; other model/image schemas are unchanged.
 
 ### Effects
 
@@ -500,7 +502,7 @@ Use [Model Animation](model-animation.md) for:
 
 `AllowAnimationGeometry` is a narrow migration aid, not a normal asset policy. It names one exact external file selected by `Anim`, resolves from the final concrete `.fo3d`, and is consumed only by baker validation. It is not serialized. Duplicate paths, duplicate resolved targets, non-selected files, and exceptions left behind after geometry removal are hard errors. Repair the source into a geometry-free animation export while preserving required helper/bone hierarchy, then remove the exception in the same asset migration.
 
-3D skeletal animation is separate from the 2D `NextX` / `NextY` contract in [Sprite Root Motion](sprite-root-motion.md).
+3D skeletal animation is separate from the 2D `Motion` contract in [Sprite Root Motion](sprite-root-motion.md).
 
 ## Runtime loading and caching
 

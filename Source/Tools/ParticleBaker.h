@@ -51,7 +51,7 @@ FO_DECLARE_EXCEPTION(ParticleBakerException);
 class ParticleBaker final : public BaseBaker
 {
 public:
-    static constexpr string_view_nt NAME = "Particle";
+    static constexpr string_view_nt NAME {"Particle"};
 
     explicit ParticleBaker(shared_ptr<BakingContext> ctx);
     ParticleBaker(const ParticleBaker&) = delete;
@@ -66,6 +66,8 @@ public:
     void BakeFiles(const FileCollection& files, string_view target_path) const override;
 
 private:
+    auto CollectResourceDependencies(const FileCollection& files, string_view path, const ResourceProviderCallback& providers) const -> vector<string> override;
+
 #if FO_SPARK_PARTICLES
     void BakeSparkFile(const File& file) const;
 #endif

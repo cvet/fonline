@@ -90,8 +90,8 @@ struct ModelSkeletonCompatibilityReport
     vector<ModelSkeletonAnimationDataIssue> AnimationDataIssues {};
 };
 
-[[nodiscard]] auto BuildModelSkeletonCompatibilityReport(const ModelSkeletonSource& base_skeleton, const_span<ModelSkeletonClipSource> clips) -> ModelSkeletonCompatibilityReport;
-[[nodiscard]] auto FormatModelSkeletonCompatibilityReport(const ModelSkeletonCompatibilityReport& report) -> string;
+auto BuildModelSkeletonCompatibilityReport(const ModelSkeletonSource& base_skeleton, const_span<ModelSkeletonClipSource> clips) -> ModelSkeletonCompatibilityReport;
+auto FormatModelSkeletonCompatibilityReport(const ModelSkeletonCompatibilityReport& report) -> string;
 
 FO_DECLARE_EXCEPTION(ModelAnimationConverterException);
 
@@ -129,8 +129,8 @@ struct ModelAnimationRigBindingSource
 
 // Every archive is read back before returning, so BuildModelAnimationRigData starts from artifacts that are
 // already proven loadable
-[[nodiscard]] auto BuildModelAnimationRigArtifacts(string_view model_description, const ModelSkeletonSource& base_skeleton, const ModelSkeletonCompatibilityReport& compatibility_report, const_span<ModelAnimationSource> animations, bool nearest_sampling) -> ModelAnimationRigArtifacts;
-[[nodiscard]] auto BuildModelAnimationRigData(ModelAnimationRigArtifacts artifacts, const_span<ModelAnimationRigBindingSource> bindings) -> ModelAnimationRigData;
+auto BuildModelAnimationRigArtifacts(string_view model_description, const ModelSkeletonSource& base_skeleton, const ModelSkeletonCompatibilityReport& compatibility_report, const_span<ModelAnimationSource> animations, bool nearest_sampling) -> ModelAnimationRigArtifacts;
+auto BuildModelAnimationRigData(ModelAnimationRigArtifacts artifacts, const_span<ModelAnimationRigBindingSource> bindings) -> ModelAnimationRigData;
 
 FO_END_NAMESPACE
 

@@ -56,14 +56,14 @@ FO_BEGIN_NAMESPACE
 // into a hard alignment error; call-shape coverage lives in Test_AngelScriptCall.cpp
 namespace
 {
-    struct AlignTestRig
+    namespace AlignTestRig
     {
         static auto MakeSettings() -> GlobalSettings
         {
-            auto settings = GlobalSettings(false);
+            auto settings {GlobalSettings(false)};
 
-            settings.ApplyDefaultSettings();
-            settings.ApplyAutoSettings();
+            settings.SetupDefaultSettings();
+            settings.ApplyAutoSettings({});
 
             BakerTests::ApplySelfContainedServerSettings(settings);
 
@@ -241,7 +241,7 @@ namespace AlignTest
 )"},
                 },
                 [](string_view message) {
-                    string message_str = string(message);
+                    string message_str {string(message)};
 
                     if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
                         throw ScriptSystemException(message_str);
@@ -251,21 +251,21 @@ namespace AlignTest
 
         static auto MakeResources() -> FileSystem
         {
-            auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
+            auto metadata_blob {BakerTests::MakeEmptyMetadataBlob()};
 
-            auto compiler_resources_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("AlignTestCompilerResources");
+            auto compiler_resources_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("AlignTestCompilerResources")};
             compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
 
-            FileSystem compiler_resources;
+            FileSystem compiler_resources {};
             compiler_resources.AddCustomSource(std::move(compiler_resources_source));
 
-            auto script_blob = MakeScriptBinary(compiler_resources);
+            auto script_blob {MakeScriptBinary(compiler_resources)};
 
-            auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("AlignTestRuntimeResources");
+            auto runtime_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("AlignTestRuntimeResources")};
             runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
             runtime_source->AddFile("AlignTest.fos-bin-server", script_blob);
 
-            FileSystem resources;
+            FileSystem resources {};
             resources.AddCustomSource(std::move(runtime_source));
 
             return resources;
@@ -273,7 +273,7 @@ namespace AlignTest
 
         static auto WaitForStart(ptr<ServerEngine> server) -> string
         {
-            for (int32_t i = 0; i < 6000; i++) {
+            for (int32_t i {0}; i < 6000; i++) {
                 if (server->IsStarted()) {
                     return {};
                 }
@@ -287,8 +287,11 @@ namespace AlignTest
             return "ServerEngine startup timed out";
         }
 
-        static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine> { return safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources()); }
-    };
+        static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
+        {
+            return safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources());
+        }
+    }
 
     // Mirrors AddPropertyToClass: anything stored as a reference aligns like a pointer, while inline value types
     // and primitives align by their size
@@ -299,18 +302,18 @@ namespace AlignTest
         }
 
         if ((type_id & AngelScript::asTYPEID_MASK_OBJECT) != 0) {
-            nptr<AngelScript::asITypeInfo> type_info = as_engine->GetTypeInfoById(type_id);
+            nptr<AngelScript::asITypeInfo> type_info {as_engine->GetTypeInfoById(type_id)};
             FO_VERIFY_AND_THROW(type_info, "Member type info must resolve", type_id);
 
             if ((type_info->GetFlags() & AngelScript::asOBJ_REF) != 0) {
                 return sizeof(void*); // Script classes / arrays / funcdefs held as implicit handles
             }
 
-            size_t size = type_info->GetSize();
+            size_t size {type_info->GetSize()};
             return size >= 8 ? 8 : size >= 4 ? 4 : size >= 2 ? 2 : 1;
         }
 
-        int32_t primitive_size = as_engine->GetSizeOfPrimitiveType(type_id);
+        int32_t primitive_size {as_engine->GetSizeOfPrimitiveType(type_id)};
 
         if (primitive_size == 8) {
             return 8;
@@ -329,14 +332,14 @@ namespace AlignTest
     {
         REQUIRE(type_info->GetPropertyCount() > 0);
 
-        for (AngelScript::asUINT i = 0; i < type_info->GetPropertyCount(); i++) {
-            const char* prop_name = nullptr;
-            int32_t prop_type_id = 0;
-            int32_t prop_offset = 0;
-            bool is_reference = false;
+        for (AngelScript::asUINT i {0}; i < type_info->GetPropertyCount(); i++) {
+            const char* prop_name {nullptr};
+            int32_t prop_type_id {0};
+            int32_t prop_offset {0};
+            bool is_reference {false};
             REQUIRE(type_info->GetProperty(i, &prop_name, &prop_type_id, nullptr, nullptr, &prop_offset, &is_reference) >= 0);
 
-            size_t required_alignment = RequiredMemberAlignment(as_engine, prop_type_id, is_reference);
+            size_t required_alignment {RequiredMemberAlignment(as_engine, prop_type_id, is_reference)};
 
             INFO(strex("{}::{} offset {} required alignment {}", type_info->GetName(), prop_name != nullptr ? prop_name : "?", prop_offset, required_alignment).str());
             CHECK(numeric_cast<size_t>(prop_offset) % required_alignment == 0);
@@ -346,49 +349,49 @@ namespace AlignTest
 
 TEST_CASE("AngelScriptValueAlignment")
 {
-    auto settings = AlignTestRig::MakeSettings();
-    auto server = AlignTestRig::MakeServerEngine(settings);
+    auto settings {AlignTestRig::MakeSettings()};
+    auto server {AlignTestRig::MakeServerEngine(settings)};
 
-    auto shutdown = scope_exit([&server]() noexcept {
+    auto shutdown {scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
                 server->Shutdown();
             }
         });
-    });
+    })};
 
-    string startup_error = AlignTestRig::WaitForStart(server);
+    string startup_error {AlignTestRig::WaitForStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
 
-    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
 
-    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
+    auto fn {[&server](string_view name) { return server->Hashes.to_hashed_string(name); }};
 
     // Script-class member layout: every member must sit on a correctly aligned byte offset across
     // the base class, both inheritance levels and the mixin-including class
     {
-        auto backend = GetScriptBackend(ptr<BaseEngine>(server.get()));
-        auto context_mngr = backend->GetContextMngr();
+        auto backend {GetScriptBackend(ptr<BaseEngine>(server.get()))};
+        auto context_mngr {backend->GetContextMngr()};
         REQUIRE(context_mngr);
 
-        auto ctx = context_mngr->RequestContext();
-        uint64_t context_generation = context_mngr->GetContextGeneration(ctx);
-        auto return_context = scope_exit([&context_mngr, &ctx, &context_generation]() noexcept { context_mngr->ReturnContext(ctx, context_generation); });
+        auto ctx {context_mngr->RequestContext()};
+        uint64_t context_generation {context_mngr->GetContextGeneration(ctx)};
+        auto return_context {scope_exit([&context_mngr, &ctx, &context_generation]() noexcept { context_mngr->ReturnContext(ctx, context_generation); })};
 
-        nptr<AngelScript::asIScriptEngine> as_engine = ctx->GetEngine();
+        nptr<AngelScript::asIScriptEngine> as_engine {ctx->GetEngine()};
         REQUIRE(as_engine);
 
         // Script classes live in the script module, not in the engine's registered-type scope
         REQUIRE(as_engine->GetModuleCount() >= 1);
-        nptr<AngelScript::asIScriptModule> script_module = as_engine->GetModuleByIndex(0);
+        nptr<AngelScript::asIScriptModule> script_module {as_engine->GetModuleByIndex(0)};
         REQUIRE(script_module);
 
         for (string_view class_decl : {string_view {"AlignTest::MixedMembers"}, string_view {"AlignTest::DerivedMembers"}, string_view {"AlignTest::DerivedTwice"}, string_view {"AlignTest::WithMixin"}}) {
             INFO(class_decl);
-            nptr<AngelScript::asITypeInfo> class_type = script_module->GetTypeInfoByDecl(class_decl.data());
+            nptr<AngelScript::asITypeInfo> class_type {script_module->GetTypeInfoByDecl(class_decl.data())};
             REQUIRE(class_type);
             CheckClassMemberAlignment(as_engine, class_type);
         }
@@ -396,13 +399,13 @@ TEST_CASE("AngelScriptValueAlignment")
 
     // Runtime execution: under the UBSan leg any misaligned member/local/global constructor or read
     // trips a hard `alignment` runtime error in the value-type behaviours
-    auto call_and_check = [&](string_view func_name, int64_t expected) {
+    auto call_and_check {[&](string_view func_name, int64_t expected) {
         INFO(func_name);
-        auto func = server->FindFunc<int64_t>(fn(func_name));
+        auto func {server->FindFunc<int64_t>(fn(func_name))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == expected);
-    };
+    }};
 
     call_and_check("AlignTest::ConstructAndUseMembers", 65);
     call_and_check("AlignTest::CallOddArgFrameLocals", 43);
@@ -413,54 +416,54 @@ TEST_CASE("AngelScriptValueAlignment")
 
 TEST_CASE("AngelScriptNativeCallNormalizesBoolArgument")
 {
-    auto settings = AlignTestRig::MakeSettings();
-    auto server = AlignTestRig::MakeServerEngine(settings);
+    auto settings {AlignTestRig::MakeSettings()};
+    auto server {AlignTestRig::MakeServerEngine(settings)};
 
-    auto shutdown = scope_exit([&server]() noexcept {
+    auto shutdown {scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
                 server->Shutdown();
             }
         });
-    });
+    })};
 
-    string startup_error = AlignTestRig::WaitForStart(server);
+    string startup_error {AlignTestRig::WaitForStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
 
-    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
 
-    auto backend = GetScriptBackend(ptr<BaseEngine>(server.get()));
-    auto context_mngr = backend->GetContextMngr();
+    auto backend {GetScriptBackend(ptr<BaseEngine>(server.get()))};
+    auto context_mngr {backend->GetContextMngr()};
     REQUIRE(context_mngr);
 
-    auto ctx = context_mngr->RequestContext();
-    uint64_t context_generation = context_mngr->GetContextGeneration(ctx);
-    auto return_context = scope_exit([&context_mngr, &ctx, &context_generation]() noexcept { context_mngr->ReturnContext(ctx, context_generation); });
+    auto ctx {context_mngr->RequestContext()};
+    uint64_t context_generation {context_mngr->GetContextGeneration(ctx)};
+    auto return_context {scope_exit([&context_mngr, &ctx, &context_generation]() noexcept { context_mngr->ReturnContext(ctx, context_generation); })};
 
-    nptr<AngelScript::asIScriptEngine> as_engine = ctx->GetEngine();
+    nptr<AngelScript::asIScriptEngine> as_engine {ctx->GetEngine()};
     REQUIRE(as_engine);
     REQUIRE(as_engine->GetModuleCount() >= 1);
 
-    nptr<AngelScript::asIScriptModule> script_module = as_engine->GetModuleByIndex(0);
+    nptr<AngelScript::asIScriptModule> script_module {as_engine->GetModuleByIndex(0)};
     REQUIRE(script_module);
 
-    nptr<AngelScript::asIScriptFunction> concat_bool = script_module->GetFunctionByDecl("string AlignTest::ConcatBool(bool)");
+    nptr<AngelScript::asIScriptFunction> concat_bool {script_module->GetFunctionByDecl("string AlignTest::ConcatBool(bool)")};
     REQUIRE(concat_bool);
 
     // The VM writes one byte for a bool and leaves the rest of its stack DWORD as it found it, so the slot is
     // filled here the way a reused slot arrives: the low byte carries the bool, the bytes above it carry litter
     REQUIRE(ctx->Prepare(concat_bool.get()) >= 0);
 
-    nptr<void> flag_slot = ctx->GetAddressOfArg(0);
+    nptr<void> flag_slot {ctx->GetAddressOfArg(0)};
     REQUIRE(flag_slot);
     *cast_from_void<uint32_t*>(flag_slot) = 0x7F390401U;
 
     REQUIRE(ctx->Execute() == AngelScript::asEXECUTION_FINISHED);
 
-    nptr<void> concat_result = ctx->GetReturnObject();
+    nptr<void> concat_result {ctx->GetReturnObject()};
     REQUIRE(concat_result);
     CHECK(*cast_from_void<const string*>(concat_result) == "flag=true");
 }

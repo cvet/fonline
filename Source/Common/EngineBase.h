@@ -56,8 +56,8 @@ public:
 
     struct ProtoMigrator
     {
-        string Name;
-        function<optional<hstring>(hstring, const AnyData::Document&)> Callback;
+        string Name {};
+        function<optional<hstring>(hstring, const AnyData::Document&)> Callback {};
     };
 
     explicit EngineMetadata(const MetadataRegistrar& registrar);
@@ -94,7 +94,6 @@ public:
     [[nodiscard]] auto GetInboundRemoteCalls() const noexcept -> ptr<const unordered_map<hstring, RemoteCallDesc>> { return &_inboundRemoteCalls; }
     [[nodiscard]] auto GetGameSetting(string_view name) const -> const BaseTypeDesc&;
     [[nodiscard]] auto GetGameSettings() const noexcept -> const auto& { return _gameSettings; }
-    [[nodiscard]] auto GetGameSettingsInitialValues() const noexcept -> const auto& { return _gameSettingsInitialValues; }
     [[nodiscard]] auto CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const noexcept -> optional<hstring> override;
     [[nodiscard]] auto GetAllProtos() const noexcept -> const auto& { return _protoMngr.GetAllProtos(); }
     [[nodiscard]] auto GetProtoItems() const noexcept -> const auto& { return _protoMngr.GetProtoItems(); }
@@ -131,7 +130,7 @@ public:
     void RegisterEntityEvent(string_view entity_name, EntityEventDesc&& event);
     void RegisterOutboundRemoteCall(RemoteCallDesc&& remote_call);
     void RegisterInboundRemoteCall(RemoteCallDesc&& remote_call);
-    void RegisterGameSetting(string_view name, const BaseTypeDesc& type, string_view initial_value);
+    void RegisterGameSetting(string_view name, const BaseTypeDesc& type);
     void RegisterMigrationRules(unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>&& migration_rules);
     void RegisterMigrationRule(string_view rule_name, string_view extra_info, string_view target, string_view replacement);
     void RegisterPropertyMigrationRule(string_view owner, string_view action, string_view target, string_view replacement = {});
@@ -169,7 +168,6 @@ private:
     unordered_map<hstring, RemoteCallDesc> _outboundRemoteCalls {};
     unordered_map<hstring, RemoteCallDesc> _inboundRemoteCalls {};
     unordered_map<string, ptr<const BaseTypeDesc>> _gameSettings {};
-    map<string, string> _gameSettingsInitialValues {};
     unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>> _migrationRules {};
     map<hstring, map<hstring, ProtoMigrator>> _protoMigrators {};
     string _emptyStr {};
@@ -188,7 +186,7 @@ struct ScriptOverrunRecord
 class BaseEngine : public EngineMetadata, public ScriptSystem, public Entity, public GameProperties
 {
 public:
-    using RemoteCallHandler = function<void(hstring, nptr<Entity>, span<uint8_t>)>;
+    using RemoteCallHandler = function<void(hstring, nptr<Entity>, span<uint8_t>, shared_ptr<ScriptCallCompletion>)>;
 
     BaseEngine(const BaseEngine&) = delete;
     BaseEngine(BaseEngine&&) noexcept = delete;
@@ -209,7 +207,7 @@ public:
     auto Random(int32_t min_value, int32_t max_value) const -> int32_t;
     auto CaptureRandomState() const -> random_generator::state_data;
     void RestoreRandomState(const random_generator::state_data& state);
-    void FrameAdvance();
+    void FrameAdvance(bool process_backends = true);
 
     virtual void Shutdown() { }
     virtual void ScheduleDelayedCallback(timespan delay, function<void()> body);
@@ -223,7 +221,7 @@ public:
     void SendRemoteCall(hstring name, ptr<Entity> caller, const_span<uint8_t> data);
     void SetRemoteCallHandler(hstring name, RemoteCallHandler handler, bool replace = false);
     void VerifyBindedRemoteCalls() const noexcept(false);
-    void HandleInboundRemoteCall(hstring name, nptr<Entity> caller, span<uint8_t> data);
+    void HandleInboundRemoteCall(hstring name, nptr<Entity> caller, span<uint8_t> data, shared_ptr<ScriptCallCompletion> completion = {});
 
     ptr<GlobalSettings> Settings;
     FileSystem Resources;

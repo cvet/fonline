@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "Rendering.h"
 
 FO_BEGIN_NAMESPACE
@@ -85,13 +87,13 @@ public:
         FO_VERIFY_AND_THROW(size.height > 0, "Size height must be positive", size.height);
         ValidateTextureRect(*this, pos, size);
 
-        vector<ucolor> result;
+        vector<ucolor> result {};
         result.resize(numeric_cast<size_t>(size.width) * numeric_cast<size_t>(size.height));
 
-        for (int32_t y = 0; y < size.height; y++) {
-            for (int32_t x = 0; x < size.width; x++) {
+        for (int32_t y {0}; y < size.height; y++) {
+            for (int32_t x {0}; x < size.width; x++) {
                 ipos32 src_pos {pos.x + x, pos.y + y};
-                size_t dst_index = numeric_cast<size_t>(y) * numeric_cast<size_t>(size.width) + numeric_cast<size_t>(x);
+                size_t dst_index {numeric_cast<size_t>(y) * numeric_cast<size_t>(size.width) + numeric_cast<size_t>(x)};
                 result[dst_index] = _pixels[CalcTextureIndex(*this, src_pos)];
             }
         }
@@ -113,14 +115,14 @@ public:
             return;
         }
 
-        int32_t pitch = use_dest_pitch ? Size.width : size.width;
-        size_t required_size = (numeric_cast<size_t>(size.height - 1) * numeric_cast<size_t>(pitch)) + numeric_cast<size_t>(size.width);
+        int32_t pitch {use_dest_pitch ? Size.width : size.width};
+        size_t required_size {(numeric_cast<size_t>(size.height - 1) * numeric_cast<size_t>(pitch)) + numeric_cast<size_t>(size.width)};
         FO_VERIFY_AND_THROW(data.size() >= required_size, "Texture update source data is smaller than the required region size");
 
-        for (int32_t y = 0; y < size.height; y++) {
-            for (int32_t x = 0; x < size.width; x++) {
+        for (int32_t y {0}; y < size.height; y++) {
+            for (int32_t x {0}; x < size.width; x++) {
                 ipos32 dst_pos {pos.x + x, pos.y + y};
-                size_t src_index = numeric_cast<size_t>(y) * numeric_cast<size_t>(pitch) + numeric_cast<size_t>(x);
+                size_t src_index {numeric_cast<size_t>(y) * numeric_cast<size_t>(pitch) + numeric_cast<size_t>(x)};
                 _pixels[CalcTextureIndex(*this, dst_pos)] = data[src_index];
             }
         }
@@ -140,14 +142,18 @@ public:
     {
     }
 
+    [[nodiscard]] auto GetLastUploadedVertices() const -> size_t { return _lastUploadedVertices; }
+
+    [[nodiscard]] auto GetLastUploadedIndices() const -> size_t { return _lastUploadedIndices; }
+
     void Upload(EffectUsage usage, optional<size_t> custom_vertices_size, optional<size_t> custom_indices_size) override
     {
         if (IsStatic && !StaticDataChanged) {
             return;
         }
 
-        size_t upload_vertices = custom_vertices_size.value_or(VertCount);
-        size_t upload_indices = custom_indices_size.value_or(IndCount);
+        size_t upload_vertices {custom_vertices_size.value_or(VertCount)};
+        size_t upload_indices {custom_indices_size.value_or(IndCount)};
 
 #if FO_ENABLE_3D
         if (usage == EffectUsage::Model) {
@@ -170,10 +176,6 @@ public:
         _lastUploadedIndices = upload_indices;
     }
 
-    [[nodiscard]] auto GetLastUploadedVertices() const -> size_t { return _lastUploadedVertices; }
-
-    [[nodiscard]] auto GetLastUploadedIndices() const -> size_t { return _lastUploadedIndices; }
-
 private:
     size_t _lastUploadedVertices {};
     size_t _lastUploadedIndices {};
@@ -181,7 +183,7 @@ private:
 
 static auto GetNullEffectConfig(string_view name, const RenderEffectLoader& loader) -> string
 {
-    auto fofx_content = loader(name);
+    auto fofx_content {loader(name)};
 
     if (!fofx_content.empty()) {
         return fofx_content;
@@ -204,7 +206,7 @@ public:
 
     void DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, optional<size_t> indices_to_draw, nptr<const RenderTexture> custom_tex) override
     {
-        size_t draw_indices = indices_to_draw.value_or(dbuf->IndCount - start_index);
+        size_t draw_indices {indices_to_draw.value_or(dbuf->IndCount - start_index)};
         FO_VERIFY_AND_THROW(start_index <= dbuf->IndCount, "Draw buffer start index is outside index buffer bounds", start_index, dbuf->IndCount);
         FO_VERIFY_AND_THROW(draw_indices <= dbuf->IndCount - start_index, "Draw buffer index range is outside index buffer bounds", start_index, draw_indices, dbuf->IndCount);
 
@@ -221,7 +223,7 @@ public:
 
         // Nothing is rasterized, but the depth state is still resolved so a draw asking for a state the
         // effect never built fails headlessly too, not only on a backend with real device objects
-        for (size_t pass = 0; pass < _passCount; pass++) {
+        for (size_t pass {0}; pass < _passCount; pass++) {
 #if FO_ENABLE_3D
             if (DisableShadow && _isShadow[pass]) {
                 continue;
@@ -237,20 +239,20 @@ public:
             }
 
             if (_needMainTexBuf && !MainTexBuf.has_value()) {
-                auto& main_tex_buf = MainTexBuf = MainTexBuffer();
-                auto size_data = GetFallbackTextureSizeData();
+                auto& main_tex_buf {MainTexBuf = MainTexBuffer()};
+                auto size_data {GetFallbackTextureSizeData()};
 
                 if (custom_tex) {
                     size_data = custom_tex->SizeData;
                 }
 
-                auto main_texture_size = main_tex_buf->MainTexSize;
+                float32_t* main_texture_size {main_tex_buf->MainTexSize};
                 memory::copy(main_texture_size, size_data, 4 * sizeof(float32_t));
             }
         }
 
         if (_needProjBuf && !ProjBuf.has_value()) {
-            auto& proj_buf = ProjBuf = ProjBuffer();
+            auto& proj_buf {ProjBuf = ProjBuffer()};
             proj_buf->ProjMatrix[0] = 1.0f;
             proj_buf->ProjMatrix[5] = 1.0f;
             proj_buf->ProjMatrix[10] = 1.0f;
@@ -276,12 +278,12 @@ auto Null_Renderer::CreateEffect(EffectUsage usage, string_view name, const Rend
 
 auto Null_Renderer::CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44
 {
-    float32_t r_l = right - left;
-    float32_t t_b = top - bottom;
-    float32_t f_n = farp - nearp;
-    float32_t tx = -(right + left) / r_l;
-    float32_t ty = -(top + bottom) / t_b;
-    float32_t tz = -(farp + nearp) / f_n;
+    float32_t r_l {right - left};
+    float32_t t_b {top - bottom};
+    float32_t f_n {farp - nearp};
+    float32_t tx {-(right + left) / r_l};
+    float32_t ty {-(top + bottom) / t_b};
+    float32_t tz {-(farp + nearp) / f_n};
 
     mat44 result {1.0f};
 
@@ -353,7 +355,7 @@ void Null_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool s
         return;
     }
 
-    auto null_tex = _currentRenderTarget.dyn_cast<Null_Texture>();
+    auto null_tex {_currentRenderTarget.dyn_cast<Null_Texture>()};
     FO_VERIFY_AND_THROW(null_tex, "Missing required null texture");
     null_tex->Clear(color.value());
 }

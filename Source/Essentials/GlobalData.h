@@ -39,7 +39,7 @@ FO_BEGIN_NAMESPACE
 
 namespace global_data
 {
-    constexpr auto MAX_CALLBACKS = 40;
+    constexpr auto MAX_CALLBACKS {40};
     using callback = void (*)() noexcept;
     // Told the name of each set just before its delete callback runs, so a teardown that never returns names the
     // set it stopped in. It runs inside the sweep and must touch no global data
@@ -47,7 +47,7 @@ namespace global_data
 
     // True when this call built the set, false when it already existed: an entry point that did not build the set
     // must not tear it down, since whoever did is still using it
-    auto create() -> bool;
+    [[nodiscard]] auto create() -> bool;
     void destroy(teardown_observer observer = nullptr, void* observer_context = nullptr);
 
     // Reaching for global data outside its lifetime is a startup or teardown ordering defect, and carrying on

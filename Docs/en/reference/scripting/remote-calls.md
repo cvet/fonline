@@ -214,6 +214,59 @@ On the server, `ServerEngine::Process_RemoteCall()` rejects a negative or curren
 
 The server then runs `ValidateInboundRemoteCallData()` before acquiring the calling `Player` cover or invoking the handler. The validator walks the metadata shape, checks enum/hash/reference data, rejects negative or over-limit collection counts, proves minimum remaining bytes before iterating a collection, and requires complete payload consumption. The AngelScript decoder independently enforces the same collection ceiling before reserve or construction, including nested dictionary arrays. The Managed decoder uses the shared `RemoteCallWire` reader, repeats the payload and array ceiling checks before building a managed `List<T>`, requires complete consumption, and invokes the attributed handler inside the backend context. These transport checks do not replace domain validation. Log failures with enough call/caller context to diagnose them without logging secrets or full untrusted payloads.
 
+## Runtime monitoring and disconnection
+
+The server monitors each connection independently with these `ServerNetwork` settings:
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `RemoteCallWarningTimeMs` | `1000` | Warn when an unfinished inbound RPC or a complete queued input frame reaches this age. |
+| `RemoteCallDisconnectTimeMs` | `30000` | Disconnect that client when either age reaches this threshold. |
+| `RemoteCallWarningIntervalMs` | `10000` | Minimum interval between warnings on one connection; `0` warns once per continuous violating episode. |
+| `MaxPendingRemoteCalls` | `256` | Maximum accepted unfinished handlers on one connection; reject the next call and disconnect before invoking it. |
+
+Zero disables each age reaction or the pending-count ceiling independently.
+Setting both age thresholds and the pending ceiling to zero disables tracking.
+Negative values are rejected at server startup. The warning threshold need not
+be lower than the disconnect threshold; disconnection takes precedence.
+
+An independent watchdog samples monotonic time about every 100 ms. It does not
+need entity cover or a free script worker. After framing and payload-size checks,
+an invocation starts before argument validation and acquisition of the caller's cover, and ends when its handler
+actually completes: synchronously, after a Managed `Task` succeeds, faults or
+cancels, or after an AngelScript suspended context returns. These diagnostic
+invocation IDs are local to the connection and do not replace application
+request IDs. Completion still says nothing about delivery of a separate reply.
+
+Native monitoring uses the opaque `RpcRuntimeCallId` for invocation identity and
+the existing player entity `ident_t` for `CallerId`; these IDs cannot be mixed
+implicitly. A zero invocation ID denotes no tracked call.
+
+Queue age starts when the **last byte** makes the oldest waiting input frame
+complete. Partial delivery alone is not queued work. The framing reader owns
+this decision; inspecting it does not consume input. All high-level message
+kinds participate, including messages waiting behind a running RPC. Arrival
+history is bounded to 4096 segments; coalescing conservatively keeps the newer
+timestamp, so it can delay a report rather than invent an older arrival.
+
+Warnings include the peer, known caller, invocation name/ID, cause, age, pending
+count, buffered bytes, started/finished counts and per-method counts. For an
+input-queue report, `queued_call_hash` identifies the queued RPC when available;
+`last_dispatch` and `stats_call` describe already dispatched work and must not
+be mistaken for that queued method. Arguments and credentials are not logged.
+Choose thresholds for legitimate long-running handlers as well as abuse.
+
+Enforcement records `DisconnectReason::RpcRuntimeLimit` and closes the transport.
+It uses `NetworkServerConnection::RequestDisconnect()` without waiting for
+send/receive callbacks that may themselves be waiting for a script-owned lock.
+Ordinary `Disconnect()` / `DropAsyncCallbacks()` still quiesce callbacks before
+owner destruction. Transport-only closure can defer disconnect notification,
+including for interthread peers; watchdog accounting stops immediately.
+It does not preempt executing code, cancel arbitrary tasks or roll back game
+changes. Completion owners hold detached connection state and a weak transport
+reference; disconnect/teardown clears pending records as abandoned, and late
+completion safely releases its owner. New connections have fresh state.
+
 ## Baked metadata
 
 `MetadataBaker` emits one binary metadata file per target. A remote-call record contains:

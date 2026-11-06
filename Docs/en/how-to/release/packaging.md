@@ -12,6 +12,25 @@ This guide turns an embedding project's compiled FOnline applications and baked 
 
 Use the generated [package interface](../../reference/packages/index.md) for the exact current grammar, target/platform compatibility, pack tokens, payloads, and command-line arguments. Use the [Support Matrix](../../reference/platforms/support-matrix.md) before calling any resulting artifact supported.
 
+## Resource selection
+
+`package.py` requires a valid `Resources.usage.json` from the successful full
+bake. It validates version 1, exact build/configuration hashes against the success
+markers, canonical case-sensitive paths, duplicate keys/entries and the existence
+of every listed file. Missing or invalid selection fails packaging; there is no
+implicit full-content fallback. The exact allowlist is intersected with existing
+target suffix restrictions at the shared collection hook, including Client,
+server-served client resources and Embedded. Platform-specific managed runtime
+replacement remains mandatory after resource collection. A pack with no selected
+art files is a valid empty `.fores` archive.
+
+Use the full loose bake tree for development and Mapper workflows. Resource-free
+tool payloads retain their existing `NoRes` behavior; this manifest does not add a
+new full-content package mode. Embedding projects must declare direct and computed
+runtime paths through Resource properties or ordinary forced-inclusion tables.
+The [baking guide](../../explanation/content-pipeline/baking.md#resource-usage-manifest)
+owns roots, runtime closure, output ownership and manifest publication.
+
 ## Package decision
 
 For each declared application variant, build the exact target, run
@@ -113,7 +132,7 @@ Each `BINARY` clause has this shape:
 BINARY <target> <platform> <architecture> <pack+tokens> [POSTFIX <variant>]
 ```
 
-`CONFIG` selects a baked sub-config. For resource-bearing client and server packages, baking must have produced `Baking/Configs/<config>.fomain-client` or `...-server` through the `Config` baker. The package target does not silently create missing application binaries or baked resources.
+`CONFIG` selects a baked sub-config. For resource-bearing client and server packages, baking must have produced `Baking/Metadata/<config>.fomain-client` or `...-server` through the `Config` baker. The package target does not silently create missing application binaries or baked resources.
 
 Use `POSTFIX` when a separately built binary variant has `FO_BINARY_OUTPUT_POSTFIX`. The declaration value must match the build output. This keeps package input selection, packaged runtime identity, and server-staged updater payload names aligned. Do not use a package name as an implicit variant selector.
 
@@ -156,7 +175,7 @@ Each embedded-data or configuration patch locates the first matching marker, che
 
 `Examples/PackagingMatrix` is the executable Engine-owned baseline for native package mechanics. It is intentionally separate from the readable starter and multiplayer tutorials because `ConfigBaker` requires every server/client runtime setting to be initialized. Its checked-in `FOnlinePackagingMatrix.fomain` is deterministically generated from `Source/Common/Settings.inc`; `generate_config.py --check` fails when settings and the fixture diverge.
 
-Both this fixture and `Examples/MinimalMultiplayer` derive defaults from the current `SETTING(...)` declarations. After changing the settings schema, regenerate both example configurations before running their freshness checks.
+Example generators exclude runtime-owned `SettingNames` keys. Regenerate and `--check` after schema changes.
 
 In a standalone checkout of `Examples/PackagingMatrix` with its `Engine`
 submodule initialized, configure the host build and build the fixture-owned
@@ -208,7 +227,6 @@ green landed job and a reviewed external repository commit/tag.
 - `Raw` retains the staged portable directory.
 - `Zip` emits a portable archive from that directory.
 - `Wix` emits a per-user MSI. On Windows, prepare the Engine-pinned portable WiX v3 toolset with `buildtools.py prepare-workspace wix`; `package.py` finds `FO_WIX_ROOT`, a sibling `wix3` workspace, or finally `candle`/`light` on `PATH`. It passes the selected directory to `createmsi.py --wix-dir`; direct invocations accept the same option, including paths with spaces as one argument. Omitting it uses the tools on `PATH`. `light` runs ICE validation first and retries once with `-sval` only when the Windows Installer service is unavailable; every other linker/ICE failure and a failed fallback remain fatal. POSIX package hosts require `wixl` 0.102 or newer.
-- `OGL` adds the separately built OpenGL runtime variant.
 - `Lib` selects the library form where the target supports it.
 - `POSTFIX` keeps independently built variants, such as a depot-specific client, from colliding.
 
@@ -379,7 +397,7 @@ Promote a package row to project-qualified only when the named lane is versioned
 
 | Symptom | Inspect first |
 |---|---|
-| `Config file not found` | `Config` baker, package `CONFIG`, `Baking/Configs`, and fresh bake output |
+| `Config file not found` | `Config` baker, package `CONFIG`, `Baking/Metadata`, and fresh bake output |
 | Missing binary input | built target/variant, platform architecture key, `POSTFIX`, and shared `FO_OUTPUT_PATH` |
 | Unknown or invalid pack token | generated package matrix rather than remembered combinations |
 | Package succeeds but requested artifact is absent | output-producing pack token and final package output path |
@@ -426,3 +444,14 @@ Promote a package row to project-qualified only when the named lane is versioned
 - [Client Runtime Split and Updater](../../explanation/runtime/client-updater.md)
 - [Release Operations](operations.md)
 - [Engine Upgrade Guide](../migration/engine-upgrade.md)
+
+
+`Common.ResourcesPath` owns application placement (default `Resources`). A Server
+package separates its own packs at this root from client distribution in `Client`.
+The config bakers omit typed zeros after author completeness checks. Metadata
+Setting stores name/type only (file version 6). Compatibility `0.0.87` requires
+rebuilding native roles and one matching rebake before distributing these profiles.
+
+The Config baker writes two profiles per role and sub-config: `.fomain-server/client` contains the full resource configuration; `.fomain-embedded-server/client` contains only Engine settings and the explicitly listed `Baking.BootstrapGameSettings`. Both carry resource-pack declarations and omit typed zeros. The packager embeds the smaller profile into executables and runtime libraries, while keeping the full selected profile in Metadata. Package-time settings are resolved from the full profile. Missing embedded profiles fail packaging; they do not fall back to embedding gameplay settings. Startup still applies exactly one selected main profile.
+
+The packager moves the main-section `Common.ResourcesPath` line to the first line of each embedded profile so bootstrap finds it immediately. Its value and all other line ordering are preserved; full resource profiles and baked source files are unchanged.

@@ -76,7 +76,7 @@ auto ModelBoundsSampler::CalculateStaticBounds() const -> optional<ModelBounds3D
         return std::nullopt;
     }
 
-    optional<ModelBounds3D> result;
+    optional<ModelBounds3D> result {};
 
     if (!IncludePosedGeometry(_bindPoseTransforms, result) || !result) {
         return std::nullopt;
@@ -94,20 +94,20 @@ auto ModelBoundsSampler::CalculateAnimationBounds(const ModelAnimationSource& an
             return std::nullopt;
         }
 
-        optional<vector<nptr<const ModelAnimationJointSource>>> outputs = BuildBoneOutputs(animation);
+        optional<vector<nptr<const ModelAnimationJointSource>>> outputs {BuildBoneOutputs(animation)};
 
         if (!outputs) {
             return std::nullopt;
         }
 
-        optional<vector<float32_t>> sample_times = BuildSampleTimes(animation, *outputs, reversed);
+        optional<vector<float32_t>> sample_times {BuildSampleTimes(animation, *outputs, reversed)};
 
         if (!sample_times) {
             return std::nullopt;
         }
 
-        vector<mat44> combined_transforms(_bones.size());
-        optional<ModelBounds3D> result;
+        vector<mat44> combined_transforms {vector<mat44>(_bones.size())};
+        optional<ModelBounds3D> result {};
 
         for (float32_t sample_time : *sample_times) {
             if (!BuildCombinedTransforms(*outputs, sample_time, animation.Duration, reversed, combined_transforms)) {
@@ -138,7 +138,7 @@ auto ModelBoundsSampler::GetBindPoseBoneTransform(string_view bone) const -> opt
         return std::nullopt;
     }
 
-    auto it = _boneIndex.find(string(bone));
+    auto it {_boneIndex.find(string(bone))};
 
     if (it == _boneIndex.end()) {
         return std::nullopt;
@@ -156,26 +156,26 @@ auto ModelBoundsSampler::SampleBoneTransforms(const ModelAnimationSource& animat
             return std::nullopt;
         }
 
-        auto bone_it = _boneIndex.find(string(bone));
+        auto bone_it {_boneIndex.find(string(bone))};
 
         if (bone_it == _boneIndex.end()) {
             return std::nullopt;
         }
 
-        optional<vector<nptr<const ModelAnimationJointSource>>> outputs = BuildBoneOutputs(animation);
+        optional<vector<nptr<const ModelAnimationJointSource>>> outputs {BuildBoneOutputs(animation)};
 
         if (!outputs) {
             return std::nullopt;
         }
 
-        optional<vector<float32_t>> sample_times = BuildSampleTimes(animation, *outputs, reversed);
+        optional<vector<float32_t>> sample_times {BuildSampleTimes(animation, *outputs, reversed)};
 
         if (!sample_times) {
             return std::nullopt;
         }
 
-        vector<mat44> combined_transforms(_bones.size());
-        vector<mat44> result;
+        vector<mat44> combined_transforms {vector<mat44>(_bones.size())};
+        vector<mat44> result {};
         result.reserve(sample_times->size());
 
         for (float32_t sample_time : *sample_times) {
@@ -202,7 +202,7 @@ auto CalculateRigidAttachmentBounds(const_span<mat44> bone_transforms, const Mod
         return std::nullopt;
     }
 
-    optional<ModelBounds3D> result;
+    optional<ModelBounds3D> result {};
 
     for (const mat44& bone_transform : bone_transforms) {
         if (!IncludeTransformedModelBounds(result, attachment_bounds, bone_transform * attachment_transform)) {
@@ -215,8 +215,8 @@ auto CalculateRigidAttachmentBounds(const_span<mat44> bone_transforms, const Mod
 
 void ModelBoundsSampler::AppendBone(const ModelMeshBoneData& bone, optional<size_t> parent)
 {
-    size_t bone_index = _bones.size();
-    Bone& target = _bones.emplace_back();
+    size_t bone_index {_bones.size()};
+    Bone& target {_bones.emplace_back()};
     target.Name = bone.Name;
     target.BindTransform = bone.TransformationMatrix;
     target.Parent = parent;
@@ -226,13 +226,13 @@ void ModelBoundsSampler::AppendBone(const ModelMeshBoneData& bone, optional<size
     }
 
     if (bone.AttachedMesh) {
-        const ModelMeshGeometryData& source = *bone.AttachedMesh;
+        const ModelMeshGeometryData& source {*bone.AttachedMesh};
         target.AttachedMesh = Mesh {};
-        Mesh& mesh = *target.AttachedMesh;
+        Mesh& mesh {*target.AttachedMesh};
         mesh.Vertices.reserve(source.Vertices.size());
 
         for (const ModelMeshVertexData& source_vertex : source.Vertices) {
-            Vertex& vertex = mesh.Vertices.emplace_back();
+            Vertex& vertex {mesh.Vertices.emplace_back()};
             vertex.Position = source_vertex.Position;
             std::ranges::copy(source_vertex.BlendWeights, vertex.BlendWeights);
             std::ranges::copy(source_vertex.BlendIndices, vertex.BlendIndices);
@@ -266,7 +266,7 @@ auto ModelBoundsSampler::BuildBoneIndex() -> bool
 {
     _boneIndex.reserve(_bones.size());
 
-    for (size_t i = 0; i < _bones.size(); i++) {
+    for (size_t i {0}; i < _bones.size(); i++) {
         if (!_boneIndex.emplace(_bones[i].Name, i).second) {
             return false;
         }
@@ -279,9 +279,9 @@ auto ModelBoundsSampler::BuildBindPoseTransforms() -> bool
 {
     _bindPoseTransforms.resize(_bones.size());
 
-    for (size_t i = 0; i < _bones.size(); i++) {
+    for (size_t i {0}; i < _bones.size(); i++) {
         if (_bones[i].Parent) {
-            size_t parent = *_bones[i].Parent;
+            size_t parent {*_bones[i].Parent};
             FO_VERIFY_AND_THROW(parent < i, "Baked model hierarchy parent must precede its child", parent, i);
             _bindPoseTransforms[i] = _bindPoseTransforms[parent] * _bones[i].BindTransform;
         }
@@ -299,11 +299,11 @@ auto ModelBoundsSampler::BuildBindPoseTransforms() -> bool
 
 auto ModelBoundsSampler::BuildDrawableMeshes(const vector<string>& disabled_meshes) -> bool
 {
-    constexpr float64_t weight_sum_tolerance = 0.001;
-    bool all_meshes_disabled = std::ranges::find(disabled_meshes, string {}) != disabled_meshes.end();
+    constexpr float64_t weight_sum_tolerance {0.001};
+    bool all_meshes_disabled {std::ranges::find(disabled_meshes, string {}) != disabled_meshes.end()};
 
-    for (size_t bone_index = 0; bone_index < _bones.size(); bone_index++) {
-        const Bone& owner_bone = _bones[bone_index];
+    for (size_t bone_index {0}; bone_index < _bones.size(); bone_index++) {
+        const Bone& owner_bone {_bones[bone_index]};
 
         if (!owner_bone.AttachedMesh || owner_bone.AttachedMesh->Vertices.empty() || owner_bone.AttachedMesh->Indices.empty()) {
             continue;
@@ -312,11 +312,11 @@ auto ModelBoundsSampler::BuildDrawableMeshes(const vector<string>& disabled_mesh
             continue;
         }
 
-        const Mesh& mesh = *owner_bone.AttachedMesh;
-        DrawableMesh& drawable_mesh = _drawableMeshes.emplace_back();
+        const Mesh& mesh {*owner_bone.AttachedMesh};
+        DrawableMesh& drawable_mesh {_drawableMeshes.emplace_back()};
         drawable_mesh.OwnerBone = bone_index;
 
-        vector<bool> referenced_vertices(mesh.Vertices.size());
+        vector<bool> referenced_vertices {vector<bool>(mesh.Vertices.size())};
 
         for (ModelMeshIndexData vertex_index : mesh.Indices) {
             if (numeric_cast<size_t>(vertex_index) >= mesh.Vertices.size()) {
@@ -326,7 +326,7 @@ auto ModelBoundsSampler::BuildDrawableMeshes(const vector<string>& disabled_mesh
             referenced_vertices[numeric_cast<size_t>(vertex_index)] = true;
         }
 
-        for (size_t vertex_index = 0; vertex_index < referenced_vertices.size(); vertex_index++) {
+        for (size_t vertex_index {0}; vertex_index < referenced_vertices.size(); vertex_index++) {
             if (referenced_vertices[vertex_index]) {
                 drawable_mesh.VertexIndices.emplace_back(vertex_index);
             }
@@ -346,7 +346,7 @@ auto ModelBoundsSampler::BuildDrawableMeshes(const vector<string>& disabled_mesh
                     continue;
                 }
 
-                auto it = _boneIndex.find(skin_bone_name);
+                auto it {_boneIndex.find(skin_bone_name)};
 
                 if (it == _boneIndex.end()) {
                     return false;
@@ -356,13 +356,13 @@ auto ModelBoundsSampler::BuildDrawableMeshes(const vector<string>& disabled_mesh
             }
 
             for (size_t vertex_index : drawable_mesh.VertexIndices) {
-                const Vertex& vertex = mesh.Vertices[vertex_index];
-                float64_t weight_sum = 0.0;
-                bool has_influence = false;
+                const Vertex& vertex {mesh.Vertices[vertex_index]};
+                float64_t weight_sum {0.0};
+                bool has_influence {false};
 
-                for (size_t influence = 0; influence < MODEL_MESH_BONES_PER_VERTEX; influence++) {
-                    float32_t weight = vertex.BlendWeights[influence];
-                    float32_t raw_index = vertex.BlendIndices[influence];
+                for (size_t influence {0}; influence < MODEL_MESH_BONES_PER_VERTEX; influence++) {
+                    float32_t weight {vertex.BlendWeights[influence]};
+                    float32_t raw_index {vertex.BlendIndices[influence]};
 
                     if (!std::isfinite(weight) || !std::isfinite(raw_index) || weight < 0.0f) {
                         return false;
@@ -371,7 +371,7 @@ auto ModelBoundsSampler::BuildDrawableMeshes(const vector<string>& disabled_mesh
                         continue;
                     }
 
-                    int32_t index = iround<int32_t>(raw_index);
+                    int32_t index {iround<int32_t>(raw_index)};
 
                     if (index < 0 || numeric_cast<size_t>(index) >= drawable_mesh.SkinBones.size() || !is_float_equal(raw_index, numeric_cast<float32_t>(index))) {
                         return false;
@@ -399,7 +399,7 @@ auto ModelBoundsSampler::BuildDrawableMeshes(const vector<string>& disabled_mesh
 // bone matrix. A blended vertex is a convex combination of its slots, hence inside the union of the boxes
 void ModelBoundsSampler::BuildMeshEnvelopes(DrawableMesh& drawable_mesh) const
 {
-    const Mesh& mesh = *_bones[drawable_mesh.OwnerBone].AttachedMesh;
+    const Mesh& mesh {*_bones[drawable_mesh.OwnerBone].AttachedMesh};
 
     if (drawable_mesh.SkinBones.empty()) {
         for (size_t vertex_index : drawable_mesh.VertexIndices) {
@@ -412,15 +412,15 @@ void ModelBoundsSampler::BuildMeshEnvelopes(DrawableMesh& drawable_mesh) const
     drawable_mesh.SkinBoneEnvelopes.resize(drawable_mesh.SkinBones.size());
 
     for (size_t vertex_index : drawable_mesh.VertexIndices) {
-        const Vertex& vertex = mesh.Vertices[vertex_index];
+        const Vertex& vertex {mesh.Vertices[vertex_index]};
 
-        for (size_t influence = 0; influence < MODEL_MESH_BONES_PER_VERTEX; influence++) {
+        for (size_t influence {0}; influence < MODEL_MESH_BONES_PER_VERTEX; influence++) {
             if (vertex.BlendWeights[influence] == 0.0f) {
                 continue;
             }
 
-            size_t skin_index = numeric_cast<size_t>(iround<int32_t>(vertex.BlendIndices[influence]));
-            glm::vec4 offset_position = mesh.SkinBoneOffsets[skin_index] * glm::vec4 {vertex.Position, 1.0f};
+            size_t skin_index {numeric_cast<size_t>(iround<int32_t>(vertex.BlendIndices[influence]))};
+            glm::vec4 offset_position {mesh.SkinBoneOffsets[skin_index] * glm::vec4 {vertex.Position, 1.0f}};
             (void)IncludeModelBoundsPoint(drawable_mesh.SkinBoneEnvelopes[skin_index], vec3 {offset_position});
         }
     }
@@ -428,19 +428,19 @@ void ModelBoundsSampler::BuildMeshEnvelopes(DrawableMesh& drawable_mesh) const
 
 auto ModelBoundsSampler::BuildBoneOutputs(const ModelAnimationSource& animation) const -> optional<vector<nptr<const ModelAnimationJointSource>>>
 {
-    unordered_map<string, size_t> output_index;
+    unordered_map<string, size_t> output_index {};
     output_index.reserve(animation.Joints.size());
 
-    for (size_t i = 0; i < animation.Joints.size(); i++) {
+    for (size_t i {0}; i < animation.Joints.size(); i++) {
         if (!output_index.emplace(animation.Joints[i].OutputName, i).second) {
             return std::nullopt;
         }
     }
 
-    vector<nptr<const ModelAnimationJointSource>> result(_bones.size());
+    vector<nptr<const ModelAnimationJointSource>> result {vector<nptr<const ModelAnimationJointSource>>(_bones.size())};
 
-    for (size_t i = 0; i < _bones.size(); i++) {
-        if (auto it = output_index.find(_bones[i].Name); it != output_index.end()) {
+    for (size_t i {0}; i < _bones.size(); i++) {
+        if (auto it {output_index.find(_bones[i].Name)}; it != output_index.end()) {
             result[i] = &animation.Joints[it->second];
         }
     }
@@ -450,13 +450,13 @@ auto ModelBoundsSampler::BuildBoneOutputs(const ModelAnimationSource& animation)
 
 auto ModelBoundsSampler::BuildSampleTimes(const ModelAnimationSource& animation, const vector<nptr<const ModelAnimationJointSource>>& outputs, bool reversed) const -> optional<vector<float32_t>>
 {
-    constexpr float64_t GRID_SAMPLES_PER_SECOND = 60.0;
+    constexpr float64_t GRID_SAMPLES_PER_SECOND {60.0};
 
     if (!std::isfinite(animation.Duration) || animation.Duration <= 0.0f) {
         throw ModelBoundsException("Animation has invalid duration", animation.Name, animation.Duration);
     }
 
-    vector<float32_t> result;
+    vector<float32_t> result {};
 
     for (nptr<const ModelAnimationJointSource> output : outputs) {
         if (!output) {
@@ -471,12 +471,12 @@ auto ModelBoundsSampler::BuildSampleTimes(const ModelAnimationSource& animation,
         AppendTrackSampleTimes(output->Translation.Times, animation.Duration, reversed, result);
     }
 
-    float64_t interval_count_value = std::ceil(numeric_cast<float64_t>(animation.Duration) * GRID_SAMPLES_PER_SECOND);
-    size_t interval_count = std::max<size_t>(1, iround<size_t>(interval_count_value));
+    float64_t interval_count_value {std::ceil(numeric_cast<float64_t>(animation.Duration) * GRID_SAMPLES_PER_SECOND)};
+    size_t interval_count {std::max<size_t>(1, iround<size_t>(interval_count_value))};
     result.reserve(result.size() + interval_count + 1);
 
-    for (size_t i = 0; i <= interval_count; i++) {
-        float64_t factor = numeric_cast<float64_t>(i) / numeric_cast<float64_t>(interval_count);
+    for (size_t i {0}; i <= interval_count; i++) {
+        float64_t factor {numeric_cast<float64_t>(i) / numeric_cast<float64_t>(interval_count)};
         result.emplace_back(numeric_cast<float32_t>(numeric_cast<float64_t>(animation.Duration) * factor));
     }
 
@@ -490,11 +490,11 @@ auto ModelBoundsSampler::BuildCombinedTransforms(const vector<nptr<const ModelAn
     FO_VERIFY_AND_THROW(outputs.size() == _bones.size(), "Animation output mapping size does not match model hierarchy");
     FO_VERIFY_AND_THROW(combined_transforms.size() == _bones.size(), "Combined transform buffer size does not match model hierarchy");
 
-    for (size_t i = 0; i < _bones.size(); i++) {
-        mat44 local_transform = outputs[i] ? SampleJointTransform(*outputs[i], time, duration, reversed) : _bones[i].BindTransform;
+    for (size_t i {0}; i < _bones.size(); i++) {
+        mat44 local_transform {outputs[i] ? SampleJointTransform(*outputs[i], time, duration, reversed) : _bones[i].BindTransform};
 
         if (_bones[i].Parent) {
-            size_t parent = *_bones[i].Parent;
+            size_t parent {*_bones[i].Parent};
             FO_VERIFY_AND_THROW(parent < i, "Baked model hierarchy parent must precede its child", parent, i);
             combined_transforms[i] = combined_transforms[parent] * local_transform;
         }
@@ -513,7 +513,7 @@ auto ModelBoundsSampler::BuildCombinedTransforms(const vector<nptr<const ModelAn
 auto ModelBoundsSampler::IncludePosedGeometry(const vector<mat44>& combined_transforms, optional<ModelBounds3D>& bounds) const -> bool
 {
     for (const DrawableMesh& drawable_mesh : _drawableMeshes) {
-        const Mesh& mesh = *_bones[drawable_mesh.OwnerBone].AttachedMesh;
+        const Mesh& mesh {*_bones[drawable_mesh.OwnerBone].AttachedMesh};
 
         if (drawable_mesh.OwnerBone >= combined_transforms.size() || drawable_mesh.SkinBones.size() != mesh.SkinBoneOffsets.size()) {
             return false;
@@ -528,7 +528,7 @@ auto ModelBoundsSampler::IncludePosedGeometry(const vector<mat44>& combined_tran
                 continue;
             }
 
-            for (size_t skin_index = 0; skin_index < drawable_mesh.SkinBones.size(); skin_index++) {
+            for (size_t skin_index {0}; skin_index < drawable_mesh.SkinBones.size(); skin_index++) {
                 if (!drawable_mesh.SkinBoneEnvelopes[skin_index]) {
                     continue;
                 }
@@ -544,21 +544,21 @@ auto ModelBoundsSampler::IncludePosedGeometry(const vector<mat44>& combined_tran
         }
 
         for (size_t vertex_index : drawable_mesh.VertexIndices) {
-            const Vertex& vertex = mesh.Vertices[vertex_index];
+            const Vertex& vertex {mesh.Vertices[vertex_index]};
             glm::vec4 transformed {};
 
             if (drawable_mesh.SkinBones.empty()) {
                 transformed = combined_transforms[drawable_mesh.OwnerBone] * glm::vec4 {vertex.Position, 1.0f};
             }
             else {
-                for (size_t influence = 0; influence < MODEL_MESH_BONES_PER_VERTEX; influence++) {
-                    float32_t weight = vertex.BlendWeights[influence];
+                for (size_t influence {0}; influence < MODEL_MESH_BONES_PER_VERTEX; influence++) {
+                    float32_t weight {vertex.BlendWeights[influence]};
 
                     if (weight == 0.0f) {
                         continue;
                     }
 
-                    size_t skin_index = numeric_cast<size_t>(iround<int32_t>(vertex.BlendIndices[influence]));
+                    size_t skin_index {numeric_cast<size_t>(iround<int32_t>(vertex.BlendIndices[influence]))};
 
                     if (skin_index >= drawable_mesh.SkinBones.size() || drawable_mesh.SkinBones[skin_index] >= combined_transforms.size()) {
                         return false;
@@ -583,7 +583,7 @@ auto ModelBoundsSampler::IncludePosedGeometry(const vector<mat44>& combined_tran
 
 static auto ValidateJointTracks(const ModelAnimationJointSource& joint) -> bool
 {
-    auto validate_track = [](const auto& times, const auto& values) {
+    auto validate_track {[](const auto& times, const auto& values) {
         if (times.size() != values.size()) {
             return false;
         }
@@ -591,7 +591,7 @@ static auto ValidateJointTracks(const ModelAnimationJointSource& joint) -> bool
             return false;
         }
 
-        for (size_t i = 0; i < times.size(); i++) {
+        for (size_t i {0}; i < times.size(); i++) {
             if (!std::isfinite(times[i]) || !IsFinite(values[i])) {
                 return false;
             }
@@ -601,15 +601,15 @@ static auto ValidateJointTracks(const ModelAnimationJointSource& joint) -> bool
         }
 
         return true;
-    };
+    }};
 
     return validate_track(joint.Scale.Times, joint.Scale.Values) && validate_track(joint.Rotation.Times, joint.Rotation.Values) && validate_track(joint.Translation.Times, joint.Translation.Values);
 }
 
 static void AppendTrackSampleTimes(const vector<float32_t>& times, float32_t duration, bool reversed, vector<float32_t>& sample_times)
 {
-    for (size_t i = 0; i < times.size(); i++) {
-        float32_t sample_time = std::clamp(reversed ? duration - times[i] : times[i], 0.0f, duration);
+    for (size_t i {0}; i < times.size(); i++) {
+        float32_t sample_time {std::clamp(reversed ? duration - times[i] : times[i], 0.0f, duration)};
         sample_times.emplace_back(sample_time);
 
         // A reversed clip reads a key from the span ending on it, so the pose just before the key is one the
@@ -619,8 +619,8 @@ static void AppendTrackSampleTimes(const vector<float32_t>& times, float32_t dur
         }
 
         if (i != 0) {
-            float64_t midpoint = (numeric_cast<float64_t>(times[i - 1]) + numeric_cast<float64_t>(times[i])) * 0.5;
-            float32_t midpoint_time = numeric_cast<float32_t>(midpoint);
+            float64_t midpoint {(numeric_cast<float64_t>(times[i - 1]) + numeric_cast<float64_t>(times[i])) * 0.5};
+            float32_t midpoint_time {numeric_cast<float32_t>(midpoint)};
             sample_times.emplace_back(std::clamp(reversed ? duration - midpoint_time : midpoint_time, 0.0f, duration));
         }
     }
@@ -628,40 +628,40 @@ static void AppendTrackSampleTimes(const vector<float32_t>& times, float32_t dur
 
 static auto SampleJointTransform(const ModelAnimationJointSource& joint, float32_t time, float32_t duration, bool reversed) -> mat44
 {
-    vec3 scale = SampleVectorTrack(time, duration, reversed, joint.Scale);
-    quaternion rotation = SampleRotationTrack(time, duration, reversed, joint.Rotation);
-    vec3 translation = SampleVectorTrack(time, duration, reversed, joint.Translation);
+    vec3 scale {SampleVectorTrack(time, duration, reversed, joint.Scale)};
+    quaternion rotation {SampleRotationTrack(time, duration, reversed, joint.Rotation)};
+    vec3 translation {SampleVectorTrack(time, duration, reversed, joint.Translation)};
     return glm::translate(mat44 {1.0f}, translation) * glm::mat4_cast(rotation) * glm::scale(mat44 {1.0f}, scale);
 }
 
 static auto SampleVectorTrack(float32_t time, float32_t duration, bool reversed, const ModelAnimationVec3Track& track) -> vec3
 {
     if (reversed) {
-        float32_t reversed_time = duration - time;
-        optional<size_t> span = FindReversedKeySpan(track.Times, reversed_time);
+        float32_t reversed_time {duration - time};
+        optional<size_t> span {FindReversedKeySpan(track.Times, reversed_time)};
 
         if (!span) {
             return track.Values.front();
         }
 
-        size_t index = *span;
-        vec3 result = track.Values[index];
-        float32_t factor = (reversed_time - track.Times[index]) / (track.Times[index] - track.Times[index - 1]);
+        size_t index {*span};
+        vec3 result {track.Values[index]};
+        float32_t factor {(reversed_time - track.Times[index]) / (track.Times[index] - track.Times[index - 1])};
         result.x += (track.Values[index - 1].x - result.x) * factor;
         result.y += (track.Values[index - 1].y - result.y) * factor;
         result.z += (track.Values[index - 1].z - result.z) * factor;
         return result;
     }
 
-    optional<size_t> span = FindForwardKeySpan(track.Times, time);
+    optional<size_t> span {FindForwardKeySpan(track.Times, time)};
 
     if (!span) {
         return track.Values.back();
     }
 
-    size_t index = *span;
-    vec3 result = track.Values[index];
-    float32_t factor = (time - track.Times[index]) / (track.Times[index + 1] - track.Times[index]);
+    size_t index {*span};
+    vec3 result {track.Values[index]};
+    float32_t factor {(time - track.Times[index]) / (track.Times[index + 1] - track.Times[index])};
     result.x += (track.Values[index + 1].x - result.x) * factor;
     result.y += (track.Values[index + 1].y - result.y) * factor;
     result.z += (track.Values[index + 1].z - result.z) * factor;
@@ -671,26 +671,26 @@ static auto SampleVectorTrack(float32_t time, float32_t duration, bool reversed,
 static auto SampleRotationTrack(float32_t time, float32_t duration, bool reversed, const ModelAnimationQuaternionTrack& track) -> quaternion
 {
     if (reversed) {
-        float32_t reversed_time = duration - time;
-        optional<size_t> span = FindReversedKeySpan(track.Times, reversed_time);
+        float32_t reversed_time {duration - time};
+        optional<size_t> span {FindReversedKeySpan(track.Times, reversed_time)};
 
         if (!span) {
             return track.Values.front();
         }
 
-        size_t index = *span;
-        float32_t factor = (reversed_time - track.Times[index]) / (track.Times[index] - track.Times[index - 1]);
+        size_t index {*span};
+        float32_t factor {(reversed_time - track.Times[index]) / (track.Times[index] - track.Times[index - 1])};
         return glm::normalize(glm::slerp(track.Values[index], track.Values[index - 1], factor));
     }
 
-    optional<size_t> span = FindForwardKeySpan(track.Times, time);
+    optional<size_t> span {FindForwardKeySpan(track.Times, time)};
 
     if (!span) {
         return track.Values.back();
     }
 
-    size_t index = *span;
-    float32_t factor = (time - track.Times[index]) / (track.Times[index + 1] - track.Times[index]);
+    size_t index {*span};
+    float32_t factor {(time - track.Times[index]) / (track.Times[index + 1] - track.Times[index])};
     return glm::normalize(glm::slerp(track.Values[index], track.Values[index + 1], factor));
 }
 
@@ -698,7 +698,7 @@ static auto SampleRotationTrack(float32_t time, float32_t duration, bool reverse
 // Absent means the sample sits outside the authored span range and the caller clamps to an end key
 static auto FindForwardKeySpan(const vector<float32_t>& times, float32_t time) -> optional<size_t>
 {
-    auto upper = std::ranges::upper_bound(times, time);
+    auto upper {std::ranges::upper_bound(times, time)};
 
     if (upper == times.begin() || upper == times.end()) {
         return std::nullopt;
@@ -710,7 +710,7 @@ static auto FindForwardKeySpan(const vector<float32_t>& times, float32_t time) -
 // The reversed pass reads a span by its end key, so it anchors on the first key at or after the sample
 static auto FindReversedKeySpan(const vector<float32_t>& times, float32_t time) -> optional<size_t>
 {
-    auto lower = std::ranges::lower_bound(times, time);
+    auto lower {std::ranges::lower_bound(times, time)};
 
     if (lower == times.begin() || lower == times.end()) {
         return std::nullopt;
@@ -731,9 +731,9 @@ static auto IsFinite(const quaternion& value) -> bool
 
 static auto IsFinite(const mat44& value) -> bool
 {
-    ptr<const float32_t> values = glm::value_ptr(value);
+    ptr<const float32_t> values {glm::value_ptr(value)};
 
-    for (size_t i = 0; i < 16; i++) {
+    for (size_t i {0}; i < 16; i++) {
         if (!std::isfinite(values[i])) {
             return false;
         }

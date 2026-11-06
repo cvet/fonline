@@ -20,12 +20,12 @@ This interface describes engine-owned composition and hook contracts for project
 | Stability | <code>experimental</code> |
 | Support policy | Source-compatible use is documented for a pinned engine revision; independently built binary compatibility is not promised. |
 | Source manifest | [BuildTools/NativeExtensionInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/NativeExtensionInterface.json) |
-| Contract digest | <code>6a8b5d9d6b95a80f67104ddfabe3a7b42051b1b8944eb79ef6954c93d83a635d</code> |
+| Contract digest | <code>82ed3091d89d8d525261b4709039af09214f49fa40c074bb31d80a6ce0563e57</code> |
 
 | Reference | Entries | Purpose |
 | --- | --- | --- |
 | [Roles](roles.md) | 6 | CMake source routing, libraries, headers, and consumers. |
-| [Hooks](hooks.md) | 8 | Optional declarations, call sites, defaults, and compatibility state. |
+| [Hooks](hooks.md) | 10 | Optional declarations, call sites, defaults, and compatibility state. |
 | [Bindings](bindings.md) | 6 | Registration, namespace, pointer, and dependency rules. |
 
 ## Boundary

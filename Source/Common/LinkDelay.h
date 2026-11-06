@@ -55,23 +55,23 @@ public:
 private:
     struct Sample
     {
-        int64_t ReceiveMs {};
+        nanotime ReceivedAt {};
         int64_t OffsetMs {};
     };
 
-    [[nodiscard]] auto EvaluateUsualOffset() const -> int64_t;
+    auto EvaluateUsualOffset() const -> int64_t;
 
-    int64_t _windowMs;
-    int64_t _exceptionalMs;
-    int64_t _rebaseMs;
+    timespan _window {};
+    timespan _exceptional {};
+    timespan _rebase {};
     // A stall's burst stays out of what the link usually takes, or it would hide how late its own later messages were
     deque<Sample> _usual {};
     deque<Sample> _exceptionalRun {};
-    optional<int64_t> _exceptionalSinceMs {};
+    optional<nanotime> _exceptionalSince {};
 };
 
 // How far ahead a late movement plan is played: not at all below the lateness an ordinary jittery link produces, the
 // lateness itself above it, never more than the upper bound
-[[nodiscard]] auto EvaluateLateCatchUp(timespan late_time, timespan min_time, timespan max_time) noexcept -> timespan;
+auto EvaluateLateCatchUp(timespan late_time, timespan min_time, timespan max_time) noexcept -> timespan;
 
 FO_END_NAMESPACE

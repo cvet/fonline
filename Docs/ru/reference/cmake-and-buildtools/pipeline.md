@@ -7,7 +7,7 @@ permalink: /Docs/ru/reference/cmake-and-buildtools/pipeline.html
 ---
 
 # Конвейер BuildTools
-<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"4048b63e7bc7ff1c9f898fba37ac5b8378ce1283260a59758c2eea96cc9477ed"} -->
+<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"ec015ec5612d1d52d92ae2ba3cf88b927f50bb7269167a35f759c52cd59518c0"} -->
 Этот документ объясняет поэтапный CMake-конвейер в `BuildTools/cmake/`. Он
 дополняет основанное на исходниках руководство [Build Workflow](../../how-to/build/):
 в нём описан пользовательский подход к сборке, а здесь — владение реализацией.
@@ -120,6 +120,8 @@ Manifest содержит независимые backends `FO_SPARK_PARTICLES` �
 исходников Engine и защищают реализацию соответствующим macro. Отключённый
 backend не добавляет third-party target, скомпилированную runtime или Mapper
 implementation, runtime resource extensions и baker implementation.
+
+`FO_UNITY_BUILD` явно включает CMake Unity-компиляцию собственных core libraries и приложений и по умолчанию равен `OFF`. `FO_UNITY_BUILD_BATCH_SIZE` по умолчанию равен `32` и обязан быть положительным десятичным целым даже при выключенной функции. `ProjectOptions.cmake` владеет этой проверкой; `Build.cmake` применяет режим `BATCH` только из `AddCoreStaticLibrary` и `SetupApplicationTarget`, не включая bundled third-party targets в Unity-компиляцию. Внедрение и компромисс по памяти описаны в разделе [Unity-сборки](../../how-to/build/#unity-сборка).
 
 На Linux linker исключает статические архивы LibreSSL Engine из dynamic
 symbol table executable. Managed shim OpenSSL открывает системную `libssl`

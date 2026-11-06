@@ -31,10 +31,6 @@
 // SOFTWARE.
 //
 
-// ReSharper disable CppClangTidyReadabilityRedundantDeclaration
-// ReSharper disable CppClangTidyClangDiagnosticCastFunctionTypeStrict
-// ReSharper disable CppClangTidyModernizeUseDesignatedInitializers
-
 ///@ CodeGen Template MetadataRegistration
 
 #include "MetadataRegistration.h"

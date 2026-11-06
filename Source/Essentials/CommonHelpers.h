@@ -156,14 +156,14 @@ private:
 
     static void addref(T& ref)
     {
-        auto ref_ptr = get_ref(ref);
+        auto ref_ptr {get_ref(ref)};
         FO_VERIFY_AND_THROW(ref_ptr, "Missing required reference");
         details::call_addref(ref_ptr);
     }
 
     static void release(T& ref)
     {
-        auto ref_ptr = get_ref(ref);
+        auto ref_ptr {get_ref(ref)};
         FO_VERIFY_AND_THROW(ref_ptr, "Missing required reference");
         details::call_release(ref_ptr);
     }
@@ -175,10 +175,12 @@ template<typename T>
     requires(std::is_pointer_v<T>)
 [[nodiscard]] constexpr auto copy_hold_ref(vector<T>&& value) -> ref_hold_vector<ref_hold_ptr_t<T>>
 {
-    auto ref_vec = ref_hold_vector<ref_hold_ptr_t<T>>(value.size());
+    auto ref_vec {ref_hold_vector<ref_hold_ptr_t<T>>(value.size())};
+
     for (T ref : value) {
         ref_vec.add(ref_hold_ptr_t<T>(ref));
     }
+
     return ref_vec;
 }
 
@@ -186,10 +188,12 @@ template<typename T>
     requires(!std::is_pointer_v<T>)
 [[nodiscard]] constexpr auto copy_hold_ref(vector<T>&& value) -> ref_hold_vector<ref_hold_ptr_t<T>>
 {
-    auto ref_vec = ref_hold_vector<ref_hold_ptr_t<T>>(value.size());
+    auto ref_vec {ref_hold_vector<ref_hold_ptr_t<T>>(value.size())};
+
     for (auto&& ref : value) {
         ref_vec.add(ref_hold_ptr_t<T>(ref.get()));
     }
+
     return ref_vec;
 }
 
@@ -197,10 +201,12 @@ template<typename T>
     requires(std::is_pointer_v<T>)
 [[nodiscard]] constexpr auto copy_hold_ref(vector<T>& value) -> ref_hold_vector<ref_hold_ptr_t<T>>
 {
-    auto ref_vec = ref_hold_vector<ref_hold_ptr_t<T>>(value.size());
+    auto ref_vec {ref_hold_vector<ref_hold_ptr_t<T>>(value.size())};
+
     for (T ref : value) {
         ref_vec.add(ref_hold_ptr_t<T>(ref));
     }
+
     return ref_vec;
 }
 
@@ -208,10 +214,12 @@ template<typename T>
     requires(!std::is_pointer_v<T>)
 [[nodiscard]] constexpr auto copy_hold_ref(vector<T>& value) -> ref_hold_vector<ref_hold_ptr_t<T>>
 {
-    auto ref_vec = ref_hold_vector<ref_hold_ptr_t<T>>(value.size());
+    auto ref_vec {ref_hold_vector<ref_hold_ptr_t<T>>(value.size())};
+
     for (auto&& ref : value) {
         ref_vec.add(ref_hold_ptr_t<T>(ref.get()));
     }
+
     return ref_vec;
 }
 
@@ -219,10 +227,12 @@ template<typename T>
     requires(std::is_pointer_v<T>)
 [[nodiscard]] constexpr auto copy_hold_ref(span<T> value) -> ref_hold_vector<ref_hold_ptr_t<T>>
 {
-    auto ref_vec = ref_hold_vector<ref_hold_ptr_t<T>>(value.size());
+    auto ref_vec {ref_hold_vector<ref_hold_ptr_t<T>>(value.size())};
+
     for (T ref : value) {
         ref_vec.add(ref_hold_ptr_t<T>(ref));
     }
+
     return ref_vec;
 }
 
@@ -230,10 +240,12 @@ template<typename T>
     requires(!std::is_pointer_v<T>)
 [[nodiscard]] constexpr auto copy_hold_ref(span<T> value) -> ref_hold_vector<ref_hold_ptr_t<T>>
 {
-    auto ref_vec = ref_hold_vector<ref_hold_ptr_t<T>>(value.size());
+    auto ref_vec {ref_hold_vector<ref_hold_ptr_t<T>>(value.size())};
+
     for (auto&& ref : value) {
         ref_vec.add(ref_hold_ptr_t<T>(ref.get()));
     }
+
     return ref_vec;
 }
 
@@ -241,10 +253,12 @@ template<typename T, typename U>
     requires(!std::is_pointer_v<U>)
 [[nodiscard]] constexpr auto copy_hold_ref(unordered_map<T, U>& value) -> ref_hold_vector<ref_hold_ptr_t<U>>
 {
-    auto ref_vec = ref_hold_vector<ref_hold_ptr_t<U>>(value.size());
+    auto ref_vec {ref_hold_vector<ref_hold_ptr_t<U>>(value.size())};
+
     for (auto&& ref : value | std::views::values) {
         ref_vec.add(ref_hold_ptr_t<U>(ref.get()));
     }
+
     return ref_vec;
 }
 
@@ -252,10 +266,12 @@ template<typename T, typename U>
     requires(!std::is_pointer_v<U>)
 [[nodiscard]] constexpr auto copy_hold_ref(unordered_map<T, U>&& value) -> ref_hold_vector<ref_hold_ptr_t<U>>
 {
-    auto ref_vec = ref_hold_vector<ref_hold_ptr_t<U>>(value.size());
+    auto ref_vec {ref_hold_vector<ref_hold_ptr_t<U>>(value.size())};
+
     for (auto&& ref : value | std::views::values) {
         ref_vec.add(ref_hold_ptr_t<U>(ref.get()));
     }
+
     return ref_vec;
 }
 
@@ -263,34 +279,41 @@ template<typename T>
     requires(!std::is_pointer_v<T>)
 [[nodiscard]] constexpr auto copy_hold_ref(unordered_set<T>& value) -> ref_hold_vector<ref_hold_ptr_t<T>>
 {
-    auto ref_vec = ref_hold_vector<ref_hold_ptr_t<T>>(value.size());
+    auto ref_vec {ref_hold_vector<ref_hold_ptr_t<T>>(value.size())};
+
     for (auto&& ref : value) {
         ref_vec.add(ref_hold_ptr_t<T>(ref.get_no_const()));
     }
+
     return ref_vec;
 }
 
 // RAII holder for a value-typed C resource bracketed by paired init/clear free functions (e.g. th_info_init / th_info_clear).
-// The held value is default-zeroed, then InitFn(&Value) runs on construction and ClearFn(&Value) on destruction
+// The held value is default-zeroed, then InitFn runs on construction and ClearFn on destruction
 template<typename T, auto InitFn, auto ClearFn>
     requires(std::is_invocable_v<decltype(InitFn), T*> && std::is_invocable_v<decltype(ClearFn), T*>)
-struct scoped_init_clear
+class scoped_init_clear
 {
-    scoped_init_clear() noexcept { InitFn(&Value); }
+public:
+    scoped_init_clear() noexcept { InitFn(&_value); }
     scoped_init_clear(const scoped_init_clear&) = delete;
     scoped_init_clear(scoped_init_clear&&) noexcept = delete;
     auto operator=(const scoped_init_clear&) -> scoped_init_clear& = delete;
     auto operator=(scoped_init_clear&&) noexcept -> scoped_init_clear& = delete;
-    ~scoped_init_clear() noexcept { ClearFn(&Value); }
+    ~scoped_init_clear() noexcept { ClearFn(&_value); }
 
-    T Value {};
+    [[nodiscard]] auto get() noexcept -> T& { return _value; }
+    [[nodiscard]] auto get() const noexcept -> const T& { return _value; }
+
+private:
+    T _value {};
 };
 
 // Vector helpers
 template<std::ranges::range T>
 constexpr void vec_add_unique_value(T& vec, typename T::value_type value)
 {
-    auto it = std::ranges::find(vec, value);
+    auto it {std::ranges::find(vec, value)};
     FO_VERIFY_AND_THROW(it == vec.end(), "Unexpected entry found in vec");
     vec.emplace_back(std::move(value));
 }
@@ -298,7 +321,7 @@ constexpr void vec_add_unique_value(T& vec, typename T::value_type value)
 template<std::ranges::range T>
 constexpr void vec_remove_unique_value(T& vec, typename T::value_type value)
 {
-    auto it = std::ranges::find(vec, value);
+    auto it {std::ranges::find(vec, value)};
     FO_VERIFY_AND_THROW(it != vec.end(), "Lookup failed in vec");
     vec.erase(it);
 }
@@ -306,7 +329,7 @@ constexpr void vec_remove_unique_value(T& vec, typename T::value_type value)
 template<std::ranges::range T, typename U>
 constexpr void vec_remove_unique_value_if(T& vec, const U& predicate)
 {
-    auto it = std::ranges::find_if(vec, predicate);
+    auto it {std::ranges::find_if(vec, predicate)};
     FO_VERIFY_AND_THROW(it != vec.end(), "Lookup failed in vec");
     vec.erase(it);
 }
@@ -314,30 +337,33 @@ constexpr void vec_remove_unique_value_if(T& vec, const U& predicate)
 template<std::ranges::range T>
 constexpr auto vec_safe_add_unique_value(T& vec, typename T::value_type value) noexcept -> bool
 {
-    if (auto it = std::ranges::find(vec, value); it == vec.end()) {
+    if (auto it {std::ranges::find(vec, value)}; it == vec.end()) {
         vec.emplace_back(std::move(value));
         return true;
     }
+
     return false;
 }
 
 template<std::ranges::range T>
 constexpr auto vec_safe_remove_unique_value(T& vec, typename T::value_type value) noexcept -> bool
 {
-    if (auto it = std::ranges::find(vec, value); it != vec.end()) {
+    if (auto it {std::ranges::find(vec, value)}; it != vec.end()) {
         vec.erase(it);
         return true;
     }
+
     return false;
 }
 
 template<std::ranges::range T, typename U>
 constexpr auto vec_safe_remove_unique_value_if(T& vec, const U& predicate) noexcept -> bool
 {
-    if (auto it = std::ranges::find_if(vec, predicate); it != vec.end()) {
+    if (auto it {std::ranges::find_if(vec, predicate)}; it != vec.end()) {
         vec.erase(it);
         return true;
     }
+
     return false;
 }
 
@@ -365,13 +391,15 @@ using rebind_vector_t = typename rebind_vector<std::remove_cvref_t<Cont>, U>::ty
 template<std::ranges::range T, typename U>
 [[nodiscard]] constexpr auto vec_filter(T&& cont, const U& filter) -> rebind_vector_t<T, std::ranges::range_value_t<T>> // NOLINT(cppcoreguidelines-missing-std-forward)
 {
-    rebind_vector_t<T, std::ranges::range_value_t<T>> vec;
+    rebind_vector_t<T, std::ranges::range_value_t<T>> vec {};
     vec.reserve(cont.size());
+
     for (auto&& value : cont) {
         if (static_cast<bool>(filter(value))) {
             vec.emplace_back(value);
         }
     }
+
     return vec;
 }
 
@@ -379,29 +407,32 @@ template<std::ranges::range T, typename U>
 [[nodiscard]] constexpr auto vec_transform(T&& cont, const U& transfromer) -> auto // NOLINT(cppcoreguidelines-missing-std-forward)
 {
     using result_type = std::remove_cvref_t<std::invoke_result_t<U, std::ranges::range_reference_t<T>>>;
-    rebind_vector_t<T, result_type> vec;
+    rebind_vector_t<T, result_type> vec {};
     vec.reserve(cont.size());
+
     for (auto&& value : cont) {
         vec.emplace_back(transfromer(value));
     }
+
     return vec;
 }
 
 template<std::ranges::range T, typename U>
 [[nodiscard]] constexpr auto vec_exists(T&& cont, const U& value) noexcept -> bool // NOLINT(cppcoreguidelines-missing-std-forward)
 {
-    for (auto it = cont.begin(); it != cont.end(); ++it) {
+    for (auto it {cont.begin()}; it != cont.end(); ++it) {
         if (*it == value) {
             return true;
         }
     }
+
     return false;
 }
 
 template<std::ranges::range T, typename U>
 [[nodiscard]] constexpr auto vec_sorted(T&& cont, const U& predicate) noexcept -> rebind_vector_t<T, std::ranges::range_value_t<T>> // NOLINT(cppcoreguidelines-missing-std-forward)
 {
-    rebind_vector_t<T, std::ranges::range_value_t<T>> vec;
+    rebind_vector_t<T, std::ranges::range_value_t<T>> vec {};
     vec.reserve(cont.size());
     vec.assign(cont.begin(), cont.end());
     std::ranges::stable_sort(vec, predicate);
@@ -420,7 +451,7 @@ template<std::ranges::range T>
         }
     }
     else {
-        vector<std::ranges::range_value_t<T>> vec;
+        vector<std::ranges::range_value_t<T>> vec {};
         vec.reserve(cont.size());
         vec.assign(cont.begin(), cont.end());
         return vec;
@@ -504,9 +535,9 @@ template<typename T>
     }
 
     FO_STRONG_ASSERT(data.size() % sizeof(T) == 0, "Byte span size is not a whole multiple of the object size");
-    auto bytes = make_nptr(data.data());
+    auto bytes {make_nptr(data.data())};
     FO_STRONG_ASSERT(bytes, "Byte span has a null pointer");
-    ptr<T> values = bytes.reinterpret_as<T>();
+    ptr<T> values {bytes.reinterpret_as<T>()};
     return make_span(values, data.size() / sizeof(T));
 }
 
@@ -518,32 +549,32 @@ template<typename T>
     }
 
     FO_STRONG_ASSERT(data.size() % sizeof(T) == 0, "Byte span size is not a whole multiple of the object size");
-    auto bytes = make_nptr(data.data());
+    auto bytes {make_nptr(data.data())};
     FO_STRONG_ASSERT(bytes, "Byte span has a null pointer");
-    ptr<const T> values = bytes.template reinterpret_as<T>();
+    ptr<const T> values {bytes.template reinterpret_as<T>()};
     return make_span(values, data.size() / sizeof(T));
 }
 
 template<typename T>
 [[nodiscard]] inline auto object_to_bytes(T& object) noexcept -> span<uint8_t>
 {
-    auto object_ptr = make_ptr(&object);
-    ptr<uint8_t> bytes = object_ptr.template reinterpret_as<uint8_t>();
+    auto object_ptr {make_ptr(&object)};
+    ptr<uint8_t> bytes {object_ptr.template reinterpret_as<uint8_t>()};
     return make_span(bytes, sizeof(T));
 }
 
 template<typename T>
 [[nodiscard]] inline auto object_to_bytes(const T& object) noexcept -> const_span<uint8_t>
 {
-    auto object_ptr = make_ptr(&object);
-    ptr<const uint8_t> bytes = object_ptr.template reinterpret_as<uint8_t>();
+    auto object_ptr {make_ptr(&object)};
+    ptr<const uint8_t> bytes {object_ptr.template reinterpret_as<uint8_t>()};
     return make_span(bytes, sizeof(T));
 }
 
 template<typename T>
 [[nodiscard]] inline auto get_object_byte(T& object, size_t index) noexcept -> uint8_t
 {
-    span<uint8_t> bytes = object_to_bytes(object);
+    span<uint8_t> bytes {object_to_bytes(object)};
     FO_STRONG_ASSERT(index < bytes.size(), "Object byte index is out of range");
     return bytes[index];
 }
@@ -551,7 +582,7 @@ template<typename T>
 template<typename T>
 inline void set_object_byte(T& object, size_t index, uint8_t value) noexcept
 {
-    span<uint8_t> bytes = object_to_bytes(object);
+    span<uint8_t> bytes {object_to_bytes(object)};
     FO_STRONG_ASSERT(index < bytes.size(), "Object byte index is out of range");
     bytes[index] = value;
 }
@@ -559,7 +590,7 @@ inline void set_object_byte(T& object, size_t index, uint8_t value) noexcept
 template<typename T>
 inline void swap_object_bytes(T& object, size_t first_index, size_t second_index) noexcept
 {
-    span<uint8_t> bytes = object_to_bytes(object);
+    span<uint8_t> bytes {object_to_bytes(object)};
     FO_STRONG_ASSERT(first_index < bytes.size(), "First object byte index is out of range");
     FO_STRONG_ASSERT(second_index < bytes.size(), "Second object byte index is out of range");
     std::swap(bytes[first_index], bytes[second_index]);

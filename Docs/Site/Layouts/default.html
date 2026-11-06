@@ -127,7 +127,7 @@
         <label for="docs-search-input">{% if docs_locale == 'ru' %}Поиск по документации FOnline{% else %}Search FOnline documentation{% endif %}</label>
         <button class="icon-button search-close" type="button" data-search-close aria-label="{% if docs_locale == 'ru' %}Закрыть поиск{% else %}Close search{% endif %}">&times;</button>
       </div>
-      <input id="docs-search-input" class="search-input" type="search" autocomplete="off" spellcheck="false" placeholder="{% if docs_locale == 'ru' %}API, карты, скрипты, сборка...{% else %}API, maps, scripting, build...{% endif %}" data-search-input>
+      <input id="docs-search-input" class="search-input" type="search" autofocus autocomplete="off" spellcheck="false" placeholder="{% if docs_locale == 'ru' %}API, карты, скрипты, сборка...{% else %}API, maps, scripting, build...{% endif %}" data-search-input>
       <div class="search-status" role="status" aria-live="polite" data-search-status>{% if docs_locale == 'ru' %}Введите запрос.{% else %}Start typing to search.{% endif %}</div>
       <ol class="search-results" data-search-results></ol>
     </dialog>

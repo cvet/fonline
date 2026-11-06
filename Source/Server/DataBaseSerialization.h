@@ -45,8 +45,8 @@ FO_BEGIN_NAMESPACE
 
 namespace DataBaseSerialization
 {
-    inline constexpr size_t MAX_DOCUMENT_BYTES = 64 * 1024 * 1024;
-    inline constexpr size_t MAX_DOCUMENT_DEPTH = 64;
+    inline constexpr size_t MAX_DOCUMENT_BYTES {64 * 1024 * 1024};
+    inline constexpr size_t MAX_DOCUMENT_DEPTH {64};
 
     auto ToJson(const AnyData::Document& doc) -> nlohmann::json;
     auto FromJson(const nlohmann::json& json) -> AnyData::Document;

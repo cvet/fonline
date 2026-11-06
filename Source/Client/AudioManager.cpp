@@ -32,6 +32,7 @@
 //
 
 #include "AudioManager.h"
+
 #include "Application.h"
 #include "FileSystem.h"
 
@@ -39,6 +40,8 @@
 #include "vorbis/vorbisfile.h"
 
 FO_BEGIN_NAMESPACE
+
+static constexpr timespan MIN_REPEAT_DURATION {std::chrono::milliseconds {1}};
 
 struct AudioManager::Sound
 {
@@ -62,7 +65,7 @@ struct AudioManager::Sound
 
 struct OggFileContext
 {
-    File Holder;
+    File Holder {};
     FileReader Reader;
 };
 
@@ -114,12 +117,12 @@ void AudioManager::ProcessSounds(uint8_t silence, span<uint8_t> output)
         _outputBuf.resize(output.size());
     }
 
-    for (auto it = _playingSounds.begin(); it != _playingSounds.end();) {
-        auto sound = it->as_ptr();
-        span<uint8_t> mix_buffer = span<uint8_t> {_outputBuf.data(), output.size()};
+    for (auto it {_playingSounds.begin()}; it != _playingSounds.end();) {
+        auto sound {it->as_ptr()};
+        span<uint8_t> mix_buffer {span<uint8_t> {_outputBuf.data(), output.size()}};
 
         if (ProcessSound(sound, silence, mix_buffer)) {
-            int32_t volume = sound->IsMusic ? _musicVolume : _soundVolume;
+            int32_t volume {sound->IsMusic ? _musicVolume : _soundVolume};
             volume = numeric_cast<int32_t>(std::lround(numeric_cast<float32_t>(volume) * sound->Attenuation));
 
             // Panned on the way to the mixer, not into the decoded buffer: a sound decoded in one go would keep the lean it
@@ -143,22 +146,22 @@ auto AudioManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
     if (sound->ConvertedBufCur < sound->ConvertedBuf.size()) {
         if (output.size() > sound->ConvertedBuf.size() - sound->ConvertedBufCur) {
             // Flush last part of buffer
-            auto offset = sound->ConvertedBuf.size() - sound->ConvertedBufCur;
-            auto target = make_ptr(output.data());
-            auto source = make_ptr(sound->ConvertedBuf.data()).offset(sound->ConvertedBufCur);
+            auto offset {sound->ConvertedBuf.size() - sound->ConvertedBufCur};
+            auto target {make_ptr(output.data())};
+            auto source {make_ptr(sound->ConvertedBuf.data()).offset(sound->ConvertedBufCur)};
             memory::copy(target, source, offset);
             sound->ConvertedBufCur += offset;
 
             // Stream new parts
             while (offset < output.size() && sound->OggStream && StreamOgg(sound)) {
-                auto write = sound->ConvertedBuf.size() - sound->ConvertedBufCur;
+                auto write {sound->ConvertedBuf.size() - sound->ConvertedBufCur};
 
                 if (offset + write > output.size()) {
                     write = output.size() - offset;
                 }
 
-                auto stream_target = make_ptr(output.data()).offset(offset);
-                auto stream_source = make_ptr(sound->ConvertedBuf.data()).offset(sound->ConvertedBufCur);
+                auto stream_target {make_ptr(output.data()).offset(offset)};
+                auto stream_source {make_ptr(sound->ConvertedBuf.data()).offset(sound->ConvertedBufCur)};
                 memory::copy(stream_target, stream_source, write);
                 sound->ConvertedBufCur += write;
                 offset += write;
@@ -166,17 +169,18 @@ auto AudioManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
 
             // Cut off end
             if (offset < output.size()) {
-                auto silence_target = make_ptr(output.data()).offset(offset);
+                auto silence_target {make_ptr(output.data()).offset(offset)};
                 memory::fill(silence_target, silence, output.size() - offset);
             }
         }
         else {
             // Copy
             if (!output.empty()) {
-                auto target = make_ptr(output.data());
-                auto source = make_ptr(sound->ConvertedBuf.data()).offset(sound->ConvertedBufCur);
+                auto target {make_ptr(output.data())};
+                auto source {make_ptr(sound->ConvertedBuf.data()).offset(sound->ConvertedBufCur)};
                 memory::copy(target, source, output.size());
             }
+
             sound->ConvertedBufCur += output.size();
         }
 
@@ -191,7 +195,7 @@ auto AudioManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
     // Repeat
     if (sound->RepeatTime) {
         if (!sound->NextPlayTime) {
-            sound->NextPlayTime = nanotime::now() + (sound->RepeatTime > std::chrono::milliseconds {1} ? sound->RepeatTime : timespan::zero);
+            sound->NextPlayTime = nanotime::now() + (sound->RepeatTime > MIN_REPEAT_DURATION ? sound->RepeatTime : timespan::zero);
         }
 
         if (nanotime::now() >= sound->NextPlayTime) {
@@ -199,7 +203,7 @@ auto AudioManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
             sound->ConvertedBufCur = 0;
 
             if (sound->OggStream) {
-                auto ogg_stream = sound->OggStream.as_nptr();
+                auto ogg_stream {sound->OggStream.as_nptr()};
                 FO_VERIFY_AND_THROW(ogg_stream, "Ogg stream is null");
                 ov_raw_seek(ogg_stream.get(), 0);
             }
@@ -213,15 +217,16 @@ auto AudioManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
 
         // Give silent
         if (!output.empty()) {
-            auto silence_target = make_ptr(output.data());
+            auto silence_target {make_ptr(output.data())};
             memory::fill(silence_target, silence, output.size());
         }
+
         return true;
     }
 
     // Give silent
     if (!output.empty()) {
-        auto silence_target = make_ptr(output.data());
+        auto silence_target {make_ptr(output.data())};
         memory::fill(silence_target, silence, output.size());
     }
 
@@ -233,23 +238,23 @@ auto AudioManager::Load(string_view fname, bool is_music, timespan repeat_time, 
     FO_TRACE_ZONE(Audio);
 
     // Every audio resource is baked to Ogg Vorbis, so the authored extension names the source format only
-    auto file = _resources->ReadFile(fname);
+    auto file {_resources->ReadFile(fname)};
 
     if (!file) {
         return 0;
     }
 
-    auto sound_owner = safe_alloc::make_unique<Sound>();
-    auto sound = sound_owner.as_ptr();
+    auto sound_owner {safe_alloc::make_unique<Sound>()};
+    auto sound {sound_owner.as_ptr()};
     sound->Attenuation = attenuation;
     sound->Pan = pan;
 
-    ov_callbacks callbacks;
+    ov_callbacks callbacks {};
 
     callbacks.read_func = [](void* output_buf, size_t size, size_t count, void* datasource) -> size_t {
-        auto file_context = cast_from_void<OggFileContext*>(datasource);
+        auto file_context {cast_from_void<OggFileContext*>(datasource)};
         FO_VERIFY_AND_THROW(file_context, "Missing Ogg file context");
-        size_t bytes_read = std::min(file_context->Reader.GetSize() - file_context->Reader.GetCurPos(), size * count);
+        size_t bytes_read {std::min(file_context->Reader.GetSize() - file_context->Reader.GetCurPos(), size * count)};
 
         if (bytes_read > 0) {
             FO_VERIFY_AND_THROW(output_buf != nullptr, "Ogg read output buffer is null");
@@ -260,7 +265,7 @@ auto AudioManager::Load(string_view fname, bool is_music, timespan repeat_time, 
     };
 
     callbacks.seek_func = [](void* datasource, ogg_int64_t offset, int32_t whence) -> int32_t {
-        auto file_context = cast_from_void<OggFileContext*>(datasource);
+        auto file_context {cast_from_void<OggFileContext*>(datasource)};
         FO_VERIFY_AND_THROW(file_context, "Missing Ogg file context");
 
         switch (whence) {
@@ -274,6 +279,7 @@ auto AudioManager::Load(string_view fname, bool is_music, timespan repeat_time, 
             else {
                 file_context->Reader.GoBack(numeric_cast<size_t>(-offset));
             }
+
             break;
         case SEEK_END:
             file_context->Reader.SetCurPos(file_context->Reader.GetSize() - numeric_cast<size_t>(offset));
@@ -286,32 +292,33 @@ auto AudioManager::Load(string_view fname, bool is_music, timespan repeat_time, 
     };
 
     callbacks.close_func = [](void* datasource) -> int32_t {
-        auto file_context = cast_from_void<OggFileContext*>(datasource);
+        auto file_context {cast_from_void<OggFileContext*>(datasource)};
         FO_VERIFY_AND_THROW(file_context, "Missing Ogg file context");
-        auto owned_file_context = adopt_unique_ptr(file_context);
+        auto owned_file_context {adopt_unique_ptr(file_context)};
         ignore_unused(owned_file_context);
         return 0;
     };
 
     callbacks.tell_func = [](void* datasource) -> long {
-        auto file_context = cast_from_void<const OggFileContext*>(datasource);
+        auto file_context {cast_from_void<const OggFileContext*>(datasource)};
         FO_VERIFY_AND_THROW(file_context, "Missing Ogg file context");
         return numeric_cast<long>(file_context->Reader.GetCurPos());
     };
 
-    auto ogg_stream_owner = safe_alloc::make_unique<OggVorbis_File>();
-    auto released_ogg_stream = ogg_stream_owner.release();
+    auto ogg_stream_owner {safe_alloc::make_unique<OggVorbis_File>()};
+    auto released_ogg_stream {ogg_stream_owner.release()};
     sound->OggStream = make_unique_del_ptr(released_ogg_stream, [](OggVorbis_File* raw_vf) noexcept {
-        auto vf = make_ptr(raw_vf);
-        auto owned_vf = adopt_unique_ptr(vf);
+        auto vf {make_ptr(raw_vf)};
+        auto owned_vf {adopt_unique_ptr(vf)};
         ov_clear(owned_vf.get());
     });
-    auto ogg_stream = sound->OggStream.as_nptr();
+
+    auto ogg_stream {sound->OggStream.as_nptr()};
     FO_VERIFY_AND_THROW(ogg_stream, "Ogg stream is null");
 
-    FileReader reader = file.GetReader();
-    auto file_context = safe_alloc::make_unique<OggFileContext>(OggFileContext {std::move(file), std::move(reader)});
-    int32_t error = ov_open_callbacks(make_nptr(file_context.get()).void_cast(), ogg_stream.get(), nullptr, 0, callbacks);
+    FileReader reader {file.GetReader()};
+    auto file_context {safe_alloc::make_unique<OggFileContext>(OggFileContext {std::move(file), std::move(reader)})};
+    int32_t error {ov_open_callbacks(make_nptr(file_context.get()).void_cast(), ogg_stream.get(), nullptr, 0, callbacks)};
 
     if (error != 0) {
         logging::write(logging::type::warning, "Open OGG file '{}' fail, error:", fname);
@@ -343,10 +350,10 @@ auto AudioManager::Load(string_view fname, bool is_music, timespan repeat_time, 
         return 0;
     }
 
-    auto released_file_context = file_context.release();
+    auto released_file_context {file_context.release()};
     ignore_unused(released_file_context);
 
-    auto vi = make_nptr(ov_info(ogg_stream.get(), -1));
+    auto vi {make_nptr(ov_info(ogg_stream.get(), -1))};
     FO_VERIFY_AND_THROW(vi, "Vorbis info is null");
 
     sound->OriginalChannels = vi->channels;
@@ -354,13 +361,13 @@ auto AudioManager::Load(string_view fname, bool is_music, timespan repeat_time, 
     sound->BaseBuf.resize(_streamingPortion);
     sound->BaseBufLen = _streamingPortion;
 
-    int32_t result;
-    int32_t decoded = 0;
-    span<uint8_t> base_buf = span<uint8_t> {sound->BaseBuf.data(), sound->BaseBuf.size()};
+    int32_t result {};
+    int32_t decoded {0};
+    span<uint8_t> base_buf {span<uint8_t> {sound->BaseBuf.data(), sound->BaseBuf.size()}};
 
     while (true) {
-        auto output = make_ptr(base_buf.data()).offset(numeric_cast<size_t>(decoded)).reinterpret_as<char>();
-        int32_t read_size = numeric_cast<int32_t>(_streamingPortion - decoded);
+        auto output {make_ptr(base_buf.data()).offset(numeric_cast<size_t>(decoded)).reinterpret_as<char>()};
+        int32_t read_size {numeric_cast<int32_t>(_streamingPortion - decoded)};
         result = numeric_cast<int32_t>(ov_read(ogg_stream.get(), output.get(), read_size, 0, 2, 1, nullptr));
 
         if (result <= 0) {
@@ -398,7 +405,7 @@ auto AudioManager::Load(string_view fname, bool is_music, timespan repeat_time, 
 
     // The handle is taken where the sound enters the list, so a load that fails part-way leaves the manager
     // exactly as it was
-    uint32_t sound_id = ++_soundIdCounter;
+    uint32_t sound_id {++_soundIdCounter};
     sound->Id = sound_id;
 
     _audio->LockDevice();
@@ -413,15 +420,15 @@ auto AudioManager::StreamOgg(ptr<Sound> sound) -> bool
     FO_TRACE_ZONE(Audio);
 
     FO_VERIFY_AND_THROW(sound->OggStream, "Sound has no Ogg stream to read");
-    auto ogg_stream = sound->OggStream.as_nptr();
+    auto ogg_stream {sound->OggStream.as_nptr()};
     FO_VERIFY_AND_THROW(ogg_stream, "Ogg stream is null");
-    long result;
-    int32_t decoded = 0;
-    span<uint8_t> base_buf = span<uint8_t> {sound->BaseBuf.data(), sound->BaseBuf.size()};
+    long result {};
+    int32_t decoded {0};
+    span<uint8_t> base_buf {span<uint8_t> {sound->BaseBuf.data(), sound->BaseBuf.size()}};
 
     while (true) {
-        auto output = make_ptr(base_buf.data()).offset(numeric_cast<size_t>(decoded)).reinterpret_as<char>();
-        int32_t read_size = numeric_cast<int32_t>(_streamingPortion - decoded);
+        auto output {make_ptr(base_buf.data()).offset(numeric_cast<size_t>(decoded)).reinterpret_as<char>()};
+        int32_t read_size {numeric_cast<int32_t>(_streamingPortion - decoded)};
         result = ov_read(ogg_stream.get(), output.get(), read_size, 0, 2, 1, nullptr);
 
         if (result <= 0) {
@@ -467,13 +474,13 @@ void AudioManager::ApplyPan(span<uint8_t> buf, float32_t pan)
 
     // Safe on any mixer buffer, whose format is the engine's own S16 stereo whatever the device runs. A balance, not constant power:
     // lifting the near channel above unity would clip a loud sample, a worse artefact than the three decibels given up at full deflection
-    float32_t left_gain = pan > 0.0f ? 1.0f - pan : 1.0f;
-    float32_t right_gain = pan < 0.0f ? 1.0f + pan : 1.0f;
+    float32_t left_gain {pan > 0.0f ? 1.0f - pan : 1.0f};
+    float32_t right_gain {pan < 0.0f ? 1.0f + pan : 1.0f};
 
-    size_t frame_count = buf.size() / (sizeof(int16_t) * 2);
-    auto samples = make_ptr(buf.data()).reinterpret_as<int16_t>();
+    size_t frame_count {buf.size() / (sizeof(int16_t) * 2)};
+    auto samples {make_ptr(buf.data()).reinterpret_as<int16_t>()};
 
-    for (size_t i = 0; i < frame_count; i++) {
+    for (size_t i {0}; i < frame_count; i++) {
         *samples.offset(i * 2) = numeric_cast<int16_t>(std::lround(numeric_cast<float32_t>(*samples.offset(i * 2)) * left_gain));
         *samples.offset(i * 2 + 1) = numeric_cast<int16_t>(std::lround(numeric_cast<float32_t>(*samples.offset(i * 2 + 1)) * right_gain));
     }
@@ -523,7 +530,7 @@ auto AudioManager::UpdateSound(uint32_t sound_id, float32_t attenuation, float32
     // are made with the device held
     _audio->LockDevice();
 
-    bool updated = false;
+    bool updated {false};
 
     for (auto& sound : _playingSounds) {
         if (sound->Id == sound_id) {

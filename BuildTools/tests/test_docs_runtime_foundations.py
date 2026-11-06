@@ -48,7 +48,7 @@ class DocumentationRuntimeFoundationsTests(unittest.TestCase):
             "Maximum message size",
             "Per-pass message budget",
             "UDP reorder window",
-            "Pre-handshake parse failures",
+            "Malformed peer frames stay operational noise at every stage of a session",
             "MaxReorderAhead",
             "NetMessage::UnresolvedHash",
             "Async transport connection lifetime & threading",

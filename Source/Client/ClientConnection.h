@@ -57,12 +57,18 @@ public:
         Failed,
     };
 
+    enum class ResourceMode : uint8_t
+    {
+        Platform,
+        CommonForInterthread,
+    };
+
     using ConnectCallback = function<void(ConnectResult result)>;
     using DisconnectCallback = function<void()>;
     using MessageCallback = function<void()>;
 
     ClientConnection() = delete;
-    explicit ClientConnection(ptr<ClientNetworkSettings> settings);
+    explicit ClientConnection(ptr<ClientNetworkSettings> settings, ResourceMode resource_mode);
     ClientConnection(const ClientConnection&) = delete;
     ClientConnection(ClientConnection&&) noexcept = delete;
     auto operator=(const ClientConnection&) = delete;
@@ -112,6 +118,8 @@ private:
     optional<SecureChannel> _channel {};
     vector<uint8_t> _channelPlaintext {};
     vector<uint8_t> _sealedOut {};
+    ResourceMode _resourceMode;
+    bool _connectingOverInterthread {};
     bool _connectingOverUdp {};
     bool _connectingHandled {};
     bool _udpFallbackTried {};
@@ -138,7 +146,7 @@ private:
     nanotime _lastReceiveTime {};
     size_t _msgCount {};
 #if FO_DEBUG
-    static constexpr size_t NET_MESSAGE_HISTORY_LIMIT = 1024;
+    static constexpr size_t NET_MESSAGE_HISTORY_LIMIT {1024};
     deque<NetMessage> _msgHistory {};
 #endif
 };

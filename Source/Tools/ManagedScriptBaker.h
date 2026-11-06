@@ -58,7 +58,7 @@ struct ManagedProjectAnalysis
 class ManagedScriptBaker final : public BaseBaker
 {
 public:
-    static constexpr string_view_nt NAME = "Managed";
+    static constexpr string_view_nt NAME {"Managed"};
 
     explicit ManagedScriptBaker(shared_ptr<BakingContext> ctx);
     ManagedScriptBaker(const ManagedScriptBaker&) = delete;

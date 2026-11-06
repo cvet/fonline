@@ -32,6 +32,7 @@
 //
 
 #include "Logging.h"
+
 #include "BaseLogging.h"
 #include "GlobalData.h"
 #include "Platform.h"
@@ -46,16 +47,16 @@ static void flush_log_message_repeats_locked();
 static auto is_same_as_last_log_message(logging::type type, string_view message) -> bool;
 static void remember_last_log_message(logging::type type, string_view message) noexcept;
 static void clear_last_log_message() noexcept;
-static void flush_log_at_exit();
+static void flush_message_log_at_exit();
 
 struct logging_data
 {
     logging_data()
     {
 #if !FO_WEB && !FO_MAC && !FO_IOS && !FO_ANDROID
-        (void)std::at_quick_exit(flush_log_at_exit);
+        (void)std::at_quick_exit(flush_message_log_at_exit);
 #else
-        ignore_unused(flush_log_at_exit);
+        ignore_unused(flush_message_log_at_exit);
 #endif
 
         main_thread_id = std::this_thread::get_id();
@@ -76,7 +77,7 @@ void logging::write_message(logging::type type, string_view message, nptr<const 
 {
     try {
         if (!log_state.is_created()) {
-            string result;
+            string result {};
             result.reserve(message.length() + 1);
             result += message;
             result += '\n';
@@ -137,15 +138,15 @@ void logging::disable_tags()
 static void emit_log_message(logging::type type, string_view message, nptr<const stack_trace::catched_data> st)
 {
     // Make message
-    string result;
+    string result {};
     result.reserve(message.length() + 64);
 
     if (!log_state->tags_disabled) {
-        time_desc_t time = nanotime::now().desc(true);
+        time_desc_t time {nanotime::now().desc(true)};
         result += strex("[{:02}/{:02}/{:02}] ", time.day, time.month, time.year % 100);
         result += strex("[{:02}:{:02}:{:02}] ", time.hour, time.minute, time.second);
 
-        if (std::thread::id thread_id = std::this_thread::get_id(); thread_id != log_state->main_thread_id) {
+        if (std::thread::id thread_id {std::this_thread::get_id()}; thread_id != log_state->main_thread_id) {
             result += strex("[{}] ", get_this_thread_name());
         }
     }
@@ -166,7 +167,7 @@ static void emit_log_message(logging::type type, string_view message, nptr<const
         }
 
         log_state->log_functions_in_process = true;
-        auto reset_in_process = scope_exit([]() noexcept { log_state->log_functions_in_process = false; });
+        auto reset_in_process {scope_exit([]() noexcept { log_state->log_functions_in_process = false; })};
 
         for (const auto& func : log_state->log_functions | std::views::values) {
             func(type, result, st);
@@ -178,7 +179,7 @@ static void emit_log_message(logging::type type, string_view message, nptr<const
     }
 
 #if FO_TRACE_CATEGORY_ENABLED(Log)
-    auto tracy_message = make_ptr(result.c_str());
+    auto tracy_message {make_ptr(result.c_str())};
     TracyMessage(tracy_message.get(), result.length());
 #endif
 }
@@ -189,8 +190,8 @@ static void flush_log_message_repeats_locked()
         return;
     }
 
-    optional<logging::type> last_log_type = log_state->last_log_type;
-    uint64_t same_message_count = log_state->same_log_message_count;
+    optional<logging::type> last_log_type {log_state->last_log_type};
+    uint64_t same_message_count {log_state->same_log_message_count};
 
     clear_last_log_message();
 
@@ -198,7 +199,7 @@ static void flush_log_message_repeats_locked()
         return;
     }
 
-    string repeat_message;
+    string repeat_message {};
 
     if (same_message_count == 1) {
         repeat_message = "...and 1 more same message";
@@ -210,7 +211,7 @@ static void flush_log_message_repeats_locked()
     emit_log_message(*last_log_type, repeat_message, nullptr);
 }
 
-static void flush_log_at_exit()
+static void flush_message_log_at_exit()
 {
     if (log_state.is_created()) {
         std::scoped_lock locker {log_state->locker};

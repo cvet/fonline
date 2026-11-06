@@ -31,9 +31,9 @@
 // SOFTWARE.
 //
 
-#include "catch_amalgamated.hpp"
-
 #include "Common.h"
+
+#include "catch_amalgamated.hpp"
 
 FO_BEGIN_NAMESPACE
 
@@ -41,8 +41,8 @@ TEST_CASE("GenericUtils")
 {
     SECTION("WyHash")
     {
-        auto data = make_ptr("abcdefg").reinterpret_as<uint8_t>();
-        auto data2 = make_ptr("abcdefh").reinterpret_as<uint8_t>();
+        auto data {make_ptr("abcdefg").reinterpret_as<uint8_t>()};
+        auto data2 {make_ptr("abcdefh").reinterpret_as<uint8_t>()};
 
         CHECK(hashing_ex::hash(data.get(), 4) != 0);
         CHECK(hashing_ex::hash(data.get(), 4) != hashing_ex::hash(data.get(), 5));
@@ -51,16 +51,18 @@ TEST_CASE("GenericUtils")
 
     SECTION("StdRandom")
     {
-        std::mt19937 rnd32; // NOLINT(cert-msc51-cpp)
-        for (int32_t i = 1; i < 10000; i++) {
+        std::mt19937 rnd32 {}; // NOLINT(cert-msc51-cpp)
+        for (int32_t i {1}; i < 10000; i++) {
             (void)rnd32();
         }
+
         CHECK(rnd32() == 4123659995);
 
-        std::mt19937_64 rnd64; // NOLINT(cert-msc51-cpp)
-        for (int32_t i = 1; i < 10000; i++) {
+        std::mt19937_64 rnd64 {}; // NOLINT(cert-msc51-cpp)
+        for (int32_t i {1}; i < 10000; i++) {
             (void)rnd64();
         }
+
         CHECK(rnd64() == 9981545732273789042UL);
     }
 

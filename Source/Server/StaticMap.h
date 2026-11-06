@@ -43,8 +43,9 @@ FO_BEGIN_NAMESPACE
 class StaticItem;
 class Critter;
 
-// The baked static layer of one ProtoMap, shared by every live instance of that map. It owns the hex field
-// outright: callers describe content through the loading API and read it back, but never touch a Field
+// The baked static layer of one ProtoMap, shared by every live instance of that map, or the runtime static items of
+// a map instance. It owns the hex field outright: callers describe content through the loading API and
+// read it back, but never touch a Field
 class StaticMap final
 {
 public:
@@ -80,11 +81,9 @@ public:
     [[nodiscard]] auto GetHexItemBillets() const noexcept -> const_span<ItemBillet>;
     [[nodiscard]] auto GetChildItemBillets() const noexcept -> const_span<ItemBillet>;
 
-    // The hexes one static item occupies, so a map instance hiding it knows which fields to rebuild
     void ForEachItemHex(ident_t static_item_id, const function<void(mpos)>& callback) const;
-    // A detached copy of one hex field with the listed items left out, keeping the baked scroll block
-    auto BuildFieldWithout(mpos hex, const unordered_set<ident_t>& removed_ids) const -> Field;
-
+    auto BuildFieldWithout(mpos hex, const unordered_set<ident_t>& removed_ids) -> Field;
+    void MergeFieldInto(mpos hex, ptr<Field> field);
     void ReserveCritters(size_t critter_count);
     void ReserveItems(size_t item_count);
     void AddCritterBillet(ident_t critter_id, refcount_ptr<Critter> cr);
@@ -94,11 +93,11 @@ public:
     void AddChildItemBillet(ident_t item_id, ptr<StaticItem> item);
     void MarkScrollBlocked(mpos hex);
     void ShrinkToFit();
+    void RemoveStaticItems(const unordered_set<ident_t>& static_item_ids);
 
 private:
-    static auto CreateHexField(msize map_size, string_view grid_type) -> unique_ptr<TwoDimensionalGrid<Field, mpos, msize>>;
-    static void ApplyItemToField(ptr<StaticItem> item, ptr<Field> field);
-
+    void ApplyItemToField(ptr<StaticItem> item, ptr<Field> field);
+    auto CreateHexField(string_view grid_type) -> unique_ptr<TwoDimensionalGrid<Field, mpos, msize>>;
     void ForEachItemHex(ptr<const StaticItem> item, const function<void(mpos)>& callback) const;
 
     msize _mapSize;

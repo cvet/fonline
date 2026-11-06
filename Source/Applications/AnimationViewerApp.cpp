@@ -76,7 +76,7 @@ static void DrawViewerFrame()
 {
     FO_TRACE_ZONE(Editor);
 
-    auto engine = GetEngine();
+    auto engine {GetEngine()};
 
     engine->FrameAdvance();
     engine->EffectMngr.UpdateEffects(engine->GameTime);
@@ -86,7 +86,7 @@ static void DrawViewerFrame()
 
     // EndScene must balance BeginScene even if Draw throws, or the scene render target stays bound
     // and the next EndFrame fails
-    auto end_scene = scope_exit([&]() noexcept { safe_call([&engine] { engine->SprMngr.EndScene(); }); });
+    auto end_scene {scope_exit([&]() noexcept { safe_call([&engine] { engine->SprMngr.EndScene(); }); })};
 
     GetViewer()->Draw();
 }
@@ -104,10 +104,10 @@ static void AnimationViewerEntry([[maybe_unused]] void* data)
 
         if (!Data->Engine) {
             try {
-                auto settings = make_ptr(&GetApp()->Settings);
+                auto settings {make_ptr(&GetApp()->Settings)};
                 Data->Engine = safe_alloc::make_refcounted<ClientEngine>(settings, GetViewerResources(*settings), &GetApp()->MainWindow);
 
-                auto engine = GetEngine();
+                auto engine {GetEngine()};
                 Data->Viewer = safe_alloc::make_unique<AnimationViewer>(engine, &engine->SprMngr, &engine->ResMngr, &engine->CritterFrames, &engine->GameTime);
 
                 // The window is the whole application here: it starts open and
@@ -167,7 +167,7 @@ int main(int argc, char** argv) // Handled by SDL
         }
 
 #else
-        auto balancer = FrameBalancer(!GetApp()->Settings.Render.VSync, GetApp()->Settings.Render.Sleep, GetApp()->Settings.Render.FixedFPS);
+        auto balancer {FrameBalancer(!GetApp()->Settings.Render.VSync, GetApp()->Settings.Render.Sleep, GetApp()->Settings.Render.FixedFPS)};
 
         while (!GetApp()->IsQuitRequested()) {
             balancer.StartLoop();
@@ -182,7 +182,7 @@ int main(int argc, char** argv) // Handled by SDL
             }
 
             Data->Viewer.reset();
-            auto engine = GetEngine();
+            auto engine {GetEngine()};
             engine->Shutdown();
             Data->Engine.reset();
         }
@@ -200,15 +200,14 @@ int main(int argc, char** argv) // Handled by SDL
 static auto GetViewerResources(GlobalSettings& settings) -> FileSystem
 {
     if (settings.Common.Packaged) {
-        FileSystem resources;
-        resources.AddPacksSource(settings.Baking.ClientResources, settings.GetClientResourcePacks());
-        resources.AddPacksSource(settings.Baking.ClientResources, settings.GetMapperResourcePacks());
+        FileSystem resources {};
+        resources.AddPacksSource(settings.Common.Packaged, settings.Common.ResourcesPath, settings.GetClientResourcePacks());
+        resources.AddPacksSource(settings.Common.Packaged, settings.Common.ResourcesPath, settings.GetMapperResourcePacks());
         return resources;
     }
     else {
-        FileSystem resources;
+        FileSystem resources {};
         resources.AddCustomSource(safe_alloc::make_unique<BakerDataSource>(&settings));
         return resources;
     }
 }
-

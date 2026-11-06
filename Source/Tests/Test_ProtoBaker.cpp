@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
 #if FO_ANGELSCRIPT_SCRIPTING
@@ -44,11 +46,11 @@ FO_BEGIN_NAMESPACE
 // The pack opens with its string table: the count, then each string length-prefixed
 static auto ReadProtoPackStrings(const vector<uint8_t>& data) -> set<string>
 {
-    auto reader = data_reader {data};
-    uint32_t count = reader.read<uint32_t>();
-    set<string> strings;
+    data_reader reader {data_reader {data}};
+    uint32_t count {reader.read<uint32_t>()};
+    set<string> strings {};
 
-    for (uint32_t i = 0; i < count; i++) {
+    for (uint32_t i {0}; i < count; i++) {
         strings.emplace(reader.read_string());
     }
 
@@ -59,8 +61,8 @@ TEST_CASE("ProtoBaker")
 {
     using namespace BakerTests;
 
-    TestRig rig;
-    auto bakers = MakeRequestedBakers({string(ProtoBaker::NAME)}, rig);
+    TestRig rig {};
+    auto bakers {MakeRequestedBakers({string(ProtoBaker::NAME)}, rig)};
 
     REQUIRE(bakers.size() == 1);
     CHECK(bakers.front()->GetName() == ProtoBaker::NAME);
@@ -68,41 +70,43 @@ TEST_CASE("ProtoBaker")
     CHECK_NOTHROW(bakers.front()->BakeFiles(TestRig::MakeEmptyFiles(), "skip.bin"));
     CHECK_NOTHROW(bakers.front()->BakeFiles(TestRig::MakeEmptyFiles(), ""));
 
-    auto add_server_metadata = [](TestRig& local_rig) { local_rig.AddBakedFile("Metadata.fometa-server", BakerTests::MakeEmptyMetadataBlob()); };
+    auto add_server_metadata {[](TestRig& local_rig) { local_rig.AddBakedFile("Metadata.fometa-server", BakerTests::MakeEmptyMetadataBlob()); }};
     // A client bake parses the server side too, for the strings the server pack carries, so it needs server metadata
-    auto add_client_mapper_metadata = [](TestRig& local_rig) {
-        auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
+    auto add_client_mapper_metadata {[](TestRig& local_rig) {
+        auto metadata_blob {BakerTests::MakeEmptyMetadataBlob()};
         local_rig.AddBakedFile("Metadata.fometa-server", metadata_blob);
         local_rig.AddBakedFile("Metadata.fometa-client", metadata_blob);
         local_rig.AddBakedFile("Metadata.fometa-mapper", metadata_blob);
-    };
-    auto add_client_mapper_metadata_blob = [](TestRig& local_rig, const vector<uint8_t>& metadata_blob) {
+    }};
+
+    auto add_client_mapper_metadata_blob {[](TestRig& local_rig, const vector<uint8_t>& metadata_blob) {
         local_rig.AddBakedFile("Metadata.fometa-server", metadata_blob);
         local_rig.AddBakedFile("Metadata.fometa-client", metadata_blob);
         local_rig.AddBakedFile("Metadata.fometa-mapper", metadata_blob);
-    };
-    auto server_only_bake = [](string_view path, uint64_t) { return path.ends_with(".fopro-bin-server"); };
-    auto client_mapper_bake = [](string_view path, uint64_t) { return path.ends_with(".fopro-bin-client") || path.ends_with(".fopro-bin-mapper"); };
+    }};
+
+    auto server_only_bake {[](string_view path, uint64_t) { return path.ends_with(".fopro-bin-server"); }};
+    auto client_mapper_bake {[](string_view path, uint64_t) { return path.ends_with(".fopro-bin-client") || path.ends_with(".fopro-bin-mapper"); }};
 
     SECTION("IgnoresNonProtoSourceFiles")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         local_rig.AddSourceFile("Data/Readme.txt", "not a proto");
 
-        ProtoBaker baker(local_rig.MakeContext("ProtoPackIgnored"));
+        ProtoBaker baker {local_rig.MakeContext("ProtoPackIgnored")};
         REQUIRE_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
         CHECK(local_rig.Outputs.empty());
     }
 
     SECTION("BakesClientAndMapperProtoTargets")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         local_rig.AddSourceFile("Items/PlainItem.fopro", R"([ProtoItem]
 $Name = PlainItem
 )");
         add_client_mapper_metadata(local_rig);
 
-        ProtoBaker baker(local_rig.MakeContext("ProtoPackAll", client_mapper_bake));
+        ProtoBaker baker {local_rig.MakeContext("ProtoPackAll", client_mapper_bake)};
         REQUIRE_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
         CHECK(local_rig.Outputs.contains("ProtoPackAll.fopro-bin-client"));
         CHECK(local_rig.Outputs.contains("ProtoPackAll.fopro-bin-mapper"));
@@ -111,13 +115,13 @@ $Name = PlainItem
 
     SECTION("BakesFomapHeaderWithDefaultProtoName")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         OverrideSetting(local_rig.Settings.Baking.ProtoFileExtensions, vector<string> {"fopro", "fomap"});
         local_rig.AddSourceFile("Maps/HeaderOnly.fomap", R"([ProtoMap]
 )");
         add_client_mapper_metadata(local_rig);
 
-        ProtoBaker baker(local_rig.MakeContext("ProtoPackFomap", client_mapper_bake));
+        ProtoBaker baker {local_rig.MakeContext("ProtoPackFomap", client_mapper_bake)};
         REQUIRE_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
         CHECK(local_rig.Outputs.contains("ProtoPackFomap.fopro-bin-client"));
         CHECK(local_rig.Outputs.contains("ProtoPackFomap.fopro-bin-mapper"));
@@ -126,7 +130,7 @@ $Name = PlainItem
 
     SECTION("RejectsCollidingAnonymousMapAnchors")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         OverrideSetting(local_rig.Settings.Baking.ProtoFileExtensions, vector<string> {"fopro", "fomap"});
         local_rig.AddSourceFile("Maps/Collide.fomap", R"([ProtoMap]
 Outside = True
@@ -136,13 +140,13 @@ Outside = False
         add_client_mapper_metadata(local_rig);
 
         // Both anchors resolve to the file stem and collide in proto registration
-        ProtoBaker baker(local_rig.MakeContext("ProtoPackFomap", client_mapper_bake));
+        ProtoBaker baker {local_rig.MakeContext("ProtoPackFomap", client_mapper_bake)};
         CHECK_THROWS_AS(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), ProtoBakerException);
     }
 
     SECTION("BakesInheritedProtoParents")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         local_rig.AddSourceFile("Items/Inherit.fopro", R"([ProtoItem]
 $Name = ParentItem
 Hidden = True
@@ -153,7 +157,7 @@ $Parent = ParentItem
 )");
         add_client_mapper_metadata(local_rig);
 
-        ProtoBaker baker(local_rig.MakeContext("ProtoPackInherit", client_mapper_bake));
+        ProtoBaker baker {local_rig.MakeContext("ProtoPackInherit", client_mapper_bake)};
         REQUIRE_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
         CHECK(local_rig.Outputs.contains("ProtoPackInherit.fopro-bin-client"));
         CHECK(local_rig.Outputs.contains("ProtoPackInherit.fopro-bin-mapper"));
@@ -162,7 +166,7 @@ $Parent = ParentItem
 
     // Variant overrides Base and Other reaches Base again, the shape Baking.AllowRepeatedProtoParents
     // governs. Baking the same set with a single-parent Child makes blob equality pin which parent won
-    auto make_diamond_source = [](string_view child_parents) {
+    auto make_diamond_source {[](string_view child_parents) {
         return string(R"([ProtoItem]
 $Name = DiamondBase
 LightDistance = 1
@@ -180,26 +184,26 @@ $Parent = DiamondBase
 $Name = DiamondChild
 $Parent = )")
             .append(child_parents);
-    };
+    }};
 
-    auto bake_diamond = [&](string_view child_parents, bool allow_repeated) {
-        TestRig local_rig;
+    auto bake_diamond {[&](string_view child_parents, bool allow_repeated) {
+        TestRig local_rig {};
         OverrideSetting(local_rig.Settings.Baking.AllowRepeatedProtoParents, allow_repeated);
         local_rig.AddSourceFile("Items/Diamond.fopro", make_diamond_source(child_parents));
 
-        auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
+        auto metadata_blob {BakerTests::MakeEmptyMetadataBlob()};
         local_rig.AddBakedFile("Metadata.fometa-server", metadata_blob);
         local_rig.AddBakedFile("Metadata.fometa-client", metadata_blob);
         local_rig.AddBakedFile("Metadata.fometa-mapper", metadata_blob);
 
-        ProtoBaker baker(local_rig.MakeContext("ProtoPackDiamond", client_mapper_bake));
+        ProtoBaker baker {local_rig.MakeContext("ProtoPackDiamond", client_mapper_bake)};
         baker.BakeFiles(local_rig.GetAllSourceFiles(), "");
         return local_rig.Outputs.at("ProtoPackDiamond.fopro-bin-client");
-    };
+    }};
 
     SECTION("RepeatedProtoParentDefaultIsPermissive")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         CHECK(local_rig.Settings.Baking.AllowRepeatedProtoParents);
     }
 
@@ -217,7 +221,7 @@ $Parent = )")
 
     SECTION("AppliesRepeatedProtoParentOnce")
     {
-        auto diamond = bake_diamond("DiamondVariant DiamondOther", true);
+        auto diamond {bake_diamond("DiamondVariant DiamondOther", true)};
 
         // First reach keeps its position, so Variant's override of Base survives Other's walk
         CHECK(diamond == bake_diamond("DiamondVariant", true));
@@ -226,33 +230,33 @@ $Parent = )")
 
     SECTION("RejectsProtoParentCycleUnderEverySetting")
     {
-        auto bake_cycle = [&](string_view content, bool allow_repeated) {
-            TestRig local_rig;
+        auto bake_cycle {[&](string_view content, bool allow_repeated) {
+            TestRig local_rig {};
             OverrideSetting(local_rig.Settings.Baking.AllowRepeatedProtoParents, allow_repeated);
             local_rig.AddSourceFile("Items/Cycle.fopro", content);
 
-            auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
+            auto metadata_blob {BakerTests::MakeEmptyMetadataBlob()};
             local_rig.AddBakedFile("Metadata.fometa-server", metadata_blob);
             local_rig.AddBakedFile("Metadata.fometa-client", metadata_blob);
             local_rig.AddBakedFile("Metadata.fometa-mapper", metadata_blob);
 
-            ProtoBaker baker(local_rig.MakeContext("ProtoPackCycle", client_mapper_bake));
+            ProtoBaker baker {local_rig.MakeContext("ProtoPackCycle", client_mapper_bake)};
             baker.BakeFiles(local_rig.GetAllSourceFiles(), "");
-        };
+        }};
 
-        string_view self_cycle = R"([ProtoItem]
+        string_view self_cycle {R"([ProtoItem]
 $Name = SelfCycle
 $Parent = SelfCycle
-)";
-        string_view pair_cycle = R"([ProtoItem]
+)"};
+        string_view pair_cycle {R"([ProtoItem]
 $Name = CycleA
 $Parent = CycleB
 
 [ProtoItem]
 $Name = CycleB
 $Parent = CycleA
-)";
-        string_view long_cycle = R"([ProtoItem]
+)"};
+        string_view long_cycle {R"([ProtoItem]
 $Name = LongA
 $Parent = LongC
 
@@ -263,7 +267,7 @@ $Parent = LongA
 [ProtoItem]
 $Name = LongC
 $Parent = LongB
-)";
+)"};
 
         // A cycle is never valid input, so the setting may not make it bakeable either way
         for (bool allow_repeated : {true, false}) {
@@ -275,8 +279,8 @@ $Parent = LongB
 
     // Baked bytes must follow the prototype set alone. Iterating an unordered map would chain
     // same-bucket entries in insertion order, so moving a proto between files rewrote output that did not change
-    auto bake_arrangement = [&](const vector<pair<string_view, string_view>>& files) {
-        TestRig local_rig;
+    auto bake_arrangement {[&](const vector<pair<string_view, string_view>>& files) {
+        TestRig local_rig {};
 
         for (const auto& [path, content] : files) {
             local_rig.AddSourceFile(path, content);
@@ -284,14 +288,14 @@ $Parent = LongB
 
         add_client_mapper_metadata(local_rig);
 
-        ProtoBaker baker(local_rig.MakeContext("ProtoPackOrder", client_mapper_bake));
+        ProtoBaker baker {local_rig.MakeContext("ProtoPackOrder", client_mapper_bake)};
         baker.BakeFiles(local_rig.GetAllSourceFiles(), "");
         return local_rig.Outputs.at("ProtoPackOrder.fopro-bin-client");
-    };
+    }};
 
     SECTION("BakesIdenticalBytesWhateverFileCarriesEachProto")
     {
-        constexpr string_view items_abc = R"([ProtoItem]
+        constexpr string_view items_abc {R"([ProtoItem]
 $Name = OrderItemA
 LightDistance = 1
 
@@ -302,8 +306,8 @@ LightDistance = 2
 [ProtoItem]
 $Name = OrderItemC
 LightDistance = 3
-)";
-        constexpr string_view items_de_critter_p = R"([ProtoItem]
+)"};
+        constexpr string_view items_de_critter_p {R"([ProtoItem]
 $Name = OrderItemD
 LightDistance = 4
 
@@ -313,8 +317,8 @@ LightDistance = 5
 
 [ProtoCritter]
 $Name = OrderCritterP
-)";
-        constexpr string_view items_fgh_critter_q = R"([ProtoItem]
+)"};
+        constexpr string_view items_fgh_critter_q {R"([ProtoItem]
 $Name = OrderItemF
 LightDistance = 6
 
@@ -328,19 +332,19 @@ LightDistance = 8
 
 [ProtoCritter]
 $Name = OrderCritterQ
-)";
+)"};
 
         // The same protos, redistributed and renamed so neither the file order nor the order within a
         // file survives, while the resolved set stays identical
-        constexpr string_view mixed_hg = R"([ProtoItem]
+        constexpr string_view mixed_hg {R"([ProtoItem]
 $Name = OrderItemH
 LightDistance = 8
 
 [ProtoItem]
 $Name = OrderItemG
 LightDistance = 7
-)";
-        constexpr string_view mixed_fed_critter_q = R"([ProtoCritter]
+)"};
+        constexpr string_view mixed_fed_critter_q {R"([ProtoCritter]
 $Name = OrderCritterQ
 
 [ProtoItem]
@@ -354,8 +358,8 @@ LightDistance = 5
 [ProtoItem]
 $Name = OrderItemD
 LightDistance = 4
-)";
-        constexpr string_view mixed_cba_critter_p = R"([ProtoItem]
+)"};
+        constexpr string_view mixed_cba_critter_p {R"([ProtoItem]
 $Name = OrderItemC
 LightDistance = 3
 
@@ -369,16 +373,16 @@ LightDistance = 2
 [ProtoItem]
 $Name = OrderItemA
 LightDistance = 1
-)";
+)"};
 
-        auto grouped = bake_arrangement({{"Items/Alpha.fopro", items_abc}, {"Items/Beta.fopro", items_de_critter_p}, {"Items/Gamma.fopro", items_fgh_critter_q}});
-        auto shuffled = bake_arrangement({{"Protos/Zulu.fopro", mixed_hg}, {"Protos/Yankee.fopro", mixed_fed_critter_q}, {"Protos/Xray.fopro", mixed_cba_critter_p}});
+        auto grouped {bake_arrangement({{"Items/Alpha.fopro", items_abc}, {"Items/Beta.fopro", items_de_critter_p}, {"Items/Gamma.fopro", items_fgh_critter_q}})};
+        auto shuffled {bake_arrangement({{"Protos/Zulu.fopro", mixed_hg}, {"Protos/Yankee.fopro", mixed_fed_critter_q}, {"Protos/Xray.fopro", mixed_cba_critter_p}})};
 
         CHECK_FALSE(grouped.empty());
         CHECK(grouped == shuffled);
 
         // Guard against the comparison passing because the payload never reached the blob
-        auto changed = bake_arrangement({{"Items/Alpha.fopro", items_abc}, {"Items/Beta.fopro", items_de_critter_p}, {"Items/Gamma.fopro", R"([ProtoItem]
+        auto changed {bake_arrangement({{"Items/Alpha.fopro", items_abc}, {"Items/Beta.fopro", items_de_critter_p}, {"Items/Gamma.fopro", R"([ProtoItem]
 $Name = OrderItemF
 LightDistance = 6
 
@@ -392,20 +396,20 @@ LightDistance = 9
 
 [ProtoCritter]
 $Name = OrderCritterQ
-)"}});
+)"}})};
 
         CHECK(grouped != changed);
     }
 
     SECTION("BakesDynamicCustomEntityProtos")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         local_rig.AddSourceFile("Custom/Gizmo.fopro", R"([ProtoGizmo]
 $Name = CustomGizmo
 )");
         add_client_mapper_metadata_blob(local_rig, BakerTests::MakeMetadataBlob({{"Entity", {{"Gizmo", "HasProtos"}}}}));
 
-        ProtoBaker baker(local_rig.MakeContext("ProtoPackCustom", client_mapper_bake));
+        ProtoBaker baker {local_rig.MakeContext("ProtoPackCustom", client_mapper_bake)};
         REQUIRE_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
         CHECK(local_rig.Outputs.contains("ProtoPackCustom.fopro-bin-client"));
         CHECK(local_rig.Outputs.contains("ProtoPackCustom.fopro-bin-mapper"));
@@ -414,13 +418,13 @@ $Name = CustomGizmo
 
     SECTION("BakesDynamicFixedTypeProtos")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         local_rig.AddSourceFile("Protos/Blueprint.fopro", R"([Blueprint]
 $Name = VaultDoorBlueprint
 )");
         add_client_mapper_metadata_blob(local_rig, BakerTests::MakeMetadataBlob({{"FixedType", {{"Blueprint"}}}}));
 
-        ProtoBaker baker(local_rig.MakeContext("ProtoPackFixed", client_mapper_bake));
+        ProtoBaker baker {local_rig.MakeContext("ProtoPackFixed", client_mapper_bake)};
         REQUIRE_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
         CHECK(local_rig.Outputs.contains("ProtoPackFixed.fopro-bin-client"));
         CHECK(local_rig.Outputs.contains("ProtoPackFixed.fopro-bin-mapper"));
@@ -429,7 +433,7 @@ $Name = VaultDoorBlueprint
 
     SECTION("ClientPackCarriesStringsOfServerOnlyProperties")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         local_rig.AddSourceFile("Protos/Blueprint.fopro", R"([Blueprint]
 $Name = VaultDoorBlueprint
 ServerEffectIds = RevealVaultDoor HideVaultDoor
@@ -442,57 +446,80 @@ SharedEffectId = OpenVaultDoor
             }));
 
         // Only the client pack is outdated, so the server side is parsed for its strings and not written
-        auto client_only_bake = [](string_view path, uint64_t) { return path.ends_with(".fopro-bin-client"); };
-        ProtoBaker baker(local_rig.MakeContext("ProtoPackStrings", client_only_bake));
+        auto client_only_bake {[](string_view path, uint64_t) { return path.ends_with(".fopro-bin-client"); }};
+        ProtoBaker baker {local_rig.MakeContext("ProtoPackStrings", client_only_bake)};
         REQUIRE_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
         REQUIRE(local_rig.Outputs.contains("ProtoPackStrings.fopro-bin-client"));
         CHECK(local_rig.Outputs.size() == 1);
 
-        auto client_strings = ReadProtoPackStrings(local_rig.Outputs.at("ProtoPackStrings.fopro-bin-client"));
+        auto client_strings {ReadProtoPackStrings(local_rig.Outputs.at("ProtoPackStrings.fopro-bin-client"))};
         CHECK(client_strings.contains("OpenVaultDoor"));
         CHECK(client_strings.contains("RevealVaultDoor"));
         CHECK(client_strings.contains("HideVaultDoor"));
     }
 
+    SECTION("RejectsWhitespaceInExplicitProtoName")
+    {
+        TestRig local_rig {};
+        local_rig.AddSourceFile("Items/BadName.fopro", R"([ProtoItem]
+$Name = Bad Name
+)");
+        add_client_mapper_metadata(local_rig);
+
+        ProtoBaker baker {local_rig.MakeContext("ProtoPackBadName", client_mapper_bake)};
+        CHECK_THROWS_AS(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), ProtoBakerException);
+    }
+
+    SECTION("RejectsWhitespaceInFileStemProtoName")
+    {
+        TestRig local_rig {};
+        local_rig.AddSourceFile("Items/Bad Name.fopro", R"([ProtoItem]
+)");
+        add_client_mapper_metadata(local_rig);
+
+        ProtoBaker baker {local_rig.MakeContext("ProtoPackBadName", client_mapper_bake)};
+        CHECK_THROWS_AS(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), ProtoBakerException);
+    }
+
     SECTION("RejectsInvalidProtoSectionNames")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         local_rig.AddSourceFile("Items/Broken.fopro", R"([BrokenSection]
 $Name = Broken
 )");
         add_client_mapper_metadata(local_rig);
 
-        ProtoBaker baker(local_rig.MakeContext("ProtoPackBroken", client_mapper_bake));
+        ProtoBaker baker {local_rig.MakeContext("ProtoPackBroken", client_mapper_bake)};
         CHECK_THROWS_AS(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), ProtoBakerException);
     }
 
     SECTION("RejectsEntityTypeWithoutProtos")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         local_rig.AddSourceFile("Custom/AuditLog.fopro", R"([ProtoAuditLog]
 $Name = AuditLogEntry
 )");
         add_client_mapper_metadata_blob(local_rig, BakerTests::MakeMetadataBlob({{"Entity", {{"AuditLog"}}}}));
 
-        ProtoBaker baker(local_rig.MakeContext("ProtoPackNoProtos", client_mapper_bake));
+        ProtoBaker baker {local_rig.MakeContext("ProtoPackNoProtos", client_mapper_bake)};
         CHECK_THROWS_AS(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), ProtoBakerException);
     }
 
     SECTION("RejectsUnknownProtoTypeNames")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         local_rig.AddSourceFile("Custom/Unknown.fopro", R"([ProtoUnknownEntity]
 $Name = UnknownProto
 )");
         add_client_mapper_metadata(local_rig);
 
-        ProtoBaker baker(local_rig.MakeContext("ProtoPackUnknownType", client_mapper_bake));
+        ProtoBaker baker {local_rig.MakeContext("ProtoPackUnknownType", client_mapper_bake)};
         CHECK_THROWS_AS(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), ProtoBakerException);
     }
 
     SECTION("RejectsDuplicateProtoIdsAcrossFiles")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         local_rig.AddSourceFile("Items/DuplicateOne.fopro", R"([ProtoItem]
 $Name = DuplicateItem
 )");
@@ -501,26 +528,26 @@ $Name = DuplicateItem
 )");
         add_client_mapper_metadata(local_rig);
 
-        ProtoBaker baker(local_rig.MakeContext("ProtoPackDuplicate", client_mapper_bake));
+        ProtoBaker baker {local_rig.MakeContext("ProtoPackDuplicate", client_mapper_bake)};
         CHECK_THROWS_AS(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), ProtoBakerException);
     }
 
     SECTION("RejectsMissingDirectProtoParent")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         local_rig.AddSourceFile("Items/MissingParent.fopro", R"([ProtoItem]
 $Name = OrphanItem
 $Parent = MissingParentItem
 )");
         add_client_mapper_metadata(local_rig);
 
-        ProtoBaker baker(local_rig.MakeContext("ProtoPackMissingParent", client_mapper_bake));
+        ProtoBaker baker {local_rig.MakeContext("ProtoPackMissingParent", client_mapper_bake)};
         CHECK_THROWS_AS(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), ProtoBakerException);
     }
 
     SECTION("RejectsProtoParentFromAnotherType")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         local_rig.AddSourceFile("Protos/CrossTypeParent.fopro", R"([ProtoItem]
 $Name = SharedBase
 
@@ -530,38 +557,38 @@ $Parent = SharedBase
 )");
         add_client_mapper_metadata(local_rig);
 
-        ProtoBaker baker(local_rig.MakeContext("ProtoPackCrossParent", client_mapper_bake));
+        ProtoBaker baker {local_rig.MakeContext("ProtoPackCrossParent", client_mapper_bake)};
         CHECK_THROWS_AS(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), ProtoBakerException);
     }
 
 #if FO_ANGELSCRIPT_SCRIPTING
-    auto make_script_blob = [](string_view script_source) {
-        auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
+    auto make_script_blob {[](string_view script_source) {
+        auto metadata_blob {BakerTests::MakeEmptyMetadataBlob()};
 
-        auto compiler_resources_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ProtoBakerCompilerResources");
+        auto compiler_resources_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("ProtoBakerCompilerResources")};
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
 
-        FileSystem compiler_resources;
+        FileSystem compiler_resources {};
         compiler_resources.AddCustomSource(std::move(compiler_resources_source));
 
         BakerServerEngine compiler_engine {compiler_resources};
 
         return BakerTests::CompileInlineScripts(&compiler_engine, "ProtoBakerScripts", {{"Scripts/TestItemCallbacks.fos", string(script_source)}}, [](string_view message) {
-            string message_str = string(message);
+            string message_str {string(message)};
 
             if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
                 throw ScriptSystemException(message_str);
             }
         });
-    };
+    }};
 
-    static constexpr string_view ProtoFile = R"([ProtoItem]
+    static constexpr string_view ProtoFile {R"([ProtoItem]
 $Name = TestItem
 StaticScript = TestItemCallbacks::OnStatic
 TriggerScript = TestItemCallbacks::OnTrigger
-)";
+)"};
 
-    static constexpr string_view InitProtoFile = R"([ProtoItem]
+    static constexpr string_view InitProtoFile {R"([ProtoItem]
 $Name = InitItem
 InitScript = TestItemCallbacks::OnItemInit
 
@@ -576,9 +603,9 @@ InitScript = TestItemCallbacks::OnMapInit
 [ProtoLocation]
 $Name = InitLocation
 InitScript = TestItemCallbacks::OnLocationInit
-)";
+)"};
 
-    static constexpr string_view ValidScript = R"(namespace TestItemCallbacks
+    static constexpr string_view ValidScript {R"(namespace TestItemCallbacks
 {
 [[ItemStatic]]
 bool OnStatic(Critter cr, StaticItem staticItem, Item? usedItem, any param)
@@ -590,9 +617,9 @@ bool OnStatic(Critter cr, StaticItem staticItem, Item? usedItem, any param)
 void OnTrigger(Critter cr, StaticItem trigger, bool entered, mdir dir)
 {
 }
-})";
+})"};
 
-    static constexpr string_view ValidInitScript = R"(namespace TestItemCallbacks
+    static constexpr string_view ValidInitScript {R"(namespace TestItemCallbacks
 {
 void OnItemInit(Item item, bool firstTime)
 {
@@ -609,9 +636,9 @@ void OnMapInit(Map map, bool firstTime)
 void OnLocationInit(Location loc, bool firstTime)
 {
 }
-})";
+})"};
 
-    static constexpr string_view LegacyAttributeScript = R"(namespace TestItemCallbacks
+    static constexpr string_view LegacyAttributeScript {R"(namespace TestItemCallbacks
 {
 [[StaticItemCallback]]
 bool OnStatic(Critter cr, StaticItem staticItem, Item? usedItem, any param)
@@ -623,9 +650,9 @@ bool OnStatic(Critter cr, StaticItem staticItem, Item? usedItem, any param)
 void OnTrigger(Critter cr, StaticItem trigger, bool entered, mdir dir)
 {
 }
-})";
+})"};
 
-    static constexpr string_view WrongSignatureScript = R"(namespace TestItemCallbacks
+    static constexpr string_view WrongSignatureScript {R"(namespace TestItemCallbacks
 {
 [[ItemStatic]]
 void OnStatic(Critter cr, StaticItem staticItem, Item? usedItem, any param)
@@ -637,55 +664,55 @@ bool OnTrigger(Critter cr, StaticItem trigger, bool entered, mdir dir)
 {
     return true;
 }
-})";
+})"};
 
     SECTION("BakesItemScriptPropertiesWhenCallbacksHaveItemAttributes")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         local_rig.AddSourceFile("Items/TestItem.fopro", ProtoFile);
 
         add_server_metadata(local_rig);
         local_rig.AddBakedFile("TestItemCallbacks.fos-bin-server", make_script_blob(ValidScript));
 
-        ProtoBaker baker(local_rig.MakeContext("ProtoPackTest", server_only_bake));
+        ProtoBaker baker {local_rig.MakeContext("ProtoPackTest", server_only_bake)};
         REQUIRE_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
         CHECK(local_rig.Outputs.contains("ProtoPackTest.fopro-bin-server"));
     }
 
     SECTION("BakesInitScriptPropertiesForServerProtoTypes")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         local_rig.AddSourceFile("Protos/InitScripts.fopro", InitProtoFile);
 
         add_server_metadata(local_rig);
         local_rig.AddBakedFile("TestItemCallbacks.fos-bin-server", make_script_blob(ValidInitScript));
 
-        ProtoBaker baker(local_rig.MakeContext("ProtoPackInit", server_only_bake));
+        ProtoBaker baker {local_rig.MakeContext("ProtoPackInit", server_only_bake)};
         REQUIRE_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
         CHECK(local_rig.Outputs.contains("ProtoPackInit.fopro-bin-server"));
     }
 
     SECTION("RejectsLegacyTriggerAndStaticItemAttributeNames")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         local_rig.AddSourceFile("Items/TestItem.fopro", ProtoFile);
 
         add_server_metadata(local_rig);
         local_rig.AddBakedFile("TestItemCallbacks.fos-bin-server", make_script_blob(LegacyAttributeScript));
 
-        ProtoBaker baker(local_rig.MakeContext("ProtoPackTest", server_only_bake));
+        ProtoBaker baker {local_rig.MakeContext("ProtoPackTest", server_only_bake)};
         CHECK_THROWS_AS(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), ProtoBakerException);
     }
 
     SECTION("RejectsWrongItemScriptCallbackSignaturesEvenWhenAttributed")
     {
-        TestRig local_rig;
+        TestRig local_rig {};
         local_rig.AddSourceFile("Items/TestItem.fopro", ProtoFile);
 
         add_server_metadata(local_rig);
         local_rig.AddBakedFile("TestItemCallbacks.fos-bin-server", make_script_blob(WrongSignatureScript));
 
-        ProtoBaker baker(local_rig.MakeContext("ProtoPackTest", server_only_bake));
+        ProtoBaker baker {local_rig.MakeContext("ProtoPackTest", server_only_bake)};
         CHECK_THROWS_AS(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), ProtoBakerException);
     }
 #endif

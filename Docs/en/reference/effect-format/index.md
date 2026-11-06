@@ -20,7 +20,7 @@ This reference describes the reusable Engine-owned `.fofx` authoring, baking, re
 | Stability | <code>experimental</code> |
 | Support policy | The contract is generated for a pinned Engine revision. Projects own effect catalogs, visual policy, quality profiles, concrete override paths, and ScriptValue slot meanings. |
 | Source manifest | [BuildTools/EffectFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/EffectFormatInterface.json) |
-| Contract digest | <code>bd50466bab9291d7b04d119f6fb9b613bc6507b1c771cef1605c7d7e7184aea0</code> |
+| Contract digest | <code>77b8fb3b52a68b4c02cc0b57f12c39269e96853a539773e4480bedf68c9b7454</code> |
 | Source extension | <code>.fofx</code> |
 | Runtime side | <code>client</code> |
 

@@ -64,7 +64,7 @@ static auto ManagedInteropShimLoad(const char* name, int flags, char** err, void
         return nullptr;
     }
 
-    auto first_entry = FindInteropShimLibrary(name);
+    auto first_entry {FindInteropShimLibrary(name)};
 
     if (!first_entry.has_value()) {
         return nullptr;
@@ -83,15 +83,15 @@ static auto ManagedInteropShimSymbol(void* handle, const char* name, char** err,
         return nullptr;
     }
 
-    size_t first_entry = static_cast<size_t>(reinterpret_cast<uintptr_t>(handle)) - 1;
+    size_t first_entry {static_cast<size_t>(reinterpret_cast<uintptr_t>(handle)) - 1};
 
     if (first_entry >= ManagedPInvokeEntryCount) {
         return nullptr;
     }
 
-    string_view library = ManagedPInvokeEntries[first_entry].Library;
+    string_view library {ManagedPInvokeEntries[first_entry].Library};
 
-    for (size_t i = first_entry; i < ManagedPInvokeEntryCount; i++) {
+    for (size_t i {first_entry}; i < ManagedPInvokeEntryCount; i++) {
         if (library != ManagedPInvokeEntries[i].Library) {
             break;
         }
@@ -116,9 +116,9 @@ static auto FindInteropShimLibrary(string_view name) -> optional<size_t>
 {
     FO_TRACE_ZONE(Script);
 
-    string normalized = NormalizeInteropShimName(name);
+    string normalized {NormalizeInteropShimName(name)};
 
-    for (size_t i = 0; i < ManagedPInvokeEntryCount; i++) {
+    for (size_t i {0}; i < ManagedPInvokeEntryCount; i++) {
         if (NormalizeInteropShimName(ManagedPInvokeEntries[i].Library) == normalized) {
             return i;
         }
@@ -131,7 +131,7 @@ static auto FindInteropShimLibrary(string_view name) -> optional<size_t>
 // so both sides are reduced to the bare module name before they are compared
 static auto NormalizeInteropShimName(string_view name) -> string
 {
-    size_t separator_pos = name.find_last_of("/\\");
+    size_t separator_pos {name.find_last_of("/\\")};
 
     if (separator_pos != string_view::npos) {
         name.remove_prefix(separator_pos + 1);
@@ -142,7 +142,7 @@ static auto NormalizeInteropShimName(string_view name) -> string
     }
 
     for (string_view extension : {".so", ".dylib", ".dll", ".a", ".lib"}) {
-        if (size_t pos = name.find(extension); pos != string_view::npos) {
+        if (size_t pos {name.find(extension)}; pos != string_view::npos) {
             name = name.substr(0, pos);
             break;
         }

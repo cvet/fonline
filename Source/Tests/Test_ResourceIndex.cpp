@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
 #include "DataSource.h"
@@ -42,8 +44,8 @@ FO_BEGIN_NAMESPACE
 
 static auto MakeTempIndexDir(string_view name) -> string
 {
-    auto base = std::filesystem::temp_directory_path() / std::format("lf_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
-    string dir = fs::path_to_string(base);
+    auto base {std::filesystem::temp_directory_path() / std::format("lf_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count())};
+    string dir {fs::path_to_string(base)};
     REQUIRE(fs::create_directories(dir));
     return dir;
 }
@@ -71,22 +73,22 @@ static auto BytesOf(string_view text) -> vector<uint8_t>
 
 static auto ReadThroughIndex(const ResourceIndexSource& index, string_view path) -> vector<uint8_t>
 {
-    size_t size = 0;
-    uint64_t write_time = 0;
-    auto buf = index.OpenFile(path, size, write_time);
+    size_t size {0};
+    uint64_t write_time {0};
+    auto buf {index.OpenFile(path, size, write_time)};
     REQUIRE(buf);
-    auto data = const_span<uint8_t> {buf.get(), size};
+    auto data {const_span<uint8_t> {buf.get(), size}};
     return vector<uint8_t> {data.begin(), data.end()};
 }
 
 static auto Crc32(const_span<uint8_t> data) -> uint32_t
 {
-    uint32_t crc = 0xFFFFFFFF;
+    uint32_t crc {0xFFFFFFFF};
 
     for (uint8_t byte : data) {
         crc ^= byte;
 
-        for (size_t bit = 0; bit < 8; ++bit) {
+        for (size_t bit {0}; bit < 8; ++bit) {
             crc = (crc >> 1) ^ (0xEDB88320 & (0 - (crc & 1)));
         }
     }
@@ -98,20 +100,21 @@ static auto Crc32(const_span<uint8_t> data) -> uint32_t
 // enough to mount through DataSource::MountPack and measure the engine's own reader against a pack
 static void WriteStoredZip(string_view path, const vector<std::pair<string, string>>& files)
 {
-    vector<uint8_t> out;
-    vector<uint8_t> central;
-    auto put16 = [](vector<uint8_t>& buf, uint16_t value) { buf.insert(buf.end(), {static_cast<uint8_t>(value & 0xFF), static_cast<uint8_t>(value >> 8)}); };
-    auto put32 = [](vector<uint8_t>& buf, uint32_t value) {
-        for (size_t i = 0; i < 4; ++i) {
+    vector<uint8_t> out {};
+    vector<uint8_t> central {};
+    auto put16 {[](vector<uint8_t>& buf, uint16_t value) { buf.insert(buf.end(), {static_cast<uint8_t>(value & 0xFF), static_cast<uint8_t>(value >> 8)}); }};
+    auto put32 {[](vector<uint8_t>& buf, uint32_t value) {
+        for (size_t i {0}; i < 4; ++i) {
             buf.emplace_back(static_cast<uint8_t>((value >> (i * 8)) & 0xFF));
         }
-    };
-    auto put_bytes = [](vector<uint8_t>& buf, string_view text) { buf.insert(buf.end(), text.begin(), text.end()); };
+    }};
+
+    auto put_bytes {[](vector<uint8_t>& buf, string_view text) { buf.insert(buf.end(), text.begin(), text.end()); }};
 
     for (const auto& [name, content] : files) {
-        uint32_t local_offset = numeric_cast<uint32_t>(out.size());
-        uint32_t crc = Crc32(const_span<uint8_t> {reinterpret_cast<const uint8_t*>(content.data()), content.size()});
-        uint32_t size = numeric_cast<uint32_t>(content.size());
+        uint32_t local_offset {numeric_cast<uint32_t>(out.size())};
+        uint32_t crc {Crc32(const_span<uint8_t> {reinterpret_cast<const uint8_t*>(content.data()), content.size()})};
+        uint32_t size {numeric_cast<uint32_t>(content.size())};
 
         put32(out, 0x04034B50);
         put16(out, 20);
@@ -147,7 +150,7 @@ static void WriteStoredZip(string_view path, const vector<std::pair<string, stri
         put_bytes(central, name);
     }
 
-    uint32_t central_offset = numeric_cast<uint32_t>(out.size());
+    uint32_t central_offset {numeric_cast<uint32_t>(out.size())};
     out.insert(out.end(), central.begin(), central.end());
 
     put32(out, 0x06054B50);
@@ -164,10 +167,10 @@ static void WriteStoredZip(string_view path, const vector<std::pair<string, stri
 
 TEST_CASE("FileBufferHolderMovesVectorStorage")
 {
-    vector<uint8_t> data(4096, 0x5A);
-    ptr<const uint8_t> original = make_ptr(data.data());
-    auto holder = MakeFileBufferHolder(std::move(data));
-    ptr<const uint8_t> held = holder;
+    vector<uint8_t> data {vector<uint8_t>(4096, 0x5A)};
+    ptr<const uint8_t> original {make_ptr(data.data())};
+    auto holder {MakeFileBufferHolder(std::move(data))};
+    ptr<const uint8_t> held {holder};
 
     CHECK(held == original);
     CHECK(holder[0] == 0x5A);
@@ -178,19 +181,19 @@ TEST_CASE("FileBufferHolderMovesVectorStorage")
 
 TEST_CASE("ResourcePackInApkRegion")
 {
-    string dir = MakeTempIndexDir("apk_region");
-    auto cleanup = scope_exit([&]() noexcept { (void)fs::remove_dir_tree(dir); });
+    string dir {MakeTempIndexDir("apk_region")};
+    auto cleanup {scope_exit([&]() noexcept { (void)fs::remove_dir_tree(dir); })};
     WritePack(dir, "Art", {{"Old.txt", "same content"}, {"Deleted.txt", "gone"}});
     WritePack(dir, "Target", {{"Renamed.txt", "same content"}, {"Added.txt", "new content"}});
-    string base_path = strex(dir).combine_path("Art.fores").str();
-    string apk_path = strex(dir).combine_path("client.apk").str();
-    auto bytes = fs::read_file(base_path);
+    string base_path {strex(dir).combine_path("Art.fores").str()};
+    string apk_path {strex(dir).combine_path("client.apk").str()};
+    auto bytes {fs::read_file(base_path)};
     REQUIRE(bytes);
     WriteStoredZip(apk_path, {{"unrelated", string(4096, 'x')}, {"assets/Resources/Art.fores", *bytes}, {"after", "outside the pack"}});
     REQUIRE(fs::remove_file(base_path));
-    string apk_dir = strex("{}!/assets/Resources", apk_path).str();
-    string installed = strex(apk_dir).combine_path("Art.fores").str();
-    fs::disk_read_file region = OpenResourcePackFile(installed);
+    string apk_dir {strex("{}!/assets/Resources", apk_path).str()};
+    string installed {strex(apk_dir).combine_path("Art.fores").str()};
+    fs::disk_read_file region {OpenResourcePackFile(installed)};
     REQUIRE(region);
     CHECK(region.get_size() == bytes->size());
     array<uint8_t, 1> outside {};
@@ -198,7 +201,7 @@ TEST_CASE("ResourcePackInApkRegion")
     CHECK_FALSE(region.read_at(std::numeric_limits<uint64_t>::max(), outside));
 
     ResourcePackSource target {strex(dir).combine_path("Target.fores").str()};
-    string patch_path = GetResourcePatchPath(base_path);
+    string patch_path {GetResourcePatchPath(base_path)};
     ResourcePatchWriter writer {installed, patch_path, target.GetEntryRefs(), target.GetContentHash()};
     REQUIRE(writer.GetDownloads().size() == 1);
     fs::disk_directory_lock patch_lock {strex(patch_path).extract_dir().str()};
@@ -206,17 +209,17 @@ TEST_CASE("ResourcePackInApkRegion")
     fs::disk_read_file remote {strex(dir).combine_path("Target.fores").str()};
 
     for (const ResourcePackEntryRef& entry : writer.GetDownloads()) {
-        vector<uint8_t> payload(numeric_cast<size_t>(entry.StoredSize));
+        vector<uint8_t> payload {vector<uint8_t>(numeric_cast<size_t>(entry.StoredSize))};
         REQUIRE(remote.read_at(entry.DataOffset, payload));
         writer.AddEncodedFile(payload);
     }
 
     writer.Finish();
-    vector<ResourceIndexPack> packs;
-    vector<string> paths;
+    vector<ResourceIndexPack> packs {};
+    vector<string> paths {};
     REQUIRE(ResolveResourceIndexPacks({apk_dir, dir}, {"Art"}, packs, paths));
     REQUIRE(paths == vector<string> {installed});
-    string index_path = strex(dir).combine_path("Resources.foindex").str();
+    string index_path {strex(dir).combine_path("Resources.foindex").str()};
     BuildResourceIndex(index_path, paths, packs);
     ResourceIndexSource index {index_path, {apk_dir, dir}};
     CHECK(ReadThroughIndex(index, "Renamed.txt") == BytesOf("same content"));
@@ -229,16 +232,16 @@ TEST_CASE("ResourcePackInApkRegion")
 TEST_CASE("ResourcePackUnderDirectoryEndingInBang")
 {
     // A writable root such as a profile named "Bob!" is a directory, not an archive, so "!/" must not split it
-    string root = MakeTempIndexDir("bang_dir");
-    auto cleanup = scope_exit([&]() noexcept { (void)fs::remove_dir_tree(root); });
-    string dir = strex(root).combine_path("Bob!").combine_path("Resources").str();
+    string root {MakeTempIndexDir("bang_dir")};
+    auto cleanup {scope_exit([&]() noexcept { (void)fs::remove_dir_tree(root); })};
+    string dir {strex(root).combine_path("Bob!").combine_path("Resources").str()};
     REQUIRE(fs::create_directories(dir));
     WritePack(dir, "Art", {{"Old.txt", "old"}});
     WritePack(root, "Target", {{"Old.txt", "old"}, {"New.txt", "new"}});
-    string base_path = strex(dir).combine_path("Art.fores").str();
-    string patch_path = GetResourcePatchPath(base_path);
+    string base_path {strex(dir).combine_path("Art.fores").str()};
+    string patch_path {GetResourcePatchPath(base_path)};
 
-    ResourcePackHeader header;
+    ResourcePackHeader header {};
     REQUIRE(ReadResourcePackHeader(base_path, header));
     CHECK(GetResourcePackWriteTime(base_path) == fs::last_write_time(base_path));
     CHECK(ResolveResourcePackPath({dir}, "Art") == base_path);
@@ -250,7 +253,7 @@ TEST_CASE("ResourcePackUnderDirectoryEndingInBang")
     writer.Begin(patch_lock);
 
     for (const ResourcePackEntryRef& entry : writer.GetDownloads()) {
-        vector<uint8_t> payload(numeric_cast<size_t>(entry.StoredSize));
+        vector<uint8_t> payload {vector<uint8_t>(numeric_cast<size_t>(entry.StoredSize))};
         REQUIRE(remote.read_at(entry.DataOffset, payload));
         writer.AddEncodedFile(payload);
     }
@@ -258,7 +261,7 @@ TEST_CASE("ResourcePackUnderDirectoryEndingInBang")
     writer.Finish();
 
     // The updater drops a patch this call cannot read as stale, which is how a committed update was lost
-    auto patch_info = ReadResourcePatchInfo(patch_path, header);
+    auto patch_info {ReadResourcePatchInfo(patch_path, header)};
     REQUIRE(patch_info.has_value());
     CHECK(patch_info->ContentHash == target.GetContentHash());
 }
@@ -267,18 +270,18 @@ TEST_CASE("ResourceIndex")
 {
     SECTION("PatchedPairsMatchDirectEnumerationAndInvalidateOnEveryCommit")
     {
-        string dir = MakeTempIndexDir("index_patch_pair");
-        auto cleanup = scope_exit([&]() noexcept { (void)fs::remove_dir_tree(dir); });
+        string dir {MakeTempIndexDir("index_patch_pair")};
+        auto cleanup {scope_exit([&]() noexcept { (void)fs::remove_dir_tree(dir); })};
         WritePack(dir, "Base", {{"Shared.txt", "earlier"}, {"Base.txt", "base"}});
         WritePack(dir, "Over", {{"Shared.txt", "later"}, {"Deleted.txt", "gone"}, {"Keep.txt", "keep"}});
-        string base_path = strex(dir).combine_path("Over.fores").str();
-        string patch_path = GetResourcePatchPath(base_path);
-        string target_path = strex(dir).combine_path("Target.fores").str();
-        string index_path = strex(dir).combine_path("Resources.foindex").str();
+        string base_path {strex(dir).combine_path("Over.fores").str()};
+        string patch_path {GetResourcePatchPath(base_path)};
+        string target_path {strex(dir).combine_path("Target.fores").str()};
+        string index_path {strex(dir).combine_path("Resources.foindex").str()};
         vector<string> names {"Base", "Over"};
         vector<string> dirs {dir};
 
-        auto append = [&](const vector<pair<string, string>>& files) {
+        auto append {[&](const vector<pair<string, string>>& files) {
             WritePack(dir, "Target", files);
             ResourcePackSource target {target_path};
             ResourcePatchWriter writer {base_path, patch_path, target.GetEntryRefs(), target.GetContentHash()};
@@ -287,27 +290,27 @@ TEST_CASE("ResourceIndex")
             writer.Begin(patch_lock);
 
             for (const ResourcePackEntryRef& entry : writer.GetDownloads()) {
-                vector<uint8_t> data(numeric_cast<size_t>(entry.StoredSize));
+                vector<uint8_t> data {vector<uint8_t>(numeric_cast<size_t>(entry.StoredSize))};
                 REQUIRE(remote.read_at(entry.DataOffset, data));
                 writer.AddEncodedFile(data);
             }
 
             writer.Finish();
-        };
+        }};
 
         append({{"Keep.txt", "keep"}, {"New.txt", "new"}});
-        vector<ResourceIndexPack> packs;
-        vector<string> paths;
+        vector<ResourceIndexPack> packs {};
+        vector<string> paths {};
         REQUIRE(ResolveResourceIndexPacks(dirs, names, packs, paths));
         BuildResourceIndex(index_path, paths, packs);
         REQUIRE(IsResourceIndexCurrent(index_path, dirs, names));
 
         {
-            FileSystem direct;
+            FileSystem direct {};
             direct.AddCustomSource(safe_alloc::make_unique<ResourcePackSource>(strex(dir).combine_path("Base.fores").str()));
             direct.AddCustomSource(safe_alloc::make_unique<ResourcePackSource>(base_path, patch_path));
             ResourceIndexSource cached {index_path, dirs};
-            vector<string> direct_names;
+            vector<string> direct_names {};
 
             for (const auto& file : direct.GetAllFiles()) {
                 direct_names.emplace_back(file.GetPath());
@@ -318,9 +321,9 @@ TEST_CASE("ResourceIndex")
             CHECK_FALSE(cached.IsFileExists("Deleted.txt"));
             CHECK(ReadThroughIndex(cached, "New.txt") == BytesOf("new"));
             ResourcePackSource pair {base_path, patch_path};
-            size_t size = 0;
-            uint64_t direct_time = 0;
-            uint64_t cached_time = 0;
+            size_t size {0};
+            uint64_t direct_time {0};
+            uint64_t cached_time {0};
             REQUIRE(pair.GetFileInfo("Keep.txt", size, direct_time));
             REQUIRE(cached.GetFileInfo("Keep.txt", size, cached_time));
             CHECK(cached_time == direct_time);
@@ -345,21 +348,21 @@ TEST_CASE("ResourceIndex")
 
     SECTION("RestoresWritableBaseBackupBeforeSelectingTheInstalledBase")
     {
-        string dir = MakeTempIndexDir("resource_base_recovery");
-        auto cleanup = scope_exit([&]() noexcept { (void)fs::remove_dir_tree(dir); });
-        string writable = strex(dir).combine_path("Writable").str();
+        string dir {MakeTempIndexDir("resource_base_recovery")};
+        auto cleanup {scope_exit([&]() noexcept { (void)fs::remove_dir_tree(dir); })};
+        string writable {strex(dir).combine_path("Writable").str()};
         REQUIRE(fs::create_directories(writable));
         WritePack(dir, "Core", {{"File.txt", "installed"}});
         WritePack(writable, "Core", {{"File.txt", "updated"}});
-        string base = strex(writable).combine_path("Core.fores").str();
-        string backup = strex("{}{}", base, REPLACED_FILE_BACKUP_SUFFIX).str();
+        string base {strex(writable).combine_path("Core.fores").str()};
+        string backup {strex("{}{}", base, REPLACED_FILE_BACKUP_SUFFIX).str()};
         REQUIRE(fs::rename_durable(base, backup));
         CHECK(ResolveResourcePackPath({dir, writable}, "Core") == base);
         CHECK_FALSE(fs::exists(backup));
         ResourcePackSource restored {base};
-        size_t size = 0;
-        uint64_t write_time = 0;
-        auto data = restored.OpenFile("File.txt", size, write_time);
+        size_t size {0};
+        uint64_t write_time {0};
+        auto data {restored.OpenFile("File.txt", size, write_time)};
         REQUIRE(data);
         REQUIRE(size == 7);
         CHECK(std::memcmp(data.get(), "updated", size) == 0);
@@ -374,19 +377,19 @@ TEST_CASE("ResourceIndex")
 
     SECTION("RejectsMalformedIndexRecordsBeforeUsingTheirOffsets")
     {
-        string dir = MakeTempIndexDir("index_record_bounds");
-        auto cleanup = scope_exit([&dir]() noexcept { (void)fs::remove_dir_tree(dir); });
-        string index_path = strex(dir).combine_path("Merged.foindex").str();
+        string dir {MakeTempIndexDir("index_record_bounds")};
+        auto cleanup {scope_exit([&dir]() noexcept { (void)fs::remove_dir_tree(dir); })};
+        string index_path {strex(dir).combine_path("Merged.foindex").str()};
         vector<string> dirs {dir};
         WritePack(dir, "Data", {{"File.txt", "payload"}});
 
-        vector<ResourceIndexPack> packs;
-        vector<string> pack_paths;
+        vector<ResourceIndexPack> packs {};
+        vector<string> pack_paths {};
         REQUIRE(ResolveResourceIndexPacks(dirs, {"Data"}, packs, pack_paths));
         BuildResourceIndex(index_path, pack_paths, packs, ResourcePackWriteSettings {0, 100});
-        auto original = fs::read_file(index_path);
+        auto original {fs::read_file(index_path)};
         REQUIRE(original.has_value());
-        vector<uint8_t> bytes(original->begin(), original->end());
+        vector<uint8_t> bytes {vector<uint8_t>(original->begin(), original->end())};
 
         SECTION("PackNamePastPool")
         {
@@ -416,15 +419,15 @@ TEST_CASE("ResourceIndex")
 
     SECTION("MergesPacksWithTheLastOneWinning")
     {
-        string dir = MakeTempIndexDir("index_merge");
-        string index_path = strex(dir).combine_path("Merged.foindex").str();
+        string dir {MakeTempIndexDir("index_merge")};
+        string index_path {strex(dir).combine_path("Merged.foindex").str()};
 
         WritePack(dir, "Base", {{"Shared.txt", "from base"}, {"OnlyBase.txt", "base only"}});
         WritePack(dir, "Over", {{"Shared.txt", "from over"}, {"OnlyOver.txt", "over only"}});
 
         vector<string> dirs {dir};
-        vector<ResourceIndexPack> packs;
-        vector<string> pack_paths;
+        vector<ResourceIndexPack> packs {};
+        vector<string> pack_paths {};
         REQUIRE(ResolveResourceIndexPacks(dirs, vector<string> {"Base", "Over"}, packs, pack_paths));
         BuildResourceIndex(index_path, pack_paths, packs);
 
@@ -436,7 +439,7 @@ TEST_CASE("ResourceIndex")
             CHECK(ReadThroughIndex(index, "OnlyBase.txt") == BytesOf("base only"));
             CHECK(ReadThroughIndex(index, "OnlyOver.txt") == BytesOf("over only"));
 
-            auto snapshot = index.GetIndexSnapshot();
+            auto snapshot {index.GetIndexSnapshot()};
             REQUIRE(snapshot.has_value());
             CHECK(snapshot->size() == 3);
             CHECK(index.GetFileNames("", true, "txt").size() == 3);
@@ -448,25 +451,25 @@ TEST_CASE("ResourceIndex")
 
     SECTION("ListsNamesFromTheEntriesItAlreadyHolds")
     {
-        string dir = MakeTempIndexDir("index_names");
-        string index_path = strex(dir).combine_path("Merged.foindex").str();
+        string dir {MakeTempIndexDir("index_names")};
+        string index_path {strex(dir).combine_path("Merged.foindex").str()};
         vector<string> dirs {dir};
 
         WritePack(dir, "Base", {{"Dir/A.txt", "a"}, {"Root.bin", "r"}, {"Shared.txt", "base"}});
         WritePack(dir, "Over", {{"Dir/B.txt", "b"}, {"Shared.txt", "over"}});
 
-        vector<ResourceIndexPack> packs;
-        vector<string> pack_paths;
+        vector<ResourceIndexPack> packs {};
+        vector<string> pack_paths {};
         REQUIRE(ResolveResourceIndexPacks(dirs, vector<string> {"Base", "Over"}, packs, pack_paths));
         BuildResourceIndex(index_path, pack_paths, packs);
 
         {
             ResourceIndexSource index {index_path, dirs};
 
-            auto snapshot = index.GetIndexSnapshot();
+            auto snapshot {index.GetIndexSnapshot()};
             REQUIRE(snapshot.has_value());
 
-            vector<string> from_snapshot;
+            vector<string> from_snapshot {};
 
             for (const IndexedFile& file : *snapshot) {
                 from_snapshot.emplace_back(file.Path);
@@ -476,7 +479,7 @@ TEST_CASE("ResourceIndex")
 
             // The listing and the entry table must stay one source of truth: a second copy of the paths is what
             // both drifts from the entries and pays for itself in resident memory for the life of the mount
-            auto listed = index.GetFileNames("", true, "");
+            auto listed {index.GetFileNames("", true, "")};
             std::sort(listed.begin(), listed.end());
             CHECK(listed == from_snapshot);
             CHECK(listed.size() == 4);
@@ -494,33 +497,33 @@ TEST_CASE("ResourceIndex")
 
     SECTION("ReportsTheOwningPackWriteTime")
     {
-        string dir = MakeTempIndexDir("index_write_time");
-        string index_path = strex(dir).combine_path("Merged.foindex").str();
+        string dir {MakeTempIndexDir("index_write_time")};
+        string index_path {strex(dir).combine_path("Merged.foindex").str()};
         vector<string> dirs {dir};
 
         WritePack(dir, "Base", {{"A.txt", "a"}});
         WritePack(dir, "Over", {{"B.txt", "b"}});
 
-        vector<ResourceIndexPack> packs;
-        vector<string> pack_paths;
+        vector<ResourceIndexPack> packs {};
+        vector<string> pack_paths {};
         REQUIRE(ResolveResourceIndexPacks(dirs, vector<string> {"Base", "Over"}, packs, pack_paths));
         BuildResourceIndex(index_path, pack_paths, packs);
 
-        auto pack_write_time = [&](string_view pack_name, string_view entry_path) -> uint64_t {
+        auto pack_write_time {[&](string_view pack_name, string_view entry_path) -> uint64_t {
             ResourcePackSource pack {strex(dir).combine_path(strex("{}.fores", pack_name)).str()};
-            size_t size = 0;
-            uint64_t write_time = 0;
+            size_t size {0};
+            uint64_t write_time {0};
             REQUIRE(pack.GetFileInfo(entry_path, size, write_time));
             return write_time;
-        };
+        }};
 
-        auto index_write_time = [&](string_view entry_path) -> uint64_t {
+        auto index_write_time {[&](string_view entry_path) -> uint64_t {
             ResourceIndexSource index {index_path, dirs};
-            size_t size = 0;
-            uint64_t write_time = 0;
+            size_t size {0};
+            uint64_t write_time {0};
             REQUIRE(index.GetFileInfo(entry_path, size, write_time));
             return write_time;
-        };
+        }};
 
         // GetClientResources switches between the two views by whether the tree is current, so one file has to
         // answer the same either way - and the answer is the mtime of the pack the bytes live in, not the tree's
@@ -532,8 +535,8 @@ TEST_CASE("ResourceIndex")
 
     SECTION("ReportsWhetherTheIndexStillDescribesTheDisk")
     {
-        string dir = MakeTempIndexDir("index_current");
-        string index_path = strex(dir).combine_path("Merged.foindex").str();
+        string dir {MakeTempIndexDir("index_current")};
+        string index_path {strex(dir).combine_path("Merged.foindex").str()};
         vector<string> dirs {dir};
         vector<string> names {"Base", "Over"};
 
@@ -543,8 +546,8 @@ TEST_CASE("ResourceIndex")
         // An absent index is the ordinary first-run answer, not an error
         CHECK_FALSE(IsResourceIndexCurrent(index_path, dirs, names));
 
-        vector<ResourceIndexPack> packs;
-        vector<string> pack_paths;
+        vector<ResourceIndexPack> packs {};
+        vector<string> pack_paths {};
         REQUIRE(ResolveResourceIndexPacks(dirs, names, packs, pack_paths));
         BuildResourceIndex(index_path, pack_paths, packs);
         CHECK(IsResourceIndexCurrent(index_path, dirs, names));
@@ -561,14 +564,14 @@ TEST_CASE("ResourceIndex")
 
     SECTION("RefusesAnIndexWhosePackMovedOn")
     {
-        string dir = MakeTempIndexDir("index_stale");
-        string index_path = strex(dir).combine_path("Merged.foindex").str();
+        string dir {MakeTempIndexDir("index_stale")};
+        string index_path {strex(dir).combine_path("Merged.foindex").str()};
 
         WritePack(dir, "Data", {{"File.txt", "first"}});
 
         vector<string> dirs {dir};
-        vector<ResourceIndexPack> packs;
-        vector<string> pack_paths;
+        vector<ResourceIndexPack> packs {};
+        vector<string> pack_paths {};
         REQUIRE(ResolveResourceIndexPacks(dirs, vector<string> {"Data"}, packs, pack_paths));
         BuildResourceIndex(index_path, pack_paths, packs);
 
@@ -577,11 +580,11 @@ TEST_CASE("ResourceIndex")
 
         CHECK_THROWS(ResourceIndexSource {index_path, dirs});
 
-        ResourceIndexHeader header;
+        ResourceIndexHeader header {};
         REQUIRE(ReadResourceIndexHeader(index_path, header));
 
-        vector<ResourceIndexPack> current_packs;
-        vector<string> current_paths;
+        vector<ResourceIndexPack> current_packs {};
+        vector<string> current_paths {};
         REQUIRE(ResolveResourceIndexPacks(dirs, vector<string> {"Data"}, current_packs, current_paths));
         CHECK(ComputeResourceIndexPackListHash(current_packs) != header.PackListHash);
 
@@ -600,15 +603,15 @@ TEST_CASE("ResourceIndex")
     {
         // Small fixtures hide a decode sized by a multiplier instead of the exact length: the product only
         // becomes absurd once the index is real. 4000 entries is past that point and still quick
-        static constexpr size_t ENTRY_COUNT = 4000;
+        static constexpr size_t ENTRY_COUNT {4000};
 
-        string dir = MakeTempIndexDir("index_large");
-        string index_path = strex(dir).combine_path("Merged.foindex").str();
+        string dir {MakeTempIndexDir("index_large")};
+        string index_path {strex(dir).combine_path("Merged.foindex").str()};
 
         {
             ResourcePackWriter writer {strex(dir).combine_path("Bulk.fores").str()};
 
-            for (size_t i = 0; i < ENTRY_COUNT; ++i) {
+            for (size_t i {0}; i < ENTRY_COUNT; ++i) {
                 writer.AddFile(strex("CommonArt_Group/Scenery/Section{}/Sprite_{:05}.png", i % 16, i).str(), MakeBytes("payload"));
             }
 
@@ -616,12 +619,12 @@ TEST_CASE("ResourceIndex")
         }
 
         vector<string> dirs {dir};
-        vector<ResourceIndexPack> packs;
-        vector<string> pack_paths;
+        vector<ResourceIndexPack> packs {};
+        vector<string> pack_paths {};
         REQUIRE(ResolveResourceIndexPacks(dirs, vector<string> {"Bulk"}, packs, pack_paths));
         BuildResourceIndex(index_path, pack_paths, packs);
 
-        ResourceIndexHeader header;
+        ResourceIndexHeader header {};
         REQUIRE(ReadResourceIndexHeader(index_path, header));
         CHECK(header.EntryCount == ENTRY_COUNT);
         CHECK(header.IndexDecodedSize > 128 * 1024);
@@ -637,35 +640,35 @@ TEST_CASE("ResourceIndex")
 
     SECTION("RejectsMalformedIndexes")
     {
-        string dir = MakeTempIndexDir("index_malformed");
-        string index_path = strex(dir).combine_path("Merged.foindex").str();
+        string dir {MakeTempIndexDir("index_malformed")};
+        string index_path {strex(dir).combine_path("Merged.foindex").str()};
 
         WritePack(dir, "Data", {{"File.txt", "payload"}});
 
         vector<string> dirs {dir};
-        vector<ResourceIndexPack> packs;
-        vector<string> pack_paths;
+        vector<ResourceIndexPack> packs {};
+        vector<string> pack_paths {};
         REQUIRE(ResolveResourceIndexPacks(dirs, vector<string> {"Data"}, packs, pack_paths));
         BuildResourceIndex(index_path, pack_paths, packs);
 
-        auto original = fs::read_file(index_path);
+        auto original {fs::read_file(index_path)};
         REQUIRE(original.has_value());
 
-        string not_an_index = strex(dir).combine_path("NotAnIndex.foindex").str();
+        string not_an_index {strex(dir).combine_path("NotAnIndex.foindex").str()};
         REQUIRE(fs::write_file(not_an_index, string(RESOURCE_INDEX_HEADER_SIZE + 16, '\0')));
         CHECK_THROWS(ResourceIndexSource {not_an_index, dirs});
 
-        ResourceIndexHeader ignored;
+        ResourceIndexHeader ignored {};
         CHECK_FALSE(ReadResourceIndexHeader(not_an_index, ignored));
 
         // One flipped header byte breaks the checksum, which is what stops a bad offset being believed
-        string bad_header = strex(dir).combine_path("BadHeader.foindex").str();
-        string bad_header_data = *original;
+        string bad_header {strex(dir).combine_path("BadHeader.foindex").str()};
+        string bad_header_data {*original};
         bad_header_data[20] = static_cast<char>(bad_header_data[20] ^ 0xFF);
         REQUIRE(fs::write_file(bad_header, bad_header_data));
         CHECK_THROWS(ResourceIndexSource {bad_header, dirs});
 
-        string truncated = strex(dir).combine_path("Truncated.foindex").str();
+        string truncated {strex(dir).combine_path("Truncated.foindex").str()};
         REQUIRE(fs::write_file(truncated, original->substr(0, original->size() - 4)));
         CHECK_THROWS(ResourceIndexSource {truncated, dirs});
         CHECK_FALSE(IsResourceIndexCurrent(truncated, dirs, {"Data"}));
@@ -678,25 +681,25 @@ TEST_CASE("ResourceIndex")
 // the real corpus, and payloads are tiny on purpose - the builder reads pack indexes, never payloads
 TEST_CASE("ResourceIndexCost", "[.]")
 {
-    static constexpr size_t PACK_COUNT = 32;
-    static constexpr size_t ENTRIES_PER_PACK = 555;
+    static constexpr size_t PACK_COUNT {32};
+    static constexpr size_t ENTRIES_PER_PACK {555};
 
-    string dir = MakeTempIndexDir("index_cost");
-    string index_path = strex(dir).combine_path("Merged.foindex").str();
+    string dir {MakeTempIndexDir("index_cost")};
+    string index_path {strex(dir).combine_path("Merged.foindex").str()};
     vector<string> dirs {dir};
-    vector<string> names;
+    vector<string> names {};
 
-    auto elapsed_ms = [](auto started) { return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count(); };
+    auto elapsed_ms {[](auto started) { return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count(); }};
 
-    auto write_started = std::chrono::steady_clock::now();
+    auto write_started {std::chrono::steady_clock::now()};
 
-    for (size_t pack = 0; pack < PACK_COUNT; ++pack) {
-        string pack_name = strex("Pack{}", pack).str();
+    for (size_t pack {0}; pack < PACK_COUNT; ++pack) {
+        string pack_name {strex("Pack{}", pack).str()};
         names.emplace_back(pack_name);
 
         ResourcePackWriter writer {strex(dir).combine_path(strex("{}.fores", pack_name)).str()};
 
-        for (size_t entry = 0; entry < ENTRIES_PER_PACK; ++entry) {
+        for (size_t entry {0}; entry < ENTRIES_PER_PACK; ++entry) {
             // Paths of the length the measured corpus averages, so the string pool is the size it would be
             writer.AddFile(strex("CommonArt_Group{}/Scenery/Section{}/Sprite_{}_{:04}.png", pack, entry % 16, pack, entry).str(), MakeBytes("payload"));
         }
@@ -704,38 +707,38 @@ TEST_CASE("ResourceIndexCost", "[.]")
         writer.Finish();
     }
 
-    double write_ms = elapsed_ms(write_started);
+    double write_ms {elapsed_ms(write_started)};
 
-    vector<ResourceIndexPack> packs;
-    vector<string> pack_paths;
-    auto resolve_started = std::chrono::steady_clock::now();
+    vector<ResourceIndexPack> packs {};
+    vector<string> pack_paths {};
+    auto resolve_started {std::chrono::steady_clock::now()};
     REQUIRE(ResolveResourceIndexPacks(dirs, names, packs, pack_paths));
-    double resolve_ms = elapsed_ms(resolve_started);
+    double resolve_ms {elapsed_ms(resolve_started)};
 
-    auto build_started = std::chrono::steady_clock::now();
+    auto build_started {std::chrono::steady_clock::now()};
     BuildResourceIndex(index_path, pack_paths, packs);
-    double build_ms = elapsed_ms(build_started);
+    double build_ms {elapsed_ms(build_started)};
 
-    ResourceIndexHeader header;
+    ResourceIndexHeader header {};
     REQUIRE(ReadResourceIndexHeader(index_path, header));
 
-    double mount_ms = 0.0;
-    double lookup_ms = 0.0;
-    double read_ms = 0.0;
-    size_t entry_count = 0;
+    double mount_ms {0.0};
+    double lookup_ms {0.0};
+    double read_ms {0.0};
+    size_t entry_count {0};
 
     // Scoped so the mounted tree releases its pack handles before the directory is removed
     {
-        auto mount_started = std::chrono::steady_clock::now();
+        auto mount_started {std::chrono::steady_clock::now()};
         ResourceIndexSource index {index_path, dirs};
         mount_ms = elapsed_ms(mount_started);
 
         // Bound to a name first: the snapshot comes back by value, and iterating *temporary would walk a
         // container that is already destroyed
-        auto snapshot = index.GetIndexSnapshot();
+        auto snapshot {index.GetIndexSnapshot()};
         REQUIRE(snapshot.has_value());
 
-        vector<string> lookup_paths;
+        vector<string> lookup_paths {};
         lookup_paths.reserve(snapshot->size());
 
         for (const auto& entry : *snapshot) {
@@ -746,8 +749,8 @@ TEST_CASE("ResourceIndexCost", "[.]")
 
         entry_count = lookup_paths.size();
 
-        auto lookup_started = std::chrono::steady_clock::now();
-        size_t found = 0;
+        auto lookup_started {std::chrono::steady_clock::now()};
+        size_t found {0};
 
         for (const auto& path : lookup_paths) {
             found += index.IsFileExists(path) ? 1 : 0;
@@ -756,7 +759,7 @@ TEST_CASE("ResourceIndexCost", "[.]")
         lookup_ms = elapsed_ms(lookup_started);
         CHECK(found == lookup_paths.size());
 
-        auto read_started = std::chrono::steady_clock::now();
+        auto read_started {std::chrono::steady_clock::now()};
 
         for (const auto& path : lookup_paths) {
             CHECK(ReadThroughIndex(index, path).size() == 7);
@@ -784,17 +787,17 @@ TEST_CASE("ResourceIndexCost", "[.]")
 // path. Entries are stored, which leaves the mount comparison intact and makes the read figure ZIP's best
 TEST_CASE("ResourcePackVersusZipCost", "[.]")
 {
-    static constexpr size_t ENTRY_COUNT = 8000;
+    static constexpr size_t ENTRY_COUNT {8000};
 
-    string dir = MakeTempIndexDir("pack_vs_zip");
-    vector<std::pair<string, string>> files;
+    string dir {MakeTempIndexDir("pack_vs_zip")};
+    vector<std::pair<string, string>> files {};
     files.reserve(ENTRY_COUNT);
 
-    for (size_t i = 0; i < ENTRY_COUNT; ++i) {
+    for (size_t i {0}; i < ENTRY_COUNT; ++i) {
         files.emplace_back(strex("CommonArt_Group/Scenery/Section{}/Sprite_{:05}.png", i % 16, i).str(), string("payload"));
     }
 
-    auto elapsed_ms = [](auto started) { return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count(); };
+    auto elapsed_ms {[](auto started) { return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count(); }};
 
     {
         ResourcePackWriter writer {strex(dir).combine_path("Bulk.fores").str()};
@@ -806,25 +809,25 @@ TEST_CASE("ResourcePackVersusZipCost", "[.]")
         writer.Finish();
     }
 
-    string zip_dir = strex(dir).combine_path("zip").str();
+    string zip_dir {strex(dir).combine_path("zip").str()};
     REQUIRE(fs::create_directories(zip_dir));
     WriteStoredZip(strex(zip_dir).combine_path("Bulk.zip").str(), files);
 
-    double pack_mount_ms = 0.0;
-    double pack_read_ms = 0.0;
-    double zip_mount_ms = 0.0;
-    double zip_read_ms = 0.0;
+    double pack_mount_ms {0.0};
+    double pack_read_ms {0.0};
+    double zip_mount_ms {0.0};
+    double zip_read_ms {0.0};
 
     {
-        auto started = std::chrono::steady_clock::now();
-        auto pack = DataSource::MountPack(dir, "Bulk", false);
+        auto started {std::chrono::steady_clock::now()};
+        auto pack {DataSource::MountPack(dir, "Bulk", false)};
         pack_mount_ms = elapsed_ms(started);
 
         started = std::chrono::steady_clock::now();
 
         for (const auto& [name, content] : files) {
-            size_t size = 0;
-            uint64_t write_time = 0;
+            size_t size {0};
+            uint64_t write_time {0};
             CHECK(pack->OpenFile(name, size, write_time));
         }
 
@@ -832,15 +835,15 @@ TEST_CASE("ResourcePackVersusZipCost", "[.]")
     }
 
     {
-        auto started = std::chrono::steady_clock::now();
-        auto zip = DataSource::MountPack(zip_dir, "Bulk", false);
+        auto started {std::chrono::steady_clock::now()};
+        auto zip {DataSource::MountPack(zip_dir, "Bulk", false)};
         zip_mount_ms = elapsed_ms(started);
 
         started = std::chrono::steady_clock::now();
 
         for (const auto& [name, content] : files) {
-            size_t size = 0;
-            uint64_t write_time = 0;
+            size_t size {0};
+            uint64_t write_time {0};
             CHECK(zip->OpenFile(name, size, write_time));
         }
 

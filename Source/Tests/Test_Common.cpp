@@ -31,9 +31,10 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
-#include "Common.h"
 #include "DataSerialization.h"
 #include "EngineBase.h"
 #include "FileSystem.h"
@@ -42,6 +43,9 @@
 #include "SpriteResource.h"
 
 FO_BEGIN_NAMESPACE
+
+auto Common_Game_DivRem(ptr<BaseEngine> engine, int32_t dividend, int32_t divisor, int32_t& remainder) -> int32_t;
+auto Common_Game_RotateDirAngle(ptr<BaseEngine> engine, mdir dir, bool clockwise, int16_t step) -> mdir;
 
 class FramePumpTestBackend final : public ScriptSystemBackend
 {
@@ -79,13 +83,13 @@ public:
 TEST_CASE("EngineFramePumpsOnlyItsOwnScriptBackends")
 {
     GlobalSettings settings {false};
-    settings.ApplyDefaultSettings();
+    settings.SetupDefaultSettings();
 
     for (EngineSideKind side : {EngineSideKind::ServerSide, EngineSideKind::ClientSide, EngineSideKind::MapperSide}) {
         FramePumpTestEngine first {&settings, side};
         FramePumpTestEngine second {&settings, side};
-        int32_t first_calls = 0;
-        int32_t second_calls = 0;
+        int32_t first_calls {0};
+        int32_t second_calls {0};
         first.RegisterBackend(7, safe_alloc::make_unique<FramePumpTestBackend>([&] {
             first_calls++;
             CHECK(first.GetFrameTime() == first.GameTime.GetFrameTime());
@@ -110,13 +114,13 @@ TEST_CASE("EngineFramePumpsOnlyItsOwnScriptBackends")
 TEST_CASE("ScriptOverrunsAreBoundedAndEngineLocal")
 {
     GlobalSettings settings {false};
-    settings.ApplyDefaultSettings();
+    settings.SetupDefaultSettings();
     FramePumpTestEngine first {&settings, EngineSideKind::ClientSide};
     FramePumpTestEngine second {&settings, EngineSideKind::ClientSide};
     first.RegisterScriptOverrun("Entry", timespan {std::chrono::milliseconds {120}}, timespan {std::chrono::milliseconds {5}});
     first.RegisterScriptOverrun("Entry", timespan {std::chrono::milliseconds {50}}, timespan {std::chrono::milliseconds {30}});
     CHECK(second.TakeScriptOverruns().empty());
-    auto records = first.TakeScriptOverruns();
+    auto records {first.TakeScriptOverruns()};
     REQUIRE(records.size() == 1);
     CHECK(records[0].Entry == "Entry");
     CHECK(records[0].Count == 2);
@@ -124,7 +128,7 @@ TEST_CASE("ScriptOverrunsAreBoundedAndEngineLocal")
     CHECK(records[0].MaxLockWait == timespan {std::chrono::milliseconds {30}});
     CHECK(first.TakeScriptOverruns().empty());
 
-    for (int32_t i = 0; i < 40; i++) {
+    for (int32_t i {0}; i < 40; i++) {
         first.RegisterScriptOverrun(strex("Entry{}", i), timespan {std::chrono::milliseconds {i}}, {});
     }
 
@@ -145,10 +149,10 @@ TEST_CASE("CommonEvents")
 {
     SECTION("DispatchAndManualUnsubscribe")
     {
-        EventObserver<int32_t> observer;
-        EventDispatcher<int32_t> dispatch(&observer);
-        EventUnsubscriber unsubscriber;
-        int32_t sum = 0;
+        EventObserver<int32_t> observer {};
+        EventDispatcher<int32_t> dispatch {&observer};
+        EventUnsubscriber unsubscriber {};
+        int32_t sum {0};
 
         unsubscriber += (observer += [&](int32_t value) { sum += value; });
         unsubscriber += (observer += [&](int32_t value) { sum += value * 10; });
@@ -167,12 +171,12 @@ TEST_CASE("CommonEvents")
 
     SECTION("DestructorUnsubscribes")
     {
-        EventObserver<int32_t> observer;
-        EventDispatcher<int32_t> dispatch(&observer);
-        int32_t calls = 0;
+        EventObserver<int32_t> observer {};
+        EventDispatcher<int32_t> dispatch {&observer};
+        int32_t calls {0};
 
         {
-            EventUnsubscriber unsubscriber;
+            EventUnsubscriber unsubscriber {};
             unsubscriber += (observer += [&](int32_t value) { calls += value; });
 
             dispatch(5);
@@ -185,14 +189,14 @@ TEST_CASE("CommonEvents")
 
     SECTION("MoveKeepsSubscriptionOwnership")
     {
-        EventObserver<int32_t> observer;
-        EventDispatcher<int32_t> dispatch(&observer);
-        int32_t calls = 0;
+        EventObserver<int32_t> observer {};
+        EventDispatcher<int32_t> dispatch {&observer};
+        int32_t calls {0};
 
-        EventUnsubscriber original;
+        EventUnsubscriber original {};
         original += (observer += [&](int32_t value) { calls += value; });
 
-        EventUnsubscriber moved = std::move(original);
+        EventUnsubscriber moved {std::move(original)};
 
         dispatch(3);
         CHECK(calls == 3);
@@ -204,10 +208,10 @@ TEST_CASE("CommonEvents")
 
     SECTION("DispatchCopiesValueArgumentsForEverySubscriber")
     {
-        EventObserver<string> observer;
-        EventDispatcher<string> dispatch(&observer);
-        EventUnsubscriber unsubscriber;
-        vector<string> received;
+        EventObserver<string> observer {};
+        EventDispatcher<string> dispatch {&observer};
+        EventUnsubscriber unsubscriber {};
+        vector<string> received {};
 
         unsubscriber += (observer += [&](string value) { received.emplace_back(std::move(value)); });
         unsubscriber += (observer += [&](string value) { received.emplace_back(std::move(value)); });
@@ -224,30 +228,72 @@ TEST_CASE("CommonUtilities")
 {
     SECTION("PackagedBuildAccessorsAreConsistent")
     {
-        // An unpackaged test build reports no runtime name; a packaged one must name it
-        CHECK(IsPackaged() == !GetPackagedRuntimeName().empty());
+        GlobalSettings settings {false};
+        settings.ApplyAutoSettings("SnapshotRuntime_Headless");
+        CHECK(settings.Common.Packaged);
+        CHECK(settings.GetPackagedRuntimeName() == "SnapshotRuntime_Headless");
+        settings.ApplyAutoSettings({});
+        CHECK_FALSE(settings.Common.Packaged);
+        CHECK(settings.GetPackagedRuntimeName().empty());
+    }
+}
+
+TEST_CASE("CommonScriptArithmetic")
+{
+    GlobalSettings settings {false};
+    settings.SetupDefaultSettings();
+    FramePumpTestEngine engine {&settings, EngineSideKind::ClientSide};
+
+    SECTION("DivisionByZeroPreservesRemainder")
+    {
+        int32_t remainder {123};
+        CHECK_THROWS_AS(Common_Game_DivRem(&engine, 7, 0, remainder), DivisionByZeroException);
+        CHECK(remainder == 123);
+    }
+
+    SECTION("SignedDivisionOverflowPreservesRemainder")
+    {
+        int32_t remainder {123};
+        CHECK_THROWS_AS(Common_Game_DivRem(&engine, std::numeric_limits<int32_t>::min(), -1, remainder), OverflowException);
+        CHECK(remainder == 123);
+    }
+
+    SECTION("SignedDivisionRetainsTruncationAndRemainder")
+    {
+        int32_t remainder {0};
+        CHECK(Common_Game_DivRem(&engine, -7, 3, remainder) == -2);
+        CHECK(remainder == -1);
+        CHECK(Common_Game_DivRem(&engine, 7, -3, remainder) == -2);
+        CHECK(remainder == 1);
+    }
+
+    SECTION("RotationAcceptsEntireStepRange")
+    {
+        CHECK(Common_Game_RotateDirAngle(&engine, mdir {350}, true, std::numeric_limits<int16_t>::max()) == mdir {357});
+        CHECK(Common_Game_RotateDirAngle(&engine, mdir {350}, false, std::numeric_limits<int16_t>::min()) == mdir {358});
+        CHECK(Common_Game_RotateDirAngle(&engine, mdir {10}, true, -60) == mdir {310});
     }
 }
 
 TEST_CASE("CommonFrameBalancer")
 {
     // One preempted loop on a loaded machine overruns any bound, while a balancer that really waits overruns every loop
-    auto fastest_loop = [](FrameBalancer& balancer) {
-        auto measure = [&balancer] {
-            nanotime start = nanotime::now();
+    auto fastest_loop {[](FrameBalancer& balancer) {
+        auto measure {[&balancer] {
+            nanotime start {nanotime::now()};
             balancer.StartLoop();
             balancer.EndLoop();
             return nanotime::now() - start;
-        };
+        }};
 
-        timespan fastest = measure();
+        timespan fastest {measure()};
 
-        for (int32_t i = 1; i < 10; i++) {
+        for (int32_t i {1}; i < 10; i++) {
             fastest = std::min(fastest, measure());
         }
 
         return fastest;
-    };
+    }};
 
     SECTION("DisabledBalancerDoesNotWait")
     {
@@ -267,7 +313,7 @@ TEST_CASE("CommonFrameBalancer")
     {
         FrameBalancer balancer {true, 5, 0};
 
-        nanotime start = nanotime::now();
+        nanotime start {nanotime::now()};
         balancer.StartLoop();
         balancer.EndLoop();
 
@@ -279,9 +325,9 @@ TEST_CASE("CommonFrameBalancer")
         // The fixed-fps arm pads each loop up to the frame budget
         FrameBalancer balancer {true, -1, 200};
 
-        nanotime start = nanotime::now();
+        nanotime start {nanotime::now()};
 
-        for (int32_t i = 0; i < 3; i++) {
+        for (int32_t i {0}; i < 3; i++) {
             balancer.StartLoop();
             balancer.EndLoop();
         }
@@ -294,9 +340,9 @@ TEST_CASE("CommonFrameBalancer")
         // Sleep 0 is a plain uncapped default, and FixedFPS set beside it must still hold the loop to its budget
         FrameBalancer balancer {true, 0, 200};
 
-        nanotime start = nanotime::now();
+        nanotime start {nanotime::now()};
 
-        for (int32_t i = 0; i < 3; i++) {
+        for (int32_t i {0}; i < 3; i++) {
             balancer.StartLoop();
             balancer.EndLoop();
         }
@@ -314,32 +360,32 @@ TEST_CASE("CommonFrameBalancer")
 
 TEST_CASE("CommonRemoteCallWireSizes")
 {
-    auto make_primitive = [](string_view name, size_t size) {
-        BaseTypeDesc type;
+    auto make_primitive {[](string_view name, size_t size) {
+        BaseTypeDesc type {};
         type.Name = string {name};
         type.Size = size;
         type.IsPrimitive = true;
         return type;
-    };
+    }};
 
     SECTION("PlainAndReferenceTypesReportTheirMinimumSize")
     {
         CHECK(GetRemoteCallSimpleValueMinWireSize(make_primitive("int32", sizeof(int32_t))) == sizeof(int32_t));
         CHECK(GetRemoteCallSimpleValueMinWireSize(make_primitive("int64", sizeof(int64_t))) == sizeof(int64_t));
 
-        BaseTypeDesc enum_type;
+        BaseTypeDesc enum_type {};
         enum_type.Name = "TestEnum";
         enum_type.Size = sizeof(uint16_t);
         enum_type.IsEnum = true;
         CHECK(GetRemoteCallSimpleValueMinWireSize(enum_type) == sizeof(uint16_t));
 
         // A string only has to carry its length prefix to be well formed
-        BaseTypeDesc string_type;
+        BaseTypeDesc string_type {};
         string_type.Name = "string";
         string_type.IsString = true;
         CHECK(GetRemoteCallSimpleValueMinWireSize(string_type) == sizeof(uint32_t));
 
-        BaseTypeDesc hash_type;
+        BaseTypeDesc hash_type {};
         hash_type.Name = "hstring";
         hash_type.IsHashedString = true;
         CHECK(GetRemoteCallSimpleValueMinWireSize(hash_type) == sizeof(hstring::hash_t));
@@ -347,13 +393,13 @@ TEST_CASE("CommonRemoteCallWireSizes")
 
     SECTION("StructSizesAreTheSumOfTheirFields")
     {
-        auto layout = safe_alloc::make_shared<StructLayoutDesc>();
+        auto layout {safe_alloc::make_shared<StructLayoutDesc>()};
         layout->Fields.emplace_back();
         layout->Fields.back().Type = make_primitive("int32", sizeof(int32_t));
         layout->Fields.emplace_back();
         layout->Fields.back().Type = make_primitive("int16", sizeof(int16_t));
 
-        BaseTypeDesc struct_type;
+        BaseTypeDesc struct_type {};
         struct_type.Name = "TestStruct";
         struct_type.IsStruct = true;
         struct_type.StructLayout = layout;
@@ -363,41 +409,59 @@ TEST_CASE("CommonRemoteCallWireSizes")
 
     SECTION("UnsupportedAndMalformedTypesAreRejected")
     {
-        BaseTypeDesc zero_sized;
+        BaseTypeDesc zero_sized {};
         zero_sized.Name = "BadPrimitive";
         zero_sized.IsPrimitive = true;
         CHECK_THROWS_AS(GetRemoteCallSimpleValueMinWireSize(zero_sized), VerificationException);
 
-        BaseTypeDesc no_layout;
+        BaseTypeDesc no_layout {};
         no_layout.Name = "BadStruct";
         no_layout.IsStruct = true;
         CHECK_THROWS_AS(GetRemoteCallSimpleValueMinWireSize(no_layout), VerificationException);
 
-        BaseTypeDesc unsupported;
+        BaseTypeDesc unsupported {};
         unsupported.Name = "Unsupported";
         CHECK_THROWS_AS(GetRemoteCallSimpleValueMinWireSize(unsupported), NotSupportedException);
     }
 }
 
+TEST_CASE("SpriteDurationsRequireExactSerializedMilliseconds")
+{
+    CHECK(GetSpriteDurationMilliseconds(std::chrono::milliseconds {1}) == 1);
+    CHECK(GetSpriteDurationMilliseconds(std::chrono::milliseconds {std::numeric_limits<uint32_t>::max()}) == std::numeric_limits<uint32_t>::max());
+    CHECK_THROWS(GetSpriteDurationMilliseconds(timespan::zero));
+    CHECK_THROWS(GetSpriteDurationMilliseconds(std::chrono::milliseconds {-1}));
+    CHECK_THROWS(GetSpriteDurationMilliseconds(std::chrono::microseconds {1500}));
+    CHECK_THROWS(GetSpriteDurationMilliseconds(std::chrono::nanoseconds {1}));
+    CHECK_THROWS(GetSpriteDurationMilliseconds(std::chrono::milliseconds {uint64_t {1} + std::numeric_limits<uint32_t>::max()}));
+
+    SpriteDirInfo direction {.Frames = {SpriteFrameInfo {.Duration = std::chrono::nanoseconds {1}}}};
+    CHECK(GetSpriteDirDuration(direction) == timespan {1});
+
+    direction.Frames[0].Duration = std::chrono::milliseconds {std::numeric_limits<uint32_t>::max()};
+    direction.Frames.emplace_back(SpriteFrameInfo {.Duration = timespan {1}});
+    CHECK_THROWS(GetSpriteDirDuration(direction));
+}
+
 TEST_CASE("SpriteResourceDecoderReadsCompleteResource")
 {
-    vector<uint8_t> data;
+    vector<uint8_t> data {};
     data_writer writer {data};
     vector<ucolor> pixels {ucolor {1, 2, 3, 4}, ucolor {5, 6, 7, 8}};
 
     writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
     writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);
-    writer.write<uint16_t>(uint16_t {2});
-    writer.write<uint16_t>(uint16_t {75});
     writer.write<uint8_t>(uint8_t {1});
-
-    writer.write<uint8_t>(uint8_t {0});
-    writer.write<int16_t>(int16_t {-3});
-    writer.write<int16_t>(int16_t {4});
     writer.write<uint16_t>(uint16_t {2});
-    writer.write<uint16_t>(uint16_t {1});
+    writer.write<uint32_t>(uint32_t {75});
+    writer.write<uint32_t>(uint32_t {37});
+    writer.write<int32_t>(int32_t {-3});
+    writer.write<int32_t>(int32_t {4});
     writer.write<int16_t>(int16_t {5});
     writer.write<int16_t>(int16_t {-6});
+    writer.write<uint8_t>(uint8_t {0});
+    writer.write<uint16_t>(uint16_t {2});
+    writer.write<uint16_t>(uint16_t {1});
     writer.write_object_vector(pixels);
     writer.write<uint8_t>(static_cast<uint8_t>(SpriteMeshKind::Mesh));
     writer.write<uint16_t>(uint16_t {3});
@@ -416,6 +480,11 @@ TEST_CASE("SpriteResourceDecoderReadsCompleteResource")
     writer.write<uint16_t>(uint16_t {1});
     writer.write<uint16_t>(uint16_t {2});
 
+    writer.write<uint32_t>(uint32_t {38});
+    writer.write<int32_t>(int32_t {17});
+    writer.write<int32_t>(int32_t {-12});
+    writer.write<int16_t>(int16_t {2});
+    writer.write<int16_t>(int16_t {-3});
     writer.write<uint8_t>(uint8_t {1});
     writer.write<uint16_t>(uint16_t {0});
     writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
@@ -423,13 +492,36 @@ TEST_CASE("SpriteResourceDecoderReadsCompleteResource")
     vector<uint8_t> containing_data {0xAA, 0xBB, 0xCC};
     containing_data.insert(containing_data.end(), data.begin(), data.end());
     containing_data.insert(containing_data.end(), {0xDD, 0xEE});
-    const_span<uint8_t> resource_data = const_span<uint8_t> {containing_data}.subspan(3, data.size());
-    SpriteResourceData resource = ReadSpriteResource(resource_data);
+    const_span<uint8_t> resource_data {const_span<uint8_t> {containing_data}.subspan(3, data.size())};
+    vector<uint8_t> original_containing_data {containing_data};
+    SpriteResourceData resource {ReadSpriteResource(resource_data)};
+    CHECK(containing_data == original_containing_data);
+
+    vector<uint8_t> invalid_data {data};
+    invalid_data[3] = 0;
+    invalid_data[4] = 0;
+    CHECK_THROWS_AS(ReadSpriteResource(invalid_data), VerificationException);
+
+    vector<uint8_t> invalid_direction_data {data};
+    invalid_direction_data[2] = 0;
+    CHECK_THROWS_AS(ReadSpriteResource(invalid_direction_data), VerificationException);
+
+    vector<uint8_t> invalid_forward_reference {data};
+    invalid_forward_reference[data.size() - 3] = 1;
+    invalid_forward_reference[data.size() - 2] = 0;
+    CHECK_THROWS_AS(ReadSpriteResource(invalid_forward_reference), VerificationException);
+
+    vector<uint8_t> truncated_pixel_payload {vector<uint8_t>(data.begin(), data.begin() + 31)};
+    CHECK_THROWS_AS(ReadSpriteResource(truncated_pixel_payload), VerificationException);
+
+    REQUIRE(data[38] == static_cast<uint8_t>(SpriteMeshKind::Mesh));
+    vector<uint8_t> truncated_mesh_payload {vector<uint8_t>(data.begin(), data.begin() + 45)};
+    CHECK_THROWS_AS(ReadSpriteResource(truncated_mesh_payload), VerificationException);
 
     REQUIRE(resource.Animation.Sprite.has_value());
-    const SpriteInfo& sprite_info = *resource.Animation.Sprite;
-    CHECK(sprite_info.FrameCount == 2);
-    CHECK(sprite_info.Duration == std::chrono::milliseconds {75});
+    const SpriteInfo& sprite_info {*resource.Animation.Sprite};
+    CHECK(sprite_info.Directions[0].Frames.size() == 2);
+    CHECK(GetSpriteDirDuration(sprite_info.Directions[0]) == std::chrono::milliseconds {75});
     REQUIRE(sprite_info.Directions.size() == 1);
     REQUIRE(sprite_info.Directions.front().Frames.size() == 2);
     CHECK(sprite_info.Directions.front().Frames[0].Offset == ipos32 {-3, 4});
@@ -437,15 +529,15 @@ TEST_CASE("SpriteResourceDecoderReadsCompleteResource")
     CHECK(sprite_info.Directions.front().Frames[0].NextOffset == ipos32 {5, -6});
     REQUIRE(sprite_info.Directions.front().Frames[1].SharedFrameIndex.has_value());
     CHECK(*sprite_info.Directions.front().Frames[1].SharedFrameIndex == 0);
-    CHECK(sprite_info.Directions.front().Frames[1].Offset == ipos32 {-3, 4});
+    CHECK(sprite_info.Directions.front().Frames[1].Offset == ipos32 {17, -12});
     CHECK(sprite_info.Directions.front().Frames[1].Size == isize32 {2, 1});
-    CHECK(sprite_info.Directions.front().Frames[1].NextOffset == ipos32 {5, -6});
+    CHECK(sprite_info.Directions.front().Frames[1].NextOffset == ipos32 {2, -3});
     REQUIRE(resource.Directions.size() == 1);
 
-    const SpriteResourceDirectionData& direction = resource.Directions.front();
+    const SpriteResourceDirectionData& direction {resource.Directions.front()};
     REQUIRE(direction.Frames.size() == 2);
 
-    const SpriteResourceFrameData& frame = direction.Frames[0];
+    const SpriteResourceFrameData& frame {direction.Frames[0]};
     CHECK_FALSE(frame.SharedFrameIndex.has_value());
     CHECK(frame.Offset == ipos32 {-3, 4});
     CHECK(frame.Size == isize32 {2, 1});
@@ -457,13 +549,16 @@ TEST_CASE("SpriteResourceDecoderReadsCompleteResource")
     CHECK(frame.Mesh->Vertices == vector<ipos32> {{0, 0}, {2, 0}, {0, 1}});
     CHECK(frame.Mesh->Indices == vector<uint16_t> {0, 1, 2});
 
-    const SpriteResourceFrameData& shared_frame = direction.Frames[1];
+    const SpriteResourceFrameData& shared_frame {direction.Frames[1]};
     REQUIRE(shared_frame.SharedFrameIndex.has_value());
     CHECK(*shared_frame.SharedFrameIndex == 0);
+    CHECK(shared_frame.Duration == std::chrono::milliseconds {38});
+    CHECK(shared_frame.Offset == ipos32 {17, -12});
+    CHECK(shared_frame.NextOffset == ipos32 {2, -3});
     CHECK(shared_frame.Pixels.empty());
     CHECK_FALSE(shared_frame.Mesh.has_value());
 
-    SpriteResourceFrameData cropped_frame;
+    SpriteResourceFrameData cropped_frame {};
     cropped_frame.Size = {3, 3};
     cropped_frame.Pixels = {
         ucolor {1, 0, 0},
@@ -482,7 +577,7 @@ TEST_CASE("SpriteResourceDecoderReadsCompleteResource")
         .Indices = {0, 1, 2},
     };
 
-    SpriteResourceImageData restored_image = ExtractSpriteResourceFrameImage(std::move(cropped_frame));
+    SpriteResourceImageData restored_image {ExtractSpriteResourceFrameImage(std::move(cropped_frame))};
     CHECK(restored_image.Size == isize32 {4, 3});
     CHECK(restored_image.Pixels ==
         vector<ucolor> {
@@ -499,6 +594,218 @@ TEST_CASE("SpriteResourceDecoderReadsCompleteResource")
             ucolor {},
             ucolor {},
         });
+}
+
+TEST_CASE("SpriteResourceDecoderKeepsWideFrameCountsPositive")
+{
+    constexpr int32_t frame_count {65535};
+
+    vector<uint8_t> data {};
+    data_writer writer {data};
+    vector<ucolor> pixels {ucolor {1, 2, 3, 4}};
+
+    writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+    writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);
+    writer.write<uint8_t>(uint8_t {1});
+    writer.write<uint16_t>(numeric_cast<uint16_t>(frame_count));
+    writer.write<uint32_t>(uint32_t {65535});
+
+    writer.write<uint32_t>(uint32_t {1});
+    writer.write<int32_t>(numeric_cast<int32_t>(std::numeric_limits<int16_t>::min()));
+    writer.write<int32_t>(numeric_cast<int32_t>(std::numeric_limits<int16_t>::max()));
+    writer.write<int16_t>(int16_t {-1});
+    writer.write<int16_t>(int16_t {-1});
+    writer.write<uint8_t>(uint8_t {0});
+    writer.write<uint16_t>(uint16_t {1});
+    writer.write<uint16_t>(uint16_t {1});
+    writer.write_object_vector(pixels);
+    writer.write<uint8_t>(static_cast<uint8_t>(SpriteMeshKind::Quad));
+
+    for (int32_t frame_index {1}; frame_index < frame_count; frame_index++) {
+        writer.write<uint32_t>(uint32_t {1});
+        writer.write<int32_t>(numeric_cast<int32_t>(std::numeric_limits<int16_t>::min()));
+        writer.write<int32_t>(numeric_cast<int32_t>(std::numeric_limits<int16_t>::max()));
+        writer.write<int16_t>(int16_t {-1});
+        writer.write<int16_t>(int16_t {-1});
+        writer.write<uint8_t>(uint8_t {1});
+        writer.write<uint16_t>(numeric_cast<uint16_t>(frame_index - 1));
+    }
+
+    writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+
+    vector<uint8_t> original_data {data};
+    SpriteResourceData resource {ReadSpriteResource(data)};
+    CHECK(data == original_data);
+
+    REQUIRE(resource.Animation.Sprite.has_value());
+    const SpriteInfo& sprite_info {*resource.Animation.Sprite};
+    CHECK(sprite_info.Directions.front().Frames.size() == numeric_cast<size_t>(frame_count));
+    CHECK(GetSpriteDirDuration(sprite_info.Directions.front()) == std::chrono::milliseconds {65535});
+    REQUIRE(sprite_info.Directions.size() == 1);
+    REQUIRE(sprite_info.Directions.front().Frames.size() == numeric_cast<size_t>(frame_count));
+    CHECK(sprite_info.Directions.front().Frames.front().Offset == ipos32 {std::numeric_limits<int16_t>::min(), std::numeric_limits<int16_t>::max()});
+    CHECK(sprite_info.Directions.front().Frames.front().NextOffset == ipos32 {-1, -1});
+
+    REQUIRE(sprite_info.Directions.front().Frames[40000].SharedFrameIndex.has_value());
+    CHECK(*sprite_info.Directions.front().Frames[40000].SharedFrameIndex == 39999);
+    REQUIRE(sprite_info.Directions.front().Frames.back().SharedFrameIndex.has_value());
+    CHECK(*sprite_info.Directions.front().Frames.back().SharedFrameIndex == 65533);
+    CHECK(sprite_info.Directions.front().Frames.back().Offset == ipos32 {std::numeric_limits<int16_t>::min(), std::numeric_limits<int16_t>::max()});
+
+    REQUIRE(resource.Directions.size() == 1);
+    REQUIRE(resource.Directions.front().Frames.size() == numeric_cast<size_t>(frame_count));
+    REQUIRE(resource.Directions.front().Frames.back().SharedFrameIndex.has_value());
+    CHECK(*resource.Directions.front().Frames.back().SharedFrameIndex == 65533);
+}
+
+TEST_CASE("SpriteResourceDecoderKeepsWideFrameDimensionsPositive")
+{
+    constexpr int32_t frame_width {65535};
+
+    vector<uint8_t> data {};
+    data_writer writer {data};
+    vector<ucolor> pixels {vector<ucolor>(numeric_cast<size_t>(frame_width), ucolor {9, 8, 7, 6})};
+
+    writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+    writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);
+    writer.write<uint8_t>(uint8_t {1});
+    writer.write<uint16_t>(uint16_t {1});
+    writer.write<uint32_t>(uint32_t {100});
+
+    writer.write<uint32_t>(uint32_t {100});
+    writer.write<int32_t>(int32_t {0});
+    writer.write<int32_t>(int32_t {0});
+    writer.write<int16_t>(int16_t {0});
+    writer.write<int16_t>(int16_t {0});
+    writer.write<uint8_t>(uint8_t {0});
+    writer.write<uint16_t>(numeric_cast<uint16_t>(frame_width));
+    writer.write<uint16_t>(uint16_t {1});
+    writer.write_object_vector(pixels);
+    writer.write<uint8_t>(static_cast<uint8_t>(SpriteMeshKind::Quad));
+    writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+
+    vector<uint8_t> original_data {data};
+    SpriteResourceData resource {ReadSpriteResource(data)};
+    CHECK(data == original_data);
+
+    REQUIRE(resource.Animation.Sprite.has_value());
+    const SpriteInfo& sprite_info {*resource.Animation.Sprite};
+    REQUIRE(sprite_info.Directions.size() == 1);
+    REQUIRE(sprite_info.Directions.front().Frames.size() == 1);
+    CHECK(sprite_info.Directions.front().Frames.front().Size == isize32 {frame_width, 1});
+
+    REQUIRE(resource.Directions.size() == 1);
+    REQUIRE(resource.Directions.front().Frames.size() == 1);
+    const SpriteResourceFrameData& frame {resource.Directions.front().Frames.front()};
+    CHECK(frame.Size == isize32 {frame_width, 1});
+    CHECK(frame.Pixels.size() == numeric_cast<size_t>(frame_width));
+    CHECK(frame.Pixels.front() == ucolor {9, 8, 7, 6});
+    CHECK(frame.Pixels.back() == ucolor {9, 8, 7, 6});
+}
+
+TEST_CASE("SpriteResourceDecoderKeepsWideMeshCountsAndCoordinatesPositive")
+{
+    constexpr int32_t frame_width {65535};
+    constexpr int32_t vertex_count {65535};
+
+    vector<uint8_t> data {};
+    data_writer writer {data};
+    vector<ucolor> pixels {vector<ucolor>(numeric_cast<size_t>(frame_width), ucolor {1, 1, 1, 1})};
+
+    writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+    writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);
+    writer.write<uint8_t>(uint8_t {1});
+    writer.write<uint16_t>(uint16_t {1});
+    writer.write<uint32_t>(uint32_t {100});
+
+    writer.write<uint32_t>(uint32_t {100});
+    writer.write<int32_t>(int32_t {0});
+    writer.write<int32_t>(int32_t {0});
+    writer.write<int16_t>(int16_t {0});
+    writer.write<int16_t>(int16_t {0});
+    writer.write<uint8_t>(uint8_t {0});
+    writer.write<uint16_t>(numeric_cast<uint16_t>(frame_width));
+    writer.write<uint16_t>(uint16_t {1});
+    writer.write_object_vector(pixels);
+    writer.write<uint8_t>(static_cast<uint8_t>(SpriteMeshKind::Mesh));
+    writer.write<uint16_t>(numeric_cast<uint16_t>(vertex_count));
+    writer.write<uint32_t>(uint32_t {3});
+    writer.write<uint16_t>(uint16_t {65535});
+    writer.write<uint16_t>(uint16_t {65535});
+    writer.write<int32_t>(int32_t {0});
+    writer.write<int32_t>(int32_t {0});
+
+    for (int32_t vertex {0}; vertex < vertex_count; vertex++) {
+        writer.write<uint16_t>(vertex == 1 ? uint16_t {65535} : uint16_t {0});
+        writer.write<uint16_t>(vertex == vertex_count - 1 ? uint16_t {1} : uint16_t {0});
+    }
+
+    writer.write<uint16_t>(uint16_t {0});
+    writer.write<uint16_t>(uint16_t {1});
+    writer.write<uint16_t>(uint16_t {65534});
+    writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+
+    vector<uint8_t> original_data {data};
+    SpriteResourceData resource {ReadSpriteResource(data)};
+    CHECK(data == original_data);
+
+    REQUIRE(resource.Directions.size() == 1);
+    REQUIRE(resource.Directions.front().Frames.size() == 1);
+    const SpriteResourceFrameData& frame {resource.Directions.front().Frames.front()};
+    CHECK(frame.Size == isize32 {frame_width, 1});
+    REQUIRE(frame.Mesh.has_value());
+    CHECK(frame.Mesh->SourceSize == isize32 {65535, 65535});
+    CHECK(frame.Mesh->SourceOffset == ipos32 {});
+    REQUIRE(frame.Mesh->Vertices.size() == vertex_count);
+    CHECK(frame.Mesh->Vertices.front() == ipos32 {0, 0});
+    CHECK(frame.Mesh->Vertices[1] == ipos32 {frame_width, 0});
+    CHECK(frame.Mesh->Vertices.back() == ipos32 {0, 1});
+    CHECK(frame.Mesh->Indices == vector<uint16_t> {0, 1, 65534});
+}
+
+TEST_CASE("SpriteResourceDecoderRejectsMalformedMeshCounts")
+{
+    auto make_mesh_resource {[](uint16_t vertex_count, uint32_t index_count) {
+        vector<uint8_t> data {};
+        data_writer writer {data};
+
+        writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+        writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);
+        writer.write<uint8_t>(uint8_t {1});
+        writer.write<uint16_t>(uint16_t {1});
+        writer.write<uint32_t>(uint32_t {100});
+
+        writer.write<uint32_t>(uint32_t {100});
+        writer.write<int32_t>(int32_t {0});
+        writer.write<int32_t>(int32_t {0});
+        writer.write<int16_t>(int16_t {0});
+        writer.write<int16_t>(int16_t {0});
+        writer.write<uint8_t>(uint8_t {0});
+        writer.write<uint16_t>(uint16_t {1});
+        writer.write<uint16_t>(uint16_t {1});
+        writer.write_object_vector(vector<ucolor> {ucolor {1, 2, 3, 4}});
+        writer.write<uint8_t>(static_cast<uint8_t>(SpriteMeshKind::Mesh));
+        writer.write<uint16_t>(vertex_count);
+        writer.write<uint32_t>(index_count);
+        writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+
+        return data;
+    }};
+
+    SECTION("UnboundedIndexCount")
+    {
+        CHECK_THROWS_AS(ReadSpriteResource(make_mesh_resource(3, std::numeric_limits<uint32_t>::max())), VerificationException);
+    }
+
+    SECTION("ZeroMeshCounts")
+    {
+        CHECK_THROWS_AS(ReadSpriteResource(make_mesh_resource(0, 0)), VerificationException);
+    }
+
+    SECTION("IncompleteTriangleIndexCount")
+    {
+        CHECK_THROWS_AS(ReadSpriteResource(make_mesh_resource(3, 4)), VerificationException);
+    }
 }
 
 FO_END_NAMESPACE

@@ -31,9 +31,9 @@
 // SOFTWARE.
 //
 
-#include "catch_amalgamated.hpp"
-
 #include "Common.h"
+
+#include "catch_amalgamated.hpp"
 
 FO_BEGIN_NAMESPACE
 
@@ -53,24 +53,51 @@ TEST_CASE("TimeRelated")
         CHECK(timespan::zero == timespan {});
     }
 
+    SECTION("FloatingUnitConversionsPreserveFractions")
+    {
+        for (int32_t sign : {-1, 1}) {
+            timespan half_ms {std::chrono::microseconds {sign * 500}};
+            timespan one_and_half_sec {std::chrono::milliseconds {sign * 1500}};
+
+            CHECK(half_ms.to_ms<double>() == sign * 0.5);
+            CHECK(half_ms.to_sec<double>() == sign * 0.0005);
+            CHECK(one_and_half_sec.to_sec<float>() == sign * 1.5f);
+            CHECK(half_ms.to_ms<int64_t>() == 0);
+            CHECK(one_and_half_sec.to_sec<int64_t>() == sign);
+        }
+
+        CHECK(timespan {1}.to_ms<double>() == 0.000001);
+        CHECK(timespan {1}.to_sec<double>() == 0.000000001);
+        CHECK(timespan::zero.to_sec<double>() == 0.0);
+    }
+
     SECTION("NanoAndSyncTime")
     {
         nanotime n1 {timespan {std::chrono::seconds {2}}};
         nanotime n2 {timespan {std::chrono::seconds {5}}};
-        timespan delta = n2 - n1;
+        timespan delta {n2 - n1};
         CHECK(delta.seconds() == 3);
 
         synctime s1 {timespan {std::chrono::milliseconds {100}}};
-        synctime s2 = s1 + timespan {std::chrono::milliseconds {250}};
+        synctime s2 {s1 + timespan {std::chrono::milliseconds {250}}};
         CHECK((s2 - s1).milliseconds() == 250);
         CHECK(s2 > s1);
         CHECK(synctime::zero == synctime {});
     }
 
+    SECTION("SyncTimeUnitConversionsPreserveTheFullMillisecondRange")
+    {
+        for (int64_t value : {std::numeric_limits<int64_t>::min(), int64_t {-1500}, int64_t {-999}, int64_t {0}, int64_t {999}, int64_t {1500}, std::numeric_limits<int64_t>::max()}) {
+            synctime time {value};
+            CHECK(time.milliseconds() == value);
+            CHECK(time.seconds() == value / 1000);
+        }
+    }
+
     SECTION("OffsetAndDescRoundtrip")
     {
-        time_desc_t now_desc = nanotime::now().desc(false);
-        auto off = make_time_offset( //
+        time_desc_t now_desc {nanotime::now().desc(false)};
+        auto off {make_time_offset( //
             now_desc.year, //
             now_desc.month, //
             now_desc.day, //
@@ -80,9 +107,9 @@ TEST_CASE("TimeRelated")
             now_desc.millisecond, //
             now_desc.microsecond, //
             now_desc.nanosecond, //
-            false);
+            false)};
 
-        time_desc_t back = make_time_desc(off, false);
+        time_desc_t back {make_time_desc(off, false)};
 
         CHECK(back.year == now_desc.year);
         CHECK(back.month == now_desc.month);
@@ -98,14 +125,14 @@ TEST_CASE("TimeRelated")
 
     SECTION("TimeMeterPauseResume")
     {
-        time_meter meter;
+        time_meter meter {};
         std::this_thread::sleep_for(std::chrono::milliseconds {5});
 
         meter.pause();
-        auto paused = meter.get_duration().milliseconds();
+        auto paused {meter.get_duration().milliseconds()};
 
         std::this_thread::sleep_for(std::chrono::milliseconds {5});
-        auto paused_after_wait = meter.get_duration().milliseconds();
+        auto paused_after_wait {meter.get_duration().milliseconds()};
         CHECK(paused_after_wait == paused);
 
         meter.resume();
@@ -115,14 +142,14 @@ TEST_CASE("TimeRelated")
 
     SECTION("TimeMeterResumeWithoutPause")
     {
-        time_meter meter;
+        time_meter meter {};
         std::this_thread::sleep_for(std::chrono::milliseconds {5});
 
-        auto before_resume = meter.get_duration().milliseconds();
+        auto before_resume {meter.get_duration().milliseconds()};
         meter.resume();
 
         std::this_thread::sleep_for(std::chrono::milliseconds {5});
-        auto after_resume = meter.get_duration().milliseconds();
+        auto after_resume {meter.get_duration().milliseconds()};
 
         CHECK(before_resume >= 1);
         CHECK(after_resume >= before_resume);
@@ -130,40 +157,40 @@ TEST_CASE("TimeRelated")
 
     SECTION("TimeMeterPauseIsIdempotent")
     {
-        time_meter meter;
+        time_meter meter {};
         std::this_thread::sleep_for(std::chrono::milliseconds {5});
 
         meter.pause();
-        auto first_pause = meter.get_duration().milliseconds();
+        auto first_pause {meter.get_duration().milliseconds()};
 
         std::this_thread::sleep_for(std::chrono::milliseconds {5});
         meter.pause();
-        auto second_pause = meter.get_duration().milliseconds();
+        auto second_pause {meter.get_duration().milliseconds()};
 
         CHECK(second_pause == first_pause);
     }
 
     SECTION("DurationFormatterBranches")
     {
-        auto us_text = std::format("{}", timespan {std::chrono::nanoseconds {1234}});
+        auto us_text {std::format("{}", timespan {std::chrono::nanoseconds {1234}})};
         CHECK(us_text == "1.234 us");
 
-        auto ms_text = std::format("{}", timespan {std::chrono::microseconds {1234}});
+        auto ms_text {std::format("{}", timespan {std::chrono::microseconds {1234}})};
         CHECK(ms_text == "1.234 ms");
 
-        auto sec_text = std::format("{}", timespan {std::chrono::milliseconds {1234}});
+        auto sec_text {std::format("{}", timespan {std::chrono::milliseconds {1234}})};
         CHECK(sec_text == "1.234 sec");
 
-        auto hms_text = std::format("{}", timespan {std::chrono::seconds {3661}});
+        auto hms_text {std::format("{}", timespan {std::chrono::seconds {3661}})};
         CHECK(hms_text == "01:01:01 sec");
 
-        auto day_text = std::format("{}", timespan {std::chrono::hours {49}});
+        auto day_text {std::format("{}", timespan {std::chrono::hours {49}})};
         CHECK(day_text == "2 days 01:00:00 sec");
     }
 
     SECTION("DurationFormatterMinuteAndDayBoundaries")
     {
-        CHECK(std::format("{}", timespan {}) == "0.000 us");
+        CHECK(std::format("{}", timespan::zero) == "0.000 us");
         CHECK(std::format("{}", timespan {std::chrono::milliseconds {59999}}) == "59.999 sec");
         CHECK(std::format("{}", timespan {std::chrono::minutes {1}}) == "00:01:00 sec");
         CHECK(std::format("{}", timespan {std::chrono::seconds {86399}}) == "23:59:59 sec");
@@ -174,10 +201,10 @@ TEST_CASE("TimeRelated")
 
     SECTION("TimespanAndSynctimeFormatter")
     {
-        auto ts_text = std::format("{}", timespan {std::chrono::milliseconds {1500}});
+        auto ts_text {std::format("{}", timespan {std::chrono::milliseconds {1500}})};
         CHECK(ts_text == "1.500 sec");
 
-        auto st_text = std::format("{}", synctime {timespan {std::chrono::milliseconds {2500}}});
+        auto st_text {std::format("{}", synctime {timespan {std::chrono::milliseconds {2500}}})};
         CHECK(st_text == "2.500 sec");
     }
 

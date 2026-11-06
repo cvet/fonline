@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
 #include "Timer.h"
@@ -52,13 +54,13 @@ TEST_CASE("GameTimer")
     SECTION("FrameAdvanceUpdatesTimeAndDelta")
     {
         GameTimer timer {&settings};
-        nanotime initial_time = timer.GetFrameTime();
+        nanotime initial_time {timer.GetFrameTime()};
 
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
         timer.FrameAdvance(false);
 
         CHECK(timer.GetFrameTime() >= initial_time);
-        CHECK(timer.GetFrameDeltaTime() >= timespan {});
+        CHECK(timer.GetFrameDeltaTime() >= timespan::zero);
     }
 
     SECTION("SynchronizedTimeMovesForwardAfterAdvance")
@@ -88,14 +90,14 @@ TEST_CASE("GameTimer")
         CHECK(timer.IsPaused());
         CHECK_THROWS_AS(timer.Pause(), VerificationException);
 
-        nanotime paused_frame_time = timer.GetFrameTime();
-        synctime paused_sync_time = timer.GetSynchronizedTime();
+        nanotime paused_frame_time {timer.GetFrameTime()};
+        synctime paused_sync_time {timer.GetSynchronizedTime()};
 
         std::this_thread::sleep_for(std::chrono::milliseconds(20));
         timer.FrameAdvance(false);
 
         CHECK(timer.GetFrameTime() == paused_frame_time);
-        CHECK(timer.GetFrameDeltaTime() == timespan {});
+        CHECK(timer.GetFrameDeltaTime() == timespan::zero);
         CHECK(timer.GetSynchronizedTime() == paused_sync_time);
 
         timer.Resume();
@@ -117,7 +119,7 @@ TEST_CASE("GameTimer")
         std::this_thread::sleep_for(std::chrono::milliseconds(20));
         timer.FrameAdvance(false);
 
-        synctime current_time = timer.GetSynchronizedTime();
+        synctime current_time {timer.GetSynchronizedTime()};
         synctime older_time {current_time.milliseconds() - 100};
 
         timer.SetSynchronizedTimeMonotonic(older_time);

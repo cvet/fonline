@@ -39,9 +39,9 @@
 #error FO_TESTING_APP is not enabled
 #endif
 
-#include "catch_amalgamated.hpp"
-
 #include "Common.h"
+
+#include "catch_amalgamated.hpp"
 
 #include "Application.h"
 
@@ -52,7 +52,7 @@ int32_t main(int32_t argc, char** argv)
     try {
         IsTestingInProgress = true;
         InitAppForTesting();
-        int32_t result = Catch::Session().run(argc, argv);
+        int32_t result {Catch::Session().run(argc, argv)};
         IsTestingInProgress = false;
         return result;
     }

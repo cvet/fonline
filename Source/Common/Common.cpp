@@ -32,9 +32,12 @@
 //
 
 #include "Common.h"
+
 #include "Application.h"
 
 FO_BEGIN_NAMESPACE
+
+static constexpr timespan IDLE_TIME_BALANCE_FLOOR {-std::chrono::milliseconds {1000}};
 
 struct InterthreadData
 {
@@ -43,15 +46,70 @@ struct InterthreadData
 };
 FO_GLOBAL_DATA(InterthreadData, Interthread);
 
-FO_KEEP_DATA_SYMBOL char PACKAGED_BUILD_NAME[128] = "###NotPackaged###"
-                                                    "##############################################################################################################";
-static auto ReadPackagedBuildName() -> string;
-static const string PackagedBuildName = ReadPackagedBuildName();
 bool IsTestingInProgress {};
+
+auto CommandLineArgs::GetSettingValue(string_view name, optional<string_view> implicit_value) const -> optional<string_view>
+{
+    for (size_t i {_args.size()}; i > 0; --i) {
+        optional<CommandLineSetting> setting {GetSetting(i - 1)};
+
+        if (!setting || setting->Name != name) {
+            continue;
+        }
+
+        if (setting->Value) {
+            return setting->Value;
+        }
+
+        if (implicit_value) {
+            return implicit_value;
+        }
+    }
+
+    return std::nullopt;
+}
+
+auto CommandLineArgs::GetSettings(string_view name) const -> vector<CommandLineSetting>
+{
+    vector<CommandLineSetting> result {};
+
+    for (size_t i {0}; i < _args.size(); i++) {
+        optional<CommandLineSetting> setting {GetSetting(i)};
+
+        if (setting && (name.empty() || setting->Name == name)) {
+            result.emplace_back(setting.value());
+        }
+    }
+
+    return result;
+}
+
+auto CommandLineArgs::GetSetting(size_t index) const noexcept -> optional<CommandLineSetting>
+{
+    if (index >= _args.size()) {
+        return std::nullopt;
+    }
+
+    string_view arg {Get(index)};
+
+    if (!IsOption(arg)) {
+        return std::nullopt;
+    }
+
+    string_view name {strvex(arg.substr(arg.starts_with("--") ? 2 : 1)).trim().strv()};
+    optional<string_view> value {};
+
+    // Checked on the raw next argument, so a negative number stays a value
+    if (index + 1 < _args.size() && !IsOption(Get(index + 1))) {
+        value = Get(index + 1);
+    }
+
+    return CommandLineSetting {name, value};
+}
 
 ProgramArgs::ProgramArgs(int32_t argc, nptr<char*> argv)
 {
-    optional<vector<string>> platform_args = platform::get_command_line_args();
+    optional<vector<string>> platform_args {platform::get_command_line_args()};
 
     if (platform_args.has_value()) {
         _values = std::move(platform_args.value());
@@ -59,7 +117,7 @@ ProgramArgs::ProgramArgs(int32_t argc, nptr<char*> argv)
     else {
         CommandLineArgs narrow_args {argc, argv};
 
-        for (size_t i = 0; i < narrow_args.size(); i++) {
+        for (size_t i {0}; i < narrow_args.size(); i++) {
             _values.emplace_back(narrow_args.Get(i));
         }
     }
@@ -69,16 +127,6 @@ ProgramArgs::ProgramArgs(int32_t argc, nptr<char*> argv)
     for (string& value : _values) {
         _pointers.emplace_back(value.data());
     }
-}
-
-auto IsPackaged() -> bool
-{
-    return !PackagedBuildName.empty();
-}
-
-auto GetPackagedRuntimeName() -> string
-{
-    return PackagedBuildName;
 }
 
 auto AddInterthreadListener(uint16_t port, InterthreadListener listener) -> bool
@@ -99,7 +147,7 @@ auto FindInterthreadListener(uint16_t port) -> optional<InterthreadListener>
 {
     scoped_lock locker {Interthread->ListenersLocker};
 
-    auto it = Interthread->Listeners.find(port);
+    auto it {Interthread->Listeners.find(port)};
 
     if (it == Interthread->Listeners.end()) {
         return std::nullopt;
@@ -130,10 +178,10 @@ auto GetRemoteCallSimpleValueMinWireSize(const BaseTypeDesc& type) -> size_t
     if (type.IsStruct) {
         FO_VERIFY_AND_THROW(type.StructLayout, "Remote call struct layout is null", type.Name);
 
-        size_t min_size = 0;
+        size_t min_size {0};
 
         for (const auto& field : type.StructLayout->Fields) {
-            size_t field_min_size = GetRemoteCallSimpleValueMinWireSize(field.Type);
+            size_t field_min_size {GetRemoteCallSimpleValueMinWireSize(field.Type)};
             FO_VERIFY_AND_THROW(field_min_size <= std::numeric_limits<size_t>::max() - min_size, "Remote call struct minimum serialized size overflows", type.Name);
             min_size += field_min_size;
         }
@@ -144,24 +192,10 @@ auto GetRemoteCallSimpleValueMinWireSize(const BaseTypeDesc& type) -> size_t
     throw NotSupportedException("Unsupported simple remote call argument type", type.Name);
 }
 
-static auto ReadPackagedBuildName() -> string
-{
-    string raw = strex().assignVolatile(PACKAGED_BUILD_NAME, sizeof(PACKAGED_BUILD_NAME)).str();
-
-    if (raw.find("NotPackaged") != string::npos) {
-        return {};
-    }
-
-    if (auto null_pos = raw.find('\0'); null_pos != string::npos) {
-        raw.resize(null_pos);
-    }
-
-    return raw;
-}
-
 FrameBalancer::FrameBalancer(bool enabled, int32_t sleep, int32_t fixed_fps) :
     _enabled {enabled && (sleep >= 0 || fixed_fps > 0)},
-    _sleep {sleep},
+    _sleep {std::chrono::milliseconds {std::max(sleep, 0)}},
+    _yieldAfterLoop {sleep == 0},
     _fixedFps {fixed_fps}
 {
 }
@@ -187,31 +221,31 @@ void FrameBalancer::EndLoop()
 
     // A frame rate cap outranks the plain per-frame sleep, so a config that keeps Sleep 0 can still be capped
     if (_fixedFps > 0) {
-        timespan target_time = std::chrono::nanoseconds(iround<uint64_t>(1000.0 / numeric_cast<float64_t>(_fixedFps) * 1000000.0));
-        timespan idle_time = target_time - _loopDuration + _idleTimeBalance;
+        timespan target_time {std::chrono::nanoseconds(iround<uint64_t>(1000.0 / numeric_cast<float64_t>(_fixedFps) * 1000000.0))};
+        timespan idle_time {target_time - _loopDuration + _idleTimeBalance};
 
         if (idle_time > timespan::zero) {
-            nanotime sleep_start = nanotime::now();
+            nanotime sleep_start {nanotime::now()};
 
             precise_sleep(idle_time.value());
 
-            timespan sleep_duration = nanotime::now() - sleep_start;
+            timespan sleep_duration {nanotime::now() - sleep_start};
 
             _idleTimeBalance += (target_time - _loopDuration) - sleep_duration;
         }
         else {
             _idleTimeBalance += target_time - _loopDuration;
 
-            if (_idleTimeBalance < timespan(-std::chrono::milliseconds {1000})) {
-                _idleTimeBalance = timespan(-std::chrono::milliseconds {1000});
+            if (_idleTimeBalance < IDLE_TIME_BALANCE_FLOOR) {
+                _idleTimeBalance = IDLE_TIME_BALANCE_FLOOR;
             }
         }
     }
-    else if (_sleep == 0) {
+    else if (_yieldAfterLoop) {
         std::this_thread::yield();
     }
-    else if (_sleep > 0) {
-        coarse_sleep(std::chrono::milliseconds(_sleep));
+    else if (_sleep > timespan::zero) {
+        coarse_sleep(_sleep.value());
     }
 }
 

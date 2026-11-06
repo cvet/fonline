@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
 #include "CommonHelpers.h"
@@ -314,7 +316,7 @@ TEST_CASE("SmartPointers")
         REQUIRE(moved_ptr.get() != nullptr);
         CHECK(moved_ptr.get() == &value);
 
-        auto derived_ptr = moved_ptr.dyn_cast<PtrDerived>();
+        auto derived_ptr {moved_ptr.dyn_cast<PtrDerived>()};
         REQUIRE(derived_ptr);
         CHECK(derived_ptr->Value == 42);
     }
@@ -323,13 +325,13 @@ TEST_CASE("SmartPointers")
     {
         PtrCrossDerived value {43, 44};
         ptr<PtrBase> base_ptr {&value};
-        auto mixin_ptr = base_ptr.dyn_cast<PtrMixin>();
+        auto mixin_ptr {base_ptr.dyn_cast<PtrMixin>()};
 
         REQUIRE(mixin_ptr);
         CHECK(mixin_ptr->MixinValue == 44);
 
         ptr<const PtrBase> const_base_ptr {&value};
-        auto const_mixin_ptr = const_base_ptr.dyn_cast<const PtrMixin>();
+        auto const_mixin_ptr {const_base_ptr.dyn_cast<const PtrMixin>()};
 
         REQUIRE(const_mixin_ptr);
         CHECK(const_mixin_ptr->MixinValue == 44);
@@ -339,15 +341,15 @@ TEST_CASE("SmartPointers")
     {
         PtrDerived value {17};
         ptr<PtrBase> compat_ptr {&value};
-        ptr<PtrBase> base_ptr = compat_ptr;
-        nptr<PtrBase> maybe_base = base_ptr;
+        ptr<PtrBase> base_ptr {compat_ptr};
+        nptr<PtrBase> maybe_base {base_ptr};
 
         REQUIRE(base_ptr.get() != nullptr);
         REQUIRE(maybe_base);
         CHECK(base_ptr.get() == &value);
         CHECK(maybe_base.get() == &value);
 
-        ptr<PtrBase> narrowed_ptr = maybe_base;
+        ptr<PtrBase> narrowed_ptr {maybe_base};
         CHECK(narrowed_ptr.get() == &value);
     }
 
@@ -359,17 +361,17 @@ TEST_CASE("SmartPointers")
         STATIC_REQUIRE(std::same_as<decltype(make_nptr(std::declval<const PtrDerived*>())), nptr<const PtrDerived>>);
 
         PtrDerived value {19};
-        PtrDerived* raw_value = &value;
+        PtrDerived* raw_value {&value};
 
-        auto borrowed = make_ptr(raw_value);
-        auto maybe_borrowed = make_nptr(raw_value);
+        auto borrowed {make_ptr(raw_value)};
+        auto maybe_borrowed {make_nptr(raw_value)};
 
         CHECK(borrowed.get() == &value);
         REQUIRE(maybe_borrowed);
         CHECK(maybe_borrowed.get() == &value);
 
-        PtrDerived* raw_empty = nullptr;
-        auto empty = make_nptr(raw_empty);
+        PtrDerived* raw_empty {nullptr};
+        auto empty {make_nptr(raw_empty)};
         CHECK_FALSE(empty);
     }
 
@@ -378,17 +380,17 @@ TEST_CASE("SmartPointers")
         STATIC_REQUIRE(!std::is_same_v<nptr<PtrBase>, ptr<PtrBase>>);
         STATIC_REQUIRE(sizeof(nptr<PtrBase>) == sizeof(PtrBase*));
 
-        nptr<PtrBase> empty_ptr;
+        nptr<PtrBase> empty_ptr {};
         CHECK_FALSE(empty_ptr);
 
         PtrDerived value {21};
         ptr<PtrDerived> derived_ptr {&value};
-        nptr<PtrBase> maybe_base = derived_ptr;
+        nptr<PtrBase> maybe_base {derived_ptr};
 
         REQUIRE(maybe_base);
         CHECK(maybe_base.get() == &value);
 
-        auto maybe_derived = maybe_base.dyn_cast<PtrDerived>();
+        auto maybe_derived {maybe_base.dyn_cast<PtrDerived>()};
         REQUIRE(maybe_derived);
         CHECK(maybe_derived->Value == 21);
 
@@ -398,15 +400,15 @@ TEST_CASE("SmartPointers")
 
     SECTION("BorrowedPointersSupportBufferOffsetArithmetic")
     {
-        int32_t buffer[4] = {10, 20, 30, 40};
+        int32_t buffer[4] {10, 20, 30, 40};
 
         ptr<int32_t> base {&buffer[0]};
-        auto third = base.offset(2);
+        auto third {base.offset(2)};
         CHECK(third.get() == &buffer[2]);
         CHECK(*third == 30);
 
         nptr<int32_t> maybe_base {&buffer[0]};
-        auto maybe_second = maybe_base.offset(1);
+        auto maybe_second {maybe_base.offset(1)};
         CHECK(maybe_second.get() == &buffer[1]);
         CHECK(*maybe_second == 20);
     }
@@ -414,31 +416,31 @@ TEST_CASE("SmartPointers")
     SECTION("PointerVocabularySupportsOpaqueVoidCast")
     {
         PtrDerived value {63};
-        PtrBase* base_value = &value;
+        PtrBase* base_value {&value};
         ptr<PtrBase> borrowed {base_value};
         nptr<PtrBase> maybe_borrowed {base_value};
-        nptr<PtrBase> empty_borrowed;
+        nptr<PtrBase> empty_borrowed {};
 
         CHECK(borrowed.void_cast() == static_cast<void*>(base_value));
         CHECK(maybe_borrowed.void_cast() == static_cast<void*>(base_value));
         CHECK(empty_borrowed.void_cast() == nullptr);
 
-        auto unique_owner = safe_alloc::make_unique<PtrDerived>(64);
-        ptr<PtrDerived> borrowed_unique_owner = unique_owner;
+        auto unique_owner {safe_alloc::make_unique<PtrDerived>(64)};
+        ptr<PtrDerived> borrowed_unique_owner {unique_owner};
         CHECK(unique_owner.void_cast() == borrowed_unique_owner.void_cast());
 
-        auto array_owner = safe_alloc::make_unique_arr<int32_t>(2);
-        unique_arr_ptr<int32_t> empty_array_owner;
+        auto array_owner {safe_alloc::make_unique_arr<int32_t>(2)};
+        unique_arr_ptr<int32_t> empty_array_owner {};
         CHECK(array_owner.void_cast() != nullptr);
         CHECK(empty_array_owner.void_cast() == nullptr);
 
-        int32_t destroy_count = 0;
-        auto raw_ref = MakeUnreferencedRefCountedValue(66, &destroy_count);
+        int32_t destroy_count {0};
+        auto raw_ref {MakeUnreferencedRefCountedValue(66, &destroy_count)};
 
         {
-            refcount_ptr<RefCountedValue> ref_owner = refcount_ptr<RefCountedValue>::from_addref(raw_ref.get());
-            refcount_nptr<RefCountedValue> maybe_ref_owner = ref_owner;
-            refcount_nptr<RefCountedValue> empty_ref_owner;
+            refcount_ptr<RefCountedValue> ref_owner {refcount_ptr<RefCountedValue>::from_addref(raw_ref.get())};
+            refcount_nptr<RefCountedValue> maybe_ref_owner {ref_owner};
+            refcount_nptr<RefCountedValue> empty_ref_owner {};
 
             CHECK(ref_owner.void_cast() == raw_ref.void_cast());
             CHECK(maybe_ref_owner.void_cast() == raw_ref.void_cast());
@@ -447,37 +449,38 @@ TEST_CASE("SmartPointers")
 
         CHECK(destroy_count == 1);
 
-        auto shared_owner = safe_alloc::make_shared<PtrDerived>(67);
-        shared_ptr<PtrDerived> empty_shared_owner;
-        weak_ptr<PtrDerived> weak_owner = shared_owner;
-        weak_ptr<PtrDerived> empty_weak_owner;
+        auto shared_owner {safe_alloc::make_shared<PtrDerived>(67)};
+        shared_ptr<PtrDerived> empty_shared_owner {};
+        weak_ptr<PtrDerived> weak_owner {shared_owner};
+        weak_ptr<PtrDerived> empty_weak_owner {};
 
-        ptr<PtrDerived> borrowed_shared_owner = shared_owner;
+        ptr<PtrDerived> borrowed_shared_owner {shared_owner};
         CHECK(shared_owner.void_cast() == borrowed_shared_owner.void_cast());
         CHECK(empty_shared_owner.void_cast() == nullptr);
         CHECK(weak_owner.void_cast() == shared_owner.void_cast());
         CHECK(empty_weak_owner.void_cast() == nullptr);
 
-        auto custom_owner = make_unique_del_ptr(safe_alloc::make_raw<int32_t>(68), [](int32_t* raw_value) noexcept { delete raw_value; });
-        ptr<int32_t> borrowed_custom_owner = custom_owner;
+        auto custom_owner {make_unique_del_ptr(safe_alloc::make_raw<int32_t>(68), [](int32_t* raw_value) noexcept { delete raw_value; })};
+        ptr<int32_t> borrowed_custom_owner {custom_owner};
         CHECK(custom_owner.void_cast() == borrowed_custom_owner.void_cast());
 
-        auto maybe_custom_value = safe_alloc::make_raw<int32_t>(69);
-        auto maybe_custom_owner = make_unique_del_ptr(maybe_custom_value, [](int32_t* raw_value) noexcept { delete raw_value; });
-        nptr<int32_t> borrowed_maybe_custom_owner = maybe_custom_owner;
+        auto maybe_custom_value {safe_alloc::make_raw<int32_t>(69)};
+        auto maybe_custom_owner {make_unique_del_ptr(maybe_custom_value, [](int32_t* raw_value) noexcept { delete raw_value; })};
+        nptr<int32_t> borrowed_maybe_custom_owner {maybe_custom_owner};
         CHECK(maybe_custom_owner.void_cast() == borrowed_maybe_custom_owner.void_cast());
 
-        auto empty_custom_owner = make_unique_del_ptr(nptr<int32_t> {}, [](int32_t* raw_value) noexcept { ignore_unused(raw_value); });
+        auto empty_custom_owner {make_unique_del_ptr(nptr<int32_t> {}, [](int32_t* raw_value) noexcept { ignore_unused(raw_value); })};
         CHECK(empty_custom_owner.void_cast() == nullptr);
 
-        int32_t deleted_opaque_value = 0;
+        int32_t deleted_opaque_value {0};
         {
-            auto raw_opaque_value = safe_alloc::make_raw<int32_t>(70);
-            auto opaque_owner = make_unique_del_ptr(raw_opaque_value.reinterpret_as<void>(), [&](void* raw_value) noexcept {
-                auto value = cast_from_void<int32_t*>(raw_value);
-                auto owned_value = adopt_unique_ptr(value);
+            auto raw_opaque_value {safe_alloc::make_raw<int32_t>(70)};
+            auto opaque_owner {make_unique_del_ptr(raw_opaque_value.reinterpret_as<void>(), [&](void* raw_value) noexcept {
+                auto value {cast_from_void<int32_t*>(raw_value)};
+                auto owned_value {adopt_unique_ptr(value)};
                 deleted_opaque_value = *owned_value;
-            });
+            })};
+
             CHECK(opaque_owner.get() == raw_opaque_value.void_cast());
         }
         CHECK(deleted_opaque_value == 70);
@@ -485,26 +488,26 @@ TEST_CASE("SmartPointers")
 
     SECTION("CustomDeleterOwnersSupportArrayIndexing")
     {
-        auto values = make_ptr(new int32_t[3] {11, 22, 33});
-        auto owner = make_unique_del_ptr(values, [](int32_t* raw_values) noexcept { delete[] raw_values; });
+        auto values {make_ptr(new int32_t[3] {11, 22, 33})};
+        auto owner {make_unique_del_ptr(values, [](int32_t* raw_values) noexcept { delete[] raw_values; })};
 
         CHECK(owner[0] == 11);
         owner[1] = 44;
 
-        unique_del_nptr<int32_t> maybe_owner = std::move(owner);
-        const auto& const_owner = maybe_owner;
+        unique_del_nptr<int32_t> maybe_owner {static_cast<unique_del_nptr<int32_t>>(std::move(owner))};
+        const auto& const_owner {maybe_owner};
         CHECK(maybe_owner[1] == 44);
         CHECK(const_owner[2] == 33);
     }
 
     SECTION("UniquePtrReleaseTransfersOwnership")
     {
-        auto unique_value = safe_alloc::make_unique<PtrDerived>(77);
+        auto unique_value {safe_alloc::make_unique<PtrDerived>(77)};
 
         REQUIRE(unique_value.get() != nullptr);
         CHECK(unique_value->Value == 77);
 
-        auto released_ptr = unique_value.release();
+        auto released_ptr {unique_value.release()};
         CHECK(unique_value.get() == nullptr);
         REQUIRE(released_ptr.get() != nullptr);
         CHECK(released_ptr->Value == 77);
@@ -515,10 +518,10 @@ TEST_CASE("SmartPointers")
 
     SECTION("UniqueOwningPointersBorrowImplicitly")
     {
-        auto owned_ptr = safe_alloc::make_unique<PtrDerived>(81);
+        auto owned_ptr {safe_alloc::make_unique<PtrDerived>(81)};
 
-        ptr<PtrBase> borrowed = owned_ptr;
-        nptr<PtrBase> maybe_borrowed = owned_ptr;
+        ptr<PtrBase> borrowed {owned_ptr};
+        nptr<PtrBase> maybe_borrowed {owned_ptr};
 
         REQUIRE(borrowed.get() != nullptr);
         REQUIRE(maybe_borrowed);
@@ -528,8 +531,8 @@ TEST_CASE("SmartPointers")
 
         unique_nptr<PtrDerived> maybe_owned {safe_alloc::make_unique<PtrDerived>(82)};
         REQUIRE(maybe_owned);
-        ptr<PtrBase> borrowed_from_maybe_owner = maybe_owned;
-        nptr<PtrBase> maybe_borrowed_from_owner = maybe_owned;
+        ptr<PtrBase> borrowed_from_maybe_owner {maybe_owned};
+        nptr<PtrBase> maybe_borrowed_from_owner {maybe_owned};
 
         REQUIRE(maybe_borrowed_from_owner);
         CHECK(borrowed_from_maybe_owner.get() == maybe_owned.get());
@@ -541,10 +544,10 @@ TEST_CASE("SmartPointers")
 
     SECTION("ExplicitBorrowSurvivesOwnerMove")
     {
-        auto source_owner = safe_alloc::make_unique<PtrDerived>(83);
-        auto borrowed = source_owner.as_ptr();
+        auto source_owner {safe_alloc::make_unique<PtrDerived>(83)};
+        auto borrowed {source_owner.as_ptr()};
 
-        auto destination_owner = std::move(source_owner);
+        auto destination_owner {std::move(source_owner)};
 
         CHECK(borrowed.get() == destination_owner.get());
         CHECK(borrowed->Value == 83);
@@ -552,9 +555,9 @@ TEST_CASE("SmartPointers")
 
     SECTION("UniqueOwningPointersDynCastToBorrowDirectly")
     {
-        unique_ptr<PtrBase> owned_ptr = safe_alloc::make_unique<PtrCrossDerived>(83, 84);
+        unique_ptr<PtrBase> owned_ptr {safe_alloc::make_unique<PtrCrossDerived>(83, 84)};
 
-        auto mixin = owned_ptr.dyn_cast<PtrMixin>();
+        auto mixin {owned_ptr.dyn_cast<PtrMixin>()};
         STATIC_REQUIRE(std::is_same_v<decltype(mixin), nptr<PtrMixin>>);
 
         REQUIRE(mixin);
@@ -563,14 +566,14 @@ TEST_CASE("SmartPointers")
 
     SECTION("AsPtrAsNptrKeepAutoBorrowLocals")
     {
-        int32_t value = 12;
+        int32_t value {12};
         ptr<int32_t> borrowed {&value};
-        const auto& const_borrowed = borrowed;
+        const auto& const_borrowed {borrowed};
 
-        auto deduced_ptr = borrowed.as_ptr();
-        auto deduced_const_ptr = const_borrowed.as_ptr();
-        auto deduced_nptr = borrowed.as_nptr();
-        auto deduced_const_nptr = const_borrowed.as_nptr();
+        auto deduced_ptr {borrowed.as_ptr()};
+        auto deduced_const_ptr {const_borrowed.as_ptr()};
+        auto deduced_nptr {borrowed.as_nptr()};
+        auto deduced_const_nptr {const_borrowed.as_nptr()};
 
         STATIC_REQUIRE(std::is_same_v<decltype(deduced_ptr), ptr<int32_t>>);
         STATIC_REQUIRE(std::is_same_v<decltype(deduced_const_ptr), ptr<const int32_t>>);
@@ -581,12 +584,12 @@ TEST_CASE("SmartPointers")
         CHECK(deduced_nptr.get() == &value);
         CHECK(deduced_const_nptr.get() == &value);
 
-        auto owned_ptr = safe_alloc::make_unique<PtrDerived>(83);
-        const auto& const_owned_ptr = owned_ptr;
-        auto owner_ptr = owned_ptr.as_ptr();
-        auto owner_const_ptr = const_owned_ptr.as_ptr();
-        auto owner_nptr = owned_ptr.as_nptr();
-        auto owner_const_nptr = const_owned_ptr.as_nptr();
+        auto owned_ptr {safe_alloc::make_unique<PtrDerived>(83)};
+        const auto& const_owned_ptr {owned_ptr};
+        auto owner_ptr {owned_ptr.as_ptr()};
+        auto owner_const_ptr {const_owned_ptr.as_ptr()};
+        auto owner_nptr {owned_ptr.as_nptr()};
+        auto owner_const_nptr {const_owned_ptr.as_nptr()};
 
         STATIC_REQUIRE(std::is_same_v<decltype(owner_ptr), ptr<PtrDerived>>);
         STATIC_REQUIRE(std::is_same_v<decltype(owner_const_ptr), ptr<const PtrDerived>>);
@@ -605,27 +608,27 @@ TEST_CASE("SmartPointers")
         STATIC_REQUIRE(!std::is_copy_constructible_v<unique_nptr<PtrBase>>);
         STATIC_REQUIRE(std::is_constructible_v<unique_nptr<PtrBase>, unique_ptr<PtrDerived>&&>);
 
-        unique_nptr<PtrBase> empty_ptr;
+        unique_nptr<PtrBase> empty_ptr {};
         CHECK_FALSE(empty_ptr);
         CHECK(empty_ptr.void_cast() == nullptr);
 
-        auto owned_ptr = safe_alloc::make_unique<PtrDerived>(88);
+        auto owned_ptr {safe_alloc::make_unique<PtrDerived>(88)};
         unique_nptr<PtrBase> ptr {std::move(owned_ptr)};
 
         CHECK(owned_ptr.get() == nullptr); // FO_USE_AFTER_MOVE_SUPPRESS: test intentionally verifies the moved-from owner contract
 
         REQUIRE(ptr);
-        nptr<PtrBase> maybe_borrowed_ptr = ptr;
+        nptr<PtrBase> maybe_borrowed_ptr {ptr};
         CHECK(ptr.void_cast() == maybe_borrowed_ptr.void_cast());
         CHECK(ptr->Value == 88);
 
-        auto derived = ptr.dyn_cast<PtrDerived>();
+        auto derived {ptr.dyn_cast<PtrDerived>()};
         STATIC_REQUIRE(std::is_same_v<decltype(derived), nptr<PtrDerived>>);
 
         REQUIRE(derived);
         CHECK(derived->Value == 88);
 
-        auto non_null_ptr = ptr.take_not_null();
+        auto non_null_ptr {ptr.take_not_null()};
 
         CHECK_FALSE(ptr);
         REQUIRE(non_null_ptr.get() != nullptr);
@@ -634,15 +637,15 @@ TEST_CASE("SmartPointers")
 
     SECTION("UniqueDelPtrRunsCustomDeleter")
     {
-        int32_t deleted_value = 0;
+        int32_t deleted_value {0};
 
         {
-            auto ptr = make_unique_del_ptr(safe_alloc::make_raw<int32_t>(15), [&](int32_t* value) {
+            auto ptr {make_unique_del_ptr(safe_alloc::make_raw<int32_t>(15), [&](int32_t* value) {
                 deleted_value = *value;
                 delete value;
-            });
+            })};
 
-            nptr<int32_t> maybe_ptr = ptr;
+            nptr<int32_t> maybe_ptr {ptr};
             REQUIRE(maybe_ptr);
             CHECK(*ptr == 15);
         }
@@ -652,16 +655,16 @@ TEST_CASE("SmartPointers")
 
     SECTION("RefcountPtrTracksReferencesAndReleaseOwnership")
     {
-        int32_t destroy_count = 0;
-        auto raw = MakeUnreferencedRefCountedValue(33, &destroy_count);
+        int32_t destroy_count {0};
+        auto raw {MakeUnreferencedRefCountedValue(33, &destroy_count)};
 
         {
-            refcount_ptr<RefCountedValue> ptr = refcount_ptr<RefCountedValue>::from_addref(raw.get());
+            refcount_ptr<RefCountedValue> ptr {refcount_ptr<RefCountedValue>::from_addref(raw.get())};
             REQUIRE(ptr.get() != nullptr);
             CHECK(raw->RefCount == 1);
 
             {
-                refcount_ptr<RefCountedValue> copy = ptr;
+                refcount_ptr<RefCountedValue> copy {ptr};
                 REQUIRE(copy.get() != nullptr);
                 CHECK(raw->RefCount == 2);
                 CHECK(copy->Value == 33);
@@ -669,7 +672,7 @@ TEST_CASE("SmartPointers")
 
             CHECK(raw->RefCount == 1);
 
-            RefCountedValue* released = ptr.release_ownership();
+            RefCountedValue* released {ptr.release_ownership()};
             CHECK(ptr.get() == nullptr);
             REQUIRE(released == raw.get());
             CHECK(raw->RefCount == 1);
@@ -686,13 +689,13 @@ TEST_CASE("SmartPointers")
         STATIC_REQUIRE(sizeof(refcount_nptr<RefCountedValue>) == sizeof(RefCountedValue*));
         STATIC_REQUIRE(std::is_constructible_v<refcount_nptr<RefCountedValue>, refcount_ptr<RefCountedValue>&&>);
 
-        int32_t destroy_count = 0;
-        refcount_nptr<RefCountedValue> maybe_ref;
+        int32_t destroy_count {0};
+        refcount_nptr<RefCountedValue> maybe_ref {};
 
         CHECK_FALSE(maybe_ref);
 
-        auto raw = MakeUnreferencedRefCountedValue(44, &destroy_count);
-        refcount_ptr<RefCountedValue> non_null_ptr = refcount_ptr<RefCountedValue>::from_addref(raw.get());
+        auto raw {MakeUnreferencedRefCountedValue(44, &destroy_count)};
+        refcount_ptr<RefCountedValue> non_null_ptr {refcount_ptr<RefCountedValue>::from_addref(raw.get())};
         maybe_ref = std::move(non_null_ptr);
 
         CHECK(non_null_ptr.get() == nullptr); // FO_USE_AFTER_MOVE_SUPPRESS: test intentionally verifies the moved-from refcount contract
@@ -700,7 +703,7 @@ TEST_CASE("SmartPointers")
         CHECK(maybe_ref->RefCount == 1);
         CHECK(maybe_ref->Value == 44);
 
-        auto restored_ptr = maybe_ref.take_not_null();
+        auto restored_ptr {maybe_ref.take_not_null()};
 
         CHECK_FALSE(maybe_ref);
         REQUIRE(restored_ptr.get() != nullptr);
@@ -708,7 +711,7 @@ TEST_CASE("SmartPointers")
         CHECK(restored_ptr->Value == 44);
 
         {
-            refcount_ptr<RefCountedValue> scoped_ptr = std::move(restored_ptr);
+            refcount_ptr<RefCountedValue> scoped_ptr {std::move(restored_ptr)};
             CHECK(restored_ptr.get() == nullptr); // FO_USE_AFTER_MOVE_SUPPRESS: test intentionally verifies the moved-from refcount contract
         }
 
@@ -717,12 +720,12 @@ TEST_CASE("SmartPointers")
 
     SECTION("RefcountPtrAdoptsExistingReferenceThroughNamedFactory")
     {
-        int32_t destroy_count = 0;
-        auto raw = MakeUnreferencedRefCountedValue(49, &destroy_count);
+        int32_t destroy_count {0};
+        auto raw {MakeUnreferencedRefCountedValue(49, &destroy_count)};
         raw->AddRef();
 
         {
-            refcount_ptr<RefCountedValue> ptr = refcount_ptr<RefCountedValue>::from_adopted_ref(raw.get());
+            refcount_ptr<RefCountedValue> ptr {refcount_ptr<RefCountedValue>::from_adopted_ref(raw.get())};
             REQUIRE(ptr.get() != nullptr);
             CHECK(ptr.get() == raw.get());
             CHECK(raw->RefCount == 1);
@@ -733,24 +736,24 @@ TEST_CASE("SmartPointers")
 
     SECTION("RefcountedOwningPointersBorrowImplicitly")
     {
-        int32_t destroy_count = 0;
-        auto raw = MakeUnreferencedRefCountedValue(55, &destroy_count);
+        int32_t destroy_count {0};
+        auto raw {MakeUnreferencedRefCountedValue(55, &destroy_count)};
 
         {
-            ptr<RefCountedValue> borrowed = raw;
-            auto held = borrowed.hold_ref();
+            ptr<RefCountedValue> borrowed {raw};
+            auto held {borrowed.hold_ref()};
             REQUIRE(held.get() != nullptr);
             CHECK(held.get() == raw.get());
             CHECK(raw->RefCount == 1);
 
-            auto maybe_held = borrowed.try_hold_ref();
+            auto maybe_held {borrowed.try_hold_ref()};
             REQUIRE(maybe_held);
             CHECK(maybe_held.get() == raw.get());
             CHECK(raw->RefCount == 2);
 
-            ptr<RefCountedValue> borrowed_again = held;
-            ptr<RefCountedValue> borrowed_from_maybe_owner = maybe_held;
-            nptr<RefCountedValue> maybe_borrowed_again = maybe_held;
+            ptr<RefCountedValue> borrowed_again {held};
+            ptr<RefCountedValue> borrowed_from_maybe_owner {maybe_held};
+            nptr<RefCountedValue> maybe_borrowed_again {maybe_held};
             CHECK(borrowed_again.get() == raw.get());
             CHECK(borrowed_from_maybe_owner.get() == raw.get());
             CHECK(maybe_borrowed_again.get() == raw.get());
@@ -761,14 +764,14 @@ TEST_CASE("SmartPointers")
 
     SECTION("RefcountOwningPointersDynCastBorrowForNonRefcountableTargets")
     {
-        auto raw = MakeUnreferencedRefCountedPolyValue(61, 62);
+        auto raw {MakeUnreferencedRefCountedPolyValue(61, 62)};
 
         {
-            refcount_ptr<RefCountedPolyBase> owner = refcount_ptr<RefCountedPolyBase>::from_addref(raw.get());
+            refcount_ptr<RefCountedPolyBase> owner {refcount_ptr<RefCountedPolyBase>::from_addref(raw.get())};
             CHECK(raw->RefCount == 1);
 
             {
-                auto derived_owner = owner.dyn_cast<RefCountedPolyDerived>();
+                auto derived_owner {owner.dyn_cast<RefCountedPolyDerived>()};
                 STATIC_REQUIRE(std::is_same_v<decltype(derived_owner), refcount_nptr<RefCountedPolyDerived>>);
 
                 REQUIRE(derived_owner);
@@ -778,7 +781,7 @@ TEST_CASE("SmartPointers")
 
             CHECK(raw->RefCount == 1);
 
-            auto mixin = owner.dyn_cast<PtrMixin>();
+            auto mixin {owner.dyn_cast<PtrMixin>()};
             STATIC_REQUIRE(std::is_same_v<decltype(mixin), nptr<PtrMixin>>);
 
             REQUIRE(mixin);
@@ -789,30 +792,30 @@ TEST_CASE("SmartPointers")
 
     SECTION("NullableBorrowedPointerTryHoldRefReturnsEmptyForNull")
     {
-        nptr<RefCountedValue> borrowed;
-        auto held = borrowed.try_hold_ref();
+        nptr<RefCountedValue> borrowed {};
+        auto held {borrowed.try_hold_ref()};
 
         CHECK_FALSE(held);
     }
 
     SECTION("SharedAndWeakAliasesPropagateConstCorrectly")
     {
-        auto shared = safe_alloc::make_shared<PtrDerived>(91);
-        weak_ptr<PtrDerived> weak = shared;
+        auto shared {safe_alloc::make_shared<PtrDerived>(91)};
+        weak_ptr<PtrDerived> weak {shared};
 
         REQUIRE(shared);
         CHECK(shared.use_count() == 1);
         CHECK(weak.use_count() == 1);
-        ptr<PtrBase> shared_borrowed = shared;
-        nptr<PtrBase> maybe_shared_borrowed = shared;
+        ptr<PtrBase> shared_borrowed {shared};
+        nptr<PtrBase> maybe_shared_borrowed {shared};
         CHECK(shared_borrowed->Value == 91);
         CHECK(maybe_shared_borrowed->Value == 91);
 
-        const auto& const_shared = shared;
-        ptr<const PtrBase> const_borrowed = const_shared;
+        const auto& const_shared {shared};
+        ptr<const PtrBase> const_borrowed {const_shared};
         CHECK(const_borrowed->Value == 91);
 
-        auto locked = weak.lock();
+        auto locked {weak.lock()};
         REQUIRE(locked);
         CHECK(locked->Value == 91);
         CHECK(shared.use_count() == 2);
@@ -821,7 +824,7 @@ TEST_CASE("SmartPointers")
         shared.reset();
 
         CHECK_FALSE(shared);
-        nptr<PtrDerived> empty_borrowed = shared;
+        nptr<PtrDerived> empty_borrowed {shared};
         CHECK_FALSE(empty_borrowed);
         CHECK(weak.use_count() == 0);
         CHECK_FALSE(weak.lock());
@@ -829,24 +832,24 @@ TEST_CASE("SmartPointers")
 
     SECTION("SharedAndWeakOwnershipIsThreadSafe")
     {
-        constexpr size_t THREADS_COUNT = 8;
-        constexpr size_t ITERATIONS_COUNT = 20000;
+        constexpr size_t THREADS_COUNT {8};
+        constexpr size_t ITERATIONS_COUNT {20000};
 
-        auto shared = safe_alloc::make_shared<PtrDerived>(7);
-        weak_ptr<PtrDerived> weak = shared;
-        std::atomic<size_t> locked_count = 0;
+        auto shared {safe_alloc::make_shared<PtrDerived>(7)};
+        weak_ptr<PtrDerived> weak {shared};
+        std::atomic<size_t> locked_count {0};
 
         {
-            std::vector<std::thread> workers;
+            std::vector<std::thread> workers {};
             workers.reserve(THREADS_COUNT);
 
-            for (size_t i = 0; i < THREADS_COUNT; i++) {
+            for (size_t i {0}; i < THREADS_COUNT; i++) {
                 workers.emplace_back([&shared, &weak, &locked_count] {
-                    for (size_t j = 0; j < ITERATIONS_COUNT; j++) {
-                        shared_ptr<PtrDerived> copy = shared;
-                        weak_ptr<PtrDerived> local_weak = copy;
+                    for (size_t j {0}; j < ITERATIONS_COUNT; j++) {
+                        shared_ptr<PtrDerived> copy {shared};
+                        weak_ptr<PtrDerived> local_weak {copy};
 
-                        if (auto locked = local_weak.lock()) {
+                        if (auto locked {local_weak.lock()}) {
                             locked_count.fetch_add(1, std::memory_order_relaxed);
                         }
 
@@ -872,38 +875,40 @@ TEST_CASE("SmartPointers")
 
     SECTION("SharedOwnershipReleaseRaceDestroysExactlyOnce")
     {
-        constexpr size_t THREADS_COUNT = 8;
-        constexpr size_t ITERATIONS_COUNT = 5000;
+        constexpr size_t THREADS_COUNT {8};
+        constexpr size_t ITERATIONS_COUNT {5000};
 
-        std::atomic<size_t> destroyed_count = 0;
+        std::atomic<size_t> destroyed_count {0};
 
-        struct RaceValue
+        class RaceValue
         {
+        public:
             explicit RaceValue(std::atomic<size_t>& counter) :
-                Counter {&counter}
+                _counter {&counter}
             {
             }
-            ~RaceValue() { Counter->fetch_add(1, std::memory_order_relaxed); }
+            ~RaceValue() { _counter->fetch_add(1, std::memory_order_relaxed); }
             RaceValue(const RaceValue&) = delete;
             RaceValue(RaceValue&&) noexcept = delete;
             auto operator=(const RaceValue&) = delete;
             auto operator=(RaceValue&&) noexcept = delete;
 
-            ptr<std::atomic<size_t>> Counter;
+        private:
+            ptr<std::atomic<size_t>> _counter;
         };
 
-        auto shared = safe_alloc::make_shared<RaceValue>(destroyed_count);
-        weak_ptr<RaceValue> weak = shared;
+        auto shared {safe_alloc::make_shared<RaceValue>(destroyed_count)};
+        weak_ptr<RaceValue> weak {shared};
 
         {
-            std::vector<std::thread> workers;
+            std::vector<std::thread> workers {};
             workers.reserve(THREADS_COUNT);
 
-            for (size_t i = 0; i < THREADS_COUNT; i++) {
+            for (size_t i {0}; i < THREADS_COUNT; i++) {
                 workers.emplace_back([&weak] {
-                    for (size_t j = 0; j < ITERATIONS_COUNT; j++) {
-                        if (auto locked = weak.lock()) {
-                            shared_ptr<RaceValue> copy = locked;
+                    for (size_t j {0}; j < ITERATIONS_COUNT; j++) {
+                        if (auto locked {weak.lock()}) {
+                            shared_ptr<RaceValue> copy {locked};
                             ignore_unused(copy);
                         }
                     }
@@ -930,7 +935,7 @@ TEST_CASE("SmartPointers")
             int32_t Value {};
         };
 
-        auto head = safe_alloc::make_shared<ChainNode>();
+        auto head {safe_alloc::make_shared<ChainNode>()};
         head->Value = 1;
         head->Next = safe_alloc::make_shared<ChainNode>();
         head->Next->Value = 2;
@@ -955,20 +960,20 @@ TEST_CASE("SmartPointers")
             int32_t Value {};
         };
 
-        size_t deleted_count = 0;
+        size_t deleted_count {0};
 
-        auto make_node = [&deleted_count](int32_t value) -> unique_del_nptr<DelNode> {
-            auto owner = safe_alloc::make_unique<DelNode>();
-            auto released = owner.release();
+        auto make_node {[&deleted_count](int32_t value) -> unique_del_nptr<DelNode> {
+            auto owner {safe_alloc::make_unique<DelNode>()};
+            auto released {owner.release()};
             released->Value = value;
             return make_unique_del_ptr(released, [&deleted_count](ptr<DelNode> node) noexcept {
                 deleted_count++;
-                auto owned_node = adopt_unique_ptr(node);
+                auto owned_node {adopt_unique_ptr(node)};
                 ignore_unused(owned_node);
             });
-        };
+        }};
 
-        auto head = make_node(1);
+        auto head {make_node(1)};
         head->Next = make_node(2);
         head->Next->Next = make_node(3);
 

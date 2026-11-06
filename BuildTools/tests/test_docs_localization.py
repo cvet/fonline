@@ -81,8 +81,8 @@ class LocalizationDocumentationTests(unittest.TestCase):
         second = docs_localization.generate_localization_status(ENGINE_ROOT)
         self.assertEqual(first, second)
         self.assertGreater(first["summary"]["required_document_count"], 100)
-        self.assertEqual(first["summary"]["required_document_count"], 195)
-        self.assertEqual(first["summary"]["current_translation_count"], 195)
+        self.assertEqual(first["summary"]["required_document_count"], 196)
+        self.assertEqual(first["summary"]["current_translation_count"], 196)
         self.assertEqual(
             first["summary"]["missing_translation_count"],
             0,
@@ -113,6 +113,7 @@ class LocalizationDocumentationTests(unittest.TestCase):
                 "backup-and-recovery",
                 "baking-pipeline",
                 "build-workflow",
+                "class-layout",
                 "buildtools-pipeline",
                 "buildtools-readme",
                 "engine-changelog",

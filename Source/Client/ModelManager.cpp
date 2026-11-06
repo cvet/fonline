@@ -86,11 +86,10 @@ ModelManager::ModelManager(ptr<RenderSettings> settings, ptr<FileSystem> resourc
     _sceneBackgroundProvider {std::move(scene_background_provider)},
     _particleMngr(settings, effect_mngr, render, resources, game_time, std::move(tex_loader), std::move(draw_wireframe), [this]() FO_DEFERRED { return ResolveModelParticleSceneBackground(_directSceneDraw, _settings->Render.ModelDirectDraw, _sceneBackgroundProvider); })
 {
-    _moveTransitionTime = numeric_cast<float32_t>(_settings->Render.Animation3dSmoothTime) / 1000.0f;
-    _moveTransitionTime = std::max(_moveTransitionTime, 0.001f);
+    _moveTransitionTime = std::chrono::milliseconds {std::max(_settings->Render.Animation3dSmoothTime, 1)};
 
     if (_settings->Render.Animation3dFPS != 0) {
-        _animUpdateThreshold = iround<int32_t>(1000.0f / numeric_cast<float32_t>(_settings->Render.Animation3dFPS));
+        _animUpdateThreshold = std::chrono::milliseconds {iround<int32_t>(1000.0f / numeric_cast<float32_t>(_settings->Render.Animation3dFPS))};
     }
 
     _headBone = GetBoneHashedString(settings->Render.HeadBone);
@@ -112,10 +111,10 @@ auto ModelManager::LoadModel(string_view fname) -> nptr<ModelBone>
     FO_TRACE_ZONE(Model);
 
     // Find already loaded
-    hstring name_hashed = _engineMetadata->Hashes.to_hashed_string(fname);
+    hstring name_hashed {_engineMetadata->Hashes.to_hashed_string(fname)};
 
-    for (size_t i = 0; i != _loadedModels.size(); ++i) {
-        auto root_bone = _loadedModels[i].as_ptr();
+    for (size_t i {0}; i != _loadedModels.size(); ++i) {
+        auto root_bone {_loadedModels[i].as_ptr()};
 
         if (root_bone->Name == name_hashed) {
             return root_bone;
@@ -135,23 +134,23 @@ auto ModelManager::LoadModel(string_view fname) -> nptr<ModelBone>
     }
 
     // Load file data
-    auto file = _resources->ReadFile(fname);
+    auto file {_resources->ReadFile(fname)};
     FO_VERIFY_AND_THROW(file, "3D model loader could not read model resource", fname);
 
     // Load bones
-    auto reader = data_reader(file.GetDataSpan());
-    auto root_bone = [&]() -> unique_ptr<ModelBone> {
+    data_reader reader {file.GetDataSpan()};
+    auto root_bone {[&]() -> unique_ptr<ModelBone> {
         try {
-            ModelMeshData mesh_data = ReadModelMeshData(reader, fname);
+            ModelMeshData mesh_data {ReadModelMeshData(reader, fname)};
             FO_VERIFY_AND_THROW(mesh_data.RootBone, "Decoded model mesh has no root bone", fname);
-            auto loaded_root_bone = ConvertModelMeshBone(std::move(*mesh_data.RootBone), _engineMetadata->Hashes);
+            auto loaded_root_bone {ConvertModelMeshBone(std::move(*mesh_data.RootBone), _engineMetadata->Hashes)};
             FixModelBoneAfterLoad(loaded_root_bone, loaded_root_bone);
             return loaded_root_bone;
         }
         catch (const std::exception& ex) {
             throw DataReadingException("Invalid baked model mesh", fname, ex.what());
         }
-    }();
+    }()};
 
     // Add to collection
     root_bone->Name = name_hashed;
@@ -163,25 +162,23 @@ auto ModelManager::CreateModel(string_view name) -> unique_nptr<ModelInstance>
 {
     FO_TRACE_ZONE(Model);
 
-    auto model_info = GetInformation(name);
+    auto model_info {GetInformation(name)};
 
     if (!model_info) {
         return nullptr;
     }
 
-    auto model = model_info->CreateInstance();
+    auto model {model_info->CreateInstance()};
 
     // Create mesh instances
     model->_allMeshes.reserve(model_info->_hierarchy->_allDrawBones.size());
     model->_allMeshesDisabled.resize(model_info->_hierarchy->_allDrawBones.size());
 
-    for (size_t i = 0, j = model_info->_hierarchy->_allDrawBones.size(); i < j; i++) {
-        auto bone = model_info->_hierarchy->_allDrawBones[i];
-        auto mesh = bone->AttachedMesh ? make_nptr(&*bone->AttachedMesh) : nullptr;
+    for (size_t i {0}, j {model_info->_hierarchy->_allDrawBones.size()}; i < j; i++) {
+        auto bone {model_info->_hierarchy->_allDrawBones[i]};
+        auto mesh {bone->AttachedMesh ? make_nptr(&*bone->AttachedMesh) : nullptr};
         FO_VERIFY_AND_THROW(mesh, "Mesh is null");
-        auto new_mesh_instance = safe_alloc::make_unique<MeshInstance>(mesh);
-        string_view tex_name = mesh->DiffuseTexture;
-        new_mesh_instance->CurTexures[0] = new_mesh_instance->DefaultTexures[0] = !tex_name.empty() ? nptr<MeshTexture>(model_info->_hierarchy->GetTexture(tex_name)) : nullptr;
+        auto new_mesh_instance {safe_alloc::make_unique<MeshInstance>(mesh)};
         new_mesh_instance->CurEffect = new_mesh_instance->DefaultEffect = !mesh->EffectName.empty() ? nptr<RenderEffect>(model_info->_hierarchy->GetEffect(mesh->EffectName)) : nullptr;
         model->_allMeshes.emplace_back(std::move(new_mesh_instance));
     }
@@ -193,15 +190,15 @@ auto ModelManager::CreateModel(string_view name) -> unique_nptr<ModelInstance>
 
 void ModelManager::PreloadModel(string_view name)
 {
-    auto model_info = GetInformation(name);
+    auto model_info {GetInformation(name)};
     ignore_unused(model_info);
 }
 
 auto ModelManager::GetInformation(string_view name) -> nptr<ModelInformation>
 {
     // Try to find instance
-    for (size_t i = 0; i != _allModelInfos.size(); ++i) {
-        auto model_info = _allModelInfos[i].as_ptr();
+    for (size_t i {0}; i != _allModelInfos.size(); ++i) {
+        auto model_info {_allModelInfos[i].as_ptr()};
 
         if (model_info->_fileName == name) {
             return model_info;
@@ -209,7 +206,7 @@ auto ModelManager::GetInformation(string_view name) -> nptr<ModelInformation>
     }
 
     // Create new instance
-    auto model_info = safe_alloc::make_unique<ModelInformation>(this);
+    auto model_info {safe_alloc::make_unique<ModelInformation>(this)};
 
     if (!model_info->Load(name)) {
         return nullptr;
@@ -221,8 +218,8 @@ auto ModelManager::GetInformation(string_view name) -> nptr<ModelInformation>
 
 auto ModelManager::GetHierarchy(string_view name) -> nptr<ModelHierarchy>
 {
-    for (size_t i = 0; i != _hierarchyFiles.size(); ++i) {
-        auto model_hierarchy = _hierarchyFiles[i].as_ptr();
+    for (size_t i {0}; i != _hierarchyFiles.size(); ++i) {
+        auto model_hierarchy {_hierarchyFiles[i].as_ptr()};
 
         if (model_hierarchy->_fileName == name) {
             return model_hierarchy;
@@ -230,14 +227,14 @@ auto ModelManager::GetHierarchy(string_view name) -> nptr<ModelHierarchy>
     }
 
     // Load
-    auto root_bone = LoadModel(name);
+    auto root_bone {LoadModel(name)};
 
     if (!root_bone) {
         logging::write(logging::type::warning, "Unable to load model hierarchy file '{}'", name);
         return nullptr;
     }
 
-    auto model_hierarchy = safe_alloc::make_unique<ModelHierarchy>(this, string {name}, root_bone);
+    auto model_hierarchy {safe_alloc::make_unique<ModelHierarchy>(this, string {name}, root_bone)};
     model_hierarchy->SetupBones();
 
     _hierarchyFiles.emplace_back(std::move(model_hierarchy));
@@ -248,14 +245,14 @@ static auto ConvertModelMeshGeometry(ModelMeshGeometryData&& source, hash_resolv
 {
     FO_TRACE_ZONE(Model);
 
-    auto mesh = MeshData {
+    auto mesh {MeshData {
         .Owner = owner,
-    };
+    }};
 
     mesh.Vertices.reserve(source.Vertices.size());
 
     for (const ModelMeshVertexData& source_vertex : source.Vertices) {
-        auto& vertex = mesh.Vertices.emplace_back();
+        auto& vertex {mesh.Vertices.emplace_back()};
         vertex.Position = source_vertex.Position;
         vertex.Normal = source_vertex.Normal;
         std::ranges::copy(source_vertex.TexCoord, vertex.TexCoord);
@@ -282,8 +279,8 @@ static auto ConvertModelMeshGeometry(ModelMeshGeometryData&& source, hash_resolv
 
 static auto ConvertModelMeshBone(ModelMeshBoneData&& source, hash_resolver& hashes) -> unique_ptr<ModelBone>
 {
-    auto bone = safe_alloc::make_unique<ModelBone>();
-    hstring source_name = hashes.to_hashed_string(source.Name);
+    auto bone {safe_alloc::make_unique<ModelBone>()};
+    hstring source_name {hashes.to_hashed_string(source.Name)};
     bone->Name = source_name;
     bone->SourceName = source_name;
     bone->RestLocalTransform = source.TransformationMatrix;
@@ -304,13 +301,12 @@ static auto ConvertModelMeshBone(ModelMeshBoneData&& source, hash_resolver& hash
     return bone;
 }
 
-// ReSharper disable once CppMemberFunctionMayBeConst
 static void FixModelBoneAfterLoad(ptr<ModelBone> bone, ptr<ModelBone> root_bone)
 {
     if (bone->AttachedMesh) {
-        for (size_t i = 0; i < bone->AttachedMesh->SkinBoneNames.size(); i++) {
+        for (size_t i {0}; i < bone->AttachedMesh->SkinBoneNames.size(); i++) {
             if (bone->AttachedMesh->SkinBoneNames[i]) {
-                auto skin_bone = FindModelBone(root_bone, bone->AttachedMesh->SkinBoneNames[i]);
+                auto skin_bone {FindModelBone(root_bone, bone->AttachedMesh->SkinBoneNames[i])};
                 FO_VERIFY_AND_THROW(skin_bone, "Skin bone was not found in a model", bone->AttachedMesh->SkinBoneNames[i], bone->Name);
                 bone->AttachedMesh->SkinBones[i] = skin_bone;
             }
@@ -320,7 +316,7 @@ static void FixModelBoneAfterLoad(ptr<ModelBone> bone, ptr<ModelBone> root_bone)
         }
     }
 
-    for (size_t i = 0; i != bone->Children.size(); ++i) {
+    for (size_t i {0}; i != bone->Children.size(); ++i) {
         FixModelBoneAfterLoad(bone->Children[i], root_bone);
     }
 }

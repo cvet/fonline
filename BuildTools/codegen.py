@@ -36,8 +36,10 @@ ENGINE_HOOK_NAMES = (
     'SetupBakersHook',
     'CheckCritterVisibilityHook',
     'CheckItemVisibilityHook',
+    'CheckViewMapCritterVisibilityHook',
+    'CheckViewMapItemVisibilityHook',
 )
-INTERNAL_CONFIG_CAPACITY = 20000
+INTERNAL_CONFIG_CAPACITY = 40000
 
 
 @dataclass(slots=True)
@@ -723,6 +725,33 @@ def tokenize(text: str | None, anySymbols: list[int] | None = None) -> list[str]
             current_token = flush_token(result, current_token)
         else:
             current_token += ch
+    current_token = flush_token(result, current_token)
+    return result
+
+
+def tokenize_migration_rule(text: str | None) -> list[str]:
+    if text is None:
+        return []
+    text = text.strip()
+    result: list[str] = []
+    current_token = ''
+    inside_quotes = False
+
+    for ch in text:
+        if ch == '"':
+            if inside_quotes:
+                result.append(current_token)
+                current_token = ''
+                inside_quotes = False
+            else:
+                current_token = flush_token(result, current_token)
+                inside_quotes = True
+        elif ch in ' \t' and not inside_quotes:
+            current_token = flush_token(result, current_token)
+        else:
+            current_token += ch
+
+    assert not inside_quotes, 'Malformed quoted migration rule argument'
     current_token = flush_token(result, current_token)
     return result
 
@@ -1771,8 +1800,7 @@ def parse_engine_hook_tags() -> None:
         try:
             hook_context = require_str_context(tag_context, 'EngineHook')
             name = tokenize(hook_context)[2]
-            assert name in ['ApplicationInitHook', 'ApplicationShutdownHook', 'ServerInitHook', 'ClientInitHook', 'ClientStartupSettingsHook',
-                            'SetupBakersHook', 'CheckCritterVisibilityHook', 'CheckItemVisibilityHook'], 'Invalid engine hook ' + name
+            assert name in ENGINE_HOOK_NAMES, 'Invalid engine hook ' + name
 
             add_codegen_tag('EngineHook', EngineHookTag(name, [], comment), get_tag_source(tag_meta))
             if name != 'ApplicationShutdownHook':
@@ -1792,10 +1820,12 @@ def parse_migration_rule_tags() -> None:
 
         try:
             action_rule = (tag_info or '').split()[0:1] in (['Property'], ['Proto'])
-            rule_args = tokenize(tag_info, anySymbols=[3, 4] if action_rule else [2, 3])
+            rule_args = tokenize_migration_rule(tag_info)
             assert len(rule_args) and rule_args[0] in ['Version', 'Property', 'Proto', 'Component', 'Remove', 'Enum'], 'Invalid migration rule'
             remove_rule = action_rule and rule_args[2:3] == ['Remove']
             assert len(rule_args) == (4 if remove_rule or not action_rule else 5), 'Invalid migration rule args'
+            assert all(arg.strip() for arg in rule_args), 'Empty migration rule argument'
+            assert remove_rule or not any(char.isspace() for char in rule_args[-1]), 'Migration replacement must not contain whitespace'
             if action_rule:
                 assert rule_args[2] in ['Rename', 'Transform', 'Remove'], 'Invalid migration action'
             for existing in codegen_tags['MigrationRule']:
@@ -2283,7 +2313,7 @@ def generate_generic_code() -> None:
         global_lines.append('void ClientStartupSettingsHook(GlobalSettings&, int32_t, bool) { /* Stub */ }')
     if not is_engine_hook_enabled('SetupBakersHook'):
         global_lines.append('class BaseBaker;')
-        global_lines.append('struct BakingContext;')
+        global_lines.append('class BakingContext;')
         global_lines.append('void SetupBakersHook(span<const string>, vector<unique_ptr<BaseBaker>>&, shared_ptr<BakingContext>) { /* Stub */ }')
     if not is_engine_hook_enabled('CheckCritterVisibilityHook'):
         global_lines.append('class ServerEngine;')
@@ -2296,6 +2326,18 @@ def generate_generic_code() -> None:
         global_lines.append('class Critter;')
         global_lines.append('class Item;')
         global_lines.append('bool CheckItemVisibilityHook(ptr<const ServerEngine>, ptr<const Map>, ptr<const Critter>, ptr<const Item>) { return true; }')
+    if not is_engine_hook_enabled('CheckViewMapCritterVisibilityHook'):
+        global_lines.append('class ServerEngine;')
+        global_lines.append('class Map;')
+        global_lines.append('class Entity;')
+        global_lines.append('class Critter;')
+        global_lines.append('CritterVisibilityMode CheckViewMapCritterVisibilityHook(ptr<const ServerEngine>, ptr<const Map>, nptr<const Entity>, mpos, ptr<const Critter>) { return CritterVisibilityMode::Full; }')
+    if not is_engine_hook_enabled('CheckViewMapItemVisibilityHook'):
+        global_lines.append('class ServerEngine;')
+        global_lines.append('class Map;')
+        global_lines.append('class Entity;')
+        global_lines.append('class Item;')
+        global_lines.append('bool CheckViewMapItemVisibilityHook(ptr<const ServerEngine>, ptr<const Map>, nptr<const Entity>, mpos, ptr<const Item>) { return true; }')
     global_lines.append('')
     
     # Engine properties
@@ -2347,7 +2389,7 @@ def append_ref_call_registration(register_lines: list[str], method_name: str, ca
     register_lines.append('    MethodDesc{ .Name = "' + method_name + '", ' +
             '.Call = [](FuncCallData& call) {' + (' ignore_unused(call); } },' if is_stub else ''))
     if not is_stub:
-        register_lines.append('        struct Wrapped { ' + call + ' };')
+        register_lines.append('        class Wrapped { public: ' + call + ' };')
         register_lines.append('        NativeDataCaller::NativeCall<&Wrapped::Call>(call);')
         register_lines.append('    } },')
 
@@ -2374,7 +2416,7 @@ def append_ref_method_registration(
         # A property accessor is a field read or write, cheaper than the zone that would time it
         if not is_property:
             register_lines.append('        FO_TRACE_ZONE_NAMED(Script, "' + ref_type_tag.name + '::' + method_name + '");')
-        register_lines.append('        struct Wrapped { static ' +
+        register_lines.append('        class Wrapped { public: static ' +
                 ('auto' if ret != 'void' else 'void') + ' Call(ptr<' + ref_type_tag.name + '> self' + (', ' if params else '') +
         ', '.join([meta_type_to_engine_type(p.arg_type, ref_type_tag.target, True, wrap_handles=True, nullable=p.nullable) + ' ' + p.name for p in params]) + ') ' +
             ('-> ' + meta_type_to_engine_type(ret, ref_type_tag.target, False, wrap_handles=True, nullable=ret_nullable) if ret != 'void' else '') +
@@ -2449,6 +2491,43 @@ def get_value_type_layout(tag: ExportValueTypeTag) -> list[tuple[str, str]]:
     return result
 
 
+# Layout field types that an embedding project selects at build time through an engine define
+CONFIGURED_LAYOUT_FIELD_TYPES: dict[str, tuple[str, dict[str, str]]] = {
+    'mcoord': ('FO_MAP_WIDE_COORDS', {'0': 'int16', '1': 'int32'}),
+}
+
+
+def get_engine_define(name: str) -> str | None:
+    for define in args.enginedefine:
+        define_name, separator, value = define.partition('=')
+        if define_name.strip() == name:
+            return value.strip() if separator else ''
+    return None
+
+
+def resolve_layout_field_type(field_type: str) -> str:
+    configured_type = CONFIGURED_LAYOUT_FIELD_TYPES.get(field_type)
+    if configured_type is None:
+        return field_type
+    define_name, variants = configured_type
+    define_value = get_engine_define(define_name)
+    assert define_value in variants, 'Layout field type ' + field_type + ' requires engine define ' + define_name + ' set to one of ' + ', '.join(sorted(variants))
+    return variants[define_value]
+
+
+def get_resolved_value_type_layout(tag: ExportValueTypeTag) -> list[tuple[str, str]]:
+    return [(resolve_layout_field_type(field_type), field_name) for field_type, field_name in get_value_type_layout(tag)]
+
+
+def hash_resolved_value_type_layouts() -> None:
+    def hash_resolved_value_type_layouts_impl() -> None:
+        # Parsing hashed the declared layouts; the field types selected for this build join the compatibility version here
+        for value_type_tag in codegen_tags['ExportValueType']:
+            hash_recursive(compatibility_hasher, (value_type_tag.name, get_resolved_value_type_layout(value_type_tag)))
+
+    run_codegen_step(hash_resolved_value_type_layouts_impl, 'Can\'t resolve value type layouts')
+
+
 def append_value_type_registration(helper_lines: list[str], register_lines: list[str]) -> None:
     if not codegen_tags['ExportValueType']:
         return
@@ -2488,7 +2567,7 @@ def append_value_type_registration(helper_lines: list[str], register_lines: list
 
     for value_type_tag in sorted_tags:
         body_lines.append('meta->RegisterValueTypeLayout("' + value_type_tag.name + '", { {')
-        for field_type, field_name in get_value_type_layout(value_type_tag):
+        for field_type, field_name in get_resolved_value_type_layout(value_type_tag):
             body_lines.append('    {string_view("' + field_name + '"), string_view("' + field_type + '")},')
         body_lines.append('} });')
         body_lines.append('')
@@ -2522,7 +2601,7 @@ def append_ref_type_registration(helper_lines: list[str], register_lines: list[s
             if not is_stub:
                 body_lines.append('        FO_TRACE_ZONE_NAMED(Script, "' + ref_type_tag.name + '::__Factory");')
 
-                body_lines.append('        struct Wrapped { ' + 'static auto Call() -> ptr<' + ref_type_tag.name + '> ' +
+                body_lines.append('        class Wrapped { public: ' + 'static auto Call() -> ptr<' + ref_type_tag.name + '> ' +
                         '{ return safe_alloc::make_refcounted<' + ref_type_tag.name + '>().release_ownership(); }' + ' };')
                 body_lines.append('        NativeDataCaller::NativeCall<&Wrapped::Call>(call);')
                 body_lines.append('    } },')
@@ -2842,6 +2921,7 @@ def flush_generated_files() -> None:
 def run_codegen() -> None:
     parse_meta_files()
     parse_all_tags()
+    hash_resolved_value_type_layouts()
     run_generic_codegen()
     run_metadata_registration_codegen()
     write_embedded_resources()

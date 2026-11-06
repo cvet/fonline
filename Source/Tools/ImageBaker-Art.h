@@ -34,6 +34,7 @@
 #pragma once
 
 #include "Common.h"
+
 #include "ImageImport.h"
 
 #if FO_IMAGE_ART

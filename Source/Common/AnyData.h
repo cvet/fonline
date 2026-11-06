@@ -60,7 +60,6 @@ public:
     class Value
     {
     public:
-        // ReSharper disable CppNonExplicitConvertingConstructor
         Value(int64_t value) :
             _value(value)
         {
@@ -85,7 +84,6 @@ public:
             _value(safe_alloc::make_unique<Dict>(std::move(value)))
         {
         }
-        // ReSharper restore CppNonExplicitConvertingConstructor
 
         Value() = delete;
         Value(const Value&) = delete;
@@ -102,7 +100,8 @@ public:
         [[nodiscard]] auto AsString() const -> string_view { return std::get<string>(_value); }
         [[nodiscard]] auto AsArray() const -> const Array& { return *std::get<unique_ptr<Array>>(_value); }
         [[nodiscard]] auto AsDict() const -> const Dict& { return *std::get<unique_ptr<Dict>>(_value); }
-        [[nodiscard]] auto Copy() const -> Value;
+
+        auto Copy() const -> Value;
 
     private:
         std::variant<int64_t, float64_t, bool, string, unique_ptr<Array>, unique_ptr<Dict>> _value {};
@@ -122,11 +121,11 @@ public:
         [[nodiscard]] auto operator[](size_t index) const -> const Value& { return _value.at(index); }
         [[nodiscard]] auto Size() const noexcept -> size_t { return _value.size(); }
         [[nodiscard]] auto Empty() const noexcept -> bool { return _value.empty(); }
-        [[nodiscard]] auto Copy() const -> Array;
 
         [[nodiscard]] auto begin() const noexcept { return _value.cbegin(); }
         [[nodiscard]] auto end() const noexcept { return _value.cend(); }
 
+        auto Copy() const -> Array;
         void Reserve(size_t size) noexcept { _value.reserve(size); }
         void EmplaceBack(Value value) noexcept { _value.emplace_back(std::move(value)); }
 
@@ -149,11 +148,11 @@ public:
         [[nodiscard]] auto Size() const noexcept -> size_t { return _value.size(); }
         [[nodiscard]] auto Empty() const noexcept -> bool { return _value.empty(); }
         [[nodiscard]] auto Contains(string_view key) const noexcept -> bool { return _value.count(key) != 0; }
-        [[nodiscard]] auto Copy() const -> Dict;
 
         [[nodiscard]] auto begin() const noexcept { return _value.cbegin(); }
         [[nodiscard]] auto end() const noexcept { return _value.cend(); }
 
+        auto Copy() const -> Dict;
         void Emplace(string key, Value value) noexcept { _value.emplace(std::move(key), std::move(value)); }
         void Assign(const string& key, Value value) noexcept { _value.insert_or_assign(key, std::move(value)); }
         void Erase(const string& key) noexcept { _value.erase(key); }
@@ -172,22 +171,22 @@ public:
         auto operator=(Document&&) noexcept -> Document& = default;
         ~Document() = default;
 
-        [[nodiscard]] auto Copy() const -> Document;
+        auto Copy() const -> Document;
     };
 
-    [[nodiscard]] static auto ValueToString(const Value& value) -> string;
-    [[nodiscard]] static auto ParseValue(const string& str, bool as_dict, bool as_array, ValueType value_type) -> Value;
+    static auto ValueToString(const Value& value) -> string;
+    static auto ParseValue(const string& str, bool as_dict, bool as_array, ValueType value_type) -> Value;
 
 private:
-    [[nodiscard]] static auto ValueToCodedString(const Value& value) -> string;
-    [[nodiscard]] static auto ReadToken(nptr<const char> str, string& result) -> nptr<const char>;
+    static auto ValueToCodedString(const Value& value) -> string;
+    static auto ReadToken(nptr<const char> str, string& result) -> nptr<const char>;
 };
 
 namespace StringEscaping
 {
     void AppendCodeString(string& result, string_view str);
-    [[nodiscard]] auto CodeString(string_view str) -> string;
-    [[nodiscard]] auto DecodeString(string_view str) -> string;
+    auto CodeString(string_view str) -> string;
+    auto DecodeString(string_view str) -> string;
 }
 
 FO_END_NAMESPACE

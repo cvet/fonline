@@ -5,7 +5,7 @@ locale: ru
 document_id: web-debugging
 permalink: /Docs/ru/how-to/platforms/web-debugging.html
 ---
-<!-- docs-translation: {"document_id":"web-debugging","locale":"ru","source_path":"Docs/en/how-to/platforms/web-debugging.md","source_sha256":"ac9a7601e53b44458de39b4d111158f28dd601c03a1a1e6abe355c7ca38d6828"} -->
+<!-- docs-translation: {"document_id":"web-debugging","locale":"ru","source_path":"Docs/en/how-to/platforms/web-debugging.md","source_sha256":"fc3b619b9a4afc905d662b2a5edb5da42aca35460011231929635c372541c51f"} -->
 # Сборка, упаковка и отладка FOnline в браузере
 
 Это принадлежащая Engine инструкция по подготовке закреплённого Emscripten toolchain, сборке и упаковке WebAssembly-клиента, его локальной раздаче для диагностики, подключению к серверу проекта и квалификации браузерного deployment. Она следует текущим BuildTools, package shell, Web runtime, networking, renderer, updater, модели поддержки и проверенным project evidence. Встраивающий проект отвечает за bake контента, серверный профиль, аутентификацию, публичный origin, матрицу браузеров, deployment, мониторинг и решение о выпуске.
@@ -217,7 +217,7 @@ summary; native-thread case отсутствует в single-threaded browser.
 
 ### Persistent data
 
-Runtime создаёт `/PersistentData`, монтирует IDBFS, вызывает `FS.syncfs(true)` и задерживает обычный startup до завершения начальной загрузки из браузера в virtual filesystem. Сейчас callback отмечает готовность даже при ненулевом `err`. Проверенный generic path не доказывает автоматическую обратную синхронизацию после каждого последующего изменения.
+Runtime создаёт `/PersistentData`, монтирует IDBFS, вызывает `FS.syncfs(true)` и задерживает инициализацию приложения до успешной начальной загрузки из браузера в virtual filesystem. Ошибки загрузки и сохранения останавливают Web runtime вместо сообщения о готовности. При смене конфигурационного ресурса после синхронизации ресурсов вызывается `FS.syncfs(false)`; основной цикл ожидает успешного сохранения до перезагрузки страницы для применения ресурсного профиля. Это не подтверждает автоматическую обратную синхронизацию всех остальных изменений virtual filesystem.
 
 Поэтому не обещайте durable saves только на основании mount IDBFS. Проект должен определить, какие данные там находятся, когда выполняется flush записей, поведение quota/eviction, private/incognito mode, schema/version migration, recovery после corruption, удаление пользовательских данных и multi-tab conflict policy. Проверяйте cold reload и browser restart на точном production origin; storage привязан к origin.
 
@@ -293,7 +293,7 @@ Engine build lane намеренно не предоставляет эти brow
 | Configure выбирает не тот compiler | BuildTools platform `web`, путь workspace toolchain, `emsdk_env` и stale build directory |
 | Link падает только на Web | strict undefined/unimplemented syscall output, unsupported native dependency, Web platform guards и exception flags |
 | Package отсутствует | успешные bake/build, точные dev name/config, project git revision, `FO_OUTPUT` и log `package-web-debug` |
-| Package отклоняет ресурсы | current effective config, `Baking.ClientResources`, свежие metadata, отсутствие `NoRes` и loading-image path |
+| Package отклоняет ресурсы | current effective config, `Common.ResourcesPath`, свежие metadata, отсутствие `NoRes` и loading-image path |
 | `index.html` загружается, а wasm/data нет | раздаваемый package directory, status/MIME, HTML fallback, proxy rewrite, compression и cache |
 | Браузер показывает старый код | точный origin/path, добавленный проектом service worker или CDN, entry-point cache, versioned artifact и package hash |
 | WebGL2 context не запускается | наличие browser/WebGL2, GPU/driver/blocklist, software-rendering policy, console и context attributes |

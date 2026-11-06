@@ -43,7 +43,7 @@ FO_BEGIN_NAMESPACE
 class GameProperties : public EntityProperties
 {
 public:
-    static constexpr string_view ENTITY_TYPE_NAME = "Game";
+    static constexpr string_view ENTITY_TYPE_NAME {"Game"};
 
     explicit GameProperties(Properties& props) noexcept :
         EntityProperties(props)
@@ -79,7 +79,7 @@ public:
 class PlayerProperties : public EntityProperties
 {
 public:
-    static constexpr string_view ENTITY_TYPE_NAME = "Player";
+    static constexpr string_view ENTITY_TYPE_NAME {"Player"};
 
     explicit PlayerProperties(Properties& props) noexcept :
         EntityProperties(props)
@@ -100,7 +100,7 @@ public:
 class ItemProperties : public EntityProperties
 {
 public:
-    static constexpr string_view ENTITY_TYPE_NAME = "Item";
+    static constexpr string_view ENTITY_TYPE_NAME {"Item"};
 
     explicit ItemProperties(Properties& props) noexcept :
         EntityProperties(props)
@@ -291,7 +291,7 @@ public:
 class CritterProperties : public EntityProperties
 {
 public:
-    static constexpr string_view ENTITY_TYPE_NAME = "Critter";
+    static constexpr string_view ENTITY_TYPE_NAME {"Critter"};
 
     explicit CritterProperties(Properties& props) noexcept :
         EntityProperties(props)
@@ -403,12 +403,15 @@ public:
     // RGBA color emitted by the critter's client-side light source
     ///@ ExportProperty Client Mutable
     FO_ENTITY_PROPERTY(ucolor, LightColor);
+    // Pixel offset of the critter's map sprite added to its movement and animation offsets; never synchronized
+    ///@ ExportProperty Client Mutable
+    FO_ENTITY_PROPERTY(ipos32, VisualOffset);
 };
 
 class MapProperties : public EntityProperties
 {
 public:
-    static constexpr string_view ENTITY_TYPE_NAME = "Map";
+    static constexpr string_view ENTITY_TYPE_NAME {"Map"};
 
     explicit MapProperties(Properties& props) noexcept :
         EntityProperties(props)
@@ -483,7 +486,7 @@ public:
 class LocationProperties : public EntityProperties
 {
 public:
-    static constexpr string_view ENTITY_TYPE_NAME = "Location";
+    static constexpr string_view ENTITY_TYPE_NAME {"Location"};
 
     explicit LocationProperties(Properties& props) noexcept :
         EntityProperties(props)
@@ -501,4 +504,3 @@ public:
 };
 
 FO_END_NAMESPACE
-

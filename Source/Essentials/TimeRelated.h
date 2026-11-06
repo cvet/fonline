@@ -35,6 +35,7 @@
 
 #include "BasicCore.h"
 #include "Containers.h"
+#include "SafeArithmetics.h"
 #include "StrongType.h"
 
 FO_BEGIN_NAMESPACE
@@ -61,7 +62,6 @@ public:
     ~timespan() = default;
 
     template<typename T, typename U>
-    // ReSharper disable once CppNonExplicitConvertingConstructor
     constexpr timespan(const std::chrono::duration<T, U>& other) noexcept :
         _value {std::chrono::duration_cast<resolution>(other).count()}
     {
@@ -98,12 +98,22 @@ public:
     template<typename T>
     [[nodiscard]] constexpr auto to_ms() const noexcept -> T
     {
-        return static_cast<T>(std::chrono::duration_cast<std::chrono::milliseconds>(value()).count());
+        if constexpr (std::is_floating_point_v<T>) {
+            return std::chrono::duration<T, std::milli> {value()}.count();
+        }
+        else {
+            return static_cast<T>(std::chrono::duration_cast<std::chrono::milliseconds>(value()).count());
+        }
     }
     template<typename T>
     [[nodiscard]] constexpr auto to_sec() const noexcept -> T
     {
-        return static_cast<T>(std::chrono::duration_cast<std::chrono::seconds>(value()).count());
+        if constexpr (std::is_floating_point_v<T>) {
+            return std::chrono::duration<T> {value()}.count();
+        }
+        else {
+            return static_cast<T>(std::chrono::duration_cast<std::chrono::seconds>(value()).count());
+        }
     }
     template<typename T>
     [[nodiscard]] constexpr auto div(const timespan& other) const noexcept -> T
@@ -131,8 +141,8 @@ struct time_desc_t
     int32_t nanosecond {}; // 0..999
 };
 
-auto make_time_desc(timespan time_offset, bool local) -> time_desc_t;
-auto make_time_offset(int32_t year, int32_t month, int32_t day, int32_t hour, int32_t minute, int32_t second, int32_t millisecond, int32_t microsecond, int32_t nanosecond, bool local) -> timespan;
+[[nodiscard]] auto make_time_desc(timespan time_offset, bool local) -> time_desc_t;
+[[nodiscard]] auto make_time_offset(int32_t year, int32_t month, int32_t day, int32_t hour, int32_t minute, int32_t second, int32_t millisecond, int32_t microsecond, int32_t nanosecond, bool local) -> timespan;
 
 // Monotonic steady-clock time point stored as a signed 64-bit nanosecond count; it is not civil wall-clock time
 // value: Nanoseconds from the process-local monotonic steady-clock epoch; this is not civil wall-clock time
@@ -150,7 +160,6 @@ public:
     auto operator=(nanotime&& other) noexcept -> nanotime& = default;
     ~nanotime() = default;
 
-    // ReSharper disable once CppNonExplicitConvertingConstructor
     constexpr nanotime(const steady_time_point& other) noexcept :
         _value {std::chrono::duration_cast<resolution>(other.time_since_epoch()).count()}
     {
@@ -197,7 +206,7 @@ public:
     [[nodiscard]] constexpr auto duration_value() const noexcept -> timespan { return resolution(_value); }
     [[nodiscard]] auto desc(bool local) const -> time_desc_t { return make_time_desc(value() - now().value(), local); }
 
-    static auto now() noexcept -> nanotime { return nanotime(steady_time_point::clock::now()); }
+    [[nodiscard]] static auto now() noexcept -> nanotime { return nanotime(steady_time_point::clock::now()); }
 
     static const nanotime zero;
 
@@ -256,8 +265,8 @@ public:
     [[nodiscard]] constexpr auto operator-(const synctime& other) const noexcept -> timespan { return value() - other.value(); }
     [[nodiscard]] constexpr auto nanoseconds() const noexcept -> underlying_type { return std::chrono::duration_cast<std::chrono::nanoseconds>(value().time_since_epoch()).count(); }
     [[nodiscard]] constexpr auto microseconds() const noexcept -> underlying_type { return std::chrono::duration_cast<std::chrono::microseconds>(value().time_since_epoch()).count(); }
-    [[nodiscard]] constexpr auto milliseconds() const noexcept -> underlying_type { return std::chrono::duration_cast<std::chrono::milliseconds>(value().time_since_epoch()).count(); }
-    [[nodiscard]] constexpr auto seconds() const noexcept -> underlying_type { return std::chrono::duration_cast<std::chrono::seconds>(value().time_since_epoch()).count(); }
+    [[nodiscard]] constexpr auto milliseconds() const noexcept -> underlying_type { return _value; }
+    [[nodiscard]] constexpr auto seconds() const noexcept -> underlying_type { return _value / 1000; }
     [[nodiscard]] constexpr auto value() const noexcept -> steady_time_point { return steady_time_point(resolution(_value)); }
     [[nodiscard]] constexpr auto duration_value() const noexcept -> timespan { return resolution(_value); }
 
@@ -275,34 +284,34 @@ struct std::formatter<FO_NAMESPACE steady_time_point::duration> : formatter<FO_N
     template<typename FormatContext>
     auto format(const FO_NAMESPACE steady_time_point::duration& value, FormatContext& ctx) const
     {
-        FO_NAMESPACE string buf;
+        FO_NAMESPACE string buf {};
 
         if (value < std::chrono::milliseconds {1}) {
-            auto us = std::chrono::duration_cast<std::chrono::microseconds>(value).count() % 1000;
-            auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(value).count() % 1000;
+            auto us {std::chrono::duration_cast<std::chrono::microseconds>(value).count() % 1000};
+            auto ns {std::chrono::duration_cast<std::chrono::nanoseconds>(value).count() % 1000};
             std::format_to(std::back_inserter(buf), "{}.{:03} us", us, ns);
         }
         else if (value < std::chrono::seconds {1}) {
-            auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(value).count() % 1000;
-            auto us = std::chrono::duration_cast<std::chrono::microseconds>(value).count() % 1000;
+            auto ms {std::chrono::duration_cast<std::chrono::milliseconds>(value).count() % 1000};
+            auto us {std::chrono::duration_cast<std::chrono::microseconds>(value).count() % 1000};
             std::format_to(std::back_inserter(buf), "{}.{:03} ms", ms, us);
         }
         else if (value < std::chrono::minutes {1}) {
-            auto sec = std::chrono::duration_cast<std::chrono::seconds>(value).count();
-            auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(value).count() % 1000;
+            auto sec {std::chrono::duration_cast<std::chrono::seconds>(value).count()};
+            auto ms {std::chrono::duration_cast<std::chrono::milliseconds>(value).count() % 1000};
             std::format_to(std::back_inserter(buf), "{}.{:03} sec", sec, ms);
         }
         else if (value < std::chrono::hours {24}) {
-            int64_t hour = std::chrono::duration_cast<std::chrono::hours>(value).count();
-            int32_t min = std::chrono::duration_cast<std::chrono::minutes>(value).count() % 60;
-            auto sec = std::chrono::duration_cast<std::chrono::seconds>(value).count() % 60;
+            int64_t hour {std::chrono::duration_cast<std::chrono::hours>(value).count()};
+            int32_t min {FO_NAMESPACE numeric_cast<int32_t>(std::chrono::duration_cast<std::chrono::minutes>(value).count() % 60)};
+            auto sec {std::chrono::duration_cast<std::chrono::seconds>(value).count() % 60};
             std::format_to(std::back_inserter(buf), "{:02}:{:02}:{:02} sec", hour, min, sec);
         }
         else {
-            int64_t day = std::chrono::duration_cast<std::chrono::hours>(value).count() / 24;
-            int32_t hour = std::chrono::duration_cast<std::chrono::hours>(value).count() % 24;
-            int32_t min = std::chrono::duration_cast<std::chrono::minutes>(value).count() % 60;
-            auto sec = std::chrono::duration_cast<std::chrono::seconds>(value).count() % 60;
+            int64_t day {std::chrono::duration_cast<std::chrono::hours>(value).count() / 24};
+            int32_t hour {FO_NAMESPACE numeric_cast<int32_t>(std::chrono::duration_cast<std::chrono::hours>(value).count() % 24)};
+            int32_t min {FO_NAMESPACE numeric_cast<int32_t>(std::chrono::duration_cast<std::chrono::minutes>(value).count() % 60)};
+            auto sec {std::chrono::duration_cast<std::chrono::seconds>(value).count() % 60};
             std::format_to(std::back_inserter(buf), "{} day{} {:02}:{:02}:{:02} sec", day, day > 1 ? "s" : "", hour, min, sec);
         }
 
@@ -320,7 +329,7 @@ struct std::formatter<FO_NAMESPACE steady_time_point> : formatter<FO_NAMESPACE s
     {
         FO_NAMESPACE string buf;
 
-        auto td = FO_NAMESPACE nanotime(value).desc(true);
+        auto td {FO_NAMESPACE nanotime(value).desc(true)};
         std::format_to(std::back_inserter(buf), "{}-{:02}-{:02} {:02}:{:02}:{:02}", td.year, td.month, td.day, td.hour, td.minute, td.second);
 
         return formatter<FO_NAMESPACE string_view>::format(buf, ctx);
@@ -376,7 +385,7 @@ public:
     void resume() noexcept;
 
 private:
-    nanotime _start_time;
+    nanotime _start_time {};
     timespan _paused_duration {};
     bool _paused {};
 };

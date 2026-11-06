@@ -39,7 +39,7 @@
 
 FO_BEGIN_NAMESPACE
 
-constexpr uint32_t MODEL_BOUNDS_VERSION = 2;
+constexpr uint32_t MODEL_BOUNDS_VERSION {2};
 
 struct ModelBounds3D
 {

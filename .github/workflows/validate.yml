@@ -19,6 +19,8 @@ on:
         default: all
         options:
           - all
+          - unity
+          - wide-coords
           - managed-apple
 
 jobs:
@@ -32,12 +34,21 @@ jobs:
     - uses: actions/checkout@v6
       with:
         fetch-depth: 0
+    - uses: actions/setup-dotnet@v5
+      with:
+        dotnet-version: 10.0.x
+    - name: Check Windows macro inventory generator
+      run: dotnet run --project BuildTools/WinApiUndefGenerator/GeneratorTests.csproj --configuration Release
     - name: Install codegen regression dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y python3-pytest
+        sudo apt-get install -y python3-pytest cmake ninja-build
     - name: Check generated configuration and default arguments
-      run: python3 -m pytest -q BuildTools/tests/test_codegen_default_args.py
+      run: >-
+        python3 -m pytest -q
+        BuildTools/tests/test_codegen_default_args.py
+        BuildTools/tests/test_codegen_value_type_layouts.py
+        BuildTools/tests/test_cmake_map_size_options.py
     - name: Check managed runtime preparation and recovery
       run: >-
         python3 -m pytest -q
@@ -45,6 +56,17 @@ jobs:
         BuildTools/tests/test_managed_runtime_workspace_cache.py
         BuildTools/tests/test_buildtools_prebuilt_managed_runtime.py
         BuildTools/tests/test_managed_runtime_byproducts.py
+    - name: Check resource pipeline and native module regressions
+      run: >-
+        python3 -m pytest -q
+        BuildTools/tests/test_package_resource_usage.py
+        BuildTools/tests/test_package_parallel_resources.py
+        BuildTools/tests/test_package_resource_pack.py
+        BuildTools/tests/test_is_packaged_usage.py
+        BuildTools/tests/test_native_modules.py
+        BuildTools/tests/test_native_source_layout.py
+        BuildTools/tests/test_native_formatting.py
+        BuildTools/tests/test_resource_usage_pipeline_wiring.py
     - run: python3 BuildTools/tests/test_engine_version.py
     - name: Check the exact publication range
       env:
@@ -82,6 +104,10 @@ jobs:
     steps:
     - uses: actions/checkout@v6
     - run: BuildTools/prepare-workspace.sh linux-packages linux
+    - run: python3 BuildTools/check_native_modules.py
+    - run: python3 BuildTools/check_native_source_layout.py
+    - run: python3 BuildTools/check_native_source_layout.py --source-dir Examples
+    - run: python3 BuildTools/check_native_source_layout.py --source-dir BuildTools/validation-project
     - run: python3 BuildTools/buildtools.py format-source
     - run: git diff --exit-code
   temporary-compat:
@@ -339,6 +365,34 @@ jobs:
     defaults:
       run:
         shell: bash
+    steps:
+    - uses: actions/checkout@v6
+    - run: BuildTools/prepare-workspace.sh linux-packages linux
+    - run: BuildTools/validate.sh unit-tests
+  unity:
+    if: ${{github.event_name != 'workflow_dispatch' || !inputs.job || inputs.job == 'all' || inputs.job == 'unity'}}
+    name: Validate unity build
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        shell: bash
+    env:
+      FO_UNITY_BUILD: ON
+      FO_UNITY_BUILD_BATCH_SIZE: '32'
+    steps:
+    - uses: actions/checkout@v6
+    - run: BuildTools/prepare-workspace.sh linux-packages linux
+    - run: python3 -m pytest -q BuildTools/tests/test_unity_build.py
+    - run: BuildTools/validate.sh unit-tests
+  wide-coords:
+    if: ${{github.event_name != 'workflow_dispatch' || !inputs.job || inputs.job == 'all' || inputs.job == 'wide-coords'}}
+    name: Run unit tests with wide map coordinates
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        shell: bash
+    env:
+      FO_MAP_WIDE_COORDS: ON
     steps:
     - uses: actions/checkout@v6
     - run: BuildTools/prepare-workspace.sh linux-packages linux

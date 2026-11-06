@@ -8,7 +8,7 @@ permalink: /Docs/en/how-to/release/backup-and-recovery.html
 
 # Backup and Recovery
 
-This runbook defines the reusable backup, restore, and disaster-recovery boundary for an FOnline server. Use it with [Persistence](../../explanation/persistence/) for storage mechanics, [Release Operations](operations.md) for process control, and the [Engine Upgrade Guide](../migration/engine-upgrade.md) when durable data crosses an Engine or game revision.
+See [storage](../../explanation/persistence/), [process control](operations.md), and [revision upgrades](../migration/engine-upgrade.md).
 
 ## Recovery decision
 
@@ -40,7 +40,7 @@ The Engine owns the database facade, JSON/SQLite/Mongo/Memory backends, asynchro
 - recovery point objective (RPO), recovery time objective (RTO), service dependencies, traffic drain, and restore authority;
 - production credentials, personal-data handling, incident decisions, and destructive-action approval.
 
-The Engine has no database snapshot command, online-backup API, point-in-time recovery controller, migration transaction, traffic-drain endpoint, or restore orchestrator. A project must supply and test those operations without presenting them as built-in Engine behavior.
+The Engine provides backend-consistent database byte snapshots and a native server composition with runtime eligibility checks; see [persistence snapshots](../../explanation/persistence/#backend-consistent-snapshots) and [server snapshots](../../explanation/runtime/server.md). These primitives do not supply an operational backup command, provider backup policy, point-in-time recovery controller, migration transaction, traffic-drain endpoint or restore orchestrator. A project must supply and test those operations.
 
 Treat one recoverable release as a compatible unit: immutable server package, effective configuration and sub-config identity, Engine and game revisions, baked resources, persistent data, recovery oplogs, migration state, and the secrets or key identifiers needed to read them. Never restore data into an arbitrary binary merely because both start.
 
@@ -55,7 +55,7 @@ Treat one recoverable release as a compatible unit: immutable server package, ef
 | `DbSQLite <directory>` | `<directory>/Storage.sqlite` plus active SQLite WAL sidecars | The Engine opens WAL mode with `synchronous=NORMAL`; individual writes autocommit. Do not copy only `Storage.sqlite` while the server is running. Use a provider/SQLite-consistent online backup or stop the server and preserve the complete storage directory. The Engine exposes no online backup or checkpoint command. |
 | `Mongo <URI> <database>` | The named Mongo database in the configured deployment | The URI/provider defines write concern, replication, snapshot, dump, and point-in-time capabilities; the Engine does not override them. Use a provider-native database-consistent method and record its guarantees. |
 
-For JSON and SQLite, the complete trimmed remainder after the provider name is the storage directory. Internal spaces are preserved; the parser does not remove literal quotes. The directory must be nonempty. Mongo still takes exactly a URI and database token, and Memory takes no arguments.
+JSON/SQLite preserve internal directory spaces. See the [connection grammar](../../explanation/persistence/).
 
 JSON records now use ordinary JSON and SQLite records use CBOR. Both require fresh storage; historical BSON-backed stores have no reader or automatic migration. See [storage formats and upgrade boundary](../../explanation/persistence/#storage-formats-and-upgrade-boundary) before selecting or restoring a backup.
 

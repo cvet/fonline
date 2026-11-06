@@ -38,7 +38,7 @@ class BakingPipelineDocumentationTests(unittest.TestCase):
 
         for name, class_name, order in BAKERS:
             header = self._read(f"Source/Tools/{class_name}.h")
-            self.assertIn(f'NAME = "{name}"', header, class_name)
+            self.assertIn(f'NAME {{"{name}"}}', header, class_name)
             self.assertIn(
                 f"GetOrder() const -> int32_t override {{ return {order}; }}",
                 header,

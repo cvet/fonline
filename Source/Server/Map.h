@@ -72,6 +72,7 @@ public:
     [[nodiscard]] auto IsHexMovable(mpos hex) const noexcept -> bool;
     [[nodiscard]] auto IsHexShootable(mpos hex) const noexcept -> bool;
     [[nodiscard]] auto IsHexesMovable(mpos hex, int32_t radius) const -> bool;
+    [[nodiscard]] auto GetMovableHexesInSight(mpos origin, int32_t radius) const -> vector<mpos>;
     [[nodiscard]] auto HasPathfindingObstacle(mpos hex, nptr<const Critter> ignore_cr) const noexcept -> bool;
     [[nodiscard]] auto IsBlockItemOnHex(mpos hex) const noexcept -> bool;
     [[nodiscard]] auto IsTriggerItemOnHex(mpos hex) const noexcept -> bool;
@@ -107,6 +108,7 @@ public:
     [[nodiscard]] auto GetSpectatorPlayersForSend() -> vector<refcount_ptr<Player>>;
     [[nodiscard]] auto GetSpectatorPlayersForSend(ident_t entity_id, mpos hex) -> vector<refcount_ptr<Player>>;
     [[nodiscard]] bool IsSpectatorEntityVisible(ident_t player_id, ident_t entity_id);
+    [[nodiscard]] auto GetSpectatorCritterVisibility(ident_t player_id, ident_t critter_id) -> CritterVisibilityMode;
     [[nodiscard]] auto GetStaticItem(ident_t id) const noexcept -> nptr<StaticItem>;
     [[nodiscard]] auto GetStaticItemOnHex(mpos hex, hstring pid) const noexcept -> nptr<StaticItem>;
     [[nodiscard]] auto GetStaticItems() const noexcept -> const_span<ptr<StaticItem>>;
@@ -115,11 +117,14 @@ public:
     [[nodiscard]] auto GetStaticItemsInRadius(mpos hex, int32_t radius, hstring pid) const -> vector<ptr<StaticItem>>;
     [[nodiscard]] auto GetTriggerStaticItemsOnHex(mpos hex) const noexcept -> const_span<ptr<StaticItem>>;
     [[nodiscard]] auto HasStaticItem(ident_t static_item_id) const noexcept -> bool;
+    [[nodiscard]] auto IsRuntimeStaticItem(ident_t static_item_id) const noexcept -> bool;
     [[nodiscard]] auto HasRemovedStaticItems() const noexcept -> bool;
     [[nodiscard]] auto IsOutsideArea(mpos hex) const noexcept -> bool;
 
     void SetLocation(nptr<Location> loc) noexcept;
     auto RemoveStaticItem(ident_t static_item_id) -> bool;
+    void AddRuntimeStaticItems(span<refcount_ptr<StaticItem>> static_items);
+    void RemoveRuntimeStaticItems(const unordered_set<ident_t>& static_item_ids);
     void RefreshRemovedStaticItems();
     void VerifyStaticItemRemovalsOnlyGrow(const_span<ident_t> new_ids) const;
     void AddCritter(ptr<Critter> cr);
@@ -127,7 +132,8 @@ public:
     void RefreshCritterPlayerState(ptr<Critter> cr);
     void AddSpectatorPlayer(ptr<Player> player);
     void RemoveSpectatorPlayer(ptr<Player> player);
-    void SetSpectatorArea(ptr<Player> player, mpos hex, int32_t radius);
+    void SetSpectatorArea(ptr<Player> player, mpos hex, int32_t radius, nptr<Entity> context = nullptr);
+    void RefreshSpectatorVisibility(ptr<Player> player);
     void RefreshAreaSpectators(ptr<const Critter> cr, bool removed = false);
     void RefreshAreaSpectators(ptr<const Item> item, bool removed = false);
     void AddItem(ptr<Item> item, mpos hex, nptr<Critter> dropper);
@@ -159,8 +165,12 @@ private:
     {
         mpos Hex {};
         int32_t Radius {};
+        refcount_nptr<Entity> Context {};
         unordered_set<ident_t> VisibleEntities {};
+        unordered_map<ident_t, CritterVisibilityMode> CritterModes {};
+        bool RefreshPending {};
     };
+
     struct Field
     {
         bool HasCritter {};
@@ -176,18 +186,27 @@ private:
         bool ManualBlockFull {};
     };
 
-    static auto CreateHexField(msize map_size, string_view grid_type) -> unique_ptr<TwoDimensionalGrid<Field, mpos, msize>>;
-
+    auto CreateHexField(string_view grid_type) -> unique_ptr<TwoDimensionalGrid<Field, mpos, msize>>;
     auto GetStaticField(mpos hex) const noexcept -> const StaticMap::Field&;
     void RebuildStaticOverlay();
+    void RefreshStaticFieldOverride(mpos hex);
+    void RebuildVisibleStaticItems();
 
     void SetMultihexCritter(ptr<Critter> cr, bool set);
     void RecacheHexFlags(ptr<Field> field);
     auto IsMapItemContextChanged(ptr<const Item> item, ident_t map_id, mpos hex) const -> bool;
+    auto GetSpectatorAreas() -> vector<pair<refcount_ptr<Player>, shared_ptr<SpectatorArea>>>;
+    auto HasSpectatorContextCover(const SpectatorArea& area) const -> bool;
+    auto GetSpectatorCritterVisibility(const SpectatorArea& area, ptr<const Critter> cr) const -> CritterVisibilityMode;
+    auto IsSpectatorItemVisible(const SpectatorArea& area, ptr<const Item> item) const -> bool;
+    void ScheduleSpectatorRefresh(ptr<Player> player, shared_ptr<SpectatorArea> area);
+    void RefreshSpectatorVisibility(ptr<Player> player, shared_ptr<SpectatorArea> area);
+    void RefreshSpectatorCritter(ptr<Player> player, shared_ptr<SpectatorArea> area, ptr<const Critter> cr, bool removed, bool send_movement);
+    void RefreshSpectatorItem(ptr<Player> player, shared_ptr<SpectatorArea> area, ptr<const Item> item, bool removed);
 
     ptr<const ProtoMap> _protoMap;
     ptr<StaticMap> _staticMap;
-    msize _mapSize;
+    msize _mapSize {};
     unique_ptr<TwoDimensionalGrid<Field, mpos, msize>> _hexField;
     vector<ptr<Critter>> _critters {};
     unordered_map<ident_t, ptr<Critter>> _crittersMap {};
@@ -195,20 +214,15 @@ private:
     vector<ptr<Critter>> _nonPlayerCritters {};
     vector<ptr<Item>> _items {};
     unordered_map<ident_t, ptr<Item>> _itemsMap {};
-    // Per-instance view over the proto-shared StaticMap. All three stay empty while the map keeps
-    // every baked static item, and the accessors then read the shared data with no extra indirection
     unordered_set<ident_t> _removedStaticItems {};
     unordered_map<mpos, StaticMap::Field> _staticFieldOverrides {};
     vector<ptr<StaticItem>> _visibleStaticItems {};
+    unique_nptr<StaticMap> _runtimeStatics {};
     nptr<Location> _mapLocation {};
-    // Declared before _spectatorPlayers so it outlives the data it guards
     shared_mutex _spectatorLock {};
-    // _spectatorLock protects lock-free snapshots and mutations outside entity cover.
-    // Entity-covered getters and teardown use FO_TSA_NO_ANALYSIS
     vector<ptr<Player>> _spectatorPlayers FO_TSA_GUARDED_BY(_spectatorLock) {};
-    unordered_map<ident_t, SpectatorArea> _spectatorAreas FO_TSA_GUARDED_BY(_spectatorLock) {};
+    unordered_map<ident_t, shared_ptr<SpectatorArea>> _spectatorAreas FO_TSA_GUARDED_BY(_spectatorLock) {};
     EntityLock _ownedLock {};
 };
 
 FO_END_NAMESPACE
-

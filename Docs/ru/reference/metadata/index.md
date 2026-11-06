@@ -5,7 +5,7 @@ locale: ru
 document_id: generated-api-metadata
 permalink: /Docs/ru/reference/metadata/
 ---
-<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"c0ecdbb3a63fc63f5d2d68adffb7631cc4bf024b96c6ffcf79bb8d06389adc2b"} -->
+<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"9bbe7498d597cfc5f6d668380bd4a0ecf9a1aaafbf399490d4b4bfc99bbfafdf"} -->
 # Сгенерированный API и метаданные
 
 Этот документ описывает потоки генерации кода и регистрации метаданных движка. Используйте его при изменении generated source, metadata annotations, определений свойств и видимых скриптам API contracts.
@@ -220,7 +220,7 @@ Generated files являются build artifacts. Документируйте �
 Стадия создаёт обычный и принудительный command target генерации кода и добавляет `CodeGeneration` в `FO_GEN_DEPENDENCIES`.
 
 `InternalConfig.gen.inc` резервирует фиксированную движком patch area размером
-20000 bytes. Подключаемый проект не может менять её размер; перед записью
+40000 bytes. Подключаемый проект не может менять её размер; перед записью
 bootstrap config `package.py` определяет точную ёмкость по markers в generated
 binary.
 
@@ -950,14 +950,14 @@ EntityHolder фильтруется по стороне до поиска тип
 Изменение token layout любой metadata section меняет file layout и требует bump
 `METADATA_FILE_VERSION`. Metadata version не заменяет эту защиту: она хеширует
 code-generation tags, поэтому изменение tokens reader/writer может не изменить
-hash. Текущая file version равна `2`; более старый layout отклоняется с verdict
+hash. Текущая file version равна `6`; более старый layout отклоняется с verdict
 о необходимости rebake до начала decoding sections.
 
 `MakeMetadataHeader()` и `ReadMetadataHeader()` владеют форматом в `MetadataRegistration.cpp`. `RegisterDynamicMetadata()` читает header до любой section и передаёт значение в `EngineMetadata::RegisterMetadataVersion()`. `ReadMetadataVersion()` читает только header для проверок updater и startup server; runtime получает зарегистрированное значение через `EngineMetadata::GetMetadataVersion()`. Значение вычисляется, а не настраивается. `Network.ForceMetadataVersion` существует только для имитации mismatch в tests.
 
 Invariant обеспечивают четыре слоя:
 
-1. Одна bake создаёт `Baking.ServerResources` и `Baking.ClientResources`, а deployment обновляет их вместе.
+1. Один bake создаёт серверные пакеты в `Common.ResourcesPath` и клиентскую раздачу в дочернем `Client`; deployment обновляет их вместе.
 2. `UpdaterBackend::LoadFromClientResources` читает version из распространяемых client packs и завершает startup с `UpdaterException`, если она не совпадает с загруженной server version.
 3. После sync `Updater::FinishResourcesUpdate` повторно читает local packs и возвращает `UpdaterResult::MetadataMismatch` до создания `ClientEngine`, если они всё ещё отличаются от server.
 4. Client handshake отправляет свою version, а server возвращает собственную version и mismatch verdict как последнюю race-проверку. См. [Client updater](../../explanation/runtime/client-updater.md#handshake).
@@ -972,7 +972,7 @@ targets, tag changes и отказ от старого file layout), `Test_Prope
 `Test_ClientServerIntegration.cpp`
 (`ServerReportsMetadataMismatchInHandshake`).
 
-Правила Proto используют явные действия `Rename`, `Remove` или `Transform`. Rename/Remove остаются правилами lookup без контекста; `Remove` не принимает замену. Transform задаёт имя-источник у владельца, поддерживающего прототипы, и получает исходный документ БД до поиска прототипа. У источника допускается одно действие; неизвестные действия, повтор источника и прежний токен удаления отклоняются. Правила Property и Proto Rename/Transform создают записи метаданных из пяти частей; Remove у обоих видов содержит четыре. См. [контракт миграции документов Managed](../../how-to/scripting/managed-csharp.md#миграция-свойств-документа).
+Правила Proto используют явные действия `Rename`, `Remove` или `Transform`. Rename/Remove остаются правилами lookup без контекста; `Remove` не принимает замену. Transform задаёт имя-источник у владельца, поддерживающего прототипы, и получает исходный документ БД до поиска прототипа. У источника допускается одно действие; неизвестные действия, повтор источника и прежний токен удаления отклоняются. Legacy source-идентификатор с whitespace записывается в двойных кавычках, например `Proto Modifier Rename "Local knowledge" LocalKnowledge`; quoted source также работает в `Transform` и `Remove`. Голая последовательность слов и replacement с whitespace отклоняются. Правила Property и Proto Rename/Transform создают записи метаданных из пяти частей; Remove у обоих видов содержит четыре. См. [контракт миграции документов Managed](../../how-to/scripting/managed-csharp.md#миграция-свойств-документа).
 
 Migration rules являются generic remaps `(kind, extra-info, target → replacement)` с transitive resolution и задаются как `///@ MigrationRule <Kind> ...`. Помимо `Proto` / `Property`, применяемых при lookup proto и resolution property name, kind `Enum` используется `PropertiesSerializer`, когда сохранённое **имя** enum value больше не разрешается при load. Вместо `EnumResolveException` rule сопоставляет старое имя текущему значению как для scalar enum properties, так и для enum keys словаря. Удалённые или переименованные enum values не делают старые saves непригодными.
 
@@ -1107,3 +1107,8 @@ python BuildTools/docs_public_api.py --check
 13. Запустите tests API/reference и команды `python BuildTools/docs_api.py --check`, `python BuildTools/docs_reference.py --check`; при изменении metadata регенерируйте оба layers.
 14. Запустите focused test и `--check` каждого затронутого domain generator; для cross-domain change выполните `docs_contract_diff.py --enforce` и регенерируйте public contract index.
 15. После изменения public Markdown, paths, diagrams или screenshots по порядку регенерируйте snippets, localization status, site data, AI evaluation/delivery, затем проверьте built Jekyll artifact и browser audit.
+
+Запись секции Setting содержит ровно два токена: полное имя настройки и тип.
+Значения принадлежат полным binary/resource profiles и не применяются при runtime
+регистрации metadata. Трёхколоночные записи версии 5 требуют rebake. MetadataBaker
+по-прежнему проверяет полноту авторских значений.

@@ -98,7 +98,7 @@ auto RunClientRuntimeHostPass(const optional<ClientRuntimeHostResult>& runtime_r
 
 void CaptureClientRuntimeResultStrings(ClientRuntimeResult& result, string& runtime_path, string& compatibility_version)
 {
-    auto capture_text = [](nptr<const char> text, string& storage) -> nptr<const char> {
+    auto capture_text {[](nptr<const char> text, string& storage) -> nptr<const char> {
         if (!text) {
             storage.clear();
             return nullptr;
@@ -111,7 +111,7 @@ void CaptureClientRuntimeResultStrings(ClientRuntimeResult& result, string& runt
         }
 
         return storage.c_str();
-    };
+    }};
 
     result.RequestedRuntimePath = capture_text(result.RequestedRuntimePath, runtime_path).get();
     result.RequestedCompatibilityVersion = capture_text(result.RequestedCompatibilityVersion, compatibility_version).get();

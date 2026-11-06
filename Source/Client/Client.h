@@ -395,7 +395,7 @@ protected:
         ipos16 RayHexOffset {};
     };
 
-    [[nodiscard]] auto IsDirectPlanPlaying(ptr<CritterHexView> cr) const -> bool;
+    auto IsDirectPlanPlaying(ptr<CritterHexView> cr) const -> bool;
     void SteerDirectMove(ptr<CritterHexView> cr, mdir dir, uint16_t speed);
     void ProcessDirectMove();
     void PlanDirectMove(ptr<CritterHexView> cr, string_view reason, uint16_t speed, bool extends_run);
@@ -472,6 +472,7 @@ protected:
     void OnSetCritterModelName(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetCritterHideSprite(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetCritterElevation(ptr<Entity> entity, ptr<const Property> prop);
+    void OnSetCritterVisualOffset(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetCritterDrawFlatten(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetCritterLight(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetItemFlags(ptr<Entity> entity, ptr<const Property> prop);
@@ -549,4 +550,3 @@ protected:
 };
 
 FO_END_NAMESPACE
-

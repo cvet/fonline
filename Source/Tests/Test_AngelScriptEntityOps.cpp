@@ -47,12 +47,12 @@ FO_BEGIN_NAMESPACE
 
 namespace
 {
-    static auto MakeSettings() -> GlobalSettings
+    static auto AngelScriptEntityOpsMakeSettings() -> GlobalSettings
     {
-        auto settings = GlobalSettings(false);
+        auto settings {GlobalSettings(false)};
 
-        settings.ApplyDefaultSettings();
-        settings.ApplyAutoSettings();
+        settings.SetupDefaultSettings();
+        settings.ApplyAutoSettings({});
 
         BakerTests::ApplySelfContainedServerSettings(settings);
         BakerTests::OverrideSetting(settings.DataBase.CustomCollections, vector<string> {"test_collection:Int"});
@@ -91,11 +91,11 @@ namespace
         });
     }
 
-    static auto MakeScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
+    static auto AngelScriptEntityOpsMakeScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
     {
         BakerServerEngine compiler_engine {metadata_resources};
 
-        auto script_source = string(R"(
+        auto script_source {string(R"(
 
 namespace EntityOps
 {
@@ -1917,14 +1917,14 @@ namespace EntityOps
         return 0;
     }
 }
-)";
+)"};
 
         return BakerTests::CompileInlineScripts(&compiler_engine, "EntityOpsScripts",
             {
                 {"Scripts/EntityOps.fos", script_source},
             },
             [](string_view message) {
-                string message_str = string(message);
+                string message_str {string(message)};
 
                 if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
                     throw ScriptSystemException(message_str);
@@ -1932,29 +1932,29 @@ namespace EntityOps
             });
     }
 
-    static auto MakeResources() -> FileSystem
+    static auto AngelScriptEntityOpsMakeResources() -> FileSystem
     {
-        auto metadata_blob = MakeEntityOpsMetadataBlob();
+        auto metadata_blob {MakeEntityOpsMetadataBlob()};
 
-        auto compiler_resources_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("EntityOpsCompilerResources");
+        auto compiler_resources_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("EntityOpsCompilerResources")};
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
 
-        FileSystem compiler_resources;
+        FileSystem compiler_resources {};
         compiler_resources.AddCustomSource(std::move(compiler_resources_source));
 
         BakerServerEngine proto_engine {compiler_resources};
-        hstring critter_type = proto_engine.Hashes.to_hashed_string("Critter");
-        hstring item_type = proto_engine.Hashes.to_hashed_string("Item");
-        hstring coverage_proto_type = proto_engine.Hashes.to_hashed_string("CoverageProtoTarget");
-        hstring coverage_fixed_type = proto_engine.Hashes.to_hashed_string("CoverageFixed");
-        auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestCritter");
-        auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
-        auto item2_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem2");
-        auto coverage_proto_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCustomEntity>(proto_engine, coverage_proto_type, "CoverageProtoOne");
-        auto coverage_fixed_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCustomEntity>(proto_engine, coverage_fixed_type, "CoverageFixedOne");
-        auto script_blob = MakeScriptBinary(compiler_resources);
+        hstring critter_type {proto_engine.Hashes.to_hashed_string("Critter")};
+        hstring item_type {proto_engine.Hashes.to_hashed_string("Item")};
+        hstring coverage_proto_type {proto_engine.Hashes.to_hashed_string("CoverageProtoTarget")};
+        hstring coverage_fixed_type {proto_engine.Hashes.to_hashed_string("CoverageFixed")};
+        auto critter_blob {BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestCritter")};
+        auto item_blob {BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem")};
+        auto item2_blob {BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem2")};
+        auto coverage_proto_blob {BakerTests::MakeSingleProtoResourceBlob<ProtoCustomEntity>(proto_engine, coverage_proto_type, "CoverageProtoOne")};
+        auto coverage_fixed_blob {BakerTests::MakeSingleProtoResourceBlob<ProtoCustomEntity>(proto_engine, coverage_fixed_type, "CoverageFixedOne")};
+        auto script_blob {AngelScriptEntityOpsMakeScriptBinary(compiler_resources)};
 
-        auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("EntityOpsRuntimeResources");
+        auto runtime_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("EntityOpsRuntimeResources")};
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
         runtime_source->AddFile("EntityOpsCritter.fopro-bin-server", critter_blob);
         runtime_source->AddFile("EntityOpsItem.fopro-bin-server", item_blob);
@@ -1963,7 +1963,7 @@ namespace EntityOps
         runtime_source->AddFile("EntityOpsCoverageFixed.fopro-bin-server", coverage_fixed_blob);
         runtime_source->AddFile("EntityOps.fos-bin-server", script_blob);
 
-        FileSystem resources;
+        FileSystem resources {};
         resources.AddCustomSource(std::move(runtime_source));
 
         return resources;
@@ -1990,7 +1990,7 @@ namespace EntityOps
 )"},
             },
             [](string_view message) {
-                string message_str = string(message);
+                string message_str {string(message)};
 
                 if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
                     throw ScriptSystemException(message_str);
@@ -2000,29 +2000,29 @@ namespace EntityOps
 
     static auto MakeConstGlobalMismatchResources() -> FileSystem
     {
-        auto metadata_blob = MakeEntityOpsMetadataBlob();
+        auto metadata_blob {MakeEntityOpsMetadataBlob()};
 
-        auto compiler_resources_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("EntityOpsConstGlobalMismatchCompilerResources");
+        auto compiler_resources_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("EntityOpsConstGlobalMismatchCompilerResources")};
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
 
-        FileSystem compiler_resources;
+        FileSystem compiler_resources {};
         compiler_resources.AddCustomSource(std::move(compiler_resources_source));
 
-        auto script_blob = MakeConstGlobalMismatchScriptBinary(compiler_resources);
+        auto script_blob {MakeConstGlobalMismatchScriptBinary(compiler_resources)};
 
-        auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("EntityOpsConstGlobalMismatchRuntimeResources");
+        auto runtime_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("EntityOpsConstGlobalMismatchRuntimeResources")};
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
         runtime_source->AddFile("EntityOpsConstGlobalMismatch.fos-bin-server", script_blob);
 
-        FileSystem resources;
+        FileSystem resources {};
         resources.AddCustomSource(std::move(runtime_source));
 
         return resources;
     }
 
-    static auto WaitForStart(ptr<ServerEngine> server) -> string
+    static auto AngelScriptEntityOpsWaitForStart(ptr<ServerEngine> server) -> string
     {
-        for (int32_t i = 0; i < 6000; i++) {
+        for (int32_t i {0}; i < 6000; i++) {
             if (server->IsStarted()) {
                 return {};
             }
@@ -2036,64 +2036,68 @@ namespace EntityOps
         return "ServerEngine startup timed out";
     }
 
-    static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
+    static auto AngelScriptEntityOpsMakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
     {
-        return safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources());
+        return safe_alloc::make_refcounted<ServerEngine>(&settings, AngelScriptEntityOpsMakeResources());
     }
 }
 
 #define MAKE_SERVER() \
-    auto settings = MakeSettings(); \
-    refcount_ptr<ServerEngine> server = MakeServerEngine(settings); \
-    auto shutdown = scope_exit([&server]() noexcept { \
+    auto settings {AngelScriptEntityOpsMakeSettings()}; \
+    refcount_ptr<ServerEngine> server {AngelScriptEntityOpsMakeServerEngine(settings)}; \
+    auto shutdown {scope_exit([&server]() noexcept { \
         safe_call([&server] { \
             if (server->IsStarted()) { \
                 server->Shutdown(); \
             } \
         }); \
-    }); \
-    string startup_error = WaitForStart(server); \
+    })}; \
+    string startup_error {AngelScriptEntityOpsWaitForStart(server)}; \
     INFO(startup_error); \
     REQUIRE(startup_error.empty()); \
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}})); \
-    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); }); \
-    auto get_func = [&server](string_view name) { return server->Hashes.to_hashed_string(name); }
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })}; \
+    auto get_func \
+    { \
+        [&server](string_view name) { return server->Hashes.to_hashed_string(name); } \
+    }
 
 #define RUN_SCRIPT_FUNC(func_name) \
-    auto func = server->FindFunc<int32_t>(get_func("EntityOps::" func_name)); \
+    auto func {server->FindFunc<int32_t>(get_func("EntityOps::" func_name))}; \
     REQUIRE(func); \
     REQUIRE(func.Call()); \
     CHECK(func.GetResult() == 0)
 
 #define RUN_SCRIPT_FUNC_THROWS(func_name, expected_message) \
-    auto func = server->FindFunc<void>(get_func("EntityOps::" func_name)); \
+    auto func {server->FindFunc<void>(get_func("EntityOps::" func_name))}; \
     REQUIRE(func); \
-    auto prev_callback = exceptions::get_callback(); \
-    string message; \
+    auto prev_callback {exceptions::get_callback()}; \
+    string message {}; \
     exceptions::set_callback([&](string_view msg, const stack_trace::catched_data&, bool) { message = string(msg); }); \
-    auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); }); \
+    auto restore_callback {scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); })}; \
     CHECK_FALSE(func.Call()); \
     INFO(message); \
     CHECK(message.find(expected_message) != string::npos)
 
 TEST_CASE("AngelScriptEntityConstGlobalStartupFailures")
 {
-    auto settings = MakeSettings();
-    string message;
-    std::mutex message_locker;
+    auto settings {AngelScriptEntityOpsMakeSettings()};
+    string message {};
+    std::mutex message_locker {};
 
-    auto prev_callback = exceptions::get_callback();
+    auto prev_callback {exceptions::get_callback()};
     exceptions::set_callback([&](string_view msg, const stack_trace::catched_data&, bool) {
-        std::scoped_lock locker(message_locker);
+        std::scoped_lock locker {message_locker};
 
         message += msg;
         message += '\n';
     });
-    auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); });
 
-    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeConstGlobalMismatchResources());
-    bool server_shutdown = false;
-    auto shutdown = scope_exit([&server, &server_shutdown]() noexcept {
+    auto restore_callback {scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); })};
+
+    auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, MakeConstGlobalMismatchResources())};
+    bool server_shutdown {false};
+    auto shutdown {scope_exit([&server, &server_shutdown]() noexcept {
         safe_call([&server, &server_shutdown] {
             if (server_shutdown) {
                 return;
@@ -2102,9 +2106,9 @@ TEST_CASE("AngelScriptEntityConstGlobalStartupFailures")
                 server->Shutdown();
             }
         });
-    });
+    })};
 
-    string startup_error = WaitForStart(server.get());
+    string startup_error {AngelScriptEntityOpsWaitForStart(server.get())};
     INFO(startup_error);
     CHECK_FALSE(startup_error.empty());
     CHECK(server->IsStartingError());
@@ -2113,9 +2117,9 @@ TEST_CASE("AngelScriptEntityConstGlobalStartupFailures")
     server->Shutdown();
     server_shutdown = true;
 
-    string message_snapshot;
+    string message_snapshot {};
     {
-        std::scoped_lock locker(message_locker);
+        std::scoped_lock locker {message_locker};
         message_snapshot = message;
     }
 
@@ -2199,45 +2203,45 @@ TEST_CASE("ScriptEntityArgumentPromotion")
 {
     MAKE_SERVER();
 
-    nptr<const ProtoItem> item_proto = server->GetProtoItem(get_func("TestItem"));
+    nptr<const ProtoItem> item_proto {server->GetProtoItem(get_func("TestItem"))};
     REQUIRE(item_proto);
 
     // A handle slot is non-const by construction, while the proto lookup only hands out a const view
-    ptr<Entity> proto_entity = make_ptr(const_cast<ProtoItem*>(std::addressof(*item_proto)));
+    ptr<Entity> proto_entity {make_ptr(const_cast<ProtoItem*>(std::addressof(*item_proto)))};
 
     SECTION("NarrowsAScalarArgumentToTheDeclaredType")
     {
-        nptr<Entity> base_entity = proto_entity;
+        nptr<Entity> base_entity {proto_entity};
         NativeDataProvider::StorageEntryType slot_storage {};
-        ptr<void> slot = NativeDataProvider::NormalizeArg(base_entity, slot_storage);
+        ptr<void> slot {NativeDataProvider::NormalizeArg(base_entity, slot_storage)};
 
-        nptr<ProtoItem> temp;
-        auto narrowed = NativeDataCaller::ConvertArg<ptr<ProtoItem>, decltype(temp)>(slot, NativeDataProvider::NATIVE_DATA_ACCESSOR, temp);
+        nptr<ProtoItem> temp {};
+        auto narrowed {NativeDataCaller::ConvertArg<ptr<ProtoItem>, decltype(temp)>(slot, NativeDataProvider::NATIVE_DATA_ACCESSOR, temp)};
 
         CHECK(narrowed == proto_entity);
     }
 
     SECTION("RejectsAScalarArgumentOfAnotherEntityType")
     {
-        nptr<Entity> base_entity = proto_entity;
+        nptr<Entity> base_entity {proto_entity};
         NativeDataProvider::StorageEntryType slot_storage {};
-        ptr<void> slot = NativeDataProvider::NormalizeArg(base_entity, slot_storage);
+        ptr<void> slot {NativeDataProvider::NormalizeArg(base_entity, slot_storage)};
 
-        nptr<ProtoCritter> temp;
+        nptr<ProtoCritter> temp {};
 
         CHECK_THROWS_AS((NativeDataCaller::ConvertArg<ptr<ProtoCritter>, decltype(temp)>(slot, NativeDataProvider::NATIVE_DATA_ACCESSOR, temp)), ScriptException);
     }
 
     SECTION("NarrowsADictValueToTheDeclaredType")
     {
-        map<hstring, nptr<Entity>> source;
+        map<hstring, nptr<Entity>> source {};
         source.emplace(get_func("entry"), proto_entity);
 
         NativeDataProvider::StorageEntryType storage {};
-        ptr<void> data = NativeDataProvider::NormalizeArg(source, storage);
+        ptr<void> data {NativeDataProvider::NormalizeArg(source, storage)};
 
-        optional<map<hstring, nptr<ProtoItem>>> temp;
-        auto narrowed = NativeDataCaller::ConvertArg<map<hstring, nptr<ProtoItem>>, decltype(temp)>(data, NativeDataProvider::NATIVE_DATA_ACCESSOR, temp);
+        optional<map<hstring, nptr<ProtoItem>>> temp {};
+        auto narrowed {NativeDataCaller::ConvertArg<map<hstring, nptr<ProtoItem>>, decltype(temp)>(data, NativeDataProvider::NATIVE_DATA_ACCESSOR, temp)};
 
         REQUIRE(narrowed.size() == 1);
         CHECK(narrowed.begin()->second == proto_entity);
@@ -2245,27 +2249,27 @@ TEST_CASE("ScriptEntityArgumentPromotion")
 
     SECTION("RejectsADictValueOfAnotherEntityType")
     {
-        map<hstring, nptr<Entity>> source;
+        map<hstring, nptr<Entity>> source {};
         source.emplace(get_func("entry"), proto_entity);
 
         NativeDataProvider::StorageEntryType storage {};
-        ptr<void> data = NativeDataProvider::NormalizeArg(source, storage);
+        ptr<void> data {NativeDataProvider::NormalizeArg(source, storage)};
 
-        optional<map<hstring, nptr<ProtoCritter>>> temp;
+        optional<map<hstring, nptr<ProtoCritter>>> temp {};
 
         CHECK_THROWS_AS((NativeDataCaller::ConvertArg<map<hstring, nptr<ProtoCritter>>, decltype(temp)>(data, NativeDataProvider::NATIVE_DATA_ACCESSOR, temp)), ScriptException);
     }
 
     SECTION("KeepsTheBaseValueTypeAsIs")
     {
-        map<hstring, nptr<Entity>> source;
+        map<hstring, nptr<Entity>> source {};
         source.emplace(get_func("entry"), proto_entity);
 
         NativeDataProvider::StorageEntryType storage {};
-        ptr<void> data = NativeDataProvider::NormalizeArg(source, storage);
+        ptr<void> data {NativeDataProvider::NormalizeArg(source, storage)};
 
-        optional<map<hstring, nptr<Entity>>> temp;
-        auto narrowed = NativeDataCaller::ConvertArg<map<hstring, nptr<Entity>>, decltype(temp)>(data, NativeDataProvider::NATIVE_DATA_ACCESSOR, temp);
+        optional<map<hstring, nptr<Entity>>> temp {};
+        auto narrowed {NativeDataCaller::ConvertArg<map<hstring, nptr<Entity>>, decltype(temp)>(data, NativeDataProvider::NATIVE_DATA_ACCESSOR, temp)};
 
         REQUIRE(narrowed.size() == 1);
         CHECK(narrowed.begin()->second == proto_entity);

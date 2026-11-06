@@ -134,6 +134,9 @@ Continue with the [canonical reference](../../en/reference/prototype-format/prop
 <a id="entry-prototype-format-property-critter-visibilitymode-42263efa59"></a>
 - [`entry-prototype-format-property-critter-visibilitymode-42263efa59`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-visibilitymode-42263efa59)
 
+<a id="entry-prototype-format-property-critter-visualoffset-b378e97f37"></a>
+- [`entry-prototype-format-property-critter-visualoffset-b378e97f37`](../../en/reference/prototype-format/properties.md#entry-prototype-format-property-critter-visualoffset-b378e97f37)
+
 ## `Item` properties
 
 Continue with the [canonical reference](../../en/reference/prototype-format/properties.md).

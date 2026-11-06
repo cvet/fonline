@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/lifecycle-and-concurrency.html
 ---
 
 # Жизненный цикл и конкурентность скриптов
-<!-- docs-translation: {"document_id":"script-lifecycle-concurrency","locale":"ru","source_path":"Docs/en/how-to/scripting/lifecycle-and-concurrency.md","source_sha256":"694e68cad5e93d24c532b13a54f81b43ee526780fdc9a825961fb99ce8de771c"} -->
+<!-- docs-translation: {"document_id":"script-lifecycle-concurrency","locale":"ru","source_path":"Docs/en/how-to/scripting/lifecycle-and-concurrency.md","source_sha256":"0fee6c129f783d2b7ddb2f69dc8214106a77155ec4ef857ccfb056085f40dd9b"} -->
 > Документация движка. Это руководство описывает переиспользуемое поведение lifecycle и concurrency, общее для AngelScript и Managed C#, а затем явно называет правила каждого языка. Модули проекта, gameplay policies и проектные synchronization helpers принадлежат подключающей игре.
 
 ## Назначение
@@ -183,6 +183,12 @@ void ApplyImmediateRule(Critter critter)
 Явно отписывайтесь, когда поведение должно прекратиться до уничтожения владельца, при замене callback или когда долгоживущий global owner должен освободить проектный объект. Не ведите второй глобальный реестр проекта только ради отписки обычных entity callbacks при destruction: он дублирует владение lifetime движка и создаёт дополнительный источник stale handles.
 
 Event dispatch может запускать пользовательские callbacks, изменяющие подписки, поэтому движок обходит snapshot callback. Не рассчитывайте, что подписка, добавленная во время dispatch, будет вызвана в том же dispatch.
+
+### Завершение time event
+
+Time event остаётся зарегистрированным, пока выполняется его callback, в том числе во время AngelScript `Yield` и managed `await`. Запись приостановлена для dispatcher: следующий запуск того же события не может пересечься с текущим вызовом. `CountTimeEvent`, `RepeatTimeEvent`, `SetTimeEventData` и `StopTimeEvent` по-прежнему обращаются к ней по существующей identity. Overloads `CountTimeEvent` по callback и ID принимают `bool excludeExecuting = false`: по умолчанию считаются все подходящие зарегистрированные записи; `true` считает только ожидающие запуска, исключая выполняющийся callback во время приостановки и ожидания финализации. Флаг только фильтрует подсчёт; регистрация, изменение, отмена и планирование повторов не меняются.
+
+Именно завершение скриптового вызова, а не возврат его первого native execution scope, применяет изменения `TimeEventContext` и определяет возможность повтора. Следующий интервал отсчитывается от frame, в котором backend наблюдает окончательное завершение на engine pump, и использует актуальную длительность повтора. Task с асинхронным планированием продолжений может быть обработан в более позднем frame; повтор до завершения исключён. Серверная финализация вновь получает блокировку владельца и сохраняет это наблюдаемое время завершения. Одноразовое событие видно до завершения; вызов с ошибкой без явного `TimeEventContext.Repeat` удаляет событие. Явный `Repeat`, как и прежде, сохраняется при ошибке; `Stop` имеет приоритет при любом исходе. Остановка ожидающего события исключает будущие запуски, не прерывая уже начатое продолжение. Уничтожение сущности, явная очистка и shutdown не позволяют позднему завершению восстановить запись.
 
 ### Преобразование свойства и реакция после записи
 
@@ -384,6 +390,8 @@ Managed C# входит в те же независимые от backend кон�
 Не используйте `Game.OnFinish` только для повторения этих действий владельцев. Используйте его для функционального project teardown: сброса project service, завершения external session или отмены работы, которая принадлежит внешнему относительно обычного entity lifetime владельцу.
 
 Script expression temporaries, возвращаемые object handles, delegates, arrays и dictionaries принадлежат runtime согласно зарегистрированным behaviours AngelScript. Unsafe-reference expressions могут отложить очистку receiver и arguments до безопасной точки выражения; native/script call bridges удерживают скопированный результат и освобождают заменённые объекты и объекты exception path. Проектные скрипты не должны добавлять ручные reference-count или shutdown registries для компенсации этих деталей. Сохранившийся object graph указывает на отсутствующий owner release или GC-enumeration contract в типе-владельце.
+
+`ScriptFunc` записывает handle результата в собственный nullable slot отдельно от нормализованных аргументов. `GetResult()` восстанавливает объявленный тип, создавая non-nullable pointer при чтении. Результат — borrow без cover. AngelScript удерживает cached reference до замены/cleanup через тот же slot; move переносит cleanup. Managed wrappers сохраняют прежний lifetime без дополнительной native-ссылки.
 
 Suspended continuation может пережить gameplay assumptions, при которых началась. После resumption destroyed handle следует считать невалидным, даже если local variable остаётся non-null на уровне языка скриптов; обычная защита entity access должна отклонить destroyed access. Когда destruction является нормальным исходом, предпочитайте явное разрешение и nullable narrowing.
 

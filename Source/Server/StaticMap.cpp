@@ -32,6 +32,7 @@
 //
 
 #include "StaticMap.h"
+
 #include "Critter.h"
 #include "Item.h"
 #include "Settings.h"
@@ -40,7 +41,7 @@ FO_BEGIN_NAMESPACE
 
 StaticMap::StaticMap(msize map_size, string_view grid_type) :
     _mapSize {map_size},
-    _hexField {CreateHexField(map_size, grid_type)}
+    _hexField {CreateHexField(grid_type)}
 {
 }
 
@@ -58,7 +59,7 @@ auto StaticMap::GetField(mpos hex) const noexcept -> const Field&
 
 auto StaticMap::GetStaticItem(ident_t static_item_id) const noexcept -> nptr<StaticItem>
 {
-    if (auto it = _staticItemsById.find(static_item_id); it != _staticItemsById.end()) {
+    if (auto it {_staticItemsById.find(static_item_id)}; it != _staticItemsById.end()) {
         return it->second;
     }
 
@@ -97,28 +98,38 @@ auto StaticMap::GetChildItemBillets() const noexcept -> const_span<ItemBillet>
 
 void StaticMap::ForEachItemHex(ident_t static_item_id, const function<void(mpos)>& callback) const
 {
-    auto it = _staticItemsById.find(static_item_id);
+    auto it {_staticItemsById.find(static_item_id)};
     FO_STRONG_ASSERT(it != _staticItemsById.end(), "Static item id is missing from the baked map", static_item_id);
 
     ForEachItemHex(it->second, callback);
 }
 
-auto StaticMap::BuildFieldWithout(mpos hex, const unordered_set<ident_t>& removed_ids) const -> Field
+auto StaticMap::BuildFieldWithout(mpos hex, const unordered_set<ident_t>& removed_ids) -> Field
 {
-    const auto& shared_field = _hexField->GetCellForReading(hex);
-    Field field;
+    auto shared_field {_hexField->GetCellForWriting(hex)};
+    Field field {};
 
     // Seeded from the baked scroll block, which owns no item and would otherwise be lost here
-    field.ScrollBlocked = shared_field.ScrollBlocked;
-    field.MoveBlocked = shared_field.ScrollBlocked;
+    field.ScrollBlocked = shared_field->ScrollBlocked;
+    field.MoveBlocked = shared_field->ScrollBlocked;
 
-    for (ptr<StaticItem> static_item : shared_field.StaticItems) {
+    for (ptr<StaticItem> static_item : shared_field->StaticItems) {
         if (removed_ids.count(static_item->GetId()) == 0) {
             ApplyItemToField(static_item, make_ptr(&field));
         }
     }
 
     return field;
+}
+
+// Adds this map's items on a hex to another field, which takes over their blocking and triggers
+void StaticMap::MergeFieldInto(mpos hex, ptr<Field> field)
+{
+    auto own_field {_hexField->GetCellForWriting(hex)};
+
+    for (ptr<StaticItem> static_item : own_field->StaticItems) {
+        ApplyItemToField(static_item, field);
+    }
 }
 
 void StaticMap::ReserveCritters(size_t critter_count)
@@ -152,7 +163,7 @@ void StaticMap::AddStaticItem(ident_t item_id, ptr<StaticItem> item)
     _staticItemsById.emplace(item_id, item);
 
     ForEachItemHex(item, [this, item](mpos item_hex) {
-        auto field = _hexField->GetCellForWriting(item_hex);
+        auto field {_hexField->GetCellForWriting(item_hex)};
         ApplyItemToField(item, field);
     });
 }
@@ -169,7 +180,7 @@ void StaticMap::AddChildItemBillet(ident_t item_id, ptr<StaticItem> item)
 
 void StaticMap::MarkScrollBlocked(mpos hex)
 {
-    auto field = _hexField->GetCellForWriting(hex);
+    auto field {_hexField->GetCellForWriting(hex)};
 
     field->ScrollBlocked = true;
     field->MoveBlocked = true;
@@ -184,19 +195,51 @@ void StaticMap::ShrinkToFit()
     _staticItems.shrink_to_fit();
 }
 
-auto StaticMap::CreateHexField(msize map_size, string_view grid_type) -> unique_ptr<TwoDimensionalGrid<Field, mpos, msize>>
+void StaticMap::RemoveStaticItems(const unordered_set<ident_t>& static_item_ids)
 {
-    if (grid_type == "Static") {
-        return safe_alloc::make_unique<StaticTwoDimensionalGrid<Field, mpos, msize>>(map_size);
-    }
-    if (grid_type == "Chunked") {
-        return safe_alloc::make_unique<ChunkedTwoDimensionalGrid<Field, mpos, msize, GameSettings::SERVER_MAP_CHUNK_SIDE>>(map_size);
-    }
-    if (grid_type == "Dynamic") {
-        return safe_alloc::make_unique<DynamicTwoDimensionalGrid<Field, mpos, msize>>(map_size);
+    unordered_set<mpos> dirty_hexes {};
+
+    for (ident_t static_item_id : static_item_ids) {
+        auto it {_staticItemsById.find(static_item_id)};
+        FO_VERIFY_AND_THROW(it != _staticItemsById.end(), "Static item to remove is missing from the static map", static_item_id);
+
+        ForEachItemHex(it->second, [&dirty_hexes](mpos item_hex) { dirty_hexes.emplace(item_hex); });
     }
 
-    throw SettingsException("Unknown server map grid type; expected Static, Chunked or Dynamic", "Server.ProtoMapGridType", grid_type);
+    // Fields are rebuilt while the removed items are still owned, since a field holds plain pointers to them
+    for (mpos hex : dirty_hexes) {
+        Field field {BuildFieldWithout(hex, static_item_ids)};
+
+        if (field.StaticItems.empty() && !field.ScrollBlocked) {
+            _hexField->ClearArea(hex, msize {1, 1});
+        }
+        else {
+            *_hexField->GetCellForWriting(hex) = std::move(field);
+        }
+    }
+
+    std::erase_if(_staticItems, [&static_item_ids](ptr<StaticItem> item) { return static_item_ids.count(item->GetId()) != 0; });
+
+    for (ident_t static_item_id : static_item_ids) {
+        _staticItemsById.erase(static_item_id);
+    }
+
+    std::erase_if(_ownedItemBillets, [&static_item_ids](const OwnedItemBillet& billet) { return static_item_ids.count(billet.first) != 0; });
+}
+
+auto StaticMap::CreateHexField(string_view grid_type) -> unique_ptr<TwoDimensionalGrid<Field, mpos, msize>>
+{
+    if (grid_type == "Static") {
+        return safe_alloc::make_unique<StaticTwoDimensionalGrid<Field, mpos, msize>>(_mapSize);
+    }
+    if (grid_type == "Chunked") {
+        return safe_alloc::make_unique<ChunkedTwoDimensionalGrid<Field, mpos, msize, GameSettings::SERVER_MAP_CHUNK_SIDE>>(_mapSize);
+    }
+    if (grid_type == "Dynamic") {
+        return safe_alloc::make_unique<DynamicTwoDimensionalGrid<Field, mpos, msize>>(_mapSize);
+    }
+
+    throw SettingsException("Unknown server map grid type; expected Static, Chunked or Dynamic", SettingNames::Server_ProtoMapGridType, grid_type);
 }
 
 void StaticMap::ApplyItemToField(ptr<StaticItem> item, ptr<Field> field)
@@ -224,7 +267,7 @@ void StaticMap::ApplyItemToField(ptr<StaticItem> item, ptr<Field> field)
 
 void StaticMap::ForEachItemHex(ptr<const StaticItem> item, const function<void(mpos)>& callback) const
 {
-    mpos hex = item->GetHex();
+    mpos hex {item->GetHex()};
     callback(hex);
 
     if (item->IsNonEmptyMultihexLines()) {

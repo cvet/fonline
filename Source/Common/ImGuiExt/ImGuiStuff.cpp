@@ -32,6 +32,7 @@
 //
 
 #include "ImGuiStuff.h"
+
 #include "EngineBase.h"
 
 FO_USING_NAMESPACE();
@@ -46,8 +47,8 @@ static auto ImGuiAlloc(size_t sz, void* user_data) -> void*
 {
     ignore_unused(user_data);
 
-    constexpr safe_allocator<uint8_t> allocator;
-    ptr<uint8_t> bytes = allocator.allocate(sz);
+    constexpr safe_allocator<uint8_t> allocator {};
+    ptr<uint8_t> bytes {allocator.allocate(sz)};
     return bytes.get();
 }
 
@@ -55,13 +56,13 @@ static void ImGuiFree(void* raw_mem, void* user_data)
 {
     ignore_unused(user_data);
 
-    auto bytes = cast_from_void<uint8_t*>(raw_mem);
+    auto bytes {cast_from_void<uint8_t*>(raw_mem)};
 
     if (!bytes) {
         return;
     }
 
-    constexpr safe_allocator<uint8_t> allocator;
+    constexpr safe_allocator<uint8_t> allocator {};
     allocator.deallocate(bytes.get(), 0);
 }
 
@@ -69,7 +70,7 @@ static void ImGuiLogError(ImGuiContext* ctx, void* user_data, const char* msg) n
 {
     ignore_unused(user_data);
 
-    const ImGuiWindow* window = ctx != nullptr ? ctx->CurrentWindow : nullptr;
+    const ImGuiWindow* window {ctx != nullptr ? ctx->CurrentWindow : nullptr};
     logging::write(logging::type::error, "ImGui error in window '{}': {}", window != nullptr ? window->Name : "(none)", msg != nullptr ? msg : "(no message)");
 }
 

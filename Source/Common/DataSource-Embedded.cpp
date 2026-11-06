@@ -73,8 +73,8 @@ private:
 
 struct EmbeddedZipMemStream
 {
-    span<const volatile uint8_t> Buf;
-    uint32_t Pos;
+    span<const volatile uint8_t> Buf {};
+    uint32_t Pos {};
 };
 
 EmbeddedFile::EmbeddedFile()
@@ -83,12 +83,12 @@ EmbeddedFile::EmbeddedFile()
 
     scoped_lock locker {_zipHandleLocker};
 
-    zlib_filefunc_def ffunc;
+    zlib_filefunc_def ffunc {};
 
     static_assert(sizeof(EMBEDDED_RESOURCES) > 100);
-    bool default_array = true;
+    bool default_array {true};
 
-    for (size_t i = 0; i < sizeof(EMBEDDED_RESOURCES) && default_array; i++) {
+    for (size_t i {0}; i < sizeof(EMBEDDED_RESOURCES) && default_array; i++) {
         if (EMBEDDED_RESOURCES[i] != numeric_cast<uint8_t>((i + 42) % 200)) {
             default_array = false;
         }
@@ -102,44 +102,50 @@ EmbeddedFile::EmbeddedFile()
     ffunc.zopen_file = [](voidpf, const char*, int32_t) -> voidpf {
         array<uint8_t, sizeof(uint32_t)> embedded_size_bytes {};
 
-        for (size_t i = 0; i < embedded_size_bytes.size(); i++) {
+        for (size_t i {0}; i < embedded_size_bytes.size(); i++) {
             embedded_size_bytes[i] = EMBEDDED_RESOURCES[i];
         }
 
-        uint32_t embedded_size = 0;
+        uint32_t embedded_size {0};
 
-        auto embedded_size_target = make_ptr(&embedded_size).reinterpret_as<uint8_t>();
+        auto embedded_size_target {make_ptr(&embedded_size).reinterpret_as<uint8_t>()};
         memory::copy(embedded_size_target, embedded_size_bytes.data(), embedded_size_bytes.size());
 
-        auto mem_stream = safe_alloc::make_unique<EmbeddedZipMemStream>(span<const volatile uint8_t> {EMBEDDED_RESOURCES + sizeof(uint32_t), numeric_cast<size_t>(embedded_size)}, 0);
+        auto mem_stream {safe_alloc::make_unique<EmbeddedZipMemStream>(span<const volatile uint8_t> {EMBEDDED_RESOURCES + sizeof(uint32_t), numeric_cast<size_t>(embedded_size)}, 0)};
 
         return mem_stream.release().void_cast();
     };
+
     ffunc.zread_file = [](voidpf, voidpf stream, void* buf, uLong size) -> uLong {
-        auto mem_stream = cast_from_void<EmbeddedZipMemStream*>(stream);
+        auto mem_stream {cast_from_void<EmbeddedZipMemStream*>(stream)};
         FO_VERIFY_AND_THROW(mem_stream, "Embedded zip read callback received a null memory stream");
-        auto out_buf = cast_from_void<uint8_t*>(buf);
+        auto out_buf {cast_from_void<uint8_t*>(buf)};
 
         if (size == 0) {
             return 0;
         }
 
         FO_VERIFY_AND_THROW(out_buf, "Embedded zip read callback received a null output buffer");
-        for (size_t i = 0; i < size; i++) {
+
+        for (size_t i {0}; i < size; i++) {
             out_buf[i] = mem_stream->Buf[mem_stream->Pos + i];
         }
+
         mem_stream->Pos += numeric_cast<uint32_t>(size);
         return size;
     };
+
     ffunc.zwrite_file = [](voidpf, voidpf, const void*, uLong) -> uLong { return 0; };
     ffunc.ztell_file = [](voidpf, voidpf stream) -> long {
-        auto mem_stream = cast_from_void<const EmbeddedZipMemStream*>(stream);
+        auto mem_stream {cast_from_void<const EmbeddedZipMemStream*>(stream)};
         FO_VERIFY_AND_THROW(mem_stream, "Embedded zip tell callback received a null memory stream");
         return numeric_cast<long>(mem_stream->Pos);
     };
+
     ffunc.zseek_file = [](voidpf, voidpf stream, uLong offset, int32_t origin) -> long {
-        auto mem_stream = cast_from_void<EmbeddedZipMemStream*>(stream);
+        auto mem_stream {cast_from_void<EmbeddedZipMemStream*>(stream)};
         FO_VERIFY_AND_THROW(mem_stream, "Embedded zip seek callback received a null memory stream");
+
         switch (origin) {
         case ZLIB_FILEFUNC_SEEK_SET:
             mem_stream->Pos = numeric_cast<uint32_t>(offset);
@@ -153,39 +159,44 @@ EmbeddedFile::EmbeddedFile()
         default:
             return -1;
         }
+
         return 0;
     };
+
     ffunc.zclose_file = [](voidpf, voidpf stream) -> int32_t {
-        auto mem_stream = cast_from_void<EmbeddedZipMemStream*>(stream);
+        auto mem_stream {cast_from_void<EmbeddedZipMemStream*>(stream)};
         FO_VERIFY_AND_THROW(mem_stream, "Embedded zip close callback received a null memory stream");
 
-        auto owned_mem_stream = adopt_unique_ptr(mem_stream);
+        auto owned_mem_stream {adopt_unique_ptr(mem_stream)};
         ignore_unused(owned_mem_stream);
         return 0;
     };
+
     ffunc.zerror_file = [](voidpf, voidpf stream) -> int32_t {
         if (!stream) {
             return 1;
         }
+
         return 0;
     };
+
     ffunc.opaque = nullptr;
 
-    auto zip_handle = make_nptr(unzOpen2("", &ffunc));
-    auto close_on_fail = scope_fail([&zip_handle]() noexcept {
+    auto zip_handle {make_nptr(unzOpen2("", &ffunc))};
+    auto close_on_fail {scope_fail([&zip_handle]() noexcept {
         if (zip_handle) {
             unzClose(zip_handle.get());
             zip_handle = nullptr;
         }
-    });
+    })};
 
     if (!zip_handle) {
         throw DataSourceException("Can't read embedded ZIP archive", EMBEDDED_PACK_NAME);
     }
 
-    unz_global_info gi;
+    unz_global_info gi {};
 
-    int32_t global_info_result = unzGetGlobalInfo(zip_handle.get(), &gi);
+    int32_t global_info_result {unzGetGlobalInfo(zip_handle.get(), &gi)};
 
     if (global_info_result != UNZ_OK) {
         throw DataSourceException("Read embedded file tree failed (unzGetGlobalInfo)", EMBEDDED_PACK_NAME, global_info_result);
@@ -194,19 +205,19 @@ EmbeddedFile::EmbeddedFile()
         throw DataSourceException("Embedded ZIP archive has no entries", EMBEDDED_PACK_NAME);
     }
 
-    EmbeddedFileInfo zip_info;
-    unz_file_pos pos;
-    unz_file_info info;
-    char name_buf[4096];
+    EmbeddedFileInfo zip_info {};
+    unz_file_pos pos {};
+    unz_file_info info {};
+    char name_buf[4096] {};
 
-    for (uLong i = 0; i < gi.number_entry; i++) {
-        int32_t file_pos_result = unzGetFilePos(zip_handle.get(), &pos);
+    for (uLong i {0}; i < gi.number_entry; i++) {
+        int32_t file_pos_result {unzGetFilePos(zip_handle.get(), &pos)};
 
         if (file_pos_result != UNZ_OK) {
             throw DataSourceException("Read embedded file tree failed (unzGetFilePos)", EMBEDDED_PACK_NAME, i, file_pos_result);
         }
 
-        int32_t file_info_result = unzGetCurrentFileInfo(zip_handle.get(), &info, name_buf, sizeof(name_buf), nullptr, 0, nullptr, 0);
+        int32_t file_info_result {unzGetCurrentFileInfo(zip_handle.get(), &info, name_buf, sizeof(name_buf), nullptr, 0, nullptr, 0)};
 
         if (file_info_result != UNZ_OK) {
             throw DataSourceException("Read embedded file tree failed (unzGetCurrentFileInfo)", EMBEDDED_PACK_NAME, i, file_info_result);
@@ -216,7 +227,7 @@ EmbeddedFile::EmbeddedFile()
         }
 
         if ((info.external_fa & 0x10) == 0) { // Not folder
-            string name = strex(name_buf).normalize_path_slashes();
+            string name {static_cast<string&&>(strex(name_buf).normalize_path_slashes())};
 
             if (info.uncompressed_size > numeric_cast<uLong>(std::numeric_limits<int32_t>::max())) {
                 throw DataSourceException("Embedded ZIP entry exceeds the supported decoded size", EMBEDDED_PACK_NAME, name, info.uncompressed_size);
@@ -229,7 +240,7 @@ EmbeddedFile::EmbeddedFile()
         }
 
         if (i + 1 < gi.number_entry) {
-            int32_t next_result = unzGoToNextFile(zip_handle.get());
+            int32_t next_result {unzGoToNextFile(zip_handle.get())};
 
             if (next_result != UNZ_OK) {
                 throw DataSourceException("Read embedded file tree failed (unzGoToNextFile)", EMBEDDED_PACK_NAME, i, next_result);
@@ -257,7 +268,7 @@ auto EmbeddedFile::IsFileExists(string_view path) const -> bool
         return false;
     }
 
-    auto it = _filesTree.find(path);
+    auto it {_filesTree.find(path)};
 
     if (it == _filesTree.end()) {
         return false;
@@ -274,13 +285,13 @@ auto EmbeddedFile::GetFileInfo(string_view path, size_t& size, uint64_t& write_t
         return false;
     }
 
-    auto it = _filesTree.find(path);
+    auto it {_filesTree.find(path)};
 
     if (it == _filesTree.end()) {
         return false;
     }
 
-    const auto& info = it->second;
+    const auto& info {it->second};
     write_time = _writeTime;
     size = info.UncompressedSize;
     return true;
@@ -296,7 +307,7 @@ auto EmbeddedFile::GetIndexSnapshot() const -> optional<vector<IndexedFile>>
         return std::nullopt;
     }
 
-    vector<IndexedFile> files;
+    vector<IndexedFile> files {};
     files.reserve(_filesTree.size());
 
     for (const auto& [path, info] : _filesTree) {
@@ -316,30 +327,30 @@ auto EmbeddedFile::OpenFile(string_view path, size_t& size, uint64_t& write_time
         return nullptr;
     }
 
-    auto it = _filesTree.find(path);
+    auto it {_filesTree.find(path)};
 
     if (it == _filesTree.end()) {
         return nullptr;
     }
 
-    const auto& info = it->second;
-    unz_file_pos pos = info.Pos;
+    const auto& info {it->second};
+    unz_file_pos pos {info.Pos};
 
-    int32_t file_pos_result = unzGoToFilePos(_zipHandle.get(), &pos);
+    int32_t file_pos_result {unzGoToFilePos(_zipHandle.get(), &pos)};
 
     if (file_pos_result != UNZ_OK) {
         throw DataSourceException("Can't read embedded file (unzGoToFilePos)", EMBEDDED_PACK_NAME, path, file_pos_result);
     }
 
-    int32_t open_result = unzOpenCurrentFile(_zipHandle.get());
+    int32_t open_result {unzOpenCurrentFile(_zipHandle.get())};
 
     if (open_result != UNZ_OK) {
         throw DataSourceException("Can't read embedded file (unzOpenCurrentFile)", EMBEDDED_PACK_NAME, path, open_result);
     }
 
-    auto buf = safe_alloc::make_unique_arr<uint8_t>(numeric_cast<size_t>(info.UncompressedSize));
-    int32_t read = unzReadCurrentFile(_zipHandle.get(), buf.get(), info.UncompressedSize);
-    int32_t close_result = unzCloseCurrentFile(_zipHandle.get());
+    auto buf {safe_alloc::make_unique_arr<uint8_t>(numeric_cast<size_t>(info.UncompressedSize))};
+    int32_t read {unzReadCurrentFile(_zipHandle.get(), buf.get(), info.UncompressedSize)};
+    int32_t close_result {unzCloseCurrentFile(_zipHandle.get())};
 
     if (read != info.UncompressedSize) {
         throw DataSourceException("Can't read embedded file (unzReadCurrentFile)", EMBEDDED_PACK_NAME, path, info.UncompressedSize, read, close_result);

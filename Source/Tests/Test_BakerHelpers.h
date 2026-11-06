@@ -35,6 +35,7 @@
 
 #include "Common.h"
 
+#include "AngelScriptBaker.h"
 #include "AngelScriptScripting.h"
 #include "Baker.h"
 #include "DataSerialization.h"
@@ -50,7 +51,7 @@ FO_BEGIN_NAMESPACE
 namespace BakerTests
 {
     template<typename T>
-    [[nodiscard]] inline auto FixedSettingForOverride(const T& setting) noexcept -> ptr<T>
+    inline auto FixedSettingForOverride(const T& setting) noexcept -> ptr<T>
     {
         return const_cast<T*>(&setting);
     }
@@ -59,14 +60,14 @@ namespace BakerTests
     inline void OverrideSetting(T& setting, U&& value)
     {
         using setting_type = std::remove_cvref_t<T>;
-        auto mutable_setting = FixedSettingForOverride(setting);
+        auto mutable_setting {FixedSettingForOverride(setting)};
         *mutable_setting = setting_type {std::forward<U>(value)};
     }
 
     // Every connection runs the secure channel, in-process ones included, so a test server and its clients share
     // this pair; the secret half protects nothing and must never be reused outside tests
-    constexpr string_view TEST_CHANNEL_SECRET_KEY = "8b2f91afe7a12c2391799af9094131fa3874021ae219dca8425ae7fecdc806df";
-    constexpr string_view TEST_CHANNEL_PUBLIC_KEY = "cdd0e74747f2a569b9da28c9750b2d9ec6ffad05dc65329e434b702712a2d15f";
+    constexpr string_view TEST_CHANNEL_SECRET_KEY {"8b2f91afe7a12c2391799af9094131fa3874021ae219dca8425ae7fecdc806df"};
+    constexpr string_view TEST_CHANNEL_PUBLIC_KEY {"cdd0e74747f2a569b9da28c9750b2d9ec6ffad05dc65329e434b702712a2d15f"};
 
     inline void ApplyTestChannelKeys(GlobalSettings& settings)
     {
@@ -83,30 +84,34 @@ namespace BakerTests
     // Isolate persisted client/mapper settings and history from the embedding project's cache
     inline auto GetTestCacheDir() -> string
     {
-        struct TestCacheDir
+        class TestCacheDir
         {
+        public:
             TestCacheDir() :
-                Path {fs::path_to_string(std::filesystem::temp_directory_path() / std::format("fo_unit_test_cache_{}", platform::get_current_process_id_str()))}
+                _path {fs::path_to_string(std::filesystem::temp_directory_path() / std::format("fo_unit_test_cache_{}", platform::get_current_process_id_str()))}
             {
             }
             TestCacheDir(const TestCacheDir&) = delete;
             TestCacheDir(TestCacheDir&&) noexcept = delete;
             auto operator=(const TestCacheDir&) = delete;
             auto operator=(TestCacheDir&&) noexcept = delete;
-            ~TestCacheDir() { ignore_unused(fs::remove_dir_tree(Path)); }
+            ~TestCacheDir() { ignore_unused(fs::remove_dir_tree(_path)); }
 
-            string Path;
+            [[nodiscard]] auto GetPath() const noexcept -> const string& { return _path; }
+
+        private:
+            string _path;
         };
 
-        static TestCacheDir dir;
-        return dir.Path;
+        static TestCacheDir dir {};
+        return dir.GetPath();
     }
 
     inline void ApplySelfContainedClientSettings(GlobalSettings& settings)
     {
         ApplyTestChannelKeys(settings);
         OverrideSetting(settings.Baking.BakeOutput, string {});
-        OverrideSetting(settings.Baking.CacheResources, GetTestCacheDir());
+        OverrideSetting(settings.Common.CachePath, GetTestCacheDir());
         OverrideSetting(settings.View.ScreenWidth, 320);
         OverrideSetting(settings.View.ScreenHeight, 200);
         OverrideSetting(settings.Audio.DisableAudio, true);
@@ -160,10 +165,58 @@ namespace BakerTests
         OverrideSetting(settings.AngelScript.MutableGlobalsAllowedNamespaces, GetTestMutableGlobalsAllowedNamespaces());
     }
 
+    template<typename T>
+    inline auto FormatConfigBakerScalarValue(const T& value) -> string
+    {
+        return strex("{}", value);
+    }
+
+    template<typename T>
+    inline auto FormatConfigBakerSettingValue(const vector<T>& value) -> string
+    {
+        string result {};
+
+        for (T entry : value) {
+            if (!result.empty()) {
+                result += " ";
+            }
+
+            result += FormatConfigBakerScalarValue(entry);
+        }
+
+        return result;
+    }
+
+    template<typename T>
+    inline auto FormatConfigBakerSettingValue(const T& value) -> string
+    {
+        return FormatConfigBakerScalarValue(value);
+    }
+
+    template<typename T>
+    inline void AppendConfigBakerSetting(string& config, string_view name, const T& value)
+    {
+        config += strex("{} = {}\n", name, FormatConfigBakerSettingValue(value));
+    }
+
+    // Writes every declared setting, so a root config fixture carries the native reference values instead of
+    // inheriting them from defaults
+    inline auto MakeCompleteConfigBakerConfig() -> string
+    {
+        string config {};
+
+#define SETTING(type, group, name, ...) AppendConfigBakerSetting(config, SettingNames::group##_##name, type {__VA_ARGS__})
+#define SETTING_GROUP(group, ...)
+#define SETTING_GROUP_END(group)
+#include "Settings.inc"
+
+        return config;
+    }
+
     inline auto MakeScriptCompilerSettings() -> GlobalSettings
     {
-        auto settings = GlobalSettings(false);
-        settings.ApplyDefaultSettings();
+        auto settings {GlobalSettings(false)};
+        settings.SetupDefaultSettings();
         OverrideSetting(settings.AngelScript.MutableGlobalsAllowedNamespaces, GetTestMutableGlobalsAllowedNamespaces());
         return settings;
     }
@@ -177,7 +230,7 @@ namespace BakerTests
         };
     }
 
-    constexpr string_view TEST_METADATA_VERSION = "testdatalayout00";
+    constexpr string_view TEST_METADATA_VERSION {"testdatalayout00"};
 
     // Writes the `Metadata.fometa-*` wire format, so a test can declare dynamic metadata without hand-packing
     // bytes
@@ -185,8 +238,8 @@ namespace BakerTests
     {
         // Registration reads the fixed header first, so a test blob has to carry one even when the test only
         // cares about the sections behind it
-        vector<uint8_t> metadata = MakeMetadataHeader(metadata_version);
-        auto writer = data_writer(metadata);
+        vector<uint8_t> metadata {MakeMetadataHeader(metadata_version)};
+        data_writer writer {metadata};
 
         writer.write<uint16_t>(numeric_cast<uint16_t>(sections.size()));
 
@@ -221,24 +274,24 @@ namespace BakerTests
 
     inline auto MakeMemoryDataSourceFileBufferHolder(unique_arr_ptr<uint8_t>&& buf) -> unique_del_ptr<const uint8_t>
     {
-        auto released_buf = make_ptr<const uint8_t*>(buf.release());
+        auto released_buf {make_ptr<const uint8_t*>(buf.release())};
         return make_unique_del_ptr(released_buf, CleanupMemoryDataSourceFileBuffer);
     }
 
     template<typename ProtoType>
     inline auto MakeSingleProtoResourceBlob(EngineMetadata& meta, hstring type_name, string_view proto_name) -> vector<uint8_t>
     {
-        vector<uint8_t> props_data;
-        set<hstring> str_hashes;
+        vector<uint8_t> props_data {};
+        set<hstring> str_hashes {};
 
-        auto registrar = meta.GetPropertyRegistrar(type_name);
+        auto registrar {meta.GetPropertyRegistrar(type_name)};
         REQUIRE(static_cast<bool>(registrar));
 
         ProtoType proto {meta.Hashes.to_hashed_string(proto_name), registrar};
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
-        vector<uint8_t> protos_data;
-        auto writer = data_writer(protos_data);
+        vector<uint8_t> protos_data {};
+        data_writer writer {protos_data};
 
         writer.write<uint32_t>(uint32_t {0});
         ignore_unused(str_hashes);
@@ -249,6 +302,7 @@ namespace BakerTests
         writer.write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
         writer.write_string_bytes(proto_name);
         writer.write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
+
         if (!props_data.empty()) {
             writer.write_bytes({props_data.data(), props_data.size()});
         }
@@ -261,8 +315,8 @@ namespace BakerTests
     template<typename ProtoType>
     inline auto MakeMultiProtoResourceBlob(EngineMetadata& meta, hstring type_name, const vector<pair<string, function<void(ProtoType&)>>>& protos) -> vector<uint8_t>
     {
-        vector<uint8_t> protos_data;
-        auto writer = data_writer(protos_data);
+        vector<uint8_t> protos_data {};
+        data_writer writer {protos_data};
 
         writer.write<uint32_t>(uint32_t {0});
         writer.write<uint32_t>(uint32_t {1});
@@ -277,8 +331,8 @@ namespace BakerTests
                 configure(proto);
             }
 
-            vector<uint8_t> props_data;
-            set<hstring> str_hashes;
+            vector<uint8_t> props_data {};
+            set<hstring> str_hashes {};
             proto.GetProperties()->StoreAllData(props_data, str_hashes);
             ignore_unused(str_hashes);
 
@@ -293,29 +347,31 @@ namespace BakerTests
 
     // A baked sprite with several frames in one direction. Some runtime paths cast the loaded sprite to
     // SpriteSheet, which a single-frame sprite never becomes, so they need this instead
-    inline auto MakeMultiFrameBakedSprite(uint16_t frame_count, uint16_t width = 2, uint16_t height = 2, uint16_t ticks = 100, ipos16 frame_motion = {}) -> vector<uint8_t>
+    inline auto MakeMultiFrameBakedSprite(uint16_t frame_count, uint16_t width = 2, uint16_t height = 2, uint32_t ticks = 100, ipos16 frame_motion = {}) -> vector<uint8_t>
     {
-        vector<uint8_t> sprite_data;
-        auto writer = data_writer(sprite_data);
+        vector<uint8_t> sprite_data {};
+        data_writer writer {sprite_data};
 
         writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
         writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);
-        writer.write<uint16_t>(frame_count);
-        writer.write<uint16_t>(ticks);
         writer.write<uint8_t>(uint8_t {1}); // Directions
+        writer.write<uint16_t>(frame_count);
+        writer.write<uint32_t>(ticks);
 
-        auto pixel_count = numeric_cast<size_t>(width) * height;
+        auto pixel_count {numeric_cast<size_t>(width) * height};
 
-        for (uint16_t frame = 0; frame < frame_count; frame++) {
-            writer.write<uint8_t>(uint8_t {0}); // Not a sprite reference
-            writer.write<int16_t>(int16_t {0}); // Offset x
-            writer.write<int16_t>(int16_t {0}); // Offset y
-            writer.write<uint16_t>(width);
-            writer.write<uint16_t>(height);
+        for (uint16_t frame {0}; frame < frame_count; frame++) {
+            uint32_t duration {numeric_cast<uint32_t>((numeric_cast<uint64_t>(frame) + 1) * ticks / frame_count - numeric_cast<uint64_t>(frame) * ticks / frame_count)};
+            writer.write<uint32_t>(duration);
+            writer.write<int32_t>(int32_t {0}); // Offset x
+            writer.write<int32_t>(int32_t {0}); // Offset y
             writer.write<int16_t>(frame_motion.x);
             writer.write<int16_t>(frame_motion.y);
+            writer.write<uint8_t>(uint8_t {0}); // Not a sprite reference
+            writer.write<uint16_t>(width);
+            writer.write<uint16_t>(height);
 
-            for (size_t i = 0; i < pixel_count; i++) {
+            for (size_t i {0}; i < pixel_count; i++) {
                 writer.write<uint8_t>(uint8_t {255});
                 writer.write<uint8_t>(uint8_t {255});
                 writer.write<uint8_t>(uint8_t {255});
@@ -334,26 +390,26 @@ namespace BakerTests
     // real baked art
     inline auto MakeMinimalBakedSprite(uint16_t width = 1, uint16_t height = 1, SpriteMeshKind mesh_kind = SpriteMeshKind::Quad, const SpriteMeshData& mesh = {}) -> vector<uint8_t>
     {
-        vector<uint8_t> sprite_data;
-        auto writer = data_writer(sprite_data);
+        vector<uint8_t> sprite_data {};
+        data_writer writer {sprite_data};
 
         writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
         writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);
-        writer.write<uint16_t>(uint16_t {1}); // Frames count
-        writer.write<uint16_t>(uint16_t {0}); // Ticks
         writer.write<uint8_t>(uint8_t {1}); // Directions
-
-        writer.write<uint8_t>(uint8_t {0}); // Not a sprite reference
-        writer.write<int16_t>(int16_t {0}); // Offset x
-        writer.write<int16_t>(int16_t {0}); // Offset y
-        writer.write<uint16_t>(width);
-        writer.write<uint16_t>(height);
+        writer.write<uint16_t>(uint16_t {1}); // Frames count
+        writer.write<uint32_t>(uint32_t {100}); // Whole duration
+        writer.write<uint32_t>(uint32_t {100}); // Frame duration
+        writer.write<int32_t>(int32_t {0}); // Offset x
+        writer.write<int32_t>(int32_t {0}); // Offset y
         writer.write<int16_t>(int16_t {0}); // Frame x
         writer.write<int16_t>(int16_t {0}); // Frame y
+        writer.write<uint8_t>(uint8_t {0}); // Not a sprite reference
+        writer.write<uint16_t>(width);
+        writer.write<uint16_t>(height);
 
-        auto pixel_count = numeric_cast<size_t>(width) * height;
+        auto pixel_count {numeric_cast<size_t>(width) * height};
 
-        for (size_t i = 0; i < pixel_count; i++) {
+        for (size_t i {0}; i < pixel_count; i++) {
             writer.write<uint8_t>(uint8_t {255}); // R
             writer.write<uint8_t>(uint8_t {255}); // G
             writer.write<uint8_t>(uint8_t {255}); // B
@@ -402,15 +458,11 @@ namespace BakerTests
         [[nodiscard]] auto IsDiskDir() const -> bool override { return false; }
         [[nodiscard]] auto GetPackName() const -> string_view override { return _packName; }
 
-        void AddFile(string_view path, string_view content, uint64_t write_time = 1) { AddFile(path, vector<uint8_t> {content.begin(), content.end()}, write_time); }
-
-        void AddFile(string_view path, vector<uint8_t> data, uint64_t write_time = 1) { _entries[string(path)] = Entry {.Path = string(path), .Data = std::move(data), .WriteTime = write_time}; }
-
         [[nodiscard]] auto IsFileExists(string_view path) const -> bool override { return _entries.contains(string(path)); }
 
         [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool override
         {
-            auto it = _entries.find(string(path));
+            auto it {_entries.find(string(path))};
 
             if (it == _entries.end()) {
                 return false;
@@ -423,7 +475,7 @@ namespace BakerTests
 
         [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t> override
         {
-            auto it = _entries.find(string(path));
+            auto it {_entries.find(string(path))};
 
             if (it == _entries.end()) {
                 size = 0;
@@ -434,10 +486,10 @@ namespace BakerTests
             size = it->second.Data.size();
             write_time = it->second.WriteTime;
 
-            auto buf = safe_alloc::make_unique_arr<uint8_t>(size);
+            auto buf {safe_alloc::make_unique_arr<uint8_t>(size)};
 
             if (size != 0u) {
-                ptr<uint8_t> buf_ptr = buf.get();
+                ptr<uint8_t> buf_ptr {buf.get()};
                 memory::copy(buf_ptr, it->second.Data.data(), size);
             }
 
@@ -446,7 +498,7 @@ namespace BakerTests
 
         [[nodiscard]] auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> override
         {
-            vector<string> result;
+            vector<string> result {};
 
             for (const auto& [path, entry] : _entries) {
                 ignore_unused(entry);
@@ -456,7 +508,7 @@ namespace BakerTests
                 }
 
                 if (!dir.empty()) {
-                    string path_dir = strex(path).extract_dir().str();
+                    string path_dir {strex(path).extract_dir().str()};
 
                     if (recursive) {
                         if (!path.starts_with(string(dir))) {
@@ -475,6 +527,10 @@ namespace BakerTests
             return result;
         }
 
+        void AddFile(string_view path, string_view content, uint64_t write_time = 1) { AddFile(path, vector<uint8_t> {content.begin(), content.end()}, write_time); }
+
+        void AddFile(string_view path, vector<uint8_t> data, uint64_t write_time = 1) { _entries[string(path)] = Entry {.Path = string(path), .Data = std::move(data), .WriteTime = write_time}; }
+
     private:
         string _packName {};
         unordered_map<string, Entry> _entries {};
@@ -485,18 +541,18 @@ namespace BakerTests
     public:
         explicit MemoryFileSet(string pack_name)
         {
-            auto ds = safe_alloc::make_unique<MemoryDataSource>(std::move(pack_name));
+            auto ds {safe_alloc::make_unique<MemoryDataSource>(std::move(pack_name))};
             _dataSource = ds.get();
             _fileSystem.AddCustomSource(std::move(ds));
         }
 
-        void AddTextFile(string_view path, string_view content, uint64_t write_time = 1) { _dataSource->AddFile(path, content, write_time); }
-
-        void AddBinaryFile(string_view path, vector<uint8_t> content, uint64_t write_time = 1) { _dataSource->AddFile(path, std::move(content), write_time); }
-
         [[nodiscard]] auto ReadFile(string_view path) const -> File { return _fileSystem.ReadFile(path); }
 
         [[nodiscard]] auto GetFileSystem() const -> const FileSystem& { return _fileSystem; }
+
+        void AddTextFile(string_view path, string_view content, uint64_t write_time = 1) { _dataSource->AddFile(path, content, write_time); }
+
+        void AddBinaryFile(string_view path, vector<uint8_t> content, uint64_t write_time = 1) { _dataSource->AddFile(path, std::move(content), write_time); }
 
     private:
         nptr<MemoryDataSource> _dataSource {};
@@ -507,9 +563,9 @@ namespace BakerTests
     {
         // GlobalSettings holds member references back to *this (Common, Network, ...), so it can't
         // be safely moved out of a lambda. Construct in place and initialize once via call_once
-        static GlobalSettings instance(true);
-        static std::once_flag once;
-        std::call_once(once, [] { instance.ApplyDefaultSettings(); });
+        static GlobalSettings instance {true};
+        static std::once_flag once {};
+        std::call_once(once, [] { instance.SetupDefaultSettings(); });
         return &instance;
     }
 
@@ -534,7 +590,7 @@ namespace BakerTests
 
     inline auto CompileInlineScripts(ptr<EngineMetadata> meta, string_view pack_name, const vector<pair<string, string>>& script_files, function<void(string_view)> message_callback) -> vector<uint8_t>
     {
-        auto script_settings = MakeScriptCompilerSettings();
+        auto script_settings {MakeScriptCompilerSettings()};
         return CompileInlineScripts(meta, script_settings, pack_name, script_files, std::move(message_callback));
     }
 #endif
@@ -542,25 +598,39 @@ namespace BakerTests
     class TestRig final
     {
     public:
-        TestRig() :
+        explicit TestRig(string_view config_name = {}, string_view config_dir = {}) :
             Settings(true)
         {
-            Settings.ApplyDefaultSettings();
+            if (!config_name.empty()) {
+                Settings.SetupConfigAtPath(config_name, config_dir);
+            }
+            else {
+                Settings.SetupDefaultSettings();
 
-            // In-memory fixtures must not load assemblies or caches from the working directory
-            OverrideSetting(Settings.Baking.BakeOutput, string {});
-            OverrideSetting(Settings.Baking.ProtoFileExtensions, vector<string> {"fopro", "fomap"});
-            // The gate fires again when the engine loads bytecode, so the runtime settings need the same allowlist
-            // as the compile-time ones; the gate-test re-overrides this on its own rig
-            OverrideSetting(Settings.AngelScript.MutableGlobalsAllowedNamespaces, GetTestMutableGlobalsAllowedNamespaces());
+                // In-memory fixtures must not load assemblies or caches from the working directory
+                OverrideSetting(Settings.Baking.BakeOutput, string {});
+                OverrideSetting(Settings.Baking.ProtoFileExtensions, vector<string> {"fopro", "fomap"});
+                // The gate fires again when the engine loads bytecode, so the runtime settings need the same allowlist
+                // as the compile-time ones; the gate-test re-overrides this on its own rig
+                OverrideSetting(Settings.AngelScript.MutableGlobalsAllowedNamespaces, GetTestMutableGlobalsAllowedNamespaces());
+            }
 
-            auto source_ds = safe_alloc::make_unique<MemoryDataSource>("Tests");
+            auto source_ds {safe_alloc::make_unique<MemoryDataSource>("Tests")};
             _sourceData = source_ds.get();
             SourceFiles.AddCustomSource(std::move(source_ds));
 
-            auto baked_ds = safe_alloc::make_unique<MemoryDataSource>("Baked");
+            auto baked_ds {safe_alloc::make_unique<MemoryDataSource>("Baked")};
             _bakedData = baked_ds.get();
             BakedFiles.AddCustomSource(std::move(baked_ds));
+        }
+
+        [[nodiscard]] auto GetAllSourceFiles() const -> FileCollection { return SourceFiles.GetAllFiles(); }
+
+        [[nodiscard]] auto GetOutputText(string_view path) const -> string
+        {
+            auto it {Outputs.find(string(path))};
+            FO_VERIFY_AND_THROW(it != Outputs.end(), "Lookup failed in outputs");
+            return string {it->second.begin(), it->second.end()};
         }
 
         void AddSourceFile(string_view path, string_view content, uint64_t write_time = 1) { _sourceData->AddFile(path, content, write_time); }
@@ -571,11 +641,9 @@ namespace BakerTests
 
         void AddBakedFile(string_view path, vector<uint8_t> content, uint64_t write_time = 1) { _bakedData->AddFile(path, std::move(content), write_time); }
 
-        [[nodiscard]] auto GetAllSourceFiles() const -> FileCollection { return SourceFiles.GetAllFiles(); }
+        static auto MakeEmptyFiles() -> FileCollection { return FileCollection(vector<FileHeader> {}); }
 
-        [[nodiscard]] static auto MakeEmptyFiles() -> FileCollection { return FileCollection(vector<FileHeader> {}); }
-
-        auto MakeContext(string_view pack_name = "TestPack", BakeCheckerCallback bake_checker = BakeCheckerCallback {}) -> shared_ptr<BakingContext>
+        auto MakeContextOptions(string_view pack_name = "TestPack", BakeCheckerCallback bake_checker = BakeCheckerCallback {}) -> BakingContextOptions
         {
             Outputs.clear();
 
@@ -583,10 +651,10 @@ namespace BakerTests
                 bake_checker = [](string_view, uint64_t) { return true; };
             }
 
-            auto settings_ptr = make_nptr(&Settings);
-            auto baked_files_ptr = make_nptr(&BakedFiles);
+            auto settings_ptr {make_nptr(&Settings)};
+            auto baked_files_ptr {make_nptr(&BakedFiles)};
 
-            return safe_alloc::make_shared<BakingContext>(BakingContext {
+            return BakingContextOptions {
                 .Settings = settings_ptr,
                 .PackName = string(pack_name),
                 .BakeChecker = std::move(bake_checker),
@@ -597,15 +665,10 @@ namespace BakerTests
                     },
                 .BakedFiles = baked_files_ptr,
                 .ForceSyncMode = true,
-            });
+            };
         }
 
-        [[nodiscard]] auto GetOutputText(string_view path) const -> string
-        {
-            auto it = Outputs.find(string(path));
-            FO_VERIFY_AND_THROW(it != Outputs.end(), "Lookup failed in outputs");
-            return string {it->second.begin(), it->second.end()};
-        }
+        auto MakeContext(string_view pack_name = "TestPack", BakeCheckerCallback bake_checker = BakeCheckerCallback {}) -> shared_ptr<BakingContext> { return safe_alloc::make_shared<BakingContext>(MakeContextOptions(pack_name, std::move(bake_checker))); }
 
         GlobalSettings Settings;
         FileSystem SourceFiles {};
@@ -617,6 +680,35 @@ namespace BakerTests
         nptr<MemoryDataSource> _bakedData {};
     };
 
+    inline void AddTestBakedImage(TestRig& rig, string_view path, const vector<uint8_t>& data)
+    {
+        auto sprite {ReadSpriteResource(data)};
+        FO_VERIFY_AND_THROW(sprite.Animation.Sprite, "Test image has no sprite metadata", path);
+        SpriteInfoFileEntry entry {string {path}, string {path}, *sprite.Animation.Sprite};
+        rig.AddBakedFile(path, data);
+        rig.AddBakedFile(strex("SpriteInfo/TestImages/{}.foinfo", path), WriteSpriteInfoFile({entry}));
+    }
+
+#if FO_ANGELSCRIPT_SCRIPTING
+    // A server proto bake loads real script bytecode, so in-memory resource fixtures compile their own role outputs
+    // before the next MakeContext resets Outputs
+    inline void AddBakedScriptBytecode(TestRig& rig)
+    {
+        rig.AddSourceFile("Scripts/Fixture.fos", "namespace SharedDiagnostics { int Value() { return 42; } }\n");
+
+        AngelScriptBaker baker {rig.MakeContext("Scripts")};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "");
+
+        REQUIRE(rig.Outputs.size() == 3);
+
+        for (const auto& [path, bytes] : rig.Outputs) {
+            REQUIRE(strex(path).get_file_extension().starts_with("fos-bin-"));
+            REQUIRE(!bytes.empty());
+            rig.AddBakedFile(path, bytes);
+        }
+    }
+#endif
+
     inline auto MakeRequestedBakers(const vector<string>& request_bakers, TestRig& rig, string_view pack_name = "TestPack") -> vector<unique_ptr<BaseBaker>>
     {
         return BaseBaker::SetupBakers(request_bakers, string(pack_name), rig.Settings, [](string_view, uint64_t) { return true; }, [](string_view, const_span<uint8_t>) { return BakingWriteResult::Changed; }, &rig.BakedFiles);
@@ -624,4 +716,3 @@ namespace BakerTests
 }
 
 FO_END_NAMESPACE
-

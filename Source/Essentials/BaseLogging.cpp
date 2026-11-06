@@ -32,6 +32,7 @@
 //
 
 #include "BaseLogging.h"
+
 #include "GlobalData.h"
 
 #if FO_WINDOWS
@@ -42,23 +43,23 @@
 
 FO_BEGIN_NAMESPACE
 
-constexpr size_t async_queue_drop_limit = 100000;
+constexpr size_t async_queue_drop_limit {100000};
 
 static void start_async_worker();
 static void stop_async_worker() noexcept;
 static void async_worker_loop() noexcept;
 static void write_sync(string_view message) noexcept;
-static void flush_log_at_exit();
+static void flush_base_log_at_exit();
 
 struct base_logging_data
 {
     base_logging_data()
     {
 #if !FO_WEB && !FO_MAC && !FO_IOS && !FO_ANDROID
-        int32_t result = std::at_quick_exit(flush_log_at_exit);
+        int32_t result {std::at_quick_exit(flush_base_log_at_exit)};
         ignore_unused(result);
 #else
-        ignore_unused(flush_log_at_exit);
+        ignore_unused(flush_base_log_at_exit);
 #endif
 
 #if FO_WINDOWS
@@ -93,7 +94,7 @@ void logging::to_file(string_view path, bool append)
         return;
     }
 
-    bool open_failed = false;
+    bool open_failed {false};
 
     {
         std::scoped_lock locker {base_logging->log_locker};
@@ -103,7 +104,7 @@ void logging::to_file(string_view path, bool append)
         }
 
         // Through a path built from UTF-8: a narrow name is read in the ANSI code page on Windows, which cannot carry every profile path
-        std::ios_base::openmode open_mode = std::ios::out | std::ios::binary | (append ? std::ios::app : std::ios::trunc);
+        std::ios_base::openmode open_mode {std::ios::out | std::ios::binary | (append ? std::ios::app : std::ios::trunc)};
         base_logging->log_file_handle.open(std::filesystem::path {std::u8string(path.begin(), path.end())}, open_mode);
 
         if (base_logging->log_file_handle) {
@@ -166,8 +167,8 @@ void logging::write_base(string_view message, const stack_trace::catched_data* s
         }
 
         if (base_logging->async_enabled.load(std::memory_order_acquire)) {
-            bool enqueued = false;
-            bool dropped = false;
+            bool enqueued {false};
+            bool dropped {false};
 
             {
                 std::scoped_lock queue_lock {base_logging->async_queue_mutex};
@@ -178,7 +179,7 @@ void logging::write_base(string_view message, const stack_trace::catched_data* s
                         dropped = true;
                     }
                     else {
-                        base_logging_data::async_entry entry;
+                        base_logging_data::async_entry entry {};
                         entry.message.assign(message);
 
                         if (st != nullptr) {
@@ -201,7 +202,7 @@ void logging::write_base(string_view message, const stack_trace::catched_data* s
         }
 
         if (st != nullptr) {
-            std::string combined;
+            std::string combined {};
             combined.reserve(message.size() + 256);
             combined.append(message);
             combined.append(stack_trace::format(*st));
@@ -260,8 +261,8 @@ static void stop_async_worker() noexcept
 static void async_worker_loop() noexcept
 {
     try {
-        std::deque<base_logging_data::async_entry> drained;
-        size_t drained_drop_count = 0;
+        std::deque<base_logging_data::async_entry> drained {};
+        size_t drained_drop_count {0};
 
         while (true) {
             {
@@ -283,7 +284,7 @@ static void async_worker_loop() noexcept
             for (const auto& entry : drained) {
                 if (entry.stack_trace_of.has_value()) {
                     try {
-                        std::string combined;
+                        std::string combined {};
                         combined.reserve(entry.message.size() + 256);
                         combined.append(entry.message);
                         combined.append(stack_trace::format(entry.stack_trace_of.value()));
@@ -301,7 +302,7 @@ static void async_worker_loop() noexcept
             }
 
             if (drained_drop_count != 0) {
-                std::string drop_notice = "Dropped ";
+                std::string drop_notice {"Dropped "};
                 drop_notice += std::to_string(drained_drop_count);
                 drop_notice += " log messages due to high volume (queue limit ";
                 drop_notice += std::to_string(async_queue_drop_limit);
@@ -337,7 +338,7 @@ static void write_sync(string_view message) noexcept
     }
 }
 
-static void flush_log_at_exit()
+static void flush_base_log_at_exit()
 {
     if (base_logging.is_created()) {
         stop_async_worker();
@@ -354,7 +355,7 @@ static void flush_log_at_exit()
 
 void logging::safe_write_stack_trace(const stack_trace::data& st) noexcept
 {
-    char itoa_buf[64] = {};
+    char itoa_buf[64] {};
 
     if (st.native_truncated) {
         logging::write_base("Stack trace (most recent call first, truncated at ");
@@ -365,10 +366,10 @@ void logging::safe_write_stack_trace(const stack_trace::data& st) noexcept
         logging::write_base("Stack trace (most recent call first):\n");
     }
 
-    bool resolution_succeeded = false;
+    bool resolution_succeeded {false};
 
     try {
-        auto resolved = stack_trace::resolve(st);
+        auto resolved {stack_trace::resolve(st)};
 
         for (const auto& frame : resolved) {
             logging::write_base("- [");
@@ -379,7 +380,7 @@ void logging::safe_write_stack_trace(const stack_trace::data& st) noexcept
             if (!frame.file.empty()) {
                 std::string_view file_name {frame.file};
 
-                if (auto pos = file_name.find_last_of("/\\"); pos != std::string_view::npos) {
+                if (auto pos {file_name.find_last_of("/\\")}; pos != std::string_view::npos) {
                     file_name = file_name.substr(pos + 1);
                 }
 
@@ -410,9 +411,9 @@ void logging::safe_write_stack_trace(const stack_trace::data& st) noexcept
             }
         }
 
-        for (uint32_t i = 0; i < st.native_frame_count; i++) {
+        for (uint32_t i {0}; i < st.native_frame_count; i++) {
             logging::write_base("- [Native] 0x");
-            stack_trace::native_frame_address addr = st.native_frames[i];
+            stack_trace::native_frame_address addr {st.native_frames[i]};
             logging::write_base(itoa(static_cast<int64_t>(addr), itoa_buf, 16));
             logging::write_base("\n");
         }

@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
 #include "Baker.h"
@@ -59,7 +61,7 @@ namespace
         {
             _host = "Test";
 
-            vector<uint8_t> offer;
+            vector<uint8_t> offer {};
             _clientChannel.TakeHandshakeOutput(offer);
             ReceiveCallback(offer);
         }
@@ -69,9 +71,66 @@ namespace
         auto operator=(MoveReconciliationConnection&&) noexcept = delete;
         ~MoveReconciliationConnection() override = default;
 
+        [[nodiscard]] auto CountReceivedMovement(NetMessage message, ident_t cr_id) -> size_t
+        {
+            scoped_lock locker {_clientChannelLocker};
+
+            return numeric_cast<size_t>(std::ranges::count_if(_receivedMovement, [message, cr_id](const ReceivedMovement& received) { return received.Message == message && received.CritterId == cr_id; }));
+        }
+
+        [[nodiscard]] auto ReadReceivedSenderTime(NetMessage message, ident_t cr_id) -> int64_t
+        {
+            scoped_lock locker {_clientChannelLocker};
+
+            for (auto it {_receivedMovement.rbegin()}; it != _receivedMovement.rend(); ++it) {
+                const ReceivedMovement& received {*it};
+
+                if (received.Message != message || received.CritterId != cr_id) {
+                    continue;
+                }
+
+                NetInBuffer packet {numeric_cast<size_t>(_settings->Network.NetBufferSize)};
+                packet.AddData(received.Data);
+                REQUIRE(packet.ReadMsg() == message);
+                REQUIRE(packet.Read<ident_t>() == cr_id);
+
+                if (message == NetMessage::CritterMove) {
+                    (void)packet.Read<uint32_t>();
+                    (void)packet.Read<uint32_t>();
+                    (void)packet.Read<uint16_t>();
+                    (void)packet.Read<mpos>();
+
+                    uint16_t steps_count {packet.Read<uint16_t>()};
+
+                    for (uint16_t i {0}; i < steps_count; i++) {
+                        (void)packet.Read<hdir>();
+                    }
+
+                    uint16_t control_steps_count {packet.Read<uint16_t>()};
+
+                    for (uint16_t i {0}; i < control_steps_count; i++) {
+                        (void)packet.Read<uint16_t>();
+                    }
+
+                    (void)packet.Read<ipos16>();
+                    (void)packet.Read<uint32_t>();
+                    (void)packet.Read<float32_t>();
+                }
+                else {
+                    REQUIRE(message == NetMessage::CritterMoveLease);
+                    (void)packet.Read<uint32_t>();
+                    (void)packet.Read<float32_t>();
+                }
+
+                return packet.Read<int64_t>();
+            }
+
+            FO_VERIFY_AND_THROW(false, "Movement message was not received", message, cr_id);
+        }
+
         void Receive(const_span<uint8_t> buf)
         {
-            vector<uint8_t> sealed;
+            vector<uint8_t> sealed {};
 
             {
                 scoped_lock locker {_clientChannelLocker};
@@ -80,13 +139,6 @@ namespace
             }
 
             ReceiveCallback(sealed);
-        }
-
-        [[nodiscard]] auto CountReceivedMovement(NetMessage message, ident_t cr_id) -> size_t
-        {
-            scoped_lock locker {_clientChannelLocker};
-
-            return numeric_cast<size_t>(std::ranges::count(_receivedMovement, std::pair {message, cr_id}));
         }
 
         void ClearReceivedMovement()
@@ -101,7 +153,7 @@ namespace
         {
             scoped_lock locker {_clientChannelLocker};
 
-            vector<uint8_t> encoded_data = SendCallback();
+            vector<uint8_t> encoded_data {SendCallback()};
 
             if (!encoded_data.empty()) {
                 _clientChannel.Receive(encoded_data, _plainData);
@@ -113,6 +165,13 @@ namespace
         void DisconnectImpl() override { }
 
     private:
+        struct ReceivedMovement
+        {
+            NetMessage Message {};
+            ident_t CritterId {};
+            vector<uint8_t> Data {};
+        };
+
         // The compressed stream is continuous, so every packet is unpacked in order even when nothing in it is recorded
         void RecordMovementMessages()
         {
@@ -120,15 +179,15 @@ namespace
                 return;
             }
 
-            const_span<uint8_t> data = _plainData;
+            const_span<uint8_t> data {_plainData};
 
             if (!_settings->Network.DisableZlibCompression) {
                 _decompressor.decompress(_plainData, _unpackedData);
                 data = _unpackedData;
             }
 
-            constexpr size_t header_size = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(NetMessage);
-            size_t offset = 0;
+            constexpr size_t header_size {sizeof(uint32_t) + sizeof(uint32_t) + sizeof(NetMessage)};
+            size_t offset {0};
 
             while (offset < data.size()) {
                 FO_VERIFY_AND_THROW(data.size() - offset >= header_size, "Truncated outgoing network message header", data.size(), offset);
@@ -140,12 +199,13 @@ namespace
 
                 FO_VERIFY_AND_THROW(message_size >= header_size && message_size <= data.size() - offset, "Invalid outgoing network message size", message_size, data.size(), offset);
 
-                if (message == NetMessage::CritterMove || message == NetMessage::CritterPos) {
+                if (message == NetMessage::CritterMove || message == NetMessage::CritterPos || message == NetMessage::CritterMoveLease) {
                     FO_VERIFY_AND_THROW(message_size >= header_size + sizeof(ident_t), "Truncated outgoing movement message", message_size);
 
                     ident_t cr_id {};
                     memory::copy(&cr_id, data.data() + offset + header_size, sizeof(cr_id));
-                    _receivedMovement.emplace_back(message, cr_id);
+                    const_span<uint8_t> message_data {data.subspan(offset, message_size)};
+                    _receivedMovement.push_back(ReceivedMovement {.Message = message, .CritterId = cr_id, .Data = vector<uint8_t>(message_data.begin(), message_data.end())});
                 }
 
                 offset += message_size;
@@ -157,15 +217,15 @@ namespace
         vector<uint8_t> _plainData {};
         stream_decompressor _decompressor {};
         vector<uint8_t> _unpackedData {};
-        vector<pair<NetMessage, ident_t>> _receivedMovement {};
+        vector<ReceivedMovement> _receivedMovement {};
     };
 
     auto MakeSettings() -> GlobalSettings
     {
-        GlobalSettings settings(false);
+        GlobalSettings settings {false};
 
-        settings.ApplyDefaultSettings();
-        settings.ApplyAutoSettings();
+        settings.SetupDefaultSettings();
+        settings.ApplyAutoSettings({});
 
         BakerTests::ApplySelfContainedServerSettings(settings);
         BakerTests::OverrideSetting(settings.Server.DbStorage, string {"Memory"});
@@ -177,8 +237,8 @@ namespace
 
     auto MakeEmptyMapBlob() -> vector<uint8_t>
     {
-        vector<uint8_t> map_data;
-        data_writer writer(map_data);
+        vector<uint8_t> map_data {};
+        data_writer writer {map_data};
 
         writer.write<uint32_t>(BAKED_MAP_FILE_MAGIC);
         writer.write<uint32_t>(BAKED_MAP_FILE_VERSION);
@@ -190,10 +250,10 @@ namespace
 
     auto MakeMapProtoBlob(BakerServerEngine& proto_engine, hstring type_name, string_view proto_name, msize map_size) -> vector<uint8_t>
     {
-        vector<uint8_t> props_data;
-        set<hstring> str_hashes;
+        vector<uint8_t> props_data {};
+        set<hstring> str_hashes {};
 
-        auto registrar = proto_engine.GetPropertyRegistrar(type_name);
+        auto registrar {proto_engine.GetPropertyRegistrar(type_name)};
         REQUIRE(static_cast<bool>(registrar));
 
         ProtoMap proto {proto_engine.Hashes.to_hashed_string(proto_name), registrar};
@@ -201,8 +261,8 @@ namespace
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
         ignore_unused(str_hashes);
 
-        vector<uint8_t> protos_data;
-        data_writer writer(protos_data);
+        vector<uint8_t> protos_data {};
+        data_writer writer {protos_data};
 
         writer.write<uint32_t>(uint32_t {0});
         writer.write<uint32_t>(uint32_t {1});
@@ -222,20 +282,20 @@ namespace
 
     auto MakeResources() -> FileSystem
     {
-        vector<uint8_t> metadata_blob = BakerTests::MakeEmptyMetadataBlob();
+        vector<uint8_t> metadata_blob {BakerTests::MakeEmptyMetadataBlob()};
 
-        auto compiler_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("MoveReconciliationCompiler");
+        auto compiler_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("MoveReconciliationCompiler")};
         compiler_source->AddFile("Metadata.fometa-server", metadata_blob);
 
-        FileSystem compiler_resources;
+        FileSystem compiler_resources {};
         compiler_resources.AddCustomSource(std::move(compiler_source));
 
         BakerServerEngine proto_engine {compiler_resources};
-        hstring critter_type = proto_engine.Hashes.to_hashed_string("Critter");
-        hstring location_type = proto_engine.Hashes.to_hashed_string("Location");
-        hstring map_type = proto_engine.Hashes.to_hashed_string("Map");
+        hstring critter_type {proto_engine.Hashes.to_hashed_string("Critter")};
+        hstring location_type {proto_engine.Hashes.to_hashed_string("Location")};
+        hstring map_type {proto_engine.Hashes.to_hashed_string("Map")};
 
-        auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("MoveReconciliationRuntime");
+        auto runtime_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("MoveReconciliationRuntime")};
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
 #if FO_ANGELSCRIPT_SCRIPTING
         runtime_source->AddFile("MoveReconciliation.fos-bin-server", BakerTests::CompileInlineScripts(&proto_engine, "MoveReconciliationScripts", {{"Scripts/MoveReconciliation.fos", "void MoveReconciliationFixtureEntry() {}"}}, [](string_view message) { FAIL(message); }));
@@ -245,14 +305,14 @@ namespace
         runtime_source->AddFile("TestMap.fopro-bin-server", MakeMapProtoBlob(proto_engine, map_type, "TestMap", msize {200, 200}));
         runtime_source->AddFile("TestMap.fomap-bin-server", MakeEmptyMapBlob());
 
-        FileSystem resources;
+        FileSystem resources {};
         resources.AddCustomSource(std::move(runtime_source));
         return resources;
     }
 
     auto WaitForStart(ptr<ServerEngine> server) -> string
     {
-        for (int32_t i = 0; i < 6000; i++) {
+        for (int32_t i {0}; i < 6000; i++) {
             if (server->IsStarted()) {
                 return {};
             }
@@ -268,7 +328,7 @@ namespace
 
     auto CreateLoggedPlayer(ptr<ServerEngine> server, shared_ptr<NetworkServerConnection> net_connection, string_view name) -> ptr<Player>
     {
-        auto not_logged_in_player = server->CreateNotLoggedInPlayer(std::move(net_connection));
+        auto not_logged_in_player {server->CreateNotLoggedInPlayer(std::move(net_connection))};
 
         not_logged_in_player->SetName(name);
         not_logged_in_player->SetLastControlledCritterId(ident_t {1});
@@ -366,8 +426,8 @@ namespace
     // allowance instead of the bare movement period a never-pinged connection is limited to
     void PlantConnectionRoundTrip(ptr<Player> player, ptr<ServerEngine> server, timespan round_trip)
     {
-        auto connection = player->GetConnection();
-        nanotime request_time = server->GameTime.GetFrameTime();
+        auto connection {player->GetConnection()};
+        nanotime request_time {server->GameTime.GetFrameTime()};
 
         connection->RegisterPingRequest(request_time);
         connection->RegisterPingAnswer(request_time + round_trip);
@@ -380,7 +440,7 @@ namespace
         server->Unlock();
         locked = false;
 
-        auto deadline = std::chrono::steady_clock::now() + timeout;
+        auto deadline {std::chrono::steady_clock::now() + timeout};
 
         while (std::chrono::steady_clock::now() < deadline) {
             coarse_sleep(std::chrono::milliseconds {5});
@@ -413,39 +473,39 @@ namespace
 
 TEST_CASE("ServerCritterMovePositionReconciliation")
 {
-    auto settings = MakeSettings();
-    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources());
-    auto shutdown = scope_exit([&server]() noexcept {
+    auto settings {MakeSettings()};
+    auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources())};
+    auto shutdown {scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
                 server->Shutdown();
             }
         });
-    });
+    })};
 
-    string startup_error = WaitForStart(server);
+    string startup_error {WaitForStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
 
-    bool server_locked = true;
-    auto unlock = scope_exit([&server, &server_locked]() noexcept {
+    bool server_locked {true};
+    auto unlock {scope_exit([&server, &server_locked]() noexcept {
         safe_call([&server, &server_locked] {
             if (server_locked) {
                 server->Unlock();
             }
         });
-    });
+    })};
 
-    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
+    auto fn {[&server](string_view name) { return server->Hashes.to_hashed_string(name); }};
 
     SECTION("TransferLandsOnTheHexWithoutTheInterruptedStep")
     {
-        auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
-        auto map = loc->GetMapByIndex(0);
+        auto loc {server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")})};
+        auto map {loc->GetMapByIndex(0)};
         REQUIRE(static_cast<bool>(map));
 
-        auto cr = server->CreateCritter(fn("TestCritter"), true);
+        auto cr {server->CreateCritter(fn("TestCritter"), true)};
         mpos landing_hex {40, 40};
 
         server->MapMngr.TransferToMap(cr, map, mpos {20, 20}, mdir {}, std::nullopt);
@@ -471,14 +531,14 @@ TEST_CASE("ServerCritterMovePositionReconciliation")
 
     SECTION("RefusesArrivalBeyondCatchUpAllowance")
     {
-        auto test_connection = safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings);
-        auto player = CreateLoggedPlayer(server, test_connection, "MoveFinishedTooEarly");
+        auto test_connection {safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings)};
+        auto player {CreateLoggedPlayer(server, test_connection, "MoveFinishedTooEarly")};
 
-        auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
-        auto map = loc->GetMapByIndex(0);
+        auto loc {server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")})};
+        auto map {loc->GetMapByIndex(0)};
         REQUIRE(static_cast<bool>(map));
 
-        auto cr = server->CreateCritter(fn("TestCritter"), true);
+        auto cr {server->CreateCritter(fn("TestCritter"), true)};
         mpos server_hex {20, 20};
 
         server->MapMngr.TransferToMap(cr, map, server_hex, mdir {}, std::nullopt);
@@ -492,9 +552,9 @@ TEST_CASE("ServerCritterMovePositionReconciliation")
         server->StartCritterMoving(cr, uint16_t {1}, move_steps, control_steps, ipos16 {}, player);
         REQUIRE(cr->IsMoving());
 
-        auto moving = cr->GetMoving();
+        auto moving {cr->GetMoving()};
         REQUIRE(static_cast<bool>(moving));
-        mpos end_hex = moving->GetEndHex();
+        mpos end_hex {moving->GetEndHex()};
 
         SendCritterMoveFinished(test_connection, server, map->GetId(), cr->GetId(), end_hex, end_hex, ipos16 {}, mdir {});
 
@@ -502,13 +562,13 @@ TEST_CASE("ServerCritterMovePositionReconciliation")
         CHECK_FALSE(WaitForUnlockedServerCondition(
             server, server_locked,
             [&server, &cr] {
-                auto ctx = server->RequireCurrentSyncContext();
+                auto ctx {server->RequireCurrentSyncContext()};
                 ctx->SyncEntity(cr);
                 return !cr->IsMoving();
             },
             std::chrono::milliseconds {300}));
 
-        auto ctx = server->RequireCurrentSyncContext();
+        auto ctx {server->RequireCurrentSyncContext()};
         small_vector<ptr<ServerEntity>, 4> sync_entities {player, cr, map, loc};
         ctx->SyncEntities(sync_entities);
 
@@ -524,16 +584,16 @@ TEST_CASE("ServerCritterMovePositionReconciliation")
 
     SECTION("ReconcilesReportedPositionWithinAllowance")
     {
-        auto test_connection = safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings);
-        auto player = CreateLoggedPlayer(server, test_connection, "MoveFinishedAccepted");
+        auto test_connection {safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings)};
+        auto player {CreateLoggedPlayer(server, test_connection, "MoveFinishedAccepted")};
 
-        auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
-        auto map = loc->GetMapByIndex(0);
+        auto loc {server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")})};
+        auto map {loc->GetMapByIndex(0)};
         REQUIRE(static_cast<bool>(map));
 
-        auto cr = server->CreateCritter(fn("TestCritter"), true);
+        auto cr {server->CreateCritter(fn("TestCritter"), true)};
         mpos server_hex {20, 20};
-        mpos first_step_hex = server_hex;
+        mpos first_step_hex {server_hex};
         REQUIRE(GeometryHelper::MoveHexByDir(first_step_hex, hdir::East, map->GetSize()));
 
         server->MapMngr.TransferToMap(cr, map, server_hex, mdir {}, std::nullopt);
@@ -547,26 +607,26 @@ TEST_CASE("ServerCritterMovePositionReconciliation")
         server->StartCritterMoving(cr, uint16_t {400}, move_steps, control_steps, ipos16 {}, player);
         REQUIRE(cr->IsMoving());
 
-        auto moving = cr->GetMoving();
+        auto moving {cr->GetMoving()};
         REQUIRE(static_cast<bool>(moving));
-        mpos end_hex = moving->GetEndHex();
+        mpos end_hex {moving->GetEndHex()};
 
         // The allowance is min(round trip / 2, MoveFinishCatchUpMaxMs) + CritterMovingPeriodMs. This movement
         // is authored to fit inside it, and the guard fails loudly if the hex metric or the defaults change
-        int32_t allowed_catch_up_ms = std::min(400, server->Settings->Server.MoveFinishCatchUpMaxMs) + server->Settings->Server.CritterMovingPeriodMs;
-        REQUIRE(moving->GetWholeTime() < numeric_cast<float32_t>(allowed_catch_up_ms));
+        int32_t allowed_catch_up_ms {std::min(400, server->Settings->Server.MoveFinishCatchUpMaxMs) + server->Settings->Server.CritterMovingPeriodMs};
+        REQUIRE(moving->GetWholeTime().to_ms<float64_t>() < numeric_cast<float32_t>(allowed_catch_up_ms));
 
         // Reporting arrival one hex in must settle the critter there, short of where the plan ends. Left to
         // itself the movement would carry it to end_hex, so this is what the reconciliation actually decides
         SendCritterMoveFinished(test_connection, server, map->GetId(), cr->GetId(), end_hex, first_step_hex, ipos16 {}, mdir {});
 
         REQUIRE(WaitForUnlockedServerCondition(server, server_locked, [&server, &cr] {
-            auto ctx = server->RequireCurrentSyncContext();
+            auto ctx {server->RequireCurrentSyncContext()};
             ctx->SyncEntity(cr);
             return !cr->IsMoving();
         }));
 
-        auto ctx = server->RequireCurrentSyncContext();
+        auto ctx {server->RequireCurrentSyncContext()};
         small_vector<ptr<ServerEntity>, 4> sync_entities {player, cr, map, loc};
         ctx->SyncEntities(sync_entities);
 
@@ -581,16 +641,16 @@ TEST_CASE("ServerCritterMovePositionReconciliation")
 
     SECTION("IgnoresArrivalNamingAnotherPlan")
     {
-        auto test_connection = safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings);
-        auto player = CreateLoggedPlayer(server, test_connection, "MoveFinishedStalePlan");
+        auto test_connection {safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings)};
+        auto player {CreateLoggedPlayer(server, test_connection, "MoveFinishedStalePlan")};
 
-        auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
-        auto map = loc->GetMapByIndex(0);
+        auto loc {server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")})};
+        auto map {loc->GetMapByIndex(0)};
         REQUIRE(static_cast<bool>(map));
 
-        auto cr = server->CreateCritter(fn("TestCritter"), true);
+        auto cr {server->CreateCritter(fn("TestCritter"), true)};
         mpos server_hex {20, 20};
-        mpos first_step_hex = server_hex;
+        mpos first_step_hex {server_hex};
         REQUIRE(GeometryHelper::MoveHexByDir(first_step_hex, hdir::East, map->GetSize()));
 
         server->MapMngr.TransferToMap(cr, map, server_hex, mdir {}, std::nullopt);
@@ -604,21 +664,21 @@ TEST_CASE("ServerCritterMovePositionReconciliation")
         server->StartCritterMoving(cr, uint16_t {400}, move_steps, control_steps, ipos16 {}, player);
         REQUIRE(cr->IsMoving());
 
-        auto moving = cr->GetMoving();
+        auto moving {cr->GetMoving()};
         REQUIRE(static_cast<bool>(moving));
-        mpos end_hex = moving->GetEndHex();
+        mpos end_hex {moving->GetEndHex()};
 
         // The same report as the accepted case except for the plan it names, which this critter is not
         // walking. It must be dropped, leaving the movement to finish where its own plan ends
         SendCritterMoveFinished(test_connection, server, map->GetId(), cr->GetId(), server_hex, first_step_hex, ipos16 {}, mdir {});
 
         REQUIRE(WaitForUnlockedServerCondition(server, server_locked, [&server, &cr] {
-            auto ctx = server->RequireCurrentSyncContext();
+            auto ctx {server->RequireCurrentSyncContext()};
             ctx->SyncEntity(cr);
             return !cr->IsMoving();
         }));
 
-        auto ctx = server->RequireCurrentSyncContext();
+        auto ctx {server->RequireCurrentSyncContext()};
         small_vector<ptr<ServerEntity>, 4> sync_entities {player, cr, map, loc};
         ctx->SyncEntities(sync_entities);
 
@@ -632,41 +692,41 @@ TEST_CASE("ServerCritterMovePositionReconciliation")
 
     SECTION("RefusedMoveRequestStopsTheCritterForItsObservers")
     {
-        auto test_connection = safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings);
-        auto player = CreateLoggedPlayer(server, test_connection, "RefusedMoveObserver");
+        auto test_connection {safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings)};
+        auto player {CreateLoggedPlayer(server, test_connection, "RefusedMoveObserver")};
 
-        auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
-        auto map = loc->GetMapByIndex(0);
+        auto loc {server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")})};
+        auto map {loc->GetMapByIndex(0)};
         REQUIRE(static_cast<bool>(map));
 
-        auto observer = server->CreateCritter(fn("TestCritter"), true);
+        auto observer {server->CreateCritter(fn("TestCritter"), true)};
         observer->SetLookDistance(40);
         server->MapMngr.TransferToMap(observer, map, mpos {20, 20}, mdir {}, std::nullopt);
         server->SwitchPlayerCritter(player, observer);
         REQUIRE(player->GetControlledCritter() == observer.get());
 
-        auto mover = server->CreateCritter(fn("TestCritter"), false);
+        auto mover {server->CreateCritter(fn("TestCritter"), false)};
         mpos mover_hex {24, 20};
         mpos far_hex {44, 20};
         server->MapMngr.TransferToMap(mover, map, mover_hex, mdir {}, std::nullopt);
         REQUIRE(observer->IsSeeCritter(mover->GetId()));
 
-        auto ctx = server->RequireCurrentSyncContext();
+        auto ctx {server->RequireCurrentSyncContext()};
         small_vector<ptr<ServerEntity>, 5> sync_entities {player, observer, mover, map, loc};
         ctx->SyncEntities(sync_entities);
 
-        auto request_move = [&mover](mpos hex, int32_t speed) { return refcount_ptr<MovingContext>::from_adopted_ref(Server_Critter_MoveToHex(mover, hex, 0, speed, {}).get()); };
+        auto request_move {[&mover](mpos hex, int32_t speed) { return refcount_ptr<MovingContext>::from_adopted_ref(Server_Critter_MoveToHex(mover, hex, 0, speed, {}).get()); }};
 
         // The server keeps the critter where it is, so the observer must be told to stop playing the route it last
         // received; left alone, its client walks the critter to the end of that route and leaves it there
-        auto refuse_mid_route = [&](mpos hex, int32_t speed, MovingState refusal) {
-            auto route = request_move(far_hex, 1);
+        auto refuse_mid_route {[&](mpos hex, int32_t speed, MovingState refusal) {
+            auto route {request_move(far_hex, 1)};
             REQUIRE(mover->IsMoving());
 
             test_connection->Dispatch();
             test_connection->ClearReceivedMovement();
 
-            auto refused = request_move(hex, speed);
+            auto refused {request_move(hex, speed)};
             test_connection->Dispatch();
 
             CHECK(refused->IsCompleted());
@@ -676,19 +736,19 @@ TEST_CASE("ServerCritterMovePositionReconciliation")
             CHECK(mover->GetHex() == mover_hex);
             CHECK(test_connection->CountReceivedMovement(NetMessage::CritterPos, mover->GetId()) == 1);
             CHECK(test_connection->CountReceivedMovement(NetMessage::CritterMove, mover->GetId()) == 0);
-        };
+        }};
 
         refuse_mid_route(mover_hex, 1, MovingState::Success);
         refuse_mid_route(far_hex, 0, MovingState::CantMove);
 
         // A request that finds a route replaces the one in progress with a single CritterMove, not a stop and a start
-        auto route = request_move(far_hex, 1);
+        auto route {request_move(far_hex, 1)};
         REQUIRE(mover->IsMoving());
 
         test_connection->Dispatch();
         test_connection->ClearReceivedMovement();
 
-        auto retarget = request_move(mpos {24, 40}, 1);
+        auto retarget {request_move(mpos {24, 40}, 1)};
         test_connection->Dispatch();
 
         CHECK_FALSE(retarget->IsCompleted());
@@ -705,20 +765,56 @@ TEST_CASE("ServerCritterMovePositionReconciliation")
         server->MapMngr.DestroyLocation(loc);
     }
 
+    SECTION("MovementMessagesAreStampedAtSendTime")
+    {
+        auto test_connection {safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings)};
+        auto player {CreateLoggedPlayer(server, test_connection, "MovementSendTime")};
+
+        auto loc {server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")})};
+        auto map {loc->GetMapByIndex(0)};
+        REQUIRE(static_cast<bool>(map));
+
+        auto cr {server->CreateCritter(fn("TestCritter"), false)};
+        server->MapMngr.TransferToMap(cr, map, mpos {20, 20}, mdir {}, std::nullopt);
+        server->StartCritterMoving(cr, uint16_t {70}, vector<mdir> {hdir::East, hdir::East, hdir::East}, vector<uint16_t> {3}, ipos16 {}, nullptr);
+
+        server->GameTime.Pause();
+        auto resume {scope_exit([&server]() noexcept { safe_call([&server] { server->GameTime.Resume(); }); })};
+
+        coarse_sleep(std::chrono::milliseconds {250});
+        test_connection->ClearReceivedMovement();
+
+        // A frame snapshot can be old, but its link timestamp belongs to the actual send, not that frame
+        int64_t before_send_ms {nanotime::now().milliseconds()};
+        player->Send_Moving(cr);
+        player->Send_MovingLease(cr);
+        int64_t after_send_ms {nanotime::now().milliseconds()};
+        test_connection->Dispatch();
+
+        CHECK(test_connection->ReadReceivedSenderTime(NetMessage::CritterMove, cr->GetId()) >= before_send_ms);
+        CHECK(test_connection->ReadReceivedSenderTime(NetMessage::CritterMove, cr->GetId()) <= after_send_ms);
+        CHECK(test_connection->ReadReceivedSenderTime(NetMessage::CritterMoveLease, cr->GetId()) >= before_send_ms);
+        CHECK(test_connection->ReadReceivedSenderTime(NetMessage::CritterMoveLease, cr->GetId()) <= after_send_ms);
+
+        server->StopCritterMoving(cr);
+        server->CrMngr.DestroyCritter(cr);
+        server->MapMngr.DestroyLocation(loc);
+    }
+
     // A stop reaching the server after the player's own plan ran out there still names a point on that plan: the server
     // walks back to it rather than correcting the player to the plan's end while its later messages move the server on
     SECTION("StopArrivingAfterTheOwnPlanEndedWalksBackAlongIt")
     {
-        auto test_connection = safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings);
-        auto player = CreateLoggedPlayer(server, test_connection, "LateStopOwnPlan");
+        auto test_connection {safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings)};
+        auto player {CreateLoggedPlayer(server, test_connection, "LateStopOwnPlan")};
 
-        auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
-        auto map = loc->GetMapByIndex(0);
+        auto loc {server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")})};
+        auto map {loc->GetMapByIndex(0)};
         REQUIRE(static_cast<bool>(map));
 
-        auto cr = server->CreateCritter(fn("TestCritter"), true);
+        auto cr {server->CreateCritter(fn("TestCritter"), true)};
         mpos server_hex {20, 20};
-        mpos first_step_hex = server_hex;
+        mpos first_step_hex {server_hex};
         REQUIRE(GeometryHelper::MoveHexByDir(first_step_hex, hdir::East, map->GetSize()));
 
         server->MapMngr.TransferToMap(cr, map, server_hex, mdir {}, std::nullopt);
@@ -730,12 +826,12 @@ TEST_CASE("ServerCritterMovePositionReconciliation")
         server->StartCritterMoving(cr, uint16_t {400}, move_steps, control_steps, ipos16 {}, player);
         REQUIRE(cr->IsMoving());
 
-        auto moving = cr->GetMoving();
+        auto moving {cr->GetMoving()};
         REQUIRE(static_cast<bool>(moving));
-        mpos end_hex = moving->GetEndHex();
+        mpos end_hex {moving->GetEndHex()};
 
         REQUIRE(WaitForUnlockedServerCondition(server, server_locked, [&server, &cr] {
-            auto ctx = server->RequireCurrentSyncContext();
+            auto ctx {server->RequireCurrentSyncContext()};
             ctx->SyncEntity(cr);
             return !cr->IsMoving();
         }));
@@ -745,12 +841,12 @@ TEST_CASE("ServerCritterMovePositionReconciliation")
         SendStopCritterMove(test_connection, server, map->GetId(), cr->GetId(), first_step_hex, ipos16 {}, mdir {});
 
         REQUIRE(WaitForUnlockedServerCondition(server, server_locked, [&server, &cr, first_step_hex] {
-            auto ctx = server->RequireCurrentSyncContext();
+            auto ctx {server->RequireCurrentSyncContext()};
             ctx->SyncEntity(cr);
             return cr->GetHex() == first_step_hex;
         }));
 
-        auto ctx = server->RequireCurrentSyncContext();
+        auto ctx {server->RequireCurrentSyncContext()};
         small_vector<ptr<ServerEntity>, 4> sync_entities {player, cr, map, loc};
         ctx->SyncEntities(sync_entities);
 
@@ -769,37 +865,37 @@ TEST_CASE("ServerCritterMovePositionReconciliation")
     SECTION("LateMoveIsPlayedFromWhereThePlayerIsByNow")
     {
         for (int64_t delay_ms : {int64_t {3000}, int64_t {0}}) {
-            auto test_connection = safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings);
-            auto player = CreateLoggedPlayer(server, test_connection, delay_ms != 0 ? "LateMoveCaughtUp" : "MoveOnTime");
+            auto test_connection {safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings)};
+            auto player {CreateLoggedPlayer(server, test_connection, delay_ms != 0 ? "LateMoveCaughtUp" : "MoveOnTime")};
 
-            auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
-            auto map = loc->GetMapByIndex(0);
+            auto loc {server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")})};
+            auto map {loc->GetMapByIndex(0)};
             REQUIRE(static_cast<bool>(map));
 
-            auto cr = server->CreateCritter(fn("TestCritter"), true);
+            auto cr {server->CreateCritter(fn("TestCritter"), true)};
             mpos server_hex {20, 20};
 
             server->MapMngr.TransferToMap(cr, map, server_hex, mdir {}, std::nullopt);
             server->SwitchPlayerCritter(player, cr);
             REQUIRE(player->GetControlledCritter() == cr.get());
 
-            vector<mdir> move_steps(12, mdir {hdir::East});
+            vector<mdir> move_steps {vector<mdir>(12, mdir {hdir::East})};
             SendPing(test_connection, server, nanotime::now().milliseconds());
             SendCritterMove(test_connection, server, map->GetId(), cr->GetId(), uint16_t {20}, server_hex, move_steps, nanotime::now().milliseconds() - delay_ms);
 
             REQUIRE(WaitForUnlockedServerCondition(server, server_locked, [&server, &cr] {
-                auto ctx = server->RequireCurrentSyncContext();
+                auto ctx {server->RequireCurrentSyncContext()};
                 ctx->SyncEntity(cr);
                 return cr->IsMoving();
             }));
 
-            auto ctx = server->RequireCurrentSyncContext();
+            auto ctx {server->RequireCurrentSyncContext()};
             small_vector<ptr<ServerEntity>, 4> sync_entities {player, cr, map, loc};
             ctx->SyncEntities(sync_entities);
 
-            auto moving = cr->GetMoving();
+            auto moving {cr->GetMoving()};
             REQUIRE(static_cast<bool>(moving));
-            float32_t elapsed_ms = moving->GetRuntimeElapsedTime(server->GameTime.GetFrameTime());
+            float64_t elapsed_ms {moving->GetRuntimeElapsedTime(server->GameTime.GetFrameTime()).to_ms<float64_t>()};
 
             if (delay_ms != 0) {
                 CHECK(elapsed_ms >= 2800.0f);
@@ -820,14 +916,14 @@ TEST_CASE("ServerCritterMovePositionReconciliation")
     // it waits at the lease and walks on once the player renews it
     SECTION("LeasedMoveWaitsAtTheLeaseUntilRenewed")
     {
-        auto test_connection = safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings);
-        auto player = CreateLoggedPlayer(server, test_connection, "LeasedMove");
+        auto test_connection {safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings)};
+        auto player {CreateLoggedPlayer(server, test_connection, "LeasedMove")};
 
-        auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
-        auto map = loc->GetMapByIndex(0);
+        auto loc {server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")})};
+        auto map {loc->GetMapByIndex(0)};
         REQUIRE(static_cast<bool>(map));
 
-        auto cr = server->CreateCritter(fn("TestCritter"), true);
+        auto cr {server->CreateCritter(fn("TestCritter"), true)};
         mpos server_hex {20, 20};
 
         server->MapMngr.TransferToMap(cr, map, server_hex, mdir {}, std::nullopt);
@@ -835,19 +931,19 @@ TEST_CASE("ServerCritterMovePositionReconciliation")
         REQUIRE(player->GetControlledCritter() == cr.get());
 
         // Two hundred milliseconds of a fast plan are about two hexes of twelve
-        vector<mdir> move_steps(12, mdir {hdir::East});
+        vector<mdir> move_steps {vector<mdir>(12, mdir {hdir::East})};
         SendPing(test_connection, server, nanotime::now().milliseconds());
         SendCritterMove(test_connection, server, map->GetId(), cr->GetId(), uint16_t {300}, server_hex, move_steps, nanotime::now().milliseconds(), 7, 200.0f);
 
         REQUIRE(WaitForUnlockedServerCondition(server, server_locked, [&server, &cr] {
-            auto ctx = server->RequireCurrentSyncContext();
+            auto ctx {server->RequireCurrentSyncContext()};
             ctx->SyncEntity(cr);
             return cr->IsMoving() && cr->GetMoving()->IsHeldByLease();
         }));
 
-        mpos held_hex;
+        mpos held_hex {};
         {
-            auto ctx = server->RequireCurrentSyncContext();
+            auto ctx {server->RequireCurrentSyncContext()};
             ctx->SyncEntity(cr);
             held_hex = cr->GetHex();
         }
@@ -859,12 +955,12 @@ TEST_CASE("ServerCritterMovePositionReconciliation")
         SendCritterMoveLease(test_connection, server, map->GetId(), cr->GetId(), 7, 5000.0f);
 
         REQUIRE(WaitForUnlockedServerCondition(server, server_locked, [&server, &cr, held_hex] {
-            auto ctx = server->RequireCurrentSyncContext();
+            auto ctx {server->RequireCurrentSyncContext()};
             ctx->SyncEntity(cr);
             return GeometryHelper::GetDistance(held_hex, cr->GetHex()) >= 3;
         }));
 
-        auto ctx = server->RequireCurrentSyncContext();
+        auto ctx {server->RequireCurrentSyncContext()};
         small_vector<ptr<ServerEntity>, 4> sync_entities {player, cr, map, loc};
         ctx->SyncEntities(sync_entities);
 
@@ -880,38 +976,38 @@ TEST_CASE("ServerCritterMovePositionReconciliation")
 
     SECTION("TruncatedDirectionBecomesAnAuthoritativeFinitePlan")
     {
-        auto test_connection = safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings);
-        auto player = CreateLoggedPlayer(server, test_connection, "TruncatedLease");
-        auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
-        auto map = loc->GetMapByIndex(0);
+        auto test_connection {safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings)};
+        auto player {CreateLoggedPlayer(server, test_connection, "TruncatedLease")};
+        auto loc {server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")})};
+        auto map {loc->GetMapByIndex(0)};
         REQUIRE(static_cast<bool>(map));
 
-        auto cr = server->CreateCritter(fn("TestCritter"), true);
+        auto cr {server->CreateCritter(fn("TestCritter"), true)};
         mpos start_hex {20, 20};
         server->MapMngr.TransferToMap(cr, map, start_hex, mdir {}, std::nullopt);
         server->SwitchPlayerCritter(player, cr);
 
-        mpos blocker_hex = start_hex;
+        mpos blocker_hex {start_hex};
 
-        for (int32_t i = 0; i < 6; i++) {
+        for (int32_t i {0}; i < 6; i++) {
             REQUIRE(GeometryHelper::MoveHexByDir(blocker_hex, hdir::East, map->GetSize()));
         }
 
         map->SetHexManualBlock(blocker_hex, true, false);
-        vector<mdir> move_steps(12, mdir {hdir::East});
+        vector<mdir> move_steps {vector<mdir>(12, mdir {hdir::East})};
         SendCritterMove(test_connection, server, map->GetId(), cr->GetId(), uint16_t {100}, start_hex, move_steps, nanotime::now().milliseconds(), 7, 200.0f);
 
         REQUIRE(WaitForUnlockedServerCondition(server, server_locked, [&server, &cr] {
-            auto ctx = server->RequireCurrentSyncContext();
+            auto ctx {server->RequireCurrentSyncContext()};
             ctx->SyncEntity(cr);
             return cr->IsMoving();
         }));
 
-        auto ctx = server->RequireCurrentSyncContext();
+        auto ctx {server->RequireCurrentSyncContext()};
         small_vector<ptr<ServerEntity>, 4> sync_entities {player, cr, map, loc};
         ctx->SyncEntities(sync_entities);
         REQUIRE(cr->GetMoving()->GetSteps().size() == 5);
-        CHECK(cr->GetMoving()->GetLeaseTime() == 0.0f);
+        CHECK(cr->GetMoving()->GetLeaseTime().to_ms<float64_t>() == 0.0f);
 
         server->StopCritterMoving(cr);
         server->SwitchPlayerCritter(player, nullptr);
@@ -922,37 +1018,37 @@ TEST_CASE("ServerCritterMovePositionReconciliation")
 
     SECTION("LeaseRenewalPreservesItsPointAcrossASpeedChange")
     {
-        auto test_connection = safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings);
-        auto player = CreateLoggedPlayer(server, test_connection, "LeaseSpeedChange");
-        auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
-        auto map = loc->GetMapByIndex(0);
+        auto test_connection {safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings)};
+        auto player {CreateLoggedPlayer(server, test_connection, "LeaseSpeedChange")};
+        auto loc {server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")})};
+        auto map {loc->GetMapByIndex(0)};
         REQUIRE(static_cast<bool>(map));
 
-        auto cr = server->CreateCritter(fn("TestCritter"), true);
+        auto cr {server->CreateCritter(fn("TestCritter"), true)};
         mpos start_hex {20, 20};
         server->MapMngr.TransferToMap(cr, map, start_hex, mdir {}, std::nullopt);
         server->SwitchPlayerCritter(player, cr);
 
-        vector<mdir> steps(12, mdir {hdir::East});
-        auto moving = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {300}, steps, vector<uint16_t> {12}, server->GameTime.GetFrameTime(), timespan {}, start_hex, ipos16 {}, ipos16 {});
-        moving->SetLeaseTime(200.0f, server->GameTime.GetFrameTime());
+        vector<mdir> steps {vector<mdir>(12, mdir {hdir::East})};
+        auto moving {safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {300}, steps, vector<uint16_t> {12}, server->GameTime.GetFrameTime(), timespan::zero, start_hex, ipos16 {}, ipos16 {})};
+        moving->SetLeaseTime(timespan {std::chrono::duration<float64_t, std::milli> {200.0f}}, server->GameTime.GetFrameTime());
         server->StartCritterMoving(cr, moving, player, 7);
         server->ChangeCritterMovingSpeed(cr, uint16_t {150});
-        REQUIRE(moving->GetLeaseTime() == 400.0f);
+        REQUIRE(moving->GetLeaseTime().to_ms<float64_t>() == 400.0f);
 
         // This renewal was sent before the player learned the new speed: its boundary is still ninety pixels in
         SendCritterMoveLease(test_connection, server, map->GetId(), cr->GetId(), 7, 300.0f, uint16_t {300});
 
         REQUIRE(WaitForUnlockedServerCondition(server, server_locked, [&server, &cr] {
-            auto ctx = server->RequireCurrentSyncContext();
+            auto ctx {server->RequireCurrentSyncContext()};
             ctx->SyncEntity(cr);
-            return cr->IsMoving() && cr->GetMoving()->GetLeaseTime() >= 590.0f;
+            return cr->IsMoving() && cr->GetMoving()->GetLeaseTime().to_ms<float64_t>() >= 590.0f;
         }));
 
-        auto ctx = server->RequireCurrentSyncContext();
+        auto ctx {server->RequireCurrentSyncContext()};
         small_vector<ptr<ServerEntity>, 4> sync_entities {player, cr, map, loc};
         ctx->SyncEntities(sync_entities);
-        CHECK(moving->GetLeaseTime() == 600.0f);
+        CHECK(moving->GetLeaseTime().to_ms<float64_t>() == 600.0f);
 
         server->StopCritterMoving(cr);
         server->SwitchPlayerCritter(player, nullptr);
@@ -965,26 +1061,26 @@ TEST_CASE("ServerCritterMovePositionReconciliation")
     // back to a critter standing there, not to a plan still under way
     SECTION("LeasedMoveStopsWhenThePlayerDisconnects")
     {
-        auto test_connection = safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings);
-        auto player = CreateLoggedPlayer(server, test_connection, "LeasedMoveDropped");
+        auto test_connection {safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings)};
+        auto player {CreateLoggedPlayer(server, test_connection, "LeasedMoveDropped")};
 
-        auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
-        auto map = loc->GetMapByIndex(0);
+        auto loc {server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")})};
+        auto map {loc->GetMapByIndex(0)};
         REQUIRE(static_cast<bool>(map));
 
-        auto cr = server->CreateCritter(fn("TestCritter"), true);
+        auto cr {server->CreateCritter(fn("TestCritter"), true)};
         mpos server_hex {20, 20};
 
         server->MapMngr.TransferToMap(cr, map, server_hex, mdir {}, std::nullopt);
         server->SwitchPlayerCritter(player, cr);
         REQUIRE(player->GetControlledCritter() == cr.get());
 
-        vector<mdir> move_steps(12, mdir {hdir::East});
+        vector<mdir> move_steps {vector<mdir>(12, mdir {hdir::East})};
         SendPing(test_connection, server, nanotime::now().milliseconds());
         SendCritterMove(test_connection, server, map->GetId(), cr->GetId(), uint16_t {300}, server_hex, move_steps, nanotime::now().milliseconds(), 7, 200.0f);
 
         REQUIRE(WaitForUnlockedServerCondition(server, server_locked, [&server, &cr] {
-            auto ctx = server->RequireCurrentSyncContext();
+            auto ctx {server->RequireCurrentSyncContext()};
             ctx->SyncEntity(cr);
             return cr->IsMoving() && cr->GetMoving()->IsHeldByLease();
         }));
@@ -992,12 +1088,12 @@ TEST_CASE("ServerCritterMovePositionReconciliation")
         player->GetConnection()->HardDisconnect(DisconnectReason::ClientClosed);
 
         REQUIRE(WaitForUnlockedServerCondition(server, server_locked, [&server, &cr] {
-            auto ctx = server->RequireCurrentSyncContext();
+            auto ctx {server->RequireCurrentSyncContext()};
             ctx->SyncEntity(cr);
             return !cr->IsMoving();
         }));
 
-        auto ctx = server->RequireCurrentSyncContext();
+        auto ctx {server->RequireCurrentSyncContext()};
         small_vector<ptr<ServerEntity>, 3> sync_entities {cr, map, loc};
         ctx->SyncEntities(sync_entities);
 
@@ -1012,16 +1108,16 @@ TEST_CASE("ServerCritterMovePositionReconciliation")
     // point on it after it has ended is answered with the server position, as before
     SECTION("StopArrivingAfterAScriptPlanEndedKeepsTheServerPosition")
     {
-        auto test_connection = safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings);
-        auto player = CreateLoggedPlayer(server, test_connection, "LateStopScriptPlan");
+        auto test_connection {safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings)};
+        auto player {CreateLoggedPlayer(server, test_connection, "LateStopScriptPlan")};
 
-        auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
-        auto map = loc->GetMapByIndex(0);
+        auto loc {server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")})};
+        auto map {loc->GetMapByIndex(0)};
         REQUIRE(static_cast<bool>(map));
 
-        auto cr = server->CreateCritter(fn("TestCritter"), true);
+        auto cr {server->CreateCritter(fn("TestCritter"), true)};
         mpos server_hex {20, 20};
-        mpos first_step_hex = server_hex;
+        mpos first_step_hex {server_hex};
         REQUIRE(GeometryHelper::MoveHexByDir(first_step_hex, hdir::East, map->GetSize()));
 
         server->MapMngr.TransferToMap(cr, map, server_hex, mdir {}, std::nullopt);
@@ -1033,28 +1129,28 @@ TEST_CASE("ServerCritterMovePositionReconciliation")
         server->StartCritterMoving(cr, uint16_t {400}, move_steps, control_steps, ipos16 {}, nullptr);
         REQUIRE(cr->IsMoving());
 
-        auto moving = cr->GetMoving();
+        auto moving {cr->GetMoving()};
         REQUIRE(static_cast<bool>(moving));
-        mpos end_hex = moving->GetEndHex();
+        mpos end_hex {moving->GetEndHex()};
 
         REQUIRE(WaitForUnlockedServerCondition(server, server_locked, [&server, &cr] {
-            auto ctx = server->RequireCurrentSyncContext();
+            auto ctx {server->RequireCurrentSyncContext()};
             ctx->SyncEntity(cr);
             return !cr->IsMoving();
         }));
 
         SendStopCritterMove(test_connection, server, map->GetId(), cr->GetId(), first_step_hex, ipos16 {}, mdir {});
 
-        bool walked_back = WaitForUnlockedServerCondition(
+        bool walked_back {WaitForUnlockedServerCondition(
             server, server_locked,
             [&server, &cr, first_step_hex] {
-                auto ctx = server->RequireCurrentSyncContext();
+                auto ctx {server->RequireCurrentSyncContext()};
                 ctx->SyncEntity(cr);
                 return cr->GetHex() == first_step_hex;
             },
-            std::chrono::milliseconds {300});
+            std::chrono::milliseconds {300})};
 
-        auto ctx = server->RequireCurrentSyncContext();
+        auto ctx {server->RequireCurrentSyncContext()};
         small_vector<ptr<ServerEntity>, 4> sync_entities {player, cr, map, loc};
         ctx->SyncEntities(sync_entities);
 

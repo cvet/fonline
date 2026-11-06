@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-package-index","locale":"ru","source_path":"Docs/en/reference/packages/index.md","source_sha256":"9d4a376f4179a3256c834767349b2b4d879b42e6108f025976005eb7d59da4cc"} -->
+<!-- docs-translation: {"document_id":"generated-package-index","locale":"ru","source_path":"Docs/en/reference/packages/index.md","source_sha256":"14d775149f84bec80b5fda20a12b14c48342ed0787a3b13cf602e22a448c66ce"} -->
 
 # Сгенерированный интерфейс пакетов
 
@@ -34,14 +34,14 @@ generated: true
 | Support policy | Версионируемая линия поддержки пакетов не объявлена; встраивающие проекты должны фиксировать ревизию движка. |
 | Manifest | [BuildTools/PackageInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/PackageInterface.json) |
 | Packager | [BuildTools/package.py](https://github.com/cvet/fonline/blob/master/BuildTools/package.py) |
-| Contract digest | <code>13ad77ab5b1a53bc20e8c3a701043aebcc6c6c27dcc3e03b9d0fa696c6602b2f</code> |
+| Contract digest | <code>dd1d44b27a2629b29c7bde73bc2e2ed144e18f95e95fe34064a09370a7a51902</code> |
 
 ## Покрытие
 
 | Справочник | Записи | Назначение |
 | --- | --- | --- |
 | [Declaration](declaration.md) | 2 | CMake clauses and per-binary modifiers. |
-| [Targets/platforms/packs](matrix.md) | 6 / 6 / 19 | Accepted runtime dimensions and support status. |
+| [Targets/platforms/packs](matrix.md) | 6 / 6 / 18 | Accepted runtime dimensions and support status. |
 | [Payloads and artifacts](payloads.md) | 8 | Implemented output-producing pack tokens. |
 | [Packager CLI](cli.md) | 17 | Exact internal package.py invocation contract. |
 
@@ -52,10 +52,11 @@ generated: true
 - DefinePackage declaration clauses and the per-binary POSTFIX modifier
 - package.py targets, platforms, architecture keys, pack tokens, and payload effects
 - implemented, placeholder, and unsupported package boundaries
+- Resources.usage.json prerequisite and selection before target-specific resource packaging
 
 Не входит в этот раздел:
 
 - embedding-project package matrices and release policy
 - project configuration key schema and secret provisioning
-- resource-pack content selection and deployment topology
+- game-specific resource root declarations and deployment topology
 - installer signing credentials and external tool operation

@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+#include "Common.h"
+
 #include "catch_amalgamated.hpp"
 
 #include "Application.h"
@@ -50,15 +52,15 @@ FO_BEGIN_NAMESPACE
 
 #if FO_EFFEKSEER_PARTICLES
 
-static constexpr string_view EffekseerFixturePath = "Particles/Effekseer01/Simple_Sprite_FixedYAxis.efk";
-static constexpr string_view EffekseerZSortFixturePath = "Particles/EffekseerTests/ZSort_Sprite.efk";
-static constexpr string_view EffekseerRingFixturePath = "Particles/EffekseerTests/Modern_Ring.efk";
-static constexpr string_view EffekseerStripFixturePath = "Particles/EffekseerTests/Strip.efk";
-static constexpr string_view EffekseerModelFixturePath = "Particles/EffekseerTests/Mesh.efk";
-static constexpr string_view EffekseerDistortionFixturePath = "Particles/EffekseerTests/Refraction.efk";
+static constexpr string_view EffekseerFixturePath {"Particles/Effekseer01/Simple_Sprite_FixedYAxis.efk"};
+static constexpr string_view EffekseerZSortFixturePath {"Particles/EffekseerTests/ZSort_Sprite.efk"};
+static constexpr string_view EffekseerRingFixturePath {"Particles/EffekseerTests/Modern_Ring.efk"};
+static constexpr string_view EffekseerStripFixturePath {"Particles/EffekseerTests/Strip.efk"};
+static constexpr string_view EffekseerModelFixturePath {"Particles/EffekseerTests/Mesh.efk"};
+static constexpr string_view EffekseerDistortionFixturePath {"Particles/EffekseerTests/Refraction.efk"};
 static constexpr frect32 EffekseerFixtureAtlasRect {0.125f, 0.25f, 0.5f, 0.375f};
 
-struct CapturedEffekseerDraw final
+struct CapturedEffekseerDraw
 {
     string EffectName {};
     vector<Vertex2D> Vertices {};
@@ -74,7 +76,7 @@ struct CapturedEffekseerDraw final
     CullModeType CullMode {};
 };
 
-struct EffekseerDrawCapture final
+struct EffekseerDrawCapture
 {
     vector<CapturedEffekseerDraw> Draws {};
 };
@@ -103,12 +105,14 @@ public:
     explicit CapturingAppRender(ptr<GlobalSettings> settings);
 
     [[nodiscard]] auto GetRenderTarget() -> nptr<RenderTexture> override;
-    [[nodiscard]] auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
-    [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
-    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
-    [[nodiscard]] auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override;
     [[nodiscard]] auto IsRenderTargetFlipped() const -> bool override;
     [[nodiscard]] auto GetProjMatrix() const -> mat44 override;
+    [[nodiscard]] auto GetDraws() const -> const vector<CapturedEffekseerDraw>&;
+
+    auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
+    auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
+    auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
+    auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override;
 
     void SetRenderTarget(nptr<RenderTexture> tex) override;
     void SetOrthoDepthRange(float32_t nearp, float32_t farp) noexcept override;
@@ -117,10 +121,9 @@ public:
     void DisableScissor() override;
 
     void ClearDraws();
-    [[nodiscard]] auto GetDraws() const -> const vector<CapturedEffekseerDraw>&;
 
 private:
-    Null_Renderer _renderer;
+    Null_Renderer _renderer {};
     AppScreenState _screen {};
     shared_ptr<EffekseerDrawCapture> _capture;
     nptr<RenderTexture> _renderTarget {};
@@ -140,22 +143,24 @@ public:
     // Extra resources an effect loads by itself, such as the .efkmodel payloads a model node references
     EffekseerRuntimeTestRig(string_view effect_path, vector<uint8_t> effect_data, const map<string, vector<uint8_t>>& dependencies, bool provide_texture = true);
 
-    [[nodiscard]] auto CreateSystem() -> unique_ptr<ParticleRuntimeSystem>;
-    [[nodiscard]] auto CreateManagedSystem() -> optional<ParticleSystem>;
     [[nodiscard]] auto CanCreateSystem() -> bool;
-    [[nodiscard]] auto TryCreateSystem() -> unique_nptr<ParticleRuntimeSystem>;
+
     [[nodiscard]] auto GetDraws() const -> const vector<CapturedEffekseerDraw>&;
     [[nodiscard]] auto GetTextureRequests() const -> const vector<string>&;
     [[nodiscard]] auto GetSceneBackground() const -> nptr<const RenderTexture>;
+
+    auto CreateSystem() -> unique_ptr<ParticleRuntimeSystem>;
+    auto CreateManagedSystem() -> optional<ParticleSystem>;
+    auto TryCreateSystem() -> unique_nptr<ParticleRuntimeSystem>;
     void SetSceneBackgroundMode(TestSceneBackgroundMode mode);
     void ClearDraws();
 
 private:
-    [[nodiscard]] auto ProvideSceneBackground() const -> ParticleSceneBackgroundResult;
+    auto ProvideSceneBackground() const -> ParticleSceneBackgroundResult;
 
     EffekseerRuntimeTestSettings _settings {};
-    string _effectPath;
-    FileSystem _resources;
+    string _effectPath {};
+    FileSystem _resources {};
     unique_ptr<CapturingAppRender> _render;
     unique_ptr<EffectManager> _effectManager;
     unique_ptr<RenderTexture> _texture;
@@ -171,7 +176,7 @@ private:
 EffekseerRuntimeTestSettings::EffekseerRuntimeTestSettings() :
     GlobalSettings {false}
 {
-    ApplyDefaultSettings();
+    SetupDefaultSettings();
     BakerTests::ApplySelfContainedClientSettings(*this);
 }
 
@@ -187,12 +192,12 @@ void CapturingRenderEffect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_
     ignore_unused(custom_tex);
     FO_VERIFY_AND_THROW(start_index <= dbuf->IndCount, "Captured draw starts outside the index buffer", start_index, dbuf->IndCount);
 
-    size_t draw_index_count = indices_to_draw.value_or(dbuf->IndCount - start_index);
+    size_t draw_index_count {indices_to_draw.value_or(dbuf->IndCount - start_index)};
     FO_VERIFY_AND_THROW(draw_index_count <= dbuf->IndCount - start_index, "Captured draw exceeds the index buffer", start_index, draw_index_count, dbuf->IndCount);
     FO_VERIFY_AND_THROW(dbuf->IndCount <= dbuf->Indices.size(), "Captured draw exceeds the allocated index buffer", dbuf->IndCount, dbuf->Indices.size());
 
     // A draw carries either the 2D vertex layout or the model one, never both
-    bool model_layout = dbuf->Vertices.empty();
+    bool model_layout {dbuf->Vertices.empty()};
 
     if (model_layout) {
         FO_VERIFY_AND_THROW(dbuf->VertCount <= dbuf->Vertices3D.size(), "Captured draw exceeds the model vertex buffer", dbuf->VertCount, dbuf->Vertices3D.size());
@@ -204,11 +209,11 @@ void CapturingRenderEffect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_
     const_span<Vertex2D> vertices {dbuf->Vertices.data(), model_layout ? 0 : dbuf->VertCount};
     const_span<Vertex3D> vertices_3d {dbuf->Vertices3D.data(), model_layout ? dbuf->VertCount : 0};
     const_span<vindex_t> indices {dbuf->Indices.data() + start_index, draw_index_count};
-    vector<Vertex2D> captured_vertices(vertices.begin(), vertices.end());
-    vector<Vertex3D> captured_vertices_3d(vertices_3d.begin(), vertices_3d.end());
-    vector<vindex_t> captured_indices(indices.begin(), indices.end());
-    optional<array<float32_t, 4>> captured_sub_rect;
-    optional<array<float32_t, 4>> captured_sampling;
+    vector<Vertex2D> captured_vertices {vector<Vertex2D>(vertices.begin(), vertices.end())};
+    vector<Vertex3D> captured_vertices_3d {vector<Vertex3D>(vertices_3d.begin(), vertices_3d.end())};
+    vector<vindex_t> captured_indices {vector<vindex_t>(indices.begin(), indices.end())};
+    optional<array<float32_t, 4>> captured_sub_rect {};
+    optional<array<float32_t, 4>> captured_sampling {};
 
     if (SpriteBorderBuf.has_value()) {
         captured_sub_rect = array<float32_t, 4> {SpriteBorderBuf->SpriteBorder[0], SpriteBorderBuf->SpriteBorder[1], SpriteBorderBuf->SpriteBorder[2], SpriteBorderBuf->SpriteBorder[3]};
@@ -313,8 +318,8 @@ auto CapturingAppRender::GetDraws() const -> const vector<CapturedEffekseerDraw>
 
 static void AddEffekseerRuntimeTestResources(BakerTests::MemoryDataSource& source, string_view effect_path, vector<uint8_t> effect_data)
 {
-    static constexpr string_view effect_config = "[Effect]\nPasses = 1\n";
-    static constexpr string_view effect_info = "[EffectInfo]\nMainTex = 0\nProjBuf = 1\n";
+    static constexpr string_view effect_config {"[Effect]\nPasses = 1\n"};
+    static constexpr string_view effect_info {"[EffectInfo]\nMainTex = 0\nProjBuf = 1\n"};
 
     // The runtime throws on a binary without the mandatory bounds trailer, and the cooked fixtures are raw Effekseer
     // payloads, so a representative trailer is appended here
@@ -329,7 +334,7 @@ static void AddEffekseerRuntimeTestResources(BakerTests::MemoryDataSource& sourc
 
     // The atlas-mapping variants additionally read the sub-rectangle and the sampling flags, so their reflected info
     // declares those buffers
-    static constexpr string_view atlas_effect_info = "[EffectInfo]\nMainTex = 0\nProjBuf = 0\nSpriteBorderBuf = 1\nParticleSamplingBuf = 2\nMainTexBuf = 3\n";
+    static constexpr string_view atlas_effect_info {"[EffectInfo]\nMainTex = 0\nProjBuf = 0\nSpriteBorderBuf = 1\nParticleSamplingBuf = 2\nMainTexBuf = 3\n"};
 
     for (string_view atlas_effect : {"Effects/Particles_ColorMulAtlas.fofx", "Effects/Particles_ColorAddAtlas.fofx", "Effects/Particles_ColorSubAtlas.fofx"}) {
         source.AddFile(atlas_effect, effect_config);
@@ -337,7 +342,7 @@ static void AddEffekseerRuntimeTestResources(BakerTests::MemoryDataSource& sourc
     }
 
     // The distortion variants read the same buffers plus the scene copy they refract
-    static constexpr string_view distortion_effect_info = "[EffectInfo]\nMainTex = 0\nBackgroundTex = 1\nProjBuf = 0\nSpriteBorderBuf = 1\nParticleSamplingBuf = 2\nMainTexBuf = 3\n";
+    static constexpr string_view distortion_effect_info {"[EffectInfo]\nMainTex = 0\nBackgroundTex = 1\nProjBuf = 0\nSpriteBorderBuf = 1\nParticleSamplingBuf = 2\nMainTexBuf = 3\n"};
 
     for (string_view distortion_effect : {"Effects/Particles_DistortionAtlas.fofx", "Effects/Particles_DistortionAddAtlas.fofx"}) {
         source.AddFile(distortion_effect, effect_config);
@@ -347,14 +352,14 @@ static void AddEffekseerRuntimeTestResources(BakerTests::MemoryDataSource& sourc
 
 static auto MakeEffekseerRuntimeTestResources(string_view effect_path, vector<uint8_t> effect_data, const map<string, vector<uint8_t>>& dependencies) -> FileSystem
 {
-    auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("EffekseerRuntimeTests");
+    auto source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("EffekseerRuntimeTests")};
     AddEffekseerRuntimeTestResources(*source, effect_path, std::move(effect_data));
 
     for (const auto& [path, data] : dependencies) {
         source->AddFile(path, data);
     }
 
-    FileSystem resources;
+    FileSystem resources {};
     resources.AddCustomSource(std::move(source));
     return resources;
 }
@@ -414,7 +419,7 @@ EffekseerRuntimeTestRig::EffekseerRuntimeTestRig(string_view effect_path, vector
 
 auto EffekseerRuntimeTestRig::CreateSystem() -> unique_ptr<ParticleRuntimeSystem>
 {
-    auto system = _backend->Create(_effectPath);
+    auto system {_backend->Create(_effectPath)};
     FO_VERIFY_AND_THROW(system, "Effekseer runtime test fixture failed to create");
     return system.take_not_null();
 }
@@ -485,13 +490,13 @@ static auto MakeEffekseerIdentitySetup() -> ParticleRuntimeSetup
 static auto DrawEffekseerFixture(EffekseerRuntimeTestRig& rig, int32_t seed, int32_t frame_count = 1) -> vector<CapturedEffekseerDraw>
 {
     FO_VERIFY_AND_THROW(frame_count > 0, "Effekseer runtime test requires a positive frame count", frame_count);
-    unique_ptr<ParticleRuntimeSystem> system = rig.CreateSystem();
+    unique_ptr<ParticleRuntimeSystem> system {rig.CreateSystem()};
 
     system->Setup(MakeEffekseerIdentitySetup());
     system->Respawn(seed);
     REQUIRE(system->IsActive());
 
-    for (int32_t frame = 0; frame < frame_count; frame++) {
+    for (int32_t frame {0}; frame < frame_count; frame++) {
         system->Update(1.0f / 60.0f);
     }
 
@@ -504,9 +509,9 @@ static void CheckEffekseerDrawsEqual(const vector<CapturedEffekseerDraw>& left, 
 {
     REQUIRE(left.size() == right.size());
 
-    for (size_t draw_index = 0; draw_index < left.size(); draw_index++) {
-        const CapturedEffekseerDraw& left_draw = left[draw_index];
-        const CapturedEffekseerDraw& right_draw = right[draw_index];
+    for (size_t draw_index {0}; draw_index < left.size(); draw_index++) {
+        const CapturedEffekseerDraw& left_draw {left[draw_index]};
+        const CapturedEffekseerDraw& right_draw {right[draw_index]};
         CAPTURE(draw_index);
         CHECK(left_draw.EffectName == right_draw.EffectName);
         CHECK(left_draw.Indices == right_draw.Indices);
@@ -515,9 +520,9 @@ static void CheckEffekseerDrawsEqual(const vector<CapturedEffekseerDraw>& left, 
         CHECK(left_draw.HasProjection == right_draw.HasProjection);
         REQUIRE(left_draw.Vertices.size() == right_draw.Vertices.size());
 
-        for (size_t vertex_index = 0; vertex_index < left_draw.Vertices.size(); vertex_index++) {
-            const Vertex2D& left_vertex = left_draw.Vertices[vertex_index];
-            const Vertex2D& right_vertex = right_draw.Vertices[vertex_index];
+        for (size_t vertex_index {0}; vertex_index < left_draw.Vertices.size(); vertex_index++) {
+            const Vertex2D& left_vertex {left_draw.Vertices[vertex_index]};
+            const Vertex2D& right_vertex {right_draw.Vertices[vertex_index]};
             CAPTURE(vertex_index);
             CHECK(left_vertex.PosX == right_vertex.PosX);
             CHECK(left_vertex.PosY == right_vertex.PosY);
@@ -534,7 +539,7 @@ static void CheckEffekseerDrawsEqual(const vector<CapturedEffekseerDraw>& left, 
 static void CheckEffekseerFixtureGeometry(const vector<CapturedEffekseerDraw>& draws)
 {
     REQUIRE(draws.size() == 1);
-    const CapturedEffekseerDraw& draw = draws.front();
+    const CapturedEffekseerDraw& draw {draws.front()};
     CHECK(draw.EffectName == "Effects/Particles_ColorAddAtlas.fofx");
     CHECK(draw.PrimitiveType == RenderPrimitiveType::TriangleList);
     CHECK(draw.HasMainTexture);
@@ -544,8 +549,8 @@ static void CheckEffekseerFixtureGeometry(const vector<CapturedEffekseerDraw>& d
 
     // The vertex carries the emitter's raw coordinate and the shader maps it into the atlas entry, so the fixture's
     // full-sprite UV rectangle stays [0,1] here while the entry travels in the sub-rectangle below
-    const float32_t expected_u[4] = {0.0f, 1.0f, 0.0f, 1.0f};
-    const float32_t expected_v[4] = {1.0f, 1.0f, 0.0f, 0.0f};
+    const float32_t expected_u[4] {0.0f, 1.0f, 0.0f, 1.0f};
+    const float32_t expected_v[4] {1.0f, 1.0f, 0.0f, 0.0f};
 
     REQUIRE(draw.AtlasSubRect.has_value());
     CHECK((*draw.AtlasSubRect)[0] == Catch::Approx(EffekseerFixtureAtlasRect.x));
@@ -558,8 +563,8 @@ static void CheckEffekseerFixtureGeometry(const vector<CapturedEffekseerDraw>& d
     CHECK((*draw.Sampling)[0] == 0.0f);
     CHECK((*draw.Sampling)[1] == 1.0f);
 
-    for (size_t vertex_index = 0; vertex_index < draw.Vertices.size(); vertex_index++) {
-        const Vertex2D& vertex = draw.Vertices[vertex_index];
+    for (size_t vertex_index {0}; vertex_index < draw.Vertices.size(); vertex_index++) {
+        const Vertex2D& vertex {draw.Vertices[vertex_index]};
         CAPTURE(vertex_index);
         CHECK(std::isfinite(vertex.PosX));
         CHECK(std::isfinite(vertex.PosY));
@@ -585,13 +590,13 @@ static void CheckEffekseerFixtureGeometry(const vector<CapturedEffekseerDraw>& d
 static void CheckEffekseerMultiInstanceTopology(const vector<CapturedEffekseerDraw>& draws, size_t expected_instance_count)
 {
     REQUIRE(draws.size() == 1);
-    const CapturedEffekseerDraw& draw = draws.front();
+    const CapturedEffekseerDraw& draw {draws.front()};
     REQUIRE(draw.Vertices.size() == expected_instance_count * 4);
     REQUIRE(draw.Indices.size() == expected_instance_count * 6);
 
-    for (size_t instance_index = 0; instance_index < expected_instance_count; instance_index++) {
-        vindex_t vertex_base = numeric_cast<vindex_t>(instance_index * 4);
-        size_t index_base = instance_index * 6;
+    for (size_t instance_index {0}; instance_index < expected_instance_count; instance_index++) {
+        vindex_t vertex_base {numeric_cast<vindex_t>(instance_index * 4)};
+        size_t index_base {instance_index * 6};
         CAPTURE(instance_index);
         CHECK(draw.Indices[index_base + 0] == vertex_base + 0);
         CHECK(draw.Indices[index_base + 1] == vertex_base + 1);
@@ -604,12 +609,12 @@ static void CheckEffekseerMultiInstanceTopology(const vector<CapturedEffekseerDr
 
 static void CheckEffekseerRingGeometry(const vector<CapturedEffekseerDraw>& draws)
 {
-    constexpr size_t segment_count = 16;
-    constexpr size_t vertices_per_segment = 8;
-    constexpr size_t indices_per_segment = 12;
+    constexpr size_t segment_count {16};
+    constexpr size_t vertices_per_segment {8};
+    constexpr size_t indices_per_segment {12};
 
     REQUIRE(draws.size() == 1);
-    const CapturedEffekseerDraw& draw = draws.front();
+    const CapturedEffekseerDraw& draw {draws.front()};
     CHECK(draw.PrimitiveType == RenderPrimitiveType::TriangleList);
     CHECK(draw.HasMainTexture);
     CHECK(draw.HasProjection);
@@ -633,18 +638,18 @@ static void CheckEffekseerRingGeometry(const vector<CapturedEffekseerDraw>& draw
 
     ring_center /= numeric_cast<float32_t>(draw.Vertices.size());
 
-    const float32_t expected_radii[vertices_per_segment] = {2.0f, 1.5f, 2.0f, 1.5f, 1.5f, 1.0f, 1.5f, 1.0f};
-    const float32_t expected_v[vertices_per_segment] = {0.0f, 0.5f, 0.0f, 0.5f, 0.5f, 1.0f, 0.5f, 1.0f};
-    const vindex_t local_indices[indices_per_segment] = {0, 1, 2, 2, 1, 3, 4, 5, 6, 6, 5, 7};
+    const float32_t expected_radii[vertices_per_segment] {2.0f, 1.5f, 2.0f, 1.5f, 1.5f, 1.0f, 1.5f, 1.0f};
+    const float32_t expected_v[vertices_per_segment] {0.0f, 0.5f, 0.0f, 0.5f, 0.5f, 1.0f, 0.5f, 1.0f};
+    const vindex_t local_indices[indices_per_segment] {0, 1, 2, 2, 1, 3, 4, 5, 6, 6, 5, 7};
 
-    for (size_t segment_index = 0; segment_index < segment_count; segment_index++) {
-        size_t vertex_base = segment_index * vertices_per_segment;
-        size_t index_base = segment_index * indices_per_segment;
-        float32_t expected_u = numeric_cast<float32_t>(segment_index) / numeric_cast<float32_t>(segment_count);
-        float32_t expected_next_u = numeric_cast<float32_t>(segment_index + 1) / numeric_cast<float32_t>(segment_count);
+    for (size_t segment_index {0}; segment_index < segment_count; segment_index++) {
+        size_t vertex_base {segment_index * vertices_per_segment};
+        size_t index_base {segment_index * indices_per_segment};
+        float32_t expected_u {numeric_cast<float32_t>(segment_index) / numeric_cast<float32_t>(segment_count)};
+        float32_t expected_next_u {numeric_cast<float32_t>(segment_index + 1) / numeric_cast<float32_t>(segment_count)};
 
-        for (size_t vertex_offset = 0; vertex_offset < vertices_per_segment; vertex_offset++) {
-            const Vertex2D& vertex = draw.Vertices[vertex_base + vertex_offset];
+        for (size_t vertex_offset {0}; vertex_offset < vertices_per_segment; vertex_offset++) {
+            const Vertex2D& vertex {draw.Vertices[vertex_base + vertex_offset]};
             vec3 position {vertex.PosX, vertex.PosY, vertex.PosZ};
             CAPTURE(segment_index, vertex_offset);
             CHECK(glm::length(position - ring_center) == Catch::Approx(expected_radii[vertex_offset]).margin(0.001f));
@@ -652,7 +657,7 @@ static void CheckEffekseerRingGeometry(const vector<CapturedEffekseerDraw>& draw
             CHECK(vertex.TexV == Catch::Approx(expected_v[vertex_offset]));
         }
 
-        for (size_t index_offset = 0; index_offset < indices_per_segment; index_offset++) {
+        for (size_t index_offset {0}; index_offset < indices_per_segment; index_offset++) {
             CAPTURE(segment_index, index_offset);
             CHECK(draw.Indices[index_base + index_offset] == numeric_cast<vindex_t>(vertex_base) + local_indices[index_offset]);
         }
@@ -661,19 +666,19 @@ static void CheckEffekseerRingGeometry(const vector<CapturedEffekseerDraw>& draw
 
 static auto GetEffekseerRingDepths(const vector<CapturedEffekseerDraw>& draws) -> vector<float32_t>
 {
-    constexpr size_t vertices_per_ring = 16 * 8;
+    constexpr size_t vertices_per_ring {16 * 8};
 
     REQUIRE(draws.size() == 1);
-    const vector<Vertex2D>& vertices = draws.front().Vertices;
+    const vector<Vertex2D>& vertices {draws.front().Vertices};
     REQUIRE(vertices.size() % vertices_per_ring == 0);
 
-    vector<float32_t> depths;
+    vector<float32_t> depths {};
     depths.reserve(vertices.size() / vertices_per_ring);
 
-    for (size_t vertex_base = 0; vertex_base < vertices.size(); vertex_base += vertices_per_ring) {
-        float32_t depth = 0.0f;
+    for (size_t vertex_base {0}; vertex_base < vertices.size(); vertex_base += vertices_per_ring) {
+        float32_t depth {0.0f};
 
-        for (size_t vertex_offset = 0; vertex_offset < vertices_per_ring; vertex_offset++) {
+        for (size_t vertex_offset {0}; vertex_offset < vertices_per_ring; vertex_offset++) {
             depth += vertices[vertex_base + vertex_offset].PosZ;
         }
 
@@ -686,14 +691,14 @@ static auto GetEffekseerRingDepths(const vector<CapturedEffekseerDraw>& draws) -
 static auto GetEffekseerQuadDepths(const vector<CapturedEffekseerDraw>& draws) -> vector<float32_t>
 {
     REQUIRE(draws.size() == 1);
-    const vector<Vertex2D>& vertices = draws.front().Vertices;
+    const vector<Vertex2D>& vertices {draws.front().Vertices};
     REQUIRE(vertices.size() % 4 == 0);
 
-    vector<float32_t> depths;
+    vector<float32_t> depths {};
     depths.reserve(vertices.size() / 4);
 
-    for (size_t vertex_base = 0; vertex_base < vertices.size(); vertex_base += 4) {
-        float32_t depth = vertices[vertex_base].PosZ;
+    for (size_t vertex_base {0}; vertex_base < vertices.size(); vertex_base += 4) {
+        float32_t depth {vertices[vertex_base].PosZ};
         CHECK(vertices[vertex_base + 1].PosZ == Catch::Approx(depth));
         CHECK(vertices[vertex_base + 2].PosZ == Catch::Approx(depth));
         CHECK(vertices[vertex_base + 3].PosZ == Catch::Approx(depth));
@@ -705,11 +710,11 @@ static auto GetEffekseerQuadDepths(const vector<CapturedEffekseerDraw>& draws) -
 
 TEST_CASE("Effekseer particle runtime produces deterministic FOnline callback geometry", "[particle][effekseer-runtime]")
 {
-    EffekseerRuntimeTestRig first_rig;
-    EffekseerRuntimeTestRig second_rig;
+    EffekseerRuntimeTestRig first_rig {};
+    EffekseerRuntimeTestRig second_rig {};
 
-    vector<CapturedEffekseerDraw> first_draws = DrawEffekseerFixture(first_rig, 173);
-    vector<CapturedEffekseerDraw> second_draws = DrawEffekseerFixture(second_rig, 173);
+    vector<CapturedEffekseerDraw> first_draws {DrawEffekseerFixture(first_rig, 173)};
+    vector<CapturedEffekseerDraw> second_draws {DrawEffekseerFixture(second_rig, 173)};
 
     CheckEffekseerDrawsEqual(first_draws, second_draws);
     CheckEffekseerFixtureGeometry(first_draws);
@@ -722,8 +727,8 @@ TEST_CASE("Effekseer particle runtime produces deterministic modern Ring geometr
     EffekseerRuntimeTestRig first_rig {EffekseerRingFixturePath, ParticleTests::MakeModernRingEffect()};
     EffekseerRuntimeTestRig second_rig {EffekseerRingFixturePath, ParticleTests::MakeModernRingEffect()};
 
-    vector<CapturedEffekseerDraw> first_draws = DrawEffekseerFixture(first_rig, 307);
-    vector<CapturedEffekseerDraw> second_draws = DrawEffekseerFixture(second_rig, 307);
+    vector<CapturedEffekseerDraw> first_draws {DrawEffekseerFixture(first_rig, 307)};
+    vector<CapturedEffekseerDraw> second_draws {DrawEffekseerFixture(second_rig, 307)};
 
     CheckEffekseerDrawsEqual(first_draws, second_draws);
     CheckEffekseerRingGeometry(first_draws);
@@ -732,12 +737,12 @@ TEST_CASE("Effekseer particle runtime produces deterministic modern Ring geometr
 
 TEST_CASE("Effekseer particle runtime chunks Ring geometry within the index budget", "[particle][effekseer-runtime]")
 {
-    constexpr int32_t instance_count = 501;
-    constexpr size_t segment_count = 16;
-    constexpr size_t instances_in_full_chunk = 500;
+    constexpr int32_t instance_count {501};
+    constexpr size_t segment_count {16};
+    constexpr size_t instances_in_full_chunk {500};
 
     EffekseerRuntimeTestRig rig {EffekseerRingFixturePath, ParticleTests::MakeModernRingEffect(instance_count)};
-    vector<CapturedEffekseerDraw> draws = DrawEffekseerFixture(rig, 313);
+    vector<CapturedEffekseerDraw> draws {DrawEffekseerFixture(rig, 313)};
 
     REQUIRE(draws.size() == 2);
     CHECK(draws[0].Vertices.size() == instances_in_full_chunk * segment_count * 8);
@@ -750,25 +755,25 @@ TEST_CASE("Effekseer particle runtime chunks Ring geometry within the index budg
 
 TEST_CASE("Effekseer particle runtime honors cooked Ring Z-sort modes", "[particle][effekseer-runtime]")
 {
-    constexpr int32_t none = 0;
-    constexpr int32_t normal_order = 1;
-    constexpr int32_t reverse_order = 2;
-    constexpr int32_t seed = 317;
-    constexpr int32_t instance_count = 6;
+    constexpr int32_t none {0};
+    constexpr int32_t normal_order {1};
+    constexpr int32_t reverse_order {2};
+    constexpr int32_t seed {317};
+    constexpr int32_t instance_count {6};
 
     EffekseerRuntimeTestRig none_rig {EffekseerRingFixturePath, ParticleTests::MakeModernRingEffect(instance_count, none)};
     EffekseerRuntimeTestRig normal_rig {EffekseerRingFixturePath, ParticleTests::MakeModernRingEffect(instance_count, normal_order)};
     EffekseerRuntimeTestRig reverse_rig {EffekseerRingFixturePath, ParticleTests::MakeModernRingEffect(instance_count, reverse_order)};
 
-    vector<float32_t> none_depths = GetEffekseerRingDepths(DrawEffekseerFixture(none_rig, seed));
-    vector<float32_t> normal_depths = GetEffekseerRingDepths(DrawEffekseerFixture(normal_rig, seed));
-    vector<float32_t> reverse_depths = GetEffekseerRingDepths(DrawEffekseerFixture(reverse_rig, seed));
+    vector<float32_t> none_depths {GetEffekseerRingDepths(DrawEffekseerFixture(none_rig, seed))};
+    vector<float32_t> normal_depths {GetEffekseerRingDepths(DrawEffekseerFixture(normal_rig, seed))};
+    vector<float32_t> reverse_depths {GetEffekseerRingDepths(DrawEffekseerFixture(reverse_rig, seed))};
 
-    vector<float32_t> sorted_depths = none_depths;
+    vector<float32_t> sorted_depths {none_depths};
     std::sort(sorted_depths.begin(), sorted_depths.end());
     REQUIRE(sorted_depths.size() == numeric_cast<size_t>(instance_count));
 
-    for (size_t depth_index = 1; depth_index < sorted_depths.size(); depth_index++) {
+    for (size_t depth_index {1}; depth_index < sorted_depths.size(); depth_index++) {
         CHECK(sorted_depths[depth_index - 1] < sorted_depths[depth_index]);
     }
 
@@ -779,11 +784,11 @@ TEST_CASE("Effekseer particle runtime honors cooked Ring Z-sort modes", "[partic
 
 TEST_CASE("Effekseer particle runtime batches multiple callback instances deterministically", "[particle][effekseer-runtime]")
 {
-    EffekseerRuntimeTestRig first_rig;
-    EffekseerRuntimeTestRig second_rig;
+    EffekseerRuntimeTestRig first_rig {};
+    EffekseerRuntimeTestRig second_rig {};
 
-    vector<CapturedEffekseerDraw> first_draws = DrawEffekseerFixture(first_rig, 419, 6);
-    vector<CapturedEffekseerDraw> second_draws = DrawEffekseerFixture(second_rig, 419, 6);
+    vector<CapturedEffekseerDraw> first_draws {DrawEffekseerFixture(first_rig, 419, 6)};
+    vector<CapturedEffekseerDraw> second_draws {DrawEffekseerFixture(second_rig, 419, 6)};
 
     CheckEffekseerDrawsEqual(first_draws, second_draws);
     CheckEffekseerMultiInstanceTopology(first_draws, 6);
@@ -791,35 +796,35 @@ TEST_CASE("Effekseer particle runtime batches multiple callback instances determ
 
 TEST_CASE("Effekseer particle runtime honors cooked sprite Z-sort modes", "[particle][effekseer-runtime]")
 {
-    constexpr int32_t none = 0;
-    constexpr int32_t normal_order = 1;
-    constexpr int32_t reverse_order = 2;
-    constexpr int32_t seed = 503;
-    constexpr int32_t frame_count = 6;
-    constexpr size_t instance_count = 6;
+    constexpr int32_t none {0};
+    constexpr int32_t normal_order {1};
+    constexpr int32_t reverse_order {2};
+    constexpr int32_t seed {503};
+    constexpr int32_t frame_count {6};
+    constexpr size_t instance_count {6};
 
     EffekseerRuntimeTestRig none_rig {EffekseerZSortFixturePath, ParticleTests::MakeZSortSpriteEffect(none)};
     EffekseerRuntimeTestRig normal_rig {EffekseerZSortFixturePath, ParticleTests::MakeZSortSpriteEffect(normal_order)};
     EffekseerRuntimeTestRig reverse_rig {EffekseerZSortFixturePath, ParticleTests::MakeZSortSpriteEffect(reverse_order)};
 
-    vector<CapturedEffekseerDraw> none_draws = DrawEffekseerFixture(none_rig, seed, frame_count);
-    vector<CapturedEffekseerDraw> normal_draws = DrawEffekseerFixture(normal_rig, seed, frame_count);
-    vector<CapturedEffekseerDraw> reverse_draws = DrawEffekseerFixture(reverse_rig, seed, frame_count);
+    vector<CapturedEffekseerDraw> none_draws {DrawEffekseerFixture(none_rig, seed, frame_count)};
+    vector<CapturedEffekseerDraw> normal_draws {DrawEffekseerFixture(normal_rig, seed, frame_count)};
+    vector<CapturedEffekseerDraw> reverse_draws {DrawEffekseerFixture(reverse_rig, seed, frame_count)};
 
     CheckEffekseerMultiInstanceTopology(none_draws, instance_count);
     CheckEffekseerMultiInstanceTopology(normal_draws, instance_count);
     CheckEffekseerMultiInstanceTopology(reverse_draws, instance_count);
     CHECK(normal_draws.front().EffectName == "Effects/Particles_ColorMulAtlas.fofx");
 
-    vector<float32_t> none_depths = GetEffekseerQuadDepths(none_draws);
-    vector<float32_t> normal_depths = GetEffekseerQuadDepths(normal_draws);
-    vector<float32_t> reverse_depths = GetEffekseerQuadDepths(reverse_draws);
+    vector<float32_t> none_depths {GetEffekseerQuadDepths(none_draws)};
+    vector<float32_t> normal_depths {GetEffekseerQuadDepths(normal_draws)};
+    vector<float32_t> reverse_depths {GetEffekseerQuadDepths(reverse_draws)};
 
-    vector<float32_t> sorted_depths = none_depths;
+    vector<float32_t> sorted_depths {none_depths};
     std::sort(sorted_depths.begin(), sorted_depths.end());
     REQUIRE(sorted_depths.size() == instance_count);
 
-    for (size_t depth_index = 1; depth_index < sorted_depths.size(); depth_index++) {
+    for (size_t depth_index {1}; depth_index < sorted_depths.size(); depth_index++) {
         CHECK(sorted_depths[depth_index - 1] < sorted_depths[depth_index]);
     }
 
@@ -830,8 +835,8 @@ TEST_CASE("Effekseer particle runtime honors cooked sprite Z-sort modes", "[part
 
 TEST_CASE("Effekseer particle runtime repeats draw and seeded respawn packets", "[particle][effekseer-runtime]")
 {
-    EffekseerRuntimeTestRig rig;
-    unique_ptr<ParticleRuntimeSystem> system = rig.CreateSystem();
+    EffekseerRuntimeTestRig rig {};
+    unique_ptr<ParticleRuntimeSystem> system {rig.CreateSystem()};
 
     system->Setup(MakeEffekseerIdentitySetup());
     system->Respawn(811);
@@ -840,57 +845,57 @@ TEST_CASE("Effekseer particle runtime repeats draw and seeded respawn packets", 
 
     rig.ClearDraws();
     system->Draw();
-    vector<CapturedEffekseerDraw> first_draws = rig.GetDraws();
+    vector<CapturedEffekseerDraw> first_draws {rig.GetDraws()};
     CheckEffekseerFixtureGeometry(first_draws);
 
     rig.ClearDraws();
     system->Draw();
-    vector<CapturedEffekseerDraw> repeated_draws = rig.GetDraws();
+    vector<CapturedEffekseerDraw> repeated_draws {rig.GetDraws()};
     CheckEffekseerDrawsEqual(first_draws, repeated_draws);
 
     system->Respawn(811);
     system->Update(1.0f / 60.0f);
     rig.ClearDraws();
     system->Draw();
-    vector<CapturedEffekseerDraw> respawned_draws = rig.GetDraws();
+    vector<CapturedEffekseerDraw> respawned_draws {rig.GetDraws()};
     CheckEffekseerDrawsEqual(first_draws, respawned_draws);
 }
 
 TEST_CASE("Particle facade reapplies scale to an active Effekseer runtime", "[particle][effekseer-runtime]")
 {
-    EffekseerRuntimeTestRig rig;
-    optional<ParticleSystem> created_system = rig.CreateManagedSystem();
+    EffekseerRuntimeTestRig rig {};
+    optional<ParticleSystem> created_system {rig.CreateManagedSystem()};
     REQUIRE(created_system);
 
-    ParticleSystem& system = *created_system;
-    ParticleRuntimeSetup setup = MakeEffekseerIdentitySetup();
+    ParticleSystem& system {*created_system};
+    ParticleRuntimeSetup setup {MakeEffekseerIdentitySetup()};
     system.Setup(setup.Projection, setup.World, setup.PositionOffset, setup.LookDirectionAngle, setup.ViewOffset, setup.TiltInProjection);
     REQUIRE(system.Respawn(977));
     system.Update();
-    REQUIRE(system.GetElapsedTime() > 0.0f);
+    REQUIRE(system.GetElapsedTime() > timespan::zero);
 
     rig.ClearDraws();
     system.Draw();
-    vector<CapturedEffekseerDraw> unscaled_draws = rig.GetDraws();
+    vector<CapturedEffekseerDraw> unscaled_draws {rig.GetDraws()};
     CheckEffekseerFixtureGeometry(unscaled_draws);
     CHECK_FALSE(system.NeedForceDraw());
 
-    float32_t elapsed_before_scale = system.GetElapsedTime();
+    timespan elapsed_before_scale {system.GetElapsedTime()};
     system.SetScale(2.0f);
     CHECK(system.NeedForceDraw());
     CHECK(system.GetElapsedTime() == elapsed_before_scale);
 
     rig.ClearDraws();
     system.Draw();
-    vector<CapturedEffekseerDraw> scaled_draws = rig.GetDraws();
+    vector<CapturedEffekseerDraw> scaled_draws {rig.GetDraws()};
     REQUIRE(scaled_draws.size() == unscaled_draws.size());
 
-    for (size_t draw_index = 0; draw_index < unscaled_draws.size(); draw_index++) {
-        const vector<Vertex2D>& unscaled_vertices = unscaled_draws[draw_index].Vertices;
-        const vector<Vertex2D>& scaled_vertices = scaled_draws[draw_index].Vertices;
+    for (size_t draw_index {0}; draw_index < unscaled_draws.size(); draw_index++) {
+        const vector<Vertex2D>& unscaled_vertices {unscaled_draws[draw_index].Vertices};
+        const vector<Vertex2D>& scaled_vertices {scaled_draws[draw_index].Vertices};
         REQUIRE(scaled_vertices.size() == unscaled_vertices.size());
 
-        for (size_t vertex_index = 0; vertex_index < unscaled_vertices.size(); vertex_index++) {
+        for (size_t vertex_index {0}; vertex_index < unscaled_vertices.size(); vertex_index++) {
             CAPTURE(draw_index, vertex_index);
             CHECK(scaled_vertices[vertex_index].PosX == Catch::Approx(unscaled_vertices[vertex_index].PosX * 2.0f).margin(0.001f));
             CHECK(scaled_vertices[vertex_index].PosY == Catch::Approx(unscaled_vertices[vertex_index].PosY * 2.0f).margin(0.001f));
@@ -901,24 +906,40 @@ TEST_CASE("Particle facade reapplies scale to an active Effekseer runtime", "[pa
 
 TEST_CASE("Particle facade advances a model-attached effect from an explicit frame delta", "[particle][effekseer-runtime]")
 {
-    EffekseerRuntimeTestRig rig;
-    optional<ParticleSystem> created_system = rig.CreateManagedSystem();
+    EffekseerRuntimeTestRig rig {};
+    optional<ParticleSystem> created_system {rig.CreateManagedSystem()};
     REQUIRE(created_system);
 
-    ParticleSystem& system = *created_system;
-    ParticleRuntimeSetup setup = MakeEffekseerIdentitySetup();
+    ParticleSystem& system {*created_system};
+    ParticleRuntimeSetup setup {MakeEffekseerIdentitySetup()};
     system.Setup(setup.Projection, setup.World, setup.PositionOffset, setup.LookDirectionAngle, setup.ViewOffset, setup.TiltInProjection);
     REQUIRE(system.Respawn(977));
 
-    constexpr float32_t frame_delta = 1.0f / 30.0f;
+    constexpr timespan frame_delta {std::chrono::nanoseconds {33333333}};
     system.Update(frame_delta);
 
-    CHECK(system.GetElapsedTime() == Catch::Approx(frame_delta));
+    CHECK(system.GetElapsedTime() == frame_delta);
     CHECK(system.IsActive());
 
     rig.ClearDraws();
     system.Draw();
     CheckEffekseerFixtureGeometry(rig.GetDraws());
+}
+
+TEST_CASE("Particle facade preserves fractional elapsed time", "[particle][effekseer-runtime]")
+{
+    EffekseerRuntimeTestRig rig {};
+    optional<ParticleSystem> created_system {rig.CreateManagedSystem()};
+    REQUIRE(created_system);
+
+    ParticleSystem& system {*created_system};
+    REQUIRE(system.Respawn(977));
+
+    system.Update(timespan {500001});
+    system.Update(timespan {1});
+    CHECK(system.GetElapsedTime() == timespan {500002});
+    CHECK_THROWS(system.Update(timespan {-1}));
+    CHECK(system.GetElapsedTime() == timespan {500002});
 }
 
 TEST_CASE("Effekseer particle runtime rejects a missing color texture", "[particle][effekseer-runtime]")
@@ -934,21 +955,21 @@ TEST_CASE("Effekseer particle runtime rejects a missing color texture", "[partic
 // exists once several instances of one group are alive together, which a cooked single-instance fixture cannot express
 static auto MakeStripFixtureRig(string_view project) -> unique_ptr<EffekseerRuntimeTestRig>
 {
-    EffekseerCompilerOutput compiled = CompileEffekseerProject("Particles/EffekseerTests/Strip.efkproj", {reinterpret_cast<const uint8_t*>(project.data()), project.size()});
+    EffekseerCompilerOutput compiled {CompileEffekseerProject("Particles/EffekseerTests/Strip.efkproj", {reinterpret_cast<const uint8_t*>(project.data()), project.size()})};
 
     return safe_alloc::make_unique<EffekseerRuntimeTestRig>(EffekseerStripFixturePath, std::move(compiled.Binary));
 }
 
 static auto DrawStripFixture(EffekseerRuntimeTestRig& rig, const ParticleRuntimeSetup& setup) -> vector<CapturedEffekseerDraw>
 {
-    unique_ptr<ParticleRuntimeSystem> system = rig.CreateSystem();
+    unique_ptr<ParticleRuntimeSystem> system {rig.CreateSystem()};
 
     system->Setup(setup);
     system->Respawn(4711);
     REQUIRE(system->IsActive());
 
     // Long enough for every generation of the group to exist, short enough that none of them has expired
-    for (int32_t frame = 0; frame < 8; frame++) {
+    for (int32_t frame {0}; frame < 8; frame++) {
         system->Update(1.0f / 60.0f);
     }
 
@@ -978,15 +999,15 @@ static void CheckStripGeometry(const CapturedEffekseerDraw& draw, size_t segment
     REQUIRE(draw.Sampling);
     CHECK((*draw.Sampling)[0] == Catch::Approx(0.0f));
 
-    for (size_t segment_index = 0; segment_index < segment_count; segment_index++) {
-        size_t vertex_base = segment_index * 8;
-        size_t index_base = segment_index * 12;
-        const vector<Vertex2D>& vertices = draw.Vertices;
+    for (size_t segment_index {0}; segment_index < segment_count; segment_index++) {
+        size_t vertex_base {segment_index * 8};
+        size_t index_base {segment_index * 12};
+        const vector<Vertex2D>& vertices {draw.Vertices};
 
         // Two quads per segment, wound exactly like every other particle quad the renderer emits
-        const size_t expected_indices[12] = {0, 1, 2, 2, 1, 3, 4, 5, 6, 6, 5, 7};
+        const size_t expected_indices[12] {0, 1, 2, 2, 1, 3, 4, 5, 6, 6, 5, 7};
 
-        for (size_t offset = 0; offset < 12; offset++) {
+        for (size_t offset {0}; offset < 12; offset++) {
             CHECK(numeric_cast<size_t>(draw.Indices[index_base + offset]) == vertex_base + expected_indices[offset]);
         }
 
@@ -1004,12 +1025,12 @@ static void CheckStripGeometry(const CapturedEffekseerDraw& draw, size_t segment
         CHECK(vertices[vertex_base + 1].PosZ == Catch::Approx((vertices[vertex_base + 0].PosZ + vertices[vertex_base + 5].PosZ) * 0.5f));
 
         // Effekseer stretches the texture across the strip: half the width per quad, and the V range of the segment
-        float32_t v_near = numeric_cast<float32_t>(segment_index) / numeric_cast<float32_t>(segment_count);
-        float32_t v_far = numeric_cast<float32_t>(segment_index + 1) / numeric_cast<float32_t>(segment_count);
-        const float32_t expected_u[8] = {0.0f, 0.5f, 0.0f, 0.5f, 0.5f, 1.0f, 0.5f, 1.0f};
-        const float32_t expected_v[8] = {v_near, v_near, v_far, v_far, v_near, v_near, v_far, v_far};
+        float32_t v_near {numeric_cast<float32_t>(segment_index) / numeric_cast<float32_t>(segment_count)};
+        float32_t v_far {numeric_cast<float32_t>(segment_index + 1) / numeric_cast<float32_t>(segment_count)};
+        const float32_t expected_u[8] {0.0f, 0.5f, 0.0f, 0.5f, 0.5f, 1.0f, 0.5f, 1.0f};
+        const float32_t expected_v[8] {v_near, v_near, v_far, v_far, v_near, v_near, v_far, v_far};
 
-        for (size_t offset = 0; offset < 8; offset++) {
+        for (size_t offset {0}; offset < 8; offset++) {
             CHECK(vertices[vertex_base + offset].TexU == Catch::Approx(expected_u[offset]));
             CHECK(vertices[vertex_base + offset].TexV == Catch::Approx(expected_v[offset]));
         }
@@ -1017,7 +1038,7 @@ static void CheckStripGeometry(const CapturedEffekseerDraw& draw, size_t segment
         // A segment continues the previous one instead of starting a new band
         if (segment_index != 0) {
             for (size_t offset : {size_t {0}, size_t {1}, size_t {5}}) {
-                size_t previous_offset = offset == 5 ? 7 : offset + 2;
+                size_t previous_offset {offset == 5 ? 7 : offset + 2};
                 CHECK(vertices[vertex_base + offset].PosX == vertices[vertex_base - 8 + previous_offset].PosX);
                 CHECK(vertices[vertex_base + offset].PosY == vertices[vertex_base - 8 + previous_offset].PosY);
                 CHECK(vertices[vertex_base + offset].PosZ == vertices[vertex_base - 8 + previous_offset].PosZ);
@@ -1028,28 +1049,28 @@ static void CheckStripGeometry(const CapturedEffekseerDraw& draw, size_t segment
 
 // A band whose orientation comes from a normalized axis inherits the precision of the engine's - and upstream
 // Effekseer's - fast reciprocal square root, so widths are compared with a tolerance rather than bit-exactly
-static constexpr float32_t StripWidthTolerance = 0.001f;
+static constexpr float32_t StripWidthTolerance {0.001f};
 
 static auto GetStripWidthVector(const CapturedEffekseerDraw& draw, size_t segment_index) -> vec3
 {
-    const Vertex2D& left = draw.Vertices[segment_index * 8 + 0];
-    const Vertex2D& right = draw.Vertices[segment_index * 8 + 5];
+    const Vertex2D& left {draw.Vertices[segment_index * 8 + 0]};
+    const Vertex2D& right {draw.Vertices[segment_index * 8 + 5]};
 
     return vec3 {left.PosX - right.PosX, left.PosY - right.PosY, left.PosZ - right.PosZ};
 }
 
 TEST_CASE("Effekseer particle runtime builds ribbon strip geometry", "[particle][effekseer-runtime]")
 {
-    unique_ptr<EffekseerRuntimeTestRig> rig = MakeStripFixtureRig(ParticleTests::MakeSimpleRibbonProject(false));
-    vector<CapturedEffekseerDraw> draws = DrawStripFixture(*rig, MakeEffekseerIdentitySetup());
+    unique_ptr<EffekseerRuntimeTestRig> rig {MakeStripFixtureRig(ParticleTests::MakeSimpleRibbonProject(false))};
+    vector<CapturedEffekseerDraw> draws {DrawStripFixture(*rig, MakeEffekseerIdentitySetup())};
 
     REQUIRE(draws.size() == 1);
     CheckStripGeometry(draws.front(), 3);
 
     // The authored edge offsets are -0.5 and 0.5, so an unrotated, unscaled band is one unit wide along its own X axis.
     // No normalization is involved on this path, so the width is exact
-    for (size_t segment_index = 0; segment_index < 3; segment_index++) {
-        vec3 width = GetStripWidthVector(draws.front(), segment_index);
+    for (size_t segment_index {0}; segment_index < 3; segment_index++) {
+        vec3 width {GetStripWidthVector(draws.front(), segment_index)};
         CHECK(glm::length(width) == Catch::Approx(1.0f));
         CHECK(width.x == Catch::Approx(-1.0f));
     }
@@ -1059,40 +1080,40 @@ TEST_CASE("Effekseer particle runtime orients a viewpoint-dependent ribbon towar
 {
     // A quarter turn aims the emitter's X axis at the camera, the one placement where the two ribbon orientations
     // disagree: an ordinary band collapses to a line, a viewpoint-dependent one keeps its width
-    ParticleRuntimeSetup setup = MakeEffekseerIdentitySetup();
+    ParticleRuntimeSetup setup {MakeEffekseerIdentitySetup()};
     setup.World = glm::rotate(mat44 {1.0f}, 90.0f * DEG_TO_RAD_FLOAT, vec3 {0.0f, 1.0f, 0.0f});
 
-    unique_ptr<EffekseerRuntimeTestRig> plain_rig = MakeStripFixtureRig(ParticleTests::MakeSimpleRibbonProject(false));
-    vector<CapturedEffekseerDraw> plain_draws = DrawStripFixture(*plain_rig, setup);
+    unique_ptr<EffekseerRuntimeTestRig> plain_rig {MakeStripFixtureRig(ParticleTests::MakeSimpleRibbonProject(false))};
+    vector<CapturedEffekseerDraw> plain_draws {DrawStripFixture(*plain_rig, setup)};
 
     REQUIRE(plain_draws.size() == 1);
     CheckStripGeometry(plain_draws.front(), 3);
-    vec3 plain_width = GetStripWidthVector(plain_draws.front(), 0);
+    vec3 plain_width {GetStripWidthVector(plain_draws.front(), 0)};
     CHECK(glm::length(plain_width) == Catch::Approx(1.0f).margin(StripWidthTolerance));
     CHECK(std::abs(plain_width.z) == Catch::Approx(1.0f).margin(StripWidthTolerance));
 
-    unique_ptr<EffekseerRuntimeTestRig> facing_rig = MakeStripFixtureRig(ParticleTests::MakeSimpleRibbonProject(true));
-    vector<CapturedEffekseerDraw> facing_draws = DrawStripFixture(*facing_rig, setup);
+    unique_ptr<EffekseerRuntimeTestRig> facing_rig {MakeStripFixtureRig(ParticleTests::MakeSimpleRibbonProject(true))};
+    vector<CapturedEffekseerDraw> facing_draws {DrawStripFixture(*facing_rig, setup)};
 
     REQUIRE(facing_draws.size() == 1);
     CheckStripGeometry(facing_draws.front(), 3);
-    vec3 facing_width = GetStripWidthVector(facing_draws.front(), 0);
+    vec3 facing_width {GetStripWidthVector(facing_draws.front(), 0)};
     CHECK(glm::length(facing_width) == Catch::Approx(1.0f).margin(StripWidthTolerance));
     CHECK(facing_width.z == Catch::Approx(0.0f).margin(StripWidthTolerance));
 }
 
 TEST_CASE("Effekseer particle runtime builds track strip geometry", "[particle][effekseer-runtime]")
 {
-    unique_ptr<EffekseerRuntimeTestRig> rig = MakeStripFixtureRig(ParticleTests::MakeSimpleTrackProject());
-    vector<CapturedEffekseerDraw> draws = DrawStripFixture(*rig, MakeEffekseerIdentitySetup());
+    unique_ptr<EffekseerRuntimeTestRig> rig {MakeStripFixtureRig(ParticleTests::MakeSimpleTrackProject())};
+    vector<CapturedEffekseerDraw> draws {DrawStripFixture(*rig, MakeEffekseerIdentitySetup())};
 
     REQUIRE(draws.size() == 1);
     CheckStripGeometry(draws.front(), 3);
 
-    for (size_t segment_index = 0; segment_index < 3; segment_index++) {
-        vec3 width = GetStripWidthVector(draws.front(), segment_index);
-        const Vertex2D& near_center = draws.front().Vertices[segment_index * 8 + 1];
-        const Vertex2D& far_center = draws.front().Vertices[segment_index * 8 + 3];
+    for (size_t segment_index {0}; segment_index < 3; segment_index++) {
+        vec3 width {GetStripWidthVector(draws.front(), segment_index)};
+        const Vertex2D& near_center {draws.front().Vertices[segment_index * 8 + 1]};
+        const Vertex2D& far_center {draws.front().Vertices[segment_index * 8 + 3]};
         vec3 trail {far_center.PosX - near_center.PosX, far_center.PosY - near_center.PosY, far_center.PosZ - near_center.PosZ};
 
         // The authored widths are all 1, so every cross-section is one unit wide however far along the trail it sits
@@ -1108,9 +1129,9 @@ TEST_CASE("Effekseer particle runtime builds track strip geometry", "[particle][
 // references - four vertices, two faces, a distinct red channel per corner so the vertex mapping is visible
 static auto MakeModelFixtureRig(int32_t culling, vector<uint8_t> model_payload) -> unique_ptr<EffekseerRuntimeTestRig>
 {
-    string project = ParticleTests::MakeModelProject(culling);
-    EffekseerCompilerOutput compiled = CompileEffekseerProject("Particles/EffekseerTests/Mesh.efkproj", {reinterpret_cast<const uint8_t*>(project.data()), project.size()});
-    map<string, vector<uint8_t>> dependencies;
+    string project {ParticleTests::MakeModelProject(culling)};
+    EffekseerCompilerOutput compiled {CompileEffekseerProject("Particles/EffekseerTests/Mesh.efkproj", {reinterpret_cast<const uint8_t*>(project.data()), project.size()})};
+    map<string, vector<uint8_t>> dependencies {};
     dependencies.emplace("Particles/EffekseerTests/Model/Fixture.efkmodel", std::move(model_payload));
 
     return safe_alloc::make_unique<EffekseerRuntimeTestRig>(EffekseerModelFixturePath, std::move(compiled.Binary), dependencies);
@@ -1123,23 +1144,23 @@ static auto MakeModelFixtureRig(int32_t culling) -> unique_ptr<EffekseerRuntimeT
 
 TEST_CASE("Effekseer particle runtime rejects malformed model payloads", "[particle][effekseer-runtime]")
 {
-    vector<uint8_t> truncated = ParticleTests::MakeFixtureModelPayload();
+    vector<uint8_t> truncated {ParticleTests::MakeFixtureModelPayload()};
     truncated.resize(5 * sizeof(int32_t));
-    unique_ptr<EffekseerRuntimeTestRig> rig = MakeModelFixtureRig(2, std::move(truncated));
+    unique_ptr<EffekseerRuntimeTestRig> rig {MakeModelFixtureRig(2, std::move(truncated))};
 
     CHECK_FALSE(rig->CanCreateSystem());
 }
 
 TEST_CASE("Effekseer particle runtime draws model node meshes", "[particle][effekseer-runtime]")
 {
-    unique_ptr<EffekseerRuntimeTestRig> rig = MakeModelFixtureRig(2);
-    unique_ptr<ParticleRuntimeSystem> system = rig->CreateSystem();
+    unique_ptr<EffekseerRuntimeTestRig> rig {MakeModelFixtureRig(2)};
+    unique_ptr<ParticleRuntimeSystem> system {rig->CreateSystem()};
 
     system->Setup(MakeEffekseerIdentitySetup());
     system->Respawn(913);
     REQUIRE(system->IsActive());
 
-    for (int32_t frame = 0; frame < 4; frame++) {
+    for (int32_t frame {0}; frame < 4; frame++) {
         system->Update(1.0f / 60.0f);
     }
 
@@ -1147,21 +1168,21 @@ TEST_CASE("Effekseer particle runtime draws model node meshes", "[particle][effe
     system->Draw();
     REQUIRE(system->IsActive());
 
-    const vector<CapturedEffekseerDraw>& draws = rig->GetDraws();
+    const vector<CapturedEffekseerDraw>& draws {rig->GetDraws()};
     REQUIRE(draws.size() == 1);
 
-    const CapturedEffekseerDraw& draw = draws.front();
+    const CapturedEffekseerDraw& draw {draws.front()};
     CHECK(draw.EffectName == "Effects/Particles_ColorAddAtlas.fofx");
     CHECK(draw.PrimitiveType == RenderPrimitiveType::TriangleList);
 
     // Two generations are alive, and each contributes the mesh's two faces as three vertices apiece
-    constexpr size_t mesh_vertices = 6;
+    constexpr size_t mesh_vertices {6};
     REQUIRE(draw.Vertices.size() % mesh_vertices == 0);
     REQUIRE(draw.Vertices.size() / mesh_vertices >= 2);
     REQUIRE(draw.Indices.size() == draw.Vertices.size());
 
     // The mesh is emitted as a plain triangle list, so the indices run straight through the vertices
-    for (size_t index = 0; index < draw.Indices.size(); index++) {
+    for (size_t index {0}; index < draw.Indices.size(); index++) {
         CHECK(numeric_cast<size_t>(draw.Indices[index]) == index);
     }
 
@@ -1171,14 +1192,14 @@ TEST_CASE("Effekseer particle runtime draws model node meshes", "[particle][effe
     array<float32_t, mesh_vertices> expected_u {0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f};
     array<float32_t, mesh_vertices> expected_v {1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f};
 
-    for (size_t corner = 0; corner < mesh_vertices; corner++) {
+    for (size_t corner {0}; corner < mesh_vertices; corner++) {
         CHECK(draw.Vertices[corner].Color.comp.r == expected_red[corner]);
         CHECK(draw.Vertices[corner].TexU == Catch::Approx(expected_u[corner]));
         CHECK(draw.Vertices[corner].TexV == Catch::Approx(expected_v[corner]));
     }
 
     // Every instance draws the same mesh, so the second copy repeats the first one's colours and texture coordinates
-    for (size_t corner = 0; corner < mesh_vertices; corner++) {
+    for (size_t corner {0}; corner < mesh_vertices; corner++) {
         CHECK(draw.Vertices[mesh_vertices + corner].Color.comp.r == expected_red[corner]);
         CHECK(draw.Vertices[mesh_vertices + corner].TexU == Catch::Approx(expected_u[corner]));
         CHECK(draw.Vertices[mesh_vertices + corner].TexV == Catch::Approx(expected_v[corner]));
@@ -1201,21 +1222,21 @@ TEST_CASE("Effekseer particle runtime carries the model node culling mode into t
     };
 
     for (const auto& [culling, expected] : cases) {
-        unique_ptr<EffekseerRuntimeTestRig> rig = MakeModelFixtureRig(culling);
-        unique_ptr<ParticleRuntimeSystem> system = rig->CreateSystem();
+        unique_ptr<EffekseerRuntimeTestRig> rig {MakeModelFixtureRig(culling)};
+        unique_ptr<ParticleRuntimeSystem> system {rig->CreateSystem()};
 
         system->Setup(MakeEffekseerIdentitySetup());
         system->Respawn(913);
         REQUIRE(system->IsActive());
 
-        for (int32_t frame = 0; frame < 4; frame++) {
+        for (int32_t frame {0}; frame < 4; frame++) {
             system->Update(1.0f / 60.0f);
         }
 
         rig->ClearDraws();
         system->Draw();
 
-        const vector<CapturedEffekseerDraw>& draws = rig->GetDraws();
+        const vector<CapturedEffekseerDraw>& draws {rig->GetDraws()};
         REQUIRE(draws.size() == 1);
         CHECK(draws.front().CullMode == expected);
     }
@@ -1225,30 +1246,30 @@ TEST_CASE("Effekseer particle runtime carries the model node culling mode into t
 // whose size it can read, and a refracting node without a texture is rejected by design
 static auto MakeDistortionFixtureRig(float32_t intensity, int32_t alpha_blend) -> unique_ptr<EffekseerRuntimeTestRig>
 {
-    std::filesystem::path temp_dir = std::filesystem::temp_directory_path() / std::format("fo_effekseer_distortion_{}", std::chrono::steady_clock::now().time_since_epoch().count());
-    string project_path = fs::path_to_string(temp_dir / "Refraction.efkproj");
-    string texture_path = fs::path_to_string(temp_dir / "Texture" / "Distortion.png");
-    auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs::remove_dir_tree(fs::path_to_string(temp_dir)); });
+    std::filesystem::path temp_dir {std::filesystem::temp_directory_path() / std::format("fo_effekseer_distortion_{}", std::chrono::steady_clock::now().time_since_epoch().count())};
+    string project_path {fs::path_to_string(temp_dir / "Refraction.efkproj")};
+    string texture_path {fs::path_to_string(temp_dir / "Texture" / "Distortion.png")};
+    auto cleanup {scope_exit([&temp_dir]() noexcept { (void)fs::remove_dir_tree(fs::path_to_string(temp_dir)); })};
 
-    string project = ParticleTests::MakeDistortionProject(intensity, alpha_blend);
-    vector<uint8_t> image = ParticleTests::MakeFixtureImageHeader(8, 8);
+    string project {ParticleTests::MakeDistortionProject(intensity, alpha_blend)};
+    vector<uint8_t> image {ParticleTests::MakeFixtureImageHeader(8, 8)};
     REQUIRE(fs::write_file(project_path, project));
     REQUIRE(fs::write_file(texture_path, string_view {reinterpret_cast<const char*>(image.data()), image.size()}));
 
-    EffekseerCompilerOutput compiled = CompileEffekseerProject(project_path, {reinterpret_cast<const uint8_t*>(project.data()), project.size()});
+    EffekseerCompilerOutput compiled {CompileEffekseerProject(project_path, {reinterpret_cast<const uint8_t*>(project.data()), project.size()})};
 
     return safe_alloc::make_unique<EffekseerRuntimeTestRig>(EffekseerDistortionFixturePath, std::move(compiled.Binary));
 }
 
 static auto DrawDistortionFixture(EffekseerRuntimeTestRig& rig) -> vector<CapturedEffekseerDraw>
 {
-    unique_ptr<ParticleRuntimeSystem> system = rig.CreateSystem();
+    unique_ptr<ParticleRuntimeSystem> system {rig.CreateSystem()};
 
     system->Setup(MakeEffekseerIdentitySetup());
     system->Respawn(5501);
     REQUIRE(system->IsActive());
 
-    for (int32_t frame = 0; frame < 4; frame++) {
+    for (int32_t frame {0}; frame < 4; frame++) {
         system->Update(1.0f / 60.0f);
     }
 
@@ -1260,13 +1281,13 @@ static auto DrawDistortionFixture(EffekseerRuntimeTestRig& rig) -> vector<Captur
 
 TEST_CASE("Effekseer particle runtime refracts the scene through distortion nodes", "[particle][effekseer-runtime]")
 {
-    constexpr float32_t intensity = 0.25f;
-    unique_ptr<EffekseerRuntimeTestRig> rig = MakeDistortionFixtureRig(intensity, 2);
-    vector<CapturedEffekseerDraw> draws = DrawDistortionFixture(*rig);
+    constexpr float32_t intensity {0.25f};
+    unique_ptr<EffekseerRuntimeTestRig> rig {MakeDistortionFixtureRig(intensity, 2)};
+    vector<CapturedEffekseerDraw> draws {DrawDistortionFixture(*rig)};
 
     REQUIRE(draws.size() == 1);
 
-    const CapturedEffekseerDraw& draw = draws.front();
+    const CapturedEffekseerDraw& draw {draws.front()};
     CHECK(draw.EffectName == "Effects/Particles_DistortionAddAtlas.fofx");
 
     // A refracting draw carries the model vertex layout, the scene copy it samples, and the intensity that scales the
@@ -1281,16 +1302,16 @@ TEST_CASE("Effekseer particle runtime refracts the scene through distortion node
     REQUIRE(draw.Vertices3D.size() / 4 >= 2);
     REQUIRE(draw.Indices.size() == draw.Vertices3D.size() / 4 * 6);
 
-    for (size_t quad = 0; quad < draw.Vertices3D.size() / 4; quad++) {
-        const Vertex3D& first = draw.Vertices3D[quad * 4];
+    for (size_t quad {0}; quad < draw.Vertices3D.size() / 4; quad++) {
+        const Vertex3D& first {draw.Vertices3D[quad * 4]};
 
         // The particle's own plane travels per vertex: two unit axes, perpendicular to each other, shared by the quad
         CHECK(glm::length(first.Tangent) == Catch::Approx(1.0f).margin(0.001f));
         CHECK(glm::length(first.Bitangent) == Catch::Approx(1.0f).margin(0.001f));
         CHECK(glm::dot(first.Tangent, first.Bitangent) == Catch::Approx(0.0f).margin(0.001f));
 
-        for (size_t corner = 1; corner < 4; corner++) {
-            const Vertex3D& vertex = draw.Vertices3D[quad * 4 + corner];
+        for (size_t corner {1}; corner < 4; corner++) {
+            const Vertex3D& vertex {draw.Vertices3D[quad * 4 + corner]};
             CHECK(vertex.Tangent == first.Tangent);
             CHECK(vertex.Bitangent == first.Bitangent);
         }
@@ -1299,14 +1320,14 @@ TEST_CASE("Effekseer particle runtime refracts the scene through distortion node
 
 TEST_CASE("Effekseer direct-model distortion survives its atlas preview", "[particle][effekseer-runtime]")
 {
-    unique_ptr<EffekseerRuntimeTestRig> rig = MakeDistortionFixtureRig(1.0f, 1);
-    unique_ptr<ParticleRuntimeSystem> system = rig->CreateSystem();
+    unique_ptr<EffekseerRuntimeTestRig> rig {MakeDistortionFixtureRig(1.0f, 1)};
+    unique_ptr<ParticleRuntimeSystem> system {rig->CreateSystem()};
 
     system->Setup(MakeEffekseerIdentitySetup());
     system->Respawn(5501);
     REQUIRE(system->IsActive());
 
-    for (int32_t frame = 0; frame < 4; frame++) {
+    for (int32_t frame {0}; frame < 4; frame++) {
         system->Update(1.0f / 60.0f);
     }
 
@@ -1333,18 +1354,18 @@ TEST_CASE("Effekseer direct-model distortion survives its atlas preview", "[part
 #if FO_ENABLE_3D
 TEST_CASE("Model particle background policy defers atlas preview then supplies scene replay", "[particle][effekseer-runtime]")
 {
-    unique_ptr<EffekseerRuntimeTestRig> rig = MakeDistortionFixtureRig(1.0f, 1);
-    int32_t provider_calls = 0;
-    ParticleSceneBackgroundProvider provider = [&provider_calls, &rig]() -> ParticleSceneBackgroundResult {
+    unique_ptr<EffekseerRuntimeTestRig> rig {MakeDistortionFixtureRig(1.0f, 1)};
+    int32_t provider_calls {0};
+    ParticleSceneBackgroundProvider provider {[&provider_calls, &rig]() -> ParticleSceneBackgroundResult {
         provider_calls++;
         return {.State = ParticleSceneBackgroundState::Available, .Texture = rig->GetSceneBackground()};
-    };
+    }};
 
-    ParticleSceneBackgroundResult atlas_preview = ResolveModelParticleSceneBackground(false, true, provider);
+    ParticleSceneBackgroundResult atlas_preview {ResolveModelParticleSceneBackground(false, true, provider)};
     CHECK(atlas_preview.State == ParticleSceneBackgroundState::Deferred);
     CHECK(provider_calls == 0);
 
-    ParticleSceneBackgroundResult scene_replay = ResolveModelParticleSceneBackground(true, true, provider);
+    ParticleSceneBackgroundResult scene_replay {ResolveModelParticleSceneBackground(true, true, provider)};
     CHECK(scene_replay.State == ParticleSceneBackgroundState::Available);
     CHECK(scene_replay.Texture == rig->GetSceneBackground());
     CHECK(provider_calls == 1);
@@ -1357,14 +1378,14 @@ TEST_CASE("Model particle background policy defers atlas preview then supplies s
 
 TEST_CASE("Effekseer particle runtime picks the distortion blend the node asks for", "[particle][effekseer-runtime]")
 {
-    unique_ptr<EffekseerRuntimeTestRig> blended_rig = MakeDistortionFixtureRig(1.0f, 1);
-    vector<CapturedEffekseerDraw> blended_draws = DrawDistortionFixture(*blended_rig);
+    unique_ptr<EffekseerRuntimeTestRig> blended_rig {MakeDistortionFixtureRig(1.0f, 1)};
+    vector<CapturedEffekseerDraw> blended_draws {DrawDistortionFixture(*blended_rig)};
 
     REQUIRE(blended_draws.size() == 1);
     CHECK(blended_draws.front().EffectName == "Effects/Particles_DistortionAtlas.fofx");
 
-    unique_ptr<EffekseerRuntimeTestRig> added_rig = MakeDistortionFixtureRig(1.0f, 2);
-    vector<CapturedEffekseerDraw> added_draws = DrawDistortionFixture(*added_rig);
+    unique_ptr<EffekseerRuntimeTestRig> added_rig {MakeDistortionFixtureRig(1.0f, 2)};
+    vector<CapturedEffekseerDraw> added_draws {DrawDistortionFixture(*added_rig)};
 
     REQUIRE(added_draws.size() == 1);
     CHECK(added_draws.front().EffectName == "Effects/Particles_DistortionAddAtlas.fofx");
@@ -1381,49 +1402,49 @@ TEST_CASE("Effekseer capability census", "[.census]")
         return;
     }
 
-    static constexpr int32_t census_seed = 977;
-    static constexpr int32_t census_frames = 4;
-    static constexpr float32_t census_frame_delta = 1.0f / 30.0f;
+    static constexpr int32_t census_seed {977};
+    static constexpr int32_t census_frames {4};
+    static constexpr float32_t census_frame_delta {1.0f / 30.0f};
 
     // The mesh loads through the runtime's own loader, so the payloads must be reachable exactly as in a resource
     // pack, or the census measures a missing file instead of the renderer
-    map<string, vector<uint8_t>> dependencies;
+    map<string, vector<uint8_t>> dependencies {};
 
     for (const auto& entry : std::filesystem::recursive_directory_iterator(corpus)) {
         if (!entry.is_regular_file() || entry.path().extension() != ".efkmodel") {
             continue;
         }
 
-        auto file = std::ifstream {entry.path(), std::ios::binary};
-        string relative = strex(fs::path_to_string(std::filesystem::relative(entry.path(), corpus))).normalize_path_slashes();
+        auto file {std::ifstream {entry.path(), std::ios::binary}};
+        string relative {static_cast<string&&>(strex(fs::path_to_string(std::filesystem::relative(entry.path(), corpus))).normalize_path_slashes())};
         dependencies.emplace(strex("Particles/{}", relative), vector<uint8_t> {std::istreambuf_iterator<char> {file}, std::istreambuf_iterator<char> {}});
     }
 
-    size_t walked = 0;
-    size_t accepted = 0;
-    size_t drawn = 0;
-    size_t retired_while_drawing = 0;
+    size_t walked {0};
+    size_t accepted {0};
+    size_t drawn {0};
+    size_t retired_while_drawing {0};
 
     for (const auto& entry : std::filesystem::recursive_directory_iterator(corpus)) {
         if (!entry.is_regular_file() || entry.path().extension() != ".efk") {
             continue;
         }
 
-        string relative_path = strex(fs::path_to_string(std::filesystem::relative(entry.path(), corpus))).normalize_path_slashes();
-        vector<uint8_t> data;
+        string relative_path {static_cast<string&&>(strex(fs::path_to_string(std::filesystem::relative(entry.path(), corpus))).normalize_path_slashes())};
+        vector<uint8_t> data {};
 
         {
-            auto file = std::ifstream {entry.path(), std::ios::binary};
+            auto file {std::ifstream {entry.path(), std::ios::binary}};
             data.assign(std::istreambuf_iterator<char> {file}, std::istreambuf_iterator<char> {});
         }
 
         // The rig appends its own mandatory bounds trailer, so hand it the bare payload
-        EffekseerBoundsTrailer trailer = ReadEffekseerBoundsTrailer(data);
+        EffekseerBoundsTrailer trailer {ReadEffekseerBoundsTrailer(data)};
         data.resize(trailer.PayloadSize);
 
         EffekseerRuntimeTestRig rig {strex("Particles/{}", relative_path), std::move(data), dependencies};
         walked++;
-        unique_nptr<ParticleRuntimeSystem> created = rig.TryCreateSystem();
+        unique_nptr<ParticleRuntimeSystem> created {rig.TryCreateSystem()};
 
         if (!created) {
             continue;
@@ -1434,11 +1455,11 @@ TEST_CASE("Effekseer capability census", "[.census]")
 
         // Play it for a few frames so the node renderers run: a rejection that only a real draw can reach retires the
         // handle, which the runtime reports as the system going inactive
-        unique_ptr<ParticleRuntimeSystem> system = created.take_not_null();
+        unique_ptr<ParticleRuntimeSystem> system {created.take_not_null()};
         system->Setup(MakeEffekseerIdentitySetup());
         system->Respawn(census_seed);
 
-        for (int32_t frame = 0; frame < census_frames && system->IsActive(); frame++) {
+        for (int32_t frame {0}; frame < census_frames && system->IsActive(); frame++) {
             system->Update(census_frame_delta);
             system->Draw();
         }
@@ -1529,7 +1550,7 @@ static auto MakeEffekseerNodeBodyProject(string_view node_body) -> string
 
 static auto CompileEffekseerNodeBody(string_view node_body) -> EffekseerCompilerOutput
 {
-    string project = MakeEffekseerNodeBodyProject(node_body);
+    string project {MakeEffekseerNodeBodyProject(node_body)};
     return CompileEffekseerProject("Particles/EffekseerTests/NodeBody.efkproj", {reinterpret_cast<const uint8_t*>(project.data()), project.size()});
 }
 
@@ -1606,7 +1627,7 @@ static auto MakeEffekseerTypeSweepProject(string_view location_values, string_vi
 
 static auto CompileEffekseerTypeSweep(string_view location_values, string_view rotation_values, string_view scaling_values) -> EffekseerCompilerOutput
 {
-    string project = MakeEffekseerTypeSweepProject(location_values, rotation_values, scaling_values);
+    string project {MakeEffekseerTypeSweepProject(location_values, rotation_values, scaling_values)};
     return CompileEffekseerProject("Particles/EffekseerTests/TypeSweep.efkproj", {reinterpret_cast<const uint8_t*>(project.data()), project.size()});
 }
 
@@ -1622,7 +1643,7 @@ TEST_CASE("Effekseer compiler writes every authored location type", "[particle][
 
     for (const string& location : location_variants) {
         INFO(location);
-        EffekseerCompilerOutput compiled = CompileEffekseerTypeSweep(location, "", "");
+        EffekseerCompilerOutput compiled {CompileEffekseerTypeSweep(location, "", "")};
         CHECK_FALSE(compiled.Binary.empty());
     }
 
@@ -1632,17 +1653,17 @@ TEST_CASE("Effekseer compiler writes every authored location type", "[particle][
 
 TEST_CASE("Effekseer compiler writes every authored rotation and scale type", "[particle][effekseer-compiler]")
 {
-    for (int32_t type = 0; type <= 7; type++) {
-        string rotation = strex("<RotationValues><Type>{}</Type></RotationValues>", type).str();
+    for (int32_t type {0}; type <= 7; type++) {
+        string rotation {strex("<RotationValues><Type>{}</Type></RotationValues>", type).str()};
         INFO(rotation);
-        EffekseerCompilerOutput compiled = CompileEffekseerTypeSweep("", rotation, "");
+        EffekseerCompilerOutput compiled {CompileEffekseerTypeSweep("", rotation, "")};
         CHECK_FALSE(compiled.Binary.empty());
     }
 
-    for (int32_t type = 0; type <= 6; type++) {
-        string scaling = strex("<ScalingValues><Type>{}</Type></ScalingValues>", type).str();
+    for (int32_t type {0}; type <= 6; type++) {
+        string scaling {strex("<ScalingValues><Type>{}</Type></ScalingValues>", type).str()};
         INFO(scaling);
-        EffekseerCompilerOutput compiled = CompileEffekseerTypeSweep("", "", scaling);
+        EffekseerCompilerOutput compiled {CompileEffekseerTypeSweep("", "", scaling)};
         CHECK_FALSE(compiled.Binary.empty());
     }
 
@@ -1657,7 +1678,7 @@ TEST_CASE("EffekseerCompilerWritesOptionalNodeSections", "[effekseer-compiler]")
         // Renderer type 4 is the ring. Its shape, per-ring locations and per-ring colours are all selected by
         // plain integers on the Ring node, with the payload in sibling <Name>_Fixed / _Random / _Easing nodes
         for (int32_t shape_type : {0, 1, 2, 3}) {
-            string body = strex(R"(        <DrawingValues>
+            string body {strex(R"(        <DrawingValues>
           <Type>4</Type>
           <Ring>
             <RingShape>
@@ -1683,10 +1704,10 @@ TEST_CASE("EffekseerCompilerWritesOptionalNodeSections", "[effekseer-compiler]")
           </Ring>
         </DrawingValues>)",
                 shape_type)
-                              .str();
+                    .str()};
 
             INFO(body);
-            EffekseerCompilerOutput compiled = CompileEffekseerNodeBody(body);
+            EffekseerCompilerOutput compiled {CompileEffekseerNodeBody(body)};
             CHECK_FALSE(compiled.Binary.empty());
         }
     }
@@ -1696,7 +1717,7 @@ TEST_CASE("EffekseerCompilerWritesOptionalNodeSections", "[effekseer-compiler]")
         // Renderer types 3 and 6 are the ribbon and the track. Their colour selectors are plain integers on
         // the renderer node, not nested colour blocks, so the defaults are enough to run both writers
         for (int32_t renderer_type : {3, 6}) {
-            string body = strex(R"(        <DrawingValues>
+            string body {strex(R"(        <DrawingValues>
           <Type>{}</Type>
           <Ribbon>
             <ViewpointDependent>false</ViewpointDependent>
@@ -1710,16 +1731,16 @@ TEST_CASE("EffekseerCompilerWritesOptionalNodeSections", "[effekseer-compiler]")
           </Track>
         </DrawingValues>)",
                 renderer_type)
-                              .str();
+                    .str()};
 
             INFO(body);
-            EffekseerCompilerOutput compiled = CompileEffekseerNodeBody(body);
+            EffekseerCompilerOutput compiled {CompileEffekseerNodeBody(body)};
             CHECK_FALSE(compiled.Binary.empty());
         }
 
         // The ribbon colour selector also has random and easing variants
         for (int32_t color_all : {1, 2}) {
-            string body = strex(R"(        <DrawingValues>
+            string body {strex(R"(        <DrawingValues>
           <Type>3</Type>
           <Ribbon>
             <ColorAll>{}</ColorAll>
@@ -1727,7 +1748,7 @@ TEST_CASE("EffekseerCompilerWritesOptionalNodeSections", "[effekseer-compiler]")
           </Ribbon>
         </DrawingValues>)",
                 color_all)
-                              .str();
+                    .str()};
 
             INFO(body);
             CHECK_FALSE(CompileEffekseerNodeBody(body).Binary.empty());
@@ -1739,7 +1760,7 @@ TEST_CASE("EffekseerCompilerWritesOptionalNodeSections", "[effekseer-compiler]")
     SECTION("EveryStandardColourType")
     {
         // 0 fixed, 1 random, 2 easing, 3 f-curve, 4 gradient
-        string curve_colour = R"(        <DrawingValues>
+        string curve_colour {R"(        <DrawingValues>
           <Type>2</Type>
           <Sprite />
           <ColorAll>
@@ -1764,17 +1785,17 @@ TEST_CASE("EffekseerCompilerWritesOptionalNodeSections", "[effekseer-compiler]")
                 </FCurve>
               </FCurve>
           </ColorAll>
-        </DrawingValues>)";
+        </DrawingValues>)"};
         CHECK_FALSE(CompileEffekseerNodeBody(curve_colour).Binary.empty());
 
-        string easing_colour = R"(        <DrawingValues>
+        string easing_colour {R"(        <DrawingValues>
           <Type>2</Type>
           <Sprite />
           <ColorAll><Type>2</Type><Easing><Start><Max><R>255</R><G>255</G><B>255</B><A>255</A></Max><Min><R>0</R><G>0</G><B>0</B><A>0</A></Min></Start><End><Max><R>255</R><G>255</G><B>255</B><A>255</A></Max><Min><R>0</R><G>0</G><B>0</B><A>0</A></Min></End></Easing></ColorAll>
-        </DrawingValues>)";
+        </DrawingValues>)"};
         CHECK_FALSE(CompileEffekseerNodeBody(easing_colour).Binary.empty());
 
-        string gradient_colour = R"(        <DrawingValues>
+        string gradient_colour {R"(        <DrawingValues>
           <Type>2</Type>
           <Sprite />
           <ColorAll>
@@ -1789,7 +1810,7 @@ TEST_CASE("EffekseerCompilerWritesOptionalNodeSections", "[effekseer-compiler]")
                 </AlphaMarkers>
               </Gradient>
           </ColorAll>
-        </DrawingValues>)";
+        </DrawingValues>)"};
         CHECK_FALSE(CompileEffekseerNodeBody(gradient_colour).Binary.empty());
 
         CHECK_THROWS_AS(CompileEffekseerNodeBody(R"(        <DrawingValues>
@@ -1803,7 +1824,7 @@ TEST_CASE("EffekseerCompilerWritesOptionalNodeSections", "[effekseer-compiler]")
     SECTION("CurveDrivenLocationSamplesTheCurveSolver")
     {
         // Location type 3 is the f-curve, which is the only path that runs the cubic curve solver
-        string body = R"(        <DrawingValues>
+        string body {R"(        <DrawingValues>
           <Type>2</Type>
           <Sprite />
         </DrawingValues>
@@ -1828,7 +1849,7 @@ TEST_CASE("EffekseerCompilerWritesOptionalNodeSections", "[effekseer-compiler]")
               </Keys>
             </FCurve>
           </LocationFCurve>
-        </LocationValues>)";
+        </LocationValues>)"};
         CHECK_FALSE(CompileEffekseerNodeBody(body).Binary.empty());
 
         // Type 5 is the view-offset variant, and an unknown type must be rejected
@@ -1847,7 +1868,7 @@ TEST_CASE("EffekseerCompilerWritesOptionalNodeSections", "[effekseer-compiler]")
     {
         // The location-abs section carries the external force fields
         for (int32_t field_type : {0, 1, 2}) {
-            string body = strex(R"(        <DrawingValues>
+            string body {strex(R"(        <DrawingValues>
           <Type>2</Type>
           <Sprite />
         </DrawingValues>
@@ -1857,7 +1878,7 @@ TEST_CASE("EffekseerCompilerWritesOptionalNodeSections", "[effekseer-compiler]")
           <Rotation><X>0</X><Y>0</Y><Z>0</Z></Rotation>
         </LocationAbsValues>)",
                 field_type)
-                              .str();
+                    .str()};
 
             INFO(body);
             CHECK_FALSE(CompileEffekseerNodeBody(body).Binary.empty());
@@ -1868,7 +1889,7 @@ TEST_CASE("EffekseerCompilerWritesOptionalNodeSections", "[effekseer-compiler]")
     {
         // 0 none, 1 box, 2 plane, 3 sphere - each writes a different payload
         for (int32_t rule_type : {0, 1, 2, 3}) {
-            string body = strex(R"(        <DrawingValues>
+            string body {strex(R"(        <DrawingValues>
           <Type>2</Type>
           <Sprite />
         </DrawingValues>
@@ -1882,10 +1903,10 @@ TEST_CASE("EffekseerCompilerWritesOptionalNodeSections", "[effekseer-compiler]")
           <SphereRadius>4</SphereRadius>
         </KillRulesValues>)",
                 rule_type)
-                              .str();
+                    .str()};
 
             INFO(body);
-            EffekseerCompilerOutput compiled = CompileEffekseerNodeBody(body);
+            EffekseerCompilerOutput compiled {CompileEffekseerNodeBody(body)};
             CHECK_FALSE(compiled.Binary.empty());
         }
 
@@ -1904,7 +1925,7 @@ TEST_CASE("EffekseerCompilerWritesOptionalNodeSections", "[effekseer-compiler]")
     SECTION("RotationAndScaleEasingAndCurves")
     {
         // The easing and f-curve variants of rotation and scale are separate writers from the fixed ones
-        string rotation_easing = R"(        <DrawingValues>
+        string rotation_easing {R"(        <DrawingValues>
           <Type>2</Type>
           <Sprite />
         </DrawingValues>
@@ -1914,10 +1935,10 @@ TEST_CASE("EffekseerCompilerWritesOptionalNodeSections", "[effekseer-compiler]")
             <Start><Max><X>0</X><Y>0</Y><Z>0</Z></Max><Min><X>0</X><Y>0</Y><Z>0</Z></Min></Start>
             <End><Max><X>360</X><Y>360</Y><Z>360</Z></Max><Min><X>0</X><Y>0</Y><Z>0</Z></Min></End>
           </Easing>
-        </RotationValues>)";
+        </RotationValues>)"};
         CHECK_FALSE(CompileEffekseerNodeBody(rotation_easing).Binary.empty());
 
-        string scale_easing = R"(        <DrawingValues>
+        string scale_easing {R"(        <DrawingValues>
           <Type>2</Type>
           <Sprite />
         </DrawingValues>
@@ -1927,10 +1948,10 @@ TEST_CASE("EffekseerCompilerWritesOptionalNodeSections", "[effekseer-compiler]")
             <Start><Max><X>1</X><Y>1</Y><Z>1</Z></Max><Min><X>1</X><Y>1</Y><Z>1</Z></Min></Start>
             <End><Max><X>2</X><Y>2</Y><Z>2</Z></Max><Min><X>2</X><Y>2</Y><Z>2</Z></Min></End>
           </Easing>
-        </ScalingValues>)";
+        </ScalingValues>)"};
         CHECK_FALSE(CompileEffekseerNodeBody(scale_easing).Binary.empty());
 
-        string location_easing = R"(        <DrawingValues>
+        string location_easing {R"(        <DrawingValues>
           <Type>2</Type>
           <Sprite />
         </DrawingValues>
@@ -1940,7 +1961,7 @@ TEST_CASE("EffekseerCompilerWritesOptionalNodeSections", "[effekseer-compiler]")
             <Start><Max><X>0</X><Y>0</Y><Z>0</Z></Max><Min><X>0</X><Y>0</Y><Z>0</Z></Min></Start>
             <End><Max><X>5</X><Y>5</Y><Z>5</Z></Max><Min><X>0</X><Y>0</Y><Z>0</Z></Min></End>
           </Easing>
-        </LocationValues>)";
+        </LocationValues>)"};
         CHECK_FALSE(CompileEffekseerNodeBody(location_easing).Binary.empty());
     }
 
@@ -1948,7 +1969,7 @@ TEST_CASE("EffekseerCompilerWritesOptionalNodeSections", "[effekseer-compiler]")
     {
         // Depth ordering and the texture UV modes are written for every node
         for (int32_t uv_type : {0, 1, 2, 3}) {
-            string body = strex(R"(        <DrawingValues>
+            string body {strex(R"(        <DrawingValues>
           <Type>2</Type>
           <Sprite />
           <TextureUVType>
@@ -1966,7 +1987,7 @@ TEST_CASE("EffekseerCompilerWritesOptionalNodeSections", "[effekseer-compiler]")
           <DrawingPriority>2</DrawingPriority>
         </DepthValues>)",
                 uv_type)
-                              .str();
+                    .str()};
 
             INFO(body);
             CHECK_FALSE(CompileEffekseerNodeBody(body).Binary.empty());
@@ -1976,7 +1997,7 @@ TEST_CASE("EffekseerCompilerWritesOptionalNodeSections", "[effekseer-compiler]")
     SECTION("SoundSectionIsWrittenWhenEnabled")
     {
         for (int32_t sound_type : {0, 1}) {
-            string body = strex(R"(        <DrawingValues>
+            string body {strex(R"(        <DrawingValues>
           <Type>2</Type>
           <Sprite />
         </DrawingValues>
@@ -1993,10 +2014,10 @@ TEST_CASE("EffekseerCompilerWritesOptionalNodeSections", "[effekseer-compiler]")
           </Sound>
         </SoundValues>)",
                 sound_type)
-                              .str();
+                    .str()};
 
             INFO(body);
-            EffekseerCompilerOutput compiled = CompileEffekseerNodeBody(body);
+            EffekseerCompilerOutput compiled {CompileEffekseerNodeBody(body)};
             CHECK_FALSE(compiled.Binary.empty());
         }
     }
@@ -2004,18 +2025,18 @@ TEST_CASE("EffekseerCompilerWritesOptionalNodeSections", "[effekseer-compiler]")
     SECTION("SpriteColourTypes")
     {
         // Fixed, random and gradient colours each take their own writer
-        string fixed_colour = R"(        <DrawingValues>
+        string fixed_colour {R"(        <DrawingValues>
           <Type>2</Type>
           <Sprite />
           <ColorAll><Type>0</Type><Fixed><R>10</R><G>20</G><B>30</B><A>255</A></Fixed></ColorAll>
-        </DrawingValues>)";
+        </DrawingValues>)"};
         CHECK_FALSE(CompileEffekseerNodeBody(fixed_colour).Binary.empty());
 
-        string random_colour = R"(        <DrawingValues>
+        string random_colour {R"(        <DrawingValues>
           <Type>2</Type>
           <Sprite />
           <ColorAll><Type>1</Type><Random><R><Max>255</Max><Min>0</Min></R><G><Max>255</Max><Min>0</Min></G><B><Max>255</Max><Min>0</Min></B><A><Max>255</Max><Min>0</Min></A></Random></ColorAll>
-        </DrawingValues>)";
+        </DrawingValues>)"};
         CHECK_FALSE(CompileEffekseerNodeBody(random_colour).Binary.empty());
     }
 }

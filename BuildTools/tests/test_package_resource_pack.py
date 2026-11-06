@@ -25,7 +25,7 @@ CODEC_DEFLATE = _package.RESOURCE_PACK_CODEC_DEFLATE
 def test_android_activity_resolves_the_configured_asset_directory(tmp_path: Path) -> None:
     packager = _package.Packager.__new__(_package.Packager)
     packager.target_output_path = str(tmp_path)
-    packager.client_res_dir = "Content/Resource Packs"
+    packager.resources_dir = "Content/Resource Packs"
     packager.args = SimpleNamespace(config="LocalTest")
     template = tmp_path / "app/src/main/java-template"
     template.mkdir(parents=True)

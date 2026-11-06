@@ -43,24 +43,24 @@ using namespace MapperTests;
 
 TEST_CASE("AngelScriptMapperScriptApiCoverage")
 {
-    auto settings = MakeMapperTestSettings();
-    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
+    auto settings {MakeMapperTestSettings()};
+    auto mapper {safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow)};
 
-    auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
+    auto shutdown {scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); })};
 
     mapper->InitIface();
 
-    string body = MakeItemBlock(10, TILE_A, 5, 5) + MakeItemBlock(11, TILE_B, 7, 7);
-    auto map = mapper->LoadMapFromText("ScriptApiMap", "ScriptApiMap.fomap", MakeMapText(body));
+    string body {MakeItemBlock(10, TILE_A, 5, 5) + MakeItemBlock(11, TILE_B, 7, 7)};
+    auto map {mapper->LoadMapFromText("ScriptApiMap", "ScriptApiMap.fomap", MakeMapText(body))};
     REQUIRE(map);
     mapper->ShowMap(map.as_ptr());
 
-    auto run_script = [&mapper](string_view name) {
-        int32_t result = -1;
+    auto run_script {[&mapper](string_view name) {
+        int32_t result {-1};
         INFO(name);
         REQUIRE(mapper->CallFunc(mapper->Hashes.to_hashed_string(name), result));
         CHECK(result == 0);
-    };
+    }};
 
     run_script("MapperMergeTest::UnitTestMapperViewApi");
     run_script("MapperMergeTest::UnitTestMapperEntityApi");
@@ -82,4 +82,3 @@ TEST_CASE("AngelScriptMapperScriptApiCoverage")
 FO_END_NAMESPACE
 
 #endif
-

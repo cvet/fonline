@@ -65,7 +65,7 @@ public:
         TraceModeType TraceMode {};
         bool CheckShootBlocks {true};
         int32_t FogExtraLength {};
-        int32_t FogTransitionDuration {};
+        timespan FogTransitionDuration {};
         int32_t MapHexWidth {};
         int32_t MapHexHeight {};
         msize MapSize {};
@@ -90,7 +90,7 @@ public:
 
 private:
     void BuildPoints(const Input& input, vector<PrimitivePoint>& fog_points) const;
-    void StartTransition(vector<PrimitivePoint>&& points, nanotime frame_time, int32_t duration);
+    void StartTransition(vector<PrimitivePoint>&& points, nanotime frame_time, timespan duration);
     void UpdateTransition(nanotime frame_time);
     void FinishTransition();
     void InterpolatePoints(const vector<PrimitivePoint>& from_points, const vector<PrimitivePoint>& to_points, float32_t t, vector<PrimitivePoint>& result_points);
@@ -115,7 +115,7 @@ private:
     TraceModeType _lastTraceMode {};
     bool _lastCheckShootBlocks {true};
     nanotime _transitionTime {};
-    int32_t _transitionDuration {}; // duration (ms) of the active morph (grow/move/shrink)
+    timespan _transitionDuration {}; // Duration of the active morph (grow/move/shrink)
     vector<PrimitivePoint> _points {};
     vector<PrimitivePoint> _startPoints {};
     vector<PrimitivePoint> _targetPoints {};
