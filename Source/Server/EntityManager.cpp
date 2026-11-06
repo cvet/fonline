@@ -1354,11 +1354,15 @@ void EntityManager::MakePersistent(ptr<ServerEntity> entity, bool persistent, bo
 {
     FO_TRACE_ZONE(Entity);
 
+    ValidateEntityAccess(entity);
     FO_VERIFY_AND_THROW(entity->GetId(), "Entity has no assigned id");
 
     if (auto player {entity.dyn_cast<Player>()}) {
         throw EntityManagerException("Can't change persistence of player", player->GetId());
     }
+
+    // The holder's restore index changes together with the persistence, so its cover is proved before any mutation
+    ValidateEntityAccess(GetRestoreIndexHolder(entity));
 
     if (persistent) {
         if (explicitly_requested) {
@@ -1388,12 +1392,15 @@ void EntityManager::MakePersistentRecursive(ptr<ServerEntity> entity, unordered_
 
     ValidateEntityAccess(entity);
 
+    // Children get their records before the holder that lists them, and a record exists before its listing,
+    // so an interrupted promotion leaves unreferenced records rather than references to missing ones
+    ForEachPersistentChildEntity(entity, [this, &processed](ptr<ServerEntity> child) { MakePersistentRecursive(child, processed); });
+
     if (!entity->IsPersistent()) {
         _engine->DbStorage.Insert(entity->GetTypeNamePlural(), entity->GetId(), StoreEntityDoc(entity));
         entity->SetPersistent(true);
+        UpdateHolderRestoreIndex(entity, true);
     }
-
-    ForEachPersistentChildEntity(entity, [this, &processed](ptr<ServerEntity> child) { MakePersistentRecursive(child, processed); });
 }
 
 void EntityManager::MakeNonPersistentRecursive(ptr<ServerEntity> entity, unordered_set<ptr<ServerEntity>>& processed)
@@ -1406,12 +1413,105 @@ void EntityManager::MakeNonPersistentRecursive(ptr<ServerEntity> entity, unorder
 
     ValidateEntityAccess(entity);
 
-    ForEachPersistentChildEntity(entity, [this, &processed](ptr<ServerEntity> child) { MakeNonPersistentRecursive(child, processed); });
-
+    // A listing is removed before its record and a holder before its children, so an interrupted demotion
+    // leaves unreferenced records rather than references to missing ones
     if (entity->IsPersistent()) {
+        UpdateHolderRestoreIndex(entity, false);
         _engine->DbStorage.Delete(entity->GetTypeNamePlural(), entity->GetId());
         entity->SetPersistent(false);
     }
+
+    ForEachPersistentChildEntity(entity, [this, &processed](ptr<ServerEntity> child) { MakeNonPersistentRecursive(child, processed); });
+}
+
+// A restore index lists exactly the children that have their own records, so every change of membership is strict
+void EntityManager::UpdateHolderRestoreIndex(ptr<ServerEntity> entity, bool persistent)
+{
+    FO_TRACE_ZONE(Entity);
+
+    auto holder {GetRestoreIndexHolder(entity)};
+
+    if (!holder) {
+        return;
+    }
+
+    ValidateEntityAccess(holder);
+
+    ident_t id {entity->GetId()};
+
+    auto update_ids {[id, persistent](vector<ident_t>& ids) {
+        if (persistent) {
+            vec_add_unique_value(ids, id);
+        }
+        else {
+            vec_remove_unique_value(ids, id);
+        }
+    }};
+
+    if (auto custom_entity {entity.dyn_cast<CustomEntity>()}) {
+        auto holder_prop {_engine->GetEntityHolderIdsProp(holder, custom_entity->GetCustomHolderEntry())};
+        auto holder_props {holder->GetPropertiesForEdit()};
+        auto inner_entity_ids {holder_props->GetValueFast<vector<ident_t>>(holder_prop)};
+        update_ids(inner_entity_ids);
+        holder_props->SetValue(holder_prop, inner_entity_ids);
+    }
+    else if (entity.dyn_cast<Item>()) {
+        if (auto holder_map {holder.dyn_cast<Map>()}) {
+            auto item_ids {holder_map->GetItemIds()};
+            update_ids(item_ids);
+            holder_map->SetItemIds(item_ids);
+        }
+        else if (auto holder_cr {holder.dyn_cast<Critter>()}) {
+            auto item_ids {holder_cr->GetItemIds()};
+            update_ids(item_ids);
+            holder_cr->SetItemIds(item_ids);
+        }
+        else if (auto container {holder.dyn_cast<Item>()}) {
+            auto inner_item_ids {container->GetInnerItemIds()};
+            update_ids(inner_item_ids);
+            container->SetInnerItemIds(inner_item_ids);
+        }
+    }
+    else if (entity.dyn_cast<Critter>()) {
+        if (auto holder_map {holder.dyn_cast<Map>()}) {
+            auto cr_ids {holder_map->GetCritterIds()};
+            update_ids(cr_ids);
+            holder_map->SetCritterIds(cr_ids);
+        }
+    }
+    else if (entity.dyn_cast<Map>()) {
+        if (auto holder_loc {holder.dyn_cast<Location>()}) {
+            auto map_ids {holder_loc->GetMapIds()};
+            update_ids(map_ids);
+            holder_loc->SetMapIds(map_ids);
+        }
+    }
+}
+
+// The holder whose stored ID list restores the entity; locations, global-map and player-controlled critters have none
+auto EntityManager::GetRestoreIndexHolder(ptr<ServerEntity> entity) -> refcount_nptr<Entity>
+{
+    if (auto custom_entity {entity.dyn_cast<CustomEntity>()}) {
+        hstring entry {custom_entity->GetCustomHolderEntry()};
+
+        if (!entry) {
+            return nullptr;
+        }
+
+        auto holder {GetCustomEntityHolder(custom_entity)};
+
+        if (!_engine->GetEntityType(holder->GetTypeName()).HolderEntries.at(entry).Persistent) {
+            return nullptr;
+        }
+
+        return holder;
+    }
+
+    if (auto cr {entity.dyn_cast<Critter>()}; cr && cr->GetControlledByPlayer()) {
+        return nullptr;
+    }
+
+    return entity->GetParent();
 }
 
 void EntityManager::ForEachPersistentChildEntity(ptr<ServerEntity> entity, const function<void(ptr<ServerEntity> child)>& callback) const
@@ -1667,20 +1767,23 @@ auto EntityManager::CreateCustomInnerEntity(ptr<Entity> holder, hstring entry, h
 
     holder->AddInnerEntity(entry, entity);
 
-    auto holder_prop {_engine->GetEntityHolderIdsProp(holder, entry)};
-    auto holder_props {holder->GetPropertiesForEdit()};
-    auto inner_entity_ids {holder_props->GetValueFast<vector<ident_t>>(holder_prop)};
-    vec_add_unique_value(inner_entity_ids, entity->GetId());
-    holder_props->SetValue(holder_prop, inner_entity_ids);
+    bool persistent_entry {_engine->GetEntityType(holder->GetTypeName()).HolderEntries.at(entry).Persistent};
+
+    // A persistent entry is a restore index of entities that have their own records, so promotion lists a new one
+    if (!persistent_entry) {
+        auto holder_prop {_engine->GetEntityHolderIdsProp(holder, entry)};
+        auto holder_props {holder->GetPropertiesForEdit()};
+        auto inner_entity_ids {holder_props->GetValueFast<vector<ident_t>>(holder_prop)};
+        vec_add_unique_value(inner_entity_ids, entity->GetId());
+        holder_props->SetValue(holder_prop, inner_entity_ids);
+    }
 
     if (auto holder_entity {holder.dyn_cast<ServerEntity>()}) {
-        const auto& holder_type {_engine->GetEntityType(holder->GetTypeName())};
-
-        if (holder_type.HolderEntries.at(entry).Persistent && holder_entity->IsPersistent()) {
+        if (persistent_entry && holder_entity->IsPersistent()) {
             MakePersistent(entity, true);
         }
     }
-    else if (_engine->GetEntityType(holder->GetTypeName()).HolderEntries.at(entry).Persistent) {
+    else if (persistent_entry) {
         MakePersistent(entity, true);
     }
 
@@ -1716,6 +1819,20 @@ void EntityManager::AttachCustomEntityToHolder(ptr<CustomEntity> entity, ptr<Ent
 
         entity->SetEntityLock(_engine->GetEntityLock());
     }
+}
+
+// An entity without a holder id belongs to the engine singleton, which has no parent link
+auto EntityManager::GetCustomEntityHolder(ptr<CustomEntity> entity) -> refcount_ptr<Entity>
+{
+    if (auto id {entity->GetCustomHolderId()}) {
+        auto parent {entity->GetParent()};
+        FO_VERIFY_AND_THROW(parent, "Custom entity holder has no parent entity");
+        FO_VERIFY_AND_THROW(parent->GetId() == id, "Custom entity parent id does not match the holder id");
+        ValidateEntityAccess(parent);
+        return std::move(parent).take_not_null();
+    }
+
+    return _engine.hold_ref();
 }
 
 auto EntityManager::ConstructCustomEntity(hstring type_name, hstring pid) -> refcount_ptr<CustomEntity>
@@ -1904,17 +2021,7 @@ void EntityManager::DestroyCustomEntity(ptr<CustomEntity> entity)
         prev_deps = remaining_deps;
     }
 
-    refcount_ptr<Entity> holder {[&]() -> refcount_ptr<Entity> {
-        if (auto id {entity->GetCustomHolderId()}) {
-            auto parent {entity->GetParent()};
-            FO_VERIFY_AND_THROW(parent, "Custom entity holder has no parent entity");
-            FO_VERIFY_AND_THROW(parent->GetId() == id, "Custom entity parent id does not match the holder id");
-            ValidateEntityAccess(parent);
-            return std::move(parent).take_not_null();
-        }
-
-        return _engine.hold_ref();
-    }()};
+    auto holder {GetCustomEntityHolder(entity)};
 
     ForEachCustomEntityView(entity, [entity](ptr<Player> player, bool owner) {
         ignore_unused(owner);
@@ -1924,11 +2031,15 @@ void EntityManager::DestroyCustomEntity(ptr<CustomEntity> entity)
     auto entry {entity->GetCustomHolderEntry()};
     holder->RemoveInnerEntity(entry, entity);
 
-    auto holder_prop {_engine->GetEntityHolderIdsProp(holder, entry)};
-    auto holder_props {holder->GetPropertiesForEdit()};
-    auto inner_entity_ids {holder_props->GetValueFast<vector<ident_t>>(holder_prop)};
-    vec_remove_unique_value(inner_entity_ids, entity->GetId());
-    holder_props->SetValue(holder_prop, inner_entity_ids);
+    bool persistent_entry {_engine->GetEntityType(holder->GetTypeName()).HolderEntries.at(entry).Persistent};
+
+    if (!persistent_entry || entity->IsPersistent()) {
+        auto holder_prop {_engine->GetEntityHolderIdsProp(holder, entry)};
+        auto holder_props {holder->GetPropertiesForEdit()};
+        auto inner_entity_ids {holder_props->GetValueFast<vector<ident_t>>(holder_prop)};
+        vec_remove_unique_value(inner_entity_ids, entity->GetId());
+        holder_props->SetValue(holder_prop, inner_entity_ids);
+    }
 
     _engine->TimeEventMngr.CancelAllForEntity(entity);
     entity->SetParent(nullptr);

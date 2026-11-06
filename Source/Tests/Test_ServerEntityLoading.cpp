@@ -5,6 +5,7 @@
 
 #include "catch_amalgamated.hpp"
 
+#include "EntitySync.h"
 #include "Server.h"
 #include "Test_BakerHelpers.h"
 
@@ -122,6 +123,249 @@ static void DiscardLoadedCritter(ptr<ServerEngine> server, ptr<Critter> cr)
     hstring record_type {server->Hashes.to_hashed_string("LoadingRecord")}; \
     hstring record_entry {server->Hashes.to_hashed_string("HeldRecords")}; \
     ignore_unused(item_pid, record_type, record_entry)
+
+TEST_CASE("ServerNonPersistentInventoryItemDoesNotLeaveRestoreDependency", "[server][entity][database]")
+{
+    MAKE_ENTITY_LOADING_SERVER();
+
+    auto cr {server->CreateCritter(critter_pid, true)};
+    server->EntityMngr.MakePersistent(cr, true, true);
+    auto kept {server->CrMngr.AddItemToCritter(cr, server->ItemMngr.CreateItem(item_pid, nullptr), false)};
+    auto temporary {server->CrMngr.AddItemToCritter(cr, server->ItemMngr.CreateItem(item_pid, nullptr), false)};
+    ident_t kept_id {kept->GetId()};
+    ident_t temporary_id {temporary->GetId()};
+    ident_t cr_id {cr->GetId()};
+    server->EntityMngr.MakePersistent(temporary, false, true);
+    server->DbStorage.WaitCommitChanges();
+
+    CHECK_FALSE(temporary->IsPersistent());
+    CHECK(server->DbStorage.Get(server->Hashes.to_hashed_string("Items"), temporary_id).Empty());
+    CHECK(cr->GetInvItem(temporary_id) == temporary);
+    CHECK(cr->GetItemIds() == vector<ident_t> {kept_id});
+
+    auto cr_doc {server->DbStorage.Get(server->Hashes.to_hashed_string("Critters"), cr_id)};
+    REQUIRE_FALSE(cr_doc.Empty());
+    const auto& saved_ids {cr_doc["ItemIds"].AsArray()};
+    CHECK(saved_ids.Size() == 1);
+
+    REQUIRE_NOTHROW(server->CrMngr.RemoveItemFromCritter(cr, temporary, false));
+    CHECK(temporary->GetOwnership() == ItemOwnership::Nowhere);
+    server->ItemMngr.DestroyItem(temporary);
+
+    server->UnloadCritter(cr);
+    bool is_error {false};
+    auto loaded {server->EntityMngr.LoadCritter(cr_id, false, nullptr, is_error)};
+    REQUIRE(loaded);
+    CHECK_FALSE(is_error);
+    CHECK(CollectItemIds(loaded->GetInvItems()) == vector<ident_t> {kept_id});
+}
+
+TEST_CASE("ServerNonPersistentContainerItemDoesNotLeaveRestoreDependency", "[server][entity][database]")
+{
+    MAKE_ENTITY_LOADING_SERVER();
+
+    auto cr {server->CreateCritter(critter_pid, true)};
+    server->EntityMngr.MakePersistent(cr, true, true);
+    auto bag {server->CrMngr.AddItemToCritter(cr, server->ItemMngr.CreateItem(item_pid, nullptr), false)};
+    auto kept {bag->AddItemToContainer(server->ItemMngr.CreateItem(item_pid, nullptr), {})};
+    auto temporary {bag->AddItemToContainer(server->ItemMngr.CreateItem(item_pid, nullptr), {})};
+    ident_t cr_id {cr->GetId()};
+    ident_t bag_id {bag->GetId()};
+    ident_t kept_id {kept->GetId()};
+    ident_t temporary_id {temporary->GetId()};
+    server->EntityMngr.MakePersistent(temporary, false, true);
+    server->DbStorage.WaitCommitChanges();
+
+    CHECK_FALSE(temporary->IsPersistent());
+    CHECK(server->DbStorage.Get(server->Hashes.to_hashed_string("Items"), temporary_id).Empty());
+    CHECK(CollectItemIds(bag->GetAllInnerItems()) == vector<ident_t> {kept_id, temporary_id});
+    CHECK(bag->GetInnerItemIds() == vector<ident_t> {kept_id});
+    auto bag_doc {server->DbStorage.Get(server->Hashes.to_hashed_string("Items"), bag_id)};
+    REQUIRE_FALSE(bag_doc.Empty());
+    CHECK(bag_doc["InnerItemIds"].AsArray().Size() == 1);
+
+    REQUIRE_NOTHROW(bag->RemoveItemFromContainer(temporary));
+    CHECK(temporary->GetOwnership() == ItemOwnership::Nowhere);
+    server->ItemMngr.DestroyItem(temporary);
+    server->UnloadCritter(cr);
+    bool is_error {false};
+    auto loaded {server->EntityMngr.LoadCritter(cr_id, false, nullptr, is_error)};
+    REQUIRE(loaded);
+    CHECK_FALSE(is_error);
+    auto loaded_bag {server->EntityMngr.GetItem(bag_id)};
+    REQUIRE(loaded_bag);
+    CHECK(CollectItemIds(loaded_bag->GetAllInnerItems()) == vector<ident_t> {kept_id});
+}
+
+// A restore index lists exactly the items with their own records: demotion of the holder or of one item unlinks them,
+// and a later promotion of the holder lists every item it promotes
+TEST_CASE("ServerHolderDemotionAndPromotionKeepItemRestoreIndexConsistent", "[server][entity][database]")
+{
+    MAKE_ENTITY_LOADING_SERVER();
+
+    auto cr {server->CreateCritter(critter_pid, true)};
+    server->EntityMngr.MakePersistent(cr, true, true);
+    auto kept {server->CrMngr.AddItemToCritter(cr, server->ItemMngr.CreateItem(item_pid, nullptr), false)};
+    auto temporary {server->CrMngr.AddItemToCritter(cr, server->ItemMngr.CreateItem(item_pid, nullptr), false)};
+    ident_t cr_id {cr->GetId()};
+    ident_t kept_id {kept->GetId()};
+    ident_t temporary_id {temporary->GetId()};
+    hstring critters_collection {server->Hashes.to_hashed_string("Critters")};
+    hstring items_collection {server->Hashes.to_hashed_string("Items")};
+
+    server->EntityMngr.MakePersistent(temporary, false, true);
+    REQUIRE(cr->GetItemIds() == vector<ident_t> {kept_id});
+
+    server->EntityMngr.MakePersistent(cr, false, true);
+    server->DbStorage.WaitCommitChanges();
+
+    CHECK_FALSE(cr->IsPersistent());
+    CHECK_FALSE(kept->IsPersistent());
+    CHECK(server->DbStorage.Get(critters_collection, cr_id).Empty());
+    CHECK(server->DbStorage.Get(items_collection, kept_id).Empty());
+    CHECK(cr->GetItemIds().empty());
+
+    server->EntityMngr.MakePersistent(cr, true, true);
+    server->DbStorage.WaitCommitChanges();
+
+    CHECK(kept->IsPersistent());
+    CHECK(temporary->IsPersistent());
+    CHECK(cr->GetItemIds() == vector<ident_t> {kept_id, temporary_id});
+    auto cr_doc {server->DbStorage.Get(critters_collection, cr_id)};
+    REQUIRE_FALSE(cr_doc.Empty());
+    CHECK(cr_doc["ItemIds"].AsArray().Size() == 2);
+    CHECK_FALSE(server->DbStorage.Get(items_collection, kept_id).Empty());
+    CHECK_FALSE(server->DbStorage.Get(items_collection, temporary_id).Empty());
+
+    server->UnloadCritter(cr);
+    bool is_error {false};
+    auto loaded {server->EntityMngr.LoadCritter(cr_id, false, nullptr, is_error)};
+    REQUIRE(loaded);
+    CHECK_FALSE(is_error);
+    CHECK(CollectItemIds(loaded->GetInvItems()) == vector<ident_t> {kept_id, temporary_id});
+}
+
+// A custom entity demoted from a persistent entry leaves its holder's restore index, and ordinary destruction finds it unlisted
+TEST_CASE("ServerNonPersistentCustomEntityDoesNotLeaveRestoreDependency", "[server][entity][database]")
+{
+    MAKE_ENTITY_LOADING_SERVER();
+
+    auto cr {server->CreateCritter(critter_pid, true)};
+    server->EntityMngr.MakePersistent(cr, true, true);
+    auto kept {server->EntityMngr.CreateCustomInnerEntity(cr, record_entry, {})};
+    auto temporary {server->EntityMngr.CreateCustomInnerEntity(cr, record_entry, {})};
+    ident_t cr_id {cr->GetId()};
+    ident_t kept_id {kept->GetId()};
+    ident_t temporary_id {temporary->GetId()};
+    hstring records_collection {server->Hashes.to_hashed_string("LoadingRecords")};
+    auto holder_prop {server->GetEntityHolderIdsProp(cr, record_entry)};
+    REQUIRE(temporary->IsPersistent());
+
+    server->EntityMngr.MakePersistent(temporary, false, false);
+    server->DbStorage.WaitCommitChanges();
+
+    CHECK_FALSE(temporary->IsPersistent());
+    CHECK(server->DbStorage.Get(records_collection, temporary_id).Empty());
+    CHECK(CollectCustomEntityIds(cr, record_entry) == vector<ident_t> {kept_id, temporary_id});
+    CHECK(cr->GetProperties()->GetValueFast<vector<ident_t>>(holder_prop.get()) == vector<ident_t> {kept_id});
+
+    REQUIRE_NOTHROW(server->EntityMngr.DestroyCustomEntity(temporary));
+    server->UnloadCritter(cr);
+    bool is_error {false};
+    auto loaded {server->EntityMngr.LoadCritter(cr_id, false, nullptr, is_error)};
+    REQUIRE(loaded);
+    CHECK_FALSE(is_error);
+    CHECK(CollectCustomEntityIds(loaded, record_entry) == vector<ident_t> {kept_id});
+    DiscardLoadedCritter(server, loaded);
+}
+
+// The engine singleton holds custom entities without a parent link, and its persistent entries follow the same rule
+TEST_CASE("ServerNonPersistentGameHeldEntityDoesNotLeaveRestoreDependency", "[server][entity][database]")
+{
+    MAKE_ENTITY_LOADING_SERVER();
+    server->LockForPropertyAccess();
+    auto unlock_singleton {scope_exit([&server]() noexcept { server->UnlockForPropertyAccess(); })};
+
+    hstring records_collection {server->Hashes.to_hashed_string("LoadingRecords")};
+    hstring game_entry {server->Hashes.to_hashed_string("PersistentRecords")};
+    auto game_record {server->EntityMngr.CreateCustomInnerEntity(server, game_entry, {})};
+    ident_t game_record_id {game_record->GetId()};
+    auto game_prop {server->GetEntityHolderIdsProp(server, game_entry)};
+    REQUIRE(game_record->IsPersistent());
+    REQUIRE(server->GetProperties()->GetValueFast<vector<ident_t>>(game_prop.get()) == vector<ident_t> {game_record_id});
+
+    server->EntityMngr.MakePersistent(game_record, false, false);
+    server->DbStorage.WaitCommitChanges();
+
+    CHECK(server->DbStorage.Get(records_collection, game_record_id).Empty());
+    CHECK(server->GetProperties()->GetValueFast<vector<ident_t>>(game_prop.get()).empty());
+}
+
+TEST_CASE("ServerItemPersistenceRejectsUncoveredHolderBeforeMutation", "[server][entity][database][sync]")
+{
+    GlobalSettings settings {MakeEntityLoadingSettings()};
+    BakerTests::OverrideSetting(settings.Server.WorkerThreads, int32_t {2});
+    auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, MakeEntityLoadingResources())};
+    auto shutdown {scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    })};
+    REQUIRE(WaitForEntityLoadingStartup(server));
+
+    bool requested {false};
+    SECTION("Demotion")
+    {
+    }
+    SECTION("Promotion")
+    {
+        requested = true;
+    }
+
+    refcount_nptr<Critter> holder {};
+    refcount_nptr<Item> held_item {};
+    {
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+        auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
+        auto cr {server->CreateCritter(server->Hashes.to_hashed_string("LoadingCritter"), true)};
+        server->EntityMngr.MakePersistent(cr, true, true);
+        auto item {server->CrMngr.AddItemToCritter(cr, server->ItemMngr.CreateItem(server->Hashes.to_hashed_string("LoadingItem"), nullptr), false)};
+        server->EntityMngr.MakePersistent(item, !requested, true);
+        holder = cr.hold_ref();
+        held_item = item.hold_ref();
+    }
+    REQUIRE(holder);
+    REQUIRE(held_item);
+    auto cr {require_refcount_ptr(holder)};
+    auto item {require_refcount_ptr(held_item)};
+    hstring items_collection {server->Hashes.to_hashed_string("Items")};
+
+    server->RunScriptContext([&] {
+        small_vector<ptr<ServerEntity>, 2> full_cover {cr, item};
+        server->RequireCurrentSyncContext()->SyncEntities(full_cover);
+        bool persistent_before {item->IsPersistent()};
+        bool explicit_before {item->IsExplicitlyPersistent()};
+        vector<ident_t> ids_before {cr->GetItemIds()};
+        server->DbStorage.WaitCommitChanges();
+        bool stored_before {!server->DbStorage.Get(items_collection, item->GetId()).Empty()};
+
+        small_vector<ptr<ServerEntity>, 1> item_cover {item};
+        server->RequireCurrentSyncContext()->Release();
+        server->RequireCurrentSyncContext()->SyncEntities(item_cover);
+        REQUIRE(IsEntityAccessValid(item));
+        REQUIRE_FALSE(IsEntityAccessValid(cr));
+        CHECK_THROWS_WITH(server->EntityMngr.MakePersistent(item, requested, true), Catch::Matchers::ContainsSubstring("Entity access without sync"));
+
+        server->RequireCurrentSyncContext()->SyncEntities(full_cover);
+        CHECK(item->IsPersistent() == persistent_before);
+        CHECK(item->IsExplicitlyPersistent() == explicit_before);
+        CHECK(cr->GetItemIds() == ids_before);
+        server->DbStorage.WaitCommitChanges();
+        CHECK(!server->DbStorage.Get(items_collection, item->GetId()).Empty() == stored_before);
+    });
+}
 
 // A login restores the whole inventory tree, so the reads it costs must follow the depth of the tree, not its size
 TEST_CASE("ServerLoadCritterReadsInventoryTreeOneRequestPerLevel", "[server][entity][database]")

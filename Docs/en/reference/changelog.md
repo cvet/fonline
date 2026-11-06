@@ -16,6 +16,18 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Fixed
 
+- Keep every holder's restore index equal to the held entities that have their own records: map, critter-inventory and nested-container lists for items, `Map.CritterIds` for critters that are not player-controlled, `Location.MapIds` for maps and persistent holder entries for custom entities. Attaching or detaching a persistent entity, promotion and demotion change the listing strictly; a temporary entity leaves it untouched. Promotion records children before their holder and demotion removes a holder's record before its children's, so an interrupted change leaves unreferenced records rather than references to missing ones.
+- Validate the holder of the entity's restore index before changing persistence flags, storage or restore membership. Cover rejection in both directions with two workers, and real removal, destruction and unload/load of items, critters, maps and custom entities.
+
+### Migration
+
+- Baseline `8b32281d50` (`2026.1.112-dev`) to `2026.1.113-dev`. `MakePersistent(bool)` retains its argument and persistence meaning. Cover the entity and the holder of its restore index before calling it: the immediate holder of an item, the map of a critter that is not player-controlled, the location of a map and the holder of a custom entity, as required by the complete native call graph. Review callers that change the persistence of held entities before adoption. An uncovered holder raises `Entity access without sync` before mutation. Native callers need the same cover.
+- Rebuild matching server/baker and native consumers, regenerate the API reference and rebake project scripts. Property IDs, declared document layouts, network messages, the `MigrationRule Version` marker, Managed ABI and resource schemas are unchanged. The read-only `Map.ItemIds`, `Critter.ItemIds`, `Item.InnerItemIds`, `Map.CritterIds`, `Location.MapIds` and persistent holder-entry `<Entry>Ids` properties no longer list temporary entities, also in temporary holders; read the held entities through the runtime getters such as `Map.GetItems()`, `Critter.GetItems()` or `Location.GetMaps()` instead. Search with `rg -n 'ItemIds|CritterIds|MapIds|InnerItemIds' <project-source-dirs>`. Already missing records remain load errors; there is no startup pruning or implicit repair. Preserve coherent binaries/storage and review pre-existing inconsistencies through an isolated restore. Rollback uses the preceding matching binaries/data without a new conversion.
+
+## 2026.1.112-dev - 2026-11-06
+
+### Fixed
+
 - Order flat map sprites by their sub-layer before their row. A flat sprite has no ground depth, so below `DrawOrderType::NormalBegin` the draw-order key is now `[group 6][sub-layer 8][gap 4][hex Y 24][hex X 22]`: `Item.DrawOrderSubLayer` is a paint layer that outranks the hex row, and rows and X order only sprites of one sub-layer. Before, a flat decal on a later row covered a flat marker with a higher sub-layer on an earlier row, so ground decals showed through a marker strip wherever their hex happened to sort after the strip's cell. The standing key is unchanged. `Test_MapSprite.cpp` pins both orders.
 
 ### Migration
@@ -39,7 +51,6 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 ### Migration
 
 - Baseline `b055b5da22` (`2026.1.110-dev`) to `2026.1.111-dev`. No API, settings, wire protocol, `MigrationRule Version`, Managed ABI, saved data or resource schema change. Rebuild every native role. Native code calling `SpriteManager::DrawSprites` passes the depth origin row after the draw area (`MapView::GetMapDepthOriginY()` for a map view). A pixel exactly on a cell edge, a light ray near a half-hex tie and a SPARK effect whose simulated duration falls on a step boundary may resolve differently than before; rebake to refresh particle bounds.
-
 
 ## 2026.1.110-dev - 2026-11-06
 

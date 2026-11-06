@@ -694,14 +694,19 @@ void Map::RefreshCritterPlayerState(ptr<Critter> cr)
     bool removed_from_non_players {vec_safe_remove_unique_value(_nonPlayerCritters, cr)};
     FO_VERIFY_AND_THROW(removed_from_players || removed_from_non_players, "Critter was not removed from any map critter bucket");
 
-    auto cr_ids {GetCritterIds()};
-    vec_safe_remove_unique_value(cr_ids, cr->GetId());
+    // The restore index lists critters that have their own records and are not player-controlled
+    if (cr->IsPersistent()) {
+        auto cr_ids {GetCritterIds()};
 
-    if (!cr->GetControlledByPlayer()) {
-        vec_add_unique_value(cr_ids, cr->GetId());
+        if (removed_from_non_players) {
+            vec_remove_unique_value(cr_ids, cr->GetId());
+        }
+        if (!cr->GetControlledByPlayer()) {
+            vec_add_unique_value(cr_ids, cr->GetId());
+        }
+
+        SetCritterIds(cr_ids);
     }
-
-    SetCritterIds(cr_ids);
 
     if (cr->GetControlledByPlayer()) {
         vec_add_unique_value(_playerCritters, cr);
@@ -782,9 +787,12 @@ void Map::AddItem(ptr<Item> item, mpos hex, nptr<Critter> dropper)
 
     SetItem(item);
 
-    auto item_ids {GetItemIds()};
-    vec_add_unique_value(item_ids, item->GetId());
-    SetItemIds(item_ids);
+    // The restore index lists items that have their own records; promotion lists a temporary one
+    if (item->IsPersistent()) {
+        auto item_ids {GetItemIds()};
+        vec_add_unique_value(item_ids, item->GetId());
+        SetItemIds(item_ids);
+    }
 
     if (IsPersistent()) {
         _engine->EntityMngr.MakePersistent(item, true);
@@ -905,9 +913,12 @@ void Map::RemoveItem(ident_t item_id)
     item->SetMapId(ident_t {});
     item->SetHex({});
 
-    auto item_ids {GetItemIds()};
-    vec_remove_unique_value(item_ids, item->GetId());
-    SetItemIds(item_ids);
+    if (item->IsPersistent()) {
+        auto item_ids {GetItemIds()};
+        vec_remove_unique_value(item_ids, item->GetId());
+        SetItemIds(item_ids);
+    }
+
     RefreshAreaSpectators(item, true);
 
     if (item->IsPersistent() && !item->IsExplicitlyPersistent()) {

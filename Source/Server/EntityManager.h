@@ -125,6 +125,8 @@ public:
 private:
     void MakePersistentRecursive(ptr<ServerEntity> entity, unordered_set<ptr<ServerEntity>>& processed);
     void MakeNonPersistentRecursive(ptr<ServerEntity> entity, unordered_set<ptr<ServerEntity>>& processed);
+    void UpdateHolderRestoreIndex(ptr<ServerEntity> entity, bool persistent);
+    auto GetRestoreIndexHolder(ptr<ServerEntity> entity) -> refcount_nptr<Entity>;
     void ForEachPersistentChildEntity(ptr<ServerEntity> entity, const function<void(ptr<ServerEntity> child)>& callback) const;
 
     void LoadInnerEntities(ptr<Entity> holder, bool& is_error) noexcept;
@@ -139,6 +141,7 @@ private:
 
     auto ConstructCustomEntity(hstring type_name, hstring pid) -> refcount_ptr<CustomEntity>;
     void AttachCustomEntityToHolder(ptr<CustomEntity> entity, ptr<Entity> holder);
+    auto GetCustomEntityHolder(ptr<CustomEntity> entity) -> refcount_ptr<Entity>;
 
     void CaptureFreshEntity(ptr<ServerEntity> entity) FO_TSA_REQUIRES(_registryLock);
     void RegisterEntity(ptr<ServerEntity> entity) FO_TSA_REQUIRES(_registryLock);
