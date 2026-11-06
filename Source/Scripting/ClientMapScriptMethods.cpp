@@ -852,7 +852,12 @@ FO_SCRIPT_API fpos32 Client_Map_GetHexScreenPosF(ptr<MapView> self, mpos hex)
     ipos32 hex_pos {self->GetHexMapPos(hex)};
     ipos32 hex_center {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
     ipos32 map_pos {hex_pos + hex_center};
-    return (fpos32(map_pos) - self->GetScrollOffset()) * self->GetSpritesZoom();
+    fpos32 scroll_offset {self->GetScrollOffset()};
+
+    // A hex far from the view lies millions of pixels away, so the scroll is taken off in double
+    float64_t screen_x {(numeric_cast<float64_t>(map_pos.x) - numeric_cast<float64_t>(scroll_offset.x)) * numeric_cast<float64_t>(self->GetSpritesZoom())};
+    float64_t screen_y {(numeric_cast<float64_t>(map_pos.y) - numeric_cast<float64_t>(scroll_offset.y)) * numeric_cast<float64_t>(self->GetSpritesZoom())};
+    return fpos32 {numeric_cast<float32_t>(screen_x), numeric_cast<float32_t>(screen_y)};
 }
 
 // Resolves a screen position to a map hex, writes the hex on success, and returns whether the position maps to the view

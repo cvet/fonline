@@ -250,7 +250,7 @@ SETTING(float32_t, Render, ModelProjFactor, 40.0f); // Screen px per 3D world un
 SETTING(int32_t, Render, ModelSpriteMaxTextureWidth, 2048); // Max GPU scratch-texture width a 3D model sprite may allocate; larger envelopes clamp and draw cropped
 SETTING(int32_t, Render, ModelSpriteMaxTextureHeight, 2048); // Max GPU scratch-texture height a 3D model sprite may allocate; larger envelopes clamp and draw cropped
 SETTING(bool, Render, ModelDirectDraw, false); // If true, map 3D models render directly into the scene depth buffer; otherwise they render as cached atlas sprites
-SETTING(int32_t, Render, MapMaxElevation, 4096); // Max abs sprite elevation (px) used to size the per-map scene depth range; smaller = more depth-buffer precision (less z-fighting), but sprites beyond it would be depth-clipped
+SETTING(int32_t, Render, MapMaxElevation, 4096); // Max abs sprite elevation (px) used to size the scene depth range of a map view; smaller = more depth-buffer precision (less z-fighting), but sprites beyond it would be depth-clipped
 SETTING(int32_t, Render, EggEllipseWidthExt, 0); // Transparency egg ellipse extra width in pixels added to logical sprite/view width
 SETTING(int32_t, Render, EggEllipseHeightExt, 0); // Transparency egg ellipse extra height in pixels added to logical sprite/view height
 SETTING(float32_t, Render, EggTransparencyTransitionFactor, 0.9f); // Fraction of egg mask kept fully transparent before linear fade to opaque

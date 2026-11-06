@@ -255,6 +255,7 @@ public:
     auto GetCenterRawHex() const -> ipos32;
     auto ConvertToScreenRawHex(ipos32 center_raw_hex) const -> ipos32;
     auto GetHexMapPos(mpos hex) const -> ipos32;
+    auto GetMapDepthOriginY() const -> int32_t;
     auto IsOutsideArea(mpos hex) const -> bool;
 
     void RebuildMap();
@@ -420,7 +421,6 @@ private:
     bool _mapperMode {};
     bool _mapLoading {};
     msize _mapSize {};
-    float32_t _mapDepthHalf {};
     ident_t _workEntityId {};
     map<string, string> _headerExtraFields {};
 

@@ -589,11 +589,10 @@ void ParticleBaker::BakeSparkFile(const File& file) const
         SPK::Vector3D bounds_max {-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max()};
         float32_t billboard_radius {0.0f};
         bool any_particles {false};
-        float32_t elapsed {0.0f};
 
-        for (size_t step {0}; step < SPARK_BOUNDS_MAX_STEPS && elapsed < sim_duration; step++) {
+        // Elapsed time follows from the step count, so the last step is decided without accumulated rounding
+        for (size_t step {0}; step < SPARK_BOUNDS_MAX_STEPS && numeric_cast<float64_t>(step) * numeric_cast<float64_t>(SPARK_BOUNDS_SIM_STEP) < numeric_cast<float64_t>(sim_duration); step++) {
             simulation->updateParticles(SPARK_BOUNDS_SIM_STEP);
-            elapsed += SPARK_BOUNDS_SIM_STEP;
 
             for (size_t group_index {0}; group_index < simulation->getNbGroups(); group_index++) {
                 const SPK::Ref<SPK::Group>& group {simulation->getGroup(group_index)};

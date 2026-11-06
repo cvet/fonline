@@ -14,6 +14,25 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-11-06
 
+### Fixed
+
+- Measure map scene depth from the view's top pixel row instead of absolute map depth. `GeometryHelper::GetHexMapDepth(rawHex, hexOffset, elevation, originY)` gives a sprite's depth relative to that row with the row difference in integers, `SpriteManager::DrawSprites` takes the origin row, and `MapView::DrawMap` sizes the ortho depth range per frame from the view instead of from the map corners. Far from the origin of a continent-sized map, depths of millions rounded away the layer bias and the standing-sprite depth slope, so direct-draw models and particles z-fought against walls; depths now keep the precision of a small map.
+- Resolve screen and map pixels to cells in `GeometryHelper::GetHexPosCoord` exactly: square geometry solves its diamond lattice in integers, so a pixel on a cell edge rounds the same way everywhere, and hexagonal geometry finds its lattice coordinates in `float64_t`. Pixels millions away from the origin of a large map no longer resolve to a neighbouring cell near its edges.
+- Take the vector difference in integers before scaling in `GeometryHelper::GetLineDirAngle`, so a short vector between far map positions keeps its angle.
+- Square the segment offset of `MovingContext` in `float64_t`; a segment longer than about 46,000 pixels overflowed `int32` before.
+- Trace light rays in `MapView::TraceLightLine` from the step count relative to the source hex, so rays end on the same cells wherever the light stands; the float accumulator drifted by up to a fifth of a hex far out on a large map.
+- Clamp the client scroll against the scroll area with integer edges relative to the view, so the camera no longer jitters by up to half a pixel at the area border far out on a large map.
+- Keep `ModelInstance` body rotation within one turn: a completed turn lands on its target instead of adding 360 degrees per lap.
+- End an item flight at its start offset plus the travelled direction (`ItemHexView`); the end point multiplied the start offset by the distance before.
+- Compute `Map.GetHexScreenPosF` for hexes far from the view in `float64_t` before narrowing the screen result, and decide the last SPARK bounds simulation step from the step count instead of a float accumulator.
+
+### Migration
+
+- Baseline `b055b5da22` (`2026.1.110-dev`) to `2026.1.111-dev`. No API, settings, wire protocol, `MigrationRule Version`, Managed ABI, saved data or resource schema change. Rebuild every native role. Native code calling `SpriteManager::DrawSprites` passes the depth origin row after the draw area (`MapView::GetMapDepthOriginY()` for a map view). A pixel exactly on a cell edge, a light ray near a half-hex tie and a SPARK effect whose simulated duration falls on a step boundary may resolve differently than before; rebake to refresh particle bounds.
+
+
+## 2026.1.110-dev - 2026-11-06
+
 ### Changed
 
 - Build the large-map tests with 16-bit map coordinates: `TraceIsTheSameAnywhereOnTheMap`, `VeryLongTracesReachTheirTargetAndStayInvariant`, `VeryLongSquareTracesFollowTheExactLine` and `PathFinding::RoutesMatchOnContinentSizedMaps` no longer put a literal above the `mcoord_t` range into a map size on the skipped wide-coordinate branch, so `LF_UnitTests` compiles without `FO_MAP_WIDE_COORDS`.

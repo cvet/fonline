@@ -1498,7 +1498,10 @@ void ModelInstance::ProcessAnimation(timespan elapsed, ipos32 pos, float32_t sca
     // Rotate body
     if (!is_float_equal(_moveDirAngle, _targetMoveDirAngle)) {
         float32_t diff {GeometryHelper::GetDirAngleDiffSided(_moveDirAngle, _targetMoveDirAngle)};
-        _moveDirAngle += std::clamp(diff * elapsed.to_sec<float32_t>() * 10.0f, -std::abs(diff), std::abs(diff));
+        float32_t turn {std::clamp(diff * elapsed.to_sec<float32_t>() * 10.0f, -std::abs(diff), std::abs(diff))};
+
+        // A turn that completes lands on the target itself, so laps in one direction never grow the angle
+        _moveDirAngle = std::abs(turn) >= std::abs(diff) ? _targetMoveDirAngle : _moveDirAngle + turn;
     }
 
     // Advance animation time

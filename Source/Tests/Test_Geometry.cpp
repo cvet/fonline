@@ -229,6 +229,30 @@ TEST_CASE("GeometryHelper")
     CHECK(GeometryHelper::HexesInRadius(2) == 1 + GameSettings::MAP_DIR_COUNT * 3);
 }
 
+TEST_CASE("GetLineDirAngle far out on a large map")
+{
+    // A short vector between pixel positions millions away from the origin keeps the angle it has near the origin,
+    // also where the projected Y exceeds the range in which float32 holds every integer
+    random_generator rnd {5112029};
+
+    for (int32_t round {0}; round < 2000; round++) {
+        int32_t x1 {rnd.next_between(-40, 40)};
+        int32_t y1 {rnd.next_between(-40, 40)};
+        int32_t x2 {x1 + rnd.next_between(-30, 30)};
+        int32_t y2 {y1 + rnd.next_between(-30, 30)};
+
+        if (x1 == x2 && y1 == y2) {
+            continue;
+        }
+
+        constexpr int32_t shift_x {4000001};
+        constexpr int32_t shift_y {9000001};
+
+        INFO("round " << round);
+        CHECK(GeometryHelper::GetLineDirAngle(x1 + shift_x, y1 + shift_y, x2 + shift_x, y2 + shift_y) == GeometryHelper::GetLineDirAngle(x1, y1, x2, y2));
+    }
+}
+
 TEST_CASE("GetHexPos and GetHexPosCoord")
 {
     constexpr int32_t w {GameSettings::MAP_HEX_WIDTH};
@@ -248,6 +272,38 @@ TEST_CASE("GetHexPos and GetHexPosCoord")
         for (int16_t rx {0}; rx < 10; rx++) {
             for (int16_t ry {0}; ry < 10; ry++) {
                 CHECK(GeometryHelper::GetHexPos(mpos {rx, ry}) == GeometryHelper::GetHexPos(ipos32 {rx, ry}));
+            }
+        }
+    }
+
+    SECTION("GetHexPosCoord far out on a large map resolves pixels like near the origin")
+    {
+        // Pixels millions away from the origin resolve to the same cell, relative to its centre, as the same pixels
+        // around a cell near the origin; an even column shift keeps the hex lattice aligned
+        if constexpr (std::numeric_limits<mcoord_t>::max() < 128000) {
+            SKIP("Map coordinates are 16-bit in this build");
+        }
+        else {
+            const ipos32 near_hex {2, 2};
+            const ipos32 far_hexes[] {{100000, 120000}, {127000, 3000}, {64000, 127998}};
+
+            for (ipos32 far_hex : far_hexes) {
+                ipos32 near_center {GeometryHelper::GetHexPos(near_hex)};
+                ipos32 far_center {GeometryHelper::GetHexPos(far_hex)};
+
+                for (int32_t dy {-hex_h}; dy <= hex_h; dy++) {
+                    for (int32_t dx {-w}; dx <= w; dx++) {
+                        ipos32 near_offset {};
+                        ipos32 far_offset {};
+                        ipos32 near_result {GeometryHelper::GetHexPosCoord(ipos32 {near_center.x + dx, near_center.y + dy}, &near_offset)};
+                        ipos32 far_result {GeometryHelper::GetHexPosCoord(ipos32 {far_center.x + dx, far_center.y + dy}, &far_offset)};
+
+                        INFO("far " << far_hex.x << "," << far_hex.y << " pixel offset " << dx << "," << dy);
+                        REQUIRE(far_result.x - far_hex.x == near_result.x - near_hex.x);
+                        REQUIRE(far_result.y - far_hex.y == near_result.y - near_hex.y);
+                        REQUIRE(far_offset == near_offset);
+                    }
+                }
             }
         }
     }
@@ -688,6 +744,56 @@ TEST_CASE("Map camera world projection")
         CHECK(is_float_equal(a.x, b.x));
         CHECK(is_float_equal(a.y, b.y));
         CHECK(is_float_equal(a.z, b.z));
+    }
+}
+
+TEST_CASE("GetHexMapDepth")
+{
+    float32_t angle_rad {GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT};
+    float32_t cot_a {std::cos(angle_rad) / std::sin(angle_rad)};
+
+    SECTION("Matches the absolute projection less the origin row near the map origin")
+    {
+        for (int32_t rx {0}; rx < 12; rx++) {
+            for (int32_t ry {0}; ry < 12; ry++) {
+                for (float32_t elevation : {-300.0f, 0.0f, 450.0f}) {
+                    ipos32 offset {rx - 6, ry * 2 - 11};
+                    int32_t origin_y {GeometryHelper::GetHexPos(ipos32 {3, 4}).y};
+                    float32_t absolute {GeometryHelper::ProjectWorldToMap(GeometryHelper::GetHexWorldPos(ipos32 {rx, ry}, offset, elevation)).z};
+                    float32_t relative {GeometryHelper::GetHexMapDepth(ipos32 {rx, ry}, offset, elevation, origin_y)};
+
+                    INFO("rx=" << rx << " ry=" << ry << " elevation=" << elevation);
+                    CHECK(relative == Catch::Approx(absolute - numeric_cast<float32_t>(origin_y) * cot_a).margin(0.01));
+                }
+            }
+        }
+    }
+
+    SECTION("Far out on a large map keeps the depths of the same view near the origin")
+    {
+        // The depth of a hex relative to its view's top row is the same anywhere on the map, so far views keep the
+        // sub-unit layer bias that absolute depths of millions would round away; an even shift keeps hex columns aligned
+        if constexpr (std::numeric_limits<mcoord_t>::max() < 128000) {
+            SKIP("Map coordinates are 16-bit in this build");
+        }
+        else {
+            const ipos32 near_view {10, 10};
+            const ipos32 far_view {110000, 120000};
+            int32_t near_origin {GeometryHelper::GetHexPos(near_view).y};
+            int32_t far_origin {GeometryHelper::GetHexPos(far_view).y};
+
+            for (int32_t dx {0}; dx < 30; dx++) {
+                for (int32_t dy {0}; dy < 30; dy++) {
+                    ipos32 offset {dx - 15, dy - 15};
+                    float32_t elevation {numeric_cast<float32_t>(dx * 13 - dy * 7)};
+                    float32_t near_depth {GeometryHelper::GetHexMapDepth(ipos32 {near_view.x + dx, near_view.y + dy}, offset, elevation, near_origin)};
+                    float32_t far_depth {GeometryHelper::GetHexMapDepth(ipos32 {far_view.x + dx, far_view.y + dy}, offset, elevation, far_origin)};
+
+                    INFO("dx=" << dx << " dy=" << dy);
+                    CHECK(far_depth == near_depth);
+                }
+            }
+        }
     }
 }
 

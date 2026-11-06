@@ -201,6 +201,7 @@ namespace GeometryHelper
     auto GetHexWorldPos(mpos hex, ipos32 hex_offset, float32_t elevation = 0.0f) -> vec3;
     auto GetHexWorldPos(ipos32 raw_hex, ipos32 hex_offset, float32_t elevation = 0.0f) -> vec3;
     auto ProjectWorldToMap(vec3 world_pos) -> vec3;
+    auto GetHexMapDepth(ipos32 raw_hex, ipos32 hex_offset, float32_t elevation, int32_t origin_y) -> float32_t;
     auto ProjectMapYToGroundDepth(float32_t map_y, float32_t elevation = 0.0f) -> float32_t;
     auto ProjectMapYToVerticalDepth(float32_t map_y, float32_t anchor_map_y, float32_t anchor_depth) -> float32_t;
     auto MakeMapCameraView(float32_t camera_angle_deg, float32_t yaw_deg, fpos32 scroll_offset, float32_t zoom) -> mat44;

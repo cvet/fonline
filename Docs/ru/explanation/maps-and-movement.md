@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/maps-and-movement.html
 ---
 
 # Карты, движение и геометрия
-<!-- docs-translation: {"document_id":"maps-movement-geometry","locale":"ru","source_path":"Docs/en/explanation/maps-and-movement.md","source_sha256":"17f4a98d4e8c76f36cbc596e831aea17975cd19d2afa74c282d7f857ad3a0608"} -->
+<!-- docs-translation: {"document_id":"maps-movement-geometry","locale":"ru","source_path":"Docs/en/explanation/maps-and-movement.md","source_sha256":"1225d8884cad5a2f41381b6bc688929771a9c62f8a85ef3060b625ef26a83885"} -->
 Владельцы геометрии/движения Engine: `Source/Common/Geometry.*`, `LineTracer.*`, `Movement.*`, `PathFinding.*`, `MapLoader.*`, map bakers и тесты.
 
 Разделы `.fomap`, identity/владение размещением, Mapper round-trip, side-specific baking и материализация runtime описаны в [формате карт](../how-to/content/map-format.md).
@@ -241,10 +241,10 @@ callback проход через gag-предметы, но не занятос�
 - `Map::RemovedStaticItemIds` (`Common Mutable PublicSync Persistent`) — сохранённый список. Он и есть весь контракт: сохранение, синхронизация с клиентом и видимость из скриптов следуют из свойства.
 - `Map` выводит из него три кэша в `RefreshRemovedStaticItems()` → `RebuildStaticOverlay()`: множество удалённых id, `vector` уцелевших статических предметов и override `StaticMap::Field` для каждого гекса, который покрывал удалённый предмет. Все три пусты, пока карта хранит все запечённые предметы, поэтому нетронутая карта читает общую сетку без лишней косвенности.
 - `Map::VerifyStaticItemRemovalsOnlyGrow()` — страж append-only, вызываемый через setter `ServerEngine::OnSetMapRemovedStaticItems`. Он ничего не меняет и только бросает исключение, поэтому отклонённая запись оставляет карту ровно такой, какой она была.
-- `Map::GetStaticField()` возвращает override, когда он есть, и общую ячейку в остальных случаях. Через него проходят все статические запросы (`GetStaticItem`, `GetStaticItemOnHex`, `GetStaticItems`, `GetStaticItemsOnHex`, `GetStaticItemsInRadius`, `GetTriggerStaticItemsOnHex`, `IsTriggerStaticItemOnHex`) и оба запроса блокировки, поэтому удалённый предмет исчезает из движения, стрельбы, триггеров и поиска одинаково.
-- `StaticMap::ForEachItemHex()` и `StaticMap::ApplyItemToField()` общие для загрузчика и для пересборки overlay, поэтому они не могут разойтись в том, какие гексы занимает предмет и какую блокировку он даёт.
+- `Map::GetStaticField()` возвращает override, когда он есть, иначе непустое поле [runtime static items](#содержимое-карт-во-время-работы) карты, иначе общую ячейку. Через него проходят все статические запросы (`GetStaticItem`, `GetStaticItemOnHex`, `GetStaticItems`, `GetStaticItemsOnHex`, `GetStaticItemsInRadius`, `GetTriggerStaticItemsOnHex`, `IsTriggerStaticItemOnHex`) и оба запроса блокировки, поэтому удалённый предмет исчезает из движения, стрельбы, триггеров и поиска одинаково.
+- `StaticMap::ForEachItemHex()` даёт гексы, которые покрывает предмет, а приватный `StaticMap::ApplyItemToField()` добавляет предмет в поле для загрузчика (`AddStaticItem()`), для пересборки overlay (`BuildFieldWithout()`, `MergeFieldInto()`) и для выгрузки runtime static items (`RemoveStaticItems()`), поэтому никто из них не может разойтись в том, какие гексы занимает предмет и какую блокировку он даёт.
 - `StaticMap::Field::ScrollBlocked` существует ради этой пересборки. Проход загрузчика по scroll-блокировке пишет `MoveBlocked` без владеющего предмета, поэтому override, собранный только из уцелевших предметов, молча открыл бы границу карты; пересборка сначала засевает `MoveBlocked` из `ScrollBlocked`.
-- Статические предметы несут `ident_t`, записанный их файлом карты (`MapManager::LoadFromResources`): именно его ищет `GetStaticItem()`, его несёт клиентский `ItemHexView` и его записывает список удалений.
+- Запечённые статические предметы несут `ident_t`, записанный их файлом карты и прочитанный вместе с содержимым карты при первом использовании (`MapManager::ReadStaticMap()`); runtime static items несут этот id плюс `idOffset` своей загрузки. Именно этот id ищет `GetStaticItem()` и несёт клиентский `ItemHexView`; список удалений записывает только запечённые id.
 
 `EntityManager::CallInit(Map, bool)` строит overlay один раз на карту — этот хук покрывает и только что созданную карту, и восстановленную из базы. Изменения во время работы приходят через post-setter свойства `ServerEngine::OnPostSetMapRemovedStaticItems`, поэтому скрипт, пишущий свойство напрямую, получает ту же пересборку, что и вызывающий `RemoveStaticItem()`.
 

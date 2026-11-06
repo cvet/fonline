@@ -920,7 +920,7 @@ auto IsCutByTransparentEgg(TransparentEggTarget target, mpos egg_hex, EggAppeare
     return false;
 }
 
-void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, ucolor color, ptr<RenderEffect> default_effect)
+void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, int32_t depth_origin_y, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, ucolor color, ptr<RenderEffect> default_effect)
 {
     FO_TRACE_ZONE(Render);
 
@@ -934,9 +934,9 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
     const_span<unique_ptr<MapSprite>> sprites {mspr_list.GetActiveSprites()};
     bool apply_brightness {_settings->Render.Brightness != 0};
 
-    auto get_map_sprite_proj {[](const MapSprite* mspr) -> vec3 {
+    auto get_map_sprite_depth {[depth_origin_y](const MapSprite* mspr) -> float32_t {
         float32_t elevation {numeric_cast<float32_t>(mspr->GetElevation())};
-        return GeometryHelper::ProjectWorldToMap(GeometryHelper::GetHexWorldPos(mspr->GetHex(), mspr->GetMapRootOffset(), elevation));
+        return GeometryHelper::GetHexMapDepth(ipos32(mspr->GetHex()), mspr->GetMapRootOffset(), elevation, depth_origin_y);
     }};
     auto is_standing_sprite {[](DrawOrderType draw_order) -> bool { //
         return draw_order >= DrawOrderType::NormalBegin && draw_order <= DrawOrderType::NormalEnd;
@@ -965,11 +965,10 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
         }
 
         if (spr->IsDirectDraw()) {
-            vec3 map_proj {get_map_sprite_proj(mspr.get())};
             // Only a tiny ground separation, because inheriting the direct-draw draw-order bias would pull
             // particles in front of critters and scenery
             float32_t direct_layer_bias {MAP_LAYER_DEPTH_BIAS};
-            float32_t depth {map_proj.z + direct_layer_bias};
+            float32_t depth {get_map_sprite_depth(mspr.get()) + direct_layer_bias};
             // scene_pos == GetDrawRootPos() - draw_area == mspr_rect.pos + sprite root offset (already computed
             // by GetDrawRect above), so reuse mspr_rect instead of calling GetDrawRootPos a second time
             ipos32 root_offset {mspr->GetSpriteRootOffset()};
@@ -1044,8 +1043,7 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
 
         auto& vbuf {_spritesDrawBuf->Vertices};
         bool standing_sprite {is_standing_sprite(draw_order)};
-        vec3 sprite_proj {get_map_sprite_proj(mspr.get())};
-        float32_t pos_z {sprite_proj.z};
+        float32_t pos_z {get_map_sprite_depth(mspr.get())};
 
         for (size_t j {start_vpos}; j < _spritesDrawBuf->VertCount; j++) {
             vbuf[j].PosZ = pos_z;
@@ -1078,9 +1076,9 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
             float32_t cos_a {std::cos(angle_rad)};
             float32_t tan_a {sin_a / cos_a};
 
+            // A vertex's map row lies its screen offset from the root's, so only that offset scales the depth slope
             for (size_t j {start_vpos}; j < _spritesDrawBuf->VertCount; j++) {
-                float32_t map_y {sprite_proj.y + (vbuf[j].PosY - scene_pos_y)};
-                vbuf[j].PosZ = sprite_proj.z - (map_y - sprite_proj.y) * tan_a;
+                vbuf[j].PosZ = pos_z - (vbuf[j].PosY - scene_pos_y) * tan_a;
             }
         }
 

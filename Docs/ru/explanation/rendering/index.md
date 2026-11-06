@@ -5,7 +5,7 @@ locale: ru
 document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"64ba69dc056e4179069fd8799524a787938cf14c40d947f699d0b5c3652088f2"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"0e97d8b905080cf8a38b6f8fbf8e0e505d994ec1416340599af813e25f906dcf"} -->
 # Frontend и рендеринг
 
 ## Отображение ограниченного обзора карты
@@ -1010,6 +1010,7 @@ OpenGL — immediate `glCullFace`. `ResolveCullMode()` throws при unbuilt mod
 buffer. `EffectUsage::QuadSprite` и `Model` участвуют в нём; на targets без
 depth attachment (UI, light, final screen flush) state является no-op.
 
+- **Depth сцены** отсчитывается от верхней строки пикселей карты в виде (`MapView::GetMapDepthOriginY()`): `GeometryHelper::GetHexMapDepth` даёт depth спрайта относительно этой строки, беря разность строк в целых числах, а direct-draw модели и частицы привязываются к тому же относительному depth. `MapView::DrawMap` задаёт ortho depth range каждый кадр по высоте вида плюс строкам одной страницы атласа, `Render.MapMaxElevation` и запасу для моделей, поэтому карта размером с континент сохраняет точность depth маленькой карты; абсолютные depth в миллионы округляли бы подъединичное смещение слоёв, и модели вдали от начала карты мерцали бы на стенах.
 - **Screen-space quads** (GUI, fonts, render-target blits, non-map effects) начинают с `Vertex2D::PosZ = 0`. Для map sprite `SpriteManager` перезаписывает Z перед flush в `_rtMap`.
 - **Standing map sprites** (`Item`, `Critter`) пишут depth, но не test-ят его (`Always` + write в `2D_Default`/`2D_WithoutEgg`). Depth нужен direct particles/models; sprite-vs-sprite решает painter order. Их vertical planes имеют общий gradient `ProjectMapYToVerticalDepth` и не пересекаются, поэтому order по anchor depth точно совпадает с per-pixel `LessEqual`, не создавая z-fighting coincident rows.
 - `MapSpriteList::MakeDrawOrderPos` сортирует standing sprites по `GeometryHelper::GetHexScreenRow(GetHexPos().y)`, то есть по классу одинаковой ground depth (`+2X/-1Y`), а не по raw hex row. Внутри строки ключ имеет порядок `[group 8][row 24][layer 8][sub-layer 8][hex X 16]`: персонаж рисуется перед любым стоящим предметом своей экранной строки, а среди предметов стены с низким sub-layer рисуются раньше. Ближние строки по-прежнему побеждают; при равном ключе действует порядок добавления. `Item.DrawOrderSubLayer` изменяем и публично синхронизируется: получив новое значение, клиент пересоздаёт спрайты предмета с новым ключом без перезагрузки карты. Контракт закреплён `Test_Geometry.cpp` и `Test_MapSprite.cpp`.

@@ -129,9 +129,11 @@ void MovingContext::EvaluateSegment(uint16_t control_step_begin, uint16_t contro
         oy += _endHexOffset.y;
     }
 
-    float32_t proj_oy {numeric_cast<float32_t>(oy) * GeometryHelper::GetYProj()};
+    // Squared in double, since a long segment's pixel offset squared exceeds int32
+    float64_t fx {numeric_cast<float64_t>(ox)};
+    float64_t proj_oy {numeric_cast<float64_t>(oy) * numeric_cast<float64_t>(GeometryHelper::GetYProj())};
     offset = {ox, oy};
-    dist = std::sqrt(numeric_cast<float32_t>(ox * ox) + proj_oy * proj_oy);
+    dist = numeric_cast<float32_t>(std::sqrt(fx * fx + proj_oy * proj_oy));
 }
 
 auto MovingContext::EvaluateRawProgress(timespan elapsed_time) const -> MovingRawProgress

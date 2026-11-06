@@ -10559,8 +10559,8 @@
           "translation": "Имена костей ног (Todo: перенести LegBones в настройки fo3d)"
         },
         "/symbols/@id=setting.common.Render.MapMaxElevation/description": {
-          "source_sha256": "caeb1e02813a7c219805a62128827c5543397b2fb53d6b7a5a8398da4dd75d3f",
-          "translation": "Максимальное абсолютное возвышение спрайта в пикселях для размера диапазона глубины сцены каждой карты; меньшее значение повышает точность depth buffer и уменьшает z-fighting, но спрайты за пределами диапазона будут отсечены по глубине"
+          "source_sha256": "a31591f03abd2219b7ebf275cbd8e54bbbeafa5f5c2930cc85edb13d02e7fe58",
+          "translation": "Максимальное абсолютное возвышение спрайта в пикселях для размера диапазона глубины сцены вида карты; меньшее значение повышает точность depth buffer и уменьшает z-fighting, но спрайты за пределами диапазона будут отсечены по глубине"
         },
         "/symbols/@id=setting.common.Render.ModelDirectDraw/description": {
           "source_sha256": "47436e1b9a94c07933c0a19f69a1c5ebfa1ce4f4c779ad7fcb91f079d819ed81",

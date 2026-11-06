@@ -107,31 +107,6 @@ MapView::MapView(ptr<ClientEngine> engine, ident_t id, ptr<const ProtoMap> proto
     FO_VERIFY_AND_THROW(_mapSize.width > 0 && _mapSize.height > 0, "Map size must be positive", _mapSize.width, _mapSize.height);
     FO_VERIFY_AND_THROW(_mapSize.width <= GameSettings::MAX_MAP_SIZE && _mapSize.height <= GameSettings::MAX_MAP_SIZE, "Map size exceeds the engine maximum", _mapSize.width, _mapSize.height, GameSettings::MAX_MAP_SIZE);
 
-    {
-        const ipos32 corners[] {{0, 0}, {numeric_cast<int32_t>(_mapSize.width) - 1, 0}, //
-            {0, numeric_cast<int32_t>(_mapSize.height) - 1}, //
-            {numeric_cast<int32_t>(_mapSize.width) - 1, numeric_cast<int32_t>(_mapSize.height) - 1}};
-        // A realistic elevation bound rather than the full int16 domain, which would reserve most of the depth
-        // buffer for elevations no sprite reaches; anything beyond the bound is depth-clipped, hence the Setting
-        float32_t elev_extent {numeric_cast<float32_t>(std::max(_engine->Settings->Render.MapMaxElevation, 0))};
-        float32_t elev_min {-elev_extent};
-        float32_t elev_max {elev_extent};
-        float32_t min_depth {std::numeric_limits<float32_t>::max()};
-        float32_t max_depth {std::numeric_limits<float32_t>::lowest()};
-
-        for (auto corner : corners) {
-            for (float32_t elev : {elev_min, 0.0f, elev_max}) {
-                float32_t d {GeometryHelper::ProjectWorldToMap(GeometryHelper::GetHexWorldPos(corner, ipos32 {}, elev)).z};
-                min_depth = std::min(min_depth, d);
-                max_depth = std::max(max_depth, d);
-            }
-        }
-
-        float32_t near_bound {min_depth - MAP_DEPTH_RANGE_MARGIN};
-        float32_t far_bound {max_depth + MAP_DEPTH_RANGE_MARGIN};
-        _mapDepthHalf = std::max(std::abs(near_bound), std::abs(far_bound));
-    }
-
     _hexField.emplace(_mapSize);
 
     _lightPoints.resize(1);
@@ -2076,11 +2051,12 @@ void MapView::CleanLightFan(ptr<LightSource> ls)
 void MapView::TraceLightLine(ptr<LightSource> ls, mpos from_hex, mpos& to_hex, int32_t distance, int32_t raw_intensity)
 {
     const auto [base_sx, base_sy] {GeometryHelper::GetStepsCoords({from_hex.x, from_hex.y}, {to_hex.x, to_hex.y})};
-    float32_t sx1_f {base_sx};
-    float32_t sy1_f {base_sy};
+    float64_t sx1_f {numeric_cast<float64_t>(base_sx)};
+    float64_t sy1_f {numeric_cast<float64_t>(base_sy)};
 
-    float32_t curx1_f {numeric_cast<float32_t>(from_hex.x)};
-    float32_t cury1_f {numeric_cast<float32_t>(from_hex.y)};
+    // The ray position is taken from the step count relative to the source hex, so it neither accumulates rounding
+    // nor depends on where the light stands on the map
+    int64_t step {0};
     int32_t curx1_i {numeric_cast<int32_t>(from_hex.x)};
     int32_t cury1_i {numeric_cast<int32_t>(from_hex.y)};
 
@@ -2091,24 +2067,28 @@ void MapView::TraceLightLine(ptr<LightSource> ls, mpos from_hex, mpos& to_hex, i
 
     while (true) {
         cur_raw_intensity -= raw_intensity_sub;
-        curx1_f += sx1_f;
-        cury1_f += sy1_f;
+        step++;
 
+        float64_t rel_x {sx1_f * numeric_cast<float64_t>(step)};
+        float64_t rel_y {sy1_f * numeric_cast<float64_t>(step)};
         int32_t old_curx1_i {curx1_i};
         int32_t old_cury1_i {cury1_i};
 
-        // Casts
-        curx1_i = iround<int32_t>(curx1_f);
+        // Halves round up, as for the absolute position before
+        int32_t round_x {iround<int32_t>(rel_x)};
 
-        if (curx1_f - numeric_cast<float32_t>(curx1_i) >= 0.5f) {
-            curx1_i++;
+        if (rel_x - numeric_cast<float64_t>(round_x) >= 0.5) {
+            round_x++;
         }
 
-        cury1_i = iround<int32_t>(cury1_f);
+        int32_t round_y {iround<int32_t>(rel_y)};
 
-        if (cury1_f - numeric_cast<float32_t>(cury1_i) >= 0.5f) {
-            cury1_i++;
+        if (rel_y - numeric_cast<float64_t>(round_y) >= 0.5) {
+            round_y++;
         }
+
+        curx1_i = checked_add(numeric_cast<int32_t>(from_hex.x), round_x);
+        cury1_i = checked_add(numeric_cast<int32_t>(from_hex.y), round_y);
 
         // Left&Right trace
         int32_t ox {0};
@@ -2839,6 +2819,12 @@ void MapView::UpdateTransparentEggs()
     UpdateTransparentEgg(TransparentEggSlot::Secondary);
 }
 
+// Map pixel row the scene depths of this view are measured from: the view's top row, whose depth is zero
+auto MapView::GetMapDepthOriginY() const -> int32_t
+{
+    return GeometryHelper::GetHexPos(_screenRawHex).y;
+}
+
 void MapView::DrawMap()
 {
     FO_TRACE_ZONE(Render);
@@ -2849,7 +2835,13 @@ void MapView::DrawMap()
 
     UpdateTransparentEggs();
 
-    _engine->SprMngr.GetRender().SetOrthoDepthRange(-_mapDepthHalf, _mapDepthHalf);
+    // Depths are measured from the view's top pixel row, so the range spans what the view can draw, not the whole map: a
+    // continent-sized map keeps the precision a small one has. Sprites are rooted at most an atlas page outside the view
+    float32_t angle_rad {GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT};
+    float32_t elev_extent {numeric_cast<float32_t>(std::max(_engine->Settings->Render.MapMaxElevation, 0))};
+    float32_t row_margin {numeric_cast<float32_t>(AppRender::MAX_ATLAS_HEIGHT)};
+    float32_t depth_half {(_viewSize.height + row_margin) * std::cos(angle_rad) / std::sin(angle_rad) + std::sin(angle_rad) * elev_extent + MAP_DEPTH_RANGE_MARGIN};
+    _engine->SprMngr.GetRender().SetOrthoDepthRange(-depth_half, depth_half);
     auto restore_depth_range {scope_exit([this]() noexcept { _engine->SprMngr.GetRender().SetOrthoDepthRange(ORTHO_DEPTH_DEFAULT_NEAR, ORTHO_DEPTH_DEFAULT_FAR); })};
 
     ProcessLighting();
@@ -2908,7 +2900,7 @@ void MapView::DrawMap()
             // Tiles
             _engine->OnRenderMap_BeforeTiles.Fire(this, draw_area);
             FO_VERIFY_AND_THROW(_engine->EffectMngr.Effects.Tile, "Tile effect is null");
-            _engine->SprMngr.DrawSprites(_mapSprites, draw_area, false, DrawOrderType::Tile, DrawOrderType::PreLight, GetMapDayColor(), _engine->EffectMngr.Effects.Tile);
+            _engine->SprMngr.DrawSprites(_mapSprites, draw_area, GetMapDepthOriginY(), false, DrawOrderType::Tile, DrawOrderType::PreLight, GetMapDayColor(), _engine->EffectMngr.Effects.Tile);
             _engine->OnRenderMap_AfterTiles.Fire(this, draw_area);
 
             // Lighting
@@ -2955,7 +2947,7 @@ void MapView::DrawMap()
             // Flat sprites
             _engine->OnRenderMap_BeforeFlatSprites.Fire(this, draw_area);
             FO_VERIFY_AND_THROW(_engine->EffectMngr.Effects.Flat, "Flat effect is null");
-            _engine->SprMngr.DrawSprites(_mapSprites, draw_area, false, DrawOrderType::AfterLight, DrawOrderType::FlatEnd, GetMapDayColor(), _engine->EffectMngr.Effects.Flat);
+            _engine->SprMngr.DrawSprites(_mapSprites, draw_area, GetMapDepthOriginY(), false, DrawOrderType::AfterLight, DrawOrderType::FlatEnd, GetMapDayColor(), _engine->EffectMngr.Effects.Flat);
             _engine->OnRenderMap_AfterFlatSprites.Fire(this, draw_area);
 
             // Other sprites, with fog layers interleaved by their draw order
@@ -2986,7 +2978,7 @@ void MapView::DrawMap()
                         _engine->SprMngr.GetRtMngr().PushRenderTarget(_rtIndoorMask);
                         _engine->SprMngr.GetRtMngr().ClearCurrentRenderTarget(ucolor::clear);
                         FO_VERIFY_AND_THROW(_engine->EffectMngr.Effects.Roof, "Roof effect is null");
-                        _engine->SprMngr.DrawSprites(_indoorMaskSprites, draw_area, false, DrawOrderType::Roof, DrawOrderType::Roof4, GetMapDayColor(), _engine->EffectMngr.Effects.Roof);
+                        _engine->SprMngr.DrawSprites(_indoorMaskSprites, draw_area, GetMapDepthOriginY(), false, DrawOrderType::Roof, DrawOrderType::Roof4, GetMapDayColor(), _engine->EffectMngr.Effects.Roof);
                         _engine->SprMngr.GetRtMngr().PopRenderTarget();
                         flush_map->IndoorMaskTex = _rtIndoorMask->GetTexture();
                     }
@@ -3049,7 +3041,7 @@ void MapView::DrawSpritesWithFog(const irect32& draw_area)
 
     if (_engine->Settings->View.DisableFog || _mapperMode || !HasFogLayers()) {
         for (const SpriteDrawSegment& segment : sprite_draw_segments) {
-            _engine->SprMngr.DrawSprites(_mapSprites, draw_area, true, segment.From, segment.To, day_color, segment.Effect);
+            _engine->SprMngr.DrawSprites(_mapSprites, draw_area, GetMapDepthOriginY(), true, segment.From, segment.To, day_color, segment.Effect);
         }
 
         return;
@@ -3074,14 +3066,14 @@ void MapView::DrawSpritesWithFog(const irect32& draw_area)
             }
 
             DrawOrderType boundary {static_cast<DrawOrderType>(order)};
-            _engine->SprMngr.DrawSprites(_mapSprites, draw_area, true, static_cast<DrawOrderType>(sprite_segment_begin), boundary, day_color, segment.Effect);
+            _engine->SprMngr.DrawSprites(_mapSprites, draw_area, GetMapDepthOriginY(), true, static_cast<DrawOrderType>(sprite_segment_begin), boundary, day_color, segment.Effect);
             DrawFogSlot(draw_area, boundary);
 
             sprite_segment_begin = order + 1;
         }
 
         if (sprite_segment_begin <= segment_end) {
-            _engine->SprMngr.DrawSprites(_mapSprites, draw_area, true, static_cast<DrawOrderType>(sprite_segment_begin), segment.To, day_color, segment.Effect);
+            _engine->SprMngr.DrawSprites(_mapSprites, draw_area, GetMapDepthOriginY(), true, static_cast<DrawOrderType>(sprite_segment_begin), segment.To, day_color, segment.Effect);
         }
     }
 }
@@ -3572,27 +3564,32 @@ void MapView::InstantScroll(fpos32 scroll)
         irect32 scroll_area {GetScrollAxialArea()};
 
         if (!scroll_area.is_zero()) {
-            fpos32 screen_pos {fpos32(GeometryHelper::GetHexPos(_screenRawHex))};
+            ipos32 screen_pos {GeometryHelper::GetHexPos(_screenRawHex)};
             float32_t zoom {GetSpritesZoom()};
             fpos32 view_size {fpos32(numeric_cast<float32_t>(_screenSize.width), numeric_cast<float32_t>(_screenSize.height)) / zoom};
-            fpos32 lt_pos {screen_pos + _scrollOffset};
-            fpos32 rb_pos {screen_pos + view_size + _scrollOffset};
-            float32_t area_l {numeric_cast<float32_t>(scroll_area.x * GameSettings::MAP_HEX_WIDTH / 2 + GameSettings::MAP_HEX_WIDTH)};
-            float32_t area_t {numeric_cast<float32_t>(scroll_area.y * GameSettings::MAP_HEX_LINE_HEIGHT + GameSettings::MAP_HEX_LINE_HEIGHT)};
-            float32_t area_r {numeric_cast<float32_t>((scroll_area.x + scroll_area.width) * GameSettings::MAP_HEX_WIDTH / 2 + GameSettings::MAP_HEX_WIDTH)};
-            float32_t area_b {numeric_cast<float32_t>((scroll_area.y + scroll_area.height) * GameSettings::MAP_HEX_LINE_HEIGHT + GameSettings::MAP_HEX_LINE_HEIGHT)};
+            int32_t area_l {scroll_area.x * GameSettings::MAP_HEX_WIDTH / 2 + GameSettings::MAP_HEX_WIDTH};
+            int32_t area_t {scroll_area.y * GameSettings::MAP_HEX_LINE_HEIGHT + GameSettings::MAP_HEX_LINE_HEIGHT};
+            int32_t area_r {(scroll_area.x + scroll_area.width) * GameSettings::MAP_HEX_WIDTH / 2 + GameSettings::MAP_HEX_WIDTH};
+            int32_t area_b {(scroll_area.y + scroll_area.height) * GameSettings::MAP_HEX_LINE_HEIGHT + GameSettings::MAP_HEX_LINE_HEIGHT};
 
-            if (lt_pos.x - area_l < 0.0f) {
-                _scrollOffset.x -= lt_pos.x - area_l;
+            // Area edges relative to the view origin are found in integers, so far out on a large map the small
+            // scroll offset keeps its fraction instead of meeting millions of pixels in float
+            float32_t to_l {numeric_cast<float32_t>(area_l - screen_pos.x)};
+            float32_t to_t {numeric_cast<float32_t>(area_t - screen_pos.y)};
+            float32_t to_r {numeric_cast<float32_t>(area_r - screen_pos.x)};
+            float32_t to_b {numeric_cast<float32_t>(area_b - screen_pos.y)};
+
+            if (_scrollOffset.x < to_l) {
+                _scrollOffset.x = to_l;
             }
-            if (lt_pos.y - area_t < 0.0f) {
-                _scrollOffset.y -= lt_pos.y - area_t;
+            if (_scrollOffset.y < to_t) {
+                _scrollOffset.y = to_t;
             }
-            if (rb_pos.x - area_r >= 0.0f) {
-                _scrollOffset.x -= rb_pos.x - area_r + 0.001f;
+            if (_scrollOffset.x + view_size.x - to_r >= 0.0f) {
+                _scrollOffset.x = to_r - view_size.x - 0.001f;
             }
-            if (rb_pos.y - area_b >= 0.0f) {
-                _scrollOffset.y -= rb_pos.y - area_b + 0.001f;
+            if (_scrollOffset.y + view_size.y - to_b >= 0.0f) {
+                _scrollOffset.y = to_b - view_size.y - 0.001f;
             }
         }
     }

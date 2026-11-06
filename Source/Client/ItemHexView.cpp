@@ -113,7 +113,7 @@ void ItemHexView::Process()
         float32_t dist {(_moveCurOffset - _moveStartOffset).dist()};
 
         if (dist >= _moveWholeDist) {
-            _moveCurOffset = (_moveStartOffset + _moveStepOffset) * _moveWholeDist;
+            _moveCurOffset = _moveStartOffset + _moveStepOffset * _moveWholeDist;
             _isMoving = false;
         }
 

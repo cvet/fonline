@@ -561,12 +561,11 @@ auto GeometryHelper::GetYProj() -> float32_t
 
 auto GeometryHelper::GetLineDirAngle(int32_t x1, int32_t y1, int32_t x2, int32_t y2) -> float32_t
 {
-    float32_t x1_f {numeric_cast<float32_t>(x1)};
-    float32_t y1_f {numeric_cast<float32_t>(y1) * GetYProj()};
-    float32_t x2_f {numeric_cast<float32_t>(x2)};
-    float32_t y2_f {numeric_cast<float32_t>(y2) * GetYProj()};
+    // The difference is taken in integers first, so far map positions keep the angle of a short vector
+    float32_t dx {numeric_cast<float32_t>(checked_sub(x2, x1))};
+    float32_t dy {numeric_cast<float32_t>(checked_sub(y2, y1)) * GetYProj()};
 
-    float32_t angle {90.0f + RAD_TO_DEG_FLOAT * std::atan2(y2_f - y1_f, x2_f - x1_f)};
+    float32_t angle {90.0f + RAD_TO_DEG_FLOAT * std::atan2(dy, dx)};
 
     if (angle < 0.0f) {
         angle += 360.0f;
@@ -656,6 +655,19 @@ auto GeometryHelper::ProjectWorldToMap(vec3 world_pos) -> vec3
     return vec3 {screen_x, screen_y, depth};
 }
 
+// The view depth of ProjectWorldToMap(GetHexWorldPos(...)) less that of map pixel row origin_y at elevation zero; the row
+// difference is taken in integers, so the depth stays exact however far out on the map the hex lies
+auto GeometryHelper::GetHexMapDepth(ipos32 raw_hex, ipos32 hex_offset, float32_t elevation, int32_t origin_y) -> float32_t
+{
+    ipos32 hex_pos {GetHexPos(raw_hex)};
+    float64_t rows {numeric_cast<float64_t>(checked_sub(checked_add(hex_pos.y, hex_offset.y), origin_y))};
+    float64_t angle_rad {numeric_cast<float64_t>(GameSettings::MAP_CAMERA_ANGLE) * DEG_TO_RAD_FLOAT64};
+    float64_t sin_a {std::sin(angle_rad)};
+    float64_t cos_a {std::cos(angle_rad)};
+
+    return numeric_cast<float32_t>(rows * cos_a / sin_a + sin_a * numeric_cast<float64_t>(elevation));
+}
+
 auto GeometryHelper::ProjectMapYToGroundDepth(float32_t map_y, float32_t elevation) -> float32_t
 {
     float32_t angle_rad {GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT};
@@ -738,16 +750,17 @@ auto GeometryHelper::GetHexPosCoord(ipos32 pos, nptr<ipos32> hex_offset) -> ipos
     constexpr int32_t half_w {w / 2};
     constexpr int32_t h {GameSettings::MAP_HEX_LINE_HEIGHT};
 
+    // Positions far out on a large map reach millions of pixels, so lattice coordinates are found in double
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         // Hex centers form a lattice with v1 = (half_w, h) along ry and v2 = (w, 0) along -rx, so a
         // pixel is a * v1 + b * v2 with a = py / h and b = (px - a * half_w) / w
-        float32_t fh {numeric_cast<float32_t>(h)};
-        float32_t fw {numeric_cast<float32_t>(w)};
-        float32_t fhw {numeric_cast<float32_t>(half_w)};
+        float64_t fh {numeric_cast<float64_t>(h)};
+        float64_t fw {numeric_cast<float64_t>(w)};
+        float64_t fhw {numeric_cast<float64_t>(half_w)};
 
-        float32_t fa {numeric_cast<float32_t>(pos.y) / fh};
-        float32_t fb {(numeric_cast<float32_t>(pos.x) - fa * fhw) / fw};
-        float32_t fc {-(fa + fb)};
+        float64_t fa {numeric_cast<float64_t>(pos.y) / fh};
+        float64_t fb {(numeric_cast<float64_t>(pos.x) - fa * fhw) / fw};
+        float64_t fc {-(fa + fb)};
 
         // Cube coordinate rounding
         int32_t ra {iround<int32_t>(fa)};
@@ -755,9 +768,9 @@ auto GeometryHelper::GetHexPosCoord(ipos32 pos, nptr<ipos32> hex_offset) -> ipos
         int32_t rc {iround<int32_t>(fc)};
 
         if (ra + rb + rc != 0) {
-            float32_t da {std::abs(numeric_cast<float32_t>(ra) - fa)};
-            float32_t db {std::abs(numeric_cast<float32_t>(rb) - fb)};
-            float32_t dc {std::abs(numeric_cast<float32_t>(rc) - fc)};
+            float64_t da {std::abs(numeric_cast<float64_t>(ra) - fa)};
+            float64_t db {std::abs(numeric_cast<float64_t>(rb) - fb)};
+            float64_t dc {std::abs(numeric_cast<float64_t>(rc) - fc)};
 
             if (da > db && da > dc) {
                 ra = -(rb + rc);
@@ -820,13 +833,17 @@ auto GeometryHelper::GetHexPosCoord(ipos32 pos, nptr<ipos32> hex_offset) -> ipos
         return raw_hex;
     }
     else {
-        // Oblique transform of the diamond grid, whose cell (rx, ry) centers on ((ry - rx) * half_w,
-        // (ry + rx) * h): u = px / half_w + py / h and v = -px / half_w + py / h are 2 * ry and 2 * rx there
-        float32_t u {numeric_cast<float32_t>(pos.x) / numeric_cast<float32_t>(half_w) + numeric_cast<float32_t>(pos.y) / numeric_cast<float32_t>(h)};
-        float32_t v {-numeric_cast<float32_t>(pos.x) / numeric_cast<float32_t>(half_w) + numeric_cast<float32_t>(pos.y) / numeric_cast<float32_t>(h)};
+        // Diamond cell (rx, ry) centers on ((ry - rx) * half_w, (ry + rx) * h), so ry = (px * h + py * half_w) / (2 * half_w * h) and rx
+        // likewise with -px; integer division rounds an edge pixel's halves away from zero, like iround, anywhere on the map
+        int64_t px {numeric_cast<int64_t>(pos.x)};
+        int64_t py {numeric_cast<int64_t>(pos.y)};
+        int64_t h64 {numeric_cast<int64_t>(h)};
+        int64_t half_w64 {numeric_cast<int64_t>(half_w)};
+        int64_t den {2 * half_w64 * h64};
+        auto round_div {[den](int64_t num) -> int64_t { return num >= 0 ? (2 * num + den) / (2 * den) : -((-2 * num + den) / (2 * den)); }};
 
-        int32_t ry {iround<int32_t>(u * 0.5f)};
-        int32_t rx {iround<int32_t>(v * 0.5f)};
+        int32_t ry {numeric_cast<int32_t>(round_div(px * h64 + py * half_w64))};
+        int32_t rx {numeric_cast<int32_t>(round_div(-px * h64 + py * half_w64))};
         ipos32 raw_hex {rx, ry};
 
         if (hex_offset) {
