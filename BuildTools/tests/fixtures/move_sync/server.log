@@ -1,0 +1,17 @@
+[07/11/26] [12:30:01] Start server
+[07/11/26] [12:30:07] [ServerPool-1] MOVESYNC side=srv ev=move_req t=4812041000 st=1778140800041 cr=1001 player=Actor client_start=100,100 server_hex=100,100 steps=4 bridge=0 joined=0 truncated=0 speed=70 late_ms=0 rtt_ms=80
+[07/11/26] [12:30:07] [ServerPool-1] MOVESYNC side=srv ev=move_start t=4812041000 st=1778140800041 cr=1001 uid=7 start=100,100 end=104,100 whole_ms=1200 offset_ms=40 lease_ms=0 speed=70 was_moving=0 initiator=Actor
+[07/11/26] [12:30:07] [ServerPool-1] MOVESYNC side=srv ev=send t=4812041000 st=1778140800041 cr=1001 to=Observer own=0 kind=move hex=100,100 end=104,100 offset_ms=40
+[07/11/26] [12:30:07] [ServerPool-0] MOVESYNC side=srv ev=step t=4812306000 st=1778140800306 cr=1001 uid=7 hex=101,100 elapsed_ms=305 runtime_ms=305
+[07/11/26] [12:30:07] [ServerPool-0] MOVESYNC side=srv ev=step t=4812606000 st=1778140800606 cr=1001 uid=7 hex=102,100 elapsed_ms=605 runtime_ms=605
+[07/11/26] [12:30:07] [ServerPool-0] MOVESYNC side=srv ev=step t=4812906000 st=1778140800906 cr=1001 uid=7 hex=103,100 elapsed_ms=905 runtime_ms=905
+[07/11/26] [12:30:08] [ServerPool-0] MOVESYNC side=srv ev=step t=4813206000 st=1778140801206 cr=1001 uid=7 hex=104,100 elapsed_ms=1205 runtime_ms=1205
+[07/11/26] [12:30:08] [ServerPool-1] MOVESYNC side=srv ev=finish_req t=4813243000 st=1778140801243 cr=1001 reported_end=104,100 client_hex=104,100 server_hex=104,100 remaining_ms=-1 allowed_ms=-1 rtt_ms=80 outcome=not_moving
+[07/11/26] [12:30:11] [ServerPool-1] MOVESYNC side=srv ev=move_req t=4816041000 st=1778140804041 cr=1001 player=Actor client_start=104,100 server_hex=104,100 steps=3 bridge=0 joined=0 truncated=0 speed=70 late_ms=0 rtt_ms=80
+[07/11/26] [12:30:11] [ServerPool-1] MOVESYNC side=srv ev=move_start t=4816041000 st=1778140804041 cr=1001 uid=8 start=104,100 end=107,100 whole_ms=900 offset_ms=40 lease_ms=0 speed=70 was_moving=0 initiator=Actor
+[07/11/26] [12:30:11] [ServerPool-1] MOVESYNC side=srv ev=send t=4816041000 st=1778140804041 cr=1001 to=Observer own=0 kind=move hex=104,100 end=107,100 offset_ms=40
+[07/11/26] [12:30:11] [ServerPool-0] MOVESYNC side=srv ev=step t=4816306000 st=1778140804306 cr=1001 uid=8 hex=105,100 elapsed_ms=305 runtime_ms=305
+[07/11/26] [12:30:11] [ServerPool-0] MOVESYNC side=srv ev=stop t=4816610000 st=1778140804610 cr=1001 uid=8 reason=8 hex=105,100 broadcast=all
+[07/11/26] [12:30:11] [ServerPool-0] MOVESYNC side=srv ev=send t=4816610000 st=1778140804610 cr=1001 to=Actor own=1 kind=pos hex=105,100
+[07/11/26] [12:30:11] [ServerPool-0] MOVESYNC side=srv ev=send t=4816610000 st=1778140804610 cr=1001 to=Observer own=0 kind=pos hex=105,100
+[07/11/26] [12:30:14] Server stopped
