@@ -6,6 +6,7 @@ disagreement points at either the reader or the Engine rather than at this file.
 
 from __future__ import annotations
 
+import ast
 import json
 import sys
 from pathlib import Path
@@ -153,6 +154,84 @@ def test_terminal_continuation_ends_on_the_last_physical_line(suffix):
         (['[S]'], '[S]', 1, 1),
         (['A = 1 \\'], 'A = 1 ', 2, 2),
     ]
+
+
+# ---------- one grammar behind every entry point ----------
+
+def _format_content_inputs() -> list[str]:
+    # Every config text the format_content tests feed or expect: string and bytes literals with a line break, and
+    # literal line lists joined the way its fomain_lines helper joins them
+    tree = ast.parse(Path(__file__).with_name('test_format_content.py').read_text(encoding='utf-8'))
+    texts: list[str] = []
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Constant) and isinstance(node.value, (str, bytes)):
+            value = node.value.decode('utf-8') if isinstance(node.value, bytes) else node.value
+            if '\n' in value:
+                texts.append(value)
+        elif isinstance(node, ast.List) and node.elts and all(isinstance(item, ast.Constant) and isinstance(item.value, str) for item in node.elts):
+            texts.append('\n'.join(item.value for item in node.elts))
+
+    return texts
+
+
+GOLDEN_CONFIG_FILES = sorted(path for path in PROJECT.rglob('*') if path.suffix in ('.fomain', '.fopro', '.fomap'))
+FORMAT_CONTENT_INPUTS = _format_content_inputs()
+GRAMMAR_CASES = [
+    *((path.relative_to(DATA).as_posix(), ff.read_text(path)) for path in GOLDEN_CONFIG_FILES),
+    *((f'test_format_content#{index}', text) for index, text in enumerate(FORMAT_CONTENT_INPUTS)),
+    *((f'test_format_content#{index}-crlf', text.replace('\n', '\r\n')) for index, text in enumerate(FORMAT_CONTENT_INPUTS)),
+]
+
+
+def test_grammar_cases_cover_the_fixtures():
+    assert len(GOLDEN_CONFIG_FILES) >= 10
+    assert len(FORMAT_CONTENT_INPUTS) >= 50
+    assert any(name.endswith('Golden.fomain') for name, _ in GRAMMAR_CASES)
+
+
+@pytest.mark.parametrize(('name', 'text'), GRAMMAR_CASES, ids=[name for name, _ in GRAMMAR_CASES])
+def test_foconfig_and_format_content_read_like_fo_formats(tmp_path, name, text):
+    import foconfig
+    import format_content as fc
+
+    expected = _reading(ff.parse_config_text(text))
+
+    def foconfig_reading(load) -> list[tuple[str, dict[str, str]]]:
+        parser = foconfig.ConfigParser()
+        load(parser)
+        return [(item.name, item.content) for item in parser.sections]
+
+    pieces = text.split('\n')
+    lines = [piece + '\n' for piece in pieces[:-1]] + ([pieces[-1]] if pieces[-1] else [])
+    path = tmp_path.resolve() / 'Config.fomain'
+    path.write_bytes(text.encode('utf-8'))
+    bom_path = tmp_path.resolve() / 'Bom.fomain'
+    bom_path.write_bytes(b'\xef\xbb\xbf' + text.encode('utf-8'))
+
+    assert foconfig_reading(lambda parser: parser.loadFromText(text)) == expected
+    assert foconfig_reading(lambda parser: parser.loadFromLines(lines)) == expected
+    assert _reading(ff.read_config_file(path)) == expected
+
+    # loadFromFile drops one leading BOM, the Engine reader and read_config_file keep it
+    without_bom = _reading(ff.parse_config_text(text.removeprefix('\ufeff')))
+    assert foconfig_reading(lambda parser: parser.loadFromFile(path)) == without_bom
+    assert foconfig_reading(lambda parser: parser.loadFromFile(bom_path)) == expected
+    assert _reading(ff.read_config_file(bom_path)) == _reading(ff.parse_config_text('\ufeff' + text))
+
+    # The formatter's line model classifies every logical line the way the reader applies it
+    replayed: list[tuple[str, dict[str, str]]] = [('', {})]
+    for line in fc.read_lines(text):
+        if line.kind == fc.HEADER:
+            replayed.append((line.name, {}))
+        elif line.kind == fc.ENTRY and line.entry is not None:
+            values = replayed[-1][1]
+            if line.entry.append and line.entry.key in values:
+                if line.entry.value:
+                    values[line.entry.key] += ' ' + line.entry.value
+            else:
+                values[line.entry.key] = line.entry.value
+    assert replayed == expected
 
 
 # ---------- setting directives: Source/Common/Settings.cpp ResolveSettingValue ----------
