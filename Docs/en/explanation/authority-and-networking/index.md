@@ -289,9 +289,12 @@ when they write into one log (embedded clients do).
 | cl | `input` | project scripts | a change of scripted direct input (`state=<keys or stick> pattern_ms`), written by the AI-control input driver |
 
 `finish_req` outcomes are `accepted`, `not_moving` (the server had already finished — the normal case),
-`attached`, `stale_plan`, `too_early`, `invalidated`, `superseded` and `reconcile_failed`. Reading the lines
-is the job of an embedding project's tooling; the engine only guarantees that the field names above stay
-stable.
+`attached`, `stale_plan`, `too_early`, `invalidated`, `superseded` and `reconcile_failed`.
+`BuildTools/move_sync_analysis.py` merges server and client logs, cuts them into scenarios and reports
+convergence, lag and corrections; see
+[Analyse movement synchronization traces](../../how-to/project/content-and-diagnostics-tools.md#analyse-movement-synchronization-traces).
+Scenario marks, harnesses and acceptance thresholds stay with the project, and the engine guarantees that
+the field names above stay stable.
 
 ### Disconnect reasons
 

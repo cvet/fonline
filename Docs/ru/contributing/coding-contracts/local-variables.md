@@ -161,9 +161,12 @@ CHECK(value.empty()); // FO_USE_AFTER_MOVE_SUPPRESS: test verifies the moved-fro
 с `compile_commands.json` для Clang 20+:
 проверку явных типов и проверки `clang-query` / `clang-tidy` для избыточной
 локальной константности и использования после перемещения. Движок владеет
-только описанными правилами и маркерами `FO_REDUNDANT_CONST_SUPPRESS` /
-`FO_USE_AFTER_MOVE_SUPPRESS`. Реализация анализатора, создание базы компиляции,
-выбор области и политика CI принадлежат подключающему проекту.
+описанными правилами, маркерами `FO_REDUNDANT_CONST_SUPPRESS` /
+`FO_USE_AFTER_MOVE_SUPPRESS` и самим анализатором: аудитами
+`explicit-local-types` и `local-variables` из `BuildTools/native_source_audit.py`.
+Создание базы компиляции, выбор области, baseline-файлы и политика CI
+принадлежат подключающему проекту, который запускает те же команды над своими
+native-каталогами; см. [Аудит правил нативного кода в игровом проекте](../../how-to/project/native-source-audits.md).
 
 Перед публикацией выполняйте все три проверки над изменёнными исходниками
 движка. Проект может распространить тот же gate на собственные native

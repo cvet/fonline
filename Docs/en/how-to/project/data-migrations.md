@@ -167,7 +167,7 @@ Search the project for the old identifier in scripts, content, `.fomain` files a
 
 ## Never reuse a retired identity
 
-A retired property name, prototype id or enum value must not be given a new meaning, because stored data and old content would reinterpret it silently. The Engine enforces this only for properties (a live declaration under a removed or renamed-away name is rejected). For every other identity it is a project discipline, and it must outlive the rule: when a rename rule is eventually deleted, the retired name still stays reserved. A project can keep a small written ledger of every released identity, checked by a validator, so reuse fails in review and in CI rather than in production. That tool is project-owned; the pattern is to compare each release's identities with the ledger and fail on a reintroduced retired name.
+A retired property name, prototype id or enum value must not be given a new meaning, because stored data and old content would reinterpret it silently. The Engine enforces this only for properties (a live declaration under a removed or renamed-away name is rejected). For every other identity it is a project discipline, and it must outlive the rule: when a rename rule is eventually deleted, the retired name still stays reserved. The Engine's migration guard, `BuildTools/migration_guard.py`, implements that ledger: it compares the prototype ids, property names and enum values a project declares with a committed manifest, requires a rule for every identity that left, and fails on a reintroduced retired name, so reuse fails in review and in CI rather than in production ([Guard Identity Migrations](migration-guard.md)). Identities it does not see, such as catalog ids stored inside property values or text keys copied into saves, need project registries beside it.
 
 A property type change is a replacement, not a rename. Give the new meaning a distinct name, retire the old one with `Remove`, and prove the value carry-over on isolated data. Prototype migration does not repair an incompatible property payload.
 
@@ -214,7 +214,7 @@ Deploy a data migration as a unit: matching server package, baked resources, con
 - Every rename, removal or move of a persisted identity has a rule in the same change.
 - The rule grammar bakes without errors for every role, and the destination or target exists.
 - Game code, content and settings contain only current names.
-- The retired identity is recorded and cannot be reintroduced.
+- The retired identity is recorded and cannot be reintroduced: `migration_guard.py --check` passes and the manifest diff is in the same change (see the [migration guard checklist](migration-guard.md#validation-checklist)).
 - The migration ran on an isolated copy, survived a restart unchanged, and passed sparse and old-shape fixtures.
 - The supported save horizon and the removal decision are written down.
 - Engine update notes were applied oldest first, and metadata, configuration and scripts were rebaked together.

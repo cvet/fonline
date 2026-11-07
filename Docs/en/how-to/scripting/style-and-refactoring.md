@@ -110,7 +110,7 @@ A local rename is mechanical only when none of these surfaces can observe it.
 
 ### Supported command and version
 
-The Engine does not own one universal `.clang-format` layout for project AngelScript after the high-level CoreScripts move. A project must pin its layout and clang-format version. The reusable formatter wrapper in `BuildTools/buildtools.py` requires clang-format 20 and preserves the file's BOM/line-ending convention. Its `format-source` command formats the `.cpp`, `.h`, and `.cs` files under Engine `Source`, which contains no `.fos` files. For `.fos`, a project calls the importable `format_files(clang_format, root, patterns)` with a `*.fos` pattern; it applies `fix_fos_nullable_suffix` to every `.fos` file, which repairs FOnline-specific nullable suffix, cast, array, and named-argument spacing without changing literals or comments.
+The Engine does not own one universal `.clang-format` layout for project AngelScript after the high-level CoreScripts move. A project must pin its layout and clang-format version. The reusable formatter wrapper in `BuildTools/buildtools.py` requires clang-format 20, removes a UTF-8 BOM and preserves the file's LF or CRLF convention. Its `format-source` command formats the `.cpp`, `.h`, and `.cs` files under Engine `Source`, which contains no `.fos` files. For `.fos`, a project calls the importable `format_files(clang_format, root, patterns)` with a `*.fos` pattern; it applies `fix_fos_nullable_suffix` to every `.fos` file, which repairs FOnline-specific nullable suffix, cast, array, and named-argument spacing without changing literals or comments.
 
 From the Engine repository run:
 
@@ -390,6 +390,8 @@ An embedding game must document the parts the Engine cannot choose:
 - formatter coverage outside Engine `Source`;
 - temporary namespace exceptions and their removal plan;
 - file-size, commented-code, or other quality-ratchet thresholds.
+
+The thresholds are project policy, but the checks are Engine tools: `BuildTools/check_angelscript_hygiene.py` reports namespace/file mismatches, `#include`, side-macro existence tests, unbalanced preprocessor blocks, misplaced sort directives, file endings and, when enabled, commented-out code and file size, against a count-ratchet baseline; `BuildTools/check_script_bindings.py` compares handler nullability with event and remote-call declarations. See [Check Script Bindings and AngelScript Hygiene](../project/script-and-binding-checks.md).
 
 Last Frontier's narrow test-only global exceptions and project formatter are useful current evidence. TLA's broad production mutable-global allowlist and ongoing refactoring log are migration evidence, not an Engine recommendation. Neither project is a normative dependency of this guide.
 

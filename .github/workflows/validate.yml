@@ -67,6 +67,35 @@ jobs:
         BuildTools/tests/test_native_source_layout.py
         BuildTools/tests/test_native_formatting.py
         BuildTools/tests/test_resource_usage_pipeline_wiring.py
+    - name: Check project tooling regressions
+      run: >-
+        python3 -m pytest -q
+        BuildTools/tests/test_artifact_checksums.py
+        BuildTools/tests/test_project_version.py
+        BuildTools/tests/test_release_preflight.py
+        BuildTools/tests/test_engine_upgrade_report.py
+        BuildTools/tests/test_markdown_links.py
+        BuildTools/tests/test_native_source_audit.py
+        BuildTools/tests/test_native_source_audit_smart_pointer.py
+        BuildTools/tests/test_native_source_audit_clang.py
+        BuildTools/tests/test_native_safety_audit_sync_scope.py
+        BuildTools/tests/test_native_safety_audit_exception_safety.py
+        BuildTools/tests/test_check_script_bindings.py
+        BuildTools/tests/test_check_angelscript_hygiene.py
+        BuildTools/tests/test_finding_baseline.py
+        BuildTools/tests/test_fo_formats.py
+        BuildTools/tests/test_format_content.py
+        BuildTools/tests/test_migration_guard.py
+        BuildTools/tests/test_check_text_packs.py
+        BuildTools/tests/test_move_sync_analysis.py
+        BuildTools/tests/test_buildtools_managed_project.py
+        BuildTools/tests/test_buildtools_host_workspace.py
+        BuildTools/tests/test_ai_control_mcp.py
+        BuildTools/tests/test_script_test_harness_example.py
+        BuildTools/tests/test_cmake_baker_runtime_copy.py
+        BuildTools/tests/test_cmake_option_names.py
+    - name: Run managed script analyzer self-tests
+      run: dotnet run --project Source/Scripting/Managed/Analyzers/Tests/FOnline.Analyzers.Tests.csproj --configuration Release
     - run: python3 BuildTools/tests/test_engine_version.py
     - name: Check the exact publication range
       env:
@@ -108,6 +137,14 @@ jobs:
     - run: python3 BuildTools/check_native_source_layout.py
     - run: python3 BuildTools/check_native_source_layout.py --source-dir Examples
     - run: python3 BuildTools/check_native_source_layout.py --source-dir BuildTools/validation-project
+    - run: python3 BuildTools/check_native_source_layout.py --comments --comment-baseline BuildTools/audit_baselines/native_comments.tsv
+    - run: python3 BuildTools/native_source_audit.py allocator
+    - run: python3 BuildTools/native_source_audit.py smart-pointer
+    - run: python3 BuildTools/native_safety_audit.py sync-scope
+    - run: python3 BuildTools/native_safety_audit.py exception-safety
+    - run: python3 BuildTools/check_script_bindings.py --scope Source --scope Examples --scripts Examples
+    - run: python3 BuildTools/check_angelscript_hygiene.py --scripts Examples
+    - run: python3 BuildTools/markdown_links.py --exclude ThirdParty --exclude Workspace --exclude Build --exclude "**/node_modules" --exclude Examples/PublicRepositoryTemplate/README.template.md
     - run: python3 BuildTools/buildtools.py format-source
     - run: git diff --exit-code
   temporary-compat:

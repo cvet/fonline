@@ -136,7 +136,11 @@ continue to accept nanoseconds for `timespan` and milliseconds for `synctime`.
 Methods resolved by the native backend through `[CallableByEngine]` are
 `internal`, even though Mono lookup can find non-public methods. They are dispatch
 entry points, not ordinary direct-call helpers; a change must respect the owning
-dispatcher, synchronization and callback-lifetime contract.
+dispatcher, synchronization and callback-lifetime contract. `FOENTRY002` of the
+Engine analyzers reports such a method, and any other engine-dispatched or
+attribute-registered method, that is not `internal`; `FOENTRY001` separately
+reports direct calls of dispatcher-bound entry points such as `[Event]` handlers.
+See [Engine-Contract Analyzers for Managed C# Projects](../project/engine-contract-analyzers.md).
 
 Each backend has an isolated load context, but gameplay state requires an explicit per-engine owner: `Game`, entity, property or ref type. Static constants and immutable type metadata are valid; mutable caches, registries, timer gates and collections do not gain ownership from C# static fields.
 
@@ -182,13 +186,13 @@ Callback and remote-call arguments keep their metadata shape: native `any[]` arr
 
 ## Async and continuation scheduling
 
-`Game.YieldAsync(milliseconds)` is the managed equivalent of a script suspension. It completes from an Engine time event and resumes through the backend-owned `ScriptSynchronizationContext`. Do not use `async void`; return `Task` or `Task<T>` so the Engine can observe completion and faults.
+`ScriptTask.Delay(milliseconds)` (or `ScriptTask.Delay(timespan)`) from `CoreScripts/ScriptTask.cs` is the managed equivalent of a script suspension. It completes from an Engine time event and resumes through the backend-owned `ScriptSynchronizationContext`. Do not use `async void`; return `Task` or `Task<T>` so the Engine can observe completion and faults.
 
 Each backend owns a separate continuation queue. `BaseEngine::FrameAdvance` pumps only its backends after releasing the frame-property lock. Every resumed continuation re-enters the owning Engine through `RunScriptContext`; on the server this creates a fresh synchronization context. A newly posted continuation waits for a later frame, so a yielding loop cannot monopolize one frame.
 
 `Post` raises an atomic backend-ready flag while the scheduler is open; an idle frame does not enter managed code just to find an empty queue. A partly failed pump signals remaining work for the next frame. Shutdown closes the scheduler before unbinding the backend, so a late post cannot signal released native state. `Native.GetAndResetContinuationPumps` exposes pump counts to interop tests.
 
-Synchronous native-result callbacks and module initialization use a private continuation queue and drain only their own awaited continuations. `Game.YieldAsync` is rejected in that context because the blocked caller cannot advance the timer pump. Completed tasks remain valid.
+Synchronous native-result callbacks and module initialization use a private continuation queue and drain only their own awaited continuations. `ScriptTask.Delay` is rejected in that context because the blocked caller cannot advance the timer pump. Completed tasks remain valid.
 
 `ScriptTask.Delay(timespan)` retains nanoseconds; `Delay(int)` adapts milliseconds.
 Both reject synchronous callbacks. Unit scaling uses checked arithmetic.
@@ -409,7 +413,7 @@ When `FO_TRACE_ENABLED` and the `Script` category are enabled, the backend insta
 
 Method names and source locations are resolved once into a process-wide table shared by all managed backends and then read under a shared lock. Zone names omit parameter lists and commas because Tracy's CSV hotspot exporter does not quote that field. Mono profiler callbacks are `noexcept` C-ABI boundaries and must never unwind through JIT-generated code. See [Profiling](../quality/profiling.md#managed-script-zones) for how to read these zones beneath a `Script execution overrun` entry.
 
-Use the generated solution/project for IDE navigation and Roslyn diagnostics. Debug native startup and P/Invoke at the host process boundary; debug managed behavior with runtime logs and focused callbacks unless the embedding project provides a qualified managed debugger attachment workflow. The AngelScript UDP debugger does not debug C# and its settings should not be presented as a managed debugger.
+Use the generated solution/project for IDE navigation and Roslyn diagnostics. `buildtools.py managed-project-path <main>.fomain --build-dir <build-dir>` prints where `ManagedScriptBaker` wrote them, and `--open` opens the solution; see [Locate the generated managed project](../project/content-and-diagnostics-tools.md#locate-the-generated-managed-project). Debug native startup and P/Invoke at the host process boundary; debug managed behavior with runtime logs and focused callbacks unless the embedding project provides a qualified managed debugger attachment workflow. The AngelScript UDP debugger does not debug C# and its settings should not be presented as a managed debugger.
 
 First diagnosis routes:
 
@@ -425,6 +429,7 @@ First diagnosis routes:
 | Package starts with missing framework type | `ManagedRuntime/runtime.manifest` and target-specific pack replacement. |
 | ABI bind fails before module initialization | Stale generated `*Abi.gen.cs`, native manifest/hash mismatch, or a skipped managed rebuild. |
 | A wrapper unsubscribe leaves the callback active | Subscription ownership on the native entity and delegate equality; do not keep wrapper-local event state. |
+| `FOENTRY*`, `FOVERIFY*` or `FOSTATIC001` fails the build | The rule's contract and the `.editorconfig` severity in [Engine-Contract Analyzers](../project/engine-contract-analyzers.md). |
 
 ## Session snapshots
 
@@ -459,7 +464,7 @@ A source port is complete only when declarations, generated API use, lifecycle, 
 
 Preserve public metadata names, remote-call wire declarations, property layouts, persisted identifiers, and behavior unless the migration deliberately changes them. Backend-neutral metadata should not change merely because syntax changed. Run both sides during a controlled comparison only when the project has explicitly designed that lane; do not ship two handlers for the same event or remote call accidentally.
 
-Replace AngelScript `[[ModuleInit]]`, `[[Event]]`, `[[Async]]`/`Yield`, and dynamic synchronization comments with the managed `[ModuleInit]`, `[Event]`, `Task`/`YieldAsync`, and cover-attribute/analyzer contracts. Port Engine-provided helpers by semantics, not by transliterating syntax or retaining no-op compatibility shims.
+Replace AngelScript `[[ModuleInit]]`, `[[Event]]`, `[[Async]]`/`Yield`, and dynamic synchronization comments with the managed `[ModuleInit]`, `[Event]`, `Task`/`ScriptTask.Delay`, and cover-attribute/analyzer contracts. Port Engine-provided helpers by semantics, not by transliterating syntax or retaining no-op compatibility shims.
 
 ## Project documentation boundary
 

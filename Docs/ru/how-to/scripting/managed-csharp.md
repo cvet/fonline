@@ -138,6 +138,11 @@ value types повторяют native API (`ipos.x`, `hstr()`, `timespan.millise
 `internal`, хотя Mono lookup умеет находить непубличные методы. Это входы
 dispatcher, а не обычные вспомогательные методы для прямого вызова; изменения
 учитывают контракт владельца dispatcher, синхронизации и времени жизни callback.
+`FOENTRY002` анализаторов движка сообщает о таком методе и любом другом методе,
+который движок вызывает или регистрирует через attribute, если он не `internal`;
+`FOENTRY001` отдельно сообщает о прямых вызовах entry points, привязанных к
+dispatcher, например handlers `[Event]`. См.
+[Анализаторы контрактов движка для проектов на Managed C#](../project/engine-contract-analyzers.md).
 
 У каждого backend изолированный load context, но gameplay state требует явного per-engine owner: `Game`, entity, property или ref type. Static constants и immutable type metadata допустимы; mutable caches, registries, timer gates и collections не получают владение от C# static fields.
 
@@ -183,13 +188,13 @@ RPC dispatch и ожидающие временные события испол�
 
 ## Async и планирование continuations
 
-`Game.YieldAsync(milliseconds)` — managed-аналог приостановки скрипта. Он завершается через Engine time event и продолжается через принадлежащий backend `ScriptSynchronizationContext`. Не используйте `async void`; возвращайте `Task` или `Task<T>`, чтобы движок мог наблюдать completion и faults.
+`ScriptTask.Delay(milliseconds)` (или `ScriptTask.Delay(timespan)`) из `CoreScripts/ScriptTask.cs` — managed-аналог приостановки скрипта. Он завершается через Engine time event и продолжается через принадлежащий backend `ScriptSynchronizationContext`. Не используйте `async void`; возвращайте `Task` или `Task<T>`, чтобы движок мог наблюдать completion и faults.
 
 Каждый backend владеет отдельной очередью continuation. `BaseEngine::FrameAdvance` обрабатывает только свои backend после освобождения frame-property lock. Каждая продолженная continuation снова входит в свой Engine через `RunScriptContext`; на сервере это создаёт новый synchronization context. Новая continuation ждёт следующего frame, поэтому yielding loop не может занять весь текущий frame.
 
 `Post` поднимает atomic ready flag backend, пока scheduler открыт; idle frame не входит в managed code ради проверки пустой очереди. Частично прерванный pump повторно сигнализирует об оставшейся работе для следующего frame. При shutdown scheduler закрывается до unbind, поэтому поздний post не обращается к освобождённому backend. `Native.GetAndResetContinuationPumps` даёт interop tests счётчик входов в pump.
 
-Synchronous native-result callbacks и module initialization используют private continuation queue и обрабатывают только continuations собственного await. `Game.YieldAsync` в таком контексте запрещён, потому что заблокированный caller не может продвинуть timer pump. Уже completed tasks остаются допустимыми.
+Synchronous native-result callbacks и module initialization используют private continuation queue и обрабатывают только continuations собственного await. `ScriptTask.Delay` в таком контексте запрещён, потому что заблокированный caller не может продвинуть timer pump. Уже completed tasks остаются допустимыми.
 
 `ScriptTask.Delay(timespan)` сохраняет наносекунды; `Delay(int)` переводит миллисекунды.
 Обе перегрузки запрещают синхронный callback. Масштабирование единиц использует checked-арифметику.
@@ -413,7 +418,7 @@ Managed-обработчик события, который бросает ис�
 
 Имена методов и source locations один раз разрешаются в process-wide table, общую для всех managed backend, а затем читаются под shared lock. В именах зон нет parameter lists и запятых, потому что Tracy CSV hotspot exporter не заключает это поле в кавычки. Callbacks Mono profiler являются `noexcept` C-ABI boundaries и не должны разворачивать стек через JIT-generated code. Как читать эти зоны под entry `Script execution overrun`, описано в [профилировании](../quality/profiling.md#зоны-managed-скриптов).
 
-Используйте generated solution/project для IDE navigation и Roslyn diagnostics. Native startup и P/Invoke отлаживайте на границе host process; managed behavior — через runtime logs и focused callbacks, если подключающий проект не поддерживает проверенный managed debugger attach. UDP debugger AngelScript не отлаживает C#, и его settings нельзя выдавать за managed debugger.
+Используйте generated solution/project для IDE navigation и Roslyn diagnostics. `buildtools.py managed-project-path <main>.fomain --build-dir <build-dir>` печатает, куда `ManagedScriptBaker` их записал, а `--open` открывает solution; см. [Поиск сгенерированного управляемого проекта](../project/content-and-diagnostics-tools.md#поиск-сгенерированного-управляемого-проекта). Native startup и P/Invoke отлаживайте на границе host process; managed behavior — через runtime logs и focused callbacks, если подключающий проект не поддерживает проверенный managed debugger attach. UDP debugger AngelScript не отлаживает C#, и его settings нельзя выдавать за managed debugger.
 
 Первичные маршруты диагностики:
 
@@ -429,6 +434,7 @@ Managed-обработчик события, который бросает ис�
 | Package не находит framework type | `ManagedRuntime/runtime.manifest` и target-specific замена pack. |
 | ABI bind падает до module initialization | Stale generated `*Abi.gen.cs`, несовпадение native manifest/hash или пропущенная managed rebuild. |
 | Unsubscribe через wrapper оставляет callback активным | Ownership subscription на native entity и delegate equality; wrapper-local event state запрещён. |
+| `FOENTRY*`, `FOVERIFY*` или `FOSTATIC001` ломает сборку | Контракт правила и уровень серьёзности в `.editorconfig` в [Анализаторах контрактов движка](../project/engine-contract-analyzers.md). |
 
 ## Снимки сессии
 
@@ -463,7 +469,7 @@ Source port завершён только тогда, когда перенес�
 
 Сохраняйте public metadata names, declarations remote-call wire, property layouts, persisted identifiers и behavior, если migration намеренно их не меняет. Backend-neutral metadata не должна меняться только из-за нового синтаксиса. Запускайте оба backend во временном сравнительном lane только по явному плану проекта; не допускайте случайно двух handlers одного event или remote call.
 
-Замените AngelScript `[[ModuleInit]]`, `[[Event]]`, `[[Async]]`/`Yield` и динамические комментарии синхронизации на managed `[ModuleInit]`, `[Event]`, `Task`/`YieldAsync` и contracts cover attributes/analyzer. Портируйте Engine helpers по семантике, а не транслитерацией синтаксиса или сохранением no-op compatibility shims.
+Замените AngelScript `[[ModuleInit]]`, `[[Event]]`, `[[Async]]`/`Yield` и динамические комментарии синхронизации на managed `[ModuleInit]`, `[Event]`, `Task`/`ScriptTask.Delay` и contracts cover attributes/analyzer. Портируйте Engine helpers по семантике, а не транслитерацией синтаксиса или сохранением no-op compatibility shims.
 
 ## Граница документации проекта
 

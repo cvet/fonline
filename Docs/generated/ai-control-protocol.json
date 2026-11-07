@@ -737,13 +737,19 @@
       "id": "ai-control-protocol.integration.mcp-boundary",
       "name": "MCP adapter boundary",
       "stability": "experimental",
-      "requirement": "An MCP adapter may map project observations/actions into semantic tools, but its tool namespace, launch orchestration, memory, prompts, and gameplay policies are project-owned.",
+      "requirement": "An MCP adapter may map project observations/actions into semantic tools. The Engine adapter core supplies only MCP framing, endpoint and event-cursor handling, protocol-generic tools, launch mechanics, and owned-process control; project tool names, launch profiles, readiness gates, memory, prompts, and gameplay policies are project-owned and plug in through a registered project module.",
       "rationale": "Transport compatibility must not falsely standardize one game's QA surface.",
       "source": [
         {
           "path": "Examples/AiControlSample/README.md",
           "anchors": [
             "without borrowing Last Frontier or TLA gameplay schemas"
+          ]
+        },
+        {
+          "path": "BuildTools/ai_control_mcp/registry.py",
+          "anchors": [
+            "def register_project_module("
           ]
         }
       ]
@@ -896,5 +902,5 @@
       "experimental": 50
     }
   },
-  "contract_digest": "cea32aa5325a0f7601c93c0b40d599865eac7b5471093ec61ade8eb4baf070dd"
+  "contract_digest": "4b7e3c6df0e4822e9eea624d1ad68614a5761b638f34c68e04fb6270d7abd61e"
 }

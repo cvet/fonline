@@ -38,13 +38,14 @@ class DocumentationNativeCodingContractsTests(unittest.TestCase):
         self.assertNotIn("Tools/ExceptionSafetyAudit", guide)
         self.assertNotIn("Tools/AllocatorAudit", guide)
 
-    def test_local_variable_rules_keep_analyzers_project_owned(self) -> None:
+    def test_local_variable_rules_name_the_engine_audits(self) -> None:
         guide = self._read(f"{DOC_ROOT}/local-variables.md")
         for marker in (
             "FO_REDUNDANT_CONST_SUPPRESS",
             "FO_USE_AFTER_MOVE_SUPPRESS",
             "Clang 20+",
-            "embedding project owns analyzer implementation",
+            "`explicit-local-types` and `local-variables` audits",
+            "BuildTools/native_source_audit.py",
             "compile-database generation",
         ):
             self.assertIn(marker, guide)
@@ -106,7 +107,7 @@ class DocumentationNativeCodingContractsTests(unittest.TestCase):
             self.assertIn(marker.replace("class ", ""), guide)
         self.assertIn("make_shared", memory)
         self.assertIn("safe_alloc::make_shared", guide)
-        self.assertIn("does not currently ship a whole-tree", guide)
+        self.assertIn("`BuildTools/native_source_audit.py` is the whole-tree checker", guide)
         self.assertNotIn("Tools/SmartPointerAudit", guide)
         self.assertIn("Do not reintroduce the removed permissive `FO_STRICT_*`", guide)
 

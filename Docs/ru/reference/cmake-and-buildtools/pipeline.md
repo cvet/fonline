@@ -251,6 +251,10 @@ headless variants client, server variants, Mapper, viewers анимаций и �
 baker, AngelScript compiler, Managed script baker и testing app. Универсального приложения Editor и
 соответствующей validation target нет.
 
+Когда собирается `<FO_DEV_NAME>_BakerLib`, стадия также копирует его рядом с
+каждым client и server executable, который при запуске выполняет предварительную
+сборку ресурсов; см. [Встраивание](../../how-to/build/embedding-project.md#библиотека-сборщика-ресурсов-рядом-с-приложениями-выполняющими-предварительную-сборку).
+
 Effekseer Editor намеренно отсутствует в этой стадии и application target
 graph. Его отдельный entrypoint `BuildTools/EffekseerEditor/build.ps1`
 конфигурирует и собирает upstream sources независимо от CMake-конфигурации

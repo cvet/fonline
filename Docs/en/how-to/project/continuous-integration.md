@@ -156,7 +156,7 @@ Each stage answers one question and only runs when the previous answer is yes. C
 
 ```text
 classify changes
-  -> validate / format gates          (project-owned)
+  -> validate / format gates          (Engine checks through project wrappers)
   -> configure + native build
   -> compile scripts                  (CompileAngelScript and/or CompileManagedScripts)
   -> bake                             (BakeResources; ForceBakeResources for release)
@@ -168,7 +168,12 @@ classify changes
 
 | Stage | Command shape | Gate |
 |---|---|---|
-| Validate / format | Project-owned checks | Fails fast on style, generated-file drift and authored-data errors |
+| Format drift | `python Engine/BuildTools/buildtools.py format-content --check` ([Format Game Content Files](format-content.md)) | Fails on an unformatted main config, prototype or, with `--fos`, script file |
+| Native audits | `python Engine/BuildTools/native_source_audit.py <audit> --config <file>` and `python Engine/BuildTools/native_safety_audit.py sync-scope` / `exception-safety` with `--scope`, `--config` and `--baseline` ([native source audits](native-source-audits.md), [native safety audits](native-safety-audits.md)) | Text audits need only Python; the clang-based audits run after configure and code generation in one Clang 20 lane with `--require-tooling` |
+| Script checks | `python Engine/BuildTools/check_script_bindings.py` and `check_angelscript_hygiene.py` with the project root, scopes and baselines ([script checks](script-and-binding-checks.md)) | Fails on raw script-facing pointers, handler nullability drift, module hygiene findings and stale baseline rows |
+| Content checks | `python Engine/BuildTools/check_text_packs.py <roots> --config <fomain>` ([text packs](content-and-diagnostics-tools.md#lint-text-packs-before-baking)) and `python Engine/BuildTools/migration_guard.py --config <file> --check` ([migration guard](migration-guard.md)) | Before the bake; never run `--update-manifest` in CI |
+| Documentation links | `python Engine/BuildTools/markdown_links.py --root . --exclude Engine` or the project wrapper ([documentation checks](documentation-checks.md)) | Runs on documentation-only changes too |
+| Project validation | Project-owned checks and generator `--check` modes | Fails fast on generated-file drift and authored-data errors |
 | Compile scripts | `cmake --build <build-dir> --config <config> --target CompileManagedScripts` (or `CompileAngelScript`) | Build every scripting backend the project enables, on every role it ships |
 | Bake | `... --target BakeResources`; `... --target ForceBakeResources` for release or when the input graph changed | Server and client metadata must come from one bake |
 | Unit tests | `... --target RunUnitTests` | Exists when the project enables unit tests |
@@ -194,7 +199,7 @@ Runtime jobs (build, bake, tests, packages) are expensive. A cheap classificatio
 - Define path groups once, in a script: documentation, content, scripts, native source, build files, CI files.
 - Treat any path the script does not recognize as requiring the full lane. A new top-level directory must never silently skip a gate.
 - Always run the full lane on the default branch, on schedule and on release dispatch. Classification only trims pull requests.
-- Always run the validation jobs that apply to documentation (link and format checks), even for a documentation-only change.
+- Always run the validation jobs that apply to documentation (link and format checks, see [Check Documentation Links in a Game Project](documentation-checks.md)), even for a documentation-only change.
 - Treat a change to the CI definition or the classifier itself as requiring every lane.
 
 The Engine's own workflow does not classify paths; its `workflow_dispatch` `job` input selects a validation scope by hand instead. The classifier pattern is project-owned.
@@ -228,10 +233,10 @@ The Engine's validation workflow is a reference for validation only; it does not
 A release is a manual dispatch from a protected ref, not a side effect of a push. The pattern:
 
 1. Inputs: the version or tag to publish and a dry-run flag.
-2. Preflight job, no credentials: verify that the input version matches the project's version source, that the tag does not already exist, that the revision is on the protected branch, that the Engine gitlink matches the intended pin, and that the pinned lane is green for this commit.
+2. Preflight job, no credentials: verify that the input version matches the project's version source, that the tag does not already exist, that the revision is on the protected branch, that the Engine gitlink matches the intended pin, and that the pinned lane is green for this commit. `release_preflight.py` performs the clean-tree, version, tag and Engine-gitlink reachability checks and treats every ref other than the release ref as a dry run; `project_version.py --check` validates the version file ([Release Tooling for a Game Project](release-tooling.md#preflight-a-release)). The pinned-lane result stays a workflow condition.
 3. Build, bake with `ForceBakeResources`, test and package from the dispatched commit, using the same commands as the pinned lane.
 4. Publish only when the dry-run flag is off and the ref is the protected release ref. On any other ref, run steps 1 to 3 and stop before publication, so a release workflow edit is testable on a branch without side effects.
-5. Attach the manifest, hashes and evidence to the release, then run the post-publish verification in [Release Operations](../release/operations.md).
+5. Attach the manifest, hashes and evidence to the release, then run the post-publish verification in [Release Operations](../release/operations.md). `release_preflight.py --manifest` or `artifact_checksums.py` writes the SHA-256 manifest ([write package checksums](release-tooling.md#write-package-checksums)).
 
 Do not let the release job fetch a floating Engine branch.
 

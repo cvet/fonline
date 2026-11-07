@@ -246,7 +246,7 @@ shell.
 
 ```text
 classify changes
-  -> validate / format gates          (project-owned)
+  -> validate / format gates          (Engine checks through project wrappers)
   -> configure + native build
   -> compile scripts                  (CompileAngelScript and/or CompileManagedScripts)
   -> bake                             (BakeResources; ForceBakeResources for release)
@@ -258,7 +258,12 @@ classify changes
 
 | Стадия | Форма команды | Шлюз |
 |---|---|---|
-| Валидация / форматирование | Проверки, принадлежащие проекту | Быстро завершается ошибкой при нарушениях стиля, расхождении сгенерированных файлов и ошибках авторских данных |
+| Расхождение форматирования | `python Engine/BuildTools/buildtools.py format-content --check` ([Форматирование файлов игрового контента](format-content.md)) | Падает на неотформатированной главной конфигурации, файле прототипов или, с `--fos`, скрипте |
+| Аудиты нативного кода | `python Engine/BuildTools/native_source_audit.py <audit> --config <file>` и `python Engine/BuildTools/native_safety_audit.py sync-scope` / `exception-safety` с `--scope`, `--config` и `--baseline` ([аудит нативного кода](native-source-audits.md), [аудит безопасности нативного кода](native-safety-audits.md)) | Текстовым аудитам нужен только Python; аудиты на основе Clang выполняются после configure и генерации кода в одной линии Clang 20 с `--require-tooling` |
+| Проверки скриптов | `python Engine/BuildTools/check_script_bindings.py` и `check_angelscript_hygiene.py` с корнем, областями и baseline-файлами проекта ([проверки скриптов](script-and-binding-checks.md)) | Падает на сырых указателях на скриптовой границе, расхождении nullability обработчиков, находках гигиены модулей и устаревших строках baseline |
+| Проверки контента | `python Engine/BuildTools/check_text_packs.py <roots> --config <fomain>` ([текстовые пакеты](content-and-diagnostics-tools.md#проверка-текстовых-пакетов-до-бейкинга)) и `python Engine/BuildTools/migration_guard.py --config <file> --check` ([защита миграций](migration-guard.md)) | До запекания; никогда не запускайте `--update-manifest` в CI |
+| Ссылки документации | `python Engine/BuildTools/markdown_links.py --root . --exclude Engine` или обёртка проекта ([проверка документации](documentation-checks.md)) | Выполняется и для изменений только документации |
+| Валидация проекта | Проверки, принадлежащие проекту, и режимы `--check` генераторов | Быстро завершается ошибкой при расхождении сгенерированных файлов и ошибках авторских данных |
 | Компиляция скриптов | `cmake --build <build-dir> --config <config> --target CompileManagedScripts` (или `CompileAngelScript`) | Собирайте каждый backend скриптов, включённый проектом, для каждой роли, которую он поставляет |
 | Запекание | `... --target BakeResources`; `... --target ForceBakeResources` для выпуска или при изменении графа входов | Метаданные сервера и клиента должны происходить из одного запекания |
 | Unit-тесты | `... --target RunUnitTests` | Существует, если проект включает unit-тесты |
@@ -307,7 +312,8 @@ Runtime-jobs (сборка, запекание, тесты, пакеты) дор
 - Всегда запускайте полную линию в ветке по умолчанию, по расписанию и при
   запуске выпуска. Классификация только сокращает pull requests.
 - Всегда запускайте validation jobs, применимые к документации (проверки
-  ссылок и форматирования), даже для изменения только документации.
+  ссылок и форматирования, см. [Проверка ссылок документации в игровом проекте](documentation-checks.md)),
+  даже для изменения только документации.
 - Считайте, что изменение определения CI или самого классификатора требует
   всех линий.
 
@@ -386,7 +392,11 @@ Validation workflow движка служит образцом только дл
 2. Preflight-job без credentials: проверьте, что входная версия совпадает с
    источником версии проекта, что тег ещё не существует, что ревизия находится
    в защищённой ветке, что gitlink движка совпадает с намеченным закреплением и
-   что pinned-линия зелёная для этого commit.
+   что pinned-линия зелёная для этого commit. `release_preflight.py` выполняет
+   проверки чистого дерева, версии, тега и достижимости gitlink движка и считает
+   любой ref, кроме release ref, прогоном dry-run; `project_version.py --check`
+   проверяет файл версии ([Инструменты выпуска для игрового проекта](release-tooling.md#выполните-предварительную-проверку-выпуска)).
+   Результат pinned-линии остаётся условием workflow.
 3. Соберите, запеките с `ForceBakeResources`, протестируйте и упакуйте из
    запущенного commit теми же командами, что и в pinned-линии.
 4. Публикуйте, только когда флаг dry-run выключен и ref является защищённым
@@ -395,6 +405,8 @@ Validation workflow движка служит образцом только дл
    ветке без побочных эффектов.
 5. Приложите к выпуску манифест, хеши и доказательства, затем выполните
    проверку после публикации из [Эксплуатации релиза](../release/operations.md).
+   Манифест SHA-256 пишет `release_preflight.py --manifest` или
+   `artifact_checksums.py` ([запись контрольных сумм пакетов](release-tooling.md#запишите-контрольные-суммы-пакетов)).
 
 Не позволяйте release-job загружать плавающую ветку движка.
 

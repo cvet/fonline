@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-cli-index","locale":"ru","source_path":"Docs/en/reference/buildtools/index.md","source_sha256":"88f298310097c592683f467ff8629d360a835d4d6a130827509e9276a69cbba7"} -->
+<!-- docs-translation: {"document_id":"generated-cli-index","locale":"ru","source_path":"Docs/en/reference/buildtools/index.md","source_sha256":"5c837c613ba09a8a9ab1f8cb944f794d5f8d5b5151fe4218c1895d6845484db2"} -->
 
 # Сгенерированный справочник CLI BuildTools
 
@@ -23,29 +23,31 @@ generated: true
 | Начиная с версии | Не объявлено |
 | Политика поддержки | Версионируемая линия поддержки CLI не объявлена; закрепляйте ревизию движка в автоматизации. |
 | Исходный парсер | [BuildTools/buildtools.py](https://github.com/cvet/fonline/blob/master/BuildTools/buildtools.py) |
-| Дайджест контракта | <code>c236327f629d012faec89b4b87430b8f09bbe432b63454ee6557293276331ad2</code> |
+| Дайджест контракта | <code>5079db447e1798d3ebc361db85498e4e22ef94e756573587aea998593d44a363</code> |
 
 ## Покрытие
 
 | Справочник | Записи | Назначение |
 | --- | --- | --- |
-| [Команды](commands.md) | 13 | Команды с 25 собственными аргументами. |
+| [Команды](commands.md) | 15 | Команды с 39 собственными аргументами. |
 | Глобальные аргументы | 0 | Аргументы, принимаемые перед командой. |
 
 ## Справка верхнего уровня
 
 ```text
-usage: buildtools.py [-h] {env,build,validate,setup-mono,format-source,toolset,build-auxiliary,prepare-workspace,repair-checkout-case,package-web-debug,package-android-debug,host-check,prepare-host-workspace} ...
+usage: buildtools.py [-h]
+                     {env,build,validate,setup-mono,format-source,format-content,toolset,build-auxiliary,prepare-workspace,repair-checkout-case,package-web-debug,package-android-debug,managed-project-path,host-check,prepare-host-workspace} ...
 
 Shared BuildTools helpers
 
 positional arguments:
-  {env,build,validate,setup-mono,format-source,toolset,build-auxiliary,prepare-workspace,repair-checkout-case,package-web-debug,package-android-debug,host-check,prepare-host-workspace}
+  {env,build,validate,setup-mono,format-source,format-content,toolset,build-auxiliary,prepare-workspace,repair-checkout-case,package-web-debug,package-android-debug,managed-project-path,host-check,prepare-host-workspace}
     env                 resolve BuildTools environment
     build               configure and build a target
     validate            configure and validate scenarios
     setup-mono          prepare mono runtime
     format-source       format engine source files
+    format-content      format project .fomain, prototype and optional AngelScript files
     toolset             build an existing toolset target
     build-auxiliary     build a separately packaged auxiliary tool
     prepare-workspace   prepare shared workspace parts
@@ -54,6 +56,8 @@ positional arguments:
     package-web-debug   package the local web debug client
     package-android-debug
                         package the local android debug client
+    managed-project-path
+                        print the generated managed C# project and solution paths
     host-check          check host prerequisites
     prepare-host-workspace
                         prepare host workspace and prerequisites

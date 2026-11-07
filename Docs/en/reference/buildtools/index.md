@@ -21,29 +21,31 @@ This reference is generated from the same `argparse.ArgumentParser` used by the 
 | Since | Not declared |
 | Support policy | No versioned CLI support line is declared; pin an engine revision in automation. |
 | Source parser | [BuildTools/buildtools.py](https://github.com/cvet/fonline/blob/master/BuildTools/buildtools.py) |
-| Contract digest | <code>c236327f629d012faec89b4b87430b8f09bbe432b63454ee6557293276331ad2</code> |
+| Contract digest | <code>5079db447e1798d3ebc361db85498e4e22ef94e756573587aea998593d44a363</code> |
 
 ## Coverage
 
 | Reference | Entries | Purpose |
 | --- | --- | --- |
-| [Commands](commands.md) | 13 | Commands with 25 command-specific arguments. |
+| [Commands](commands.md) | 15 | Commands with 39 command-specific arguments. |
 | Global arguments | 0 | Arguments accepted before a command. |
 
 ## Top-level help
 
 ```text
-usage: buildtools.py [-h] {env,build,validate,setup-mono,format-source,toolset,build-auxiliary,prepare-workspace,repair-checkout-case,package-web-debug,package-android-debug,host-check,prepare-host-workspace} ...
+usage: buildtools.py [-h]
+                     {env,build,validate,setup-mono,format-source,format-content,toolset,build-auxiliary,prepare-workspace,repair-checkout-case,package-web-debug,package-android-debug,managed-project-path,host-check,prepare-host-workspace} ...
 
 Shared BuildTools helpers
 
 positional arguments:
-  {env,build,validate,setup-mono,format-source,toolset,build-auxiliary,prepare-workspace,repair-checkout-case,package-web-debug,package-android-debug,host-check,prepare-host-workspace}
+  {env,build,validate,setup-mono,format-source,format-content,toolset,build-auxiliary,prepare-workspace,repair-checkout-case,package-web-debug,package-android-debug,managed-project-path,host-check,prepare-host-workspace}
     env                 resolve BuildTools environment
     build               configure and build a target
     validate            configure and validate scenarios
     setup-mono          prepare mono runtime
     format-source       format engine source files
+    format-content      format project .fomain, prototype and optional AngelScript files
     toolset             build an existing toolset target
     build-auxiliary     build a separately packaged auxiliary tool
     prepare-workspace   prepare shared workspace parts
@@ -52,6 +54,8 @@ positional arguments:
     package-web-debug   package the local web debug client
     package-android-debug
                         package the local android debug client
+    managed-project-path
+                        print the generated managed C# project and solution paths
     host-check          check host prerequisites
     prepare-host-workspace
                         prepare host workspace and prerequisites

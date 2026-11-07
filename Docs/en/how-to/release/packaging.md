@@ -342,7 +342,7 @@ For every candidate, emit or retain an artifact manifest containing at least:
 - third-party license/provenance inventory;
 - updater generation/runtime ABI when the artifact participates in native updates.
 
-Generate hashes from the files that will actually be published, after signing and final packaging. Store immutable manifests beside immutable artifacts. Comparing two hashes is meaningful only when their declared input and signing policies match.
+Generate hashes from the files that will actually be published, after signing and final packaging. `BuildTools/artifact_checksums.py` writes them as `<name>.sha256` sidecars and an optional `sha256sum`-format manifest once the last package writer has stopped, and `--verify` rechecks them; `package.py` does not write them ([Release Tooling for a Game Project](../project/release-tooling.md#write-package-checksums)). Store immutable manifests beside immutable artifacts. Comparing two hashes is meaningful only when their declared input and signing policies match.
 
 ## Signing and secret boundaries
 

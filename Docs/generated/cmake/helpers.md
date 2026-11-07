@@ -24,5 +24,11 @@ The canonical generated reference moved to locale-specific paths.
 <a id="entry-cmake-helper-addbakingtarget-5d644391c3"></a>
 - [`entry-cmake-helper-addbakingtarget-5d644391c3`](../../en/reference/cmake/helpers.md#entry-cmake-helper-addbakingtarget-5d644391c3)
 
+<a id="entry-cmake-helper-copytargetruntimetotarget-903abd938c"></a>
+- [`entry-cmake-helper-copytargetruntimetotarget-903abd938c`](../../en/reference/cmake/helpers.md#entry-cmake-helper-copytargetruntimetotarget-903abd938c)
+
+<a id="entry-cmake-helper-copyruntimetotarget-ba209ab75d"></a>
+- [`entry-cmake-helper-copyruntimetotarget-ba209ab75d`](../../en/reference/cmake/helpers.md#entry-cmake-helper-copyruntimetotarget-ba209ab75d)
+
 <a id="entry-cmake-helper-temporarycompat-7b9b14f99a"></a>
 - [`entry-cmake-helper-temporarycompat-7b9b14f99a`](../../en/reference/cmake/helpers.md#entry-cmake-helper-temporarycompat-7b9b14f99a)

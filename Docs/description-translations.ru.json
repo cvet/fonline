@@ -11482,6 +11482,42 @@
           "source_sha256": "2194cae5068db97a2895d98a50d6ddb59482296a5a7e391ec669399becab2988",
           "translation": "Определить окружение BuildTools."
         },
+        "/commands/@id=cli.buildtools.command.format-content/arguments/@id=cli.buildtools.command.format-content.argument.check/description": {
+          "source_sha256": "4337d058dde3a53bb7b69c826f153616bddd58c94ad1b2eb73c641a9c34e0b29",
+          "translation": "Сообщить о файлах, которым нужно форматирование, и завершиться с кодом 1, ничего не записывая."
+        },
+        "/commands/@id=cli.buildtools.command.format-content/arguments/@id=cli.buildtools.command.format-content.argument.fomain/description": {
+          "source_sha256": "d7ad3de1f39d2afa440e8b03f085355e21aa7dbc91f9cac39837598e02f4714a",
+          "translation": "Путь к основной конфигурации (по умолчанию единственный файл *.fomain в корне проекта)."
+        },
+        "/commands/@id=cli.buildtools.command.format-content/arguments/@id=cli.buildtools.command.format-content.argument.fos/description": {
+          "source_sha256": "0dd3f3c92dab2658f77f1ecbf2e70f9d6faba9037940ad2cd0b7209639a04891",
+          "translation": "Также форматировать через clang-format 20 файлы AngelScript, подходящие под этот glob относительно корня проекта (можно повторять)."
+        },
+        "/commands/@id=cli.buildtools.command.format-content/arguments/@id=cli.buildtools.command.format-content.argument.metadata/description": {
+          "source_sha256": "bf1b62c29a62e169de63aa2f7418abadba9d2e5ee018c649cb716abd68c66057",
+          "translation": "Читать порядок свойств и настроек из этих файлов в указанном порядке вместо пакетов ресурсов Metadata (можно повторять)."
+        },
+        "/commands/@id=cli.buildtools.command.format-content/arguments/@id=cli.buildtools.command.format-content.argument.project_root/description": {
+          "source_sha256": "55ccecd43f717b69682dec69973e0df004abb2fbe960885c06b2aa2c8a74a84e",
+          "translation": "Корень проекта для относительных путей и поиска .fomain (по умолчанию FO_PROJECT_ROOT, затем текущий каталог)."
+        },
+        "/commands/@id=cli.buildtools.command.format-content/arguments/@id=cli.buildtools.command.format-content.argument.proto_path/description": {
+          "source_sha256": "ae4bbcb1ce94e5f35f2be24011ec70b72af62cfb49adad6c27d440299f0d6d46",
+          "translation": "Форматировать только эти файлы или каталоги прототипов вместо пакетов ресурсов Proto (можно повторять)."
+        },
+        "/commands/@id=cli.buildtools.command.format-content/arguments/@id=cli.buildtools.command.format-content.argument.skip_fomain/description": {
+          "source_sha256": "0c8eb351f7f8a915b1d7116b8645306e2c348504ecfb8d922c92c00b0d563de5",
+          "translation": "Не форматировать основную конфигурацию."
+        },
+        "/commands/@id=cli.buildtools.command.format-content/arguments/@id=cli.buildtools.command.format-content.argument.skip_protos/description": {
+          "source_sha256": "13996606f9677074a71b53adb187ff8aed72d385d6077159bf17577f1fcaf770",
+          "translation": "Не форматировать файлы прототипов."
+        },
+        "/commands/@id=cli.buildtools.command.format-content/summary": {
+          "source_sha256": "f4f953ce3f99c0915eaae879b8a3507e32b4f235fbdfb28815009c9749a33699",
+          "translation": "Форматировать файлы .fomain, прототипов и необязательные файлы AngelScript проекта."
+        },
         "/commands/@id=cli.buildtools.command.format-source/summary": {
           "source_sha256": "a5b1e26042fa18d11ce189d7a277bb51e0306d1afa3987d7cd2e13ef69c36f05",
           "translation": "Форматировать исходники движка."
@@ -13694,6 +13730,46 @@
           "source_sha256": "aea99625aefb8459c19638eccdce88b569ba0213285d812047b14b7a7bd5be44",
           "translation": "Управление устройством Android"
         },
+        "/helpers/@id=helper-cli.angelscript-hygiene-check/description": {
+          "source_sha256": "7679ee0c80b934649fe8901d5ce924ee0a09ff7fc046b95f170cb7debb152704",
+          "translation": "Проверяет авторские модули AngelScript на соблюдение соглашений о пространствах имён, include, макросах стороны, директивах сортировки и окончании файлов с baseline, счётчики которого могут только уменьшаться."
+        },
+        "/helpers/@id=helper-cli.angelscript-hygiene-check/global_arguments/@id=helper-cli.angelscript-hygiene-check.argument.baseline/description": {
+          "source_sha256": "013a22b75211a01ba3113286a3354a6325c15103d88f68c8b582689f0d967ce5",
+          "translation": "Принятые находки (TSV с правилом, путём, числом и причиной); можно повторять."
+        },
+        "/helpers/@id=helper-cli.angelscript-hygiene-check/global_arguments/@id=helper-cli.angelscript-hygiene-check.argument.config/description": {
+          "source_sha256": "1ae075c6071d54972bceaef94789f1d5134019b32663d349fad01ce71b2df023",
+          "translation": "Переключатели правил, параметры правил и исключения (schema_version 1)."
+        },
+        "/helpers/@id=helper-cli.angelscript-hygiene-check/global_arguments/@id=helper-cli.angelscript-hygiene-check.argument.exclude/description": {
+          "source_sha256": "ab559f958afec333e8ccc66e5801f74295815b07758e26021ff41584e10a4d15",
+          "translation": "Шаблон fnmatch для пропускаемых POSIX-путей относительно корня; можно повторять."
+        },
+        "/helpers/@id=helper-cli.angelscript-hygiene-check/global_arguments/@id=helper-cli.angelscript-hygiene-check.argument.list_rules/description": {
+          "source_sha256": "c2397fb5590380396f7a70e48f096c506347d770b47ab4a1532459c52fd82ad2",
+          "translation": "Вывести идентификаторы правил и значения по умолчанию и завершиться."
+        },
+        "/helpers/@id=helper-cli.angelscript-hygiene-check/global_arguments/@id=helper-cli.angelscript-hygiene-check.argument.root/description": {
+          "source_sha256": "f174e34919975fbd3ccc8b375f170a70a1901da00df21541b2cf66102cfc23a3",
+          "translation": "Корень репозитория, относительно которого заданы каталоги скриптов и выводимые пути (по умолчанию корень Engine, содержащий этот скрипт)."
+        },
+        "/helpers/@id=helper-cli.angelscript-hygiene-check/global_arguments/@id=helper-cli.angelscript-hygiene-check.argument.scripts/description": {
+          "source_sha256": "7f0957994969350b4d7045c94079d88504313b57cc17f32fe814e54717e0845c",
+          "translation": "Каталог относительно корня, в котором рекурсивно ищутся файлы .fos; можно повторять (по умолчанию Examples)."
+        },
+        "/helpers/@id=helper-cli.angelscript-hygiene-check/global_arguments/@id=helper-cli.angelscript-hygiene-check.argument.write_baseline/description": {
+          "source_sha256": "7df6f47fc55b7b6a26cc2479f54f65e0a45a906ca9f881ead8c58ce61d5a9c2e",
+          "translation": "Записать текущие числа находок с пустыми причинами вместо блокирующей проверки."
+        },
+        "/helpers/@id=helper-cli.angelscript-hygiene-check/invocation_owner": {
+          "source_sha256": "3aef3b472c47f8f5259401cf2155c60df9c66b5938a9af02645b7c38e8d61576",
+          "translation": "CI движка и гейты качества встраивающего игрового проекта"
+        },
+        "/helpers/@id=helper-cli.angelscript-hygiene-check/name": {
+          "source_sha256": "7206798195d2054f2de2d3bea4d3395fcebf711668bab3ecdd288d6182d5249d",
+          "translation": "Проверка гигиены кода AngelScript"
+        },
         "/helpers/@id=helper-cli.artifact-checksums/description": {
           "source_sha256": "7bad85b38ff5ad8d4fd62ee76c70423083b26d071ad230cf857a49f7726ee30f",
           "translation": "Записывает или проверяет sidecar-файлы SHA-256 и необязательный манифест для готовых релизных пакетов."
@@ -14068,6 +14144,106 @@
           "source_sha256": "9471fbc1effe847b39d40144d7b1f0241891f5d590dbda97d20387b6822f966a",
           "translation": "Отчёт об обновлении Engine"
         },
+        "/helpers/@id=helper-cli.fo-formats/commands/@id=helper-cli.fo-formats.command.config/arguments/@id=helper-cli.fo-formats.command.config.argument.files/description": {
+          "source_sha256": "d793ddc3082e9ad6fd1c5eea0127c5d4e30055a0c41aa56321b4be772eb077ad",
+          "translation": "Также перечислить входные файлы каждого пакета ресурсов."
+        },
+        "/helpers/@id=helper-cli.fo-formats/commands/@id=helper-cli.fo-formats.command.config/arguments/@id=helper-cli.fo-formats.command.config.argument.main_config/description": {
+          "source_sha256": "e786dcee4af9f40737a5b722a7b4b199fa8f2495763b1e002732c1390d6b2b50",
+          "translation": "Основной файл конфигурации (.fomain)."
+        },
+        "/helpers/@id=helper-cli.fo-formats/commands/@id=helper-cli.fo-formats.command.config/arguments/@id=helper-cli.fo-formats.command.config.argument.sub_config/description": {
+          "source_sha256": "af29de62ce78a406606c98488991d76f003393a20b3258f4b72bd1cf6bc3904b",
+          "translation": "Применить эту секцию [SubConfig] после основных настроек."
+        },
+        "/helpers/@id=helper-cli.fo-formats/commands/@id=helper-cli.fo-formats.command.config/summary": {
+          "source_sha256": "122494b5f0011f50ae0abf737715a12054dc673dad2f7298f5f22baac2e97a67",
+          "translation": "Действующие настройки, пакеты ресурсов и подконфигурации основной конфигурации."
+        },
+        "/helpers/@id=helper-cli.fo-formats/commands/@id=helper-cli.fo-formats.command.protos/arguments/@id=helper-cli.fo-formats.command.protos.argument.main_config/description": {
+          "source_sha256": "e786dcee4af9f40737a5b722a7b4b199fa8f2495763b1e002732c1390d6b2b50",
+          "translation": "Основной файл конфигурации (.fomain)."
+        },
+        "/helpers/@id=helper-cli.fo-formats/commands/@id=helper-cli.fo-formats.command.protos/arguments/@id=helper-cli.fo-formats.command.protos.argument.name/description": {
+          "source_sha256": "587ab9fbe7098e1eca70ce3c9034d34dac2defbe3ca18832ef96bf1b9b63fe60",
+          "translation": "Вывести только прототип с этим именем после миграций."
+        },
+        "/helpers/@id=helper-cli.fo-formats/commands/@id=helper-cli.fo-formats.command.protos/arguments/@id=helper-cli.fo-formats.command.protos.argument.sub_config/description": {
+          "source_sha256": "af29de62ce78a406606c98488991d76f003393a20b3258f4b72bd1cf6bc3904b",
+          "translation": "Применить эту секцию [SubConfig] после основных настроек."
+        },
+        "/helpers/@id=helper-cli.fo-formats/commands/@id=helper-cli.fo-formats.command.protos/arguments/@id=helper-cli.fo-formats.command.protos.argument.type_name/description": {
+          "source_sha256": "df68be88444e8e80cbf2ddb3fe6f858f2ae44c5cc986b67f4bdc79ac923a4b19",
+          "translation": "Вывести только прототипы этого типа."
+        },
+        "/helpers/@id=helper-cli.fo-formats/commands/@id=helper-cli.fo-formats.command.protos/summary": {
+          "source_sha256": "67d545e3259ebc5d8f9538ca387521c2bbda4191b57f5b728c13d200614c273d",
+          "translation": "Действующие значения прототипов из каждого пакета сборщика ресурсов Proto."
+        },
+        "/helpers/@id=helper-cli.fo-formats/commands/@id=helper-cli.fo-formats.command.text/arguments/@id=helper-cli.fo-formats.command.text.argument.path/description": {
+          "source_sha256": "c5fbc781c8888b1f3437bc61db87b33e7fafe2af7d5419c0fd35f15578e39700",
+          "translation": "Файл текстового пакета с именем <TextPack>.<Language>.fotxt."
+        },
+        "/helpers/@id=helper-cli.fo-formats/commands/@id=helper-cli.fo-formats.command.text/summary": {
+          "source_sha256": "133b0b28fcc4f1fa5fec09bee23c7bffebe2446f62dc3c7d472ffd847978d328",
+          "translation": "Записи одного файла текстового пакета .fotxt."
+        },
+        "/helpers/@id=helper-cli.fo-formats/description": {
+          "source_sha256": "976a9ec3a12c08928dccc2fadb319152019d36fa065997fe502450d34731aca9",
+          "translation": "Выводит действующую конфигурацию, входы пакетов ресурсов, унаследованные значения прототипов и записи текстовых пакетов так, как их читают парсеры движка."
+        },
+        "/helpers/@id=helper-cli.fo-formats/invocation_owner": {
+          "source_sha256": "0b9fa75be67da52cae6eb2806433e1658a4491a5027771ace0f08688f995d1e0",
+          "translation": "контентные инструменты встраивающего игрового проекта и прямая диагностика разработчиком"
+        },
+        "/helpers/@id=helper-cli.fo-formats/name": {
+          "source_sha256": "9586ab02259e875d2b7a47a05cd9f45884e905186188a977252e477200c34773",
+          "translation": "Средство чтения форматов контента движка"
+        },
+        "/helpers/@id=helper-cli.format-content/description": {
+          "source_sha256": "d5c4fd7f48af3eb10e30d289564cab256b8c186cf07b2a7187454681ed43802e",
+          "translation": "Форматирует файлы .fomain, прототипов и необязательные файлы AngelScript в раскладке движка и отказывается от любой перезаписи, которая изменила бы прочитанное движком."
+        },
+        "/helpers/@id=helper-cli.format-content/global_arguments/@id=helper-cli.format-content.argument.check/description": {
+          "source_sha256": "4337d058dde3a53bb7b69c826f153616bddd58c94ad1b2eb73c641a9c34e0b29",
+          "translation": "Сообщить о файлах, которым нужно форматирование, и завершиться с кодом 1, ничего не записывая."
+        },
+        "/helpers/@id=helper-cli.format-content/global_arguments/@id=helper-cli.format-content.argument.fomain/description": {
+          "source_sha256": "d7ad3de1f39d2afa440e8b03f085355e21aa7dbc91f9cac39837598e02f4714a",
+          "translation": "Путь к основной конфигурации (по умолчанию единственный файл *.fomain в корне проекта)."
+        },
+        "/helpers/@id=helper-cli.format-content/global_arguments/@id=helper-cli.format-content.argument.fos/description": {
+          "source_sha256": "0dd3f3c92dab2658f77f1ecbf2e70f9d6faba9037940ad2cd0b7209639a04891",
+          "translation": "Также форматировать через clang-format 20 файлы AngelScript, подходящие под этот glob относительно корня проекта (можно повторять)."
+        },
+        "/helpers/@id=helper-cli.format-content/global_arguments/@id=helper-cli.format-content.argument.metadata/description": {
+          "source_sha256": "bf1b62c29a62e169de63aa2f7418abadba9d2e5ee018c649cb716abd68c66057",
+          "translation": "Читать порядок свойств и настроек из этих файлов в указанном порядке вместо пакетов ресурсов Metadata (можно повторять)."
+        },
+        "/helpers/@id=helper-cli.format-content/global_arguments/@id=helper-cli.format-content.argument.project_root/description": {
+          "source_sha256": "55ccecd43f717b69682dec69973e0df004abb2fbe960885c06b2aa2c8a74a84e",
+          "translation": "Корень проекта для относительных путей и поиска .fomain (по умолчанию FO_PROJECT_ROOT, затем текущий каталог)."
+        },
+        "/helpers/@id=helper-cli.format-content/global_arguments/@id=helper-cli.format-content.argument.proto_path/description": {
+          "source_sha256": "ae4bbcb1ce94e5f35f2be24011ec70b72af62cfb49adad6c27d440299f0d6d46",
+          "translation": "Форматировать только эти файлы или каталоги прототипов вместо пакетов ресурсов Proto (можно повторять)."
+        },
+        "/helpers/@id=helper-cli.format-content/global_arguments/@id=helper-cli.format-content.argument.skip_fomain/description": {
+          "source_sha256": "0c8eb351f7f8a915b1d7116b8645306e2c348504ecfb8d922c92c00b0d563de5",
+          "translation": "Не форматировать основную конфигурацию."
+        },
+        "/helpers/@id=helper-cli.format-content/global_arguments/@id=helper-cli.format-content.argument.skip_protos/description": {
+          "source_sha256": "13996606f9677074a71b53adb187ff8aed72d385d6077159bf17577f1fcaf770",
+          "translation": "Не форматировать файлы прототипов."
+        },
+        "/helpers/@id=helper-cli.format-content/invocation_owner": {
+          "source_sha256": "194972c24b9fc025e2e9825bce0875fdbd2859e39cac2fc88e8089222e5b13f8",
+          "translation": "BuildTools/buildtools.py format-content, задачи форматирования встраивающего игрового проекта и проверки расхождений в CI"
+        },
+        "/helpers/@id=helper-cli.format-content/name": {
+          "source_sha256": "43389397dc821b193772d757643b613f7e0cb861a2cbf6261c5e82e6afc12aae",
+          "translation": "Форматировщик контента"
+        },
         "/helpers/@id=helper-cli.gameplay-test-runner/description": {
           "source_sha256": "44e2afeb32638ce404022d1d5ca1a1051d3857c078a41fa55c0dad8430816458",
           "translation": "Запускает упорядоченные многопроцессные игровые smoke-сценарии с контрактами готовности, маркеров, deadline, очистки и JSON-отчёта."
@@ -14091,6 +14267,642 @@
         "/helpers/@id=helper-cli.gameplay-test-runner/name": {
           "source_sha256": "92c468bed64c0f33dc0584828524a7ce97127320f5003e8c82bee0db84d4a4cd",
           "translation": "Запуск игровых тестов"
+        },
+        "/helpers/@id=helper-cli.markdown-links/description": {
+          "source_sha256": "be5db750652a9b42dc678e595a133e323effd1eebe81f8c536b854830e563b8a",
+          "translation": "Проверяет локальные ссылки Markdown, якоря заголовков в стиле GitHub, UTF-8, парность ограждённых блоков кода и, по выбору, единственный заголовок H1 в пределах одного корня репозитория."
+        },
+        "/helpers/@id=helper-cli.markdown-links/global_arguments/@id=helper-cli.markdown-links.argument.allow_line_fragments/description": {
+          "source_sha256": "9a67d777ea69ad25953a96356ab5a6a4a1e6cd6f17709324b95ab3783eed2754",
+          "translation": "Принимать фрагменты строк #L10 и #L10-L20 у целей Markdown."
+        },
+        "/helpers/@id=helper-cli.markdown-links/global_arguments/@id=helper-cli.markdown-links.argument.exclude/description": {
+          "source_sha256": "9f3b54025a0e0948687183f5d093efd49ad690d527c7bab65f400dc00da0b0ce",
+          "translation": "Glob файлов или каталогов относительно корня, исключаемых из набора документов; можно повторять."
+        },
+        "/helpers/@id=helper-cli.markdown-links/global_arguments/@id=helper-cli.markdown-links.argument.h1_exempt/description": {
+          "source_sha256": "00cb0eea80214657f3cc22592928788f0deb97c5015742f844869e22e2bad27c",
+          "translation": "Glob документов относительно корня, освобождённых от --require-single-h1; можно повторять."
+        },
+        "/helpers/@id=helper-cli.markdown-links/global_arguments/@id=helper-cli.markdown-links.argument.include/description": {
+          "source_sha256": "9584f1d06e3b0e9a6efdb105507f6d034bb1666a9de21198b8bc4cacc6a08410",
+          "translation": "Glob документов относительно корня; можно повторять (по умолчанию **/*.md и **/*.markdown)."
+        },
+        "/helpers/@id=helper-cli.markdown-links/global_arguments/@id=helper-cli.markdown-links.argument.list/description": {
+          "source_sha256": "e1d7492fea9b7152aca69b5889fe4a486eb7236f7439bcfaa06505a4af97868b",
+          "translation": "Вывести выбранные документы вместо их проверки."
+        },
+        "/helpers/@id=helper-cli.markdown-links/global_arguments/@id=helper-cli.markdown-links.argument.require_reference_definitions/description": {
+          "source_sha256": "7e307c1c20856591201d0d4377704c145c8b11b8b64f5a833c2f160752f674d3",
+          "translation": "Сообщать о ссылках [text][label], метка которых не определена в том же документе."
+        },
+        "/helpers/@id=helper-cli.markdown-links/global_arguments/@id=helper-cli.markdown-links.argument.require_single_h1/description": {
+          "source_sha256": "4d1bc7b6071458aa6460832e687af95a21c5bba1ca39aefa1fa14128ef53c1b6",
+          "translation": "Сообщать о документах, в которых не ровно один заголовок H1."
+        },
+        "/helpers/@id=helper-cli.markdown-links/global_arguments/@id=helper-cli.markdown-links.argument.root/description": {
+          "source_sha256": "9c5d3a51b5c20ba614957469b4a3eb8149b1e304179ccf2e2e02de4edc9bdb8f",
+          "translation": "Корень репозитория, ограничивающий цели ссылок (по умолчанию текущий каталог)."
+        },
+        "/helpers/@id=helper-cli.markdown-links/global_arguments/@id=helper-cli.markdown-links.argument.skip_target/description": {
+          "source_sha256": "adf94dbfb6cbaf7d303f58c3cadc233c987c845b35972224e3413b3d26c69a33",
+          "translation": "Glob непроверяемых целей ссылок относительно корня, например неизвлечённого submodule; можно повторять."
+        },
+        "/helpers/@id=helper-cli.markdown-links/global_arguments/@id=helper-cli.markdown-links.argument.target_root/description": {
+          "source_sha256": "05e5a8bad49ea231f3f9dc2b7015a3a9dacee1298429bab96b6fe966ef0b1ef7",
+          "translation": "Дополнительный каталог относительно --root, на который могут указывать ссылки без проверки его документов; можно повторять."
+        },
+        "/helpers/@id=helper-cli.markdown-links/invocation_owner": {
+          "source_sha256": "6b22a1f62487c8efd1681e37d9ecb2e4b63498400391b27b15d7dcaedaccaa56",
+          "translation": "обёртки документации встраивающего игрового проекта, локальные задачи и задания документации в CI"
+        },
+        "/helpers/@id=helper-cli.markdown-links/name": {
+          "source_sha256": "baa0edc3dd00941cdc7157d40e1e560b0f29b6d1f6361e51b2e4d7a43fa7de3f",
+          "translation": "Проверка ссылок Markdown"
+        },
+        "/helpers/@id=helper-cli.migration-guard/description": {
+          "source_sha256": "5abb3758ca313ce52074d3ad6973b5a80cbd2db7760f2bf8221410186800277a",
+          "translation": "Требует MigrationRule для каждого удалённого или переименованного прототипа, свойства и значения enum и по зафиксированному манифесту запрещает повторное использование выведенных из оборота идентификаторов."
+        },
+        "/helpers/@id=helper-cli.migration-guard/global_arguments/@id=helper-cli.migration-guard.argument.check/description": {
+          "source_sha256": "651e6a876e57c8783f0032ace1e8b03f83e27c32bce9b862abfb5618603c43d3",
+          "translation": "Сравнить дерево с манифестом; завершиться с кодом 1 при любом нарушении."
+        },
+        "/helpers/@id=helper-cli.migration-guard/global_arguments/@id=helper-cli.migration-guard.argument.config/description": {
+          "source_sha256": "45b87c15e70c0c938f63796d8abd15c0b00fb1248d97331a6603aa5a1e4ba017",
+          "translation": "JSON-конфигурация проверки относительно корня."
+        },
+        "/helpers/@id=helper-cli.migration-guard/global_arguments/@id=helper-cli.migration-guard.argument.content_dir/description": {
+          "source_sha256": "5c42f478f335909459da756c8f928d3a60b645dd46ea801988da8f2f03ec512e",
+          "translation": "Каталог прототипов; заменяет пакеты Proto основной конфигурации."
+        },
+        "/helpers/@id=helper-cli.migration-guard/global_arguments/@id=helper-cli.migration-guard.argument.main_config/description": {
+          "source_sha256": "5123f7fc23bc3a712ef0372665fe88b6973aacf8ef36376f623e88cabb47bd36",
+          "translation": "Основной файл конфигурации (.fomain), пакеты которого задают область проверки."
+        },
+        "/helpers/@id=helper-cli.migration-guard/global_arguments/@id=helper-cli.migration-guard.argument.manifest/description": {
+          "source_sha256": "6cee2d510d3d470fdcce00ec740900190f77347d9b342753595a409aefb9bd26",
+          "translation": "Файл манифеста для проверки или перезаписи."
+        },
+        "/helpers/@id=helper-cli.migration-guard/global_arguments/@id=helper-cli.migration-guard.argument.native_source/description": {
+          "source_sha256": "45736929af53b03a5a518929a1997dc6864c13beee134944ca4871bb8e2f3f85",
+          "translation": "Glob нативных исходников относительно корня с объявлениями свойств и enum."
+        },
+        "/helpers/@id=helper-cli.migration-guard/global_arguments/@id=helper-cli.migration-guard.argument.proto_extension/description": {
+          "source_sha256": "00029921799fc597fdf9cb3240e3b046a7104fe5d483ff45a2a88fdef531bd48",
+          "translation": "Расширение файлов прототипов для --content-dir (по умолчанию Baking.ProtoFileExtensions)."
+        },
+        "/helpers/@id=helper-cli.migration-guard/global_arguments/@id=helper-cli.migration-guard.argument.root/description": {
+          "source_sha256": "59a04ffb33e73ba7994a0e2842de1628eedc577fa9cc25cb0143dd9591ccb1a5",
+          "translation": "Корень проекта, относительно которого разрешаются относительные пути (по умолчанию текущий каталог)."
+        },
+        "/helpers/@id=helper-cli.migration-guard/global_arguments/@id=helper-cli.migration-guard.argument.script_dir/description": {
+          "source_sha256": "dbc59043f7a6713aefd4cf244a7ba4599ab131b82ddda54997d1de237a922456",
+          "translation": "Каталог исходников скриптов; заменяет пакеты Metadata основной конфигурации."
+        },
+        "/helpers/@id=helper-cli.migration-guard/global_arguments/@id=helper-cli.migration-guard.argument.sub_config/description": {
+          "source_sha256": "04d1983014ce3b0a3b5533b5d29ad4beb48f9244e7d45c11c5815d2933937c4d",
+          "translation": "Применить эту [SubConfig] основной конфигурации перед чтением пакетов ресурсов."
+        },
+        "/helpers/@id=helper-cli.migration-guard/global_arguments/@id=helper-cli.migration-guard.argument.update_manifest/description": {
+          "source_sha256": "68cb7df1dcf764325423b06e0853535bb7243b191211331949b9901481718bbb",
+          "translation": "Перезаписать манифест по дереву; отказывает, пока не хватает правила или идентификатор используется повторно."
+        },
+        "/helpers/@id=helper-cli.migration-guard/invocation_owner": {
+          "source_sha256": "3874d910f6bdb0cf9a52dba905ab72f133fa80b04c353b160e8e5a140da0f5ea",
+          "translation": "локальные задачи проверки встраивающего игрового проекта и контентные гейты CI"
+        },
+        "/helpers/@id=helper-cli.migration-guard/name": {
+          "source_sha256": "4976196cddedb13897f96208592eace73b888065015597b0205570fd4b56071e",
+          "translation": "Контроль миграций идентичности"
+        },
+        "/helpers/@id=helper-cli.native-safety-audit/commands/@id=helper-cli.native-safety-audit.command.exception-safety/arguments/@id=helper-cli.native-safety-audit.command.exception-safety.argument.accept/description": {
+          "source_sha256": "bcd955ed99fd66b67f52defb884f9ec15526ed8dc216868393c83aca5a37b64d",
+          "translation": "update: обновить хеш тела функции, классификация которой выведена заново (можно повторять)."
+        },
+        "/helpers/@id=helper-cli.native-safety-audit/commands/@id=helper-cli.native-safety-audit.command.exception-safety/arguments/@id=helper-cli.native-safety-audit.command.exception-safety.argument.accept_all_changed/description": {
+          "source_sha256": "b502b99c21985824b65eea22e50ae8ce0bbb4255528c72fcbd623b0bb3c8b537",
+          "translation": "update: обновить все изменившиеся хеши тел."
+        },
+        "/helpers/@id=helper-cli.native-safety-audit/commands/@id=helper-cli.native-safety-audit.command.exception-safety/arguments/@id=helper-cli.native-safety-audit.command.exception-safety.argument.action/description": {
+          "source_sha256": "c7e6f646b7aac7618e465deaf2f0075c22d19fb61015d0ebc0a4b0b5cadd5ea3",
+          "translation": "audit (по умолчанию) завершается ошибкой при расхождении; report сводит baseline; update поддерживает их в актуальном состоянии."
+        },
+        "/helpers/@id=helper-cli.native-safety-audit/commands/@id=helper-cli.native-safety-audit.command.exception-safety/arguments/@id=helper-cli.native-safety-audit.command.exception-safety.argument.add_new/description": {
+          "source_sha256": "bd73ebbb072a834fac1a58d57d93345c069b315fe6c15043a9a143b9407e9959",
+          "translation": "update: добавить неклассифицированные строки для новых функций."
+        },
+        "/helpers/@id=helper-cli.native-safety-audit/commands/@id=helper-cli.native-safety-audit.command.exception-safety/arguments/@id=helper-cli.native-safety-audit.command.exception-safety.argument.area/description": {
+          "source_sha256": "d64191a2299100c98556119828d7e70da94eab5646c9b76f7ab10d4d67a34b2f",
+          "translation": "report: перечислить строки этой области исходников (второй компонент пути)."
+        },
+        "/helpers/@id=helper-cli.native-safety-audit/commands/@id=helper-cli.native-safety-audit.command.exception-safety/arguments/@id=helper-cli.native-safety-audit.command.exception-safety.argument.baseline/description": {
+          "source_sha256": "d2e1544051f70ac7d23521112ec57546d5447452880a854c78b0b3b84bf6d3cb",
+          "translation": "Проектный baseline TSV для находок в каталогах --scope."
+        },
+        "/helpers/@id=helper-cli.native-safety-audit/commands/@id=helper-cli.native-safety-audit.command.exception-safety/arguments/@id=helper-cli.native-safety-audit.command.exception-safety.argument.config/description": {
+          "source_sha256": "3c692c8e4669fc86871fb8f0b8dd8df0f1c733d9aee636fd8c9773c360691f55",
+          "translation": "Проектная JSON-конфигурация с исключениями стороннего кода и проверенными проектными правилами."
+        },
+        "/helpers/@id=helper-cli.native-safety-audit/commands/@id=helper-cli.native-safety-audit.command.exception-safety/arguments/@id=helper-cli.native-safety-audit.command.exception-safety.argument.engine_root/description": {
+          "source_sha256": "22f23ff4787eb36598f14d5ef5026e46dc8f55fe564c91ccec962f70ac6a748b",
+          "translation": "Проверяемый checkout Engine (по умолчанию checkout, содержащий этот скрипт)."
+        },
+        "/helpers/@id=helper-cli.native-safety-audit/commands/@id=helper-cli.native-safety-audit.command.exception-safety/arguments/@id=helper-cli.native-safety-audit.command.exception-safety.argument.fail_on/description": {
+          "source_sha256": "61001ecd8c91a54e02fecc68724ec65ac85d61b517eaef9ee8e4d378b29a461f",
+          "translation": "audit: также завершаться ошибкой при предупреждениях (неразобранные уровни None, заметки ревью)."
+        },
+        "/helpers/@id=helper-cli.native-safety-audit/commands/@id=helper-cli.native-safety-audit.command.exception-safety/arguments/@id=helper-cli.native-safety-audit.command.exception-safety.argument.file_filter/description": {
+          "source_sha256": "0ca75dd91df92756e6848a545e0ee9e6ea6b14856e6bf421b617f8907f9e50e1",
+          "translation": "report: перечислить строки, файл которых содержит этот текст."
+        },
+        "/helpers/@id=helper-cli.native-safety-audit/commands/@id=helper-cli.native-safety-audit.command.exception-safety/arguments/@id=helper-cli.native-safety-audit.command.exception-safety.argument.function_filter/description": {
+          "source_sha256": "3a5140c19c65f4124ac41bd5ed779b50cae3a43cc640b29c88c586962e66ff94",
+          "translation": "report: перечислить строки, функция которых содержит этот текст."
+        },
+        "/helpers/@id=helper-cli.native-safety-audit/commands/@id=helper-cli.native-safety-audit.command.exception-safety/arguments/@id=helper-cli.native-safety-audit.command.exception-safety.argument.level/description": {
+          "source_sha256": "1c67a3f93c96282b775118cd31123cf1691f7bd79667685686a073f2704fd651",
+          "translation": "report: перечислить строки с этим уровнем."
+        },
+        "/helpers/@id=helper-cli.native-safety-audit/commands/@id=helper-cli.native-safety-audit.command.exception-safety/arguments/@id=helper-cli.native-safety-audit.command.exception-safety.argument.migrate_signatures/description": {
+          "source_sha256": "c6f5a24c2d3b7df2716022887b674e8407a9547ef4b1092d5109862967d21195",
+          "translation": "update: переносить классификации через изменения только сигнатуры при одинаковых хешах тел."
+        },
+        "/helpers/@id=helper-cli.native-safety-audit/commands/@id=helper-cli.native-safety-audit.command.exception-safety/arguments/@id=helper-cli.native-safety-audit.command.exception-safety.argument.prune_removed/description": {
+          "source_sha256": "fbf85e825c8a876d2ff5ba6c23198944d2e7c4a5e831fd04dd6f4bb9c2567e1c",
+          "translation": "update: удалить строки исчезнувших функций."
+        },
+        "/helpers/@id=helper-cli.native-safety-audit/commands/@id=helper-cli.native-safety-audit.command.exception-safety/arguments/@id=helper-cli.native-safety-audit.command.exception-safety.argument.root/description": {
+          "source_sha256": "b23d913800c69b26b4baa204f23e1f61ea576d8ca978767eaf48c44bc2a1d2fe",
+          "translation": "Корень репозитория для путей --scope, --config и --baseline (по умолчанию текущий каталог)."
+        },
+        "/helpers/@id=helper-cli.native-safety-audit/commands/@id=helper-cli.native-safety-audit.command.exception-safety/arguments/@id=helper-cli.native-safety-audit.command.exception-safety.argument.scope/description": {
+          "source_sha256": "af063385de197e502133ee5823b3f74ec642f95ce89bbb40cdad7ab32b48be08",
+          "translation": "Нативный каталог проекта относительно корня, проверяемый правилами Engine (можно повторять)."
+        },
+        "/helpers/@id=helper-cli.native-safety-audit/commands/@id=helper-cli.native-safety-audit.command.exception-safety/summary": {
+          "source_sha256": "198d46306c7df3e4c060529de5bf8fd514ea92c095d2b03b69e61ba58b559910",
+          "translation": "Проверить пофункциональные классификации безопасности исключений по baseline."
+        },
+        "/helpers/@id=helper-cli.native-safety-audit/commands/@id=helper-cli.native-safety-audit.command.sync-scope/arguments/@id=helper-cli.native-safety-audit.command.sync-scope.argument.baseline/description": {
+          "source_sha256": "d2e1544051f70ac7d23521112ec57546d5447452880a854c78b0b3b84bf6d3cb",
+          "translation": "Проектный baseline TSV для находок в каталогах --scope."
+        },
+        "/helpers/@id=helper-cli.native-safety-audit/commands/@id=helper-cli.native-safety-audit.command.sync-scope/arguments/@id=helper-cli.native-safety-audit.command.sync-scope.argument.config/description": {
+          "source_sha256": "3c692c8e4669fc86871fb8f0b8dd8df0f1c733d9aee636fd8c9773c360691f55",
+          "translation": "Проектная JSON-конфигурация с исключениями стороннего кода и проверенными проектными правилами."
+        },
+        "/helpers/@id=helper-cli.native-safety-audit/commands/@id=helper-cli.native-safety-audit.command.sync-scope/arguments/@id=helper-cli.native-safety-audit.command.sync-scope.argument.engine_root/description": {
+          "source_sha256": "22f23ff4787eb36598f14d5ef5026e46dc8f55fe564c91ccec962f70ac6a748b",
+          "translation": "Проверяемый checkout Engine (по умолчанию checkout, содержащий этот скрипт)."
+        },
+        "/helpers/@id=helper-cli.native-safety-audit/commands/@id=helper-cli.native-safety-audit.command.sync-scope/arguments/@id=helper-cli.native-safety-audit.command.sync-scope.argument.json/description": {
+          "source_sha256": "59ec7d32fd8ece103ea8e467eea5939145ff9f4dcfaf6bf01140a70c5cc3ff90",
+          "translation": "Вывести сводку и диагностику в формате JSON."
+        },
+        "/helpers/@id=helper-cli.native-safety-audit/commands/@id=helper-cli.native-safety-audit.command.sync-scope/arguments/@id=helper-cli.native-safety-audit.command.sync-scope.argument.root/description": {
+          "source_sha256": "b23d913800c69b26b4baa204f23e1f61ea576d8ca978767eaf48c44bc2a1d2fe",
+          "translation": "Корень репозитория для путей --scope, --config и --baseline (по умолчанию текущий каталог)."
+        },
+        "/helpers/@id=helper-cli.native-safety-audit/commands/@id=helper-cli.native-safety-audit.command.sync-scope/arguments/@id=helper-cli.native-safety-audit.command.sync-scope.argument.scope/description": {
+          "source_sha256": "af063385de197e502133ee5823b3f74ec642f95ce89bbb40cdad7ab32b48be08",
+          "translation": "Нативный каталог проекта относительно корня, проверяемый правилами Engine (можно повторять)."
+        },
+        "/helpers/@id=helper-cli.native-safety-audit/commands/@id=helper-cli.native-safety-audit.command.sync-scope/summary": {
+          "source_sha256": "c10782f974e8cb1d5fbc534281d2dd913531cd333fa638410e212950f70584fc",
+          "translation": "Отклонить нативный код, который получает, заменяет или освобождает покрытие сущностей для экспортов в скрипты."
+        },
+        "/helpers/@id=helper-cli.native-safety-audit/description": {
+          "source_sha256": "e8b13a8062ba1e4cc3ed76a7c2e2ed5c17af6d65373b575e4ce53be58fc3f66d",
+          "translation": "Отклоняет нативный код, меняющий покрытие сущностей в обход серверных экспортов в скрипты, и сверяет пофункциональные классификации безопасности исключений в исходниках движка и проекта с зафиксированными baseline."
+        },
+        "/helpers/@id=helper-cli.native-safety-audit/invocation_owner": {
+          "source_sha256": "842053d5a0eb71018e2d9dd7d307d6ea517f69d0866eb1e39d80daada0f8ed27",
+          "translation": "workflow validate движка, задачи нативной проверки встраивающего игрового проекта и CI"
+        },
+        "/helpers/@id=helper-cli.native-safety-audit/name": {
+          "source_sha256": "d4e3409453c65cc7e303e14aac54ed9366c0e721795dfc4f56f7d8cd252a9d0c",
+          "translation": "Аудиты нативной безопасности"
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.allocator/arguments/@id=helper-cli.native-source-audit.command.allocator.argument.baseline/description": {
+          "source_sha256": "c3aa38cc749afb1849a6634dc99f47ea17764ea768a0de02216d7d130182f39d",
+          "translation": "Дополнительный проектный baseline TSV с путями относительно корня; можно повторять."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.allocator/arguments/@id=helper-cli.native-source-audit.command.allocator.argument.config/description": {
+          "source_sha256": "6b6aa3c4cb4039f4b7adaf78e76f0cccb244746f00c5fd55bc99cd91863278c3",
+          "translation": "JSON-конфигурация с областями проверки, шаблонами исключений, baseline и параметрами аудита; путь задаётся относительно --root."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.allocator/arguments/@id=helper-cli.native-source-audit.command.allocator.argument.emit_baseline/description": {
+          "source_sha256": "a961cf95fa445f9174b5e211f9600c1c80819410a2abf929ab684287a1405aa1",
+          "translation": "Записать строки-кандидаты baseline (с пустым столбцом причины) для оставшихся находок."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.allocator/arguments/@id=helper-cli.native-source-audit.command.allocator.argument.engine_root/description": {
+          "source_sha256": "c3c802156c90577bb08d51d6210900e0a0c301ef2a48d2405fa48e2319358ce8",
+          "translation": "Checkout Engine, чьи правила Source и BuildTools/audit_baselines применяются (по умолчанию Engine, содержащий этот инструмент)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.allocator/arguments/@id=helper-cli.native-source-audit.command.allocator.argument.exclude/description": {
+          "source_sha256": "6a6961e10818959b28a435e7bbee6aace93c84ada42b3250189498acfdc977f6",
+          "translation": "Шаблон fnmatch для пропускаемых путей относительно корня; шаблон, оканчивающийся на /, пропускает поддерево; можно повторять."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.allocator/arguments/@id=helper-cli.native-source-audit.command.allocator.argument.fail_on/description": {
+          "source_sha256": "a5b4644a0d347da4d09889cea9cc92ad65117ea586666370570d1f2950ffa6f1",
+          "translation": "Минимальная серьёзность, при которой команда завершается ошибкой (по умолчанию error)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.allocator/arguments/@id=helper-cli.native-source-audit.command.allocator.argument.max_printed/description": {
+          "source_sha256": "84894cb4fa05ff05729fb92d217dd42212f8ac44de438d1f5d40960a17d44630",
+          "translation": "Максимальное число находок, выводимых в stdout; 0 выводит все (по умолчанию 50)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.allocator/arguments/@id=helper-cli.native-source-audit.command.allocator.argument.no_engine_baseline/description": {
+          "source_sha256": "71ac54a43daaa532a8f785343ff0d8891f3642239048f337d0d9d41ae39300dd",
+          "translation": "Не применять BuildTools/audit_baselines/<audit>.tsv из Engine."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.allocator/arguments/@id=helper-cli.native-source-audit.command.allocator.argument.report/description": {
+          "source_sha256": "59e9a485c1e7b0f510d091da2b288f09783c5b97340423c2ebbdecd5eda00a65",
+          "translation": "Записать оставшиеся находки и устаревшие строки baseline в TSV."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.allocator/arguments/@id=helper-cli.native-source-audit.command.allocator.argument.root/description": {
+          "source_sha256": "2dd000e85ded46707e9970650c3ab7a22b57ab16f73878047d15a68574bbe13c",
+          "translation": "Корень, относительно которого заданы области проверки, исключения, отчёты и проектные baseline (по умолчанию текущий каталог)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.allocator/arguments/@id=helper-cli.native-source-audit.command.allocator.argument.scope/description": {
+          "source_sha256": "52c0f26ecabf40a876613c7e441d4411815daa542063a9ea77f3cc2aa7de1b80",
+          "translation": "Проверяемый файл или каталог относительно --root; можно повторять (по умолчанию области из конфигурации, иначе каталог Source движка)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.allocator/description": {
+          "source_sha256": "6b5759da19ccc9ed8ffc3b1b65265378a4f61201e5b36e3d4fee1e5cbeda5914",
+          "translation": "Сообщить о стандартных контейнерах, выделяющих память вспомогательных функциях std:: и прямых вызовах выделения памяти C в обход системы памяти движка."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.allocator/summary": {
+          "source_sha256": "e8bd09f6abedcaf7c700421b39e31913d847bfee4f013ea7a6370a85f34c052b",
+          "translation": "Сообщить о стандартных контейнерах, выделяющих память функциях std:: и выделении памяти C вне системы памяти."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.explicit-local-types/arguments/@id=helper-cli.native-source-audit.command.explicit-local-types.argument.also_redundant_local_const/description": {
+          "source_sha256": "c256e8eb4e69bea5233ad1c6ba5ad2739300cd0804d25ad6cf18485a9ace0f59",
+          "translation": "Запустить сопоставитель redundant-local-const в том же проходе AST."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.explicit-local-types/arguments/@id=helper-cli.native-source-audit.command.explicit-local-types.argument.apply_report/description": {
+          "source_sha256": "d4a1137277f5d27493e5b961ff42c0e34437ab9c0c0fa4cf65dd74c8766b1c47",
+          "translation": "Применить ранее проверенный JSON-отчёт без запуска clang-query (требует --mode apply)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.explicit-local-types/arguments/@id=helper-cli.native-source-audit.command.explicit-local-types.argument.baseline/description": {
+          "source_sha256": "c3aa38cc749afb1849a6634dc99f47ea17764ea768a0de02216d7d130182f39d",
+          "translation": "Дополнительный проектный baseline TSV с путями относительно корня; можно повторять."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.explicit-local-types/arguments/@id=helper-cli.native-source-audit.command.explicit-local-types.argument.batch_size/description": {
+          "source_sha256": "8a1938bf27e62891c0ff0bc09cb8972a4db8fb0ee9616d330f55d411d35a9459",
+          "translation": "Число единиц трансляции на процесс clang (по умолчанию 2)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.explicit-local-types/arguments/@id=helper-cli.native-source-audit.command.explicit-local-types.argument.clang_query/description": {
+          "source_sha256": "80d34523ba63d8d7cdc1f9f4da76d9f280c157da20422852b4fe261e986a0686",
+          "translation": "Исполняемый файл clang-query (по умолчанию FO_CLANG_QUERY, затем PATH)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.explicit-local-types/arguments/@id=helper-cli.native-source-audit.command.explicit-local-types.argument.clang_tidy/description": {
+          "source_sha256": "158888051aea3aa9150209f44e2169251045bb290257bae2f1d9e16a4112d447",
+          "translation": "Исполняемый файл clang-tidy для use-after-move (по умолчанию FO_CLANG_TIDY, затем PATH)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.explicit-local-types/arguments/@id=helper-cli.native-source-audit.command.explicit-local-types.argument.compilation_database/description": {
+          "source_sha256": "56c4a9fa2f76100cbd8b2dda80fc6e8f07efa4d06b418563700e9fb3ae213cb2",
+          "translation": "Каталог с compile_commands.json (по умолчанию compilation_database из конфигурации)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.explicit-local-types/arguments/@id=helper-cli.native-source-audit.command.explicit-local-types.argument.config/description": {
+          "source_sha256": "6b6aa3c4cb4039f4b7adaf78e76f0cccb244746f00c5fd55bc99cd91863278c3",
+          "translation": "JSON-конфигурация с областями проверки, шаблонами исключений, baseline и параметрами аудита; путь задаётся относительно --root."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.explicit-local-types/arguments/@id=helper-cli.native-source-audit.command.explicit-local-types.argument.emit_baseline/description": {
+          "source_sha256": "a961cf95fa445f9174b5e211f9600c1c80819410a2abf929ab684287a1405aa1",
+          "translation": "Записать строки-кандидаты baseline (с пустым столбцом причины) для оставшихся находок."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.explicit-local-types/arguments/@id=helper-cli.native-source-audit.command.explicit-local-types.argument.engine_root/description": {
+          "source_sha256": "c3c802156c90577bb08d51d6210900e0a0c301ef2a48d2405fa48e2319358ce8",
+          "translation": "Checkout Engine, чьи правила Source и BuildTools/audit_baselines применяются (по умолчанию Engine, содержащий этот инструмент)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.explicit-local-types/arguments/@id=helper-cli.native-source-audit.command.explicit-local-types.argument.exclude/description": {
+          "source_sha256": "6a6961e10818959b28a435e7bbee6aace93c84ada42b3250189498acfdc977f6",
+          "translation": "Шаблон fnmatch для пропускаемых путей относительно корня; шаблон, оканчивающийся на /, пропускает поддерево; можно повторять."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.explicit-local-types/arguments/@id=helper-cli.native-source-audit.command.explicit-local-types.argument.jobs/description": {
+          "source_sha256": "c4dec50ceb748c6da0dc186a03a4dee66b9f7174a02b2e4af244c1c1c32fc94c",
+          "translation": "Число параллельных процессов clang (по умолчанию 4)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.explicit-local-types/arguments/@id=helper-cli.native-source-audit.command.explicit-local-types.argument.json/description": {
+          "source_sha256": "ddfca7216f9ab0415ed095bd81a4c162069f9666dfd9fdfd0e451f3a77e7c92a",
+          "translation": "Записать полный отчёт о кандидатах в JSON."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.explicit-local-types/arguments/@id=helper-cli.native-source-audit.command.explicit-local-types.argument.max_printed/description": {
+          "source_sha256": "84894cb4fa05ff05729fb92d217dd42212f8ac44de438d1f5d40960a17d44630",
+          "translation": "Максимальное число находок, выводимых в stdout; 0 выводит все (по умолчанию 50)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.explicit-local-types/arguments/@id=helper-cli.native-source-audit.command.explicit-local-types.argument.mode/description": {
+          "source_sha256": "b295e189dca4bbcab2c34699c7a7d7741145728ed3acdf807362ac1e393da8fa",
+          "translation": "check завершается ошибкой при наличии кандидатов; report никогда не завершается ошибкой; apply переписывает подходящие токены auto."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.explicit-local-types/arguments/@id=helper-cli.native-source-audit.command.explicit-local-types.argument.no_engine_baseline/description": {
+          "source_sha256": "71ac54a43daaa532a8f785343ff0d8891f3642239048f337d0d9d41ae39300dd",
+          "translation": "Не применять BuildTools/audit_baselines/<audit>.tsv из Engine."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.explicit-local-types/arguments/@id=helper-cli.native-source-audit.command.explicit-local-types.argument.report/description": {
+          "source_sha256": "59e9a485c1e7b0f510d091da2b288f09783c5b97340423c2ebbdecd5eda00a65",
+          "translation": "Записать оставшиеся находки и устаревшие строки baseline в TSV."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.explicit-local-types/arguments/@id=helper-cli.native-source-audit.command.explicit-local-types.argument.require_tooling/description": {
+          "source_sha256": "eebd161347a1cbb43428f08bb1849196f157d8a017947c30e967a264bbe1133e",
+          "translation": "Завершаться с кодом 2 вместо пропуска, если нет инструментов clang или базы компиляции."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.explicit-local-types/arguments/@id=helper-cli.native-source-audit.command.explicit-local-types.argument.root/description": {
+          "source_sha256": "2dd000e85ded46707e9970650c3ab7a22b57ab16f73878047d15a68574bbe13c",
+          "translation": "Корень, относительно которого заданы области проверки, исключения, отчёты и проектные baseline (по умолчанию текущий каталог)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.explicit-local-types/arguments/@id=helper-cli.native-source-audit.command.explicit-local-types.argument.scope/description": {
+          "source_sha256": "52c0f26ecabf40a876613c7e441d4411815daa542063a9ea77f3cc2aa7de1b80",
+          "translation": "Проверяемый файл или каталог относительно --root; можно повторять (по умолчанию области из конфигурации, иначе каталог Source движка)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.explicit-local-types/arguments/@id=helper-cli.native-source-audit.command.explicit-local-types.argument.source_pattern/description": {
+          "source_sha256": "aa653db6eeec1311539d20922eb93de683cddd698b65ce38bac7d2dcb233a064",
+          "translation": "Регулярное выражение isExpansionInFileMatching для clang-query (по умолчанию выводится из областей проверки)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.explicit-local-types/arguments/@id=helper-cli.native-source-audit.command.explicit-local-types.argument.timeout/description": {
+          "source_sha256": "5ae9655a6686d053766afc1f266ad1da97e8d5b5f218be1f0fe50b68310e2e10",
+          "translation": "Допустимое время одного процесса clang в секундах (по умолчанию 900)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.explicit-local-types/arguments/@id=helper-cli.native-source-audit.command.explicit-local-types.argument.unit_pattern/description": {
+          "source_sha256": "5d219d5b17f1d5240303b0978d1572920491c9ae175d5ea46d514492a7237c59",
+          "translation": "Анализировать только единицы компиляции, отображаемый путь которых соответствует этому регулярному выражению."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.explicit-local-types/description": {
+          "source_sha256": "129b33ddc98621220d3ffabf6f62335f13f4fd0f3444503482927d3e477a1eab",
+          "translation": "Запустить clang-query по базе компиляции и сообщить о локальных переменных auto, которые должны явно указывать свой простой тип."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.explicit-local-types/summary": {
+          "source_sha256": "40c5f9b2419310fd761bf016fa37b69002124d57736d21180d8e9238837b7286",
+          "translation": "Найти локальные переменные auto, выведенный тип которых является простым явным типом (clang-query)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.local-variables/arguments/@id=helper-cli.native-source-audit.command.local-variables.argument.baseline/description": {
+          "source_sha256": "c3aa38cc749afb1849a6634dc99f47ea17764ea768a0de02216d7d130182f39d",
+          "translation": "Дополнительный проектный baseline TSV с путями относительно корня; можно повторять."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.local-variables/arguments/@id=helper-cli.native-source-audit.command.local-variables.argument.batch_size/description": {
+          "source_sha256": "8a1938bf27e62891c0ff0bc09cb8972a4db8fb0ee9616d330f55d411d35a9459",
+          "translation": "Число единиц трансляции на процесс clang (по умолчанию 2)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.local-variables/arguments/@id=helper-cli.native-source-audit.command.local-variables.argument.checks/description": {
+          "source_sha256": "2843cf4321617faee388eefa3acf85bb04316abc0764fa22207ca29a60e91ba2",
+          "translation": "Запускаемые проверки (по умолчанию все)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.local-variables/arguments/@id=helper-cli.native-source-audit.command.local-variables.argument.clang_query/description": {
+          "source_sha256": "80d34523ba63d8d7cdc1f9f4da76d9f280c157da20422852b4fe261e986a0686",
+          "translation": "Исполняемый файл clang-query (по умолчанию FO_CLANG_QUERY, затем PATH)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.local-variables/arguments/@id=helper-cli.native-source-audit.command.local-variables.argument.clang_tidy/description": {
+          "source_sha256": "158888051aea3aa9150209f44e2169251045bb290257bae2f1d9e16a4112d447",
+          "translation": "Исполняемый файл clang-tidy для use-after-move (по умолчанию FO_CLANG_TIDY, затем PATH)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.local-variables/arguments/@id=helper-cli.native-source-audit.command.local-variables.argument.compilation_database/description": {
+          "source_sha256": "56c4a9fa2f76100cbd8b2dda80fc6e8f07efa4d06b418563700e9fb3ae213cb2",
+          "translation": "Каталог с compile_commands.json (по умолчанию compilation_database из конфигурации)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.local-variables/arguments/@id=helper-cli.native-source-audit.command.local-variables.argument.config/description": {
+          "source_sha256": "6b6aa3c4cb4039f4b7adaf78e76f0cccb244746f00c5fd55bc99cd91863278c3",
+          "translation": "JSON-конфигурация с областями проверки, шаблонами исключений, baseline и параметрами аудита; путь задаётся относительно --root."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.local-variables/arguments/@id=helper-cli.native-source-audit.command.local-variables.argument.emit_baseline/description": {
+          "source_sha256": "a961cf95fa445f9174b5e211f9600c1c80819410a2abf929ab684287a1405aa1",
+          "translation": "Записать строки-кандидаты baseline (с пустым столбцом причины) для оставшихся находок."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.local-variables/arguments/@id=helper-cli.native-source-audit.command.local-variables.argument.engine_root/description": {
+          "source_sha256": "c3c802156c90577bb08d51d6210900e0a0c301ef2a48d2405fa48e2319358ce8",
+          "translation": "Checkout Engine, чьи правила Source и BuildTools/audit_baselines применяются (по умолчанию Engine, содержащий этот инструмент)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.local-variables/arguments/@id=helper-cli.native-source-audit.command.local-variables.argument.exclude/description": {
+          "source_sha256": "6a6961e10818959b28a435e7bbee6aace93c84ada42b3250189498acfdc977f6",
+          "translation": "Шаблон fnmatch для пропускаемых путей относительно корня; шаблон, оканчивающийся на /, пропускает поддерево; можно повторять."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.local-variables/arguments/@id=helper-cli.native-source-audit.command.local-variables.argument.jobs/description": {
+          "source_sha256": "c4dec50ceb748c6da0dc186a03a4dee66b9f7174a02b2e4af244c1c1c32fc94c",
+          "translation": "Число параллельных процессов clang (по умолчанию 4)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.local-variables/arguments/@id=helper-cli.native-source-audit.command.local-variables.argument.max_printed/description": {
+          "source_sha256": "84894cb4fa05ff05729fb92d217dd42212f8ac44de438d1f5d40960a17d44630",
+          "translation": "Максимальное число находок, выводимых в stdout; 0 выводит все (по умолчанию 50)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.local-variables/arguments/@id=helper-cli.native-source-audit.command.local-variables.argument.mode/description": {
+          "source_sha256": "59d743aac841266274e61c8576a25096e6adc4940baab305cd9161db25ed3f74",
+          "translation": "check завершается ошибкой при активных находках; report никогда не завершается ошибкой; apply удаляет избыточный const (требует --checks redundant-local-const)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.local-variables/arguments/@id=helper-cli.native-source-audit.command.local-variables.argument.no_engine_baseline/description": {
+          "source_sha256": "71ac54a43daaa532a8f785343ff0d8891f3642239048f337d0d9d41ae39300dd",
+          "translation": "Не применять BuildTools/audit_baselines/<audit>.tsv из Engine."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.local-variables/arguments/@id=helper-cli.native-source-audit.command.local-variables.argument.report/description": {
+          "source_sha256": "59e9a485c1e7b0f510d091da2b288f09783c5b97340423c2ebbdecd5eda00a65",
+          "translation": "Записать оставшиеся находки и устаревшие строки baseline в TSV."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.local-variables/arguments/@id=helper-cli.native-source-audit.command.local-variables.argument.require_tooling/description": {
+          "source_sha256": "eebd161347a1cbb43428f08bb1849196f157d8a017947c30e967a264bbe1133e",
+          "translation": "Завершаться с кодом 2 вместо пропуска, если нет инструментов clang или базы компиляции."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.local-variables/arguments/@id=helper-cli.native-source-audit.command.local-variables.argument.root/description": {
+          "source_sha256": "2dd000e85ded46707e9970650c3ab7a22b57ab16f73878047d15a68574bbe13c",
+          "translation": "Корень, относительно которого заданы области проверки, исключения, отчёты и проектные baseline (по умолчанию текущий каталог)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.local-variables/arguments/@id=helper-cli.native-source-audit.command.local-variables.argument.scope/description": {
+          "source_sha256": "52c0f26ecabf40a876613c7e441d4411815daa542063a9ea77f3cc2aa7de1b80",
+          "translation": "Проверяемый файл или каталог относительно --root; можно повторять (по умолчанию области из конфигурации, иначе каталог Source движка)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.local-variables/arguments/@id=helper-cli.native-source-audit.command.local-variables.argument.source_pattern/description": {
+          "source_sha256": "aa653db6eeec1311539d20922eb93de683cddd698b65ce38bac7d2dcb233a064",
+          "translation": "Регулярное выражение isExpansionInFileMatching для clang-query (по умолчанию выводится из областей проверки)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.local-variables/arguments/@id=helper-cli.native-source-audit.command.local-variables.argument.timeout/description": {
+          "source_sha256": "5ae9655a6686d053766afc1f266ad1da97e8d5b5f218be1f0fe50b68310e2e10",
+          "translation": "Допустимое время одного процесса clang в секундах (по умолчанию 900)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.local-variables/arguments/@id=helper-cli.native-source-audit.command.local-variables.argument.unit_pattern/description": {
+          "source_sha256": "5d219d5b17f1d5240303b0978d1572920491c9ae175d5ea46d514492a7237c59",
+          "translation": "Анализировать только единицы компиляции, отображаемый путь которых соответствует этому регулярному выражению."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.local-variables/description": {
+          "source_sha256": "1fc48b5ea73c0f48bba8a0314f66fa2be84e5366d73e62fb0bf38e93098f2cf4",
+          "translation": "Запустить clang-query и clang-tidy по базе компиляции, чтобы найти избыточный const верхнего уровня у локальных переменных и use-after-move."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.local-variables/summary": {
+          "source_sha256": "62e3e6ecc1061b5e9e50b5b99b5fc94e016930aef178fdf15368871bd4c13906",
+          "translation": "Найти локальные переменные с избыточным const верхнего уровня (clang-query) и use-after-move (clang-tidy)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.smart-pointer-ast/arguments/@id=helper-cli.native-source-audit.command.smart-pointer-ast.argument.all/description": {
+          "source_sha256": "f8d22b7ca27968d9a4ff50cdde07e7ceb5632c2bfea8a581f49a992d20512a80",
+          "translation": "Сообщать о каждом совпадении в областях проверки, а не только в добавленных строках."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.smart-pointer-ast/arguments/@id=helper-cli.native-source-audit.command.smart-pointer-ast.argument.baseline/description": {
+          "source_sha256": "c3aa38cc749afb1849a6634dc99f47ea17764ea768a0de02216d7d130182f39d",
+          "translation": "Дополнительный проектный baseline TSV с путями относительно корня; можно повторять."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.smart-pointer-ast/arguments/@id=helper-cli.native-source-audit.command.smart-pointer-ast.argument.batch_size/description": {
+          "source_sha256": "8a1938bf27e62891c0ff0bc09cb8972a4db8fb0ee9616d330f55d411d35a9459",
+          "translation": "Число единиц трансляции на процесс clang (по умолчанию 2)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.smart-pointer-ast/arguments/@id=helper-cli.native-source-audit.command.smart-pointer-ast.argument.clang_query/description": {
+          "source_sha256": "80d34523ba63d8d7cdc1f9f4da76d9f280c157da20422852b4fe261e986a0686",
+          "translation": "Исполняемый файл clang-query (по умолчанию FO_CLANG_QUERY, затем PATH)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.smart-pointer-ast/arguments/@id=helper-cli.native-source-audit.command.smart-pointer-ast.argument.clang_tidy/description": {
+          "source_sha256": "158888051aea3aa9150209f44e2169251045bb290257bae2f1d9e16a4112d447",
+          "translation": "Исполняемый файл clang-tidy для use-after-move (по умолчанию FO_CLANG_TIDY, затем PATH)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.smart-pointer-ast/arguments/@id=helper-cli.native-source-audit.command.smart-pointer-ast.argument.compilation_database/description": {
+          "source_sha256": "56c4a9fa2f76100cbd8b2dda80fc6e8f07efa4d06b418563700e9fb3ae213cb2",
+          "translation": "Каталог с compile_commands.json (по умолчанию compilation_database из конфигурации)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.smart-pointer-ast/arguments/@id=helper-cli.native-source-audit.command.smart-pointer-ast.argument.config/description": {
+          "source_sha256": "6b6aa3c4cb4039f4b7adaf78e76f0cccb244746f00c5fd55bc99cd91863278c3",
+          "translation": "JSON-конфигурация с областями проверки, шаблонами исключений, baseline и параметрами аудита; путь задаётся относительно --root."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.smart-pointer-ast/arguments/@id=helper-cli.native-source-audit.command.smart-pointer-ast.argument.diff_base/description": {
+          "source_sha256": "a699669addb78603dc2278e696148a2fb10dac05223790e9739c6a302d35e697",
+          "translation": "Сообщать только о совпадениях в строках, добавленных после этой ревизии git."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.smart-pointer-ast/arguments/@id=helper-cli.native-source-audit.command.smart-pointer-ast.argument.emit_baseline/description": {
+          "source_sha256": "a961cf95fa445f9174b5e211f9600c1c80819410a2abf929ab684287a1405aa1",
+          "translation": "Записать строки-кандидаты baseline (с пустым столбцом причины) для оставшихся находок."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.smart-pointer-ast/arguments/@id=helper-cli.native-source-audit.command.smart-pointer-ast.argument.engine_root/description": {
+          "source_sha256": "c3c802156c90577bb08d51d6210900e0a0c301ef2a48d2405fa48e2319358ce8",
+          "translation": "Checkout Engine, чьи правила Source и BuildTools/audit_baselines применяются (по умолчанию Engine, содержащий этот инструмент)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.smart-pointer-ast/arguments/@id=helper-cli.native-source-audit.command.smart-pointer-ast.argument.exclude/description": {
+          "source_sha256": "6a6961e10818959b28a435e7bbee6aace93c84ada42b3250189498acfdc977f6",
+          "translation": "Шаблон fnmatch для пропускаемых путей относительно корня; шаблон, оканчивающийся на /, пропускает поддерево; можно повторять."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.smart-pointer-ast/arguments/@id=helper-cli.native-source-audit.command.smart-pointer-ast.argument.jobs/description": {
+          "source_sha256": "c4dec50ceb748c6da0dc186a03a4dee66b9f7174a02b2e4af244c1c1c32fc94c",
+          "translation": "Число параллельных процессов clang (по умолчанию 4)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.smart-pointer-ast/arguments/@id=helper-cli.native-source-audit.command.smart-pointer-ast.argument.max_printed/description": {
+          "source_sha256": "84894cb4fa05ff05729fb92d217dd42212f8ac44de438d1f5d40960a17d44630",
+          "translation": "Максимальное число находок, выводимых в stdout; 0 выводит все (по умолчанию 50)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.smart-pointer-ast/arguments/@id=helper-cli.native-source-audit.command.smart-pointer-ast.argument.no_engine_baseline/description": {
+          "source_sha256": "71ac54a43daaa532a8f785343ff0d8891f3642239048f337d0d9d41ae39300dd",
+          "translation": "Не применять BuildTools/audit_baselines/<audit>.tsv из Engine."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.smart-pointer-ast/arguments/@id=helper-cli.native-source-audit.command.smart-pointer-ast.argument.report/description": {
+          "source_sha256": "59e9a485c1e7b0f510d091da2b288f09783c5b97340423c2ebbdecd5eda00a65",
+          "translation": "Записать оставшиеся находки и устаревшие строки baseline в TSV."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.smart-pointer-ast/arguments/@id=helper-cli.native-source-audit.command.smart-pointer-ast.argument.require_tooling/description": {
+          "source_sha256": "eebd161347a1cbb43428f08bb1849196f157d8a017947c30e967a264bbe1133e",
+          "translation": "Завершаться с кодом 2 вместо пропуска, если нет инструментов clang или базы компиляции."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.smart-pointer-ast/arguments/@id=helper-cli.native-source-audit.command.smart-pointer-ast.argument.root/description": {
+          "source_sha256": "2dd000e85ded46707e9970650c3ab7a22b57ab16f73878047d15a68574bbe13c",
+          "translation": "Корень, относительно которого заданы области проверки, исключения, отчёты и проектные baseline (по умолчанию текущий каталог)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.smart-pointer-ast/arguments/@id=helper-cli.native-source-audit.command.smart-pointer-ast.argument.scope/description": {
+          "source_sha256": "52c0f26ecabf40a876613c7e441d4411815daa542063a9ea77f3cc2aa7de1b80",
+          "translation": "Проверяемый файл или каталог относительно --root; можно повторять (по умолчанию области из конфигурации, иначе каталог Source движка)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.smart-pointer-ast/arguments/@id=helper-cli.native-source-audit.command.smart-pointer-ast.argument.source_pattern/description": {
+          "source_sha256": "aa653db6eeec1311539d20922eb93de683cddd698b65ce38bac7d2dcb233a064",
+          "translation": "Регулярное выражение isExpansionInFileMatching для clang-query (по умолчанию выводится из областей проверки)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.smart-pointer-ast/arguments/@id=helper-cli.native-source-audit.command.smart-pointer-ast.argument.timeout/description": {
+          "source_sha256": "5ae9655a6686d053766afc1f266ad1da97e8d5b5f218be1f0fe50b68310e2e10",
+          "translation": "Допустимое время одного процесса clang в секундах (по умолчанию 900)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.smart-pointer-ast/arguments/@id=helper-cli.native-source-audit.command.smart-pointer-ast.argument.unit_pattern/description": {
+          "source_sha256": "5d219d5b17f1d5240303b0978d1572920491c9ae175d5ea46d514492a7237c59",
+          "translation": "Анализировать только единицы компиляции, отображаемый путь которых соответствует этому регулярному выражению."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.smart-pointer-ast/description": {
+          "source_sha256": "a8f6b5b368efb525b9aaaf33e1ba4f475036451e6a3eb80162757c5572889ce9",
+          "translation": "Запустить clang-query по базе компиляции и сообщить о сырых указателях в объявлениях, полях, параметрах и возвращаемых значениях."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.smart-pointer-ast/summary": {
+          "source_sha256": "a05add610dee61f6811d37a59de6d5d1c2102a5f5704eae4e2e84a248a8f85bc",
+          "translation": "Найти через clang-query объявления сырых указателей в строках, добавленных после ревизии git."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.smart-pointer/arguments/@id=helper-cli.native-source-audit.command.smart-pointer.argument.baseline/description": {
+          "source_sha256": "c3aa38cc749afb1849a6634dc99f47ea17764ea768a0de02216d7d130182f39d",
+          "translation": "Дополнительный проектный baseline TSV с путями относительно корня; можно повторять."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.smart-pointer/arguments/@id=helper-cli.native-source-audit.command.smart-pointer.argument.config/description": {
+          "source_sha256": "6b6aa3c4cb4039f4b7adaf78e76f0cccb244746f00c5fd55bc99cd91863278c3",
+          "translation": "JSON-конфигурация с областями проверки, шаблонами исключений, baseline и параметрами аудита; путь задаётся относительно --root."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.smart-pointer/arguments/@id=helper-cli.native-source-audit.command.smart-pointer.argument.emit_baseline/description": {
+          "source_sha256": "a961cf95fa445f9174b5e211f9600c1c80819410a2abf929ab684287a1405aa1",
+          "translation": "Записать строки-кандидаты baseline (с пустым столбцом причины) для оставшихся находок."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.smart-pointer/arguments/@id=helper-cli.native-source-audit.command.smart-pointer.argument.engine_root/description": {
+          "source_sha256": "c3c802156c90577bb08d51d6210900e0a0c301ef2a48d2405fa48e2319358ce8",
+          "translation": "Checkout Engine, чьи правила Source и BuildTools/audit_baselines применяются (по умолчанию Engine, содержащий этот инструмент)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.smart-pointer/arguments/@id=helper-cli.native-source-audit.command.smart-pointer.argument.exclude/description": {
+          "source_sha256": "6a6961e10818959b28a435e7bbee6aace93c84ada42b3250189498acfdc977f6",
+          "translation": "Шаблон fnmatch для пропускаемых путей относительно корня; шаблон, оканчивающийся на /, пропускает поддерево; можно повторять."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.smart-pointer/arguments/@id=helper-cli.native-source-audit.command.smart-pointer.argument.fail_on/description": {
+          "source_sha256": "a5b4644a0d347da4d09889cea9cc92ad65117ea586666370570d1f2950ffa6f1",
+          "translation": "Минимальная серьёзность, при которой команда завершается ошибкой (по умолчанию error)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.smart-pointer/arguments/@id=helper-cli.native-source-audit.command.smart-pointer.argument.inventory/description": {
+          "source_sha256": "2f4502c73cf2513c63cafa13420b9004ebf14d120d4f87f3335697e909907f97",
+          "translation": "Вывести не влияющие на результат счётчики инвентаризации словаря указателей и маркеров сырых указателей."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.smart-pointer/arguments/@id=helper-cli.native-source-audit.command.smart-pointer.argument.inventory_details_output/description": {
+          "source_sha256": "6d19209edb4669f56faae5defa3134aa4d2a260568e842f16a73283aa1e89600",
+          "translation": "Записать построчные маркеры инвентаризации в TSV."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.smart-pointer/arguments/@id=helper-cli.native-source-audit.command.smart-pointer.argument.inventory_output/description": {
+          "source_sha256": "ea9d60db496a67afd3d051576f26f14543c211d2cd7eaf26eab7454771225aa0",
+          "translation": "Записать пофайловые счётчики инвентаризации в TSV."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.smart-pointer/arguments/@id=helper-cli.native-source-audit.command.smart-pointer.argument.jobs/description": {
+          "source_sha256": "a45b42e8df35edaa71088ac67958afc8a41c533a7667cfaf7bc9a5390d337666",
+          "translation": "Число рабочих процессов; 0 означает число CPU; порядок вывода от него не зависит (по умолчанию 0)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.smart-pointer/arguments/@id=helper-cli.native-source-audit.command.smart-pointer.argument.max_printed/description": {
+          "source_sha256": "84894cb4fa05ff05729fb92d217dd42212f8ac44de438d1f5d40960a17d44630",
+          "translation": "Максимальное число находок, выводимых в stdout; 0 выводит все (по умолчанию 50)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.smart-pointer/arguments/@id=helper-cli.native-source-audit.command.smart-pointer.argument.no_engine_baseline/description": {
+          "source_sha256": "71ac54a43daaa532a8f785343ff0d8891f3642239048f337d0d9d41ae39300dd",
+          "translation": "Не применять BuildTools/audit_baselines/<audit>.tsv из Engine."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.smart-pointer/arguments/@id=helper-cli.native-source-audit.command.smart-pointer.argument.report/description": {
+          "source_sha256": "59e9a485c1e7b0f510d091da2b288f09783c5b97340423c2ebbdecd5eda00a65",
+          "translation": "Записать оставшиеся находки и устаревшие строки baseline в TSV."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.smart-pointer/arguments/@id=helper-cli.native-source-audit.command.smart-pointer.argument.root/description": {
+          "source_sha256": "2dd000e85ded46707e9970650c3ab7a22b57ab16f73878047d15a68574bbe13c",
+          "translation": "Корень, относительно которого заданы области проверки, исключения, отчёты и проектные baseline (по умолчанию текущий каталог)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.smart-pointer/arguments/@id=helper-cli.native-source-audit.command.smart-pointer.argument.scope/description": {
+          "source_sha256": "52c0f26ecabf40a876613c7e441d4411815daa542063a9ea77f3cc2aa7de1b80",
+          "translation": "Проверяемый файл или каталог относительно --root; можно повторять (по умолчанию области из конфигурации, иначе каталог Source движка)."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.smart-pointer/arguments/@id=helper-cli.native-source-audit.command.smart-pointer.argument.summary_output/description": {
+          "source_sha256": "a4ea66d702bc04dc084c5fd30551660f463fac797423ed8e705191d706c76ada",
+          "translation": "Записать JSON-сводку находок и счётчиков инвентаризации."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.smart-pointer/description": {
+          "source_sha256": "c95d55f78a1325dbd997f4cfc67c59ba99f03be09675c7cd8e7d182e48dd3976",
+          "translation": "Проверить текстовыми правилами словарь умных указателей, проверки nullable и формы границ сырых указателей."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/commands/@id=helper-cli.native-source-audit.command.smart-pointer/summary": {
+          "source_sha256": "1f24298bea02b14c395a0309e70b730a4f1c0216453504f4538421e8db70ee5c",
+          "translation": "Проверить словарь умных указателей ptr/nptr/unique/refcount и границы сырых указателей."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/description": {
+          "source_sha256": "c6c0cd022cc1cb3bb6d9a5106b0708a412f23a3d41b0e2ad342c994cd05e9af2",
+          "translation": "Проверяет нативные области C++ на нарушения контрактов аллокаторов, умных указателей и локальных переменных с baseline движка и проекта."
+        },
+        "/helpers/@id=helper-cli.native-source-audit/invocation_owner": {
+          "source_sha256": "58e558be4a1a0e5f9cae11a46bb00abffd520abdfcab1b602f23ff402d1a6d21",
+          "translation": "CI проверки движка, обёртки нативных аудитов встраивающего игрового проекта и прямое использование разработчиком"
+        },
+        "/helpers/@id=helper-cli.native-source-audit/name": {
+          "source_sha256": "abc9867910af751a329213bdc5aa15f321ed32b312a5b805d1bd46dea67119db",
+          "translation": "Аудиты нативных исходников"
         },
         "/helpers/@id=helper-cli.project-version/description": {
           "source_sha256": "dc2535274620c96a8ace4fbd495eba8c19bb984a0458faa6266b1fbeef8a36d4",
@@ -14267,6 +15079,46 @@
         "/helpers/@id=helper-cli.move-sync-analysis/name": {
           "source_sha256": "fd72f3093ce905605379cbae6f6c259be67b5052b0760a1e2feba8d49c3e9505",
           "translation": "Анализ трейса синхронизации движения"
+        },
+        "/helpers/@id=helper-cli.script-binding-check/description": {
+          "source_sha256": "0018c72005f20f8c8fc3499a64c6cccbff6ce6783eb5ca25609266818ab584a5",
+          "translation": "Отклоняет сырые указатели в нативных сигнатурах, доступных скриптам, и сравнивает nullability обработчиков AngelScript с объявлениями событий и удалённых вызовов."
+        },
+        "/helpers/@id=helper-cli.script-binding-check/global_arguments/@id=helper-cli.script-binding-check.argument.baseline/description": {
+          "source_sha256": "013a22b75211a01ba3113286a3354a6325c15103d88f68c8b582689f0d967ce5",
+          "translation": "Принятые находки (TSV с правилом, путём, числом и причиной); можно повторять."
+        },
+        "/helpers/@id=helper-cli.script-binding-check/global_arguments/@id=helper-cli.script-binding-check.argument.exclude/description": {
+          "source_sha256": "ab559f958afec333e8ccc66e5801f74295815b07758e26021ff41584e10a4d15",
+          "translation": "Шаблон fnmatch для пропускаемых POSIX-путей относительно корня; можно повторять."
+        },
+        "/helpers/@id=helper-cli.script-binding-check/global_arguments/@id=helper-cli.script-binding-check.argument.list_rules/description": {
+          "source_sha256": "c7a3931cf47d5f11e5b180511d3336f63efcf9a70d933badf2f9fbe427dc5574",
+          "translation": "Вывести идентификаторы правил и завершиться."
+        },
+        "/helpers/@id=helper-cli.script-binding-check/global_arguments/@id=helper-cli.script-binding-check.argument.root/description": {
+          "source_sha256": "bdcda502352a9a83a8cf12d75c1000861d6cec5d05fe36fe315b68ea46cd19bc",
+          "translation": "Корень репозитория, относительно которого заданы области проверки и выводимые пути (по умолчанию корень Engine, содержащий этот скрипт)."
+        },
+        "/helpers/@id=helper-cli.script-binding-check/global_arguments/@id=helper-cli.script-binding-check.argument.scope/description": {
+          "source_sha256": "dea654b8fba8f8617e690810d6382f77c255e70449edc3e597392a4844da328e",
+          "translation": "Каталог нативных исходников относительно корня; можно повторять (по умолчанию Source)."
+        },
+        "/helpers/@id=helper-cli.script-binding-check/global_arguments/@id=helper-cli.script-binding-check.argument.scripts/description": {
+          "source_sha256": "c51c18661e0c465f22ad21d7d1f5512aac301d1671336e24f5299ed8f4eda3eb",
+          "translation": "Каталог AngelScript относительно корня, обработчики которого сравниваются; можно повторять."
+        },
+        "/helpers/@id=helper-cli.script-binding-check/global_arguments/@id=helper-cli.script-binding-check.argument.write_baseline/description": {
+          "source_sha256": "7df6f47fc55b7b6a26cc2479f54f65e0a45a906ca9f881ead8c58ce61d5a9c2e",
+          "translation": "Записать текущие числа находок с пустыми причинами вместо блокирующей проверки."
+        },
+        "/helpers/@id=helper-cli.script-binding-check/invocation_owner": {
+          "source_sha256": "3aef3b472c47f8f5259401cf2155c60df9c66b5938a9af02645b7c38e8d61576",
+          "translation": "CI движка и гейты качества встраивающего игрового проекта"
+        },
+        "/helpers/@id=helper-cli.script-binding-check/name": {
+          "source_sha256": "f9909c08f068135d654895802d68f34414f25391fc08ae05fc968f6592d84cce",
+          "translation": "Проверка привязок скриптов"
         },
         "/helpers/@id=helper-cli.simple-web-server/description": {
           "source_sha256": "43d4e2c2f90c9e2ff611e5b3ce4d2cb7e488d40409fe995238369d223dc66eb1",

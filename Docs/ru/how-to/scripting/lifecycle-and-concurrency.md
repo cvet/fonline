@@ -118,7 +118,7 @@ dispatchers в другой форме. Указывайте только док
 | Инициализация модуля | `ScriptSystem::InitModules()` | Init functions выполняются по возрастанию приоритета, пока присваивание globals временно разрешено. |
 | Инициализация сущности | `EntityManager::CallInit()` | Сущность отмечается инициализированной, срабатывает её событие `On*Init`, затем выполняется необязательный сохранённый callback `InitScript`. |
 | Dispatch callback | Client loop или server worker job | Events, time events, remote calls и native re-entry вызывают атрибутированные функции через принадлежащий им API. |
-| Приостановка | Менеджер contexts AngelScript или managed synchronization context | `Yield` или `await Game.YieldAsync(...)` сохраняет continuation, но текущий native execution scope возвращается. |
+| Приостановка | Менеджер contexts AngelScript или managed synchronization context | `Yield` или `await ScriptTask.Delay(...)` сохраняет continuation, но текущий native execution scope возвращается. |
 | Возобновление | Client scheduled-callback pass или server worker pool | Continuation выполняется позже; на сервере она может работать на другом worker под новым synchronization context. |
 | Уничтожение сущности | Владелец entity/manager | Callbacks событий и storage time event очищаются; серверные dispatch jobs отменяются владеющим manager. |
 | Завершение runtime | Client/server и scripting backend | Global events/time events, сущности, script globals, contexts и backend освобождаются в порядке, заданном владельцами. |
@@ -340,7 +340,11 @@ capture до публикации; он не разрешает обнаруже
 и `Game.Unlock` — исключения, поскольку синхронизация является их видимым
 назначением. `Server.SingleThreadedLogic` обходит модель покрытия на единственном
 logic worker. Контракт общий для backends, а не проектный workaround или правило
-только для AngelScript.
+только для AngelScript. `BuildTools/native_safety_audit.py sync-scope` сообщает о
+script export, native call graph которого восстанавливает недостающее покрытие
+через `SyncEntity` / `SyncEntities` или другое запрещённое получение, для движка
+и для native-каталогов проекта; см.
+[Аудит покрытия сущностей и безопасности исключений в игровом проекте](../project/native-safety-audits.md).
 
 ## Владение изменяемым состоянием
 
@@ -365,7 +369,7 @@ Managed C# входит в те же независимые от backend кон�
 - `[ModuleInit(priority)]` отмечает static parameterless method с возвратом `void` или `Task`. `ScriptSystem::InitModules()` по-прежнему упорядочивает инициализаторы по возрастанию priority; возвращённый task ожидается внутри synchronization context backend до перехода к следующей инициализации.
 - Event-, timer-, remote-call-, property- и другие dispatch handlers используют managed attributes из `CoreScripts/Attributes.cs`. Метод с dispatcher-owned attribute входит через свой dispatcher, а не вызывается напрямую только потому, что C# позволяет назвать его.
 - `async void` запрещён. Awaitable handlers и named calls возвращают `Task`; используйте `Task<T>` только когда caller contract потребляет результат. Возвращаемое значение inbound remote call игнорируется wire даже для awaitable managed handler.
-- `Game.YieldAsync(milliseconds)` планирует continuation в `ScriptSynchronizationContext` backend. У каждого backend своя очередь, которую прокачивают кадры движка. Работа, перенесённая в `ThreadPool` или продолженная через `ConfigureAwait(false)`, находится вне этого context и не должна вызывать Engine API.
+- `ScriptTask.Delay(milliseconds)` (или `Delay(timespan)`) планирует continuation в `ScriptSynchronizationContext` backend. У каждого backend своя очередь, которую прокачивают кадры движка. Работа, перенесённая в `ThreadPool` или продолженная через `ConfigureAwait(false)`, находится вне этого context и не должна вызывать Engine API.
 - Server cover объявляется и проверяется через `[RequiresCover]`, `[ProvidesCover]`, `[PreservesCover]` и `CoverReach`. Roslyn-диагностики `FOSYNC001`–`FOSYNC007` и `FOSYNC009` находят неверные targets, пропущенное распространение, entry declarations, покрытые collections и locks, пересекающие `await`.
 - Cover обычно не переживает `await`. Сохраняйте его только через явный `[PreservesCover]` contract поддерживаемой операции; иначе после resumption заново разрешите mutable state и получите полный cover.
 - Named invocation требует `[CallableByName]`. Allowlist административных и внутренних named calls — разные границы; не расширяйте одну ради другой.
@@ -416,7 +420,7 @@ Suspended continuation может пережить gameplay assumptions, при 
 | Callback attribute или правило прямого вызова AngelScript | `Test_AngelScriptAttributes` и project `CompileAngelScript`/bake. |
 | Managed callback, named call или async signature | `Test_ManagedScriptBaker`, managed core tests и project `CompileManagedScripts`/bake. |
 | Политика mutable global/static | `Test_AngelScriptBaker` для AngelScript; managed owner/isolation tests и project compile для C#. |
-| `Yield` / `YieldAsync` или планирование context | Затронутый AngelScript context test или managed async/callback-context tests плюс затронутый client/server runtime test. |
+| `Yield` / `ScriptTask.Delay` или планирование context | Затронутый AngelScript context test или managed async/callback-context tests плюс затронутый client/server runtime test. |
 | Server cover, singleton lock или access validation | `Test_EntitySync`, затронутые script-method/entity tests и runtime-путь проекта. |
 | Cover входящего server remote call | Server runtime/remote-call tests и handler, читающий controlled critter вызывающего. |
 | Миграция persisted critter preload | `Test_EntityLifecycle`, migration и bake tests подключающего проекта. |

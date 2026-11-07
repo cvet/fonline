@@ -50,6 +50,10 @@ The Engine repository owns:
 - bounded line, command-queue, and event-history requirements;
 - accepted-command sequence ids and the terminal `command_completed` event;
 - the loopback-first security policy;
+- the generic MCP adapter core in `BuildTools/ai_control_mcp` (MCP stdio, session,
+  event cursors, launch profile and process ownership), which loads the project's
+  game tools from a registered project module; see
+  [Drive a Game with the AiControl MCP Adapter](project/ai-control-mcp.md);
 - the standard-library reference client, protocol sample, generated contract,
   focused tests, and compatibility-diff policy.
 
@@ -277,8 +281,8 @@ behavior.
 ## MCP adapter integration
 
 The reference client in `BuildTools/ai_control_client.py` is a small transport
-library and diagnostic CLI. An MCP adapter should build on the same rules but
-remain project-specific:
+library and diagnostic CLI. An MCP adapter builds on the same rules, and its game
+tools remain project-specific:
 
 1. Connect to an explicit endpoint and authenticate once per connection.
 2. Call `status` and `observe`; validate the project's observation

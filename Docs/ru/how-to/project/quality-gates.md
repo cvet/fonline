@@ -31,6 +31,14 @@ permalink: /Docs/ru/how-to/project/quality-gates.html
 - `BuildTools/format-source.cmd`
 - `BuildTools/check_native_source_layout.py`
 - `BuildTools/check_native_modules.py`
+- `BuildTools/native_source_audit.py`
+- `BuildTools/native_safety_audit.py`
+- `BuildTools/check_script_bindings.py`
+- `BuildTools/check_angelscript_hygiene.py`
+- `BuildTools/format_content.py`
+- `BuildTools/migration_guard.py`
+- `BuildTools/check_text_packs.py`
+- `BuildTools/markdown_links.py`
 - `BuildTools/NativeModuleExceptions.json`
 - `BuildTools/temporary_compat.py`
 - `BuildTools/docs_metadata.py`
@@ -65,15 +73,18 @@ permalink: /Docs/ru/how-to/project/quality-gates.html
 | Область | Поставляется движком | Добавляется проектом |
 |---|---|---|
 | Форматирование нативного кода | `buildtools.py format-source` для `Source/` движка; переопределение бинарного файла через `FO_CLANG_FORMAT`; проверка major-версии clang-format 20 | Собственный `.clang-format`, закреплённый бинарный файл и команда, обходящая каталоги проекта |
-| Форматирование AngelScript | Исправление `T?`, приведений, `Item?[]` и именованных аргументов после clang-format (`fix_fos_nullable_suffix`) | Обёртка, применяющая его к `.fos`-файлам проекта |
+| Форматирование AngelScript | Исправление `T?`, приведений, `Item?[]` и именованных аргументов после clang-format (`fix_fos_nullable_suffix`); `buildtools.py format-content --fos <glob>` применяет его к скриптам проекта | Glob скриптов и `.clang-format` проекта |
+| Форматирование контента | `buildtools.py format-content` для главной конфигурации и файлов прототипов с режимом проверки расхождений `--check` ([Форматирование файлов игрового контента](format-content.md)) | Его запуск; форматтеры только для проекта в обёртке |
 | Проверки компиляции Managed C# | Сгенерированный проект с `Nullable=enable`, `CheckForOverflowUnderflow`, `TreatWarningsAsErrors`, `EnforceCodeStyleInBuild` | Уровни серьёзности в `.editorconfig`, ссылки на анализаторы и пакеты |
-| Анализ покрытия сущностей (Managed) | `FOnline.Analyzers.csproj` с диагностиками `FOSYNC` | Подключение через `ManagedScript.Analyzers` |
+| Managed-анализаторы | `FOnline.Analyzers.csproj` с диагностиками покрытия сущностей `FOSYNC` и [правилами контрактов движка](engine-contract-analyzers.md) `FOENTRY`, `FOVERIFY` и `FOSTATIC` | Подключение через `ManagedScript.Analyzers`; уровни серьёзности; правила проекта в анализаторе проекта |
 | Анализ потокобезопасности нативного кода | `-Werror=thread-safety` в каждой конфигурации Clang, применяется к коду движка и проекта | Аннотирование блокировок проекта; линия сборки на Clang |
 | Предупреждения нативного кода | MSVC `/W4` без `/WX` | `-Werror` или `/WX` для целей, принадлежащих проекту |
 | Компиляция скриптов | Цели `CompileAngelScript` и `CompileManagedScripts` | Запуск для каждой роли и сбой при предупреждениях |
-| Аудиты локальных переменных, политики указателей и безопасности исключений | Только письменные правила | Реализация анализатора, работа с compile database, baseline-файлы, политика CI |
+| Аудиты нативного кода и его безопасности | `native_source_audit.py` (выделение памяти, умные указатели, локальные переменные) и `native_safety_audit.py` (покрытие сущностей, безопасность исключений), каждый с baseline движка ([аудит нативного кода](native-source-audits.md), [аудит безопасности нативного кода](native-safety-audits.md)) | Области, конфигурация и baseline-файлы проекта; compile database и инструменты Clang 20 для аудитов на основе Clang; политика CI |
+| Проверки скриптовых привязок и гигиены AngelScript | `check_script_bindings.py` и `check_angelscript_hygiene.py` с baseline-храповиком по счётчикам ([проверки скриптов](script-and-binding-checks.md)) | Области, конфигурация, baseline-файлы; правила только для проекта в отдельном скрипте |
+| Проверки контента и документации | `check_text_packs.py` ([текстовые пакеты](content-and-diagnostics-tools.md)), `migration_guard.py` ([защита миграций](migration-guard.md)), `markdown_links.py` ([проверка документации](documentation-checks.md)) | Языки и письменности, манифест идентичностей, набор документов и исключения с причинами |
 | Проверки сгенерированного вывода | Соглашение `--check` в генераторах движка; `docs_metadata.py --check` | `--check` для каждого генератора проекта |
-| Проверки раскладки и дат совместимости | `check_native_source_layout.py` и `temporary_compat.py` принимают пути проекта | Решение их запускать |
+| Проверки раскладки, комментариев и дат совместимости | `check_native_source_layout.py` (с `--comments` и baseline комментариев) и `temporary_compat.py` принимают пути проекта | Решение их запускать |
 | Санитайзеры | Типы сборки `San_*` в `Init.cmake` | Presets, которые их выбирают |
 
 ## Единообразное форматирование исходников
@@ -109,9 +120,9 @@ Before: Critter? target;     Item?[] items;     cast<Critter?>(x)     Create(cou
 Raw:    Critter ? target;    Item ? [] items;   cast < Critter ? > (x)   Create(count : 2)
 ```
 
-Никогда не запускайте необработанный clang-format над `.fos`-файлами. Исправление реализовано в `BuildTools/buildtools.py` как `fix_fos_nullable_suffix`. Оно маскирует строковые литералы, символьные литералы и комментарии, восстанавливает пробелы в приведённых выше формах и оставляет текст литералов без изменений. `format_files(clang_format, root, patterns)` в том же модуле оборачивает clang-format, сохраняет BOM и окончания строк, оставляет один завершающий перевод строки, применяет исправление к каждому пути `.fos` и возвращает число изменённых файлов.
+Никогда не запускайте необработанный clang-format над `.fos`-файлами. Исправление реализовано в `BuildTools/buildtools.py` как `fix_fos_nullable_suffix`. Оно маскирует строковые литералы, символьные литералы и комментарии, восстанавливает пробелы в приведённых выше формах и оставляет текст литералов без изменений. `format_files(clang_format, root, patterns)` в том же модуле оборачивает clang-format, удаляет UTF-8 BOM, сохраняет окончания строк LF или CRLF, оставляет один завершающий перевод строки, применяет исправление к каждому пути `.fos` и возвращает число изменённых файлов.
 
-Сам `format-source` до `.fos`-файлов не добирается: в его списке шаблонов нет `*.fos`, а в дереве `Source/` движка таких файлов нет. Поэтому проект вызывает функции напрямую. Собственный тест движка (`BuildTools/tests/test_docs_angelscript_style.py`) точно так же вызывает `buildtools.format_files(..., ["**/*.fos"])`, а другие скрипты BuildTools (`package.py`, `docs_support_matrix.py`) уже импортируют этот модуль. Эти функции являются модульными вспомогательными функциями, а не документированным интерфейсом командной строки, поэтому закрепите ревизию движка, держите обёртку небольшой и покройте её тестом, который форматирует nullable-пример:
+Сам `format-source` до `.fos`-файлов не добирается: в его списке шаблонов нет `*.fos`, а в дереве `Source/` движка таких файлов нет. Маршрут командной строки для скриптов проекта — `buildtools.py format-content --fos <glob>`: он применяет то же исправление к каждому файлу, сохраняет BOM, а не удаляет его, и имеет режим `--check` ([Форматирование файлов игрового контента](format-content.md)). Проект, которому нужна сама обёртка, вызывает функции напрямую. Собственный тест движка (`BuildTools/tests/test_docs_angelscript_style.py`) точно так же вызывает `buildtools.format_files(..., ["**/*.fos"])`, а другие скрипты BuildTools (`package.py`, `docs_support_matrix.py`) уже импортируют этот модуль. Эти функции являются модульными вспомогательными функциями, а не документированным интерфейсом командной строки, поэтому закрепите ревизию движка, держите обёртку небольшой и покройте её тестом, который форматирует nullable-пример:
 
 ```python
 import sys
@@ -158,13 +169,17 @@ endif()
 
 | Анализ | Что предоставляет движок | Что должен предоставить проект |
 |---|---|---|
-| Nullability | Принудительная проверка компилятором и в runtime в обоих backend; Managed-диагностика nullable через сгенерированный проект | Соответствие объявлений событий и удалённых вызовов и другие правила авторинга — анализаторы на стороне проекта; см. [Nullability](../../contributing/coding-contracts/nullability.md) |
+| Nullability | Принудительная проверка компилятором и в runtime в обоих backend; Managed-диагностика nullable через сгенерированный проект; `check_script_bindings.py` сравнивает обработчики событий и удалённых вызовов AngelScript с их объявлениями ([проверки скриптов](script-and-binding-checks.md)) | Запуск проверки на областях проекта; другие правила авторинга; см. [Nullability](../../contributing/coding-contracts/nullability.md) |
 | Покрытие сущностей (Managed) | `FOSYNC001`-`FOSYNC005`, `FOSYNC009`-`FOSYNC011`, `FOSYNC015` в `FOnline.Analyzers.csproj`; `FOSYNC006`, `FOSYNC007` и `FOSYNC012`-`FOSYNC014` выведены из употребления | Добавить ссылку на проект (ниже), задать уровни серьёзности в `.editorconfig`, понизить правила для тестовых исходников отдельной секцией `.editorconfig` по пути |
+| Контракты движка (Managed) | `FOENTRY001`-`FOENTRY003`, `FOVERIFY001`-`FOVERIFY003` и `FOSTATIC001` в том же проекте анализаторов ([анализаторы контрактов движка](engine-contract-analyzers.md)) | Уровни серьёзности, параметры `fonline_entry.*` для атрибутов проекта, приёмочный probe |
+| Покрытие сущностей (нативный код) | `native_safety_audit.py sync-scope` со встроенными правилами движка ([аудит безопасности нативного кода](native-safety-audits.md)) | `--scope` для нативных каталогов проекта, проверенные планировщики и фабрики проекта в конфигурации, baseline с причинами |
 | Потокобезопасность (нативный код) | Макросы `FO_TSA_*` и флаг Clang | Аннотации в блокировках проекта, перечень исключений |
-| Локальные переменные | Правила плюс маркеры `FO_REDUNDANT_CONST_SUPPRESS` и `FO_USE_AFTER_MOVE_SUPPRESS` | Анализатор над `compile_commands.json`; `clang-query` и `clang-tidy` на хосте; урезанная compile database с одной командой на единицу трансляции |
-| Политика указателей | Правила и тесты обёрток | Проверка проекта с точными allowlist на уровне строк; движок такой проверки не поставляет |
-| Безопасность исключений | Словарь классификации и правила вывода | Любой baseline по функциям; движок его не поставляет |
-| Раскладка исходников | `check_native_source_layout.py --root <dir> --source-dir <dir>` | Запуск над `SourceExt` |
+| Выделение памяти | Аудит `allocator` из `native_source_audit.py` ([аудит нативного кода](native-source-audits.md)) | Области, исключения для vendored-кода, baseline проекта |
+| Локальные переменные | Правила, маркеры `FO_REDUNDANT_CONST_SUPPRESS` и `FO_USE_AFTER_MOVE_SUPPRESS` и аудиты `local-variables` и `explicit-local-types` ([аудит нативного кода](native-source-audits.md)) | Compile database, собранная после генерации кода и урезанная до одной команды на единицу трансляции; `clang-query` и `clang-tidy` 20+ на хосте; `--require-tooling` в линии Clang |
+| Политика указателей | Правила, тесты обёрток и аудиты `smart-pointer` и `smart-pointer-ast` с точными строками baseline ([аудит нативного кода](native-source-audits.md)) | Baseline проекта с причиной в каждой строке; ABI-шаблоны и nullable-фабрики проекта в конфигурации |
+| Безопасность исключений | Словарь классификации, правила вывода и `native_safety_audit.py exception-safety` с baseline движка ([аудит безопасности нативного кода](native-safety-audits.md)) | Baseline проекта для его нативных областей, заново выводимый при каждом изменении |
+| Раскладка исходников и комментарии | `check_native_source_layout.py --root <dir> --source-dir <dir>`; `--comments` с baseline комментариев по счётчикам | Запуск над `SourceExt` |
+| Гигиена модулей AngelScript | `check_angelscript_hygiene.py` с baseline-храповиком по счётчикам ([проверки скриптов](script-and-binding-checks.md)) | Конфигурация, включаемые правила и пороги вроде `file-size`, правила только для проекта в отдельном скрипте |
 | Даты временной совместимости | `temporary_compat.py <dirs>` | Передача каталогов проекта |
 | Санитайзеры | Конфигурации `San_Address`, `San_Memory`, `San_Undefined`, `San_Thread` | Presets и линия на Linux; сценарии `validate.sh unit-tests-san-*` запускают собственный проект валидации движка |
 
@@ -202,10 +217,18 @@ Baseline фиксирует известные нарушения; файл ис
 Запускайте проверки в порядке, в котором каждая производит то, что потребляет следующая:
 
 1. Generate: заново сгенерируйте выводы, принадлежащие проекту, затем переконфигурируйте, если менялись входы CMake.
-2. Format: запустите форматтеры проекта, затем `git diff --exit-code` в режиме проверки.
-3. Analyze: статические проверки, не требующие запекания (раскладка, анализаторы, `temporary_compat.py`, аудиты проекта).
-4. Validate: скомпилируйте скрипты для каждой роли и выполните запекание плюс валидаторы контента.
-5. Test: нативные модульные тесты, затем тесты скриптов и уровня процессов (см. [Добавление и запуск тестов в игровом проекте](project-tests.md)).
+2. Format: `buildtools.py format-content --check` (с `--fos` для AngelScript) и форматтеры проекта в режиме проверки, либо запустите их и затем `git diff --exit-code` ([Форматирование файлов игрового контента](format-content.md)).
+3. Analyze: статические проверки, не требующие запекания, в таком порядке:
+   1. `check_native_source_layout.py` и `temporary_compat.py` на каталогах проекта;
+   2. `native_source_audit.py allocator` и `smart-pointer` ([аудит нативного кода](native-source-audits.md));
+   3. `native_safety_audit.py sync-scope` и `exception-safety` ([аудит безопасности нативного кода](native-safety-audits.md));
+   4. `check_script_bindings.py` и `check_angelscript_hygiene.py` ([проверки скриптов](script-and-binding-checks.md));
+   5. `check_text_packs.py` ([текстовые пакеты](content-and-diagnostics-tools.md#проверка-текстовых-пакетов-до-бейкинга)) и `migration_guard.py --check` ([защита миграций](migration-guard.md));
+   6. `markdown_links.py` по Markdown проекта ([проверка документации](documentation-checks.md));
+   7. аудиты только для проекта;
+   8. после configure и генерации кода, в линии с Clang 20: аудиты `local-variables`, `explicit-local-types` и `smart-pointer-ast` с `--require-tooling`.
+4. Validate: скомпилируйте скрипты для каждой роли с включёнными Managed-[анализаторами контрактов движка](engine-contract-analyzers.md) и выполните запекание плюс валидаторы контента.
+5. Test: нативные модульные тесты, затем тесты скриптов через [обвязку скриптовых тестов](script-test-harness.md) и тесты уровня процессов (см. [Добавление и запуск тестов в игровом проекте](project-tests.md)).
 
 Порядок сгенерированных данных и последовательность configure/compile/bake описаны в разделе [сгенерированные данные](../build/generated-content.md). Не запускайте запекание одновременно с потребителем его результата.
 
@@ -217,6 +240,9 @@ Baseline фиксирует известные нарушения; файл ис
 | Проверка расхождений форматтера | Нет | Да | Да |
 | Генератор `--check` | Да, если быстрый | Да | Да |
 | Раскладка, `temporary_compat.py` | Да | Да | Да |
+| Текстовые аудиты нативного кода, аудиты безопасности нативного кода, проверки скриптовых привязок и гигиены | Да, если менялись нативные или скриптовые файлы | Да | Да |
+| Проверка текстовых пакетов, защита миграций, проверка ссылок документации | Да, если быстрые | Да | Да |
+| Аудиты нативного кода на основе Clang | Нет | По требованию | Да, в одной линии Clang с `--require-tooling` |
 | Компиляция скриптов, все роли | Нет | Да | Да |
 | Запекание и валидация контента | Нет | Да | Да |
 | Нативные модульные тесты | Нет | Да | Да |
@@ -233,4 +259,5 @@ Baseline фиксирует известные нарушения; файл ис
 - Нативные цели проекта собираются с предупреждениями как ошибками на MSVC и на одной линии Clang.
 - У каждого генератора есть режим `--check`, подключённый до потребителя.
 - У каждой строки baseline и исключений есть причина; проверка падает на устаревших строках.
+- Аудиты и проверки движка запускаются с областями, конфигурацией и baseline-файлами проекта через тонкие обёртки, и в проекте не осталось копий проверок движка.
 - Агрегирующая задача выполняет generate, format, analyze, validate и test в этом порядке, и CI повторяет её.

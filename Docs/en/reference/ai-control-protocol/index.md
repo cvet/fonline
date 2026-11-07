@@ -25,7 +25,7 @@ This reference defines the Engine-owned, project-neutral envelope for opt-in AI 
 | Maximum JSON payload | <code>1048576</code> |
 | Stable entries | 50 |
 | Source manifest | [BuildTools/AiControlProtocol.json](https://github.com/cvet/fonline/blob/master/BuildTools/AiControlProtocol.json) |
-| Contract digest | <code>cea32aa5325a0f7601c93c0b40d599865eac7b5471093ec61ade8eb4baf070dd</code> |
+| Contract digest | <code>4b7e3c6df0e4822e9eea624d1ad68614a5761b638f34c68e04fb6270d7abd61e</code> |
 
 | Reference | Purpose |
 | --- | --- |

@@ -191,6 +191,8 @@ Creates executable and shared-library applications from `Source/Applications/*.c
 
 Examples of entry points wired here include client, client runtime library, client headless variants, server variants, mapper, animation and particle viewers, baker, AngelScript compiler, Managed script baker, and testing app depending on options. There is no generic Editor application or validation target.
 
+When `<FO_DEV_NAME>_BakerLib` is built, the stage also copies it next to every client and server executable that prebakes resources on startup; see [Embedding](../../how-to/build/embedding-project.md#baker-library-next-to-prebaking-applications).
+
 Effekseer Editor is intentionally absent from this stage and from the
 application target graph. Its standalone `BuildTools/EffekseerEditor/build.ps1`
 entry point configures and builds upstream sources independently of an

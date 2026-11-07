@@ -55,7 +55,7 @@
       "tooling": 1
     },
     "stage_count": 10,
-    "helper_count": 7
+    "helper_count": 9
   },
   "options": [
     {
@@ -827,7 +827,7 @@
         "Post"
       ],
       "source": "BuildTools/cmake/stages/Applications.cmake",
-      "description": "Create enabled client, server, mapper, compiler, baker, viewer, and test applications.",
+      "description": "Create enabled client, server, mapper, compiler, baker, viewer, and test applications. When <DEV>_BakerLib is built, copy it next to every client and server executable whose entry point prebakes resources on startup.",
       "id": "cmake.stage.Applications"
     },
     {
@@ -923,6 +923,22 @@
       "source": "BuildTools/cmake/stages/ScriptsAndBaking.cmake",
       "description": "Create a project baking target with an optional subconfig, force mode, and build-hash update after SetupScriptsAndBaking.",
       "id": "cmake.helper.AddBakingTarget"
+    },
+    {
+      "name": "CopyTargetRuntimeToTarget",
+      "kind": "function",
+      "signature": "CopyTargetRuntimeToTarget(<consumer-target> <producer-target>)",
+      "source": "BuildTools/cmake/helpers/Build.cmake",
+      "description": "Build the producer before the consumer and copy the producer binary next to the consumer binary after each consumer build. Skips silently when either target is missing; requesting the same pair twice aborts configure. Call it after BuildApplications, normally from a Finalize Pre hook; the Applications stage already owns the <DEV>_BakerLib copies.",
+      "id": "cmake.helper.CopyTargetRuntimeToTarget"
+    },
+    {
+      "name": "CopyRuntimeToTarget",
+      "kind": "function",
+      "signature": "CopyRuntimeToTarget(<target> <runtime-file>)",
+      "source": "BuildTools/cmake/helpers/Build.cmake",
+      "description": "Copy an existing runtime file next to the target binary after each target build. Skips silently when the path is empty, the file is absent at configure time, or the target is missing. Call it after BuildApplications, normally from a Finalize Pre hook.",
+      "id": "cmake.helper.CopyRuntimeToTarget"
     },
     {
       "name": "TemporaryCompat",

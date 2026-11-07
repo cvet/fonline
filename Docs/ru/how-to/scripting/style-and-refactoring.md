@@ -110,7 +110,7 @@ Cross-namespace вызовы должны называть владельца. �
 
 ### Поддерживаемая команда и версия
 
-После переноса high-level CoreScripts движок не владеет одним универсальным `.clang-format` layout проектного AngelScript. Проект обязан закрепить свой layout и версию clang-format. Переиспользуемый formatter wrapper в `BuildTools/buildtools.py` требует clang-format 20 и сохраняет BOM и line-ending convention файла. Его команда `format-source` форматирует файлы `.cpp`, `.h` и `.cs` внутри Engine `Source`, где нет файлов `.fos`. Для `.fos` проект вызывает импортируемую функцию `format_files(clang_format, root, patterns)` с шаблоном `*.fos`; она применяет `fix_fos_nullable_suffix` к каждому файлу `.fos` и исправляет специфичные для FOnline пробелы nullable suffix, cast, array и named arguments, не меняя literals и comments.
+После переноса high-level CoreScripts движок не владеет одним универсальным `.clang-format` layout проектного AngelScript. Проект обязан закрепить свой layout и версию clang-format. Переиспользуемый formatter wrapper в `BuildTools/buildtools.py` требует clang-format 20, удаляет UTF-8 BOM и сохраняет выбор LF или CRLF файла. Его команда `format-source` форматирует файлы `.cpp`, `.h` и `.cs` внутри Engine `Source`, где нет файлов `.fos`. Для `.fos` проект вызывает импортируемую функцию `format_files(clang_format, root, patterns)` с шаблоном `*.fos`; она применяет `fix_fos_nullable_suffix` к каждому файлу `.fos` и исправляет специфичные для FOnline пробелы nullable suffix, cast, array и named arguments, не меняя literals и comments.
 
 Из репозитория движка выполните:
 
@@ -390,6 +390,8 @@ CI движка запускает `buildtools.py format-source` и `git diff --
 - formatter coverage вне Engine `Source`;
 - временные namespace exceptions и план их удаления;
 - пороги file-size, commented-code и другие quality ratchets.
+
+Пороги являются политикой проекта, но сами проверки — инструменты движка: `BuildTools/check_angelscript_hygiene.py` сообщает о несовпадении namespace и файла, `#include`, проверках существования side macros, несбалансированных блоках препроцессора, неверно размещённых sort directives, окончаниях файлов и, если включено, о commented-out code и размере файла, сверяясь с baseline-храповиком по счётчикам; `BuildTools/check_script_bindings.py` сравнивает nullability обработчиков с объявлениями событий и remote calls. См. [Проверка скриптовых привязок и гигиены AngelScript](../project/script-and-binding-checks.md).
 
 Узкие test-only исключения globals и project formatter Last Frontier являются полезным текущим свидетельством. Широкий production mutable-global allowlist и ongoing refactoring log TLA являются свидетельством миграции, а не рекомендацией движка. Ни один проект не является нормативной зависимостью этого руководства.
 

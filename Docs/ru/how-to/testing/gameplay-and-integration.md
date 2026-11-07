@@ -32,11 +32,14 @@ Native Catch2 targets, sanitizers и coverage описаны в
 
 Используйте boundary-based test selection и запускайте проверки narrow-first,
 чтобы первый отказ давал focused failure location. Для process smoke объявляйте
-`ready_marker`, упорядоченные `required_markers`, `forbidden_markers` и единый
-deadline; всегда сохраняйте command lines, logs, причины завершения и результаты
-cleanup. Engine владеет этим контрактом runner. Встраивающий проект владеет
+`ready_marker`, `required_markers` (каждый должен появиться в выводе процесса;
+их порядок не проверяется), `forbidden_markers` и единый deadline; всегда
+сохраняйте command lines, logs, причины завершения и результаты cleanup.
+Engine владеет этим контрактом runner. Встраивающий проект владеет
 своими script test registration API, каталогом fixtures, gameplay assertions,
-acceptance thresholds, accounts, databases, scenes и release lanes.
+acceptance thresholds, accounts, databases, scenes и release lanes;
+[Шаблон обвязки скриптовых тестов](../project/script-test-harness.md) даёт ему
+копируемую обвязку для обоих скриптовых backends, которая отчитывается через этот runner.
 
 ## Выберите минимальную владеющую границу
 

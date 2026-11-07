@@ -499,6 +499,300 @@ options:
   --append              Request project queue append semantics.
 ```
 
+<a id="entry-helper-cli-format-content-55dd5b4af8"></a>
+## Content formatter
+
+Format .fomain, prototype and optional AngelScript files in the Engine layout and refuse any rewrite that would change what the Engine reads.
+
+- Stable ID: `helper-cli.format-content`
+- Program: `format_content.py`
+- Owner: `tooling`
+- Audience: `game-developer`, `embedding-project-build-system`, `ci-maintainer`
+- Invocation owner: BuildTools/buildtools.py format-content, embedding-project format tasks and CI drift checks
+- Parser source: [BuildTools/format_content.py](https://github.com/cvet/fonline/blob/master/BuildTools/format_content.py)
+
+### Top-level arguments
+
+| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| <a id="entry-helper-cli-format-content-argument-check-8b8c3a568e"></a><code>helper-cli.format-content.argument.check</code> | <code>--check</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | report files that need formatting and exit with 1 without writing |
+| <a id="entry-helper-cli-format-content-argument-project-root-6e4fec9931"></a><code>helper-cli.format-content.argument.project_root</code> | <code>--project-root</code> | <code>option</code> | no | <code>1</code> | - | - | project root for relative paths and the .fomain lookup (default: FO_PROJECT_ROOT, then the current directory) |
+| <a id="entry-helper-cli-format-content-argument-fomain-a606ea4773"></a><code>helper-cli.format-content.argument.fomain</code> | <code>--fomain</code> | <code>option</code> | no | <code>1</code> | - | - | main config path (default: the only *.fomain file in the project root) |
+| <a id="entry-helper-cli-format-content-argument-skip-fomain-73a5e4f85a"></a><code>helper-cli.format-content.argument.skip_fomain</code> | <code>--skip-fomain</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | do not format the main config |
+| <a id="entry-helper-cli-format-content-argument-skip-protos-f2852331c7"></a><code>helper-cli.format-content.argument.skip_protos</code> | <code>--skip-protos</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | do not format prototype files |
+| <a id="entry-helper-cli-format-content-argument-proto-path-b8908326cc"></a><code>helper-cli.format-content.argument.proto_path</code> | <code>--proto-path</code> | <code>option</code> | no | <code>1</code> | - | - | format only these prototype files or directories instead of the Proto resource packs (repeatable) |
+| <a id="entry-helper-cli-format-content-argument-metadata-5d8267408d"></a><code>helper-cli.format-content.argument.metadata</code> | <code>--metadata</code> | <code>option</code> | no | <code>1</code> | - | - | read property and setting order from these files, in this order, instead of the Metadata resource packs (repeatable) |
+| <a id="entry-helper-cli-format-content-argument-fos-509bfd7d26"></a><code>helper-cli.format-content.argument.fos</code> | <code>--fos</code> | <code>option</code> | no | <code>1</code> | - | - | also format AngelScript files matching this glob relative to the project root with clang-format 20 (repeatable) |
+
+### Exact top-level `--help` output
+
+```text
+usage: format_content.py [-h] [--check] [--project-root PROJECT_ROOT] [--fomain FOMAIN] [--skip-fomain] [--skip-protos] [--proto-path PATH] [--metadata PATH] [--fos PATTERN]
+
+Format .fomain, prototype and optional AngelScript files without changing what the Engine reads from them.
+
+options:
+  -h, --help            show this help message and exit
+  --check               report files that need formatting and exit with 1 without writing
+  --project-root PROJECT_ROOT
+                        project root for relative paths and the .fomain lookup (default: FO_PROJECT_ROOT, then the current directory)
+  --fomain FOMAIN       main config path (default: the only *.fomain file in the project root)
+  --skip-fomain         do not format the main config
+  --skip-protos         do not format prototype files
+  --proto-path PATH     format only these prototype files or directories instead of the Proto resource packs (repeatable)
+  --metadata PATH       read property and setting order from these files, in this order, instead of the Metadata resource packs (repeatable)
+  --fos PATTERN         also format AngelScript files matching this glob relative to the project root with clang-format 20 (repeatable)
+```
+
+<a id="entry-helper-cli-fo-formats-9aa60fdd1b"></a>
+## Engine content format reader
+
+Print effective configuration, resource-pack inputs, inherited prototype values and text-pack entries as the Engine parsers read them.
+
+- Stable ID: `helper-cli.fo-formats`
+- Program: `fo_formats.py`
+- Owner: `tooling`
+- Audience: `game-developer`, `tool-developer`, `ci-maintainer`
+- Invocation owner: embedding-project content tools and direct developer diagnostics
+- Parser source: [BuildTools/fo_formats.py](https://github.com/cvet/fonline/blob/master/BuildTools/fo_formats.py)
+
+### Top-level arguments
+
+No arguments at this level.
+
+### Exact top-level `--help` output
+
+```text
+usage: fo_formats.py [-h] {config,protos,text} ...
+
+Print Engine content formats as the Engine reads them, as JSON.
+
+positional arguments:
+  {config,protos,text}
+    config              Effective settings, resource packs and sub-configs of a main config.
+    protos              Effective prototype values of every Proto baker pack.
+    text                Entries of one .fotxt text pack file.
+
+options:
+  -h, --help            show this help message and exit
+```
+
+<a id="entry-helper-cli-fo-formats-command-config-a240801186"></a>
+### `config`
+
+Effective settings, resource packs and sub-configs of a main config.
+
+Stable ID: `helper-cli.fo-formats.command.config`
+
+```text
+usage: fo_formats.py config [-h] [--sub-config SUB_CONFIG] [--files] main_config
+```
+
+| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| <a id="entry-helper-cli-fo-formats-command-config-argument-main-config-f5f3e4257e"></a><code>helper-cli.fo-formats.command.config.argument.main_config</code> | <code>main_config</code> | <code>positional</code> | yes | <code>1</code> | - | - | Main configuration file (.fomain). |
+| <a id="entry-helper-cli-fo-formats-command-config-argument-sub-config-8c714c49f3"></a><code>helper-cli.fo-formats.command.config.argument.sub_config</code> | <code>--sub-config</code> | <code>option</code> | no | <code>1</code> | - | - | Apply this [SubConfig] section after the main settings. |
+| <a id="entry-helper-cli-fo-formats-command-config-argument-files-2e43f74a8d"></a><code>helper-cli.fo-formats.command.config.argument.files</code> | <code>--files</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | Also list the input files of every resource pack. |
+
+#### Exact `--help` output
+
+```text
+usage: fo_formats.py config [-h] [--sub-config SUB_CONFIG] [--files] main_config
+
+positional arguments:
+  main_config           Main configuration file (.fomain).
+
+options:
+  -h, --help            show this help message and exit
+  --sub-config SUB_CONFIG
+                        Apply this [SubConfig] section after the main settings.
+  --files               Also list the input files of every resource pack.
+```
+
+<a id="entry-helper-cli-fo-formats-command-protos-b4ecbf6062"></a>
+### `protos`
+
+Effective prototype values of every Proto baker pack.
+
+Stable ID: `helper-cli.fo-formats.command.protos`
+
+```text
+usage: fo_formats.py protos [-h] [--sub-config SUB_CONFIG] [--type TYPE_NAME] [--name NAME] main_config
+```
+
+| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| <a id="entry-helper-cli-fo-formats-command-protos-argument-main-config-a9280d2130"></a><code>helper-cli.fo-formats.command.protos.argument.main_config</code> | <code>main_config</code> | <code>positional</code> | yes | <code>1</code> | - | - | Main configuration file (.fomain). |
+| <a id="entry-helper-cli-fo-formats-command-protos-argument-sub-config-717ae55730"></a><code>helper-cli.fo-formats.command.protos.argument.sub_config</code> | <code>--sub-config</code> | <code>option</code> | no | <code>1</code> | - | - | Apply this [SubConfig] section after the main settings. |
+| <a id="entry-helper-cli-fo-formats-command-protos-argument-type-name-f7ba8ff641"></a><code>helper-cli.fo-formats.command.protos.argument.type_name</code> | <code>--type</code> | <code>option</code> | no | <code>1</code> | - | - | Print only prototypes of this type. |
+| <a id="entry-helper-cli-fo-formats-command-protos-argument-name-6b38e320b2"></a><code>helper-cli.fo-formats.command.protos.argument.name</code> | <code>--name</code> | <code>option</code> | no | <code>1</code> | - | - | Print only the prototype with this migrated name. |
+
+#### Exact `--help` output
+
+```text
+usage: fo_formats.py protos [-h] [--sub-config SUB_CONFIG] [--type TYPE_NAME] [--name NAME] main_config
+
+positional arguments:
+  main_config           Main configuration file (.fomain).
+
+options:
+  -h, --help            show this help message and exit
+  --sub-config SUB_CONFIG
+                        Apply this [SubConfig] section after the main settings.
+  --type TYPE_NAME      Print only prototypes of this type.
+  --name NAME           Print only the prototype with this migrated name.
+```
+
+<a id="entry-helper-cli-fo-formats-command-text-0daf766e0e"></a>
+### `text`
+
+Entries of one .fotxt text pack file.
+
+Stable ID: `helper-cli.fo-formats.command.text`
+
+```text
+usage: fo_formats.py text [-h] path
+```
+
+| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| <a id="entry-helper-cli-fo-formats-command-text-argument-path-5eefdb030f"></a><code>helper-cli.fo-formats.command.text.argument.path</code> | <code>path</code> | <code>positional</code> | yes | <code>1</code> | - | - | Text pack file named &lt;TextPack&gt;.&lt;Language&gt;.fotxt. |
+
+#### Exact `--help` output
+
+```text
+usage: fo_formats.py text [-h] path
+
+positional arguments:
+  path        Text pack file named <TextPack>.<Language>.fotxt.
+
+options:
+  -h, --help  show this help message and exit
+```
+
+<a id="entry-helper-cli-migration-guard-3e5c9b3e72"></a>
+## Identity migration guard
+
+Require a MigrationRule for every removed or renamed prototype, property and enum value and refuse reuse of retired identifiers against a committed manifest.
+
+- Stable ID: `helper-cli.migration-guard`
+- Program: `migration_guard.py`
+- Owner: `quality`
+- Audience: `game-developer`, `embedding-project-build-system`, `ci-maintainer`
+- Invocation owner: embedding-project local validation tasks and CI content gates
+- Parser source: [BuildTools/migration_guard.py](https://github.com/cvet/fonline/blob/master/BuildTools/migration_guard.py)
+
+### Top-level arguments
+
+| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| <a id="entry-helper-cli-migration-guard-argument-check-208ac0af24"></a><code>helper-cli.migration-guard.argument.check</code> | <code>--check</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | Compare the tree with the manifest; exit 1 on any violation. |
+| <a id="entry-helper-cli-migration-guard-argument-update-manifest-21506ae2f8"></a><code>helper-cli.migration-guard.argument.update_manifest</code> | <code>--update-manifest</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | Rewrite the manifest from the tree; refuses while a rule is missing or an identifier is reused. |
+| <a id="entry-helper-cli-migration-guard-argument-root-a5a58eaaa8"></a><code>helper-cli.migration-guard.argument.root</code> | <code>--root</code> | <code>option</code> | no | <code>1</code> | - | <code>.</code> | Project root; relative paths resolve against it (default: current directory). |
+| <a id="entry-helper-cli-migration-guard-argument-config-99037a53c4"></a><code>helper-cli.migration-guard.argument.config</code> | <code>--config</code> | <code>option</code> | no | <code>1</code> | - | - | JSON guard configuration, relative to the root. |
+| <a id="entry-helper-cli-migration-guard-argument-main-config-419b231c42"></a><code>helper-cli.migration-guard.argument.main_config</code> | <code>--main-config</code> | <code>option</code> | no | <code>1</code> | - | - | Main configuration file (.fomain) whose packs define the scope. |
+| <a id="entry-helper-cli-migration-guard-argument-sub-config-1eb8560b24"></a><code>helper-cli.migration-guard.argument.sub_config</code> | <code>--sub-config</code> | <code>option</code> | no | <code>1</code> | - | - | Apply this [SubConfig] of the main config before reading resource packs. |
+| <a id="entry-helper-cli-migration-guard-argument-manifest-e4892f0674"></a><code>helper-cli.migration-guard.argument.manifest</code> | <code>--manifest</code> | <code>option</code> | no | <code>1</code> | - | - | Manifest file to check or rewrite. |
+| <a id="entry-helper-cli-migration-guard-argument-content-dir-e52d6014db"></a><code>helper-cli.migration-guard.argument.content_dir</code> | <code>--content-dir</code> | <code>option</code> | no | <code>1</code> | - | - | Prototype directory; replaces the Proto packs of the main config. |
+| <a id="entry-helper-cli-migration-guard-argument-proto-extension-df65aff360"></a><code>helper-cli.migration-guard.argument.proto_extension</code> | <code>--proto-extension</code> | <code>option</code> | no | <code>1</code> | - | - | Prototype file extension used with --content-dir (default: Baking.ProtoFileExtensions). |
+| <a id="entry-helper-cli-migration-guard-argument-script-dir-28433b02c0"></a><code>helper-cli.migration-guard.argument.script_dir</code> | <code>--script-dir</code> | <code>option</code> | no | <code>1</code> | - | - | Script source directory; replaces the Metadata packs of the main config. |
+| <a id="entry-helper-cli-migration-guard-argument-native-source-86584a00f7"></a><code>helper-cli.migration-guard.argument.native_source</code> | <code>--native-source</code> | <code>option</code> | no | <code>1</code> | - | - | Root-relative glob of native sources with property and enum declarations. |
+
+### Exact top-level `--help` output
+
+```text
+usage: migration_guard.py [-h] (--check | --update-manifest) [--root ROOT] [--config CONFIG] [--main-config MAIN_CONFIG] [--sub-config SUB_CONFIG] [--manifest MANIFEST] [--content-dir CONTENT_DIR] [--proto-extension PROTO_EXTENSION]
+                          [--script-dir SCRIPT_DIR] [--native-source NATIVE_SOURCE]
+
+Require a MigrationRule for every removed or renamed prototype, property and enum value, and refuse reuse of a retired identifier, against a committed manifest.
+
+options:
+  -h, --help            show this help message and exit
+  --check               Compare the tree with the manifest; exit 1 on any violation.
+  --update-manifest     Rewrite the manifest from the tree; refuses while a rule is missing or an identifier is reused.
+  --root ROOT           Project root; relative paths resolve against it (default: current directory).
+  --config CONFIG       JSON guard configuration, relative to the root.
+  --main-config MAIN_CONFIG
+                        Main configuration file (.fomain) whose packs define the scope.
+  --sub-config SUB_CONFIG
+                        Apply this [SubConfig] of the main config before reading resource packs.
+  --manifest MANIFEST   Manifest file to check or rewrite.
+  --content-dir CONTENT_DIR
+                        Prototype directory; replaces the Proto packs of the main config.
+  --proto-extension PROTO_EXTENSION
+                        Prototype file extension used with --content-dir (default: Baking.ProtoFileExtensions).
+  --script-dir SCRIPT_DIR
+                        Script source directory; replaces the Metadata packs of the main config.
+  --native-source NATIVE_SOURCE
+                        Root-relative glob of native sources with property and enum declarations.
+```
+
+<a id="entry-helper-cli-ai-control-mcp-f5daba9e92"></a>
+## AiControl MCP adapter
+
+Serve an AiControl bridge to an MCP client over stdio with generic protocol, endpoint, readiness, and owned-process tools plus project-registered tools; a development tool, never shipped.
+
+- Stable ID: `helper-cli.ai-control-mcp`
+- Program: `ai_control_mcp`
+- Owner: `tooling`
+- Audience: `game-developer`, `tool-developer`, `ci-maintainer`
+- Invocation owner: embedding-project MCP client configurations, project tool modules, and AI playtest runners
+- Parser source: [BuildTools/ai_control_mcp/cli.py](https://github.com/cvet/fonline/blob/master/BuildTools/ai_control_mcp/cli.py)
+
+### Top-level arguments
+
+| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| <a id="entry-helper-cli-ai-control-mcp-argument-host-7b34651295"></a><code>helper-cli.ai-control-mcp.argument.host</code> | <code>--host</code> | <code>option</code> | no | <code>1</code> | - | <code>127.0.0.1</code> | Default bridge host. |
+| <a id="entry-helper-cli-ai-control-mcp-argument-port-abe34ef593"></a><code>helper-cli.ai-control-mcp.argument.port</code> | <code>--port</code> | <code>option</code> | no | <code>1</code> | - | <code>43011</code> | Default bridge port and base port for launches. |
+| <a id="entry-helper-cli-ai-control-mcp-argument-timeout-fb4db925fb"></a><code>helper-cli.ai-control-mcp.argument.timeout</code> | <code>--timeout</code> | <code>option</code> | no | <code>1</code> | - | <code>5.0</code> | Bridge socket timeout in seconds. |
+| <a id="entry-helper-cli-ai-control-mcp-argument-token-env-860365e381"></a><code>helper-cli.ai-control-mcp.argument.token_env</code> | <code>--token-env</code> | <code>option</code> | no | <code>1</code> | - | <code>FONLINE_AI_TOKEN</code> | Environment variable containing the shared bridge token. |
+| <a id="entry-helper-cli-ai-control-mcp-argument-allow-remote-198670fb65"></a><code>helper-cli.ai-control-mcp.argument.allow_remote</code> | <code>--allow-remote</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | Permit non-loopback bridges; they also require a token. |
+| <a id="entry-helper-cli-ai-control-mcp-argument-project-root-7c11b8ad5e"></a><code>helper-cli.ai-control-mcp.argument.project_root</code> | <code>--project-root</code> | <code>option</code> | no | <code>1</code> | - | <code>.</code> | Root for launch paths, binaries and logs. |
+| <a id="entry-helper-cli-ai-control-mcp-argument-project-module-9c91958182"></a><code>helper-cli.ai-control-mcp.argument.project_module</code> | <code>--project-module</code> | <code>option</code> | no | <code>1</code> | - | - | Dotted module name or .py file whose register(registry) adds project tools; repeatable. |
+| <a id="entry-helper-cli-ai-control-mcp-argument-module-path-88a2b91f23"></a><code>helper-cli.ai-control-mcp.argument.module_path</code> | <code>--module-path</code> | <code>option</code> | no | <code>1</code> | - | - | Directory added to the import path for dotted project modules. |
+| <a id="entry-helper-cli-ai-control-mcp-argument-launch-profile-651c076ad8"></a><code>helper-cli.ai-control-mcp.argument.launch_profile</code> | <code>--launch-profile</code> | <code>option</code> | no | <code>1</code> | - | - | JSON launch profile; overrides a profile set by a project module. |
+| <a id="entry-helper-cli-ai-control-mcp-argument-tool-prefix-81f493735e"></a><code>helper-cli.ai-control-mcp.argument.tool_prefix</code> | <code>--tool-prefix</code> | <code>option</code> | no | <code>1</code> | - | <code>fo_</code> | Prefix of the core tool names. |
+| <a id="entry-helper-cli-ai-control-mcp-argument-server-name-fc5871ec1c"></a><code>helper-cli.ai-control-mcp.argument.server_name</code> | <code>--server-name</code> | <code>option</code> | no | <code>1</code> | - | <code>fonline-ai-control</code> | MCP serverInfo name. |
+| <a id="entry-helper-cli-ai-control-mcp-argument-keep-processes-on-exit-f35bb54895"></a><code>helper-cli.ai-control-mcp.argument.keep_processes_on_exit</code> | <code>--keep-processes-on-exit</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | Leave launched processes running after the adapter exits; their trees must then be stopped manually. |
+| <a id="entry-helper-cli-ai-control-mcp-argument-max-message-bytes-54d556734f"></a><code>helper-cli.ai-control-mcp.argument.max_message_bytes</code> | <code>--max-message-bytes</code> | <code>option</code> | no | <code>1</code> | - | <code>4194304</code> | Largest accepted MCP message line. |
+| <a id="entry-helper-cli-ai-control-mcp-argument-list-tools-734a9df574"></a><code>helper-cli.ai-control-mcp.argument.list_tools</code> | <code>--list-tools</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | Print the registered tool names and descriptions as JSON, then exit. |
+
+### Exact top-level `--help` output
+
+```text
+usage: ai_control_mcp [-h] [--host HOST] [--port PORT] [--timeout TIMEOUT] [--token-env TOKEN_ENV] [--allow-remote] [--project-root PROJECT_ROOT] [--project-module PROJECT_MODULE] [--module-path MODULE_PATH]
+                      [--launch-profile LAUNCH_PROFILE] [--tool-prefix TOOL_PREFIX] [--server-name SERVER_NAME] [--keep-processes-on-exit] [--max-message-bytes MAX_MESSAGE_BYTES] [--list-tools]
+
+Serve an AiControl bridge to an MCP client over stdio; a development tool, never shipped.
+
+options:
+  -h, --help            show this help message and exit
+  --host HOST           Default bridge host.
+  --port PORT           Default bridge port and base port for launches.
+  --timeout TIMEOUT     Bridge socket timeout in seconds.
+  --token-env TOKEN_ENV
+                        Environment variable containing the shared bridge token.
+  --allow-remote        Permit non-loopback bridges; they also require a token.
+  --project-root PROJECT_ROOT
+                        Root for launch paths, binaries and logs.
+  --project-module PROJECT_MODULE
+                        Dotted module name or .py file whose register(registry) adds project tools; repeatable.
+  --module-path MODULE_PATH
+                        Directory added to the import path for dotted project modules.
+  --launch-profile LAUNCH_PROFILE
+                        JSON launch profile; overrides a profile set by a project module.
+  --tool-prefix TOOL_PREFIX
+                        Prefix of the core tool names.
+  --server-name SERVER_NAME
+                        MCP serverInfo name.
+  --keep-processes-on-exit
+                        Leave launched processes running after the adapter exits; their trees must then be stopped manually.
+  --max-message-bytes MAX_MESSAGE_BYTES
+                        Largest accepted MCP message line.
+  --list-tools          Print the registered tool names and descriptions as JSON, then exit.
+```
+
 <a id="entry-helper-cli-windows7-import-check-a0c7e4cb59"></a>
 ## Windows 7 import validation
 
@@ -532,6 +826,603 @@ options:
   -h, --help            show this help message and exit
   --require-large-address-aware
                         Require the large-address flag on checked executables
+```
+
+<a id="entry-helper-cli-markdown-links-dd3ef679c3"></a>
+## Markdown link check
+
+Check local Markdown links, GitHub-style heading anchors, UTF-8, fenced-code balance, and optional single-H1 structure under one repository root.
+
+- Stable ID: `helper-cli.markdown-links`
+- Program: `markdown_links.py`
+- Owner: `quality`
+- Audience: `game-developer`, `engine-contributor`, `embedding-project-build-system`, `ci-maintainer`
+- Invocation owner: embedding-project documentation wrappers, local tasks, and CI documentation jobs
+- Parser source: [BuildTools/markdown_links.py](https://github.com/cvet/fonline/blob/master/BuildTools/markdown_links.py)
+
+### Top-level arguments
+
+| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| <a id="entry-helper-cli-markdown-links-argument-root-186c609292"></a><code>helper-cli.markdown-links.argument.root</code> | <code>--root</code> | <code>option</code> | no | <code>1</code> | - | <code>.</code> | repository root that bounds link targets (default: current directory) |
+| <a id="entry-helper-cli-markdown-links-argument-include-b34d770aa2"></a><code>helper-cli.markdown-links.argument.include</code> | <code>--include</code> | <code>option</code> | no | <code>1</code> | - | - | root-relative document glob; repeatable (default: **/*.md and **/*.markdown) |
+| <a id="entry-helper-cli-markdown-links-argument-exclude-386dea20e1"></a><code>helper-cli.markdown-links.argument.exclude</code> | <code>--exclude</code> | <code>option</code> | no | <code>1</code> | - | - | root-relative file or directory glob removed from the document set; repeatable |
+| <a id="entry-helper-cli-markdown-links-argument-target-root-fcbed4592b"></a><code>helper-cli.markdown-links.argument.target_root</code> | <code>--target-root</code> | <code>option</code> | no | <code>1</code> | - | - | extra directory, relative to --root, that links may point into without its documents being checked; repeatable |
+| <a id="entry-helper-cli-markdown-links-argument-skip-target-04617bb757"></a><code>helper-cli.markdown-links.argument.skip_target</code> | <code>--skip-target</code> | <code>option</code> | no | <code>1</code> | - | - | root-relative glob of link targets that are not verified, such as a submodule that is not checked out; repeatable |
+| <a id="entry-helper-cli-markdown-links-argument-allow-line-fragments-ca419e631a"></a><code>helper-cli.markdown-links.argument.allow_line_fragments</code> | <code>--allow-line-fragments</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | accept #L10 and #L10-L20 line fragments on Markdown targets |
+| <a id="entry-helper-cli-markdown-links-argument-require-reference-definitions-9d60c1c23a"></a><code>helper-cli.markdown-links.argument.require_reference_definitions</code> | <code>--require-reference-definitions</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | report [text][label] links whose label has no definition in the same document |
+| <a id="entry-helper-cli-markdown-links-argument-require-single-h1-5cf2bb0ab9"></a><code>helper-cli.markdown-links.argument.require_single_h1</code> | <code>--require-single-h1</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | report documents that do not contain exactly one H1 heading |
+| <a id="entry-helper-cli-markdown-links-argument-h1-exempt-a1a2bb6f20"></a><code>helper-cli.markdown-links.argument.h1_exempt</code> | <code>--h1-exempt</code> | <code>option</code> | no | <code>1</code> | - | - | root-relative glob of documents exempt from --require-single-h1; repeatable |
+| <a id="entry-helper-cli-markdown-links-argument-list-24f08b8e09"></a><code>helper-cli.markdown-links.argument.list</code> | <code>--list</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | print the selected documents instead of checking them |
+
+### Exact top-level `--help` output
+
+```text
+usage: markdown_links.py [-h] [--root ROOT] [--include GLOB] [--exclude GLOB] [--target-root DIR] [--skip-target GLOB] [--allow-line-fragments] [--require-reference-definitions] [--require-single-h1] [--h1-exempt GLOB] [--list]
+
+Check local Markdown links, heading anchors, UTF-8 and fenced-code balance under one root
+
+options:
+  -h, --help            show this help message and exit
+  --root ROOT           repository root that bounds link targets (default: current directory)
+  --include GLOB        root-relative document glob; repeatable (default: **/*.md and **/*.markdown)
+  --exclude GLOB        root-relative file or directory glob removed from the document set; repeatable
+  --target-root DIR     extra directory, relative to --root, that links may point into without its documents being checked; repeatable
+  --skip-target GLOB    root-relative glob of link targets that are not verified, such as a submodule that is not checked out; repeatable
+  --allow-line-fragments
+                        accept #L10 and #L10-L20 line fragments on Markdown targets
+  --require-reference-definitions
+                        report [text][label] links whose label has no definition in the same document
+  --require-single-h1   report documents that do not contain exactly one H1 heading
+  --h1-exempt GLOB      root-relative glob of documents exempt from --require-single-h1; repeatable
+  --list                print the selected documents instead of checking them
+```
+
+<a id="entry-helper-cli-native-source-audit-b6c759ee81"></a>
+## Native source audits
+
+Audit native C++ scopes for allocator, smart-pointer and local-variable contract violations with Engine-owned and project baselines.
+
+- Stable ID: `helper-cli.native-source-audit`
+- Program: `native_source_audit.py`
+- Owner: `quality`
+- Audience: `engine-contributor`, `embedding-project-build-system`, `ci-maintainer`
+- Invocation owner: Engine validation CI, embedding-project native audit wrappers and direct developer use
+- Parser source: [BuildTools/native_source_audit.py](https://github.com/cvet/fonline/blob/master/BuildTools/native_source_audit.py)
+
+### Top-level arguments
+
+No arguments at this level.
+
+### Exact top-level `--help` output
+
+```text
+usage: native_source_audit.py [-h] AUDIT ...
+
+Audit native C++ sources against the Engine coding contracts. Each audit scans --scope paths below --root (default: the Engine Source directory), applies the Engine-owned baseline plus project baselines, and fails on remaining findings or
+on stale baseline rows. Exit codes: 0 passed or skipped, 1 findings or stale baseline rows, 2 invalid invocation, configuration, baseline or tool failure.
+
+positional arguments:
+  AUDIT
+    allocator           Report standard containers, allocating std:: helpers and C allocation outside the memory system.
+    smart-pointer       Check the ptr/nptr/unique/refcount smart-pointer vocabulary and raw-pointer boundaries.
+    smart-pointer-ast   Find raw pointer declarations on lines added since a git revision with clang-query.
+    local-variables     Find redundant top-level const locals (clang-query) and use-after-move (clang-tidy).
+    explicit-local-types
+                        Find auto locals whose deduced type is a simple explicit type (clang-query).
+
+options:
+  -h, --help            show this help message and exit
+```
+
+<a id="entry-helper-cli-native-source-audit-command-allocator-f2635ae834"></a>
+### `allocator`
+
+Report standard containers, allocating std:: helpers and C allocation outside the memory system.
+
+Stable ID: `helper-cli.native-source-audit.command.allocator`
+
+```text
+usage: native_source_audit.py allocator [-h] [--root ROOT] [--scope SCOPE] [--exclude EXCLUDE] [--config CONFIG] [--baseline BASELINE] [--no-engine-baseline] [--report REPORT] [--emit-baseline EMIT_BASELINE] [--max-printed MAX_PRINTED]
+                                        [--engine-root ENGINE_ROOT] [--fail-on {error,warning,none}]
+```
+
+| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| <a id="entry-helper-cli-native-source-audit-command-allocator-argument-root-b51b4df71f"></a><code>helper-cli.native-source-audit.command.allocator.argument.root</code> | <code>--root</code> | <code>option</code> | no | <code>1</code> | - | - | Root that scopes, excludes, reports and project baselines are relative to (default: current directory). |
+| <a id="entry-helper-cli-native-source-audit-command-allocator-argument-scope-e650c5db32"></a><code>helper-cli.native-source-audit.command.allocator.argument.scope</code> | <code>--scope</code> | <code>option</code> | no | <code>1</code> | - | - | File or directory to audit, relative to --root; repeatable (default: config scopes, else the Engine Source directory). |
+| <a id="entry-helper-cli-native-source-audit-command-allocator-argument-exclude-c757307d99"></a><code>helper-cli.native-source-audit.command.allocator.argument.exclude</code> | <code>--exclude</code> | <code>option</code> | no | <code>1</code> | - | - | fnmatch pattern of root-relative paths to skip; a pattern ending in / skips a subtree; repeatable. |
+| <a id="entry-helper-cli-native-source-audit-command-allocator-argument-config-1351d21964"></a><code>helper-cli.native-source-audit.command.allocator.argument.config</code> | <code>--config</code> | <code>option</code> | no | <code>1</code> | - | - | JSON configuration with scopes, exclude patterns, baselines and audit options; relative to --root. |
+| <a id="entry-helper-cli-native-source-audit-command-allocator-argument-baseline-e81d76ed86"></a><code>helper-cli.native-source-audit.command.allocator.argument.baseline</code> | <code>--baseline</code> | <code>option</code> | no | <code>1</code> | - | - | Additional project baseline TSV with root-relative paths; repeatable. |
+| <a id="entry-helper-cli-native-source-audit-command-allocator-argument-no-engine-baseline-49facc3a84"></a><code>helper-cli.native-source-audit.command.allocator.argument.no_engine_baseline</code> | <code>--no-engine-baseline</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | Do not apply BuildTools/audit_baselines/&lt;audit&gt;.tsv from the Engine. |
+| <a id="entry-helper-cli-native-source-audit-command-allocator-argument-report-bc2532a22e"></a><code>helper-cli.native-source-audit.command.allocator.argument.report</code> | <code>--report</code> | <code>option</code> | no | <code>1</code> | - | - | Write remaining findings and stale baseline rows as TSV. |
+| <a id="entry-helper-cli-native-source-audit-command-allocator-argument-emit-baseline-693dd50cd4"></a><code>helper-cli.native-source-audit.command.allocator.argument.emit_baseline</code> | <code>--emit-baseline</code> | <code>option</code> | no | <code>1</code> | - | - | Write candidate baseline rows (empty reason column) for the remaining findings. |
+| <a id="entry-helper-cli-native-source-audit-command-allocator-argument-max-printed-6237b58a2c"></a><code>helper-cli.native-source-audit.command.allocator.argument.max_printed</code> | <code>--max-printed</code> | <code>option</code> | no | <code>1</code> | - | <code>50</code> | Maximum findings printed to stdout; 0 prints all (default: 50). |
+| <a id="entry-helper-cli-native-source-audit-command-allocator-argument-engine-root-dabaaa3d97"></a><code>helper-cli.native-source-audit.command.allocator.argument.engine_root</code> | <code>--engine-root</code> | <code>option</code> | no | <code>1</code> | - | - | Engine checkout whose Source rules and BuildTools/audit_baselines apply (default: the Engine containing this tool). |
+| <a id="entry-helper-cli-native-source-audit-command-allocator-argument-fail-on-143ec39510"></a><code>helper-cli.native-source-audit.command.allocator.argument.fail_on</code> | <code>--fail-on</code> | <code>option</code> | no | <code>1</code> | <code>error</code>, <code>warning</code>, <code>none</code> | <code>error</code> | Minimum severity that fails the command (default: error). |
+
+#### Exact `--help` output
+
+```text
+usage: native_source_audit.py allocator [-h] [--root ROOT] [--scope SCOPE] [--exclude EXCLUDE] [--config CONFIG] [--baseline BASELINE] [--no-engine-baseline] [--report REPORT] [--emit-baseline EMIT_BASELINE] [--max-printed MAX_PRINTED]
+                                        [--engine-root ENGINE_ROOT] [--fail-on {error,warning,none}]
+
+Report standard containers, allocating std:: helpers and bare C allocation calls that bypass the Engine memory system.
+
+options:
+  -h, --help            show this help message and exit
+  --root ROOT           Root that scopes, excludes, reports and project baselines are relative to (default: current directory).
+  --scope SCOPE         File or directory to audit, relative to --root; repeatable (default: config scopes, else the Engine Source directory).
+  --exclude EXCLUDE     fnmatch pattern of root-relative paths to skip; a pattern ending in / skips a subtree; repeatable.
+  --config CONFIG       JSON configuration with scopes, exclude patterns, baselines and audit options; relative to --root.
+  --baseline BASELINE   Additional project baseline TSV with root-relative paths; repeatable.
+  --no-engine-baseline  Do not apply BuildTools/audit_baselines/<audit>.tsv from the Engine.
+  --report REPORT       Write remaining findings and stale baseline rows as TSV.
+  --emit-baseline EMIT_BASELINE
+                        Write candidate baseline rows (empty reason column) for the remaining findings.
+  --max-printed MAX_PRINTED
+                        Maximum findings printed to stdout; 0 prints all (default: 50).
+  --engine-root ENGINE_ROOT
+                        Engine checkout whose Source rules and BuildTools/audit_baselines apply (default: the Engine containing this tool).
+  --fail-on {error,warning,none}
+                        Minimum severity that fails the command (default: error).
+```
+
+<a id="entry-helper-cli-native-source-audit-command-smart-pointer-da5c5ce703"></a>
+### `smart-pointer`
+
+Check the ptr/nptr/unique/refcount smart-pointer vocabulary and raw-pointer boundaries.
+
+Stable ID: `helper-cli.native-source-audit.command.smart-pointer`
+
+```text
+usage: native_source_audit.py smart-pointer [-h] [--root ROOT] [--scope SCOPE] [--exclude EXCLUDE] [--config CONFIG] [--baseline BASELINE] [--no-engine-baseline] [--report REPORT] [--emit-baseline EMIT_BASELINE]
+                                            [--max-printed MAX_PRINTED] [--engine-root ENGINE_ROOT] [--fail-on {error,warning,none}] [--inventory] [--inventory-output INVENTORY_OUTPUT] [--inventory-details-output INVENTORY_DETAILS_OUTPUT]
+                                            [--summary-output SUMMARY_OUTPUT] [--jobs JOBS]
+```
+
+| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-root-bc026d9d60"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.root</code> | <code>--root</code> | <code>option</code> | no | <code>1</code> | - | - | Root that scopes, excludes, reports and project baselines are relative to (default: current directory). |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-scope-b023b38f83"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.scope</code> | <code>--scope</code> | <code>option</code> | no | <code>1</code> | - | - | File or directory to audit, relative to --root; repeatable (default: config scopes, else the Engine Source directory). |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-exclude-053fc1fd37"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.exclude</code> | <code>--exclude</code> | <code>option</code> | no | <code>1</code> | - | - | fnmatch pattern of root-relative paths to skip; a pattern ending in / skips a subtree; repeatable. |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-config-1331c94d38"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.config</code> | <code>--config</code> | <code>option</code> | no | <code>1</code> | - | - | JSON configuration with scopes, exclude patterns, baselines and audit options; relative to --root. |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-baseline-7b6d3a9111"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.baseline</code> | <code>--baseline</code> | <code>option</code> | no | <code>1</code> | - | - | Additional project baseline TSV with root-relative paths; repeatable. |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-no-engine-baseline-a3a6eeecd5"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.no_engine_baseline</code> | <code>--no-engine-baseline</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | Do not apply BuildTools/audit_baselines/&lt;audit&gt;.tsv from the Engine. |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-report-a00b854ac3"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.report</code> | <code>--report</code> | <code>option</code> | no | <code>1</code> | - | - | Write remaining findings and stale baseline rows as TSV. |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-emit-baseline-14aaecc175"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.emit_baseline</code> | <code>--emit-baseline</code> | <code>option</code> | no | <code>1</code> | - | - | Write candidate baseline rows (empty reason column) for the remaining findings. |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-max-printed-1d8f2623b6"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.max_printed</code> | <code>--max-printed</code> | <code>option</code> | no | <code>1</code> | - | <code>50</code> | Maximum findings printed to stdout; 0 prints all (default: 50). |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-engine-root-450d894b59"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.engine_root</code> | <code>--engine-root</code> | <code>option</code> | no | <code>1</code> | - | - | Engine checkout whose Source rules and BuildTools/audit_baselines apply (default: the Engine containing this tool). |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-fail-on-e469434b31"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.fail_on</code> | <code>--fail-on</code> | <code>option</code> | no | <code>1</code> | <code>error</code>, <code>warning</code>, <code>none</code> | <code>error</code> | Minimum severity that fails the command (default: error). |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-inventory-f6423df9ea"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.inventory</code> | <code>--inventory</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | Print non-failing inventory counters for pointer vocabulary and raw-pointer markers. |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-inventory-output-f8f36da320"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.inventory_output</code> | <code>--inventory-output</code> | <code>option</code> | no | <code>1</code> | - | - | Write per-file inventory counters as TSV. |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-inventory-details-output-d67935ddb7"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.inventory_details_output</code> | <code>--inventory-details-output</code> | <code>option</code> | no | <code>1</code> | - | - | Write line-level inventory markers as TSV. |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-summary-output-ac8ab040b4"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.summary_output</code> | <code>--summary-output</code> | <code>option</code> | no | <code>1</code> | - | - | Write a JSON summary of findings and inventory counters. |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-jobs-c22afc8be0"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.jobs</code> | <code>--jobs</code> | <code>option</code> | no | <code>1</code> | - | <code>0</code> | Worker processes; 0 uses the CPU count; output order does not depend on it (default: 0). |
+
+#### Exact `--help` output
+
+```text
+usage: native_source_audit.py smart-pointer [-h] [--root ROOT] [--scope SCOPE] [--exclude EXCLUDE] [--config CONFIG] [--baseline BASELINE] [--no-engine-baseline] [--report REPORT] [--emit-baseline EMIT_BASELINE]
+                                            [--max-printed MAX_PRINTED] [--engine-root ENGINE_ROOT] [--fail-on {error,warning,none}] [--inventory] [--inventory-output INVENTORY_OUTPUT] [--inventory-details-output INVENTORY_DETAILS_OUTPUT]
+                                            [--summary-output SUMMARY_OUTPUT] [--jobs JOBS]
+
+Check the smart-pointer vocabulary, nullable checks and raw-pointer boundary shapes with text rules.
+
+options:
+  -h, --help            show this help message and exit
+  --root ROOT           Root that scopes, excludes, reports and project baselines are relative to (default: current directory).
+  --scope SCOPE         File or directory to audit, relative to --root; repeatable (default: config scopes, else the Engine Source directory).
+  --exclude EXCLUDE     fnmatch pattern of root-relative paths to skip; a pattern ending in / skips a subtree; repeatable.
+  --config CONFIG       JSON configuration with scopes, exclude patterns, baselines and audit options; relative to --root.
+  --baseline BASELINE   Additional project baseline TSV with root-relative paths; repeatable.
+  --no-engine-baseline  Do not apply BuildTools/audit_baselines/<audit>.tsv from the Engine.
+  --report REPORT       Write remaining findings and stale baseline rows as TSV.
+  --emit-baseline EMIT_BASELINE
+                        Write candidate baseline rows (empty reason column) for the remaining findings.
+  --max-printed MAX_PRINTED
+                        Maximum findings printed to stdout; 0 prints all (default: 50).
+  --engine-root ENGINE_ROOT
+                        Engine checkout whose Source rules and BuildTools/audit_baselines apply (default: the Engine containing this tool).
+  --fail-on {error,warning,none}
+                        Minimum severity that fails the command (default: error).
+  --inventory           Print non-failing inventory counters for pointer vocabulary and raw-pointer markers.
+  --inventory-output INVENTORY_OUTPUT
+                        Write per-file inventory counters as TSV.
+  --inventory-details-output INVENTORY_DETAILS_OUTPUT
+                        Write line-level inventory markers as TSV.
+  --summary-output SUMMARY_OUTPUT
+                        Write a JSON summary of findings and inventory counters.
+  --jobs JOBS           Worker processes; 0 uses the CPU count; output order does not depend on it (default: 0).
+```
+
+<a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-1e450a0b76"></a>
+### `smart-pointer-ast`
+
+Find raw pointer declarations on lines added since a git revision with clang-query.
+
+Stable ID: `helper-cli.native-source-audit.command.smart-pointer-ast`
+
+```text
+usage: native_source_audit.py smart-pointer-ast [-h] [--root ROOT] [--scope SCOPE] [--exclude EXCLUDE] [--config CONFIG] [--baseline BASELINE] [--no-engine-baseline] [--report REPORT] [--emit-baseline EMIT_BASELINE]
+                                                [--max-printed MAX_PRINTED] [--engine-root ENGINE_ROOT] [--compilation-database COMPILATION_DATABASE] [--clang-query CLANG_QUERY] [--clang-tidy CLANG_TIDY] [--require-tooling]
+                                                [--source-pattern SOURCE_PATTERN] [--unit-pattern UNIT_PATTERN] [--jobs JOBS] [--batch-size BATCH_SIZE] [--timeout TIMEOUT] [--diff-base DIFF_BASE] [--all]
+```
+
+| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-root-709ef1d1da"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.root</code> | <code>--root</code> | <code>option</code> | no | <code>1</code> | - | - | Root that scopes, excludes, reports and project baselines are relative to (default: current directory). |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-scope-3181f4d5e6"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.scope</code> | <code>--scope</code> | <code>option</code> | no | <code>1</code> | - | - | File or directory to audit, relative to --root; repeatable (default: config scopes, else the Engine Source directory). |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-exclude-d54e3ec139"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.exclude</code> | <code>--exclude</code> | <code>option</code> | no | <code>1</code> | - | - | fnmatch pattern of root-relative paths to skip; a pattern ending in / skips a subtree; repeatable. |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-config-e3d7bd573c"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.config</code> | <code>--config</code> | <code>option</code> | no | <code>1</code> | - | - | JSON configuration with scopes, exclude patterns, baselines and audit options; relative to --root. |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-baseline-be3de9b966"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.baseline</code> | <code>--baseline</code> | <code>option</code> | no | <code>1</code> | - | - | Additional project baseline TSV with root-relative paths; repeatable. |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-no-engine-baseline-06eac88335"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.no_engine_baseline</code> | <code>--no-engine-baseline</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | Do not apply BuildTools/audit_baselines/&lt;audit&gt;.tsv from the Engine. |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-report-ecdfab81d1"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.report</code> | <code>--report</code> | <code>option</code> | no | <code>1</code> | - | - | Write remaining findings and stale baseline rows as TSV. |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-emit-baseline-2bd7f0b33c"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.emit_baseline</code> | <code>--emit-baseline</code> | <code>option</code> | no | <code>1</code> | - | - | Write candidate baseline rows (empty reason column) for the remaining findings. |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-max-printed-c7519ee967"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.max_printed</code> | <code>--max-printed</code> | <code>option</code> | no | <code>1</code> | - | <code>50</code> | Maximum findings printed to stdout; 0 prints all (default: 50). |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-engine-root-6ab07b2daf"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.engine_root</code> | <code>--engine-root</code> | <code>option</code> | no | <code>1</code> | - | - | Engine checkout whose Source rules and BuildTools/audit_baselines apply (default: the Engine containing this tool). |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-compilation-database-275f0f7d31"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.compilation_database</code> | <code>--compilation-database</code> | <code>option</code> | no | <code>1</code> | - | - | Directory containing compile_commands.json (default: config compilation_database). |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-clang-query-a5636d9a3a"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.clang_query</code> | <code>--clang-query</code> | <code>option</code> | no | <code>1</code> | - | - | clang-query executable (default: FO_CLANG_QUERY, then PATH). |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-clang-tidy-0287724cf6"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.clang_tidy</code> | <code>--clang-tidy</code> | <code>option</code> | no | <code>1</code> | - | - | clang-tidy executable for use-after-move (default: FO_CLANG_TIDY, then PATH). |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-require-tooling-fd897a294d"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.require_tooling</code> | <code>--require-tooling</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | Fail with exit code 2 instead of skipping when clang tools or the compilation database are missing. |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-source-pattern-321fd38859"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.source_pattern</code> | <code>--source-pattern</code> | <code>option</code> | no | <code>1</code> | - | - | clang-query isExpansionInFileMatching regex (default: derived from the scopes). |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-unit-pattern-cee1272720"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.unit_pattern</code> | <code>--unit-pattern</code> | <code>option</code> | no | <code>1</code> | - | - | Only analyze compilation units whose display path matches this regex. |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-jobs-57b1c95d62"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.jobs</code> | <code>--jobs</code> | <code>option</code> | no | <code>1</code> | - | <code>4</code> | Parallel clang processes (default: 4). |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-batch-size-2c4770a500"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.batch_size</code> | <code>--batch-size</code> | <code>option</code> | no | <code>1</code> | - | <code>2</code> | Translation units per clang process (default: 2). |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-timeout-c997a6ad5b"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.timeout</code> | <code>--timeout</code> | <code>option</code> | no | <code>1</code> | - | <code>900</code> | Seconds allowed per clang process (default: 900). |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-diff-base-5535e3d5d0"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.diff_base</code> | <code>--diff-base</code> | <code>option</code> | no | <code>1</code> | - | - | Report only matches on lines added since this git revision. |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-all-017217c67b"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.all</code> | <code>--all</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | Report every match in the scopes instead of added lines only. |
+
+#### Exact `--help` output
+
+```text
+usage: native_source_audit.py smart-pointer-ast [-h] [--root ROOT] [--scope SCOPE] [--exclude EXCLUDE] [--config CONFIG] [--baseline BASELINE] [--no-engine-baseline] [--report REPORT] [--emit-baseline EMIT_BASELINE]
+                                                [--max-printed MAX_PRINTED] [--engine-root ENGINE_ROOT] [--compilation-database COMPILATION_DATABASE] [--clang-query CLANG_QUERY] [--clang-tidy CLANG_TIDY] [--require-tooling]
+                                                [--source-pattern SOURCE_PATTERN] [--unit-pattern UNIT_PATTERN] [--jobs JOBS] [--batch-size BATCH_SIZE] [--timeout TIMEOUT] [--diff-base DIFF_BASE] [--all]
+
+Run clang-query over a compilation database and report raw pointer declarations, fields, parameters and returns.
+
+options:
+  -h, --help            show this help message and exit
+  --root ROOT           Root that scopes, excludes, reports and project baselines are relative to (default: current directory).
+  --scope SCOPE         File or directory to audit, relative to --root; repeatable (default: config scopes, else the Engine Source directory).
+  --exclude EXCLUDE     fnmatch pattern of root-relative paths to skip; a pattern ending in / skips a subtree; repeatable.
+  --config CONFIG       JSON configuration with scopes, exclude patterns, baselines and audit options; relative to --root.
+  --baseline BASELINE   Additional project baseline TSV with root-relative paths; repeatable.
+  --no-engine-baseline  Do not apply BuildTools/audit_baselines/<audit>.tsv from the Engine.
+  --report REPORT       Write remaining findings and stale baseline rows as TSV.
+  --emit-baseline EMIT_BASELINE
+                        Write candidate baseline rows (empty reason column) for the remaining findings.
+  --max-printed MAX_PRINTED
+                        Maximum findings printed to stdout; 0 prints all (default: 50).
+  --engine-root ENGINE_ROOT
+                        Engine checkout whose Source rules and BuildTools/audit_baselines apply (default: the Engine containing this tool).
+  --compilation-database COMPILATION_DATABASE
+                        Directory containing compile_commands.json (default: config compilation_database).
+  --clang-query CLANG_QUERY
+                        clang-query executable (default: FO_CLANG_QUERY, then PATH).
+  --clang-tidy CLANG_TIDY
+                        clang-tidy executable for use-after-move (default: FO_CLANG_TIDY, then PATH).
+  --require-tooling     Fail with exit code 2 instead of skipping when clang tools or the compilation database are missing.
+  --source-pattern SOURCE_PATTERN
+                        clang-query isExpansionInFileMatching regex (default: derived from the scopes).
+  --unit-pattern UNIT_PATTERN
+                        Only analyze compilation units whose display path matches this regex.
+  --jobs JOBS           Parallel clang processes (default: 4).
+  --batch-size BATCH_SIZE
+                        Translation units per clang process (default: 2).
+  --timeout TIMEOUT     Seconds allowed per clang process (default: 900).
+  --diff-base DIFF_BASE
+                        Report only matches on lines added since this git revision.
+  --all                 Report every match in the scopes instead of added lines only.
+```
+
+<a id="entry-helper-cli-native-source-audit-command-local-variables-55804e1b24"></a>
+### `local-variables`
+
+Find redundant top-level const locals (clang-query) and use-after-move (clang-tidy).
+
+Stable ID: `helper-cli.native-source-audit.command.local-variables`
+
+```text
+usage: native_source_audit.py local-variables [-h] [--root ROOT] [--scope SCOPE] [--exclude EXCLUDE] [--config CONFIG] [--baseline BASELINE] [--no-engine-baseline] [--report REPORT] [--emit-baseline EMIT_BASELINE]
+                                              [--max-printed MAX_PRINTED] [--engine-root ENGINE_ROOT] [--compilation-database COMPILATION_DATABASE] [--clang-query CLANG_QUERY] [--clang-tidy CLANG_TIDY] [--require-tooling]
+                                              [--source-pattern SOURCE_PATTERN] [--unit-pattern UNIT_PATTERN] [--jobs JOBS] [--batch-size BATCH_SIZE] [--timeout TIMEOUT] [--checks {all,redundant-local-const,use-after-move}]
+                                              [--mode {check,report,apply}]
+```
+
+| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-root-e9f15d4745"></a><code>helper-cli.native-source-audit.command.local-variables.argument.root</code> | <code>--root</code> | <code>option</code> | no | <code>1</code> | - | - | Root that scopes, excludes, reports and project baselines are relative to (default: current directory). |
+| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-scope-2360e0a319"></a><code>helper-cli.native-source-audit.command.local-variables.argument.scope</code> | <code>--scope</code> | <code>option</code> | no | <code>1</code> | - | - | File or directory to audit, relative to --root; repeatable (default: config scopes, else the Engine Source directory). |
+| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-exclude-88e7b5e761"></a><code>helper-cli.native-source-audit.command.local-variables.argument.exclude</code> | <code>--exclude</code> | <code>option</code> | no | <code>1</code> | - | - | fnmatch pattern of root-relative paths to skip; a pattern ending in / skips a subtree; repeatable. |
+| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-config-635bf74540"></a><code>helper-cli.native-source-audit.command.local-variables.argument.config</code> | <code>--config</code> | <code>option</code> | no | <code>1</code> | - | - | JSON configuration with scopes, exclude patterns, baselines and audit options; relative to --root. |
+| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-baseline-db1963dc9f"></a><code>helper-cli.native-source-audit.command.local-variables.argument.baseline</code> | <code>--baseline</code> | <code>option</code> | no | <code>1</code> | - | - | Additional project baseline TSV with root-relative paths; repeatable. |
+| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-no-engine-baseline-36631b1c23"></a><code>helper-cli.native-source-audit.command.local-variables.argument.no_engine_baseline</code> | <code>--no-engine-baseline</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | Do not apply BuildTools/audit_baselines/&lt;audit&gt;.tsv from the Engine. |
+| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-report-11c8d43103"></a><code>helper-cli.native-source-audit.command.local-variables.argument.report</code> | <code>--report</code> | <code>option</code> | no | <code>1</code> | - | - | Write remaining findings and stale baseline rows as TSV. |
+| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-emit-baseline-9a7c7af585"></a><code>helper-cli.native-source-audit.command.local-variables.argument.emit_baseline</code> | <code>--emit-baseline</code> | <code>option</code> | no | <code>1</code> | - | - | Write candidate baseline rows (empty reason column) for the remaining findings. |
+| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-max-printed-9f68994ec7"></a><code>helper-cli.native-source-audit.command.local-variables.argument.max_printed</code> | <code>--max-printed</code> | <code>option</code> | no | <code>1</code> | - | <code>50</code> | Maximum findings printed to stdout; 0 prints all (default: 50). |
+| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-engine-root-6e36b23522"></a><code>helper-cli.native-source-audit.command.local-variables.argument.engine_root</code> | <code>--engine-root</code> | <code>option</code> | no | <code>1</code> | - | - | Engine checkout whose Source rules and BuildTools/audit_baselines apply (default: the Engine containing this tool). |
+| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-compilation-database-d207dadd7a"></a><code>helper-cli.native-source-audit.command.local-variables.argument.compilation_database</code> | <code>--compilation-database</code> | <code>option</code> | no | <code>1</code> | - | - | Directory containing compile_commands.json (default: config compilation_database). |
+| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-clang-query-cdea2cb1c5"></a><code>helper-cli.native-source-audit.command.local-variables.argument.clang_query</code> | <code>--clang-query</code> | <code>option</code> | no | <code>1</code> | - | - | clang-query executable (default: FO_CLANG_QUERY, then PATH). |
+| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-clang-tidy-2932561bf7"></a><code>helper-cli.native-source-audit.command.local-variables.argument.clang_tidy</code> | <code>--clang-tidy</code> | <code>option</code> | no | <code>1</code> | - | - | clang-tidy executable for use-after-move (default: FO_CLANG_TIDY, then PATH). |
+| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-require-tooling-5775a36475"></a><code>helper-cli.native-source-audit.command.local-variables.argument.require_tooling</code> | <code>--require-tooling</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | Fail with exit code 2 instead of skipping when clang tools or the compilation database are missing. |
+| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-source-pattern-8ebec8e148"></a><code>helper-cli.native-source-audit.command.local-variables.argument.source_pattern</code> | <code>--source-pattern</code> | <code>option</code> | no | <code>1</code> | - | - | clang-query isExpansionInFileMatching regex (default: derived from the scopes). |
+| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-unit-pattern-8e072b4a30"></a><code>helper-cli.native-source-audit.command.local-variables.argument.unit_pattern</code> | <code>--unit-pattern</code> | <code>option</code> | no | <code>1</code> | - | - | Only analyze compilation units whose display path matches this regex. |
+| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-jobs-7d25d664a0"></a><code>helper-cli.native-source-audit.command.local-variables.argument.jobs</code> | <code>--jobs</code> | <code>option</code> | no | <code>1</code> | - | <code>4</code> | Parallel clang processes (default: 4). |
+| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-batch-size-b175a924ef"></a><code>helper-cli.native-source-audit.command.local-variables.argument.batch_size</code> | <code>--batch-size</code> | <code>option</code> | no | <code>1</code> | - | <code>2</code> | Translation units per clang process (default: 2). |
+| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-timeout-aff4d887c1"></a><code>helper-cli.native-source-audit.command.local-variables.argument.timeout</code> | <code>--timeout</code> | <code>option</code> | no | <code>1</code> | - | <code>900</code> | Seconds allowed per clang process (default: 900). |
+| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-checks-d4437d53fc"></a><code>helper-cli.native-source-audit.command.local-variables.argument.checks</code> | <code>--checks</code> | <code>option</code> | no | <code>1</code> | <code>all</code>, <code>redundant-local-const</code>, <code>use-after-move</code> | <code>all</code> | Checks to run (default: all). |
+| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-mode-4af34bc325"></a><code>helper-cli.native-source-audit.command.local-variables.argument.mode</code> | <code>--mode</code> | <code>option</code> | no | <code>1</code> | <code>check</code>, <code>report</code>, <code>apply</code> | <code>check</code> | check fails on active findings; report never fails; apply removes redundant const (requires --checks redundant-local-const). |
+
+#### Exact `--help` output
+
+```text
+usage: native_source_audit.py local-variables [-h] [--root ROOT] [--scope SCOPE] [--exclude EXCLUDE] [--config CONFIG] [--baseline BASELINE] [--no-engine-baseline] [--report REPORT] [--emit-baseline EMIT_BASELINE]
+                                              [--max-printed MAX_PRINTED] [--engine-root ENGINE_ROOT] [--compilation-database COMPILATION_DATABASE] [--clang-query CLANG_QUERY] [--clang-tidy CLANG_TIDY] [--require-tooling]
+                                              [--source-pattern SOURCE_PATTERN] [--unit-pattern UNIT_PATTERN] [--jobs JOBS] [--batch-size BATCH_SIZE] [--timeout TIMEOUT] [--checks {all,redundant-local-const,use-after-move}]
+                                              [--mode {check,report,apply}]
+
+Run clang-query and clang-tidy over a compilation database to find redundant top-level local const and use-after-move.
+
+options:
+  -h, --help            show this help message and exit
+  --root ROOT           Root that scopes, excludes, reports and project baselines are relative to (default: current directory).
+  --scope SCOPE         File or directory to audit, relative to --root; repeatable (default: config scopes, else the Engine Source directory).
+  --exclude EXCLUDE     fnmatch pattern of root-relative paths to skip; a pattern ending in / skips a subtree; repeatable.
+  --config CONFIG       JSON configuration with scopes, exclude patterns, baselines and audit options; relative to --root.
+  --baseline BASELINE   Additional project baseline TSV with root-relative paths; repeatable.
+  --no-engine-baseline  Do not apply BuildTools/audit_baselines/<audit>.tsv from the Engine.
+  --report REPORT       Write remaining findings and stale baseline rows as TSV.
+  --emit-baseline EMIT_BASELINE
+                        Write candidate baseline rows (empty reason column) for the remaining findings.
+  --max-printed MAX_PRINTED
+                        Maximum findings printed to stdout; 0 prints all (default: 50).
+  --engine-root ENGINE_ROOT
+                        Engine checkout whose Source rules and BuildTools/audit_baselines apply (default: the Engine containing this tool).
+  --compilation-database COMPILATION_DATABASE
+                        Directory containing compile_commands.json (default: config compilation_database).
+  --clang-query CLANG_QUERY
+                        clang-query executable (default: FO_CLANG_QUERY, then PATH).
+  --clang-tidy CLANG_TIDY
+                        clang-tidy executable for use-after-move (default: FO_CLANG_TIDY, then PATH).
+  --require-tooling     Fail with exit code 2 instead of skipping when clang tools or the compilation database are missing.
+  --source-pattern SOURCE_PATTERN
+                        clang-query isExpansionInFileMatching regex (default: derived from the scopes).
+  --unit-pattern UNIT_PATTERN
+                        Only analyze compilation units whose display path matches this regex.
+  --jobs JOBS           Parallel clang processes (default: 4).
+  --batch-size BATCH_SIZE
+                        Translation units per clang process (default: 2).
+  --timeout TIMEOUT     Seconds allowed per clang process (default: 900).
+  --checks {all,redundant-local-const,use-after-move}
+                        Checks to run (default: all).
+  --mode {check,report,apply}
+                        check fails on active findings; report never fails; apply removes redundant const (requires --checks redundant-local-const).
+```
+
+<a id="entry-helper-cli-native-source-audit-command-explicit-local-types-ce31af3e54"></a>
+### `explicit-local-types`
+
+Find auto locals whose deduced type is a simple explicit type (clang-query).
+
+Stable ID: `helper-cli.native-source-audit.command.explicit-local-types`
+
+```text
+usage: native_source_audit.py explicit-local-types [-h] [--root ROOT] [--scope SCOPE] [--exclude EXCLUDE] [--config CONFIG] [--baseline BASELINE] [--no-engine-baseline] [--report REPORT] [--emit-baseline EMIT_BASELINE]
+                                                   [--max-printed MAX_PRINTED] [--engine-root ENGINE_ROOT] [--compilation-database COMPILATION_DATABASE] [--clang-query CLANG_QUERY] [--clang-tidy CLANG_TIDY] [--require-tooling]
+                                                   [--source-pattern SOURCE_PATTERN] [--unit-pattern UNIT_PATTERN] [--jobs JOBS] [--batch-size BATCH_SIZE] [--timeout TIMEOUT] [--mode {check,report,apply}] [--also-redundant-local-const]
+                                                   [--json JSON] [--apply-report APPLY_REPORT]
+```
+
+| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-root-369f3dee8f"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.root</code> | <code>--root</code> | <code>option</code> | no | <code>1</code> | - | - | Root that scopes, excludes, reports and project baselines are relative to (default: current directory). |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-scope-2a0af532d0"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.scope</code> | <code>--scope</code> | <code>option</code> | no | <code>1</code> | - | - | File or directory to audit, relative to --root; repeatable (default: config scopes, else the Engine Source directory). |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-exclude-c7ae1ce9b5"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.exclude</code> | <code>--exclude</code> | <code>option</code> | no | <code>1</code> | - | - | fnmatch pattern of root-relative paths to skip; a pattern ending in / skips a subtree; repeatable. |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-config-652948dd1f"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.config</code> | <code>--config</code> | <code>option</code> | no | <code>1</code> | - | - | JSON configuration with scopes, exclude patterns, baselines and audit options; relative to --root. |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-baseline-0e2606b2b1"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.baseline</code> | <code>--baseline</code> | <code>option</code> | no | <code>1</code> | - | - | Additional project baseline TSV with root-relative paths; repeatable. |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-no-engine-baseline-9345df01ac"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.no_engine_baseline</code> | <code>--no-engine-baseline</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | Do not apply BuildTools/audit_baselines/&lt;audit&gt;.tsv from the Engine. |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-report-f05b60f2e2"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.report</code> | <code>--report</code> | <code>option</code> | no | <code>1</code> | - | - | Write remaining findings and stale baseline rows as TSV. |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-emit-baseline-e5158c899a"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.emit_baseline</code> | <code>--emit-baseline</code> | <code>option</code> | no | <code>1</code> | - | - | Write candidate baseline rows (empty reason column) for the remaining findings. |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-max-printed-6be8beaba4"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.max_printed</code> | <code>--max-printed</code> | <code>option</code> | no | <code>1</code> | - | <code>50</code> | Maximum findings printed to stdout; 0 prints all (default: 50). |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-engine-root-fe32165f03"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.engine_root</code> | <code>--engine-root</code> | <code>option</code> | no | <code>1</code> | - | - | Engine checkout whose Source rules and BuildTools/audit_baselines apply (default: the Engine containing this tool). |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-compilation-database-5cd6c9a80a"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.compilation_database</code> | <code>--compilation-database</code> | <code>option</code> | no | <code>1</code> | - | - | Directory containing compile_commands.json (default: config compilation_database). |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-clang-query-b26471837d"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.clang_query</code> | <code>--clang-query</code> | <code>option</code> | no | <code>1</code> | - | - | clang-query executable (default: FO_CLANG_QUERY, then PATH). |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-clang-tidy-842844fa57"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.clang_tidy</code> | <code>--clang-tidy</code> | <code>option</code> | no | <code>1</code> | - | - | clang-tidy executable for use-after-move (default: FO_CLANG_TIDY, then PATH). |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-require-tooling-ed6e9af4ce"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.require_tooling</code> | <code>--require-tooling</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | Fail with exit code 2 instead of skipping when clang tools or the compilation database are missing. |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-source-pattern-227e6ed556"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.source_pattern</code> | <code>--source-pattern</code> | <code>option</code> | no | <code>1</code> | - | - | clang-query isExpansionInFileMatching regex (default: derived from the scopes). |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-unit-pattern-6c260c2a0d"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.unit_pattern</code> | <code>--unit-pattern</code> | <code>option</code> | no | <code>1</code> | - | - | Only analyze compilation units whose display path matches this regex. |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-jobs-f4f8a61b02"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.jobs</code> | <code>--jobs</code> | <code>option</code> | no | <code>1</code> | - | <code>4</code> | Parallel clang processes (default: 4). |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-batch-size-d6c7bdfe90"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.batch_size</code> | <code>--batch-size</code> | <code>option</code> | no | <code>1</code> | - | <code>2</code> | Translation units per clang process (default: 2). |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-timeout-85f2404c4b"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.timeout</code> | <code>--timeout</code> | <code>option</code> | no | <code>1</code> | - | <code>900</code> | Seconds allowed per clang process (default: 900). |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-mode-620cef2533"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.mode</code> | <code>--mode</code> | <code>option</code> | no | <code>1</code> | <code>check</code>, <code>report</code>, <code>apply</code> | <code>check</code> | check fails on candidates; report never fails; apply rewrites the eligible auto tokens. |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-also-redundant-local-const-13904bda78"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.also_redundant_local_const</code> | <code>--also-redundant-local-const</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | Run the redundant-local-const matcher in the same AST pass. |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-json-4b6cefcd40"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.json</code> | <code>--json</code> | <code>option</code> | no | <code>1</code> | - | - | Write the full candidate report as JSON. |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-apply-report-d7e1a78868"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.apply_report</code> | <code>--apply-report</code> | <code>option</code> | no | <code>1</code> | - | - | Apply a previously reviewed JSON report without running clang-query (requires --mode apply). |
+
+#### Exact `--help` output
+
+```text
+usage: native_source_audit.py explicit-local-types [-h] [--root ROOT] [--scope SCOPE] [--exclude EXCLUDE] [--config CONFIG] [--baseline BASELINE] [--no-engine-baseline] [--report REPORT] [--emit-baseline EMIT_BASELINE]
+                                                   [--max-printed MAX_PRINTED] [--engine-root ENGINE_ROOT] [--compilation-database COMPILATION_DATABASE] [--clang-query CLANG_QUERY] [--clang-tidy CLANG_TIDY] [--require-tooling]
+                                                   [--source-pattern SOURCE_PATTERN] [--unit-pattern UNIT_PATTERN] [--jobs JOBS] [--batch-size BATCH_SIZE] [--timeout TIMEOUT] [--mode {check,report,apply}] [--also-redundant-local-const]
+                                                   [--json JSON] [--apply-report APPLY_REPORT]
+
+Run clang-query over a compilation database and report auto locals that must spell their simple type explicitly.
+
+options:
+  -h, --help            show this help message and exit
+  --root ROOT           Root that scopes, excludes, reports and project baselines are relative to (default: current directory).
+  --scope SCOPE         File or directory to audit, relative to --root; repeatable (default: config scopes, else the Engine Source directory).
+  --exclude EXCLUDE     fnmatch pattern of root-relative paths to skip; a pattern ending in / skips a subtree; repeatable.
+  --config CONFIG       JSON configuration with scopes, exclude patterns, baselines and audit options; relative to --root.
+  --baseline BASELINE   Additional project baseline TSV with root-relative paths; repeatable.
+  --no-engine-baseline  Do not apply BuildTools/audit_baselines/<audit>.tsv from the Engine.
+  --report REPORT       Write remaining findings and stale baseline rows as TSV.
+  --emit-baseline EMIT_BASELINE
+                        Write candidate baseline rows (empty reason column) for the remaining findings.
+  --max-printed MAX_PRINTED
+                        Maximum findings printed to stdout; 0 prints all (default: 50).
+  --engine-root ENGINE_ROOT
+                        Engine checkout whose Source rules and BuildTools/audit_baselines apply (default: the Engine containing this tool).
+  --compilation-database COMPILATION_DATABASE
+                        Directory containing compile_commands.json (default: config compilation_database).
+  --clang-query CLANG_QUERY
+                        clang-query executable (default: FO_CLANG_QUERY, then PATH).
+  --clang-tidy CLANG_TIDY
+                        clang-tidy executable for use-after-move (default: FO_CLANG_TIDY, then PATH).
+  --require-tooling     Fail with exit code 2 instead of skipping when clang tools or the compilation database are missing.
+  --source-pattern SOURCE_PATTERN
+                        clang-query isExpansionInFileMatching regex (default: derived from the scopes).
+  --unit-pattern UNIT_PATTERN
+                        Only analyze compilation units whose display path matches this regex.
+  --jobs JOBS           Parallel clang processes (default: 4).
+  --batch-size BATCH_SIZE
+                        Translation units per clang process (default: 2).
+  --timeout TIMEOUT     Seconds allowed per clang process (default: 900).
+  --mode {check,report,apply}
+                        check fails on candidates; report never fails; apply rewrites the eligible auto tokens.
+  --also-redundant-local-const
+                        Run the redundant-local-const matcher in the same AST pass.
+  --json JSON           Write the full candidate report as JSON.
+  --apply-report APPLY_REPORT
+                        Apply a previously reviewed JSON report without running clang-query (requires --mode apply).
+```
+
+<a id="entry-helper-cli-native-safety-audit-2f4598f1d2"></a>
+## Native safety audits
+
+Reject native code that changes entity cover behind server script exports and gate per-function exception-safety classifications of Engine and project sources against committed baselines.
+
+- Stable ID: `helper-cli.native-safety-audit`
+- Program: `native_safety_audit.py`
+- Owner: `quality`
+- Audience: `engine-contributor`, `game-developer`, `embedding-project-build-system`, `ci-maintainer`
+- Invocation owner: Engine validate workflow, embedding-project native validation tasks and CI
+- Parser source: [BuildTools/native_safety_audit.py](https://github.com/cvet/fonline/blob/master/BuildTools/native_safety_audit.py)
+
+### Top-level arguments
+
+No arguments at this level.
+
+### Exact top-level `--help` output
+
+```text
+usage: native_safety_audit.py [-h] command ...
+
+Audit Engine and project native sources against the entity-cover and exception-safety contracts.
+
+positional arguments:
+  command
+    sync-scope        reject native code that obtains, replaces or releases entity cover for script exports
+    exception-safety  check per-function exception-safety classifications against the baselines
+
+options:
+  -h, --help          show this help message and exit
+```
+
+<a id="entry-helper-cli-native-safety-audit-command-sync-scope-fd8f2cb3e2"></a>
+### `sync-scope`
+
+reject native code that obtains, replaces or releases entity cover for script exports
+
+Stable ID: `helper-cli.native-safety-audit.command.sync-scope`
+
+```text
+usage: native_safety_audit.py sync-scope [-h] [--root ROOT] [--engine-root ENGINE_ROOT] [--scope DIR] [--config FILE] [--baseline FILE] [--json]
+```
+
+| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| <a id="entry-helper-cli-native-safety-audit-command-sync-scope-argument-root-ee86ae1201"></a><code>helper-cli.native-safety-audit.command.sync-scope.argument.root</code> | <code>--root</code> | <code>option</code> | no | <code>1</code> | - | - | repository root for --scope, --config and --baseline paths (default: current directory) |
+| <a id="entry-helper-cli-native-safety-audit-command-sync-scope-argument-engine-root-44d0761344"></a><code>helper-cli.native-safety-audit.command.sync-scope.argument.engine_root</code> | <code>--engine-root</code> | <code>option</code> | no | <code>1</code> | - | - | Engine checkout to audit (default: the checkout that contains this script) |
+| <a id="entry-helper-cli-native-safety-audit-command-sync-scope-argument-scope-510657e758"></a><code>helper-cli.native-safety-audit.command.sync-scope.argument.scope</code> | <code>--scope</code> | <code>option</code> | no | <code>1</code> | - | - | root-relative project native directory audited with the Engine rules (repeatable) |
+| <a id="entry-helper-cli-native-safety-audit-command-sync-scope-argument-config-aec59ba760"></a><code>helper-cli.native-safety-audit.command.sync-scope.argument.config</code> | <code>--config</code> | <code>option</code> | no | <code>1</code> | - | - | project JSON configuration with vendored exclusions and reviewed project rules |
+| <a id="entry-helper-cli-native-safety-audit-command-sync-scope-argument-baseline-1d3414d1ee"></a><code>helper-cli.native-safety-audit.command.sync-scope.argument.baseline</code> | <code>--baseline</code> | <code>option</code> | no | <code>1</code> | - | - | project baseline TSV for findings in the --scope directories |
+| <a id="entry-helper-cli-native-safety-audit-command-sync-scope-argument-json-5bed230967"></a><code>helper-cli.native-safety-audit.command.sync-scope.argument.json</code> | <code>--json</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | print the summary and diagnostics as JSON |
+
+#### Exact `--help` output
+
+```text
+usage: native_safety_audit.py sync-scope [-h] [--root ROOT] [--engine-root ENGINE_ROOT] [--scope DIR] [--config FILE] [--baseline FILE] [--json]
+
+options:
+  -h, --help            show this help message and exit
+  --root ROOT           repository root for --scope, --config and --baseline paths (default: current directory)
+  --engine-root ENGINE_ROOT
+                        Engine checkout to audit (default: the checkout that contains this script)
+  --scope DIR           root-relative project native directory audited with the Engine rules (repeatable)
+  --config FILE         project JSON configuration with vendored exclusions and reviewed project rules
+  --baseline FILE       project baseline TSV for findings in the --scope directories
+  --json                print the summary and diagnostics as JSON
+```
+
+<a id="entry-helper-cli-native-safety-audit-command-exception-safety-b885bae5b9"></a>
+### `exception-safety`
+
+check per-function exception-safety classifications against the baselines
+
+Stable ID: `helper-cli.native-safety-audit.command.exception-safety`
+
+```text
+usage: native_safety_audit.py exception-safety [-h] [--root ROOT] [--engine-root ENGINE_ROOT] [--scope DIR] [--config FILE] [--baseline FILE] [--fail-on {error,warning}] [--level {NoThrow,Strong,Basic,None,Unclassified}] [--area AREA]
+                                               [--file FILE_FILTER] [--function FUNCTION_FILTER] [--add-new] [--prune-removed] [--migrate-signatures] [--accept FILE::FUNCTION] [--accept-all-changed]
+                                               [{audit,report,update}]
+```
+
+| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-root-5d7c6b896b"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.root</code> | <code>--root</code> | <code>option</code> | no | <code>1</code> | - | - | repository root for --scope, --config and --baseline paths (default: current directory) |
+| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-engine-root-083634bab3"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.engine_root</code> | <code>--engine-root</code> | <code>option</code> | no | <code>1</code> | - | - | Engine checkout to audit (default: the checkout that contains this script) |
+| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-scope-70c5a52bbc"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.scope</code> | <code>--scope</code> | <code>option</code> | no | <code>1</code> | - | - | root-relative project native directory audited with the Engine rules (repeatable) |
+| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-config-654e18e52f"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.config</code> | <code>--config</code> | <code>option</code> | no | <code>1</code> | - | - | project JSON configuration with vendored exclusions and reviewed project rules |
+| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-baseline-15731f3d0c"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.baseline</code> | <code>--baseline</code> | <code>option</code> | no | <code>1</code> | - | - | project baseline TSV for findings in the --scope directories |
+| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-action-fe490ae347"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.action</code> | <code>action</code> | <code>positional</code> | no | <code>?</code> | <code>audit</code>, <code>report</code>, <code>update</code> | <code>audit</code> | audit (default) fails on drift; report summarizes the baselines; update maintains them |
+| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-fail-on-7e82c37cb6"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.fail_on</code> | <code>--fail-on</code> | <code>option</code> | no | <code>1</code> | <code>error</code>, <code>warning</code> | - | audit: also fail on warnings (pending None adjudication, review notes) |
+| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-level-0401e86486"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.level</code> | <code>--level</code> | <code>option</code> | no | <code>1</code> | <code>NoThrow</code>, <code>Strong</code>, <code>Basic</code>, <code>None</code>, <code>Unclassified</code> | - | report: list rows with this level |
+| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-area-e417e6bb25"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.area</code> | <code>--area</code> | <code>option</code> | no | <code>1</code> | - | - | report: list rows of this source area (second path component) |
+| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-file-filter-b4b911f1b9"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.file_filter</code> | <code>--file</code> | <code>option</code> | no | <code>1</code> | - | - | report: list rows whose file contains this text |
+| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-function-filter-6fa689a4b9"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.function_filter</code> | <code>--function</code> | <code>option</code> | no | <code>1</code> | - | - | report: list rows whose function contains this text |
+| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-add-new-4c6e13395d"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.add_new</code> | <code>--add-new</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | update: add unclassified rows for new functions |
+| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-prune-removed-9eddff4bd8"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.prune_removed</code> | <code>--prune-removed</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | update: remove rows whose function vanished |
+| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-migrate-signatures-91bfff0832"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.migrate_signatures</code> | <code>--migrate-signatures</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | update: carry classifications across signature-only changes with identical body hashes |
+| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-accept-e6ce13f96f"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.accept</code> | <code>--accept</code> | <code>option</code> | no | <code>1</code> | - | - | update: refresh the body hash of a re-derived function (repeatable) |
+| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-accept-all-changed-7220be3c80"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.accept_all_changed</code> | <code>--accept-all-changed</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | update: refresh every changed body hash |
+
+#### Exact `--help` output
+
+```text
+usage: native_safety_audit.py exception-safety [-h] [--root ROOT] [--engine-root ENGINE_ROOT] [--scope DIR] [--config FILE] [--baseline FILE] [--fail-on {error,warning}] [--level {NoThrow,Strong,Basic,None,Unclassified}] [--area AREA]
+                                               [--file FILE_FILTER] [--function FUNCTION_FILTER] [--add-new] [--prune-removed] [--migrate-signatures] [--accept FILE::FUNCTION] [--accept-all-changed]
+                                               [{audit,report,update}]
+
+positional arguments:
+  {audit,report,update}
+                        audit (default) fails on drift; report summarizes the baselines; update maintains them
+
+options:
+  -h, --help            show this help message and exit
+  --root ROOT           repository root for --scope, --config and --baseline paths (default: current directory)
+  --engine-root ENGINE_ROOT
+                        Engine checkout to audit (default: the checkout that contains this script)
+  --scope DIR           root-relative project native directory audited with the Engine rules (repeatable)
+  --config FILE         project JSON configuration with vendored exclusions and reviewed project rules
+  --baseline FILE       project baseline TSV for findings in the --scope directories
+  --fail-on {error,warning}
+                        audit: also fail on warnings (pending None adjudication, review notes)
+  --level {NoThrow,Strong,Basic,None,Unclassified}
+                        report: list rows with this level
+  --area AREA           report: list rows of this source area (second path component)
+  --file FILE_FILTER    report: list rows whose file contains this text
+  --function FUNCTION_FILTER
+                        report: list rows whose function contains this text
+  --add-new             update: add unclassified rows for new functions
+  --prune-removed       update: remove rows whose function vanished
+  --migrate-signatures  update: carry classifications across signature-only changes with identical body hashes
+  --accept FILE::FUNCTION
+                        update: refresh the body hash of a re-derived function (repeatable)
+  --accept-all-changed  update: refresh every changed body hash
 ```
 
 <a id="entry-helper-cli-android-device-ab99179ae9"></a>
@@ -791,6 +1682,298 @@ options:
   --fork       fork process
 ```
 
+<a id="entry-helper-cli-artifact-checksums-efe1b1aaa6"></a>
+## Artifact checksums
+
+Write or verify SHA-256 sidecars and an optional manifest for finished release packages.
+
+- Stable ID: `helper-cli.artifact-checksums`
+- Program: `artifact_checksums.py`
+- Owner: `build-release`
+- Audience: `release-operator`, `ci-maintainer`, `embedding-project-build-system`
+- Invocation owner: embedding-project release jobs after the last package writer stops
+- Parser source: [BuildTools/artifact_checksums.py](https://github.com/cvet/fonline/blob/master/BuildTools/artifact_checksums.py)
+
+### Top-level arguments
+
+| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| <a id="entry-helper-cli-artifact-checksums-argument-directory-dbf51c94e9"></a><code>helper-cli.artifact-checksums.argument.directory</code> | <code>directory</code> | <code>positional</code> | yes | <code>1</code> | - | - | finished package directory, before publication |
+| <a id="entry-helper-cli-artifact-checksums-argument-artifact-3dd87d0f1b"></a><code>helper-cli.artifact-checksums.argument.artifact</code> | <code>--artifact</code> | <code>option</code> | no | <code>1</code> | - | - | select this file, relative to the directory, instead of scanning the directory root; repeatable |
+| <a id="entry-helper-cli-artifact-checksums-argument-suffix-3303b5534f"></a><code>helper-cli.artifact-checksums.argument.suffix</code> | <code>--suffix</code> | <code>option</code> | no | <code>1</code> | - | - | case-insensitive file-name suffix to select; repeatable; replaces the default .zip, .tar, .tar.gz, .msi and .apk |
+| <a id="entry-helper-cli-artifact-checksums-argument-manifest-4e1036138a"></a><code>helper-cli.artifact-checksums.argument.manifest</code> | <code>--manifest</code> | <code>option</code> | no | <code>1</code> | - | - | also write (or verify) one manifest of every selected file at the directory root, for example SHA256SUMS |
+| <a id="entry-helper-cli-artifact-checksums-argument-no-sidecars-bd7146afb3"></a><code>helper-cli.artifact-checksums.argument.no_sidecars</code> | <code>--no-sidecars</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | write or verify only the manifest; requires --manifest |
+| <a id="entry-helper-cli-artifact-checksums-argument-verify-7eee2f243b"></a><code>helper-cli.artifact-checksums.argument.verify</code> | <code>--verify</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | compare existing sidecars and manifest with the current file bytes instead of writing them |
+
+### Exact top-level `--help` output
+
+```text
+usage: artifact_checksums.py [-h] [--artifact RELATIVE_PATH] [--suffix SUFFIX] [--manifest FILENAME] [--no-sidecars] [--verify] directory
+
+Write or verify SHA-256 sidecars and an optional manifest for finished release packages.
+
+positional arguments:
+  directory             finished package directory, before publication
+
+options:
+  -h, --help            show this help message and exit
+  --artifact RELATIVE_PATH
+                        select this file, relative to the directory, instead of scanning the directory root; repeatable
+  --suffix SUFFIX       case-insensitive file-name suffix to select; repeatable; replaces the default .zip, .tar, .tar.gz, .msi and .apk
+  --manifest FILENAME   also write (or verify) one manifest of every selected file at the directory root, for example SHA256SUMS
+  --no-sidecars         write or verify only the manifest; requires --manifest
+  --verify              compare existing sidecars and manifest with the current file bytes instead of writing them
+```
+
+<a id="entry-helper-cli-project-version-52ce8849a0"></a>
+## Project version generator
+
+Generate or check a machine-written monotonic project VERSION file with a built-in or project-owned version scheme.
+
+- Stable ID: `helper-cli.project-version`
+- Program: `project_version.py`
+- Owner: `build-release`
+- Audience: `game-developer`, `ci-maintainer`, `embedding-project-build-system`
+- Invocation owner: embedding-project version tasks, hooks and CI checks
+- Parser source: [BuildTools/project_version.py](https://github.com/cvet/fonline/blob/master/BuildTools/project_version.py)
+
+### Top-level arguments
+
+| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| <a id="entry-helper-cli-project-version-argument-root-e3201c76c3"></a><code>helper-cli.project-version.argument.root</code> | <code>--root</code> | <code>option</code> | no | <code>1</code> | - | <code>.</code> | directory inside the project work tree (default: current directory) |
+| <a id="entry-helper-cli-project-version-argument-config-2c1e6b62ba"></a><code>helper-cli.project-version.argument.config</code> | <code>--config</code> | <code>option</code> | no | <code>1</code> | - | - | JSON file with any of file, base_ref, scheme, limits, since_commit; options given on the command line win |
+| <a id="entry-helper-cli-project-version-argument-file-ae457daa3a"></a><code>helper-cli.project-version.argument.file</code> | <code>--file</code> | <code>option</code> | no | <code>1</code> | - | - | version file relative to --root (default: VERSION) |
+| <a id="entry-helper-cli-project-version-argument-base-ref-6e2264ba65"></a><code>helper-cli.project-version.argument.base_ref</code> | <code>--base-ref</code> | <code>option</code> | no | <code>1</code> | - | - | Git ref whose version the next value must exceed, for example origin/main; required to generate |
+| <a id="entry-helper-cli-project-version-argument-scheme-a69912c938"></a><code>helper-cli.project-version.argument.scheme</code> | <code>--scheme</code> | <code>option</code> | no | <code>1</code> | - | - | built-in patch-per-commit (default) or counter, or &lt;file.py or module&gt;:&lt;factory&gt; of a project scheme |
+| <a id="entry-helper-cli-project-version-argument-limit-945d934d1d"></a><code>helper-cli.project-version.argument.limit</code> | <code>--limit</code> | <code>option</code> | no | <code>1</code> | - | - | exclusive upper bound of one scheme component, for example patch=10000; a full component carries into the previous one; repeatable |
+| <a id="entry-helper-cli-project-version-argument-since-commit-637b3f1b85"></a><code>helper-cli.project-version.argument.since_commit</code> | <code>--since-commit</code> | <code>option</code> | no | <code>1</code> | - | - | ignore values committed before this commit, for example where the encoding changed; it must be an ancestor of every compared ref |
+| <a id="entry-helper-cli-project-version-argument-check-2421a0cc6a"></a><code>helper-cli.project-version.argument.check</code> | <code>--check</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | validate the working-tree file without writing it |
+
+### Exact top-level `--help` output
+
+```text
+usage: project_version.py [-h] [--root ROOT] [--config CONFIG] [--file FILE] [--base-ref BASE_REF] [--scheme SCHEME] [--limit COMPONENT=N] [--since-commit SINCE_COMMIT] [--check]
+
+Generate or check a machine-written monotonic project VERSION file against Git history.
+
+options:
+  -h, --help            show this help message and exit
+  --root ROOT           directory inside the project work tree (default: current directory)
+  --config CONFIG       JSON file with any of file, base_ref, scheme, limits, since_commit; options given on the command line win
+  --file FILE           version file relative to --root (default: VERSION)
+  --base-ref BASE_REF   Git ref whose version the next value must exceed, for example origin/main; required to generate
+  --scheme SCHEME       built-in patch-per-commit (default) or counter, or <file.py or module>:<factory> of a project scheme
+  --limit COMPONENT=N   exclusive upper bound of one scheme component, for example patch=10000; a full component carries into the previous one; repeatable
+  --since-commit SINCE_COMMIT
+                        ignore values committed before this commit, for example where the encoding changed; it must be an ancestor of every compared ref
+  --check               validate the working-tree file without writing it
+```
+
+<a id="entry-helper-cli-release-preflight-f5192a7f8b"></a>
+## Release preflight
+
+Validate a project release version, tag and assets, choose publish or dry-run, split oversized assets and write a checksum manifest.
+
+- Stable ID: `helper-cli.release-preflight`
+- Program: `release_preflight.py`
+- Owner: `build-release`
+- Audience: `release-operator`, `ci-maintainer`
+- Invocation owner: embedding-project manual release jobs before tagging and publication
+- Parser source: [BuildTools/release_preflight.py](https://github.com/cvet/fonline/blob/master/BuildTools/release_preflight.py)
+
+### Top-level arguments
+
+| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| <a id="entry-helper-cli-release-preflight-argument-root-3bdae0a691"></a><code>helper-cli.release-preflight.argument.root</code> | <code>--root</code> | <code>option</code> | no | <code>1</code> | - | <code>.</code> | directory inside the project work tree (default: current directory) |
+| <a id="entry-helper-cli-release-preflight-argument-config-7795ea0c55"></a><code>helper-cli.release-preflight.argument.config</code> | <code>--config</code> | <code>option</code> | no | <code>1</code> | - | - | project_version.py JSON config; its file, scheme and limits apply here |
+| <a id="entry-helper-cli-release-preflight-argument-file-09ca21cfb3"></a><code>helper-cli.release-preflight.argument.file</code> | <code>--file</code> | <code>option</code> | no | <code>1</code> | - | - | version file relative to --root (default: VERSION) |
+| <a id="entry-helper-cli-release-preflight-argument-scheme-00d87d25f5"></a><code>helper-cli.release-preflight.argument.scheme</code> | <code>--scheme</code> | <code>option</code> | no | <code>1</code> | - | - | version scheme, as for project_version.py (default: patch-per-commit) |
+| <a id="entry-helper-cli-release-preflight-argument-limit-947859499f"></a><code>helper-cli.release-preflight.argument.limit</code> | <code>--limit</code> | <code>option</code> | no | <code>1</code> | - | - | scheme component limit, as for project_version.py; repeatable |
+| <a id="entry-helper-cli-release-preflight-argument-tag-prefix-c323e1731a"></a><code>helper-cli.release-preflight.argument.tag_prefix</code> | <code>--tag-prefix</code> | <code>option</code> | no | <code>1</code> | - | <code>v</code> | release tag prefix before the version (default: v) |
+| <a id="entry-helper-cli-release-preflight-argument-remote-f7eaa2dcb3"></a><code>helper-cli.release-preflight.argument.remote</code> | <code>--remote</code> | <code>option</code> | no | <code>1</code> | - | - | also look for the tag on this Git remote, for example origin |
+| <a id="entry-helper-cli-release-preflight-argument-ref-19af983c12"></a><code>helper-cli.release-preflight.argument.ref</code> | <code>--ref</code> | <code>option</code> | no | <code>1</code> | - | - | ref being released, for example refs/heads/main (default: the branch checked out at HEAD) |
+| <a id="entry-helper-cli-release-preflight-argument-release-ref-d1273200a8"></a><code>helper-cli.release-preflight.argument.release_ref</code> | <code>--release-ref</code> | <code>option</code> | no | <code>1</code> | - | - | only this ref publishes; every other ref is a dry run, and without it every run is a dry run |
+| <a id="entry-helper-cli-release-preflight-argument-dry-run-2b5fa5e478"></a><code>helper-cli.release-preflight.argument.dry_run</code> | <code>--dry-run</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | force dry-run mode even on the release ref |
+| <a id="entry-helper-cli-release-preflight-argument-engine-9472b02da4"></a><code>helper-cli.release-preflight.argument.engine</code> | <code>--engine</code> | <code>option</code> | no | <code>1</code> | - | - | also require the committed gitlink of this Engine submodule to be reachable from a remote-tracking branch of the submodule |
+| <a id="entry-helper-cli-release-preflight-argument-assets-dir-14259b81bb"></a><code>helper-cli.release-preflight.argument.assets_dir</code> | <code>--assets-dir</code> | <code>option</code> | no | <code>1</code> | - | - | directory whose root-level files are the release assets |
+| <a id="entry-helper-cli-release-preflight-argument-asset-pattern-dc2cf1b2ab"></a><code>helper-cli.release-preflight.argument.asset_pattern</code> | <code>--asset-pattern</code> | <code>option</code> | no | <code>1</code> | - | - | file-name pattern of the assets in --assets-dir; repeatable (default: every file) |
+| <a id="entry-helper-cli-release-preflight-argument-max-asset-bytes-88de42eb91"></a><code>helper-cli.release-preflight.argument.max_asset_bytes</code> | <code>--max-asset-bytes</code> | <code>option</code> | no | <code>1</code> | - | - | split each larger asset into &lt;name&gt;.partNN pieces of at most SIZE bytes; K, M and G suffixes are powers of 1024 |
+| <a id="entry-helper-cli-release-preflight-argument-manifest-66e8bb1588"></a><code>helper-cli.release-preflight.argument.manifest</code> | <code>--manifest</code> | <code>option</code> | no | <code>1</code> | - | - | write a SHA-256 manifest of the final assets into --assets-dir |
+| <a id="entry-helper-cli-release-preflight-argument-outputs-file-0239d782b6"></a><code>helper-cli.release-preflight.argument.outputs_file</code> | <code>--outputs-file</code> | <code>option</code> | no | <code>1</code> | - | - | append version, tag, previous_tag, publish and assets as key=value lines, for example to $GITHUB_OUTPUT |
+| <a id="entry-helper-cli-release-preflight-argument-summary-file-74fca7a46a"></a><code>helper-cli.release-preflight.argument.summary_file</code> | <code>--summary-file</code> | <code>option</code> | no | <code>1</code> | - | - | append a Markdown summary, for example to $GITHUB_STEP_SUMMARY |
+
+### Exact top-level `--help` output
+
+```text
+usage: release_preflight.py [-h] [--root ROOT] [--config CONFIG] [--file FILE] [--scheme SCHEME] [--limit COMPONENT=N] [--tag-prefix TAG_PREFIX] [--remote REMOTE] [--ref REF] [--release-ref RELEASE_REF] [--dry-run] [--engine PATH]
+                            [--assets-dir ASSETS_DIR] [--asset-pattern GLOB] [--max-asset-bytes SIZE] [--manifest FILENAME] [--outputs-file OUTPUTS_FILE] [--summary-file SUMMARY_FILE]
+
+Validate the version, tag and assets of a project release and decide between publish and dry-run.
+
+options:
+  -h, --help            show this help message and exit
+  --root ROOT           directory inside the project work tree (default: current directory)
+  --config CONFIG       project_version.py JSON config; its file, scheme and limits apply here
+  --file FILE           version file relative to --root (default: VERSION)
+  --scheme SCHEME       version scheme, as for project_version.py (default: patch-per-commit)
+  --limit COMPONENT=N   scheme component limit, as for project_version.py; repeatable
+  --tag-prefix TAG_PREFIX
+                        release tag prefix before the version (default: v)
+  --remote REMOTE       also look for the tag on this Git remote, for example origin
+  --ref REF             ref being released, for example refs/heads/main (default: the branch checked out at HEAD)
+  --release-ref RELEASE_REF
+                        only this ref publishes; every other ref is a dry run, and without it every run is a dry run
+  --dry-run             force dry-run mode even on the release ref
+  --engine PATH         also require the committed gitlink of this Engine submodule to be reachable from a remote-tracking branch of the submodule
+  --assets-dir ASSETS_DIR
+                        directory whose root-level files are the release assets
+  --asset-pattern GLOB  file-name pattern of the assets in --assets-dir; repeatable (default: every file)
+  --max-asset-bytes SIZE
+                        split each larger asset into <name>.partNN pieces of at most SIZE bytes; K, M and G suffixes are powers of 1024
+  --manifest FILENAME   write a SHA-256 manifest of the final assets into --assets-dir
+  --outputs-file OUTPUTS_FILE
+                        append version, tag, previous_tag, publish and assets as key=value lines, for example to $GITHUB_OUTPUT
+  --summary-file SUMMARY_FILE
+                        append a Markdown summary, for example to $GITHUB_STEP_SUMMARY
+```
+
+<a id="entry-helper-cli-engine-upgrade-report-a1902fe984"></a>
+## Engine upgrade report
+
+Write a Markdown Engine update record with the Engine identities, the incoming range, changelog migrations and a project name search.
+
+- Stable ID: `helper-cli.engine-upgrade-report`
+- Program: `engine_upgrade_report.py`
+- Owner: `documentation`
+- Audience: `game-developer`, `engine-contributor`
+- Invocation owner: embedding-project Engine update work, run from the project root
+- Parser source: [BuildTools/engine_upgrade_report.py](https://github.com/cvet/fonline/blob/master/BuildTools/engine_upgrade_report.py)
+
+### Top-level arguments
+
+| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| <a id="entry-helper-cli-engine-upgrade-report-argument-project-9e74f0315a"></a><code>helper-cli.engine-upgrade-report.argument.project</code> | <code>--project</code> | <code>option</code> | no | <code>1</code> | - | <code>.</code> | embedding project work tree (default: current directory) |
+| <a id="entry-helper-cli-engine-upgrade-report-argument-engine-b448f3e919"></a><code>helper-cli.engine-upgrade-report.argument.engine</code> | <code>--engine</code> | <code>option</code> | no | <code>1</code> | - | <code>Engine</code> | Engine checkout relative to --project (default: Engine) |
+| <a id="entry-helper-cli-engine-upgrade-report-argument-old-ab375d7aa4"></a><code>helper-cli.engine-upgrade-report.argument.old</code> | <code>--old</code> | <code>option</code> | no | <code>1</code> | - | - | baseline Engine revision (default: the parent gitlink at HEAD) |
+| <a id="entry-helper-cli-engine-upgrade-report-argument-new-8b113dcac3"></a><code>helper-cli.engine-upgrade-report.argument.new</code> | <code>--new</code> | <code>option</code> | no | <code>1</code> | - | - | target Engine revision, for example a commit or a v&lt;version&gt; tag (default: the Engine checkout HEAD) |
+| <a id="entry-helper-cli-engine-upgrade-report-argument-changelog-5ffef85197"></a><code>helper-cli.engine-upgrade-report.argument.changelog</code> | <code>--changelog</code> | <code>option</code> | no | <code>1</code> | - | <code>Docs/en/reference/changelog.md</code> | changelog path inside the Engine repository, read at the target revision (default: Docs/en/reference/changelog.md) |
+| <a id="entry-helper-cli-engine-upgrade-report-argument-names-fcde25bd3f"></a><code>helper-cli.engine-upgrade-report.argument.names</code> | <code>--names</code> | <code>option</code> | no | <code>1</code> | - | - | text file with one literal name per line to search in the project sources; blank lines are ignored |
+| <a id="entry-helper-cli-engine-upgrade-report-argument-search-path-5e221d686e"></a><code>helper-cli.engine-upgrade-report.argument.search_path</code> | <code>--search-path</code> | <code>option</code> | no | <code>1</code> | - | - | project pathspec to search for the names; repeatable (default: the whole project except the Engine checkout) |
+| <a id="entry-helper-cli-engine-upgrade-report-argument-max-locations-011a38ebcd"></a><code>helper-cli.engine-upgrade-report.argument.max_locations</code> | <code>--max-locations</code> | <code>option</code> | no | <code>1</code> | - | <code>20</code> | locations listed per name in the record; the match count is always complete (default: 20) |
+| <a id="entry-helper-cli-engine-upgrade-report-argument-output-da11040904"></a><code>helper-cli.engine-upgrade-report.argument.output</code> | <code>--output</code> | <code>option</code> | no | <code>1</code> | - | - | write the record to this file instead of standard output |
+| <a id="entry-helper-cli-engine-upgrade-report-argument-force-1707183875"></a><code>helper-cli.engine-upgrade-report.argument.force</code> | <code>--force</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | replace an existing --output file |
+
+### Exact top-level `--help` output
+
+```text
+usage: engine_upgrade_report.py [-h] [--project PROJECT] [--engine ENGINE] [--old OLD] [--new NEW] [--changelog CHANGELOG] [--names NAMES] [--search-path PATHSPEC] [--max-locations MAX_LOCATIONS] [--output OUTPUT] [--force]
+
+Write a Markdown Engine update record for an embedding project from read-only Git queries.
+
+options:
+  -h, --help            show this help message and exit
+  --project PROJECT     embedding project work tree (default: current directory)
+  --engine ENGINE       Engine checkout relative to --project (default: Engine)
+  --old OLD             baseline Engine revision (default: the parent gitlink at HEAD)
+  --new NEW             target Engine revision, for example a commit or a v<version> tag (default: the Engine checkout HEAD)
+  --changelog CHANGELOG
+                        changelog path inside the Engine repository, read at the target revision (default: Docs/en/reference/changelog.md)
+  --names NAMES         text file with one literal name per line to search in the project sources; blank lines are ignored
+  --search-path PATHSPEC
+                        project pathspec to search for the names; repeatable (default: the whole project except the Engine checkout)
+  --max-locations MAX_LOCATIONS
+                        locations listed per name in the record; the match count is always complete (default: 20)
+  --output OUTPUT       write the record to this file instead of standard output
+  --force               replace an existing --output file
+```
+
+<a id="entry-helper-cli-script-binding-check-56e942e304"></a>
+## Script binding check
+
+Reject raw pointers in script-facing native signatures and compare AngelScript handler nullability with event and remote-call declarations.
+
+- Stable ID: `helper-cli.script-binding-check`
+- Program: `check_script_bindings.py`
+- Owner: `quality`
+- Audience: `game-developer`, `engine-contributor`, `ci-maintainer`
+- Invocation owner: Engine CI and embedding-project quality gates
+- Parser source: [BuildTools/check_script_bindings.py](https://github.com/cvet/fonline/blob/master/BuildTools/check_script_bindings.py)
+
+### Top-level arguments
+
+| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| <a id="entry-helper-cli-script-binding-check-argument-root-0186131671"></a><code>helper-cli.script-binding-check.argument.root</code> | <code>--root</code> | <code>option</code> | no | <code>1</code> | - | - | repository root that scopes and reported paths are relative to (default: the Engine root that contains this script) |
+| <a id="entry-helper-cli-script-binding-check-argument-scope-ce0f036e90"></a><code>helper-cli.script-binding-check.argument.scope</code> | <code>--scope</code> | <code>option</code> | no | <code>1</code> | - | - | root-relative native source directory; repeatable (default: Source) |
+| <a id="entry-helper-cli-script-binding-check-argument-scripts-be2566252b"></a><code>helper-cli.script-binding-check.argument.scripts</code> | <code>--scripts</code> | <code>option</code> | no | <code>1</code> | - | - | root-relative AngelScript directory whose handlers are compared; repeatable |
+| <a id="entry-helper-cli-script-binding-check-argument-exclude-81d76422a0"></a><code>helper-cli.script-binding-check.argument.exclude</code> | <code>--exclude</code> | <code>option</code> | no | <code>1</code> | - | - | fnmatch pattern for root-relative POSIX paths to skip; repeatable |
+| <a id="entry-helper-cli-script-binding-check-argument-baseline-0b842d512b"></a><code>helper-cli.script-binding-check.argument.baseline</code> | <code>--baseline</code> | <code>option</code> | no | <code>1</code> | - | - | accepted findings (rule, path, count, reason TSV); repeatable |
+| <a id="entry-helper-cli-script-binding-check-argument-write-baseline-d4d708b0d6"></a><code>helper-cli.script-binding-check.argument.write_baseline</code> | <code>--write-baseline</code> | <code>option</code> | no | <code>1</code> | - | - | write current finding counts with empty reasons instead of gating |
+| <a id="entry-helper-cli-script-binding-check-argument-list-rules-8205fa771d"></a><code>helper-cli.script-binding-check.argument.list_rules</code> | <code>--list-rules</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | print rule identifiers and exit |
+
+### Exact top-level `--help` output
+
+```text
+usage: check_script_bindings.py [-h] [--root ROOT] [--scope DIR] [--scripts DIR] [--exclude GLOB] [--baseline TSV] [--write-baseline TSV] [--list-rules]
+
+Check script-facing native signatures for ptr/nptr spelling and compare AngelScript handlers with event and remote-call declarations
+
+options:
+  -h, --help            show this help message and exit
+  --root ROOT           repository root that scopes and reported paths are relative to (default: the Engine root that contains this script)
+  --scope DIR           root-relative native source directory; repeatable (default: Source)
+  --scripts DIR         root-relative AngelScript directory whose handlers are compared; repeatable
+  --exclude GLOB        fnmatch pattern for root-relative POSIX paths to skip; repeatable
+  --baseline TSV        accepted findings (rule, path, count, reason TSV); repeatable
+  --write-baseline TSV  write current finding counts with empty reasons instead of gating
+  --list-rules          print rule identifiers and exit
+```
+
+<a id="entry-helper-cli-angelscript-hygiene-check-b5053583a9"></a>
+## AngelScript hygiene check
+
+Check authored AngelScript modules for namespace, include, side-macro, sort-directive and file-ending conventions with a count-ratchet baseline.
+
+- Stable ID: `helper-cli.angelscript-hygiene-check`
+- Program: `check_angelscript_hygiene.py`
+- Owner: `quality`
+- Audience: `game-developer`, `engine-contributor`, `ci-maintainer`
+- Invocation owner: Engine CI and embedding-project quality gates
+- Parser source: [BuildTools/check_angelscript_hygiene.py](https://github.com/cvet/fonline/blob/master/BuildTools/check_angelscript_hygiene.py)
+
+### Top-level arguments
+
+| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| <a id="entry-helper-cli-angelscript-hygiene-check-argument-root-62e4bfdc20"></a><code>helper-cli.angelscript-hygiene-check.argument.root</code> | <code>--root</code> | <code>option</code> | no | <code>1</code> | - | - | repository root that script directories and reported paths are relative to (default: the Engine root that contains this script) |
+| <a id="entry-helper-cli-angelscript-hygiene-check-argument-scripts-3af5b503fb"></a><code>helper-cli.angelscript-hygiene-check.argument.scripts</code> | <code>--scripts</code> | <code>option</code> | no | <code>1</code> | - | - | root-relative directory searched recursively for .fos files; repeatable (default: Examples) |
+| <a id="entry-helper-cli-angelscript-hygiene-check-argument-config-0f43c6ee5e"></a><code>helper-cli.angelscript-hygiene-check.argument.config</code> | <code>--config</code> | <code>option</code> | no | <code>1</code> | - | - | rule switches, rule options and excludes (schema_version 1) |
+| <a id="entry-helper-cli-angelscript-hygiene-check-argument-exclude-6adf1dbcfb"></a><code>helper-cli.angelscript-hygiene-check.argument.exclude</code> | <code>--exclude</code> | <code>option</code> | no | <code>1</code> | - | - | fnmatch pattern for root-relative POSIX paths to skip; repeatable |
+| <a id="entry-helper-cli-angelscript-hygiene-check-argument-baseline-1036f14d59"></a><code>helper-cli.angelscript-hygiene-check.argument.baseline</code> | <code>--baseline</code> | <code>option</code> | no | <code>1</code> | - | - | accepted findings (rule, path, count, reason TSV); repeatable |
+| <a id="entry-helper-cli-angelscript-hygiene-check-argument-write-baseline-504af0139a"></a><code>helper-cli.angelscript-hygiene-check.argument.write_baseline</code> | <code>--write-baseline</code> | <code>option</code> | no | <code>1</code> | - | - | write current finding counts with empty reasons instead of gating |
+| <a id="entry-helper-cli-angelscript-hygiene-check-argument-list-rules-e0fb8a073d"></a><code>helper-cli.angelscript-hygiene-check.argument.list_rules</code> | <code>--list-rules</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | print rule identifiers, defaults and exit |
+
+### Exact top-level `--help` output
+
+```text
+usage: check_angelscript_hygiene.py [-h] [--root ROOT] [--scripts DIR] [--config JSON] [--exclude GLOB] [--baseline TSV] [--write-baseline TSV] [--list-rules]
+
+Check authored AngelScript modules for namespace, include, side-macro, sort-directive and file-ending conventions with an optional count-ratchet baseline
+
+options:
+  -h, --help            show this help message and exit
+  --root ROOT           repository root that script directories and reported paths are relative to (default: the Engine root that contains this script)
+  --scripts DIR         root-relative directory searched recursively for .fos files; repeatable (default: Examples)
+  --config JSON         rule switches, rule options and excludes (schema_version 1)
+  --exclude GLOB        fnmatch pattern for root-relative POSIX paths to skip; repeatable
+  --baseline TSV        accepted findings (rule, path, count, reason TSV); repeatable
+  --write-baseline TSV  write current finding counts with empty reasons instead of gating
+  --list-rules          print rule identifiers, defaults and exit
+```
+
 <a id="entry-helper-cli-createmsi-18899fd2a5"></a>
 ## MSI creation
 
@@ -823,4 +2006,117 @@ positional arguments:
 options:
   -h, --help           show this help message and exit
   --wix-dir directory  directory containing WiX tools; omit to find them on PATH
+```
+
+<a id="entry-helper-cli-move-sync-analysis-d49c9c73db"></a>
+## Movement synchronization trace analysis
+
+Merge Network.MoveSyncTrace MOVESYNC log lines into per-scenario divergence, lag and correction reports.
+
+- Stable ID: `helper-cli.move-sync-analysis`
+- Program: `move_sync_analysis.py`
+- Owner: `networking`
+- Audience: `game-developer`, `engine-contributor`, `ci-maintainer`
+- Invocation owner: embedding-project movement playtests and direct developer diagnostics
+- Parser source: [BuildTools/move_sync_analysis.py](https://github.com/cvet/fonline/blob/master/BuildTools/move_sync_analysis.py)
+
+### Top-level arguments
+
+| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| <a id="entry-helper-cli-move-sync-analysis-argument-logs-3467b9a7b1"></a><code>helper-cli.move-sync-analysis.argument.logs</code> | <code>logs</code> | <code>positional</code> | yes | <code>+</code> | - | - | log files holding MOVESYNC lines (server and clients) |
+| <a id="entry-helper-cli-move-sync-analysis-argument-geometry-1efb4132b0"></a><code>helper-cli.move-sync-analysis.argument.geometry</code> | <code>--geometry</code> | <code>option</code> | yes | <code>1</code> | <code>hexagonal</code>, <code>square</code> | - | world grid geometry of the project (FO_GEOMETRY) |
+| <a id="entry-helper-cli-move-sync-analysis-argument-clock-c5f44c6507"></a><code>helper-cli.move-sync-analysis.argument.clock</code> | <code>--clock</code> | <code>option</code> | no | <code>1</code> | <code>t</code>, <code>st</code> | <code>t</code> | t: shared monotonic clock (one machine); st: synchronized time (several machines) |
+| <a id="entry-helper-cli-move-sync-analysis-argument-actor-b6d2392d27"></a><code>helper-cli.move-sync-analysis.argument.actor</code> | <code>--actor</code> | <code>option</code> | no | <code>1</code> | - | - | analyse the whole trace as one scenario of this critter id instead of mark-delimited scenarios |
+| <a id="entry-helper-cli-move-sync-analysis-argument-settle-ms-a0a6aa90f1"></a><code>helper-cli.move-sync-analysis.argument.settle_ms</code> | <code>--settle-ms</code> | <code>option</code> | no | <code>1</code> | - | <code>0</code> | extend each scenario window by this many milliseconds after its end mark |
+| <a id="entry-helper-cli-move-sync-analysis-argument-extra-side-ec3cf909c8"></a><code>helper-cli.move-sync-analysis.argument.extra_side</code> | <code>--extra-side</code> | <code>option</code> | no | <code>1</code> | - | - | also read MOVESYNC lines of this project-written side into timelines (repeatable) |
+| <a id="entry-helper-cli-move-sync-analysis-argument-timeline-32c7996c9b"></a><code>helper-cli.move-sync-analysis.argument.timeline</code> | <code>--timeline</code> | <code>option</code> | no | <code>1</code> | - | - | print the merged timeline of a scenario label (repeatable, or 'all') |
+| <a id="entry-helper-cli-move-sync-analysis-argument-json-3dc3c07aae"></a><code>helper-cli.move-sync-analysis.argument.json</code> | <code>--json</code> | <code>option</code> | no | <code>1</code> | - | - | write the full report as JSON |
+| <a id="entry-helper-cli-move-sync-analysis-argument-markdown-ececb5d9f8"></a><code>helper-cli.move-sync-analysis.argument.markdown</code> | <code>--markdown</code> | <code>option</code> | no | <code>1</code> | - | - | write the Markdown summary table |
+| <a id="entry-helper-cli-move-sync-analysis-argument-require-converged-beecd1dc57"></a><code>helper-cli.move-sync-analysis.argument.require_converged</code> | <code>--require-converged</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | exit 1 when any scenario ends with the views disagreeing |
+
+### Exact top-level `--help` output
+
+```text
+usage: move_sync_analysis.py [-h] --geometry {hexagonal,square} [--clock {t,st}] [--actor ACTOR] [--settle-ms SETTLE_MS] [--extra-side EXTRA_SIDE] [--timeline TIMELINE] [--json JSON] [--markdown MARKDOWN] [--require-converged]
+                             logs [logs ...]
+
+Analyse MOVESYNC movement synchronization traces written with Network.MoveSyncTrace.
+
+positional arguments:
+  logs                  log files holding MOVESYNC lines (server and clients)
+
+options:
+  -h, --help            show this help message and exit
+  --geometry {hexagonal,square}
+                        world grid geometry of the project (FO_GEOMETRY)
+  --clock {t,st}        t: shared monotonic clock (one machine); st: synchronized time (several machines)
+  --actor ACTOR         analyse the whole trace as one scenario of this critter id instead of mark-delimited scenarios
+  --settle-ms SETTLE_MS
+                        extend each scenario window by this many milliseconds after its end mark
+  --extra-side EXTRA_SIDE
+                        also read MOVESYNC lines of this project-written side into timelines (repeatable)
+  --timeline TIMELINE   print the merged timeline of a scenario label (repeatable, or 'all')
+  --json JSON           write the full report as JSON
+  --markdown MARKDOWN   write the Markdown summary table
+  --require-converged   exit 1 when any scenario ends with the views disagreeing
+```
+
+<a id="entry-helper-cli-check-text-packs-fedc98c863"></a>
+## Text pack lint
+
+Check raw .fotxt packs for parse errors, duplicate variants, wrong-script text and language key parity before baking.
+
+- Stable ID: `helper-cli.check-text-packs`
+- Program: `check_text_packs.py`
+- Owner: `localization`
+- Audience: `game-developer`, `embedding-project-build-system`, `ci-maintainer`
+- Invocation owner: embedding-project localization tasks and CI content gates
+- Parser source: [BuildTools/check_text_packs.py](https://github.com/cvet/fonline/blob/master/BuildTools/check_text_packs.py)
+
+### Top-level arguments
+
+| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| <a id="entry-helper-cli-check-text-packs-argument-roots-627d26f42e"></a><code>helper-cli.check-text-packs.argument.roots</code> | <code>roots</code> | <code>positional</code> | yes | <code>+</code> | - | - | text directories to scan recursively; each root is checked as one resource-pack input |
+| <a id="entry-helper-cli-check-text-packs-argument-languages-7d3cd02ab0"></a><code>helper-cli.check-text-packs.argument.languages</code> | <code>--languages</code> | <code>option</code> | no | <code>1</code> | - | - | ordered Baking.BakeLanguages declarations, such as 'engl russ' |
+| <a id="entry-helper-cli-check-text-packs-argument-config-f8719d6287"></a><code>helper-cli.check-text-packs.argument.config</code> | <code>--config</code> | <code>option</code> | no | <code>1</code> | - | - | main .fomain config whose Baking.BakeLanguages is read |
+| <a id="entry-helper-cli-check-text-packs-argument-sub-config-8bcca85937"></a><code>helper-cli.check-text-packs.argument.sub_config</code> | <code>--sub-config</code> | <code>option</code> | no | <code>1</code> | - | - | sub-config applied over the main config section (with --config) |
+| <a id="entry-helper-cli-check-text-packs-argument-script-b9d05d8ff5"></a><code>helper-cli.check-text-packs.argument.script</code> | <code>--script</code> | <code>option</code> | no | <code>1</code> | - | - | letter scripts a language allows, such as engl=latin (repeatable) |
+| <a id="entry-helper-cli-check-text-packs-argument-ignore-pattern-97a578746d"></a><code>helper-cli.check-text-packs.argument.ignore_pattern</code> | <code>--ignore-pattern</code> | <code>option</code> | no | <code>1</code> | - | - | text removed before the script check, such as project placeholders (repeatable) |
+| <a id="entry-helper-cli-check-text-packs-argument-sparse-809ef46431"></a><code>helper-cli.check-text-packs.argument.sparse</code> | <code>--sparse</code> | <code>option</code> | no | <code>1</code> | - | - | language that intentionally inherits missing packs and keys from its fallback (repeatable) |
+| <a id="entry-helper-cli-check-text-packs-argument-strict-variant-counts-33eaebdbfd"></a><code>helper-cli.check-text-packs.argument.strict_variant_counts</code> | <code>--strict-variant-counts</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | also report keys whose variant count differs from the fallback language |
+| <a id="entry-helper-cli-check-text-packs-argument-baseline-b7bb7e71e3"></a><code>helper-cli.check-text-packs.argument.baseline</code> | <code>--baseline</code> | <code>option</code> | no | <code>1</code> | - | - | JSON exemption file with a reason per known finding (repeatable) |
+| <a id="entry-helper-cli-check-text-packs-argument-base-dir-318973e81c"></a><code>helper-cli.check-text-packs.argument.base_dir</code> | <code>--base-dir</code> | <code>option</code> | no | <code>1</code> | - | - | directory that finding and exemption paths are relative to (default: current directory) |
+| <a id="entry-helper-cli-check-text-packs-argument-json-48e08e1073"></a><code>helper-cli.check-text-packs.argument.json</code> | <code>--json</code> | <code>option</code> | no | <code>1</code> | - | - | also write the remaining findings as JSON |
+
+### Exact top-level `--help` output
+
+```text
+usage: check_text_packs.py [-h] (--languages LANGUAGES | --config CONFIG) [--sub-config SUB_CONFIG] [--script LANGUAGE=SCRIPTS] [--ignore-pattern REGEX] [--sparse LANGUAGE] [--strict-variant-counts] [--baseline BASELINE]
+                           [--base-dir BASE_DIR] [--json JSON]
+                           roots [roots ...]
+
+Lint raw .fotxt text packs against the Engine grammar and language normalization.
+
+positional arguments:
+  roots                 text directories to scan recursively; each root is checked as one resource-pack input
+
+options:
+  -h, --help            show this help message and exit
+  --languages LANGUAGES
+                        ordered Baking.BakeLanguages declarations, such as 'engl russ'
+  --config CONFIG       main .fomain config whose Baking.BakeLanguages is read
+  --sub-config SUB_CONFIG
+                        sub-config applied over the main config section (with --config)
+  --script LANGUAGE=SCRIPTS
+                        letter scripts a language allows, such as engl=latin (repeatable)
+  --ignore-pattern REGEX
+                        text removed before the script check, such as project placeholders (repeatable)
+  --sparse LANGUAGE     language that intentionally inherits missing packs and keys from its fallback (repeatable)
+  --strict-variant-counts
+                        also report keys whose variant count differs from the fallback language
+  --baseline BASELINE   JSON exemption file with a reason per known finding (repeatable)
+  --base-dir BASE_DIR   directory that finding and exemption paths are relative to (default: current directory)
+  --json JSON           also write the remaining findings as JSON
 ```

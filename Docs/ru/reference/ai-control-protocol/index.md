@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-ai-control-protocol-index","locale":"ru","source_path":"Docs/en/reference/ai-control-protocol/index.md","source_sha256":"ab4ad1691fff340a296176f4fad47fb4e56d9e7aa069f43e170531a5e0ab2643"} -->
+<!-- docs-translation: {"document_id":"generated-ai-control-protocol-index","locale":"ru","source_path":"Docs/en/reference/ai-control-protocol/index.md","source_sha256":"20f773de1c33541fd240f606c99ba91928e28273c86b381648a0506b2a5f4db8"} -->
 
 # Сгенерированный справочник протокола AiControl
 
@@ -27,7 +27,7 @@ generated: true
 | Максимальный JSON payload | <code>1048576</code> |
 | Стабильные элементы | 50 |
 | Манифест-источник | [BuildTools/AiControlProtocol.json](https://github.com/cvet/fonline/blob/master/BuildTools/AiControlProtocol.json) |
-| Digest контракта | <code>cea32aa5325a0f7601c93c0b40d599865eac7b5471093ec61ade8eb4baf070dd</code> |
+| Digest контракта | <code>4b7e3c6df0e4822e9eea624d1ad68614a5761b638f34c68e04fb6270d7abd61e</code> |
 
 | Справочник | Назначение |
 | --- | --- |

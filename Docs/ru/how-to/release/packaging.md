@@ -484,7 +484,11 @@ included files и external SDKs могут содержать host- или time-
 - updater generation/runtime ABI, если artifact участвует в native updates.
 
 Вычисляйте hashes из фактически публикуемых файлов после signing и final
-packaging. Храните immutable manifests рядом с immutable artifacts. Сравнение
+packaging. `BuildTools/artifact_checksums.py` записывает их как sidecars
+`<name>.sha256` и необязательный manifest в формате `sha256sum` после того, как
+последний writer пакета остановился, а `--verify` перепроверяет их; `package.py`
+их не записывает ([Инструменты выпуска для игрового проекта](../project/release-tooling.md#запишите-контрольные-суммы-пакетов)).
+Храните immutable manifests рядом с immutable artifacts. Сравнение
 двух hashes осмысленно только при совпадающих заявленных input и signing
 policies.
 

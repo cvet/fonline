@@ -311,7 +311,19 @@
           "project-data-migrations",
           "project-versioning-and-releases",
           "project-ai-assisted-maintenance",
-          "setup-troubleshooting"
+          "setup-troubleshooting",
+          "project-ai-control-mcp",
+          "project-content-and-diagnostics-tools",
+          "project-documentation-checks",
+          "project-engine-contract-analyzers",
+          "project-format-content",
+          "project-migration-guard",
+          "project-native-safety-audits",
+          "project-native-source-audits",
+          "project-reading-engine-formats",
+          "project-release-tooling",
+          "project-script-and-binding-checks",
+          "project-script-test-harness"
         ]
       },
       {
@@ -2252,7 +2264,15 @@
         "BuildTools/cmake/helpers/Build.cmake",
         "BuildTools/cmake/stages/ScriptsAndBaking.cmake",
         "Source/Applications",
-        "Source/Tools"
+        "Source/Tools",
+        "BuildTools/cmake/stages/Applications.cmake",
+        "BuildTools/tests/test_cmake_baker_runtime_copy.py",
+        "Examples/MinimalProject/CMakeLists.txt",
+        "Examples/MinimalProject/FOnlineStarter.fomain",
+        "Examples/MinimalProject/README.md",
+        "Examples/MinimalMultiplayer/CMakeLists.txt",
+        "Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain",
+        "Source/Frontend/ApplicationInit.cpp"
       ]
     },
     "Docs/EmbeddingProject.md": {
@@ -2790,7 +2810,27 @@
         "BuildTools/tests/validate_package_interface.cmake",
         "Docs/en/reference/cmake/index.md",
         "Docs/en/reference/helper-cli/index.md",
-        "Docs/generated/package/index.md"
+        "Docs/generated/package/index.md",
+        "BuildTools/cmake/ProjectInterface.json",
+        "BuildTools/cmake/stages/Init.cmake",
+        "BuildTools/cmake/stages/ProjectOptions.cmake",
+        "BuildTools/cmake/stages/ThirdParty.cmake",
+        "BuildTools/cmake/stages/EngineSources.cmake",
+        "BuildTools/cmake/stages/Codegen.cmake",
+        "BuildTools/cmake/helpers/EnsureCodegenOutputs.cmake.in",
+        "BuildTools/cmake/stages/CoreLibs.cmake",
+        "BuildTools/cmake/stages/Applications.cmake",
+        "BuildTools/cmake/stages/ScriptsAndBaking.cmake",
+        "BuildTools/cmake/stages/Packages.cmake",
+        "BuildTools/cmake/stages/Finalize.cmake",
+        "BuildTools/cmake/helpers/Build.cmake",
+        "BuildTools/cmake/helpers/Commands.cmake",
+        "BuildTools/cmake/helpers/Options.cmake",
+        "BuildTools/cmake/RunTestExecutable.cmake",
+        "BuildTools/cmake/helpers/State.cmake",
+        "BuildTools/cmake/helpers/WriteBuildHash.cmake",
+        "BuildTools/EffekseerEditor/build.ps1",
+        "BuildTools/tests/test_package_include.py"
       ]
     },
     "Docs/BuildToolsPipeline.md": {
@@ -2870,7 +2910,87 @@
         "BuildTools/cmake/stages/ScriptsAndBaking.cmake",
         "BuildTools/cmake/helpers/WriteBuildHash.cmake",
         "BuildTools/managed_runtime_payload.py",
-        "Source/Tests/Test_BakerSetup.cpp"
+        "Source/Tests/Test_BakerSetup.cpp",
+        "BuildTools/cmake/helpers/Build.cmake",
+        "Source/Applications/BakerApp.cpp",
+        "Source/Applications/BakerLib.cpp",
+        "Source/Tools/Baker.h",
+        "Source/Tools/Baker.cpp",
+        "Source/Tools/BakingContext.h",
+        "Source/Tools/BakingContext.cpp",
+        "Source/Tools/BakingReport.h",
+        "Source/Tools/BakingReport.cpp",
+        "Source/Tools/ResourceUsage.h",
+        "Source/Tools/ResourceUsage.cpp",
+        "BuildTools/resource_usage.py",
+        "Source/Tools/MetadataBaker.h",
+        "Source/Tools/MetadataBaker.cpp",
+        "Source/Tools/ConfigBaker.h",
+        "Source/Tools/ConfigBaker.cpp",
+        "Source/Tools/RawCopyBaker.h",
+        "Source/Tools/RawCopyBaker.cpp",
+        "Source/Tools/AudioBaker.h",
+        "Source/Tools/AudioBaker.cpp",
+        "Source/Tools/ImageBaker.h",
+        "Source/Tools/ImageBaker.cpp",
+        "Source/Tools/SpriteMeshing.h",
+        "Source/Tools/SpriteMeshing.cpp",
+        "Source/Common/SpriteResource.h",
+        "Source/Common/SpriteResource.cpp",
+        "Source/Tools/EffectBaker.h",
+        "Source/Tools/EffectBaker.cpp",
+        "Source/Tools/ProtoBaker.h",
+        "Source/Tools/ProtoBaker.cpp",
+        "Source/Tools/MapBaker.h",
+        "Source/Tools/MapBaker.cpp",
+        "Source/Tools/TextBaker.h",
+        "Source/Tools/TextBaker.cpp",
+        "Source/Tools/ProtoTextBaker.h",
+        "Source/Tools/ProtoTextBaker.cpp",
+        "Source/Tools/ModelMeshBaker.h",
+        "Source/Tools/ModelMeshBaker.cpp",
+        "Source/Common/ModelMeshData.h",
+        "Source/Common/ModelMeshData.cpp",
+        "Source/Tools/ModelInfoBaker.h",
+        "Source/Tools/ModelInfoBaker.cpp",
+        "Source/Tools/ParticleBaker.h",
+        "Source/Tools/ParticleBaker.cpp",
+        "Source/Common/AnimationInfo.h",
+        "Source/Common/AnimationInfo.cpp",
+        "Source/Common/ModelBounds.cpp",
+        "Source/Common/ModelBounds.h",
+        "Source/Tools/ModelBoundsCalculator.h",
+        "Source/Tools/ModelBoundsCalculator.cpp",
+        "Source/Tools/ModelSourceLoader.h",
+        "Source/Tools/ModelSourceLoader.cpp",
+        "Source/Tools/ModelAnimationConverter.h",
+        "Source/Tools/ModelAnimationConverter.cpp",
+        "Source/Common/ModelAnimationData.h",
+        "Source/Common/ModelAnimationData.cpp",
+        "Source/Tools/AngelScriptBaker.h",
+        "Source/Tools/AngelScriptBaker.cpp",
+        "Source/Tools/ManagedScriptBaker.h",
+        "Source/Tools/ManagedScriptBaker.cpp",
+        "Source/Tests/Test_MetadataBaker.cpp",
+        "Source/Tests/Test_ConfigBaker.cpp",
+        "Source/Tests/Test_RawCopyBaker.cpp",
+        "Source/Tests/Test_AudioBaker.cpp",
+        "Source/Tests/Test_ImageBaker.cpp",
+        "Source/Tests/Test_EffectBaker.cpp",
+        "Source/Tests/Test_ProtoBaker.cpp",
+        "Source/Tests/Test_ProtoTextBaker.cpp",
+        "Source/Tests/Test_MapBaker.cpp",
+        "Source/Tests/Test_TextBaker.cpp",
+        "Source/Tests/Test_ModelBaker.cpp",
+        "Source/Tests/Test_ParticleBaker.cpp",
+        "Source/Tests/Test_ModelMeshData.cpp",
+        "Source/Tests/Test_ModelAnimationData.cpp",
+        "Source/Tests/Test_ModelAnimationConverter.cpp",
+        "Source/Tests/Test_ModelSkeletonCompatibility.cpp",
+        "Source/Tests/Test_ModelSourceLoader.cpp",
+        "Source/Tests/Test_OzzAnimation.cpp",
+        "Source/Tests/Test_AngelScriptBaker.cpp",
+        "Source/Tests/Test_ManagedScriptBaker.cpp"
       ]
     },
     "Docs/en/reference/settings/configuration-and-data-sources.md": {
@@ -2896,7 +3016,34 @@
         "Source/Common",
         "Source/Essentials",
         "Source/Frontend/ApplicationInit.cpp",
-        "Source/Tests/Test_Settings.cpp"
+        "Source/Tests/Test_Settings.cpp",
+        "Source/Common/ConfigFile.h",
+        "Source/Common/ConfigFile.cpp",
+        "Source/Common/Settings.h",
+        "Source/Common/Settings.cpp",
+        "Source/Common/DataSource.h",
+        "Source/Common/DataSource.cpp",
+        "Source/Common/FileSystem.h",
+        "Source/Common/FileSystem.cpp",
+        "Source/Common/CacheStorage.h",
+        "Source/Common/CacheStorage.cpp",
+        "Source/Common/SettingsStorage.h",
+        "Source/Common/SettingsStorage.cpp",
+        "Source/Essentials/DiskFileSystem.h",
+        "Source/Essentials/DiskFileSystem.cpp",
+        "Source/Essentials/Platform.h",
+        "Source/Essentials/Platform.cpp",
+        "Source/Client/Client.cpp",
+        "Source/Client/Updater.cpp",
+        "Source/Client/ResourceManager.h",
+        "Source/Client/ResourceManager.cpp",
+        "Source/Tools/Baker.h",
+        "Source/Tools/Baker.cpp",
+        "Source/Tools/ConfigBaker.h",
+        "Source/Tools/ConfigBaker.cpp",
+        "BuildTools/cmake/stages/Codegen.cmake",
+        "BuildTools/cmake/stages/ScriptsAndBaking.cmake",
+        "BuildTools/cmake/stages/Packages.cmake"
       ]
     },
     "Docs/ConfigurationAndDataSources.md": {
@@ -2951,7 +3098,10 @@
         "BuildTools/cmake/stages/ScriptsAndBaking.cmake",
         "Examples/MinimalProject/FOnlineStarter.fomain",
         "Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain",
-        "Docs/en/reference/settings/configuration-and-data-sources.md"
+        "Docs/en/reference/settings/configuration-and-data-sources.md",
+        "Source/Tests/Test_Settings.cpp",
+        "Examples/MinimalProject/CMakeLists.txt",
+        "Examples/MinimalMultiplayer/CMakeLists.txt"
       ]
     },
     "Docs/ProjectConfiguration.md": {
@@ -3168,7 +3318,8 @@
         "Docs/generated",
         "Docs/en/reference/changelog.md",
         "Docs/en/how-to/release/versioning.md",
-        "Docs/en/how-to/build/embedding-project.md"
+        "Docs/en/how-to/build/embedding-project.md",
+        "BuildTools/engine_upgrade_report.py"
       ]
     },
     "Docs/EngineUpgradeGuide.md": {
@@ -3678,7 +3829,8 @@
         "Source/Tests/Test_Platform.cpp",
         "Source/Tests/Test_Settings.cpp",
         "ThirdParty/rpmalloc/rpmalloc/rpmalloc.c",
-        "BuildTools/ExternalProjectEvidence.json"
+        "BuildTools/ExternalProjectEvidence.json",
+        "BuildTools/tests/test_package_zip_helpers.py"
       ]
     },
     "Docs/FrontendAndRendering.md": {
@@ -3983,7 +4135,38 @@
         "Source/Tests/Test_AngelScriptBaker.cpp",
         "Source/Tests/Test_ManagedScriptBaker.cpp",
         "Source/Tests/Test_EntitySync.cpp",
-        "BuildTools/tests/test_docs_script_lifecycle.py"
+        "BuildTools/tests/test_docs_script_lifecycle.py",
+        "Source/Common/ScriptSystem.h",
+        "Source/Common/EntityProperties.h",
+        "Source/Common/Entity.h",
+        "Source/Server/EntityManager.cpp",
+        "Source/Tools/Baker.cpp",
+        "Source/Server/EntitySync.h",
+        "Source/Scripting/ServerCritterScriptMethods.cpp",
+        "Source/Scripting/ServerItemScriptMethods.cpp",
+        "Source/Scripting/ServerLocationScriptMethods.cpp",
+        "Source/Scripting/ServerMapScriptMethods.cpp",
+        "Source/Scripting/AngelScript/AngelScriptAttributes.cpp",
+        "Source/Scripting/AngelScript/AngelScriptBackend.cpp",
+        "Source/Scripting/AngelScript/AngelScriptCall.cpp",
+        "Source/Scripting/AngelScript/AngelScriptContext.cpp",
+        "Source/Scripting/AngelScript/AngelScriptEntity.cpp",
+        "Source/Scripting/AngelScript/AngelScriptGlobals.cpp",
+        "Source/Scripting/AngelScript/AngelScriptRemoteCalls.cpp",
+        "Source/Scripting/Managed/CoreScripts/Initializator.cs",
+        "Source/Scripting/Managed/CoreScripts/ScriptSynchronizationContext.cs",
+        "Source/Scripting/Managed/CoreScripts/Sync.cs",
+        "Source/Scripting/Managed/ManagedScriptBackend.cpp",
+        "Source/Scripting/Managed/ManagedRuntime.cpp",
+        "ThirdParty/AngelScript/sdk/angelscript/source/as_compiler.cpp",
+        "ThirdParty/AngelScript/sdk/angelscript/source/as_scriptengine.cpp",
+        "Source/Tests/Test_AngelScriptCall.cpp",
+        "Source/Tests/Test_EntityLifecycle.cpp",
+        "Source/Tests/Test_AngelScriptEntityLifecycle.cpp",
+        "Source/Tests/Test_ServerMapOperations.cpp",
+        "Source/Tests/Test_AngelScriptServerMapOperations.cpp",
+        "Source/Tests/Test_AngelScriptEntityOps.cpp",
+        "Source/Tests/Test_AngelScriptBuiltins.cpp"
       ]
     },
     "Docs/ScriptLifecycleAndConcurrency.md": {
@@ -11316,7 +11499,15 @@
         "Source/Tests",
         "BuildTools/validate.sh",
         "Docs/generated/source-inventory.json",
-        ".github/workflows/validate.yml"
+        ".github/workflows/validate.yml",
+        "Source/Applications/TestingApp.cpp",
+        "Source/Tests/README.md",
+        "BuildTools/cmake/stages/EngineSources.cmake",
+        "BuildTools/cmake/stages/Applications.cmake",
+        "BuildTools/cmake/stages/Init.cmake",
+        "BuildTools/cmake/RunTestExecutable.cmake",
+        "BuildTools/codecoverage.py",
+        "BuildTools/validate.cmd"
       ]
     },
     "Docs/Testing.md": {
@@ -13251,7 +13442,9 @@
         "Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain",
         "Examples/NativeExtensionSample",
         "Examples/PublicRepositoryTemplate",
-        "Examples/PublicRepositories.json"
+        "Examples/PublicRepositories.json",
+        "BuildTools/cmake/helpers/Build.cmake",
+        "BuildTools/cmake/stages/Applications.cmake"
       ]
     },
     "Docs/en/how-to/project/vscode-workspace.md": {
@@ -13411,7 +13604,9 @@
         "Docs/en/how-to/build/generated-content.md",
         "Docs/en/explanation/content-pipeline/baking.md",
         "Docs/en/reference/metadata/index.md",
-        "Docs/en/reference/script-api/settings.md"
+        "Docs/en/reference/script-api/settings.md",
+        "Examples/GameplayTestHarness/ScriptTests/script-tests.json",
+        "Docs/en/how-to/project/script-test-harness.md"
       ]
     },
     "Docs/en/how-to/project/continuous-integration.md": {
@@ -13543,7 +13738,10 @@
         "Source/Common/Settings.cpp",
         "Source/Common/Settings.inc",
         "Source/Frontend/ApplicationInit.cpp",
-        "Source/Tests/Test_Settings.cpp"
+        "Source/Tests/Test_Settings.cpp",
+        "BuildTools/artifact_checksums.py",
+        "BuildTools/project_version.py",
+        "BuildTools/release_preflight.py"
       ]
     },
     "Docs/en/how-to/project/ai-assisted-maintenance.md": {
@@ -13802,6 +14000,495 @@
         "Docs/en/how-to/content/prototype-format.md",
         "Docs/en/how-to/scripting/managed-csharp.md",
         "Docs/en/how-to/scripting/lifecycle-and-concurrency.md"
+      ]
+    },
+    "Docs/en/how-to/project/ai-control-mcp.md": {
+      "id": "project-ai-control-mcp",
+      "title": "Drive a Game with the AiControl MCP Adapter",
+      "audiences": [
+        "game-developer",
+        "tool-developer",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "how-to",
+        "visibility": "public",
+        "human": true,
+        "translation": "required"
+      },
+      "owner": "tooling",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/how-to/project/ai-control-mcp.md",
+      "sources": [
+        "BuildTools/ai_control_mcp/__main__.py",
+        "BuildTools/ai_control_mcp/cli.py",
+        "BuildTools/ai_control_mcp/stdio.py",
+        "BuildTools/ai_control_mcp/server.py",
+        "BuildTools/ai_control_mcp/registry.py",
+        "BuildTools/ai_control_mcp/context.py",
+        "BuildTools/ai_control_mcp/schemas.py",
+        "BuildTools/ai_control_mcp/core_tools.py",
+        "BuildTools/ai_control_mcp/session.py",
+        "BuildTools/ai_control_mcp/launch.py",
+        "BuildTools/ai_control_mcp/process_owner.py",
+        "BuildTools/ai_control_mcp/runner.py",
+        "BuildTools/ai_control_mcp/advisory.py",
+        "BuildTools/ai_control_client.py",
+        "BuildTools/AiControlProtocol.json",
+        "BuildTools/HelperCliInterface.json",
+        "BuildTools/foconfig.py",
+        "BuildTools/tests/test_ai_control_mcp.py",
+        "BuildTools/tests/test_ai_control_protocol.py",
+        "BuildTools/cmake/helpers/Build.cmake",
+        "BuildTools/cmake/stages/Applications.cmake",
+        "Source/Common/Settings.cpp",
+        "Source/Common/Settings.inc",
+        "Source/Frontend/ApplicationInit.cpp",
+        "Examples/AiControlSample/ai_control_sample.py",
+        "Examples/AiControlSample/README.md",
+        "Docs/en/how-to/ai-control-protocol.md",
+        "Docs/en/how-to/build/project-configuration.md",
+        "Docs/en/how-to/release/security-and-secrets.md"
+      ]
+    },
+    "Docs/en/how-to/project/content-and-diagnostics-tools.md": {
+      "id": "project-content-and-diagnostics-tools",
+      "title": "Text Pack, Move Sync and Managed Project Tools",
+      "audiences": [
+        "game-developer",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "how-to",
+        "visibility": "public",
+        "human": true,
+        "translation": "required"
+      },
+      "owner": "quality",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/how-to/project/content-and-diagnostics-tools.md",
+      "sources": [
+        "BuildTools/check_text_packs.py",
+        "BuildTools/move_sync_analysis.py",
+        "BuildTools/buildtools.py",
+        "BuildTools/foconfig.py",
+        "BuildTools/HelperCliInterface.json",
+        "BuildTools/tests/test_check_text_packs.py",
+        "BuildTools/tests/test_move_sync_analysis.py",
+        "BuildTools/tests/test_buildtools_managed_project.py",
+        "BuildTools/tests/fixtures/move_sync",
+        "BuildTools/cmake/stages/ScriptsAndBaking.cmake",
+        "BuildTools/cmake/stages/Codegen.cmake",
+        "BuildTools/codegen.py",
+        "Source/Common/TextPack.cpp",
+        "Source/Tools/TextBaker.cpp",
+        "Source/Common/Movement.h",
+        "Source/Common/Movement.cpp",
+        "Source/Common/Geometry.cpp",
+        "Source/Common/Settings.inc",
+        "Source/Common/Settings.cpp",
+        "Source/Essentials/Logging.cpp",
+        "Source/Client/Client.cpp",
+        "Source/Client/CritterHexView.cpp",
+        "Source/Server/Server.cpp",
+        "Source/Server/Player.cpp",
+        "Source/Frontend/ApplicationInit.cpp",
+        "Source/Tools/ManagedScriptBaker.cpp",
+        "Docs/en/how-to/content/text-and-localization.md",
+        "Docs/en/explanation/authority-and-networking/index.md",
+        "Docs/en/how-to/scripting/managed-csharp.md",
+        "Docs/en/how-to/build/project-configuration.md"
+      ]
+    },
+    "Docs/en/how-to/project/documentation-checks.md": {
+      "id": "project-documentation-checks",
+      "title": "Check Documentation Links in a Game Project",
+      "audiences": [
+        "game-developer",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "how-to",
+        "visibility": "public",
+        "human": true,
+        "translation": "required"
+      },
+      "owner": "quality",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/how-to/project/documentation-checks.md",
+      "sources": [
+        "BuildTools/markdown_links.py",
+        "BuildTools/tests/test_markdown_links.py",
+        "BuildTools/docs_validate.py",
+        "BuildTools/docs_ai_eval.py",
+        "BuildTools/docs_ai_model_eval.py",
+        "BuildTools/HelperCliInterface.json",
+        ".github/workflows/validate.yml",
+        "Docs/en/how-to/project/quality-gates.md",
+        "Docs/en/how-to/project/continuous-integration.md",
+        "Docs/en/how-to/project/vscode-workspace.md"
+      ]
+    },
+    "Docs/en/how-to/project/engine-contract-analyzers.md": {
+      "id": "project-engine-contract-analyzers",
+      "title": "Engine-Contract Analyzers for Managed C# Projects",
+      "audiences": [
+        "game-developer",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "how-to",
+        "visibility": "public",
+        "human": true,
+        "translation": "required"
+      },
+      "owner": "scripting",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/how-to/project/engine-contract-analyzers.md",
+      "sources": [
+        "Source/Scripting/Managed/Analyzers/EntryPointAnalyzer.cs",
+        "Source/Scripting/Managed/Analyzers/InvariantAnalyzer.cs",
+        "Source/Scripting/Managed/Analyzers/ScriptStaticAnalyzer.cs",
+        "Source/Scripting/Managed/Analyzers/CoverVocabulary.cs",
+        "Source/Scripting/Managed/Analyzers/FOnline.Analyzers.csproj",
+        "Source/Scripting/Managed/Analyzers/AnalyzerReleases.Unshipped.md",
+        "Source/Scripting/Managed/Analyzers/Acceptance/EngineContractProbe.cs",
+        "Source/Scripting/Managed/Analyzers/Tests/EngineContractTests.cs",
+        "Source/Scripting/Managed/Analyzers/Tests/FOnline.Analyzers.Tests.csproj",
+        "Source/Scripting/Managed/CoreScripts/Attributes.cs",
+        "Source/Scripting/Managed/CoreScripts/DatabaseDocument.cs",
+        "Source/Scripting/Managed/CoreScripts/Invariant.cs",
+        "Source/Scripting/Managed/CoreScripts/ScriptStaticCleanup.cs",
+        "Source/Scripting/Managed/ManagedScriptBackend.cpp",
+        "Source/Scripting/AngelScript/AngelScriptAttributes.cpp",
+        "Source/Common/Settings.inc",
+        "Source/Tools/ManagedScriptBaker.cpp"
+      ]
+    },
+    "Docs/en/how-to/project/format-content.md": {
+      "id": "project-format-content",
+      "title": "Format Game Content Files",
+      "audiences": [
+        "game-developer",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "how-to",
+        "visibility": "public",
+        "human": true,
+        "translation": "required"
+      },
+      "owner": "tooling",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/how-to/project/format-content.md",
+      "sources": [
+        "BuildTools/format_content.py",
+        "BuildTools/foconfig.py",
+        "BuildTools/buildtools.py",
+        "BuildTools/HelperCliInterface.json",
+        "BuildTools/tests/test_format_content.py",
+        "Source/Common/ConfigFile.cpp",
+        "Source/Common/Settings.inc",
+        "Source/Common/Settings.cpp",
+        "Source/Common/FileSystem.cpp",
+        "Source/Tools/Baker.cpp",
+        "Source/Tools/MetadataBaker.cpp",
+        "Source/Tools/ProtoBaker.cpp",
+        "Source/Client/MapView.cpp",
+        "Source/Tests/Test_ConfigFile.cpp",
+        "Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain"
+      ]
+    },
+    "Docs/en/how-to/project/migration-guard.md": {
+      "id": "project-migration-guard",
+      "title": "Guard Identity Migrations",
+      "audiences": [
+        "game-developer",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "how-to",
+        "visibility": "public",
+        "human": true,
+        "translation": "required"
+      },
+      "owner": "quality",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/how-to/project/migration-guard.md",
+      "sources": [
+        "BuildTools/migration_guard.py",
+        "BuildTools/fo_formats.py",
+        "BuildTools/tests/test_migration_guard.py",
+        "BuildTools/HelperCliInterface.json",
+        "BuildTools/codegen.py",
+        "Source/Tools/MetadataBaker.cpp",
+        "Source/Tools/ProtoBaker.cpp",
+        "Source/Common/EngineBase.cpp",
+        "Source/Common/Properties.cpp",
+        "Source/Common/PropertiesSerializer.cpp",
+        "Source/Common/EntityProperties.h",
+        "Source/Common/Common.h",
+        "Docs/en/how-to/project/data-migrations.md"
+      ]
+    },
+    "Docs/en/how-to/project/native-safety-audits.md": {
+      "id": "project-native-safety-audits",
+      "title": "Audit Entity Cover and Exception Safety in a Game Project",
+      "audiences": [
+        "game-developer",
+        "engine-contributor",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "how-to",
+        "visibility": "public",
+        "human": true,
+        "translation": "required"
+      },
+      "owner": "quality",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/how-to/project/native-safety-audits.md",
+      "sources": [
+        "AGENTS.md",
+        "BuildTools/native_safety_audit.py",
+        "BuildTools/native_safety_audit/scope.py",
+        "BuildTools/native_safety_audit/sync_scope.py",
+        "BuildTools/native_safety_audit/exception_safety.py",
+        "BuildTools/native_safety_audit/cpp_parser.py",
+        "BuildTools/audit_baselines/sync-scope.tsv",
+        "BuildTools/audit_baselines/exception-safety.tsv",
+        "BuildTools/tests/test_native_safety_audit_sync_scope.py",
+        "BuildTools/tests/test_native_safety_audit_exception_safety.py",
+        "BuildTools/HelperCliInterface.json",
+        "Source/Server/EntitySync.cpp",
+        "Source/Scripting/ServerGlobalScriptMethods.cpp",
+        "Docs/en/how-to/scripting/lifecycle-and-concurrency.md",
+        "Docs/en/how-to/scripting/managed-csharp.md",
+        "Docs/en/contributing/coding-contracts/exception-safety.md",
+        "Examples/MinimalMultiplayer/SourceExt/ServerExtension.cpp",
+        ".github/workflows/validate.yml"
+      ]
+    },
+    "Docs/en/how-to/project/native-source-audits.md": {
+      "id": "project-native-source-audits",
+      "title": "Audit Native Source Rules in a Game Project",
+      "audiences": [
+        "game-developer",
+        "engine-contributor",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "how-to",
+        "visibility": "public",
+        "human": true,
+        "translation": "required"
+      },
+      "owner": "quality",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/how-to/project/native-source-audits.md",
+      "sources": [
+        "AGENTS.md",
+        "BuildTools/native_source_audit.py",
+        "BuildTools/native_source_audit/cli.py",
+        "BuildTools/native_source_audit/common.py",
+        "BuildTools/native_source_audit/allocator.py",
+        "BuildTools/native_source_audit/smart_pointer.py",
+        "BuildTools/native_source_audit/raw_pointer_ast.py",
+        "BuildTools/native_source_audit/local_variables.py",
+        "BuildTools/native_source_audit/explicit_local_types.py",
+        "BuildTools/native_source_audit/clang_support.py",
+        "BuildTools/native_source_audit/clang_audits.py",
+        "BuildTools/native_source_audit/queries/redundant_local_const.query.in",
+        "BuildTools/native_source_audit/queries/explicit_local_types.query.in",
+        "BuildTools/audit_baselines/allocator.tsv",
+        "BuildTools/audit_baselines/smart-pointer.tsv",
+        "BuildTools/HelperCliInterface.json",
+        "BuildTools/tests/test_native_source_audit.py",
+        "BuildTools/tests/test_native_source_audit_smart_pointer.py",
+        "BuildTools/tests/test_native_source_audit_clang.py",
+        "Source/Essentials/Containers.h",
+        "Source/Essentials/MemorySystem.h",
+        "Source/Essentials/SmartPointers.h",
+        "Docs/en/contributing/coding-contracts/smart-pointers.md",
+        "Docs/en/contributing/coding-contracts/local-variables.md",
+        "Docs/en/contributing/coding-contracts/exception-safety.md",
+        "Docs/en/contributing/coding-contracts/nullability.md",
+        "Docs/en/reference/native/essentials.md",
+        "Docs/en/how-to/project/quality-gates.md"
+      ]
+    },
+    "Docs/en/how-to/project/reading-engine-formats.md": {
+      "id": "project-reading-engine-formats",
+      "title": "Read Engine Content Formats from Project Tools",
+      "audiences": [
+        "game-developer",
+        "tool-developer",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "how-to",
+        "visibility": "public",
+        "human": true,
+        "translation": "required"
+      },
+      "owner": "tooling",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/how-to/project/reading-engine-formats.md",
+      "sources": [
+        "BuildTools/fo_formats.py",
+        "BuildTools/foconfig.py",
+        "BuildTools/tests/test_fo_formats.py",
+        "BuildTools/tests/data/fo_formats/expected.json",
+        "BuildTools/tests/data/fo_formats/Project/Golden.fomain",
+        "BuildTools/HelperCliInterface.json",
+        "Source/Common/ConfigFile.cpp",
+        "Source/Common/Settings.cpp",
+        "Source/Common/Settings.inc",
+        "Source/Common/FileSystem.cpp",
+        "Source/Common/DataSource-Directory.cpp",
+        "Source/Essentials/DiskFileSystem.cpp",
+        "Source/Essentials/StringUtils.cpp",
+        "Source/Common/AnyData.cpp",
+        "Source/Common/TextPack.cpp",
+        "Source/Common/EngineBase.cpp",
+        "Source/Tools/ProtoBaker.cpp",
+        "Source/Tools/ProtoTextBaker.cpp",
+        "Source/Tools/TextBaker.cpp",
+        "Source/Tools/MetadataBaker.cpp",
+        "Source/Tests/Test_ConfigFile.cpp",
+        "Source/Tests/Test_ProtoBaker.cpp",
+        "Source/Tests/Test_ProtoTextBaker.cpp",
+        "Source/Tests/Test_TextPack.cpp",
+        "Docs/generated/prototype-format.json",
+        "Docs/generated/text-format.json"
+      ]
+    },
+    "Docs/en/how-to/project/release-tooling.md": {
+      "id": "project-release-tooling",
+      "title": "Release Tooling for a Game Project",
+      "audiences": [
+        "game-developer",
+        "release-operator",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "how-to",
+        "visibility": "public",
+        "human": true,
+        "translation": "required"
+      },
+      "owner": "build-release",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/how-to/project/release-tooling.md",
+      "sources": [
+        "BuildTools/project_version.py",
+        "BuildTools/release_preflight.py",
+        "BuildTools/artifact_checksums.py",
+        "BuildTools/engine_upgrade_report.py",
+        "BuildTools/engine_version.py",
+        "BuildTools/package.py",
+        "BuildTools/HelperCliInterface.json",
+        "BuildTools/tests/test_project_version.py",
+        "BuildTools/tests/test_release_preflight.py",
+        "BuildTools/tests/test_artifact_checksums.py",
+        "BuildTools/tests/test_engine_upgrade_report.py",
+        "Docs/en/how-to/project/versioning-and-releases.md",
+        "Docs/en/how-to/project/continuous-integration.md",
+        "Docs/en/how-to/migration/engine-upgrade.md",
+        "Docs/en/how-to/release/packaging.md"
+      ]
+    },
+    "Docs/en/how-to/project/script-and-binding-checks.md": {
+      "id": "project-script-and-binding-checks",
+      "title": "Check Script Bindings and AngelScript Hygiene",
+      "audiences": [
+        "game-developer",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "how-to",
+        "visibility": "public",
+        "human": true,
+        "translation": "required"
+      },
+      "owner": "quality",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/how-to/project/script-and-binding-checks.md",
+      "sources": [
+        "BuildTools/check_script_bindings.py",
+        "BuildTools/check_angelscript_hygiene.py",
+        "BuildTools/angelscript_source.py",
+        "BuildTools/finding_baseline.py",
+        "BuildTools/check_native_source_layout.py",
+        "BuildTools/codegen.py",
+        "BuildTools/HelperCliInterface.json",
+        "BuildTools/tests/test_check_script_bindings.py",
+        "BuildTools/tests/test_check_angelscript_hygiene.py",
+        "BuildTools/tests/test_finding_baseline.py",
+        "Source/Scripting/AngelScript/AngelScriptBackend.cpp",
+        "Source/Scripting/AngelScript/AngelScriptEntity.cpp",
+        "Source/Scripting/AngelScript/AngelScriptHelpers.cpp",
+        "Source/Scripting/AngelScript/AngelScriptRemoteCalls.cpp",
+        "Source/Server/Server.h",
+        "ThirdParty/AngelScript/sdk/angelscript/source/as_datatype.cpp",
+        "Examples/MinimalMultiplayer/Scripts/Tutorial.fos",
+        "Docs/en/contributing/coding-contracts/nullability.md",
+        "Docs/en/how-to/scripting/style-and-refactoring.md"
+      ]
+    },
+    "Docs/en/how-to/project/script-test-harness.md": {
+      "id": "project-script-test-harness",
+      "title": "Script Test Harness Pattern for AngelScript and Managed C#",
+      "audiences": [
+        "game-developer",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "how-to",
+        "visibility": "public",
+        "human": true,
+        "translation": "required"
+      },
+      "owner": "quality",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/how-to/project/script-test-harness.md",
+      "sources": [
+        "Examples/GameplayTestHarness/README.md",
+        "Examples/GameplayTestHarness/ScriptTests/AngelScript/Testing.fos",
+        "Examples/GameplayTestHarness/ScriptTests/AngelScript/Test_HarnessExample.fos",
+        "Examples/GameplayTestHarness/ScriptTests/Managed/Testing.cs",
+        "Examples/GameplayTestHarness/ScriptTests/Managed/Test_HarnessExample.cs",
+        "Examples/GameplayTestHarness/ScriptTests/Managed/Verification/ScriptTestHost.cs",
+        "Examples/GameplayTestHarness/ScriptTests/Managed/Verification/ScriptTestHost.csproj",
+        "Examples/GameplayTestHarness/ScriptTests/Managed/Verification/Test_HarnessSelfCheck.cs",
+        "Examples/GameplayTestHarness/ScriptTests/script-tests.fomain",
+        "Examples/GameplayTestHarness/ScriptTests/script-tests.json",
+        "Examples/MinimalMultiplayer/CMakeLists.txt",
+        "Examples/MinimalMultiplayer/run_tutorial_smoke.py",
+        "BuildTools/gameplay_test_runner.py",
+        "BuildTools/tests/test_script_test_harness_example.py",
+        "Source/Common/Settings.inc",
+        "Source/Common/Common.h",
+        "Source/Common/Common.cpp",
+        "Source/Essentials/BasicCore.cpp",
+        "Source/Frontend/Application.cpp",
+        "Source/Scripting/CommonGlobalScriptMethods.cpp",
+        "Source/Scripting/AngelScript/AngelScriptBackend.cpp",
+        "Source/Scripting/AngelScript/AngelScriptGlobals.cpp",
+        "Source/Scripting/Managed/CoreScripts/Attributes.cs",
+        "Source/Scripting/Managed/CoreScripts/TimePlace.cs"
       ]
     }
   }

@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-cli-commands","locale":"ru","source_path":"Docs/en/reference/buildtools/commands.md","source_sha256":"51ddcc38745233f60433a9b322104dee7ce3371e1e0e5c6d082918309c7f088b"} -->
+<!-- docs-translation: {"document_id":"generated-cli-commands","locale":"ru","source_path":"Docs/en/reference/buildtools/commands.md","source_sha256":"d7e8e85e92f7e834d233b144297b5c56b3f9e9426187bc7b2862398b2a6450ba"} -->
 
 # Команды BuildTools
 
@@ -154,6 +154,46 @@ usage: buildtools.py format-source [-h]
 
 options:
   -h, --help  show this help message and exit
+```
+
+<a id="entry-cli-buildtools-command-format-content-6dc0b07205"></a>
+## `format-content`
+
+format project .fomain, prototype and optional AngelScript files
+
+Стабильный ID: `cli.buildtools.command.format-content`
+
+```text
+usage: buildtools.py format-content [-h] [--check] [--project-root PROJECT_ROOT] [--fomain FOMAIN] [--skip-fomain] [--skip-protos] [--proto-path PATH] [--metadata PATH] [--fos PATTERN]
+```
+
+| Стабильный ID | Аргумент | Вид | Обязателен | Значения | Варианты | По умолчанию | Описание |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| <a id="entry-cli-buildtools-command-format-content-argument-check-3b86dcf3b7"></a><code>cli.buildtools.command.format-content.argument.check</code> | <code>--check</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | report files that need formatting and exit with 1 without writing |
+| <a id="entry-cli-buildtools-command-format-content-argument-project-root-8b1c804f98"></a><code>cli.buildtools.command.format-content.argument.project_root</code> | <code>--project-root</code> | <code>option</code> | нет | <code>1</code> | - | - | project root for relative paths and the .fomain lookup (default: FO_PROJECT_ROOT, then the current directory) |
+| <a id="entry-cli-buildtools-command-format-content-argument-fomain-3b911889ad"></a><code>cli.buildtools.command.format-content.argument.fomain</code> | <code>--fomain</code> | <code>option</code> | нет | <code>1</code> | - | - | main config path (default: the only *.fomain file in the project root) |
+| <a id="entry-cli-buildtools-command-format-content-argument-skip-fomain-a57f30e33e"></a><code>cli.buildtools.command.format-content.argument.skip_fomain</code> | <code>--skip-fomain</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | do not format the main config |
+| <a id="entry-cli-buildtools-command-format-content-argument-skip-protos-f90108b034"></a><code>cli.buildtools.command.format-content.argument.skip_protos</code> | <code>--skip-protos</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | do not format prototype files |
+| <a id="entry-cli-buildtools-command-format-content-argument-proto-path-990248df57"></a><code>cli.buildtools.command.format-content.argument.proto_path</code> | <code>--proto-path</code> | <code>option</code> | нет | <code>1</code> | - | - | format only these prototype files or directories instead of the Proto resource packs (repeatable) |
+| <a id="entry-cli-buildtools-command-format-content-argument-metadata-7f71a73042"></a><code>cli.buildtools.command.format-content.argument.metadata</code> | <code>--metadata</code> | <code>option</code> | нет | <code>1</code> | - | - | read property and setting order from these files, in this order, instead of the Metadata resource packs (repeatable) |
+| <a id="entry-cli-buildtools-command-format-content-argument-fos-e2ccd6169f"></a><code>cli.buildtools.command.format-content.argument.fos</code> | <code>--fos</code> | <code>option</code> | нет | <code>1</code> | - | - | also format AngelScript files matching this glob relative to the project root with clang-format 20 (repeatable) |
+
+### Точный вывод `--help`
+
+```text
+usage: buildtools.py format-content [-h] [--check] [--project-root PROJECT_ROOT] [--fomain FOMAIN] [--skip-fomain] [--skip-protos] [--proto-path PATH] [--metadata PATH] [--fos PATTERN]
+
+options:
+  -h, --help            show this help message and exit
+  --check               report files that need formatting and exit with 1 without writing
+  --project-root PROJECT_ROOT
+                        project root for relative paths and the .fomain lookup (default: FO_PROJECT_ROOT, then the current directory)
+  --fomain FOMAIN       main config path (default: the only *.fomain file in the project root)
+  --skip-fomain         do not format the main config
+  --skip-protos         do not format prototype files
+  --proto-path PATH     format only these prototype files or directories instead of the Proto resource packs (repeatable)
+  --metadata PATH       read property and setting order from these files, in this order, instead of the Metadata resource packs (repeatable)
+  --fos PATTERN         also format AngelScript files matching this glob relative to the project root with clang-format 20 (repeatable)
 ```
 
 <a id="entry-cli-buildtools-command-toolset-d0a17e5293"></a>
@@ -326,6 +366,45 @@ positional arguments:
 
 options:
   -h, --help            show this help message and exit
+```
+
+<a id="entry-cli-buildtools-command-managed-project-path-dbd9e015f4"></a>
+## `managed-project-path`
+
+Вывести пути сгенерированного управляемого проекта C# и его решения.
+
+Стабильный ID: `cli.buildtools.command.managed-project-path`
+
+```text
+usage: buildtools.py managed-project-path [-h] [--sub-config SUB_CONFIG] [--build-dir BUILD_DIR] [--json] [--require-existing] [--open] config
+```
+
+| Стабильный ID | Аргумент | Вид | Обязателен | Значения | Варианты | По умолчанию | Описание |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| <a id="entry-cli-buildtools-command-managed-project-path-argument-config-53e8370ff8"></a><code>cli.buildtools.command.managed-project-path.argument.config</code> | <code>config</code> | <code>positional</code> | да | <code>1</code> | - | - | Основная конфигурация .fomain, которую применяет бейкер управляемых скриптов. |
+| <a id="entry-cli-buildtools-command-managed-project-path-argument-sub-config-4d7d065a87"></a><code>cli.buildtools.command.managed-project-path.argument.sub_config</code> | <code>--sub-config</code> | <code>option</code> | нет | <code>1</code> | - | - | Подконфигурация, применяемая поверх основной секции (по умолчанию: никакой, как в CompileManagedScripts). |
+| <a id="entry-cli-buildtools-command-managed-project-path-argument-build-dir-8c8ae3d886"></a><code>cli.buildtools.command.managed-project-path.argument.build_dir</code> | <code>--build-dir</code> | <code>option</code> | нет | <code>1</code> | - | - | Каталог сборки CMake; обязателен, когда ManagedScript.GeneratedDir пуст. |
+| <a id="entry-cli-buildtools-command-managed-project-path-argument-json-08f2b220b1"></a><code>cli.buildtools.command.managed-project-path.argument.json</code> | <code>--json</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Вывести пути и наличие проекта и решения в виде JSON. |
+| <a id="entry-cli-buildtools-command-managed-project-path-argument-require-existing-79d2227e6a"></a><code>cli.buildtools.command.managed-project-path.argument.require_existing</code> | <code>--require-existing</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Завершиться с кодом 1, если сгенерированный проект или решение отсутствует. |
+| <a id="entry-cli-buildtools-command-managed-project-path-argument-open-c8acf124cc"></a><code>cli.buildtools.command.managed-project-path.argument.open</code> | <code>--open</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Открыть сгенерированное решение через файловую ассоциацию рабочего стола. |
+
+### Точный вывод `--help`
+
+```text
+usage: buildtools.py managed-project-path [-h] [--sub-config SUB_CONFIG] [--build-dir BUILD_DIR] [--json] [--require-existing] [--open] config
+
+positional arguments:
+  config                main .fomain config the managed script baker applies
+
+options:
+  -h, --help            show this help message and exit
+  --sub-config SUB_CONFIG
+                        sub-config applied over the main section (default: none, as CompileManagedScripts)
+  --build-dir BUILD_DIR
+                        CMake build directory; required when ManagedScript.GeneratedDir is empty
+  --json                print the paths and whether the project and solution exist as JSON
+  --require-existing    exit 1 when the generated project or solution is missing
+  --open                open the generated solution with its desktop file association
 ```
 
 <a id="entry-cli-buildtools-command-host-check-20b3f27def"></a>
