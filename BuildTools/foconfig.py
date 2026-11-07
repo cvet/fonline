@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
+import fo_formats
+
 
 ConfigValue = str | int | bool | None
 
@@ -55,30 +57,10 @@ class ConfigParser:
             self.loadFromLines(file.readlines())
 
     def loadFromLines(self, lines: Iterable[str]) -> None:
-        self.sections = []
-        section_name = ''
-        section_content: dict[str, str] = {}
-
-        for raw_line in lines:
-            line = raw_line.split('#', 1)[0].strip()
-            if not line:
-                continue
-
-            if line.startswith('[') and line.endswith(']'):
-                self.sections.append(ConfigSection(section_name, section_content))
-                section_name = line[1:-1].strip()
-                section_content = {}
-                continue
-
-            if '=' not in line:
-                continue
-
-            key, value = line.split('=', 1)
-            key = key.strip()
-            if key:
-                section_content[key] = value.strip()
-
-        self.sections.append(ConfigSection(section_name, section_content))
+        # The Engine's ConfigFile grammar, so packaging reads a config exactly as the runtime and the baker do
+        text = '\n'.join(line[:-1] if line.endswith('\n') else line for line in lines)
+        document = fo_formats.parse_config_text(text)
+        self.sections = [ConfigSection(section.name, dict(section.values)) for section in document.sections]
 
     def mainSection(self) -> ConfigSection:
         return self.sections[0]

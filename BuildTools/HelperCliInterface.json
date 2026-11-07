@@ -77,6 +77,17 @@
       "description": "Call an Engine-compatible project AiControl bridge through the versioned NDJSON/TCP envelope without exposing shared tokens on the command line."
     },
     {
+      "id": "helper-cli.fo-formats",
+      "name": "Engine content format reader",
+      "source": "BuildTools/fo_formats.py",
+      "factory": "create_parser",
+      "program": "fo_formats.py",
+      "owner": "tooling",
+      "audiences": ["game-developer", "tool-developer", "ci-maintainer"],
+      "invocation_owner": "embedding-project content tools and direct developer diagnostics",
+      "description": "Print effective configuration, resource-pack inputs, inherited prototype values and text-pack entries as the Engine parsers read them."
+    },
+    {
       "id": "helper-cli.windows7-import-check",
       "name": "Windows 7 import validation",
       "source": "BuildTools/check_windows7_imports.py",
