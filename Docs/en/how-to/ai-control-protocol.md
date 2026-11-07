@@ -67,8 +67,8 @@ Every embedding project owns:
 - action names, parameter semantics, normal gameplay validation, cancellation,
   and failure messages;
 - event types beyond `command_completed`;
-- MCP tool names, launch recipes, endpoint registries, memory, agent policies,
-  prompts, and reports;
+- game MCP tool names, launch profiles and recipes, readiness gates, memory,
+  agent policies, prompts, and reports;
 - native/script integration tests against the actual project client.
 
 Last Frontier and TLA both have client bridges, but their observations, action
@@ -292,6 +292,12 @@ remain project-specific:
    game-playing policy from the wire client.
 6. Include bridge version, project schema version, Engine/project revision, and
    endpoint identity in reports, but never include the token.
+
+The Engine ships a generic adapter core in `BuildTools/ai_control_mcp` that
+implements the transport, endpoint, cursor, completion, launch, and process
+ownership parts of this list and loads the project's game tools from a
+registered project module; see
+[Drive a Game with the AiControl MCP Adapter](project/ai-control-mcp.md).
 
 Do not publish Last Frontier's `lf_*` tools or TLA's `tla_*` tools as generic
 FOnline methods. A small project may expose only `observe`, `move`, and
