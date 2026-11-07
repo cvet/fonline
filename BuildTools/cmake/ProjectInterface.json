@@ -509,6 +509,16 @@
       "affects_baking": true
     },
     {
+      "name": "FO_AI_CONTROL",
+      "cache_type": "BOOL",
+      "value_kind": "boolean",
+      "required": false,
+      "default": "OFF",
+      "category": "feature",
+      "description": "Compile the development AiControl listener into Windows, Linux, and macOS clients; keep it OFF for shipping builds.",
+      "affects_baking": false
+    },
+    {
       "name": "FO_DISABLE_ASIO",
       "cache_type": "BOOL",
       "value_kind": "boolean",

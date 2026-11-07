@@ -11,6 +11,7 @@
 #include "PropertiesSerializer.h"
 #include "ScriptSystem.h"
 #include "Server.h"
+#include "ServerImage.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -1955,6 +1956,16 @@ FO_SCRIPT_API vector<hstring> Server_Game_GetItemRegistryProtoIds(ptr<ServerEngi
     }
 
     return proto_ids;
+}
+
+// Loads a baked single-frame image resource into a script-owned pixel image; throws when it is missing, animated or empty
+///@ ExportMethod PassOwnership
+FO_SCRIPT_API ptr<ServerImage> Server_Game_LoadImage(ptr<ServerEngine> server, string_view imageName)
+{
+    auto image {LoadServerImage(server->Resources, imageName)};
+
+    image->addref();
+    return image;
 }
 
 FO_END_NAMESPACE

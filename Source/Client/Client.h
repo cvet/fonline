@@ -5,6 +5,7 @@
 
 #include "Common.h"
 
+#include "AiControlListener.h"
 #include "Application.h"
 #include "AudioManager.h"
 #include "CacheStorage.h"
@@ -87,6 +88,9 @@ public:
     [[nodiscard]] auto GetCurLocation() noexcept -> nptr<LocationView> { return _curLocation; }
     [[nodiscard]] auto GetCurMap() noexcept -> nptr<MapView> { return _curMap; }
     [[nodiscard]] auto GetCurMap() const noexcept -> nptr<const MapView> { return _curMap; }
+#if FO_HAVE_AI_CONTROL
+    [[nodiscard]] auto GetAiControl() noexcept -> nptr<AiControlListener> { return _aiControl; }
+#endif
 
     auto ResolveCritterAnimationSprite(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim) -> shared_ptr<SpriteSheet> override;
     auto ResolveCritterAnimationSubstitute(hstring base_model_name, CritterStateAnim base_state_anim, CritterActionAnim base_action_anim, hstring& model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim) -> bool override;
@@ -517,6 +521,11 @@ protected:
         function<void()> Body {};
     };
     vector<ScheduledCallback> _scheduledCallbacks {};
+
+#if FO_HAVE_AI_CONTROL
+    // Released on shutdown after OnFinish so project command handlers never outlive the engine state they borrow
+    unique_nptr<AiControlListener> _aiControl {safe_alloc::make_unique<AiControlListener>()};
+#endif
 };
 
 FO_END_NAMESPACE
