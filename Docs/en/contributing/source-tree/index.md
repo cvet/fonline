@@ -93,6 +93,42 @@ boundaries are validated from the Engine root and from the example's own reposit
 root (`--root Examples/NativeExtensionSample --source-dir SourceExt --shallow`); its
 server extension follows the regular cpp-only rule.
 
+## Native comment check
+
+`check_native_source_layout.py --comments` adds the comment rules from the
+[Engine agent instructions](../../../../AGENTS.md) to the layout check. Without
+`--comments` the output and exit code are unchanged, so existing runs keep working.
+
+| Rule | Reports |
+| --- | --- |
+| `comment-length` | A comment with more than two lines of prose. Adjacent whole-line `//` comments form one comment; a `///@` tag, code or a blank line ends it. Separator lines and `// field: ...` labels that match the next `///@ ExportValueType` layout do not count. |
+| `comment-bookkeeping` | A tracker ID (`#1234`, `issue 42`, `PROJ-1234`), a date, a version or release marker (`since v1.2`, `added in 2026.1.4`), an author line, a history note (`the old implementation`) or a benchmark result (`2x faster`, `benchmarked at 3 ms`). Standard names such as `UTF-8`, `SHA-256` and `ECMA-335` are not tracker IDs. |
+| `comment-period` | A concluding sentence that ends with a period, including trailing comments. Earlier sentences keep their punctuation, and an ellipsis is not a period. |
+
+License banners, commented-out code, `clang-format`, `NOLINT` and `ReSharper`
+directives and inline `/*name*/` annotations are exempt. Whether a comment explains
+intent instead of narrating the code remains a review decision.
+
+Engine CI runs the rules against a baseline that records the remaining Engine
+findings with a reason per row; counts may only go down:
+
+```bash
+python3 BuildTools/check_native_source_layout.py --comments --comment-baseline BuildTools/audit_baselines/native_comments.tsv
+```
+
+A project checks its own extensions with its own baseline, because baseline paths
+are relative to the checked root:
+
+```bash
+python3 Engine/BuildTools/check_native_source_layout.py --root . --source-dir SourceExt --shallow --comments --comment-baseline Tools/QualityBaselines/native_comments.tsv
+```
+
+`--write-comment-baseline <file>` writes the current counts with empty reasons,
+which must be filled before the file loads; `--comments-report-only` prints the
+findings and fails only on layout issues. The baseline format is shared with the
+script checks and described in
+[Check Script Bindings and AngelScript Hygiene](../../how-to/project/script-and-binding-checks.md#baselines-and-the-ratchet).
+
 ## `Source/Applications/`
 
 Contains app and library entry points. Examples include client, server variants, mapper, editor, baker, AngelScript compiler, Managed script baker, and testing app wrappers. Build target wiring is in `BuildTools/cmake/stages/Applications.cmake`.
