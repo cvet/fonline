@@ -119,7 +119,7 @@ python BuildTools/buildtools.py format-source
 git diff --exit-code
 ```
 
-`format-source` не обнаруживает отдельное script tree использующего движок проекта. Проект должен применять документированный formatter к собственным `.fos`, например такой, который вызывает `format_files`, как описано выше, и отдельно запускать команду движка, когда изменён исходный код submodule.
+`format-source` не обнаруживает отдельное script tree использующего движок проекта. Проект должен применять документированный formatter к собственным `.fos`, например такой, который вызывает `format_files`, как описано выше, и отдельно запускать команду движка, когда изменён исходный код submodule. `buildtools.py format-content --fos <glob>` применяет тот же пофайловый wrapper к script tree проекта, сохраняет BOM вместо удаления и дополнительно форматирует `.fomain` и файлы прототипов проекта; см. [Форматирование файлов игрового контента](../project/format-content.md).
 
 BuildTools использует `FO_CLANG_FORMAT`, если он задан, иначе ищет `clang-format-20`, затем `clang-format`, и отклоняет binary, major version которого не равен 20. CI движка повторно запускает wrapper и требует пустой diff.
 
