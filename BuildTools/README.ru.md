@@ -768,6 +768,10 @@ major version 20. Затем BuildTools восстанавливает nullable 
 forms AngelScript, которые clang-format разбирает как C++. Полный контракт и
 граница встраивающего проекта описаны в
 [руководстве по стилю AngelScript и рефакторингу](../Docs/ru/how-to/scripting/style-and-refactoring.md).
+`buildtools.py format-content` форматирует принадлежащие движку форматы контента
+проекта, его `.fomain` и файлы прототипов, а с `--fos <glob>` и его AngelScript
+через тот же wrapper; см.
+[Форматирование файлов игрового контента](../Docs/ru/how-to/project/format-content.md).
 
 ## Срок временной совместимости
 

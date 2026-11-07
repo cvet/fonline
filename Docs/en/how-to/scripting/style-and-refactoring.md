@@ -119,7 +119,7 @@ python BuildTools/buildtools.py format-source
 git diff --exit-code
 ```
 
-`format-source` does not discover an embedding project's separate script tree. A project must use its documented formatter for project-owned `.fos` files, for example one that calls `format_files` as above, and run the Engine command separately when the submodule source changed.
+`format-source` does not discover an embedding project's separate script tree. A project must use its documented formatter for project-owned `.fos` files, for example one that calls `format_files` as above, and run the Engine command separately when the submodule source changed. `buildtools.py format-content --fos <glob>` runs the same per-file wrapper over a project's script tree, keeps a BOM instead of removing it, and also formats the project's `.fomain` and prototype files; see [Format Game Content Files](../project/format-content.md).
 
 BuildTools uses `FO_CLANG_FORMAT` when set, otherwise searches for `clang-format-20` and then `clang-format`, and rejects a binary whose major version is not 20. Engine CI reruns the wrapper and requires an empty diff.
 
