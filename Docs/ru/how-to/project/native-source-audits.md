@@ -7,8 +7,7 @@ permalink: /Docs/ru/how-to/project/native-source-audits.html
 ---
 
 # Аудит правил нативного кода в игровом проекте
-<!-- docs-translation: {"document_id":"project-native-source-audits","locale":"ru","source_path":"Docs/en/how-to/project/native-source-audits.md","source_sha256":"PLACEHOLDER"} -->
-
+<!-- docs-translation: {"document_id":"project-native-source-audits","locale":"ru","source_path":"Docs/en/how-to/project/native-source-audits.md","source_sha256":"277d2192d9f02a0caa12224295bc7526f7c9c1e0cfd5af54833a2cc986de3201"} -->
 `BuildTools/native_source_audit.py` проверяет нативные исходники C++ на соответствие контрактам кода движка для выделения памяти, умных указателей и локальных переменных. Движок запускает его на собственном `Source/` с baseline, которым владеет движок; игровой проект запускает ту же команду на своих каталогах нативных расширений со своими областями проверки и своим baseline и держит у себя только тонкую обёртку. На странице описаны команды, форматы конфигурации и baseline, а также расширение аудитов в проекте без их копирования.
 
 ## Проверенные исходные пути

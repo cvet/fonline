@@ -7,8 +7,7 @@ permalink: /Docs/ru/how-to/project/native-safety-audits.html
 ---
 
 # Аудит покрытия сущностей и безопасности исключений в игровом проекте
-<!-- docs-translation: {"document_id":"project-native-safety-audits","locale":"ru","source_path":"Docs/en/how-to/project/native-safety-audits.md","source_sha256":"PLACEHOLDER"} -->
-
+<!-- docs-translation: {"document_id":"project-native-safety-audits","locale":"ru","source_path":"Docs/en/how-to/project/native-safety-audits.md","source_sha256":"b23944b8ed2cc69b945ee9a1fa23449c4147860a16a34f68d8481dd5a127fb4a"} -->
 `BuildTools/native_safety_audit.py` проверяет нативные исходники C++ на
 соответствие двум контрактам движка: нативный код, достижимый из серверного
 скриптового экспорта, не должен получать, заменять или освобождать покрытие
@@ -241,23 +240,23 @@ baseline, переданный `sync-scope` через `--baseline`, долже�
 2. Добавьте тонкую обертку проекта, которая фиксирует аргументы, чтобы локальная
    задача, hook и CI вызывали одну команду:
 
-   ```python
-   import subprocess
-   import sys
-   from pathlib import Path
+```python
+import subprocess
+import sys
+from pathlib import Path
 
-   ROOT = Path(__file__).resolve().parents[2]
-   AUDIT = ROOT / "Engine" / "BuildTools" / "native_safety_audit.py"
-   PROJECT = ["--root", str(ROOT), "--scope", "SourceExt", "--config", "Validation/NativeSafety/config.json"]
+ROOT = Path(__file__).resolve().parents[2]
+AUDIT = ROOT / "Engine" / "BuildTools" / "native_safety_audit.py"
+PROJECT = ["--root", str(ROOT), "--scope", "SourceExt", "--config", "Validation/NativeSafety/config.json"]
 
-   def main() -> int:
-       sync = subprocess.call([sys.executable, str(AUDIT), "sync-scope", *PROJECT, "--baseline", "Validation/NativeSafety/sync-scope.tsv"])
-       exceptions = subprocess.call([sys.executable, str(AUDIT), "exception-safety", *PROJECT, "--baseline", "Validation/NativeSafety/exception-safety.tsv"])
-       return max(sync, exceptions)
+def main() -> int:
+    sync = subprocess.call([sys.executable, str(AUDIT), "sync-scope", *PROJECT, "--baseline", "Validation/NativeSafety/sync-scope.tsv"])
+    exceptions = subprocess.call([sys.executable, str(AUDIT), "exception-safety", *PROJECT, "--baseline", "Validation/NativeSafety/exception-safety.tsv"])
+    return max(sync, exceptions)
 
-   if __name__ == "__main__":
-       raise SystemExit(main())
-   ```
+if __name__ == "__main__":
+    raise SystemExit(main())
+```
 
 3. Создайте baseline безопасности исключений проекта командой
    `exception-safety update --add-new` с теми же аргументами; команда запишет

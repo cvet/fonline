@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/coding-contracts/local-variables.html
 ---
 
 # Локальные переменные
-<!-- docs-translation: {"document_id":"local-variables","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/local-variables.md","source_sha256":"660e9606abd242516141d2762fb2d3d546e879e7a6084f9f33cf588e4a68d4bb"} -->
+<!-- docs-translation: {"document_id":"local-variables","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/local-variables.md","source_sha256":"e0003a50e3ac600fa892aca9555fba4b2bce42ca8afc8fd46ab8860e7fb81870"} -->
 Этот документ определяет правила собственного C++-кода для инициализации переменных,
 явного написания локальных типов, избыточного верхнеуровневого `const` и диагностики
 использования после перемещения.

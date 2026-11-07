@@ -99,10 +99,10 @@ class DocumentationHelperCliTests(unittest.TestCase):
         self.assertEqual(model["schema_version"], 1)
         self.assertEqual(model["generated_by"], "BuildTools/docs_helper_cli.py")
         self.assertEqual(model["summary"], {
-            "helper_count": 9,
-            "command_count": 16,
-            "global_argument_count": 35,
-            "command_argument_count": 52,
+            "helper_count": 23,
+            "command_count": 26,
+            "global_argument_count": 144,
+            "command_argument_count": 174,
         })
         self.assertEqual(model["helpers"][0]["id"], "helper-cli.codegen")
         self.assertEqual(model["helpers"][-1]["id"], "helper-cli.check-text-packs")

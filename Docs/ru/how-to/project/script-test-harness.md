@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/project/script-test-harness.html
 ---
 
 # Шаблон обвязки скриптовых тестов для AngelScript и Managed C#
-<!-- docs-translation: {"document_id":"project-script-test-harness","locale":"ru","source_path":"Docs/en/how-to/project/script-test-harness.md","source_sha256":"PLACEHOLDER"} -->
+<!-- docs-translation: {"document_id":"project-script-test-harness","locale":"ru","source_path":"Docs/en/how-to/project/script-test-harness.md","source_sha256":"90b163e542a92991509f8c80cae0f23e384a4b28c426773e9bae4ac42e00aaab"} -->
 Это руководство даёт игровому проекту небольшую копируемую обвязку, которая
 выполняет игровые тесты уровня скриптов внутри одного сервера без графического
 интерфейса и сообщает о них через фиксированный контракт маркеров. Движок

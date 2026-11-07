@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/project/script-and-binding-checks.html
 ---
 
 # Проверка скриптовых привязок и гигиены AngelScript
-<!-- docs-translation: {"document_id":"project-script-and-binding-checks","locale":"ru","source_path":"Docs/en/how-to/project/script-and-binding-checks.md","source_sha256":"PLACEHOLDER"} -->
+<!-- docs-translation: {"document_id":"project-script-and-binding-checks","locale":"ru","source_path":"Docs/en/how-to/project/script-and-binding-checks.md","source_sha256":"019d9e461fd28fd5c684a1be6a3d2d77247164310c59a8d6b78255e81e1d5cbb"} -->
 Две проверки движка, работающие только на чтение, находят ошибки на границе скриптов
 раньше сборки или бейка. `check_script_bindings.py` удерживает обращённые к скриптам
 нативные сигнатуры в словаре `ptr<T>`/`nptr<T>` и сравнивает обработчики AngelScript

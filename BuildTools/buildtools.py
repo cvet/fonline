@@ -4206,9 +4206,12 @@ def resolve_managed_project_paths(config_path: Path, sub_config: str | None, bui
 	parser = foconfig.ConfigParser()
 	parser.loadFromFile(config_path)
 	settings = parser.resolveSettings(sub_config)
+	appended = appended_config_keys(config_path)
 
+	# The parser folds `+=` into the value and SetValue appends a value led by `+`, so both are found here
 	for name in (MANAGED_PROJECT_NAME_SETTING, MANAGED_GENERATED_DIR_SETTING):
-		if f'{name} +' in settings or '$' in settings.get(name, ''):
+		value = settings.get(name, '')
+		if name in appended or value.startswith('+') or '$' in value:
 			raise ValueError(f'{name} uses += or a $ substitution, which managed-project-path does not resolve')
 
 	project_name = settings.get(MANAGED_PROJECT_NAME_SETTING, MANAGED_DEFAULT_PROJECT_NAME)
@@ -4233,6 +4236,24 @@ def resolve_managed_project_paths(config_path: Path, sub_config: str | None, bui
 		generated_dir / f'{project_name}.gen.sln',
 		generated_dir / f'{MANAGED_HOST_PROJECT_NAME}.gen.csproj',
 	)
+
+
+def appended_config_keys(config_path: Path) -> set[str]:
+	"""Keys any section of the config assigns with `+=`, read with the ConfigFile line grammar."""
+	import foconfig
+
+	text = config_path.read_bytes().decode('utf-8-sig')
+	appended: set[str] = set()
+
+	for logical in foconfig.iter_logical_lines(foconfig.split_physical_lines(text)):
+		if not logical.text or logical.text[0] == '[':
+			continue
+
+		entry = foconfig.parse_key_value(logical.text)
+		if entry is not None and entry.append:
+			appended.add(entry.key)
+
+	return appended
 
 
 def open_with_desktop_association(path: Path) -> None:

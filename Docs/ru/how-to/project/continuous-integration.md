@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/project/continuous-integration.html
 ---
 
 # Настройка непрерывной интеграции для игрового проекта
-<!-- docs-translation: {"document_id":"project-continuous-integration","locale":"ru","source_path":"Docs/en/how-to/project/continuous-integration.md","source_sha256":"572e486c11d5268022f7f06daa02d9b96b40732e06dd6efaaa515cbde018c3f2"} -->
+<!-- docs-translation: {"document_id":"project-continuous-integration","locale":"ru","source_path":"Docs/en/how-to/project/continuous-integration.md","source_sha256":"44ae2b6d5884d31cca47971741876c93a5499ab3d9746cc551ca236441796fde"} -->
 Руководство показывает, как встраивающий игровой проект строит непрерывную
 интеграцию вокруг движка: какие линии запускать, как извлекать submodule
 движка, как готовить runner командами, принадлежащими движку, как упорядочивать

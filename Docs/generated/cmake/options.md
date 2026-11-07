@@ -150,6 +150,9 @@ The canonical generated reference moved to locale-specific paths.
 <a id="entry-cmake-option-fo-audio-acm-582880f030"></a>
 - [`entry-cmake-option-fo-audio-acm-582880f030`](../../en/reference/cmake/options.md#entry-cmake-option-fo-audio-acm-582880f030)
 
+<a id="entry-cmake-option-fo-ai-control-66ee210114"></a>
+- [`entry-cmake-option-fo-ai-control-66ee210114`](../../en/reference/cmake/options.md#entry-cmake-option-fo-ai-control-66ee210114)
+
 <a id="entry-cmake-option-fo-disable-asio-849d7e6a1f"></a>
 - [`entry-cmake-option-fo-disable-asio-849d7e6a1f`](../../en/reference/cmake/options.md#entry-cmake-option-fo-disable-asio-849d7e6a1f)
 

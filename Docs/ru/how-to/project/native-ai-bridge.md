@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/project/native-ai-bridge.html
 ---
 
 # Встраивание AiControl listener в игровой клиент
-<!-- docs-translation: {"document_id":"project-native-ai-bridge","locale":"ru","source_path":"Docs/en/how-to/project/native-ai-bridge.md","source_sha256":"PLACEHOLDER"} -->
+<!-- docs-translation: {"document_id":"project-native-ai-bridge","locale":"ru","source_path":"Docs/en/how-to/project/native-ai-bridge.md","source_sha256":"39c2adbde4dfb566a974d50fde53a00e9103abe4bbfb3c01edb3fd3cbbb61450"} -->
 Engine поставляет необязательный native listener для [протокола AiControl](../ai-control-protocol.md): TCP endpoint на loopback внутри клиента разработки, через который QA-инструмент, локальный скрипт или MCP-адаптер наблюдает за игрой и ставит команды в очередь. Engine отвечает за транспорт, авторизацию, ограниченные очереди и завершение работы; игровой проект отвечает за свои настройки, схему наблюдения и набор команд. На этой странице описано, как компилировать listener только в клиенты разработки, запускать его из проектных настроек, регистрировать проектные команды и перевести проект с собственной копии listener. Как и протокол, listener экспериментальный.
 
 ## Проверенные исходные пути

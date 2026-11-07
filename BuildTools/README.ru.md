@@ -5,7 +5,7 @@ permalink: /BuildTools/README.ru.html
 locale: ru
 document_id: buildtools-readme
 ---
-<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"f7f4733cb7773a67c8bfd534765c1467893a3b31c34a2eb504f9a48685bb665b"} -->
+<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"1e777fd745d575aff5ede124d71757dee010bbeab4bf7144dc8f6fb4ff57aaca"} -->
 # Инструменты сборки FOnline Engine
 
 ## Скрипты сборки

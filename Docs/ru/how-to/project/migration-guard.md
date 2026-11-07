@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/project/migration-guard.html
 ---
 
 # Защита миграций идентичностей
-<!-- docs-translation: {"document_id":"project-migration-guard","locale":"ru","source_path":"Docs/en/how-to/project/migration-guard.md","source_sha256":"PLACEHOLDER"} -->
+<!-- docs-translation: {"document_id":"project-migration-guard","locale":"ru","source_path":"Docs/en/how-to/project/migration-guard.md","source_sha256":"427c15473f9b65e93841a28af1faa3caf94b5e961ffd8fa12085c01e6204bd2a"} -->
 Сохранённые сущности и авторский контент ссылаются на прототипы, имена свойств и
 значения enum по имени. Переименование или удаление без `///@ MigrationRule`
 оставляет сохранённые данные указывающими в пустоту, а повторное объявление

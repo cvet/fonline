@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/project/content-and-diagnostics-tools.html
 ---
 
 # Инструменты текстовых пакетов, синхронизации движения и управляемого проекта
-<!-- docs-translation: {"document_id":"project-content-and-diagnostics-tools","locale":"ru","source_path":"Docs/en/how-to/project/content-and-diagnostics-tools.md","source_sha256":"PLACEHOLDER"} -->
+<!-- docs-translation: {"document_id":"project-content-and-diagnostics-tools","locale":"ru","source_path":"Docs/en/how-to/project/content-and-diagnostics-tools.md","source_sha256":"d6127454ed36b3091f1dd46c624a8b96824d59aa3776b911e46f1aa23f5c6e22"} -->
 Это руководство описывает три небольших инструмента движка, которые игровой проект запускает из своих задач и CI: `check_text_packs.py` проверяет исходные текстовые пакеты `.fotxt` до бейкинга, `move_sync_analysis.py` превращает строки журнала `Network.MoveSyncTrace` в отчёты о синхронизации движения по сценариям, а `buildtools.py managed-project-path` выводит, куда бейкер Managed C# записывает сгенерированный проект и решение. Для каждого инструмента даны команды, коды выхода и настройка, а затем показано, как проект добавляет свои правила поверх инструмента, не копируя его.
 
 Все три инструмента читают только форматы, определённые движком: грамматику текстовых пакетов, строки трейса `MOVESYNC` и настройки `ManagedScript`. Выбор языков, обвязка сценариев, пороги приёмки и автоматизация IDE остаются в проекте.

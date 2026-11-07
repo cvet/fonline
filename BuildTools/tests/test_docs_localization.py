@@ -81,8 +81,8 @@ class LocalizationDocumentationTests(unittest.TestCase):
         second = docs_localization.generate_localization_status(ENGINE_ROOT)
         self.assertEqual(first, second)
         self.assertGreater(first["summary"]["required_document_count"], 100)
-        self.assertEqual(first["summary"]["required_document_count"], 211)
-        self.assertEqual(first["summary"]["current_translation_count"], 211)
+        self.assertEqual(first["summary"]["required_document_count"], 224)
+        self.assertEqual(first["summary"]["current_translation_count"], 224)
         self.assertEqual(
             first["summary"]["missing_translation_count"],
             0,
@@ -304,6 +304,19 @@ class LocalizationDocumentationTests(unittest.TestCase):
                 "project-data-migrations",
                 "project-versioning-and-releases",
                 "project-ai-assisted-maintenance",
+                "project-ai-control-mcp",
+                "project-content-and-diagnostics-tools",
+                "project-documentation-checks",
+                "project-engine-contract-analyzers",
+                "project-format-content",
+                "project-migration-guard",
+                "project-native-ai-bridge",
+                "project-native-safety-audits",
+                "project-native-source-audits",
+                "project-reading-engine-formats",
+                "project-release-tooling",
+                "project-script-and-binding-checks",
+                "project-script-test-harness",
                 "setup-troubleshooting",
                 "contributing-vscode-extensions",
                 "runtime-log-files",

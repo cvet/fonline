@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/project/documentation-checks.html
 ---
 
 # Проверка ссылок документации в игровом проекте
-<!-- docs-translation: {"document_id":"project-documentation-checks","locale":"ru","source_path":"Docs/en/how-to/project/documentation-checks.md","source_sha256":"PLACEHOLDER"} -->
+<!-- docs-translation: {"document_id":"project-documentation-checks","locale":"ru","source_path":"Docs/en/how-to/project/documentation-checks.md","source_sha256":"580c083d802d92d7ce6c2369c8ea2c9ff39be1cb02939ea5d2c4a3ac997ac13c"} -->
 Руководство показывает, как игровой проект проверяет собственный Markdown с
 помощью `BuildTools/markdown_links.py` из движка: локальные ссылки должны вести к
 существующим файлам, `#fragment` должен совпадать с настоящим заголовком или

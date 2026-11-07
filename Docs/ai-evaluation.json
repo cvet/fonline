@@ -290,7 +290,7 @@
           "description": "Use observable Task results and the backend continuation context instead of async void or detached Engine calls.",
           "document_id": "managed-csharp-scripting",
           "anchor": "async-and-continuation-scheduling",
-          "required_terms": ["Game.YieldAsync", "ScriptSynchronizationContext", "async void", "ConfigureAwait(false)"]
+          "required_terms": ["ScriptTask.Delay", "ScriptSynchronizationContext", "async void", "ConfigureAwait(false)"]
         },
         {
           "id": "managed-cover-analysis",

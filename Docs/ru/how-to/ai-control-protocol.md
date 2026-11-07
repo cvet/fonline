@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/ai-control-protocol.html
 ---
 
 # Протокол AiControl
-<!-- docs-translation: {"document_id":"ai-control-protocol-guide","locale":"ru","source_path":"Docs/en/how-to/ai-control-protocol.md","source_sha256":"d7b627419e6d15d24243a1d65a3b677b90b15b409a7d9ad0fb5a2d95945d39c7"} -->
+<!-- docs-translation: {"document_id":"ai-control-protocol-guide","locale":"ru","source_path":"Docs/en/how-to/ai-control-protocol.md","source_sha256":"e6533af901fd813414b2e0ba9003c3166ee836b412f1555766ac38b5985154e0"} -->
 Проекты FOnline могут предоставлять клиент разработки автоматизированным
 QA-агентам, локальным инструментам или MCP-адаптеру, не превращая команды
 отдельной игры в часть Engine. Эта страница определяет такую переиспользуемую

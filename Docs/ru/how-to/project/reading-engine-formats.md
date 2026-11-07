@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/project/reading-engine-formats.html
 ---
 
 # Чтение форматов контента движка из инструментов проекта
-<!-- docs-translation: {"document_id":"project-reading-engine-formats","locale":"ru","source_path":"Docs/en/how-to/project/reading-engine-formats.md","source_sha256":"PLACEHOLDER"} -->
+<!-- docs-translation: {"document_id":"project-reading-engine-formats","locale":"ru","source_path":"Docs/en/how-to/project/reading-engine-formats.md","source_sha256":"cb0f93a73fb145ea9e5927fa435182286a32b93268d23929c07493b67fd1fe64"} -->
 Аудиты, линтеры и генераторы игрового проекта читают те же файлы, что и сборщики
 ресурсов: главную конфигурацию, пакеты ресурсов, прототипы и текстовые пакеты.
 `BuildTools/fo_formats.py` читает их так же, как парсеры движка, поэтому

@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/project/data-migrations.html
 ---
 
 # Миграция сохранённых данных и контента в игровом проекте
-<!-- docs-translation: {"document_id":"project-data-migrations","locale":"ru","source_path":"Docs/en/how-to/project/data-migrations.md","source_sha256":"b5ac35657327c7dd5e490421e35c8eeba6e9948645734cd5101e1e7f724c15cc"} -->
+<!-- docs-translation: {"document_id":"project-data-migrations","locale":"ru","source_path":"Docs/en/how-to/project/data-migrations.md","source_sha256":"5e0829bf6b985915af12c097f898bdc04f93be3271bcf4e309569c88e1afbf4d"} -->
 Работающая игра хранит данные, записанные более старыми сборками. Руководство
 объясняет, какие имена и значения считаются сохраняемыми идентичностями, как
 объявлять записи `///@ MigrationRule`, когда одна из них меняется, как

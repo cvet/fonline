@@ -188,23 +188,23 @@ Gate on the exit code; the step prints its own summary and findings. A baseline 
 1. Keep the project files together, for example `Validation/NativeSafety/config.json`, `sync-scope.tsv` and `exception-safety.tsv`, owned by the same reviewers as the native extension code.
 2. Add a thin project wrapper that fixes the arguments, so the local task, the hook and CI call one command:
 
-   ```python
-   import subprocess
-   import sys
-   from pathlib import Path
+```python
+import subprocess
+import sys
+from pathlib import Path
 
-   ROOT = Path(__file__).resolve().parents[2]
-   AUDIT = ROOT / "Engine" / "BuildTools" / "native_safety_audit.py"
-   PROJECT = ["--root", str(ROOT), "--scope", "SourceExt", "--config", "Validation/NativeSafety/config.json"]
+ROOT = Path(__file__).resolve().parents[2]
+AUDIT = ROOT / "Engine" / "BuildTools" / "native_safety_audit.py"
+PROJECT = ["--root", str(ROOT), "--scope", "SourceExt", "--config", "Validation/NativeSafety/config.json"]
 
-   def main() -> int:
-       sync = subprocess.call([sys.executable, str(AUDIT), "sync-scope", *PROJECT, "--baseline", "Validation/NativeSafety/sync-scope.tsv"])
-       exceptions = subprocess.call([sys.executable, str(AUDIT), "exception-safety", *PROJECT, "--baseline", "Validation/NativeSafety/exception-safety.tsv"])
-       return max(sync, exceptions)
+def main() -> int:
+    sync = subprocess.call([sys.executable, str(AUDIT), "sync-scope", *PROJECT, "--baseline", "Validation/NativeSafety/sync-scope.tsv"])
+    exceptions = subprocess.call([sys.executable, str(AUDIT), "exception-safety", *PROJECT, "--baseline", "Validation/NativeSafety/exception-safety.tsv"])
+    return max(sync, exceptions)
 
-   if __name__ == "__main__":
-       raise SystemExit(main())
-   ```
+if __name__ == "__main__":
+    raise SystemExit(main())
+```
 
 3. Create the project exception-safety baseline with `exception-safety update --add-new` and the same arguments; the command writes the missing file. Classify every new row and write its reason before committing.
 4. Put project-only reviewed helpers (worker schedulers, typed factories, deferred queues) in the configuration with a reason each, never in a copy of the Engine rules. A rule that no longer names a function fails, so it is removed together with the helper.

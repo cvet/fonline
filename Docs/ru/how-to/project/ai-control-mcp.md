@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/project/ai-control-mcp.html
 ---
 
 # Управление игрой через MCP-адаптер AiControl
-<!-- docs-translation: {"document_id":"project-ai-control-mcp","locale":"ru","source_path":"Docs/en/how-to/project/ai-control-mcp.md","source_sha256":"PLACEHOLDER"} -->
+<!-- docs-translation: {"document_id":"project-ai-control-mcp","locale":"ru","source_path":"Docs/en/how-to/project/ai-control-mcp.md","source_sha256":"bfe502eccdbae819a627889071a81cecfd0686874c011fb00f36a1f8237b7617"} -->
 Руководство показывает, как игровой проект даёт ИИ-агенту наблюдать за
 отладочной сборкой и играть в неё через MCP-адаптер движка из
 `BuildTools/ai_control_mcp`. Адаптер говорит с MCP-клиентом агента по Model
@@ -112,7 +112,7 @@ stdio-сервер. Точный файл конфигурации принад�
 Переменную с токеном задавайте в окружении, которое наследует клиент, и никогда
 не в этом файле. Чтобы попробовать адаптер без игры, запустите в другом
 терминале пример протокола из
-[Examples/AiControlSample](../../../../Examples/AiControlSample/README.md)
+[Examples/AiControlSample](../../../../Examples/AiControlSample/README.ru.md)
 командой `py -3 Engine\Examples\AiControlSample\ai_control_sample.py` (он слушает
 порт по умолчанию `43011`) и вызовите на нём `mygame_ping`, `mygame_observe` и
 `mygame_act`.

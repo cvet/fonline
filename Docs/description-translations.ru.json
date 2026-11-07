@@ -4790,6 +4790,42 @@
           "source_sha256": "8a63e0febd6d42389f93894f9ed031abc28a4c7f496b2d83c908a3eb3ae6b7b5",
           "translation": "Во время RenderIface помещает в стек переиспользуемую offscreen-цель размером с экран и очищает её при явном запросе, загрязнении или изменении размера; активные поверхности нужно передавать на экран в порядке стека."
         },
+        "/symbols/@id=script.method.client.Game.AiControlAvailable/description": {
+          "source_sha256": "2e2bccb2860d01678c25c2427e0895ebfe62dc938fed114a0a2af74b6215393f",
+          "translation": "Возвращает, скомпилирован ли в эту сборку listener AiControl для разработки (FO_AI_CONTROL на настольной платформе)"
+        },
+        "/symbols/@id=script.method.client.Game.AiControlCompleteCommand/description": {
+          "source_sha256": "a51790dff068e92c132fe6fed81c1bdee7456c1fc0162742f728b294c371050c",
+          "translation": "Добавляет завершающее событие command_completed для извлечённой команды"
+        },
+        "/symbols/@id=script.method.client.Game.AiControlGetStatus/description": {
+          "source_sha256": "f3e79df03a1dc9f56a46941edf3c99e4704d1553957c5baa1fcfcad39c8ef06c",
+          "translation": "Возвращает объект состояния listener, отдаваемый методом status, в виде текста JSON"
+        },
+        "/symbols/@id=script.method.client.Game.AiControlIsRunning/description": {
+          "source_sha256": "fc8556be54c5538bcb5e5963fa8d65b5308a9572ca4b21003cef59deb0d4e70d",
+          "translation": "Возвращает, принимает ли поток listener AiControl соединения"
+        },
+        "/symbols/@id=script.method.client.Game.AiControlPullCommand/description": {
+          "source_sha256": "086a2f01181f7a73c3d82fb230ae4e3b6d02322d4cc30a3b92242c2e3a421c69",
+          "translation": "Берёт следующую поставленную в очередь команду, которую не обработал ни один нативный обработчик, и возвращает false, если очередь пуста; paramsJson хранит полный объект params команды act"
+        },
+        "/symbols/@id=script.method.client.Game.AiControlPushEvent/description": {
+          "source_sha256": "299e73efc6a4a49d21b42fce3598b87ea847d1dbe424d86ffd167684683b6de3",
+          "translation": "Добавляет один проектный объект события в ограниченную историю событий AiControl"
+        },
+        "/symbols/@id=script.method.client.Game.AiControlSetObservation/description": {
+          "source_sha256": "b6a11810f703c6992a405f73aa5e51eed97c8d53b8e29e8640ab97df78ff9bc8",
+          "translation": "Заменяет опубликованное наблюдение полным снимком в виде объекта JSON; выбрасывает исключение для некорректного JSON, не объекта или слишком большого снимка"
+        },
+        "/symbols/@id=script.method.client.Game.AiControlStart/description": {
+          "source_sha256": "957838f10406dbb67043a4bbb354ebf812fbf835d3d93c4a697864937a27d24c",
+          "translation": "Запускает listener AiControl с заданными проектом endpoint, токеном и границами; выбрасывает исключение, если сборка его исключает, он уже запущен или конфигурация небезопасна"
+        },
+        "/symbols/@id=script.method.client.Game.AiControlStop/description": {
+          "source_sha256": "9e49f9b761b89ad4658a867ff483dcb8544f4eb88c6584b222cf2abc1458f8ac",
+          "translation": "Останавливает listener AiControl, закрывает его соединение и завершает ошибкой команды, всё ещё стоящие в очереди; ничего не делает, если он не запущен"
+        },
         "/symbols/@id=script.method.client.Game.BindFont/description": {
           "source_sha256": "ade12409aee8188a4acae1b9bb6adb6bdd15e4712d85cbdda105604d2ebcd934",
           "translation": "Привязывает ресурс .fofnt или .fnt к клиентскому слоту шрифта с заданным масштабом по умолчанию; для любого другого расширения выбрасывает исключение."
@@ -8046,6 +8082,10 @@
           "source_sha256": "786aa674b51cbd23d87c43167327ff22b414f42741794f1956c09a9a0b228949",
           "translation": "Загружает сохранённого криттера на карту"
         },
+        "/symbols/@id=script.method.server.Game.LoadImage/description": {
+          "source_sha256": "ec71554bd08f304e2515f33645011b7783de2a5c79141f25bde25c95b620f99f",
+          "translation": "Загружает собранный однокадровый ресурс изображения в принадлежащее скрипту изображение из пикселей; выбрасывает исключение, если ресурс отсутствует, анимирован или пуст"
+        },
         "/symbols/@id=script.method.server.Game.LoadStaticMap/description": {
           "source_sha256": "3a361908396a2839a54c8d58bbd24f94f499d09c9a5ebe35e9168f3e5804bfb5",
           "translation": "Прочитать запечённое содержимое прототипа карты в кэш сейчас или в рабочем потоке; запрос до конца этого чтения ждёт его"
@@ -9446,6 +9486,14 @@
           "source_sha256": "28fa152e8c224f80cd1c8cd9aeb4129f9d1a2240e2b22409747defde0d5b6ab4",
           "translation": "Помечает текущее событие для удаления после завершения выполнения скрипта"
         },
+        "/symbols/@id=script.ref-method.server.ServerImage.GetColor/description": {
+          "source_sha256": "25d9fab739f587f2f33b836861c88be99fea4dda140de06a04f567a9a022e862",
+          "translation": "Возвращает цвет одного пикселя и выбрасывает исключение для позиции вне изображения"
+        },
+        "/symbols/@id=script.ref-method.server.ServerImage.GetSize/description": {
+          "source_sha256": "e0d3d4ffd7114d987828d83a637303bf9702d6e41c0a30800ea891b9134f0f04",
+          "translation": "Возвращает ширину и высоту изображения в пикселях"
+        },
         "/symbols/@id=script.ref-type.client.FogLayer/description": {
           "source_sha256": "ba30b49f6329ae33246525aa0d6264e6047b5feaa959a05e439fd14b9ba160f5",
           "translation": "Принадлежащий карте слой тумана или трассируемой зоны, форма и параметры композиции которого каждый кадр перестраиваются из изменяемых полей скрипта."
@@ -9469,6 +9517,10 @@
         "/symbols/@id=script.ref-type.common.TimeEventContext/description": {
           "source_sha256": "faa217c16707d6effd4e5a46e191fc3c3e79347dfe2157c253d34453940f4dc1",
           "translation": "Временный контекст обработчика для чтения и изменения выполняющегося time event; запрошенные изменения применяются после завершения выполнения скрипта"
+        },
+        "/symbols/@id=script.ref-type.server.ServerImage/description": {
+          "source_sha256": "de1f0da642f6d8c8035fa0f054f04cd116839e0ccc6702d310e5f116ca0c8064",
+          "translation": "Декодированные пиксели одного собранного однокадрового спрайтового ресурса для серверных поисков, например масок мировой карты"
         },
         "/symbols/@id=script.value-field.GamepadState.Available/description": {
           "source_sha256": "391d07af65cada08546e44516de4067a2b86dc03403853898bac920e2374bdcc",
@@ -11725,6 +11777,10 @@
             "значение SetOption, заданное подключающим проектом",
             "объявленное значение интерфейса по умолчанию"
           ]
+        },
+        "/options/@id=cmake.option.FO_AI_CONTROL/description": {
+          "source_sha256": "f1a460abab57bc1d0ebecacd54026fc8b345e00b4bed83ad29a5f02023095a37",
+          "translation": "Компилировать listener AiControl для разработки в клиенты Windows, Linux и macOS; для поставляемых сборок оставляйте OFF."
         },
         "/options/@id=cmake.option.FO_ANGELSCRIPT_SCRIPTING/description": {
           "source_sha256": "94220ee86d5eb9635fa1e7653f8e14cb9ff45003c86e4563e0b861cbe6818e12",
@@ -14376,6 +14432,58 @@
           "source_sha256": "4976196cddedb13897f96208592eace73b888065015597b0205570fd4b56071e",
           "translation": "Контроль миграций идентичности"
         },
+        "/helpers/@id=helper-cli.move-sync-analysis/description": {
+          "source_sha256": "506ae93640fa9265082df9f8e937b93e6a72db857e58d8f45b4ddfa3a5b94145",
+          "translation": "Свести строки журнала MOVESYNC из Network.MoveSyncTrace в отчёты о расхождении, отставании и коррекциях по сценариям."
+        },
+        "/helpers/@id=helper-cli.move-sync-analysis/global_arguments/@id=helper-cli.move-sync-analysis.argument.actor/description": {
+          "source_sha256": "f4f675fcbcd743e8716939e4509b452acd083397f3aa3ceccd4965984e65971c",
+          "translation": "Разобрать весь трейс как один сценарий этого id криттера вместо сценариев, ограниченных метками."
+        },
+        "/helpers/@id=helper-cli.move-sync-analysis/global_arguments/@id=helper-cli.move-sync-analysis.argument.clock/description": {
+          "source_sha256": "0b9a715d2a4a266e214e9e53bc0d4da7473d5a587b4a345d6df96c46235c12f2",
+          "translation": "t: общие монотонные часы (одна машина); st: синхронизированное время (несколько машин)."
+        },
+        "/helpers/@id=helper-cli.move-sync-analysis/global_arguments/@id=helper-cli.move-sync-analysis.argument.extra_side/description": {
+          "source_sha256": "5a8965c2028098ca769b7d328ca47c29d22a569d5f28208b14190d78c3c3eda3",
+          "translation": "Также читать в шкалы времени строки MOVESYNC этой стороны, которую пишет проект (можно повторять)."
+        },
+        "/helpers/@id=helper-cli.move-sync-analysis/global_arguments/@id=helper-cli.move-sync-analysis.argument.geometry/description": {
+          "source_sha256": "fa2ac665b0403e00bba3fb485c757c3a2bf4da550abbb05328169b7a6e49d3ce",
+          "translation": "Геометрия игровой сетки проекта (FO_GEOMETRY)."
+        },
+        "/helpers/@id=helper-cli.move-sync-analysis/global_arguments/@id=helper-cli.move-sync-analysis.argument.json/description": {
+          "source_sha256": "2355b121526afaa65b1005975f2ffb385b743dcce201f60fd80d489fbf42e57c",
+          "translation": "Записать полный отчёт в JSON."
+        },
+        "/helpers/@id=helper-cli.move-sync-analysis/global_arguments/@id=helper-cli.move-sync-analysis.argument.logs/description": {
+          "source_sha256": "6a1597c6a83f75ecb3e81aebbf347119ec54d062755a4025d9308d6983fe99ea",
+          "translation": "Файлы журналов со строками MOVESYNC (сервер и клиенты)."
+        },
+        "/helpers/@id=helper-cli.move-sync-analysis/global_arguments/@id=helper-cli.move-sync-analysis.argument.markdown/description": {
+          "source_sha256": "2097c7f59104ee6fe5c585957ce3e8295efe95f8160621a79232f87f6ca5f5e3",
+          "translation": "Записать сводную таблицу Markdown."
+        },
+        "/helpers/@id=helper-cli.move-sync-analysis/global_arguments/@id=helper-cli.move-sync-analysis.argument.require_converged/description": {
+          "source_sha256": "755f5e93e753c805623626eb3a9096705ad4edeb05962caeed58036bd834d5ef",
+          "translation": "Завершиться с кодом 1, если хотя бы один сценарий заканчивается расхождением точек зрения."
+        },
+        "/helpers/@id=helper-cli.move-sync-analysis/global_arguments/@id=helper-cli.move-sync-analysis.argument.settle_ms/description": {
+          "source_sha256": "7b0f43c16527cdbca7950638bf09ca988349efeb0f0efd908ab54cba66bb3c65",
+          "translation": "Продлить окно каждого сценария на столько миллисекунд после его конечной метки."
+        },
+        "/helpers/@id=helper-cli.move-sync-analysis/global_arguments/@id=helper-cli.move-sync-analysis.argument.timeline/description": {
+          "source_sha256": "abf6139b1ad98ae8baae6e8ad88d2a591e757531053cd7abd4a87bb3aa7f24d1",
+          "translation": "Вывести сводную шкалу времени сценария с этой меткой (можно повторять, или 'all')."
+        },
+        "/helpers/@id=helper-cli.move-sync-analysis/invocation_owner": {
+          "source_sha256": "5f1f8ada34edc56e6b70253943a8df1be6aeb2eac588c2d1863319b0de448911",
+          "translation": "плейтесты движения встраивающего игрового проекта и прямая диагностика разработчиком"
+        },
+        "/helpers/@id=helper-cli.move-sync-analysis/name": {
+          "source_sha256": "fd72f3093ce905605379cbae6f6c259be67b5052b0760a1e2feba8d49c3e9505",
+          "translation": "Анализ трейса синхронизации движения"
+        },
         "/helpers/@id=helper-cli.native-safety-audit/commands/@id=helper-cli.native-safety-audit.command.exception-safety/arguments/@id=helper-cli.native-safety-audit.command.exception-safety.argument.accept/description": {
           "source_sha256": "bcd955ed99fd66b67f52defb884f9ec15526ed8dc216868393c83aca5a37b64d",
           "translation": "update: обновить хеш тела функции, классификация которой выведена заново (можно повторять)."
@@ -15027,58 +15135,6 @@
         "/helpers/@id=helper-cli.release-preflight/name": {
           "source_sha256": "23dad50d4eb583a75c2b3af8ce9e57b9bc0279456cb89bf8452bd1a754189d39",
           "translation": "Предварительная проверка релиза"
-        },
-        "/helpers/@id=helper-cli.move-sync-analysis/description": {
-          "source_sha256": "506ae93640fa9265082df9f8e937b93e6a72db857e58d8f45b4ddfa3a5b94145",
-          "translation": "Свести строки журнала MOVESYNC из Network.MoveSyncTrace в отчёты о расхождении, отставании и коррекциях по сценариям."
-        },
-        "/helpers/@id=helper-cli.move-sync-analysis/global_arguments/@id=helper-cli.move-sync-analysis.argument.actor/description": {
-          "source_sha256": "f4f675fcbcd743e8716939e4509b452acd083397f3aa3ceccd4965984e65971c",
-          "translation": "Разобрать весь трейс как один сценарий этого id криттера вместо сценариев, ограниченных метками."
-        },
-        "/helpers/@id=helper-cli.move-sync-analysis/global_arguments/@id=helper-cli.move-sync-analysis.argument.clock/description": {
-          "source_sha256": "0b9a715d2a4a266e214e9e53bc0d4da7473d5a587b4a345d6df96c46235c12f2",
-          "translation": "t: общие монотонные часы (одна машина); st: синхронизированное время (несколько машин)."
-        },
-        "/helpers/@id=helper-cli.move-sync-analysis/global_arguments/@id=helper-cli.move-sync-analysis.argument.extra_side/description": {
-          "source_sha256": "5a8965c2028098ca769b7d328ca47c29d22a569d5f28208b14190d78c3c3eda3",
-          "translation": "Также читать в шкалы времени строки MOVESYNC этой стороны, которую пишет проект (можно повторять)."
-        },
-        "/helpers/@id=helper-cli.move-sync-analysis/global_arguments/@id=helper-cli.move-sync-analysis.argument.geometry/description": {
-          "source_sha256": "fa2ac665b0403e00bba3fb485c757c3a2bf4da550abbb05328169b7a6e49d3ce",
-          "translation": "Геометрия игровой сетки проекта (FO_GEOMETRY)."
-        },
-        "/helpers/@id=helper-cli.move-sync-analysis/global_arguments/@id=helper-cli.move-sync-analysis.argument.json/description": {
-          "source_sha256": "2355b121526afaa65b1005975f2ffb385b743dcce201f60fd80d489fbf42e57c",
-          "translation": "Записать полный отчёт в JSON."
-        },
-        "/helpers/@id=helper-cli.move-sync-analysis/global_arguments/@id=helper-cli.move-sync-analysis.argument.logs/description": {
-          "source_sha256": "6a1597c6a83f75ecb3e81aebbf347119ec54d062755a4025d9308d6983fe99ea",
-          "translation": "Файлы журналов со строками MOVESYNC (сервер и клиенты)."
-        },
-        "/helpers/@id=helper-cli.move-sync-analysis/global_arguments/@id=helper-cli.move-sync-analysis.argument.markdown/description": {
-          "source_sha256": "2097c7f59104ee6fe5c585957ce3e8295efe95f8160621a79232f87f6ca5f5e3",
-          "translation": "Записать сводную таблицу Markdown."
-        },
-        "/helpers/@id=helper-cli.move-sync-analysis/global_arguments/@id=helper-cli.move-sync-analysis.argument.require_converged/description": {
-          "source_sha256": "755f5e93e753c805623626eb3a9096705ad4edeb05962caeed58036bd834d5ef",
-          "translation": "Завершиться с кодом 1, если хотя бы один сценарий заканчивается расхождением точек зрения."
-        },
-        "/helpers/@id=helper-cli.move-sync-analysis/global_arguments/@id=helper-cli.move-sync-analysis.argument.settle_ms/description": {
-          "source_sha256": "7b0f43c16527cdbca7950638bf09ca988349efeb0f0efd908ab54cba66bb3c65",
-          "translation": "Продлить окно каждого сценария на столько миллисекунд после его конечной метки."
-        },
-        "/helpers/@id=helper-cli.move-sync-analysis/global_arguments/@id=helper-cli.move-sync-analysis.argument.timeline/description": {
-          "source_sha256": "abf6139b1ad98ae8baae6e8ad88d2a591e757531053cd7abd4a87bb3aa7f24d1",
-          "translation": "Вывести сводную шкалу времени сценария с этой меткой (можно повторять, или 'all')."
-        },
-        "/helpers/@id=helper-cli.move-sync-analysis/invocation_owner": {
-          "source_sha256": "5f1f8ada34edc56e6b70253943a8df1be6aeb2eac588c2d1863319b0de448911",
-          "translation": "плейтесты движения встраивающего игрового проекта и прямая диагностика разработчиком"
-        },
-        "/helpers/@id=helper-cli.move-sync-analysis/name": {
-          "source_sha256": "fd72f3093ce905605379cbae6f6c259be67b5052b0760a1e2feba8d49c3e9505",
-          "translation": "Анализ трейса синхронизации движения"
         },
         "/helpers/@id=helper-cli.script-binding-check/description": {
           "source_sha256": "0018c72005f20f8c8fc3499a64c6cccbff6ce6783eb5ca25609266818ab584a5",

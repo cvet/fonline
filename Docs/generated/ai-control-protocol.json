@@ -19,7 +19,7 @@
       "loopback-first threat boundary and reference validation"
     ],
     "excluded": [
-      "a listener compiled into the FOnline core runtime",
+      "a listener enabled by default or compiled into shipping clients",
       "project observation fields, game action names, entity semantics, and readiness gates",
       "MCP tool names, orchestration recipes, game-playing policies, and model prompts",
       "server authority bypasses, administrator commands, TLS, discovery, and internet exposure"
@@ -670,11 +670,24 @@
   "integration_rules": [
     {
       "id": "ai-control-protocol.integration.native-extension",
-      "name": "Project-owned listener",
+      "name": "Opt-in client listener",
       "stability": "experimental",
-      "requirement": "Implement the listener as an opt-in embedding-project native extension unless and until a reviewed Engine runtime owner is introduced.",
-      "rationale": "The current protocol is reusable, but listener policy and shipping risk remain project responsibilities.",
+      "requirement": "Compile a listener only into development clients, either the optional Engine listener selected with FO_AI_CONTROL or an opt-in embedding-project native extension; enablement, settings, observations, and the command set remain project-owned.",
+      "rationale": "The transport is reusable, but listener policy and shipping risk remain project responsibilities.",
       "source": [
+        {
+          "path": "Source/Client/AiControlListener.h",
+          "anchors": [
+            "class AiControlListener final",
+            "void RegisterCommandHandler(string_view type, AiControlCommandHandler handler);"
+          ]
+        },
+        {
+          "path": "BuildTools/cmake/stages/Init.cmake",
+          "anchors": [
+            "FO_AI_CONTROL \"Compile the development AiControl listener into desktop clients\" OFF"
+          ]
+        },
         {
           "path": "Examples/AiControlSample/README.md",
           "anchors": [
@@ -902,5 +915,5 @@
       "experimental": 50
     }
   },
-  "contract_digest": "4b7e3c6df0e4822e9eea624d1ad68614a5761b638f34c68e04fb6270d7abd61e"
+  "contract_digest": "c6f015d2a5da080ee67846adb1a4a6a572bb1ad449cc73354171d74bd463cdf9"
 }

@@ -267,18 +267,18 @@ The Engine tools hold the reusable mechanics; the project keeps its policy next 
 
 - **Thin wrapper.** Put the project's settings in `Tools/version.json` and call the Engine tool from a project script, so tasks, hooks and CI share one entry point:
 
-  ```python
-  import subprocess
-  import sys
-  from pathlib import Path
+```python
+import subprocess
+import sys
+from pathlib import Path
 
-  ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[1]
 
-  # Limits keep the value inside the save-format encoding; see the project versioning page
-  command = [sys.executable, str(ROOT / 'Engine/BuildTools/project_version.py'),
-             '--root', str(ROOT), '--config', str(ROOT / 'Tools/version.json'), *sys.argv[1:]]
-  raise SystemExit(subprocess.run(command).returncode)
-  ```
+# Limits keep the value inside the save-format encoding; see the project versioning page
+command = [sys.executable, str(ROOT / 'Engine/BuildTools/project_version.py'),
+           '--root', str(ROOT), '--config', str(ROOT / 'Tools/version.json'), *sys.argv[1:]]
+raise SystemExit(subprocess.run(command).returncode)
+```
 
 - **Project checks beside it.** Run game-specific checks after the Engine tool in the same task: for example that the version still converts into the game's data version, that a store version code moved with it, or that release notes exist for the new tag. Fail the task when either step fails.
 - **Reasons next to settings.** The JSON config is strict and has no comment field. Record why each limit, `since_commit` or tag prefix exists in a comment beside the wrapper call or in the project's versioning page, and remove a setting together with its reason when it stops applying.

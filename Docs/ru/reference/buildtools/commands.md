@@ -159,7 +159,7 @@ options:
 <a id="entry-cli-buildtools-command-format-content-6dc0b07205"></a>
 ## `format-content`
 
-format project .fomain, prototype and optional AngelScript files
+Форматировать файлы .fomain, прототипов и необязательные файлы AngelScript проекта.
 
 Стабильный ID: `cli.buildtools.command.format-content`
 
@@ -169,14 +169,14 @@ usage: buildtools.py format-content [-h] [--check] [--project-root PROJECT_ROOT]
 
 | Стабильный ID | Аргумент | Вид | Обязателен | Значения | Варианты | По умолчанию | Описание |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| <a id="entry-cli-buildtools-command-format-content-argument-check-3b86dcf3b7"></a><code>cli.buildtools.command.format-content.argument.check</code> | <code>--check</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | report files that need formatting and exit with 1 without writing |
-| <a id="entry-cli-buildtools-command-format-content-argument-project-root-8b1c804f98"></a><code>cli.buildtools.command.format-content.argument.project_root</code> | <code>--project-root</code> | <code>option</code> | нет | <code>1</code> | - | - | project root for relative paths and the .fomain lookup (default: FO_PROJECT_ROOT, then the current directory) |
-| <a id="entry-cli-buildtools-command-format-content-argument-fomain-3b911889ad"></a><code>cli.buildtools.command.format-content.argument.fomain</code> | <code>--fomain</code> | <code>option</code> | нет | <code>1</code> | - | - | main config path (default: the only *.fomain file in the project root) |
-| <a id="entry-cli-buildtools-command-format-content-argument-skip-fomain-a57f30e33e"></a><code>cli.buildtools.command.format-content.argument.skip_fomain</code> | <code>--skip-fomain</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | do not format the main config |
-| <a id="entry-cli-buildtools-command-format-content-argument-skip-protos-f90108b034"></a><code>cli.buildtools.command.format-content.argument.skip_protos</code> | <code>--skip-protos</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | do not format prototype files |
-| <a id="entry-cli-buildtools-command-format-content-argument-proto-path-990248df57"></a><code>cli.buildtools.command.format-content.argument.proto_path</code> | <code>--proto-path</code> | <code>option</code> | нет | <code>1</code> | - | - | format only these prototype files or directories instead of the Proto resource packs (repeatable) |
-| <a id="entry-cli-buildtools-command-format-content-argument-metadata-7f71a73042"></a><code>cli.buildtools.command.format-content.argument.metadata</code> | <code>--metadata</code> | <code>option</code> | нет | <code>1</code> | - | - | read property and setting order from these files, in this order, instead of the Metadata resource packs (repeatable) |
-| <a id="entry-cli-buildtools-command-format-content-argument-fos-e2ccd6169f"></a><code>cli.buildtools.command.format-content.argument.fos</code> | <code>--fos</code> | <code>option</code> | нет | <code>1</code> | - | - | also format AngelScript files matching this glob relative to the project root with clang-format 20 (repeatable) |
+| <a id="entry-cli-buildtools-command-format-content-argument-check-3b86dcf3b7"></a><code>cli.buildtools.command.format-content.argument.check</code> | <code>--check</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Сообщить о файлах, которым нужно форматирование, и завершиться с кодом 1, ничего не записывая. |
+| <a id="entry-cli-buildtools-command-format-content-argument-project-root-8b1c804f98"></a><code>cli.buildtools.command.format-content.argument.project_root</code> | <code>--project-root</code> | <code>option</code> | нет | <code>1</code> | - | - | Корень проекта для относительных путей и поиска .fomain (по умолчанию FO_PROJECT_ROOT, затем текущий каталог). |
+| <a id="entry-cli-buildtools-command-format-content-argument-fomain-3b911889ad"></a><code>cli.buildtools.command.format-content.argument.fomain</code> | <code>--fomain</code> | <code>option</code> | нет | <code>1</code> | - | - | Путь к основной конфигурации (по умолчанию единственный файл *.fomain в корне проекта). |
+| <a id="entry-cli-buildtools-command-format-content-argument-skip-fomain-a57f30e33e"></a><code>cli.buildtools.command.format-content.argument.skip_fomain</code> | <code>--skip-fomain</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Не форматировать основную конфигурацию. |
+| <a id="entry-cli-buildtools-command-format-content-argument-skip-protos-f90108b034"></a><code>cli.buildtools.command.format-content.argument.skip_protos</code> | <code>--skip-protos</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Не форматировать файлы прототипов. |
+| <a id="entry-cli-buildtools-command-format-content-argument-proto-path-990248df57"></a><code>cli.buildtools.command.format-content.argument.proto_path</code> | <code>--proto-path</code> | <code>option</code> | нет | <code>1</code> | - | - | Форматировать только эти файлы или каталоги прототипов вместо пакетов ресурсов Proto (можно повторять). |
+| <a id="entry-cli-buildtools-command-format-content-argument-metadata-7f71a73042"></a><code>cli.buildtools.command.format-content.argument.metadata</code> | <code>--metadata</code> | <code>option</code> | нет | <code>1</code> | - | - | Читать порядок свойств и настроек из этих файлов в указанном порядке вместо пакетов ресурсов Metadata (можно повторять). |
+| <a id="entry-cli-buildtools-command-format-content-argument-fos-e2ccd6169f"></a><code>cli.buildtools.command.format-content.argument.fos</code> | <code>--fos</code> | <code>option</code> | нет | <code>1</code> | - | - | Также форматировать через clang-format 20 файлы AngelScript, подходящие под этот glob относительно корня проекта (можно повторять). |
 
 ### Точный вывод `--help`
 

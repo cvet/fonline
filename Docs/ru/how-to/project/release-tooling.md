@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/project/release-tooling.html
 ---
 
 # Инструменты выпуска для игрового проекта
-<!-- docs-translation: {"document_id":"project-release-tooling","locale":"ru","source_path":"Docs/en/how-to/project/release-tooling.md","source_sha256":"PLACEHOLDER"} -->
+<!-- docs-translation: {"document_id":"project-release-tooling","locale":"ru","source_path":"Docs/en/how-to/project/release-tooling.md","source_sha256":"eb00efbccc02b1ef6a93b78e1fa7c10a92f7ee3600f3ca3fd7323b69a813b115"} -->
 Движок поставляет четыре вспомогательных скрипта для работы игрового репозитория над выпусками и обновлениями: `project_version.py` пишет и проверяет монотонный `VERSION` проекта, `release_preflight.py` проверяет выпуск до постановки тега, `artifact_checksums.py` записывает контрольные суммы SHA-256 готовых пакетов, а `engine_upgrade_report.py` готовит запись об обновлении движка. Это скрипты Python 3.12 на стандартной библиотеке; они читают Git и никогда не выполняют fetch, не ставят теги, не делают push и ничего не публикуют. Политика проекта (схема нумерации, границы разрядов, префикс тега, ветка выпуска, имена ассетов) остаётся в параметрах команд и в одном небольшом JSON-файле, которым владеет проект.
 
 ## Проверенные исходные пути
@@ -267,18 +267,18 @@ release:
 
 - **Тонкая обёртка.** Положите настройки проекта в `Tools/version.json` и вызывайте инструмент движка из скрипта проекта, чтобы задачи, hooks и CI имели одну точку входа:
 
-  ```python
-  import subprocess
-  import sys
-  from pathlib import Path
+```python
+import subprocess
+import sys
+from pathlib import Path
 
-  ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[1]
 
-  # Limits keep the value inside the save-format encoding; see the project versioning page
-  command = [sys.executable, str(ROOT / 'Engine/BuildTools/project_version.py'),
-             '--root', str(ROOT), '--config', str(ROOT / 'Tools/version.json'), *sys.argv[1:]]
-  raise SystemExit(subprocess.run(command).returncode)
-  ```
+# Limits keep the value inside the save-format encoding; see the project versioning page
+command = [sys.executable, str(ROOT / 'Engine/BuildTools/project_version.py'),
+           '--root', str(ROOT), '--config', str(ROOT / 'Tools/version.json'), *sys.argv[1:]]
+raise SystemExit(subprocess.run(command).returncode)
+```
 
 - **Проверки проекта рядом.** Запускайте игровые проверки после инструмента движка в той же задаче: например, что версия по-прежнему преобразуется в версию данных игры, что код версии для магазина сдвинулся вместе с ней или что для нового тега есть заметки о выпуске. Задача должна завершаться ошибкой, если провалился любой шаг.
 - **Причины рядом с настройками.** JSON-конфигурация строгая и не имеет поля для комментариев. Записывайте, зачем существует каждая граница, `since_commit` или префикс тега, в комментарии рядом с вызовом обёртки или на странице версионирования проекта и удаляйте настройку вместе с её причиной, когда она перестаёт действовать.

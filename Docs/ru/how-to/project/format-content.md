@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/project/format-content.html
 ---
 
 # Форматирование файлов игрового контента
-<!-- docs-translation: {"document_id":"project-format-content","locale":"ru","source_path":"Docs/en/how-to/project/format-content.md","source_sha256":"PLACEHOLDER"} -->
+<!-- docs-translation: {"document_id":"project-format-content","locale":"ru","source_path":"Docs/en/how-to/project/format-content.md","source_sha256":"5c03cb90036edca613fbeb5273979f33b525bc0e16c6dbca431fda00ecb71de6"} -->
 `format-content` даёт игровому проекту единую каноническую раскладку для форматов, которыми владеет движок: главного конфига `.fomain`, файлов прототипов и, по желанию, скриптов AngelScript `.fos`. Команда сортирует настройки и свойства в стабильном порядке, нормализует пустые строки и пробелы в `key = value` и перечитывает каждую переписанную конфигурацию и каждый прототип моделью читателя движка, поэтому запуск форматирования никогда не меняет то, что движок соберёт. Запускайте её перед коммитом правок контента и как CI-проверку расхождений; для собственных исходников движка на C++ и C# по-прежнему служит `format-source`.
 
 ## Проверенные исходные пути

@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/testing/gameplay-and-integration.html
 ---
 
 # Gameplay- и integration-тестирование
-<!-- docs-translation: {"document_id":"gameplay-testing","locale":"ru","source_path":"Docs/en/how-to/testing/gameplay-and-integration.md","source_sha256":"2cd0aa61a8e5ed82840b3fb12048aa4da44a0880a231bd577f713965cbc3d271"} -->
+<!-- docs-translation: {"document_id":"gameplay-testing","locale":"ru","source_path":"Docs/en/how-to/testing/gameplay-and-integration.md","source_sha256":"48be85a5aa01297f40b55b441d0f1de3786c4af24690765d36c1626a89205623"} -->
 > Документация принадлежит движку. Руководство задает переиспользуемые правила
 > выбора test boundary, детерминированных fixtures, process runner, markers,
 > deadline, cleanup и evidence для игр на FOnline.

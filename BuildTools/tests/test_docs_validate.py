@@ -1725,9 +1725,14 @@ class DocumentationValidatorTests(unittest.TestCase):
             json.dumps(ai_control_manifest, indent=2) + "\n",
             encoding="utf-8",
         )
+        # Every manifest collection cites sources the generator opens, so copy all of them
         ai_control_source_paths = set(ai_control_manifest["sources"].values())
-        for entry in ai_control_manifest["validation_rules"]:
-            ai_control_source_paths.update(source["path"] for source in entry["source"])
+        for collection in ai_control_manifest.values():
+            if not isinstance(collection, list):
+                continue
+            for entry in collection:
+                if isinstance(entry, dict) and isinstance(entry.get("source"), list):
+                    ai_control_source_paths.update(source["path"] for source in entry["source"])
         for relative_path in sorted(ai_control_source_paths):
             source_path = BUILDTOOLS_DIR.parent / relative_path
             target_path = documentation_metadata.output_path(root, relative_path)

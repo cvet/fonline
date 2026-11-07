@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/scripting-runtime/choosing-a-backend.html
 ---
 
 # Выбор backend для скриптов
-<!-- docs-translation: {"document_id":"choosing-a-script-backend","locale":"ru","source_path":"Docs/en/explanation/scripting-runtime/choosing-a-backend.md","source_sha256":"f57d967fb3deb25023509e97c9a12bf753bd0af3e40be19eebdf80c9611abd03"} -->
+<!-- docs-translation: {"document_id":"choosing-a-script-backend","locale":"ru","source_path":"Docs/en/explanation/scripting-runtime/choosing-a-backend.md","source_sha256":"c3b1efa3b284ce9b2ca149b2e724b5daf5c8754071b04a04eb088db7fa0d5725"} -->
 Встраивающий игровой проект выбирает backend игровых скриптов при настройке
 сборки: AngelScript (модули `.fos`) или Managed C# (модули `.cs` на встроенном
 Mono). Выбор меняет требования к toolchain, sanitizer-линии, отладку,
@@ -226,7 +226,7 @@ opt-out не зависит от backend и закреплён тестом
 объявления удалённых вызовов, раскладки свойств и сохраняемые идентификаторы,
 если миграция не меняет их намеренно, и не отправляйте случайно два обработчика
 одного события. Соответствие атрибутов (`[[ModuleInit]]` → `[ModuleInit]`,
-`[[Async]]`/`Yield` → `Task`/`YieldAsync`, cover времени выполнения →
+`[[Async]]`/`Yield` → `Task`/`ScriptTask.Delay`, cover времени выполнения →
 `[RequiresCover]` и родственные) описано в [разделе миграции Managed
 C#](../../how-to/scripting/managed-csharp.md#миграция-с-angelscript). Обратного
 направления в руководствах Engine нет; считайте его тем же списком проверки,

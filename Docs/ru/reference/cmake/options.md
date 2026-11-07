@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-cmake-options","locale":"ru","source_path":"Docs/en/reference/cmake/options.md","source_sha256":"ee61bcb082e10589569657fc6bf58dbb65408eeecfe8ea15b677d6e2c3ff0056"} -->
+<!-- docs-translation: {"document_id":"generated-cmake-options","locale":"ru","source_path":"Docs/en/reference/cmake/options.md","source_sha256":"d168608478f286927d5ee15ae68772dcdbd3ec48aba5283c825ce5112ccfe8c8"} -->
 
 # Параметры проекта CMake
 
@@ -67,6 +67,7 @@ generated: true
 | <a id="entry-cmake-option-fo-image-mos-1a1a47be08"></a><code>cmake.option.FO_IMAGE_MOS</code> | <code>FO_IMAGE_MOS</code> | <code>BOOL</code> / <code>boolean</code> | Нет | Да | <code>OFF</code> | - | <code>dependency</code> | Включает загрузчик изображений MOS. |
 | <a id="entry-cmake-option-fo-image-bam-2538e775b6"></a><code>cmake.option.FO_IMAGE_BAM</code> | <code>FO_IMAGE_BAM</code> | <code>BOOL</code> / <code>boolean</code> | Нет | Да | <code>OFF</code> | - | <code>dependency</code> | Включает загрузчик изображений BAM. |
 | <a id="entry-cmake-option-fo-audio-acm-582880f030"></a><code>cmake.option.FO_AUDIO_ACM</code> | <code>FO_AUDIO_ACM</code> | <code>BOOL</code> / <code>boolean</code> | Нет | Да | <code>OFF</code> | - | <code>dependency</code> | Включить импортёр аудио ACM. |
+| <a id="entry-cmake-option-fo-ai-control-66ee210114"></a><code>cmake.option.FO_AI_CONTROL</code> | <code>FO_AI_CONTROL</code> | <code>BOOL</code> / <code>boolean</code> | Нет | No | <code>OFF</code> | - | <code>feature</code> | Компилировать listener AiControl для разработки в клиенты Windows, Linux и macOS; для поставляемых сборок оставляйте OFF. |
 | <a id="entry-cmake-option-fo-disable-asio-849d7e6a1f"></a><code>cmake.option.FO_DISABLE_ASIO</code> | <code>FO_DISABLE_ASIO</code> | <code>BOOL</code> / <code>boolean</code> | Нет | No | <code>OFF</code> | - | <code>dependency</code> | Отключает сетевой backend Asio. |
 | <a id="entry-cmake-option-fo-disable-web-sockets-9e4c3178dd"></a><code>cmake.option.FO_DISABLE_WEB_SOCKETS</code> | <code>FO_DISABLE_WEB_SOCKETS</code> | <code>BOOL</code> / <code>boolean</code> | Нет | No | <code>OFF</code> | - | <code>dependency</code> | Отключает поддержку транспорта WebSocket. |
 | <a id="entry-cmake-option-fo-disable-namespace-0c22154309"></a><code>cmake.option.FO_DISABLE_NAMESPACE</code> | <code>FO_DISABLE_NAMESPACE</code> | <code>BOOL</code> / <code>boolean</code> | Нет | No | <code>OFF</code> | - | <code>native-interface</code> | Компилирует нативные символы движка без пространства имён FOnline. |

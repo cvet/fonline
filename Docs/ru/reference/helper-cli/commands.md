@@ -502,29 +502,29 @@ options:
 ```
 
 <a id="entry-helper-cli-format-content-55dd5b4af8"></a>
-## Content formatter
+## Форматировщик контента
 
-Format .fomain, prototype and optional AngelScript files in the Engine layout and refuse any rewrite that would change what the Engine reads.
+Форматирует файлы .fomain, прототипов и необязательные файлы AngelScript в раскладке движка и отказывается от любой перезаписи, которая изменила бы прочитанное движком.
 
 - Стабильный ID: `helper-cli.format-content`
 - Программа: `format_content.py`
 - Владелец: `tooling`
 - Аудитория: `game-developer`, `embedding-project-build-system`, `ci-maintainer`
-- Владелец вызова: BuildTools/buildtools.py format-content, embedding-project format tasks and CI drift checks
+- Владелец вызова: BuildTools/buildtools.py format-content, задачи форматирования встраивающего игрового проекта и проверки расхождений в CI
 - Исходный парсер: [BuildTools/format_content.py](https://github.com/cvet/fonline/blob/master/BuildTools/format_content.py)
 
 ### Аргументы верхнего уровня
 
 | Стабильный ID | Аргумент | Вид | Обязателен | Значения | Варианты | По умолчанию | Описание |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| <a id="entry-helper-cli-format-content-argument-check-8b8c3a568e"></a><code>helper-cli.format-content.argument.check</code> | <code>--check</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | report files that need formatting and exit with 1 without writing |
-| <a id="entry-helper-cli-format-content-argument-project-root-6e4fec9931"></a><code>helper-cli.format-content.argument.project_root</code> | <code>--project-root</code> | <code>option</code> | нет | <code>1</code> | - | - | project root for relative paths and the .fomain lookup (default: FO_PROJECT_ROOT, then the current directory) |
-| <a id="entry-helper-cli-format-content-argument-fomain-a606ea4773"></a><code>helper-cli.format-content.argument.fomain</code> | <code>--fomain</code> | <code>option</code> | нет | <code>1</code> | - | - | main config path (default: the only *.fomain file in the project root) |
-| <a id="entry-helper-cli-format-content-argument-skip-fomain-73a5e4f85a"></a><code>helper-cli.format-content.argument.skip_fomain</code> | <code>--skip-fomain</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | do not format the main config |
-| <a id="entry-helper-cli-format-content-argument-skip-protos-f2852331c7"></a><code>helper-cli.format-content.argument.skip_protos</code> | <code>--skip-protos</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | do not format prototype files |
-| <a id="entry-helper-cli-format-content-argument-proto-path-b8908326cc"></a><code>helper-cli.format-content.argument.proto_path</code> | <code>--proto-path</code> | <code>option</code> | нет | <code>1</code> | - | - | format only these prototype files or directories instead of the Proto resource packs (repeatable) |
-| <a id="entry-helper-cli-format-content-argument-metadata-5d8267408d"></a><code>helper-cli.format-content.argument.metadata</code> | <code>--metadata</code> | <code>option</code> | нет | <code>1</code> | - | - | read property and setting order from these files, in this order, instead of the Metadata resource packs (repeatable) |
-| <a id="entry-helper-cli-format-content-argument-fos-509bfd7d26"></a><code>helper-cli.format-content.argument.fos</code> | <code>--fos</code> | <code>option</code> | нет | <code>1</code> | - | - | also format AngelScript files matching this glob relative to the project root with clang-format 20 (repeatable) |
+| <a id="entry-helper-cli-format-content-argument-check-8b8c3a568e"></a><code>helper-cli.format-content.argument.check</code> | <code>--check</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Сообщить о файлах, которым нужно форматирование, и завершиться с кодом 1, ничего не записывая. |
+| <a id="entry-helper-cli-format-content-argument-project-root-6e4fec9931"></a><code>helper-cli.format-content.argument.project_root</code> | <code>--project-root</code> | <code>option</code> | нет | <code>1</code> | - | - | Корень проекта для относительных путей и поиска .fomain (по умолчанию FO_PROJECT_ROOT, затем текущий каталог). |
+| <a id="entry-helper-cli-format-content-argument-fomain-a606ea4773"></a><code>helper-cli.format-content.argument.fomain</code> | <code>--fomain</code> | <code>option</code> | нет | <code>1</code> | - | - | Путь к основной конфигурации (по умолчанию единственный файл *.fomain в корне проекта). |
+| <a id="entry-helper-cli-format-content-argument-skip-fomain-73a5e4f85a"></a><code>helper-cli.format-content.argument.skip_fomain</code> | <code>--skip-fomain</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Не форматировать основную конфигурацию. |
+| <a id="entry-helper-cli-format-content-argument-skip-protos-f2852331c7"></a><code>helper-cli.format-content.argument.skip_protos</code> | <code>--skip-protos</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Не форматировать файлы прототипов. |
+| <a id="entry-helper-cli-format-content-argument-proto-path-b8908326cc"></a><code>helper-cli.format-content.argument.proto_path</code> | <code>--proto-path</code> | <code>option</code> | нет | <code>1</code> | - | - | Форматировать только эти файлы или каталоги прототипов вместо пакетов ресурсов Proto (можно повторять). |
+| <a id="entry-helper-cli-format-content-argument-metadata-5d8267408d"></a><code>helper-cli.format-content.argument.metadata</code> | <code>--metadata</code> | <code>option</code> | нет | <code>1</code> | - | - | Читать порядок свойств и настроек из этих файлов в указанном порядке вместо пакетов ресурсов Metadata (можно повторять). |
+| <a id="entry-helper-cli-format-content-argument-fos-509bfd7d26"></a><code>helper-cli.format-content.argument.fos</code> | <code>--fos</code> | <code>option</code> | нет | <code>1</code> | - | - | Также форматировать через clang-format 20 файлы AngelScript, подходящие под этот glob относительно корня проекта (можно повторять). |
 
 ### Точный вывод `--help` верхнего уровня
 
@@ -547,15 +547,15 @@ options:
 ```
 
 <a id="entry-helper-cli-fo-formats-9aa60fdd1b"></a>
-## Engine content format reader
+## Средство чтения форматов контента движка
 
-Print effective configuration, resource-pack inputs, inherited prototype values and text-pack entries as the Engine parsers read them.
+Выводит действующую конфигурацию, входы пакетов ресурсов, унаследованные значения прототипов и записи текстовых пакетов так, как их читают парсеры движка.
 
 - Стабильный ID: `helper-cli.fo-formats`
 - Программа: `fo_formats.py`
 - Владелец: `tooling`
 - Аудитория: `game-developer`, `tool-developer`, `ci-maintainer`
-- Владелец вызова: embedding-project content tools and direct developer diagnostics
+- Владелец вызова: контентные инструменты встраивающего игрового проекта и прямая диагностика разработчиком
 - Исходный парсер: [BuildTools/fo_formats.py](https://github.com/cvet/fonline/blob/master/BuildTools/fo_formats.py)
 
 ### Аргументы верхнего уровня
@@ -582,7 +582,7 @@ options:
 <a id="entry-helper-cli-fo-formats-command-config-a240801186"></a>
 ### `config`
 
-Effective settings, resource packs and sub-configs of a main config.
+Действующие настройки, пакеты ресурсов и подконфигурации основной конфигурации.
 
 Stable ID: `helper-cli.fo-formats.command.config`
 
@@ -592,9 +592,9 @@ usage: fo_formats.py config [-h] [--sub-config SUB_CONFIG] [--files] main_config
 
 | Стабильный ID | Аргумент | Вид | Обязателен | Значения | Варианты | По умолчанию | Описание |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| <a id="entry-helper-cli-fo-formats-command-config-argument-main-config-f5f3e4257e"></a><code>helper-cli.fo-formats.command.config.argument.main_config</code> | <code>main_config</code> | <code>positional</code> | да | <code>1</code> | - | - | Main configuration file (.fomain). |
-| <a id="entry-helper-cli-fo-formats-command-config-argument-sub-config-8c714c49f3"></a><code>helper-cli.fo-formats.command.config.argument.sub_config</code> | <code>--sub-config</code> | <code>option</code> | нет | <code>1</code> | - | - | Apply this [SubConfig] section after the main settings. |
-| <a id="entry-helper-cli-fo-formats-command-config-argument-files-2e43f74a8d"></a><code>helper-cli.fo-formats.command.config.argument.files</code> | <code>--files</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Also list the input files of every resource pack. |
+| <a id="entry-helper-cli-fo-formats-command-config-argument-main-config-f5f3e4257e"></a><code>helper-cli.fo-formats.command.config.argument.main_config</code> | <code>main_config</code> | <code>positional</code> | да | <code>1</code> | - | - | Основной файл конфигурации (.fomain). |
+| <a id="entry-helper-cli-fo-formats-command-config-argument-sub-config-8c714c49f3"></a><code>helper-cli.fo-formats.command.config.argument.sub_config</code> | <code>--sub-config</code> | <code>option</code> | нет | <code>1</code> | - | - | Применить эту секцию [SubConfig] после основных настроек. |
+| <a id="entry-helper-cli-fo-formats-command-config-argument-files-2e43f74a8d"></a><code>helper-cli.fo-formats.command.config.argument.files</code> | <code>--files</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Также перечислить входные файлы каждого пакета ресурсов. |
 
 #### Точный вывод `--help`
 
@@ -614,7 +614,7 @@ options:
 <a id="entry-helper-cli-fo-formats-command-protos-b4ecbf6062"></a>
 ### `protos`
 
-Effective prototype values of every Proto baker pack.
+Действующие значения прототипов из каждого пакета сборщика ресурсов Proto.
 
 Stable ID: `helper-cli.fo-formats.command.protos`
 
@@ -624,10 +624,10 @@ usage: fo_formats.py protos [-h] [--sub-config SUB_CONFIG] [--type TYPE_NAME] [-
 
 | Стабильный ID | Аргумент | Вид | Обязателен | Значения | Варианты | По умолчанию | Описание |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| <a id="entry-helper-cli-fo-formats-command-protos-argument-main-config-a9280d2130"></a><code>helper-cli.fo-formats.command.protos.argument.main_config</code> | <code>main_config</code> | <code>positional</code> | да | <code>1</code> | - | - | Main configuration file (.fomain). |
-| <a id="entry-helper-cli-fo-formats-command-protos-argument-sub-config-717ae55730"></a><code>helper-cli.fo-formats.command.protos.argument.sub_config</code> | <code>--sub-config</code> | <code>option</code> | нет | <code>1</code> | - | - | Apply this [SubConfig] section after the main settings. |
-| <a id="entry-helper-cli-fo-formats-command-protos-argument-type-name-f7ba8ff641"></a><code>helper-cli.fo-formats.command.protos.argument.type_name</code> | <code>--type</code> | <code>option</code> | нет | <code>1</code> | - | - | Print only prototypes of this type. |
-| <a id="entry-helper-cli-fo-formats-command-protos-argument-name-6b38e320b2"></a><code>helper-cli.fo-formats.command.protos.argument.name</code> | <code>--name</code> | <code>option</code> | нет | <code>1</code> | - | - | Print only the prototype with this migrated name. |
+| <a id="entry-helper-cli-fo-formats-command-protos-argument-main-config-a9280d2130"></a><code>helper-cli.fo-formats.command.protos.argument.main_config</code> | <code>main_config</code> | <code>positional</code> | да | <code>1</code> | - | - | Основной файл конфигурации (.fomain). |
+| <a id="entry-helper-cli-fo-formats-command-protos-argument-sub-config-717ae55730"></a><code>helper-cli.fo-formats.command.protos.argument.sub_config</code> | <code>--sub-config</code> | <code>option</code> | нет | <code>1</code> | - | - | Применить эту секцию [SubConfig] после основных настроек. |
+| <a id="entry-helper-cli-fo-formats-command-protos-argument-type-name-f7ba8ff641"></a><code>helper-cli.fo-formats.command.protos.argument.type_name</code> | <code>--type</code> | <code>option</code> | нет | <code>1</code> | - | - | Вывести только прототипы этого типа. |
+| <a id="entry-helper-cli-fo-formats-command-protos-argument-name-6b38e320b2"></a><code>helper-cli.fo-formats.command.protos.argument.name</code> | <code>--name</code> | <code>option</code> | нет | <code>1</code> | - | - | Вывести только прототип с этим именем после миграций. |
 
 #### Точный вывод `--help`
 
@@ -648,7 +648,7 @@ options:
 <a id="entry-helper-cli-fo-formats-command-text-0daf766e0e"></a>
 ### `text`
 
-Entries of one .fotxt text pack file.
+Записи одного файла текстового пакета .fotxt.
 
 Stable ID: `helper-cli.fo-formats.command.text`
 
@@ -658,7 +658,7 @@ usage: fo_formats.py text [-h] path
 
 | Стабильный ID | Аргумент | Вид | Обязателен | Значения | Варианты | По умолчанию | Описание |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| <a id="entry-helper-cli-fo-formats-command-text-argument-path-5eefdb030f"></a><code>helper-cli.fo-formats.command.text.argument.path</code> | <code>path</code> | <code>positional</code> | да | <code>1</code> | - | - | Text pack file named &lt;TextPack&gt;.&lt;Language&gt;.fotxt. |
+| <a id="entry-helper-cli-fo-formats-command-text-argument-path-5eefdb030f"></a><code>helper-cli.fo-formats.command.text.argument.path</code> | <code>path</code> | <code>positional</code> | да | <code>1</code> | - | - | Файл текстового пакета с именем &lt;TextPack&gt;.&lt;Language&gt;.fotxt. |
 
 #### Точный вывод `--help`
 
@@ -673,32 +673,32 @@ options:
 ```
 
 <a id="entry-helper-cli-migration-guard-3e5c9b3e72"></a>
-## Identity migration guard
+## Контроль миграций идентичности
 
-Require a MigrationRule for every removed or renamed prototype, property and enum value and refuse reuse of retired identifiers against a committed manifest.
+Требует MigrationRule для каждого удалённого или переименованного прототипа, свойства и значения enum и по зафиксированному манифесту запрещает повторное использование выведенных из оборота идентификаторов.
 
 - Стабильный ID: `helper-cli.migration-guard`
 - Программа: `migration_guard.py`
 - Владелец: `quality`
 - Аудитория: `game-developer`, `embedding-project-build-system`, `ci-maintainer`
-- Владелец вызова: embedding-project local validation tasks and CI content gates
+- Владелец вызова: локальные задачи проверки встраивающего игрового проекта и контентные гейты CI
 - Исходный парсер: [BuildTools/migration_guard.py](https://github.com/cvet/fonline/blob/master/BuildTools/migration_guard.py)
 
 ### Аргументы верхнего уровня
 
 | Стабильный ID | Аргумент | Вид | Обязателен | Значения | Варианты | По умолчанию | Описание |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| <a id="entry-helper-cli-migration-guard-argument-check-208ac0af24"></a><code>helper-cli.migration-guard.argument.check</code> | <code>--check</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Compare the tree with the manifest; exit 1 on any violation. |
-| <a id="entry-helper-cli-migration-guard-argument-update-manifest-21506ae2f8"></a><code>helper-cli.migration-guard.argument.update_manifest</code> | <code>--update-manifest</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Rewrite the manifest from the tree; refuses while a rule is missing or an identifier is reused. |
-| <a id="entry-helper-cli-migration-guard-argument-root-a5a58eaaa8"></a><code>helper-cli.migration-guard.argument.root</code> | <code>--root</code> | <code>option</code> | нет | <code>1</code> | - | <code>.</code> | Project root; relative paths resolve against it (default: current directory). |
-| <a id="entry-helper-cli-migration-guard-argument-config-99037a53c4"></a><code>helper-cli.migration-guard.argument.config</code> | <code>--config</code> | <code>option</code> | нет | <code>1</code> | - | - | JSON guard configuration, relative to the root. |
-| <a id="entry-helper-cli-migration-guard-argument-main-config-419b231c42"></a><code>helper-cli.migration-guard.argument.main_config</code> | <code>--main-config</code> | <code>option</code> | нет | <code>1</code> | - | - | Main configuration file (.fomain) whose packs define the scope. |
-| <a id="entry-helper-cli-migration-guard-argument-sub-config-1eb8560b24"></a><code>helper-cli.migration-guard.argument.sub_config</code> | <code>--sub-config</code> | <code>option</code> | нет | <code>1</code> | - | - | Apply this [SubConfig] of the main config before reading resource packs. |
-| <a id="entry-helper-cli-migration-guard-argument-manifest-e4892f0674"></a><code>helper-cli.migration-guard.argument.manifest</code> | <code>--manifest</code> | <code>option</code> | нет | <code>1</code> | - | - | Manifest file to check or rewrite. |
-| <a id="entry-helper-cli-migration-guard-argument-content-dir-e52d6014db"></a><code>helper-cli.migration-guard.argument.content_dir</code> | <code>--content-dir</code> | <code>option</code> | нет | <code>1</code> | - | - | Prototype directory; replaces the Proto packs of the main config. |
-| <a id="entry-helper-cli-migration-guard-argument-proto-extension-df65aff360"></a><code>helper-cli.migration-guard.argument.proto_extension</code> | <code>--proto-extension</code> | <code>option</code> | нет | <code>1</code> | - | - | Prototype file extension used with --content-dir (default: Baking.ProtoFileExtensions). |
-| <a id="entry-helper-cli-migration-guard-argument-script-dir-28433b02c0"></a><code>helper-cli.migration-guard.argument.script_dir</code> | <code>--script-dir</code> | <code>option</code> | нет | <code>1</code> | - | - | Script source directory; replaces the Metadata packs of the main config. |
-| <a id="entry-helper-cli-migration-guard-argument-native-source-86584a00f7"></a><code>helper-cli.migration-guard.argument.native_source</code> | <code>--native-source</code> | <code>option</code> | нет | <code>1</code> | - | - | Root-relative glob of native sources with property and enum declarations. |
+| <a id="entry-helper-cli-migration-guard-argument-check-208ac0af24"></a><code>helper-cli.migration-guard.argument.check</code> | <code>--check</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Сравнить дерево с манифестом; завершиться с кодом 1 при любом нарушении. |
+| <a id="entry-helper-cli-migration-guard-argument-update-manifest-21506ae2f8"></a><code>helper-cli.migration-guard.argument.update_manifest</code> | <code>--update-manifest</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Перезаписать манифест по дереву; отказывает, пока не хватает правила или идентификатор используется повторно. |
+| <a id="entry-helper-cli-migration-guard-argument-root-a5a58eaaa8"></a><code>helper-cli.migration-guard.argument.root</code> | <code>--root</code> | <code>option</code> | нет | <code>1</code> | - | <code>.</code> | Корень проекта, относительно которого разрешаются относительные пути (по умолчанию текущий каталог). |
+| <a id="entry-helper-cli-migration-guard-argument-config-99037a53c4"></a><code>helper-cli.migration-guard.argument.config</code> | <code>--config</code> | <code>option</code> | нет | <code>1</code> | - | - | JSON-конфигурация проверки относительно корня. |
+| <a id="entry-helper-cli-migration-guard-argument-main-config-419b231c42"></a><code>helper-cli.migration-guard.argument.main_config</code> | <code>--main-config</code> | <code>option</code> | нет | <code>1</code> | - | - | Основной файл конфигурации (.fomain), пакеты которого задают область проверки. |
+| <a id="entry-helper-cli-migration-guard-argument-sub-config-1eb8560b24"></a><code>helper-cli.migration-guard.argument.sub_config</code> | <code>--sub-config</code> | <code>option</code> | нет | <code>1</code> | - | - | Применить эту [SubConfig] основной конфигурации перед чтением пакетов ресурсов. |
+| <a id="entry-helper-cli-migration-guard-argument-manifest-e4892f0674"></a><code>helper-cli.migration-guard.argument.manifest</code> | <code>--manifest</code> | <code>option</code> | нет | <code>1</code> | - | - | Файл манифеста для проверки или перезаписи. |
+| <a id="entry-helper-cli-migration-guard-argument-content-dir-e52d6014db"></a><code>helper-cli.migration-guard.argument.content_dir</code> | <code>--content-dir</code> | <code>option</code> | нет | <code>1</code> | - | - | Каталог прототипов; заменяет пакеты Proto основной конфигурации. |
+| <a id="entry-helper-cli-migration-guard-argument-proto-extension-df65aff360"></a><code>helper-cli.migration-guard.argument.proto_extension</code> | <code>--proto-extension</code> | <code>option</code> | нет | <code>1</code> | - | - | Расширение файлов прототипов для --content-dir (по умолчанию Baking.ProtoFileExtensions). |
+| <a id="entry-helper-cli-migration-guard-argument-script-dir-28433b02c0"></a><code>helper-cli.migration-guard.argument.script_dir</code> | <code>--script-dir</code> | <code>option</code> | нет | <code>1</code> | - | - | Каталог исходников скриптов; заменяет пакеты Metadata основной конфигурации. |
+| <a id="entry-helper-cli-migration-guard-argument-native-source-86584a00f7"></a><code>helper-cli.migration-guard.argument.native_source</code> | <code>--native-source</code> | <code>option</code> | нет | <code>1</code> | - | - | Glob нативных исходников относительно корня с объявлениями свойств и enum. |
 
 ### Точный вывод `--help` верхнего уровня
 
@@ -831,31 +831,31 @@ options:
 ```
 
 <a id="entry-helper-cli-markdown-links-dd3ef679c3"></a>
-## Markdown link check
+## Проверка ссылок Markdown
 
-Check local Markdown links, GitHub-style heading anchors, UTF-8, fenced-code balance, and optional single-H1 structure under one repository root.
+Проверяет локальные ссылки Markdown, якоря заголовков в стиле GitHub, UTF-8, парность ограждённых блоков кода и, по выбору, единственный заголовок H1 в пределах одного корня репозитория.
 
 - Стабильный ID: `helper-cli.markdown-links`
 - Программа: `markdown_links.py`
 - Владелец: `quality`
 - Аудитория: `game-developer`, `engine-contributor`, `embedding-project-build-system`, `ci-maintainer`
-- Владелец вызова: embedding-project documentation wrappers, local tasks, and CI documentation jobs
+- Владелец вызова: обёртки документации встраивающего игрового проекта, локальные задачи и задания документации в CI
 - Исходный парсер: [BuildTools/markdown_links.py](https://github.com/cvet/fonline/blob/master/BuildTools/markdown_links.py)
 
 ### Аргументы верхнего уровня
 
 | Стабильный ID | Аргумент | Вид | Обязателен | Значения | Варианты | По умолчанию | Описание |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| <a id="entry-helper-cli-markdown-links-argument-root-186c609292"></a><code>helper-cli.markdown-links.argument.root</code> | <code>--root</code> | <code>option</code> | нет | <code>1</code> | - | <code>.</code> | repository root that bounds link targets (default: current directory) |
-| <a id="entry-helper-cli-markdown-links-argument-include-b34d770aa2"></a><code>helper-cli.markdown-links.argument.include</code> | <code>--include</code> | <code>option</code> | нет | <code>1</code> | - | - | root-relative document glob; repeatable (default: **/*.md and **/*.markdown) |
-| <a id="entry-helper-cli-markdown-links-argument-exclude-386dea20e1"></a><code>helper-cli.markdown-links.argument.exclude</code> | <code>--exclude</code> | <code>option</code> | нет | <code>1</code> | - | - | root-relative file or directory glob removed from the document set; repeatable |
-| <a id="entry-helper-cli-markdown-links-argument-target-root-fcbed4592b"></a><code>helper-cli.markdown-links.argument.target_root</code> | <code>--target-root</code> | <code>option</code> | нет | <code>1</code> | - | - | extra directory, relative to --root, that links may point into without its documents being checked; repeatable |
-| <a id="entry-helper-cli-markdown-links-argument-skip-target-04617bb757"></a><code>helper-cli.markdown-links.argument.skip_target</code> | <code>--skip-target</code> | <code>option</code> | нет | <code>1</code> | - | - | root-relative glob of link targets that are not verified, such as a submodule that is not checked out; repeatable |
-| <a id="entry-helper-cli-markdown-links-argument-allow-line-fragments-ca419e631a"></a><code>helper-cli.markdown-links.argument.allow_line_fragments</code> | <code>--allow-line-fragments</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | accept #L10 and #L10-L20 line fragments on Markdown targets |
-| <a id="entry-helper-cli-markdown-links-argument-require-reference-definitions-9d60c1c23a"></a><code>helper-cli.markdown-links.argument.require_reference_definitions</code> | <code>--require-reference-definitions</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | report [text][label] links whose label has no definition in the same document |
-| <a id="entry-helper-cli-markdown-links-argument-require-single-h1-5cf2bb0ab9"></a><code>helper-cli.markdown-links.argument.require_single_h1</code> | <code>--require-single-h1</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | report documents that do not contain exactly one H1 heading |
-| <a id="entry-helper-cli-markdown-links-argument-h1-exempt-a1a2bb6f20"></a><code>helper-cli.markdown-links.argument.h1_exempt</code> | <code>--h1-exempt</code> | <code>option</code> | нет | <code>1</code> | - | - | root-relative glob of documents exempt from --require-single-h1; repeatable |
-| <a id="entry-helper-cli-markdown-links-argument-list-24f08b8e09"></a><code>helper-cli.markdown-links.argument.list</code> | <code>--list</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | print the selected documents instead of checking them |
+| <a id="entry-helper-cli-markdown-links-argument-root-186c609292"></a><code>helper-cli.markdown-links.argument.root</code> | <code>--root</code> | <code>option</code> | нет | <code>1</code> | - | <code>.</code> | Корень репозитория, ограничивающий цели ссылок (по умолчанию текущий каталог). |
+| <a id="entry-helper-cli-markdown-links-argument-include-b34d770aa2"></a><code>helper-cli.markdown-links.argument.include</code> | <code>--include</code> | <code>option</code> | нет | <code>1</code> | - | - | Glob документов относительно корня; можно повторять (по умолчанию **/*.md и **/*.markdown). |
+| <a id="entry-helper-cli-markdown-links-argument-exclude-386dea20e1"></a><code>helper-cli.markdown-links.argument.exclude</code> | <code>--exclude</code> | <code>option</code> | нет | <code>1</code> | - | - | Glob файлов или каталогов относительно корня, исключаемых из набора документов; можно повторять. |
+| <a id="entry-helper-cli-markdown-links-argument-target-root-fcbed4592b"></a><code>helper-cli.markdown-links.argument.target_root</code> | <code>--target-root</code> | <code>option</code> | нет | <code>1</code> | - | - | Дополнительный каталог относительно --root, на который могут указывать ссылки без проверки его документов; можно повторять. |
+| <a id="entry-helper-cli-markdown-links-argument-skip-target-04617bb757"></a><code>helper-cli.markdown-links.argument.skip_target</code> | <code>--skip-target</code> | <code>option</code> | нет | <code>1</code> | - | - | Glob непроверяемых целей ссылок относительно корня, например неизвлечённого submodule; можно повторять. |
+| <a id="entry-helper-cli-markdown-links-argument-allow-line-fragments-ca419e631a"></a><code>helper-cli.markdown-links.argument.allow_line_fragments</code> | <code>--allow-line-fragments</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Принимать фрагменты строк #L10 и #L10-L20 у целей Markdown. |
+| <a id="entry-helper-cli-markdown-links-argument-require-reference-definitions-9d60c1c23a"></a><code>helper-cli.markdown-links.argument.require_reference_definitions</code> | <code>--require-reference-definitions</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Сообщать о ссылках [text][label], метка которых не определена в том же документе. |
+| <a id="entry-helper-cli-markdown-links-argument-require-single-h1-5cf2bb0ab9"></a><code>helper-cli.markdown-links.argument.require_single_h1</code> | <code>--require-single-h1</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Сообщать о документах, в которых не ровно один заголовок H1. |
+| <a id="entry-helper-cli-markdown-links-argument-h1-exempt-a1a2bb6f20"></a><code>helper-cli.markdown-links.argument.h1_exempt</code> | <code>--h1-exempt</code> | <code>option</code> | нет | <code>1</code> | - | - | Glob документов относительно корня, освобождённых от --require-single-h1; можно повторять. |
+| <a id="entry-helper-cli-markdown-links-argument-list-24f08b8e09"></a><code>helper-cli.markdown-links.argument.list</code> | <code>--list</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Вывести выбранные документы вместо их проверки. |
 
 ### Точный вывод `--help` верхнего уровня
 
@@ -881,15 +881,15 @@ options:
 ```
 
 <a id="entry-helper-cli-native-source-audit-b6c759ee81"></a>
-## Native source audits
+## Аудиты нативных исходников
 
-Audit native C++ scopes for allocator, smart-pointer and local-variable contract violations with Engine-owned and project baselines.
+Проверяет нативные области C++ на нарушения контрактов аллокаторов, умных указателей и локальных переменных с baseline движка и проекта.
 
 - Стабильный ID: `helper-cli.native-source-audit`
 - Программа: `native_source_audit.py`
 - Владелец: `quality`
 - Аудитория: `engine-contributor`, `embedding-project-build-system`, `ci-maintainer`
-- Владелец вызова: Engine validation CI, embedding-project native audit wrappers and direct developer use
+- Владелец вызова: CI проверки движка, обёртки нативных аудитов встраивающего игрового проекта и прямое использование разработчиком
 - Исходный парсер: [BuildTools/native_source_audit.py](https://github.com/cvet/fonline/blob/master/BuildTools/native_source_audit.py)
 
 ### Аргументы верхнего уровня
@@ -920,7 +920,7 @@ options:
 <a id="entry-helper-cli-native-source-audit-command-allocator-f2635ae834"></a>
 ### `allocator`
 
-Report standard containers, allocating std:: helpers and C allocation outside the memory system.
+Сообщить о стандартных контейнерах, выделяющих память функциях std:: и выделении памяти C вне системы памяти.
 
 Stable ID: `helper-cli.native-source-audit.command.allocator`
 
@@ -931,17 +931,17 @@ usage: native_source_audit.py allocator [-h] [--root ROOT] [--scope SCOPE] [--ex
 
 | Стабильный ID | Аргумент | Вид | Обязателен | Значения | Варианты | По умолчанию | Описание |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| <a id="entry-helper-cli-native-source-audit-command-allocator-argument-root-b51b4df71f"></a><code>helper-cli.native-source-audit.command.allocator.argument.root</code> | <code>--root</code> | <code>option</code> | нет | <code>1</code> | - | - | Root that scopes, excludes, reports and project baselines are relative to (default: current directory). |
-| <a id="entry-helper-cli-native-source-audit-command-allocator-argument-scope-e650c5db32"></a><code>helper-cli.native-source-audit.command.allocator.argument.scope</code> | <code>--scope</code> | <code>option</code> | нет | <code>1</code> | - | - | File or directory to audit, relative to --root; repeatable (default: config scopes, else the Engine Source directory). |
-| <a id="entry-helper-cli-native-source-audit-command-allocator-argument-exclude-c757307d99"></a><code>helper-cli.native-source-audit.command.allocator.argument.exclude</code> | <code>--exclude</code> | <code>option</code> | нет | <code>1</code> | - | - | fnmatch pattern of root-relative paths to skip; a pattern ending in / skips a subtree; repeatable. |
-| <a id="entry-helper-cli-native-source-audit-command-allocator-argument-config-1351d21964"></a><code>helper-cli.native-source-audit.command.allocator.argument.config</code> | <code>--config</code> | <code>option</code> | нет | <code>1</code> | - | - | JSON configuration with scopes, exclude patterns, baselines and audit options; relative to --root. |
-| <a id="entry-helper-cli-native-source-audit-command-allocator-argument-baseline-e81d76ed86"></a><code>helper-cli.native-source-audit.command.allocator.argument.baseline</code> | <code>--baseline</code> | <code>option</code> | нет | <code>1</code> | - | - | Additional project baseline TSV with root-relative paths; repeatable. |
-| <a id="entry-helper-cli-native-source-audit-command-allocator-argument-no-engine-baseline-49facc3a84"></a><code>helper-cli.native-source-audit.command.allocator.argument.no_engine_baseline</code> | <code>--no-engine-baseline</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Do not apply BuildTools/audit_baselines/&lt;audit&gt;.tsv from the Engine. |
-| <a id="entry-helper-cli-native-source-audit-command-allocator-argument-report-bc2532a22e"></a><code>helper-cli.native-source-audit.command.allocator.argument.report</code> | <code>--report</code> | <code>option</code> | нет | <code>1</code> | - | - | Write remaining findings and stale baseline rows as TSV. |
-| <a id="entry-helper-cli-native-source-audit-command-allocator-argument-emit-baseline-693dd50cd4"></a><code>helper-cli.native-source-audit.command.allocator.argument.emit_baseline</code> | <code>--emit-baseline</code> | <code>option</code> | нет | <code>1</code> | - | - | Write candidate baseline rows (empty reason column) for the remaining findings. |
-| <a id="entry-helper-cli-native-source-audit-command-allocator-argument-max-printed-6237b58a2c"></a><code>helper-cli.native-source-audit.command.allocator.argument.max_printed</code> | <code>--max-printed</code> | <code>option</code> | нет | <code>1</code> | - | <code>50</code> | Maximum findings printed to stdout; 0 prints all (default: 50). |
-| <a id="entry-helper-cli-native-source-audit-command-allocator-argument-engine-root-dabaaa3d97"></a><code>helper-cli.native-source-audit.command.allocator.argument.engine_root</code> | <code>--engine-root</code> | <code>option</code> | нет | <code>1</code> | - | - | Engine checkout whose Source rules and BuildTools/audit_baselines apply (default: the Engine containing this tool). |
-| <a id="entry-helper-cli-native-source-audit-command-allocator-argument-fail-on-143ec39510"></a><code>helper-cli.native-source-audit.command.allocator.argument.fail_on</code> | <code>--fail-on</code> | <code>option</code> | нет | <code>1</code> | <code>error</code>, <code>warning</code>, <code>none</code> | <code>error</code> | Minimum severity that fails the command (default: error). |
+| <a id="entry-helper-cli-native-source-audit-command-allocator-argument-root-b51b4df71f"></a><code>helper-cli.native-source-audit.command.allocator.argument.root</code> | <code>--root</code> | <code>option</code> | нет | <code>1</code> | - | - | Корень, относительно которого заданы области проверки, исключения, отчёты и проектные baseline (по умолчанию текущий каталог). |
+| <a id="entry-helper-cli-native-source-audit-command-allocator-argument-scope-e650c5db32"></a><code>helper-cli.native-source-audit.command.allocator.argument.scope</code> | <code>--scope</code> | <code>option</code> | нет | <code>1</code> | - | - | Проверяемый файл или каталог относительно --root; можно повторять (по умолчанию области из конфигурации, иначе каталог Source движка). |
+| <a id="entry-helper-cli-native-source-audit-command-allocator-argument-exclude-c757307d99"></a><code>helper-cli.native-source-audit.command.allocator.argument.exclude</code> | <code>--exclude</code> | <code>option</code> | нет | <code>1</code> | - | - | Шаблон fnmatch для пропускаемых путей относительно корня; шаблон, оканчивающийся на /, пропускает поддерево; можно повторять. |
+| <a id="entry-helper-cli-native-source-audit-command-allocator-argument-config-1351d21964"></a><code>helper-cli.native-source-audit.command.allocator.argument.config</code> | <code>--config</code> | <code>option</code> | нет | <code>1</code> | - | - | JSON-конфигурация с областями проверки, шаблонами исключений, baseline и параметрами аудита; путь задаётся относительно --root. |
+| <a id="entry-helper-cli-native-source-audit-command-allocator-argument-baseline-e81d76ed86"></a><code>helper-cli.native-source-audit.command.allocator.argument.baseline</code> | <code>--baseline</code> | <code>option</code> | нет | <code>1</code> | - | - | Дополнительный проектный baseline TSV с путями относительно корня; можно повторять. |
+| <a id="entry-helper-cli-native-source-audit-command-allocator-argument-no-engine-baseline-49facc3a84"></a><code>helper-cli.native-source-audit.command.allocator.argument.no_engine_baseline</code> | <code>--no-engine-baseline</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Не применять BuildTools/audit_baselines/&lt;audit&gt;.tsv из Engine. |
+| <a id="entry-helper-cli-native-source-audit-command-allocator-argument-report-bc2532a22e"></a><code>helper-cli.native-source-audit.command.allocator.argument.report</code> | <code>--report</code> | <code>option</code> | нет | <code>1</code> | - | - | Записать оставшиеся находки и устаревшие строки baseline в TSV. |
+| <a id="entry-helper-cli-native-source-audit-command-allocator-argument-emit-baseline-693dd50cd4"></a><code>helper-cli.native-source-audit.command.allocator.argument.emit_baseline</code> | <code>--emit-baseline</code> | <code>option</code> | нет | <code>1</code> | - | - | Записать строки-кандидаты baseline (с пустым столбцом причины) для оставшихся находок. |
+| <a id="entry-helper-cli-native-source-audit-command-allocator-argument-max-printed-6237b58a2c"></a><code>helper-cli.native-source-audit.command.allocator.argument.max_printed</code> | <code>--max-printed</code> | <code>option</code> | нет | <code>1</code> | - | <code>50</code> | Максимальное число находок, выводимых в stdout; 0 выводит все (по умолчанию 50). |
+| <a id="entry-helper-cli-native-source-audit-command-allocator-argument-engine-root-dabaaa3d97"></a><code>helper-cli.native-source-audit.command.allocator.argument.engine_root</code> | <code>--engine-root</code> | <code>option</code> | нет | <code>1</code> | - | - | Checkout Engine, чьи правила Source и BuildTools/audit_baselines применяются (по умолчанию Engine, содержащий этот инструмент). |
+| <a id="entry-helper-cli-native-source-audit-command-allocator-argument-fail-on-143ec39510"></a><code>helper-cli.native-source-audit.command.allocator.argument.fail_on</code> | <code>--fail-on</code> | <code>option</code> | нет | <code>1</code> | <code>error</code>, <code>warning</code>, <code>none</code> | <code>error</code> | Минимальная серьёзность, при которой команда завершается ошибкой (по умолчанию error). |
 
 #### Точный вывод `--help`
 
@@ -973,7 +973,7 @@ options:
 <a id="entry-helper-cli-native-source-audit-command-smart-pointer-da5c5ce703"></a>
 ### `smart-pointer`
 
-Check the ptr/nptr/unique/refcount smart-pointer vocabulary and raw-pointer boundaries.
+Проверить словарь умных указателей ptr/nptr/unique/refcount и границы сырых указателей.
 
 Stable ID: `helper-cli.native-source-audit.command.smart-pointer`
 
@@ -985,22 +985,22 @@ usage: native_source_audit.py smart-pointer [-h] [--root ROOT] [--scope SCOPE] [
 
 | Стабильный ID | Аргумент | Вид | Обязателен | Значения | Варианты | По умолчанию | Описание |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-root-bc026d9d60"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.root</code> | <code>--root</code> | <code>option</code> | нет | <code>1</code> | - | - | Root that scopes, excludes, reports and project baselines are relative to (default: current directory). |
-| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-scope-b023b38f83"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.scope</code> | <code>--scope</code> | <code>option</code> | нет | <code>1</code> | - | - | File or directory to audit, relative to --root; repeatable (default: config scopes, else the Engine Source directory). |
-| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-exclude-053fc1fd37"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.exclude</code> | <code>--exclude</code> | <code>option</code> | нет | <code>1</code> | - | - | fnmatch pattern of root-relative paths to skip; a pattern ending in / skips a subtree; repeatable. |
-| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-config-1331c94d38"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.config</code> | <code>--config</code> | <code>option</code> | нет | <code>1</code> | - | - | JSON configuration with scopes, exclude patterns, baselines and audit options; relative to --root. |
-| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-baseline-7b6d3a9111"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.baseline</code> | <code>--baseline</code> | <code>option</code> | нет | <code>1</code> | - | - | Additional project baseline TSV with root-relative paths; repeatable. |
-| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-no-engine-baseline-a3a6eeecd5"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.no_engine_baseline</code> | <code>--no-engine-baseline</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Do not apply BuildTools/audit_baselines/&lt;audit&gt;.tsv from the Engine. |
-| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-report-a00b854ac3"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.report</code> | <code>--report</code> | <code>option</code> | нет | <code>1</code> | - | - | Write remaining findings and stale baseline rows as TSV. |
-| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-emit-baseline-14aaecc175"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.emit_baseline</code> | <code>--emit-baseline</code> | <code>option</code> | нет | <code>1</code> | - | - | Write candidate baseline rows (empty reason column) for the remaining findings. |
-| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-max-printed-1d8f2623b6"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.max_printed</code> | <code>--max-printed</code> | <code>option</code> | нет | <code>1</code> | - | <code>50</code> | Maximum findings printed to stdout; 0 prints all (default: 50). |
-| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-engine-root-450d894b59"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.engine_root</code> | <code>--engine-root</code> | <code>option</code> | нет | <code>1</code> | - | - | Engine checkout whose Source rules and BuildTools/audit_baselines apply (default: the Engine containing this tool). |
-| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-fail-on-e469434b31"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.fail_on</code> | <code>--fail-on</code> | <code>option</code> | нет | <code>1</code> | <code>error</code>, <code>warning</code>, <code>none</code> | <code>error</code> | Minimum severity that fails the command (default: error). |
-| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-inventory-f6423df9ea"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.inventory</code> | <code>--inventory</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Print non-failing inventory counters for pointer vocabulary and raw-pointer markers. |
-| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-inventory-output-f8f36da320"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.inventory_output</code> | <code>--inventory-output</code> | <code>option</code> | нет | <code>1</code> | - | - | Write per-file inventory counters as TSV. |
-| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-inventory-details-output-d67935ddb7"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.inventory_details_output</code> | <code>--inventory-details-output</code> | <code>option</code> | нет | <code>1</code> | - | - | Write line-level inventory markers as TSV. |
-| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-summary-output-ac8ab040b4"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.summary_output</code> | <code>--summary-output</code> | <code>option</code> | нет | <code>1</code> | - | - | Write a JSON summary of findings and inventory counters. |
-| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-jobs-c22afc8be0"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.jobs</code> | <code>--jobs</code> | <code>option</code> | нет | <code>1</code> | - | <code>0</code> | Worker processes; 0 uses the CPU count; output order does not depend on it (default: 0). |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-root-bc026d9d60"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.root</code> | <code>--root</code> | <code>option</code> | нет | <code>1</code> | - | - | Корень, относительно которого заданы области проверки, исключения, отчёты и проектные baseline (по умолчанию текущий каталог). |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-scope-b023b38f83"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.scope</code> | <code>--scope</code> | <code>option</code> | нет | <code>1</code> | - | - | Проверяемый файл или каталог относительно --root; можно повторять (по умолчанию области из конфигурации, иначе каталог Source движка). |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-exclude-053fc1fd37"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.exclude</code> | <code>--exclude</code> | <code>option</code> | нет | <code>1</code> | - | - | Шаблон fnmatch для пропускаемых путей относительно корня; шаблон, оканчивающийся на /, пропускает поддерево; можно повторять. |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-config-1331c94d38"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.config</code> | <code>--config</code> | <code>option</code> | нет | <code>1</code> | - | - | JSON-конфигурация с областями проверки, шаблонами исключений, baseline и параметрами аудита; путь задаётся относительно --root. |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-baseline-7b6d3a9111"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.baseline</code> | <code>--baseline</code> | <code>option</code> | нет | <code>1</code> | - | - | Дополнительный проектный baseline TSV с путями относительно корня; можно повторять. |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-no-engine-baseline-a3a6eeecd5"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.no_engine_baseline</code> | <code>--no-engine-baseline</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Не применять BuildTools/audit_baselines/&lt;audit&gt;.tsv из Engine. |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-report-a00b854ac3"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.report</code> | <code>--report</code> | <code>option</code> | нет | <code>1</code> | - | - | Записать оставшиеся находки и устаревшие строки baseline в TSV. |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-emit-baseline-14aaecc175"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.emit_baseline</code> | <code>--emit-baseline</code> | <code>option</code> | нет | <code>1</code> | - | - | Записать строки-кандидаты baseline (с пустым столбцом причины) для оставшихся находок. |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-max-printed-1d8f2623b6"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.max_printed</code> | <code>--max-printed</code> | <code>option</code> | нет | <code>1</code> | - | <code>50</code> | Максимальное число находок, выводимых в stdout; 0 выводит все (по умолчанию 50). |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-engine-root-450d894b59"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.engine_root</code> | <code>--engine-root</code> | <code>option</code> | нет | <code>1</code> | - | - | Checkout Engine, чьи правила Source и BuildTools/audit_baselines применяются (по умолчанию Engine, содержащий этот инструмент). |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-fail-on-e469434b31"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.fail_on</code> | <code>--fail-on</code> | <code>option</code> | нет | <code>1</code> | <code>error</code>, <code>warning</code>, <code>none</code> | <code>error</code> | Минимальная серьёзность, при которой команда завершается ошибкой (по умолчанию error). |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-inventory-f6423df9ea"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.inventory</code> | <code>--inventory</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Вывести не влияющие на результат счётчики инвентаризации словаря указателей и маркеров сырых указателей. |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-inventory-output-f8f36da320"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.inventory_output</code> | <code>--inventory-output</code> | <code>option</code> | нет | <code>1</code> | - | - | Записать пофайловые счётчики инвентаризации в TSV. |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-inventory-details-output-d67935ddb7"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.inventory_details_output</code> | <code>--inventory-details-output</code> | <code>option</code> | нет | <code>1</code> | - | - | Записать построчные маркеры инвентаризации в TSV. |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-summary-output-ac8ab040b4"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.summary_output</code> | <code>--summary-output</code> | <code>option</code> | нет | <code>1</code> | - | - | Записать JSON-сводку находок и счётчиков инвентаризации. |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-argument-jobs-c22afc8be0"></a><code>helper-cli.native-source-audit.command.smart-pointer.argument.jobs</code> | <code>--jobs</code> | <code>option</code> | нет | <code>1</code> | - | <code>0</code> | Число рабочих процессов; 0 означает число CPU; порядок вывода от него не зависит (по умолчанию 0). |
 
 #### Точный вывод `--help`
 
@@ -1041,7 +1041,7 @@ options:
 <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-1e450a0b76"></a>
 ### `smart-pointer-ast`
 
-Find raw pointer declarations on lines added since a git revision with clang-query.
+Найти через clang-query объявления сырых указателей в строках, добавленных после ревизии git.
 
 Stable ID: `helper-cli.native-source-audit.command.smart-pointer-ast`
 
@@ -1053,27 +1053,27 @@ usage: native_source_audit.py smart-pointer-ast [-h] [--root ROOT] [--scope SCOP
 
 | Стабильный ID | Аргумент | Вид | Обязателен | Значения | Варианты | По умолчанию | Описание |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-root-709ef1d1da"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.root</code> | <code>--root</code> | <code>option</code> | нет | <code>1</code> | - | - | Root that scopes, excludes, reports and project baselines are relative to (default: current directory). |
-| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-scope-3181f4d5e6"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.scope</code> | <code>--scope</code> | <code>option</code> | нет | <code>1</code> | - | - | File or directory to audit, relative to --root; repeatable (default: config scopes, else the Engine Source directory). |
-| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-exclude-d54e3ec139"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.exclude</code> | <code>--exclude</code> | <code>option</code> | нет | <code>1</code> | - | - | fnmatch pattern of root-relative paths to skip; a pattern ending in / skips a subtree; repeatable. |
-| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-config-e3d7bd573c"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.config</code> | <code>--config</code> | <code>option</code> | нет | <code>1</code> | - | - | JSON configuration with scopes, exclude patterns, baselines and audit options; relative to --root. |
-| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-baseline-be3de9b966"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.baseline</code> | <code>--baseline</code> | <code>option</code> | нет | <code>1</code> | - | - | Additional project baseline TSV with root-relative paths; repeatable. |
-| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-no-engine-baseline-06eac88335"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.no_engine_baseline</code> | <code>--no-engine-baseline</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Do not apply BuildTools/audit_baselines/&lt;audit&gt;.tsv from the Engine. |
-| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-report-ecdfab81d1"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.report</code> | <code>--report</code> | <code>option</code> | нет | <code>1</code> | - | - | Write remaining findings and stale baseline rows as TSV. |
-| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-emit-baseline-2bd7f0b33c"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.emit_baseline</code> | <code>--emit-baseline</code> | <code>option</code> | нет | <code>1</code> | - | - | Write candidate baseline rows (empty reason column) for the remaining findings. |
-| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-max-printed-c7519ee967"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.max_printed</code> | <code>--max-printed</code> | <code>option</code> | нет | <code>1</code> | - | <code>50</code> | Maximum findings printed to stdout; 0 prints all (default: 50). |
-| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-engine-root-6ab07b2daf"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.engine_root</code> | <code>--engine-root</code> | <code>option</code> | нет | <code>1</code> | - | - | Engine checkout whose Source rules and BuildTools/audit_baselines apply (default: the Engine containing this tool). |
-| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-compilation-database-275f0f7d31"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.compilation_database</code> | <code>--compilation-database</code> | <code>option</code> | нет | <code>1</code> | - | - | Directory containing compile_commands.json (default: config compilation_database). |
-| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-clang-query-a5636d9a3a"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.clang_query</code> | <code>--clang-query</code> | <code>option</code> | нет | <code>1</code> | - | - | clang-query executable (default: FO_CLANG_QUERY, then PATH). |
-| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-clang-tidy-0287724cf6"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.clang_tidy</code> | <code>--clang-tidy</code> | <code>option</code> | нет | <code>1</code> | - | - | clang-tidy executable for use-after-move (default: FO_CLANG_TIDY, then PATH). |
-| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-require-tooling-fd897a294d"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.require_tooling</code> | <code>--require-tooling</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Fail with exit code 2 instead of skipping when clang tools or the compilation database are missing. |
-| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-source-pattern-321fd38859"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.source_pattern</code> | <code>--source-pattern</code> | <code>option</code> | нет | <code>1</code> | - | - | clang-query isExpansionInFileMatching regex (default: derived from the scopes). |
-| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-unit-pattern-cee1272720"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.unit_pattern</code> | <code>--unit-pattern</code> | <code>option</code> | нет | <code>1</code> | - | - | Only analyze compilation units whose display path matches this regex. |
-| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-jobs-57b1c95d62"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.jobs</code> | <code>--jobs</code> | <code>option</code> | нет | <code>1</code> | - | <code>4</code> | Parallel clang processes (default: 4). |
-| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-batch-size-2c4770a500"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.batch_size</code> | <code>--batch-size</code> | <code>option</code> | нет | <code>1</code> | - | <code>2</code> | Translation units per clang process (default: 2). |
-| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-timeout-c997a6ad5b"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.timeout</code> | <code>--timeout</code> | <code>option</code> | нет | <code>1</code> | - | <code>900</code> | Seconds allowed per clang process (default: 900). |
-| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-diff-base-5535e3d5d0"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.diff_base</code> | <code>--diff-base</code> | <code>option</code> | нет | <code>1</code> | - | - | Report only matches on lines added since this git revision. |
-| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-all-017217c67b"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.all</code> | <code>--all</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Report every match in the scopes instead of added lines only. |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-root-709ef1d1da"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.root</code> | <code>--root</code> | <code>option</code> | нет | <code>1</code> | - | - | Корень, относительно которого заданы области проверки, исключения, отчёты и проектные baseline (по умолчанию текущий каталог). |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-scope-3181f4d5e6"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.scope</code> | <code>--scope</code> | <code>option</code> | нет | <code>1</code> | - | - | Проверяемый файл или каталог относительно --root; можно повторять (по умолчанию области из конфигурации, иначе каталог Source движка). |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-exclude-d54e3ec139"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.exclude</code> | <code>--exclude</code> | <code>option</code> | нет | <code>1</code> | - | - | Шаблон fnmatch для пропускаемых путей относительно корня; шаблон, оканчивающийся на /, пропускает поддерево; можно повторять. |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-config-e3d7bd573c"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.config</code> | <code>--config</code> | <code>option</code> | нет | <code>1</code> | - | - | JSON-конфигурация с областями проверки, шаблонами исключений, baseline и параметрами аудита; путь задаётся относительно --root. |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-baseline-be3de9b966"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.baseline</code> | <code>--baseline</code> | <code>option</code> | нет | <code>1</code> | - | - | Дополнительный проектный baseline TSV с путями относительно корня; можно повторять. |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-no-engine-baseline-06eac88335"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.no_engine_baseline</code> | <code>--no-engine-baseline</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Не применять BuildTools/audit_baselines/&lt;audit&gt;.tsv из Engine. |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-report-ecdfab81d1"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.report</code> | <code>--report</code> | <code>option</code> | нет | <code>1</code> | - | - | Записать оставшиеся находки и устаревшие строки baseline в TSV. |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-emit-baseline-2bd7f0b33c"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.emit_baseline</code> | <code>--emit-baseline</code> | <code>option</code> | нет | <code>1</code> | - | - | Записать строки-кандидаты baseline (с пустым столбцом причины) для оставшихся находок. |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-max-printed-c7519ee967"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.max_printed</code> | <code>--max-printed</code> | <code>option</code> | нет | <code>1</code> | - | <code>50</code> | Максимальное число находок, выводимых в stdout; 0 выводит все (по умолчанию 50). |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-engine-root-6ab07b2daf"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.engine_root</code> | <code>--engine-root</code> | <code>option</code> | нет | <code>1</code> | - | - | Checkout Engine, чьи правила Source и BuildTools/audit_baselines применяются (по умолчанию Engine, содержащий этот инструмент). |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-compilation-database-275f0f7d31"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.compilation_database</code> | <code>--compilation-database</code> | <code>option</code> | нет | <code>1</code> | - | - | Каталог с compile_commands.json (по умолчанию compilation_database из конфигурации). |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-clang-query-a5636d9a3a"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.clang_query</code> | <code>--clang-query</code> | <code>option</code> | нет | <code>1</code> | - | - | Исполняемый файл clang-query (по умолчанию FO_CLANG_QUERY, затем PATH). |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-clang-tidy-0287724cf6"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.clang_tidy</code> | <code>--clang-tidy</code> | <code>option</code> | нет | <code>1</code> | - | - | Исполняемый файл clang-tidy для use-after-move (по умолчанию FO_CLANG_TIDY, затем PATH). |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-require-tooling-fd897a294d"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.require_tooling</code> | <code>--require-tooling</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Завершаться с кодом 2 вместо пропуска, если нет инструментов clang или базы компиляции. |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-source-pattern-321fd38859"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.source_pattern</code> | <code>--source-pattern</code> | <code>option</code> | нет | <code>1</code> | - | - | Регулярное выражение isExpansionInFileMatching для clang-query (по умолчанию выводится из областей проверки). |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-unit-pattern-cee1272720"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.unit_pattern</code> | <code>--unit-pattern</code> | <code>option</code> | нет | <code>1</code> | - | - | Анализировать только единицы компиляции, отображаемый путь которых соответствует этому регулярному выражению. |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-jobs-57b1c95d62"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.jobs</code> | <code>--jobs</code> | <code>option</code> | нет | <code>1</code> | - | <code>4</code> | Число параллельных процессов clang (по умолчанию 4). |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-batch-size-2c4770a500"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.batch_size</code> | <code>--batch-size</code> | <code>option</code> | нет | <code>1</code> | - | <code>2</code> | Число единиц трансляции на процесс clang (по умолчанию 2). |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-timeout-c997a6ad5b"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.timeout</code> | <code>--timeout</code> | <code>option</code> | нет | <code>1</code> | - | <code>900</code> | Допустимое время одного процесса clang в секундах (по умолчанию 900). |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-diff-base-5535e3d5d0"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.diff_base</code> | <code>--diff-base</code> | <code>option</code> | нет | <code>1</code> | - | - | Сообщать только о совпадениях в строках, добавленных после этой ревизии git. |
+| <a id="entry-helper-cli-native-source-audit-command-smart-pointer-ast-argument-all-017217c67b"></a><code>helper-cli.native-source-audit.command.smart-pointer-ast.argument.all</code> | <code>--all</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Сообщать о каждом совпадении в областях проверки, а не только в добавленных строках. |
 
 #### Точный вывод `--help`
 
@@ -1122,7 +1122,7 @@ options:
 <a id="entry-helper-cli-native-source-audit-command-local-variables-55804e1b24"></a>
 ### `local-variables`
 
-Find redundant top-level const locals (clang-query) and use-after-move (clang-tidy).
+Найти локальные переменные с избыточным const верхнего уровня (clang-query) и use-after-move (clang-tidy).
 
 Stable ID: `helper-cli.native-source-audit.command.local-variables`
 
@@ -1135,27 +1135,27 @@ usage: native_source_audit.py local-variables [-h] [--root ROOT] [--scope SCOPE]
 
 | Стабильный ID | Аргумент | Вид | Обязателен | Значения | Варианты | По умолчанию | Описание |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-root-e9f15d4745"></a><code>helper-cli.native-source-audit.command.local-variables.argument.root</code> | <code>--root</code> | <code>option</code> | нет | <code>1</code> | - | - | Root that scopes, excludes, reports and project baselines are relative to (default: current directory). |
-| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-scope-2360e0a319"></a><code>helper-cli.native-source-audit.command.local-variables.argument.scope</code> | <code>--scope</code> | <code>option</code> | нет | <code>1</code> | - | - | File or directory to audit, relative to --root; repeatable (default: config scopes, else the Engine Source directory). |
-| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-exclude-88e7b5e761"></a><code>helper-cli.native-source-audit.command.local-variables.argument.exclude</code> | <code>--exclude</code> | <code>option</code> | нет | <code>1</code> | - | - | fnmatch pattern of root-relative paths to skip; a pattern ending in / skips a subtree; repeatable. |
-| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-config-635bf74540"></a><code>helper-cli.native-source-audit.command.local-variables.argument.config</code> | <code>--config</code> | <code>option</code> | нет | <code>1</code> | - | - | JSON configuration with scopes, exclude patterns, baselines and audit options; relative to --root. |
-| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-baseline-db1963dc9f"></a><code>helper-cli.native-source-audit.command.local-variables.argument.baseline</code> | <code>--baseline</code> | <code>option</code> | нет | <code>1</code> | - | - | Additional project baseline TSV with root-relative paths; repeatable. |
-| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-no-engine-baseline-36631b1c23"></a><code>helper-cli.native-source-audit.command.local-variables.argument.no_engine_baseline</code> | <code>--no-engine-baseline</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Do not apply BuildTools/audit_baselines/&lt;audit&gt;.tsv from the Engine. |
-| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-report-11c8d43103"></a><code>helper-cli.native-source-audit.command.local-variables.argument.report</code> | <code>--report</code> | <code>option</code> | нет | <code>1</code> | - | - | Write remaining findings and stale baseline rows as TSV. |
-| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-emit-baseline-9a7c7af585"></a><code>helper-cli.native-source-audit.command.local-variables.argument.emit_baseline</code> | <code>--emit-baseline</code> | <code>option</code> | нет | <code>1</code> | - | - | Write candidate baseline rows (empty reason column) for the remaining findings. |
-| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-max-printed-9f68994ec7"></a><code>helper-cli.native-source-audit.command.local-variables.argument.max_printed</code> | <code>--max-printed</code> | <code>option</code> | нет | <code>1</code> | - | <code>50</code> | Maximum findings printed to stdout; 0 prints all (default: 50). |
-| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-engine-root-6e36b23522"></a><code>helper-cli.native-source-audit.command.local-variables.argument.engine_root</code> | <code>--engine-root</code> | <code>option</code> | нет | <code>1</code> | - | - | Engine checkout whose Source rules and BuildTools/audit_baselines apply (default: the Engine containing this tool). |
-| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-compilation-database-d207dadd7a"></a><code>helper-cli.native-source-audit.command.local-variables.argument.compilation_database</code> | <code>--compilation-database</code> | <code>option</code> | нет | <code>1</code> | - | - | Directory containing compile_commands.json (default: config compilation_database). |
-| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-clang-query-cdea2cb1c5"></a><code>helper-cli.native-source-audit.command.local-variables.argument.clang_query</code> | <code>--clang-query</code> | <code>option</code> | нет | <code>1</code> | - | - | clang-query executable (default: FO_CLANG_QUERY, then PATH). |
-| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-clang-tidy-2932561bf7"></a><code>helper-cli.native-source-audit.command.local-variables.argument.clang_tidy</code> | <code>--clang-tidy</code> | <code>option</code> | нет | <code>1</code> | - | - | clang-tidy executable for use-after-move (default: FO_CLANG_TIDY, then PATH). |
-| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-require-tooling-5775a36475"></a><code>helper-cli.native-source-audit.command.local-variables.argument.require_tooling</code> | <code>--require-tooling</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Fail with exit code 2 instead of skipping when clang tools or the compilation database are missing. |
-| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-source-pattern-8ebec8e148"></a><code>helper-cli.native-source-audit.command.local-variables.argument.source_pattern</code> | <code>--source-pattern</code> | <code>option</code> | нет | <code>1</code> | - | - | clang-query isExpansionInFileMatching regex (default: derived from the scopes). |
-| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-unit-pattern-8e072b4a30"></a><code>helper-cli.native-source-audit.command.local-variables.argument.unit_pattern</code> | <code>--unit-pattern</code> | <code>option</code> | нет | <code>1</code> | - | - | Only analyze compilation units whose display path matches this regex. |
-| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-jobs-7d25d664a0"></a><code>helper-cli.native-source-audit.command.local-variables.argument.jobs</code> | <code>--jobs</code> | <code>option</code> | нет | <code>1</code> | - | <code>4</code> | Parallel clang processes (default: 4). |
-| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-batch-size-b175a924ef"></a><code>helper-cli.native-source-audit.command.local-variables.argument.batch_size</code> | <code>--batch-size</code> | <code>option</code> | нет | <code>1</code> | - | <code>2</code> | Translation units per clang process (default: 2). |
-| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-timeout-aff4d887c1"></a><code>helper-cli.native-source-audit.command.local-variables.argument.timeout</code> | <code>--timeout</code> | <code>option</code> | нет | <code>1</code> | - | <code>900</code> | Seconds allowed per clang process (default: 900). |
-| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-checks-d4437d53fc"></a><code>helper-cli.native-source-audit.command.local-variables.argument.checks</code> | <code>--checks</code> | <code>option</code> | нет | <code>1</code> | <code>all</code>, <code>redundant-local-const</code>, <code>use-after-move</code> | <code>all</code> | Checks to run (default: all). |
-| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-mode-4af34bc325"></a><code>helper-cli.native-source-audit.command.local-variables.argument.mode</code> | <code>--mode</code> | <code>option</code> | нет | <code>1</code> | <code>check</code>, <code>report</code>, <code>apply</code> | <code>check</code> | check fails on active findings; report never fails; apply removes redundant const (requires --checks redundant-local-const). |
+| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-root-e9f15d4745"></a><code>helper-cli.native-source-audit.command.local-variables.argument.root</code> | <code>--root</code> | <code>option</code> | нет | <code>1</code> | - | - | Корень, относительно которого заданы области проверки, исключения, отчёты и проектные baseline (по умолчанию текущий каталог). |
+| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-scope-2360e0a319"></a><code>helper-cli.native-source-audit.command.local-variables.argument.scope</code> | <code>--scope</code> | <code>option</code> | нет | <code>1</code> | - | - | Проверяемый файл или каталог относительно --root; можно повторять (по умолчанию области из конфигурации, иначе каталог Source движка). |
+| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-exclude-88e7b5e761"></a><code>helper-cli.native-source-audit.command.local-variables.argument.exclude</code> | <code>--exclude</code> | <code>option</code> | нет | <code>1</code> | - | - | Шаблон fnmatch для пропускаемых путей относительно корня; шаблон, оканчивающийся на /, пропускает поддерево; можно повторять. |
+| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-config-635bf74540"></a><code>helper-cli.native-source-audit.command.local-variables.argument.config</code> | <code>--config</code> | <code>option</code> | нет | <code>1</code> | - | - | JSON-конфигурация с областями проверки, шаблонами исключений, baseline и параметрами аудита; путь задаётся относительно --root. |
+| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-baseline-db1963dc9f"></a><code>helper-cli.native-source-audit.command.local-variables.argument.baseline</code> | <code>--baseline</code> | <code>option</code> | нет | <code>1</code> | - | - | Дополнительный проектный baseline TSV с путями относительно корня; можно повторять. |
+| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-no-engine-baseline-36631b1c23"></a><code>helper-cli.native-source-audit.command.local-variables.argument.no_engine_baseline</code> | <code>--no-engine-baseline</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Не применять BuildTools/audit_baselines/&lt;audit&gt;.tsv из Engine. |
+| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-report-11c8d43103"></a><code>helper-cli.native-source-audit.command.local-variables.argument.report</code> | <code>--report</code> | <code>option</code> | нет | <code>1</code> | - | - | Записать оставшиеся находки и устаревшие строки baseline в TSV. |
+| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-emit-baseline-9a7c7af585"></a><code>helper-cli.native-source-audit.command.local-variables.argument.emit_baseline</code> | <code>--emit-baseline</code> | <code>option</code> | нет | <code>1</code> | - | - | Записать строки-кандидаты baseline (с пустым столбцом причины) для оставшихся находок. |
+| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-max-printed-9f68994ec7"></a><code>helper-cli.native-source-audit.command.local-variables.argument.max_printed</code> | <code>--max-printed</code> | <code>option</code> | нет | <code>1</code> | - | <code>50</code> | Максимальное число находок, выводимых в stdout; 0 выводит все (по умолчанию 50). |
+| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-engine-root-6e36b23522"></a><code>helper-cli.native-source-audit.command.local-variables.argument.engine_root</code> | <code>--engine-root</code> | <code>option</code> | нет | <code>1</code> | - | - | Checkout Engine, чьи правила Source и BuildTools/audit_baselines применяются (по умолчанию Engine, содержащий этот инструмент). |
+| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-compilation-database-d207dadd7a"></a><code>helper-cli.native-source-audit.command.local-variables.argument.compilation_database</code> | <code>--compilation-database</code> | <code>option</code> | нет | <code>1</code> | - | - | Каталог с compile_commands.json (по умолчанию compilation_database из конфигурации). |
+| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-clang-query-cdea2cb1c5"></a><code>helper-cli.native-source-audit.command.local-variables.argument.clang_query</code> | <code>--clang-query</code> | <code>option</code> | нет | <code>1</code> | - | - | Исполняемый файл clang-query (по умолчанию FO_CLANG_QUERY, затем PATH). |
+| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-clang-tidy-2932561bf7"></a><code>helper-cli.native-source-audit.command.local-variables.argument.clang_tidy</code> | <code>--clang-tidy</code> | <code>option</code> | нет | <code>1</code> | - | - | Исполняемый файл clang-tidy для use-after-move (по умолчанию FO_CLANG_TIDY, затем PATH). |
+| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-require-tooling-5775a36475"></a><code>helper-cli.native-source-audit.command.local-variables.argument.require_tooling</code> | <code>--require-tooling</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Завершаться с кодом 2 вместо пропуска, если нет инструментов clang или базы компиляции. |
+| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-source-pattern-8ebec8e148"></a><code>helper-cli.native-source-audit.command.local-variables.argument.source_pattern</code> | <code>--source-pattern</code> | <code>option</code> | нет | <code>1</code> | - | - | Регулярное выражение isExpansionInFileMatching для clang-query (по умолчанию выводится из областей проверки). |
+| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-unit-pattern-8e072b4a30"></a><code>helper-cli.native-source-audit.command.local-variables.argument.unit_pattern</code> | <code>--unit-pattern</code> | <code>option</code> | нет | <code>1</code> | - | - | Анализировать только единицы компиляции, отображаемый путь которых соответствует этому регулярному выражению. |
+| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-jobs-7d25d664a0"></a><code>helper-cli.native-source-audit.command.local-variables.argument.jobs</code> | <code>--jobs</code> | <code>option</code> | нет | <code>1</code> | - | <code>4</code> | Число параллельных процессов clang (по умолчанию 4). |
+| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-batch-size-b175a924ef"></a><code>helper-cli.native-source-audit.command.local-variables.argument.batch_size</code> | <code>--batch-size</code> | <code>option</code> | нет | <code>1</code> | - | <code>2</code> | Число единиц трансляции на процесс clang (по умолчанию 2). |
+| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-timeout-aff4d887c1"></a><code>helper-cli.native-source-audit.command.local-variables.argument.timeout</code> | <code>--timeout</code> | <code>option</code> | нет | <code>1</code> | - | <code>900</code> | Допустимое время одного процесса clang в секундах (по умолчанию 900). |
+| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-checks-d4437d53fc"></a><code>helper-cli.native-source-audit.command.local-variables.argument.checks</code> | <code>--checks</code> | <code>option</code> | нет | <code>1</code> | <code>all</code>, <code>redundant-local-const</code>, <code>use-after-move</code> | <code>all</code> | Запускаемые проверки (по умолчанию все). |
+| <a id="entry-helper-cli-native-source-audit-command-local-variables-argument-mode-4af34bc325"></a><code>helper-cli.native-source-audit.command.local-variables.argument.mode</code> | <code>--mode</code> | <code>option</code> | нет | <code>1</code> | <code>check</code>, <code>report</code>, <code>apply</code> | <code>check</code> | check завершается ошибкой при активных находках; report никогда не завершается ошибкой; apply удаляет избыточный const (требует --checks redundant-local-const). |
 
 #### Точный вывод `--help`
 
@@ -1206,7 +1206,7 @@ options:
 <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-ce31af3e54"></a>
 ### `explicit-local-types`
 
-Find auto locals whose deduced type is a simple explicit type (clang-query).
+Найти локальные переменные auto, выведенный тип которых является простым явным типом (clang-query).
 
 Stable ID: `helper-cli.native-source-audit.command.explicit-local-types`
 
@@ -1219,29 +1219,29 @@ usage: native_source_audit.py explicit-local-types [-h] [--root ROOT] [--scope S
 
 | Стабильный ID | Аргумент | Вид | Обязателен | Значения | Варианты | По умолчанию | Описание |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-root-369f3dee8f"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.root</code> | <code>--root</code> | <code>option</code> | нет | <code>1</code> | - | - | Root that scopes, excludes, reports and project baselines are relative to (default: current directory). |
-| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-scope-2a0af532d0"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.scope</code> | <code>--scope</code> | <code>option</code> | нет | <code>1</code> | - | - | File or directory to audit, relative to --root; repeatable (default: config scopes, else the Engine Source directory). |
-| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-exclude-c7ae1ce9b5"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.exclude</code> | <code>--exclude</code> | <code>option</code> | нет | <code>1</code> | - | - | fnmatch pattern of root-relative paths to skip; a pattern ending in / skips a subtree; repeatable. |
-| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-config-652948dd1f"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.config</code> | <code>--config</code> | <code>option</code> | нет | <code>1</code> | - | - | JSON configuration with scopes, exclude patterns, baselines and audit options; relative to --root. |
-| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-baseline-0e2606b2b1"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.baseline</code> | <code>--baseline</code> | <code>option</code> | нет | <code>1</code> | - | - | Additional project baseline TSV with root-relative paths; repeatable. |
-| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-no-engine-baseline-9345df01ac"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.no_engine_baseline</code> | <code>--no-engine-baseline</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Do not apply BuildTools/audit_baselines/&lt;audit&gt;.tsv from the Engine. |
-| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-report-f05b60f2e2"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.report</code> | <code>--report</code> | <code>option</code> | нет | <code>1</code> | - | - | Write remaining findings and stale baseline rows as TSV. |
-| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-emit-baseline-e5158c899a"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.emit_baseline</code> | <code>--emit-baseline</code> | <code>option</code> | нет | <code>1</code> | - | - | Write candidate baseline rows (empty reason column) for the remaining findings. |
-| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-max-printed-6be8beaba4"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.max_printed</code> | <code>--max-printed</code> | <code>option</code> | нет | <code>1</code> | - | <code>50</code> | Maximum findings printed to stdout; 0 prints all (default: 50). |
-| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-engine-root-fe32165f03"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.engine_root</code> | <code>--engine-root</code> | <code>option</code> | нет | <code>1</code> | - | - | Engine checkout whose Source rules and BuildTools/audit_baselines apply (default: the Engine containing this tool). |
-| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-compilation-database-5cd6c9a80a"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.compilation_database</code> | <code>--compilation-database</code> | <code>option</code> | нет | <code>1</code> | - | - | Directory containing compile_commands.json (default: config compilation_database). |
-| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-clang-query-b26471837d"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.clang_query</code> | <code>--clang-query</code> | <code>option</code> | нет | <code>1</code> | - | - | clang-query executable (default: FO_CLANG_QUERY, then PATH). |
-| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-clang-tidy-842844fa57"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.clang_tidy</code> | <code>--clang-tidy</code> | <code>option</code> | нет | <code>1</code> | - | - | clang-tidy executable for use-after-move (default: FO_CLANG_TIDY, then PATH). |
-| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-require-tooling-ed6e9af4ce"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.require_tooling</code> | <code>--require-tooling</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Fail with exit code 2 instead of skipping when clang tools or the compilation database are missing. |
-| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-source-pattern-227e6ed556"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.source_pattern</code> | <code>--source-pattern</code> | <code>option</code> | нет | <code>1</code> | - | - | clang-query isExpansionInFileMatching regex (default: derived from the scopes). |
-| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-unit-pattern-6c260c2a0d"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.unit_pattern</code> | <code>--unit-pattern</code> | <code>option</code> | нет | <code>1</code> | - | - | Only analyze compilation units whose display path matches this regex. |
-| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-jobs-f4f8a61b02"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.jobs</code> | <code>--jobs</code> | <code>option</code> | нет | <code>1</code> | - | <code>4</code> | Parallel clang processes (default: 4). |
-| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-batch-size-d6c7bdfe90"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.batch_size</code> | <code>--batch-size</code> | <code>option</code> | нет | <code>1</code> | - | <code>2</code> | Translation units per clang process (default: 2). |
-| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-timeout-85f2404c4b"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.timeout</code> | <code>--timeout</code> | <code>option</code> | нет | <code>1</code> | - | <code>900</code> | Seconds allowed per clang process (default: 900). |
-| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-mode-620cef2533"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.mode</code> | <code>--mode</code> | <code>option</code> | нет | <code>1</code> | <code>check</code>, <code>report</code>, <code>apply</code> | <code>check</code> | check fails on candidates; report never fails; apply rewrites the eligible auto tokens. |
-| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-also-redundant-local-const-13904bda78"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.also_redundant_local_const</code> | <code>--also-redundant-local-const</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Run the redundant-local-const matcher in the same AST pass. |
-| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-json-4b6cefcd40"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.json</code> | <code>--json</code> | <code>option</code> | нет | <code>1</code> | - | - | Write the full candidate report as JSON. |
-| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-apply-report-d7e1a78868"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.apply_report</code> | <code>--apply-report</code> | <code>option</code> | нет | <code>1</code> | - | - | Apply a previously reviewed JSON report without running clang-query (requires --mode apply). |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-root-369f3dee8f"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.root</code> | <code>--root</code> | <code>option</code> | нет | <code>1</code> | - | - | Корень, относительно которого заданы области проверки, исключения, отчёты и проектные baseline (по умолчанию текущий каталог). |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-scope-2a0af532d0"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.scope</code> | <code>--scope</code> | <code>option</code> | нет | <code>1</code> | - | - | Проверяемый файл или каталог относительно --root; можно повторять (по умолчанию области из конфигурации, иначе каталог Source движка). |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-exclude-c7ae1ce9b5"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.exclude</code> | <code>--exclude</code> | <code>option</code> | нет | <code>1</code> | - | - | Шаблон fnmatch для пропускаемых путей относительно корня; шаблон, оканчивающийся на /, пропускает поддерево; можно повторять. |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-config-652948dd1f"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.config</code> | <code>--config</code> | <code>option</code> | нет | <code>1</code> | - | - | JSON-конфигурация с областями проверки, шаблонами исключений, baseline и параметрами аудита; путь задаётся относительно --root. |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-baseline-0e2606b2b1"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.baseline</code> | <code>--baseline</code> | <code>option</code> | нет | <code>1</code> | - | - | Дополнительный проектный baseline TSV с путями относительно корня; можно повторять. |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-no-engine-baseline-9345df01ac"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.no_engine_baseline</code> | <code>--no-engine-baseline</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Не применять BuildTools/audit_baselines/&lt;audit&gt;.tsv из Engine. |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-report-f05b60f2e2"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.report</code> | <code>--report</code> | <code>option</code> | нет | <code>1</code> | - | - | Записать оставшиеся находки и устаревшие строки baseline в TSV. |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-emit-baseline-e5158c899a"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.emit_baseline</code> | <code>--emit-baseline</code> | <code>option</code> | нет | <code>1</code> | - | - | Записать строки-кандидаты baseline (с пустым столбцом причины) для оставшихся находок. |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-max-printed-6be8beaba4"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.max_printed</code> | <code>--max-printed</code> | <code>option</code> | нет | <code>1</code> | - | <code>50</code> | Максимальное число находок, выводимых в stdout; 0 выводит все (по умолчанию 50). |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-engine-root-fe32165f03"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.engine_root</code> | <code>--engine-root</code> | <code>option</code> | нет | <code>1</code> | - | - | Checkout Engine, чьи правила Source и BuildTools/audit_baselines применяются (по умолчанию Engine, содержащий этот инструмент). |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-compilation-database-5cd6c9a80a"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.compilation_database</code> | <code>--compilation-database</code> | <code>option</code> | нет | <code>1</code> | - | - | Каталог с compile_commands.json (по умолчанию compilation_database из конфигурации). |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-clang-query-b26471837d"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.clang_query</code> | <code>--clang-query</code> | <code>option</code> | нет | <code>1</code> | - | - | Исполняемый файл clang-query (по умолчанию FO_CLANG_QUERY, затем PATH). |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-clang-tidy-842844fa57"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.clang_tidy</code> | <code>--clang-tidy</code> | <code>option</code> | нет | <code>1</code> | - | - | Исполняемый файл clang-tidy для use-after-move (по умолчанию FO_CLANG_TIDY, затем PATH). |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-require-tooling-ed6e9af4ce"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.require_tooling</code> | <code>--require-tooling</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Завершаться с кодом 2 вместо пропуска, если нет инструментов clang или базы компиляции. |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-source-pattern-227e6ed556"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.source_pattern</code> | <code>--source-pattern</code> | <code>option</code> | нет | <code>1</code> | - | - | Регулярное выражение isExpansionInFileMatching для clang-query (по умолчанию выводится из областей проверки). |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-unit-pattern-6c260c2a0d"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.unit_pattern</code> | <code>--unit-pattern</code> | <code>option</code> | нет | <code>1</code> | - | - | Анализировать только единицы компиляции, отображаемый путь которых соответствует этому регулярному выражению. |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-jobs-f4f8a61b02"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.jobs</code> | <code>--jobs</code> | <code>option</code> | нет | <code>1</code> | - | <code>4</code> | Число параллельных процессов clang (по умолчанию 4). |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-batch-size-d6c7bdfe90"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.batch_size</code> | <code>--batch-size</code> | <code>option</code> | нет | <code>1</code> | - | <code>2</code> | Число единиц трансляции на процесс clang (по умолчанию 2). |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-timeout-85f2404c4b"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.timeout</code> | <code>--timeout</code> | <code>option</code> | нет | <code>1</code> | - | <code>900</code> | Допустимое время одного процесса clang в секундах (по умолчанию 900). |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-mode-620cef2533"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.mode</code> | <code>--mode</code> | <code>option</code> | нет | <code>1</code> | <code>check</code>, <code>report</code>, <code>apply</code> | <code>check</code> | check завершается ошибкой при наличии кандидатов; report никогда не завершается ошибкой; apply переписывает подходящие токены auto. |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-also-redundant-local-const-13904bda78"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.also_redundant_local_const</code> | <code>--also-redundant-local-const</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Запустить сопоставитель redundant-local-const в том же проходе AST. |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-json-4b6cefcd40"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.json</code> | <code>--json</code> | <code>option</code> | нет | <code>1</code> | - | - | Записать полный отчёт о кандидатах в JSON. |
+| <a id="entry-helper-cli-native-source-audit-command-explicit-local-types-argument-apply-report-d7e1a78868"></a><code>helper-cli.native-source-audit.command.explicit-local-types.argument.apply_report</code> | <code>--apply-report</code> | <code>option</code> | нет | <code>1</code> | - | - | Применить ранее проверенный JSON-отчёт без запуска clang-query (требует --mode apply). |
 
 #### Точный вывод `--help`
 
@@ -1293,15 +1293,15 @@ options:
 ```
 
 <a id="entry-helper-cli-native-safety-audit-2f4598f1d2"></a>
-## Native safety audits
+## Аудиты нативной безопасности
 
-Reject native code that changes entity cover behind server script exports and gate per-function exception-safety classifications of Engine and project sources against committed baselines.
+Отклоняет нативный код, меняющий покрытие сущностей в обход серверных экспортов в скрипты, и сверяет пофункциональные классификации безопасности исключений в исходниках движка и проекта с зафиксированными baseline.
 
 - Стабильный ID: `helper-cli.native-safety-audit`
 - Программа: `native_safety_audit.py`
 - Владелец: `quality`
 - Аудитория: `engine-contributor`, `game-developer`, `embedding-project-build-system`, `ci-maintainer`
-- Владелец вызова: Engine validate workflow, embedding-project native validation tasks and CI
+- Владелец вызова: workflow validate движка, задачи нативной проверки встраивающего игрового проекта и CI
 - Исходный парсер: [BuildTools/native_safety_audit.py](https://github.com/cvet/fonline/blob/master/BuildTools/native_safety_audit.py)
 
 ### Аргументы верхнего уровня
@@ -1327,7 +1327,7 @@ options:
 <a id="entry-helper-cli-native-safety-audit-command-sync-scope-fd8f2cb3e2"></a>
 ### `sync-scope`
 
-reject native code that obtains, replaces or releases entity cover for script exports
+Отклонить нативный код, который получает, заменяет или освобождает покрытие сущностей для экспортов в скрипты.
 
 Stable ID: `helper-cli.native-safety-audit.command.sync-scope`
 
@@ -1337,12 +1337,12 @@ usage: native_safety_audit.py sync-scope [-h] [--root ROOT] [--engine-root ENGIN
 
 | Стабильный ID | Аргумент | Вид | Обязателен | Значения | Варианты | По умолчанию | Описание |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| <a id="entry-helper-cli-native-safety-audit-command-sync-scope-argument-root-ee86ae1201"></a><code>helper-cli.native-safety-audit.command.sync-scope.argument.root</code> | <code>--root</code> | <code>option</code> | нет | <code>1</code> | - | - | repository root for --scope, --config and --baseline paths (default: current directory) |
-| <a id="entry-helper-cli-native-safety-audit-command-sync-scope-argument-engine-root-44d0761344"></a><code>helper-cli.native-safety-audit.command.sync-scope.argument.engine_root</code> | <code>--engine-root</code> | <code>option</code> | нет | <code>1</code> | - | - | Engine checkout to audit (default: the checkout that contains this script) |
-| <a id="entry-helper-cli-native-safety-audit-command-sync-scope-argument-scope-510657e758"></a><code>helper-cli.native-safety-audit.command.sync-scope.argument.scope</code> | <code>--scope</code> | <code>option</code> | нет | <code>1</code> | - | - | root-relative project native directory audited with the Engine rules (repeatable) |
-| <a id="entry-helper-cli-native-safety-audit-command-sync-scope-argument-config-aec59ba760"></a><code>helper-cli.native-safety-audit.command.sync-scope.argument.config</code> | <code>--config</code> | <code>option</code> | нет | <code>1</code> | - | - | project JSON configuration with vendored exclusions and reviewed project rules |
-| <a id="entry-helper-cli-native-safety-audit-command-sync-scope-argument-baseline-1d3414d1ee"></a><code>helper-cli.native-safety-audit.command.sync-scope.argument.baseline</code> | <code>--baseline</code> | <code>option</code> | нет | <code>1</code> | - | - | project baseline TSV for findings in the --scope directories |
-| <a id="entry-helper-cli-native-safety-audit-command-sync-scope-argument-json-5bed230967"></a><code>helper-cli.native-safety-audit.command.sync-scope.argument.json</code> | <code>--json</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | print the summary and diagnostics as JSON |
+| <a id="entry-helper-cli-native-safety-audit-command-sync-scope-argument-root-ee86ae1201"></a><code>helper-cli.native-safety-audit.command.sync-scope.argument.root</code> | <code>--root</code> | <code>option</code> | нет | <code>1</code> | - | - | Корень репозитория для путей --scope, --config и --baseline (по умолчанию текущий каталог). |
+| <a id="entry-helper-cli-native-safety-audit-command-sync-scope-argument-engine-root-44d0761344"></a><code>helper-cli.native-safety-audit.command.sync-scope.argument.engine_root</code> | <code>--engine-root</code> | <code>option</code> | нет | <code>1</code> | - | - | Проверяемый checkout Engine (по умолчанию checkout, содержащий этот скрипт). |
+| <a id="entry-helper-cli-native-safety-audit-command-sync-scope-argument-scope-510657e758"></a><code>helper-cli.native-safety-audit.command.sync-scope.argument.scope</code> | <code>--scope</code> | <code>option</code> | нет | <code>1</code> | - | - | Нативный каталог проекта относительно корня, проверяемый правилами Engine (можно повторять). |
+| <a id="entry-helper-cli-native-safety-audit-command-sync-scope-argument-config-aec59ba760"></a><code>helper-cli.native-safety-audit.command.sync-scope.argument.config</code> | <code>--config</code> | <code>option</code> | нет | <code>1</code> | - | - | Проектная JSON-конфигурация с исключениями стороннего кода и проверенными проектными правилами. |
+| <a id="entry-helper-cli-native-safety-audit-command-sync-scope-argument-baseline-1d3414d1ee"></a><code>helper-cli.native-safety-audit.command.sync-scope.argument.baseline</code> | <code>--baseline</code> | <code>option</code> | нет | <code>1</code> | - | - | Проектный baseline TSV для находок в каталогах --scope. |
+| <a id="entry-helper-cli-native-safety-audit-command-sync-scope-argument-json-5bed230967"></a><code>helper-cli.native-safety-audit.command.sync-scope.argument.json</code> | <code>--json</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Вывести сводку и диагностику в формате JSON. |
 
 #### Точный вывод `--help`
 
@@ -1363,7 +1363,7 @@ options:
 <a id="entry-helper-cli-native-safety-audit-command-exception-safety-b885bae5b9"></a>
 ### `exception-safety`
 
-check per-function exception-safety classifications against the baselines
+Проверить пофункциональные классификации безопасности исключений по baseline.
 
 Stable ID: `helper-cli.native-safety-audit.command.exception-safety`
 
@@ -1375,22 +1375,22 @@ usage: native_safety_audit.py exception-safety [-h] [--root ROOT] [--engine-root
 
 | Стабильный ID | Аргумент | Вид | Обязателен | Значения | Варианты | По умолчанию | Описание |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-root-5d7c6b896b"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.root</code> | <code>--root</code> | <code>option</code> | нет | <code>1</code> | - | - | repository root for --scope, --config and --baseline paths (default: current directory) |
-| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-engine-root-083634bab3"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.engine_root</code> | <code>--engine-root</code> | <code>option</code> | нет | <code>1</code> | - | - | Engine checkout to audit (default: the checkout that contains this script) |
-| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-scope-70c5a52bbc"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.scope</code> | <code>--scope</code> | <code>option</code> | нет | <code>1</code> | - | - | root-relative project native directory audited with the Engine rules (repeatable) |
-| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-config-654e18e52f"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.config</code> | <code>--config</code> | <code>option</code> | нет | <code>1</code> | - | - | project JSON configuration with vendored exclusions and reviewed project rules |
-| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-baseline-15731f3d0c"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.baseline</code> | <code>--baseline</code> | <code>option</code> | нет | <code>1</code> | - | - | project baseline TSV for findings in the --scope directories |
-| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-action-fe490ae347"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.action</code> | <code>action</code> | <code>positional</code> | нет | <code>?</code> | <code>audit</code>, <code>report</code>, <code>update</code> | <code>audit</code> | audit (default) fails on drift; report summarizes the baselines; update maintains them |
-| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-fail-on-7e82c37cb6"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.fail_on</code> | <code>--fail-on</code> | <code>option</code> | нет | <code>1</code> | <code>error</code>, <code>warning</code> | - | audit: also fail on warnings (pending None adjudication, review notes) |
-| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-level-0401e86486"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.level</code> | <code>--level</code> | <code>option</code> | нет | <code>1</code> | <code>NoThrow</code>, <code>Strong</code>, <code>Basic</code>, <code>None</code>, <code>Unclassified</code> | - | report: list rows with this level |
-| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-area-e417e6bb25"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.area</code> | <code>--area</code> | <code>option</code> | нет | <code>1</code> | - | - | report: list rows of this source area (second path component) |
-| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-file-filter-b4b911f1b9"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.file_filter</code> | <code>--file</code> | <code>option</code> | нет | <code>1</code> | - | - | report: list rows whose file contains this text |
-| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-function-filter-6fa689a4b9"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.function_filter</code> | <code>--function</code> | <code>option</code> | нет | <code>1</code> | - | - | report: list rows whose function contains this text |
-| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-add-new-4c6e13395d"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.add_new</code> | <code>--add-new</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | update: add unclassified rows for new functions |
-| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-prune-removed-9eddff4bd8"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.prune_removed</code> | <code>--prune-removed</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | update: remove rows whose function vanished |
-| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-migrate-signatures-91bfff0832"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.migrate_signatures</code> | <code>--migrate-signatures</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | update: carry classifications across signature-only changes with identical body hashes |
-| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-accept-e6ce13f96f"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.accept</code> | <code>--accept</code> | <code>option</code> | нет | <code>1</code> | - | - | update: refresh the body hash of a re-derived function (repeatable) |
-| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-accept-all-changed-7220be3c80"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.accept_all_changed</code> | <code>--accept-all-changed</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | update: refresh every changed body hash |
+| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-root-5d7c6b896b"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.root</code> | <code>--root</code> | <code>option</code> | нет | <code>1</code> | - | - | Корень репозитория для путей --scope, --config и --baseline (по умолчанию текущий каталог). |
+| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-engine-root-083634bab3"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.engine_root</code> | <code>--engine-root</code> | <code>option</code> | нет | <code>1</code> | - | - | Проверяемый checkout Engine (по умолчанию checkout, содержащий этот скрипт). |
+| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-scope-70c5a52bbc"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.scope</code> | <code>--scope</code> | <code>option</code> | нет | <code>1</code> | - | - | Нативный каталог проекта относительно корня, проверяемый правилами Engine (можно повторять). |
+| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-config-654e18e52f"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.config</code> | <code>--config</code> | <code>option</code> | нет | <code>1</code> | - | - | Проектная JSON-конфигурация с исключениями стороннего кода и проверенными проектными правилами. |
+| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-baseline-15731f3d0c"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.baseline</code> | <code>--baseline</code> | <code>option</code> | нет | <code>1</code> | - | - | Проектный baseline TSV для находок в каталогах --scope. |
+| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-action-fe490ae347"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.action</code> | <code>action</code> | <code>positional</code> | нет | <code>?</code> | <code>audit</code>, <code>report</code>, <code>update</code> | <code>audit</code> | audit (по умолчанию) завершается ошибкой при расхождении; report сводит baseline; update поддерживает их в актуальном состоянии. |
+| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-fail-on-7e82c37cb6"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.fail_on</code> | <code>--fail-on</code> | <code>option</code> | нет | <code>1</code> | <code>error</code>, <code>warning</code> | - | audit: также завершаться ошибкой при предупреждениях (неразобранные уровни None, заметки ревью). |
+| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-level-0401e86486"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.level</code> | <code>--level</code> | <code>option</code> | нет | <code>1</code> | <code>NoThrow</code>, <code>Strong</code>, <code>Basic</code>, <code>None</code>, <code>Unclassified</code> | - | report: перечислить строки с этим уровнем. |
+| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-area-e417e6bb25"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.area</code> | <code>--area</code> | <code>option</code> | нет | <code>1</code> | - | - | report: перечислить строки этой области исходников (второй компонент пути). |
+| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-file-filter-b4b911f1b9"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.file_filter</code> | <code>--file</code> | <code>option</code> | нет | <code>1</code> | - | - | report: перечислить строки, файл которых содержит этот текст. |
+| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-function-filter-6fa689a4b9"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.function_filter</code> | <code>--function</code> | <code>option</code> | нет | <code>1</code> | - | - | report: перечислить строки, функция которых содержит этот текст. |
+| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-add-new-4c6e13395d"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.add_new</code> | <code>--add-new</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | update: добавить неклассифицированные строки для новых функций. |
+| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-prune-removed-9eddff4bd8"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.prune_removed</code> | <code>--prune-removed</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | update: удалить строки исчезнувших функций. |
+| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-migrate-signatures-91bfff0832"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.migrate_signatures</code> | <code>--migrate-signatures</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | update: переносить классификации через изменения только сигнатуры при одинаковых хешах тел. |
+| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-accept-e6ce13f96f"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.accept</code> | <code>--accept</code> | <code>option</code> | нет | <code>1</code> | - | - | update: обновить хеш тела функции, классификация которой выведена заново (можно повторять). |
+| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-accept-all-changed-7220be3c80"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.accept_all_changed</code> | <code>--accept-all-changed</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | update: обновить все изменившиеся хеши тел. |
 
 #### Точный вывод `--help`
 
@@ -1893,28 +1893,28 @@ options:
 ```
 
 <a id="entry-helper-cli-script-binding-check-56e942e304"></a>
-## Script binding check
+## Проверка привязок скриптов
 
-Reject raw pointers in script-facing native signatures and compare AngelScript handler nullability with event and remote-call declarations.
+Отклоняет сырые указатели в нативных сигнатурах, доступных скриптам, и сравнивает nullability обработчиков AngelScript с объявлениями событий и удалённых вызовов.
 
 - Стабильный ID: `helper-cli.script-binding-check`
 - Программа: `check_script_bindings.py`
 - Владелец: `quality`
 - Аудитория: `game-developer`, `engine-contributor`, `ci-maintainer`
-- Владелец вызова: Engine CI and embedding-project quality gates
+- Владелец вызова: CI движка и гейты качества встраивающего игрового проекта
 - Исходный парсер: [BuildTools/check_script_bindings.py](https://github.com/cvet/fonline/blob/master/BuildTools/check_script_bindings.py)
 
 ### Аргументы верхнего уровня
 
 | Стабильный ID | Аргумент | Вид | Обязателен | Значения | Варианты | По умолчанию | Описание |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| <a id="entry-helper-cli-script-binding-check-argument-root-0186131671"></a><code>helper-cli.script-binding-check.argument.root</code> | <code>--root</code> | <code>option</code> | нет | <code>1</code> | - | - | repository root that scopes and reported paths are relative to (default: the Engine root that contains this script) |
-| <a id="entry-helper-cli-script-binding-check-argument-scope-ce0f036e90"></a><code>helper-cli.script-binding-check.argument.scope</code> | <code>--scope</code> | <code>option</code> | нет | <code>1</code> | - | - | root-relative native source directory; repeatable (default: Source) |
-| <a id="entry-helper-cli-script-binding-check-argument-scripts-be2566252b"></a><code>helper-cli.script-binding-check.argument.scripts</code> | <code>--scripts</code> | <code>option</code> | нет | <code>1</code> | - | - | root-relative AngelScript directory whose handlers are compared; repeatable |
-| <a id="entry-helper-cli-script-binding-check-argument-exclude-81d76422a0"></a><code>helper-cli.script-binding-check.argument.exclude</code> | <code>--exclude</code> | <code>option</code> | нет | <code>1</code> | - | - | fnmatch pattern for root-relative POSIX paths to skip; repeatable |
-| <a id="entry-helper-cli-script-binding-check-argument-baseline-0b842d512b"></a><code>helper-cli.script-binding-check.argument.baseline</code> | <code>--baseline</code> | <code>option</code> | нет | <code>1</code> | - | - | accepted findings (rule, path, count, reason TSV); repeatable |
-| <a id="entry-helper-cli-script-binding-check-argument-write-baseline-d4d708b0d6"></a><code>helper-cli.script-binding-check.argument.write_baseline</code> | <code>--write-baseline</code> | <code>option</code> | нет | <code>1</code> | - | - | write current finding counts with empty reasons instead of gating |
-| <a id="entry-helper-cli-script-binding-check-argument-list-rules-8205fa771d"></a><code>helper-cli.script-binding-check.argument.list_rules</code> | <code>--list-rules</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | print rule identifiers and exit |
+| <a id="entry-helper-cli-script-binding-check-argument-root-0186131671"></a><code>helper-cli.script-binding-check.argument.root</code> | <code>--root</code> | <code>option</code> | нет | <code>1</code> | - | - | Корень репозитория, относительно которого заданы области проверки и выводимые пути (по умолчанию корень Engine, содержащий этот скрипт). |
+| <a id="entry-helper-cli-script-binding-check-argument-scope-ce0f036e90"></a><code>helper-cli.script-binding-check.argument.scope</code> | <code>--scope</code> | <code>option</code> | нет | <code>1</code> | - | - | Каталог нативных исходников относительно корня; можно повторять (по умолчанию Source). |
+| <a id="entry-helper-cli-script-binding-check-argument-scripts-be2566252b"></a><code>helper-cli.script-binding-check.argument.scripts</code> | <code>--scripts</code> | <code>option</code> | нет | <code>1</code> | - | - | Каталог AngelScript относительно корня, обработчики которого сравниваются; можно повторять. |
+| <a id="entry-helper-cli-script-binding-check-argument-exclude-81d76422a0"></a><code>helper-cli.script-binding-check.argument.exclude</code> | <code>--exclude</code> | <code>option</code> | нет | <code>1</code> | - | - | Шаблон fnmatch для пропускаемых POSIX-путей относительно корня; можно повторять. |
+| <a id="entry-helper-cli-script-binding-check-argument-baseline-0b842d512b"></a><code>helper-cli.script-binding-check.argument.baseline</code> | <code>--baseline</code> | <code>option</code> | нет | <code>1</code> | - | - | Принятые находки (TSV с правилом, путём, числом и причиной); можно повторять. |
+| <a id="entry-helper-cli-script-binding-check-argument-write-baseline-d4d708b0d6"></a><code>helper-cli.script-binding-check.argument.write_baseline</code> | <code>--write-baseline</code> | <code>option</code> | нет | <code>1</code> | - | - | Записать текущие числа находок с пустыми причинами вместо блокирующей проверки. |
+| <a id="entry-helper-cli-script-binding-check-argument-list-rules-8205fa771d"></a><code>helper-cli.script-binding-check.argument.list_rules</code> | <code>--list-rules</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Вывести идентификаторы правил и завершиться. |
 
 ### Точный вывод `--help` верхнего уровня
 
@@ -1935,28 +1935,28 @@ options:
 ```
 
 <a id="entry-helper-cli-angelscript-hygiene-check-b5053583a9"></a>
-## AngelScript hygiene check
+## Проверка гигиены кода AngelScript
 
-Check authored AngelScript modules for namespace, include, side-macro, sort-directive and file-ending conventions with a count-ratchet baseline.
+Проверяет авторские модули AngelScript на соблюдение соглашений о пространствах имён, include, макросах стороны, директивах сортировки и окончании файлов с baseline, счётчики которого могут только уменьшаться.
 
 - Стабильный ID: `helper-cli.angelscript-hygiene-check`
 - Программа: `check_angelscript_hygiene.py`
 - Владелец: `quality`
 - Аудитория: `game-developer`, `engine-contributor`, `ci-maintainer`
-- Владелец вызова: Engine CI and embedding-project quality gates
+- Владелец вызова: CI движка и гейты качества встраивающего игрового проекта
 - Исходный парсер: [BuildTools/check_angelscript_hygiene.py](https://github.com/cvet/fonline/blob/master/BuildTools/check_angelscript_hygiene.py)
 
 ### Аргументы верхнего уровня
 
 | Стабильный ID | Аргумент | Вид | Обязателен | Значения | Варианты | По умолчанию | Описание |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| <a id="entry-helper-cli-angelscript-hygiene-check-argument-root-62e4bfdc20"></a><code>helper-cli.angelscript-hygiene-check.argument.root</code> | <code>--root</code> | <code>option</code> | нет | <code>1</code> | - | - | repository root that script directories and reported paths are relative to (default: the Engine root that contains this script) |
-| <a id="entry-helper-cli-angelscript-hygiene-check-argument-scripts-3af5b503fb"></a><code>helper-cli.angelscript-hygiene-check.argument.scripts</code> | <code>--scripts</code> | <code>option</code> | нет | <code>1</code> | - | - | root-relative directory searched recursively for .fos files; repeatable (default: Examples) |
-| <a id="entry-helper-cli-angelscript-hygiene-check-argument-config-0f43c6ee5e"></a><code>helper-cli.angelscript-hygiene-check.argument.config</code> | <code>--config</code> | <code>option</code> | нет | <code>1</code> | - | - | rule switches, rule options and excludes (schema_version 1) |
-| <a id="entry-helper-cli-angelscript-hygiene-check-argument-exclude-6adf1dbcfb"></a><code>helper-cli.angelscript-hygiene-check.argument.exclude</code> | <code>--exclude</code> | <code>option</code> | нет | <code>1</code> | - | - | fnmatch pattern for root-relative POSIX paths to skip; repeatable |
-| <a id="entry-helper-cli-angelscript-hygiene-check-argument-baseline-1036f14d59"></a><code>helper-cli.angelscript-hygiene-check.argument.baseline</code> | <code>--baseline</code> | <code>option</code> | нет | <code>1</code> | - | - | accepted findings (rule, path, count, reason TSV); repeatable |
-| <a id="entry-helper-cli-angelscript-hygiene-check-argument-write-baseline-504af0139a"></a><code>helper-cli.angelscript-hygiene-check.argument.write_baseline</code> | <code>--write-baseline</code> | <code>option</code> | нет | <code>1</code> | - | - | write current finding counts with empty reasons instead of gating |
-| <a id="entry-helper-cli-angelscript-hygiene-check-argument-list-rules-e0fb8a073d"></a><code>helper-cli.angelscript-hygiene-check.argument.list_rules</code> | <code>--list-rules</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | print rule identifiers, defaults and exit |
+| <a id="entry-helper-cli-angelscript-hygiene-check-argument-root-62e4bfdc20"></a><code>helper-cli.angelscript-hygiene-check.argument.root</code> | <code>--root</code> | <code>option</code> | нет | <code>1</code> | - | - | Корень репозитория, относительно которого заданы каталоги скриптов и выводимые пути (по умолчанию корень Engine, содержащий этот скрипт). |
+| <a id="entry-helper-cli-angelscript-hygiene-check-argument-scripts-3af5b503fb"></a><code>helper-cli.angelscript-hygiene-check.argument.scripts</code> | <code>--scripts</code> | <code>option</code> | нет | <code>1</code> | - | - | Каталог относительно корня, в котором рекурсивно ищутся файлы .fos; можно повторять (по умолчанию Examples). |
+| <a id="entry-helper-cli-angelscript-hygiene-check-argument-config-0f43c6ee5e"></a><code>helper-cli.angelscript-hygiene-check.argument.config</code> | <code>--config</code> | <code>option</code> | нет | <code>1</code> | - | - | Переключатели правил, параметры правил и исключения (schema_version 1). |
+| <a id="entry-helper-cli-angelscript-hygiene-check-argument-exclude-6adf1dbcfb"></a><code>helper-cli.angelscript-hygiene-check.argument.exclude</code> | <code>--exclude</code> | <code>option</code> | нет | <code>1</code> | - | - | Шаблон fnmatch для пропускаемых POSIX-путей относительно корня; можно повторять. |
+| <a id="entry-helper-cli-angelscript-hygiene-check-argument-baseline-1036f14d59"></a><code>helper-cli.angelscript-hygiene-check.argument.baseline</code> | <code>--baseline</code> | <code>option</code> | нет | <code>1</code> | - | - | Принятые находки (TSV с правилом, путём, числом и причиной); можно повторять. |
+| <a id="entry-helper-cli-angelscript-hygiene-check-argument-write-baseline-504af0139a"></a><code>helper-cli.angelscript-hygiene-check.argument.write_baseline</code> | <code>--write-baseline</code> | <code>option</code> | нет | <code>1</code> | - | - | Записать текущие числа находок с пустыми причинами вместо блокирующей проверки. |
+| <a id="entry-helper-cli-angelscript-hygiene-check-argument-list-rules-e0fb8a073d"></a><code>helper-cli.angelscript-hygiene-check.argument.list_rules</code> | <code>--list-rules</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Вывести идентификаторы правил и значения по умолчанию и завершиться. |
 
 ### Точный вывод `--help` верхнего уровня
 

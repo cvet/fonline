@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_by": "BuildTools/docs_external_evidence.py",
   "source_manifest": "BuildTools/ExternalProjectEvidence.json",
-  "source_sha256": "f094eef51b7cee40ba4f8318d298137ae30c894726bc956973b18c17b80e3a87",
+  "source_sha256": "da813683375e819676540fe3213f0d5a9a55acc2904dd6a5cf1d34fa9a5f6235",
   "title": "External Project Evidence And Promotion Inventory",
   "policy": {
     "normative_boundary": "External project usage is discovery and compatibility evidence only. Engine source, tests, manifests, generated contracts, and Engine-owned examples remain normative.",
@@ -260,7 +260,8 @@
         "Docs/en/how-to/build/embedding-project.md",
         "Docs/en/how-to/build/index.md",
         "Docs/en/how-to/build/project-configuration.md",
-        "Docs/en/reference/cmake-and-buildtools/pipeline.md"
+        "Docs/en/reference/cmake-and-buildtools/pipeline.md",
+        "BuildTools/cmake/stages/Applications.cmake"
       ],
       "planned_targets": [],
       "external_targets": [],
@@ -292,7 +293,9 @@
       "engine_targets": [
         "Docs/en/contributing/documentation/index.md",
         "Docs/en/how-to/migration/engine-upgrade.md",
-        "Docs/en/contributing/contract-change-management.md"
+        "Docs/en/contributing/contract-change-management.md",
+        "Docs/en/how-to/project/release-tooling.md",
+        "BuildTools/engine_upgrade_report.py"
       ],
       "planned_targets": [],
       "external_targets": [],
@@ -412,6 +415,10 @@
         {
           "snapshot": "fonline-tla",
           "path": "Nullability.md"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "Tools/NullableEstimate/validate_nullable.py"
         }
       ],
       "reusable_claim": "Nullable script handles and native pointer annotations require one source-backed vocabulary, diagnostics, and analyzer workflow.",
@@ -419,7 +426,10 @@
       "owner": "scripting",
       "priority": "P0",
       "engine_targets": [
-        "Docs/en/contributing/coding-contracts/nullability.md"
+        "Docs/en/contributing/coding-contracts/nullability.md",
+        "BuildTools/check_script_bindings.py",
+        "BuildTools/tests/test_check_script_bindings.py",
+        "Docs/en/how-to/project/script-and-binding-checks.md"
       ],
       "planned_targets": [],
       "external_targets": [],
@@ -584,7 +594,9 @@
       "priority": "P0",
       "engine_targets": [
         "Docs/en/how-to/content/text-and-localization.md",
-        "Docs/en/reference/text-format/index.md"
+        "Docs/en/reference/text-format/index.md",
+        "BuildTools/check_text_packs.py",
+        "Docs/en/how-to/project/content-and-diagnostics-tools.md"
       ],
       "planned_targets": [],
       "external_targets": [],
@@ -915,6 +927,10 @@
         {
           "snapshot": "fonline-tla",
           "path": "AGENTS.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Scripts/Testing.cs"
         }
       ],
       "reusable_claim": "Games benefit from deterministic fixture setup, boundary-based test selection, narrow-first execution, timeout/log contracts, and cross-layer integration evidence.",
@@ -927,7 +943,10 @@
         "BuildTools/gameplay_test_runner.py",
         "BuildTools/tests/test_gameplay_test_runner.py",
         "Examples/GameplayTestHarness",
-        "Examples/MinimalMultiplayer"
+        "Examples/MinimalMultiplayer",
+        "Docs/en/how-to/project/script-test-harness.md",
+        "Examples/GameplayTestHarness/ScriptTests",
+        "BuildTools/tests/test_script_test_harness_example.py"
       ],
       "planned_targets": [],
       "external_targets": [],
@@ -938,7 +957,7 @@
         "documentation"
       ],
       "promotion_gate": "The project-neutral runner has deterministic positive/failure/timeout coverage, a synthetic fixture, and real baked headless server/client proof in Minimal Multiplayer.",
-      "decision": "Engine now owns boundary-based test selection plus process readiness, marker, deadline, cleanup, and report semantics. Script test registries, game fixtures/assertions, filters, content, persistence backends, platform labs, and acceptance thresholds stay project-owned. Linux automatic-range port selection and the exact Anchor run-variable/retired-property process-stop oracle are project harness policy, not new Engine transport or persistence guarantees."
+      "decision": "The Engine ships a copyable two-backend script test harness example and its marker contract next to the process runner; suite registries, fixtures, sharding and game policy stay project-owned."
     },
     {
       "id": "native-analyzers",
@@ -959,6 +978,26 @@
         {
           "snapshot": "fonline-tla",
           "path": "Nullability.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Tools/AllocatorAudit"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Tools/SyncScopeAudit"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Tools/LocalVariableValidator"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Tools/ExplicitLocalTypes"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Tools/ScriptAnalyzers"
         }
       ],
       "reusable_claim": "Nullability, smart-pointer, exception-safety, thread-safety, and local-variable policies need Engine-owned contracts and source-backed enforcement boundaries; whole-tree analyzers and baselines remain project-owned until promoted with reusable tests.",
@@ -970,7 +1009,15 @@
         "Docs/en/contributing/coding-contracts/smart-pointers.md",
         "Docs/en/contributing/coding-contracts/exception-safety.md",
         "Docs/en/contributing/coding-contracts/thread-safety-analysis.md",
-        "Docs/en/contributing/coding-contracts/local-variables.md"
+        "Docs/en/contributing/coding-contracts/local-variables.md",
+        "BuildTools/native_source_audit.py",
+        "BuildTools/native_safety_audit.py",
+        "BuildTools/audit_baselines/exception-safety.tsv",
+        "BuildTools/audit_baselines/allocator.tsv",
+        "Docs/en/how-to/project/native-source-audits.md",
+        "Docs/en/how-to/project/native-safety-audits.md",
+        "Docs/en/how-to/project/engine-contract-analyzers.md",
+        "Source/Scripting/Managed/Analyzers/EntryPointAnalyzer.cs"
       ],
       "planned_targets": [],
       "external_targets": [],
@@ -980,7 +1027,7 @@
         "scripting"
       ],
       "promotion_gate": "Engine documents name exact source/runtime/compiler evidence and distinguish reusable checks from embedding-project analyzers, allowlists, and baselines.",
-      "decision": "Engine contracts and in-repository compiler/runtime checks are normative; whole-tree analyzers, project wrappers, allowlists, and integration baselines stay project-owned until promoted into Engine with tests."
+      "decision": "The Engine owns the native source audits, the entity-cover and exception-safety audits with their Engine baselines, and the Engine-contract Roslyn rules (FOENTRY, FOVERIFY, FOSTATIC); project wrappers, configuration, baselines and style analyzers stay project-owned."
     },
     {
       "id": "project-generators-formatters-and-audits",
@@ -1013,7 +1060,11 @@
       "priority": "P2",
       "engine_targets": [
         "Docs/en/how-to/build/generated-content.md",
-        "Docs/en/how-to/build/embedding-project.md"
+        "Docs/en/how-to/build/embedding-project.md",
+        "BuildTools/format_content.py",
+        "BuildTools/fo_formats.py",
+        "Docs/en/how-to/project/format-content.md",
+        "Docs/en/how-to/project/reading-engine-formats.md"
       ],
       "planned_targets": [],
       "external_targets": [
@@ -1028,7 +1079,7 @@
         "documentation"
       ],
       "promotion_gate": "Move reusable implementation and tests into Engine before adding any concrete format or command to Engine documentation.",
-      "decision": "Engine documents the ownership pattern; the current GUI/dialog generators, formatters, and audits remain project-owned."
+      "decision": "The Engine owns the content formatter and the format readers; GUI and dialog generators, game content audits and project wrappers stay project-owned."
     },
     {
       "id": "dialog-tree-stack",
@@ -1168,7 +1219,14 @@
         "Docs/en/reference/ai-control-protocol/index.md",
         "BuildTools/ai_control_client.py",
         "BuildTools/tests/test_ai_control_protocol.py",
-        "Examples/AiControlSample"
+        "Examples/AiControlSample",
+        "BuildTools/ai_control_mcp",
+        "BuildTools/tests/test_ai_control_mcp.py",
+        "Docs/en/how-to/project/ai-control-mcp.md",
+        "Source/Client/AiControlListener.h",
+        "Source/Client/AiControlListener.cpp",
+        "Source/Tests/Test_AiControlListener.cpp",
+        "Docs/en/how-to/project/native-ai-bridge.md"
       ],
       "planned_targets": [],
       "external_targets": [],
@@ -1180,7 +1238,7 @@
         "documentation"
       ],
       "promotion_gate": "Keep the generated experimental contract, loopback threat boundary, reference client, malformed-peer tests, protocol smoke, and runnable sample current; a native core listener still requires a separate runtime and security promotion.",
-      "decision": "Promote only the transport envelope, authorization, bounded command/event lifecycle, reference client, and protocol sample; keep every project's observation schema, action catalog, administrator tools, and MCP namespace project-owned."
+      "decision": "Promote only the transport envelope, authorization, bounded command/event lifecycle, reference client, and protocol sample; keep every project's observation schema, action catalog, administrator tools, and MCP namespace project-owned. The generic MCP adapter core and the optional native client listener (FO_AI_CONTROL) are Engine-owned; game command sets, observation fields, launch recipes and scenario playtests stay with the projects."
     },
     {
       "id": "packaging-platform-and-release",
@@ -1442,6 +1500,14 @@
         {
           "snapshot": "fonline-tla",
           "path": "DbPendingChanges.oplog"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Tools/MigrationGuard/migration_guard.py"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "Scripts/Migration.fos"
         }
       ],
       "reusable_claim": "Entity persistence, database backends, migration metadata, compatibility versions, backup, rollout, and rollback need separate Engine and project ownership.",
@@ -1453,7 +1519,9 @@
         "Docs/en/explanation/entity-and-property-model/index.md",
         "Docs/en/how-to/release/backup-and-recovery.md",
         "Docs/en/how-to/migration/engine-upgrade.md",
-        "Docs/en/explanation/authority-and-networking/index.md"
+        "Docs/en/explanation/authority-and-networking/index.md",
+        "BuildTools/migration_guard.py",
+        "Docs/en/how-to/project/migration-guard.md"
       ],
       "planned_targets": [],
       "external_targets": [],
@@ -1607,7 +1675,10 @@
         "Docs/en/explanation/scripting-runtime/index.md",
         "Docs/en/contributing/documentation/index.md",
         "BuildTools/buildtools.py",
-        "BuildTools/tests/test_docs_angelscript_style.py"
+        "BuildTools/tests/test_docs_angelscript_style.py",
+        "BuildTools/check_angelscript_hygiene.py",
+        "BuildTools/tests/test_check_angelscript_hygiene.py",
+        "Docs/en/how-to/project/script-and-binding-checks.md"
       ],
       "planned_targets": [],
       "external_targets": [],
@@ -1837,7 +1908,8 @@
       "priority": "P1",
       "engine_targets": [
         "Docs/en/how-to/project/vscode-workspace.md",
-        "Docs/en/contributing/tooling/vscode-extensions.md"
+        "Docs/en/contributing/tooling/vscode-extensions.md",
+        "BuildTools/buildtools.py"
       ],
       "planned_targets": [],
       "external_targets": [],
@@ -1920,7 +1992,10 @@
       "priority": "P1",
       "engine_targets": [
         "Docs/en/how-to/project/continuous-integration.md",
-        "Docs/en/how-to/project/versioning-and-releases.md"
+        "Docs/en/how-to/project/versioning-and-releases.md",
+        "BuildTools/release_preflight.py",
+        "BuildTools/artifact_checksums.py",
+        "Docs/en/how-to/project/release-tooling.md"
       ],
       "planned_targets": [],
       "external_targets": [
@@ -1935,7 +2010,7 @@
         "platform"
       ],
       "promotion_gate": "Move any reusable CI step runner or workflow gate into Engine with tests before a concrete command is named in Engine documentation.",
-      "decision": "The Engine documents the job order, trust boundaries and preflight pattern; step runners, workflow gates and publication hosts remain project-owned."
+      "decision": "The Engine owns the job order, trust boundaries, release preflight and checksum tooling; step runners, workflow gates and publication hosts remain project-owned."
     },
     {
       "id": "project-quality-gates",
@@ -1968,7 +2043,11 @@
       "priority": "P1",
       "engine_targets": [
         "Docs/en/how-to/project/quality-gates.md",
-        "Docs/en/how-to/project/project-tests.md"
+        "Docs/en/how-to/project/project-tests.md",
+        "Docs/en/how-to/project/documentation-checks.md",
+        "Docs/en/how-to/project/script-and-binding-checks.md",
+        "Docs/en/how-to/project/native-source-audits.md",
+        "Docs/en/how-to/project/native-safety-audits.md"
       ],
       "planned_targets": [],
       "external_targets": [
@@ -2005,11 +2084,13 @@
         }
       ],
       "reusable_claim": "A project version is machine-written, monotonic and unique per release, and is distinct from Engine, compatibility, data and package identities.",
-      "disposition": "boundary-owned",
+      "disposition": "promoted",
       "owner": "build-release",
       "priority": "P1",
       "engine_targets": [
-        "Docs/en/how-to/project/versioning-and-releases.md"
+        "Docs/en/how-to/project/versioning-and-releases.md",
+        "BuildTools/project_version.py",
+        "Docs/en/how-to/project/release-tooling.md"
       ],
       "planned_targets": [],
       "external_targets": [
@@ -2022,7 +2103,7 @@
         "runtime"
       ],
       "promotion_gate": "Scheme-specific encodings stay out of Engine; the requirements are re-derived from the identities documented in Engine versioning and updater sources.",
-      "decision": "The Engine documents the identities and the requirements for a project version; the generator and its encoding remain project-owned."
+      "decision": "The Engine owns the generic project version generator and checker with pluggable schemes; a project keeps its own encoding as a scheme or configuration."
     },
     {
       "id": "project-docs-and-agent-process",
@@ -2061,28 +2142,55 @@
       ],
       "promotion_gate": "Presented as an optional pattern with rationale; authority, language and publication rules stay project policy.",
       "decision": "The Engine documents the pattern for teams that use agents; instruction contents, language policy and authority rules remain project-owned."
+    },
+    {
+      "id": "project-markdown-link-checks",
+      "title": "Markdown link and anchor checks for project documentation",
+      "sources": [
+        {
+          "snapshot": "last-frontier",
+          "path": "Tools/DocLinkAudit/doc_link_audit.py"
+        }
+      ],
+      "reusable_claim": "Both projects check local links and GitHub-style anchors with independent implementations, and the Engine documentation validator had a third.",
+      "disposition": "promoted",
+      "owner": "documentation",
+      "priority": "P2",
+      "engine_targets": [
+        "BuildTools/markdown_links.py",
+        "Docs/en/how-to/project/documentation-checks.md"
+      ],
+      "planned_targets": [],
+      "external_targets": [],
+      "required_reviews": [
+        "documentation",
+        "quality",
+        "tooling"
+      ],
+      "promotion_gate": "One shared module with tests is used by the Engine documentation validator and exposed as a command.",
+      "decision": "The Engine owns the link and anchor checker; evidence snapshot verification and other Ops-specific audits stay project-owned."
     }
   ],
   "summary": {
     "snapshot_count": 3,
-    "record_count": 38,
-    "source_reference_count": 224,
+    "record_count": 39,
+    "source_reference_count": 234,
     "records_by_disposition": {
-      "boundary-owned": 6,
+      "boundary-owned": 5,
       "project-owned": 3,
-      "promoted": 28,
+      "promoted": 30,
       "promotion-candidate": 1
     },
     "records_by_priority": {
       "P0": 19,
       "P1": 11,
-      "P2": 4,
+      "P2": 5,
       "P3": 4
     },
     "records_by_owner": {
       "build-release": 7,
       "content-data": 6,
-      "documentation": 2,
+      "documentation": 3,
       "frontend": 5,
       "localization": 1,
       "quality": 5,

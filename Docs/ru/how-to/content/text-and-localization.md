@@ -5,7 +5,7 @@ locale: ru
 document_id: text-and-localization-guide
 permalink: /Docs/ru/how-to/content/text-and-localization.html
 ---
-<!-- docs-translation: {"document_id":"text-and-localization-guide","locale":"ru","source_path":"Docs/en/how-to/content/text-and-localization.md","source_sha256":"5aed7e56ef6d40d41146231ac6c670d340eeb21d61356019e4ce330d42db33f2"} -->
+<!-- docs-translation: {"document_id":"text-and-localization-guide","locale":"ru","source_path":"Docs/en/how-to/content/text-and-localization.md","source_sha256":"12a7da560caa23e1d0376b5a56e4b34f0f4fed51e904381daafc42438893c31b"} -->
 # Текст и локализация
 
 Engine определяет формат исходных `.fotxt`, поля `$Text` прототипов, запекание

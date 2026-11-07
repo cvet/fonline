@@ -770,10 +770,6 @@
         {
           "snapshot": "last-frontier",
           "path": "Scripts/Testing.cs"
-        },
-        {
-          "snapshot": "fonline-tla",
-          "path": "Scripts/Testing.fos"
         }
       ],
       "reusable_claim": "Games benefit from deterministic fixture setup, boundary-based test selection, narrow-first execution, timeout/log contracts, and cross-layer integration evidence.",
@@ -1065,7 +1061,11 @@
         "Examples/AiControlSample",
         "BuildTools/ai_control_mcp",
         "BuildTools/tests/test_ai_control_mcp.py",
-        "Docs/en/how-to/project/ai-control-mcp.md"
+        "Docs/en/how-to/project/ai-control-mcp.md",
+        "Source/Client/AiControlListener.h",
+        "Source/Client/AiControlListener.cpp",
+        "Source/Tests/Test_AiControlListener.cpp",
+        "Docs/en/how-to/project/native-ai-bridge.md"
       ],
       "planned_targets": [],
       "external_targets": [],
@@ -1077,7 +1077,7 @@
         "documentation"
       ],
       "promotion_gate": "Keep the generated experimental contract, loopback threat boundary, reference client, malformed-peer tests, protocol smoke, and runnable sample current; a native core listener still requires a separate runtime and security promotion.",
-      "decision": "Promote only the transport envelope, authorization, bounded command/event lifecycle, reference client, and protocol sample; keep every project's observation schema, action catalog, administrator tools, and MCP namespace project-owned."
+      "decision": "Promote only the transport envelope, authorization, bounded command/event lifecycle, reference client, and protocol sample; keep every project's observation schema, action catalog, administrator tools, and MCP namespace project-owned. The generic MCP adapter core and the optional native client listener (FO_AI_CONTROL) are Engine-owned; game command sets, observation fields, launch recipes and scenario playtests stay with the projects."
     },
     {
       "id": "packaging-platform-and-release",
@@ -1989,10 +1989,6 @@
         {
           "snapshot": "last-frontier",
           "path": "Tools/DocLinkAudit/doc_link_audit.py"
-        },
-        {
-          "snapshot": "fonline-tla",
-          "path": "Tools/DocsCheck/check_docs.py"
         }
       ],
       "reusable_claim": "Both projects check local links and GitHub-style anchors with independent implementations, and the Engine documentation validator had a third.",

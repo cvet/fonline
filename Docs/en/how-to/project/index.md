@@ -46,7 +46,7 @@ This section follows a game repository from the first workstation to routine mai
 | Numbering and shipping builds | [Version and Release a Game Project](versioning-and-releases.md) |
 | Generating `VERSION`, preflighting a release, writing package checksums, recording an Engine update | [Release Tooling for a Game Project](release-tooling.md) |
 | Working with AI coding agents | [Maintain a Project with AI Coding Agents](ai-assisted-maintenance.md) |
-| Letting an AI agent observe and play a development build | [Drive a Game with the AiControl MCP Adapter](ai-control-mcp.md) |
+| Letting an AI agent observe and play a development build | [Drive a Game with the AiControl MCP Adapter](ai-control-mcp.md), and [Embed the AiControl Listener in a Game Client](native-ai-bridge.md) for the client side |
 
 ## The lifecycle at a glance
 

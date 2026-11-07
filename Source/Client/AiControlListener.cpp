@@ -36,10 +36,11 @@ static auto IsValidRequestId(const nlohmann::json& id) -> bool;
 static auto IsLoopbackAddress(uint32_t addr_net_order) -> bool;
 static auto TokensEqual(string_view left, string_view right) noexcept -> bool;
 static auto ReadCommandFields(const nlohmann::json& params, AiControlCommand& command) -> bool;
-static auto ReadIdent(const nlohmann::json& params, const std::string& name, ident_t& value) -> bool;
-static auto ReadInt32(const nlohmann::json& params, const std::string& name, int32_t& value) -> bool;
-static auto ReadString(const nlohmann::json& params, const std::string& name, string& value) -> bool;
-static auto ReadBool(const nlohmann::json& params, const std::string& name, bool& value) -> bool;
+static auto ReadIdent(const nlohmann::json& params, string_view name, ident_t& value) -> bool;
+static auto ReadInt32(const nlohmann::json& params, string_view name, int32_t& value) -> bool;
+static auto ReadString(const nlohmann::json& params, string_view name, string& value) -> bool;
+static auto ReadBool(const nlohmann::json& params, string_view name, bool& value) -> bool;
+static auto JsonStringView(const nlohmann::json& value) -> string_view;
 static auto ReadEventCursor(const nlohmann::json& params, uint64_t& after_seq, int32_t& limit) -> bool;
 static auto MakeLogExceptionEvent(logging::type type, string_view message, bool has_stack_trace) -> optional<string>;
 static auto ClassifyLogException(logging::type type, string_view message) -> string_view;
@@ -64,14 +65,14 @@ auto AiControlListener::GetStatusJson() const -> string
 
     nlohmann::json status {};
     status["running"] = _running.load(std::memory_order_acquire);
-    status["host"] = std::string(_config.Host);
+    status["host"] = string_view {_config.Host};
     status["port"] = _config.Port;
     status["queuedCommands"] = _commands.size();
     status["maxQueuedCommands"] = _config.MaxQueuedCommands;
     status["events"] = _events.size();
     status["maxEvents"] = _config.MaxEvents;
     status["observationSeq"] = _observationSeq;
-    status["lastError"] = std::string(_lastError);
+    status["lastError"] = string_view {_lastError};
 
     return DumpJson(status);
 }
@@ -129,6 +130,13 @@ void AiControlListener::Start(const AiControlListenerConfig& config)
     if (!_server.listen(bind_address, config.Port, 1, true)) {
         throw AiControlException("AiControl listener cannot listen", bind_address, config.Port, net_sockets::last_error_text());
     }
+
+    // A failed log hook or thread start must not leave the port bound and the listener reported as running
+    auto stop_on_fail {scope_fail([this]() noexcept {
+        UnregisterLogCallback();
+        _server.close();
+        _running.store(false, std::memory_order_release);
+    })};
 
     _config = config;
     _config.Host = std::move(host);
@@ -195,7 +203,7 @@ void AiControlListener::CompleteCommand(uint32_t command_seq, bool success, stri
     event["type"] = "command_completed";
     event["commandSeq"] = command_seq;
     event["success"] = success;
-    event["message"] = std::string(LimitText(message, AI_CONTROL_MAX_MESSAGE_BYTES));
+    event["message"] = LimitText(message, AI_CONTROL_MAX_MESSAGE_BYTES);
 
     AppendEvent(DumpJson(event));
 }
@@ -349,8 +357,8 @@ auto AiControlListener::HandleLine(string_view line, bool& authorized) -> string
     auto jsonrpc_it {request.find("jsonrpc")};
     auto method_it {request.find("method")};
     auto params_it {request.find("params")};
-    bool valid_jsonrpc {jsonrpc_it != request.end() && jsonrpc_it->is_string() && jsonrpc_it->get<std::string>() == "2.0"};
-    bool valid_method {method_it != request.end() && method_it->is_string() && !method_it->get<std::string>().empty()};
+    bool valid_jsonrpc {jsonrpc_it != request.end() && jsonrpc_it->is_string() && JsonStringView(*jsonrpc_it) == "2.0"};
+    bool valid_method {method_it != request.end() && method_it->is_string() && !JsonStringView(*method_it).empty()};
     bool valid_params {params_it == request.end() || params_it->is_object()};
 
     if (!valid_jsonrpc || !valid_method || !valid_params) {
@@ -359,11 +367,11 @@ auto AiControlListener::HandleLine(string_view line, bool& authorized) -> string
 
     nlohmann::json params {};
     params = params_it != request.end() ? *params_it : nlohmann::json::object();
-    std::string method {method_it->get<std::string>()};
+    string_view method {JsonStringView(*method_it)};
 
     if (method == "auth") {
         auto token_it {params.find("token")};
-        bool token_matches {token_it != params.end() && token_it->is_string() && TokensEqual(token_it->get<std::string>(), _config.Token)};
+        bool token_matches {token_it != params.end() && token_it->is_string() && TokensEqual(JsonStringView(*token_it), _config.Token)};
         authorized = _config.Token.empty() || token_matches;
         return MakeResult(id, authorized ? R"({"authorized":true})" : R"({"authorized":false})");
     }
@@ -407,12 +415,12 @@ auto AiControlListener::HandleLine(string_view line, bool& authorized) -> string
     if (method == "act") {
         auto type_it {params.find("type")};
 
-        if (type_it == params.end() || !type_it->is_string() || type_it->get<std::string>().empty()) {
+        if (type_it == params.end() || !type_it->is_string() || JsonStringView(*type_it).empty()) {
             return MakeError(id, AI_CONTROL_ERROR_INVALID_PARAMS, "Missing command type");
         }
 
         AiControlCommand command {};
-        command.Type = string {type_it->get<std::string>()};
+        command.Type = string {JsonStringView(*type_it)};
 
         if (!ReadCommandFields(params, command)) {
             return MakeError(id, AI_CONTROL_ERROR_INVALID_PARAMS, "Invalid command field");
@@ -637,7 +645,7 @@ static auto MakeError(const nlohmann::json& id, int32_t code, string_view messag
     nlohmann::json response {};
     response["jsonrpc"] = "2.0";
     response["id"] = id;
-    response["error"] = {{"code", code}, {"message", std::string(message)}};
+    response["error"] = {{"code", code}, {"message", message}};
 
     return DumpJson(response);
 }
@@ -676,7 +684,7 @@ static auto IsValidRequestId(const nlohmann::json& id) -> bool
         return true;
     }
 
-    return id.is_string() && id.get<std::string>().size() <= numeric_cast<size_t>(AI_CONTROL_MAX_ID_BYTES);
+    return id.is_string() && JsonStringView(id).size() <= numeric_cast<size_t>(AI_CONTROL_MAX_ID_BYTES);
 }
 
 static auto IsLoopbackAddress(uint32_t addr_net_order) -> bool
@@ -715,7 +723,7 @@ static auto ReadCommandFields(const nlohmann::json& params, AiControlCommand& co
         ReadBool(params, "append", command.Append);
 }
 
-static auto ReadIdent(const nlohmann::json& params, const std::string& name, ident_t& value) -> bool
+static auto ReadIdent(const nlohmann::json& params, string_view name, ident_t& value) -> bool
 {
     auto it {params.find(name)};
 
@@ -734,7 +742,7 @@ static auto ReadIdent(const nlohmann::json& params, const std::string& name, ide
 
     // Decimal strings carry 64-bit identifiers past the precision of JSON number parsers
     if (it->is_string()) {
-        std::string text {it->get<std::string>()};
+        string_view text {JsonStringView(*it)};
 
         if (text.empty() || text.size() > 18 || !std::ranges::all_of(text, [](char ch) { return ch >= '0' && ch <= '9'; })) {
             return false;
@@ -747,7 +755,7 @@ static auto ReadIdent(const nlohmann::json& params, const std::string& name, ide
     return false;
 }
 
-static auto ReadInt32(const nlohmann::json& params, const std::string& name, int32_t& value) -> bool
+static auto ReadInt32(const nlohmann::json& params, string_view name, int32_t& value) -> bool
 {
     auto it {params.find(name)};
 
@@ -769,7 +777,7 @@ static auto ReadInt32(const nlohmann::json& params, const std::string& name, int
     return true;
 }
 
-static auto ReadString(const nlohmann::json& params, const std::string& name, string& value) -> bool
+static auto ReadString(const nlohmann::json& params, string_view name, string& value) -> bool
 {
     auto it {params.find(name)};
 
@@ -781,11 +789,11 @@ static auto ReadString(const nlohmann::json& params, const std::string& name, st
         return false;
     }
 
-    value = string {it->get<std::string>()};
+    value = string {JsonStringView(*it)};
     return true;
 }
 
-static auto ReadBool(const nlohmann::json& params, const std::string& name, bool& value) -> bool
+static auto ReadBool(const nlohmann::json& params, string_view name, bool& value) -> bool
 {
     auto it {params.find(name)};
 
@@ -799,6 +807,12 @@ static auto ReadBool(const nlohmann::json& params, const std::string& name, bool
 
     value = it->get<bool>();
     return true;
+}
+
+static auto JsonStringView(const nlohmann::json& value) -> string_view
+{
+    // Reads the text the json value already owns instead of copying it out; callers check is_string first
+    return value.get_ref<const nlohmann::json::string_t&>();
 }
 
 static auto ReadEventCursor(const nlohmann::json& params, uint64_t& after_seq, int32_t& limit) -> bool
@@ -839,10 +853,10 @@ static auto MakeLogExceptionEvent(logging::type type, string_view message, bool 
     nlohmann::json event {};
     event["type"] = "runtime_exception";
     event["source"] = "engine_log";
-    event["level"] = std::string(LogTypeToString(type));
-    event["category"] = std::string(category);
-    event["message"] = std::string(LimitText(TrimText(message), AI_CONTROL_MAX_MESSAGE_BYTES));
-    event["raw"] = std::string(LimitText(message, AI_CONTROL_MAX_MESSAGE_BYTES));
+    event["level"] = LogTypeToString(type);
+    event["category"] = category;
+    event["message"] = LimitText(TrimText(message), AI_CONTROL_MAX_MESSAGE_BYTES);
+    event["raw"] = LimitText(message, AI_CONTROL_MAX_MESSAGE_BYTES);
     event["hasStackTrace"] = has_stack_trace;
 
     return DumpJson(event);

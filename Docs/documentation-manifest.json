@@ -323,7 +323,8 @@
           "project-reading-engine-formats",
           "project-release-tooling",
           "project-script-and-binding-checks",
-          "project-script-test-harness"
+          "project-script-test-harness",
+          "project-native-ai-bridge"
         ]
       },
       {
@@ -2613,7 +2614,10 @@
         "Docs/en/reference/platforms/support-matrix.md",
         "Docs/en/how-to/platforms/web-debugging.md",
         "Docs/en/how-to/platforms/android-debugging.md",
-        "Docs/en/explanation/runtime/client-updater.md"
+        "Docs/en/explanation/runtime/client-updater.md",
+        "Examples/PackagingMatrix/",
+        "Examples/MinimalProject/",
+        "Examples/MinimalMultiplayer/"
       ]
     },
     "Docs/PackagingAndRelease.md": {
@@ -3674,7 +3678,38 @@
       "sources": [
         "Source/Client",
         "Source/Server",
-        "Source/Common"
+        "Source/Common",
+        "Source/Common/NetBuffer.h",
+        "Source/Common/NetBuffer.cpp",
+        "Source/Common/NoiseProtocol.h",
+        "Source/Common/NoiseProtocol.cpp",
+        "Source/Common/SecureChannel.h",
+        "Source/Common/SecureChannel.cpp",
+        "Source/Common/NetworkUdp.h",
+        "Source/Common/NetworkUdp.cpp",
+        "Source/Common/Settings.inc",
+        "Source/Common/LinkDelay.cpp",
+        "Source/Essentials/TimeRelated.h",
+        "Source/Tests/Test_LinkDelay.cpp",
+        "Source/Client/NetworkClient.h",
+        "Source/Client/NetworkClient-Interthread.cpp",
+        "Source/Client/NetworkClient-Sockets.cpp",
+        "Source/Client/NetworkClient-UdpSockets.cpp",
+        "Source/Server/NetworkServer.h",
+        "Source/Server/NetworkServer-Interthread.cpp",
+        "Source/Server/NetworkServer-UdpSockets.cpp",
+        "Source/Server/NetworkServer-Asio.cpp",
+        "Source/Server/NetworkServer-WebSockets.cpp",
+        "Source/Server/Server.cpp",
+        "Source/Server/ServerConnection.h",
+        "Source/Server/ServerConnection.cpp",
+        "Source/Tests/Test_NetworkUdp.cpp",
+        "Source/Tests/Test_NetworkClient.cpp",
+        "Source/Tests/Test_NetworkServer.cpp",
+        "Source/Tests/Test_ClientServerIntegration.cpp",
+        "Source/Tests/Test_Cryptography.cpp",
+        "Source/Tests/Test_NoiseProtocol.cpp",
+        "Source/Tests/Test_SecureChannel.cpp"
       ]
     },
     "Docs/Networking.md": {
@@ -3956,7 +3991,38 @@
         "Source/Tools/ManagedScriptBaker.cpp",
         "ThirdParty/AngelScript",
         "BuildTools/cmake/stages/ScriptsAndBaking.cmake",
-        "BuildTools/managed_runtime_payload.py"
+        "BuildTools/managed_runtime_payload.py",
+        "Source/Common/ScriptSystem.h",
+        "Source/Common/ScriptSystem.cpp",
+        "Source/Scripting/AngelScript/AngelScriptScripting.h",
+        "Source/Scripting/AngelScript/AngelScriptScripting.cpp",
+        "Source/Scripting/AngelScript/AngelScriptBackend.h",
+        "Source/Scripting/AngelScript/AngelScriptBackend.cpp",
+        "Source/Scripting/AngelScript/AngelScriptAttributes.cpp",
+        "Source/Scripting/AngelScript/AngelScriptCall.cpp",
+        "Source/Scripting/AngelScript/AngelScriptEntity.cpp",
+        "Source/Scripting/AngelScript/AngelScriptGlobals.cpp",
+        "Source/Scripting/AngelScript/AngelScriptRemoteCalls.cpp",
+        "Source/Scripting/AngelScript/AngelScriptReflection.cpp",
+        "ThirdParty/AngelScript/sdk/angelscript/source/as_compiler.cpp",
+        "Source/Scripting/Managed/ManagedHost/ManagedLoadContextHost.cs",
+        "Source/Scripting/Native/.keepalive",
+        "Source/Tests/Test_AngelScriptAttributes.cpp",
+        "Source/Tests/Test_AngelScriptBaker.cpp",
+        "Source/Tests/Test_AngelScriptBytecode.cpp",
+        "Source/Tests/Test_AngelScriptCall.cpp",
+        "Source/Tests/Test_ManagedScriptBaker.cpp",
+        "Source/Tests/Test_ManagedScriptRuntime.cpp",
+        "Source/Tests/Test_ClientDataValidation.cpp",
+        "Source/Tests/Test_AngelScriptCommonScriptMethods.cpp",
+        "Source/Tests/Test_EntityLifecycle.cpp",
+        "Source/Tests/Test_AngelScriptEntityLifecycle.cpp",
+        "Source/Tests/Test_EntitySync.cpp",
+        "Source/Tests/Test_MetadataBaker.cpp",
+        "Source/Tests/Test_NetBuffer.cpp",
+        "Source/Tests/Test_AngelScriptBuiltins.cpp",
+        "Source/Tests/Test_AngelScriptEntityOps.cpp",
+        "Source/Tests/Test_AngelScriptServerScriptMethods.cpp"
       ]
     },
     "Docs/Scripting.md": {
@@ -4225,7 +4291,20 @@
         "Source/Tests/Test_NetBuffer.cpp",
         "BuildTools/docs_metadata.py",
         "BuildTools/tests/test_docs_metadata.py",
-        "Examples/MinimalProject"
+        "Examples/MinimalProject",
+        "Source/Common/EngineBase.cpp",
+        "Source/Common/Settings.inc",
+        "Source/Common/NetBuffer.cpp",
+        "Source/Server/ClientDataValidation.h",
+        "Source/Scripting/AngelScript/AngelScriptAttributes.cpp",
+        "Source/Scripting/Managed/ManagedScriptBackend.cpp",
+        "Source/Scripting/Managed/CoreScripts/RemoteCall.cs",
+        "Source/Scripting/Managed/CoreScripts/RemoteCallScriptFuncs.cs",
+        "Source/Tools/ManagedScriptBaker.cpp",
+        "Source/Tests/Test_ManagedScriptBaker.cpp",
+        "Source/Scripting/Managed/Tests/BootstrapScenarios.cs",
+        "Examples/MinimalProject/Scripts/Starter.fos",
+        "Examples/MinimalProject/run_starter_smoke.py"
       ]
     },
     "Docs/RemoteCalls.md": {
@@ -13429,6 +13508,8 @@
         "BuildTools/Init.cmake",
         "BuildTools/buildtools.py",
         "BuildTools/cmake/ProjectInterface.json",
+        "BuildTools/cmake/helpers/Build.cmake",
+        "BuildTools/cmake/stages/Applications.cmake",
         "BuildTools/cmake/stages/Init.cmake",
         "Docs/en/how-to/build/embedding-project.md",
         "Docs/en/how-to/build/project-configuration.md",
@@ -13442,9 +13523,7 @@
         "Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain",
         "Examples/NativeExtensionSample",
         "Examples/PublicRepositoryTemplate",
-        "Examples/PublicRepositories.json",
-        "BuildTools/cmake/helpers/Build.cmake",
-        "BuildTools/cmake/stages/Applications.cmake"
+        "Examples/PublicRepositories.json"
       ]
     },
     "Docs/en/how-to/project/vscode-workspace.md": {
@@ -13528,6 +13607,14 @@
         "BuildTools/format-source.cmd",
         "BuildTools/check_native_source_layout.py",
         "BuildTools/check_native_modules.py",
+        "BuildTools/native_source_audit.py",
+        "BuildTools/native_safety_audit.py",
+        "BuildTools/check_script_bindings.py",
+        "BuildTools/check_angelscript_hygiene.py",
+        "BuildTools/format_content.py",
+        "BuildTools/migration_guard.py",
+        "BuildTools/check_text_packs.py",
+        "BuildTools/markdown_links.py",
         "BuildTools/NativeModuleExceptions.json",
         "BuildTools/temporary_compat.py",
         "BuildTools/docs_metadata.py",
@@ -13590,6 +13677,7 @@
         "Source/Tools/ConfigBaker.cpp",
         "Examples/GameplayTestHarness/README.md",
         "Examples/GameplayTestHarness/synthetic-smoke.json",
+        "Examples/GameplayTestHarness/ScriptTests/script-tests.json",
         "Examples/MinimalMultiplayer/CMakeLists.txt",
         "Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain",
         "Examples/MinimalMultiplayer/Scripts/Tutorial.fos",
@@ -13597,6 +13685,7 @@
         "Examples/NativeExtensionSample/CMakeLists.txt",
         "Examples/NativeExtensionSample/Tests/NativeExtensionCoreTest.cpp",
         "Docs/en/how-to/testing/gameplay-and-integration.md",
+        "Docs/en/how-to/project/script-test-harness.md",
         "Docs/en/contributing/testing/index.md",
         "Docs/en/tutorials/first-test.md",
         "Docs/en/how-to/native-extensions.md",
@@ -13604,9 +13693,7 @@
         "Docs/en/how-to/build/generated-content.md",
         "Docs/en/explanation/content-pipeline/baking.md",
         "Docs/en/reference/metadata/index.md",
-        "Docs/en/reference/script-api/settings.md",
-        "Examples/GameplayTestHarness/ScriptTests/script-tests.json",
-        "Docs/en/how-to/project/script-test-harness.md"
+        "Docs/en/reference/script-api/settings.md"
       ]
     },
     "Docs/en/how-to/project/continuous-integration.md": {
@@ -13719,9 +13806,12 @@
       "disposition": "retain",
       "target": "Docs/en/how-to/project/versioning-and-releases.md",
       "sources": [
+        "BuildTools/artifact_checksums.py",
         "BuildTools/cmake/stages/Init.cmake",
         "BuildTools/codegen.py",
         "BuildTools/package.py",
+        "BuildTools/project_version.py",
+        "BuildTools/release_preflight.py",
         "BuildTools/tests/test_package_wix_installer.py",
         "Docs/en/explanation/runtime/client-updater.md",
         "Docs/en/how-to/build/project-configuration.md",
@@ -13738,10 +13828,7 @@
         "Source/Common/Settings.cpp",
         "Source/Common/Settings.inc",
         "Source/Frontend/ApplicationInit.cpp",
-        "Source/Tests/Test_Settings.cpp",
-        "BuildTools/artifact_checksums.py",
-        "BuildTools/project_version.py",
-        "BuildTools/release_preflight.py"
+        "Source/Tests/Test_Settings.cpp"
       ]
     },
     "Docs/en/how-to/project/ai-assisted-maintenance.md": {
@@ -14489,6 +14576,45 @@
         "Source/Scripting/AngelScript/AngelScriptGlobals.cpp",
         "Source/Scripting/Managed/CoreScripts/Attributes.cs",
         "Source/Scripting/Managed/CoreScripts/TimePlace.cs"
+      ]
+    },
+    "Docs/en/how-to/project/native-ai-bridge.md": {
+      "id": "project-native-ai-bridge",
+      "title": "Embed the AiControl Listener in a Game Client",
+      "audiences": [
+        "game-developer",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "how-to",
+        "visibility": "public",
+        "human": true,
+        "translation": "required"
+      },
+      "owner": "runtime",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/how-to/project/native-ai-bridge.md",
+      "sources": [
+        "Source/Client/AiControlListener.h",
+        "Source/Client/AiControlListener.cpp",
+        "Source/Client/Client.h",
+        "Source/Client/Client.cpp",
+        "Source/Scripting/ClientGlobalScriptMethods.cpp",
+        "Source/Scripting/ServerGlobalScriptMethods.cpp",
+        "Source/Server/ServerImage.h",
+        "Source/Server/ServerImage.cpp",
+        "Source/Essentials/NetSockets.h",
+        "Source/Essentials/NetSockets.cpp",
+        "Source/Tests/Test_AiControlListener.cpp",
+        "Source/Tests/Test_ServerImage.cpp",
+        "BuildTools/cmake/stages/Init.cmake",
+        "BuildTools/cmake/stages/EngineSources.cmake",
+        "BuildTools/cmake/ProjectInterface.json",
+        "BuildTools/validation-project/CMakeLists.txt",
+        "BuildTools/AiControlProtocol.json",
+        "BuildTools/ai_control_client.py",
+        "Examples/AiControlSample/"
       ]
     }
   }

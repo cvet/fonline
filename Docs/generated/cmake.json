@@ -28,18 +28,18 @@
     "declared interface default"
   ],
   "summary": {
-    "option_count": 62,
+    "option_count": 63,
     "required_option_count": 8,
-    "optional_option_count": 54,
+    "optional_option_count": 55,
     "options_by_cache_type": {
-      "BOOL": 37,
+      "BOOL": 38,
       "STRING": 25
     },
     "options_by_category": {
       "capacity": 2,
       "dependency": 17,
       "diagnostics": 1,
-      "feature": 3,
+      "feature": 4,
       "geometry": 6,
       "model-shape": 4,
       "native-interface": 1,
@@ -589,6 +589,17 @@
       "description": "Enable the ACM audio importer.",
       "affects_baking": true,
       "id": "cmake.option.FO_AUDIO_ACM"
+    },
+    {
+      "name": "FO_AI_CONTROL",
+      "cache_type": "BOOL",
+      "value_kind": "boolean",
+      "required": false,
+      "default": "OFF",
+      "category": "feature",
+      "description": "Compile the development AiControl listener into Windows, Linux, and macOS clients; keep it OFF for shipping builds.",
+      "affects_baking": false,
+      "id": "cmake.option.FO_AI_CONTROL"
     },
     {
       "name": "FO_DISABLE_ASIO",

@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/project/engine-contract-analyzers.html
 ---
 
 # Анализаторы контрактов движка для проектов на Managed C#
-<!-- docs-translation: {"document_id":"project-engine-contract-analyzers","locale":"ru","source_path":"Docs/en/how-to/project/engine-contract-analyzers.md","source_sha256":"PLACEHOLDER"} -->
+<!-- docs-translation: {"document_id":"project-engine-contract-analyzers","locale":"ru","source_path":"Docs/en/how-to/project/engine-contract-analyzers.md","source_sha256":"047d4b737d98b7ebc5c374e6ef0428abb86214bcc24785a7c10c72132ae0459b"} -->
 `FOnline.Analyzers` проверяет исходники скриптов Managed C# на соответствие контрактам, которыми владеет движок: как вызываются точки входа с атрибутами, как пишутся вызовы помощников `Invariant` и какие статические поля может очистить проход при остановке. На этой странице перечислены эти правила и показано, как встраивающий игровой проект включает и настраивает их и как держит собственные правила стиля и именования в отдельном анализаторе рядом с ними. Правила покрытия сущностей (`FOSYNC*`) находятся в той же сборке и описаны в [Managed C# Scripting](../scripting/managed-csharp.md#серверная-синхронизация-сущностей).
 
 ## Проверенные пути исходников

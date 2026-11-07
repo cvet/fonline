@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/project/project-tests.html
 ---
 
 # Добавление и запуск тестов в игровом проекте
-<!-- docs-translation: {"document_id":"project-tests","locale":"ru","source_path":"Docs/en/how-to/project/project-tests.md","source_sha256":"d15d824b978236467ca56d2f6ddf6423c6996ceb2e9ef99843e7675cdc6f68d4"} -->
+<!-- docs-translation: {"document_id":"project-tests","locale":"ru","source_path":"Docs/en/how-to/project/project-tests.md","source_sha256":"0268887e3b63f8c15471c7919f9849bee39468e1ddbd17ece9a0b2558f51b79a"} -->
 Это руководство для игровой команды, которой нужны автоматические тесты сверх
 проверки «запускается». Оно показывает, как выбрать самую дешёвую границу теста,
 способную наблюдать изменение, как добавить нативные unit-тесты через роль

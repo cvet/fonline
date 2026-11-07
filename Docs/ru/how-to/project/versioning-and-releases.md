@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/project/versioning-and-releases.html
 ---
 
 # Версионирование и выпуск игрового проекта
-<!-- docs-translation: {"document_id":"project-versioning-and-releases","locale":"ru","source_path":"Docs/en/how-to/project/versioning-and-releases.md","source_sha256":"2d5647cb3fc996bacad3d5dde9e1efc8baf783efe779e49de6e43fc70ff1de56"} -->
+<!-- docs-translation: {"document_id":"project-versioning-and-releases","locale":"ru","source_path":"Docs/en/how-to/project/versioning-and-releases.md","source_sha256":"f22cb0eb13f04dc2d99983ec5eaf1e7615187969300b098e5be2d3103c6765d0"} -->
 Игровой репозиторий несёт несколько идентичностей, похожих на версии: они
 отвечают на разные вопросы и принадлежат разным сторонам. Это руководство
 разделяет их, показывает, как дать игре сгенерированную монотонную версию и

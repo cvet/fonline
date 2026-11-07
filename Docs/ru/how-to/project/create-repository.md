@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/project/create-repository.html
 ---
 
 # Создание репозитория игры на FOnline
-<!-- docs-translation: {"document_id":"project-create-repository","locale":"ru","source_path":"Docs/en/how-to/project/create-repository.md","source_sha256":"e0c04fc4cc1c330cd29c8790ccfaecdd06ca353c7e2aa932bb315d19d05bef43"} -->
+<!-- docs-translation: {"document_id":"project-create-repository","locale":"ru","source_path":"Docs/en/how-to/project/create-repository.md","source_sha256":"2a2163651ac73cce52c2cd06116b5c19e52d5abd8dcc22c00f3bf63f36c8a1f5"} -->
 Это руководство ведёт игровую команду от пустого каталога до репозитория,
 который конфигурируется, собирает ресурсы и проходит smoke-запуск на закреплённой
 ревизии движка. Здесь объясняется, чем владеет каждый корневой файл, как

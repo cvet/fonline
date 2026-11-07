@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/project/quality-gates.html
 ---
 
 # Поддержание здоровья игрового проекта: форматирование, анализ и проверки
-<!-- docs-translation: {"document_id":"project-quality-gates","locale":"ru","source_path":"Docs/en/how-to/project/quality-gates.md","source_sha256":"36f1fced7f48226efa5dd053e4d2492aa36e3c0d9fb2ec6d9d470fd0b676d197"} -->
+<!-- docs-translation: {"document_id":"project-quality-gates","locale":"ru","source_path":"Docs/en/how-to/project/quality-gates.md","source_sha256":"1d547f1cc03e10df835c5faee2143d0069618058fdef70f201c6c1c58a580119"} -->
 Руководство разделяет то, что встраивающий игровой проект получает от движка без
 какой-либо работы, и то, что проект должен добавить сам. Оно описывает
 дисциплину, благодаря которой эти проверки остаются осмысленными: предупреждения
