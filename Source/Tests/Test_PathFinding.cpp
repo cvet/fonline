@@ -2209,7 +2209,7 @@ TEST_CASE("PathFindingCost", "[.]")
         input.EnclosureProbeLimit = request.EnclosureProbeLimit;
         input.FreeMovement = request.FreeMovement;
         input.Multihex = request.Multihex;
-        input.CheckHex = [&check_calls, &is_blocked, local](mpos hex) -> HexBlockResult {
+        input.CheckHex = [&check_calls, &is_blocked, local, MAP_SIZE](mpos hex) -> HexBlockResult {
             check_calls++;
             ipos32 raw_hex {local(hex)};
 
