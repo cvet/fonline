@@ -11527,8 +11527,8 @@
           "translation": "Проверить доступность без установки или сборки."
         },
         "/commands/@id=cli.buildtools.command.prepare-host-workspace/arguments/@id=cli.buildtools.command.prepare-host-workspace.argument.features/description": {
-          "source_sha256": "432bc7db51aca522f790d70674901dced7c0c79755d5bbcf5de05e2241fb76e3",
-          "translation": "Подготавливаемые группы возможностей; не указывайте их, чтобы использовать значения host-системы по умолчанию."
+          "source_sha256": "439c3046f6e78b9bd0349b6ce7b86db3ad3f403c42be783b880ed6455a0fb782",
+          "translation": "Подготавливаемые группы возможностей; не указывайте их, чтобы использовать значения host-системы по умолчанию; имя, которое host-система не поддерживает, является ошибкой: linux принимает common-packages, linux-packages, web-packages, android-packages, windows-cross-packages, msi-packages, all-packages, toolset, web, android-arm32, android-arm64, android-x86, dotnet, windows-cross, msan-libcxx, all (по умолчанию: all); windows принимает toolset, web, wix, all (по умолчанию: toolset); macos не принимает возможностей; prepare-host-workspace macos только выполняет проверку host-системы."
         },
         "/commands/@id=cli.buildtools.command.prepare-host-workspace/arguments/@id=cli.buildtools.command.prepare-host-workspace.argument.host/description": {
           "source_sha256": "38448ee6847c6f315c403f28760575eda11bd40f3fc30eeb6bfb2302da76b6af",
@@ -11638,8 +11638,8 @@
           "translation": "Регистрирует явный обработчик поиска пакета, используемый перехватчиком find_package на стадии ThirdParty."
         },
         "/helpers/@id=cmake.helper.SetOption/description": {
-          "source_sha256": "c51d7f0d9b27a106400783bc54fa1e682ff032e0a306d393747daec1d774300f",
-          "translation": "Задаёт значение подключающего проекта по умолчанию, только если переменная ещё не определена."
+          "source_sha256": "7f3e90e3415c4f3ae6f3e02be0e9573beb5d080c4851dd3eeeaafadf5c693f32",
+          "translation": "Задаёт значение подключающего проекта по умолчанию, только если переменная ещё не определена. Имя FO_ должно быть объявленной опцией: снятое имя отвергается прямо в вызове с указанием замены, а любое другое необъявленное имя FO_ — после объявления опций на стадии Init. SetOptionValues применяет ту же проверку имён."
         },
         "/helpers/@id=cmake.helper.TemporaryCompat/description": {
           "source_sha256": "d0255ca6a9ec191b5990343734d320439e6094f6baae721a6cc0f9621a30a6bd",

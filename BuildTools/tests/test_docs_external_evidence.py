@@ -29,7 +29,7 @@ class ExternalProjectEvidenceTests(unittest.TestCase):
             docs_external_evidence.generate_model(ENGINE_ROOT),
         )
         self.assertEqual(self.model["summary"]["snapshot_count"], 3)
-        self.assertEqual(self.model["summary"]["record_count"], 32)
+        self.assertEqual(self.model["summary"]["record_count"], 38)
         self.assertIn(
             "private-item-policy-and-map-spectators",
             {record["id"] for record in self.model["records"]},

@@ -295,6 +295,26 @@
         ]
       },
       {
+        "id": "project",
+        "title": "Run a game project",
+        "title_ru": "Ведение игрового проекта",
+        "document_ids": [
+          "project-lifecycle",
+          "project-workstation-setup",
+          "project-create-repository",
+          "choosing-a-script-backend",
+          "project-vscode-workspace",
+          "choosing-a-data-representation",
+          "project-quality-gates",
+          "project-tests",
+          "project-continuous-integration",
+          "project-data-migrations",
+          "project-versioning-and-releases",
+          "project-ai-assisted-maintenance",
+          "setup-troubleshooting"
+        ]
+      },
+      {
         "id": "build-ship",
         "title": "Build and ship",
         "title_ru": "Сборка и выпуск",
@@ -386,7 +406,8 @@
           "networking",
           "persistence",
           "frontend-rendering",
-          "gui-runtime-guide"
+          "gui-runtime-guide",
+          "runtime-log-files"
         ]
       },
       {
@@ -404,7 +425,8 @@
           "source-tree",
           "applications-entry-points",
           "source-readme",
-          "buildtools-readme"
+          "buildtools-readme",
+          "contributing-vscode-extensions"
         ]
       },
       {
@@ -3137,7 +3159,16 @@
         "Docs/en/how-to/build/project-configuration.md",
         "Docs/en/how-to/build/generated-content.md",
         "Docs/en/reference/platforms/support-matrix.md",
-        "Docs/en/contributing/documentation/index.md"
+        "Docs/en/contributing/documentation/index.md",
+        "VERSION",
+        ".gitignore",
+        "BuildTools/docs_engine_version.py",
+        "BuildTools/engine_version.py",
+        "Docs/contract-change-dispositions.json",
+        "Docs/generated",
+        "Docs/en/reference/changelog.md",
+        "Docs/en/how-to/release/versioning.md",
+        "Docs/en/how-to/build/embedding-project.md"
       ]
     },
     "Docs/EngineUpgradeGuide.md": {
@@ -13085,6 +13116,692 @@
         "BuildTools/tests/test_buildtools_prebuilt_managed_runtime.py",
         "Docs/en/how-to/scripting/managed-csharp.md",
         "Docs/en/reference/changelog.md"
+      ]
+    },
+    "Docs/_meta/ProjectLifecycleDocumentationPlan.md": {
+      "id": "project-lifecycle-documentation-plan",
+      "title": "Project Lifecycle Documentation Plan",
+      "audiences": [
+        "engine-contributor",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "none",
+        "visibility": "internal",
+        "human": true,
+        "translation": "not-required"
+      },
+      "owner": "documentation",
+      "state": "active-plan",
+      "disposition": "retain",
+      "target": "Docs/_meta/ProjectLifecycleDocumentationPlan.md",
+      "sources": [
+        "BuildTools/Init.cmake",
+        "BuildTools/cmake/ProjectInterface.json",
+        "BuildTools/fonline-tools/package.json",
+        "BuildTools/fonline-tools/src/extension.ts",
+        "Docs/ProductionDocumentationPlan.md",
+        "Docs/en/how-to/build/embedding-project.md",
+        "Docs/en/how-to/migration/engine-upgrade.md",
+        "Examples/MinimalProject/validate.py"
+      ]
+    },
+    "Docs/en/how-to/project/index.md": {
+      "id": "project-lifecycle",
+      "title": "Project Lifecycle",
+      "audiences": [
+        "game-developer",
+        "release-operator",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "how-to",
+        "visibility": "public",
+        "human": true,
+        "translation": "required"
+      },
+      "owner": "build-release",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/how-to/project/index.md",
+      "sources": [
+        "BuildTools/Init.cmake",
+        "BuildTools/cmake/ProjectInterface.json",
+        "BuildTools/fonline-tools/package.json",
+        "Docs/en/how-to/build/embedding-project.md",
+        "Docs/en/how-to/migration/engine-upgrade.md",
+        "Examples/MinimalProject/README.md"
+      ]
+    },
+    "Docs/en/how-to/project/workstation-setup.md": {
+      "id": "project-workstation-setup",
+      "title": "Prepare a Workstation for an FOnline Project",
+      "audiences": [
+        "game-developer",
+        "release-operator",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "how-to",
+        "visibility": "public",
+        "human": true,
+        "translation": "required"
+      },
+      "owner": "build-release",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/how-to/project/workstation-setup.md",
+      "sources": [
+        "BuildTools/README.md",
+        "BuildTools/buildtools.py",
+        "BuildTools/Init.cmake",
+        "BuildTools/cmake/stages/Init.cmake",
+        "BuildTools/cmake/stages/Codegen.cmake",
+        "BuildTools/cmake/stages/ThirdParty.cmake",
+        "BuildTools/cmake/ProjectInterface.json",
+        "BuildTools/build.cmd",
+        "BuildTools/find-python.sh",
+        "BuildTools/find-python.cmd",
+        "BuildTools/prepare-workspace.sh",
+        "BuildTools/prepare-mac-workspace.sh",
+        "BuildTools/prepare-win-workspace.ps1",
+        "Docs/en/reference/buildtools/commands.md",
+        "Docs/en/reference/platforms/support-matrix.md",
+        "Docs/en/how-to/build/index.md",
+        "Docs/en/how-to/platforms/web-debugging.md",
+        "Examples/MinimalProject/CMakePresets.json",
+        "Examples/MinimalProject/CMakeLists.txt",
+        "Source/Essentials/DiskFileSystem.cpp",
+        "ThirdParty/dotnet-runtime",
+        ".github/workflows/validate.yml"
+      ]
+    },
+    "Docs/en/how-to/project/create-repository.md": {
+      "id": "project-create-repository",
+      "title": "Create an FOnline Game Repository",
+      "audiences": [
+        "game-developer",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "how-to",
+        "visibility": "public",
+        "human": true,
+        "translation": "required"
+      },
+      "owner": "build-release",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/how-to/project/create-repository.md",
+      "sources": [
+        ".gitattributes",
+        "BuildTools/Init.cmake",
+        "BuildTools/buildtools.py",
+        "BuildTools/cmake/ProjectInterface.json",
+        "BuildTools/cmake/stages/Init.cmake",
+        "Docs/en/how-to/build/embedding-project.md",
+        "Docs/en/how-to/build/project-configuration.md",
+        "Docs/en/how-to/build/public-example-repositories.md",
+        "Docs/en/how-to/build/generated-content.md",
+        "Docs/en/reference/cmake/stages.md",
+        "Docs/en/tutorials/first-project.md",
+        "Examples/MinimalProject",
+        "Examples/MinimalMultiplayer/CMakeLists.txt",
+        "Examples/MinimalMultiplayer/CMakePresets.json",
+        "Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain",
+        "Examples/NativeExtensionSample",
+        "Examples/PublicRepositoryTemplate",
+        "Examples/PublicRepositories.json"
+      ]
+    },
+    "Docs/en/how-to/project/vscode-workspace.md": {
+      "id": "project-vscode-workspace",
+      "title": "Set Up a VS Code Workspace for an FOnline Project",
+      "audiences": [
+        "game-developer",
+        "tool-developer",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "how-to",
+        "visibility": "public",
+        "human": true,
+        "translation": "required"
+      },
+      "owner": "tooling",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/how-to/project/vscode-workspace.md",
+      "sources": [
+        ".vscode/extensions.json",
+        ".gitignore",
+        ".github/workflows/validate.yml",
+        "BuildTools/fonline-tools/package.json",
+        "BuildTools/fonline-tools/tsconfig.json",
+        "BuildTools/fonline-tools/src/extension.ts",
+        "BuildTools/fonline-tools/src/jsonc.ts",
+        "BuildTools/fonline-tools/src/tests/jsonc.test.ts",
+        "BuildTools/fonline-tools/dist/extension.js",
+        "BuildTools/angelscript-debugger/package.json",
+        "BuildTools/angelscript-debugger/src/extension.ts",
+        "BuildTools/angelscript-debugger/src/activateFosDebug.ts",
+        "BuildTools/angelscript-debugger/src/attachDiscovery.ts",
+        "BuildTools/angelscript-debugger/src/fosDebug.ts",
+        "BuildTools/angelscript-debugger/src/fosRuntime.ts",
+        "BuildTools/angelscript-debugger/src/tests/adapter.test.ts",
+        "BuildTools/angelscript-debugger/src/tests/attachDiscovery.test.ts",
+        "BuildTools/tests/test_docs_debugging.py",
+        "BuildTools/build.cmd",
+        "BuildTools/build.sh",
+        "BuildTools/buildtools.py",
+        "BuildTools/cmake/helpers/Build.cmake",
+        "BuildTools/cmake/stages/Applications.cmake",
+        "BuildTools/cmake/stages/Init.cmake",
+        "Source/Common/Common.h",
+        "Source/Common/Common.cpp",
+        "Examples/MinimalProject/CMakeLists.txt",
+        "Examples/MinimalProject/CMakePresets.json",
+        "Examples/MinimalProject/FOnlineStarter.fomain",
+        "Examples/MinimalProject/README.md",
+        "Docs/en/troubleshooting/debugging.md",
+        "Docs/en/reference/prototype-format/syntax.md"
+      ]
+    },
+    "Docs/en/how-to/project/quality-gates.md": {
+      "id": "project-quality-gates",
+      "title": "Keep a Game Project Healthy: Formatting, Analysis, and Gates",
+      "audiences": [
+        "game-developer",
+        "engine-contributor",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "how-to",
+        "visibility": "public",
+        "human": true,
+        "translation": "required"
+      },
+      "owner": "quality",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/how-to/project/quality-gates.md",
+      "sources": [
+        "AGENTS.md",
+        "BuildTools/buildtools.py",
+        "BuildTools/package.py",
+        "BuildTools/docs_support_matrix.py",
+        "BuildTools/README.md",
+        "BuildTools/format-source.sh",
+        "BuildTools/format-source.cmd",
+        "BuildTools/check_native_source_layout.py",
+        "BuildTools/check_native_modules.py",
+        "BuildTools/NativeModuleExceptions.json",
+        "BuildTools/temporary_compat.py",
+        "BuildTools/docs_metadata.py",
+        "BuildTools/tests/test_docs_angelscript_style.py",
+        "BuildTools/cmake/stages/Init.cmake",
+        "BuildTools/cmake/stages/Applications.cmake",
+        "BuildTools/cmake/RunTestExecutable.cmake",
+        "Source/.clang-format",
+        "Source/Common/Settings.inc",
+        "Source/Tools/ManagedScriptBaker.cpp",
+        "Source/Scripting/AngelScript/AngelScriptBackend.cpp",
+        "Source/Scripting/Managed/Analyzers/FOnline.Analyzers.csproj",
+        "Docs/SyncCoverAnalysis.md",
+        "Docs/en/how-to/scripting/style-and-refactoring.md",
+        "Docs/en/how-to/scripting/managed-csharp.md",
+        "Docs/en/how-to/build/generated-content.md",
+        "Docs/en/how-to/build/project-configuration.md",
+        "Docs/en/contributing/coding-contracts/nullability.md",
+        "Docs/en/contributing/coding-contracts/thread-safety-analysis.md",
+        "Docs/en/contributing/coding-contracts/exception-safety.md",
+        "Docs/en/contributing/coding-contracts/local-variables.md",
+        "Docs/en/contributing/coding-contracts/smart-pointers.md",
+        "Docs/en/contributing/testing/index.md",
+        "Docs/en/reference/buildtools/commands.md",
+        "Examples/NativeExtensionSample/CMakeLists.txt",
+        "Examples/MinimalMultiplayer/CMakeLists.txt",
+        "Examples/MinimalMultiplayer/generate_config.py",
+        ".github/workflows/validate.yml"
+      ]
+    },
+    "Docs/en/how-to/project/project-tests.md": {
+      "id": "project-tests",
+      "title": "Add and Run Tests in a Game Project",
+      "audiences": [
+        "game-developer",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "how-to",
+        "visibility": "public",
+        "human": true,
+        "translation": "required"
+      },
+      "owner": "quality",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/how-to/project/project-tests.md",
+      "sources": [
+        "BuildTools/gameplay_test_runner.py",
+        "BuildTools/cmake/RunTestExecutable.cmake",
+        "BuildTools/cmake/helpers/Build.cmake",
+        "BuildTools/cmake/stages/Applications.cmake",
+        "BuildTools/cmake/stages/EngineSources.cmake",
+        "BuildTools/cmake/stages/ScriptsAndBaking.cmake",
+        "Source/Applications/TestingApp.cpp",
+        "Source/Common/Settings.inc",
+        "Source/Common/Settings.cpp",
+        "Source/Tests/Test_Settings.cpp",
+        "Source/Tools/MetadataBaker.cpp",
+        "Source/Tools/ConfigBaker.cpp",
+        "Examples/GameplayTestHarness/README.md",
+        "Examples/GameplayTestHarness/synthetic-smoke.json",
+        "Examples/MinimalMultiplayer/CMakeLists.txt",
+        "Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain",
+        "Examples/MinimalMultiplayer/Scripts/Tutorial.fos",
+        "Examples/MinimalMultiplayer/tutorial-smoke.json",
+        "Examples/NativeExtensionSample/CMakeLists.txt",
+        "Examples/NativeExtensionSample/Tests/NativeExtensionCoreTest.cpp",
+        "Docs/en/how-to/testing/gameplay-and-integration.md",
+        "Docs/en/contributing/testing/index.md",
+        "Docs/en/tutorials/first-test.md",
+        "Docs/en/how-to/native-extensions.md",
+        "Docs/en/how-to/build/project-configuration.md",
+        "Docs/en/how-to/build/generated-content.md",
+        "Docs/en/explanation/content-pipeline/baking.md",
+        "Docs/en/reference/metadata/index.md",
+        "Docs/en/reference/script-api/settings.md"
+      ]
+    },
+    "Docs/en/how-to/project/continuous-integration.md": {
+      "id": "project-continuous-integration",
+      "title": "Set Up Continuous Integration for a Game Project",
+      "audiences": [
+        "game-developer",
+        "release-operator",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "how-to",
+        "visibility": "public",
+        "human": true,
+        "translation": "required"
+      },
+      "owner": "build-release",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/how-to/project/continuous-integration.md",
+      "sources": [
+        ".github/workflows/validate.yml",
+        "Examples/PublicRepositoryTemplate/.github/workflows/pinned-engine.template.yml",
+        "Examples/PublicRepositoryTemplate/.github/workflows/current-engine.template.yml",
+        "Examples/PublicRepositoryTemplate/collect-evidence.py",
+        "Examples/PublicRepositoryTemplate/.gitattributes",
+        "BuildTools/README.md",
+        "BuildTools/buildtools.py",
+        "BuildTools/prepare-workspace.sh",
+        "BuildTools/prepare-win-workspace.ps1",
+        "BuildTools/build.sh",
+        "BuildTools/build.cmd",
+        "BuildTools/validate.sh",
+        "BuildTools/validate.cmd",
+        "BuildTools/gameplay_test_runner.py",
+        "BuildTools/cmake/stages/ScriptsAndBaking.cmake",
+        "BuildTools/cmake/stages/Applications.cmake",
+        "Docs/en/how-to/build/index.md",
+        "Docs/en/how-to/build/embedding-project.md",
+        "Docs/en/how-to/build/public-example-repositories.md",
+        "Docs/en/how-to/release/packaging.md",
+        "Docs/en/how-to/release/security-and-secrets.md",
+        "Docs/en/how-to/testing/gameplay-and-integration.md",
+        "Docs/en/reference/buildtools/commands.md",
+        "Docs/en/reference/platforms/support-matrix.md"
+      ]
+    },
+    "Docs/en/how-to/project/data-migrations.md": {
+      "id": "project-data-migrations",
+      "title": "Migrate Saved Data and Content in a Game Project",
+      "audiences": [
+        "game-developer",
+        "release-operator",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "how-to",
+        "visibility": "public",
+        "human": true,
+        "translation": "required"
+      },
+      "owner": "runtime",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/how-to/project/data-migrations.md",
+      "sources": [
+        "Source/Tools/MetadataBaker.cpp",
+        "Source/Common/EngineBase.cpp",
+        "Source/Common/Properties.cpp",
+        "Source/Common/PropertiesSerializer.cpp",
+        "Source/Common/ProtoManager.cpp",
+        "Source/Common/Common.h",
+        "Source/Common/EntityProperties.h",
+        "Source/Scripting/Managed/CoreScripts/DatabaseDocument.cs",
+        "Source/Scripting/Managed/CoreScripts/Native.DatabaseMigrations.cs",
+        "Source/Scripting/AngelScript/AngelScriptDocumentMigrations.cpp",
+        "Source/Tests/Test_MetadataBaker.cpp",
+        "Source/Tests/Test_AngelScriptDocumentMigrations.cpp",
+        "BuildTools/codegen.py",
+        "AGENTS.md",
+        "Docs/en/explanation/persistence/index.md",
+        "Docs/en/reference/script-api/migrations.md",
+        "Docs/en/reference/metadata/index.md",
+        "Docs/en/how-to/scripting/style-and-refactoring.md",
+        "Docs/en/how-to/scripting/managed-csharp.md",
+        "Docs/en/how-to/content/prototype-format.md",
+        "Docs/en/how-to/release/versioning.md",
+        "Docs/en/how-to/release/backup-and-recovery.md",
+        "Docs/en/how-to/migration/engine-upgrade.md",
+        "Docs/en/explanation/runtime/client-updater.md",
+        "Docs/en/reference/changelog.md"
+      ]
+    },
+    "Docs/en/how-to/project/versioning-and-releases.md": {
+      "id": "project-versioning-and-releases",
+      "title": "Version and Release a Game Project",
+      "audiences": [
+        "game-developer",
+        "release-operator",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "how-to",
+        "visibility": "public",
+        "human": true,
+        "translation": "required"
+      },
+      "owner": "build-release",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/how-to/project/versioning-and-releases.md",
+      "sources": [
+        "BuildTools/cmake/stages/Init.cmake",
+        "BuildTools/codegen.py",
+        "BuildTools/package.py",
+        "BuildTools/tests/test_package_wix_installer.py",
+        "Docs/en/explanation/runtime/client-updater.md",
+        "Docs/en/how-to/build/project-configuration.md",
+        "Docs/en/how-to/release/backup-and-recovery.md",
+        "Docs/en/how-to/release/operations.md",
+        "Docs/en/how-to/release/packaging.md",
+        "Docs/en/how-to/release/security-and-secrets.md",
+        "Docs/en/how-to/release/versioning.md",
+        "Docs/en/reference/cmake-and-buildtools/pipeline.md",
+        "Docs/en/reference/metadata/index.md",
+        "Docs/en/reference/script-api/settings.md",
+        "Docs/en/reference/settings/configuration-and-data-sources.md",
+        "Source/Common/Common.h",
+        "Source/Common/Settings.cpp",
+        "Source/Common/Settings.inc",
+        "Source/Frontend/ApplicationInit.cpp",
+        "Source/Tests/Test_Settings.cpp"
+      ]
+    },
+    "Docs/en/how-to/project/ai-assisted-maintenance.md": {
+      "id": "project-ai-assisted-maintenance",
+      "title": "Maintain a Project with AI Coding Agents",
+      "audiences": [
+        "game-developer",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "how-to",
+        "visibility": "public",
+        "human": true,
+        "translation": "required"
+      },
+      "owner": "documentation",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/how-to/project/ai-assisted-maintenance.md",
+      "sources": [
+        "AGENTS.md",
+        "BuildTools/docs_ai_delivery.py",
+        "BuildTools/documentation_metadata.py",
+        "BuildTools/docs_prepare.py",
+        "Docs/ai-evaluation.json",
+        "Docs/documentation-manifest.json",
+        "Docs/en/how-to/ai-control-protocol.md",
+        "Docs/en/how-to/migration/engine-upgrade.md",
+        "Docs/en/explanation/content-pipeline/baking.md",
+        "Docs/en/contributing/documentation/index.md",
+        "Docs/en/contributing/documentation/ai-evaluation.md",
+        "Docs/en/contributing/documentation/site-publication.md",
+        "Docs/en/reference/ai-control-protocol/index.md",
+        "Examples/AiControlSample/"
+      ]
+    },
+    "Docs/en/troubleshooting/setup.md": {
+      "id": "setup-troubleshooting",
+      "title": "Troubleshoot Project Setup",
+      "audiences": [
+        "game-developer",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "how-to",
+        "visibility": "public",
+        "human": true,
+        "translation": "required"
+      },
+      "owner": "build-release",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/troubleshooting/setup.md",
+      "sources": [
+        "BuildTools/Init.cmake",
+        "BuildTools/buildtools.py",
+        "BuildTools/package.py",
+        "BuildTools/build.cmd",
+        "BuildTools/prepare-workspace.sh",
+        "BuildTools/cmake/ProjectInterface.json",
+        "BuildTools/cmake/helpers/Build.cmake",
+        "BuildTools/cmake/helpers/Options.cmake",
+        "BuildTools/cmake/stages/Init.cmake",
+        "BuildTools/cmake/stages/ProjectOptions.cmake",
+        "BuildTools/cmake/stages/Codegen.cmake",
+        "BuildTools/cmake/stages/ThirdParty.cmake",
+        "BuildTools/cmake/stages/ScriptsAndBaking.cmake",
+        "Source/Tools/Baker.cpp",
+        "Source/Server/Server.cpp",
+        "Source/Server/UpdaterBackend.cpp",
+        "Source/Client/Updater.cpp",
+        "Source/Common/MetadataRegistration.cpp",
+        "Docs/contract-change-dispositions.json",
+        "Docs/en/tutorials/first-project.md",
+        "Docs/en/how-to/build/project-configuration.md",
+        "Docs/en/how-to/build/generated-content.md",
+        "Docs/en/explanation/content-pipeline/baking.md",
+        "Docs/en/reference/metadata/index.md",
+        "Examples/MinimalProject/CMakeLists.txt",
+        "Examples/MinimalProject/CMakePresets.json"
+      ]
+    },
+    "Docs/en/contributing/tooling/vscode-extensions.md": {
+      "id": "contributing-vscode-extensions",
+      "title": "Maintain the FOnline VS Code Extensions",
+      "audiences": [
+        "engine-contributor",
+        "tool-developer",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "how-to",
+        "visibility": "public",
+        "human": true,
+        "translation": "required"
+      },
+      "owner": "tooling",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/contributing/tooling/vscode-extensions.md",
+      "sources": [
+        ".gitignore",
+        ".gitattributes",
+        ".github/workflows/validate.yml",
+        "BuildTools/fonline-tools/package.json",
+        "BuildTools/fonline-tools/tsconfig.json",
+        "BuildTools/fonline-tools/.gitignore",
+        "BuildTools/fonline-tools/src/extension.ts",
+        "BuildTools/fonline-tools/src/jsonc.ts",
+        "BuildTools/fonline-tools/src/tests/jsonc.test.ts",
+        "BuildTools/fonline-tools/dist/extension.js",
+        "BuildTools/angelscript-debugger/package.json",
+        "BuildTools/angelscript-debugger/tsconfig.json",
+        "BuildTools/angelscript-debugger/.gitignore",
+        "BuildTools/angelscript-debugger/src/extension.ts",
+        "BuildTools/angelscript-debugger/src/activateFosDebug.ts",
+        "BuildTools/angelscript-debugger/src/attachDiscovery.ts",
+        "BuildTools/angelscript-debugger/src/debugAdapter.ts",
+        "BuildTools/angelscript-debugger/src/fosDebug.ts",
+        "BuildTools/angelscript-debugger/src/fosRuntime.ts",
+        "BuildTools/angelscript-debugger/src/web-extension.ts",
+        "BuildTools/angelscript-debugger/src/tests/adapter.test.ts",
+        "BuildTools/angelscript-debugger/src/tests/attachDiscovery.test.ts",
+        "BuildTools/angelscript-debugger/dist/extension.js",
+        "BuildTools/angelscript-debugger/dist/debugAdapter.js",
+        "BuildTools/tests/test_docs_debugging.py",
+        "Docs/en/troubleshooting/debugging.md",
+        "Docs/en/how-to/project/vscode-workspace.md",
+        "Docs/en/contributing/documentation/index.md",
+        "Docs/en/how-to/release/versioning.md"
+      ]
+    },
+    "Docs/en/reference/runtime/log-files.md": {
+      "id": "runtime-log-files",
+      "title": "Runtime and Tool Log Files",
+      "audiences": [
+        "game-developer",
+        "release-operator",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "reference",
+        "visibility": "public",
+        "human": true,
+        "translation": "required"
+      },
+      "owner": "runtime",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/reference/runtime/log-files.md",
+      "sources": [
+        "Source/Frontend/ApplicationInit.cpp",
+        "Source/Frontend/Application.h",
+        "Source/Essentials/BaseLogging.cpp",
+        "Source/Essentials/BaseLogging.h",
+        "Source/Essentials/Logging.cpp",
+        "Source/Essentials/Logging.h",
+        "Source/Essentials/DiskFileSystem.cpp",
+        "Source/Applications/ClientApp.cpp",
+        "Source/Applications/ClientLib.cpp",
+        "Source/Applications/ServerApp.cpp",
+        "Source/Applications/BakerLib.cpp",
+        "Source/Applications/TestingApp.cpp",
+        "Source/Client/ClientSessionMarker.cpp",
+        "Source/Server/Server.cpp",
+        "Source/Common/Settings.inc",
+        "BuildTools/cmake/stages/Applications.cmake",
+        "BuildTools/cmake/RunTestExecutable.cmake",
+        "Docs/en/explanation/runtime/client-updater.md",
+        "Docs/en/contributing/testing/index.md",
+        "Docs/en/how-to/release/operations.md",
+        "Docs/en/troubleshooting/debugging.md",
+        "Docs/en/how-to/platforms/android-debugging.md",
+        "Docs/en/how-to/platforms/web-debugging.md"
+      ]
+    },
+    "Docs/en/explanation/scripting-runtime/choosing-a-backend.md": {
+      "id": "choosing-a-script-backend",
+      "title": "Choose a Script Backend",
+      "audiences": [
+        "game-developer",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "explanation",
+        "visibility": "public",
+        "human": true,
+        "translation": "required"
+      },
+      "owner": "scripting",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/explanation/scripting-runtime/choosing-a-backend.md",
+      "sources": [
+        "BuildTools/cmake/ProjectInterface.json",
+        "BuildTools/cmake/stages/Init.cmake",
+        "BuildTools/cmake/stages/ProjectOptions.cmake",
+        "BuildTools/cmake/stages/Applications.cmake",
+        "BuildTools/cmake/stages/ScriptsAndBaking.cmake",
+        "BuildTools/cmake/stages/ThirdParty.cmake",
+        "BuildTools/buildtools.py",
+        "BuildTools/README.md",
+        "BuildTools/SupportMatrix.json",
+        "Source/Common/Settings.inc",
+        "Source/Server/Server.cpp",
+        "Source/Server/EntitySync.cpp",
+        "Source/Tests/Test_ServerEngine.cpp",
+        "Docs/en/explanation/scripting-runtime/index.md",
+        "Docs/en/explanation/runtime/server.md",
+        "Docs/en/how-to/scripting/managed-csharp.md",
+        "Docs/en/how-to/scripting/style-and-refactoring.md",
+        "Docs/en/how-to/scripting/lifecycle-and-concurrency.md",
+        "Docs/en/how-to/build/generated-content.md",
+        "Docs/en/how-to/build/project-configuration.md",
+        "Docs/en/troubleshooting/debugging.md",
+        "Docs/en/reference/platforms/support-matrix.md",
+        "Docs/en/reference/script-api/settings.md",
+        "Docs/en/contributing/coding-contracts/nullability.md",
+        "Examples/MinimalProject/"
+      ]
+    },
+    "Docs/en/explanation/entity-and-property-model/choosing-a-representation.md": {
+      "id": "choosing-a-data-representation",
+      "title": "Choose How to Represent Game Data",
+      "audiences": [
+        "game-developer",
+        "content-author",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "explanation",
+        "visibility": "public",
+        "human": true,
+        "translation": "required"
+      },
+      "owner": "runtime",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/explanation/entity-and-property-model/choosing-a-representation.md",
+      "sources": [
+        "BuildTools/codegen.py",
+        "BuildTools/tests/check_resource_usage_pipeline.py",
+        "Source/Common/Settings.inc",
+        "Source/Common/Geometry.h",
+        "Source/Common/Properties.h",
+        "Source/Tests/Test_MetadataBaker.cpp",
+        "Source/Tools/ManagedScriptBaker.cpp",
+        "Source/Scripting/AngelScript/AngelScriptEntity.cpp",
+        "Examples/MinimalProject/Scripts/Starter.fos",
+        "Examples/MinimalProject/FOnlineStarter.fomain",
+        "Docs/en/explanation/entity-and-property-model/index.md",
+        "Docs/en/explanation/persistence/index.md",
+        "Docs/en/reference/metadata/index.md",
+        "Docs/en/reference/settings/configuration-and-data-sources.md",
+        "Docs/en/reference/script-api/settings.md",
+        "Docs/en/how-to/content/prototype-format.md",
+        "Docs/en/how-to/scripting/managed-csharp.md",
+        "Docs/en/how-to/scripting/lifecycle-and-concurrency.md"
       ]
     }
   }

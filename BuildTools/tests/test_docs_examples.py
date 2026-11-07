@@ -351,9 +351,9 @@ class PublicExampleDocumentationTests(unittest.TestCase):
         for marker in ("actions/checkout@v6", "submodules: recursive", "--engine-mode pinned", "{{PRIMARY_CHECK_COMMAND}}"):
             self.assertIn(marker, pinned_workflow)
         for workflow in (pinned_workflow, current_workflow):
-            self.assertIn("Engine/BuildTools/prepare-workspace.sh linux-packages linux", workflow)
-        prepare_workspace = (ENGINE_ROOT / "BuildTools/prepare-workspace.sh").read_text(encoding="utf-8")
-        self.assertNotIn("showcase-display-packages", prepare_workspace)
+            self.assertIn("Engine/BuildTools/prepare-workspace.sh linux-packages", workflow)
+        self.assertIn("Engine/BuildTools/prepare-workspace.sh web-packages web", pinned_workflow)
+        self.assertNotIn("showcase-display-packages", pinned_workflow)
         evidence_collector = (
             ENGINE_ROOT / "Examples/PublicRepositoryTemplate/collect-evidence.py"
         ).read_text(encoding="utf-8")
@@ -379,7 +379,6 @@ class PublicExampleDocumentationTests(unittest.TestCase):
         )
         for marker in (
             "collect-evidence.py --mode pinned",
-            "showcase-display-packages",
             "linux-capture",
             "content-showcase-linux-opengl-${{ github.sha }}-${{ github.run_attempt }}",
             "captures/linux-opengl.png",

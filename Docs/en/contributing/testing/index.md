@@ -22,7 +22,7 @@ Use this page when choosing native validation for an engine change or when addin
 - `BuildTools/cmake/stages/EngineSources.cmake`
 - `BuildTools/cmake/stages/Applications.cmake`
 - `BuildTools/cmake/stages/Init.cmake`
-- `BuildTools/cmake/helpers/RunAndLog.cmake`
+- `BuildTools/cmake/RunTestExecutable.cmake`
 - `BuildTools/codecoverage.py`
 - `BuildTools/validate.sh`
 - `BuildTools/validate.cmd`
@@ -200,7 +200,7 @@ scoped to artifacts the test can prove it owns.
 
 Tests that provoke asynchronous exception reporting must capture the expected report and await it before restoring global callbacks or changing log sinks. `NetworkServerAsioRearmsAcceptAfterCallbackException` verifies both accept rearming and its nonfatal report: the detached reporter can outlive listener shutdown.
 
-With Visual Studio/MSBuild generators, `RunUnitTests` writes the test process output to `<build-dir>/<ProjectDevName>_UnitTests.log` and uses the test process exit code as the pass/fail signal. This keeps expected negative-case diagnostics such as compiler `error` lines from being reclassified as MSBuild errors. On failure the helper also echoes the captured output before stopping, so CI logs name the failing test/assertion even when the runner workspace and file log are discarded.
+With every generator, `RunUnitTests` runs the test executable through `BuildTools/cmake/RunTestExecutable.cmake`. The script starts the executable in the project source directory, writes its stdout and stderr to `<build-dir>/Testing/<ProjectDevName>_UnitTests-<config>.log`, and passes only when the process exits with code 0 and the output contains a Catch2 summary (`All tests passed (...)` or the `test cases:` totals line). Because the output goes to the log file instead of the build console, expected negative-case diagnostics such as compiler `error` lines are not reclassified as MSBuild errors. When the process exits with a non-zero code, the script echoes the captured output before stopping, so CI logs name the failing test/assertion even when the runner workspace and file log are discarded; on success it prints the summary line and the log path.
 
 For broad validation scenarios, the BuildTools validators can run selected scenarios:
 

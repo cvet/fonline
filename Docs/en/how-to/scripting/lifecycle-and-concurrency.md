@@ -149,7 +149,7 @@ The runtime indexes valid init functions, stores their priorities, and uses a st
 3. abort startup if any invocation fails;
 4. freeze globals after all functions complete.
 
-`Game.SetConstGlobalVar(...)` is therefore an initialization-only operation. It throws after the freeze boundary. The baker also rejects mutable module-level globals unless their namespace is explicitly allowed by `Script.MutableGlobalsAllowedNamespaces`.
+`Game.SetConstGlobalVar(...)` is therefore an initialization-only operation. It throws after the freeze boundary. The baker also rejects mutable module-level globals unless their namespace is explicitly allowed by `AngelScript.MutableGlobalsAllowedNamespaces`.
 
 Prefer module init for registration and immutable lookup construction. Do not start gameplay work that assumes the world, current player, map, or network session already exists. The client fires `Game.OnStart` after module initialization; the server fires its initialization lifecycle events after `InitModules()` in the server startup sequence.
 

@@ -38,7 +38,7 @@ Before changing reusable or project script code:
 - keep authoritative mutation on its owning side and mutable state on an owning engine or entity object;
 - use the exact function and declaration attributes required by the dispatcher or generator;
 - enter dispatcher-owned attributed functions through the dispatcher route;
-- keep module globals const-only by default: `Script.MutableGlobalsAllowedNamespaces` is a narrow compatibility escape hatch for explicitly owned legacy namespaces, not permission for unowned mutable state;
+- keep module globals const-only by default: `AngelScript.MutableGlobalsAllowedNamespaces` is a narrow compatibility escape hatch for explicitly owned legacy namespaces, not permission for unowned mutable state;
 - write nullable handles as `T?`, narrow before use, and use a non-null type when absence is not part of the contract;
 - edit authored inputs and regenerate derived `.fos` files instead of patching generated output;
 - classify the change as mechanical, structural, behavioral, or contract work; use small, narrow batches and add migration/compatibility proof for contract work;
@@ -110,7 +110,7 @@ A local rename is mechanical only when none of these surfaces can observe it.
 
 ### Supported command and version
 
-The Engine does not own one universal `.clang-format` layout for project AngelScript after the high-level CoreScripts move. A project must pin its layout and clang-format version. The reusable `BuildTools/buildtools.py format-source` wrapper requires clang-format 20, preserves the file's BOM/line-ending convention, and repairs FOnline-specific nullable suffix, cast, array, and named-argument spacing without changing literals or comments.
+The Engine does not own one universal `.clang-format` layout for project AngelScript after the high-level CoreScripts move. A project must pin its layout and clang-format version. The reusable formatter wrapper in `BuildTools/buildtools.py` requires clang-format 20 and preserves the file's BOM/line-ending convention. Its `format-source` command formats the `.cpp`, `.h`, and `.cs` files under Engine `Source`, which contains no `.fos` files. For `.fos`, a project calls the importable `format_files(clang_format, root, patterns)` with a `*.fos` pattern; it applies `fix_fos_nullable_suffix` to every `.fos` file, which repairs FOnline-specific nullable suffix, cast, array, and named-argument spacing without changing literals or comments.
 
 From the Engine repository run:
 
@@ -119,7 +119,7 @@ python BuildTools/buildtools.py format-source
 git diff --exit-code
 ```
 
-`format-source` formats supported files under Engine `Source`; it does not discover an embedding project's separate script tree. A project must use its documented formatter for project-owned `.fos` files and run the Engine command separately when the submodule source changed.
+`format-source` does not discover an embedding project's separate script tree. A project must use its documented formatter for project-owned `.fos` files, for example one that calls `format_files` as above, and run the Engine command separately when the submodule source changed.
 
 BuildTools uses `FO_CLANG_FORMAT` when set, otherwise searches for `clang-format-20` and then `clang-format`, and rejects a binary whose major version is not 20. Engine CI reruns the wrapper and requires an empty diff.
 
@@ -166,7 +166,7 @@ The Engine does not mandate a natural language for game comments, a file-header 
 
 ### Mutable state and globals
 
-After module build, the backend rejects every mutable module-level global whose namespace does not match a configured prefix in `Script.MutableGlobalsAllowedNamespaces`. Const globals are accepted. The default empty list therefore enforces const-only module globals.
+After module build, the backend rejects every mutable module-level global whose namespace does not match a configured prefix in `AngelScript.MutableGlobalsAllowedNamespaces`. Const globals are accepted. The default empty list therefore enforces const-only module globals.
 
 Prefer state owned by the engine instance, entity, or an explicit lifecycle object. If a legacy project temporarily needs mutable globals, allow only the narrowest namespace prefix, record the owner and removal condition, and test startup on every side. Prefix matching means a broad entry can admit more namespaces than its author intended.
 
@@ -195,7 +195,7 @@ Attributes are compiler and dispatcher contracts, not decorative labels. The pip
 
 The built-in direct-call-blocking set is `Event`, `TimeEvent`, `AnimCallback`, `PropertyGetter`, `PropertySetter`, `PropertyMigrator`, `ProtoMigrator`, `ServerRemoteCall`, `ClientRemoteCall`, `AdminRemoteCall`, `ItemTrigger`, `ItemStatic`, `ModuleInit`, and `InvokeEntry`. A script function bearing one of these attributes must be entered through its owning dispatcher or API, not called as an ordinary helper.
 
-Projects may add dispatcher-owned attributes through `Script.ExtraDirectCallBlockingAttributes`. `Script.AttributedFunctionDirectCallAllowedNamespaces` can exempt caller namespaces by prefix for compatibility. Keep either list narrow and transitional; extracting a normal helper is preferable when behavior genuinely needs both direct and dispatched entry.
+Projects may add dispatcher-owned attributes through `AngelScript.ExtraDirectCallBlockingAttributes`. `AngelScript.AttributedFunctionDirectCallAllowedNamespaces` can exempt caller namespaces by prefix for compatibility. Keep either list narrow and transitional; extracting a normal helper is preferable when behavior genuinely needs both direct and dispatched entry.
 
 The validator also checks callback API ownership, including event subscription, time-event APIs, animation callbacks, and property getter/setter registration. An attribute with the right spelling but the wrong route still fails the contract.
 
@@ -399,7 +399,7 @@ Re-audit this page in the same change when any of these owners changes:
 
 - script discovery, first-line sorting, side macros, module construction, or bytecode pipeline in `AngelScriptBackend.cpp`;
 - direct-call blockers, marker propagation, callback validation, or special attributes in `AngelScriptAttributes.*`;
-- `Script.MutableGlobalsAllowedNamespaces`, `Script.AttributedFunctionDirectCallAllowedNamespaces`, or `Script.ExtraDirectCallBlockingAttributes`;
+- `AngelScript.MutableGlobalsAllowedNamespaces`, `AngelScript.AttributedFunctionDirectCallAllowedNamespaces`, or `AngelScript.ExtraDirectCallBlockingAttributes`;
 - `.fos` patterns, clang-format discovery/version checks, repair logic, encoding, line-ending, or EOF behavior in `BuildTools/buildtools.py`;
 - the reusable formatter wrapper, project-owned `.clang-format`, or maintained public-example layout;
 - generated declaration ownership or the lifecycle/nullability contracts linked from this guide;

@@ -89,7 +89,9 @@ The sample `Examples/NativeExtensionSample/SourceExt/NativeExtensionCore.h` belo
 to a standalone C++ library built without Engine includes; it keeps its standard
 library dependency and must not include `Common.h`. Its independent
 `Tests/NativeExtensionCoreTest.cpp` starts with `NativeExtensionCore.h`. These exact
-boundaries are validated; its server extension follows the regular cpp-only rule.
+boundaries are validated from the Engine root and from the example's own repository
+root (`--root Examples/NativeExtensionSample --source-dir SourceExt --shallow`); its
+server extension follows the regular cpp-only rule.
 
 ## `Source/Applications/`
 

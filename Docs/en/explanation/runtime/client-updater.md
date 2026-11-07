@@ -296,7 +296,7 @@ A matching PDB (Windows-only, named `<live>.pdb`, e.g. `<runtime-name>.dll.pdb`)
 Versioned by `FO_UPDATER_VERSION = 5` ([Common/Common.h](../../../../Source/Common/Common.h)). Bump it when
 the wire format changes or an older updater/host lifecycle is unsafe to continue. This generation
 requires the secure channel before any updater message; a pre-channel client cannot self-update. It receives one frozen plaintext handshake answer with `updater_outdated` before disconnecting, so it tells the player to install the latest full client instead of reporting the server offline. No other updater traffic bypasses the secure channel.
-Gameplay compatibility (`Settings.CompatibilityVersion`) is separate and changes with every build.
+Gameplay compatibility (`Settings.CompatibilityVersion`) is separate. It is a digest of the parsed codegen declarations (`FO_COMPATIBILITY_VERSION`), so it changes when those declarations change, not with every build.
 
 ### Handshake
 

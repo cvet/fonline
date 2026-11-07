@@ -5,7 +5,7 @@ locale: ru
 document_id: configuration-data-sources
 permalink: /Docs/ru/reference/settings/configuration-and-data-sources.html
 ---
-<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"4e4d529904c4fd1c31c5694365aa98b1e60f0f00db0c3e8442d7ecb2607c7dc4"} -->
+<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"580bec24c0c1630428b7a7592770f72d5ccea6477003052e96c24d258a3344ec"} -->
 # Конфигурация и источники данных
 
 > Документация движка. Эта страница описывает переиспользуемые механизмы разбора конфигурации, runtime settings, смонтированные источники данных, поиск файлов и хранение кэша. Конкретные значения конфигурации и правила размещения контента принадлежат встраивающему проекту.
@@ -90,8 +90,12 @@ permalink: /Docs/ru/reference/settings/configuration-and-data-sources.html
 aggregate, поэтому native-код читает `settings.Network.ServerPort`, а config,
 command-line и runtime lookup используют `Network.ServerPort`. Проектная
 `///@ Setting` тоже содержит полное имя с точками. Короткие имена могут повторяться
-в разных группах; имя без группы считается custom и отмечается config baker как
-`Unknown setting`. Managed-свойства `Settings.Group.Name` доступны только для
+в разных группах, поэтому имя без группы, например `ServerPort`, не означает
+`Network.ServerPort`. Имя, которое не является ни встроенным, ни проектной
+`///@ Setting`, становится строковой custom setting, доступной через
+`GetCustomSetting`/`FindCustomSetting`; config baker отмечает его как
+`Unknown setting <name> = <value>`, не прерывая bake, и записывает его только в
+baked server profile. Managed-свойства `Settings.Group.Name` доступны только для
 чтения. Изменяемые во время работы значения принадлежат API владельца, например
 `MapView::SetVisibleLayers`, `AudioManager::SetMusicVolume` или
 `Application::ScreenState`. Native-обход `BakerTests::OverrideSetting` из

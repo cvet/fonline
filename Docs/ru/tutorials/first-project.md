@@ -5,7 +5,7 @@ locale: ru
 document_id: legacy-tutorial-entry
 permalink: /Docs/ru/tutorials/first-project.html
 ---
-<!-- docs-translation: {"document_id":"legacy-tutorial-entry","locale":"ru","source_path":"Docs/en/tutorials/first-project.md","source_sha256":"b136193f90ed0307bac291d22ffd2e28c37645d533293a2df113015126567758"} -->
+<!-- docs-translation: {"document_id":"legacy-tutorial-entry","locale":"ru","source_path":"Docs/en/tutorials/first-project.md","source_sha256":"18d72cda510279f3a222fc487f72621e6f395b53ac51b2fdd19b0aa41cd2a71e"} -->
 # Первый headless-проект FOnline
 
 В этом руководстве запускается принадлежащий движку минимальный проект без
@@ -33,26 +33,33 @@ validation wrapper требуются:
 
 ## Запустите starter
 
-В корне репозитория движка выполните команду для текущего хоста.
+Пример рассчитан на игровой репозиторий, где Engine лежит в `Engine/` рядом с
+`CMakeLists.txt`. При запуске на месте внутри репозитория движка этот путь должен
+указывать обратно на корень репозитория. Создайте ссылку один раз, затем
+запустите validator.
 
-Windows x64:
+Windows x64, из корня репозитория движка:
 
 ```powershell
 cd Examples\MinimalProject
+New-Item -ItemType Junction -Path Engine -Target ..\..
 python validate.py
 ```
 
-Linux x64:
+Linux x64, из корня репозитория движка:
 
 ```bash
 cd Examples/MinimalProject
+ln -s ../.. Engine
 python3 validate.py
 ```
 
-BuildTools заново создаёт `Workspace/validation-project`, копирует туда
-канонический scaffold, связывает копию с текущим checkout движка,
-конфигурирует и собирает сервер и baker, запекает ресурсы и запускает sub-config
-`StarterSmoke`. Таймаут smoke-runner равен 60 секундам.
+Без ссылки конфигурация останавливается с сообщением `include could not find
+requested file: Engine/BuildTools/Init.cmake`, за которым следует `Unknown CMake
+command "SetOption"`. Validator выбирает пресет хоста, конфигурирует проект в
+`Build/<host>/` и собирает `RunStarterSmoke`. Эта цель зависит от headless-сервера
+и `BakeResources`, поэтому собирает сервер, запекает ресурсы и запускает
+sub-config `StarterSmoke`. Таймаут smoke-runner равен 60 секундам.
 
 ## Подтвердите успех
 
@@ -73,7 +80,7 @@ starter_smoke_passed
 инициализации сервера; недостаточно просто запустить и остановить нативный
 процесс.
 
-Сгенерированные файлы остаются в `Workspace/`:
+Сгенерированные файлы остаются в игнорируемом каталоге `Build/` примера:
 
 - `Examples/MinimalProject/Build/windows/` — дерево сборки и результатов Windows;
 - `Examples/MinimalProject/Build/linux/` — дерево сборки и результатов Linux.

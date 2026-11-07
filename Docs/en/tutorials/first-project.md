@@ -26,23 +26,25 @@ The canonical scaffold is [Examples/MinimalProject](../../../Examples/MinimalPro
 
 ## Run the starter
 
-From the engine repository root, run the command for the current host.
+The example is written to live in a game repository that has Engine at `Engine/` beside its `CMakeLists.txt`. Run in place inside the Engine repository, it needs that path to point back at the repository root. Create the link once, then run the validator.
 
-Windows x64:
+Windows x64, from the engine repository root:
 
 ```powershell
 cd Examples\MinimalProject
+New-Item -ItemType Junction -Path Engine -Target ..\..
 python validate.py
 ```
 
-Linux x64:
+Linux x64, from the engine repository root:
 
 ```bash
 cd Examples/MinimalProject
+ln -s ../.. Engine
 python3 validate.py
 ```
 
-BuildTools recreates `Workspace/validation-project`, copies the canonical scaffold into it, links that copy back to the current engine checkout, configures the server and baker, builds them, bakes resources, and runs the `StarterSmoke` sub-config. The smoke runner has a 60-second timeout.
+Without the link, configuration stops with `include could not find requested file: Engine/BuildTools/Init.cmake`, followed by `Unknown CMake command "SetOption"`. The validator selects the host preset, configures the project in `Build/<host>/`, and builds `RunStarterSmoke`. That target depends on the headless server and `BakeResources`, so it builds the server, bakes resources, and runs the `StarterSmoke` sub-config. The smoke runner has a 60-second timeout.
 
 ## Confirm success
 
@@ -58,7 +60,7 @@ starter_smoke_passed
 
 The command must exit with code zero. The native value proves that the server-scoped C++ source entered `ServerLib`, codegen generated its script binding, and baked AngelScript called it. The lifecycle markers prove that the module subscribed to `Game.OnStart` and ran after server initialization; a native process that merely started and stopped is not sufficient.
 
-Generated files stay under `Workspace/`:
+Generated files stay under the ignored `Build/` directory of the example:
 
 - `Examples/MinimalProject/Build/windows/` is the Windows build/output tree;
 - `Examples/MinimalProject/Build/linux/` is the Linux build/output tree.

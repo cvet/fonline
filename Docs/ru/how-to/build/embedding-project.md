@@ -7,10 +7,11 @@ permalink: /Docs/ru/how-to/build/embedding-project.html
 ---
 
 # Встраивание FOnline в игровой проект
-<!-- docs-translation: {"document_id":"embedding-project","locale":"ru","source_path":"Docs/en/how-to/build/embedding-project.md","source_sha256":"0acb2ae65debb2493c031a7054a88ab552d1cae52581979b098ea8fa81034b23"} -->
+<!-- docs-translation: {"document_id":"embedding-project","locale":"ru","source_path":"Docs/en/how-to/build/embedding-project.md","source_sha256":"51fbcb9cbc76f3eaf1c3d121c0ec557cb7023976fce04a42d7ab5f90ab7722b5"} -->
 FOnline рассчитан на подключение как source submodule. Репозиторий движка
 поставляет переиспользуемую технологию, а репозиторий игры создает конкретный
-продукт.
+продукт. Раздел [Жизненный цикл проекта](../project/index.md) шаг за шагом
+описывает создание и сопровождение такого репозитория.
 
 ## Проверенные исходные пути
 

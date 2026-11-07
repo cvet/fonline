@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/lifecycle-and-concurrency.html
 ---
 
 # Жизненный цикл и конкурентность скриптов
-<!-- docs-translation: {"document_id":"script-lifecycle-concurrency","locale":"ru","source_path":"Docs/en/how-to/scripting/lifecycle-and-concurrency.md","source_sha256":"0fee6c129f783d2b7ddb2f69dc8214106a77155ec4ef857ccfb056085f40dd9b"} -->
+<!-- docs-translation: {"document_id":"script-lifecycle-concurrency","locale":"ru","source_path":"Docs/en/how-to/scripting/lifecycle-and-concurrency.md","source_sha256":"6c3f957ab5167454ccba406541bc5cddbd2724d11a26da33a55ff0994d590a1d"} -->
 > Документация движка. Это руководство описывает переиспользуемое поведение lifecycle и concurrency, общее для AngelScript и Managed C#, а затем явно называет правила каждого языка. Модули проекта, gameplay policies и проектные synchronization helpers принадлежат подключающей игре.
 
 ## Назначение
@@ -151,7 +151,7 @@ Runtime индексирует валидные init functions, сохраняе
 3. прерывает запуск при ошибке любого вызова;
 4. замораживает globals после завершения всех функций.
 
-Следовательно, `Game.SetConstGlobalVar(...)` допустим только при инициализации. После границы freeze он выбрасывает исключение. Baker также отклоняет изменяемые globals уровня модуля, если их namespace явно не разрешён в `Script.MutableGlobalsAllowedNamespaces`.
+Следовательно, `Game.SetConstGlobalVar(...)` допустим только при инициализации. После границы freeze он выбрасывает исключение. Baker также отклоняет изменяемые globals уровня модуля, если их namespace явно не разрешён в `AngelScript.MutableGlobalsAllowedNamespaces`.
 
 Используйте module init для регистрации и построения неизменяемых lookup. Не запускайте gameplay work, предполагающий, что world, current player, map или network session уже существуют. Клиент вызывает `Game.OnStart` после инициализации модулей; сервер запускает свои initialization lifecycle events после `InitModules()` в последовательности старта сервера.
 

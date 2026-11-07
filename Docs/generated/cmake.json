@@ -873,7 +873,7 @@
       "kind": "function",
       "signature": "SetOption(<name> <value>)",
       "source": "BuildTools/Init.cmake",
-      "description": "Set an embedding-project default only when the variable is not already defined.",
+      "description": "Set an embedding-project default only when the variable is not already defined. An FO_ name must be a declared option: a retired name fails at the call with its replacement, and any other undeclared FO_ name fails once the Init stage has declared the options. SetOptionValues applies the same name check.",
       "id": "cmake.helper.SetOption"
     },
     {

@@ -350,7 +350,7 @@
           "description": "Keep mutable globals exceptional and enter dispatcher-owned attributed functions through their owning route.",
           "document_id": "angelscript-style",
           "anchor": "mutable-state-and-globals",
-          "required_terms": ["Script.MutableGlobalsAllowedNamespaces", "const-only", "compatibility escape hatch", "dispatcher route"]
+          "required_terms": ["AngelScript.MutableGlobalsAllowedNamespaces", "const-only", "compatibility escape hatch", "dispatcher route"]
         },
         {
           "id": "script-refactor-classification",
@@ -1453,6 +1453,167 @@
       "forbidden_assumptions": [
         "Do not treat a syntactically valid package, a build-only lane, a private reserved repository, or unobserved required checks as production release evidence.",
         "Do not collapse per-repository values into mixed, predominantly, uniformly, or similar summaries; enumerate the exact source status, remote visibility/state, observed Engine pin, and observed checks for all four repositories."
+      ]
+    },
+    {
+      "id": "architecture-project-vscode-task-grammar",
+      "category": "architecture",
+      "question": "How does the Engine-owned FOnline Tools VS Code extension build its menu from a game project workspace, which label tags does it understand, where must a task or launch name repeat the tags, and what happens when tasks.json cannot be parsed?",
+      "primary_document_id": "project-vscode-workspace",
+      "supporting_document_ids": [
+        "contributing-vscode-extensions",
+        "debugging"
+      ],
+      "retrieval_checks": [
+        {
+          "query": "FOnline Tools VS Code extension task label tags hidden sort platform hotkeys tasks.json",
+          "expected_document_ids": [
+            "project-vscode-workspace"
+          ],
+          "max_rank": 3
+        },
+        {
+          "query": "VS Code extensions fonline-tools angelscript-debugger build typecheck dist maintain",
+          "expected_document_ids": [
+            "contributing-vscode-extensions"
+          ],
+          "max_rank": 3
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "vscode-label-grammar",
+          "description": "State the tag grammar and that dependent references repeat the complete label.",
+          "document_id": "project-vscode-workspace",
+          "anchor": "label-grammar",
+          "required_terms": [
+            "[hidden]",
+            "[sort:N]",
+            "dependsOn",
+            "preLaunchTask",
+            "complete label"
+          ]
+        },
+        {
+          "id": "vscode-tasks-json-parsing",
+          "description": "Explain that the extension accepts the same relaxed JSON as VS Code and reports a parse error.",
+          "document_id": "project-vscode-workspace",
+          "anchor": "data-sources",
+          "required_terms": [
+            "trailing commas",
+            "byte-order mark",
+            "Cannot parse"
+          ]
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not assume the extension lists tasks of other workspace folders, ignores a tasks.json parse error silently, or treats the label grammar as a versioned public API."
+      ]
+    },
+    {
+      "id": "migration-project-setup-missing-engine-link",
+      "category": "migration",
+      "question": "A new game repository fails to configure with an include error for Engine/BuildTools/Init.cmake followed by an unknown SetOption command. What is the cause, how is it fixed for a game repository and for an example run inside the Engine repository, and which pin and submodule decisions belong in the first commit?",
+      "primary_document_id": "setup-troubleshooting",
+      "supporting_document_ids": [
+        "project-create-repository",
+        "project-workstation-setup"
+      ],
+      "retrieval_checks": [
+        {
+          "query": "include could not find requested file Engine/BuildTools/Init.cmake Unknown CMake command SetOption",
+          "expected_document_ids": [
+            "setup-troubleshooting"
+          ],
+          "max_rank": 3
+        },
+        {
+          "query": "create an FOnline game repository add Engine submodule pin root files gitignore gitattributes",
+          "expected_document_ids": [
+            "project-create-repository"
+          ],
+          "max_rank": 3
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "setup-missing-engine-include",
+          "description": "Identify the missing Engine directory as the cause of both CMake errors.",
+          "document_id": "setup-troubleshooting",
+          "anchor": "the-engine-include-cannot-be-found",
+          "required_terms": [
+            "Engine/BuildTools/Init.cmake",
+            "Unknown CMake command",
+            "SetOption"
+          ]
+        },
+        {
+          "id": "setup-create-repository-pin",
+          "description": "Name the Engine submodule and exact pin as part of repository creation.",
+          "document_id": "project-create-repository",
+          "anchor": "create-the-repository-and-add-engine",
+          "required_terms": [
+            "submodule",
+            "Engine"
+          ]
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not suggest copying Engine files into the project, relaxing the CMake minimum, or defining SetOption locally to silence the error."
+      ]
+    },
+    {
+      "id": "migration-project-engine-identities",
+      "category": "migration",
+      "question": "When a game project moves its Engine submodule to a newer revision, which three Engine identities must be recorded and compared, how are the incoming changelog migration notes selected and applied, and why is a multi-step contract report not run with --enforce?",
+      "primary_document_id": "engine-upgrade-guide",
+      "supporting_document_ids": [
+        "engine-versioning",
+        "engine-changelog",
+        "api-change-management"
+      ],
+      "retrieval_checks": [
+        {
+          "query": "record Engine identities gitlink index entry Engine checkout update submodule skipped range changelog migration",
+          "expected_document_ids": [
+            "engine-upgrade-guide"
+          ],
+          "max_rank": 3
+        },
+        {
+          "query": "upgrade embedding project contract diff comparator baseline-git-ref enforce skipped range",
+          "expected_document_ids": [
+            "engine-upgrade-guide"
+          ],
+          "max_rank": 3
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "upgrade-three-identities",
+          "description": "Name the parent gitlink, the index entry and the Engine checkout as independent identities.",
+          "document_id": "engine-upgrade-guide",
+          "anchor": "record-the-engine-identities",
+          "required_terms": [
+            "Parent gitlink",
+            "Index entry",
+            "Engine checkout"
+          ]
+        },
+        {
+          "id": "upgrade-enforce-boundary",
+          "description": "Explain that --enforce is an Engine merge gate bound to exact digests.",
+          "document_id": "engine-upgrade-guide",
+          "anchor": "compare-generated-contracts",
+          "required_terms": [
+            "--enforce",
+            "merge gate",
+            "baseline and current contract digests"
+          ]
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not treat the checked-out Engine HEAD as the recorded pin, skip changelog Migration sections for intermediate versions, or add project entries to the Engine disposition ledger."
       ]
     }
   ]

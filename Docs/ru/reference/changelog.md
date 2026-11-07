@@ -7,12 +7,52 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"9a3cecb54500ffa7716dfb5367038e3b51ab643d8c9f8b29f7df48877e89bc16"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"94be5cc055eced5ca1e34b8562c075899ae9d8e190a436608315e6b2fe55ef5f"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
-## Current - 2026-11-06
+## Current - 2026-11-07
+
+### Добавлено
+
+- Добавлен раздел документации «Жизненный цикл проекта» (`Docs/en/how-to/project/`, русское зеркало в `Docs/ru`) для игровой команды, встраивающей Engine: [Жизненный цикл проекта](../how-to/project/index.md), подготовка рабочей станции, создание репозитория, руководство по рабочему пространству VS Code для расширений FOnline Tools и отладчика AngelScript, проверки качества, тесты проекта, непрерывная интеграция, миграции данных, версии и выпуски и необязательный шаблон сопровождения с ИИ-агентами. Добавлены [устранение проблем настройки проекта](../troubleshooting/setup.md), [файлы журналов среды выполнения и инструментов](runtime/log-files.md), [выбор бэкенда скриптов](../explanation/scripting-runtime/choosing-a-backend.md), [выбор представления игровых данных](../explanation/entity-and-property-model/choosing-a-representation.md) и страница для разработчиков инструментов [сопровождение расширений VS Code для FOnline](../contributing/tooling/vscode-extensions.md). Руководство [обновление Engine во встраивающем проекте](../how-to/migration/engine-upgrade.md) дополнено командами Git, фиксирующими три идентичности Engine, перечнем записей changelog для пропущенного диапазона, поиском влияния на потребителей, рекомендациями по разбиению длинных диапазонов и скелетом плана обновления.
+- Добавлены `BuildTools/find-python.sh` и `BuildTools/find-python.cmd`. Обёртки BuildTools (`build`, `validate`, `toolset`, `format-source`, `setup-mono`, `setup-env`) используют их, чтобы выбрать интерпретатор, удовлетворяющий новому минимуму версии Python.
+- Добавлен `npm test` в `BuildTools/fonline-tools` и `BuildTools/angelscript-debugger`: тесты разбора облегчённого JSON для FOnline Tools и тесты выбора цели для отладчика рядом с существующими тестами адаптера.
+- Добавлены три задачи AI-оценки для сценариев VS Code, настройки проекта и обновления Engine и шесть записей реестра внешних проектов.
+
+### Изменено
+
+- `SetOption` и `SetOptionValues` на этапе configure отвергают имена `FO_`, не являющиеся объявленными опциями. Снятые имена приводят к ошибке прямо в вызове с указанием замены (`FO_MONO_SCRIPTING` → `FO_MANAGED_SCRIPTING`, `FO_BUILD_EDITOR` → `FO_BUILD_MAPPER`, `FO_DISABLE_UNQLITE` → `FO_DATABASE_SQLITE`, `FO_INTERNAL_CONFIG_CAPACITY` удалена); любое другое необъявленное имя `FO_` отвергается сразу после объявления опций на стадии Init. Имена без префикса `FO_` не проверяются. `SetOption(FO_BINARY_OUTPUT_POSTFIX ...)` теперь действует, а не перекрывается предопределённым пустым значением.
+- `prepare-workspace.sh`, `prepare-mac-workspace.sh` и `prepare-win-workspace.ps1` передают все возможности в `buildtools.py prepare-host-workspace`, который теперь отклоняет имя, не поддерживаемое host-системой (код выхода 2, с перечнем допустимых имён), а не отбрасывает его и не делает ничего. `linux` и `packages` больше не являются именами возможностей; `wix` и `msi-packages` работают через обёртки. `prepare-host-workspace macos` задокументирован как только проверка host-системы.
+- `BuildTools/buildtools.py` требует Python 3.12 или новее: более старый интерпретатор останавливается с понятным сообщением, `host-check` проверяет версию на любой host-системе, а обёртки пропускают неподходящий интерпретатор.
+- FOnline Tools читает `tasks.json` как облегчённый JSON, который принимает VS Code (комментарии, завершающие запятые, ведущий BOM), и сообщает об ошибке разбора как `FOnline Tools: Cannot parse <path>: <reason>`, а не показывает пустое меню. Список горячих клавиш перестраивается из текущих файлов при каждом нажатии. `processId` в конфигурации attach `fos` для AngelScript теперь фильтрует обнаруженные цели: при одном совпадении attach идёт без выбора. Оба пакета расширений проходят typecheck; удалены устаревший отслеживаемый `fonline-tools/out/`, скрипты `compile` и никогда не настроенный скрипт `lint` отладчика с его зависимостями.
+- В `CMakePresets.json` примеров `Examples/MinimalProject`, `MinimalMultiplayer`, `NativeExtensionSample` и `ContentShowcase` объявлена схема `"version": 3`. Они использовали схему 8, которую CMake читает только начиная с 3.28, хотя каждый объявляет минимумом CMake 3.22; все используемые ими возможности пресетов входят в схему 3.
+- В `CMakeLists.txt` пяти примеров вместо удалённого `FO_MONO_SCRIPTING` указан `FO_MANAGED_SCRIPTING`, из `.fomain` примеров `MinimalProject` и `NativeExtensionSample` удалён игнорируемый ключ `RecursiveInput`, а из закреплённого workflow шаблона репозитория убрана неизвестная возможность `showcase-display-packages`.
+- В `Examples/MinimalProject/.gitignore` исключён `/Engine/`, а README примера, руководство «Первый headless-проект» и их английские пары описывают junction или symlink `Engine`, нужный при запуске примера внутри репозитория Engine. Руководство описывало копию `Workspace/validation-project`, которую `validate.py` не создаёт.
+- `check_native_source_layout.py` распознаёт автономный нативный пример (`SourceExt/NativeExtensionCore.h` и его тест) и при проверке из корня его собственного репозитория, а не только из корня Engine.
+- Удалены неиспользуемый `BuildTools/cmake/helpers/RunAndLog.cmake` и устаревшая строка `*.fodlg` корневого `.gitattributes`.
+
+### Исправлено
+
+- `AbortMessage` и `StatusMessage` сохраняют точку с запятой в тексте; шесть сообщений, включая ошибку устаревшей опции базы данных, теряли её. Конфигурация репозитория без первого коммита больше не печатает ошибку `git rev-parse` перед запасным хэшем сборки.
+- `$ENV{...}` и `$FILE{...}` в аргументах каталогов с префиксом `+` (`--Common.ResourcesPath`, `--Common.CachePath` и подобных) разрешаются без ведущего `+`, который раньше дописывался к пути буквально.
+- `docs_ai_model_review.py` разрешает корень до проверки выхода пути за его пределы, поэтому корень в короткой (8.3) или неканонической форме больше не отклоняет корректные пути прогонов внутри корня; защита от выхода покрыта тестом.
+
+### Документация
+
+- В руководствах по стилю и жизненному циклу скриптов исправлены имена настроек AngelScript: `AngelScript.MutableGlobalsAllowedNamespaces`, `AngelScript.AttributedFunctionDirectCallAllowedNamespaces` и `AngelScript.ExtraDirectCallBlockingAttributes`; руководства, документационный тест и набор AI-оценки всё ещё использовали удалённые написания `Script.*`.
+- Указано, что `Settings.CompatibilityVersion` — дайджест разобранных объявлений codegen, а не значение, меняющееся с каждой сборкой; описан журнал `RunUnitTests` (`<build-dir>/Testing/<target>-<config>.log`, запуск через `RunTestExecutable.cmake`); указано, какие виды правил миграции читаются (`Property`, `Proto`, `Enum`; `Version` — маркер); указано, что `.foinfo` требует `Baking.ProtoFileExtensions`; утверждения о неизвестных настройках согласованы; `Baking.IgnoreInputDirs` добавлен в руководство по сборке ресурсов; указано, что `format-source` форматирует только `.cpp`, `.h` и `.cs`; устаревшие примеры `./linux.sh` в README BuildTools заменены на `build.sh`.
+
+### Миграция
+
+- Базовая ревизия `8b32281d50` (`2026.1.112-dev`) → `2026.1.113-dev`. Хранимые свойства, сетевой протокол, `MigrationRule Version`, Managed ABI и схемы ресурсов не меняются, конвертация сохранённых данных не требуется. Нативное изменение ограничено исправлением аргументов каталогов выше. Пересоберите нативные цели; запекание не нужно.
+- Выполните `rg -n "SetOption(Values)?\(" CMakeLists.txt cmake/` по корневому файлу проекта и подключаемым файлам и сравните каждое имя `FO_` со справочником опций CMake. Замените или удалите снятые имена по списку в разделе «Изменено», а принадлежащие проекту переменные, начинающиеся с `FO_`, переименуйте с префиксом проекта. Проект, задававший `FO_BUILD_EDITOR`, теперь падает на configure, пока строка не удалена или не заменена. `SetOption(FO_BINARY_OUTPUT_POSTFIX ...)` в проекте теперь меняет имя каталога бинарных файлов; удалите вызов, если это не задумано.
+- Выполните `rg -n "prepare-(host-)?workspace|prepare-(win|mac)-workspace" .` по файлам CI и скриптам, удалите токены `linux` и `packages` и все возможности, которых нет в списке host-системы; в шаблонах репозиториев уберите `showcase-display-packages`. Установите Python 3.12 или новее на каждую машину, где запускается BuildTools.
+- Проект, скопировавший `CMakePresets.json` примера, может оставить схему 8, если его минимальный CMake — 3.28 или новее, либо понизить её до наименьшей схемы, нужной его пресетам. Выполните `rg -n "RecursiveInput|Script\.(MutableGlobalsAllowedNamespaces|AttributedFunctionDirectCallAllowedNamespaces|ExtraDirectCallBlockingAttributes)"` по файлам `.fomain`: удалите `RecursiveInput` (ключ никогда не действовал) и пишите перечисленные настройки с префиксом `AngelScript.`.
+- Проверьте `rg '"processId"' .vscode/launch.json`: `processId` в конфигурации attach для AngelScript теперь должен быть объявленным `<pid>:<port>` или быть удалён, чтобы сохранить окно выбора цели. Код, ссылавшийся на `RunAndLog.cmake` или `<DevName>_UnitTests.log` в каталоге сборки, должен читать `<build-dir>/Testing/<DevName>_UnitTests-<config>.log`.
+
+## 2026.1.112-dev - 2026-11-06
 
 ### Исправлено
 

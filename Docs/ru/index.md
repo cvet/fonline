@@ -5,7 +5,7 @@ locale: ru
 document_id: documentation-home
 permalink: /Docs/ru/
 ---
-<!-- docs-translation: {"document_id":"documentation-home","locale":"ru","source_path":"Docs/en/index.md","source_sha256":"17a1640c76a8e35cd809bf887b801ada2dd3dc4f80c7e8dbed6f64a0ed767853"} -->
+<!-- docs-translation: {"document_id":"documentation-home","locale":"ru","source_path":"Docs/en/index.md","source_sha256":"faf8c5e0f51e154bc9f53ae6bc6151a0434d8b8f788739bb00ab9c6f5cfb8e4c"} -->
 # Документация движка FOnline
 
 [Правила версий движка](how-to/release/versioning.md) и [история изменений](reference/changelog.md) определяют выпуски и обязательную работу по миграции.
@@ -53,6 +53,31 @@ FOnline. Она предназначена для разработчиков и�
   описывают переиспользуемые эксплуатационные границы выпуска.
 - [Обновление движка](how-to/migration/engine-upgrade.md) задаёт сверку полного
   диапазона ревизий, проверку совместимости, регенерацию и откат.
+
+## Ведение игрового проекта
+
+- [Жизненный цикл проекта](how-to/project/index.md) ведёт игровую команду от
+  подготовки рабочей станции через создание репозитория, настройку редактора,
+  проверки качества, непрерывную интеграцию, миграции данных, обновления движка
+  и выпуски.
+- [Подготовка рабочей станции](how-to/project/workstation-setup.md),
+  [создание игрового репозитория](how-to/project/create-repository.md) и
+  [устранение проблем настройки](troubleshooting/setup.md) охватывают первый день.
+- [Выбор бэкенда скриптов](explanation/scripting-runtime/choosing-a-backend.md) и
+  [выбор представления игровых данных](explanation/entity-and-property-model/choosing-a-representation.md)
+  помогают принять ранние проектные решения.
+- [Рабочее пространство VS Code](how-to/project/vscode-workspace.md) описывает
+  расширения FOnline Tools и отладчик AngelScript из Engine и граф задач, который
+  они читают.
+- [Проверки качества](how-to/project/quality-gates.md),
+  [тесты проекта](how-to/project/project-tests.md) и
+  [непрерывная интеграция](how-to/project/continuous-integration.md) поддерживают
+  здоровье проекта; [миграции данных](how-to/project/data-migrations.md),
+  [версии и выпуски](how-to/project/versioning-and-releases.md) и
+  [файлы журналов среды выполнения и инструментов](reference/runtime/log-files.md)
+  охватывают изменения и эксплуатацию.
+- [Сопровождение с ИИ-агентами](how-to/project/ai-assisted-maintenance.md) —
+  необязательный шаблон для команд, работающих с ИИ-агентами для разработки.
 
 ## Создание контента
 

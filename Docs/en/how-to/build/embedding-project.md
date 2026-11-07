@@ -8,7 +8,7 @@ permalink: /Docs/en/how-to/build/embedding-project.html
 
 # Embedding FOnline in a Game Project
 
-FOnline is designed to be embedded as a source submodule. The engine repository supplies reusable technology; the game repository supplies the concrete product.
+FOnline is designed to be embedded as a source submodule. The engine repository supplies reusable technology; the game repository supplies the concrete product. The [Project Lifecycle](../project/index.md) section covers creating and maintaining such a repository step by step.
 
 ## Source paths inspected
 

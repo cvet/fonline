@@ -5,7 +5,7 @@ document_id: baking-pipeline
 locale: ru
 permalink: /Docs/ru/explanation/content-pipeline/baking.html
 ---
-<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"0d46e5473afd678d8f3dd8acd2d6db42fc1bb82d717258d9d178cc08c5f42d5c"} -->
+<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"a1dc2507d39edb87a631ca0e8ec1d363037e418dc1eccbdf38220f7951218e11"} -->
 # Конвейер запекания ресурсов
 
 Bake выдаёт loose outputs для каждого target. Затем packaging фильтрует логический pack по target и пишет детерминированную базу `.fores`; Embedded внутри executable остаётся ZIP. Клиентское обновление может соединить базу с одним append-only writable `.patch.fores`, а удаляемый `Resources.foindex` ускоряет общий поиск. Бинарный формат, хеши, проверки и восстановление описаны в [формате пакетов ресурсов](../../../ResourcePackFormat.md), синхронизация клиента — в [разделении client runtime и updater](../runtime/client-updater.md). `BuildTools/measure_resource_packs.py` сравнивает реальные форматы baked tree с необязательным readback; `analyze_resource_corpus.py` оценивает распределение исходников и стоимость индекса без записи packs.
@@ -226,7 +226,7 @@ SpriteInfo, ModelAnimationInfo и стандартные эффекты движ
 объявленные текущими baker-ами, кандидатами не становятся. Причины включения на карте
 группируются по исходной карте, типу сущности и свойству, без повтора каждого ID.
 
-При включённой фильтрации встраивающий проект задаёт принудительные включения обычными метаданными и `.foinfo`:
+При включённой фильтрации встраивающий проект задаёт принудительные включения обычными метаданными и строками FixedType:
 
 ```text
 ///@ FixedType Common ResourceSet
@@ -244,6 +244,17 @@ Files = "Interface/Example With Space.png" \
 точные запечённые имена; маски и каталоги не поддерживаются. Проект сопровождает
 прямые пути скриптов, GUI и настроек, вычисляемые семейства и внешние ссылки внутри
 непрозрачных JSON/INI/Spine-данных. Конструкторы скриптов для сбора регистра не выполняются.
+
+Такие строки являются обычными секциями прототипов. Baker `Proto` читает их только
+в pack, у которого `Bakers` содержит `Proto`, и только из файлов с расширением из
+`Baking.ProtoFileExtensions` (по умолчанию `fopro`). Поэтому для строк в файле
+`.foinfo` добавьте `foinfo` в этот список, например
+`Baking.ProtoFileExtensions = fopro foinfo` в
+`BuildTools/tests/check_resource_usage_pipeline.py` (сохраните расширения, которые
+проект уже перечисляет, например `fomap`); иначе разместите их в файле `.fopro`.
+Файлы `.foinfo`, которые пишут сами baker-ы Engine, `SpriteInfo/<PackName>.foinfo`
+и `ModelAnimationInfo.foinfo`, являются запечёнными индексами спрайтов и анимаций
+моделей, а не авторскими каталогами.
 
 Эксклюзивная блокировка bake захватывается до инвалидирования старого манифеста.
 Успешный проход публикует временный файл переименованием после согласования выходов,
@@ -416,6 +427,19 @@ Discovery model-info регистрирует пути выходов без п�
 - side-only флаг применяется лишь к действительно server/client/mapper ресурсу; pack без него доставляется server и client;
 - обычный authored source задаётся через `InputDirs`, archives/data packs — через `InputFiles`; baked output не редактируется как исходник;
 - после смены ревизии Engine, контракта baker-а, глобальных metadata или dependency graph выполняется force bake, если timestamp-инкрементальность не может доказать эквивалентность.
+
+`Baking.IgnoreInputDirs` (`string[]`, по умолчанию пуст) исключает входные каталоги
+из bake. `Settings.inc` описывает её как «Каталоги входов ресурсных пакетов,
+исключаемые из всех пакетов относительно конфигурации, объявившей пакет; каждый
+должен быть входом какого-либо пакета». Каждая запись разрешается от `ConfigDir` каждого pack и удаляет
+совпадающую запись `InputDirs`; подкаталог другого перечисленного входа она не
+отфильтровывает, поскольку входные каталоги монтируются рекурсивно. Задайте её в
+поставочной sub-config, чтобы отдельный каталог, например тестовые скрипты, не
+попал в поставляемые packs. Запись, не являющаяся входом ни одного pack, приводит
+к сбою применения настроек с `SettingsException`, поэтому опечатка не отправит
+каталог в поставку незаметно. Оба поведения закреплены в
+`Source/Tests/Test_Settings.cpp`; настройка показана в
+[Project Tests](../../how-to/project/project-tests.md#исключение-тестовых-исходников-из-поставляемых-пакетов).
 
 Точный синтаксис и precedence описаны в [Configure a Game Project](../../how-to/build/project-configuration.md), а порядок generated sources и восстановление — в [Generated Content Workflow](../../how-to/build/generated-content.md).
 

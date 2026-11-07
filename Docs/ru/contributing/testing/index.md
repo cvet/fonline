@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/testing/
 ---
 
 # Тестирование
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"514d79c46813399c4818d5aad818aa10d77b6ab4373f62562e6570990f42f411"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"bb6fa802fe3b4b91d7c9f0d91b816da72917c31cae7e2b70726d33f41f308aa9"} -->
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
 > `Source/Tests/Test_*.cpp`.
@@ -28,7 +28,7 @@ permalink: /Docs/ru/contributing/testing/
 - `BuildTools/cmake/stages/EngineSources.cmake`
 - `BuildTools/cmake/stages/Applications.cmake`
 - `BuildTools/cmake/stages/Init.cmake`
-- `BuildTools/cmake/helpers/RunAndLog.cmake`
+- `BuildTools/cmake/RunTestExecutable.cmake`
 - `BuildTools/codecoverage.py`
 - `BuildTools/validate.sh` и `BuildTools/validate.cmd`
 
@@ -283,11 +283,17 @@ diagnostic evidence, а cleanup ограничен artifacts с доказанн
 
 Тест, вызывающий асинхронную обработку исключения, должен захватить ожидаемый отчёт и дождаться его до восстановления глобального обработчика или смены файла журнала. `NetworkServerAsioRearmsAcceptAfterCallbackException` проверяет и повторный приём соединения, и отчёт о нефатальном исключении: отдельный поток обработки может завершиться позже остановки listener.
 
-Для Visual Studio/MSBuild `RunUnitTests` пишет process output в
-`<build-dir>/<ProjectDevName>_UnitTests.log` и использует exit code процесса.
-Так ожидаемые строки `error` из negative cases не превращаются в ошибки MSBuild.
-При failure helper также выводит captured output перед остановкой, поэтому CI log
-называет failing test/assertion даже после удаления runner workspace и file log.
+При любом generator `RunUnitTests` запускает test executable через
+`BuildTools/cmake/RunTestExecutable.cmake`. Скрипт запускает executable в
+каталоге исходников проекта, пишет его stdout и stderr в
+`<build-dir>/Testing/<ProjectDevName>_UnitTests-<config>.log` и считает запуск
+успешным, только если процесс завершился с кодом 0, а output содержит сводку
+Catch2 (`All tests passed (...)` или строку итогов `test cases:`). Output уходит
+в log file, а не в консоль сборки, поэтому ожидаемые строки `error` из negative
+cases не превращаются в ошибки MSBuild. При ненулевом exit code скрипт выводит
+captured output перед остановкой, поэтому CI log называет failing test/assertion даже
+после удаления runner workspace и file log; при успехе он печатает строку сводки
+и путь к log.
 
 BuildTools может запускать выбранные широкие сценарии:
 

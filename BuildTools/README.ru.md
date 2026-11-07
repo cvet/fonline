@@ -5,7 +5,7 @@ permalink: /BuildTools/README.ru.html
 locale: ru
 document_id: buildtools-readme
 ---
-<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"a28963f6a853472192aad8338672c01b9214c47cf9513f7d586bac8e722b8d0a"} -->
+<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"f7f4733cb7773a67c8bfd534765c1467893a3b31c34a2eb504f9a48685bb665b"} -->
 # Инструменты сборки FOnline Engine
 
 ## Скрипты сборки
@@ -18,6 +18,18 @@ document_id: buildtools-readme
 исполняемого parser. Используйте [справочник BuildTools CLI](../Docs/ru/reference/buildtools/index.md)
 или [каноническую JSON-модель](../Docs/generated/cli.json), а не поддерживайте
 отдельный список команд вручную.
+
+`buildtools.py` требует Python 3.12 или новее (`MIN_PYTHON_VERSION`; он передаёт
+`onexc=` в `shutil.rmtree`). Каждая команда, включая `host-check`, сначала
+сравнивает запущенный интерпретатор с этим минимумом и останавливается с
+`BuildTools requires Python 3.12 or newer, but <path> is Python <version>`;
+интерпретатор Python 2 не может разобрать файл и останавливается с `SyntaxError`.
+Обёртки выбирают интерпретатор, удовлетворяющий минимуму: скрипты `.sh`
+подключают `find-python.sh`, который пробует `python3`, затем самый новый
+`python3.N` из `PATH`, затем `python`; скрипты `.cmd` вызывают `find-python.cmd`,
+а `prepare-win-workspace.ps1` проверяет так же, пробуя `py -3`, затем `python`.
+Если ни один кандидат не подходит, обёртка завершается с
+`Python 3.12 or newer not found`.
 
 Скрипты-помощники движка имеют отдельную поверхность на основе manifest.
 Используйте [справочник helper CLI](../Docs/ru/reference/helper-cli/index.md) или
@@ -320,8 +332,8 @@ target tree и обновляет существующий `SingleZip` без du
 
 ## Переменные окружения сборки
 
-Build scripts (sh/bat) можно вызывать из текущего каталога (например,
-`./linux.sh`) или из корня repository (например, `BuildTools/linux.sh`).
+Build scripts (sh/cmd) можно вызывать из каталога `BuildTools` (например,
+`./build.sh`) или из корня repository (например, `BuildTools/build.sh`).
 Перед запуском build scripts можно задать следующие переменные окружения.
 
 BuildTools использует только project-specific overrides с префиксом `FO_`.
@@ -393,7 +405,7 @@ workspace:
 - `msi-packages`
 - `all-packages`
 
-Workspace features `linux`, `web`, `android-arm64` и `windows-cross` не
+Workspace features `web`, `android-arm64` и `windows-cross` не
 устанавливают apt packages. На чистом host сначала передайте соответствующий
 feature `*-packages`. `all-packages` устанавливает все группы выше, включая
 `php-cli` и `msi-packages` с toolset MSI installer `wixl`. Поскольку apt
@@ -412,6 +424,17 @@ Host wrapper scripts делегируют unified-команде подгото�
 - `buildtools.py prepare-host-workspace linux ...`
 - `buildtools.py prepare-host-workspace windows ...`
 - `buildtools.py prepare-host-workspace macos ...`
+
+Каждый host принимает только features, которые на нём что-то подготавливают:
+Linux принимает группы пакетов выше, а также `toolset`, `web`, `android-arm32`,
+`android-arm64`, `android-x86`, `dotnet`, `windows-cross`, `msan-libcxx` и `all`;
+Windows принимает `toolset`, `web`, `wix` и `all`; macOS не принимает ни одного,
+поэтому `prepare-host-workspace macos` только выполняет проверку host. Любое
+другое имя, включая выведенные из употребления `linux` и `packages`, завершается
+с кодом 2 и сообщением со списком имён, которые принимает host. Обёртки
+превращают слово `check` в `--check` и передают все остальные аргументы без
+изменений, поэтому единственным владельцем этого словаря остаётся
+`buildtools.py`, а feature с опечаткой приводит к ошибке, а не отбрасывается.
 
 Версия Emscripten фиксируется `Engine/ThirdParty/emscripten` и устанавливается
 в `Workspace/emsdk`.
@@ -734,8 +757,11 @@ python3 BuildTools/secure_channel_key.py public /path/to/channel.key
 
 ## Форматирование исходного кода
 
-`buildtools.py format-source` форматирует дерево `Source/` Engine, включая
-`.fos`, с помощью clang-format. `discover_clang_format()` разрешает binary в
+`buildtools.py format-source` форматирует файлы `.cpp`, `.h` и `.cs` дерева
+`Source/` Engine с помощью clang-format; файлов `.fos` в этом дереве нет. Проект
+форматирует собственный AngelScript, вызывая импортируемую функцию
+`format_files(clang_format, root, patterns)` с шаблоном `*.fos`; она применяет
+исправление `fix_fos_nullable_suffix` к каждому форматируемому файлу `.fos`. `discover_clang_format()` разрешает binary в
 таком порядке: override `FO_CLANG_FORMAT`, если задан, затем
 `clang-format-20`/`clang-format` из `PATH`; разрешённый binary должен сообщать
 major version 20. Затем BuildTools восстанавливает nullable и named-argument

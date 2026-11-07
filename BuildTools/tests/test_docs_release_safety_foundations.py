@@ -75,7 +75,8 @@ class ReleaseSafetyFoundationsDocumentationTests(unittest.TestCase):
 
         self.assertIn('"$TARGET_ENV{"', settings)
         self.assertIn('"$TARGET_FILE{"', settings)
-        self.assertIn('(!_bakingMode && (is_target_env || is_target_file))', settings)
+        self.assertIn('if (is_env || is_file || (!baking_mode && (is_target_env || is_target_file))) {', settings)
+        self.assertIn('ResolveSettingValue(setting_name, setting_value, config_dir, _bakingMode)', settings)
         self.assertIn('logging::write("Unknown setting {} = {}", key, value)', baker)
         self.assertIn("ANDROID_RELEASE_STORE_PASSWORD_ENV", packager)
         self.assertIn("ANDROID_RELEASE_KEY_PASSWORD_ENV", packager)

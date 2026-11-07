@@ -12,7 +12,47 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-11-06
+## Current - 2026-11-07
+
+### Added
+
+- Add the Project Lifecycle documentation section (`Docs/en/how-to/project/`, Russian mirror under `Docs/ru`) for a game team that embeds the Engine: [Project Lifecycle](../how-to/project/index.md), workstation setup, repository creation, a VS Code workspace guide for the FOnline Tools and AngelScript debugger extensions, quality gates, project tests, continuous integration, data migrations, versioning and releases, and an optional AI-assisted maintenance pattern. Add [Troubleshoot Project Setup](../troubleshooting/setup.md), [Runtime and Tool Log Files](runtime/log-files.md), [Choose a Script Backend](../explanation/scripting-runtime/choosing-a-backend.md), [Choose How to Represent Game Data](../explanation/entity-and-property-model/choosing-a-representation.md) and the contributor page [Maintain the FOnline VS Code Extensions](../contributing/tooling/vscode-extensions.md). Extend [Upgrade an Embedding Project](../how-to/migration/engine-upgrade.md) with the Git commands that record the three Engine identities, the skipped-range changelog listing, the consumer-impact search, batching guidance and an update plan skeleton.
+- Add `BuildTools/find-python.sh` and `BuildTools/find-python.cmd`. The BuildTools wrappers (`build`, `validate`, `toolset`, `format-source`, `setup-mono`, `setup-env`) use them to pick an interpreter that meets the new Python floor.
+- Add `npm test` to `BuildTools/fonline-tools` and `BuildTools/angelscript-debugger`: relaxed-JSON tests for FOnline Tools, and target-selection tests added to the existing adapter tests of the debugger.
+- Add three AI-evaluation tasks for the VS Code, project setup and Engine update journeys, and six external-project evidence records.
+
+### Changed
+
+- Reject `FO_` names that are not declared options in `SetOption` and `SetOptionValues` at configure time. Removed names fail at the call with the replacement named (`FO_MONO_SCRIPTING` → `FO_MANAGED_SCRIPTING`, `FO_BUILD_EDITOR` → `FO_BUILD_MAPPER`, `FO_DISABLE_UNQLITE` → `FO_DATABASE_SQLITE`, `FO_INTERNAL_CONFIG_CAPACITY` deleted); any other undeclared `FO_` name fails right after the option declarations of the Init stage. Names without the `FO_` prefix are not checked. `SetOption(FO_BINARY_OUTPUT_POSTFIX ...)` now takes effect instead of being shadowed by a predefined empty value.
+- Forward every feature from `prepare-workspace.sh`, `prepare-mac-workspace.sh` and `prepare-win-workspace.ps1` to `buildtools.py prepare-host-workspace`, which now rejects a feature name the host does not support (exit code 2, with the valid names) instead of dropping it or doing nothing. `linux` and `packages` are no longer feature names; `wix` and `msi-packages` work through the wrappers. `prepare-host-workspace macos` is documented as a host check only.
+- Require Python 3.12 or newer for `BuildTools/buildtools.py`: an older interpreter stops with a clear message, `host-check` verifies the version on every host, and the wrappers skip an unsuitable interpreter.
+- Make FOnline Tools read `tasks.json` as the relaxed JSON VS Code accepts (comments, trailing commas, a leading byte-order mark) and report a parse failure as `FOnline Tools: Cannot parse <path>: <reason>` instead of showing an empty menu. Rebuild its hotkey list from the current files on every press. Let a `processId` in an AngelScript `fos` attach configuration filter the discovered targets: one match attaches without a picker. Both extension packages typecheck cleanly; remove the stale tracked `fonline-tools/out/`, the `compile` scripts and the never-configured debugger `lint` script and its dependencies.
+- Declare schema `"version": 3` in the `CMakePresets.json` of `Examples/MinimalProject`, `MinimalMultiplayer`, `NativeExtensionSample` and `ContentShowcase`. They used schema 8, which CMake reads only from 3.28, although each declares CMake 3.22 as its minimum; every preset feature they use belongs to schema 3.
+- Set `FO_MANAGED_SCRIPTING` instead of the removed `FO_MONO_SCRIPTING` in the `CMakeLists.txt` of the five example projects, drop the ignored `RecursiveInput` key from the `.fomain` of `MinimalProject` and `NativeExtensionSample`, and remove the unknown `showcase-display-packages` token from the pinned repository template workflow.
+- Exclude `/Engine/` in `Examples/MinimalProject/.gitignore` and document the `Engine` junction or symlink that running the example inside the Engine repository needs, in its README, in the First Headless Project tutorial and in their Russian counterparts. The tutorial described a `Workspace/validation-project` copy that `validate.py` does not create.
+- Recognize the standalone native sample (`SourceExt/NativeExtensionCore.h` and its test) in `check_native_source_layout.py` when it is checked from its own repository root, not only from the Engine root.
+- Remove the unused `BuildTools/cmake/helpers/RunAndLog.cmake` and the stale `*.fodlg` line of the root `.gitattributes`.
+
+### Fixed
+
+- Keep semicolons in `AbortMessage` and `StatusMessage` texts; six messages, including the retired-database option error, lost them. Configuring a repository without a first commit no longer prints a `git rev-parse` error before the fallback build hash.
+- Resolve `$ENV{...}` and `$FILE{...}` in a `+`-prefixed `--Common.ResourcesPath`, `--Common.CachePath` and similar directory arguments without the leading `+`, which was appended to the path literally.
+- Resolve the root before the path-escape check in `docs_ai_model_review.py`, so a root given in short (8.3) or non-canonical form no longer rejects valid in-root run paths, and cover the escape protection with a test.
+
+### Documentation
+
+- Correct the AngelScript setting names in the script style and lifecycle guides to `AngelScript.MutableGlobalsAllowedNamespaces`, `AngelScript.AttributedFunctionDirectCallAllowedNamespaces` and `AngelScript.ExtraDirectCallBlockingAttributes`; the guides, a documentation test and the AI evaluation set still used the removed `Script.*` spellings.
+- State that `Settings.CompatibilityVersion` is a digest of the parsed codegen declarations rather than a value that changes with every build; describe the `RunUnitTests` log (`<build-dir>/Testing/<target>-<config>.log`, run through `RunTestExecutable.cmake`); state which migration rule kinds are consulted (`Property`, `Proto`, `Enum`; `Version` is a marker); state that `.foinfo` needs `Baking.ProtoFileExtensions`; make the unknown-setting statements agree; add `Baking.IgnoreInputDirs` to the baking guide; state that `format-source` formats `.cpp`, `.h` and `.cs` only; replace the retired `./linux.sh` examples in the BuildTools README with `build.sh`.
+
+### Migration
+
+- Baseline `8b32281d50` (`2026.1.112-dev`) → `2026.1.113-dev`. No stored property, network protocol, `MigrationRule Version`, Managed ABI or resource schema changes, and no saved-data conversion is required. The native change is limited to the directory-argument fix above. Rebuild the native targets; no bake is needed.
+- Search the project root file and included files with `rg -n "SetOption(Values)?\(" CMakeLists.txt cmake/` and compare every `FO_` name with the CMake option reference. Replace or delete removed names as listed in the Changed section, and rename project-owned variables that start with `FO_` to a project prefix. A project that set `FO_BUILD_EDITOR` now fails at configure until the line is removed or replaced. `SetOption(FO_BINARY_OUTPUT_POSTFIX ...)` in a project now changes the binary output directory name; remove the call if that is not intended.
+- Search CI files and scripts with `rg -n "prepare-(host-)?workspace|prepare-(win|mac)-workspace" .` and remove the `linux` and `packages` tokens and every feature the host does not list; repository templates must drop `showcase-display-packages`. Install Python 3.12 or newer on every machine that runs BuildTools.
+- A project that copied the example `CMakePresets.json` may keep schema 8 when its own minimum CMake is 3.28 or newer, or lower it to the lowest schema its presets need. Search `.fomain` files with `rg -n "RecursiveInput|Script\.(MutableGlobalsAllowedNamespaces|AttributedFunctionDirectCallAllowedNamespaces|ExtraDirectCallBlockingAttributes)"`: delete `RecursiveInput` (it never had an effect) and spell the settings with the `AngelScript.` prefix.
+- Check `rg '"processId"' .vscode/launch.json`: a `processId` in an AngelScript attach configuration must now be the advertised `<pid>:<port>` or be removed to keep the target picker. Code that referred to `RunAndLog.cmake` or to `<DevName>_UnitTests.log` in the build directory should read `<build-dir>/Testing/<DevName>_UnitTests-<config>.log`.
+
+## 2026.1.112-dev - 2026-11-06
 
 ### Fixed
 

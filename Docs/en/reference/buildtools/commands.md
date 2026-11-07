@@ -364,13 +364,13 @@ Stable ID: `cli.buildtools.command.prepare-host-workspace`
 ```text
 usage: buildtools.py prepare-host-workspace [-h] [--check]
                                             {linux,windows,macos}
-                                            [{common-packages,linux-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,linux,web,android-arm32,android-arm64,android-x86,toolset,dotnet,windows-cross,wix,msan-libcxx,all} ...]
+                                            [{common-packages,linux-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,toolset,web,android-arm32,android-arm64,android-x86,dotnet,windows-cross,msan-libcxx,all,wix} ...]
 ```
 
 | Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | <a id="entry-cli-buildtools-command-prepare-host-workspace-argument-host-8fb8276bf1"></a><code>cli.buildtools.command.prepare-host-workspace.argument.host</code> | <code>host</code> | <code>positional</code> | yes | <code>1</code> | <code>linux</code>, <code>windows</code>, <code>macos</code> | - | host platform to prepare |
-| <a id="entry-cli-buildtools-command-prepare-host-workspace-argument-features-1d7026db67"></a><code>cli.buildtools.command.prepare-host-workspace.argument.features</code> | <code>features</code> | <code>positional</code> | no | <code>*</code> | <code>common-packages</code>, <code>linux-packages</code>, <code>web-packages</code>, <code>android-packages</code>, <code>windows-cross-packages</code>, <code>msi-packages</code>, <code>all-packages</code>, <code>linux</code>, <code>web</code>, <code>android-arm32</code>, <code>android-arm64</code>, <code>android-x86</code>, <code>toolset</code>, <code>dotnet</code>, <code>windows-cross</code>, <code>wix</code>, <code>msan-libcxx</code>, <code>all</code> | - | feature groups to prepare; omit to use the host defaults |
+| <a id="entry-cli-buildtools-command-prepare-host-workspace-argument-features-1d7026db67"></a><code>cli.buildtools.command.prepare-host-workspace.argument.features</code> | <code>features</code> | <code>positional</code> | no | <code>*</code> | <code>common-packages</code>, <code>linux-packages</code>, <code>web-packages</code>, <code>android-packages</code>, <code>windows-cross-packages</code>, <code>msi-packages</code>, <code>all-packages</code>, <code>toolset</code>, <code>web</code>, <code>android-arm32</code>, <code>android-arm64</code>, <code>android-x86</code>, <code>dotnet</code>, <code>windows-cross</code>, <code>msan-libcxx</code>, <code>all</code>, <code>wix</code> | - | feature groups to prepare; omit to use the host defaults; a name the host does not support is an error: linux accepts common-packages, linux-packages, web-packages, android-packages, windows-cross-packages, msi-packages, all-packages, toolset, web, android-arm32, android-arm64, android-x86, dotnet, windows-cross, msan-libcxx, all (default: all); windows accepts toolset, web, wix, all (default: toolset); macos accepts no features; prepare-host-workspace macos only runs the host check |
 | <a id="entry-cli-buildtools-command-prepare-host-workspace-argument-check-f990629a92"></a><code>cli.buildtools.command.prepare-host-workspace.argument.check</code> | <code>--check</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | check availability without installing or building |
 
 ### Exact `--help` output
@@ -378,13 +378,15 @@ usage: buildtools.py prepare-host-workspace [-h] [--check]
 ```text
 usage: buildtools.py prepare-host-workspace [-h] [--check]
                                             {linux,windows,macos}
-                                            [{common-packages,linux-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,linux,web,android-arm32,android-arm64,android-x86,toolset,dotnet,windows-cross,wix,msan-libcxx,all} ...]
+                                            [{common-packages,linux-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,toolset,web,android-arm32,android-arm64,android-x86,dotnet,windows-cross,msan-libcxx,all,wix} ...]
 
 positional arguments:
   {linux,windows,macos}
                         host platform to prepare
-  {common-packages,linux-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,linux,web,android-arm32,android-arm64,android-x86,toolset,dotnet,windows-cross,wix,msan-libcxx,all}
-                        feature groups to prepare; omit to use the host defaults
+  {common-packages,linux-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,toolset,web,android-arm32,android-arm64,android-x86,dotnet,windows-cross,msan-libcxx,all,wix}
+                        feature groups to prepare; omit to use the host defaults; a name the host does not support is an error: linux accepts common-packages, linux-packages, web-packages, android-packages, windows-cross-packages, msi-
+                        packages, all-packages, toolset, web, android-arm32, android-arm64, android-x86, dotnet, windows-cross, msan-libcxx, all (default: all); windows accepts toolset, web, wix, all (default: toolset); macos accepts no
+                        features; prepare-host-workspace macos only runs the host check
 
 options:
   -h, --help            show this help message and exit

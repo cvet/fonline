@@ -5,7 +5,7 @@ locale: ru
 document_id: source-tree
 permalink: /Docs/ru/contributing/source-tree/
 ---
-<!-- docs-translation: {"document_id":"source-tree","locale":"ru","source_path":"Docs/en/contributing/source-tree/index.md","source_sha256":"8a71bccda71634e881867eaca35e18248ff98e8e65c0038c855274b29b07534c"} -->
+<!-- docs-translation: {"document_id":"source-tree","locale":"ru","source_path":"Docs/en/contributing/source-tree/index.md","source_sha256":"e39791120acdd74226372758c3181b883e20f0d132eba518d4b6d51a3843ea03"} -->
 # Руководство по дереву исходного кода
 
 Это руководство объясняет, откуда начинать навигацию по `Source/`. Оно дополняет краткий [Source README](../../../../Source/README.ru.md).
@@ -94,7 +94,9 @@ authored scope. Оба валидатора и их регрессии обяз�
 самостоятельной C++-библиотеке, собираемой без заголовков Engine: он сохраняет
 стандартную библиотеку и не должен подключать `Common.h`. Её отдельный
 `Tests/NativeExtensionCoreTest.cpp` начинается с `NativeExtensionCore.h`. Эти точные
-границы проверяются явно; серверное расширение следует обычным правилам cpp-only.
+границы проверяются явно из корня Engine и из корня собственного репозитория примера
+(`--root Examples/NativeExtensionSample --source-dir SourceExt --shallow`); серверное
+расширение следует обычным правилам cpp-only.
 
 ## `Source/Applications/`
 

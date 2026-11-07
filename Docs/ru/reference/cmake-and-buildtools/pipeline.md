@@ -7,7 +7,7 @@ permalink: /Docs/ru/reference/cmake-and-buildtools/pipeline.html
 ---
 
 # Конвейер BuildTools
-<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"ec015ec5612d1d52d92ae2ba3cf88b927f50bb7269167a35f759c52cd59518c0"} -->
+<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"67f354b7034bf0966143c090530371444980fd3d112e4b54d82f21315f5b8ec5"} -->
 Этот документ объясняет поэтапный CMake-конвейер в `BuildTools/cmake/`. Он
 дополняет основанное на исходниках руководство [Build Workflow](../../how-to/build/):
 в нём описан пользовательский подход к сборке, а здесь — владение реализацией.
@@ -60,7 +60,7 @@ revision-pinned implementation interfaces: автоматизация обяза
 - `BuildTools/cmake/helpers/Build.cmake`
 - `BuildTools/cmake/helpers/Commands.cmake`
 - `BuildTools/cmake/helpers/Options.cmake`
-- `BuildTools/cmake/helpers/RunAndLog.cmake`
+- `BuildTools/cmake/RunTestExecutable.cmake`
 - `BuildTools/cmake/helpers/State.cmake`
 - `BuildTools/cmake/helpers/WriteBuildHash.cmake`
 - `BuildTools/codegen.py`
@@ -256,12 +256,13 @@ graph. Его отдельный entrypoint `BuildTools/EffekseerEditor/build.ps
 конфигурирует и собирает upstream sources независимо от CMake-конфигурации
 FOnline во встраивающем проекте.
 
-Для Visual Studio/MSBuild test targets стадия запускает test executable через
-`BuildTools/cmake/helpers/RunAndLog.cmake`. Helper сохраняет stdout и stderr в
-`<build-dir>/<target>.log` и завершает CMake command с реальным process exit
-code. Так ожидаемая диагностика negative tests сохраняется, а MSBuild не
-трактует строки со словом `error` как build failures. Другие generators
-запускают executable напрямую.
+При любом generator `RunUnitTests` запускает test executable через script-mode
+runner `BuildTools/cmake/RunTestExecutable.cmake`. Runner сохраняет stdout и
+stderr в `<build-dir>/Testing/<target>-<config>.log` и завершает CMake command
+ошибкой, если process exit code ненулевой (сначала выводя captured output) или
+в output нет сводки Catch2. Так ожидаемая диагностика negative tests
+сохраняется, а MSBuild не трактует строки со словом `error` как build failures.
+Run targets покрытия кода вместо этого вызывают `BuildTools/codecoverage.py`.
 
 Native-конфигурации Windows, Linux и macOS без cross-compilation также собирают
 `FOnlineResourcePackHash` перед baker и CMake package targets. Эта host-only
@@ -448,8 +449,6 @@ diagnostics, а не для source ownership или проверки build featu
 - `Build.cmake` — helpers создания build/target, включая executable-only `/LARGEADDRESSAWARE` для Windows x86; см. [пределы адресного пространства и проверку](../../how-to/build/#адресное-пространство-windows-x86).
 - `Commands.cmake` — helpers command targets.
 - `Options.cmake` — helpers options/values.
-- `RunAndLog.cmake` — внутренний script-mode process runner, сохраняющий test
-  output и передающий exit code.
 - `State.cmake` — поддержка состояния и hooks поэтапного pipeline.
 - `WriteBuildHash.cmake` — записывает настроенный `FO_BUILD_HASH`, переданный
   как `BUILD_HASH`, в маркеры native binaries. Resource marker записывает

@@ -54,6 +54,29 @@ documentation.
 - [Engine Upgrade Guide](how-to/migration/engine-upgrade.md) defines full-range
   revision reconciliation, compatibility review, regeneration, and rollback.
 
+## Run a game project
+
+- [Project Lifecycle](how-to/project/index.md) routes a game team from
+  workstation preparation through repository creation, editor setup, quality
+  gates, continuous integration, data migrations, Engine updates and releases.
+- [Prepare a Workstation](how-to/project/workstation-setup.md),
+  [Create a Game Repository](how-to/project/create-repository.md), and
+  [Troubleshoot Project Setup](troubleshooting/setup.md) cover the first day.
+- [Choose a Script Backend](explanation/scripting-runtime/choosing-a-backend.md) and
+  [Choose How to Represent Game Data](explanation/entity-and-property-model/choosing-a-representation.md)
+  support the early design decisions.
+- [VS Code Workspace](how-to/project/vscode-workspace.md) documents the Engine's
+  FOnline Tools and AngelScript debugger extensions and the task graph they read.
+- [Quality Gates](how-to/project/quality-gates.md),
+  [Project Tests](how-to/project/project-tests.md), and
+  [Continuous Integration](how-to/project/continuous-integration.md) keep a
+  project healthy; [Data Migrations](how-to/project/data-migrations.md),
+  [Versioning and Releases](how-to/project/versioning-and-releases.md), and
+  [Runtime and Tool Log Files](reference/runtime/log-files.md) cover change and
+  operation.
+- [AI-Assisted Maintenance](how-to/project/ai-assisted-maintenance.md) is an
+  optional pattern for teams that work with AI coding agents.
+
 ## Author content
 
 - [Prototype Format](how-to/content/prototype-format.md)

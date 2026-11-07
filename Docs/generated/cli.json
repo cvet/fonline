@@ -493,8 +493,8 @@
       "name": "prepare-host-workspace",
       "summary": "prepare host workspace and prerequisites",
       "description": null,
-      "usage": "usage: buildtools.py prepare-host-workspace [-h] [--check]\n                                            {linux,windows,macos}\n                                            [{common-packages,linux-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,linux,web,android-arm32,android-arm64,android-x86,toolset,dotnet,windows-cross,wix,msan-libcxx,all} ...]",
-      "help_output": "usage: buildtools.py prepare-host-workspace [-h] [--check]\n                                            {linux,windows,macos}\n                                            [{common-packages,linux-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,linux,web,android-arm32,android-arm64,android-x86,toolset,dotnet,windows-cross,wix,msan-libcxx,all} ...]\n\npositional arguments:\n  {linux,windows,macos}\n                        host platform to prepare\n  {common-packages,linux-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,linux,web,android-arm32,android-arm64,android-x86,toolset,dotnet,windows-cross,wix,msan-libcxx,all}\n                        feature groups to prepare; omit to use the host defaults\n\noptions:\n  -h, --help            show this help message and exit\n  --check               check availability without installing or building\n",
+      "usage": "usage: buildtools.py prepare-host-workspace [-h] [--check]\n                                            {linux,windows,macos}\n                                            [{common-packages,linux-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,toolset,web,android-arm32,android-arm64,android-x86,dotnet,windows-cross,msan-libcxx,all,wix} ...]",
+      "help_output": "usage: buildtools.py prepare-host-workspace [-h] [--check]\n                                            {linux,windows,macos}\n                                            [{common-packages,linux-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,toolset,web,android-arm32,android-arm64,android-x86,dotnet,windows-cross,msan-libcxx,all,wix} ...]\n\npositional arguments:\n  {linux,windows,macos}\n                        host platform to prepare\n  {common-packages,linux-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,toolset,web,android-arm32,android-arm64,android-x86,dotnet,windows-cross,msan-libcxx,all,wix}\n                        feature groups to prepare; omit to use the host defaults; a name the host does not support is an error: linux accepts common-packages, linux-packages, web-packages, android-packages, windows-cross-packages, msi-\n                        packages, all-packages, toolset, web, android-arm32, android-arm64, android-x86, dotnet, windows-cross, msan-libcxx, all (default: all); windows accepts toolset, web, wix, all (default: toolset); macos accepts no\n                        features; prepare-host-workspace macos only runs the host check\n\noptions:\n  -h, --help            show this help message and exit\n  --check               check availability without installing or building\n",
       "arguments": [
         {
           "id": "cli.buildtools.command.prepare-host-workspace.argument.host",
@@ -531,21 +531,20 @@
             "windows-cross-packages",
             "msi-packages",
             "all-packages",
-            "linux",
+            "toolset",
             "web",
             "android-arm32",
             "android-arm64",
             "android-x86",
-            "toolset",
             "dotnet",
             "windows-cross",
-            "wix",
             "msan-libcxx",
-            "all"
+            "all",
+            "wix"
           ],
           "default": null,
           "type": null,
-          "description": "feature groups to prepare; omit to use the host defaults"
+          "description": "feature groups to prepare; omit to use the host defaults; a name the host does not support is an error: linux accepts common-packages, linux-packages, web-packages, android-packages, windows-cross-packages, msi-packages, all-packages, toolset, web, android-arm32, android-arm64, android-x86, dotnet, windows-cross, msan-libcxx, all (default: all); windows accepts toolset, web, wix, all (default: toolset); macos accepts no features; prepare-host-workspace macos only runs the host check"
         },
         {
           "id": "cli.buildtools.command.prepare-host-workspace.argument.check",
@@ -571,5 +570,5 @@
     "global_argument_count": 0,
     "command_argument_count": 25
   },
-  "contract_digest": "fe4230108f54098166ceb508251225ab910d03b975cd7bd5267b7c212341d27d"
+  "contract_digest": "c236327f629d012faec89b4b87430b8f09bbe432b63454ee6557293276331ad2"
 }

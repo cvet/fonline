@@ -9,9 +9,9 @@ This internal audit records discovery material, ownership decisions, and promoti
 ## Coverage
 
 - Snapshots: **3**
-- Classified concerns: **32**
-- Source references: **196**
-- Dispositions: `boundary-owned` 3, `project-owned` 3, `promoted` 25, `promotion-candidate` 1
+- Classified concerns: **38**
+- Source references: **224**
+- Dispositions: `boundary-owned` 6, `project-owned` 3, `promoted` 28, `promotion-candidate` 1
 
 ## Audited snapshots
 
@@ -57,6 +57,12 @@ This internal audit records discovery material, ownership decisions, and promoti
 | `native-debugging-workflows` Native, mixed-stack, and AngelScript debugging workflows | `promoted` | `P0` | `quality` | `Docs/en/troubleshooting/debugging.md`<br>`BuildTools/tests/test_docs_debugging.py` | `quality`<br>`platform`<br>`networking`<br>`documentation` |
 | `asset-provenance-and-public-examples` Tutorial assets, provenance, and public examples | `promoted` | `P0` | `build-release` | `Docs/en/how-to/build/public-example-repositories.md`<br>`Examples/PublicRepositories.json`<br>`Examples/PublicRepositoryTemplate` | `build-release`<br>`content-data`<br>`documentation`<br>`quality` |
 | `private-item-policy-and-map-spectators` Private item knowledge and bounded map spectators | `boundary-owned` | `P1` | `runtime` | `Docs/en/explanation/runtime/server.md`<br>`Source/Tests/Test_ServerEntityLifetime.cpp` | `runtime`<br>`scripting`<br>`quality`<br>`documentation` |
+| `ide-and-editor-workflow` Editor integration: task grammar, aggregate routes, and extension delivery | `promoted` | `P1` | `tooling` | `Docs/en/how-to/project/vscode-workspace.md`<br>`Docs/en/contributing/tooling/vscode-extensions.md` | `tooling`<br>`documentation`<br>`platform` |
+| `repository-hygiene-and-attributes` Repository hygiene: ignored outputs, attributes, submodule scope, and optional LFS | `promoted` | `P1` | `build-release` | `Docs/en/how-to/project/create-repository.md`<br>`Docs/en/how-to/project/workstation-setup.md`<br>`Docs/en/troubleshooting/setup.md` | `build-release`<br>`documentation`<br>`platform` |
+| `project-ci-structure` Project CI structure, portable steps, and release preflight | `boundary-owned` | `P1` | `build-release` | `Docs/en/how-to/project/continuous-integration.md`<br>`Docs/en/how-to/project/versioning-and-releases.md` | `build-release`<br>`documentation`<br>`quality`<br>`platform` |
+| `project-quality-gates` Project quality gates, baselines, and aggregate verification | `boundary-owned` | `P1` | `quality` | `Docs/en/how-to/project/quality-gates.md`<br>`Docs/en/how-to/project/project-tests.md` | `quality`<br>`documentation`<br>`tooling` |
+| `project-versioning-and-release-identity` Generated project version and release identity | `boundary-owned` | `P1` | `build-release` | `Docs/en/how-to/project/versioning-and-releases.md` | `build-release`<br>`documentation`<br>`runtime` |
+| `project-docs-and-agent-process` Project documentation and AI-agent process | `promoted` | `P2` | `documentation` | `Docs/en/how-to/project/ai-assisted-maintenance.md` | `documentation`<br>`quality`<br>`tooling` |
 
 ## Decisions and gates
 
@@ -283,6 +289,48 @@ This internal audit records discovery material, ownership decisions, and promoti
 - Reusable claim: Projects can keep discovery private to a viewer; reusable map views carry opaque entity context into separate critter and item visibility hooks for snapshots and live updates without adopting the discovery policy.
 - Decision: The pinned project snapshot demonstrates viewer-specific mine state and a native item-visibility hook; it does not attest a later checkpoint-preview implementation or current game fixes. The current Engine owns opaque retained context, separate synchronous read-only hooks, membership and critter modes, and independently covered deferred refresh, re-derived from its native source/tests. Discovery abilities, relation labels, mine ownership, null-context meaning and gameplay rules stay project-owned.
 - Promotion gate: Engine-owned MapViewContextControlsBothSubjectKinds and BoundedMapSpectatorsTrackVisibility cover context, lifetime, radius and null fallback. MapViewDeferredRefreshCannotChangeReplacementSubscription, MapViewDeferredRefreshSendsCurrentPosition and MapViewDeferredRefreshRestoresItemPropertiesWithoutBlockingOtherSubjects cover deferred subscription identity and current serialized state. An embedding project separately validates its visibility policy and discovery lifecycle.
+
+### Editor integration: task grammar, aggregate routes, and extension delivery
+
+- Sources: `last-frontier:.vscode/tasks.json`, `last-frontier:.vscode/launch.json`, `last-frontier:.vscode/settings.json`, `fonline-tla:.vscode/tasks.json`, `fonline-tla:.vscode/launch.json`, `fonline-tla:.vscode/settings.json`
+- Reusable claim: Both projects drive the Engine-owned FOnline Tools menu from workspace tasks and launch profiles that follow one label grammar, depend on a configure task, and expose a sequential aggregate verification route.
+- Decision: The Engine documents the extension contract and a generic task-graph pattern; concrete task names, groups and aggregate contents remain project-owned.
+- Promotion gate: Label grammar, hotkeys and platform filtering are re-derived from the extension source; the extensions are working Engine-owned tools installed through tracked workspace symlinks, and the pages state which behavior the Engine repository itself tests.
+
+### Repository hygiene: ignored outputs, attributes, submodule scope, and optional LFS
+
+- Sources: `last-frontier:.gitattributes`, `last-frontier:AGENTS.md`, `last-frontier:Docs/BuildAndLaunch.md`, `fonline-tla:.gitattributes`, `fonline-tla:AGENTS.md`
+- Reusable claim: A game repository keeps generated output and logs untracked, fixes line endings and binary treatment for every FOnline format, scopes submodule initialization when other private submodules exist, and decides about LFS up front.
+- Decision: The Engine teaches the repository shape and the decisions to make; hosting, guard tools and audits are project-owned.
+- Promotion gate: Every command and file form is re-derived from Engine BuildTools, the examples and CMake behavior; LFS hosting and long-path guards stay project policy.
+
+### Project CI structure, portable steps, and release preflight
+
+- Sources: `last-frontier:Tools/CiSteps/README.md`, `last-frontier:.github/workflows/smoke-tests.yml`, `last-frontier:Tools/CiChecks/check_workflow_syntax.py`, `fonline-tla:.github/workflows/build.yml`
+- Reusable claim: Both projects order CI as validate, compile, bake, unit tests and package, keep steps portable across runners, and publish only from a manual dispatch with version and tag preflight.
+- Decision: The Engine documents the job order, trust boundaries and preflight pattern; step runners, workflow gates and publication hosts remain project-owned.
+- Promotion gate: Move any reusable CI step runner or workflow gate into Engine with tests before a concrete command is named in Engine documentation.
+
+### Project quality gates, baselines, and aggregate verification
+
+- Sources: `last-frontier:AGENTS.md`, `last-frontier:Tools/CiChecks/check_workflow_syntax.py`, `last-frontier:.vscode/tasks.json`, `fonline-tla:AGENTS.md`, `fonline-tla:.vscode/tasks.json`
+- Reusable claim: Warnings are failures, baselines carry written reasons and never loosen to pass, and one ordered local route mirrors the CI gates.
+- Decision: The Engine documents the discipline and the Engine-owned tools; concrete audits, baselines and exemption files remain project-owned.
+- Promotion gate: Only Engine-supplied formatters and analyzers are documented as commands; project audits and test-quality gates need Engine implementation and tests first.
+
+### Generated project version and release identity
+
+- Sources: `last-frontier:Tools/GenerateVersion/generate_version.py`, `last-frontier:AGENTS.md`, `fonline-tla:Tools/GenerateVersion/generate_version.py`, `fonline-tla:.github/workflows/build.yml`
+- Reusable claim: A project version is machine-written, monotonic and unique per release, and is distinct from Engine, compatibility, data and package identities.
+- Decision: The Engine documents the identities and the requirements for a project version; the generator and its encoding remain project-owned.
+- Promotion gate: Scheme-specific encodings stay out of Engine; the requirements are re-derived from the identities documented in Engine versioning and updater sources.
+
+### Project documentation and AI-agent process
+
+- Sources: `last-frontier:AGENTS.md`, `last-frontier:Docs/Plans/README.md`, `last-frontier:Docs/BuildAndLaunch.md`, `fonline-tla:AGENTS.md`
+- Reusable claim: A single AGENTS.md front door that routes to Engine instructions, dated task plans, and an ignored per-task workspace make agent-assisted maintenance reviewable.
+- Decision: The Engine documents the pattern for teams that use agents; instruction contents, language policy and authority rules remain project-owned.
+- Promotion gate: Presented as an optional pattern with rationale; authority, language and publication rules stay project policy.
 
 ## Owner review requirements
 
