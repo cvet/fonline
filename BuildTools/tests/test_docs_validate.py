@@ -46,6 +46,7 @@ import docs_snippets  # noqa: E402
 import docs_support_matrix  # noqa: E402
 import docs_text_format  # noqa: E402
 import docs_video  # noqa: E402
+import markdown_links  # noqa: E402
 
 
 class DocumentationValidatorTests(unittest.TestCase):
@@ -2037,7 +2038,7 @@ class DocumentationValidatorTests(unittest.TestCase):
         )
         primary_file = root / primary_path
         primary_anchors = (
-            sorted(docs_validate._markdown_anchors(primary_file))
+            sorted(markdown_links.markdown_anchors(primary_file))
             if primary_file.is_file()
             else ["missing"]
         )
