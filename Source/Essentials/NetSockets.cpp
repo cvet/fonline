@@ -405,6 +405,29 @@ auto tcp_socket::set_nodelay(bool enabled) noexcept -> bool
     return ::setsockopt(*_sock, IPPROTO_TCP, TCP_NODELAY, optval_data.get(), sizeof(optval)) == 0;
 }
 
+auto tcp_socket::set_nonblocking(bool enabled) noexcept -> bool
+{
+    if (!is_valid()) {
+        return false;
+    }
+
+#if FO_WINDOWS
+    u_long mode {enabled ? 1u : 0u};
+
+    return ::ioctlsocket(*_sock, FIONBIO, &mode) == 0;
+#else
+    int32_t flags {::fcntl(*_sock, F_GETFL, 0)};
+
+    if (flags < 0) {
+        return false;
+    }
+
+    int32_t new_flags {enabled ? (flags | O_NONBLOCK) : (flags & ~O_NONBLOCK)};
+
+    return ::fcntl(*_sock, F_SETFL, new_flags) == 0;
+#endif
+}
+
 auto tcp_socket::peek_socket_error() const noexcept -> int32_t
 {
     if (!is_valid()) {
@@ -454,7 +477,7 @@ void tcp_socket::close() noexcept
     _sock.reset();
 }
 
-auto tcp_server::listen(string_view bind_host, uint16_t port, int32_t backlog) noexcept -> bool
+auto tcp_server::listen(string_view bind_host, uint16_t port, int32_t backlog, bool reuse_addr) noexcept -> bool
 {
     FO_TRACE_ZONE(Network);
 
@@ -465,6 +488,22 @@ auto tcp_server::listen(string_view bind_host, uint16_t port, int32_t backlog) n
     if (sock == INVALID_SOCKET_VALUE) {
         return false;
     }
+
+    // POSIX keeps the port of a recently closed connection in TIME_WAIT; on Windows the same option would
+    // let another socket share the port, and rebinding over TIME_WAIT already works there
+#if !FO_WINDOWS && !FO_WEB
+    if (reuse_addr) {
+        constexpr int32_t opt {1};
+        auto opt_data {make_ptr(&opt).reinterpret_as<const char>()};
+
+        if (::setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, opt_data.get(), sizeof(opt)) == SOCKET_ERROR_VALUE) {
+            close_socket(sock);
+            return false;
+        }
+    }
+#else
+    ignore_unused(reuse_addr);
+#endif
 
     sockaddr_in addr {};
     addr.sin_family = AF_INET;
