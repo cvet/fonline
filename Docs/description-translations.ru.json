@@ -13502,6 +13502,74 @@
           "source_sha256": "1fce5be80b11fa71633553785ff984f41e5258d21c1f3ebbc06e469e2b65c4be",
           "translation": "Клиент протокола AiControl"
         },
+        "/helpers/@id=helper-cli.ai-control-mcp/description": {
+          "source_sha256": "7d3bec96624ec173f4e8f4b197ade0c5d0b369ac158020732d9e109951d512cb",
+          "translation": "Предоставляет bridge AiControl MCP-клиенту через stdio: общие инструменты протокола, endpoint, готовности и собственных процессов плюс инструменты, зарегистрированные проектом; инструмент разработки, никогда не поставляется в выпуске."
+        },
+        "/helpers/@id=helper-cli.ai-control-mcp/global_arguments/@id=helper-cli.ai-control-mcp.argument.allow_remote/description": {
+          "source_sha256": "6b1cbb8dddb7492d878940fc2427752eacb34df3fa0a8f1c736af862162a962a",
+          "translation": "Разрешить не-loopback bridges; им также нужен токен."
+        },
+        "/helpers/@id=helper-cli.ai-control-mcp/global_arguments/@id=helper-cli.ai-control-mcp.argument.host/description": {
+          "source_sha256": "1fc04af51c13180a03c5f584daa7453e69b3b9e48f03260c4eda98c7c020d219",
+          "translation": "Хост bridge по умолчанию."
+        },
+        "/helpers/@id=helper-cli.ai-control-mcp/global_arguments/@id=helper-cli.ai-control-mcp.argument.keep_processes_on_exit/description": {
+          "source_sha256": "1b84c8dd4e6fe55596d4bbd8a8e3b29f08148f5141c1770527ece046c528a2b5",
+          "translation": "Оставить запущенные процессы работать после выхода адаптера; их деревья затем нужно остановить вручную."
+        },
+        "/helpers/@id=helper-cli.ai-control-mcp/global_arguments/@id=helper-cli.ai-control-mcp.argument.launch_profile/description": {
+          "source_sha256": "c64df46b66dc1d826f0ea2b6a20c460e1e8ced1c7bb77003a1a553ea099f78a4",
+          "translation": "JSON-профиль запуска; заменяет профиль, заданный проектным модулем."
+        },
+        "/helpers/@id=helper-cli.ai-control-mcp/global_arguments/@id=helper-cli.ai-control-mcp.argument.list_tools/description": {
+          "source_sha256": "685a2c2831a19c475597b0ae82f0df047af5ceaeba36656c742c9a4a7a059a9f",
+          "translation": "Напечатать имена и описания зарегистрированных инструментов в JSON и выйти."
+        },
+        "/helpers/@id=helper-cli.ai-control-mcp/global_arguments/@id=helper-cli.ai-control-mcp.argument.max_message_bytes/description": {
+          "source_sha256": "f5afc1d561ab1914044b2e445142126321a8d12466a6e81d07c171213a4f5f62",
+          "translation": "Самая длинная допустимая строка сообщения MCP."
+        },
+        "/helpers/@id=helper-cli.ai-control-mcp/global_arguments/@id=helper-cli.ai-control-mcp.argument.module_path/description": {
+          "source_sha256": "09cc6a2f56df618a03d9909f636afa15d87ca7d4d2621fcfbe814b74ba49d215",
+          "translation": "Каталог, добавляемый в путь импорта для проектных модулей, заданных через точку."
+        },
+        "/helpers/@id=helper-cli.ai-control-mcp/global_arguments/@id=helper-cli.ai-control-mcp.argument.port/description": {
+          "source_sha256": "945eaa3efee077133c5f9916f890e32ff43f3d069c469947b7f8b22e766f456a",
+          "translation": "Порт bridge по умолчанию и базовый порт для запусков."
+        },
+        "/helpers/@id=helper-cli.ai-control-mcp/global_arguments/@id=helper-cli.ai-control-mcp.argument.project_module/description": {
+          "source_sha256": "8b6722d32e5a97e2cdeb967185e7696f4ab9edaa573db31f3c0ac86239288cbf",
+          "translation": "Имя модуля через точку или файл .py, чей register(registry) добавляет проектные инструменты; можно повторять."
+        },
+        "/helpers/@id=helper-cli.ai-control-mcp/global_arguments/@id=helper-cli.ai-control-mcp.argument.project_root/description": {
+          "source_sha256": "127686b1f29e06dc1249fb26cfeb7a3b3a6106e9815e3310c46355ff4bbcbaa5",
+          "translation": "Корень для путей запуска, бинарников и журналов."
+        },
+        "/helpers/@id=helper-cli.ai-control-mcp/global_arguments/@id=helper-cli.ai-control-mcp.argument.server_name/description": {
+          "source_sha256": "f554c44dc5b93d0c02560f0d9d9a93bbc78c533f6b5caba39f2b224a45e7b8c6",
+          "translation": "Имя serverInfo для MCP."
+        },
+        "/helpers/@id=helper-cli.ai-control-mcp/global_arguments/@id=helper-cli.ai-control-mcp.argument.timeout/description": {
+          "source_sha256": "ae94bea71fb6507c7c11a5d5c4b63acacb0574eda5d9eb6bb9b860d76ef9dcb9",
+          "translation": "Тайм-аут сокета bridge в секундах."
+        },
+        "/helpers/@id=helper-cli.ai-control-mcp/global_arguments/@id=helper-cli.ai-control-mcp.argument.token_env/description": {
+          "source_sha256": "99630587625ddb0ce2716bb92ba38a517488225d552bec08476deaf4cf058fb3",
+          "translation": "Переменная окружения с общим токеном bridge."
+        },
+        "/helpers/@id=helper-cli.ai-control-mcp/global_arguments/@id=helper-cli.ai-control-mcp.argument.tool_prefix/description": {
+          "source_sha256": "f927aee3c999995e80a79866e2a635a0ec050d419fca298d9fb42d8e88ec3399",
+          "translation": "Префикс имён базовых инструментов."
+        },
+        "/helpers/@id=helper-cli.ai-control-mcp/invocation_owner": {
+          "source_sha256": "53cc39fc1190e9ff408a998dedf04a8dc8c5f0feea594be8eee5450a750d5431",
+          "translation": "конфигурации MCP-клиентов встраивающего проекта, проектные модули инструментов и раннеры ИИ-плейтестов"
+        },
+        "/helpers/@id=helper-cli.ai-control-mcp/name": {
+          "source_sha256": "b61a79a909ea01c6fbbc598329f4e7a4926cb27aca30ce8e8d51b442f5131b88",
+          "translation": "MCP-адаптер AiControl"
+        },
         "/helpers/@id=helper-cli.android-device/commands/@id=helper-cli.android-device.command.connect/arguments/@id=helper-cli.android-device.command.connect.argument.device/description": {
           "source_sha256": "9f42ce387e09e93930a254405d53481bd9a716ec813c0372cfc549fa459f1469",
           "translation": "IP-адрес устройства с необязательным портом; при отсутствии используются автоматический поиск и интерактивный выбор."
