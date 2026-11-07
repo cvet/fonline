@@ -208,6 +208,16 @@ def test_exclude_glob_crosses_directories(tmp_path: Path) -> None:
     assert context.iter_files() == []
 
 
+def test_directory_exclude_pattern_may_contain_a_glob(tmp_path: Path) -> None:
+    root = project(tmp_path)
+    write(root, 'SourceExt/vendor-zlib/deflate.c', 'void* p = malloc(1);\n')
+    context = build_context('allocator', root=root, scopes=['SourceExt'], excludes=['SourceExt/vendor-*/'],
+                            baselines=[], config_path=None, use_engine_baseline=False, engine_root=root / 'Engine')
+
+    assert [context.display_path(path) for path in context.iter_files()] == ['SourceExt/Bridge.cpp']
+    assert not context.covers('SourceExt/vendor-zlib/')
+
+
 @pytest.mark.parametrize('payload', [
     {'scopes': ['Source']},
     {'schema_version': 2},

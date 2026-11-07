@@ -97,9 +97,7 @@ class AuditContext:
         """Exclude patterns are fnmatch globs on display paths; ``*`` also crosses ``/`` and ``dir/`` names a subtree."""
 
         for pattern in self.excludes:
-            if pattern.endswith('/') and display.startswith(pattern):
-                return True
-            if fnmatch.fnmatchcase(display, pattern):
+            if fnmatch.fnmatchcase(display, pattern + '*' if pattern.endswith('/') else pattern):
                 return True
 
         return False
