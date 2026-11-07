@@ -220,6 +220,28 @@
       "description": "Write a Markdown Engine update record with the Engine identities, the incoming range, changelog migrations and a project name search."
     },
     {
+      "id": "helper-cli.script-binding-check",
+      "name": "Script binding check",
+      "source": "BuildTools/check_script_bindings.py",
+      "factory": "create_parser",
+      "program": "check_script_bindings.py",
+      "owner": "quality",
+      "audiences": ["game-developer", "engine-contributor", "ci-maintainer"],
+      "invocation_owner": "Engine CI and embedding-project quality gates",
+      "description": "Reject raw pointers in script-facing native signatures and compare AngelScript handler nullability with event and remote-call declarations."
+    },
+    {
+      "id": "helper-cli.angelscript-hygiene-check",
+      "name": "AngelScript hygiene check",
+      "source": "BuildTools/check_angelscript_hygiene.py",
+      "factory": "create_parser",
+      "program": "check_angelscript_hygiene.py",
+      "owner": "quality",
+      "audiences": ["game-developer", "engine-contributor", "ci-maintainer"],
+      "invocation_owner": "Engine CI and embedding-project quality gates",
+      "description": "Check authored AngelScript modules for namespace, include, side-macro, sort-directive and file-ending conventions with a count-ratchet baseline."
+    },
+    {
       "id": "helper-cli.createmsi",
       "name": "MSI creation",
       "source": "BuildTools/msicreator/createmsi.py",
