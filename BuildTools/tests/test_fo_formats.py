@@ -113,7 +113,7 @@ def test_key_lines_cover_continuations_and_appends():
 
 def test_byte_order_mark_is_not_stripped():
     # ConfigFile reads bytes: a BOM keeps the first header from starting with '['
-    document = ff.parse_config_text('﻿[ProtoItem]\n$Name = X\n')
+    document = ff.parse_config_text('\ufeff[ProtoItem]\n$Name = X\n')
     assert [item.name for item in document.sections] == ['']
     assert document.main.values == {'$Name': 'X'}
 
