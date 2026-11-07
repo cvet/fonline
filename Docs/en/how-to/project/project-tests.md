@@ -10,7 +10,7 @@ permalink: /Docs/en/how-to/project/project-tests.html
 
 This guide is for a game team that wants automated tests beyond "it starts". It shows how to choose the cheapest test boundary that can observe a change, how to add native unit tests through the `TESTS` source role, how to build a script-level test harness driven by a sub-config and project-defined settings, how to run real server and client processes, how to keep test sources out of shipping resource packs, and how to decide that a run passed.
 
-The Engine supplies the native test executable, the process runner and the rules for markers and exit codes. It does not define a game's script test registry, fixtures, accounts or acceptance thresholds; those are project code.
+The Engine supplies the native test executable, the process runner and the rules for markers and exit codes. It does not define a game's script test registry as an Engine API, nor its fixtures, accounts or acceptance thresholds; those are project code. For script tests it ships a copyable harness example that a project adopts as its own code; see [Script Test Harness Pattern for AngelScript and Managed C#](script-test-harness.md).
 
 ## Source paths inspected
 
@@ -28,6 +28,7 @@ The Engine supplies the native test executable, the process runner and the rules
 - `Source/Tools/ConfigBaker.cpp`
 - `Examples/GameplayTestHarness/README.md`
 - `Examples/GameplayTestHarness/synthetic-smoke.json`
+- `Examples/GameplayTestHarness/ScriptTests/script-tests.json`
 - `Examples/MinimalMultiplayer/CMakeLists.txt`
 - `Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain`
 - `Examples/MinimalMultiplayer/Scripts/Tutorial.fos`
@@ -35,6 +36,7 @@ The Engine supplies the native test executable, the process runner and the rules
 - `Examples/NativeExtensionSample/CMakeLists.txt`
 - `Examples/NativeExtensionSample/Tests/NativeExtensionCoreTest.cpp`
 - `Docs/en/how-to/testing/gameplay-and-integration.md`
+- `Docs/en/how-to/project/script-test-harness.md`
 - `Docs/en/contributing/testing/index.md`
 - `Docs/en/tutorials/first-test.md`
 - `Docs/en/how-to/native-extensions.md`
@@ -104,6 +106,8 @@ A pure library can also be tested without Catch2: `Examples/NativeExtensionSampl
 
 The Engine does not define a test registry, a discovery attribute or a runner inside the game. A project builds the smallest harness that fits: settings that switch test mode on, an entry event that runs assertions, a marker per verified milestone, and a clean quit. `Examples/MinimalMultiplayer/Scripts/Tutorial.fos` is the reference shape.
 
+For more than a handful of checks, copy the harness core from `Examples/GameplayTestHarness/ScriptTests` instead. It adds suite registration, the filter, per-test timeouts, stop-on-first-failure and a terminal `[Testing] COMPLETE status=passed` line for the process runner, with the same `Testing.*` settings. [Script Test Harness Pattern for AngelScript and Managed C#](script-test-harness.md) documents its marker contract, its settings and how a project extends it.
+
 ### Declare the settings
 
 A project setting is declared with a metadata tag and addressed by its full dotted name. The tag is `///@ Setting <Common|Server|Client> <type> <Group.Name>`; the type must be a primitive, enum or string, and the name must contain a group. The master `.fomain` must carry a value for every declared setting or `MetadataBaker` fails the bake ("setting has no configured value"). A `Testing` group is a project choice, not an Engine group:
@@ -157,7 +161,7 @@ void OnTestStart()
 
 ### Select tests with a filter
 
-Filtering is project policy. A simple scheme is the `Testing.Filter` string above: the entry event reads it and runs only the matching group, and an empty value runs everything. Pass it as an ordinary setting override on the command line, using the same `-Group.Name value` form that the Engine's bake target uses (`-Baking.ForceBaking False`). Keep the filter a runner convenience; CI runs the unfiltered set.
+Filtering is project policy. A simple scheme is the `Testing.Filter` string above: the entry event reads it and runs only the matching group, and an empty value runs everything. Pass it as an ordinary setting override on the command line, using the same `-Group.Name value` form that the Engine's bake target uses (`-Baking.ForceBaking False`). Keep the filter a runner convenience; CI runs the unfiltered set. The copyable harness implements this scheme with comma-separated, case-insensitive tokens matched against `suite.name`, and it fails a run that selects no test.
 
 ### Launch it
 
@@ -255,6 +259,7 @@ Run the layers in dependency order and stop at the first failing layer: native u
 - Native cases carry a project tag and run through the direct executable and `RunUnitTests`.
 - Test settings are declared with `///@ Setting`, have values in the master `.fomain`, and are switched on only by a sub-config.
 - Each scenario names its required markers, forbidden markers, deadline and expected exit code.
+- A script-test scenario requires the harness's terminal `[Testing] COMPLETE status=passed` line, not a count of passing lines.
 - A shipping bake target applies `Baking.IgnoreInputDirs` and a check proves tests are absent from its packs.
 - Persistence claims are tested on a restart of a file-backed database, not on `Memory`.
 - No test runs while a bake of the same output is in progress.
