@@ -22,6 +22,7 @@
 #include "ProtoManager.h"
 #include "ScriptSystem.h"
 #include "ServerConnection.h"
+#include "ServerImage.h"
 #include "Settings.h"
 #include "UpdaterBackend.h"
 #include "WorkerPool.h"
