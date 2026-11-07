@@ -88,6 +88,17 @@
       "description": "Inspect linked PE files for Windows 7 import compatibility and optionally require the large-address flag on executables."
     },
     {
+      "id": "helper-cli.markdown-links",
+      "name": "Markdown link check",
+      "source": "BuildTools/markdown_links.py",
+      "factory": "create_parser",
+      "program": "markdown_links.py",
+      "owner": "quality",
+      "audiences": ["game-developer", "engine-contributor", "embedding-project-build-system", "ci-maintainer"],
+      "invocation_owner": "embedding-project documentation wrappers, local tasks, and CI documentation jobs",
+      "description": "Check local Markdown links, GitHub-style heading anchors, UTF-8, fenced-code balance, and optional single-H1 structure under one repository root."
+    },
+    {
       "id": "helper-cli.android-device",
       "name": "Android device control",
       "source": "BuildTools/android_device.py",

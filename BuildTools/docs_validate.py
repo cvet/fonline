@@ -6,7 +6,6 @@ import re
 import sys
 from collections.abc import Iterable
 from pathlib import Path, PurePosixPath
-from urllib.parse import unquote, urlsplit
 
 import docs_api
 import docs_api_diff
@@ -42,6 +41,7 @@ import docs_snippets
 import docs_support_matrix
 import docs_text_format
 import docs_video
+import markdown_links
 
 
 DEFAULT_MANIFEST = "Docs/documentation-manifest.json"
@@ -77,140 +77,6 @@ PAGES_README_PERMALINKS = {
 PLACEHOLDER_ROUTE_MARKER = "> placeholder route."
 LEGACY_ROUTE_MARKER = "> legacy route."
 UNFINISHED_CONTENT_MARKERS = ("...generate content...", "...write about", "estimated finishing date")
-
-INLINE_LINK_RE = re.compile(r"!?\[[^\]]*]\((?P<target>[^\r\n)]*)\)")
-REFERENCE_LINK_RE = re.compile(r"^\s*\[[^\]]+]:\s*(?P<target>\S+)")
-HTML_LINK_RE = re.compile(r"\b(?:href|src)=[\"'](?P<target>[^\"']+)[\"']", re.IGNORECASE)
-FENCE_RE = re.compile(r"^\s*(`{3,}|~{3,})")
-INLINE_CODE_RE = re.compile(r"(`+)(.+?)\1")
-HEADING_RE = re.compile(r"^(?P<marks>#{1,6})\s+(?P<title>.+?)\s*#*\s*$")
-EXPLICIT_ANCHOR_RE = re.compile(r"<(?:a|[^>]+)\s+(?:id|name)=[\"'](?P<anchor>[^\"']+)[\"']", re.IGNORECASE)
-
-
-def _is_within(path: Path, root: Path) -> bool:
-    try:
-        path.relative_to(root)
-        return True
-    except ValueError:
-        return False
-
-
-def _strip_inline_code(line: str) -> str:
-    return INLINE_CODE_RE.sub(lambda match: " " * len(match.group(0)), line)
-
-
-def _iter_prose_lines(text: str, *, strip_inline_code: bool = True) -> Iterable[tuple[int, str]]:
-    active_fence: str | None = None
-
-    for line_number, line in enumerate(text.splitlines(), start=1):
-        fence = FENCE_RE.match(line)
-        if fence:
-            marker = fence.group(1)[0]
-            if active_fence is None:
-                active_fence = marker
-            elif active_fence == marker:
-                active_fence = None
-            continue
-
-        if active_fence is None:
-            yield line_number, _strip_inline_code(line) if strip_inline_code else line
-
-
-def _normalize_link_target(raw_target: str) -> str:
-    target = raw_target.strip()
-    if target.startswith("<") and ">" in target:
-        return target[1 : target.index(">")]
-
-    title_separator = re.search(r"\s+[\"']", target)
-    if title_separator:
-        target = target[: title_separator.start()]
-    return target
-
-
-def _iter_markdown_links(path: Path) -> Iterable[tuple[int, str]]:
-    text = path.read_text(encoding="utf-8")
-    for line_number, line in _iter_prose_lines(text):
-        for pattern in (INLINE_LINK_RE, HTML_LINK_RE):
-            for match in pattern.finditer(line):
-                yield line_number, _normalize_link_target(match.group("target"))
-
-        reference_match = REFERENCE_LINK_RE.match(line)
-        if reference_match:
-            yield line_number, _normalize_link_target(reference_match.group("target"))
-
-
-def _heading_slug(title: str) -> str:
-    title = re.sub(r"!?\[([^\]]+)]\([^)]*\)", r"\1", title)
-    title = re.sub(r"<[^>]+>", "", title)
-    title = title.replace("`", "").replace("*", "")
-    title = title.strip().lower()
-    title = re.sub(r"[^\w\- ]", "", title, flags=re.UNICODE)
-    return re.sub(r"\s+", "-", title)
-
-
-def _markdown_anchors(path: Path) -> set[str]:
-    anchors: set[str] = set()
-    slug_counts: dict[str, int] = {}
-    text = path.read_text(encoding="utf-8")
-
-    for _, line in _iter_prose_lines(text, strip_inline_code=False):
-        for anchor_match in EXPLICIT_ANCHOR_RE.finditer(line):
-            anchors.add(anchor_match.group("anchor"))
-
-        heading_match = HEADING_RE.match(line)
-        if not heading_match:
-            continue
-
-        base_slug = _heading_slug(heading_match.group("title"))
-        duplicate_index = slug_counts.get(base_slug, 0)
-        slug_counts[base_slug] = duplicate_index + 1
-        anchors.add(base_slug if duplicate_index == 0 else f"{base_slug}-{duplicate_index}")
-
-    return anchors
-
-
-def _resolve_local_target(root: Path, document: Path, target: str) -> tuple[Path, str]:
-    path_text, _, fragment = target.partition("#")
-    path_text = unquote(path_text.split("?", maxsplit=1)[0])
-    if path_text.startswith("/"):
-        candidate = root / path_text.lstrip("/")
-    elif path_text:
-        candidate = document.parent / path_text
-    else:
-        candidate = document
-    return candidate.resolve(), unquote(fragment)
-
-
-def validate_links(root: Path, documents: Iterable[str]) -> list[str]:
-    errors: list[str] = []
-    anchor_cache: dict[Path, set[str]] = {}
-
-    for document_path in sorted(documents):
-        document = root / document_path
-        for line_number, target in _iter_markdown_links(document):
-            if not target or target.startswith("#"):
-                candidate = document
-                fragment = unquote(target.removeprefix("#"))
-            else:
-                parsed = urlsplit(target)
-                if parsed.scheme or target.startswith("//"):
-                    continue
-                candidate, fragment = _resolve_local_target(root, document, target)
-
-            location = f"{document_path}:{line_number}"
-            if not _is_within(candidate, root):
-                errors.append(f"{location}: local link escapes the engine root: {target}")
-                continue
-            if not candidate.exists():
-                errors.append(f"{location}: local link target does not exist: {target}")
-                continue
-
-            if fragment and candidate.is_file() and candidate.suffix.lower() in {".md", ".markdown"}:
-                anchors = anchor_cache.setdefault(candidate, _markdown_anchors(candidate))
-                if fragment not in anchors:
-                    errors.append(f"{location}: Markdown anchor does not exist: {target}")
-
-    return errors
 
 
 def _expand_inventory(root: Path, patterns: Iterable[str]) -> set[str]:
@@ -2442,11 +2308,11 @@ def validate_manifest(root: Path, manifest_path: Path) -> tuple[list[str], dict[
             redirect_path = root / path
             canonical_path = (root / target_path).resolve()
             links_to_canonical = False
-            for _, target in _iter_markdown_links(redirect_path):
-                parsed = urlsplit(target)
-                if parsed.scheme or target.startswith("//"):
+            redirect_text = redirect_path.read_text(encoding="utf-8")
+            for _, target in markdown_links.iter_links(redirect_text):
+                if markdown_links.is_external_target(target):
                     continue
-                candidate, _ = _resolve_local_target(root, redirect_path, target)
+                candidate, _ = markdown_links.resolve_local_target(root, redirect_path, target)
                 if candidate == canonical_path:
                     links_to_canonical = True
                     break
@@ -2465,7 +2331,7 @@ def validate_documentation(root: Path, manifest_relative_path: str = DEFAULT_MAN
     documents = manifest.get("documents", {}) if isinstance(manifest, dict) else {}
     if isinstance(documents, dict):
         existing_documents = [path for path in documents if (root / path).is_file()]
-        errors.extend(validate_links(root, existing_documents))
+        errors.extend(markdown_links.check_links(root, existing_documents, root_label="engine root"))
         return errors, len(existing_documents)
     return errors, 0
 
