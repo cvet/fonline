@@ -146,7 +146,8 @@ SetDefaultVariables(0
 	FO_HAVE_DIRECT_3D
 	FO_HAVE_METAL
 	FO_HAVE_VULKAN
-	FO_HAVE_SDL_GPU)
+	FO_HAVE_SDL_GPU
+	FO_HAVE_AI_CONTROL)
 
 # Configuration duplication
 ExecuteProcess(
