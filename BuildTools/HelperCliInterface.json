@@ -88,6 +88,28 @@
       "description": "Format .fomain, prototype and optional AngelScript files in the Engine layout and refuse any rewrite that would change what the Engine reads."
     },
     {
+      "id": "helper-cli.fo-formats",
+      "name": "Engine content format reader",
+      "source": "BuildTools/fo_formats.py",
+      "factory": "create_parser",
+      "program": "fo_formats.py",
+      "owner": "tooling",
+      "audiences": ["game-developer", "tool-developer", "ci-maintainer"],
+      "invocation_owner": "embedding-project content tools and direct developer diagnostics",
+      "description": "Print effective configuration, resource-pack inputs, inherited prototype values and text-pack entries as the Engine parsers read them."
+    },
+    {
+      "id": "helper-cli.migration-guard",
+      "name": "Identity migration guard",
+      "source": "BuildTools/migration_guard.py",
+      "factory": "create_parser",
+      "program": "migration_guard.py",
+      "owner": "quality",
+      "audiences": ["game-developer", "embedding-project-build-system", "ci-maintainer"],
+      "invocation_owner": "embedding-project local validation tasks and CI content gates",
+      "description": "Require a MigrationRule for every removed or renamed prototype, property and enum value and refuse reuse of retired identifiers against a committed manifest."
+    },
+    {
       "id": "helper-cli.windows7-import-check",
       "name": "Windows 7 import validation",
       "source": "BuildTools/check_windows7_imports.py",

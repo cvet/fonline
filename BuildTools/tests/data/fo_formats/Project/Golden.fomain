@@ -1,0 +1,36 @@
+# Golden project for test_fo_formats.py; expected.json names the Engine source of every expected value
+Common.GameName = Golden \
+    Project
+Common.GameVersion = $FILE{VERSION}
+Baking.ProtoFileExtensions = fopro fomap
+Baking.BakeLanguages = engl russ
+Custom.Quoted = "kept # inside quotes" # stripped comment
+Custom.List = one
+Custom.List += two
+
+[SubConfig]
+Name = Base
+Custom.Quoted = base
+
+[SubConfig]
+Name = Smoke
+Parent = Base
+Custom.List = +three
+Baking.IgnoreInputDirs = Disabled
+
+[ResourcePack]
+Name = Metadata
+InputDirs = Scripts
+Bakers = Metadata
+
+[ResourcePack]
+Name = Protos
+InputDirs = Protos Disabled
+ExcludePatterns = **/_*.fomap
+Bakers = Proto ProtoText
+
+[ResourcePack]
+Name = Texts
+InputDirs = Texts
+ClientOnly = True
+Bakers = Text

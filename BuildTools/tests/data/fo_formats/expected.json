@@ -1,0 +1,85 @@
+{
+  "description": "Effective values of Project/Golden.fomain derived by hand from the Engine parsers and their tests, not from fo_formats output.",
+  "config": {
+    "derivation": "Source/Common/ConfigFile.cpp continuation and quote rules, Source/Common/Settings.cpp ResolveSettingValue ($FILE relative to the config directory, trimmed) and SetValue; Test_ConfigFile PreservesCommentCharactersInsideDoubleQuotes and StoresViewsIntoOwnedInput.",
+    "settings": {
+      "Baking.BakeLanguages": "engl russ",
+      "Baking.ProtoFileExtensions": "fopro fomap",
+      "Common.GameName": "Golden Project",
+      "Common.GameVersion": "1.2.3",
+      "Custom.List": "one two",
+      "Custom.Quoted": "\"kept # inside quotes\""
+    },
+    "packs": {
+      "Metadata": {"input_dirs": ["Scripts"], "bakers": ["Metadata"], "client_only": false},
+      "Protos": {"input_dirs": ["Protos", "Disabled"], "bakers": ["Proto", "ProtoText"], "client_only": false},
+      "Texts": {"input_dirs": ["Texts"], "bakers": ["Text"], "client_only": true}
+    }
+  },
+  "config_smoke": {
+    "derivation": "Settings.cpp AddSubConfigs merges parents first, ApplySubConfigSection applies a leading + as append, ApplyIgnoreInputDirs removes the input relative to the declaring config.",
+    "settings": {
+      "Baking.IgnoreInputDirs": "Disabled",
+      "Custom.List": "one two three",
+      "Custom.Quoted": "base"
+    },
+    "protos_input_dirs": ["Protos"]
+  },
+  "prototype_files": {
+    "derivation": "DiskFileSystem.cpp recursive_dir_look skips names starting with . or ~ and directories starting with _; FileSystem::FilterFiles applies ExcludePatterns; ProtoBaker keeps Baking.ProtoFileExtensions.",
+    "files": [
+      "Items/Inherit.fopro",
+      "Items/Lantern.fopro",
+      "Items/TextItems.fopro",
+      "Items/Weapons.fopro",
+      "Maps/Anchors.fomap",
+      "Maps/Solo.fomap",
+      "Old.fopro"
+    ]
+  },
+  "prototypes": {
+    "derivation": "ProtoBaker.cpp fill_parent_recursive: parents left to right after their own ancestors, child last, a repeated ancestor applies where first reached (Test_ProtoBaker AppliesRepeatedProtoParentOnce); $Name defaults to the file stem; nested [$Name/...] sections are skipped; parent names pass CheckMigrationRule, which follows Rename chains.",
+    "Item DiamondBase": {"LightDistance": "1", "Hidden": "True"},
+    "Item DiamondVariant": {"LightDistance": "2", "Hidden": "True"},
+    "Item DiamondOther": {"LightDistance": "1", "Hidden": "True"},
+    "Item DiamondChild": {"LightDistance": "2", "Hidden": "True"},
+    "Item LeftParent": {"Weight": "10", "Cost": "1"},
+    "Item RightParent": {"Weight": "20"},
+    "Item TwoParents": {"Weight": "20", "Cost": "5"},
+    "Item BaseItem": {},
+    "Item ChildItem": {},
+    "Item Sword": {"Damage": "5"},
+    "Item Dagger": {"Damage": "5"},
+    "Item Lantern": {"LightDistance": "3"},
+    "Item Retired": {},
+    "Map MapOne": {"Size": "10 10"},
+    "Map MapTwo": {},
+    "Map Solo": {"Size": "5 5"}
+  },
+  "prototype_texts": {
+    "derivation": "ProtoTextBaker.cpp: $Text keys inherit like properties, the value passes StringEscaping::DecodeString, unknown languages are dropped, then TextPack::FixPacks fills russ from engl (Test_ProtoTextBaker BakesProtoTextPacksByTypeLanguageAndInheritedParents).",
+    "engl": {
+      "Items ChildItem Desc": "Child item description",
+      "Items ChildItem Long": "Line\nBreak",
+      "Items ChildItem Name": "Base item name"
+    },
+    "russ": {
+      "Items ChildItem Desc": "Child item ru",
+      "Items ChildItem Long": "Line\nBreak",
+      "Items ChildItem Name": "Base item name"
+    }
+  },
+  "text_packs": {
+    "derivation": "TextPack::LoadFromString keeps duplicate keys as ordered variants and joins multiline text with newlines; FixPacks gives a missing key the first base variant and removes keys the base lacks (Test_TextPack FixStrAddsMissingAndRemovesUnknownKeys).",
+    "engl": {
+      "Dialogs 100 ": ["Hello"],
+      "Dialogs 200 3": ["World"],
+      "Dialogs 300 ": ["Line1\nLine2", "Variant"]
+    },
+    "russ": {
+      "Dialogs 100 ": ["Привет"],
+      "Dialogs 200 3": ["World"],
+      "Dialogs 300 ": ["Line1\nLine2"]
+    }
+  }
+}

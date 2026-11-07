@@ -1,0 +1,5 @@
+namespace Migration
+{
+///@ MigrationRule Proto Item Rename OldSword Sword
+///@ MigrationRule Proto Item Rename "Old Blade" OldSword // chains resolve to the last name
+}

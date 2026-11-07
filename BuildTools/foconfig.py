@@ -16,6 +16,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Iterator
 
+import fo_formats
+
 
 ConfigValue = str | int | bool | None
 

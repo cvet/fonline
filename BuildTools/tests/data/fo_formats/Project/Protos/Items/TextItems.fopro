@@ -1,0 +1,12 @@
+[ProtoItem]
+$Name = BaseItem
+$Text engl Name = Base item name
+$Text engl Desc = Base item description
+
+[ProtoItem]
+$Name = ChildItem
+$Parent = BaseItem
+$Text engl Desc = Child item description
+$Text engl Long = Line\nBreak
+$Text russ Desc = Child item ru
+$Text span Name = Nombre ignorado

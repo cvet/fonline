@@ -1,0 +1,9 @@
+[ProtoMap]
+$Name = MapOne
+Size = 10 10
+
+[$Name/Item]
+Kind = Skipped
+
+[ProtoMap]
+$Name = MapTwo
