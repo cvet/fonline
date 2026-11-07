@@ -99,15 +99,18 @@ class DocumentationHelperCliTests(unittest.TestCase):
         self.assertEqual(model["schema_version"], 1)
         self.assertEqual(model["generated_by"], "BuildTools/docs_helper_cli.py")
         self.assertEqual(model["summary"], {
-            "helper_count": 8,
+            "helper_count": 12,
             "command_count": 16,
-            "global_argument_count": 25,
+            "global_argument_count": 66,
             "command_argument_count": 52,
         })
         self.assertEqual(model["helpers"][0]["id"], "helper-cli.codegen")
         self.assertEqual(model["helpers"][-1]["id"], "helper-cli.createmsi")
         self.assertIn("helper-cli.windows7-import-check", [helper["id"] for helper in model["helpers"]])
         self.assertIn("helper-cli.ai-control-client", [helper["id"] for helper in model["helpers"]])
+        for helper_id in ("helper-cli.artifact-checksums", "helper-cli.project-version",
+                          "helper-cli.release-preflight", "helper-cli.engine-upgrade-report"):
+            self.assertIn(helper_id, [helper["id"] for helper in model["helpers"]])
 
         identities = [
             entry["id"]

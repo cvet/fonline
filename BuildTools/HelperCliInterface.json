@@ -110,6 +110,50 @@
       "description": "Serve a packaged web client from a no-cache local HTTP server."
     },
     {
+      "id": "helper-cli.artifact-checksums",
+      "name": "Artifact checksums",
+      "source": "BuildTools/artifact_checksums.py",
+      "factory": "create_parser",
+      "program": "artifact_checksums.py",
+      "owner": "build-release",
+      "audiences": ["release-operator", "ci-maintainer", "embedding-project-build-system"],
+      "invocation_owner": "embedding-project release jobs after the last package writer stops",
+      "description": "Write or verify SHA-256 sidecars and an optional manifest for finished release packages."
+    },
+    {
+      "id": "helper-cli.project-version",
+      "name": "Project version generator",
+      "source": "BuildTools/project_version.py",
+      "factory": "create_parser",
+      "program": "project_version.py",
+      "owner": "build-release",
+      "audiences": ["game-developer", "ci-maintainer", "embedding-project-build-system"],
+      "invocation_owner": "embedding-project version tasks, hooks and CI checks",
+      "description": "Generate or check a machine-written monotonic project VERSION file with a built-in or project-owned version scheme."
+    },
+    {
+      "id": "helper-cli.release-preflight",
+      "name": "Release preflight",
+      "source": "BuildTools/release_preflight.py",
+      "factory": "create_parser",
+      "program": "release_preflight.py",
+      "owner": "build-release",
+      "audiences": ["release-operator", "ci-maintainer"],
+      "invocation_owner": "embedding-project manual release jobs before tagging and publication",
+      "description": "Validate a project release version, tag and assets, choose publish or dry-run, split oversized assets and write a checksum manifest."
+    },
+    {
+      "id": "helper-cli.engine-upgrade-report",
+      "name": "Engine upgrade report",
+      "source": "BuildTools/engine_upgrade_report.py",
+      "factory": "create_parser",
+      "program": "engine_upgrade_report.py",
+      "owner": "documentation",
+      "audiences": ["game-developer", "engine-contributor"],
+      "invocation_owner": "embedding-project Engine update work, run from the project root",
+      "description": "Write a Markdown Engine update record with the Engine identities, the incoming range, changelog migrations and a project name search."
+    },
+    {
       "id": "helper-cli.createmsi",
       "name": "MSI creation",
       "source": "BuildTools/msicreator/createmsi.py",

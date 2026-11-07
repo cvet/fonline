@@ -5326,6 +5326,10 @@
           "source_sha256": "db7b3665cff44b4cec354182c291fb1f5bb39ad1cbd75a2685e752236db0939e",
           "translation": "Внедряет событие перемещения касания с переданными идентификатором пальца, позицией и смещением."
         },
+        "/symbols/@id=script.method.client.Game.SimulateTouchScroll/description": {
+          "source_sha256": "925fc3bcc97a0e01e405d9023343a9b28dc43312b3f7a97e2b2201f6d0678518",
+          "translation": "Передаёт событие прокрутки касанием в заданной позиции клиента со знаковым смещением в пикселях"
+        },
         "/symbols/@id=script.method.client.Game.SimulateTouchTap/description": {
           "source_sha256": "2fe12632ec01d8c70f1f217244b53bb3992caacf53104e347bc7b655506fb1e1",
           "translation": "Внедряет событие короткого касания в заданной клиентской позиции."
@@ -5622,6 +5626,14 @@
           "source_sha256": "7e50fccf6338d4bc8976bdd4b1489b8662c8da42795433c2757b0fe0e6b4e467",
           "translation": "Возвращает текущее значение флага проверки прокрутки представления карты."
         },
+        "/symbols/@id=script.method.client.Map.LoadRuntimeStaticItems%230971edd694992850/description": {
+          "source_sha256": "74bf8007d1c46e1800c3d58588eefef0b0e439427aef63aef9970c795076ce29",
+          "translation": "Загрузить статические предметы области прототипа карты из её клиентской выпечки как статические предметы времени выполнения так, чтобы первый гекс области попал в `destHex`, с запечёнными идентификаторами плюс `idOffset`, и вернуть их идентификаторы"
+        },
+        "/symbols/@id=script.method.client.Map.LoadRuntimeStaticItems%237af3f0c56f49e919/description": {
+          "source_sha256": "cdefc1d21ff4c438707cb9b0766caf07968afb34cacfc6065243948cfb719eb1",
+          "translation": "Загрузить статические предметы клиентской выпечки прототипа карты как статические предметы времени выполнения так, чтобы её первый гекс попал в `destHex`, с запечёнными идентификаторами плюс `idOffset`, и вернуть их идентификаторы"
+        },
         "/symbols/@id=script.method.client.Map.MoveHexByDir%2362392271e1b42030/description": {
           "source_sha256": "bf3d396b2e51d1c84def1baf9d12d10a071a67c92d7d35912b4e8db9ebb83df5",
           "translation": "Перемещает гекс на одну ячейку в заданном направлении, если цель остается внутри карты, обновляет аргумент и сообщает об успехе."
@@ -5681,6 +5693,10 @@
         "/symbols/@id=script.method.client.Map.SetVisibleLayers/description": {
           "source_sha256": "21d4d1661087088874996cfaf76755294c917eb128ba371abfaf39c2a52ead51",
           "translation": "Заменяет набор слоёв, видимых в текущем представлении карты."
+        },
+        "/symbols/@id=script.method.client.Map.UnloadRuntimeStaticItems/description": {
+          "source_sha256": "20d4c22d77c7c152de0b91cb6410121adc9fb054c6a429a71148238734e66a1c",
+          "translation": "Удалить статические предметы времени выполнения, добавленные в представление карты через `LoadRuntimeStaticItems`, и освободить оставшиеся пустыми блоки полей"
         },
         "/symbols/@id=script.method.common.Game.AndroidBuild/description": {
           "source_sha256": "3db581a240a4a9044c0bb2836762ab57eb407acf4e1286399c233ca10e68e14f",
@@ -8014,6 +8030,10 @@
           "source_sha256": "e5076c27b251772e0615f185bcbcae09812d64810bf477fd9f7ad7f8ca34500e",
           "translation": "Возвращает, покрыта ли сущность, не выводя диагностику"
         },
+        "/symbols/@id=script.method.server.Game.IsStaticMapLoaded/description": {
+          "source_sha256": "2a0c98334e5eef32635c4198c60bfe72156c02892b4e89807aecec9ba0150eca",
+          "translation": "Вернуть, кэшировано ли запечённое содержимое прототипа карты"
+        },
         "/symbols/@id=script.method.server.Game.IsTextPresent/description": {
           "source_sha256": "f1fedeac2de1487c3f34053b682cb71d83e7fe2708521dedda248485311c79c1",
           "translation": "Возвращает, содержит ли языковой пакет указанный текстовый ключ"
@@ -8025,6 +8045,14 @@
         "/symbols/@id=script.method.server.Game.LoadCritter%23f50433829d33781c/description": {
           "source_sha256": "786aa674b51cbd23d87c43167327ff22b414f42741794f1956c09a9a0b228949",
           "translation": "Загружает сохранённого криттера на карту"
+        },
+        "/symbols/@id=script.method.server.Game.LoadStaticMap/description": {
+          "source_sha256": "3a361908396a2839a54c8d58bbd24f94f499d09c9a5ebe35e9168f3e5804bfb5",
+          "translation": "Прочитать запечённое содержимое прототипа карты в кэш сейчас или в рабочем потоке; запрос до конца этого чтения ждёт его"
+        },
+        "/symbols/@id=script.method.server.Game.LoadStaticMaps/description": {
+          "source_sha256": "939de09b3a046d2dafe1799af0bf780ce4e47bee720b3670b091ee561d2a3c64",
+          "translation": "Прочитать запечённое содержимое прототипов карт в кэш сейчас или в рабочих потоках; запрос одного из них ждёт его чтения"
         },
         "/symbols/@id=script.method.server.Game.Lock/description": {
           "source_sha256": "c1329133078c99ddc79ab91b337b8fbf23fe8aaef43c5355b8ba47ba0126171d",
@@ -8113,6 +8141,10 @@
         "/symbols/@id=script.method.server.Game.UnloadCritter/description": {
           "source_sha256": "53787ac96144222c11507313f85a26f3f4217c318d496983fe1723a0bcff7c5c",
           "translation": "Выгружает криттера из симуляции"
+        },
+        "/symbols/@id=script.method.server.Game.UnloadStaticMap/description": {
+          "source_sha256": "356c0f0b3fc7a0650e10952431c82171d9a0ab9d01f53ec530418ed118fbe052",
+          "translation": "Освободить кэшированное запечённое содержимое прототипа карты и вернуть, выгружено ли оно; оно остаётся, пока читается или используется картой"
         },
         "/symbols/@id=script.method.server.Game.Unlock/description": {
           "source_sha256": "e3cbd4106541d43aab4ca5a88215cecb0c8c561bd45f3b8d54ca3c557c35a519",
@@ -8257,6 +8289,10 @@
         "/symbols/@id=script.method.server.Map.FindReachableHexes/description": {
           "source_sha256": "0b0db970ebc95869d95fcc034ed9b018c72cb0c8977ab74164ba95b30658df4d",
           "translation": "Определяет, какие целевые гексы достижимы от начального в пределах заданной максимальной длины пути."
+        },
+        "/symbols/@id=script.method.server.Map.GenerateContent/description": {
+          "source_sha256": "182ba1bf365dcd142d22952cde840d9eac542f05ca939862dd40049d671d3b20",
+          "translation": "Создать криттеров и динамические предметы прототипа карты так, чтобы её первый гекс попал в `destHex`, и вернуть идентификаторы созданных криттеров и предметов карты"
         },
         "/symbols/@id=script.method.server.Map.GetCritter%23beaf90ce99481bb9/description": {
           "source_sha256": "c350318c415ad7051e0f6f8ddd6bf654bb9e176d35b0a99e6a86fbcd454af629",
@@ -8482,6 +8518,14 @@
           "source_sha256": "f4921eec8d478d08784c2d2e5f09c0505877f063dc64a42d9d2267496422625e",
           "translation": "Возвращает, находится ли допустимый гекс карты вне крытой области"
         },
+        "/symbols/@id=script.method.server.Map.LoadRuntimeStaticItems%230971edd694992850/description": {
+          "source_sha256": "8aa96ba2c5245e828d249939e326fed372c1bd399d01616bfed930f96744ef46",
+          "translation": "Загрузить статические предметы области прототипа карты как статические предметы времени выполнения так, чтобы первый гекс области попал в `destHex`, с запечёнными идентификаторами плюс `idOffset`, и вернуть их идентификаторы"
+        },
+        "/symbols/@id=script.method.server.Map.LoadRuntimeStaticItems%237af3f0c56f49e919/description": {
+          "source_sha256": "4b2a8fdca3fa15d9beae675ab7f368a95d5f91d388f4e6515d4c922e01536d8f",
+          "translation": "Загрузить статические предметы прототипа карты как статические предметы времени выполнения так, чтобы её первый гекс попал в `destHex`, с запечёнными идентификаторами плюс `idOffset`, и вернуть их идентификаторы"
+        },
         "/symbols/@id=script.method.server.Map.MoveHexByDir%2362392271e1b42030/description": {
           "source_sha256": "8f148627cc8ea229579824c17ddf24640a19796d3dcf57dec19deff562d8184d",
           "translation": "Сдвигает гекс на один шаг в направлении с учётом границ карты и возвращает, сдвинулся ли он"
@@ -8513,6 +8557,10 @@
         "/symbols/@id=script.method.server.Map.UnblockHex/description": {
           "source_sha256": "165a5021fe48753a5c87f52c6afd59beda2e55aeb1a93205106fcb2083846bea",
           "translation": "Снимает ручную блокировку допустимого гекса карты"
+        },
+        "/symbols/@id=script.method.server.Map.UnloadRuntimeStaticItems/description": {
+          "source_sha256": "621ddfb90e2ab8cd8dd2c547a0fcae48a47f5f5df66423b829aef204baf8a93d",
+          "translation": "Удалить статические предметы времени выполнения, добавленные в карту через `LoadRuntimeStaticItems`"
         },
         "/symbols/@id=script.method.server.Map.VerifyTrigger/description": {
           "source_sha256": "6ca3c0b3e99248cf5d48d176d8adf2918ac9c81843772643c63449659bc4b713",
@@ -10166,6 +10214,10 @@
           "source_sha256": "436ee2776ffc7d3214d7e8c18beab0c492386c5ca87908c52830efa9b1b64780",
           "translation": "Если true, выделенный фоновый поток записывает сообщения лога в файл и консоль"
         },
+        "/symbols/@id=setting.common.Common.CachePath/description": {
+          "source_sha256": "1143f80ae15a2e775c416766d73a40ac6bde20c9950de5065a48a61efcd08fc4",
+          "translation": "Каталог кэша"
+        },
         "/symbols/@id=setting.common.Common.GameName/description": {
           "source_sha256": "75a486c1d1e7dba9804fc9503a233d738fd39a69d7db1a239d4d6b3b78b1c0f0",
           "translation": "Имя игры, используемое в логах и заголовке окна"
@@ -10181,6 +10233,14 @@
         "/symbols/@id=setting.common.Common.Packaged/description": {
           "source_sha256": "ce8c99725bab653a35c82f3c3fc3c6a5ea92b9cd34d1c0cdc9a3312b4559d2d3",
           "translation": "Если yes, упаковка выполнена (только чтение)"
+        },
+        "/symbols/@id=setting.common.Common.PlatformBinariesPath/description": {
+          "source_sha256": "f6c416bd17d29f1a813c4eae79e270cccb6d9f9030937919e9fc15f3cb63f4fb",
+          "translation": "Каталог клиентских runtime binaries по платформам, раздаваемых updater"
+        },
+        "/symbols/@id=setting.common.Common.ResourcesPath/description": {
+          "source_sha256": "ac191455e235e9d8922aa87d48485d267c19696be5d620947888efbf03622eb7",
+          "translation": "Каталог ресурсов приложения; клиентская раздача сервера находится в его дочернем Client"
         },
         "/symbols/@id=setting.common.Common.SecretSettingTokens/description": {
           "source_sha256": "ca17dee98cb802f600af5284a3246be7593fd24b68225b87aba3097859a3f4d9",
@@ -10929,66 +10989,6 @@
         "/symbols/@id=setting.server.ServerNetwork.WssPrivateKey/description": {
           "source_sha256": "db82685ecf12b80c08ba089ca50bdded3ee37cf20534d42acd149600a028fbaa",
           "translation": "Закрытый ключ защищенного WebSocket"
-        },
-        "/symbols/@id=script.method.client.Game.SimulateTouchScroll/description": {
-          "source_sha256": "925fc3bcc97a0e01e405d9023343a9b28dc43312b3f7a97e2b2201f6d0678518",
-          "translation": "Передаёт событие прокрутки касанием в заданной позиции клиента со знаковым смещением в пикселях"
-        },
-        "/symbols/@id=setting.common.Common.CachePath/description": {
-          "source_sha256": "1143f80ae15a2e775c416766d73a40ac6bde20c9950de5065a48a61efcd08fc4",
-          "translation": "Каталог кэша"
-        },
-        "/symbols/@id=setting.common.Common.PlatformBinariesPath/description": {
-          "source_sha256": "f6c416bd17d29f1a813c4eae79e270cccb6d9f9030937919e9fc15f3cb63f4fb",
-          "translation": "Каталог клиентских runtime binaries по платформам, раздаваемых updater"
-        },
-        "/symbols/@id=setting.common.Common.ResourcesPath/description": {
-          "source_sha256": "ac191455e235e9d8922aa87d48485d267c19696be5d620947888efbf03622eb7",
-          "translation": "Каталог ресурсов приложения; клиентская раздача сервера находится в его дочернем Client"
-        },
-        "/symbols/@id=script.method.client.Map.LoadRuntimeStaticItems%230971edd694992850/description": {
-          "source_sha256": "74bf8007d1c46e1800c3d58588eefef0b0e439427aef63aef9970c795076ce29",
-          "translation": "Загрузить статические предметы области прототипа карты из её клиентской выпечки как статические предметы времени выполнения так, чтобы первый гекс области попал в `destHex`, с запечёнными идентификаторами плюс `idOffset`, и вернуть их идентификаторы"
-        },
-        "/symbols/@id=script.method.client.Map.LoadRuntimeStaticItems%237af3f0c56f49e919/description": {
-          "source_sha256": "cdefc1d21ff4c438707cb9b0766caf07968afb34cacfc6065243948cfb719eb1",
-          "translation": "Загрузить статические предметы клиентской выпечки прототипа карты как статические предметы времени выполнения так, чтобы её первый гекс попал в `destHex`, с запечёнными идентификаторами плюс `idOffset`, и вернуть их идентификаторы"
-        },
-        "/symbols/@id=script.method.client.Map.UnloadRuntimeStaticItems/description": {
-          "source_sha256": "20d4c22d77c7c152de0b91cb6410121adc9fb054c6a429a71148238734e66a1c",
-          "translation": "Удалить статические предметы времени выполнения, добавленные в представление карты через `LoadRuntimeStaticItems`, и освободить оставшиеся пустыми блоки полей"
-        },
-        "/symbols/@id=script.method.server.Game.IsStaticMapLoaded/description": {
-          "source_sha256": "2a0c98334e5eef32635c4198c60bfe72156c02892b4e89807aecec9ba0150eca",
-          "translation": "Вернуть, кэшировано ли запечённое содержимое прототипа карты"
-        },
-        "/symbols/@id=script.method.server.Game.LoadStaticMap/description": {
-          "source_sha256": "3a361908396a2839a54c8d58bbd24f94f499d09c9a5ebe35e9168f3e5804bfb5",
-          "translation": "Прочитать запечённое содержимое прототипа карты в кэш сейчас или в рабочем потоке; запрос до конца этого чтения ждёт его"
-        },
-        "/symbols/@id=script.method.server.Game.LoadStaticMaps/description": {
-          "source_sha256": "939de09b3a046d2dafe1799af0bf780ce4e47bee720b3670b091ee561d2a3c64",
-          "translation": "Прочитать запечённое содержимое прототипов карт в кэш сейчас или в рабочих потоках; запрос одного из них ждёт его чтения"
-        },
-        "/symbols/@id=script.method.server.Game.UnloadStaticMap/description": {
-          "source_sha256": "356c0f0b3fc7a0650e10952431c82171d9a0ab9d01f53ec530418ed118fbe052",
-          "translation": "Освободить кэшированное запечённое содержимое прототипа карты и вернуть, выгружено ли оно; оно остаётся, пока читается или используется картой"
-        },
-        "/symbols/@id=script.method.server.Map.GenerateContent/description": {
-          "source_sha256": "182ba1bf365dcd142d22952cde840d9eac542f05ca939862dd40049d671d3b20",
-          "translation": "Создать криттеров и динамические предметы прототипа карты так, чтобы её первый гекс попал в `destHex`, и вернуть идентификаторы созданных криттеров и предметов карты"
-        },
-        "/symbols/@id=script.method.server.Map.LoadRuntimeStaticItems%230971edd694992850/description": {
-          "source_sha256": "8aa96ba2c5245e828d249939e326fed372c1bd399d01616bfed930f96744ef46",
-          "translation": "Загрузить статические предметы области прототипа карты как статические предметы времени выполнения так, чтобы первый гекс области попал в `destHex`, с запечёнными идентификаторами плюс `idOffset`, и вернуть их идентификаторы"
-        },
-        "/symbols/@id=script.method.server.Map.LoadRuntimeStaticItems%237af3f0c56f49e919/description": {
-          "source_sha256": "4b2a8fdca3fa15d9beae675ab7f368a95d5f91d388f4e6515d4c922e01536d8f",
-          "translation": "Загрузить статические предметы прототипа карты как статические предметы времени выполнения так, чтобы её первый гекс попал в `destHex`, с запечёнными идентификаторами плюс `idOffset`, и вернуть их идентификаторы"
-        },
-        "/symbols/@id=script.method.server.Map.UnloadRuntimeStaticItems/description": {
-          "source_sha256": "621ddfb90e2ab8cd8dd2c547a0fcae48a47f5f5df66423b829aef204baf8a93d",
-          "translation": "Удалить статические предметы времени выполнения, добавленные в карту через `LoadRuntimeStaticItems`"
         }
       }
     },
@@ -13590,6 +13590,42 @@
           "source_sha256": "aea99625aefb8459c19638eccdce88b569ba0213285d812047b14b7a7bd5be44",
           "translation": "Управление устройством Android"
         },
+        "/helpers/@id=helper-cli.artifact-checksums/description": {
+          "source_sha256": "7bad85b38ff5ad8d4fd62ee76c70423083b26d071ad230cf857a49f7726ee30f",
+          "translation": "Записывает или проверяет sidecar-файлы SHA-256 и необязательный манифест для готовых релизных пакетов."
+        },
+        "/helpers/@id=helper-cli.artifact-checksums/global_arguments/@id=helper-cli.artifact-checksums.argument.artifact/description": {
+          "source_sha256": "3114572c2e76c6d683c07bc41a99be5409e95f3a21fec7d9a4bd4217bff0c463",
+          "translation": "Выбрать этот файл, заданный относительно каталога, вместо просмотра корня каталога; можно повторять."
+        },
+        "/helpers/@id=helper-cli.artifact-checksums/global_arguments/@id=helper-cli.artifact-checksums.argument.directory/description": {
+          "source_sha256": "4cd51a2bd6139b1244511608d57d3fb5aed05de7f10b35697a208fb01fcaa3bb",
+          "translation": "Каталог готового пакета до публикации."
+        },
+        "/helpers/@id=helper-cli.artifact-checksums/global_arguments/@id=helper-cli.artifact-checksums.argument.manifest/description": {
+          "source_sha256": "344f4ab32a09a0e5afad220c71d6a384a4e9d7fc107cfbe1c0f2ec16b80551fe",
+          "translation": "Также записать (или проверить) один манифест всех выбранных файлов в корне каталога, например SHA256SUMS."
+        },
+        "/helpers/@id=helper-cli.artifact-checksums/global_arguments/@id=helper-cli.artifact-checksums.argument.no_sidecars/description": {
+          "source_sha256": "eb5689e7d7c74879b8c916289790a1b62c7b6399d9185b1bf7aa24ecfa1b5507",
+          "translation": "Записывать или проверять только манифест; требует --manifest."
+        },
+        "/helpers/@id=helper-cli.artifact-checksums/global_arguments/@id=helper-cli.artifact-checksums.argument.suffix/description": {
+          "source_sha256": "34367bd4bb817c7a074b51cd7f079d7ccd11394ce251730273b504ea906b858f",
+          "translation": "Суффикс имени файла для выбора без учёта регистра; можно повторять; заменяет набор по умолчанию .zip, .tar, .tar.gz, .msi и .apk."
+        },
+        "/helpers/@id=helper-cli.artifact-checksums/global_arguments/@id=helper-cli.artifact-checksums.argument.verify/description": {
+          "source_sha256": "2f9c5d2aec82a1571287a1b9f8ebe3f35d5a5dc7bcf9402ae591309958cd24bb",
+          "translation": "Сравнить существующие sidecar-файлы и манифест с текущими байтами файлов вместо их записи."
+        },
+        "/helpers/@id=helper-cli.artifact-checksums/invocation_owner": {
+          "source_sha256": "83e36169cb08d3b6cce57cdbff58fb2b2f172bab6f7fd1a20ff7aa148ef2c152",
+          "translation": "релизные задачи подключающего проекта после остановки последнего записывающего пакеты процесса"
+        },
+        "/helpers/@id=helper-cli.artifact-checksums/name": {
+          "source_sha256": "cbf7977d137c15e8ed532cc932d8dceb2b178651df94b9aee2ea6f82300673b0",
+          "translation": "Контрольные суммы артефактов"
+        },
         "/helpers/@id=helper-cli.codecoverage/commands/@id=helper-cli.codecoverage.command.clean/arguments/@id=helper-cli.codecoverage.command.clean.argument.backend/description": {
           "source_sha256": "aa1fb879cb02c5b3148f25e5eaba5e6e772934ec69f98ce2e3ecb63b9f54dcdb",
           "translation": "Backend компилятора/toolchain покрытия."
@@ -13820,6 +13856,58 @@
           "source_sha256": "71a1ab05bd94edf78dd44316b4d064c8b17f3853d67808c2dd981ca54a674a12",
           "translation": "Создание MSI"
         },
+        "/helpers/@id=helper-cli.engine-upgrade-report/description": {
+          "source_sha256": "c7b07e3dda06d7a8616cbcc3c25ad3056014d30b309a69c0dae3b499e171790c",
+          "translation": "Записывает Markdown-запись обновления Engine с идентичностями Engine, входящим диапазоном, миграциями из истории изменений и поиском имён в проекте."
+        },
+        "/helpers/@id=helper-cli.engine-upgrade-report/global_arguments/@id=helper-cli.engine-upgrade-report.argument.changelog/description": {
+          "source_sha256": "fdd98092826f8a2628724cf3ff5810fd536dd4f0a6985f23fcc2ddbcbb28196a",
+          "translation": "Путь к истории изменений внутри репозитория Engine, читается на целевой ревизии (по умолчанию Docs/en/reference/changelog.md)."
+        },
+        "/helpers/@id=helper-cli.engine-upgrade-report/global_arguments/@id=helper-cli.engine-upgrade-report.argument.engine/description": {
+          "source_sha256": "c4d2f1c86d01c17a306008c814f2c9bfa5c372cc9e20dec12627f3382d873975",
+          "translation": "Checkout Engine относительно --project (по умолчанию Engine)."
+        },
+        "/helpers/@id=helper-cli.engine-upgrade-report/global_arguments/@id=helper-cli.engine-upgrade-report.argument.force/description": {
+          "source_sha256": "ba063812dd0bcdd8b8e6e22898b923ddb0a5ac81d5db855e3e751a9c7344c5dd",
+          "translation": "Заменить существующий файл --output."
+        },
+        "/helpers/@id=helper-cli.engine-upgrade-report/global_arguments/@id=helper-cli.engine-upgrade-report.argument.max_locations/description": {
+          "source_sha256": "185efced36ebeadf8c7dbe445097f74c9518eb594bf7fb42a71084c848bbe764",
+          "translation": "Число мест, перечисляемых для каждого имени в записи; число совпадений всегда полное (по умолчанию 20)."
+        },
+        "/helpers/@id=helper-cli.engine-upgrade-report/global_arguments/@id=helper-cli.engine-upgrade-report.argument.names/description": {
+          "source_sha256": "b1df1d988ff102366fc52ff494470b75ccfa7f869be8d0fc64fdabcaedeba284",
+          "translation": "Текстовый файл с одним буквальным именем на строку для поиска в исходниках проекта; пустые строки пропускаются."
+        },
+        "/helpers/@id=helper-cli.engine-upgrade-report/global_arguments/@id=helper-cli.engine-upgrade-report.argument.new/description": {
+          "source_sha256": "b9cd01ab382a09b32efe8f9b551c58de5819e85229dffcdbdd898ba82195bc58",
+          "translation": "Целевая ревизия Engine, например коммит или тег v<version> (по умолчанию HEAD checkout Engine)."
+        },
+        "/helpers/@id=helper-cli.engine-upgrade-report/global_arguments/@id=helper-cli.engine-upgrade-report.argument.old/description": {
+          "source_sha256": "8fe6e7d6f2926d13d8a2075579eb8721a18f92d314ef69937d6c83806b72e169",
+          "translation": "Базовая ревизия Engine (по умолчанию родительский gitlink в HEAD)."
+        },
+        "/helpers/@id=helper-cli.engine-upgrade-report/global_arguments/@id=helper-cli.engine-upgrade-report.argument.output/description": {
+          "source_sha256": "190e689729b9a917ba21f6d0100ec1aae1684c15df1cd14e30953db92f8bef69",
+          "translation": "Записать запись в этот файл вместо стандартного вывода."
+        },
+        "/helpers/@id=helper-cli.engine-upgrade-report/global_arguments/@id=helper-cli.engine-upgrade-report.argument.project/description": {
+          "source_sha256": "f80b40f3b1e6ec08a9c0b7b0b0fa597003a4a3461b3e9535d1ad5426fed11618",
+          "translation": "Рабочее дерево подключающего проекта (по умолчанию текущий каталог)."
+        },
+        "/helpers/@id=helper-cli.engine-upgrade-report/global_arguments/@id=helper-cli.engine-upgrade-report.argument.search_path/description": {
+          "source_sha256": "5ddf7743fce83799af1a142bb4c381b9f8402a570272e9aceca96702dda0d85f",
+          "translation": "Pathspec проекта для поиска имён; можно повторять (по умолчанию весь проект без checkout Engine)."
+        },
+        "/helpers/@id=helper-cli.engine-upgrade-report/invocation_owner": {
+          "source_sha256": "39af8871d6dc200bb79efed2c0a7ce9728029b76318198582e0c6bad16656292",
+          "translation": "работа подключающего проекта по обновлению Engine, запуск из корня проекта"
+        },
+        "/helpers/@id=helper-cli.engine-upgrade-report/name": {
+          "source_sha256": "9471fbc1effe847b39d40144d7b1f0241891f5d590dbda97d20387b6822f966a",
+          "translation": "Отчёт об обновлении Engine"
+        },
         "/helpers/@id=helper-cli.gameplay-test-runner/description": {
           "source_sha256": "44e2afeb32638ce404022d1d5ca1a1051d3857c078a41fa55c0dad8430816458",
           "translation": "Запускает упорядоченные многопроцессные игровые smoke-сценарии с контрактами готовности, маркеров, deadline, очистки и JSON-отчёта."
@@ -13843,6 +13931,130 @@
         "/helpers/@id=helper-cli.gameplay-test-runner/name": {
           "source_sha256": "92c468bed64c0f33dc0584828524a7ce97127320f5003e8c82bee0db84d4a4cd",
           "translation": "Запуск игровых тестов"
+        },
+        "/helpers/@id=helper-cli.project-version/description": {
+          "source_sha256": "dc2535274620c96a8ace4fbd495eba8c19bb984a0458faa6266b1fbeef8a36d4",
+          "translation": "Создаёт или проверяет записываемый машиной монотонный файл VERSION проекта по встроенной или проектной схеме версий."
+        },
+        "/helpers/@id=helper-cli.project-version/global_arguments/@id=helper-cli.project-version.argument.base_ref/description": {
+          "source_sha256": "aaad3e5f5f730dcaa2f10b0fcc0e23042c2b738712fced9b5d8f693cc6f009e6",
+          "translation": "Git ref, версию которого должно превышать следующее значение, например origin/main; обязателен для создания."
+        },
+        "/helpers/@id=helper-cli.project-version/global_arguments/@id=helper-cli.project-version.argument.check/description": {
+          "source_sha256": "2de6ac8431644379c373857b05f1956812d42dd71a4cd0beb7d83f4adc9370e1",
+          "translation": "Проверить файл рабочего дерева, не записывая его."
+        },
+        "/helpers/@id=helper-cli.project-version/global_arguments/@id=helper-cli.project-version.argument.config/description": {
+          "source_sha256": "fee2436cf216068ef62e3c705ef0f86cdc5bf225a541a3645559f751d54919a8",
+          "translation": "JSON-файл с любыми из ключей file, base_ref, scheme, limits, since_commit; параметры командной строки имеют приоритет."
+        },
+        "/helpers/@id=helper-cli.project-version/global_arguments/@id=helper-cli.project-version.argument.file/description": {
+          "source_sha256": "f5408587aef4fa094f7a9e3513105c97d8f4da779dba245c70c729b4741d6e2e",
+          "translation": "Файл версии относительно --root (по умолчанию VERSION)."
+        },
+        "/helpers/@id=helper-cli.project-version/global_arguments/@id=helper-cli.project-version.argument.limit/description": {
+          "source_sha256": "d45dacbc8cfb04bf62c7bf167e966b82d2ce1fb58ef1845a2a0e5d28d18cad54",
+          "translation": "Исключающая верхняя граница одного компонента схемы, например patch=10000; заполненный компонент переносится в предыдущий; можно повторять."
+        },
+        "/helpers/@id=helper-cli.project-version/global_arguments/@id=helper-cli.project-version.argument.root/description": {
+          "source_sha256": "3e9eef21d2b2ff93ade03488c7db91beef24e4ce7ec494ce10c979619af2a1bd",
+          "translation": "Каталог внутри рабочего дерева проекта (по умолчанию текущий каталог)."
+        },
+        "/helpers/@id=helper-cli.project-version/global_arguments/@id=helper-cli.project-version.argument.scheme/description": {
+          "source_sha256": "28e47848b5f4dcd2a5e06a2487f8037f7c1cf4dfd6fdda9c896c0af73969e650",
+          "translation": "Встроенная схема patch-per-commit (по умолчанию) или counter либо <file.py or module>:<factory> проектной схемы."
+        },
+        "/helpers/@id=helper-cli.project-version/global_arguments/@id=helper-cli.project-version.argument.since_commit/description": {
+          "source_sha256": "467701dce81d4e6ce9cd360d15bb3040e240de4f78e7790cf389319336a6b4d5",
+          "translation": "Игнорировать значения, зафиксированные до этого коммита, например до смены кодирования; он должен быть предком каждого сравниваемого ref."
+        },
+        "/helpers/@id=helper-cli.project-version/invocation_owner": {
+          "source_sha256": "9bf245f985931262fc6fa0dcc561b195c4c26c1f2731a9643d7fb927d04e0194",
+          "translation": "задачи версии, hooks и проверки CI подключающего проекта"
+        },
+        "/helpers/@id=helper-cli.project-version/name": {
+          "source_sha256": "8548251f4cb048f235999d9cfe86178b4886cf8e13fe4c5dd3cb77235366e133",
+          "translation": "Генератор версии проекта"
+        },
+        "/helpers/@id=helper-cli.release-preflight/description": {
+          "source_sha256": "d22586d18f02e02a3f6f9a3a758520893ffbbf7d2383b30269115e09702d3a05",
+          "translation": "Проверяет версию, тег и ассеты релиза проекта, выбирает публикацию или dry-run, делит слишком большие ассеты и записывает манифест контрольных сумм."
+        },
+        "/helpers/@id=helper-cli.release-preflight/global_arguments/@id=helper-cli.release-preflight.argument.asset_pattern/description": {
+          "source_sha256": "ff00c94fe4d0ebc54e4895b1439ed34cce99d97779ade514b4551073cb3d4596",
+          "translation": "Шаблон имени файла ассетов в --assets-dir; можно повторять (по умолчанию каждый файл)."
+        },
+        "/helpers/@id=helper-cli.release-preflight/global_arguments/@id=helper-cli.release-preflight.argument.assets_dir/description": {
+          "source_sha256": "40cac08b4dde4c0c9f30c85625108f92a530ca632869c5e07d8126cc6a69e7ae",
+          "translation": "Каталог, файлы корня которого являются релизными ассетами."
+        },
+        "/helpers/@id=helper-cli.release-preflight/global_arguments/@id=helper-cli.release-preflight.argument.config/description": {
+          "source_sha256": "89c1b06f8e202bd336d66de7317eb1e9de28b010443da14a5e898669fd40d050",
+          "translation": "JSON-конфигурация project_version.py; её file, scheme и limits действуют и здесь."
+        },
+        "/helpers/@id=helper-cli.release-preflight/global_arguments/@id=helper-cli.release-preflight.argument.dry_run/description": {
+          "source_sha256": "e30947daafbc2ae46117e6c472b2f69703ad4d5a83bcec37cfc919f5e5872c02",
+          "translation": "Принудительно включить режим dry-run даже на релизном ref."
+        },
+        "/helpers/@id=helper-cli.release-preflight/global_arguments/@id=helper-cli.release-preflight.argument.engine/description": {
+          "source_sha256": "31d4db0e38cc437479757740c9f5ea28434a1285f1527a50ee34ead1add2f879",
+          "translation": "Также требовать, чтобы зафиксированный gitlink этого submodule Engine был достижим из remote-tracking-ветки submodule."
+        },
+        "/helpers/@id=helper-cli.release-preflight/global_arguments/@id=helper-cli.release-preflight.argument.file/description": {
+          "source_sha256": "f5408587aef4fa094f7a9e3513105c97d8f4da779dba245c70c729b4741d6e2e",
+          "translation": "Файл версии относительно --root (по умолчанию VERSION)."
+        },
+        "/helpers/@id=helper-cli.release-preflight/global_arguments/@id=helper-cli.release-preflight.argument.limit/description": {
+          "source_sha256": "43c8cce37facec5c5599ced19487358406477f39f51ecb5c81be9cc5147e4667",
+          "translation": "Граница компонента схемы, как для project_version.py; можно повторять."
+        },
+        "/helpers/@id=helper-cli.release-preflight/global_arguments/@id=helper-cli.release-preflight.argument.manifest/description": {
+          "source_sha256": "1d738b15ee792b889e60c0cce700d446318a774850b6bfc040279c97ff6790ac",
+          "translation": "Записать манифест SHA-256 итоговых ассетов в --assets-dir."
+        },
+        "/helpers/@id=helper-cli.release-preflight/global_arguments/@id=helper-cli.release-preflight.argument.max_asset_bytes/description": {
+          "source_sha256": "e98183e63985564acfad84afe922cbf710abeb3cf9ac7c948fc5356228200085",
+          "translation": "Делить каждый ассет большего размера на части <name>.partNN не больше SIZE байт; суффиксы K, M и G означают степени 1024."
+        },
+        "/helpers/@id=helper-cli.release-preflight/global_arguments/@id=helper-cli.release-preflight.argument.outputs_file/description": {
+          "source_sha256": "827d7f48260448fad1083ba0332e68f109822860853c51af7db07c8e9e33009e",
+          "translation": "Дописать version, tag, previous_tag, publish и assets строками key=value, например в $GITHUB_OUTPUT."
+        },
+        "/helpers/@id=helper-cli.release-preflight/global_arguments/@id=helper-cli.release-preflight.argument.ref/description": {
+          "source_sha256": "e08e7d9059ed7d431b0009c469f137f85d82b3229edf671dab2314c03abf4c86",
+          "translation": "Выпускаемый ref, например refs/heads/main (по умолчанию ветка, извлечённая в HEAD)."
+        },
+        "/helpers/@id=helper-cli.release-preflight/global_arguments/@id=helper-cli.release-preflight.argument.release_ref/description": {
+          "source_sha256": "2e1b72dd3a5c45da0c5fd3b8e2e4fa00710203f648a7032e36751e1bb7fa339d",
+          "translation": "Публикует только этот ref; любой другой ref даёт dry-run, а без параметра каждый запуск является dry-run."
+        },
+        "/helpers/@id=helper-cli.release-preflight/global_arguments/@id=helper-cli.release-preflight.argument.remote/description": {
+          "source_sha256": "539871c5a4ffaf199756f02867f099b920814cefb44f8a3f62398e6242b05827",
+          "translation": "Также искать тег в этом удалённом репозитории Git, например origin."
+        },
+        "/helpers/@id=helper-cli.release-preflight/global_arguments/@id=helper-cli.release-preflight.argument.root/description": {
+          "source_sha256": "3e9eef21d2b2ff93ade03488c7db91beef24e4ce7ec494ce10c979619af2a1bd",
+          "translation": "Каталог внутри рабочего дерева проекта (по умолчанию текущий каталог)."
+        },
+        "/helpers/@id=helper-cli.release-preflight/global_arguments/@id=helper-cli.release-preflight.argument.scheme/description": {
+          "source_sha256": "b70a6e4f47f15c134e0c121e52e8b44f92a273707ccc666d78bca96d469316c9",
+          "translation": "Схема версий, как для project_version.py (по умолчанию patch-per-commit)."
+        },
+        "/helpers/@id=helper-cli.release-preflight/global_arguments/@id=helper-cli.release-preflight.argument.summary_file/description": {
+          "source_sha256": "27b3f2589a74250385e3e55b1ada112bfbc0f4934a67b26805d6fcbcfbfc3af2",
+          "translation": "Дописать Markdown-сводку, например в $GITHUB_STEP_SUMMARY."
+        },
+        "/helpers/@id=helper-cli.release-preflight/global_arguments/@id=helper-cli.release-preflight.argument.tag_prefix/description": {
+          "source_sha256": "f3b6912ba6d14cfb3943dd6c4af2e4ef1a93425f7ccbcbf39f55cd09ca06fc10",
+          "translation": "Префикс релизного тега перед версией (по умолчанию v)."
+        },
+        "/helpers/@id=helper-cli.release-preflight/invocation_owner": {
+          "source_sha256": "5ba7db79cd21ad43fa4d164c6ad37c4caece386bbb62f0e4d167d07ed1ac7dab",
+          "translation": "ручные релизные задачи подключающего проекта перед созданием тега и публикацией"
+        },
+        "/helpers/@id=helper-cli.release-preflight/name": {
+          "source_sha256": "23dad50d4eb583a75c2b3af8ce9e57b9bc0279456cb89bf8452bd1a754189d39",
+          "translation": "Предварительная проверка релиза"
         },
         "/helpers/@id=helper-cli.simple-web-server/description": {
           "source_sha256": "43d4e2c2f90c9e2ff611e5b3ce4d2cb7e488d40409fe995238369d223dc66eb1",
