@@ -77,6 +77,17 @@
       "description": "Call an Engine-compatible project AiControl bridge through the versioned NDJSON/TCP envelope without exposing shared tokens on the command line."
     },
     {
+      "id": "helper-cli.format-content",
+      "name": "Content formatter",
+      "source": "BuildTools/format_content.py",
+      "factory": "create_parser",
+      "program": "format_content.py",
+      "owner": "tooling",
+      "audiences": ["game-developer", "embedding-project-build-system", "ci-maintainer"],
+      "invocation_owner": "BuildTools/buildtools.py format-content, embedding-project format tasks and CI drift checks",
+      "description": "Format .fomain, prototype and optional AngelScript files in the Engine layout and refuse any rewrite that would change what the Engine reads."
+    },
+    {
       "id": "helper-cli.windows7-import-check",
       "name": "Windows 7 import validation",
       "source": "BuildTools/check_windows7_imports.py",

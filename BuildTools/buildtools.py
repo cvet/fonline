@@ -226,22 +226,22 @@ CI_CA_VAR = 'FO_CI_CA'
 # clang-format treats `?` as a binary operator and inserts whitespace around
 # it: `Critter? cr` becomes `Critter ? cr`. AngelScript uses `T?` as a
 # nullable type suffix (parsed natively by the engine since the
-# `asBC_RefCpyChk` change) and the project style is to keep `?` attached to
-# the type. The same regex is used by `Tools/Formatter/format_project.py`
-# in the embedding project; keep them in sync if the suffix shape changes.
-# The type token is either an uppercase identifier with optional namespace
-# and optional `[]` (covers `Critter`, `Critter[]`, `TutorialSystem::Point`,
-# etc.) or a lowercase primitive followed by `[]` (covers `hstring[]`,
-# `int[]`, `string[]` â€" array-of-primitive is itself a handle and can carry
-# `?`, but the bare primitive cannot, so the `[]` is mandatory here)
-_FOS_NULLABLE_TYPE = r'(?:[A-Z][\w:]*(?:\[\])?|[a-z][\w]*\[\])'
+# `asBC_RefCpyChk` change) and the style is to keep `?` attached to the type.
+# The type token is a template instance such as `array<Critter>` or
+# `dict<string, any>` (one nested level) or an identifier with optional
+# namespace and optional `[]` (covers `Critter`, `Critter[]`,
+# `TutorialSystem::Point`, funcdef names such as `callback_void`, `hstring[]`).
+# A ternary never ends its true branch at `,`, `)` or `;`; when the candidate is
+# followed by `=` or a call, a lone `:` later in the same statement marks the
+# ternary and the text is left alone
+_FOS_NULLABLE_GENERIC = r'[A-Za-z][\w:]*<[^<>;?]*(?:<[^<>;?]*>[^<>;?]*)?>'
+_FOS_NULLABLE_TYPE = r'(?:' + _FOS_NULLABLE_GENERIC + r'(?:\[\])?|[A-Za-z_][\w:]*(?:\[\])?)'
 FOS_NULLABLE_SUFFIX_RE = re.compile(
 	r'(?<![.\w])(' + _FOS_NULLABLE_TYPE + r')\s+\?\s+([A-Za-z_]\w*)(\s*(?:[(,)=;]|\[\]))'
 )
-# Inside function bodies we also need to repair uninitialized declarations
-# `Critter ? targetCr;` â€" the trailing `;` (no `=`) form. A ternary always
-# carries `:` between its branches and never `;` directly after the candidate
-# identifier, so adding `;` here doesn't collide with ternary parsing
+# Inside function bodies only the local-declaration forms `Critter ? target;`
+# and `Critter ? target = value` are repaired; calls and arguments there are
+# expressions
 FOS_NULLABLE_SUFFIX_BODY_RE = re.compile(
 	r'(?<![.\w])(' + _FOS_NULLABLE_TYPE + r')\s+\?\s+([A-Za-z_]\w*)(\s*[=;])'
 )
@@ -252,8 +252,7 @@ FOS_NULLABLE_SUFFIX_BODY_RE = re.compile(
 # (`foo(name: v)` -> `foo(name : v)`). A `?` immediately before `>` or an empty
 # `[]`, and a `:` whose left side is an argument-position identifier, are all
 # unambiguous markers, so the inserted spacing is collapsed back. String / char
-# literals and comments are masked first so literal text is never rewritten. Kept
-# in sync with `Tools/Formatter/format_project.py` in the embedding project
+# literals and comments are masked first so literal text is never rewritten
 _FOS_ANGLE_NAME = r'(?:cast|[A-Za-z_]\w*)'
 _FOS_ANGLE_SUBTYPE = r'[\w:]+(?:\s*\[\s*\])?'
 FOS_NULLABLE_ANGLE_CALL_RE = re.compile(
@@ -4041,9 +4040,9 @@ def fix_fos_nullable_suffix(text: str) -> str:
 	for start, end, inside_body in spans:
 		chunk = text[start:end]
 		if inside_body:
-			chunk = FOS_NULLABLE_SUFFIX_BODY_RE.sub(r'\1? \2\3', chunk)
+			chunk = FOS_NULLABLE_SUFFIX_BODY_RE.sub(_fos_repair_nullable_declaration, chunk)
 		else:
-			chunk = FOS_NULLABLE_SUFFIX_RE.sub(r'\1? \2\3', chunk)
+			chunk = FOS_NULLABLE_SUFFIX_RE.sub(_fos_repair_nullable_declaration, chunk)
 		out.append(chunk)
 	result = ''.join(out)
 	# Repair nullable markers inside template / cast angle brackets (call form first
@@ -4057,6 +4056,45 @@ def fix_fos_nullable_suffix(text: str) -> str:
 	# Restore the masked literals/comments
 	result = FOS_STASH_RE.sub(lambda m: stash[int(m.group(1))], result)
 	return result
+
+
+def _fos_repair_nullable_declaration(match: 're.Match[str]') -> str:
+	boundary = match.group(3).strip()
+	if boundary in ('=', '(') and _fos_statement_continues_as_ternary(match.string, match.end(), 1 if boundary == '(' else 0):
+		return match.group(0)
+	return f'{match.group(1)}? {match.group(2)}{match.group(3)}'
+
+
+def _fos_statement_continues_as_ternary(text: str, position: int, depth: int) -> bool:
+	# The rest of a ternary's true branch holds one `:` more than `?`; an initializer's own ternaries are balanced
+	balance = 0
+	while position < len(text):
+		char = text[position]
+		if char == '(':
+			depth += 1
+		elif char == ')':
+			depth -= 1
+			if depth < 0:
+				break
+		elif depth <= 0 and char in ';{}':
+			break
+		elif char == ':' and text.startswith('::', position):
+			position += 1
+		elif depth == 0 and char == ':':
+			balance += 1
+		elif depth == 0 and char == '?':
+			balance -= 1
+		position += 1
+	return balance > 0
+
+
+def format_source_text(clang_format: str, path: Path, original: str) -> str:
+	# The result keeps the original line-ending convention and has no BOM; callers decide how to write it
+	formatted = strip_text_bom(run_capture_text([clang_format, str(path)], log_command=False))
+	formatted = ensure_trailing_newline(normalize_line_endings(formatted, detect_line_ending(original)), detect_line_ending(original))
+	if path.suffix == '.fos':
+		formatted = fix_fos_nullable_suffix(formatted)
+	return formatted
 
 
 def format_files(clang_format: str, root: Path, patterns: Sequence[str]) -> int:
@@ -4084,10 +4122,7 @@ def format_files(clang_format: str, root: Path, patterns: Sequence[str]) -> int:
 		progress.update(f'Formatting {index}/{total}: {rel_path}')
 
 		original, has_bom = read_text_strip_bom(path)
-		formatted = strip_text_bom(run_capture_text([clang_format, str(path)], log_command=False))
-		formatted = ensure_trailing_newline(normalize_line_endings(formatted, detect_line_ending(original)), detect_line_ending(original))
-		if path.suffix == '.fos':
-			formatted = fix_fos_nullable_suffix(formatted)
+		formatted = format_source_text(clang_format, path, original)
 		if not differs_beyond_line_endings(original, formatted) and not has_bom:
 			continue
 
@@ -4175,6 +4210,11 @@ def create_parser() -> argparse.ArgumentParser:
 	format_parser = subparsers.add_parser('format-source', help='format engine source files')
 	format_parser.set_defaults(no_args=True)
 
+	import format_content
+
+	format_content_parser = subparsers.add_parser('format-content', help='format project .fomain, prototype and optional AngelScript files')
+	format_content.add_arguments(format_content_parser)
+
 	toolset_parser = subparsers.add_parser('toolset', help='build an existing toolset target')
 	toolset_parser.add_argument('target', help='target from the configured toolset build tree')
 
@@ -4241,7 +4281,7 @@ def main() -> None:
 			print_env_summary(env)
 		return
 
-	if args.command != 'format-source':
+	if args.command not in ('format-source', 'format-content'):
 		print_env_summary(env)
 
 	if args.command == 'build':
@@ -4257,6 +4297,10 @@ def main() -> None:
 	if args.command == 'format-source':
 		format_source(env)
 		return
+	if args.command == 'format-content':
+		import format_content
+
+		raise SystemExit(format_content.run(args))
 	if args.command == 'toolset':
 		build_toolset(args.target, env)
 		return
