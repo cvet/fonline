@@ -30,6 +30,10 @@ def section(text: str, name: str = '', **options: bool) -> dict[str, str]:
     return found.values
 
 
+def _reading(document: ff.ConfigDocument) -> list[tuple[str, dict[str, str]]]:
+    return [(item.name, item.values) for item in document.sections]
+
+
 # ---------- configuration grammar: Source/Tests/Test_ConfigFile.cpp ----------
 
 @pytest.mark.parametrize('suffix', ['', '\n'])
@@ -125,6 +129,30 @@ def test_foconfig_reads_through_the_engine_grammar():
     parser.loadFromLines(['Key = "a # b" # c\n', 'List = one\n', 'List += two\n', '[Pack] trailing\n', 'Name = P\n'])
     assert parser.mainSection().content == {'Key': '"a # b"', 'List': 'one two'}
     assert parser.getSections('Pack')[0].getStr('Name') == 'P'
+
+
+def test_form_feed_and_vertical_tab_are_not_line_whitespace():
+    # The constructor trims whole lines and section names with strvex::trim (space, LF, CR, tab); only key and
+    # value ranges use TrimConfigRange, which also strips form feed and vertical tab
+    text = '[A]\n\f[B]\nx = 1\n[\vC\f]\ny = a \\\f\nz = 2\n'
+    expected = [('', {}), ('A', {'x': '1'}), ('\vC\f', {'y': 'a \\', 'z': '2'})]
+    assert _reading(ff.parse_config_text(text)) == expected
+
+    import foconfig
+
+    parser = foconfig.ConfigParser()
+    parser.loadFromText(text)
+    assert [(item.name, item.content) for item in parser.sections] == expected
+
+
+@pytest.mark.parametrize('suffix', ['', '\n'])
+def test_terminal_continuation_ends_on_the_last_physical_line(suffix):
+    document = ff.parse_config_text('[S]\nA = 1 \\' + suffix)
+    assert document.first('S').key_lines == {'A': (2, 2)}
+    assert [(line.physical, line.text, line.first_line, line.last_line) for line in ff.iter_config_lines(ff.split_config_lines('[S]\nA = 1 \\' + suffix))] == [
+        (['[S]'], '[S]', 1, 1),
+        (['A = 1 \\'], 'A = 1 ', 2, 2),
+    ]
 
 
 # ---------- setting directives: Source/Common/Settings.cpp ResolveSettingValue ----------

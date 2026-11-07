@@ -46,7 +46,8 @@ EXIT_DRIFT = 1
 EXIT_ERROR = 2
 
 UTF8_BOM = '\ufeff'
-SPACE = foconfig.CONFIG_SPACE
+# Line layout trims what the reader trims around whole lines; form feed and vertical tab stay significant there
+SPACE = foconfig.TRIM_SPACE
 METADATA_EXTENSIONS = ('fos', 'cs')
 MAPPER_OWNED_SECTIONS = ('ProtoMap',)
 ENGINE_SETTING_RE = re.compile(r'^SETTING\(\s*(?:[^,<]|<[^>]*>)+,\s*([A-Za-z0-9_]+)\s*,\s*([A-Za-z0-9_]+)\s*[,)]')
