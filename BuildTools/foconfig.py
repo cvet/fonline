@@ -86,6 +86,38 @@ class ConfigParser:
     def getSections(self, sectionName: str) -> list[ConfigSection]:
         return [section for section in self.sections if section.name == sectionName]
 
+    def resolveSettings(self, subConfig: str | None = None) -> dict[str, str]:
+        """Main-section settings with a sub-config applied over them, as the Engine settings loader does.
+
+        Sub-configs inherit their space-separated Parent list in order, later parents override earlier
+        ones and the section's own values override all parents; an empty name or NONE applies none."""
+        settings = dict(self.mainSection().content)
+
+        if not subConfig or subConfig == 'NONE':
+            return settings
+
+        resolved: dict[str, dict[str, str]] = {}
+
+        for section in self.getSections('SubConfig'):
+            name = section.content.get('Name', '')
+            if not name:
+                raise KeyError('Sub config name not specified')
+
+            values: dict[str, str] = {}
+            for parent in section.content.get('Parent', '').split():
+                if parent not in resolved:
+                    raise KeyError(f"Parent sub config '{parent}' of '{name}' not found")
+                values.update(resolved[parent])
+
+            values.update({key: value for key, value in section.content.items() if key not in ('Name', 'Parent')})
+            resolved.setdefault(name, values)
+
+        if subConfig not in resolved:
+            raise KeyError(f"Sub config '{subConfig}' not found")
+
+        settings.update(resolved[subConfig])
+        return settings
+
     def load_from_file(self, path: str | Path) -> None:
         self.loadFromFile(path)
 
@@ -97,3 +129,6 @@ class ConfigParser:
 
     def get_sections(self, section_name: str) -> list[ConfigSection]:
         return self.getSections(section_name)
+
+    def resolve_settings(self, sub_config: str | None = None) -> dict[str, str]:
+        return self.resolveSettings(sub_config)

@@ -4150,6 +4150,104 @@ def build_auxiliary(target: str, config: str, env: Mapping[str, str]) -> None:
 	)
 
 
+MANAGED_PROJECT_NAME_SETTING = 'ManagedScript.ProjectName'
+MANAGED_GENERATED_DIR_SETTING = 'ManagedScript.GeneratedDir'
+# Defaults of Source/Common/Settings.inc and the host project name of Source/Tools/ManagedScriptBaker.cpp
+MANAGED_DEFAULT_PROJECT_NAME = 'FOnline'
+MANAGED_HOST_PROJECT_NAME = 'FOnline.ManagedHost'
+
+
+class ManagedProjectPaths(NamedTuple):
+	generated_dir: Path
+	project: Path
+	solution: Path
+	host_project: Path
+
+
+def resolve_managed_project_paths(config_path: Path, sub_config: str | None, build_dir: Path | None) -> ManagedProjectPaths:
+	"""Where ManagedScriptBaker writes the generated project for this config, from the settings it reads."""
+	import foconfig
+
+	parser = foconfig.ConfigParser()
+	parser.loadFromFile(config_path)
+	settings = parser.resolveSettings(sub_config)
+
+	for name in (MANAGED_PROJECT_NAME_SETTING, MANAGED_GENERATED_DIR_SETTING):
+		if f'{name} +' in settings or '$' in settings.get(name, ''):
+			raise ValueError(f'{name} uses += or a $ substitution, which managed-project-path does not resolve')
+
+	project_name = settings.get(MANAGED_PROJECT_NAME_SETTING, MANAGED_DEFAULT_PROJECT_NAME)
+	if not project_name:
+		raise ValueError(f'{MANAGED_PROJECT_NAME_SETTING} setting is empty')
+
+	# A relative directory is rooted at the applied main config, an empty one at the build tree's GeneratedSource
+	generated_value = settings.get(MANAGED_GENERATED_DIR_SETTING, '')
+	if generated_value:
+		generated_dir = Path(generated_value)
+		if not generated_dir.is_absolute():
+			generated_dir = config_path.resolve().parent / generated_dir
+	elif build_dir is not None:
+		generated_dir = build_dir / 'GeneratedSource' / 'Managed'
+	else:
+		raise ValueError(f'{MANAGED_GENERATED_DIR_SETTING} is empty, so the baker writes into <build-dir>/GeneratedSource/Managed; pass --build-dir')
+
+	generated_dir = generated_dir.resolve()
+	return ManagedProjectPaths(
+		generated_dir,
+		generated_dir / f'{project_name}.gen.csproj',
+		generated_dir / f'{project_name}.gen.sln',
+		generated_dir / f'{MANAGED_HOST_PROJECT_NAME}.gen.csproj',
+	)
+
+
+def open_with_desktop_association(path: Path) -> None:
+	if os.name == 'nt':
+		os.startfile(str(path))
+	elif sys.platform == 'darwin':
+		subprocess.run(['open', str(path)], check=True)
+	else:
+		subprocess.run(['xdg-open', str(path)], check=True)
+
+
+def managed_project_path(args: argparse.Namespace, launch: Callable[[Path], None] = open_with_desktop_association) -> int:
+	try:
+		paths = resolve_managed_project_paths(args.config, args.sub_config, args.build_dir)
+	except (OSError, KeyError, ValueError) as exception:
+		message = exception.args[0] if isinstance(exception, KeyError) and exception.args else exception
+		print(f'managed-project-path: {message}', file=sys.stderr, flush=True)
+		return 2
+
+	if args.json:
+		print(json.dumps({
+			'generatedDir': str(paths.generated_dir),
+			'project': str(paths.project),
+			'solution': str(paths.solution),
+			'hostProject': str(paths.host_project),
+			'projectExists': paths.project.is_file(),
+			'solutionExists': paths.solution.is_file(),
+		}, indent=2), flush=True)
+	else:
+		print(f'generated-dir: {paths.generated_dir}', flush=True)
+		print(f'project: {paths.project}', flush=True)
+		print(f'solution: {paths.solution}', flush=True)
+		print(f'host-project: {paths.host_project}', flush=True)
+
+	if args.require_existing or args.open:
+		missing = [str(path) for path in (paths.project, paths.solution) if not path.is_file()]
+		if missing:
+			print(f'managed-project-path: missing {", ".join(missing)}; run CompileManagedScripts or BakeResources first', file=sys.stderr, flush=True)
+			return 1
+
+	if args.open:
+		try:
+			launch(paths.solution)
+		except (OSError, subprocess.CalledProcessError) as exception:
+			print(f'managed-project-path: cannot open {paths.solution}: {exception}', file=sys.stderr, flush=True)
+			return 1
+
+	return 0
+
+
 def create_parser() -> argparse.ArgumentParser:
 	parser = argparse.ArgumentParser(prog='buildtools.py', description='Shared BuildTools helpers')
 	subparsers = parser.add_subparsers(dest='command', required=True)
@@ -4203,6 +4301,14 @@ def create_parser() -> argparse.ArgumentParser:
 	package_android_parser.add_argument('platform', choices=ANDROID_PLATFORMS, help='Android target platform (e.g. android-arm64)')
 	package_android_parser.add_argument('configs', nargs='+', help='config names to package (e.g. LocalTest)')
 
+	managed_project_parser = subparsers.add_parser('managed-project-path', help='print the generated managed C# project and solution paths')
+	managed_project_parser.add_argument('config', type=Path, help='main .fomain config the managed script baker applies')
+	managed_project_parser.add_argument('--sub-config', help='sub-config applied over the main section (default: none, as CompileManagedScripts)')
+	managed_project_parser.add_argument('--build-dir', type=Path, help='CMake build directory; required when ManagedScript.GeneratedDir is empty')
+	managed_project_parser.add_argument('--json', action='store_true', help='print the paths and whether the project and solution exist as JSON')
+	managed_project_parser.add_argument('--require-existing', action='store_true', help='exit 1 when the generated project or solution is missing')
+	managed_project_parser.add_argument('--open', action='store_true', help='open the generated solution with its desktop file association')
+
 	host_check_parser = subparsers.add_parser('host-check', help='check host prerequisites')
 	host_check_parser.add_argument('host', choices=['linux', 'macos', 'windows'], help='host platform to inspect')
 
@@ -4230,6 +4336,9 @@ def main() -> None:
 		feature_error = describe_unsupported_host_features(args.host, args.features)
 		if feature_error:
 			parser.error(feature_error)
+
+	if args.command == 'managed-project-path':
+		raise SystemExit(managed_project_path(args))
 
 	env = resolve_env()
 	apply_env(env)
