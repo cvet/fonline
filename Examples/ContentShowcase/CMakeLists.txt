@@ -22,15 +22,6 @@ StartProjectGeneration()
 RegisterProjectOptions()
 AddThirdPartyLibraries()
 RegisterEngineSources()
-
-function(_focs_post_target_setup)
-    if(TARGET FOCS_Client AND TARGET FOCS_BakerLib)
-        CopyTargetRuntimeToTarget(FOCS_Client FOCS_BakerLib)
-    endif()
-endfunction()
-
-AddStageHook(Finalize Pre _focs_post_target_setup)
-
 SetupCodeGeneration()
 BuildCoreLibraries()
 BuildApplications()

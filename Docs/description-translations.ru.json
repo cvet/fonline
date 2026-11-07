@@ -11633,6 +11633,14 @@
           "source_sha256": "7f4580e6e2ceab2bc395eb42286e64b6ddae12ea571606b5a286ccfc3a31bdc1",
           "translation": "Регистрирует макрос проекта на границе стадии до её выполнения."
         },
+        "/helpers/@id=cmake.helper.CopyRuntimeToTarget/description": {
+          "source_sha256": "3b84afde9babf2b160935b19cdc51c806e878596a1063cdd20bafe824a7db9f8",
+          "translation": "После каждой сборки цели копирует существующий файл среды выполнения рядом с её бинарным файлом. Молча пропускает вызов, если путь пуст, файла нет на момент configure или цели нет. Вызывайте после BuildApplications, обычно из hook Finalize Pre."
+        },
+        "/helpers/@id=cmake.helper.CopyTargetRuntimeToTarget/description": {
+          "source_sha256": "79faf1735da270e2e7edcd1def9d45dc4714dab4bbbd1270b2450ca43f53a8f3",
+          "translation": "Собирает producer до consumer и после каждой сборки consumer копирует бинарный файл producer рядом с бинарным файлом consumer. Молча пропускает вызов, если какой-либо цели нет; повторный запрос той же пары прерывает configure. Вызывайте после BuildApplications, обычно из hook Finalize Pre; копии <DEV>_BakerLib уже принадлежат стадии Applications."
+        },
         "/helpers/@id=cmake.helper.RegisterFindPackageHandler/description": {
           "source_sha256": "84f36641415d03acd81700af35abafa960b396270bfa8fd4bb0eff94db3606b6",
           "translation": "Регистрирует явный обработчик поиска пакета, используемый перехватчиком find_package на стадии ThirdParty."
@@ -11924,8 +11932,8 @@
           "translation": "Версионируемая линия поддержки пока не объявлена; подключающим проектам следует закреплять ревизию движка."
         },
         "/stages/@id=cmake.stage.Applications/description": {
-          "source_sha256": "cdb4c6ae8c2ffe8a3b93aca19c029745a79c8c420a7712f1b764327e3a7a4ad2",
-          "translation": "Создаёт включённые приложения клиента, сервера, Mapper, компилятора, baker, viewer и тестов."
+          "source_sha256": "855a2240ba8307253679e24914cb74bc5982ba54a04aee77fe6af5c6a488ddf3",
+          "translation": "Создаёт включённые приложения клиента, сервера, Mapper, компилятора, baker, viewer и тестов. Если собирается <DEV>_BakerLib, копирует её рядом с каждым исполняемым файлом клиента и сервера, точка входа которого выполняет предварительную сборку ресурсов при запуске."
         },
         "/stages/@id=cmake.stage.Codegen/description": {
           "source_sha256": "79722e6b6c3853461eaaed76797949daad4baefe8ddd01889782cdcc34f07812",

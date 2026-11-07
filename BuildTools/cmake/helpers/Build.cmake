@@ -808,13 +808,25 @@ endfunction()
 # Wire one CMake target's output binary to be copied next to another's output
 # binary as a POST_BUILD step, and ensure the producer is built first. Useful
 # for shared libraries / plugins that must sit next to a host executable
-# (e.g. Baker shared lib next to the Server, AngelScript debugger plugin next
-# to a tool host, ...). Silently does nothing if either target is missing
+# (e.g. AngelScript debugger plugin next to a tool host, ...). Silently does
+# nothing if either target is missing; requesting the same pair twice aborts configure
 function(CopyTargetRuntimeToTarget consumerTarget producerTarget)
 	if(NOT TARGET ${consumerTarget} OR NOT TARGET ${producerTarget})
 		return()
 	endif()
 
+	# A repeated pair means two owners maintain one runtime list, and only one may remain
+	GetTargetProperty(copiedRuntimes ${consumerTarget} FO_COPIED_RUNTIME_TARGETS)
+
+	if("${producerTarget}" IN_LIST copiedRuntimes)
+		if("${producerTarget}" STREQUAL "${FO_DEV_NAME}_BakerLib")
+			AbortMessage("CopyTargetRuntimeToTarget: the Applications stage already copies ${producerTarget} next to ${consumerTarget}; remove the project-side copy")
+		endif()
+
+		AbortMessage("CopyTargetRuntimeToTarget: ${producerTarget} is already copied next to ${consumerTarget}; remove the duplicate call")
+	endif()
+
+	set_property(TARGET ${consumerTarget} APPEND PROPERTY FO_COPIED_RUNTIME_TARGETS ${producerTarget})
 	add_dependencies(${consumerTarget} ${producerTarget})
 	AddCustomCommand(TARGET ${consumerTarget} POST_BUILD
 		COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:${producerTarget}>" "$<TARGET_FILE_DIR:${consumerTarget}>"
