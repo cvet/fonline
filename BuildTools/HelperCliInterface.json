@@ -119,6 +119,28 @@
       "audiences": ["release-operator", "engine-contributor"],
       "invocation_owner": "BuildTools/package.py Wix pack",
       "description": "Build an MSI installer from a package-generated WiX definition."
+    },
+    {
+      "id": "helper-cli.move-sync-analysis",
+      "name": "Movement synchronization trace analysis",
+      "source": "BuildTools/move_sync_analysis.py",
+      "factory": "create_parser",
+      "program": "move_sync_analysis.py",
+      "owner": "networking",
+      "audiences": ["game-developer", "engine-contributor", "ci-maintainer"],
+      "invocation_owner": "embedding-project movement playtests and direct developer diagnostics",
+      "description": "Merge Network.MoveSyncTrace MOVESYNC log lines into per-scenario divergence, lag and correction reports."
+    },
+    {
+      "id": "helper-cli.check-text-packs",
+      "name": "Text pack lint",
+      "source": "BuildTools/check_text_packs.py",
+      "factory": "create_parser",
+      "program": "check_text_packs.py",
+      "owner": "localization",
+      "audiences": ["game-developer", "embedding-project-build-system", "ci-maintainer"],
+      "invocation_owner": "embedding-project localization tasks and CI content gates",
+      "description": "Check raw .fotxt packs for parse errors, duplicate variants, wrong-script text and language key parity before baking."
     }
   ]
 }
