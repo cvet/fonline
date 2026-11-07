@@ -29,6 +29,9 @@
     <Compile Include="CoverVocabulary.cs" />
     <Compile Include="SyncCoverAnalyzer.cs" />
     <Compile Include="SyncCoverAnalyzer.CoveredWidening.cs" />
+    <Compile Include="EntryPointAnalyzer.cs" />
+    <Compile Include="InvariantAnalyzer.cs" />
+    <Compile Include="ScriptStaticAnalyzer.cs" />
   </ItemGroup>
   <ItemGroup>
     <!-- RS2008 requires every diagnostic id to be tracked; these double as the rule changelog. -->
