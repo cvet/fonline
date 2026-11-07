@@ -526,6 +526,16 @@ def test_moved_end_of_file_continuation_is_closed_by_a_blank_line(tmp_path: Path
     assert sections(path.read_text(encoding="utf-8")) == sections(text)
 
 
+def test_form_feed_stays_where_the_reader_keeps_it(tmp_path: Path) -> None:
+    # The reader trims whole lines without form feed, so a value ending in "\\" before it is no continuation
+    text = "\fZeta.A=1\nZeta.B = a \\\f\nAlpha.B = 1\n"
+    path = write(tmp_path / "Game.fomain", text)
+
+    assert fc.format_fomain_file(path, {}, check=False).changed
+    assert path.read_bytes() == b"Alpha.B = 1\n\nZeta.A = 1\nZeta.B = a \\\f\n"
+    assert sections(path.read_bytes().decode("utf-8")) == sections(text) == [("", {"Zeta.A": "1", "Zeta.B": "a \\", "Alpha.B": "1"})]
+
+
 def test_meaning_check_rejects_a_changed_reading(tmp_path: Path) -> None:
     path = tmp_path / "Game.fomain"
 

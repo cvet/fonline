@@ -25,7 +25,7 @@ import os
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Collection, Iterable, Mapping, Sequence
+from typing import Collection, Iterable, Iterator, Mapping, Sequence
 
 
 # Whitespace sets differ between the Engine helpers: strvex::trim strips these four characters,
@@ -146,11 +146,95 @@ class ConfigDocument:
         return found.values.get(key, default) if found is not None else default
 
 
-def parse_config_key_value_line(line: str) -> tuple[str, str, bool] | None:
-    """Port of `ConfigFile::ParseConfigKeyValueLine`: `(key, value, append)` or None without an assignment.
+@dataclass(slots=True)
+class ConfigLine:
+    """One line as the `ConfigFile` constructor parses it.
 
-    An unescaped `#` outside double quotes starts a comment, the first `=` separates key and value and a
-    `+` right before it marks an append."""
+    `physical` holds the physical lines a continuation merged, without line terminators, `text` the merged and
+    trimmed text, `first_line` and `last_line` the 1-based numbers of the first and last physical line."""
+
+    physical: list[str]
+    text: str
+    first_line: int
+    last_line: int
+
+
+@dataclass(slots=True)
+class ConfigKeyValue:
+    key: str
+    value: str
+    append: bool
+    # Index of the separating `=` in the parsed line text
+    separator: int
+
+
+def split_config_lines(text: str) -> list[str]:
+    """Physical lines as the `ConfigFile` constructor cuts them: at LF only, one trailing CR removed.
+
+    A final LF ends the last line instead of starting an empty one; the Engine reads that empty remainder too,
+    which changes nothing because an empty line is skipped and a pending continuation is closed either way."""
+    lines = text.split('\n')
+
+    if text.endswith('\n'):
+        lines.pop()
+
+    return [line[:-1] if line.endswith('\r') else line for line in lines]
+
+
+def iter_config_lines(physical_lines: Iterable[str]) -> Iterator[ConfigLine]:
+    """Logical lines in file order, empty ones included.
+
+    Each physical line is trimmed with `strvex::trim` (`TRIM_SPACE`, so form feed and vertical tab stay). A line
+    ending in a backslash preceded by a space or tab continues: its text without the backslash, trimmed, plus
+    one space is prepended to the next line. A continuation on the last line still forms a line."""
+    group: list[str] = []
+    accumulated = ''
+    first_line = 0
+    line_number = 0
+
+    for line_number, physical in enumerate(physical_lines, start=1):
+        if not group:
+            first_line = line_number
+
+        group.append(physical)
+        line = physical.strip(TRIM_SPACE)
+
+        if accumulated:
+            line = accumulated + line
+            accumulated = ''
+
+        if len(line) >= 2 and line[-1] == '\\' and line[-2] in ' \t':
+            accumulated = line[:-1].strip(TRIM_SPACE) + ' '
+            continue
+
+        yield ConfigLine(group, line, first_line, line_number)
+        group = []
+
+    if accumulated:
+        yield ConfigLine(group, accumulated, first_line, line_number)
+
+
+def parse_config_section_header(line: str) -> str | None:
+    """Section name of a logical line starting with `[`: the text before the first `]` trimmed with
+    `strvex::trim`; text after `]` is ignored. None for any other line and for a header without `]` or with an
+    empty name, which the Engine ignores as a whole."""
+    if not line.startswith('['):
+        return None
+
+    end = line.find(']')
+
+    if end == -1:
+        return None
+
+    name = line[1:end].strip(TRIM_SPACE)
+    return name or None
+
+
+def parse_config_key_value(line: str) -> ConfigKeyValue | None:
+    """Port of `ConfigFile::ParseConfigKeyValueLine`, or None when the line holds no assignment.
+
+    An unescaped `#` outside double quotes starts a comment, the first `=` separates key and value, a `+` right
+    before it marks an append, and key and value are trimmed with `TrimConfigRange` (`CONFIG_SPACE`)."""
     inside_quotes = False
     backslash_run = 0
     separator = -1
@@ -181,7 +265,13 @@ def parse_config_key_value_line(line: str) -> tuple[str, str, bool] | None:
     if key_begin == key_end:
         return None
 
-    return line[key_begin:key_end], line[value_begin:value_end], append
+    return ConfigKeyValue(line[key_begin:key_end], line[value_begin:value_end], append, separator)
+
+
+def parse_config_key_value_line(line: str) -> tuple[str, str, bool] | None:
+    """`parse_config_key_value` as a `(key, value, append)` tuple."""
+    entry = parse_config_key_value(line)
+    return (entry.key, entry.value, entry.append) if entry is not None else None
 
 
 def _trim_range(line: str, begin: int, end: int) -> tuple[int, int]:
@@ -199,71 +289,47 @@ def parse_config_text(text: str, *, skip_nested_sections: bool = False) -> Confi
     space, a trailing backslash preceded by space or tab continues the line, and a header without `]` or with an
     empty name is ignored (following keys stay in the previous section). Section names containing `/` are
     nested sections; `skip_nested_sections` drops them with their keys, as `ConfigFileOption::SkipNestedSections`."""
+    return parse_config_lines(split_config_lines(text), skip_nested_sections=skip_nested_sections)
+
+
+def parse_config_lines(physical_lines: Iterable[str], *, skip_nested_sections: bool = False) -> ConfigDocument:
+    """`parse_config_text` over physical lines already split, without their line terminators."""
     current = ConfigSection('', {}, 0, {})
     sections = [current]
     skip_current = False
-    accumulated = ''
-    accumulated_start = 0
-    physical_lines = text.split('\n')
 
-    def process(line: str, line_number: int, start_line: int) -> None:
-        nonlocal current, skip_current
-
-        if line[0] == '[':
-            end = line.find(']')
-            if end == -1:
-                return
-            name = line[1:end].strip(TRIM_SPACE)
-            if not name:
-                return
-            if '/' in name and skip_nested_sections:
-                skip_current = True
-                return
-            skip_current = False
-            current = ConfigSection(name, {}, line_number, {})
-            sections.append(current)
-            return
-
-        if skip_current:
-            return
-
-        parsed = parse_config_key_value_line(line)
-        if parsed is None:
-            return
-
-        key, value, append = parsed
-        if append and key in current.values:
-            if value:
-                current.values[key] = current.values[key] + ' ' + value
-            current.key_lines[key] = (current.key_lines[key][0], line_number)
-        else:
-            current.values[key] = value
-            current.key_lines[key] = (start_line, line_number)
-
-    for index, raw in enumerate(physical_lines):
-        line_number = index + 1
-        line = raw[:-1] if raw.endswith('\r') else raw
-        line = line.strip(TRIM_SPACE)
-        start_line = line_number
-
-        if accumulated:
-            line = accumulated + line
-            start_line = accumulated_start
-            accumulated = ''
+    for logical in iter_config_lines(physical_lines):
+        line = logical.text
 
         if not line:
             continue
 
-        if len(line) >= 2 and line[-1] == '\\' and line[-2] in ' \t':
-            accumulated = line[:-1].strip(TRIM_SPACE) + ' '
-            accumulated_start = start_line
+        if line[0] == '[':
+            name = parse_config_section_header(line)
+            if name is None:
+                continue
+            if '/' in name and skip_nested_sections:
+                skip_current = True
+                continue
+            skip_current = False
+            current = ConfigSection(name, {}, logical.last_line, {})
+            sections.append(current)
             continue
 
-        process(line, line_number, start_line)
+        if skip_current:
+            continue
 
-    # A continuation on the last line still forms an entry, as the Engine loop runs once more for it
-    if accumulated:
-        process(accumulated, len(physical_lines), accumulated_start)
+        entry = parse_config_key_value(line)
+        if entry is None:
+            continue
+
+        if entry.append and entry.key in current.values:
+            if entry.value:
+                current.values[entry.key] = current.values[entry.key] + ' ' + entry.value
+            current.key_lines[entry.key] = (current.key_lines[entry.key][0], logical.last_line)
+        else:
+            current.values[entry.key] = entry.value
+            current.key_lines[entry.key] = (logical.first_line, logical.last_line)
 
     return ConfigDocument(sections)
 
