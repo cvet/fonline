@@ -121,6 +121,17 @@
       "description": "Audit native C++ scopes for allocator, smart-pointer and local-variable contract violations with Engine-owned and project baselines."
     },
     {
+      "id": "helper-cli.native-safety-audit",
+      "name": "Native safety audits",
+      "source": "BuildTools/native_safety_audit.py",
+      "factory": "create_parser",
+      "program": "native_safety_audit.py",
+      "owner": "quality",
+      "audiences": ["engine-contributor", "game-developer", "embedding-project-build-system", "ci-maintainer"],
+      "invocation_owner": "Engine validate workflow, embedding-project native validation tasks and CI",
+      "description": "Reject native code that changes entity cover behind server script exports and gate per-function exception-safety classifications of Engine and project sources against committed baselines."
+    },
+    {
       "id": "helper-cli.android-device",
       "name": "Android device control",
       "source": "BuildTools/android_device.py",
