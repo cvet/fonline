@@ -23,6 +23,10 @@ import buildtools
     ],
 )
 def test_ios_runtime_architecture_matches_native_target(tmp_path: Path, platform: str, processor: str, expected: str) -> None:
+    # StartProjectGeneration loads its Git tracking helper through FO_ENGINE_ROOT, so stage it in the fixture tree
+    staged_helper = tmp_path / "Engine/BuildTools/cmake/helpers/EngineVersion.cmake"
+    staged_helper.parent.mkdir(parents=True)
+    shutil.copy2(BUILDTOOLS_DIR / "cmake/helpers/EngineVersion.cmake", staged_helper)
     (tmp_path / "CMakeLists.txt").write_text(
         "cmake_minimum_required(VERSION 3.22)\n"
         "project(AppleRuntimeArchitecture NONE)\n"

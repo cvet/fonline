@@ -3,7 +3,7 @@ permalink: /Examples/MinimalProject/README.ru.html
 locale: ru
 document_id: minimal-project-readme
 ---
-<!-- docs-translation: {"document_id":"minimal-project-readme","locale":"ru","source_path":"Examples/MinimalProject/README.md","source_sha256":"799fea6770f5d2181da542f6fb7487ba088c594b8c22e9b636c4dbcce6e13631"} -->
+<!-- docs-translation: {"document_id":"minimal-project-readme","locale":"ru","source_path":"Examples/MinimalProject/README.md","source_sha256":"f03b8856735252bc1ae879968a5b00fdfe545083be94fb35cd8a33689734c9a3"} -->
 # Минимальный проект FOnline
 
 Это принадлежащий движку исполняемый starter и opt-in проект проверки. Он
@@ -24,8 +24,9 @@ document_id: minimal-project-readme
   жизненного цикла и парные запечённые метаданные remote call;
 - `validate.py` выбирает поддерживаемый пресет хоста и запускает полный маршрут
   конфигурации, сборки и smoke-теста;
-- `Engine/` предоставляется как ссылка или подмодуль validation wrapper либо
-  checkout игрового проекта.
+- `Engine/` — подмодуль в checkout игрового проекта. При запуске на месте внутри
+  репозитория движка это должна быть junction или symlink на корень репозитория;
+  `.gitignore` примера её исключает.
 
 В проекте нет карт, криттеров, предметов, диалогов, GUI, аутентификации или
 продуктовой политики. Они принадлежат последующим руководствам и публичным
@@ -33,7 +34,9 @@ document_id: minimal-project-readme
 
 ## Автоматизированный smoke-тест
 
-Из корня движка:
+Из корня примера с инициализированным `Engine/` (внутри репозитория движка
+сначала создайте ссылку: `New-Item -ItemType Junction -Path Engine -Target ..\..`
+в Windows или `ln -s ../.. Engine` в Linux):
 
 ```bash
 cd Examples/MinimalProject
@@ -99,7 +102,7 @@ Starter не включает `Config` baker, потому что распрос
 
 ```bash
 # Debian/Ubuntu host prerequisites (first Linux run only)
-Engine/BuildTools/prepare-workspace.sh linux-packages linux
+Engine/BuildTools/prepare-workspace.sh linux-packages
 
 # Cross-platform wrapper (Windows or Linux)
 python validate.py

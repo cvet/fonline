@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.22)
 
 # Option setter
 function(SetOption var value)
+	RecordProjectOptionName(SetOption "${var}")
+
 	if(NOT DEFINED ${var})
 		set(${var} ${value} PARENT_SCOPE)
 	endif()

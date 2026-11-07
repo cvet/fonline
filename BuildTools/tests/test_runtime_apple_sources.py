@@ -196,6 +196,8 @@ def test_apple_native_source_corrections_compile_without_masking_diagnostics(run
 
 
 @pytest.mark.skipif(not shutil.which("cmake") or not (shutil.which("clang-20") or shutil.which("clang")), reason="CMake and Clang are required")
+# The default Windows generator (Visual Studio) ignores CMAKE_C_COMPILER and probes with cl, so Windows drives Clang through Ninja
+@pytest.mark.skipif(sys.platform == "win32" and not shutil.which("ninja"), reason="Ninja is required to probe with Clang on Windows")
 @pytest.mark.parametrize("parameter_type", ["int", "size_t"])
 @pytest.mark.parametrize("flags", [
     "-Werror -Weverything", "-Werror",
@@ -234,6 +236,7 @@ def test_domain_name_probe_checks_the_function_type_independently_of_conversion_
         build = source / "build"
         result = subprocess.run([
             shutil.which("cmake"), "-S", str(source), "-B", str(build),
+            *(["-G", "Ninja"] if sys.platform == "win32" else []),
             f"-DCMAKE_C_COMPILER={shutil.which('clang-20') or shutil.which('clang')}",
         ], capture_output=True, text=True)
         assert result.returncode == 0, result.stdout + result.stderr

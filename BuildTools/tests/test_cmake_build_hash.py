@@ -191,6 +191,19 @@ def test_markers_match_compiled_revision_after_head_advances(
     assert_markers(source, target, compiled)
 
 
+@pytest.mark.parametrize('repository', ('without-commit', 'none'))
+def test_missing_head_falls_back_to_random_hash_without_git_errors(tmp_path: Path, repository: str) -> None:
+    source = tmp_path / 'source'
+    source.mkdir()
+    environment = git_environment(source)
+    if repository == 'without-commit':
+        run('git', 'init', cwd=source, env=environment)
+    write_fixture(source)
+    output = run('cmake', '-S', str(source), '-B', str(source / 'build'), cwd=source, env=environment)
+    assert 'fatal:' not in output
+    assert re.fullmatch(r'[0-9a-f]{40}-random', configure_hashes(source / 'build')[0])
+
+
 def test_markers_track_head_in_source_with_spaces(tmp_path: Path) -> None:
     source = tmp_path / 'source with spaces'
     source.mkdir()

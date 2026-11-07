@@ -24,6 +24,14 @@ import urllib.parse
 import urllib.request
 import zipfile
 from pathlib import Path
+
+# BuildTools passes onexc= to shutil.rmtree, which exists from Python 3.12. The check precedes the typing import
+# so that an older Python 3 stops with this message instead of an ImportError
+MIN_PYTHON_VERSION = (3, 12)
+
+if sys.version_info < MIN_PYTHON_VERSION:
+	raise SystemExit(f'BuildTools requires Python {MIN_PYTHON_VERSION[0]}.{MIN_PYTHON_VERSION[1]} or newer, but {sys.executable} is Python {".".join(str(part) for part in sys.version_info[:3])}')
+
 from typing import Callable, Iterable, Mapping, NamedTuple, NotRequired, Sequence, TypedDict
 
 
@@ -706,8 +714,6 @@ def check_windows_host_tools() -> list[str]:
 		issues.append('Please install Visual Studio with C++ Build Tools or Build Tools for Visual Studio')
 	if not shutil.which('cmake'):
 		issues.append('Please install CMake from https://cmake.org')
-	if not (shutil.which('py') or shutil.which('python')):
-		issues.append('Please install Python from https://www.python.org')
 	return issues
 
 
@@ -1918,6 +1924,38 @@ HOST_FEATURE_WORKSPACE_PARTS = {
 	},
 	'macos': {},
 }
+
+HOST_FEATURE_PACKAGE_GROUPS: dict[str, Mapping[str, Sequence[str]]] = {
+	'linux': LINUX_FEATURE_PACKAGE_GROUPS,
+	'windows': {},
+	'macos': {},
+}
+
+
+def list_host_features(host_name: str) -> list[str]:
+	return [*HOST_FEATURE_PACKAGE_GROUPS[host_name], *HOST_FEATURE_WORKSPACE_PARTS[host_name]]
+
+
+def list_all_host_features() -> list[str]:
+	features: list[str] = []
+	for host_name in HOST_FEATURE_WORKSPACE_PARTS:
+		extend_unique(features, list_host_features(host_name))
+	return features
+
+
+def describe_host_features(host_name: str) -> str:
+	features = list_host_features(host_name)
+	if not features:
+		return f'{host_name} accepts no features; prepare-host-workspace {host_name} only runs the host check'
+	return f'{host_name} accepts {", ".join(features)} (default: {", ".join(HOST_DEFAULT_FEATURES[host_name])})'
+
+
+def describe_unsupported_host_features(host_name: str, features: Sequence[str]) -> str:
+	host_features = list_host_features(host_name)
+	unsupported = [feature for feature in features if feature not in host_features]
+	if not unsupported:
+		return ''
+	return f'prepare-host-workspace {host_name} does not support {", ".join(unsupported)}: {describe_host_features(host_name)}'
 
 
 def resolve_selected_features(host_name: str, features: Sequence[str]) -> list[str]:
@@ -4169,31 +4207,15 @@ def create_parser() -> argparse.ArgumentParser:
 	host_check_parser.add_argument('host', choices=['linux', 'macos', 'windows'], help='host platform to inspect')
 
 	prepare_host_parser = subparsers.add_parser('prepare-host-workspace', help='prepare host workspace and prerequisites')
-	prepare_host_parser.add_argument('host', choices=['linux', 'windows', 'macos'], help='host platform to prepare')
+	prepare_host_parser.add_argument('host', choices=list(HOST_FEATURE_WORKSPACE_PARTS), help='host platform to prepare')
 	prepare_host_parser.add_argument(
 		'features',
 		nargs='*',
-		choices=[
-			'common-packages',
-			'linux-packages',
-			'web-packages',
-			'android-packages',
-			'windows-cross-packages',
-			'msi-packages',
-			'all-packages',
-			'linux',
-			'web',
-			'android-arm32',
-			'android-arm64',
-			'android-x86',
-			'toolset',
-			'dotnet',
-			'windows-cross',
-			'wix',
-			'msan-libcxx',
-			'all',
-		],
-		help='feature groups to prepare; omit to use the host defaults',
+		choices=list_all_host_features(),
+		help=(
+			'feature groups to prepare; omit to use the host defaults; a name the host does not support is an error: '
+			+ '; '.join(describe_host_features(host_name) for host_name in HOST_FEATURE_WORKSPACE_PARTS)
+		),
 	)
 	prepare_host_parser.add_argument('--check', action='store_true', help='check availability without installing or building')
 
@@ -4203,6 +4225,12 @@ def create_parser() -> argparse.ArgumentParser:
 def main() -> None:
 	parser = create_parser()
 	args = parser.parse_args()
+
+	if args.command == 'prepare-host-workspace':
+		feature_error = describe_unsupported_host_features(args.host, args.features)
+		if feature_error:
+			parser.error(feature_error)
+
 	env = resolve_env()
 	apply_env(env)
 

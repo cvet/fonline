@@ -26,6 +26,10 @@ def _configure_flags(tmp_path: Path, system: str, generator: str = "Xcode") -> d
     if not shutil.which(build_tool):
         pytest.skip(f"{build_tool} is required for {actual_generator}")
 
+    # StartProjectGeneration loads its Git tracking helper through FO_ENGINE_ROOT, so stage it in the fixture tree
+    staged_helper = tmp_path / "Engine/BuildTools/cmake/helpers/EngineVersion.cmake"
+    staged_helper.parent.mkdir(parents=True)
+    shutil.copy2(BUILDTOOLS_DIR / "cmake/helpers/EngineVersion.cmake", staged_helper)
     (tmp_path / "CMakeLists.txt").write_text(
         "cmake_minimum_required(VERSION 3.22)\n"
         "project(AppleArchiveDiagnostics NONE)\n"

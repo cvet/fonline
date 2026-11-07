@@ -11,12 +11,27 @@ function(message mode)
 	endif()
 endfunction()
 
+# Arguments are joined one by one: expanding ARGN would split a quoted text at its semicolons
 function(StatusMessage)
-	_message(STATUS ${ARGN})
+	set(text "")
+	set(argIndex 0)
+	while(argIndex LESS ARGC)
+		string(APPEND text "${ARGV${argIndex}}")
+		math(EXPR argIndex "${argIndex} + 1")
+	endwhile()
+
+	_message(STATUS "${text}")
 endfunction()
 
 function(AbortMessage)
-	_message(FATAL_ERROR ${ARGN})
+	set(text "")
+	set(argIndex 0)
+	while(argIndex LESS ARGC)
+		string(APPEND text "${ARGV${argIndex}}")
+		math(EXPR argIndex "${argIndex} + 1")
+	endwhile()
+
+	_message(FATAL_ERROR "${text}")
 endfunction()
 
 # Skip all install rules
@@ -189,6 +204,7 @@ macro(SetOptionValues)
 
 	while(optionArgs)
 		ListPopFront(optionArgs optionName optionValue)
+		RecordProjectOptionName(SetOptionValues "${optionName}")
 		set(_soptShadow "_FO_OPTION_DEFAULT_${optionName}")
 		get_property(_soptHasCache CACHE ${optionName} PROPERTY VALUE SET)
 		get_property(_soptCacheType CACHE ${optionName} PROPERTY TYPE)

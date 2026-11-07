@@ -17,13 +17,13 @@ This is the engine-owned executable starter and opt-in validation project. It is
 - `StarterServerExtension.cpp` demonstrates a server-scoped native script export and an optional engine hook;
 - `run_starter_smoke.py` enforces a timeout, native/script lifecycle markers, and paired baked remote-call metadata;
 - `validate.py` selects the supported host preset and runs the complete configure/build/smoke route;
-- `Engine/` is supplied as a link/submodule by the validation wrapper or by a game-project checkout.
+- `Engine/` is a submodule in a game-project checkout. Run in place inside the Engine repository, it must be a junction or symlink to the repository root; the example's `.gitignore` excludes it.
 
 The project has no maps, critters, items, dialogs, GUI, authentication, or product policy. Those belong in later tutorials and public showcase repositories.
 
 ## Automated smoke
 
-From the example root with `Engine/` initialized:
+From the example root with `Engine/` initialized (inside the Engine repository, first link it with `New-Item -ItemType Junction -Path Engine -Target ..\..` on Windows or `ln -s ../.. Engine` on Linux):
 
 ```bash
 cd Examples/MinimalProject
@@ -60,7 +60,7 @@ With `Engine/` initialized, the standalone preset route is:
 
 ```bash
 # Debian/Ubuntu host prerequisites (first Linux run only)
-Engine/BuildTools/prepare-workspace.sh linux-packages linux
+Engine/BuildTools/prepare-workspace.sh linux-packages
 
 # Cross-platform wrapper (Windows or Linux)
 python validate.py

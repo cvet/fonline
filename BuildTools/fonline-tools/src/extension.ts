@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { parseJsonc } from './jsonc';
 
 const COMMAND_ID = 'fonline-tools.showTools';
 const STATUS_BAR_TEXT = '$(tools) FOnline Tools';
@@ -60,13 +61,25 @@ function getWorkspaceFolder(): vscode.WorkspaceFolder | undefined {
     return vscode.workspace.workspaceFolders?.[0];
 }
 
-async function readJsonFile<T>(fileUri: vscode.Uri): Promise<T | undefined> {
+// A missing file means that the workspace has no entries; an unreadable or invalid file is reported to the caller.
+async function readJsoncFile<T>(fileUri: vscode.Uri): Promise<T | undefined> {
+    let raw: Uint8Array;
+
     try {
-        const raw = await vscode.workspace.fs.readFile(fileUri);
-        return JSON.parse(decodeUtf8(raw)) as T;
+        raw = await vscode.workspace.fs.readFile(fileUri);
     }
-    catch {
-        return undefined;
+    catch (error) {
+        if (error instanceof vscode.FileSystemError && error.code === 'FileNotFound') {
+            return undefined;
+        }
+        throw error;
+    }
+
+    try {
+        return parseJsonc(decodeUtf8(raw)) as T;
+    }
+    catch (error) {
+        throw new Error(`Cannot parse ${fileUri.fsPath}: ${(error as Error).message}`);
     }
 }
 
@@ -222,7 +235,7 @@ async function readWorkspaceTaskLabels(): Promise<Set<string>> {
     }
 
     const tasksUri = vscode.Uri.joinPath(workspaceFolder.uri, '.vscode', 'tasks.json');
-    const parsed = await readJsonFile<{ tasks?: WorkspaceTaskDefinition[] }>(tasksUri);
+    const parsed = await readJsoncFile<{ tasks?: WorkspaceTaskDefinition[] }>(tasksUri);
     if (!parsed) {
         return new Set();
     }
@@ -239,16 +252,12 @@ function isMainWorkspaceTask(task: vscode.Task, workspaceFolder: vscode.Workspac
     if (scope === vscode.TaskScope.Workspace) {
         return true;
     }
-    return !!scope && 'uri' in scope && scope.uri.toString() === workspaceFolder.uri.toString();
+    return typeof scope === 'object' && scope.uri.toString() === workspaceFolder.uri.toString();
 }
 
 function getNodePlatform(): string {
     const nodeGlobal = globalThis as typeof globalThis & { process?: { platform?: string } };
     return nodeGlobal.process?.platform ?? '';
-}
-
-function getHostBuildPresetName(): string {
-    return getNodePlatform() === 'win32' ? 'base-msvc' : 'base-ninja';
 }
 
 const GROUP_DESCRIPTIONS = new Set(['Task Group', 'Launch Group']);
@@ -403,23 +412,17 @@ function getLaunchPicks(): ToolPick[] {
 
 const MAX_SORT_HOTKEYS = 9;
 
-let cachedSortedPicks: ToolPick[] = [];
-
-async function refreshSortedPicks(): Promise<ToolPick[]> {
-    const allPicks = [...await getTaskPicks(), ...getLaunchPicks()];
-    cachedSortedPicks = allPicks.filter(p => p.sortPriority !== undefined).sort((a, b) => (a.sortPriority ?? Infinity) - (b.sortPriority ?? Infinity));
-    return cachedSortedPicks;
+async function getTopLevelPicks(): Promise<ToolPick[]> {
+    return sortPicks([...await getTaskPicks(), ...getLaunchPicks()]);
 }
 
 async function showToolsPicker(): Promise<void> {
-    const picks = sortPicks([...await getTaskPicks(), ...getLaunchPicks()]);
+    const picks = await getTopLevelPicks();
 
     if (picks.length === 0) {
         void vscode.window.showInformationMessage('No FOnline tasks or launch configurations found.');
         return;
     }
-
-    cachedSortedPicks = picks.filter(p => p.sortPriority !== undefined).sort((a, b) => (a.sortPriority ?? Infinity) - (b.sortPriority ?? Infinity));
 
     const selected = await vscode.window.showQuickPick(picks, {
         title: 'FOnline Tools',
@@ -433,25 +436,32 @@ async function showToolsPicker(): Promise<void> {
     }
 }
 
+// The entries are rebuilt on every press, so a hotkey always follows the current tasks.json and launch.json.
+async function runSortedPick(sortPriority: number): Promise<void> {
+    const pick = (await getTopLevelPicks()).find(p => p.sortPriority === sortPriority);
+
+    if (!pick) {
+        void vscode.window.showWarningMessage(`No FOnline item with [sort:${sortPriority}] found.`);
+        return;
+    }
+
+    await pick.run();
+}
+
+async function runReportingErrors(action: () => Promise<void>): Promise<void> {
+    try {
+        await action();
+    }
+    catch (error) {
+        void vscode.window.showErrorMessage(`FOnline Tools: ${(error as Error).message}`);
+    }
+}
+
 export function activate(context: vscode.ExtensionContext): void {
-    const showToolsCommand = vscode.commands.registerCommand(COMMAND_ID, async () => {
-        await showToolsPicker();
-    });
+    const showToolsCommand = vscode.commands.registerCommand(COMMAND_ID, () => runReportingErrors(showToolsPicker));
 
     for (let i = 1; i <= MAX_SORT_HOTKEYS; i++) {
-        const command = vscode.commands.registerCommand(`fonline-tools.runSorted${i}`, async () => {
-            if (cachedSortedPicks.length === 0) {
-                await refreshSortedPicks();
-            }
-
-            const pick = cachedSortedPicks.find(p => p.sortPriority === i);
-            if (pick) {
-                await pick.run();
-            }
-            else {
-                void vscode.window.showWarningMessage(`No FOnline item with [sort:${i}] found.`);
-            }
-        });
+        const command = vscode.commands.registerCommand(`fonline-tools.runSorted${i}`, () => runReportingErrors(() => runSortedPick(i)));
         context.subscriptions.push(command);
     }
 

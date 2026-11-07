@@ -25,8 +25,9 @@ _GENERATOR_INPUTS = frozenset({
     "Source/Common/MetadataRegistration.template.cpp",
 })
 _NATIVE_SUFFIXES = frozenset({".h", ".cpp"})
-_STANDALONE_SAMPLE_HEADER = "Examples/NativeExtensionSample/SourceExt/NativeExtensionCore.h"
-_STANDALONE_SAMPLE_TEST = "Examples/NativeExtensionSample/Tests/NativeExtensionCoreTest.cpp"
+_STANDALONE_SAMPLE_ROOT = "Examples/NativeExtensionSample/"
+_STANDALONE_SAMPLE_HEADER = "SourceExt/NativeExtensionCore.h"
+_STANDALONE_SAMPLE_TEST = "Tests/NativeExtensionCoreTest.cpp"
 _INCLUDE_RE = re.compile(r"^[ \t]*#[ \t]*include\b(?P<rest>.*)\Z")
 _INCLUDE_PREFIX_RE = re.compile(r"[ \t]*#[ \t]*include[ \t]*\Z")
 _EOF_TAIL_RE = re.compile(r"(?P<eols>(?:\r\n|\n)+)\Z")
@@ -237,7 +238,7 @@ def _check_native_file(rel: str, text: str, inventory: set[str]) -> set[str]:
 
         if header_rel in inventory:
             expected = _basename(header_rel)
-        elif rel == _STANDALONE_SAMPLE_TEST:
+        elif _is_standalone_sample(rel, _STANDALONE_SAMPLE_TEST):
             expected = "NativeExtensionCore.h"
         else:
             expected = "Common.h"
@@ -283,12 +284,18 @@ def _has_blank_line_after(text: str, line: int) -> bool:
 
 
 def _is_bootstrap_header(rel: str) -> bool:
-    if rel in ("Source/Common/Common.h",
-               "Source/Common/ImGuiExt/ImGuiConfig.h",
-               _STANDALONE_SAMPLE_HEADER):
+    if rel in ("Source/Common/Common.h", "Source/Common/ImGuiExt/ImGuiConfig.h"):
+        return True
+
+    if _is_standalone_sample(rel, _STANDALONE_SAMPLE_HEADER):
         return True
 
     return _parent(rel) == "Source/Essentials"
+
+
+def _is_standalone_sample(rel: str, sample_file: str) -> bool:
+    # The sample is checked from the Engine root and from its own repository root.
+    return rel == sample_file or rel == _STANDALONE_SAMPLE_ROOT + sample_file
 
 
 def _is_common_include(kind: str, target: str) -> bool:

@@ -1,5 +1,60 @@
 include_guard()
 
+# SetOption and SetOptionValues record FO_ names; retired names fail at once, the rest once every option is declared
+function(RecordProjectOptionName command var)
+	if(NOT "${var}" MATCHES "^FO_")
+		return()
+	endif()
+
+	GetRetiredOptionGuidance("${var}" retiredGuidance)
+	if(NOT "${retiredGuidance}" STREQUAL "")
+		AbortMessage("${command}: ${var} was removed. ${retiredGuidance}")
+	endif()
+
+	get_property(declarationsComplete GLOBAL PROPERTY _FO_OPTION_DECLARATIONS_COMPLETE)
+	if(declarationsComplete)
+		RequireDeclaredProjectOption("${command}" "${var}")
+	else()
+		set_property(GLOBAL APPEND PROPERTY _FO_PROJECT_OPTION_NAMES "${var}")
+		set_property(GLOBAL PROPERTY _FO_PROJECT_OPTION_${var}_COMMAND "${command}")
+	endif()
+endfunction()
+
+# Run once after the Init stage declarations; later SetOption calls are checked immediately
+function(ValidateProjectOptionNames)
+	set_property(GLOBAL PROPERTY _FO_OPTION_DECLARATIONS_COMPLETE ON)
+	get_property(optionNames GLOBAL PROPERTY _FO_PROJECT_OPTION_NAMES)
+
+	foreach(optionName IN LISTS optionNames)
+		get_property(command GLOBAL PROPERTY _FO_PROJECT_OPTION_${optionName}_COMMAND)
+		RequireDeclaredProjectOption("${command}" "${optionName}")
+	endforeach()
+endfunction()
+
+function(RequireDeclaredProjectOption command var)
+	get_property(declaredType GLOBAL PROPERTY _FO_OPTION_${var}_TYPE)
+	if(NOT declaredType)
+		AbortMessage("${command}: ${var} is not a declared option. Check the name against the CMake option reference; project variables need a prefix other than FO_")
+	endif()
+endfunction()
+
+# Removed FO_ options keep a targeted refusal; FO_DISABLE_MONGO and FO_DISABLE_SQLITE are refused by the Init stage
+function(GetRetiredOptionGuidance var outputVar)
+	set(guidance "")
+
+	if(var STREQUAL "FO_MONO_SCRIPTING")
+		set(guidance "Use FO_MANAGED_SCRIPTING for the Managed C# backend")
+	elseif(var STREQUAL "FO_BUILD_EDITOR")
+		set(guidance "Use FO_BUILD_MAPPER for the Mapper, AnimationViewer and ParticleViewer; no generic Editor target exists")
+	elseif(var STREQUAL "FO_INTERNAL_CONFIG_CAPACITY")
+		set(guidance "The Engine owns the internal config capacity; delete the setting")
+	elseif(var STREQUAL "FO_DISABLE_UNQLITE")
+		set(guidance "Enable the SQLite database provider with FO_DATABASE_SQLITE when the project needs it")
+	endif()
+
+	set(${outputVar} "${guidance}" PARENT_SCOPE)
+endfunction()
+
 # Every declaration records its type and whether its final value affects baked resources
 function(RegisterDeclaredOption var optionType affectsBaking)
 	get_property(registeredType GLOBAL PROPERTY _FO_OPTION_${var}_TYPE)

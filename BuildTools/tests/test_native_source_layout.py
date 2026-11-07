@@ -217,6 +217,19 @@ def test_standalone_sample_keeps_its_engine_independent_interface(tmp_path: Path
     assert any("must not include Common.h" in issue for issue in layout.check_layout(root, "Examples"))
 
 
+def test_standalone_sample_is_recognized_from_its_own_repository_root(tmp_path: Path) -> None:
+    files = {
+        "SourceExt/NativeExtensionCore.h": '#pragma once\n\n#include <cstdint>\n',
+        "SourceExt/NativeExtensionCore.cpp": implementation("NativeExtensionCore.h"),
+    }
+    root = project(tmp_path, files)
+
+    assert layout.check_layout(root, "SourceExt", shallow=True) == []
+
+    (root / "SourceExt/NativeExtensionCore.h").write_text(header(), encoding="utf-8")
+    assert any("must not include Common.h" in issue for issue in layout.check_layout(root, "SourceExt", shallow=True))
+
+
 def test_standalone_sample_test_does_not_fall_back_to_common(tmp_path: Path) -> None:
     files = {
         "Examples/NativeExtensionSample/SourceExt/NativeExtensionCore.h": (

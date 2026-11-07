@@ -90,6 +90,8 @@ DeclareBoolOptions(
 	FO_UNIT_TESTS "Build only binaries for Unit Testing" OFF
 	FO_CODE_COVERAGE "Build only binaries for Code Coverage reports" OFF)
 
+ValidateProjectOptionNames()
+
 # Quiet all non-error messages instead ourself
 if(FO_VERBOSE_BUILD)
 	StatusMessage("Verbose build mode")
@@ -126,10 +128,12 @@ CollectGitHeadDependencies("${FO_GIT_ROOT}" FO_GIT_DEPENDENCIES)
 if(NOT "${FO_GIT_DEPENDENCIES}" STREQUAL "")
 	set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${FO_GIT_DEPENDENCIES})
 endif()
+# Without Git, a repository or a first commit the random fallback below is the intended result, not an error
 ExecuteProcess(COMMAND git rev-parse HEAD
 	WORKING_DIRECTORY ${FO_GIT_ROOT}
 	RESULT_VARIABLE FO_GIT_HASH_RESULT
 	OUTPUT_VARIABLE FO_GIT_HASH
+	ERROR_QUIET
 	OUTPUT_STRIP_TRAILING_WHITESPACE)
 
 if(FO_GIT_HASH_RESULT STREQUAL "0")
