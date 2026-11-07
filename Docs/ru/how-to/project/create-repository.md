@@ -22,6 +22,8 @@ permalink: /Docs/ru/how-to/project/create-repository.html
 - `BuildTools/Init.cmake`
 - `BuildTools/buildtools.py`
 - `BuildTools/cmake/ProjectInterface.json`
+- `BuildTools/cmake/helpers/Build.cmake`
+- `BuildTools/cmake/stages/Applications.cmake`
 - `BuildTools/cmake/stages/Init.cmake`
 - `Docs/en/how-to/build/embedding-project.md`
 - `Docs/en/how-to/build/project-configuration.md`
@@ -282,6 +284,15 @@ FinalizeProjectGeneration()
   проектная цель сборки ресурсов создаётся сразу после
   `SetupScriptsAndBaking()`. См. [Упаковка и релиз](../release/packaging.md) и
   [Добавление проектной цели запекания](../build/embedding-project.md#добавление-проектной-цели-запекания).
+- Скелету не нужен hook для библиотеки сборщика ресурсов. Непакетированный
+  клиент или сервер загружает `<FO_DEV_NAME>_BakerLib` из своего каталога, чтобы
+  при запуске собрать изменённые исходники, а `BuildApplications()` копирует
+  библиотеку рядом с каждым таким исполняемым файлом, если `FO_BUILD_BAKER`
+  включён. Вызов из проекта вроде
+  `CopyTargetRuntimeToTarget(${FO_DEV_NAME}_Server ${FO_DEV_NAME}_BakerLib)`
+  прерывает configure. Собственные файлы среды выполнения проекта копируются из
+  hook `Finalize Pre`; см.
+  [Копирование файлов среды выполнения проекта рядом с приложениями](../build/embedding-project.md#копирование-файлов-среды-выполнения-проекта-рядом-с-приложениями).
 - Хэш сборки -- это `HEAD` репозитория проекта. Вне Git-репозитория или до
   первого коммита CMake без сообщения об ошибке переходит на случайный хэш
   (в логе configure виден `Build hash: ...-random`). Для первого configure
@@ -678,6 +689,8 @@ Studio; при написании этого руководства он не д
 | Configure прерывается, называя пустую обязательную переменную | Отсутствует обязательная опция из таблицы в разделе [Написание корневого CMakeLists.txt](#написание-корневого-cmakeliststxt) | Добавьте строку `SetOption` |
 | `SetOption: <name> is not a declared option` или `<name> was removed` | Имя, переданное в `SetOption` или `SetOptionValues`, записано с опечаткой или снято с поддержки | Сверьте его со [справочником опций](../../reference/cmake/options.md); для снятого имени выполните замену из сообщения |
 | Опция, по-видимому, ни на что не влияет | Имя пришло из `-D`, preset или окружения, которые не проверяются, и записано с опечаткой или снято с поддержки | Сверьте его со [справочником опций](../../reference/cmake/options.md) |
+| `CopyTargetRuntimeToTarget: the Applications stage already copies <FO_DEV_NAME>_BakerLib next to <target>; remove the project-side copy` | `CMakeLists.txt` всё ещё сам копирует библиотеку сборщика ресурсов, как делали проекты для более ранней ревизии Engine | Удалите этот вызов и все остальные вызовы `CopyTargetRuntimeToTarget(... _BakerLib)`; см. [Перенос проекта, который сам копирует сборщик ресурсов](../build/embedding-project.md#перенос-проекта-который-сам-копирует-сборщик-ресурсов) |
+| Непакетированный клиент или сервер сообщает `Warning! <FO_DEV_NAME>_BakerLib not found. Resources may be out of date` или `Baker not found. Unable to bake resources` | Preset оставляет `FO_BUILD_BAKER` выключенным, или целевая платформа не собирает библиотеку сборщика ресурсов | Включите `FO_BUILD_BAKER` в preset и пересоберите цель приложения: она сначала собирает и копирует библиотеку |
 | Сборка ресурсов падает на pointer-файлах или неожиданном тексте в бинарных файлах | Объекты LFS не были загружены | Загрузите объекты LFS до сборки ресурсов и проверьте фильтры в `.gitattributes` |
 | Массовые изменения окончаний строк в diff | Отсутствующий или поздно добавленный `.gitattributes` | Добавьте правила, выполните `git add --renormalize .`, просмотрите результат |
 
@@ -692,6 +705,9 @@ Studio; при написании этого руководства он не д
   URL.
 - [ ] `CMakeLists.txt` задаёт каждую обязательную опцию, использует только
   объявленные имена опций и вызывает все десять стадий по одному разу по порядку.
+- [ ] `CMakeLists.txt` не содержит вызова `CopyTargetRuntimeToTarget` для
+  `<FO_DEV_NAME>_BakerLib`; копирование файлов среды выполнения проекта
+  находится в hook `Finalize Pre`.
 - [ ] `FO_DEV_NAME`, `FO_NICE_NAME`, имя `.fomain` и presets согласованы.
 - [ ] `VERSION` существует, и `Common.GameVersion` берётся из него.
 - [ ] `.gitignore` покрывает вывод сборки, сборки ресурсов, lock-файлы, логи и

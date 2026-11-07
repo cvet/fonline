@@ -16,6 +16,8 @@ This guide takes a game team from an empty directory to a repository that config
 - `BuildTools/Init.cmake`
 - `BuildTools/buildtools.py`
 - `BuildTools/cmake/ProjectInterface.json`
+- `BuildTools/cmake/helpers/Build.cmake`
+- `BuildTools/cmake/stages/Applications.cmake`
 - `BuildTools/cmake/stages/Init.cmake`
 - `Docs/en/how-to/build/embedding-project.md`
 - `Docs/en/how-to/build/project-configuration.md`
@@ -213,6 +215,7 @@ Points that are easy to get wrong:
 - Optional native components such as database providers are chosen with `SetOptionValues` before `StartProjectGeneration`; see [Optional native components](../build/project-configuration.md#optional-native-components).
 - Native sources are added per role (`COMMON`, `SERVER`, `CLIENT`, `MAPPER`, `BAKER`, `TESTS`) with `AddEngineSources` before `RegisterEngineSources`. `Examples/NativeExtensionSample` shows `SourceExt/`, a unit-tested core library and a smoke target. Its `FO_SERVER_LIBS` link-list integration is documented in the examples as revision-pinned state, not a declared helper; re-audit it whenever the Engine pin changes.
 - Packages are declared between `SetupScriptsAndBaking()` and `BuildPackages()`; a project baking target is created right after `SetupScriptsAndBaking()`. See [Packaging and Release](../release/packaging.md) and [Add a project-specific baking target](../build/embedding-project.md#add-a-project-specific-baking-target).
+- The skeleton needs no hook for the baker library. An unpackaged client or server loads `<FO_DEV_NAME>_BakerLib` from its own directory to bake changed sources at startup, and `BuildApplications()` copies the library next to every such executable when `FO_BUILD_BAKER` is ON. A project call such as `CopyTargetRuntimeToTarget(${FO_DEV_NAME}_Server ${FO_DEV_NAME}_BakerLib)` aborts configure. The project's own runtime files are copied from a `Finalize Pre` hook; see [Copy project runtime files next to applications](../build/embedding-project.md#copy-project-runtime-files-next-to-applications).
 - The build hash is the project repository's `HEAD`. Outside a Git repository, or before the first commit, CMake falls back to a random hash without an error message (the configure log shows `Build hash: ...-random`). That is fine for a first configure, but commit before you judge incremental behavior.
 
 The stage list, hooks and responsibilities are generated in [CMake Project Stages and Hooks](../../reference/cmake/stages.md). The meaning of generated outputs is in [Generated Content Workflow](../build/generated-content.md).
@@ -510,6 +513,8 @@ Rebuild with `ForceBakeResources` after changing pack membership, bakers or lang
 | Configure aborts naming an empty required variable | A required option from the table in [Write the root CMakeLists.txt](#write-the-root-cmakeliststxt) is missing | Add the `SetOption` line |
 | `SetOption: <name> is not a declared option` or `<name> was removed` | The name passed to `SetOption` or `SetOptionValues` is misspelled or retired | Compare it with the [option reference](../../reference/cmake/options.md); for a retired name follow the replacement in the message |
 | An option appears to have no effect | The name came from `-D`, a preset or the environment, which are not checked, and is misspelled or retired | Compare it with the [option reference](../../reference/cmake/options.md) |
+| `CopyTargetRuntimeToTarget: the Applications stage already copies <FO_DEV_NAME>_BakerLib next to <target>; remove the project-side copy` | `CMakeLists.txt` still copies the baker library itself, as projects written for an earlier Engine revision did | Delete that call and every other `CopyTargetRuntimeToTarget(... _BakerLib)` call; see [Migrate a project that copies the baker itself](../build/embedding-project.md#migrate-a-project-that-copies-the-baker-itself) |
+| An unpackaged client or server reports `Warning! <FO_DEV_NAME>_BakerLib not found. Resources may be out of date` or `Baker not found. Unable to bake resources` | The preset leaves `FO_BUILD_BAKER` OFF, or the target platform builds no baker library | Turn `FO_BUILD_BAKER` ON in the preset and rebuild the application target, which builds and copies the library first |
 | Bake fails on pointer files or unexpected text in binaries | LFS objects were not fetched | Fetch LFS objects before baking and check the `.gitattributes` filters |
 | Mass line-ending changes in a diff | Missing or late `.gitattributes` | Add the rules, run `git add --renormalize .`, review |
 
@@ -519,6 +524,7 @@ Rebuild with `ForceBakeResources` after changing pack membership, bakers or lang
 - [ ] A fresh clone followed by `git submodule update --init --recursive Engine` reproduces the checkout, including on the CI runner image.
 - [ ] `Engine/` is not ignored, and `.gitmodules` records the URL form you chose.
 - [ ] `CMakeLists.txt` sets every required option, uses only declared option names, and calls all ten stages once in order.
+- [ ] `CMakeLists.txt` contains no `CopyTargetRuntimeToTarget` call for `<FO_DEV_NAME>_BakerLib`; copies of project runtime files live in a `Finalize Pre` hook.
 - [ ] `FO_DEV_NAME`, `FO_NICE_NAME`, the `.fomain` name and the presets agree.
 - [ ] `VERSION` exists and `Common.GameVersion` resolves from it.
 - [ ] `.gitignore` covers build, bake, lock, log and workspace output and no authored directory.

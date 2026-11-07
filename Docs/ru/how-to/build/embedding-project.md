@@ -18,7 +18,9 @@ FOnline рассчитан на подключение как source submodule. 
 - `BuildTools/Init.cmake`
 - `BuildTools/cmake/ProjectInterface.json`
 - `BuildTools/cmake/helpers/Build.cmake`
+- `BuildTools/cmake/stages/Applications.cmake`
 - `BuildTools/cmake/stages/ScriptsAndBaking.cmake`
+- `BuildTools/tests/test_cmake_baker_runtime_copy.py`
 - `Examples/MinimalProject/CMakeLists.txt`
 - `Examples/MinimalProject/FOnlineStarter.fomain`
 - `Examples/MinimalProject/README.md`
@@ -26,6 +28,7 @@ FOnline рассчитан на подключение как source submodule. 
 - `Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain`
 - `Examples/PublicRepositories.json`
 - `Source/Applications`
+- `Source/Frontend/ApplicationInit.cpp`
 - `Source/Tools`
 
 Принадлежащий движку
@@ -153,6 +156,120 @@ BuildPackages()
 рабочий каталог `FO_OUTPUT_PATH`, аргумент главной конфигурации и обновление
 resource build hash. Имя цели, содержимое subconfig и последующая политика
 CI/пакетов должны оставаться в репозитории игры.
+
+### Библиотека сборщика ресурсов рядом с приложениями, выполняющими предварительную сборку
+
+Непакетированный клиент или сервер перед запуском заново собирает изменённые
+исходники. `Source/Frontend/ApplicationInit.cpp` ищет `FO_BakeResources` в
+работающем процессе, а если не находит, загружает `<FO_DEV_NAME>_BakerLib` из
+каталога исполняемого файла. Если библиотеки нет, приложение показывает
+`Warning! <FO_DEV_NAME>_BakerLib not found. Resources may be out of date` и
+запускается на уже собранных ресурсах, а если собранных ресурсов нет,
+останавливается с сообщением `Baker not found. Unable to bake resources`.
+`Baking.PrebakeOnStartup = False` намеренно пропускает этот шаг.
+
+Копированием владеет `BuildApplications()`. Если цель библиотеки сборщика
+ресурсов существует (`FO_BUILD_BAKER` включён и платформа не Web), стадия
+Applications делает каждый из этих исполняемых файлов зависимым от неё и
+копирует её рядом с исполняемым файлом после каждой его сборки:
+
+| Исполняемый файл | Когда собирается |
+|---|---|
+| `<FO_DEV_NAME>_Client` | `FO_BUILD_CLIENT`, кроме библиотечных сборок клиента, например Android |
+| `<FO_DEV_NAME>_ClientHeadless` | `FO_BUILD_CLIENT` в Windows, Linux и macOS |
+| `<FO_DEV_NAME>_Server`, `<FO_DEV_NAME>_ServerHeadless` | `FO_BUILD_SERVER` |
+| `<FO_DEV_NAME>_ServerService` | `FO_BUILD_SERVER` в Windows |
+| `<FO_DEV_NAME>_ServerDaemon` | `FO_BUILD_SERVER` на остальных платформах |
+
+Это исполняемые файлы, точка входа которых передаёт
+`AppInitFlags::PrebakeResources` в `InitApp`. Модуль среды выполнения клиента
+`<FO_DEV_NAME>_ClientLib` выполняет предварительную сборку внутри своего
+исполняемого файла-хоста и находит библиотеку рядом с этим хостом. Mapper,
+просмотрщики, ASCompiler, Baker и ManagedScriptBaker линкуют код сборщика
+ресурсов статически и никогда не загружают библиотеку, поэтому копию не
+получают. Библиотечная сборка клиента тоже её не получает: её код работает
+внутри процесса-хоста, который проект не собирает.
+`BuildTools/tests/test_cmake_baker_runtime_copy.py` выводит этот набор из точек
+входа и падает, если стадия от них расходится.
+
+Не копируйте библиотеку сборщика ресурсов из проекта.
+`CopyTargetRuntimeToTarget` запоминает каждую пару потребителя и поставщика, и
+повторный запрос пары прерывает configure. Для библиотеки сборщика ресурсов
+сообщение называет стадию:
+
+```text
+CMake Error at Engine/BuildTools/cmake/helpers/Build.cmake:<line> (_message):
+  CopyTargetRuntimeToTarget: the Applications stage already copies
+  MYGAME_BakerLib next to MYGAME_Server; remove the project-side copy
+Call Stack (most recent call first):
+  Engine/BuildTools/cmake/helpers/Build.cmake:<line> (AbortMessage)
+  CMakeLists.txt:<line> (CopyTargetRuntimeToTarget)
+```
+
+Это поведение намеренное. Вторая идентичная копия собралась бы корректно, но
+оставила бы в проекте второй список приложений, который расходится со списком
+Engine при каждом новом приложении. Стек вызовов указывает строку проекта,
+которую нужно удалить.
+
+### Перенос проекта, который сам копирует сборщик ресурсов
+
+Проекты, написанные для ревизии Engine без этого шага стадии, обычно содержат
+hook `Finalize Pre` со строками
+`CopyTargetRuntimeToTarget(<app> ${FO_DEV_NAME}_BakerLib)`. Найдите их из корня
+репозитория игры; команда одинакова в PowerShell и bash:
+
+```bash
+git grep -n -E 'CopyTargetRuntimeToTarget\([^)]*_BakerLib' -- '*CMakeLists.txt' '*.cmake'
+```
+
+`git grep` не ищет в submodule Engine, поэтому собственный вызов стадии в
+вывод не попадает.
+
+1. Удалите каждый найденный вызов, включая вызовы для Mapper, ASCompiler и
+   других инструментов. Эти приложения никогда не загружают библиотеку, поэтому
+   их копия лишь клала рядом неиспользуемый файл.
+2. Если функция hook стала пустой, удалите её и строку
+   `AddStageHook(Finalize Pre <macro-name>)`. Оставьте hook, если он выполняет
+   другую работу, например копирует сторонние файлы среды выполнения или задаёт
+   параметры линковки.
+3. Заново выполните configure и пересоберите цели клиента и сервера. Configure
+   должен завершиться без ошибки `already copies`, а каталог каждого
+   исполняемого файла из таблицы выше должен содержать `<FO_DEV_NAME>_BakerLib`
+   с суффиксом разделяемой библиотеки платформы, например `.dll` в Windows и
+   `.so` в Linux.
+
+### Копирование файлов среды выполнения проекта рядом с приложениями
+
+Файлы среды выполнения, которыми владеет проект, например библиотека SDK
+поставщика или цель плагина проекта, копируются из hook `Finalize Pre`. К этому
+моменту существуют все цели приложений. Используйте документированные
+helper-команды из [справочника проектных helper-команд CMake](../../reference/cmake/helpers.md):
+`CopyRuntimeToTarget` для файла и `CopyTargetRuntimeToTarget` для цели CMake. В
+этом примере `MYGAME_VENDOR_RUNTIME` содержит абсолютный путь к файлу среды
+выполнения поставщика для настроенной платформы, а `MyGamePlugin` -- цель
+разделяемой библиотеки, которую определяет проект:
+
+```cmake
+function(_mygame_copy_runtimes)
+    CopyRuntimeToTarget(${FO_DEV_NAME}_Client "${MYGAME_VENDOR_RUNTIME}")
+    CopyTargetRuntimeToTarget(${FO_DEV_NAME}_Server MyGamePlugin)
+endfunction()
+
+AddStageHook(Finalize Pre _mygame_copy_runtimes)
+```
+
+- Регистрируйте hook до `FinalizeProjectGeneration()`; `AddStageHook`
+  прерывает configure для стадии, которая уже выполнилась.
+- Обе helper-команды молча пропускают отсутствующую цель, поэтому один hook
+  подходит для presets с разными ролями приложений.
+- `CopyRuntimeToTarget` также пропускает пустой путь и файл, которого нет на
+  момент configure. Если копии нет, сначала проверьте путь в окружении
+  configure.
+- `CopyTargetRuntimeToTarget` собирает поставщика до потребителя, а повторная
+  пара прерывает configure, как описано выше.
+
+`BuildTools/tests/test_cmake_baker_runtime_copy.py` конфигурирует этот hook во
+временном проекте и проверяет обе копии.
 
 ## Композиция документации
 
