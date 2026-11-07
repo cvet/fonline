@@ -88,6 +88,17 @@
       "description": "Inspect linked PE files for Windows 7 import compatibility and optionally require the large-address flag on executables."
     },
     {
+      "id": "helper-cli.native-source-audit",
+      "name": "Native source audits",
+      "source": "BuildTools/native_source_audit.py",
+      "factory": "create_parser",
+      "program": "native_source_audit.py",
+      "owner": "quality",
+      "audiences": ["engine-contributor", "embedding-project-build-system", "ci-maintainer"],
+      "invocation_owner": "Engine validation CI, embedding-project native audit wrappers and direct developer use",
+      "description": "Audit native C++ scopes for allocator, smart-pointer and local-variable contract violations with Engine-owned and project baselines."
+    },
+    {
       "id": "helper-cli.android-device",
       "name": "Android device control",
       "source": "BuildTools/android_device.py",
