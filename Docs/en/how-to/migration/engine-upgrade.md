@@ -8,7 +8,7 @@ permalink: /Docs/en/how-to/migration/engine-upgrade.html
 
 # Upgrade an Embedding Project
 
-This guide provides a repeatable Engine-update procedure for a game repository. It covers source integration, generated contracts, content, saves, networking, client runtime, and documentation. It also gives the literal Git commands, the changelog and consumer-impact search recipes, batching rules for long ranges, and a plan skeleton that pairs with the completion record.
+This guide provides a repeatable Engine-update procedure for a game repository. It covers source integration, generated contracts, content, saves, networking, client runtime, and documentation. It also gives the Git commands that move the pin, the `engine_upgrade_report.py` command that records the identities, the incoming range, the changelog migrations and the consumer-impact search, batching rules for long ranges, and a plan skeleton that pairs with the completion record.
 
 ## Source paths inspected
 
@@ -17,6 +17,7 @@ This guide provides a repeatable Engine-update procedure for a game repository. 
 - `.gitignore`
 - `BuildTools/docs_contract_diff.py`
 - `BuildTools/docs_engine_version.py`
+- `BuildTools/engine_upgrade_report.py`
 - `BuildTools/engine_version.py`
 - `Docs/contract-change-dispositions.json`
 - `Docs/generated`
@@ -69,32 +70,16 @@ A project that embeds Engine as a Git submodule has three independent Engine ide
 | Index entry | Pin the next project commit would record | `git ls-files --stage Engine` or `git rev-parse :Engine` |
 | Engine checkout | Commit actually built and tested | `git -C Engine rev-parse HEAD` |
 
-Capture them as variables and compare:
+`BuildTools/engine_upgrade_report.py` writes all three into the update record, with the Engine `VERSION` of the baseline and target, the local changes of the checkout and the `git submodule status` line; [Fetch, pin and stage the new revision](#fetch-pin-and-stage-the-new-revision) runs it. The commands on this page keep the baseline in a variable:
 
 ```bash
 old=$(git rev-parse HEAD:Engine)
-staged=$(git rev-parse :Engine)
-checkout=$(git -C Engine rev-parse HEAD)
-
-echo "gitlink at HEAD: $old"
-echo "index entry:     $staged"
-echo "Engine checkout: $checkout"
 git submodule status Engine
-git -C Engine show "$old:VERSION"
-git -C Engine status --short
 ```
 
 ```powershell
 $old = git rev-parse HEAD:Engine
-$staged = git rev-parse :Engine
-$checkout = git -C Engine rev-parse HEAD
-
-Write-Output "gitlink at HEAD: $old"
-Write-Output "index entry:     $staged"
-Write-Output "Engine checkout: $checkout"
 git submodule status Engine
-git -C Engine show "${old}:VERSION"
-git -C Engine status --short
 ```
 
 `git submodule status` prefixes the line with a space when the checkout equals the index entry, `+` when the checkout differs from it, `-` when the submodule is not initialized, and `U` on a merge conflict. `git diff --submodule=log -- Engine` lists the commits between the index entry and the checkout, and `git diff --cached --submodule=log -- Engine` lists the commits between `HEAD` and the index entry.
@@ -151,15 +136,13 @@ git -C Engine stash push --include-untracked --message engine-update-safety
 ## Fetch, pin and stage the new revision
 
 1. Define the target as an exact commit of the Engine repository. A published release is tagged `v<version>`; resolve the tag to a commit rather than recording the tag name.
-2. Verify that the commit is present and that the old pin is its ancestor. A non-ancestor target is a different history line, not an update of this one.
+2. Write the update record before checking the target out. The report only reads Git: it resolves the target, checks that the old pin is its ancestor and lists the range. A non-ancestor target is a different history line, not an update of this one; the record then marks the ancestry check `FAILED` and the command exits with status `1`.
 3. Check out the target in the submodule, detached, and stage the new gitlink.
 
 ```bash
 new='<new-engine-sha>'
 
-git -C Engine rev-parse --verify "$new^{commit}"
-git -C Engine merge-base --is-ancestor "$old" "$new" && echo "old pin is an ancestor"
-git -C Engine log --oneline "$old..$new"
+python3 Engine/BuildTools/engine_upgrade_report.py --new "$new" --output Workspace/engine-update/record.md
 
 git -C Engine checkout --detach "$new"
 git add Engine
@@ -169,15 +152,14 @@ git diff --cached --submodule=log -- Engine
 ```powershell
 $new = '<new-engine-sha>'
 
-git -C Engine rev-parse --verify "$new^{commit}"
-git -C Engine merge-base --is-ancestor $old $new
-if ($LASTEXITCODE -eq 0) { Write-Output 'old pin is an ancestor' }
-git -C Engine log --oneline "$old..$new"
+py -3 Engine/BuildTools/engine_upgrade_report.py --new $new --output Workspace/engine-update/record.md
 
 git -C Engine checkout --detach $new
 git add Engine
 git diff --cached --submodule=log -- Engine
 ```
+
+Keep the record outside the Engine checkout. The report does not replace an existing file without `--force`, so a record that is already being filled in stays intact. [Release Tooling for a Game Project](../project/release-tooling.md#prepare-an-engine-update-record) lists its sections and options.
 
 After staging, the three identities from [Record the Engine identities](#record-the-engine-identities) should agree on the new commit, except that `HEAD` still holds the old gitlink until the project commit is made. Commit the pin together with the adoption changes (configuration, scripts, content, documentation) so that no project revision records a pin that does not build.
 
@@ -195,35 +177,21 @@ git restore --staged Engine
 
 ## Audit the complete Engine range
 
-Inspect every commit and changed path between the old and new pins:
+Inspect every commit and changed path between the old and new pins. The update record lists every commit of the range oldest first, the same commits as `git -C Engine log --oneline "$old..$new"`, with empty owner, consequence and action columns, plus the number of changed paths per top-level area. Read the changes themselves with:
 
 ```bash
-git -C Engine log --oneline "$old..$new"
 git -C Engine diff --stat "$old..$new"
 git -C Engine diff "$old..$new" -- \
   Source BuildTools ThirdParty Resources Docs Examples
 ```
 
 ```powershell
-git -C Engine log --oneline "$old..$new"
 git -C Engine diff --stat "$old..$new"
 git -C Engine diff "$old..$new" -- `
   Source BuildTools ThirdParty Resources Docs Examples
 ```
 
-Keep one note per commit (subject, owning area, project consequence). Two narrower listings help to sort them:
-
-```bash
-git -C Engine log --first-parent --oneline "$old..$new" -- VERSION
-git -C Engine diff --stat "$old..$new" -- Docs/generated
-```
-
-```powershell
-git -C Engine log --first-parent --oneline "$old..$new" -- VERSION
-git -C Engine diff --stat "$old..$new" -- Docs/generated
-```
-
-The first lists the publication steps, each a first-parent commit that changed `VERSION`, and therefore the points where the update can be paused. The second shows which generated contract models changed.
+Fill in one note per commit (subject, owning area, project consequence). Two sections of the record help to sort them. "Publication steps" lists each first-parent commit that changed `VERSION`, and therefore the points where the update can be paused. "Changed generated contract models" shows which models under `Docs/generated` changed.
 
 Classify changes by owner and consequence:
 
@@ -255,45 +223,10 @@ The English changelog (`Docs/en/reference/changelog.md`) is the migration source
 
 The old revision's own entry is retained in the new changelog under its exact version (the publication validator rejects a revision that drops a preceding entry). Entries newer than the old version, up to and including the new version, are the ones to apply.
 
-1. Read both `VERSION` values:
+1. Read the "Changelog entries, oldest first" section of the update record. The report reads the English changelog of the target revision with `git show`, resolves `Current` to the target `VERSION` with the helpers of `BuildTools/engine_version.py`, and quotes the `### Migration` section of every entry newer than the old version, up to and including the new version. It also quotes non-empty `## Unreleased` text of the target.
+2. Open each listed entry in order. Execute its `### Migration` section completely before the next one, including intermediate regeneration, bake and data steps, and record the result in the plan.
 
-   ```bash
-   old_version=$(git -C Engine show "$old:VERSION")
-   new_version=$(git -C Engine show "$new:VERSION")
-   echo "$old_version -> $new_version"
-   ```
-
-   ```powershell
-   $oldVersion = git -C Engine show "${old}:VERSION"
-   $newVersion = git -C Engine show "${new}:VERSION"
-   Write-Output "$oldVersion -> $newVersion"
-   ```
-
-2. With the new revision checked out, list the headings with their line numbers:
-
-   ```bash
-   grep -n '^## ' Engine/Docs/en/reference/changelog.md
-   ```
-
-   ```powershell
-   Select-String -Path Engine/Docs/en/reference/changelog.md -Pattern '^## '
-   ```
-
-3. Or print the incoming entries oldest first with the helpers that the Engine tooling itself uses (`changelog_releases` and `read_engine_version` in `BuildTools/engine_version.py`). Save the script from [the listing below](#incoming-notes-script) outside the Engine tree, for example in the task's scratch directory as `list_incoming_notes.py`, and run it:
-
-   ```bash
-   python3 list_incoming_notes.py Engine "$old_version"
-   ```
-
-   ```powershell
-   py -3 list_incoming_notes.py Engine $oldVersion
-   ```
-
-   Any Python 3 interpreter works; on some hosts `python` still resolves to Python 2. The script prints one `<version> <date>` line per incoming entry and nothing else. It reads the checked-out changelog, so check out the new revision first.
-
-4. Open each listed entry in order. Execute its `### Migration` section completely before the next one, including intermediate regeneration, bake and data steps, and record the result in the plan.
-
-An old version that has no changelog entry predates the maintained log or sits on another release line. Do not guess a range: review the complete commit range from the previous section.
+An old version that has no changelog entry predates the maintained log or sits on another release line; the record says so and the report prints a warning. Do not guess a range: review the complete commit range from the previous section.
 
 `BuildTools/docs_engine_version.py` is the Engine's own publication validator; it lists no ranges. From a project it can still confirm that the incoming first-parent history consists of well-formed publication steps and count them. It only reads Git and the changelogs of the Engine root it is given:
 
@@ -309,46 +242,23 @@ py -3 Engine/BuildTools/docs_engine_version.py --root Engine --check `
 
 A pass prints `Engine update validation passed: <N> publication step(s)`. A failure names the first step that breaks the version or changelog rules, which marks a range that needs the complete source audit. For a release line pass `--branch release/<year>.<major>` instead of `master`.
 
-### Incoming notes script
-
-This script prints one `<version> <date>` line per incoming changelog entry, oldest first. It reads the changelog and `VERSION` of the Engine checkout it is given.
-
-```python
-import sys
-from pathlib import Path
-
-engine_root = Path(sys.argv[1])
-old_version = sys.argv[2]
-
-sys.path.insert(0, str(engine_root / 'BuildTools'))
-from engine_version import changelog_releases, read_engine_version
-
-new_version = read_engine_version(engine_root)
-text = (engine_root / 'Docs/en/reference/changelog.md').read_text(encoding='utf-8')
-releases = changelog_releases(new_version, text)
-versions = [version for version, _ in releases]
-if old_version not in versions:
-    sys.exit(f'{old_version} has no changelog entry: review the complete revision range instead')
-
-for version, date in reversed(releases[:versions.index(old_version)]):
-    print(version, date)
-```
-
 ## Search project sources for consumer impact
 
 The changelog and the contract report name symbols, settings, options, commands and file forms. For every such name, decide whether the project uses it. Collect the names from three places: each applicable `### Migration` section (including the detection patterns it prescribes), the contract report below, and the `git diff --stat` listing of the audited range.
 
-Write one name per line into a text file, for example `update-names.txt`, and search the project's tracked sources, excluding the Engine submodule. `git grep` does not descend into submodules, so the pathspec exclusion only documents the intent:
+Write one name per line into a text file, for example `update-names.txt`; the record's "Names quoted in the incoming migration notes" list is a starting point. Run the report with `--names` into a second file and move its consumer table into the record:
 
 ```bash
-git grep -nIF -f update-names.txt -- . ':!Engine'
+python3 Engine/BuildTools/engine_upgrade_report.py --old "$old" --new "$new" \
+  --names update-names.txt --output Workspace/engine-update/consumers.md
 ```
 
 ```powershell
-git grep -nIF -f update-names.txt -- . ':!Engine'
+py -3 Engine/BuildTools/engine_upgrade_report.py --old $old --new $new `
+  --names update-names.txt --output Workspace/engine-update/consumers.md
 ```
 
-The command is identical in both shells. `-F` treats each line as literal text, `-I` skips binary files, and exit status `1` means no match, which is the negative evidence for that list. Search each of these areas, because the same name appears in different forms:
+The report runs `git grep -nIF` over the tracked project sources outside the Engine checkout: `-F` treats each line as literal text and `-I` skips binary files. Each name gets its match count and locations, and a name without a match is marked for its negative evidence. `--search-path` restricts the search to the given pathspecs. Make sure the search covers each of these areas, because the same name appears in different forms:
 
 - script sources of every enabled backend, including test scripts;
 - native extension sources and the bridge code that includes Engine headers;
@@ -413,7 +323,7 @@ Do not treat an `internal` label as proof of no project impact. It only means th
 
 ## Batch a long range
 
-A range of many publication steps does not have to be adopted at once. Each first-parent commit that changes `VERSION` is a published step with its own dated migration entry, so it is a valid intermediate pin; list them with the `git log --first-parent --oneline "$old..$new" -- VERSION` command above. Commits inside a merged branch are not publication steps and carry no migration entry of their own.
+A range of many publication steps does not have to be adopted at once. Each first-parent commit that changes `VERSION` is a published step with its own dated migration entry, so it is a valid intermediate pin; the "Publication steps" table of the update record lists them, as does `git -C Engine log --first-parent --oneline "$old..$new" -- VERSION`. Commits inside a merged branch are not publication steps and carry no migration entry of their own.
 
 1. Read the migration entry of every step in the range before choosing the batches.
 2. End a batch at each step whose entry requires a boundary the project must pass and verify before continuing:
@@ -532,7 +442,7 @@ The project documentation may link to Engine mechanics but should not duplicate 
 
 ## Update plan skeleton
 
-Create the plan before the first checkout and keep it current; the completion record below is its final form. Adapt the sections to the project, but keep the baseline and target of both repositories, the per-commit notes and the qualification limits.
+Create the plan before the first checkout and keep it current; the completion record below is its final form. Adapt the sections to the project, but keep the baseline and target of both repositories, the per-commit notes and the qualification limits. `engine_upgrade_report.py` writes a Markdown record with these sections and the Git facts filled in; the skeleton below is the reference form for a plan written by hand.
 
 ```text
 Goal:

@@ -12,9 +12,12 @@ A game repository carries several version-like identities that answer different 
 
 ## Source paths inspected
 
+- `BuildTools/artifact_checksums.py`
 - `BuildTools/cmake/stages/Init.cmake`
 - `BuildTools/codegen.py`
 - `BuildTools/package.py`
+- `BuildTools/project_version.py`
+- `BuildTools/release_preflight.py`
 - `BuildTools/tests/test_package_wix_installer.py`
 - `Docs/en/explanation/runtime/client-updater.md`
 - `Docs/en/how-to/build/project-configuration.md`
@@ -79,7 +82,7 @@ Decide where the generated file lives:
 | Commit `VERSION`, updated by the generator in the release or merge flow | The version is visible in source and reproducible from the commit; CI compares the file with the generator output | An extra commit or a pre-merge step, and the counting rule above must be exact |
 | Do not commit it; generate before configure and bake, and ignore the file | No extra commits and no off-by-one rule | Every build path needs the generator step; a checkout without the file falls back to an unresolved value |
 
-Either way, the project owns the generator and its tests. Engine ships none.
+For the committed choice the Engine ships `BuildTools/project_version.py`. It advances `VERSION` against a base ref unless the file is already modified, checks it against the reachable history with `--check`, and takes the numbering scheme, digit limits and base ref as parameters, so the encoding stays project policy; see [Release Tooling for a Game Project](release-tooling.md#generate-and-check-the-project-version). The uncommitted choice needs a project-owned generator step, and any scheme the built-in ones cannot express is a project scheme module with its own tests.
 
 ## Wire the version into the game
 
@@ -126,56 +129,32 @@ Authority for these rules is [Client Runtime Split and Updater](../../explanatio
 - Make tags immutable. Never move or delete a published tag; a bad release is superseded by a higher version.
 - Prefer annotated tags created by the release job, so the tag records who or what published it.
 - A push of a tag that already exists with a different target is rejected by Git, which gives the final guard against a race between two dispatches. Also use workflow concurrency control so only one release job runs per project.
-- Record next to the tag: project commit SHA, project version, Engine SHA and `VERSION`, the changelog range reviewed, package IDs, and artifact hashes. [Packaging and Release](../release/packaging.md#prepare-a-release-owned-package-matrix) lists the evidence fields.
+- Record next to the tag: project commit SHA, project version, Engine SHA and `VERSION`, the changelog range reviewed, package IDs, and artifact hashes. [Packaging and Release](../release/packaging.md#prepare-a-release-owned-package-matrix) lists the evidence fields. `BuildTools/artifact_checksums.py` writes the hashes of the final files as `.sha256` sidecars and a manifest.
 
 ## Preflight a manual release
 
-A release is a manual dispatch from a protected ref, as described in [Dispatch releases manually](continuous-integration.md#dispatch-releases-manually). The preflight step carries the version checks. This sketch uses commands that exist in Git and POSIX shells, and also runs in Git Bash on Windows:
+A release is a manual dispatch from a protected ref, as described in [Dispatch releases manually](continuous-integration.md#dispatch-releases-manually). `BuildTools/release_preflight.py` carries the version checks of the preflight step. It rejects a shallow clone and tracked changes, validates the version file with the project's scheme, rejects a tag that already exists locally or on the remote, requires the version to exceed the newest release tag, and treats every ref other than the release ref as a dry run:
 
 ```bash
-set -eu
-
-version="$(tr -d '[:space:]' < VERSION)"
-tag="v${version}"
-
-# 1. The value is a numeric dotted version.
-case "${version}" in
-  *[!0-9.]* | "" | .* | *. | *..*) echo "invalid version: ${version}" >&2; exit 1 ;;
-esac
-
-# 2. The working tree is clean and the full history is present.
-test -z "$(git status --porcelain)" || { echo "dirty working tree" >&2; exit 1; }
-test "$(git rev-parse --is-shallow-repository)" = "false" || { echo "shallow clone" >&2; exit 1; }
-
-# 3. The tag does not exist on the remote.
-if git ls-remote --exit-code --tags origin "refs/tags/${tag}" >/dev/null 2>&1; then
-  echo "tag ${tag} already exists" >&2
-  exit 1
-fi
-
-# 4. The version sorts strictly after the newest existing release tag.
-latest="$(git tag --list 'v*' --sort=-v:refname | head -n 1)"
-if [ -n "${latest}" ]; then
-  newest="$(printf '%s\n%s\n' "${latest#v}" "${version}" | sort -V | tail -n 1)"
-  if [ "${newest}" != "${version}" ] || [ "${latest#v}" = "${version}" ]; then
-    echo "version ${version} does not exceed ${latest}" >&2
-    exit 1
-  fi
-fi
-
-# 5. Run the project's generator in check mode here and compare its output with VERSION.
-
-echo "preflight passed for ${tag}"
+python3 Engine/BuildTools/project_version.py --check
+python3 Engine/BuildTools/release_preflight.py --ref "$GITHUB_REF" --release-ref refs/heads/main \
+  --remote origin --engine Engine
 ```
+
+```powershell
+py -3 Engine/BuildTools/project_version.py --check
+py -3 Engine/BuildTools/release_preflight.py --ref refs/heads/main --release-ref refs/heads/main `
+  --remote origin --engine Engine
+```
+
+[Release Tooling for a Game Project](release-tooling.md#preflight-a-release) documents the output, the tag prefix and scheme options, the splitting of oversized assets with a checksum manifest, and the CI wiring.
 
 Add the checks specific to a game around it:
 
-- The dispatched revision is on the protected release branch, or the run is a dry run that stops before publication.
-- The `Engine` gitlink equals the pin recorded for the release, and that SHA is reachable from the published Engine branch (`git -C Engine branch -r --contains <sha>`). Do not fetch a floating Engine branch in the release job.
+- The dispatched revision is on the protected release branch, or the run is a dry run that stops before publication. `--release-ref` decides the mode; keep the publish step behind the `publish=true` output.
+- The `Engine` gitlink equals the pin recorded for the release, and that SHA is reachable from the published Engine branch; `--engine Engine` checks the reachability, and the clean-tree check rejects a checkout that differs from the gitlink. Do not fetch a floating Engine branch in the release job.
 - The pinned lane is green for this commit, and the generated version equals the value the build will embed.
 - Bake with `ForceBakeResources`, build and package from the dispatched commit, then create the tag only after artifact acceptance, as the last step before publication.
-
-The shell sketch was exercised against scratch repositories with no tags, a higher version, an existing tag and a lower version, and it gave the expected result in each case. It is a pattern; adapt the tag prefix and comparison to your scheme.
 
 ## Operate, back up and roll back
 

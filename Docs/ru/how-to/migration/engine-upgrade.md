@@ -11,9 +11,11 @@ permalink: /Docs/ru/how-to/migration/engine-upgrade.html
 Это руководство задаёт повторяемую процедуру обновления Engine в игровом
 репозитории. Она охватывает интеграцию исходников, сгенерированные контракты,
 контент, сохранения, сеть, client runtime и документацию. Кроме того, оно
-приводит дословные команды Git, рецепты поиска по истории изменений и влияния
-на потребителей, правила разбиения длинных диапазонов на серии и скелет плана,
-парный к записи о завершении.
+приводит команды Git, которые перемещают закрепление, команду
+`engine_upgrade_report.py`, которая записывает идентичности, входящий диапазон,
+миграции из истории изменений и поиск влияния на потребителей, правила
+разбиения длинных диапазонов на серии и скелет плана, парный к записи о
+завершении.
 
 ## Проверенные исходные пути
 
@@ -22,6 +24,7 @@ permalink: /Docs/ru/how-to/migration/engine-upgrade.html
 - `.gitignore`
 - `BuildTools/docs_contract_diff.py`
 - `BuildTools/docs_engine_version.py`
+- `BuildTools/engine_upgrade_report.py`
 - `BuildTools/engine_version.py`
 - `Docs/contract-change-dispositions.json`
 - `Docs/generated`
@@ -90,32 +93,21 @@ review.
 | Запись индекса | Закрепление, которое запишет следующий commit проекта | `git ls-files --stage Engine` или `git rev-parse :Engine` |
 | Checkout Engine | Commit, который фактически собран и проверен | `git -C Engine rev-parse HEAD` |
 
-Сохраните их в переменных и сравните:
+`BuildTools/engine_upgrade_report.py` записывает все три идентичности в запись
+об обновлении вместе с `VERSION` Engine для baseline и цели, локальными
+изменениями checkout и строкой `git submodule status`; его запускает раздел
+[Получите, закрепите и добавьте в индекс новую
+ревизию](#получите-закрепите-и-добавьте-в-индекс-новую-ревизию). Команды на этой
+странице хранят baseline в переменной:
 
 ```bash
 old=$(git rev-parse HEAD:Engine)
-staged=$(git rev-parse :Engine)
-checkout=$(git -C Engine rev-parse HEAD)
-
-echo "gitlink at HEAD: $old"
-echo "index entry:     $staged"
-echo "Engine checkout: $checkout"
 git submodule status Engine
-git -C Engine show "$old:VERSION"
-git -C Engine status --short
 ```
 
 ```powershell
 $old = git rev-parse HEAD:Engine
-$staged = git rev-parse :Engine
-$checkout = git -C Engine rev-parse HEAD
-
-Write-Output "gitlink at HEAD: $old"
-Write-Output "index entry:     $staged"
-Write-Output "Engine checkout: $checkout"
 git submodule status Engine
-git -C Engine show "${old}:VERSION"
-git -C Engine status --short
 ```
 
 `git submodule status` начинает строку с пробела, когда checkout совпадает с
@@ -194,18 +186,19 @@ git -C Engine stash push --include-untracked --message engine-update-safety
 1. Определите цель как точный commit репозитория Engine. Опубликованный выпуск
    помечен тегом `v<version>`; разрешите тег в commit, а не записывайте имя
    тега.
-2. Проверьте, что commit присутствует и что старое закрепление является его
-   предком. Цель, для которой старое закрепление не является предком,
-   относится к другой линии истории, а не обновляет текущую.
+2. Запишите запись об обновлении до извлечения цели. Отчёт только читает Git:
+   он разрешает цель, проверяет, что старое закрепление является её предком, и
+   перечисляет диапазон. Цель, для которой старое закрепление не является
+   предком, относится к другой линии истории, а не обновляет текущую; тогда
+   запись помечает проверку предка как `FAILED`, а команда завершается с кодом
+   `1`.
 3. Извлеките цель в submodule в режиме detached и добавьте новый gitlink в
    индекс.
 
 ```bash
 new='<new-engine-sha>'
 
-git -C Engine rev-parse --verify "$new^{commit}"
-git -C Engine merge-base --is-ancestor "$old" "$new" && echo "old pin is an ancestor"
-git -C Engine log --oneline "$old..$new"
+python3 Engine/BuildTools/engine_upgrade_report.py --new "$new" --output Workspace/engine-update/record.md
 
 git -C Engine checkout --detach "$new"
 git add Engine
@@ -215,15 +208,17 @@ git diff --cached --submodule=log -- Engine
 ```powershell
 $new = '<new-engine-sha>'
 
-git -C Engine rev-parse --verify "$new^{commit}"
-git -C Engine merge-base --is-ancestor $old $new
-if ($LASTEXITCODE -eq 0) { Write-Output 'old pin is an ancestor' }
-git -C Engine log --oneline "$old..$new"
+py -3 Engine/BuildTools/engine_upgrade_report.py --new $new --output Workspace/engine-update/record.md
 
 git -C Engine checkout --detach $new
 git add Engine
 git diff --cached --submodule=log -- Engine
 ```
+
+Храните запись вне checkout Engine. Отчёт не заменяет существующий файл без
+`--force`, поэтому запись, которую уже заполняют, остаётся нетронутой. Разделы
+и параметры записи перечислены на странице [Инструменты выпуска для игрового
+проекта](../project/release-tooling.md#подготовьте-запись-об-обновлении-движка).
 
 После добавления в индекс три идентичности из раздела [Запишите идентичности Engine](#запишите-идентичности-engine) должны
 указывать на новый commit, за исключением `HEAD`: он хранит старый gitlink,
@@ -246,39 +241,29 @@ git restore --staged Engine
 
 ## Проверьте полный диапазон Engine
 
-Изучите каждый commit и изменённый путь между старой и новой привязками:
+Изучите каждый commit и изменённый путь между старой и новой привязками. Запись
+об обновлении перечисляет каждый commit диапазона от старых к новым, те же
+commits, что и `git -C Engine log --oneline "$old..$new"`, с пустыми столбцами
+владельца, последствия и действия, а также число изменённых путей по каждой
+области верхнего уровня. Сами изменения читайте так:
 
 ```bash
-git -C Engine log --oneline "$old..$new"
 git -C Engine diff --stat "$old..$new"
 git -C Engine diff "$old..$new" -- \
   Source BuildTools ThirdParty Resources Docs Examples
 ```
 
 ```powershell
-git -C Engine log --oneline "$old..$new"
 git -C Engine diff --stat "$old..$new"
 git -C Engine diff "$old..$new" -- `
   Source BuildTools ThirdParty Resources Docs Examples
 ```
 
-Ведите по одной заметке на commit (subject, владеющая область, последствие для
-проекта). Отсортировать их помогают два более узких списка:
-
-```bash
-git -C Engine log --first-parent --oneline "$old..$new" -- VERSION
-git -C Engine diff --stat "$old..$new" -- Docs/generated
-```
-
-```powershell
-git -C Engine log --first-parent --oneline "$old..$new" -- VERSION
-git -C Engine diff --stat "$old..$new" -- Docs/generated
-```
-
-Первый перечисляет шаги публикации, каждый из которых является commit первого
-родителя, изменившим `VERSION`, а значит, и точки, в которых обновление можно
-приостановить. Второй показывает, какие сгенерированные модели контрактов
-изменились.
+Заполните по одной заметке на commit (subject, владеющая область, последствие
+для проекта). Отсортировать их помогают два раздела записи. «Publication steps»
+перечисляет каждый commit первого родителя, изменивший `VERSION`, а значит, и
+точки, в которых обновление можно приостановить. «Changed generated contract
+models» показывает, какие модели в `Docs/generated` изменились.
 
 Классифицируйте изменения по владельцу и последствиям:
 
@@ -323,56 +308,20 @@ Engine.
 предшествующую запись). Применять нужно записи новее старой версии, вплоть до
 новой версии включительно.
 
-1. Прочитайте оба значения `VERSION`:
-
-   ```bash
-   old_version=$(git -C Engine show "$old:VERSION")
-   new_version=$(git -C Engine show "$new:VERSION")
-   echo "$old_version -> $new_version"
-   ```
-
-   ```powershell
-   $oldVersion = git -C Engine show "${old}:VERSION"
-   $newVersion = git -C Engine show "${new}:VERSION"
-   Write-Output "$oldVersion -> $newVersion"
-   ```
-
-2. Извлеките новую ревизию и перечислите заголовки с номерами строк:
-
-   ```bash
-   grep -n '^## ' Engine/Docs/en/reference/changelog.md
-   ```
-
-   ```powershell
-   Select-String -Path Engine/Docs/en/reference/changelog.md -Pattern '^## '
-   ```
-
-3. Либо выведите входящие записи от старых к новым с помощью тех же helpers,
-   которые использует сам инструментарий Engine (`changelog_releases` и
-   `read_engine_version` в `BuildTools/engine_version.py`). Сохраните скрипт из
-   [листинга ниже](#скрипт-входящих-заметок) вне дерева Engine, например в
-   scratch-каталоге задачи как `list_incoming_notes.py`, и запустите его:
-
-   ```bash
-   python3 list_incoming_notes.py Engine "$old_version"
-   ```
-
-   ```powershell
-   py -3 list_incoming_notes.py Engine $oldVersion
-   ```
-
-   Подходит любой интерпретатор Python 3; на некоторых хостах `python` всё ещё
-   указывает на Python 2. Скрипт печатает по одной строке `<version> <date>` на
-   каждую входящую запись и ничего больше. Он читает извлечённую историю
-   изменений, поэтому сначала извлеките новую ревизию.
-
-4. Откройте каждую перечисленную запись по порядку. Полностью выполните её
+1. Прочитайте раздел «Changelog entries, oldest first» записи об обновлении.
+   Отчёт читает английскую историю изменений целевой ревизии через `git show`,
+   разрешает `Current` в `VERSION` цели с помощью helpers из
+   `BuildTools/engine_version.py` и цитирует раздел `### Migration` каждой
+   записи новее старой версии, вплоть до новой версии включительно. Непустой
+   текст `## Unreleased` цели он тоже цитирует.
+2. Откройте каждую перечисленную запись по порядку. Полностью выполните её
    раздел `### Migration` до перехода к следующей, включая промежуточные шаги
    регенерации, bake и данных, и запишите результат в план.
 
 Старая версия без записи в истории изменений предшествует поддерживаемому
-журналу или находится на другой релизной линии. Не угадывайте диапазон:
-проверьте полный диапазон commits из предыдущего раздела.
+журналу или находится на другой релизной линии; запись сообщает об этом, а
+отчёт печатает предупреждение. Не угадывайте диапазон: проверьте полный
+диапазон commits из предыдущего раздела.
 
 `BuildTools/docs_engine_version.py` - собственный валидатор публикации Engine;
 диапазонов он не перечисляет. Из проекта с его помощью всё же можно
@@ -396,33 +345,6 @@ py -3 Engine/BuildTools/docs_engine_version.py --root Engine --check `
 указывает на диапазон, которому нужен полный аудит исходников. Для релизной
 линии передайте `--branch release/<year>.<major>` вместо `master`.
 
-### Скрипт входящих заметок
-
-Этот скрипт печатает по одной строке `<version> <date>` на каждую входящую
-запись истории изменений, от старых к новым. Он читает историю изменений и
-`VERSION` переданного ему checkout Engine.
-
-```python
-import sys
-from pathlib import Path
-
-engine_root = Path(sys.argv[1])
-old_version = sys.argv[2]
-
-sys.path.insert(0, str(engine_root / 'BuildTools'))
-from engine_version import changelog_releases, read_engine_version
-
-new_version = read_engine_version(engine_root)
-text = (engine_root / 'Docs/en/reference/changelog.md').read_text(encoding='utf-8')
-releases = changelog_releases(new_version, text)
-versions = [version for version, _ in releases]
-if old_version not in versions:
-    sys.exit(f'{old_version} has no changelog entry: review the complete revision range instead')
-
-for version, date in reversed(releases[:versions.index(old_version)]):
-    print(version, date)
-```
-
 ## Найдите в исходниках проекта влияние на потребителей
 
 История изменений и отчёт о контрактах называют символы, settings, options,
@@ -432,23 +354,27 @@ for version, date in reversed(releases[:versions.index(old_version)]):
 контрактах ниже и из списка `git diff --stat` проверенного диапазона.
 
 Запишите по одному имени в строке в текстовый файл, например
-`update-names.txt`, и выполните поиск по отслеживаемым исходникам проекта, без
-submodule Engine. `git grep` не спускается в submodules, поэтому исключение в
-pathspec лишь документирует намерение:
+`update-names.txt`; отправной точкой служит список «Names quoted in the incoming
+migration notes» записи. Запустите отчёт с `--names` во второй файл и
+перенесите его таблицу потребителей в запись:
 
 ```bash
-git grep -nIF -f update-names.txt -- . ':!Engine'
+python3 Engine/BuildTools/engine_upgrade_report.py --old "$old" --new "$new" \
+  --names update-names.txt --output Workspace/engine-update/consumers.md
 ```
 
 ```powershell
-git grep -nIF -f update-names.txt -- . ':!Engine'
+py -3 Engine/BuildTools/engine_upgrade_report.py --old $old --new $new `
+  --names update-names.txt --output Workspace/engine-update/consumers.md
 ```
 
-Команда одинакова в обеих оболочках. `-F` трактует каждую строку как буквальный
-текст, `-I` пропускает бинарные файлы, а код выхода `1` означает отсутствие
-совпадений, что и служит отрицательным доказательством для этого списка. Ищите
-в каждой из этих областей, потому что одно и то же имя встречается в разных
-формах:
+Отчёт выполняет `git grep -nIF` по отслеживаемым исходникам проекта вне
+checkout Engine: `-F` трактует каждую строку как буквальный текст, а `-I`
+пропускает бинарные файлы. Для каждого имени указываются число совпадений и
+места, а имя без совпадений помечается для отрицательного доказательства.
+`--search-path` ограничивает поиск заданными pathspec. Убедитесь, что поиск
+охватывает каждую из этих областей, потому что одно и то же имя встречается в
+разных формах:
 
 - исходники скриптов каждого включённого backend, включая тестовые скрипты;
 - исходники native extensions и bridge-код, подключающий заголовки Engine;
@@ -558,8 +484,9 @@ project settings без канонической модели; они опира
 Диапазон из многих шагов публикации не обязательно принимать за один раз.
 Каждый commit первого родителя, изменяющий `VERSION`, является опубликованным
 шагом с собственной датированной записью миграции, поэтому он служит
-допустимым промежуточным закреплением; перечислите такие шаги приведённой выше
-командой `git log --first-parent --oneline "$old..$new" -- VERSION`. Commits
+допустимым промежуточным закреплением; такие шаги перечисляет таблица
+«Publication steps» записи об обновлении, а также
+`git -C Engine log --first-parent --oneline "$old..$new" -- VERSION`. Commits
 внутри влитой ветки не являются шагами публикации и не имеют собственной
 записи миграции.
 
@@ -729,7 +656,9 @@ Cross-build не является device qualification, а headless test не д
 Создайте план до первого checkout и поддерживайте его актуальным; запись о
 завершении ниже является его окончательной формой. Адаптируйте разделы под
 проект, но сохраните baseline и target обоих репозиториев, заметки по каждому
-commit и ограничения квалификации.
+commit и ограничения квалификации. `engine_upgrade_report.py` пишет
+Markdown-запись с этими разделами и заполненными фактами Git; скелет ниже —
+эталонная форма для плана, который пишут вручную.
 
 ```text
 Goal:

@@ -18,9 +18,12 @@ permalink: /Docs/ru/how-to/project/versioning-and-releases.html
 
 ## Проверенные исходные пути
 
+- `BuildTools/artifact_checksums.py`
 - `BuildTools/cmake/stages/Init.cmake`
 - `BuildTools/codegen.py`
 - `BuildTools/package.py`
+- `BuildTools/project_version.py`
+- `BuildTools/release_preflight.py`
 - `BuildTools/tests/test_package_wix_installer.py`
 - `Docs/en/explanation/runtime/client-updater.md`
 - `Docs/en/how-to/build/project-configuration.md`
@@ -123,8 +126,14 @@ git rev-list --count --first-parent HEAD
 | Коммитить `VERSION`, который обновляет генератор в процессе выпуска или слияния | Версия видна в исходниках и воспроизводима по коммиту; CI сравнивает файл с выводом генератора | Дополнительный коммит или шаг перед слиянием, а описанное выше правило подсчёта должно быть точным |
 | Не коммитить его; генерировать перед configure и сборкой ресурсов и игнорировать файл | Нет лишних коммитов и правила о смещении на единицу | Каждому пути сборки нужен шаг генератора; checkout без файла откатывается к неразрешённому значению |
 
-В любом случае генератор и его тесты принадлежат проекту. Движок их не
-поставляет.
+Для варианта с коммитом движок поставляет `BuildTools/project_version.py`. Он
+продвигает `VERSION` относительно базовой ссылки, если файл ещё не изменён,
+проверяет его по достижимой истории с `--check` и принимает схему нумерации,
+границы разрядов и базовую ссылку как параметры, поэтому кодирование остаётся
+политикой проекта; см. [Инструменты выпуска для игрового
+проекта](release-tooling.md#создайте-и-проверьте-версию-проекта). Варианту без
+коммита нужен шаг генератора, которым владеет проект, а любая схема, которую не
+выражают встроенные, оформляется как модуль схемы проекта со своими тестами.
 
 ## Подключите версию к игре
 
@@ -215,70 +224,52 @@ C++ движка и проекта (теги `///@`, enums, объявления
   `VERSION` движка, проверенный диапазон истории изменений, ID пакетов и хеши
   артефактов. Поля свидетельств перечислены на странице [Упаковка и
   выпуск](../release/packaging.md#подготовьте-принадлежащую-релизу-package-matrix).
+  `BuildTools/artifact_checksums.py` записывает хеши итоговых файлов как
+  sidecar-файлы `.sha256` и манифест.
 
 ## Выполните предварительную проверку ручного выпуска
 
 Выпуск — это ручной запуск (dispatch) из защищённой ссылки (ref), как описано в
 разделе [Запускайте выпуски
-вручную](continuous-integration.md#запускайте-выпуски-вручную). Шаг
-предварительной проверки (preflight) содержит проверки версии. Этот набросок
-использует команды, которые есть в Git и POSIX-оболочках, и также работает в
-Git Bash на Windows:
+вручную](continuous-integration.md#запускайте-выпуски-вручную).
+`BuildTools/release_preflight.py` выполняет проверки версии в шаге
+предварительной проверки (preflight). Он отклоняет неглубокий клон и изменения
+отслеживаемых файлов, проверяет файл версии по схеме проекта, отклоняет тег,
+который уже есть локально или в удалённом репозитории, требует, чтобы версия
+превышала новейший тег выпуска, и считает любую ссылку, кроме ссылки выпуска,
+пробным запуском:
 
 ```bash
-set -eu
-
-version="$(tr -d '[:space:]' < VERSION)"
-tag="v${version}"
-
-# 1. The value is a numeric dotted version.
-case "${version}" in
-  *[!0-9.]* | "" | .* | *. | *..*) echo "invalid version: ${version}" >&2; exit 1 ;;
-esac
-
-# 2. The working tree is clean and the full history is present.
-test -z "$(git status --porcelain)" || { echo "dirty working tree" >&2; exit 1; }
-test "$(git rev-parse --is-shallow-repository)" = "false" || { echo "shallow clone" >&2; exit 1; }
-
-# 3. The tag does not exist on the remote.
-if git ls-remote --exit-code --tags origin "refs/tags/${tag}" >/dev/null 2>&1; then
-  echo "tag ${tag} already exists" >&2
-  exit 1
-fi
-
-# 4. The version sorts strictly after the newest existing release tag.
-latest="$(git tag --list 'v*' --sort=-v:refname | head -n 1)"
-if [ -n "${latest}" ]; then
-  newest="$(printf '%s\n%s\n' "${latest#v}" "${version}" | sort -V | tail -n 1)"
-  if [ "${newest}" != "${version}" ] || [ "${latest#v}" = "${version}" ]; then
-    echo "version ${version} does not exceed ${latest}" >&2
-    exit 1
-  fi
-fi
-
-# 5. Run the project's generator in check mode here and compare its output with VERSION.
-
-echo "preflight passed for ${tag}"
+python3 Engine/BuildTools/project_version.py --check
+python3 Engine/BuildTools/release_preflight.py --ref "$GITHUB_REF" --release-ref refs/heads/main \
+  --remote origin --engine Engine
 ```
+
+```powershell
+py -3 Engine/BuildTools/project_version.py --check
+py -3 Engine/BuildTools/release_preflight.py --ref refs/heads/main --release-ref refs/heads/main `
+  --remote origin --engine Engine
+```
+
+Страница [Инструменты выпуска для игрового
+проекта](release-tooling.md#выполните-предварительную-проверку-выпуска) описывает
+вывод, параметры префикса тега и схемы, разделение слишком больших ассетов с
+манифестом контрольных сумм и подключение к CI.
 
 Добавьте вокруг него проверки, специфичные для игры:
 
 - Запущенная ревизия находится в защищённой ветке выпуска, или запуск является
-  пробным (dry run) и останавливается до публикации.
+  пробным (dry run) и останавливается до публикации. Режим определяет
+  `--release-ref`; держите шаг публикации за выходом `publish=true`.
 - Gitlink `Engine` равен закреплению, записанному для выпуска, и этот SHA
-  достижим из опубликованной ветки движка
-  (`git -C Engine branch -r --contains <sha>`). Не получайте плавающую ветку
-  движка в задании выпуска.
+  достижим из опубликованной ветки движка; `--engine Engine` проверяет
+  достижимость, а проверка чистого дерева отклоняет checkout, отличный от
+  gitlink. Не получайте плавающую ветку движка в задании выпуска.
 - Линия с закреплённой ревизией (pinned lane) зелёная для этого коммита, и
   сгенерированная версия равна значению, которое встроит сборка.
 - Соберите ресурсы с `ForceBakeResources`, соберите и упакуйте из запущенного
   коммита, а тег создайте только после приёмки артефактов, последним шагом перед
   публикацией.
-
-Набросок на shell проверен на временных репозиториях без тегов, с более высокой
-версией, с существующим тегом и с более низкой версией и в каждом случае дал
-ожидаемый результат. Это паттерн; адаптируйте префикс тега и сравнение к своей
-схеме.
 
 ## Эксплуатация, резервное копирование и откат
 

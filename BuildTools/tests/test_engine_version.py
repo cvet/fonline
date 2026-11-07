@@ -264,6 +264,17 @@ class EngineVersionTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'migration disposition'):
             engine_version.validate_changelog_texts('2026.1.21.2', [notes[0].replace('### Migration', '### Changed'), notes[1]])
 
+    def test_changelog_entries_resolve_current_and_split_sections(self) -> None:
+        text = ('# Log\n\n## Unreleased\n\nDraft.\n\n## Current - 2026-10-05\n\n### Changed\n- New.\n\n'
+                '### Migration\n- Rename `A` to `B`.\n\n## 2026.1.21-dev - 2026-10-04\n\n### Migration\nNone.\n')
+        entries = engine_version.changelog_entries('2026.1.22-dev', text)
+        self.assertEqual([(entry.version, entry.date) for entry in entries],
+                         [('2026.1.22-dev', '2026-10-05'), ('2026.1.21-dev', '2026-10-04')])
+        self.assertEqual(engine_version.changelog_section(entries[0].body, 'Migration'), '- Rename `A` to `B`.\n\n')
+        self.assertEqual(engine_version.changelog_section(entries[0].body, 'Changed'), '- New.\n\n')
+        self.assertEqual(engine_version.changelog_section(entries[1].body, 'Migration'), 'None.\n')
+        self.assertIsNone(engine_version.changelog_section(entries[1].body, 'Changed'))
+
     def test_candidate_promotion_is_metadata_only(self) -> None:
         old, new = '2026.1.21.1-rc', '2026.1.21.1'
         inputs = {('show', 'base:VERSION'): old + '\n', ('show', 'target:VERSION'): new + '\n',
