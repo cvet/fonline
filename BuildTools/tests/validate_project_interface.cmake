@@ -22,7 +22,7 @@ endif()
 string(JSON _optionCount LENGTH "${_interfaceJson}" options)
 string(JSON _stageCount LENGTH "${_interfaceJson}" stages)
 string(JSON _helperCount LENGTH "${_interfaceJson}" helpers)
-if(NOT _optionCount EQUAL 62 OR NOT _stageCount EQUAL 10 OR NOT _helperCount EQUAL 7)
+if(NOT _optionCount EQUAL 62 OR NOT _stageCount EQUAL 10 OR NOT _helperCount EQUAL 9)
 	message(FATAL_ERROR "Unexpected project-interface shape: ${_optionCount} options, ${_stageCount} stages, ${_helperCount} helpers")
 endif()
 
