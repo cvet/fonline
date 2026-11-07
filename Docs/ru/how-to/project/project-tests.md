@@ -18,7 +18,10 @@ permalink: /Docs/ru/how-to/project/project-tests.html
 
 Движок предоставляет нативный тестовый исполняемый файл, раннер процессов и
 правила для маркеров и кодов выхода. Он не определяет реестр скриптовых тестов
-игры, фикстуры, учётные записи или пороги приёмки; всё это код проекта.
+игры как API движка, а также фикстуры, учётные записи или пороги приёмки; всё
+это код проекта. Для скриптовых тестов он поставляет копируемый пример обвязки,
+который проект принимает как собственный код; см.
+[Шаблон обвязки скриптовых тестов для AngelScript и Managed C#](script-test-harness.md).
 
 ## Проверенные исходные пути
 
@@ -36,6 +39,7 @@ permalink: /Docs/ru/how-to/project/project-tests.html
 - `Source/Tools/ConfigBaker.cpp`
 - `Examples/GameplayTestHarness/README.md`
 - `Examples/GameplayTestHarness/synthetic-smoke.json`
+- `Examples/GameplayTestHarness/ScriptTests/script-tests.json`
 - `Examples/MinimalMultiplayer/CMakeLists.txt`
 - `Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain`
 - `Examples/MinimalMultiplayer/Scripts/Tutorial.fos`
@@ -43,6 +47,7 @@ permalink: /Docs/ru/how-to/project/project-tests.html
 - `Examples/NativeExtensionSample/CMakeLists.txt`
 - `Examples/NativeExtensionSample/Tests/NativeExtensionCoreTest.cpp`
 - `Docs/en/how-to/testing/gameplay-and-integration.md`
+- `Docs/en/how-to/project/script-test-harness.md`
 - `Docs/en/contributing/testing/index.md`
 - `Docs/en/tutorials/first-test.md`
 - `Docs/en/how-to/native-extensions.md`
@@ -146,6 +151,14 @@ permalink: /Docs/ru/how-to/project/project-tests.html
 на каждую проверенную веху и чистый выход. Эталонная форма:
 `Examples/MinimalMultiplayer/Scripts/Tutorial.fos`.
 
+Если проверок больше нескольких, скопируйте вместо этого ядро обвязки из
+`Examples/GameplayTestHarness/ScriptTests`. Оно добавляет регистрацию наборов,
+фильтр, тайм-аут на каждый тест, остановку на первом провале и завершающую
+строку `[Testing] COMPLETE status=passed` для раннера процессов, используя те же
+настройки `Testing.*`. Страница
+[Шаблон обвязки скриптовых тестов для AngelScript и Managed C#](script-test-harness.md)
+описывает контракт маркеров, настройки и расширение обвязки в проекте.
+
 ### Объявление настроек
 
 Настройка проекта объявляется тегом метаданных, а обращаются к ней по полному
@@ -219,7 +232,9 @@ void OnTestStart()
 запускает всё. Передавайте её как обычное переопределение настройки в командной
 строке в той же форме `-Group.Name value`, которую использует цель сборки
 ресурсов Engine (`-Baking.ForceBaking False`). Фильтр — лишь удобство при
-запуске; CI выполняет набор без фильтра.
+запуске; CI выполняет набор без фильтра. Копируемая обвязка реализует эту схему
+токенами через запятую без учёта регистра, которые сопоставляются с
+`suite.name`, и проваливает прогон, в котором не выбран ни один тест.
 
 ### Запуск
 
@@ -388,6 +403,8 @@ headless-процессов, затем проверки пакетов. Сох�
   `.fomain` и включаются только подконфигурацией.
 - Каждый сценарий указывает свои обязательные маркеры, запрещённые маркеры,
   deadline и ожидаемый код выхода.
+- Сценарий скриптовых тестов требует завершающую строку обвязки
+  `[Testing] COMPLETE status=passed`, а не подсчёт строк об успехе.
 - Цель поставляемой сборки ресурсов применяет `Baking.IgnoreInputDirs`, а
   проверка доказывает, что в её пакетах нет тестов.
 - Заявления о сохранности данных проверены перезапуском файловой базы данных, а

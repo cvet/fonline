@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Compiles the copyable managed harness against Engine CoreScripts and a stand-in of the generated server API -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- The Engine API keeps lowercase value-type names such as timespan and any -->
+    <NoWarn>$(NoWarn);CS8981</NoWarn>
+    <DefineConstants>$(DefineConstants);SERVER</DefineConstants>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <StartupObject>FOnline.ScriptTestHost</StartupObject>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../Testing.cs" Link="Harness/Testing.cs" />
+    <Compile Include="../Test_HarnessExample.cs" Link="Harness/Test_HarnessExample.cs" />
+    <Compile Include="ScriptTestHost.cs" />
+    <Compile Include="Test_HarnessSelfCheck.cs" />
+    <Compile Include="../../../../../Source/Scripting/Managed/CoreScripts/Any.cs" Link="CoreScripts/Any.cs" />
+    <Compile Include="../../../../../Source/Scripting/Managed/CoreScripts/Attributes.cs" Link="CoreScripts/Attributes.cs" />
+    <Compile Include="../../../../../Source/Scripting/Managed/CoreScripts/Enums.cs" Link="CoreScripts/Enums.cs" />
+    <Compile Include="../../../../../Source/Scripting/Managed/CoreScripts/Invariant.cs" Link="CoreScripts/Invariant.cs" />
+    <Compile Include="../../../../../Source/Scripting/Managed/CoreScripts/TimePlace.cs" Link="CoreScripts/TimePlace.cs" />
+  </ItemGroup>
+</Project>
