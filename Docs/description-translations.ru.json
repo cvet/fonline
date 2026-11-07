@@ -215,16 +215,16 @@
           "translation": "MCP-адаптер может отображать проектные наблюдения/действия в семантические инструменты, но пространство имён tools, запуск, память, prompts и игровые политики принадлежат проекту."
         },
         "/integration_rules/@id=ai-control-protocol.integration.native-extension/name": {
-          "source_sha256": "0f90a8dee989cbf4e4efd6ce18102678c35b74e52ce68d62524f701ab067b0ff",
-          "translation": "Listener принадлежит проекту"
+          "source_sha256": "3e5894ad3b6ae3f082b11510cdc23b9a5ad879935c45bccd27b97507bbdb3d80",
+          "translation": "Опциональный клиентский listener"
         },
         "/integration_rules/@id=ai-control-protocol.integration.native-extension/rationale": {
-          "source_sha256": "b132fde3497dacaed3fee3ba0850878f8ac3e2d907f9df9c1dbae9a6324088c1",
-          "translation": "Текущий протокол переиспользуем, но политика listener и shipping-риски остаются ответственностью проекта."
+          "source_sha256": "2cab7e065c407241a57b9a686b4e0a6df5a3b4c07ff3b7d48b3883776b0a91b2",
+          "translation": "Транспорт переиспользуем, но политика listener и shipping-риски остаются ответственностью проекта."
         },
         "/integration_rules/@id=ai-control-protocol.integration.native-extension/requirement": {
-          "source_sha256": "aeecf72f5fa9f57228952a715bdb7c4f31cec112ba955509c7a42202a9e01648",
-          "translation": "Реализуйте listener как опциональное native-расширение встраиваемого проекта, пока в runtime Engine не появится проверенный владелец."
+          "source_sha256": "194e179b5c2e6479f2c0ba8c15d225a327afe403d56ed2f069f00aa19dc9f389",
+          "translation": "Компилируйте listener только в клиенты для разработки: либо необязательный listener Engine, выбираемый опцией FO_AI_CONTROL, либо опциональное native-расширение встраиваемого проекта; включение, настройки, наблюдения и набор команд принадлежат проекту."
         },
         "/integration_rules/@id=ai-control-protocol.integration.observation-schema/name": {
           "source_sha256": "824ae231f4fd42aa619887d746f6344baad3e8fd71addde4e692c2437277ec86",
@@ -287,9 +287,9 @@
           "translation": "Возвращает состояние транспорта, заполнение и пределы очереди/событий, sequence последнего наблюдения и последнюю ошибку bridge."
         },
         "/scope/excluded": {
-          "source_sha256": "0e3f12e09774b447895bf3eaf18ae5ffbad3cf1e0385ca5968c47309664d4841",
+          "source_sha256": "d7c553458056818c02c566fa100b02bc2a80bbabe058a465c9fd9c451945ef04",
           "translation": [
-            "listener, скомпилированный в основной runtime FOnline",
+            "listener, включённый по умолчанию или скомпилированный в shipping-клиенты",
             "проектные поля наблюдений, имена игровых действий, семантика сущностей и критерии готовности",
             "имена MCP-инструментов, рецепты оркестрации, игровые политики и prompts моделей",
             "обход server authority, команды администратора, TLS, discovery и публикация в интернете"

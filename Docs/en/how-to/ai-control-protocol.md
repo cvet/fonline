@@ -53,8 +53,9 @@ The Engine repository owns:
 - the standard-library reference client, protocol sample, generated contract,
   focused tests, and compatibility-diff policy.
 
-This is a protocol and integration contract, not a listener in the FOnline core
-runtime. The reference server deliberately stands in for a project client loop.
+This is a protocol and integration contract. The optional Engine listener
+selected with `FO_AI_CONTROL` is one implementation of it and is compiled out by
+default. The reference server deliberately stands in for a project client loop.
 
 ## What the project owns
 
@@ -268,11 +269,13 @@ project may support more, but it then owns authorization isolation, event cursor
 write serialization, observation fan-out, and load limits. Clients must not
 depend on that extension.
 
-The Engine does not currently provide a native listener helper. Promoting one
-would require a core runtime owner, cross-platform socket tests, shutdown and
-thread-safety proof, a stable configuration surface, and a separate security
-review. Do not describe a project `SourceExt` implementation as built-in Engine
-behavior.
+The Engine ships an optional native listener that implements these steps inside
+`ClientEngine` when a project enables `FO_AI_CONTROL`; settings, observations
+and the command set stay in the project. Read
+[Embed the AiControl Listener in a Game Client](project/native-ai-bridge.md)
+for the option, the script API, command handler registration and migration from
+a project copy. A project `SourceExt` listener remains project behavior, not
+built-in Engine behavior.
 
 ## MCP adapter integration
 
