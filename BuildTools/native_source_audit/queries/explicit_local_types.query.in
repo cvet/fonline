@@ -1,0 +1,25 @@
+set output dump
+set bind-root false
+set traversal IgnoreUnlessSpelledInSource
+
+# A local initialized from a lambda literal deduces to a closure type, which has no spellable name and
+# can never become an explicit type, so skipping it costs no coverage. It also avoids dumping the closure
+# body: clang-query 20 segfaults in the AST dumper on some lambdas under IgnoreUnlessSpelledInSource
+# (observed on Source/Applications/ServerApp.cpp, and only under that traversal).
+match varDecl(@SOURCE_FILTER@, unless(parmVarDecl()), unless(isImplicit()), hasAutomaticStorageDuration(), unless(hasInitializer(lambdaExpr())), anyOf(hasType(autoType()), hasType(qualType(hasDescendant(qualType(autoType())))))).bind("auto_local")
+
+let qualifiedRecordAuto autoType(hasDeducedType(hasDeclaration(cxxRecordDecl(hasAncestor(anyOf(recordDecl(), namespaceDecl(unless(hasName("fo")))))))), unless(hasDeducedType(hasDeclaration(typedefNameDecl()))))
+
+let qualifiedEnumAuto autoType(hasDeducedType(hasDeclaration(enumDecl(hasAncestor(anyOf(recordDecl(), namespaceDecl(unless(hasName("fo")))))))), unless(hasDeducedType(hasDeclaration(typedefNameDecl()))))
+
+let qualifiedTypedefAuto autoType(hasDeducedType(hasDeclaration(typedefNameDecl(hasAncestor(anyOf(recordDecl(), namespaceDecl(unless(hasName("fo")))))))))
+
+match varDecl(@SOURCE_FILTER@, unless(parmVarDecl()), unless(isImplicit()), hasAutomaticStorageDuration(), anyOf(hasType(qualifiedRecordAuto), hasType(qualType(hasDescendant(qualType(qualifiedRecordAuto)))), hasType(qualifiedEnumAuto), hasType(qualType(hasDescendant(qualType(qualifiedEnumAuto)))), hasType(qualifiedTypedefAuto), hasType(qualType(hasDescendant(qualType(qualifiedTypedefAuto)))))).bind("nested_type_local")
+
+let foRecordAuto autoType(hasDeducedType(hasDeclaration(cxxRecordDecl(hasAncestor(namespaceDecl(hasName("fo")))))), unless(hasDeducedType(hasDeclaration(typedefNameDecl()))))
+
+let foEnumAuto autoType(hasDeducedType(hasDeclaration(enumDecl(hasAncestor(namespaceDecl(hasName("fo")))))), unless(hasDeducedType(hasDeclaration(typedefNameDecl()))))
+
+let foTypedefAuto autoType(hasDeducedType(hasDeclaration(typedefNameDecl(hasAncestor(namespaceDecl(hasName("fo")))))))
+
+match varDecl(@SOURCE_FILTER@, unless(parmVarDecl()), unless(isImplicit()), unless(hasAncestor(namespaceDecl(hasName("fo")))), hasAutomaticStorageDuration(), anyOf(hasType(foRecordAuto), hasType(qualType(hasDescendant(qualType(foRecordAuto)))), hasType(foEnumAuto), hasType(qualType(hasDescendant(qualType(foEnumAuto)))), hasType(foTypedefAuto), hasType(qualType(hasDescendant(qualType(foTypedefAuto)))))).bind("nested_type_local")

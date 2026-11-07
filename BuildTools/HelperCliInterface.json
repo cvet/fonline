@@ -110,6 +110,17 @@
       "description": "Check local Markdown links, GitHub-style heading anchors, UTF-8, fenced-code balance, and optional single-H1 structure under one repository root."
     },
     {
+      "id": "helper-cli.native-source-audit",
+      "name": "Native source audits",
+      "source": "BuildTools/native_source_audit.py",
+      "factory": "create_parser",
+      "program": "native_source_audit.py",
+      "owner": "quality",
+      "audiences": ["engine-contributor", "embedding-project-build-system", "ci-maintainer"],
+      "invocation_owner": "Engine validation CI, embedding-project native audit wrappers and direct developer use",
+      "description": "Audit native C++ scopes for allocator, smart-pointer and local-variable contract violations with Engine-owned and project baselines."
+    },
+    {
       "id": "helper-cli.android-device",
       "name": "Android device control",
       "source": "BuildTools/android_device.py",
