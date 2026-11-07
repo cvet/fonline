@@ -11494,6 +11494,34 @@
           "source_sha256": "c23d03272563fce74149116649f7fb2f8f6c339635bb749df3609b137b6766b2",
           "translation": "Проверить зависимости host-системы."
         },
+        "/commands/@id=cli.buildtools.command.managed-project-path/arguments/@id=cli.buildtools.command.managed-project-path.argument.build_dir/description": {
+          "source_sha256": "574989aa4af3c6dfc11a169c6b67f5db98e49c8b13b3cb0ae4577ab4b8626dd8",
+          "translation": "Каталог сборки CMake; обязателен, когда ManagedScript.GeneratedDir пуст."
+        },
+        "/commands/@id=cli.buildtools.command.managed-project-path/arguments/@id=cli.buildtools.command.managed-project-path.argument.config/description": {
+          "source_sha256": "450db4424db2264e7273cc64bfc184e3af61fdb91721fddc684e0d68422788c8",
+          "translation": "Основная конфигурация .fomain, которую применяет бейкер управляемых скриптов."
+        },
+        "/commands/@id=cli.buildtools.command.managed-project-path/arguments/@id=cli.buildtools.command.managed-project-path.argument.json/description": {
+          "source_sha256": "ae88e3755b6b99aac1c4779589119666ee470ace3c2a6454dd3d0394b232928c",
+          "translation": "Вывести пути и наличие проекта и решения в виде JSON."
+        },
+        "/commands/@id=cli.buildtools.command.managed-project-path/arguments/@id=cli.buildtools.command.managed-project-path.argument.open/description": {
+          "source_sha256": "16ffcf80e519566998a227dd07c046b73bd198f19e7c0c29c230ca5d882c1bfd",
+          "translation": "Открыть сгенерированное решение через файловую ассоциацию рабочего стола."
+        },
+        "/commands/@id=cli.buildtools.command.managed-project-path/arguments/@id=cli.buildtools.command.managed-project-path.argument.require_existing/description": {
+          "source_sha256": "e7ff224f886cdb7a04a285f48b5a58275122aa8e81fc75572b88f6e748cec4be",
+          "translation": "Завершиться с кодом 1, если сгенерированный проект или решение отсутствует."
+        },
+        "/commands/@id=cli.buildtools.command.managed-project-path/arguments/@id=cli.buildtools.command.managed-project-path.argument.sub_config/description": {
+          "source_sha256": "878fd3ff4dae97b897f20b4f2606c715d65d9dbe35b660d451b06881f39456aa",
+          "translation": "Подконфигурация, применяемая поверх основной секции (по умолчанию: никакой, как в CompileManagedScripts)."
+        },
+        "/commands/@id=cli.buildtools.command.managed-project-path/summary": {
+          "source_sha256": "e06b7f78265565589e5fbd884a84e352583262024da2a2636a5d55c3098c87ed",
+          "translation": "Вывести пути сгенерированного управляемого проекта C# и его решения."
+        },
         "/commands/@id=cli.buildtools.command.package-android-debug/arguments/@id=cli.buildtools.command.package-android-debug.argument.configs/description": {
           "source_sha256": "dbf676d2e9be039321b9ddddfea5895d35ecb9101c02c7cddcf56fd16166e7c5",
           "translation": "Имена упаковываемых конфигураций (например, LocalTest)."
@@ -13634,6 +13662,62 @@
           "source_sha256": "cbf7977d137c15e8ed532cc932d8dceb2b178651df94b9aee2ea6f82300673b0",
           "translation": "Контрольные суммы артефактов"
         },
+        "/helpers/@id=helper-cli.check-text-packs/description": {
+          "source_sha256": "2e65a461ce0c242524a5b9ffe15f84efe34c621bd6196d90303a555489409476",
+          "translation": "Проверить исходные пакеты .fotxt на ошибки разбора, повторяющиеся варианты, текст в чужой письменности и согласованность ключей между языками до бейкинга."
+        },
+        "/helpers/@id=helper-cli.check-text-packs/global_arguments/@id=helper-cli.check-text-packs.argument.base_dir/description": {
+          "source_sha256": "27975fd4f4b222bb54996c0a6f193b11632c210676998347f44e439e85ddbbe0",
+          "translation": "Каталог, относительно которого записываются пути находок и исключений (по умолчанию: текущий каталог)."
+        },
+        "/helpers/@id=helper-cli.check-text-packs/global_arguments/@id=helper-cli.check-text-packs.argument.baseline/description": {
+          "source_sha256": "a63b5132f10ad81724df81afbaa32dd4c4030fe325e76d593122b672b3d04282",
+          "translation": "JSON-файл исключений с причиной для каждой известной находки (можно повторять)."
+        },
+        "/helpers/@id=helper-cli.check-text-packs/global_arguments/@id=helper-cli.check-text-packs.argument.config/description": {
+          "source_sha256": "4563f1e4487237490fcfee7a29fe7b68428ddad94466783a5d38fac4d9367626",
+          "translation": "Основная конфигурация .fomain, из которой читается Baking.BakeLanguages."
+        },
+        "/helpers/@id=helper-cli.check-text-packs/global_arguments/@id=helper-cli.check-text-packs.argument.ignore_pattern/description": {
+          "source_sha256": "da38373363546a93df6e3e962bb2b6b1c861795178742240815409aebf55cf83",
+          "translation": "Текст, удаляемый перед проверкой письменности, например подстановки проекта (можно повторять)."
+        },
+        "/helpers/@id=helper-cli.check-text-packs/global_arguments/@id=helper-cli.check-text-packs.argument.json/description": {
+          "source_sha256": "6966cd602afd2569beb32b6340969af5da8237ce66d03ffdf85c7c6885b4b735",
+          "translation": "Дополнительно записать оставшиеся находки в JSON."
+        },
+        "/helpers/@id=helper-cli.check-text-packs/global_arguments/@id=helper-cli.check-text-packs.argument.languages/description": {
+          "source_sha256": "6f64c4eeda1971ec2a505c8a2e39acaaa7d451f811acbb3c7ab9a23d7d08761a",
+          "translation": "Упорядоченные объявления Baking.BakeLanguages, например 'engl russ'."
+        },
+        "/helpers/@id=helper-cli.check-text-packs/global_arguments/@id=helper-cli.check-text-packs.argument.roots/description": {
+          "source_sha256": "af353d76a7b386b6b1a47641ee482f3c5bc28b84ed65cf50edd028c058420c30",
+          "translation": "Каталоги текстов для рекурсивного обхода; каждый корень проверяется как отдельный вход пакета ресурсов."
+        },
+        "/helpers/@id=helper-cli.check-text-packs/global_arguments/@id=helper-cli.check-text-packs.argument.script/description": {
+          "source_sha256": "5ff4ce8c0951ab42518c2db7d361d67ecb4487ff0b2e83e419de67a3bf75fe2e",
+          "translation": "Письменности, допустимые для языка, например engl=latin (можно повторять)."
+        },
+        "/helpers/@id=helper-cli.check-text-packs/global_arguments/@id=helper-cli.check-text-packs.argument.sparse/description": {
+          "source_sha256": "88a2d689bedb65e9808d907cb1ad80368181a42c65e9dcfeec007f73b6551714",
+          "translation": "Язык, который намеренно наследует отсутствующие пакеты и ключи от резервного языка (можно повторять)."
+        },
+        "/helpers/@id=helper-cli.check-text-packs/global_arguments/@id=helper-cli.check-text-packs.argument.strict_variant_counts/description": {
+          "source_sha256": "107dbf00b7403419026c13736f831ea24b1baa497762c4f9342da1646b83c8e7",
+          "translation": "Также сообщать о ключах, у которых число вариантов отличается от резервного языка."
+        },
+        "/helpers/@id=helper-cli.check-text-packs/global_arguments/@id=helper-cli.check-text-packs.argument.sub_config/description": {
+          "source_sha256": "94e6c0bcdf2464743b1f1d13e6acc9446a08c9600ff65e1154f095d3fa52538a",
+          "translation": "Подконфигурация, применяемая поверх основной секции конфигурации (вместе с --config)."
+        },
+        "/helpers/@id=helper-cli.check-text-packs/invocation_owner": {
+          "source_sha256": "5f462d01eb9ad880157a3d18c97fe55029c21649b3879e4f9cd8736a3c0fe1a0",
+          "translation": "задачи локализации встраивающего игрового проекта и контентные гейты CI"
+        },
+        "/helpers/@id=helper-cli.check-text-packs/name": {
+          "source_sha256": "1d420a8ccd89c96f7392944d3a36f1b7ea1769fc3c448a2437519ed3481f5809",
+          "translation": "Проверка текстовых пакетов"
+        },
         "/helpers/@id=helper-cli.codecoverage/commands/@id=helper-cli.codecoverage.command.clean/arguments/@id=helper-cli.codecoverage.command.clean.argument.backend/description": {
           "source_sha256": "aa1fb879cb02c5b3148f25e5eaba5e6e772934ec69f98ce2e3ecb63b9f54dcdb",
           "translation": "Backend компилятора/toolchain покрытия."
@@ -14063,6 +14147,58 @@
         "/helpers/@id=helper-cli.release-preflight/name": {
           "source_sha256": "23dad50d4eb583a75c2b3af8ce9e57b9bc0279456cb89bf8452bd1a754189d39",
           "translation": "Предварительная проверка релиза"
+        },
+        "/helpers/@id=helper-cli.move-sync-analysis/description": {
+          "source_sha256": "506ae93640fa9265082df9f8e937b93e6a72db857e58d8f45b4ddfa3a5b94145",
+          "translation": "Свести строки журнала MOVESYNC из Network.MoveSyncTrace в отчёты о расхождении, отставании и коррекциях по сценариям."
+        },
+        "/helpers/@id=helper-cli.move-sync-analysis/global_arguments/@id=helper-cli.move-sync-analysis.argument.actor/description": {
+          "source_sha256": "f4f675fcbcd743e8716939e4509b452acd083397f3aa3ceccd4965984e65971c",
+          "translation": "Разобрать весь трейс как один сценарий этого id криттера вместо сценариев, ограниченных метками."
+        },
+        "/helpers/@id=helper-cli.move-sync-analysis/global_arguments/@id=helper-cli.move-sync-analysis.argument.clock/description": {
+          "source_sha256": "0b9a715d2a4a266e214e9e53bc0d4da7473d5a587b4a345d6df96c46235c12f2",
+          "translation": "t: общие монотонные часы (одна машина); st: синхронизированное время (несколько машин)."
+        },
+        "/helpers/@id=helper-cli.move-sync-analysis/global_arguments/@id=helper-cli.move-sync-analysis.argument.extra_side/description": {
+          "source_sha256": "5a8965c2028098ca769b7d328ca47c29d22a569d5f28208b14190d78c3c3eda3",
+          "translation": "Также читать в шкалы времени строки MOVESYNC этой стороны, которую пишет проект (можно повторять)."
+        },
+        "/helpers/@id=helper-cli.move-sync-analysis/global_arguments/@id=helper-cli.move-sync-analysis.argument.geometry/description": {
+          "source_sha256": "fa2ac665b0403e00bba3fb485c757c3a2bf4da550abbb05328169b7a6e49d3ce",
+          "translation": "Геометрия игровой сетки проекта (FO_GEOMETRY)."
+        },
+        "/helpers/@id=helper-cli.move-sync-analysis/global_arguments/@id=helper-cli.move-sync-analysis.argument.json/description": {
+          "source_sha256": "2355b121526afaa65b1005975f2ffb385b743dcce201f60fd80d489fbf42e57c",
+          "translation": "Записать полный отчёт в JSON."
+        },
+        "/helpers/@id=helper-cli.move-sync-analysis/global_arguments/@id=helper-cli.move-sync-analysis.argument.logs/description": {
+          "source_sha256": "6a1597c6a83f75ecb3e81aebbf347119ec54d062755a4025d9308d6983fe99ea",
+          "translation": "Файлы журналов со строками MOVESYNC (сервер и клиенты)."
+        },
+        "/helpers/@id=helper-cli.move-sync-analysis/global_arguments/@id=helper-cli.move-sync-analysis.argument.markdown/description": {
+          "source_sha256": "2097c7f59104ee6fe5c585957ce3e8295efe95f8160621a79232f87f6ca5f5e3",
+          "translation": "Записать сводную таблицу Markdown."
+        },
+        "/helpers/@id=helper-cli.move-sync-analysis/global_arguments/@id=helper-cli.move-sync-analysis.argument.require_converged/description": {
+          "source_sha256": "755f5e93e753c805623626eb3a9096705ad4edeb05962caeed58036bd834d5ef",
+          "translation": "Завершиться с кодом 1, если хотя бы один сценарий заканчивается расхождением точек зрения."
+        },
+        "/helpers/@id=helper-cli.move-sync-analysis/global_arguments/@id=helper-cli.move-sync-analysis.argument.settle_ms/description": {
+          "source_sha256": "7b0f43c16527cdbca7950638bf09ca988349efeb0f0efd908ab54cba66bb3c65",
+          "translation": "Продлить окно каждого сценария на столько миллисекунд после его конечной метки."
+        },
+        "/helpers/@id=helper-cli.move-sync-analysis/global_arguments/@id=helper-cli.move-sync-analysis.argument.timeline/description": {
+          "source_sha256": "abf6139b1ad98ae8baae6e8ad88d2a591e757531053cd7abd4a87bb3aa7f24d1",
+          "translation": "Вывести сводную шкалу времени сценария с этой меткой (можно повторять, или 'all')."
+        },
+        "/helpers/@id=helper-cli.move-sync-analysis/invocation_owner": {
+          "source_sha256": "5f1f8ada34edc56e6b70253943a8df1be6aeb2eac588c2d1863319b0de448911",
+          "translation": "плейтесты движения встраивающего игрового проекта и прямая диагностика разработчиком"
+        },
+        "/helpers/@id=helper-cli.move-sync-analysis/name": {
+          "source_sha256": "fd72f3093ce905605379cbae6f6c259be67b5052b0760a1e2feba8d49c3e9505",
+          "translation": "Анализ трейса синхронизации движения"
         },
         "/helpers/@id=helper-cli.simple-web-server/description": {
           "source_sha256": "43d4e2c2f90c9e2ff611e5b3ce4d2cb7e488d40409fe995238369d223dc66eb1",

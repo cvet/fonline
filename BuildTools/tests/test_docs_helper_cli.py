@@ -105,7 +105,7 @@ class DocumentationHelperCliTests(unittest.TestCase):
             "command_argument_count": 52,
         })
         self.assertEqual(model["helpers"][0]["id"], "helper-cli.codegen")
-        self.assertEqual(model["helpers"][-1]["id"], "helper-cli.createmsi")
+        self.assertEqual(model["helpers"][-1]["id"], "helper-cli.check-text-packs")
         self.assertIn("helper-cli.windows7-import-check", [helper["id"] for helper in model["helpers"]])
         self.assertIn("helper-cli.ai-control-client", [helper["id"] for helper in model["helpers"]])
         self.assertIn("helper-cli.markdown-links", [helper["id"] for helper in model["helpers"]])

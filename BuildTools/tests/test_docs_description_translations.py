@@ -60,7 +60,7 @@ class DocumentationDescriptionTranslationTests(unittest.TestCase):
             ("cmake", 85),
             ("effect-format", 157),
             ("font-format", 187),
-            ("helper-cli", 125),
+            ("helper-cli", 152),
             ("image-format", 246),
             ("map-format", 218),
             ("model-format", 144),
