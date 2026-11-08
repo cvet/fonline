@@ -276,6 +276,7 @@ struct MasterBaker::PackBakeContext
     std::atomic_int BakedFiles {};
     mutex BakedFilePathsLocker {};
     unordered_set<string> BakedFilePaths FO_TSA_GUARDED_BY(BakedFilePathsLocker) {};
+    unordered_set<string> BakedOutputPaths FO_TSA_GUARDED_BY(BakedFilePathsLocker) {};
     bool FirstBake {};
     bool OutputAdded {};
     time_meter BakingTime {};
@@ -599,6 +600,11 @@ auto MasterBaker::PreparePackContext(const ResourcePackInfo& res_pack, unordered
     }};
 
     auto write_data {[context = pack_bake_context_ptr](string_view path, span<const uint8_t> baked_data) mutable -> BakingWriteResult {
+        {
+            scoped_lock lock {context->BakedFilePathsLocker};
+            context->BakedOutputPaths.emplace(path);
+        }
+
         string res_path {strex(context->OutputDir).combine_path(path).str()};
 
         if (!fs::compare_file_content(res_path, baked_data)) {
@@ -805,6 +811,13 @@ auto MasterBaker::CollectExpectedOutputs(vector<unique_ptr<PackBakeContext>>& pa
 
         for (const auto& res_name : bake_context->BakedFilePaths) {
             string expected_path {static_cast<string&&>(strex(bake_context->PackName).combine_path(res_name))};
+            expected.ResourceNames.emplace(ExcludeAllExt(expected_path));
+            expected.Paths.insert_or_assign(strex(expected_path).lower().str(), expected_path);
+        }
+
+        // A baker may rename its output; the written spelling must survive the stale-cased sweep
+        for (const auto& output_name : bake_context->BakedOutputPaths) {
+            string expected_path {static_cast<string&&>(strex(bake_context->PackName).combine_path(output_name))};
             expected.ResourceNames.emplace(ExcludeAllExt(expected_path));
             expected.Paths.insert_or_assign(strex(expected_path).lower().str(), expected_path);
         }
