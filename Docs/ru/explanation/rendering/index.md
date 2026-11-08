@@ -5,7 +5,7 @@ locale: ru
 document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"fbb94a1d8b7948eaf7031d58459ee45cc2f9d6fd0bd49c1c4396b58f85086f2a"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"5e74b65a9c46991548ea369bac3750572d45173ce79609493d58d1d3c1321b4a"} -->
 # Frontend и рендеринг
 
 ## Отображение ограниченного обзора карты
@@ -704,6 +704,7 @@ entry points через X-macro table. Поэтому binary не имеет loa
 
 - **Одна queue, два frames in flight.** `VULKAN_FRAMES_IN_FLIGHT = 2`; каждый slot содержит command buffer, fence, acquire semaphore, descriptor pool, mapped uniform bump buffer, staging ring и deferred-destroy queue. `BeginFrame()` ждёт fence своего slot, очищает deferred destroys, resets pools, acquires swapchain image, clears и начинает render pass. `EndFrame()` submits и presents. Render-complete semaphores принадлежат swapchain images, acquire semaphores — slots. Fence гарантирует завершение всех более ранних submissions этой queue.
 - **Deferred destroy per slot.** `Destroy*Safe(...)` добавляют handles в current slot; queue очищается после ожидания его fence. Разные helper names нужны из-за integer handles на 32-bit. Всегда используется `VK_NULL_HANDLE`. Swapchain recreation делает `vkDeviceWaitIdle`, очищает все queues и перестраивает synchronization.
+- **Effect pipelines ждут device перед destruction.** `Vulkan_Effect::~Vulkan_Effect` вызывает `vkDeviceWaitIdle` перед уничтожением pipelines: effect может выгружаться, пока in-flight frame ещё ссылается на его pipeline, и немедленное уничтожение нарушает `VUID-vkDestroyPipeline-pipeline-00765`.
 - **Uploads и requested readbacks записываются в frame command buffer; блокирующее чтение flush-ит его.** `UpdateTextureRegion` временно завершает render pass и пишет barrier/copy/barrier в frame buffer через staging ring, сохраняя порядок предшествующих clears/uploads. `RequestTextureRegion` также записывает copy между render passes без mid-frame submit/wait; `TakePixels` проверяет completed-frame index либо submission fence. `GetTextureRegion` по-прежнему вызывает `FlushFrameCommandBufferMidFrame()` (submit записанного prefix, wait idle, возобновление recording), затем immediate staging copy. Uploads и readback requests вне записи frame используют immediate path. Новые immediate-queue операции должны сохранять эти границы порядка и готовности.
 - **Dynamic geometry использует per-draw-buffer/per-slot ring pools.** Каждый `DrawBuffer::Upload` берёт следующий persistently mapped HOST_VISIBLE buffer текущего slot. Ring resets при первом acquire нового frame после fence. Capacity grows только при необходимости; steady state — memcpy без create/allocate/free на каждый draw. Static buffers используют one-off staging в device-local memory.
 - **Shaders baked с `highp`.** `mediump` превращается в SPIR-V `RelaxedPrecision`, который Vulkan drivers могут выполнить как FP16; большие time/world values переполняются и дают black output. Effect baker поэтому выдаёт `precision highp float`.

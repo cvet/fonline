@@ -1468,6 +1468,11 @@ void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
 
 Vulkan_Effect::~Vulkan_Effect()
 {
+    // Pipelines may still be referenced by an in-flight command buffer
+    if (_ctx.get() && _ctx->Device != VK_NULL_HANDLE) {
+        vkDeviceWaitIdle(_ctx->Device);
+    }
+
     for (size_t pass = 0; pass < EFFECT_MAX_PASSES; pass++) {
         if (VertexShaderModule[pass] != VK_NULL_HANDLE) {
             vkDestroyShaderModule(_ctx->Device, VertexShaderModule[pass], nullptr);
