@@ -5119,7 +5119,22 @@ void ServerEngine::ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map)
             mdir dir {mdir(iround<int32_t>(GeometryHelper::GetDirAngle(old_hex, target_hex)))};
             int32_t multihex {cr->GetMultihex()};
 
-            auto check_hex {[map](mpos h) -> HexBlockResult { return map->IsHexMovable(h) ? HexBlockResult::Passable : HexBlockResult::Blocked; }};
+            auto check_hex {[map, cr](mpos h) -> HexBlockResult {
+                if (!map->IsHexMovable(h)) {
+                    return HexBlockResult::Blocked;
+                }
+
+                // Pathfinding treats critters as passable for scripts; a client-supplied path must not end on them
+                if (map->IsCritterOnHex(h, CritterFindType::Any)) {
+                    for (auto other : map->GetCrittersOnHex(h, CritterFindType::Any)) {
+                        if (other != cr) {
+                            return HexBlockResult::Blocked;
+                        }
+                    }
+                }
+
+                return HexBlockResult::Passable;
+            }};
 
             if (PathFinding::CheckHexWithMultihex(target_hex, dir, multihex, map->GetSize(), check_hex) != HexBlockResult::Blocked) {
                 map->RemoveCritterFromField(cr);
