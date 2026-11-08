@@ -914,6 +914,19 @@ FO_SCRIPT_API nptr<ClientEntity> Client_Map_GetEntityAtScreenPos(ptr<MapView> se
     return entity;
 }
 
+// Fades map sprites that cover the given critter, keeping its silhouette visible
+///@ ExportMethod
+FO_SCRIPT_API void Client_Map_UpdateCritterOccluders(ptr<MapView> self, ptr<CritterView> cr, uint8_t alpha)
+{
+    auto hex_cr {cr.dyn_cast<CritterHexView>()};
+
+    if (!hex_cr) {
+        throw ScriptException("Critter is not on map");
+    }
+
+    self->UpdateCritterOccluders(hex_cr, alpha);
+}
+
 // Returns whether the supplied hex lies inside this map's dimensions without throwing for an invalid coordinate
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Map_IsHexValid(ptr<MapView> self, mpos hex)

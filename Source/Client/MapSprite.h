@@ -86,6 +86,7 @@ public:
     [[nodiscard]] auto GetSpriteRootOffset() const noexcept -> ipos32;
     [[nodiscard]] auto GetViewRect() const noexcept -> irect32;
     [[nodiscard]] auto IsHidden() const noexcept -> bool { return _hidden; }
+    [[nodiscard]] auto IsOccluderFaded() const noexcept -> bool { return _occluderFaded; }
     [[nodiscard]] auto GetSprite() const noexcept -> nptr<const Sprite> { return _pSpr ? *_pSpr : _spr; }
     [[nodiscard]] auto GetHex() const noexcept -> mpos { return _hex; }
     [[nodiscard]] auto GetHexOffset() const noexcept -> ipos32 { return _hexOffset; }
@@ -112,6 +113,8 @@ public:
     void SetColor(ucolor color) noexcept;
     void SetAlpha(nptr<const uint8_t> alpha) noexcept;
     void SetFixedAlpha(uint8_t alpha) noexcept;
+    void SetOccluderAlpha(uint8_t alpha) noexcept;
+    void ClearOccluderAlpha() noexcept;
     void SetLight(nptr<const ucolor> light, nptr<const ucolor> light_right, nptr<const ucolor> light_left) noexcept;
     void SetHidden(bool hidden) noexcept;
     void SetElevation(int16_t elevation) noexcept;
@@ -144,6 +147,9 @@ private:
     // Borrowed HexView-owned frame offset override; absent falls back to the sprite's own offset
     nptr<const optional<ipos32>> _pSprOffsetOverride {};
     nptr<const uint8_t> _alpha {};
+    nptr<const uint8_t> _savedAlpha {};
+    bool _occluderFaded {};
+    uint8_t _occluderAlpha {0xFF};
     nptr<const ucolor> _light {};
     nptr<const ucolor> _lightRight {};
     nptr<const ucolor> _lightLeft {};
@@ -176,6 +182,7 @@ public:
 
     [[nodiscard]] auto HasActiveSprites() const noexcept { return !_activeSprites.empty(); }
     [[nodiscard]] auto GetActiveSprites() const noexcept -> const_span<unique_ptr<MapSprite>> { return _activeSprites; }
+    [[nodiscard]] auto GetActiveSprites() noexcept -> span<unique_ptr<MapSprite>> { return _activeSprites; }
     [[nodiscard]] auto GetDrawOrderRange(DrawOrderType from, DrawOrderType to) const -> pair<uint32_t, uint32_t>;
 
     auto AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_offset, nptr<const ipos32> phex_offset, nptr<const Sprite> spr, nptr<const Sprite*> pspr, nptr<const ipos32> spr_offset, nptr<const ipos32> root_offset, nptr<const uint8_t> alpha, nptr<RenderEffect*> effect, nptr<bool> callback, int8_t sub_layer) noexcept -> ptr<MapSprite>;
