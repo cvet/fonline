@@ -1981,9 +1981,8 @@ TEST_CASE("PathFinding::TraceLine")
     }
 }
 
-// Hidden: what one search costs on a settlement-sized map, per kind of request, with every answer folded into a
-// fingerprint so two builds can be compared on the same requests. The same requests run again on the settlement
-// placed inside a continent-sized map, whose answers must match. A measurement, so it runs only by name
+// Hidden: what one search costs on a settlement-sized map, per kind of request, with answers folded into a fingerprint
+// The same requests repeat on a continent-sized map and must match. A measurement, so it runs only by name
 TEST_CASE("PathFindingCost", "[.]")
 {
     constexpr int16_t SIDE {600};

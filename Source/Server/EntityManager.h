@@ -143,7 +143,7 @@ private:
     void AttachCustomEntityToHolder(ptr<CustomEntity> entity, ptr<Entity> holder);
     auto GetCustomEntityHolder(ptr<CustomEntity> entity) -> refcount_ptr<Entity>;
 
-    auto ReserveRegistrationId(ptr<const ServerEntity> entity) -> ident_t FO_TSA_EXCLUDES(_registryLock);
+    ident_t ReserveRegistrationId(ptr<const ServerEntity> entity) FO_TSA_EXCLUDES(_registryLock);
     void ReserveEntityIdRange() FO_TSA_EXCLUDES(_registryLock);
     void CaptureFreshEntity(ptr<ServerEntity> entity) FO_TSA_REQUIRES(_registryLock);
     void RegisterEntity(ptr<ServerEntity> entity, ident_t fresh_id) FO_TSA_REQUIRES(_registryLock);
@@ -160,22 +160,21 @@ private:
     unordered_map<hstring, unordered_map<ident_t, ptr<CustomEntity>>> _allCustomEntities FO_TSA_GUARDED_BY(_registryLock) {};
     unordered_map<ident_t, refcount_ptr<ServerEntity>> _allEntities FO_TSA_GUARDED_BY(_registryLock) {};
 
-    // Leaf lock: nothing else is acquired while it is held
     mutex _entityIdLock {};
     int64_t _lastEntityId FO_TSA_GUARDED_BY(_entityIdLock) {};
     int64_t _persistedEntityId FO_TSA_GUARDED_BY(_entityIdLock) {};
 
-    const hstring _playerTypeName {};
-    const hstring _locationTypeName {};
-    const hstring _mapTypeName {};
-    const hstring _critterTypeName {};
-    const hstring _itemTypeName {};
-    const hstring _playerCollectionName {};
-    const hstring _locationCollectionName {};
-    const hstring _mapCollectionName {};
-    const hstring _critterCollectionName {};
-    const hstring _itemCollectionName {};
-    const hstring _protoMigrationRuleName {};
+    hstring _playerTypeName {};
+    hstring _locationTypeName {};
+    hstring _mapTypeName {};
+    hstring _critterTypeName {};
+    hstring _itemTypeName {};
+    hstring _playerCollectionName {};
+    hstring _locationCollectionName {};
+    hstring _mapCollectionName {};
+    hstring _critterCollectionName {};
+    hstring _itemCollectionName {};
+    hstring _protoMigrationRuleName {};
 };
 
 FO_END_NAMESPACE
