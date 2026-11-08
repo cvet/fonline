@@ -710,6 +710,12 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-client-item-movetohex-a9ddf84e55"></a>
 - [`symbol-script-method-client-item-movetohex-a9ddf84e55`](../../en/reference/script-api/methods.md#symbol-script-method-client-item-movetohex-a9ddf84e55)
 
+<a id="symbol-script-method-client-item-movetohexvisual-8953d1fd00"></a>
+- [`symbol-script-method-client-item-movetohexvisual-8953d1fd00`](../../en/reference/script-api/methods.md#symbol-script-method-client-item-movetohexvisual-8953d1fd00)
+
+<a id="symbol-script-method-client-item-movetohexvisualforduration-aadec30b73"></a>
+- [`symbol-script-method-client-item-movetohexvisualforduration-aadec30b73`](../../en/reference/script-api/methods.md#symbol-script-method-client-item-movetohexvisualforduration-aadec30b73)
+
 <a id="symbol-script-method-client-item-playanim-091dcf76c4"></a>
 - [`symbol-script-method-client-item-playanim-091dcf76c4`](../../en/reference/script-api/methods.md#symbol-script-method-client-item-playanim-091dcf76c4)
 
@@ -938,6 +944,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 
 <a id="symbol-script-method-client-map-unloadruntimestaticitems-4460dc2897"></a>
 - [`symbol-script-method-client-map-unloadruntimestaticitems-4460dc2897`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-unloadruntimestaticitems-4460dc2897)
+
+<a id="symbol-script-method-client-map-updatecritteroccluders-4a8c9123a8"></a>
+- [`symbol-script-method-client-map-updatecritteroccluders-4a8c9123a8`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-updatecritteroccluders-4a8c9123a8)
 
 <a id="group-method-common-game-ab04446c71"></a>
 - [`group-method-common-game-ab04446c71`](../../en/reference/script-api/methods.md#group-method-common-game-ab04446c71)

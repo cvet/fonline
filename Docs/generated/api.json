@@ -10,8 +10,8 @@
       "selector": "scope:native-codegen",
       "stability": "experimental",
       "since": "2022.1.0.wip",
-      "symbol_count": 2603,
-      "inventory_sha256": "dd92ebb2e80d7834a14a0778abb3a83b1faaabd32a3f31f18fe52b099fb166ee",
+      "symbol_count": 2606,
+      "inventory_sha256": "ac473d9a495cfa964031875d8be58a7da39a969a5a0be0807b5dcad69f6859a4",
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
@@ -72,13 +72,13 @@
     "api_contract_scope_selector": "scope:native-codegen"
   },
   "summary": {
-    "symbol_count": 2603,
+    "symbol_count": 2606,
     "symbols_by_kind": {
       "entity": 7,
       "enum": 60,
       "enum-value": 770,
       "event": 121,
-      "method": 1028,
+      "method": 1031,
       "migration-rule": 27,
       "property": 134,
       "ref-field": 42,
@@ -89,17 +89,17 @@
       "value-type": 22
     },
     "symbols_by_stability": {
-      "experimental": 2602,
+      "experimental": 2605,
       "internal": 1
     },
     "explicit_contract_declaration_count": 4,
-    "explicit_contract_symbol_count": 2603,
+    "explicit_contract_symbol_count": 2606,
     "default_contract_symbol_count": 0,
     "explicit_contracts_by_stability": {
-      "experimental": 2602,
+      "experimental": 2605,
       "internal": 1
     },
-    "described_symbol_count": 2603,
+    "described_symbol_count": 2606,
     "missing_description_count": 0,
     "symbols_without_source_count": 14,
     "metadata_source_file_count": 43,
@@ -48086,7 +48086,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientItemScriptMethods.cpp",
-        "line": 201
+        "line": 219
       },
       "contract": {
         "explicit": true,
@@ -48126,7 +48126,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientItemScriptMethods.cpp",
-        "line": 180
+        "line": 198
       },
       "contract": {
         "explicit": true,
@@ -48166,7 +48166,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientItemScriptMethods.cpp",
-        "line": 164
+        "line": 182
       },
       "contract": {
         "explicit": true,
@@ -48451,6 +48451,116 @@
       ]
     },
     {
+      "id": "script.method.client.Item.MoveToHexVisual",
+      "family_id": "script.method.client.Item.MoveToHexVisual",
+      "kind": "method",
+      "name": "MoveToHexVisual",
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "receiver": "Item",
+      "signature": "void Item.MoveToHexVisual(mpos hex, float32 speed)",
+      "description": "Starts a purely visual item flight along a straight line without changing its hex; does nothing for items outside the map view",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ClientItemScriptMethods.cpp",
+        "line": 164
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "client",
+      "receivers": [
+        "Item"
+      ],
+      "return": {
+        "type": "void",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "hex",
+          "type": "mpos",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "speed",
+          "type": "float32",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.client.Item.MoveToHexVisualForDuration",
+      "family_id": "script.method.client.Item.MoveToHexVisualForDuration",
+      "kind": "method",
+      "name": "MoveToHexVisualForDuration",
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "receiver": "Item",
+      "signature": "void Item.MoveToHexVisualForDuration(mpos hex, int32 duration_ms)",
+      "description": "Starts a purely visual item flight that reaches the target hex after the requested duration",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ClientItemScriptMethods.cpp",
+        "line": 173
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "client",
+      "receivers": [
+        "Item"
+      ],
+      "return": {
+        "type": "void",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "hex",
+          "type": "mpos",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "duration_ms",
+          "type": "int32",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
       "id": "script.method.client.Item.PlayAnim",
       "family_id": "script.method.client.Item.PlayAnim",
       "kind": "method",
@@ -48531,7 +48641,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientItemScriptMethods.cpp",
-        "line": 192
+        "line": 210
       },
       "contract": {
         "explicit": true,
@@ -48715,7 +48825,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 990
+        "line": 1003
       },
       "contract": {
         "explicit": true,
@@ -48777,7 +48887,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 1004
+        "line": 1017
       },
       "contract": {
         "explicit": true,
@@ -48997,7 +49107,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 1041
+        "line": 1054
       },
       "contract": {
         "explicit": true,
@@ -50042,7 +50152,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 1034
+        "line": 1047
       },
       "contract": {
         "explicit": true,
@@ -50303,7 +50413,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 1078
+        "line": 1091
       },
       "contract": {
         "explicit": true,
@@ -50932,7 +51042,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 1065
+        "line": 1078
       },
       "contract": {
         "explicit": true,
@@ -51020,7 +51130,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 925
+        "line": 938
       },
       "contract": {
         "explicit": true,
@@ -51140,7 +51250,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 957
+        "line": 970
       },
       "contract": {
         "explicit": true,
@@ -51188,7 +51298,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 968
+        "line": 981
       },
       "contract": {
         "explicit": true,
@@ -51236,7 +51346,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 918
+        "line": 931
       },
       "contract": {
         "explicit": true,
@@ -51284,7 +51394,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 946
+        "line": 959
       },
       "contract": {
         "explicit": true,
@@ -51332,7 +51442,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 979
+        "line": 992
       },
       "contract": {
         "explicit": true,
@@ -51824,7 +51934,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 1022
+        "line": 1035
       },
       "contract": {
         "explicit": true,
@@ -51996,7 +52106,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientMapScriptMethods.cpp",
-        "line": 1058
+        "line": 1071
       },
       "contract": {
         "explicit": true,
@@ -52390,6 +52500,61 @@
         {
           "name": "runtimeStaticItemIds",
           "type": "ident[]",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.client.Map.UpdateCritterOccluders",
+      "family_id": "script.method.client.Map.UpdateCritterOccluders",
+      "kind": "method",
+      "name": "UpdateCritterOccluders",
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "receiver": "Map",
+      "signature": "void Map.UpdateCritterOccluders(Critter cr, uint8 alpha)",
+      "description": "Fades map sprites that cover the given critter, keeping its silhouette visible",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ClientMapScriptMethods.cpp",
+        "line": 918
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 15
+        },
+        "notes": ""
+      },
+      "declared_target": "client",
+      "receivers": [
+        "Map"
+      ],
+      "return": {
+        "type": "void",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "cr",
+          "type": "Critter",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "alpha",
+          "type": "uint8",
           "nullable": false,
           "by_reference": false,
           "default": null
@@ -97039,7 +97204,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/MapSprite.h",
-        "line": 203
+        "line": 210
       },
       "contract": {
         "explicit": true,
@@ -97073,7 +97238,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/MapSprite.h",
-        "line": 203
+        "line": 210
       },
       "contract": {
         "explicit": true,
@@ -97107,7 +97272,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/MapSprite.h",
-        "line": 203
+        "line": 210
       },
       "contract": {
         "explicit": true,
@@ -97141,7 +97306,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/MapSprite.h",
-        "line": 203
+        "line": 210
       },
       "contract": {
         "explicit": true,
@@ -97175,7 +97340,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/MapSprite.h",
-        "line": 203
+        "line": 210
       },
       "contract": {
         "explicit": true,
@@ -97209,7 +97374,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/MapSprite.h",
-        "line": 203
+        "line": 210
       },
       "contract": {
         "explicit": true,
@@ -97243,7 +97408,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/MapSprite.h",
-        "line": 203
+        "line": 210
       },
       "contract": {
         "explicit": true,
@@ -97277,7 +97442,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/MapSprite.h",
-        "line": 203
+        "line": 210
       },
       "contract": {
         "explicit": true,
@@ -97311,7 +97476,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/MapSprite.h",
-        "line": 203
+        "line": 210
       },
       "contract": {
         "explicit": true,
@@ -97345,7 +97510,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/MapSprite.h",
-        "line": 203
+        "line": 210
       },
       "contract": {
         "explicit": true,
@@ -97379,7 +97544,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/MapSprite.h",
-        "line": 203
+        "line": 210
       },
       "contract": {
         "explicit": true,
@@ -97413,7 +97578,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/MapSprite.h",
-        "line": 203
+        "line": 210
       },
       "contract": {
         "explicit": true,
@@ -97447,7 +97612,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/MapSprite.h",
-        "line": 203
+        "line": 210
       },
       "contract": {
         "explicit": true,
@@ -97481,7 +97646,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/MapSprite.h",
-        "line": 203
+        "line": 210
       },
       "contract": {
         "explicit": true,
@@ -97515,7 +97680,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/MapSprite.h",
-        "line": 203
+        "line": 210
       },
       "contract": {
         "explicit": true,
@@ -97549,7 +97714,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/MapSprite.h",
-        "line": 203
+        "line": 210
       },
       "contract": {
         "explicit": true,
@@ -97583,7 +97748,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/MapSprite.h",
-        "line": 203
+        "line": 210
       },
       "contract": {
         "explicit": true,
@@ -97617,7 +97782,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/MapSprite.h",
-        "line": 203
+        "line": 210
       },
       "contract": {
         "explicit": true,
@@ -97651,7 +97816,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/MapSprite.h",
-        "line": 203
+        "line": 210
       },
       "contract": {
         "explicit": true,
@@ -97960,7 +98125,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/MapSprite.h",
-        "line": 203
+        "line": 210
       },
       "contract": {
         "explicit": true,
@@ -99159,7 +99324,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/MapSprite.h",
-        "line": 203
+        "line": 210
       },
       "contract": {
         "explicit": true,
