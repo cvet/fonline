@@ -16,6 +16,16 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Fixed
 
+- Resolve map pixels exactly on a hex boundary far from the origin like the same pixels near it. `GetHexPosCoord()` rounded the lattice coordinates through `double`, so a boundary pixel millions of pixels out could pick a different neighbour than its translated counterpart; wide-coordinate maps and the `GetHexPosCoord far out on a large map` test exposed it. Lattice coordinates, cube rounding and the inside test now use exact integer arithmetic.
+
+### Migration
+
+- Baseline `2026.1.117-dev` to `2026.1.118-dev`. No project migration is required: no API, property, serialization, network or resource contract changes. A pixel exactly on a hex boundary may resolve to a different adjacent cell than before when floating-point rounding picked it; the result is now the same at every map distance. Rebuild the client and server roles to pick up the fix.
+
+## 2026.1.117-dev - 2026-11-08
+
+### Fixed
+
 - Keep the release-safety documentation test aligned with the zero-based settings initialization. `ResolveSettingValue()` receives the baking mode as a parameter, so its target-directive guard reads `!baking_mode`; the test still expected the former member expression and failed the documentation job on every commit after `8b1a9d5547`. No Engine behavior changes.
 
 ### Migration

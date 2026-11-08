@@ -720,27 +720,30 @@ auto GeometryHelper::GetHexPosCoord(ipos32 pos, nptr<ipos32> hex_offset) -> ipos
     constexpr int32_t half_w {w / 2};
     constexpr int32_t h {GameSettings::MAP_HEX_LINE_HEIGHT};
 
-    // Positions far out on a large map reach millions of pixels, so lattice coordinates are found in double
+    // Lattice coordinates stay exact in integers: rounding their double form loses boundary ties far out
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         // Hex centers form a lattice with v1 = (half_w, h) along ry and v2 = (w, 0) along -rx, so a
         // pixel is a * v1 + b * v2 with a = py / h and b = (px - a * half_w) / w
-        float64_t fh {numeric_cast<float64_t>(h)};
-        float64_t fw {numeric_cast<float64_t>(w)};
-        float64_t fhw {numeric_cast<float64_t>(half_w)};
+        int64_t px {numeric_cast<int64_t>(pos.x)};
+        int64_t py {numeric_cast<int64_t>(pos.y)};
+        int64_t h64 {numeric_cast<int64_t>(h)};
+        int64_t w64 {numeric_cast<int64_t>(w)};
+        int64_t half_w64 {numeric_cast<int64_t>(half_w)};
+        int64_t denominator {h64 * w64};
 
-        float64_t fa {numeric_cast<float64_t>(pos.y) / fh};
-        float64_t fb {(numeric_cast<float64_t>(pos.x) - fa * fhw) / fw};
-        float64_t fc {-(fa + fb)};
+        // Round halves away from zero like iround
+        auto round_div {[](int64_t value, int64_t divisor) -> int64_t { return value >= 0 ? (value + divisor / 2) / divisor : (value - divisor / 2) / divisor; }};
 
-        // Cube coordinate rounding
-        int32_t ra {iround<int32_t>(fa)};
-        int32_t rb {iround<int32_t>(fb)};
-        int32_t rc {iround<int32_t>(fc)};
+        int64_t ra {round_div(py, h64)};
+        int64_t b_numerator {px * h64 - py * half_w64};
+        int64_t rb {round_div(b_numerator, denominator)};
+        int64_t c_numerator {-(py * w64 + b_numerator)};
+        int64_t rc {round_div(c_numerator, denominator)};
 
         if (ra + rb + rc != 0) {
-            float64_t da {std::abs(numeric_cast<float64_t>(ra) - fa)};
-            float64_t db {std::abs(numeric_cast<float64_t>(rb) - fb)};
-            float64_t dc {std::abs(numeric_cast<float64_t>(rc) - fc)};
+            int64_t da {std::abs(py * w64 - ra * denominator)};
+            int64_t db {std::abs(b_numerator - rb * denominator)};
+            int64_t dc {std::abs(c_numerator - rc * denominator)};
 
             if (da > db && da > dc) {
                 ra = -(rb + rc);
@@ -754,35 +757,29 @@ auto GeometryHelper::GetHexPosCoord(ipos32 pos, nptr<ipos32> hex_offset) -> ipos
         }
 
         // Hex center from lattice coordinates
-        int32_t cx {ra * half_w + rb * w};
-        int32_t cy {ra * h};
-        int32_t dx {pos.x - cx};
-        int32_t dy {pos.y - cy};
+        int64_t dx {px - (ra * half_w64 + rb * w64)};
+        int64_t dy {py - ra * h64};
 
         // Inside test by the three symmetric edge constraints of a pointy-top hex: |dx| <= half_w and
         // |dx * hq ± dy * half_w| <= limit
-        constexpr int32_t hq {GameSettings::MAP_HEX_HEIGHT / 4};
-        constexpr int32_t limit {2 * half_w * hq};
+        constexpr int64_t hq {GameSettings::MAP_HEX_HEIGHT / 4};
+        constexpr int64_t limit {2 * half_w * hq};
 
-        auto is_inside_hex {[](int32_t lx, int32_t ly) -> bool { return std::abs(lx) <= half_w && std::abs(lx * hq - ly * half_w) <= limit && std::abs(lx * hq + ly * half_w) <= limit; }};
+        auto is_inside_hex {[](int64_t lx, int64_t ly) -> bool { return std::abs(lx) <= half_w && std::abs(lx * hq - ly * half_w) <= limit && std::abs(lx * hq + ly * half_w) <= limit; }};
 
         if (!is_inside_hex(dx, dy)) {
             // Check 6 neighbors in lattice space: (±1,0), (0,±1), (+1,-1), (-1,+1)
             static constexpr ipos32 neighbor_offsets[] {{1, 0}, {-1, 0}, {0, 1}, {0, -1}, {1, -1}, {-1, 1}};
 
             for (const auto& off : neighbor_offsets) {
-                int32_t na {ra + off.x};
-                int32_t nb {rb + off.y};
-                int32_t ncx {na * half_w + nb * w};
-                int32_t ncy {na * h};
-                int32_t ndx {pos.x - ncx};
-                int32_t ndy {pos.y - ncy};
+                int64_t na {ra + off.x};
+                int64_t nb {rb + off.y};
+                int64_t ndx {px - (na * half_w64 + nb * w64)};
+                int64_t ndy {py - na * h64};
 
                 if (is_inside_hex(ndx, ndy)) {
                     ra = na;
                     rb = nb;
-                    cx = ncx;
-                    cy = ncy;
                     dx = ndx;
                     dy = ndy;
                     break;
@@ -792,12 +789,12 @@ auto GeometryHelper::GetHexPosCoord(ipos32 pos, nptr<ipos32> hex_offset) -> ipos
 
         // Convert lattice (a, b) back to engine hex coordinates (rx, ry)
         // From: a = ry + floor(rx/2), b = -rx
-        int32_t rx {-rb};
-        int32_t ry {ra - (rx < 0 ? rx - 1 : rx) / 2};
+        int32_t rx {numeric_cast<int32_t>(-rb)};
+        int32_t ry {numeric_cast<int32_t>(ra - (rx < 0 ? rx - 1 : rx) / 2)};
         ipos32 raw_hex {rx, ry};
 
         if (hex_offset) {
-            *hex_offset = {dx, dy};
+            *hex_offset = {numeric_cast<int32_t>(dx), numeric_cast<int32_t>(dy)};
         }
 
         return raw_hex;
