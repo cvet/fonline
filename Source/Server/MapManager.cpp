@@ -883,6 +883,10 @@ void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, op
 {
     FO_TRACE_ZONE(Map);
 
+    auto cr_holder = cr.hold_ref();
+    auto requested_map_holder = map.try_hold_ref();
+    ignore_unused(cr_holder, requested_map_holder);
+
     EnsureEntitySynced(cr);
     ValidateEntityAccess(map);
 
@@ -947,10 +951,38 @@ void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, op
                 }
             }
 
+            mpos before_dir_hex = cr->GetHex();
+            uint32_t before_dir_uid = cr->GetMovingUid();
             cr->ChangeDir(dir);
-            map->RemoveCritterFromField(cr);
-            cr->SetHex(start_hex);
-            map->AddCritterToField(cr);
+
+            if (cr->IsDestroyed() || map->IsDestroyed()) {
+                return;
+            }
+            if (!IsEntityAccessValid(cr) || !IsEntityAccessValid(map)) {
+                return;
+            }
+
+            auto after_dir_parent = cr->GetParent<Map>();
+
+            if (cr->GetMapId() != map->GetId() || after_dir_parent != prev_map_ref || cr->GetHex() != before_dir_hex || cr->GetMovingUid() != before_dir_uid || cr->GetMultihex() != multihex) {
+                return;
+            }
+
+            map->MoveCritterOnField(cr, start_hex);
+
+            if (cr->IsDestroyed() || map->IsDestroyed()) {
+                return;
+            }
+            if (!IsEntityAccessValid(cr) || !IsEntityAccessValid(map)) {
+                return;
+            }
+
+            auto after_move_parent = cr->GetParent<Map>();
+
+            if (cr->GetMapId() != map->GetId() || after_move_parent != prev_map_ref || cr->GetHex() != start_hex || cr->GetMovingUid() != before_dir_uid || cr->GetMultihex() != multihex) {
+                return;
+            }
+
             cr->Send_Teleport(cr, start_hex);
             cr->Broadcast_Teleport(start_hex);
             cr->ClearVisibleEnitites();

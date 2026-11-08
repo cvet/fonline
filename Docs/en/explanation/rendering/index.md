@@ -682,6 +682,23 @@ Design and important behaviors:
 - **Physical device selection.** The backend prefers a discrete GPU that exposes a graphics+present queue family for the surface and the swapchain extension, instead of blindly taking the first enumerated device.
 - **Validation.** When `Render.RenderDebug` is set (or in a debug build) and the `VK_LAYER_KHRONOS_validation` layer is available, the backend enables it and routes layer messages to the log as `[VkLayer/…]` through a `VK_EXT_debug_utils` messenger. Use this for backend validation; a correct change should run with zero validation errors.
 
+Image allocation publishes its output handles only after successful creation,
+memory allocation and binding. A failed API call does not transfer ownership of
+its output values.
+Texture construction guards confirmed views, images and memory; a recoverable
+failure after recording starts resets the nonpending staging command buffer
+before releasing resources referenced by its commands. Successful construction
+also resets that buffer before publishing the sampling layout.
+
+The synchronous staging helper is shared by texture construction, blocking
+readback, immediate texture uploads and static-buffer copies. Submit host/device
+OOM remains recoverable under Vulkan's unchanged-object guarantee. Other submit
+errors, any failed wait after successful submission, and a failed recovery reset
+write a synchronous stage/result diagnostic and call native
+[`exit_app_immediately`](../../reference/native/essentials.md). They do not unwind
+into GPU resource cleanup or application teardown. This policy belongs to the
+synchronous helper; frame submission and deferred destruction have separate owners.
+
 Vulkan changes should be validated on a machine with a working Vulkan runtime
 and, for validation output, the Khronos validation layer. Run a visible client
 with `Render.ForceVulkan=True Render.RenderDebug=True` and confirm the log has

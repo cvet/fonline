@@ -22,6 +22,16 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Fixed
 
+- Publish Vulkan image handles only after successful creation, allocation and
+  binding, and reset the nonpending staging command buffer before releasing
+  resources recorded by a failed texture construction. Recoverable host/device
+  OOM submit failures still propagate; other submit failures and any failed wait
+  terminate through the immediate native exit instead of unwinding into GPU or
+  application teardown.
+- Commit a server movement step's hex and map-field membership together. A
+  property setter or re-entrant event that destroys or relocates the critter, or
+  an authority callback that rejects the step, now aborts it without losing the
+  old field membership or leaving the hex inconsistent with the map.
 - Prepare visible direct-scene critters before `OnRenderMap_BeforeSprites` and
   reuse their pose across repeated draws. Independent bone followers can use
   that event; particle projection refresh does not advance simulation time.

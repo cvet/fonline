@@ -555,6 +555,8 @@ Server-side movement helpers include:
 - `CritterMovingJob()` as the self-rescheduling worker-pool body for active movement;
 - `ProcessCritterMovingBySteps()`.
 
+A movement step commits the critter's hex and its map-field membership together. Property setters and re-entrant events run while the old hex and field remain consistent; only after they return does the commit relocate the field entry and publish the new hex. A setter that destroys or relocates the critter, or an authority callback that rejects the step, aborts the commit without losing the old membership. The caller then revalidates the critter and plan before continuing, so callbacks keep their existing destroy/relocate rights without turning a step into a field inconsistency.
+
 `Source/Tests/Test_ServerEngine.cpp` includes overdue movement tests that verify route completion, condition-independent movement processing, and blocked-hex stopping behavior. Coordinate/pathfinding mechanics remain documented in [Maps, Movement, and Geometry](../maps-and-movement.md).
 
 ## Client update backend

@@ -5,7 +5,7 @@ locale: ru
 document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"a0a827f895fb6b639456f99b467654a0a946d9a4640b83093a2e19040a2e740c"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"fbb94a1d8b7948eaf7031d58459ee45cc2f9d6fd0bd49c1c4396b58f85086f2a"} -->
 # Frontend и рендеринг
 
 ## Отображение ограниченного обзора карты
@@ -717,6 +717,24 @@ entry points через X-macro table. Поэтому binary не имеет loa
 - **Point primitives.** Из-за ограничений SPIRV-Cross `POINT_LIST` отображается в `TRIANGLE_LIST`; текущий content point rendering не использует.
 - **Physical device.** Предпочитается discrete GPU с graphics+present queue family и swapchain extension.
 - **Validation.** При `Render.RenderDebug` или debug build доступный `VK_LAYER_KHRONOS_validation` пишет сообщения `[VkLayer/...]` через `VK_EXT_debug_utils`.
+
+Выделение изображения публикует выходные handles только после успешных creation,
+memory allocation и binding. Отказ API не передаёт владение значениями его
+outputs. Конструктор texture защищает
+подтверждённые views, images и memory; при восстанавливаемом отказе после начала
+recording сбрасывает staging command buffer вне состояния pending до
+освобождения записанных в нём ресурсов. Успешное создание тоже сбрасывает этот
+buffer перед публикацией sampling layout.
+
+Синхронный staging helper используется конструктором texture, blocking readback,
+immediate texture uploads и static-buffer copies. Submit host/device OOM остаётся
+восстанавливаемым по гарантии Vulkan о неизменности объектов. Другие submit errors,
+любой отказ wait после успешного submit и отказ recovery reset синхронно выводят
+stage/result и вызывают native
+[`exit_app_immediately`](../../reference/native/essentials.md). Раскрутка стека
+с очисткой GPU-ресурсов или остановкой приложения не выполняется. Этот контракт
+принадлежит синхронному helper; frame submission и deferred destruction имеют
+отдельных владельцев.
 
 Проверяйте Vulkan на машине с рабочим runtime и, для validation output, Khronos
 validation layer. Запускайте visible client с

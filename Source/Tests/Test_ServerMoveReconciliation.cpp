@@ -287,7 +287,7 @@ namespace
         return protos_data;
     }
 
-    auto MakeResources() -> FileSystem
+    auto MakeResources(bool with_commit_trigger = false) -> FileSystem
     {
         vector<uint8_t> metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
@@ -311,6 +311,11 @@ namespace
         runtime_source->AddFile("MoveLocation.fopro-bin-server", BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "TestLocation"));
         runtime_source->AddFile("TestMap.fopro-bin-server", MakeMapProtoBlob(proto_engine, map_type, "TestMap", msize {200, 200}));
         runtime_source->AddFile("TestMap.fomap-bin-server", MakeEmptyMapBlob());
+
+        if (with_commit_trigger) {
+            hstring item_type = proto_engine.Hashes.to_hashed_string("Item");
+            runtime_source->AddFile("CommitTrigger.fopro-bin-server", BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "CommitTrigger"));
+        }
 
         FileSystem resources;
         resources.AddCustomSource(std::move(runtime_source));
@@ -1768,6 +1773,264 @@ TEST_CASE("ServerMovementSessionIdentity")
     actor->UnmarkIsForPlayer();
     server->CrMngr.DestroyCritter(actor);
     server->MapMngr.DestroyLocation(loc);
+}
+
+struct MovementAuthorityCommitPilotControl
+{
+    ident_t TargetId {};
+    ident_t TriggerId {};
+    std::atomic_bool Armed {};
+    std::atomic_bool ArmedOnce {};
+    std::atomic_uint32_t AfterCommitCalls {};
+    std::atomic_uint32_t Mutations {};
+    std::atomic_uint32_t WalkIn {};
+    std::atomic_uint32_t WalkOut {};
+    std::atomic_uint32_t OriginalUid {};
+    std::atomic_uint32_t MutatedUid {};
+    std::atomic_uint32_t Reports {};
+    mpos CommittedHex {};
+};
+
+TEST_CASE("ServerMovementAuthorityAfterCommitPilot")
+{
+    int32_t route = GENERATE(0, 1);
+    int32_t mutation = GENERATE(0, 1, 2, 3);
+    CAPTURE(route, mutation);
+    auto settings = MakeSettings();
+
+    if (route == 1) {
+        BakerTests::OverrideSetting(settings.Server.CritterMovingPeriodMs, int32_t {30000});
+    }
+
+    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources(true));
+    auto shutdown = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+    REQUIRE(WaitForStart(server).empty());
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    bool locked = true;
+    auto unlock = scope_exit([&]() noexcept {
+        if (locked) {
+            safe_call([&server] { server->Unlock(); });
+        }
+    });
+
+    auto net = safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings);
+    auto player = CreateLoggedPlayer(server, net, "CommitAuthority").hold_ref();
+    auto location = server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("TestLocation"), vector<hstring> {server->Hashes.to_hashed_string("TestMap")}).hold_ref();
+    auto map = location->GetMapByIndex(0).try_hold_ref();
+    REQUIRE(map);
+    auto actor = server->CreateCritter(server->Hashes.to_hashed_string("TestCritter"), true).hold_ref();
+    ident_t actor_id = actor->GetId();
+    ident_t map_id = map->GetId();
+    mpos start {20, 20};
+    mpos first_hex = start;
+    mpos relocated_hex {40, 40};
+    REQUIRE(GeometryHelper::MoveHexByDir(first_hex, hdir::East, map->GetSize()));
+    REQUIRE(first_hex != start);
+    REQUIRE(first_hex != relocated_hex);
+    server->MapMngr.TransferToMap(actor, map, start, mdir {}, std::nullopt);
+    server->SwitchPlayerCritter(player, actor);
+    auto trigger = server->ItemMngr.CreateItemOnHex(map, first_hex, server->Hashes.to_hashed_string("CommitTrigger"), nullptr).hold_ref();
+    ident_t trigger_id = trigger->GetId();
+    trigger->SetNoBlock(true);
+    trigger->SetShootThru(true);
+    trigger->SetIsTrigger(true);
+    auto cover = [&] {
+        small_vector<ptr<ServerEntity>, 5> entities {player, location, map, actor, trigger};
+        server->RequireCurrentSyncContext()->SyncEntities(entities);
+    };
+    cover();
+    REQUIRE(map->IsHexMovable(first_hex));
+    REQUIRE(map->IsTriggerItemOnHex(first_hex));
+    REQUIRE(map->GetTriggerItemsOnHex(first_hex).size() == 1);
+    REQUIRE(player->GetControlledCritter() == actor.get());
+    auto control = safe_alloc::make_shared<MovementAuthorityCommitPilotControl>();
+    control->TargetId = actor_id;
+    control->TriggerId = trigger_id;
+    auto previous_reporter = exceptions::get_callback();
+    exceptions::set_callback([control, previous_reporter](string_view message, const stack_trace::catched_data& trace, bool fatal) mutable {
+        control->Reports.fetch_add(1);
+
+        if (previous_reporter) {
+            previous_reporter(message, trace, fatal);
+        }
+    });
+    auto restore_reporter = scope_exit([previous = std::move(previous_reporter)]() mutable noexcept { exceptions::set_callback(std::move(previous)); });
+    bool subscribed = false;
+    uintptr_t subscription_id = reinterpret_cast<uintptr_t>(&subscribed);
+    auto cleanup_fixture = [&] {
+        control->Armed.store(false);
+
+        if (!locked) {
+            locked = server->Lock(timespan {std::chrono::seconds {10}});
+            FO_VERIFY_AND_THROW(locked, "Authority commit pilot could not acquire cleanup boundary");
+        }
+
+        cover();
+
+        if (subscribed) {
+            server->OnPlayerMovementAuthority.Unsubscribe(subscription_id);
+            subscribed = false;
+        }
+        if (!actor->IsDestroyed()) {
+            if (actor->IsMoving()) {
+                server->StopCritterMoving(actor);
+            }
+
+            server->SwitchPlayerCritter(player, nullptr);
+            actor->UnmarkIsForPlayer();
+            server->CrMngr.DestroyCritter(actor);
+        }
+        if (!location->IsDestroyed()) {
+            server->MapMngr.DestroyLocation(location);
+        }
+    };
+    auto cleanup = scope_exit([&]() noexcept { safe_call(cleanup_fixture); });
+
+    Entity::EventCallbackData walk;
+    walk.SubscriptionPtr = subscription_id;
+    walk.Callback = [control](FuncCallData& call) mutable {
+        FO_VERIFY_AND_THROW(call.ArgsData.size() == 4, "Authority commit pilot item event arity mismatch");
+        ptr<void> receiver_data = call.ArgsData[0];
+        auto receiver = make_nptr(*cast_from_void<Entity**>(receiver_data.get())).dyn_cast<Item>();
+        ptr<void> target_data = call.ArgsData[1];
+        auto target = make_nptr(*cast_from_void<Entity**>(target_data.get())).dyn_cast<Critter>();
+        FO_VERIFY_AND_THROW(receiver && target && receiver->GetId() == control->TriggerId && target->GetId() == control->TargetId, "Authority commit pilot item event identity mismatch");
+        ptr<void> entered_data = call.ArgsData[2];
+        bool entered = *cast_from_void<bool*>(entered_data.get());
+
+        if (entered) {
+            control->WalkIn.fetch_add(1);
+        }
+        else {
+            control->WalkOut.fetch_add(1);
+        }
+
+        return Entity::EventResult::ContinueChain;
+    };
+    trigger->OnCritterWalk.Subscribe(std::move(walk));
+    actor->GetPropertyHex()->AddPostSetter([control](nptr<Entity> entity, ptr<const Property>) mutable {
+        auto target = entity.dyn_cast<Critter>();
+
+        if (!target || target->GetId() != control->TargetId || control->ArmedOnce.exchange(true)) {
+            return;
+        }
+
+        auto owner = target->GetParent<Map>();
+        FO_VERIFY_AND_THROW(owner && owner->IsCritterOnHex(target->GetHex(), target), "Authority commit pilot armed before consistent raw publication");
+        control->CommittedHex = target->GetHex();
+        control->OriginalUid.store(target->GetMovingUid());
+        control->Armed.store(true, std::memory_order_release);
+    });
+
+    Entity::EventCallbackData authority;
+    authority.SubscriptionPtr = subscription_id;
+    authority.Callback = [&, control](FuncCallData& call) mutable {
+        FO_VERIFY_AND_THROW(call.ArgsData.size() == 3, "Authority commit pilot global event arity mismatch");
+        ptr<void> sender_data = call.ArgsData[0];
+        auto sender = make_nptr(*cast_from_void<Entity**>(sender_data.get())).dyn_cast<Player>();
+        ptr<void> target_data = call.ArgsData[1];
+        ptr<void> allowed_data = call.ArgsData[2];
+        auto target = make_nptr(*cast_from_void<Entity**>(target_data.get())).dyn_cast<Critter>();
+
+        if (!target || target->GetId() != control->TargetId || !control->Armed.exchange(false, std::memory_order_acq_rel)) {
+            return Entity::EventResult::ContinueChain;
+        }
+
+        FO_VERIFY_AND_THROW(sender == player, "Authority commit pilot global event sender mismatch");
+        FO_VERIFY_AND_THROW(IsEntityAccessValid(player) && IsEntityAccessValid(map) && IsEntityAccessValid(target), "Authority commit pilot callback lacks ordinary caller cover");
+        FO_VERIFY_AND_THROW(target->GetHex() == control->CommittedHex && map->IsCritterOnHex(control->CommittedHex, target), "Authority commit pilot callback entered inconsistent position");
+        control->AfterCommitCalls.fetch_add(1);
+
+        if (mutation == 1 || mutation == 2) {
+            control->Mutations.fetch_add(1);
+            map->MoveCritterOnField(target, relocated_hex);
+            control->MutatedUid.store(target->GetMovingUid());
+
+            if (mutation == 2) {
+                *cast_from_void<bool*>(allowed_data.get()) = false;
+            }
+        }
+        else if (mutation == 3) {
+            control->Mutations.fetch_add(1);
+            auto replacement = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {1}, vector<mdir>(12, mdir {hdir::East}), vector<uint16_t> {12}, server->GameTime.GetFrameTime(), timespan {}, target->GetHex(), ipos16 {}, ipos16 {});
+            server->StartCritterMoving(target, replacement, player, 19);
+            control->MutatedUid.store(target->GetMovingUid());
+        }
+
+        return Entity::EventResult::ContinueChain;
+    };
+    server->OnPlayerMovementAuthority.Subscribe(std::move(authority));
+    subscribed = true;
+
+    if (route == 0) {
+        SendCritterMove(net, server, map_id, actor_id, uint16_t {300}, start, vector<mdir> {hdir::East}, nanotime::now().milliseconds());
+    }
+    else {
+        server->StartCritterMoving(actor, uint16_t {1}, vector<mdir>(3, mdir {hdir::East}), vector<uint16_t> {3}, ipos16 {}, player);
+        SendStopCritterMove(net, server, map_id, actor_id, first_hex, ipos16 {}, mdir {});
+    }
+
+    auto wait = [&](const function<bool()>& condition) {
+        return WaitForUnlockedServerCondition(server, locked, [&] {
+            cover();
+            return condition();
+        }, std::chrono::milliseconds {3000});
+    };
+    REQUIRE(wait([&] {
+        if (control->AfterCommitCalls.load() != 1) {
+            return false;
+        }
+
+        return mutation == 3 ? actor->IsMoving() && actor->GetMovingUid() == control->MutatedUid.load() : !actor->IsMoving();
+    }));
+
+    size_t ping_before = net->CountReceivedMovement(NetMessage::Ping, ident_t {});
+    NetOutBuffer ping {numeric_cast<size_t>(server->Settings->Network.NetBufferSize)};
+    ping.StartMsg(NetMessage::Ping);
+    ping.Write(false);
+    ping.Write(nanotime::now().milliseconds());
+    ping.EndMsg();
+    net->Receive(ping.GetData());
+    REQUIRE(wait([&] { return net->CountReceivedMovement(NetMessage::Ping, ident_t {}) > ping_before; }));
+    REQUIRE(control->ArmedOnce.load());
+    REQUIRE(control->CommittedHex == first_hex);
+    REQUIRE(control->AfterCommitCalls.load() == 1);
+    REQUIRE(control->Mutations.load() == (mutation == 0 ? uint32_t {0} : uint32_t {1}));
+    REQUIRE(control->WalkIn.load() == (mutation == 0 ? uint32_t {1} : uint32_t {0}));
+    REQUIRE(control->WalkOut.load() == 0);
+    REQUIRE(control->Reports.load() == 0);
+    REQUIRE_FALSE(player->GetConnection()->IsHardDisconnected());
+    REQUIRE_FALSE(actor->IsDestroyed());
+    REQUIRE(map->GetCritter(actor_id) == actor);
+    REQUIRE(actor->GetParent<Map>() == map);
+    REQUIRE(actor->GetMapId() == map_id);
+    REQUIRE(map->IsCritterOnHex(actor->GetHex(), actor));
+    REQUIRE_FALSE(map->IsCritterOnHex(start, actor));
+
+    if (mutation == 1 || mutation == 2) {
+        REQUIRE(actor->GetHex() == relocated_hex);
+        REQUIRE_FALSE(map->IsCritterOnHex(first_hex, actor));
+        REQUIRE(control->MutatedUid.load() == control->OriginalUid.load());
+    }
+    else {
+        REQUIRE(actor->GetHex() == first_hex);
+    }
+    if (mutation == 3) {
+        REQUIRE(control->MutatedUid.load() != control->OriginalUid.load());
+        REQUIRE(actor->IsMoving());
+        REQUIRE(actor->GetMovingUid() == control->MutatedUid.load());
+        REQUIRE(actor->IsPlayerMovementOwner(player));
+    }
+
+    logging::write("MOVEMENT_CALLER_AUTHORITY_RESULT route={} mutation={} after_commit={} mutations={} trigger_in={} trigger_out={} original_uid={} mutation_uid={} actual_uid={} hex={},{}",
+        route, mutation, control->AfterCommitCalls.load(), control->Mutations.load(), control->WalkIn.load(), control->WalkOut.load(), control->OriginalUid.load(), control->MutatedUid.load(), actor->GetMovingUid(), actor->GetHex().x, actor->GetHex().y);
+    cleanup_fixture();
+    cleanup.release();
+    REQUIRE_FALSE(server->EntityMngr.GetCritter(actor_id));
+    REQUIRE_FALSE(server->EntityMngr.GetMap(map_id));
+    REQUIRE_FALSE(server->EntityMngr.GetItem(trigger_id));
+    REQUIRE(control->Reports.load() == 0);
+    logging::write("MOVEMENT_CALLER_AUTHORITY_CLEANUP route={} mutation={} subscribed=false actor_absent=true map_absent=true trigger_absent=true", route, mutation);
 }
 
 FO_END_NAMESPACE

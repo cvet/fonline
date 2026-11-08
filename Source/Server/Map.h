@@ -141,6 +141,7 @@ public:
     void SetHexManualBlock(mpos hex, bool enable, bool full);
     void AddCritterToField(ptr<Critter> cr);
     void RemoveCritterFromField(ptr<Critter> cr);
+    void MoveCritterOnField(ptr<Critter> cr, mpos requested_hex, const function<bool()>& validate_context = {});
     void RecacheHexFlags(mpos hex);
     void VerifyTrigger(ptr<Critter> cr, mpos from_hex, mpos to_hex, mdir dir);
     auto CheckGagItems(mpos hex, int32_t radius, const function<bool(ptr<const Item>)>& gag_callback) const -> bool;

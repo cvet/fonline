@@ -656,6 +656,7 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_WorkerPool.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_EntitySync.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerMoveReconciliation.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerMovementCommitPilot.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_WorkThread.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptAlignment.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptAttributes.cpp"

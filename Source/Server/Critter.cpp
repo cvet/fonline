@@ -581,7 +581,15 @@ void Critter::MoveAttachedCritters()
     auto new_hex = GetHex();
     auto new_hex_offset = GetHexOffset();
 
-    auto attached = GetAttachedCritters();
+    auto this_ref_holder = refcount_ptr<Critter>::from_addref(this);
+    auto attached = copy_hold_ref(GetAttachedCritters());
+    auto validate_attached = [this, map, new_hex](ptr<const Critter> cr) {
+        if (IsDestroyed() || map->IsDestroyed() || cr->IsDestroyed()) {
+            return false;
+        }
+
+        return GetMapId() == map->GetId() && GetHex() == new_hex && cr->GetMapId() == map->GetId() && cr->GetIsAttached() && cr->GetAttachMaster() == GetId();
+    };
 
     for (ptr<Critter> cr : attached) {
         FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
@@ -591,19 +599,25 @@ void Critter::MoveAttachedCritters()
 
         cr->SetHexOffset(new_hex_offset);
 
+        if (!validate_attached(cr)) {
+            return;
+        }
+
         auto hex = cr->GetHex();
 
         if (hex != new_hex) {
-            map->RemoveCritterFromField(cr);
-            cr->SetHex(new_hex);
-            map->AddCritterToField(cr);
+            function<bool()> validate_commit = [&] { return validate_attached(cr); };
+            map->MoveCritterOnField(cr, new_hex, validate_commit);
+
+            if (!validate_attached(cr) || cr->GetHex() != new_hex) {
+                return;
+            }
 
             moved_critters.emplace_back(cr.hold_ref(), hex);
         }
     }
 
     // Callbacks time
-    auto this_ref_holder = refcount_ptr<Critter>::from_addref(this);
     auto map_ref_holder = map;
     auto dir = GetDir();
 

@@ -5183,26 +5183,32 @@ void ServerEngine::ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map, co
     FO_VERIFY_AND_THROW(moving, "Missing active movement state");
     moving->ValidateRuntimeState();
 
-    auto validate_moving = [this, cr, expected_uid = cr->GetMovingUid(), expected_map_id = cr->GetMapId(), map, &validate_authority](mpos expected_hex) -> bool {
+    auto validate_moving = [this, cr, expected_uid = cr->GetMovingUid(), expected_map_id = cr->GetMapId(), map, &validate_authority](mpos expected_hex) mutable -> bool {
         auto validate_moving_inner = [&]() -> bool {
-            if (cr->IsDestroyed() || map->IsDestroyed()) {
+            if (cr->IsDestroyed() || cr->IsDestroying() || map->IsDestroyed() || map->IsDestroying()) {
                 return false;
             }
-            if (cr->GetMovingUid() != expected_uid) {
+            if (!IsEntityAccessValid(cr) || !IsEntityAccessValid(map)) {
                 return false;
             }
-            if (cr->GetMapId() != expected_map_id) {
-                return false;
-            }
-            if (cr->GetHex() != expected_hex) {
+            if (cr->GetMovingUid() != expected_uid || cr->GetMapId() != expected_map_id || cr->GetHex() != expected_hex) {
                 return false;
             }
 
-            return !validate_authority || validate_authority();
+            auto parent = cr->GetParent<Map>();
+            return parent == map && map->GetCritter(cr->GetId()) == cr;
         };
 
-        if (!validate_moving_inner()) {
-            if (!cr->IsDestroyed() && cr->GetMovingUid() == expected_uid) {
+        bool moving_valid = validate_moving_inner();
+
+        if (moving_valid && validate_authority) {
+            bool authority_valid = validate_authority();
+            bool moving_valid_after = validate_moving_inner();
+            moving_valid = authority_valid && moving_valid_after;
+        }
+
+        if (!moving_valid) {
+            if (!cr->IsDestroyed() && !cr->IsDestroying() && IsEntityAccessValid(cr) && cr->GetMovingUid() == expected_uid) {
                 StopCritterMoving(cr, MovingState::Stopped);
             }
 
@@ -5241,11 +5247,18 @@ void ServerEngine::ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map, co
             auto check_hex = [map](mpos h) -> HexBlockResult { return map->IsHexMovable(h) ? HexBlockResult::Passable : HexBlockResult::Blocked; };
 
             if (PathFinding::CheckHexWithMultihex(target_hex, dir, multihex, map->GetSize(), check_hex) != HexBlockResult::Blocked) {
-                map->RemoveCritterFromField(cr);
-                cr->SetHex(target_hex);
-                map->AddCritterToField(cr);
+                function<bool()> validate_commit = [&, expected_uid = cr->GetMovingUid()] {
+                    if (cr->IsDestroyed() || map->IsDestroyed() || cr->GetMovingUid() != expected_uid) {
+                        return false;
+                    }
 
-                FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
+                    return !validate_authority || validate_authority();
+                };
+                map->MoveCritterOnField(cr, target_hex, validate_commit);
+
+                if (!validate_moving(target_hex)) {
+                    return;
+                }
 
                 if (Settings->Network.MoveSyncTrace) {
                     TraceMoveSync("step", strex("cr={} uid={} hex={},{} elapsed_ms={} runtime_ms={}", cr->GetId(), cr->GetMovingUid(), target_hex.x, target_hex.y, iround<int32_t>(moving->GetElapsedTime().to_ms<float64_t>()), iround<int32_t>(moving->GetRuntimeElapsedTime(current_time).to_ms<float64_t>())).strv());
@@ -5529,17 +5542,28 @@ auto ServerEngine::MoveCritterToStopHex(ptr<Critter> cr, ptr<Map> map, mpos targ
     ident_t expected_cr_id = cr->GetId();
     uint32_t expected_moving_uid = cr->GetMovingUid();
 
-    auto validate_moved_critter = [cr, map, expected_map_id, expected_cr_id, expected_moving_uid, target_hex, &validate_authority] {
-        if (cr->IsDestroyed() || map->IsDestroyed()) {
+    auto is_moved_current = [cr, map, expected_map_id, expected_cr_id, expected_moving_uid, target_hex]() mutable {
+        if (cr->IsDestroyed() || cr->IsDestroying() || map->IsDestroyed() || map->IsDestroying()) {
             return false;
         }
-        if (cr->GetId() != expected_cr_id || cr->GetMapId() != expected_map_id || cr->GetMovingUid() != expected_moving_uid) {
+        if (!IsEntityAccessValid(cr) || !IsEntityAccessValid(map)) {
             return false;
         }
-        if (cr->GetHex() != target_hex) {
+        if (cr->GetId() != expected_cr_id || cr->GetMapId() != expected_map_id || cr->GetMovingUid() != expected_moving_uid || cr->GetHex() != target_hex) {
             return false;
         }
-        return validate_authority();
+
+        auto parent = cr->GetParent<Map>();
+        return parent == map && map->GetCritter(expected_cr_id) == cr;
+    };
+    auto validate_moved_critter = [&] {
+        if (!is_moved_current()) {
+            return false;
+        }
+
+        bool authority_valid = validate_authority();
+        bool moved_current_after = is_moved_current();
+        return authority_valid && moved_current_after;
     };
 
     mpos old_hex = cr->GetHex();
@@ -5559,11 +5583,21 @@ auto ServerEngine::MoveCritterToStopHex(ptr<Critter> cr, ptr<Map> map, mpos targ
     auto cr_ref_holder = cr.hold_ref();
     auto map_ref_holder = map.hold_ref();
 
-    map->RemoveCritterFromField(cr);
-    cr->SetHex(target_hex);
-    map->AddCritterToField(cr);
+    function<bool()> validate_commit = [&] {
+        if (cr->IsDestroyed() || map->IsDestroyed()) {
+            return false;
+        }
+        if (cr->GetId() != expected_cr_id || cr->GetMapId() != expected_map_id || cr->GetMovingUid() != expected_moving_uid) {
+            return false;
+        }
 
-    FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
+        return validate_authority();
+    };
+    map->MoveCritterOnField(cr, target_hex, validate_commit);
+
+    if (!validate_moved_critter()) {
+        return false;
+    }
 
     map->VerifyTrigger(cr, old_hex, target_hex, dir);
 

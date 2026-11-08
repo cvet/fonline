@@ -7,7 +7,7 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"167f671b029fe9c88f188d418bfba05b4533e0b494cde9c20cf494d54f04b113"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"d7382f689b7672f60c27a114d0496b286ec2e685575e6c7b33a704dbb7cdc65c"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
@@ -22,6 +22,16 @@ permalink: /Docs/ru/reference/changelog.html
 
 ### Исправлено
 
+- Handle изображения Vulkan публикуются только после успешных создания, выделения
+  памяти и привязки; staging command buffer вне pending сбрасывается до
+  освобождения ресурсов, записанных неудачным созданием texture. Восстанавливаемый
+  OOM при submit по-прежнему пробрасывается; остальные отказы submit и любой
+  неудачный wait завершают процесс немедленным native-выходом без раскрутки
+  очистки GPU или приложения.
+- Клетка шага серверного движения и присутствие в поле карты фиксируются вместе.
+  Сеттер свойства или повторно входящее событие, уничтожившее либо переместившее
+  криттера, или callback допуска, отклонивший шаг, прерывает его без потери
+  прежнего присутствия в поле и без рассогласования клетки с картой.
 - Видимые direct-криттеры подготавливаются до `OnRenderMap_BeforeSprites`,
   повторные рисования используют ту же позу. Следующие за костью независимые
   спрайты могут обновляться в этом событии; перепривязка projection частиц
