@@ -1217,6 +1217,8 @@ TEST_CASE("ConfigBaker")
 #if FO_ANGELSCRIPT_SCRIPTING
 TEST_CASE("BakerDataSourceResolvesConfigsBakedOnDemand")
 {
+    using namespace BakerTests;
+
     string temp_dir = MakeConfigBakerTempDir();
     string metadata_input_path = strex(temp_dir).combine_path("metadata_input/Metadata.fos").str();
     string output_dir = strex(temp_dir).combine_path("output").str();
@@ -1233,7 +1235,9 @@ TEST_CASE("BakerDataSourceResolvesConfigsBakedOnDemand")
         std::filesystem::last_write_time(fs::make_path(metadata_output_path), source_time + std::chrono::minutes {1});
     }
 
-    REQUIRE(fs::write_file(strex(temp_dir).combine_path("Test.fomain").str(), MakeCompleteConfigBakerConfig() + strex(R"(Baking.BakeOutput = {}
+    REQUIRE(fs::write_file(strex(temp_dir).combine_path("Test.fomain").str(),
+        MakeCompleteConfigBakerConfig() +
+            strex(R"(Baking.BakeOutput = {}
 Baking.SingleThreadBaking = true
 [ResourcePack]
 Name = Metadata
@@ -1245,18 +1249,17 @@ Name = Configs
 Bakers = {}
 ServerOnly = True
 )",
-                                                                                                               output_dir, MetadataBaker::NAME, ConfigBaker::NAME)
-                                                                                                               .str()));
+                output_dir, MetadataBaker::NAME, ConfigBaker::NAME)
+                .str()));
 
     GlobalSettings settings {true};
-    settings.ApplyDefaultSettings();
-    settings.ApplyConfigAtPath("Test.fomain", temp_dir);
+    settings.SetupConfigAtPath("Test.fomain", temp_dir);
 
     BakerDataSource data_source {&settings};
     REQUIRE(data_source.IsFileExists("(Root).fomain-server"));
 
-    size_t size = 0;
-    uint64_t write_time = 0;
+    size_t size {};
+    uint64_t write_time {};
 
     REQUIRE(data_source.GetFileInfo("(Root).fomain-server", size, write_time));
     REQUIRE(fs::exists(config_output_path));
