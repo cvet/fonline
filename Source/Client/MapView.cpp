@@ -4180,14 +4180,14 @@ void MapView::UpdateCritterOccluders(nptr<CritterHexView> cr, uint8_t alpha)
 {
     FO_TRACE_ZONE(Map);
 
-    const bool has_cr {cr && cr->IsMapSpriteValid()};
+    bool has_cr {cr && cr->IsMapSpriteValid()};
 
     nptr<const Sprite> cr_spr {};
     irect32 cr_rect {};
     uint32_t cr_sort {};
     vector<ipos32> cr_pixels {};
 
-    const int32_t sample_step {4};
+    constexpr int32_t sample_step {4};
 
     if (has_cr) {
         ptr<MapSprite> cr_mspr {cr->GetMapSprite()};
@@ -4214,10 +4214,10 @@ void MapView::UpdateCritterOccluders(nptr<CritterHexView> cr, uint8_t alpha)
             return false;
         }
 
-        const int32_t left {std::max(cr_rect.x, rect.x)};
-        const int32_t top {std::max(cr_rect.y, rect.y)};
-        const int32_t right {std::min(cr_rect.x + cr_rect.width, rect.x + rect.width)};
-        const int32_t bottom {std::min(cr_rect.y + cr_rect.height, rect.y + rect.height)};
+        int32_t left {std::max(cr_rect.x, rect.x)};
+        int32_t top {std::max(cr_rect.y, rect.y)};
+        int32_t right {std::min(cr_rect.x + cr_rect.width, rect.x + rect.width)};
+        int32_t bottom {std::min(cr_rect.y + cr_rect.height, rect.y + rect.height)};
 
         if (left >= right || top >= bottom) {
             return false;
