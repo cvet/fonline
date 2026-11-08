@@ -39,12 +39,15 @@ public:
     void SetAnimDir(mdir dir);
     void RefreshAnim();
     void MoveToHex(mpos hex, float32_t speed);
+    void MoveToHexVisual(mpos hex, float32_t speed);
+    void MoveToHexVisualForDuration(mpos hex, int32_t duration_ms);
     void RefreshOffs();
     void SetMultihexEntries(vector<mpos> entries);
 
 private:
     void OnDestroySelf() override;
     void SetupSprite(ptr<MapSprite> mspr) override;
+    void MoveToHexVisualImpl(mpos hex, float32_t speed, int32_t duration_ms);
 
     shared_ptr<Sprite> _anim {};
     hstring _animName {};
@@ -55,6 +58,7 @@ private:
     mdir _animDir {};
 
     bool _isMoving {};
+    bool _moveVisualOnly {};
     float32_t _moveSpeed {};
     fpos32 _moveStepOffset {};
     fpos32 _moveStartOffset {};
@@ -63,6 +67,9 @@ private:
     nanotime _moveUpdateLastTime {};
     mdir _moveDir {};
     vector<mpos> _moveSteps {};
+    ipos16 _moveBaseOffset {};
+    nanotime _moveStartTime {};
+    float32_t _moveDurationMs {};
 
     optional<vector<mpos>> _multihexEntries {};
 };

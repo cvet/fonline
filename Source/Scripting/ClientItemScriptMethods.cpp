@@ -160,6 +160,24 @@ FO_SCRIPT_API void Client_Item_MoveToHex(ptr<ItemView> self, mpos hex, float32_t
     }
 }
 
+// Starts a purely visual item flight along a straight line without changing its hex; does nothing for items outside the map view
+///@ ExportMethod
+FO_SCRIPT_API void Client_Item_MoveToHexVisual(ptr<ItemView> self, mpos hex, float32_t speed)
+{
+    if (auto hex_item {self.dyn_cast<ItemHexView>()}) {
+        hex_item->MoveToHexVisual(hex, speed);
+    }
+}
+
+// Starts a purely visual item flight that reaches the target hex after the requested duration
+///@ ExportMethod
+FO_SCRIPT_API void Client_Item_MoveToHexVisualForDuration(ptr<ItemView> self, mpos hex, int32_t duration_ms)
+{
+    if (auto hex_item {self.dyn_cast<ItemHexView>()}) {
+        hex_item->MoveToHexVisualForDuration(hex, duration_ms);
+    }
+}
+
 // Returns a snapshot of handles to the item's immediate contained items, without recursively flattening nested containers
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<ItemView>> Client_Item_GetInnerItems(ptr<ItemView> self)
