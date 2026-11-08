@@ -143,8 +143,10 @@ private:
     void AttachCustomEntityToHolder(ptr<CustomEntity> entity, ptr<Entity> holder);
     auto GetCustomEntityHolder(ptr<CustomEntity> entity) -> refcount_ptr<Entity>;
 
+    auto ReserveRegistrationId(ptr<const ServerEntity> entity) -> ident_t FO_TSA_EXCLUDES(_registryLock);
+    void ReserveEntityIdRange() FO_TSA_EXCLUDES(_registryLock);
     void CaptureFreshEntity(ptr<ServerEntity> entity) FO_TSA_REQUIRES(_registryLock);
-    void RegisterEntity(ptr<ServerEntity> entity) FO_TSA_REQUIRES(_registryLock);
+    void RegisterEntity(ptr<ServerEntity> entity, ident_t fresh_id) FO_TSA_REQUIRES(_registryLock);
     void UnregisterEntity(ptr<ServerEntity> entity, bool delete_from_db) FO_TSA_REQUIRES(_registryLock);
 
     ptr<ServerEngine> _engine;
@@ -158,8 +160,10 @@ private:
     unordered_map<hstring, unordered_map<ident_t, ptr<CustomEntity>>> _allCustomEntities FO_TSA_GUARDED_BY(_registryLock) {};
     unordered_map<ident_t, refcount_ptr<ServerEntity>> _allEntities FO_TSA_GUARDED_BY(_registryLock) {};
 
-    int64_t _lastEntityId {};
-    int64_t _persistedEntityId {};
+    // Leaf lock: nothing else is acquired while it is held
+    mutex _entityIdLock {};
+    int64_t _lastEntityId FO_TSA_GUARDED_BY(_entityIdLock) {};
+    int64_t _persistedEntityId FO_TSA_GUARDED_BY(_entityIdLock) {};
 
     const hstring _playerTypeName {};
     const hstring _locationTypeName {};

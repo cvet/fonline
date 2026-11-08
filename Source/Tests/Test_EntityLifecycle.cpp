@@ -1994,7 +1994,6 @@ TEST_CASE("EventChainStopsOnlyForCallbacksWithExplicitResult", "[events]")
     }
 }
 
-
 // A restore index lists exactly the children that have their own records: critter and map demotion unlink the entity
 // and its demoted children, promotion lists them again, and player-controlled critters stay outside the map list
 TEST_CASE("CritterAndMapPersistenceKeepHolderRestoreIndexesConsistent", "[server][entity][database]")

@@ -12,7 +12,18 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-11-06
+## Current - 2026-11-08
+
+### Fixed
+
+- Stop a server-wide freeze between entity registration and the Game singleton lock. Every `Server.EntityIdReserveBatch` ids a registration persisted the next `LastEntityId` bound while it held the entity registry and waited for the Game lock, while a `Game.Lock()` holder that looked an entity up waited for the registry. Both threads stopped, and every following Game property access, entity lookup and registration stopped behind them, so the worker pool and connection handling stopped. A fresh id is now reserved before the registry is taken, the bound is persisted under the Game lock without the registry, and `FlushExactEntityId()` takes the Game lock first. `ServerEntityIdReserveWaitsForGameLockOutsideRegistry` covers the order.
+- Stop the same kind of freeze between a player's connection and the Game singleton lock. `Player::Send_LoginSuccess()` and `Player::Send_InitData()` held the connection while they waited for the Game lock to encode the global values, and a thread inside a `GameLock` scope that wrote a public Game property or called a client waited for that connection. The global values are now encoded before the connection is taken. `PlayerGlobalVarsAreCapturedBeforeTheConnectionIsTaken` covers the order.
+
+### Migration
+
+- Baseline `0d1a56de63` (`2026.1.114-dev`) to `2026.1.115-dev`. No project migration is required: entity ids stay unique and monotonic, the `LastEntityId` bound is still stored before any id of its range is handed out, and stored documents, property IDs, network messages, Managed ABI, resource schemas and the `MigrationRule Version` marker are unchanged. `Server.EntityIdReserveBatch` must be positive: a zero or negative value previously stored a bound below the id it handed out and now fails the first fresh registration. Rebuild the server role to pick up the fix.
+
+## 2026.1.114-dev - 2026-11-06
 
 ### Fixed
 

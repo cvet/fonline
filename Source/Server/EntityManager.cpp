@@ -308,6 +308,8 @@ void EntityManager::InitEntityIdBoundary()
 
     FO_VERIFY_AND_THROW(_allEntities.empty(), "Entity id boundary must be set before any entity is registered", _allEntities.size());
 
+    scoped_lock id_lock {_entityIdLock};
+
     // A snapshot carries the exact boundary its world stopped at and validates it against the payload
     // before this runs, so raising it to the configured floor would break the continuity it promises
     _lastEntityId = _engine->IsRestoredFromSnapshot() ? last : std::max(last, start);
@@ -368,12 +370,20 @@ void EntityManager::LoadEntities() FO_TSA_NO_ANALYSIS
 
 void EntityManager::FlushExactEntityId()
 {
-    scoped_lock lock {_registryLock};
-
-    _persistedEntityId = _lastEntityId;
+    // Same order as a range reserve: an exhausted range cannot hand out an id until this engine lock is released
     _engine->LockForPropertyAccess();
     auto unlock_prop {scope_exit([this]() noexcept { _engine->UnlockForPropertyAccess(); })};
-    _engine->SetLastEntityId(ident_t {numeric_cast<int64_t>(_lastEntityId)});
+
+    int64_t last_id {};
+
+    {
+        scoped_lock lock {_entityIdLock};
+
+        _persistedEntityId = _lastEntityId;
+        last_id = _lastEntityId;
+    }
+
+    _engine->SetLastEntityId(ident_t {last_id});
 }
 
 // Failed restoration prunes runtime IDs without overwriting the durable list needed by the next attempt
@@ -1166,6 +1176,7 @@ void EntityManager::RegisterPlayer(ptr<Player> player, ident_t id, bool persiste
     ident_t assigned_id {player->GetId()};
     FO_VERIFY_AND_THROW(!id || !assigned_id || assigned_id == id, "Player is already assigned a different id", assigned_id, id);
     ident_t requested_id {id ? id : assigned_id};
+    ident_t fresh_id {requested_id ? ident_t {} : ReserveRegistrationId(player)};
     scoped_lock lock {_registryLock};
 
     if (requested_id) {
@@ -1180,7 +1191,7 @@ void EntityManager::RegisterPlayer(ptr<Player> player, ident_t id, bool persiste
         player->SetId(id);
     }
 
-    RegisterEntity(player);
+    RegisterEntity(player, fresh_id);
     player->SetPersistent(persistent);
     const auto [it, inserted] {_allPlayers.emplace(player->GetId(), player)};
     FO_STRONG_ASSERT(inserted, "Player id is already registered", player->GetId());
@@ -1202,11 +1213,12 @@ void EntityManager::RegisterLocation(ptr<Location> loc)
 {
     FO_TRACE_ZONE(Entity);
 
+    ident_t fresh_id {ReserveRegistrationId(loc)};
     scoped_lock lock {_registryLock};
 
     CaptureFreshEntity(loc);
 
-    RegisterEntity(loc);
+    RegisterEntity(loc, fresh_id);
     const auto [it, inserted] {_allLocations.emplace(loc->GetId(), loc)};
     FO_STRONG_ASSERT(inserted, "Location id is already registered", loc->GetId(), loc->GetProtoId());
 }
@@ -1227,11 +1239,12 @@ void EntityManager::RegisterMap(ptr<Map> map)
 {
     FO_TRACE_ZONE(Entity);
 
+    ident_t fresh_id {ReserveRegistrationId(map)};
     scoped_lock lock {_registryLock};
 
     CaptureFreshEntity(map);
 
-    RegisterEntity(map);
+    RegisterEntity(map, fresh_id);
     const auto [it, inserted] {_allMaps.emplace(map->GetId(), map)};
     FO_STRONG_ASSERT(inserted, "Map id is already registered", map->GetId(), map->GetProtoId());
 }
@@ -1252,11 +1265,12 @@ void EntityManager::RegisterCritter(ptr<Critter> cr)
 {
     FO_TRACE_ZONE(Entity);
 
+    ident_t fresh_id {ReserveRegistrationId(cr)};
     scoped_lock lock {_registryLock};
 
     CaptureFreshEntity(cr);
 
-    RegisterEntity(cr);
+    RegisterEntity(cr, fresh_id);
     const auto [it, inserted] {_allCritters.emplace(cr->GetId(), cr)};
     FO_STRONG_ASSERT(inserted, "Critter id is already registered", cr->GetId(), cr->GetProtoId());
 }
@@ -1277,11 +1291,12 @@ void EntityManager::RegisterItem(ptr<Item> item)
 {
     FO_TRACE_ZONE(Entity);
 
+    ident_t fresh_id {ReserveRegistrationId(item)};
     scoped_lock lock {_registryLock};
 
     CaptureFreshEntity(item);
 
-    RegisterEntity(item);
+    RegisterEntity(item, fresh_id);
     const auto [it, inserted] {_allItems.emplace(item->GetId(), item)};
     FO_STRONG_ASSERT(inserted, "Item id is already registered", item->GetId(), item->GetProtoId());
 }
@@ -1328,9 +1343,10 @@ void EntityManager::RegisterCustomEntity(ptr<CustomEntity> custom_entity)
 
     ValidateEntityAccess(custom_entity);
 
+    ident_t fresh_id {ReserveRegistrationId(custom_entity)};
     scoped_lock lock {_registryLock};
 
-    RegisterEntity(custom_entity);
+    RegisterEntity(custom_entity, fresh_id);
 
     auto& custom_entities {_allCustomEntities[custom_entity->GetTypeName()]};
     const auto [it, inserted] {custom_entities.emplace(custom_entity->GetId(), custom_entity)};
@@ -1581,6 +1597,57 @@ auto EntityManager::StoreEntityDoc(ptr<ServerEntity> entity) -> AnyData::Documen
     }
 }
 
+// Persisting a new id range takes the engine lock, which ranks above the registry because `Game.Lock()` holders look
+// entities up, so a fresh id is reserved before the caller takes the registry
+auto EntityManager::ReserveRegistrationId(ptr<const ServerEntity> entity) -> ident_t
+{
+    if (entity->GetId()) {
+        return ident_t {};
+    }
+
+    while (true) {
+        {
+            scoped_lock lock {_entityIdLock};
+
+            if (_lastEntityId < _persistedEntityId) {
+                int64_t id_num {++_lastEntityId};
+                return ident_t {id_num};
+            }
+        }
+
+        ReserveEntityIdRange();
+    }
+}
+
+void EntityManager::ReserveEntityIdRange()
+{
+    int64_t batch {_engine->Settings->Server.EntityIdReserveBatch};
+    FO_VERIFY_AND_THROW(batch > 0, "Entity id reserve batch must be positive", batch);
+
+    _engine->LockForPropertyAccess();
+    auto unlock_prop {scope_exit([this]() noexcept { _engine->UnlockForPropertyAccess(); })};
+
+    int64_t boundary {};
+
+    {
+        scoped_lock lock {_entityIdLock};
+
+        // Another thread may have persisted a range while this one waited for the engine lock
+        if (_lastEntityId < _persistedEntityId) {
+            return;
+        }
+
+        boundary = _lastEntityId + batch;
+    }
+
+    // The boundary is stored before any id of its range is handed out
+    _engine->SetLastEntityId(ident_t {boundary});
+
+    scoped_lock lock {_entityIdLock};
+
+    _persistedEntityId = boundary;
+}
+
 void EntityManager::CaptureFreshEntity(ptr<ServerEntity> entity)
 {
     ident_t id {entity->GetId()};
@@ -1588,26 +1655,22 @@ void EntityManager::CaptureFreshEntity(ptr<ServerEntity> entity)
     _engine->RequireCurrentSyncContext()->EnsureFreshEntitySynced(entity);
 }
 
-void EntityManager::RegisterEntity(ptr<ServerEntity> entity)
+void EntityManager::RegisterEntity(ptr<ServerEntity> entity, ident_t fresh_id)
 {
-    // Caller must hold _registryLock (unique)
+    // Caller must hold _registryLock (unique) and pass the id reserved for an entity without one
     if (!entity->GetId()) {
-        int64_t id_num {++_lastEntityId};
-        ident_t id {numeric_cast<int64_t>(id_num)};
-        FO_STRONG_ASSERT(_allEntities.count(id) == 0, "Generated entity id is already present in the entity registry", entity->GetTypeName(), id);
+        FO_VERIFY_AND_THROW(fresh_id, "Entity without an id is registered without a reserved id", entity->GetTypeName());
+        FO_STRONG_ASSERT(_allEntities.count(fresh_id) == 0, "Generated entity id is already present in the entity registry", entity->GetTypeName(), fresh_id);
 
-        if (id_num > _persistedEntityId) {
-            _persistedEntityId = id_num + _engine->Settings->Server.EntityIdReserveBatch - 1;
-
-            _engine->LockForPropertyAccess();
-            auto unlock_prop {scope_exit([this]() noexcept { _engine->UnlockForPropertyAccess(); })};
-            _engine->SetLastEntityId(ident_t {numeric_cast<int64_t>(_persistedEntityId)});
-        }
-
-        entity->SetId(id);
+        entity->SetId(fresh_id);
     }
     else {
+        FO_VERIFY_AND_THROW(!fresh_id, "Entity with an id is registered with a reserved id", entity->GetTypeName(), entity->GetId(), fresh_id);
+
         int64_t id_num {entity->GetId().underlying_value()};
+
+        scoped_lock id_lock {_entityIdLock};
+
         _lastEntityId = std::max(_lastEntityId, id_num);
     }
 
