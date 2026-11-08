@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-package-cli","locale":"ru","source_path":"Docs/en/reference/packages/cli.md","source_sha256":"53eb6146ad5d88f907b59f398cc8b5873b941df9e0ef6eb9f78caa692d0c362a"} -->
+<!-- docs-translation: {"document_id":"generated-package-cli","locale":"ru","source_path":"Docs/en/reference/packages/cli.md","source_sha256":"2be15edbf10aae189a2338cedb9f5dfc10414d53321a3300f0e48768a3fc06c3"} -->
 
 # Командная строка упаковщика
 
@@ -18,7 +18,8 @@ generated: true
 ```text
 usage: package.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME -nicename NICENAME -target {Server,Client,Mapper,Baker,AnimationViewer,ParticleViewer} -platform {Windows,Linux,Android,macOS,iOS,Web} -arch ARCH
                   [-expect-client-runtime EXPECT_CLIENT_RUNTIME] -pack PACK -config CONFIG -input INPUT [-binary-output-postfix BINARY_OUTPUT_POSTFIX] -output OUTPUT [-resource-pack-compress-level {0,1,2,3,4,5,6,7,8,9}]
-                  [-resource-pack-jobs RESOURCE_PACK_JOBS] [-resource-pack-hash-library RESOURCE_PACK_HASH_LIBRARY] [-bundle-compress-level {0,1,2,3,4,5,6,7,8,9}]
+                  [-resource-pack-jobs RESOURCE_PACK_JOBS] [-resource-pack-hash-library RESOURCE_PACK_HASH_LIBRARY] [-bundle-compress-level {0,1,2,3,4,5,6,7,8,9}] [-linux-portable-tools LINUX_PORTABLE_TOOLS]
+                  [-linux-extra-library LINUX_EXTRA_LIBRARY] [-linux-ca-setting LINUX_CA_SETTING] [-linux-ca-bundle LINUX_CA_BUNDLE]
 
 FOnline packager
 
@@ -49,6 +50,14 @@ options:
                         explicit host FNV-1a library; otherwise discover it under input Binaries/BuildTools-*
   -bundle-compress-level {0,1,2,3,4,5,6,7,8,9}
                         override the bundle compression level (zlib scale: 0 stores, 9 is the strongest)
+  -linux-portable-tools LINUX_PORTABLE_TOOLS
+                        SHA256-verified Portable/AppImage tool cache (default: user cache directory)
+  -linux-extra-library LINUX_EXTRA_LIBRARY
+                        Explicit Linux dlopen library path or SONAME to bundle; repeatable
+  -linux-ca-setting LINUX_CA_SETTING
+                        Optional application setting that receives the bundled CA path, for native TLS consumers
+  -linux-ca-bundle LINUX_CA_BUNDLE
+                        CA certificate bundle to include (default: packaging environment system trust bundle)
 ```
 
 | Стабильный ID | Аргумент | Обязательно | Действие | Варианты | По умолчанию | Описание |
@@ -70,3 +79,7 @@ options:
 | <a id="entry-package-cli-argument-resource-pack-jobs-82d960426c"></a><code>package.cli.argument.resource_pack_jobs</code> | <code>-resource-pack-jobs</code> | нет | <code>store</code> | - | <code>1</code> | максимум одновременно создаваемых архивов ресурсов (по умолчанию FO_RESOURCE_PACK_JOBS или 1) |
 | <a id="entry-package-cli-argument-resource-pack-hash-library-adae8db29e"></a><code>package.cli.argument.resource_pack_hash_library</code> | <code>-resource-pack-hash-library</code> | нет | <code>store</code> | - | - | Явная host-библиотека FNV-1a; иначе поиск под input Binaries/BuildTools-*. |
 | <a id="entry-package-cli-argument-bundle-compress-level-b8ad3a9fba"></a><code>package.cli.argument.bundle_compress_level</code> | <code>-bundle-compress-level</code> | нет | <code>store</code> | <code>0</code>, <code>1</code>, <code>2</code>, <code>3</code>, <code>4</code>, <code>5</code>, <code>6</code>, <code>7</code>, <code>8</code>, <code>9</code> | - | переопределить уровень сжатия внешнего пакета (шкала zlib: 0 без сжатия, 9 максимально) |
+| <a id="entry-package-cli-argument-linux-portable-tools-61b2554952"></a><code>package.cli.argument.linux_portable_tools</code> | <code>-linux-portable-tools</code> | нет | <code>store</code> | - | <code>-</code> | Проверяемый SHA256 cache инструментов Portable/AppImage (по умолчанию пользовательский cache) |
+| <a id="entry-package-cli-argument-linux-extra-library-8a0a663645"></a><code>package.cli.argument.linux_extra_library</code> | <code>-linux-extra-library</code> | нет | <code>append</code> | - | - | Явный путь или SONAME включаемой Linux dlopen library; параметр повторяемый |
+| <a id="entry-package-cli-argument-linux-ca-setting-85ea0758c0"></a><code>package.cli.argument.linux_ca_setting</code> | <code>-linux-ca-setting</code> | нет | <code>store</code> | - | <code>-</code> | Необязательная настройка приложения для передачи bundled CA path нативным TLS consumers |
+| <a id="entry-package-cli-argument-linux-ca-bundle-d84d566344"></a><code>package.cli.argument.linux_ca_bundle</code> | <code>-linux-ca-bundle</code> | нет | <code>store</code> | - | - | Включаемый CA certificate bundle (по умолчанию системный trust bundle среды упаковки) |

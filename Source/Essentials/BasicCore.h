@@ -446,6 +446,11 @@ inline constexpr bool always_false_v {false};
 
 namespace details
 {
+#if FO_LINUX
+    // Main-image identity shared by Essentials modules below the operating system facade
+    [[nodiscard]] auto linux_executable_path() noexcept -> std::optional<std::string>;
+#endif
+
     template<typename T>
     struct remove_all_pointers
     {

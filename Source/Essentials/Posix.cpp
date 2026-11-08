@@ -175,16 +175,13 @@ auto posix::get_home_dir() noexcept -> optional<string>
 auto posix::get_executable_path() noexcept -> optional<string>
 {
 #if FO_LINUX
-    char path[FILENAME_MAX] {};
-    auto path_data {make_ptr(path)};
-    ssize_t size {::readlink("/proc/self/exe", path_data.get(), sizeof(path) - 1)};
+    auto path {details::linux_executable_path()};
 
-    if (size == -1) {
+    if (!path) {
         return std::nullopt;
     }
 
-    path_data[static_cast<size_t>(size)] = 0;
-    return string {path_data.get()};
+    return string {path.value().c_str()};
 
 #elif FO_MAC
     char path[PROC_PIDPATHINFO_MAXSIZE] {};

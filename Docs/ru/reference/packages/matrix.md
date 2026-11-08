@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-package-matrix","locale":"ru","source_path":"Docs/en/reference/packages/matrix.md","source_sha256":"d84213768018084f1b3bf783802c99ea9e8a799e97362c40a40b1ef134ada36d"} -->
+<!-- docs-translation: {"document_id":"generated-package-matrix","locale":"ru","source_path":"Docs/en/reference/packages/matrix.md","source_sha256":"27a711096b7210691e035cedf588eda4c079e8d999cd56a76253712b532bcb12"} -->
 
 # Цели, платформы и наборы пакетов
 
@@ -56,4 +56,5 @@ generated: true
 | <a id="entry-package-pack-ondemandprofiling-c1bba3db77"></a><code>package.pack.OnDemandProfiling</code> | <code>OnDemandProfiling</code> | <code>binary-selection</code> | <code>implemented</code> | <code>Windows</code>, <code>Linux</code> | <code>Server</code>, <code>Client</code> | Включает обычный вариант бинарного файла и вариант профилирования по запросу. |
 | <a id="entry-package-pack-lib-a225228362"></a><code>package.pack.Lib</code> | <code>Lib</code> | <code>binary-selection</code> | <code>implemented</code> | <code>Windows</code> | <code>Client</code>, <code>Baker</code> | Упаковывает приложение в виде динамической библиотеки вместо исполняемого файла. |
 | <a id="entry-package-pack-webserver-c35e2bc615"></a><code>package.pack.WebServer</code> | <code>WebServer</code> | <code>payload</code> | <code>implemented</code> | <code>Web</code> | <code>Client</code> | Добавляет локальный помощник simple-web-server.py в содержимое браузерного клиента. |
-| <a id="entry-package-pack-appimage-5f139403c1"></a><code>package.pack.AppImage</code> | <code>AppImage</code> | <code>artifact</code> | <code>placeholder</code> | <code>Linux</code> | <code>Client</code> | Зарезервированный токен; текущий упаковщик Linux не выпускает артефакт AppImage. |
+| <a id="entry-package-pack-portable-c2c22fc98e"></a><code>package.pack.Portable</code> | <code>Portable</code> | <code>payload</code> | <code>implemented</code> | <code>Linux</code> | <code>Server</code>, <code>Client</code>, <code>Mapper</code>, <code>Baker</code>, <code>AnimationViewer</code>, <code>ParticleViewer</code> | Готовит отдельный переносимый AppDir для каждой архитектуры, роли и profiling variant с частными ELF loader, GLIBC и dependency closure. Сочетается с artifact token, например Raw или TarGz. |
+| <a id="entry-package-pack-appimage-5f139403c1"></a><code>package.pack.AppImage</code> | <code>AppImage</code> | <code>artifact</code> | <code>implemented</code> | <code>Linux</code> | <code>Server</code>, <code>Client</code>, <code>Mapper</code>, <code>Baker</code>, <code>AnimationViewer</code>, <code>ParticleViewer</code> | Готовит переносимый AppDir и создаёт type-2 AppImage для каждой архитектуры и binary variant инструментами с закреплённым SHA256. Writable data находятся снаружи read-only образа. |

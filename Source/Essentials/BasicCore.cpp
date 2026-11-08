@@ -3,6 +3,12 @@
 
 #include "BasicCore.h"
 
+#if FO_LINUX
+#include <stdlib.h>
+#include <sys/auxv.h>
+#include <unistd.h>
+#endif
+
 #if FO_WINDOWS
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
@@ -150,5 +156,59 @@ auto itoa(int64_t num, char buf[64], int32_t base) noexcept -> const char*
 
     return buf;
 }
+
+#if FO_LINUX
+auto details::linux_executable_path() noexcept -> std::optional<std::string>
+{
+    char path[FILENAME_MAX] {};
+    auto program_headers {::getauxval(AT_PHDR)};
+    FILE* mappings {::fopen("/proc/self/maps", "r")};
+
+    if (program_headers != 0 && mappings) {
+        char line[FILENAME_MAX + 128] {};
+
+        while (::fgets(line, sizeof(line), mappings) != nullptr) {
+            unsigned long begin {};
+            unsigned long end {};
+
+            if (::sscanf(line, "%lx-%lx", &begin, &end) == 2 && begin <= program_headers && program_headers < end) {
+                char mapping_path[128] {};
+                ::snprintf(mapping_path, sizeof(mapping_path), "/proc/self/map_files/%lx-%lx", begin, end);
+                ssize_t mapped_size {::readlink(mapping_path, path, sizeof(path) - 1)};
+
+                if (mapped_size >= 0) {
+                    ::fclose(mappings);
+                    path[static_cast<size_t>(mapped_size)] = 0;
+                    return std::string {path};
+                }
+
+                break;
+            }
+        }
+    }
+
+    if (mappings) {
+        ::fclose(mappings);
+    }
+
+    const char* exec_name {reinterpret_cast<const char*>(::getauxval(AT_EXECFN))};
+
+    // A mapped program header identifies the active image even after a rename. If map_files is restricted,
+    // AT_EXECFN identifies an explicitly invoked loader's application; ordinary dynamic programs retain the kernel path
+    if (::getauxval(AT_BASE) == 0 && exec_name && exec_name[0] == '/' && ::realpath(exec_name, path) != nullptr) {
+        return std::string {path};
+    }
+
+    ssize_t size {::readlink("/proc/self/exe", path, sizeof(path) - 1)};
+
+    if (size == -1) {
+        return std::nullopt;
+    }
+
+    path[static_cast<size_t>(size)] = 0;
+    return std::string {path};
+}
+
+#endif
 
 FO_END_NAMESPACE

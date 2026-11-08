@@ -29,6 +29,7 @@ from typing import IO, Callable, Iterable, Literal, Mapping, Sequence
 import buildtools
 import foconfig
 import managed_runtime_payload
+import linux_portable
 import resource_pack_hash
 import resource_usage
 
@@ -154,11 +155,42 @@ def create_parser() -> argparse.ArgumentParser:
 	parser.add_argument('-resource-pack-jobs', type=positive_job_count, default=os.environ.get(RESOURCE_PACK_JOBS_ENV, '1'), help='maximum concurrent resource archives (default: FO_RESOURCE_PACK_JOBS or 1)')
 	parser.add_argument('-resource-pack-hash-library', help='explicit host FNV-1a library; otherwise discover it under input Binaries/BuildTools-*')
 	parser.add_argument('-bundle-compress-level', dest='bundle_compress_level', type=int, choices=range(0, 10), help='override the bundle compression level (zlib scale: 0 stores, 9 is the strongest)')
+	parser.add_argument('-linux-portable-tools', default=os.environ.get('FO_LINUX_PORTABLE_TOOLS', ''),
+		help='SHA256-verified Portable/AppImage tool cache (default: user cache directory)')
+	parser.add_argument('-linux-extra-library', action='append', default=[],
+		help='Explicit Linux dlopen library path or SONAME to bundle; repeatable')
+	parser.add_argument('-linux-ca-setting', default=os.environ.get('FO_LINUX_CA_SETTING', ''),
+		help='Optional application setting that receives the bundled CA path, for native TLS consumers')
+	parser.add_argument('-linux-ca-bundle', type=Path, default=os.environ.get('FO_LINUX_CA_BUNDLE') or None,
+		help='CA certificate bundle to include (default: packaging environment system trust bundle)')
 	return parser
 
 
 def parse_args() -> argparse.Namespace:
 	return create_parser().parse_args()
+
+
+def validate_package_request(args: argparse.Namespace) -> None:
+	packs = set(args.pack.split('+'))
+	if not packs.intersection({'Portable', 'AppImage'}):
+		return
+	catalog = json.loads((Path(__file__).parent / 'PackageInterface.json').read_text(encoding='utf-8'))
+	definitions = {item['name']: item for item in catalog['packs']}
+	for name in packs:
+		item = definitions.get(name)
+		if item is None:
+			raise ValueError(f'Unknown package token: {name}')
+		if args.platform not in item['platforms'] or args.target not in item['targets']:
+			raise ValueError(f'{name} is not supported for {args.target}/{args.platform}')
+	if args.platform != 'Linux':
+		raise ValueError('Portable/AppImage requires Linux package inputs')
+	if not any(definitions[name]['artifact'] for name in packs):
+		raise ValueError('Portable requires an artifact token such as Raw, TarGz, Zip or AppImage')
+	target = next(item for item in catalog['targets'] if item['name'] == args.target)
+	if not set(target['required_packs']).issubset(packs):
+		raise ValueError(f'{args.target} requires package tokens: {target["required_packs"]}')
+	if not set(args.arch.split('+')).issubset(linux_portable.APPIMAGE_ARCHITECTURES):
+		raise ValueError(f'Unknown portable Linux architecture: {args.arch}')
 
 
 def parse_include_args(arguments: Sequence[str]) -> argparse.Namespace:
@@ -655,7 +687,7 @@ def validate_package_mode_path(relative_path: str) -> None:
 	assert all(part not in ('', '.', '..') for part in posix_path.parts), f'Package mode path must not escape its root: {relative_path}'
 
 
-def read_package_mode_manifest(package_root: Path) -> dict[str, int]:
+def read_package_mode_manifest(package_root: Path, *, replaced_prefix: str | None = None) -> dict[str, int]:
 	manifest_path = package_root / PACKAGE_MODE_MANIFEST
 	if not manifest_path.is_file():
 		return {}
@@ -678,6 +710,8 @@ def read_package_mode_manifest(package_root: Path) -> dict[str, int]:
 		assert isinstance(encoded_mode, str) and re.fullmatch(r'[0-7]{3}', encoded_mode), f'Invalid package mode for {relative_path}: {encoded_mode!r}'
 		logical_mode = int(encoded_mode, 8)
 		assert logical_mode in PACKAGE_FILE_MODES, f'Unsupported package mode for {relative_path}: {encoded_mode}'
+		if replaced_prefix is not None and relative_path.startswith(replaced_prefix):
+			continue
 		file_path = resolve_safe_relative_path(package_root, relative_path, 'Package mode path')
 		assert file_path.is_file(), f'Package mode path is not a file: {relative_path}'
 		modes[relative_path] = logical_mode
@@ -936,6 +970,7 @@ class Packager:
 	resource_usage_allowlists: dict[str, frozenset[str]] | None = field(init=False, default=None)
 
 	def __post_init__(self) -> None:
+		validate_package_request(self.args)
 		self.pack_args = set(self.args.pack.split('+'))
 		self.output_path = os.path.realpath(self.args.output if self.args.output else os.getcwd()).rstrip('\\/')
 		self.build_tools_path = os.path.dirname(os.path.realpath(__file__))
@@ -968,6 +1003,8 @@ class Packager:
 				path += '-' + self.args.binary_output_postfix
 		else:
 			path += '-' + self.args.platform
+			if self.pack_args.intersection({'Portable', 'AppImage'}) and self.args.binary_output_postfix:
+				path += '-' + self.args.binary_output_postfix
 		return path
 
 	def iter_arches(self) -> list[str]:
@@ -1113,7 +1150,7 @@ class Packager:
 				continue
 			if entry_name in excluded_names:
 				continue
-			if os.path.splitext(entry_name)[1].lower() not in RUNTIME_COMPANION_EXTENSIONS:
+			if os.path.splitext(entry_name)[1].lower() not in RUNTIME_COMPANION_EXTENSIONS and not re.search(r'\.so\.\d+(?:\.\d+)*$', entry_name):
 				continue
 
 			log('Runtime companion included', entry_name)
@@ -1385,6 +1422,11 @@ class Packager:
 					pass
 				except OSError as error:
 					log('Failed to clean package zip after packaging error:', archive_path, error)
+		for path in getattr(self, 'portable_artifacts', []):
+			try:
+				Path(path).unlink(missing_ok=True)
+			except OSError as error:
+				log('Failed to clean portable package artifact after packaging error:', path, error)
 
 	def record_logical_file_mode(self, file_path: str | Path, logical_mode: int) -> None:
 		assert logical_mode in PACKAGE_FILE_MODES, 'Unsupported package file mode: ' + format(logical_mode, '03o')
@@ -1398,9 +1440,10 @@ class Packager:
 		package_root = Path(self.output_path)
 		target_root = Path(self.target_output_path)
 		target_prefix = target_root.resolve().relative_to(package_root.resolve()).as_posix().rstrip('/') + '/'
+		replaced_prefix = target_prefix if self.pack_args.intersection({'Portable', 'AppImage'}) else None
 		all_modes = {
 			path: mode
-			for path, mode in read_package_mode_manifest(package_root).items()
+			for path, mode in read_package_mode_manifest(package_root, replaced_prefix=replaced_prefix).items()
 			if not path.startswith(target_prefix)
 		}
 
@@ -1945,6 +1988,10 @@ class Packager:
 		if self.args.target == 'Server' and not self.has_pack('NoRes'):
 			self.package_all_client_runtime_update_payloads()
 
+		if self.pack_args.intersection({'Portable', 'AppImage'}):
+			self.package_linux_portable()
+			return
+
 		all_linux_variants = self.iter_linux_variants()
 		cross_variant_excluded = self.build_client_runtime_companion_names('.so') if self.args.target == 'Client' else set()
 
@@ -1978,8 +2025,80 @@ class Packager:
 				st = os.stat(output_file_path)
 				os.chmod(output_file_path, st.st_mode | stat.S_IEXEC)
 
-		if self.has_pack('AppImage'):
-			pass
+	def package_linux_portable(self) -> None:
+		target = Path(self.target_output_path)
+		tools_cache_arg = getattr(self.args, 'linux_portable_tools', '')
+		tools_cache = Path(tools_cache_arg) if tools_cache_arg else Path(os.environ.get('XDG_CACHE_HOME', str(Path.home() / '.cache'))) / 'fonline/portable-tools'
+		cross_variant_excluded = self.build_client_runtime_companion_names('.so') if self.args.target == 'Client' else set()
+		client_postfix = '_' + self.args.binary_output_postfix if self.args.target == 'Client' and self.args.binary_output_postfix else ''
+		tools_by_arch = {}
+		self.portable_artifacts = []
+		with tempfile.TemporaryDirectory(prefix=target.name + '.portable-', dir=target.parent) as work_name:
+			work = Path(work_name)
+			bundles = work / 'bundles'
+			bundles.mkdir()
+			images = work / 'images'
+			images.mkdir()
+			for arch in self.iter_arches():
+				if arch not in tools_by_arch:
+					tools_by_arch[arch] = linux_portable.resolve_tools(tools_cache, arch, appimage=self.has_pack('AppImage'))
+				tools = tools_by_arch[arch]
+				for index, variant in enumerate(self.iter_linux_variants()):
+					stage = work / f'input-{arch}-{index}'
+					shutil.copytree(target, stage)
+					bin_name = self.args.devname + '_' + self.args.target + variant.role
+					base_name = self.args.nicename + ('_' + variant.role if variant.role else '') if self.args.target == 'Client' else bin_name
+					bin_out_name = base_name + self.build_output_variant_suffix(variant) + client_postfix
+					bin_path = self.resolve_binary_input_dir(arch, variant, bin_name)
+					previous_modes = self.logical_file_modes
+					try:
+						self.target_output_path = str(stage)
+						self.logical_file_modes = {}
+						if self.args.target == 'Client':
+							self.package_platform_binary(bin_path, self.build_client_runtime_input_name(variant), bin_out_name, '.so',
+								excluded_companions=cross_variant_excluded)
+						main_path = self.package_platform_binary(bin_path, bin_name, bin_out_name, '', excluded_companions=cross_variant_excluded)
+						Path(main_path).chmod(0o755)
+					finally:
+						self.target_output_path = str(target)
+						self.logical_file_modes = previous_modes
+					extra_names = list(getattr(self.args, 'linux_extra_library', []))
+					extra_names.extend(linux_portable.sdl_dynamic_libraries([
+						path for path in stage.iterdir() if linux_portable.is_elf(path)]))
+					if (Path(bin_path) / MANAGED_RUNTIME_DIRECTORY).is_dir():
+						extra_names.extend(['libssl.so.3', 'libcrypto.so.3'])
+					extra_libraries = []
+					if extra_names:
+						info = linux_portable.inspect_elf(Path(main_path))
+						extra_libraries = [linux_portable.find_system_library(name, bits=info.bits, machine=info.machine) for name in dict.fromkeys(extra_names)]
+					variant_name = bin_out_name + ('-' + variant.profiling if variant.profiling else '') + '-' + arch
+					destination = bundles / (variant_name + '.AppDir')
+					identity = {
+						'name': self.args.nicename, 'version': self.resolve_game_version(),
+						'target': self.args.target, 'role': variant.role, 'profiling': variant.profiling,
+						'architecture': arch, 'postfix': self.args.binary_output_postfix,
+						'preserve_cwd': '1' if self.has_pack('NoRes') else '0',
+						'ca_setting': getattr(self.args, 'linux_ca_setting', ''),
+						'packaged_name': bin_out_name,
+						'build_hash': getattr(self.args, 'buildhash', ''),
+					}
+					linux_portable.prepare_portable(stage, destination, bin_out_name, appimage=self.has_pack('AppImage'),
+						tools=tools, extra_libraries=extra_libraries, identity=identity,
+						ca_bundle=getattr(self.args, 'linux_ca_bundle', None))
+					if self.has_pack('AppImage'):
+						linux_portable.make_appimage(destination, images / (target.name + '-' + variant_name + '.AppImage'),
+							tools=tools, architecture=arch)
+					shutil.rmtree(stage)
+			shutil.rmtree(target)
+			bundles.rename(target)
+			for image in images.iterdir():
+				final_path = Path(self.output_path) / image.name
+				image.replace(final_path)
+				self.portable_artifacts.append(str(final_path))
+		self.logical_file_modes = {}
+		for path in target.rglob('*'):
+			if path.is_file():
+				self.record_logical_file_mode(path, 0o755 if path.name == 'AppRun' or path.stat().st_mode & 0o111 else 0o644)
 
 	def package_web(self) -> None:
 		assert self.args.arch == 'wasm'
@@ -2311,24 +2430,72 @@ class Packager:
 		log('Code signing: done')
 
 	def finalize_output(self) -> None:
+		if not self.pack_args.intersection({'Portable', 'AppImage'}):
+			self.finalize_output_unchecked()
+			return
+		# Root merges and the shared SingleZip can precede another failing artifact or metadata write.
+		# Preserve the affected shared paths until the entire invocation has finalized successfully.
+		output = Path(self.output_path)
+		names = {PACKAGE_MODE_MANIFEST}
+		if self.has_pack('SingleZip'):
+			names.add(output.name + '.zip')
+		if self.has_pack('Root'):
+			names.update(path.name for path in Path(self.target_output_path).iterdir())
+		with tempfile.TemporaryDirectory(prefix='portable-rollback-', dir=output) as work:
+			backup = Path(work)
+			for name in names:
+				path = output / name
+				if path.is_dir() and not path.is_symlink():
+					shutil.copytree(path, backup / name, symlinks=True)
+				elif path.exists() or path.is_symlink():
+					shutil.copy2(path, backup / name, follow_symlinks=False)
+			try:
+				self.finalize_output_unchecked()
+			except Exception:
+				for name in names:
+					path = output / name
+					if path.is_dir() and not path.is_symlink():
+						shutil.rmtree(path)
+					else:
+						path.unlink(missing_ok=True)
+					previous = backup / name
+					if previous.exists() or previous.is_symlink():
+						previous.replace(path)
+				raise
+
+	def finalize_output_unchecked(self) -> None:
 		logical_file_modes = getattr(self, 'logical_file_modes', {})
 		self.sign_windows_binaries()
 
 		if self.has_pack('Zip'):
 			log('Create zipped archive')
+			if self.pack_args.intersection({'Portable', 'AppImage'}):
+				self.portable_artifacts.append(self.target_output_path + '.zip')
 			make_zip(self.target_output_path + '.zip', self.target_output_path, self.bundle_compress_level, mode_overrides=logical_file_modes)
 
 		if self.has_pack('SingleZip'):
 			log('Add to single zip archive')
 			single_zip_path = os.path.join(self.output_path, os.path.basename(self.output_path) + '.zip')
-			make_zip(single_zip_path, self.target_output_path, self.bundle_compress_level, 'a', logical_file_modes)
+			if self.pack_args.intersection({'Portable', 'AppImage'}):
+				with tempfile.TemporaryDirectory(prefix='portable-singlezip-', dir=self.output_path) as work:
+					temporary_zip = Path(work) / 'package.zip'
+					if Path(single_zip_path).is_file():
+						shutil.copy2(single_zip_path, temporary_zip)
+					make_zip(temporary_zip, self.target_output_path, self.bundle_compress_level, 'a', logical_file_modes)
+					temporary_zip.replace(single_zip_path)
+			else:
+				make_zip(single_zip_path, self.target_output_path, self.bundle_compress_level, 'a', logical_file_modes)
 
 		if self.has_pack('Tar'):
 			log('Create tar archive')
+			if self.pack_args.intersection({'Portable', 'AppImage'}):
+				self.portable_artifacts.append(self.target_output_path + '.tar')
 			make_tar(self.target_output_path + '.tar', self.target_output_path, 'w', logical_file_modes)
 
 		if self.has_pack('TarGz'):
 			log('Create tar.gz archive')
+			if self.pack_args.intersection({'Portable', 'AppImage'}):
+				self.portable_artifacts.append(self.target_output_path + '.tar.gz')
 			make_tar(self.target_output_path + '.tar.gz', self.target_output_path, 'w:gz', logical_file_modes)
 
 		if self.has_pack('Root'):
@@ -2502,6 +2669,8 @@ class Packager:
 
 	def run(self) -> None:
 		log(f'Make {self.args.target} ({self.args.config}) for {self.args.platform}')
+		if self.pack_args.intersection({'Portable', 'AppImage'}) and sys.platform != 'linux':
+			raise RuntimeError('Portable/AppImage packaging runs in the matching Linux build/runtime environment')
 		self.prepare_output()
 		try:
 			if not self.has_pack('NoRes'):

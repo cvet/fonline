@@ -547,17 +547,42 @@
       "id": "package.pack.WebServer"
     },
     {
-      "name": "AppImage",
-      "category": "artifact",
-      "status": "placeholder",
+      "name": "Portable",
+      "category": "payload",
+      "status": "implemented",
       "artifact": false,
       "platforms": [
         "Linux"
       ],
       "targets": [
-        "Client"
+        "Server",
+        "Client",
+        "Mapper",
+        "Baker",
+        "AnimationViewer",
+        "ParticleViewer"
       ],
-      "description": "Reserved token; the current Linux packager emits no AppImage artifact.",
+      "description": "Prepare one relocatable AppDir per architecture, role and profiling variant with a private ELF loader, GLIBC and dependency closure. Combine with an artifact token such as Raw or TarGz.",
+      "id": "package.pack.Portable"
+    },
+    {
+      "name": "AppImage",
+      "category": "artifact",
+      "status": "implemented",
+      "artifact": true,
+      "platforms": [
+        "Linux"
+      ],
+      "targets": [
+        "Server",
+        "Client",
+        "Mapper",
+        "Baker",
+        "AnimationViewer",
+        "ParticleViewer"
+      ],
+      "description": "Prepare a portable AppDir and emit a type-2 AppImage per architecture and binary variant using SHA256-pinned tools. Writable data lives outside the read-only image.",
+      "output": "<target-output>-<binary-variant>-<arch>.AppImage",
       "id": "package.pack.AppImage"
     }
   ],
@@ -602,8 +627,8 @@
   "cli": {
     "program": "package.py",
     "description": "FOnline packager",
-    "usage": "usage: package.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME -nicename NICENAME -target {Server,Client,Mapper,Baker,AnimationViewer,ParticleViewer} -platform {Windows,Linux,Android,macOS,iOS,Web} -arch ARCH\n                  [-expect-client-runtime EXPECT_CLIENT_RUNTIME] -pack PACK -config CONFIG -input INPUT [-binary-output-postfix BINARY_OUTPUT_POSTFIX] -output OUTPUT [-resource-pack-compress-level {0,1,2,3,4,5,6,7,8,9}]\n                  [-resource-pack-jobs RESOURCE_PACK_JOBS] [-resource-pack-hash-library RESOURCE_PACK_HASH_LIBRARY] [-bundle-compress-level {0,1,2,3,4,5,6,7,8,9}]",
-    "help_output": "usage: package.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME -nicename NICENAME -target {Server,Client,Mapper,Baker,AnimationViewer,ParticleViewer} -platform {Windows,Linux,Android,macOS,iOS,Web} -arch ARCH\n                  [-expect-client-runtime EXPECT_CLIENT_RUNTIME] -pack PACK -config CONFIG -input INPUT [-binary-output-postfix BINARY_OUTPUT_POSTFIX] -output OUTPUT [-resource-pack-compress-level {0,1,2,3,4,5,6,7,8,9}]\n                  [-resource-pack-jobs RESOURCE_PACK_JOBS] [-resource-pack-hash-library RESOURCE_PACK_HASH_LIBRARY] [-bundle-compress-level {0,1,2,3,4,5,6,7,8,9}]\n\nFOnline packager\n\noptions:\n  -h, --help            show this help message and exit\n  -maincfg MAINCFG      Main config path\n  -buildhash BUILDHASH  build hash\n  -devname DEVNAME      Dev game name\n  -nicename NICENAME    Representable game name\n  -target {Server,Client,Mapper,Baker,AnimationViewer,ParticleViewer}\n                        package target type\n  -platform {Windows,Linux,Android,macOS,iOS,Web}\n                        platform type\n  -arch ARCH            architectures to include (divided by +)\n  -expect-client-runtime EXPECT_CLIENT_RUNTIME\n                        Client variant whose runtime payload this server package must distribute, as Platform:arch[:postfix]. Repeatable\n  -pack PACK            package type\n  -config CONFIG        config name\n  -input INPUT          input dir (from FO_OUTPUT_PATH)\n  -binary-output-postfix BINARY_OUTPUT_POSTFIX\n                        suffix appended to binary output dir names\n  -output OUTPUT        output dir\n  -resource-pack-compress-level {0,1,2,3,4,5,6,7,8,9}\n                        override the resource pack compression level (zlib scale: 0 stores, 9 is the strongest)\n  -resource-pack-jobs RESOURCE_PACK_JOBS\n                        maximum concurrent resource archives (default: FO_RESOURCE_PACK_JOBS or 1)\n  -resource-pack-hash-library RESOURCE_PACK_HASH_LIBRARY\n                        explicit host FNV-1a library; otherwise discover it under input Binaries/BuildTools-*\n  -bundle-compress-level {0,1,2,3,4,5,6,7,8,9}\n                        override the bundle compression level (zlib scale: 0 stores, 9 is the strongest)\n",
+    "usage": "usage: package.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME -nicename NICENAME -target {Server,Client,Mapper,Baker,AnimationViewer,ParticleViewer} -platform {Windows,Linux,Android,macOS,iOS,Web} -arch ARCH\n                  [-expect-client-runtime EXPECT_CLIENT_RUNTIME] -pack PACK -config CONFIG -input INPUT [-binary-output-postfix BINARY_OUTPUT_POSTFIX] -output OUTPUT [-resource-pack-compress-level {0,1,2,3,4,5,6,7,8,9}]\n                  [-resource-pack-jobs RESOURCE_PACK_JOBS] [-resource-pack-hash-library RESOURCE_PACK_HASH_LIBRARY] [-bundle-compress-level {0,1,2,3,4,5,6,7,8,9}] [-linux-portable-tools LINUX_PORTABLE_TOOLS]\n                  [-linux-extra-library LINUX_EXTRA_LIBRARY] [-linux-ca-setting LINUX_CA_SETTING] [-linux-ca-bundle LINUX_CA_BUNDLE]",
+    "help_output": "usage: package.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME -nicename NICENAME -target {Server,Client,Mapper,Baker,AnimationViewer,ParticleViewer} -platform {Windows,Linux,Android,macOS,iOS,Web} -arch ARCH\n                  [-expect-client-runtime EXPECT_CLIENT_RUNTIME] -pack PACK -config CONFIG -input INPUT [-binary-output-postfix BINARY_OUTPUT_POSTFIX] -output OUTPUT [-resource-pack-compress-level {0,1,2,3,4,5,6,7,8,9}]\n                  [-resource-pack-jobs RESOURCE_PACK_JOBS] [-resource-pack-hash-library RESOURCE_PACK_HASH_LIBRARY] [-bundle-compress-level {0,1,2,3,4,5,6,7,8,9}] [-linux-portable-tools LINUX_PORTABLE_TOOLS]\n                  [-linux-extra-library LINUX_EXTRA_LIBRARY] [-linux-ca-setting LINUX_CA_SETTING] [-linux-ca-bundle LINUX_CA_BUNDLE]\n\nFOnline packager\n\noptions:\n  -h, --help            show this help message and exit\n  -maincfg MAINCFG      Main config path\n  -buildhash BUILDHASH  build hash\n  -devname DEVNAME      Dev game name\n  -nicename NICENAME    Representable game name\n  -target {Server,Client,Mapper,Baker,AnimationViewer,ParticleViewer}\n                        package target type\n  -platform {Windows,Linux,Android,macOS,iOS,Web}\n                        platform type\n  -arch ARCH            architectures to include (divided by +)\n  -expect-client-runtime EXPECT_CLIENT_RUNTIME\n                        Client variant whose runtime payload this server package must distribute, as Platform:arch[:postfix]. Repeatable\n  -pack PACK            package type\n  -config CONFIG        config name\n  -input INPUT          input dir (from FO_OUTPUT_PATH)\n  -binary-output-postfix BINARY_OUTPUT_POSTFIX\n                        suffix appended to binary output dir names\n  -output OUTPUT        output dir\n  -resource-pack-compress-level {0,1,2,3,4,5,6,7,8,9}\n                        override the resource pack compression level (zlib scale: 0 stores, 9 is the strongest)\n  -resource-pack-jobs RESOURCE_PACK_JOBS\n                        maximum concurrent resource archives (default: FO_RESOURCE_PACK_JOBS or 1)\n  -resource-pack-hash-library RESOURCE_PACK_HASH_LIBRARY\n                        explicit host FNV-1a library; otherwise discover it under input Binaries/BuildTools-*\n  -bundle-compress-level {0,1,2,3,4,5,6,7,8,9}\n                        override the bundle compression level (zlib scale: 0 stores, 9 is the strongest)\n  -linux-portable-tools LINUX_PORTABLE_TOOLS\n                        SHA256-verified Portable/AppImage tool cache (default: user cache directory)\n  -linux-extra-library LINUX_EXTRA_LIBRARY\n                        Explicit Linux dlopen library path or SONAME to bundle; repeatable\n  -linux-ca-setting LINUX_CA_SETTING\n                        Optional application setting that receives the bundled CA path, for native TLS consumers\n  -linux-ca-bundle LINUX_CA_BUNDLE\n                        CA certificate bundle to include (default: packaging environment system trust bundle)\n",
     "arguments": [
       {
         "id": "package.cli.argument.maincfg",
@@ -878,6 +903,62 @@
         "default": null,
         "type": "int",
         "description": "override the bundle compression level (zlib scale: 0 stores, 9 is the strongest)"
+      },
+      {
+        "id": "package.cli.argument.linux_portable_tools",
+        "destination": "linux_portable_tools",
+        "action": "store",
+        "option_strings": [
+          "-linux-portable-tools"
+        ],
+        "required": false,
+        "nargs": 1,
+        "choices": null,
+        "default": "",
+        "type": null,
+        "description": "SHA256-verified Portable/AppImage tool cache (default: user cache directory)"
+      },
+      {
+        "id": "package.cli.argument.linux_extra_library",
+        "destination": "linux_extra_library",
+        "action": "append",
+        "option_strings": [
+          "-linux-extra-library"
+        ],
+        "required": false,
+        "nargs": 1,
+        "choices": null,
+        "default": [],
+        "type": null,
+        "description": "Explicit Linux dlopen library path or SONAME to bundle; repeatable"
+      },
+      {
+        "id": "package.cli.argument.linux_ca_setting",
+        "destination": "linux_ca_setting",
+        "action": "store",
+        "option_strings": [
+          "-linux-ca-setting"
+        ],
+        "required": false,
+        "nargs": 1,
+        "choices": null,
+        "default": "",
+        "type": null,
+        "description": "Optional application setting that receives the bundled CA path, for native TLS consumers"
+      },
+      {
+        "id": "package.cli.argument.linux_ca_bundle",
+        "destination": "linux_ca_bundle",
+        "action": "store",
+        "option_strings": [
+          "-linux-ca-bundle"
+        ],
+        "required": false,
+        "nargs": 1,
+        "choices": null,
+        "default": null,
+        "type": "Path",
+        "description": "CA certificate bundle to include (default: packaging environment system trust bundle)"
       }
     ]
   },
@@ -887,10 +968,10 @@
     "target_count": 6,
     "platform_count": 6,
     "implemented_platform_count": 4,
-    "pack_count": 18,
-    "implemented_pack_count": 17,
-    "artifact_pack_count": 8,
-    "cli_argument_count": 17
+    "pack_count": 19,
+    "implemented_pack_count": 19,
+    "artifact_pack_count": 9,
+    "cli_argument_count": 21
   },
-  "contract_digest": "dd1d44b27a2629b29c7bde73bc2e2ed144e18f95e95fe34064a09370a7a51902"
+  "contract_digest": "29d98129772bfb19f5887816c1f5328cd4504db3d28ad377c3035bd1ae4e2934"
 }

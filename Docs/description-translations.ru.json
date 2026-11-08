@@ -16672,6 +16672,22 @@
           "source_sha256": "71da9b18461a00ebf01481a93e1fadd776968220ec1dce44ec47dfd521324c9a",
           "translation": "входной каталог (из FO_OUTPUT_PATH)"
         },
+        "/cli/arguments/@id=package.cli.argument.linux_ca_bundle/description": {
+          "source_sha256": "326ad692e200e315fcfeaf0e9ed4aa1419f738e3177754b81db828b68523e94e",
+          "translation": "Включаемый CA certificate bundle (по умолчанию системный trust bundle среды упаковки)"
+        },
+        "/cli/arguments/@id=package.cli.argument.linux_ca_setting/description": {
+          "source_sha256": "29be29cb619395571d764d19d11bdf47461928717d726ee4e3c14274e6135c58",
+          "translation": "Необязательная настройка приложения для передачи bundled CA path нативным TLS consumers"
+        },
+        "/cli/arguments/@id=package.cli.argument.linux_extra_library/description": {
+          "source_sha256": "12243c964ebc6caea6952d1c88834ae7233404be9b9cde9a3d2f23c5b0e316bf",
+          "translation": "Явный путь или SONAME включаемой Linux dlopen library; параметр повторяемый"
+        },
+        "/cli/arguments/@id=package.cli.argument.linux_portable_tools/description": {
+          "source_sha256": "bcf54fcb7d82298c4565321374f4e90fae4541c7649ff02ffe200dada12851ef",
+          "translation": "Проверяемый SHA256 cache инструментов Portable/AppImage (по умолчанию пользовательский cache)"
+        },
         "/cli/arguments/@id=package.cli.argument.maincfg/description": {
           "source_sha256": "109059c923ff57b7cd47620f64b1604dc6d76b697b891f3bc6723c38b241cbce",
           "translation": "путь к основному конфигурационному файлу"
@@ -16757,8 +16773,8 @@
           "translation": "Запускает Gradle и копирует выбранный подписанный или отладочный APK рядом с подготовленным проектом."
         },
         "/packs/@id=package.pack.AppImage/description": {
-          "source_sha256": "300b90223f5551cdd842bb0813d875924b1d0507f41296f726d3b901c0ffca72",
-          "translation": "Зарезервированный токен; текущий упаковщик Linux не выпускает артефакт AppImage."
+          "source_sha256": "18480b098967561fc7f4888d7889e39d17ac55ff9b10aa764354fba734144ab6",
+          "translation": "Готовит переносимый AppDir и создаёт type-2 AppImage для каждой архитектуры и binary variant инструментами с закреплённым SHA256. Writable data находятся снаружи read-only образа."
         },
         "/packs/@id=package.pack.Daemon/description": {
           "source_sha256": "cd371a715cebb0df58319a75a83f6d616e7b0d586815ccc99eacc08c94723552",
@@ -16783,6 +16799,10 @@
         "/packs/@id=package.pack.OnDemandProfiling/description": {
           "source_sha256": "b50065f47241bf367f1a1f8003a0c7f114eaddd05f17c8eef230b3c76f2652bf",
           "translation": "Включает обычный вариант бинарного файла и вариант профилирования по запросу."
+        },
+        "/packs/@id=package.pack.Portable/description": {
+          "source_sha256": "0339529ff121f9f895405abf39277fc5b960e4f8b4905f2c7ffc9e6652d7a5a0",
+          "translation": "Готовит отдельный переносимый AppDir для каждой архитектуры, роли и profiling variant с частными ELF loader, GLIBC и dependency closure. Сочетается с artifact token, например Raw или TarGz."
         },
         "/packs/@id=package.pack.Raw/description": {
           "source_sha256": "fc1aa26d28701d249b0280d4e968458adf36bdf511d84403f7b12ab50a1f9916",

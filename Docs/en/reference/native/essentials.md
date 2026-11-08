@@ -163,6 +163,8 @@ This list is intentionally exact rather than thematic. `Essentials.h` defines a 
 
 Keep new essentials APIs free of dependencies on `Source/Common/`, `Source/Client/`, `Source/Server/`, `Source/Tools/`, or embedding-project headers.
 
+The include check also rejects local Essentials headers missing from the umbrella order. Linux main-image lookup is an internal helper declared in `BasicCore.h` and implemented in `BasicCore.cpp`, shared by `Posix` and the earlier `StackTrace` module. The libbacktrace filename policy and filename storage remain local to `StackTrace.cpp`.
+
 `global_data::destroy(observer, context)` calls the observer with each registered set name immediately before its delete callback. This makes a stuck teardown attributable to a set without letting the observer depend on global data that may already be gone. A host/runtime module must destroy only a set it created, and it must join its own workers before returning to a continuing host. Process-lifetime crash-record state stays outside this sweep.
 
 ## Subsystem map

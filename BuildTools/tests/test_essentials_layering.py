@@ -85,6 +85,10 @@ def test_essentials_modules_include_only_their_own_or_earlier_modules() -> None:
             )
 
             for dependency in dependencies:
+                if dependency not in module_order and (ESSENTIALS_DIR / f"{dependency}.h").is_file():
+                    violations.append(f"{source_path.name} -> {dependency}.h (missing from Essentials.h)")
+                    continue
+
                 if (
                     dependency in module_order
                     and dependency != module
@@ -92,7 +96,7 @@ def test_essentials_modules_include_only_their_own_or_earlier_modules() -> None:
                 ):
                     violations.append(f"{source_path.name} -> {dependency}.h")
 
-    assert not violations, "Essentials reverse include dependencies:\n" + "\n".join(sorted(violations))
+    assert not violations, "Essentials include dependencies:\n" + "\n".join(sorted(violations))
 
 
 def test_essentials_public_apis_do_not_depend_on_later_modules() -> None:
