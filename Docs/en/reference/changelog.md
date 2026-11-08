@@ -14,6 +14,30 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-11-08
 
+### Added
+
+- Add client-only visual item movement: `Item.MoveToHexVisual(hex, speed)` and `Item.MoveToHexVisualForDuration(hex, duration_ms)` slide a map item along a straight line while it keeps its hex. Add `Map.UpdateCritterOccluders(critter, alpha)` to fade map sprites that cover a critter, with faded sprites skipped by screen picking.
+
+### Fixed
+
+- Stop losing SDL_GPU texture uploads. A burst of region updates cycled one transfer buffer inside a single command buffer, and Metal silently dropped some copies, leaving atlas regions transparent. Uploads now submit in bounded chunks, and a transfer buffer is submitted before it is replaced. A 32 MB staging ring with at most four rings in flight bounds memory during a map load instead of growing one buffer per upload.
+- Scale mouse coordinates by the window pixel density. SDL reports pointer positions in window points while the renderer works in pixels, so clicks, hover, wheel and relative motion landed at half the distance on 2x displays. `SetMousePosition` converts back to points.
+- Apply the chosen critter's authoritative equipment slots before refreshing its view and firing `OnCritterAction`; a single-item slot also moves its displaced item to the previous slot. Non-chosen critters replace their public inventory even with an empty snapshot, before view refresh, so moving the last public item clears stale equipment.
+- Finish interrupted database recovery cleanup. Cleanup now retires and syncs the pending log before truncating committed progress; an empty pending log with surviving committed progress is treated as interrupted cleanup rather than replayed. If cleanup fails in-process, the next failed-backend commit finishes it before appending to the pending file.
+- Track the exact spelling of written baker outputs, so the stale-cased output sweep cannot rename a deliberately renamed resource back. Resolve always-rebaked `ConfigBaker` outputs lazily through `BakerDataSource` instead of failing with "Baked output is not current for its source inputs".
+- Compile the client critter model query without an unused-variable warning when 3D support is disabled, and remove an unused lambda from `ScriptSystem::FindFunc`.
+- Reject a client-supplied movement step onto a hex occupied by another critter. Pathfinding still treats critters as passable for scripted routes; this restriction applies to the server's validation of client paths.
+
+### Changed
+
+- Refresh the bundled examples for the current Engine: generated enum setting defaults are numeric, the removed AngelScript `CoreScripts` input is no longer referenced, `MinimalMultiplayer` calls `AddItem` without the removed count argument, every example declares its own development secure-channel key pair, and server targets receive the Baker runtime library.
+
+### Migration
+
+- Baseline `c5101d149a` (`2026.1.116-dev`) to `2026.1.117-dev`. No stored document, property, resource-schema, network-message or `MigrationRule Version` change; rebuild every native role and the Baker. Existing project scripts and configs keep their meaning. The visual movement and occluder methods are additions; project scripts that use them need a matching runtime. Client-supplied movement paths no longer end on a hex occupied by a foreign critter; review scripted movement that relies on stacking. Journeys left by the older committed-first cleanup order may still need the isolated recovery procedure, and rolling back to a runtime without retired-generation handling requires both journals empty. Example packs need a rebake only when a project uses them.
+
+## 2026.1.116-dev - 2026-11-08
+
 ### Fixed
 
 - Restore the Linux server build. `EntityManager::ReserveRegistrationId()` declared its `FO_TSA_EXCLUDES(_registryLock)` attribute after a trailing return type, which clang does not late-parse, so the lock declared further down the class was an undeclared identifier. MSVC ignores the attribute, which hid the error on Windows. The method now has a leading return type, so the attribute is parsed after the class is complete.

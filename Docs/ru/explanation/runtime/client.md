@@ -5,7 +5,7 @@ locale: ru
 document_id: client-runtime
 permalink: /Docs/ru/explanation/runtime/client.html
 ---
-<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"d5688fae9569e202a98d5b7e24f4a99b658a534c15f7c1a733f0d16f5723e02a"} -->
+<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"3cd21c45a527a466f585f7737df097fd5e023ed0c05ea22470dadec574db5c2b"} -->
 )
 # Клиентская среда выполнения
 
@@ -176,6 +176,10 @@ callers сохраняют и адресуют эти items. Action-context snap
 identity на своей более узкой boundary.
 
 Script GUI widgets `ItemView` кешируют handles предметов, привязанные к cells. `Resort()` удаляет destroyed handles, возвращённые stale supplier, сохраняет cell только когда источник вернул тот же живой экземпляр handle, и перепривязывает replacement clone с тем же entity id, чтобы callback отрисовки предмета видел актуальное количество и остальные projected properties.
+
+`Net_OnCritterMoveItem()` применяет актуальные слоты инвентаря выбранного криттера до обновления его представления и вызова `OnCritterAction`. При переносе в одиночный слот вытесненный предмет также перемещается в прежний слот; остальные предметы множественного слота остаются на месте. Detached action-context item описывает полученный слот назначения, а аргумент действия содержит прежний слот. Виджеты инвентаря, принадлежащие игровому проекту, могут перестраивать кеш ячеек по этому событию без локального предсказания переноса.
+
+Для невыбранного криттера `Player::Send_MoveItem()` передаёт полный публичный снимок инвентаря. `Net_OnCritterMoveItem()` заменяет прежний инвентарь даже при нулевом количестве предметов в снимке, до обновления представления и callback действий; поэтому перенос или скрытие последнего публичного предмета очищает прежнее отображение экипировки. Выбранный криттер не получает полный снимок этим сообщением: его количество обязано быть нулевым, а отдельно синхронизируемый инвентарь сохраняется.
 
 ## Архитектура runtime 3D-моделей
 
