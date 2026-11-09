@@ -198,9 +198,12 @@ auto Item::AddItemToContainer(ptr<Item> item, const any_t& stack_id) -> ptr<Item
     item->SetContainerStack(stack_id);
     SetItemToContainer(item);
 
-    auto inner_item_ids {GetInnerItemIds()};
-    vec_add_unique_value(inner_item_ids, item->GetId());
-    SetInnerItemIds(inner_item_ids);
+    // The restore index lists items that have their own records; promotion lists a temporary one
+    if (item->IsPersistent()) {
+        auto inner_item_ids {GetInnerItemIds()};
+        vec_add_unique_value(inner_item_ids, item->GetId());
+        SetInnerItemIds(inner_item_ids);
+    }
 
     if (IsPersistent()) {
         _engine->EntityMngr.MakePersistent(item, true);
@@ -226,9 +229,11 @@ void Item::RemoveItemFromContainer(ptr<Item> item)
         _innerItems.reset();
     }
 
-    auto inner_item_ids {GetInnerItemIds()};
-    vec_remove_unique_value(inner_item_ids, item->GetId());
-    SetInnerItemIds(inner_item_ids);
+    if (item->IsPersistent()) {
+        auto inner_item_ids {GetInnerItemIds()};
+        vec_remove_unique_value(inner_item_ids, item->GetId());
+        SetInnerItemIds(inner_item_ids);
+    }
 
     if (item->IsPersistent() && !item->IsExplicitlyPersistent()) {
         _engine->EntityMngr.MakePersistent(item, false);

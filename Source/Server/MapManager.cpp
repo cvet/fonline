@@ -1419,7 +1419,8 @@ void MapManager::AddCritterToMap(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir 
         cr->SetHex(hex);
         cr->ChangeDir(dir);
 
-        if (!cr->GetControlledByPlayer()) {
+        // The restore index lists critters that have their own records; promotion lists a temporary one
+        if (!cr->GetControlledByPlayer() && cr->IsPersistent()) {
             auto cr_ids {map->GetCritterIds()};
             vec_add_unique_value(cr_ids, cr->GetId());
             map->SetCritterIds(cr_ids);
@@ -1540,10 +1541,13 @@ void MapManager::RemoveCritterFromMap(ptr<Critter> cr, nptr<Map> map)
         // Notify spectators
         map->RefreshAreaSpectators(cr, true);
 
+        // Leaving the map may demote the critter, so its listing follows the persistence it had on the map
+        bool listed {cr->IsPersistent()};
+
         map->RemoveCritter(cr);
         cr->SetMapId({});
 
-        if (!cr->GetControlledByPlayer()) {
+        if (listed && !cr->GetControlledByPlayer()) {
             auto cr_ids {map->GetCritterIds()};
             vec_remove_unique_value(cr_ids, cr->GetId());
             map->SetCritterIds(cr_ids);

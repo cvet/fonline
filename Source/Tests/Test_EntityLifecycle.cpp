@@ -1994,4 +1994,83 @@ TEST_CASE("EventChainStopsOnlyForCallbacksWithExplicitResult", "[events]")
     }
 }
 
+// A restore index lists exactly the children that have their own records: critter and map demotion unlink the entity
+// and its demoted children, promotion lists them again, and player-controlled critters stay outside the map list
+TEST_CASE("CritterAndMapPersistenceKeepHolderRestoreIndexesConsistent", "[server][entity][database]")
+{
+    auto settings {EntityLifecycleTests::MakeSettings()};
+    auto server {EntityLifecycleTests::MakeServerEngine(settings)};
+    auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
+    REQUIRE(EntityLifecycleTests::WaitForStart(server).empty());
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
+    auto hash {[&](string_view value) { return server->Hashes.to_hashed_string(value); }};
+    auto stored_ids {[&](string_view collection, ident_t id, string_view key) -> size_t {
+        server->DbStorage.WaitCommitChanges();
+        auto doc {server->DbStorage.Get(hash(collection), id)};
+        REQUIRE_FALSE(doc.Empty());
+        return doc[string(key)].AsArray().Size();
+    }};
+    auto has_record {[&](string_view collection, ident_t id) -> bool {
+        server->DbStorage.WaitCommitChanges();
+        return !server->DbStorage.Get(hash(collection), id).Empty();
+    }};
+
+    auto loc {server->MapMngr.CreateLocation(hash("TestLocation"), vector<hstring> {hash("TestMap")})};
+    auto map {loc->GetMapByIndex(0)};
+    REQUIRE(map);
+    auto npc {server->CreateCritter(hash("TestCritter"), false)};
+    auto player_cr {server->CreateCritter(hash("TestCritter"), true)};
+    server->MapMngr.TransferToMap(npc, map, mpos {20, 20}, mdir {}, std::nullopt);
+    server->MapMngr.TransferToMap(player_cr, map, mpos {24, 20}, mdir {}, std::nullopt);
+    ident_t loc_id {loc->GetId()};
+    ident_t map_id {map->GetId()};
+    ident_t npc_id {npc->GetId()};
+    server->EntityMngr.MakePersistent(loc, true, true);
+    REQUIRE(npc->IsPersistent());
+    REQUIRE(player_cr->IsPersistent());
+    REQUIRE(map->GetCritterIds() == vector<ident_t> {npc_id});
+
+    server->EntityMngr.MakePersistent(npc, false, true);
+    CHECK(map->GetCritterIds().empty());
+    CHECK(stored_ids("Maps", map_id, "CritterIds") == 0);
+    CHECK_FALSE(has_record("Critters", npc_id));
+
+    server->EntityMngr.MakePersistent(player_cr, false, true);
+    server->EntityMngr.MakePersistent(player_cr, true, true);
+    server->EntityMngr.MakePersistent(npc, true, true);
+    CHECK(map->GetCritterIds() == vector<ident_t> {npc_id});
+    CHECK(stored_ids("Maps", map_id, "CritterIds") == 1);
+    CHECK(has_record("Critters", npc_id));
+
+    server->EntityMngr.MakePersistent(map, false, true);
+    CHECK(loc->GetMapIds().empty());
+    CHECK(stored_ids("Locations", loc_id, "MapIds") == 0);
+    CHECK_FALSE(has_record("Maps", map_id));
+    CHECK_FALSE(npc->IsPersistent());
+    CHECK(map->GetCritterIds().empty());
+
+    server->EntityMngr.MakePersistent(map, true, true);
+    CHECK(loc->GetMapIds() == vector<ident_t> {map_id});
+    CHECK(stored_ids("Locations", loc_id, "MapIds") == 1);
+    CHECK(stored_ids("Maps", map_id, "CritterIds") == 1);
+    CHECK(has_record("Critters", npc_id));
+
+    // A persistent critter that leaves player control joins the list
+    ident_t player_cr_id {player_cr->GetId()};
+    player_cr->UnmarkIsForPlayer();
+    CHECK(map->GetCritterIds() == vector<ident_t> {npc_id, player_cr_id});
+    CHECK(stored_ids("Maps", map_id, "CritterIds") == 2);
+
+    // Ordinary removal of an entity demoted on its own finds it already unlinked
+    server->EntityMngr.MakePersistent(npc, false, true);
+    REQUIRE_NOTHROW(server->CrMngr.DestroyCritter(npc));
+    CHECK(map->GetCritterIds() == vector<ident_t> {player_cr_id});
+
+    server->EntityMngr.MakePersistent(map, false, true);
+    CHECK(map->GetCritterIds().empty());
+    REQUIRE_NOTHROW(server->CrMngr.DestroyCritter(player_cr));
+    REQUIRE_NOTHROW(server->MapMngr.DestroyLocation(loc));
+}
+
 FO_END_NAMESPACE

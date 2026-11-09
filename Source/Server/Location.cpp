@@ -146,9 +146,12 @@ void Location::AddMap(ptr<Map> map)
 {
     vec_add_unique_value(_locMaps, map.hold_ref());
 
-    auto map_ids {GetMapIds()};
-    vec_add_unique_value(map_ids, map->GetId());
-    SetMapIds(map_ids);
+    // The restore index lists maps that have their own records; promotion lists a temporary one
+    if (map->IsPersistent()) {
+        auto map_ids {GetMapIds()};
+        vec_add_unique_value(map_ids, map->GetId());
+        SetMapIds(map_ids);
+    }
 
     map->SetLocId(GetId());
     map->SetLocMapIndex(numeric_cast<int32_t>(_locMaps.size()) - 1);
@@ -164,9 +167,11 @@ void Location::RemoveMap(ptr<Map> map)
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     vec_remove_unique_value(_locMaps, map.hold_ref());
 
-    auto map_ids {GetMapIds()};
-    vec_remove_unique_value(map_ids, map->GetId());
-    SetMapIds(map_ids);
+    if (map->IsPersistent()) {
+        auto map_ids {GetMapIds()};
+        vec_remove_unique_value(map_ids, map->GetId());
+        SetMapIds(map_ids);
+    }
 
     map->SetLocId({});
     map->SetLocMapIndex({});

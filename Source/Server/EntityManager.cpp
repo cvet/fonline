@@ -308,6 +308,8 @@ void EntityManager::InitEntityIdBoundary()
 
     FO_VERIFY_AND_THROW(_allEntities.empty(), "Entity id boundary must be set before any entity is registered", _allEntities.size());
 
+    scoped_lock id_lock {_entityIdLock};
+
     // A snapshot carries the exact boundary its world stopped at and validates it against the payload
     // before this runs, so raising it to the configured floor would break the continuity it promises
     _lastEntityId = _engine->IsRestoredFromSnapshot() ? last : std::max(last, start);
@@ -368,12 +370,20 @@ void EntityManager::LoadEntities() FO_TSA_NO_ANALYSIS
 
 void EntityManager::FlushExactEntityId()
 {
-    scoped_lock lock {_registryLock};
-
-    _persistedEntityId = _lastEntityId;
+    // Same order as a range reserve: an exhausted range cannot hand out an id until this engine lock is released
     _engine->LockForPropertyAccess();
     auto unlock_prop {scope_exit([this]() noexcept { _engine->UnlockForPropertyAccess(); })};
-    _engine->SetLastEntityId(ident_t {numeric_cast<int64_t>(_lastEntityId)});
+
+    int64_t last_id {};
+
+    {
+        scoped_lock lock {_entityIdLock};
+
+        _persistedEntityId = _lastEntityId;
+        last_id = _lastEntityId;
+    }
+
+    _engine->SetLastEntityId(ident_t {last_id});
 }
 
 // Failed restoration prunes runtime IDs without overwriting the durable list needed by the next attempt
@@ -1166,6 +1176,7 @@ void EntityManager::RegisterPlayer(ptr<Player> player, ident_t id, bool persiste
     ident_t assigned_id {player->GetId()};
     FO_VERIFY_AND_THROW(!id || !assigned_id || assigned_id == id, "Player is already assigned a different id", assigned_id, id);
     ident_t requested_id {id ? id : assigned_id};
+    ident_t fresh_id {requested_id ? ident_t {} : ReserveRegistrationId(player)};
     scoped_lock lock {_registryLock};
 
     if (requested_id) {
@@ -1180,7 +1191,7 @@ void EntityManager::RegisterPlayer(ptr<Player> player, ident_t id, bool persiste
         player->SetId(id);
     }
 
-    RegisterEntity(player);
+    RegisterEntity(player, fresh_id);
     player->SetPersistent(persistent);
     const auto [it, inserted] {_allPlayers.emplace(player->GetId(), player)};
     FO_STRONG_ASSERT(inserted, "Player id is already registered", player->GetId());
@@ -1202,11 +1213,12 @@ void EntityManager::RegisterLocation(ptr<Location> loc)
 {
     FO_TRACE_ZONE(Entity);
 
+    ident_t fresh_id {ReserveRegistrationId(loc)};
     scoped_lock lock {_registryLock};
 
     CaptureFreshEntity(loc);
 
-    RegisterEntity(loc);
+    RegisterEntity(loc, fresh_id);
     const auto [it, inserted] {_allLocations.emplace(loc->GetId(), loc)};
     FO_STRONG_ASSERT(inserted, "Location id is already registered", loc->GetId(), loc->GetProtoId());
 }
@@ -1227,11 +1239,12 @@ void EntityManager::RegisterMap(ptr<Map> map)
 {
     FO_TRACE_ZONE(Entity);
 
+    ident_t fresh_id {ReserveRegistrationId(map)};
     scoped_lock lock {_registryLock};
 
     CaptureFreshEntity(map);
 
-    RegisterEntity(map);
+    RegisterEntity(map, fresh_id);
     const auto [it, inserted] {_allMaps.emplace(map->GetId(), map)};
     FO_STRONG_ASSERT(inserted, "Map id is already registered", map->GetId(), map->GetProtoId());
 }
@@ -1252,11 +1265,12 @@ void EntityManager::RegisterCritter(ptr<Critter> cr)
 {
     FO_TRACE_ZONE(Entity);
 
+    ident_t fresh_id {ReserveRegistrationId(cr)};
     scoped_lock lock {_registryLock};
 
     CaptureFreshEntity(cr);
 
-    RegisterEntity(cr);
+    RegisterEntity(cr, fresh_id);
     const auto [it, inserted] {_allCritters.emplace(cr->GetId(), cr)};
     FO_STRONG_ASSERT(inserted, "Critter id is already registered", cr->GetId(), cr->GetProtoId());
 }
@@ -1277,11 +1291,12 @@ void EntityManager::RegisterItem(ptr<Item> item)
 {
     FO_TRACE_ZONE(Entity);
 
+    ident_t fresh_id {ReserveRegistrationId(item)};
     scoped_lock lock {_registryLock};
 
     CaptureFreshEntity(item);
 
-    RegisterEntity(item);
+    RegisterEntity(item, fresh_id);
     const auto [it, inserted] {_allItems.emplace(item->GetId(), item)};
     FO_STRONG_ASSERT(inserted, "Item id is already registered", item->GetId(), item->GetProtoId());
 }
@@ -1328,9 +1343,10 @@ void EntityManager::RegisterCustomEntity(ptr<CustomEntity> custom_entity)
 
     ValidateEntityAccess(custom_entity);
 
+    ident_t fresh_id {ReserveRegistrationId(custom_entity)};
     scoped_lock lock {_registryLock};
 
-    RegisterEntity(custom_entity);
+    RegisterEntity(custom_entity, fresh_id);
 
     auto& custom_entities {_allCustomEntities[custom_entity->GetTypeName()]};
     const auto [it, inserted] {custom_entities.emplace(custom_entity->GetId(), custom_entity)};
@@ -1354,11 +1370,15 @@ void EntityManager::MakePersistent(ptr<ServerEntity> entity, bool persistent, bo
 {
     FO_TRACE_ZONE(Entity);
 
+    ValidateEntityAccess(entity);
     FO_VERIFY_AND_THROW(entity->GetId(), "Entity has no assigned id");
 
     if (auto player {entity.dyn_cast<Player>()}) {
         throw EntityManagerException("Can't change persistence of player", player->GetId());
     }
+
+    // The holder's restore index changes together with the persistence, so its cover is proved before any mutation
+    ValidateEntityAccess(GetRestoreIndexHolder(entity));
 
     if (persistent) {
         if (explicitly_requested) {
@@ -1388,12 +1408,15 @@ void EntityManager::MakePersistentRecursive(ptr<ServerEntity> entity, unordered_
 
     ValidateEntityAccess(entity);
 
+    // Children get their records before the holder that lists them, and a record exists before its listing,
+    // so an interrupted promotion leaves unreferenced records rather than references to missing ones
+    ForEachPersistentChildEntity(entity, [this, &processed](ptr<ServerEntity> child) { MakePersistentRecursive(child, processed); });
+
     if (!entity->IsPersistent()) {
         _engine->DbStorage.Insert(entity->GetTypeNamePlural(), entity->GetId(), StoreEntityDoc(entity));
         entity->SetPersistent(true);
+        UpdateHolderRestoreIndex(entity, true);
     }
-
-    ForEachPersistentChildEntity(entity, [this, &processed](ptr<ServerEntity> child) { MakePersistentRecursive(child, processed); });
 }
 
 void EntityManager::MakeNonPersistentRecursive(ptr<ServerEntity> entity, unordered_set<ptr<ServerEntity>>& processed)
@@ -1406,12 +1429,105 @@ void EntityManager::MakeNonPersistentRecursive(ptr<ServerEntity> entity, unorder
 
     ValidateEntityAccess(entity);
 
-    ForEachPersistentChildEntity(entity, [this, &processed](ptr<ServerEntity> child) { MakeNonPersistentRecursive(child, processed); });
-
+    // A listing is removed before its record and a holder before its children, so an interrupted demotion
+    // leaves unreferenced records rather than references to missing ones
     if (entity->IsPersistent()) {
+        UpdateHolderRestoreIndex(entity, false);
         _engine->DbStorage.Delete(entity->GetTypeNamePlural(), entity->GetId());
         entity->SetPersistent(false);
     }
+
+    ForEachPersistentChildEntity(entity, [this, &processed](ptr<ServerEntity> child) { MakeNonPersistentRecursive(child, processed); });
+}
+
+// A restore index lists exactly the children that have their own records, so every change of membership is strict
+void EntityManager::UpdateHolderRestoreIndex(ptr<ServerEntity> entity, bool persistent)
+{
+    FO_TRACE_ZONE(Entity);
+
+    auto holder {GetRestoreIndexHolder(entity)};
+
+    if (!holder) {
+        return;
+    }
+
+    ValidateEntityAccess(holder);
+
+    ident_t id {entity->GetId()};
+
+    auto update_ids {[id, persistent](vector<ident_t>& ids) {
+        if (persistent) {
+            vec_add_unique_value(ids, id);
+        }
+        else {
+            vec_remove_unique_value(ids, id);
+        }
+    }};
+
+    if (auto custom_entity {entity.dyn_cast<CustomEntity>()}) {
+        auto holder_prop {_engine->GetEntityHolderIdsProp(holder, custom_entity->GetCustomHolderEntry())};
+        auto holder_props {holder->GetPropertiesForEdit()};
+        auto inner_entity_ids {holder_props->GetValueFast<vector<ident_t>>(holder_prop)};
+        update_ids(inner_entity_ids);
+        holder_props->SetValue(holder_prop, inner_entity_ids);
+    }
+    else if (entity.dyn_cast<Item>()) {
+        if (auto holder_map {holder.dyn_cast<Map>()}) {
+            auto item_ids {holder_map->GetItemIds()};
+            update_ids(item_ids);
+            holder_map->SetItemIds(item_ids);
+        }
+        else if (auto holder_cr {holder.dyn_cast<Critter>()}) {
+            auto item_ids {holder_cr->GetItemIds()};
+            update_ids(item_ids);
+            holder_cr->SetItemIds(item_ids);
+        }
+        else if (auto container {holder.dyn_cast<Item>()}) {
+            auto inner_item_ids {container->GetInnerItemIds()};
+            update_ids(inner_item_ids);
+            container->SetInnerItemIds(inner_item_ids);
+        }
+    }
+    else if (entity.dyn_cast<Critter>()) {
+        if (auto holder_map {holder.dyn_cast<Map>()}) {
+            auto cr_ids {holder_map->GetCritterIds()};
+            update_ids(cr_ids);
+            holder_map->SetCritterIds(cr_ids);
+        }
+    }
+    else if (entity.dyn_cast<Map>()) {
+        if (auto holder_loc {holder.dyn_cast<Location>()}) {
+            auto map_ids {holder_loc->GetMapIds()};
+            update_ids(map_ids);
+            holder_loc->SetMapIds(map_ids);
+        }
+    }
+}
+
+// The holder whose stored ID list restores the entity; locations, global-map and player-controlled critters have none
+auto EntityManager::GetRestoreIndexHolder(ptr<ServerEntity> entity) -> refcount_nptr<Entity>
+{
+    if (auto custom_entity {entity.dyn_cast<CustomEntity>()}) {
+        hstring entry {custom_entity->GetCustomHolderEntry()};
+
+        if (!entry) {
+            return nullptr;
+        }
+
+        auto holder {GetCustomEntityHolder(custom_entity)};
+
+        if (!_engine->GetEntityType(holder->GetTypeName()).HolderEntries.at(entry).Persistent) {
+            return nullptr;
+        }
+
+        return holder;
+    }
+
+    if (auto cr {entity.dyn_cast<Critter>()}; cr && cr->GetControlledByPlayer()) {
+        return nullptr;
+    }
+
+    return entity->GetParent();
 }
 
 void EntityManager::ForEachPersistentChildEntity(ptr<ServerEntity> entity, const function<void(ptr<ServerEntity> child)>& callback) const
@@ -1481,6 +1597,57 @@ auto EntityManager::StoreEntityDoc(ptr<ServerEntity> entity) -> AnyData::Documen
     }
 }
 
+// Persisting a new id range takes the engine lock, which ranks above the registry because `Game.Lock()` holders look
+// entities up, so a fresh id is reserved before the caller takes the registry
+auto EntityManager::ReserveRegistrationId(ptr<const ServerEntity> entity) -> ident_t
+{
+    if (entity->GetId()) {
+        return ident_t {};
+    }
+
+    while (true) {
+        {
+            scoped_lock lock {_entityIdLock};
+
+            if (_lastEntityId < _persistedEntityId) {
+                int64_t id_num {++_lastEntityId};
+                return ident_t {id_num};
+            }
+        }
+
+        ReserveEntityIdRange();
+    }
+}
+
+void EntityManager::ReserveEntityIdRange()
+{
+    int64_t batch {_engine->Settings->Server.EntityIdReserveBatch};
+    FO_VERIFY_AND_THROW(batch > 0, "Entity id reserve batch must be positive", batch);
+
+    _engine->LockForPropertyAccess();
+    auto unlock_prop {scope_exit([this]() noexcept { _engine->UnlockForPropertyAccess(); })};
+
+    int64_t boundary {};
+
+    {
+        scoped_lock lock {_entityIdLock};
+
+        // Another thread may have persisted a range while this one waited for the engine lock
+        if (_lastEntityId < _persistedEntityId) {
+            return;
+        }
+
+        boundary = _lastEntityId + batch;
+    }
+
+    // The boundary is stored before any id of its range is handed out
+    _engine->SetLastEntityId(ident_t {boundary});
+
+    scoped_lock lock {_entityIdLock};
+
+    _persistedEntityId = boundary;
+}
+
 void EntityManager::CaptureFreshEntity(ptr<ServerEntity> entity)
 {
     ident_t id {entity->GetId()};
@@ -1488,26 +1655,22 @@ void EntityManager::CaptureFreshEntity(ptr<ServerEntity> entity)
     _engine->RequireCurrentSyncContext()->EnsureFreshEntitySynced(entity);
 }
 
-void EntityManager::RegisterEntity(ptr<ServerEntity> entity)
+void EntityManager::RegisterEntity(ptr<ServerEntity> entity, ident_t fresh_id)
 {
-    // Caller must hold _registryLock (unique)
+    // Caller must hold _registryLock (unique) and pass the id reserved for an entity without one
     if (!entity->GetId()) {
-        int64_t id_num {++_lastEntityId};
-        ident_t id {numeric_cast<int64_t>(id_num)};
-        FO_STRONG_ASSERT(_allEntities.count(id) == 0, "Generated entity id is already present in the entity registry", entity->GetTypeName(), id);
+        FO_VERIFY_AND_THROW(fresh_id, "Entity without an id is registered without a reserved id", entity->GetTypeName());
+        FO_STRONG_ASSERT(_allEntities.count(fresh_id) == 0, "Generated entity id is already present in the entity registry", entity->GetTypeName(), fresh_id);
 
-        if (id_num > _persistedEntityId) {
-            _persistedEntityId = id_num + _engine->Settings->Server.EntityIdReserveBatch - 1;
-
-            _engine->LockForPropertyAccess();
-            auto unlock_prop {scope_exit([this]() noexcept { _engine->UnlockForPropertyAccess(); })};
-            _engine->SetLastEntityId(ident_t {numeric_cast<int64_t>(_persistedEntityId)});
-        }
-
-        entity->SetId(id);
+        entity->SetId(fresh_id);
     }
     else {
+        FO_VERIFY_AND_THROW(!fresh_id, "Entity with an id is registered with a reserved id", entity->GetTypeName(), entity->GetId(), fresh_id);
+
         int64_t id_num {entity->GetId().underlying_value()};
+
+        scoped_lock id_lock {_entityIdLock};
+
         _lastEntityId = std::max(_lastEntityId, id_num);
     }
 
@@ -1667,20 +1830,23 @@ auto EntityManager::CreateCustomInnerEntity(ptr<Entity> holder, hstring entry, h
 
     holder->AddInnerEntity(entry, entity);
 
-    auto holder_prop {_engine->GetEntityHolderIdsProp(holder, entry)};
-    auto holder_props {holder->GetPropertiesForEdit()};
-    auto inner_entity_ids {holder_props->GetValueFast<vector<ident_t>>(holder_prop)};
-    vec_add_unique_value(inner_entity_ids, entity->GetId());
-    holder_props->SetValue(holder_prop, inner_entity_ids);
+    bool persistent_entry {_engine->GetEntityType(holder->GetTypeName()).HolderEntries.at(entry).Persistent};
+
+    // A persistent entry is a restore index of entities that have their own records, so promotion lists a new one
+    if (!persistent_entry) {
+        auto holder_prop {_engine->GetEntityHolderIdsProp(holder, entry)};
+        auto holder_props {holder->GetPropertiesForEdit()};
+        auto inner_entity_ids {holder_props->GetValueFast<vector<ident_t>>(holder_prop)};
+        vec_add_unique_value(inner_entity_ids, entity->GetId());
+        holder_props->SetValue(holder_prop, inner_entity_ids);
+    }
 
     if (auto holder_entity {holder.dyn_cast<ServerEntity>()}) {
-        const auto& holder_type {_engine->GetEntityType(holder->GetTypeName())};
-
-        if (holder_type.HolderEntries.at(entry).Persistent && holder_entity->IsPersistent()) {
+        if (persistent_entry && holder_entity->IsPersistent()) {
             MakePersistent(entity, true);
         }
     }
-    else if (_engine->GetEntityType(holder->GetTypeName()).HolderEntries.at(entry).Persistent) {
+    else if (persistent_entry) {
         MakePersistent(entity, true);
     }
 
@@ -1716,6 +1882,20 @@ void EntityManager::AttachCustomEntityToHolder(ptr<CustomEntity> entity, ptr<Ent
 
         entity->SetEntityLock(_engine->GetEntityLock());
     }
+}
+
+// An entity without a holder id belongs to the engine singleton, which has no parent link
+auto EntityManager::GetCustomEntityHolder(ptr<CustomEntity> entity) -> refcount_ptr<Entity>
+{
+    if (auto id {entity->GetCustomHolderId()}) {
+        auto parent {entity->GetParent()};
+        FO_VERIFY_AND_THROW(parent, "Custom entity holder has no parent entity");
+        FO_VERIFY_AND_THROW(parent->GetId() == id, "Custom entity parent id does not match the holder id");
+        ValidateEntityAccess(parent);
+        return std::move(parent).take_not_null();
+    }
+
+    return _engine.hold_ref();
 }
 
 auto EntityManager::ConstructCustomEntity(hstring type_name, hstring pid) -> refcount_ptr<CustomEntity>
@@ -1904,17 +2084,7 @@ void EntityManager::DestroyCustomEntity(ptr<CustomEntity> entity)
         prev_deps = remaining_deps;
     }
 
-    refcount_ptr<Entity> holder {[&]() -> refcount_ptr<Entity> {
-        if (auto id {entity->GetCustomHolderId()}) {
-            auto parent {entity->GetParent()};
-            FO_VERIFY_AND_THROW(parent, "Custom entity holder has no parent entity");
-            FO_VERIFY_AND_THROW(parent->GetId() == id, "Custom entity parent id does not match the holder id");
-            ValidateEntityAccess(parent);
-            return std::move(parent).take_not_null();
-        }
-
-        return _engine.hold_ref();
-    }()};
+    auto holder {GetCustomEntityHolder(entity)};
 
     ForEachCustomEntityView(entity, [entity](ptr<Player> player, bool owner) {
         ignore_unused(owner);
@@ -1924,11 +2094,15 @@ void EntityManager::DestroyCustomEntity(ptr<CustomEntity> entity)
     auto entry {entity->GetCustomHolderEntry()};
     holder->RemoveInnerEntity(entry, entity);
 
-    auto holder_prop {_engine->GetEntityHolderIdsProp(holder, entry)};
-    auto holder_props {holder->GetPropertiesForEdit()};
-    auto inner_entity_ids {holder_props->GetValueFast<vector<ident_t>>(holder_prop)};
-    vec_remove_unique_value(inner_entity_ids, entity->GetId());
-    holder_props->SetValue(holder_prop, inner_entity_ids);
+    bool persistent_entry {_engine->GetEntityType(holder->GetTypeName()).HolderEntries.at(entry).Persistent};
+
+    if (!persistent_entry || entity->IsPersistent()) {
+        auto holder_prop {_engine->GetEntityHolderIdsProp(holder, entry)};
+        auto holder_props {holder->GetPropertiesForEdit()};
+        auto inner_entity_ids {holder_props->GetValueFast<vector<ident_t>>(holder_prop)};
+        vec_remove_unique_value(inner_entity_ids, entity->GetId());
+        holder_props->SetValue(holder_prop, inner_entity_ids);
+    }
 
     _engine->TimeEventMngr.CancelAllForEntity(entity);
     entity->SetParent(nullptr);

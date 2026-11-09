@@ -5,7 +5,7 @@ locale: ru
 document_id: entity-model
 permalink: /Docs/ru/explanation/entity-and-property-model/
 ---
-<!-- docs-translation: {"document_id":"entity-model","locale":"ru","source_path":"Docs/en/explanation/entity-and-property-model/index.md","source_sha256":"60939dd5025fb3dabe5201d2029826ddf8b7834678635c061360e25a2b897f3c"} -->
+<!-- docs-translation: {"document_id":"entity-model","locale":"ru","source_path":"Docs/en/explanation/entity-and-property-model/index.md","source_sha256":"8a4622fcd1eebae60e070c77933b676961675e1220de87c3b2cf98b55da29d63"} -->
 # Модель сущностей
 
 Этот документ описывает переиспользуемую runtime-модель сущностей: дескрипторы типов сущностей, сгенерированные средства доступа к свойствам, сущности-прототипы, владение внутренними сущностями, события сущностей и модель хранения свойств, на которой строятся другие runtime-системы.
@@ -199,7 +199,7 @@ Overlays, производные от прототипов, лениво соз�
 
 `Persistent`-записи сохраняют потомков постоянных держателей или Game; остальные записи временные. Проверяйте потомков и связи через unload/load. Потомки Critter восстанавливаются до `OnCritterPreLoad`; игровые callbacks восстанавливают или завершают состояние.
 
-Общие persistent-поля `CustomHolderId` и `CustomHolderEntry` позволяют custom entities записывать отношения holder. `EntityManagerApi` предоставляет hooks создания, lookup и уничтожения custom entity:
+Общие persistent-поля `CustomHolderId` и `CustomHolderEntry` позволяют custom entities записывать отношения holder. Custom-типы регистрируют все три общих поля под теми же индексами, что и экспортируемые типы, поэтому `MakePersistent()` записывает явное постоянство custom entity так же, как у любой другой сущности. `EntityManagerApi` предоставляет hooks создания, lookup и уничтожения custom entity:
 
 - `CreateCustomInnerEntity()`
 - `CreateCustomEntity()`

@@ -104,6 +104,7 @@ public:
     FO_ENTITY_EVENT(OnLogout);
 
 private:
+    auto CaptureGlobalVars() -> NetOutBuffer;
     void SendCritter(ptr<const Critter> cr, bool is_chosen, CritterVisibilityMode vis_mode, bool send_movement);
     void SendItem(NetOutBuffer& out_buf, ptr<const Item> item, bool owned, bool with_slot, bool with_inner_entities);
     void SendInnerEntities(NetOutBuffer& out_buf, ptr<const Entity> holder, bool owned);

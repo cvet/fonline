@@ -2,5 +2,3 @@
 rule	path	count	reason
 comment-length	Source/Common/ImGuiExt/ImGuiConfig.h	13	The file mirrors upstream Dear ImGui imconfig.h, comments included, so upstream updates stay a reviewable diff.
 comment-length	Source/Frontend/Rendering.h	7	GLSL uniform-buffer layout maps document channel semantics that no C++ declaration carries; the longer explanations still need a move to the rendering reference.
-comment-length	Source/Server/StaticMap.h	1	A three-line class explanation that predates the comment check; condense it or move it to the server runtime documentation.
-comment-length	Source/Tests/Test_PathFinding.cpp	1	A three-line description of a hidden measurement test that predates the comment check; condense it into the test name or a two-line note.

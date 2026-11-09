@@ -12,7 +12,7 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-11-07
+## Current - 2026-11-09
 
 ### Added
 
@@ -56,13 +56,78 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Migration
 
-- Baseline `8b32281d50` (`2026.1.112-dev`) → `2026.1.113-dev`. No stored property, network protocol, `MigrationRule Version`, Managed ABI or resource schema changes, and no saved-data conversion is required. The new script methods (`Game.AiControl*` on the client, `Game.LoadImage` and `ServerImage` on the server) change the generated metadata and therefore the derived `CompatibilityVersion`: reconfigure, rebuild every native role and client runtime library, and rebake metadata and scripts together; mixed bakes are rejected as before. The central `MigrationRule Version` marker `0.0.87` and the Managed ABI identity stay the same.
+- Baseline `7d134df5f8` (`2026.1.118-dev`) → `2026.1.119-dev`. No stored property, network protocol, `MigrationRule Version`, Managed ABI or resource schema changes, and no saved-data conversion is required. The new script methods (`Game.AiControl*` on the client, `Game.LoadImage` and `ServerImage` on the server) change the generated metadata and therefore the derived `CompatibilityVersion`: reconfigure, rebuild every native role and client runtime library, and rebake metadata and scripts together; mixed bakes are rejected as before. The central `MigrationRule Version` marker `0.0.88` and the Managed ABI identity stay the same.
 - Search the project root file and included files with `rg -n "SetOption(Values)?\(" CMakeLists.txt cmake/` and compare every `FO_` name with the CMake option reference. Replace or delete removed names as listed in the Changed section, and rename project-owned variables that start with `FO_` to a project prefix. A project that set `FO_BUILD_EDITOR` now fails at configure until the line is removed or replaced. `SetOption(FO_BINARY_OUTPUT_POSTFIX ...)` in a project now changes the binary output directory name; remove the call if that is not intended.
 - Search CI files and scripts with `rg -n "prepare-(host-)?workspace|prepare-(win|mac)-workspace" .` and remove the `linux` and `packages` tokens and every feature the host does not list; repository templates must drop `showcase-display-packages`. Install Python 3.12 or newer on every machine that runs BuildTools.
 - A project that copied the example `CMakePresets.json` may keep schema 8 when its own minimum CMake is 3.28 or newer, or lower it to the lowest schema its presets need. Search `.fomain` files with `rg -n "RecursiveInput|Script\.(MutableGlobalsAllowedNamespaces|AttributedFunctionDirectCallAllowedNamespaces|ExtraDirectCallBlockingAttributes)"`: delete `RecursiveInput` (it never had an effect) and spell the settings with the `AngelScript.` prefix.
 - Check `rg '"processId"' .vscode/launch.json`: a `processId` in an AngelScript attach configuration must now be the advertised `<pid>:<port>` or be removed to keep the target picker. Code that referred to `RunAndLog.cmake` or to `<DevName>_UnitTests.log` in the build directory should read `<build-dir>/Testing/<DevName>_UnitTests-<config>.log`.
 - A project that kept its own copy of any tool above should delete the copy and its tests and call the Engine tool from a thin wrapper; the matching page under `Docs/en/how-to/project/` lists the search command, the option mapping and the baseline conversion. Search with `rg -n "CopyTargetRuntimeToTarget\([^)]*_BakerLib" CMakeLists.txt cmake/` first: a project that still copies the baker library itself now fails configure with a message naming the line. Projects that load `FOnline.Analyzers` get the new rules at Warning severity, which fails builds under `TreatWarningsAsErrors`; rename old project-prefixed severity keys as listed on the analyzers page. Callers that passed `--allow-remote` to the AiControl client or adapter without a token must set one.
 - A project with its own AiControl listener deletes it (`Client_Game_AiControl*`, its asio include path and gate define), sets `FO_AI_CONTROL` from a project development option and registers its command set with `RegisterCommandHandler` from `ClientInitHook`; codegen fails on the duplicate script methods until the old ones are deleted. `AiControlStart` has no `enabled` argument, throws instead of returning false and rejects non-positive bounds; `AiControlPullCommand` has a new `paramsJson` output; observations and events must be JSON objects; command fields are type-checked. A project with its own `Server_Game_LoadImage`/`GetImageColor` deletes them and uses `img = Game.LoadImage(name); img.GetColor(pos)`. Search with `rg -n "AiControlStart|AiControlPullCommand|LoadImage|GetImageColor" Scripts SourceExt`. Projects that copied the example `.fomain` files drop the removed pack inputs with `git grep -n "AngelScript/CoreScripts\|Core.fos"`.
+
+## 2026.1.118-dev - 2026-11-08
+
+### Fixed
+
+- Resolve map pixels exactly on a hex boundary far from the origin like the same pixels near it. `GetHexPosCoord()` rounded the lattice coordinates through `double`, so a boundary pixel millions of pixels out could pick a different neighbour than its translated counterpart; wide-coordinate maps and the `GetHexPosCoord far out on a large map` test exposed it. Lattice coordinates, cube rounding and the inside test now use exact integer arithmetic.
+
+### Migration
+
+- Baseline `2026.1.117-dev` to `2026.1.118-dev`. No project migration is required: no API, property, serialization, network or resource contract changes. A pixel exactly on a hex boundary may resolve to a different adjacent cell than before when floating-point rounding picked it; the result is now the same at every map distance. Rebuild the client and server roles to pick up the fix.
+
+## 2026.1.117-dev - 2026-11-08
+
+### Fixed
+
+- Keep the release-safety documentation test aligned with the zero-based settings initialization. `ResolveSettingValue()` receives the baking mode as a parameter, so its target-directive guard reads `!baking_mode`; the test still expected the former member expression and failed the documentation job on every commit after `8b1a9d5547`. No Engine behavior changes.
+
+### Migration
+
+- Baseline `2026.1.116-dev` to `2026.1.117-dev`. No project migration is required: only a documentation test expectation changes; no API, property, serialization, network or resource contract changes.
+
+## 2026.1.116-dev - 2026-11-08
+
+### Fixed
+
+- Restore the Linux server build. `EntityManager::ReserveRegistrationId()` declared its `FO_TSA_EXCLUDES(_registryLock)` attribute after a trailing return type, which clang does not late-parse, so the lock declared further down the class was an undeclared identifier. MSVC ignores the attribute, which hid the error on Windows. The method now has a leading return type, so the attribute is parsed after the class is complete.
+- Shorten the `StaticMap` class comment and the `PathFindingCost` test comment to the two-line limit of the comment standard audit.
+
+### Migration
+
+- Baseline `2026.1.115-dev` to `2026.1.116-dev`. No project migration is required: no API, property, serialization, network or resource contract changes; the edits are a declaration form and two comments. A project baseline of exception-safety classifications keyed on function bodies is unaffected, because neither function body changes.
+
+## 2026.1.115-dev - 2026-11-08
+
+### Fixed
+
+- Stop a server-wide freeze between entity registration and the Game singleton lock. Every `Server.EntityIdReserveBatch` ids a registration persisted the next `LastEntityId` bound while it held the entity registry and waited for the Game lock, while a `Game.Lock()` holder that looked an entity up waited for the registry. Both threads stopped, and every following Game property access, entity lookup and registration stopped behind them, so the worker pool and connection handling stopped. A fresh id is now reserved before the registry is taken, the bound is persisted under the Game lock without the registry, and `FlushExactEntityId()` takes the Game lock first. `ServerEntityIdReserveWaitsForGameLockOutsideRegistry` covers the order.
+- Stop the same kind of freeze between a player's connection and the Game singleton lock. `Player::Send_LoginSuccess()` and `Player::Send_InitData()` held the connection while they waited for the Game lock to encode the global values, and a thread inside a `GameLock` scope that wrote a public Game property or called a client waited for that connection. The global values are now encoded before the connection is taken. `PlayerGlobalVarsAreCapturedBeforeTheConnectionIsTaken` covers the order.
+
+### Migration
+
+- Baseline `0d1a56de63` (`2026.1.114-dev`) to `2026.1.115-dev`. No project migration is required: entity ids stay unique and monotonic, the `LastEntityId` bound is still stored before any id of its range is handed out, and stored documents, property IDs, network messages, Managed ABI, resource schemas and the `MigrationRule Version` marker are unchanged. `Server.EntityIdReserveBatch` must be positive: a zero or negative value previously stored a bound below the id it handed out and now fails the first fresh registration. Rebuild the server role to pick up the fix.
+
+## 2026.1.114-dev - 2026-11-06
+
+### Fixed
+
+- Register the shared `ExplicitlyPersistent` core property for custom entity types as well. Custom types registered only `CustomHolderId` and `CustomHolderEntry`, so `MakePersistent()` with an explicit request, including the script `Entity.MakePersistent(bool)`, wrote the flag into the custom type's next property and failed or corrupted it.
+- Regenerate the API, image-format, map-format and prototype-format references, whose source anchors went stale with the SPDX header change.
+
+### Migration
+
+- Baseline `320c982767` (`2026.1.113-dev`) to `2026.1.114-dev`; central `MigrationRule Version` `0.0.87` to `0.0.88`. Every custom type gains the persistent `bool ExplicitlyPersistent` core property right after `CustomHolderEntry`, which moves the registration index of each later custom-type property by one. Reconfigure, rebuild every native role and rebake metadata and scripts together; mixed builds and resource sets are rejected by the compatibility check. Stored documents keep their named fields and need no conversion: a missing `ExplicitlyPersistent` reads as `false`. Scripts that call `Entity.MakePersistent(bool)` on custom entities now work instead of failing. Roll back the binaries and resources together.
+
+## 2026.1.113-dev - 2026-11-06
+
+### Fixed
+
+- Keep every holder's restore index equal to the held entities that have their own records: map, critter-inventory and nested-container lists for items, `Map.CritterIds` for critters that are not player-controlled, `Location.MapIds` for maps and persistent holder entries for custom entities. Attaching or detaching a persistent entity, promotion and demotion change the listing strictly; a temporary entity leaves it untouched. Promotion records children before their holder and demotion removes a holder's record before its children's, so an interrupted change leaves unreferenced records rather than references to missing ones.
+- Validate the holder of the entity's restore index before changing persistence flags, storage or restore membership. Cover rejection in both directions with two workers, and real removal, destruction and unload/load of items, critters, maps and custom entities.
+
+### Migration
+
+- Baseline `8b32281d50` (`2026.1.112-dev`) to `2026.1.113-dev`. `MakePersistent(bool)` retains its argument and persistence meaning. Cover the entity and the holder of its restore index before calling it: the immediate holder of an item, the map of a critter that is not player-controlled, the location of a map and the holder of a custom entity, as required by the complete native call graph. Review callers that change the persistence of held entities before adoption. An uncovered holder raises `Entity access without sync` before mutation. Native callers need the same cover.
+- Rebuild matching server/baker and native consumers, regenerate the API reference and rebake project scripts. Property IDs, declared document layouts, network messages, the `MigrationRule Version` marker, Managed ABI and resource schemas are unchanged. The read-only `Map.ItemIds`, `Critter.ItemIds`, `Item.InnerItemIds`, `Map.CritterIds`, `Location.MapIds` and persistent holder-entry `<Entry>Ids` properties no longer list temporary entities, also in temporary holders; read the held entities through the runtime getters such as `Map.GetItems()`, `Critter.GetItems()` or `Location.GetMaps()` instead. Search with `rg -n 'ItemIds|CritterIds|MapIds|InnerItemIds' <project-source-dirs>`. Already missing records remain load errors; there is no startup pruning or implicit repair. Preserve coherent binaries/storage and review pre-existing inconsistencies through an isolated restore. Rollback uses the preceding matching binaries/data without a new conversion.
 
 ## 2026.1.112-dev - 2026-11-06
 
@@ -91,7 +156,6 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 ### Migration
 
 - Baseline `b055b5da22` (`2026.1.110-dev`) to `2026.1.111-dev`. No API, settings, wire protocol, `MigrationRule Version`, Managed ABI, saved data or resource schema change. Rebuild every native role. Native code calling `SpriteManager::DrawSprites` passes the depth origin row after the draw area (`MapView::GetMapDepthOriginY()` for a map view). A pixel exactly on a cell edge, a light ray near a half-hex tie and a SPARK effect whose simulated duration falls on a step boundary may resolve differently than before; rebake to refresh particle bounds.
-
 
 ## 2026.1.110-dev - 2026-11-06
 

@@ -3635,4 +3635,182 @@ TEST_CASE("ServerItemCreationAnyPropertiesRespectMutability")
     CHECK(proto->GetTileLayer() == proto_layer);
 }
 
+TEST_CASE("ServerEntityIdReserveWaitsForGameLockOutsideRegistry")
+{
+    auto settings {MakeServerTestSettings()};
+    auto server {MakeServerEngine(settings)};
+    auto shutdown {scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    })};
+
+    string startup_error {WaitForServerStart(server)};
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
+    hstring pid {server->Hashes.to_hashed_string("TestItem")};
+    REQUIRE(server->GetProtoItem(pid));
+
+    // An exhausted range makes the next fresh id persist a new boundary, which needs the Game lock
+    server->EntityMngr.FlushExactEntityId();
+
+    auto engine_lock {server->GetEntityLock()};
+    auto ctx {server->RequireCurrentSyncContext()};
+    ctx->LockSingleton(engine_lock);
+    bool singleton_held {true};
+    auto unlock_singleton {scope_exit([&]() noexcept {
+        if (singleton_held) {
+            safe_call([&] { ctx->UnlockSingleton(engine_lock); });
+        }
+    })};
+
+    std::atomic_bool creator_finished {false};
+    ident_t created_id {};
+    string creator_error {};
+
+    std::thread creator {[&]() {
+        SyncContext creator_ctx {};
+        creator_ctx.Activate();
+
+        try {
+            auto item {server->ItemMngr.CreateItem(pid, nullptr)};
+            created_id = item->GetId();
+            server->ItemMngr.DestroyItem(item);
+        }
+        catch (const std::exception& ex) {
+            creator_error = ex.what();
+        }
+
+        creator_ctx.Release();
+        creator_ctx.Deactivate();
+        creator_finished.store(true, std::memory_order_release);
+    }};
+
+    nanotime wait_deadline {nanotime::now() + timespan {std::chrono::seconds {10}}};
+
+    while (engine_lock->WaiterCount() == 0 && nanotime::now() < wait_deadline) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+
+    bool creator_waits_for_game_lock {engine_lock->WaiterCount() != 0};
+
+    // A Game.Lock() holder that looks entities up must not wait for a registration parked on that same lock
+    std::atomic_bool lookup_done {false};
+    std::thread lookup {[&]() {
+        ignore_unused(server->EntityMngr.GetEntitiesCount());
+        lookup_done.store(true, std::memory_order_release);
+    }};
+
+    nanotime lookup_deadline {nanotime::now() + timespan {std::chrono::seconds {5}}};
+
+    while (!lookup_done.load(std::memory_order_acquire) && nanotime::now() < lookup_deadline) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+
+    bool lookup_finished_under_game_lock {lookup_done.load(std::memory_order_acquire)};
+    bool finished_under_game_lock {creator_finished.load(std::memory_order_acquire)};
+
+    ctx->UnlockSingleton(engine_lock);
+    singleton_held = false;
+    lookup.join();
+    creator.join();
+
+    INFO(creator_error);
+    CHECK(creator_error.empty());
+    CHECK(creator_waits_for_game_lock);
+    CHECK(lookup_finished_under_game_lock);
+    CHECK_FALSE(finished_under_game_lock);
+    CHECK(creator_finished.load(std::memory_order_acquire));
+    CHECK(created_id != ident_t {});
+    CHECK(server->GetLastEntityId().underlying_value() >= created_id.underlying_value());
+}
+
+TEST_CASE("PlayerGlobalVarsAreCapturedBeforeTheConnectionIsTaken")
+{
+    auto settings {MakeServerTestSettings()};
+    auto server {MakeServerEngine(settings)};
+    auto shutdown {scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    })};
+
+    string startup_error {WaitForServerStart(server)};
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
+    auto player {CreateStandalonePlayer(server, "UnitTestGlobalVarsPlayer")};
+    auto engine_lock {server->GetEntityLock()};
+    auto ctx {server->RequireCurrentSyncContext()};
+
+    // A script inside a `GameLock` scope sends to players, so the connection must never be held while the Game lock is awaited
+    ctx->LockSingleton(engine_lock);
+    bool singleton_held {true};
+    auto unlock_singleton {scope_exit([&]() noexcept {
+        if (singleton_held) {
+            safe_call([&] { ctx->UnlockSingleton(engine_lock); });
+        }
+    })};
+
+    std::atomic_bool init_finished {false};
+    string init_error {};
+    vector<uint8_t> update_desc {1, 2, 3};
+
+    std::thread init_sender {[&]() {
+        try {
+            player->Send_InitData(update_desc);
+        }
+        catch (const std::exception& ex) {
+            init_error = ex.what();
+        }
+
+        init_finished.store(true, std::memory_order_release);
+    }};
+
+    nanotime wait_deadline {nanotime::now() + timespan {std::chrono::seconds {10}}};
+
+    while (engine_lock->WaiterCount() == 0 && nanotime::now() < wait_deadline) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+
+    bool init_waits_for_game_lock {engine_lock->WaiterCount() != 0};
+
+    // Any other send to the same player, as a Game-locked script makes it, must not queue behind the waiting one
+    std::atomic_bool ping_finished {false};
+    std::thread ping_sender {[&]() {
+        player->Send_Ping(false);
+        ping_finished.store(true, std::memory_order_release);
+    }};
+
+    nanotime ping_deadline {nanotime::now() + timespan {std::chrono::seconds {5}}};
+
+    while (!ping_finished.load(std::memory_order_acquire) && nanotime::now() < ping_deadline) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+
+    bool ping_finished_under_game_lock {ping_finished.load(std::memory_order_acquire)};
+    bool init_finished_under_game_lock {init_finished.load(std::memory_order_acquire)};
+
+    ctx->UnlockSingleton(engine_lock);
+    singleton_held = false;
+    ping_sender.join();
+    init_sender.join();
+
+    INFO(init_error);
+    CHECK(init_error.empty());
+    CHECK(init_waits_for_game_lock);
+    CHECK(ping_finished_under_game_lock);
+    CHECK_FALSE(init_finished_under_game_lock);
+    CHECK(init_finished.load(std::memory_order_acquire));
+}
+
 FO_END_NAMESPACE

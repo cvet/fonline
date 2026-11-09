@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-api-migrations","locale":"ru","source_path":"Docs/en/reference/script-api/migrations.md","source_sha256":"946c03fbdf9fc85eaea9995ffd0b4289e231f8a7f92f08465f77286aa1235acb"} -->
+<!-- docs-translation: {"document_id":"generated-api-migrations","locale":"ru","source_path":"Docs/en/reference/script-api/migrations.md","source_sha256":"2d91a6cd24c5765b2c0d3d8e76a742472710546f5ce88255970c8a8cdb509eae"} -->
 
 # Правила миграции
 
@@ -54,4 +54,4 @@ generated: true
 
 | Область | Прежнее имя | Замена | ID символа | Контракт | Исходник | Описание |
 | --- | --- | --- | --- | --- | --- | --- |
-| <code>0</code> | <code>0</code> | <code>87</code> | <a id="symbol-migration-version-0-0-44f81ee08d"></a><code>migration.Version.0.0</code> | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | [Source/Common/Common.h:18](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L18) | Принудительно изменяет версию совместимости |
+| <code>0</code> | <code>0</code> | <code>88</code> | <a id="symbol-migration-version-0-0-44f81ee08d"></a><code>migration.Version.0.0</code> | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | [Source/Common/Common.h:18](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L18) | Принудительно изменяет версию совместимости |

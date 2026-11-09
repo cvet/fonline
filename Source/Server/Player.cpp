@@ -227,6 +227,21 @@ void Player::ResetViewMap() noexcept
     _viewMapRadius.store(0, std::memory_order_release);
 }
 
+// The Game lock ranks above the connection: a Game property write sends to players while it holds the Game lock, so
+// the global values are encoded here, before the connection is taken, and written into the message as ready bytes
+auto Player::CaptureGlobalVars() -> NetOutBuffer
+{
+    NetOutBuffer global_vars {numeric_cast<size_t>(_engine->Settings->Network.NetBufferSize)};
+
+    _engine->LockForPropertyAccess();
+    auto unlock_global_vars {scope_exit([this]() noexcept { _engine->UnlockForPropertyAccess(); })};
+
+    auto global_vars_data {_engine->StoreData(false)};
+    global_vars.WritePropsData(*global_vars_data.Data, *global_vars_data.Sizes);
+
+    return global_vars;
+}
+
 void Player::Send_LoginSuccess()
 {
     FO_TRACE_ZONE(Entity);
@@ -234,21 +249,14 @@ void Player::Send_LoginSuccess()
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
 
     auto player_data {StoreData(true)};
+    NetOutBuffer global_vars {CaptureGlobalVars()};
 
     scoped_lock conn_lock {_connectionLock};
 
     ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::LoginSuccess};
 
     out_buf->Write(GetId());
-
-    {
-        _engine->LockForPropertyAccess();
-        auto unlock_global_vars {scope_exit([this]() noexcept { _engine->UnlockForPropertyAccess(); })};
-
-        auto global_vars_data {_engine->StoreData(false)};
-        out_buf->WritePropsData(*global_vars_data.Data, *global_vars_data.Sizes);
-    }
-
+    out_buf->Push(global_vars.GetData());
     out_buf->WritePropsData(*player_data.Data, *player_data.Sizes);
     SendInnerEntities(*out_buf, _engine, false);
 }
@@ -792,21 +800,15 @@ void Player::Send_InitData(const_span<uint8_t> update_desc)
 
     FO_VALIDATE_ENTITY(NONE);
 
+    NetOutBuffer global_vars {CaptureGlobalVars()};
+
     scoped_lock conn_lock {_connectionLock};
 
     ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::InitData};
 
     out_buf->Write(numeric_cast<uint32_t>(update_desc.size()));
     out_buf->Push(update_desc);
-
-    {
-        _engine->LockForPropertyAccess();
-        auto unlock_global_vars {scope_exit([this]() noexcept { _engine->UnlockForPropertyAccess(); })};
-
-        auto global_vars_data {_engine->StoreData(false)};
-        out_buf->WritePropsData(*global_vars_data.Data, *global_vars_data.Sizes);
-    }
-
+    out_buf->Push(global_vars.GetData());
     out_buf->Write(_engine->GameTime.GetSynchronizedTime());
 }
 
@@ -903,8 +905,7 @@ void Player::Send_AddCustomEntity(ptr<CustomEntity> entity, bool owned)
     out_buf->Write(entity->GetCustomHolderEntry());
     out_buf->Write(entity->GetId());
 
-    auto entity_with_proto {entity.dyn_cast<CustomEntityWithProto>()};
-    if (entity_with_proto) {
+    if (auto entity_with_proto {entity.dyn_cast<CustomEntityWithProto>()}) {
         FO_VERIFY_AND_THROW(_engine->GetEntityType(entity->GetTypeName()).HasProtos, "Entity type has no prototypes but a proto entity was requested");
         out_buf->Write(entity_with_proto->GetProtoId());
     }
@@ -990,13 +991,11 @@ void Player::SendInnerEntities(NetOutBuffer& out_buf, ptr<const Entity> holder, 
 
         for (const auto& entity : entities) {
             auto custom_entity {require_refcount_ptr(entity.dyn_cast<CustomEntity>())};
-
             auto data {custom_entity->StoreData(owned)};
 
             out_buf.Write(custom_entity->GetId());
 
-            auto custom_entity_with_proto {(nptr<const CustomEntity> {custom_entity}).dyn_cast<CustomEntityWithProto>()};
-            if (custom_entity_with_proto) {
+            if (auto custom_entity_with_proto {(nptr<const CustomEntity> {custom_entity}).dyn_cast<CustomEntityWithProto>()}) {
                 out_buf.Write(custom_entity_with_proto->GetProtoId());
             }
             else {

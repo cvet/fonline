@@ -39,9 +39,12 @@ auto CritterManager::AddItemToCritter(ptr<Critter> cr, ptr<Item> item, bool send
 
     cr->SetItem(item);
 
-    auto item_ids {cr->GetItemIds()};
-    vec_add_unique_value(item_ids, item->GetId());
-    cr->SetItemIds(item_ids);
+    // The restore index lists items that have their own records; promotion lists a temporary one
+    if (item->IsPersistent()) {
+        auto item_ids {cr->GetItemIds()};
+        vec_add_unique_value(item_ids, item->GetId());
+        cr->SetItemIds(item_ids);
+    }
 
     if (cr->IsPersistent()) {
         _engine->EntityMngr.MakePersistent(item, true);
@@ -76,9 +79,11 @@ void CritterManager::RemoveItemFromCritter(ptr<Critter> cr, ptr<Item> item, bool
 
     cr->RemoveItem(item);
 
-    auto item_ids {cr->GetItemIds()};
-    vec_remove_unique_value(item_ids, item->GetId());
-    cr->SetItemIds(item_ids);
+    if (item->IsPersistent()) {
+        auto item_ids {cr->GetItemIds()};
+        vec_remove_unique_value(item_ids, item->GetId());
+        cr->SetItemIds(item_ids);
+    }
 
     item->SetOwnership(ItemOwnership::Nowhere);
 
