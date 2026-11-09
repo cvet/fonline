@@ -183,9 +183,7 @@ TEST_CASE("MapperFrameDrawFailureUnbindsScene", "[mapper-frame-abort]")
     size_t returned_depth = mapper->SprMngr.GetRtMngr().GetRenderTargetStack().size();
     bool returned_backend_bound = static_cast<bool>(mapper->SprMngr.GetRender().GetRenderTarget());
     bool fallback_abort_needed = returned_depth != 0 || returned_backend_bound;
-    logging::write("MAPPER_ABORT_FAILURE direct={} throw={} calls={} vertices={} indices={} start={} fault_depth={} fault_backend={} returned_depth={} returned_backend={} before={} after={} iface={} fallback={} error={}",
-        direct_map, threw, fault.Calls, fault.VertexCount, fault.IndexCount, fault.StartIndex, fault.Depth, fault.BackendBound,
-        returned_depth, returned_backend_bound, before_sprites, after_sprites, iface_calls, fallback_abort_needed, error);
+    logging::write("MAPPER_ABORT_FAILURE direct={} throw={} calls={} vertices={} indices={} start={} fault_depth={} fault_backend={} returned_depth={} returned_backend={} before={} after={} iface={} fallback={} error={}", direct_map, threw, fault.Calls, fault.VertexCount, fault.IndexCount, fault.StartIndex, fault.Depth, fault.BackendBound, returned_depth, returned_backend_bound, before_sprites, after_sprites, iface_calls, fallback_abort_needed, error);
 
     CHECK(threw);
     CHECK(error.find("Controlled mapper draw failure") != string::npos);
@@ -218,9 +216,7 @@ TEST_CASE("MapperFrameDrawFailureUnbindsScene", "[mapper-frame-abort]")
     CHECK(fault.Calls == 1);
     CHECK(mapper->SprMngr.GetRtMngr().GetRenderTargetStack().empty());
     CHECK_FALSE(mapper->SprMngr.GetRender().GetRenderTarget());
-    logging::write("MAPPER_ABORT_RECOVERY direct={} fallback={} before={} after={} iface={} depth={} backend={}",
-        direct_map, fallback_abort_needed, before_sprites, after_sprites, iface_calls,
-        mapper->SprMngr.GetRtMngr().GetRenderTargetStack().size(), static_cast<bool>(mapper->SprMngr.GetRender().GetRenderTarget()));
+    logging::write("MAPPER_ABORT_RECOVERY direct={} fallback={} before={} after={} iface={} depth={} backend={}", direct_map, fallback_abort_needed, before_sprites, after_sprites, iface_calls, mapper->SprMngr.GetRtMngr().GetRenderTargetStack().size(), static_cast<bool>(mapper->SprMngr.GetRender().GetRenderTarget()));
 }
 
 FO_END_NAMESPACE

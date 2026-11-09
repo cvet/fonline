@@ -56,10 +56,8 @@ TEST_CASE("MapModelBoneAnchorMatchesThePoseSubmittedAfterBeforeSprites")
     animation_info.insert(animation_info.end(), replacement_animation_info.begin(), replacement_animation_info.end());
     resources.emplace_back("ModelAnimationInfo.foinfo", std::move(animation_info));
     resources.emplace_back(string {mesh_path}, mesh);
-    resources.emplace_back(string {model_path},
-        MakeRuntimeModelDescription(model_path, mesh_path, mesh, {}, {}, nullptr, false, {}, 0.0f, nullptr, description));
-    resources.emplace_back(string {replacement_path},
-        MakeRuntimeModelDescription(replacement_path, mesh_path, mesh, {}, {}, nullptr, false, {}, 0.0f, nullptr, replacement_description));
+    resources.emplace_back(string {model_path}, MakeRuntimeModelDescription(model_path, mesh_path, mesh, {}, {}, nullptr, false, {}, 0.0f, nullptr, description));
+    resources.emplace_back(string {replacement_path}, MakeRuntimeModelDescription(replacement_path, mesh_path, mesh, {}, {}, nullptr, false, {}, 0.0f, nullptr, replacement_description));
     resources.emplace_back("AnchorSprite.png", BakerTests::MakeMinimalBakedSprite(8, 8));
 
     auto settings = MakeClientTestSettings();
@@ -163,9 +161,7 @@ TEST_CASE("MapModelBoneAnchorMatchesThePoseSubmittedAfterBeforeSprites")
     };
     callback.SubscriptionPtr = reinterpret_cast<uintptr_t>(&holder);
     client->OnRenderMap_BeforeSprites.Subscribe(std::move(callback));
-    auto unsubscribe = scope_exit([&client, &holder]() noexcept {
-        client->OnRenderMap_BeforeSprites.Unsubscribe(reinterpret_cast<uintptr_t>(&holder));
-    });
+    auto unsubscribe = scope_exit([&client, &holder]() noexcept { client->OnRenderMap_BeforeSprites.Unsubscribe(reinterpret_cast<uintptr_t>(&holder)); });
     if (replacement_case) {
         auto state = static_cast<CritterStateAnim>(1);
         auto action = static_cast<CritterActionAnim>(1);
@@ -178,11 +174,12 @@ TEST_CASE("MapModelBoneAnchorMatchesThePoseSubmittedAfterBeforeSprites")
             .StateAnim = state,
             .ActionAnim = action,
             .NormalizedTime = 0.5f,
-            .Callback = [&cr, &replacement_callbacks, &callback_source_name, replacement_name] {
-                replacement_callbacks++;
-                callback_source_name = cr->GetModelName();
-                cr->SetModelName(replacement_name);
-            },
+            .Callback =
+                [&cr, &replacement_callbacks, &callback_source_name, replacement_name] {
+                    replacement_callbacks++;
+                    callback_source_name = cr->GetModelName();
+                    cr->SetModelName(replacement_name);
+                },
         });
 
         model->SetSpeed(10.0f);

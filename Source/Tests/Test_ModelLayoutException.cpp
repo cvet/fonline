@@ -100,7 +100,11 @@ TEST_CASE("ModelSetupFrameProjectionFailurePreservesCommittedLayout")
 
     LayoutFaultProbeRender renderer {&client->SprMngr.GetRender()};
     ModelManager manager {&settings, &client->Resources, client, &client->EffectMngr, &renderer, &client->GameTime, client,
-        [](string_view path) { ignore_unused(path); return pair<nptr<RenderTexture>, frect32> {}; }, [] { return false; }};
+        [](string_view path) {
+            ignore_unused(path);
+            return pair<nptr<RenderTexture>, frect32> {};
+        },
+        [] { return false; }};
     auto model = manager.CreateModel(model_path);
     auto control = manager.CreateModel(model_path);
     REQUIRE(model);
@@ -198,7 +202,11 @@ TEST_CASE("ModelScaleRefreshFailureRequiresOrdinaryPrepareRetry")
 
     LayoutFaultProbeRender renderer {&client->SprMngr.GetRender()};
     ModelManager manager {&settings, &client->Resources, client, &client->EffectMngr, &renderer, &client->GameTime, client,
-        [](string_view path) { ignore_unused(path); return pair<nptr<RenderTexture>, frect32> {}; }, [] { return false; }};
+        [](string_view path) {
+            ignore_unused(path);
+            return pair<nptr<RenderTexture>, frect32> {};
+        },
+        [] { return false; }};
     auto model = manager.CreateModel(model_path);
     auto control = manager.CreateModel(model_path);
     REQUIRE(model);
@@ -291,7 +299,11 @@ TEST_CASE("ModelSetupFrameSupportsRepeatedSizesAndSignedPivots")
 
     LayoutFaultProbeRender renderer {&client->SprMngr.GetRender()};
     ModelManager manager {&settings, &client->Resources, client, &client->EffectMngr, &renderer, &client->GameTime, client,
-        [](string_view path) { ignore_unused(path); return pair<nptr<RenderTexture>, frect32> {}; }, [] { return false; }};
+        [](string_view path) {
+            ignore_unused(path);
+            return pair<nptr<RenderTexture>, frect32> {};
+        },
+        [] { return false; }};
     auto model = manager.CreateModel(model_path);
     auto control = manager.CreateModel(model_path);
     REQUIRE(model);

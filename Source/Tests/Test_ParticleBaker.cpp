@@ -1024,12 +1024,7 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
 
         EffekseerBoundsTrailer seed_one_trailer = ReadEffekseerBoundsTrailer(seed_one_a);
         EffekseerBoundsTrailer seed_two_trailer = ReadEffekseerBoundsTrailer(seed_two);
-        bool seed_bounds_differ = seed_one_trailer.PositionMin.x != seed_two_trailer.PositionMin.x ||
-                                  seed_one_trailer.PositionMin.y != seed_two_trailer.PositionMin.y ||
-                                  seed_one_trailer.PositionMin.z != seed_two_trailer.PositionMin.z ||
-                                  seed_one_trailer.PositionMax.x != seed_two_trailer.PositionMax.x ||
-                                  seed_one_trailer.PositionMax.y != seed_two_trailer.PositionMax.y ||
-                                  seed_one_trailer.PositionMax.z != seed_two_trailer.PositionMax.z;
+        bool seed_bounds_differ = seed_one_trailer.PositionMin.x != seed_two_trailer.PositionMin.x || seed_one_trailer.PositionMin.y != seed_two_trailer.PositionMin.y || seed_one_trailer.PositionMin.z != seed_two_trailer.PositionMin.z || seed_one_trailer.PositionMax.x != seed_two_trailer.PositionMax.x || seed_one_trailer.PositionMax.y != seed_two_trailer.PositionMax.y || seed_one_trailer.PositionMax.z != seed_two_trailer.PositionMax.z;
 
         CHECK(seed_bounds_differ);
         CHECK(seed_one_trailer.PositionMin.x < seed_one_trailer.PositionMax.x);

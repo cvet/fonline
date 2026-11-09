@@ -3203,18 +3203,12 @@ static void RetireEffekseerHandle(ptr<EffekseerParticleRuntimeSystem::Impl> syst
     // Effekseer intentionally retires draw sets through two deferred GC queues.
     // Three flips cover an active draw set as well as both queue stages
     for (size_t flush_index = 0; flush_index < 3; flush_index++) {
-        InvokeEffekseerManagerOperation([system] {
-            system->Runtime->Manager->Flip();
-        });
+        InvokeEffekseerManagerOperation([system] { system->Runtime->Manager->Flip(); });
 
         system->Runtime->RenderingSnapshotDirty = false;
 
-        InvokeEffekseerManagerOperation([system] {
-            system->Runtime->Manager->BeginUpdate();
-        });
-        InvokeEffekseerManagerOperation([system] {
-            system->Runtime->Manager->EndUpdate();
-        });
+        InvokeEffekseerManagerOperation([system] { system->Runtime->Manager->BeginUpdate(); });
+        InvokeEffekseerManagerOperation([system] { system->Runtime->Manager->EndUpdate(); });
     }
 
     system->Handle = -1;
@@ -3402,28 +3396,20 @@ auto EffekseerParticleRuntimeSystem::Prewarm() -> float32_t
 
     ApplyEffekseerRootMatrix(_impl);
 
-    InvokeEffekseerManagerOperation([this] {
-        _impl->Runtime->Manager->Flip();
-    });
+    InvokeEffekseerManagerOperation([this] { _impl->Runtime->Manager->Flip(); });
 
     _impl->Runtime->RenderingSnapshotDirty = false;
 
-    InvokeEffekseerManagerOperation([this] {
-        _impl->Runtime->Manager->BeginUpdate();
-    });
+    InvokeEffekseerManagerOperation([this] { _impl->Runtime->Manager->BeginUpdate(); });
 
     while (remaining_frames > 0.0f && _impl->Runtime->Manager->Exists(_impl->Handle)) {
         float32_t step = std::min(remaining_frames, 1.0f);
-        InvokeEffekseerManagerOperation([this, step] {
-            _impl->Runtime->Manager->UpdateHandle(_impl->Handle, step);
-        });
+        InvokeEffekseerManagerOperation([this, step] { _impl->Runtime->Manager->UpdateHandle(_impl->Handle, step); });
 
         remaining_frames -= step;
     }
 
-    InvokeEffekseerManagerOperation([this] {
-        _impl->Runtime->Manager->EndUpdate();
-    });
+    InvokeEffekseerManagerOperation([this] { _impl->Runtime->Manager->EndUpdate(); });
 
     // Flip also retires empty effects and roots whose children have finished
     if (_impl->Runtime->Manager->GetInstanceCount(_impl->Handle) <= 1) {
@@ -3447,9 +3433,7 @@ void EffekseerParticleRuntimeSystem::Respawn(optional<int32_t> seed)
         return;
     }
 
-    InvokeEffekseerManagerOperation([this] {
-        _impl->Handle = _impl->Runtime->Manager->Play(_impl->Effect, 0.0f, 0.0f, 0.0f);
-    });
+    InvokeEffekseerManagerOperation([this] { _impl->Handle = _impl->Runtime->Manager->Play(_impl->Effect, 0.0f, 0.0f, 0.0f); });
 
     if (_impl->Handle < 0) {
         _impl->Fail("Effekseer manager failed to play the effect");
@@ -3490,32 +3474,24 @@ void EffekseerParticleRuntimeSystem::UpdateInternal(float32_t delta_seconds, boo
         FO_TRACE_ZONE_NAMED(Particles, "Effekseer.BeginUpdate");
 
         if (flip || _impl->Runtime->RenderingSnapshotDirty) {
-            InvokeEffekseerManagerOperation([this] {
-                _impl->Runtime->Manager->Flip();
-            });
+            InvokeEffekseerManagerOperation([this] { _impl->Runtime->Manager->Flip(); });
 
             _impl->Runtime->RenderingSnapshotDirty = false;
         }
 
-        InvokeEffekseerManagerOperation([this] {
-            _impl->Runtime->Manager->BeginUpdate();
-        });
+        InvokeEffekseerManagerOperation([this] { _impl->Runtime->Manager->BeginUpdate(); });
     }
 
     {
         FO_TRACE_ZONE_NAMED(Particles, "Effekseer.UpdateHandle");
 
-        InvokeEffekseerManagerOperation([this, delta_seconds] {
-            _impl->Runtime->Manager->UpdateHandle(_impl->Handle, delta_seconds * EFFEKSEER_FRAMES_PER_SECOND);
-        });
+        InvokeEffekseerManagerOperation([this, delta_seconds] { _impl->Runtime->Manager->UpdateHandle(_impl->Handle, delta_seconds * EFFEKSEER_FRAMES_PER_SECOND); });
     }
 
     {
         FO_TRACE_ZONE_NAMED(Particles, "Effekseer.EndUpdate");
 
-        InvokeEffekseerManagerOperation([this] {
-            _impl->Runtime->Manager->EndUpdate();
-        });
+        InvokeEffekseerManagerOperation([this] { _impl->Runtime->Manager->EndUpdate(); });
     }
 
     // Flip also retires empty effects and roots whose children have finished

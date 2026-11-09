@@ -684,11 +684,7 @@ void SpriteManager::DrawSprite(ptr<const Sprite> spr, ipos32 pos, ucolor color)
             }
 
             if (_dipQueue.empty() || _dipQueue.back().MainTexture != layer_spr->GetBatchTexture() || _dipQueue.back().SourceEffect != effect) {
-                _dipQueue.emplace_back(DipData {
-                    .MainTexture = layer_spr->GetBatchTexture(),
-                    .SourceEffect = effect,
-                    .IndicesCount = ind_count
-                });
+                _dipQueue.emplace_back(DipData {.MainTexture = layer_spr->GetBatchTexture(), .SourceEffect = effect, .IndicesCount = ind_count});
             }
             else {
                 _dipQueue.back().IndicesCount += ind_count;
@@ -761,11 +757,7 @@ void SpriteManager::DrawSpriteSizeExt(ptr<const Sprite> spr, fpos32 pos, fsize32
             }
 
             if (_dipQueue.empty() || _dipQueue.back().MainTexture != layer_spr->GetBatchTexture() || _dipQueue.back().SourceEffect != effect) {
-                _dipQueue.emplace_back(DipData {
-                    .MainTexture = layer_spr->GetBatchTexture(),
-                    .SourceEffect = effect,
-                    .IndicesCount = ind_count
-                });
+                _dipQueue.emplace_back(DipData {.MainTexture = layer_spr->GetBatchTexture(), .SourceEffect = effect, .IndicesCount = ind_count});
             }
             else {
                 _dipQueue.back().IndicesCount += ind_count;
@@ -1151,11 +1143,7 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
                 }
 
                 if (_dipQueue.empty() || _dipQueue.back().MainTexture != layer_spr->GetBatchTexture() || _dipQueue.back().SourceEffect != effect) {
-                    _dipQueue.emplace_back(DipData {
-                        .MainTexture = layer_spr->GetBatchTexture(),
-                        .SourceEffect = effect,
-                        .IndicesCount = ind_count
-                    });
+                    _dipQueue.emplace_back(DipData {.MainTexture = layer_spr->GetBatchTexture(), .SourceEffect = effect, .IndicesCount = ind_count});
                 }
                 else {
                     _dipQueue.back().IndicesCount += ind_count;

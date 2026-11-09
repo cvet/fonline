@@ -367,8 +367,7 @@ void ModelAnimationController::AdvanceTimeline(timespan elapsed)
     pending.reserve(_tracks.size());
 
     for (const Track& track : _tracks) {
-        pending.emplace_back(TimelineState {.Enabled = track.Enabled, .Speed = track.Speed, .Weight = track.Weight,
-            .Position = track.Position, .Events = track.Events});
+        pending.emplace_back(TimelineState {.Enabled = track.Enabled, .Speed = track.Speed, .Weight = track.Weight, .Position = track.Position, .Events = track.Events});
     }
 
     for (TimelineState& track : pending) {
@@ -509,8 +508,7 @@ void ModelAnimationController::ApplyTrackEvents(TimelineState& track, timespan t
         for (size_t index = 0; index < track.Events.size(); index++) {
             const Track::Event& event = track.Events[index];
 
-            if (!event.ValueFrom.has_value() && event.StartTime <= time &&
-                (next_index == track.Events.size() || event.StartTime < track.Events[next_index].StartTime)) {
+            if (!event.ValueFrom.has_value() && event.StartTime <= time && (next_index == track.Events.size() || event.StartTime < track.Events[next_index].StartTime)) {
                 next_index = index;
             }
         }
@@ -522,9 +520,7 @@ void ModelAnimationController::ApplyTrackEvents(TimelineState& track, timespan t
         Track::Event event = std::move(track.Events[next_index]);
         track.Events.erase(track.Events.begin() + numeric_cast<ptrdiff_t>(next_index));
 
-        std::erase_if(track.Events, [&](const Track::Event& active) {
-            return active.ValueFrom.has_value() && active.Type == event.Type;
-        });
+        std::erase_if(track.Events, [&](const Track::Event& active) { return active.ValueFrom.has_value() && active.Type == event.Type; });
 
         if (event.Type == Track::EventType::Enable) {
             track.Enabled = event.ValueTo > 0.0f;
@@ -541,7 +537,6 @@ void ModelAnimationController::ApplyTrackEvents(TimelineState& track, timespan t
         }
     }
 }
-
 
 static_assert(MODEL_ANIMATION_MAX_JOINTS == MODEL_ANIMATION_RIG_MAX_JOINTS);
 

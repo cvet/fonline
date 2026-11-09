@@ -2645,7 +2645,6 @@ void MapView::DrawMap()
 #if FO_ENABLE_3D
             if (_engine->Settings->Render.ModelDirectDraw) {
                 PrepareCritterSceneFrames(draw_area);
-                FO_VERIFY_AND_THROW(!IsDestroyed(), "Map was destroyed during critter scene preparation");
             }
 #endif
 

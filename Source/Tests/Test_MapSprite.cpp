@@ -218,8 +218,7 @@ TEST_CASE("MapSpriteDepthOffsetKeepsTheScreenAnchor")
     ipos32 field_offset {1000, 500};
     ipos32 sprite_offset {5, -8};
     ipos32 root_offset {2, 3};
-    auto sprite = list.AddSprite(DrawOrderType::Particles, mpos {100, 100}, ipos32 {12, -17},
-        &field_offset, nullptr, nullptr, &sprite_offset, &root_offset, nullptr, nullptr, nullptr, 0);
+    auto sprite = list.AddSprite(DrawOrderType::Particles, mpos {100, 100}, ipos32 {12, -17}, &field_offset, nullptr, nullptr, &sprite_offset, &root_offset, nullptr, nullptr, nullptr, 0);
     sprite->SetElevation(18);
 
     CHECK(sprite->GetDepthOffset() == 0.0f);

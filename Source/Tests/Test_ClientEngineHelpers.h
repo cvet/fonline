@@ -1928,11 +1928,7 @@ BoundsMaxZ = 1 1 1 1
 
     // A valid baked model description is produced by the real ModelInfoBaker: the fixture supplies the
     // source asset directly through the loader callback, so no source-file format has to be reproduced
-    inline auto MakeRuntimeModelDescription(string_view model_path, string_view mesh_path, const vector<uint8_t>& mesh_blob,
-        string_view default_link_extra = {}, string_view attached_mesh_path = {},
-        nptr<const vector<uint8_t>> attached_mesh_blob = nullptr, bool use_two_bone_rig = false,
-        const vector<pair<string, vector<uint8_t>>>& texture_resources = {}, float32_t end_translation = 0.0f,
-        nptr<vector<uint8_t>> animation_info = nullptr, string_view description_override = {}) -> vector<uint8_t>
+    inline auto MakeRuntimeModelDescription(string_view model_path, string_view mesh_path, const vector<uint8_t>& mesh_blob, string_view default_link_extra = {}, string_view attached_mesh_path = {}, nptr<const vector<uint8_t>> attached_mesh_blob = nullptr, bool use_two_bone_rig = false, const vector<pair<string, vector<uint8_t>>>& texture_resources = {}, float32_t end_translation = 0.0f, nptr<vector<uint8_t>> animation_info = nullptr, string_view description_override = {}) -> vector<uint8_t>
     {
         BakerTests::TestRig rig;
         // A one-line description leaves the layer machinery unreachable, so the caller's extra is inserted right

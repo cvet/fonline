@@ -393,14 +393,17 @@ TEST_CASE("ServerMovementCommitBoundaryPilot")
         requested = moving->GetEndHex();
         server->StartCritterMoving(critter, moving, nullptr);
         uint32_t active_uid = critter->GetMovingUid();
-        REQUIRE(ServerEngineTests::WaitForUnlockedServerCondition(server, locked, [&] {
-            cover();
-            if (scenario == 21) {
-                return !server->EntityMngr.GetCritter(critter_id);
-            }
+        REQUIRE(ServerEngineTests::WaitForUnlockedServerCondition(
+            server, locked,
+            [&] {
+                cover();
+                if (scenario == 21) {
+                    return !server->EntityMngr.GetCritter(critter_id);
+                }
 
-            return scenario == 0 ? !critter->IsMoving() : control->Reports.load(std::memory_order_acquire) == 1;
-        }, std::chrono::milliseconds {1500}));
+                return scenario == 0 ? !critter->IsMoving() : control->Reports.load(std::memory_order_acquire) == 1;
+            },
+            std::chrono::milliseconds {1500}));
         REQUIRE(control->Reports.load() == (scenario == 0 || scenario == 21 ? uint32_t {0} : uint32_t {1}));
 
         if (scenario == 0) {
@@ -568,8 +571,7 @@ TEST_CASE("ServerMovementCommitBoundaryPilot")
     }
 
     REQUIRE(control->UnexpectedReports.load() == 0);
-    logging::write("MOVEMENT_COMMIT_RESULT scenario={} grid={} pre={} post={} pre_consistent={} post_consistent={} authority_consistent={} actions={} reports={} destroyed={} relocated={} map_destroyed={}",
-        scenario, grid_name, control->Pre.load(), control->Post.load(), control->PreConsistent.load(), control->PostConsistent.load(), control->AuthorityConsistent.load(), control->Actions.load(), control->Reports.load(), destroyed, relocated, map_destroyed);
+    logging::write("MOVEMENT_COMMIT_RESULT scenario={} grid={} pre={} post={} pre_consistent={} post_consistent={} authority_consistent={} actions={} reports={} destroyed={} relocated={} map_destroyed={}", scenario, grid_name, control->Pre.load(), control->Post.load(), control->PreConsistent.load(), control->PostConsistent.load(), control->AuthorityConsistent.load(), control->Actions.load(), control->Reports.load(), destroyed, relocated, map_destroyed);
     cleanup_fixture();
     cleanup.release();
     REQUIRE_FALSE(repaired);

@@ -2056,8 +2056,7 @@ TEST_CASE("EffekseerCompilerWritesOptionalNodeSections", "[effekseer-compiler]")
     }
 }
 
-static auto MakeModelTrailFixture(int32_t life, int32_t count, float32_t interval,
-    string_view location = "<X>0</X><Y>0</Y><Z>0</Z>", int32_t binding = 1, string_view node_values = {}) -> unique_ptr<EffekseerRuntimeTestRig>
+static auto MakeModelTrailFixture(int32_t life, int32_t count, float32_t interval, string_view location = "<X>0</X><Y>0</Y><Z>0</Z>", int32_t binding = 1, string_view node_values = {}) -> unique_ptr<EffekseerRuntimeTestRig>
 {
     string project = strex(R"EFFEKSEER(<?xml version="1.0" encoding="utf-8"?>
 <EffekseerProject>
@@ -2084,7 +2083,9 @@ static auto MakeModelTrailFixture(int32_t life, int32_t count, float32_t interva
   <ToolVersion>1.80.5</ToolVersion><Version>3</Version>
   <StartFrame>0</StartFrame><EndFrame>60</EndFrame><IsLoop>False</IsLoop>
 </EffekseerProject>
-)EFFEKSEER", count, life, life, interval, interval, binding, binding, binding, location).str();
+)EFFEKSEER",
+        count, life, life, interval, interval, binding, binding, binding, location)
+                         .str();
 
     if (!node_values.empty()) {
         size_t drawing_position = project.find("<DrawingValues>");
@@ -2773,7 +2774,9 @@ TEST_CASE("Effekseer neighbour refresh publishes rebased kill-rule coordinates",
 <KillRulesValues><Type>3</Type>
 <IsScaleAndRotationApplied>{}</IsScaleAndRotationApplied>
 <SphereRadius>1</SphereRadius><SphereIsKillInside>False</SphereIsKillInside>
-</KillRulesValues>)", transformed_rules ? "True" : "False").str();
+</KillRulesValues>)",
+            transformed_rules ? "True" : "False")
+                           .str();
         unique_ptr<EffekseerRuntimeTestRig> queried_rig = MakeModelTrailFixture(30, 1, 1.0f, "<X>0.25</X><Y>0</Y><Z>0</Z>", 1, rules);
         unique_ptr<EffekseerRuntimeTestRig> control_rig = MakeModelTrailFixture(30, 1, 1.0f, "<X>0.25</X><Y>0</Y><Z>0</Z>", 1, rules);
         unique_ptr<ParticleRuntimeSystem> queried = queried_rig->CreateSystem();
@@ -2823,22 +2826,44 @@ TEST_CASE("Effekseer neighbour refresh publishes rebased kill-rule coordinates",
 TEST_CASE("Effekseer decomposes collapsed diagonal scales into finite canonical frames", "[particle][effekseer-runtime][effekseer-singular-transform]")
 {
     const array<vec3, 8> scales {
-        vec3 {0.0f, 2.0f, 3.0f}, vec3 {1.0f, 0.0f, 3.0f},
-        vec3 {1.0f, 2.0f, 0.0f}, vec3 {0.0f, 0.0f, 3.0f},
-        vec3 {0.0f, 2.0f, 0.0f}, vec3 {1.0f, 0.0f, 0.0f},
-        vec3 {0.0f, 0.0f, 0.0f}, vec3 {1.0f, 2.0f, 3.0f},
+        vec3 {0.0f, 2.0f, 3.0f},
+        vec3 {1.0f, 0.0f, 3.0f},
+        vec3 {1.0f, 2.0f, 0.0f},
+        vec3 {0.0f, 0.0f, 3.0f},
+        vec3 {0.0f, 2.0f, 0.0f},
+        vec3 {1.0f, 0.0f, 0.0f},
+        vec3 {0.0f, 0.0f, 0.0f},
+        vec3 {1.0f, 2.0f, 3.0f},
     };
     const array<float32_t, 12> identity {
-        1.0f, 0.0f, 0.0f, 0.0f,
-        0.0f, 1.0f, 0.0f, 0.0f,
-        0.0f, 0.0f, 1.0f, 0.0f,
+        1.0f,
+        0.0f,
+        0.0f,
+        0.0f,
+        0.0f,
+        1.0f,
+        0.0f,
+        0.0f,
+        0.0f,
+        0.0f,
+        1.0f,
+        0.0f,
     };
 
     const auto check_identity = [&](const Effekseer::SIMD::Mat43f& rotation) {
         const array<float32_t, 12> values {
-            rotation.X.GetX(), rotation.X.GetY(), rotation.X.GetZ(), rotation.X.GetW(),
-            rotation.Y.GetX(), rotation.Y.GetY(), rotation.Y.GetZ(), rotation.Y.GetW(),
-            rotation.Z.GetX(), rotation.Z.GetY(), rotation.Z.GetZ(), rotation.Z.GetW(),
+            rotation.X.GetX(),
+            rotation.X.GetY(),
+            rotation.X.GetZ(),
+            rotation.X.GetW(),
+            rotation.Y.GetX(),
+            rotation.Y.GetY(),
+            rotation.Y.GetZ(),
+            rotation.Y.GetW(),
+            rotation.Z.GetX(),
+            rotation.Z.GetY(),
+            rotation.Z.GetZ(),
+            rotation.Z.GetW(),
         };
 
         for (size_t index = 0; index < values.size(); index++) {
@@ -2851,10 +2876,18 @@ TEST_CASE("Effekseer decomposes collapsed diagonal scales into finite canonical 
         CAPTURE(scale.x, scale.y, scale.z);
 
         const Effekseer::SIMD::Mat43f matrix {
-            scale.x, 0.0f, 0.0f,
-            0.0f, scale.y, 0.0f,
-            0.0f, 0.0f, scale.z,
-            3.0f, 4.0f, 5.0f,
+            scale.x,
+            0.0f,
+            0.0f,
+            0.0f,
+            scale.y,
+            0.0f,
+            0.0f,
+            0.0f,
+            scale.z,
+            3.0f,
+            4.0f,
+            5.0f,
         };
         Effekseer::SIMD::Vec3f extracted_scale;
         Effekseer::SIMD::Mat43f rotation;
@@ -2876,22 +2909,36 @@ TEST_CASE("Effekseer decomposes collapsed diagonal scales into finite canonical 
 TEST_CASE("Effekseer singular SRT decomposition preserves surviving rotated axes", "[particle][effekseer-runtime][effekseer-singular-transform]")
 {
     const array<vec3, 12> scales {
-        vec3 {0.0f, 2.0f, 3.0f}, vec3 {1.0f, 0.0f, 3.0f},
-        vec3 {1.0f, 2.0f, 0.0f}, vec3 {0.0f, 0.0f, 3.0f},
-        vec3 {0.0f, 2.0f, 0.0f}, vec3 {1.0f, 0.0f, 0.0f},
-        vec3 {0.0f, 0.0f, 0.0f}, vec3 {1.0f, 2.0f, 3.0f},
-        vec3 {-1.0f, 2.0f, 3.0f}, vec3 {1.0f, -2.0f, 3.0f},
-        vec3 {0.0f, -2.0f, 3.0f}, vec3 {-1.0f, 0.0f, 0.0f},
+        vec3 {0.0f, 2.0f, 3.0f},
+        vec3 {1.0f, 0.0f, 3.0f},
+        vec3 {1.0f, 2.0f, 0.0f},
+        vec3 {0.0f, 0.0f, 3.0f},
+        vec3 {0.0f, 2.0f, 0.0f},
+        vec3 {1.0f, 0.0f, 0.0f},
+        vec3 {0.0f, 0.0f, 0.0f},
+        vec3 {1.0f, 2.0f, 3.0f},
+        vec3 {-1.0f, 2.0f, 3.0f},
+        vec3 {1.0f, -2.0f, 3.0f},
+        vec3 {0.0f, -2.0f, 3.0f},
+        vec3 {-1.0f, 0.0f, 0.0f},
     };
 
     for (const vec3& scale : scales) {
         CAPTURE(scale.x, scale.y, scale.z);
 
         const Effekseer::SIMD::Mat43f matrix {
-            0.0f, scale.x, 0.0f,
-            -scale.y, 0.0f, 0.0f,
-            0.0f, 0.0f, scale.z,
-            3.0f, 4.0f, 5.0f,
+            0.0f,
+            scale.x,
+            0.0f,
+            -scale.y,
+            0.0f,
+            0.0f,
+            0.0f,
+            0.0f,
+            scale.z,
+            3.0f,
+            4.0f,
+            5.0f,
         };
         Effekseer::SIMD::Vec3f extracted_scale;
         Effekseer::SIMD::Mat43f rotation;
@@ -2953,10 +3000,18 @@ TEST_CASE("Effekseer singular SRT decomposition preserves an independent 3D basi
     // The constructor takes each authored row as one argument triplet, so these are exactly the scaled source rows
     const auto make_matrix = [](const vec3& scale) {
         return Effekseer::SIMD::Mat43f {
-            scale.x * (1.0f / 3.0f), scale.x * (2.0f / 3.0f), scale.x * (2.0f / 3.0f),
-            scale.y * (2.0f / 3.0f), scale.y * (1.0f / 3.0f), scale.y * (-2.0f / 3.0f),
-            scale.z * (-2.0f / 3.0f), scale.z * (2.0f / 3.0f), scale.z * (-1.0f / 3.0f),
-            3.0f, 4.0f, 5.0f,
+            scale.x * (1.0f / 3.0f),
+            scale.x * (2.0f / 3.0f),
+            scale.x * (2.0f / 3.0f),
+            scale.y * (2.0f / 3.0f),
+            scale.y * (1.0f / 3.0f),
+            scale.y * (-2.0f / 3.0f),
+            scale.z * (-2.0f / 3.0f),
+            scale.z * (2.0f / 3.0f),
+            scale.z * (-1.0f / 3.0f),
+            3.0f,
+            4.0f,
+            5.0f,
         };
     };
 
@@ -3080,10 +3135,18 @@ TEST_CASE("Effekseer singular SRT decomposition retains invalid surviving basis 
         // X is collapsed while Y survives with a nonfinite component. A repair that substitutes a finite
         // canonical identity for any singular matrix would erase the invalid input instead of propagating it
         const Effekseer::SIMD::Mat43f matrix {
-            0.0f, 0.0f, 0.0f,
-            invalid_component, 1.0f / 3.0f, -2.0f / 3.0f,
-            -2.0f / 3.0f, 2.0f / 3.0f, -1.0f / 3.0f,
-            3.0f, 4.0f, 5.0f,
+            0.0f,
+            0.0f,
+            0.0f,
+            invalid_component,
+            1.0f / 3.0f,
+            -2.0f / 3.0f,
+            -2.0f / 3.0f,
+            2.0f / 3.0f,
+            -1.0f / 3.0f,
+            3.0f,
+            4.0f,
+            5.0f,
         };
 
         Effekseer::SIMD::Vec3f extracted_scale;
@@ -3093,13 +3156,7 @@ TEST_CASE("Effekseer singular SRT decomposition retains invalid surviving basis 
 
         const Effekseer::SIMD::Mat43f direct_rotation = matrix.GetRotation();
 
-        const auto has_nonfinite_component = [](const Effekseer::SIMD::Mat43f& rotation) {
-            return !std::isfinite(rotation.X.GetX()) || !std::isfinite(rotation.X.GetY()) ||
-                !std::isfinite(rotation.X.GetZ()) || !std::isfinite(rotation.Y.GetX()) ||
-                !std::isfinite(rotation.Y.GetY()) || !std::isfinite(rotation.Y.GetZ()) ||
-                !std::isfinite(rotation.Z.GetX()) || !std::isfinite(rotation.Z.GetY()) ||
-                !std::isfinite(rotation.Z.GetZ());
-        };
+        const auto has_nonfinite_component = [](const Effekseer::SIMD::Mat43f& rotation) { return !std::isfinite(rotation.X.GetX()) || !std::isfinite(rotation.X.GetY()) || !std::isfinite(rotation.X.GetZ()) || !std::isfinite(rotation.Y.GetX()) || !std::isfinite(rotation.Y.GetY()) || !std::isfinite(rotation.Y.GetZ()) || !std::isfinite(rotation.Z.GetX()) || !std::isfinite(rotation.Z.GetY()) || !std::isfinite(rotation.Z.GetZ()); };
 
         // Only at least one nonfinite basis component is required; the routines need not fill every lane with NaN
         CHECK(has_nonfinite_component(decomposed_rotation));
@@ -3256,15 +3313,12 @@ static void AddModelChildPoseParticleFixtureResources(BakerTests::MemoryDataSour
     vector<uint8_t> animation_info;
     resources.emplace_back(string {ModelChildPoseParticleMeshPath}, mesh);
     resources.emplace_back(string {ModelChildPoseParticleChildMeshPath}, child_mesh);
-    resources.emplace_back(string {ModelChildPoseParticleModelPath}, ClientEngineTests::MakeRuntimeModelDescription(ModelChildPoseParticleModelPath,
-        ModelChildPoseParticleMeshPath, mesh, {}, ModelChildPoseParticleChildMeshPath, &child_mesh, true, {}, 2.0f, &animation_info,
-        "Model ChildProjection.fbx\nAnim 1 1 ModelFile Base\nLayer 3\nValue 1 Attach ChildProjectionEquipment.fbx MoveX 3\n"));
+    resources.emplace_back(string {ModelChildPoseParticleModelPath}, ClientEngineTests::MakeRuntimeModelDescription(ModelChildPoseParticleModelPath, ModelChildPoseParticleMeshPath, mesh, {}, ModelChildPoseParticleChildMeshPath, &child_mesh, true, {}, 2.0f, &animation_info, "Model ChildProjection.fbx\nAnim 1 1 ModelFile Base\nLayer 3\nValue 1 Attach ChildProjectionEquipment.fbx MoveX 3\n"));
     resources.emplace_back("ModelAnimationInfo.foinfo", std::move(animation_info));
     source.AddFile("Effects/3D_Skinned.fofx-1-info", "[EffectInfo]\nProjBuf = 0\nModelBuf = 1\nModelAnimBuf = 2\n");
 }
 
-static auto CaptureModelChildPoseParticleDraw(CapturingAppRender& render, EffectManager& effects, string_view model_shader, ptr<ModelInstance> instance,
-    const mat44& projection, hstring anchor_bone, vec3 anchor_offset, int32_t callback_count) -> ModelChildPoseParticleDrawSnapshot
+static auto CaptureModelChildPoseParticleDraw(CapturingAppRender& render, EffectManager& effects, string_view model_shader, ptr<ModelInstance> instance, const mat44& projection, hstring anchor_bone, vec3 anchor_offset, int32_t callback_count) -> ModelChildPoseParticleDrawSnapshot
 {
     array<float32_t, 16> expected {};
 
@@ -3361,10 +3415,7 @@ TEST_CASE("ModelChildPoseParticleRegressionCallbackBirthReplayAndFiniteRetiremen
     REQUIRE(effects.Effects.SkinnedModel->IsNeedModelAnimBuf());
 
     auto texture = render.CreateTexture({8, 8}, true, false);
-    ModelManager manager {&settings, &client->Resources, client.get(), &effects, &render, &client->GameTime,
-        client.get(), [&texture](string_view) -> pair<nptr<RenderTexture>, frect32> {
-            return {texture.as_nptr(), EffekseerFixtureAtlasRect};
-        }, []() { return false; }};
+    ModelManager manager {&settings, &client->Resources, client.get(), &effects, &render, &client->GameTime, client.get(), [&texture](string_view) -> pair<nptr<RenderTexture>, frect32> { return {texture.as_nptr(), EffekseerFixtureAtlasRect}; }, []() { return false; }};
 
     hstring parent_bone = client->Hashes.to_hashed_string(ModelChildPoseParticleMeshPath);
     hstring child_bone = client->Hashes.to_hashed_string(ModelChildPoseParticleChildMeshPath);
@@ -3415,46 +3466,49 @@ TEST_CASE("ModelChildPoseParticleRegressionCallbackBirthReplayAndFiniteRetiremen
         .StateAnim = state,
         .ActionAnim = action,
         .NormalizedTime = ModelChildPoseParticleCallbackPhase,
-        .Callback = [&model, &child_callbacks, unlit, child_bone, offset] {
-            child_callbacks++;
+        .Callback =
+            [&model, &child_callbacks, unlit, child_bone, offset] {
+                child_callbacks++;
 
-            if (unlit) {
-                model->RunUnlitParticle(ModelChildPoseParticleParticlePath, child_bone, offset);
-            }
-            else {
-                model->RunParticle(ModelChildPoseParticleParticlePath, child_bone, offset);
-            }
-        },
+                if (unlit) {
+                    model->RunUnlitParticle(ModelChildPoseParticleParticlePath, child_bone, offset);
+                }
+                else {
+                    model->RunParticle(ModelChildPoseParticleParticlePath, child_bone, offset);
+                }
+            },
     });
     control->AddAnimationCallback(ModelAnimationCallback {
         .StateAnim = state,
         .ActionAnim = action,
         .NormalizedTime = ModelChildPoseParticleCallbackPhase,
-        .Callback = [&control, &control_callbacks, unlit, child_bone, offset] {
-            control_callbacks++;
+        .Callback =
+            [&control, &control_callbacks, unlit, child_bone, offset] {
+                control_callbacks++;
 
-            if (unlit) {
-                control->RunUnlitParticle(ModelChildPoseParticleParticlePath, child_bone, offset);
-            }
-            else {
-                control->RunParticle(ModelChildPoseParticleParticlePath, child_bone, offset);
-            }
-        },
+                if (unlit) {
+                    control->RunUnlitParticle(ModelChildPoseParticleParticlePath, child_bone, offset);
+                }
+                else {
+                    control->RunParticle(ModelChildPoseParticleParticlePath, child_bone, offset);
+                }
+            },
     });
     parent_control->AddAnimationCallback(ModelAnimationCallback {
         .StateAnim = state,
         .ActionAnim = action,
         .NormalizedTime = ModelChildPoseParticleCallbackPhase,
-        .Callback = [&parent_control, &parent_control_callbacks, unlit, parent_bone, offset] {
-            parent_control_callbacks++;
+        .Callback =
+            [&parent_control, &parent_control_callbacks, unlit, parent_bone, offset] {
+                parent_control_callbacks++;
 
-            if (unlit) {
-                parent_control->RunUnlitParticle(ModelChildPoseParticleParticlePath, parent_bone, offset);
-            }
-            else {
-                parent_control->RunParticle(ModelChildPoseParticleParticlePath, parent_bone, offset);
-            }
-        },
+                if (unlit) {
+                    parent_control->RunUnlitParticle(ModelChildPoseParticleParticlePath, parent_bone, offset);
+                }
+                else {
+                    parent_control->RunParticle(ModelChildPoseParticleParticlePath, parent_bone, offset);
+                }
+            },
     });
 
     auto play_once = [&](ptr<ModelInstance> instance) {
@@ -3510,8 +3564,7 @@ TEST_CASE("ModelChildPoseParticleRegressionCallbackBirthReplayAndFiniteRetiremen
     REQUIRE(first.Anchor);
     REQUIRE(control_first.Anchor);
     REQUIRE(parent_control_first.Anchor);
-    CAPTURE(first.PacketCenter.x, first.PacketCenter.y, first.PacketCenter.z,
-        parent_control_first.PacketCenter.x, parent_control_first.PacketCenter.y, parent_control_first.PacketCenter.z);
+    CAPTURE(first.PacketCenter.x, first.PacketCenter.y, first.PacketCenter.z, parent_control_first.PacketCenter.x, parent_control_first.PacketCenter.y, parent_control_first.PacketCenter.z);
     REQUIRE(glm::length(first.PacketCenter - parent_control_first.PacketCenter) > 0.01f);
 
     REQUIRE(first.Particles.front().Projection);
@@ -3549,12 +3602,8 @@ TEST_CASE("ModelChildPoseParticleRegressionCallbackBirthReplayAndFiniteRetiremen
     CHECK(first.Particles.front().Sampling == third.Particles.front().Sampling);
     CHECK(first.Particles.front().CullMode == second.Particles.front().CullMode);
     CHECK(first.Particles.front().CullMode == third.Particles.front().CullMode);
-    CheckModelChildPoseParticlePacketFramesEqual(
-        ModelChildPoseParticlePacketFrame {.Center = first.PacketCenter, .Right = first.PacketRight, .Up = first.PacketUp},
-        ModelChildPoseParticlePacketFrame {.Center = second.PacketCenter, .Right = second.PacketRight, .Up = second.PacketUp});
-    CheckModelChildPoseParticlePacketFramesEqual(
-        ModelChildPoseParticlePacketFrame {.Center = first.PacketCenter, .Right = first.PacketRight, .Up = first.PacketUp},
-        ModelChildPoseParticlePacketFrame {.Center = third.PacketCenter, .Right = third.PacketRight, .Up = third.PacketUp});
+    CheckModelChildPoseParticlePacketFramesEqual(ModelChildPoseParticlePacketFrame {.Center = first.PacketCenter, .Right = first.PacketRight, .Up = first.PacketUp}, ModelChildPoseParticlePacketFrame {.Center = second.PacketCenter, .Right = second.PacketRight, .Up = second.PacketUp});
+    CheckModelChildPoseParticlePacketFramesEqual(ModelChildPoseParticlePacketFrame {.Center = first.PacketCenter, .Right = first.PacketRight, .Up = first.PacketUp}, ModelChildPoseParticlePacketFrame {.Center = third.PacketCenter, .Right = third.PacketRight, .Up = third.PacketUp});
     CHECK(first.Particles.front().Projection.value() != second.Particles.front().Projection.value());
     CHECK(first.Particles.front().Projection.value() == third.Particles.front().Projection.value());
     CHECK(second.AnimAbsoluteTime == first.AnimAbsoluteTime);
@@ -3654,10 +3703,7 @@ TEST_CASE("ModelChildPoseParticleRegressionChildRemovalAndParentReuse", "[model-
     REQUIRE(effects.Effects.SkinnedModel->IsNeedModelAnimBuf());
 
     auto texture = render.CreateTexture({8, 8}, true, false);
-    ModelManager manager {&settings, &client->Resources, client.get(), &effects, &render, &client->GameTime,
-        client.get(), [&texture](string_view) -> pair<nptr<RenderTexture>, frect32> {
-            return {texture.as_nptr(), EffekseerFixtureAtlasRect};
-        }, []() { return false; }};
+    ModelManager manager {&settings, &client->Resources, client.get(), &effects, &render, &client->GameTime, client.get(), [&texture](string_view) -> pair<nptr<RenderTexture>, frect32> { return {texture.as_nptr(), EffekseerFixtureAtlasRect}; }, []() { return false; }};
 
     hstring parent_bone = client->Hashes.to_hashed_string(ModelChildPoseParticleMeshPath);
     hstring child_bone = client->Hashes.to_hashed_string(ModelChildPoseParticleChildMeshPath);
@@ -3707,16 +3753,17 @@ TEST_CASE("ModelChildPoseParticleRegressionChildRemovalAndParentReuse", "[model-
         .StateAnim = state,
         .ActionAnim = action,
         .NormalizedTime = ModelChildPoseParticleCallbackPhase,
-        .Callback = [&model, &callbacks, unlit, child_bone, offset] {
-            callbacks++;
+        .Callback =
+            [&model, &callbacks, unlit, child_bone, offset] {
+                callbacks++;
 
-            if (unlit) {
-                model->RunUnlitParticle(ModelChildPoseParticleParticlePath, child_bone, offset);
-            }
-            else {
-                model->RunParticle(ModelChildPoseParticleParticlePath, child_bone, offset);
-            }
-        },
+                if (unlit) {
+                    model->RunUnlitParticle(ModelChildPoseParticleParticlePath, child_bone, offset);
+                }
+                else {
+                    model->RunParticle(ModelChildPoseParticleParticlePath, child_bone, offset);
+                }
+            },
     });
     (void)model->PlayAnim(state, action, child_layers.data(), 0.0f, combine_enum(ModelAnimFlags::PlayOnce, ModelAnimFlags::NoSmooth), 1.0f);
     model->SetupFrame(isize32 {512, 512}, ipos32 {256, 384});

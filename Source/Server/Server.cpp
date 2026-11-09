@@ -73,7 +73,7 @@ public:
     auto operator=(PlayerMovementAuthority&&) = delete;
     ~PlayerMovementAuthority() = default;
 
-    [[nodiscard]] auto Check() -> bool
+    auto Check() -> bool
     {
         if (!IsCurrent()) {
             return false;
@@ -88,7 +88,7 @@ public:
     }
 
 private:
-    [[nodiscard]] auto IsCurrent() -> bool
+    auto IsCurrent() -> bool
     {
         if (_player->IsDestroyed() || _player->IsDestroying() || _cr->IsDestroyed() || _cr->IsDestroying() || _map->IsDestroyed() || _map->IsDestroying() || !_actor || _actor->IsDestroyed() || _actor->IsDestroying()) {
             return false;

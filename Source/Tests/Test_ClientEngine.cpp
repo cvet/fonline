@@ -111,10 +111,7 @@ TEST_CASE("MapSpriteDepthOffsetReachesBothRenderPaths")
             return 0;
         }
 
-        void DrawInScene(fpos32 position, float32_t depth) const override
-        {
-            Calls.emplace_back(position, depth);
-        }
+        void DrawInScene(fpos32 position, float32_t depth) const override { Calls.emplace_back(position, depth); }
 
         mutable vector<pair<fpos32, float32_t>> Calls;
     };
@@ -131,13 +128,11 @@ TEST_CASE("MapSpriteDepthOffsetReachesBothRenderPaths")
     {
         RecordingSceneSprite visual {&client->SprMngr};
         MapSpriteList list;
-        auto sprite = list.AddSprite(DrawOrderType::Particles, mpos {3, 3}, ipos32 {12, -17},
-            &field_offset, &visual, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0);
+        auto sprite = list.AddSprite(DrawOrderType::Particles, mpos {3, 3}, ipos32 {12, -17}, &field_offset, &visual, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0);
 
         for (float32_t delta : {0.0f, 12.5f, -9.25f}) {
             sprite->SetDepthOffset(delta);
-            client->SprMngr.DrawSprites(list, irect32 {0, 0, 320, 200}, false,
-                DrawOrderType::Particles, DrawOrderType::Particles, ucolor {255, 255, 255}, &effect);
+            client->SprMngr.DrawSprites(list, irect32 {0, 0, 320, 200}, false, DrawOrderType::Particles, DrawOrderType::Particles, ucolor {255, 255, 255}, &effect);
             REQUIRE(visual.Calls.size() > 0);
             const auto& baseline = visual.Calls.front();
             const auto& actual = visual.Calls.back();
@@ -153,15 +148,13 @@ TEST_CASE("MapSpriteDepthOffsetReachesBothRenderPaths")
         auto visual = client->ResMngr.LoadSprite(client->Hashes.to_hashed_string("DepthSprite.png"), AtlasType::MapSprites);
         REQUIRE(visual);
         MapSpriteList list;
-        auto sprite = list.AddSprite(DrawOrderType::Particles, mpos {3, 3}, ipos32 {12, -17},
-            &field_offset, visual.get(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0);
+        auto sprite = list.AddSprite(DrawOrderType::Particles, mpos {3, 3}, ipos32 {12, -17}, &field_offset, visual.get(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0);
         vector<Vertex2D> baseline;
 
         for (float32_t delta : {0.0f, 12.5f, -9.25f}) {
             sprite->SetDepthOffset(delta);
             effect.Draws.clear();
-            client->SprMngr.DrawSprites(list, irect32 {0, 0, 320, 200}, false,
-                DrawOrderType::Particles, DrawOrderType::Particles, ucolor {255, 255, 255}, &effect);
+            client->SprMngr.DrawSprites(list, irect32 {0, 0, 320, 200}, false, DrawOrderType::Particles, DrawOrderType::Particles, ucolor {255, 255, 255}, &effect);
             REQUIRE(effect.Draws.size() == 1);
             const auto& vertices = effect.Draws.front().Vertices;
             REQUIRE(vertices.size() == 4);
@@ -183,8 +176,7 @@ TEST_CASE("MapSpriteDepthOffsetReachesBothRenderPaths")
         auto visual = client->ResMngr.LoadSprite(client->Hashes.to_hashed_string("DepthSprite.png"), AtlasType::MapSprites);
         REQUIRE(visual);
         MapSpriteList list;
-        auto sprite = list.AddSprite(DrawOrderType::Item, mpos {3, 3}, ipos32 {12, -17},
-            &field_offset, visual.get(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0);
+        auto sprite = list.AddSprite(DrawOrderType::Item, mpos {3, 3}, ipos32 {12, -17}, &field_offset, visual.get(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0);
         CHECK(client->SprMngr.GetMapSpritePointAnchor(sprite, ipos32 {}).has_value());
 
         sprite->SetHidden(true);
@@ -193,13 +185,11 @@ TEST_CASE("MapSpriteDepthOffsetReachesBothRenderPaths")
         sprite->Invalidate();
         CHECK_FALSE(client->SprMngr.GetMapSpritePointAnchor(sprite, ipos32 {}).has_value());
 
-        auto unavailable = list.AddSprite(DrawOrderType::Item, mpos {3, 3}, ipos32 {12, -17},
-            &field_offset, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0);
+        auto unavailable = list.AddSprite(DrawOrderType::Item, mpos {3, 3}, ipos32 {12, -17}, &field_offset, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0);
         CHECK_FALSE(client->SprMngr.GetMapSpritePointAnchor(unavailable, ipos32 {}).has_value());
 
         RecordingSceneSprite direct {&client->SprMngr};
-        auto scene = list.AddSprite(DrawOrderType::Particles, mpos {3, 3}, ipos32 {12, -17},
-            &field_offset, &direct, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0);
+        auto scene = list.AddSprite(DrawOrderType::Particles, mpos {3, 3}, ipos32 {12, -17}, &field_offset, &direct, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0);
         CHECK_FALSE(client->SprMngr.GetMapSpritePointAnchor(scene, ipos32 {}).has_value());
     }
 
@@ -208,12 +198,10 @@ TEST_CASE("MapSpriteDepthOffsetReachesBothRenderPaths")
         auto visual = client->ResMngr.LoadSprite(client->Hashes.to_hashed_string("DepthSprite.png"), AtlasType::MapSprites);
         REQUIRE(visual);
         MapSpriteList list;
-        auto sprite = list.AddSprite(DrawOrderType::Item, mpos {3, 3}, ipos32 {12, -17},
-            &field_offset, visual.get(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0);
+        auto sprite = list.AddSprite(DrawOrderType::Item, mpos {3, 3}, ipos32 {12, -17}, &field_offset, visual.get(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0);
         optional<pair<ipos32, float32_t>> anchor;
 
-        for (float32_t invalid : {std::numeric_limits<float32_t>::quiet_NaN(),
-                 std::numeric_limits<float32_t>::infinity(), -std::numeric_limits<float32_t>::infinity()}) {
+        for (float32_t invalid : {std::numeric_limits<float32_t>::quiet_NaN(), std::numeric_limits<float32_t>::infinity(), -std::numeric_limits<float32_t>::infinity()}) {
             sprite->SetDepthOffset(invalid);
             CHECK_NOTHROW(anchor = client->SprMngr.GetMapSpritePointAnchor(sprite, ipos32 {}));
             CHECK_FALSE(anchor.has_value());
@@ -223,43 +211,34 @@ TEST_CASE("MapSpriteDepthOffsetReachesBothRenderPaths")
         CHECK(client->SprMngr.GetMapSpritePointAnchor(sprite, ipos32 {}).has_value());
 
         ipos32 safe_base {std::numeric_limits<int32_t>::max() - 1024, std::numeric_limits<int32_t>::min() + 1024};
-        auto large = list.AddSprite(DrawOrderType::Item, mpos {3, 3}, safe_base,
-            &field_offset, visual.get(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0);
+        auto large = list.AddSprite(DrawOrderType::Item, mpos {3, 3}, safe_base, &field_offset, visual.get(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0);
         ipos32 safe_local {123, -456};
         CHECK_NOTHROW(anchor = client->SprMngr.GetMapSpritePointAnchor(large, safe_local));
         REQUIRE(anchor.has_value());
-        CHECK(anchor->first == ipos32 {safe_base.x + safe_local.x - GameSettings::MAP_HEX_WIDTH / 2,
-                  safe_base.y + safe_local.y - GameSettings::MAP_HEX_HEIGHT / 2});
+        CHECK(anchor->first == ipos32 {safe_base.x + safe_local.x - GameSettings::MAP_HEX_WIDTH / 2, safe_base.y + safe_local.y - GameSettings::MAP_HEX_HEIGHT / 2});
 
         // The identity path must preserve integers above float32's exact range
         ipos32 exact_local {16777217, -16777219};
-        auto exact = list.AddSprite(DrawOrderType::Item, mpos {3, 3}, ipos32 {},
-            &field_offset, visual.get(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0);
+        auto exact = list.AddSprite(DrawOrderType::Item, mpos {3, 3}, ipos32 {}, &field_offset, visual.get(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0);
         CHECK_NOTHROW(anchor = client->SprMngr.GetMapSpritePointAnchor(exact, exact_local));
         REQUIRE(anchor.has_value());
-        CHECK(anchor->first == ipos32 {exact_local.x - GameSettings::MAP_HEX_WIDTH / 2,
-                  exact_local.y - GameSettings::MAP_HEX_HEIGHT / 2});
+        CHECK(anchor->first == ipos32 {exact_local.x - GameSettings::MAP_HEX_WIDTH / 2, exact_local.y - GameSettings::MAP_HEX_HEIGHT / 2});
 
-        auto overflow = list.AddSprite(DrawOrderType::Item, mpos {3, 3},
-            ipos32 {std::numeric_limits<int32_t>::max() - 4, 0}, &field_offset, visual.get(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0);
+        auto overflow = list.AddSprite(DrawOrderType::Item, mpos {3, 3}, ipos32 {std::numeric_limits<int32_t>::max() - 4, 0}, &field_offset, visual.get(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0);
         CHECK_NOTHROW(anchor = client->SprMngr.GetMapSpritePointAnchor(overflow, ipos32 {100, 0}));
         CHECK_FALSE(anchor.has_value());
 
-        auto center_overflow = list.AddSprite(DrawOrderType::Item, mpos {3, 3},
-            ipos32 {std::numeric_limits<int32_t>::max() - 2, 0}, &field_offset, visual.get(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0);
+        auto center_overflow = list.AddSprite(DrawOrderType::Item, mpos {3, 3}, ipos32 {std::numeric_limits<int32_t>::max() - 2, 0}, &field_offset, visual.get(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0);
         CHECK_NOTHROW(anchor = client->SprMngr.GetMapSpritePointAnchor(center_overflow, ipos32 {4, 0}));
         CHECK_FALSE(anchor.has_value());
 
-        auto underflow = list.AddSprite(DrawOrderType::Item, mpos {3, 3},
-            ipos32 {std::numeric_limits<int32_t>::min() + 4, 0}, &field_offset, visual.get(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0);
+        auto underflow = list.AddSprite(DrawOrderType::Item, mpos {3, 3}, ipos32 {std::numeric_limits<int32_t>::min() + 4, 0}, &field_offset, visual.get(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0);
         CHECK_NOTHROW(anchor = client->SprMngr.GetMapSpritePointAnchor(underflow, ipos32 {-100, 0}));
         CHECK_FALSE(anchor.has_value());
 
-        auto rotated = list.AddSprite(DrawOrderType::Item, mpos {3, 3}, ipos32 {},
-            &field_offset, visual.get(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0);
+        auto rotated = list.AddSprite(DrawOrderType::Item, mpos {3, 3}, ipos32 {}, &field_offset, visual.get(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0);
         rotated->SetAngle(45);
-        CHECK_NOTHROW(anchor = client->SprMngr.GetMapSpritePointAnchor(rotated,
-            ipos32 {std::numeric_limits<int32_t>::max(), std::numeric_limits<int32_t>::max()}));
+        CHECK_NOTHROW(anchor = client->SprMngr.GetMapSpritePointAnchor(rotated, ipos32 {std::numeric_limits<int32_t>::max(), std::numeric_limits<int32_t>::max()}));
         CHECK_FALSE(anchor.has_value());
     }
 }
@@ -288,8 +267,7 @@ TEST_CASE("MapSpriteStandingPointAnchorOracle")
     ipos32 sprite_offset {12, -9};
     ipos32 root_offset {7, -11};
     ipos32 local_point {3, -36};
-    array<PointTransform, 6> transforms {{{0, false, false}, {37, false, false}, {-23, false, true},
-        {0, true, false}, {37, true, false}, {-23, true, true}}};
+    array<PointTransform, 6> transforms {{{0, false, false}, {37, false, false}, {-23, false, true}, {0, true, false}, {37, true, false}, {-23, true, true}}};
 
     for (mpos contact : {mpos {8, 8}, mpos {10, 8}}) {
         ipos32 field_offset = ipos32 {180, 160} + GeometryHelper::GetHexOffset(mpos {8, 8}, contact);
@@ -298,15 +276,13 @@ TEST_CASE("MapSpriteStandingPointAnchorOracle")
             for (auto transform : transforms) {
                 DrawOrderType order = transform.Flat ? DrawOrderType::FlatItemAfterLight : DrawOrderType::Item;
                 MapSpriteList walls;
-                auto wall = walls.AddSprite(order, contact, center, &field_offset,
-                    visual.get(), nullptr, &sprite_offset, &root_offset, nullptr, nullptr, nullptr, 0);
+                auto wall = walls.AddSprite(order, contact, center, &field_offset, visual.get(), nullptr, &sprite_offset, &root_offset, nullptr, nullptr, nullptr, 0);
                 wall->SetElevation(elevation);
                 wall->SetDepthOffset(7.5f);
                 wall->SetAngle(transform.Angle);
                 wall->SetMapProjected(transform.MapProjected);
                 effect.Draws.clear();
-                client->SprMngr.DrawSprites(walls, irect32 {0, 0, 640, 400}, false,
-                    order, order, ucolor {255, 255, 255}, &effect);
+                client->SprMngr.DrawSprites(walls, irect32 {0, 0, 640, 400}, false, order, order, ucolor {255, 255, 255}, &effect);
                 REQUIRE(effect.Draws.size() == 1);
                 vector<Vertex2D> vertices = ReadRecordedLayerQuad(effect.Draws.front());
                 REQUIRE(vertices[1].TexU == vertices[0].TexU);
@@ -318,9 +294,7 @@ TEST_CASE("MapSpriteStandingPointAnchorOracle")
                 // Texture coordinates identify the original corners after the renderer transforms their positions
                 float32_t u = 15.0f / 32.0f;
                 float32_t v = 63.0f / 96.0f;
-                fpos32 precise {
-                    vertices[1].PosX + u * (vertices[2].PosX - vertices[1].PosX) + v * (vertices[0].PosX - vertices[1].PosX),
-                    vertices[1].PosY + u * (vertices[2].PosY - vertices[1].PosY) + v * (vertices[0].PosY - vertices[1].PosY)};
+                fpos32 precise {vertices[1].PosX + u * (vertices[2].PosX - vertices[1].PosX) + v * (vertices[0].PosX - vertices[1].PosX), vertices[1].PosY + u * (vertices[2].PosY - vertices[1].PosY) + v * (vertices[0].PosY - vertices[1].PosY)};
                 float32_t precise_depth = vertices[1].PosZ + u * (vertices[2].PosZ - vertices[1].PosZ) + v * (vertices[0].PosZ - vertices[1].PosZ);
                 auto top = std::ranges::min_element(vertices, {}, &Vertex2D::PosY);
                 auto bottom = std::ranges::max_element(vertices, {}, &Vertex2D::PosY);
@@ -328,16 +302,13 @@ TEST_CASE("MapSpriteStandingPointAnchorOracle")
                 float32_t slope = (bottom->PosZ - top->PosZ) / (bottom->PosY - top->PosY);
 
                 ipos32 draw_root = wall->GetDrawRootPos();
-                ipos32 point = draw_root + ipos32 {
-                    iround<int32_t>(precise.x - numeric_cast<float32_t>(draw_root.x)),
-                    iround<int32_t>(precise.y - numeric_cast<float32_t>(draw_root.y))};
+                ipos32 point = draw_root + ipos32 {iround<int32_t>(precise.x - numeric_cast<float32_t>(draw_root.x)), iround<int32_t>(precise.y - numeric_cast<float32_t>(draw_root.y))};
                 float32_t target_depth = precise_depth + (numeric_cast<float32_t>(point.y) - precise.y) * slope;
                 REQUIRE(std::isfinite(target_depth));
 
                 ipos32 offset = point - field_offset - center;
                 MapSpriteList points;
-                auto marker = points.AddSprite(DrawOrderType::Particles, contact, center, &field_offset,
-                    visual.get(), nullptr, &offset, nullptr, nullptr, nullptr, nullptr, 0);
+                auto marker = points.AddSprite(DrawOrderType::Particles, contact, center, &field_offset, visual.get(), nullptr, &offset, nullptr, nullptr, nullptr, nullptr, 0);
                 CHECK(marker->GetDrawRootPos() == point);
                 vec3 ground_projection = marker->GetMapRootProjection();
                 REQUIRE(std::abs(ground_projection.z - target_depth) > 1.0f);
@@ -360,16 +331,13 @@ TEST_CASE("MapSpriteStandingPointAnchorOracle")
                     CHECK(std::abs(target_depth - carrier_projection.z) < 0.002f);
                 }
                 else if (transform.Angle == 0 && !transform.MapProjected) {
-                    float32_t without_root = GeometryHelper::ProjectMapYToVerticalDepth(
-                        carrier_projection.y + numeric_cast<float32_t>(local_point.y),
-                        carrier_projection.y, carrier_projection.z);
+                    float32_t without_root = GeometryHelper::ProjectMapYToVerticalDepth(carrier_projection.y + numeric_cast<float32_t>(local_point.y), carrier_projection.y, carrier_projection.z);
                     REQUIRE(std::abs(without_root - target_depth) > 1.0f);
 
                     if (elevation != 0) {
                         ipos32 old_offset = sprite_offset + local_point;
                         CHECK(field_offset + center + old_offset != point);
-                        float32_t without_rounding = GeometryHelper::ProjectMapYToVerticalDepth(
-                            ground_projection.y, carrier_projection.y, carrier_projection.z);
+                        float32_t without_rounding = GeometryHelper::ProjectMapYToVerticalDepth(ground_projection.y, carrier_projection.y, carrier_projection.z);
                         REQUIRE(std::abs(without_rounding - target_depth) > 0.02f);
                     }
                 }
@@ -384,15 +352,12 @@ TEST_CASE("MapSpriteStandingPointAnchorOracle")
                     quad += strex("|v={:.9g},{:.9g},{:.9g}", vertex.PosX, vertex.PosY, vertex.PosZ).str();
                 }
 
-                INFO(strex("POINT_MATRIX|hex={},{}|elevation={}|angle={}|flat={}|projected={}|x={}|y={}|depth={:.9g}|correction={:.9g}{}",
-                    contact.x, contact.y, elevation, transform.Angle, transform.Flat ? 1 : 0,
-                    transform.MapProjected ? 1 : 0, point.x, point.y, target_depth, correction, quad).str());
+                INFO(strex("POINT_MATRIX|hex={},{}|elevation={}|angle={}|flat={}|projected={}|x={}|y={}|depth={:.9g}|correction={:.9g}{}", contact.x, contact.y, elevation, transform.Angle, transform.Flat ? 1 : 0, transform.MapProjected ? 1 : 0, point.x, point.y, target_depth, correction, quad).str());
                 CHECK(std::isfinite(correction));
             }
         }
     }
 }
-
 
 TEST_CASE("MapSpriteDepthOffsetIsCopiedAndValidatedBeforeAttachment")
 {
@@ -425,8 +390,7 @@ TEST_CASE("MapSpriteDepthOffsetIsCopiedAndValidatedBeforeAttachment")
     CHECK(holder.MSpr->GetElevation() == 18);
     CHECK(holder.MSpr->GetDepthOffset() == 12.5f);
 
-    for (float32_t invalid : {std::numeric_limits<float32_t>::quiet_NaN(),
-             std::numeric_limits<float32_t>::infinity(), -std::numeric_limits<float32_t>::infinity()}) {
+    for (float32_t invalid : {std::numeric_limits<float32_t>::quiet_NaN(), std::numeric_limits<float32_t>::infinity(), -std::numeric_limits<float32_t>::infinity()}) {
         holder.DepthOffset = invalid;
         CHECK_THROWS_AS(Client_Map_DrawMapSprite(map, &holder), ScriptException);
         CHECK(holder.Valid);
@@ -746,9 +710,7 @@ TEST_CASE("ParticleSpriteInitialSimulationUsesSceneSpace", "[particles][effeksee
         auto atlas_bounds = atlas->GetParticle()->GetLiveBounds();
         REQUIRE(atlas_bounds);
 
-        CAPTURE(actual_bounds->PositionMin.x, actual_bounds->PositionMax.x,
-            reference_bounds->PositionMin.x, reference_bounds->PositionMax.x,
-            wrong_bounds->PositionMin.x, wrong_bounds->PositionMax.x);
+        CAPTURE(actual_bounds->PositionMin.x, actual_bounds->PositionMax.x, reference_bounds->PositionMin.x, reference_bounds->PositionMax.x, wrong_bounds->PositionMin.x, wrong_bounds->PositionMax.x);
         REQUIRE(wrong_bounds->PositionMax.x > reference_bounds->PositionMax.x + 1.0f);
         CHECK(atlas_bounds->PositionMin.x < reference_bounds->PositionMin.x - 1.0f);
 
@@ -1283,8 +1245,7 @@ TEST_CASE("BoneMapAnchorPreservesTheCarrierAndModelDepth")
     vector<pair<string, vector<uint8_t>>> resources;
     resources.emplace_back(string {"ModelAnimationInfo.foinfo"}, MakeUnitTestModelAnimationInfo(MODEL_PATH));
     resources.emplace_back(string {MESH_PATH}, mesh);
-    resources.emplace_back(string {MODEL_PATH},
-        MakeRuntimeModelDescription(MODEL_PATH, MESH_PATH, mesh, {}, {}, nullptr, false, {}, 0.0f, nullptr, DESCRIPTION));
+    resources.emplace_back(string {MODEL_PATH}, MakeRuntimeModelDescription(MODEL_PATH, MESH_PATH, mesh, {}, {}, nullptr, false, {}, 0.0f, nullptr, DESCRIPTION));
     resources.emplace_back("AnchorSprite.png", BakerTests::MakeMinimalBakedSprite(8, 8));
     auto settings = MakeClientTestSettings();
     bool direct_draw = GENERATE(false, true);
@@ -1405,16 +1366,13 @@ TEST_CASE("BoneMapAnchorPreservesTheCarrierAndModelDepth")
                     ipos32 field_offset {320, 240};
                     ipos32 root_offset = carrier->GetRootOffset();
                     MapSpriteList carriers;
-                    auto submitted = carriers.AddSprite(DrawOrderType::Critter, cr->GetHex(), carrier->GetHexOffset(),
-                        &field_offset, carrier->GetSprite(), nullptr, carrier->GetPSprOffset(), &root_offset,
-                        nullptr, nullptr, nullptr, 0);
+                    auto submitted = carriers.AddSprite(DrawOrderType::Critter, cr->GetHex(), carrier->GetHexOffset(), &field_offset, carrier->GetSprite(), nullptr, carrier->GetPSprOffset(), &root_offset, nullptr, nullptr, nullptr, 0);
                     submitted->SetElevation(elevation);
                     submitted->SetDepthOffset(carrier->GetDepthOffset());
                     CHECK(submitted->GetSpriteRootOffset() == carrier->GetSpriteRootOffset());
 
                     effect.Draws.clear();
-                    client->SprMngr.DrawSprites(carriers, irect32 {0, 0, 1280, 960}, false,
-                        DrawOrderType::Critter, DrawOrderType::Critter, ucolor {255, 255, 255}, &effect);
+                    client->SprMngr.DrawSprites(carriers, irect32 {0, 0, 1280, 960}, false, DrawOrderType::Critter, DrawOrderType::Critter, ucolor {255, 255, 255}, &effect);
                     REQUIRE(effect.Draws.size() == 1);
 
                     vector<Vertex2D> vertices = ReadRecordedLayerQuad(effect.Draws.front());
@@ -1428,8 +1386,7 @@ TEST_CASE("BoneMapAnchorPreservesTheCarrierAndModelDepth")
                     float32_t expected_depth = top->PosZ + fraction * (bottom->PosZ - top->PosZ);
                     CHECK(std::abs(holder.MSpr->GetMapRootProjection().z - expected_depth) < 0.002f);
                     CHECK(std::abs(physical_depth - depth) > 1.0f);
-                    CHECK(holder.MSpr->GetDrawRootPos() - *holder.MSpr->GetPHexOffset() ==
-                        point - field_offset);
+                    CHECK(holder.MSpr->GetDrawRootPos() - *holder.MSpr->GetPHexOffset() == point - field_offset);
                 }
             }
         }
@@ -1473,8 +1430,7 @@ TEST_CASE("BoneMapAnchorPreservesTheCarrierAndModelDepth")
         CHECK(offset == cr->GetSpriteOffset());
         CHECK(depth == 0.0f);
 
-        for (float32_t invalid : {std::numeric_limits<float32_t>::quiet_NaN(),
-                 std::numeric_limits<float32_t>::infinity(), std::numeric_limits<float32_t>::max()}) {
+        for (float32_t invalid : {std::numeric_limits<float32_t>::quiet_NaN(), std::numeric_limits<float32_t>::infinity(), std::numeric_limits<float32_t>::max()}) {
             offset = ipos32 {123, 456};
             depth = 123.0f;
             CHECK_FALSE(Client_Critter_GetBoneSpriteMapAnchor(cr, bone, invalid, 0.0f, 0.0f, offset, depth));
@@ -1494,8 +1450,7 @@ TEST_CASE("BoneMapAnchorPreservesTheCarrierAndModelDepth")
         CHECK(offset == flat->GetSpriteOffset());
         CHECK(depth == 0.0f);
 
-        auto off_map = safe_alloc::make_refcounted<CritterView>(client, ident_t {2002},
-            client->GetProtoCritter(client->Hashes.to_hashed_string("UnitTestClientCritter")), nullptr);
+        auto off_map = safe_alloc::make_refcounted<CritterView>(client, ident_t {2002}, client->GetProtoCritter(client->Hashes.to_hashed_string("UnitTestClientCritter")), nullptr);
         auto destroy_off_map = scope_exit([&off_map]() noexcept { safe_call([&off_map] { off_map->DestroySelf(); }); });
         offset = ipos32 {123, 456};
         depth = 123.0f;
@@ -1534,13 +1489,11 @@ TEST_CASE("BoneMapAnchorPreservesTheCarrierAndModelDepth")
         CHECK(offset == flat->GetSpriteOffset());
         CHECK(depth == 0.0f);
 
-        auto off_map = safe_alloc::make_refcounted<CritterView>(client, ident_t {2002},
-            client->GetProtoCritter(client->Hashes.to_hashed_string("UnitTestClientCritter")), nullptr);
+        auto off_map = safe_alloc::make_refcounted<CritterView>(client, ident_t {2002}, client->GetProtoCritter(client->Hashes.to_hashed_string("UnitTestClientCritter")), nullptr);
         auto destroy_off_map = scope_exit([&off_map]() noexcept { safe_call([&off_map] { off_map->DestroySelf(); }); });
         CHECK_THROWS_AS(Client_Critter_GetBoneMapAnchor(off_map, bone, 0.0f, 0.0f, 0.0f, offset, depth), ScriptException);
     }
 }
-
 
 TEST_CASE("ModelBoneDepthKeepsThePosedPointAcrossRenderPaths")
 {
@@ -1551,8 +1504,7 @@ TEST_CASE("ModelBoneDepthKeepsThePosedPointAcrossRenderPaths")
     vector<pair<string, vector<uint8_t>>> resources;
     resources.emplace_back(string {"ModelAnimationInfo.foinfo"}, MakeUnitTestModelAnimationInfo(MODEL_PATH));
     resources.emplace_back(string {MESH_PATH}, mesh);
-    resources.emplace_back(string {MODEL_PATH},
-        MakeRuntimeModelDescription(MODEL_PATH, MESH_PATH, mesh, {}, {}, nullptr, false, {}, 0.0f, nullptr, DESCRIPTION));
+    resources.emplace_back(string {MODEL_PATH}, MakeRuntimeModelDescription(MODEL_PATH, MESH_PATH, mesh, {}, {}, nullptr, false, {}, 0.0f, nullptr, DESCRIPTION));
     auto settings = MakeClientTestSettings();
     BakerTests::OverrideSetting(settings.Render.ModelProjFactor, 32.0f);
     BakerTests::OverrideSetting(settings.Geometry.MapCameraAngle, GameSettings::MAP_CAMERA_ANGLE);
@@ -1631,8 +1583,7 @@ TEST_CASE("ModelBoneDepthKeepsThePosedPointAcrossRenderPaths")
         CHECK_FALSE(model->GetBonePos(client->Hashes.to_hashed_string("MissingBone"), vec3 {}, make_ptr(&depth)));
         CHECK(depth == 0.0f);
 
-        for (float32_t invalid : {std::numeric_limits<float32_t>::quiet_NaN(),
-                 std::numeric_limits<float32_t>::infinity(), std::numeric_limits<float32_t>::max()}) {
+        for (float32_t invalid : {std::numeric_limits<float32_t>::quiet_NaN(), std::numeric_limits<float32_t>::infinity(), std::numeric_limits<float32_t>::max()}) {
             depth = 123.0f;
             CHECK_FALSE(model->GetBonePos(bone, vec3 {invalid, 0.0f, 0.0f}, make_ptr(&depth)));
             CHECK(depth == 0.0f);
@@ -1711,9 +1662,7 @@ TEST_CASE("ModelParticleEmitsAtItsBoneBeforeAnotherPose")
     vector<uint8_t> animation_info;
     vector<pair<string, vector<uint8_t>>> resources;
     resources.emplace_back(string {mesh_path}, mesh);
-    resources.emplace_back(string {model_path}, MakeRuntimeModelDescription(model_path, mesh_path, mesh,
-        {}, {}, nullptr, true, {}, 2.0f, &animation_info,
-        "Model ImmediateParticle.fbx\nAnim 1 1 ModelFile Base\n"));
+    resources.emplace_back(string {model_path}, MakeRuntimeModelDescription(model_path, mesh_path, mesh, {}, {}, nullptr, true, {}, 2.0f, &animation_info, "Model ImmediateParticle.fbx\nAnim 1 1 ModelFile Base\n"));
     resources.emplace_back("ModelAnimationInfo.foinfo", std::move(animation_info));
     resources.emplace_back(string {particle_path}, std::move(particle.Binary));
 
@@ -1778,11 +1727,12 @@ TEST_CASE("ModelParticleEmitsAtItsBoneBeforeAnotherPose")
             .StateAnim = state,
             .ActionAnim = action,
             .NormalizedTime = 0.5f,
-            .Callback = [&model, &run_particle, particle_path, bone, offset, &callbacks] {
-                callbacks++;
+            .Callback =
+                [&model, &run_particle, particle_path, bone, offset, &callbacks] {
+                    callbacks++;
 
-                run_particle(model.get(), particle_path, bone, offset);
-            },
+                    run_particle(model.get(), particle_path, bone, offset);
+                },
         });
         model->SetSpeed(10.0f);
         (void)model->PlayAnim(state, action, nullptr, 0.0f, combine_enum(ModelAnimFlags::PlayOnce, ModelAnimFlags::NoSmooth));
@@ -1799,16 +1749,14 @@ TEST_CASE("ModelParticleEmitsAtItsBoneBeforeAnotherPose")
         CHECK(model->HasUnlitParticles() == unlit);
         auto first = model->GetSpriteBounds();
         REQUIRE(first);
-        CAPTURE(first->Rect.x, first->Rect.y, first->Rect.width, first->Rect.height,
-            first->RequiredFrameSize.width, first->RequiredFrameSize.height);
+        CAPTURE(first->Rect.x, first->Rect.y, first->Rect.width, first->Rect.height, first->RequiredFrameSize.width, first->RequiredFrameSize.height);
         CHECK(model->GetDrawSize() == isize32 {512, 512});
 
         auto relative = model->GetBonePos(bone, offset);
         REQUIRE(relative);
 
         ipos32 point = *relative + model->GetFramePivot();
-        REQUIRE((point.x < before->Rect.x || point.x >= before->Rect.x + before->Rect.width ||
-            point.y < before->Rect.y || point.y >= before->Rect.y + before->Rect.height));
+        REQUIRE((point.x < before->Rect.x || point.x >= before->Rect.x + before->Rect.width || point.y < before->Rect.y || point.y >= before->Rect.y + before->Rect.height));
         CHECK(point.x >= first->Rect.x);
         CHECK(point.x < first->Rect.x + first->Rect.width);
         CHECK(point.y >= first->Rect.y);
@@ -1849,16 +1797,14 @@ TEST_CASE("ModelParticleEmitsAtItsBoneBeforeAnotherPose")
         CHECK(model->HasUnlitParticles() == unlit);
         auto first = model->GetSpriteBounds();
         REQUIRE(first);
-        CAPTURE(first->Rect.x, first->Rect.y, first->Rect.width, first->Rect.height,
-            first->RequiredFrameSize.width, first->RequiredFrameSize.height);
+        CAPTURE(first->Rect.x, first->Rect.y, first->Rect.width, first->Rect.height, first->RequiredFrameSize.width, first->RequiredFrameSize.height);
         CHECK(model->GetDrawSize() == isize32 {512, 512});
 
         auto relative = model->GetBonePos(bone, offset);
         REQUIRE(relative);
 
         ipos32 point = *relative + model->GetFramePivot();
-        REQUIRE((point.x < before->Rect.x || point.x >= before->Rect.x + before->Rect.width ||
-            point.y < before->Rect.y || point.y >= before->Rect.y + before->Rect.height));
+        REQUIRE((point.x < before->Rect.x || point.x >= before->Rect.x + before->Rect.width || point.y < before->Rect.y || point.y >= before->Rect.y + before->Rect.height));
         CHECK(point.x >= first->Rect.x);
         CHECK(point.x < first->Rect.x + first->Rect.width);
         CHECK(point.y >= first->Rect.y);
@@ -1880,8 +1826,7 @@ TEST_CASE("ModelParticleEmitsAtItsBoneBeforeAnotherPose")
         CHECK(model->HasUnlitParticles() == unlit);
         auto first = model->GetSpriteBounds();
         REQUIRE(first);
-        CAPTURE(first->Rect.x, first->Rect.y, first->Rect.width, first->Rect.height,
-            first->RequiredFrameSize.width, first->RequiredFrameSize.height);
+        CAPTURE(first->Rect.x, first->Rect.y, first->Rect.width, first->Rect.height, first->RequiredFrameSize.width, first->RequiredFrameSize.height);
         CHECK(model->GetDrawSize() == isize32 {512, 512});
 
         auto relative = model->GetBonePos(bone, offset);
@@ -1913,16 +1858,14 @@ TEST_CASE("ModelParticleEmitsAtItsBoneBeforeAnotherPose")
         CHECK(model->HasUnlitParticles() == unlit);
         auto control = model->GetSpriteBounds();
         REQUIRE(control);
-        CAPTURE(control->Rect.x, control->Rect.y, control->Rect.width, control->Rect.height,
-            control->RequiredFrameSize.width, control->RequiredFrameSize.height);
+        CAPTURE(control->Rect.x, control->Rect.y, control->Rect.width, control->Rect.height, control->RequiredFrameSize.width, control->RequiredFrameSize.height);
         CHECK(model->GetDrawSize() == isize32 {512, 512});
 
         auto relative = model->GetBonePos(bone, offset);
         REQUIRE(relative);
 
         ipos32 point = *relative + model->GetFramePivot();
-        REQUIRE((point.x < before->Rect.x || point.x >= before->Rect.x + before->Rect.width ||
-            point.y < before->Rect.y || point.y >= before->Rect.y + before->Rect.height));
+        REQUIRE((point.x < before->Rect.x || point.x >= before->Rect.x + before->Rect.width || point.y < before->Rect.y || point.y >= before->Rect.y + before->Rect.height));
         CHECK(point.x >= control->Rect.x);
         CHECK(point.x < control->Rect.x + control->Rect.width);
         CHECK(point.y >= control->Rect.y);
@@ -1959,8 +1902,7 @@ TEST_CASE("ModelParticleEmitsAtItsBoneBeforeAnotherPose")
         fresh_model->PoseSpriteFrame(false);
         auto placed = fresh_model->GetSpriteBounds();
         REQUIRE(placed);
-        CAPTURE(placed->Rect.x, placed->Rect.y, placed->Rect.width, placed->Rect.height,
-            placed->RequiredFrameSize.width, placed->RequiredFrameSize.height);
+        CAPTURE(placed->Rect.x, placed->Rect.y, placed->Rect.width, placed->Rect.height, placed->RequiredFrameSize.width, placed->RequiredFrameSize.height);
         CHECK(particle_attach_count(fresh_model) == 1);
         CHECK(fresh_model->HasUnlitParticles() == unlit);
         CHECK(fresh_model->GetDrawSize() == isize32 {512, 512});
@@ -1969,8 +1911,7 @@ TEST_CASE("ModelParticleEmitsAtItsBoneBeforeAnotherPose")
         REQUIRE(relative);
 
         ipos32 point = *relative + fresh_model->GetFramePivot();
-        REQUIRE((point.x < before->Rect.x || point.x >= before->Rect.x + before->Rect.width ||
-            point.y < before->Rect.y || point.y >= before->Rect.y + before->Rect.height));
+        REQUIRE((point.x < before->Rect.x || point.x >= before->Rect.x + before->Rect.width || point.y < before->Rect.y || point.y >= before->Rect.y + before->Rect.height));
         CHECK(point.x >= placed->Rect.x);
         CHECK(point.x < placed->Rect.x + placed->Rect.width);
         CHECK(point.y >= placed->Rect.y);
@@ -2000,8 +1941,7 @@ TEST_CASE("ModelParticleEmitsAtItsBoneBeforeAnotherPose")
         CHECK(particle_attach_count(fresh_model) == 0);
         CHECK_FALSE(fresh_model->HasUnlitParticles());
         REQUIRE(finished);
-        CHECK((point.x < finished->Rect.x || point.x >= finished->Rect.x + finished->Rect.width ||
-            point.y < finished->Rect.y || point.y >= finished->Rect.y + finished->Rect.height));
+        CHECK((point.x < finished->Rect.x || point.x >= finished->Rect.x + finished->Rect.width || point.y < finished->Rect.y || point.y >= finished->Rect.y + finished->Rect.height));
     }
 
     SECTION("MissingBoneCreatesNoParticleAndLeavesTheModelUsable")
@@ -2107,7 +2047,6 @@ TEST_CASE("ModelParticleEmitsAtItsBoneBeforeAnotherPose")
         CHECK_FALSE(instance->HasUnlitParticles());
         CHECK_FALSE(sprite->GetUnlitOverlay());
     }
-
 }
 #endif
 
@@ -2322,10 +2261,11 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
             .StateAnim = state,
             .ActionAnim = action,
             .NormalizedTime = 0.5f,
-            .Callback = [&model, &callbacks] {
-                callbacks++;
-                model->SetDir(mdir {int16_t {90}}, false);
-            },
+            .Callback =
+                [&model, &callbacks] {
+                    callbacks++;
+                    model->SetDir(mdir {int16_t {90}}, false);
+                },
         });
         model->SetSpeed(10.0f);
         (void)model->PlayAnim(state, action, nullptr, 0.0f, combine_enum(ModelAnimFlags::PlayOnce, ModelAnimFlags::NoSmooth));

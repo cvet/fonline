@@ -101,8 +101,7 @@ public:
         FO_VERIFY_AND_THROW(start_index <= dbuf->IndCount, "Graph probe draw starts outside CPU indices");
         size_t requested_indices = indices_to_draw.value_or(dbuf->IndCount - start_index);
         bool coherent = dbuf->VertCount <= buffer->UploadedVertices && start_index <= buffer->UploadedIndices && requested_indices <= buffer->UploadedIndices - start_index;
-        _draws->emplace_back(GraphProbeDraw {dbuf->VertCount, requested_indices, buffer->UploadedVertices,
-            buffer->UploadedIndices, buffer->UploadGeneration, coherent});
+        _draws->emplace_back(GraphProbeDraw {dbuf->VertCount, requested_indices, buffer->UploadedVertices, buffer->UploadedIndices, buffer->UploadGeneration, coherent});
         FO_VERIFY_AND_THROW(coherent, "Graph probe draw exceeds the retained static upload");
         _forward->DrawBuffer(dbuf, start_index, indices_to_draw, custom_tex);
     }
@@ -122,14 +121,8 @@ public:
 
     auto GetRenderTarget() -> nptr<RenderTexture> override { return _forward->GetRenderTarget(); }
     auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override { return _forward->CreateTexture(size, linear_filtered, with_depth); }
-    auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override
-    {
-        return safe_alloc::make_unique<GraphProbeBuffer>(is_static, _forward->CreateDrawBuffer(is_static));
-    }
-    auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override
-    {
-        return safe_alloc::make_unique<GraphProbeEffect>(usage, name, loader, _forward->CreateEffect(usage, name, loader), &Draws);
-    }
+    auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override { return safe_alloc::make_unique<GraphProbeBuffer>(is_static, _forward->CreateDrawBuffer(is_static)); }
+    auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override { return safe_alloc::make_unique<GraphProbeEffect>(usage, name, loader, _forward->CreateEffect(usage, name, loader), &Draws); }
     auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override { return _forward->CreateOrthoMatrix(left, right, bottom, top, nearp, farp); }
     auto IsRenderTargetFlipped() const -> bool override { return _forward->IsRenderTargetFlipped(); }
     auto GetProjMatrix() const -> mat44 override { return _forward->GetProjMatrix(); }
@@ -175,8 +168,7 @@ static auto MakeGraphProbeModelResources() -> vector<pair<string, vector<uint8_t
     resources.emplace_back(string {extra_mesh_path}, MakeRuntimeModelTriangleMesh());
     resources.emplace_back(string {late_mesh_path}, MakeRuntimeModelTriangleMesh(vec3 {}, "Late.png"));
     BakerTests::TestRig rig;
-    rig.AddSourceFile(model_path,
-        "Model GraphBody.fbx\nAnim 1 1 ModelFile Base\nLayer 3\nValue 1 Attach GraphExtra.fbx Link Limb\nValue 1 Attach GraphLate.fbx Link Limb\n", 1);
+    rig.AddSourceFile(model_path, "Model GraphBody.fbx\nAnim 1 1 ModelFile Base\nLayer 3\nValue 1 Attach GraphExtra.fbx Link Limb\nValue 1 Attach GraphLate.fbx Link Limb\n", 1);
 
     for (const auto& [path, data] : resources) {
         rig.AddSourceFile(path, "model source fixture", 1);
@@ -184,8 +176,7 @@ static auto MakeGraphProbeModelResources() -> vector<pair<string, vector<uint8_t
     }
 
     BakerTests::AddTestBakedImage(rig, "Models/Late.png", BakerTests::MakeMinimalBakedSprite(8, 8));
-    rig.AddBakedFile("Metadata.fometa-client", BakerTests::MakeMetadataBlob({{"Enum",
-        {{"CritterStateAnim", "", "TestState", "1"}, {"CritterActionAnim", "", "TestAction", "1"}}}}));
+    rig.AddBakedFile("Metadata.fometa-client", BakerTests::MakeMetadataBlob({{"Enum", {{"CritterStateAnim", "", "TestState", "1"}, {"CritterActionAnim", "", "TestAction", "1"}}}}));
     ModelInfoBaker info_baker(rig.MakeContext(), [mesh_path](string_view path, const File& file) -> ModelSourceAsset {
         ModelSourceAsset asset;
         asset.FileName = path;
@@ -271,9 +262,7 @@ TEST_CASE("ModelMeshGenerationStaticUploadControls", "[model-mesh-generation]")
     CHECK(render.Draws.back().RequestedIndices == 6);
     CHECK(render.Draws.back().UploadedIndices == 6);
     CHECK(render.Draws.back().UploadGeneration == 2);
-    logging::write("GRAPH_RECORDER_CONTROLS records={} initial_upload={} stale_requested={} stale_uploaded={} stale_generation={} restored_upload={} restored_generation={}",
-        render.Draws.size(), render.Draws[0].UploadedIndices, render.Draws[1].RequestedIndices,
-        render.Draws[1].UploadedIndices, render.Draws[1].UploadGeneration, render.Draws[2].UploadedIndices, render.Draws[2].UploadGeneration);
+    logging::write("GRAPH_RECORDER_CONTROLS records={} initial_upload={} stale_requested={} stale_uploaded={} stale_generation={} restored_upload={} restored_generation={}", render.Draws.size(), render.Draws[0].UploadedIndices, render.Draws[1].RequestedIndices, render.Draws[1].UploadedIndices, render.Draws[1].UploadGeneration, render.Draws[2].UploadedIndices, render.Draws[2].UploadGeneration);
 }
 
 TEST_CASE("ModelMeshGenerationFailureDiscardsPartialDrawsAndAllowsRetry", "[model-mesh-generation]")
@@ -302,7 +291,8 @@ TEST_CASE("ModelMeshGenerationFailureDiscardsPartialDrawsAndAllowsRetry", "[mode
             }
 
             return {texture.as_nptr(), frect32 {0.0f, 0.0f, 1.0f, 1.0f}};
-        }, [] { return false; }};
+        },
+        [] { return false; }};
     auto model = manager.CreateModel(model_path);
     REQUIRE(model);
     array<int32_t, MODEL_LAYERS_COUNT> layers {};
@@ -356,9 +346,7 @@ TEST_CASE("ModelMeshGenerationFailureDiscardsPartialDrawsAndAllowsRetry", "[mode
     CHECK(render.Draws.back().UploadedIndices == 9);
     CHECK(render.Draws.back().UploadGeneration == baseline_generation + 1);
     CHECK(texture_requests == 3);
-    logging::write("MODEL_MESH_REBUILD_RECOVERY requested={} uploaded={} upload_generation={} loader_requests={} coherent={}",
-        render.Draws.back().RequestedIndices, render.Draws.back().UploadedIndices, render.Draws.back().UploadGeneration,
-        texture_requests, render.Draws.back().Coherent);
+    logging::write("MODEL_MESH_REBUILD_RECOVERY requested={} uploaded={} upload_generation={} loader_requests={} coherent={}", render.Draws.back().RequestedIndices, render.Draws.back().UploadedIndices, render.Draws.back().UploadGeneration, texture_requests, render.Draws.back().Coherent);
 }
 
 #endif

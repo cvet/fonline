@@ -418,15 +418,12 @@ TEST_CASE("MapViewMultihexSpriteVisibilityFixture")
     CHECK(is_float_equal(anchor_depth, expected_anchor->second));
     auto current_extras = wall->GetExtraMapSprites();
     REQUIRE(current_extras);
-    auto contact_entry = std::ranges::find_if(*current_extras, [contact](auto&& entry) {
-        return entry.second && entry.first->GetHex() == contact;
-    });
+    auto contact_entry = std::ranges::find_if(*current_extras, [contact](auto&& entry) { return entry.second && entry.first->GetHex() == contact; });
     REQUIRE(contact_entry != current_extras->end());
     nptr<MapSprite> current_contact_sprite = contact_entry->first;
     REQUIRE(current_contact_sprite);
     REQUIRE_FALSE(current_contact_sprite->IsHidden());
-    INFO("VISIBLE_HEX_FIXTURE|primary_visible=" << (wall->IsMapSpriteVisible() ? 1 : 0)
-         << "|contact_visible=" << (!current_contact_sprite->IsHidden() ? 1 : 0));
+    INFO("VISIBLE_HEX_FIXTURE|primary_visible=" << (wall->IsMapSpriteVisible() ? 1 : 0) << "|contact_visible=" << (!current_contact_sprite->IsHidden() ? 1 : 0));
 
     current_contact_sprite->Invalidate();
     CHECK_FALSE(contact_entry->second);

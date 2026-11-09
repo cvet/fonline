@@ -1971,10 +1971,13 @@ TEST_CASE("ServerMovementAuthorityAfterCommitPilot")
     }
 
     auto wait = [&](const function<bool()>& condition) {
-        return WaitForUnlockedServerCondition(server, locked, [&] {
-            cover();
-            return condition();
-        }, std::chrono::milliseconds {3000});
+        return WaitForUnlockedServerCondition(
+            server, locked,
+            [&] {
+                cover();
+                return condition();
+            },
+            std::chrono::milliseconds {3000});
     };
     REQUIRE(wait([&] {
         if (control->AfterCommitCalls.load() != 1) {
@@ -2022,8 +2025,7 @@ TEST_CASE("ServerMovementAuthorityAfterCommitPilot")
         REQUIRE(actor->IsPlayerMovementOwner(player));
     }
 
-    logging::write("MOVEMENT_CALLER_AUTHORITY_RESULT route={} mutation={} after_commit={} mutations={} trigger_in={} trigger_out={} original_uid={} mutation_uid={} actual_uid={} hex={},{}",
-        route, mutation, control->AfterCommitCalls.load(), control->Mutations.load(), control->WalkIn.load(), control->WalkOut.load(), control->OriginalUid.load(), control->MutatedUid.load(), actor->GetMovingUid(), actor->GetHex().x, actor->GetHex().y);
+    logging::write("MOVEMENT_CALLER_AUTHORITY_RESULT route={} mutation={} after_commit={} mutations={} trigger_in={} trigger_out={} original_uid={} mutation_uid={} actual_uid={} hex={},{}", route, mutation, control->AfterCommitCalls.load(), control->Mutations.load(), control->WalkIn.load(), control->WalkOut.load(), control->OriginalUid.load(), control->MutatedUid.load(), actor->GetMovingUid(), actor->GetHex().x, actor->GetHex().y);
     cleanup_fixture();
     cleanup.release();
     REQUIRE_FALSE(server->EntityMngr.GetCritter(actor_id));
