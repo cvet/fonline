@@ -14616,6 +14616,33 @@
         "BuildTools/ai_control_client.py",
         "Examples/AiControlSample/"
       ]
+    },
+    "Docs/_meta/MechanicsRecipesDocumentationPlan.md": {
+      "id": "mechanics-recipes-documentation-plan",
+      "title": "Mechanics Recipes Documentation Plan",
+      "audiences": [
+        "engine-contributor",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "none",
+        "visibility": "internal",
+        "human": true,
+        "translation": "not-required"
+      },
+      "owner": "documentation",
+      "state": "active-plan",
+      "disposition": "retain",
+      "target": "Docs/_meta/MechanicsRecipesDocumentationPlan.md",
+      "sources": [
+        "Docs/generated/api.json",
+        "Docs/en/how-to/project/script-test-harness.md",
+        "Docs/en/explanation/entity-and-property-model/choosing-a-representation.md",
+        "Docs/en/how-to/scripting/lifecycle-and-concurrency.md",
+        "Examples/MinimalMultiplayer",
+        "Examples/GameplayTestHarness",
+        "Docs/_meta/ProjectLifecycleDocumentationPlan.md"
+      ]
     }
   }
 }
