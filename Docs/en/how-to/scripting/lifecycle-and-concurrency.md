@@ -116,7 +116,7 @@ Script execution is a sequence of bounded entries, not one serialized game-wide 
 | Module initialization | `ScriptSystem::InitModules()` | Init functions run in ascending priority while global assignment is temporarily enabled. |
 | Entity initialization | `EntityManager::CallInit()` | The entity is marked initialized, its `On*Init` event fires, then its optional persisted `InitScript` callback runs. |
 | Callback dispatch | Client loop or server worker job | Events, time events, remote calls, and native re-entry invoke attributed functions through their owning API. |
-| Suspension | AngelScript context manager or managed synchronization context | `Yield` or `await Game.YieldAsync(...)` preserves a continuation, but the current native execution scope returns. |
+| Suspension | AngelScript context manager or managed synchronization context | `Yield` or `await ScriptTask.Delay(...)` preserves a continuation, but the current native execution scope returns. |
 | Resumption | Client scheduled-callback pass or server worker pool | The continuation runs later; on the server it may run on another worker under a fresh synchronization context. |
 | Entity destruction | Entity/manager owner | Event callbacks and time-event storage are cleared; server dispatch jobs are cancelled by the owning manager. |
 | Runtime shutdown | Client/server and scripting backend | Global events/time events, entities, script globals, contexts, and the backend are drained in owner-defined order. |
@@ -149,7 +149,7 @@ The runtime indexes valid init functions, stores their priorities, and uses a st
 3. abort startup if any invocation fails;
 4. freeze globals after all functions complete.
 
-`Game.SetConstGlobalVar(...)` is therefore an initialization-only operation. It throws after the freeze boundary. The baker also rejects mutable module-level globals unless their namespace is explicitly allowed by `Script.MutableGlobalsAllowedNamespaces`.
+`Game.SetConstGlobalVar(...)` is therefore an initialization-only operation. It throws after the freeze boundary. The baker also rejects mutable module-level globals unless their namespace is explicitly allowed by `AngelScript.MutableGlobalsAllowedNamespaces`.
 
 Prefer module init for registration and immutable lookup construction. Do not start gameplay work that assumes the world, current player, map, or network session already exists. The client fires `Game.OnStart` after module initialization; the server fires its initialization lifecycle events after `InitModules()` in the server startup sequence.
 
@@ -338,6 +338,9 @@ primitives `Game.Sync`, `Game.SyncRelease`, `Game.Lock` and `Game.Unlock` are ex
 because synchronization is their visible purpose. `Server.SingleThreadedLogic`
 bypasses the cover model on its single logic worker. This is a backend-neutral
 contract, not a project workaround or an AngelScript-only rule.
+`BuildTools/native_safety_audit.py sync-scope` reports a script export whose
+native call graph repairs missing cover through `SyncEntity` / `SyncEntities` or
+another forbidden acquisition, for the Engine and for project native directories; see [Audit Entity Cover and Exception Safety in a Game Project](../project/native-safety-audits.md).
 
 ## Mutable state ownership
 
@@ -362,8 +365,8 @@ Managed C# enters the same backend-neutral `ScriptSystem`, entity, property, eve
 - `[ModuleInit(priority)]` marks a static parameterless `void` or `Task` method. `ScriptSystem::InitModules()` still orders initializers by ascending priority; a returned task is awaited inside the backend-owned synchronization context before initialization advances.
 - Event, timer, remote-call, property, and other engine-dispatched handlers use their managed attributes from `CoreScripts/Attributes.cs`. A dispatcher-owned attributed method is entered through its dispatcher, not invoked directly merely because C# can name it.
 - `async void` is rejected. Awaitable handlers and named calls return `Task`; use `Task<T>` only where the caller contract consumes a result. Inbound remote-call return values are ignored by the wire even when the managed handler is awaitable.
-- `Game.YieldAsync(milliseconds)` schedules the continuation on the backend's `ScriptSynchronizationContext`. Each backend has its own queue, pumped by engine frames. Work moved to `ThreadPool` or continued through `ConfigureAwait(false)` is outside that context and must not call Engine APIs.
-- Server cover is declared and checked with `[RequiresCover]`, `[ProvidesCover]`, `[PreservesCover]`, and `CoverReach`. Roslyn diagnostics `FOSYNC001` through `FOSYNC007` and `FOSYNC009` catch invalid targets, missing propagation, entry declarations, covered collections, and locks crossing `await`.
+- `ScriptTask.Delay(milliseconds)` (or `Delay(timespan)`) schedules the continuation on the backend's `ScriptSynchronizationContext`. Each backend has its own queue, pumped by engine frames. Work moved to `ThreadPool` or continued through `ConfigureAwait(false)` is outside that context and must not call Engine APIs.
+- Server cover is declared and checked with `[RequiresCover]`, `[ProvidesCover]`, `[PreservesCover]`, and `CoverReach`. Roslyn diagnostics `FOSYNC001` through `FOSYNC005` and `FOSYNC009` through `FOSYNC011` catch invalid targets, missing propagation, entry declarations, probed cover, covered collections, and cover that is not re-proved after `await`; `FOSYNC006` and `FOSYNC007` are retired because a lock scope is a ref struct and the compiler rejects holding it across `await`.
 - Cover normally does not survive `await`. Preserve it only through the explicit `[PreservesCover]` contract supported by the called operation; otherwise re-resolve mutable state and reacquire the complete cover after resumption.
 - Named invocation requires `[CallableByName]`. Administrative and internal named-call allowlists are separate boundaries; do not widen one to satisfy the other.
 - Delegates retained past a call are GC roots owned by the managed backend. Timer unsubscription needs the same delegate identity. Native reference objects retained by managed code must follow the generated `__AddRef` / `__Release` ownership contract.
@@ -413,7 +416,7 @@ Choose the narrowest gate that proves the changed contract:
 | AngelScript callback attribute or direct-call rule | `Test_AngelScriptAttributes` and project `CompileAngelScript`/bake. |
 | Managed callback, named-call, or async signature | `Test_ManagedScriptBaker`, managed core tests, and project `CompileManagedScripts`/bake. |
 | Mutable global/static policy | `Test_AngelScriptBaker` for AngelScript; managed owner/isolation tests plus project compile for C#. |
-| `Yield` / `YieldAsync` or context scheduling | The affected AngelScript context test or managed async/callback-context tests plus the affected client/server runtime test. |
+| `Yield` / `ScriptTask.Delay` or context scheduling | The affected AngelScript context test or managed async/callback-context tests plus the affected client/server runtime test. |
 | Server cover, singleton lock, or access validation | `Test_EntitySync`, affected script-method/entity tests, and a project runtime path. |
 | Inbound server remote-call cover | Server runtime/remote-call tests plus a handler that reads the caller's controlled critter. |
 | Persisted critter preload migration | `Test_EntityLifecycle` plus the embedding project's migration and bake tests. |

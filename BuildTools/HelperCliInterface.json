@@ -77,6 +77,50 @@
       "description": "Call an Engine-compatible project AiControl bridge through the versioned NDJSON/TCP envelope without exposing shared tokens on the command line."
     },
     {
+      "id": "helper-cli.format-content",
+      "name": "Content formatter",
+      "source": "BuildTools/format_content.py",
+      "factory": "create_parser",
+      "program": "format_content.py",
+      "owner": "tooling",
+      "audiences": ["game-developer", "embedding-project-build-system", "ci-maintainer"],
+      "invocation_owner": "BuildTools/buildtools.py format-content, embedding-project format tasks and CI drift checks",
+      "description": "Format .fomain, prototype and optional AngelScript files in the Engine layout and refuse any rewrite that would change what the Engine reads."
+    },
+    {
+      "id": "helper-cli.fo-formats",
+      "name": "Engine content format reader",
+      "source": "BuildTools/fo_formats.py",
+      "factory": "create_parser",
+      "program": "fo_formats.py",
+      "owner": "tooling",
+      "audiences": ["game-developer", "tool-developer", "ci-maintainer"],
+      "invocation_owner": "embedding-project content tools and direct developer diagnostics",
+      "description": "Print effective configuration, resource-pack inputs, inherited prototype values and text-pack entries as the Engine parsers read them."
+    },
+    {
+      "id": "helper-cli.migration-guard",
+      "name": "Identity migration guard",
+      "source": "BuildTools/migration_guard.py",
+      "factory": "create_parser",
+      "program": "migration_guard.py",
+      "owner": "quality",
+      "audiences": ["game-developer", "embedding-project-build-system", "ci-maintainer"],
+      "invocation_owner": "embedding-project local validation tasks and CI content gates",
+      "description": "Require a MigrationRule for every removed or renamed prototype, property and enum value and refuse reuse of retired identifiers against a committed manifest."
+    },
+    {
+      "id": "helper-cli.ai-control-mcp",
+      "name": "AiControl MCP adapter",
+      "source": "BuildTools/ai_control_mcp/cli.py",
+      "factory": "create_parser",
+      "program": "ai_control_mcp",
+      "owner": "tooling",
+      "audiences": ["game-developer", "tool-developer", "ci-maintainer"],
+      "invocation_owner": "embedding-project MCP client configurations, project tool modules, and AI playtest runners",
+      "description": "Serve an AiControl bridge to an MCP client over stdio with generic protocol, endpoint, readiness, and owned-process tools plus project-registered tools; a development tool, never shipped."
+    },
+    {
       "id": "helper-cli.windows7-import-check",
       "name": "Windows 7 import validation",
       "source": "BuildTools/check_windows7_imports.py",
@@ -86,6 +130,39 @@
       "audiences": ["engine-contributor", "embedding-project-build-system", "release-operator"],
       "invocation_owner": "embedding-project Windows 7 CI and release validation",
       "description": "Inspect linked PE files for Windows 7 import compatibility and optionally require the large-address flag on executables."
+    },
+    {
+      "id": "helper-cli.markdown-links",
+      "name": "Markdown link check",
+      "source": "BuildTools/markdown_links.py",
+      "factory": "create_parser",
+      "program": "markdown_links.py",
+      "owner": "quality",
+      "audiences": ["game-developer", "engine-contributor", "embedding-project-build-system", "ci-maintainer"],
+      "invocation_owner": "embedding-project documentation wrappers, local tasks, and CI documentation jobs",
+      "description": "Check local Markdown links, GitHub-style heading anchors, UTF-8, fenced-code balance, and optional single-H1 structure under one repository root."
+    },
+    {
+      "id": "helper-cli.native-source-audit",
+      "name": "Native source audits",
+      "source": "BuildTools/native_source_audit.py",
+      "factory": "create_parser",
+      "program": "native_source_audit.py",
+      "owner": "quality",
+      "audiences": ["engine-contributor", "embedding-project-build-system", "ci-maintainer"],
+      "invocation_owner": "Engine validation CI, embedding-project native audit wrappers and direct developer use",
+      "description": "Audit native C++ scopes for allocator, smart-pointer and local-variable contract violations with Engine-owned and project baselines."
+    },
+    {
+      "id": "helper-cli.native-safety-audit",
+      "name": "Native safety audits",
+      "source": "BuildTools/native_safety_audit.py",
+      "factory": "create_parser",
+      "program": "native_safety_audit.py",
+      "owner": "quality",
+      "audiences": ["engine-contributor", "game-developer", "embedding-project-build-system", "ci-maintainer"],
+      "invocation_owner": "Engine validate workflow, embedding-project native validation tasks and CI",
+      "description": "Reject native code that changes entity cover behind server script exports and gate per-function exception-safety classifications of Engine and project sources against committed baselines."
     },
     {
       "id": "helper-cli.android-device",
@@ -110,6 +187,72 @@
       "description": "Serve a packaged web client from a no-cache local HTTP server."
     },
     {
+      "id": "helper-cli.artifact-checksums",
+      "name": "Artifact checksums",
+      "source": "BuildTools/artifact_checksums.py",
+      "factory": "create_parser",
+      "program": "artifact_checksums.py",
+      "owner": "build-release",
+      "audiences": ["release-operator", "ci-maintainer", "embedding-project-build-system"],
+      "invocation_owner": "embedding-project release jobs after the last package writer stops",
+      "description": "Write or verify SHA-256 sidecars and an optional manifest for finished release packages."
+    },
+    {
+      "id": "helper-cli.project-version",
+      "name": "Project version generator",
+      "source": "BuildTools/project_version.py",
+      "factory": "create_parser",
+      "program": "project_version.py",
+      "owner": "build-release",
+      "audiences": ["game-developer", "ci-maintainer", "embedding-project-build-system"],
+      "invocation_owner": "embedding-project version tasks, hooks and CI checks",
+      "description": "Generate or check a machine-written monotonic project VERSION file with a built-in or project-owned version scheme."
+    },
+    {
+      "id": "helper-cli.release-preflight",
+      "name": "Release preflight",
+      "source": "BuildTools/release_preflight.py",
+      "factory": "create_parser",
+      "program": "release_preflight.py",
+      "owner": "build-release",
+      "audiences": ["release-operator", "ci-maintainer"],
+      "invocation_owner": "embedding-project manual release jobs before tagging and publication",
+      "description": "Validate a project release version, tag and assets, choose publish or dry-run, split oversized assets and write a checksum manifest."
+    },
+    {
+      "id": "helper-cli.engine-upgrade-report",
+      "name": "Engine upgrade report",
+      "source": "BuildTools/engine_upgrade_report.py",
+      "factory": "create_parser",
+      "program": "engine_upgrade_report.py",
+      "owner": "documentation",
+      "audiences": ["game-developer", "engine-contributor"],
+      "invocation_owner": "embedding-project Engine update work, run from the project root",
+      "description": "Write a Markdown Engine update record with the Engine identities, the incoming range, changelog migrations and a project name search."
+    },
+    {
+      "id": "helper-cli.script-binding-check",
+      "name": "Script binding check",
+      "source": "BuildTools/check_script_bindings.py",
+      "factory": "create_parser",
+      "program": "check_script_bindings.py",
+      "owner": "quality",
+      "audiences": ["game-developer", "engine-contributor", "ci-maintainer"],
+      "invocation_owner": "Engine CI and embedding-project quality gates",
+      "description": "Reject raw pointers in script-facing native signatures and compare AngelScript handler nullability with event and remote-call declarations."
+    },
+    {
+      "id": "helper-cli.angelscript-hygiene-check",
+      "name": "AngelScript hygiene check",
+      "source": "BuildTools/check_angelscript_hygiene.py",
+      "factory": "create_parser",
+      "program": "check_angelscript_hygiene.py",
+      "owner": "quality",
+      "audiences": ["game-developer", "engine-contributor", "ci-maintainer"],
+      "invocation_owner": "Engine CI and embedding-project quality gates",
+      "description": "Check authored AngelScript modules for namespace, include, side-macro, sort-directive and file-ending conventions with a count-ratchet baseline."
+    },
+    {
       "id": "helper-cli.createmsi",
       "name": "MSI creation",
       "source": "BuildTools/msicreator/createmsi.py",
@@ -119,6 +262,28 @@
       "audiences": ["release-operator", "engine-contributor"],
       "invocation_owner": "BuildTools/package.py Wix pack",
       "description": "Build an MSI installer from a package-generated WiX definition."
+    },
+    {
+      "id": "helper-cli.move-sync-analysis",
+      "name": "Movement synchronization trace analysis",
+      "source": "BuildTools/move_sync_analysis.py",
+      "factory": "create_parser",
+      "program": "move_sync_analysis.py",
+      "owner": "networking",
+      "audiences": ["game-developer", "engine-contributor", "ci-maintainer"],
+      "invocation_owner": "embedding-project movement playtests and direct developer diagnostics",
+      "description": "Merge Network.MoveSyncTrace MOVESYNC log lines into per-scenario divergence, lag and correction reports."
+    },
+    {
+      "id": "helper-cli.check-text-packs",
+      "name": "Text pack lint",
+      "source": "BuildTools/check_text_packs.py",
+      "factory": "create_parser",
+      "program": "check_text_packs.py",
+      "owner": "localization",
+      "audiences": ["game-developer", "embedding-project-build-system", "ci-maintainer"],
+      "invocation_owner": "embedding-project localization tasks and CI content gates",
+      "description": "Check raw .fotxt packs for parse errors, duplicate variants, wrong-script text and language key parity before baking."
     }
   ]
 }

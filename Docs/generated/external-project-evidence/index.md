@@ -9,9 +9,9 @@ This internal audit records discovery material, ownership decisions, and promoti
 ## Coverage
 
 - Snapshots: **3**
-- Classified concerns: **32**
-- Source references: **196**
-- Dispositions: `boundary-owned` 3, `project-owned` 3, `promoted` 25, `promotion-candidate` 1
+- Classified concerns: **39**
+- Source references: **234**
+- Dispositions: `boundary-owned` 5, `project-owned` 3, `promoted` 30, `promotion-candidate` 1
 
 ## Audited snapshots
 
@@ -26,37 +26,44 @@ This internal audit records discovery material, ownership decisions, and promoti
 | Concern | Disposition | Priority | Owner | Engine or planned targets | Required reviews |
 | --- | --- | --- | --- | --- | --- |
 | `linked-model-output-discovery` Linked model discovery with a partial output cache | `promoted` | `P1` | `content-data` | `Docs/en/explanation/content-pipeline/baking.md` | `content-data`<br>`quality` |
-| `project-bootstrap-and-build` Project bootstrap, staged build, and first launch | `promoted` | `P0` | `build-release` | `Docs/en/tutorials/getting-started.md`<br>`Docs/en/how-to/build/embedding-project.md`<br>`Docs/en/how-to/build/index.md`<br>`Docs/en/how-to/build/project-configuration.md`<br>`Docs/en/reference/cmake-and-buildtools/pipeline.md` | `build-release`<br>`documentation`<br>`platform` |
-| `engine-update-reconciliation` Engine submodule update reconciliation | `promoted` | `P0` | `documentation` | `Docs/en/contributing/documentation/index.md`<br>`Docs/en/how-to/migration/engine-upgrade.md`<br>`Docs/en/contributing/contract-change-management.md` | `documentation`<br>`build-release`<br>`quality` |
+| `project-bootstrap-and-build` Project bootstrap, staged build, and first launch | `promoted` | `P0` | `build-release` | `Docs/en/tutorials/getting-started.md`<br>`Docs/en/how-to/build/embedding-project.md`<br>`Docs/en/how-to/build/index.md`<br>`Docs/en/how-to/build/project-configuration.md`<br>`Docs/en/reference/cmake-and-buildtools/pipeline.md`<br>`BuildTools/cmake/stages/Applications.cmake` | `build-release`<br>`documentation`<br>`platform` |
+| `engine-update-reconciliation` Engine submodule update reconciliation | `promoted` | `P0` | `documentation` | `Docs/en/contributing/documentation/index.md`<br>`Docs/en/how-to/migration/engine-upgrade.md`<br>`Docs/en/contributing/contract-change-management.md`<br>`Docs/en/how-to/project/release-tooling.md`<br>`BuildTools/engine_upgrade_report.py` | `documentation`<br>`build-release`<br>`quality` |
 | `generated-content-ownership` Generated content ownership and dependency order | `promoted` | `P0` | `content-data` | `Docs/en/how-to/build/generated-content.md`<br>`Docs/en/explanation/content-pipeline/baking.md`<br>`Docs/en/reference/settings/configuration-and-data-sources.md` | `content-data`<br>`build-release`<br>`quality` |
 | `script-architecture-and-lifecycle` Script modules, lifecycle, authority, and concurrency | `promoted` | `P0` | `scripting` | `Docs/en/explanation/scripting-runtime/index.md`<br>`Docs/en/how-to/scripting/lifecycle-and-concurrency.md`<br>`Docs/en/reference/metadata/index.md` | `scripting`<br>`runtime`<br>`networking`<br>`quality` |
-| `nullability-contract` Script and native nullability | `promoted` | `P0` | `scripting` | `Docs/en/contributing/coding-contracts/nullability.md` | `scripting`<br>`runtime`<br>`quality` |
+| `nullability-contract` Script and native nullability | `promoted` | `P0` | `scripting` | `Docs/en/contributing/coding-contracts/nullability.md`<br>`BuildTools/check_script_bindings.py`<br>`BuildTools/tests/test_check_script_bindings.py`<br>`Docs/en/how-to/project/script-and-binding-checks.md` | `scripting`<br>`runtime`<br>`quality` |
 | `native-extensions-and-dependencies` Native extensions and project-local dependencies | `promoted` | `P0` | `runtime` | `Docs/en/how-to/native-extensions.md`<br>`Docs/en/how-to/native-extensions/project-dependencies.md`<br>`Docs/en/contributing/third-party/index.md`<br>`Docs/en/reference/native-extension/index.md` | `runtime`<br>`scripting`<br>`build-release`<br>`platform` |
 | `prototype-authoring` Prototype authoring and validation | `promoted` | `P0` | `content-data` | `Docs/en/how-to/content/prototype-format.md`<br>`Docs/en/reference/prototype-format/index.md` | `content-data`<br>`scripting`<br>`quality` |
 | `map-authoring-and-materialization` Map authoring, baking, and materialization | `promoted` | `P0` | `content-data` | `Docs/en/how-to/content/map-format.md`<br>`Docs/en/reference/map-format/index.md`<br>`Docs/en/how-to/tools/mapper-interactive.md` | `content-data`<br>`tooling`<br>`runtime`<br>`quality` |
-| `text-and-localization-format` Text packs, languages, and runtime lookup | `promoted` | `P0` | `content-data` | `Docs/en/how-to/content/text-and-localization.md`<br>`Docs/en/reference/text-format/index.md` | `content-data`<br>`localization`<br>`frontend`<br>`quality` |
+| `text-and-localization-format` Text packs, languages, and runtime lookup | `promoted` | `P0` | `content-data` | `Docs/en/how-to/content/text-and-localization.md`<br>`Docs/en/reference/text-format/index.md`<br>`BuildTools/check_text_packs.py`<br>`Docs/en/how-to/project/content-and-diagnostics-tools.md` | `content-data`<br>`localization`<br>`frontend`<br>`quality` |
 | `model-animation-and-root-motion` Models, animation timing, and sprite root motion | `promoted` | `P0` | `frontend` | `Docs/en/how-to/content/model-format.md`<br>`Docs/en/how-to/content/model-animation.md`<br>`Docs/en/how-to/content/sprite-root-motion.md`<br>`Docs/en/reference/model-format/index.md` | `frontend`<br>`content-data`<br>`runtime`<br>`quality` |
 | `effects-images-and-shaders` Effects, images, sprites, and shader resources | `promoted` | `P0` | `frontend` | `Docs/en/explanation/rendering/index.md`<br>`Docs/en/how-to/content/effect-format.md`<br>`Docs/en/how-to/content/image-format.md`<br>`Docs/en/reference/effect-format/index.md`<br>`Docs/en/reference/image-format/index.md` | `frontend`<br>`content-data`<br>`platform`<br>`quality` |
 | `particle-authoring-and-runtime` Particle authoring, baking, tools, and runtime | `promoted` | `P0` | `frontend` | `Docs/en/how-to/content/particle-format.md`<br>`Docs/en/how-to/tools/particle-authoring.md`<br>`Docs/en/reference/particle-format/index.md` | `frontend`<br>`tooling`<br>`content-data`<br>`platform`<br>`quality` |
 | `font-audio-and-video` Fonts, audio, and video presentation | `promoted` | `P0` | `frontend` | `Docs/en/how-to/content/font-format.md`<br>`Docs/en/how-to/content/audio.md`<br>`Docs/en/how-to/content/video.md`<br>`Docs/en/reference/font-format/index.md`<br>`Docs/en/reference/audio/index.md`<br>`Docs/en/reference/video/index.md` | `frontend`<br>`content-data`<br>`platform`<br>`quality` |
 | `mapper-and-focused-viewers` Mapper, AnimationViewer, and ParticleViewer | `promoted` | `P0` | `tooling` | `Docs/en/how-to/tools/mapper-interactive.md`<br>`Docs/en/how-to/tools/mapper.md`<br>`Docs/en/how-to/tools/animation-particle-viewers.md` | `tooling`<br>`frontend`<br>`content-data`<br>`quality` |
 | `profiling-practice` Client and server profiling | `promoted` | `P1` | `quality` | `Docs/en/how-to/quality/profiling.md` | `quality`<br>`runtime`<br>`frontend`<br>`build-release` |
-| `gameplay-test-harness` Reusable gameplay and integration test harness | `promoted` | `P1` | `quality` | `Docs/en/contributing/testing/index.md`<br>`Docs/en/how-to/testing/gameplay-and-integration.md`<br>`BuildTools/gameplay_test_runner.py`<br>`BuildTools/tests/test_gameplay_test_runner.py`<br>`Examples/GameplayTestHarness`<br>`Examples/MinimalMultiplayer` | `quality`<br>`scripting`<br>`runtime`<br>`documentation` |
-| `native-analyzers` Native and script safety analyzers | `promoted` | `P0` | `quality` | `Docs/en/contributing/coding-contracts/nullability.md`<br>`Docs/en/contributing/coding-contracts/smart-pointers.md`<br>`Docs/en/contributing/coding-contracts/exception-safety.md`<br>`Docs/en/contributing/coding-contracts/thread-safety-analysis.md`<br>`Docs/en/contributing/coding-contracts/local-variables.md` | `quality`<br>`runtime`<br>`scripting` |
-| `project-generators-formatters-and-audits` Project generators, formatters, and content audits | `boundary-owned` | `P2` | `tooling` | `Docs/en/how-to/build/generated-content.md`<br>`Docs/en/how-to/build/embedding-project.md` | `tooling`<br>`content-data`<br>`quality`<br>`documentation` |
+| `gameplay-test-harness` Reusable gameplay and integration test harness | `promoted` | `P1` | `quality` | `Docs/en/contributing/testing/index.md`<br>`Docs/en/how-to/testing/gameplay-and-integration.md`<br>`BuildTools/gameplay_test_runner.py`<br>`BuildTools/tests/test_gameplay_test_runner.py`<br>`Examples/GameplayTestHarness`<br>`Examples/MinimalMultiplayer`<br>`Docs/en/how-to/project/script-test-harness.md`<br>`Examples/GameplayTestHarness/ScriptTests`<br>`BuildTools/tests/test_script_test_harness_example.py` | `quality`<br>`scripting`<br>`runtime`<br>`documentation` |
+| `native-analyzers` Native and script safety analyzers | `promoted` | `P0` | `quality` | `Docs/en/contributing/coding-contracts/nullability.md`<br>`Docs/en/contributing/coding-contracts/smart-pointers.md`<br>`Docs/en/contributing/coding-contracts/exception-safety.md`<br>`Docs/en/contributing/coding-contracts/thread-safety-analysis.md`<br>`Docs/en/contributing/coding-contracts/local-variables.md`<br>`BuildTools/native_source_audit.py`<br>`BuildTools/native_safety_audit.py`<br>`BuildTools/audit_baselines/exception-safety.tsv`<br>`BuildTools/audit_baselines/allocator.tsv`<br>`Docs/en/how-to/project/native-source-audits.md`<br>`Docs/en/how-to/project/native-safety-audits.md`<br>`Docs/en/how-to/project/engine-contract-analyzers.md`<br>`Source/Scripting/Managed/Analyzers/EntryPointAnalyzer.cs` | `quality`<br>`runtime`<br>`scripting` |
+| `project-generators-formatters-and-audits` Project generators, formatters, and content audits | `boundary-owned` | `P2` | `tooling` | `Docs/en/how-to/build/generated-content.md`<br>`Docs/en/how-to/build/embedding-project.md`<br>`BuildTools/format_content.py`<br>`BuildTools/fo_formats.py`<br>`Docs/en/how-to/project/format-content.md`<br>`Docs/en/how-to/project/reading-engine-formats.md` | `tooling`<br>`content-data`<br>`quality`<br>`documentation` |
 | `dialog-tree-stack` Dialog tree parser, baker, runtime, editor, and audit | `project-owned` | `P3` | `content-data` | `last-frontier:Docs/Dialogs.md`<br>`last-frontier:Tools/DialogAudit`<br>`fonline-tla:Dialogs` | `content-data`<br>`scripting`<br>`tooling` |
 | `declarative-gui-authoring` Declarative GUI authoring and screen generation | `boundary-owned` | `P3` | `frontend` | `Docs/en/how-to/runtime/gui.md`<br>`Docs/en/reference/gui-runtime/index.md` | `frontend`<br>`tooling`<br>`scripting` |
-| `ai-control-bridge` AI observation and control bridge | `promoted` | `P2` | `tooling` | `Docs/en/how-to/build/embedding-project.md`<br>`Docs/en/how-to/ai-control-protocol.md`<br>`Docs/en/reference/ai-control-protocol/index.md`<br>`BuildTools/ai_control_client.py`<br>`BuildTools/tests/test_ai_control_protocol.py`<br>`Examples/AiControlSample` | `tooling`<br>`runtime`<br>`networking`<br>`quality`<br>`documentation` |
+| `ai-control-bridge` AI observation and control bridge | `promoted` | `P2` | `tooling` | `Docs/en/how-to/build/embedding-project.md`<br>`Docs/en/how-to/ai-control-protocol.md`<br>`Docs/en/reference/ai-control-protocol/index.md`<br>`BuildTools/ai_control_client.py`<br>`BuildTools/tests/test_ai_control_protocol.py`<br>`Examples/AiControlSample`<br>`BuildTools/ai_control_mcp`<br>`BuildTools/tests/test_ai_control_mcp.py`<br>`Docs/en/how-to/project/ai-control-mcp.md`<br>`Source/Client/AiControlListener.h`<br>`Source/Client/AiControlListener.cpp`<br>`Source/Tests/Test_AiControlListener.cpp`<br>`Docs/en/how-to/project/native-ai-bridge.md` | `tooling`<br>`runtime`<br>`networking`<br>`quality`<br>`documentation` |
 | `packaging-platform-and-release` Cross-platform packaging and release evidence | `promotion-candidate` | `P1` | `build-release` | `Docs/en/how-to/build/index.md`<br>`Docs/en/how-to/release/packaging.md`<br>`Docs/en/reference/platforms/support-matrix.md`<br>`Docs/en/reference/packages/index.md`<br>`Docs/en/how-to/platforms/web-debugging.md`<br>`Docs/en/how-to/platforms/android-debugging.md`<br>`Examples/PackagingMatrix`<br>`Examples/MinimalMultiplayer` | `build-release`<br>`platform`<br>`quality`<br>`documentation` |
 | `updater-secrets-security-and-recovery` Updater, secrets, signing, security, and recovery operations | `promoted` | `P1` | `build-release` | `Docs/en/explanation/runtime/client-updater.md`<br>`Docs/en/how-to/release/packaging.md`<br>`Docs/en/how-to/release/security-and-secrets.md`<br>`Docs/en/how-to/release/operations.md`<br>`Docs/en/how-to/release/backup-and-recovery.md`<br>`Docs/en/how-to/migration/engine-upgrade.md`<br>`Docs/en/contributing/third-party/index.md` | `build-release`<br>`platform`<br>`runtime`<br>`networking`<br>`quality` |
-| `persistence-and-migration` Persistence, save migration, and compatibility | `promoted` | `P0` | `runtime` | `Docs/en/explanation/persistence/index.md`<br>`Docs/en/explanation/entity-and-property-model/index.md`<br>`Docs/en/how-to/release/backup-and-recovery.md`<br>`Docs/en/how-to/migration/engine-upgrade.md`<br>`Docs/en/explanation/authority-and-networking/index.md` | `runtime`<br>`networking`<br>`scripting`<br>`quality` |
+| `persistence-and-migration` Persistence, save migration, and compatibility | `promoted` | `P0` | `runtime` | `Docs/en/explanation/persistence/index.md`<br>`Docs/en/explanation/entity-and-property-model/index.md`<br>`Docs/en/how-to/release/backup-and-recovery.md`<br>`Docs/en/how-to/migration/engine-upgrade.md`<br>`Docs/en/explanation/authority-and-networking/index.md`<br>`BuildTools/migration_guard.py`<br>`Docs/en/how-to/project/migration-guard.md` | `runtime`<br>`networking`<br>`scripting`<br>`quality` |
 | `gameplay-systems-and-content-policy` Gameplay systems, content catalogs, and balance policy | `project-owned` | `P3` | `scripting` | `last-frontier:Docs/GameSystems.md`<br>`last-frontier:Docs/ContentWorkflow.md`<br>`fonline-tla:Scripts` | `scripting`<br>`content-data`<br>`quality` |
 | `analytics-liveops-and-support` Analytics, live operations, support, and product services | `project-owned` | `P3` | `runtime` | `last-frontier:Docs/Analytics.md`<br>`last-frontier:Docs/Ops/AGENTS.md` | `runtime`<br>`networking`<br>`build-release` |
-| `angelscript-style-and-refactoring` AngelScript style, refactoring, and change batching | `promoted` | `P2` | `scripting` | `Docs/en/how-to/scripting/style-and-refactoring.md`<br>`Docs/en/explanation/scripting-runtime/index.md`<br>`Docs/en/contributing/documentation/index.md`<br>`BuildTools/buildtools.py`<br>`BuildTools/tests/test_docs_angelscript_style.py` | `scripting`<br>`quality`<br>`documentation` |
+| `angelscript-style-and-refactoring` AngelScript style, refactoring, and change batching | `promoted` | `P2` | `scripting` | `Docs/en/how-to/scripting/style-and-refactoring.md`<br>`Docs/en/explanation/scripting-runtime/index.md`<br>`Docs/en/contributing/documentation/index.md`<br>`BuildTools/buildtools.py`<br>`BuildTools/tests/test_docs_angelscript_style.py`<br>`BuildTools/check_angelscript_hygiene.py`<br>`BuildTools/tests/test_check_angelscript_hygiene.py`<br>`Docs/en/how-to/project/script-and-binding-checks.md` | `scripting`<br>`quality`<br>`documentation` |
 | `documentation-localization-governance` Documentation localization and terminology governance | `promoted` | `P0` | `localization` | `Docs/en/contributing/documentation/translation.md`<br>`Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md`<br>`Docs/translation-glossary.json` | `localization`<br>`documentation`<br>`quality` |
 | `native-debugging-workflows` Native, mixed-stack, and AngelScript debugging workflows | `promoted` | `P0` | `quality` | `Docs/en/troubleshooting/debugging.md`<br>`BuildTools/tests/test_docs_debugging.py` | `quality`<br>`platform`<br>`networking`<br>`documentation` |
 | `asset-provenance-and-public-examples` Tutorial assets, provenance, and public examples | `promoted` | `P0` | `build-release` | `Docs/en/how-to/build/public-example-repositories.md`<br>`Examples/PublicRepositories.json`<br>`Examples/PublicRepositoryTemplate` | `build-release`<br>`content-data`<br>`documentation`<br>`quality` |
 | `private-item-policy-and-map-spectators` Private item knowledge and bounded map spectators | `boundary-owned` | `P1` | `runtime` | `Docs/en/explanation/runtime/server.md`<br>`Source/Tests/Test_ServerEntityLifetime.cpp` | `runtime`<br>`scripting`<br>`quality`<br>`documentation` |
+| `ide-and-editor-workflow` Editor integration: task grammar, aggregate routes, and extension delivery | `promoted` | `P1` | `tooling` | `Docs/en/how-to/project/vscode-workspace.md`<br>`Docs/en/contributing/tooling/vscode-extensions.md`<br>`BuildTools/buildtools.py` | `tooling`<br>`documentation`<br>`platform` |
+| `repository-hygiene-and-attributes` Repository hygiene: ignored outputs, attributes, submodule scope, and optional LFS | `promoted` | `P1` | `build-release` | `Docs/en/how-to/project/create-repository.md`<br>`Docs/en/how-to/project/workstation-setup.md`<br>`Docs/en/troubleshooting/setup.md` | `build-release`<br>`documentation`<br>`platform` |
+| `project-ci-structure` Project CI structure, portable steps, and release preflight | `boundary-owned` | `P1` | `build-release` | `Docs/en/how-to/project/continuous-integration.md`<br>`Docs/en/how-to/project/versioning-and-releases.md`<br>`BuildTools/release_preflight.py`<br>`BuildTools/artifact_checksums.py`<br>`Docs/en/how-to/project/release-tooling.md` | `build-release`<br>`documentation`<br>`quality`<br>`platform` |
+| `project-quality-gates` Project quality gates, baselines, and aggregate verification | `boundary-owned` | `P1` | `quality` | `Docs/en/how-to/project/quality-gates.md`<br>`Docs/en/how-to/project/project-tests.md`<br>`Docs/en/how-to/project/documentation-checks.md`<br>`Docs/en/how-to/project/script-and-binding-checks.md`<br>`Docs/en/how-to/project/native-source-audits.md`<br>`Docs/en/how-to/project/native-safety-audits.md` | `quality`<br>`documentation`<br>`tooling` |
+| `project-versioning-and-release-identity` Generated project version and release identity | `promoted` | `P1` | `build-release` | `Docs/en/how-to/project/versioning-and-releases.md`<br>`BuildTools/project_version.py`<br>`Docs/en/how-to/project/release-tooling.md` | `build-release`<br>`documentation`<br>`runtime` |
+| `project-docs-and-agent-process` Project documentation and AI-agent process | `promoted` | `P2` | `documentation` | `Docs/en/how-to/project/ai-assisted-maintenance.md` | `documentation`<br>`quality`<br>`tooling` |
+| `project-markdown-link-checks` Markdown link and anchor checks for project documentation | `promoted` | `P2` | `documentation` | `BuildTools/markdown_links.py`<br>`Docs/en/how-to/project/documentation-checks.md` | `documentation`<br>`quality`<br>`tooling` |
 
 ## Decisions and gates
 
@@ -97,7 +104,7 @@ This internal audit records discovery material, ownership decisions, and promoti
 
 ### Script and native nullability
 
-- Sources: `last-frontier:Docs/Scripts.md`, `fonline-tla:Nullability.md`
+- Sources: `last-frontier:Docs/Scripts.md`, `fonline-tla:Nullability.md`, `fonline-tla:Tools/NullableEstimate/validate_nullable.py`
 - Reusable claim: Nullable script handles and native pointer annotations require one source-backed vocabulary, diagnostics, and analyzer workflow.
 - Decision: The Engine guide, compiler diagnostics, and native-boundary checks are normative; TLA migration notes and Last Frontier analyzers remain evidence only.
 - Promotion gate: Compiler diagnostics and native-boundary checks enforce the reusable contract; declaration-parity and style analyzers remain explicitly project-owned.
@@ -174,23 +181,23 @@ This internal audit records discovery material, ownership decisions, and promoti
 
 ### Reusable gameplay and integration test harness
 
-- Sources: `last-frontier:Docs/Testing.md`, `last-frontier:Tools/PipelineTests`, `fonline-tla:Docs/ReanimationPlan.md`, `fonline-tla:AGENTS.md`
+- Sources: `last-frontier:Docs/Testing.md`, `last-frontier:Tools/PipelineTests`, `fonline-tla:Docs/ReanimationPlan.md`, `fonline-tla:AGENTS.md`, `last-frontier:Scripts/Testing.cs`
 - Reusable claim: Games benefit from deterministic fixture setup, boundary-based test selection, narrow-first execution, timeout/log contracts, and cross-layer integration evidence.
-- Decision: Engine now owns boundary-based test selection plus process readiness, marker, deadline, cleanup, and report semantics. Script test registries, game fixtures/assertions, filters, content, persistence backends, platform labs, and acceptance thresholds stay project-owned. Linux automatic-range port selection and the exact Anchor run-variable/retired-property process-stop oracle are project harness policy, not new Engine transport or persistence guarantees.
+- Decision: The Engine ships a copyable two-backend script test harness example and its marker contract next to the process runner; suite registries, fixtures, sharding and game policy stay project-owned.
 - Promotion gate: The project-neutral runner has deterministic positive/failure/timeout coverage, a synthetic fixture, and real baked headless server/client proof in Minimal Multiplayer.
 
 ### Native and script safety analyzers
 
-- Sources: `last-frontier:Tools/SmartPointerAudit`, `last-frontier:Tools/ExceptionSafetyAudit`, `last-frontier:Docs/Testing.md`, `fonline-tla:Nullability.md`
+- Sources: `last-frontier:Tools/SmartPointerAudit`, `last-frontier:Tools/ExceptionSafetyAudit`, `last-frontier:Docs/Testing.md`, `fonline-tla:Nullability.md`, `last-frontier:Tools/AllocatorAudit`, `last-frontier:Tools/SyncScopeAudit`, `last-frontier:Tools/LocalVariableValidator`, `last-frontier:Tools/ExplicitLocalTypes`, `last-frontier:Tools/ScriptAnalyzers`
 - Reusable claim: Nullability, smart-pointer, exception-safety, thread-safety, and local-variable policies need Engine-owned contracts and source-backed enforcement boundaries; whole-tree analyzers and baselines remain project-owned until promoted with reusable tests.
-- Decision: Engine contracts and in-repository compiler/runtime checks are normative; whole-tree analyzers, project wrappers, allowlists, and integration baselines stay project-owned until promoted into Engine with tests.
+- Decision: The Engine owns the native source audits, the entity-cover and exception-safety audits with their Engine baselines, and the Engine-contract Roslyn rules (FOENTRY, FOVERIFY, FOSTATIC); project wrappers, configuration, baselines and style analyzers stay project-owned.
 - Promotion gate: Engine documents name exact source/runtime/compiler evidence and distinguish reusable checks from embedding-project analyzers, allowlists, and baselines.
 
 ### Project generators, formatters, and content audits
 
 - Sources: `last-frontier:Tools/InterfaceEditor`, `last-frontier:Tools/DialogAudit`, `last-frontier:Docs/ContentWorkflow.md`, `fonline-tla:AGENTS.md`, `fonline-tla:FormatSource.bat`
 - Reusable claim: Generated-file discipline and source-level validation are reusable patterns, but concrete project generators and audits are not automatically Engine tools.
-- Decision: Engine documents the ownership pattern; the current GUI/dialog generators, formatters, and audits remain project-owned.
+- Decision: The Engine owns the content formatter and the format readers; GUI and dialog generators, game content audits and project wrappers stay project-owned.
 - Promotion gate: Move reusable implementation and tests into Engine before adding any concrete format or command to Engine documentation.
 
 ### Dialog tree parser, baker, runtime, editor, and audit
@@ -211,7 +218,7 @@ This internal audit records discovery material, ownership decisions, and promoti
 
 - Sources: `last-frontier:Docs/AiControl.md`, `last-frontier:SourceExt/ClientAiBridge.cpp`, `last-frontier:Scripts/AiControl.cs`, `last-frontier:Tools/AiControlMcp/ai_control_mcp.py`, `fonline-tla:Docs/AiControl.md`, `fonline-tla:SourceExt/ClientAiBridge.cpp`, `fonline-tla:Scripts/AiControl.fos`, `fonline-tla:Tools/AiControlMcp/ai_control_mcp.py`
 - Reusable claim: Two projects expose AI observation/action bridges, but their schemas, QA commands, MCP adapters, and content semantics are still independently project-owned.
-- Decision: Promote only the transport envelope, authorization, bounded command/event lifecycle, reference client, and protocol sample; keep every project's observation schema, action catalog, administrator tools, and MCP namespace project-owned.
+- Decision: Promote only the transport envelope, authorization, bounded command/event lifecycle, reference client, and protocol sample; keep every project's observation schema, action catalog, administrator tools, and MCP namespace project-owned. The generic MCP adapter core and the optional native client listener (FO_AI_CONTROL) are Engine-owned; game command sets, observation fields, launch recipes and scenario playtests stay with the projects.
 - Promotion gate: Keep the generated experimental contract, loopback threat boundary, reference client, malformed-peer tests, protocol smoke, and runnable sample current; a native core listener still requires a separate runtime and security promotion.
 
 ### Cross-platform packaging and release evidence
@@ -230,7 +237,7 @@ This internal audit records discovery material, ownership decisions, and promoti
 
 ### Persistence, save migration, and compatibility
 
-- Sources: `last-frontier:Docs/Scripts.md`, `last-frontier:Docs/Properties.md`, `last-frontier:Scripts/Migration_Damage.cs`, `last-frontier:Scripts/Tests/Test_Migration_Damage.cs`, `last-frontier:Scripts/Modifiers.Impl.cs`, `last-frontier:Docs/Modifiers.md`, `last-frontier:Docs/DocumentationMaintenance.md`, `fonline-tla:README.md`, `fonline-tla:DbPendingChanges.oplog`
+- Sources: `last-frontier:Docs/Scripts.md`, `last-frontier:Docs/Properties.md`, `last-frontier:Scripts/Migration_Damage.cs`, `last-frontier:Scripts/Tests/Test_Migration_Damage.cs`, `last-frontier:Scripts/Modifiers.Impl.cs`, `last-frontier:Docs/Modifiers.md`, `last-frontier:Docs/DocumentationMaintenance.md`, `fonline-tla:README.md`, `fonline-tla:DbPendingChanges.oplog`, `last-frontier:Tools/MigrationGuard/migration_guard.py`, `fonline-tla:Scripts/Migration.fos`
 - Reusable claim: Entity persistence, database backends, migration metadata, compatibility versions, backup, rollout, and rollback need separate Engine and project ownership.
 - Decision: Engine mechanics plus provider-neutral backup-set, oplog, restore, and drill boundaries are promoted; concrete schemas, migrations, providers, schedules, retention, objectives, credentials, and production operations remain project-owned. The explicit persistent custom-holder gate and inner-entity load order are Engine-owned; Last Frontier's modifier restore/finish policy, six-type protection schema, checked int16/int8 legacy transfer, per-game compatibility version and actual persisted Sunder reload/idempotency fixture do not change Engine storage formats or qualify a production migration.
 - Promotion gate: Engine storage/migration behavior is source-backed; every game validates its schema/data and recovery path before rollout.
@@ -283,6 +290,55 @@ This internal audit records discovery material, ownership decisions, and promoti
 - Reusable claim: Projects can keep discovery private to a viewer; reusable map views carry opaque entity context into separate critter and item visibility hooks for snapshots and live updates without adopting the discovery policy.
 - Decision: The pinned project snapshot demonstrates viewer-specific mine state and a native item-visibility hook; it does not attest a later checkpoint-preview implementation or current game fixes. The current Engine owns opaque retained context, separate synchronous read-only hooks, membership and critter modes, and independently covered deferred refresh, re-derived from its native source/tests. Discovery abilities, relation labels, mine ownership, null-context meaning and gameplay rules stay project-owned.
 - Promotion gate: Engine-owned MapViewContextControlsBothSubjectKinds and BoundedMapSpectatorsTrackVisibility cover context, lifetime, radius and null fallback. MapViewDeferredRefreshCannotChangeReplacementSubscription, MapViewDeferredRefreshSendsCurrentPosition and MapViewDeferredRefreshRestoresItemPropertiesWithoutBlockingOtherSubjects cover deferred subscription identity and current serialized state. An embedding project separately validates its visibility policy and discovery lifecycle.
+
+### Editor integration: task grammar, aggregate routes, and extension delivery
+
+- Sources: `last-frontier:.vscode/tasks.json`, `last-frontier:.vscode/launch.json`, `last-frontier:.vscode/settings.json`, `fonline-tla:.vscode/tasks.json`, `fonline-tla:.vscode/launch.json`, `fonline-tla:.vscode/settings.json`
+- Reusable claim: Both projects drive the Engine-owned FOnline Tools menu from workspace tasks and launch profiles that follow one label grammar, depend on a configure task, and expose a sequential aggregate verification route.
+- Decision: The Engine documents the extension contract and a generic task-graph pattern; concrete task names, groups and aggregate contents remain project-owned.
+- Promotion gate: Label grammar, hotkeys and platform filtering are re-derived from the extension source; the extensions are working Engine-owned tools installed through tracked workspace symlinks, and the pages state which behavior the Engine repository itself tests.
+
+### Repository hygiene: ignored outputs, attributes, submodule scope, and optional LFS
+
+- Sources: `last-frontier:.gitattributes`, `last-frontier:AGENTS.md`, `last-frontier:Docs/BuildAndLaunch.md`, `fonline-tla:.gitattributes`, `fonline-tla:AGENTS.md`
+- Reusable claim: A game repository keeps generated output and logs untracked, fixes line endings and binary treatment for every FOnline format, scopes submodule initialization when other private submodules exist, and decides about LFS up front.
+- Decision: The Engine teaches the repository shape and the decisions to make; hosting, guard tools and audits are project-owned.
+- Promotion gate: Every command and file form is re-derived from Engine BuildTools, the examples and CMake behavior; LFS hosting and long-path guards stay project policy.
+
+### Project CI structure, portable steps, and release preflight
+
+- Sources: `last-frontier:Tools/CiSteps/README.md`, `last-frontier:.github/workflows/smoke-tests.yml`, `last-frontier:Tools/CiChecks/check_workflow_syntax.py`, `fonline-tla:.github/workflows/build.yml`
+- Reusable claim: Both projects order CI as validate, compile, bake, unit tests and package, keep steps portable across runners, and publish only from a manual dispatch with version and tag preflight.
+- Decision: The Engine owns the job order, trust boundaries, release preflight and checksum tooling; step runners, workflow gates and publication hosts remain project-owned.
+- Promotion gate: Move any reusable CI step runner or workflow gate into Engine with tests before a concrete command is named in Engine documentation.
+
+### Project quality gates, baselines, and aggregate verification
+
+- Sources: `last-frontier:AGENTS.md`, `last-frontier:Tools/CiChecks/check_workflow_syntax.py`, `last-frontier:.vscode/tasks.json`, `fonline-tla:AGENTS.md`, `fonline-tla:.vscode/tasks.json`
+- Reusable claim: Warnings are failures, baselines carry written reasons and never loosen to pass, and one ordered local route mirrors the CI gates.
+- Decision: The Engine documents the discipline and the Engine-owned tools; concrete audits, baselines and exemption files remain project-owned.
+- Promotion gate: Only Engine-supplied formatters and analyzers are documented as commands; project audits and test-quality gates need Engine implementation and tests first.
+
+### Generated project version and release identity
+
+- Sources: `last-frontier:Tools/GenerateVersion/generate_version.py`, `last-frontier:AGENTS.md`, `fonline-tla:Tools/GenerateVersion/generate_version.py`, `fonline-tla:.github/workflows/build.yml`
+- Reusable claim: A project version is machine-written, monotonic and unique per release, and is distinct from Engine, compatibility, data and package identities.
+- Decision: The Engine owns the generic project version generator and checker with pluggable schemes; a project keeps its own encoding as a scheme or configuration.
+- Promotion gate: Scheme-specific encodings stay out of Engine; the requirements are re-derived from the identities documented in Engine versioning and updater sources.
+
+### Project documentation and AI-agent process
+
+- Sources: `last-frontier:AGENTS.md`, `last-frontier:Docs/Plans/README.md`, `last-frontier:Docs/BuildAndLaunch.md`, `fonline-tla:AGENTS.md`
+- Reusable claim: A single AGENTS.md front door that routes to Engine instructions, dated task plans, and an ignored per-task workspace make agent-assisted maintenance reviewable.
+- Decision: The Engine documents the pattern for teams that use agents; instruction contents, language policy and authority rules remain project-owned.
+- Promotion gate: Presented as an optional pattern with rationale; authority, language and publication rules stay project policy.
+
+### Markdown link and anchor checks for project documentation
+
+- Sources: `last-frontier:Tools/DocLinkAudit/doc_link_audit.py`
+- Reusable claim: Both projects check local links and GitHub-style anchors with independent implementations, and the Engine documentation validator had a third.
+- Decision: The Engine owns the link and anchor checker; evidence snapshot verification and other Ops-specific audits stay project-owned.
+- Promotion gate: One shared module with tests is used by the Engine documentation validator and exposed as a command.
 
 ## Owner review requirements
 

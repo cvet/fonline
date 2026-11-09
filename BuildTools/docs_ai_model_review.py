@@ -216,9 +216,10 @@ def validate_run_provenance(
     relative_path = Path(run_path_value)
     if relative_path.is_absolute():
         raise ValueError("review.run.path must be relative to the Engine root")
-    run_path = (root / relative_path).resolve()
+    engine_root = root.resolve()
+    run_path = (engine_root / relative_path).resolve()
     try:
-        run_path.relative_to(root)
+        run_path.relative_to(engine_root)
     except ValueError as exception:
         raise ValueError("review.run.path escapes the Engine root") from exception
     if not run_path.exists():

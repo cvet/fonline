@@ -237,6 +237,33 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-client-game-activateoffscreensurface-07832eea0d"></a>
 - [`symbol-script-method-client-game-activateoffscreensurface-07832eea0d`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-activateoffscreensurface-07832eea0d)
 
+<a id="symbol-script-method-client-game-aicontrolavailable-25a5d05a1e"></a>
+- [`symbol-script-method-client-game-aicontrolavailable-25a5d05a1e`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-aicontrolavailable-25a5d05a1e)
+
+<a id="symbol-script-method-client-game-aicontrolcompletecommand-cab978aa71"></a>
+- [`symbol-script-method-client-game-aicontrolcompletecommand-cab978aa71`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-aicontrolcompletecommand-cab978aa71)
+
+<a id="symbol-script-method-client-game-aicontrolgetstatus-2979716415"></a>
+- [`symbol-script-method-client-game-aicontrolgetstatus-2979716415`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-aicontrolgetstatus-2979716415)
+
+<a id="symbol-script-method-client-game-aicontrolisrunning-5d3d3bd49c"></a>
+- [`symbol-script-method-client-game-aicontrolisrunning-5d3d3bd49c`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-aicontrolisrunning-5d3d3bd49c)
+
+<a id="symbol-script-method-client-game-aicontrolpullcommand-de4a14a835"></a>
+- [`symbol-script-method-client-game-aicontrolpullcommand-de4a14a835`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-aicontrolpullcommand-de4a14a835)
+
+<a id="symbol-script-method-client-game-aicontrolpushevent-b093926443"></a>
+- [`symbol-script-method-client-game-aicontrolpushevent-b093926443`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-aicontrolpushevent-b093926443)
+
+<a id="symbol-script-method-client-game-aicontrolsetobservation-e5439182a2"></a>
+- [`symbol-script-method-client-game-aicontrolsetobservation-e5439182a2`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-aicontrolsetobservation-e5439182a2)
+
+<a id="symbol-script-method-client-game-aicontrolstart-fe3c2d8702"></a>
+- [`symbol-script-method-client-game-aicontrolstart-fe3c2d8702`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-aicontrolstart-fe3c2d8702)
+
+<a id="symbol-script-method-client-game-aicontrolstop-2c841bb947"></a>
+- [`symbol-script-method-client-game-aicontrolstop-2c841bb947`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-aicontrolstop-2c841bb947)
+
 <a id="symbol-script-method-client-game-bindfont-487403157b"></a>
 - [`symbol-script-method-client-game-bindfont-487403157b`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-bindfont-487403157b)
 
@@ -2735,6 +2762,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 
 <a id="symbol-script-method-server-game-loadcritter-f50433829d33781c-d2732fb3ef"></a>
 - [`symbol-script-method-server-game-loadcritter-f50433829d33781c-d2732fb3ef`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-loadcritter-f50433829d33781c-d2732fb3ef)
+
+<a id="symbol-script-method-server-game-loadimage-00bbaf2cfa"></a>
+- [`symbol-script-method-server-game-loadimage-00bbaf2cfa`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-loadimage-00bbaf2cfa)
 
 <a id="symbol-script-method-server-game-loadstaticmap-1db1c5d0ad"></a>
 - [`symbol-script-method-server-game-loadstaticmap-1db1c5d0ad`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-loadstaticmap-1db1c5d0ad)

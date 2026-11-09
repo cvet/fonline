@@ -249,6 +249,14 @@ rendering tests and a visible client. Then rebake an embedding project.
 Project-owned pack catalogs, translation guards, lexem formatters, and GUI
 refresh behavior require project tests rather than Engine fixtures.
 
+Before baking, an embedding project lints its raw `.fotxt` files with
+`BuildTools/check_text_packs.py`. It parses each file as `TextPack::LoadFromString`
+does, simulates the language normalization above for the ordered
+`Baking.BakeLanguages` list, and reports parse errors, unknown languages,
+duplicates, letters of a disallowed script, and keys or packs that the fallback
+would drop or copy; see
+[Text Pack, Move Sync and Managed Project Tools](../project/content-and-diagnostics-tools.md#lint-text-packs-before-baking).
+
 ## Maintenance routing
 
 - raw syntax, key identity, variants, binary loading, or normalization:

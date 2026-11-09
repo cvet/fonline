@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/build/public-example-repositories.html
 ---
 
 # Публичные репозитории с примерами
-<!-- docs-translation: {"document_id":"public-example-repositories","locale":"ru","source_path":"Docs/en/how-to/build/public-example-repositories.md","source_sha256":"faae854133e244465ed0758c64b7d03a90bbe342ca2a9eccf17247ffd699e1cc"} -->
+<!-- docs-translation: {"document_id":"public-example-repositories","locale":"ru","source_path":"Docs/en/how-to/build/public-example-repositories.md","source_sha256":"b0fb200de15da1767bdb8550aafe19d65b803466a25738fbec6520343f93a4e1"} -->
 Это руководство определяет, как создаются, проверяются, подготавливаются, выпускаются и поддерживаются совместимыми репозитории с примерами FOnline. Машиночитаемый первоисточник находится в [Examples/PublicRepositories.json](../../../../Examples/PublicRepositories.json), а его проверяемая проекция находится в [сгенерированном реестре](../../reference/public-examples/index.md).
 
 ## Статус контракта
@@ -165,7 +165,7 @@ python Engine/BuildTools/docs_examples.py --verify-repository . --engine-mode pi
 
 `pinned-engine` запускается для каждого pull request и обновления защищённой ветки. Она проверяет управление репозиторием, идентичность gitlink и metadata, основное поведение примера и все специфичные для репозитория платформенные шлюзы. Шаблон проекта и исходный код Minimal Multiplayer требуют smoke-задачи Windows и Linux; Minimal Multiplayer дополнительно требует приёмку пакетов Windows/Linux и сохраняемые доказательства пакетов, адресованные commit.
 
-Linux-задачи подготавливают системные зависимости командой `Engine/BuildTools/prepare-workspace.sh linux-packages linux` из полученной ревизии. Не копируйте список apt-пакетов в workflow примеров: принадлежащая Engine команда является версионируемым платформенным контрактом и удерживает prerequisites pinned- и compatibility-линий одинаковыми.
+Linux-задачи подготавливают системные зависимости командой `Engine/BuildTools/prepare-workspace.sh linux-packages` из полученной ревизии. Не копируйте список apt-пакетов в workflow примеров: принадлежащая Engine команда является версионируемым платформенным контрактом и удерживает prerequisites pinned- и compatibility-линий одинаковыми.
 
 Content Showcase использует `web-packages web` для принадлежащих Engine Web prerequisites; нужные визуальной линии пакеты Xvfb/Mesa остаются в собственном workflow репозитория примера. Запускайте helper с принадлежащим примеру `Workspace`, выбранным через `FO_WORKSPACE`; BuildTools выводит закреплённый путь `Workspace/emsdk` и не учитывает посторонний override `FO_EMSDK`. Загружайте PNG Linux OpenGL, capture contract и process evidence до более длинной WebGL 2 runtime-линии, чтобы последующий сбой Web не стирал уже достоверное backend evidence, при этом вся обязательная job остаётся неуспешной до прохождения всех линий.
 

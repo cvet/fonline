@@ -46,6 +46,7 @@ import docs_snippets  # noqa: E402
 import docs_support_matrix  # noqa: E402
 import docs_text_format  # noqa: E402
 import docs_video  # noqa: E402
+import markdown_links  # noqa: E402
 
 
 class DocumentationValidatorTests(unittest.TestCase):
@@ -1724,9 +1725,14 @@ class DocumentationValidatorTests(unittest.TestCase):
             json.dumps(ai_control_manifest, indent=2) + "\n",
             encoding="utf-8",
         )
+        # Every manifest collection cites sources the generator opens, so copy all of them
         ai_control_source_paths = set(ai_control_manifest["sources"].values())
-        for entry in ai_control_manifest["validation_rules"]:
-            ai_control_source_paths.update(source["path"] for source in entry["source"])
+        for collection in ai_control_manifest.values():
+            if not isinstance(collection, list):
+                continue
+            for entry in collection:
+                if isinstance(entry, dict) and isinstance(entry.get("source"), list):
+                    ai_control_source_paths.update(source["path"] for source in entry["source"])
         for relative_path in sorted(ai_control_source_paths):
             source_path = BUILDTOOLS_DIR.parent / relative_path
             target_path = documentation_metadata.output_path(root, relative_path)
@@ -2037,7 +2043,7 @@ class DocumentationValidatorTests(unittest.TestCase):
         )
         primary_file = root / primary_path
         primary_anchors = (
-            sorted(docs_validate._markdown_anchors(primary_file))
+            sorted(markdown_links.markdown_anchors(primary_file))
             if primary_file.is_file()
             else ["missing"]
         )

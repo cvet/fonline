@@ -1,0 +1,15 @@
+[07/11/26] [12:30:02] Apply config FOnlineProject.fomain
+[07/11/26] [12:30:05] MOVESYNC side=cl ev=in t=4810020000 st=1778140797980 viewer=1002 cr=1002 own=1 hex=98,101 moving=0
+[07/11/26] [12:30:05] MOVESYNC side=cl ev=in t=4810030000 st=1778140797990 viewer=1002 cr=1001 own=0 hex=100,100 moving=0
+[07/11/26] [12:30:06] MOVESYNC side=cl ev=frames t=4811520000 st=1778140799480 viewer=1002 n=59 ms=1000 max_ms=24
+[07/11/26] [12:30:07] MOVESYNC side=cl ev=move_recv t=4812081000 st=1778140800041 viewer=1002 cr=1001 own=0 start=100,100 end=104,100 prev_hex=100,100 offset_ms=80 whole_ms=1200 joined=0 lease_ms=0 late_ms=0 ahead_ms=40 catchup_ms=0 smooth_ms=0
+[07/11/26] [12:30:07] MOVESYNC side=cl ev=step t=4812346000 st=1778140800306 viewer=1002 cr=1001 own=0 hex=101,100 elapsed_ms=300
+[07/11/26] [12:30:07] MOVESYNC side=cl ev=frames t=4812520000 st=1778140800480 viewer=1002 n=60 ms=1000 max_ms=22
+[07/11/26] [12:30:07] MOVESYNC side=cl ev=step t=4812646000 st=1778140800606 viewer=1002 cr=1001 own=0 hex=102,100 elapsed_ms=600
+[07/11/26] [12:30:07] MOVESYNC side=cl ev=step t=4812946000 st=1778140800906 viewer=1002 cr=1001 own=0 hex=103,100 elapsed_ms=900
+[07/11/26] [12:30:08] MOVESYNC side=cl ev=step t=4813246000 st=1778140801206 viewer=1002 cr=1001 own=0 hex=104,100 elapsed_ms=1200
+[07/11/26] [12:30:08] MOVESYNC side=cl ev=arrive t=4813246000 st=1778140801206 viewer=1002 cr=1001 own=0 end=104,100 hex=104,100
+[07/11/26] [12:30:08] MOVESYNC side=cl ev=frames t=4813520000 st=1778140801480 viewer=1002 n=60 ms=1000 max_ms=23
+[07/11/26] [12:30:11] MOVESYNC side=cl ev=move_recv t=4816081000 st=1778140804041 viewer=1002 cr=1001 own=0 start=104,100 end=107,100 prev_hex=104,100 offset_ms=80 whole_ms=900 joined=0 lease_ms=0 late_ms=0 ahead_ms=40 catchup_ms=0 smooth_ms=0
+[07/11/26] [12:30:11] MOVESYNC side=cl ev=step t=4816346000 st=1778140804306 viewer=1002 cr=1001 own=0 hex=105,100 elapsed_ms=300
+[07/11/26] [12:30:11] MOVESYNC side=cl ev=pos_recv t=4816650000 st=1778140804610 viewer=1002 cr=1001 own=0 hex=105,100 prev_hex=105,100 jump=0 err_px=4 was_moving=1

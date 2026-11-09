@@ -5,7 +5,7 @@ locale: ru
 document_id: client-updater
 permalink: /Docs/ru/explanation/runtime/client-updater.html
 ---
-<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"51e5e915b8b9c5c70da7be9d77dcbbbe3ff39cee81c412db1efacdf5c8f19349"} -->
+<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"28abf7d3cfec6b9d18e54c5c6e54bacb5edc97ae32c0d74cadb49b52deae02c8"} -->
 # Разделение клиентской среды выполнения и обновление
 
 > Документация движка по переиспользуемому ABI между клиентским host и runtime,
@@ -304,7 +304,7 @@ PDB другой сборки не должен уничтожить подхо�
 wire format или когда lifecycle старого updater/host больше нельзя безопасно
 продолжать. Эта генерация требует защищённый канал до любого сообщения updater;
 клиент без канала не может обновить себя через него. Он получает единственный открытый ответ рукопожатия старого формата с `updater_outdated` и сообщает игроку о необходимости установить актуальный полный клиент, а не о недоступности сервера. Другой трафик updater не обходит защищённый канал. Игровая
-`Settings.CompatibilityVersion` независима и обычно изменяется с каждой сборкой.
+`Settings.CompatibilityVersion` независима. Это дайджест разобранных объявлений codegen (`FO_COMPATIBILITY_VERSION`), поэтому она меняется при изменении этих объявлений, а не с каждой сборкой.
 
 ### Handshake
 

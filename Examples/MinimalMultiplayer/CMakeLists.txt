@@ -9,7 +9,7 @@ SetOption(FO_NICE_NAME "FOnline Minimal Multiplayer")
 SetOption(FO_ENABLE_3D OFF)
 SetOption(FO_ANGELSCRIPT_SCRIPTING ON)
 SetOption(FO_NATIVE_SCRIPTING OFF)
-SetOption(FO_MONO_SCRIPTING OFF)
+SetOption(FO_MANAGED_SCRIPTING OFF)
 SetOption(FO_SPARK_PARTICLES ON)
 SetOption(FO_GEOMETRY HEXAGONAL)
 SetOption(FO_MAP_HEX_WIDTH 32)
@@ -25,13 +25,6 @@ AddThirdPartyLibraries()
 AddEngineSources(
     SERVER SourceExt/ServerExtension.cpp)
 RegisterEngineSources()
-
-function(_fomm_post_target_setup)
-    CopyTargetRuntimeToTarget(${FO_DEV_NAME}_Client ${FO_DEV_NAME}_BakerLib)
-endfunction()
-
-AddStageHook(Finalize Pre _fomm_post_target_setup)
-
 SetupCodeGeneration()
 BuildCoreLibraries()
 BuildApplications()

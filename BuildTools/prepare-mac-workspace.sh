@@ -3,30 +3,36 @@
 echo "Prepare workspace"
 
 CUR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PYTHON_BIN="$(command -v python3 || command -v python || true)"
+source "$CUR_DIR/find-python.sh"
 
-if [[ -z "$PYTHON_BIN" ]]; then
-	echo "Python not found" >&2
-	exit 1
-fi
-
+# Feature names pass through unchanged: buildtools.py owns the vocabulary, and macOS accepts none
 BUILDTOOLS_ARGS=(prepare-host-workspace macos)
 CHECK_ONLY=0
-KNOWN_FEATURES=(packages linux web android-arm32 android-arm64 android-x86 toolset dotnet all)
 
 for arg in "$@"; do
 	if [[ "$arg" == "check" ]]; then
 		CHECK_ONLY=1
-		BUILDTOOLS_ARGS+=(--check)
-	elif [[ " ${KNOWN_FEATURES[*]} " == *" $arg "* ]]; then
+	else
 		BUILDTOOLS_ARGS+=("$arg")
 	fi
 done
 
+if [[ $CHECK_ONLY -eq 1 ]]; then
+	BUILDTOOLS_ARGS+=(--check)
+fi
+
 while true; do
-	if "$PYTHON_BIN" "$CUR_DIR/buildtools.py" "${BUILDTOOLS_ARGS[@]}"; then
+	STATUS=0
+	"$PYTHON_BIN" "$CUR_DIR/buildtools.py" "${BUILDTOOLS_ARGS[@]}" || STATUS=$?
+
+	if [[ $STATUS -eq 0 ]]; then
 		echo "Workspace is ready!"
 		exit 0
+	fi
+
+	# Exit status 2 is an argument error, which installing host tools cannot fix
+	if [[ $STATUS -eq 2 ]]; then
+		exit 2
 	fi
 
 	if [[ $CHECK_ONLY -eq 1 ]]; then

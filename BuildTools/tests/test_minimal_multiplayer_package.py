@@ -67,7 +67,8 @@ class MinimalMultiplayerPackageTests(unittest.TestCase):
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
 
-            self.assertEqual(module.BUILDTOOLS_ROOT, buildtools)
+            # The verifier anchors on its resolved location; a temporary directory may be an unresolved 8.3 alias
+            self.assertEqual(module.BUILDTOOLS_ROOT, buildtools.resolve())
 
     def test_checked_package_manifest_and_cmake_cover_both_hosts(self) -> None:
         manifest = json.loads((ENGINE_ROOT / "Examples/MinimalMultiplayer/package-smoke.json").read_text(encoding="utf-8"))

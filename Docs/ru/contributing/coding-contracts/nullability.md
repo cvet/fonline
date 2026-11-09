@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/coding-contracts/nullability.html
 ---
 
 # Nullable-типы
-<!-- docs-translation: {"document_id":"nullability","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/nullability.md","source_sha256":"ba79255cf2cce8d31b49bf02997ea78d9acc950f4ea846fe2647afb845e6686a"} -->
+<!-- docs-translation: {"document_id":"nullability","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/nullability.md","source_sha256":"20539a0cfabaf0a344d99e0124d80c53116f7e92a4af5f0832b8aa93e11f3170"} -->
 > Документация принадлежит движку. Эта страница задает переиспользуемый
 > контракт компилятора, runtime и native-границы. Анализаторы проекта могут
 > вводить более строгую политику авторинга, но не являются частью контракта
@@ -86,8 +86,12 @@ nullable каждого аргумента в `ArgDesc::Nullable` у `EntityEven
 
 Объявление является контрактом. Каждый `[[Event]]`,
 `[[ServerRemoteCall]]` и `[[ClientRemoteCall]]` с тем же именем обязан
-повторять `?` по аргументам. Baker и side-specific binding проверяют remote
-calls; подробности см. в [Remote Calls](../../reference/scripting/remote-calls.md).
+повторять `?` по аргументам. Ни baker, ни binding AngelScript эти markers не
+сравнивают: binding требует соответствующую реализацию с правильным атрибутом
+remote call и числом аргументов, но поиск handler сравнивает типы handle и
+игнорирует `?`. Parity для handlers событий и remote calls проверяет
+`BuildTools/check_script_bindings.py` ([Проверка скриптовых привязок и гигиены AngelScript](../../how-to/project/script-and-binding-checks.md));
+сигнатуры и handlers remote calls описаны в [Remote Calls](../../reference/scripting/remote-calls.md).
 `[[AdminRemoteCall]]` является отдельной командной точкой входа.
 
 ```angelscript
@@ -100,9 +104,10 @@ void OnCritterDamaged(Critter cr, Critter? attacker, int32 damage) { ... }
 void OnCritterDamaged(Critter cr, Critter attacker, int32 damage) { ... }
 ```
 
-AS runtime применяет null-контракт к записи handle, но сопоставление двух
-независимых declaration-ов события или remote call остается задачей
-статического анализа проекта.
+AS runtime применяет null-контракт к записи handle, но не сопоставляет два
+независимых declaration-а события или remote call; это статически проверяют
+правила `event-handler-nullability` и `remote-call-handler-nullability` из
+`check_script_bindings.py`.
 
 ## Сторона движка: `ptr<T>` / `nptr<T>` и raw-pointer nullability
 
@@ -572,12 +577,18 @@ lookup declarations могут использовать explicit `@`; запре
 
 ## Инструменты проекта
 
-Движок владеет compiler/runtime enforcement и native binding contract. Проект
-может добавить read-only анализаторы для правил, связывающих независимые
-declaration-ы:
+Движок владеет compiler/runtime enforcement, native binding contract и двумя
+read-only проверками: `BuildTools/check_script_bindings.py` сообщает о raw
+pointers на скриптовой границе, удалённом marker `FO_NULLABLE`, сохранённых
+callback-сигнатурах, отличающихся от экспортированной, и handlers событий и
+remote calls AngelScript, чьи `?` расходятся с declaration
+([Проверка скриптовых привязок и гигиены AngelScript](../../how-to/project/script-and-binding-checks.md)); аудит
+`smart-pointer` из `BuildTools/native_source_audit.py` сообщает о native
+dereference `nptr<T>` без guard ([Аудит правил нативного кода в игровом проекте](../../how-to/project/native-source-audits.md)).
+Проект запускает их на своих областях и может добавить read-only анализаторы
+для других правил авторинга:
 
 - `?` только на handle-capable reference types;
-- parity nullability у event и remote-call handlers;
 - narrowing nullable local перед dereference;
 - прямой dereference проверенного `nptr<T>` без лишнего alias;
 - единый implicit-handle style без `@`;
@@ -593,7 +604,9 @@ engine-owned tests.
 1. Явно выберите контракт в declaration: `T?` в script, `nptr<T>` для
    nullable native export и `ptr<T>` для non-null.
 2. Скомпилируйте затронутые script modules, чтобы запустить диагностики движка.
-3. Запустите project-side проверки declaration parity и style.
+3. Запустите `check_script_bindings.py` для declaration parity
+   ([Проверка скриптовых привязок и гигиены AngelScript](../../how-to/project/script-and-binding-checks.md)) и
+   project-side проверки style.
 
 Rewriter проекта не должен выводить контракт сам. Он сохраняет выбранные
 автором markers и может удалить только guard, ставший лишним из-за generated

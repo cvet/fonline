@@ -154,6 +154,46 @@ options:
   -h, --help  show this help message and exit
 ```
 
+<a id="entry-cli-buildtools-command-format-content-6dc0b07205"></a>
+## `format-content`
+
+format project .fomain, prototype and optional AngelScript files
+
+Stable ID: `cli.buildtools.command.format-content`
+
+```text
+usage: buildtools.py format-content [-h] [--check] [--project-root PROJECT_ROOT] [--fomain FOMAIN] [--skip-fomain] [--skip-protos] [--proto-path PATH] [--metadata PATH] [--fos PATTERN]
+```
+
+| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| <a id="entry-cli-buildtools-command-format-content-argument-check-3b86dcf3b7"></a><code>cli.buildtools.command.format-content.argument.check</code> | <code>--check</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | report files that need formatting and exit with 1 without writing |
+| <a id="entry-cli-buildtools-command-format-content-argument-project-root-8b1c804f98"></a><code>cli.buildtools.command.format-content.argument.project_root</code> | <code>--project-root</code> | <code>option</code> | no | <code>1</code> | - | - | project root for relative paths and the .fomain lookup (default: FO_PROJECT_ROOT, then the current directory) |
+| <a id="entry-cli-buildtools-command-format-content-argument-fomain-3b911889ad"></a><code>cli.buildtools.command.format-content.argument.fomain</code> | <code>--fomain</code> | <code>option</code> | no | <code>1</code> | - | - | main config path (default: the only *.fomain file in the project root) |
+| <a id="entry-cli-buildtools-command-format-content-argument-skip-fomain-a57f30e33e"></a><code>cli.buildtools.command.format-content.argument.skip_fomain</code> | <code>--skip-fomain</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | do not format the main config |
+| <a id="entry-cli-buildtools-command-format-content-argument-skip-protos-f90108b034"></a><code>cli.buildtools.command.format-content.argument.skip_protos</code> | <code>--skip-protos</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | do not format prototype files |
+| <a id="entry-cli-buildtools-command-format-content-argument-proto-path-990248df57"></a><code>cli.buildtools.command.format-content.argument.proto_path</code> | <code>--proto-path</code> | <code>option</code> | no | <code>1</code> | - | - | format only these prototype files or directories instead of the Proto resource packs (repeatable) |
+| <a id="entry-cli-buildtools-command-format-content-argument-metadata-7f71a73042"></a><code>cli.buildtools.command.format-content.argument.metadata</code> | <code>--metadata</code> | <code>option</code> | no | <code>1</code> | - | - | read property and setting order from these files, in this order, instead of the Metadata resource packs (repeatable) |
+| <a id="entry-cli-buildtools-command-format-content-argument-fos-e2ccd6169f"></a><code>cli.buildtools.command.format-content.argument.fos</code> | <code>--fos</code> | <code>option</code> | no | <code>1</code> | - | - | also format AngelScript files matching this glob relative to the project root with clang-format 20 (repeatable) |
+
+### Exact `--help` output
+
+```text
+usage: buildtools.py format-content [-h] [--check] [--project-root PROJECT_ROOT] [--fomain FOMAIN] [--skip-fomain] [--skip-protos] [--proto-path PATH] [--metadata PATH] [--fos PATTERN]
+
+options:
+  -h, --help            show this help message and exit
+  --check               report files that need formatting and exit with 1 without writing
+  --project-root PROJECT_ROOT
+                        project root for relative paths and the .fomain lookup (default: FO_PROJECT_ROOT, then the current directory)
+  --fomain FOMAIN       main config path (default: the only *.fomain file in the project root)
+  --skip-fomain         do not format the main config
+  --skip-protos         do not format prototype files
+  --proto-path PATH     format only these prototype files or directories instead of the Proto resource packs (repeatable)
+  --metadata PATH       read property and setting order from these files, in this order, instead of the Metadata resource packs (repeatable)
+  --fos PATTERN         also format AngelScript files matching this glob relative to the project root with clang-format 20 (repeatable)
+```
+
 <a id="entry-cli-buildtools-command-toolset-d0a17e5293"></a>
 ## `toolset`
 
@@ -326,6 +366,45 @@ options:
   -h, --help            show this help message and exit
 ```
 
+<a id="entry-cli-buildtools-command-managed-project-path-dbd9e015f4"></a>
+## `managed-project-path`
+
+print the generated managed C# project and solution paths
+
+Stable ID: `cli.buildtools.command.managed-project-path`
+
+```text
+usage: buildtools.py managed-project-path [-h] [--sub-config SUB_CONFIG] [--build-dir BUILD_DIR] [--json] [--require-existing] [--open] config
+```
+
+| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| <a id="entry-cli-buildtools-command-managed-project-path-argument-config-53e8370ff8"></a><code>cli.buildtools.command.managed-project-path.argument.config</code> | <code>config</code> | <code>positional</code> | yes | <code>1</code> | - | - | main .fomain config the managed script baker applies |
+| <a id="entry-cli-buildtools-command-managed-project-path-argument-sub-config-4d7d065a87"></a><code>cli.buildtools.command.managed-project-path.argument.sub_config</code> | <code>--sub-config</code> | <code>option</code> | no | <code>1</code> | - | - | sub-config applied over the main section (default: none, as CompileManagedScripts) |
+| <a id="entry-cli-buildtools-command-managed-project-path-argument-build-dir-8c8ae3d886"></a><code>cli.buildtools.command.managed-project-path.argument.build_dir</code> | <code>--build-dir</code> | <code>option</code> | no | <code>1</code> | - | - | CMake build directory; required when ManagedScript.GeneratedDir is empty |
+| <a id="entry-cli-buildtools-command-managed-project-path-argument-json-08f2b220b1"></a><code>cli.buildtools.command.managed-project-path.argument.json</code> | <code>--json</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | print the paths and whether the project and solution exist as JSON |
+| <a id="entry-cli-buildtools-command-managed-project-path-argument-require-existing-79d2227e6a"></a><code>cli.buildtools.command.managed-project-path.argument.require_existing</code> | <code>--require-existing</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | exit 1 when the generated project or solution is missing |
+| <a id="entry-cli-buildtools-command-managed-project-path-argument-open-c8acf124cc"></a><code>cli.buildtools.command.managed-project-path.argument.open</code> | <code>--open</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | open the generated solution with its desktop file association |
+
+### Exact `--help` output
+
+```text
+usage: buildtools.py managed-project-path [-h] [--sub-config SUB_CONFIG] [--build-dir BUILD_DIR] [--json] [--require-existing] [--open] config
+
+positional arguments:
+  config                main .fomain config the managed script baker applies
+
+options:
+  -h, --help            show this help message and exit
+  --sub-config SUB_CONFIG
+                        sub-config applied over the main section (default: none, as CompileManagedScripts)
+  --build-dir BUILD_DIR
+                        CMake build directory; required when ManagedScript.GeneratedDir is empty
+  --json                print the paths and whether the project and solution exist as JSON
+  --require-existing    exit 1 when the generated project or solution is missing
+  --open                open the generated solution with its desktop file association
+```
+
 <a id="entry-cli-buildtools-command-host-check-20b3f27def"></a>
 ## `host-check`
 
@@ -364,13 +443,13 @@ Stable ID: `cli.buildtools.command.prepare-host-workspace`
 ```text
 usage: buildtools.py prepare-host-workspace [-h] [--check]
                                             {linux,windows,macos}
-                                            [{common-packages,linux-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,linux,web,android-arm32,android-arm64,android-x86,toolset,dotnet,windows-cross,wix,msan-libcxx,all} ...]
+                                            [{common-packages,linux-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,toolset,web,android-arm32,android-arm64,android-x86,dotnet,windows-cross,msan-libcxx,all,wix} ...]
 ```
 
 | Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | <a id="entry-cli-buildtools-command-prepare-host-workspace-argument-host-8fb8276bf1"></a><code>cli.buildtools.command.prepare-host-workspace.argument.host</code> | <code>host</code> | <code>positional</code> | yes | <code>1</code> | <code>linux</code>, <code>windows</code>, <code>macos</code> | - | host platform to prepare |
-| <a id="entry-cli-buildtools-command-prepare-host-workspace-argument-features-1d7026db67"></a><code>cli.buildtools.command.prepare-host-workspace.argument.features</code> | <code>features</code> | <code>positional</code> | no | <code>*</code> | <code>common-packages</code>, <code>linux-packages</code>, <code>web-packages</code>, <code>android-packages</code>, <code>windows-cross-packages</code>, <code>msi-packages</code>, <code>all-packages</code>, <code>linux</code>, <code>web</code>, <code>android-arm32</code>, <code>android-arm64</code>, <code>android-x86</code>, <code>toolset</code>, <code>dotnet</code>, <code>windows-cross</code>, <code>wix</code>, <code>msan-libcxx</code>, <code>all</code> | - | feature groups to prepare; omit to use the host defaults |
+| <a id="entry-cli-buildtools-command-prepare-host-workspace-argument-features-1d7026db67"></a><code>cli.buildtools.command.prepare-host-workspace.argument.features</code> | <code>features</code> | <code>positional</code> | no | <code>*</code> | <code>common-packages</code>, <code>linux-packages</code>, <code>web-packages</code>, <code>android-packages</code>, <code>windows-cross-packages</code>, <code>msi-packages</code>, <code>all-packages</code>, <code>toolset</code>, <code>web</code>, <code>android-arm32</code>, <code>android-arm64</code>, <code>android-x86</code>, <code>dotnet</code>, <code>windows-cross</code>, <code>msan-libcxx</code>, <code>all</code>, <code>wix</code> | - | feature groups to prepare; omit to use the host defaults; a name the host does not support is an error: linux accepts common-packages, linux-packages, web-packages, android-packages, windows-cross-packages, msi-packages, all-packages, toolset, web, android-arm32, android-arm64, android-x86, dotnet, windows-cross, msan-libcxx, all (default: all); windows accepts toolset, web, wix, all (default: toolset); macos accepts no features; prepare-host-workspace macos only runs the host check |
 | <a id="entry-cli-buildtools-command-prepare-host-workspace-argument-check-f990629a92"></a><code>cli.buildtools.command.prepare-host-workspace.argument.check</code> | <code>--check</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | check availability without installing or building |
 
 ### Exact `--help` output
@@ -378,13 +457,15 @@ usage: buildtools.py prepare-host-workspace [-h] [--check]
 ```text
 usage: buildtools.py prepare-host-workspace [-h] [--check]
                                             {linux,windows,macos}
-                                            [{common-packages,linux-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,linux,web,android-arm32,android-arm64,android-x86,toolset,dotnet,windows-cross,wix,msan-libcxx,all} ...]
+                                            [{common-packages,linux-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,toolset,web,android-arm32,android-arm64,android-x86,dotnet,windows-cross,msan-libcxx,all,wix} ...]
 
 positional arguments:
   {linux,windows,macos}
                         host platform to prepare
-  {common-packages,linux-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,linux,web,android-arm32,android-arm64,android-x86,toolset,dotnet,windows-cross,wix,msan-libcxx,all}
-                        feature groups to prepare; omit to use the host defaults
+  {common-packages,linux-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,toolset,web,android-arm32,android-arm64,android-x86,dotnet,windows-cross,msan-libcxx,all,wix}
+                        feature groups to prepare; omit to use the host defaults; a name the host does not support is an error: linux accepts common-packages, linux-packages, web-packages, android-packages, windows-cross-packages, msi-
+                        packages, all-packages, toolset, web, android-arm32, android-arm64, android-x86, dotnet, windows-cross, msan-libcxx, all (default: all); windows accepts toolset, web, wix, all (default: toolset); macos accepts no
+                        features; prepare-host-workspace macos only runs the host check
 
 options:
   -h, --help            show this help message and exit

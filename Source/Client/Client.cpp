@@ -292,6 +292,10 @@ void ClientEngine::Shutdown()
 
     OnFinish.Fire();
 
+#if FO_HAVE_AI_CONTROL
+    _aiControl.reset();
+#endif
+
     _eventUnsubscriber.Unsubscribe();
 
     UnsubscribeAllEvents();
@@ -476,6 +480,12 @@ void ClientEngine::MainLoop()
     for (const ScriptOverrunRecord& overrun : TakeScriptOverruns()) {
         OnScriptOverrun.Fire(overrun.Entry, overrun.MaxExecution, overrun.MaxLockWait, overrun.Count);
     }
+
+#if FO_HAVE_AI_CONTROL
+    if (_aiControl) {
+        _aiControl->DispatchCommands();
+    }
+#endif
 
     OnLoop.Fire();
 

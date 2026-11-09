@@ -11,12 +11,27 @@ function(message mode)
 	endif()
 endfunction()
 
+# Arguments are joined one by one: expanding ARGN would split a quoted text at its semicolons
 function(StatusMessage)
-	_message(STATUS ${ARGN})
+	set(text "")
+	set(argIndex 0)
+	while(argIndex LESS ARGC)
+		string(APPEND text "${ARGV${argIndex}}")
+		math(EXPR argIndex "${argIndex} + 1")
+	endwhile()
+
+	_message(STATUS "${text}")
 endfunction()
 
 function(AbortMessage)
-	_message(FATAL_ERROR ${ARGN})
+	set(text "")
+	set(argIndex 0)
+	while(argIndex LESS ARGC)
+		string(APPEND text "${ARGV${argIndex}}")
+		math(EXPR argIndex "${argIndex} + 1")
+	endwhile()
+
+	_message(FATAL_ERROR "${text}")
 endfunction()
 
 # Skip all install rules
@@ -189,6 +204,7 @@ macro(SetOptionValues)
 
 	while(optionArgs)
 		ListPopFront(optionArgs optionName optionValue)
+		RecordProjectOptionName(SetOptionValues "${optionName}")
 		set(_soptShadow "_FO_OPTION_DEFAULT_${optionName}")
 		get_property(_soptHasCache CACHE ${optionName} PROPERTY VALUE SET)
 		get_property(_soptCacheType CACHE ${optionName} PROPERTY TYPE)
@@ -792,13 +808,25 @@ endfunction()
 # Wire one CMake target's output binary to be copied next to another's output
 # binary as a POST_BUILD step, and ensure the producer is built first. Useful
 # for shared libraries / plugins that must sit next to a host executable
-# (e.g. Baker shared lib next to the Server, AngelScript debugger plugin next
-# to a tool host, ...). Silently does nothing if either target is missing
+# (e.g. AngelScript debugger plugin next to a tool host, ...). Silently does
+# nothing if either target is missing; requesting the same pair twice aborts configure
 function(CopyTargetRuntimeToTarget consumerTarget producerTarget)
 	if(NOT TARGET ${consumerTarget} OR NOT TARGET ${producerTarget})
 		return()
 	endif()
 
+	# A repeated pair means two owners maintain one runtime list, and only one may remain
+	GetTargetProperty(copiedRuntimes ${consumerTarget} FO_COPIED_RUNTIME_TARGETS)
+
+	if("${producerTarget}" IN_LIST copiedRuntimes)
+		if("${producerTarget}" STREQUAL "${FO_DEV_NAME}_BakerLib")
+			AbortMessage("CopyTargetRuntimeToTarget: the Applications stage already copies ${producerTarget} next to ${consumerTarget}; remove the project-side copy")
+		endif()
+
+		AbortMessage("CopyTargetRuntimeToTarget: ${producerTarget} is already copied next to ${consumerTarget}; remove the duplicate call")
+	endif()
+
+	set_property(TARGET ${consumerTarget} APPEND PROPERTY FO_COPIED_RUNTIME_TARGETS ${producerTarget})
 	add_dependencies(${consumerTarget} ${producerTarget})
 	AddCustomCommand(TARGET ${consumerTarget} POST_BUILD
 		COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:${producerTarget}>" "$<TARGET_FILE_DIR:${consumerTarget}>"

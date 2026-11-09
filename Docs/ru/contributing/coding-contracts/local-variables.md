@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/coding-contracts/local-variables.html
 ---
 
 # Локальные переменные
-<!-- docs-translation: {"document_id":"local-variables","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/local-variables.md","source_sha256":"660e9606abd242516141d2762fb2d3d546e879e7a6084f9f33cf588e4a68d4bb"} -->
+<!-- docs-translation: {"document_id":"local-variables","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/local-variables.md","source_sha256":"e0003a50e3ac600fa892aca9555fba4b2bce42ca8afc8fd46ab8860e7fb81870"} -->
 Этот документ определяет правила собственного C++-кода для инициализации переменных,
 явного написания локальных типов, избыточного верхнеуровневого `const` и диагностики
 использования после перемещения.
@@ -161,9 +161,12 @@ CHECK(value.empty()); // FO_USE_AFTER_MOVE_SUPPRESS: test verifies the moved-fro
 с `compile_commands.json` для Clang 20+:
 проверку явных типов и проверки `clang-query` / `clang-tidy` для избыточной
 локальной константности и использования после перемещения. Движок владеет
-только описанными правилами и маркерами `FO_REDUNDANT_CONST_SUPPRESS` /
-`FO_USE_AFTER_MOVE_SUPPRESS`. Реализация анализатора, создание базы компиляции,
-выбор области и политика CI принадлежат подключающему проекту.
+описанными правилами, маркерами `FO_REDUNDANT_CONST_SUPPRESS` /
+`FO_USE_AFTER_MOVE_SUPPRESS` и самим анализатором: аудитами
+`explicit-local-types` и `local-variables` из `BuildTools/native_source_audit.py`.
+Создание базы компиляции, выбор области, baseline-файлы и политика CI
+принадлежат подключающему проекту, который запускает те же команды над своими
+native-каталогами; см. [Аудит правил нативного кода в игровом проекте](../../how-to/project/native-source-audits.md).
 
 Перед публикацией выполняйте все три проверки над изменёнными исходниками
 движка. Проект может распространить тот же gate на собственные native

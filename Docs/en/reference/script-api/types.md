@@ -13,7 +13,7 @@ A dash in the description column means that the owning source metadata has no do
 
 [Reference index](index.md) | [Canonical JSON model](../../../generated/api.json) | [Generation contract](../metadata/)
 
-This page contains **997** type and member symbols.
+This page contains **1000** type and member symbols.
 
 ## Entities
 
@@ -2192,6 +2192,23 @@ Shared movement-path state containing route geometry, timing, offsets, blocking 
 | ref-method | <code>timespan MovingContext.GetWholeTime()</code> | <a id="symbol-script-ref-method-common-movingcontext-getwholetime-85ed9aede4"></a><code>script.ref-method.common.MovingContext.GetWholeTime</code> | callable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | [Source/Common/Movement.h:58](https://github.com/cvet/fonline/blob/master/Source/Common/Movement.h#L58) | Returns the total route duration after speed and endpoint offsets are applied |
 | ref-method | <code>bool MovingContext.IsCompleted()</code> | <a id="symbol-script-ref-method-common-movingcontext-iscompleted-cfbdf78e77"></a><code>script.ref-method.common.MovingContext.IsCompleted</code> | callable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | [Source/Common/Movement.h:58](https://github.com/cvet/fonline/blob/master/Source/Common/Movement.h#L58) | Returns whether the movement has been explicitly completed |
 
+<a id="symbol-script-ref-type-server-serverimage-822f4e24fc"></a>
+### <code>ServerImage</code>
+
+<code>ref type ServerImage</code><br>
+Symbol ID: <code>script.ref-type.server.ServerImage</code><br>
+Runtime: server<br>
+Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15)<br>
+Flags: <code>RefCounted</code>, <code>Export</code>, <code>=</code>, <code>GetSize</code>, <code>,</code>, <code>GetColor</code><br>
+Source: [Source/Server/ServerImage.h:13](https://github.com/cvet/fonline/blob/master/Source/Server/ServerImage.h#L13)
+
+Decoded pixels of one baked single-frame sprite resource for server-side lookups such as world-map masks
+
+| Kind | Member | Symbol ID | Member contract | API contract | Source | Description |
+| --- | --- | --- | --- | --- | --- | --- |
+| ref-method | <code>ucolor ServerImage.GetColor(ipos pos)</code> | <a id="symbol-script-ref-method-server-serverimage-getcolor-b0fae0b50a"></a><code>script.ref-method.server.ServerImage.GetColor</code> | callable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | [Source/Server/ServerImage.h:13](https://github.com/cvet/fonline/blob/master/Source/Server/ServerImage.h#L13) | Returns the color of one pixel and throws for a position outside the image |
+| ref-method | <code>isize ServerImage.GetSize()</code> | <a id="symbol-script-ref-method-server-serverimage-getsize-091a93fd2c"></a><code>script.ref-method.server.ServerImage.GetSize</code> | callable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | [Source/Server/ServerImage.h:13](https://github.com/cvet/fonline/blob/master/Source/Server/ServerImage.h#L13) | Returns the image width and height in pixels |
+
 <a id="symbol-script-ref-type-client-spritepattern-338f66b808"></a>
 ### <code>SpritePattern</code>
 
@@ -2247,10 +2264,10 @@ Symbol ID: <code>script.ref-type.client.VideoPlayback</code><br>
 Runtime: client, mapper<br>
 Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15)<br>
 Flags: <code>RefCounted</code>, <code>Export</code>, <code>=</code>, <code>Stopped</code><br>
-Source: [Source/Client/Client.h:48](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L48)
+Source: [Source/Client/Client.h:49](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L49)
 
 Script-owned controller for a video clip and render texture created by Game.CreateVideoPlayback and advanced by Game.DrawVideoPlayback
 
 | Kind | Member | Symbol ID | Member contract | API contract | Source | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| ref-field | <code>bool VideoPlayback.Stopped</code> | <a id="symbol-script-ref-field-client-videoplayback-stopped-941befb4f8"></a><code>script.ref-field.client.VideoPlayback.Stopped</code> | mutable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | [Source/Client/Client.h:48](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L48) | Becomes true after DrawVideoPlayback observes that the underlying clip has stopped and releases its playback resources |
+| ref-field | <code>bool VideoPlayback.Stopped</code> | <a id="symbol-script-ref-field-client-videoplayback-stopped-941befb4f8"></a><code>script.ref-field.client.VideoPlayback.Stopped</code> | mutable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | [Source/Client/Client.h:49](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L49) | Becomes true after DrawVideoPlayback observes that the underlying clip has stopped and releases its playback resources |

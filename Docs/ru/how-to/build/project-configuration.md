@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/build/project-configuration.html
 ---
 
 # Конфигурация игрового проекта
-<!-- docs-translation: {"document_id":"project-configuration","locale":"ru","source_path":"Docs/en/how-to/build/project-configuration.md","source_sha256":"ce9f943c2939b61ba104a3cd107d5e6ba7a9edeb7dde9aad50d23317c2bc3744"} -->
+<!-- docs-translation: {"document_id":"project-configuration","locale":"ru","source_path":"Docs/en/how-to/build/project-configuration.md","source_sha256":"41ef8bcec279c0bb8c6ded2e5d0d8f51ce9656989495b71713163fcbe22d96bd"} -->
 Руководство показывает, как embedding project должен создавать `.fomain`,
 resource packs и именованные sub-configs. Точная runtime model описана в
 [Конфигурация и источники данных](../../reference/settings/configuration-and-data-sources.md), а
@@ -107,8 +107,10 @@ ManagedScript.Dirs = Engine/Source/Scripting/Managed/CoreScripts Scripts
 ManagedScript.Analyzers = Engine/Source/Scripting/Managed/Analyzers/FOnline.Analyzers.csproj
 ```
 
-Неизвестные имена становятся project custom settings и доступны через
-`GetCustomSetting` / `FindCustomSetting`. Это намеренное поведение для
+Неизвестные имена становятся project custom settings, доступными через
+`GetCustomSetting` / `FindCustomSetting`; config baker отмечает каждое как
+`Unknown setting <name> = <value>`, не прерывая bake, и записывает его только в
+baked server profile. Это намеренное поведение для
 game-owned configuration, но опечатка в имени built-in setting поэтому может
 выглядеть допустимой. Добавляйте focused project test для каждого content ID,
 port/profile, prototype name, path или custom setting, влияющего на startup или
@@ -178,8 +180,9 @@ Bakers = Managed
 
 Не более одного side-only flag может быть true. Без flags pack поставляется
 server и client. Mapper-only packs отделены. `RecursiveInput` встречается в
-старых project files, но не является текущим field `ResourcePackInfo`;
-рекурсию задавайте через `IncludePatterns = **`.
+старых project files, но не является текущим field `ResourcePackInfo` и
+игнорируется: каждый input directory монтируется рекурсивно, а пустой
+`IncludePatterns` выбирает все files, поэтому удалите этот key.
 
 Разделяйте packs, если различаются ownership, release cadence, side visibility
 или update policy. Не используйте pack order как скрытую систему gameplay
@@ -295,6 +298,14 @@ SetOptionValues(
 Memory обязательна в Server; для Baker обязательны PNG/TGA/FOFRM и libpng, а для аудио — WAV/Ogg и Vorbis/Ogg. Embedded/APK сохраняют minizip при внешнем ZIP OFF. Stock client читает baked sprites и Vorbis-аудио без импортёров исходников и драйверов БД.
 
 Старые `FO_DISABLE_MONGO`/`FO_DISABLE_SQLITE` завершаются ошибкой; удалите их из кеша/окружения и выберите положительные опции.
+
+`SetOptionValues` и `SetOption` отвергают имя `FO_`, которое не является объявленной опцией, поэтому опечатка в имени компонента останавливает configure на стадии Init, а не оставляет компонент выключенным:
+
+```text
+SetOptionValues: FO_DATABASE_SQLLITE is not a declared option. Check the name against the CMake option reference; project variables need a prefix other than FO_
+```
+
+Снятые имена отвергаются прямо в вызове с указанием замены; их перечисляет раздел [Устранение неполадок настройки проекта](../../troubleshooting/setup.md#опечатка-или-снятая-опция-останавливает-configure).
 
 <a id="baking-configuration-fingerprint"></a>
 ## Отпечаток конфигурации бейкинга

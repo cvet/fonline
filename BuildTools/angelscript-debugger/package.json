@@ -13,8 +13,6 @@
   ],
   "private": true,
   "scripts": {
-    "compile": "tsc -p ./",
-    "lint": "eslint src --ext ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "esbuild-base": "esbuild ./src/extension.ts --bundle --tsconfig=./tsconfig.json --external:vscode --format=cjs --platform=node --outfile=dist/extension.js",
     "esbuild-adapter": "esbuild ./src/debugAdapter.ts --bundle --tsconfig=./tsconfig.json --format=cjs --platform=node --outfile=dist/debugAdapter.js",
@@ -25,7 +23,7 @@
     "publish": "vsce publish",
     "publish-pre-release": "vsce publish --pre-release",
     "vscode:prepublish": "rimraf dist && npm run -S esbuild-base -- --minify && npm run -S esbuild-web -- --minify && npm run -S esbuild-adapter -- --minify",
-    "test": "npm run typecheck",
+    "test": "npm run typecheck && npm run build && esbuild \"./src/tests/*.test.ts\" --bundle --format=cjs --platform=node --outdir=test-out/tests && mocha --ui tdd \"test-out/tests/*.test.js\"",
     "build": "npm run -S esbuild-base -- --sourcemap --sources-content=false && npm run -S esbuild-web -- --sourcemap --sources-content=false && npm run -S esbuild-adapter -- --sourcemap --sources-content=false",
     "clean": "rimraf node_modules package-lock.json"
   },
@@ -33,21 +31,18 @@
     "@types/glob": "^7.2.0",
     "@types/mocha": "^9.1.0",
     "@types/node": "^18.19.86",
-    "@types/vscode": "^1.66.0",
-    "@typescript-eslint/eslint-plugin": "^5.17.0",
-    "@typescript-eslint/parser": "^5.17.0",
+    "@types/vscode": "~1.89.0",
     "@vscode/debugadapter": "^1.56.0",
     "@vscode/debugadapter-testsupport": "^1.56.0",
     "await-notify": "^1.0.1",
     "base64-js": "^1.5.1",
     "esbuild": "^0.28.1",
-    "eslint": "^8.12.0",
     "events": "^3.3.0",
     "glob": "^7.2.0",
     "mocha": "^11.3.0",
     "path-browserify": "^1.0.1",
     "rimraf": "^3.0.2",
-    "typescript": "^4.6.3",
+    "typescript": "^4.9.5",
     "url": "^0.11.0",
     "vsce": "^2.15.0"
   },
@@ -169,9 +164,5 @@
         }
       }
     ]
-  },
-  "dependencies": {
-    "build": "^0.1.4",
-    "clean": "^4.0.2"
   }
 }

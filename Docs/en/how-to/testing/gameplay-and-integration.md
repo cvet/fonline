@@ -23,11 +23,14 @@ For the native Catch2 executable, generated targets, sanitizers, and coverage in
 
 Use boundary-based test selection and run narrow-first so the first failing
 layer gives a focused failure location. For a process smoke, declare a
-`ready_marker`, ordered `required_markers`, `forbidden_markers`, and one common
-deadline; always retain command lines, logs, exit reasons, and cleanup results.
+`ready_marker`, `required_markers` (each must appear in the process output;
+their order is not checked), `forbidden_markers`, and one common deadline;
+always retain command lines, logs, exit reasons, and cleanup results.
 The Engine owns this runner contract. The embedding project owns its script test
 registration API, fixture catalog, gameplay assertions, acceptance thresholds,
-accounts, databases, scenes, and release lanes.
+accounts, databases, scenes, and release lanes; the
+[Script Test Harness Pattern](../project/script-test-harness.md) gives it a
+copyable harness for both script backends that reports through this runner.
 
 ## Select the narrowest owning boundary
 

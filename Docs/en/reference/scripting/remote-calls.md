@@ -168,7 +168,7 @@ public static class AccountUi
     public static async Task RequestRename(Player player, string name)
     {
         // Authorize, validate, and reacquire cover after every await.
-        await Game.YieldAsync(1);
+        await ScriptTask.Delay(1);
     }
 
     [ClientRemoteCall]

@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"f84bea16de57b1c13f0dc92e8eb4895cc1fee3aaa5ede5d2e2bfdd1be93461aa"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"40c988ff1f14dcbd8c94a27d426592ee69fb2bf61e33ed242a3339463556ed8e"} -->
 > Принадлежащее движку руководство Managed C#; игровые модули и политика принадлежат подключающему проекту.
 
 
@@ -138,6 +138,11 @@ value types повторяют native API (`ipos.x`, `hstr()`, `timespan.millise
 `internal`, хотя Mono lookup умеет находить непубличные методы. Это входы
 dispatcher, а не обычные вспомогательные методы для прямого вызова; изменения
 учитывают контракт владельца dispatcher, синхронизации и времени жизни callback.
+`FOENTRY002` анализаторов движка сообщает о таком методе и любом другом методе,
+который движок вызывает или регистрирует через attribute, если он не `internal`;
+`FOENTRY001` отдельно сообщает о прямых вызовах entry points, привязанных к
+dispatcher, например handlers `[Event]`. См.
+[Анализаторы контрактов движка для проектов на Managed C#](../project/engine-contract-analyzers.md).
 
 У каждого backend изолированный load context, но gameplay state требует явного per-engine owner: `Game`, entity, property или ref type. Static constants и immutable type metadata допустимы; mutable caches, registries, timer gates и collections не получают владение от C# static fields.
 
@@ -183,13 +188,13 @@ RPC dispatch и ожидающие временные события испол�
 
 ## Async и планирование continuations
 
-`Game.YieldAsync(milliseconds)` — managed-аналог приостановки скрипта. Он завершается через Engine time event и продолжается через принадлежащий backend `ScriptSynchronizationContext`. Не используйте `async void`; возвращайте `Task` или `Task<T>`, чтобы движок мог наблюдать completion и faults.
+`ScriptTask.Delay(milliseconds)` (или `ScriptTask.Delay(timespan)`) из `CoreScripts/ScriptTask.cs` — managed-аналог приостановки скрипта. Он завершается через Engine time event и продолжается через принадлежащий backend `ScriptSynchronizationContext`. Не используйте `async void`; возвращайте `Task` или `Task<T>`, чтобы движок мог наблюдать completion и faults.
 
 Каждый backend владеет отдельной очередью continuation. `BaseEngine::FrameAdvance` обрабатывает только свои backend после освобождения frame-property lock. Каждая продолженная continuation снова входит в свой Engine через `RunScriptContext`; на сервере это создаёт новый synchronization context. Новая continuation ждёт следующего frame, поэтому yielding loop не может занять весь текущий frame.
 
 `Post` поднимает atomic ready flag backend, пока scheduler открыт; idle frame не входит в managed code ради проверки пустой очереди. Частично прерванный pump повторно сигнализирует об оставшейся работе для следующего frame. При shutdown scheduler закрывается до unbind, поэтому поздний post не обращается к освобождённому backend. `Native.GetAndResetContinuationPumps` даёт interop tests счётчик входов в pump.
 
-Synchronous native-result callbacks и module initialization используют private continuation queue и обрабатывают только continuations собственного await. `Game.YieldAsync` в таком контексте запрещён, потому что заблокированный caller не может продвинуть timer pump. Уже completed tasks остаются допустимыми.
+Synchronous native-result callbacks и module initialization используют private continuation queue и обрабатывают только continuations собственного await. `ScriptTask.Delay` в таком контексте запрещён, потому что заблокированный caller не может продвинуть timer pump. Уже completed tasks остаются допустимыми.
 
 `ScriptTask.Delay(timespan)` сохраняет наносекунды; `Delay(int)` переводит миллисекунды.
 Обе перегрузки запрещают синхронный callback. Масштабирование единиц использует checked-арифметику.
@@ -294,11 +299,11 @@ Generated entity properties имеют native backing. Dynamic ref types — man
 
 Мигратор значения объявляется как `///@ MigrationRule Property Critter Transform MyProp GameMigrations.RewriteMyProp`. Свойство должно существовать и иметь `Persistent`; Managed backend связывает одну статическую синхронную функцию с `[PropertyMigrator]` и точной сигнатурой `bool RewriteMyProp(ref T value, DatabaseDocument document)`. `T` — сгенерированный тип свойства. До загрузки БД отклоняются отсутствующие, неоднозначные, generic, асинхронные, неатрибутированные функции и несовпадающие сигнатуры. Связывание кэшируется; при вызове reflection не выполняется.
 
-Функция меняет отделённое значение до загрузки свойств и событий сущности. Возврат `true` сериализует результат, `false` сохраняет исходное представление точно. `DatabaseDocument.EntityType`, `Read<T>(property)` и `ReadEncoded(field)` дают исходный контекст документа. Типизированное чтение декодирует объявленные свойства и использует базовые значения прототипа при отсутствии поля; encoded-чтение предоставляет произвольное поле без предположения о его смысловом типе. Контекст заканчивается при возврате и не должен сохраняться. Все функции одного документа видят одинаковый исходный контекст, даже когда другая функция меняет соседнее свойство. Декодированные коллекции являются отделёнными копиями.
+Функция выполняется при загрузке сохранённого документа: она меняет отделённое значение до того, как документ декодируется в свойства сущности, и до того, как восстановленную сущность увидит любое событие или скрипт. Возврат `true` сериализует результат, `false` сохраняет исходное представление точно. `DatabaseDocument.EntityType`, `Read<T>(property)` и `ReadEncoded(field)` дают исходный контекст документа. Типизированное чтение декодирует объявленные свойства и использует базовые значения прототипа при отсутствии поля; encoded-чтение предоставляет произвольное поле без предположения о его смысловом типе. Контекст заканчивается при возврате и не должен сохраняться. Все функции одного документа видят одинаковый исходный контекст, даже когда другая функция меняет соседнее свойство. Декодированные коллекции являются отделёнными копиями.
 
 Все результаты подготавливаются до изменения документа. Исключение оставляет документ и очередь записи БД нетронутыми. Успешный перенос ставит только изменённые канонические поля в штатный путь коммита БД. Эта граница применяется к Game, Player, обычным сущностям, пакетной загрузке предметов и постоянным пользовательским сущностям до загрузки свойств. Это атомарная подготовка одного документа, не транзакция всей БД. Проект определяет типы ссылок, условия, коллизии и идемпотентность; движок не угадывает тип прототипа по произвольному `hstring` или `any`.
 
-Переименование имени свойства объявляется как `///@ MigrationRule Property Critter Rename MyPropOld MyPropNew`. Новое имя обязано существовать. Исторические источники указывают на текущее имя; его `Transform`, если задан, обрабатывает и значение под старым именем. Текущий ключ выигрывает у старых. Устаревшие top-level ключи могут оставаться в хранилище, поскольку коммит обновляет отдельные поля. Формы `Enum`, `Entity`, `EntityHolder` и `Version` не меняются. Пользовательские сущности только серверной роли и их правила не включаются в другие роли метаданных. Автоматическое связывание `Transform` реализовано в обоих действующих backend; несвязанная функция отвергает перенос документа, а не пропускается молча. Для удалённого свойства задайте `///@ MigrationRule Property Critter Remove MyPropOld` без замены. Финализация метаданных и bake отклоняют свойство, всё ещё объявленное под этим именем у того же владельца, включая поля RefType. Загрузка документа и текста свойств пропускает его старое значение; исторический ключ верхнего уровня может оставаться в БД. Правило сохраняется как постоянный запрет имени. Property и Proto имеют общую грамматику действий: Rename/Transform содержат пять частей, Remove — четыре; лишний аргумент Remove отклоняется.
+Переименование имени свойства объявляется как `///@ MigrationRule Property Critter Rename MyPropOld MyPropNew`. Новое имя обязано существовать. Исторические источники указывают на текущее имя; его `Transform`, если задан, обрабатывает и значение под старым именем. Текущий ключ выигрывает у старых. Устаревшие top-level ключи могут оставаться в хранилище, поскольку коммит обновляет отдельные поля. Кроме `Property` и `Proto`, runtime учитывает только `///@ MigrationRule Enum <EnumName> <OldValueName> <NewValueName>`, которое переименовывает сохранённое имя значения enum при декодировании persisted data; правило `Version` из четырёх частей в `Source/Common/Common.h` — ручной маркер совместимости Engine, и как переименование оно никогда не используется. Других видов правил с runtime-потребителем нет. Пользовательские сущности только серверной роли и их правила не включаются в другие роли метаданных. Автоматическое связывание `Transform` реализовано в обоих действующих backend; несвязанная функция отвергает перенос документа, а не пропускается молча. Для удалённого свойства задайте `///@ MigrationRule Property Critter Remove MyPropOld` без замены. Финализация метаданных и bake отклоняют свойство, всё ещё объявленное под этим именем у того же владельца, включая поля RefType. Загрузка документа и текста свойств пропускает его старое значение; исторический ключ верхнего уровня может оставаться в БД. Правило сохраняется как постоянный запрет имени. Property и Proto имеют общую грамматику действий: Rename/Transform содержат пять частей, Remove — четыре; лишний аргумент Remove отклоняется.
 
 Для изолированных фикстур используется собственный `DatabaseDocument(entityType, originalValues)` и `Migrate<T>(property, ref value)`. Это вызывает зарегистрированную типизированную функцию без создания сущности; метод не коммитит документ и не имитирует запись в БД. Постоянное сохранение проверяется отдельно настоящей загрузкой БД и перезапуском процесса.
 
@@ -413,7 +418,7 @@ Managed-обработчик события, который бросает ис�
 
 Имена методов и source locations один раз разрешаются в process-wide table, общую для всех managed backend, а затем читаются под shared lock. В именах зон нет parameter lists и запятых, потому что Tracy CSV hotspot exporter не заключает это поле в кавычки. Callbacks Mono profiler являются `noexcept` C-ABI boundaries и не должны разворачивать стек через JIT-generated code. Как читать эти зоны под entry `Script execution overrun`, описано в [профилировании](../quality/profiling.md#зоны-managed-скриптов).
 
-Используйте generated solution/project для IDE navigation и Roslyn diagnostics. Native startup и P/Invoke отлаживайте на границе host process; managed behavior — через runtime logs и focused callbacks, если подключающий проект не поддерживает проверенный managed debugger attach. UDP debugger AngelScript не отлаживает C#, и его settings нельзя выдавать за managed debugger.
+Используйте generated solution/project для IDE navigation и Roslyn diagnostics. `buildtools.py managed-project-path <main>.fomain --build-dir <build-dir>` печатает, куда `ManagedScriptBaker` их записал, а `--open` открывает solution; см. [Поиск сгенерированного управляемого проекта](../project/content-and-diagnostics-tools.md#поиск-сгенерированного-управляемого-проекта). Native startup и P/Invoke отлаживайте на границе host process; managed behavior — через runtime logs и focused callbacks, если подключающий проект не поддерживает проверенный managed debugger attach. UDP debugger AngelScript не отлаживает C#, и его settings нельзя выдавать за managed debugger.
 
 Первичные маршруты диагностики:
 
@@ -429,6 +434,7 @@ Managed-обработчик события, который бросает ис�
 | Package не находит framework type | `ManagedRuntime/runtime.manifest` и target-specific замена pack. |
 | ABI bind падает до module initialization | Stale generated `*Abi.gen.cs`, несовпадение native manifest/hash или пропущенная managed rebuild. |
 | Unsubscribe через wrapper оставляет callback активным | Ownership subscription на native entity и delegate equality; wrapper-local event state запрещён. |
+| `FOENTRY*`, `FOVERIFY*` или `FOSTATIC001` ломает сборку | Контракт правила и уровень серьёзности в `.editorconfig` в [Анализаторах контрактов движка](../project/engine-contract-analyzers.md). |
 
 ## Снимки сессии
 
@@ -463,7 +469,7 @@ Source port завершён только тогда, когда перенес�
 
 Сохраняйте public metadata names, declarations remote-call wire, property layouts, persisted identifiers и behavior, если migration намеренно их не меняет. Backend-neutral metadata не должна меняться только из-за нового синтаксиса. Запускайте оба backend во временном сравнительном lane только по явному плану проекта; не допускайте случайно двух handlers одного event или remote call.
 
-Замените AngelScript `[[ModuleInit]]`, `[[Event]]`, `[[Async]]`/`Yield` и динамические комментарии синхронизации на managed `[ModuleInit]`, `[Event]`, `Task`/`YieldAsync` и contracts cover attributes/analyzer. Портируйте Engine helpers по семантике, а не транслитерацией синтаксиса или сохранением no-op compatibility shims.
+Замените AngelScript `[[ModuleInit]]`, `[[Event]]`, `[[Async]]`/`Yield` и динамические комментарии синхронизации на managed `[ModuleInit]`, `[Event]`, `Task`/`ScriptTask.Delay` и contracts cover attributes/analyzer. Портируйте Engine helpers по семантике, а не транслитерацией синтаксиса или сохранением no-op compatibility shims.
 
 ## Граница документации проекта
 

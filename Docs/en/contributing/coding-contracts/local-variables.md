@@ -154,10 +154,13 @@ The reason is mandatory and must contain at least eight characters.
 
 The type, constness and use-after-move rules use a Clang 20+ `compile_commands.json` analyzer:
 an explicit-type checker plus `clang-query` / `clang-tidy` checks for redundant
-local constness and use after move. The engine owns only the rules above and the
-`FO_REDUNDANT_CONST_SUPPRESS` / `FO_USE_AFTER_MOVE_SUPPRESS` markers. An
-embedding project owns analyzer implementation, compile-database generation,
-scope selection, and CI policy.
+local constness and use after move. The engine owns the rules above, the
+`FO_REDUNDANT_CONST_SUPPRESS` / `FO_USE_AFTER_MOVE_SUPPRESS` markers, and the
+analyzer: the `explicit-local-types` and `local-variables` audits of
+`BuildTools/native_source_audit.py`. An embedding project owns
+compile-database generation, scope selection, baselines and CI policy, and
+runs the same commands on its native directories; see
+[Audit Native Source Rules in a Game Project](../../how-to/project/native-source-audits.md).
 
 Run all three checks over changed engine sources before publication. A project
 may extend the same gate to its native extensions, but project paths, task

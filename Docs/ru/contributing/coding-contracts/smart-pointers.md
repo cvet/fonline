@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/coding-contracts/smart-pointers.html
 ---
 
 # Умные указатели
-<!-- docs-translation: {"document_id":"smart-pointers","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/smart-pointers.md","source_sha256":"00127de2f7ad8dc83ae4397bee91938e88a859e61e5d4d9ce1f581f7dff69a4e"} -->
+<!-- docs-translation: {"document_id":"smart-pointers","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/smart-pointers.md","source_sha256":"85306ef63de77293bdcc7e4023cc772fc3b90a7d0c922d4250c30dfa7f1bd9d8"} -->
 > Документация движка. Эта страница определяет словарь native C++-указателей
 > из `Source/Essentials/SmartPointers.h`: владение, nullability, правила
 > миграции и требования к проверке.
@@ -71,11 +71,11 @@ Guard может быть ранним `if (!target) { <recover>; return; }`, п
 truthiness указателя напрямую: `target`, `size == 0 || data`; если присутствие
 сравнивается с другим bool, вычислите его явно через
 `static_cast<bool>(target)` для wrapper или `raw != nullptr` для raw pointer.
-Подключающий проект может проверять правило guard-aware анализатором над Engine
-и native extensions. Репозиторий Engine владеет правилом и wrapper/runtime
-тестами, но пока не поставляет такой анализатор. Проектная проверка
-`NullableLocalDereference` должна исправлять каждый hit в исходнике, а не
-скрывать его count baseline.
+Аудит `smart-pointer` из `BuildTools/native_source_audit.py` проверяет это
+правило как `NullableLocalDereference` во всём Engine и, с областями проекта,
+в native extensions проекта ([Аудит правил нативного кода в игровом проекте](../../how-to/project/native-source-audits.md)).
+Исправляйте каждый hit в исходнике (добавьте guard/`verify` или сузьте
+producer до `ptr<T>`), а не скрывайте его строкой baseline.
 
 **Проверенный `nptr<T>` неявно сужается до `ptr<T>`: не пишите `.as_ptr()` там,
 где ожидается `ptr<T>`.** Преобразующий конструктор проверяет non-null в точке
@@ -433,13 +433,19 @@ rg "^\s*(mutable\s+)?refcount_ptr<[^\n;]+>\s+\w+[^;{}]*\{\}\s*;" Source SourceEx
 подключающего проекта. При изменении native bindings или exported signatures
 дополнительно выполняйте script compilation/baking validation проекта.
 
-Engine пока не поставляет whole-tree textual/AST smart-pointer checker.
-Подключающий проект может хранить migration guards, но его commands, task names,
-baselines и allowlists не являются нормативным доказательством движка.
+`BuildTools/native_source_audit.py` является whole-tree checker этой политики.
+Его текстовый аудит `smart-pointer` проверяет borrows, owners, `std::` owners,
+reference members, guarded nullable dereference и raw pointers вне распознанных
+ABI-форм; аудит `smart-pointer-ast` проверяет raw pointer variables, fields,
+parameters и returns на новых строках по настоящему `compile_commands.json`.
+Engine запускает их над `Source/` со своим baseline, а подключающий проект
+запускает те же команды над своими native-каталогами со своими областями,
+конфигурацией и baseline.
 
-Проектный checker должен применять точные line-level allowlists только для
-проверенных ABI/low-level boundaries, а не count budgets; напрямую запрещать
-class reference members и unguarded nullable dereference; отличать inventory
-nullable owner от violation; использовать настоящий `compile_commands.json`
-для AST. Перенесите checker в `BuildTools/` и добавьте Engine-owned tests прежде,
-чем объявлять его стандартной командой этой документации.
+Строки baseline сопоставляются с точными строками исходника и содержат
+письменную причину, а не count budgets, поэтому проверенная ABI/low-level
+boundary остаётся видимой, а новое нарушение не прячется за исправленным;
+строка, которая больше ничему не соответствует, падает как устаревшая. ABI-формы
+и nullable C-фабрики проекта задаются в конфигурации аудита, а правила указателей
+только для проекта живут в отдельном checker проекта рядом с обёрткой, а не в
+копии аудита Engine. См. [Аудит правил нативного кода в игровом проекте](../../how-to/project/native-source-audits.md).

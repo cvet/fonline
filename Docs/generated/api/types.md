@@ -3290,6 +3290,19 @@ Continue with the [canonical reference](../../en/reference/script-api/types.md).
 <a id="symbol-script-ref-method-common-movingcontext-iscompleted-cfbdf78e77"></a>
 - [`symbol-script-ref-method-common-movingcontext-iscompleted-cfbdf78e77`](../../en/reference/script-api/types.md#symbol-script-ref-method-common-movingcontext-iscompleted-cfbdf78e77)
 
+<a id="symbol-script-ref-type-server-serverimage-822f4e24fc"></a>
+- [`symbol-script-ref-type-server-serverimage-822f4e24fc`](../../en/reference/script-api/types.md#symbol-script-ref-type-server-serverimage-822f4e24fc)
+
+### <code>ServerImage</code>
+
+Continue with the [canonical reference](../../en/reference/script-api/types.md).
+
+<a id="symbol-script-ref-method-server-serverimage-getcolor-b0fae0b50a"></a>
+- [`symbol-script-ref-method-server-serverimage-getcolor-b0fae0b50a`](../../en/reference/script-api/types.md#symbol-script-ref-method-server-serverimage-getcolor-b0fae0b50a)
+
+<a id="symbol-script-ref-method-server-serverimage-getsize-091a93fd2c"></a>
+- [`symbol-script-ref-method-server-serverimage-getsize-091a93fd2c`](../../en/reference/script-api/types.md#symbol-script-ref-method-server-serverimage-getsize-091a93fd2c)
+
 <a id="symbol-script-ref-type-client-spritepattern-338f66b808"></a>
 - [`symbol-script-ref-type-client-spritepattern-338f66b808`](../../en/reference/script-api/types.md#symbol-script-ref-type-client-spritepattern-338f66b808)
 

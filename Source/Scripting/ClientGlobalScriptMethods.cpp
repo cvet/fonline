@@ -2119,4 +2119,158 @@ FO_SCRIPT_API void Client_Game_SetScreenKeyboard(ptr<ClientEngine> client, bool 
     client->SprMngr.GetInput()->SetScreenKeyboardEnabled(enabled);
 }
 
+#if FO_HAVE_AI_CONTROL
+static auto GetAiControlListener(ptr<ClientEngine> client) -> ptr<AiControlListener>
+{
+    auto listener {client->GetAiControl()};
+
+    if (!listener) {
+        throw AiControlException("AiControl listener is already released by client shutdown");
+    }
+
+    return listener;
+}
+#endif
+
+// Returns whether this build compiled the development AiControl listener (FO_AI_CONTROL on a desktop platform)
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Client_Game_AiControlAvailable(ptr<ClientEngine> client)
+{
+    ignore_unused(client);
+
+#if FO_HAVE_AI_CONTROL
+    return true;
+#else
+    return false;
+#endif
+}
+
+// Starts the AiControl listener with project-supplied endpoint, token and bounds; throws when the build excludes it, it already runs, or the configuration is unsafe
+///@ ExportMethod
+FO_SCRIPT_API void Client_Game_AiControlStart(ptr<ClientEngine> client, string_view host, int32_t port, string_view token, int32_t maxQueuedCommands, int32_t maxEvents)
+{
+#if FO_HAVE_AI_CONTROL
+    if (port <= 0 || port > std::numeric_limits<uint16_t>::max()) {
+        throw AiControlException("Invalid AiControl port", port);
+    }
+
+    AiControlListenerConfig config {};
+    config.Host = string {host};
+    config.Port = numeric_cast<uint16_t>(port);
+    config.Token = string {token};
+    config.MaxQueuedCommands = maxQueuedCommands;
+    config.MaxEvents = maxEvents;
+
+    GetAiControlListener(client)->Start(config);
+#else
+    ignore_unused(client, host, port, token, maxQueuedCommands, maxEvents);
+    throw AiControlException("AiControl listener is not compiled into this build");
+#endif
+}
+
+// Stops the AiControl listener, closes its connection and fails still queued commands; does nothing when it is not running
+///@ ExportMethod
+FO_SCRIPT_API void Client_Game_AiControlStop(ptr<ClientEngine> client)
+{
+#if FO_HAVE_AI_CONTROL
+    if (auto listener {client->GetAiControl()}) {
+        listener->Stop();
+    }
+#else
+    ignore_unused(client);
+#endif
+}
+
+// Returns whether the AiControl listener thread is accepting connections
+///@ ExportMethod
+FO_SCRIPT_API bool Client_Game_AiControlIsRunning(ptr<ClientEngine> client)
+{
+#if FO_HAVE_AI_CONTROL
+    auto listener {client->GetAiControl()};
+    return listener && listener->IsRunning();
+#else
+    ignore_unused(client);
+    return false;
+#endif
+}
+
+// Takes the next queued command that no native handler claims and returns false when none is queued; paramsJson keeps the complete act params object
+///@ ExportMethod
+FO_SCRIPT_API bool Client_Game_AiControlPullCommand(ptr<ClientEngine> client, uint32_t& commandSeq, string& type, ident_t& targetId, ident_t& itemId, ident_t& auxId, int32_t& x, int32_t& y, int32_t& screenX, int32_t& screenY, int32_t& intArg, string& stringArg, bool& append, string& paramsJson)
+{
+    AiControlCommand command {};
+
+#if FO_HAVE_AI_CONTROL
+    auto listener {client->GetAiControl()};
+    bool pulled {listener && listener->TryPullCommand(command)};
+#else
+    ignore_unused(client);
+    bool pulled {false};
+#endif
+
+    commandSeq = command.Seq;
+    type = std::move(command.Type);
+    targetId = command.TargetId;
+    itemId = command.ItemId;
+    auxId = command.AuxId;
+    x = command.X;
+    y = command.Y;
+    screenX = command.ScreenX;
+    screenY = command.ScreenY;
+    intArg = command.IntArg;
+    stringArg = std::move(command.StringArg);
+    append = command.Append;
+    paramsJson = std::move(command.ParamsJson);
+
+    return pulled;
+}
+
+// Replaces the published observation with a complete JSON object snapshot; throws for invalid JSON, a non-object or an oversized snapshot
+///@ ExportMethod
+FO_SCRIPT_API void Client_Game_AiControlSetObservation(ptr<ClientEngine> client, string_view observationJson)
+{
+#if FO_HAVE_AI_CONTROL
+    GetAiControlListener(client)->SetObservation(observationJson);
+#else
+    ignore_unused(client, observationJson);
+    throw AiControlException("AiControl listener is not compiled into this build");
+#endif
+}
+
+// Appends one project event object to the bounded AiControl event history
+///@ ExportMethod
+FO_SCRIPT_API void Client_Game_AiControlPushEvent(ptr<ClientEngine> client, string_view eventJson)
+{
+#if FO_HAVE_AI_CONTROL
+    GetAiControlListener(client)->PushEvent(eventJson);
+#else
+    ignore_unused(client, eventJson);
+    throw AiControlException("AiControl listener is not compiled into this build");
+#endif
+}
+
+// Appends the terminal command_completed event for a pulled command
+///@ ExportMethod
+FO_SCRIPT_API void Client_Game_AiControlCompleteCommand(ptr<ClientEngine> client, uint32_t commandSeq, bool success, string_view message)
+{
+#if FO_HAVE_AI_CONTROL
+    GetAiControlListener(client)->CompleteCommand(commandSeq, success, message);
+#else
+    ignore_unused(client, commandSeq, success, message);
+    throw AiControlException("AiControl listener is not compiled into this build");
+#endif
+}
+
+// Returns the listener status object served by the status method as JSON text
+///@ ExportMethod
+FO_SCRIPT_API string Client_Game_AiControlGetStatus(ptr<ClientEngine> client)
+{
+#if FO_HAVE_AI_CONTROL
+    return GetAiControlListener(client)->GetStatusJson();
+#else
+    ignore_unused(client);
+    throw AiControlException("AiControl listener is not compiled into this build");
+#endif
+}
+
 FO_END_NAMESPACE

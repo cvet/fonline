@@ -5,7 +5,7 @@ document_id: native-extension-sample-readme
 ---
 
 # Пример native-расширения FOnline
-<!-- docs-translation: {"document_id":"native-extension-sample-readme","locale":"ru","source_path":"Examples/NativeExtensionSample/README.md","source_sha256":"2b20525120004086efe0011fdd84e8deba8279546849a9e4907a715309b335dc"} -->
+<!-- docs-translation: {"document_id":"native-extension-sample-readme","locale":"ru","source_path":"Examples/NativeExtensionSample/README.md","source_sha256":"bc9c2509616ed78cec41cf3756368bcb2fa4a73b80145bd3ecd24e407b207495"} -->
 Этот принадлежащий движку проект показывает полный путь проектного C++-расширения без игровых сервисов и сторонних SDK. Он отделён от минимального starter-проекта, чтобы границы владения native-кодом и совместимости оставались явными.
 
 Пример доказывает следующее:
@@ -40,7 +40,7 @@ cmake --build --preset linux-check
 На Linux сначала установите зависимости, определённые закреплённой ревизией Engine:
 
 ```bash
-Engine/BuildTools/prepare-workspace.sh linux-packages linux
+Engine/BuildTools/prepare-workspace.sh linux-packages
 ```
 
 Успех подтверждают native- и runtime-маркеры:

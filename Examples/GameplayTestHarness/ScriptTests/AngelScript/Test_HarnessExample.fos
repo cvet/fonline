@@ -1,0 +1,51 @@
+// Example suite for the copyable harness: registration, expectations and a deferred test resumed by a time event
+// A game suite keeps its own fixtures, content ids and cleanup in files like this one
+namespace Test_HarnessExample
+{
+
+#if SERVER
+
+[[ModuleInit]]
+void InitTestHarnessExample()
+{
+    Game.OnTestingInit.Subscribe(OnTestingInit);
+}
+
+[[Event]]
+void OnTestingInit()
+{
+    Testing::RegisterTest("harness_example", "split_drops_empty_entries", SplitDropsEmptyEntries);
+    Testing::RegisterTest("harness_example", "time_event_completes_a_deferred_test", TimeEventCompletesADeferredTest, 2000);
+}
+
+void SplitDropsEmptyEntries(Testing::TestContext ctx)
+{
+    string[] parts = "alpha,,beta".split(",", true);
+    if (!Testing::ExpectEq(ctx, parts.length(), 2, "Split entry count")) {
+        return;
+    }
+
+    Testing::ExpectStrEq(ctx, parts[1], "beta", "Second entry");
+}
+
+void TimeEventCompletesADeferredTest(Testing::TestContext ctx)
+{
+    Testing::Defer(ctx);
+    Game.StartTimeEvent(Testing::Milliseconds(50), FinishDeferredTest, ctx.Id);
+}
+
+[[TimeEvent]]
+void FinishDeferredTest(any value)
+{
+    // A null context means the watchdog already failed this test
+    Testing::TestContext? ctx = Testing::Resume(int(value));
+    if (ctx == null) {
+        return;
+    }
+
+    Testing::Pass(ctx);
+}
+
+#endif
+
+}

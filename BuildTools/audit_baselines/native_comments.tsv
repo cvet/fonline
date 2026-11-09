@@ -1,0 +1,4 @@
+# Accepted native comment findings for check_native_source_layout.py --comments; counts may only go down
+rule	path	count	reason
+comment-length	Source/Common/ImGuiExt/ImGuiConfig.h	13	The file mirrors upstream Dear ImGui imconfig.h, comments included, so upstream updates stay a reviewable diff.
+comment-length	Source/Frontend/Rendering.h	7	GLSL uniform-buffer layout maps document channel semantics that no C++ declaration carries; the longer explanations still need a move to the rendering reference.

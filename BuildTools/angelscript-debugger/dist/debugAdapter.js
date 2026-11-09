@@ -6,7 +6,11 @@ var __getOwnPropNames = Object.getOwnPropertyNames;
 var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __commonJS = (cb, mod) => function __require() {
-  return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
+  try {
+    return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
+  } catch (e) {
+    throw mod = 0, e;
+  }
 };
 var __copyProps = (to, from, except, desc) => {
   if (from && typeof from === "object" || typeof from === "function") {
@@ -2580,14 +2584,14 @@ async function resolveAttachTarget(args2, _readTextFile) {
     throw new Error(`No debugger targets discovered on UDP port ${discoveryPort}.`);
   }
   const processId = normalizeProcessId(args2.processId);
-  if (processId) {
-    const matched = targets.find((t) => t.processId === processId);
-    if (!matched) {
-      throw new Error(`No discovered debugger target with processId '${processId}'.`);
-    }
-    return matched;
+  const matched = matchAttachTargets(targets, processId);
+  if (matched.length === 0) {
+    throw new Error(`No discovered debugger target with processId '${processId}'.`);
   }
-  return targets[0];
+  return matched[0];
+}
+function matchAttachTargets(targets, processId) {
+  return processId ? targets.filter((target) => target.processId === processId) : targets;
 }
 function normalizeProcessId(value) {
   if (!value) {

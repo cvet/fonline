@@ -14,6 +14,8 @@ Builds normally start in an embedding project. Use [Build Workflow](../Docs/en/h
 
 The exact main `buildtools.py` command surface is generated from its executable parser. Browse the [BuildTools CLI reference](../Docs/en/reference/buildtools/index.md) or the [canonical JSON model](../Docs/generated/cli.json) instead of maintaining a separate command inventory.
 
+`buildtools.py` requires Python 3.12 or newer (`MIN_PYTHON_VERSION`; it passes `onexc=` to `shutil.rmtree`). Every command, `host-check` included, first compares the running interpreter with that floor and stops with `BuildTools requires Python 3.12 or newer, but <path> is Python <version>`; a Python 2 interpreter cannot parse the file and stops with a `SyntaxError`. The wrappers choose an interpreter that meets the floor: the `.sh` scripts source `find-python.sh`, which tries `python3`, then the newest `python3.N` on `PATH`, then `python`; the `.cmd` scripts call `find-python.cmd` and `prepare-win-workspace.ps1` probes the same way, trying `py -3` and then `python`. When no candidate qualifies, the wrapper exits with `Python 3.12 or newer not found`.
+
 Engine-owned helper scripts use a separate manifest-backed surface. Browse the [helper CLI reference](../Docs/en/reference/helper-cli/index.md) or [canonical JSON model](../Docs/generated/helper-cli.json) for codegen, Mono compilation, coverage, gameplay-test orchestration, Windows 7 import validation, Android-device, local-web-server, and MSI commands. The executable parsers own syntax; `HelperCliInterface.json` owns purpose, audience, invocation owner, and the explicit boundary from the main CLI and packager.
 
 `gameplay_test_runner.py` executes checked multi-process smoke manifests with readiness, required/forbidden markers, one scenario deadline, cleanup, and a compact JSON report. Its reusable testing contract and real headless server/client proof are documented in [Gameplay and Integration Testing](../Docs/en/how-to/testing/gameplay-and-integration.md).
@@ -228,7 +230,8 @@ existing `SingleZip` without duplicate or stale entries.
 
 ## Build environment variables
 
-Build scripts (sh/bat) can be called both from current directory (e.g. `./linux.sh`) or repository root (e.g. `BuildTools/linux.sh`).  
+Build scripts (sh/cmd) can be called both from the `BuildTools` directory (e.g. `./build.sh`) or from the repository root (e.g. `BuildTools/build.sh`).
+
 Following environment variables may be set before starting build scripts:
 
 BuildTools consumes only project-specific overrides with the `FO_` prefix. Any declared project-interface option can be overridden from an environment variable with the same name; the exact list and precedence are in the [generated options reference](../Docs/en/reference/cmake/options.md). Standard tool variables such as `ANDROID_HOME`, `ANDROID_SDK_ROOT`, and `ANDROID_NDK_ROOT` are reserved for spawned external tools and are not read as BuildTools inputs.
@@ -285,7 +288,7 @@ Linux system package installation is explicit and separate from workspace prepar
 - `msi-packages`
 - `all-packages`
 
-Workspace features such as `linux`, `web`, `android-arm64`, and `windows-cross` do not install apt packages. On a fresh host, pass the matching `*-packages` feature first. `all-packages` installs every group above (including `php-cli` and `msi-packages`, the `wixl` MSI-installer toolset). Because apt lives only on the host-provisioning path, no `prepare-workspace` part installs system packages, and parallel CI jobs never contend for the apt lock.
+Workspace features such as `web`, `android-arm64`, and `windows-cross` do not install apt packages. On a fresh host, pass the matching `*-packages` feature first. `all-packages` installs every group above (including `php-cli` and `msi-packages`, the `wixl` MSI-installer toolset). Because apt lives only on the host-provisioning path, no `prepare-workspace` part installs system packages, and parallel CI jobs never contend for the apt lock.
 
 Host prerequisite checks are also available through the main tool:
 
@@ -319,6 +322,8 @@ Host wrapper scripts now delegate to the unified workspace preparation command:
 - `buildtools.py prepare-host-workspace linux ...`
 - `buildtools.py prepare-host-workspace windows ...`
 - `buildtools.py prepare-host-workspace macos ...`
+
+Each host accepts only the features that prepare something on it: Linux accepts the package groups above plus `toolset`, `web`, `android-arm32`, `android-arm64`, `android-x86`, `dotnet`, `windows-cross`, `msan-libcxx` and `all`; Windows accepts `toolset`, `web`, `wix` and `all`; macOS accepts none, so `prepare-host-workspace macos` only runs the host check. Any other name, including the retired `linux` and `packages`, fails with exit code 2 and a message that lists the names the host accepts. The wrappers turn the word `check` into `--check` and forward every other argument unchanged, so `buildtools.py` is the only owner of this vocabulary and a misspelled feature fails instead of being dropped.
 
 Emscripten version is pinned by `Engine/ThirdParty/emscripten` and installed into `Workspace/emsdk`.
 On Windows, BuildTools runs `emsdk.py` with its own `sys.executable`; a different legacy `python` earlier
@@ -588,7 +593,7 @@ key that clients pin; `public` prints it again later. The script needs nothing b
 
 ## Source formatting
 
-`buildtools.py format-source` formats the Engine `Source/` tree, including `.fos`, with clang-format. The binary is resolved by `discover_clang_format()`: the `FO_CLANG_FORMAT` override first (when set), then `clang-format-20`/`clang-format` on `PATH`; the resolved binary must report major version 20. BuildTools then repairs AngelScript nullable and named-argument forms that clang-format parses as C++. The complete contract and embedding-project boundary are in [AngelScript Style and Refactoring](../Docs/en/how-to/scripting/style-and-refactoring.md).
+`buildtools.py format-source` formats the `.cpp`, `.h` and `.cs` files of the Engine `Source/` tree with clang-format; that tree contains no `.fos` files. A project formats its own AngelScript by calling the importable `format_files(clang_format, root, patterns)` with a `*.fos` pattern, which applies the `fix_fos_nullable_suffix` repair to every `.fos` file it formats. The binary is resolved by `discover_clang_format()`: the `FO_CLANG_FORMAT` override first (when set), then `clang-format-20`/`clang-format` on `PATH`; the resolved binary must report major version 20. BuildTools then repairs AngelScript nullable and named-argument forms that clang-format parses as C++. The complete contract and embedding-project boundary are in [AngelScript Style and Refactoring](../Docs/en/how-to/scripting/style-and-refactoring.md). `buildtools.py format-content` formats the Engine-owned content formats of a project, its `.fomain` and prototype files, and with `--fos <glob>` its AngelScript through the same wrapper; see [Format Game Content Files](../Docs/en/how-to/project/format-content.md).
 
 ## Temporary compatibility dates
 

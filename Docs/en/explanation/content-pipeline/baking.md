@@ -191,7 +191,7 @@ Both incremental and forced bakes produce the complete loose tree. Disabled filt
 With `Baking.FilterResources = True`, `ResourceUsage::CollectReferences()` re-reads root references from the baked output on every run, including cache hits; a previous manifest is never reused as a source. Roots are:
 
 - the `Render.ImGuiDefaultEffect`, `Render.CritterStubSpriteName` and `Render.ItemStubSpriteName` settings, from the applied config and the baked client config;
-- every resource-typed property of every typed baked prototype — server and client metadata, including `FixedType` rows from `.foinfo` files — through `ResourceUsage::AddProperties()`;
+- every resource-typed property of every typed baked prototype — server and client metadata, including `FixedType` rows from authored prototype containers — through `ResourceUsage::AddProperties()`;
 - the same resource-typed properties of placed map entities (critters on the server side, items on both sides), restored from the baked map blobs.
 
 `AddProperties` is a typed property read, not a scan of arbitrary strings: it visits only properties whose base type is resource, and only a nonempty scalar `hstring` or a nonempty `hstring[]` array; any other resource-typed shape is a baking error. Each root must name an actual baked output path — a reference with no baked provider fails manifest creation with `Referenced resource has no baked output`, so root paths always map to the names bakers actually wrote.
@@ -222,7 +222,7 @@ grouped by source map, entity type and property rather than repeated for placeme
 
 ### Forced inclusion for opaque runtime names
 
-With filtering enabled, opaque JSON/INI, Spine and script-composed names need explicit roots. The registry has no wildcards, recursion, arbitrary-string scanning, constructor interception or silent full-export fallback. Declare an ordinary `FixedType`, such as `ResourceSet` with an `hstring[] Resource` `Files` property, and populate `.foinfo` rows: the same collector reads their typed resource properties. No type name has special parsing and no constructors execute. With default `False`, all current outputs ship and these catalogs are unnecessary.
+With filtering enabled, opaque JSON/INI, Spine and script-composed names need explicit roots. The registry has no wildcards, recursion, arbitrary-string scanning, constructor interception or silent full-export fallback. Declare an ordinary `FixedType`, such as `ResourceSet` with an `hstring[] Resource` `Files` property, and populate its rows: the same collector reads their typed resource properties. No type name has special parsing and no constructors execute. With default `False`, all current outputs ship and these catalogs are unnecessary.
 
 Declare:
 
@@ -239,6 +239,8 @@ $Name = Startup
 Files = "Interface/Example With Space.png" \
  "Music/Example.ogg"
 ```
+
+These rows are ordinary prototype sections. The `Proto` baker reads them only in a pack whose `Bakers` include `Proto`, and only from files whose extension is listed in `Baking.ProtoFileExtensions` (default `fopro`). Rows in a `.foinfo` file therefore need `foinfo` added to that list, such as `Baking.ProtoFileExtensions = fopro foinfo` in `BuildTools/tests/check_resource_usage_pipeline.py` (keep the extensions the project already lists, such as `fomap`); otherwise author them in a `.fopro` file. The `.foinfo` files that Engine bakers write, `SpriteInfo/<PackName>.foinfo` and `ModelAnimationInfo.foinfo`, are baked sprite and model-animation indexes, not authored catalogs.
 
 ## CMake entry points
 
@@ -538,6 +540,8 @@ Mature projects and the independent TLA codebase converge on a few useful practi
 - use one side-only flag when a pack truly belongs only to server, client, or mapper; an unflagged pack is delivered to server and client;
 - prefer authored directories for normal source and `InputFiles` for mounted archives or data packs; do not edit baked output as source;
 - run a force bake after an Engine revision, baker contract, global metadata, or dependency-graph change that invalidates more than timestamp-based incremental detection can prove.
+
+`Baking.IgnoreInputDirs` (`string[]`, empty by default) removes input directories from baking. `Settings.inc` defines it as "Resource pack input directories left out of every pack, relative to the config declaring the pack; each must be an input of some pack". Each entry resolves against every pack's `ConfigDir` and removes an identical `InputDirs` entry; it does not filter a subdirectory of another listed input, because input directories are mounted recursively. Set it in a shipping sub-config to keep a separate directory, for example test scripts, out of shipping packs. An entry that is no pack's input fails settings application with a `SettingsException`, so a misspelled entry cannot ship the directory silently. `Source/Tests/Test_Settings.cpp` pins both behaviors; [Project Tests](../../how-to/project/project-tests.md#keep-test-sources-out-of-shipping-packs) shows the setup.
 
 For the exact project-configuration grammar and precedence rules, see [Configure a Game Project](../../how-to/build/project-configuration.md). For generated-source ownership and recovery order, see [Generated Content Workflow](../../how-to/build/generated-content.md).
 

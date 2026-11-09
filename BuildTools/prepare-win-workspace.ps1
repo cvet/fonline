@@ -26,60 +26,56 @@ Write-Host "- FO_WORKSPACE=$FO_WORKSPACE"
 
 $buildToolsPy = Join-Path $PSScriptRoot "buildtools.py"
 
+# Returns the first interpreter that meets MIN_PYTHON_VERSION in buildtools.py, preferring the py launcher
 Function Get-PythonCommand {
-    if (Get-Command py -ErrorAction SilentlyContinue) {
-        return @("py", "-3")
-    }
-
-    return @("python")
-}
-
-Function Invoke-BuildTools {
-    Param (
-        [string[]] $Arguments
+    $ErrorActionPreference = "Continue"
+    $probe = "import sys; sys.exit(int(sys.version_info < (3, 12)))"
+    $candidates = @(
+        [pscustomobject]@{ Executable = "py"; Arguments = @("-3") },
+        [pscustomobject]@{ Executable = "python"; Arguments = @() }
     )
 
-    $pythonCommand = Get-PythonCommand
-    if ($pythonCommand.Length -gt 1) {
-        & $pythonCommand[0] $pythonCommand[1..($pythonCommand.Length - 1)] $buildToolsPy @Arguments
+    foreach ($candidate in $candidates) {
+        if (Get-Command $candidate.Executable -ErrorAction SilentlyContinue) {
+            $candidateArgs = $candidate.Arguments
+            & $candidate.Executable @candidateArgs -c $probe 2>&1 | Out-Null
+            if ($LASTEXITCODE -eq 0) {
+                return $candidate
+            }
+        }
     }
-    else {
-        & $pythonCommand[0] $buildToolsPy @Arguments
-    }
-    if ($LASTEXITCODE -ne 0) {
-        throw "BuildTools failed with exit code $LASTEXITCODE"
-    }
+
+    throw "Python 3.12 or newer not found (tried py -3 and python)"
 }
+
+$python = Get-PythonCommand
 
 if (!(Test-Path $FO_WORKSPACE)) {
     New-Item -Path "$FO_WORKSPACE" -ItemType Directory | Out-Null
 }
 
+# Feature names pass through unchanged: buildtools.py owns the vocabulary and rejects names Windows does not support
 $checkOnly = $args -contains "check"
-$knownFeatures = @("packages", "linux", "web", "android-arm32", "android-arm64", "android-x86", "toolset", "dotnet", "all")
+$features = @($args | Where-Object { $_ -ne "check" })
 
-$filteredArgs = @()
-foreach ($arg in $args) {
-    if (($arg -ne "check") -and ($knownFeatures -contains $arg)) {
-        $filteredArgs += $arg
-    }
-}
-
-$buildToolsArgs = @("prepare-host-workspace", "windows") + $filteredArgs
+$buildToolsArgs = @("prepare-host-workspace", "windows") + $features
 if ($checkOnly) {
     $buildToolsArgs += "--check"
 }
 
-try {
-    Invoke-BuildTools -Arguments $buildToolsArgs
+$pythonArgs = $python.Arguments
+& $python.Executable @pythonArgs $buildToolsPy @buildToolsArgs
+$exitCode = $LASTEXITCODE
+
+if ($exitCode -eq 0) {
     Write-Host "Workspace is ready!"
     exit 0
 }
-catch {
-    if ($checkOnly) {
-        Write-Host "Workspace is not ready!"
-        exit 10
-    }
 
-    throw
+# Exit code 2 is an argument error rather than a missing workspace part
+if ($checkOnly -and ($exitCode -ne 2)) {
+    Write-Host "Workspace is not ready!"
+    exit 10
 }
+
+throw "BuildTools failed with exit code $exitCode"

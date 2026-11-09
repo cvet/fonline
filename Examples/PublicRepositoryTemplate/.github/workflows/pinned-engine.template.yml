@@ -23,11 +23,11 @@ jobs:
       - name: Prepare Linux build dependencies
         if: runner.os == 'Linux'
         shell: bash
-        run: Engine/BuildTools/prepare-workspace.sh linux-packages linux
-      - name: Prepare Content Showcase display and Web dependencies
+        run: Engine/BuildTools/prepare-workspace.sh linux-packages
+      - name: Prepare Content Showcase Web dependencies
         if: runner.os == 'Linux' && '{{REPOSITORY_ID}}' == 'content-showcase'
         shell: bash
-        run: Engine/BuildTools/prepare-workspace.sh showcase-display-packages web-packages web
+        run: Engine/BuildTools/prepare-workspace.sh web-packages web
       - name: Install Content Showcase browser runtime
         if: runner.os == 'Linux' && '{{REPOSITORY_ID}}' == 'content-showcase'
         working-directory: WebTests

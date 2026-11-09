@@ -21,8 +21,8 @@
   },
   "program": "buildtools.py",
   "description": "Shared BuildTools helpers",
-  "usage": "usage: buildtools.py [-h] {env,build,validate,setup-mono,format-source,toolset,build-auxiliary,prepare-workspace,repair-checkout-case,package-web-debug,package-android-debug,host-check,prepare-host-workspace} ...",
-  "help_output": "usage: buildtools.py [-h] {env,build,validate,setup-mono,format-source,toolset,build-auxiliary,prepare-workspace,repair-checkout-case,package-web-debug,package-android-debug,host-check,prepare-host-workspace} ...\n\nShared BuildTools helpers\n\npositional arguments:\n  {env,build,validate,setup-mono,format-source,toolset,build-auxiliary,prepare-workspace,repair-checkout-case,package-web-debug,package-android-debug,host-check,prepare-host-workspace}\n    env                 resolve BuildTools environment\n    build               configure and build a target\n    validate            configure and validate scenarios\n    setup-mono          prepare mono runtime\n    format-source       format engine source files\n    toolset             build an existing toolset target\n    build-auxiliary     build a separately packaged auxiliary tool\n    prepare-workspace   prepare shared workspace parts\n    repair-checkout-case\n                        realign working-tree entry names with the git index\n    package-web-debug   package the local web debug client\n    package-android-debug\n                        package the local android debug client\n    host-check          check host prerequisites\n    prepare-host-workspace\n                        prepare host workspace and prerequisites\n\noptions:\n  -h, --help            show this help message and exit\n",
+  "usage": "usage: buildtools.py [-h]\n                     {env,build,validate,setup-mono,format-source,format-content,toolset,build-auxiliary,prepare-workspace,repair-checkout-case,package-web-debug,package-android-debug,managed-project-path,host-check,prepare-host-workspace} ...",
+  "help_output": "usage: buildtools.py [-h]\n                     {env,build,validate,setup-mono,format-source,format-content,toolset,build-auxiliary,prepare-workspace,repair-checkout-case,package-web-debug,package-android-debug,managed-project-path,host-check,prepare-host-workspace} ...\n\nShared BuildTools helpers\n\npositional arguments:\n  {env,build,validate,setup-mono,format-source,format-content,toolset,build-auxiliary,prepare-workspace,repair-checkout-case,package-web-debug,package-android-debug,managed-project-path,host-check,prepare-host-workspace}\n    env                 resolve BuildTools environment\n    build               configure and build a target\n    validate            configure and validate scenarios\n    setup-mono          prepare mono runtime\n    format-source       format engine source files\n    format-content      format project .fomain, prototype and optional AngelScript files\n    toolset             build an existing toolset target\n    build-auxiliary     build a separately packaged auxiliary tool\n    prepare-workspace   prepare shared workspace parts\n    repair-checkout-case\n                        realign working-tree entry names with the git index\n    package-web-debug   package the local web debug client\n    package-android-debug\n                        package the local android debug client\n    managed-project-path\n                        print the generated managed C# project and solution paths\n    host-check          check host prerequisites\n    prepare-host-workspace\n                        prepare host workspace and prerequisites\n\noptions:\n  -h, --help            show this help message and exit\n",
   "global_arguments": [],
   "commands": [
     {
@@ -223,6 +223,144 @@
       "usage": "usage: buildtools.py format-source [-h]",
       "help_output": "usage: buildtools.py format-source [-h]\n\noptions:\n  -h, --help  show this help message and exit\n",
       "arguments": []
+    },
+    {
+      "id": "cli.buildtools.command.format-content",
+      "name": "format-content",
+      "summary": "format project .fomain, prototype and optional AngelScript files",
+      "description": null,
+      "usage": "usage: buildtools.py format-content [-h] [--check] [--project-root PROJECT_ROOT] [--fomain FOMAIN] [--skip-fomain] [--skip-protos] [--proto-path PATH] [--metadata PATH] [--fos PATTERN]",
+      "help_output": "usage: buildtools.py format-content [-h] [--check] [--project-root PROJECT_ROOT] [--fomain FOMAIN] [--skip-fomain] [--skip-protos] [--proto-path PATH] [--metadata PATH] [--fos PATTERN]\n\noptions:\n  -h, --help            show this help message and exit\n  --check               report files that need formatting and exit with 1 without writing\n  --project-root PROJECT_ROOT\n                        project root for relative paths and the .fomain lookup (default: FO_PROJECT_ROOT, then the current directory)\n  --fomain FOMAIN       main config path (default: the only *.fomain file in the project root)\n  --skip-fomain         do not format the main config\n  --skip-protos         do not format prototype files\n  --proto-path PATH     format only these prototype files or directories instead of the Proto resource packs (repeatable)\n  --metadata PATH       read property and setting order from these files, in this order, instead of the Metadata resource packs (repeatable)\n  --fos PATTERN         also format AngelScript files matching this glob relative to the project root with clang-format 20 (repeatable)\n",
+      "arguments": [
+        {
+          "id": "cli.buildtools.command.format-content.argument.check",
+          "destination": "check",
+          "kind": "option",
+          "action": "store_true",
+          "option_strings": [
+            "--check"
+          ],
+          "metavar": null,
+          "required": false,
+          "nargs": 0,
+          "choices": null,
+          "default": false,
+          "type": null,
+          "description": "report files that need formatting and exit with 1 without writing"
+        },
+        {
+          "id": "cli.buildtools.command.format-content.argument.project_root",
+          "destination": "project_root",
+          "kind": "option",
+          "action": "store",
+          "option_strings": [
+            "--project-root"
+          ],
+          "metavar": null,
+          "required": false,
+          "nargs": 1,
+          "choices": null,
+          "default": null,
+          "type": null,
+          "description": "project root for relative paths and the .fomain lookup (default: FO_PROJECT_ROOT, then the current directory)"
+        },
+        {
+          "id": "cli.buildtools.command.format-content.argument.fomain",
+          "destination": "fomain",
+          "kind": "option",
+          "action": "store",
+          "option_strings": [
+            "--fomain"
+          ],
+          "metavar": null,
+          "required": false,
+          "nargs": 1,
+          "choices": null,
+          "default": null,
+          "type": null,
+          "description": "main config path (default: the only *.fomain file in the project root)"
+        },
+        {
+          "id": "cli.buildtools.command.format-content.argument.skip_fomain",
+          "destination": "skip_fomain",
+          "kind": "option",
+          "action": "store_true",
+          "option_strings": [
+            "--skip-fomain"
+          ],
+          "metavar": null,
+          "required": false,
+          "nargs": 0,
+          "choices": null,
+          "default": false,
+          "type": null,
+          "description": "do not format the main config"
+        },
+        {
+          "id": "cli.buildtools.command.format-content.argument.skip_protos",
+          "destination": "skip_protos",
+          "kind": "option",
+          "action": "store_true",
+          "option_strings": [
+            "--skip-protos"
+          ],
+          "metavar": null,
+          "required": false,
+          "nargs": 0,
+          "choices": null,
+          "default": false,
+          "type": null,
+          "description": "do not format prototype files"
+        },
+        {
+          "id": "cli.buildtools.command.format-content.argument.proto_path",
+          "destination": "proto_path",
+          "kind": "option",
+          "action": "append",
+          "option_strings": [
+            "--proto-path"
+          ],
+          "metavar": "PATH",
+          "required": false,
+          "nargs": 1,
+          "choices": null,
+          "default": [],
+          "type": null,
+          "description": "format only these prototype files or directories instead of the Proto resource packs (repeatable)"
+        },
+        {
+          "id": "cli.buildtools.command.format-content.argument.metadata",
+          "destination": "metadata",
+          "kind": "option",
+          "action": "append",
+          "option_strings": [
+            "--metadata"
+          ],
+          "metavar": "PATH",
+          "required": false,
+          "nargs": 1,
+          "choices": null,
+          "default": [],
+          "type": null,
+          "description": "read property and setting order from these files, in this order, instead of the Metadata resource packs (repeatable)"
+        },
+        {
+          "id": "cli.buildtools.command.format-content.argument.fos",
+          "destination": "fos",
+          "kind": "option",
+          "action": "append",
+          "option_strings": [
+            "--fos"
+          ],
+          "metavar": "PATTERN",
+          "required": false,
+          "nargs": 1,
+          "choices": null,
+          "default": [],
+          "type": null,
+          "description": "also format AngelScript files matching this glob relative to the project root with clang-format 20 (repeatable)"
+        }
+      ]
     },
     {
       "id": "cli.buildtools.command.toolset",
@@ -461,6 +599,110 @@
       ]
     },
     {
+      "id": "cli.buildtools.command.managed-project-path",
+      "name": "managed-project-path",
+      "summary": "print the generated managed C# project and solution paths",
+      "description": null,
+      "usage": "usage: buildtools.py managed-project-path [-h] [--sub-config SUB_CONFIG] [--build-dir BUILD_DIR] [--json] [--require-existing] [--open] config",
+      "help_output": "usage: buildtools.py managed-project-path [-h] [--sub-config SUB_CONFIG] [--build-dir BUILD_DIR] [--json] [--require-existing] [--open] config\n\npositional arguments:\n  config                main .fomain config the managed script baker applies\n\noptions:\n  -h, --help            show this help message and exit\n  --sub-config SUB_CONFIG\n                        sub-config applied over the main section (default: none, as CompileManagedScripts)\n  --build-dir BUILD_DIR\n                        CMake build directory; required when ManagedScript.GeneratedDir is empty\n  --json                print the paths and whether the project and solution exist as JSON\n  --require-existing    exit 1 when the generated project or solution is missing\n  --open                open the generated solution with its desktop file association\n",
+      "arguments": [
+        {
+          "id": "cli.buildtools.command.managed-project-path.argument.config",
+          "destination": "config",
+          "kind": "positional",
+          "action": "store",
+          "option_strings": [],
+          "metavar": null,
+          "required": true,
+          "nargs": 1,
+          "choices": null,
+          "default": null,
+          "type": "Path",
+          "description": "main .fomain config the managed script baker applies"
+        },
+        {
+          "id": "cli.buildtools.command.managed-project-path.argument.sub_config",
+          "destination": "sub_config",
+          "kind": "option",
+          "action": "store",
+          "option_strings": [
+            "--sub-config"
+          ],
+          "metavar": null,
+          "required": false,
+          "nargs": 1,
+          "choices": null,
+          "default": null,
+          "type": null,
+          "description": "sub-config applied over the main section (default: none, as CompileManagedScripts)"
+        },
+        {
+          "id": "cli.buildtools.command.managed-project-path.argument.build_dir",
+          "destination": "build_dir",
+          "kind": "option",
+          "action": "store",
+          "option_strings": [
+            "--build-dir"
+          ],
+          "metavar": null,
+          "required": false,
+          "nargs": 1,
+          "choices": null,
+          "default": null,
+          "type": "Path",
+          "description": "CMake build directory; required when ManagedScript.GeneratedDir is empty"
+        },
+        {
+          "id": "cli.buildtools.command.managed-project-path.argument.json",
+          "destination": "json",
+          "kind": "option",
+          "action": "store_true",
+          "option_strings": [
+            "--json"
+          ],
+          "metavar": null,
+          "required": false,
+          "nargs": 0,
+          "choices": null,
+          "default": false,
+          "type": null,
+          "description": "print the paths and whether the project and solution exist as JSON"
+        },
+        {
+          "id": "cli.buildtools.command.managed-project-path.argument.require_existing",
+          "destination": "require_existing",
+          "kind": "option",
+          "action": "store_true",
+          "option_strings": [
+            "--require-existing"
+          ],
+          "metavar": null,
+          "required": false,
+          "nargs": 0,
+          "choices": null,
+          "default": false,
+          "type": null,
+          "description": "exit 1 when the generated project or solution is missing"
+        },
+        {
+          "id": "cli.buildtools.command.managed-project-path.argument.open",
+          "destination": "open",
+          "kind": "option",
+          "action": "store_true",
+          "option_strings": [
+            "--open"
+          ],
+          "metavar": null,
+          "required": false,
+          "nargs": 0,
+          "choices": null,
+          "default": false,
+          "type": null,
+          "description": "open the generated solution with its desktop file association"
+        }
+      ]
+    },
+    {
       "id": "cli.buildtools.command.host-check",
       "name": "host-check",
       "summary": "check host prerequisites",
@@ -493,8 +735,8 @@
       "name": "prepare-host-workspace",
       "summary": "prepare host workspace and prerequisites",
       "description": null,
-      "usage": "usage: buildtools.py prepare-host-workspace [-h] [--check]\n                                            {linux,windows,macos}\n                                            [{common-packages,linux-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,linux,web,android-arm32,android-arm64,android-x86,toolset,dotnet,windows-cross,wix,msan-libcxx,all} ...]",
-      "help_output": "usage: buildtools.py prepare-host-workspace [-h] [--check]\n                                            {linux,windows,macos}\n                                            [{common-packages,linux-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,linux,web,android-arm32,android-arm64,android-x86,toolset,dotnet,windows-cross,wix,msan-libcxx,all} ...]\n\npositional arguments:\n  {linux,windows,macos}\n                        host platform to prepare\n  {common-packages,linux-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,linux,web,android-arm32,android-arm64,android-x86,toolset,dotnet,windows-cross,wix,msan-libcxx,all}\n                        feature groups to prepare; omit to use the host defaults\n\noptions:\n  -h, --help            show this help message and exit\n  --check               check availability without installing or building\n",
+      "usage": "usage: buildtools.py prepare-host-workspace [-h] [--check]\n                                            {linux,windows,macos}\n                                            [{common-packages,linux-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,toolset,web,android-arm32,android-arm64,android-x86,dotnet,windows-cross,msan-libcxx,all,wix} ...]",
+      "help_output": "usage: buildtools.py prepare-host-workspace [-h] [--check]\n                                            {linux,windows,macos}\n                                            [{common-packages,linux-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,toolset,web,android-arm32,android-arm64,android-x86,dotnet,windows-cross,msan-libcxx,all,wix} ...]\n\npositional arguments:\n  {linux,windows,macos}\n                        host platform to prepare\n  {common-packages,linux-packages,web-packages,android-packages,windows-cross-packages,msi-packages,all-packages,toolset,web,android-arm32,android-arm64,android-x86,dotnet,windows-cross,msan-libcxx,all,wix}\n                        feature groups to prepare; omit to use the host defaults; a name the host does not support is an error: linux accepts common-packages, linux-packages, web-packages, android-packages, windows-cross-packages, msi-\n                        packages, all-packages, toolset, web, android-arm32, android-arm64, android-x86, dotnet, windows-cross, msan-libcxx, all (default: all); windows accepts toolset, web, wix, all (default: toolset); macos accepts no\n                        features; prepare-host-workspace macos only runs the host check\n\noptions:\n  -h, --help            show this help message and exit\n  --check               check availability without installing or building\n",
       "arguments": [
         {
           "id": "cli.buildtools.command.prepare-host-workspace.argument.host",
@@ -531,21 +773,20 @@
             "windows-cross-packages",
             "msi-packages",
             "all-packages",
-            "linux",
+            "toolset",
             "web",
             "android-arm32",
             "android-arm64",
             "android-x86",
-            "toolset",
             "dotnet",
             "windows-cross",
-            "wix",
             "msan-libcxx",
-            "all"
+            "all",
+            "wix"
           ],
           "default": null,
           "type": null,
-          "description": "feature groups to prepare; omit to use the host defaults"
+          "description": "feature groups to prepare; omit to use the host defaults; a name the host does not support is an error: linux accepts common-packages, linux-packages, web-packages, android-packages, windows-cross-packages, msi-packages, all-packages, toolset, web, android-arm32, android-arm64, android-x86, dotnet, windows-cross, msan-libcxx, all (default: all); windows accepts toolset, web, wix, all (default: toolset); macos accepts no features; prepare-host-workspace macos only runs the host check"
         },
         {
           "id": "cli.buildtools.command.prepare-host-workspace.argument.check",
@@ -567,9 +808,9 @@
     }
   ],
   "summary": {
-    "command_count": 13,
+    "command_count": 15,
     "global_argument_count": 0,
-    "command_argument_count": 25
+    "command_argument_count": 39
   },
-  "contract_digest": "fe4230108f54098166ceb508251225ab910d03b975cd7bd5267b7c212341d27d"
+  "contract_digest": "5079db447e1798d3ebc361db85498e4e22ef94e756573587aea998593d44a363"
 }

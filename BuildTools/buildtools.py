@@ -24,6 +24,14 @@ import urllib.parse
 import urllib.request
 import zipfile
 from pathlib import Path
+
+# BuildTools passes onexc= to shutil.rmtree, which exists from Python 3.12. The check precedes the typing import
+# so that an older Python 3 stops with this message instead of an ImportError
+MIN_PYTHON_VERSION = (3, 12)
+
+if sys.version_info < MIN_PYTHON_VERSION:
+	raise SystemExit(f'BuildTools requires Python {MIN_PYTHON_VERSION[0]}.{MIN_PYTHON_VERSION[1]} or newer, but {sys.executable} is Python {".".join(str(part) for part in sys.version_info[:3])}')
+
 from typing import Callable, Iterable, Mapping, NamedTuple, NotRequired, Sequence, TypedDict
 
 
@@ -218,22 +226,22 @@ CI_CA_VAR = 'FO_CI_CA'
 # clang-format treats `?` as a binary operator and inserts whitespace around
 # it: `Critter? cr` becomes `Critter ? cr`. AngelScript uses `T?` as a
 # nullable type suffix (parsed natively by the engine since the
-# `asBC_RefCpyChk` change) and the project style is to keep `?` attached to
-# the type. The same regex is used by `Tools/Formatter/format_project.py`
-# in the embedding project; keep them in sync if the suffix shape changes.
-# The type token is either an uppercase identifier with optional namespace
-# and optional `[]` (covers `Critter`, `Critter[]`, `TutorialSystem::Point`,
-# etc.) or a lowercase primitive followed by `[]` (covers `hstring[]`,
-# `int[]`, `string[]` â€" array-of-primitive is itself a handle and can carry
-# `?`, but the bare primitive cannot, so the `[]` is mandatory here)
-_FOS_NULLABLE_TYPE = r'(?:[A-Z][\w:]*(?:\[\])?|[a-z][\w]*\[\])'
+# `asBC_RefCpyChk` change) and the style is to keep `?` attached to the type.
+# The type token is a template instance such as `array<Critter>` or
+# `dict<string, any>` (one nested level) or an identifier with optional
+# namespace and optional `[]` (covers `Critter`, `Critter[]`,
+# `TutorialSystem::Point`, funcdef names such as `callback_void`, `hstring[]`).
+# A ternary never ends its true branch at `,`, `)` or `;`; when the candidate is
+# followed by `=` or a call, a lone `:` later in the same statement marks the
+# ternary and the text is left alone
+_FOS_NULLABLE_GENERIC = r'[A-Za-z][\w:]*<[^<>;?]*(?:<[^<>;?]*>[^<>;?]*)?>'
+_FOS_NULLABLE_TYPE = r'(?:' + _FOS_NULLABLE_GENERIC + r'(?:\[\])?|[A-Za-z_][\w:]*(?:\[\])?)'
 FOS_NULLABLE_SUFFIX_RE = re.compile(
 	r'(?<![.\w])(' + _FOS_NULLABLE_TYPE + r')\s+\?\s+([A-Za-z_]\w*)(\s*(?:[(,)=;]|\[\]))'
 )
-# Inside function bodies we also need to repair uninitialized declarations
-# `Critter ? targetCr;` â€" the trailing `;` (no `=`) form. A ternary always
-# carries `:` between its branches and never `;` directly after the candidate
-# identifier, so adding `;` here doesn't collide with ternary parsing
+# Inside function bodies only the local-declaration forms `Critter ? target;`
+# and `Critter ? target = value` are repaired; calls and arguments there are
+# expressions
 FOS_NULLABLE_SUFFIX_BODY_RE = re.compile(
 	r'(?<![.\w])(' + _FOS_NULLABLE_TYPE + r')\s+\?\s+([A-Za-z_]\w*)(\s*[=;])'
 )
@@ -244,8 +252,7 @@ FOS_NULLABLE_SUFFIX_BODY_RE = re.compile(
 # (`foo(name: v)` -> `foo(name : v)`). A `?` immediately before `>` or an empty
 # `[]`, and a `:` whose left side is an argument-position identifier, are all
 # unambiguous markers, so the inserted spacing is collapsed back. String / char
-# literals and comments are masked first so literal text is never rewritten. Kept
-# in sync with `Tools/Formatter/format_project.py` in the embedding project
+# literals and comments are masked first so literal text is never rewritten
 _FOS_ANGLE_NAME = r'(?:cast|[A-Za-z_]\w*)'
 _FOS_ANGLE_SUBTYPE = r'[\w:]+(?:\s*\[\s*\])?'
 FOS_NULLABLE_ANGLE_CALL_RE = re.compile(
@@ -706,8 +713,6 @@ def check_windows_host_tools() -> list[str]:
 		issues.append('Please install Visual Studio with C++ Build Tools or Build Tools for Visual Studio')
 	if not shutil.which('cmake'):
 		issues.append('Please install CMake from https://cmake.org')
-	if not (shutil.which('py') or shutil.which('python')):
-		issues.append('Please install Python from https://www.python.org')
 	return issues
 
 
@@ -1918,6 +1923,38 @@ HOST_FEATURE_WORKSPACE_PARTS = {
 	},
 	'macos': {},
 }
+
+HOST_FEATURE_PACKAGE_GROUPS: dict[str, Mapping[str, Sequence[str]]] = {
+	'linux': LINUX_FEATURE_PACKAGE_GROUPS,
+	'windows': {},
+	'macos': {},
+}
+
+
+def list_host_features(host_name: str) -> list[str]:
+	return [*HOST_FEATURE_PACKAGE_GROUPS[host_name], *HOST_FEATURE_WORKSPACE_PARTS[host_name]]
+
+
+def list_all_host_features() -> list[str]:
+	features: list[str] = []
+	for host_name in HOST_FEATURE_WORKSPACE_PARTS:
+		extend_unique(features, list_host_features(host_name))
+	return features
+
+
+def describe_host_features(host_name: str) -> str:
+	features = list_host_features(host_name)
+	if not features:
+		return f'{host_name} accepts no features; prepare-host-workspace {host_name} only runs the host check'
+	return f'{host_name} accepts {", ".join(features)} (default: {", ".join(HOST_DEFAULT_FEATURES[host_name])})'
+
+
+def describe_unsupported_host_features(host_name: str, features: Sequence[str]) -> str:
+	host_features = list_host_features(host_name)
+	unsupported = [feature for feature in features if feature not in host_features]
+	if not unsupported:
+		return ''
+	return f'prepare-host-workspace {host_name} does not support {", ".join(unsupported)}: {describe_host_features(host_name)}'
 
 
 def resolve_selected_features(host_name: str, features: Sequence[str]) -> list[str]:
@@ -4003,9 +4040,9 @@ def fix_fos_nullable_suffix(text: str) -> str:
 	for start, end, inside_body in spans:
 		chunk = text[start:end]
 		if inside_body:
-			chunk = FOS_NULLABLE_SUFFIX_BODY_RE.sub(r'\1? \2\3', chunk)
+			chunk = FOS_NULLABLE_SUFFIX_BODY_RE.sub(_fos_repair_nullable_declaration, chunk)
 		else:
-			chunk = FOS_NULLABLE_SUFFIX_RE.sub(r'\1? \2\3', chunk)
+			chunk = FOS_NULLABLE_SUFFIX_RE.sub(_fos_repair_nullable_declaration, chunk)
 		out.append(chunk)
 	result = ''.join(out)
 	# Repair nullable markers inside template / cast angle brackets (call form first
@@ -4019,6 +4056,45 @@ def fix_fos_nullable_suffix(text: str) -> str:
 	# Restore the masked literals/comments
 	result = FOS_STASH_RE.sub(lambda m: stash[int(m.group(1))], result)
 	return result
+
+
+def _fos_repair_nullable_declaration(match: 're.Match[str]') -> str:
+	boundary = match.group(3).strip()
+	if boundary in ('=', '(') and _fos_statement_continues_as_ternary(match.string, match.end(), 1 if boundary == '(' else 0):
+		return match.group(0)
+	return f'{match.group(1)}? {match.group(2)}{match.group(3)}'
+
+
+def _fos_statement_continues_as_ternary(text: str, position: int, depth: int) -> bool:
+	# The rest of a ternary's true branch holds one `:` more than `?`; an initializer's own ternaries are balanced
+	balance = 0
+	while position < len(text):
+		char = text[position]
+		if char == '(':
+			depth += 1
+		elif char == ')':
+			depth -= 1
+			if depth < 0:
+				break
+		elif depth <= 0 and char in ';{}':
+			break
+		elif char == ':' and text.startswith('::', position):
+			position += 1
+		elif depth == 0 and char == ':':
+			balance += 1
+		elif depth == 0 and char == '?':
+			balance -= 1
+		position += 1
+	return balance > 0
+
+
+def format_source_text(clang_format: str, path: Path, original: str) -> str:
+	# The result keeps the original line-ending convention and has no BOM; callers decide how to write it
+	formatted = strip_text_bom(run_capture_text([clang_format, str(path)], log_command=False))
+	formatted = ensure_trailing_newline(normalize_line_endings(formatted, detect_line_ending(original)), detect_line_ending(original))
+	if path.suffix == '.fos':
+		formatted = fix_fos_nullable_suffix(formatted)
+	return formatted
 
 
 def format_files(clang_format: str, root: Path, patterns: Sequence[str]) -> int:
@@ -4046,10 +4122,7 @@ def format_files(clang_format: str, root: Path, patterns: Sequence[str]) -> int:
 		progress.update(f'Formatting {index}/{total}: {rel_path}')
 
 		original, has_bom = read_text_strip_bom(path)
-		formatted = strip_text_bom(run_capture_text([clang_format, str(path)], log_command=False))
-		formatted = ensure_trailing_newline(normalize_line_endings(formatted, detect_line_ending(original)), detect_line_ending(original))
-		if path.suffix == '.fos':
-			formatted = fix_fos_nullable_suffix(formatted)
+		formatted = format_source_text(clang_format, path, original)
 		if not differs_beyond_line_endings(original, formatted) and not has_bom:
 			continue
 
@@ -4112,6 +4185,125 @@ def build_auxiliary(target: str, config: str, env: Mapping[str, str]) -> None:
 	)
 
 
+MANAGED_PROJECT_NAME_SETTING = 'ManagedScript.ProjectName'
+MANAGED_GENERATED_DIR_SETTING = 'ManagedScript.GeneratedDir'
+# Defaults of Source/Common/Settings.inc and the host project name of Source/Tools/ManagedScriptBaker.cpp
+MANAGED_DEFAULT_PROJECT_NAME = 'FOnline'
+MANAGED_HOST_PROJECT_NAME = 'FOnline.ManagedHost'
+
+
+class ManagedProjectPaths(NamedTuple):
+	generated_dir: Path
+	project: Path
+	solution: Path
+	host_project: Path
+
+
+def resolve_managed_project_paths(config_path: Path, sub_config: str | None, build_dir: Path | None) -> ManagedProjectPaths:
+	"""Where ManagedScriptBaker writes the generated project for this config, from the settings it reads."""
+	import foconfig
+
+	parser = foconfig.ConfigParser()
+	parser.loadFromFile(config_path)
+	settings = parser.resolveSettings(sub_config)
+	appended = appended_config_keys(config_path)
+
+	# The parser folds `+=` into the value and SetValue appends a value led by `+`, so both are found here
+	for name in (MANAGED_PROJECT_NAME_SETTING, MANAGED_GENERATED_DIR_SETTING):
+		value = settings.get(name, '')
+		if name in appended or value.startswith('+') or '$' in value:
+			raise ValueError(f'{name} uses += or a $ substitution, which managed-project-path does not resolve')
+
+	project_name = settings.get(MANAGED_PROJECT_NAME_SETTING, MANAGED_DEFAULT_PROJECT_NAME)
+	if not project_name:
+		raise ValueError(f'{MANAGED_PROJECT_NAME_SETTING} setting is empty')
+
+	# A relative directory is rooted at the applied main config, an empty one at the build tree's GeneratedSource
+	generated_value = settings.get(MANAGED_GENERATED_DIR_SETTING, '')
+	if generated_value:
+		generated_dir = Path(generated_value)
+		if not generated_dir.is_absolute():
+			generated_dir = config_path.resolve().parent / generated_dir
+	elif build_dir is not None:
+		generated_dir = build_dir / 'GeneratedSource' / 'Managed'
+	else:
+		raise ValueError(f'{MANAGED_GENERATED_DIR_SETTING} is empty, so the baker writes into <build-dir>/GeneratedSource/Managed; pass --build-dir')
+
+	generated_dir = generated_dir.resolve()
+	return ManagedProjectPaths(
+		generated_dir,
+		generated_dir / f'{project_name}.gen.csproj',
+		generated_dir / f'{project_name}.gen.sln',
+		generated_dir / f'{MANAGED_HOST_PROJECT_NAME}.gen.csproj',
+	)
+
+
+def appended_config_keys(config_path: Path) -> set[str]:
+	"""Keys any section of the config assigns with `+=`, read with the ConfigFile line grammar."""
+	import foconfig
+
+	text = config_path.read_bytes().decode('utf-8-sig')
+	appended: set[str] = set()
+
+	for logical in foconfig.iter_logical_lines(foconfig.split_physical_lines(text)):
+		if not logical.text or logical.text[0] == '[':
+			continue
+
+		entry = foconfig.parse_key_value(logical.text)
+		if entry is not None and entry.append:
+			appended.add(entry.key)
+
+	return appended
+
+
+def open_with_desktop_association(path: Path) -> None:
+	if os.name == 'nt':
+		os.startfile(str(path))
+	elif sys.platform == 'darwin':
+		subprocess.run(['open', str(path)], check=True)
+	else:
+		subprocess.run(['xdg-open', str(path)], check=True)
+
+
+def managed_project_path(args: argparse.Namespace, launch: Callable[[Path], None] = open_with_desktop_association) -> int:
+	try:
+		paths = resolve_managed_project_paths(args.config, args.sub_config, args.build_dir)
+	except (OSError, KeyError, ValueError) as exception:
+		message = exception.args[0] if isinstance(exception, KeyError) and exception.args else exception
+		print(f'managed-project-path: {message}', file=sys.stderr, flush=True)
+		return 2
+
+	if args.json:
+		print(json.dumps({
+			'generatedDir': str(paths.generated_dir),
+			'project': str(paths.project),
+			'solution': str(paths.solution),
+			'hostProject': str(paths.host_project),
+			'projectExists': paths.project.is_file(),
+			'solutionExists': paths.solution.is_file(),
+		}, indent=2), flush=True)
+	else:
+		print(f'generated-dir: {paths.generated_dir}', flush=True)
+		print(f'project: {paths.project}', flush=True)
+		print(f'solution: {paths.solution}', flush=True)
+		print(f'host-project: {paths.host_project}', flush=True)
+
+	if args.require_existing or args.open:
+		missing = [str(path) for path in (paths.project, paths.solution) if not path.is_file()]
+		if missing:
+			print(f'managed-project-path: missing {", ".join(missing)}; run CompileManagedScripts or BakeResources first', file=sys.stderr, flush=True)
+			return 1
+
+	if args.open:
+		try:
+			launch(paths.solution)
+		except (OSError, subprocess.CalledProcessError) as exception:
+			print(f'managed-project-path: cannot open {paths.solution}: {exception}', file=sys.stderr, flush=True)
+			return 1
+
+	return 0
+
+
 def create_parser() -> argparse.ArgumentParser:
 	parser = argparse.ArgumentParser(prog='buildtools.py', description='Shared BuildTools helpers')
 	subparsers = parser.add_subparsers(dest='command', required=True)
@@ -4136,6 +4328,11 @@ def create_parser() -> argparse.ArgumentParser:
 
 	format_parser = subparsers.add_parser('format-source', help='format engine source files')
 	format_parser.set_defaults(no_args=True)
+
+	import format_content
+
+	format_content_parser = subparsers.add_parser('format-content', help='format project .fomain, prototype and optional AngelScript files')
+	format_content.add_arguments(format_content_parser)
 
 	toolset_parser = subparsers.add_parser('toolset', help='build an existing toolset target')
 	toolset_parser.add_argument('target', help='target from the configured toolset build tree')
@@ -4165,35 +4362,27 @@ def create_parser() -> argparse.ArgumentParser:
 	package_android_parser.add_argument('platform', choices=ANDROID_PLATFORMS, help='Android target platform (e.g. android-arm64)')
 	package_android_parser.add_argument('configs', nargs='+', help='config names to package (e.g. LocalTest)')
 
+	managed_project_parser = subparsers.add_parser('managed-project-path', help='print the generated managed C# project and solution paths')
+	managed_project_parser.add_argument('config', type=Path, help='main .fomain config the managed script baker applies')
+	managed_project_parser.add_argument('--sub-config', help='sub-config applied over the main section (default: none, as CompileManagedScripts)')
+	managed_project_parser.add_argument('--build-dir', type=Path, help='CMake build directory; required when ManagedScript.GeneratedDir is empty')
+	managed_project_parser.add_argument('--json', action='store_true', help='print the paths and whether the project and solution exist as JSON')
+	managed_project_parser.add_argument('--require-existing', action='store_true', help='exit 1 when the generated project or solution is missing')
+	managed_project_parser.add_argument('--open', action='store_true', help='open the generated solution with its desktop file association')
+
 	host_check_parser = subparsers.add_parser('host-check', help='check host prerequisites')
 	host_check_parser.add_argument('host', choices=['linux', 'macos', 'windows'], help='host platform to inspect')
 
 	prepare_host_parser = subparsers.add_parser('prepare-host-workspace', help='prepare host workspace and prerequisites')
-	prepare_host_parser.add_argument('host', choices=['linux', 'windows', 'macos'], help='host platform to prepare')
+	prepare_host_parser.add_argument('host', choices=list(HOST_FEATURE_WORKSPACE_PARTS), help='host platform to prepare')
 	prepare_host_parser.add_argument(
 		'features',
 		nargs='*',
-		choices=[
-			'common-packages',
-			'linux-packages',
-			'web-packages',
-			'android-packages',
-			'windows-cross-packages',
-			'msi-packages',
-			'all-packages',
-			'linux',
-			'web',
-			'android-arm32',
-			'android-arm64',
-			'android-x86',
-			'toolset',
-			'dotnet',
-			'windows-cross',
-			'wix',
-			'msan-libcxx',
-			'all',
-		],
-		help='feature groups to prepare; omit to use the host defaults',
+		choices=list_all_host_features(),
+		help=(
+			'feature groups to prepare; omit to use the host defaults; a name the host does not support is an error: '
+			+ '; '.join(describe_host_features(host_name) for host_name in HOST_FEATURE_WORKSPACE_PARTS)
+		),
 	)
 	prepare_host_parser.add_argument('--check', action='store_true', help='check availability without installing or building')
 
@@ -4203,6 +4392,15 @@ def create_parser() -> argparse.ArgumentParser:
 def main() -> None:
 	parser = create_parser()
 	args = parser.parse_args()
+
+	if args.command == 'prepare-host-workspace':
+		feature_error = describe_unsupported_host_features(args.host, args.features)
+		if feature_error:
+			parser.error(feature_error)
+
+	if args.command == 'managed-project-path':
+		raise SystemExit(managed_project_path(args))
+
 	env = resolve_env()
 	apply_env(env)
 
@@ -4213,7 +4411,7 @@ def main() -> None:
 			print_env_summary(env)
 		return
 
-	if args.command != 'format-source':
+	if args.command not in ('format-source', 'format-content'):
 		print_env_summary(env)
 
 	if args.command == 'build':
@@ -4229,6 +4427,10 @@ def main() -> None:
 	if args.command == 'format-source':
 		format_source(env)
 		return
+	if args.command == 'format-content':
+		import format_content
+
+		raise SystemExit(format_content.run(args))
 	if args.command == 'toolset':
 		build_toolset(args.target, env)
 		return

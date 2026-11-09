@@ -1,0 +1,347 @@
+// Copyable server test harness core; the marker and settings contract is Docs/en/how-to/project/script-test-harness.md
+// Suites subscribe to Game.OnTestingInit and call Testing::RegisterTest; game fixtures stay in the suite files
+namespace Testing
+{
+
+#if SERVER
+
+///@ Setting Server bool Testing.Enabled
+///@ Setting Server string Testing.Filter
+///@ Setting Server bool Testing.StopOnFirstFailure
+///@ Setting Server bool Testing.ExitOnFinish
+///@ Setting Server int32 Testing.TestTimeout
+
+///@ Event Server Game OnTestingInit()
+
+const string MarkerPrefix = "[Testing] ";
+const int TimespanMillisecondsPlace = 2;
+
+funcdef void TestFunc(TestContext ctx);
+
+class TestCase
+{
+    string FullName;
+    TestFunc? Func;
+    int TimeoutMs;
+}
+
+class TestContext
+{
+    int Id;
+    string FullName;
+    bool Deferred;
+    bool Finished; // A verdict is recorded; later Pass/Fail calls are ignored
+    bool Completed; // The runner has logged the verdict and moved on
+    bool Ok;
+    string FailText;
+}
+
+class RunState
+{
+    TestCase[] Tests = {};
+    int[] Selected = {};
+    bool Registering;
+    string ConfigError;
+    int Position;
+    TestContext? Current;
+    uint WatchdogId;
+    int Passed;
+    int Failed;
+}
+
+// The harness's only mutable global, admitted by AngelScript.MutableGlobalsAllowedNamespaces for test bakes
+RunState Run = RunState();
+
+timespan Milliseconds(int value)
+{
+    return timespan(value, TimespanMillisecondsPlace);
+}
+
+[[ModuleInit]]
+void InitTesting()
+{
+    if (!Settings.Testing.Enabled) {
+        return;
+    }
+
+    Game.OnStart.Subscribe(StartTesting);
+}
+
+[[Event]]
+void StartTesting()
+{
+    RunState run = RunState();
+    Run = run;
+
+    // Suites register lazily from the event, so module initialization order does not matter
+    run.Registering = true;
+    Game.OnTestingInit.Fire();
+    run.Registering = false;
+
+    if (Settings.Testing.TestTimeout <= 0) {
+        AddConfigError(run, "Testing.TestTimeout must be a positive number of milliseconds");
+    }
+
+    for (int i = 0; i < run.Tests.length(); i++) {
+        if (MatchesFilter(run.Tests[i].FullName)) {
+            run.Selected.insertLast(i);
+        }
+    }
+
+    string counts = "registered=" + run.Tests.length() + " selected=" + run.Selected.length();
+    Game.Log(MarkerPrefix + "START " + counts + " filter='" + Settings.Testing.Filter + "'");
+
+    if (!run.ConfigError.isEmpty()) {
+        Game.Log(MarkerPrefix + "ERROR " + run.ConfigError);
+        FinishRun();
+        return;
+    }
+
+    if (run.Selected.length() == 0) {
+        Game.Log(MarkerPrefix + "ERROR no registered test matches the filter");
+        FinishRun();
+        return;
+    }
+
+    Game.StartTimeEvent(Milliseconds(1), NextTest);
+}
+
+// Registers one test; valid only inside a Game.OnTestingInit handler. A timeout of 0 uses Testing.TestTimeout
+void RegisterTest(string suite, string name, TestFunc func, int timeoutMs = 0)
+{
+    if (!Run.Registering) {
+        throw("Tests register only while Game.OnTestingInit is fired", suite, name);
+    }
+
+    string fullName = suite + "." + name;
+
+    // A throwing registration would silently drop the rest of the suite, so problems fail the whole run instead
+    if (suite.isEmpty() || name.isEmpty() || suite.find(".") != -1 || timeoutMs < 0) {
+        AddConfigError(Run, "invalid registration '" + fullName + "'");
+        return;
+    }
+
+    for (int i = 0; i < Run.Tests.length(); i++) {
+        if (Run.Tests[i].FullName == fullName) {
+            AddConfigError(Run, "duplicate test '" + fullName + "'");
+            return;
+        }
+    }
+
+    TestCase test = TestCase();
+    test.FullName = fullName;
+    test.Func = func;
+    test.TimeoutMs = timeoutMs;
+    Run.Tests.insertLast(test);
+}
+
+[[TimeEvent]]
+void NextTest()
+{
+    RunState run = Run;
+
+    if (run.Failed > 0 && Settings.Testing.StopOnFirstFailure) {
+        FinishRun();
+        return;
+    }
+
+    if (run.Position >= run.Selected.length()) {
+        FinishRun();
+        return;
+    }
+
+    TestCase test = run.Tests[run.Selected[run.Position]];
+    TestContext ctx = TestContext();
+    ctx.Id = run.Position;
+    ctx.FullName = test.FullName;
+    run.Current = ctx;
+
+    int timeoutMs = test.TimeoutMs > 0 ? test.TimeoutMs : Settings.Testing.TestTimeout;
+    run.WatchdogId = Game.StartTimeEvent(Milliseconds(timeoutMs), WatchTest, ctx.Id);
+
+    TestFunc? func = test.Func;
+
+    try {
+        if (func != null) {
+            func(ctx);
+        }
+    }
+    catch {
+        Fail(ctx, "exception: " + GetExceptionInfo());
+    }
+
+    // A callback that returns without a verdict and without Defer has passed
+    if (!ctx.Finished && !ctx.Deferred) {
+        ctx.Finished = true;
+        ctx.Ok = true;
+    }
+
+    if (ctx.Finished && !ctx.Completed) {
+        CompleteTest(ctx);
+    }
+}
+
+[[TimeEvent]]
+void WatchTest(any value)
+{
+    TestContext? ctx = Run.Current;
+    if (ctx == null || ctx.Id != int(value) || ctx.Completed) {
+        return;
+    }
+
+    if (!ctx.Finished) {
+        ctx.Finished = true;
+        ctx.Ok = false;
+        ctx.FailText = "timeout";
+    }
+
+    // The watchdog event is the one firing, so it must not be stopped again
+    Run.WatchdogId = 0;
+    CompleteTest(ctx);
+}
+
+void CompleteTest(TestContext ctx)
+{
+    RunState run = Run;
+    ctx.Completed = true;
+
+    if (run.WatchdogId != 0) {
+        Game.StopTimeEvent(run.WatchdogId);
+        run.WatchdogId = 0;
+    }
+
+    if (ctx.Ok) {
+        run.Passed++;
+        Game.Log(MarkerPrefix + "PASS " + ctx.FullName);
+    }
+    else {
+        run.Failed++;
+        Game.Log(MarkerPrefix + "FAIL " + ctx.FullName + ": " + ctx.FailText);
+    }
+
+    run.Position++;
+    Game.StartTimeEvent(Milliseconds(1), NextTest);
+}
+
+void FinishRun()
+{
+    RunState run = Run;
+    int selected = run.Selected.length();
+    int executed = run.Passed + run.Failed;
+    bool passed = run.ConfigError.isEmpty() && selected > 0 && run.Failed == 0;
+
+    string summary = "status=" + (passed ? "passed" : "failed") + " registered=" + run.Tests.length() + " selected=" + selected;
+    summary += " passed=" + run.Passed + " failed=" + run.Failed;
+    summary += " skipped=" + (run.Tests.length() - selected) + " not_run=" + (selected - executed);
+    Game.Log(MarkerPrefix + "COMPLETE " + summary);
+
+    if (Settings.Testing.ExitOnFinish) {
+        Game.RequestQuit(passed);
+    }
+}
+
+void AddConfigError(RunState run, string message)
+{
+    run.ConfigError += (run.ConfigError.isEmpty() ? "" : "; ") + message;
+}
+
+// Comma-separated tokens; a test is selected when its suite.name contains any token, ignoring case
+bool MatchesFilter(string fullName)
+{
+    string filter = Settings.Testing.Filter.trim();
+    if (filter.isEmpty()) {
+        return true;
+    }
+
+    string name = fullName.lower();
+    string[] tokens = filter.lower().split(",", true);
+
+    for (int i = 0; i < tokens.length(); i++) {
+        string token = tokens[i].trim();
+        if (!token.isEmpty() && name.find(token) != -1) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// ---------------------------------------------------------------------------
+// Assertions
+// ---------------------------------------------------------------------------
+
+// Returns the condition so a test can stop at the first failed expectation
+bool Expect(TestContext ctx, bool condition, string message)
+{
+    if (!condition) {
+        Fail(ctx, message);
+        return false;
+    }
+
+    return true;
+}
+
+bool ExpectEq(TestContext ctx, int64 actual, int64 expected, string message)
+{
+    return Expect(ctx, actual == expected, message + " (actual " + actual + ", expected " + expected + ")");
+}
+
+bool ExpectStrEq(TestContext ctx, string actual, string expected, string message)
+{
+    return Expect(ctx, actual == expected, message + " (actual '" + actual + "', expected '" + expected + "')");
+}
+
+void Fail(TestContext ctx, string message)
+{
+    if (ctx.Finished) {
+        return;
+    }
+
+    ctx.Finished = true;
+    ctx.Ok = false;
+    ctx.FailText = message;
+    CompleteDeferred(ctx);
+}
+
+void Pass(TestContext ctx)
+{
+    if (ctx.Finished) {
+        return;
+    }
+
+    ctx.Finished = true;
+    ctx.Ok = true;
+    CompleteDeferred(ctx);
+}
+
+// ---------------------------------------------------------------------------
+// Deferred tests: the callback calls Defer, then a later event resolves the context and calls Pass or Fail
+// ---------------------------------------------------------------------------
+
+void Defer(TestContext ctx)
+{
+    ctx.Deferred = true;
+}
+
+// Returns the context for an id carried through a time-event payload, or null once that test has completed
+TestContext? Resume(int id)
+{
+    TestContext? ctx = Run.Current;
+    if (ctx == null || ctx.Id != id || ctx.Completed) {
+        return null;
+    }
+
+    return ctx;
+}
+
+void CompleteDeferred(TestContext ctx)
+{
+    TestContext? current = Run.Current;
+    if (ctx.Deferred && !ctx.Completed && current is ctx) {
+        CompleteTest(ctx);
+    }
+}
+
+#endif
+
+}

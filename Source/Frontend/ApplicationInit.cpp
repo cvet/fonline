@@ -458,8 +458,8 @@ static auto ResolveAppSettingDirectory(const CommandLineArgs& args, string_view 
     for (const CommandLineSetting& setting : args.GetSettings(name)) {
         string raw_value {strex(setting.Value.value_or("1")).trim().str()};
         bool append {!raw_value.empty() && raw_value.front() == '+'};
-        string_view value {append ? string_view(raw_value).substr(1) : raw_value};
-        auto resolved {ResolveSettingValue(name, raw_value, "", false)};
+        string value {append ? raw_value.substr(1) : raw_value};
+        auto resolved {ResolveSettingValue(name, value, "", false)};
 
         if (resolved) {
             value = *resolved;

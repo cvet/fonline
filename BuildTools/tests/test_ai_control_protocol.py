@@ -83,10 +83,70 @@ class AiControlProtocolTests(unittest.TestCase):
     def test_reference_client_rejects_remote_endpoint_without_opt_in(self) -> None:
         with self.assertRaisesRegex(ValueError, "explicit allow_remote"):
             ai_control_client.AiControlClient("192.0.2.10", 43011)
+        with self.assertRaisesRegex(ValueError, "explicit allow_remote"):
+            ai_control_client.AiControlClient("192.0.2.10", 43011, token="remote-token")
         client = ai_control_client.AiControlClient(
-            "192.0.2.10", 43011, allow_remote=True
+            "192.0.2.10", 43011, allow_remote=True, token="remote-token"
         )
         client.close()
+
+    def test_reference_client_rejects_remote_endpoint_without_token(self) -> None:
+        for host in ("192.0.2.10", "example.invalid"):
+            with self.subTest(host=host), patch.object(
+                ai_control_client.socket, "create_connection"
+            ) as connection:
+                with self.assertRaisesRegex(ValueError, "non-empty token"):
+                    ai_control_client.AiControlClient(host, 43011, allow_remote=True)
+                connection.assert_not_called()
+        with self.assertRaisesRegex(ValueError, "token must be a string"):
+            ai_control_client.AiControlClient(token=None)  # type: ignore[arg-type]
+
+    def test_reference_cli_refuses_remote_endpoint_without_token(self) -> None:
+        stderr = io.StringIO()
+        with patch.dict(ai_control_client.os.environ, {"FONLINE_AI_TOKEN": ""}), contextlib.redirect_stderr(stderr):
+            exit_code = ai_control_client.main(["--host", "192.0.2.10", "--allow-remote", "ping"])
+
+        self.assertEqual(exit_code, 1)
+        self.assertIn("non-empty token", stderr.getvalue())
+
+    def test_reference_client_authenticates_every_new_connection(self) -> None:
+        state = ai_control_sample.SampleState("sample-token", 4, 16)
+        with ai_control_sample.AiControlServer(("127.0.0.1", 0), state) as server:
+            thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.05}, daemon=True)
+            thread.start()
+            port = int(server.server_address[1])
+            try:
+                client = ai_control_client.AiControlClient("127.0.0.1", port, token="sample-token")
+                with client:
+                    self.assertEqual(client.ping(), {"ok": True})
+                    client.close()
+                    self.assertEqual(client.status()["maxQueuedCommands"], 4)
+
+                with self.assertRaisesRegex(ai_control_client.AuthorizationError, "rejected the configured token"):
+                    ai_control_client.AiControlClient("127.0.0.1", port, token="wrong-token").connect()
+
+                anonymous = ai_control_client.AiControlClient("127.0.0.1", port)
+                with anonymous:
+                    with self.assertRaises(ai_control_client.RemoteError) as raised:
+                        anonymous.ping()
+                    self.assertEqual(raised.exception.code, -32001)
+            finally:
+                state.stop.set()
+                server.shutdown()
+                thread.join(timeout=5)
+
+    def test_reference_client_drops_connection_after_failed_exchange(self) -> None:
+        with _OneResponsePeer(b"not-json\n") as peer:
+            client = ai_control_client.AiControlClient("127.0.0.1", peer.port)
+            with self.assertRaises(ai_control_client.ProtocolError):
+                client.ping()
+            self.assertIsNone(client._socket)
+
+        with _OneResponsePeer(b"") as peer:
+            client = ai_control_client.AiControlClient("127.0.0.1", peer.port, timeout=0.2)
+            with self.assertRaises(ai_control_client.ProtocolError):
+                client.ping()
+            self.assertIsNone(client._socket)
 
     def test_reference_cli_never_accepts_a_raw_token(self) -> None:
         help_text = ai_control_client.create_parser().format_help()

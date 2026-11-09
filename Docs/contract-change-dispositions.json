@@ -14892,6 +14892,54 @@
       "release_note": "Docs/en/reference/changelog.md#current---2026-11-05",
       "compatibility": "No property, protocol or resource change: MigrationRule Version 0.0.87 and Managed ABI 9 are unchanged. Baked map content is now read on first use instead of at startup. Deploy matching binaries and scripts; rollback restores the preceding complete set.",
       "owner": "Engine map, scripting and compatibility maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.68e214a56f952afa",
+      "baseline_contract_sha256": "0ad3d6572c83b168e3aaa184239cf5768fb7363ae5a3733b4170270be4f738ad",
+      "current_contract_sha256": "a4c1f7ad47f5e0d9367cec2d5bf5436092d3cea9d12994d335ce6013dbf51074",
+      "classification": "breaking",
+      "rationale": "The native-codegen inventory gains the optional client AiControl listener script methods (Game.AiControlAvailable, AiControlStart, AiControlStop, AiControlIsRunning, AiControlPullCommand, AiControlSetObservation, AiControlPushEvent, AiControlCompleteCommand, AiControlGetStatus) and the server image reader (Game.LoadImage, ServerImage.GetSize, ServerImage.GetColor). SymbolCount and InventorySha256 are updated for owner review; existing symbols keep their identities.",
+      "migration": "Docs/en/reference/changelog.md#current---2026-11-09: additive surface; no source, data or resource conversion is required. A project that carries its own AiControl listener or server image methods deletes them (the changelog lists the search command) because codegen rejects the duplicate names. Rebuild every native role and regenerate both scripting backends from the same revision.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-09",
+      "compatibility": "No property, protocol or resource change: MigrationRule Version 0.0.88 and Managed ABI 9 are unchanged. The generated metadata and the derived CompatibilityVersion change, so deploy matching binaries and scripts; rollback restores the preceding complete set.",
+      "owner": "Engine client runtime, server runtime and scripting maintainers"
+    },
+    {
+      "domain": "ai-control-protocol",
+      "change_id": "ai-control-protocol-change.model-scope.694ab2f9e49aa004",
+      "baseline_contract_sha256": "9a4272404028ac2fe11bec66caef7dd60e22036cf28d28ed533a715f290bf86e",
+      "current_contract_sha256": "f3a5d74a1ba02e3fdfffbe16d951d43b0a12e2e333554a141e2c91a75a324f43",
+      "classification": "breaking",
+      "rationale": "The AiControl integration rules describe the Engine-owned MCP adapter core (BuildTools/ai_control_mcp) and the optional native client listener (FO_AI_CONTROL) instead of leaving both to embedding projects; the protocol, wire format, security boundary and reference client behavior are unchanged apart from the token requirement for non-loopback endpoints.",
+      "migration": "Docs/en/reference/changelog.md#current---2026-11-09: a project with its own MCP adapter or native listener follows the changelog migration steps; the wire protocol needs no conversion.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-09",
+      "compatibility": "No protocol or runtime compatibility change: the AiControl protocol version, MigrationRule Version 0.0.88 and Managed ABI 9 are unchanged. Non-loopback endpoints now require a non-empty token in the reference client and the Engine listener.",
+      "owner": "Engine AiControl, client runtime and tooling maintainers"
+    },
+    {
+      "domain": "ai-control-protocol",
+      "change_id": "ai-control-protocol-change.modified.f790a1145268313e",
+      "baseline_contract_sha256": "9a4272404028ac2fe11bec66caef7dd60e22036cf28d28ed533a715f290bf86e",
+      "current_contract_sha256": "f3a5d74a1ba02e3fdfffbe16d951d43b0a12e2e333554a141e2c91a75a324f43",
+      "classification": "breaking",
+      "rationale": "The AiControl integration rules describe the Engine-owned MCP adapter core (BuildTools/ai_control_mcp) and the optional native client listener (FO_AI_CONTROL) instead of leaving both to embedding projects; the protocol, wire format, security boundary and reference client behavior are unchanged apart from the token requirement for non-loopback endpoints.",
+      "migration": "Docs/en/reference/changelog.md#current---2026-11-09: a project with its own MCP adapter or native listener follows the changelog migration steps; the wire protocol needs no conversion.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-09",
+      "compatibility": "No protocol or runtime compatibility change: the AiControl protocol version, MigrationRule Version 0.0.88 and Managed ABI 9 are unchanged. Non-loopback endpoints now require a non-empty token in the reference client and the Engine listener.",
+      "owner": "Engine AiControl, client runtime and tooling maintainers"
+    },
+    {
+      "domain": "ai-control-protocol",
+      "change_id": "ai-control-protocol-change.modified.4773131367a017a5",
+      "baseline_contract_sha256": "9a4272404028ac2fe11bec66caef7dd60e22036cf28d28ed533a715f290bf86e",
+      "current_contract_sha256": "f3a5d74a1ba02e3fdfffbe16d951d43b0a12e2e333554a141e2c91a75a324f43",
+      "classification": "breaking",
+      "rationale": "The AiControl integration rules describe the Engine-owned MCP adapter core (BuildTools/ai_control_mcp) and the optional native client listener (FO_AI_CONTROL) instead of leaving both to embedding projects; the protocol, wire format, security boundary and reference client behavior are unchanged apart from the token requirement for non-loopback endpoints.",
+      "migration": "Docs/en/reference/changelog.md#current---2026-11-09: a project with its own MCP adapter or native listener follows the changelog migration steps; the wire protocol needs no conversion.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-09",
+      "compatibility": "No protocol or runtime compatibility change: the AiControl protocol version, MigrationRule Version 0.0.88 and Managed ABI 9 are unchanged. Non-loopback endpoints now require a non-empty token in the reference client and the Engine listener.",
+      "owner": "Engine AiControl, client runtime and tooling maintainers"
     }
   ]
 }

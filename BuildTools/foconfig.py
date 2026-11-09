@@ -1,13 +1,36 @@
 #!/usr/bin/python3
 
+"""Configuration reader API of the packaging and formatting scripts over the `fo_formats` grammar.
+
+`fo_formats` owns the port of `Source/Common/ConfigFile.cpp`; this module only adapts it to the interface its
+callers use: `ConfigParser` with camelCase and snake_case methods, `ConfigSection` with typed getters, and the
+line-level helpers `split_physical_lines`, `iter_logical_lines`, `parse_section_header` and `parse_key_value`
+that a tool rewriting config files needs. `loadFromFile` additionally removes a leading UTF-8 BOM, which the
+native reader does not do; `loadFromText` and `loadFromLines` keep the text exactly as given.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
+import fo_formats
+
 
 ConfigValue = str | int | bool | None
+
+# Keys and values are trimmed with CONFIG_SPACE, whole lines and section names with TRIM_SPACE
+CONFIG_SPACE = fo_formats.CONFIG_SPACE
+TRIM_SPACE = fo_formats.TRIM_SPACE
+
+LogicalLine = fo_formats.ConfigLine
+KeyValue = fo_formats.ConfigKeyValue
+
+split_physical_lines = fo_formats.split_config_lines
+iter_logical_lines = fo_formats.iter_config_lines
+parse_section_header = fo_formats.parse_config_section_header
+parse_key_value = fo_formats.parse_config_key_value
 
 
 @dataclass(slots=True)
@@ -51,34 +74,22 @@ class ConfigParser:
         self.sections: list[ConfigSection] = []
 
     def loadFromFile(self, path: str | Path) -> None:
-        with Path(path).open('r', encoding='utf-8-sig') as file:
-            self.loadFromLines(file.readlines())
+        self.loadFromText(Path(path).read_bytes().decode('utf-8-sig'))
+
+    def loadFromText(self, text: str) -> None:
+        self._load(fo_formats.parse_config_text(text))
 
     def loadFromLines(self, lines: Iterable[str]) -> None:
-        self.sections = []
-        section_name = ''
-        section_content: dict[str, str] = {}
+        physical_lines: list[str] = []
 
-        for raw_line in lines:
-            line = raw_line.split('#', 1)[0].strip()
-            if not line:
-                continue
+        for line in lines:
+            line = line[:-1] if line.endswith('\n') else line
+            physical_lines.append(line[:-1] if line.endswith('\r') else line)
 
-            if line.startswith('[') and line.endswith(']'):
-                self.sections.append(ConfigSection(section_name, section_content))
-                section_name = line[1:-1].strip()
-                section_content = {}
-                continue
+        self._load(fo_formats.parse_config_lines(physical_lines))
 
-            if '=' not in line:
-                continue
-
-            key, value = line.split('=', 1)
-            key = key.strip()
-            if key:
-                section_content[key] = value.strip()
-
-        self.sections.append(ConfigSection(section_name, section_content))
+    def _load(self, document: fo_formats.ConfigDocument) -> None:
+        self.sections = [ConfigSection(section.name, section.values) for section in document.sections]
 
     def mainSection(self) -> ConfigSection:
         return self.sections[0]
@@ -86,8 +97,43 @@ class ConfigParser:
     def getSections(self, sectionName: str) -> list[ConfigSection]:
         return [section for section in self.sections if section.name == sectionName]
 
+    def resolveSettings(self, subConfig: str | None = None) -> dict[str, str]:
+        """Main-section settings with a sub-config applied over them, as the Engine settings loader does.
+
+        Sub-configs inherit their space-separated Parent list in order, later parents override earlier
+        ones and the section's own values override all parents; an empty name or NONE applies none."""
+        settings = dict(self.mainSection().content)
+
+        if not subConfig or subConfig == 'NONE':
+            return settings
+
+        resolved: dict[str, dict[str, str]] = {}
+
+        for section in self.getSections('SubConfig'):
+            name = section.content.get('Name', '')
+            if not name:
+                raise KeyError('Sub config name not specified')
+
+            values: dict[str, str] = {}
+            for parent in section.content.get('Parent', '').split():
+                if parent not in resolved:
+                    raise KeyError(f"Parent sub config '{parent}' of '{name}' not found")
+                values.update(resolved[parent])
+
+            values.update({key: value for key, value in section.content.items() if key not in ('Name', 'Parent')})
+            resolved.setdefault(name, values)
+
+        if subConfig not in resolved:
+            raise KeyError(f"Sub config '{subConfig}' not found")
+
+        settings.update(resolved[subConfig])
+        return settings
+
     def load_from_file(self, path: str | Path) -> None:
         self.loadFromFile(path)
+
+    def load_from_text(self, text: str) -> None:
+        self.loadFromText(text)
 
     def load_from_lines(self, lines: Iterable[str]) -> None:
         self.loadFromLines(lines)
@@ -97,3 +143,6 @@ class ConfigParser:
 
     def get_sections(self, section_name: str) -> list[ConfigSection]:
         return self.getSections(section_name)
+
+    def resolve_settings(self, sub_config: str | None = None) -> dict[str, str]:
+        return self.resolveSettings(sub_config)

@@ -12,8 +12,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
 
-import docs_validate
 import documentation_metadata
+import markdown_links
 
 
 SCHEMA_VERSION = 2
@@ -154,9 +154,9 @@ def _document_excerpt(text: str, query_tokens: set[str], maximum_bytes: int) -> 
     slug_counts: dict[str, int] = {}
     annotated_lines: list[str] = []
     for line in normalized.splitlines(keepends=True):
-        heading = docs_validate.HEADING_RE.match(line.rstrip("\r\n"))
+        heading = markdown_links.HEADING_RE.match(line.rstrip("\r\n"))
         if heading:
-            base_slug = docs_validate._heading_slug(heading.group("title"))
+            base_slug = markdown_links.heading_slug(heading.group("title"))
             duplicate_index = slug_counts.get(base_slug, 0)
             slug_counts[base_slug] = duplicate_index + 1
             anchor = base_slug if duplicate_index == 0 else f"{base_slug}-{duplicate_index}"
@@ -722,7 +722,7 @@ def _task_observations(
         if valid_document and isinstance(anchor, str):
             path_value = document_map[document_id].get("path")
             if isinstance(path_value, str):
-                valid_anchor = anchor in docs_validate._markdown_anchors(root / path_value)
+                valid_anchor = anchor in markdown_links.markdown_anchors(root / path_value)
         citations.append(
             {
                 "document_id": document_id,

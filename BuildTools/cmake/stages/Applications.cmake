@@ -233,6 +233,20 @@ if(FO_BUILD_BAKER OR FO_CODE_COVERAGE)
     endif()
 endif()
 
+# Unpackaged entry points started with AppInitFlags::PrebakeResources load the baker library from
+# their executable directory; a library client runs inside a foreign host, so it gets no copy
+if(TARGET ${FO_DEV_NAME}_BakerLib)
+    SetValue(prebakeApplications Server ServerService ServerDaemon ServerHeadless)
+
+    if(NOT FO_BUILD_LIBRARY)
+        AppendList(prebakeApplications Client ClientHeadless)
+    endif()
+
+    foreach(prebakeApplication IN LISTS prebakeApplications)
+        CopyTargetRuntimeToTarget(${FO_DEV_NAME}_${prebakeApplication} ${FO_DEV_NAME}_BakerLib)
+    endforeach()
+endif()
+
 if(FO_UNIT_TESTS OR FO_CODE_COVERAGE)
     SetValue(FO_CODE_COVERAGE_BACKEND "")
 

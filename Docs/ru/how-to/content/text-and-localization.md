@@ -5,7 +5,7 @@ locale: ru
 document_id: text-and-localization-guide
 permalink: /Docs/ru/how-to/content/text-and-localization.html
 ---
-<!-- docs-translation: {"document_id":"text-and-localization-guide","locale":"ru","source_path":"Docs/en/how-to/content/text-and-localization.md","source_sha256":"5aed7e56ef6d40d41146231ac6c670d340eeb21d61356019e4ce330d42db33f2"} -->
+<!-- docs-translation: {"document_id":"text-and-localization-guide","locale":"ru","source_path":"Docs/en/how-to/content/text-and-localization.md","source_sha256":"12a7da560caa23e1d0376b5a56e4b34f0f4fed51e904381daafc42438893c31b"} -->
 # Текст и локализация
 
 Engine определяет формат исходных `.fotxt`, поля `$Text` прототипов, запекание
@@ -275,6 +275,14 @@ python -m unittest BuildTools.tests.test_docs_text_format
 тестами рендеринга и видимым клиентом. Затем повторно запеките подключаемый
 проект. Проектные каталоги пакетов, проверки переводов, formatter-ы lexem и
 обновление GUI требуют тестов проекта, а не fixtures Engine.
+
+Перед запеканием подключающий проект проверяет сырые файлы `.fotxt` с помощью
+`BuildTools/check_text_packs.py`. Он разбирает каждый файл так же, как
+`TextPack::LoadFromString`, моделирует описанную выше нормализацию языков для
+упорядоченного списка `Baking.BakeLanguages` и сообщает об ошибках разбора,
+необъявленных языках, дубликатах, буквах недопустимой письменности, а также о
+ключах и пакетах, которые fallback отбросил бы или скопировал; см.
+[Инструменты текстовых пакетов, синхронизации движения и управляемого проекта](../project/content-and-diagnostics-tools.md#проверка-текстовых-пакетов-до-бейкинга).
 
 ## Маршрутизация сопровождения
 

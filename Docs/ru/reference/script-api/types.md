@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-api-types","locale":"ru","source_path":"Docs/en/reference/script-api/types.md","source_sha256":"3da751df66fd932b180181fee984a9cb2e15b03d45ea3d431a6d73145e01ebeb"} -->
+<!-- docs-translation: {"document_id":"generated-api-types","locale":"ru","source_path":"Docs/en/reference/script-api/types.md","source_sha256":"77dd9e53987faeb4f0a3b68b285c3e0537ee64c39f9dd1bb98c30ccab7f3642c"} -->
 
 # Типы скриптов
 
@@ -15,7 +15,7 @@ generated: true
 
 [Индекс справочника](index.md) | [Каноническая JSON-модель](../../../generated/api.json) | [Контракт генерации](../metadata/)
 
-Эта страница содержит **997** символов типов и их членов.
+Эта страница содержит **1000** символов типов и их членов.
 
 ## Сущности
 
@@ -2194,6 +2194,23 @@ Runtime: server, client, mapper<br>
 | ref-method | <code>timespan MovingContext.GetWholeTime()</code> | <a id="symbol-script-ref-method-common-movingcontext-getwholetime-85ed9aede4"></a><code>script.ref-method.common.MovingContext.GetWholeTime</code> | callable | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | [Source/Common/Movement.h:58](https://github.com/cvet/fonline/blob/master/Source/Common/Movement.h#L58) | Возвращает полную длительность маршрута с учётом скорости и смещений конечных точек. |
 | ref-method | <code>bool MovingContext.IsCompleted()</code> | <a id="symbol-script-ref-method-common-movingcontext-iscompleted-cfbdf78e77"></a><code>script.ref-method.common.MovingContext.IsCompleted</code> | callable | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | [Source/Common/Movement.h:58](https://github.com/cvet/fonline/blob/master/Source/Common/Movement.h#L58) | Показывает, было ли движение явно завершено. |
 
+<a id="symbol-script-ref-type-server-serverimage-822f4e24fc"></a>
+### <code>ServerImage</code>
+
+<code>ref type ServerImage</code><br>
+ID символа: <code>script.ref-type.server.ServerImage</code><br>
+Runtime: server<br>
+Контракт: <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15)<br>
+Флаги: <code>RefCounted</code>, <code>Export</code>, <code>=</code>, <code>GetSize</code>, <code>,</code>, <code>GetColor</code><br>
+Исходник: [Source/Server/ServerImage.h:13](https://github.com/cvet/fonline/blob/master/Source/Server/ServerImage.h#L13)
+
+Декодированные пиксели одного собранного однокадрового спрайтового ресурса для серверных поисков, например масок мировой карты
+
+| Вид | Член | ID символа | Контракт члена | API-контракт | Исходник | Описание |
+| --- | --- | --- | --- | --- | --- | --- |
+| ref-method | <code>ucolor ServerImage.GetColor(ipos pos)</code> | <a id="symbol-script-ref-method-server-serverimage-getcolor-b0fae0b50a"></a><code>script.ref-method.server.ServerImage.GetColor</code> | callable | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | [Source/Server/ServerImage.h:13](https://github.com/cvet/fonline/blob/master/Source/Server/ServerImage.h#L13) | Возвращает цвет одного пикселя и выбрасывает исключение для позиции вне изображения |
+| ref-method | <code>isize ServerImage.GetSize()</code> | <a id="symbol-script-ref-method-server-serverimage-getsize-091a93fd2c"></a><code>script.ref-method.server.ServerImage.GetSize</code> | callable | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | [Source/Server/ServerImage.h:13](https://github.com/cvet/fonline/blob/master/Source/Server/ServerImage.h#L13) | Возвращает ширину и высоту изображения в пикселях |
+
 <a id="symbol-script-ref-type-client-spritepattern-338f66b808"></a>
 ### <code>SpritePattern</code>
 
@@ -2249,10 +2266,10 @@ ID символа: <code>script.ref-type.client.VideoPlayback</code><br>
 Runtime: client, mapper<br>
 Контракт: <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15)<br>
 Флаги: <code>RefCounted</code>, <code>Export</code>, <code>=</code>, <code>Stopped</code><br>
-Исходник: [Source/Client/Client.h:48](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L48)
+Исходник: [Source/Client/Client.h:49](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L49)
 
 Принадлежащий скрипту контроллер видеоклипа и текстуры вывода, создаваемый Game.CreateVideoPlayback и продвигаемый Game.DrawVideoPlayback.
 
 | Вид | Член | ID символа | Контракт члена | API-контракт | Исходник | Описание |
 | --- | --- | --- | --- | --- | --- | --- |
-| ref-field | <code>bool VideoPlayback.Stopped</code> | <a id="symbol-script-ref-field-client-videoplayback-stopped-941befb4f8"></a><code>script.ref-field.client.VideoPlayback.Stopped</code> | mutable | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | [Source/Client/Client.h:48](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L48) | Становится true, когда DrawVideoPlayback обнаруживает остановку исходного клипа и освобождает ресурсы воспроизведения. |
+| ref-field | <code>bool VideoPlayback.Stopped</code> | <a id="symbol-script-ref-field-client-videoplayback-stopped-941befb4f8"></a><code>script.ref-field.client.VideoPlayback.Stopped</code> | mutable | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | [Source/Client/Client.h:49](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L49) | Становится true, когда DrawVideoPlayback обнаруживает остановку исходного клипа и освобождает ресурсы воспроизведения. |

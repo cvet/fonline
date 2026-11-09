@@ -107,8 +107,8 @@ ServerOnly = True
 
 [ResourcePack]
 Name = Scripts
-InputDirs = Scripts Engine/Source/Scripting/AngelScript/CoreScripts
-IncludePatterns = Tutorial.fos Core.fos
+InputDirs = Scripts
+IncludePatterns = Tutorial.fos
 Bakers = AngelScript
 
 [ResourcePack]

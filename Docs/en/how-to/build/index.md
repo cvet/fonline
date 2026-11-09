@@ -104,7 +104,7 @@ The exact list depends on host OS and target platform, but common tools include:
 
 - Git
 - CMake
-- Python 3
+- Python 3.12 or newer, which `buildtools.py` enforces
 - A C++20-capable compiler/toolchain
 - Platform SDKs for the targets you build
 - Visual Studio or Build Tools on Windows-oriented workflows
