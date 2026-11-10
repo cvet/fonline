@@ -7,12 +7,22 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"19df82b7cb214d060d57a14c92bee9591b04ebc2ba4e97afb6de5e1d99aa0c6e"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"1dab886bd62b504a2f909dc7a69d0d9f781c3eeeec8c9244ee02d39ae7383759"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
-## Current - 2026-11-08
+## Current - 2026-11-10
+
+### Исправлено
+
+- `ClientStartupSettingsHook` теперь вызывается и из загружаемой библиотеки client runtime. `ClientLib.cpp` — runtime, который client host загружает по умолчанию, — создавал `ClientEngine` без hook, тогда как `ClientApp.cpp` (встроенный runtime), `ServerApp.cpp` и `ServerHeadlessApp.cpp` его вызывали; поэтому проект, менявший в нём startup-настройки клиента, видел изменение только во встроенном runtime. Загружаемый runtime теперь вызывает `ClientStartupSettingsHook(GetApp()->Settings, 1, false)` после синхронизации ресурсов и непосредственно перед созданием client, так же, как `ClientApp.cpp`.
+
+### Миграция
+
+- Базовая `2026.1.118-dev`, целевая `2026.1.119-dev`. Миграция проекта не требуется: контракты API, свойств, сериализации, сети и ресурсов не меняются, объявление hook и стандартная заглушка прежние. Проект, уже определяющий `ClientStartupSettingsHook`, теперь получает его вызов и в загружаемом runtime; hook, написанный только под встроенный runtime, стоит один раз пересмотреть, потому что он начинает действовать и в standalone client по умолчанию. Проект без hook сохраняет сгенерированную заглушку. Пересоберите библиотеку client runtime (`<Project>_ClientLib`) и host, чтобы получить исправление.
+
+## 2026.1.118-dev - 2026-11-08
 
 ### Исправлено
 

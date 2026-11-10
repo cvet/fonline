@@ -12,7 +12,17 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-11-08
+## Current - 2026-11-10
+
+### Fixed
+
+- Call `ClientStartupSettingsHook` from the loadable client runtime library. `ClientLib.cpp`, the runtime that the client host loads by default, constructed `ClientEngine` without the hook, while `ClientApp.cpp` (embedded runtime), `ServerApp.cpp` and `ServerHeadlessApp.cpp` called it, so a project that adjusted client startup settings there saw its change only in the embedded runtime. The loadable runtime now calls `ClientStartupSettingsHook(GetApp()->Settings, 1, false)` after resource synchronization and immediately before constructing the client, exactly like `ClientApp.cpp`.
+
+### Migration
+
+- Baseline `2026.1.118-dev` to `2026.1.119-dev`. No project migration is required: no API, property, serialization, network or resource contract changes, and the hook declaration and default stub are unchanged. A project that already defines `ClientStartupSettingsHook` now has it run in the loadable runtime as well; a hook that was written only for the embedded runtime should be reviewed once, because it now applies to the default standalone client too. A project without the hook keeps the generated no-op stub. Rebuild the client runtime library (`<Project>_ClientLib`) and host to pick up the change.
+
+## 2026.1.118-dev - 2026-11-08
 
 ### Fixed
 

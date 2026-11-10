@@ -5,7 +5,7 @@ locale: ru
 document_id: applications-entry-points
 permalink: /Docs/ru/reference/applications.html
 ---
-<!-- docs-translation: {"document_id":"applications-entry-points","locale":"ru","source_path":"Docs/en/reference/applications.md","source_sha256":"4c94d7f50df1bbd67bee33dc0baac378598eb461680d78be58c9f761dfe970d4"} -->
+<!-- docs-translation: {"document_id":"applications-entry-points","locale":"ru","source_path":"Docs/en/reference/applications.md","source_sha256":"d7606e76f4e98429c49d3f55527b6a9647950dd97311872ceec7c9c0df638191"} -->
 # Приложения и точки входа
 
 Этот документ сопоставляет точки входа приложений в `Source/Applications/` и их wiring в BuildTools.
@@ -71,7 +71,7 @@ permalink: /Docs/ru/reference/applications.html
 
 Приложения, создающие `ClientEngine`, вызывают предоставленный проектом `ClientStartupSettingsHook(GlobalSettings&, int32_t clientIndex, bool embedded)` непосредственно перед созданием client:
 
-- `ClientApp.cpp` вызывает его для standalone client с `clientIndex = 1` и `embedded = false`.
+- `ClientApp.cpp` (встроенный client runtime) и `ClientLib.cpp` (загружаемая библиотека client runtime) вызывают его для standalone client с `clientIndex = 1` и `embedded = false`.
 - `ServerApp.cpp` вызывает его для каждого GUI embedded client после копирования app settings в принадлежащий client `GlobalSettings`.
 - `ServerHeadlessApp.cpp` вызывает его для каждого headless embedded client после копирования app settings в принадлежащий client `GlobalSettings`.
 
