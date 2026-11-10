@@ -169,6 +169,9 @@ Continue with the [canonical reference](../../en/reference/script-api/events.md)
 <a id="symbol-script-event-client-game-onscriptoverrun-65e3abf09f"></a>
 - [`symbol-script-event-client-game-onscriptoverrun-65e3abf09f`](../../en/reference/script-api/events.md#symbol-script-event-client-game-onscriptoverrun-65e3abf09f)
 
+<a id="symbol-script-event-client-game-onsimulationpausechanged-5e7efa3a7a"></a>
+- [`symbol-script-event-client-game-onsimulationpausechanged-5e7efa3a7a`](../../en/reference/script-api/events.md#symbol-script-event-client-game-onsimulationpausechanged-5e7efa3a7a)
+
 <a id="symbol-script-event-client-game-onstart-be89bde213"></a>
 - [`symbol-script-event-client-game-onstart-be89bde213`](../../en/reference/script-api/events.md#symbol-script-event-client-game-onstart-be89bde213)
 

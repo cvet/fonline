@@ -56,6 +56,8 @@ namespace EntityLifecycleTests
                 return _sentDisconnectCount.load(std::memory_order_relaxed);
             case NetMessage::TimeSync:
                 return _sentTimeSyncCount.load(std::memory_order_relaxed);
+            case NetMessage::SimulationPause:
+                return _sentSimulationPauseCount.load(std::memory_order_acquire);
             case NetMessage::CritterDir:
                 return _sentCritterDirCount.load(std::memory_order_acquire);
             default:
@@ -63,6 +65,7 @@ namespace EntityLifecycleTests
             }
         }
 
+        [[nodiscard]] auto GetLastSentSimulationPaused() const noexcept -> bool { return _lastSentSimulationPaused.load(std::memory_order_acquire); }
         [[nodiscard]] auto GetLastSentCritterDirId() const noexcept -> ident_t { return _lastSentCritterDirId.load(std::memory_order_relaxed); }
         [[nodiscard]] auto GetLastSentCritterDir() const noexcept -> mdir { return _lastSentCritterDir.load(std::memory_order_relaxed); }
         [[nodiscard]] auto GetSentTrackedMessageCount() const noexcept -> size_t { return _sentTrackedMessageCount.load(std::memory_order_relaxed); }
@@ -173,6 +176,14 @@ namespace EntityLifecycleTests
                     else if (message == NetMessage::TimeSync) {
                         _sentTimeSyncCount.fetch_add(1, std::memory_order_relaxed);
                     }
+                    else if (message == NetMessage::SimulationPause) {
+                        FO_VERIFY_AND_THROW(message_size == header_size + sizeof(bool) + sizeof(synctime), "Invalid outgoing simulation pause message size", message_size);
+
+                        bool paused {};
+                        memory::copy(&paused, data.data() + offset + header_size, sizeof(paused));
+                        _lastSentSimulationPaused.store(paused, std::memory_order_relaxed);
+                        _sentSimulationPauseCount.fetch_add(1, std::memory_order_release);
+                    }
 
                     if (message == NetMessage::AddCritter || message == NetMessage::RemoveCritter) {
                         size_t tracked_index {_sentTrackedMessageCount.fetch_add(1, std::memory_order_relaxed)};
@@ -198,6 +209,8 @@ namespace EntityLifecycleTests
         std::atomic<size_t> _sentInfoMessageCount {};
         std::atomic<size_t> _sentDisconnectCount {};
         std::atomic<size_t> _sentTimeSyncCount {};
+        std::atomic<size_t> _sentSimulationPauseCount {};
+        std::atomic<bool> _lastSentSimulationPaused {};
         std::atomic<size_t> _sentCritterDirCount {};
         std::atomic<ident_t> _lastSentCritterDirId {};
         std::atomic<mdir> _lastSentCritterDir {};

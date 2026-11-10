@@ -983,6 +983,11 @@ auto ServerEngine::PlayerJob(ptr<Player> player) -> std::optional<timespan>
         return std::nullopt;
     }
 
+    // The player learns about a pause or resume on its next pass, so its clock and movement stop with the server's
+    if (bool paused {IsSimulationPaused()}; paused != player->IsSimulationPauseSent()) {
+        player->Send_SimulationPause(paused);
+    }
+
     return std::chrono::milliseconds {Settings->Server.ConnectionProcessPeriodMs};
 }
 
@@ -1124,6 +1129,10 @@ void ServerEngine::Shutdown()
     FO_TRACE_ZONE(Engine);
 
     FO_VERIFY_AND_THROW(!GetCurrentSyncContext(), "Server shutdown must be requested outside a server execution context");
+
+    // A queued hold request may wait for the quiescence lock, so the control thread is drained before taking it
+    _simulationControlClosed.store(true, std::memory_order_release);
+    _simulationControl.clear();
 
     scoped_lock quiescence_locker {_quiescenceLocker};
 
@@ -1831,6 +1840,39 @@ auto ServerEngine::ReleaseSimulationHold(string_view reason) -> bool
 
     ServerQuiescenceGuard guard {_quiescenceLocker, drained_context};
     return release_hold();
+}
+
+void ServerEngine::RequestSimulationHold(string reason, bool hold)
+{
+    FO_VERIFY_AND_THROW(!reason.empty(), "Simulation hold requires a reason");
+
+    if (_simulationControlClosed.load(std::memory_order_acquire)) {
+        return;
+    }
+
+    _simulationControl.add_job([this, reason = std::move(reason), hold]() -> optional<timespan> {
+        if (_simulationControlClosed.load(std::memory_order_acquire) || _shutdownInProgress.load(std::memory_order_acquire)) {
+            return std::nullopt;
+        }
+
+        // A request made during startup applies once the server runs
+        if (!_started) {
+            return std::chrono::milliseconds {10};
+        }
+
+        try {
+            bool changed {hold ? HoldSimulation(reason) : ReleaseSimulationHold(reason)};
+
+            if (!changed) {
+                logging::write(logging::type::warning, "Simulation {} '{}' changed nothing", hold ? "hold" : "hold release", reason);
+            }
+        }
+        catch (const std::exception& ex) {
+            exceptions::report_and_continue(ex);
+        }
+
+        return std::nullopt;
+    });
 }
 
 void ServerEngine::SuspendSimulationWork()

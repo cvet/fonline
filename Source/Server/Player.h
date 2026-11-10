@@ -77,6 +77,8 @@ public:
     void Send_ChosenRemoveItem(ptr<const Item> item);
     void Send_Teleport(ptr<const Critter> cr, mpos to_hex);
     void Send_TimeSync();
+    void Send_SimulationPause(bool paused);
+    [[nodiscard]] auto IsSimulationPauseSent() const noexcept -> bool { return _simulationPauseSent; }
     void Send_InfoMessage(EngineInfoMessage info_message, string_view extra_text = "");
     void Send_HashList(const_span<string> hash_strings);
     void Send_RemoteCall(hstring rpc_name, const_span<uint8_t> rpc_data);
@@ -119,6 +121,7 @@ private:
     optional<ViewMapContext> _viewMap {};
     std::atomic<int32_t> _viewMapRadius {};
     nptr<Map> _viewMapTarget {};
+    bool _simulationPauseSent {}; // Player job only
     EntityLock _ownedLock {};
 };
 

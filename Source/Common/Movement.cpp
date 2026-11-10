@@ -193,6 +193,13 @@ void MovingContext::FastForward(timespan time)
     _offsetTime += time;
 }
 
+void MovingContext::Delay(timespan time)
+{
+    FO_VERIFY_AND_THROW(time >= timespan::zero, "Movement can only be delayed by a positive span", time.milliseconds());
+
+    _offsetTime -= time;
+}
+
 void MovingContext::Complete(MovingState reason) noexcept
 {
     if (reason == MovingState::Success) {

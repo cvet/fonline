@@ -74,6 +74,7 @@ public:
     [[nodiscard]] auto GetEngine() -> ptr<ClientEngine> { return this; }
     [[nodiscard]] auto IsConnecting() const noexcept -> bool;
     [[nodiscard]] auto IsConnected() const noexcept -> bool;
+    [[nodiscard]] auto IsSimulationPaused() const noexcept -> bool { return _simulationPaused; }
     [[nodiscard]] auto GetConnection() noexcept -> ptr<ClientConnection> { return &_conn; }
     [[nodiscard]] auto GetChosen() noexcept -> nptr<CritterView>;
     [[nodiscard]] auto GetMapChosen() noexcept -> nptr<CritterHexView>;
@@ -150,6 +151,9 @@ public:
     // Runs when the server accepts login and the client receives the login-success message
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnLoginSuccess);
+    // Runs when the server reports that its simulation was paused or resumed
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnSimulationPauseChanged, bool /*paused*/);
     // Runs for an informational message received from the server
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnInfoMessage, EngineInfoMessage /*infoMessage*/, string /*extraText*/);
@@ -418,6 +422,8 @@ protected:
     void Net_OnChosenAddItem();
     void Net_OnChosenRemoveItem();
     void Net_OnTimeSync();
+    void Net_OnSimulationPause();
+    void ResetSimulationPause();
     void Net_OnLoadMap();
     void Net_OnSomeItems();
     void Net_OnViewMap();
@@ -455,6 +461,7 @@ protected:
 
     ClientConnection _conn;
     bool _connectionRequest {};
+    bool _simulationPaused {};
     EventUnsubscriber _eventUnsubscriber {};
     TextPack _curLang {make_ptr(&Hashes)};
     vector<pair<string, TextPack>> _langPackCache {};

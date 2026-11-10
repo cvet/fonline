@@ -616,9 +616,15 @@ void CritterHexView::ProcessMoving()
     FO_VERIFY_AND_THROW(moving, "Missing active movement state");
     moving->ValidateRuntimeState();
 
+    // A paused server holds its movement, so the plan stands still for the frames of the pause
+    if (_engine->IsSimulationPaused()) {
+        moving->Delay(_engine->GameTime.GetFrameDeltaTime());
+        _movingCatchUpTime = _engine->GameTime.GetFrameTime();
+    }
+
     // A late plan runs faster until it has made up the time it lost on the way, so the critter sprints to where it
     // would be instead of appearing there
-    if (_movingCatchUpLeft > timespan::zero) {
+    if (_movingCatchUpLeft > timespan::zero && !_engine->IsSimulationPaused()) {
         nanotime frame_time {_engine->GameTime.GetFrameTime()};
         float32_t extra_rate {std::max(_engine->Settings->Client.MoveCatchUpRate, 1.0f) - 1.0f};
         timespan frame_extra {std::chrono::nanoseconds {iround<int64_t>(numeric_cast<float64_t>((frame_time - _movingCatchUpTime).nanoseconds()) * extra_rate)}};

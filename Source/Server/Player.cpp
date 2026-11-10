@@ -716,6 +716,22 @@ void Player::Send_TimeSync()
     out_buf->Write(_engine->GameTime.GetSynchronizedTime());
 }
 
+void Player::Send_SimulationPause(bool paused)
+{
+    FO_VALIDATE_ENTITY(NONE);
+
+    {
+        scoped_lock conn_lock {_connectionLock};
+
+        ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::SimulationPause};
+
+        out_buf->Write(paused);
+        out_buf->Write(_engine->GameTime.GetSynchronizedTime());
+    }
+
+    _simulationPauseSent = paused;
+}
+
 void Player::Send_InfoMessage(EngineInfoMessage info_message, string_view extra_text)
 {
     FO_VALIDATE_ENTITY(NONE);

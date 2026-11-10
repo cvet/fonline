@@ -187,6 +187,9 @@ public:
     void ResumeSimulation();
     [[nodiscard]] auto HoldSimulation(string_view reason) -> bool;
     [[nodiscard]] auto ReleaseSimulationHold(string_view reason) -> bool;
+    // Queues a named hold or its release from any context, a script job included. Requests apply in order on a
+    // control thread once the calling job has finished; a request the hold set cannot take is logged and dropped
+    void RequestSimulationHold(string reason, bool hold);
     void DrawGui();
 
     auto CreateNotLoggedInPlayer(shared_ptr<NetworkServerConnection> net_connection) -> ptr<Player>;
@@ -464,6 +467,8 @@ private:
     work_thread _mainWorker {"ServerWorker"};
     work_thread _healthWriter {"ServerHealthWriter"};
     work_thread _rpcWatchdog {"ServerRpcWatchdog"};
+    work_thread _simulationControl {"ServerSimulationControl"};
+    std::atomic<bool> _simulationControlClosed {};
     mutex _rpcStatesLocker {};
     vector<weak_ptr<ServerConnection::RuntimeState>> _rpcStates FO_TSA_GUARDED_BY(_rpcStatesLocker) {};
     string _healthFileName {};

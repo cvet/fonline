@@ -4234,6 +4234,10 @@
           "source_sha256": "703454eeb2bdac4758a34b562edb007118082de1299e501ada2577202223b960",
           "translation": "Перед следующим OnLoop сообщает ограниченную сводку превышений времени выполнения скрипта."
         },
+        "/symbols/@id=script.event.client.Game.OnSimulationPauseChanged/description": {
+          "source_sha256": "c5c08f3b9214dbb5c9a474a9e9f872d8fcf91dbe4240bb2594cd1ccf243e346e",
+          "translation": "Срабатывает, когда сервер сообщает, что его симуляция приостановлена или возобновлена"
+        },
         "/symbols/@id=script.event.client.Game.OnStart/description": {
           "source_sha256": "bd39c95ba2234ac90659a7e31caaaf51eb531d813d9c370813a7d27b32894f90",
           "translation": "Однократно выполняется после завершения инициализации клиента."
@@ -5089,6 +5093,10 @@
         "/symbols/@id=script.method.client.Game.IsMouseAvailable/description": {
           "source_sha256": "b6c9e3824012ffb5fc586de754d6320a8390d43e2a8f810af9b20cbdbcf8e570",
           "translation": "Возвращает, предоставляет ли активный backend ввода работу с мышью."
+        },
+        "/symbols/@id=script.method.client.Game.IsSimulationPaused/description": {
+          "source_sha256": "87b9be622dbf1ec0cae3e33b5d21b00eb38788b913b505c0a6cfeb1cf1f0db24",
+          "translation": "Возвращает, сообщил ли сервер в последний раз, что его симуляция приостановлена"
         },
         "/symbols/@id=script.method.client.Game.IsSpriteHit/description": {
           "source_sha256": "f0f1b2e30f51491618a0c9d905ef2cc37a7444130ee1052b4b90d456e1dc576f",
@@ -8010,9 +8018,17 @@
           "source_sha256": "53d713803b5ec6e7199705fe02dc54aefe2f52c0d68d60e5bd4ab890b3476c71",
           "translation": "Возвращает число текстов языкового пакета для ключа"
         },
+        "/symbols/@id=script.method.server.Game.HoldSimulation/description": {
+          "source_sha256": "d23cf78e8b596834f409cd22ed956f9f3b9c4dcac3751ac042119f805d1b8ac5",
+          "translation": "Удерживает симуляцию под именованным владельцем. Игровое время, time events и движение криттеров останавливаются, когда запрос применяется после вызывающего задания; задания игроков продолжают работать. Повторное удержание тем же владельцем ничего не меняет"
+        },
         "/symbols/@id=script.method.server.Game.IsEntityLocked/description": {
           "source_sha256": "e5076c27b251772e0615f185bcbcae09812d64810bf477fd9f7ad7f8ca34500e",
           "translation": "Возвращает, покрыта ли сущность, не выводя диагностику"
+        },
+        "/symbols/@id=script.method.server.Game.IsSimulationPaused/description": {
+          "source_sha256": "1795093318bc8059df58460078eb4e4def34e90bfabee2cd6bfba3477ecd1f31",
+          "translation": "Возвращает, приостановлена ли симуляция сейчас; удержание, запрошенное вызывающим заданием, ещё не применено"
         },
         "/symbols/@id=script.method.server.Game.IsTextPresent/description": {
           "source_sha256": "f1fedeac2de1487c3f34053b682cb71d83e7fe2708521dedda248485311c79c1",
@@ -8065,6 +8081,10 @@
         "/symbols/@id=script.method.server.Game.MoveItems%23efe80393199559d9/description": {
           "source_sha256": "469862cd87372a26b9958c5d41fd8b12fb45b55f4a84dde13e1c8e003a09008c",
           "translation": "Перемещает каждый ненулевой живой предмет на допустимый гекс карты"
+        },
+        "/symbols/@id=script.method.server.Game.ReleaseSimulationHold/description": {
+          "source_sha256": "2a95bb26dc254cae64fc8f58b08621f51c21adbcc25e2324fd260ee5e81127b4",
+          "translation": "Снимает именованное удержание симуляции; симуляция возобновляется после снятия последнего удержания"
         },
         "/symbols/@id=script.method.server.Game.SetSynchronizedTime/description": {
           "source_sha256": "e95b194ba32c8b70ab2b11a437b9ce208bc70b12e5cc7cb518d68216aff14cb4",

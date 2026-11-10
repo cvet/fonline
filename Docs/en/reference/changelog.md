@@ -14,6 +14,16 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-11-06
 
+### Added
+
+- Script-requested simulation pause. Server scripts hold and release the simulation under named owners with `Game.HoldSimulation(owner)` and `Game.ReleaseSimulationHold(owner)`, and read `Game.IsSimulationPaused()`. A request queues on the `ServerSimulationControl` thread and applies once the calling job has finished, because a script job cannot drain the simulation it runs in. Logged-in players receive the new `NetMessage::SimulationPause`; the client freezes its synchronized time and holds critter movement until the resume, and client scripts get `Game.IsSimulationPaused()` and `OnSimulationPauseChanged(paused)`. `GameTimer` gains `FreezeSynchronizedTime`, `ThawSynchronizedTime` and `IsSynchronizedTimeFrozen`, and `MovingContext` gains `Delay`.
+
+### Migration
+
+- Baseline `8b32281d50` (`2026.1.112-dev`) → `2026.1.113-dev`. The wire protocol gains `NetMessage::SimulationPause`, so the `MigrationRule Version` marker moves to `0 0 88`: rebuild every native role, rebuild the client together with the server and recompile scripts. Stored properties, saved data, the Managed ABI and resource schemas do not change, and no project source change is required; a project that never calls the new methods sees no pause message.
+
+## 2026.1.112-dev - 2026-11-06
+
 ### Fixed
 
 - Order flat map sprites by their sub-layer before their row. A flat sprite has no ground depth, so below `DrawOrderType::NormalBegin` the draw-order key is now `[group 6][sub-layer 8][gap 4][hex Y 24][hex X 22]`: `Item.DrawOrderSubLayer` is a paint layer that outranks the hex row, and rows and X order only sprites of one sub-layer. Before, a flat decal on a later row covered a flat marker with a higher sub-layer on an earlier row, so ground decals showed through a marker strip wherever their hex happened to sort after the strip's cell. The standing key is unchanged. `Test_MapSprite.cpp` pins both orders.

@@ -155,6 +155,7 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     _conn.AddMessageHandler(NetMessage::ChosenAddItem, [this]() FO_DEFERRED { Net_OnChosenAddItem(); });
     _conn.AddMessageHandler(NetMessage::ChosenRemoveItem, [this]() FO_DEFERRED { Net_OnChosenRemoveItem(); });
     _conn.AddMessageHandler(NetMessage::TimeSync, [this]() FO_DEFERRED { Net_OnTimeSync(); });
+    _conn.AddMessageHandler(NetMessage::SimulationPause, [this]() FO_DEFERRED { Net_OnSimulationPause(); });
     _conn.AddMessageHandler(NetMessage::ViewMap, [this]() FO_DEFERRED { Net_OnViewMap(); });
     _conn.AddMessageHandler(NetMessage::LoadMap, [this]() FO_DEFERRED { Net_OnLoadMap(); });
     _conn.AddMessageHandler(NetMessage::SomeItems, [this]() FO_DEFERRED { Net_OnSomeItems(); });
@@ -685,6 +686,7 @@ void ClientEngine::Net_OnDisconnect()
     }
 
     DestroyInnerEntities();
+    ResetSimulationPause();
 
     _connectionRequest = false;
     OnDisconnected.Fire();
@@ -1955,6 +1957,46 @@ void ClientEngine::Net_OnTimeSync()
 
     GameTime.SetSynchronizedTimeMonotonic(time);
     SetSynchronizedTime(GameTime.GetSynchronizedTime());
+}
+
+void ClientEngine::Net_OnSimulationPause()
+{
+    FO_TRACE_ZONE(Core);
+
+    auto paused {_conn.InBuf->Read<bool>()};
+    auto time {_conn.InBuf->Read<synctime>()};
+
+    if (paused == _simulationPaused) {
+        GameTime.SetSynchronizedTimeMonotonic(time);
+        SetSynchronizedTime(GameTime.GetSynchronizedTime());
+        return;
+    }
+
+    if (paused) {
+        GameTime.FreezeSynchronizedTime(time);
+    }
+    else {
+        GameTime.ThawSynchronizedTime(time);
+    }
+
+    SetSynchronizedTime(GameTime.GetSynchronizedTime());
+    _simulationPaused = paused;
+
+    OnSimulationPauseChanged.Fire(paused);
+}
+
+// A lost connection ends the server's pause for this client; its time thaws where it stood
+void ClientEngine::ResetSimulationPause()
+{
+    if (!_simulationPaused) {
+        return;
+    }
+
+    _simulationPaused = false;
+
+    if (GameTime.IsSynchronizedTimeFrozen()) {
+        GameTime.ThawSynchronizedTime(GameTime.GetSynchronizedTime());
+    }
 }
 
 void ClientEngine::Net_OnLoadMap()

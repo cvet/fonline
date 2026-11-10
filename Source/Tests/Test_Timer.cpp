@@ -48,6 +48,58 @@ TEST_CASE("GameTimer")
         CHECK(timer.GetSynchronizedTime() >= sync_base);
     }
 
+    SECTION("FrozenSynchronizedTimeStandsWhileFrameTimeRuns")
+    {
+        GameTimer timer {&settings};
+        synctime sync_base {777000};
+
+        timer.SetSynchronizedTime(sync_base);
+        timer.FrameAdvance(false);
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        timer.FrameAdvance(false);
+
+        synctime before_freeze {timer.GetSynchronizedTime()};
+        timer.FreezeSynchronizedTime(sync_base);
+
+        // The freeze never moves the time back below what was already shown
+        CHECK(timer.IsSynchronizedTimeFrozen());
+        CHECK(timer.GetSynchronizedTime() == before_freeze);
+        CHECK_THROWS_AS(timer.FreezeSynchronizedTime(sync_base), VerificationException);
+
+        nanotime frame_before {timer.GetFrameTime()};
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        timer.FrameAdvance(false);
+
+        CHECK(timer.GetFrameTime() > frame_before);
+        CHECK(timer.GetSynchronizedTime() == before_freeze);
+
+        // A later report moves the frozen time forward and an earlier one does not
+        synctime later {before_freeze + std::chrono::milliseconds {50}};
+        timer.SetSynchronizedTimeMonotonic(later);
+        CHECK(timer.GetSynchronizedTime() == later);
+        timer.SetSynchronizedTimeMonotonic(sync_base);
+        CHECK(timer.GetSynchronizedTime() == later);
+
+        timer.ThawSynchronizedTime(sync_base);
+        CHECK_FALSE(timer.IsSynchronizedTimeFrozen());
+        CHECK(timer.GetSynchronizedTime() == later);
+        CHECK_THROWS_AS(timer.ThawSynchronizedTime(sync_base), VerificationException);
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        timer.FrameAdvance(false);
+        CHECK(timer.GetSynchronizedTime() > later);
+    }
+
+    SECTION("FreezeBeforeSynchronizationUsesTheReportedTime")
+    {
+        GameTimer timer {&settings};
+        synctime reported {4242};
+
+        timer.FreezeSynchronizedTime(reported);
+        CHECK(timer.IsTimeSynchronized());
+        CHECK(timer.GetSynchronizedTime() == reported);
+    }
+
     SECTION("PauseFreezesFrameAndSynchronizedTime")
     {
         GameTimer timer {&settings};

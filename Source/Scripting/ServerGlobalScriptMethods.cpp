@@ -1576,6 +1576,36 @@ FO_SCRIPT_API void Server_Game_LoadStaticMaps(ptr<ServerEngine> server, readonly
     server->MapMngr.LoadStaticMaps(protos, asyncLoad);
 }
 
+// Hold the simulation under a named owner. Game time, time events and critter movement stop once the request is
+// applied after the calling job; player jobs keep running. A second hold under the same owner changes nothing
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_HoldSimulation(ptr<ServerEngine> server, string_view owner)
+{
+    if (owner.empty()) {
+        throw ScriptException("Simulation hold owner is empty");
+    }
+
+    server->RequestSimulationHold(string {owner}, true);
+}
+
+// Release a named simulation hold; the simulation resumes after the last hold is released
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_ReleaseSimulationHold(ptr<ServerEngine> server, string_view owner)
+{
+    if (owner.empty()) {
+        throw ScriptException("Simulation hold owner is empty");
+    }
+
+    server->RequestSimulationHold(string {owner}, false);
+}
+
+// Return whether the simulation is paused now; a hold requested by the calling job is not applied yet
+///@ ExportMethod
+FO_SCRIPT_API bool Server_Game_IsSimulationPaused(ptr<ServerEngine> server)
+{
+    return server->IsSimulationPaused();
+}
+
 // Return whether the baked content of a prototype map is cached
 ///@ ExportMethod
 FO_SCRIPT_API bool Server_Game_IsStaticMapLoaded(ptr<ServerEngine> server, hstring mapPid)

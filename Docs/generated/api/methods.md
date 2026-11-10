@@ -462,6 +462,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-client-game-ismouseavailable-76ea7ca687"></a>
 - [`symbol-script-method-client-game-ismouseavailable-76ea7ca687`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-ismouseavailable-76ea7ca687)
 
+<a id="symbol-script-method-client-game-issimulationpaused-889518debc"></a>
+- [`symbol-script-method-client-game-issimulationpaused-889518debc`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-issimulationpaused-889518debc)
+
 <a id="symbol-script-method-client-game-isspritehit-b573de01eb"></a>
 - [`symbol-script-method-client-game-isspritehit-b573de01eb`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-isspritehit-b573de01eb)
 
@@ -2721,8 +2724,14 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-server-game-gettextcount-211f69a25c"></a>
 - [`symbol-script-method-server-game-gettextcount-211f69a25c`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-gettextcount-211f69a25c)
 
+<a id="symbol-script-method-server-game-holdsimulation-793c3fae99"></a>
+- [`symbol-script-method-server-game-holdsimulation-793c3fae99`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-holdsimulation-793c3fae99)
+
 <a id="symbol-script-method-server-game-isentitylocked-fe2e74f382"></a>
 - [`symbol-script-method-server-game-isentitylocked-fe2e74f382`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-isentitylocked-fe2e74f382)
+
+<a id="symbol-script-method-server-game-issimulationpaused-b9bbf8e127"></a>
+- [`symbol-script-method-server-game-issimulationpaused-b9bbf8e127`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-issimulationpaused-b9bbf8e127)
 
 <a id="symbol-script-method-server-game-isstaticmaploaded-6374cddb4b"></a>
 - [`symbol-script-method-server-game-isstaticmaploaded-6374cddb4b`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-isstaticmaploaded-6374cddb4b)
@@ -2771,6 +2780,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 
 <a id="symbol-script-method-server-game-moveitems-efe80393199559d9-ebeab7d6fd"></a>
 - [`symbol-script-method-server-game-moveitems-efe80393199559d9-ebeab7d6fd`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-moveitems-efe80393199559d9-ebeab7d6fd)
+
+<a id="symbol-script-method-server-game-releasesimulationhold-0c535fcce8"></a>
+- [`symbol-script-method-server-game-releasesimulationhold-0c535fcce8`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-releasesimulationhold-0c535fcce8)
 
 <a id="symbol-script-method-server-game-setsynchronizedtime-e4b76181b9"></a>
 - [`symbol-script-method-server-game-setsynchronizedtime-e4b76181b9`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-setsynchronizedtime-e4b76181b9)

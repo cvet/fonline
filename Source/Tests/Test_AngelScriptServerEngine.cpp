@@ -202,6 +202,50 @@ TEST_CASE("AngelScriptServerEngineScriptCallsMarshalContainersAndEntities")
     server->CrMngr.DestroyCritter(cr);
 }
 
+TEST_CASE("AngelScriptServerScriptHoldsAndReleasesTheSimulation")
+{
+    auto settings {MakeServerTestSettings()};
+    auto server {ServerEngineTests::MakeServerEngine(settings)};
+
+    auto shutdown {scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    })};
+
+    string startup_error {ServerEngineTests::WaitForServerStart(server)};
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    auto call_script {[&server](string_view name) {
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+        auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
+        auto func {server->FindFunc<void>(server->Hashes.to_hashed_string(name))};
+        REQUIRE(func);
+        REQUIRE(func.Call());
+    }};
+
+    auto wait_for {[](const function<bool()>& condition) {
+        for (int32_t i {0}; i < 400; i++) {
+            if (condition()) {
+                return true;
+            }
+
+            coarse_sleep(std::chrono::milliseconds {5});
+        }
+
+        return false;
+    }};
+
+    call_script("ServerEngineTest::UnitTestHoldSimulation");
+    REQUIRE(wait_for([&] { return server->IsSimulationPaused(); }));
+
+    call_script("ServerEngineTest::UnitTestReleaseSimulation");
+    REQUIRE(wait_for([&] { return !server->IsSimulationPaused(); }));
+}
+
 TEST_CASE("AngelScriptServerSnapshotRejectsSuspendedScript")
 {
     auto snapshot_root {std::filesystem::temp_directory_path() / std::format("fo_engine_snapshot_blockers_{}", std::chrono::steady_clock::now().time_since_epoch().count())};
