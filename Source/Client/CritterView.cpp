@@ -135,6 +135,40 @@ auto CritterView::GetInvItem(ident_t item_id) noexcept -> nptr<ItemView>
     return nullptr;
 }
 
+void CritterView::ApplyAuthoritativeItemSlotMove(ident_t item_id, CritterItemSlot previous_slot, CritterItemSlot current_slot)
+{
+    FO_TRACE_ZONE(Entity);
+
+    auto item = GetInvItem(item_id);
+
+    if (!item || previous_slot == current_slot) {
+        return;
+    }
+
+    auto self_ref_holder = ptr<CritterView> {this}.hold_ref();
+    auto item_ref_holder = item.hold_ref();
+    size_t slot_index = static_cast<size_t>(current_slot);
+    bool multi_item_slot = slot_index < _engine->Settings->Critter.CritterSlotMultiItem.size() && _engine->Settings->Critter.CritterSlotMultiItem[slot_index];
+
+    if (!multi_item_slot) {
+        for (ptr<ItemView> peer : copy_hold_ref(_invItems)) {
+            if (peer->IsDestroyed() || peer->GetOwnership() != ItemOwnership::CritterInventory || peer->GetCritterId() != GetId() || GetInvItem(peer->GetId()) != peer) {
+                continue;
+            }
+
+            if (peer->GetId() != item_id && peer->GetCritterSlot() == current_slot) {
+                peer->SetCritterSlot(previous_slot);
+
+                if (IsDestroyed() || item->IsDestroyed() || item->GetOwnership() != ItemOwnership::CritterInventory || item->GetCritterId() != GetId() || GetInvItem(item_id) != item) {
+                    return;
+                }
+            }
+        }
+    }
+
+    item->SetCritterSlot(current_slot);
+}
+
 auto CritterView::GetInvItemByPid(hstring item_pid) noexcept -> nptr<ItemView>
 {
     for (size_t i {0}; i < _invItems.size(); i++) {

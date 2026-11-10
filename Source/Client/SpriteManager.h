@@ -65,14 +65,14 @@ public:
     [[nodiscard]] virtual auto IsDirectDraw() const -> bool { return false; }
     [[nodiscard]] virtual auto IsCopyable() const -> bool { return false; }
     [[nodiscard]] virtual auto IsPlaying() const -> bool { return false; }
-    [[nodiscard]] virtual auto GetTime() const -> float32_t { return 0.0f; }
+    [[nodiscard]] virtual auto GetPhase() const -> float32_t { return 0.0f; }
 
     void SetOffset(ipos32 offset) noexcept { _offset = offset; }
     void SetDrawEffect(nptr<RenderEffect> effect) const noexcept { _drawEffect = effect; }
     virtual auto MakeCopy() const -> shared_ptr<Sprite> { throw InvalidCallException(FO_LINE_STR); }
     virtual auto FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t = 0;
     virtual void Prewarm() { }
-    virtual void SetTime(float32_t normalized_time) { ignore_unused(normalized_time); }
+    virtual void SetPhase(float32_t normalized_phase) { ignore_unused(normalized_phase); }
     virtual void SetDirection(mdir dir) { ignore_unused(dir); }
     virtual void PlayDefault() { Play({}, true, false); }
     virtual void Play(hstring anim_name, bool looped, bool reversed) { ignore_unused(anim_name, looped, reversed); }

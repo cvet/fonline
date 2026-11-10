@@ -6476,8 +6476,9 @@ static auto SpliceMapIntoFomapContent(string_view file_stem, const string& origi
         result.append(original_content);
     }
 
-    string context_name {string(file_stem)};
-    bool map_written {false};
+    string context_name = string(file_stem);
+    bool map_written = false;
+    bool separator_pending = false;
 
     for (const auto& range : section_ranges) {
         string owner_name {};
@@ -6497,9 +6498,15 @@ static auto SpliceMapIntoFomapContent(string_view file_stem, const string& origi
             if (!map_written) {
                 result.append(map_content);
                 map_written = true;
+                separator_pending = true;
             }
         }
         else {
+            if (separator_pending) {
+                result.append("\n");
+                separator_pending = false;
+            }
+
             result.append(original_content, range.Start, range.End - range.Start);
         }
     }

@@ -768,6 +768,27 @@ auto GlobalMapGroup::GetMemberIds(uint64_t& revision) const -> vector<ident_t>
     return ids;
 }
 
+void GlobalMapGroup::BroadcastAttachments(ptr<const Critter> from_cr, nptr<const Player> ignore_player) const
+{
+    // Keep membership stable until enqueue, before a departing member can send its next map load
+    shared_lock lock {_lock};
+    small_vector<refcount_ptr<Player>, 8> recipients;
+
+    for (ptr<Critter> member : _members) {
+        auto player = member->GetPlayerForSend();
+
+        if (!player || player == ignore_player) {
+            continue;
+        }
+        if (std::ranges::any_of(recipients, [&player](const auto& recipient) { return recipient == player; })) {
+            continue;
+        }
+
+        player->Send_Attachments(from_cr, member);
+        recipients.emplace_back(std::move(player).take_not_null());
+    }
+}
+
 void GlobalMapGroup::AddMember(ptr<Critter> cr)
 {
     scoped_lock lock {_lock};
@@ -1180,7 +1201,18 @@ void Critter::SendAndBroadcast_Attachments()
 {
     FO_TRACE_ZONE(Entity);
 
-    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+
+    if (!GetMapId() && _globalMapGroup) {
+        auto own_player = GetPlayerForSend();
+
+        if (own_player) {
+            own_player->Send_Attachments(this, this);
+        }
+
+        _globalMapGroup->BroadcastAttachments(this, own_player);
+        return;
+    }
 
     Send_Attachments(this);
 

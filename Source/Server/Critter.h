@@ -231,6 +231,8 @@ public:
     [[nodiscard]] auto GetMembers() const -> vector<ptr<Critter>>;
     [[nodiscard]] auto GetMemberIds(uint64_t& revision) const -> vector<ident_t>;
 
+    void BroadcastAttachments(ptr<const Critter> from_cr, nptr<const Player> ignore_player) const;
+
     void AddMember(ptr<Critter> cr);
     void RemoveMember(ptr<Critter> cr);
 

@@ -14,6 +14,93 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-11-10
 
+### Changed
+
+- Reconcile the feature branch's lifecycle, attached movement, playback, message transaction, Mapper and build-marker contracts with the current master settings, persistence, synchronization and large-map changes. The feature-branch notes below retain their original revisions and migration details because their version numbers overlap independent master history.
+
+### Migration
+
+- Merge feature baseline `589756e6b368f1363b46b160b36a72911d3758b5` (`2026.1.101-dev`) with master baseline `54863a068c6c0dc73d0660a0147cfff601f74396` (`2026.1.119-dev`). Apply the intervening master migration notes in order and the feature-branch notes below. The merged manual compatibility marker is `0.0.88`; no additional stored-document conversion is introduced by the merge itself.
+- Reconfigure and rebuild affected native roles, extensions and tests, regenerate matching metadata and managed bindings, then bake and deploy server/client resources from one coherent source revision. Review settings and resource paths, holder synchronization for persistence, native map consumers and runtime library startup. Roll back matching binaries and resources together; do not mix generations.
+
+### Feature-branch records retained at merge
+
+#### Feature branch 2026.1.101-dev - 2026-11-02
+
+##### Fixed
+
+- Apply the requested cut and gag callback in the same client path search. A valid route through an admitted gag is no longer discarded by an earlier callback-free cut search.
+
+##### Migration
+
+- Base `c811962f25ae6d551316b76996b5e69e7436fa7a` (`2026.1.100-dev`) to `2026.1.101-dev`: rebuild Client, Mapper and the native test host. Existing callback signatures, hex coordinates, cut units, invalid-argument errors and the adjacent-hex shortcut retain their meanings. This restores positive-cut routing through admitted gag items; no project source, settings, saved-data or resource conversion is required.
+- The native map owner handles cut-zero exact targets, negative-cut normalization and starts already within cut. Refused gag items and solid blockers remain impassable. The regression uses a real exported callback and script-function conversion on a wall-separated client map; project gameplay and presentation acceptance are separate.
+- No manual compatibility-marker, Managed ABI, network, resource-schema or updater-format change is introduced. The marker remains `0.0.86`, Managed ABI `9`, SpriteResource v3 and snapshot format4 remain unchanged. Normal revision/metadata regeneration still applies; use one matching client/server/resource set when adopting or rolling back the Engine revision.
+
+#### Feature branch 2026.1.100-dev - 2026-11-02
+
+##### Fixed
+
+- End standalone Mapper map output with exactly one LF while retaining blank separators between sections.
+- Keep the separator before the next retained section when replacing a map in a multi-map container; untouched sibling blocks remain byte-exact.
+- Retain the Mapper freeze documentation and its source-bound check with the normalized phase-zero API adopted in `2026.1.98-dev`; first-frame authoring behavior is unchanged.
+
+##### Migration
+
+- Base `f083ca17d5a36d6be921bdd579e48ed556f7694d` (`2026.1.99-dev`) to `2026.1.100-dev`: rebuild the Mapper and native test host, then re-save edited maps through the native Mapper. Existing map input, including old final blank lines, remains readable. No project script, setting, source-map or saved-data conversion is required; map IDs, property values, placement order and ownership links retain their meanings.
+- Only the selected map is normalized. An untouched final sibling retains its existing EOF bytes; do not trim the entire container or use another writer to normalize it. Review the complete canonical diff and rebake both map outputs through the normal content workflow.
+- No API, network, managed ABI, resource schema, updater format or manual compatibility-marker change is introduced. Native regressions cover returned text, actual disk save paths, first/middle/last multi-map replacement, exact siblings, reload and repeat saves; this does not qualify other platforms or all embedding-project map content.
+
+#### Feature branch 2026.1.99-dev - 2026-11-02
+
+##### Fixed
+
+- Keep Git configuration dependencies file-only, including the first loose branch ref after `pack-refs`. Visual Studio regeneration no longer reports a Git directory as a missing file (`MSB8064`).
+- Write native build markers from a stable target-specific configured hash file. A direct Visual Studio build that regenerates late now writes the same project revision as its generated header and compiled executable on that first build.
+
+##### Migration
+
+- Base `027a6b38a343658f383bab3ea613ef173cfc3d32` (`2026.1.98-dev`) to `2026.1.99-dev`: reconfigure and rebuild the affected native targets. No project source, setting, content or saved-data conversion is required; existing project and Engine revision identities retain their meaning. Exact-ref creation detection remains active for normal and linked Git worktrees.
+- `WriteBuildHash.cmake` retains the existing literal `BUILD_HASH` mode and adds the exclusive `BUILD_HASH_INPUT_FILE` mode. Supply exactly one non-empty literal or existing non-empty file; missing, directory, empty or ambiguous inputs fail before the output is changed. The configured build helper selects the file mode automatically; callers using the literal mode need no changes.
+- No network, managed ABI, resource schema, updater format or manual compatibility-marker change is introduced. The marker remains `0.0.86`, Managed ABI `9` and SpriteResource v3 remain unchanged. Reconfiguration restores the old helper on rollback; build/package markers must still describe the binaries they accompany. Windows Visual Studio and Ninja fixture checks are separate from full project build/bake and other-platform qualification.
+
+#### Feature branch 2026.1.98-dev - 2026-11-02
+
+##### Fixed
+
+- Preserve loop, one-shot and frozen sprite playback through refresh and reentrant animation selection. Use explicit normalized-phase APIs: native `Sprite.GetTime/SetTime` → `GetPhase/SetPhase`, script `Game.SetSpriteTime` → `Game.SetSpritePhase`, `Item.SetAnimTime` → `Item.SetAnimPhase`, and `OnCritterAnimationInit` → `OnCritterAnimationPlaybackInit` with ref `normalizedPosition`.
+- Abort an outgoing message if its writer unwinds or finalization fails, retaining earlier complete queued messages and releasing the buffer lock. Successful packets keep their existing layout, field types, units and order.
+- Retain the inventory owner, moved item and peer snapshot across synchronous post-setters; stop after owner/item invalidation and skip peers removed by reentrant callbacks.
+- Preserve the published monotonic movement sender contract and extend real-wire tests for ping, movement and lease payloads, paused/clamped game time and delayed dispatch. Earlier receipts remain bound to their original sources.
+
+##### Migration
+
+- Base `7bda9a657966d8db2e4328b5402746036564756f` (`2026.1.97-dev`) to `2026.1.98-dev`: apply the exact native, AngelScript and Managed replacements in the [sprite animation migration](../how-to/migration/script-owned-sprite-animations.md). Old API/event names are removed and unmigrated calls fail compilation/baking; no old-name aliases or persisted-data conversion are introduced. Project-owned animation roles and numeric identities retain their meanings.
+- Regenerate API, bindings and metadata; rebuild affected client/server/Mapper/Baker/test roles and extensions, then force-rebake one coherent set of CoreScripts, assemblies, metadata and packs. Deploy or roll back that set together and reject mixtures.
+- The manual marker stays `0.0.86`: the replaced callable/event identifiers are already hashed by codegen, while transactional buffer recovery restores the packet invariant without adding a wire field or changing its meaning. Managed ABI `9` and SpriteResource v3 are unchanged. Recheck playback/phase, reentrant slot lifetimes, failed-message recovery and real transport clocks; final native/build/bake/player qualification remains separate.
+
+#### Feature branch 2026.1.97-dev - 2026-11-02
+
+##### Added
+
+- Client-only `Critter.GetAttachedCritterIds()` returns a copy of the received ordered IDs, including unloaded views. Editing it changes no attachment or authority; `Game.GetCritter(id)` may return null.
+
+##### Fixed
+
+- Revalidate attached movement permission, controller/connection/map identity and leases after callbacks, including renewals and speed-zero stops.
+- Order global attachment snapshots with group membership and queued map context; refresh them after bounded map viewing without exposing other groups.
+- Use canonical client critter paths/cuts, reject blocked neighbours, and reconcile exclusive item slots without displacing multi-item slots or retaining invalid entities across setters.
+- Refuse disconnected outbound client RPC before packet mutation. Admit retained destroyed handles only to the existing native `Game.IsEntityLocked` coverage probe, without acquiring cover or weakening ordinary argument rejection.
+- Compact generated search indexes by a bijective document-position permutation after the existing term filter. Preserve all documents, metadata, terms, scores and posting order under the unchanged locale byte limit.
+
+##### Migration
+
+- Baseline `efefc47f3ace19b4e45428a20c2a1b12fc7f7666` (`2026.1.96-dev`) to `2026.1.97-dev`: the combined lifecycle/attachment contract advances the manual marker from `0.0.85` to `0.0.86`. Incoming fault continuation, VisualOffset and coordinate/grid fixes remain. Default coordinates stay16-bit/4000; field types, units, IDs/defaults, persistence and packet order retain meaning. Managed ABI9, SpriteResource v3 and snapshot format4 are unchanged; no saved-data conversion is required.
+- Regenerate API/bindings/metadata; rebuild native extensions and Client/Server/Mapper/Baker/tests, then force-rebake matching CoreScripts, assemblies and packs. Deploy/roll back that whole set; reject mixed generations. Movement handlers permit re-evaluation after callbacks; RPC callers wait for connection and cancel/defer on disconnect. The coverage probe grants no missing backend API.
+- Qualify paths/cuts, slot lifetimes, attachment ordering/privacy, view return, attached/reentrant movement, covers and save/restart through the existing owners. Prior results remain historical until final combined-source native and player checks.
+
+## 2026.1.119-dev - 2026-11-10
+
 ### Fixed
 
 - Call `ClientStartupSettingsHook` from the loadable client runtime library. `ClientLib.cpp`, the runtime that the client host loads by default, constructed `ClientEngine` without the hook, while `ClientApp.cpp` (embedded runtime), `ServerApp.cpp` and `ServerHeadlessApp.cpp` called it, so a project that adjusted client startup settings there saw its change only in the embedded runtime. The loadable runtime now calls `ClientStartupSettingsHook(GetApp()->Settings, 1, false)` after resource synchronization and immediately before constructing the client, exactly like `ClientApp.cpp`.

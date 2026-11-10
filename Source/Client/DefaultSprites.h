@@ -73,7 +73,7 @@ public:
     [[nodiscard]] auto GetDirection(mdir dir) const -> nptr<const SpriteSheet>;
     [[nodiscard]] auto GetDirection(mdir dir) -> nptr<SpriteSheet>;
     [[nodiscard]] auto IsPlaying() const -> bool override { return _playing; }
-    [[nodiscard]] auto GetTime() const -> float32_t override;
+    [[nodiscard]] auto GetPhase() const -> float32_t override;
     [[nodiscard]] auto GetDuration() const noexcept -> timespan { return GetCurrentDirection()->_duration; }
     [[nodiscard]] auto GetFramesCount() const noexcept -> int32_t { return GetCurrentDirection()->_framesCount; }
     [[nodiscard]] auto GetStateAnimation() const noexcept -> CritterStateAnim { return _stateAnim; }
@@ -88,7 +88,7 @@ public:
     auto FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override;
     void SetFrame(int32_t index, shared_ptr<Sprite> sprite, ipos32 offset, ipos32 motion);
     void Prewarm() override;
-    void SetTime(float32_t normalized_time) override;
+    void SetPhase(float32_t normalized_phase) override;
     void SetDirection(mdir dir) override;
     void Play(hstring anim_name, bool looped, bool reversed) override;
     void Stop() override;

@@ -32,7 +32,7 @@ public:
     auto PlayWithSeed(int32_t seed) -> bool;
     void SetDrawInScene(bool draw_in_scene);
     void Prewarm() override;
-    void SetTime(float32_t normalized_time) override;
+    void SetPhase(float32_t normalized_phase) override;
     void SetDirection(mdir dir) override;
     void Play(hstring anim_name, bool looped, bool reversed) override;
     void Stop() override;

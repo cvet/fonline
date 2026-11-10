@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"f84bea16de57b1c13f0dc92e8eb4895cc1fee3aaa5ede5d2e2bfdd1be93461aa"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"5fa2c09fa4754c72d165c5e82f080080894fc212e2e23bbb689d8907270e49a0"} -->
 > Принадлежащее движку руководство Managed C#; игровые модули и политика принадлежат подключающему проекту.
 
 
@@ -163,9 +163,14 @@ Managed marker attributes соответствуют ролям Engine dispatche
 
 Generated event wrappers отвергают handler без `[Event]` до создания native subscription. Named calls также закрыты по умолчанию: `Game.Invoke` и administrative dispatch принимают только явно отмеченные functions и подходящий allowlist.
 
+Component callbacks восстанавливают имена metadata с точкой; плоские имена сохраняют подчёркивания.
+Фазы следуют [контракту lifecycle](lifecycle-and-concurrency.md).
+
 ## Events, callbacks, timers и named calls
 
 Generated event wrappers поддерживают handlers, возвращающие `void`, `Task`, `EventResult` или `Task<EventResult>`. Native dispatch ожидает tasks с результатом до решения о продолжении subscriber chain. Используйте `Task<EventResult>`, если handler после await может употребить или уничтожить argument, который не должны получить последующие subscribers.
+
+Синхронные обработчики изменяемых списков и словарей следуют [контракту обратной записи коллекций](#изменяемые-коллекции-событий).
 
 Time-event API принимают synchronous delegates и generated async delegates, возвращающие `Task`. Identity delegate является частью регистрации: остановка time event отдельно созданным delegate не находит существующий callback. Незавершённый callback task сохраняет событие зарегистрированным и приостановленным до окончательного завершения, исключая пересечение с собственным следующим запуском. Интервал повтора начинается после завершения; интервал и payload можно менять во время await. Изменения TimeEventContext после await применяются при завершении. Repeat/cancel меняет будущее расписание и не отменяет уже запущенный task.
 
@@ -201,6 +206,8 @@ Synchronous native-result callbacks и module initialization использую�
 Контракт server cover не зависит от backend: script caller должен покрыть все существующие сущности, которые native call graph может читать или изменять. `await` завершает прежний cover; перед повторным использованием заново найдите или проверьте сохранённую сущность и снова получите cover.
 
 Нативный bridge проверяет managed entity receiver до вызова экспортированного instance method или события через оба ABI; подписка на событие также проверяет target. Поэтому uncovered receiver сообщает ошибку cover на границе скрипта, а не доходит до `noexcept` accessor свойства с завершением процесса. Проверка не приобретает cover: caller по-прежнему должен выполнить объявленные требования.
+
+`Game.IsEntityLocked` принимает удерживаемые уничтоженные handle через bridge, сохраняя `Sync.IsUnavailable` при гонке без приобретения cover. Обычные native-вызовы отклоняют уничтоженные скалярные сущности.
 
 Managed scripts объявляют и доказывают этот контракт через:
 
@@ -242,33 +249,13 @@ Managed `FOnline.any` — value type с текстовым представле�
 
 Generated entity properties имеют native backing. Dynamic ref types — managed DTO, значения которых материализуются из native property storage или присваиваются туда. Getter возвращает detached structured state; сохраняйте изменение через read-modify-reassign, если generated member сам не является live wrapper.
 
-Нативные managed RefType с зарегистрированной фабрикой без аргументов имеют публичный конструктор:
-`new MapSpriteHolder()` создаёт пригодный нативный объект. Типы без фабрики — `FogLayer`, `SpritePattern`,
-`VideoPlayback`, `TimeEventContext`, `MovingContext` — получают через создающие API движка.
-Динамические RefType остаются обычными managed DTO.
+Native RefTypes с фабрикой без аргументов имеют конструктор `new MapSpriteHolder()`. Типы без фабрики (`FogLayer`, `SpritePattern`, `VideoPlayback`, `TimeEventContext`, `MovingContext`) выдаются создающими API; dynamic RefTypes остаются DTO.
 
-Нативные обёртки с подсчётом ссылок реализуют `System.IDisposable` и автоматически удерживают одну
-нативную ссылку. Результаты фабрик и `PassOwnership` принимают переданную ссылку; другие результаты,
-аргументы callback/событий и элементы коллекций получают собственную ссылку до передачи скриптам.
-Независимые обёртки имеют независимое владение; C#-алиасы разделяют одну обёртку. Нативные `__Factory`,
-`__AddRef` и `__Release` скрыты из публичного managed API. Используйте `new`, создающие API, `using`
-и `Dispose()`. Конструктор разделяет учёт с временной обёрткой фабрики без второй нативной ссылки.
+Refcounted-обёртки реализуют `IDisposable` и владеют одной ссылкой. Результат factory/`PassOwnership` принимает её; остальные результаты, callback и элементы коллекций приобретают её. Независимые обёртки владеют независимыми leases; aliases разделяют одну обёртку. Конструктор разделяет lease временной обёртки без ещё одного приобретения. Публичные `__Factory`/`__AddRef`/`__Release` скрыты: используйте конструктор, создающий API, `using` и `Dispose`.
 
-`Dispose()` закрывает обёртку, возвращает её ссылку на разрешённом скриптовом потоке и подавляет
-финализацию. Повторный вызов и освобождение после shutdown безопасны; получение указателя закрытой
-обёртки, включая boxed/packed-аргументы и элементы коллекций, вызывает исключение. Не совмещайте
-освобождение и вызовы конкурентно. Экспортированный нативный `Dispose` без аргументов входит в очистку:
-`FogLayer.Dispose()` удаляет слой с карты и освобождает обёртку как при прямом вызове, так и через `using`.
-Действие выполняется до возврата ссылки; ошибка сохраняет владение для повторной попытки, а уже
-выполненное действие при повторной попытке не повторяется. Динамические DTO и нативные обёртки без
-подсчёта ссылок не получают этого владения/интерфейса.
+`Dispose` закрывает обёртку на разрешённом скриптовом потоке и подавляет финализацию; повтор и освобождение после shutdown безвредны. Обращение к закрытому pointer, включая boxed/packed аргументы и элементы коллекций, вызывает исключение; не совмещайте вызовы с освобождением. Native cleanup без аргументов предшествует освобождению: `FogLayer.Dispose` удаляет слой и отдаёт владение. Ошибка cleanup сохраняет владение для повтора; завершённый cleanup не повторяется. Non-refcounted-обёртки/DTO не имеют этого интерфейса.
 
-Недостижимый объект учёта ставит очистку в очередь и будит backend. Следующий `Process` выполняет
-нативную очистку на потоке движка перед продолжениями скриптов; финализатор не запускает нативные
-деструкторы. Срок GC не определён. Нативные вызовы удерживают получателя и packed-аргументы RefType.
-`Map.DrawMapSprite` заимствует поля holder до завершения кадра: держите владельца до последнего
-отрисованного использования, вызовите `StopDraw()`, затем `Dispose()`. Область `using` должна включать
-это использование.
+Недостижимые leases ставят cleanup в очередь и будят backend; следующий `Process` очищает на потоке Engine до continuations. Финализатор не вызывает native-деструкторы; момент GC не определён. Native-вызов удерживает receiver/packed RefType arguments. `Map.DrawMapSprite` заимствует поля holder на время отрисовки: удерживайте владельца до последнего кадра, затем `StopDraw` и `Dispose`; область `using` должна охватывать это использование.
 
 Реестр entry assembly удерживает записи владения, а не обёртки. Shutdown закрывает его и очищает
 очередь и живые объекты до финальной сборки сущностей/unbind; поздние финализаторы ничего не делают.
@@ -376,6 +363,11 @@ Setup проверяет непустые заголовки, включаемы
 Существующий маркер READY используется только с комплектным деревом. Отсутствующие или пустые обязательные файлы снимают маркер и запускают обычное восстановление кэша либо повторную публикацию исходной сборки; без настроенного кэша действующие маркеры исходников/объектов сохраняют уже собранные выходы Mono. Кандидаты кэша проверяются до установки, prebuilt — до копирования и записи READY. Свежий результат проверяется до публикации в кэш; неполный результат завершает setup с ошибкой и лишается READY. Комплектные деревья сохраняют прежний ключ кэша и имена маркеров.
 
 ## Packaging и updating
+
+Приоритет `FO_DOTNET_DIR`: непустой CMake cache, окружение, `<build>/dotnet`.
+Пути окружения Windows нормализуются к записи CMake; эквивалентные разделители
+задают тот же корень. Короткие корни Windows обходят ограничения длины путей
+при сборке исходников.
 
 Prepared runtime содержит только managed class libraries, на которые реально ссылаются target assemblies, включая `System.Private.CoreLib.dll`; native runtime libraries, JIT binaries, headers, import libraries и symbols исключены из resource payload. Mono и generated native interop table остаются linked в application. Target-specific class libraries берутся из published runtime этой цели, а не из host SDK.
 

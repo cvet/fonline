@@ -23,6 +23,10 @@ Deterministic engine tests; [Testing](../../Docs/en/contributing/testing/) owns 
 
 ## Current test suites
 
+`ClientBinaryCompatibilityPrecedesPlayerSession` checks real engines: identical
+metadata with a different digest refuses outdated resources before login;
+matching digests connect.
+
 Generated filenames/count: [source-inventory.json](https://fonline.ru/Docs/generated/source-inventory.json); ownership and validation: [Testing](../../Docs/en/contributing/testing/).
 
 `Test_ClientEntityLifetime.cpp` runs with either scripting backend. It verifies that registry lookups

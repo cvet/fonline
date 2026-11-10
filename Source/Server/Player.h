@@ -89,7 +89,7 @@ public:
     void Send_ViewMap();
     void Send_PlaceToGameComplete();
     void Send_SomeItems(const_span<ptr<const Item>> items, bool owned, bool with_inner_entities, const any_t& context_param);
-    void Send_Attachments(ptr<const Critter> from_cr);
+    void Send_Attachments(ptr<const Critter> from_cr, nptr<const Critter> global_recipient = nullptr);
     void Send_AddCustomEntity(ptr<CustomEntity> entity, bool owned);
     void Send_RemoveCustomEntity(ident_t id);
 
@@ -112,6 +112,8 @@ private:
 
     mutex _connectionLock {};
     unique_ptr<ServerConnection> _connection FO_TSA_GUARDED_BY(_connectionLock);
+    // Unknown while a LoadMap attempt is incomplete or has failed
+    optional<ident_t> _sentMapId FO_TSA_GUARDED_BY(_connectionLock) {};
     string _name {"(NotLoggedIn)"};
     mutable atomic_mutex _controlledCrLinkLocker {};
     std::atomic<Critter*> _controlledCr {};

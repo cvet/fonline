@@ -174,6 +174,16 @@ snapshot may instead represent an immutable static map item and legitimately
 carry an empty id; `ReceiveDetachedItem()` accepts that generic state, while the
 list handler enforces identity at its narrower boundary.
 
+Authoritative inventory slot reconciliation retains the critter and moved item
+and iterates a retained snapshot of the inventory. Property post-setters run
+synchronously and may remove another item, move the item to another holder, or
+destroy the critter. Revalidate membership and lifetime after each slot setter;
+stop the remaining reconciliation when the moved item or owner is invalidated.
+The network handler also revalidates the critter before refreshing its light.
+Already committed slot writes remain valid; this is not a transactional rollback.
+Ordinary moves, prediction echoes and multi-item destinations preserve their
+existing semantics (`Test_ClientEntityLifetime.cpp`).
+
 Script GUI `ItemView` widgets cache the item handles bound to their cells. `Resort()` drops destroyed handles returned by a stale supplier, keeps a cell only when the source returns the same live handle instance, and rebinds a replacement clone with the same entity id so item draw callbacks observe its current count and other projected properties.
 
 ## 3D model runtime architecture
@@ -405,6 +415,8 @@ whole-game FPS or a fragmented 32-bit long session; see [Testing](../../contribu
 
 All three manager-owned map targets are retired at unload, and failed construction releases any already-created targets. Queued draws are flushed before teardown and matching cached indoor-mask borrows are cleared before texture deletion; see [render-target ownership](../rendering/#render-targets-and-client-bridge). Sprite-cache eviction also deletes empty atlas pages and their targets while preserving live allocations. Model mesh/animation definitions remain a separate resource-identity cache, not owners of retired maps.
 
+`CritterView::OnDestroySelf()` clears this view’s attachment IDs and inventory without destroying passengers or a successor sharing its entity ID. Map/global removal use it; `ClientCritterDestroyClearsAttachmentsBeforeDelayedFinalRelease` tests delayed release and successor registration.
+
 `Test_ClientEntityLifetime.cpp` covers retained handles, pending item owners, construction failure and empty/live atlas pages. Its retained-storage bound runs only when debug/profiling allocator statistics are available. Process private bytes and working set also include allocator, managed-runtime and renderer/driver caches; a remaining high-water mark alone is not proof of a loaded map, and headless target counts do not qualify hardware memory behavior.
 
 The client resource path starts with a `FileSystem` from `GetClientResources()` and is organized by runtime managers:
@@ -604,22 +616,24 @@ For local critter movement prediction, `ClientEngine::CritterMoveTo()` synchroni
 
 ### Held-direction movement
 
-`Critter.MoveToDir(dir, speed)` is a held direction — keyboard, D-pad or stick — not a path to a point ahead. It sets or steers the critter's *direct-move intent*, which lasts until `StopMove()`, a path order (`MoveToHex()`), or the critter leaving the current map (`UnloadMap()` drops it). The client materialises the intent itself:
+`Critter.MoveToDir(dir, speed)` holds client intent until `StopMove()`, `MoveToHex()` or map unload. `PathFinding::TraceDirection()` respects map blocking and critter footprint.
 
-- **One long plan under a lease.** A plan is a `PathFinding::TraceDirection()` of `Client.DirectMoveTraceSteps` hexes along the input ray, sliding along obstacles when `Client.DirectMoveSlide` is on (see [MapsMovementGeometry.md](../maps-and-movement.md#direction-traces)); the player's own critter walks all of it. The plan goes to the server numbered and *leased*: the server and every other player run it only `Client.DirectMoveLeaseSteps` steps ahead of where the player has confirmed holding the direction, and `ProcessDirectMove()` renews the lease with a small `SendCritterMoveLease` once `Client.DirectMoveLeaseRenewSteps` or fewer of it are left ahead of the critter. A held run is therefore one plan with one timeline on every side, while a stall on the player's link stops the server and the observers at the lease end instead of carrying them along the trace. The wire lease names projected path distance, so a speed correction cannot move its boundary and it does not depend on the link's latency: the server trails the player by one uplink transit and meets the lease end only when renewals stop arriving.
-- **The next plan before this one ends.** When the plan has `Client.DirectMoveExtendAheadSteps` or fewer steps left and was traced to its full length, the next one is traced on from where the critter is, projected onto the line the run began on, at the plan's current speed, which the server may have changed.
-- **Turn throttle.** A turn of at least `Client.DirectMoveRetargetImmediateAngle` degrees, a speed change, a start and a stop are planned at once. A smaller turn, including a 45° keyboard change under the default 60° threshold, is applied at most once per `Client.DirectMoveRetargetMinMs`; the latest direction wins when the interval passes.
-- **Server plans play out.** The controller extends only the plan it made itself. A plan the server sends for the critter (a correction, a truncated path) plays out first; a truncated path is finite and has no lease, since its replacement retires the client plan that would renew it; the held direction resumes when it ends, and a blocked direction is retried at the re-plan interval rather than every frame.
+- `Client.DirectMoveTraceSteps` bounds each trace. `Client.DirectMoveSlide` allows forward side steps around blockers. Extensions retain the ray and authoritative speed without rounding drift. Only full traces extend when `Client.DirectMoveExtendAheadSteps` remain.
+- Numbered plans lease projected distance. Server and observers advance at most `Client.DirectMoveLeaseSteps` ahead of confirmed input. `SendCritterMoveLease` renews when `Client.DirectMoveLeaseRenewSteps` remain. Uplink stalls stop them at the lease regardless of speed corrections or usual transit delay.
+- `Client.DirectMoveRetargetImmediateAngle` turns, speed changes, starts and stops apply immediately. Smaller turns (45° with the default 60° threshold) wait for `Client.DirectMoveRetargetMinMs`; the latest input wins. Blocked directions retry at that interval.
+- Held input resumes after server corrections. Truncation makes a correction finite and retires its lease and renewals.
 
-An observer applies a leased plan and its renewals (`CritterMoveLease`, matched to the plan by the server's movement uid) to its copy; a copy joined further along its path carries the lease shifted by the projected distance it skipped, converted to time at its current speed. `MovingContext::SetLeaseTime` holds a plan at its lease with the plan's clock stopped, so a longer lease resumes it from where it waited; while it waits the critter is drawn standing (`CritterHexView` switches to the idle animation and back when the plan moves on), not walking in place. With `Network.MoveSyncTrace`, every such plan writes a `dir_plan` line naming its reason (`start`, `turn`, `extend`, `resume`) and every renewal a `lease_send` line, see [Networking.md](../authority-and-networking/index.md#movement-synchronization-trace).
+Observers match `CritterMoveLease` by server uid and shift its boundary by joined path distance at current speed. `MovingContext::SetLeaseTime` pauses the clock there until renewal; `CritterHexView` draws the wait standing. See [direction traces](../maps-and-movement.md#direction-traces) and [tracing](../authority-and-networking/index.md#movement-synchronization-trace).
 
 ### Late plans catch up
 
-Movement messages carry their sender's clock: `SendCritterMove`, `SendStopCritterMove`, `SendCritterMoveLease` and `Ping` from the client, `CritterMove`, `CritterMoveLease` and `Ping` from the server. Each end keeps a `LinkDelayEstimator` for its link (`ClientConnection` for the downlink, `ServerConnection` for the uplink): the median receive-minus-send offset of the link's usual messages over the last `Network.LinkDelayWindowMs` is its usual transit, and a message's excess over it is how long a stall held it — the transit itself would need a clock both ends share, the excess does not. The median, not the best transit, is the reference so that ordinary jitter is not caught up as if it were a stall: a plan caught up to the best transit would put the server ahead of where the player's stop reaches it and walk it past the stop. A message late by `Network.MoveLateCatchUpMinMs` or more is kept out of the usual ones, so every message of a stall's burst is measured against the link as it was before it; a link whose every message stayed that late for `Network.LinkDelayRebaseMs` got slower for good, and its new transit becomes the usual one. The duration of this exceptional run is tracked independently of its bounded sample queue, so frequent messages cannot postpone rebasing. At least a handful of usual samples outlive the window, so a link that fell silent keeps its transit. A plan or a lease renewal late by at least `Network.MoveLateCatchUpMinMs` is played from where it would be by now, up to `Network.MoveLateCatchUpMaxMs`: the server fast-forwards it at once, an observer runs it at `Client.MoveCatchUpRate` times its speed until it has made up the time, up to `Client.MoveCatchUpSmoothMaxMs`, and skips the rest. The same holds for a plan the server itself started ahead because the player's move reached it late: an observer whose copy stands at the plan's start begins there and runs to where the server has it, rather than skipping the steps (`ahead_ms` in the trace); a copy anywhere else, such as a critter just come into view, is placed where the plan has it. The player's own critter is never caught up: its plans are its own input.
+Movement and ping messages carry sender-clock stamps (see [networking](../authority-and-networking/)). Each connection's `LinkDelayEstimator` measures excess over median receive-minus-send offset within `Network.LinkDelayWindowMs`, without shared clocks. Usual samples survive silence. Excluding lateness from `Network.MoveLateCatchUpMinMs` keeps stall bursts visible. Lateness persisting for `Network.LinkDelayRebaseMs` rebases usual transit independently of the bounded queue. The median keeps ordinary jitter from moving the server ahead of later stops.
+
+Plans and renewals catch up from that minimum to `Network.MoveLateCatchUpMaxMs`. The server fast-forwards; observers play up to `Client.MoveCatchUpSmoothMaxMs` at `Client.MoveCatchUpRate` and skip the excess. Observers at the plan start play server-ahead progress; newly visible copies start at current progress. Chosen input is not caught up.
 
 ### Joining a plan already under way
 
-A plan the receiver's copy of the critter has partly walked already — the continuation of a movement that reached it after a slower transit than the previous plan — is joined where the critter stands, up to `Network.MovePlanJoinMaxSteps` steps in, instead of being walked from its start (`FindPathPrefixSteps` / `DropPathPrefix`). The server does the same, after first bringing the critter's current plan up to the present, since its steps advance only once a movement period.
+`FindPathPrefixSteps` / `DropPathPrefix` join at the current hex within `Network.MovePlanJoinMaxSteps`, without backward replay. The server first advances its previous plan to now. Zero disables joining.
 
 ## Client-side validation tests
 

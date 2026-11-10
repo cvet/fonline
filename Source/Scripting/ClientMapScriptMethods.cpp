@@ -557,25 +557,8 @@ FO_SCRIPT_API vector<mdir> Client_Map_GetPath(ptr<MapView> self, ptr<CritterView
         throw ScriptException("Critter is not on map");
     }
 
-    if (GeometryHelper::GetDistance(hex_cr->GetHex(), toHex) <= 1 + hex_cr->GetMultihex()) {
-        if (GeometryHelper::GetDistance(hex_cr->GetHex(), toHex) > hex_cr->GetMultihex() && cut == 0) {
-            return {GeometryHelper::GetHexDir(hex_cr->GetHex(), toHex)};
-        }
-
-        return {};
-    }
-
-    mpos to_hex {toHex};
-    mpos init_to_hex {toHex};
-
-    if (cut > 0 && !self->CutPath(hex_cr, hex_cr->GetHex(), to_hex, numeric_cast<int32_t>(cut))) {
-        return {};
-    }
-    if (cut > 0 && GeometryHelper::GetDistance(hex_cr->GetHex(), init_to_hex) <= cut + hex_cr->GetMultihex() && GeometryHelper::GetDistance(hex_cr->GetHex(), to_hex) <= 1 + hex_cr->GetMultihex()) {
-        return {};
-    }
-
-    auto result {self->FindPath(hex_cr, hex_cr->GetHex(), to_hex, -1)};
+    mpos to_hex = toHex;
+    auto result = self->FindPath(hex_cr, hex_cr->GetHex(), to_hex, cut);
 
     if (!result) {
         return {};
@@ -606,19 +589,11 @@ FO_SCRIPT_API vector<mdir> Client_Map_GetPath(ptr<MapView> self, mpos fromHex, m
         return {};
     }
 
-    mpos to_hex {toHex};
-    mpos init_to_hex {toHex};
+    mpos to_hex = toHex;
 
-    if (cut > 0 && !self->CutPath(nullptr, fromHex, to_hex, numeric_cast<int32_t>(cut))) {
-        return {};
-    }
+    function<bool(ptr<const ItemHexView>)> gag_check = [gag_cb = safe_alloc::make_shared<ScriptFunc<bool, ptr<ItemView>>>(std::move(gagCallback))](ptr<const ItemHexView> gag) mutable { return gag_cb->Call(make_ptr(const_cast<ItemHexView*>(std::addressof(*gag)))) && gag_cb->GetResult(); };
 
-    if (cut > 0 && GeometryHelper::GetDistance(fromHex, init_to_hex) <= cut && GeometryHelper::GetDistance(fromHex, to_hex) <= 1) {
-        return {};
-    }
-
-    function<bool(ptr<const ItemHexView>)> gag_check {[gag_cb = safe_alloc::make_shared<ScriptFunc<bool, ptr<ItemView>>>(std::move(gagCallback))](ptr<const ItemHexView> gag) mutable { return gag_cb->Call(make_ptr(const_cast<ItemHexView*>(std::addressof(*gag)))) && gag_cb->GetResult(); }};
-    auto result {self->FindPath(nullptr, fromHex, to_hex, -1, ipos16 {}, gag_check)};
+    auto result = self->FindPath(nullptr, fromHex, to_hex, cut, ipos16 {}, gag_check);
 
     if (!result) {
         return {};
@@ -676,22 +651,8 @@ FO_SCRIPT_API int32_t Client_Map_GetPathLength(ptr<MapView> self, ptr<CritterVie
         throw ScriptException("Critter is not on map");
     }
 
-    if (GeometryHelper::GetDistance(hex_cr->GetHex(), toHex) <= 1 + hex_cr->GetMultihex()) {
-        return cut > 0 ? 0 : 1;
-    }
-
-    mpos to_hex {toHex};
-    mpos init_to_hex {toHex};
-
-    if (cut > 0 && !self->CutPath(hex_cr, hex_cr->GetHex(), to_hex, numeric_cast<int32_t>(cut))) {
-        return 0;
-    }
-
-    if (cut > 0 && GeometryHelper::GetDistance(hex_cr->GetHex(), init_to_hex) <= cut + hex_cr->GetMultihex() && GeometryHelper::GetDistance(hex_cr->GetHex(), to_hex) <= 1 + hex_cr->GetMultihex()) {
-        return 0;
-    }
-
-    auto result {self->FindPath(hex_cr, hex_cr->GetHex(), to_hex, -1)};
+    mpos to_hex = toHex;
+    auto result = self->FindPath(hex_cr, hex_cr->GetHex(), to_hex, cut);
 
     if (!result) {
         return 0;

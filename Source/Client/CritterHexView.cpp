@@ -224,8 +224,8 @@ void CritterHexView::NextAnim()
         }
 
         _curAnim->Frames = frames;
-        _curAnim->FrameIndex = lerp(0, frames->GetFramesCount() - 1, _curAnim->NormalizedTime);
         _curAnim->FramesDuration = frames->GetDuration();
+        UpdateAnimFrame(*_curAnim);
     }
 
     _engine->OnCritterAnimationProcess.Fire(this, _curAnim->StateAnim, _curAnim->ActionAnim, _curAnim->ContextItem, false);
@@ -238,7 +238,7 @@ void CritterHexView::NextAnim()
             anim_flags = combine_enum(anim_flags, ModelAnimFlags::Freeze);
         }
 
-        _model->PlayAnim(_curAnim->StateAnim, _curAnim->ActionAnim, GetModelLayersData(), _curAnim->NormalizedTime, anim_flags, _curAnim->Speed);
+        _model->PlayAnim(_curAnim->StateAnim, _curAnim->ActionAnim, GetModelLayersData(), _curAnim->NormalizedPosition, anim_flags, _curAnim->Speed);
     }
     else
 #endif
@@ -280,9 +280,35 @@ void CritterHexView::StopAnim()
 
 void CritterHexView::PrepareAnim(CritterAnim& anim, CritterAnimationContext context, int32_t moving_speed)
 {
-    _engine->OnCritterAnimationInit.Fire(this, anim.StateAnim, anim.ActionAnim, anim.ContextItem, context, moving_speed, anim.Flags, anim.NormalizedTime, anim.Speed);
-    FO_VERIFY_AND_THROW(std::isfinite(anim.NormalizedTime) && anim.NormalizedTime >= 0.0f && anim.NormalizedTime <= 1.0f, "Invalid normalized critter animation time", anim.NormalizedTime);
+    _engine->OnCritterAnimationPlaybackInit.Fire(this, anim.StateAnim, anim.ActionAnim, anim.ContextItem, context, moving_speed, anim.Flags, anim.NormalizedPosition, anim.Speed);
+    FO_VERIFY_AND_THROW(std::isfinite(anim.NormalizedPosition) && anim.NormalizedPosition >= 0.0f && anim.NormalizedPosition <= 1.0f, "Invalid normalized critter animation position", anim.NormalizedPosition);
     FO_VERIFY_AND_THROW(std::isfinite(anim.Speed) && anim.Speed > 0.0f, "Invalid critter animation speed", anim.Speed);
+}
+
+void CritterHexView::UpdateAnimFrame(CritterAnim& anim)
+{
+    bool frozen = is_enum_set(anim.Flags, CritterAnimationFlags::Freeze);
+    bool movement_drives_frame = !frozen && IsMoving() && is_enum_set(anim.Flags, CritterAnimationFlags::Movement);
+
+    if (frozen) {
+        anim.FrameIndex = lerp(0, anim.Frames->GetFramesCount() - 1, anim.NormalizedPosition);
+        return;
+    }
+
+    // Movement frames come from RefreshAnimOffset's world displacement
+    if (movement_drives_frame) {
+        return;
+    }
+
+    if (anim.FramesDuration > timespan::zero) {
+        float64_t phase = anim.NormalizedPosition + std::max(0.0, (_engine->GameTime.GetFrameTime() - _animStartTime).div<float64_t>(anim.FramesDuration)) * anim.Speed;
+        phase = _curAnim.has_value() ? std::min(phase, 1.0) : phase - std::floor(phase);
+
+        anim.FrameIndex = anim.Frames->GetFrameIndexAtPhase(phase);
+    }
+    else {
+        anim.FrameIndex = lerp(0, anim.Frames->GetFramesCount() - 1, anim.NormalizedPosition);
+    }
 }
 
 void CritterHexView::RefreshView(bool no_smooth)
@@ -331,7 +357,7 @@ void CritterHexView::RefreshView(bool no_smooth)
                 anim_flags = combine_enum(anim_flags, ModelAnimFlags::Freeze);
             }
 
-            _model->PlayAnim(state_anim, action_anim, GetModelLayersData(), selection.NormalizedTime, anim_flags, selection.Speed);
+            _model->PlayAnim(state_anim, action_anim, GetModelLayersData(), selection.NormalizedPosition, anim_flags, selection.Speed);
         }
         else
 #endif
@@ -346,21 +372,23 @@ void CritterHexView::RefreshView(bool no_smooth)
 
             FO_VERIFY_AND_THROW(frames, "Critter animation frames are missing");
 
-            bool changed {_idle2dAnim.Frames != frames || _idle2dAnim.StateAnim != state_anim || _idle2dAnim.ActionAnim != action_anim || _idle2dAnim.Flags != selection.Flags || !is_float_equal(_idle2dAnim.NormalizedTime, selection.NormalizedTime) || !is_float_equal(_idle2dAnim.Speed, selection.Speed)};
-            int32_t frame_index {_idle2dAnim.FrameIndex};
+            selection.Frames = frames;
+            selection.FramesDuration = frames->GetDuration();
+
+            bool changed = _idle2dAnim.Frames != frames || _idle2dAnim.StateAnim != state_anim || _idle2dAnim.ActionAnim != action_anim || _idle2dAnim.Flags != selection.Flags || !is_float_equal(_idle2dAnim.NormalizedPosition, selection.NormalizedPosition) || !is_float_equal(_idle2dAnim.Speed, selection.Speed);
+            int32_t frame_index = _idle2dAnim.FrameIndex;
 
             if (changed) {
                 _animStartTime = _engine->GameTime.GetFrameTime();
 
                 _engine->OnCritterAnimationProcess.Fire(this, state_anim, action_anim, nullptr, true);
 
-                frame_index = lerp(0, frames->GetFramesCount() - 1, selection.NormalizedTime);
+                UpdateAnimFrame(selection);
+                frame_index = selection.FrameIndex;
             }
 
             _idle2dAnim = std::move(selection);
-            _idle2dAnim.Frames = frames;
             _idle2dAnim.FrameIndex = frame_index;
-            _idle2dAnim.FramesDuration = frames->GetDuration();
 
             RefreshAnimOffset(_idle2dAnim);
             SetAnimSpr(_idle2dAnim.Frames, _idle2dAnim.FrameIndex);
@@ -423,8 +451,8 @@ void CritterHexView::RefreshModel()
             FO_VERIFY_AND_THROW(_model, "Model sprite is missing its model instance");
 
             _model->SetAnimationCallbacks(std::move(animCallbacks));
-            _model->SetAnimInitCallback([this](CritterAnimationContext context, int32_t moving_speed, CritterStateAnim& state_anim, CritterActionAnim& action_anim, CritterAnimationFlags& flags, float32_t& normalized_time, float32_t& speed) FO_DEFERRED { //
-                _engine->OnCritterAnimationInit.Fire(this, state_anim, action_anim, nullptr, context, moving_speed, flags, normalized_time, speed);
+            _model->SetAnimInitCallback([this](CritterAnimationContext context, int32_t moving_speed, CritterStateAnim& state_anim, CritterActionAnim& action_anim, CritterAnimationFlags& flags, float32_t& normalized_position, float32_t& speed) FO_DEFERRED { //
+                _engine->OnCritterAnimationPlaybackInit.Fire(this, state_anim, action_anim, nullptr, context, moving_speed, flags, normalized_position, speed);
             });
 
             _model->SetLookDir(GetDir());
@@ -526,24 +554,9 @@ void CritterHexView::Process()
     {
         auto& cur_anim {_curAnim.has_value() ? _curAnim.value() : _idle2dAnim};
 
-        bool frozen {is_enum_set(cur_anim.Flags, CritterAnimationFlags::Freeze)};
-        bool movement_drives_frame {!frozen && IsMoving() && is_enum_set(cur_anim.Flags, CritterAnimationFlags::Movement)};
+        int32_t prev_frm_index = cur_anim.FrameIndex;
 
-        int32_t prev_frm_index {cur_anim.FrameIndex};
-
-        if (frozen) {
-            cur_anim.FrameIndex = cur_anim.Frames->GetFrameIndexAtPhase(cur_anim.NormalizedTime);
-        }
-        else if (!movement_drives_frame) {
-            float64_t phase {cur_anim.NormalizedTime};
-
-            if (cur_anim.FramesDuration > timespan::zero) {
-                phase += std::max(0.0, (_engine->GameTime.GetFrameTime() - _animStartTime).div<float64_t>(cur_anim.FramesDuration)) * cur_anim.Speed;
-            }
-
-            phase = _curAnim.has_value() ? std::min(phase, 1.0) : phase - std::floor(phase);
-            cur_anim.FrameIndex = cur_anim.Frames->GetFrameIndexAtPhase(phase);
-        }
+        UpdateAnimFrame(cur_anim);
 
         // Motion selects its pose and recomputes compensation even within the same frame
         RefreshAnimOffset(cur_anim);
@@ -563,7 +576,7 @@ void CritterHexView::Process()
         else
 #endif
         {
-            anim_complete = !is_enum_set(_curAnim->Flags, CritterAnimationFlags::Freeze) && (_curAnim->FramesDuration == timespan::zero || (_engine->GameTime.GetFrameTime() - _animStartTime).div<float64_t>(_curAnim->FramesDuration) * _curAnim->Speed >= 1.0 - _curAnim->NormalizedTime);
+            anim_complete = !is_enum_set(_curAnim->Flags, CritterAnimationFlags::Freeze) && (_curAnim->FramesDuration == timespan::zero || (_engine->GameTime.GetFrameTime() - _animStartTime).div<float64_t>(_curAnim->FramesDuration) * _curAnim->Speed >= 1.0 - _curAnim->NormalizedPosition);
         }
 
         if (anim_complete) {
