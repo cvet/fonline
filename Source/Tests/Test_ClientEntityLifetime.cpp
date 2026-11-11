@@ -571,11 +571,14 @@ TEST_CASE("ClientAuthoritativeInventorySlotMoveStopsAfterReentrantDestruction")
     auto critter_proto = safe_alloc::make_refcounted<ProtoCritter>(client->Hashes.to_hashed_string("ReentrantSlotCritter"), client->GetPropertyRegistrar("Critter"));
     auto item_proto = safe_alloc::make_refcounted<ProtoItem>(client->Hashes.to_hashed_string("ReentrantSlotItem"), client->GetPropertyRegistrar("Item"));
     auto critter = safe_alloc::make_refcounted<CritterView>(client, ident_t {1101}, critter_proto);
-    auto cleanup = scope_exit([&critter]() noexcept {
+    auto callback_active {safe_alloc::make_shared<bool>(true)};
+    auto cleanup {scope_exit([&critter, callback_active]() mutable noexcept {
+        *callback_active = false;
+
         if (!critter->IsDestroyed()) {
             safe_call([&critter] { critter->DestroySelf(); });
         }
-    });
+    })};
     auto displaced = critter->AddMapperInvItem(ident_t {1102}, item_proto, CritterItemSlot::Main, nullptr);
     auto moved = critter->AddMapperInvItem(ident_t {1103}, item_proto, CritterItemSlot::Inventory, nullptr).hold_ref();
     auto peer = critter->AddMapperInvItem(ident_t {1104}, item_proto, CritterItemSlot::Main, nullptr).hold_ref();
@@ -583,8 +586,8 @@ TEST_CASE("ClientAuthoritativeInventorySlotMoveStopsAfterReentrantDestruction")
     CAPTURE(mutation);
     int32_t callback_count = 0;
 
-    displaced->GetPropertyCritterSlot()->AddPostSetter([&](nptr<Entity> entity, ptr<const Property>) {
-        if (entity == displaced) {
+    displaced->GetPropertyCritterSlot()->AddPostSetter([&, callback_active](nptr<Entity> entity, ptr<const Property>) {
+        if (*callback_active && entity == displaced) {
             callback_count++;
 
             if (mutation == 0) {

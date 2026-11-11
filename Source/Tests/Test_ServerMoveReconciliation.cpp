@@ -2204,9 +2204,7 @@ TEST_CASE("ServerMovementTransportClock")
 
         timespan catch_up_min = std::chrono::milliseconds {server->Settings->Network.MoveLateCatchUpMinMs};
         timespan catch_up_max = std::chrono::milliseconds {server->Settings->Network.MoveLateCatchUpMaxMs};
-        auto make_estimator = [&server] {
-            return LinkDelayEstimator {std::chrono::milliseconds {server->Settings->Network.LinkDelayWindowMs}, std::chrono::milliseconds {server->Settings->Network.MoveLateCatchUpMinMs}, std::chrono::milliseconds {server->Settings->Network.LinkDelayRebaseMs}};
-        };
+        auto make_estimator = [&server] { return LinkDelayEstimator {std::chrono::milliseconds {server->Settings->Network.LinkDelayWindowMs}, std::chrono::milliseconds {server->Settings->Network.MoveLateCatchUpMinMs}, std::chrono::milliseconds {server->Settings->Network.LinkDelayRebaseMs}}; };
         auto evaluate_catch_up = [&](timespan late) { return EvaluateLateCatchUp(late, catch_up_min, catch_up_max); };
         auto check_move_payload = [&](const TransportPacketSnapshot& actual, const TransportPacketSnapshot& expected) {
             CHECK(actual.Message == NetMessage::CritterMove);

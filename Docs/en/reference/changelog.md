@@ -12,11 +12,12 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-11-10
+## Current - 2026-11-11
 
 ### Changed
 
 - Reconcile the feature branch's lifecycle, attached movement, playback, message transaction, Mapper and build-marker contracts with the current master settings, persistence, synchronization and large-map changes. The feature-branch notes below retain their original revisions and migration details because their version numbers overlap independent master history.
+- Complete the exact-base generated API contract review and fix native test helpers and callback cleanup for unity and lifetime validation. These changes do not alter production runtime behavior.
 
 ### Migration
 

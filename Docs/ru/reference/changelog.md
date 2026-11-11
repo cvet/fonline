@@ -7,16 +7,17 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"96399311b94f6f31c589aada75ca4f7800ca5a657a0be99f2287ea5c8b0e9cbb"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"6393a9cbdc193a14c89fd434452ec038317f09f418a9cefe988c8875bd997c4f"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
-## Current - 2026-11-10
+## Current - 2026-11-11
 
 ### Изменено
 
 - Согласованы контракты feature-ветки для жизненного цикла, движения прикреплённых сущностей, воспроизведения, транзакций сообщений, Mapper и маркеров сборки с изменениями master в настройках, сохранении, синхронизации и больших картах. Приведённые ниже записи feature-ветки сохраняют исходные ревизии и детали миграции: их номера версий совпадают с независимой историей master.
+- Завершена проверка сгенерированного API-контракта относительно точной базовой ревизии; исправлены native test helpers и очистка callback для unity-сборки и проверки жизненного цикла. Эти изменения не меняют поведение production runtime.
 
 ### Миграция
 
