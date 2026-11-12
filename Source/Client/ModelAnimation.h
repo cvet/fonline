@@ -207,6 +207,7 @@ public:
     [[nodiscard]] auto GetCacheSignature() const noexcept -> uint64_t;
     [[nodiscard]] auto GetJointCount() const noexcept -> size_t;
     [[nodiscard]] auto GetJointName(size_t index) const -> string_view;
+    [[nodiscard]] auto GetJointParentIndex(size_t index) const -> int32_t;
     [[nodiscard]] auto GetBaseJointMapping() const noexcept -> const_span<uint32_t>;
     [[nodiscard]] auto GetBaseJointPresence() const noexcept -> const_span<uint8_t>;
     [[nodiscard]] auto GetClipCount() const noexcept -> size_t;

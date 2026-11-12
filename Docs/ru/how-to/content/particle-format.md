@@ -5,7 +5,7 @@ locale: ru
 document_id: particle-format-guide
 permalink: /Docs/ru/how-to/content/particle-format.html
 ---
-<!-- docs-translation: {"document_id":"particle-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/particle-format.md","source_sha256":"882ecc5e97e8ee42025c22295d2ced88254572f6041483c2928df06ddd4f4978"} -->
+<!-- docs-translation: {"document_id":"particle-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/particle-format.md","source_sha256":"c20af5c617a5e3a328b7ba162194c80e94da0dcbfde721cd0ee6b41e0ff81cc6"} -->
 # Авторинг и runtime частиц
 
 FOnline предоставляет два опциональных backend частиц за единым
@@ -236,6 +236,10 @@ animation callback получают эту инициализацию до те�
 ждёт следующей валидной позы. Ожидающие эффекты не рисуются и не расширяют кадр
 в identity-преобразованиях. Дальнейшие положительные delta позы продвигают
 эффект; нулевые re-pose при подборе кадра не старят его.
+
+Частицы дочерней модели используют текущую проекцию кадра и смещение вида
+корневой модели, сохраняя позу кости дочерней. Вложенный эффект остаётся
+в одном кадре с моделью как в атласе, так и при прямой отрисовке.
 
 Для модельного Effekseer `ParticleRuntimeSetup.World` задаёт полную позу кости.
 Конечный `LookDirectionAngle` принимается как прежняя подсказка без второго yaw;

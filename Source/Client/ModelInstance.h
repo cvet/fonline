@@ -66,6 +66,10 @@ public:
     auto operator=(ModelInstance&&) noexcept = delete;
     ~ModelInstance();
 
+    [[nodiscard]] auto GetRoot() -> ptr<ModelInstance>;
+    [[nodiscard]] auto GetRoot() const -> ptr<const ModelInstance>;
+    [[nodiscard]] auto GetParent() -> nptr<ModelInstance> { return _parent; }
+    [[nodiscard]] auto GetParent() const -> nptr<const ModelInstance> { return _parent; }
     [[nodiscard]] auto Convert2dTo3d(ipos32 pos) const -> vec3;
     [[nodiscard]] auto Convert3dTo2d(vec3 pos) const -> ipos32;
     [[nodiscard]] auto HasAnimation(CritterStateAnim state_anim, CritterActionAnim action_anim) const noexcept -> bool;

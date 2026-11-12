@@ -5,7 +5,7 @@ document_id: model-format-guide
 locale: ru
 permalink: /Docs/ru/how-to/content/model-format.html
 ---
-<!-- docs-translation: {"document_id":"model-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/model-format.md","source_sha256":"a0fab3a2294adbb463eb5d1fa26496ffae5231fb49b59453f23029b5a9452a0f"} -->
+<!-- docs-translation: {"document_id":"model-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/model-format.md","source_sha256":"7f370467024cb46e6e39d01ca3dbbefd0055af4b774345aa3c0f717eb37b6704"} -->
 # Формат моделей и 3D-композиция
 
 FOnline использует описания моделей `.fo3d`, чтобы собрать на клиенте запечённые 3D-меши, преобразованные исходные анимации, выбираемую слоями экипировку, дочерние модели, частицы, переопределения материалов и объёмы отсечения.
@@ -35,6 +35,8 @@ FOnline использует описания моделей `.fo3d`, чтобы
 2. `ModelInfoBaker` с порядком `6` разбирает конкретные `.fo3d`, проверяет ссылки и свежесть исходников, загружает выбранные скелеты и клипы через `ModelSourceAssetCache`, преобразует канонический runtime rig и записывает `LFMODINF` с обязательным payload `LFOZZRIG` по пути `.fo3d`. Он также создаёт `ModelAnimationInfo.foinfo` для общих длительностей и границ.
 
 Клиент не разбирает авторский текст, FBX или OBJ. `ModelManager` загружает общие иерархии мешей, `ModelInformation` строго читает неизменяемое описание и rig, а каждый `ModelInstance` владеет изменяемыми контроллерами, матрицами позы, дочерними объектами, частицами и render-композицией. Старые payload без заголовка и частичные fallback для rig отклоняются.
+
+`ModelInstance::GetParent()` возвращает родителя или null; `GetRoot()` — корень или сам объект. Указатели невладеющие, с сохранением const.
 
 Файлы с basename `TEMPLATE_` предназначены только для include. Они влияют на конкретные описания и timestamps запекания, но не создаются как самостоятельные `.fo3d`-ресурсы или секции `ModelAnimationInfo.foinfo`.
 
@@ -427,7 +429,7 @@ DisableBackwardAnim
 
 `ModelManager::CreateModel(name)` принимает запечённый `.fo3d` с полной composition semantics либо baked mesh path с простой rest-pose model без declarations и animation controller.
 
-Descriptions и mesh hierarchies кешируются по resource name. Неизменяемые clips, remaps, bindings и canonical skeleton принадлежат `ModelInformation`; mutable timelines, poses, matrices, children и procedural transforms — каждому `ModelInstance`. При смене слоёв активные children повторно используются по stable baked link id, а переставшие совпадать children и particles удаляются.
+Descriptions и meshes кешируются по имени. Clips, remaps, bindings и skeletons принадлежат `ModelInformation`; poses, matrices и children — `ModelInstance`. Несвязанные joints следуют за родителями. При смене слоёв связи повторно используются по baked id, а несовпавшие children и particles удаляются.
 
 Combined mesh generation объединяет совместимые видимые meshes, пока effect, textures или bone capacity не требуют нового batch. Cuts применяются после объединения parent и child meshes.
 

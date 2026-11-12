@@ -60,6 +60,28 @@ ModelInstance::~ModelInstance()
     _modelParticles.clear();
 }
 
+auto ModelInstance::GetRoot() -> ptr<ModelInstance>
+{
+    ptr<ModelInstance> root = this;
+
+    while (root->_parent) {
+        root = root->_parent;
+    }
+
+    return root;
+}
+
+auto ModelInstance::GetRoot() const -> ptr<const ModelInstance>
+{
+    ptr<const ModelInstance> root = this;
+
+    while (root->_parent) {
+        root = root->_parent;
+    }
+
+    return root;
+}
+
 void ModelInstance::StartMeshGeneration()
 {
     if (!_allowMeshGeneration) {
@@ -1688,18 +1710,43 @@ void ModelInstance::ProcessAnimation(timespan elapsed, ipos32 pos, float32_t sca
 
     // Update linked matrices
     if (_parent && !_linkJoints.empty()) {
-        for (const ModelPoseJointLink& binding : _linkJoints) {
-            FO_STRONG_ASSERT(binding.ChildJointIndex < _worldMatrices.size(), "Linked model child joint index is outside its world-matrix snapshot", _modelInfo->_fileName, binding.ChildJointIndex, _worldMatrices.size());
-            const mat44& parent_world_matrix {_parent->GetWorldMatrix(binding.ParentJointIndex)};
+        size_t link_index = 0;
 
-            if (_animationRuntimePose) {
-                _animationRuntimePose->OverrideWorldMatrix(binding.ChildJointIndex, parent_world_matrix);
-                _worldMatrices[binding.ChildJointIndex] = _animationRuntimePose->GetWorldMatrices()[binding.ChildJointIndex];
+        for (size_t joint_index = 0; joint_index < _worldMatrices.size(); joint_index++) {
+            mat44 world_matrix;
+
+            if (link_index < _linkJoints.size() && _linkJoints[link_index].ChildJointIndex == joint_index) {
+                world_matrix = _parent->GetWorldMatrix(_linkJoints[link_index].ParentJointIndex);
+                link_index++;
             }
             else {
-                _worldMatrices[binding.ChildJointIndex] = parent_world_matrix;
+                int32_t parent_index = _animationRuntimePose ? _modelInfo->_animationRuntimeRig->GetJointParentIndex(joint_index) : _modelInfo->_restPoseJoints[joint_index].ParentIndex;
+                const mat44& parent_matrix = parent_index >= 0 ? _worldMatrices[numeric_cast<size_t>(parent_index)] : _parentMatrix;
+                mat44 local_matrix;
+
+                if (_animationRuntimePose) {
+                    ModelAnimationRuntimeTransform local = _animationRuntimePose->GetFinalLocalTransform(joint_index);
+                    local_matrix = glm::translate(mat44 {1.0f}, local.Translation) * glm::mat4_cast(local.Rotation) * glm::scale(mat44 {1.0f}, local.Scale);
+                }
+                else {
+                    local_matrix = _modelInfo->_restPoseJoints[joint_index].RestLocalTransform;
+
+                    if (auto angle = GetProceduralJointRotationAngle(numeric_cast<uint32_t>(joint_index)); angle) {
+                        local_matrix = glm::rotate(mat44 {1.0f}, *angle, vec3 {1.0f, 0.0f, 0.0f}) * local_matrix;
+                    }
+                }
+
+                world_matrix = parent_matrix * local_matrix;
             }
+
+            if (_animationRuntimePose) {
+                _animationRuntimePose->OverrideWorldMatrix(joint_index, world_matrix);
+            }
+
+            _worldMatrices[joint_index] = world_matrix;
         }
+
+        FO_STRONG_ASSERT(link_index == _linkJoints.size(), "Linked model child joint index is outside its world-matrix snapshot", _modelInfo->_fileName, link_index, _linkJoints.size());
     }
 
     _worldPoseReady = true;
@@ -1776,9 +1823,10 @@ void ModelInstance::UpdateModelParticle(ModelParticleSystem& model_particle, tim
         return;
     }
 
-    const mat44& proj = _directSceneDraw ? _drawProj : _frameProj;
+    ptr<ModelInstance> root = GetRoot();
+    const mat44& proj = root->_directSceneDraw ? root->_drawProj : root->_frameProj;
     const mat44& bone_world_matrix = model_particle.Owner->GetWorldMatrix(model_particle.JointIndex);
-    vec3 view_offset = _directSceneDraw ? vec3 {} : _moveOffset;
+    vec3 view_offset = root->_directSceneDraw ? vec3 {} : root->_moveOffset;
     float32_t rotation = model_particle.Id == 0 ? model_particle.Rot : model_particle.Rot + _lookDirAngle;
 
     // The bone transform already includes camera tilt; applying it again makes frame sizing chase a growing box

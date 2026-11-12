@@ -237,6 +237,10 @@ bone pose. A finite `LookDirectionAngle` is accepted as a legacy hint without
 applying a second yaw; a non-finite hint rejects the effect. Orient the effect
 through `World` or its authored nodes.
 
+Particles owned by child model instances use the root model's current frame
+projection and view offset. Their bone pose still comes from the child. This
+keeps nested attachments in the same atlas or direct-scene frame as the model.
+
 For emitters bound at particle creation, moving or shrinking the emitter does
 not move or shrink older particles. Live bounds therefore union the current
 baked envelope with Sprite/Ribbon/Ring/Track/Model instance geometry. A cached

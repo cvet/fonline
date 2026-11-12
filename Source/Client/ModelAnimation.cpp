@@ -793,6 +793,13 @@ auto ModelAnimationRuntimeRig::GetJointName(size_t index) const -> string_view
     return joint_names[index];
 }
 
+auto ModelAnimationRuntimeRig::GetJointParentIndex(size_t index) const -> int32_t
+{
+    auto joint_parents = _impl->Skeleton.joint_parents();
+    FO_VERIFY_AND_THROW(index < joint_parents.size(), "Model animation runtime joint index is outside the rig", index, joint_parents.size());
+    return joint_parents[index];
+}
+
 auto ModelAnimationRuntimeRig::GetBaseJointMapping() const noexcept -> const_span<uint32_t>
 {
     return _impl->BaseJointRemap.SourceToCanonicalJointIndices;

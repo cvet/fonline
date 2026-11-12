@@ -1766,7 +1766,7 @@ void main(void)
 
     // The second bone carries its own offset, so half the corners move by a different matrix and the posed
     // silhouette is genuinely skeleton-driven
-    inline auto MakeSkinnedRuntimeModelMesh() -> vector<uint8_t>
+    inline auto MakeSkinnedRuntimeModelMesh(bool add_nozzle = false) -> vector<uint8_t>
     {
         auto root_bone {safe_alloc::make_unique<ModelMeshBoneData>()};
         root_bone->Name = "Root";
@@ -1777,6 +1777,14 @@ void main(void)
         limb_bone->Name = "Limb";
         limb_bone->TransformationMatrix = glm::translate(mat44 {1.0f}, vec3 {0.35f, 0.7f, 0.0f});
         limb_bone->GlobalTransformationMatrix = limb_bone->TransformationMatrix;
+
+        if (add_nozzle) {
+            auto nozzle = safe_alloc::make_unique<ModelMeshBoneData>();
+            nozzle->Name = "Nozzle";
+            nozzle->TransformationMatrix = glm::translate(mat44 {1.0f}, vec3 {0.2f, 0.4f, 0.0f});
+            nozzle->GlobalTransformationMatrix = limb_bone->GlobalTransformationMatrix * nozzle->TransformationMatrix;
+            limb_bone->Children.emplace_back(std::move(nozzle));
+        }
 
         ModelMeshGeometryData geometry {};
         geometry.SkinBoneNames = {"Root", "Limb"};
@@ -1893,7 +1901,7 @@ BoundsMaxZ = 1 1 1 1
 
     // A valid baked model description is produced by the real ModelInfoBaker: the fixture supplies the
     // source asset directly through the loader callback, so no source-file format has to be reproduced
-    inline auto MakeRuntimeModelDescription(string_view model_path, string_view mesh_path, const vector<uint8_t>& mesh_blob, string_view default_link_extra = {}, string_view attached_mesh_path = {}, nptr<const vector<uint8_t>> attached_mesh_blob = nullptr, bool use_two_bone_rig = false, const vector<pair<string, vector<uint8_t>>>& texture_resources = {}, float32_t end_translation = 0.0f, nptr<vector<uint8_t>> animation_info = nullptr, string_view description_override = {}) -> vector<uint8_t>
+    inline auto MakeRuntimeModelDescription(string_view model_path, string_view mesh_path, const vector<uint8_t>& mesh_blob, string_view default_link_extra = {}, string_view attached_mesh_path = {}, nptr<const vector<uint8_t>> attached_mesh_blob = nullptr, bool use_two_bone_rig = false, const vector<pair<string, vector<uint8_t>>>& texture_resources = {}, float32_t end_translation = 0.0f, nptr<vector<uint8_t>> animation_info = nullptr, string_view description_override = {}, const vector<pair<string, vector<uint8_t>>>& extra_baked_resources = {}, string_view attached_source = {}) -> vector<uint8_t>
     {
         BakerTests::TestRig rig {};
         // A one-line description leaves the layer machinery unreachable, so the caller's extra is inserted right
@@ -1945,9 +1953,13 @@ BoundsMaxZ = 1 1 1 1
             BakerTests::AddTestBakedImage(rig, texture_path, data);
         }
 
+        for (const auto& [resource_path, data] : extra_baked_resources) {
+            rig.AddBakedFile(resource_path, data, 1);
+        }
+
         if (!attached_mesh_path.empty()) {
             FO_VERIFY_AND_THROW(attached_mesh_blob, "Runtime model description attachment has no mesh blob", attached_mesh_path);
-            rig.AddSourceFile(attached_mesh_path, string {"attached model source fixture"}, 1);
+            rig.AddSourceFile(attached_mesh_path, attached_source.empty() ? string {"attached model source fixture"} : string {attached_source}, 1);
             rig.AddBakedFile(attached_mesh_path, *attached_mesh_blob, 1);
         }
 
