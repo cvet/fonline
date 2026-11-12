@@ -140,6 +140,7 @@ void NetOutBuffer::EndMsg()
 
     auto msg_len_target {make_ptr(_bufData.data()).offset(_startedBufPos + sizeof(msg_signature))};
     memory::copy(msg_len_target, &msg_len, sizeof(msg_len));
+
     _msgStarted = false;
 }
 

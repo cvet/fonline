@@ -553,7 +553,6 @@ void CritterHexView::Process()
 #endif
     {
         auto& cur_anim {_curAnim.has_value() ? _curAnim.value() : _idle2dAnim};
-
         int32_t prev_frm_index = cur_anim.FrameIndex;
 
         UpdateAnimFrame(cur_anim);

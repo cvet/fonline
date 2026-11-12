@@ -768,10 +768,27 @@ auto GlobalMapGroup::GetMemberIds(uint64_t& revision) const -> vector<ident_t>
     return ids;
 }
 
+void GlobalMapGroup::AddMember(ptr<Critter> cr)
+{
+    scoped_lock lock {_lock};
+
+    vec_add_unique_value(_members, cr);
+    _revision++;
+}
+
+void GlobalMapGroup::RemoveMember(ptr<Critter> cr)
+{
+    scoped_lock lock {_lock};
+
+    vec_remove_unique_value(_members, cr);
+    _revision++;
+}
+
 void GlobalMapGroup::BroadcastAttachments(ptr<const Critter> from_cr, nptr<const Player> ignore_player) const
 {
     // Keep membership stable until enqueue, before a departing member can send its next map load
     shared_lock lock {_lock};
+
     small_vector<refcount_ptr<Player>, 8> recipients;
 
     for (ptr<Critter> member : _members) {
@@ -787,22 +804,6 @@ void GlobalMapGroup::BroadcastAttachments(ptr<const Critter> from_cr, nptr<const
         player->Send_Attachments(from_cr, member);
         recipients.emplace_back(std::move(player).take_not_null());
     }
-}
-
-void GlobalMapGroup::AddMember(ptr<Critter> cr)
-{
-    scoped_lock lock {_lock};
-
-    vec_add_unique_value(_members, cr);
-    _revision++;
-}
-
-void GlobalMapGroup::RemoveMember(ptr<Critter> cr)
-{
-    scoped_lock lock {_lock};
-
-    vec_remove_unique_value(_members, cr);
-    _revision++;
 }
 
 auto Critter::GetVisibleCritterMode(ident_t cr_id) const noexcept -> CritterVisibilityMode

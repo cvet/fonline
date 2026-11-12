@@ -41,6 +41,7 @@ public:
     [[nodiscard]] auto GetName() const noexcept -> string_view override;
     [[nodiscard]] auto GetControlledCritter() noexcept -> nptr<Critter>;
     [[nodiscard]] auto GetControlledCritter() const noexcept -> nptr<const Critter>;
+    [[nodiscard]] auto HasPlayerMovementControl(nptr<const Critter> controller, ptr<const Critter> target) const -> bool;
     [[nodiscard]] auto GetSyncWidenEntity() noexcept -> refcount_nptr<ServerEntity> override;
     [[nodiscard]] auto GetSyncWidenEntity() const noexcept -> refcount_nptr<const ServerEntity> override;
     [[nodiscard]] ptr<ServerConnection> GetConnection() noexcept FO_TSA_NO_ANALYSIS;
@@ -112,7 +113,6 @@ private:
 
     mutex _connectionLock {};
     unique_ptr<ServerConnection> _connection FO_TSA_GUARDED_BY(_connectionLock);
-    // Unknown while a LoadMap attempt is incomplete or has failed
     optional<ident_t> _sentMapId FO_TSA_GUARDED_BY(_connectionLock) {};
     string _name {"(NotLoggedIn)"};
     mutable atomic_mutex _controlledCrLinkLocker {};
