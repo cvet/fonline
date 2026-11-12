@@ -409,7 +409,7 @@ class DocumentationApiModelTests(unittest.TestCase):
                             for symbol in experimental_symbols if symbol["id"] in view_refresh_ids))
         attachment_id = "script.method.client.Critter.GetAttachedCritterIds"
         attachment_symbol = next(symbol for symbol in experimental_symbols if symbol["id"] == attachment_id)
-        self.assertEqual(attachment_symbol["since"], "2026.1.53-dev")
+        self.assertEqual(attachment_symbol["since"], "2026.1.120-dev")
         self.assertEqual(attachment_symbol["signature"], "ident[] Critter.GetAttachedCritterIds()")
         self.assertEqual(attachment_symbol["contract"]["selector"], attachment_id)
         allocator_id = "script.method.common.Game.GetAllocatorStatistics"

@@ -557,8 +557,8 @@ FO_SCRIPT_API vector<mdir> Client_Map_GetPath(ptr<MapView> self, ptr<CritterView
         throw ScriptException("Critter is not on map");
     }
 
-    mpos to_hex = toHex;
-    auto result = self->FindPath(hex_cr, hex_cr->GetHex(), to_hex, cut);
+    mpos to_hex {toHex};
+    auto result {self->FindPath(hex_cr, hex_cr->GetHex(), to_hex, cut)};
 
     if (!result) {
         return {};
@@ -589,10 +589,10 @@ FO_SCRIPT_API vector<mdir> Client_Map_GetPath(ptr<MapView> self, mpos fromHex, m
         return {};
     }
 
-    mpos to_hex = toHex;
+    mpos to_hex {toHex};
 
-    function<bool(ptr<const ItemHexView>)> gag_check = [gag_cb = safe_alloc::make_shared<ScriptFunc<bool, ptr<ItemView>>>(std::move(gagCallback))](ptr<const ItemHexView> gag) mutable { return gag_cb->Call(make_ptr(const_cast<ItemHexView*>(std::addressof(*gag)))) && gag_cb->GetResult(); };
-    auto result = self->FindPath(nullptr, fromHex, to_hex, cut, ipos16 {}, gag_check);
+    function<bool(ptr<const ItemHexView>)> gag_check {[gag_cb = safe_alloc::make_shared<ScriptFunc<bool, ptr<ItemView>>>(std::move(gagCallback))](ptr<const ItemHexView> gag) mutable { return gag_cb->Call(make_ptr(const_cast<ItemHexView*>(std::addressof(*gag)))) && gag_cb->GetResult(); }};
+    auto result {self->FindPath(nullptr, fromHex, to_hex, cut, ipos16 {}, gag_check)};
 
     if (!result) {
         return {};
@@ -650,8 +650,8 @@ FO_SCRIPT_API int32_t Client_Map_GetPathLength(ptr<MapView> self, ptr<CritterVie
         throw ScriptException("Critter is not on map");
     }
 
-    mpos to_hex = toHex;
-    auto result = self->FindPath(hex_cr, hex_cr->GetHex(), to_hex, cut);
+    mpos to_hex {toHex};
+    auto result {self->FindPath(hex_cr, hex_cr->GetHex(), to_hex, cut)};
 
     if (!result) {
         return 0;

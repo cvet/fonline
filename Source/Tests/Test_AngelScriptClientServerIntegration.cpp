@@ -59,7 +59,7 @@ TEST_CASE("AngelScriptClientAndServerHandshakeOverInterthreadTransport")
     CHECK(login_success_calls == 0);
     CHECK(disconnected_calls == 0);
 
-    auto login_call = client->Hashes.to_hashed_string("UnitTestLogin");
+    auto login_call {client->Hashes.to_hashed_string("UnitTestLogin")};
     CHECK_THROWS_AS(client->SendRemoteCall(login_call, client, {}), VerificationException);
     CHECK(client->GetConnection()->OutBuf->IsEmpty());
 
@@ -313,15 +313,15 @@ TEST_CASE("AngelScriptClientLogsInThroughARemoteCall")
 
     // Server-initiated swaps must update both inventory views. Predicted local
     // swaps already moved the peer, so the authoritative echo must be harmless
-    auto chosen = client->GetChosen();
+    auto chosen {client->GetChosen()};
     REQUIRE(chosen);
-    auto item_mark = client->GetPropertyRegistrar(client->Hashes.to_hashed_string("Item"))->FindProperty("UnitTestItemMark");
+    auto item_mark {client->GetPropertyRegistrar(client->Hashes.to_hashed_string("Item"))->FindProperty("UnitTestItemMark")};
     REQUIRE(item_mark);
 
     for (int32_t step = 7; step <= 9; step++) {
         if (step == 9) {
             for (auto& item : chosen->GetInvItems()) {
-                const auto mark = item->GetProperties()->GetValue<int32_t>(item_mark);
+                const auto mark {item->GetProperties()->GetValue<int32_t>(item_mark)};
                 if (mark == 71 || mark == 72) {
                     item->SetCritterSlot(mark == 72 ? CritterItemSlot::Main : CritterItemSlot::Inventory);
                 }
@@ -329,16 +329,16 @@ TEST_CASE("AngelScriptClientLogsInThroughARemoteCall")
         }
 
         REQUIRE(client->CallFunc<void, int32_t>(client->Hashes.to_hashed_string("ClientServerIntegrationClient::UnitTestSendWorldStep"), step));
-        bool slots_match = false;
+        bool slots_match {false};
 
         for (int32_t tick = 0; tick < 1000 && !slots_match; tick++) {
             client->MainLoop();
-            int32_t main_count = 0;
-            int32_t main_mark = 0;
-            int32_t inventory_peer_count = 0;
+            int32_t main_count {0};
+            int32_t main_mark {0};
+            int32_t inventory_peer_count {0};
 
             for (auto& item : chosen->GetInvItems()) {
-                const auto mark = item->GetProperties()->GetValue<int32_t>(item_mark);
+                const auto mark {item->GetProperties()->GetValue<int32_t>(item_mark)};
                 if (item->GetCritterSlot() == CritterItemSlot::Main) {
                     main_count++;
                     main_mark = mark;
@@ -348,7 +348,7 @@ TEST_CASE("AngelScriptClientLogsInThroughARemoteCall")
                 }
             }
 
-            int32_t swap_pings = 0;
+            int32_t swap_pings {0};
             REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientServerIntegrationClient::UnitTestGetClientPings"), swap_pings));
             slots_match = swap_pings == 42 + step - 6 && main_count == 1 && inventory_peer_count == 1 && main_mark == (step == 8 ? 71 : 72);
             if (!slots_match) {

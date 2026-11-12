@@ -2320,22 +2320,22 @@ TEST_CASE("MapperSavesMapsToADiskMapsRoot")
     string reference_map {MakeMapText(MakeItemBlock(10, TILE_A, 5, 5))};
     REQUIRE(fs::write_file((maps_dir / "ReferenceMap.fomap").generic_string(), reference_map));
 
-    string first_sibling = "[ProtoMap]\n$Name = FirstMap\n# first sibling spelling\nSize = 32 32\nWorkHex = 0 0\n\n" + MakeItemBlock(30, TILE_A, 5, 5);
-    string middle_sibling = "[ProtoMap]\n$Name = MiddleMap\n# middle sibling spelling\nSize = 32 32\nWorkHex = 0 0\n\n" + MakeItemBlock(31, TILE_B, 6, 6);
-    string last_sibling = "[ProtoMap]\n$Name = LastMap\n# last sibling spelling\nSize = 32 32\nWorkHex = 0 0\n\n[$Name/Item]\n$Id = 32\n$Proto = MapperMergeTileA\nHex = 7 7\n";
+    string first_sibling {"[ProtoMap]\n$Name = FirstMap\n# first sibling spelling\nSize = 32 32\nWorkHex = 0 0\n\n" + MakeItemBlock(30, TILE_A, 5, 5)};
+    string middle_sibling {"[ProtoMap]\n$Name = MiddleMap\n# middle sibling spelling\nSize = 32 32\nWorkHex = 0 0\n\n" + MakeItemBlock(31, TILE_B, 6, 6)};
+    string last_sibling {"[ProtoMap]\n$Name = LastMap\n# last sibling spelling\nSize = 32 32\nWorkHex = 0 0\n\n[$Name/Item]\n$Id = 32\n$Proto = MapperMergeTileA\nHex = 7 7\n"};
     REQUIRE(fs::write_file((maps_dir / "CombinedMaps.fomap").generic_string(), first_sibling + middle_sibling + last_sibling));
 
-    string first_tail_sibling = "[ProtoMap]\n$Name = TailFirst\nSize = 32 32\nWorkHex = 0 0\n\n" + MakeItemBlock(40, TILE_A, 8, 8);
-    string untouched_tail_sibling = "[ProtoMap]\n$Name = TailLast\n# preserve this noncanonical tail\nSize = 32 32\nWorkHex = 0 0\n\n" + MakeItemBlock(41, TILE_B, 9, 9) + "\n\n";
+    string first_tail_sibling {"[ProtoMap]\n$Name = TailFirst\nSize = 32 32\nWorkHex = 0 0\n\n" + MakeItemBlock(40, TILE_A, 8, 8)};
+    string untouched_tail_sibling {"[ProtoMap]\n$Name = TailLast\n# preserve this noncanonical tail\nSize = 32 32\nWorkHex = 0 0\n\n" + MakeItemBlock(41, TILE_B, 9, 9) + "\n\n"};
     REQUIRE(fs::write_file((maps_dir / "UntouchedTail.fomap").generic_string(), first_tail_sibling + untouched_tail_sibling));
 
-    auto check_terminal_newline = [](const string& saved) {
+    auto check_terminal_newline {[](const string& saved) {
         REQUIRE_FALSE(saved.empty());
         CHECK(saved.ends_with("\n"));
         CHECK_FALSE(saved.ends_with("\n\n"));
-    };
+    }};
 
-    auto settings = MakeMapperTestSettings();
+    auto settings {MakeMapperTestSettings()};
     BakerTests::OverrideSetting(settings.Baking.ProtoFileExtensions, vector<string> {"fopro", "fomap"});
     auto pack_config {ConfigFile(strex("[ResourcePack]\nName = MapperSaveTestPack\nInputDirs = {}\n", maps_dir.generic_string()).str())};
     settings.ApplyConfigFile(pack_config, "");
@@ -2352,22 +2352,22 @@ TEST_CASE("MapperSavesMapsToADiskMapsRoot")
 
     SECTION("CanonicalTextPreservesInternalSeparatorsAndOneTerminalNewline")
     {
-        string saved = map->SaveToText("SavedRoundTrip");
+        string saved {map->SaveToText("SavedRoundTrip")};
         check_terminal_newline(saved);
         CHECK(saved.find("\n\n[$Name/Item]\n") != string::npos);
 
-        auto reloaded = mapper->LoadMapFromText("SavedRoundTrip", "SavedRoundTrip.fomap", saved);
+        auto reloaded {mapper->LoadMapFromText("SavedRoundTrip", "SavedRoundTrip.fomap", saved)};
         REQUIRE(reloaded);
         REQUIRE(reloaded->GetItems().size() == 1);
         CHECK(reloaded->GetItems().front()->GetId() == ident_t {11});
         CHECK(reloaded->SaveToText("SavedRoundTrip") == saved);
 
-        auto empty = mapper->LoadMapFromText("EmptyMap", "EmptyMap.fomap", MakeMapText(""));
+        auto empty {mapper->LoadMapFromText("EmptyMap", "EmptyMap.fomap", MakeMapText(""))};
         REQUIRE(empty);
-        string empty_saved = empty->SaveToText("EmptyRoundTrip");
+        string empty_saved {empty->SaveToText("EmptyRoundTrip")};
         check_terminal_newline(empty_saved);
 
-        auto empty_reloaded = mapper->LoadMapFromText("EmptyRoundTrip", "EmptyRoundTrip.fomap", empty_saved);
+        auto empty_reloaded {mapper->LoadMapFromText("EmptyRoundTrip", "EmptyRoundTrip.fomap", empty_saved)};
         REQUIRE(empty_reloaded);
         CHECK(empty_reloaded->GetItems().empty());
         CHECK(empty_reloaded->SaveToText("EmptyRoundTrip") == empty_saved);
@@ -2375,12 +2375,12 @@ TEST_CASE("MapperSavesMapsToADiskMapsRoot")
 
     SECTION("SavingADeclaredSingleMapUsesItsDiskContainer")
     {
-        auto reference = mapper->LoadMap("ReferenceMap");
+        auto reference {mapper->LoadMap("ReferenceMap")};
         REQUIRE(reference);
         reference->SetFixedDayTime(123);
 
         REQUIRE_NOTHROW(mapper->SaveMap(reference, "ReferenceMap"));
-        auto saved = fs::read_file((maps_dir / "ReferenceMap.fomap").generic_string());
+        auto saved {fs::read_file((maps_dir / "ReferenceMap.fomap").generic_string())};
         REQUIRE(saved);
         check_terminal_newline(*saved);
         CHECK(saved->find("FixedDayTime = 123\n") != string::npos);
@@ -2395,18 +2395,18 @@ TEST_CASE("MapperSavesMapsToADiskMapsRoot")
         for (string_view selected_name : {"FirstMap", "MiddleMap", "LastMap"}) {
             DYNAMIC_SECTION(selected_name)
             {
-                auto selected = mapper->LoadMap(selected_name);
+                auto selected {mapper->LoadMap(selected_name)};
                 REQUIRE(selected);
                 selected->SetFixedDayTime(123);
 
-                string selected_text = selected->SaveToText(selected_name);
+                string selected_text {selected->SaveToText(selected_name)};
                 check_terminal_newline(selected_text);
                 REQUIRE_NOTHROW(mapper->SaveMap(selected, selected_name));
-                auto saved = fs::read_file((maps_dir / "CombinedMaps.fomap").generic_string());
+                auto saved {fs::read_file((maps_dir / "CombinedMaps.fomap").generic_string())};
                 REQUIRE(saved);
                 check_terminal_newline(*saved);
 
-                string expected;
+                string expected {};
 
                 if (selected_name == "FirstMap") {
                     expected = selected_text + "\n" + middle_sibling + last_sibling;
@@ -2423,7 +2423,7 @@ TEST_CASE("MapperSavesMapsToADiskMapsRoot")
                 CHECK(fs::read_file((maps_dir / "CombinedMaps.fomap").generic_string()) == saved);
 
                 for (string_view reloaded_name : {"FirstMap", "MiddleMap", "LastMap"}) {
-                    auto reloaded = mapper->LoadMapFromText(reloaded_name, "CombinedMaps.fomap", *saved);
+                    auto reloaded {mapper->LoadMapFromText(reloaded_name, "CombinedMaps.fomap", *saved)};
                     REQUIRE(reloaded);
                     REQUIRE(reloaded->GetItems().size() == 1);
 
@@ -2437,14 +2437,14 @@ TEST_CASE("MapperSavesMapsToADiskMapsRoot")
 
     SECTION("ReplacingFirstMapDoesNotTrimAnUntouchedSiblingTail")
     {
-        auto selected = mapper->LoadMap("TailFirst");
+        auto selected {mapper->LoadMap("TailFirst")};
         REQUIRE(selected);
         selected->SetFixedDayTime(123);
 
-        string selected_text = selected->SaveToText("TailFirst");
+        string selected_text {selected->SaveToText("TailFirst")};
         check_terminal_newline(selected_text);
         REQUIRE_NOTHROW(mapper->SaveMap(selected, "TailFirst"));
-        auto saved = fs::read_file((maps_dir / "UntouchedTail.fomap").generic_string());
+        auto saved {fs::read_file((maps_dir / "UntouchedTail.fomap").generic_string())};
         REQUIRE(saved);
         CHECK(*saved == selected_text + "\n" + untouched_tail_sibling);
         CHECK(saved->ends_with(untouched_tail_sibling));
@@ -2457,7 +2457,7 @@ TEST_CASE("MapperSavesMapsToADiskMapsRoot")
     {
         REQUIRE_NOTHROW(mapper->SaveMapToDir(map.as_ptr(), "Generated", "SavedByTest"));
         CHECK(std::filesystem::exists(maps_dir / "Generated" / "SavedByTest.fomap"));
-        auto saved = fs::read_file((maps_dir / "Generated" / "SavedByTest.fomap").generic_string());
+        auto saved {fs::read_file((maps_dir / "Generated" / "SavedByTest.fomap").generic_string())};
         REQUIRE(saved);
         check_terminal_newline(*saved);
         CHECK(saved->find("\n\n[$Name/Item]\n") != string::npos);
@@ -2789,7 +2789,7 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
     auto resources {MakeMapperTestResources()};
     auto source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("AnimationPolicyResources")};
     source->AddFile("Policy.fofrm", BakerTests::MakeMultiFrameBakedSprite(5, 2, 2, 100, ipos16 {2, 0}));
-    vector<uint8_t> phase_data = BakerTests::MakeMultiFrameBakedSprite(16, 2, 2, 1600, ipos16 {2, 0});
+    vector<uint8_t> phase_data {BakerTests::MakeMultiFrameBakedSprite(16, 2, 2, 1600, ipos16 {2, 0})};
     source->AddFile("PhasePolicy.fofrm", phase_data);
     resources.AddCustomSource(std::move(source));
     auto mapper {safe_alloc::make_refcounted<MapperEngine>(&settings, std::move(resources), &GetApp()->MainWindow)};
@@ -2808,10 +2808,10 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
         sprite->SetFrame(index, sprite->GetSprite(index)->MakeCopy(), ipos32 {40 + index, -17}, sprite->GetSpriteMotion()[index]);
     }
 
-    uint32_t spr_id = mapper->AnimAdd(sprite);
-    auto flags = CritterAnimationFlags::None;
-    float32_t normalized_position = 0.0f;
-    Entity::EventCallbackData selection;
+    uint32_t spr_id {mapper->AnimAdd(sprite)};
+    auto flags {CritterAnimationFlags::None};
+    float32_t normalized_position {0.0f};
+    Entity::EventCallbackData selection {};
     selection.Callback = [&flags, &normalized_position, &selected_action](FuncCallData& call) {
         *cast_from_void<CritterStateAnim*>(call.ArgsData[1]) = static_cast<CritterStateAnim>(401);
         *cast_from_void<CritterActionAnim*>(call.ArgsData[2]) = selected_action;
@@ -2820,7 +2820,7 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
         return Entity::EventResult::ContinueChain;
     };
     mapper->OnCritterAnimationPlaybackInit.Subscribe(std::move(selection));
-    Entity::EventCallbackData resolution;
+    Entity::EventCallbackData resolution {};
     resolution.Callback = [&observed, &spr_id](FuncCallData& call) {
         observed = *cast_from_void<CritterActionAnim*>(call.ArgsData[2]);
         *cast_from_void<uint32_t*>(call.ArgsData[3]) = spr_id;
@@ -2837,7 +2837,7 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
         CAPTURE(phase_data.size(), phase_data.capacity());
         REQUIRE(phase_data.size() == 618);
         REQUIRE(phase_data.capacity() >= phase_data.size());
-        SpriteResourceData decoded = ReadSpriteResource(phase_data);
+        SpriteResourceData decoded {ReadSpriteResource(phase_data)};
         REQUIRE(decoded.Directions.size() == 1);
         REQUIRE(decoded.Directions.front().Frames.size() == 16);
 
@@ -2852,7 +2852,7 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
             CHECK(std::ranges::all_of(frame.Pixels, [](ucolor pixel) { return pixel == ucolor {255, 255, 255, 255}; }));
         }
 
-        auto phase_sprite = mapper->ResMngr.LoadSprite("PhasePolicy.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>();
+        auto phase_sprite {mapper->ResMngr.LoadSprite("PhasePolicy.fofrm", AtlasType::MapSprites).dyn_cast<SpriteSheet>()};
         REQUIRE(phase_sprite);
         REQUIRE(phase_sprite->GetFramesCount() == 16);
         REQUIRE(phase_sprite->GetDuration() == timespan {std::chrono::milliseconds {1600}});
@@ -2863,7 +2863,7 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
 
         spr_id = mapper->AnimAdd(phase_sprite);
         selected_action = static_cast<CritterActionAnim>(600);
-        auto frames = mapper->CritterFrames.GetCritterAnimFrames(critter->GetModelName(), static_cast<CritterStateAnim>(401), selected_action, critter->GetDir());
+        auto frames {mapper->CritterFrames.GetCritterAnimFrames(critter->GetModelName(), static_cast<CritterStateAnim>(401), selected_action, critter->GetDir())};
         REQUIRE(frames);
         REQUIRE(frames->GetFramesCount() == 16);
 
@@ -2874,7 +2874,7 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
         REQUIRE(frames->GetSprite(0) != frames->GetSprite(2));
 
         normalized_position = 0.1f;
-        auto frame_time = mapper->GameTime.GetFrameTime();
+        auto frame_time {mapper->GameTime.GetFrameTime()};
 
         SECTION("FreezeKeepsRoundedPositionBeforeAndAfterProcessing")
         {
@@ -2918,7 +2918,7 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
 
         SECTION("UnequalDurationsSeparateAdvancingPhaseFromFrozenPosition")
         {
-            auto unequal = safe_alloc::make_shared<SpriteSheet>(&mapper->SprMngr, vector<vector<timespan>> {{timespan {std::chrono::milliseconds {900}}, timespan {std::chrono::milliseconds {100}}}});
+            auto unequal {safe_alloc::make_shared<SpriteSheet>(&mapper->SprMngr, vector<vector<timespan>> {{timespan {std::chrono::milliseconds {900}}, timespan {std::chrono::milliseconds {100}}}})};
 
             for (int32_t index = 0; index < unequal->GetFramesCount(); index++) {
                 unequal->SetFrame(index, phase_sprite->GetSprite(index)->MakeCopy(), ipos32 {}, ipos32 {});
@@ -2927,7 +2927,7 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
             REQUIRE(unequal->GetDuration() == timespan {std::chrono::milliseconds {1000}});
             spr_id = mapper->AnimAdd(unequal);
             selected_action = static_cast<CritterActionAnim>(601);
-            auto unequal_frames = mapper->CritterFrames.GetCritterAnimFrames(critter->GetModelName(), static_cast<CritterStateAnim>(401), selected_action, critter->GetDir());
+            auto unequal_frames {mapper->CritterFrames.GetCritterAnimFrames(critter->GetModelName(), static_cast<CritterStateAnim>(401), selected_action, critter->GetDir())};
             REQUIRE(unequal_frames);
             REQUIRE(unequal_frames->GetFramesCount() == 2);
             REQUIRE(unequal_frames->GetSprite(0) != unequal_frames->GetSprite(1));
@@ -2947,7 +2947,7 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
 
         SECTION("UntimedManualPositionHoldsAndOnlyUnfrozenQueueCompletes")
         {
-            auto untimed = safe_alloc::make_shared<SpriteSheet>(&mapper->SprMngr, vector<vector<timespan>> {vector<timespan>(16, timespan::zero)});
+            auto untimed {safe_alloc::make_shared<SpriteSheet>(&mapper->SprMngr, vector<vector<timespan>> {vector<timespan>(16, timespan::zero)})};
 
             for (int32_t index = 0; index < untimed->GetFramesCount(); index++) {
                 untimed->SetFrame(index, phase_sprite->GetSprite(index)->MakeCopy(), ipos32 {}, ipos32 {});
@@ -2956,7 +2956,7 @@ TEST_CASE("CritterAnimationPreservesProjectSelectionWhileMoving")
             REQUIRE(untimed->GetDuration() == timespan::zero);
             spr_id = mapper->AnimAdd(untimed);
             selected_action = static_cast<CritterActionAnim>(602);
-            auto untimed_frames = mapper->CritterFrames.GetCritterAnimFrames(critter->GetModelName(), static_cast<CritterStateAnim>(401), selected_action, critter->GetDir());
+            auto untimed_frames {mapper->CritterFrames.GetCritterAnimFrames(critter->GetModelName(), static_cast<CritterStateAnim>(401), selected_action, critter->GetDir())};
             REQUIRE(untimed_frames);
             REQUIRE(untimed_frames->GetFramesCount() == 16);
             REQUIRE(untimed_frames->GetDuration() == timespan::zero);

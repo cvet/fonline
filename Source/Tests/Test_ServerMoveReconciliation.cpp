@@ -277,7 +277,7 @@ namespace
                 }
 
                 if (message == NetMessage::Ping || message == NetMessage::CritterMove || message == NetMessage::CritterMoveLease) {
-                    const_span<uint8_t> payload = data.subspan(offset + header_size, message_size - header_size);
+                    const_span<uint8_t> payload {data.subspan(offset + header_size, message_size - header_size)};
                     _transportPackets.emplace_back(DecodeTransportPacket(message, payload, nanotime::now(), message_size));
                 }
 
@@ -300,12 +300,12 @@ namespace
         // Payloads of Player::Send_Ping, Player::SendCritterMoving and Player::Send_MovingLease in their wire order
         [[nodiscard]] static auto DecodeTransportPacket(NetMessage message, const_span<uint8_t> payload, nanotime receive_time, uint32_t frame_bytes) -> TransportPacketSnapshot
         {
-            TransportPacketSnapshot snapshot;
+            TransportPacketSnapshot snapshot {};
             snapshot.Message = message;
             snapshot.FrameBytes = frame_bytes;
             snapshot.ReceiveTime = receive_time;
 
-            size_t pos = 0;
+            size_t pos {0};
 
             switch (message) {
             case NetMessage::Ping:
@@ -325,7 +325,7 @@ namespace
                 ReadTransportField(payload, pos, snapshot.Speed);
                 ReadTransportField(payload, pos, snapshot.StartHex);
 
-                uint16_t step_count = 0;
+                uint16_t step_count {0};
                 ReadTransportField(payload, pos, step_count);
                 FO_VERIFY_AND_THROW(step_count <= (payload.size() - pos) / sizeof(hdir), "Outgoing movement step count exceeds remaining bytes", step_count, payload.size(), pos);
                 snapshot.Steps.resize(step_count);
@@ -334,7 +334,7 @@ namespace
                     ReadTransportField(payload, pos, snapshot.Steps[i]);
                 }
 
-                uint16_t control_count = 0;
+                uint16_t control_count {0};
                 ReadTransportField(payload, pos, control_count);
                 FO_VERIFY_AND_THROW(control_count <= (payload.size() - pos) / sizeof(uint16_t), "Outgoing movement control count exceeds remaining bytes", control_count, payload.size(), pos);
                 snapshot.ControlSteps.resize(control_count);
@@ -360,11 +360,11 @@ namespace
         // Payload of Player::Send_Attachments: id, attached flag, master id, attached count and each attached id
         [[nodiscard]] static auto DecodeAttachmentSnapshot(const_span<uint8_t> payload) -> CritterAttachmentSnapshot
         {
-            constexpr size_t fixed_size = sizeof(ident_t) + sizeof(bool) + sizeof(ident_t) + sizeof(uint16_t);
+            constexpr size_t fixed_size {sizeof(ident_t) + sizeof(bool) + sizeof(ident_t) + sizeof(uint16_t)};
             FO_VERIFY_AND_THROW(payload.size() >= fixed_size, "Truncated outgoing attachments payload", payload.size());
 
-            size_t pos = 0;
-            CritterAttachmentSnapshot snapshot;
+            size_t pos {0};
+            CritterAttachmentSnapshot snapshot {};
 
             memory::copy(&snapshot.CrId, payload.data() + pos, sizeof(snapshot.CrId));
             pos += sizeof(snapshot.CrId);
@@ -375,7 +375,7 @@ namespace
             memory::copy(&snapshot.MasterId, payload.data() + pos, sizeof(snapshot.MasterId));
             pos += sizeof(snapshot.MasterId);
 
-            uint16_t attached_count = 0;
+            uint16_t attached_count {0};
             memory::copy(&attached_count, payload.data() + pos, sizeof(attached_count));
             pos += sizeof(attached_count);
 
@@ -1376,40 +1376,40 @@ TEST_CASE("ServerCritterMovePositionReconciliation")
 
 TEST_CASE("ServerAttachedMasterMovementAuthority")
 {
-    auto settings = MakeSettings();
-    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources());
-    auto shutdown = scope_exit([&server]() noexcept {
+    auto settings {MakeSettings()};
+    auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources())};
+    auto shutdown {scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
                 server->Shutdown();
             }
         });
-    });
+    })};
 
-    string startup_error = WaitForStart(server);
+    string startup_error {WaitForStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
 
-    bool server_locked = true;
-    auto unlock = scope_exit([&server, &server_locked]() noexcept {
+    bool server_locked {true};
+    auto unlock {scope_exit([&server, &server_locked]() noexcept {
         safe_call([&server, &server_locked] {
             if (server_locked) {
                 server->Unlock();
             }
         });
-    });
+    })};
 
-    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
-    auto test_connection = safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings);
-    auto player = CreateLoggedPlayer(server, test_connection, "AttachedMasterMovement");
-    auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
-    auto map = loc->GetMapByIndex(0);
+    auto fn {[&server](string_view name) { return server->Hashes.to_hashed_string(name); }};
+    auto test_connection {safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings)};
+    auto player {CreateLoggedPlayer(server, test_connection, "AttachedMasterMovement")};
+    auto loc {server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")})};
+    auto map {loc->GetMapByIndex(0)};
     REQUIRE(static_cast<bool>(map));
 
-    auto chosen = server->CreateCritter(fn("TestCritter"), true);
-    auto master = server->CreateCritter(fn("TestCritter"), false);
-    auto stranger = server->CreateCritter(fn("TestCritter"), true);
+    auto chosen {server->CreateCritter(fn("TestCritter"), true)};
+    auto master {server->CreateCritter(fn("TestCritter"), false)};
+    auto stranger {server->CreateCritter(fn("TestCritter"), true)};
     server->MapMngr.TransferToMap(chosen, map, mpos {19, 20}, mdir {}, std::nullopt);
     server->MapMngr.TransferToMap(master, map, mpos {20, 20}, mdir {}, std::nullopt);
     server->MapMngr.TransferToMap(stranger, map, mpos {40, 40}, mdir {}, std::nullopt);
@@ -1417,54 +1417,54 @@ TEST_CASE("ServerAttachedMasterMovementAuthority")
     chosen->AttachToCritter(master);
     REQUIRE(player->GetControlledCritter() == chosen.get());
 
-    int32_t move_calls = 0;
-    int32_t dir_calls = 0;
-    function<Entity::EventResult()> on_move = [] { return Entity::EventResult::ContinueChain; };
-    Entity::EventCallbackData move_callback;
+    int32_t move_calls {0};
+    int32_t dir_calls {0};
+    function<Entity::EventResult()> on_move {[] { return Entity::EventResult::ContinueChain; }};
+    Entity::EventCallbackData move_callback {};
     move_callback.Callback = [&](FuncCallData&) {
         move_calls++;
         return on_move();
     };
     move_callback.SubscriptionPtr = reinterpret_cast<uintptr_t>(&move_calls);
     server->OnPlayerMoveCritter.Subscribe(std::move(move_callback));
-    Entity::EventCallbackData dir_callback;
+    Entity::EventCallbackData dir_callback {};
     dir_callback.Callback = [&](FuncCallData&) {
         dir_calls++;
         return Entity::EventResult::ContinueChain;
     };
     dir_callback.SubscriptionPtr = reinterpret_cast<uintptr_t>(&dir_calls);
     server->OnPlayerDirCritter.Subscribe(std::move(dir_callback));
-    auto unsubscribe = scope_exit([&]() noexcept {
+    auto unsubscribe {scope_exit([&]() noexcept {
         server->OnPlayerMoveCritter.Unsubscribe(reinterpret_cast<uintptr_t>(&move_calls));
         server->OnPlayerDirCritter.Unsubscribe(reinterpret_cast<uintptr_t>(&dir_calls));
-    });
+    })};
 
-    auto sync_fixture = [&] {
-        auto ctx = server->RequireCurrentSyncContext();
+    auto sync_fixture {[&] {
+        auto ctx {server->RequireCurrentSyncContext()};
         small_vector<ptr<ServerEntity>, 6> entities {player, chosen, master, stranger, map, loc};
         ctx->SyncEntities(entities);
-    };
-    auto wait_move_calls = [&](int32_t count) {
+    }};
+    auto wait_move_calls {[&](int32_t count) {
         return WaitForUnlockedServerCondition(server, server_locked, [&] {
             sync_fixture();
             return move_calls >= count;
         });
-    };
-    auto start_master_move = [&](uint16_t speed) {
+    }};
+    auto start_master_move {[&](uint16_t speed) {
         server->StartCritterMoving(master, speed, vector<mdir> {hdir::East, hdir::East, hdir::East}, vector<uint16_t> {3}, ipos16 {}, player);
         REQUIRE(master->IsMoving());
-    };
-    auto start_master_lease = [&] {
-        auto plan = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {1}, vector<mdir> {hdir::East, hdir::East, hdir::East}, vector<uint16_t> {3}, server->GameTime.GetFrameTime(), timespan {}, master->GetHex(), ipos16 {}, ipos16 {});
+    }};
+    auto start_master_lease {[&] {
+        auto plan {safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {1}, vector<mdir> {hdir::East, hdir::East, hdir::East}, vector<uint16_t> {3}, server->GameTime.GetFrameTime(), timespan {}, master->GetHex(), ipos16 {}, ipos16 {})};
         plan->SetLeaseTime(timespan {std::chrono::duration<float64_t, std::milli> {200.0f}}, server->GameTime.GetFrameTime());
         server->StartCritterMoving(master, std::move(plan), player, 7);
         REQUIRE(master->IsMoving());
-    };
+    }};
 
     SECTION("AttachedChosenReplacesItsMovingMastersPlan")
     {
         start_master_move(uint16_t {1});
-        uint32_t previous_uid = master->GetMovingUid();
+        uint32_t previous_uid {master->GetMovingUid()};
         SendCritterMove(test_connection, server, master, uint16_t {2});
         REQUIRE(wait_move_calls(1));
         REQUIRE(master->IsMoving());
@@ -1557,8 +1557,8 @@ TEST_CASE("ServerAttachedMasterMovementAuthority")
     {
         PlantConnectionRoundTrip(player, server, timespan {std::chrono::milliseconds {800}});
         start_master_move(uint16_t {400});
-        mpos end_hex = master->GetMoving()->GetEndHex();
-        mpos first_hex = master->GetHex();
+        mpos end_hex {master->GetMoving()->GetEndHex()};
+        mpos first_hex {master->GetHex()};
         REQUIRE(GeometryHelper::MoveHexByDir(first_hex, hdir::East, map->GetSize()));
         SendCritterMoveFinished(test_connection, server, map->GetId(), master->GetId(), end_hex, first_hex, ipos16 {}, mdir {});
         REQUIRE(wait_move_calls(1));
@@ -1572,8 +1572,8 @@ TEST_CASE("ServerAttachedMasterMovementAuthority")
         on_move = [] { return Entity::EventResult::StopChain; };
         PlantConnectionRoundTrip(player, server, timespan {std::chrono::milliseconds {800}});
         start_master_move(uint16_t {400});
-        mpos end_hex = master->GetMoving()->GetEndHex();
-        auto start_hex = master->GetHex();
+        mpos end_hex {master->GetMoving()->GetEndHex()};
+        auto start_hex {master->GetHex()};
         SendCritterMoveFinished(test_connection, server, map->GetId(), master->GetId(), end_hex, start_hex, ipos16 {}, mdir {});
         REQUIRE(wait_move_calls(1));
         CHECK(master->IsMoving());
@@ -1620,7 +1620,7 @@ TEST_CASE("ServerAttachedMasterMovementAuthority")
 
     SECTION("AnUnrelatedCritterNeverReachesScriptPermissionChecks")
     {
-        auto stranger_plan = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {1}, vector<mdir> {hdir::East}, vector<uint16_t> {1}, server->GameTime.GetFrameTime(), timespan {}, stranger->GetHex(), ipos16 {}, ipos16 {});
+        auto stranger_plan {safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {1}, vector<mdir> {hdir::East}, vector<uint16_t> {1}, server->GameTime.GetFrameTime(), timespan {}, stranger->GetHex(), ipos16 {}, ipos16 {})};
         stranger_plan->SetLeaseTime(timespan {std::chrono::duration<float64_t, std::milli> {200.0f}}, server->GameTime.GetFrameTime());
         server->StartCritterMoving(stranger, std::move(stranger_plan), player, 7);
         SendCritterMoveLease(test_connection, server, map->GetId(), stranger->GetId(), 7, 1000.0f, uint16_t {1});
@@ -1655,30 +1655,30 @@ TEST_CASE("ServerAttachedMasterMovementAuthority")
 
 TEST_CASE("CritterAttachmentDestruction")
 {
-    auto settings = MakeSettings();
-    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources());
-    auto shutdown = scope_exit([&server]() noexcept {
+    auto settings {MakeSettings()};
+    auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources())};
+    auto shutdown {scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
                 server->Shutdown();
             }
         });
-    });
+    })};
 
-    string startup_error = WaitForStart(server);
+    string startup_error {WaitForStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
-    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
 
-    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
-    auto test_connection = safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings);
-    auto player = CreateLoggedPlayer(server, test_connection, "AttachmentDestruction");
-    auto master = server->CreateCritter(fn("TestCritter"), false).hold_ref();
-    auto passenger = server->CreateCritter(fn("TestCritter"), true).hold_ref();
-    auto other_passenger = server->CreateCritter(fn("TestCritter"), false).hold_ref();
-    auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
-    auto map = loc->GetMapByIndex(0);
+    auto fn {[&server](string_view name) { return server->Hashes.to_hashed_string(name); }};
+    auto test_connection {safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings)};
+    auto player {CreateLoggedPlayer(server, test_connection, "AttachmentDestruction")};
+    auto master {server->CreateCritter(fn("TestCritter"), false).hold_ref()};
+    auto passenger {server->CreateCritter(fn("TestCritter"), true).hold_ref()};
+    auto other_passenger {server->CreateCritter(fn("TestCritter"), false).hold_ref()};
+    auto loc {server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")})};
+    auto map {loc->GetMapByIndex(0)};
     REQUIRE(map);
     server->MapMngr.TransferToMap(master, map, mpos {20, 20}, mdir {}, std::nullopt);
     server->MapMngr.TransferToMap(passenger, map, mpos {19, 20}, mdir {}, std::nullopt);
@@ -1699,7 +1699,7 @@ TEST_CASE("CritterAttachmentDestruction")
             error_count.fetch_add(1, std::memory_order_relaxed);
         }
     });
-    auto remove_callback = scope_exit([]() noexcept { logging::set_callback("critter-attachment-destruction-test", {}); });
+    auto remove_callback {scope_exit([]() noexcept { logging::set_callback("critter-attachment-destruction-test", {}); })};
 
     SECTION("MasterDestroyedBeforePassengers")
     {
@@ -1754,39 +1754,39 @@ TEST_CASE("CritterAttachmentDestruction")
 // transfer must leave both riders holding one listing exactly their two ids and leave other groups deaf to it
 TEST_CASE("CritterGlobalAttachmentSnapshotsReachOnlyTheirGroupOnce")
 {
-    auto settings = MakeSettings();
-    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources());
-    auto shutdown = scope_exit([&server]() noexcept {
+    auto settings {MakeSettings()};
+    auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources())};
+    auto shutdown {scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
                 server->Shutdown();
             }
         });
-    });
+    })};
 
-    string startup_error = WaitForStart(server);
+    string startup_error {WaitForStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
-    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
 
-    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
+    auto fn {[&server](string_view name) { return server->Hashes.to_hashed_string(name); }};
 
-    auto driver_connection = safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings);
-    auto passenger_connection = safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings);
-    auto outsider_connection = safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings);
-    auto driver_player = CreateLoggedPlayer(server, driver_connection, "GlobalAttachmentDriver");
-    auto passenger_player = CreateLoggedPlayer(server, passenger_connection, "GlobalAttachmentPassenger");
-    auto outsider_player = CreateLoggedPlayer(server, outsider_connection, "GlobalAttachmentOutsider");
+    auto driver_connection {safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings)};
+    auto passenger_connection {safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings)};
+    auto outsider_connection {safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings)};
+    auto driver_player {CreateLoggedPlayer(server, driver_connection, "GlobalAttachmentDriver")};
+    auto passenger_player {CreateLoggedPlayer(server, passenger_connection, "GlobalAttachmentPassenger")};
+    auto outsider_player {CreateLoggedPlayer(server, outsider_connection, "GlobalAttachmentOutsider")};
 
-    auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
-    auto map = loc->GetMapByIndex(0);
+    auto loc {server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")})};
+    auto map {loc->GetMapByIndex(0)};
     REQUIRE(static_cast<bool>(map));
 
-    auto master = server->CreateCritter(fn("TestCritter"), false).hold_ref();
-    auto driver = server->CreateCritter(fn("TestCritter"), true).hold_ref();
-    auto passenger = server->CreateCritter(fn("TestCritter"), true).hold_ref();
-    auto outsider = server->CreateCritter(fn("TestCritter"), true).hold_ref();
+    auto master {server->CreateCritter(fn("TestCritter"), false).hold_ref()};
+    auto driver {server->CreateCritter(fn("TestCritter"), true).hold_ref()};
+    auto passenger {server->CreateCritter(fn("TestCritter"), true).hold_ref()};
+    auto outsider {server->CreateCritter(fn("TestCritter"), true).hold_ref()};
 
     server->MapMngr.TransferToMap(master, map, mpos {20, 20}, mdir {}, std::nullopt);
     server->MapMngr.TransferToMap(driver, map, mpos {19, 20}, mdir {}, std::nullopt);
@@ -1797,15 +1797,15 @@ TEST_CASE("CritterGlobalAttachmentSnapshotsReachOnlyTheirGroupOnce")
     server->SwitchPlayerCritter(passenger_player, passenger);
     server->SwitchPlayerCritter(outsider_player, outsider);
 
-    auto sync_fixture = [&] {
-        auto ctx = server->RequireCurrentSyncContext();
-        ptr<Critter> master_ref = master;
-        ptr<Critter> driver_ref = driver;
-        ptr<Critter> passenger_ref = passenger;
-        ptr<Critter> outsider_ref = outsider;
+    auto sync_fixture {[&] {
+        auto ctx {server->RequireCurrentSyncContext()};
+        ptr<Critter> master_ref {master};
+        ptr<Critter> driver_ref {driver};
+        ptr<Critter> passenger_ref {passenger};
+        ptr<Critter> outsider_ref {outsider};
         small_vector<ptr<ServerEntity>, 10> entities {driver_player, passenger_player, outsider_player, master_ref, driver_ref, passenger_ref, outsider_ref, map, loc};
         ctx->SyncEntities(entities);
-    };
+    }};
 
     sync_fixture();
     driver->AttachToCritter(master);
@@ -1815,12 +1815,12 @@ TEST_CASE("CritterGlobalAttachmentSnapshotsReachOnlyTheirGroupOnce")
     // transfer and stays a real third player in a different group
     server->MapMngr.TransferToGlobal(outsider, ident_t {});
 
-    auto flush_observations = [&] {
+    auto flush_observations {[&] {
         driver_connection->Dispatch();
         passenger_connection->Dispatch();
         outsider_connection->Dispatch();
-    };
-    auto clear_observations = [&] {
+    }};
+    auto clear_observations {[&] {
         flush_observations();
 
         driver_connection->ClearReceivedCritterMessages();
@@ -1829,10 +1829,10 @@ TEST_CASE("CritterGlobalAttachmentSnapshotsReachOnlyTheirGroupOnce")
         passenger_connection->ClearReceivedAttachmentSnapshots();
         outsider_connection->ClearReceivedCritterMessages();
         outsider_connection->ClearReceivedAttachmentSnapshots();
-    };
-    auto latest_attachment = [](const vector<CritterAttachmentSnapshot>& snapshots, ident_t cr_id) -> optional<CritterAttachmentSnapshot> {
+    }};
+    auto latest_attachment {[](const vector<CritterAttachmentSnapshot>& snapshots, ident_t cr_id) -> optional<CritterAttachmentSnapshot> {
         for (size_t i = snapshots.size(); i > 0; i--) {
-            const CritterAttachmentSnapshot& snapshot = snapshots[i - 1];
+            const CritterAttachmentSnapshot& snapshot {snapshots[i - 1]};
 
             if (snapshot.CrId == cr_id) {
                 return snapshot;
@@ -1840,20 +1840,20 @@ TEST_CASE("CritterGlobalAttachmentSnapshotsReachOnlyTheirGroupOnce")
         }
 
         return std::nullopt;
-    };
-    auto attachment_ids_match = [](const vector<ident_t>& actual, const vector<ident_t>& expected) -> bool {
+    }};
+    auto attachment_ids_match {[](const vector<ident_t>& actual, const vector<ident_t>& expected) -> bool {
         if (actual.size() != expected.size()) {
             return false;
         }
 
         return std::ranges::all_of(expected, [&actual](ident_t id) { return std::ranges::find(actual, id) != actual.end(); });
-    };
-    auto count_attachments = [](const vector<CritterAttachmentSnapshot>& snapshots, ident_t cr_id) -> size_t { return numeric_cast<size_t>(std::ranges::count_if(snapshots, [cr_id](const CritterAttachmentSnapshot& snapshot) { return snapshot.CrId == cr_id; })); };
+    }};
+    auto count_attachments {[](const vector<CritterAttachmentSnapshot>& snapshots, ident_t cr_id) -> size_t { return numeric_cast<size_t>(std::ranges::count_if(snapshots, [cr_id](const CritterAttachmentSnapshot& snapshot) { return snapshot.CrId == cr_id; })); }};
 
     // Oracles are the fixture's own actor ids, never the critters' current attachment state
-    ident_t master_id = master->GetId();
-    ident_t driver_id = driver->GetId();
-    ident_t passenger_id = passenger->GetId();
+    ident_t master_id {master->GetId()};
+    ident_t driver_id {driver->GetId()};
+    ident_t passenger_id {passenger->GetId()};
     vector<ident_t> expected_full_master_ids {driver_id, passenger_id};
     vector<ident_t> expected_detached_master_ids {driver_id};
 
@@ -1861,7 +1861,7 @@ TEST_CASE("CritterGlobalAttachmentSnapshotsReachOnlyTheirGroupOnce")
     clear_observations();
     driver_player->Send_Attachments(master);
     flush_observations();
-    auto known_snapshot = latest_attachment(driver_connection->GetReceivedAttachmentSnapshots(), master_id);
+    auto known_snapshot {latest_attachment(driver_connection->GetReceivedAttachmentSnapshots(), master_id)};
     REQUIRE(known_snapshot.has_value());
     REQUIRE(attachment_ids_match(known_snapshot->AttachedIds, expected_full_master_ids));
 
@@ -1871,7 +1871,7 @@ TEST_CASE("CritterGlobalAttachmentSnapshotsReachOnlyTheirGroupOnce")
             error_count.fetch_add(1, std::memory_order_relaxed);
         }
     });
-    auto remove_callback = scope_exit([]() noexcept { logging::set_callback("critter-global-attachment-test", {}); });
+    auto remove_callback {scope_exit([]() noexcept { logging::set_callback("critter-global-attachment-test", {}); })};
 
     clear_observations();
     server->MapMngr.TransferToGlobal(master, ident_t {});
@@ -1881,15 +1881,15 @@ TEST_CASE("CritterGlobalAttachmentSnapshotsReachOnlyTheirGroupOnce")
     // with one whose attached list is exactly their two ids
     SECTION("TransferLeavesBothRidersHoldingTheFullMasterList")
     {
-        auto expect_full_master_list = [&](const vector<CritterAttachmentSnapshot>& snapshots) {
-            optional<CritterAttachmentSnapshot> master_snapshot = latest_attachment(snapshots, master_id);
+        auto expect_full_master_list {[&](const vector<CritterAttachmentSnapshot>& snapshots) {
+            optional<CritterAttachmentSnapshot> master_snapshot {latest_attachment(snapshots, master_id)};
 
             CHECK(master_snapshot.has_value());
 
             if (master_snapshot.has_value()) {
                 CHECK(attachment_ids_match(master_snapshot->AttachedIds, expected_full_master_ids));
             }
-        };
+        }};
 
         expect_full_master_list(driver_connection->GetReceivedAttachmentSnapshots());
         expect_full_master_list(passenger_connection->GetReceivedAttachmentSnapshots());
@@ -1904,9 +1904,9 @@ TEST_CASE("CritterGlobalAttachmentSnapshotsReachOnlyTheirGroupOnce")
         passenger->DetachFromCritter();
         flush_observations();
 
-        auto expect_detach_state = [&](const vector<CritterAttachmentSnapshot>& snapshots) {
-            optional<CritterAttachmentSnapshot> master_snapshot = latest_attachment(snapshots, master_id);
-            optional<CritterAttachmentSnapshot> passenger_snapshot = latest_attachment(snapshots, passenger_id);
+        auto expect_detach_state {[&](const vector<CritterAttachmentSnapshot>& snapshots) {
+            optional<CritterAttachmentSnapshot> master_snapshot {latest_attachment(snapshots, master_id)};
+            optional<CritterAttachmentSnapshot> passenger_snapshot {latest_attachment(snapshots, passenger_id)};
 
             CHECK(master_snapshot.has_value());
 
@@ -1920,7 +1920,7 @@ TEST_CASE("CritterGlobalAttachmentSnapshotsReachOnlyTheirGroupOnce")
                 CHECK_FALSE(passenger_snapshot->IsAttached);
                 CHECK(passenger_snapshot->MasterId == ident_t {});
             }
-        };
+        }};
 
         expect_detach_state(driver_connection->GetReceivedAttachmentSnapshots());
         expect_detach_state(passenger_connection->GetReceivedAttachmentSnapshots());
@@ -1935,8 +1935,8 @@ TEST_CASE("CritterGlobalAttachmentSnapshotsReachOnlyTheirGroupOnce")
         driver->SendAndBroadcast_Attachments();
         flush_observations();
 
-        vector<CritterAttachmentSnapshot> driver_frames = driver_connection->GetReceivedAttachmentSnapshots();
-        vector<CritterAttachmentSnapshot> passenger_frames = passenger_connection->GetReceivedAttachmentSnapshots();
+        vector<CritterAttachmentSnapshot> driver_frames {driver_connection->GetReceivedAttachmentSnapshots()};
+        vector<CritterAttachmentSnapshot> passenger_frames {passenger_connection->GetReceivedAttachmentSnapshots()};
 
         CHECK(count_attachments(driver_frames, driver_id) == 1);
         CHECK(driver_frames.size() == 1);
@@ -1973,27 +1973,27 @@ TEST_CASE("CritterGlobalAttachmentSnapshotsReachOnlyTheirGroupOnce")
             CHECK(passenger_connection->CountReceivedCritterMessage(NetMessage::AddCritter, id) == 1);
         }
 
-        auto resumed_master = latest_attachment(passenger_connection->GetReceivedAttachmentSnapshots(), master_id);
+        auto resumed_master {latest_attachment(passenger_connection->GetReceivedAttachmentSnapshots(), master_id)};
         CHECK(resumed_master.has_value());
         if (resumed_master) {
             CHECK(attachment_ids_match(resumed_master->AttachedIds, vector<ident_t> {passenger_id}));
         }
 
-        auto resumed_driver = latest_attachment(passenger_connection->GetReceivedAttachmentSnapshots(), driver_id);
+        auto resumed_driver {latest_attachment(passenger_connection->GetReceivedAttachmentSnapshots(), driver_id)};
         CHECK(resumed_driver.has_value());
         if (resumed_driver) {
             CHECK_FALSE(resumed_driver->IsAttached);
             CHECK(resumed_driver->MasterId == ident_t {});
         }
 
-        auto resumed_passenger = latest_attachment(passenger_connection->GetReceivedAttachmentSnapshots(), passenger_id);
+        auto resumed_passenger {latest_attachment(passenger_connection->GetReceivedAttachmentSnapshots(), passenger_id)};
         CHECK(resumed_passenger.has_value());
         if (resumed_passenger) {
             CHECK(resumed_passenger->IsAttached);
             CHECK(resumed_passenger->MasterId == master_id);
         }
 
-        vector<ident_t> added_ids;
+        vector<ident_t> added_ids {};
         for (const auto& [message, id] : passenger_connection->GetReceivedCritterMessages()) {
             if (message == NetMessage::AddCritter) {
                 added_ids.emplace_back(id);
@@ -2013,8 +2013,8 @@ TEST_CASE("CritterGlobalAttachmentSnapshotsReachOnlyTheirGroupOnce")
 
     SECTION("QueuedMapContextFollowsTheConnectionAcrossSwapAndRollback")
     {
-        auto reconnect_connection = safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings);
-        auto reconnect_player = server->CreateNotLoggedInPlayer(reconnect_connection);
+        auto reconnect_connection {safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings)};
+        auto reconnect_player {server->CreateNotLoggedInPlayer(reconnect_connection)};
         clear_observations();
         driver_player->SwapConnection(reconnect_player);
         master->SendAndBroadcast_Attachments();
@@ -2039,8 +2039,8 @@ TEST_CASE("CritterGlobalAttachmentSnapshotsReachOnlyTheirGroupOnce")
 
     SECTION("PinnedRecipientCannotReceiveTheOldGroupAfterSwitchingCritter")
     {
-        auto replacement = server->CreateCritter(fn("TestCritter"), true).hold_ref();
-        auto pending_player = passenger->GetPlayerForSend();
+        auto replacement {server->CreateCritter(fn("TestCritter"), true).hold_ref()};
+        auto pending_player {passenger->GetPlayerForSend()};
         REQUIRE(pending_player);
         server->SwitchPlayerCritter(passenger_player, replacement);
         clear_observations();
@@ -2084,41 +2084,41 @@ TEST_CASE("CritterGlobalAttachmentSnapshotsReachOnlyTheirGroupOnce")
 
 TEST_CASE("ServerMovementTransportClock")
 {
-    auto settings = MakeSettings();
+    auto settings {MakeSettings()};
     REQUIRE(settings.Network.NetBufferSize > 0);
 
-    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources());
-    auto shutdown = scope_exit([&server]() noexcept {
+    auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources())};
+    auto shutdown {scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
                 server->Shutdown();
             }
         });
-    });
+    })};
 
-    string startup_error = WaitForStart(server);
+    string startup_error {WaitForStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE_FALSE(server->GameTime.IsPaused());
     REQUIRE(server->IsConnectionAdmissionOpen());
     REQUIRE_FALSE(server->GetCurrentSyncContext());
 
-    bool callback_invoked = false;
-    bool quiesced = server->RunInQuiescence(timespan {std::chrono::seconds {10}}, [&](const ServerQuiescenceState&) {
+    bool callback_invoked {false};
+    bool quiesced {server->RunInQuiescence(timespan {std::chrono::seconds {10}}, [&](const ServerQuiescenceState&) {
         callback_invoked = true;
 
         CHECK(server->GameTime.IsPaused());
         CHECK_FALSE(server->IsConnectionAdmissionOpen());
 
-        auto ctx = server->RequireCurrentSyncContext();
-        auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
-        auto test_connection = safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings);
-        auto player = CreateLoggedPlayer(server, test_connection, "MovementTransportClock");
-        auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
-        auto map = loc->GetMapByIndex(0);
+        auto ctx {server->RequireCurrentSyncContext()};
+        auto fn {[&server](string_view name) { return server->Hashes.to_hashed_string(name); }};
+        auto test_connection {safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings)};
+        auto player {CreateLoggedPlayer(server, test_connection, "MovementTransportClock")};
+        auto loc {server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")})};
+        auto map {loc->GetMapByIndex(0)};
         REQUIRE(static_cast<bool>(map));
 
-        auto cr = server->CreateCritter(fn("TestCritter"), true);
+        auto cr {server->CreateCritter(fn("TestCritter"), true)};
         mpos start_hex {20, 20};
         server->MapMngr.TransferToMap(cr, map, start_hex, mdir {}, std::nullopt);
         server->SwitchPlayerCritter(player, cr);
@@ -2127,50 +2127,50 @@ TEST_CASE("ServerMovementTransportClock")
         small_vector<ptr<ServerEntity>, 4> sync_entities {player, cr, map, loc};
         ctx->SyncEntities(sync_entities);
 
-        vector<mdir> move_steps(12, mdir {hdir::East});
+        vector<mdir> move_steps {vector<mdir>(12, mdir {hdir::East})};
         vector<uint16_t> control_steps {12};
-        auto moving = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {300}, move_steps, control_steps, server->GameTime.GetFrameTime(), timespan {std::chrono::milliseconds {100}}, start_hex, ipos16 {}, ipos16 {});
+        auto moving {safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {300}, move_steps, control_steps, server->GameTime.GetFrameTime(), timespan {std::chrono::milliseconds {100}}, start_hex, ipos16 {}, ipos16 {})};
         moving->SetLeaseTime(timespan {std::chrono::milliseconds {200}}, server->GameTime.GetFrameTime());
         server->StartCritterMoving(cr, moving, player, 7);
         REQUIRE(cr->IsMoving());
 
-        uint32_t expected_moving_uid = cr->GetMovingUid();
-        int32_t expected_whole_ms = iround<int32_t>(std::ceil(moving->GetWholeTime().to_ms<float64_t>()));
+        uint32_t expected_moving_uid {cr->GetMovingUid()};
+        int32_t expected_whole_ms {iround<int32_t>(std::ceil(moving->GetWholeTime().to_ms<float64_t>()))};
 
         test_connection->Dispatch();
         test_connection->ClearReceivedTransportPackets();
         test_connection->ClearReceivedCritterMessages();
         test_connection->ClearReceivedAttachmentSnapshots();
 
-        nanotime frozen_frame = server->GameTime.GetFrameTime();
-        nanotime sleep_started = nanotime::now();
+        nanotime frozen_frame {server->GameTime.GetFrameTime()};
+        nanotime sleep_started {nanotime::now()};
         coarse_sleep(std::chrono::milliseconds {250});
-        nanotime sleep_finished = nanotime::now();
+        nanotime sleep_finished {nanotime::now()};
         server->GameTime.FrameAdvance(true);
 
         REQUIRE(server->GameTime.GetFrameTime() == frozen_frame);
         REQUIRE(sleep_finished - sleep_started >= std::chrono::milliseconds {250});
         REQUIRE(sleep_finished - frozen_frame >= std::chrono::milliseconds {250});
 
-        auto check_sender_stamp = [&](const TransportPacketSnapshot& packet, nanotime before, nanotime after) {
+        auto check_sender_stamp {[&](const TransportPacketSnapshot& packet, nanotime before, nanotime after) {
             CHECK(numeric_cast<size_t>(packet.FrameBytes) <= numeric_cast<size_t>(settings.Network.NetBufferSize));
             CHECK(packet.SenderMs >= before.milliseconds());
             CHECK(packet.SenderMs <= after.milliseconds());
             CHECK(packet.SenderMs > frozen_frame.milliseconds());
-        };
+        }};
 
-        nanotime ping_before = nanotime::now();
+        nanotime ping_before {nanotime::now()};
         player->Send_Ping(false);
-        nanotime ping_after = nanotime::now();
-        nanotime move_before = nanotime::now();
+        nanotime ping_after {nanotime::now()};
+        nanotime move_before {nanotime::now()};
         player->Send_Moving(cr);
-        nanotime move_after = nanotime::now();
-        nanotime lease_before = nanotime::now();
+        nanotime move_after {nanotime::now()};
+        nanotime lease_before {nanotime::now()};
         player->Send_MovingLease(cr);
-        nanotime lease_after = nanotime::now();
+        nanotime lease_after {nanotime::now()};
         test_connection->Dispatch();
 
-        vector<TransportPacketSnapshot> packets = test_connection->GetReceivedTransportPackets();
+        vector<TransportPacketSnapshot> packets {test_connection->GetReceivedTransportPackets()};
         REQUIRE(packets.size() == 3);
         REQUIRE(packets[0].Message == NetMessage::Ping);
         REQUIRE(packets[1].Message == NetMessage::CritterMove);
@@ -2199,14 +2199,14 @@ TEST_CASE("ServerMovementTransportClock")
         CHECK(packets[2].LeaseDistance == 60.0f);
         check_sender_stamp(packets[2], lease_before, lease_after);
 
-        TransportPacketSnapshot expected_move = packets[1];
-        TransportPacketSnapshot expected_lease = packets[2];
+        TransportPacketSnapshot expected_move {packets[1]};
+        TransportPacketSnapshot expected_lease {packets[2]};
 
-        timespan catch_up_min = std::chrono::milliseconds {server->Settings->Network.MoveLateCatchUpMinMs};
-        timespan catch_up_max = std::chrono::milliseconds {server->Settings->Network.MoveLateCatchUpMaxMs};
-        auto make_estimator = [&server] { return LinkDelayEstimator {std::chrono::milliseconds {server->Settings->Network.LinkDelayWindowMs}, std::chrono::milliseconds {server->Settings->Network.MoveLateCatchUpMinMs}, std::chrono::milliseconds {server->Settings->Network.LinkDelayRebaseMs}}; };
-        auto evaluate_catch_up = [&](timespan late) { return EvaluateLateCatchUp(late, catch_up_min, catch_up_max); };
-        auto check_move_payload = [&](const TransportPacketSnapshot& actual, const TransportPacketSnapshot& expected) {
+        timespan catch_up_min {std::chrono::milliseconds {server->Settings->Network.MoveLateCatchUpMinMs}};
+        timespan catch_up_max {std::chrono::milliseconds {server->Settings->Network.MoveLateCatchUpMaxMs}};
+        auto make_estimator {[&server] { return LinkDelayEstimator {std::chrono::milliseconds {server->Settings->Network.LinkDelayWindowMs}, std::chrono::milliseconds {server->Settings->Network.MoveLateCatchUpMinMs}, std::chrono::milliseconds {server->Settings->Network.LinkDelayRebaseMs}}; }};
+        auto evaluate_catch_up {[&](timespan late) { return EvaluateLateCatchUp(late, catch_up_min, catch_up_max); }};
+        auto check_move_payload {[&](const TransportPacketSnapshot& actual, const TransportPacketSnapshot& expected) {
             CHECK(actual.Message == NetMessage::CritterMove);
             CHECK(actual.CrId == expected.CrId);
             CHECK(actual.WholeMs == expected.WholeMs);
@@ -2219,30 +2219,30 @@ TEST_CASE("ServerMovementTransportClock")
             CHECK(actual.EndHexOffset == expected.EndHexOffset);
             CHECK(actual.MovingUid == expected.MovingUid);
             CHECK(actual.LeaseDistance == expected.LeaseDistance);
-        };
-        auto check_lease_payload = [&](const TransportPacketSnapshot& actual, const TransportPacketSnapshot& expected) {
+        }};
+        auto check_lease_payload {[&](const TransportPacketSnapshot& actual, const TransportPacketSnapshot& expected) {
             CHECK(actual.Message == NetMessage::CritterMoveLease);
             CHECK(actual.CrId == expected.CrId);
             CHECK(actual.MovingUid == expected.MovingUid);
             CHECK(actual.LeaseDistance == expected.LeaseDistance);
             CHECK(actual.LeaseDistance == 60.0f);
-        };
-        auto capture_fresh_ping = [&]() -> TransportPacketSnapshot {
+        }};
+        auto capture_fresh_ping {[&]() -> TransportPacketSnapshot {
             test_connection->Dispatch();
             test_connection->ClearReceivedTransportPackets();
 
             player->Send_Ping(false);
             test_connection->Dispatch();
 
-            vector<TransportPacketSnapshot> ping_packets = test_connection->GetReceivedTransportPackets();
+            vector<TransportPacketSnapshot> ping_packets {test_connection->GetReceivedTransportPackets()};
             REQUIRE(ping_packets.size() == 1);
             REQUIRE(ping_packets.front().Message == NetMessage::Ping);
 
             return ping_packets.front();
-        };
+        }};
 
-        LinkDelayEstimator immediate_estimator = make_estimator();
-        TransportPacketSnapshot baseline_ping = capture_fresh_ping();
+        LinkDelayEstimator immediate_estimator {make_estimator()};
+        TransportPacketSnapshot baseline_ping {capture_fresh_ping()};
         (void)immediate_estimator.AddSample(baseline_ping.SenderMs, baseline_ping.ReceiveTime);
         test_connection->ClearReceivedTransportPackets();
 
@@ -2263,12 +2263,12 @@ TEST_CASE("ServerMovementTransportClock")
         check_lease_payload(packets[1], expected_lease);
 
         // Millisecond rounding can leave a timely sample nonzero; the production threshold decides lateness
-        timespan immediate_move_late = immediate_estimator.AddSample(packets[0].SenderMs, packets[0].ReceiveTime);
+        timespan immediate_move_late {immediate_estimator.AddSample(packets[0].SenderMs, packets[0].ReceiveTime)};
         CHECK(evaluate_catch_up(immediate_move_late) == timespan::zero);
-        timespan immediate_lease_late = immediate_estimator.AddSample(packets[1].SenderMs, packets[1].ReceiveTime);
+        timespan immediate_lease_late {immediate_estimator.AddSample(packets[1].SenderMs, packets[1].ReceiveTime)};
         CHECK(evaluate_catch_up(immediate_lease_late) == timespan::zero);
 
-        LinkDelayEstimator delayed_move_estimator = make_estimator();
+        LinkDelayEstimator delayed_move_estimator {make_estimator()};
         baseline_ping = capture_fresh_ping();
         (void)delayed_move_estimator.AddSample(baseline_ping.SenderMs, baseline_ping.ReceiveTime);
         test_connection->ClearReceivedTransportPackets();
@@ -2290,11 +2290,11 @@ TEST_CASE("ServerMovementTransportClock")
         CHECK(packets.front().ReceiveTime - move_after >= std::chrono::milliseconds {250});
         check_move_payload(packets.front(), expected_move);
 
-        timespan delayed_move_late = delayed_move_estimator.AddSample(packets.front().SenderMs, packets.front().ReceiveTime);
+        timespan delayed_move_late {delayed_move_estimator.AddSample(packets.front().SenderMs, packets.front().ReceiveTime)};
         CHECK(evaluate_catch_up(delayed_move_late) > timespan::zero);
         CHECK(server->GameTime.GetFrameTime() == frozen_frame);
 
-        LinkDelayEstimator delayed_lease_estimator = make_estimator();
+        LinkDelayEstimator delayed_lease_estimator {make_estimator()};
         baseline_ping = capture_fresh_ping();
         (void)delayed_lease_estimator.AddSample(baseline_ping.SenderMs, baseline_ping.ReceiveTime);
         test_connection->ClearReceivedTransportPackets();
@@ -2316,7 +2316,7 @@ TEST_CASE("ServerMovementTransportClock")
         CHECK(packets.front().ReceiveTime - lease_after >= std::chrono::milliseconds {250});
         check_lease_payload(packets.front(), expected_lease);
 
-        timespan delayed_lease_late = delayed_lease_estimator.AddSample(packets.front().SenderMs, packets.front().ReceiveTime);
+        timespan delayed_lease_late {delayed_lease_estimator.AddSample(packets.front().SenderMs, packets.front().ReceiveTime)};
         CHECK(evaluate_catch_up(delayed_lease_late) > timespan::zero);
         CHECK(server->GameTime.GetFrameTime() == frozen_frame);
 
@@ -2325,7 +2325,7 @@ TEST_CASE("ServerMovementTransportClock")
         cr->UnmarkIsForPlayer();
         server->CrMngr.DestroyCritter(cr);
         server->MapMngr.DestroyLocation(loc);
-    });
+    })};
 
     CHECK(callback_invoked);
     REQUIRE(quiesced);

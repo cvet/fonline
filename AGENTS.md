@@ -262,9 +262,3 @@ Find additional owners through [the source tree](Docs/en/contributing/source-tre
 and [public contracts](Docs/en/reference/public-contract/index.md). Verify exact
 current names; do not guess from an old file or neighboring backend. Report the
 final diff/checks/blockers and leave local edits unless publication was authorized.
-
-For Mapper work, read the [interactive manual](Docs/en/how-to/tools/mapper-interactive.md)
-and [tool contracts](Docs/en/how-to/tools/mapper.md); viewer work starts at the
-[animation/particle viewer guide](Docs/en/how-to/tools/animation-particle-viewers.md).
-AngelScript authoring starts at
-[style and refactoring](Docs/en/how-to/scripting/style-and-refactoring.md).

@@ -261,14 +261,14 @@ FO_SCRIPT_API nptr<ItemView> Client_Critter_GetItem(ptr<CritterView> self, ItemP
     return nullptr;
 }
 
-///@ ApiContract script.method.client.Critter.GetAttachedCritterIds experimental Since=2026.1.53-dev
+///@ ApiContract script.method.client.Critter.GetAttachedCritterIds experimental Since=2026.1.120-dev
 // Returns a snapshot of the replicated attachment ids of this critter, including ids with no entity loaded on this client
 ///@ ExportMethod
 FO_SCRIPT_API vector<ident_t> Client_Critter_GetAttachedCritterIds(ptr<CritterView> self)
 {
-    auto attached_ids = self->GetAttachedCritters();
+    auto attached_ids {self->GetAttachedCritters()};
 
-    vector<ident_t> ids;
+    vector<ident_t> ids {};
     ids.reserve(attached_ids.size());
 
     for (size_t i = 0; i < attached_ids.size(); i++) {

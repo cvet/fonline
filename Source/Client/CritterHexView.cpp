@@ -287,8 +287,8 @@ void CritterHexView::PrepareAnim(CritterAnim& anim, CritterAnimationContext cont
 
 void CritterHexView::UpdateAnimFrame(CritterAnim& anim)
 {
-    bool frozen = is_enum_set(anim.Flags, CritterAnimationFlags::Freeze);
-    bool movement_drives_frame = !frozen && IsMoving() && is_enum_set(anim.Flags, CritterAnimationFlags::Movement);
+    bool frozen {is_enum_set(anim.Flags, CritterAnimationFlags::Freeze)};
+    bool movement_drives_frame {!frozen && IsMoving() && is_enum_set(anim.Flags, CritterAnimationFlags::Movement)};
 
     if (frozen) {
         anim.FrameIndex = lerp(0, anim.Frames->GetFramesCount() - 1, anim.NormalizedPosition);
@@ -301,7 +301,7 @@ void CritterHexView::UpdateAnimFrame(CritterAnim& anim)
     }
 
     if (anim.FramesDuration > timespan::zero) {
-        float64_t phase = anim.NormalizedPosition + std::max(0.0, (_engine->GameTime.GetFrameTime() - _animStartTime).div<float64_t>(anim.FramesDuration)) * anim.Speed;
+        float64_t phase {anim.NormalizedPosition + std::max(0.0, (_engine->GameTime.GetFrameTime() - _animStartTime).div<float64_t>(anim.FramesDuration)) * anim.Speed};
         phase = _curAnim.has_value() ? std::min(phase, 1.0) : phase - std::floor(phase);
 
         anim.FrameIndex = anim.Frames->GetFrameIndexAtPhase(phase);
@@ -375,8 +375,8 @@ void CritterHexView::RefreshView(bool no_smooth)
             selection.Frames = frames;
             selection.FramesDuration = frames->GetDuration();
 
-            bool changed = _idle2dAnim.Frames != frames || _idle2dAnim.StateAnim != state_anim || _idle2dAnim.ActionAnim != action_anim || _idle2dAnim.Flags != selection.Flags || !is_float_equal(_idle2dAnim.NormalizedPosition, selection.NormalizedPosition) || !is_float_equal(_idle2dAnim.Speed, selection.Speed);
-            int32_t frame_index = _idle2dAnim.FrameIndex;
+            bool changed {_idle2dAnim.Frames != frames || _idle2dAnim.StateAnim != state_anim || _idle2dAnim.ActionAnim != action_anim || _idle2dAnim.Flags != selection.Flags || !is_float_equal(_idle2dAnim.NormalizedPosition, selection.NormalizedPosition) || !is_float_equal(_idle2dAnim.Speed, selection.Speed)};
+            int32_t frame_index {_idle2dAnim.FrameIndex};
 
             if (changed) {
                 _animStartTime = _engine->GameTime.GetFrameTime();
@@ -553,7 +553,7 @@ void CritterHexView::Process()
 #endif
     {
         auto& cur_anim {_curAnim.has_value() ? _curAnim.value() : _idle2dAnim};
-        int32_t prev_frm_index = cur_anim.FrameIndex;
+        int32_t prev_frm_index {cur_anim.FrameIndex};
 
         UpdateAnimFrame(cur_anim);
 

@@ -789,10 +789,10 @@ void GlobalMapGroup::BroadcastAttachments(ptr<const Critter> from_cr, nptr<const
     // Keep membership stable until enqueue, before a departing member can send its next map load
     shared_lock lock {_lock};
 
-    small_vector<refcount_ptr<Player>, 8> recipients;
+    small_vector<refcount_ptr<Player>, 8> recipients {};
 
     for (ptr<Critter> member : _members) {
-        auto player = member->GetPlayerForSend();
+        auto player {member->GetPlayerForSend()};
 
         if (!player || player == ignore_player) {
             continue;
@@ -1202,10 +1202,10 @@ void Critter::SendAndBroadcast_Attachments()
 {
     FO_TRACE_ZONE(Entity);
 
-    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
 
     if (!GetMapId() && _globalMapGroup) {
-        auto own_player = GetPlayerForSend();
+        auto own_player {GetPlayerForSend()};
 
         if (own_player) {
             own_player->Send_Attachments(this, this);

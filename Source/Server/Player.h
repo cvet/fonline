@@ -113,6 +113,7 @@ private:
 
     mutex _connectionLock {};
     unique_ptr<ServerConnection> _connection FO_TSA_GUARDED_BY(_connectionLock);
+    // Unknown while a LoadMap attempt is incomplete or has failed
     optional<ident_t> _sentMapId FO_TSA_GUARDED_BY(_connectionLock) {};
     string _name {"(NotLoggedIn)"};
     mutable atomic_mutex _controlledCrLinkLocker {};

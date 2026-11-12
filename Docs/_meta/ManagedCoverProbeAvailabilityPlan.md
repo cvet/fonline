@@ -2,10 +2,13 @@
 
 ## Status
 
-- State: complete for the local fix and retained-data integration validation.
-- Updated: 2026-10-11 UTC.
-- Engine HEAD: `7999575afdaf778913725443b1c4beddab74a3a6`; working version `2026.1.29-dev`.
-- Previous compatibility marker: `0.0.71`; working marker: `0.0.72`.
+- State: complete; the fix is retained in the feature-branch integration with master.
+- Updated: 2026-11-12 UTC.
+- Integration baseline: master `54863a068c6c0dc73d0660a0147cfff601f74396` (`2026.1.119-dev`); target version `2026.1.120-dev`.
+- Manual compatibility marker: `0.0.88` on the baseline, `0.0.89` for the integration. The marker advance belongs to the integrated
+  attachment and movement network contract; the probe flag alone changes no wire, save or resource layout.
+- Original local fix: Engine `7999575afdaf778913725443b1c4beddab74a3a6` (`2026.1.29-dev`). The evidence below keeps the
+  revisions it was recorded on and is not relabeled as evidence for the integration.
 
 ## Problem and contract
 

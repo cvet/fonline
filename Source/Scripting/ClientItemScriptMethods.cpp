@@ -126,7 +126,7 @@ FO_SCRIPT_API void Client_Item_StopAnim(ptr<ItemView> self)
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Item_SetAnimPhase(ptr<ItemView> self, float32_t normalizedPhase)
 {
-    if (auto hex_item = self.dyn_cast<ItemHexView>()) {
+    if (auto hex_item {self.dyn_cast<ItemHexView>()}) {
         hex_item->SetAnimPhase(normalizedPhase);
     }
 }

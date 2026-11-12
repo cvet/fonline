@@ -6476,9 +6476,9 @@ static auto SpliceMapIntoFomapContent(string_view file_stem, const string& origi
         result.append(original_content);
     }
 
-    string context_name = string(file_stem);
-    bool map_written = false;
-    bool separator_pending = false;
+    string context_name {string(file_stem)};
+    bool map_written {false};
+    bool separator_pending {false};
 
     for (const auto& range : section_ranges) {
         string owner_name {};

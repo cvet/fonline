@@ -12,16 +12,22 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## Current - 2026-11-11
+## Current - 2026-11-12
+
+### Added
+
+- `BuildTools/docs_engine_version.py --write-next --branch master --baseline-git-ref <fetched-master-sha>` writes the next master `VERSION` after preparing both changelogs. It checks the full fetched baseline commit, the version transition, both dated migration notes and the unchanged bodies and order of preceding release records, then replaces `VERSION` atomically. The existing value must be the baseline, the next version, or the exact unresolved `HEAD`/`origin/master` merge conflict backed by its index stages; stale or abbreviated baselines, other edits and inputs that change during preparation are refused. The writer neither publishes nor replaces the build, integration and validation gates. The versioning guide also records that a merge of published histories must keep the previous master tip on the target's first-parent chain for the `--history` check.
 
 ### Changed
 
 - Reconcile the feature branch's lifecycle, attached movement, playback, message transaction, Mapper and build-marker contracts with the current master settings, persistence, synchronization and large-map changes. The feature-branch notes below retain their original revisions and migration details because their version numbers overlap independent master history.
 - Complete the exact-base generated API contract review and fix native test helpers and callback cleanup for unity and lifetime validation. These changes do not alter production runtime behavior.
+- The attached-controller movement authority check is the `Player::HasPlayerMovementControl` query instead of a server-file helper; every movement request path keeps the same decision. `Critter.GetAttachedCritterIds` records its first master version, `2026.1.120-dev`, as its `Since`.
+- Client `Net_OnCritterMoveItem` retains the moved critter from lookup through every script callback and stops after a callback destroys it. Attachment snapshots are not published for a critter that is being destroyed.
 
 ### Migration
 
-- Merge feature baseline `589756e6b368f1363b46b160b36a72911d3758b5` (`2026.1.101-dev`) with master baseline `54863a068c6c0dc73d0660a0147cfff601f74396` (`2026.1.119-dev`). Apply the intervening master migration notes in order and the feature-branch notes below. The merged manual compatibility marker is `0.0.88`; no additional stored-document conversion is introduced by the merge itself.
+- Merge feature baseline `589756e6b368f1363b46b160b36a72911d3758b5` (`2026.1.101-dev`) with master baseline `54863a068c6c0dc73d0660a0147cfff601f74396` (`2026.1.119-dev`). Apply the intervening master migration notes in order and the feature-branch notes below. The manual compatibility marker advances from master's `0.0.88` to `0.0.89`: the retained attachment delivery for global groups, ordered snapshots, attached-controller movement authority and RPC refusal change network/runtime behavior that master `0.0.88` builds do not share. Client, server and resources built from master `2026.1.119-dev` are rejected by this revision and the other way round. No additional stored-document conversion is introduced by the merge itself.
 - Reconfigure and rebuild affected native roles, extensions and tests, regenerate matching metadata and managed bindings, then bake and deploy server/client resources from one coherent source revision. Review settings and resource paths, holder synchronization for persistence, native map consumers and runtime library startup. Roll back matching binaries and resources together; do not mix generations.
 
 ### Feature-branch records retained at merge

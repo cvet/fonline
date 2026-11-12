@@ -93,10 +93,10 @@ static auto MakeClientLifetimeEngine(GlobalSettings& settings, vector<pair<strin
 
 TEST_CASE("ClientRemoteCallsRequireConnectedSession")
 {
-    auto settings = MakeClientLifetimeSettings();
-    auto client = MakeClientLifetimeEngine(settings);
-    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
-    auto call = client->Hashes.to_hashed_string("DisconnectedProbe");
+    auto settings {MakeClientLifetimeSettings()};
+    auto client {MakeClientLifetimeEngine(settings)};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+    auto call {client->Hashes.to_hashed_string("DisconnectedProbe")};
 
     CHECK_FALSE(client->IsConnected());
     CHECK_THROWS_AS(client->SendRemoteCall(call, client, {}), VerificationException);
@@ -105,46 +105,46 @@ TEST_CASE("ClientRemoteCallsRequireConnectedSession")
 
 TEST_CASE("ClientBinaryCompatibilityPrecedesPlayerSession")
 {
-    bool compatible = GENERATE(true, false);
+    bool compatible {GENERATE(true, false)};
     CAPTURE(compatible);
     static std::atomic_uint16_t next_port {48200};
-    auto port = next_port.fetch_add(1);
-    GlobalSettings server_settings(false);
+    auto port {next_port.fetch_add(1)};
+    GlobalSettings server_settings {false};
     server_settings.SetupDefaultSettings();
     server_settings.ApplyAutoSettings({});
     BakerTests::ApplySelfContainedServerSettings(server_settings);
     BakerTests::OverrideSetting(server_settings.Network.ServerPort, port);
-    auto client_settings = MakeClientLifetimeSettings();
+    auto client_settings {MakeClientLifetimeSettings()};
     BakerTests::OverrideSetting(client_settings.Network.ServerPort, port);
     if (!compatible) {
-        string different_version = server_settings.Network.CompatibilityVersion;
+        string different_version {server_settings.Network.CompatibilityVersion};
         REQUIRE(!different_version.empty());
         different_version.front() = different_version.front() == '0' ? '1' : '0';
         BakerTests::OverrideSetting(client_settings.Network.CompatibilityVersion, different_version);
     }
 
-    auto server_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ClientCompatibilityServer");
+    auto server_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("ClientCompatibilityServer")};
     server_source->AddFile("Metadata.fometa-server", BakerTests::MakeEmptyMetadataBlob());
 #if FO_ANGELSCRIPT_SCRIPTING
-    auto compiler_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ClientCompatibilityCompiler");
+    auto compiler_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("ClientCompatibilityCompiler")};
     compiler_source->AddFile("Metadata.fometa-server", BakerTests::MakeEmptyMetadataBlob());
-    FileSystem compiler_resources;
+    FileSystem compiler_resources {};
     compiler_resources.AddCustomSource(std::move(compiler_source));
     BakerServerEngine compiler {compiler_resources};
     server_source->AddFile("ClientCompatibility.fos-bin-server", BakerTests::CompileInlineScripts(&compiler, "ClientCompatibilityScripts", {{"Scripts/Compatibility.fos", "void CompatibilityFixtureEntry() {}"}}, [](string_view message) { FAIL(message); }));
 #endif
-    FileSystem server_resources;
+    FileSystem server_resources {};
     server_resources.AddCustomSource(std::move(server_source));
-    auto server = safe_alloc::make_refcounted<ServerEngine>(&server_settings, std::move(server_resources));
-    auto client = MakeClientLifetimeEngine(client_settings);
-    auto shutdown = scope_exit([&server, &client]() noexcept {
+    auto server {safe_alloc::make_refcounted<ServerEngine>(&server_settings, std::move(server_resources))};
+    auto client {MakeClientLifetimeEngine(client_settings)};
+    auto shutdown {scope_exit([&server, &client]() noexcept {
         safe_call([&client] { client->Shutdown(); });
         safe_call([&server] {
             if (server->IsStarted()) {
                 server->Shutdown();
             }
         });
-    });
+    })};
 
     for (int32_t i = 0; i < 3000 && !server->IsStarted() && !server->IsStartingError(); i++) {
         coarse_sleep(std::chrono::milliseconds {10});
@@ -152,7 +152,7 @@ TEST_CASE("ClientBinaryCompatibilityPrecedesPlayerSession")
     REQUIRE(server->IsStarted());
     REQUIRE(client->GetMetadataVersion() == server->GetMetadataVersion());
     client->Connect();
-    bool refused = false;
+    bool refused {false};
     for (int32_t i = 0; i < 2000 && !refused && !client->IsConnected(); i++) {
         try {
             client->MainLoop();
@@ -170,7 +170,7 @@ TEST_CASE("ClientBinaryCompatibilityPrecedesPlayerSession")
     client->Disconnect();
 
     if (compatible) {
-        auto call = client->Hashes.to_hashed_string("DisconnectedProbe");
+        auto call {client->Hashes.to_hashed_string("DisconnectedProbe")};
         CHECK_THROWS_AS(client->SendRemoteCall(call, client, {}), VerificationException);
         CHECK(client->GetConnection()->OutBuf->IsEmpty());
 
@@ -484,12 +484,12 @@ TEST_CASE("ClientEntityLookupRetainsUntilCallerFinishes")
 
 TEST_CASE("ClientCritterDestroyClearsAttachmentsBeforeDelayedFinalRelease")
 {
-    auto settings = MakeClientLifetimeSettings();
-    auto client = MakeClientLifetimeEngine(settings);
-    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
-    auto proto = safe_alloc::make_refcounted<ProtoCritter>(client->Hashes.to_hashed_string("AttachedCritter"), client->GetPropertyRegistrar("Critter").as_ptr());
-    auto passenger = safe_alloc::make_refcounted<CritterView>(client, ident_t {1003}, proto);
-    auto old_hull = safe_alloc::make_refcounted<CritterView>(client, ident_t {1002}, proto);
+    auto settings {MakeClientLifetimeSettings()};
+    auto client {MakeClientLifetimeEngine(settings)};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+    auto proto {safe_alloc::make_refcounted<ProtoCritter>(client->Hashes.to_hashed_string("AttachedCritter"), client->GetPropertyRegistrar("Critter").as_ptr())};
+    auto passenger {safe_alloc::make_refcounted<CritterView>(client, ident_t {1003}, proto)};
+    auto old_hull {safe_alloc::make_refcounted<CritterView>(client, ident_t {1002}, proto)};
     passenger->SetIsAttached(true);
     passenger->SetAttachMaster(old_hull->GetId());
     old_hull->SetAttachedCritters({passenger->GetId()});
@@ -502,7 +502,7 @@ TEST_CASE("ClientCritterDestroyClearsAttachmentsBeforeDelayedFinalRelease")
     CHECK_FALSE(passenger->IsDestroyed());
     CHECK(client->GetEntity(passenger->GetId()) == passenger);
 
-    auto new_hull = safe_alloc::make_refcounted<CritterView>(client, ident_t {1002}, proto);
+    auto new_hull {safe_alloc::make_refcounted<CritterView>(client, ident_t {1002}, proto)};
     new_hull->SetAttachedCritters({passenger->GetId()});
     std::thread release_thread {[owner = std::move(old_hull)] { ignore_unused(owner); }};
     release_thread.join();
@@ -517,17 +517,17 @@ TEST_CASE("ClientCritterDestroyClearsAttachmentsBeforeDelayedFinalRelease")
 
 TEST_CASE("ClientAuthoritativeInventorySlotMoveSwapsExclusivePeers")
 {
-    auto settings = MakeClientLifetimeSettings();
+    auto settings {MakeClientLifetimeSettings()};
     BakerTests::OverrideSetting(settings.Critter.CritterSlotMultiItem, vector<bool> {true, false, true});
-    auto client = MakeClientLifetimeEngine(settings);
-    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
-    auto critter_proto = safe_alloc::make_refcounted<ProtoCritter>(client->Hashes.to_hashed_string("SlotCritter"), client->GetPropertyRegistrar("Critter").as_ptr());
-    auto item_proto = safe_alloc::make_refcounted<ProtoItem>(client->Hashes.to_hashed_string("SlotItem"), client->GetPropertyRegistrar("Item").as_ptr());
-    auto critter = safe_alloc::make_refcounted<CritterView>(client, ident_t {1002}, critter_proto);
-    auto first = critter->AddMapperInvItem(ident_t {1003}, item_proto, CritterItemSlot::Main, nullptr);
-    auto second = critter->AddMapperInvItem(ident_t {1004}, item_proto, CritterItemSlot::Inventory, nullptr);
-    auto third = critter->AddMapperInvItem(ident_t {1005}, item_proto, CritterItemSlot::Inventory, nullptr);
-    auto cleanup = scope_exit([&critter]() noexcept { safe_call([&critter] { critter->DestroySelf(); }); });
+    auto client {MakeClientLifetimeEngine(settings)};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+    auto critter_proto {safe_alloc::make_refcounted<ProtoCritter>(client->Hashes.to_hashed_string("SlotCritter"), client->GetPropertyRegistrar("Critter").as_ptr())};
+    auto item_proto {safe_alloc::make_refcounted<ProtoItem>(client->Hashes.to_hashed_string("SlotItem"), client->GetPropertyRegistrar("Item").as_ptr())};
+    auto critter {safe_alloc::make_refcounted<CritterView>(client, ident_t {1002}, critter_proto)};
+    auto first {critter->AddMapperInvItem(ident_t {1003}, item_proto, CritterItemSlot::Main, nullptr)};
+    auto second {critter->AddMapperInvItem(ident_t {1004}, item_proto, CritterItemSlot::Inventory, nullptr)};
+    auto third {critter->AddMapperInvItem(ident_t {1005}, item_proto, CritterItemSlot::Inventory, nullptr)};
+    auto cleanup {scope_exit([&critter]() noexcept { safe_call([&critter] { critter->DestroySelf(); }); })};
 
     critter->ApplyAuthoritativeItemSlotMove(second->GetId(), CritterItemSlot::Inventory, CritterItemSlot::Main);
     CHECK(first->GetCritterSlot() == CritterItemSlot::Inventory);
@@ -551,7 +551,7 @@ TEST_CASE("ClientAuthoritativeInventorySlotMoveSwapsExclusivePeers")
     CHECK(third->GetCritterSlot() == CritterItemSlot::Inventory);
 
     // Authored multi-item equipment slots have the same peer-preservation rule
-    const auto multi_slot = static_cast<CritterItemSlot>(2);
+    const auto multi_slot {static_cast<CritterItemSlot>(2)};
     first->SetCritterSlot(multi_slot);
     critter->ApplyAuthoritativeItemSlotMove(second->GetId(), CritterItemSlot::Inventory, multi_slot);
     CHECK(first->GetCritterSlot() == multi_slot);
@@ -564,13 +564,13 @@ TEST_CASE("ClientAuthoritativeInventorySlotMoveSwapsExclusivePeers")
 
 TEST_CASE("ClientAuthoritativeInventorySlotMoveStopsAfterReentrantDestruction")
 {
-    auto settings = MakeClientLifetimeSettings();
+    auto settings {MakeClientLifetimeSettings()};
     BakerTests::OverrideSetting(settings.Critter.CritterSlotMultiItem, vector<bool> {true, false});
-    auto client = MakeClientLifetimeEngine(settings);
-    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
-    auto critter_proto = safe_alloc::make_refcounted<ProtoCritter>(client->Hashes.to_hashed_string("ReentrantSlotCritter"), client->GetPropertyRegistrar("Critter"));
-    auto item_proto = safe_alloc::make_refcounted<ProtoItem>(client->Hashes.to_hashed_string("ReentrantSlotItem"), client->GetPropertyRegistrar("Item"));
-    auto critter = safe_alloc::make_refcounted<CritterView>(client, ident_t {1101}, critter_proto);
+    auto client {MakeClientLifetimeEngine(settings)};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+    auto critter_proto {safe_alloc::make_refcounted<ProtoCritter>(client->Hashes.to_hashed_string("ReentrantSlotCritter"), client->GetPropertyRegistrar("Critter"))};
+    auto item_proto {safe_alloc::make_refcounted<ProtoItem>(client->Hashes.to_hashed_string("ReentrantSlotItem"), client->GetPropertyRegistrar("Item"))};
+    auto critter {safe_alloc::make_refcounted<CritterView>(client, ident_t {1101}, critter_proto)};
     auto callback_active {safe_alloc::make_shared<bool>(true)};
     auto cleanup {scope_exit([&critter, callback_active]() mutable noexcept {
         *callback_active = false;
@@ -579,12 +579,12 @@ TEST_CASE("ClientAuthoritativeInventorySlotMoveStopsAfterReentrantDestruction")
             safe_call([&critter] { critter->DestroySelf(); });
         }
     })};
-    auto displaced = critter->AddMapperInvItem(ident_t {1102}, item_proto, CritterItemSlot::Main, nullptr);
-    auto moved = critter->AddMapperInvItem(ident_t {1103}, item_proto, CritterItemSlot::Inventory, nullptr).hold_ref();
-    auto peer = critter->AddMapperInvItem(ident_t {1104}, item_proto, CritterItemSlot::Main, nullptr).hold_ref();
-    int32_t mutation = GENERATE(0, 1, 2);
+    auto displaced {critter->AddMapperInvItem(ident_t {1102}, item_proto, CritterItemSlot::Main, nullptr)};
+    auto moved {critter->AddMapperInvItem(ident_t {1103}, item_proto, CritterItemSlot::Inventory, nullptr).hold_ref()};
+    auto peer {critter->AddMapperInvItem(ident_t {1104}, item_proto, CritterItemSlot::Main, nullptr).hold_ref()};
+    int32_t mutation {GENERATE(0, 1, 2)};
     CAPTURE(mutation);
-    int32_t callback_count = 0;
+    int32_t callback_count {0};
 
     displaced->GetPropertyCritterSlot()->AddPostSetter([&, callback_active](nptr<Entity> entity, ptr<const Property>) {
         if (*callback_active && entity == displaced) {

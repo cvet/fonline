@@ -411,7 +411,7 @@ void Player::Send_LoadMap(nptr<const Map> map)
     _sentMapId.reset();
 
     {
-        auto out_buf = _connection->WriteMsg(NetMessage::LoadMap);
+        ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::LoadMap};
 
         out_buf->Write(loc_id);
         out_buf->Write(map_id);
@@ -422,8 +422,8 @@ void Player::Send_LoadMap(nptr<const Map> map)
         if (map) {
             FO_VERIFY_AND_THROW(loc, "Map has no owning location");
 
-            auto map_data = map->StoreData(false);
-            auto loc_data = loc->StoreData(false);
+            auto map_data {map->StoreData(false)};
+            auto loc_data {loc->StoreData(false)};
             out_buf->WritePropsData(*map_data.Data, *map_data.Sizes);
             out_buf->WritePropsData(*loc_data.Data, *loc_data.Sizes);
             SendInnerEntities(*out_buf, loc, false);
@@ -898,7 +898,7 @@ void Player::Send_Attachments(ptr<const Critter> from_cr, nptr<const Critter> gl
         return;
     }
 
-    auto out_buf = _connection->WriteMsg(NetMessage::CritterAttachments);
+    ServerConnection::OutBufAccessor out_buf {_connection, NetMessage::CritterAttachments};
 
     out_buf->Write(from_cr->GetId());
 
