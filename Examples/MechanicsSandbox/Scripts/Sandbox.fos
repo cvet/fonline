@@ -1,0 +1,96 @@
+// Shared sandbox world: the location and map that recipe tests create, and the headless-client login
+// Recipes never call each other; anything two recipes need lives in this module
+namespace Sandbox
+{
+
+///@ RemoteCall Server EnterSandbox()
+
+#if SERVER
+
+const hstring LocationPid = "Sandbox_Location".hstr();
+const hstring MapPid = "Sandbox_Map".hstr();
+const hstring PlayerPid = "Sandbox_Player".hstr();
+const hstring NpcPid = "Sandbox_Npc".hstr();
+const mpos EntryHex = mpos(25, 25);
+
+// Creates one location with its map; the creating script keeps cover of the new entities
+Map CreateMap()
+{
+    hstring[] mapPids = {MapPid};
+    Location location = Game.CreateLocation(LocationPid, mapPids);
+    return location.GetMapByIndex(0);
+}
+
+// Places a headless client's new character on the sandbox map that a running test created
+[[ServerRemoteCall]] [[Async]]
+void EnterSandbox(Player unloginedPlayer)
+{
+    Map? map = Game.GetMap(MapPid);
+    if (map == null) {
+        Game.Log("sandbox_enter_refused reason=no_map");
+        return;
+    }
+
+    Location location = map.GetLocation();
+    Critter body = Game.CreateCritter(PlayerPid, true);
+
+    Game.Sync(array<Entity> = {unloginedPlayer, location, map, body});
+    body.TransferToMap(map, EntryHex, mdir(0));
+
+    unloginedPlayer.SetName("SandboxPlayer");
+    Player player = Game.LoginPlayerToNewRecord(unloginedPlayer);
+    Game.Sync(array<Entity> = {player, location, map, body});
+    player.SwitchCritter(body);
+    Game.Log("sandbox_player_entered");
+}
+
+#endif
+
+#if CLIENT
+
+///@ Setting Client bool Sandbox.ClientAutomation
+
+[[ModuleInit]]
+void InitClient()
+{
+    if (!Settings.Sandbox.ClientAutomation) {
+        return;
+    }
+
+    Game.OnStart.Subscribe(OnClientStart);
+    Game.OnConnected.Subscribe(OnConnected);
+    Game.OnConnectingFailed.Subscribe(OnConnectingFailed);
+    Game.OnDisconnected.Subscribe(OnDisconnected);
+}
+
+[[Event]]
+void OnClientStart()
+{
+    Game.Connect();
+}
+
+[[Event]]
+void OnConnected()
+{
+    Game.Log("sandbox_client_connected");
+    CurPlayer.ServerCall.EnterSandbox();
+}
+
+[[Event]]
+void OnConnectingFailed()
+{
+    Game.Log("sandbox_client_connection_failed");
+    Game.RequestQuit(false);
+}
+
+// The server ends a drill by quitting after its verdict; the client follows it
+[[Event]]
+void OnDisconnected()
+{
+    Game.Log("sandbox_client_disconnected");
+    Game.RequestQuit(true);
+}
+
+#endif
+
+}

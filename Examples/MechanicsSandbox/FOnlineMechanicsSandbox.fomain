@@ -1,0 +1,119 @@
+Common.GameName = FOnline Mechanics Sandbox
+Common.GameVersion = 0.1.0
+Common.ResourcesPath = Resources
+Common.PlatformBinariesPath = PlatformBinaries
+Common.CachePath = Cache
+
+Network.ServerPort = 4030
+Network.WebSocketPort = 4031
+ClientNetwork.ServerHost = 127.0.0.1
+Client.Language = engl
+
+Server.DbStorage = Memory
+Server.WorkerThreads = 2
+Server.EntityStartId = 10000000001
+Server.EntityIdReserveBatch = 1000
+
+ServerNetwork.DisableNetworking = False
+
+Baking.ForceBaking = False
+Baking.SingleThreadBaking = False
+Baking.IgnoreMissingBakerWarning = False
+Baking.RawCopyFileExtensions = fofnt bmfc fnt acm ogg wav ogv json ini
+Baking.ProtoFileExtensions = fopro fomap
+Baking.BakeLanguages = engl russ
+Baking.BakeOutput = Baking
+Baking.ResourcePackCompressLevel = 1
+Baking.BundleCompressLevel = 1
+
+SpriteMesh.Enabled = False
+SpriteMesh.AlphaThreshold = 0
+SpriteMesh.MaxTriangles = 4096
+SpriteMesh.AreaSavingsWeight = 32.0
+
+View.ScreenWidth = 1024
+View.ScreenHeight = 768
+
+# Script test harness, merged from Examples/GameplayTestHarness/ScriptTests/script-tests.fomain
+Testing.Enabled = False
+Testing.Filter =
+Testing.StopOnFirstFailure = False
+Testing.ExitOnFinish = True
+Testing.TestTimeout = 10000
+AngelScript.MutableGlobalsAllowedNamespaces = Testing
+
+# Sandbox-owned script settings
+Sandbox.ClientAutomation = False
+
+# In-process recipe tests on an in-memory database
+[SubConfig]
+Name = RecipeTests
+Testing.Enabled = True
+ServerNetwork.DisableNetworking = True
+Server.DbStorage = Memory
+
+# Two-phase restart tests; the runner passes its own JSON directory with -Server.DbStorage
+[SubConfig]
+Name = RecipeRestart
+Testing.Enabled = True
+ServerNetwork.DisableNetworking = True
+Server.DbStorage = JSON RecipeRestartDb
+
+# Server side of tests that need a connected headless client
+[SubConfig]
+Name = RecipeNetworkTests
+Testing.Enabled = True
+Testing.TestTimeout = 60000
+Server.DbStorage = Memory
+
+# Headless client that follows the server-side test drill
+[SubConfig]
+Name = RecipeClient
+Sandbox.ClientAutomation = True
+Baking.IgnoreMissingBakerWarning = True
+Render.HeadlessWindow = True
+Render.NullRenderer = True
+Render.FixedFPS = 30
+Audio.DisableAudio = True
+
+[ResourcePack]
+Name = Metadata
+InputDirs = Scripts
+IncludePatterns = **/*.fos
+Bakers = Metadata
+
+[ResourcePack]
+Name = Scripts
+InputDirs = Scripts
+IncludePatterns = **/*.fos
+Bakers = AngelScript
+
+[ResourcePack]
+Name = Embedded
+InputDirs = Engine/Resources/Embedded
+IncludePatterns = **
+Bakers = Image Effect RawCopy
+
+[ResourcePack]
+Name = Core
+InputDirs = Engine/Resources/Core Engine/Resources/Embedded
+IncludePatterns = **
+Bakers = Image Effect RawCopy
+
+[ResourcePack]
+Name = Texts
+InputDirs = Content Maps
+IncludePatterns = **
+Bakers = ProtoText
+
+[ResourcePack]
+Name = Protos
+InputDirs = Content Maps
+IncludePatterns = **
+Bakers = Proto
+
+[ResourcePack]
+Name = Maps
+InputDirs = Maps
+IncludePatterns = **/*.fomap
+Bakers = Map
