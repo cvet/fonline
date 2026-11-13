@@ -25,8 +25,8 @@ Continue with the [canonical reference](../../en/reference/script-api/events.md)
 <a id="symbol-script-event-client-game-oncritteraction-786f365adb"></a>
 - [`symbol-script-event-client-game-oncritteraction-786f365adb`](../../en/reference/script-api/events.md#symbol-script-event-client-game-oncritteraction-786f365adb)
 
-<a id="symbol-script-event-client-game-oncritteranimationinit-92f7f7cddd"></a>
-- [`symbol-script-event-client-game-oncritteranimationinit-92f7f7cddd`](../../en/reference/script-api/events.md#symbol-script-event-client-game-oncritteranimationinit-92f7f7cddd)
+<a id="symbol-script-event-client-game-oncritteranimationplaybackinit-0c13126b70"></a>
+- [`symbol-script-event-client-game-oncritteranimationplaybackinit-0c13126b70`](../../en/reference/script-api/events.md#symbol-script-event-client-game-oncritteranimationplaybackinit-0c13126b70)
 
 <a id="symbol-script-event-client-game-oncritteranimationprocess-2920f469c4"></a>
 - [`symbol-script-event-client-game-oncritteranimationprocess-2920f469c4`](../../en/reference/script-api/events.md#symbol-script-event-client-game-oncritteranimationprocess-2920f469c4)

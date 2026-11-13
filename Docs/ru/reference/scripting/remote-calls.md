@@ -7,7 +7,7 @@ permalink: /Docs/ru/reference/scripting/remote-calls.html
 ---
 
 # Удалённые вызовы
-<!-- docs-translation: {"document_id":"remote-calls","locale":"ru","source_path":"Docs/en/reference/scripting/remote-calls.md","source_sha256":"4db8b7cfe442b9c1088e920b337913f5c7f5093abf001bce4d5bf8ae3aaaaa5f"} -->
+<!-- docs-translation: {"document_id":"remote-calls","locale":"ru","source_path":"Docs/en/reference/scripting/remote-calls.md","source_sha256":"5df67fdd9fb6bbcc0e27a2a8cc71fb9643ae6cd736dc4a4b4a8c5e34cdaf9e39"} -->
 > Документация движка. Эта страница определяет переиспользуемый контракт удалённых вызовов FOnline. Каждый подключающий проект владеет конкретными вызовами, правилами авторизации, сгенерированным каталогом вызовов и политикой совместимости.
 
 ## Назначение
@@ -20,6 +20,8 @@ permalink: /Docs/ru/reference/scripting/remote-calls.html
 4. запечённых метаданных, которые задают обоим runtime одинаковые имя, порядок аргументов, типы, nullable-признаки и подсказку имени исходного файла.
 
 Удалённые вызовы не являются событиями движка, обычными вызовами функций или функциями «запрос-ответ». Они возвращают `void`; ответ оформляется как другой явно объявленный удалённый вызов.
+
+Исходящий клиентский RPC требует завершённого handshake Engine, включая вход до аутентификации учётной записи. До handshake/после отключения `ClientEngine::HandleOutboundRemoteCall` выбрасывает `VerificationException` (`Remote call requires an established client connection`, имя вызова) до записи в буфер; вызов не ждёт и не повторяется в другой сессии. AngelScript получает исключение скрипта; Managed — `NativeCallException : InvalidOperationException`.
 
 ## Проверенные пути исходного кода
 

@@ -21,6 +21,8 @@ Use remote calls for one-way script messages between an authenticated client run
 
 Remote calls are not engine events, ordinary function calls, or request/response functions. They return `void`; a response is another explicitly declared remote call.
 
+Outbound client RPCs require the completed Engine handshake, including login before account authentication. Before handshake/after disconnect, `ClientEngine::HandleOutboundRemoteCall` throws `VerificationException` (`Remote call requires an established client connection`, call name) before buffering; calls neither wait nor replay in another session. AngelScript receives a script exception; Managed receives `NativeCallException : InvalidOperationException`.
+
 ## Source paths inspected
 
 - `Source/Tools/MetadataBaker.cpp`

@@ -5,7 +5,7 @@ locale: ru
 document_id: sprite-root-motion
 permalink: /Docs/ru/how-to/content/sprite-root-motion.html
 ---
-<!-- docs-translation: {"document_id":"sprite-root-motion","locale":"ru","source_path":"Docs/en/how-to/content/sprite-root-motion.md","source_sha256":"8ad3d93337f7794dbe36cb2735a9e317972abd811e931e09de4e7e72e5420f2a"} -->
+<!-- docs-translation: {"document_id":"sprite-root-motion","locale":"ru","source_path":"Docs/en/how-to/content/sprite-root-motion.md","source_sha256":"107155a503fbb4f5b226dc1bd08349f0d53a3fc1ede32fa26b025b3a15937098"} -->
 # Корневое движение спрайтов и циклы ходьбы
 
 FOnline переносит запечённые 2D-дельты кадров и согласует позы walk/run с
@@ -136,7 +136,7 @@ Shared-слот ссылается на прежние пиксели/геоме
 
 - криттер использует 2D-спрайт, а не загруженную 3D-модель;
 - у криттера есть активный `MovingContext`;
-- проект вернул `CritterAnimationFlags::Movement` без `Freeze` из `OnCritterAnimationInit`.
+- проект вернул `CritterAnimationFlags::Movement` без `Freeze` из `OnCritterAnimationPlaybackInit`.
 
 В этой ветке кадр выбирает позиция движения. Прошедшее время анимации не продвигает цикл ходьбы/бега независимо.
 

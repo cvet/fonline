@@ -91,7 +91,8 @@ Applications that construct a `ClientEngine` call the project-provided
 `ClientStartupSettingsHook(GlobalSettings&, int32_t clientIndex, bool embedded)`
 immediately before client construction:
 
-- `ClientApp.cpp` calls it for the standalone client with `clientIndex = 1` and
+- `ClientApp.cpp` (embedded client runtime) and `ClientLib.cpp` (loadable client
+  runtime library) call it for the standalone client with `clientIndex = 1` and
   `embedded = false`.
 - `ServerApp.cpp` calls it for each GUI embedded client after copying app
   settings into a client-owned `GlobalSettings`.

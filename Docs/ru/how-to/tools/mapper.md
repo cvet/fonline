@@ -5,7 +5,7 @@ locale: ru
 document_id: mapper-tools
 permalink: /Docs/ru/how-to/tools/mapper.html
 ---
-<!-- docs-translation: {"document_id":"mapper-tools","locale":"ru","source_path":"Docs/en/how-to/tools/mapper.md","source_sha256":"a2dfe9ff18f0ff8bb60a5ab8116a3adeedd62753e9626ea27f42099538227f6f"} -->
+<!-- docs-translation: {"document_id":"mapper-tools","locale":"ru","source_path":"Docs/en/how-to/tools/mapper.md","source_sha256":"8fd42a86aaf36bf27e300f3001d6d9be3ae17abf92dd0923c57249a9ba3dbe6d"} -->
 # Инструменты Mapper
 
 > Документация движка по переиспользуемым API жизненного цикла Mapper,
@@ -283,7 +283,7 @@ runtime-атласа. Точные цвета и правила времени �
 ## Текущие ограничения: известная область
 
 В режиме Mapper каждый анимированный предмет карты намеренно заморожен в
-моменте `0.0`. `ItemHexView::RefreshAnim()` останавливает
+нормализованной фазе `0.0`. `ItemHexView::RefreshAnim()` останавливает
 загруженный спрайт и выбирает первый кадр вместо запуска обычного
 воспроизведения. Поэтому интерактивные виды Mapper и headless-снимки остаются
 детерминированными для дверей, контейнеров и других многокадровых предметов

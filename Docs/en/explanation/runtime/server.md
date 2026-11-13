@@ -499,6 +499,8 @@ The reusable geometry, path finding, blockers, line tracing, and map-loading con
 
 `Critter` itself owns visibility sets, attached player/critter relationships, moving state, map-transfer locking, visible item checks, broadcasting helpers, and critter-specific script events.
 
+Master destruction preserves/detaches passengers; passenger destruction removes the master’s entry. Under entity lock, `SendAndBroadcast_Attachments()` accepts destroying endpoints, whose own snapshot is skipped; survivors receive updates. New attachments to destroying endpoints are forbidden. `CritterAttachmentDestruction` tests both orders over an encrypted connection.
+
 ### `ItemManager`
 
 `ItemManager` owns item creation, splitting, destruction, and movement between holders:
@@ -538,7 +540,7 @@ After stalled uplink or a [held-direction lease](client.md#held-direction-moveme
 
 ### An arrival the client predicted is reconciled before the request behind it
 
-`Process_MoveFinished()` handles `SendCritterMoveFinished` after a predicted plan ends. The server begins the plan one uplink transit after the client, so an action sent at arrival could otherwise be checked while the server critter is still moving. The ordered player-message loop reconciles the arrival along the authoritative path before reading the action behind it. The report identifies the plan by its end hex, and can advance only `min(round trip / 2, Server.MoveFinishCatchUpMaxMs) + Server.CritterMovingPeriodMs`; an excessive or stale report is refused. This is completion of an existing move, so it does not fire `OnPlayerMoveCritter`. `Server.MoveBridgeReportHexes` sets the threshold for logging the async-fix bridge on new movement requests.
+`Process_MoveFinished()` reconciles `SendCritterMoveFinished` before the next ordered action: server prediction starts one uplink later. The end hex identifies the plan; catch-up is bounded by `min(round trip / 2, Server.MoveFinishCatchUpMaxMs) + Server.CritterMovingPeriodMs`. Excess/stale reports fail. Controlled-critter completion skips `OnPlayerMoveCritter`; direct-master completion rechecks it at zero speed to reject passengers/revoked drivers. Controller, attachment, map and movement ID are revalidated after callbacks and reconciliation. `Server.MoveBridgeReportHexes` sets new-request async-bridge logging.
 
 ### A teleport ends the plan it interrupts
 

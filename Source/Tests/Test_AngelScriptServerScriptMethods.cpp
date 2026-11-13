@@ -1447,9 +1447,11 @@ namespace ScriptMethodsTest
 
         Game.Sync(doomed);
         Game.DestroyCritter(doomed);
+        if (!Game.IsEntityLocked(doomed)) return -3;
 
         Game.Sync(anchor, doomed);
-        if (!Game.IsEntityLocked(anchor)) return -3;
+        if (!Game.IsEntityLocked(anchor)) return -4;
+        if (Game.IsEntityLocked(doomed)) return -5;
 
         Game.DestroyCritter(anchor);
 

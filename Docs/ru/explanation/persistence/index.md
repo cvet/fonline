@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/persistence/
 ---
 
 # Сохранение данных
-<!-- docs-translation: {"document_id":"persistence","locale":"ru","source_path":"Docs/en/explanation/persistence/index.md","source_sha256":"a3e144787e45e8351c59fe4e36384f2549f89ce3dafda1524a7364a95ab132a5"} -->
+<!-- docs-translation: {"document_id":"persistence","locale":"ru","source_path":"Docs/en/explanation/persistence/index.md","source_sha256":"b6d0f004b9748c84e9064496bf39e5432483b09f2fd4f3788d752fa836a49001"} -->
 Этот документ описывает серверную абстракцию базы данных, модель коллекций и ключей, очередь commit, согласованные с backend снимки, журналы восстановления и реализации backend.
 
 Используйте его при изменении `Source/Server/DataBase.*`, настроек базы данных, кода загрузки и сохранения сущностей или тестов persistence.
@@ -178,7 +178,7 @@ Backend без байтового представления бросает `Dat
 
 JSON-файлы содержат обычные UTF-8 objects, BLOB записи SQLite — CBOR objects. Сохраняются знаковый Int64 (пределы и числа выше 2^53), конечный Float64, Bool, String, Array, Dict, включая NUL строк/ключей. Null/binary, unsigned overflow, другой корень, испорченный/усечённый вход и байты после CBOR отвергаются. Пределы: 64 МиБ на запись, 64 уровня вложенности. SAX проверяет типы/глубину/объявленные размеры до выделения DOM; валидация предшествует записи.
 
-Используйте пустые JSON/SQLite: для старых EJSON/BSON нет reader/converter. Сохраните старые binaries/storage для отката. Семантика Mongo BSON/Memory и SQLite tables/keys/WAL/snapshots сохраняется; снимкам нужны текущие согласованные metadata/binaries. [Компоненты](../../how-to/build/project-configuration.md#optional-native-components) задают выбор провайдера, [backup/recovery](../../how-to/release/backup-and-recovery.md) — согласованные комплекты. Guarded `Test_DataBase.cpp` проверяет codecs, reopen/update/delete и recovery.
+Используйте пустые JSON/SQLite: для старых EJSON/BSON нет reader/converter. Сохраните старые binaries/storage для отката. Семантика Mongo BSON/Memory и SQLite tables/keys/WAL/snapshots сохраняется; Engine snapshots требуют metadata/binaries, согласованных с текущим маркером совместимости в `Source/Common/Common.h`. [Компоненты](../../how-to/build/project-configuration.md#optional-native-components) задают выбор провайдера, [backup/recovery](../../how-to/release/backup-and-recovery.md) — согласованные комплекты. Guarded `Test_DataBase.cpp` проверяет codecs, reopen/update/delete и recovery.
 
 ## Связь с состоянием сущности
 
