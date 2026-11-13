@@ -3,8 +3,6 @@
 namespace Sandbox
 {
 
-///@ Property Player Server string SandboxAccount Mutable Persistent
-
 ///@ RemoteCall Server EnterSandbox()
 
 // Shared by every side, so each runtime module, the mapper's included, has content to build
@@ -41,9 +39,7 @@ void EnterSandbox(Player unloginedPlayer)
     Game.Sync(array<Entity> = {unloginedPlayer, location, body});
     body.TransferToMap(location.GetMapByIndex(0), EntryHex, mdir(0));
 
-    // A new player record needs at least one persistent value; the database rejects an empty document
     unloginedPlayer.SetName("SandboxPlayer");
-    unloginedPlayer.SandboxAccount = "sandbox";
     Player player = Game.LoginPlayerToNewRecord(unloginedPlayer);
     Game.Sync(array<Entity> = {player, location, body});
     player.SwitchCritter(body);

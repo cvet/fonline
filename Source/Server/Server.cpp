@@ -3016,6 +3016,11 @@ void ServerEngine::UnloadCritter(ptr<Critter> cr)
         throw GenericException("Player critter not detached from player before unloading");
     }
 
+    // Leaving the map demotes persistence derived from it, so the unloaded critter takes ownership of its record
+    if (cr->IsPersistent() && !cr->IsExplicitlyPersistent()) {
+        EntityMngr.MakePersistent(cr, true, true);
+    }
+
     cr->MarkAsDestroying();
 
     OnCritterUnload.Fire(cr);
@@ -3613,7 +3618,9 @@ auto ServerEngine::LoginPlayerToNewRecord(ptr<Player> not_logged_in_player) -> p
     EntityMngr.RegisterPlayer(player, ident_t {});
     registered_player = true;
 
+    // The name keeps the record non-empty when no persistent property differs from its default
     auto player_doc {PropertiesSerializer::SaveToDocument(player->GetProperties(), nullptr, Hashes, *this)};
+    player_doc.Emplace("_Name", string(player->GetName()));
     DbStorage.Insert(PlayersCollectionName, player->GetId(), player_doc);
     inserted_player_record = true;
 

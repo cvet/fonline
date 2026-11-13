@@ -96,9 +96,6 @@ void UnloadAndLoadKeepTheState(Testing::TestContext ctx)
     PersistentState::RecordVisit(cr);
     location.MakePersistent(true);
 
-    // Persistence through the map ends when the critter leaves it, which would delete the record on unload
-    cr.MakePersistent(true);
-
     ident crId = cr.Id;
     synctime stamp = cr.FirstVisitTime;
     Game.UnloadCritter(cr);

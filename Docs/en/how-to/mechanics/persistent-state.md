@@ -108,13 +108,10 @@ $Text engl = "Regular visitor"
 $Text russ = "Постоянный посетитель"
 ```
 
-A created critter is temporary. It gets a record when it, or the location that holds it, is made persistent. The in-process test then unloads it and loads it back; the explicit `MakePersistent` on the critter is required, see [Pitfalls](#pitfalls-and-anti-patterns):
+A created critter is temporary. It gets a record when it, or the location that holds it, is made persistent. The in-process test then unloads it and loads it back. `Game.UnloadCritter` keeps the record of a critter that is persistent only through its location by making that persistence explicit, see [Pitfalls](#pitfalls-and-anti-patterns):
 
 ```angelscript
     location.MakePersistent(true);
-
-    // Persistence through the map ends when the critter leaves it, which would delete the record on unload
-    cr.MakePersistent(true);
 
     ident crId = cr.Id;
     synctime stamp = cr.FirstVisitTime;
@@ -127,12 +124,10 @@ A created critter is temporary. It gets a record when it, or the location that h
     Testing::ExpectEq(ctx, restored.TestLoadEventCount, 1, "Game.LoadCritter fires OnCritterLoad");
 ```
 
-A player record has the same need for persistent data. `Game.LoginPlayerToNewRecord` inserts the player's properties as a new document, so the sandbox login sets one persistent `Player` property, `SandboxAccount`, before it logs in:
+A player record needs no recipe-specific preparation. `Game.LoginPlayerToNewRecord` stores the player's name with its persistent properties, so a new player whose properties all keep their defaults still gets a record:
 
 ```angelscript
-    // A new player record needs at least one persistent value; the database rejects an empty document
     unloginedPlayer.SetName("SandboxPlayer");
-    unloginedPlayer.SandboxAccount = "sandbox";
     Player player = Game.LoginPlayerToNewRecord(unloginedPlayer);
 ```
 
@@ -169,8 +164,7 @@ A removed property keeps a permanent `Remove` tombstone, and a type change is a 
 
 - A memory database proves nothing about a restart. With `Server.DbStorage = Memory` records live as long as the process; only a second process on the same `JSON <directory>` or database proves persistence, as [Test a migration](../project/data-migrations.md#test-a-migration) says for any persisted change.
 - A persistent property of a temporary entity is not written: `ServerEngine::OnSaveEntityValue` (`Source/Server/Server.cpp`) skips entities without a record. The current values reach the database only when the entity gets its record (`EntityManager::MakePersistentRecursive` stores the whole document) and are lost if it never does. A critter created by `Map.AddCritter` stays temporary until it, or its location, is made persistent; the test `new_critter_is_temporary_until_made_persistent` checks both states.
-- Persistence inherited from a map ends when the critter leaves it. `Map::AddCritter` promotes a critter on a persistent map, and `Map::RemoveCritter` demotes one that is not explicitly persistent, which deletes its record (`Source/Server/Map.cpp`, `EntityManager::MakeNonPersistentRecursive` in `Source/Server/EntityManager.cpp`). `Game.UnloadCritter` removes the critter from its map first, so it deletes the record of such an NPC, and a move to another persistent map deletes the record and writes it again. Call `MakePersistent(true)` on a critter that must keep its record on its own.
-- A new player record cannot be empty. `Game.LoginPlayerToNewRecord` inserts the player's persistent properties, and an empty document fails with `Cannot insert empty document` (`DataBaseImpl::InsertInner` in `Source/Server/DataBase.cpp`); the login is rolled back and the connection is closed. Set at least one persistent `Player` property first.
+- Persistence inherited from a map ends when the critter leaves it. `Map::AddCritter` promotes a critter on a persistent map, and `Map::RemoveCritter` demotes one that is not explicitly persistent, which deletes its record (`Source/Server/Map.cpp`, `EntityManager::MakeNonPersistentRecursive` in `Source/Server/EntityManager.cpp`). A move to a temporary map therefore deletes the record, and a move to another persistent map deletes it and writes it again. `Game.UnloadCritter` is the exception: it makes such persistence explicit before it removes the critter from its map (`ServerEngine::UnloadCritter` in `Source/Server/Server.cpp`), so the record survives and the loaded critter keeps it on its own. Call `MakePersistent(true)` on a critter that must keep its record across moves.
 - `Game.OnCritterLoad` is not a restore hook. It never runs for critters restored with their maps at startup ([time events after a database reload](../scripting/lifecycle-and-concurrency.md#time-events-after-a-database-reload) states the same rule), so state rebuilt only there is missing after every restart.
 - `Baking.PrebakeOnStartup` defaults to `true` (`Source/Common/Settings.inc`), so every process of a multi-process test runs the baker before it starts. The sandbox bakes once and sets `Baking.PrebakeOnStartup = False`, so every phase starts on that one bake.
 - A script-global dictionary keyed by entity id instead of a property separates the data from the entity's lifetime and persistence ([anti-patterns](../../explanation/entity-and-property-model/choosing-a-representation.md#anti-patterns)).

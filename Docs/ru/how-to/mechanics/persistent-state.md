@@ -8,7 +8,7 @@ recipe_kind: primitive
 ---
 
 # Собственное сохраняемое состояние персонажа
-<!-- docs-translation: {"document_id":"recipe-persistent-state","locale":"ru","source_path":"Docs/en/how-to/mechanics/persistent-state.md","source_sha256":"b35832e04116e4a8ff29518b73f4a2a1570057ba6ee822c9350e31c009ed9514"} -->
+<!-- docs-translation: {"document_id":"recipe-persistent-state","locale":"ru","source_path":"Docs/en/how-to/mechanics/persistent-state.md","source_sha256":"70e57e0882ce2841459778e2e7f1babd3b5038c253ded1560dc83896276cf226"} -->
 Этот рецепт добавляет значение, которым владеет сервер, которое сохраняется вместе с персонажем и возвращается после переподключения или перезапуска сервера: счётчик визитов, помеченный один раз при создании и изменяемый через одного писателя. Рецепт показывает, какие флаги свойств это обеспечивают, какой hook движка выполняется на каком пути восстановления, какие записи движок удаляет без запроса и какой двухфазный тест доказывает перезапуск.
 
 | Backend | Статус |
@@ -108,13 +108,10 @@ $Text engl = "Regular visitor"
 $Text russ = "Постоянный посетитель"
 ```
 
-Созданный криттер временный. Он получает запись, когда сохраняемым делают его самого или локацию, в которой он находится. Затем тест внутри процесса выгружает его и загружает обратно; явный `MakePersistent` для криттера обязателен, см. [Ловушки](#ловушки-и-антипаттерны):
+Созданный криттер временный. Он получает запись, когда сохраняемым делают его самого или локацию, в которой он находится. Затем тест внутри процесса выгружает его и загружает обратно. `Game.UnloadCritter` сохраняет запись криттера, сохраняемого только через локацию, делая эту сохраняемость явной, см. [Ловушки](#ловушки-и-антипаттерны):
 
 ```angelscript
     location.MakePersistent(true);
-
-    // Persistence through the map ends when the critter leaves it, which would delete the record on unload
-    cr.MakePersistent(true);
 
     ident crId = cr.Id;
     synctime stamp = cr.FirstVisitTime;
@@ -127,12 +124,10 @@ $Text russ = "Постоянный посетитель"
     Testing::ExpectEq(ctx, restored.TestLoadEventCount, 1, "Game.LoadCritter fires OnCritterLoad");
 ```
 
-Записи игрока сохраняемые данные нужны так же. `Game.LoginPlayerToNewRecord` вставляет свойства игрока как новый документ, поэтому вход в песочнице до входа задаёт одно сохраняемое свойство `Player` — `SandboxAccount`:
+Запись игрока не требует особой подготовки. `Game.LoginPlayerToNewRecord` сохраняет имя игрока вместе с его сохраняемыми свойствами, поэтому новый игрок, у которого все свойства остались по умолчанию, всё равно получает запись:
 
 ```angelscript
-    // A new player record needs at least one persistent value; the database rejects an empty document
     unloginedPlayer.SetName("SandboxPlayer");
-    unloginedPlayer.SandboxAccount = "sandbox";
     Player player = Game.LoginPlayerToNewRecord(unloginedPlayer);
 ```
 
@@ -169,8 +164,7 @@ $Text russ = "Постоянный посетитель"
 
 - База данных в памяти ничего не доказывает о перезапуске. При `Server.DbStorage = Memory` записи живут, пока живёт процесс; сохранение доказывает только второй процесс на том же `JSON <directory>` или той же базе данных, как [Протестируйте миграцию](../project/data-migrations.md#протестируйте-миграцию) требует для любого сохраняемого изменения.
 - Сохраняемое свойство временной сущности не записывается: `ServerEngine::OnSaveEntityValue` (`Source/Server/Server.cpp`) пропускает сущности без записи. Текущие значения попадают в базу данных, только когда сущность получает запись (`EntityManager::MakePersistentRecursive` сохраняет документ целиком), и теряются, если этого не происходит. Криттер, созданный `Map.AddCritter`, остаётся временным, пока сохраняемым не сделают его самого или его локацию; тест `new_critter_is_temporary_until_made_persistent` проверяет оба состояния.
-- Сохраняемость, унаследованная от карты, заканчивается, когда криттер покидает карту. `Map::AddCritter` повышает криттера на сохраняемой карте, а `Map::RemoveCritter` понижает криттера, который не сохраняемый явно, и это удаляет его запись (`Source/Server/Map.cpp`, `EntityManager::MakeNonPersistentRecursive` в `Source/Server/EntityManager.cpp`). `Game.UnloadCritter` сначала убирает криттера с карты, поэтому удаляет запись такого NPC, а переход на другую сохраняемую карту удаляет запись и пишет её заново. Вызывайте `MakePersistent(true)` для криттера, который должен сохранить запись сам по себе.
-- Новая запись игрока не может быть пустой. `Game.LoginPlayerToNewRecord` вставляет сохраняемые свойства игрока, и пустой документ завершается ошибкой `Cannot insert empty document` (`DataBaseImpl::InsertInner` в `Source/Server/DataBase.cpp`); вход откатывается, а соединение закрывается. Сначала задайте хотя бы одно сохраняемое свойство `Player`.
+- Сохраняемость, унаследованная от карты, заканчивается, когда криттер покидает карту. `Map::AddCritter` повышает криттера на сохраняемой карте, а `Map::RemoveCritter` понижает криттера, который не сохраняемый явно, и это удаляет его запись (`Source/Server/Map.cpp`, `EntityManager::MakeNonPersistentRecursive` в `Source/Server/EntityManager.cpp`). Поэтому переход на временную карту удаляет запись, а переход на другую сохраняемую карту удаляет её и пишет заново. Исключение — `Game.UnloadCritter`: перед снятием криттера с карты он делает такую сохраняемость явной (`ServerEngine::UnloadCritter` в `Source/Server/Server.cpp`), поэтому запись сохраняется, и загруженный криттер владеет ею сам. Вызывайте `MakePersistent(true)` для криттера, который должен сохранять запись при переходах.
 - `Game.OnCritterLoad` — не hook восстановления. Он никогда не выполняется для криттеров, восстановленных вместе с картами при старте ([time events после перезагрузки из базы данных](../scripting/lifecycle-and-concurrency.md#time-events-после-перезагрузки-из-базы-данных) формулирует то же правило), поэтому состояние, которое восстанавливается только там, отсутствует после каждого перезапуска.
 - `Baking.PrebakeOnStartup` по умолчанию `true` (`Source/Common/Settings.inc`), поэтому каждый процесс многопроцессного теста запускает сборщик ресурсов перед стартом. Песочница выполняет сборку ресурсов один раз и задаёт `Baking.PrebakeOnStartup = False`, чтобы каждая фаза стартовала на этой одной сборке.
 - Глобальный словарь скрипта с ключом по id сущности вместо свойства отделяет данные от времени жизни и сохранения сущности ([антипаттерны](../../explanation/entity-and-property-model/choosing-a-representation.md#антипаттерны)).

@@ -91,8 +91,7 @@ Linux (bash), from the build directory:
 ## Notes
 
 - `FOnlineMechanicsSandbox.fomain` is generated. An unpackaged run applies the `.fomain` to zeroed settings, so the file lists every Engine setting; edit `OVERRIDES` or `PROJECT_SECTIONS` in `generate_config.py`, run `python generate_config.py`, and let `--check` (run before every bake) catch a stale file. Enum settings are written as numbers because the runtime reads them as integers.
-- A map critter that is persistent only because its location is persistent loses that persistence, and its database record, when it leaves the map. `Game.UnloadCritter` removes it from the map first, so the unload and load tests call `cr.MakePersistent(true)` on the critter itself before unloading it.
-- `Game.LoginPlayerToNewRecord` rejects a new player whose record would be empty, so the sandbox login sets one persistent `Player` property, `SandboxAccount`, before logging in.
+- A map critter that is persistent only because its location is persistent loses that persistence, and its database record, when it moves to another map. `Game.UnloadCritter` makes that persistence explicit first, so the unload and load tests rely on the location alone.
 - Test sources are baked together with the recipes because this sandbox ships nothing. A game project keeps them out of its shipping packs; see [Add and Run Tests in a Game Project](../../Docs/en/how-to/project/project-tests.md).
 - `Scripts/Testing.fos` must stay byte-identical to `Examples/GameplayTestHarness/ScriptTests/AngelScript/Testing.fos`; `BuildTools/tests/test_mechanics_sandbox.py` checks it.
 - Engine CI runs only static checks on `Examples/`. The full route above needs a native build and is run on demand.

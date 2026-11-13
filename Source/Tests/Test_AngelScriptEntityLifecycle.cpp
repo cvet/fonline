@@ -247,6 +247,42 @@ TEST_CASE("AngelScriptEntityInitEvents")
         server->MapMngr.DestroyLocation(loc);
     }
 
+    SECTION("CritterUnloadKeepsRecordOfCritterPersistentThroughItsMap")
+    {
+        auto loc {server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")})};
+        server->EntityMngr.MakePersistent(loc, true, true);
+
+        auto map {loc->GetMapByIndex(0)};
+        REQUIRE(static_cast<bool>(map));
+        REQUIRE(map->IsPersistent());
+
+        auto cr {server->CreateCritter(fn("TestCritter"), false)};
+        server->MapMngr.TransferToMap(cr, map, mpos {20, 20}, mdir {}, std::nullopt);
+        REQUIRE(cr->IsPersistent());
+        REQUIRE_FALSE(cr->IsExplicitlyPersistent());
+
+        ident_t cr_id {cr->GetId()};
+        REQUIRE(vec_exists(map->GetCritterIds(), cr_id));
+
+        server->UnloadCritter(cr);
+        server->DbStorage.WaitCommitChanges();
+
+        CHECK_FALSE(static_cast<bool>(server->EntityMngr.GetCritter(cr_id)));
+        CHECK_FALSE(vec_exists(map->GetCritterIds(), cr_id));
+        CHECK(server->DbStorage.Valid(fn("Critters"), cr_id));
+
+        auto loaded {server->LoadCritter(cr_id, false)};
+        CHECK(loaded->GetId() == cr_id);
+        CHECK(loaded->IsPersistent());
+        CHECK(loaded->IsExplicitlyPersistent());
+
+        server->CrMngr.DestroyCritter(loaded);
+        server->DbStorage.WaitCommitChanges();
+        CHECK_FALSE(server->DbStorage.Valid(fn("Critters"), cr_id));
+
+        server->MapMngr.DestroyLocation(loc);
+    }
+
     SECTION("CritterLoadEventMayDestroyLoadedCritterThrows")
     {
         auto reset_func {server->FindFunc<void>(fn("EntityLifecycle::ResetCounters"))};
@@ -423,6 +459,24 @@ TEST_CASE("AngelScriptPlayerRegistrationCppApi")
 
         auto not_logged_in_player {CreatePreparedNotLoggedInPlayer(server, "RejectNewRecord")};
         CHECK_THROWS_WITH(server->LoginPlayerToNewRecord(not_logged_in_player), Catch::Matchers::ContainsSubstring("New player login rejected by OnPlayerLogin"));
+    }
+
+    SECTION("LoginPlayerToNewRecordStoresPlayerWithOnlyDefaultProperties")
+    {
+        auto reset_func {server->FindFunc<void>(fn("EntityLifecycle::ResetCounters"))};
+        REQUIRE(reset_func);
+        REQUIRE(reset_func.Call());
+
+        shared_ptr<NetworkServerConnection> net_connection {NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected)};
+        auto not_logged_in_player {server->CreateNotLoggedInPlayer(std::move(net_connection))};
+        not_logged_in_player->SetName("DefaultPropertiesPlayer");
+
+        auto player {server->LoginPlayerToNewRecord(not_logged_in_player)};
+        server->DbStorage.WaitCommitChanges();
+
+        auto player_doc {server->DbStorage.Get(fn("Players"), player->GetId())};
+        REQUIRE(player_doc.Contains("_Name"));
+        CHECK(AnyData::ValueToString(player_doc["_Name"]) == "DefaultPropertiesPlayer");
     }
 
     SECTION("LoginPlayerToExistentRecordThrowsWhenPlayerLoginStopsChain")
