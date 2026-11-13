@@ -17,6 +17,11 @@ if not BUILDTOOLS_ROOT.is_dir():
 sys.path.insert(0, str(BUILDTOOLS_ROOT))
 
 import gameplay_test_runner  # noqa: E402
+import secure_channel_key  # noqa: E402
+
+
+CHANNEL_SECRET = ROOT / "Workspace" / "SandboxChannel.key"
+CHANNEL_PUBLIC = ROOT / "Workspace" / "SandboxChannel.pub"
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -35,6 +40,15 @@ def create_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def ensure_channel_keys() -> None:
+    """Creates the local test identity the sandbox config reads; an existing secret is kept."""
+    if not CHANNEL_SECRET.exists():
+        public_key = secure_channel_key.generate_secret_file(CHANNEL_SECRET)
+    else:
+        public_key = secure_channel_key.read_public_key(CHANNEL_SECRET)
+    CHANNEL_PUBLIC.write_text(public_key.hex() + "\n", encoding="ascii", newline="\n")
+
+
 def main(argv: list[str] | None = None) -> int:
     args = create_parser().parse_args(argv)
     restart_db = Path(args.restart_db).resolve()
@@ -47,6 +61,7 @@ def main(argv: list[str] | None = None) -> int:
     if restart_db.exists():
         shutil.rmtree(restart_db)
     restart_db.mkdir(parents=True)
+    ensure_channel_keys()
 
     return gameplay_test_runner.main(
         [

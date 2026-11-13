@@ -33,6 +33,17 @@ BuildPackages()
 if(FO_BUILD_CLIENT AND FO_BUILD_SERVER AND FO_BUILD_BAKER)
     find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
+    add_custom_target(CheckSandboxConfig
+        COMMAND ${Python3_EXECUTABLE}
+            "${CMAKE_CURRENT_SOURCE_DIR}/generate_config.py"
+            --check
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        VERBATIM
+        COMMENT "Check generated mechanics sandbox config")
+
+    add_dependencies(BakeResources CheckSandboxConfig)
+    add_dependencies(ForceBakeResources CheckSandboxConfig)
+
     add_custom_target(RunMechanicsChecks
         COMMAND ${Python3_EXECUTABLE}
             "${CMAKE_CURRENT_SOURCE_DIR}/run_mechanics_smoke.py"
