@@ -92,6 +92,8 @@ jobs:
         BuildTools/tests/test_buildtools_host_workspace.py
         BuildTools/tests/test_ai_control_mcp.py
         BuildTools/tests/test_script_test_harness_example.py
+        BuildTools/tests/test_mechanics_recipes.py
+        BuildTools/tests/test_mechanics_sandbox.py
         BuildTools/tests/test_cmake_baker_runtime_copy.py
         BuildTools/tests/test_cmake_option_names.py
     - name: Run managed script analyzer self-tests

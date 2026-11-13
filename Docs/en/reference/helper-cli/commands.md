@@ -2120,3 +2120,42 @@ options:
   --base-dir BASE_DIR   directory that finding and exemption paths are relative to (default: current directory)
   --json JSON           also write the remaining findings as JSON
 ```
+
+<a id="entry-helper-cli-mechanics-recipes-82e7696870"></a>
+## Mechanics recipe gate
+
+Check mechanics recipe pages, their Russian mirrors and the section index against the recipe manifest, the example files they quote and the generated API model.
+
+- Stable ID: `helper-cli.mechanics-recipes`
+- Program: `mechanics_recipes.py`
+- Owner: `documentation`
+- Audience: `engine-contributor`, `game-developer`, `ci-maintainer`
+- Invocation owner: Engine documentation tests, recipe authors and CI documentation checks
+- Parser source: [BuildTools/mechanics_recipes.py](https://github.com/cvet/fonline/blob/master/BuildTools/mechanics_recipes.py)
+
+### Top-level arguments
+
+| Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| <a id="entry-helper-cli-mechanics-recipes-argument-check-bd1e7fd4fe"></a><code>helper-cli.mechanics-recipes.argument.check</code> | <code>--check</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | validate the manifest, pages, Russian mirrors, section index and example files |
+| <a id="entry-helper-cli-mechanics-recipes-argument-list-8f15b9ea08"></a><code>helper-cli.mechanics-recipes.argument.list</code> | <code>--list</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | print the recipes and cross-cutting pages from the manifest without validating them |
+| <a id="entry-helper-cli-mechanics-recipes-argument-root-1fef77f62b"></a><code>helper-cli.mechanics-recipes.argument.root</code> | <code>--root</code> | <code>option</code> | no | <code>1</code> | - | - | Engine checkout to check (default: the checkout that contains this script) |
+| <a id="entry-helper-cli-mechanics-recipes-argument-manifest-e6c0d2cff4"></a><code>helper-cli.mechanics-recipes.argument.manifest</code> | <code>--manifest</code> | <code>option</code> | no | <code>1</code> | - | - | recipe manifest (default: Examples/MechanicsSandbox/recipes.json under --root) |
+| <a id="entry-helper-cli-mechanics-recipes-argument-api-model-fb43bc3add"></a><code>helper-cli.mechanics-recipes.argument.api_model</code> | <code>--api-model</code> | <code>option</code> | no | <code>1</code> | - | - | generated API model (default: Docs/generated/api.json under --root) |
+
+### Exact top-level `--help` output
+
+```text
+usage: mechanics_recipes.py [-h] (--check | --list) [--root ROOT] [--manifest MANIFEST] [--api-model API_MODEL]
+
+Check mechanics recipe pages against their recipe manifest, example files and the generated API model
+
+options:
+  -h, --help            show this help message and exit
+  --check               validate the manifest, pages, Russian mirrors, section index and example files
+  --list                print the recipes and cross-cutting pages from the manifest without validating them
+  --root ROOT           Engine checkout to check (default: the checkout that contains this script)
+  --manifest MANIFEST   recipe manifest (default: Examples/MechanicsSandbox/recipes.json under --root)
+  --api-model API_MODEL
+                        generated API model (default: Docs/generated/api.json under --root)
+```

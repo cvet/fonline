@@ -30,7 +30,7 @@ Each recipe has four parts that change together:
 | Part | Location |
 | --- | --- |
 | Page and Russian mirror | `Docs/en/how-to/mechanics/<slug>.md`, `Docs/ru/how-to/mechanics/<slug>.md` |
-| Script module | `Examples/MechanicsSandbox/Scripts/Recipes/<PascalSlug>.fos`, namespace `Recipe<PascalSlug>` |
+| Script module | `Examples/MechanicsSandbox/Scripts/Recipes/<PascalSlug>.fos`, namespace `<PascalSlug>` |
 | Tests and smoke scenarios | `Examples/MechanicsSandbox/Scripts/Tests/Test_<PascalSlug>.fos`, scenarios in `Examples/MechanicsSandbox/mechanics-smoke.json` |
 | Manifest entry | `Examples/MechanicsSandbox/recipes.json`: kind, backend statuses, files, symbols, scenarios |
 

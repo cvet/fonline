@@ -77,6 +77,13 @@ documentation.
 - [AI-Assisted Maintenance](how-to/project/ai-assisted-maintenance.md) is an
   optional pattern for teams that work with AI coding agents.
 
+## Build game mechanics
+
+- [Build Game Mechanics](how-to/mechanics/index.md) is a set of task-shaped recipes
+  (persistent character state, validated actions, timed effects that survive a
+  restart, cover transactions), each backed by a tested module in
+  `Examples/MechanicsSandbox`.
+
 ## Author content
 
 - [Prototype Format](how-to/content/prototype-format.md)

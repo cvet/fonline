@@ -83,6 +83,9 @@ Continue with the [canonical reference](../../en/reference/helper-cli/index.md).
 <a id="entry-helper-cli-check-text-packs-fedc98c863"></a>
 - [`entry-helper-cli-check-text-packs-fedc98c863`](../../en/reference/helper-cli/index.md#entry-helper-cli-check-text-packs-fedc98c863)
 
+<a id="entry-helper-cli-mechanics-recipes-82e7696870"></a>
+- [`entry-helper-cli-mechanics-recipes-82e7696870`](../../en/reference/helper-cli/index.md#entry-helper-cli-mechanics-recipes-82e7696870)
+
 ## Coverage
 
 Continue with the [canonical reference](../../en/reference/helper-cli/index.md).

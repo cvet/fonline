@@ -21,7 +21,7 @@ This reference is generated from the `argparse.ArgumentParser` objects used by e
 | Since | Not declared |
 | Support policy | Helper command lines are revision-pinned implementation interfaces; automation must pin an engine revision. |
 | Source manifest | [BuildTools/HelperCliInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/HelperCliInterface.json) |
-| Contract digest | <code>b5d6391cbb8dc43b7a7d75ae83e85381cb8af54396fb805b33ace1359248e950</code> |
+| Contract digest | <code>7e8bebc4bf6dac70fc285e133eb7ce4f87da6cfae939d2794e45f3f073595ca6</code> |
 
 ## Inventory
 
@@ -50,10 +50,11 @@ This reference is generated from the `argparse.ArgumentParser` objects used by e
 | <a id="entry-helper-cli-createmsi-18899fd2a5"></a><code>helper-cli.createmsi</code> | [MSI creation](commands.md#entry-helper-cli-createmsi-18899fd2a5) | <code>build-release</code> | BuildTools/package.py Wix pack | [BuildTools/msicreator/createmsi.py](https://github.com/cvet/fonline/blob/master/BuildTools/msicreator/createmsi.py) | 0 / 2 |
 | <a id="entry-helper-cli-move-sync-analysis-d49c9c73db"></a><code>helper-cli.move-sync-analysis</code> | [Movement synchronization trace analysis](commands.md#entry-helper-cli-move-sync-analysis-d49c9c73db) | <code>networking</code> | embedding-project movement playtests and direct developer diagnostics | [BuildTools/move_sync_analysis.py](https://github.com/cvet/fonline/blob/master/BuildTools/move_sync_analysis.py) | 0 / 10 |
 | <a id="entry-helper-cli-check-text-packs-fedc98c863"></a><code>helper-cli.check-text-packs</code> | [Text pack lint](commands.md#entry-helper-cli-check-text-packs-fedc98c863) | <code>localization</code> | embedding-project localization tasks and CI content gates | [BuildTools/check_text_packs.py](https://github.com/cvet/fonline/blob/master/BuildTools/check_text_packs.py) | 0 / 11 |
+| <a id="entry-helper-cli-mechanics-recipes-82e7696870"></a><code>helper-cli.mechanics-recipes</code> | [Mechanics recipe gate](commands.md#entry-helper-cli-mechanics-recipes-82e7696870) | <code>documentation</code> | Engine documentation tests, recipe authors and CI documentation checks | [BuildTools/mechanics_recipes.py](https://github.com/cvet/fonline/blob/master/BuildTools/mechanics_recipes.py) | 0 / 5 |
 
 ## Coverage
 
-The model contains 23 helpers, 26 subcommands, 144 global arguments, and 174 subcommand arguments.
+The model contains 24 helpers, 26 subcommands, 149 global arguments, and 174 subcommand arguments.
 
 Included:
 

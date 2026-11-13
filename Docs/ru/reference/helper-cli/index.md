@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-helper-cli-index","locale":"ru","source_path":"Docs/en/reference/helper-cli/index.md","source_sha256":"2491dd3973af90f1241b429d37faeecc1360a0e2b0366ba227192ddf42166121"} -->
+<!-- docs-translation: {"document_id":"generated-helper-cli-index","locale":"ru","source_path":"Docs/en/reference/helper-cli/index.md","source_sha256":"48b75e0ead404302291eaf139a29f3df5aacf9400c5f177d6a86bb2572e3f0e8"} -->
 
 # Сгенерированный справочник вспомогательных CLI
 
@@ -23,7 +23,7 @@ generated: true
 | Начиная с версии | Не объявлено |
 | Политика поддержки | Командные строки helpers являются привязанными к ревизии интерфейсами реализации; автоматизация должна закреплять ревизию движка. |
 | Исходный манифест | [BuildTools/HelperCliInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/HelperCliInterface.json) |
-| Digest контракта | <code>b5d6391cbb8dc43b7a7d75ae83e85381cb8af54396fb805b33ace1359248e950</code> |
+| Digest контракта | <code>7e8bebc4bf6dac70fc285e133eb7ce4f87da6cfae939d2794e45f3f073595ca6</code> |
 
 ## Инвентарь
 
@@ -52,10 +52,11 @@ generated: true
 | <a id="entry-helper-cli-createmsi-18899fd2a5"></a><code>helper-cli.createmsi</code> | [Создание MSI](commands.md#entry-helper-cli-createmsi-18899fd2a5) | <code>build-release</code> | пакет Wix в BuildTools/package.py | [BuildTools/msicreator/createmsi.py](https://github.com/cvet/fonline/blob/master/BuildTools/msicreator/createmsi.py) | 0 / 2 |
 | <a id="entry-helper-cli-move-sync-analysis-d49c9c73db"></a><code>helper-cli.move-sync-analysis</code> | [Анализ трейса синхронизации движения](commands.md#entry-helper-cli-move-sync-analysis-d49c9c73db) | <code>networking</code> | плейтесты движения встраивающего игрового проекта и прямая диагностика разработчиком | [BuildTools/move_sync_analysis.py](https://github.com/cvet/fonline/blob/master/BuildTools/move_sync_analysis.py) | 0 / 10 |
 | <a id="entry-helper-cli-check-text-packs-fedc98c863"></a><code>helper-cli.check-text-packs</code> | [Проверка текстовых пакетов](commands.md#entry-helper-cli-check-text-packs-fedc98c863) | <code>localization</code> | задачи локализации встраивающего игрового проекта и контентные гейты CI | [BuildTools/check_text_packs.py](https://github.com/cvet/fonline/blob/master/BuildTools/check_text_packs.py) | 0 / 11 |
+| <a id="entry-helper-cli-mechanics-recipes-82e7696870"></a><code>helper-cli.mechanics-recipes</code> | [Проверка рецептов механик](commands.md#entry-helper-cli-mechanics-recipes-82e7696870) | <code>documentation</code> | тесты документации движка, авторы рецептов и проверки документации в CI | [BuildTools/mechanics_recipes.py](https://github.com/cvet/fonline/blob/master/BuildTools/mechanics_recipes.py) | 0 / 5 |
 
 ## Покрытие
 
-Модель содержит 23 helpers, 26 подкоманд, 144 глобальных аргументов и 174 аргументов подкоманд.
+Модель содержит 24 helpers, 26 подкоманд, 149 глобальных аргументов и 174 аргументов подкоманд.
 
 Включено:
 

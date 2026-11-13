@@ -81,8 +81,8 @@ class LocalizationDocumentationTests(unittest.TestCase):
         second = docs_localization.generate_localization_status(ENGINE_ROOT)
         self.assertEqual(first, second)
         self.assertGreater(first["summary"]["required_document_count"], 100)
-        self.assertEqual(first["summary"]["required_document_count"], 224)
-        self.assertEqual(first["summary"]["current_translation_count"], 224)
+        self.assertEqual(first["summary"]["required_document_count"], 229)
+        self.assertEqual(first["summary"]["current_translation_count"], 229)
         self.assertEqual(
             first["summary"]["missing_translation_count"],
             0,
@@ -322,6 +322,11 @@ class LocalizationDocumentationTests(unittest.TestCase):
                 "runtime-log-files",
                 "choosing-a-script-backend",
                 "choosing-a-data-representation",
+                "mechanics-recipes",
+                "recipe-persistent-state",
+                "recipe-validated-action",
+                "recipe-timed-effect",
+                "mechanics-cover-transactions",
             },
         )
         for document in current.values():

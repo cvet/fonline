@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-helper-cli-commands","locale":"ru","source_path":"Docs/en/reference/helper-cli/commands.md","source_sha256":"4ddf038aa2cef65eeb7407ddb9423ee4729247171941809056e11848eb66b047"} -->
+<!-- docs-translation: {"document_id":"generated-helper-cli-commands","locale":"ru","source_path":"Docs/en/reference/helper-cli/commands.md","source_sha256":"c11a4fa56dc3b929de05dcc87bcd2fa3d74ba4dbb3265046e617b136cc16f796"} -->
 
 # Команды вспомогательных CLI
 
@@ -2121,4 +2121,43 @@ options:
   --baseline BASELINE   JSON exemption file with a reason per known finding (repeatable)
   --base-dir BASE_DIR   directory that finding and exemption paths are relative to (default: current directory)
   --json JSON           also write the remaining findings as JSON
+```
+
+<a id="entry-helper-cli-mechanics-recipes-82e7696870"></a>
+## Проверка рецептов механик
+
+Проверить страницы рецептов механик, их русские зеркала и указатель раздела по манифесту рецептов, цитируемым файлам примера и сгенерированной модели API.
+
+- Стабильный ID: `helper-cli.mechanics-recipes`
+- Программа: `mechanics_recipes.py`
+- Владелец: `documentation`
+- Аудитория: `engine-contributor`, `game-developer`, `ci-maintainer`
+- Владелец вызова: тесты документации движка, авторы рецептов и проверки документации в CI
+- Исходный парсер: [BuildTools/mechanics_recipes.py](https://github.com/cvet/fonline/blob/master/BuildTools/mechanics_recipes.py)
+
+### Аргументы верхнего уровня
+
+| Стабильный ID | Аргумент | Вид | Обязателен | Значения | Варианты | По умолчанию | Описание |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| <a id="entry-helper-cli-mechanics-recipes-argument-check-bd1e7fd4fe"></a><code>helper-cli.mechanics-recipes.argument.check</code> | <code>--check</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | проверить манифест, страницы, русские зеркала, указатель раздела и файлы примера |
+| <a id="entry-helper-cli-mechanics-recipes-argument-list-8f15b9ea08"></a><code>helper-cli.mechanics-recipes.argument.list</code> | <code>--list</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | вывести рецепты и сквозные страницы из манифеста без проверки |
+| <a id="entry-helper-cli-mechanics-recipes-argument-root-1fef77f62b"></a><code>helper-cli.mechanics-recipes.argument.root</code> | <code>--root</code> | <code>option</code> | нет | <code>1</code> | - | - | проверяемый checkout движка (по умолчанию: checkout, содержащий этот скрипт) |
+| <a id="entry-helper-cli-mechanics-recipes-argument-manifest-e6c0d2cff4"></a><code>helper-cli.mechanics-recipes.argument.manifest</code> | <code>--manifest</code> | <code>option</code> | нет | <code>1</code> | - | - | манифест рецептов (по умолчанию: Examples/MechanicsSandbox/recipes.json внутри --root) |
+| <a id="entry-helper-cli-mechanics-recipes-argument-api-model-fb43bc3add"></a><code>helper-cli.mechanics-recipes.argument.api_model</code> | <code>--api-model</code> | <code>option</code> | нет | <code>1</code> | - | - | сгенерированная модель API (по умолчанию: Docs/generated/api.json внутри --root) |
+
+### Точный вывод `--help` верхнего уровня
+
+```text
+usage: mechanics_recipes.py [-h] (--check | --list) [--root ROOT] [--manifest MANIFEST] [--api-model API_MODEL]
+
+Check mechanics recipe pages against their recipe manifest, example files and the generated API model
+
+options:
+  -h, --help            show this help message and exit
+  --check               validate the manifest, pages, Russian mirrors, section index and example files
+  --list                print the recipes and cross-cutting pages from the manifest without validating them
+  --root ROOT           Engine checkout to check (default: the checkout that contains this script)
+  --manifest MANIFEST   recipe manifest (default: Examples/MechanicsSandbox/recipes.json under --root)
+  --api-model API_MODEL
+                        generated API model (default: Docs/generated/api.json under --root)
 ```

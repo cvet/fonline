@@ -52,10 +52,10 @@ BACKEND_STATUSES = ("runtime-verified", "compile-verified", "shape")
 FILE_CATEGORIES = ("angelscript", "managed", "content", "maps", "tests")
 CATEGORY_SUFFIXES = {"angelscript": (".fos",), "managed": (".cs",)}
 MANIFEST_FIELDS = {"schema_version", "description", "sandbox", "recipes", "cross_cutting"}
-RECIPE_FIELDS = {"slug", "title", "kind", "backends", "page", "files", "symbols", "builtins", "events_fired_by_recipe", "smoke"}
-RECIPE_OPTIONAL_FIELDS = {"builtins"}
-CROSS_CUTTING_FIELDS = {"slug", "title", "page", "files", "symbols", "builtins", "events_fired_by_recipe"}
-CROSS_CUTTING_OPTIONAL_FIELDS = {"title", "builtins", "events_fired_by_recipe"}
+RECIPE_FIELDS = {"slug", "title", "kind", "backends", "page", "files", "symbols", "builtins", "metadata", "events_fired_by_recipe", "smoke"}
+RECIPE_OPTIONAL_FIELDS = {"builtins", "metadata"}
+CROSS_CUTTING_FIELDS = {"slug", "title", "page", "files", "symbols", "builtins", "metadata", "events_fired_by_recipe", "smoke"}
+CROSS_CUTTING_OPTIONAL_FIELDS = {"title", "builtins", "metadata", "events_fired_by_recipe", "smoke"}
 SMOKE_FIELDS = {"manifest", "scenarios"}
 SLUG_PATTERN = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
 RECIPE_FRONT_MATTER_KEYS = ("layout", "title", "locale", "document_id", "permalink", "recipe_kind")
@@ -432,11 +432,12 @@ def _parse_entry(value: object, where: str, cross_cutting: bool, label: str, rep
     files = _parse_files(value["files"], where, cross_cutting, backends, label, report)
     symbols = _string_list(value["symbols"], f"{where}.symbols", label, report, allow_empty=False)
     _string_list(value.get("builtins", []), f"{where}.builtins", label, report, allow_empty=True)
+    _string_list(value.get("metadata", []), f"{where}.metadata", label, report, allow_empty=True)
     fired_events = _string_list(value.get("events_fired_by_recipe", []), f"{where}.events_fired_by_recipe", label, report, allow_empty=True)
 
     smoke_manifest: str | None = None
     smoke_scenarios: list[str] = []
-    if not cross_cutting:
+    if not cross_cutting or "smoke" in value:
         smoke = value["smoke"]
         if not isinstance(smoke, dict) or set(smoke) != SMOKE_FIELDS:
             report.error("manifest", label, f"{where}.smoke must be an object with exactly manifest and scenarios")

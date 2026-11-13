@@ -1486,3 +1486,33 @@ Continue with the [canonical reference](../../en/reference/helper-cli/commands.m
 ### Exact top-level `--help` output
 
 Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
+
+<a id="entry-helper-cli-mechanics-recipes-82e7696870"></a>
+- [`entry-helper-cli-mechanics-recipes-82e7696870`](../../en/reference/helper-cli/commands.md#entry-helper-cli-mechanics-recipes-82e7696870)
+
+## Mechanics recipe gate
+
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
+
+### Top-level arguments
+
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
+
+<a id="entry-helper-cli-mechanics-recipes-argument-check-bd1e7fd4fe"></a>
+- [`entry-helper-cli-mechanics-recipes-argument-check-bd1e7fd4fe`](../../en/reference/helper-cli/commands.md#entry-helper-cli-mechanics-recipes-argument-check-bd1e7fd4fe)
+
+<a id="entry-helper-cli-mechanics-recipes-argument-list-8f15b9ea08"></a>
+- [`entry-helper-cli-mechanics-recipes-argument-list-8f15b9ea08`](../../en/reference/helper-cli/commands.md#entry-helper-cli-mechanics-recipes-argument-list-8f15b9ea08)
+
+<a id="entry-helper-cli-mechanics-recipes-argument-root-1fef77f62b"></a>
+- [`entry-helper-cli-mechanics-recipes-argument-root-1fef77f62b`](../../en/reference/helper-cli/commands.md#entry-helper-cli-mechanics-recipes-argument-root-1fef77f62b)
+
+<a id="entry-helper-cli-mechanics-recipes-argument-manifest-e6c0d2cff4"></a>
+- [`entry-helper-cli-mechanics-recipes-argument-manifest-e6c0d2cff4`](../../en/reference/helper-cli/commands.md#entry-helper-cli-mechanics-recipes-argument-manifest-e6c0d2cff4)
+
+<a id="entry-helper-cli-mechanics-recipes-argument-api-model-fb43bc3add"></a>
+- [`entry-helper-cli-mechanics-recipes-argument-api-model-fb43bc3add`](../../en/reference/helper-cli/commands.md#entry-helper-cli-mechanics-recipes-argument-api-model-fb43bc3add)
+
+### Exact top-level `--help` output
+
+Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).

@@ -5894,13 +5894,114 @@
         }
       ],
       "commands": []
+    },
+    {
+      "id": "helper-cli.mechanics-recipes",
+      "name": "Mechanics recipe gate",
+      "source": "BuildTools/mechanics_recipes.py",
+      "factory": "create_parser",
+      "program": "mechanics_recipes.py",
+      "owner": "documentation",
+      "audiences": [
+        "engine-contributor",
+        "game-developer",
+        "ci-maintainer"
+      ],
+      "invocation_owner": "Engine documentation tests, recipe authors and CI documentation checks",
+      "description": "Check mechanics recipe pages, their Russian mirrors and the section index against the recipe manifest, the example files they quote and the generated API model.",
+      "parser_description": "Check mechanics recipe pages against their recipe manifest, example files and the generated API model",
+      "usage": "usage: mechanics_recipes.py [-h] (--check | --list) [--root ROOT] [--manifest MANIFEST] [--api-model API_MODEL]",
+      "help_output": "usage: mechanics_recipes.py [-h] (--check | --list) [--root ROOT] [--manifest MANIFEST] [--api-model API_MODEL]\n\nCheck mechanics recipe pages against their recipe manifest, example files and the generated API model\n\noptions:\n  -h, --help            show this help message and exit\n  --check               validate the manifest, pages, Russian mirrors, section index and example files\n  --list                print the recipes and cross-cutting pages from the manifest without validating them\n  --root ROOT           Engine checkout to check (default: the checkout that contains this script)\n  --manifest MANIFEST   recipe manifest (default: Examples/MechanicsSandbox/recipes.json under --root)\n  --api-model API_MODEL\n                        generated API model (default: Docs/generated/api.json under --root)\n",
+      "global_arguments": [
+        {
+          "id": "helper-cli.mechanics-recipes.argument.check",
+          "destination": "check",
+          "kind": "option",
+          "action": "store_true",
+          "option_strings": [
+            "--check"
+          ],
+          "metavar": null,
+          "required": false,
+          "nargs": 0,
+          "choices": null,
+          "default": false,
+          "type": null,
+          "description": "validate the manifest, pages, Russian mirrors, section index and example files"
+        },
+        {
+          "id": "helper-cli.mechanics-recipes.argument.list",
+          "destination": "list",
+          "kind": "option",
+          "action": "store_true",
+          "option_strings": [
+            "--list"
+          ],
+          "metavar": null,
+          "required": false,
+          "nargs": 0,
+          "choices": null,
+          "default": false,
+          "type": null,
+          "description": "print the recipes and cross-cutting pages from the manifest without validating them"
+        },
+        {
+          "id": "helper-cli.mechanics-recipes.argument.root",
+          "destination": "root",
+          "kind": "option",
+          "action": "store",
+          "option_strings": [
+            "--root"
+          ],
+          "metavar": null,
+          "required": false,
+          "nargs": 1,
+          "choices": null,
+          "default": null,
+          "type": "Path",
+          "description": "Engine checkout to check (default: the checkout that contains this script)"
+        },
+        {
+          "id": "helper-cli.mechanics-recipes.argument.manifest",
+          "destination": "manifest",
+          "kind": "option",
+          "action": "store",
+          "option_strings": [
+            "--manifest"
+          ],
+          "metavar": null,
+          "required": false,
+          "nargs": 1,
+          "choices": null,
+          "default": null,
+          "type": "Path",
+          "description": "recipe manifest (default: Examples/MechanicsSandbox/recipes.json under --root)"
+        },
+        {
+          "id": "helper-cli.mechanics-recipes.argument.api_model",
+          "destination": "api_model",
+          "kind": "option",
+          "action": "store",
+          "option_strings": [
+            "--api-model"
+          ],
+          "metavar": null,
+          "required": false,
+          "nargs": 1,
+          "choices": null,
+          "default": null,
+          "type": "Path",
+          "description": "generated API model (default: Docs/generated/api.json under --root)"
+        }
+      ],
+      "commands": []
     }
   ],
   "summary": {
-    "helper_count": 23,
+    "helper_count": 24,
     "command_count": 26,
-    "global_argument_count": 144,
+    "global_argument_count": 149,
     "command_argument_count": 174
   },
-  "contract_digest": "b5d6391cbb8dc43b7a7d75ae83e85381cb8af54396fb805b33ace1359248e950"
+  "contract_digest": "7e8bebc4bf6dac70fc285e133eb7ce4f87da6cfae939d2794e45f3f073595ca6"
 }

@@ -1615,6 +1615,167 @@
       "forbidden_assumptions": [
         "Do not treat the checked-out Engine HEAD as the recorded pin, skip changelog Migration sections for intermediate versions, or add project entries to the Engine disposition ledger."
       ]
+    },
+    {
+      "id": "scripting-mechanics-timed-effect-restart",
+      "category": "scripting",
+      "question": "A buff is started with a time event when it is applied. After a server restart it never ends. Why, which event must re-arm it, and why is a CountTimeEvent guard needed there?",
+      "primary_document_id": "recipe-timed-effect",
+      "supporting_document_ids": [
+        "script-lifecycle-concurrency",
+        "mechanics-recipes"
+      ],
+      "retrieval_checks": [
+        {
+          "query": "timed effect survives restart persisted deadline re-arm OnCritterInit firstTime CountTimeEvent guard",
+          "expected_document_ids": [
+            "recipe-timed-effect"
+          ],
+          "max_rank": 3
+        },
+        {
+          "query": "build game mechanics recipes sandbox persistent state validated action timed effect",
+          "expected_document_ids": [
+            "mechanics-recipes"
+          ],
+          "max_rank": 3
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "timed-effect-timer-not-restored",
+          "description": "State that time events are not restored from the database and that the deadline must be a persistent property.",
+          "document_id": "recipe-timed-effect",
+          "anchor": "persistence-and-migration",
+          "required_terms": [
+            "BoostEndTime",
+            "Game.UnloadCritter",
+            "RestoreSnapshotTimeEvents"
+          ]
+        },
+        {
+          "id": "timed-effect-rearm-hook",
+          "description": "Name the init event with firstTime false as the re-arm hook and the guard against duplicates.",
+          "document_id": "recipe-timed-effect",
+          "anchor": "pitfalls-and-anti-patterns",
+          "required_terms": [
+            "Game.OnCritterLoad",
+            "Game.OnCritterInit",
+            "CountTimeEvent",
+            "Stop"
+          ]
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not assume the database load restores time events, that Game.OnCritterLoad runs for critters restored at startup, or that a Repeat callback ends without a Stop."
+      ]
+    },
+    {
+      "id": "scripting-mechanics-validated-action",
+      "category": "scripting",
+      "question": "A client sends a remote call naming a device id and the actor critter id. What may the server trust, how does it find the actor and the device, when is the cost charged, and what limits apply to the payload before the handler runs?",
+      "primary_document_id": "recipe-validated-action",
+      "supporting_document_ids": [
+        "remote-calls",
+        "mechanics-cover-transactions"
+      ],
+      "retrieval_checks": [
+        {
+          "query": "validated action remote call server re-derives actor from controlled critter payload ids never trusted refusal reason",
+          "expected_document_ids": [
+            "recipe-validated-action"
+          ],
+          "max_rank": 3
+        },
+        {
+          "query": "remote call MaxBytes payload limit charge cost after last refusing check headless client drill",
+          "expected_document_ids": [
+            "recipe-validated-action"
+          ],
+          "max_rank": 3
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "validated-action-authority",
+          "description": "Name the calling Player as the only trusted identity, the map derived from the actor and the ordered request handling.",
+          "document_id": "recipe-validated-action",
+          "anchor": "authority-and-sync",
+          "required_terms": [
+            "GetControlledCritter",
+            "MaxBytes",
+            "Process_RemoteCall",
+            "Yield"
+          ]
+        },
+        {
+          "id": "validated-action-pitfalls",
+          "description": "Warn against payload ids, global lookups, charging before the last refusing check and omitted limits.",
+          "document_id": "recipe-validated-action",
+          "anchor": "pitfalls-and-anti-patterns",
+          "required_terms": [
+            "Map.GetItem",
+            "MaxCollectionSize",
+            "FOENTRY001"
+          ]
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not assume an id sent by the client is trustworthy, that a missing MaxBytes means a small limit, or that a remote-call handler may be tested by calling it directly."
+      ]
+    },
+    {
+      "id": "scripting-mechanics-cover-transaction",
+      "category": "scripting",
+      "question": "A script must move an item between two critters. Which entities need cover, what does Game.SyncWiden do to the held locks, and what must be checked again afterwards or after a Yield?",
+      "primary_document_id": "mechanics-cover-transactions",
+      "supporting_document_ids": [
+        "script-lifecycle-concurrency",
+        "managed-csharp-scripting"
+      ],
+      "retrieval_checks": [
+        {
+          "query": "lock several entities for one gameplay action cover transaction Game.SyncWiden revalidate after suspension",
+          "expected_document_ids": [
+            "mechanics-cover-transactions"
+          ],
+          "max_rank": 3
+        },
+        {
+          "query": "hand over item between two critters Game.Sync prepare commit resolve ids again after Yield",
+          "expected_document_ids": [
+            "mechanics-cover-transactions"
+          ],
+          "max_rank": 3
+        }
+      ],
+      "answer_checks": [
+        {
+          "id": "cover-widen-semantics",
+          "description": "Explain that a widening of an entity outside the held chain releases and reacquires the whole set, so earlier reads are stale.",
+          "document_id": "mechanics-cover-transactions",
+          "anchor": "widening-and-revalidation-after-suspension",
+          "required_terms": [
+            "TryRetainCoveredRequest",
+            "ReleaseLocks()",
+            "AcquireLocks",
+            "Yield"
+          ]
+        },
+        {
+          "id": "cover-pitfalls",
+          "description": "State that every check and the write happen under one cover, resolved again from ids.",
+          "document_id": "mechanics-cover-transactions",
+          "anchor": "the-worked-transaction",
+          "required_terms": [
+            "Game.Sync",
+            "CommitHandOver"
+          ]
+        }
+      ],
+      "forbidden_assumptions": [
+        "Do not assume Game.SyncWiden always keeps the held cover continuous or that a value read before a widening or a Yield is still valid afterwards."
+      ]
     }
   ]
 }

@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/mechanics/
 ---
 
 # Создание игровых механик
-<!-- docs-translation: {"document_id":"mechanics-recipes","locale":"ru","source_path":"Docs/en/how-to/mechanics/index.md","source_sha256":"PLACEHOLDER"} -->
+<!-- docs-translation: {"document_id":"mechanics-recipes","locale":"ru","source_path":"Docs/en/how-to/mechanics/index.md","source_sha256":"a44b0cc24d6eaab7e1af638d8e1c95227541d10d9fead9fc1c856ecf3d0ae14d"} -->
 Этот раздел продолжает с того места, где заканчиваются учебники. Каждый рецепт собирает одну игровую механику из примитивов движка и указывает, какая сторона владеет состоянием, что переживает перезапуск, какие ловушки есть в движке и как результат проверяется. За каждым рецептом стоит запускаемый модуль в `Examples/MechanicsSandbox`, а `BuildTools/mechanics_recipes.py` проверяет, что страница по-прежнему цитирует этот модуль и ссылается на существующие символы API.
 
 ## Проверенные исходные пути
@@ -30,7 +30,7 @@ permalink: /Docs/ru/how-to/mechanics/
 | Часть | Расположение |
 | --- | --- |
 | Страница и русское зеркало | `Docs/en/how-to/mechanics/<slug>.md`, `Docs/ru/how-to/mechanics/<slug>.md` |
-| Скриптовый модуль | `Examples/MechanicsSandbox/Scripts/Recipes/<PascalSlug>.fos`, пространство имён `Recipe<PascalSlug>` |
+| Скриптовый модуль | `Examples/MechanicsSandbox/Scripts/Recipes/<PascalSlug>.fos`, пространство имён `<PascalSlug>` |
 | Тесты и smoke-сценарии | `Examples/MechanicsSandbox/Scripts/Tests/Test_<PascalSlug>.fos`, сценарии в `Examples/MechanicsSandbox/mechanics-smoke.json` |
 | Запись манифеста | `Examples/MechanicsSandbox/recipes.json`: вид, статусы backend, файлы, символы, сценарии |
 

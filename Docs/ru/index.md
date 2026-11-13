@@ -5,7 +5,7 @@ locale: ru
 document_id: documentation-home
 permalink: /Docs/ru/
 ---
-<!-- docs-translation: {"document_id":"documentation-home","locale":"ru","source_path":"Docs/en/index.md","source_sha256":"faf8c5e0f51e154bc9f53ae6bc6151a0434d8b8f788739bb00ab9c6f5cfb8e4c"} -->
+<!-- docs-translation: {"document_id":"documentation-home","locale":"ru","source_path":"Docs/en/index.md","source_sha256":"e57db376479fa2b99e2c8efc4a212c6abee0eda016ae7de96823dd564a9e131b"} -->
 # Документация движка FOnline
 
 [Правила версий движка](how-to/release/versioning.md) и [история изменений](reference/changelog.md) определяют выпуски и обязательную работу по миграции.
@@ -78,6 +78,13 @@ FOnline. Она предназначена для разработчиков и�
   охватывают изменения и эксплуатацию.
 - [Сопровождение с ИИ-агентами](how-to/project/ai-assisted-maintenance.md) —
   необязательный шаблон для команд, работающих с ИИ-агентами для разработки.
+
+## Создание игровых механик
+
+- [Создание игровых механик](how-to/mechanics/index.md) — набор рецептов по
+  задачам (постоянное состояние персонажа, проверяемые действия, временные
+  эффекты, переживающие перезапуск, транзакции cover), каждый подкреплён
+  проверенным модулем в `Examples/MechanicsSandbox`.
 
 ## Создание контента
 

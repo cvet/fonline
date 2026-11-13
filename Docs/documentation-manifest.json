@@ -373,6 +373,18 @@
         ]
       },
       {
+        "id": "mechanics",
+        "title": "Build game mechanics",
+        "title_ru": "Создание игровых механик",
+        "document_ids": [
+          "mechanics-recipes",
+          "recipe-persistent-state",
+          "recipe-validated-action",
+          "recipe-timed-effect",
+          "mechanics-cover-transactions"
+        ]
+      },
+      {
         "id": "content",
         "title": "Author content",
         "title_ru": "Создание контента",
@@ -14668,6 +14680,163 @@
         "Docs/en/how-to/scripting/lifecycle-and-concurrency.md",
         "Docs/en/how-to/scripting/managed-csharp.md",
         "Docs/en/reference/changelog.md"
+      ]
+    },
+    "Docs/en/how-to/mechanics/index.md": {
+      "id": "mechanics-recipes",
+      "title": "Build Game Mechanics",
+      "audiences": [
+        "game-developer",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "how-to",
+        "visibility": "public",
+        "human": true,
+        "translation": "required"
+      },
+      "owner": "scripting",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/how-to/mechanics/index.md",
+      "sources": [
+        "BuildTools/mechanics_recipes.py",
+        "BuildTools/tests/test_mechanics_recipes.py",
+        "BuildTools/gameplay_test_runner.py",
+        "Docs/generated/api.json",
+        "Examples/MechanicsSandbox/recipes.json",
+        "Examples/GameplayTestHarness/ScriptTests/AngelScript/Testing.fos",
+        "Examples/MinimalMultiplayer/tutorial-smoke.json",
+        ".github/workflows/validate.yml"
+      ]
+    },
+    "Docs/en/how-to/mechanics/persistent-state.md": {
+      "id": "recipe-persistent-state",
+      "title": "Custom persistent character state",
+      "audiences": [
+        "game-developer",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "how-to",
+        "visibility": "public",
+        "human": true,
+        "translation": "required"
+      },
+      "owner": "scripting",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/how-to/mechanics/persistent-state.md",
+      "sources": [
+        "Examples/MechanicsSandbox/Scripts/Recipes/PersistentState.fos",
+        "Examples/MechanicsSandbox/Scripts/Sandbox.fos",
+        "Examples/MechanicsSandbox/Scripts/Tests/Test_PersistentState.fos",
+        "Examples/MechanicsSandbox/Managed/Recipes/PersistentState.cs",
+        "Examples/MechanicsSandbox/Content/PersistentState.fopro",
+        "Examples/MechanicsSandbox/FOnlineMechanicsSandbox.fomain",
+        "Examples/MechanicsSandbox/mechanics-smoke.json",
+        "Source/Server/Server.cpp",
+        "Source/Server/EntityManager.cpp",
+        "Source/Server/Map.cpp",
+        "Source/Server/DataBase.cpp",
+        "Source/Common/Settings.inc",
+        "Docs/generated/api.json"
+      ]
+    },
+    "Docs/en/how-to/mechanics/validated-action.md": {
+      "id": "recipe-validated-action",
+      "title": "Validated action request",
+      "audiences": [
+        "game-developer",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "how-to",
+        "visibility": "public",
+        "human": true,
+        "translation": "required"
+      },
+      "owner": "scripting",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/how-to/mechanics/validated-action.md",
+      "sources": [
+        "Examples/MechanicsSandbox/Scripts/Recipes/ValidatedAction.fos",
+        "Examples/MechanicsSandbox/Scripts/Tests/Test_ValidatedAction.fos",
+        "Examples/MechanicsSandbox/Scripts/Sandbox.fos",
+        "Examples/MechanicsSandbox/Content/ValidatedAction.fopro",
+        "Examples/MechanicsSandbox/Managed/Recipes/ValidatedAction.cs",
+        "Examples/MechanicsSandbox/mechanics-smoke.json",
+        "Examples/MechanicsSandbox/FOnlineMechanicsSandbox.fomain",
+        "Source/Server/Server.cpp",
+        "Source/Server/ClientDataValidation.cpp",
+        "Source/Server/EntitySync.cpp",
+        "Source/Scripting/AngelScript/AngelScriptAttributes.cpp",
+        "Source/Scripting/AngelScript/AngelScriptRemoteCalls.cpp",
+        "Source/Scripting/Managed/Analyzers/SyncCoverAnalyzer.cs",
+        "Docs/generated/api.json"
+      ]
+    },
+    "Docs/en/how-to/mechanics/timed-effect.md": {
+      "id": "recipe-timed-effect",
+      "title": "Timed effect that survives a restart",
+      "audiences": [
+        "game-developer",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "how-to",
+        "visibility": "public",
+        "human": true,
+        "translation": "required"
+      },
+      "owner": "scripting",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/how-to/mechanics/timed-effect.md",
+      "sources": [
+        "Examples/MechanicsSandbox/Scripts/Recipes/TimedEffect.fos",
+        "Examples/MechanicsSandbox/Scripts/Tests/Test_TimedEffect.fos",
+        "Examples/MechanicsSandbox/Managed/Recipes/TimedEffect.cs",
+        "Examples/MechanicsSandbox/Content/TimedEffect.fopro",
+        "Examples/MechanicsSandbox/mechanics-smoke.json",
+        "Source/Common/TimeEvents.cpp",
+        "Source/Server/Server.cpp",
+        "Source/Server/Server.h",
+        "Source/Server/EntityManager.cpp",
+        "Docs/generated/api.json"
+      ]
+    },
+    "Docs/en/how-to/mechanics/cover-transactions.md": {
+      "id": "mechanics-cover-transactions",
+      "title": "Lock several entities for one action",
+      "audiences": [
+        "game-developer",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "how-to",
+        "visibility": "public",
+        "human": true,
+        "translation": "required"
+      },
+      "owner": "scripting",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/how-to/mechanics/cover-transactions.md",
+      "sources": [
+        "Examples/MechanicsSandbox/Scripts/Recipes/CoverTransaction.fos",
+        "Examples/MechanicsSandbox/Scripts/Tests/Test_CoverTransaction.fos",
+        "Examples/MechanicsSandbox/Managed/Recipes/CoverTransaction.cs",
+        "Examples/MechanicsSandbox/mechanics-smoke.json",
+        "Examples/MechanicsSandbox/FOnlineMechanicsSandbox.fomain",
+        "Source/Server/EntitySync.cpp",
+        "Source/Scripting/ServerGlobalScriptMethods.cpp",
+        "Source/Common/ScriptSystem.h",
+        "Source/Tests/Test_ServerEntityLifetime.cpp",
+        "Source/Scripting/Managed/CoreScripts/Sync.cs",
+        "Source/Scripting/Managed/Analyzers/SyncCoverAnalyzer.cs",
+        "Docs/generated/api.json"
       ]
     }
   }

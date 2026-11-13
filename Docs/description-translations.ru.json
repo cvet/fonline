@@ -8163,8 +8163,8 @@
           "translation": "Освобождает удерживаемое покрытие сущностей и блокировки синглтона Game"
         },
         "/symbols/@id=script.method.server.Game.SyncWiden/description": {
-          "source_sha256": "1e2beb0e7732b1638916b5062dd91fe9c8ea298571889d8ef9e47d8fe60eb347",
-          "translation": "Расширяет текущее покрытие синхронизации на месте, добавляя указанные активные сущности."
+          "source_sha256": "de712162db1afd4744425a66cd189f4f8617676087fc2439752cf66cb1386338",
+          "translation": "Расширяет текущее покрытие указанными активными сущностями; непокрытая сущность может потребовать освободить и заново захватить удерживаемый набор."
         },
         "/symbols/@id=script.method.server.Game.SyncYield/description": {
           "source_sha256": "f31bb65558883f694b6f69fd24087698de3b2702245ec8c00c4bb2f4e25dfc83",
@@ -14379,6 +14379,38 @@
         "/helpers/@id=helper-cli.markdown-links/name": {
           "source_sha256": "baa0edc3dd00941cdc7157d40e1e560b0f29b6d1f6361e51b2e4d7a43fa7de3f",
           "translation": "Проверка ссылок Markdown"
+        },
+        "/helpers/@id=helper-cli.mechanics-recipes/description": {
+          "source_sha256": "2e8e56f9902f6dd13461f6687c93fe0664688856c584c2cd867cf784885ffa76",
+          "translation": "Проверить страницы рецептов механик, их русские зеркала и указатель раздела по манифесту рецептов, цитируемым файлам примера и сгенерированной модели API."
+        },
+        "/helpers/@id=helper-cli.mechanics-recipes/global_arguments/@id=helper-cli.mechanics-recipes.argument.api_model/description": {
+          "source_sha256": "aa58efec9ebadaed7b950afec67554686c27e32d1476efa092c393d1fef890bb",
+          "translation": "сгенерированная модель API (по умолчанию: Docs/generated/api.json внутри --root)"
+        },
+        "/helpers/@id=helper-cli.mechanics-recipes/global_arguments/@id=helper-cli.mechanics-recipes.argument.check/description": {
+          "source_sha256": "400bfc42844c9a5243baca59708ed2abb6694c471cedf496371cd392510077bd",
+          "translation": "проверить манифест, страницы, русские зеркала, указатель раздела и файлы примера"
+        },
+        "/helpers/@id=helper-cli.mechanics-recipes/global_arguments/@id=helper-cli.mechanics-recipes.argument.list/description": {
+          "source_sha256": "54722aa5e4b1b1d3781a771e64f778d01d00daaec21ae2eab5a6fa3c1fbc78a2",
+          "translation": "вывести рецепты и сквозные страницы из манифеста без проверки"
+        },
+        "/helpers/@id=helper-cli.mechanics-recipes/global_arguments/@id=helper-cli.mechanics-recipes.argument.manifest/description": {
+          "source_sha256": "6af004634584ece3d81c078d03f64f37cb4a5556812059c7ab798b4d09e253f9",
+          "translation": "манифест рецептов (по умолчанию: Examples/MechanicsSandbox/recipes.json внутри --root)"
+        },
+        "/helpers/@id=helper-cli.mechanics-recipes/global_arguments/@id=helper-cli.mechanics-recipes.argument.root/description": {
+          "source_sha256": "3696980693b63a465ed10eba6bff89a2722b0849daa313205f89092831fe5ba9",
+          "translation": "проверяемый checkout движка (по умолчанию: checkout, содержащий этот скрипт)"
+        },
+        "/helpers/@id=helper-cli.mechanics-recipes/invocation_owner": {
+          "source_sha256": "58f1c20dc46a623f6b7e38d6cc89cf805f361e558a3cd2a76a4d9c3b16b3a6cb",
+          "translation": "тесты документации движка, авторы рецептов и проверки документации в CI"
+        },
+        "/helpers/@id=helper-cli.mechanics-recipes/name": {
+          "source_sha256": "75ec776b60b22cd41bac52f4ffe4b6a713ce838cdd25daa3b858d069dc0cbf76",
+          "translation": "Проверка рецептов механик"
         },
         "/helpers/@id=helper-cli.migration-guard/description": {
           "source_sha256": "5abb3758ca313ce52074d3ad6973b5a80cbd2db7760f2bf8221410186800277a",
