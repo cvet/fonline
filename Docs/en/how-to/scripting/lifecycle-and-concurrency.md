@@ -71,6 +71,14 @@ Document migrations are synchronous dispatcher-owned callbacks, executed before 
 - `Source/Client/Client.cpp`
 - `Source/Server/EntityManager.cpp`
 - `Source/Server/Server.cpp`
+- `Source/Server/CritterManager.cpp`
+- `Source/Server/Critter.h`
+- `Source/Server/Map.h`
+- `Source/Server/Player.h`
+- `Source/Common/TimeEvents.h`
+- `Source/Common/TimeEvents.cpp`
+- `Source/Tools/ManagedScriptBaker.cpp`
+- `BuildTools/codegen.py`
 - `Source/Server/WorkerPool.cpp`
 - `Source/Tools/Baker.cpp`
 - `Source/Server/EntitySync.h`
@@ -182,6 +190,22 @@ Explicitly unsubscribe when behavior must stop before the owner is destroyed, wh
 
 Event dispatch may run user callbacks that alter subscriptions, so the engine iterates a callback snapshot. Do not rely on a subscription added during a dispatch being called in that same dispatch.
 
+### Declared events the Engine never fires
+
+The Engine declares seven server events for a project to give meaning to, but no Engine code fires them. Their generated API descriptions say "Engine does not fire it directly":
+
+- `Critter.OnTalk`
+- `Critter.OnBarter`
+- `Map.OnCheckLook`
+- `Map.OnCheckTrapLook`
+- `Player.OnLogout`
+- `Player.OnAllowCommand`
+- `Player.OnGetAccess`
+
+They exist only as declarations in `Source/Server/Critter.h`, `Source/Server/Map.h` and `Source/Server/Player.h`. Scripts cannot fire them either: code generation marks Engine events as exported, and both backends generate a script `Fire` method only for events that are not exported (`AngelScriptEntity.cpp`, `ManagedScriptBaker.cpp`). A script subscription to one of them compiles and is never called. Only a project native extension that calls the event's `Fire` gives it a producer.
+
+Use the fired equivalent where one exists: `Game.OnPlayerLogout` runs when a player disconnects. Otherwise declare a project event with `///@ Event` and fire it from the code that owns the action. The [mechanics recipe gate](../mechanics/index.md#propose-a-recipe) rejects a recipe that subscribes to one of these events unless the recipe fires it itself.
+
 ### Time-event completion
 
 A time event stays registered while its callback is executing, including across AngelScript `Yield` and a managed `await`. Its record is paused for dispatch: another firing of the same event cannot overlap that invocation. `CountTimeEvent`, `RepeatTimeEvent`, `SetTimeEventData`, and `StopTimeEvent` can still address it by its existing identity. Both callback and ID overloads of `CountTimeEvent` take `bool excludeExecuting = false`: the default counts all matching registered records; `true` counts only records waiting to start, excluding executing callbacks through suspension and pending finalization. The flag only filters the count; it does not change registration, modification, cancellation, or repeat scheduling.
@@ -199,6 +223,24 @@ Managed callbacks resolve component enum identifiers to exact dotted metadata na
 `Game.OnCritterPreLoad` is the server-side migration hook for an existing persisted critter. It fires once after the critter properties, inventory, and inner entities have been restored and the critter has been registered, but before map or global-map entry, visibility processing, `OnCritterInit(critter, false)`, and `OnCritterLoad`. Newly created critters do not receive this event.
 
 The callback runs with map transfers locked. Limit it to normalizing the critter's own persisted properties and inventory: the rest of the world may still be only partially restored, and resolving, loading, or relocating other persisted entities is not supported at this phase. A handler may explicitly destroy the critter to drop a stale persisted graph. Throwing or stopping the event chain instead marks the load as failed and leaves the persisted record available for diagnosis. See [Server Runtime](../../explanation/runtime/server.md) for the full load order and player-bound behavior.
+
+### Time events after a database reload
+
+Time events are runtime state. Persistent properties are written to the database; time events are not, and an ordinary reload does not restore them:
+
+- the world restore at startup (`EntityManager::LoadEntities()`) and `Game.LoadCritter` rebuild entities from their stored records and run `OnCritterInit(critter, false)` and the matching item, map and location init events, but neither path starts a time event;
+- `Game.UnloadCritter` ends with `MarkAsDestroyed()`, which clears the critter's time events, and destroying an entity cancels its scheduled time-event jobs;
+- server shutdown clears every time event before it releases the entities.
+
+Only a server snapshot restore, a native embedder feature described in [Server Runtime](../../explanation/runtime/server.md#initialization-and-server-jobs), brings named time events back.
+
+A gameplay timer that must outlive a restart or an unload therefore needs three parts:
+
+1. A persistent property that stores the absolute deadline, for example a `synctime` compared with `Game.SynchronizedTime`. The server persists synchronized time and resumes it at startup, so downtime does not count against the deadline.
+2. A re-arm on the restore path. `Game.OnCritterInit` (or the entity's `InitScript`) with `firstTime == false` runs for both the startup restore and `Game.LoadCritter`; it starts the time event with the remaining delay, or applies the expiry at once when the deadline has already passed.
+3. A `CountTimeEvent(callback) == 0` check before every `StartTimeEvent`, so a second start path, such as refreshing the effect or a repeated init, does not schedule a duplicate.
+
+`Game.OnCritterLoad` runs only after `Game.LoadCritter`, not for critters restored with their maps at startup, so it cannot be the only re-arm hook. A snapshot restore restarts its captured time events after the world restore has already run the init events, and the check in step 3 cannot see them yet: a project that restores snapshots must keep its re-arm from duplicating the captured timers.
 
 ## Entity `InitScript` callbacks
 
@@ -442,4 +484,5 @@ For all engine documentation changes, also run the standalone documentation gate
 - A preload migration touches only the restored critter state supported at that phase.
 - Mutable state lives on an explicit lifecycle owner.
 - Destruction cleanup is not duplicated in a project-global registry without functional need.
+- No subscription targets an event the Engine never fires, and a timer that must survive a reload keeps its deadline in a persistent property and is re-armed on the restore path.
 - The selected test exercises the actual compile, scheduling, synchronization, or teardown boundary.
