@@ -20,7 +20,7 @@ class Map;
 class Location;
 class MapManager;
 
-// Plans retain this passive identity instead of retaining a Player and its connection after logout.
+// Plans retain this passive identity instead of retaining a Player and its connection after logout
 struct PlayerMovementIdentity
 {
 };

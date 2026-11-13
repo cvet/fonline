@@ -189,12 +189,12 @@ void CapturingRenderEffect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_
     const_span<Vertex2D> vertices {dbuf->Vertices.data(), model_layout ? 0 : dbuf->VertCount};
     const_span<Vertex3D> vertices_3d {dbuf->Vertices3D.data(), model_layout ? dbuf->VertCount : 0};
     const_span<vindex_t> indices {dbuf->Indices.data() + start_index, draw_index_count};
-    vector<Vertex2D> captured_vertices(vertices.begin(), vertices.end());
-    vector<Vertex3D> captured_vertices_3d(vertices_3d.begin(), vertices_3d.end());
+    vector<Vertex2D> captured_vertices {vector<Vertex2D>(vertices.begin(), vertices.end())};
+    vector<Vertex3D> captured_vertices_3d {vector<Vertex3D>(vertices_3d.begin(), vertices_3d.end())};
     vector<vindex_t> captured_indices(indices.begin(), indices.end());
-    optional<array<float32_t, 4>> captured_sub_rect;
-    optional<array<float32_t, 4>> captured_sampling;
-    optional<array<float32_t, 16>> captured_projection;
+    optional<array<float32_t, 4>> captured_sub_rect {};
+    optional<array<float32_t, 4>> captured_sampling {};
+    optional<array<float32_t, 16>> captured_projection {};
 
     if (ProjBuf.has_value()) {
         static_assert(sizeof(RenderEffect::ProjBuffer {}.ProjMatrix) == sizeof(array<float32_t, 16>));
@@ -2031,7 +2031,7 @@ TEST_CASE("EffekseerCompilerWritesOptionalNodeSections", "[effekseer-compiler]")
 
 static auto MakeModelTrailFixture(int32_t life, int32_t count, float32_t interval, string_view location = "<X>0</X><Y>0</Y><Z>0</Z>", int32_t binding = 1, string_view node_values = {}) -> unique_ptr<EffekseerRuntimeTestRig>
 {
-    string project = strex(R"EFFEKSEER(<?xml version="1.0" encoding="utf-8"?>
+    string project {strex(R"EFFEKSEER(<?xml version="1.0" encoding="utf-8"?>
 <EffekseerProject>
   <Root><Name>Root</Name><Children><Node>
     <CommonValues>
@@ -2058,15 +2058,15 @@ static auto MakeModelTrailFixture(int32_t life, int32_t count, float32_t interva
 </EffekseerProject>
 )EFFEKSEER",
         count, life, life, interval, interval, binding, binding, binding, location)
-                         .str();
+            .str()};
 
     if (!node_values.empty()) {
-        size_t drawing_position = project.find("<DrawingValues>");
+        size_t drawing_position {project.find("<DrawingValues>")};
         REQUIRE(drawing_position != string::npos);
         project.insert(drawing_position, node_values);
     }
 
-    EffekseerCompilerOutput compiled = CompileEffekseerProject("Particles/EffekseerTests/ModelTrail.efkproj", {reinterpret_cast<const uint8_t*>(project.data()), project.size()});
+    EffekseerCompilerOutput compiled {CompileEffekseerProject("Particles/EffekseerTests/ModelTrail.efkproj", {reinterpret_cast<const uint8_t*>(project.data()), project.size()})};
 
     return safe_alloc::make_unique<EffekseerRuntimeTestRig>("Particles/EffekseerTests/ModelTrail.efk", std::move(compiled.Binary));
 }
@@ -2101,9 +2101,9 @@ TEST_CASE("Effekseer model placement accepts facing hints without rotating the b
         for (float32_t scale : {1.0f, 2.0f}) {
             CAPTURE(facing, scale);
 
-            unique_ptr<EffekseerRuntimeTestRig> rig = MakeModelTrailFixture(30, 1, 1.0f, "<X>2</X><Y>3</Y><Z>4</Z>");
-            unique_ptr<ParticleRuntimeSystem> system = rig->CreateSystem();
-            ParticleRuntimeSetup setup = MakeEffekseerIdentitySetup();
+            unique_ptr<EffekseerRuntimeTestRig> rig {MakeModelTrailFixture(30, 1, 1.0f, "<X>2</X><Y>3</Y><Z>4</Z>")};
+            unique_ptr<ParticleRuntimeSystem> system {rig->CreateSystem()};
+            ParticleRuntimeSetup setup {MakeEffekseerIdentitySetup()};
             setup.World = glm::translate(mat44 {1.0f}, vec3 {7.0f, 11.0f, 13.0f}) * glm::rotate(mat44 {1.0f}, 90.0f * DEG_TO_RAD_FLOAT, vec3 {0.0f, 1.0f, 0.0f});
             setup.PositionOffset = {0.25f, 0.5f, 0.75f};
             setup.LookDirectionAngle = facing;
@@ -2114,7 +2114,7 @@ TEST_CASE("Effekseer model placement accepts facing hints without rotating the b
             REQUIRE(system->IsActive());
 
             system->Update(1.0f / 60.0f);
-            vector<CapturedEffekseerDraw> draws = DrawModelTrail(*rig, *system);
+            vector<CapturedEffekseerDraw> draws {DrawModelTrail(*rig, *system)};
             REQUIRE(draws.size() == 1);
             REQUIRE(draws.front().Vertices.size() == 4);
 
@@ -2124,7 +2124,7 @@ TEST_CASE("Effekseer model placement accepts facing hints without rotating the b
                 center += vec3 {vertex.PosX, vertex.PosY, vertex.PosZ} / 4.0f;
             }
 
-            vec3 expected = scale == 1.0f ? vec3 {11.75f, 14.5f, 10.75f} : vec3 {15.75f, 17.5f, 8.75f};
+            vec3 expected {scale == 1.0f ? vec3 {11.75f, 14.5f, 10.75f} : vec3 {15.75f, 17.5f, 8.75f}};
             CHECK(center.x == Catch::Approx(expected.x).margin(0.001f));
             CHECK(center.y == Catch::Approx(expected.y).margin(0.001f));
             CHECK(center.z == Catch::Approx(expected.z).margin(0.001f));
@@ -2134,14 +2134,14 @@ TEST_CASE("Effekseer model placement accepts facing hints without rotating the b
 
 TEST_CASE("Effekseer model bounds include old world particles and release their expired envelope", "[particle][effekseer-runtime][model-particle-integration]")
 {
-    unique_ptr<EffekseerRuntimeTestRig> rig = MakeModelTrailFixture(6, 2, 4.0f);
-    unique_ptr<ParticleRuntimeSystem> system = rig->CreateSystem();
-    ParticleRuntimeSetup setup = MakeEffekseerIdentitySetup();
+    unique_ptr<EffekseerRuntimeTestRig> rig {MakeModelTrailFixture(6, 2, 4.0f)};
+    unique_ptr<ParticleRuntimeSystem> system {rig->CreateSystem()};
+    ParticleRuntimeSetup setup {MakeEffekseerIdentitySetup()};
     setup.Scale = 4.0f;
     system->Setup(setup);
     system->Respawn(541);
     system->Update(1.0f / 60.0f);
-    vector<CapturedEffekseerDraw> first = DrawModelTrail(*rig, *system);
+    vector<CapturedEffekseerDraw> first {DrawModelTrail(*rig, *system)};
     REQUIRE(first.size() == 1);
     REQUIRE(first.front().Vertices.size() == 4);
 
@@ -2149,12 +2149,12 @@ TEST_CASE("Effekseer model bounds include old world particles and release their 
     setup.Scale = 0.25f;
     system->Setup(setup);
     system->Update(4.0f / 60.0f);
-    vector<CapturedEffekseerDraw> both = DrawModelTrail(*rig, *system);
+    vector<CapturedEffekseerDraw> both {DrawModelTrail(*rig, *system)};
     REQUIRE(both.size() == 1);
     REQUIRE(both.front().Vertices.size() == 8);
 
-    bool near_origin = false;
-    bool near_moved = false;
+    bool near_origin {false};
+    bool near_moved {false};
 
     for (const Vertex2D& vertex : both.front().Vertices) {
         near_origin |= std::abs(vertex.PosX) < 2.0f;
@@ -2165,7 +2165,7 @@ TEST_CASE("Effekseer model bounds include old world particles and release their 
     REQUIRE(near_moved);
 
     rig->ClearDraws();
-    optional<ParticleBounds3D> live = system->GetLiveBounds();
+    optional<ParticleBounds3D> live {system->GetLiveBounds()};
     REQUIRE(live);
     CHECK(rig->GetDraws().empty());
 
@@ -2175,7 +2175,7 @@ TEST_CASE("Effekseer model bounds include old world particles and release their 
     CHECK(live->BillboardRadius < 2.1f);
 
     system->Update(3.0f / 60.0f);
-    vector<CapturedEffekseerDraw> last = DrawModelTrail(*rig, *system);
+    vector<CapturedEffekseerDraw> last {DrawModelTrail(*rig, *system)};
     REQUIRE(last.size() == 1);
     REQUIRE(last.front().Vertices.size() == 4);
 
@@ -2184,7 +2184,7 @@ TEST_CASE("Effekseer model bounds include old world particles and release their 
     REQUIRE(live);
     CHECK(live->PositionMin.x - live->BillboardRadius > 50.0f);
 
-    for (int32_t frame = 0; frame < 20; frame++) {
+    for (int32_t frame {0}; frame < 20; frame++) {
         system->Update(1.0f / 60.0f);
     }
 
@@ -2193,9 +2193,9 @@ TEST_CASE("Effekseer model bounds include old world particles and release their 
 
 TEST_CASE("Effekseer atlas rebases move each live particle once without advancing generation", "[particle][effekseer-runtime][model-particle-integration]")
 {
-    unique_ptr<EffekseerRuntimeTestRig> rig = MakeModelTrailFixture(30, 2, 4.0f);
-    unique_ptr<ParticleRuntimeSystem> system = rig->CreateSystem();
-    ParticleRuntimeSetup setup = MakeEffekseerIdentitySetup();
+    unique_ptr<EffekseerRuntimeTestRig> rig {MakeModelTrailFixture(30, 2, 4.0f)};
+    unique_ptr<ParticleRuntimeSystem> system {rig->CreateSystem()};
+    ParticleRuntimeSetup setup {MakeEffekseerIdentitySetup()};
     system->Setup(setup);
     system->Respawn(541);
     system->Update(1.0f / 60.0f);
@@ -2207,7 +2207,7 @@ TEST_CASE("Effekseer atlas rebases move each live particle once without advancin
         setup.World = glm::translate(mat44 {1.0f}, total);
         system->Setup(setup);
         system->RefreshRenderTransform();
-        vector<CapturedEffekseerDraw> draws = DrawModelTrail(*rig, *system);
+        vector<CapturedEffekseerDraw> draws {DrawModelTrail(*rig, *system)};
         REQUIRE(draws.size() == 1);
         REQUIRE(draws.front().Vertices.size() == 4);
 
@@ -2221,7 +2221,7 @@ TEST_CASE("Effekseer atlas rebases move each live particle once without advancin
         CHECK(center.y == Catch::Approx(total.y).margin(0.001f));
         CHECK(center.z == Catch::Approx(total.z).margin(0.001f));
 
-        optional<ParticleBounds3D> live = system->GetLiveBounds();
+        optional<ParticleBounds3D> live {system->GetLiveBounds()};
         REQUIRE(live);
 
         CheckLiveBoundsContainDraws(*live, draws);
@@ -2232,7 +2232,7 @@ TEST_CASE("Effekseer atlas rebases move each live particle once without advancin
 
     system->Respawn(541);
     system->Update(1.0f / 60.0f);
-    vector<CapturedEffekseerDraw> restarted = DrawModelTrail(*rig, *system);
+    vector<CapturedEffekseerDraw> restarted {DrawModelTrail(*rig, *system)};
     REQUIRE(restarted.size() == 1);
     REQUIRE(restarted.front().Vertices.size() == 4);
 
@@ -2249,10 +2249,10 @@ TEST_CASE("Effekseer atlas rebases move each live particle once without advancin
 
 TEST_CASE("Effekseer live bounds preserve a valid static envelope and shared draw renderers", "[particle][effekseer-runtime][model-particle-integration]")
 {
-    unique_ptr<EffekseerRuntimeTestRig> rig = MakeModelTrailFixture(30, 1, 1.0f);
-    unique_ptr<ParticleRuntimeSystem> first = rig->CreateSystem();
-    unique_ptr<ParticleRuntimeSystem> second = rig->CreateSystem();
-    ParticleRuntimeSetup setup = MakeEffekseerIdentitySetup();
+    unique_ptr<EffekseerRuntimeTestRig> rig {MakeModelTrailFixture(30, 1, 1.0f)};
+    unique_ptr<ParticleRuntimeSystem> first {rig->CreateSystem()};
+    unique_ptr<ParticleRuntimeSystem> second {rig->CreateSystem()};
+    ParticleRuntimeSetup setup {MakeEffekseerIdentitySetup()};
     setup.World = glm::translate(mat44 {1.0f}, vec3 {3.0f, 4.0f, 5.0f});
     setup.Scale = 2.0f;
     first->Setup(setup);
@@ -2262,17 +2262,17 @@ TEST_CASE("Effekseer live bounds preserve a valid static envelope and shared dra
     second->Setup(setup);
     second->Respawn(542);
     second->Update(1.0f / 60.0f);
-    vector<CapturedEffekseerDraw> second_before = DrawModelTrail(*rig, *second);
+    vector<CapturedEffekseerDraw> second_before {DrawModelTrail(*rig, *second)};
     REQUIRE(!second_before.empty());
 
     rig->ClearDraws();
-    optional<ParticleBounds3D> live = first->GetLiveBounds();
+    optional<ParticleBounds3D> live {first->GetLiveBounds()};
     REQUIRE(live);
     CHECK(live->PositionMin == vec3 {1.0f, 2.0f, 3.0f});
     CHECK(live->PositionMax == vec3 {5.0f, 6.0f, 7.0f});
     CHECK(live->BillboardRadius == Catch::Approx(1.0f));
 
-    optional<ParticleBounds3D> baked = first->GetBakedBounds();
+    optional<ParticleBounds3D> baked {first->GetBakedBounds()};
     REQUIRE(baked);
     CHECK(baked->PositionMin == vec3 {-1.0f, -1.0f, -1.0f});
     CHECK(baked->PositionMax == vec3 {1.0f, 1.0f, 1.0f});
@@ -2285,9 +2285,9 @@ TEST_CASE("Effekseer live bounds preserve a valid static envelope and shared dra
 TEST_CASE("Effekseer rejects nonfinite hints and ignores invalid rebases without mutation", "[particle][effekseer-runtime][model-particle-integration]")
 {
     for (float32_t hint : {std::numeric_limits<float32_t>::quiet_NaN(), std::numeric_limits<float32_t>::infinity()}) {
-        unique_ptr<EffekseerRuntimeTestRig> rig = MakeModelTrailFixture(30, 1, 1.0f);
-        unique_ptr<ParticleRuntimeSystem> system = rig->CreateSystem();
-        ParticleRuntimeSetup setup = MakeEffekseerIdentitySetup();
+        unique_ptr<EffekseerRuntimeTestRig> rig {MakeModelTrailFixture(30, 1, 1.0f)};
+        unique_ptr<ParticleRuntimeSystem> system {rig->CreateSystem()};
+        ParticleRuntimeSetup setup {MakeEffekseerIdentitySetup()};
         setup.LookDirectionAngle = hint;
         system->Setup(setup);
         system->Respawn(541);
@@ -2295,12 +2295,12 @@ TEST_CASE("Effekseer rejects nonfinite hints and ignores invalid rebases without
         CHECK_FALSE(system->IsActive());
     }
 
-    unique_ptr<EffekseerRuntimeTestRig> rig = MakeModelTrailFixture(30, 2, 4.0f);
-    unique_ptr<ParticleRuntimeSystem> system = rig->CreateSystem();
+    unique_ptr<EffekseerRuntimeTestRig> rig {MakeModelTrailFixture(30, 2, 4.0f)};
+    unique_ptr<ParticleRuntimeSystem> system {rig->CreateSystem()};
     system->Setup(MakeEffekseerIdentitySetup());
     system->Respawn(541);
     system->Update(1.0f / 60.0f);
-    vector<CapturedEffekseerDraw> before = DrawModelTrail(*rig, *system);
+    vector<CapturedEffekseerDraw> before {DrawModelTrail(*rig, *system)};
     REQUIRE(before.size() == 1);
     REQUIRE(before.front().Vertices.size() == 4);
 
@@ -2316,13 +2316,13 @@ TEST_CASE("Effekseer rejects nonfinite hints and ignores invalid rebases without
 
 TEST_CASE("Effekseer bounds queries do not acquire a distortion scene background", "[particle][effekseer-runtime][model-particle-integration]")
 {
-    unique_ptr<EffekseerRuntimeTestRig> rig = MakeDistortionFixtureRig(1.0f, 1);
+    unique_ptr<EffekseerRuntimeTestRig> rig {MakeDistortionFixtureRig(1.0f, 1)};
     rig->SetSceneBackgroundMode(TestSceneBackgroundMode::Unavailable);
-    unique_ptr<ParticleRuntimeSystem> system = rig->CreateSystem();
+    unique_ptr<ParticleRuntimeSystem> system {rig->CreateSystem()};
     system->Setup(MakeEffekseerIdentitySetup());
     system->Respawn(541);
     system->Update(1.0f / 60.0f);
-    optional<ParticleBounds3D> live = system->GetLiveBounds();
+    optional<ParticleBounds3D> live {system->GetLiveBounds()};
     REQUIRE(live);
     REQUIRE(system->IsActive());
     CHECK(rig->GetDraws().empty());
@@ -2332,7 +2332,7 @@ TEST_CASE("Effekseer bounds queries do not acquire a distortion scene background
     REQUIRE(live);
 
     rig->SetSceneBackgroundMode(TestSceneBackgroundMode::Available);
-    vector<CapturedEffekseerDraw> draws = DrawModelTrail(*rig, *system);
+    vector<CapturedEffekseerDraw> draws {DrawModelTrail(*rig, *system)};
     REQUIRE(!draws.empty());
     CHECK(draws.front().HasBackgroundTexture);
 }
@@ -2342,7 +2342,7 @@ TEST_CASE("Effekseer live bounds measure each supported renderer family", "[part
     for (int32_t type : {2, 3, 4, 5, 6}) {
         CAPTURE(type);
 
-        string drawing;
+        string drawing {};
 
         switch (type) {
         case 2:
@@ -2362,31 +2362,31 @@ TEST_CASE("Effekseer live bounds measure each supported renderer family", "[part
             break;
         }
 
-        string project = strex(ParticleTests::StripProjectTemplate, drawing).str();
-        size_t drawing_position = project.find("<DrawingValues>");
+        string project {strex(ParticleTests::StripProjectTemplate, drawing).str()};
+        size_t drawing_position {project.find("<DrawingValues>")};
 
         REQUIRE(drawing_position != string::npos);
 
         project.insert(drawing_position, "<ScalingValues><Type>0</Type><Fixed><Scale><X>16</X><Y>16</Y><Z>16</Z></Scale></Fixed></ScalingValues>");
-        EffekseerCompilerOutput compiled = CompileEffekseerProject("Particles/EffekseerTests/ShapeBounds.efkproj", {reinterpret_cast<const uint8_t*>(project.data()), project.size()});
-        map<string, vector<uint8_t>> dependencies;
+        EffekseerCompilerOutput compiled {CompileEffekseerProject("Particles/EffekseerTests/ShapeBounds.efkproj", {reinterpret_cast<const uint8_t*>(project.data()), project.size()})};
+        map<string, vector<uint8_t>> dependencies {};
         dependencies.emplace("Particles/EffekseerTests/Model/Fixture.efkmodel", ParticleTests::MakeFixtureModelPayload());
         EffekseerRuntimeTestRig rig {"Particles/EffekseerTests/ShapeBounds.efk", std::move(compiled.Binary), dependencies};
-        unique_ptr<ParticleRuntimeSystem> system = rig.CreateSystem();
-        ParticleRuntimeSetup setup = MakeEffekseerIdentitySetup();
+        unique_ptr<ParticleRuntimeSystem> system {rig.CreateSystem()};
+        ParticleRuntimeSetup setup {MakeEffekseerIdentitySetup()};
         setup.Scale = 0.25f;
         system->Setup(setup);
         system->Respawn(541);
 
-        for (int32_t frame = 0; frame < 6; frame++) {
+        for (int32_t frame {0}; frame < 6; frame++) {
             system->Update(1.0f / 60.0f);
         }
 
-        optional<ParticleBounds3D> live = system->GetLiveBounds();
+        optional<ParticleBounds3D> live {system->GetLiveBounds()};
         REQUIRE(live);
         CHECK(rig.GetDraws().empty());
 
-        vector<CapturedEffekseerDraw> draws = DrawModelTrail(rig, *system);
+        vector<CapturedEffekseerDraw> draws {DrawModelTrail(rig, *system)};
         REQUIRE(!draws.empty());
         REQUIRE(!draws.front().Vertices.empty());
 
@@ -2398,27 +2398,27 @@ TEST_CASE("Effekseer live bounds measure each supported renderer family", "[part
 
 TEST_CASE("Effekseer bounds queries preserve future seeded generations", "[particle][effekseer-runtime][model-particle-integration]")
 {
-    EffekseerRuntimeTestRig queried_rig;
-    EffekseerRuntimeTestRig control_rig;
-    unique_ptr<ParticleRuntimeSystem> queried = queried_rig.CreateSystem();
-    unique_ptr<ParticleRuntimeSystem> control = control_rig.CreateSystem();
+    EffekseerRuntimeTestRig queried_rig {};
+    EffekseerRuntimeTestRig control_rig {};
+    unique_ptr<ParticleRuntimeSystem> queried {queried_rig.CreateSystem()};
+    unique_ptr<ParticleRuntimeSystem> control {control_rig.CreateSystem()};
     queried->Setup(MakeEffekseerIdentitySetup());
     control->Setup(MakeEffekseerIdentitySetup());
     queried->Respawn(173);
     control->Respawn(173);
 
-    for (int32_t frame = 0; frame < 12; frame++) {
+    for (int32_t frame {0}; frame < 12; frame++) {
         queried->Update(1.0f / 60.0f);
         control->Update(1.0f / 60.0f);
-        optional<ParticleBounds3D> first_query = queried->GetLiveBounds();
-        optional<ParticleBounds3D> second_query = queried->GetLiveBounds();
+        optional<ParticleBounds3D> first_query {queried->GetLiveBounds()};
+        optional<ParticleBounds3D> second_query {queried->GetLiveBounds()};
         REQUIRE(first_query);
         REQUIRE(second_query);
         CHECK(queried_rig.GetDraws().empty());
     }
 
-    vector<CapturedEffekseerDraw> queried_draws = DrawModelTrail(queried_rig, *queried);
-    vector<CapturedEffekseerDraw> control_draws = DrawModelTrail(control_rig, *control);
+    vector<CapturedEffekseerDraw> queried_draws {DrawModelTrail(queried_rig, *queried)};
+    vector<CapturedEffekseerDraw> control_draws {DrawModelTrail(control_rig, *control)};
     REQUIRE(!queried_draws.empty());
 
     CheckEffekseerDrawsEqual(queried_draws, control_draws);
@@ -2438,8 +2438,8 @@ static void ApplyEffekseerRefreshOrZero(ParticleRuntimeSystem& system, const Par
 
 static auto DrawAndCompareEffekseerPair(EffekseerRuntimeTestRig& queried_rig, EffekseerRuntimeTestRig& control_rig, ParticleRuntimeSystem& queried, ParticleRuntimeSystem& control) -> vector<CapturedEffekseerDraw>
 {
-    vector<CapturedEffekseerDraw> queried_draws = DrawModelTrail(queried_rig, queried);
-    vector<CapturedEffekseerDraw> control_draws = DrawModelTrail(control_rig, control);
+    vector<CapturedEffekseerDraw> queried_draws {DrawModelTrail(queried_rig, queried)};
+    vector<CapturedEffekseerDraw> control_draws {DrawModelTrail(control_rig, control)};
     REQUIRE(!queried_draws.empty());
     CheckEffekseerDrawsEqual(queried_draws, control_draws);
     return queried_draws;
@@ -2447,18 +2447,18 @@ static auto DrawAndCompareEffekseerPair(EffekseerRuntimeTestRig& queried_rig, Ef
 
 TEST_CASE("Effekseer render refresh publishes exact projection without advancing age", "[particle][effekseer-runtime][effekseer-projection-contract]")
 {
-    unique_ptr<EffekseerRuntimeTestRig> rig = MakeModelTrailFixture(6, 4, 2.0f);
-    optional<ParticleSystem> system = rig->CreateManagedSystem();
+    unique_ptr<EffekseerRuntimeTestRig> rig {MakeModelTrailFixture(6, 4, 2.0f)};
+    optional<ParticleSystem> system {rig->CreateManagedSystem()};
     REQUIRE(system);
 
-    ParticleRuntimeSetup setup = MakeEffekseerIdentitySetup();
+    ParticleRuntimeSetup setup {MakeEffekseerIdentitySetup()};
     setup.TiltInProjection = true;
     system->Setup(setup.Projection, setup.World, setup.PositionOffset, setup.LookDirectionAngle, setup.ViewOffset, setup.TiltInProjection);
     REQUIRE(system->Respawn(733));
     system->Update(timespan {std::chrono::milliseconds {17}});
 
-    timespan elapsed = system->GetElapsedTime();
-    optional<array<float32_t, 16>> previous_projection;
+    timespan elapsed {system->GetElapsedTime()};
+    optional<array<float32_t, 16>> previous_projection {};
 
     for (mat44 projection : {mat44 {1.0f}, glm::translate(mat44 {1.0f}, vec3 {12.0f, -4.0f, 7.0f}) * glm::scale(mat44 {1.0f}, vec3 {1.5f, 0.5f, 2.0f})}) {
         array<float32_t, 16> expected {};
@@ -2469,7 +2469,7 @@ TEST_CASE("Effekseer render refresh publishes exact projection without advancing
         rig->ClearDraws();
         system->Draw();
 
-        const auto& draws = rig->GetDraws();
+        const auto& draws {rig->GetDraws()};
         REQUIRE(!draws.empty());
 
         for (const CapturedEffekseerDraw& draw : draws) {
@@ -2488,21 +2488,21 @@ TEST_CASE("Effekseer render refresh publishes exact projection without advancing
 
 TEST_CASE("Effekseer unchanged repeated refresh preserves seeded draws and expiration", "[particle][effekseer-runtime][model-particle-integration][effekseer-refresh-contract]")
 {
-    unique_ptr<EffekseerRuntimeTestRig> queried_rig = MakeModelTrailFixture(6, 4, 2.0f);
-    unique_ptr<EffekseerRuntimeTestRig> control_rig = MakeModelTrailFixture(6, 4, 2.0f);
-    unique_ptr<ParticleRuntimeSystem> queried = queried_rig->CreateSystem();
-    unique_ptr<ParticleRuntimeSystem> control = control_rig->CreateSystem();
-    ParticleRuntimeSetup setup = MakeEffekseerIdentitySetup();
+    unique_ptr<EffekseerRuntimeTestRig> queried_rig {MakeModelTrailFixture(6, 4, 2.0f)};
+    unique_ptr<EffekseerRuntimeTestRig> control_rig {MakeModelTrailFixture(6, 4, 2.0f)};
+    unique_ptr<ParticleRuntimeSystem> queried {queried_rig->CreateSystem()};
+    unique_ptr<ParticleRuntimeSystem> control {control_rig->CreateSystem()};
+    ParticleRuntimeSetup setup {MakeEffekseerIdentitySetup()};
     queried->Setup(setup);
     control->Setup(setup);
     queried->Respawn(901);
     control->Respawn(901);
 
-    for (int32_t frame = 0; frame < 8; frame++) {
+    for (int32_t frame {0}; frame < 8; frame++) {
         queried->Update(1.0f / 60.0f);
         control->Update(1.0f / 60.0f);
 
-        for (int32_t repeat = 0; repeat < 3; repeat++) {
+        for (int32_t repeat {0}; repeat < 3; repeat++) {
             ApplyEffekseerRefreshOrZero(*queried, setup, true);
             ApplyEffekseerRefreshOrZero(*control, setup, false);
         }
@@ -2510,9 +2510,9 @@ TEST_CASE("Effekseer unchanged repeated refresh preserves seeded draws and expir
         DrawAndCompareEffekseerPair(*queried_rig, *control_rig, *queried, *control);
     }
 
-    bool both_went_inactive = false;
+    bool both_went_inactive {false};
 
-    for (int32_t frame = 0; frame < 30; frame++) {
+    for (int32_t frame {0}; frame < 30; frame++) {
         queried->Update(1.0f / 60.0f);
         control->Update(1.0f / 60.0f);
         queried->RefreshRenderTransform();
@@ -2539,11 +2539,11 @@ TEST_CASE("Effekseer unchanged repeated refresh preserves seeded draws and expir
 
 TEST_CASE("Effekseer transform and rebase refresh match explicit-zero control packets", "[particle][effekseer-runtime][model-particle-integration][effekseer-refresh-contract]")
 {
-    unique_ptr<EffekseerRuntimeTestRig> queried_rig = MakeModelTrailFixture(6, 4, 2.0f, "<X>0</X><Y>0</Y><Z>0</Z>", 0);
-    unique_ptr<EffekseerRuntimeTestRig> control_rig = MakeModelTrailFixture(6, 4, 2.0f, "<X>0</X><Y>0</Y><Z>0</Z>", 0);
-    unique_ptr<ParticleRuntimeSystem> queried = queried_rig->CreateSystem();
-    unique_ptr<ParticleRuntimeSystem> control = control_rig->CreateSystem();
-    ParticleRuntimeSetup setup = MakeEffekseerIdentitySetup();
+    unique_ptr<EffekseerRuntimeTestRig> queried_rig {MakeModelTrailFixture(6, 4, 2.0f, "<X>0</X><Y>0</Y><Z>0</Z>", 0)};
+    unique_ptr<EffekseerRuntimeTestRig> control_rig {MakeModelTrailFixture(6, 4, 2.0f, "<X>0</X><Y>0</Y><Z>0</Z>", 0)};
+    unique_ptr<ParticleRuntimeSystem> queried {queried_rig->CreateSystem()};
+    unique_ptr<ParticleRuntimeSystem> control {control_rig->CreateSystem()};
+    ParticleRuntimeSetup setup {MakeEffekseerIdentitySetup()};
     queried->Setup(setup);
     control->Setup(setup);
     queried->Respawn(733);
@@ -2589,10 +2589,10 @@ TEST_CASE("Effekseer transform and rebase refresh match explicit-zero control pa
         setup.World = glm::translate(mat44 {1.0f}, rebase_total);
         ApplyEffekseerRefreshOrZero(*queried, setup, true);
         ApplyEffekseerRefreshOrZero(*control, setup, false);
-        vector<CapturedEffekseerDraw> draws = DrawAndCompareEffekseerPair(*queried_rig, *control_rig, *queried, *control);
+        vector<CapturedEffekseerDraw> draws {DrawAndCompareEffekseerPair(*queried_rig, *control_rig, *queried, *control)};
 
         // Bounds and captured vertices use the same view space in this stage
-        optional<ParticleBounds3D> live = queried->GetLiveBounds();
+        optional<ParticleBounds3D> live {queried->GetLiveBounds()};
         REQUIRE(live);
         CheckLiveBoundsContainDraws(*live, draws);
 
@@ -2604,15 +2604,15 @@ TEST_CASE("Effekseer transform and rebase refresh match explicit-zero control pa
 
 TEST_CASE("Effekseer shared-manager identities track their own refresh controls", "[particle][effekseer-runtime][model-particle-integration][effekseer-refresh-contract]")
 {
-    unique_ptr<EffekseerRuntimeTestRig> queried_rig = MakeModelTrailFixture(6, 4, 2.0f);
-    unique_ptr<EffekseerRuntimeTestRig> control_rig = MakeModelTrailFixture(6, 4, 2.0f);
-    unique_nptr<ParticleRuntimeSystem> queried_first = queried_rig->CreateSystem();
-    unique_ptr<ParticleRuntimeSystem> queried_second = queried_rig->CreateSystem();
-    unique_nptr<ParticleRuntimeSystem> control_first = control_rig->CreateSystem();
-    unique_ptr<ParticleRuntimeSystem> control_second = control_rig->CreateSystem();
-    ParticleRuntimeSetup first_setup = MakeEffekseerIdentitySetup();
+    unique_ptr<EffekseerRuntimeTestRig> queried_rig {MakeModelTrailFixture(6, 4, 2.0f)};
+    unique_ptr<EffekseerRuntimeTestRig> control_rig {MakeModelTrailFixture(6, 4, 2.0f)};
+    unique_nptr<ParticleRuntimeSystem> queried_first {queried_rig->CreateSystem()};
+    unique_ptr<ParticleRuntimeSystem> queried_second {queried_rig->CreateSystem()};
+    unique_nptr<ParticleRuntimeSystem> control_first {control_rig->CreateSystem()};
+    unique_ptr<ParticleRuntimeSystem> control_second {control_rig->CreateSystem()};
+    ParticleRuntimeSetup first_setup {MakeEffekseerIdentitySetup()};
     first_setup.World = glm::translate(mat44 {1.0f}, vec3 {3.0f, 0.0f, -2.0f});
-    ParticleRuntimeSetup second_setup = MakeEffekseerIdentitySetup();
+    ParticleRuntimeSetup second_setup {MakeEffekseerIdentitySetup()};
     second_setup.World = glm::translate(mat44 {1.0f}, vec3 {40.0f, 5.0f, 8.0f});
     queried_first->Setup(first_setup);
     control_first->Setup(first_setup);
@@ -2623,8 +2623,8 @@ TEST_CASE("Effekseer shared-manager identities track their own refresh controls"
     queried_second->Respawn(542);
     control_second->Respawn(542);
 
-    for (int32_t frame = 0; frame < 8; frame++) {
-        bool first_turn = frame % 2 == 0;
+    for (int32_t frame {0}; frame < 8; frame++) {
+        bool first_turn {frame % 2 == 0};
 
         if (first_turn) {
             ApplyEffekseerRefreshOrZero(*queried_first, first_setup, true);
@@ -2644,8 +2644,8 @@ TEST_CASE("Effekseer shared-manager identities track their own refresh controls"
         queried_second->Update(1.0f / 60.0f);
         control_second->Update(1.0f / 60.0f);
 
-        vector<CapturedEffekseerDraw> queried_first_draws;
-        vector<CapturedEffekseerDraw> queried_second_draws;
+        vector<CapturedEffekseerDraw> queried_first_draws {};
+        vector<CapturedEffekseerDraw> queried_second_draws {};
 
         if (first_turn) {
             queried_first_draws = DrawAndCompareEffekseerPair(*queried_rig, *control_rig, *queried_first, *control_first);
@@ -2667,8 +2667,8 @@ TEST_CASE("Effekseer shared-manager identities track their own refresh controls"
     DrawAndCompareEffekseerPair(*queried_rig, *control_rig, *queried_second, *control_second);
 
     {
-        unique_ptr<ParticleRuntimeSystem> pending = queried_rig->CreateSystem();
-        unique_ptr<ParticleRuntimeSystem> control_pending = control_rig->CreateSystem();
+        unique_ptr<ParticleRuntimeSystem> pending {queried_rig->CreateSystem()};
+        unique_ptr<ParticleRuntimeSystem> control_pending {control_rig->CreateSystem()};
         pending->Setup(first_setup);
         control_pending->Setup(first_setup);
         pending->Respawn(903);
@@ -2677,8 +2677,8 @@ TEST_CASE("Effekseer shared-manager identities track their own refresh controls"
         // A neighbour's refresh publishes the new root and its bounds before the handle's own first update
         queried_second->RefreshRenderTransform();
         control_second->Update(0.0f);
-        optional<ParticleBounds3D> control_pending_bounds = control_pending->GetLiveBounds();
-        optional<ParticleBounds3D> pending_bounds = pending->GetLiveBounds();
+        optional<ParticleBounds3D> control_pending_bounds {control_pending->GetLiveBounds()};
+        optional<ParticleBounds3D> pending_bounds {pending->GetLiveBounds()};
         REQUIRE(control_pending_bounds);
         REQUIRE(pending_bounds);
         CHECK(pending_bounds->PositionMin == control_pending_bounds->PositionMin);
@@ -2690,9 +2690,9 @@ TEST_CASE("Effekseer shared-manager identities track their own refresh controls"
         DrawAndCompareEffekseerPair(*queried_rig, *control_rig, *pending, *control_pending);
     }
 
-    bool second_expired = false;
+    bool second_expired {false};
 
-    for (int32_t frame = 0; frame < 30; frame++) {
+    for (int32_t frame {0}; frame < 30; frame++) {
         queried_second->Update(1.0f / 60.0f);
         control_second->Update(1.0f / 60.0f);
         queried_second->RefreshRenderTransform();
@@ -2709,8 +2709,8 @@ TEST_CASE("Effekseer shared-manager identities track their own refresh controls"
     CHECK_FALSE(control_second->IsActive());
 
     // A new owner for the first identity must produce first-draw geometry before any nonzero tick
-    unique_ptr<ParticleRuntimeSystem> respawned_first = queried_rig->CreateSystem();
-    unique_ptr<ParticleRuntimeSystem> control_respawned_first = control_rig->CreateSystem();
+    unique_ptr<ParticleRuntimeSystem> respawned_first {queried_rig->CreateSystem()};
+    unique_ptr<ParticleRuntimeSystem> control_respawned_first {control_rig->CreateSystem()};
     respawned_first->Setup(first_setup);
     control_respawned_first->Setup(first_setup);
     respawned_first->Respawn(777);
@@ -2722,11 +2722,11 @@ TEST_CASE("Effekseer shared-manager identities track their own refresh controls"
 
 TEST_CASE("Effekseer expired prewarm retires on its first render refresh", "[particle][effekseer-runtime][effekseer-refresh-contract]")
 {
-    unique_ptr<EffekseerRuntimeTestRig> queried_rig = MakeModelTrailFixture(6, 4, 2.0f);
-    unique_ptr<EffekseerRuntimeTestRig> control_rig = MakeModelTrailFixture(6, 4, 2.0f);
-    unique_ptr<ParticleRuntimeSystem> queried = queried_rig->CreateSystem();
-    unique_ptr<ParticleRuntimeSystem> control = control_rig->CreateSystem();
-    ParticleRuntimeSetup setup = MakeEffekseerIdentitySetup();
+    unique_ptr<EffekseerRuntimeTestRig> queried_rig {MakeModelTrailFixture(6, 4, 2.0f)};
+    unique_ptr<EffekseerRuntimeTestRig> control_rig {MakeModelTrailFixture(6, 4, 2.0f)};
+    unique_ptr<ParticleRuntimeSystem> queried {queried_rig->CreateSystem()};
+    unique_ptr<ParticleRuntimeSystem> control {control_rig->CreateSystem()};
+    ParticleRuntimeSetup setup {MakeEffekseerIdentitySetup()};
     queried->Setup(setup);
     control->Setup(setup);
     queried->Respawn(904);
@@ -2743,20 +2743,20 @@ TEST_CASE("Effekseer neighbour refresh publishes rebased kill-rule coordinates",
 {
     for (bool transformed_rules : {false, true}) {
         CAPTURE(transformed_rules);
-        string rules = strex(R"(<RotationValues><Type>6</Type></RotationValues>
+        string rules {strex(R"(<RotationValues><Type>6</Type></RotationValues>
 <KillRulesValues><Type>3</Type>
 <IsScaleAndRotationApplied>{}</IsScaleAndRotationApplied>
 <SphereRadius>1</SphereRadius><SphereIsKillInside>False</SphereIsKillInside>
 </KillRulesValues>)",
             transformed_rules ? "True" : "False")
-                           .str();
-        unique_ptr<EffekseerRuntimeTestRig> queried_rig = MakeModelTrailFixture(30, 1, 1.0f, "<X>0.25</X><Y>0</Y><Z>0</Z>", 1, rules);
-        unique_ptr<EffekseerRuntimeTestRig> control_rig = MakeModelTrailFixture(30, 1, 1.0f, "<X>0.25</X><Y>0</Y><Z>0</Z>", 1, rules);
-        unique_ptr<ParticleRuntimeSystem> queried = queried_rig->CreateSystem();
-        unique_ptr<ParticleRuntimeSystem> neighbour = queried_rig->CreateSystem();
-        unique_ptr<ParticleRuntimeSystem> control = control_rig->CreateSystem();
-        unique_ptr<ParticleRuntimeSystem> control_neighbour = control_rig->CreateSystem();
-        ParticleRuntimeSetup setup = MakeEffekseerIdentitySetup();
+                .str()};
+        unique_ptr<EffekseerRuntimeTestRig> queried_rig {MakeModelTrailFixture(30, 1, 1.0f, "<X>0.25</X><Y>0</Y><Z>0</Z>", 1, rules)};
+        unique_ptr<EffekseerRuntimeTestRig> control_rig {MakeModelTrailFixture(30, 1, 1.0f, "<X>0.25</X><Y>0</Y><Z>0</Z>", 1, rules)};
+        unique_ptr<ParticleRuntimeSystem> queried {queried_rig->CreateSystem()};
+        unique_ptr<ParticleRuntimeSystem> neighbour {queried_rig->CreateSystem()};
+        unique_ptr<ParticleRuntimeSystem> control {control_rig->CreateSystem()};
+        unique_ptr<ParticleRuntimeSystem> control_neighbour {control_rig->CreateSystem()};
+        ParticleRuntimeSetup setup {MakeEffekseerIdentitySetup()};
         setup.World = glm::translate(mat44 {1.0f}, vec3 {0.0f, 0.0f, -5.0f});
 
         array<ptr<ParticleRuntimeSystem>, 4> systems {queried, neighbour, control, control_neighbour};
@@ -2781,8 +2781,8 @@ TEST_CASE("Effekseer neighbour refresh publishes rebased kill-rule coordinates",
         queried->RefreshRenderTransform();
         control->Update(0.0f);
 
-        vector<CapturedEffekseerDraw> control_draws = DrawModelTrail(*control_rig, *control);
-        vector<CapturedEffekseerDraw> queried_draws = DrawModelTrail(*queried_rig, *queried);
+        vector<CapturedEffekseerDraw> control_draws {DrawModelTrail(*control_rig, *control)};
+        vector<CapturedEffekseerDraw> queried_draws {DrawModelTrail(*queried_rig, *queried)};
 
         // The SDK's inverse matrix stays in compensated simulation space; translation-only rules use the rendered origin
         if (transformed_rules) {
@@ -2798,7 +2798,7 @@ TEST_CASE("Effekseer neighbour refresh publishes rebased kill-rule coordinates",
 
 TEST_CASE("Effekseer decomposes collapsed diagonal scales into finite canonical frames", "[particle][effekseer-runtime][effekseer-singular-transform]")
 {
-    const array<vec3, 8> scales {
+    array<vec3, 8> scales {
         vec3 {0.0f, 2.0f, 3.0f},
         vec3 {1.0f, 0.0f, 3.0f},
         vec3 {1.0f, 2.0f, 0.0f},
@@ -2808,7 +2808,7 @@ TEST_CASE("Effekseer decomposes collapsed diagonal scales into finite canonical 
         vec3 {0.0f, 0.0f, 0.0f},
         vec3 {1.0f, 2.0f, 3.0f},
     };
-    const array<float32_t, 12> identity {
+    array<float32_t, 12> identity {
         1.0f,
         0.0f,
         0.0f,
@@ -2823,8 +2823,8 @@ TEST_CASE("Effekseer decomposes collapsed diagonal scales into finite canonical 
         0.0f,
     };
 
-    const auto check_identity = [&](const Effekseer::SIMD::Mat43f& rotation) {
-        const array<float32_t, 12> values {
+    auto check_identity {[&](const Effekseer::SIMD::Mat43f& rotation) {
+        array<float32_t, 12> values {
             rotation.X.GetX(),
             rotation.X.GetY(),
             rotation.X.GetZ(),
@@ -2839,16 +2839,16 @@ TEST_CASE("Effekseer decomposes collapsed diagonal scales into finite canonical 
             rotation.Z.GetW(),
         };
 
-        for (size_t index = 0; index < values.size(); index++) {
+        for (size_t index {0}; index < values.size(); index++) {
             CHECK(std::isfinite(values[index]));
             CHECK(values[index] == Catch::Approx(identity[index]).margin(StripWidthTolerance));
         }
-    };
+    }};
 
     for (const vec3& scale : scales) {
         CAPTURE(scale.x, scale.y, scale.z);
 
-        const Effekseer::SIMD::Mat43f matrix {
+        Effekseer::SIMD::Mat43f matrix {
             scale.x,
             0.0f,
             0.0f,
@@ -2862,9 +2862,9 @@ TEST_CASE("Effekseer decomposes collapsed diagonal scales into finite canonical 
             4.0f,
             5.0f,
         };
-        Effekseer::SIMD::Vec3f extracted_scale;
-        Effekseer::SIMD::Mat43f rotation;
-        Effekseer::SIMD::Vec3f translation;
+        Effekseer::SIMD::Vec3f extracted_scale {};
+        Effekseer::SIMD::Mat43f rotation {};
+        Effekseer::SIMD::Vec3f translation {};
         matrix.GetSRT(extracted_scale, rotation, translation);
 
         CHECK(extracted_scale.GetX() == Catch::Approx(scale.x).margin(StripWidthTolerance));
@@ -2881,7 +2881,7 @@ TEST_CASE("Effekseer decomposes collapsed diagonal scales into finite canonical 
 
 TEST_CASE("Effekseer singular SRT decomposition preserves surviving rotated axes", "[particle][effekseer-runtime][effekseer-singular-transform]")
 {
-    const array<vec3, 12> scales {
+    array<vec3, 12> scales {
         vec3 {0.0f, 2.0f, 3.0f},
         vec3 {1.0f, 0.0f, 3.0f},
         vec3 {1.0f, 2.0f, 0.0f},
@@ -2899,7 +2899,7 @@ TEST_CASE("Effekseer singular SRT decomposition preserves surviving rotated axes
     for (const vec3& scale : scales) {
         CAPTURE(scale.x, scale.y, scale.z);
 
-        const Effekseer::SIMD::Mat43f matrix {
+        Effekseer::SIMD::Mat43f matrix {
             0.0f,
             scale.x,
             0.0f,
@@ -2913,17 +2913,17 @@ TEST_CASE("Effekseer singular SRT decomposition preserves surviving rotated axes
             4.0f,
             5.0f,
         };
-        Effekseer::SIMD::Vec3f extracted_scale;
-        Effekseer::SIMD::Mat43f rotation;
-        Effekseer::SIMD::Vec3f translation;
+        Effekseer::SIMD::Vec3f extracted_scale {};
+        Effekseer::SIMD::Mat43f rotation {};
+        Effekseer::SIMD::Vec3f translation {};
         matrix.GetSRT(extracted_scale, rotation, translation);
 
         CHECK(extracted_scale.GetX() == Catch::Approx(std::abs(scale.x)).margin(StripWidthTolerance));
         CHECK(extracted_scale.GetY() == Catch::Approx(std::abs(scale.y)).margin(StripWidthTolerance));
         CHECK(extracted_scale.GetZ() == Catch::Approx(std::abs(scale.z)).margin(StripWidthTolerance));
 
-        const auto check_rotation = [](const Effekseer::SIMD::Mat43f& value) {
-            const array<vec3, 3> axes {
+        auto check_rotation {[](const Effekseer::SIMD::Mat43f& value) {
+            array<vec3, 3> axes {
                 vec3 {value.X.GetX(), value.Y.GetX(), value.Z.GetX()},
                 vec3 {value.X.GetY(), value.Y.GetY(), value.Z.GetY()},
                 vec3 {value.X.GetZ(), value.Y.GetZ(), value.Z.GetZ()},
@@ -2939,12 +2939,12 @@ TEST_CASE("Effekseer singular SRT decomposition preserves surviving rotated axes
             CHECK(glm::dot(axes[0], axes[1]) == Catch::Approx(0.0f).margin(StripWidthTolerance));
             CHECK(glm::dot(axes[0], axes[2]) == Catch::Approx(0.0f).margin(StripWidthTolerance));
             CHECK(glm::dot(axes[1], axes[2]) == Catch::Approx(0.0f).margin(StripWidthTolerance));
-        };
+        }};
 
         check_rotation(rotation);
         check_rotation(matrix.GetRotation());
 
-        const Effekseer::SIMD::Mat43f reconstructed = Effekseer::SIMD::Mat43f::SRT(extracted_scale, rotation, translation);
+        Effekseer::SIMD::Mat43f reconstructed {Effekseer::SIMD::Mat43f::SRT(extracted_scale, rotation, translation)};
         CHECK(reconstructed.X.GetX() == Catch::Approx(0.0f).margin(StripWidthTolerance));
         CHECK(reconstructed.X.GetY() == Catch::Approx(-scale.y).margin(StripWidthTolerance));
         CHECK(reconstructed.X.GetZ() == Catch::Approx(0.0f).margin(StripWidthTolerance));
@@ -2964,14 +2964,14 @@ TEST_CASE("Effekseer singular SRT decomposition preserves an independent 3D basi
 {
     // Independent orthonormal, right-handed basis: each row has unit length, the rows are pairwise perpendicular,
     // and cross(a, b) == c. Every coordinate is nonzero, unlike the identity and axis-aligned fixtures above
-    const array<vec3, 3> authored_basis {
+    array<vec3, 3> authored_basis {
         vec3 {1.0f / 3.0f, 2.0f / 3.0f, 2.0f / 3.0f},
         vec3 {2.0f / 3.0f, 1.0f / 3.0f, -2.0f / 3.0f},
         vec3 {-2.0f / 3.0f, 2.0f / 3.0f, -1.0f / 3.0f},
     };
 
     // The constructor takes each authored row as one argument triplet, so these are exactly the scaled source rows
-    const auto make_matrix = [](const vec3& scale) {
+    auto make_matrix {[](const vec3& scale) {
         return Effekseer::SIMD::Mat43f {
             scale.x * (1.0f / 3.0f),
             scale.x * (2.0f / 3.0f),
@@ -2986,17 +2986,17 @@ TEST_CASE("Effekseer singular SRT decomposition preserves an independent 3D basi
             4.0f,
             5.0f,
         };
-    };
+    }};
 
-    const auto get_basis_rows = [](const Effekseer::SIMD::Mat43f& rotation) {
+    auto get_basis_rows {[](const Effekseer::SIMD::Mat43f& rotation) {
         return array<vec3, 3> {
             vec3 {rotation.X.GetX(), rotation.Y.GetX(), rotation.Z.GetX()},
             vec3 {rotation.X.GetY(), rotation.Y.GetY(), rotation.Z.GetY()},
             vec3 {rotation.X.GetZ(), rotation.Y.GetZ(), rotation.Z.GetZ()},
         };
-    };
+    }};
 
-    const auto check_frame = [](const array<vec3, 3>& axes, bool require_right_handed) {
+    auto check_frame {[](const array<vec3, 3>& axes, bool require_right_handed) {
         for (const vec3& axis : axes) {
             CHECK(std::isfinite(axis.x));
             CHECK(std::isfinite(axis.y));
@@ -3012,7 +3012,7 @@ TEST_CASE("Effekseer singular SRT decomposition preserves an independent 3D basi
         if (require_right_handed) {
             CHECK(glm::dot(glm::cross(axes[0], axes[1]), axes[2]) == Catch::Approx(1.0f).margin(StripWidthTolerance));
         }
-    };
+    }};
 
     struct ScaleCase final
     {
@@ -3022,7 +3022,7 @@ TEST_CASE("Effekseer singular SRT decomposition preserves an independent 3D basi
 
     // All seven singular zero/nonzero patterns, then fully nonzero positive and reflected controls. Negative
     // survivors cover every single-survivor axis and both positive and negative two-survivor scales
-    const array<ScaleCase, 10> cases {
+    array<ScaleCase, 10> cases {
         ScaleCase {vec3 {0.0f, 0.0f, 0.0f}, true},
         ScaleCase {vec3 {0.0f, 0.0f, -3.0f}, true},
         ScaleCase {vec3 {0.0f, 2.0f, 0.0f}, true},
@@ -3036,19 +3036,19 @@ TEST_CASE("Effekseer singular SRT decomposition preserves an independent 3D basi
     };
 
     for (const ScaleCase& scale_case : cases) {
-        const vec3& scale = scale_case.Scale;
+        const vec3& scale {scale_case.Scale};
         CAPTURE(scale.x, scale.y, scale.z);
         CAPTURE(scale_case.Singular);
 
-        const Effekseer::SIMD::Mat43f matrix = make_matrix(scale);
-        Effekseer::SIMD::Vec3f extracted_scale;
-        Effekseer::SIMD::Mat43f decomposed_rotation;
-        Effekseer::SIMD::Vec3f extracted_translation;
+        Effekseer::SIMD::Mat43f matrix {make_matrix(scale)};
+        Effekseer::SIMD::Vec3f extracted_scale {};
+        Effekseer::SIMD::Mat43f decomposed_rotation {};
+        Effekseer::SIMD::Vec3f extracted_translation {};
         matrix.GetSRT(extracted_scale, decomposed_rotation, extracted_translation);
 
-        const Effekseer::SIMD::Mat43f direct_rotation = matrix.GetRotation();
-        const array<vec3, 3> decomposed_axes = get_basis_rows(decomposed_rotation);
-        const array<vec3, 3> direct_axes = get_basis_rows(direct_rotation);
+        Effekseer::SIMD::Mat43f direct_rotation {matrix.GetRotation()};
+        array<vec3, 3> decomposed_axes {get_basis_rows(decomposed_rotation)};
+        array<vec3, 3> direct_axes {get_basis_rows(direct_rotation)};
 
         CHECK(extracted_scale.GetX() == Catch::Approx(std::abs(scale.x)).margin(StripWidthTolerance));
         CHECK(extracted_scale.GetY() == Catch::Approx(std::abs(scale.y)).margin(StripWidthTolerance));
@@ -3057,17 +3057,17 @@ TEST_CASE("Effekseer singular SRT decomposition preserves an independent 3D basi
         check_frame(decomposed_axes, scale_case.Singular);
         check_frame(direct_axes, scale_case.Singular);
 
-        const array<float32_t, 3> scale_components {scale.x, scale.y, scale.z};
+        array<float32_t, 3> scale_components {scale.x, scale.y, scale.z};
 
-        for (size_t axis_index = 0; axis_index < scale_components.size(); axis_index++) {
+        for (size_t axis_index {0}; axis_index < scale_components.size(); axis_index++) {
             if (scale_components[axis_index] == 0.0f) {
                 continue;
             }
 
-            const float32_t expected_sign = scale_components[axis_index] < 0.0f ? -1.0f : 1.0f;
-            const vec3 expected_axis = authored_basis[axis_index] * expected_sign;
-            const vec3& decomposed_axis = decomposed_axes[axis_index];
-            const vec3& direct_axis = direct_axes[axis_index];
+            float32_t expected_sign {scale_components[axis_index] < 0.0f ? -1.0f : 1.0f};
+            vec3 expected_axis {authored_basis[axis_index] * expected_sign};
+            const vec3& decomposed_axis {decomposed_axes[axis_index]};
+            const vec3& direct_axis {direct_axes[axis_index]};
 
             CHECK(decomposed_axis.x == Catch::Approx(expected_axis.x).margin(StripWidthTolerance));
             CHECK(decomposed_axis.y == Catch::Approx(expected_axis.y).margin(StripWidthTolerance));
@@ -3077,7 +3077,7 @@ TEST_CASE("Effekseer singular SRT decomposition preserves an independent 3D basi
             CHECK(direct_axis.z == Catch::Approx(expected_axis.z).margin(StripWidthTolerance));
         }
 
-        const Effekseer::SIMD::Mat43f reconstructed = Effekseer::SIMD::Mat43f::SRT(extracted_scale, decomposed_rotation, extracted_translation);
+        Effekseer::SIMD::Mat43f reconstructed {Effekseer::SIMD::Mat43f::SRT(extracted_scale, decomposed_rotation, extracted_translation)};
 
         // Every field of the source matrix is pinned literally, including the rows whose scale collapsed to zero
         CHECK(reconstructed.X.GetX() == Catch::Approx(scale.x * (1.0f / 3.0f)).margin(StripWidthTolerance));
@@ -3097,7 +3097,7 @@ TEST_CASE("Effekseer singular SRT decomposition preserves an independent 3D basi
 
 TEST_CASE("Effekseer singular SRT decomposition retains invalid surviving basis components", "[particle][effekseer-runtime][effekseer-singular-transform]")
 {
-    const array<float32_t, 2> invalid_components {
+    array<float32_t, 2> invalid_components {
         std::numeric_limits<float32_t>::quiet_NaN(),
         std::numeric_limits<float32_t>::infinity(),
     };
@@ -3107,7 +3107,7 @@ TEST_CASE("Effekseer singular SRT decomposition retains invalid surviving basis 
 
         // X is collapsed while Y survives with a nonfinite component. A repair that substitutes a finite
         // canonical identity for any singular matrix would erase the invalid input instead of propagating it
-        const Effekseer::SIMD::Mat43f matrix {
+        Effekseer::SIMD::Mat43f matrix {
             0.0f,
             0.0f,
             0.0f,
@@ -3122,14 +3122,14 @@ TEST_CASE("Effekseer singular SRT decomposition retains invalid surviving basis 
             5.0f,
         };
 
-        Effekseer::SIMD::Vec3f extracted_scale;
-        Effekseer::SIMD::Mat43f decomposed_rotation;
-        Effekseer::SIMD::Vec3f extracted_translation;
+        Effekseer::SIMD::Vec3f extracted_scale {};
+        Effekseer::SIMD::Mat43f decomposed_rotation {};
+        Effekseer::SIMD::Vec3f extracted_translation {};
         matrix.GetSRT(extracted_scale, decomposed_rotation, extracted_translation);
 
-        const Effekseer::SIMD::Mat43f direct_rotation = matrix.GetRotation();
+        Effekseer::SIMD::Mat43f direct_rotation {matrix.GetRotation()};
 
-        const auto has_nonfinite_component = [](const Effekseer::SIMD::Mat43f& rotation) { return !std::isfinite(rotation.X.GetX()) || !std::isfinite(rotation.X.GetY()) || !std::isfinite(rotation.X.GetZ()) || !std::isfinite(rotation.Y.GetX()) || !std::isfinite(rotation.Y.GetY()) || !std::isfinite(rotation.Y.GetZ()) || !std::isfinite(rotation.Z.GetX()) || !std::isfinite(rotation.Z.GetY()) || !std::isfinite(rotation.Z.GetZ()); };
+        auto has_nonfinite_component {[](const Effekseer::SIMD::Mat43f& rotation) { return !std::isfinite(rotation.X.GetX()) || !std::isfinite(rotation.X.GetY()) || !std::isfinite(rotation.X.GetZ()) || !std::isfinite(rotation.Y.GetX()) || !std::isfinite(rotation.Y.GetY()) || !std::isfinite(rotation.Y.GetZ()) || !std::isfinite(rotation.Z.GetX()) || !std::isfinite(rotation.Z.GetY()) || !std::isfinite(rotation.Z.GetZ()); }};
 
         // Only at least one nonfinite basis component is required; the routines need not fill every lane with NaN
         CHECK(has_nonfinite_component(decomposed_rotation));
@@ -3141,12 +3141,12 @@ TEST_CASE("Effekseer singular SRT decomposition retains invalid surviving basis 
 
 #if FO_ENABLE_3D && FO_EFFEKSEER_PARTICLES
 
-static constexpr string_view ModelChildPoseParticleMeshPath = "Models/ChildProjection.fbx";
-static constexpr string_view ModelChildPoseParticleChildMeshPath = "Models/ChildProjectionEquipment.fbx";
-static constexpr string_view ModelChildPoseParticleModelPath = "Models/ChildProjection.fo3d";
-static constexpr string_view ModelChildPoseParticleParticlePath = "Particles/ChildProjection.efk";
-static constexpr string_view ModelChildPoseParticleParticleShader = "Effects/Particles_ColorMulAtlas.fofx";
-static constexpr float32_t ModelChildPoseParticleCallbackPhase = 0.25f;
+static constexpr string_view ModelChildPoseParticleMeshPath {"Models/ChildProjection.fbx"};
+static constexpr string_view ModelChildPoseParticleChildMeshPath {"Models/ChildProjectionEquipment.fbx"};
+static constexpr string_view ModelChildPoseParticleModelPath {"Models/ChildProjection.fo3d"};
+static constexpr string_view ModelChildPoseParticleParticlePath {"Particles/ChildProjection.efk"};
+static constexpr string_view ModelChildPoseParticleParticleShader {"Effects/Particles_ColorMulAtlas.fofx"};
+static constexpr float32_t ModelChildPoseParticleCallbackPhase {0.25f};
 static constexpr std::chrono::milliseconds ModelChildPoseParticleAdvanceInterval {400};
 
 struct ModelChildPoseParticlePacketFrame
@@ -3182,7 +3182,7 @@ static auto GetModelChildPoseParticlePacketFrame(const CapturedEffekseerDraw& dr
     REQUIRE(draw.Vertices.size() == 4);
     REQUIRE(draw.Indices.size() == 6);
 
-    ModelChildPoseParticlePacketFrame frame;
+    ModelChildPoseParticlePacketFrame frame {};
 
     for (const Vertex2D& vertex : draw.Vertices) {
         frame.Center += vec3 {vertex.PosX, vertex.PosY, vertex.PosZ};
@@ -3209,7 +3209,7 @@ static void CheckModelChildPoseParticlePacketFramesEqual(const ModelChildPosePar
 
 static auto CountModelChildPoseParticleParticleAttachments(const ModelInstance& instance) -> int32_t
 {
-    int32_t count = 0;
+    int32_t count {0};
 
     for (const ModelAttachPoint& attach : instance.GetAttachPoints()) {
         if (attach.Kind == ModelAttachKind::Particle) {
@@ -3222,7 +3222,7 @@ static auto CountModelChildPoseParticleParticleAttachments(const ModelInstance& 
 
 static void AddModelChildPoseParticleFixtureResources(BakerTests::MemoryDataSource& source, vector<pair<string, vector<uint8_t>>>& resources)
 {
-    constexpr string_view particle_project = R"EFK(<?xml version="1.0" encoding="utf-8"?>
+    constexpr string_view particle_project {R"EFK(<?xml version="1.0" encoding="utf-8"?>
 <EffekseerProject>
   <Root>
     <Name>Root</Name>
@@ -3273,17 +3273,17 @@ static void AddModelChildPoseParticleFixtureResources(BakerTests::MemoryDataSour
   <EndFrame>5</EndFrame>
   <IsLoop>False</IsLoop>
 </EffekseerProject>
-)EFK";
+)EFK"};
 
-    auto project_bytes = const_span<uint8_t> {reinterpret_cast<const uint8_t*>(particle_project.data()), particle_project.size()};
-    EffekseerCompilerOutput particle = CompileEffekseerProject("Particles/ChildProjection.efkproj", project_bytes);
+    auto project_bytes {const_span<uint8_t> {reinterpret_cast<const uint8_t*>(particle_project.data()), particle_project.size()}};
+    EffekseerCompilerOutput particle {CompileEffekseerProject("Particles/ChildProjection.efkproj", project_bytes)};
     REQUIRE(particle.Dependencies.empty());
     AddEffekseerRuntimeTestResources(source, ModelChildPoseParticleParticlePath, std::move(particle.Binary));
 
     // Real baked skinned meshes, the Layer3 child link and the explicit model clock reflection stay in one fixture
-    vector<uint8_t> mesh = ClientEngineTests::MakeSkinnedRuntimeModelMesh();
-    vector<uint8_t> child_mesh = ClientEngineTests::MakeSkinnedRuntimeModelMesh();
-    vector<uint8_t> animation_info;
+    vector<uint8_t> mesh {ClientEngineTests::MakeSkinnedRuntimeModelMesh()};
+    vector<uint8_t> child_mesh {ClientEngineTests::MakeSkinnedRuntimeModelMesh()};
+    vector<uint8_t> animation_info {};
     resources.emplace_back(string {ModelChildPoseParticleMeshPath}, mesh);
     resources.emplace_back(string {ModelChildPoseParticleChildMeshPath}, child_mesh);
     resources.emplace_back(string {ModelChildPoseParticleModelPath}, ClientEngineTests::MakeRuntimeModelDescription(ModelChildPoseParticleModelPath, ModelChildPoseParticleMeshPath, mesh, {}, ModelChildPoseParticleChildMeshPath, &child_mesh, true, {}, 2.0f, &animation_info, "Model ChildProjection.fbx\nAnim 1 1 ModelFile Base\nLayer 3\nValue 1 Attach ChildProjectionEquipment.fbx MoveX 3\n"));
@@ -3295,11 +3295,11 @@ static auto CaptureModelChildPoseParticleDraw(CapturingAppRender& render, Effect
 {
     array<float32_t, 16> expected {};
 
-    for (size_t i = 0; i < expected.size(); i++) {
+    for (size_t i {0}; i < expected.size(); i++) {
         expected[i] = glm::value_ptr(projection)[i];
     }
 
-    ModelChildPoseParticleDrawSnapshot snapshot;
+    ModelChildPoseParticleDrawSnapshot snapshot {};
     render.ClearDraws();
     instance->DrawPreparedInScene(projection);
     snapshot.Draws = render.GetDraws();
@@ -3308,7 +3308,7 @@ static auto CaptureModelChildPoseParticleDraw(CapturingAppRender& render, Effect
         REQUIRE(draw.HasProjection);
         REQUIRE(draw.Projection);
 
-        for (size_t i = 0; i < expected.size(); i++) {
+        for (size_t i {0}; i < expected.size(); i++) {
             CHECK((*draw.Projection)[i] == expected[i]);
         }
 
@@ -3332,7 +3332,7 @@ static auto CaptureModelChildPoseParticleDraw(CapturingAppRender& render, Effect
     REQUIRE(snapshot.MeshIndexCount != 0);
 
     if (!snapshot.Particles.empty()) {
-        ModelChildPoseParticlePacketFrame packet_frame = GetModelChildPoseParticlePacketFrame(snapshot.Particles.front());
+        ModelChildPoseParticlePacketFrame packet_frame {GetModelChildPoseParticlePacketFrame(snapshot.Particles.front())};
         snapshot.PacketCenter = packet_frame.Center;
         snapshot.PacketRight = packet_frame.Right;
         snapshot.PacketUp = packet_frame.Up;
@@ -3365,52 +3365,49 @@ static auto CaptureModelChildPoseParticleDraw(CapturingAppRender& render, Effect
 TEST_CASE("NestedModelParticleUsesRootAtlasProjection", "[model-child-pose-particles]")
 {
     using namespace ClientEngineTests;
-    constexpr string_view mesh_path = "Models/NestedParticle.fbx";
-    constexpr string_view parent_path = "Models/NestedParticleParent.fo3d";
-    constexpr string_view child_path = "Models/NestedParticleChild.fo3d";
-    constexpr string_view particle_path = "Particles/NestedParticle.efk";
-    constexpr string_view project = R"EFK(<?xml version="1.0" encoding="utf-8"?>
-<EffekseerProject><Root><Name>Root</Name><Children><Node><Name>Instant</Name><CommonValues><MaxGeneration><Value>1</Value><Infinite>False</Infinite></MaxGeneration><Life><Min>60</Min><Max>60</Max></Life><Generation><GenerationTime><Min>0</Min><Max>0</Max></GenerationTime></Generation></CommonValues><RendererCommonValues><AlphaBlend>1</AlphaBlend><ZTest>False</ZTest><ZWrite>False</ZWrite></RendererCommonValues><DrawingValues><ColorAll><Fixed><R>255</R><G>255</G><B>255</B><A>255</A></Fixed></ColorAll><Sprite><Billboard>0</Billboard></Sprite></DrawingValues><Children /></Node></Children></Root><ToolVersion>1.80.5</ToolVersion><Version>3</Version><StartFrame>0</StartFrame><EndFrame>60</EndFrame><IsLoop>False</IsLoop></EffekseerProject>)EFK";
-    auto project_bytes = const_span<uint8_t> {reinterpret_cast<const uint8_t*>(project.data()), project.size()};
-    EffekseerCompilerOutput particle = CompileEffekseerProject("Particles/NestedParticle.efkproj", project_bytes);
-    vector<uint8_t> raw_particle = particle.Binary;
+    constexpr string_view mesh_path {"Models/NestedParticle.fbx"};
+    constexpr string_view parent_path {"Models/NestedParticleParent.fo3d"};
+    constexpr string_view child_path {"Models/NestedParticleChild.fo3d"};
+    constexpr string_view particle_path {"Particles/NestedParticle.efk"};
+    constexpr string_view project {R"EFK(<?xml version="1.0" encoding="utf-8"?>
+<EffekseerProject><Root><Name>Root</Name><Children><Node><Name>Instant</Name><CommonValues><MaxGeneration><Value>1</Value><Infinite>False</Infinite></MaxGeneration><Life><Min>60</Min><Max>60</Max></Life><Generation><GenerationTime><Min>0</Min><Max>0</Max></GenerationTime></Generation></CommonValues><RendererCommonValues><AlphaBlend>1</AlphaBlend><ZTest>False</ZTest><ZWrite>False</ZWrite></RendererCommonValues><DrawingValues><ColorAll><Fixed><R>255</R><G>255</G><B>255</B><A>255</A></Fixed></ColorAll><Sprite><Billboard>0</Billboard></Sprite></DrawingValues><Children /></Node></Children></Root><ToolVersion>1.80.5</ToolVersion><Version>3</Version><StartFrame>0</StartFrame><EndFrame>60</EndFrame><IsLoop>False</IsLoop></EffekseerProject>)EFK"};
+    auto project_bytes {const_span<uint8_t> {reinterpret_cast<const uint8_t*>(project.data()), project.size()}};
+    EffekseerCompilerOutput particle {CompileEffekseerProject("Particles/NestedParticle.efkproj", project_bytes)};
+    vector<uint8_t> raw_particle {particle.Binary};
     AppendEffekseerBoundsTrailer(particle.Binary, vec3 {-1.0f}, vec3 {1.0f}, 0.5f);
 
-    vector<uint8_t> mesh = MakeSkinnedRuntimeModelMesh();
-    vector<pair<string, vector<uint8_t>>> particle_bake_resources;
+    vector<uint8_t> mesh {MakeSkinnedRuntimeModelMesh()};
+    vector<pair<string, vector<uint8_t>>> particle_bake_resources {};
     particle_bake_resources.emplace_back(string {particle_path}, particle.Binary);
-    vector<uint8_t> child = MakeRuntimeModelDescription(child_path, mesh_path, mesh, {}, {}, nullptr, true, {}, 0.0f, nullptr,
-        "Model NestedParticle.fbx\nLayer 3\nValue 1 AttachParticles Particles/NestedParticle.efk Link Limb\n", particle_bake_resources);
-    vector<uint8_t> animation_info;
-    vector<uint8_t> parent = MakeRuntimeModelDescription(parent_path, mesh_path, mesh, {}, child_path, &child, true, {}, 0.0f, &animation_info,
-        "Model NestedParticle.fbx\nAnim 1 1 ModelFile Base\nLayer 3\nValue 1 Attach NestedParticleChild.fo3d\n", particle_bake_resources,
-        "Model NestedParticle.fbx\nLayer 3\nValue 1 AttachParticles Particles/NestedParticle.efk Link Limb\n");
+    vector<uint8_t> child {MakeRuntimeModelDescription(child_path, mesh_path, mesh, {}, {}, nullptr, true, {}, 0.0f, nullptr, "Model NestedParticle.fbx\nLayer 3\nValue 1 AttachParticles Particles/NestedParticle.efk Link Limb\n", particle_bake_resources)};
+    vector<uint8_t> animation_info {};
+    vector<uint8_t> parent {MakeRuntimeModelDescription(parent_path, mesh_path, mesh, {}, child_path, &child, true, {}, 0.0f, &animation_info, "Model NestedParticle.fbx\nAnim 1 1 ModelFile Base\nLayer 3\nValue 1 Attach NestedParticleChild.fo3d\n", particle_bake_resources, "Model NestedParticle.fbx\nLayer 3\nValue 1 AttachParticles Particles/NestedParticle.efk Link Limb\n")};
 
-    auto settings = MakeClientTestSettings();
+    auto settings {MakeClientTestSettings()};
     BakerTests::OverrideSetting(settings.Render.ModelProjFactor, 32.0f);
-    auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("NestedParticleProjection");
+    auto source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("NestedParticleProjection")};
     AddEffekseerRuntimeTestResources(*source, particle_path, std::move(raw_particle));
     source->AddFile("Effects/3D_Skinned.fofx-1-info", "[EffectInfo]\nProjBuf = 0\nModelBuf = 1\nModelAnimBuf = 2\n");
-    vector<pair<string, vector<uint8_t>>> resources;
+    vector<pair<string, vector<uint8_t>>> resources {};
     resources.emplace_back(string {mesh_path}, mesh);
     resources.emplace_back(string {child_path}, std::move(child));
     resources.emplace_back(string {parent_path}, std::move(parent));
     resources.emplace_back("ModelAnimationInfo.foinfo", std::move(animation_info));
-    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(resources)));
-    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto client {MakeClientEngine(settings, MakeClientTestResources(std::move(resources)))};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
     client->Resources.AddCustomSource(std::move(source));
     CapturingAppRender render {&settings};
     EffectManager effects {&settings, &client->Resources, &render};
     effects.LoadDefaultEffects();
-    auto texture = render.CreateTexture({8, 8}, true, false);
+    auto texture {render.CreateTexture({8, 8}, true, false)};
     ModelManager manager {&settings, &client->Resources, client.get(), &effects, &render, &client->GameTime, client.get(), [&texture](string_view) -> pair<nptr<RenderTexture>, frect32> { return {texture.as_nptr(), EffekseerFixtureAtlasRect}; }, []() { return false; }};
-    auto model = manager.CreateModel(parent_path);
+    auto model {manager.CreateModel(parent_path)};
     REQUIRE(model);
-    ptr<ModelInstance> model_view = model;
+    ptr<ModelInstance> model_view {model};
     CHECK(model->GetRoot() == model_view);
     CHECK_FALSE(model->GetParent());
-    const ModelInstance& const_model = *model;
-    ptr<const ModelInstance> const_model_view = model_view;
+    const ModelInstance& const_model {*model};
+    ptr<const ModelInstance> const_model_view {model_view};
     CHECK(const_model.GetRoot() == const_model_view);
     CHECK_FALSE(const_model.GetParent());
     model->StartMeshGeneration();
@@ -3423,8 +3420,8 @@ TEST_CASE("NestedModelParticleUsesRootAtlasProjection", "[model-child-pose-parti
     REQUIRE(CountModelChildPoseParticleParticleAttachments(*model) == 1);
     render.ClearDraws();
     model->DrawSpriteFrame();
-    optional<array<float32_t, 16>> particle_proj;
-    optional<array<float32_t, 16>> model_proj;
+    optional<array<float32_t, 16>> particle_proj {};
+    optional<array<float32_t, 16>> model_proj {};
     for (const CapturedEffekseerDraw& draw : render.GetDraws()) {
         if (draw.EffectName == ModelChildPoseParticleParticleShader) {
             particle_proj = draw.Projection;
@@ -3441,50 +3438,49 @@ TEST_CASE("NestedModelParticleUsesRootAtlasProjection", "[model-child-pose-parti
 TEST_CASE("LinkedChildNozzleFollowsParentJoint", "[model-child-pose-particles]")
 {
     using namespace ClientEngineTests;
-    constexpr string_view mesh_path = "Models/NestedParticle.fbx";
-    constexpr string_view child_mesh_path = "Models/NestedParticleEquipment.fbx";
-    constexpr string_view parent_path = "Models/NestedParticleParent.fo3d";
-    constexpr string_view particle_path = "Particles/NestedParticle.efk";
-    constexpr string_view project = R"EFK(<?xml version="1.0" encoding="utf-8"?>
-<EffekseerProject><Root><Name>Root</Name><Children><Node><Name>Instant</Name><CommonValues><MaxGeneration><Value>1</Value><Infinite>False</Infinite></MaxGeneration><Life><Min>60</Min><Max>60</Max></Life><Generation><GenerationTime><Min>0</Min><Max>0</Max></GenerationTime></Generation></CommonValues><RendererCommonValues><AlphaBlend>1</AlphaBlend><ZTest>False</ZTest><ZWrite>False</ZWrite></RendererCommonValues><DrawingValues><ColorAll><Fixed><R>255</R><G>255</G><B>255</B><A>255</A></Fixed></ColorAll><Sprite><Billboard>0</Billboard></Sprite></DrawingValues><Children /></Node></Children></Root><ToolVersion>1.80.5</ToolVersion><Version>3</Version><StartFrame>0</StartFrame><EndFrame>60</EndFrame><IsLoop>False</IsLoop></EffekseerProject>)EFK";
-    auto project_bytes = const_span<uint8_t> {reinterpret_cast<const uint8_t*>(project.data()), project.size()};
-    EffekseerCompilerOutput particle = CompileEffekseerProject("Particles/NestedParticle.efkproj", project_bytes);
-    vector<uint8_t> raw_particle = particle.Binary;
+    constexpr string_view mesh_path {"Models/NestedParticle.fbx"};
+    constexpr string_view child_mesh_path {"Models/NestedParticleEquipment.fbx"};
+    constexpr string_view parent_path {"Models/NestedParticleParent.fo3d"};
+    constexpr string_view particle_path {"Particles/NestedParticle.efk"};
+    constexpr string_view project {R"EFK(<?xml version="1.0" encoding="utf-8"?>
+<EffekseerProject><Root><Name>Root</Name><Children><Node><Name>Instant</Name><CommonValues><MaxGeneration><Value>1</Value><Infinite>False</Infinite></MaxGeneration><Life><Min>60</Min><Max>60</Max></Life><Generation><GenerationTime><Min>0</Min><Max>0</Max></GenerationTime></Generation></CommonValues><RendererCommonValues><AlphaBlend>1</AlphaBlend><ZTest>False</ZTest><ZWrite>False</ZWrite></RendererCommonValues><DrawingValues><ColorAll><Fixed><R>255</R><G>255</G><B>255</B><A>255</A></Fixed></ColorAll><Sprite><Billboard>0</Billboard></Sprite></DrawingValues><Children /></Node></Children></Root><ToolVersion>1.80.5</ToolVersion><Version>3</Version><StartFrame>0</StartFrame><EndFrame>60</EndFrame><IsLoop>False</IsLoop></EffekseerProject>)EFK"};
+    auto project_bytes {const_span<uint8_t> {reinterpret_cast<const uint8_t*>(project.data()), project.size()}};
+    EffekseerCompilerOutput particle {CompileEffekseerProject("Particles/NestedParticle.efkproj", project_bytes)};
+    vector<uint8_t> raw_particle {particle.Binary};
     AppendEffekseerBoundsTrailer(particle.Binary, vec3 {-1.0f}, vec3 {1.0f}, 0.5f);
 
-    vector<uint8_t> mesh = MakeSkinnedRuntimeModelMesh();
-    vector<uint8_t> child_mesh = MakeSkinnedRuntimeModelMesh(true);
-    vector<pair<string, vector<uint8_t>>> particle_bake_resources;
+    vector<uint8_t> mesh {MakeSkinnedRuntimeModelMesh()};
+    vector<uint8_t> child_mesh {MakeSkinnedRuntimeModelMesh(true)};
+    vector<pair<string, vector<uint8_t>>> particle_bake_resources {};
     particle_bake_resources.emplace_back(string {particle_path}, particle.Binary);
-    vector<uint8_t> animation_info;
-    vector<uint8_t> parent = MakeRuntimeModelDescription(parent_path, mesh_path, mesh, {}, child_mesh_path, &child_mesh, true, {}, 0.0f, &animation_info,
-        "Model NestedParticle.fbx\nAnim 1 1 ModelFile Base\nLayer 3\nValue 1 Attach NestedParticleEquipment.fbx\n", particle_bake_resources);
+    vector<uint8_t> animation_info {};
+    vector<uint8_t> parent {MakeRuntimeModelDescription(parent_path, mesh_path, mesh, {}, child_mesh_path, &child_mesh, true, {}, 0.0f, &animation_info, "Model NestedParticle.fbx\nAnim 1 1 ModelFile Base\nLayer 3\nValue 1 Attach NestedParticleEquipment.fbx\n", particle_bake_resources)};
 
-    auto settings = MakeClientTestSettings();
+    auto settings {MakeClientTestSettings()};
     BakerTests::OverrideSetting(settings.Render.ModelProjFactor, 32.0f);
-    auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("NestedParticleProjection");
+    auto source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("NestedParticleProjection")};
     AddEffekseerRuntimeTestResources(*source, particle_path, std::move(raw_particle));
     source->AddFile("Effects/3D_Skinned.fofx-1-info", "[EffectInfo]\nProjBuf = 0\nModelBuf = 1\nModelAnimBuf = 2\n");
-    vector<pair<string, vector<uint8_t>>> resources;
+    vector<pair<string, vector<uint8_t>>> resources {};
     resources.emplace_back(string {mesh_path}, mesh);
     resources.emplace_back(string {child_mesh_path}, child_mesh);
     resources.emplace_back(string {parent_path}, std::move(parent));
     resources.emplace_back("ModelAnimationInfo.foinfo", std::move(animation_info));
-    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(resources)));
-    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto client {MakeClientEngine(settings, MakeClientTestResources(std::move(resources)))};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
     client->Resources.AddCustomSource(std::move(source));
     CapturingAppRender render {&settings};
     EffectManager effects {&settings, &client->Resources, &render};
     effects.LoadDefaultEffects();
-    auto texture = render.CreateTexture({8, 8}, true, false);
+    auto texture {render.CreateTexture({8, 8}, true, false)};
     ModelManager manager {&settings, &client->Resources, client.get(), &effects, &render, &client->GameTime, client.get(), [&texture](string_view) -> pair<nptr<RenderTexture>, frect32> { return {texture.as_nptr(), EffekseerFixtureAtlasRect}; }, []() { return false; }};
-    auto model = manager.CreateModel(parent_path);
+    auto model {manager.CreateModel(parent_path)};
     REQUIRE(model);
-    ptr<ModelInstance> model_view = model;
+    ptr<ModelInstance> model_view {model};
     CHECK(model->GetRoot() == model_view);
     CHECK_FALSE(model->GetParent());
-    const ModelInstance& const_model = *model;
-    ptr<const ModelInstance> const_model_view = model_view;
+    const ModelInstance& const_model {*model};
+    ptr<const ModelInstance> const_model_view {model_view};
     CHECK(const_model.GetRoot() == const_model_view);
     CHECK_FALSE(const_model.GetParent());
     model->StartMeshGeneration();
@@ -3494,16 +3490,16 @@ TEST_CASE("LinkedChildNozzleFollowsParentJoint", "[model-child-pose-particles]")
     (void)model->PlayAnim(static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(1), layers.data(), 0.0f, ModelAnimFlags::Freeze);
     model->SetupFrame(isize32 {512, 512}, ipos32 {256, 384});
     model->PoseSpriteFrame(false);
-    auto limb_pos = model->GetBonePos(client->Hashes.to_hashed_string("Limb"), vec3 {0.2f, 0.4f, 0.0f});
-    auto nozzle_pos = model->GetBonePos(client->Hashes.to_hashed_string("Nozzle"));
+    auto limb_pos {model->GetBonePos(client->Hashes.to_hashed_string("Limb"), vec3 {0.2f, 0.4f, 0.0f})};
+    auto nozzle_pos {model->GetBonePos(client->Hashes.to_hashed_string("Nozzle"))};
     REQUIRE(limb_pos);
     REQUIRE(nozzle_pos);
     CHECK(*nozzle_pos == *limb_pos);
 
     model->SetRotation(1.5707963f, 0.0f, 0.0f);
     model->PoseSpriteFrame(false);
-    auto moved_limb_pos = model->GetBonePos(client->Hashes.to_hashed_string("Limb"), vec3 {0.2f, 0.4f, 0.0f});
-    auto moved_nozzle_pos = model->GetBonePos(client->Hashes.to_hashed_string("Nozzle"));
+    auto moved_limb_pos {model->GetBonePos(client->Hashes.to_hashed_string("Limb"), vec3 {0.2f, 0.4f, 0.0f})};
+    auto moved_nozzle_pos {model->GetBonePos(client->Hashes.to_hashed_string("Nozzle"))};
     REQUIRE(moved_limb_pos);
     REQUIRE(moved_nozzle_pos);
     CHECK(*moved_limb_pos != *limb_pos);
@@ -3513,18 +3509,18 @@ TEST_CASE("LinkedChildNozzleFollowsParentJoint", "[model-child-pose-particles]")
 TEST_CASE("ModelChildPoseParticleRegressionCallbackBirthReplayAndFiniteRetirement", "[model-child-pose-particles]")
 {
     using namespace ClientEngineTests;
-    bool unlit = GENERATE(false, true);
+    bool unlit {GENERATE(false, true)};
     CAPTURE(unlit);
 
-    auto settings = MakeClientTestSettings();
+    auto settings {MakeClientTestSettings()};
     BakerTests::OverrideSetting(settings.Render.ModelProjFactor, 32.0f);
 
-    auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ChildProjectionRegressionLifecycle");
-    vector<pair<string, vector<uint8_t>>> resources;
+    auto source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("ChildProjectionRegressionLifecycle")};
+    vector<pair<string, vector<uint8_t>>> resources {};
     AddModelChildPoseParticleFixtureResources(*source, resources);
 
-    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(resources)));
-    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto client {MakeClientEngine(settings, MakeClientTestResources(std::move(resources)))};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
     client->Resources.AddCustomSource(std::move(source));
 
     CapturingAppRender render {&settings};
@@ -3535,28 +3531,28 @@ TEST_CASE("ModelChildPoseParticleRegressionCallbackBirthReplayAndFiniteRetiremen
     REQUIRE(effects.Effects.SkinnedModel->IsNeedModelBuf());
     REQUIRE(effects.Effects.SkinnedModel->IsNeedModelAnimBuf());
 
-    auto texture = render.CreateTexture({8, 8}, true, false);
+    auto texture {render.CreateTexture({8, 8}, true, false)};
     ModelManager manager {&settings, &client->Resources, client.get(), &effects, &render, &client->GameTime, client.get(), [&texture](string_view) -> pair<nptr<RenderTexture>, frect32> { return {texture.as_nptr(), EffekseerFixtureAtlasRect}; }, []() { return false; }};
 
-    hstring parent_bone = client->Hashes.to_hashed_string(ModelChildPoseParticleMeshPath);
-    hstring child_bone = client->Hashes.to_hashed_string(ModelChildPoseParticleChildMeshPath);
-    auto state = static_cast<CritterStateAnim>(1);
-    auto action = static_cast<CritterActionAnim>(1);
+    hstring parent_bone {client->Hashes.to_hashed_string(ModelChildPoseParticleMeshPath)};
+    hstring child_bone {client->Hashes.to_hashed_string(ModelChildPoseParticleChildMeshPath)};
+    auto state {static_cast<CritterStateAnim>(1)};
+    auto action {static_cast<CritterActionAnim>(1)};
     vec3 offset {4.0f, 0.0f, 0.0f};
     array<int32_t, MODEL_LAYERS_COUNT> child_layers {};
     child_layers[3] = 1;
 
-    int32_t child_callbacks = 0;
-    int32_t control_callbacks = 0;
-    int32_t parent_control_callbacks = 0;
-    auto model = manager.CreateModel(ModelChildPoseParticleModelPath);
-    auto control = manager.CreateModel(ModelChildPoseParticleModelPath);
-    auto parent_control = manager.CreateModel(ModelChildPoseParticleModelPath);
+    int32_t child_callbacks {0};
+    int32_t control_callbacks {0};
+    int32_t parent_control_callbacks {0};
+    auto model {manager.CreateModel(ModelChildPoseParticleModelPath)};
+    auto control {manager.CreateModel(ModelChildPoseParticleModelPath)};
+    auto parent_control {manager.CreateModel(ModelChildPoseParticleModelPath)};
     REQUIRE(model);
     REQUIRE(control);
     REQUIRE(parent_control);
 
-    auto prepare_fixture_model = [&](ptr<ModelInstance> instance) {
+    auto prepare_fixture_model {[&](ptr<ModelInstance> instance) {
         instance->StartMeshGeneration();
         instance->PrepareFrameLayout();
         REQUIRE_FALSE(instance->FindBone(child_bone));
@@ -3565,13 +3561,13 @@ TEST_CASE("ModelChildPoseParticleRegressionCallbackBirthReplayAndFiniteRetiremen
         instance->PoseSpriteFrame(false);
         REQUIRE(instance->FindBone(child_bone));
 
-        auto parent_point = instance->GetBonePos(parent_bone, offset);
-        auto child_point = instance->GetBonePos(child_bone, offset);
+        auto parent_point {instance->GetBonePos(parent_bone, offset)};
+        auto child_point {instance->GetBonePos(child_bone, offset)};
         REQUIRE(parent_point);
         REQUIRE(child_point);
         CAPTURE(parent_point->x, parent_point->y, child_point->x, child_point->y);
         REQUIRE(child_point != parent_point);
-    };
+    }};
 
     prepare_fixture_model(model.get());
     prepare_fixture_model(control.get());
@@ -3632,11 +3628,11 @@ TEST_CASE("ModelChildPoseParticleRegressionCallbackBirthReplayAndFiniteRetiremen
             },
     });
 
-    auto play_once = [&](ptr<ModelInstance> instance) {
+    auto play_once {[&](ptr<ModelInstance> instance) {
         (void)instance->PlayAnim(state, action, child_layers.data(), 0.0f, combine_enum(ModelAnimFlags::PlayOnce, ModelAnimFlags::NoSmooth), 1.0f);
         instance->SetupFrame(isize32 {512, 512}, ipos32 {256, 384});
         instance->PoseSpriteFrame(true);
-    };
+    }};
     play_once(model.get());
     play_once(control.get());
     play_once(parent_control.get());
@@ -3652,12 +3648,12 @@ TEST_CASE("ModelChildPoseParticleRegressionCallbackBirthReplayAndFiniteRetiremen
     REQUIRE(parent_control_callbacks == 1);
 
     string model_shader {effects.Effects.SkinnedModel->GetName()};
-    mat44 first_projection = render.CreateOrthoMatrix(-50.0f, 200.0f, -75.0f, 175.0f, -10.0f, 10.0f);
-    mat44 second_projection = render.CreateOrthoMatrix(-20.0f, 300.0f, -35.0f, 225.0f, -15.0f, 20.0f);
+    mat44 first_projection {render.CreateOrthoMatrix(-50.0f, 200.0f, -75.0f, 175.0f, -10.0f, 10.0f)};
+    mat44 second_projection {render.CreateOrthoMatrix(-20.0f, 300.0f, -35.0f, 225.0f, -15.0f, 20.0f)};
 
-    auto first = CaptureModelChildPoseParticleDraw(render, effects, model_shader, model.get(), first_projection, child_bone, offset, child_callbacks);
-    auto control_first = CaptureModelChildPoseParticleDraw(render, effects, model_shader, control.get(), first_projection, child_bone, offset, control_callbacks);
-    auto parent_control_first = CaptureModelChildPoseParticleDraw(render, effects, model_shader, parent_control.get(), first_projection, parent_bone, offset, parent_control_callbacks);
+    auto first {CaptureModelChildPoseParticleDraw(render, effects, model_shader, model.get(), first_projection, child_bone, offset, child_callbacks)};
+    auto control_first {CaptureModelChildPoseParticleDraw(render, effects, model_shader, control.get(), first_projection, child_bone, offset, control_callbacks)};
+    auto parent_control_first {CaptureModelChildPoseParticleDraw(render, effects, model_shader, parent_control.get(), first_projection, parent_bone, offset, parent_control_callbacks)};
     REQUIRE(first.Particles.size() == 1);
     REQUIRE(control_first.Particles.size() == 1);
     REQUIRE(parent_control_first.Particles.size() == 1);
@@ -3689,15 +3685,15 @@ TEST_CASE("ModelChildPoseParticleRegressionCallbackBirthReplayAndFiniteRetiremen
     REQUIRE(glm::length(first.PacketCenter - parent_control_first.PacketCenter) > 0.01f);
 
     REQUIRE(first.Particles.front().Projection);
-    bool first_matches_second = true;
+    bool first_matches_second {true};
 
-    for (size_t i = 0; i < first.Particles.front().Projection->size(); i++) {
+    for (size_t i {0}; i < first.Particles.front().Projection->size(); i++) {
         first_matches_second = first_matches_second && (*first.Particles.front().Projection)[i] == glm::value_ptr(second_projection)[i];
     }
 
     CHECK_FALSE(first_matches_second);
 
-    float32_t animation_duration = model->GetAnimDuration().to_sec<float32_t>();
+    float32_t animation_duration {model->GetAnimDuration().to_sec<float32_t>()};
     REQUIRE(animation_duration > 0.0f);
     CHECK(animation_duration == Catch::Approx(1.0f));
     CHECK(control->GetAnimDuration() == model->GetAnimDuration());
@@ -3711,8 +3707,8 @@ TEST_CASE("ModelChildPoseParticleRegressionCallbackBirthReplayAndFiniteRetiremen
     CHECK(first.AnimAbsoluteTime == parent_control_first.AnimAbsoluteTime);
     CHECK(first.AnimNormalizedTime == parent_control_first.AnimNormalizedTime);
 
-    auto second = CaptureModelChildPoseParticleDraw(render, effects, model_shader, model.get(), second_projection, child_bone, offset, child_callbacks);
-    auto third = CaptureModelChildPoseParticleDraw(render, effects, model_shader, model.get(), first_projection, child_bone, offset, child_callbacks);
+    auto second {CaptureModelChildPoseParticleDraw(render, effects, model_shader, model.get(), second_projection, child_bone, offset, child_callbacks)};
+    auto third {CaptureModelChildPoseParticleDraw(render, effects, model_shader, model.get(), first_projection, child_bone, offset, child_callbacks)};
     REQUIRE(second.Particles.size() == 1);
     REQUIRE(third.Particles.size() == 1);
     CheckEffekseerDrawsEqual(first.Particles, second.Particles);
@@ -3756,9 +3752,9 @@ TEST_CASE("ModelChildPoseParticleRegressionCallbackBirthReplayAndFiniteRetiremen
     REQUIRE(model->PrepareSceneFrame(1.0f));
     REQUIRE(control->PrepareSceneFrame(1.0f));
     REQUIRE(parent_control->PrepareSceneFrame(1.0f));
-    auto retired = CaptureModelChildPoseParticleDraw(render, effects, model_shader, model.get(), first_projection, child_bone, offset, child_callbacks);
-    auto control_retired = CaptureModelChildPoseParticleDraw(render, effects, model_shader, control.get(), first_projection, child_bone, offset, control_callbacks);
-    auto parent_control_retired = CaptureModelChildPoseParticleDraw(render, effects, model_shader, parent_control.get(), first_projection, parent_bone, offset, parent_control_callbacks);
+    auto retired {CaptureModelChildPoseParticleDraw(render, effects, model_shader, model.get(), first_projection, child_bone, offset, child_callbacks)};
+    auto control_retired {CaptureModelChildPoseParticleDraw(render, effects, model_shader, control.get(), first_projection, child_bone, offset, control_callbacks)};
+    auto parent_control_retired {CaptureModelChildPoseParticleDraw(render, effects, model_shader, parent_control.get(), first_projection, parent_bone, offset, parent_control_callbacks)};
     REQUIRE(retired.Particles.empty());
     REQUIRE(control_retired.Particles.empty());
     REQUIRE(parent_control_retired.Particles.empty());
@@ -3801,18 +3797,18 @@ TEST_CASE("ModelChildPoseParticleRegressionCallbackBirthReplayAndFiniteRetiremen
 TEST_CASE("ModelChildPoseParticleRegressionChildRemovalAndParentReuse", "[model-child-pose-particles]")
 {
     using namespace ClientEngineTests;
-    bool unlit = GENERATE(false, true);
+    bool unlit {GENERATE(false, true)};
     CAPTURE(unlit);
 
-    auto settings = MakeClientTestSettings();
+    auto settings {MakeClientTestSettings()};
     BakerTests::OverrideSetting(settings.Render.ModelProjFactor, 32.0f);
 
-    auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ChildProjectionRegressionRemoval");
-    vector<pair<string, vector<uint8_t>>> resources;
+    auto source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("ChildProjectionRegressionRemoval")};
+    vector<pair<string, vector<uint8_t>>> resources {};
     AddModelChildPoseParticleFixtureResources(*source, resources);
 
-    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(resources)));
-    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto client {MakeClientEngine(settings, MakeClientTestResources(std::move(resources)))};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
     client->Resources.AddCustomSource(std::move(source));
 
     CapturingAppRender render {&settings};
@@ -3823,20 +3819,20 @@ TEST_CASE("ModelChildPoseParticleRegressionChildRemovalAndParentReuse", "[model-
     REQUIRE(effects.Effects.SkinnedModel->IsNeedModelBuf());
     REQUIRE(effects.Effects.SkinnedModel->IsNeedModelAnimBuf());
 
-    auto texture = render.CreateTexture({8, 8}, true, false);
+    auto texture {render.CreateTexture({8, 8}, true, false)};
     ModelManager manager {&settings, &client->Resources, client.get(), &effects, &render, &client->GameTime, client.get(), [&texture](string_view) -> pair<nptr<RenderTexture>, frect32> { return {texture.as_nptr(), EffekseerFixtureAtlasRect}; }, []() { return false; }};
 
-    hstring parent_bone = client->Hashes.to_hashed_string(ModelChildPoseParticleMeshPath);
-    hstring child_bone = client->Hashes.to_hashed_string(ModelChildPoseParticleChildMeshPath);
-    auto state = static_cast<CritterStateAnim>(1);
-    auto action = static_cast<CritterActionAnim>(1);
+    hstring parent_bone {client->Hashes.to_hashed_string(ModelChildPoseParticleMeshPath)};
+    hstring child_bone {client->Hashes.to_hashed_string(ModelChildPoseParticleChildMeshPath)};
+    auto state {static_cast<CritterStateAnim>(1)};
+    auto action {static_cast<CritterActionAnim>(1)};
     vec3 offset {4.0f, 0.0f, 0.0f};
     array<int32_t, MODEL_LAYERS_COUNT> child_layers {};
     array<int32_t, MODEL_LAYERS_COUNT> no_layers {};
     child_layers[3] = 1;
 
-    int32_t callbacks = 0;
-    auto model = manager.CreateModel(ModelChildPoseParticleModelPath);
+    int32_t callbacks {0};
+    auto model {manager.CreateModel(ModelChildPoseParticleModelPath)};
     REQUIRE(model);
     model->StartMeshGeneration();
     model->PrepareFrameLayout();
@@ -3845,8 +3841,8 @@ TEST_CASE("ModelChildPoseParticleRegressionChildRemovalAndParentReuse", "[model-
     model->SetupFrame(isize32 {512, 512}, ipos32 {256, 384});
     model->PoseSpriteFrame(false);
     REQUIRE(model->FindBone(child_bone));
-    auto parent_point = model->GetBonePos(parent_bone, offset);
-    auto child_point = model->GetBonePos(child_bone, offset);
+    auto parent_point {model->GetBonePos(parent_bone, offset)};
+    auto child_point {model->GetBonePos(child_bone, offset)};
     REQUIRE(parent_point);
     REQUIRE(child_point);
     REQUIRE(child_point != parent_point);
@@ -3855,7 +3851,7 @@ TEST_CASE("ModelChildPoseParticleRegressionChildRemovalAndParentReuse", "[model-
     model->PoseSpriteFrame(true);
 
     string model_shader {effects.Effects.SkinnedModel->GetName()};
-    mat44 first_projection = render.CreateOrthoMatrix(-50.0f, 200.0f, -75.0f, 175.0f, -10.0f, 10.0f);
+    mat44 first_projection {render.CreateOrthoMatrix(-50.0f, 200.0f, -75.0f, 175.0f, -10.0f, 10.0f)};
 
     CHECK(CountModelChildPoseParticleParticleAttachments(*model) == 0);
     CHECK_FALSE(model->HasUnlitParticles());
@@ -3864,7 +3860,7 @@ TEST_CASE("ModelChildPoseParticleRegressionChildRemovalAndParentReuse", "[model-
     CHECK_FALSE(model->HasUnlitParticles());
 
     REQUIRE(model->PrepareSceneFrame(1.0f));
-    auto missing = CaptureModelChildPoseParticleDraw(render, effects, model_shader, model.get(), first_projection, child_bone, offset, callbacks);
+    auto missing {CaptureModelChildPoseParticleDraw(render, effects, model_shader, model.get(), first_projection, child_bone, offset, callbacks)};
     CHECK(missing.ParticleAttachmentCount == 0);
     CHECK(missing.Particles.empty());
     CHECK_FALSE(missing.HasUnlitParticles);
@@ -3895,7 +3891,7 @@ TEST_CASE("ModelChildPoseParticleRegressionChildRemovalAndParentReuse", "[model-
     REQUIRE(model->PrepareSceneFrame(1.0f));
     REQUIRE(callbacks == 1);
 
-    auto live = CaptureModelChildPoseParticleDraw(render, effects, model_shader, model.get(), first_projection, child_bone, offset, callbacks);
+    auto live {CaptureModelChildPoseParticleDraw(render, effects, model_shader, model.get(), first_projection, child_bone, offset, callbacks)};
     REQUIRE(live.Particles.size() == 1);
     CHECK(live.ParticleAttachmentCount == 1);
     CHECK(live.CallbackCount == 1);
@@ -3910,7 +3906,7 @@ TEST_CASE("ModelChildPoseParticleRegressionChildRemovalAndParentReuse", "[model-
     (void)model->PlayAnim(state, action, no_layers.data(), 0.0f, ModelAnimFlags::Freeze);
     model->SetupFrame(isize32 {512, 512}, ipos32 {256, 384});
     REQUIRE(model->PrepareSceneFrame(1.0f));
-    auto removed = CaptureModelChildPoseParticleDraw(render, effects, model_shader, model.get(), first_projection, parent_bone, offset, callbacks);
+    auto removed {CaptureModelChildPoseParticleDraw(render, effects, model_shader, model.get(), first_projection, parent_bone, offset, callbacks)};
     CHECK_FALSE(model->FindBone(child_bone));
     CHECK_FALSE(model->GetBonePos(child_bone, offset));
     CHECK(removed.AttachPoints.empty());
@@ -3923,7 +3919,7 @@ TEST_CASE("ModelChildPoseParticleRegressionChildRemovalAndParentReuse", "[model-
 
     model->RunParticle(ModelChildPoseParticleParticlePath, parent_bone, offset);
     REQUIRE(model->PrepareSceneFrame(1.0f));
-    auto reused = CaptureModelChildPoseParticleDraw(render, effects, model_shader, model.get(), first_projection, parent_bone, offset, callbacks);
+    auto reused {CaptureModelChildPoseParticleDraw(render, effects, model_shader, model.get(), first_projection, parent_bone, offset, callbacks)};
     REQUIRE(reused.Particles.size() == 1);
     CHECK(reused.ParticleAttachmentCount == 1);
     CHECK(reused.CallbackCount == 1);
@@ -3939,7 +3935,7 @@ TEST_CASE("ModelChildPoseParticleRegressionChildRemovalAndParentReuse", "[model-
     CHECK(reused.MeshIndexCount != 0);
 
     // Direct child-target control on an independent instance; no callback is armed on this probe
-    auto child_probe = manager.CreateModel(ModelChildPoseParticleModelPath);
+    auto child_probe {manager.CreateModel(ModelChildPoseParticleModelPath)};
     REQUIRE(child_probe);
     child_probe->StartMeshGeneration();
     child_probe->PrepareFrameLayout();
@@ -3952,13 +3948,13 @@ TEST_CASE("ModelChildPoseParticleRegressionChildRemovalAndParentReuse", "[model-
     child_probe->RunParticle(ModelChildPoseParticleParticlePath, client->Hashes.to_hashed_string("MissingChildProjectionBone"), offset);
     CHECK(CountModelChildPoseParticleParticleAttachments(*child_probe) == 0);
     REQUIRE(child_probe->PrepareSceneFrame(1.0f));
-    auto empty_probe = CaptureModelChildPoseParticleDraw(render, effects, model_shader, child_probe.get(), first_projection, child_bone, offset, 0);
+    auto empty_probe {CaptureModelChildPoseParticleDraw(render, effects, model_shader, child_probe.get(), first_projection, child_bone, offset, 0)};
     CHECK(empty_probe.ParticleAttachmentCount == 0);
     CHECK(empty_probe.Particles.empty());
 
     child_probe->RunParticle(ModelChildPoseParticleParticlePath, child_bone, offset);
     REQUIRE(child_probe->PrepareSceneFrame(1.0f));
-    auto child_live = CaptureModelChildPoseParticleDraw(render, effects, model_shader, child_probe.get(), first_projection, child_bone, offset, 0);
+    auto child_live {CaptureModelChildPoseParticleDraw(render, effects, model_shader, child_probe.get(), first_projection, child_bone, offset, 0)};
     CHECK(child_live.ParticleAttachmentCount == 1);
     REQUIRE(child_live.Particles.size() == 1);
     REQUIRE(child_live.ParticleAttachment);
@@ -3975,8 +3971,8 @@ enum class EffekseerManagerFailureMode
 
 static void RunEffekseerManagerFailureCase(EffekseerManagerFailureMode mode, const char* label)
 {
-    EffekseerRuntimeTestRig rig;
-    unique_ptr<ParticleRuntimeSystem> system = rig.CreateSystem();
+    EffekseerRuntimeTestRig rig {};
+    unique_ptr<ParticleRuntimeSystem> system {rig.CreateSystem()};
     system->Setup(MakeEffekseerIdentitySetup());
     system->Update(1.0f / 60.0f);
     REQUIRE(system->IsActive());
@@ -3985,28 +3981,28 @@ static void RunEffekseerManagerFailureCase(EffekseerManagerFailureMode mode, con
     REQUIRE_FALSE(rig.GetDraws().empty());
 
     using AlignedFunction = void* (*)(uint32_t, uint32_t);
-    Effekseer::AlignedMallocFunc original = Effekseer::GetAlignedMallocFunc();
-    auto original_target = original.target<AlignedFunction>();
+    Effekseer::AlignedMallocFunc original {Effekseer::GetAlignedMallocFunc()};
+    auto original_target {original.target<AlignedFunction>()};
     REQUIRE(original_target != nullptr);
-    AlignedFunction original_function = *original_target;
-    uint32_t target_size = numeric_cast<uint32_t>(sizeof(Effekseer::InstanceGlobal));
-    uint32_t target_alignment = mode == EffekseerManagerFailureMode::WrongAlignment ? 17u : 16u;
-    uint32_t size_calls = 0;
-    uint32_t matched_calls = 0;
-    uint32_t throws = 0;
+    AlignedFunction original_function {*original_target};
+    uint32_t target_size {numeric_cast<uint32_t>(sizeof(Effekseer::InstanceGlobal))};
+    uint32_t target_alignment {mode == EffekseerManagerFailureMode::WrongAlignment ? 17u : 16u};
+    uint32_t size_calls {0};
+    uint32_t matched_calls {0};
+    uint32_t throws {0};
 
     std::fprintf(stderr, "EFFEKSEER_MANAGER_FAILURE ready mode=%s active=1 draws=%zu size=%u target_align=%u\n", label, rig.GetDraws().size(), target_size, target_alignment);
     std::fflush(stderr);
 
     {
-        auto restore = scope_exit([original_function, label, &size_calls, &matched_calls, &throws]() noexcept {
+        auto restore {scope_exit([original_function, label, &size_calls, &matched_calls, &throws]() noexcept {
             Effekseer::SetAlignedMallocFunc(original_function);
-            Effekseer::AlignedMallocFunc restored = Effekseer::GetAlignedMallocFunc();
-            auto restored_target = restored.target<AlignedFunction>();
-            bool same = restored_target != nullptr && *restored_target == original_function;
+            Effekseer::AlignedMallocFunc restored {Effekseer::GetAlignedMallocFunc()};
+            auto restored_target {restored.target<AlignedFunction>()};
+            bool same {restored_target != nullptr && *restored_target == original_function};
             std::fprintf(stderr, "EFFEKSEER_MANAGER_FAILURE restore mode=%s same=%u size_calls=%u matched=%u throws=%u\n", label, same ? 1u : 0u, size_calls, matched_calls, throws);
             std::fflush(stderr);
-        });
+        })};
 
         Effekseer::SetAlignedMallocFunc([&](uint32_t size, uint32_t alignment) -> void* {
             if (size == target_size) {
@@ -4046,8 +4042,8 @@ static void RunEffekseerManagerFailureCase(EffekseerManagerFailureMode mode, con
     REQUIRE(matched_calls == (mode == EffekseerManagerFailureMode::WrongAlignment ? 0u : 1u));
     REQUIRE((mode == EffekseerManagerFailureMode::Observe || mode == EffekseerManagerFailureMode::WrongAlignment));
 
-    Effekseer::AlignedMallocFunc restored = Effekseer::GetAlignedMallocFunc();
-    auto restored_target = restored.target<AlignedFunction>();
+    Effekseer::AlignedMallocFunc restored {Effekseer::GetAlignedMallocFunc()};
+    auto restored_target {restored.target<AlignedFunction>()};
     REQUIRE(restored_target != nullptr);
     REQUIRE(*restored_target == original_function);
     REQUIRE(system->IsActive());

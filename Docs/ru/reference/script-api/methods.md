@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-api-methods","locale":"ru","source_path":"Docs/en/reference/script-api/methods.md","source_sha256":"c2e70b69d1893edec6e5cdc29fc5842ed8b30367a9dfb35c825e4f12e79c06f5"} -->
+<!-- docs-translation: {"document_id":"generated-api-methods","locale":"ru","source_path":"Docs/en/reference/script-api/methods.md","source_sha256":"e1e61787752961c9ed8d2d3b28ad6041ee2b0a2d7cc2c602659e82847090cfb7"} -->
 
 # Нативные методы скриптов
 

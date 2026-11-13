@@ -1439,7 +1439,7 @@ class DocumentationValidatorTests(unittest.TestCase):
             else:
                 source_text = source_path.read_text(encoding="utf-8")
 
-                # Strip native ///@ metadata so the copied source keeps its anchors without extending the isolated fixture API.
+                # Strip native ///@ metadata so the copied source keeps its anchors without extending the isolated fixture API
                 if relative_path.startswith("Source/"):
                     source_text = "\n".join(
                         line for line in source_text.splitlines() if "///@" not in line

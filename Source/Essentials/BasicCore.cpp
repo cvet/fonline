@@ -33,7 +33,7 @@ void exit_app(bool success) noexcept
 #if !FO_WEB
 void exit_app_immediately(bool success) noexcept
 {
-    int32_t code = success ? EXIT_SUCCESS : EXIT_FAILURE;
+    int32_t code {success ? EXIT_SUCCESS : EXIT_FAILURE};
     std::_Exit(code);
 }
 #endif

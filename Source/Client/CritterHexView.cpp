@@ -702,8 +702,8 @@ void CritterHexView::ProcessMoving()
     if (progress.Completed && GetHex() == moving->GetEndHex()) {
         mpos end_hex {moving->GetEndHex()};
 
-        // Preserve chosen arrivals and local indirect predictions before StopMoving clears the server UID.
-        bool report_arrival = GetIsChosen() || GetMovingServerUid() == 0;
+        // Preserve chosen arrivals and local indirect predictions before StopMoving clears the server UID
+        bool report_arrival {GetIsChosen() || GetMovingServerUid() == 0};
 
         StopMoving();
         RefreshView();

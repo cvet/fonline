@@ -3060,7 +3060,7 @@ void MapView::PrepareCritterSceneFrames(const irect32& draw_area)
     FO_TRACE_ZONE(Model);
 
     for (ptr<CritterHexView> cr : copy_hold_ref(GetCritters())) {
-        for (int32_t pass = 0; pass < 3; pass++) {
+        for (int32_t pass {0}; pass < 3; pass++) {
             if (IsDestroyed()) {
                 return;
             }
@@ -3069,29 +3069,29 @@ void MapView::PrepareCritterSceneFrames(const irect32& draw_area)
                 break;
             }
 
-            auto mspr = cr->GetMapSprite();
-            auto visible_rect = _engine->SprMngr.GetMapSpriteDrawRect(mspr, draw_area);
+            auto mspr {cr->GetMapSprite()};
+            auto visible_rect {_engine->SprMngr.GetMapSpriteDrawRect(mspr, draw_area)};
 
             if (!visible_rect) {
                 break;
             }
 
-            auto spr = mspr->GetSprite();
+            auto spr {mspr->GetSprite()};
 
             if (!spr->IsDirectDraw()) {
                 break;
             }
 
-            auto model = cr->GetModel();
+            auto model {cr->GetModel()};
 
             if (!model) {
                 break;
             }
 
             // Model callbacks may replace this carrier's sprite or remove it from the map
-            auto sprite_owner = spr->shared_from_this();
+            auto sprite_owner {spr->shared_from_this()};
 
-            bool prepared = model->PrepareSceneFrame(_engine->Settings->Render.ModelProjFactor);
+            bool prepared {model->PrepareSceneFrame(_engine->Settings->Render.ModelProjFactor)};
             ignore_unused(sprite_owner);
 
             if (IsDestroyed()) {
@@ -3102,8 +3102,8 @@ void MapView::PrepareCritterSceneFrames(const irect32& draw_area)
                 break;
             }
 
-            auto current_sprite = cr->GetMapSprite()->GetSprite();
-            auto current_model = cr->GetModel();
+            auto current_sprite {cr->GetMapSprite()->GetSprite()};
+            auto current_model {cr->GetModel()};
 
             if (current_sprite == spr && current_model == model) {
                 FO_VERIFY_AND_THROW(prepared, "Critter scene pose did not stabilize", cr->GetId());

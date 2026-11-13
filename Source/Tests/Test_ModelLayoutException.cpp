@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Common.h"
 
@@ -86,17 +56,17 @@ TEST_CASE("ModelSetupFrameProjectionFailurePreservesCommittedLayout")
 {
     REQUIRE(IsNonInteractiveMode());
 
-    constexpr string_view mesh_path = "Models/LayoutProbe.fbx";
-    constexpr string_view model_path = "Models/RuntimeInstance.fo3d";
-    auto mesh = MakeRuntimeModelTriangleMesh();
-    vector<pair<string, vector<uint8_t>>> resources;
+    constexpr string_view mesh_path {"Models/LayoutProbe.fbx"};
+    constexpr string_view model_path {"Models/RuntimeInstance.fo3d"};
+    auto mesh {MakeRuntimeModelTriangleMesh()};
+    vector<pair<string, vector<uint8_t>>> resources {};
     resources.emplace_back("ModelAnimationInfo.foinfo", MakeUnitTestModelAnimationInfo(model_path));
     resources.emplace_back(string {mesh_path}, mesh);
     resources.emplace_back(string {model_path}, MakeRuntimeModelDescription(model_path, mesh_path, mesh));
-    auto settings = MakeClientTestSettings();
+    auto settings {MakeClientTestSettings()};
     BakerTests::OverrideSetting(settings.Render.ModelProjFactor, 32.0f);
-    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(resources)));
-    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto client {MakeClientEngine(settings, MakeClientTestResources(std::move(resources)))};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
 
     LayoutFaultProbeRender renderer {&client->SprMngr.GetRender()};
     ModelManager manager {&settings, &client->Resources, client, &client->EffectMngr, &renderer, &client->GameTime, client,
@@ -105,8 +75,8 @@ TEST_CASE("ModelSetupFrameProjectionFailurePreservesCommittedLayout")
             return pair<nptr<RenderTexture>, frect32> {};
         },
         [] { return false; }};
-    auto model = manager.CreateModel(model_path);
-    auto control = manager.CreateModel(model_path);
+    auto model {manager.CreateModel(model_path)};
+    auto control {manager.CreateModel(model_path)};
     REQUIRE(model);
     REQUIRE(control);
     model->PrepareFrameLayout();
@@ -117,12 +87,12 @@ TEST_CASE("ModelSetupFrameProjectionFailurePreservesCommittedLayout")
     model->PoseSpriteFrame(false);
     control->PoseSpriteFrame(false);
 
-    isize32 old_size = model->GetDrawSize();
-    ipos32 old_pivot = model->GetFramePivot();
-    irect32 old_rect = model->GetDrawRect();
-    isize32 old_lighting = model->GetLightingSize();
-    ipos32 old_projected = model->Convert3dTo2d(vec3 {1.0f, 2.0f, 0.0f});
-    vec3 old_unprojected = model->Convert2dTo3d({5, 7});
+    isize32 old_size {model->GetDrawSize()};
+    ipos32 old_pivot {model->GetFramePivot()};
+    irect32 old_rect {model->GetDrawRect()};
+    isize32 old_lighting {model->GetLightingSize()};
+    ipos32 old_projected {model->Convert3dTo2d(vec3 {1.0f, 2.0f, 0.0f})};
+    vec3 old_unprojected {model->Convert2dTo3d({5, 7})};
     REQUIRE(old_size == isize32 {64, 96});
     REQUIRE(old_pivot == ipos32 {10, 23});
     REQUIRE(old_projected == ipos32 {16, 32});
@@ -133,9 +103,9 @@ TEST_CASE("ModelSetupFrameProjectionFailurePreservesCommittedLayout")
     REQUIRE(control->GetFramePivot() == ipos32 {-7, 91});
     REQUIRE(control->Convert3dTo2d(vec3 {1.0f, 2.0f, 0.0f}) == ipos32 {16, 32});
 
-    int32_t calls_before_fault = renderer.ProjectionCalls;
+    int32_t calls_before_fault {renderer.ProjectionCalls};
     renderer.FailNextProjection = true;
-    bool saw_injected_failure = false;
+    bool saw_injected_failure {false};
 
     try {
         model->SetupFrame({128, 80}, {-7, 91});
@@ -154,12 +124,12 @@ TEST_CASE("ModelSetupFrameProjectionFailurePreservesCommittedLayout")
     CHECK(model->GetDrawRect() == old_rect);
     CHECK(model->GetLightingSize() == old_lighting);
     CHECK(model->Convert3dTo2d(vec3 {1.0f, 2.0f, 0.0f}) == old_projected);
-    vec3 failed_unprojected = model->Convert2dTo3d({5, 7});
+    vec3 failed_unprojected {model->Convert2dTo3d({5, 7})};
     CHECK(is_float_equal(failed_unprojected.x, old_unprojected.x));
     CHECK(is_float_equal(failed_unprojected.y, old_unprojected.y));
     CHECK(is_float_equal(failed_unprojected.z, old_unprojected.z));
 
-    int32_t calls_before_retry = renderer.ProjectionCalls;
+    int32_t calls_before_retry {renderer.ProjectionCalls};
     model->SetupFrame({128, 80}, {-7, 91});
     CHECK(renderer.ProjectionCalls == calls_before_retry + 1);
     model->PoseSpriteFrame(false);
@@ -171,14 +141,14 @@ TEST_CASE("ModelSetupFrameProjectionFailurePreservesCommittedLayout")
     CHECK(model->GetLightingSize() == control->GetLightingSize());
     CHECK(model->Convert3dTo2d(vec3 {1.0f, 2.0f, 0.0f}) == ipos32 {16, 32});
     CHECK(model->Convert3dTo2d(vec3 {1.0f, 2.0f, 0.0f}) == control->Convert3dTo2d(vec3 {1.0f, 2.0f, 0.0f}));
-    vec3 retry_unprojected = model->Convert2dTo3d({5, 7});
-    vec3 expected_unprojected = control->Convert2dTo3d({5, 7});
+    vec3 retry_unprojected {model->Convert2dTo3d({5, 7})};
+    vec3 expected_unprojected {control->Convert2dTo3d({5, 7})};
     CHECK(is_float_equal(retry_unprojected.x, expected_unprojected.x));
     CHECK(is_float_equal(retry_unprojected.y, expected_unprojected.y));
     CHECK(is_float_equal(retry_unprojected.z, expected_unprojected.z));
-    hstring bone = client->Hashes.to_hashed_string(mesh_path);
-    auto actual_bone = model->GetBoneSpritePos(bone);
-    auto expected_bone = control->GetBoneSpritePos(bone);
+    hstring bone {client->Hashes.to_hashed_string(mesh_path)};
+    auto actual_bone {model->GetBoneSpritePos(bone)};
+    auto expected_bone {control->GetBoneSpritePos(bone)};
     REQUIRE(actual_bone.has_value());
     REQUIRE(expected_bone.has_value());
     CHECK(actual_bone == expected_bone);
@@ -188,17 +158,17 @@ TEST_CASE("ModelScaleRefreshFailureRequiresOrdinaryPrepareRetry")
 {
     REQUIRE(IsNonInteractiveMode());
 
-    constexpr string_view mesh_path = "Models/LayoutProbe.fbx";
-    constexpr string_view model_path = "Models/RuntimeInstance.fo3d";
-    auto mesh = MakeRuntimeModelTriangleMesh();
-    vector<pair<string, vector<uint8_t>>> resources;
+    constexpr string_view mesh_path {"Models/LayoutProbe.fbx"};
+    constexpr string_view model_path {"Models/RuntimeInstance.fo3d"};
+    auto mesh {MakeRuntimeModelTriangleMesh()};
+    vector<pair<string, vector<uint8_t>>> resources {};
     resources.emplace_back("ModelAnimationInfo.foinfo", MakeUnitTestModelAnimationInfo(model_path));
     resources.emplace_back(string {mesh_path}, mesh);
     resources.emplace_back(string {model_path}, MakeRuntimeModelDescription(model_path, mesh_path, mesh));
-    auto settings = MakeClientTestSettings();
+    auto settings {MakeClientTestSettings()};
     BakerTests::OverrideSetting(settings.Render.ModelProjFactor, 32.0f);
-    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(resources)));
-    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto client {MakeClientEngine(settings, MakeClientTestResources(std::move(resources)))};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
 
     LayoutFaultProbeRender renderer {&client->SprMngr.GetRender()};
     ModelManager manager {&settings, &client->Resources, client, &client->EffectMngr, &renderer, &client->GameTime, client,
@@ -207,8 +177,8 @@ TEST_CASE("ModelScaleRefreshFailureRequiresOrdinaryPrepareRetry")
             return pair<nptr<RenderTexture>, frect32> {};
         },
         [] { return false; }};
-    auto model = manager.CreateModel(model_path);
-    auto control = manager.CreateModel(model_path);
+    auto model {manager.CreateModel(model_path)};
+    auto control {manager.CreateModel(model_path)};
     REQUIRE(model);
     REQUIRE(control);
     model->PrepareFrameLayout();
@@ -219,21 +189,21 @@ TEST_CASE("ModelScaleRefreshFailureRequiresOrdinaryPrepareRetry")
     model->PoseSpriteFrame(false);
     control->PoseSpriteFrame(false);
 
-    isize32 old_size = model->GetDrawSize();
-    ipos32 old_pivot = model->GetFramePivot();
-    irect32 old_rect = model->GetDrawRect();
-    isize32 old_lighting = model->GetLightingSize();
-    ipos32 old_projected = model->Convert3dTo2d(vec3 {1.0f, 2.0f, 0.0f});
-    vec3 old_unprojected = model->Convert2dTo3d({5, 7});
+    isize32 old_size {model->GetDrawSize()};
+    ipos32 old_pivot {model->GetFramePivot()};
+    irect32 old_rect {model->GetDrawRect()};
+    isize32 old_lighting {model->GetLightingSize()};
+    ipos32 old_projected {model->Convert3dTo2d(vec3 {1.0f, 2.0f, 0.0f})};
+    vec3 old_unprojected {model->Convert2dTo3d({5, 7})};
 
     control->SetScale(2.0f, 3.0f, 1.5f);
     control->PoseSpriteFrame(false);
     REQUIRE(control->GetDrawSize() != old_size);
     REQUIRE(control->Convert3dTo2d(vec3 {1.0f, 2.0f, 0.0f}) == ipos32 {16, 32});
 
-    int32_t calls_before_fault = renderer.ProjectionCalls;
+    int32_t calls_before_fault {renderer.ProjectionCalls};
     renderer.FailNextProjection = true;
-    bool saw_injected_failure = false;
+    bool saw_injected_failure {false};
 
     try {
         model->SetScale(2.0f, 3.0f, 1.5f);
@@ -252,12 +222,12 @@ TEST_CASE("ModelScaleRefreshFailureRequiresOrdinaryPrepareRetry")
     CHECK(model->GetDrawRect() == old_rect);
     CHECK(model->GetLightingSize() == old_lighting);
     CHECK(model->Convert3dTo2d(vec3 {1.0f, 2.0f, 0.0f}) == old_projected);
-    vec3 failed_unprojected = model->Convert2dTo3d({5, 7});
+    vec3 failed_unprojected {model->Convert2dTo3d({5, 7})};
     CHECK(is_float_equal(failed_unprojected.x, old_unprojected.x));
     CHECK(is_float_equal(failed_unprojected.y, old_unprojected.y));
     CHECK(is_float_equal(failed_unprojected.z, old_unprojected.z));
 
-    int32_t calls_before_retry = renderer.ProjectionCalls;
+    int32_t calls_before_retry {renderer.ProjectionCalls};
     model->PrepareFrameLayout();
     CHECK(renderer.ProjectionCalls == calls_before_retry + 1);
     model->PoseSpriteFrame(false);
@@ -268,14 +238,14 @@ TEST_CASE("ModelScaleRefreshFailureRequiresOrdinaryPrepareRetry")
     CHECK(model->GetLightingSize() == control->GetLightingSize());
     CHECK(model->Convert3dTo2d(vec3 {1.0f, 2.0f, 0.0f}) == ipos32 {16, 32});
     CHECK(model->Convert3dTo2d(vec3 {1.0f, 2.0f, 0.0f}) == control->Convert3dTo2d(vec3 {1.0f, 2.0f, 0.0f}));
-    vec3 retry_unprojected = model->Convert2dTo3d({5, 7});
-    vec3 expected_unprojected = control->Convert2dTo3d({5, 7});
+    vec3 retry_unprojected {model->Convert2dTo3d({5, 7})};
+    vec3 expected_unprojected {control->Convert2dTo3d({5, 7})};
     CHECK(is_float_equal(retry_unprojected.x, expected_unprojected.x));
     CHECK(is_float_equal(retry_unprojected.y, expected_unprojected.y));
     CHECK(is_float_equal(retry_unprojected.z, expected_unprojected.z));
-    hstring bone = client->Hashes.to_hashed_string(mesh_path);
-    auto actual_bone = model->GetBoneSpritePos(bone);
-    auto expected_bone = control->GetBoneSpritePos(bone);
+    hstring bone {client->Hashes.to_hashed_string(mesh_path)};
+    auto actual_bone {model->GetBoneSpritePos(bone)};
+    auto expected_bone {control->GetBoneSpritePos(bone)};
     REQUIRE(actual_bone.has_value());
     REQUIRE(expected_bone.has_value());
     CHECK(actual_bone == expected_bone);
@@ -285,17 +255,17 @@ TEST_CASE("ModelSetupFrameSupportsRepeatedSizesAndSignedPivots")
 {
     REQUIRE(IsNonInteractiveMode());
 
-    constexpr string_view mesh_path = "Models/LayoutProbe.fbx";
-    constexpr string_view model_path = "Models/RuntimeInstance.fo3d";
-    auto mesh = MakeRuntimeModelTriangleMesh();
-    vector<pair<string, vector<uint8_t>>> resources;
+    constexpr string_view mesh_path {"Models/LayoutProbe.fbx"};
+    constexpr string_view model_path {"Models/RuntimeInstance.fo3d"};
+    auto mesh {MakeRuntimeModelTriangleMesh()};
+    vector<pair<string, vector<uint8_t>>> resources {};
     resources.emplace_back("ModelAnimationInfo.foinfo", MakeUnitTestModelAnimationInfo(model_path));
     resources.emplace_back(string {mesh_path}, mesh);
     resources.emplace_back(string {model_path}, MakeRuntimeModelDescription(model_path, mesh_path, mesh));
-    auto settings = MakeClientTestSettings();
+    auto settings {MakeClientTestSettings()};
     BakerTests::OverrideSetting(settings.Render.ModelProjFactor, 32.0f);
-    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(resources)));
-    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto client {MakeClientEngine(settings, MakeClientTestResources(std::move(resources)))};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
 
     LayoutFaultProbeRender renderer {&client->SprMngr.GetRender()};
     ModelManager manager {&settings, &client->Resources, client, &client->EffectMngr, &renderer, &client->GameTime, client,
@@ -304,8 +274,8 @@ TEST_CASE("ModelSetupFrameSupportsRepeatedSizesAndSignedPivots")
             return pair<nptr<RenderTexture>, frect32> {};
         },
         [] { return false; }};
-    auto model = manager.CreateModel(model_path);
-    auto control = manager.CreateModel(model_path);
+    auto model {manager.CreateModel(model_path)};
+    auto control {manager.CreateModel(model_path)};
     REQUIRE(model);
     REQUIRE(control);
     model->PrepareFrameLayout();
@@ -316,7 +286,7 @@ TEST_CASE("ModelSetupFrameSupportsRepeatedSizesAndSignedPivots")
     model->PoseSpriteFrame(false);
     control->PoseSpriteFrame(false);
 
-    int32_t calls_before_success = renderer.ProjectionCalls;
+    int32_t calls_before_success {renderer.ProjectionCalls};
     model->SetupFrame({128, 80}, {-7, 91});
     CHECK(renderer.ProjectionCalls == calls_before_success + 1);
     control->SetupFrame({128, 80}, {-7, 91});
@@ -331,7 +301,7 @@ TEST_CASE("ModelSetupFrameSupportsRepeatedSizesAndSignedPivots")
     CHECK(model->GetDrawRect() == control->GetDrawRect());
     CHECK(model->GetLightingSize() == control->GetLightingSize());
 
-    int32_t calls_before_repeat = renderer.ProjectionCalls;
+    int32_t calls_before_repeat {renderer.ProjectionCalls};
     model->SetupFrame({128, 80}, {-9, 95});
     CHECK(renderer.ProjectionCalls == calls_before_repeat + 1);
     control->SetupFrame({128, 80}, {-9, 95});
@@ -345,8 +315,8 @@ TEST_CASE("ModelSetupFrameSupportsRepeatedSizesAndSignedPivots")
     CHECK(model->GetFramePivot() == control->GetFramePivot());
     CHECK(model->GetDrawRect() == control->GetDrawRect());
     CHECK(model->GetLightingSize() == control->GetLightingSize());
-    vec3 repeated_unprojected = model->Convert2dTo3d({5, 7});
-    vec3 expected_unprojected = control->Convert2dTo3d({5, 7});
+    vec3 repeated_unprojected {model->Convert2dTo3d({5, 7})};
+    vec3 expected_unprojected {control->Convert2dTo3d({5, 7})};
     CHECK(is_float_equal(repeated_unprojected.x, expected_unprojected.x));
     CHECK(is_float_equal(repeated_unprojected.y, expected_unprojected.y));
     CHECK(is_float_equal(repeated_unprojected.z, expected_unprojected.z));
@@ -356,27 +326,27 @@ TEST_CASE("ModelSetupFrameSupportsRepeatedSizesAndSignedPivots")
     model->PoseSpriteFrame(false);
     control->PoseSpriteFrame(false);
     REQUIRE(model->GetDrawSize() == control->GetDrawSize());
-    isize32 same_size = model->GetDrawSize();
-    ipos32 same_pivot = model->GetFramePivot();
-    ipos32 same_projected = model->Convert3dTo2d(vec3 {1.0f, 2.0f, 0.0f});
-    vec3 same_unprojected = model->Convert2dTo3d({5, 7});
-    int32_t calls_before_same_size_refresh = renderer.ProjectionCalls;
+    isize32 same_size {model->GetDrawSize()};
+    ipos32 same_pivot {model->GetFramePivot()};
+    ipos32 same_projected {model->Convert3dTo2d(vec3 {1.0f, 2.0f, 0.0f})};
+    vec3 same_unprojected {model->Convert2dTo3d({5, 7})};
+    int32_t calls_before_same_size_refresh {renderer.ProjectionCalls};
 
     model->SetScale(1.0f, 1.0f, 1.0f);
     CHECK(renderer.ProjectionCalls == calls_before_same_size_refresh);
     CHECK(model->GetDrawSize() == same_size);
     CHECK(model->GetFramePivot() == same_pivot);
     CHECK(model->Convert3dTo2d(vec3 {1.0f, 2.0f, 0.0f}) == same_projected);
-    vec3 after_same_size_unprojected = model->Convert2dTo3d({5, 7});
+    vec3 after_same_size_unprojected {model->Convert2dTo3d({5, 7})};
     CHECK(is_float_equal(after_same_size_unprojected.x, same_unprojected.x));
     CHECK(is_float_equal(after_same_size_unprojected.y, same_unprojected.y));
     CHECK(is_float_equal(after_same_size_unprojected.z, same_unprojected.z));
 
-    int32_t max_draw_width = AppRender::MAX_ATLAS_WIDTH / ModelInstance::FRAME_SCALE;
+    int32_t max_draw_width {AppRender::MAX_ATLAS_WIDTH / ModelInstance::FRAME_SCALE};
     model->SetupFrame({max_draw_width, 4}, {0, 0});
     CHECK(model->GetDrawSize() == isize32 {max_draw_width, 4});
     CHECK(model->Convert3dTo2d(vec3 {1.0f, 2.0f, 0.0f}) == ipos32 {16, 32});
-    int32_t max_draw_height = AppRender::MAX_ATLAS_HEIGHT / ModelInstance::FRAME_SCALE;
+    int32_t max_draw_height {AppRender::MAX_ATLAS_HEIGHT / ModelInstance::FRAME_SCALE};
     model->SetupFrame({4, max_draw_height}, {0, 0});
     CHECK(model->GetDrawSize() == isize32 {4, max_draw_height});
     CHECK(model->Convert3dTo2d(vec3 {1.0f, 2.0f, 0.0f}) == ipos32 {16, 32});

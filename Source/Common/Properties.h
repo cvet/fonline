@@ -833,8 +833,8 @@ void Properties::SetValue(ptr<const Property> prop, T new_value, const function<
 
                 if (before_commit) {
                     FO_VERIFY_AND_THROW(prop_data.GetSize() == sizeof(T), "Plain property commit hook received a malformed value", prop->GetName(), prop_data.GetSize(), sizeof(T));
-                    T frozen_value = prop_data.GetAs<T>();
-                    auto frozen_value_ptr = make_ptr(&frozen_value);
+                    T frozen_value {prop_data.GetAs<T>()};
+                    auto frozen_value_ptr {make_ptr(&frozen_value)};
                     span<const uint8_t> frozen_data {frozen_value_ptr.template reinterpret_as<uint8_t>().get(), sizeof(T)};
 
                     before_commit(frozen_value);

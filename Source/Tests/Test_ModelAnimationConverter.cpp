@@ -495,19 +495,19 @@ TEST_CASE("ModelAnimationRuntimePosePreservesReverseLoopBoundaries")
 
 TEST_CASE("ModelAnimationRuntimePoseHoldsOneShotEndpointsWithoutChangingLoops")
 {
-    bool nearest = GENERATE(false, true);
-    bool reversed = GENERATE(false, true);
-    unique_ptr<ModelAnimationRuntimeRig> rig = BuildModelAnimationRuntimeEvaluationTestRig(nearest);
-    size_t root = GetModelAnimationRuntimeEvaluationJoint(*rig, "Root");
-    int32_t curve_clip = GetModelAnimationRuntimeEvaluationClip(*rig, 5);
+    bool nearest {GENERATE(false, true)};
+    bool reversed {GENERATE(false, true)};
+    unique_ptr<ModelAnimationRuntimeRig> rig {BuildModelAnimationRuntimeEvaluationTestRig(nearest)};
+    size_t root {GetModelAnimationRuntimeEvaluationJoint(*rig, "Root")};
+    int32_t curve_clip {GetModelAnimationRuntimeEvaluationClip(*rig, 5)};
     ModelAnimationRuntimePose pose {rig.get()};
     array<ModelAnimationRuntimePose::TrackInput, 2> body {
         ModelAnimationRuntimePose::TrackInput {.ClipIndex = curve_clip, .Enabled = true, .Reversed = reversed, .Weight = 1.0f, .Looping = false},
         ModelAnimationRuntimePose::TrackInput {},
     };
 
-    float32_t initial_x = reversed ? 20.0f : 0.0f;
-    float32_t final_x = reversed ? 0.0f : 20.0f;
+    float32_t initial_x {reversed ? 20.0f : 0.0f};
+    float32_t final_x {reversed ? 0.0f : 20.0f};
 
     pose.Evaluate(body, {}, mat44 {1.0f});
     CHECK(pose.GetFinalLocalTransform(root).Translation.x == Catch::Approx(initial_x).margin(2.0e-2f));

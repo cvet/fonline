@@ -206,23 +206,23 @@ TEST_CASE("ManagedScriptRuntime", "[managed][scripting]")
     REQUIRE(transform_array.Call(values));
     CHECK(transform_array.GetResult() == vector<int32_t> {11, 2, 3, 77});
 
-    auto echo_raw_bytes = server->FindFunc<vector<uint8_t>, vector<uint8_t>>(name("EchoRawBytesWithCollection"));
+    auto echo_raw_bytes {server->FindFunc<vector<uint8_t>, vector<uint8_t>>(name("EchoRawBytesWithCollection"))};
     REQUIRE(echo_raw_bytes);
 
     for (size_t length : vector<size_t> {0, 1, 65537, 262144}) {
         vector<uint8_t> bytes(length);
 
-        for (size_t index = 0; index < length; index++) {
+        for (size_t index {0}; index < length; index++) {
             bytes[index] = numeric_cast<uint8_t>((index * 17 + 29) % 256);
         }
 
-        for (int32_t iteration = 0; iteration < 4; iteration++) {
+        for (int32_t iteration {0}; iteration < 4; iteration++) {
             REQUIRE(echo_raw_bytes.Call(bytes));
             CHECK(echo_raw_bytes.GetResult() == bytes);
         }
     }
 
-    auto sum_dict = server->FindFunc<int32_t, map<int32_t, int32_t>>(name("SumDictionary"));
+    auto sum_dict {server->FindFunc<int32_t, map<int32_t, int32_t>>(name("SumDictionary"))};
     REQUIRE(sum_dict);
     REQUIRE(sum_dict.Call(map<int32_t, int32_t> {{1, 10}, {2, 20}}));
     CHECK(sum_dict.GetResult() == 33);

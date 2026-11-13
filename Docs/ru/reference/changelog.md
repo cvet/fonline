@@ -7,7 +7,7 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"49943b635ef87885163e229afb8a5307c179188aa5bae6647af5d17784437703"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"c12ba5439544b0fe2f9b2f8e0c8f1f8eaa12cc6050475dacaee3a9ad04ff314b"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
@@ -22,9 +22,10 @@ permalink: /Docs/ru/reference/changelog.html
 
 ### Исправлено
 
-- Перед уничтожением pipelines эффекта Vulkan ожидает простоя устройства, поэтому
-  выгрузка эффекта при кадре в полёте больше не нарушает требование времени жизни
-  pipeline.
+- Pipelines, pipeline layout и shader modules эффекта Vulkan освобождаются через
+  отложенные очереди уничтожения слотов кадров, поэтому выгрузка эффекта при кадре
+  в полёте больше не нарушает требование времени жизни pipeline и не останавливает
+  устройство.
 - Handle изображения Vulkan публикуются только после успешных создания, выделения
   памяти и привязки; staging command buffer вне pending сбрасывается до
   освобождения ресурсов, записанных неудачным созданием texture. Восстанавливаемый

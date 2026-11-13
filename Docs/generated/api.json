@@ -49634,7 +49634,7 @@
       ],
       "receiver": "Map",
       "signature": "void Map.DrawMapSprite(MapSpriteHolder mapSpr)",
-      "description": "Adds a holder-defined sprite to this map draw, applying item-prototype rendering rules when present.\nRejects a non-finite DepthOffset before processing the holder; otherwise skips invalid, offscreen or unresolved sprites.",
+      "description": "Adds a holder-defined sprite to this map draw, applying item-prototype rendering rules when present.\nRejects a non-finite DepthOffset before processing the holder; otherwise skips invalid, offscreen or unresolved sprites",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",

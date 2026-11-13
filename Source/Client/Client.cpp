@@ -3033,8 +3033,8 @@ void ClientEngine::CritterMoveTo(ptr<CritterHexView> cr, variant<tuple<mpos, ipo
         return;
     }
 
-    // A local completion can end playback while the server still holds the outstanding lease.
-    bool had_direct_intent = _directMove.has_value() && _directMove->CritterId == cr->GetId();
+    // A local completion can end playback while the server still holds the outstanding lease
+    bool had_direct_intent {_directMove.has_value() && _directMove->CritterId == cr->GetId()};
 
     if (had_direct_intent) {
         _directMove.reset();
@@ -3309,7 +3309,7 @@ void ClientEngine::TraceFrameHealth()
 void ClientEngine::CritterMovingFinished(ptr<CritterHexView> cr, mpos end_hex)
 {
     // The caller preserves chosen arrivals and locally predicted indirect plans before StopMoving clears
-    // their origin. Playback of another entity's server plan never reaches this path.
+    // their origin. Playback of another entity's server plan never reaches this path
     nptr<CritterHexView> chosen {GetMapChosen()};
     nptr<CritterHexView> reporting_cr {cr};
 

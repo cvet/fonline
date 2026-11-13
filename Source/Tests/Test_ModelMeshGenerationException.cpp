@@ -1,28 +1,5 @@
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
+// SPDX-License-Identifier: MIT
 
 #include "Common.h"
 
@@ -56,7 +33,7 @@ public:
     void Upload(EffectUsage usage, optional<size_t> custom_vertices_size, optional<size_t> custom_indices_size) override
     {
         UploadCalls++;
-        bool skip = IsStatic && !StaticDataChanged;
+        bool skip {IsStatic && !StaticDataChanged};
         _forward->Vertices = Vertices;
         _forward->Vertices3D = Vertices3D;
         _forward->Indices = Indices;
@@ -96,11 +73,11 @@ public:
 
     void DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, optional<size_t> indices_to_draw, nptr<const RenderTexture> custom_tex) override
     {
-        auto buffer = dbuf.dyn_cast<GraphProbeBuffer>();
+        auto buffer {dbuf.dyn_cast<GraphProbeBuffer>()};
         FO_VERIFY_AND_THROW(buffer, "Graph probe draw has an unexpected buffer type");
         FO_VERIFY_AND_THROW(start_index <= dbuf->IndCount, "Graph probe draw starts outside CPU indices");
-        size_t requested_indices = indices_to_draw.value_or(dbuf->IndCount - start_index);
-        bool coherent = dbuf->VertCount <= buffer->UploadedVertices && start_index <= buffer->UploadedIndices && requested_indices <= buffer->UploadedIndices - start_index;
+        size_t requested_indices {indices_to_draw.value_or(dbuf->IndCount - start_index)};
+        bool coherent {dbuf->VertCount <= buffer->UploadedVertices && start_index <= buffer->UploadedIndices && requested_indices <= buffer->UploadedIndices - start_index};
         _draws->emplace_back(GraphProbeDraw {dbuf->VertCount, requested_indices, buffer->UploadedVertices, buffer->UploadedIndices, buffer->UploadGeneration, coherent});
         FO_VERIFY_AND_THROW(coherent, "Graph probe draw exceeds the retained static upload");
         _forward->DrawBuffer(dbuf, start_index, indices_to_draw, custom_tex);
@@ -132,7 +109,7 @@ public:
     void EnableScissor(irect32 rect) override { _forward->EnableScissor(rect); }
     void DisableScissor() override { _forward->DisableScissor(); }
 
-    vector<GraphProbeDraw> Draws;
+    vector<GraphProbeDraw> Draws {};
 
 private:
     ptr<IAppRender> _forward;
@@ -140,18 +117,18 @@ private:
 
 static auto MakeGraphProbeRootTriangle() -> vector<uint8_t>
 {
-    vector<uint8_t> triangle = MakeRuntimeModelTriangleMesh();
+    vector<uint8_t> triangle {MakeRuntimeModelTriangleMesh()};
     data_reader reader {triangle};
-    ModelMeshData data = ReadModelMeshData(reader, "GraphProbeTriangle");
+    ModelMeshData data {ReadModelMeshData(reader, "GraphProbeTriangle")};
     FO_VERIFY_AND_THROW(data.RootBone && data.RootBone->AttachedMesh, "Graph probe triangle has no geometry");
-    auto limb = safe_alloc::make_unique<ModelMeshBoneData>();
+    auto limb {safe_alloc::make_unique<ModelMeshBoneData>()};
     limb->Name = "Limb";
     limb->TransformationMatrix = mat44 {1.0f};
     limb->GlobalTransformationMatrix = mat44 {1.0f};
     data.RootBone->Children.emplace_back(std::move(limb));
     data.RootBone->AttachedMesh->SkinBoneNames = {"Root", "Limb"};
     data.RootBone->AttachedMesh->SkinBoneOffsets = {mat44 {1.0f}, mat44 {1.0f}};
-    vector<uint8_t> result;
+    vector<uint8_t> result {};
     data_writer writer {result};
     WriteModelMeshData(writer, data, "GraphProbeTriangle");
     return result;
@@ -159,15 +136,15 @@ static auto MakeGraphProbeRootTriangle() -> vector<uint8_t>
 
 static auto MakeGraphProbeModelResources() -> vector<pair<string, vector<uint8_t>>>
 {
-    constexpr string_view model_path = "Models/RuntimeInstance.fo3d";
-    constexpr string_view mesh_path = "Models/GraphBody.fbx";
-    constexpr string_view extra_mesh_path = "Models/GraphExtra.fbx";
-    constexpr string_view late_mesh_path = "Models/GraphLate.fbx";
-    vector<pair<string, vector<uint8_t>>> resources;
+    constexpr string_view model_path {"Models/RuntimeInstance.fo3d"};
+    constexpr string_view mesh_path {"Models/GraphBody.fbx"};
+    constexpr string_view extra_mesh_path {"Models/GraphExtra.fbx"};
+    constexpr string_view late_mesh_path {"Models/GraphLate.fbx"};
+    vector<pair<string, vector<uint8_t>>> resources {};
     resources.emplace_back(string {mesh_path}, MakeGraphProbeRootTriangle());
     resources.emplace_back(string {extra_mesh_path}, MakeRuntimeModelTriangleMesh());
     resources.emplace_back(string {late_mesh_path}, MakeRuntimeModelTriangleMesh(vec3 {}, "Late.png"));
-    BakerTests::TestRig rig;
+    BakerTests::TestRig rig {};
     rig.AddSourceFile(model_path, "Model GraphBody.fbx\nAnim 1 1 ModelFile Base\nLayer 3\nValue 1 Attach GraphExtra.fbx Link Limb\nValue 1 Attach GraphLate.fbx Link Limb\n", 1);
 
     for (const auto& [path, data] : resources) {
@@ -178,7 +155,7 @@ static auto MakeGraphProbeModelResources() -> vector<pair<string, vector<uint8_t
     BakerTests::AddTestBakedImage(rig, "Models/Late.png", BakerTests::MakeMinimalBakedSprite(8, 8));
     rig.AddBakedFile("Metadata.fometa-client", BakerTests::MakeMetadataBlob({{"Enum", {{"CritterStateAnim", "", "TestState", "1"}, {"CritterActionAnim", "", "TestAction", "1"}}}}));
     ModelInfoBaker info_baker(rig.MakeContext(), [mesh_path](string_view path, const File& file) -> ModelSourceAsset {
-        ModelSourceAsset asset;
+        ModelSourceAsset asset {};
         asset.FileName = path;
         asset.WriteTime = file.GetWriteTime();
         asset.Skeleton.FileName = path;
@@ -186,13 +163,13 @@ static auto MakeGraphProbeModelResources() -> vector<pair<string, vector<uint8_t
 
         if (path == mesh_path) {
             asset.Skeleton.Joints.emplace_back(ModelSkeletonJoint {.Name = "Limb", .Hierarchy = {"Root", "Limb"}, .RestLocalTransform = mat44 {1.0f}});
-            ModelAnimationSource animation;
+            ModelAnimationSource animation {};
             animation.FileName = path;
             animation.Name = "Base";
             animation.Duration = 1.0f;
 
             for (string name : {string {"Root"}, string {"Limb"}}) {
-                ModelAnimationJointSource joint;
+                ModelAnimationJointSource joint {};
                 joint.OutputName = name;
                 joint.Hierarchy = name == "Root" ? vector<string> {"Root"} : vector<string> {"Root", "Limb"};
                 joint.Translation.Times = {0.0f, 1.0f};
@@ -219,15 +196,15 @@ static auto MakeGraphProbeModelResources() -> vector<pair<string, vector<uint8_t
 TEST_CASE("ModelMeshGenerationStaticUploadControls", "[model-mesh-generation]")
 {
     REQUIRE(IsNonInteractiveMode());
-    auto settings = MakeClientTestSettings();
-    auto client = MakeClientEngine(settings);
-    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto settings {MakeClientTestSettings()};
+    auto client {MakeClientEngine(settings)};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
     GraphProbeRender render {&client->SprMngr.GetRender()};
     EffectManager effects {&settings, &client->Resources, &render};
     effects.LoadDefaultEffects();
-    auto effect = effects.Effects.SkinnedModel;
+    auto effect {effects.Effects.SkinnedModel};
     REQUIRE(effect);
-    auto buffer = render.CreateDrawBuffer(true);
+    auto buffer {render.CreateDrawBuffer(true)};
     buffer->Vertices3D.resize(3);
     buffer->Indices = {0, 1, 2};
     buffer->VertCount = 3;
@@ -268,19 +245,19 @@ TEST_CASE("ModelMeshGenerationStaticUploadControls", "[model-mesh-generation]")
 TEST_CASE("ModelMeshGenerationFailureDiscardsPartialDrawsAndAllowsRetry", "[model-mesh-generation]")
 {
     REQUIRE(IsNonInteractiveMode());
-    constexpr string_view model_path = "Models/RuntimeInstance.fo3d";
-    auto resources = MakeGraphProbeModelResources();
-    auto settings = MakeClientTestSettings();
+    constexpr string_view model_path {"Models/RuntimeInstance.fo3d"};
+    auto resources {MakeGraphProbeModelResources()};
+    auto settings {MakeClientTestSettings()};
     BakerTests::OverrideSetting(settings.Render.ModelProjFactor, 32.0f);
-    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(resources)));
-    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto client {MakeClientEngine(settings, MakeClientTestResources(std::move(resources)))};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
     GraphProbeRender render {&client->SprMngr.GetRender()};
     EffectManager effects {&settings, &client->Resources, &render};
     effects.LoadDefaultEffects();
-    auto texture = render.CreateTexture({8, 8}, true, false);
-    bool resource_available = false;
-    int32_t texture_requests = 0;
-    string requested_path;
+    auto texture {render.CreateTexture({8, 8}, true, false)};
+    bool resource_available {false};
+    int32_t texture_requests {0};
+    string requested_path {};
     ModelManager manager {&settings, &client->Resources, client, &effects, &render, &client->GameTime, client,
         [&](string_view path) -> pair<nptr<RenderTexture>, frect32> {
             texture_requests++;
@@ -293,11 +270,11 @@ TEST_CASE("ModelMeshGenerationFailureDiscardsPartialDrawsAndAllowsRetry", "[mode
             return {texture.as_nptr(), frect32 {0.0f, 0.0f, 1.0f, 1.0f}};
         },
         [] { return false; }};
-    auto model = manager.CreateModel(model_path);
+    auto model {manager.CreateModel(model_path)};
     REQUIRE(model);
     array<int32_t, MODEL_LAYERS_COUNT> layers {};
-    auto state = static_cast<CritterStateAnim>(1);
-    auto action = static_cast<CritterActionAnim>(1);
+    auto state {static_cast<CritterStateAnim>(1)};
+    auto action {static_cast<CritterActionAnim>(1)};
     (void)model->PlayAnim(state, action, layers.data(), 0.0f, ModelAnimFlags::Freeze);
     model->StartMeshGeneration();
     model->PrepareFrameLayout();
@@ -308,10 +285,10 @@ TEST_CASE("ModelMeshGenerationFailureDiscardsPartialDrawsAndAllowsRetry", "[mode
     REQUIRE(render.Draws.back().UploadedVertices == 3);
     REQUIRE(render.Draws.back().UploadedIndices == 3);
     REQUIRE(texture_requests == 0);
-    size_t baseline_generation = render.Draws.back().UploadGeneration;
+    size_t baseline_generation {render.Draws.back().UploadGeneration};
 
     layers[3] = 1;
-    bool saw_late_texture_failure = false;
+    bool saw_late_texture_failure {false};
 
     try {
         (void)model->PlayAnim(state, action, layers.data(), 0.0f, ModelAnimFlags::Freeze);
@@ -323,7 +300,7 @@ TEST_CASE("ModelMeshGenerationFailureDiscardsPartialDrawsAndAllowsRetry", "[mode
     REQUIRE(saw_late_texture_failure);
     REQUIRE(texture_requests == 1);
     REQUIRE(requested_path == "Models/Late.png");
-    size_t draws_before_failure = render.Draws.size();
+    size_t draws_before_failure {render.Draws.size()};
     REQUIRE_NOTHROW(model->PoseSpriteFrame(false));
     REQUIRE_NOTHROW(model->DrawSpriteFrame());
     CHECK(render.Draws.size() == draws_before_failure);

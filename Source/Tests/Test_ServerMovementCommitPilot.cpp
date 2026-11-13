@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Common.h"
 
@@ -66,18 +36,18 @@ struct MovementCommitPilotControl
 static void ApplyMovementCommitPilotAction(ptr<Critter> target, ptr<MovementCommitPilotControl> control)
 {
     control->Actions.fetch_add(1);
-    int32_t scenario = control->Scenario;
+    int32_t scenario {control->Scenario};
 
     if (scenario == 5 || scenario == 6 || scenario == 9 || scenario == 21) {
         target->GetEngine()->CrMngr.DestroyCritter(target);
     }
     else if (scenario == 18 || scenario == 19 || scenario == 20) {
-        auto owner = target->GetParent<Map>();
+        auto owner {target->GetParent<Map>()};
         FO_VERIFY_AND_THROW(owner, "Commit pilot map destruction has no owner");
         target->GetEngine()->MapMngr.DestroyMap(owner);
     }
     else if (scenario == 7 || scenario == 8 || scenario == 10 || scenario == 16 || scenario == 17) {
-        auto destination = target->GetEngine()->EntityMngr.GetMap(control->DestinationMapId);
+        auto destination {target->GetEngine()->EntityMngr.GetMap(control->DestinationMapId)};
         FO_VERIFY_AND_THROW(destination, "Commit pilot destination is absent");
         FO_VERIFY_AND_THROW(IsEntityAccessValid(destination), "Commit pilot destination lacks existing cover");
         target->GetEngine()->MapMngr.TransferToMap(target, destination, mpos {40, 40}, mdir {}, std::nullopt);
@@ -90,32 +60,32 @@ static void ApplyMovementCommitPilotAction(ptr<Critter> target, ptr<MovementComm
 
 TEST_CASE("ServerMovementCommitBoundaryPilot")
 {
-    int32_t scenario = GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31);
+    int32_t scenario {GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31)};
     INFO(scenario);
     REQUIRE(IsTestingInProgress);
-    auto settings = ServerEngineTests::MakeServerTestSettings();
+    auto settings {ServerEngineTests::MakeServerTestSettings()};
     BakerTests::OverrideSetting(settings.Server.CritterMovingPeriodMs, int32_t {30000});
-    string grid_name = "default";
+    string grid_name {"default"};
 
     if (scenario == 11) {
         grid_name = GENERATE(string {"Static"}, string {"Chunked"}, string {"Dynamic"});
         BakerTests::OverrideSetting(settings.Server.MapInstanceGridType, grid_name);
     }
 
-    auto server = ServerEngineTests::MakeServerEngine(settings);
-    auto shutdown = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+    auto server {ServerEngineTests::MakeServerEngine(settings)};
+    auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
     REQUIRE(ServerEngineTests::WaitForServerStart(server).empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
-    bool locked = true;
-    auto unlock = scope_exit([&]() noexcept {
+    bool locked {true};
+    auto unlock {scope_exit([&]() noexcept {
         if (locked) {
             safe_call([&server] { server->Unlock(); });
         }
-    });
+    })};
 
-    auto control = safe_alloc::make_shared<MovementCommitPilotControl>();
+    auto control {safe_alloc::make_shared<MovementCommitPilotControl>()};
     control->Scenario = scenario;
-    auto previous_reporter = exceptions::get_callback();
+    auto previous_reporter {exceptions::get_callback()};
     exceptions::set_callback([control, previous_reporter](string_view message, const stack_trace::catched_data& trace, bool fatal) mutable {
         if (!fatal && message.find("COMMIT_PILOT_INJECT") != string_view::npos) {
             control->Reports.fetch_add(1, std::memory_order_release);
@@ -128,29 +98,29 @@ TEST_CASE("ServerMovementCommitBoundaryPilot")
             }
         }
     });
-    auto restore_reporter = scope_exit([previous = std::move(previous_reporter)]() mutable noexcept { exceptions::set_callback(std::move(previous)); });
+    auto restore_reporter {scope_exit([previous = std::move(previous_reporter)]() mutable noexcept { exceptions::set_callback(std::move(previous)); })};
 
-    hstring location_pid = server->Hashes.to_hashed_string("UnitTestLocation");
-    hstring map_pid = server->Hashes.to_hashed_string("UnitTestMap");
-    auto location = server->MapMngr.CreateLocation(location_pid, vector<hstring> {map_pid, map_pid}).hold_ref();
-    auto source = location->GetMapByIndex(0).try_hold_ref();
-    auto destination = location->GetMapByIndex(1).try_hold_ref();
+    hstring location_pid {server->Hashes.to_hashed_string("UnitTestLocation")};
+    hstring map_pid {server->Hashes.to_hashed_string("UnitTestMap")};
+    auto location {server->MapMngr.CreateLocation(location_pid, vector<hstring> {map_pid, map_pid}).hold_ref()};
+    auto source {location->GetMapByIndex(0).try_hold_ref()};
+    auto destination {location->GetMapByIndex(1).try_hold_ref()};
     REQUIRE(source);
     REQUIRE(destination);
-    auto critter = server->CreateCritter(server->Hashes.to_hashed_string("UnitTestRat"), false).hold_ref();
-    ident_t critter_id = critter->GetId();
-    ident_t source_id = source->GetId();
-    ident_t destination_id = destination->GetId();
+    auto critter {server->CreateCritter(server->Hashes.to_hashed_string("UnitTestRat"), false).hold_ref()};
+    ident_t critter_id {critter->GetId()};
+    ident_t source_id {source->GetId()};
+    ident_t destination_id {destination->GetId()};
     control->TargetId = critter_id;
     control->DestinationMapId = scenario == 16 || scenario == 17 || scenario == 26 ? source_id : destination_id;
-    mpos initial_hex = scenario == 11 ? mpos {1, 1} : mpos {20, 20};
+    mpos initial_hex {scenario == 11 ? mpos {1, 1} : mpos {20, 20}};
 
     if (scenario == 11) {
         critter->SetMultihex(2);
     }
 
     server->MapMngr.TransferToMap(critter, source, initial_hex, mdir {}, std::nullopt);
-    auto cover = [&] {
+    auto cover {[&] {
         small_vector<ptr<ServerEntity>, 4> entities {location};
 
         if (!source->IsDestroyed()) {
@@ -165,12 +135,12 @@ TEST_CASE("ServerMovementCommitBoundaryPilot")
         }
 
         server->RequireCurrentSyncContext()->SyncEntities(entities);
-    };
+    }};
     cover();
-    bool repaired = false;
-    bool finish_subscribed = false;
-    uintptr_t finish_subscription = reinterpret_cast<uintptr_t>(&finish_subscribed);
-    auto cleanup_fixture = [&] {
+    bool repaired {false};
+    bool finish_subscribed {false};
+    uintptr_t finish_subscription {reinterpret_cast<uintptr_t>(&finish_subscribed)};
+    auto cleanup_fixture {[&] {
         control->Armed.store(false);
         control->DirArmed.store(false);
         control->FinishArmed.store(false);
@@ -194,7 +164,7 @@ TEST_CASE("ServerMovementCommitBoundaryPilot")
                     server->StopCritterMoving(critter);
                 }
 
-                auto owner = critter->GetParent<Map>();
+                auto owner {critter->GetParent<Map>()};
 
                 if (owner && !owner->IsDestroyed() && !owner->IsCritterOnHex(critter->GetHex(), critter)) {
                     owner->AddCritterToField(critter);
@@ -205,19 +175,19 @@ TEST_CASE("ServerMovementCommitBoundaryPilot")
 
             server->MapMngr.DestroyLocation(location);
         }
-    };
-    auto cleanup = scope_exit([&]() noexcept { safe_call(cleanup_fixture); });
-    auto property = critter->GetPropertyHex();
+    }};
+    auto cleanup {scope_exit([&]() noexcept { safe_call(cleanup_fixture); })};
+    auto property {critter->GetPropertyHex()};
     REQUIRE(property->IsCoreProperty());
     REQUIRE_FALSE(property->IsMutable());
     REQUIRE(property->IsPlainData());
     REQUIRE(property->GetBaseSize() == sizeof(mpos));
-    size_t initial_pre = property->GetSetters()->size();
-    size_t initial_post = property->GetPostSetters()->size();
+    size_t initial_pre {property->GetSetters()->size()};
+    size_t initial_post {property->GetPostSetters()->size()};
     control->TransformedHex = scenario == 4 ? initial_hex : scenario == 13 ? mpos {-1, 21} : mpos {24, 25};
 
     property->AddSetter([control](nptr<Entity> entity, ptr<const Property> prop, PropertyRawData& data) mutable {
-        auto target = entity.dyn_cast<Critter>();
+        auto target {entity.dyn_cast<Critter>()};
 
         if (!target || target->GetId() != control->TargetId) {
             return;
@@ -236,12 +206,12 @@ TEST_CASE("ServerMovementCommitBoundaryPilot")
         }
 
         FO_VERIFY_AND_THROW(prop == target->GetPropertyHex() && data.GetSize() == sizeof(mpos), "Commit pilot pre-setter type mismatch");
-        auto owner = target->GetParent<Map>();
+        auto owner {target->GetParent<Map>()};
         FO_VERIFY_AND_THROW(owner && IsEntityAccessValid(target) && IsEntityAccessValid(owner), "Commit pilot pre-setter has no existing map cover");
         FO_VERIFY_AND_THROW(owner->GetCritter(target->GetId()) == target && owner->IsCritterOnHex(target->GetHex(), target), "Commit pilot pre-setter sees inconsistent membership");
         control->PreConsistent.fetch_add(1);
         control->Armed.store(false);
-        int32_t mode = control->Scenario;
+        int32_t mode {control->Scenario};
 
         if (mode == 3 || mode == 4 || mode == 13) {
             data.SetAs<mpos>(control->TransformedHex);
@@ -256,7 +226,7 @@ TEST_CASE("ServerMovementCommitBoundaryPilot")
         }
     });
     property->AddPostSetter([control](nptr<Entity> entity, ptr<const Property>) mutable {
-        auto target = entity.dyn_cast<Critter>();
+        auto target {entity.dyn_cast<Critter>()};
 
         if (!target || target->GetId() != control->TargetId) {
             return;
@@ -268,7 +238,7 @@ TEST_CASE("ServerMovementCommitBoundaryPilot")
             control->BorrowedRawData = nullptr;
         }
 
-        auto owner = target->GetParent<Map>();
+        auto owner {target->GetParent<Map>()};
 
         if (owner && owner->GetCritter(target->GetId()) == target) {
             FO_VERIFY_AND_THROW(owner->IsCritterOnHex(target->GetHex(), target), "Commit pilot post-setter sees inconsistent membership");
@@ -281,12 +251,12 @@ TEST_CASE("ServerMovementCommitBoundaryPilot")
     });
     REQUIRE(property->GetSetters()->size() == initial_pre + 1);
     REQUIRE(property->GetPostSetters()->size() == initial_post + 1);
-    auto dir_property = critter->GetPropertyDir();
+    auto dir_property {critter->GetPropertyDir()};
     REQUIRE(dir_property->IsCoreProperty());
     REQUIRE(dir_property->GetBaseSize() == sizeof(mdir));
-    size_t initial_dir_post = dir_property->GetPostSetters()->size();
+    size_t initial_dir_post {dir_property->GetPostSetters()->size()};
     dir_property->AddPostSetter([control](nptr<Entity> entity, ptr<const Property>) mutable {
-        auto target = entity.dyn_cast<Critter>();
+        auto target {entity.dyn_cast<Critter>()};
 
         if (!target || target->GetId() != control->TargetId || !control->DirArmed.exchange(false)) {
             return;
@@ -295,14 +265,14 @@ TEST_CASE("ServerMovementCommitBoundaryPilot")
         control->DirCalls.fetch_add(1);
         control->Actions.fetch_add(1);
         FO_VERIFY_AND_THROW(target->IsMapTransfersLocked(), "Commit pilot Dir callback did not run inside locked transfer");
-        auto owner = target->GetParent<Map>();
+        auto owner {target->GetParent<Map>()};
         FO_VERIFY_AND_THROW(owner && owner->IsCritterOnHex(target->GetHex(), target), "Commit pilot Dir callback source field is inconsistent");
 
         if (control->Scenario == 26) {
             owner->MoveCritterOnField(target, mpos {40, 40});
         }
         else if (control->Scenario == 27) {
-            auto moving = ServerEngineTests::MakeServerMovementContext(owner->GetSize(), target->GetHex(), target->GetEngine()->GameTime.GetFrameTime());
+            auto moving {ServerEngineTests::MakeServerMovementContext(owner->GetSize(), target->GetHex(), target->GetEngine()->GameTime.GetFrameTime())};
             target->GetEngine()->StartCritterMoving(target, moving, nullptr);
             control->ReplacementUid.store(target->GetMovingUid());
         }
@@ -325,12 +295,12 @@ TEST_CASE("ServerMovementCommitBoundaryPilot")
     REQUIRE(dir_property->GetPostSetters()->size() == initial_dir_post + 1);
     control->Armed.store(scenario != 0 && scenario != 11 && scenario != 12 && scenario != 15 && scenario < 22);
     control->DirArmed.store(scenario >= 26 && scenario <= 29);
-    Entity::EventCallbackData finish;
+    Entity::EventCallbackData finish {};
     finish.SubscriptionPtr = finish_subscription;
     finish.Callback = [control](FuncCallData& call) mutable {
         FO_VERIFY_AND_THROW(call.ArgsData.size() == 1, "Commit pilot finish event arity mismatch");
-        ptr<void> target_data = call.ArgsData[0];
-        auto target = make_nptr(*cast_from_void<Entity**>(target_data.get())).dyn_cast<Critter>();
+        ptr<void> target_data {call.ArgsData[0]};
+        auto target {make_nptr(*cast_from_void<Entity**>(target_data.get())).dyn_cast<Critter>()};
 
         if (!target || target->GetId() != control->TargetId || !control->FinishArmed.exchange(false)) {
             return Entity::EventResult::ContinueChain;
@@ -338,9 +308,9 @@ TEST_CASE("ServerMovementCommitBoundaryPilot")
 
         control->FinishCalls.fetch_add(1);
         FO_VERIFY_AND_THROW(target->IsDestroying() && !target->IsDestroyed(), "Commit pilot did not observe real finish lifecycle state");
-        auto owner = target->GetParent<Map>();
+        auto owner {target->GetParent<Map>()};
         FO_VERIFY_AND_THROW(owner && IsEntityAccessValid(owner) && IsEntityAccessValid(target), "Commit pilot finish callback has no existing cover");
-        mpos old_hex = target->GetHex();
+        mpos old_hex {target->GetHex()};
         FO_VERIFY_AND_THROW(owner->GetCritter(target->GetId()) == target && owner->IsCritterOnHex(old_hex, target), "Commit pilot finish source is not registered on its field");
         owner->MoveCritterOnField(target, mpos {40, 40});
         FO_VERIFY_AND_THROW(target->GetHex() == (mpos {40, 40}) && owner->IsCritterOnHex(target->GetHex(), target) && !owner->IsCritterOnHex(old_hex, target), "Commit pilot finish movement did not preserve field consistency");
@@ -350,13 +320,13 @@ TEST_CASE("ServerMovementCommitBoundaryPilot")
     server->OnCritterFinish.Subscribe(std::move(finish));
     finish_subscribed = true;
     control->FinishArmed.store(scenario == 30);
-    mpos requested = scenario == 11 ? mpos {2, 1} : mpos {22, 23};
-    uint32_t authority_calls = 0;
+    mpos requested {scenario == 11 ? mpos {2, 1} : mpos {22, 23}};
+    uint32_t authority_calls {0};
     function<bool()> authority = [&] {
         authority_calls++;
 
         if (scenario == 31) {
-            auto clear_borrow = scope_exit([control]() mutable noexcept { control->BorrowedRawData = nullptr; });
+            auto clear_borrow {scope_exit([control]() mutable noexcept { control->BorrowedRawData = nullptr; })};
             FO_VERIFY_AND_THROW(control->BorrowedRawData && control->BorrowedRawData->GetSize() == sizeof(mpos), "Commit pilot raw-data borrow is absent or has wrong size");
             FO_VERIFY_AND_THROW(control->BorrowedRawData->GetAs<mpos>() == requested, "Commit pilot raw-data borrow has an unexpected input");
             FO_VERIFY_AND_THROW(critter->GetHex() == initial_hex && source->IsCritterOnHex(initial_hex, critter), "Commit pilot alias callback changed the live position prematurely");
@@ -378,7 +348,7 @@ TEST_CASE("ServerMovementCommitBoundaryPilot")
                 server->MapMngr.TransferToMap(critter, destination, mpos {40, 40}, mdir {}, std::nullopt);
             }
             else {
-                auto moving = ServerEngineTests::MakeServerMovementContext(source->GetSize(), initial_hex, server->GameTime.GetFrameTime());
+                auto moving {ServerEngineTests::MakeServerMovementContext(source->GetSize(), initial_hex, server->GameTime.GetFrameTime())};
                 server->StartCritterMoving(critter, moving, nullptr);
             }
         }
@@ -387,12 +357,12 @@ TEST_CASE("ServerMovementCommitBoundaryPilot")
     };
 
     if (scenario <= 2 || scenario == 21) {
-        auto moving_template = ServerEngineTests::MakeServerMovementContext(source->GetSize(), initial_hex, server->GameTime.GetFrameTime());
+        auto moving_template {ServerEngineTests::MakeServerMovementContext(source->GetSize(), initial_hex, server->GameTime.GetFrameTime())};
         timespan overdue {std::chrono::milliseconds {iround<int32_t>(moving_template->GetWholeTime().to_ms<float64_t>()) + 100}};
-        auto moving = ServerEngineTests::MakeServerMovementContext(source->GetSize(), initial_hex, server->GameTime.GetFrameTime() - overdue);
+        auto moving {ServerEngineTests::MakeServerMovementContext(source->GetSize(), initial_hex, server->GameTime.GetFrameTime() - overdue)};
         requested = moving->GetEndHex();
         server->StartCritterMoving(critter, moving, nullptr);
-        uint32_t active_uid = critter->GetMovingUid();
+        uint32_t active_uid {critter->GetMovingUid()};
         REQUIRE(ServerEngineTests::WaitForUnlockedServerCondition(
             server, locked,
             [&] {
@@ -456,7 +426,7 @@ TEST_CASE("ServerMovementCommitBoundaryPilot")
         }
     }
     else {
-        bool should_throw = scenario == 5 || scenario == 6 || scenario == 7 || scenario == 8 || scenario == 9 || scenario == 10 || scenario == 12 || scenario == 13 || scenario == 14 || scenario == 16 || scenario == 17 || scenario == 18 || scenario == 19 || scenario == 20 || (scenario >= 22 && scenario <= 25);
+        bool should_throw {scenario == 5 || scenario == 6 || scenario == 7 || scenario == 8 || scenario == 9 || scenario == 10 || scenario == 12 || scenario == 13 || scenario == 14 || scenario == 16 || scenario == 17 || scenario == 18 || scenario == 19 || scenario == 20 || (scenario >= 22 && scenario <= 25)};
 
         if (should_throw) {
             REQUIRE_THROWS_AS(source->MoveCritterOnField(critter, requested, authority), std::exception);
@@ -505,9 +475,9 @@ TEST_CASE("ServerMovementCommitBoundaryPilot")
         }
     }
 
-    bool destroyed = scenario == 5 || scenario == 6 || scenario == 9 || scenario == 18 || scenario == 19 || scenario == 20 || scenario == 21 || scenario == 22 || scenario == 29 || scenario == 30;
-    bool map_destroyed = scenario == 18 || scenario == 19 || scenario == 20;
-    bool relocated = scenario == 7 || scenario == 8 || scenario == 10 || scenario == 16 || scenario == 17 || scenario == 23 || scenario == 24 || scenario == 26;
+    bool destroyed {scenario == 5 || scenario == 6 || scenario == 9 || scenario == 18 || scenario == 19 || scenario == 20 || scenario == 21 || scenario == 22 || scenario == 29 || scenario == 30};
+    bool map_destroyed {scenario == 18 || scenario == 19 || scenario == 20};
+    bool relocated {scenario == 7 || scenario == 8 || scenario == 10 || scenario == 16 || scenario == 17 || scenario == 23 || scenario == 24 || scenario == 26};
 
     if (destroyed) {
         REQUIRE_FALSE(server->EntityMngr.GetCritter(critter_id));
@@ -524,7 +494,7 @@ TEST_CASE("ServerMovementCommitBoundaryPilot")
     }
     else {
         REQUIRE_FALSE(critter->IsDestroyed());
-        auto owner = critter->GetParent<Map>();
+        auto owner {critter->GetParent<Map>()};
         REQUIRE(owner);
         REQUIRE(owner->GetCritter(critter_id) == critter);
         REQUIRE(owner->IsCritterOnHex(critter->GetHex(), critter));
@@ -550,10 +520,10 @@ TEST_CASE("ServerMovementCommitBoundaryPilot")
         if (scenario == 11) {
             REQUIRE(critter->GetHex() == requested);
 
-            for (int16_t y = 0; y < 8; y++) {
-                for (int16_t x = 0; x < 8; x++) {
+            for (int16_t y {0}; y < 8; y++) {
+                for (int16_t x {0}; x < 8; x++) {
                     mpos hex {x, y};
-                    bool expected = GeometryHelper::GetDistance(hex, requested) <= 2;
+                    bool expected {GeometryHelper::GetDistance(hex, requested) <= 2};
                     REQUIRE(source->IsCritterOnHex(hex, critter) == expected);
                     REQUIRE(source->IsCritterOnHex(hex, CritterFindType::Any) == expected);
                 }

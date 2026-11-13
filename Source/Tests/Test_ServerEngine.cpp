@@ -1679,8 +1679,8 @@ TEST_CASE("ServerEngineCustomCollectionStartupValidation")
 
         std::atomic_bool storage_error_seen {};
         std::atomic_bool late_startup_seen {};
-        auto previous_exception_callback = exceptions::get_callback();
-        auto capture_exception = [&storage_error_seen, previous_exception_callback](string_view message, const stack_trace::catched_data& trace, bool fatal) {
+        auto previous_exception_callback {exceptions::get_callback()};
+        auto capture_exception {[&storage_error_seen, previous_exception_callback](string_view message, const stack_trace::catched_data& trace, bool fatal) {
             if (message.find("Duplicate database collection name") != string_view::npos) {
                 storage_error_seen = true;
             }
@@ -1692,19 +1692,19 @@ TEST_CASE("ServerEngineCustomCollectionStartupValidation")
                 logging::write_base(strex("{}\n", message), &trace);
                 logging::write_base("\n\n");
             }
-        };
+        }};
         exceptions::set_callback(std::move(capture_exception));
-        auto restore_exception_callback = scope_exit([previous = std::move(previous_exception_callback)]() mutable noexcept { exceptions::set_callback(std::move(previous)); });
+        auto restore_exception_callback {scope_exit([previous = std::move(previous_exception_callback)]() mutable noexcept { exceptions::set_callback(std::move(previous)); })};
 
-        auto capture_startup = [&storage_error_seen, &late_startup_seen](logging::type, string_view message, nptr<const stack_trace::catched_data>) {
-            bool is_late_stage = message.find("Setup engine") != string_view::npos || message.find("Load language data") != string_view::npos || message.find("Load maps data") != string_view::npos || message.find("updater backend") != string_view::npos || message.find("Start game logic") != string_view::npos || message.find("Start server complete!") != string_view::npos;
+        auto capture_startup {[&storage_error_seen, &late_startup_seen](logging::type, string_view message, nptr<const stack_trace::catched_data>) {
+            bool is_late_stage {message.find("Setup engine") != string_view::npos || message.find("Load language data") != string_view::npos || message.find("Load maps data") != string_view::npos || message.find("updater backend") != string_view::npos || message.find("Start game logic") != string_view::npos || message.find("Start server complete!") != string_view::npos};
 
             if (storage_error_seen.load() && is_late_stage) {
                 late_startup_seen = true;
             }
-        };
+        }};
         logging::set_callback("server-startup-order-test", std::move(capture_startup));
-        auto restore_logger = scope_exit([]() noexcept { logging::set_callback("server-startup-order-test", {}); });
+        auto restore_logger {scope_exit([]() noexcept { logging::set_callback("server-startup-order-test", {}); })};
 
         CheckServerStartupFailsSafely(settings);
 

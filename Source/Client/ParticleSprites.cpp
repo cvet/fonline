@@ -180,7 +180,7 @@ auto ParticleSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sh
         particle->Setup(mat44 {1.0f}, mat44 {1.0f}, {}, {}, {}, true);
     }
     else {
-        mat44 proj = _sprMngr->GetRender().CreateOrthoMatrix(0.0f, layout.ProjWidth, 0.0f, layout.ProjHeight, -10.0f, 10.0f);
+        mat44 proj {_sprMngr->GetRender().CreateOrthoMatrix(0.0f, layout.ProjWidth, 0.0f, layout.ProjHeight, -10.0f, 10.0f)};
 
         particle->Setup(proj, layout.World, {}, {}, {});
     }

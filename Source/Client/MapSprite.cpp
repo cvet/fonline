@@ -96,8 +96,8 @@ auto MapSprite::GetMapRootOffset() const noexcept -> ipos32
 
 auto MapSprite::GetMapRootProjection() const -> vec3
 {
-    vec3 world = GeometryHelper::GetHexWorldPos(_hex, GetMapRootOffset(), numeric_cast<float32_t>(_elevation));
-    vec3 projection = GeometryHelper::ProjectWorldToMap(world);
+    vec3 world {GeometryHelper::GetHexWorldPos(_hex, GetMapRootOffset(), numeric_cast<float32_t>(_elevation))};
+    vec3 projection {GeometryHelper::ProjectWorldToMap(world)};
     projection.z += _depthOffset;
 
     return projection;

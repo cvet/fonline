@@ -218,7 +218,7 @@ TEST_CASE("Model animation timeline preserves a stop across different frame part
     controller.SetTrackSpeed(0, 1.0f);
     controller.AddEventSpeed(0, 0.0f, timespan {std::chrono::milliseconds {600}}, timespan {std::chrono::milliseconds {0}});
 
-    ModelAnimationController partitioned = controller.Copy();
+    ModelAnimationController partitioned {controller.Copy()};
     partitioned.SetTrackEnable(0, true);
     partitioned.SetTrackSpeed(0, 1.0f);
     partitioned.AddEventSpeed(0, 0.0f, timespan {std::chrono::milliseconds {600}}, timespan {std::chrono::milliseconds {0}});
@@ -265,7 +265,7 @@ TEST_CASE("Model animation timeline copies bindings into fresh independent playb
     controller.AddEventSpeed(0, 3.0f, timespan {std::chrono::milliseconds {0}}, timespan {std::chrono::milliseconds {1000}});
     controller.AdvanceTimeline(timespan {std::chrono::milliseconds {250}});
 
-    ModelAnimationController copy = controller.Copy();
+    ModelAnimationController copy {controller.Copy()};
     CHECK_FALSE(copy.GetTrackEnable(0));
     CHECK(copy.GetTrackPosition(0).to_sec<float64_t>() == 0.0f);
     CHECK(copy.GetTrackSpeed(0) == 0.0f);
@@ -371,7 +371,7 @@ TEST_CASE("Model animation timelines preserve reverse advancement and event boun
 
     SECTION("An event extending beyond the clock limit does not overflow early")
     {
-        constexpr int64_t maximum = std::numeric_limits<int64_t>::max();
+        constexpr int64_t maximum {std::numeric_limits<int64_t>::max()};
         ModelAnimationController controller {1};
         controller.SetTrackEnable(0, true);
         controller.SetTrackSpeed(0, 0.0f);

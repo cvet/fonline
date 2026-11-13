@@ -5483,7 +5483,7 @@
           "translation": "Рисует загруженную карту во время события RenderIface; при вызове вне этого обработчика рендера выбрасывает исключение."
         },
         "/symbols/@id=script.method.client.Map.DrawMapSprite/description": {
-          "source_sha256": "650c4ba947628a3ffaed154753045cdc5a54f34dab6e8528bf43447d0b6ea9e2",
+          "source_sha256": "bafcf6047541b77c4c7b5cacc0306c0d9608ce4d16fa8f192dcbc2dd26c43c7e",
           "translation": "Добавляет определённый holder спрайт в отрисовку карты, применяя правила отображения прототипа предмета при его наличии. Отклоняет неконечный DepthOffset до обработки holder; иначе пропускает некорректный, невидимый или неразрешённый спрайт."
         },
         "/symbols/@id=script.method.client.Map.GetCritter/description": {

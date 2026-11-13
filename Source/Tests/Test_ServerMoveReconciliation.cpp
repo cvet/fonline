@@ -507,11 +507,11 @@ namespace
         runtime_source->AddFile("TestMap.fomap-bin-server", MakeEmptyMapBlob());
 
         if (with_commit_trigger) {
-            hstring item_type = proto_engine.Hashes.to_hashed_string("Item");
+            hstring item_type {proto_engine.Hashes.to_hashed_string("Item")};
             runtime_source->AddFile("CommitTrigger.fopro-bin-server", BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "CommitTrigger"));
         }
 
-        FileSystem resources;
+        FileSystem resources {};
         resources.AddCustomSource(std::move(runtime_source));
         return resources;
     }
@@ -1396,42 +1396,42 @@ TEST_CASE("ServerCritterMovePositionReconciliation")
 
 TEST_CASE("ServerMovementAuthority")
 {
-    auto settings = MakeSettings();
-    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources());
+    auto settings {MakeSettings()};
+    auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources())};
 
-    auto shutdown = scope_exit([&server]() noexcept {
+    auto shutdown {scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
                 server->Shutdown();
             }
         });
-    });
+    })};
 
     REQUIRE(WaitForStart(server).empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
 
-    bool locked = true;
+    bool locked {true};
 
-    auto unlock = scope_exit([&]() noexcept {
+    auto unlock {scope_exit([&]() noexcept {
         safe_call([&] {
             if (locked) {
                 server->Unlock();
             }
         });
-    });
+    })};
 
-    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
-    auto net = safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings);
-    auto player = CreateLoggedPlayer(server, net, "Driver").hold_ref();
-    auto passenger_net = safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings);
-    auto passenger = CreateLoggedPlayer(server, passenger_net, "Passenger").hold_ref();
-    auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
-    auto map = loc->GetMapByIndex(0);
+    auto fn {[&server](string_view name) { return server->Hashes.to_hashed_string(name); }};
+    auto net {safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings)};
+    auto player {CreateLoggedPlayer(server, net, "Driver").hold_ref()};
+    auto passenger_net {safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings)};
+    auto passenger {CreateLoggedPlayer(server, passenger_net, "Passenger").hold_ref()};
+    auto loc {server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")})};
+    auto map {loc->GetMapByIndex(0)};
     REQUIRE(map);
 
-    auto actor = server->CreateCritter(fn("TestCritter"), true).hold_ref();
-    auto passenger_actor = server->CreateCritter(fn("TestCritter"), true).hold_ref();
-    auto vehicle = server->CreateCritter(fn("TestCritter"), false).hold_ref();
+    auto actor {server->CreateCritter(fn("TestCritter"), true).hold_ref()};
+    auto passenger_actor {server->CreateCritter(fn("TestCritter"), true).hold_ref()};
+    auto vehicle {server->CreateCritter(fn("TestCritter"), false).hold_ref()};
     mpos start {20, 20};
     server->MapMngr.TransferToMap(vehicle, map, start, mdir {}, std::nullopt);
     server->MapMngr.TransferToMap(actor, map, mpos {18, 20}, mdir {}, std::nullopt);
@@ -1441,7 +1441,7 @@ TEST_CASE("ServerMovementAuthority")
     actor->AttachToCritter(vehicle);
     passenger_actor->AttachToCritter(vehicle);
 
-    auto cover = [&] {
+    auto cover {[&] {
         small_vector<ptr<ServerEntity>, 7> entities {map, loc};
 
         for (nptr<ServerEntity> entity : {nptr<ServerEntity> {player}, nptr<ServerEntity> {passenger}, nptr<ServerEntity> {actor}, nptr<ServerEntity> {passenger_actor}, nptr<ServerEntity> {vehicle}}) {
@@ -1451,9 +1451,9 @@ TEST_CASE("ServerMovementAuthority")
         }
 
         server->RequireCurrentSyncContext()->SyncEntities(entities);
-    };
+    }};
 
-    auto wait = [&](const function<bool()>& predicate) {
+    auto wait {[&](const function<bool()>& predicate) {
         return WaitForUnlockedServerCondition(
             server, locked,
             [&] {
@@ -1461,10 +1461,10 @@ TEST_CASE("ServerMovementAuthority")
                 return predicate();
             },
             std::chrono::milliseconds {1500});
-    };
+    }};
 
-    auto drain = [&](ptr<MoveReconciliationConnection> connection) {
-        size_t before = connection->CountReceivedMovement(NetMessage::Ping, ident_t {});
+    auto drain {[&](ptr<MoveReconciliationConnection> connection) {
+        size_t before {connection->CountReceivedMovement(NetMessage::Ping, ident_t {})};
         NetOutBuffer packet {numeric_cast<size_t>(server->Settings->Network.NetBufferSize)};
         packet.StartMsg(NetMessage::Ping);
         packet.Write(false);
@@ -1473,9 +1473,9 @@ TEST_CASE("ServerMovementAuthority")
         connection->Receive(packet.GetData());
 
         REQUIRE(wait([&] { return connection->CountReceivedMovement(NetMessage::Ping, ident_t {}) > before; }));
-    };
+    }};
 
-    auto send_dir = [&](ptr<MoveReconciliationConnection> connection, mdir dir) {
+    auto send_dir {[&](ptr<MoveReconciliationConnection> connection, mdir dir) {
         NetOutBuffer packet {numeric_cast<size_t>(server->Settings->Network.NetBufferSize)};
         packet.StartMsg(NetMessage::SendCritterDir);
         packet.Write(map->GetId());
@@ -1483,20 +1483,20 @@ TEST_CASE("ServerMovementAuthority")
         packet.Write(dir);
         packet.EndMsg();
         connection->Receive(packet.GetData());
-    };
+    }};
 
-    bool grant = true;
-    bool allow_passenger = false;
-    bool mutate_attachment = false;
+    bool grant {true};
+    bool allow_passenger {false};
+    bool mutate_attachment {false};
     function<void()> mutate_target;
-    Entity::EventCallbackData authority;
+    Entity::EventCallbackData authority {};
     authority.SubscriptionPtr = reinterpret_cast<uintptr_t>(&grant);
     authority.Callback = [&](FuncCallData& call) {
-        ptr<void> sender_data = call.ArgsData[0];
-        ptr<void> target_data = call.ArgsData[1];
-        ptr<void> allowed_data = call.ArgsData[2];
-        auto sender = make_nptr(*cast_from_void<Entity**>(sender_data.get())).dyn_cast<Player>();
-        auto target = make_nptr(*cast_from_void<Entity**>(target_data.get())).dyn_cast<Critter>();
+        ptr<void> sender_data {call.ArgsData[0]};
+        ptr<void> target_data {call.ArgsData[1]};
+        ptr<void> allowed_data {call.ArgsData[2]};
+        auto sender {make_nptr(*cast_from_void<Entity**>(sender_data.get())).dyn_cast<Player>()};
+        auto target {make_nptr(*cast_from_void<Entity**>(target_data.get())).dyn_cast<Critter>()};
         *cast_from_void<bool*>(allowed_data.get()) = grant && target == vehicle && (sender == player || (allow_passenger && sender == passenger));
 
         if (mutate_attachment && actor->GetIsAttached()) {
@@ -1505,20 +1505,20 @@ TEST_CASE("ServerMovementAuthority")
         }
 
         if (mutate_target) {
-            auto mutation = std::move(mutate_target);
+            auto mutation {std::move(mutate_target)};
             mutation();
         }
 
         return Entity::EventResult::ContinueChain;
     };
 
-    bool subscribed = false;
+    bool subscribed {false};
 
-    auto unsubscribe = scope_exit([&]() noexcept {
+    auto unsubscribe {scope_exit([&]() noexcept {
         if (subscribed) {
             server->OnPlayerMovementAuthority.Unsubscribe(reinterpret_cast<uintptr_t>(&grant));
         }
-    });
+    })};
 
     SECTION("ExplicitDriverGrantMovesTurnsAndStops")
     {
@@ -1530,7 +1530,7 @@ TEST_CASE("ServerMovementAuthority")
         CHECK(player->GetControlledCritter() == actor.get());
 
         if (vehicle->IsMoving()) {
-            mpos held = vehicle->GetHex();
+            mpos held {vehicle->GetHex()};
             SendStopCritterMove(net, server, map->GetId(), vehicle->GetId(), held, ipos16 {}, mdir {});
 
             CHECK(wait([&] { return !vehicle->IsMoving(); }));
@@ -1566,22 +1566,22 @@ TEST_CASE("ServerMovementAuthority")
     {
         server->OnPlayerMovementAuthority.Subscribe(std::move(authority));
         subscribed = true;
-        auto next_net = safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings);
-        bool reconnected = false;
-        bool restored_same = false;
-        bool candidate_destroyed = false;
-        Entity::EventCallbackData policy;
+        auto next_net {safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings)};
+        bool reconnected {false};
+        bool restored_same {false};
+        bool candidate_destroyed {false};
+        Entity::EventCallbackData policy {};
         policy.SubscriptionPtr = reinterpret_cast<uintptr_t>(&reconnected);
         policy.Callback = [&](FuncCallData&) {
             if (!reconnected) {
-                auto candidate = server->CreateNotLoggedInPlayer(next_net).hold_ref();
+                auto candidate {server->CreateNotLoggedInPlayer(next_net).hold_ref()};
                 small_vector<ptr<ServerEntity>, 8> entities {player, passenger, actor, passenger_actor, vehicle, map, loc, candidate};
                 server->RequireCurrentSyncContext()->SyncEntities(entities);
-                auto restored = server->LoginPlayerToExistentRecord(candidate, player->GetId());
+                auto restored {server->LoginPlayerToExistentRecord(candidate, player->GetId())};
                 restored_same = restored == player;
                 candidate_destroyed = candidate->IsDestroyed();
 
-                // Drop the displaced Player's cover before returning from the callback.
+                // Drop the displaced Player's cover before returning from the callback
                 cover();
                 reconnected = true;
             }
@@ -1591,7 +1591,7 @@ TEST_CASE("ServerMovementAuthority")
 
         server->OnPlayerMoveCritter.Subscribe(std::move(policy));
 
-        auto unsubscribe_policy = scope_exit([&]() noexcept { server->OnPlayerMoveCritter.Unsubscribe(reinterpret_cast<uintptr_t>(&reconnected)); });
+        auto unsubscribe_policy {scope_exit([&]() noexcept { server->OnPlayerMoveCritter.Unsubscribe(reinterpret_cast<uintptr_t>(&reconnected)); })};
         SendCritterMove(net, server, map->GetId(), vehicle->GetId(), uint16_t {300}, start, vector<mdir>(6, mdir {hdir::East}), nanotime::now().milliseconds());
 
         REQUIRE(wait([&] { return reconnected; }));
@@ -1631,15 +1631,15 @@ TEST_CASE("ServerMovementAuthority")
         server->OnPlayerMovementAuthority.Subscribe(std::move(authority));
         subscribed = true;
         vector<mdir> steps(12, mdir {hdir::East});
-        auto moving = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {300}, steps, vector<uint16_t> {12}, server->GameTime.GetFrameTime(), timespan {}, start, ipos16 {}, ipos16 {});
+        auto moving {safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {300}, steps, vector<uint16_t> {12}, server->GameTime.GetFrameTime(), timespan {}, start, ipos16 {}, ipos16 {})};
         moving->SetLeaseTime(timespan {std::chrono::milliseconds {200}}, server->GameTime.GetFrameTime());
         server->StartCritterMoving(vehicle, moving, player, 7);
 
         REQUIRE(wait([&] { return vehicle->IsMoving() && vehicle->GetMoving()->IsHeldByLease(); }));
 
-        uint32_t uid = vehicle->GetMovingUid();
-        mpos held = vehicle->GetHex();
-        timespan lease = moving->GetLeaseTime();
+        uint32_t uid {vehicle->GetMovingUid()};
+        mpos held {vehicle->GetHex()};
+        timespan lease {moving->GetLeaseTime()};
         SendCritterMoveLease(passenger_net, server, map->GetId(), vehicle->GetId(), 7, 5000.0f);
         SendStopCritterMove(passenger_net, server, map->GetId(), vehicle->GetId(), held, ipos16 {}, mdir {180});
         SendCritterMoveFinished(passenger_net, server, map->GetId(), vehicle->GetId(), moving->GetEndHex(), held, ipos16 {}, mdir {180});
@@ -1662,13 +1662,13 @@ TEST_CASE("ServerMovementAuthority")
         server->OnPlayerMovementAuthority.Subscribe(std::move(authority));
         subscribed = true;
         vector<mdir> steps(12, mdir {hdir::East});
-        auto moving = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {300}, steps, vector<uint16_t> {12}, server->GameTime.GetFrameTime(), timespan {}, start, ipos16 {}, ipos16 {});
+        auto moving {safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {300}, steps, vector<uint16_t> {12}, server->GameTime.GetFrameTime(), timespan {}, start, ipos16 {}, ipos16 {})};
         moving->SetLeaseTime(timespan {std::chrono::milliseconds {200}}, server->GameTime.GetFrameTime());
         server->StartCritterMoving(vehicle, moving, player, 7);
 
         REQUIRE(wait([&] { return vehicle->IsMoving() && vehicle->GetMoving()->IsHeldByLease(); }));
 
-        mpos held = vehicle->GetHex();
+        mpos held {vehicle->GetHex()};
         SendCritterMoveLease(passenger_net, server, map->GetId(), vehicle->GetId(), 7, 5000.0f);
         SendStopCritterMove(passenger_net, server, map->GetId(), vehicle->GetId(), held, ipos16 {}, mdir {});
         drain(passenger_net);
@@ -1684,18 +1684,18 @@ TEST_CASE("ServerMovementAuthority")
         server->OnPlayerMovementAuthority.Subscribe(std::move(authority));
         subscribed = true;
         vector<mdir> steps(6, mdir {hdir::East});
-        auto moving = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {300}, steps, vector<uint16_t> {6}, server->GameTime.GetFrameTime(), timespan {}, start, ipos16 {}, ipos16 {});
+        auto moving {safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {300}, steps, vector<uint16_t> {6}, server->GameTime.GetFrameTime(), timespan {}, start, ipos16 {}, ipos16 {})};
         moving->SetLeaseTime(timespan {std::chrono::milliseconds {200}}, server->GameTime.GetFrameTime());
         server->StartCritterMoving(vehicle, moving, player, 7);
 
         REQUIRE(wait([&] { return vehicle->IsMoving() && vehicle->GetMoving()->IsHeldByLease(); }));
 
         refcount_nptr<MovingContext> replacement;
-        Entity::EventCallbackData stop_policy;
+        Entity::EventCallbackData stop_policy {};
         stop_policy.SubscriptionPtr = reinterpret_cast<uintptr_t>(&replacement);
         stop_policy.Callback = [&](FuncCallData&) {
             cover();
-            refcount_ptr<MovingContext> next = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {1}, steps, vector<uint16_t> {6}, server->GameTime.GetFrameTime(), timespan {}, vehicle->GetHex(), ipos16 {}, ipos16 {});
+            refcount_ptr<MovingContext> next {safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {1}, steps, vector<uint16_t> {6}, server->GameTime.GetFrameTime(), timespan {}, vehicle->GetHex(), ipos16 {}, ipos16 {})};
             next->SetLeaseTime(timespan {std::chrono::milliseconds {200}}, server->GameTime.GetFrameTime());
             replacement = next;
             server->StartCritterMoving(vehicle, std::move(next), passenger, 9);
@@ -1704,7 +1704,7 @@ TEST_CASE("ServerMovementAuthority")
 
         server->OnPlayerMoveCritter.Subscribe(std::move(stop_policy));
 
-        auto unsubscribe_stop = scope_exit([&]() noexcept { server->OnPlayerMoveCritter.Unsubscribe(reinterpret_cast<uintptr_t>(&replacement)); });
+        auto unsubscribe_stop {scope_exit([&]() noexcept { server->OnPlayerMoveCritter.Unsubscribe(reinterpret_cast<uintptr_t>(&replacement)); })};
         SendStopCritterMove(net, server, map->GetId(), vehicle->GetId(), vehicle->GetHex(), ipos16 {}, mdir {});
         drain(net);
 
@@ -1720,7 +1720,7 @@ TEST_CASE("ServerMovementAuthority")
         server->OnPlayerMovementAuthority.Subscribe(std::move(authority));
         subscribed = true;
         vector<mdir> steps(3, mdir {hdir::East});
-        auto moving = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {400}, steps, vector<uint16_t> {3}, server->GameTime.GetFrameTime(), timespan {}, start, ipos16 {}, ipos16 {});
+        auto moving {safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {400}, steps, vector<uint16_t> {3}, server->GameTime.GetFrameTime(), timespan {}, start, ipos16 {}, ipos16 {})};
         moving->SetLeaseTime(moving->GetWholeTime() - timespan {std::chrono::milliseconds {5}}, server->GameTime.GetFrameTime());
         server->StartCritterMoving(vehicle, moving, player, 7);
 
@@ -1750,7 +1750,7 @@ TEST_CASE("ServerMovementAuthority")
         server->OnPlayerMovementAuthority.Subscribe(std::move(authority));
         subscribed = true;
         vector<mdir> steps(12, mdir {hdir::East});
-        auto moving = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {300}, steps, vector<uint16_t> {12}, server->GameTime.GetFrameTime(), timespan {}, start, ipos16 {}, ipos16 {});
+        auto moving {safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {300}, steps, vector<uint16_t> {12}, server->GameTime.GetFrameTime(), timespan {}, start, ipos16 {}, ipos16 {})};
         moving->SetLeaseTime(timespan {std::chrono::milliseconds {200}}, server->GameTime.GetFrameTime());
         server->StartCritterMoving(vehicle, moving, player, 7);
 
@@ -1781,7 +1781,7 @@ TEST_CASE("ServerMovementAuthority")
         server->OnPlayerMovementAuthority.Subscribe(std::move(authority));
         subscribed = true;
         vector<mdir> steps(12, mdir {hdir::East});
-        auto moving = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {300}, steps, vector<uint16_t> {12}, server->GameTime.GetFrameTime(), timespan {}, start, ipos16 {}, ipos16 {});
+        auto moving {safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {300}, steps, vector<uint16_t> {12}, server->GameTime.GetFrameTime(), timespan {}, start, ipos16 {}, ipos16 {})};
         moving->SetLeaseTime(timespan {std::chrono::milliseconds {200}}, server->GameTime.GetFrameTime());
         server->StartCritterMoving(vehicle, moving, player, 7);
 
@@ -1829,14 +1829,14 @@ TEST_CASE("ServerMovementAuthority")
 
     SECTION("ActorTransferredDuringGrantInvalidatesRequest")
     {
-        auto next_loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")}).hold_ref();
-        auto next_map = next_loc->GetMapByIndex(0).try_hold_ref();
+        auto next_loc {server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")}).hold_ref()};
+        auto next_map {next_loc->GetMapByIndex(0).try_hold_ref()};
         REQUIRE(next_map);
 
-        auto cover_both = [&] {
+        auto cover_both {[&] {
             small_vector<ptr<ServerEntity>, 9> entities {player, passenger, actor, passenger_actor, vehicle, map, loc, next_map, next_loc};
             server->RequireCurrentSyncContext()->SyncEntities(entities);
-        };
+        }};
 
         mutate_target = [&] {
             cover_both();
@@ -1903,49 +1903,49 @@ TEST_CASE("ServerMovementAuthority")
 
 TEST_CASE("ServerMovementSessionIdentity")
 {
-    auto settings = MakeSettings();
+    auto settings {MakeSettings()};
 
-    // Keep the first submitted plan alive across logout/login without racing its next movement tick.
+    // Keep the first submitted plan alive across logout/login without racing its next movement tick
     BakerTests::OverrideSetting(settings.Server.CritterMovingPeriodMs, int32_t {30000});
-    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources());
+    auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources())};
 
-    auto shutdown = scope_exit([&server]() noexcept {
+    auto shutdown {scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
                 server->Shutdown();
             }
         });
-    });
+    })};
 
     REQUIRE(WaitForStart(server).empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
 
-    bool locked = true;
+    bool locked {true};
 
-    auto unlock = scope_exit([&]() noexcept {
+    auto unlock {scope_exit([&]() noexcept {
         safe_call([&] {
             if (locked) {
                 server->Unlock();
             }
         });
-    });
+    })};
 
-    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
-    auto net = safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings);
-    auto player = CreateLoggedPlayer(server, net, "SessionIdentity").hold_ref();
-    auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
-    auto map = loc->GetMapByIndex(0);
+    auto fn {[&server](string_view name) { return server->Hashes.to_hashed_string(name); }};
+    auto net {safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings)};
+    auto player {CreateLoggedPlayer(server, net, "SessionIdentity").hold_ref()};
+    auto loc {server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")})};
+    auto map {loc->GetMapByIndex(0)};
     REQUIRE(map);
 
-    auto actor = server->CreateCritter(fn("TestCritter"), true).hold_ref();
+    auto actor {server->CreateCritter(fn("TestCritter"), true).hold_ref()};
     mpos start {20, 20};
     server->MapMngr.TransferToMap(actor, map, start, mdir {}, std::nullopt);
     server->SwitchPlayerCritter(player, actor);
-    uint64_t original_revision = player->GetMovementControlRevision();
-    ident_t player_id = player->GetId();
+    uint64_t original_revision {player->GetMovementControlRevision()};
+    ident_t player_id {player->GetId()};
     server->StartCritterMoving(actor, uint16_t {300}, vector<mdir>(12, mdir {hdir::East}), vector<uint16_t> {12}, ipos16 {}, player, timespan {std::chrono::milliseconds {150}});
 
-    auto cover = [&] {
+    auto cover {[&] {
         small_vector<ptr<ServerEntity>, 4> entities {map, loc, actor};
 
         if (!player->IsDestroyed()) {
@@ -1953,9 +1953,9 @@ TEST_CASE("ServerMovementSessionIdentity")
         }
 
         server->RequireCurrentSyncContext()->SyncEntities(entities);
-    };
+    }};
 
-    auto wait = [&](const function<bool()>& predicate) {
+    auto wait {[&](const function<bool()>& predicate) {
         return WaitForUnlockedServerCondition(
             server, locked,
             [&] {
@@ -1963,7 +1963,7 @@ TEST_CASE("ServerMovementSessionIdentity")
                 return predicate();
             },
             std::chrono::milliseconds {1500});
-    };
+    }};
 
     REQUIRE(wait([&] { return actor->IsMoving() && actor->GetHex() != start; }));
     CHECK(actor->IsPlayerMovementOwner(player));
@@ -1974,11 +1974,11 @@ TEST_CASE("ServerMovementSessionIdentity")
     REQUIRE(actor->IsMoving());
     REQUIRE_FALSE(server->EntityMngr.GetPlayer(player_id));
 
-    auto next_net = safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings);
-    auto candidate = server->CreateNotLoggedInPlayer(next_net).hold_ref();
+    auto next_net {safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings)};
+    auto candidate {server->CreateNotLoggedInPlayer(next_net).hold_ref()};
     small_vector<ptr<ServerEntity>, 4> login_entities {map, loc, actor, candidate};
     server->RequireCurrentSyncContext()->SyncEntities(login_entities);
-    auto next_player = server->LoginPlayerToExistentRecord(candidate, player_id).hold_ref();
+    auto next_player {server->LoginPlayerToExistentRecord(candidate, player_id).hold_ref()};
     server->SwitchPlayerCritter(next_player, actor);
 
     CHECK(next_player->GetId() == player_id);
@@ -2010,60 +2010,60 @@ struct MovementAuthorityCommitPilotControl
 
 TEST_CASE("ServerMovementAuthorityAfterCommitPilot")
 {
-    int32_t route = GENERATE(0, 1);
-    int32_t mutation = GENERATE(0, 1, 2, 3);
+    int32_t route {GENERATE(0, 1)};
+    int32_t mutation {GENERATE(0, 1, 2, 3)};
     CAPTURE(route, mutation);
-    auto settings = MakeSettings();
+    auto settings {MakeSettings()};
 
     if (route == 1) {
         BakerTests::OverrideSetting(settings.Server.CritterMovingPeriodMs, int32_t {30000});
     }
 
-    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources(true));
-    auto shutdown = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+    auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources(true))};
+    auto shutdown {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
     REQUIRE(WaitForStart(server).empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
-    bool locked = true;
-    auto unlock = scope_exit([&]() noexcept {
+    bool locked {true};
+    auto unlock {scope_exit([&]() noexcept {
         if (locked) {
             safe_call([&server] { server->Unlock(); });
         }
-    });
+    })};
 
-    auto net = safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings);
-    auto player = CreateLoggedPlayer(server, net, "CommitAuthority").hold_ref();
-    auto location = server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("TestLocation"), vector<hstring> {server->Hashes.to_hashed_string("TestMap")}).hold_ref();
-    auto map = location->GetMapByIndex(0).try_hold_ref();
+    auto net {safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings)};
+    auto player {CreateLoggedPlayer(server, net, "CommitAuthority").hold_ref()};
+    auto location {server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("TestLocation"), vector<hstring> {server->Hashes.to_hashed_string("TestMap")}).hold_ref()};
+    auto map {location->GetMapByIndex(0).try_hold_ref()};
     REQUIRE(map);
-    auto actor = server->CreateCritter(server->Hashes.to_hashed_string("TestCritter"), true).hold_ref();
-    ident_t actor_id = actor->GetId();
-    ident_t map_id = map->GetId();
+    auto actor {server->CreateCritter(server->Hashes.to_hashed_string("TestCritter"), true).hold_ref()};
+    ident_t actor_id {actor->GetId()};
+    ident_t map_id {map->GetId()};
     mpos start {20, 20};
-    mpos first_hex = start;
+    mpos first_hex {start};
     mpos relocated_hex {40, 40};
     REQUIRE(GeometryHelper::MoveHexByDir(first_hex, hdir::East, map->GetSize()));
     REQUIRE(first_hex != start);
     REQUIRE(first_hex != relocated_hex);
     server->MapMngr.TransferToMap(actor, map, start, mdir {}, std::nullopt);
     server->SwitchPlayerCritter(player, actor);
-    auto trigger = server->ItemMngr.CreateItemOnHex(map, first_hex, server->Hashes.to_hashed_string("CommitTrigger"), nullptr).hold_ref();
-    ident_t trigger_id = trigger->GetId();
+    auto trigger {server->ItemMngr.CreateItemOnHex(map, first_hex, server->Hashes.to_hashed_string("CommitTrigger"), nullptr).hold_ref()};
+    ident_t trigger_id {trigger->GetId()};
     trigger->SetNoBlock(true);
     trigger->SetShootThru(true);
     trigger->SetIsTrigger(true);
-    auto cover = [&] {
+    auto cover {[&] {
         small_vector<ptr<ServerEntity>, 5> entities {player, location, map, actor, trigger};
         server->RequireCurrentSyncContext()->SyncEntities(entities);
-    };
+    }};
     cover();
     REQUIRE(map->IsHexMovable(first_hex));
     REQUIRE(map->IsTriggerItemOnHex(first_hex));
     REQUIRE(map->GetTriggerItemsOnHex(first_hex).size() == 1);
     REQUIRE(player->GetControlledCritter() == actor.get());
-    auto control = safe_alloc::make_shared<MovementAuthorityCommitPilotControl>();
+    auto control {safe_alloc::make_shared<MovementAuthorityCommitPilotControl>()};
     control->TargetId = actor_id;
     control->TriggerId = trigger_id;
-    auto previous_reporter = exceptions::get_callback();
+    auto previous_reporter {exceptions::get_callback()};
     exceptions::set_callback([control, previous_reporter](string_view message, const stack_trace::catched_data& trace, bool fatal) mutable {
         control->Reports.fetch_add(1);
 
@@ -2071,10 +2071,10 @@ TEST_CASE("ServerMovementAuthorityAfterCommitPilot")
             previous_reporter(message, trace, fatal);
         }
     });
-    auto restore_reporter = scope_exit([previous = std::move(previous_reporter)]() mutable noexcept { exceptions::set_callback(std::move(previous)); });
-    bool subscribed = false;
-    uintptr_t subscription_id = reinterpret_cast<uintptr_t>(&subscribed);
-    auto cleanup_fixture = [&] {
+    auto restore_reporter {scope_exit([previous = std::move(previous_reporter)]() mutable noexcept { exceptions::set_callback(std::move(previous)); })};
+    bool subscribed {false};
+    uintptr_t subscription_id {reinterpret_cast<uintptr_t>(&subscribed)};
+    auto cleanup_fixture {[&] {
         control->Armed.store(false);
 
         if (!locked) {
@@ -2100,20 +2100,20 @@ TEST_CASE("ServerMovementAuthorityAfterCommitPilot")
         if (!location->IsDestroyed()) {
             server->MapMngr.DestroyLocation(location);
         }
-    };
-    auto cleanup = scope_exit([&]() noexcept { safe_call(cleanup_fixture); });
+    }};
+    auto cleanup {scope_exit([&]() noexcept { safe_call(cleanup_fixture); })};
 
-    Entity::EventCallbackData walk;
+    Entity::EventCallbackData walk {};
     walk.SubscriptionPtr = subscription_id;
     walk.Callback = [control](FuncCallData& call) mutable {
         FO_VERIFY_AND_THROW(call.ArgsData.size() == 4, "Authority commit pilot item event arity mismatch");
-        ptr<void> receiver_data = call.ArgsData[0];
-        auto receiver = make_nptr(*cast_from_void<Entity**>(receiver_data.get())).dyn_cast<Item>();
-        ptr<void> target_data = call.ArgsData[1];
-        auto target = make_nptr(*cast_from_void<Entity**>(target_data.get())).dyn_cast<Critter>();
+        ptr<void> receiver_data {call.ArgsData[0]};
+        auto receiver {make_nptr(*cast_from_void<Entity**>(receiver_data.get())).dyn_cast<Item>()};
+        ptr<void> target_data {call.ArgsData[1]};
+        auto target {make_nptr(*cast_from_void<Entity**>(target_data.get())).dyn_cast<Critter>()};
         FO_VERIFY_AND_THROW(receiver && target && receiver->GetId() == control->TriggerId && target->GetId() == control->TargetId, "Authority commit pilot item event identity mismatch");
-        ptr<void> entered_data = call.ArgsData[2];
-        bool entered = *cast_from_void<bool*>(entered_data.get());
+        ptr<void> entered_data {call.ArgsData[2]};
+        bool entered {*cast_from_void<bool*>(entered_data.get())};
 
         if (entered) {
             control->WalkIn.fetch_add(1);
@@ -2126,28 +2126,28 @@ TEST_CASE("ServerMovementAuthorityAfterCommitPilot")
     };
     trigger->OnCritterWalk.Subscribe(std::move(walk));
     actor->GetPropertyHex()->AddPostSetter([control](nptr<Entity> entity, ptr<const Property>) mutable {
-        auto target = entity.dyn_cast<Critter>();
+        auto target {entity.dyn_cast<Critter>()};
 
         if (!target || target->GetId() != control->TargetId || control->ArmedOnce.exchange(true)) {
             return;
         }
 
-        auto owner = target->GetParent<Map>();
+        auto owner {target->GetParent<Map>()};
         FO_VERIFY_AND_THROW(owner && owner->IsCritterOnHex(target->GetHex(), target), "Authority commit pilot armed before consistent raw publication");
         control->CommittedHex = target->GetHex();
         control->OriginalUid.store(target->GetMovingUid());
         control->Armed.store(true, std::memory_order_release);
     });
 
-    Entity::EventCallbackData authority;
+    Entity::EventCallbackData authority {};
     authority.SubscriptionPtr = subscription_id;
     authority.Callback = [&, control](FuncCallData& call) mutable {
         FO_VERIFY_AND_THROW(call.ArgsData.size() == 3, "Authority commit pilot global event arity mismatch");
-        ptr<void> sender_data = call.ArgsData[0];
-        auto sender = make_nptr(*cast_from_void<Entity**>(sender_data.get())).dyn_cast<Player>();
-        ptr<void> target_data = call.ArgsData[1];
-        ptr<void> allowed_data = call.ArgsData[2];
-        auto target = make_nptr(*cast_from_void<Entity**>(target_data.get())).dyn_cast<Critter>();
+        ptr<void> sender_data {call.ArgsData[0]};
+        auto sender {make_nptr(*cast_from_void<Entity**>(sender_data.get())).dyn_cast<Player>()};
+        ptr<void> target_data {call.ArgsData[1]};
+        ptr<void> allowed_data {call.ArgsData[2]};
+        auto target {make_nptr(*cast_from_void<Entity**>(target_data.get())).dyn_cast<Critter>()};
 
         if (!target || target->GetId() != control->TargetId || !control->Armed.exchange(false, std::memory_order_acq_rel)) {
             return Entity::EventResult::ContinueChain;
@@ -2169,7 +2169,7 @@ TEST_CASE("ServerMovementAuthorityAfterCommitPilot")
         }
         else if (mutation == 3) {
             control->Mutations.fetch_add(1);
-            auto replacement = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {1}, vector<mdir>(12, mdir {hdir::East}), vector<uint16_t> {12}, server->GameTime.GetFrameTime(), timespan {}, target->GetHex(), ipos16 {}, ipos16 {});
+            auto replacement {safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {1}, vector<mdir>(12, mdir {hdir::East}), vector<uint16_t> {12}, server->GameTime.GetFrameTime(), timespan {}, target->GetHex(), ipos16 {}, ipos16 {})};
             server->StartCritterMoving(target, replacement, player, 19);
             control->MutatedUid.store(target->GetMovingUid());
         }
@@ -2187,7 +2187,7 @@ TEST_CASE("ServerMovementAuthorityAfterCommitPilot")
         SendStopCritterMove(net, server, map_id, actor_id, first_hex, ipos16 {}, mdir {});
     }
 
-    auto wait = [&](const function<bool()>& condition) {
+    auto wait {[&](const function<bool()>& condition) {
         return WaitForUnlockedServerCondition(
             server, locked,
             [&] {
@@ -2195,7 +2195,7 @@ TEST_CASE("ServerMovementAuthorityAfterCommitPilot")
                 return condition();
             },
             std::chrono::milliseconds {3000});
-    };
+    }};
     REQUIRE(wait([&] {
         if (control->AfterCommitCalls.load() != 1) {
             return false;
@@ -2204,7 +2204,7 @@ TEST_CASE("ServerMovementAuthorityAfterCommitPilot")
         return mutation == 3 ? actor->IsMoving() && actor->GetMovingUid() == control->MutatedUid.load() : !actor->IsMoving();
     }));
 
-    size_t ping_before = net->CountReceivedMovement(NetMessage::Ping, ident_t {});
+    size_t ping_before {net->CountReceivedMovement(NetMessage::Ping, ident_t {})};
     NetOutBuffer ping {numeric_cast<size_t>(server->Settings->Network.NetBufferSize)};
     ping.StartMsg(NetMessage::Ping);
     ping.Write(false);

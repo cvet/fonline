@@ -22,9 +22,10 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Fixed
 
-- Wait for the Vulkan device to become idle before destroying an effect's
-  pipelines, so unloading an effect while a frame is in flight no longer
-  violates the pipeline lifetime requirement.
+- Release a Vulkan effect's pipelines, pipeline layout and shader modules
+  through the frame-slot deferred-destroy queues, so unloading an effect while
+  a frame is in flight no longer violates the pipeline lifetime requirement and
+  does not stall the device.
 - Publish Vulkan image handles only after successful creation, allocation and
   binding, and reset the nonpending staging command buffer before releasing
   resources recorded by a failed texture construction. Recoverable host/device

@@ -40,23 +40,23 @@ FO_SCRIPT_API ipos32 Client_Item_GetSpriteOffset(ptr<ItemView> self)
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Item_GetSpriteMapAnchor(ptr<ItemView> self, mpos hex, ipos32 localOffset, ipos32& mapOffset, float32_t& depthOffset)
 {
-    auto hex_item = self.dyn_cast<ItemHexView>();
+    auto hex_item {self.dyn_cast<ItemHexView>()};
 
     if (!hex_item) {
         throw ScriptException("Item is not on map");
     }
 
-    auto map = hex_item->GetMap();
-    msize map_size = map->GetSize();
+    auto map {hex_item->GetMap()};
+    msize map_size {map->GetSize()};
 
     if (!map_size.is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
 
-    optional<pair<ipos32, float32_t>> anchor;
+    optional<pair<ipos32, float32_t>> anchor {};
 
     if (map->IsHexInViewArea(hex)) {
-        nptr<const MapSprite> visible_spr = hex_item->GetVisibleMapSpriteAtHex(hex);
+        nptr<const MapSprite> visible_spr {hex_item->GetVisibleMapSpriteAtHex(hex)};
 
         if (visible_spr) {
             anchor = map->GetEngine()->SprMngr.GetMapSpritePointAnchor(visible_spr.as_ptr(), localOffset);

@@ -66,21 +66,21 @@ auto IsModelAnimationCallbackReached(timespan previous, timespan current, timesp
         return false;
     }
 
-    int64_t cycle = duration.nanoseconds();
-    int64_t phase = normalized_time == 1.0f ? cycle : normalized_time == 0.0f ? 0 : iround<int64_t>(numeric_cast<float64_t>(normalized_time) * numeric_cast<float64_t>(cycle));
+    int64_t cycle {duration.nanoseconds()};
+    int64_t phase {normalized_time == 1.0f ? cycle : normalized_time == 0.0f ? 0 : iround<int64_t>(numeric_cast<float64_t>(normalized_time) * numeric_cast<float64_t>(cycle))};
 
     if (!looping) {
         return previous.nanoseconds() < phase && current.nanoseconds() >= phase;
     }
 
-    int64_t previous_phase = previous.nanoseconds() % cycle;
+    int64_t previous_phase {previous.nanoseconds() % cycle};
 
     if (previous_phase < 0) {
         previous_phase += cycle;
     }
 
-    int64_t next_distance = phase > previous_phase ? phase - previous_phase : cycle - (previous_phase - phase);
-    uint64_t distance = static_cast<uint64_t>(current.nanoseconds()) - static_cast<uint64_t>(previous.nanoseconds());
+    int64_t next_distance {phase > previous_phase ? phase - previous_phase : cycle - (previous_phase - phase)};
+    uint64_t distance {static_cast<uint64_t>(current.nanoseconds()) - static_cast<uint64_t>(previous.nanoseconds())};
     return distance >= numeric_cast<uint64_t>(next_distance);
 }
 
@@ -333,7 +333,7 @@ void ModelAnimationController::SetTrackSpeed(int32_t track, float32_t speed)
 void ModelAnimationController::AdvanceTimeline(timespan elapsed)
 {
     timespan next_events_time {checked_add(_eventsTime.nanoseconds(), elapsed.nanoseconds())};
-    small_vector<TimelineState, 2> pending;
+    small_vector<TimelineState, 2> pending {};
     pending.reserve(_tracks.size());
 
     for (const Track& track : _tracks) {
@@ -342,18 +342,18 @@ void ModelAnimationController::AdvanceTimeline(timespan elapsed)
 
     for (TimelineState& track : pending) {
         if (elapsed < timespan::zero) {
-            for (auto it = track.Events.begin(); it != track.Events.end();) {
+            for (auto it {track.Events.begin()}; it != track.Events.end();) {
                 if (next_events_time < it->StartTime) {
                     ++it;
                     continue;
                 }
 
-                timespan event_elapsed = next_events_time - it->StartTime;
-                bool finished = event_elapsed >= it->SmoothTime;
-                float32_t value = it->ValueTo;
+                timespan event_elapsed {next_events_time - it->StartTime};
+                bool finished {event_elapsed >= it->SmoothTime};
+                float32_t value {it->ValueTo};
 
                 if (!finished) {
-                    float32_t from = it->ValueFrom.value_or(it->Type == Track::EventType::Speed ? track.Speed : it->Type == Track::EventType::Weight ? track.Weight : 0.0f);
+                    float32_t from {it->ValueFrom.value_or(it->Type == Track::EventType::Speed ? track.Speed : it->Type == Track::EventType::Weight ? track.Weight : 0.0f)};
                     it->ValueFrom = from;
                     value = lerp(from, it->ValueTo, event_elapsed.div<float32_t>(it->SmoothTime));
                 }
@@ -377,19 +377,19 @@ void ModelAnimationController::AdvanceTimeline(timespan elapsed)
             }
 
             FO_VERIFY_AND_THROW(std::isfinite(track.Speed) && std::isfinite(track.Weight), "Animation track resolved non-finite values", track.Speed, track.Weight);
-            timespan advance = track.Enabled ? ScaleModelAnimationTime(elapsed, track.Speed) : timespan::zero;
+            timespan advance {track.Enabled ? ScaleModelAnimationTime(elapsed, track.Speed) : timespan::zero};
             track.Position = timespan {checked_add(track.Position.nanoseconds(), advance.nanoseconds())};
             continue;
         }
 
-        timespan track_time = _eventsTime;
+        timespan track_time {_eventsTime};
         ApplyTrackEvents(track, track_time);
 
         while (track_time < next_events_time) {
-            timespan next_time = next_events_time;
+            timespan next_time {next_events_time};
 
             for (const Track::Event& event : track.Events) {
-                timespan boundary = event.StartTime;
+                timespan boundary {event.StartTime};
 
                 if (event.ValueFrom.has_value() && track_time >= event.StartTime) {
                     if (next_time < event.StartTime || event.SmoothTime > next_time - event.StartTime) {
@@ -404,11 +404,11 @@ void ModelAnimationController::AdvanceTimeline(timespan elapsed)
                 }
             }
 
-            float32_t next_speed = track.Speed;
+            float32_t next_speed {track.Speed};
 
             for (const Track::Event& event : track.Events) {
                 if (event.Type == Track::EventType::Speed && event.ValueFrom.has_value() && track_time >= event.StartTime) {
-                    float32_t progress = next_time <= event.StartTime ? 0.0f : std::clamp((next_time - event.StartTime).div<float32_t>(event.SmoothTime), 0.0f, 1.0f);
+                    float32_t progress {next_time <= event.StartTime ? 0.0f : std::clamp((next_time - event.StartTime).div<float32_t>(event.SmoothTime), 0.0f, 1.0f)};
                     next_speed = lerp(event.ValueFrom.value(), event.ValueTo, progress);
                 }
             }
@@ -416,8 +416,8 @@ void ModelAnimationController::AdvanceTimeline(timespan elapsed)
             FO_VERIFY_AND_THROW(std::isfinite(track.Speed) && std::isfinite(next_speed) && std::isfinite(track.Weight), "Animation track resolved non-finite values", track.Speed, next_speed, track.Weight);
 
             if (track.Enabled) {
-                float64_t average_speed = (numeric_cast<float64_t>(track.Speed) + numeric_cast<float64_t>(next_speed)) * 0.5;
-                timespan advance = ScaleModelAnimationTime(next_time - track_time, average_speed);
+                float64_t average_speed {(numeric_cast<float64_t>(track.Speed) + numeric_cast<float64_t>(next_speed)) * 0.5};
+                timespan advance {ScaleModelAnimationTime(next_time - track_time, average_speed)};
                 track.Position = timespan {checked_add(track.Position.nanoseconds(), advance.nanoseconds())};
             }
 
@@ -431,7 +431,7 @@ void ModelAnimationController::AdvanceTimeline(timespan elapsed)
     // Commit only after every track has advanced without overflow or invalid values
     _eventsTime = next_events_time;
 
-    for (size_t index = 0; index < _tracks.size(); index++) {
+    for (size_t index {0}; index < _tracks.size(); index++) {
         _tracks[index].Enabled = pending[index].Enabled;
         _tracks[index].Speed = pending[index].Speed;
         _tracks[index].Weight = pending[index].Weight;
@@ -442,7 +442,7 @@ void ModelAnimationController::AdvanceTimeline(timespan elapsed)
 
 void ModelAnimationController::ApplyTrackEvents(TimelineState& track, timespan time)
 {
-    for (auto it = track.Events.begin(); it != track.Events.end();) {
+    for (auto it {track.Events.begin()}; it != track.Events.end();) {
         if (!it->ValueFrom.has_value()) {
             ++it;
             continue;
@@ -453,9 +453,9 @@ void ModelAnimationController::ApplyTrackEvents(TimelineState& track, timespan t
             continue;
         }
 
-        timespan event_elapsed = time <= it->StartTime ? timespan::zero : time - it->StartTime;
-        float32_t progress = std::clamp(event_elapsed.div<float32_t>(it->SmoothTime), 0.0f, 1.0f);
-        float32_t value = lerp(it->ValueFrom.value(), it->ValueTo, progress);
+        timespan event_elapsed {time <= it->StartTime ? timespan::zero : time - it->StartTime};
+        float32_t progress {std::clamp(event_elapsed.div<float32_t>(it->SmoothTime), 0.0f, 1.0f)};
+        float32_t value {lerp(it->ValueFrom.value(), it->ValueTo, progress)};
 
         if (it->Type == Track::EventType::Speed) {
             track.Speed = value;
@@ -473,10 +473,10 @@ void ModelAnimationController::ApplyTrackEvents(TimelineState& track, timespan t
     }
 
     while (true) {
-        size_t next_index = track.Events.size();
+        size_t next_index {track.Events.size()};
 
-        for (size_t index = 0; index < track.Events.size(); index++) {
-            const Track::Event& event = track.Events[index];
+        for (size_t index {0}; index < track.Events.size(); index++) {
+            const Track::Event& event {track.Events[index]};
 
             if (!event.ValueFrom.has_value() && event.StartTime <= time && (next_index == track.Events.size() || event.StartTime < track.Events[next_index].StartTime)) {
                 next_index = index;
@@ -487,7 +487,7 @@ void ModelAnimationController::ApplyTrackEvents(TimelineState& track, timespan t
             break;
         }
 
-        Track::Event event = std::move(track.Events[next_index]);
+        Track::Event event {std::move(track.Events[next_index])};
         track.Events.erase(track.Events.begin() + numeric_cast<ptrdiff_t>(next_index));
 
         std::erase_if(track.Events, [&](const Track::Event& active) { return active.ValueFrom.has_value() && active.Type == event.Type; });
@@ -795,7 +795,7 @@ auto ModelAnimationRuntimeRig::GetJointName(size_t index) const -> string_view
 
 auto ModelAnimationRuntimeRig::GetJointParentIndex(size_t index) const -> int32_t
 {
-    auto joint_parents = _impl->Skeleton.joint_parents();
+    auto joint_parents {_impl->Skeleton.joint_parents()};
     FO_VERIFY_AND_THROW(index < joint_parents.size(), "Model animation runtime joint index is outside the rig", index, joint_parents.size());
     return joint_parents[index];
 }
@@ -1418,9 +1418,9 @@ static auto ResolveModelAnimationRuntimeTrackInput(const ModelAnimationRuntimeRi
     result.Nearest = !joint_remap.NearestSampleTimes.empty();
 
     if (result.Active) {
-        float32_t duration = clip.GetDuration();
-        float64_t playback_position = input.Looping ? std::fmod(input.Position, numeric_cast<float64_t>(duration)) : std::min(input.Position, numeric_cast<float64_t>(duration));
-        float32_t source_time = numeric_cast<float32_t>(input.Reversed ? duration - playback_position : playback_position);
+        float32_t duration {clip.GetDuration()};
+        float64_t playback_position {input.Looping ? std::fmod(input.Position, numeric_cast<float64_t>(duration)) : std::min(input.Position, numeric_cast<float64_t>(duration))};
+        float32_t source_time {numeric_cast<float32_t>(input.Reversed ? duration - playback_position : playback_position)};
 
         if (result.Nearest) {
             source_time = SnapModelAnimationRuntimeSampleTime(source_time, joint_remap.NearestSampleTimes);

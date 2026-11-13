@@ -554,7 +554,7 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
     _sprMngr->GetRtMngr().PopRenderTarget();
     pop_atlas_rt_on_fail.release();
 
-    shared_ptr<AtlasSprite> unlit_overlay;
+    shared_ptr<AtlasSprite> unlit_overlay {};
 
     if (model_spr->GetModel()->HasUnlitParticles()) {
         unlit_overlay = model_spr->_unlitOverlay;
@@ -572,7 +572,7 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
         }
 
         _sprMngr->GetRtMngr().PushRenderTarget(rt_model);
-        auto pop_unlit_rt_on_fail = scope_fail([this]() noexcept { safe_call([this] { _sprMngr->GetRtMngr().PopRenderTarget(); }); });
+        auto pop_unlit_rt_on_fail {scope_fail([this]() noexcept { safe_call([this] { _sprMngr->GetRtMngr().PopRenderTarget(); }); })};
 
         // Preserve the model's depth while replacing its color with the explicitly unlit particles
         _sprMngr->GetRtMngr().ClearCurrentRenderTarget(ucolor::clear, false);
@@ -580,8 +580,8 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
         _sprMngr->GetRtMngr().PopRenderTarget();
         pop_unlit_rt_on_fail.release();
 
-        auto atlas = unlit_overlay->GetAtlas();
-        frect32 atlas_rect = unlit_overlay->GetAtlasRect();
+        auto atlas {unlit_overlay->GetAtlas()};
+        frect32 atlas_rect {unlit_overlay->GetAtlasRect()};
         irect32 overlay_region {
             iround<int32_t>(atlas_rect.x * numeric_cast<float32_t>(atlas->GetSize().width)),
             iround<int32_t>(atlas_rect.y * numeric_cast<float32_t>(atlas->GetSize().height)),
@@ -590,7 +590,7 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
         };
 
         _sprMngr->GetRtMngr().PushRenderTarget(atlas->GetRenderTarget());
-        auto pop_overlay_atlas_on_fail = scope_fail([this]() noexcept { safe_call([this] { _sprMngr->GetRtMngr().PopRenderTarget(); }); });
+        auto pop_overlay_atlas_on_fail {scope_fail([this]() noexcept { safe_call([this] { _sprMngr->GetRtMngr().PopRenderTarget(); }); })};
         _sprMngr->DrawRenderTarget(rt_model, false, &region_from, &overlay_region);
         _sprMngr->GetRtMngr().PopRenderTarget();
         pop_overlay_atlas_on_fail.release();

@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Common.h"
 
@@ -77,7 +47,7 @@ namespace MapperAbortTests
 
 TEST_CASE("MapperFrameDrawFailureUnbindsScene", "[mapper-frame-abort]")
 {
-    bool direct_map = GENERATE(false, true);
+    bool direct_map {GENERATE(false, true)};
     CAPTURE(direct_map);
 
     REQUIRE(IsNonInteractiveMode());
@@ -85,22 +55,22 @@ TEST_CASE("MapperFrameDrawFailureUnbindsScene", "[mapper-frame-abort]")
     REQUIRE_FALSE(GetApp()->MainWindow.IsVirtual());
     REQUIRE_FALSE(GetApp()->Input.IsMouseAvailable());
 
-    auto settings = MapperTests::MakeMapperTestSettings();
+    auto settings {MapperTests::MakeMapperTestSettings()};
     BakerTests::OverrideSetting(settings.View.MapDirectDraw, direct_map);
-    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MapperTests::MakeMapperTestResources(), &GetApp()->MainWindow);
-    auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
+    auto mapper {safe_alloc::make_refcounted<MapperEngine>(&settings, MapperTests::MakeMapperTestResources(), &GetApp()->MainWindow)};
+    auto shutdown {scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); })};
 
     REQUIRE(ImGui::GetCurrentContext() == nullptr);
     ImGuiExt::Init();
-    auto destroy_context = scope_exit([]() noexcept { safe_call([] { ImGui::DestroyContext(); }); });
+    auto destroy_context {scope_exit([]() noexcept { safe_call([] { ImGui::DestroyContext(); }); })};
 
-    auto& io = ImGui::GetIO();
+    auto& io {ImGui::GetIO()};
     io.DisplaySize = ImVec2 {1280.0f, 720.0f};
     io.DeltaTime = 1.0f / 60.0f;
     io.IniFilename = nullptr;
     io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
 
-    auto map = mapper->LoadMapFromText("MapperAbortMap", "MapperAbortMap.fomap", MapperTests::MakeMapText(MapperTests::MakeItemBlock(10, MapperTests::SCENERY_A, 8, 8)));
+    auto map {mapper->LoadMapFromText("MapperAbortMap", "MapperAbortMap.fomap", MapperTests::MakeMapText(MapperTests::MakeItemBlock(10, MapperTests::SCENERY_A, 8, 8)))};
     REQUIRE(map);
     mapper->ShowMap(map.as_ptr());
     mapper->SetInputLocked(true);
@@ -109,13 +79,13 @@ TEST_CASE("MapperFrameDrawFailureUnbindsScene", "[mapper-frame-abort]")
     map->RebuildMap();
 
     REQUIRE(map->GetItems().size() == 1);
-    auto item = map->GetItems().front().as_ptr();
+    auto item {map->GetItems().front().as_ptr()};
     REQUIRE(item->IsMapSpriteVisible());
 
-    size_t before_sprites = 0;
-    size_t after_sprites = 0;
-    size_t iface_calls = 0;
-    Entity::EventCallbackData before;
+    size_t before_sprites {0};
+    size_t after_sprites {0};
+    size_t iface_calls {0};
+    Entity::EventCallbackData before {};
     before.Callback = [&](FuncCallData& call) {
         ignore_unused(call);
         before_sprites++;
@@ -124,7 +94,7 @@ TEST_CASE("MapperFrameDrawFailureUnbindsScene", "[mapper-frame-abort]")
     before.SubscriptionPtr = reinterpret_cast<uintptr_t>(&before_sprites);
     mapper->OnRenderMap_BeforeSprites.Subscribe(std::move(before));
 
-    Entity::EventCallbackData after;
+    Entity::EventCallbackData after {};
     after.Callback = [&](FuncCallData& call) {
         ignore_unused(call);
         after_sprites++;
@@ -133,7 +103,7 @@ TEST_CASE("MapperFrameDrawFailureUnbindsScene", "[mapper-frame-abort]")
     after.SubscriptionPtr = reinterpret_cast<uintptr_t>(&after_sprites);
     mapper->OnRenderMap_AfterSprites.Subscribe(std::move(after));
 
-    Entity::EventCallbackData iface;
+    Entity::EventCallbackData iface {};
     iface.Callback = [&](FuncCallData& call) {
         ignore_unused(call);
         iface_calls++;
@@ -141,17 +111,17 @@ TEST_CASE("MapperFrameDrawFailureUnbindsScene", "[mapper-frame-abort]")
     };
     iface.SubscriptionPtr = reinterpret_cast<uintptr_t>(&iface_calls);
     mapper->OnRenderIface.Subscribe(std::move(iface));
-    auto unsubscribe = scope_exit([&]() noexcept {
+    auto unsubscribe {scope_exit([&]() noexcept {
         mapper->OnRenderMap_BeforeSprites.Unsubscribe(reinterpret_cast<uintptr_t>(&before_sprites));
         mapper->OnRenderMap_AfterSprites.Unsubscribe(reinterpret_cast<uintptr_t>(&after_sprites));
         mapper->OnRenderIface.Unsubscribe(reinterpret_cast<uintptr_t>(&iface_calls));
-    });
+    })};
 
-    auto draw_frame = [&] {
+    auto draw_frame {[&] {
         ImGui::NewFrame();
-        auto end_gui_frame = scope_exit([]() noexcept { ImGui::EndFrame(); });
+        auto end_gui_frame {scope_exit([]() noexcept { ImGui::EndFrame(); })};
         mapper->MapperMainLoop();
-    };
+    }};
 
     REQUIRE_NOTHROW(draw_frame());
     REQUIRE(before_sprites > 0);
@@ -161,16 +131,16 @@ TEST_CASE("MapperFrameDrawFailureUnbindsScene", "[mapper-frame-abort]")
     REQUIRE_FALSE(mapper->SprMngr.GetRender().GetRenderTarget());
 
     MapperAbortTests::FaultQuadEffect fault {&mapper->SprMngr};
-    auto previous_effect = item->GetDrawEffect();
-    auto restore_effect = scope_exit([&]() noexcept {
+    auto previous_effect {item->GetDrawEffect()};
+    auto restore_effect {scope_exit([&]() noexcept {
         mapper->SprMngr.AbortScene();
         item->SetDrawEffect(previous_effect);
-    });
+    })};
     item->SetDrawEffect(&fault);
 
-    size_t completed_before_fault = after_sprites;
-    bool threw = false;
-    string error;
+    size_t completed_before_fault {after_sprites};
+    bool threw {false};
+    string error {};
 
     try {
         draw_frame();
@@ -180,9 +150,9 @@ TEST_CASE("MapperFrameDrawFailureUnbindsScene", "[mapper-frame-abort]")
         error = ex.what();
     }
 
-    size_t returned_depth = mapper->SprMngr.GetRtMngr().GetRenderTargetStack().size();
-    bool returned_backend_bound = static_cast<bool>(mapper->SprMngr.GetRender().GetRenderTarget());
-    bool fallback_abort_needed = returned_depth != 0 || returned_backend_bound;
+    size_t returned_depth {mapper->SprMngr.GetRtMngr().GetRenderTargetStack().size()};
+    bool returned_backend_bound {static_cast<bool>(mapper->SprMngr.GetRender().GetRenderTarget())};
+    bool fallback_abort_needed {returned_depth != 0 || returned_backend_bound};
     logging::write("MAPPER_ABORT_FAILURE direct={} throw={} calls={} vertices={} indices={} start={} fault_depth={} fault_backend={} returned_depth={} returned_backend={} before={} after={} iface={} fallback={} error={}", direct_map, threw, fault.Calls, fault.VertexCount, fault.IndexCount, fault.StartIndex, fault.Depth, fault.BackendBound, returned_depth, returned_backend_bound, before_sprites, after_sprites, iface_calls, fallback_abort_needed, error);
 
     CHECK(threw);
@@ -190,7 +160,7 @@ TEST_CASE("MapperFrameDrawFailureUnbindsScene", "[mapper-frame-abort]")
     CHECK(fault.Calls == 1);
     CHECK(fault.VertexCount > 0);
     CHECK(fault.IndexCount > 0);
-    size_t base_depth = mapper->SprMngr.GetMainRenderTarget() ? 1 : 0;
+    size_t base_depth {mapper->SprMngr.GetMainRenderTarget() ? size_t {1} : size_t {0}};
     CHECK(fault.Depth == base_depth + (direct_map ? 0 : 1));
     CHECK(fault.BackendBound == (fault.Depth != 0));
     CHECK(after_sprites >= completed_before_fault);
@@ -206,8 +176,8 @@ TEST_CASE("MapperFrameDrawFailureUnbindsScene", "[mapper-frame-abort]")
     }
 
     item->SetDrawEffect(previous_effect);
-    size_t before_recovery = before_sprites;
-    size_t after_recovery = after_sprites;
+    size_t before_recovery {before_sprites};
+    size_t after_recovery {after_sprites};
     REQUIRE_NOTHROW(draw_frame());
     CHECK(before_sprites > before_recovery);
     CHECK(after_sprites > after_recovery);

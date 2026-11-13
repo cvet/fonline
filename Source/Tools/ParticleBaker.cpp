@@ -865,7 +865,7 @@ private:
 };
 
 // Simulated here to provide a reproducible baseline envelope, as with SPARK bounds.
-// Model attachments may extend that envelope with cached live-instance bounds at runtime.
+// Model attachments may extend that envelope with cached live-instance bounds at runtime
 static void SimulateEffekseerBounds(string_view source_path, string_view source_root_path, const_span<uint8_t> binary, vec3& out_min, vec3& out_max, float32_t& out_billboard_radius)
 {
     FO_TRACE_ZONE(Baking);

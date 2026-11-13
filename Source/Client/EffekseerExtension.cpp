@@ -381,7 +381,7 @@ struct EffekseerParticleRuntimeSystem::Impl
     vec3 BaseOffset {};
     bool HasBaseMatrix {};
     bool RebasePending {};
-    mutable optional<ParticleBounds3D> LiveBounds;
+    mutable optional<ParticleBounds3D> LiveBounds {};
     mutable bool LiveBoundsValid {};
     random_generator RandomGenerator {};
     mutable bool Failed {};
@@ -2889,34 +2889,40 @@ static auto ValidateEffect(string_view path, ptr<Effekseer::Effect> effect, bool
 class EffekseerLiveBoundsCollector final
 {
 public:
+    [[nodiscard]] auto GetBounds() const noexcept -> const optional<ParticleBounds3D>& { return _bounds; }
+    [[nodiscard]] auto IsInvalid() const noexcept -> bool { return _invalid; }
+
     void Reset() noexcept
     {
-        Bounds.reset();
-        Invalid = false;
+        _bounds.reset();
+        _invalid = false;
     }
 
     void Include(const Effekseer::SIMD::Vec3f& position, float32_t radius) noexcept
     {
         vec3 point {position.GetX(), position.GetY(), position.GetZ()};
-        optional<ParticleBounds3D> bounds = MakeParticleBounds(point, point, radius);
+        optional<ParticleBounds3D> bounds {MakeParticleBounds(point, point, radius)};
 
         if (!bounds) {
-            Invalid = true;
+            _invalid = true;
             return;
         }
 
-        if (!Bounds) {
-            Bounds = bounds;
+        if (!_bounds) {
+            _bounds = bounds;
             return;
         }
 
-        Bounds->PositionMin = glm::min(Bounds->PositionMin, point);
-        Bounds->PositionMax = glm::max(Bounds->PositionMax, point);
-        Bounds->BillboardRadius = std::max(Bounds->BillboardRadius, radius);
+        _bounds->PositionMin = glm::min(_bounds->PositionMin, point);
+        _bounds->PositionMax = glm::max(_bounds->PositionMax, point);
+        _bounds->BillboardRadius = std::max(_bounds->BillboardRadius, radius);
     }
 
-    optional<ParticleBounds3D> Bounds;
-    bool Invalid {};
+    void Invalidate() noexcept { _invalid = true; }
+
+private:
+    optional<ParticleBounds3D> _bounds {};
+    bool _invalid {};
 };
 
 template<typename TInstanceParameter>
@@ -2929,7 +2935,7 @@ static auto GetEffekseerLiveInstanceLocalExtent(const TInstanceParameter& instan
 
 static auto GetEffekseerLiveInstanceLocalExtent(const Effekseer::SpriteRenderer::InstanceParameter& instance) -> float32_t
 {
-    float32_t extent = 0.0f;
+    float32_t extent {0.0f};
 
     for (const Effekseer::SIMD::Vec2f& position : instance.Positions) {
         if (!IsFinite(position)) {
@@ -2948,8 +2954,8 @@ static auto GetEffekseerLiveInstanceLocalExtent(const Effekseer::RingRenderer::I
         return std::numeric_limits<float32_t>::quiet_NaN();
     }
 
-    float32_t outer = std::hypot(instance.OuterLocation.GetX(), instance.OuterLocation.GetY());
-    float32_t inner = std::hypot(instance.InnerLocation.GetX(), instance.InnerLocation.GetY());
+    float32_t outer {std::hypot(instance.OuterLocation.GetX(), instance.OuterLocation.GetY())};
+    float32_t inner {std::hypot(instance.InnerLocation.GetX(), instance.InnerLocation.GetY())};
 
     return std::max(outer, inner);
 }
@@ -2984,16 +2990,16 @@ static auto GetEffekseerLiveNodeLocalExtent(const Effekseer::ModelRenderer::Node
         return 0.0f;
     }
 
-    Effekseer::ModelRef model = parameter.EffectPointer->GetModel(parameter.ModelIndex);
+    Effekseer::ModelRef model {parameter.EffectPointer->GetModel(parameter.ModelIndex)};
 
     if (!model) {
         return 0.0f;
     }
 
-    float32_t extent = 0.0f;
+    float32_t extent {0.0f};
 
-    for (int32_t frame = 0; frame < model->GetFrameCount(); frame++) {
-        size_t vertex_count = numeric_cast<size_t>(model->GetVertexCount(frame));
+    for (int32_t frame {0}; frame < model->GetFrameCount(); frame++) {
+        size_t vertex_count {numeric_cast<size_t>(model->GetVertexCount(frame))};
 
         if (vertex_count == 0) {
             continue;
@@ -3040,16 +3046,16 @@ public:
         ignore_unused(user_data);
 
         if (!IsFinite(instance.SRTMatrix43)) {
-            _collector->Invalid = true;
+            _collector->Invalidate();
             return;
         }
 
-        Effekseer::SIMD::Vec3f scale = instance.SRTMatrix43.GetScale();
-        float32_t max_axis_scale = std::max({std::abs(scale.GetX()), std::abs(scale.GetY()), std::abs(scale.GetZ())});
-        float32_t local_extent = GetEffekseerLiveInstanceLocalExtent(instance);
+        Effekseer::SIMD::Vec3f scale {instance.SRTMatrix43.GetScale()};
+        float32_t max_axis_scale {std::max({std::abs(scale.GetX()), std::abs(scale.GetY()), std::abs(scale.GetZ())})};
+        float32_t local_extent {GetEffekseerLiveInstanceLocalExtent(instance)};
 
         if (!std::isfinite(local_extent) || !std::isfinite(_nodeExtent)) {
-            _collector->Invalid = true;
+            _collector->Invalidate();
             return;
         }
 
@@ -3078,11 +3084,11 @@ public:
         _ringRenderer {Effekseer::MakeRefPtr<FOnlineEffekseerRingRenderer>(effect_mngr, render, draw_wireframe, _binding)},
         _trackRenderer {Effekseer::MakeRefPtr<FOnlineEffekseerTrackRenderer>(effect_mngr, render, draw_wireframe, _binding)},
         _modelRenderer {Effekseer::MakeRefPtr<FOnlineEffekseerModelRenderer>(effect_mngr, render, draw_wireframe, _binding)},
-        LiveSpriteRenderer {Effekseer::MakeRefPtr<EffekseerLiveBoundsRenderer<Effekseer::SpriteRenderer>>(&LiveBounds)},
-        LiveRibbonRenderer {Effekseer::MakeRefPtr<EffekseerLiveBoundsRenderer<Effekseer::RibbonRenderer>>(&LiveBounds)},
-        LiveRingRenderer {Effekseer::MakeRefPtr<EffekseerLiveBoundsRenderer<Effekseer::RingRenderer>>(&LiveBounds)},
-        LiveTrackRenderer {Effekseer::MakeRefPtr<EffekseerLiveBoundsRenderer<Effekseer::TrackRenderer>>(&LiveBounds)},
-        LiveModelRenderer {Effekseer::MakeRefPtr<EffekseerLiveBoundsRenderer<Effekseer::ModelRenderer>>(&LiveBounds)}
+        _liveSpriteRenderer {Effekseer::MakeRefPtr<EffekseerLiveBoundsRenderer<Effekseer::SpriteRenderer>>(&_liveBounds)},
+        _liveRibbonRenderer {Effekseer::MakeRefPtr<EffekseerLiveBoundsRenderer<Effekseer::RibbonRenderer>>(&_liveBounds)},
+        _liveRingRenderer {Effekseer::MakeRefPtr<EffekseerLiveBoundsRenderer<Effekseer::RingRenderer>>(&_liveBounds)},
+        _liveTrackRenderer {Effekseer::MakeRefPtr<EffekseerLiveBoundsRenderer<Effekseer::TrackRenderer>>(&_liveBounds)},
+        _liveModelRenderer {Effekseer::MakeRefPtr<EffekseerLiveBoundsRenderer<Effekseer::ModelRenderer>>(&_liveBounds)}
     {
         FO_TRACE_ZONE(Particles);
 
@@ -3103,6 +3109,43 @@ public:
     [[nodiscard]] auto GetBinding() noexcept -> ptr<EffekseerDrawBinding> { return _binding.as_ptr(); }
     [[nodiscard]] auto GetManager() const noexcept -> const Effekseer::ManagerRef& { return _manager; }
     [[nodiscard]] auto GetGpuParticleFactory() const noexcept -> const Effekseer::RefPtr<DetectingGpuParticleFactory>& { return _gpuParticleFactory; }
+    [[nodiscard]] auto IsRenderingSnapshotDirty() const noexcept -> bool { return _renderingSnapshotDirty; }
+
+    void MarkRenderingSnapshotDirty() noexcept { _renderingSnapshotDirty = true; }
+    void ClearRenderingSnapshotDirty() noexcept { _renderingSnapshotDirty = false; }
+
+    // Draws one handle through the measuring renderers and restores the drawing renderers even on failure
+    auto MeasureLiveBounds(Effekseer::Handle handle, const mat44& view_proj) -> const EffekseerLiveBoundsCollector&
+    {
+        _liveBounds.Reset();
+
+        Effekseer::SpriteRendererRef sprite {_manager->GetSpriteRenderer()};
+        Effekseer::RibbonRendererRef ribbon {_manager->GetRibbonRenderer()};
+        Effekseer::RingRendererRef ring {_manager->GetRingRenderer()};
+        Effekseer::TrackRendererRef track {_manager->GetTrackRenderer()};
+        Effekseer::ModelRendererRef model {_manager->GetModelRenderer()};
+
+        auto restore_renderers {scope_exit([&]() noexcept {
+            _manager->SetSpriteRenderer(sprite);
+            _manager->SetRibbonRenderer(ribbon);
+            _manager->SetRingRenderer(ring);
+            _manager->SetTrackRenderer(track);
+            _manager->SetModelRenderer(model);
+        })};
+
+        _manager->SetSpriteRenderer(_liveSpriteRenderer);
+        _manager->SetRibbonRenderer(_liveRibbonRenderer);
+        _manager->SetRingRenderer(_liveRingRenderer);
+        _manager->SetTrackRenderer(_liveTrackRenderer);
+        _manager->SetModelRenderer(_liveModelRenderer);
+
+        Effekseer::Manager::DrawParameter parameter {};
+        parameter.ViewProjectionMatrix = ToEffekseerMatrix44(view_proj);
+
+        _manager->DrawHandle(handle, parameter);
+
+        return _liveBounds;
+    }
 
 private:
     shared_ptr<EffekseerDrawBinding> _binding;
@@ -3118,15 +3161,13 @@ private:
     Effekseer::RingRendererRef _ringRenderer;
     Effekseer::TrackRendererRef _trackRenderer;
     Effekseer::ModelRendererRef _modelRenderer;
-
-public:
-    bool RenderingSnapshotDirty {true};
-    EffekseerLiveBoundsCollector LiveBounds;
-    Effekseer::SpriteRendererRef LiveSpriteRenderer;
-    Effekseer::RibbonRendererRef LiveRibbonRenderer;
-    Effekseer::RingRendererRef LiveRingRenderer;
-    Effekseer::TrackRendererRef LiveTrackRenderer;
-    Effekseer::ModelRendererRef LiveModelRenderer;
+    bool _renderingSnapshotDirty {true};
+    EffekseerLiveBoundsCollector _liveBounds {};
+    Effekseer::SpriteRendererRef _liveSpriteRenderer;
+    Effekseer::RibbonRendererRef _liveRibbonRenderer;
+    Effekseer::RingRendererRef _liveRingRenderer;
+    Effekseer::TrackRendererRef _liveTrackRenderer;
+    Effekseer::ModelRendererRef _liveModelRenderer;
 };
 
 template<typename Operation>
@@ -3152,10 +3193,10 @@ static void ApplyEffekseerRootMatrix(ptr<EffekseerParticleRuntimeSystem::Impl> s
 {
     // A neighbour may have consumed the shared dirty mark before this deferred rebase was applied
     if (system->RebasePending) {
-        system->Runtime->RenderingSnapshotDirty = true;
+        system->Runtime->MarkRenderingSnapshotDirty();
     }
 
-    mat44 root = system->RootMatrix;
+    mat44 root {system->RootMatrix};
 
     if (system->BaseOffset != vec3 {}) {
         root = glm::translate(mat44 {1.0f}, -system->BaseOffset) * root;
@@ -3191,10 +3232,10 @@ static void RetireEffekseerHandle(ptr<EffekseerParticleRuntimeSystem::Impl> syst
 
     // Effekseer intentionally retires draw sets through two deferred GC queues.
     // Three flips cover an active draw set as well as both queue stages
-    for (size_t flush_index = 0; flush_index < 3; flush_index++) {
+    for (size_t flush_index {0}; flush_index < 3; flush_index++) {
         InvokeEffekseerManagerOperation([system] { system->Runtime->GetManager()->Flip(); });
 
-        system->Runtime->RenderingSnapshotDirty = false;
+        system->Runtime->ClearRenderingSnapshotDirty();
 
         InvokeEffekseerManagerOperation([system] { system->Runtime->GetManager()->BeginUpdate(); });
         InvokeEffekseerManagerOperation([system] { system->Runtime->GetManager()->EndUpdate(); });
@@ -3256,50 +3297,22 @@ auto EffekseerParticleRuntimeSystem::GetLiveBounds() const noexcept -> optional<
         return _impl->LiveBounds;
     }
 
-    optional<ParticleBounds3D> baked = GetBakedBounds();
-    optional<ParticleBounds3D> bounds = baked ? TransformParticleBounds(*baked, _impl->BoundsMatrix) : std::nullopt;
+    optional<ParticleBounds3D> baked {GetBakedBounds()};
+    optional<ParticleBounds3D> bounds {baked ? TransformParticleBounds(*baked, _impl->BoundsMatrix) : std::nullopt};
 
     if (!bounds) {
         return std::nullopt;
     }
 
     try {
-        auto& runtime = *_impl->Runtime;
-        runtime.LiveBounds.Reset();
+        const EffekseerLiveBoundsCollector& measured {_impl->Runtime->MeasureLiveBounds(_impl->Handle, _impl->ViewProjMatrix)};
 
-        {
-            Effekseer::SpriteRendererRef sprite = runtime.GetManager()->GetSpriteRenderer();
-            Effekseer::RibbonRendererRef ribbon = runtime.GetManager()->GetRibbonRenderer();
-            Effekseer::RingRendererRef ring = runtime.GetManager()->GetRingRenderer();
-            Effekseer::TrackRendererRef track = runtime.GetManager()->GetTrackRenderer();
-            Effekseer::ModelRendererRef model = runtime.GetManager()->GetModelRenderer();
-
-            auto restore_renderers = scope_exit([&]() noexcept {
-                runtime.GetManager()->SetSpriteRenderer(sprite);
-                runtime.GetManager()->SetRibbonRenderer(ribbon);
-                runtime.GetManager()->SetRingRenderer(ring);
-                runtime.GetManager()->SetTrackRenderer(track);
-                runtime.GetManager()->SetModelRenderer(model);
-            });
-
-            runtime.GetManager()->SetSpriteRenderer(runtime.LiveSpriteRenderer);
-            runtime.GetManager()->SetRibbonRenderer(runtime.LiveRibbonRenderer);
-            runtime.GetManager()->SetRingRenderer(runtime.LiveRingRenderer);
-            runtime.GetManager()->SetTrackRenderer(runtime.LiveTrackRenderer);
-            runtime.GetManager()->SetModelRenderer(runtime.LiveModelRenderer);
-
-            Effekseer::Manager::DrawParameter parameter;
-            parameter.ViewProjectionMatrix = ToEffekseerMatrix44(_impl->ViewProjMatrix);
-
-            runtime.GetManager()->DrawHandle(_impl->Handle, parameter);
-        }
-
-        if (runtime.LiveBounds.Invalid) {
+        if (measured.IsInvalid()) {
             safe_call([this] { FailEffekseerSystem(_impl.as_ptr(), "live bounds contain non-finite geometry"); });
             return std::nullopt;
         }
-        if (runtime.LiveBounds.Bounds) {
-            optional<ParticleBounds3D> live = TransformParticleBounds(*runtime.LiveBounds.Bounds, _impl->ViewMatrix);
+        if (measured.GetBounds()) {
+            optional<ParticleBounds3D> live {TransformParticleBounds(*measured.GetBounds(), _impl->ViewMatrix)};
 
             if (!live) {
                 return std::nullopt;
@@ -3323,8 +3336,8 @@ auto EffekseerParticleRuntimeSystem::GetLiveBounds() const noexcept -> optional<
 
 void EffekseerParticleRuntimeSystem::RebaseWorldParticles(vec3 delta) noexcept
 {
-    vec3 base = _impl->BaseOffset + delta;
-    mat44 root = glm::translate(mat44 {1.0f}, delta) * _impl->RootMatrix;
+    vec3 base {_impl->BaseOffset + delta};
+    mat44 root {glm::translate(mat44 {1.0f}, delta) * _impl->RootMatrix};
 
     if (!MakeParticleBounds(delta, delta, 0.0f) || !MakeParticleBounds(base, base, 0.0f) || !IsFinite(ToEffekseerMatrix43(root))) {
         return;
@@ -3335,7 +3348,7 @@ void EffekseerParticleRuntimeSystem::RebaseWorldParticles(vec3 delta) noexcept
     _impl->BoundsMatrix = _impl->ViewMatrix * root;
     _impl->LiveBoundsValid = false;
     _impl->RebasePending = true;
-    _impl->Runtime->RenderingSnapshotDirty = true;
+    _impl->Runtime->MarkRenderingSnapshotDirty();
 
     // The model caller pairs its new absolute placement with a zero-time refresh before drawing
 }
@@ -3349,13 +3362,13 @@ void EffekseerParticleRuntimeSystem::Setup(const ParticleRuntimeSetup& setup)
 
     // World already contains the complete bone pose, including the model facing
     _impl->LiveBoundsValid = false;
-    mat44 position_offset_matrix = glm::translate(mat44 {1.0f}, setup.PositionOffset);
-    mat44 view_offset_matrix = glm::translate(mat44 {1.0f}, setup.ViewOffset);
-    mat44 root = view_offset_matrix * setup.World * position_offset_matrix;
+    mat44 position_offset_matrix {glm::translate(mat44 {1.0f}, setup.PositionOffset)};
+    mat44 view_offset_matrix {glm::translate(mat44 {1.0f}, setup.ViewOffset)};
+    mat44 root {view_offset_matrix * setup.World * position_offset_matrix};
     root *= glm::scale(mat44 {1.0f}, vec3 {setup.Scale, setup.Scale, setup.Scale});
 
     if (_impl->RootMatrix != root) {
-        _impl->Runtime->RenderingSnapshotDirty = true;
+        _impl->Runtime->MarkRenderingSnapshotDirty();
     }
 
     _impl->RootMatrix = root;
@@ -3386,18 +3399,18 @@ auto EffekseerParticleRuntimeSystem::Prewarm() -> float32_t
         return 0.0f;
     }
 
-    float32_t remaining_frames = EFFEKSEER_PREWARM_SECONDS * EFFEKSEER_FRAMES_PER_SECOND;
+    float32_t remaining_frames {EFFEKSEER_PREWARM_SECONDS * EFFEKSEER_FRAMES_PER_SECOND};
 
     ApplyEffekseerRootMatrix(_impl);
 
     InvokeEffekseerManagerOperation([this] { _impl->Runtime->GetManager()->Flip(); });
 
-    _impl->Runtime->RenderingSnapshotDirty = false;
+    _impl->Runtime->ClearRenderingSnapshotDirty();
 
     InvokeEffekseerManagerOperation([this] { _impl->Runtime->GetManager()->BeginUpdate(); });
 
     while (remaining_frames > 0.0f && _impl->Runtime->GetManager()->Exists(_impl->Handle)) {
-        float32_t step = std::min(remaining_frames, 1.0f);
+        float32_t step {std::min(remaining_frames, 1.0f)};
         InvokeEffekseerManagerOperation([this, step] { _impl->Runtime->GetManager()->UpdateHandle(_impl->Handle, step); });
 
         remaining_frames -= step;
@@ -3407,7 +3420,7 @@ auto EffekseerParticleRuntimeSystem::Prewarm() -> float32_t
 
     // Flip also retires empty effects and roots whose children have finished
     if (_impl->Runtime->GetManager()->GetInstanceCount(_impl->Handle) <= 1) {
-        _impl->Runtime->RenderingSnapshotDirty = true;
+        _impl->Runtime->MarkRenderingSnapshotDirty();
     }
 
     if (!_impl->Runtime->GetManager()->Exists(_impl->Handle)) {
@@ -3434,8 +3447,8 @@ void EffekseerParticleRuntimeSystem::Respawn(optional<int32_t> seed)
         return;
     }
 
-    _impl->Runtime->RenderingSnapshotDirty = true;
-    int32_t resolved_seed = seed ? *seed : std::bit_cast<int32_t>(static_cast<uint32_t>(_impl->RandomGenerator.next()));
+    _impl->Runtime->MarkRenderingSnapshotDirty();
+    int32_t resolved_seed {seed ? *seed : std::bit_cast<int32_t>(static_cast<uint32_t>(_impl->RandomGenerator.next()))};
     _impl->Runtime->GetManager()->SetAutoDrawing(_impl->Handle, false);
     _impl->Runtime->GetManager()->SetRandomSeed(_impl->Handle, resolved_seed);
     ApplyEffekseerRootMatrix(_impl);
@@ -3467,10 +3480,10 @@ void EffekseerParticleRuntimeSystem::UpdateInternal(float32_t delta_seconds, boo
     {
         FO_TRACE_ZONE_NAMED(Particles, "Effekseer.BeginUpdate");
 
-        if (flip || _impl->Runtime->RenderingSnapshotDirty) {
+        if (flip || _impl->Runtime->IsRenderingSnapshotDirty()) {
             InvokeEffekseerManagerOperation([this] { _impl->Runtime->GetManager()->Flip(); });
 
-            _impl->Runtime->RenderingSnapshotDirty = false;
+            _impl->Runtime->ClearRenderingSnapshotDirty();
         }
 
         InvokeEffekseerManagerOperation([this] { _impl->Runtime->GetManager()->BeginUpdate(); });
@@ -3490,7 +3503,7 @@ void EffekseerParticleRuntimeSystem::UpdateInternal(float32_t delta_seconds, boo
 
     // Flip also retires empty effects and roots whose children have finished
     if (_impl->Runtime->GetManager()->GetInstanceCount(_impl->Handle) <= 1) {
-        _impl->Runtime->RenderingSnapshotDirty = true;
+        _impl->Runtime->MarkRenderingSnapshotDirty();
     }
 
     if (!_impl->Runtime->GetManager()->Exists(_impl->Handle)) {

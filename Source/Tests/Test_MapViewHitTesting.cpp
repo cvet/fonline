@@ -239,13 +239,13 @@ TEST_CASE("MapViewMultihexSpriteVisibilityFixture")
     BakerTests::ApplySelfContainedClientSettings(settings);
     BakerTests::OverrideSetting(settings.Common.Packaged, false);
     BakerTests::OverrideSetting(settings.Baking.BakeOutput, string {});
-    auto client = safe_alloc::make_refcounted<ClientEngine>(&settings, MakeMapViewHitTestResources(), &GetApp()->MainWindow);
-    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto client {safe_alloc::make_refcounted<ClientEngine>(&settings, MakeMapViewHitTestResources(), &GetApp()->MainWindow)};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
 
-    auto map = safe_alloc::make_refcounted<MapView>(client, ident_t {1001}, client->GetProtoMap(client->Hashes.to_hashed_string("HitTestMap")), isize32 {320, 200});
-    auto destroy_map = scope_exit([&map]() noexcept { safe_call([&map] { map->DestroySelf(); }); });
+    auto map {safe_alloc::make_refcounted<MapView>(client, ident_t {1001}, client->GetProtoMap(client->Hashes.to_hashed_string("HitTestMap")), isize32 {320, 200})};
+    auto destroy_map {scope_exit([&map]() noexcept { safe_call([&map] { map->DestroySelf(); }); })};
     map->EnableMapperMode();
-    ptr<ItemHexView> wall = map->AddMapperItem(client->Hashes.to_hashed_string("HitTestMeshWall"), mpos {8, 8}, nullptr);
+    ptr<ItemHexView> wall {map->AddMapperItem(client->Hashes.to_hashed_string("HitTestMeshWall"), mpos {8, 8}, nullptr)};
     map->InstantScrollTo(mpos {8, 8});
     map->RebuildMap();
     REQUIRE(wall->IsMapSpriteVisible());
@@ -253,7 +253,7 @@ TEST_CASE("MapViewMultihexSpriteVisibilityFixture")
 
     mpos contact {10, 8};
     mpos other_contact {10, 10};
-    auto extra_sprites = wall->GetExtraMapSprites();
+    auto extra_sprites {wall->GetExtraMapSprites()};
     REQUIRE(extra_sprites);
     nptr<MapSprite> contact_sprite {};
     nptr<MapSprite> other_sprite {};
@@ -290,7 +290,7 @@ TEST_CASE("MapViewMultihexSpriteVisibilityFixture")
     ipos32 anchor_offset {1234, -5678};
     float32_t anchor_depth {64.0f};
     CHECK(Client_Item_GetSpriteMapAnchor(wall, contact, local_anchor, anchor_offset, anchor_depth));
-    optional<pair<ipos32, float32_t>> expected_anchor = client->SprMngr.GetMapSpritePointAnchor(contact_sprite.as_ptr(), local_anchor);
+    optional<pair<ipos32, float32_t>> expected_anchor {client->SprMngr.GetMapSpritePointAnchor(contact_sprite.as_ptr(), local_anchor)};
     REQUIRE(expected_anchor.has_value());
     CHECK(anchor_offset == expected_anchor->first);
     CHECK(is_float_equal(anchor_depth, expected_anchor->second));
@@ -360,7 +360,7 @@ TEST_CASE("MapViewMultihexSpriteVisibilityFixture")
     CHECK(rejected_offset == ipos32 {7777, -8888});
     CHECK(rejected_depth == -55.5f);
 
-    ptr<ItemHexView> physical = map->AddMapperItem(client->Hashes.to_hashed_string("HitTestPhysicalMeshWall"), mpos {8, 8}, nullptr);
+    ptr<ItemHexView> physical {map->AddMapperItem(client->Hashes.to_hashed_string("HitTestPhysicalMeshWall"), mpos {8, 8}, nullptr)};
     wall->RefreshSprite();
     REQUIRE(wall->IsMapSpriteVisible());
     REQUIRE(physical->IsMapSpriteVisible());
@@ -386,11 +386,11 @@ TEST_CASE("MapViewMultihexSpriteVisibilityFixture")
     CHECK(Client_Item_GetSpriteMapAnchor(wall, contact, local_anchor, anchor_offset, anchor_depth));
     CHECK(anchor_offset == expected_anchor->first);
     CHECK(is_float_equal(anchor_depth, expected_anchor->second));
-    auto current_extras = wall->GetExtraMapSprites();
+    auto current_extras {wall->GetExtraMapSprites()};
     REQUIRE(current_extras);
-    auto contact_entry = std::ranges::find_if(*current_extras, [contact](auto&& entry) { return entry.second && entry.first->GetHex() == contact; });
+    auto contact_entry {std::ranges::find_if(*current_extras, [contact](auto&& entry) { return entry.second && entry.first->GetHex() == contact; })};
     REQUIRE(contact_entry != current_extras->end());
-    nptr<MapSprite> current_contact_sprite = contact_entry->first;
+    nptr<MapSprite> current_contact_sprite {contact_entry->first};
     REQUIRE(current_contact_sprite);
     REQUIRE_FALSE(current_contact_sprite->IsHidden());
     INFO("VISIBLE_HEX_FIXTURE|primary_visible=" << (wall->IsMapSpriteVisible() ? 1 : 0) << "|contact_visible=" << (!current_contact_sprite->IsHidden() ? 1 : 0));
@@ -411,10 +411,10 @@ TEST_CASE("MapViewMultihexSpriteVisibilityFixture")
     CHECK(Client_Map_GetVisibleItemOnHex(map, wall->GetId(), other_contact) == wall);
 
     {
-        auto off_map = wall->CreateRefClone();
-        auto destroy_off_map = scope_exit([&off_map]() noexcept { safe_call([&off_map] { off_map->DestroySelf(); }); });
-        bool clone_has_hex = !!off_map.dyn_cast<ItemHexView>();
-        bool original_has_hex = !!ptr<ItemView>(wall).dyn_cast<ItemHexView>();
+        auto off_map {wall->CreateRefClone()};
+        auto destroy_off_map {scope_exit([&off_map]() noexcept { safe_call([&off_map] { off_map->DestroySelf(); }); })};
+        bool clone_has_hex {!!off_map.dyn_cast<ItemHexView>()};
+        bool original_has_hex {!!ptr<ItemView>(wall).dyn_cast<ItemHexView>()};
         CHECK_FALSE(clone_has_hex);
         CHECK(original_has_hex);
         CHECK_THROWS(Client_Item_GetSpriteOffset(off_map));
@@ -428,7 +428,7 @@ TEST_CASE("MapViewMultihexSpriteVisibilityFixture")
 
     CHECK(map->GetItem(wall->GetId()) == wall);
 
-    ident_t physical_id = physical->GetId();
+    ident_t physical_id {physical->GetId()};
     map->DestroyItem(physical);
     CHECK_FALSE(map->GetItem(physical_id));
     CHECK_FALSE(Client_Map_GetVisibleItemOnHex(map, physical_id, mpos {8, 8}));

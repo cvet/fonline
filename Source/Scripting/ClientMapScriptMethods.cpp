@@ -22,7 +22,7 @@ FO_SCRIPT_API void Client_Map_DrawMap(ptr<MapView> self)
 }
 
 // Adds a holder-defined sprite to this map draw, applying item-prototype rendering rules when present.
-// Rejects a non-finite DepthOffset before processing the holder; otherwise skips invalid, offscreen or unresolved sprites.
+// Rejects a non-finite DepthOffset before processing the holder; otherwise skips invalid, offscreen or unresolved sprites
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Map_DrawMapSprite(ptr<MapView> self, ptr<MapSpriteHolder> mapSpr)
 {
@@ -269,7 +269,7 @@ FO_SCRIPT_API nptr<ItemView> Client_Map_GetVisibleItemOnHex(ptr<MapView> self, i
         return nullptr;
     }
 
-    span<ptr<ItemHexView>> hex_items = self->GetItemsOnHex(hex);
+    span<ptr<ItemHexView>> hex_items {self->GetItemsOnHex(hex)};
 
     for (auto item : hex_items) {
         if (item->GetId() == itemId && item->IsMapSpriteVisibleAtHex(hex)) {

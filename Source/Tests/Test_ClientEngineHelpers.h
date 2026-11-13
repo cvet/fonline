@@ -1779,7 +1779,7 @@ void main(void)
         limb_bone->GlobalTransformationMatrix = limb_bone->TransformationMatrix;
 
         if (add_nozzle) {
-            auto nozzle = safe_alloc::make_unique<ModelMeshBoneData>();
+            auto nozzle {safe_alloc::make_unique<ModelMeshBoneData>()};
             nozzle->Name = "Nozzle";
             nozzle->TransformationMatrix = glm::translate(mat44 {1.0f}, vec3 {0.2f, 0.4f, 0.0f});
             nozzle->GlobalTransformationMatrix = limb_bone->GlobalTransformationMatrix * nozzle->TransformationMatrix;

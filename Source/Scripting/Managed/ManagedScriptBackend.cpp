@@ -1217,7 +1217,7 @@ void ManagedScriptBackend::FinalizeManagedObjects() noexcept
         // A timed-out or failed collection must still leave a wrapper report for diagnosis
         safe_call([&] {
 #if FO_WEB
-            for (int32_t pass = 0; pass < PASS_LIMIT; pass++) {
+            for (int32_t pass {0}; pass < PASS_LIMIT; pass++) {
                 (void)InvokeEntityWrapperTrackerCollect(this, collect_method, 1);
 
                 // Run outside managed collection, while finalizers can still return references through the bound backend
@@ -6475,17 +6475,17 @@ static auto TryWriteManagedListRaw(ptr<const ManagedScriptBackend> backend, cons
 
     FO_VERIFY_AND_THROW(element_type.Size != 0 && src.size() % element_type.Size == 0, "Raw array block is not a whole number of elements", element_type.Name, src.size());
 
-    ManagedObjectRoot raw_root;
+    ManagedObjectRoot raw_root {};
     raw_root.SetObject(reinterpret_cast<MonoObject*>(mono_array_new(GetDomainOrThrow(backend->GetDomain()), mono_get_byte_class(), src.size())));
-    MonoArray* raw = reinterpret_cast<MonoArray*>(raw_root.GetObject());
+    MonoArray* raw {reinterpret_cast<MonoArray*>(raw_root.GetObject())};
     FO_VERIFY_AND_THROW(raw != nullptr, "Can't allocate a managed raw array block", element_type.Name, src.size());
 
     if (!src.empty()) {
         memory::copy(mono_array_addr(raw, uint8_t, 0), src.data(), src.size());
     }
 
-    void* args[] = {list_root.GetObject(), raw_root.GetObject()};
-    MonoObject* result = InvokeNativeHelper(backend, "SetListRawBytes", 2, args);
+    void* args[] {list_root.GetObject(), raw_root.GetObject()};
+    MonoObject* result {InvokeNativeHelper(backend, "SetListRawBytes", 2, args)};
     return result != nullptr && *static_cast<MonoBoolean*>(mono_object_unbox(result)) != 0;
 }
 

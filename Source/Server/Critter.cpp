@@ -204,7 +204,7 @@ auto Critter::IsPlayerMovementOwner(ptr<const Player> player) const -> bool
         return false;
     }
 
-    auto actor = player->GetControlledCritter();
+    auto actor {player->GetControlledCritter()};
 
     if (!actor || actor->IsDestroyed() || actor->GetId() != _playerMovingActorId || player->GetMovementControlRevision() != _playerControlRevision || actor->GetAttachmentRevision() != _playerAttachmentRevision) {
         return false;
@@ -427,7 +427,7 @@ void Critter::MarkMovingStartedByPlayer(ptr<const Player> player, uint32_t plan_
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
     FO_VERIFY_AND_THROW(_moving, "Critter has no movement to mark as started by its player");
 
-    auto actor = player->GetControlledCritter();
+    auto actor {player->GetControlledCritter()};
     FO_VERIFY_AND_THROW(actor, "Movement initiator has no controlled actor");
 
     _playerMovingUid = _movingUid;
@@ -551,15 +551,15 @@ void Critter::MoveAttachedCritters()
     auto new_hex {GetHex()};
     auto new_hex_offset {GetHexOffset()};
 
-    auto this_ref_holder = refcount_ptr<Critter>::from_addref(this);
-    auto attached = copy_hold_ref(GetAttachedCritters());
-    auto validate_attached = [this, map, new_hex](ptr<const Critter> cr) {
+    auto this_ref_holder {refcount_ptr<Critter>::from_addref(this)};
+    auto attached {copy_hold_ref(GetAttachedCritters())};
+    auto validate_attached {[this, map, new_hex](ptr<const Critter> cr) {
         if (IsDestroyed() || map->IsDestroyed() || cr->IsDestroyed()) {
             return false;
         }
 
         return GetMapId() == map->GetId() && GetHex() == new_hex && cr->GetMapId() == map->GetId() && cr->GetIsAttached() && cr->GetAttachMaster() == GetId();
-    };
+    }};
 
     for (ptr<Critter> cr : attached) {
         FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
@@ -573,7 +573,7 @@ void Critter::MoveAttachedCritters()
             return;
         }
 
-        auto hex = cr->GetHex();
+        auto hex {cr->GetHex()};
 
         if (hex != new_hex) {
             function<bool()> validate_commit = [&] { return validate_attached(cr); };

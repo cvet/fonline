@@ -454,7 +454,7 @@ void MapperEngine::DrawMapperFrame()
     FontMngr.FrameUpdate();
 
     {
-        auto abort_scene_on_fail = scope_fail([this]() noexcept { SprMngr.AbortScene(); });
+        auto abort_scene_on_fail {scope_fail([this]() noexcept { SprMngr.AbortScene(); })};
 
         SprMngr.BeginScene();
 
