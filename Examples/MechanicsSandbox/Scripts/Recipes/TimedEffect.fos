@@ -1,0 +1,77 @@
+// Recipe: a timed effect that survives a restart
+// The persisted deadline is the truth; the time event only delivers the expiry and is re-armed after a load
+namespace TimedEffect
+{
+
+///@ Property Critter Common synctime BoostEndTime Mutable Persistent PublicSync
+
+#if SERVER
+
+[[ModuleInit]]
+void InitTimedEffect()
+{
+    Game.OnCritterInit.Subscribe(OnCritterInit);
+}
+
+// Starts the boost or moves its deadline; an armed timer reads the new deadline when it fires
+void ApplyBoost(Critter cr, timespan duration)
+{
+    cr.BoostEndTime = Game.SynchronizedTime + duration;
+    ArmBoostTimer(cr);
+}
+
+bool IsBoosted(Critter cr)
+{
+    return cr.BoostEndTime != ZERO_SYNCTIME;
+}
+
+// Time events are not restored from the database: a restored critter re-arms from its saved deadline
+[[Event]]
+void OnCritterInit(Critter cr, bool firstTime)
+{
+    if (!firstTime && IsBoosted(cr)) {
+        ArmBoostTimer(cr);
+    }
+}
+
+// At most one timer per critter, whichever path asks first
+void ArmBoostTimer(Critter cr)
+{
+    if (cr.CountTimeEvent(OnBoostTimer) != 0) {
+        return;
+    }
+
+    cr.StartTimeEvent(RemainingTime(cr), OnBoostTimer);
+}
+
+timespan RemainingTime(Critter cr)
+{
+    timespan remaining = cr.BoostEndTime - Game.SynchronizedTime;
+    return remaining > ZERO_TIMESPAN ? remaining : ZERO_TIMESPAN;
+}
+
+[[TimeEvent]]
+void OnBoostTimer(Critter cr, TimeEventContext timer)
+{
+    // A server snapshot restores its saved timers after the init re-arm, so a second timer can arrive here
+    if (!IsBoosted(cr)) {
+        timer.Stop();
+        return;
+    }
+
+    // A deadline moved later keeps the same timer waiting for the rest of the time
+    timespan remaining = RemainingTime(cr);
+    if (remaining > ZERO_TIMESPAN) {
+        timer.Repeat(remaining);
+        return;
+    }
+
+    // Repeat made the event periodic, so the last firing stops it explicitly
+    timer.Stop();
+    cr.BoostEndTime = ZERO_SYNCTIME;
+    Game.Log("timed_effect_boost_expired critter=" + cr.Id.value);
+}
+
+#endif
+
+}

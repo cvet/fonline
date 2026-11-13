@@ -1,0 +1,238 @@
+{
+  "schema_version": 1,
+  "name": "mechanics-sandbox",
+  "default_timeout_seconds": 120,
+  "forbidden_markers": [
+    "FATAL ERROR!",
+    "ScriptException",
+    "Module initialization failed",
+    "[Testing] FAIL",
+    "[Testing] ERROR",
+    "[Testing] COMPLETE status=failed"
+  ],
+  "scenarios": [
+    {
+      "id": "persistent-state",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeTests",
+            "-Testing.Filter",
+            "persistent_state."
+          ],
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS persistent_state.creation_stamps_once_and_starts_at_zero",
+            "[Testing] PASS persistent_state.record_visit_reassigns_the_property",
+            "[Testing] PASS persistent_state.new_critter_is_temporary_until_made_persistent",
+            "[Testing] PASS persistent_state.unload_and_load_keep_the_state",
+            "[Testing] COMPLETE status=passed"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "persistent-state-restart-write",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeRestart",
+            "-Server.DbStorage",
+            "JSON {restart_db}/persistent-state",
+            "-Testing.Filter",
+            "persistent_state_restart_write."
+          ],
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS persistent_state_restart_write.save_state_before_restart",
+            "[Testing] COMPLETE status=passed"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "persistent-state-restart-verify",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeRestart",
+            "-Server.DbStorage",
+            "JSON {restart_db}/persistent-state",
+            "-Testing.Filter",
+            "persistent_state_restart_verify."
+          ],
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS persistent_state_restart_verify.state_survives_restart",
+            "[Testing] COMPLETE status=passed"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "validated-action",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeNetworkTests",
+            "-Testing.Filter",
+            "validated_action."
+          ],
+          "ready_marker": "validated_action_waiting_for_client",
+          "ready_timeout_seconds": 30,
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS validated_action.client_requests_are_validated_on_the_server",
+            "[Testing] COMPLETE status=passed",
+            "sandbox_player_entered",
+            "validated_action_drill_sent",
+            "validated_action_refused reason=unknown_target",
+            "validated_action_refused reason=not_owner",
+            "validated_action_refused reason=too_far",
+            "validated_action_accepted device=",
+            "validated_action_refused reason=no_energy"
+          ]
+        },
+        {
+          "id": "client",
+          "command": [
+            "{client}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeClient"
+          ],
+          "required_markers": [
+            "sandbox_client_connected",
+            "validated_action_drill_started requests=5",
+            "accepted=true",
+            "accepted=false",
+            "sandbox_client_disconnected"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "timed-effect",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeTests",
+            "-Testing.Filter",
+            "timed_effect."
+          ],
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS timed_effect.boost_expires_at_its_deadline",
+            "[Testing] PASS timed_effect.extended_deadline_keeps_one_timer",
+            "[Testing] PASS timed_effect.unload_and_load_rearm_only_the_guarded_timer",
+            "[Testing] COMPLETE status=passed"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "timed-effect-restart-write",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeRestart",
+            "-Server.DbStorage",
+            "JSON {restart_db}/timed-effect",
+            "-Testing.Filter",
+            "timed_effect_restart_write."
+          ],
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS timed_effect_restart_write.start_boosts_before_restart",
+            "[Testing] COMPLETE status=passed"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "timed-effect-restart-verify",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeRestart",
+            "-Server.DbStorage",
+            "JSON {restart_db}/timed-effect",
+            "-Testing.Filter",
+            "timed_effect_restart_verify."
+          ],
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS timed_effect_restart_verify.rearmed_timer_expires_after_restart",
+            "[Testing] PASS timed_effect_restart_verify.naive_variant_loses_timer_after_restart",
+            "[Testing] COMPLETE status=passed",
+            "timed_effect_boost_expired critter="
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cover-transactions",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeTests",
+            "-Testing.Filter",
+            "cover_transaction."
+          ],
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS cover_transaction.hand_over_moves_the_item",
+            "[Testing] PASS cover_transaction.item_taken_during_the_wait_is_not_moved",
+            "[Testing] PASS cover_transaction.receiver_destroyed_during_the_wait_is_resolved_again",
+            "[Testing] COMPLETE status=passed",
+            "cover_transaction_interference=parcel_moved",
+            "cover_transaction_refused step=commit reason=item_gone",
+            "cover_transaction_interference=receiver_destroyed",
+            "cover_transaction_refused step=commit reason=party_gone"
+          ]
+        }
+      ]
+    }
+  ]
+}
