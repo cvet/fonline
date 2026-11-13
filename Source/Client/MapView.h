@@ -283,7 +283,6 @@ public:
     auto GetItemAtScreen(ipos32 screen_pos, bool& item_egg, int32_t extra_range, bool check_transparent, bool ignore_transparent_egg = false) -> pair<nptr<ItemHexView>, nptr<const MapSprite>>;
     auto GetCritterAtScreen(ipos32 screen_pos, bool ignore_dead_and_chosen, int32_t extra_range, bool check_transparent) -> pair<nptr<CritterHexView>, nptr<const MapSprite>>;
     auto GetEntityAtScreen(ipos32 screen_pos, int32_t extra_range, bool check_transparent, bool ignore_transparent_egg = false) -> pair<nptr<ClientEntity>, nptr<const MapSprite>>;
-    void UpdateCritterOccluders(nptr<CritterHexView> cr, uint8_t alpha);
 
     void UpdateCritterLightSource(ptr<const CritterHexView> cr);
     void UpdateItemLightSource(ptr<const ItemHexView> item);

@@ -49,8 +49,6 @@ void MapSprite::Reset() noexcept
     _itemOwner = nullptr;
     _itemHitTestWhenHidden = false;
     _pSprOffsetOverride = nullptr;
-    _savedAlpha = nullptr;
-    _occluderFaded = false;
 }
 
 auto MapSprite::GetDrawRect() const noexcept -> irect32
@@ -153,26 +151,6 @@ void MapSprite::SetFixedAlpha(uint8_t alpha) noexcept
 {
     _color.comp.a = alpha;
     _alpha = &_color.comp.a;
-}
-
-void MapSprite::SetOccluderAlpha(uint8_t alpha) noexcept
-{
-    if (!_occluderFaded) {
-        _savedAlpha = _alpha;
-        _occluderFaded = true;
-    }
-
-    _occluderAlpha = alpha;
-    _alpha = &_occluderAlpha;
-}
-
-void MapSprite::ClearOccluderAlpha() noexcept
-{
-    if (_occluderFaded) {
-        _alpha = _savedAlpha;
-        _savedAlpha = nullptr;
-        _occluderFaded = false;
-    }
 }
 
 void MapSprite::SetLight(nptr<const ucolor> light, nptr<const ucolor> light_right, nptr<const ucolor> light_left) noexcept

@@ -5402,14 +5402,6 @@
           "source_sha256": "09652340e447e7184ab4594660086e90a5e555c17a7abb8f60f0edd662ab8f01",
           "translation": "Запускает клиентское визуальное перемещение предмета на карте к целевому гексу с заданной скоростью; ничего не делает с предметами вне представления карты."
         },
-        "/symbols/@id=script.method.client.Item.MoveToHexVisual/description": {
-          "source_sha256": "16923f2400df22fdd86be1df89587d4d599ddc78228b6565d2eb2d6bcfdafa16",
-          "translation": "Запускает чисто визуальный полёт предмета по прямой, не меняя его гекс; ничего не делает для предметов вне вида карты"
-        },
-        "/symbols/@id=script.method.client.Item.MoveToHexVisualForDuration/description": {
-          "source_sha256": "d9779a033e742d48861d4c80ff6d7a484430dcf8d9fe5de4c968b20067f66630",
-          "translation": "Запускает чисто визуальный полёт предмета, достигающий целевого гекса за указанную длительность"
-        },
         "/symbols/@id=script.method.client.Item.PlayAnim/description": {
           "source_sha256": "51fa2e7198d5805d2669750b3969af878c02afb894b0730685d7437a97444353",
           "translation": "Запускает именованную анимацию спрайта предмета на карте с заданными режимами зацикливания и обратного воспроизведения; ничего не делает с предметами вне представления карты."
@@ -5705,10 +5697,6 @@
         "/symbols/@id=script.method.client.Map.UnloadRuntimeStaticItems/description": {
           "source_sha256": "20d4c22d77c7c152de0b91cb6410121adc9fb054c6a429a71148238734e66a1c",
           "translation": "Удалить статические предметы времени выполнения, добавленные в представление карты через `LoadRuntimeStaticItems`, и освободить оставшиеся пустыми блоки полей"
-        },
-        "/symbols/@id=script.method.client.Map.UpdateCritterOccluders/description": {
-          "source_sha256": "314212443099fcdaafe2e49530b4bac6866e13872129425c9b9ec7c5942d62d6",
-          "translation": "Приглушает спрайты карты, закрывающие указанного криттера, сохраняя видимым его силуэт"
         },
         "/symbols/@id=script.method.common.Game.AndroidBuild/description": {
           "source_sha256": "3db581a240a4a9044c0bb2836762ab57eb407acf4e1286399c233ca10e68e14f",
