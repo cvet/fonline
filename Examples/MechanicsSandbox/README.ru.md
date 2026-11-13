@@ -18,7 +18,8 @@
 ```text
 Examples/MechanicsSandbox/
 ├── CMakeLists.txt, CMakePresets.json   build, bake and the RunMechanicsChecks target
-├── FOnlineMechanicsSandbox.fomain      settings, harness values, sub-configs, resource packs
+├── FOnlineMechanicsSandbox.fomain      generated settings, harness values, sub-configs, resource packs
+├── generate_config.py                  writes the .fomain from Engine defaults plus sandbox overrides
 ├── recipes.json                        recipe -> page, files, Engine symbols, smoke scenarios
 ├── mechanics-smoke.json                gameplay_test_runner manifest, one or more scenarios per recipe
 ├── run_mechanics_smoke.py              clears the restart databases and runs the manifest
@@ -54,9 +55,9 @@ ln -s ../.. Engine
 python3 validate.py
 ```
 
-`validate.py` конфигурирует пресет хоста в `Build/<preset>/` и собирает цель `RunMechanicsChecks`. Эта цель собирает headless-сервер и headless-клиент, выполняет принудительное запекание, а затем запускает `run_mechanics_smoke.py` в каталоге сборки. Передайте `--binary-dir <directory>`, чтобы использовать другое дерево сборки. Запуск успешен, когда runner печатает `status=passed` для каждого сценария и завершается с кодом 0; JSON-отчёт записывается в `mechanics-smoke-report.json` в каталоге сборки.
+`validate.py` конфигурирует пресет хоста в `Build/<preset>/` и собирает цель `RunMechanicsChecks`. Эта цель собирает headless-сервер и headless-клиент, проверяет, что сгенерированная конфигурация актуальна, выполняет принудительное запекание, а затем запускает `run_mechanics_smoke.py` в каталоге сборки. Обёртка также создаёт одноразовую пару ключей защищённого канала в игнорируемом каталоге `Workspace/` рядом с конфигурацией: каждому серверу нужен `ServerNetwork.ChannelSecretKey`, даже при выключенной сети, а конфигурация читает обе половины через `$TARGET_FILE{...}`. Этот ключ служит локальной тестовой идентичностью и никогда не используется в production. Передайте `--binary-dir <directory>`, чтобы использовать другое дерево сборки. Запуск успешен, когда runner печатает `status=passed` для каждого сценария и завершается с кодом 0; JSON-отчёт записывается в `mechanics-smoke-report.json` в каталоге сборки.
 
-Во время разработки запускайте один набор тестов на уже запечённых ресурсах. Windows (PowerShell), из каталога сборки:
+Во время разработки запускайте один набор тестов на уже запечённых ресурсах; сначала один раз запустите обёртку, чтобы появился ключ канала. Windows (PowerShell), из каталога сборки:
 
 ```powershell
 & ".\Binaries\Server-Windows-win64\FOMECH_ServerHeadless.exe" -ApplyConfig "<sandbox>\FOnlineMechanicsSandbox.fomain" -ApplySubConfig RecipeTests -Testing.Filter "timed_effect."
@@ -89,6 +90,9 @@ Linux (bash), из каталога сборки:
 
 ## Примечания
 
+- `FOnlineMechanicsSandbox.fomain` генерируется. Запуск без пакета применяет `.fomain` к обнулённым настройкам, поэтому файл перечисляет все настройки Engine; меняйте `OVERRIDES` или `PROJECT_SECTIONS` в `generate_config.py`, запускайте `python generate_config.py` и полагайтесь на `--check` (он выполняется перед каждым запеканием), чтобы обнаружить устаревший файл. Настройки-перечисления записываются числами, потому что среда выполнения читает их как целые.
+- Персонаж карты, сохраняемый только потому, что сохраняема его локация, теряет эту сохраняемость и свою запись в базе данных, когда покидает карту. `Game.UnloadCritter` сначала убирает его с карты, поэтому тесты выгрузки и загрузки перед выгрузкой вызывают `cr.MakePersistent(true)` для самого персонажа.
+- `Game.LoginPlayerToNewRecord` отклоняет нового игрока, запись которого оказалась бы пустой, поэтому вход в песочницу перед входом задаёт одно сохраняемое свойство `Player` — `SandboxAccount`.
 - Исходные файлы тестов запекаются вместе с рецептами, потому что эта песочница ничего не поставляет. Игровой проект не допускает их в поставляемые паки; см. [Тесты в игровом проекте](../../Docs/ru/how-to/project/project-tests.md).
 - `Scripts/Testing.fos` должен оставаться побайтно идентичным `Examples/GameplayTestHarness/ScriptTests/AngelScript/Testing.fos`; это проверяет `BuildTools/tests/test_mechanics_sandbox.py`.
 - CI Engine выполняет для `Examples/` только статические проверки. Полный маршрут, описанный выше, требует нативной сборки и запускается по требованию.

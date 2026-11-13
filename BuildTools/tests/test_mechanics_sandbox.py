@@ -3,6 +3,7 @@ the configuration and smoke manifest it relies on, and the README fences."""
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import re
@@ -184,6 +185,27 @@ def test_config_defines_every_declared_setting_and_the_test_sub_configs() -> Non
         assert sub_configs[name]["Testing.Enabled"] == "True", name
     assert sub_configs["RecipeClient"]["Sandbox.ClientAutomation"] == "True"
     assert "FO_DATABASE_JSON ON" in _read(SANDBOX / "CMakeLists.txt")
+
+
+def test_generated_config_is_current() -> None:
+    name = "mechanics_sandbox_generate_config"
+    spec = importlib.util.spec_from_file_location(name, SANDBOX / "generate_config.py")
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+
+    assert _read(MAIN_CONFIG) == module.render_config(ENGINE_ROOT)
+    assert "generate_config.py" in _read(SANDBOX / "CMakeLists.txt")
+
+
+def test_channel_key_is_a_local_ignored_test_identity() -> None:
+    root, _ = _config_sections(_read(MAIN_CONFIG))
+    ignored = _read(SANDBOX / ".gitignore").splitlines()
+
+    assert root["ServerNetwork.ChannelSecretKey"] == "$TARGET_FILE{Workspace/SandboxChannel.key}"
+    assert root["ClientNetwork.ChannelServerKeys"] == "$TARGET_FILE{Workspace/SandboxChannel.pub}"
+    assert "/Workspace/" in ignored and "/Engine/" in ignored and "/Build/" in ignored
 
 
 def test_smoke_manifest_covers_every_registered_test() -> None:
