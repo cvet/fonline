@@ -284,6 +284,17 @@
       "audiences": ["game-developer", "embedding-project-build-system", "ci-maintainer"],
       "invocation_owner": "embedding-project localization tasks and CI content gates",
       "description": "Check raw .fotxt packs for parse errors, duplicate variants, wrong-script text and language key parity before baking."
+    },
+    {
+      "id": "helper-cli.mechanics-recipes",
+      "name": "Mechanics recipe gate",
+      "source": "BuildTools/mechanics_recipes.py",
+      "factory": "create_parser",
+      "program": "mechanics_recipes.py",
+      "owner": "documentation",
+      "audiences": ["engine-contributor", "game-developer", "ci-maintainer"],
+      "invocation_owner": "Engine documentation tests, recipe authors and CI documentation checks",
+      "description": "Check mechanics recipe pages, their Russian mirrors and the section index against the recipe manifest, the example files they quote and the generated API model."
     }
   ]
 }
