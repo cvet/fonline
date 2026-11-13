@@ -31,6 +31,9 @@ OVERRIDES = {
     "Client.Language": "engl",
     "ClientNetwork.ServerHost": "127.0.0.1",
     "Server.DbStorage": "Memory",
+    # Enum settings are read as integers, while Settings.inc spells these defaults as C++ enumerators
+    "Animation.PreviewStateAnim": "0",
+    "Animation.PreviewActionAnim": "0",
     "Server.WorkerThreads": "2",
     "Server.EntityStartId": "10000000001",
     "Server.EntityIdReserveBatch": "1000",

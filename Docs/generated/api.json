@@ -84993,7 +84993,7 @@
       ],
       "receiver": "Game",
       "signature": "void Game.SyncWiden(Entity[] entities)",
-      "description": "Widens the current synchronization cover in place to include the supplied live entities",
+      "description": "Widens the current cover with the supplied live entities; an uncovered one may release and reacquire the held set",
       "flags": [
         "Async",
         "AllowDestroyedEntityArgs"

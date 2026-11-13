@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"ac60b4922f41645a51385cb264e724b4ce4c64f048c3807dbd74ffba2652ab3d"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"a8edb17ec46fd94582e5a9f70a000223abb485387363d8348d6c51b220c75858"} -->
 > Принадлежащее движку руководство Managed C#; игровые модули и политика принадлежат подключающему проекту.
 
 
@@ -230,7 +230,7 @@ returning path, и лишь затем обходит его callees. Call вн�
 cycles разрастаться экспоненциально. Analyzer self-tests ограничивают этот graph
 по времени и по-прежнему требуют `FOSYNC009` для uncovered use после `await`.
 
-`Sync.Acquire` расширяет связанный cover на месте через `Game.SyncWiden`, не освобождая и не захватывая заново уже покрытые сущности. Нативный cover остаётся непрерывным при проходе по отношениям `[SyncWiden]`, без race window между двумя наборами.
+`Sync.Widen` расширяет cover через `Game.SyncWiden`: движок запрашивает уже удерживаемые владельцы вместе с новыми сущностями и следует отношениям `[SyncWiden]`. Сущность, уже покрытая собственной цепочкой родителей, сохраняется на месте, и нативный cover остаётся непрерывным. Для любой другой сущности движок освобождает удерживаемые блокировки и захватывает расширенный набор одним упорядоченным шагом, поэтому в этот промежуток другие потоки могут изменить ранее удерживаемые сущности: всё, что было прочитано до расширения с новой сущностью, нужно перепроверить.
 
 `FOSYNC010` запрещает отбрасывать boolean результат acquisition, включая отдельный вызов или присваивание `_`: отказ должен влиять на control flow. `FOSYNC011` требует, чтобы helper `Sync`, меняющий удерживаемый cover напрямую либо через другой effectful helper, объявил собственный `[CoverEffect]`. Analyzer считает эти findings ошибками сборки, а не advisory warnings; предложенные redundancy diagnostics `FOSYNC012`–`FOSYNC014` были отозваны.
 

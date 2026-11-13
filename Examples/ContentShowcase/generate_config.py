@@ -58,6 +58,9 @@ OVERRIDES = {
     "Web.AspectFactor": "0.625f",
     "Render.WindowResizable": "False",
     "Render.FixedFPS": "60",
+    # Enum settings are read as integers, while Settings.inc spells these defaults as C++ enumerators
+    "Animation.PreviewStateAnim": "0",
+    "Animation.PreviewActionAnim": "0",
     "Render.ImGuiDefaultEffect": "Effects/ImGui_Default.fofx",
 }
 

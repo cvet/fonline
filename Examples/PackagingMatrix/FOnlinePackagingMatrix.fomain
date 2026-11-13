@@ -151,8 +151,8 @@ SpriteMesh.MaxTriangles = 4096
 SpriteMesh.AreaSavingsWeight = 32.0f
 
 # Animation
-Animation.PreviewStateAnim = CritterStateAnim::None
-Animation.PreviewActionAnim = CritterActionAnim::None
+Animation.PreviewStateAnim = 0
+Animation.PreviewActionAnim = 0
 
 # Render
 Render.Animation3dSmoothTime = 150

@@ -228,7 +228,7 @@ cannot establish cover; this order also prevents dense conditional call cycles
 from expanding exponentially. Analyzer self-tests time-bound that graph and still
 require `FOSYNC009` for an uncovered use after `await`.
 
-`Sync.Acquire` expands linked cover in place through `Game.SyncWiden`; it does not release and reacquire the already-held entities. This keeps the native cover continuous while following `[SyncWiden]` relationships and avoids a race window between the two sets.
+`Sync.Widen` widens the cover through `Game.SyncWiden`, which requests the already-held owners together with the new entities and follows `[SyncWiden]` relationships. An entity that is already covered through its own parent chain is retained in place and the native cover stays continuous. Any other entity makes the engine release the held locks and acquire the enlarged set in one ordered step, so other threads can change the previously held entities in that gap: revalidate everything read before a widening that adds an entity.
 
 `FOSYNC010` rejects discarding a boolean acquisition answer, including a bare call or assignment to `_`: failure must influence control flow. `FOSYNC011` requires a `Sync` helper that changes held cover, directly or through another effectful helper, to declare its own `[CoverEffect]`. The analyzer treats these as build verdicts, not advisory warnings; the proposed redundancy diagnostics `FOSYNC012`–`FOSYNC014` were withdrawn.
 

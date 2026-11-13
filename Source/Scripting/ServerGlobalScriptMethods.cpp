@@ -1809,7 +1809,7 @@ FO_SCRIPT_API FO_COVER_PRIMITIVE void Server_Game_Sync(ptr<ServerEngine> server,
     ctx->SyncEntities(syncable);
 }
 
-// Widens the current synchronization cover in place to include the supplied live entities
+// Widens the current cover with the supplied live entities; an uncovered one may release and reacquire the held set
 ///@ ExportMethod Async AllowDestroyedEntityArgs
 FO_SCRIPT_API FO_COVER_PRIMITIVE void Server_Game_SyncWiden(ptr<ServerEngine> server, readonly_vector<nptr<ServerEntity>> entities)
 {
