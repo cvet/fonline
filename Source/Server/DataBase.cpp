@@ -344,7 +344,10 @@ void DataBaseImpl::InitializeOpLogs()
     open_log_file(_pendingChangesLog, oplog_path, "pending database changes file");
     open_log_file(_committedChangesLog, strex(oplog_path).replace(".oplog", "-committed.oplog").str(), "committed database changes file");
 
-    if (!_pendingChangesLog->GetContent().empty() && _committedChangesLog->GetContent().size() > _pendingChangesLog->GetContent().size()) {
+    const_span<string> pending_changes_content {_pendingChangesLog->GetContent()};
+    const_span<string> committed_changes_content {_committedChangesLog->GetContent()};
+
+    if (!pending_changes_content.empty() && committed_changes_content.size() > pending_changes_content.size()) {
         throw DataBaseException("Committed database changes file line count is greater than pending database changes file line count");
     }
 }

@@ -602,6 +602,7 @@ auto MasterBaker::PreparePackContext(const ResourcePackInfo& res_pack, unordered
     auto write_data {[context = pack_bake_context_ptr](string_view path, span<const uint8_t> baked_data) mutable -> BakingWriteResult {
         {
             scoped_lock lock {context->BakedFilePathsLocker};
+
             context->BakedOutputPaths.emplace(path);
         }
 

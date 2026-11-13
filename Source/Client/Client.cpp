@@ -1427,6 +1427,7 @@ void ClientEngine::Net_OnCritterMoveItem()
             // Apply authoritative slots before animation and script callbacks inspect the inventory
             size_t slot_index {static_cast<size_t>(cur_slot)};
             const auto& multi_item_slots {Settings->Critter.CritterSlotMultiItem};
+
             if (slot_index >= multi_item_slots.size() || !multi_item_slots[slot_index]) {
                 for (ptr<ItemView> swap_item : cr->GetInvItems()) {
                     if (swap_item != item && swap_item->GetCritterSlot() == cur_slot) {
