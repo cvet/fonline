@@ -7,7 +7,7 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"dbc1e1e48ae7d73689975b3b8aa6afd98a1c486b09b6c26bd9ed6912a7dc10ea"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"eca16c550f7cabb4047a6a4392a66e0b240d3e0da8db964e15d16283ab1e75e6"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
@@ -59,6 +59,7 @@ permalink: /Docs/ru/reference/changelog.html
 
 - В руководствах по стилю и жизненному циклу скриптов исправлены имена настроек AngelScript: `AngelScript.MutableGlobalsAllowedNamespaces`, `AngelScript.AttributedFunctionDirectCallAllowedNamespaces` и `AngelScript.ExtraDirectCallBlockingAttributes`; руководства, документационный тест и набор AI-оценки всё ещё использовали удалённые написания `Script.*`.
 - Указано, что `Settings.CompatibilityVersion` — дайджест разобранных объявлений codegen, а не значение, меняющееся с каждой сборкой; описан журнал `RunUnitTests` (`<build-dir>/Testing/<target>-<config>.log`, запуск через `RunTestExecutable.cmake`); указано, какие виды правил миграции читаются (`Property`, `Proto`, `Enum`; `Version` — маркер); указано, что `.foinfo` требует `Baking.ProtoFileExtensions`; утверждения о неизвестных настройках согласованы; `Baking.IgnoreInputDirs` добавлен в руководство по сборке ресурсов; указано, что `format-source` форматирует только `.cpp`, `.h` и `.cs`; устаревшие примеры `./linux.sh` в README BuildTools заменены на `build.sh`.
+- Исправлен абзац про `UnloadCritter` в руководстве по серверной среде выполнения: NPC, постоянный только через карту или локацию, теряет запись в базе при снятии с карты, поэтому перед выгрузкой нужно вызвать `MakePersistent(true)`. Абзац утверждал, что записи NPC сохраняются всегда.
 
 ### Миграция
 

@@ -59,6 +59,7 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 - Correct the AngelScript setting names in the script style and lifecycle guides to `AngelScript.MutableGlobalsAllowedNamespaces`, `AngelScript.AttributedFunctionDirectCallAllowedNamespaces` and `AngelScript.ExtraDirectCallBlockingAttributes`; the guides, a documentation test and the AI evaluation set still used the removed `Script.*` spellings.
 - State that `Settings.CompatibilityVersion` is a digest of the parsed codegen declarations rather than a value that changes with every build; describe the `RunUnitTests` log (`<build-dir>/Testing/<target>-<config>.log`, run through `RunTestExecutable.cmake`); state which migration rule kinds are consulted (`Property`, `Proto`, `Enum`; `Version` is a marker); state that `.foinfo` needs `Baking.ProtoFileExtensions`; make the unknown-setting statements agree; add `Baking.IgnoreInputDirs` to the baking guide; state that `format-source` formats `.cpp`, `.h` and `.cs` only; replace the retired `./linux.sh` examples in the BuildTools README with `build.sh`.
+- Correct the `UnloadCritter` paragraph of the server runtime guide: an NPC that is persistent only through its map or location loses its database record when it is removed from the map, so call `MakePersistent(true)` before unloading it. The paragraph said that records of NPCs are always kept.
 
 ### Migration
 
