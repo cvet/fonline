@@ -1,0 +1,164 @@
+// Tests for the validated-action recipe: a headless client sends real remote calls, valid and forged
+// The server test builds the targets, asks the client to send the drill and checks what changed
+namespace Test_ValidatedAction
+{
+
+///@ Property Critter Server ident TestValidTargetId Mutable
+
+///@ RemoteCall Client RunDeviceDrill(int32 testId, ident[] deviceIds) MaxBytes 64 MaxCollectionSize 8
+///@ RemoteCall Server DeviceDrillSent(int32 testId) MaxBytes 4
+
+#if SERVER
+
+[[ModuleInit]]
+void InitTestValidatedAction()
+{
+    Game.OnTestingInit.Subscribe(OnTestingInit);
+}
+
+[[Event]]
+void OnTestingInit()
+{
+    Testing::RegisterTest("validated_action", "client_requests_are_validated_on_the_server", ClientRequestsAreValidatedOnTheServer, 45000);
+}
+
+void ClientRequestsAreValidatedOnTheServer(Testing::TestContext ctx)
+{
+    Testing::Defer(ctx);
+    Sandbox::CreateMap();
+
+    // The runner starts the client after this line
+    Game.Log("validated_action_waiting_for_client");
+    Game.StartTimeEvent(Testing::Milliseconds(100), Testing::Milliseconds(100), WaitForClient, any(ctx.Id));
+}
+
+[[TimeEvent]] [[Async]]
+void WaitForClient(TimeEventContext timer)
+{
+    Testing::TestContext? ctx = Testing::Resume(int(timer.GetData()));
+    if (ctx == null) {
+        timer.Stop();
+        return;
+    }
+
+    Map? map = Game.GetMap(Sandbox::MapPid);
+    if (map == null) {
+        timer.Stop();
+        Testing::Fail(ctx, "The sandbox map disappeared");
+        return;
+    }
+
+    Game.Sync(map);
+    Critter[] players = map.GetCritters(CritterFindType::Players);
+    if (players.length() == 0) {
+        return;
+    }
+
+    Critter actor = players[0];
+    Player? player = actor.GetPlayer();
+    if (player == null) {
+        return;
+    }
+
+    timer.Stop();
+
+    // A second location holds a device the actor owns but cannot reach from its map
+    Map otherMap = Sandbox::CreateMap();
+    Game.Sync(array<Entity> = {player, map, otherMap});
+
+    mpos nearHex = actor.Hex;
+    map.MoveHexByDir(nearHex, mdir(0), 1);
+    mpos foreignHex = actor.Hex;
+    map.MoveHexByDir(foreignHex, mdir(3), 1);
+    mpos farHex = actor.Hex;
+    map.MoveHexByDir(farHex, mdir(1), 8);
+
+    Item own = PlaceDevice(map, nearHex, actor.Id);
+    Item foreign = PlaceDevice(map, foreignHex, ZERO_IDENT);
+    Item far = PlaceDevice(map, farHex, actor.Id);
+    Item elsewhere = PlaceDevice(otherMap, nearHex, actor.Id);
+
+    // Energy for exactly one activation, so the repeated valid request must be refused for its cost
+    actor.ActionEnergy = ValidatedAction::ActivationCost;
+    actor.TestValidTargetId = own.Id;
+
+    ident[] drill = {elsewhere.Id, foreign.Id, far.Id, own.Id, own.Id};
+    player.ClientCall.RunDeviceDrill(ctx.Id, drill);
+    Game.Log("validated_action_drill_sent");
+}
+
+Item PlaceDevice(Map map, mpos hex, ident ownerId)
+{
+    Item device = map.AddItem(hex, ValidatedAction::DevicePid);
+    device.DeviceOwnerId = ownerId;
+    return device;
+}
+
+// The client sends this after the drill; one connection's handlers run in arrival order
+[[ServerRemoteCall]] [[Async]]
+void DeviceDrillSent(Player player, int32 testId)
+{
+    Testing::TestContext? ctx = Testing::Resume(testId);
+    if (ctx == null) {
+        return;
+    }
+
+    Critter? actor = player.GetControlledCritter();
+    if (actor == null) {
+        Testing::Fail(ctx, "The client lost its critter");
+        return;
+    }
+
+    Location[] locations = Game.GetLocations(Sandbox::LocationPid);
+    Entity[] cover = {player};
+
+    for (uint i = 0; i < locations.length(); i++) {
+        cover.insertLast(locations[i]);
+    }
+
+    Game.Sync(cover);
+
+    actor = player.GetControlledCritter();
+    if (actor == null) {
+        Testing::Fail(ctx, "The client lost its critter");
+        return;
+    }
+
+    Testing::ExpectEq(ctx, actor.ActionEnergy, 0, "Only the accepted request paid the cost");
+
+    int devices = 0;
+
+    for (uint i = 0; i < locations.length(); i++) {
+        Item[] items = locations[i].GetMapByIndex(0).GetItems(ValidatedAction::DevicePid);
+
+        for (uint j = 0; j < items.length(); j++) {
+            int expected = items[j].Id == actor.TestValidTargetId ? 1 : 0;
+            Testing::ExpectEq(ctx, items[j].DeviceActivations, expected, "Activations of device " + items[j].Id.value);
+            devices++;
+        }
+    }
+
+    Testing::ExpectEq(ctx, devices, 4, "Every drill target was checked");
+    Testing::Pass(ctx);
+}
+
+#endif
+
+#if CLIENT
+
+// Sends the valid and the forged requests in one burst; the server replies to each one
+[[ClientRemoteCall]]
+void RunDeviceDrill(int32 testId, ident[] deviceIds)
+{
+    Game.Log("validated_action_drill_started requests=" + deviceIds.length());
+
+    for (uint i = 0; i < deviceIds.length(); i++) {
+        CurPlayer.ServerCall.ActivateDevice(deviceIds[i]);
+    }
+
+    CurPlayer.ServerCall.DeviceDrillSent(testId);
+}
+
+#endif
+
+}

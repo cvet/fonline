@@ -25,21 +25,22 @@ Map CreateMap()
 [[ServerRemoteCall]] [[Async]]
 void EnterSandbox(Player unloginedPlayer)
 {
-    Map? map = Game.GetMap(MapPid);
-    if (map == null) {
-        Game.Log("sandbox_enter_refused reason=no_map");
+    Location[] locations = Game.GetLocations(LocationPid);
+    if (locations.length() == 0) {
+        Game.Log("sandbox_enter_refused reason=no_location");
         return;
     }
 
-    Location location = map.GetLocation();
+    // The location already exists and covers its map; the new body is covered from its creation
+    Location location = locations[0];
     Critter body = Game.CreateCritter(PlayerPid, true);
 
-    Game.Sync(array<Entity> = {unloginedPlayer, location, map, body});
-    body.TransferToMap(map, EntryHex, mdir(0));
+    Game.Sync(array<Entity> = {unloginedPlayer, location, body});
+    body.TransferToMap(location.GetMapByIndex(0), EntryHex, mdir(0));
 
     unloginedPlayer.SetName("SandboxPlayer");
     Player player = Game.LoginPlayerToNewRecord(unloginedPlayer);
-    Game.Sync(array<Entity> = {player, location, map, body});
+    Game.Sync(array<Entity> = {player, location, body});
     player.SwitchCritter(body);
     Game.Log("sandbox_player_entered");
 }
