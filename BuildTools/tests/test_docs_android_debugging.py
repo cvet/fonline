@@ -130,9 +130,8 @@ class AndroidDebuggingDocumentationTests(unittest.TestCase):
 
         for contract in (
             'return new String[]{\n            "main"',
-            'args.add("--ApplySubConfig")',
-            'args.add("--Baking.ClientResources")',
-            'args.add("--Baking.CacheResources")',
+            'args.add("--Common.ResourcesPath")',
+            'args.add("--Common.CachePath")',
             'getApplicationInfo().sourceDir + "!/assets/" + $RESOURCE_DIRECTORY$',
             'args.add(resourcesDir)',
             'getIntent().getStringExtra("server_host")',
@@ -140,6 +139,7 @@ class AndroidDebuggingDocumentationTests(unittest.TestCase):
         ):
             self.assertIn(contract, activity)
 
+        self.assertNotIn('--ApplySubConfig', activity)
         self.assertNotIn('copyAssetTree("Resources", resourcesDir)', activity)
         self.assertNotIn('.asset_revision', activity)
 

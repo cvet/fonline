@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -63,7 +33,7 @@ namespace ImGuiTestHarness
     // frame before the pressed branch runs. Returns false when the window has not been drawn yet
     inline auto ActivateItem(string_view window_name, string_view item_label) -> bool
     {
-        nptr<ImGuiWindow> window = FindWindow(window_name);
+        nptr<ImGuiWindow> window {FindWindow(window_name)};
 
         if (!window) {
             return false;
@@ -79,7 +49,7 @@ namespace ImGuiTestHarness
     // ImGui names a child window "<parent>/<label>_<id>", so a chain of labels walks down to a nested one
     inline auto FindChildWindow(string_view window_name, std::initializer_list<string_view> child_labels) -> nptr<ImGuiWindow>
     {
-        nptr<ImGuiWindow> window = FindWindow(window_name);
+        nptr<ImGuiWindow> window {FindWindow(window_name)};
 
         for (string_view child_label : child_labels) {
             if (!window) {
@@ -88,8 +58,8 @@ namespace ImGuiTestHarness
 
             // The id in that name depends on whatever id stack was pushed where the child was opened - a
             // table or a PushID scope changes it - so the child is matched by the prefix instead
-            string child_prefix = strex("{}/{}_", window->Name, child_label).str();
-            nptr<ImGuiWindow> found;
+            string child_prefix {strex("{}/{}_", window->Name, child_label).str()};
+            nptr<ImGuiWindow> found {};
 
             for (ptr<ImGuiWindow> candidate : ImGui::GetCurrentContext()->Windows) {
                 if (string_view {candidate->Name}.starts_with(child_prefix)) {
@@ -108,7 +78,7 @@ namespace ImGuiTestHarness
     // id stack rather than the panel's
     inline auto ActivateChildItem(string_view window_name, std::initializer_list<string_view> child_labels, string_view item_label) -> bool
     {
-        nptr<ImGuiWindow> window = FindChildWindow(window_name, child_labels);
+        nptr<ImGuiWindow> window {FindChildWindow(window_name, child_labels)};
 
         if (!window) {
             return false;
@@ -123,7 +93,7 @@ namespace ImGuiTestHarness
     // rather than in a widget, and they all start closed - so everything they wrap never draws
     inline auto SetItemOpen(string_view window_name, string_view item_label, bool open = true) -> bool
     {
-        nptr<ImGuiWindow> window = FindWindow(window_name);
+        nptr<ImGuiWindow> window {FindWindow(window_name)};
 
         if (!window) {
             return false;
@@ -136,7 +106,7 @@ namespace ImGuiTestHarness
     // The window itself can be folded too, which skips its whole body
     inline auto SetWindowCollapsed(string_view window_name, bool collapsed) -> bool
     {
-        nptr<ImGuiWindow> window = FindWindow(window_name);
+        nptr<ImGuiWindow> window {FindWindow(window_name)};
 
         if (!window) {
             return false;

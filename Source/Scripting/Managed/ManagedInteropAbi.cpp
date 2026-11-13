@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "ManagedInteropAbi.h"
 
@@ -51,9 +21,9 @@ auto BuildManagedAbiNativeFrame(span<uint8_t> frame, const_span<ManagedAbiSlot> 
 {
     FO_VERIFY_AND_THROW(args.size() <= MAX_CALL_ARGS, "Managed frame argument count exceeds bridge limit", args.size());
     ManagedAbiNativeFrame native_frame {.PackedFrame = frame, .Args = args, .Ret = ret};
-    size_t offset = 0;
-    auto copy_slot = [&](const ManagedAbiSlot& slot) {
-        size_t aligned_offset = (offset + alignof(std::max_align_t) - 1) / alignof(std::max_align_t) * alignof(std::max_align_t);
+    size_t offset {0};
+    auto copy_slot {[&](const ManagedAbiSlot& slot) {
+        size_t aligned_offset {(offset + alignof(std::max_align_t) - 1) / alignof(std::max_align_t) * alignof(std::max_align_t)};
         FO_VERIFY_AND_THROW(numeric_cast<size_t>(slot.Offset) + slot.Size <= frame.size(), "Managed slot exceeds frame size", slot.Offset, slot.Size, frame.size());
         FO_VERIFY_AND_THROW(aligned_offset + slot.Size <= native_frame.Storage.size(), "Managed native frame exceeds storage capacity");
 
@@ -63,9 +33,9 @@ auto BuildManagedAbiNativeFrame(span<uint8_t> frame, const_span<ManagedAbiSlot> 
 
         offset = aligned_offset + slot.Size;
         return aligned_offset;
-    };
+    }};
 
-    for (size_t i = 0; i < args.size(); i++) {
+    for (size_t i {0}; i < args.size(); i++) {
         native_frame.ArgOffsets[i] = copy_slot(args[i]);
     }
 
@@ -86,13 +56,14 @@ auto GetManagedAbiNativeFrameResult(ManagedAbiNativeFrame& frame) -> nptr<void>
 
 void CopyBackManagedAbiNativeFrame(const ManagedAbiNativeFrame& frame)
 {
-    for (size_t i = 0; i < frame.Args.size(); i++) {
-        const ManagedAbiSlot& slot = frame.Args[i];
+    for (size_t i {0}; i < frame.Args.size(); i++) {
+        const ManagedAbiSlot& slot {frame.Args[i]};
 
         if (slot.Mutable && slot.Size != 0) {
             memory::copy(frame.PackedFrame.data() + slot.Offset, frame.Storage.data() + frame.ArgOffsets[i], slot.Size);
         }
     }
+
     if (frame.Ret.Size != 0) {
         memory::copy(frame.PackedFrame.data() + frame.Ret.Offset, frame.Storage.data() + frame.ResultOffset, frame.Ret.Size);
     }
@@ -100,7 +71,7 @@ void CopyBackManagedAbiNativeFrame(const ManagedAbiNativeFrame& frame)
 
 static void MixHash(uint64_t& hash, uint64_t value) noexcept
 {
-    uint64_t part = hashing_ex::hash(&value, sizeof(value));
+    uint64_t part {hashing_ex::hash(&value, sizeof(value))};
     hash ^= part + 0x9e3779b97f4a7c15ULL + (hash << 6) + (hash >> 2);
 }
 
@@ -111,13 +82,13 @@ static void MixHash(uint64_t& hash, string_view text) noexcept
         return;
     }
 
-    uint64_t part = hashing_ex::hash(text.data(), text.size());
+    uint64_t part {hashing_ex::hash(text.data(), text.size())};
     hash ^= part + 0x9e3779b97f4a7c15ULL + (hash << 6) + (hash >> 2);
 }
 
 static auto MakeSortedEntityTypes(const map<hstring, EntityTypeDesc>& types) -> vector<pair<string, const EntityTypeDesc*>>
 {
-    vector<pair<string, const EntityTypeDesc*>> result;
+    vector<pair<string, const EntityTypeDesc*>> result {};
     result.reserve(types.size());
 
     for (const auto& [type_name, desc] : types) {
@@ -130,7 +101,7 @@ static auto MakeSortedEntityTypes(const map<hstring, EntityTypeDesc>& types) -> 
 
 static auto MakeSortedRefTypes(const EngineMetadata& meta) -> vector<pair<string, const RefTypeDesc*>>
 {
-    vector<pair<string, const RefTypeDesc*>> result;
+    vector<pair<string, const RefTypeDesc*>> result {};
 
     for (const auto& type : meta.GetBaseTypes() | std::views::values) {
         if (!type.IsRefType || !type.RefType) {
@@ -151,7 +122,7 @@ static auto CanUseManagedAbiBridge(const BaseTypeDesc& type) noexcept -> bool
 
 static auto CanUseManagedAbiBridge(const ComplexTypeDesc& type) noexcept -> bool
 {
-    if (!type) {
+    if (!IsTypeDefined(type)) {
         return true;
     }
     if (type.Kind == ComplexTypeKind::Simple || type.Kind == ComplexTypeKind::Array) {
@@ -304,7 +275,7 @@ auto ManagedAbiKindFromTypeName(string_view type_name) noexcept -> ManagedAbiVal
 
 static auto MakeAbiSlot(const ComplexTypeDesc& type, uint16_t offset) -> ManagedAbiSlot
 {
-    ManagedAbiSlot slot;
+    ManagedAbiSlot slot {};
     slot.Kind = ManagedAbiKindFromBaseType(type.BaseType);
     slot.Mutable = type.IsMutable;
     slot.Size = IsManagedAbiFixedValueType(type) ? ManagedAbiSlotSize(type.BaseType) : uint16_t {0};
@@ -316,13 +287,13 @@ static auto MakeAbiSlot(const ComplexTypeDesc& type, uint16_t offset) -> Managed
 // result; a ref-type result stays boxed, because its ownership rules live in the boxing path
 static auto PackScalarSlots(const_span<ArgDesc> args, bool args_wrapped, const ComplexTypeDesc& ret, bool ret_nullable, vector<ManagedAbiSlot>& out_args, ManagedAbiSlot& out_ret, uint16_t& frame_size, uint16_t& result_offset) -> bool
 {
-    uint16_t offset = 0;
+    uint16_t offset {0};
     out_args.clear();
     out_args.reserve(args.size());
 
     for (const ArgDesc& arg : args) {
         if (!arg.Type.IsMutable && IsManagedAbiHandleType(arg.Type, args_wrapped)) {
-            ManagedAbiSlot handle_slot;
+            ManagedAbiSlot handle_slot {};
             handle_slot.Kind = ManagedAbiValueKind::Handle;
             handle_slot.Nullable = arg.Nullable;
             handle_slot.Size = MANAGED_ABI_HANDLE_SLOT_SIZE;
@@ -336,7 +307,7 @@ static auto PackScalarSlots(const_span<ArgDesc> args, bool args_wrapped, const C
             return false;
         }
 
-        ManagedAbiSlot slot = MakeAbiSlot(arg.Type, offset);
+        ManagedAbiSlot slot {MakeAbiSlot(arg.Type, offset)};
 
         if (slot.Size == 0) {
             return false;
@@ -349,14 +320,14 @@ static auto PackScalarSlots(const_span<ArgDesc> args, bool args_wrapped, const C
     result_offset = offset;
     out_ret = {};
 
-    if (ret && !ret.IsMutable && !ret.BaseType.IsRefType && IsManagedAbiHandleType(ret, true)) {
+    if (IsTypeDefined(ret) && !ret.IsMutable && !ret.BaseType.IsRefType && IsManagedAbiHandleType(ret, true)) {
         out_ret.Kind = ManagedAbiValueKind::Handle;
         out_ret.Nullable = ret_nullable;
         out_ret.Size = MANAGED_ABI_HANDLE_SLOT_SIZE;
         out_ret.Offset = offset;
         offset = numeric_cast<uint16_t>(offset + out_ret.Size);
     }
-    else if (ret) {
+    else if (IsTypeDefined(ret)) {
         if (!IsManagedAbiFixedValueType(ret)) {
             return false;
         }
@@ -382,7 +353,7 @@ static void AppendExportSettings(ManagedAbiManifest& abi, string_view target_nam
 {
     FO_TRACE_ZONE(Script);
 
-    vector<pair<string, string>> export_settings;
+    vector<pair<string, string>> export_settings {};
 
     if (target_name == "Server") {
         export_settings = GetServerSettingsTyped();
@@ -399,7 +370,7 @@ static void AppendExportSettings(ManagedAbiManifest& abi, string_view target_nam
             continue;
         }
 
-        ManagedAbiSettingEntry entry;
+        ManagedAbiSettingEntry entry {};
         entry.Name = setting_name;
         entry.Kind = ManagedAbiKindFromTypeName(type_name);
         entry.UsesTypedBridge = entry.Kind != ManagedAbiValueKind::Unsupported;
@@ -411,18 +382,18 @@ auto BuildManagedAbiManifest(const EngineMetadata& meta, string_view target_name
 {
     FO_TRACE_ZONE(Script);
 
-    ManagedAbiManifest abi;
+    ManagedAbiManifest abi {};
     abi.GeneratorIdentity = MANAGED_ABI_GENERATOR_IDENTITY;
 
-    auto append_methods = [&](string_view owner, const vector<MethodDesc>& methods, bool is_ref_type) {
-        for (size_t method_index = 0; method_index < methods.size(); method_index++) {
-            const MethodDesc& method = methods[method_index];
+    auto append_methods {[&](string_view owner, const vector<MethodDesc>& methods, bool is_ref_type) {
+        for (size_t method_index {0}; method_index < methods.size(); method_index++) {
+            const MethodDesc& method {methods[method_index]};
 
             if (!IsManagedAbiBridgeMethod(method)) {
                 continue;
             }
 
-            ManagedAbiMethodEntry entry;
+            ManagedAbiMethodEntry entry {};
             entry.Id = numeric_cast<int32_t>(abi.Methods.size());
             entry.Owner = string {owner};
             entry.Name = method.Name;
@@ -434,25 +405,25 @@ auto BuildManagedAbiManifest(const EngineMetadata& meta, string_view target_name
             entry.UsesScalarFrame = PackScalarSlots(method.Args, false, method.Ret, method.ReturnNullable, entry.Args, entry.Ret, entry.FrameSize, entry.ResultOffset);
             abi.Methods.emplace_back(std::move(entry));
         }
-    };
+    }};
 
     for (const auto& [type_name, desc] : MakeSortedEntityTypes(meta.GetEntityTypes())) {
         append_methods(type_name, desc->Methods, false);
 
         for (const EntityEventDesc& event : desc->Events) {
-            ManagedAbiEventEntry entry;
+            ManagedAbiEventEntry entry {};
             entry.Id = numeric_cast<int32_t>(abi.Events.size());
             entry.Owner = type_name;
             entry.Name = event.Name;
             entry.IsGlobal = desc->IsGlobal;
 
             ManagedAbiSlot unused_ret {};
-            uint16_t result_offset = 0;
+            uint16_t result_offset {0};
             entry.UsesScalarFrame = PackScalarSlots(event.Args, true, {}, false, entry.Args, unused_ret, entry.FrameSize, result_offset);
             abi.Events.emplace_back(std::move(entry));
         }
 
-        vector<pair<string, const EntityTypeDesc::HolderEntryDesc*>> holder_entries;
+        vector<pair<string, const EntityTypeDesc::HolderEntryDesc*>> holder_entries {};
 
         for (const auto& [entry_name, holder_entry] : desc->HolderEntries) {
             holder_entries.emplace_back(entry_name.as_str(), &holder_entry);
@@ -461,7 +432,7 @@ auto BuildManagedAbiManifest(const EngineMetadata& meta, string_view target_name
         std::ranges::sort(holder_entries, {}, [](const auto& entry) -> const string& { return entry.first; });
 
         for (const auto& [entry_name, holder_entry] : holder_entries) {
-            ManagedAbiInnerEntry entry;
+            ManagedAbiInnerEntry entry {};
             entry.Id = numeric_cast<int32_t>(abi.InnerEntries.size());
             entry.Owner = type_name;
             entry.EntryName = entry_name;
@@ -478,10 +449,10 @@ auto BuildManagedAbiManifest(const EngineMetadata& meta, string_view target_name
         append_methods(type_name, desc->Methods, true);
     }
 
-    map<string, ManagedAbiSettingEntry> settings;
+    map<string, ManagedAbiSettingEntry> settings {};
 
     for (const auto& [setting_name, setting_type] : meta.GetGameSettings()) {
-        ManagedAbiSettingEntry entry;
+        ManagedAbiSettingEntry entry {};
         entry.Name = setting_name;
         entry.Kind = ManagedAbiKindFromBaseType(*setting_type);
         entry.UsesTypedBridge = entry.Kind != ManagedAbiValueKind::Unsupported;
@@ -498,7 +469,7 @@ auto BuildManagedAbiManifest(const EngineMetadata& meta, string_view target_name
 
     std::ranges::sort(abi.Settings, {}, [](const ManagedAbiSettingEntry& entry) -> const string& { return entry.Name; });
 
-    for (int32_t i = 0; i < numeric_cast<int32_t>(abi.Settings.size()); i++) {
+    for (int32_t i {0}; i < numeric_cast<int32_t>(abi.Settings.size()); i++) {
         abi.Settings[numeric_cast<size_t>(i)].Id = i;
     }
 
@@ -613,7 +584,7 @@ auto CollectManagedAbiWrapperClasses(const EngineMetadata& meta) -> vector<strin
 {
     FO_TRACE_ZONE(Script);
 
-    vector<string> result;
+    vector<string> result {};
 
     for (const auto& [type_name, desc] : meta.GetEntityTypes()) {
         if (desc.IsGlobal) {
@@ -659,7 +630,7 @@ auto IsManagedAbiHandleType(const ComplexTypeDesc& type, bool wrapped) noexcept 
         return false;
     }
 
-    const BaseTypeDesc& base_type = type.BaseType;
+    const BaseTypeDesc& base_type {type.BaseType};
 
     // A handle that reaches managed code is wrapped by its runtime type, which only the boxing path resolves for an
     // abstract or base-typed entity; a handle that only travels into native code is a pointer whatever its type
@@ -676,9 +647,9 @@ auto IsManagedAbiHandleType(const ComplexTypeDesc& type, bool wrapped) noexcept 
 auto MakeManagedAbiCallbackKey(const ComplexTypeDesc& ret, const_span<ComplexTypeDesc> args) -> string
 {
     // Metadata type names, not C# spellings: every type a frame carries is a plain identifier on both sides
-    string key = "Callback_";
+    string key {"Callback_"};
 
-    if (ret) {
+    if (IsTypeDefined(ret)) {
         key += ret.BaseType.Name;
     }
     else {
@@ -695,8 +666,8 @@ auto MakeManagedAbiCallbackKey(const ComplexTypeDesc& ret, const_span<ComplexTyp
 
 auto BuildManagedAbiCallbackLayout(const ComplexTypeDesc& ret, const_span<ComplexTypeDesc> args) -> ManagedAbiCallbackLayout
 {
-    ManagedAbiCallbackLayout layout;
-    uint16_t offset = 0;
+    ManagedAbiCallbackLayout layout {};
+    uint16_t offset {0};
     layout.Args.reserve(args.size());
 
     for (const ComplexTypeDesc& arg : args) {
@@ -705,7 +676,7 @@ auto BuildManagedAbiCallbackLayout(const ComplexTypeDesc& ret, const_span<Comple
             return layout;
         }
 
-        ManagedAbiSlot slot;
+        ManagedAbiSlot slot {};
 
         if (IsManagedAbiHandleType(arg, true)) {
             slot.Kind = ManagedAbiValueKind::Handle;
@@ -729,7 +700,7 @@ auto BuildManagedAbiCallbackLayout(const ComplexTypeDesc& ret, const_span<Comple
 
     layout.ResultOffset = offset;
 
-    if (ret) {
+    if (IsTypeDefined(ret)) {
         if (!IsManagedAbiFixedValueType(ret)) {
             return layout;
         }
@@ -752,8 +723,8 @@ auto BuildManagedAbiCallbackLayout(const ComplexTypeDesc& ret, const_span<Comple
     return layout;
 }
 
-static_assert(sizeof(mpos) == 4 && std::is_standard_layout_v<mpos>);
-static_assert(sizeof(msize) == 4 && std::is_standard_layout_v<msize>);
+static_assert(sizeof(mpos) == sizeof(mcoord_t) * 2 && std::is_standard_layout_v<mpos>);
+static_assert(sizeof(msize) == sizeof(mcoord_t) * 2 && std::is_standard_layout_v<msize>);
 static_assert(sizeof(ipos32) == 8 && std::is_standard_layout_v<ipos32>);
 static_assert(sizeof(isize32) == 8 && std::is_standard_layout_v<isize32>);
 static_assert(sizeof(irect32) == 16 && std::is_standard_layout_v<irect32>);

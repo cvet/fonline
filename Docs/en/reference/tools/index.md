@@ -99,7 +99,7 @@ The baking family is the most mature batch tool group. `Source/Tools/Baker.h` / 
 Built-in baker implementations:
 
 - `Source/Tools/MetadataBaker.*` — parses metadata tags and produces metadata resources used by runtime registration.
-- `Source/Tools/ConfigBaker.*` — bakes configuration resources.
+- `Source/Tools/ConfigBaker.*` — bakes configuration resources; the same module contains `ClientConfigBaker : ConfigBaker`, which writes complete `.fomain-client` settings.
 - `Source/Tools/RawCopyBaker.*` — copies selected resources without transformation.
 - `Source/Tools/AudioBaker.*` — validates Ogg/Vorbis and converts supported WAV inputs to the common runtime Vorbis payload while preserving authored paths.
 - `Source/Tools/ImageBaker.*` — imports image/sprite/frame formats including classic Fallout-family formats and PNG/TGA.

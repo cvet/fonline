@@ -20,7 +20,7 @@ This reference describes the reusable Engine-owned text-pack, language, prototyp
 | Stability | <code>experimental</code> |
 | Support policy | The contract is generated for a pinned Engine revision. Projects own language policy, pack catalogs, translation workflow, semantic key conventions, and any game-specific lexem or argument formatter. |
 | Source manifest | [BuildTools/TextFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/TextFormatInterface.json) |
-| Contract digest | <code>44aac53fcc587155564320a81c23293c42ccd9a3416d468cc79e4e0bdf56d0d8</code> |
+| Contract digest | <code>95ad7ed2ce3a75f27fa445af83c6727e057447ba7ada8ad859f99a8cbd8618cd</code> |
 | Source filename | <code>&lt;TextPack&gt;.&lt;Language&gt;.fotxt</code> |
 | Baked filename | <code>&lt;ResourcePack&gt;.&lt;TextPack&gt;.&lt;Language&gt;.fotxt-bin</code> |
 | Raw entry | <code>&#123;Key1&#125;&#123;Key2&#125;&#123;Text&#125;</code> |

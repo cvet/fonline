@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "WorkThread.h"
 
@@ -111,13 +81,13 @@ void work_thread::add_job_internal(timespan delay, job next_job, bool no_notify)
     {
         scoped_lock locker {_data_locker};
 
-        nanotime fire_time = nanotime::now() + delay;
+        nanotime fire_time {nanotime::now() + delay};
 
         if (_jobs.empty() || fire_time >= _jobs.back().first) {
             _jobs.emplace_back(fire_time, std::move(next_job));
         }
         else {
-            for (auto it = _jobs.begin(); it != _jobs.end(); ++it) {
+            for (auto it {_jobs.begin()}; it != _jobs.end(); ++it) {
                 if (fire_time < it->first) {
                     _jobs.emplace(it, fire_time, std::move(next_job));
                     break;
@@ -135,7 +105,7 @@ void work_thread::clear()
 {
     FO_TRACE_ZONE(Threading);
 
-    unique_lock locker(_data_locker);
+    unique_lock locker {_data_locker};
 
     _clear_jobs = true;
 
@@ -152,7 +122,7 @@ void work_thread::wait() const
 {
     FO_TRACE_ZONE(Threading);
 
-    unique_lock locker(_data_locker);
+    unique_lock locker {_data_locker};
 
     while (!_jobs.empty() || _job_active) {
         _done_signal.wait(locker);
@@ -163,7 +133,7 @@ void work_thread::pause()
 {
     FO_TRACE_ZONE(Threading);
 
-    unique_lock locker(_data_locker);
+    unique_lock locker {_data_locker};
 
     _paused = true;
 
@@ -189,10 +159,10 @@ void work_thread::thread_entry() noexcept
 
     try {
         while (true) {
-            job next_job;
+            job next_job {};
 
             {
-                unique_lock locker(_data_locker);
+                unique_lock locker {_data_locker};
 
                 _job_active = false;
 
@@ -237,11 +207,11 @@ void work_thread::thread_entry() noexcept
                 }
 
                 if (!_jobs.empty()) {
-                    nanotime cur_time = nanotime::now();
-                    nanotime soonest_fire;
-                    bool has_pending = false;
+                    nanotime cur_time {nanotime::now()};
+                    nanotime soonest_fire {};
+                    bool has_pending {false};
 
-                    for (auto it = _jobs.begin(); it != _jobs.end(); ++it) {
+                    for (auto it {_jobs.begin()}; it != _jobs.end(); ++it) {
                         if (cur_time >= it->first) {
                             next_job = std::move(it->second);
                             _jobs.erase(it);
@@ -266,7 +236,7 @@ void work_thread::thread_entry() noexcept
 
             if (next_job) {
                 try {
-                    auto next_call_delay = next_job();
+                    auto next_call_delay {next_job()};
 
                     // Schedule repeat
                     if (next_call_delay.has_value()) {
@@ -276,7 +246,7 @@ void work_thread::thread_entry() noexcept
                 catch (const std::exception& ex) {
                     // A handler owns the reporting: it knows what the failure means to its owner and when to
                     // say so, and reporting here too would repeat it behind everything the handler set going
-                    bool handled = false;
+                    bool handled {false};
 
                     {
                         scoped_lock locker {_data_locker};
@@ -305,6 +275,7 @@ void work_thread::thread_entry() noexcept
 
                 {
                     scoped_lock locker {_data_locker};
+
                     _completed_jobs++;
                 }
             }

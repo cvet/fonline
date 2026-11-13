@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Common.h"
 
@@ -54,7 +24,7 @@ namespace
         size_t Occurrence {};
     };
 
-    static constexpr EventCallContract ExpectedServerEventCalls[] = {
+    static constexpr EventCallContract ExpectedServerEventCalls[] {
         {"Source/Scripting/ServerCritterScriptMethods.cpp", "self->GetEngine()->OnCritterItemMoved.Fire(self, item, from_slot);", 1, "post-commit item move"},
         {"Source/Scripting/ServerCritterScriptMethods.cpp", "self->GetEngine()->OnCritterItemMoved.Fire(self, item_swap, slot);", 1, "post-commit item swap"},
         {"Source/Scripting/ServerCritterScriptMethods.cpp", "self->GetEngine()->OnCritterItemMoved.Fire(self, item, from_slot);", 2, "post-commit item move"},
@@ -109,36 +79,38 @@ namespace
         {"Source/Server/Server.cpp", "OnMapCritterIn.Fire(map, cr);", 1, "post-attach stored-map critter load"},
         {"Source/Server/Server.cpp", "OnGlobalMapCritterIn.Fire(cr);", 2, "post-attach critter load"},
         {"Source/Server/Server.cpp", "OnCritterLoad.Fire(cr);", 1, "shared post-load guarded notification"},
-        {"Source/Server/Server.cpp", "EventResult pre_login_result = OnPlayerPreLogin.Fire(not_logged_in_player);", 1, "pre-registration native admission gate"},
-        {"Source/Server/Server.cpp", "EventResult pre_process_result = OnPlayerPreProcess.Fire(player);", 1, "per-message native admission gate before reading"},
+        {"Source/Server/Server.cpp", "EventResult pre_login_result {OnPlayerPreLogin.Fire(not_logged_in_player)};", 1, "pre-registration native admission gate"},
+        {"Source/Server/Server.cpp", "EventResult pre_process_result {OnPlayerPreProcess.Fire(player)};", 1, "per-message native admission gate before reading"},
         {"Source/Server/Server.cpp", "OnCritterUnload.Fire(cr);", 1, "pre-unload notification"},
         {"Source/Server/Server.cpp", "OnPlayerCritterSwitched.Fire(player, cr, prev_cr);", 1, "post-switch notification"},
         {"Source/Server/Server.cpp", "OnCritterSendInitialInfo.Fire(cr);", 1, "post-send initial info"},
-        {"Source/Server/Server.cpp", "EventResult login_result = OnPlayerLogin.Fire(player, nullptr);", 1, "player login gate"},
-        {"Source/Server/Server.cpp", "EventResult login_result = OnPlayerLogin.Fire(player, nullptr);", 2, "player login gate"},
-        {"Source/Server/Server.cpp", "EventResult login_result = OnPlayerLogin.Fire(player, not_logged_in_player);", 1, "player relogin gate"},
-        {"Source/Server/Server.cpp", "EventResult login_result = OnPlayerLogin.Fire(player, nullptr);", 3, "player login gate"},
-        {"Source/Server/Server.cpp", "EventResult move_result = OnPlayerMoveCritter.Fire(player, cr, corrected_speed);", 1, "player movement gate"},
+        {"Source/Server/Server.cpp", "EventResult login_result {OnPlayerLogin.Fire(player, nullptr)};", 1, "player login gate"},
+        {"Source/Server/Server.cpp", "EventResult login_result {OnPlayerLogin.Fire(player, nullptr)};", 2, "player login gate"},
+        {"Source/Server/Server.cpp", "EventResult login_result {OnPlayerLogin.Fire(player, not_logged_in_player)};", 1, "player relogin gate"},
+        {"Source/Server/Server.cpp", "EventResult login_result {OnPlayerLogin.Fire(player, nullptr)};", 3, "player login gate"},
+        {"Source/Server/Server.cpp", "EventResult move_result {OnPlayerMoveCritter.Fire(player, cr, corrected_speed)};", 1, "player movement gate"},
+        {"Source/Server/Server.cpp", "EventResult move_result {OnPlayerMoveCritter.Fire(player, cr, corrected_speed)};", 2, "attachment master lease renewal permission and speed gate"},
+        {"Source/Server/Server.cpp", "EventResult move_result {OnPlayerMoveCritter.Fire(player, cr, zero_speed)};", 1, "player movement gate"},
+        {"Source/Server/Server.cpp", "EventResult move_result {OnPlayerMoveCritter.Fire(player, cr, stop_speed)};", 1, "attachment master arrival permission gate"},
+        {"Source/Server/Server.cpp", "EventResult dir_result {OnPlayerDirCritter.Fire(player, cr, checked_dir)};", 2, "player direction gate"},
         {"Source/Server/Server.cpp", "Entity::EventResult result = _engine->OnPlayerMovementAuthority.Fire(_player, _cr, allowed);", 1, "explicit player movement authority with retained actor and revision revalidation"},
-        {"Source/Server/Server.cpp", "EventResult move_result = OnPlayerMoveCritter.Fire(player, cr, zero_speed);", 1, "player movement gate"},
-        {"Source/Server/Server.cpp", "EventResult dir_result = OnPlayerDirCritter.Fire(player, cr, checked_dir);", 2, "player direction gate"},
         {"Source/Server/Server.cpp", "OnCritterMoved.Fire(cr, old_hex);", 1, "post-move guarded"},
-        {"Source/Server/Server.cpp", "EventResult dir_result = OnPlayerDirCritter.Fire(player, cr, checked_dir);", 1, "player direction gate"},
+        {"Source/Server/Server.cpp", "EventResult dir_result {OnPlayerDirCritter.Fire(player, cr, checked_dir)};", 1, "player direction gate"},
         {"Source/Server/Server.cpp", "OnCritterMoved.Fire(cr, old_hex);", 2, "post-move guarded"},
         {"Source/Server/Server.cpp", "OnCritterStartMoving.Fire(cr, was_moving);", 1, "post-start-moving notification"},
         {"Source/Server/Server.cpp", "OnCritterStopMoving.Fire(cr);", 1, "post-stop-moving notification"},
         {"Source/Server/Server.cpp", "OnCritterStartMoving.Fire(cr, true);", 1, "post-speed-change notification"},
     };
 
-    [[nodiscard]] static auto Trim(string_view text) noexcept -> string_view
+    static auto Trim(string_view text) noexcept -> string_view
     {
-        size_t begin = 0;
+        size_t begin {0};
 
         while (begin < text.size() && (text[begin] == ' ' || text[begin] == '\t')) {
             begin++;
         }
 
-        size_t end = text.size();
+        size_t end {text.size()};
 
         while (end > begin && (text[end - 1] == ' ' || text[end - 1] == '\t' || text[end - 1] == '\r')) {
             end--;
@@ -147,16 +119,16 @@ namespace
         return text.substr(begin, end - begin);
     }
 
-    [[nodiscard]] static auto FindEngineRoot() -> std::filesystem::path
+    static auto FindEngineRoot() -> std::filesystem::path
     {
-        std::filesystem::path file_path = std::filesystem::absolute(std::filesystem::path {__FILE__});
+        std::filesystem::path file_path {std::filesystem::absolute(std::filesystem::path {__FILE__})};
 
-        for (std::filesystem::path path = file_path.parent_path(); !path.empty();) {
+        for (std::filesystem::path path {file_path.parent_path()}; !path.empty();) {
             if (std::filesystem::exists(path / "Source" / "Server" / "Server.cpp")) {
                 return path;
             }
 
-            std::filesystem::path parent_path = path.parent_path();
+            std::filesystem::path parent_path {path.parent_path()};
             if (parent_path == path) {
                 break;
             }
@@ -164,9 +136,9 @@ namespace
             path = parent_path;
         }
 
-        std::filesystem::path current_path = std::filesystem::current_path();
+        std::filesystem::path current_path {std::filesystem::current_path()};
 
-        for (std::filesystem::path path = current_path; !path.empty();) {
+        for (std::filesystem::path path {current_path}; !path.empty();) {
             if (std::filesystem::exists(path / "Engine" / "Source" / "Server" / "Server.cpp")) {
                 return path / "Engine";
             }
@@ -174,7 +146,7 @@ namespace
                 return path;
             }
 
-            std::filesystem::path parent_path = path.parent_path();
+            std::filesystem::path parent_path {path.parent_path()};
             if (parent_path == path) {
                 break;
             }
@@ -185,7 +157,7 @@ namespace
         FAIL("Unable to locate engine root");
     }
 
-    [[nodiscard]] static auto ReadSourceFile(const std::filesystem::path& path) -> string
+    static auto ReadSourceFile(const std::filesystem::path& path) -> string
     {
         std::ifstream file {path, std::ios::binary};
         REQUIRE(file.is_open());
@@ -195,24 +167,24 @@ namespace
 
     static void AddEventCallsFromSource(vector<EventCallSite>& calls, const std::filesystem::path& engine_root, const std::filesystem::path& source_path)
     {
-        std::string std_source = source_path.lexically_relative(engine_root).generic_string();
+        std::string std_source {source_path.lexically_relative(engine_root).generic_string()};
         string source {std_source.begin(), std_source.end()};
-        string content = ReadSourceFile(source_path);
+        string content {ReadSourceFile(source_path)};
 
-        size_t line_begin = 0;
+        size_t line_begin {0};
 
         while (line_begin <= content.size()) {
-            size_t line_end = content.find('\n', line_begin);
+            size_t line_end {content.find('\n', line_begin)};
 
             if (line_end == string::npos) {
                 line_end = content.size();
             }
 
-            string_view line = string_view {content}.substr(line_begin, line_end - line_begin);
-            string_view text = Trim(line);
+            string_view line {string_view {content}.substr(line_begin, line_end - line_begin)};
+            string_view text {Trim(line)};
 
             if (text.find(".Fire(") != string_view::npos) {
-                size_t occurrence = 1;
+                size_t occurrence {1};
 
                 for (const EventCallSite& call : calls) {
                     if (call.Source == source && call.Text == text) {
@@ -231,10 +203,10 @@ namespace
         }
     }
 
-    [[nodiscard]] static auto CollectServerEventCalls() -> vector<EventCallSite>
+    static auto CollectServerEventCalls() -> vector<EventCallSite>
     {
-        std::filesystem::path engine_root = FindEngineRoot();
-        vector<std::filesystem::path> sources;
+        std::filesystem::path engine_root {FindEngineRoot()};
+        vector<std::filesystem::path> sources {};
 
         for (const std::filesystem::directory_entry& entry : std::filesystem::recursive_directory_iterator(engine_root / "Source" / "Server")) {
             if (entry.is_regular_file() && entry.path().extension() == ".cpp") {
@@ -250,7 +222,7 @@ namespace
 
         std::sort(sources.begin(), sources.end());
 
-        vector<EventCallSite> calls;
+        vector<EventCallSite> calls {};
 
         for (const std::filesystem::path& source : sources) {
             AddEventCallsFromSource(calls, engine_root, source);
@@ -259,9 +231,9 @@ namespace
         return calls;
     }
 
-    [[nodiscard]] static auto MakeKey(string_view source, string_view text, size_t occurrence) -> string
+    static auto MakeKey(string_view source, string_view text, size_t occurrence) -> string
     {
-        string key;
+        string key {};
         key.reserve(source.size() + text.size() + 32);
         key += source;
         key += "|";
@@ -274,29 +246,29 @@ namespace
 
 TEST_CASE("ServerEventCallContracts")
 {
-    vector<EventCallSite> actual_calls = CollectServerEventCalls();
+    vector<EventCallSite> actual_calls {CollectServerEventCalls()};
 
-    set<string> actual_keys;
+    set<string> actual_keys {};
 
     for (const EventCallSite& call : actual_calls) {
-        string key = MakeKey(call.Source, call.Text, call.Occurrence);
-        bool inserted = actual_keys.emplace(key).second;
+        string key {MakeKey(call.Source, call.Text, call.Occurrence)};
+        bool inserted {actual_keys.emplace(key).second};
         CHECK(inserted);
     }
 
-    set<string> expected_keys;
+    set<string> expected_keys {};
 
     for (const EventCallContract& expected : ExpectedServerEventCalls) {
         CHECK_FALSE(expected.Source.empty());
         CHECK_FALSE(expected.Text.empty());
         CHECK_FALSE(expected.Contract.empty());
 
-        string key = MakeKey(expected.Source, expected.Text, expected.Occurrence);
-        bool inserted = expected_keys.emplace(key).second;
+        string key {MakeKey(expected.Source, expected.Text, expected.Occurrence)};
+        bool inserted {expected_keys.emplace(key).second};
         CHECK(inserted);
     }
 
-    vector<string> unexpected_calls;
+    vector<string> unexpected_calls {};
 
     for (const string& key : actual_keys) {
         if (!expected_keys.count(key)) {
@@ -304,7 +276,7 @@ TEST_CASE("ServerEventCallContracts")
         }
     }
 
-    vector<string> missing_calls;
+    vector<string> missing_calls {};
 
     for (const string& key : expected_keys) {
         if (!actual_keys.count(key)) {
@@ -312,19 +284,23 @@ TEST_CASE("ServerEventCallContracts")
         }
     }
 
-    string unexpected_report = "Unexpected server event calls:";
+    string unexpected_report {"Unexpected server event calls:"};
+
     for (const string& key : unexpected_calls) {
         unexpected_report += "\n  ";
         unexpected_report += key;
     }
+
     INFO(unexpected_report);
     CHECK(unexpected_calls.empty());
 
-    string missing_report = "Missing server event calls:";
+    string missing_report {"Missing server event calls:"};
+
     for (const string& key : missing_calls) {
         missing_report += "\n  ";
         missing_report += key;
     }
+
     INFO(missing_report);
     CHECK(missing_calls.empty());
 }

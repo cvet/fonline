@@ -43,7 +43,7 @@ if (options.explicit_root !== null) {
 const originalArgs = [...args];
 const dependencies = new Set();
 const mounts = [];
-const errors = [];
+const aborts = [];
 let completion;
 let previousCalls = 0;
 const Module = {arguments: args, preRun: () => ++previousCalls};
@@ -54,7 +54,7 @@ const idbfs = {};
 const context = {
     Module,
     IDBFS: idbfs,
-    console: {error: (...values) => errors.push(values)},
+    abort: message => { aborts.push(message); throw new Error(message); },
     addRunDependency: name => {
         assert(!dependencies.has(name));
         dependencies.add(name);
@@ -106,10 +106,17 @@ if (options.provided_arguments) {
 }
 Module.preRun[1]();
 assert.equal(mounts.length, 1, 'repeated initialization must not remount or reschedule hydration');
-completion(options.hydrate_error ? new Error('storage unavailable') : null);
-assert.equal(Module.syncfsDone, 1);
-assert.equal(dependencies.size, 0);
-assert.equal(errors.length, options.hydrate_error ? 1 : 0);
+if (options.hydrate_error) {
+    assert.throws(() => completion(new Error('storage unavailable')), /Unable to load persistent client data/);
+    assert.equal(Module.syncfsDone, 0);
+    assert.equal(dependencies.size, 1);
+    assert.equal(aborts.length, 1);
+} else {
+    completion(null);
+    assert.equal(Module.syncfsDone, 1);
+    assert.equal(dependencies.size, 0);
+    assert.equal(aborts.length, 0);
+}
 """, encoding="utf-8")
     result = subprocess.run(
         [node, str(fixture), str(BOOTSTRAP), json.dumps({

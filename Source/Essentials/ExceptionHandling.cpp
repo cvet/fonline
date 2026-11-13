@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "ExceptionHandling.h"
 
@@ -86,7 +56,7 @@ FO_GLOBAL_DATA(except_handling_data, exception_handling);
 
 // A crash handler fires at any moment of the process, the client host running on after its runtime tore the global
 // data down included, so what it records lives as long as the handlers do
-static optional<string> crash_info;
+static optional<string> crash_info {};
 #if HAS_CRASH_HANDLERS
 static std::atomic<bool> crash_handlers_installed {};
 static std::atomic<bool> crash_report_claimed {};
@@ -99,16 +69,16 @@ struct crash_exception_record
     nptr<const void> address {};
 };
 
-static optional<crash_exception_record> crash_exception;
-static optional<stack_trace::data> crash_stack_trace;
+static optional<crash_exception_record> crash_exception {};
+static optional<stack_trace::data> crash_stack_trace {};
 #endif
 
 void exceptions::report_and_exit(const std::exception& ex) noexcept
 {
     try {
-        auto st = make_error_stack_trace(ex);
+        auto st {make_error_stack_trace(ex)};
 
-        if (auto callback = exceptions::get_callback()) {
+        if (auto callback {exceptions::get_callback()}) {
             callback(ex.what(), st, true);
         }
         else {
@@ -126,9 +96,9 @@ void exceptions::report_and_exit(const std::exception& ex) noexcept
 void exceptions::report_and_continue(const std::exception& ex) noexcept
 {
     try {
-        auto st = make_error_stack_trace(ex);
+        auto st {make_error_stack_trace(ex)};
 
-        if (auto callback = exceptions::get_callback()) {
+        if (auto callback {exceptions::get_callback()}) {
             callback(ex.what(), st, false);
         }
         else {
@@ -229,7 +199,7 @@ static void install_crash_handlers() noexcept
     std::set_terminate(&on_terminate);
 
 #if FO_WINDOWS
-    winapi::crash_handlers handlers;
+    winapi::crash_handlers handlers {};
     handlers.on_exception = &on_crash_exception;
     handlers.on_report = &on_crash_report;
     handlers.on_signal = &on_crash_signal;
@@ -254,7 +224,7 @@ static void on_crash_exception(uint32_t code, uint32_t flags, nptr<const void> a
 
     // Walked here while there is stack for it, so the script frames of this thread reach the report; a stack overflow
     // leaves no room, and the reporter thread walks the saved context instead
-    constexpr uint32_t STACK_OVERFLOW_CODE = 0xC00000FDU;
+    constexpr uint32_t STACK_OVERFLOW_CODE {0xC00000FDU};
 
     if (code != STACK_OVERFLOW_CODE) {
         try {
@@ -342,9 +312,9 @@ static auto claim_crash_report() noexcept -> bool
 
 static auto make_error_stack_trace(const std::exception& ex) noexcept -> stack_trace::catched_data
 {
-    auto ex_ptr = make_nptr(&ex);
+    auto ex_ptr {make_nptr(&ex)};
 
-    if (auto base_engine_ex = ex_ptr.dyn_cast<const BaseEngineException>()) {
+    if (auto base_engine_ex {ex_ptr.dyn_cast<const BaseEngineException>()}) {
         return stack_trace::catched_data {base_engine_ex->stack_trace(), stack_trace::get()};
     }
     else {
@@ -388,8 +358,8 @@ static auto format_signal_crash_info(int32_t signum, int32_t code, nptr<const vo
 
 static auto format_runtime_crash_info(string_view reason) -> string
 {
-    string info = strex("Runtime termination: {}", !reason.empty() ? reason : string_view {"unknown"}).str();
-    std::exception_ptr current_exception = std::current_exception();
+    string info {strex("Runtime termination: {}", !reason.empty() ? reason : string_view {"unknown"}).str()};
+    std::exception_ptr current_exception {std::current_exception()};
 
     if (current_exception) {
         try {

@@ -266,7 +266,7 @@ def engine_probe_source() -> tuple[str, dict[str, object]]:
     start = utf8_source.rindex(UTF8_VALIDATION_SIGNATURE)
     end = utf8_source.index("\n}\n", start) + len("\n}\n")
     utf8_validation = utf8_source[start:end]
-    bad_character = next(line for line in utf8_source.splitlines() if line.startswith("static constexpr uint32_t UNICODE_BAD_CHAR ="))
+    bad_character = next(line for line in utf8_source.splitlines() if line.startswith("static constexpr uint32_t UNICODE_BAD_CHAR "))
     utf8_declarations = "namespace utf8 {\n" + "\n".join(function.split("\n", 1)[0].replace("utf8::", "", 1) + ";" for function in utf8_functions) + "\n}\n"
     native = ENGINE_HARNESS + utf8_declarations + bad_character + "\n" + "\n".join(utf8_functions) + utf8_validation + namespace + declaration + "\n" + "\n".join(functions) + ENGINE_MAIN
     return native, {

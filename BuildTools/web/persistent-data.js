@@ -38,13 +38,12 @@
         var dependency = 'fo-persistent-data';
         addRunDependency(dependency);
         FS.syncfs(true, function (error) {
-            // Match the existing fallback policy: continue with a diagnostic on hydration failure.
-            Module['syncfsDone'] = 1;
-
             if (error) {
-                console.error('Persistent data hydration failed:', error);
+                abort('Unable to load persistent client data: ' + error);
+                return;
             }
 
+            Module['syncfsDone'] = 1;
             removeRunDependency(dependency);
         });
     });

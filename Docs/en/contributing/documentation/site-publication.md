@@ -12,7 +12,7 @@ permalink: /Docs/en/contributing/documentation/site-publication.html
 
 The layout includes root `VERSION` through Jekyll's standard `include` tag; `includes_dir: .` makes that single source available in local builds and the ordinary GitHub Pages build alike. No copied version or preparation step is required. Publish `/VERSION` byte-for-byte with `/docs-manifest.json`; route and translation reports are sections of that shared index.
 
-Search-result summaries are limited to 224 characters including the ellipsis, with truncation at a word boundary. Full-document search terms and scores are retained; the search-index byte limit remains unchanged.
+Search-result summaries are limited to 224 characters including the ellipsis, with truncation at a word boundary. Full-document search terms and scores are retained; search indexes have no byte-size limit.
 
 ## Purpose
 
@@ -96,6 +96,11 @@ The publication route is intentionally independent from any embedding game proje
 
 ## Website source ownership
 
+Search indexes assign shorter numeric document positions to pages with more
+retained postings. This lossless internal permutation preserves every document's
+symbolic identity and metadata, all terms, posting scores and posting-list order;
+both locale indexes preserve the same search ranking contracts.
+
 The website implementation lives under `Docs/Site/`: `Layouts/` owns the
 HTML shell, `Data/` owns generated navigation, and `Assets/` owns styles,
 scripts, branding, and generated locale search indexes. `Docs/Site/_config.yml` sets
@@ -156,7 +161,7 @@ The public site wraps normal Jekyll-rendered Markdown in `Docs/Site/Layouts/defa
 
 Every public current human top-level page must appear exactly once in navigation. Generated detail pages stay out of the sidebar but remain searchable behind their generated index pages. Internal plans, placeholders, and AI-only maintainer routes appear in neither reader surface.
 
-Search uses repository-owned JavaScript and browser APIs only. There is no hosted index, account, analytics dependency, remote script, or server endpoint. The rendered page loads only its active locale index, and result routes remain in that locale. Titles and headings receive more weight than body terms; complete technical identifiers and camel-case components remain searchable. Pure numeric components and terms present in more than 60% of a locale corpus are omitted because they cannot usefully distinguish results. Compact JSON is emitted as UTF-8 instead of expanding non-ASCII text into `\\uXXXX` escapes, so the Russian budget measures actual text bytes. The source manifest enforces the reviewed 1.78125 MiB (1,867,776-byte) hard limit independently for each generated index. The limit is capacity for the complete bilingual corpus, not permission to omit documents; generation still fails closed when either locale exceeds it.
+Search uses repository-owned JavaScript and browser APIs only. There is no hosted index, account, analytics dependency, remote script, or server endpoint. The rendered page loads only its active locale index, and result routes remain in that locale. Titles and headings receive more weight than body terms; complete technical identifiers and camel-case components remain searchable. Pure numeric components and terms present in more than 60% of a locale corpus are omitted because they cannot usefully distinguish results. Compact JSON is emitted as UTF-8 instead of expanding non-ASCII text into `\\uXXXX` escapes, so Russian index size reflects actual text bytes. Search indexes have no byte-size limit; generation includes the complete eligible corpus for each locale.
 
 Regenerate after changing public Markdown membership, titles, paths, lifecycle state, migration targets, version/localization policy, navigation groups, or search policy:
 

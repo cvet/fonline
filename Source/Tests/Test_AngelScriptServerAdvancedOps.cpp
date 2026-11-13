@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Common.h"
 
@@ -49,10 +19,10 @@ namespace
 {
     static auto AngelScriptServerAdvancedOpsMakeSettings() -> GlobalSettings
     {
-        auto settings = GlobalSettings(false);
+        auto settings {GlobalSettings(false)};
 
-        settings.ApplyDefaultSettings();
-        settings.ApplyAutoSettings();
+        settings.SetupDefaultSettings();
+        settings.ApplyAutoSettings({});
 
         BakerTests::ApplySelfContainedServerSettings(settings);
         BakerTests::OverrideSetting(settings.DataBase.CustomCollections, vector<string> {"test_collection:Int"});
@@ -64,7 +34,7 @@ namespace
     {
         BakerServerEngine compiler_engine {metadata_resources};
 
-        auto script_source = string(R"(
+        auto script_source {string(R"(
 
 namespace AdvOps
 {
@@ -936,14 +906,14 @@ namespace AdvOps
         return 0;
     }
 }
-)";
+)"};
 
         return BakerTests::CompileInlineScripts(&compiler_engine, "AdvOpsScripts",
             {
                 {"Scripts/AdvOps.fos", script_source},
             },
             [](string_view message) {
-                string message_str = string(message);
+                string message_str {string(message)};
 
                 if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
                     throw ScriptSystemException(message_str);
@@ -953,31 +923,31 @@ namespace AdvOps
 
     static auto AngelScriptServerAdvancedOpsMakeResources() -> FileSystem
     {
-        auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
+        auto metadata_blob {BakerTests::MakeEmptyMetadataBlob()};
 
-        auto compiler_resources_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("AdvOpsCompilerResources");
+        auto compiler_resources_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("AdvOpsCompilerResources")};
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
 
-        FileSystem compiler_resources;
+        FileSystem compiler_resources {};
         compiler_resources.AddCustomSource(std::move(compiler_resources_source));
 
         BakerServerEngine proto_engine {compiler_resources};
-        hstring critter_type = proto_engine.Hashes.to_hashed_string("Critter");
-        hstring item_type = proto_engine.Hashes.to_hashed_string("Item");
-        hstring location_type = proto_engine.Hashes.to_hashed_string("Location");
-        auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestCritter");
-        auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
-        auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "TestLocation");
-        auto script_blob = AngelScriptServerAdvancedOpsMakeScriptBinary(compiler_resources);
+        hstring critter_type {proto_engine.Hashes.to_hashed_string("Critter")};
+        hstring item_type {proto_engine.Hashes.to_hashed_string("Item")};
+        hstring location_type {proto_engine.Hashes.to_hashed_string("Location")};
+        auto critter_blob {BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestCritter")};
+        auto item_blob {BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem")};
+        auto location_blob {BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "TestLocation")};
+        auto script_blob {AngelScriptServerAdvancedOpsMakeScriptBinary(compiler_resources)};
 
-        auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("AdvOpsRuntimeResources");
+        auto runtime_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("AdvOpsRuntimeResources")};
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
         runtime_source->AddFile("AdvOpsCritter.fopro-bin-server", critter_blob);
         runtime_source->AddFile("AdvOpsItem.fopro-bin-server", item_blob);
         runtime_source->AddFile("AdvOpsLocation.fopro-bin-server", location_blob);
         runtime_source->AddFile("AdvOps.fos-bin-server", script_blob);
 
-        FileSystem resources;
+        FileSystem resources {};
         resources.AddCustomSource(std::move(runtime_source));
 
         return resources;
@@ -985,7 +955,7 @@ namespace AdvOps
 
     static auto AngelScriptServerAdvancedOpsWaitForStart(ptr<ServerEngine> server) -> string
     {
-        for (int32_t i = 0; i < 6000; i++) {
+        for (int32_t i {0}; i < 6000; i++) {
             if (server->IsStarted()) {
                 return {};
             }
@@ -1006,24 +976,27 @@ namespace AdvOps
 }
 
 #define MAKE_ADVANCED_OPS_SERVER() \
-    auto settings = AngelScriptServerAdvancedOpsMakeSettings(); \
-    refcount_ptr<ServerEngine> server = AngelScriptServerAdvancedOpsMakeServerEngine(settings); \
-    auto shutdown = scope_exit([&server]() noexcept { \
+    auto settings {AngelScriptServerAdvancedOpsMakeSettings()}; \
+    refcount_ptr<ServerEngine> server {AngelScriptServerAdvancedOpsMakeServerEngine(settings)}; \
+    auto shutdown {scope_exit([&server]() noexcept { \
         safe_call([&server] { \
             if (server->IsStarted()) { \
                 server->Shutdown(); \
             } \
         }); \
-    }); \
-    string startup_error = AngelScriptServerAdvancedOpsWaitForStart(server); \
+    })}; \
+    string startup_error {AngelScriptServerAdvancedOpsWaitForStart(server)}; \
     INFO(startup_error); \
     REQUIRE(startup_error.empty()); \
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}})); \
-    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); }); \
-    auto get_func = [&server](string_view name) { return server->Hashes.to_hashed_string(name); }
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })}; \
+    auto get_func \
+    { \
+        [&server](string_view name) { return server->Hashes.to_hashed_string(name); } \
+    }
 
 #define RUN_ADVANCED_OPS_SCRIPT_FUNC(func_name) \
-    auto func = server->FindFunc<int32_t>(get_func("AdvOps::" func_name)); \
+    auto func {server->FindFunc<int32_t>(get_func("AdvOps::" func_name))}; \
     REQUIRE(func); \
     REQUIRE(func.Call()); \
     CHECK(func.GetResult() == 0)

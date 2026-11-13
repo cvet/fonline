@@ -1,51 +1,203 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Settings.h"
 
 #include "AnyData.h"
+#include "CacheStorage.h"
 #include "ConfigFile.h"
+#include "FileSystem.h"
 #include "ImGuiStuff.h"
 
 FO_BEGIN_NAMESPACE
 
+#include "InternalConfig.gen.inc"
+
+auto ResolveSettingValue(string_view setting_name, const string& setting_value, string_view config_dir, bool baking_mode) -> optional<string>
+{
+    size_t pos {setting_value.find('$')};
+
+    if (pos == string::npos) {
+        return std::nullopt;
+    }
+
+    string resolved_value {};
+    size_t prev_pos {0};
+
+    while (pos != string::npos) {
+        bool is_env {setting_value.compare(pos, "$ENV{"_len, "$ENV{") == 0};
+        bool is_file {setting_value.compare(pos, "$FILE{"_len, "$FILE{") == 0};
+        bool is_target_env {setting_value.compare(pos, "$TARGET_ENV{"_len, "$TARGET_ENV{") == 0};
+        bool is_target_file {setting_value.compare(pos, "$TARGET_FILE{"_len, "$TARGET_FILE{") == 0};
+        size_t len {is_env ? "$ENV{"_len : (is_file ? "$FILE{"_len : (is_target_env ? "$TARGET_ENV{"_len : "$TARGET_FILE{"_len))};
+
+        if (is_env || is_file || (!baking_mode && (is_target_env || is_target_file))) {
+            pos += len;
+            size_t end_pos {setting_value.find('}', pos)};
+
+            if (end_pos != string::npos) {
+                string name {setting_value.substr(pos, end_pos - pos)};
+
+                if (is_env || is_target_env) {
+                    auto env {make_nptr(!name.empty() ? std::getenv(name.c_str()) : nullptr)};
+
+                    if (env) {
+                        resolved_value += setting_value.substr(prev_pos, pos - prev_pos - len) + string(env.get());
+                        end_pos++;
+                    }
+                    else {
+                        logging::write(logging::type::warning, "Environment variable {} for setting {} is not found", name, setting_name);
+                        resolved_value += setting_value.substr(prev_pos, pos - prev_pos) + name;
+                    }
+                }
+                else {
+                    string file_path {fs::is_absolute_path(name) ? name : strex(config_dir).combine_path(name)};
+                    if (auto file_content {fs::read_file(file_path)}) {
+                        *file_content = strvex(*file_content).trim();
+
+                        resolved_value += setting_value.substr(prev_pos, pos - prev_pos - len) + *file_content;
+                        end_pos++;
+                    }
+                    else {
+                        logging::write(logging::type::warning, "File {} for setting {} is not found", file_path, setting_name);
+                        resolved_value += setting_value.substr(prev_pos, pos - prev_pos) + name;
+                    }
+                }
+
+                prev_pos = end_pos;
+                pos = setting_value.find('$', end_pos);
+            }
+            else {
+                throw SettingsException("Not closed $ tag in settings", setting_name, setting_value);
+            }
+        }
+        else {
+            pos = setting_value.find('$', pos + 1);
+        }
+    }
+
+    if (prev_pos != string::npos) {
+        resolved_value += setting_value.substr(prev_pos);
+    }
+
+    return resolved_value;
+}
+
+auto ReadInternalConfigValue(string_view name) -> string
+{
+    FO_TRACE_ZONE(Core);
+
+    constexpr string_view marker {"###InternalConfig###"};
+    bool unpatched {true};
+
+    for (size_t i {0}; i < marker.size(); i++) {
+        if (INTERNAL_CONFIG[i] != marker[i]) {
+            unpatched = false;
+            break;
+        }
+    }
+
+    if (unpatched) {
+        throw SettingsException("Internal config not patched");
+    }
+
+    size_t offset {0};
+
+    while (offset < sizeof(INTERNAL_CONFIG) && INTERNAL_CONFIG[offset] != '\0' && INTERNAL_CONFIG[offset] != '[') {
+        size_t matched {0};
+
+        while (matched < name.size() && offset + matched < sizeof(INTERNAL_CONFIG) && INTERNAL_CONFIG[offset + matched] == name[matched]) {
+            matched++;
+        }
+
+        if (matched == name.size() && offset + matched < sizeof(INTERNAL_CONFIG) && INTERNAL_CONFIG[offset + matched] == '=') {
+            offset += matched + 1;
+            string value {};
+            bool quoted {false};
+            size_t backslash_run {0};
+
+            while (offset < sizeof(INTERNAL_CONFIG) && INTERNAL_CONFIG[offset] != '\0' && INTERNAL_CONFIG[offset] != '\r' && INTERNAL_CONFIG[offset] != '\n') {
+                char ch {INTERNAL_CONFIG[offset++]};
+                bool escaped {(backslash_run & 1U) != 0};
+
+                if (ch == '"' && !escaped) {
+                    quoted = !quoted;
+                }
+                else if (ch == '#' && !quoted && !escaped) {
+                    break;
+                }
+
+                value += ch;
+                backslash_run = ch == '\\' ? backslash_run + 1 : 0;
+            }
+
+            return string(strvex(value).trim().strv());
+        }
+
+        while (offset < sizeof(INTERNAL_CONFIG) && INTERNAL_CONFIG[offset] != '\0' && INTERNAL_CONFIG[offset] != '\n') {
+            offset++;
+        }
+
+        if (offset < sizeof(INTERNAL_CONFIG) && INTERNAL_CONFIG[offset] == '\n') {
+            offset++;
+        }
+    }
+
+    return {};
+}
+
+auto ReadResourceConfig(const FileSystem& resources, bool required) -> optional<string>
+{
+    FO_TRACE_ZONE(FileSystem);
+
+    auto configs {resources.FilterFiles("fomain-server")};
+
+    if (configs.GetFilesCount() == 0) {
+        configs = resources.FilterFiles("fomain-client");
+    }
+
+    FO_VERIFY_AND_THROW(configs.GetFilesCount() <= 1, "Resource pack contains multiple configurations", configs.GetFilesCount());
+
+    if (configs.GetFilesCount() == 0) {
+        FO_VERIFY_AND_THROW(!required, "Resource configuration is missing");
+        return std::nullopt;
+    }
+
+    auto file {resources.ReadFile(configs.GetFileByIndex(0).GetPath())};
+    FO_VERIFY_AND_THROW(file, "Resource configuration is unreadable", configs.GetFileByIndex(0).GetPath());
+    string content {file.GetStr()};
+
+    return content;
+}
+
+void PreserveLocalConfig(const GlobalSettings& previous, const GlobalSettings& updated)
+{
+    FO_TRACE_ZONE(FileSystem);
+
+    string old_path {fs::make_writable_path(previous.Common.UserWritablePath, previous.Common.CachePath)};
+    string new_path {fs::make_writable_path(updated.Common.UserWritablePath, updated.Common.CachePath)};
+
+    if (old_path == new_path || !fs::is_dir(old_path)) {
+        return;
+    }
+
+    auto old_cache {CacheStorage(old_path)};
+    auto new_cache {CacheStorage(new_path)};
+
+    if (old_cache.HasEntry(LOCAL_CONFIG_NAME) && !new_cache.HasEntry(LOCAL_CONFIG_NAME)) {
+        auto preferences {old_cache.GetData(LOCAL_CONFIG_NAME)};
+        bool copied {new_cache.SetDataChecked(LOCAL_CONFIG_NAME, preferences)};
+        FO_VERIFY_AND_THROW(copied, "Can't preserve local configuration", new_path);
+    }
+}
+
 auto SplitSettingPath(string_view setting_name) -> vector<string>
 {
-    vector<string> path;
-    size_t prev_pos = 0;
+    vector<string> path {};
+    size_t prev_pos {0};
 
     while (prev_pos <= setting_name.size()) {
-        size_t pos = setting_name.find('.', prev_pos);
+        size_t pos {setting_name.find('.', prev_pos)};
 
         if (pos == string_view::npos) {
             path.emplace_back(setting_name.substr(prev_pos));
@@ -61,6 +213,48 @@ auto SplitSettingPath(string_view setting_name) -> vector<string>
     }
 
     return path;
+}
+
+// A template, so the branches for other value types are discarded rather than checked; the getter is a captureless
+// lambda, which a plain function pointer of the table can call through a default-constructed copy
+template<typename T, typename Getter>
+static void AddNumericSettingAccess(unordered_map<string, NumericSettingAccess>& accessors, string_view name, Getter /*getter*/)
+{
+    if constexpr (std::is_arithmetic_v<T>) {
+        NumericSettingAccess access {};
+
+        if constexpr (std::is_same_v<T, bool>) {
+            access.ReadBool = [](ptr<const GlobalSettings> settings) -> bool { return Getter {}(settings); };
+        }
+        else if constexpr (std::is_integral_v<T> && std::is_signed_v<T>) {
+            access.ReadSigned = [](ptr<const GlobalSettings> settings) -> int64_t { return numeric_cast<int64_t>(Getter {}(settings)); };
+        }
+        else if constexpr (std::is_integral_v<T>) {
+            access.ReadUnsigned = [](ptr<const GlobalSettings> settings) -> uint64_t { return numeric_cast<uint64_t>(Getter {}(settings)); };
+        }
+        else {
+            access.ReadFloat = [](ptr<const GlobalSettings> settings) -> float64_t { return numeric_cast<float64_t>(Getter {}(settings)); };
+        }
+
+        accessors.emplace(name, access);
+    }
+}
+
+auto FindNumericSettingAccess(string_view name) -> nptr<const NumericSettingAccess>
+{
+    static const unordered_map<string, NumericSettingAccess> accessors {[] {
+        unordered_map<string, NumericSettingAccess> result {};
+
+#define SETTING_GROUP(group, ...)
+#define SETTING_GROUP_END(group)
+#define SETTING(type, group, setting_name, ...) AddNumericSettingAccess<type>(result, SettingNames::group##_##setting_name, [](ptr<const GlobalSettings> settings) -> const type& { return settings->group.setting_name; })
+#include "Settings.inc"
+
+        return result;
+    }()};
+
+    auto it {accessors.find(string {name})};
+    return it != accessors.end() ? &it->second : nullptr;
 }
 
 template<typename T>
@@ -85,19 +279,19 @@ static void SetEntry(T& entry, string_view value, bool append)
         entry += value;
     }
     else if constexpr (std::same_as<T, bool>) {
-        auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Bool);
+        auto any_value {AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Bool)};
         entry |= any_value.AsBool();
     }
     else if constexpr (std::floating_point<T>) {
-        auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Float64);
+        auto any_value {AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Float64)};
         entry += numeric_cast<float32_t>(any_value.AsDouble());
     }
     else if constexpr (std::is_enum_v<T>) {
-        auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Int64);
+        auto any_value {AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Int64)};
         entry = static_cast<T>(static_cast<int64_t>(entry) | any_value.AsInt64());
     }
     else if constexpr (some_strong_type<T>) {
-        auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Int64);
+        auto any_value {AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Int64)};
         entry = T {numeric_cast<typename T::underlying_type>(any_value.AsInt64())};
     }
     else if constexpr (some_property_plain_type<T>) {
@@ -105,7 +299,7 @@ static void SetEntry(T& entry, string_view value, bool append)
         istr >> entry;
     }
     else {
-        auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Int64);
+        auto any_value {AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Int64)};
         entry += numeric_cast<T>(any_value.AsInt64());
     }
 }
@@ -124,32 +318,32 @@ static void SetEntry(vector<T>& entry, string_view value, bool append)
         }
     }
     else if constexpr (std::same_as<T, bool>) {
-        auto arr_value = AnyData::ParseValue(string(value), false, true, AnyData::ValueType::Bool);
-        const auto& arr = arr_value.AsArray();
+        auto arr_value {AnyData::ParseValue(string(value), false, true, AnyData::ValueType::Bool)};
+        const auto& arr {arr_value.AsArray()};
 
         for (const auto& arr_entry : arr) {
             entry.emplace_back(arr_entry.AsBool());
         }
     }
     else if constexpr (std::floating_point<T>) {
-        auto arr_value = AnyData::ParseValue(string(value), false, true, AnyData::ValueType::Float64);
-        const auto& arr = arr_value.AsArray();
+        auto arr_value {AnyData::ParseValue(string(value), false, true, AnyData::ValueType::Float64)};
+        const auto& arr {arr_value.AsArray()};
 
         for (const auto& arr_entry : arr) {
             entry.emplace_back(numeric_cast<float32_t>(arr_entry.AsDouble()));
         }
     }
     else if constexpr (std::is_enum_v<T>) {
-        auto arr_value = AnyData::ParseValue(string(value), false, true, AnyData::ValueType::Int64);
-        const auto& arr = arr_value.AsArray();
+        auto arr_value {AnyData::ParseValue(string(value), false, true, AnyData::ValueType::Int64)};
+        const auto& arr {arr_value.AsArray()};
 
         for (const auto& arr_entry : arr) {
             entry.emplace_back(numeric_cast<std::underlying_type_t<T>>(arr_entry.AsInt64()));
         }
     }
     else {
-        auto arr_value = AnyData::ParseValue(string(value), false, true, AnyData::ValueType::Int64);
-        const auto& arr = arr_value.AsArray();
+        auto arr_value {AnyData::ParseValue(string(value), false, true, AnyData::ValueType::Int64)};
+        const auto& arr {arr_value.AsArray()};
 
         for (const auto& arr_entry : arr) {
             entry.emplace_back(numeric_cast<T>(arr_entry.AsInt64()));
@@ -169,31 +363,6 @@ static void DrawEditableEntry(string_view name, T& entry)
     DrawEntry(name, entry);
 }
 
-// A template, so the branches for other value types are discarded rather than checked; the getter is a captureless
-// lambda, which a plain function pointer of the table can call through a default-constructed copy
-template<typename T, typename Getter>
-static void AddNumericSettingAccess(unordered_map<string, NumericSettingAccess>& accessors, string_view name, Getter /*getter*/)
-{
-    if constexpr (std::is_arithmetic_v<T>) {
-        NumericSettingAccess access;
-
-        if constexpr (std::is_same_v<T, bool>) {
-            access.ReadBool = [](ptr<const GlobalSettings> settings) -> bool { return Getter {}(settings); };
-        }
-        else if constexpr (std::is_integral_v<T> && std::is_signed_v<T>) {
-            access.ReadSigned = [](ptr<const GlobalSettings> settings) -> int64_t { return numeric_cast<int64_t>(Getter {}(settings)); };
-        }
-        else if constexpr (std::is_integral_v<T>) {
-            access.ReadUnsigned = [](ptr<const GlobalSettings> settings) -> uint64_t { return numeric_cast<uint64_t>(Getter {}(settings)); };
-        }
-        else {
-            access.ReadFloat = [](ptr<const GlobalSettings> settings) -> float64_t { return numeric_cast<float64_t>(Getter {}(settings)); };
-        }
-
-        accessors.emplace(name, access);
-    }
-}
-
 GlobalSettings::GlobalSettings(bool baking_mode) :
     _bakingMode {baking_mode}
 {
@@ -209,25 +378,31 @@ GlobalSettings::GlobalSettings(bool baking_mode) :
     }
 }
 
-void GlobalSettings::ApplyConfigAtPath(string_view config_name, string_view config_dir)
+void GlobalSettings::SetupConfigAtPath(string_view config_name, string_view config_dir)
 {
     FO_TRACE_ZONE(Core);
 
+    VerifyFreshSettings();
+
     if (config_name.empty()) {
-        return;
+        throw SettingsException("Main config name is empty");
     }
 
-    string config_path = strex(config_dir).combine_path(config_name);
+    string config_path {static_cast<string&&>(strex(config_dir).combine_path(config_name))};
+    auto settings_content {fs::read_file(config_path)};
 
-    if (auto settings_content = fs::read_file(config_path)) {
-        _appliedConfigs.emplace_back(config_path);
-
-        auto config = ConfigFile(*settings_content);
-        ApplyConfigFile(config, config_dir);
-    }
-    else {
+    if (!settings_content) {
         throw SettingsException("Config not found", config_path);
     }
+
+    auto config {ConfigFile(*settings_content)};
+    auto rollback {scope_exit([&]() noexcept { CopyFrom(GlobalSettings {_bakingMode}); })};
+
+    _appliedConfigs.emplace_back(config_path);
+    ApplyConfigFile(config, config_dir);
+    _setupState = SetupState::Initialized;
+
+    rollback.release();
 }
 
 void GlobalSettings::ApplyConfigFile(ConfigFile& config, string_view config_dir)
@@ -246,40 +421,54 @@ void GlobalSettings::ApplyCommandLine(::fo::CommandLineArgs args)
 {
     FO_TRACE_ZONE(Core);
 
-    // Every entry is applied in command-line order: a replacement followed by a +append must keep both operations
-    for (const CommandLineSetting& setting : args.GetSettings()) {
-        string key {setting.Name};
-        string value = strex("{}", setting.Value.value_or("1")).trim().str();
+    // Every entry is applied in command-line order, and recording happens only after the input views are copied,
+    // because a self-replay borrows the same storage that recording appends to
+    vector<pair<string, string>> command_line_settings {};
 
+    for (const CommandLineSetting& setting : args.GetSettings()) {
+        command_line_settings.emplace_back(string(setting.Name), strex("{}", setting.Value.value_or("1")).trim().str());
+    }
+
+    // A replacement followed by a +append must keep both operations
+    for (const auto& [key, value] : command_line_settings) {
         // The writable root was taken from this argument and resolved before anything was read, and applied again
         // as a setting value it would lose that resolution
         if (key != CommandLineSettings::ApplyConfig && key != CommandLineSettings::ApplySubConfig && key != SettingNames::Common_UserWritablePath) {
-            string shown = IsSecretSettingName(key) ? string("***") : value;
+            string shown {IsSecretSettingName(key) ? string("***") : value};
             logging::write(logging::type::info, "Set {} to {}", key, shown);
             SetValue(key, value);
+            _commandLineArgs.emplace_back(strex("--{}", key).str());
+            // Keep option-like values in the value slot; ApplyCommandLine trims the separator
+            _commandLineArgs.emplace_back(CommandLineArgs::IsOption(value) ? strex(" {}", value).str() : value);
         }
     }
 }
 
-void GlobalSettings::ApplyInternalConfig()
+void GlobalSettings::SetupInternalConfig()
 {
     FO_TRACE_ZONE(Core);
 
-#include "InternalConfig.gen.inc"
+    VerifyFreshSettings();
 
-    string config_str = strex().assignVolatile(INTERNAL_CONFIG, sizeof(INTERNAL_CONFIG)).str();
+    string config_str {strex().assignVolatile(INTERNAL_CONFIG, sizeof(INTERNAL_CONFIG)).str()};
 
     if (strvex(config_str).starts_with("###InternalConfig###")) {
         throw SettingsException("Internal config not patched");
     }
 
-    auto config = ConfigFile(config_str);
+    auto config {ConfigFile(config_str)};
+    auto rollback {scope_exit([&]() noexcept { CopyFrom(GlobalSettings {_bakingMode}); })};
+
     ApplyConfigFile(config, "");
+    _setupState = SetupState::Complete;
+    rollback.release();
 }
 
-void GlobalSettings::ApplyDefaultSettings()
+void GlobalSettings::SetupDefaultSettings()
 {
     FO_TRACE_ZONE(Core);
+
+    VerifyFreshSettings();
 
     FO_DISABLE_WARNINGS_PUSH()
 #define SETTING_GROUP(group, ...)
@@ -287,6 +476,8 @@ void GlobalSettings::ApplyDefaultSettings()
 #define SETTING(type, group, name, ...) (*FixedSettingForEdit(group.name)) = {__VA_ARGS__}
 #include "Settings.inc"
     FO_DISABLE_WARNINGS_POP()
+
+    _setupState = SetupState::Initialized;
 }
 
 void GlobalSettings::ApplyWritableRoot(string_view root)
@@ -295,13 +486,14 @@ void GlobalSettings::ApplyWritableRoot(string_view root)
     _settingValues[string(SettingNames::Common_UserWritablePath)] = string(root);
 }
 
-void GlobalSettings::ApplyAutoSettings()
+void GlobalSettings::ApplyAutoSettings(string_view packaged_runtime_name)
 {
     FO_TRACE_ZONE(Core);
 
     ApplyIgnoreInputDirs();
 
-    *FixedSettingForEdit(Common.Packaged) = IsPackaged();
+    _packagedRuntimeName = packaged_runtime_name;
+    *FixedSettingForEdit(Common.Packaged) = !_packagedRuntimeName.empty();
 
 #if FO_DEBUG
     *FixedSettingForEdit(Render.RenderDebug) = true;
@@ -312,23 +504,27 @@ void GlobalSettings::ApplyAutoSettings()
     }
 
     *FixedSettingForEdit(Network.CompatibilityVersion) = !Network.ForceCompatibilityVersion.empty() ? Network.ForceCompatibilityVersion : string_view(FO_COMPATIBILITY_VERSION);
+
+    if (_setupState == SetupState::Fresh) {
+        _setupState = SetupState::Initialized;
+    }
 }
 
 // Resource packs are read with their config, before a sub-config or the command line can name an input to ignore,
 // so the packs in effect are rebuilt from the declared ones every time
 void GlobalSettings::ApplyIgnoreInputDirs()
 {
-    vector<ResourcePackInfo> res_packs = _declaredResourcePacks;
+    vector<ResourcePackInfo> res_packs {_declaredResourcePacks};
 
     // A packaged application's baked config declares packs without their inputs, so it has nothing to check against
-    bool packs_have_inputs = std::ranges::any_of(res_packs, [](const ResourcePackInfo& res_pack) { return !res_pack.InputDirs.empty() || !res_pack.InputFiles.empty(); });
+    bool packs_have_inputs {std::ranges::any_of(res_packs, [](const ResourcePackInfo& res_pack) { return !res_pack.InputDirs.empty() || !res_pack.InputFiles.empty(); })};
 
     for (const string& ignored_dir : Baking.IgnoreInputDirs) {
-        bool is_pack_input = false;
+        bool is_pack_input {false};
 
         for (ResourcePackInfo& res_pack : res_packs) {
-            string ignored_path = strex(res_pack.ConfigDir).combine_path(ignored_dir).str();
-            size_t removed = std::erase(res_pack.InputDirs, ignored_path);
+            string ignored_path {strex(res_pack.ConfigDir).combine_path(ignored_dir).str()};
+            size_t removed {std::erase(res_pack.InputDirs, ignored_path)};
             is_pack_input = is_pack_input || removed != 0;
         }
 
@@ -350,11 +546,16 @@ void GlobalSettings::CopyFrom(const GlobalSettings& other)
     _subConfigs = other._subConfigs;
     _appliedConfigs = other._appliedConfigs;
     _appliedSettings = other._appliedSettings;
+    _packagedRuntimeName = other._packagedRuntimeName;
+    _commandLineArgs = other._commandLineArgs;
+    _startupOverrides = other._startupOverrides;
     _settingValues = other._settingValues;
+    _resourceConfigContent = other._resourceConfigContent;
     _bakingMode = other._bakingMode;
     _customSettings = other._customSettings;
     _customSettingsGeneration++;
     _emptySetting = other._emptySetting;
+    _setupState = other._setupState;
 
 #define SETTING_GROUP(group, ...)
 #define SETTING_GROUP_END(group)
@@ -362,12 +563,103 @@ void GlobalSettings::CopyFrom(const GlobalSettings& other)
 #include "Settings.inc"
 }
 
+void GlobalSettings::SetupResourceConfig(string_view content)
+{
+    FO_TRACE_ZONE(Core);
+
+    VerifyFreshSettings();
+
+    auto config {ConfigFile(string(content))};
+    auto rollback {scope_exit([&]() noexcept { CopyFrom(GlobalSettings {_bakingMode}); })};
+
+    ApplyConfigFile(config, "");
+
+    _resourceConfigContent = string(content);
+    _setupState = SetupState::Complete;
+    rollback.release();
+}
+
+void GlobalSettings::VerifyFreshSettings() const
+{
+    FO_VERIFY_AND_THROW(_setupState == SetupState::Fresh && !_resourceConfigContent && _packagedRuntimeName.empty() && _settingValues.empty() && _customSettings.empty() && _declaredResourcePacks.empty() && _resourcePacks.empty() && _subConfigs.empty() && _appliedConfigs.empty() && _commandLineArgs.empty() && _startupOverrides.empty(), "Settings setup requires fresh settings");
+
+#if FO_DEBUG
+#define SETTING(type, group, name, ...) FO_VERIFY_AND_THROW(group.name == type {}, "Settings setup requires zero engine settings", SettingNames::group##_##name)
+#define SETTING_GROUP(group, ...)
+#define SETTING_GROUP_END(group)
+#include "Settings.inc"
+#endif
+}
+
+void GlobalSettings::ApplyGameSettings(const GlobalSettings& other)
+{
+    FO_TRACE_ZONE(Core);
+
+    if (this == &other) {
+        return;
+    }
+
+    for (const auto& entry : _customSettings) {
+        _settingValues.erase(entry.first);
+        _appliedSettings.erase(entry.first);
+    }
+
+    _customSettings = other._customSettings;
+
+    for (const auto& entry : _customSettings) {
+        auto source_it {other._settingValues.find(entry.first)};
+
+        if (source_it != other._settingValues.end()) {
+            _settingValues[entry.first] = source_it->second;
+        }
+
+        if (other._appliedSettings.count(entry.first) != 0) {
+            _appliedSettings.emplace(entry.first);
+        }
+    }
+
+    _resourceConfigContent = other._resourceConfigContent;
+
+    if (other.HasCompleteConfig()) {
+        _setupState = SetupState::Complete;
+    }
+    else if (_setupState == SetupState::Complete) {
+        _setupState = SetupState::Initialized;
+    }
+
+    _customSettingsGeneration++;
+}
+
+void GlobalSettings::ApplyStartupOverrides(const GlobalSettings& source)
+{
+    FO_TRACE_ZONE(Core);
+
+    if (this == &source) {
+        return;
+    }
+
+    for (const auto& [name, value] : source._startupOverrides) {
+        SetValue(name, value);
+    }
+
+    // The frontend has already established these platform values; a new profile cannot change them
+    _packagedRuntimeName = source._packagedRuntimeName;
+    *FixedSettingForEdit(Common.Packaged) = source.Common.Packaged;
+    *FixedSettingForEdit(View.MonitorWidth) = source.View.MonitorWidth;
+    *FixedSettingForEdit(View.MonitorHeight) = source.View.MonitorHeight;
+    _startupOverrides = source._startupOverrides;
+
+    if (_setupState == SetupState::Fresh) {
+        _setupState = SetupState::Initialized;
+    }
+}
+
 void GlobalSettings::ApplySubConfigSection(string_view name)
 {
     FO_TRACE_ZONE(Core);
 
-    auto find_predicate = [&](const SubConfigInfo& cfg) { return cfg.Name == name; };
-    auto it = std::ranges::find_if(_subConfigs, find_predicate);
+    auto find_predicate {[&](const SubConfigInfo& cfg) { return cfg.Name == name; }};
+    auto it {std::ranges::find_if(_subConfigs, find_predicate)};
 
     if (it == _subConfigs.end()) {
         throw SettingsException("Sub config not found", name);
@@ -380,7 +672,7 @@ void GlobalSettings::ApplySubConfigSection(string_view name)
 
 auto BaseSettings::FindSettingValue(string_view name) const -> nptr<const string>
 {
-    auto it = _settingValues.find(name);
+    auto it {_settingValues.find(name)};
 
     if (it == _settingValues.end()) {
         return nullptr;
@@ -389,9 +681,39 @@ auto BaseSettings::FindSettingValue(string_view name) const -> nptr<const string
     return &it->second;
 }
 
+auto GlobalSettings::GetCommandLineArgs() const -> CommandLineArgs
+{
+    vector<CommandLineArg> arg_pointers {};
+    arg_pointers.reserve(_commandLineArgs.size());
+
+    // The mutable argv view is only read; the strings themselves stay owned by the settings
+    for (const string& arg : _commandLineArgs) {
+        arg_pointers.emplace_back(const_cast<char*>(arg.data()));
+    }
+
+    return CommandLineArgs {arg_pointers};
+}
+
+auto GlobalSettings::HasEngineSettingsChanges(const GlobalSettings& other) const -> bool
+{
+    if (_packagedRuntimeName != other._packagedRuntimeName || GetResourcePackDeclarations() != other.GetResourcePackDeclarations()) {
+        return true;
+    }
+
+#define SETTING_GROUP(group, ...)
+#define SETTING_GROUP_END(group)
+#define SETTING(type, group, name, ...) \
+    if (group.name != other.group.name) { \
+        return true; \
+    }
+#include "Settings.inc"
+
+    return false;
+}
+
 auto GlobalSettings::GetCustomSetting(string_view name) const -> const any_t&
 {
-    auto it = _customSettings.find(name);
+    auto it {_customSettings.find(name)};
 
     if (it == _customSettings.end()) {
         return _emptySetting;
@@ -402,7 +724,7 @@ auto GlobalSettings::GetCustomSetting(string_view name) const -> const any_t&
 
 auto GlobalSettings::FindCustomSetting(string_view name) const -> nptr<const any_t>
 {
-    auto it = _customSettings.find(name);
+    auto it {_customSettings.find(name)};
 
     if (it == _customSettings.end()) {
         return nullptr;
@@ -420,7 +742,13 @@ void GlobalSettings::SetCustomSetting(string_view name, any_t value)
 
 void GlobalSettings::SetSettingValue(string_view name, string_view value)
 {
-    SetValue(string(name), string(value));
+    string setting_name {name};
+    string setting_value {value};
+    SetValue(setting_name, setting_value);
+
+    if (HasCompleteConfig() && setting_name != SettingNames::Common_UserWritablePath) {
+        _startupOverrides.emplace_back(std::move(setting_name), std::move(setting_value));
+    }
 }
 
 auto GlobalSettings::GetRuntimeSetting(const string& name) const -> string
@@ -482,72 +810,13 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
         return;
     }
 
-    bool append = !setting_value.empty() && setting_value[0] == '+';
-    string_view value = append ? string_view(setting_value).substr(1) : setting_value;
+    bool append {!setting_value.empty() && setting_value[0] == '+'};
+    string_view value {append ? string_view(setting_value).substr(1) : setting_value};
 
-    // Resolve environment variables and files
-    string resolved_value;
-    size_t prev_pos = 0;
-    size_t pos = setting_value.find('$');
+    auto resolved_value {ResolveSettingValue(setting_name, setting_value, config_dir, _bakingMode)};
 
-    if (pos != string::npos) {
-        while (pos != string::npos) {
-            bool is_env = setting_value.compare(pos, "$ENV{"_len, "$ENV{") == 0;
-            bool is_file = setting_value.compare(pos, "$FILE{"_len, "$FILE{") == 0;
-            bool is_target_env = setting_value.compare(pos, "$TARGET_ENV{"_len, "$TARGET_ENV{") == 0;
-            bool is_target_file = setting_value.compare(pos, "$TARGET_FILE{"_len, "$TARGET_FILE{") == 0;
-            size_t len = is_env ? "$ENV{"_len : (is_file ? "$FILE{"_len : (is_target_env ? "$TARGET_ENV{"_len : "$TARGET_FILE{"_len));
-
-            if (is_env || is_file || (!_bakingMode && (is_target_env || is_target_file))) {
-                pos += len;
-                size_t end_pos = setting_value.find('}', pos);
-
-                if (end_pos != string::npos) {
-                    string name = setting_value.substr(pos, end_pos - pos);
-
-                    if (is_env || is_target_env) {
-                        auto env = make_nptr(!name.empty() ? std::getenv(name.c_str()) : nullptr);
-
-                        if (env) {
-                            resolved_value += setting_value.substr(prev_pos, pos - prev_pos - len) + string(env.get());
-                            end_pos++;
-                        }
-                        else {
-                            logging::write(logging::type::warning, "Environment variable {} for setting {} is not found", name, setting_name);
-                            resolved_value += setting_value.substr(prev_pos, pos - prev_pos) + name;
-                        }
-                    }
-                    else {
-                        string file_path = fs::is_absolute_path(name) ? name : strex(config_dir).combine_path(name);
-                        if (auto file_content = fs::read_file(file_path)) {
-                            *file_content = strvex(*file_content).trim();
-
-                            resolved_value += setting_value.substr(prev_pos, pos - prev_pos - len) + *file_content;
-                            end_pos++;
-                        }
-                        else {
-                            logging::write(logging::type::warning, "File {} for setting {} is not found", file_path, setting_name);
-                            resolved_value += setting_value.substr(prev_pos, pos - prev_pos) + name;
-                        }
-                    }
-
-                    prev_pos = end_pos;
-                    pos = setting_value.find('$', end_pos);
-                }
-                else {
-                    throw SettingsException("Not closed $ tag in settings", setting_name, setting_value);
-                }
-            }
-            else {
-                pos = setting_value.find('$', pos + 1);
-            }
-        }
-
-        if (prev_pos != string::npos) {
-            resolved_value += setting_value.substr(prev_pos);
-        }
-
-        value = resolved_value;
+    if (resolved_value) {
+        value = *resolved_value;
     }
 
 #define SET_SETTING(sett, full_name) \
@@ -562,6 +831,17 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
 
     switch (const_hash(setting_name.c_str())) {
 #include "Settings.inc"
+        FO_TEMPORARY_COMPAT(RetiredBakingDirectorySettings, "2026-12-31");
+    case const_hash("Baking.ResourcesDir"):
+    case const_hash("Baking.CacheResources"):
+    case const_hash("Baking.PlatformBinaries"):
+    case const_hash("Baking.ClientResources"):
+    case const_hash("Baking.ServerResources"):
+        if (setting_name == "Baking.ResourcesDir" || setting_name == "Baking.CacheResources" || setting_name == "Baking.PlatformBinaries" || setting_name == "Baking.ClientResources" || setting_name == "Baking.ServerResources") {
+            throw SettingsException("Directory settings belong to Common.ResourcesPath, Common.CachePath and Common.PlatformBinariesPath", setting_name);
+        }
+
+        [[fallthrough]];
     default:
         _customSettings[setting_name] = any_t(string(value));
         _settingValues[setting_name] = string(value);
@@ -581,20 +861,20 @@ void GlobalSettings::AddResourcePacks(const vector<ptr<map<string_view, string_v
     FO_TRACE_ZONE(Core);
 
     for (ptr<const map<string_view, string_view>> res_pack : res_packs) {
-        auto get_map_value = [&](string_view key) -> string {
-            auto it = res_pack->find(key);
+        auto get_map_value {[&](string_view key) -> string {
+            auto it {res_pack->find(key)};
             return it != res_pack->end() ? string(it->second) : string();
-        };
+        }};
 
-        ResourcePackInfo pack_info;
+        ResourcePackInfo pack_info {};
 
-        if (string name = get_map_value("Name"); !name.empty()) {
+        if (string name {get_map_value("Name")}; !name.empty()) {
             pack_info.Name = std::move(name);
         }
         else {
             // A section without a name is what a config cut or merged at a section boundary leaves behind, so the keys
             // it did receive are what tells the two apart
-            string section_keys;
+            string section_keys {};
 
             for (auto&& [key, value] : *res_pack) {
                 if (!key.empty()) {
@@ -607,39 +887,39 @@ void GlobalSettings::AddResourcePacks(const vector<ptr<map<string_view, string_v
 
         pack_info.ConfigDir = config_dir;
 
-        if (string server_only = get_map_value("ServerOnly"); !server_only.empty()) {
+        if (string server_only {get_map_value("ServerOnly")}; !server_only.empty()) {
             pack_info.ServerOnly = strvex(server_only).to_bool();
         }
-        if (string client_only = get_map_value("ClientOnly"); !client_only.empty()) {
+        if (string client_only {get_map_value("ClientOnly")}; !client_only.empty()) {
             pack_info.ClientOnly = strvex(client_only).to_bool();
         }
-        if (string mapper_only = get_map_value("MapperOnly"); !mapper_only.empty()) {
+        if (string mapper_only {get_map_value("MapperOnly")}; !mapper_only.empty()) {
             pack_info.MapperOnly = strvex(mapper_only).to_bool();
         }
         if (std::bit_cast<int8_t>(pack_info.ServerOnly) + std::bit_cast<int8_t>(pack_info.ClientOnly) + std::bit_cast<int8_t>(pack_info.MapperOnly) > 1) {
             throw SettingsException("Resource pack can be common or server, client or mapper only");
         }
 
-        if (string inpurt_dirs = get_map_value("InputDirs"); !inpurt_dirs.empty()) {
+        if (string inpurt_dirs {get_map_value("InputDirs")}; !inpurt_dirs.empty()) {
             for (auto& inpurt_dir : strex(inpurt_dirs).split(' ')) {
                 inpurt_dir = strex(config_dir).combine_path(inpurt_dir);
                 pack_info.InputDirs.emplace_back(std::move(inpurt_dir));
             }
         }
-        if (string input_files = get_map_value("InputFiles"); !input_files.empty()) {
+        if (string input_files {get_map_value("InputFiles")}; !input_files.empty()) {
             for (auto& path : strex(input_files).split(' ')) {
                 path = strex(config_dir).combine_path(path);
                 pack_info.InputFiles.emplace_back(std::move(path));
             }
         }
-        if (string include_patterns = get_map_value("IncludePatterns"); !include_patterns.empty()) {
+        if (string include_patterns {get_map_value("IncludePatterns")}; !include_patterns.empty()) {
             pack_info.IncludePatterns = strex(include_patterns).split(' ');
         }
-        if (string exclude_patterns = get_map_value("ExcludePatterns"); !exclude_patterns.empty()) {
+        if (string exclude_patterns {get_map_value("ExcludePatterns")}; !exclude_patterns.empty()) {
             pack_info.ExcludePatterns = strex(exclude_patterns).split(' ');
         }
 
-        if (string bakers = get_map_value("Bakers"); !bakers.empty()) {
+        if (string bakers {get_map_value("Bakers")}; !bakers.empty()) {
             for (auto& baker : strex(bakers).split(' ')) {
                 pack_info.Bakers.emplace_back(std::move(baker));
             }
@@ -655,25 +935,25 @@ void GlobalSettings::AddSubConfigs(const vector<ptr<map<string_view, string_view
     FO_TRACE_ZONE(Core);
 
     for (ptr<const map<string_view, string_view>> sub_config : sub_configs) {
-        auto get_map_value = [&](string_view key) -> string {
-            auto it = sub_config->find(key);
+        auto get_map_value {[&](string_view key) -> string {
+            auto it {sub_config->find(key)};
             return it != sub_config->end() ? string(it->second) : string();
-        };
+        }};
 
-        SubConfigInfo config_info;
+        SubConfigInfo config_info {};
         config_info.ConfigDir = config_dir;
 
-        if (string name = get_map_value("Name"); !name.empty()) {
+        if (string name {get_map_value("Name")}; !name.empty()) {
             config_info.Name = std::move(name);
         }
         else {
             throw SettingsException("Sub config name not specified");
         }
 
-        if (auto parents = strex(get_map_value("Parent")).split(' '); !parents.empty()) {
+        if (auto parents {strex(get_map_value("Parent")).split(' ')}; !parents.empty()) {
             for (const auto& parent : parents) {
-                auto find_predicate = [&](const SubConfigInfo& cfg) { return cfg.Name == parent; };
-                auto it = std::ranges::find_if(_subConfigs, find_predicate);
+                auto find_predicate {[&](const SubConfigInfo& cfg) { return cfg.Name == parent; }};
+                auto it {std::ranges::find_if(_subConfigs, find_predicate)};
 
                 if (it == _subConfigs.end()) {
                     throw SettingsException("Parent sub config not found", parent);
@@ -703,7 +983,7 @@ auto GlobalSettings::Save() const -> map<string, string>
 
     FO_VERIFY_AND_THROW(_bakingMode, "Settings can only be saved in baking mode");
 
-    map<string, string> result;
+    map<string, string> result {};
 
     for (auto&& [key, value] : _customSettings) {
         if (_appliedSettings.count(key) != 0) {
@@ -711,11 +991,11 @@ auto GlobalSettings::Save() const -> map<string, string>
         }
     }
 
-    auto add_setting = [&](string_view name, const auto& value) {
+    auto add_setting {[&](string_view name, const auto& value) {
         if (_appliedSettings.count(name) != 0) {
             result.emplace(name, strex("{}", value));
         }
-    };
+    }};
 
 #define SETTING(type, group, name, ...) add_setting(SettingNames::group##_##name, group.name)
 #define SETTING_GROUP(group, ...)
@@ -743,7 +1023,7 @@ void GlobalSettings::Draw(bool editable)
 
 auto BaseSettings::GetServerResourcePacks() const -> vector<string>
 {
-    vector<string> packs;
+    vector<string> packs {};
 
     for (const ResourcePackInfo& pack : _resourcePacks) {
         if (pack.ServerOnly || (!pack.ClientOnly && !pack.MapperOnly)) {
@@ -756,7 +1036,7 @@ auto BaseSettings::GetServerResourcePacks() const -> vector<string>
 
 auto BaseSettings::GetClientResourcePacks() const -> vector<string>
 {
-    vector<string> packs;
+    vector<string> packs {};
 
     for (const ResourcePackInfo& pack : _resourcePacks) {
         if (pack.ClientOnly || (!pack.ServerOnly && !pack.MapperOnly)) {
@@ -769,7 +1049,7 @@ auto BaseSettings::GetClientResourcePacks() const -> vector<string>
 
 auto BaseSettings::GetMapperResourcePacks() const -> vector<string>
 {
-    vector<string> packs;
+    vector<string> packs {};
 
     for (const ResourcePackInfo& pack : _resourcePacks) {
         if (pack.MapperOnly) {
@@ -782,7 +1062,7 @@ auto BaseSettings::GetMapperResourcePacks() const -> vector<string>
 
 auto BaseSettings::GetResourcePackDeclarations() const -> string
 {
-    string declarations;
+    string declarations {};
 
     for (const ResourcePackInfo& pack : _resourcePacks) {
         declarations += strex("[ResourcePack]\n");
@@ -813,7 +1093,7 @@ auto BaseSettings::GetResourcePacks() const -> const_span<ResourcePackInfo>
 
 bool GlobalSettings::IsSecretSettingName(string_view name) const
 {
-    string lower_name = strex(name).lower().str();
+    string lower_name {strex(name).lower().str()};
 
     for (const auto& token : Common.SecretSettingTokens) {
         if (!token.empty() && lower_name.find(strex(token).lower().str()) != string::npos) {
@@ -822,26 +1102,6 @@ bool GlobalSettings::IsSecretSettingName(string_view name) const
     }
 
     return false;
-}
-
-auto FindNumericSettingAccess(string_view name) -> nptr<const NumericSettingAccess>
-{
-    static const unordered_map<string, NumericSettingAccess> accessors = [] {
-        unordered_map<string, NumericSettingAccess> result;
-
-#define SETTING_GROUP(group, ...)
-#define SETTING_GROUP_END(group)
-#define SETTING(type, group, setting_name, ...) AddNumericSettingAccess<type>(result, SettingNames::group##_##setting_name, [](ptr<const GlobalSettings> settings) -> const type& { return settings->group.setting_name; })
-#include "Settings.inc"
-#undef SETTING
-#undef SETTING_GROUP
-#undef SETTING_GROUP_END
-
-        return result;
-    }();
-
-    auto it = accessors.find(string {name});
-    return it != accessors.end() ? &it->second : nullptr;
 }
 
 FO_END_NAMESPACE

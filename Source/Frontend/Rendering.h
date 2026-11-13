@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -44,16 +14,16 @@ FO_DECLARE_EXCEPTION(RenderingException);
 
 using WindowInternalHandle = void;
 
-constexpr size_t EFFECT_MAX_PASSES = FO_EFFECT_MAX_PASSES;
-constexpr size_t EFFECT_SCRIPT_VALUES = FO_EFFECT_SCRIPT_VALUES;
-constexpr float32_t ORTHO_DEPTH_DEFAULT_NEAR = -10.0f;
-constexpr float32_t ORTHO_DEPTH_DEFAULT_FAR = 10.0f;
+constexpr size_t EFFECT_MAX_PASSES {FO_EFFECT_MAX_PASSES};
+constexpr size_t EFFECT_SCRIPT_VALUES {FO_EFFECT_SCRIPT_VALUES};
+constexpr float32_t ORTHO_DEPTH_DEFAULT_NEAR {-10.0f};
+constexpr float32_t ORTHO_DEPTH_DEFAULT_FAR {10.0f};
 
 #if FO_ENABLE_3D
-constexpr size_t MODEL_LAYERS_COUNT = FO_MODEL_LAYERS_COUNT;
-constexpr size_t MODEL_MAX_TEXTURES = FO_MODEL_MAX_TEXTURES;
-constexpr size_t MODEL_MAX_BONES = FO_MODEL_MAX_BONES;
-constexpr size_t MODEL_BONES_PER_VERTEX = FO_MODEL_BONES_PER_VERTEX;
+constexpr size_t MODEL_LAYERS_COUNT {FO_MODEL_LAYERS_COUNT};
+constexpr size_t MODEL_MAX_TEXTURES {FO_MODEL_MAX_TEXTURES};
+constexpr size_t MODEL_MAX_BONES {FO_MODEL_MAX_BONES};
+constexpr size_t MODEL_BONES_PER_VERTEX {FO_MODEL_BONES_PER_VERTEX};
 #endif
 
 #if FO_RENDER_32BIT_INDEX
@@ -154,7 +124,7 @@ enum class DepthVariantType : uint8_t
     NoTestNoWrite,
 };
 
-constexpr size_t EFFECT_DEPTH_VARIANTS = 4;
+constexpr size_t EFFECT_DEPTH_VARIANTS {4};
 
 // Which faces a draw discards. Both 3D models and particle content carry this per draw, so it is a property of the draw
 // rather than of the effect's usage; the zero-initialised default draws both faces, which is what a 2D batch wants
@@ -165,7 +135,7 @@ enum class CullModeType : uint8_t
     Front,
 };
 
-constexpr size_t EFFECT_CULL_MODES = 3;
+constexpr size_t EFFECT_CULL_MODES {3};
 
 // The live window geometry a renderer draws into. It is not configuration: the configured entries name the size
 // to ask the platform for, while this follows the window the platform actually handed back and every resize after
@@ -604,13 +574,14 @@ public:
     auto operator=(Renderer&&) noexcept -> Renderer& = delete;
     virtual ~Renderer() = default;
 
-    [[nodiscard]] virtual auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> = 0;
-    [[nodiscard]] virtual auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> = 0;
-    [[nodiscard]] virtual auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> = 0;
-    [[nodiscard]] virtual auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 = 0;
     [[nodiscard]] virtual auto GetProjMatrix() const -> mat44 = 0;
     [[nodiscard]] virtual auto GetViewPort() const -> irect32 = 0;
     [[nodiscard]] virtual auto IsRenderTargetFlipped() const -> bool = 0;
+
+    virtual auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> = 0;
+    virtual auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> = 0;
+    virtual auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> = 0;
+    virtual auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 = 0;
 
     virtual void Init(GlobalSettings& settings, ptr<const AppScreenState> screen, nptr<WindowInternalHandle> window) = 0;
     virtual void Present() = 0;
@@ -625,13 +596,14 @@ public:
 class Null_Renderer final : public Renderer
 {
 public:
-    [[nodiscard]] auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
-    [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
-    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
-    [[nodiscard]] auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override;
     [[nodiscard]] auto GetViewPort() const -> irect32 override;
     [[nodiscard]] auto IsRenderTargetFlipped() const -> bool override;
     [[nodiscard]] auto GetProjMatrix() const -> mat44 override { return mat44 {1.0f}; }
+
+    auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
+    auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
+    auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
+    auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override;
 
     void Init(GlobalSettings& settings, ptr<const AppScreenState> screen, nptr<WindowInternalHandle> window) override;
     void Present() override;
@@ -656,17 +628,18 @@ class OpenGL_Renderer final : public Renderer
 public:
     struct Context;
 
-    static constexpr auto RING_BUFFER_LENGTH = 300;
+    static constexpr auto RING_BUFFER_LENGTH {300};
     OpenGL_Renderer();
     ~OpenGL_Renderer() override;
 
-    [[nodiscard]] auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
-    [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
-    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
-    [[nodiscard]] auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override;
     [[nodiscard]] auto GetViewPort() const -> irect32 override;
     [[nodiscard]] auto IsRenderTargetFlipped() const -> bool override { return true; }
     [[nodiscard]] auto GetProjMatrix() const -> mat44 override;
+
+    auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
+    auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
+    auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
+    auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override;
 
     void Init(GlobalSettings& settings, ptr<const AppScreenState> screen, nptr<WindowInternalHandle> window) override;
     void Present() override;
@@ -693,13 +666,14 @@ public:
     Direct3D_Renderer();
     ~Direct3D_Renderer() override;
 
-    [[nodiscard]] auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
-    [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
-    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
-    [[nodiscard]] auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override;
     [[nodiscard]] auto GetViewPort() const -> irect32 override;
     [[nodiscard]] auto IsRenderTargetFlipped() const -> bool override { return false; }
     [[nodiscard]] auto GetProjMatrix() const -> mat44 override;
+
+    auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
+    auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
+    auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
+    auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override;
 
     void Init(GlobalSettings& settings, ptr<const AppScreenState> screen, nptr<WindowInternalHandle> window) override;
     void Present() override;
@@ -726,13 +700,14 @@ public:
     Vulkan_Renderer();
     ~Vulkan_Renderer() override;
 
-    [[nodiscard]] auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
-    [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
-    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
-    [[nodiscard]] auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override;
     [[nodiscard]] auto GetViewPort() const -> irect32 override;
     [[nodiscard]] auto IsRenderTargetFlipped() const -> bool override { return false; }
     [[nodiscard]] auto GetProjMatrix() const -> mat44 override;
+
+    auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
+    auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
+    auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
+    auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override;
 
     void Init(GlobalSettings& settings, ptr<const AppScreenState> screen, nptr<WindowInternalHandle> window) override;
     void Present() override;
@@ -759,13 +734,14 @@ public:
     SDLGpu_Renderer();
     ~SDLGpu_Renderer() override;
 
-    [[nodiscard]] auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
-    [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
-    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
-    [[nodiscard]] auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override;
     [[nodiscard]] auto GetViewPort() const -> irect32 override;
     [[nodiscard]] auto IsRenderTargetFlipped() const -> bool override { return false; }
     [[nodiscard]] auto GetProjMatrix() const -> mat44 override;
+
+    auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
+    auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
+    auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
+    auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override;
 
     void Init(GlobalSettings& settings, ptr<const AppScreenState> screen, nptr<WindowInternalHandle> window) override;
     void Present() override;

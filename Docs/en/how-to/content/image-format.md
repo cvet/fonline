@@ -265,6 +265,12 @@ Other types/depths fail; the importer does not honor the origin bit or skip IDs.
 Prefer PNG unless the exporter has a tested TGA preset. See the
 [source-format reference](../../reference/image-format/formats.md).
 
+Wire dimensions are unsigned 16-bit values widened to `int32_t`, including values
+above 32767. Byte counts and available payload are checked before allocation.
+Truncated packets and run packets exceeding the remaining image are rejected.
+The established final raw-packet behavior is preserved: consume the complete
+encoded packet and keep only the pixels remaining in the image.
+
 ### Fallout FRM and FR0
 
 FRM/FR0 palette, animated-color, split-direction and output-name rules are in the
@@ -454,6 +460,14 @@ For image changes:
 PNG/TGA/FOFRM are mandatory. Other importers require individual `FO_IMAGE_*` [options](../build/project-configuration.md#optional-native-components). Known disabled inputs, including nested FOFRM references, report their path and required option. Adjacent `ImageBaker-*.h/.cpp` files guard palettes/helpers together; `ImageBaker-ZarDecoder` is shared by ZAR/TIL when either is enabled.
 
 Native callbacks use `ImageImport::FrameShot`, `FrameSequence`, `FrameCollection`, `LoadFunc` and `(string_view name, string_view options, FileReader reader, const ImageImport::Context& context)`. Use `context.Files` for sibling assets, `context.Resolve(path)` for nesting, and the third `AddLoader` argument for output-name mapping. Scheduling, meshes and serialization stay in the coordinator. Stock clients still read baked containers without source decoders; runtime extensions/container version are unchanged.
+
+`FrameCollection::Main` holds direction zero; `Dirs` is Engine
+`array<FrameSequence, MAX_DIRS_MINUS_ONE>` with seven additional sequences in
+direction order, initially empty. Use `numeric_cast<size_t>(direction - 1)`
+when indexing it from a signed nonzero direction. Range iteration and element
+references retain their meaning. Custom loaders that previously relied on
+C-array pointer decay must pass `Dirs.data()` only at a final foreign-API
+boundary, or use a span for a sized view. See the [migration record](../../reference/changelog.md).
 
 Native frame data uses `isize32 Size`, `ipos32 Offset` for independent draw placement,
 and `ipos32 Motion` for per-frame animation deltas accumulated during playback. FRM/FRx frame deltas and

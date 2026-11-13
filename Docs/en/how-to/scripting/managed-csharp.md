@@ -162,9 +162,14 @@ Use standard C# extension methods to expose static helpers with instance-call sy
 
 Generated event wrappers reject a handler without `[Event]` before creating the native subscription. Named calls are likewise deny-by-default: `Game.Invoke` and administrative dispatch accept only explicitly marked functions and the applicable allowlist.
 
+Component callbacks restore dotted metadata names; flat names retain underscores.
+Phases follow the [lifecycle contract](lifecycle-and-concurrency.md).
+
 ## Events, callbacks, timers, and named calls
 
 Generated event wrappers support handlers returning `void`, `Task`, `EventResult`, or `Task<EventResult>`. Native dispatch awaits result-bearing tasks before deciding whether the subscriber chain continues. Use `Task<EventResult>` when an awaited handler may consume or destroy an argument that later subscribers must not receive.
+
+Synchronous mutable list and dictionary handlers follow the [collection writeback contract](#mutable-event-collections).
 
 Time-event APIs accept synchronous delegates and generated async delegates returning `Task`. The delegate identity is part of registration: stopping a time event with a separately constructed delegate does not identify the existing callback. An incomplete callback task keeps that event registered and paused until its final completion, so it cannot overlap its own next firing. The repeat interval starts at completion; changes to the interval or payload remain available during the await. TimeEventContext changes made after the await are applied at completion. Repetition or cancellation changes future scheduling and does not cancel a task that has already started.
 
@@ -200,6 +205,8 @@ Both reject synchronous callbacks. Unit scaling uses checked arithmetic.
 The server cover contract is backend-neutral: script callers must cover every existing entity the native call graph can read or mutate. An `await` ends the old cover; re-resolve or revalidate retained entities and reacquire cover before reuse.
 
 The native bridge validates a managed entity receiver before invoking an exported instance method or firing an event through either ABI; event subscription validates its target too. An uncovered receiver therefore reports a script-boundary cover fault instead of reaching a `noexcept` property accessor that would terminate the process. This validation does not acquire cover: callers still need to satisfy the declared requirements.
+
+`Game.IsEntityLocked` accepts retained destroyed handles through the bridge, preserving raced `Sync.IsUnavailable` without acquiring cover. Ordinary native calls reject destroyed scalar entities.
 
 Managed scripts declare and prove this contract with:
 
@@ -241,31 +248,13 @@ Typed getter/setter callbacks map `ItemProperty.Weapon_UseMode` to `Weapon.UseMo
 
 Generated entity properties are native-backed. Dynamic ref types are managed DTOs whose values are materialized from or assigned to native property storage. A getter returns detached structured state; persist a mutation with read-modify-reassign unless the generated member itself is a live wrapper.
 
-Native managed RefTypes with a registered zero-argument factory expose a public parameterless
-constructor: `new MapSpriteHolder()` creates a usable native object. Types without a factory, such as
-`FogLayer`, `SpritePattern`, `VideoPlayback`, `TimeEventContext` and `MovingContext`, come from their
-creating Engine APIs. Dynamic RefTypes remain ordinary managed DTOs.
+Zero-argument factory-backed native RefTypes expose `new MapSpriteHolder()`. Types without factories (`FogLayer`, `SpritePattern`, `VideoPlayback`, `TimeEventContext`, `MovingContext`) come from creating APIs; dynamic RefTypes remain DTOs.
 
-Refcounted native wrappers implement `System.IDisposable` and automatically hold one native reference.
-Factory and `PassOwnership` results adopt the transferred reference; other results, callback/event
-arguments and collection elements acquire their own reference before reaching scripts. Independent
-wrappers own independent leases; C# aliases share one wrapper. Native `__Factory`, `__AddRef` and
-`__Release` are hidden from the public managed API. Use `new`, creating APIs, `using` and `Dispose()`.
-The factory constructor shares its temporary wrapper's lease without acquiring a second reference.
+Refcounted wrappers implement `IDisposable` and own one reference. Factory/`PassOwnership` results adopt it; other results, callbacks and collection elements acquire it. Each wrapper has a lease; aliases share it. Constructors share the temporary lease without reacquiring it. Use constructors, creating APIs, `using`/`Dispose`; public `__Factory`/`__AddRef`/`__Release` are hidden.
 
-`Dispose()` closes the wrapper, returns its ownership on an allowed script thread and suppresses
-finalization. Repeated calls and disposal after shutdown are harmless; disposed pointer access,
-including boxed/packed arguments and collection elements, throws. Do not race disposal with calls.
-An exported zero-argument native `Dispose` is part of that cleanup: `FogLayer.Dispose()` both removes
-the map layer and releases the wrapper, through either a direct call or `using`. Cleanup runs before
-release; a failed cleanup retains ownership for retry, and a completed action is not repeated on retry.
-Dynamic DTOs and non-refcounted wrappers lack this ownership/interface.
+`Dispose` closes the wrapper on an allowed script thread and suppresses finalization; repetition/after-shutdown disposal is harmless. Disposed pointer access, including boxed/packed arguments and collection elements, throws; do not race calls with disposal. Native zero-argument cleanup runs before release: `FogLayer.Dispose` removes the layer and releases ownership. Failed cleanup keeps ownership for retry; completed cleanup runs once. Non-refcounted wrappers/DTOs lack this interface.
 
-An unreachable lease queues cleanup and wakes the backend. Its next `Process` pump performs native
-cleanup on the engine thread before script continuations; the finalizer never runs native destructors.
-GC timing is unspecified. Generated native calls keep receivers and packed RefType arguments alive.
-`Map.DrawMapSprite` borrows holder fields through the rendered frame: keep the owner alive through its
-last rendered use, call `StopDraw()`, then `Dispose()`. A `using` scope must cover that use.
+Unreachable leases queue cleanup and wake the backend; its next `Process` cleans on the Engine thread before continuations. Finalizers never run native destructors; GC timing is unspecified. Calls keep receivers/packed RefTypes alive. `Map.DrawMapSprite` borrows holder fields through rendering: retain the owner through its last frame, then `StopDraw` and `Dispose`; a `using` scope must cover that use.
 
 The entry-assembly registry retains ownership records rather than wrappers. Shutdown closes it and
 cleans queued and live leases before final entity collection/unbind; late finalizers do nothing.
@@ -380,6 +369,10 @@ An existing READY marker is reused only with a complete tree. Missing or empty r
 
 ## Packaging and updating
 
+`FO_DOTNET_DIR` precedence: nonempty CMake cache, environment, `<build>/dotnet`.
+Normalize environment Windows paths to CMake syntax; equivalent separators
+select the same root. Short Windows roots avoid source-build path limits.
+
 The prepared runtime contains only managed class libraries actually referenced by the target assemblies, including `System.Private.CoreLib.dll`; native runtime libraries, JIT binaries, headers, import libraries, and symbols are excluded from the resource payload. Mono and the generated native interop table remain linked into the application. Target-specific class libraries are resolved from that target's published runtime rather than copied from the host SDK.
 
 The Managed baker places the prepared runtime under `ManagedRuntime/` in the same resource pack as the game assemblies. Client packaging rebuilds that pack from the runtime payload belonging to the exact application target. Server packaging stages one target-specific copy for every distributed client target under `PlatformBinaries/<target>/`; the updater substitutes that copy for the common pack when serving that target. Several native variants may share this updater target while their independently built equivalent CoreLib payloads differ byte-for-byte, so packaging deterministically chooses the least-qualified matching binary entry, normally the default Release build, instead of requiring those payloads to be identical.
@@ -401,6 +394,8 @@ MemorySanitizer and ThreadSanitizer configurations are rejected with `FO_MANAGED
 No C++ exception may unwind through a Mono internal-call frame: doing so bypasses managed `catch`/`finally` and can leave a nested script entry active after an awaited continuation. `RegisterInternalCalls` therefore accepts only `noexcept` function pointers. Fallible calls capture the native failure in `CaptureNativeError`, return an error payload to `CoreScripts/Native.cs`, and throw `NativeCallException` only after control is back in managed code. The native error remains catchable at the C# call site, including after `await`; genuinely non-failing calls remain `noexcept` and terminate deterministically if that contract is broken.
 
 The managed backend reports fixed native context plus managed exception text and stack information through the common script error path. `ScriptExceptions.GlobalCount` is process-wide; a harness can call `ScriptExceptions.OpenScope()` and inspect the disposed scope's `Count` for faults recorded in its logical async flow, including continuations on another OS thread. Nested scopes also charge their parents. Deferred task faults count globally when observed, not as synchronous faults in a scope. A build that merely produces assemblies does not prove startup or callback dispatch. Set `ManagedScript.InteropProbeOnStart = True` for a client/device/browser qualification run that cannot host the native test suite; startup logs one `INTEROP-TRANSPORT` line per condition and a final summary.
+
+A managed event handler that throws is reported once by `Native.InvokeEvent` or the generated `AdaptInvoke`. A handler that returns `EventResult` then stops the chain with `StopChain`. A handler without a result returns `ContinueChain`, so every lower-priority subscriber still runs and the fault does not change the event result; a handler that must be able to refuse an event returns `EventResult`.
 
 `ScriptExceptions.OpenCaptureScope()` lets a harness exercise deliberately reported failures without native error notification or unattended application shutdown. Reports still log their exception text and increment every enclosing scope and `GlobalCount`; the harness must assert and acknowledge the exact observed failures. Capture follows only its logical async flow, ends on disposal even for a retained child flow, and never captures deferred Task faults. Ordinary `OpenScope()` and uncaptured reporting keep their behavior.
 

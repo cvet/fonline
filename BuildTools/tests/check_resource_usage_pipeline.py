@@ -83,7 +83,9 @@ def create_fixture(work: Path, angelscript: bool = False) -> tuple[Path, Path, P
     # Pack paths use space-separated tokens, so keep them relative to the config.
     # Metadata.fometa-* is the native metadata registration entry point
     config = work / "Producer.fomain"
-    write(config, f"Baking.BakeOutput = {baked.as_posix()}\n"
+    write(config, "View.ScreenWidth = 1024\nView.ScreenHeight = 768\nCommon.CachePath = Cache\n"
+          "SpriteMesh.MaxTriangles = 4096\nSpriteMesh.AreaSavingsWeight = 32\n"
+          f"Baking.BakeOutput = {baked.as_posix()}\n"
           "Baking.SingleThreadBaking = True\n"
           "Baking.ProtoFileExtensions = fopro foinfo\n"
           "Baking.RawCopyFileExtensions = json fofnt foinfo fofrm tga\n"
@@ -123,7 +125,8 @@ def check_native_readback(baker: Path, work: Path, baked: Path, archive: Path,
                           expected: set[str], label: str) -> None:
     output = work / label
     config = work / "Reader.fomain"
-    write(config, f"Baking.BakeOutput = {output.as_posix()}\n"
+    write(config, "View.ScreenWidth = 1024\nView.ScreenHeight = 768\nCommon.CachePath = Cache\n"
+          f"Baking.BakeOutput = {output.as_posix()}\n"
           "Baking.SingleThreadBaking = True\n"
           "Baking.RawCopyFileExtensions = json fofnt foinfo fofrm tga\n"
           f"[ResourcePack]\nName = Readback\nInputFiles = {archive.name}\nBakers = RawCopy\n")

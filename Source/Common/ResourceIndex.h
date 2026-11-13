@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -44,15 +14,15 @@ FO_DECLARE_EXCEPTION(ResourceIndexException);
 
 // The merged resource tree: one file naming every path the packs present and where its bytes live, carried by
 // a `.foindex` file. It holds references only - no payload
-constexpr uint32_t RESOURCE_INDEX_MAGIC = 0x58494F46; // "FOIX"
-constexpr uint16_t RESOURCE_INDEX_VERSION_MAJOR = 2;
-constexpr uint16_t RESOURCE_INDEX_VERSION_MINOR = 0;
-constexpr size_t RESOURCE_INDEX_HEADER_SIZE = 72;
-constexpr size_t RESOURCE_INDEX_PACK_SIZE = 32;
-constexpr size_t RESOURCE_INDEX_ENTRY_SIZE = 56;
+constexpr uint32_t RESOURCE_INDEX_MAGIC {0x58494F46}; // "FOIX"
+constexpr uint16_t RESOURCE_INDEX_VERSION_MAJOR {2};
+constexpr uint16_t RESOURCE_INDEX_VERSION_MINOR {0};
+constexpr size_t RESOURCE_INDEX_HEADER_SIZE {72};
+constexpr size_t RESOURCE_INDEX_PACK_SIZE {32};
+constexpr size_t RESOURCE_INDEX_ENTRY_SIZE {56};
 
 // The merged tree a client mounts, kept beside the packs under the writable root because it is built there
-constexpr string_view RESOURCE_INDEX_FILE_NAME = "Resources.foindex";
+constexpr string_view RESOURCE_INDEX_FILE_NAME {"Resources.foindex"};
 
 // One pack the merged tree draws from. The file records the name rather than a path, so an installed client
 // that moved on disk still resolves, and the hash is what proves the resolved file is the one merged
@@ -120,7 +90,7 @@ public:
 private:
     struct FileEntry
     {
-        string_view Path; // Points into _index, which outlives every entry
+        string_view Path {}; // Points into _index, which outlives every entry
         uint64_t DataOffset {};
         uint64_t StoredSize {};
         uint64_t DecodedSize {};

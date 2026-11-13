@@ -60,6 +60,8 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Migration
 
+- Integrating feature baseline `27067e77ac80daf7d0c88a2868224e44948662f2` with master `9af8dc5ff4a80fda232d2539e61c1d0a52f62942` advances the compatibility marker from master `0.0.89` to `0.0.90`. Rebuild all native roles and rebake matching metadata and resources; do not mix client, server or resources across that boundary. Apply the intervening master migrations in order. The integration itself adds no saved-data conversion.
+
 - For independent sprites following a changing bone, update and reattach the
   holder in `OnRenderMap_BeforeSprites`. Bone queries remain non-advancing reads
   of the retained pose; hidden/offscreen model timing is preserved. Rebuild native
@@ -85,7 +87,512 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
   A fixed simulation seed provides repeatability, not coverage of every trajectory;
   inspect effect framing in representative scenes.
 
-## Current - 2026-10-30
+## Current - 2026-11-12
+
+### Added
+
+- `BuildTools/docs_engine_version.py --write-next --branch master --baseline-git-ref <fetched-master-sha>` writes the next master `VERSION` after preparing both changelogs. It checks the full fetched baseline commit, the version transition, both dated migration notes and the unchanged bodies and order of preceding release records, then replaces `VERSION` atomically. The existing value must be the baseline, the next version, or the exact unresolved `HEAD`/`origin/master` merge conflict backed by its index stages; stale or abbreviated baselines, other edits and inputs that change during preparation are refused. The writer neither publishes nor replaces the build, integration and validation gates. The versioning guide also records that a merge of published histories must keep the previous master tip on the target's first-parent chain for the `--history` check.
+
+### Changed
+
+- Reconcile the feature branch's lifecycle, attached movement, playback, message transaction, Mapper and build-marker contracts with the current master settings, persistence, synchronization and large-map changes. The feature-branch notes below retain their original revisions and migration details because their version numbers overlap independent master history.
+- Complete the exact-base generated API contract review and fix native test helpers and callback cleanup for unity and lifetime validation. These changes do not alter production runtime behavior.
+- The attached-controller movement authority check is the `Player::HasPlayerMovementControl` query instead of a server-file helper; every movement request path keeps the same decision. `Critter.GetAttachedCritterIds` records its first master version, `2026.1.120-dev`, as its `Since`.
+- Client `Net_OnCritterMoveItem` retains the moved critter from lookup through every script callback and stops after a callback destroys it. Attachment snapshots are not published for a critter that is being destroyed.
+
+### Migration
+
+- Merge feature baseline `589756e6b368f1363b46b160b36a72911d3758b5` (`2026.1.101-dev`) with master baseline `54863a068c6c0dc73d0660a0147cfff601f74396` (`2026.1.119-dev`). Apply the intervening master migration notes in order and the feature-branch notes below. The manual compatibility marker advances from master's `0.0.88` to `0.0.89`: the retained attachment delivery for global groups, ordered snapshots, attached-controller movement authority and RPC refusal change network/runtime behavior that master `0.0.88` builds do not share. Client, server and resources built from master `2026.1.119-dev` are rejected by this revision and the other way round. No additional stored-document conversion is introduced by the merge itself.
+- Reconfigure and rebuild affected native roles, extensions and tests, regenerate matching metadata and managed bindings, then bake and deploy server/client resources from one coherent source revision. Review settings and resource paths, holder synchronization for persistence, native map consumers and runtime library startup. Roll back matching binaries and resources together; do not mix generations.
+
+### Feature-branch records retained at merge
+
+#### Feature branch 2026.1.101-dev - 2026-11-02
+
+##### Fixed
+
+- Apply the requested cut and gag callback in the same client path search. A valid route through an admitted gag is no longer discarded by an earlier callback-free cut search.
+
+##### Migration
+
+- Base `c811962f25ae6d551316b76996b5e69e7436fa7a` (`2026.1.100-dev`) to `2026.1.101-dev`: rebuild Client, Mapper and the native test host. Existing callback signatures, hex coordinates, cut units, invalid-argument errors and the adjacent-hex shortcut retain their meanings. This restores positive-cut routing through admitted gag items; no project source, settings, saved-data or resource conversion is required.
+- The native map owner handles cut-zero exact targets, negative-cut normalization and starts already within cut. Refused gag items and solid blockers remain impassable. The regression uses a real exported callback and script-function conversion on a wall-separated client map; project gameplay and presentation acceptance are separate.
+- No manual compatibility-marker, Managed ABI, network, resource-schema or updater-format change is introduced. The marker remains `0.0.86`, Managed ABI `9`, SpriteResource v3 and snapshot format4 remain unchanged. Normal revision/metadata regeneration still applies; use one matching client/server/resource set when adopting or rolling back the Engine revision.
+
+#### Feature branch 2026.1.100-dev - 2026-11-02
+
+##### Fixed
+
+- End standalone Mapper map output with exactly one LF while retaining blank separators between sections.
+- Keep the separator before the next retained section when replacing a map in a multi-map container; untouched sibling blocks remain byte-exact.
+- Retain the Mapper freeze documentation and its source-bound check with the normalized phase-zero API adopted in `2026.1.98-dev`; first-frame authoring behavior is unchanged.
+
+##### Migration
+
+- Base `f083ca17d5a36d6be921bdd579e48ed556f7694d` (`2026.1.99-dev`) to `2026.1.100-dev`: rebuild the Mapper and native test host, then re-save edited maps through the native Mapper. Existing map input, including old final blank lines, remains readable. No project script, setting, source-map or saved-data conversion is required; map IDs, property values, placement order and ownership links retain their meanings.
+- Only the selected map is normalized. An untouched final sibling retains its existing EOF bytes; do not trim the entire container or use another writer to normalize it. Review the complete canonical diff and rebake both map outputs through the normal content workflow.
+- No API, network, managed ABI, resource schema, updater format or manual compatibility-marker change is introduced. Native regressions cover returned text, actual disk save paths, first/middle/last multi-map replacement, exact siblings, reload and repeat saves; this does not qualify other platforms or all embedding-project map content.
+
+#### Feature branch 2026.1.99-dev - 2026-11-02
+
+##### Fixed
+
+- Keep Git configuration dependencies file-only, including the first loose branch ref after `pack-refs`. Visual Studio regeneration no longer reports a Git directory as a missing file (`MSB8064`).
+- Write native build markers from a stable target-specific configured hash file. A direct Visual Studio build that regenerates late now writes the same project revision as its generated header and compiled executable on that first build.
+
+##### Migration
+
+- Base `027a6b38a343658f383bab3ea613ef173cfc3d32` (`2026.1.98-dev`) to `2026.1.99-dev`: reconfigure and rebuild the affected native targets. No project source, setting, content or saved-data conversion is required; existing project and Engine revision identities retain their meaning. Exact-ref creation detection remains active for normal and linked Git worktrees.
+- `WriteBuildHash.cmake` retains the existing literal `BUILD_HASH` mode and adds the exclusive `BUILD_HASH_INPUT_FILE` mode. Supply exactly one non-empty literal or existing non-empty file; missing, directory, empty or ambiguous inputs fail before the output is changed. The configured build helper selects the file mode automatically; callers using the literal mode need no changes.
+- No network, managed ABI, resource schema, updater format or manual compatibility-marker change is introduced. The marker remains `0.0.86`, Managed ABI `9` and SpriteResource v3 remain unchanged. Reconfiguration restores the old helper on rollback; build/package markers must still describe the binaries they accompany. Windows Visual Studio and Ninja fixture checks are separate from full project build/bake and other-platform qualification.
+
+#### Feature branch 2026.1.98-dev - 2026-11-02
+
+##### Fixed
+
+- Preserve loop, one-shot and frozen sprite playback through refresh and reentrant animation selection. Use explicit normalized-phase APIs: native `Sprite.GetTime/SetTime` → `GetPhase/SetPhase`, script `Game.SetSpriteTime` → `Game.SetSpritePhase`, `Item.SetAnimTime` → `Item.SetAnimPhase`, and `OnCritterAnimationInit` → `OnCritterAnimationPlaybackInit` with ref `normalizedPosition`.
+- Abort an outgoing message if its writer unwinds or finalization fails, retaining earlier complete queued messages and releasing the buffer lock. Successful packets keep their existing layout, field types, units and order.
+- Retain the inventory owner, moved item and peer snapshot across synchronous post-setters; stop after owner/item invalidation and skip peers removed by reentrant callbacks.
+- Preserve the published monotonic movement sender contract and extend real-wire tests for ping, movement and lease payloads, paused/clamped game time and delayed dispatch. Earlier receipts remain bound to their original sources.
+
+##### Migration
+
+- Base `7bda9a657966d8db2e4328b5402746036564756f` (`2026.1.97-dev`) to `2026.1.98-dev`: apply the exact native, AngelScript and Managed replacements in the [sprite animation migration](../how-to/migration/script-owned-sprite-animations.md). Old API/event names are removed and unmigrated calls fail compilation/baking; no old-name aliases or persisted-data conversion are introduced. Project-owned animation roles and numeric identities retain their meanings.
+- Regenerate API, bindings and metadata; rebuild affected client/server/Mapper/Baker/test roles and extensions, then force-rebake one coherent set of CoreScripts, assemblies, metadata and packs. Deploy or roll back that set together and reject mixtures.
+- The manual marker stays `0.0.86`: the replaced callable/event identifiers are already hashed by codegen, while transactional buffer recovery restores the packet invariant without adding a wire field or changing its meaning. Managed ABI `9` and SpriteResource v3 are unchanged. Recheck playback/phase, reentrant slot lifetimes, failed-message recovery and real transport clocks; final native/build/bake/player qualification remains separate.
+
+#### Feature branch 2026.1.97-dev - 2026-11-02
+
+##### Added
+
+- Client-only `Critter.GetAttachedCritterIds()` returns a copy of the received ordered IDs, including unloaded views. Editing it changes no attachment or authority; `Game.GetCritter(id)` may return null.
+
+##### Fixed
+
+- Revalidate attached movement permission, controller/connection/map identity and leases after callbacks, including renewals and speed-zero stops.
+- Order global attachment snapshots with group membership and queued map context; refresh them after bounded map viewing without exposing other groups.
+- Use canonical client critter paths/cuts, reject blocked neighbours, and reconcile exclusive item slots without displacing multi-item slots or retaining invalid entities across setters.
+- Refuse disconnected outbound client RPC before packet mutation. Admit retained destroyed handles only to the existing native `Game.IsEntityLocked` coverage probe, without acquiring cover or weakening ordinary argument rejection.
+- Compact generated search indexes by a bijective document-position permutation after the existing term filter. Preserve all documents, metadata, terms, scores and posting order under the unchanged locale byte limit.
+
+##### Migration
+
+- Baseline `efefc47f3ace19b4e45428a20c2a1b12fc7f7666` (`2026.1.96-dev`) to `2026.1.97-dev`: the combined lifecycle/attachment contract advances the manual marker from `0.0.85` to `0.0.86`. Incoming fault continuation, VisualOffset and coordinate/grid fixes remain. Default coordinates stay16-bit/4000; field types, units, IDs/defaults, persistence and packet order retain meaning. Managed ABI9, SpriteResource v3 and snapshot format4 are unchanged; no saved-data conversion is required.
+- Regenerate API/bindings/metadata; rebuild native extensions and Client/Server/Mapper/Baker/tests, then force-rebake matching CoreScripts, assemblies and packs. Deploy/roll back that whole set; reject mixed generations. Movement handlers permit re-evaluation after callbacks; RPC callers wait for connection and cancel/defer on disconnect. The coverage probe grants no missing backend API.
+- Qualify paths/cuts, slot lifetimes, attachment ordering/privacy, view return, attached/reentrant movement, covers and save/restart through the existing owners. Prior results remain historical until final combined-source native and player checks.
+
+## 2026.1.119-dev - 2026-11-10
+
+### Fixed
+
+- Call `ClientStartupSettingsHook` from the loadable client runtime library. `ClientLib.cpp`, the runtime that the client host loads by default, constructed `ClientEngine` without the hook, while `ClientApp.cpp` (embedded runtime), `ServerApp.cpp` and `ServerHeadlessApp.cpp` called it, so a project that adjusted client startup settings there saw its change only in the embedded runtime. The loadable runtime now calls `ClientStartupSettingsHook(GetApp()->Settings, 1, false)` after resource synchronization and immediately before constructing the client, exactly like `ClientApp.cpp`.
+
+### Migration
+
+- Baseline `2026.1.118-dev` to `2026.1.119-dev`. No project migration is required: no API, property, serialization, network or resource contract changes, and the hook declaration and default stub are unchanged. A project that already defines `ClientStartupSettingsHook` now has it run in the loadable runtime as well; a hook that was written only for the embedded runtime should be reviewed once, because it now applies to the default standalone client too. A project without the hook keeps the generated no-op stub. Rebuild the client runtime library (`<Project>_ClientLib`) and host to pick up the change.
+
+## 2026.1.118-dev - 2026-11-08
+
+### Fixed
+
+- Resolve map pixels exactly on a hex boundary far from the origin like the same pixels near it. `GetHexPosCoord()` rounded the lattice coordinates through `double`, so a boundary pixel millions of pixels out could pick a different neighbour than its translated counterpart; wide-coordinate maps and the `GetHexPosCoord far out on a large map` test exposed it. Lattice coordinates, cube rounding and the inside test now use exact integer arithmetic.
+
+### Migration
+
+- Baseline `2026.1.117-dev` to `2026.1.118-dev`. No project migration is required: no API, property, serialization, network or resource contract changes. A pixel exactly on a hex boundary may resolve to a different adjacent cell than before when floating-point rounding picked it; the result is now the same at every map distance. Rebuild the client and server roles to pick up the fix.
+
+## 2026.1.117-dev - 2026-11-08
+
+### Fixed
+
+- Keep the release-safety documentation test aligned with the zero-based settings initialization. `ResolveSettingValue()` receives the baking mode as a parameter, so its target-directive guard reads `!baking_mode`; the test still expected the former member expression and failed the documentation job on every commit after `8b1a9d5547`. No Engine behavior changes.
+
+### Migration
+
+- Baseline `2026.1.116-dev` to `2026.1.117-dev`. No project migration is required: only a documentation test expectation changes; no API, property, serialization, network or resource contract changes.
+
+## 2026.1.116-dev - 2026-11-08
+
+### Fixed
+
+- Restore the Linux server build. `EntityManager::ReserveRegistrationId()` declared its `FO_TSA_EXCLUDES(_registryLock)` attribute after a trailing return type, which clang does not late-parse, so the lock declared further down the class was an undeclared identifier. MSVC ignores the attribute, which hid the error on Windows. The method now has a leading return type, so the attribute is parsed after the class is complete.
+- Shorten the `StaticMap` class comment and the `PathFindingCost` test comment to the two-line limit of the comment standard audit.
+
+### Migration
+
+- Baseline `2026.1.115-dev` to `2026.1.116-dev`. No project migration is required: no API, property, serialization, network or resource contract changes; the edits are a declaration form and two comments. A project baseline of exception-safety classifications keyed on function bodies is unaffected, because neither function body changes.
+
+## 2026.1.115-dev - 2026-11-08
+
+### Fixed
+
+- Stop a server-wide freeze between entity registration and the Game singleton lock. Every `Server.EntityIdReserveBatch` ids a registration persisted the next `LastEntityId` bound while it held the entity registry and waited for the Game lock, while a `Game.Lock()` holder that looked an entity up waited for the registry. Both threads stopped, and every following Game property access, entity lookup and registration stopped behind them, so the worker pool and connection handling stopped. A fresh id is now reserved before the registry is taken, the bound is persisted under the Game lock without the registry, and `FlushExactEntityId()` takes the Game lock first. `ServerEntityIdReserveWaitsForGameLockOutsideRegistry` covers the order.
+- Stop the same kind of freeze between a player's connection and the Game singleton lock. `Player::Send_LoginSuccess()` and `Player::Send_InitData()` held the connection while they waited for the Game lock to encode the global values, and a thread inside a `GameLock` scope that wrote a public Game property or called a client waited for that connection. The global values are now encoded before the connection is taken. `PlayerGlobalVarsAreCapturedBeforeTheConnectionIsTaken` covers the order.
+
+### Migration
+
+- Baseline `0d1a56de63` (`2026.1.114-dev`) to `2026.1.115-dev`. No project migration is required: entity ids stay unique and monotonic, the `LastEntityId` bound is still stored before any id of its range is handed out, and stored documents, property IDs, network messages, Managed ABI, resource schemas and the `MigrationRule Version` marker are unchanged. `Server.EntityIdReserveBatch` must be positive: a zero or negative value previously stored a bound below the id it handed out and now fails the first fresh registration. Rebuild the server role to pick up the fix.
+
+## 2026.1.114-dev - 2026-11-06
+
+### Fixed
+
+- Register the shared `ExplicitlyPersistent` core property for custom entity types as well. Custom types registered only `CustomHolderId` and `CustomHolderEntry`, so `MakePersistent()` with an explicit request, including the script `Entity.MakePersistent(bool)`, wrote the flag into the custom type's next property and failed or corrupted it.
+- Regenerate the API, image-format, map-format and prototype-format references, whose source anchors went stale with the SPDX header change.
+
+### Migration
+
+- Baseline `320c982767` (`2026.1.113-dev`) to `2026.1.114-dev`; central `MigrationRule Version` `0.0.87` to `0.0.88`. Every custom type gains the persistent `bool ExplicitlyPersistent` core property right after `CustomHolderEntry`, which moves the registration index of each later custom-type property by one. Reconfigure, rebuild every native role and rebake metadata and scripts together; mixed builds and resource sets are rejected by the compatibility check. Stored documents keep their named fields and need no conversion: a missing `ExplicitlyPersistent` reads as `false`. Scripts that call `Entity.MakePersistent(bool)` on custom entities now work instead of failing. Roll back the binaries and resources together.
+
+## 2026.1.113-dev - 2026-11-06
+
+### Fixed
+
+- Keep every holder's restore index equal to the held entities that have their own records: map, critter-inventory and nested-container lists for items, `Map.CritterIds` for critters that are not player-controlled, `Location.MapIds` for maps and persistent holder entries for custom entities. Attaching or detaching a persistent entity, promotion and demotion change the listing strictly; a temporary entity leaves it untouched. Promotion records children before their holder and demotion removes a holder's record before its children's, so an interrupted change leaves unreferenced records rather than references to missing ones.
+- Validate the holder of the entity's restore index before changing persistence flags, storage or restore membership. Cover rejection in both directions with two workers, and real removal, destruction and unload/load of items, critters, maps and custom entities.
+
+### Migration
+
+- Baseline `8b32281d50` (`2026.1.112-dev`) to `2026.1.113-dev`. `MakePersistent(bool)` retains its argument and persistence meaning. Cover the entity and the holder of its restore index before calling it: the immediate holder of an item, the map of a critter that is not player-controlled, the location of a map and the holder of a custom entity, as required by the complete native call graph. Review callers that change the persistence of held entities before adoption. An uncovered holder raises `Entity access without sync` before mutation. Native callers need the same cover.
+- Rebuild matching server/baker and native consumers, regenerate the API reference and rebake project scripts. Property IDs, declared document layouts, network messages, the `MigrationRule Version` marker, Managed ABI and resource schemas are unchanged. The read-only `Map.ItemIds`, `Critter.ItemIds`, `Item.InnerItemIds`, `Map.CritterIds`, `Location.MapIds` and persistent holder-entry `<Entry>Ids` properties no longer list temporary entities, also in temporary holders; read the held entities through the runtime getters such as `Map.GetItems()`, `Critter.GetItems()` or `Location.GetMaps()` instead. Search with `rg -n 'ItemIds|CritterIds|MapIds|InnerItemIds' <project-source-dirs>`. Already missing records remain load errors; there is no startup pruning or implicit repair. Preserve coherent binaries/storage and review pre-existing inconsistencies through an isolated restore. Rollback uses the preceding matching binaries/data without a new conversion.
+
+## 2026.1.112-dev - 2026-11-06
+
+### Fixed
+
+- Order flat map sprites by their sub-layer before their row. A flat sprite has no ground depth, so below `DrawOrderType::NormalBegin` the draw-order key is now `[group 6][sub-layer 8][gap 4][hex Y 24][hex X 22]`: `Item.DrawOrderSubLayer` is a paint layer that outranks the hex row, and rows and X order only sprites of one sub-layer. Before, a flat decal on a later row covered a flat marker with a higher sub-layer on an earlier row, so ground decals showed through a marker strip wherever their hex happened to sort after the strip's cell. The standing key is unchanged. `Test_MapSprite.cpp` pins both orders.
+
+### Migration
+
+- Baseline `6ea95ac28d` (`2026.1.111-dev`) → `2026.1.112-dev`. No project source, generated-model or persisted-data migration is required, and no stored property, network protocol, `MigrationRule Version`, Managed ABI or resource schema changes. Rebuild the client and the Mapper; a bake is needed only to apply project content that now relies on the order. Flat sprites whose sub-layers differ may paint in a different order than before: a flat sprite with a higher `DrawOrderSubLayer` now covers a lower one on any row, whereas it used to do so only on the same row. Sprites with equal sub-layers keep their row-then-X order. Check flat decals that carry a non-zero sub-layer (for example a flat carryable at `+1`).
+
+## 2026.1.111-dev - 2026-11-06
+
+### Fixed
+
+- Measure map scene depth from the view's top pixel row instead of absolute map depth. `GeometryHelper::GetHexMapDepth(rawHex, hexOffset, elevation, originY)` gives a sprite's depth relative to that row with the row difference in integers, `SpriteManager::DrawSprites` takes the origin row, and `MapView::DrawMap` sizes the ortho depth range per frame from the view instead of from the map corners. Far from the origin of a continent-sized map, depths of millions rounded away the layer bias and the standing-sprite depth slope, so direct-draw models and particles z-fought against walls; depths now keep the precision of a small map.
+- Resolve screen and map pixels to cells in `GeometryHelper::GetHexPosCoord` exactly: square geometry solves its diamond lattice in integers, so a pixel on a cell edge rounds the same way everywhere, and hexagonal geometry finds its lattice coordinates in `float64_t`. Pixels millions away from the origin of a large map no longer resolve to a neighbouring cell near its edges.
+- Take the vector difference in integers before scaling in `GeometryHelper::GetLineDirAngle`, so a short vector between far map positions keeps its angle.
+- Square the segment offset of `MovingContext` in `float64_t`; a segment longer than about 46,000 pixels overflowed `int32` before.
+- Trace light rays in `MapView::TraceLightLine` from the step count relative to the source hex, so rays end on the same cells wherever the light stands; the float accumulator drifted by up to a fifth of a hex far out on a large map.
+- Clamp the client scroll against the scroll area with integer edges relative to the view, so the camera no longer jitters by up to half a pixel at the area border far out on a large map.
+- Keep `ModelInstance` body rotation within one turn: a completed turn lands on its target instead of adding 360 degrees per lap.
+- End an item flight at its start offset plus the travelled direction (`ItemHexView`); the end point multiplied the start offset by the distance before.
+- Compute `Map.GetHexScreenPosF` for hexes far from the view in `float64_t` before narrowing the screen result, and decide the last SPARK bounds simulation step from the step count instead of a float accumulator.
+
+### Migration
+
+- Baseline `b055b5da22` (`2026.1.110-dev`) to `2026.1.111-dev`. No API, settings, wire protocol, `MigrationRule Version`, Managed ABI, saved data or resource schema change. Rebuild every native role. Native code calling `SpriteManager::DrawSprites` passes the depth origin row after the draw area (`MapView::GetMapDepthOriginY()` for a map view). A pixel exactly on a cell edge, a light ray near a half-hex tie and a SPARK effect whose simulated duration falls on a step boundary may resolve differently than before; rebake to refresh particle bounds.
+
+## 2026.1.110-dev - 2026-11-06
+
+### Changed
+
+- Build the large-map tests with 16-bit map coordinates: `TraceIsTheSameAnywhereOnTheMap`, `VeryLongTracesReachTheirTargetAndStayInvariant`, `VeryLongSquareTracesFollowTheExactLine` and `PathFinding::RoutesMatchOnContinentSizedMaps` no longer put a literal above the `mcoord_t` range into a map size on the skipped wide-coordinate branch, so `LF_UnitTests` compiles without `FO_MAP_WIDE_COORDS`.
+- Identify a pending baked-map read in the server static-map cache by its shared promise instead of the integer value of the promise address. No behavior changes.
+
+### Migration
+
+- Baseline `9e096e8f6f` (`2026.1.109-dev`) to `2026.1.110-dev`. Tests and an internal cache token only: settings, script API, wire protocol, the `MigrationRule Version` marker, Managed ABI, saved data and resource schemas are unchanged, so no project migration is required. Projects built with 16-bit map coordinates (`FO_MAP_WIDE_COORDS` off) can compile `2026.1.109-dev` tests only with this step; rebuild every native role and the tests.
+
+## 2026.1.109-dev - 2026-11-05
+
+### Changed
+
+- Index `ChunkedTwoDimensionalGrid` blocks through a two-level table: the top level holds one owner per 32x32 block slots, and a slot table is allocated on the first write inside it. A grid at the maximum map size no longer allocates a map-sized block index (512 MB for 128,000 cells per side with 16-cell blocks). Field addresses, empty-cell reads and resize semantics are unchanged.
+- Store each client map field's applied light in `MapView::Field::Light` instead of a dense per-map colour buffer. `MapView::SetupSpriteLight(mspr, corner)` resolves the sprite's hex and corner neighbours and writes those fields; `MapSprite::SetLight` now takes the three resolved light pointers. Mapper resize needs no per-cell light pass.
+- Number client roof groups from the tracked set of roof fields in the former x-major, y-minor order, clear scroll blocks of a map without a scroll axial area from the previously blocked fields only, and destroy views outside a resized map from the view lists. Group numbers and blocked cells are unchanged.
+- Size the block index of a path search by the window its length limit allows around the start (`MaxLength` plus the multihex footprint and the goal ring, clipped to the map) instead of by the whole map, so a search costs the same on a continent-sized map as on a small one; the enclosure probe tracks hexes it floods outside the window separately. Routes are unchanged.
+- Read a proto map's baked server content when it is first needed instead of at server startup. `MapManager::LoadFromResources()` only checks that every `.fomap-bin-server` has its proto map; `MapManager::GetStaticMap()` reads the content on first use (a map instance, `Map.LoadRuntimeStaticItems`, `Map.GenerateContent` or `Game.GetStaticItemsForProtoMap`) and caches it; concurrent first requests for one map share a single read. A damaged or missing map file is reported then, as a `MapManagerException`, instead of failing startup.
+- Trace `LineTracer` lines in `float64_t` relative to their start hex, take each square-geometry position from the step count instead of summing steps, and cast the ray of the angle-and-distance form from a hex at the map origin with the start's column parity. Rounding no longer depends on where a line lies on the map or on how long it is: a line far out on a continent-sized map takes the same steps as the same line near the origin, and a square line tens of thousands of cells long stays on the cells nearest its exact course. Before, a `FreeMovement` route straightened around coordinate 120,000 could drift by a fraction of a hex. Anywhere on a map, a straightened route may now pick the other of two nearly equal hexes; results, reachability and route lengths of path searches are otherwise unchanged.
+
+### Added
+
+- Add the `float64_t` math constants `SQRT3_FLOAT64`, `SQRT3_X2_FLOAT64`, `RAD_TO_DEG_FLOAT64` and `DEG_TO_RAD_FLOAT64` beside their `float32_t` counterparts in `BasicCore.h`, and `wrap_angle(angle)` in `SafeArithmetics.h`, which wraps an angle in degrees of any floating-point type by whole turns into [0, 360] (a negative whole turn gives 360).
+- Add `TwoDimensionalGrid::ClearArea(origin, size)`, implemented by the static, chunked and dynamic grids. It resets every cell of the clipped rectangle; the chunked grid releases blocks the area covers completely and slot tables it empties. `ChunkedTwoDimensionalGrid::GetAllocatedChunkCount()` reports allocated blocks.
+- Add runtime loading of other maps' content into a map instance. Server and client `Map.LoadRuntimeStaticItems(mapPid, destHex, idOffset)` copy the static items of proto map `mapPid` into the map as runtime static items, with the source's first hex landing at `destHex` and return the copies' ids, each the baked id plus `idOffset` (an overload with `sourceHex` and `sourceSize` before `idOffset` copies only the items of that area, its first hex landing at `destHex`); an id that overflows, is zero, repeats or is already used on the map rejects the whole load; `Map.UnloadRuntimeStaticItems(runtimeStaticItemIds)` removes them again, and the client releases the field blocks they leave empty. Server `Map.GenerateContent(mapPid, destHex)` creates the proto map's critters and dynamic items as entities of the map and returns their ids. Runtime static items take part in every static query, blocking and triggers like baked ones, are not persisted and cannot join `RemovedStaticItemIds`. Server `Game.LoadStaticMap(mapPid, asyncLoad)` and `Game.LoadStaticMaps(mapPids, asyncLoad)` read one or several proto maps' content ahead, on the calling thread or on worker threads returning at once, `Game.UnloadStaticMap(mapPid)` frees it when no map instance uses it, and `Game.IsStaticMapLoaded(mapPid)` reports a finished read.
+
+### Migration
+
+- Baseline `90061a40d4` (`2026.1.108-dev`) to `2026.1.109-dev`; this reapplies the large-map work that `2026.1.103-dev` reverted. Settings, wire protocol, the `MigrationRule Version` marker, Managed ABI, saved data and resource schemas are unchanged; no content or save conversion is required. The script API only gains the methods listed above. Rebuild every native role (Server, Client, Mapper, Baker and tests) and regenerate both scripting backends, because the grid template and the `MapView` and `Map` layouts change. `StaticMap::ApplyItemToField()` becomes a private member, `StaticMap::MergeFieldInto(hex, field)` adds a map's items on a hex to another field, and `StaticMap::BuildFieldWithout()` is no longer `const`, because both hand out the map's items as mutable.
+- Baked maps are no longer read at startup: the first instance of a map reads its file on the creating thread, and an error in a map nobody creates goes unreported. A project that relied on startup to validate every baked map can call `Game.LoadStaticMap(mapPid, false)` for each one in a check. Native code that called `MapManager::GetStaticMap()` for a missing file got a failed lookup before and gets a `MapManagerException` now.
+- Native code: replace `mspr->SetLight(corner, map->GetLightData(), map->GetSize())` with `map->SetupSpriteLight(mspr, corner)`; `MapView::GetLightData()` is removed and its old dense-buffer call no longer compiles. Detect callers with `rg -n "GetLightData|SetLight\(" SourceExt` (or the project's native source roots). A custom `TwoDimensionalGrid` subclass must implement `ClearArea`; the pure virtual reports a missing override at compile time.
+- Acceptance owners are the `TwoDimensionalGrid` cases (continent-sized index, area release, bounded load/unload cycles, dynamic/static `ClearArea`), `ClientMaximumSizeMapLoadsWithoutMapSizedWork`, `PathFinding::RoutesMatchOnContinentSizedMaps`, `MapLoadsAndUnloadsContentOfOtherMaps`, `ClientMapLoadsAndUnloadsStaticItemsOfOtherMaps`, and the existing static map, removal, roof, light, scroll and hit-test cases.
+
+## 2026.1.108-dev - 2026-11-05
+
+### Changed
+
+- Repair test fixtures for fresh metadata settings, packaged viewer resource mounts and embedded profile line endings across Windows and Linux.
+
+### Migration
+
+- No project migration is required: these changes affect tests only and preserve runtime, resource, ABI and network contracts.
+
+## 2026.1.107-dev - 2026-11-05
+
+### Changed
+
+- Separate initial `SetupConfigAtPath`, `SetupInternalConfig`, `SetupResourceConfig` and `SetupDefaultSettings` from partial `Apply*` overlays. Each setup requires a fresh zero snapshot; repeated/mixed setup rejects before mutation, and failed file/profile setup permits retry. Successful setup adds no clear/default pass.
+- The packaged marker is private to application initialization. Runtime reads packaged mode and runtime identity from settings; C++ pack mounts take an explicit mode as their first argument, and auto settings take the runtime identity. No config/metadata format changes.
+- Restart after a resource configuration update only when effective Engine settings or pack declarations change. Refresh custom/game settings, removed values and typed caches in place before ClientEngine creation; preserve local/CLI/auto precedence and native settings storage.
+- The targeted refusal of retired `Baking.ResourcesDir`, `Baking.CacheResources`, `Baking.PlatformBinaries`, `Baking.ClientResources` and `Baking.ServerResources` is marked `FO_TEMPORARY_COMPAT(RetiredBakingDirectorySettings, "2026-12-31")` in the implementation and its rejection tests. The dated marker tracks removal of this diagnostic and adds no runtime work or old-name aliases.
+- The packager moves the main-section `Common.ResourcesPath` line to the first line of each embedded profile so bootstrap finds it immediately. Its value and all other line ordering are preserved; full resource profiles and baked source files are unchanged.
+- Interthread game clients request the common resource descriptor matching their shared client distribution; updater connections and network game clients retain platform-specific payload selection. Resource hash and metadata checks remain strict.
+- Produce separate full resource profiles (`.fomain-server/client`) and embedded Engine/bootstrap profiles (`.fomain-embedded-server/client`). Package executables and updater runtime modules from the embedded profile, retain full profiles for resource loading and package-time settings, and require both outputs.
+- Startup applies one main profile to zero: resource config when present, otherwise the binary config. Bootstrap scans only embedded `Common.ResourcesPath`; the unselected profile is not parsed or applied. Unpackaged startup applies authored config/sub-configs without reference defaults. Local preferences, CLI and auto keep their order; CLI and auto run once. Packaged sub-config requests use `FO_VERIFY_AND_CONTINUE`.
+- Config/ClientConfig bakers omit typed zeros and retain all nonzero declared game values. Resource config initializes fresh settings before overlays; repeated or misplaced calls are rejected, with full zero checks in debug. The clean-state flag and successful replacement copy/allocation are removed; failed partial Apply restores a zero snapshot. Ordinary Apply operations retain overlay semantics. Updater compares raw config before validation, validates changed text once and preserves preferences before a cache-path restart.
+- Replace `Baking.ServerResources` / `Baking.ClientResources` with one runtime `Common.ResourcesPath=Resources`. Server packages keep own packs at that root and client distribution in `Client`. CLI path overrides and Android APK asset URIs remain supported. No resource-directory CMake option is introduced.
+- Metadata Setting records contain only name/type; remove metadata initial-value storage and BaseEngine application. Author completeness checks remain, including explicit empty values. Metadata file version advances from 5 to 6.
+- Increase the generated internal-config reservation from 20000 to 40000 bytes; the packager enforces each binary's actual capacity.
+
+### Migration
+
+- Rename C++ `ApplyConfigAtPath`, `ApplyInternalConfig`, `ApplyResourceConfig` and `ApplyDefaultSettings` to their `Setup*` counterparts. Select one base before overlays; keep `ApplyConfigFile` for preferences and partial input. Migrate fixtures that loaded a root after defaults to construct directly from the root. Existing completeness state now distinguishes fresh/initialized/complete without changing `HasCompleteConfig` meaning. Rebuild native consumers; this API change adds no metadata, serialized or network migration.
+- Main loading uses the existing StandaloneClient flag for client-only writable overlays; server/tool profiles use their base packs. Packaged embedded-client clones point to the server distribution's Client child. Game integer ranges and enum resolution are validated before zero filtering.
+- Baked profiles carry a native compatibility comment. During a standalone client's native-first restart, optional older/incompatible profiles defer to the embedded engine/bootstrap fallback before any obsolete keys are parsed; the following resource synchronization installs the matching profile. No old-name aliases or extra Apply are introduced. Keep the cache location unchanged for first adoption, or move preferences explicitly before a native-only transition.
+- Move directory settings into Common: `Common.ResourcesPath`, `Common.CachePath` (renamed from `Baking.CacheResources`) and `Common.PlatformBinariesPath`. Update authored configs, generated/native readers, package integration and CLI flags; the old Baking keys are rejected.
+- Baseline `3d56c1f3f9` (`2026.1.106-dev`) → `2026.1.107-dev`; central `MigrationRule Version` `0.0.86` → `0.0.87`. Reconfigure, rebuild all native roles/client runtime libraries, rebake metadata/config/scripts together and repackage every distributed target. Metadata v5/three-column Setting input is rejected. No persisted entity/property conversion is required; Managed ABI remains 9.
+- Replace both old resource settings and their native/generated/CLI consumers with `Common.ResourcesPath`. Recreate server delivery as `<ResourcesPath>/` plus `<ResourcesPath>/Client/`; update deployment/smoke paths together from one bake. Content Showcase retains `Resources-Baked` in its authored config. Keep a coherent previous native/resource set for rollback.
+- Resource reader callers use `ReadResourceConfig(const FileSystem& metadata, bool required)`. Caller mounts the Metadata view before reading it. ApplicationInit scans the canonical embedded ResourcesPath line before resource lookup; ResourceApply never reads the binary. Directory relocation must update the embedded locator or supply a CLI override. The chosen profile owns all values, including those formerly carried by metadata.
+- Author every required setting, including intentional zeros; filter only baked profiles. Strings `0`/`false`, nonempty arrays and runtime directives keep their meanings. BootstrapGameSettings selects the only game values included in the embedded config. Update fixtures expecting implicit unpackaged defaults or metadata values; use explicit defaults only where the fixture requires them.
+- Deploy compatible native runtimes before zero-based resources. Native promotion/restart precedes resource synchronization/restart; platforms without native self-update need a new bundle. Never deliver these profiles to runtimes restoring defaults or metadata baselines. Offline cache-path changes require an explicit preference move; live updater migration keeps an existing destination.
+
+## 2026.1.106-dev - 2026-11-04
+
+### Fixed
+
+- Reconcile the generated-description translation test with the existing `Game.SimulateTouchScroll` description: 5003 translated entries across nineteen domains, including 2596 API descriptions. Preserve strict completeness, stable-locator and missing-translation checks.
+
+### Migration
+
+- Baseline `4375450b39` (`2026.1.105-dev`) → `2026.1.106-dev`. No project source, content, generated-model or persisted-data migration is required: this update changes only stale test expectations and release notes. The translated description already exists in the source-owned catalog. Runtime declarations, existing values, ownership, network protocol, `MigrationRule Version`, Managed ABI and resource schemas remain unchanged; there is no additional rebuild or bake boundary.
+
+## 2026.1.105-dev - 2026-11-04
+
+### Fixed
+
+- Load the real CMake command wrappers in the isolated coverage-companion fixture before including the Applications stage. `AppendSourceProperty` now has the same implementation as in normal configuration; the fixture retains its library-reuse, quick-exit profile, and resource-pack hash instrumentation checks.
+
+### Migration
+
+- Baseline `28b3a9b22a` (`2026.1.104-dev`) → `2026.1.105-dev`. No project source, content, generated API or persisted-data migration is required: only a test fixture and its documentation change. Production CMake behavior, runtime declarations, existing values, ownership, network protocol, `MigrationRule Version`, Managed ABI and resource schemas remain unchanged. Run `python -m pytest BuildTools/tests/test_codecoverage_llvm_objects.py`; its five platform configurations exercise the actual CMake stage on the host and do not establish runtime acceptance on another platform. There is no additional rebuild or bake boundary.
+
+## 2026.1.104-dev - 2026-11-04
+
+### Fixed
+
+- Reconcile the API model test's fixed inventory expectations with the existing `Game.SimulateTouchScroll` export: 2593 source-owned symbols, including 2592 experimental symbols and one internal symbol. Keep the independent source-inventory and model checks intact.
+
+### Migration
+
+- Baseline `0bd0702354` (`2026.1.103-dev`) → `2026.1.104-dev`. No project source, content or persisted-data migration is required: this update changes only test expectations and release notes. Runtime declarations, generated API models, defaults, units, IDs, ownership, network protocol, `MigrationRule Version`, Managed ABI and resource schemas remain unchanged; there is no additional rebuild or bake boundary. Earlier update migrations still apply in order.
+
+## 2026.1.103-dev - 2026-11-04
+
+### Changed
+
+- Revert the large-map integration published as `2026.1.102-dev` (`82ac7d57fe`..`72c1be91a0`): it reached master without review and returns as a pull request. Sources, scripts, generated models and documentation are again those of `2026.1.101-dev`.
+
+### Migration
+
+- Baseline `72c1be91a0` (`2026.1.102-dev`) to `2026.1.103-dev`. Code built on `2026.1.102-dev` that uses `Map.LoadStaticItems`, `Map.UnloadStaticItems`, `Map.GenerateContent`, `Game.LoadStaticMap`, `Game.LoadStaticMapsAsync`, `Game.IsStaticMapLoaded`, `Game.UnloadStaticMap`, `Game.OnGenerateStaticItemIds`, `TwoDimensionalGrid::ClearArea` or `MapView::SetupSpriteLight` no longer compiles until the pull request lands; the `2026.1.101-dev` notes apply unchanged. Rebuild every native role, regenerate both scripting backends and rebake together; `MigrationRule Version` stays `0.0.86` and Managed ABI stays `9`.
+
+## 2026.1.102-dev - 2026-11-04
+
+### Changed
+
+- Index `ChunkedTwoDimensionalGrid` blocks through a two-level table: the top level holds one owner per 32x32 block slots, and a slot table is allocated on the first write inside it. A grid at the maximum map size no longer allocates a map-sized block index (512 MB for 128,000 cells per side with 16-cell blocks). Field addresses, empty-cell reads and resize semantics are unchanged.
+- Store each client map field's applied light in `MapView::Field::Light` instead of a dense per-map colour buffer. `MapView::SetupSpriteLight(mspr, corner)` resolves the sprite's hex and corner neighbours and writes those fields; `MapSprite::SetLight` now takes the three resolved light pointers. Mapper resize needs no per-cell light pass.
+- Number client roof groups from the tracked set of roof fields in the former x-major, y-minor order, clear scroll blocks of a map without a scroll axial area from the previously blocked fields only, and destroy views outside a resized map from the view lists. Group numbers and blocked cells are unchanged.
+- Index path-search blocks through a hash table when a map has more than 65,536 search blocks, instead of a map-sized block index per search. Smaller maps keep the dense index; routes are unchanged.
+- Read a proto map's baked server content when it is first needed instead of at server startup. `MapManager::LoadFromResources()` only checks that every `.fomap-bin-server` has its proto map; `MapManager::GetStaticMap()` reads the content on first use (a map instance, `Map.LoadStaticItems`, `Map.GenerateContent` or `Game.GetStaticItemsForProtoMap`) and caches it; concurrent first requests for one map share a single read. A damaged or missing map file is reported then, as a `MapManagerException`, instead of failing startup.
+
+### Added
+
+- Add `TwoDimensionalGrid::ClearArea(origin, size)`, implemented by the static, chunked and dynamic grids. It resets every cell of the clipped rectangle; the chunked grid releases blocks the area covers completely and slot tables it empties. `ChunkedTwoDimensionalGrid::GetAllocatedChunkCount()` reports allocated blocks.
+- Add runtime loading of other maps' content into a map instance. Server and client `Map.LoadStaticItems(mapPid, offset)` copy the static items of proto map `mapPid` with their hexes moved by `offset` and return the copies' ids (an overload with `sourceHex` and `sourceSize` copies only the items of that area, its first hex landing at `offset`), which handlers of the new server and client event `Game.OnGenerateStaticItemIds(map, mapPid, offset, itemIds)` choose; `Map.UnloadStaticItems(ids)` removes them again, and the client releases the field blocks they leave empty. Server `Map.GenerateContent(mapPid, offset)` creates the proto map's critters and dynamic items as entities of the map and returns their ids. Loaded static items take part in every static query, blocking and triggers like baked ones, are not persisted and cannot join `RemovedStaticItemIds`. Server `Game.LoadStaticMap(mapPid)` and `Game.UnloadStaticMap(mapPid)` read a proto map's content ahead and free it when no map instance uses it; `Game.LoadStaticMapsAsync(mapPids)` reads several on worker threads and returns at once, and `Game.IsStaticMapLoaded(mapPid)` reports a finished read.
+
+### Migration
+
+- Baseline `20998dd3e8` (`2026.1.101-dev`) to `2026.1.102-dev`. Settings, wire protocol, the `MigrationRule Version` marker, Managed ABI, saved data and resource schemas are unchanged; no content or save conversion is required. The script API only gains methods and the event listed above. Rebuild every native role (Server, Client, Mapper, Baker and tests) and regenerate both scripting backends, because the grid template, `MapView` and `Map` layouts and the event list change.
+- Baked maps are no longer read at startup: the first instance of a map reads its file on the creating thread, and an error in a map nobody creates goes unreported. A project that relied on startup to validate every baked map can call `Game.LoadStaticMap(mapPid)` for each one in a check. Native code that called `MapManager::GetStaticMap()` for a missing file got a failed lookup before and gets a `MapManagerException` now.
+- Native code: replace `mspr->SetLight(corner, map->GetLightData(), map->GetSize())` with `map->SetupSpriteLight(mspr, corner)`; `MapView::GetLightData()` is removed and its old dense-buffer call no longer compiles. Detect callers with `rg -n "GetLightData|SetLight\(" SourceExt` (or the project's native source roots). A custom `TwoDimensionalGrid` subclass must implement `ClearArea`; the pure virtual reports a missing override at compile time.
+- Acceptance owners are the `TwoDimensionalGrid` cases (continent-sized index, area release, bounded load/unload cycles, dynamic/static `ClearArea`), `ClientMaximumSizeMapLoadsWithoutMapSizedWork`, `PathFinding::RoutesMatchOnContinentSizedMaps`, `MapLoadsAndUnloadsContentOfOtherMaps`, `ClientMapLoadsAndUnloadsStaticItemsOfOtherMaps`, and the existing static map, removal, roof, light, scroll and hit-test cases.
+
+
+
+
+## 2026.1.101-dev - 2026-11-03
+
+### Fixed
+
+- Store native image-import direction sequences in Engine `array` to avoid the GCC 13.3 aggregate-initialization compiler crash in FOFRM/FRM and their Baker/Mapper consumers. Preserve seven additional directions, empty defaults, direction order, frame data and SpriteResource v3 serialization.
+- Qualify the updater fixture's server factory so ordinary and unity native test builds select the same integration resources.
+
+### Added
+
+- `Game.SimulateTouchScroll(pos, offsetPos)` injects an aggregated scroll gesture through the ordinary client input path, updating `MousePos` and delivering `OnTouchScroll` with signed pixel coordinates. Client/Mapper scripts can use it in both scripting backends; built-in engine events retain subscription-only script surfaces.
+
+### Migration
+
+- Baseline `1ad91af9998feab93c63d6abc9932bcc4db21fdc` (`2026.1.100-dev`); target `2026.1.101-dev`. This replaces the native `ImageImport::FrameCollection::Dirs` field type `FrameSequence[MAX_DIRS_MINUS_ONE]` with `array<FrameSequence, MAX_DIRS_MINUS_ONE>`. `Main` remains direction zero; the seven additional sequences retain their ordering, independent durations, motion/placement, shared-frame indices, copy/move ownership and empty initial state. The direction-storage migration requires no script API or authored asset changes. The additive scroll simulation operation extends the source-owned API inventory; regenerate bindings and metadata together with both scripting backends.
+- Search custom native loaders for `FrameCollection`, `.Dirs`, C-array references and implicit pointer conversions. Keep range iteration and element access; for a signed nonzero direction use `collection.Dirs[numeric_cast<size_t>(direction - 1)]`. Replace `FrameSequence* first = collection.Dirs;` with a sized span where possible, or `FrameSequence* first {collection.Dirs.data()};` only at the final foreign-API boundary. A C-array-only overload or old implicit pointer conversion now fails compilation; no compatibility conversion is supplied. Recompile custom loaders against the selected headers, including ones loaded through `ImageBaker::AddLoader`.
+- Reconfigure and rebuild Baker, Mapper, native tests and affected extensions, regenerate metadata, then bake one matching client/server resource set before packaging. Native record layout is revision-specific: rebuild binary extensions and replace their host together. There is no persisted-data conversion, renamed property/identity, network protocol change, Managed ABI marker bump or SpriteResource schema change; `MigrationRule Version` stays `0.0.86`, Managed ABI stays `9`, and the image container stays v3. The generated dense method inventory and ABI content hash change with the addition; metadata, bindings and assemblies must come from one bake. Back up the executable/resource set and roll it back together.
+- Validate the affected Fofrm/Frm translation units with GCC 13.3, native image import/transform/dependency and invalid-loader cases, then ordinary/unity native tests and the embedding-project bake. Compiler checks do not establish another platform's runtime or project visual acceptance.
+
+## 2026.1.100-dev - 2026-11-03
+
+### Fixed
+
+- Construct native network buffer guards directly so Clang Thread Safety Analysis associates braced initialization with lock acquisition. Keep message IDs, payload operations, explicit unlock/relock and the original named or full-expression temporary lifetime.
+- Declare the DNS lookup scoped lock directly for annotated libc++ builds. Use explicit `data_writer` locals in two AngelScript test helpers and refresh generated API source-line references after the formatter include correction.
+- Use Engine `array` for Vulkan in-flight frame slots to avoid the GCC 13.3 compiler crash when constructing the aggregate renderer context. Preserve the slot count, default state and cyclic indexing. Complete braced initialization of the platform-specific null log path in native logging tests.
+- Keep Clang's try-lock result association in synchronization tests through a separate assignment. Corrupt the updater rejection fixture in place so its pinned reader receives the altered bytes; atomic publication correctly preserves an existing reader's snapshot.
+
+### Migration
+
+- Baseline `9d838ea0ab99895e2063da56fa128e3a36258546` (`2026.1.99-dev`); target `2026.1.100-dev`. No API is added or removed, and no saved-data conversion is required. Buffer contents, message IDs, ownership and unwind behavior remain unchanged; the network protocol, `MigrationRule Version` `0.0.86`, Managed ABI `9` and resource schemas do not change.
+- In native callers with braced factory-result guards, replace `auto output {connection->WriteMsg(message)};` with `ServerConnection::OutBufAccessor output {connection, message};`, `auto output {connection->WriteBuf()};` with `ServerConnection::OutBufAccessor output {connection, std::nullopt};`, and `auto input {connection->ReadBuf()};` with `ServerConnection::InBufAccessor input {connection};`. These existing constructors and factories remain available. Direct construction avoids Clang's unmatched-release diagnostic; do not suppress it. A reference receiver uses `make_ptr(&connection)`. Preserve temporary guards as temporaries at their existing full-expression boundary; see [local variables](../contributing/coding-contracts/local-variables.md#braced-initialization).
+- Reconfigure and rebuild affected native applications, tests and custom extensions, regenerate metadata and bake one matching client/server resource set. Roll back executables and their matching resources together.
+
+## 2026.1.99-dev - 2026-11-03
+
+### Changed
+
+- Remove the byte-size limit from documentation search indexes. Generate the complete English and Russian indexes without a capacity gate; retain document membership, token rules and search validation.
+
+- Reconcile the published native-refactoring branch with master `ac37c9d217b314b3f3a1f567f67be535cfe15cac` (`2026.1.98-dev`). Keep sprite resource v3, independent per-direction timelines, FOFRM transforms/dependencies, configurable map coordinates, packaged client configuration and the Managed no-result event-fault behavior introduced by master.
+- Deduce `checked_add/sub/mul/div` from equal operand types, align internal counts/dimensions/shared indices to signed fixed-width integers, and retain checked conversion at container, external and serialized boundaries. Check arithmetic before buffer mutation, allocation, drawing and division.
+- Keep ordinary native records passive and move their operations to free functions; encapsulate behavior and lifetime owners in classes. Essentials, settings and `ExportValueType` retain their struct APIs. Clarify the upper public query block and meaningful `[[nodiscard]]` annotations, semantic spacing and synchronization descriptions. Initialize variable definitions with braces while preserving overload selection, container cardinality and types.
+
+### Migration
+
+- This is the `2026.1.98-dev` to `2026.1.99-dev` source integration step. Rebuild Server, Client, Mapper, Baker, tests and custom native extensions, regenerate metadata and rebake a matching resource set. The retained incoming v3 sprite/FOFRM/configuration changes require the migrations in versions 64–98 below when updating from the old feature checkout; do not combine old binaries or metadata with new resources. The integration adds no save conversion, property/identity renumbering, wire format, Managed ABI or resource schema beyond master's changes; `MigrationRule Version` remains `0.0.86` and Managed ABI remains `9`. Roll back the complete matching executable/resource set.
+- Replace `checked_mul<int64_t>(a, b)` with `checked_mul(a, b)` after converting both operands to `int64_t`; apply the same rule to add/sub/div. Explicit arithmetic template arguments and mixed operand types fail deduction (MSVC C2672). A cast after an unchecked operation cannot repair overflow. Search custom native roots for `checked_(add|sub|mul|div)\s*<` and retain `numeric_cast` for differing numeric types. Integer overflow and non-finite floating results throw `OverflowException`; zero division throws `DivisionByZeroException`, including `Game.DivRem`. Finite underflow and valid units/results remain unchanged.
+- Replace consuming `FileReader::GetStrNT/GetUInt8/GetInt8/GetBEUInt16/GetBEInt16/GetLEUInt16/GetLEInt16/GetBEUInt32/GetBEInt32/GetLEUInt32/GetLEInt32` calls with the corresponding `Read*` names. The old names no longer compile; reader advancement, bounds checks and returned byte interpretation remain unchanged. Retain unrelated information queries such as `GetCurDataSpan`.
+- Rebuild consumers of sprite/import records and use signed `int32_t` for native quantities and shared indices; keep `Size`, `Offset`, `Motion`, typed per-frame `Duration` and per-direction frame arrays from sprite v3. Counts stay 1–65535, dimensions positive 16-bit, and a shared index must be nonnegative and reference an earlier frame. Whole sequence milliseconds use v3's uint32 range, with positive per-frame durations; the old v2 uint16 duration rejection and ART saturation no longer apply. Check wide pixel/byte products before allocation. Apply final wire limits and exact RGBA validation after FOFRM transformations: raw frames may acquire their canvas, motion and timing there, and a wide PNG may be resized into the output range. TGA unsigned wire dimensions retain their high bit correctly.
+- Replace record member operations with their declared free-function counterparts and stop depending on newly private implementation fields; compile affected native consumers to find each old member use. Settings/value-type APIs, script-visible types and event signatures remain intact. Braced initialization must retain selected constructors: a vector/string count constructor is preserved explicitly when a direct list would select `initializer_list`, and JSON copies remain object copies. Existing `Get` queries retain `[[nodiscard]]`; consuming/mutating methods remain in the operation block.
+- Validate `SafeArithmetics`, buffers, image import/resource/animation tests, ordinary and AngelScript native builds, generated contracts and documentation, then bake and exercise the affected project. Native Windows checks do not establish another platform or renderer's runtime acceptance.
+
+## 2026.1.98-dev - 2026-11-02
+
+### Fixed
+
+- Recover a corrupted native updater payload within the current launch: a temporary file with a wrong size, hash or prefix is removed and requested once from offset zero, a valid prefix still resumes, and a refused removal or second failure aborts without promotion. Reject `///@ Enum <Name> <Entry> = -`.
+
+### Migration
+
+- Baseline `d6742fb78664773f64f09d497243db08106aed35` (`2026.1.97-dev`) to `2026.1.98-dev`: no conversion is required. The protocol, `MigrationRule Version` `0.0.86`, Managed ABI `9` and resource schemas are unchanged.
+
+## 2026.1.97-dev - 2026-11-02
+
+### Added
+
+- `ClientConfigBaker`, derived from `ConfigBaker` in the same module, writes complete client settings to the existing `.fomain-client` outputs. A paired `Metadata` pack has no duplicate compact client outputs.
+
+### Changed
+
+- Remove the `OGL` package token. Windows client packages and server-staged runtime payloads no longer include `_OpenGL` binaries; `package.py` rejects every pack token absent from `BuildTools/PackageInterface.json`.
+- Rename the application startup flag to `AppInitFlags::StandaloneClient`. It distinguishes the player-client application, including its runtime DLL, from client engines embedded in a server; window policy and startup behavior are unchanged.
+
+### Fixed
+
+- Verify multiple external source snapshots from the two repository checkouts using their pinned commits. Current HEAD and dirty files do not replace pinned content; unsupported repositories and missing commits or sources remain errors.
+- Load the selected client or server settings from `Metadata` before application initialization; no new profile selector or configuration cache.
+
+### Migration
+
+- Base `efefc47f3ace19b4e45428a20c2a1b12fc7f7666` (`2026.1.96-dev`); update `2026.1.97-dev`.
+- Native startup and early-hook callers must replace `AppInitFlags::ClientMode` with `AppInitFlags::StandaloneClient`. The flag retains bit `0x01`; there is no old-name alias or additional ABI/network change.
+- Keep `InitApp(args, flags)`: all applications prefer a resource `.fomain-server`, then `.fomain-client` when the server config is absent.
+- Use a shared `Metadata` pack with `Bakers=Metadata Config ClientConfig`, rebuild native roles, and rebake/repackage server and client resources together. Config outputs now live in `Baking/Metadata`; each archive retains its role metadata alongside the selected config. Retain the existing package `--config`: only its selected `.fomain-client` belongs in client resources and only its selected `.fomain-server` in server resources. Missing configs leave the startup bootstrap active; after updater synchronization a declared config is required. Multiple files of the preferred suffix fail loading. Ordinary `Bakers=Config` retains its outputs. No new config setting, sub-config selection or saved-data conversion is required.
+- Remove `OGL` from package declarations and select OpenGL with `--Render.ForceOpenGL 1` or a local setting; packaging no longer patches per-binary settings into the embedded config. An installed `_OpenGL` client finds no staged runtime update and must be replaced by the regular client.
+- Runtime compatibility advances from `0.0.85` to `0.0.86` for startup/configuration consumers. Host ABI and updater wire layout are unchanged. Preserve user preferences and CLI precedence; CLI and auto settings apply once. Builtin settings stay read-only. Changed downloaded client settings require a restart before gameplay; unchanged text proceeds directly.
+- Validate matching embedded/resource sub-configs, false/zero/empty values, removed settings, precedence, first launch, changed-config restart and subsequent launch. Web/mobile acceptance must prove persistent writes and relaunch independently.
+
+## 2026.1.96-dev - 2026-11-02
+
+### Fixed
+
+- Release a partially created Vulkan buffer and its allocated memory when memory-type selection, memory allocation or buffer binding fails. Leave caller output handles unchanged on failure and transfer ownership only after successful binding.
+
+### Migration
+
+- Baseline `1ab76a88f25c1ee9116275768e227896c5d21039` (`2026.1.95-dev`) to `2026.1.96-dev`: no project source, settings, saved-data or resource conversion is required. Rebuild Client, Mapper and other targets that include the Vulkan renderer. The successful allocation path, deferred destruction of completed resources, ABI, wire protocol, compatibility marker and resource schemas are unchanged. Normal version/metadata regeneration still applies when selecting the new Engine revision; keep clients, servers and resources on one matching revision.
+
+## 2026.1.95-dev - 2026-11-01
+
+### Fixed
+
+- Update the CMake project-interface test to expect the 62 options declared by the current interface, including `FO_MAP_MAX_SIZE` and `FO_MAP_WIDE_COORDS`. Keep exact stage/helper counts and the declaration and baking-impact checks.
+- Update the native-extension interface test to expect all 10 hooks, including the two existing map-view visibility hooks. Preserve role routing and rejection of incomplete role/path pairs.
+
+### Migration
+
+- Baseline `c1b3f7114d8c7ec7299ab936fe3c36ee20726dd1` (`2026.1.94-dev`) to `2026.1.95-dev`: no project source, settings, saved-data or resource conversion is required. These test corrections change no runtime contract, ABI, wire protocol, compatibility marker or resource schema. Run `cmake -P BuildTools/tests/validate_project_interface.cmake` and `cmake -P BuildTools/tests/validate_native_extension_interface.cmake` to verify the current interfaces. Normal version/metadata regeneration still applies when selecting the new Engine revision; keep clients, servers and resources on one matching revision.
+
+## 2026.1.94-dev - 2026-11-01
+
+### Fixed
+
+- Use scoped mutex ownership for named simulation hold control so Clang can verify every acquisition and release. Preserve startup control, non-blocking control under a drained external lock, and `VerificationException` when that control is busy.
+- Regenerate the ContentShowcase and PackagingMatrix configurations from the current Engine settings.
+- Initialize the standalone web/database option test through the real CMake helpers and provide the map-size defaults required by the project-options stage. Restore canonical formatting in the Managed `mpos(string)` constructor.
+
+- Reject an overflowing map/grid resize before changing map state; publish static-grid dimensions only with the replacement cells.
+
+### Migration
+
+- Baseline `27553fd71d553bb46c47d0c8e7de6b8e8e4301ca` (`2026.1.93-dev`) to `2026.1.94-dev`: no project source, setting, persisted-data or resource conversion is required. Rebuild every affected native role (Server, Client, Mapper, Baker and tests), because the grid template is shared. Simulation hold reasons, pause ownership, startup behavior, exception type and retry rules keep their existing meanings; a failed non-blocking acquisition leaves all holds unchanged. The example configuration defaults remain unchanged. The central `MigrationRule Version` marker, Managed ABI, wire protocol and resource schemas are unchanged by these fixes. All clients, servers and baked resources must still use the same configured Engine revision as required by the preceding map-coordinate update.
+
+## 2026.1.93-dev - 2026-11-01
+
+### Added
+
+- Add the `FO_MAP_WIDE_COORDS` CMake option (baking, default `OFF`). When it is `ON`, `mpos` and `msize` components are signed 32-bit instead of signed 16-bit. Native code names the component type `mcoord_t`. Both `ExportValueType` layouts declare the field type `mcoord`; `codegen.py` resolves it to `int16` or `int32` from the `FO_MAP_WIDE_COORDS` engine define and hashes the resolved layouts into `FO_COMPATIBILITY_VERSION`. AngelScript registers the `mpos`/`msize` fields from that metadata layout, and generated Managed C# structs follow it (`short`/`int`).
+- Add the `FO_MAP_MAX_SIZE` CMake option (baking, default `4000`) as the source of `GameSettings::MAX_MAP_SIZE`. It must be from `200` to `32767`, the `int16` coordinate range, or to `4194304` with wide coordinates. `4194304` is `GameSettings::MAP_SIZE_LIMIT`, the widest map side the client sprite draw-order key orders: the key holds a cell X in 22 bits and a screen row, at most twice a side, in 24 bits. Configure rejects a value outside the range with `FO_MAP_MAX_SIZE must be an integer from 200 to <limit> (<reason>)`, and static assertions in `Common.h` and `MapSprite.cpp` repeat the bounds; another assertion keeps pixel positions within half of the `int32` range for the configured hex size.
+- Add the `wide-coords` CI job, which runs the `unit-tests` validator with `FO_MAP_WIDE_COORDS=ON`, and run `BuildTools/tests/test_codegen_value_type_layouts.py` in the `engine-update` job.
+
+### Changed
+
+- Generated Managed `mpos` and `msize` constructors take `int` arguments at either width. 16-bit fields are narrowed under the scripts' `CheckForOverflowUnderflow` arithmetic, so an out-of-range argument throws `OverflowException`; `mpos(string)` parses through the same constructor.
+- Map area and per-map storage no longer overflow `int32` or a 32-bit `size_t`: `isize::square()` becomes `square<R>()`: the caller names the result type, and the area, multiplied as `int64_t` with `checked_mul`, converts to it with `numeric_cast<R>`, so `square<int64_t>()` keeps an area past the 32-bit range on every target and a narrower type rejects it. Allocation sites call `square<size_t>()`: static and chunked two-dimensional grids, the client hex-light buffer, the path-search block index (`checked_mul<int64_t>`), `Map.GetVisibleHexes` and the renderer readback buffers throw `OverflowException` for a size that `size_t` cannot hold instead of wrapping, and every two-dimensional grid constructor (`DynamicTwoDimensionalGrid`, `StaticTwoDimensionalGrid`, `ChunkedTwoDimensionalGrid`) is no longer `noexcept`: a negative size now throws instead of logging and leaving an empty grid. Native callers name the type they need. Cell indices derived from coordinates (grid cells and chunks, hex light, path-search blocks) are computed in `int64_t` and converted with `numeric_cast<size_t>`, so a coordinate range that a 32-bit `size_t` cannot index is detected instead of wrapping. The client hex-light buffer holds one entry per hex instead of three, of which only the first third was read. The path-goal deviation uses 64-bit arithmetic. The sprite draw-order key keeps 64 bits but is packed as `[group 6][primary 24][layer 4][sub-layer 8][secondary 22]` instead of `[8][24][8][8][16]`; the relative order of every key the engine produced before is unchanged.
+- Server static-map loading and client `MapView` construction reject a map whose `Size` is not positive (`Map size must be positive`) or exceeds `GameSettings::MAX_MAP_SIZE` (`Map size exceeds the engine maximum`). Previously only Mapper resizing enforced the limit.
+
+### Migration
+
+- Baseline `50e1ddb1ea7405d9b52ef44ec338fa4d473e4cac` (`2026.1.92-dev`); this unpublished working change is `2026.1.93-dev`. Affected roles: native Server, Client, Mapper, Baker and unit tests, `codegen.py`, the AngelScript and Managed backends and the CMake project interface.
+- Default builds keep 16-bit coordinates. Native layout, network message bytes, baked property data, database documents and resource schemas are unchanged. `FO_COMPATIBILITY_VERSION` still changes because the declared layout text is hashed: rebuild and deploy clients, servers and resources from the same revision; mixed old/new builds fail the compatibility check. The `MigrationRule Version` marker stays `0.0.85` and Managed ABI `9` is unchanged. No data conversion or `MigrationRule` is required, and rollback restores the complete matching baseline artifact set.
+- Map size limit: a map larger than 4000 cells per side that was authored outside the Mapper used to load; it now stops server startup or client map loading with `Map size exceeds the engine maximum`. Detect it with `rg -n "^Size\s*=" --glob "*.fomap"` and compare both numbers with the limit. To keep such maps, add `SetOption(FO_MAP_MAX_SIZE <largest side>)` to the project `CMakeLists.txt` before `StartProjectGeneration()`, reconfigure, rebuild and rebake. A value outside the allowed range fails compilation with `FO_MAP_MAX_SIZE is out of range`, `FO_MAP_MAX_SIZE exceeds the sprite draw-order key range` or `FO_MAP_MAX_SIZE exceeds the int32 pixel range for this hex size`.
+- Native code: `GameSettings::MAX_MAP_SIZE` keeps its name and default value. Use `mcoord_t` instead of `int16_t` for map coordinates and for loop counters over map dimensions, `numeric_cast<mcoord_t>` instead of `numeric_cast<int16_t>` when narrowing into `mpos`/`msize`, and `sizeof(mcoord_t) * 2` instead of a literal `4` for their size. Detect candidates with `rg -n "int16_t" SourceExt` (or the project's native source roots) near `mpos`, `msize`, `GetHex` and `GetSize`. Default builds keep compiling the old code; with `FO_MAP_WIDE_COORDS=ON` narrowing a component into `int16_t` is reported by the compiler.
+- Native code: replace `size.square()` with `size.square<size_t>()` where the area sizes a container or buffer, and with `size.square<int64_t>()` where it is a value; inside a template on the size type write `size.template square<size_t>()`. The old call no longer compiles because the result type cannot be deduced (MSVC `C2783`, GCC/Clang "couldn't deduce template parameter"), and the conversion throws `OverflowException` for a negative area or one the named type cannot hold. Detect callers with `rg -n "\.square\(\)"`. Grid constructors (`DynamicTwoDimensionalGrid`, `StaticTwoDimensionalGrid`, `ChunkedTwoDimensionalGrid`) are no longer `noexcept` and throw for a negative size; construct them where an exception can propagate.
+- Managed scripts: `new mpos((short)x, (short)y)` and `new msize((short)w, (short)h)` keep compiling with the same meaning; the casts are no longer required, and `new mpos(x, y)` with `int` arguments now compiles and throws `OverflowException` for a value the component type cannot hold. Reading a field into `int` works at both widths; storing it in `short` or passing it to a `short` parameter compiles only with 16-bit coordinates (`CS0266` otherwise). `mpos(string)` keeps throwing `FormatException` for non-numeric text and `OverflowException` for an out-of-range value.
+- AngelScript scripts see `int16` or `int32` fields as selected; the `mpos(int x, int y)` constructor keeps its signature and range check. Use `int` locals for components to stay width-independent.
+- Enabling wide coordinates: add `SetOption(FO_MAP_WIDE_COORDS ON)`, reconfigure, rebuild every native and Managed role and rebake all resources; the option is part of the baking configuration hash, so the Baker rebuilds the complete set. Network messages and baked property data grow by four bytes per position; per-hex grids do not grow. Database documents store coordinates as numbers and load unchanged. Switching back to 16-bit fails to load any stored coordinate above 32767, so keep the pre-switch database backup for rollback.
+- Acceptance owners are `Map coordinates use the configured component width`, `MapManagerRejectsMapLargerThanEngineMaximum`, the generated-type checks in `Test_ManagedScriptBaker.cpp`, `test_codegen_value_type_layouts.py`, and the complete unit-test suite in both the ordinary `unit-tests` and the `wide-coords` CI jobs.
+
+## 2026.1.92-dev - 2026-11-01
+
+### Added
+
+- Add the client-only `Critter.VisualOffset` (`ipos`, pixels): a mutable, unsynchronized, non-persistent offset that `CritterHexView::RefreshOffs` adds to the movement, extra and animation offsets of the critter's map sprite; the client refreshes the offsets from the property's post-setter. A client script can now draw a critter off its logical position, for example along a smooth flight curve over a hex path, without changing logical state. Zero draws exactly as before.
+
+### Migration
+
+- Base `680c444d1d54d5120e1cb87b080cbe14dd81a081` (`2026.1.91-dev`) to `2026.1.92-dev`: additive; no source/data conversion. Rebuild all native roles/tests and Baker, then rebake all metadata and managed roles together. The new Critter property is registered after `LightColor`, so the registry index of every Critter property declared after it, including all embedding-project Critter properties, advances by one; the manual compatibility marker advances from `0.0.84` to `0.0.85`, and mixed old/new executables and resources are refused. Existing scripts, prototypes, maps and saves are unaffected: the property is client-only, not persisted and not synchronized, defaults to zero and changes no rendering until a script sets it. Managed ABI `9` is unchanged. Roll back matching executables and resources together.
+
+## 2026.1.91-dev - 2026-10-31
+
+### Fixed
+
+- Keep an event chain running after a Managed handler without a result faults. `Native.InvokeEvent` and the generated `AdaptInvoke` reported the fault and handed `StopChain` back for every handler, so `Entity::FireEvent` took a failed `void` or `Task` handler for a decision and skipped every lower-priority subscriber. On a client the first faulting `Game.OnStart` handler kept back the subscriber that connects to the server, and the player stayed on a black screen. A handler without an explicit result now returns `ContinueChain` after its fault is reported once; a handler that returns `EventResult` still ends the chain with `StopChain`. `Entity::FireEvent` reports a `StopChain` from a callback without an explicit result as a contract violation, and `ServerEngine::FireEvent` and `ServerEntity::FireEvent` delegate to it instead of repeating the loop. See [exception safety](../contributing/coding-contracts/exception-safety.md).
+
+### Migration
+
+- Base `56683c4737ebbb1386ae3365be49416ac1678432` (`2026.1.90-dev`) to `2026.1.91-dev`: no setting, data, resource or save conversion is required. Rebuild every native role and rebake the managed scripts, because the generated event adapters change. A Managed handler declared without a result can no longer refuse an event by faulting: its fault is reported once and the event result stays `ContinueChain`, so login, load and startup gates proceed. A handler that must be able to refuse returns `EventResult` or `Task<EventResult>`. A native C++ subscriber that returns `StopChain` must set `EventCallbackData::HasExplicitResult`; without it `Entity::FireEvent` reports a contract violation and still stops the chain. AngelScript handlers keep their behavior, because their exceptions still reach `Entity::FireEvent`. The central migration marker, Managed ABI, event frame layout and resource schemas are unchanged. Acceptance: run `EventChainStopsOnlyForCallbacksWithExplicitResult` and the ManagedScriptBaker event tests natively, then start a client whose `Game.OnStart` handler throws and check that the connecting subscriber still runs.
+
+## 2026.1.90-dev - 2026-10-30
 
 ### Changed
 

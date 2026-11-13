@@ -8,15 +8,16 @@ This internal audit records discovery material, ownership decisions, and promoti
 
 ## Coverage
 
-- Snapshots: **3**
-- Classified concerns: **32**
-- Source references: **196**
-- Dispositions: `boundary-owned` 3, `project-owned` 3, `promoted` 25, `promotion-candidate` 1
+- Snapshots: **4**
+- Classified concerns: **33**
+- Source references: **197**
+- Dispositions: `boundary-owned` 3, `project-owned` 3, `promoted` 26, `promotion-candidate` 1
 
 ## Audited snapshots
 
 | Snapshot | Repository | Exact revision | Availability | Role |
 | --- | --- | --- | --- | --- |
+| `last-frontier-client-path-cut` | `lastfrontierdev/lf` | `0046abb099c831667f07ba722a2b7c02cca7af96` | `private-local-checkout` | Pinned client cut-and-gag path-query discovery evidence |
 | `last-frontier` | `lastfrontierdev/lf` | `d028cbb35942fbb87171b94d2ef9c9ddcf6b6f31` | `private-local-checkout` | Primary mature embedding-project evidence |
 | `last-frontier-map-acceptance` | `lastfrontierdev/lf` | `b9c18d6582378d7172efffaad49ad8edc7d2e65d` | `private-local-checkout` | Pinned linked-model output-discovery regression evidence |
 | `fonline-tla` | `cvet/fonline-tla` | `b603d8fdbc2b2f89f233b2a1938686ead9d8d480` | `public-pinned-checkout` | Independent compatibility and legacy-migration evidence |
@@ -25,6 +26,7 @@ This internal audit records discovery material, ownership decisions, and promoti
 
 | Concern | Disposition | Priority | Owner | Engine or planned targets | Required reviews |
 | --- | --- | --- | --- | --- | --- |
+| `client-path-cut-and-gag-callback` Client path cut and gag callback composition | `promoted` | `P1` | `content-data` | `Docs/en/explanation/maps-and-movement.md`<br>`Docs/ru/explanation/maps-and-movement.md`<br>`Source/Tests/Test_ClientMapPaths.cpp` | `content-data`<br>`scripting`<br>`quality`<br>`documentation` |
 | `linked-model-output-discovery` Linked model discovery with a partial output cache | `promoted` | `P1` | `content-data` | `Docs/en/explanation/content-pipeline/baking.md` | `content-data`<br>`quality` |
 | `project-bootstrap-and-build` Project bootstrap, staged build, and first launch | `promoted` | `P0` | `build-release` | `Docs/en/tutorials/getting-started.md`<br>`Docs/en/how-to/build/embedding-project.md`<br>`Docs/en/how-to/build/index.md`<br>`Docs/en/how-to/build/project-configuration.md`<br>`Docs/en/reference/cmake-and-buildtools/pipeline.md` | `build-release`<br>`documentation`<br>`platform` |
 | `engine-update-reconciliation` Engine submodule update reconciliation | `promoted` | `P0` | `documentation` | `Docs/en/contributing/documentation/index.md`<br>`Docs/en/how-to/migration/engine-upgrade.md`<br>`Docs/en/contributing/contract-change-management.md` | `documentation`<br>`build-release`<br>`quality` |
@@ -59,6 +61,13 @@ This internal audit records discovery material, ownership decisions, and promoti
 | `private-item-policy-and-map-spectators` Private item knowledge and bounded map spectators | `boundary-owned` | `P1` | `runtime` | `Docs/en/explanation/runtime/server.md`<br>`Source/Tests/Test_ServerEntityLifetime.cpp` | `runtime`<br>`scripting`<br>`quality`<br>`documentation` |
 
 ## Decisions and gates
+
+### Client path cut and gag callback composition
+
+- Sources: `last-frontier-client-path-cut:Scripts/AiControl.cs`
+- Reusable claim: For non-adjacent client hexes, the callback GetPath overload must apply cut and the gag predicate in the same native search. A permitted gag may be crossed, while a refused gag or solid non-gag blocker remains impassable. Cut zero reaches the exact target, positive cut may stop within the requested distance, and an already-covered start needs no movement. Existing adjacent-hex behavior and critter multihex units remain unchanged.
+- Decision: The committed project caller passes its requested cut to the closed-door diagnostic path query. The Engine callback overload now applies cut and the gag predicate in one native search; the real native regression and existing path regressions passed. This snapshot remains discovery evidence, with no API stability label changes. Ward routing, door identification, permission to open a door, and gameplay navigation policy remain project-owned.
+- Promotion gate: ClientGagPathWithCutUsesCallbackAcrossBlockedBarrier exercises the real client map and exported ScriptFunc callback across a complete wall barrier: true callback at cuts zero and one, refused callback, solid non-gag replacement, cut covering the whole route, negative cut normalization, and invalid endpoint/null-callback rejection. Existing exact-center and multihex-body regressions remain required; the paired Engine guide derives the reusable contract from these owners.
 
 ### Linked model discovery with a partial output cache
 
@@ -302,7 +311,7 @@ This internal audit records discovery material, ownership decisions, and promoti
 
 ## Verification
 
-The normal generator/check validates schema, ownership, disposition rules, Engine targets, and deterministic output. A maintainer with both exact external checkouts also runs source verification; it proves every recorded path exists in the pinned commit rather than trusting the current working tree.
+The normal generator/check validates schema, ownership, disposition rules, Engine targets, and deterministic output. Source verification maps every snapshot to its repository checkout and reads its pinned commit; multiple revisions may share a checkout without changing HEAD. Dirty or newer files cannot supply missing pinned sources. Unsupported repositories, missing commits and missing sources are errors.
 
 ```bash
 python BuildTools/docs_external_evidence.py --check

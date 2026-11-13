@@ -407,7 +407,7 @@ owned by the backend; callers must not retain it beyond that storage's lifetime.
 | `Network.UpdateFileMaxPortionSize` | top-level | Maximum bytes per `UpdateFileData` response. Drives both transfer throughput and per-message memory pressure. Engine default: 1,000,000 bytes. |
 | `ServerNetwork.UpdateFilesInMemory` | top-level + `[SubConfig]` | `True` keeps every packaged update file in RAM (low CPU under load). `False` serves from disk on demand (low RAM, more I/O). Engine default: `False`; each project chooses overrides for its deployment profiles. |
 | `Network.ForceMetadataVersion` | top-level | Testing only: overrides the metadata version reported by the client, allowing a mismatch to be simulated without a second bake. Keep empty in shipped configurations. |
-| `Baking.PlatformBinaries` | top-level | Directory the server reads per-target client runtime libraries from, and the packager writes them to. Default `PlatformBinaries`, resolved relative to the server's working directory / package root. |
+| `Common.PlatformBinariesPath` | top-level | Directory the server reads per-target client runtime libraries from, and the packager writes them to. Default `PlatformBinaries`, resolved relative to the server's working directory / package root. |
 | `Common.UserWritablePath` | common | **Read-only** writable data root for every runtime write: logs, cache, resource overlay, self-updated binaries, and server database. It is resolved before any config is read and is not authorable: `--Common.UserWritablePath <path>` names it; otherwise an `INSTALLED` marker beside the executable selects the per-OS user-data directory plus the project name; with neither, it stays empty and paths remain relative to the working directory. |
 
 There is no auto-detection of memory vs disk mode in C++. Choose explicitly per environment.
@@ -432,8 +432,8 @@ read-only installed/APK base. `GetClientResources()` selects one effective base/
 preserving configured pack order, and is shared by gameplay and the updater's metadata check. The splash
 pack uses the same writable-first selection. An unusable splash is logged and omitted while the updater
 continues repairing resources; it must not prevent the repair itself. The updater's packaged-mode gates and
-resource-root choices read the already loaded `Common.Packaged` snapshot; direct executable-marker checks are
-limited to the pre-settings bootstrap and the filesystem's physical archive-versus-directory selection.
+resource-root choices read the already loaded `Common.Packaged` snapshot, as does the explicit mode passed
+to filesystem pack mounts. Direct executable-marker checks remain only in application bootstrap.
 
 This precedence is also the recovery path after `METADATA_FILE_VERSION` changes: a new runtime treats an
 unreadable old install pack as having no local metadata version, downloads the current pack into the writable
@@ -479,21 +479,20 @@ then removed around `createmsi` so the sibling Raw/Zip portable artifacts stay p
 - **PDBs for Windows runtime DLLs** are shipped under `<runtime_dll>.pdb` (for example, `<client-host>.dll.pdb`) — both next to the bundled client DLL and inside every server-staged `PlatformBinaries/Windows-*` payload. The host exe keeps its own `<host_name>.pdb` so the two namespaces never collide. `package.py` patches the CodeView (`RSDS`) record in place to point at the new PDB filename — for the renamed runtime DLL (`copy_runtime_pdb`) **and** for the host exe (`<name>.pdb`, patched at the `copy_pdb` call site) — so DbgHelp resolve symbols automatically without relying on the build-machine path baked into the binary. Missing PDB inputs or failed RSDS patches `assert` immediately during packaging — symbol gaps are never silently tolerated.
 - **The host PDB is delivered for missing-copy recovery only.** `package_all_client_runtime_update_payloads` stages the host's own `<name>.pdb` alongside the runtime DLL and its `<name>.dll.pdb` under `PlatformBinaries/<target>/`. The host exe is frozen and never delivered, so its PDB is build-specific and the server only carries its *current* build's host PDB. The client therefore fetches the host PDB **only when its local copy is missing** and **never overwrites a present one** (`Updater.cpp` skips the `<runtime_local_prefix>.pdb` entry when the file already exists, in either resource-sync or binaries mode). An up-to-date host re-downloads a matching PDB; an older host's matching local PDB stays untouched (and only if the player deleted it does the client write the current, non-matching one, which the debugger ignores by GUID). This recovers a deleted host PDB without ever clobbering a good one — the clobber that an unconditional host-PDB delivery used to cause for self-updated clients (frozen old host + newer server host PDB).
 
-Both the bundled runtime library in client packages and the runtime libraries staged for server-side binary updates go through the same package-time patching as ordinary executables: embedded resources, internal config, and packaged mark are written by `package.py`. Variant-specific config is applied to the runtime payload that actually runs the game; for example the Windows OpenGL runtime receives `ForceOpenGL=1`. The embedded-resource zip is produced with pinned entry timestamps and permissions (`make_embedded_pack`), so the bundled-client copy of a runtime and the matching `<Baking.PlatformBinaries>/<target>/<output_name><ext>` payload remain byte-identical across separate Server/Client package runs.
+Both the bundled runtime library in client packages and the runtime libraries staged for server-side binary updates go through the same package-time patching as ordinary executables: embedded resources, internal config, and packaged mark are written by `package.py`. Variant-specific config is applied to the runtime payload that actually runs the game; for example the Windows OpenGL runtime receives `ForceOpenGL=1`. The embedded-resource zip is produced with pinned entry timestamps and permissions (`make_embedded_pack`), so the bundled-client copy of a runtime and the matching `<Common.PlatformBinariesPath>/<target>/<output_name><ext>` payload remain byte-identical across separate Server/Client package runs.
 
 Client `.fores` bases are written from sorted normalized paths with no serialized timestamps. The packager validates the catalog and streams every decoded payload through exact-length and content-hash checks before accepting a resource archive. `Embedded` remains an in-memory ZIP with deterministic metadata and a CRC/readback check before it is patched into the executable. A corrupt artifact therefore fails packaging before it becomes an updater source. [test_package_resource_pack.py](../../../../BuildTools/tests/test_package_resource_pack.py) and [test_package_zip_helpers.py](../../../../BuildTools/tests/test_package_zip_helpers.py) cover the two formats.
 
 Packaging may delegate deterministic resource-archive reuse to the project-owned helper named by `FO_RESOURCE_ARCHIVE_CACHE_HELPER`. The helper receives `restore`, `store`, and `release` operations under a content-and-compression key; a miss or explicitly unavailable optional cache falls back to local creation. A restored `.fores` still passes payload validation, so caching cannot weaken updater integrity checks.
 
-The internal config patch area has a fixed Engine-owned capacity of 20000 bytes;
+The internal config patch area has a fixed Engine-owned capacity of 40000 bytes;
 embedding projects cannot resize it. `package.py` discovers the reserved size
 from the generated binary markers before writing bootstrap config data.
 
 Naming convention from `build_runtime_update_target_name` in `BuildTools/package.py`:
 - `Windows-win64`, `Linux-x64`, `Linux-arm64`, `macOS-arm64`, `Android-arm64`, etc.
 - Profiling variants get the `_Profiling` suffix in the staged file name.
-- The Windows OpenGL variant (`OGL`) is staged separately and patches `ForceOpenGL=1`.
-- Binary outputs tagged by `FO_BINARY_OUTPUT_POSTFIX` (e.g. `Client-Linux-x64-Steam`, `Client-Windows-win64-Steam`) are staged under the same `PlatformBinaries/<target>/` directory as the default variant, but `package_all_client_runtime_update_payloads` appends `_<postfix>` to every staged payload name (`<runtime-name>_Steam.so`, `<runtime-name>_Headless_Steam.so`, etc.) so variants do not clobber each other. `extract_binary_entry_postfix` strips either the packager order (`-Profiling_X-Debug`) or the actual CMake multi-config name (`-Debug_Profiling_X`), as well as the named release and sanitizer configurations, before reading an optional postfix. Unrelated or malformed `Client-*` directories are skipped instead of aborting an otherwise valid package. The matching package declaration must put the same value on that `BINARY` entry with `POSTFIX <value>`; there is no package-wide fallback from `FO_BINARY_OUTPUT_POSTFIX`. The client-side packager mirrors the suffix in `bin_out_name`, so the patched `PACKAGED_BUILD_NAME` lines up with the server-side payload name used by `Updater.cpp::remap_runtime_name` (`runtime_server_prefix = GetPackagedRuntimeName()`). `win32-win7` and `win64-win7` normalize to updater targets `Windows-win32` and `Windows-win64`; an explicit postfix is what keeps a legacy payload distinct from the regular build.
+- Binary outputs tagged by `FO_BINARY_OUTPUT_POSTFIX` (e.g. `Client-Linux-x64-Steam`, `Client-Windows-win64-Steam`) are staged under the same `PlatformBinaries/<target>/` directory as the default variant, but `package_all_client_runtime_update_payloads` appends `_<postfix>` to every staged payload name (`<runtime-name>_Steam.so`, `<runtime-name>_Headless_Steam.so`, etc.) so variants do not clobber each other. `extract_binary_entry_postfix` strips either the packager order (`-Profiling_X-Debug`) or the actual CMake multi-config name (`-Debug_Profiling_X`), as well as the named release and sanitizer configurations, before reading an optional postfix. Unrelated or malformed `Client-*` directories are skipped instead of aborting an otherwise valid package. The matching package declaration must put the same value on that `BINARY` entry with `POSTFIX <value>`; there is no package-wide fallback from `FO_BINARY_OUTPUT_POSTFIX`. The client-side packager mirrors the suffix in `bin_out_name`, so the patched `PACKAGED_BUILD_NAME` lines up with the server-side payload name used by `Updater.cpp::remap_runtime_name` (`runtime_server_prefix = _settings->GetPackagedRuntimeName()`). `win32-win7` and `win64-win7` normalize to updater targets `Windows-win32` and `Windows-win64`; an explicit postfix is what keeps a legacy payload distinct from the regular build.
 
 ## Embedding-project practices
 
@@ -650,3 +649,56 @@ Local validation steps:
 - [Engine Architecture](../architecture/) for engine, application, and build ownership.
 - [Native, AngelScript, and Managed Debugging](../../troubleshooting/debugging.md) for debugger setup; the host vs runtime split affects which binary the debugger should attach to.
 - The embedding project's release documentation for product-specific package profiles and alternative distribution channels.
+
+## Complete configuration updates
+
+Before initialization, a packaged client reads its selected `.fomain-client`
+from `Metadata`. Package `--config` selects the matching engine/bootstrap-only `.fomain-embedded-client` for native embedding.
+Each archive retains target metadata/sidecars and one config. Server packages
+separate `.fomain-server` startup resources from `.fomain-client` distribution.
+[Configuration and data sources](../../reference/settings/configuration-and-data-sources.md#downloaded-client-configuration)
+owns the file, precedence and validation contract.
+
+After resource/metadata verification, `Updater::FinishResourcesUpdate` compares
+the downloaded file with the retained resource text. Unchanged text proceeds
+without parsing it again. A changed profile is applied once to a clean candidate;
+`ApplyAppSettingsOverrides` restores local preferences, captured CLI operations
+and auto settings in the normal startup order.
+
+`GlobalSettings::HasEngineSettingsChanges` compares typed Engine fields and
+resource-pack declarations. A difference returns `UpdaterResult::SettingsRestartRequired`:
+the restart screen waits for shutdown and headless clients exit. Before that exit,
+`PreserveLocalConfig` copies preferences to a changed cache location when the
+destination has none, then persistent writes are flushed. Native modules are not
+promoted and this successful configuration transition is not a crash.
+
+With equal Engine settings, `ApplyGameSettings` replaces only custom/game values,
+removes absent values, advances the custom-settings generation and retains the
+new resource text. Existing native settings storage stays untouched. The updater
+returns `ResourcesReady`; persistent writes are flushed and Web waits for that
+flush before ClientEngine constructs against refreshed game settings in the same process. Comments, line order and equivalent native literals
+do not force a restart. CLI values retain priority over preferences and resources.
+
+Captured replay arguments own their strings, preserve repeated/append operations
+and survive original argv lifetime. Explicit native startup overrides are retained
+without invoking project initialization hooks again. Services already initialized
+by those hooks keep their current instances; game settings used by the later
+engine see the refreshed snapshot. Rebuild and repackage matching native clients
+and runtime libraries, then qualify game-only and native-change paths on every
+shipped platform. No new wire, metadata or resource format is introduced.
+
+Only the live updater transition knows the previous cache path; a manual offline
+resource replacement still needs an explicit preference move. Absolute installed
+resource paths keep writable overlays under `<UserWritablePath>/Resources`.
+
+Zero-based profiles require native compatibility `0.0.87`: rebuild all native roles
+and rebake together. Deploy the new native runtime before these resources; platforms
+without native self-update need a replacement bundle. Do not pair the new profiles
+with a runtime that restores defaults or game metadata baselines.
+
+The optional standalone-client bootstrap checks the profile's native compatibility
+comment before parsing settings. A native-first update can therefore restart on
+its embedded fallback while older resource settings await synchronization. Server
+bootstrap reads its base packs and cannot select a client writable replacement.
+
+Embedded game clients use the common client distribution for interthread connections, including its managed runtime pack. Their handshake requests the common update descriptor; ordinary network game clients and every updater connection retain the platform-specific descriptor. Resource hashes are checked against the selected descriptor in both cases.

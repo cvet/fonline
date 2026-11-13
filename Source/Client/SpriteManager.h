@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -47,8 +17,8 @@ FO_BEGIN_NAMESPACE
 
 namespace Color
 {
-    static constexpr auto Neutral = ucolor {128, 128, 128};
-    static constexpr auto TextWhite = ucolor {255, 255, 255};
+    static constexpr auto Neutral {ucolor {128, 128, 128}};
+    static constexpr auto TextWhite {ucolor {255, 255, 255}};
 }
 
 class IAppWindow;
@@ -95,15 +65,15 @@ public:
     [[nodiscard]] virtual auto GetUnlitOverlay() const -> nptr<const Sprite> { return nullptr; }
     [[nodiscard]] virtual auto IsDirectDraw() const -> bool { return false; }
     [[nodiscard]] virtual auto IsCopyable() const -> bool { return false; }
-    [[nodiscard]] virtual auto MakeCopy() const -> shared_ptr<Sprite> { throw InvalidCallException(FO_LINE_STR); }
     [[nodiscard]] virtual auto IsPlaying() const -> bool { return false; }
-    [[nodiscard]] virtual auto GetTime() const -> float32_t { return 0.0f; }
+    [[nodiscard]] virtual auto GetPhase() const -> float32_t { return 0.0f; }
 
     void SetOffset(ipos32 offset) noexcept { _offset = offset; }
     void SetDrawEffect(nptr<RenderEffect> effect) const noexcept { _drawEffect = effect; }
+    virtual auto MakeCopy() const -> shared_ptr<Sprite> { throw InvalidCallException(FO_LINE_STR); }
     virtual auto FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t = 0;
     virtual void Prewarm() { }
-    virtual void SetTime(float32_t normalized_time) { ignore_unused(normalized_time); }
+    virtual void SetPhase(float32_t normalized_phase) { ignore_unused(normalized_phase); }
     virtual void SetDirection(mdir dir) { ignore_unused(dir); }
     virtual void PlayDefault() { Play({}, true, false); }
     virtual void Play(hstring anim_name, bool looped, bool reversed) { ignore_unused(anim_name, looped, reversed); }
@@ -115,8 +85,8 @@ protected:
     void StartUpdate();
 
     ptr<SpriteManager> _sprMngr;
-    isize32 _size;
-    ipos32 _offset;
+    isize32 _size {};
+    ipos32 _offset {};
     mutable nptr<RenderEffect> _drawEffect {};
 };
 
@@ -154,7 +124,7 @@ class SpriteManager final
     friend class Sprite;
 
 public:
-    static constexpr size_t EGG_SLOT_COUNT = 2;
+    static constexpr size_t EGG_SLOT_COUNT {2};
 
     SpriteManager() = delete;
     SpriteManager(ptr<RenderSettings> settings, ptr<IAppWindow> window, ptr<GameTimer> game_time, ptr<EffectManager> effect_mngr, ptr<hash_resolver> hashes);
@@ -167,7 +137,6 @@ public:
     [[nodiscard]] auto ToHashedString(string_view str) -> hstring { return _hashResolver->to_hashed_string(str); }
     [[nodiscard]] auto GetRtMngr() const noexcept -> const RenderTargetManager& { return _rtMngr; }
     [[nodiscard]] auto GetRtMngr() noexcept -> RenderTargetManager& { return _rtMngr; }
-    [[nodiscard]] auto AcquireSceneBackground() -> nptr<const RenderTexture>;
     [[nodiscard]] auto GetMainRenderTarget() noexcept -> nptr<RenderTarget> { return _rtMain; }
     [[nodiscard]] auto GetMainRenderTarget() const noexcept -> nptr<const RenderTarget> { return _rtMain; }
     [[nodiscard]] auto GetAtlasMngr() noexcept -> ptr<TextureAtlasManager> { return &_atlasMngr; }
@@ -182,13 +151,15 @@ public:
     [[nodiscard]] auto IsAlwaysOnTop() const noexcept -> bool { return _alwaysOnTop; }
     [[nodiscard]] auto IsDrawWireframe() const noexcept -> bool { return _drawWireframe; }
     [[nodiscard]] auto IsWindowFocused() const -> bool;
-    [[nodiscard]] auto Random(int32_t min_value, int32_t max_value) -> int32_t;
     [[nodiscard]] auto CheckHitTest(int32_t value) const -> bool { return value > _settings->Render.SpriteHitValue; }
     [[nodiscard]] auto SpriteHitTest(ptr<const Sprite> spr, ipos32 pos) const -> bool;
     [[nodiscard]] auto IsEggTransp(ipos32 pos, ptr<const MapSprite> mspr) const -> bool;
     [[nodiscard]] auto GetMapSpriteDrawRect(ptr<const MapSprite> mspr, irect32 draw_area) const -> optional<irect32>;
     [[nodiscard]] auto GetMapSpritePointAnchor(ptr<const MapSprite> mspr, ipos32 local_point) const -> optional<pair<ipos32, float32_t>>;
     [[nodiscard]] auto GetOnBeginScene() noexcept -> ptr<EventObserver<>> { return &_onBeginScene; }
+
+    auto AcquireSceneBackground() -> nptr<const RenderTexture>;
+    auto Random(int32_t min_value, int32_t max_value) -> int32_t;
 
     void SetWindowSize(isize32 size);
     void SetScreenSize(isize32 size);
@@ -216,7 +187,8 @@ public:
     void DrawSpriteSizeExt(ptr<const Sprite> spr, fpos32 pos, fsize32 size, bool fit, bool center, bool stretch, ucolor color);
     auto DrawSpriteRegion(ptr<const Sprite> spr, fpos32 uv0, fpos32 uv1, fpos32 pos, fsize32 size, ucolor color) -> bool;
     void DrawSpritePattern(ptr<const Sprite> spr, ipos32 pos, isize32 size, isize32 spr_size, ucolor color);
-    void DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, ucolor color, ptr<RenderEffect> default_effect);
+    // Sprite depths are measured from map pixel row depth_origin_y, the same origin as the scene depth range
+    void DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, int32_t depth_origin_y, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, ucolor color, ptr<RenderEffect> default_effect);
     void DrawSpriteWithEffect(ptr<const Sprite> spr, ipos32 pos, ucolor color, ptr<RenderEffect> effect, int32_t padding);
     void DrawPoints(const_span<PrimitivePoint> points, RenderPrimitiveType prim, nptr<const irect32> draw_area = nullptr, nptr<RenderEffect> custom_effect = nullptr);
     void DrawTexture(ptr<const RenderTexture> tex, bool alpha_blend, nptr<const frect32> region_from = nullptr, nptr<const irect32> region_to = nullptr, nptr<RenderEffect> custom_effect = nullptr);
@@ -238,9 +210,9 @@ private:
         fpos32 DrawOffset {};
     };
 
-    [[nodiscard]] auto ApplyColorBrightness(ucolor color) const -> ucolor;
-    [[nodiscard]] auto CheckEggAppearence(TransparentEggSlot slot, ptr<const MapSprite> mspr) const -> bool;
-    [[nodiscard]] auto MakeAspectFitRect(isize32 source_size, isize32 target_size) const -> irect32;
+    auto ApplyColorBrightness(ucolor color) const -> ucolor;
+    auto CheckEggAppearence(TransparentEggSlot slot, ptr<const MapSprite> mspr) const -> bool;
+    auto MakeAspectFitRect(isize32 source_size, isize32 target_size) const -> irect32;
 
     void FlushBatch();
     void RefreshScissor();

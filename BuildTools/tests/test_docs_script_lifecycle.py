@@ -86,11 +86,11 @@ class ScriptLifecycleDocumentationTests(unittest.TestCase):
         methods = self._read("Source/Scripting/ServerGlobalScriptMethods.cpp")
         entity = self._read("Source/Common/Entity.cpp")
 
-        self.assertIn("ScopedSyncContext nested;", server)
+        self.assertIn("ScopedSyncContext nested {};", server)
         self.assertIn("_ctx.Release();", sync_header)
         self.assertIn("_ctx.Deactivate();", sync_header)
         self.assertIn("Cannot call Sync() while holding a singleton lock", sync_source)
-        self.assertIn("replaces current cover", methods)
+        self.assertIn("Replace the current cover", methods)
         self.assertIn("ReleaseLocks();", sync_source)
         self.assertIn("ReleaseSingletonLocks();", sync_source)
         remote_call = server[server.index("void ServerEngine::Process_RemoteCall") :]
@@ -124,8 +124,8 @@ class ScriptLifecycleDocumentationTests(unittest.TestCase):
         script_engine = self._read("ThirdParty/AngelScript/sdk/angelscript/source/as_scriptengine.cpp")
 
         backend_shutdown = backend[backend.index("AngelScriptBackend::~AngelScriptBackend()") :]
-        self.assertLess(backend_shutdown.index("_contextMngr.reset();"), backend_shutdown.index("ShutDownAndRelease();"))
-        self.assertLess(backend_shutdown.index("ShutDownAndRelease();"), backend_shutdown.index("_meta.reset();"))
+        self.assertLess(backend_shutdown.index("_contextMngr.reset();"), backend_shutdown.index("ShutDownAndRelease()"))
+        self.assertLess(backend_shutdown.index("ShutDownAndRelease()"), backend_shutdown.index("_meta.reset();"))
         shutdown = script_engine[script_engine.index("int asCScriptEngine::ShutDownAndRelease()") :]
         self.assertLess(shutdown.index("scriptModules[n]->CallExit();"), shutdown.index("collectGarbageUntilStable();"))
         self.assertLess(shutdown.index("scriptModules[n]->Discard();"), shutdown.rindex("collectGarbageUntilStable();"))

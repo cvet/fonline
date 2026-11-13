@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -76,6 +46,7 @@ public:
     [[nodiscard]] auto GetModel() noexcept -> nptr<ModelInstance> { return _model; }
     [[nodiscard]] auto GetModel() const noexcept -> nptr<const ModelInstance> { return _model; }
 #endif
+    [[nodiscard]] auto GetNameTextPos(ipos32& pos) const -> bool;
 
     void Init();
     void ChangeDir(mdir dir);
@@ -90,7 +61,6 @@ public:
     void NormalizeHexOffset();
     void AddExtraOffs(ipos32 offset);
     void RefreshOffs();
-    auto GetNameTextPos(ipos32& pos) const -> bool;
     void SetMoving(refcount_ptr<MovingContext> moving);
     // The current plan runs faster than its speed until it has made up the given time
     void SetMovingCatchUp(timespan time);
@@ -104,12 +74,10 @@ public:
 private:
     struct CritterAnim
     {
-        [[nodiscard]] auto GetContextItem() noexcept -> nptr<Entity> { return ContextItem; }
-
         CritterStateAnim StateAnim {};
         CritterActionAnim ActionAnim {};
         CritterAnimationFlags Flags {};
-        float32_t NormalizedTime {};
+        float32_t NormalizedPosition {};
         float32_t Speed {1.0f};
         refcount_nptr<Entity> ContextItem {};
         nptr<const SpriteSheet> Frames {};
@@ -125,13 +93,14 @@ private:
     void ProcessMoving();
     void NextAnim();
     void PrepareAnim(CritterAnim& anim, CritterAnimationContext context, int32_t moving_speed);
+    void UpdateAnimFrame(CritterAnim& anim);
     void SetAnimSpr(ptr<const SpriteSheet> anim, int32_t frm_index);
 
     void RefreshAnimOffset(CritterAnim& anim);
 
     // Integer-pixel displacement from the current MovingContext start to the linear position.
     // Hex snaps preserve it by shifting cur_hex and hex_offset in opposite directions
-    [[nodiscard]] auto EvaluateMovementDisplacement() const -> ipos32;
+    auto EvaluateMovementDisplacement() const -> ipos32;
 
     refcount_nptr<MovingContext> _moving {};
     timespan _movingCatchUpLeft {};

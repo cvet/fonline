@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Common.h"
 
@@ -45,7 +15,7 @@ FO_BEGIN_NAMESPACE
 
 static auto MakeSkeletonJoint(string_view name, initializer_list<string_view> hierarchy, float32_t translation_x = 0.0f) -> ModelSkeletonJoint
 {
-    ModelSkeletonJoint joint;
+    ModelSkeletonJoint joint {};
     joint.Name = name;
 
     for (string_view hierarchy_name : hierarchy) {
@@ -58,14 +28,14 @@ static auto MakeSkeletonJoint(string_view name, initializer_list<string_view> hi
 
 TEST_CASE("ModelSkeletonCompatibilityBuildsDeterministicCanonicalJointMap")
 {
-    ModelSkeletonSource base;
+    ModelSkeletonSource base {};
     base.FileName = "Models/Body.fbx";
     base.Joints = {
         MakeSkeletonJoint("Root", {"Root"}),
         MakeSkeletonJoint("Spine", {"Root", "Spine"}),
     };
 
-    ModelSkeletonClipSource weapon_clip;
+    ModelSkeletonClipSource weapon_clip {};
     weapon_clip.FileName = "Animations/Z_Weapon.fbx";
     weapon_clip.ClipName = "Idle";
     weapon_clip.Joints = {
@@ -75,7 +45,7 @@ TEST_CASE("ModelSkeletonCompatibilityBuildsDeterministicCanonicalJointMap")
     };
     weapon_clip.AnimatedJointHierarchies = {{"Root", "Spine", "Weapon"}};
 
-    ModelSkeletonClipSource pelvis_clip;
+    ModelSkeletonClipSource pelvis_clip {};
     pelvis_clip.FileName = "Animations/A_Pelvis.fbx";
     pelvis_clip.ClipName = "Walk";
     pelvis_clip.Joints = {
@@ -84,10 +54,10 @@ TEST_CASE("ModelSkeletonCompatibilityBuildsDeterministicCanonicalJointMap")
     };
     pelvis_clip.AnimatedJointHierarchies = {{"Root", "Pelvis"}};
 
-    vector<ModelSkeletonClipSource> forward_clips = {weapon_clip, pelvis_clip};
-    vector<ModelSkeletonClipSource> reverse_clips = {pelvis_clip, weapon_clip};
-    ModelSkeletonCompatibilityReport forward_report = BuildModelSkeletonCompatibilityReport(base, forward_clips);
-    ModelSkeletonCompatibilityReport reverse_report = BuildModelSkeletonCompatibilityReport(base, reverse_clips);
+    vector<ModelSkeletonClipSource> forward_clips {weapon_clip, pelvis_clip};
+    vector<ModelSkeletonClipSource> reverse_clips {pelvis_clip, weapon_clip};
+    ModelSkeletonCompatibilityReport forward_report {BuildModelSkeletonCompatibilityReport(base, forward_clips)};
+    ModelSkeletonCompatibilityReport reverse_report {BuildModelSkeletonCompatibilityReport(base, reverse_clips)};
 
     REQUIRE(forward_report.CanonicalJoints.size() == 4);
     CHECK(forward_report.CanonicalJoints[0].Hierarchy == vector<string> {"Root"});
@@ -103,14 +73,14 @@ TEST_CASE("ModelSkeletonCompatibilityBuildsDeterministicCanonicalJointMap")
 
 TEST_CASE("ModelSkeletonCompatibilityReportsRootAliases")
 {
-    ModelSkeletonSource base;
+    ModelSkeletonSource base {};
     base.FileName = "Models/Body.fbx";
     base.Joints = {
         MakeSkeletonJoint("Root", {"Root"}),
         MakeSkeletonJoint("Spine", {"Root", "Spine"}),
     };
 
-    ModelSkeletonClipSource clip;
+    ModelSkeletonClipSource clip {};
     clip.FileName = "Animations/Body.fbx";
     clip.ClipName = "Idle";
     clip.Joints = {
@@ -119,8 +89,8 @@ TEST_CASE("ModelSkeletonCompatibilityReportsRootAliases")
     };
     clip.AnimatedJointHierarchies = {{"Armature", "Spine"}};
 
-    vector<ModelSkeletonClipSource> clips = {clip};
-    ModelSkeletonCompatibilityReport report = BuildModelSkeletonCompatibilityReport(base, clips);
+    vector<ModelSkeletonClipSource> clips {clip};
+    ModelSkeletonCompatibilityReport report {BuildModelSkeletonCompatibilityReport(base, clips)};
 
     REQUIRE(report.RootAliases.size() == 1);
     CHECK(report.RootAliases.front().SourceRoot == "Armature");
@@ -130,14 +100,14 @@ TEST_CASE("ModelSkeletonCompatibilityReportsRootAliases")
 
 TEST_CASE("ModelSkeletonCompatibilityUsesDeterministicDepthFirstJointOrder")
 {
-    ModelSkeletonSource base;
+    ModelSkeletonSource base {};
     base.FileName = "Models/Branches.fbx";
     base.Joints = {
         MakeSkeletonJoint("Root", {"Root"}),
         MakeSkeletonJoint("B", {"Root", "B"}),
     };
 
-    ModelSkeletonClipSource clip;
+    ModelSkeletonClipSource clip {};
     clip.FileName = "Animations/Branches.fbx";
     clip.ClipName = "Idle";
     clip.Joints = {
@@ -148,8 +118,8 @@ TEST_CASE("ModelSkeletonCompatibilityUsesDeterministicDepthFirstJointOrder")
     };
     clip.AnimatedJointHierarchies = {{"Root", "A", "AChild"}, {"Root", "B"}};
 
-    vector<ModelSkeletonClipSource> clips = {clip};
-    ModelSkeletonCompatibilityReport report = BuildModelSkeletonCompatibilityReport(base, clips);
+    vector<ModelSkeletonClipSource> clips {clip};
+    ModelSkeletonCompatibilityReport report {BuildModelSkeletonCompatibilityReport(base, clips)};
 
     REQUIRE(report.CanonicalJoints.size() == 4);
     CHECK(report.CanonicalJoints[0].Hierarchy == vector<string> {"Root"});
@@ -160,14 +130,14 @@ TEST_CASE("ModelSkeletonCompatibilityUsesDeterministicDepthFirstJointOrder")
 
 TEST_CASE("ModelSkeletonCompatibilityAllowsEmptyTechnicalSceneRoot")
 {
-    ModelSkeletonSource base;
+    ModelSkeletonSource base {};
     base.FileName = "Models/TechnicalRoot.fbx";
     base.Joints = {
         MakeSkeletonJoint("", {""}),
         MakeSkeletonJoint("Body", {"", "Body"}),
     };
 
-    ModelSkeletonCompatibilityReport report = BuildModelSkeletonCompatibilityReport(base, {});
+    ModelSkeletonCompatibilityReport report {BuildModelSkeletonCompatibilityReport(base, {})};
 
     REQUIRE(report.CanonicalJoints.size() == 2);
     CHECK(report.CanonicalJoints[0].Name.empty());
@@ -177,11 +147,11 @@ TEST_CASE("ModelSkeletonCompatibilityAllowsEmptyTechnicalSceneRoot")
 
 TEST_CASE("ModelSkeletonCompatibilityFormatsEmptyTechnicalSceneRootUnambiguously")
 {
-    ModelSkeletonSource base;
+    ModelSkeletonSource base {};
     base.FileName = "Models/TechnicalRoot.fbx";
     base.Joints = {MakeSkeletonJoint("", {""})};
 
-    ModelSkeletonClipSource clip;
+    ModelSkeletonClipSource clip {};
     clip.FileName = "Animations/TechnicalRoot.fbx";
     clip.ClipName = "Idle";
     clip.Joints = {
@@ -190,9 +160,9 @@ TEST_CASE("ModelSkeletonCompatibilityFormatsEmptyTechnicalSceneRootUnambiguously
     };
     clip.AnimatedJointHierarchies = {{"", "Body"}};
 
-    vector<ModelSkeletonClipSource> clips = {clip};
-    ModelSkeletonCompatibilityReport report = BuildModelSkeletonCompatibilityReport(base, clips);
-    string formatted_report = FormatModelSkeletonCompatibilityReport(report);
+    vector<ModelSkeletonClipSource> clips {clip};
+    ModelSkeletonCompatibilityReport report {BuildModelSkeletonCompatibilityReport(base, clips)};
+    string formatted_report {FormatModelSkeletonCompatibilityReport(report)};
 
     CHECK(formatted_report.find("<empty-root>/Body") != string::npos);
     CHECK(formatted_report.find("contributions=[Body <-") == string::npos);
@@ -200,11 +170,11 @@ TEST_CASE("ModelSkeletonCompatibilityFormatsEmptyTechnicalSceneRootUnambiguously
 
 TEST_CASE("ModelSkeletonCompatibilityFormatsAnimationDataIssues")
 {
-    ModelSkeletonCompatibilityReport report;
+    ModelSkeletonCompatibilityReport report {};
     report.BaseFile = "Models/Body.fbx";
     report.CanonicalJoints = {MakeSkeletonJoint("Root", {"Root"})};
 
-    ModelSkeletonAnimationDataIssue issue;
+    ModelSkeletonAnimationDataIssue issue {};
     issue.FileName = "Animations/Broken.fbx";
     issue.ClipName = "Idle";
     issue.JointName = "UnusedHelper";
@@ -213,7 +183,7 @@ TEST_CASE("ModelSkeletonCompatibilityFormatsAnimationDataIssues")
     issue.NonFiniteTranslationKeys = 1;
     report.AnimationDataIssues.emplace_back(std::move(issue));
 
-    string formatted_report = FormatModelSkeletonCompatibilityReport(report);
+    string formatted_report {FormatModelSkeletonCompatibilityReport(report)};
     CHECK(formatted_report.find("animation_data_issues=1") != string::npos);
     CHECK(formatted_report.find("non_finite_keys=3") != string::npos);
     CHECK(formatted_report.find("Root/UnusedHelper <- Animations/Broken.fbx#Idle") != string::npos);
@@ -221,7 +191,7 @@ TEST_CASE("ModelSkeletonCompatibilityFormatsAnimationDataIssues")
 
 TEST_CASE("ModelSkeletonCompatibilityRejectsEmptyNonRootJoint")
 {
-    ModelSkeletonSource base;
+    ModelSkeletonSource base {};
     base.FileName = "Models/EmptyChild.fbx";
     base.Joints = {
         MakeSkeletonJoint("Root", {"Root"}),
@@ -235,7 +205,7 @@ TEST_CASE("ModelSkeletonCompatibilityRejectsAmbiguousSkeletons")
 {
     SECTION("Duplicate full hierarchy")
     {
-        ModelSkeletonSource base;
+        ModelSkeletonSource base {};
         base.FileName = "Models/DuplicatePath.fbx";
         base.Joints = {
             MakeSkeletonJoint("Root", {"Root"}),
@@ -248,7 +218,7 @@ TEST_CASE("ModelSkeletonCompatibilityRejectsAmbiguousSkeletons")
 
     SECTION("Duplicate joint name")
     {
-        ModelSkeletonSource base;
+        ModelSkeletonSource base {};
         base.FileName = "Models/DuplicateName.fbx";
         base.Joints = {
             MakeSkeletonJoint("Root", {"Root"}),
@@ -264,7 +234,7 @@ TEST_CASE("ModelSkeletonCompatibilityRejectsAmbiguousSkeletons")
 
 TEST_CASE("ModelSkeletonCompatibilityRejectsParentConflictsAndReportsRestPoseDivergence")
 {
-    ModelSkeletonSource base;
+    ModelSkeletonSource base {};
     base.FileName = "Models/Body.fbx";
     base.Joints = {
         MakeSkeletonJoint("Root", {"Root"}),
@@ -275,7 +245,7 @@ TEST_CASE("ModelSkeletonCompatibilityRejectsParentConflictsAndReportsRestPoseDiv
 
     SECTION("Parent conflict")
     {
-        ModelSkeletonClipSource clip;
+        ModelSkeletonClipSource clip {};
         clip.FileName = "Animations/ParentConflict.fbx";
         clip.ClipName = "Idle";
         clip.Joints = {
@@ -285,13 +255,13 @@ TEST_CASE("ModelSkeletonCompatibilityRejectsParentConflictsAndReportsRestPoseDiv
         };
         clip.AnimatedJointHierarchies = {{"Root", "Right", "Hand"}};
 
-        vector<ModelSkeletonClipSource> clips = {clip};
+        vector<ModelSkeletonClipSource> clips {clip};
         CHECK_THROWS_AS(BuildModelSkeletonCompatibilityReport(base, clips), ModelSkeletonCompatibilityException);
     }
 
     SECTION("Rest-pose divergence")
     {
-        ModelSkeletonClipSource clip;
+        ModelSkeletonClipSource clip {};
         clip.FileName = "Animations/RestConflict.fbx";
         clip.ClipName = "Idle";
         clip.Joints = {
@@ -300,8 +270,8 @@ TEST_CASE("ModelSkeletonCompatibilityRejectsParentConflictsAndReportsRestPoseDiv
         };
         clip.AnimatedJointHierarchies = {{"Root", "Spine"}};
 
-        vector<ModelSkeletonClipSource> clips = {clip};
-        ModelSkeletonCompatibilityReport report = BuildModelSkeletonCompatibilityReport(base, clips);
+        vector<ModelSkeletonClipSource> clips {clip};
+        ModelSkeletonCompatibilityReport report {BuildModelSkeletonCompatibilityReport(base, clips)};
 
         REQUIRE(report.RestPoseDivergences.size() == 1);
         CHECK(report.RestPoseDivergences.front().Hierarchy == vector<string> {"Root", "Spine"});
@@ -314,7 +284,7 @@ TEST_CASE("ModelSkeletonCompatibilityRejectsParentConflictsAndReportsRestPoseDiv
 
     SECTION("Rest-pose tolerance")
     {
-        ModelSkeletonClipSource clip;
+        ModelSkeletonClipSource clip {};
         clip.FileName = "Animations/RestTolerance.fbx";
         clip.ClipName = "Idle";
         clip.Joints = {
@@ -323,25 +293,25 @@ TEST_CASE("ModelSkeletonCompatibilityRejectsParentConflictsAndReportsRestPoseDiv
         };
         clip.AnimatedJointHierarchies = {{"Root", "Spine"}};
 
-        vector<ModelSkeletonClipSource> clips = {clip};
-        ModelSkeletonCompatibilityReport report = BuildModelSkeletonCompatibilityReport(base, clips);
+        vector<ModelSkeletonClipSource> clips {clip};
+        ModelSkeletonCompatibilityReport report {BuildModelSkeletonCompatibilityReport(base, clips)};
         CHECK(report.RestPoseDivergences.empty());
     }
 }
 
 TEST_CASE("ModelSkeletonCompatibilityRejectsAnimationHierarchyOutsideSourceSkeleton")
 {
-    ModelSkeletonSource base;
+    ModelSkeletonSource base {};
     base.FileName = "Models/Body.fbx";
     base.Joints = {MakeSkeletonJoint("Root", {"Root"})};
 
-    ModelSkeletonClipSource clip;
+    ModelSkeletonClipSource clip {};
     clip.FileName = "Animations/Invalid.fbx";
     clip.ClipName = "Idle";
     clip.Joints = {MakeSkeletonJoint("Root", {"Root"})};
     clip.AnimatedJointHierarchies = {{"Root", "Missing"}};
 
-    vector<ModelSkeletonClipSource> clips = {clip};
+    vector<ModelSkeletonClipSource> clips {clip};
     CHECK_THROWS_AS(BuildModelSkeletonCompatibilityReport(base, clips), ModelSkeletonCompatibilityException);
 }
 

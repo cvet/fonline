@@ -174,6 +174,16 @@ snapshot may instead represent an immutable static map item and legitimately
 carry an empty id; `ReceiveDetachedItem()` accepts that generic state, while the
 list handler enforces identity at its narrower boundary.
 
+Authoritative inventory slot reconciliation retains the critter and moved item
+and iterates a retained snapshot of the inventory. Property post-setters run
+synchronously and may remove another item, move the item to another holder, or
+destroy the critter. Revalidate membership and lifetime after each slot setter;
+stop the remaining reconciliation when the moved item or owner is invalidated.
+The network handler also revalidates the critter before refreshing its light.
+Already committed slot writes remain valid; this is not a transactional rollback.
+Ordinary moves, prediction echoes and multi-item destinations preserve their
+existing semantics (`Test_ClientEntityLifetime.cpp`).
+
 Script GUI `ItemView` widgets cache the item handles bound to their cells. `Resort()` drops destroyed handles returned by a stale supplier, keeps a cell only when the source returns the same live handle instance, and rebinds a replacement clone with the same entity id so item draw callbacks observe its current count and other projected properties.
 
 ## 3D model runtime architecture
@@ -374,29 +384,44 @@ The reusable map presentation API includes `SetExtraScrollOffset()` for script-o
 
 ### Client map field storage
 
-`MapView` stores fields in `ChunkedTwoDimensionalGrid`: a directly indexed
-table of nullable owners of dense blocks. The grid's `ChunkSide` template
+`MapView` stores fields in `ChunkedTwoDimensionalGrid`: a two-level, directly
+indexed table of nullable owners of dense blocks. The grid's `ChunkSide` template
 parameter must be a nonzero power of two. `MapView` supplies
 `GameSettings::CLIENT_MAP_CHUNK_SIDE`, currently 16, so its blocks are 16x16.
 Changing this compile-time setting requires rebuilding native consumers;
-it is not a runtime configuration key. The first write to a block constructs
-its `ChunkSide * ChunkSide` default fields. Reading a missing block returns the
-shared empty field without allocating. Access uses coordinate division/remainder
-by the compile-time block side and array indexing; it does not hash coordinates or allocate per-field
-nodes. Existing field addresses survive allocations of other blocks. Mapper
-resize preserves overlapping coordinates, discards removed fields, and may
-invalidate field addresses. Unload releases the table and every block.
+it is not a runtime configuration key. The top level holds one owner per
+32x32 block slots; a slot table is allocated on the first write inside it.
+The first write to a block constructs its `ChunkSide * ChunkSide` default
+fields. Reading a missing block returns the shared empty field without
+allocating. Access uses coordinate division/remainder by compile-time sides and
+two array lookups; it does not hash coordinates or allocate per-field nodes.
+Existing field addresses survive allocations of other blocks.
+`ClearArea(origin, size)` resets every field of a clipped rectangle, releases
+blocks it covers completely, and releases a slot table when its last block goes;
+callers remove the views those fields own first. Mapper resize preserves
+overlapping coordinates, discards removed fields, and may invalidate field
+addresses. Unload releases the tables and every block.
 
-This removes the single full-map field allocation. With the current side of
-16, a 1200x1200 map initially
-needs 5625 owner entries rather than 1440000 field slots; each field allocation
-is bounded to `256 * sizeof(MapView::Field)`. Populated blocks consume their
-full capacity, so a map with writes in every block can still approach dense
-field storage. Light and view buffers retain their existing representations.
+Each field carries its own `Light`, the strongest colour of the light sources
+applied to it. `MapView::SetupSpriteLight()` points a map sprite at the light of
+its hex and the two neighbours its corner type reads, writing those fields so
+that later light changes reach the stored addresses. Light storage therefore
+follows the touched fields instead of the map area.
+
+No map-sized allocation or whole-map pass remains on construction, scrolling or
+lighting. Roof groups are numbered from the tracked set of roof fields, in the
+former x-major, y-minor order, so group numbers are unchanged. A map without a
+scroll axial area clears only the fields it blocked before; a map with one still
+visits every cell to mark its lines. Mapper resize destroys the views outside the
+new size from the view lists. Populated blocks consume their full capacity, so a
+map with writes in every block can still approach dense field storage.
 
 `ClientLargeMapFieldsStayWithinMemoryBudget` and
 `ClientLargeMapScrollBoundsStayWithinMemoryBudget` measure the real constructor
-on an empty 1200x1200 map, including its view/light buffers and scroll bounds.
+on an empty 1200x1200 map, including its view buffers and scroll bounds.
+`ClientMaximumSizeMapLoadsWithoutMapSizedWork` constructs a map at the configured
+`FO_MAP_MAX_SIZE` (up to 128,000 cells per side), scrolls across it and checks
+time and private memory.
 The hidden `ClientMapFieldAccessCost` compares actual field reads/writes with
 dense and hash-based storage. Its timings qualify only those workloads, not
 whole-game FPS or a fragmented 32-bit long session; see [Testing](../../contributing/testing/).
@@ -406,6 +431,8 @@ whole-game FPS or a fragmented 32-bit long session; see [Testing](../../contribu
 `ClientEngine::UnloadMap()` destroys the previous `MapView` before the next map is constructed. A script handle can retain the destroyed entity shell: Managed wrappers release native references only at finalization, and either backend can retain an explicit handle. Unload, not final object destruction, therefore releases the cell grid, view/light buffers, entity collections, deferred item owners, fog data and scratch capacity. `MapSpriteList::InvalidateAll()` preserves the pool for camera rebuilds; permanent teardown uses `Clear()` to detach sprite holders and release the pool.
 
 All three manager-owned map targets are retired at unload, and failed construction releases any already-created targets. Queued draws are flushed before teardown and matching cached indoor-mask borrows are cleared before texture deletion; see [render-target ownership](../rendering/#render-targets-and-client-bridge). Sprite-cache eviction also deletes empty atlas pages and their targets while preserving live allocations. Model mesh/animation definitions remain a separate resource-identity cache, not owners of retired maps.
+
+`CritterView::OnDestroySelf()` clears this view’s attachment IDs and inventory without destroying passengers or a successor sharing its entity ID. Map/global removal use it; `ClientCritterDestroyClearsAttachmentsBeforeDelayedFinalRelease` tests delayed release and successor registration.
 
 `Test_ClientEntityLifetime.cpp` covers retained handles, pending item owners, construction failure and empty/live atlas pages. Its retained-storage bound runs only when debug/profiling allocator statistics are available. Process private bytes and working set also include allocator, managed-runtime and renderer/driver caches; a remaining high-water mark alone is not proof of a loaded map, and headless target counts do not qualify hardware memory behavior.
 
@@ -600,7 +627,7 @@ Input semantics originate in `Source/Frontend/Application.h`; game-specific UI b
 
 `ProcessInputEvent()` is the correct place for this because it is the single point every input source funnels through — SDL events polled by `ProcessInputEvents()`, scripted `Game.Simulate*` calls, and an embedding project's automation bridge alike. A filter placed in the frontend/SDL layer would cover only the OS path and would be invisible to simulated-input tests.
 
-Client scripts can synthesize local input through the same runtime path for automation and embedded-client probes. `Game.SimulateMouseMove(pos)`, `Game.SimulateMouseDown(pos, button)`, and `Game.SimulateMouseUp(pos, button)` preserve held-button state across a raw mouse gesture, including positions outside the render window; `Game.SimulateMouseClick(pos, button)` sends a complete mouse click or wheel event. `Game.SimulateTouchDown(fingerId, pos)`, `Game.SimulateTouchMove(fingerId, pos, offsetPos)`, and `Game.SimulateTouchUp(fingerId, pos)` send raw touch streams, `Game.SimulateTouchTap(pos)` sends a completed tap event, `Game.SimulateKeyPress(key, text)` sends one key down/up pair, and `Game.SimulateKeyboardPress(key1, key2, key1Text, key2Text)` remains available for two-key sequences. Two network notifications are synthesizable the same way: `Game.SimulateDisconnect()` delivers the `OnDisconnected` notification a real disconnect ends with, and `Game.SimulateInfoMessage(infoMessage, extraText)` delivers `OnInfoMessage`. Both leave the connection itself untouched — a probe testing the reaction to a dropped session must not end the session it reports through.
+Client scripts can synthesize local input through the same runtime path for automation and embedded-client probes. `Game.SimulateMouseMove(pos)`, `Game.SimulateMouseDown(pos, button)`, and `Game.SimulateMouseUp(pos, button)` preserve held-button state across a raw mouse gesture, including positions outside the render window; `Game.SimulateMouseClick(pos, button)` sends a complete mouse click or wheel event. `Game.SimulateTouchDown(fingerId, pos)`, `Game.SimulateTouchMove(fingerId, pos, offsetPos)`, and `Game.SimulateTouchUp(fingerId, pos)` send raw touch streams, `Game.SimulateTouchTap(pos)` sends a completed tap event, `Game.SimulateTouchScroll(pos, offsetPos)` sends an aggregated scroll gesture with signed pixel offsets, `Game.SimulateKeyPress(key, text)` sends one key down/up pair, and `Game.SimulateKeyboardPress(key1, key2, key1Text, key2Text)` remains available for two-key sequences. Two network notifications are synthesizable the same way: `Game.SimulateDisconnect()` delivers the `OnDisconnected` notification a real disconnect ends with, and `Game.SimulateInfoMessage(infoMessage, extraText)` delivers `OnInfoMessage`. Both leave the connection itself untouched — a probe testing the reaction to a dropped session must not end the session it reports through.
 
 For local critter movement prediction, `ClientEngine::CritterMoveTo()` synchronizes any active `MovingContext` to the current client frame before starting a new movement or sending a stop request. It then normalizes the local hex/offset pair before the next request is sent, so rapid start/stop input does not report one-frame-stale or overlarge offsets to the server.
 
@@ -610,20 +637,22 @@ For local critter movement prediction, `ClientEngine::CritterMoveTo()` synchroni
 
 The client materialises the intent itself:
 
-- **One long plan under a lease.** A plan is a `PathFinding::TraceDirection()` of `Client.DirectMoveTraceSteps` hexes along the input ray, sliding along obstacles when `Client.DirectMoveSlide` is on (see [MapsMovementGeometry.md](../maps-and-movement.md#direction-traces)); the player's own critter walks all of it. The plan goes to the server numbered and *leased*: the server and every other player run it only `Client.DirectMoveLeaseSteps` steps ahead of where the player has confirmed holding the direction, and `ProcessDirectMove()` renews the lease with a small `SendCritterMoveLease` once `Client.DirectMoveLeaseRenewSteps` or fewer of it are left ahead of the critter. A held run is therefore one plan with one timeline on every side, while a stall on the player's link stops the server and the observers at the lease end instead of carrying them along the trace. The wire lease names projected path distance, so a speed correction cannot move its boundary and it does not depend on the link's latency: the server trails the player by one uplink transit and meets the lease end only when renewals stop arriving.
-- **The next plan before this one ends.** When the plan has `Client.DirectMoveExtendAheadSteps` or fewer steps left and was traced to its full length, the next one is traced on from where the critter is, projected onto the line the run began on, at the plan's current speed, which the server may have changed.
-- **Turn throttle.** A turn of at least `Client.DirectMoveRetargetImmediateAngle` degrees, a speed change, a start and a stop are planned at once. A smaller turn, including a 45° keyboard change under the default 60° threshold, is applied at most once per `Client.DirectMoveRetargetMinMs`; the latest direction wins when the interval passes.
-- **Server plans play out.** The controller extends only the plan it made itself. A plan the server sends for the critter (a correction, a truncated path) plays out first; a truncated path is finite and has no lease, since its replacement retires the client plan that would renew it; the held direction resumes when it ends, and a blocked direction is retried at the re-plan interval rather than every frame.
+- `Client.DirectMoveTraceSteps` bounds each trace. `Client.DirectMoveSlide` allows forward side steps around blockers. Extensions retain the ray and authoritative speed without rounding drift. Only full traces extend when `Client.DirectMoveExtendAheadSteps` remain.
+- Numbered plans lease projected distance. Server and observers advance at most `Client.DirectMoveLeaseSteps` ahead of confirmed input. `SendCritterMoveLease` renews when `Client.DirectMoveLeaseRenewSteps` remain. Uplink stalls stop them at the lease regardless of speed corrections or usual transit delay.
+- `Client.DirectMoveRetargetImmediateAngle` turns, speed changes, starts and stops apply immediately. Smaller turns (45° with the default 60° threshold) wait for `Client.DirectMoveRetargetMinMs`; the latest input wins. Blocked directions retry at that interval.
+- Held input resumes after server corrections. Truncation makes a correction finite and retires its lease and renewals.
 
-An observer applies a leased plan and its renewals (`CritterMoveLease`, matched to the plan by the server's movement uid) to its copy; a copy joined further along its path carries the lease shifted by the projected distance it skipped, converted to time at its current speed. `MovingContext::SetLeaseTime` holds a plan at its lease with the plan's clock stopped, so a longer lease resumes it from where it waited; while it waits the critter is drawn standing (`CritterHexView` switches to the idle animation and back when the plan moves on), not walking in place. With `Network.MoveSyncTrace`, every such plan writes a `dir_plan` line naming its reason (`start`, `turn`, `extend`, `resume`) and every renewal a `lease_send` line, see [Networking.md](../authority-and-networking/index.md#movement-synchronization-trace).
+Observers match `CritterMoveLease` by server uid and shift its boundary by joined path distance at current speed. `MovingContext::SetLeaseTime` pauses the clock there until renewal; `CritterHexView` draws the wait standing. See [direction traces](../maps-and-movement.md#direction-traces) and [tracing](../authority-and-networking/index.md#movement-synchronization-trace).
 
 ### Late plans catch up
 
-Movement messages carry their sender's clock: `SendCritterMove`, `SendStopCritterMove`, `SendCritterMoveLease` and `Ping` from the client, `CritterMove`, `CritterMoveLease` and `Ping` from the server. Each end keeps a `LinkDelayEstimator` for its link (`ClientConnection` for the downlink, `ServerConnection` for the uplink): the median receive-minus-send offset of the link's usual messages over the last `Network.LinkDelayWindowMs` is its usual transit, and a message's excess over it is how long a stall held it — the transit itself would need a clock both ends share, the excess does not. The median, not the best transit, is the reference so that ordinary jitter is not caught up as if it were a stall: a plan caught up to the best transit would put the server ahead of where the player's stop reaches it and walk it past the stop. A message late by `Network.MoveLateCatchUpMinMs` or more is kept out of the usual ones, so every message of a stall's burst is measured against the link as it was before it; a link whose every message stayed that late for `Network.LinkDelayRebaseMs` got slower for good, and its new transit becomes the usual one. The duration of this exceptional run is tracked independently of its bounded sample queue, so frequent messages cannot postpone rebasing. At least a handful of usual samples outlive the window, so a link that fell silent keeps its transit. A plan or a lease renewal late by at least `Network.MoveLateCatchUpMinMs` is played from where it would be by now, up to `Network.MoveLateCatchUpMaxMs`: the server fast-forwards it at once, an observer runs it at `Client.MoveCatchUpRate` times its speed until it has made up the time, up to `Client.MoveCatchUpSmoothMaxMs`, and skips the rest. The same holds for a plan the server itself started ahead because the player's move reached it late: an observer whose copy stands at the plan's start begins there and runs to where the server has it, rather than skipping the steps (`ahead_ms` in the trace); a copy anywhere else, such as a critter just come into view, is placed where the plan has it. The player's own critter is never caught up: its plans are its own input.
+Movement and ping messages carry sender-clock stamps (see [networking](../authority-and-networking/)). Each connection's `LinkDelayEstimator` measures excess over median receive-minus-send offset within `Network.LinkDelayWindowMs`, without shared clocks. Usual samples survive silence. Excluding lateness from `Network.MoveLateCatchUpMinMs` keeps stall bursts visible. Lateness persisting for `Network.LinkDelayRebaseMs` rebases usual transit independently of the bounded queue. The median keeps ordinary jitter from moving the server ahead of later stops.
+
+Plans and renewals catch up from that minimum to `Network.MoveLateCatchUpMaxMs`. The server fast-forwards; observers play up to `Client.MoveCatchUpSmoothMaxMs` at `Client.MoveCatchUpRate` and skip the excess. Observers at the plan start play server-ahead progress; newly visible copies start at current progress. Chosen input is not caught up.
 
 ### Joining a plan already under way
 
-A plan the receiver's copy of the critter has partly walked already — the continuation of a movement that reached it after a slower transit than the previous plan — is joined where the critter stands, up to `Network.MovePlanJoinMaxSteps` steps in, instead of being walked from its start (`FindPathPrefixSteps` / `DropPathPrefix`). The server does the same, after first bringing the critter's current plan up to the present, since its steps advance only once a movement period.
+`FindPathPrefixSteps` / `DropPathPrefix` join at the current hex within `Network.MovePlanJoinMaxSteps`, without backward replay. The server first advances its previous plan to now. Zero disables joining.
 
 ## Client-side validation tests
 

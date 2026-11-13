@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-cmake-options","locale":"ru","source_path":"Docs/en/reference/cmake/options.md","source_sha256":"f126e60fde66be83f8305d089233b104ebcefe22eead9371fe84e15f885526e0"} -->
+<!-- docs-translation: {"document_id":"generated-cmake-options","locale":"ru","source_path":"Docs/en/reference/cmake/options.md","source_sha256":"ee61bcb082e10589569657fc6bf58dbb65408eeecfe8ea15b677d6e2c3ff0056"} -->
 
 # Параметры проекта CMake
 
@@ -26,6 +26,8 @@ generated: true
 | <a id="entry-cmake-option-fo-map-hex-width-6d86c2ea6f"></a><code>cmake.option.FO_MAP_HEX_WIDTH</code> | <code>FO_MAP_HEX_WIDTH</code> | <code>STRING</code> / <code>integer</code> | Да | Yes | Обязателен | - | <code>geometry</code> | Ширина ячейки карты в пикселях. |
 | <a id="entry-cmake-option-fo-map-hex-height-6d10ec9f1a"></a><code>cmake.option.FO_MAP_HEX_HEIGHT</code> | <code>FO_MAP_HEX_HEIGHT</code> | <code>STRING</code> / <code>integer</code> | Да | Yes | Обязателен | - | <code>geometry</code> | Высота ячейки карты в пикселях. |
 | <a id="entry-cmake-option-fo-map-camera-angle-822f761d0e"></a><code>cmake.option.FO_MAP_CAMERA_ANGLE</code> | <code>FO_MAP_CAMERA_ANGLE</code> | <code>STRING</code> / <code>number</code> | Да | Yes | Обязателен | - | <code>geometry</code> | Угол камеры карты в градусах. |
+| <a id="entry-cmake-option-fo-map-wide-coords-6f5ba5073e"></a><code>cmake.option.FO_MAP_WIDE_COORDS</code> | <code>FO_MAP_WIDE_COORDS</code> | <code>BOOL</code> / <code>boolean</code> | Нет | Да | <code>OFF</code> | - | <code>geometry</code> | Использовать знаковые 32-битные компоненты mpos и msize вместо знаковых 16-битных. |
+| <a id="entry-cmake-option-fo-map-max-size-71e8d33150"></a><code>cmake.option.FO_MAP_MAX_SIZE</code> | <code>FO_MAP_MAX_SIZE</code> | <code>STRING</code> / <code>integer</code> | Нет | Да | <code>4000</code> | - | <code>geometry</code> | Наибольшие ширина и высота карты в ячейках: от 200 до 32767, а с FO_MAP_WIDE_COORDS — до 4194304, самой широкой стороны, которую упорядочивает ключ порядка отрисовки спрайтов. |
 | <a id="entry-cmake-option-fo-app-icon-f09af9b961"></a><code>cmake.option.FO_APP_ICON</code> | <code>FO_APP_ICON</code> | <code>STRING</code> / <code>path</code> | Нет | No | <code></code> | - | <code>project-identity</code> | Исходник значка приложения для сгенерированных платформенных целей. |
 | <a id="entry-cmake-option-fo-output-path-12be24b53f"></a><code>cmake.option.FO_OUTPUT_PATH</code> | <code>FO_OUTPUT_PATH</code> | <code>STRING</code> / <code>path</code> | Да | Нет | Обязателен | - | <code>output</code> | Общий корень для сгенерированных бинарных файлов, пакетов, данных запекания и результатов проверки. |
 | <a id="entry-cmake-option-fo-cxx-standard-04de8a4993"></a><code>cmake.option.FO_CXX_STANDARD</code> | <code>FO_CXX_STANDARD</code> | <code>STRING</code> / <code>integer</code> | Нет | No | <code>20</code> | - | <code>toolchain</code> | Стандарт языка C++ для компиляции проекта; значения ниже 20 не поддерживаются. |

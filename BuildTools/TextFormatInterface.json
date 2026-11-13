@@ -117,7 +117,7 @@
         {
           "path": "Source/Common/TextPack.cpp",
           "anchors": [
-            "auto first = line.find('{', offset);",
+            "auto first {line.find('{', offset)};",
             "if (first == string::npos)",
             "continue;"
           ]
@@ -187,7 +187,7 @@
         {
           "path": "Source/Common/TextPack.cpp",
           "anchors": [
-            "auto last = line.find('}', first);",
+            "auto last {line.find('}', first)};",
             "token = line.substr(first + 1, last - first - 1);"
           ]
         }
@@ -205,7 +205,7 @@
         {
           "path": "Source/Tools/TextBaker.cpp",
           "anchors": [
-            "auto name_pair = strex(file_header.GetNameNoExt()).split('.');",
+            "auto name_pair {strex(file_header.GetNameNoExt()).split('.')};",
             "name_pair.size() == 2",
             "Text filename must contain pack name and language suffix"
           ]
@@ -237,8 +237,8 @@
         {
           "path": "Source/Tools/TextBaker.cpp",
           "anchors": [
-            "BakeLanguageConfig bake_languages = TextPack::ParseBakeLanguages(_context->GetSettings()->Baking.BakeLanguages);",
-            "const string& default_lang = bake_languages.Languages.front();"
+            "BakeLanguageConfig bake_languages {TextPack::ParseBakeLanguages(_context->GetSettings()->Baking.BakeLanguages)};",
+            "const string& default_lang {bake_languages.Languages.front()};"
           ]
         },
         {
@@ -393,8 +393,8 @@
           "path": "Source/Tools/ProtoTextBaker.cpp",
           "anchors": [
             "Prototype text key has too many tokens",
-            "string_view key2 = key_tok.size() >= 3",
-            "string_view key3 = key_tok.size() >= 4"
+            "string_view key2 {key_tok.size() >= 3",
+            "string_view key3 {key_tok.size() >= 4"
           ]
         }
       ]
@@ -409,7 +409,7 @@
         {
           "path": "Source/Tools/ProtoTextBaker.cpp",
           "anchors": [
-            "string lang = key_tok.size() >= 2 ? key_tok[1] : default_lang;"
+            "string lang {key_tok.size() >= 2 ? key_tok[1] : default_lang};"
           ]
         }
       ]

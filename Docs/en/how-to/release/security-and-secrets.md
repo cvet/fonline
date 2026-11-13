@@ -175,7 +175,7 @@ python BuildTools/docs_validate.py
 Then qualify the affected project lane with non-production credentials:
 
 1. inspect the authored `.fomain` and selected sub-config for literals;
-2. bake and verify that runtime secrets remain `$TARGET_*` directives in `Baking/Configs`, and that package credentials are absent;
+2. bake and verify that runtime secrets remain `$TARGET_*` directives in `Baking/Metadata`, and that package credentials are absent;
 3. package a development artifact and inspect the generated tree, raw package, archives, logs, and manifest;
 4. verify the Windows signing hook obtains credentials from its own protected environment, or verify the project-owned Android signing stage without placing secrets in Engine config;
 5. install or deploy, start the packaged application, and exercise updater/network behavior;
@@ -189,7 +189,7 @@ Use [Release Operations](operations.md) for target-host preflight, staged rollou
 
 | Symptom | Inspect first |
 |---|---|
-| Concrete credential appears in `Baking/Configs` | replace `$ENV`/`$FILE` with a target form and rebake from a clean output |
+| Concrete credential appears in `Baking/Metadata` | replace `$ENV`/`$FILE` with a target form and rebake from a clean output |
 | Command-line log shows a credential | setting name and `Common.SecretSettingTokens`; rotate the value because other argument exposures remain |
 | Packaging reports a missing path/file | baked target config or root project config, selected sub-config, and file permissions; do not put a secret there |
 | Android release uses the debug key | complete four-field signing tuple and selected package config |

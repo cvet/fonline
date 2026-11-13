@@ -128,7 +128,7 @@
           "path": "Source/Tools/ImageBaker-Frm.cpp",
           "anchors": [
             "auto Load",
-            "File palette_file = files.FindFileByPath",
+            "File palette_file {files.FindFileByPath",
             "collection.NewName = strvex(fname).starts_with(\"art/critters/\")"
           ]
         },
@@ -207,7 +207,7 @@
             "auto Load",
             "header.Bpp == 8",
             "stored_rotations == art_rotations",
-            "numeric_cast<size_t>(info.DataSize) == pixel_count"
+            "numeric_cast<int64_t>(info.DataSize) == pixel_count"
           ]
         },
         {
@@ -232,7 +232,7 @@
           "path": "Source/Tools/ImageBaker-Spr.cpp",
           "anchors": [
             "auto Load",
-            "duration_ms = numeric_cast<uint32_t>(1000 / 10 * anim_frames.size())"
+            "duration_ms = numeric_cast<uint32_t>(checked_mul(int64_t {100}, numeric_cast<int64_t>(anim_frames.size())))"
           ]
         },
         {
@@ -293,7 +293,7 @@
           "path": "Source/Tools/ImageBaker-Til.cpp",
           "anchors": [
             "auto Load",
-            "duration_ms = numeric_cast<uint32_t>(1000 / 10 * frames_count)"
+            "duration_ms = numeric_cast<uint32_t>(checked_mul(int64_t {100}, numeric_cast<int64_t>(frames_count)))"
           ]
         },
         {
@@ -391,7 +391,7 @@
             "static auto TgaLoad",
             "if (type != 2 && type != 10)",
             "if (pixel_depth != 24 && pixel_depth != 32)",
-            "int32_t i = (height - y - 1) * width + x;"
+            "size_t result_row {checked_mul(numeric_cast<size_t>(flipped_y), result_row_size)};"
           ]
         }
       ],
@@ -428,14 +428,14 @@
         {
           "path": "Source/Tools/ImageBaker-Fofrm.cpp",
           "anchors": [
-            "const auto& names = recipe.References.at(section);"
+            "const auto& names {recipe.References.at(section)};"
           ]
         },
         {
           "path": "Source/Tools/ImageRecipe.cpp",
           "anchors": [
             "fofrm.GetAsStr(section, \"Frames\")",
-            "bool has_frame = fofrm.HasKey(section, \"Frame\")",
+            "bool has_frame {fofrm.HasKey(section, \"Frame\")}",
             "!(has_frame || has_frames) || !references.empty()"
           ]
         }
@@ -495,15 +495,15 @@
         {
           "path": "Source/Tools/ImageBaker-Fofrm.cpp",
           "anchors": [
-            "string_view direction_prefix = FO_GEOMETRY == 1 ? \"HexDir\" : \"SquareDir\";",
-            "string section = dir == 0 ? string {} : strex(\"{} {}\", direction_prefix, dir).str();",
+            "string_view direction_prefix {FO_GEOMETRY == 1 ? \"HexDir\" : \"SquareDir\"};",
+            "string section {dir == 0 ? string {} : strex(\"{} {}\", direction_prefix, dir).str()};",
             "throw ImageBakerException(\"FOFRM file invalid apps\", fname);"
           ]
         },
         {
           "path": "Source/Tools/ImageRecipe.cpp",
           "anchors": [
-            "for (int32_t dir = 1; !valid_section && dir < GameSettings::MAP_DIR_COUNT; dir++)"
+            "for (int32_t dir {1}; !valid_section && dir < GameSettings::MAP_DIR_COUNT; dir++)"
           ]
         },
         {
@@ -564,7 +564,7 @@
             "ReadOffsetInteger(values[index * 2 + 1].AsString(), fname, section)",
             "shot.Offset = {",
             "transforms[ref].Size = sizes[ref];",
-            "auto transformed = TransformImageFrame(frame, transforms[ref], fname);"
+            "auto transformed {TransformImageFrame(frame, transforms[ref], fname)};"
           ]
         },
         {
@@ -609,7 +609,7 @@
             "\"FOFRM size requires an integer token within uint16 range\"",
             "AnyData::ParseValue(string {value}, false, true, AnyData::ValueType::String)",
             "common_size = ReadSizeValue(fofrm.GetAsStr(\"\", \"Size\"), fname, \"\", \"Size\");",
-            "auto sizes = ReadFrameSizes(fofrm, section, names.size(), common_size, fname);",
+            "auto sizes {ReadFrameSizes(fofrm, section, names.size(), common_size, fname)};",
             "\"FOFRM Size and FrameSizes are mutually exclusive in one section\""
           ]
         },
@@ -643,7 +643,7 @@
             "AnyData::ParseValue(string {fofrm.GetAsStr(section, \"FrameSizes\")}, false, true, AnyData::ValueType::String)",
             "\"FOFRM FrameSizes requires one pair per Frame or Frames reference\"",
             "(void)ReadFrameSizes(fofrm, section, count, {}, fname);",
-            "for (size_t ref = 0; ref < names.size(); ref++)",
+            "for (size_t ref {0}; ref < names.size(); ref++)",
             "ReadSizeInteger(values[index * 2 + 1].AsString(), fname, section, \"FrameSizes\")"
           ]
         },
@@ -667,7 +667,7 @@
           "path": "Source/Tools/ImageBaker-Fofrm.cpp",
           "anchors": [
             "MaterializeFrames(SelectImageSequence(child, transforms[ref].InputDir, fname), fname)",
-            "auto transformed = TransformImageFrame(frame, transforms[ref], fname);",
+            "auto transformed {TransformImageFrame(frame, transforms[ref], fname)};",
             "sequence.Frames = SelectImageFrames(std::move(sequence.Frames), fofrm, section, fname, false);"
           ]
         }
@@ -1288,7 +1288,7 @@
             "case 'H':",
             "case 'V':",
             "case 'F':",
-            "frm_count_target = std::max(frm_from, frm_to)"
+            "frm_count_target_wide {checked_add"
           ]
         }
       ]
@@ -1359,9 +1359,9 @@
         {
           "path": "Source/Tools/ImageBaker.cpp",
           "anchors": [
-            "bool scan_mode = target_path.empty()",
+            "bool scan_mode {target_path.empty()}",
             "!std::ranges::any_of(root_outputs",
-            "bool scheduled = CheckOutput("
+            "bool scheduled {CheckOutput("
           ]
         }
       ]
@@ -1420,7 +1420,7 @@
         {
           "path": "Source/Tools/ImageBaker.cpp",
           "anchors": [
-            "string output_path = collection.NewName.empty() ? string(fname) : collection.NewName",
+            "string output_path {collection.NewName.empty() ? string(fname) : collection.NewName}",
             "_context->WriteData(output_path, data)"
           ]
         }
@@ -1436,7 +1436,7 @@
         {
           "path": "Source/Common/SpriteResource.h",
           "anchors": [
-            "SPRITE_RESOURCE_VERSION = 3"
+            "SPRITE_RESOURCE_VERSION {3}"
           ]
         },
         {
@@ -1449,7 +1449,7 @@
         {
           "path": "Source/Common/Common.h",
           "anchors": [
-            "MigrationRule Version 0 0 85"
+            "MigrationRule Version 0 0 90"
           ]
         }
       ]
@@ -1464,7 +1464,7 @@
         {
           "path": "Source/Tools/ImageBaker.cpp",
           "anchors": [
-            "uint8_t dirs = ImageImport::GetDirectionCount(collection);",
+            "int32_t dirs {numeric_cast<int32_t>(ImageImport::GetDirectionCount(collection))};",
             "writer.write<uint32_t>(duration);",
             "writer.write<int32_t>(frame_offset.x);"
           ]
@@ -1489,8 +1489,8 @@
         {
           "path": "Source/Common/SpriteResource.cpp",
           "anchors": [
-            "frame.Duration = std::chrono::milliseconds {reader.GetLEUInt32()};",
-            "frame.Offset = {reader.GetLEInt32(), reader.GetLEInt32()};"
+            "frame.Duration = std::chrono::milliseconds {reader.ReadLEUInt32()};",
+            "frame.Offset = {reader.ReadLEInt32(), reader.ReadLEInt32()};"
           ]
         },
         {
@@ -1513,7 +1513,7 @@
         {
           "path": "Source/Common/AnimationInfo.h",
           "anchors": [
-            "SPRITE_INFO_VERSION = 2",
+            "SPRITE_INFO_VERSION {2}",
             "timespan Duration {};"
           ]
         },
@@ -1594,8 +1594,8 @@
             "static auto ResizeEncodedColorFrame(",
             "source.Size == size",
             "source.Size.width == 0 || source.Size.height == 0",
-            "constexpr int64_t pixel_unit = 65536;",
-            "uint64_t alpha_weight = weights[sample] * source.Data[positions[sample] + 3];",
+            "constexpr int64_t pixel_unit {65536};",
+            "uint64_t alpha_weight {weights[sample] * source.Data[positions[sample] + 3]};",
             "if (alpha != 0)",
             ".Motion = source.Motion,",
             ".Offset = source.Offset,"
@@ -1690,7 +1690,7 @@
           "path": "Source/Client/DefaultSprites.cpp",
           "anchors": [
             "if (sprite_info.Directions.front().Frames.size() > 1 || direction_count > 1)",
-            "auto anim = safe_alloc::make_shared<SpriteSheet>(_sprMngr, timelines);"
+            "auto anim {safe_alloc::make_shared<SpriteSheet>(_sprMngr, timelines)};"
           ]
         },
         {
@@ -1711,7 +1711,7 @@
         {
           "path": "Source/Client/DefaultSprites.cpp",
           "anchors": [
-            "SpriteResourceFrameData& frame = direction.Frames.front()",
+            "SpriteResourceFrameData& frame {direction.Frames.front()}",
             "result = FillAtlas(atlas_type, frame.Size, frame.Offset"
           ]
         }
@@ -1824,7 +1824,7 @@
             "_copyableSpriteCache.find({path, atlas_type})",
             "return it->second->MakeCopy()",
             "_copyableSpriteCache.emplace(pair {path, atlas_type}, spr)",
-            "auto copy = spr->MakeCopy()"
+            "auto copy {spr->MakeCopy()}"
           ]
         },
         {
@@ -1948,7 +1948,7 @@
           "anchors": [
             "Indexed TGA is not supported",
             "TGA support only 24 and 32 bpp",
-            "height - y - 1"
+            "int32_t flipped_y {checked_sub"
           ]
         },
         {
@@ -2047,6 +2047,37 @@
       ]
     },
     {
+      "id": "image-format.validation.numeric-boundaries",
+      "name": "Signed quantities and checked format boundaries",
+      "stability": "internal",
+      "requirement": "Use int32_t for imported dimensions and shared-frame indices, and typed per-frame durations with checked uint32 millisecond totals for sprite v3. Validate final signed ranges and exact RGBA byte counts after FOFRM transformations and before serialization; retain checked uint16/uint8 wire conversions and backward shared-frame references. Decode TGA uint16 dimensions into signed int32_t; reject truncated payloads and oversized run packets while preserving complete final raw-packet clipping. Internal arithmetic uses fixed-width integers; reserve size_t for actual target container, buffer or external APIs and use numeric_cast for transitions between different numeric types.",
+      "rationale": "Consistent signed types remove intermediate narrowing while preventing negative sizes, duration wrapping and high-bit wire dimensions from reaching allocation or indexing incorrectly.",
+      "source": [
+        {
+          "path": "Source/Tools/ImageImport.h",
+          "anchors": [
+            "isize32 Size",
+            "timespan Duration",
+            "int32_t SharedIndex",
+            "array<FrameSequence, MAX_DIRS_MINUS_ONE> Dirs"
+          ]
+        },
+        {
+          "path": "Source/Tools/ImageBaker.cpp",
+          "anchors": [
+            "ValidateFrameCollection",
+            "writer.write<uint16_t>"
+          ]
+        },
+        {
+          "path": "Source/Tools/ImageBaker-Tga.cpp",
+          "anchors": [
+            "TgaLoad"
+          ]
+        }
+      ]
+    },
+    {
       "id": "image-format.validation.fofrm-names",
       "name": "Canonical FOFRM names",
       "stability": "experimental",
@@ -2082,20 +2113,20 @@
     }
   ],
   "summary": {
-    "entry_count": 81,
+    "entry_count": 82,
     "format_count": 12,
     "descriptor_field_count": 33,
     "filename_option_count": 4,
     "baking_rule_count": 14,
     "runtime_rule_count": 8,
-    "validation_rule_count": 10,
+    "validation_rule_count": 11,
     "baker_extension_count": 12,
     "runtime_extension_count": 11,
     "entries_by_stability": {
       "deprecated": 1,
       "experimental": 73,
-      "internal": 7
+      "internal": 8
     }
   },
-  "contract_digest": "0fada3c0e4bb95c82c16e9d200fe863bc1bd0aa507e85238a922607adbde3673"
+  "contract_digest": "092413de5c8e7210371396c44a6e91abdae68dc3657fc15d01b14bb8986fb903"
 }

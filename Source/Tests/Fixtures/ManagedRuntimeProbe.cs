@@ -17,6 +17,11 @@ public static class ManagedRuntimeProbe
     private static long TimerSecondStartFrame;
     private static int TimerErrorsBefore;
 
+#if SERVER
+    [CallableFromNative]
+    internal static long ReadPackagedSetting() => Settings.PackagedProbe.Value;
+#endif
+
     [CallableFromNative]
     internal static uint StartAwaitedTimer(int mode)
     {

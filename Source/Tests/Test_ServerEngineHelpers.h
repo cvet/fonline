@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -53,7 +23,7 @@ namespace ServerEngineTests
 {
     constexpr msize SERVER_TEST_MAP_SIZE {200, 200};
     constexpr mpos SERVER_TEST_MOVE_START_HEX {20, 20};
-    constexpr uint16_t SERVER_TEST_MOVE_SPEED = 100;
+    constexpr uint16_t SERVER_TEST_MOVE_SPEED {100};
     const vector<mdir> SERVER_TEST_MOVE_STEPS {hdir::NorthEast, hdir::NorthEast, hdir::East, hdir::East, hdir::SouthEast};
     const vector<uint16_t> SERVER_TEST_MOVE_CONTROL_STEPS {2, 4, 5};
 
@@ -66,10 +36,10 @@ namespace ServerEngineTests
 
     inline auto MakeServerTestSettings() -> GlobalSettings
     {
-        auto settings = GlobalSettings(false);
+        auto settings {GlobalSettings(false)};
 
-        settings.ApplyDefaultSettings();
-        settings.ApplyAutoSettings();
+        settings.SetupDefaultSettings();
+        settings.ApplyAutoSettings({});
 
         BakerTests::ApplySelfContainedServerSettings(settings);
 
@@ -78,26 +48,26 @@ namespace ServerEngineTests
 
     inline auto MakeServerHealthFileName() -> string
     {
-        auto exe_path = platform::get_exe_path();
+        auto exe_path {platform::get_exe_path()};
 
         return strex("{}_Health.txt", exe_path ? strvex(exe_path.value()).extract_file_name().erase_file_extension() : string_view(FO_DEV_NAME));
     }
 
     inline auto MakeTempServerResourceDir(string_view name) -> string
     {
-        auto base = std::filesystem::temp_directory_path() / std::format("lf_server_resources_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
+        auto base {std::filesystem::temp_directory_path() / std::format("lf_server_resources_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count())};
         return fs::path_to_string(base);
     }
 
     inline void RemoveServerHealthFile(string_view name) noexcept
     {
-        std::error_code ec;
+        std::error_code ec {};
         (void)std::filesystem::remove(std::filesystem::path {fs::make_path(name)}, ec);
     }
 
     inline auto MakeEmptyMapBlob() -> vector<uint8_t>
     {
-        vector<uint8_t> map_data;
+        vector<uint8_t> map_data {};
         data_writer writer {map_data};
         writer.write<uint32_t>(BAKED_MAP_FILE_MAGIC);
         writer.write<uint32_t>(BAKED_MAP_FILE_VERSION);
@@ -124,7 +94,7 @@ namespace ServerEngineTests
 
             state_lock->UnlockStateMutex();
         }};
-        auto release_state_guard = scope_exit([&release_state]() noexcept { release_state.store(true, std::memory_order_release); });
+        auto release_state_guard {scope_exit([&release_state]() noexcept { release_state.store(true, std::memory_order_release); })};
 
         while (!state_locked.load(std::memory_order_acquire)) {
             std::this_thread::yield();
@@ -133,7 +103,7 @@ namespace ServerEngineTests
         // A safety net that must stay well above the retry budget, or releasing early would turn the expected
         // throw into a success and mask a regression
         std::jthread contention_watchdog {[&](std::stop_token) {
-            for (int32_t i = 0; i < 10000 && !ensure_finished.load(std::memory_order_acquire); i++) {
+            for (int32_t i {0}; i < 10000 && !ensure_finished.load(std::memory_order_acquire); i++) {
                 std::this_thread::sleep_for(std::chrono::milliseconds {1});
             }
 
@@ -143,7 +113,7 @@ namespace ServerEngineTests
         CHECK_THROWS_WITH(ctx.EnsureEntitySynced(target), Catch::Matchers::ContainsSubstring("covered entity lock is contended"));
 
         // Read before the test releases the contention itself, so this reflects only the watchdog
-        bool rescued_by_watchdog = release_state.load(std::memory_order_acquire);
+        bool rescued_by_watchdog {release_state.load(std::memory_order_acquire)};
         ensure_finished.store(true, std::memory_order_release);
         release_state.store(true, std::memory_order_release);
         state_owner.join();
@@ -174,17 +144,17 @@ namespace ServerEngineTests
 
     inline auto MakeMapProtoBlob(BakerServerEngine& proto_engine, hstring type_name, string_view proto_name, msize map_size) -> vector<uint8_t>
     {
-        vector<uint8_t> props_data;
-        set<hstring> str_hashes;
+        vector<uint8_t> props_data {};
+        set<hstring> str_hashes {};
 
-        auto registrar = proto_engine.GetPropertyRegistrar(type_name);
+        auto registrar {proto_engine.GetPropertyRegistrar(type_name)};
         REQUIRE(static_cast<bool>(registrar));
 
         ProtoMap proto {proto_engine.Hashes.to_hashed_string(proto_name), registrar};
         proto.SetSize(map_size);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
-        vector<uint8_t> protos_data;
+        vector<uint8_t> protos_data {};
         data_writer writer {protos_data};
 
         writer.write<uint32_t>(uint32_t {0});
@@ -196,6 +166,7 @@ namespace ServerEngineTests
         writer.write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
         writer.write_string_bytes(proto_name);
         writer.write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
+
         if (!props_data.empty()) {
             writer.write_bytes({props_data.data(), props_data.size()});
         }
@@ -381,7 +352,7 @@ namespace ServerEngineTest
 )"},
             },
             [](string_view message) {
-                string message_str = string(message);
+                string message_str {string(message)};
 
                 if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
                     throw ScriptSystemException(message_str);
@@ -395,8 +366,8 @@ namespace ServerEngineTest
     {
         BakerServerEngine compiler_engine {metadata_resources};
 
-        string_view body = mode == ServerTestScriptMode::StopOnInit ? string_view {"return EventResult::StopChain;"} : string_view {R"(throw("Unit test OnInit failure");
-        return EventResult::ContinueChain;)"};
+        string_view body {mode == ServerTestScriptMode::StopOnInit ? string_view {"return EventResult::StopChain;"} : string_view {R"(throw("Unit test OnInit failure");
+        return EventResult::ContinueChain;)"}};
 
         return BakerTests::CompileInlineScripts(&compiler_engine, "ServerEngineInitGateScripts",
             {
@@ -421,7 +392,7 @@ namespace ServerEngineInitGateTest
                         .str()},
             },
             [](string_view message) {
-                string message_str = string(message);
+                string message_str {string(message)};
 
                 if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
                     throw ScriptSystemException(message_str);
@@ -432,29 +403,29 @@ namespace ServerEngineInitGateTest
 
     inline auto MakeServerTestResources(ServerTestScriptMode script_mode = ServerTestScriptMode::Default, vector<uint8_t> metadata_blob = BakerTests::MakeEmptyMetadataBlob()) -> FileSystem
     {
-        auto compiler_resources_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ServerEngineCompilerResources");
+        auto compiler_resources_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("ServerEngineCompilerResources")};
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
 
-        FileSystem compiler_resources;
+        FileSystem compiler_resources {};
         compiler_resources.AddCustomSource(std::move(compiler_resources_source));
 
         BakerServerEngine proto_engine {compiler_resources};
-        hstring critter_type = proto_engine.Hashes.to_hashed_string("Critter");
-        hstring location_type = proto_engine.Hashes.to_hashed_string("Location");
-        hstring map_type = proto_engine.Hashes.to_hashed_string("Map");
-        hstring item_type = proto_engine.Hashes.to_hashed_string("Item");
-        auto proto_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "UnitTestRat");
-        auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "UnitTestLocation");
-        auto map_blob = MakeMapProtoBlob(proto_engine, map_type, "UnitTestMap", SERVER_TEST_MAP_SIZE);
-        auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
-        auto fomap_blob = MakeEmptyMapBlob();
+        hstring critter_type {proto_engine.Hashes.to_hashed_string("Critter")};
+        hstring location_type {proto_engine.Hashes.to_hashed_string("Location")};
+        hstring map_type {proto_engine.Hashes.to_hashed_string("Map")};
+        hstring item_type {proto_engine.Hashes.to_hashed_string("Item")};
+        auto proto_blob {BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "UnitTestRat")};
+        auto location_blob {BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "UnitTestLocation")};
+        auto map_blob {MakeMapProtoBlob(proto_engine, map_type, "UnitTestMap", SERVER_TEST_MAP_SIZE)};
+        auto item_blob {BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem")};
+        auto fomap_blob {MakeEmptyMapBlob()};
 #if FO_ANGELSCRIPT_SCRIPTING
-        auto script_blob = script_mode == ServerTestScriptMode::Default ? MakeScriptBinary(compiler_resources) : MakeInitGateScriptBinary(compiler_resources, script_mode);
+        auto script_blob {script_mode == ServerTestScriptMode::Default ? MakeScriptBinary(compiler_resources) : MakeInitGateScriptBinary(compiler_resources, script_mode)};
 #else
         REQUIRE(script_mode == ServerTestScriptMode::Default);
 #endif
 
-        auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ServerEngineRuntimeResources");
+        auto runtime_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("ServerEngineRuntimeResources")};
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
         runtime_source->AddFile("ServerEngineTest.fopro-bin-server", proto_blob);
         runtime_source->AddFile("UnitTestLocation.fopro-bin-server", location_blob);
@@ -465,7 +436,7 @@ namespace ServerEngineInitGateTest
         runtime_source->AddFile(script_mode == ServerTestScriptMode::Default ? "ServerEngineTest.fos-bin-server" : "ServerEngineInitGateTest.fos-bin-server", std::move(script_blob));
 #endif
 
-        FileSystem resources;
+        FileSystem resources {};
         resources.AddCustomSource(std::move(runtime_source));
 
         return resources;
@@ -473,7 +444,7 @@ namespace ServerEngineInitGateTest
 
     inline auto WaitForServerStart(ptr<ServerEngine> server) -> string
     {
-        for (int32_t i = 0; i < 6000; i++) {
+        for (int32_t i {0}; i < 6000; i++) {
             if (server->IsStarted()) {
                 return {};
             }
@@ -494,9 +465,9 @@ namespace ServerEngineInitGateTest
 
     inline void CheckServerStartupFailsSafely(GlobalSettings& settings, FileSystem&& resources)
     {
-        auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, std::move(resources));
+        auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, std::move(resources))};
 
-        string startup_error = WaitForServerStart(server);
+        string startup_error {WaitForServerStart(server)};
         INFO(startup_error);
         CHECK_FALSE(startup_error.empty());
         CHECK(server->IsStartingError());
@@ -512,38 +483,38 @@ namespace ServerEngineInitGateTest
 
     inline auto MakeServerStorageDoc(int64_t value) -> AnyData::Document
     {
-        AnyData::Document doc;
+        AnyData::Document doc {};
         doc.Assign(string {"value"}, value);
         return doc;
     }
 
     inline auto CreateLoggedPlayer(ptr<ServerEngine> server, string_view name) -> ptr<Player>
     {
-        shared_ptr<NetworkServerConnection> net_connection = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
-        auto not_logged_in_player = server->CreateNotLoggedInPlayer(std::move(net_connection));
+        shared_ptr<NetworkServerConnection> net_connection {NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected)};
+        auto not_logged_in_player {server->CreateNotLoggedInPlayer(std::move(net_connection))};
         server->RequireCurrentSyncContext()->SyncEntity(not_logged_in_player);
 
         not_logged_in_player->SetName(name);
         not_logged_in_player->SetLastControlledCritterId(ident_t {1});
-        auto player = server->LoginPlayerToNewRecord(not_logged_in_player);
+        auto player {server->LoginPlayerToNewRecord(not_logged_in_player)};
 
         return player;
     }
 
     inline auto CreateStandalonePlayer(ptr<ServerEngine> server, string_view name) -> refcount_ptr<Player>
     {
-        shared_ptr<NetworkServerConnection> net_connection = NetworkServer::CreateDummyConnection(server->Settings);
-        auto connection = safe_alloc::make_unique<ServerConnection>(server->Settings, std::move(net_connection), BakerTests::MakeTestChannelIdentity());
-        auto player = safe_alloc::make_refcounted<Player>(server, ident_t {}, std::move(connection));
+        shared_ptr<NetworkServerConnection> net_connection {NetworkServer::CreateDummyConnection(server->Settings)};
+        auto connection {safe_alloc::make_unique<ServerConnection>(server->Settings, std::move(net_connection), BakerTests::MakeTestChannelIdentity())};
+        auto player {safe_alloc::make_refcounted<Player>(server, ident_t {}, std::move(connection))};
 
-        SyncContext ctx;
+        SyncContext ctx {};
         ctx.Activate();
-        auto release = scope_exit([&ctx]() noexcept {
+        auto release {scope_exit([&ctx]() noexcept {
             safe_call([&ctx] {
                 ctx.Release();
                 ctx.Deactivate();
             });
-        });
+        })};
 
         ctx.SyncEntity(player);
         player->SetName(name);
@@ -562,7 +533,7 @@ namespace ServerEngineInitGateTest
         server->Unlock();
         locked = false;
 
-        auto deadline = std::chrono::steady_clock::now() + timeout;
+        auto deadline {std::chrono::steady_clock::now() + timeout};
 
         while (std::chrono::steady_clock::now() < deadline) {
             std::this_thread::sleep_for(std::chrono::milliseconds {5});

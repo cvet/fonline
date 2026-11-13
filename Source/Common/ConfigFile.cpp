@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "ConfigFile.h"
 
@@ -42,35 +12,35 @@ ConfigFile::ConfigFile(string str, ConfigFileOption options) :
 
     // The input is the first owned node, so the section views into it keep a stable address even
     // after this object is moved; appending further nodes never invalidates it
-    const string& input = _ownedStrings.emplace_back(std::move(str));
+    const string& input {_ownedStrings.emplace_back(std::move(str))};
 
-    auto cur_section_it = _sectionKeyValues.emplace(string_view {}, map<string_view, string_view> {});
-    ptr<map<string_view, string_view>> cur_section = &cur_section_it->second;
-    bool skip_cur_section = false;
+    auto cur_section_it {_sectionKeyValues.emplace(string_view {}, map<string_view, string_view> {})};
+    ptr<map<string_view, string_view>> cur_section {&cur_section_it->second};
+    bool skip_cur_section {false};
 
     _orderedSections.emplace_back(string_view {}, cur_section);
 
-    string section_content;
+    string section_content {};
 
     if (is_enum_set(_options, ConfigFileOption::CollectContent)) {
         section_content.reserve(input.length());
     }
 
-    string accum_line;
-    size_t line_begin = 0;
+    string accum_line {};
+    size_t line_begin {0};
 
     while (line_begin <= input.length() || !accum_line.empty()) {
-        size_t line_end = input.find('\n', line_begin);
-        size_t view_end = line_end != string::npos ? line_end : input.length();
-        string_view line;
+        size_t line_end {input.find('\n', line_begin)};
+        size_t view_end {line_end != string::npos ? line_end : input.length()};
+        string_view line {};
 
         if (view_end > line_begin) {
-            auto line_begin_ptr = make_ptr(input.data() + line_begin);
+            auto line_begin_ptr {make_ptr(input.data() + line_begin)};
             line = {line_begin_ptr.get(), view_end - line_begin};
         }
 
-        bool line_stable = true;
-        string merged_line;
+        bool line_stable {true};
+        string merged_line {};
 
         if (!line.empty() && line.back() == '\r') {
             line.remove_suffix(1);
@@ -101,13 +71,13 @@ ConfigFile::ConfigFile(string str, ConfigFileOption options) :
         // New section
         if (line.front() == '[') {
             // Parse name
-            size_t end = line.find(']');
+            size_t end {line.find(']')};
 
             if (end == string_view::npos) {
                 continue;
             }
 
-            string_view raw_section_name = strvex(line.substr(1, end - 1)).trim();
+            string_view raw_section_name {static_cast<string_view>(strvex(line.substr(1, end - 1)).trim())};
 
             if (raw_section_name.empty()) {
                 continue;
@@ -120,7 +90,7 @@ ConfigFile::ConfigFile(string str, ConfigFileOption options) :
             }
 
             // A name with a separator is a nested section; what its prefix means is up to the consumer
-            bool nested_section = raw_section_name.find('/') != string_view::npos;
+            bool nested_section {raw_section_name.find('/') != string_view::npos};
 
             if (nested_section && is_enum_set(_options, ConfigFileOption::SkipNestedSections)) {
                 skip_cur_section = true;
@@ -130,7 +100,7 @@ ConfigFile::ConfigFile(string str, ConfigFileOption options) :
 
             skip_cur_section = false;
 
-            string_view stored_section_name = line_stable ? raw_section_name : StoreOwnedString(raw_section_name);
+            string_view stored_section_name {line_stable ? raw_section_name : StoreOwnedString(raw_section_name)};
 
             // Add new section
             cur_section_it = _sectionKeyValues.emplace(stored_section_name, map<string_view, string_view> {});
@@ -148,23 +118,23 @@ ConfigFile::ConfigFile(string str, ConfigFileOption options) :
                 section_content.append(line.data(), line.size()).append("\n");
             }
 
-            string_view raw_key;
-            string_view raw_value;
-            bool append_value = false;
+            string_view raw_key {};
+            string_view raw_value {};
+            bool append_value {false};
 
             if (!ParseConfigKeyValueLine(line, raw_key, raw_value, append_value)) {
                 continue;
             }
 
-            string_view stored_key = line_stable ? raw_key : StoreOwnedString(raw_key);
-            string_view stored_value = line_stable ? raw_value : StoreOwnedString(raw_value);
+            string_view stored_key {line_stable ? raw_key : StoreOwnedString(raw_key)};
+            string_view stored_value {line_stable ? raw_value : StoreOwnedString(raw_value)};
 
             if (append_value) {
-                auto existing_it = cur_section->find(stored_key);
+                auto existing_it {cur_section->find(stored_key)};
 
                 if (existing_it != cur_section->end()) {
                     if (!stored_value.empty()) {
-                        string merged_value;
+                        string merged_value {};
                         merged_value.reserve(existing_it->second.size() + 1 + stored_value.size());
                         merged_value.append(existing_it->second);
                         merged_value.push_back(' ');
@@ -190,15 +160,15 @@ ConfigFile::ConfigFile(string str, ConfigFileOption options) :
 
 auto ConfigFile::ParseConfigKeyValueLine(string_view line, string_view& key, string_view& value, bool& append_value) -> bool
 {
-    bool inside_double_quotes = false;
-    size_t backslash_run = 0;
-    size_t separator_pos = string_view::npos;
-    size_t content_begin = 0;
-    size_t content_end = line.size();
+    bool inside_double_quotes {false};
+    size_t backslash_run {0};
+    size_t separator_pos {string_view::npos};
+    size_t content_begin {0};
+    size_t content_end {line.size()};
 
-    for (size_t i = 0; i < line.size(); i++) {
-        char ch = line[i];
-        bool escaped = (backslash_run & 1U) != 0;
+    for (size_t i {0}; i < line.size(); i++) {
+        char ch {line[i]};
+        bool escaped {(backslash_run & 1U) != 0};
 
         if (ch == '"' && !escaped) {
             inside_double_quotes = !inside_double_quotes;
@@ -227,10 +197,10 @@ auto ConfigFile::ParseConfigKeyValueLine(string_view line, string_view& key, str
 
     append_value = line[separator_pos - 1] == '+';
 
-    size_t key_begin = content_begin;
-    size_t key_end = append_value ? separator_pos - 1 : separator_pos;
-    size_t value_begin = separator_pos + 1;
-    size_t value_end = content_end;
+    size_t key_begin {content_begin};
+    size_t key_end {append_value ? separator_pos - 1 : separator_pos};
+    size_t value_begin {separator_pos + 1};
+    size_t value_end {content_end};
 
     TrimConfigRange(line, key_begin, key_end);
     TrimConfigRange(line, value_begin, value_end);
@@ -275,7 +245,7 @@ auto ConfigFile::FindFirstSection(string_view section_name) const noexcept -> mu
 {
     // multimap::find may answer with any section of a repeated name (libc++ returns the one its descent meets
     // first), so the first declared section is the lower bound
-    multimap<string_view, map<string_view, string_view>>::const_iterator it_section = _sectionKeyValues.lower_bound(section_name);
+    multimap<string_view, map<string_view, string_view>>::const_iterator it_section {_sectionKeyValues.lower_bound(section_name)};
 
     if (it_section == _sectionKeyValues.end() || it_section->first != section_name) {
         return _sectionKeyValues.end();
@@ -286,13 +256,13 @@ auto ConfigFile::FindFirstSection(string_view section_name) const noexcept -> mu
 
 auto ConfigFile::GetRawValue(string_view section_name, string_view key_name) const noexcept -> nptr<const string_view>
 {
-    multimap<string_view, map<string_view, string_view>>::const_iterator it_section = FindFirstSection(section_name);
+    multimap<string_view, map<string_view, string_view>>::const_iterator it_section {FindFirstSection(section_name)};
 
     if (it_section == _sectionKeyValues.end()) {
         return nullptr;
     }
 
-    map<string_view, string_view>::const_iterator it_key = it_section->second.find(key_name);
+    map<string_view, string_view>::const_iterator it_key {it_section->second.find(key_name)};
 
     if (it_key == it_section->second.end()) {
         return nullptr;
@@ -303,21 +273,21 @@ auto ConfigFile::GetRawValue(string_view section_name, string_view key_name) con
 
 auto ConfigFile::GetAsStr(string_view section_name, string_view key_name) const noexcept -> string_view
 {
-    auto str = GetRawValue(section_name, key_name);
+    auto str {GetRawValue(section_name, key_name)};
 
     return str ? *str : string_view {};
 }
 
 auto ConfigFile::GetAsStr(string_view section_name, string_view key_name, string_view def_val) const noexcept -> string_view
 {
-    auto str = GetRawValue(section_name, key_name);
+    auto str {GetRawValue(section_name, key_name)};
 
     return str ? *str : def_val;
 }
 
 auto ConfigFile::GetAsInt(string_view section_name, string_view key_name) const noexcept -> int32_t
 {
-    auto str = GetRawValue(section_name, key_name);
+    auto str {GetRawValue(section_name, key_name)};
 
     if (str && str->length() == "true"_len && strvex(*str).compare_ignore_case("true")) {
         return 1;
@@ -331,7 +301,7 @@ auto ConfigFile::GetAsInt(string_view section_name, string_view key_name) const 
 
 auto ConfigFile::GetAsInt(string_view section_name, string_view key_name, int32_t def_val) const noexcept -> int32_t
 {
-    auto str = GetRawValue(section_name, key_name);
+    auto str {GetRawValue(section_name, key_name)};
 
     if (str && str->length() == "true"_len && strvex(*str).compare_ignore_case("true")) {
         return 1;
@@ -345,7 +315,7 @@ auto ConfigFile::GetAsInt(string_view section_name, string_view key_name, int32_
 
 auto ConfigFile::GetSection(string_view section_name) const -> const map<string_view, string_view>&
 {
-    multimap<string_view, map<string_view, string_view>>::const_iterator it = FindFirstSection(section_name);
+    multimap<string_view, map<string_view, string_view>>::const_iterator it {FindFirstSection(section_name)};
     FO_VERIFY_AND_THROW(it != _sectionKeyValues.end(), "Lookup failed in section key values");
 
     return it->second;
@@ -355,12 +325,12 @@ auto ConfigFile::GetSections(string_view section_name) -> vector<ptr<map<string_
 {
     // The equal range rather than find plus count: find may land inside a repeated name, and counting on from
     // there walks past its last section
-    auto [first_it, last_it] = _sectionKeyValues.equal_range(section_name);
+    auto [first_it, last_it] {_sectionKeyValues.equal_range(section_name)};
 
-    vector<ptr<map<string_view, string_view>>> key_values;
+    vector<ptr<map<string_view, string_view>>> key_values {};
     key_values.reserve(numeric_cast<size_t>(std::distance(first_it, last_it)));
 
-    for (auto it = first_it; it != last_it; ++it) {
+    for (auto it {first_it}; it != last_it; ++it) {
         key_values.emplace_back(&it->second);
     }
 
@@ -374,19 +344,19 @@ auto ConfigFile::GetSections() noexcept -> ptr<multimap<string_view, map<string_
 
 auto ConfigFile::HasSection(string_view section_name) const noexcept -> bool
 {
-    auto it_section = _sectionKeyValues.find(section_name);
+    auto it_section {_sectionKeyValues.find(section_name)};
     return it_section != _sectionKeyValues.end();
 }
 
 auto ConfigFile::HasKey(string_view section_name, string_view key_name) const noexcept -> bool
 {
-    auto it_section = FindFirstSection(section_name);
+    auto it_section {FindFirstSection(section_name)};
 
     if (it_section == _sectionKeyValues.end()) {
         return false;
     }
 
-    auto it_key = it_section->second.find(key_name);
+    auto it_key {it_section->second.find(key_name)};
 
     if (it_key == it_section->second.end()) {
         return false;
@@ -397,7 +367,7 @@ auto ConfigFile::HasKey(string_view section_name, string_view key_name) const no
 
 auto ConfigFile::GetSectionKeyValues(string_view section_name) noexcept -> nptr<const map<string_view, string_view>>
 {
-    auto it_section = FindFirstSection(section_name);
+    auto it_section {FindFirstSection(section_name)};
 
     if (it_section == _sectionKeyValues.end()) {
         return nullptr;
@@ -410,13 +380,13 @@ auto ConfigFile::GetSectionContent(string_view section_name) const -> string_vie
 {
     FO_VERIFY_AND_THROW(is_enum_set(_options, ConfigFileOption::CollectContent), "Config file content collection was not enabled");
 
-    auto it_section = FindFirstSection(section_name);
+    auto it_section {FindFirstSection(section_name)};
 
     if (it_section == _sectionKeyValues.end()) {
         return {};
     }
 
-    auto it_key = it_section->second.find(string_view {});
+    auto it_key {it_section->second.find(string_view {})};
 
     if (it_key == it_section->second.end()) {
         return {};

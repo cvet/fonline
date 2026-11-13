@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Platform.h"
 
@@ -54,7 +24,7 @@ void platform::info_log(const string& str) noexcept
     winapi::output_debug_string(str);
 #elif FO_ANDROID
     // Not a POSIX entry point but an Android SDK one, so it stays with the platform dispatcher
-    auto message_cstr = make_ptr(str.c_str());
+    auto message_cstr {make_ptr(str.c_str())};
     __android_log_write(ANDROID_LOG_INFO, "FO", message_cstr.get());
 #else
     ignore_unused(str);
@@ -93,36 +63,36 @@ auto platform::get_user_data_base() noexcept -> string
     // The environment answers first, because a user who redirected it meant to. Only when it is silent
     // is the OS asked: nothing here drops the caller back to the install directory it cannot write
 #if FO_WINDOWS
-    if (auto local = winapi::get_environment_variable("LOCALAPPDATA"); local.has_value() && !local->empty()) {
+    if (auto local {winapi::get_environment_variable("LOCALAPPDATA")}; local.has_value() && !local->empty()) {
         return local.value();
     }
-    if (auto roaming = winapi::get_environment_variable("APPDATA"); roaming.has_value() && !roaming->empty()) {
+    if (auto roaming {winapi::get_environment_variable("APPDATA")}; roaming.has_value() && !roaming->empty()) {
         return roaming.value();
     }
-    if (auto shell_path = winapi::get_local_app_data_path(); shell_path.has_value()) {
+    if (auto shell_path {winapi::get_local_app_data_path()}; shell_path.has_value()) {
         return shell_path.value();
     }
 
     return "";
 
 #elif FO_MAC || FO_IOS
-    if (const char* home = std::getenv("HOME"); home != nullptr && home[0] != 0) {
+    if (const char* home {std::getenv("HOME")}; home != nullptr && home[0] != 0) {
         return strex(home).combine_path("Library/Application Support").str();
     }
-    if (auto home_dir = posix::get_home_dir(); home_dir.has_value()) {
+    if (auto home_dir {posix::get_home_dir()}; home_dir.has_value()) {
         return strex(home_dir.value()).combine_path("Library/Application Support").str();
     }
 
     return "";
 
 #else
-    if (const char* xdg = std::getenv("XDG_DATA_HOME"); xdg != nullptr && xdg[0] != 0) {
+    if (const char* xdg {std::getenv("XDG_DATA_HOME")}; xdg != nullptr && xdg[0] != 0) {
         return xdg;
     }
-    if (const char* home = std::getenv("HOME"); home != nullptr && home[0] != 0) {
+    if (const char* home {std::getenv("HOME")}; home != nullptr && home[0] != 0) {
         return strex(home).combine_path(".local/share").str();
     }
-    if (auto home_dir = posix::get_home_dir(); home_dir.has_value()) {
+    if (auto home_dir {posix::get_home_dir()}; home_dir.has_value()) {
         return strex(home_dir.value()).combine_path(".local/share").str();
     }
 
@@ -151,10 +121,10 @@ auto platform::get_current_process_id_str() noexcept -> string
 auto platform::get_current_process_identity() noexcept -> process_identity
 {
 #if FO_WINDOWS
-    uint32_t pid = winapi::get_current_process_id();
+    uint32_t pid {winapi::get_current_process_id()};
     return process_identity {.pid = pid, .start_time = winapi::get_running_process_start_time(pid).value_or(0)};
 #else
-    int32_t pid = posix::get_current_process_id();
+    int32_t pid {posix::get_current_process_id()};
     return process_identity {.pid = pid, .start_time = posix::get_running_process_start_time(pid).value_or(0)};
 #endif
 }
@@ -171,13 +141,13 @@ auto platform::is_process_running(const process_identity& identity) noexcept -> 
         return false;
     }
 
-    optional<uint64_t> start_time = winapi::get_running_process_start_time(static_cast<uint32_t>(identity.pid));
+    optional<uint64_t> start_time {winapi::get_running_process_start_time(static_cast<uint32_t>(identity.pid))};
 #else
     if (identity.pid > std::numeric_limits<int32_t>::max()) {
         return false;
     }
 
-    optional<uint64_t> start_time = posix::get_running_process_start_time(static_cast<int32_t>(identity.pid));
+    optional<uint64_t> start_time {posix::get_running_process_start_time(static_cast<int32_t>(identity.pid))};
 #endif
 
     return start_time.has_value() && start_time.value() == identity.start_time;
@@ -203,21 +173,21 @@ auto platform::get_process_private_memory_usage() noexcept -> size_t
 
 auto platform::get_cpu_usage_snapshot() noexcept -> cpu_usage_snapshot
 {
-    cpu_usage_snapshot result;
+    cpu_usage_snapshot result {};
 
 #if FO_WINDOWS
     result.process_time_ns = winapi::get_process_cpu_time_ns().value_or(0);
     result.logical_core_count = winapi::get_active_processor_count();
 
     // Windows reports one system-wide figure rather than a row per core
-    if (optional<winapi::cpu_core_times> system_times = winapi::get_system_cpu_times(); system_times.has_value()) {
+    if (optional<winapi::cpu_core_times> system_times {winapi::get_system_cpu_times()}; system_times.has_value()) {
         result.cores.emplace_back(cpu_usage_core_snapshot {
             .idle_time = system_times->idle_time,
             .total_time = system_times->total_time,
         });
     }
 #else
-    vector<posix::cpu_core_times> core_times = posix::get_system_cpu_times();
+    vector<posix::cpu_core_times> core_times {posix::get_system_cpu_times()};
 
     result.cores.reserve(core_times.size());
 
@@ -311,11 +281,11 @@ auto platform::get_last_module_error() noexcept -> string
 static auto make_module_file_name(const string& module_name) noexcept -> string
 {
 #if FO_WINDOWS
-    string_view extension = ".dll";
+    string_view extension {".dll"};
 #elif FO_MAC
-    string_view extension = ".dylib";
+    string_view extension {".dylib"};
 #elif FO_LINUX
-    string_view extension = ".so";
+    string_view extension {".so"};
 #endif
 
     return module_name.ends_with(extension) ? module_name : strex(strex::safe_format, "{}{}", module_name, extension).str();

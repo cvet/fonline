@@ -6,7 +6,7 @@ document_id: image-format-guide
 permalink: /Docs/ru/how-to/content/image-format.html
 ---
 
-<!-- docs-translation: {"document_id":"image-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/image-format.md","source_sha256":"0d9a2bea61ded922c83e7c7d701b203a708e89c298243533058907a521b0a89a"} -->
+<!-- docs-translation: {"document_id":"image-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/image-format.md","source_sha256":"cefb6c26b892ae90262d7443b0120366a6b7ae9dfe042fdd8538d7bb0c982495"} -->
 
 # Форматы изображений и спрайтов
 
@@ -276,6 +276,12 @@ PNG преобразует palette/grayscale, `tRNS`, 16-битные канал
 пропускает ID. Предпочитайте PNG без проверенного TGA preset экспортёра. См.
 [справочник исходных форматов](../../reference/image-format/formats.md).
 
+Исходные размеры — unsigned 16-bit значения, расширяемые до `int32_t`, включая
+значения выше 32767. Число байтов и доступные данные проверяются до выделения памяти.
+Обрезанные пакеты и run-пакеты, превышающие оставшуюся часть изображения, отвергаются.
+Прежнее поведение последнего raw-пакета сохраняется: полностью потребить его
+закодированные данные и оставить только недостающие изображению пиксели.
+
 ### Fallout FRM и FR0
 
 Палитры FRM/FR0, анимированные цвета, разделённые направления и имена выходов
@@ -495,6 +501,15 @@ clickability или воспринимаемое скольжение ног.
 PNG/TGA/FOFRM обязательны. Другие importers требуют отдельных `FO_IMAGE_*` [опций](../build/project-configuration.md#optional-native-components). Известный выключенный вход, включая nested FOFRM, сообщает путь и опцию. Соседние `ImageBaker-*.h/.cpp` закрывают палитры/helpers вместе; `ImageBaker-ZarDecoder` разделяют ZAR/TIL при включении любого из них.
 
 Native callbacks используют `ImageImport::FrameShot`, `FrameSequence`, `FrameCollection`, `LoadFunc` и `(string_view name, string_view options, FileReader reader, const ImageImport::Context& context)`. `context.Files` предоставляет соседние assets, `context.Resolve(path)` — nesting, третий аргумент `AddLoader` — выходное имя. Scheduling, meshes и serialization остаются у координатора. Stock client читает baked containers без source-декодеров; runtime extensions/container version сохраняются.
+
+`FrameCollection::Main` содержит нулевое направление; `Dirs` — Engine
+`array<FrameSequence, MAX_DIRS_MINUS_ONE>` из семи дополнительных последовательностей
+в порядке направлений, изначально пустых. При индексации знаковым ненулевым
+направлением используйте `numeric_cast<size_t>(direction - 1)`.
+Обход диапазона и ссылки на элементы сохраняют смысл. Собственные loader,
+полагавшиеся на неявное преобразование C-массива в указатель, должны передавать
+`Dirs.data()` только на конечной границе внешнего API либо использовать span
+как представление с размером. См. [запись миграции](../../reference/changelog.md).
 
 Кадр native-импорта содержит `isize32 Size`, независимую привязку `ipos32 Offset`
 и покадровую дельту движения анимации `ipos32 Motion`, накапливаемую при проигрывании. Дельты FRM/FRx и DeltaX/DeltaY

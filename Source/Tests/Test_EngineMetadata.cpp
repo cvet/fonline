@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Common.h"
 
@@ -65,22 +35,34 @@ static auto MakeSpriteAnimationInfoResources() -> FileSystem
             },
     };
 
-    auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("SpriteInfoTestPack");
+    auto source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("SpriteInfoTestPack")};
     source->AddFile("SpriteInfo/TestPack.foinfo", WriteSpriteInfoFile({entry}));
 
-    FileSystem resources;
+    FileSystem resources {};
     resources.AddCustomSource(std::move(source));
     return resources;
 }
 
+static void CheckSpriteAnimationInfoRejected(string_view content)
+{
+    auto source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("InvalidSpriteInfoTestPack")};
+    source->AddFile("SpriteInfo/TestPack.foinfo", content);
+
+    FileSystem resources {};
+    resources.AddCustomSource(std::move(source));
+
+    EngineMetadata meta {[] { }};
+    CHECK_THROWS_AS(meta.RegisterAnimationInfo(resources), VerificationException);
+}
+
 #if FO_ENABLE_3D
 
-static constexpr string_view VALID_ANIMATION_DURATIONS = R"(StateAnimations = 1
+static constexpr string_view VALID_ANIMATION_DURATIONS {R"(StateAnimations = 1
 ActionAnimations = 3
 DurationsMs = 500
-)";
+)"};
 
-static constexpr string_view VALID_ANIMATION_BOUNDS = R"(BoundsStateAnimations = 1
+static constexpr string_view VALID_ANIMATION_BOUNDS {R"(BoundsStateAnimations = 1
 BoundsActionAnimations = 1
 BoundsMinX = -1
 BoundsMinY = -1
@@ -88,9 +70,9 @@ BoundsMinZ = 0
 BoundsMaxX = 1
 BoundsMaxY = 1
 BoundsMaxZ = 2
-)";
+)"};
 
-static constexpr string_view VALID_MODEL_ANIMATION_INFO = R"([Critters/Test.fo3d]
+static constexpr string_view VALID_MODEL_ANIMATION_INFO {R"([Critters/Test.fo3d]
 BoundsVersion = 2
 ModelBoundsMinX = -2
 ModelBoundsMinY = -1
@@ -131,14 +113,14 @@ ViewBoundsMaxX = 2
 ViewBoundsMaxY = 1
 ViewBoundsMaxZ = 1.5
 
-)";
+)"};
 
 static auto MakeModelAnimationInfoResources(string_view content) -> FileSystem
 {
-    auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("AnimationInfoTestPack");
+    auto source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("AnimationInfoTestPack")};
     source->AddFile("ModelAnimationInfo.foinfo", content);
 
-    FileSystem resources;
+    FileSystem resources {};
     resources.AddCustomSource(std::move(source));
     return resources;
 }
@@ -167,7 +149,7 @@ ViewBoundsMaxZ = 3
 static void CheckModelAnimationInfoRejected(string_view content)
 {
     EngineMetadata meta {[] { }};
-    FileSystem resources = MakeModelAnimationInfoResources(content);
+    FileSystem resources {MakeModelAnimationInfoResources(content)};
     CHECK_THROWS_AS(meta.RegisterAnimationInfo(resources), VerificationException);
 }
 
@@ -187,8 +169,8 @@ TEST_CASE("PropertyMigrationActionsValidateSchema")
 {
     EngineMetadata meta {[] { }};
     meta.RegisterSide(EngineSideKind::ServerSide);
-    auto registrar = meta.RegisterEntityType("Item", true, false, true, true, true);
-    auto stored = registrar->RegisterProperty({"Server", "hstring", "Stored", "Mutable", "Persistent"});
+    auto registrar {meta.RegisterEntityType("Item", true, false, true, true, true)};
+    auto stored {registrar->RegisterProperty({"Server", "hstring", "Stored", "Mutable", "Persistent"})};
     (void)registrar->RegisterProperty({"Server", "hstring", "Transient", "Mutable"});
 
     CHECK_THROWS_AS(meta.RegisterPropertyMigrationRule("MissingOwner", "Transform", "Stored", "Migrate"), VerificationException);
@@ -271,12 +253,12 @@ TEST_CASE("EngineMetadata")
         meta.RegisterValueType("Plain");
         meta.RegisterValueTypeLayout("Plain", {{"Tag", "Wrapper"}, {"Name", "hstring"}, {"Count", "int64"}});
 
-        const BaseTypeDesc& plain_type = meta.GetBaseType("Plain");
+        const BaseTypeDesc& plain_type {meta.GetBaseType("Plain")};
         REQUIRE(plain_type.StructLayout);
         CHECK(plain_type.IsStruct);
         CHECK_FALSE(plain_type.IsRefType);
 
-        size_t packed_size = 0;
+        size_t packed_size {0};
 
         for (const FieldDesc& field : plain_type.StructLayout->Fields) {
             CHECK(field.Offset == packed_size);
@@ -298,7 +280,7 @@ TEST_CASE("EngineMetadata")
         CHECK_FALSE(meta.IsFixedType("StaticMap"));
         CHECK_FALSE(meta.IsFixedType("AbstractMap"));
 
-        const auto& proto_map_type = meta.GetBaseType("ProtoMap");
+        const auto& proto_map_type {meta.GetBaseType("ProtoMap")};
         CHECK(proto_map_type.IsEntity);
         CHECK(proto_map_type.IsEntityProto);
         CHECK_FALSE(proto_map_type.IsFixedType);
@@ -314,11 +296,11 @@ TEST_CASE("EngineMetadata")
         meta.RegisterValueTypeLayout("TextPackName", {{"Name", "hstring"}});
         meta.RegisterValueTypeLayout("TextPackKey", {{"Collection", "TextPackName"}, {"Key1", "hstring"}, {"Key2", "hstring"}, {"Key3", "hstring"}});
 
-        const BaseTypeDesc& hstring_type = meta.GetBaseType("hstring");
+        const BaseTypeDesc& hstring_type {meta.GetBaseType("hstring")};
         CHECK(hstring_type.Size == sizeof(hstring::hash_t));
         CHECK(hstring_type.Size == sizeof(hstring));
 
-        const BaseTypeDesc& text_key_type = meta.GetBaseType("TextPackKey");
+        const BaseTypeDesc& text_key_type {meta.GetBaseType("TextPackKey")};
         REQUIRE(text_key_type.StructLayout);
         CHECK(text_key_type.Size == sizeof(hstring::hash_t) * 4);
         CHECK(text_key_type.Size == sizeof(TextPackKey));
@@ -328,11 +310,11 @@ TEST_CASE("EngineMetadata")
         TextPackKey source {meta.Hashes.to_hashed_string("native-value-key")};
         array<uint8_t, sizeof(TextPackKey)> storage {};
         memory::copy(storage.data(), &source, text_key_type.Size);
-        TextPackKey copy;
+        TextPackKey copy {};
         memory::copy(&copy, storage.data(), text_key_type.Size);
         CHECK(copy == source);
 
-        const auto& fields = text_key_type.StructLayout->Fields;
+        const auto& fields {text_key_type.StructLayout->Fields};
         REQUIRE(fields.size() == 4);
         CHECK(fields[0].Offset == 0);
         CHECK(fields[1].Offset == sizeof(hstring::hash_t));
@@ -357,7 +339,7 @@ TEST_CASE("EngineMetadata")
         AddTestMigrationRule(meta, "OldField", "MiddleField");
         AddTestMigrationRule(meta, "MiddleField", "NewField");
 
-        optional<hstring> resolved = ResolveTestMigrationRule(meta, "OldField");
+        optional<hstring> resolved {ResolveTestMigrationRule(meta, "OldField")};
         REQUIRE(resolved.has_value());
         CHECK(resolved.value() == HashTestMigrationToken(meta, "NewField"));
     }
@@ -390,8 +372,8 @@ TEST_CASE("EngineMetadata")
     {
         EngineMetadata meta {[] { }};
         MigrationRulesMap migration_rules {};
-        hstring rule_name = HashTestMigrationToken(meta, "Property");
-        hstring extra_info = HashTestMigrationToken(meta, "Item");
+        hstring rule_name {HashTestMigrationToken(meta, "Property")};
+        hstring extra_info {HashTestMigrationToken(meta, "Item")};
 
         migration_rules[rule_name][extra_info].emplace(HashTestMigrationToken(meta, "OldField"), HashTestMigrationToken(meta, "MiddleField"));
         migration_rules[rule_name][extra_info].emplace(HashTestMigrationToken(meta, "MiddleField"), HashTestMigrationToken(meta, "OldField"));
@@ -403,7 +385,7 @@ TEST_CASE("EngineMetadata")
     {
         EngineMetadata meta {[] { }};
         meta.RegisterSide(EngineSideKind::ServerSide);
-        auto registrar = meta.RegisterEntityType("Item", true, false, true, true, true);
+        auto registrar {meta.RegisterEntityType("Item", true, false, true, true, true)};
         (void)registrar->RegisterProperty({"Common", "int32", "Step", "Mutable", "Persistent", "PublicSync"});
         (void)registrar->RegisterProperty({"Common", "int32", "LegacyStep", "Mutable", "Persistent", "PublicSync"});
         AddTestMigrationRule(meta, "OldStep", "Step");
@@ -411,7 +393,7 @@ TEST_CASE("EngineMetadata")
 
         EngineMetadata reuse_meta {[] { }};
         reuse_meta.RegisterSide(EngineSideKind::ServerSide);
-        auto reuse_registrar = reuse_meta.RegisterEntityType("Item", true, false, true, true, true);
+        auto reuse_registrar {reuse_meta.RegisterEntityType("Item", true, false, true, true, true)};
         (void)reuse_registrar->RegisterProperty({"Common", "int32", "Step", "Mutable", "Persistent", "PublicSync"});
         (void)reuse_registrar->RegisterProperty({"Common", "int32", "LegacyStep", "Mutable", "Persistent", "PublicSync"});
         AddTestMigrationRule(reuse_meta, "Step", "LegacyStep");
@@ -422,14 +404,14 @@ TEST_CASE("EngineMetadata")
     {
         EngineMetadata meta {[] { }};
         meta.RegisterSide(EngineSideKind::ServerSide);
-        auto registrar = meta.RegisterEntityType("Item", true, false, true, true, true);
+        auto registrar {meta.RegisterEntityType("Item", true, false, true, true, true)};
         meta.RegisterProto(meta.Hashes.to_hashed_string("Item"), safe_alloc::make_refcounted<ProtoItem>(meta.Hashes.to_hashed_string("Rifle"), registrar));
         meta.RegisterProtoMigrationRule("Item", "Rename", "OldRifle", "Rifle");
         CHECK_NOTHROW(meta.FinalizeRegistration());
 
         EngineMetadata reuse_meta {[] { }};
         reuse_meta.RegisterSide(EngineSideKind::ServerSide);
-        auto reuse_registrar = reuse_meta.RegisterEntityType("Item", true, false, true, true, true);
+        auto reuse_registrar {reuse_meta.RegisterEntityType("Item", true, false, true, true, true)};
         reuse_meta.RegisterProto(reuse_meta.Hashes.to_hashed_string("Item"), safe_alloc::make_refcounted<ProtoItem>(reuse_meta.Hashes.to_hashed_string("Rifle"), reuse_registrar));
         reuse_meta.RegisterProto(reuse_meta.Hashes.to_hashed_string("Item"), safe_alloc::make_refcounted<ProtoItem>(reuse_meta.Hashes.to_hashed_string("Carbine"), reuse_registrar));
         reuse_meta.RegisterProtoMigrationRule("Item", "Rename", "Carbine", "Rifle");
@@ -455,13 +437,13 @@ TEST_CASE("EngineMetadataSpriteAnimationInfo")
     SECTION("ParsesSpritePayloadWithout3DDependency")
     {
         EngineMetadata meta {[] { }};
-        FileSystem resources = MakeSpriteAnimationInfoResources();
+        FileSystem resources {MakeSpriteAnimationInfoResources()};
         meta.RegisterAnimationInfo(resources);
 
-        auto info = meta.GetAnimationInfo(meta.Hashes.to_hashed_string("Art/Test.png"));
+        auto info {meta.GetAnimationInfo(meta.Hashes.to_hashed_string("Art/Test.png"))};
         REQUIRE(static_cast<bool>(info));
         REQUIRE(info->Sprite.has_value());
-        const SpriteInfo& sprite_info = *info->Sprite;
+        const SpriteInfo& sprite_info {*info->Sprite};
         CHECK(sprite_info.Directions[0].Frames.size() == 2);
         CHECK(GetSpriteDirDuration(sprite_info.Directions[0]) == std::chrono::milliseconds {75});
         REQUIRE(sprite_info.Directions.size() == 1);
@@ -474,18 +456,149 @@ TEST_CASE("EngineMetadataSpriteAnimationInfo")
 
     SECTION("RejectsUnsupportedSpriteInfoVersion")
     {
-        FileSystem resources = MakeSpriteAnimationInfoResources();
-        File info_file = resources.ReadFile("SpriteInfo/TestPack.foinfo");
-        string invalid_info = info_file.GetStr();
+        FileSystem resources {MakeSpriteAnimationInfoResources()};
+        File info_file {resources.ReadFile("SpriteInfo/TestPack.foinfo")};
+        string invalid_info {info_file.GetStr()};
         invalid_info = strex(invalid_info).replace(strex("InfoVersion = {}", SPRITE_INFO_VERSION).str(), strex("InfoVersion = {}", SPRITE_INFO_VERSION + 1).str()).str();
 
-        auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("InvalidSpriteInfoTestPack");
-        source->AddFile("SpriteInfo/TestPack.foinfo", invalid_info);
-        FileSystem invalid_resources;
-        invalid_resources.AddCustomSource(std::move(source));
+        CheckSpriteAnimationInfoRejected(invalid_info);
+    }
 
-        EngineMetadata meta {[] { }};
-        CHECK_THROWS_AS(meta.RegisterAnimationInfo(invalid_resources), VerificationException);
+    SECTION("RejectsNegativeFrameCount")
+    {
+        FileSystem resources {MakeSpriteAnimationInfoResources()};
+        File info_file {resources.ReadFile("SpriteInfo/TestPack.foinfo")};
+        string invalid_info {info_file.GetStr()};
+        invalid_info = strex(invalid_info).replace("DirectionFrameCounts = 2", "DirectionFrameCounts = -1").str();
+
+        CheckSpriteAnimationInfoRejected(invalid_info);
+    }
+
+    SECTION("RejectsOversizedFrameCount")
+    {
+        FileSystem resources {MakeSpriteAnimationInfoResources()};
+        File info_file {resources.ReadFile("SpriteInfo/TestPack.foinfo")};
+        string invalid_info {info_file.GetStr()};
+        invalid_info = strex(invalid_info).replace("DirectionFrameCounts = 2", "DirectionFrameCounts = 65536").str();
+
+        CheckSpriteAnimationInfoRejected(invalid_info);
+    }
+
+    SECTION("RejectsNegativeSharedFrameIndex")
+    {
+        FileSystem resources {MakeSpriteAnimationInfoResources()};
+        File info_file {resources.ReadFile("SpriteInfo/TestPack.foinfo")};
+        string invalid_info {info_file.GetStr()};
+        invalid_info = strex(invalid_info).replace("SharedFrameIndices = -1 0", "SharedFrameIndices = -1 -2").str();
+
+        CheckSpriteAnimationInfoRejected(invalid_info);
+    }
+
+    SECTION("AcceptsMaximumFrameCountAndSharedFrameIndexes")
+    {
+        constexpr int32_t frame_count {65535};
+        SpriteFrameInfo first_frame {.Offset = {-3, 4}, .Size = {2, 1}, .NextOffset = {5, -6}, .Duration = std::chrono::milliseconds {1}};
+        SpriteDirInfo direction {};
+        direction.Frames.resize(numeric_cast<size_t>(frame_count));
+        direction.Frames.front() = first_frame;
+
+        for (int32_t frame_index {1}; frame_index < frame_count; frame_index++) {
+            SpriteFrameInfo& frame {direction.Frames[numeric_cast<size_t>(frame_index)]};
+            frame = first_frame;
+            frame.SharedFrameIndex = frame_index - 1;
+        }
+
+        SpriteInfoFileEntry entry {
+            .SourcePath = "Art/Max.png",
+            .ResourcePath = "Art/Max.png",
+            .Info = {},
+        };
+        entry.Info.Directions.emplace_back(std::move(direction));
+
+        vector<SpriteInfoFileEntry> entries {};
+        entries.emplace_back(std::move(entry));
+        string content {WriteSpriteInfoFile(entries)};
+        vector<SpriteInfoFileEntry> parsed_entries {ReadSpriteInfoFile("SpriteInfo/Max.foinfo", content)};
+
+        REQUIRE(parsed_entries.size() == 1);
+        const SpriteInfo& parsed_info {parsed_entries.front().Info};
+        CHECK(GetSpriteDirDuration(parsed_info.Directions.front()) == std::chrono::milliseconds {frame_count});
+        REQUIRE(parsed_info.Directions.size() == 1);
+        REQUIRE(parsed_info.Directions.front().Frames.size() == numeric_cast<size_t>(frame_count));
+        CHECK(parsed_info.Directions.front().Frames.front().Offset == ipos32 {-3, 4});
+        REQUIRE(parsed_info.Directions.front().Frames[40000].SharedFrameIndex.has_value());
+        CHECK(*parsed_info.Directions.front().Frames[40000].SharedFrameIndex == 39999);
+        REQUIRE(parsed_info.Directions.front().Frames.back().SharedFrameIndex.has_value());
+        CHECK(*parsed_info.Directions.front().Frames.back().SharedFrameIndex == 65533);
+    }
+
+    SECTION("WriterRejectsEmptyFrameSequence")
+    {
+        SpriteInfoFileEntry entry {
+            .SourcePath = "Art/Negative.png",
+            .ResourcePath = "Art/Negative.png",
+            .Info =
+                {
+                    .Directions =
+                        {
+                            SpriteDirInfo {
+                                .Frames =
+                                    {
+                                        SpriteFrameInfo {.Offset = {-3, 4}, .Size = {2, 1}, .NextOffset = {5, -6}, .Duration = std::chrono::milliseconds {1}},
+                                    },
+                            },
+                        },
+                },
+        };
+
+        entry.Info.Directions.front().Frames.clear();
+        CHECK_THROWS_AS(WriteSpriteInfoFile({entry}), VerificationException);
+    }
+
+    SECTION("WriterRejectsOversizedFrameCount")
+    {
+        SpriteInfoFileEntry entry {
+            .SourcePath = "Art/Oversized.png",
+            .ResourcePath = "Art/Oversized.png",
+            .Info =
+                {
+                    .Directions =
+                        {
+                            SpriteDirInfo {
+                                .Frames =
+                                    {
+                                        SpriteFrameInfo {.Offset = {-3, 4}, .Size = {2, 1}, .NextOffset = {5, -6}, .Duration = std::chrono::milliseconds {1}},
+                                    },
+                            },
+                        },
+                },
+        };
+
+        entry.Info.Directions.front().Frames.resize(65536, entry.Info.Directions.front().Frames.front());
+        CHECK_THROWS_AS(WriteSpriteInfoFile({entry}), VerificationException);
+    }
+
+    SECTION("WriterRejectsNegativeSharedFrameIndex")
+    {
+        SpriteInfoFileEntry entry {
+            .SourcePath = "Art/Shared.png",
+            .ResourcePath = "Art/Shared.png",
+            .Info =
+                {
+                    .Directions =
+                        {
+                            SpriteDirInfo {
+                                .Frames =
+                                    {
+                                        SpriteFrameInfo {.Offset = {-3, 4}, .Size = {2, 1}, .NextOffset = {5, -6}, .Duration = std::chrono::milliseconds {1}},
+                                        SpriteFrameInfo {.SharedFrameIndex = -2, .Offset = {-3, 4}, .Size = {2, 1}, .NextOffset = {5, -6}, .Duration = std::chrono::milliseconds {1}},
+                                    },
+                            },
+                        },
+                },
+        };
+
+        CHECK_THROWS_AS(WriteSpriteInfoFile({entry}), VerificationException);
     }
 }
 
@@ -496,14 +609,14 @@ TEST_CASE("EngineMetadataModelAnimationInfo")
     SECTION("ParsesCompleteModelAndKeepsDurationAndBoundsDomainsIndependent")
     {
         EngineMetadata meta {[] { }};
-        FileSystem resources = MakeModelAnimationInfoResources(VALID_MODEL_ANIMATION_INFO);
+        FileSystem resources {MakeModelAnimationInfoResources(VALID_MODEL_ANIMATION_INFO)};
         meta.RegisterAnimationInfo(resources);
 
-        hstring model_name = meta.Hashes.to_hashed_string("Critters/Test.fo3d");
-        auto info = meta.GetAnimationInfo(model_name);
+        hstring model_name {meta.Hashes.to_hashed_string("Critters/Test.fo3d")};
+        auto info {meta.GetAnimationInfo(model_name)};
         REQUIRE(static_cast<bool>(info));
         REQUIRE(info->Model.has_value());
-        const ModelAnimationInfo& model_info = *info->Model;
+        const ModelAnimationInfo& model_info {*info->Model};
 
         CHECK(model_info.ModelBounds.Min.x == -2.0f);
         CHECK(model_info.ModelBounds.Min.y == -1.0f);
@@ -518,11 +631,11 @@ TEST_CASE("EngineMetadataModelAnimationInfo")
         CHECK(model_info.ViewBounds.Max.y == 0.5f);
         CHECK(model_info.ViewBounds.Max.z == 3.0f);
 
-        auto walk_key = std::make_pair(static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(3));
-        auto run_key = std::make_pair(static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(5));
-        auto idle_key = std::make_pair(static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(1));
-        auto walk_duration = model_info.AnimationDurations.find(walk_key);
-        auto run_duration = model_info.AnimationDurations.find(run_key);
+        auto walk_key {std::make_pair(static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(3))};
+        auto run_key {std::make_pair(static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(5))};
+        auto idle_key {std::make_pair(static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(1))};
+        auto walk_duration {model_info.AnimationDurations.find(walk_key)};
+        auto run_duration {model_info.AnimationDurations.find(run_key)};
         REQUIRE(walk_duration != model_info.AnimationDurations.end());
         REQUIRE(run_duration != model_info.AnimationDurations.end());
         CHECK(walk_duration->second.milliseconds() == 500);
@@ -532,7 +645,7 @@ TEST_CASE("EngineMetadataModelAnimationInfo")
         CHECK_FALSE(model_info.AnimationBounds.contains(run_key));
         CHECK_FALSE(model_info.AnimationDurations.contains(idle_key));
 
-        auto idle_bounds = model_info.AnimationBounds.find(idle_key);
+        auto idle_bounds {model_info.AnimationBounds.find(idle_key)};
         REQUIRE(idle_bounds != model_info.AnimationBounds.end());
         CHECK(idle_bounds->second.Min.x == -1.5f);
         CHECK(idle_bounds->second.Min.y == -0.75f);
@@ -545,13 +658,13 @@ TEST_CASE("EngineMetadataModelAnimationInfo")
     SECTION("AcceptsStaticModelAndReturnsNullForMissingModel")
     {
         EngineMetadata meta {[] { }};
-        FileSystem resources = MakeModelAnimationInfoResources(VALID_MODEL_ANIMATION_INFO);
+        FileSystem resources {MakeModelAnimationInfoResources(VALID_MODEL_ANIMATION_INFO)};
         meta.RegisterAnimationInfo(resources);
 
-        auto static_info = meta.GetAnimationInfo(meta.Hashes.to_hashed_string("Critters/Static.fo3d"));
+        auto static_info {meta.GetAnimationInfo(meta.Hashes.to_hashed_string("Critters/Static.fo3d"))};
         REQUIRE(static_cast<bool>(static_info));
         REQUIRE(static_info->Model.has_value());
-        const ModelAnimationInfo& static_model_info = *static_info->Model;
+        const ModelAnimationInfo& static_model_info {*static_info->Model};
         CHECK(static_model_info.AnimationDurations.empty());
         CHECK(static_model_info.AnimationBounds.empty());
         CHECK(static_model_info.ModelBounds.Min.x == -4.0f);
@@ -563,7 +676,7 @@ TEST_CASE("EngineMetadataModelAnimationInfo")
     SECTION("MissingResourceLeavesLookupEmpty")
     {
         EngineMetadata meta {[] { }};
-        FileSystem resources;
+        FileSystem resources {};
         CHECK_NOTHROW(meta.RegisterAnimationInfo(resources));
         CHECK_FALSE(static_cast<bool>(meta.GetAnimationInfo(meta.Hashes.to_hashed_string("Critters/Test.fo3d"))));
     }
@@ -634,13 +747,13 @@ BoundsMaxZ = 2 2
     SECTION("AcceptsAnimationDurationsWithoutAnimationBounds")
     {
         EngineMetadata meta {[] { }};
-        FileSystem resources = MakeModelAnimationInfoResources(MakeModelAnimationInfoDocument(VALID_ANIMATION_DURATIONS));
+        FileSystem resources {MakeModelAnimationInfoResources(MakeModelAnimationInfoDocument(VALID_ANIMATION_DURATIONS))};
         meta.RegisterAnimationInfo(resources);
 
-        auto info = meta.GetAnimationInfo(meta.Hashes.to_hashed_string("Critters/Test.fo3d"));
+        auto info {meta.GetAnimationInfo(meta.Hashes.to_hashed_string("Critters/Test.fo3d"))};
         REQUIRE(static_cast<bool>(info));
         REQUIRE(info->Model.has_value());
-        const ModelAnimationInfo& model_info = *info->Model;
+        const ModelAnimationInfo& model_info {*info->Model};
         REQUIRE(model_info.AnimationDurations.size() == 1);
         CHECK(model_info.AnimationDurations.at({static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(3)}).milliseconds() == 500);
         CHECK(model_info.AnimationBounds.empty());
@@ -649,17 +762,17 @@ BoundsMaxZ = 2 2
     SECTION("AcceptsAnimationBoundsWithoutAnimationDurations")
     {
         EngineMetadata meta {[] { }};
-        FileSystem resources = MakeModelAnimationInfoResources(MakeModelAnimationInfoDocument(VALID_ANIMATION_BOUNDS));
+        FileSystem resources {MakeModelAnimationInfoResources(MakeModelAnimationInfoDocument(VALID_ANIMATION_BOUNDS))};
         meta.RegisterAnimationInfo(resources);
 
-        auto info = meta.GetAnimationInfo(meta.Hashes.to_hashed_string("Critters/Test.fo3d"));
+        auto info {meta.GetAnimationInfo(meta.Hashes.to_hashed_string("Critters/Test.fo3d"))};
         REQUIRE(static_cast<bool>(info));
         REQUIRE(info->Model.has_value());
-        const ModelAnimationInfo& model_info = *info->Model;
+        const ModelAnimationInfo& model_info {*info->Model};
         CHECK(model_info.AnimationDurations.empty());
         REQUIRE(model_info.AnimationBounds.size() == 1);
 
-        const ModelBounds3D& bounds = model_info.AnimationBounds.at({static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(1)});
+        const ModelBounds3D& bounds {model_info.AnimationBounds.at({static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(1)})};
         CHECK(bounds.Min.x == -1.0f);
         CHECK(bounds.Min.y == -1.0f);
         CHECK(bounds.Min.z == 0.0f);
@@ -680,7 +793,7 @@ TEST_CASE("PropertyRemovePermanentlyRetiresTheName")
 {
     EngineMetadata meta {[] { }};
     meta.RegisterSide(EngineSideKind::ServerSide);
-    auto registrar = meta.RegisterEntityType("Critter", true, false, true, true, true);
+    auto registrar {meta.RegisterEntityType("Critter", true, false, true, true, true)};
     registrar->RegisterProperty({"Server", "int32", "Current", "Mutable", "Persistent"});
     meta.RegisterPropertyMigrationRule("Critter", "Remove", "Retired");
 
@@ -692,7 +805,7 @@ TEST_CASE("PropertyRemovePermanentlyRetiresTheName")
     SECTION("AbsentSourceNeedsNoDestination")
     {
         CHECK_NOTHROW(meta.FinalizeRegistration());
-        auto rule = meta.CheckMigrationRule(meta.Hashes.to_hashed_string("Property"), meta.Hashes.to_hashed_string("Critter"), meta.Hashes.to_hashed_string("Retired"));
+        auto rule {meta.CheckMigrationRule(meta.Hashes.to_hashed_string("Property"), meta.Hashes.to_hashed_string("Critter"), meta.Hashes.to_hashed_string("Retired"))};
 
         REQUIRE(rule.has_value());
         CHECK_FALSE(*rule);
@@ -737,10 +850,10 @@ TEST_CASE("ProtoMigrationActionsUseDocumentContext")
     meta.RegisterSide(EngineSideKind::ServerSide);
     meta.RegisterEntityType("Item", true, false, true, true, true);
     meta.RegisterEntityType("Player", true, false, false, false, true);
-    hstring type = meta.Hashes.to_hashed_string("Item");
-    hstring legacy = meta.Hashes.to_hashed_string("Legacy");
-    hstring replacement = meta.Hashes.to_hashed_string("Replacement");
-    AnyData::Document original;
+    hstring type {meta.Hashes.to_hashed_string("Item")};
+    hstring legacy {meta.Hashes.to_hashed_string("Legacy")};
+    hstring replacement {meta.Hashes.to_hashed_string("Replacement")};
+    AnyData::Document original {};
     original.Emplace("_Proto", string {"Legacy"});
     original.Emplace("Kind", string {"medical"});
 
@@ -773,7 +886,7 @@ TEST_CASE("ProtoMigrationActionsUseDocumentContext")
 
     SECTION("UnchangedFunctionStops")
     {
-        hstring unchanged = meta.Hashes.to_hashed_string("Unchanged");
+        hstring unchanged {meta.Hashes.to_hashed_string("Unchanged")};
         meta.RegisterProtoMigrationRule("Item", "Transform", "Unchanged", "Keep");
         meta.BindProtoMigrator(type, unchanged, [](hstring, const AnyData::Document&) -> optional<hstring> { return std::nullopt; });
 
@@ -782,7 +895,7 @@ TEST_CASE("ProtoMigrationActionsUseDocumentContext")
 
     SECTION("ConditionalCyclesReject")
     {
-        hstring cycle = meta.Hashes.to_hashed_string("Cycle");
+        hstring cycle {meta.Hashes.to_hashed_string("Cycle")};
         meta.RegisterProtoMigrationRule("Item", "Transform", "Cycle", "CycleFunc");
         meta.RegisterProtoMigrationRule("Item", "Rename", "CycleAlias", "Cycle");
         meta.BindProtoMigrator(type, cycle, [&](hstring, const AnyData::Document&) -> optional<hstring> { return meta.Hashes.to_hashed_string("CycleAlias"); });
@@ -795,7 +908,7 @@ TEST_CASE("Native array proxies retain container-owned values after mutation")
 {
     vector<string> values {"original"};
     NativeDataProvider::ArrayDataProxy proxy {values};
-    string temporary = "copied";
+    string temporary {"copied"};
     proxy.Add(&temporary);
     temporary = "changed";
 
@@ -825,14 +938,14 @@ TEST_CASE("Native dictionary proxies expose stored keys and current iteration or
 {
     map<string, string> values {{"z", "original"}};
     NativeDataProvider::DictDataProxy proxy {values};
-    string key = "a";
-    string value = "copied";
+    string key {"a"};
+    string value {"copied"};
     proxy.Add(&key, &value);
     key = "temporary";
     value = "changed";
 
     REQUIRE(proxy.Size() == 2);
-    auto [first_key, first_value] = proxy.Get(0);
+    auto [first_key, first_value] {proxy.Get(0)};
     CHECK(first_key == make_ptr(&values.begin()->first).void_cast());
     CHECK(first_value == make_ptr(&values.begin()->second).void_cast());
     CHECK(*first_key.reinterpret_as<string>() == "a");
@@ -868,7 +981,7 @@ TEST_CASE("Const native collection proxies reject writes without changing their 
     const map<int32_t, int32_t> dict {{7, 9}}; // FO_REDUNDANT_CONST_SUPPRESS: const container selects the read-only proxy constructor
     NativeDataProvider::ArrayDataProxy array_proxy {array};
     NativeDataProvider::DictDataProxy dict_proxy {dict};
-    int32_t replacement = 42;
+    int32_t replacement {42};
 
     CHECK_THROWS_AS(array_proxy.Clear(), InvalidCallException);
     CHECK_THROWS_AS(array_proxy.Add(&replacement), InvalidCallException);

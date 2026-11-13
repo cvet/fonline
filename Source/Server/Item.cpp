@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Item.h"
 
@@ -97,7 +67,7 @@ auto Item::IsInsideContainer(ptr<const Item> container) -> bool
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
-    for (auto current = make_nptr(this).try_hold_ref(); current;) {
+    for (auto current {make_nptr(this).try_hold_ref()}; current;) {
         if (current == container.get()) {
             return true;
         }
@@ -132,7 +102,7 @@ auto Item::GetInnerItem(ident_t item_id) noexcept -> nptr<Item>
 auto Item::GetInnerItems(const any_t& stack_id) -> vector<ptr<Item>>
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    vector<ptr<Item>> result;
+    vector<ptr<Item>> result {};
 
     if (!_innerItems) {
         return result;
@@ -160,7 +130,7 @@ auto Item::GetAllInnerItems() -> vector<ptr<Item>>
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     FO_VERIFY_AND_THROW(_innerItems, "Item inner container storage is missing");
 
-    vector<ptr<Item>> result;
+    vector<ptr<Item>> result {};
     result.reserve(_innerItems->size());
 
     for (auto& item : *_innerItems) {
@@ -175,7 +145,7 @@ auto Item::GetAllInnerItems() const -> vector<ptr<const Item>>
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     FO_VERIFY_AND_THROW(_innerItems, "Item inner container storage is missing");
 
-    vector<ptr<const Item>> result;
+    vector<ptr<const Item>> result {};
     result.reserve(_innerItems->size());
 
     for (const auto& item : *_innerItems) {
@@ -190,7 +160,7 @@ auto Item::TakeAllInnerItems() -> vector<refcount_ptr<Item>>
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     FO_VERIFY_AND_THROW(_innerItems, "Item inner container storage is missing");
 
-    vector<refcount_ptr<Item>> result = std::move(*_innerItems);
+    vector<refcount_ptr<Item>> result {std::move(*_innerItems)};
     _innerItems.reset();
 
     return result;
@@ -228,9 +198,12 @@ auto Item::AddItemToContainer(ptr<Item> item, const any_t& stack_id) -> ptr<Item
     item->SetContainerStack(stack_id);
     SetItemToContainer(item);
 
-    auto inner_item_ids = GetInnerItemIds();
-    vec_add_unique_value(inner_item_ids, item->GetId());
-    SetInnerItemIds(inner_item_ids);
+    // The restore index lists items that have their own records; promotion lists a temporary one
+    if (item->IsPersistent()) {
+        auto inner_item_ids {GetInnerItemIds()};
+        vec_add_unique_value(inner_item_ids, item->GetId());
+        SetInnerItemIds(inner_item_ids);
+    }
 
     if (IsPersistent()) {
         _engine->EntityMngr.MakePersistent(item, true);
@@ -256,9 +229,11 @@ void Item::RemoveItemFromContainer(ptr<Item> item)
         _innerItems.reset();
     }
 
-    auto inner_item_ids = GetInnerItemIds();
-    vec_remove_unique_value(inner_item_ids, item->GetId());
-    SetInnerItemIds(inner_item_ids);
+    if (item->IsPersistent()) {
+        auto inner_item_ids {GetInnerItemIds()};
+        vec_remove_unique_value(inner_item_ids, item->GetId());
+        SetInnerItemIds(inner_item_ids);
+    }
 
     if (item->IsPersistent() && !item->IsExplicitlyPersistent()) {
         _engine->EntityMngr.MakePersistent(item, false);
@@ -271,8 +246,8 @@ auto Item::CanSendItem(bool as_public) const noexcept -> bool
 
     switch (GetOwnership()) {
     case ItemOwnership::CritterInventory: {
-        auto slot = GetCritterSlot();
-        size_t slot_num = static_cast<size_t>(slot);
+        auto slot {GetCritterSlot()};
+        size_t slot_num {static_cast<size_t>(slot)};
 
         if (slot_num >= _engine->Settings->Critter.CritterSlotEnabled.size() || !_engine->Settings->Critter.CritterSlotEnabled[slot_num]) {
             return false;

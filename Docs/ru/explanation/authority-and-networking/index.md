@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/authority-and-networking/
 ---
 
 # Сеть и авторитетность
-<!-- docs-translation: {"document_id":"networking","locale":"ru","source_path":"Docs/en/explanation/authority-and-networking/index.md","source_sha256":"a8a5b2ff52235dce768587437f99ce67185098a29ee22d641d3e6d699887d292"} -->
+<!-- docs-translation: {"document_id":"networking","locale":"ru","source_path":"Docs/en/explanation/authority-and-networking/index.md","source_sha256":"ca003a5fd074cdbd6b80c2eabf516c0cd5a50b303f889b5c66bd4a5e8bce9a43"} -->
 Этот документ описывает переиспользуемые сетевые слои движка: защищённый канал, буферы сообщений, обработку хешей, клиентские и серверные соединения и упорядоченный UDP-транспорт.
 
 Используйте его при изменении `Source/Common/SecureChannel.*`, `NoiseProtocol.*`, `NetBuffer.*`, `NetworkUdp.*`, клиентских и серверных соединений или сетевых тестов.
@@ -19,6 +19,8 @@ permalink: /Docs/ru/explanation/authority-and-networking/
 Не документируйте здесь хосты, порты или инфраструктуру релиза конкретного проекта.
 
 Начальные снимки динамических предметов передают только свойства с объявленной синхронизацией. Доступность Common сама по себе не разрешает передачу; неизменяемые значения и NoSync остаются локальными либо берутся из общего прототипа. Правила синхронизации и фильтрации владельческих/частных данных определяет [Entity Model](../entity-and-property-model/).
+
+[Готовность/ошибки клиентского RPC](../../reference/scripting/remote-calls.md): завершённый handshake; offline-вызов отклоняется до записи в буфер.
 
 ## Проверенные пути исходного кода
 
@@ -93,7 +95,9 @@ permalink: /Docs/ru/explanation/authority-and-networking/
 - запись арифметических типов, enum и простых типов свойств через типизированный `Write()`;
 - запись строк и хешированных строк;
 - запись блоков данных свойств через `WritePropsData()`;
-- framing сообщений через `StartMsg()` и `EndMsg()`.
+- framing сообщений через `StartMsg()`/`EndMsg()`; `AbortMsg()` удаляет только незавершённый хвост.
+
+`ServerConnection::WriteMsg()` владеет одним сообщением под блокировкой выхода. Ошибка сериализации или завершения отменяет его до снятия блокировки; готовые сообщения очереди сохраняются, следующее сообщение можно записать. Dispatch остаётся после снятия блокировки.
 
 Обязанности `NetInBuffer`:
 
@@ -107,6 +111,8 @@ permalink: /Docs/ru/explanation/authority-and-networking/
 - сжатие и сброс прочитанных буферов после обработки.
 
 Синхронизация свойств и передача состояния сущностей должны использовать эти помощники, а не самодельные бинарные раскладки.
+
+`NetBuffer::GrowBuf` проверяет запрошенную итоговую длину в байтах и каждое удвоение ёмкости через `checked_*` до изменения размера. Буфер с нулевым начальным размером растёт обычным образом; арифметическое переполнение даёт `OverflowException`, сохраняя накопленные байты и позиции. Описанные ниже проверки длины от другой стороны и границ текущего frame по-прежнему выполняются до выделения памяти или декодирования.
 
 <a id="inbound-hardening-untrusted-client-server"></a>
 
@@ -276,6 +282,8 @@ runtime compatibility gate повышен до `0.0.85`. Поля пакетов
 
 Опоздание измеряет `LinkDelayEstimator`: `SendCritterMove`, `SendStopCritterMove`, `SendCritterMoveLease`, `CritterMove`, `CritterMoveLease` и обе стороны `Ping` несут монотонные миллисекунды отправителя. Избыток над медианой обычного времени линии за `Network.LinkDelayWindowMs` показывает зависание. Ping поддерживает прежнюю оценку при отсутствии движения. План или продление с опозданием от `Network.MoveLateCatchUpMinMs` догоняет прошедшее время, см. [клиентское воспроизведение](../runtime/client.md#догоняющее-воспроизведение-запоздавших-планов). Метки вне ±9223372036854 мс вызывают `Sender timestamp is outside the native clock range` до изменения выборки; опоздание ограничено диапазоном 0…9223372036854 мс для нативного хранения наносекунд. `CritterMove` передаёт server movement uid и lease; нулевой lease проигрывает обычный план до конца. Эти поля изменяют wire format движения/Ping и требуют отдельной compatibility version.
 
+Транспортные метки движения и lease берутся из `nanotime::now()` при кодировании, в той же шкале, что и Ping. Пауза или ограничение шага `GameTime` не должны выглядеть как лишнее время передачи по сети. Прошедшее время движения и прогресс lease по-прежнему используют игровую шкалу; транспортная метка не продвигает их и не меняет wire layout.
+
 ### Трассировка синхронизации движения
 
 `Network.MoveSyncTrace` (по умолчанию выключен) записывает события синхронизации движения на сервере и клиентах. Каждое событие — одна машиночитаемая строка стабильного формата:
@@ -284,11 +292,33 @@ runtime compatibility gate повышен до `0.0.85`. Поля пакетов
 MOVESYNC side=<srv|cl> ev=<event> t=<monotonic µs> st=<synchronized ms> [viewer=<chosen id>] key=value…
 ```
 
-Локальное монотонное `t` совмещает процессы одной машины. Между машинами используется `st`, но задержка доставки синхронизации времени клиенту делает оценки приблизительными. Клиентские строки содержат `viewer` — id управляемого криттера. Серверные события: `move_req`, `move_start`, `step`, `stop`, `stopmove_req`, `finish_req`, `speed_change`, `send`; клиентские: `move_send`, `stop_send`, `finish_send`, `move_recv`, `pos_recv`, `teleport_recv`, `speed_recv`, `step`, `arrive`, `in`, `out`. `finish_req` содержит итог (`accepted`, `not_moving`, `attached`, `stale_plan`, `too_early`, `invalidated`, `superseded` или `reconcile_failed`), заявленную позицию, оставшееся/разрешённое время и измеренное время туда-обратно. Проект может добавлять метки сценариев `mark` и события скриптового ввода `input`; их исполнители и интерпретация движку не принадлежат. Трасса слишком подробна для production.
+Монотонное `t` совмещает процессы одной машины. Между машинами задержка `st` приблизительна из-за доставки синхронизации времени. `viewer` различает клиентов, в том числе встроенных в один процесс. Стабильные поля трассы перечислены ниже; события принадлежат соответствующим обработчикам движения и сети.
 
-Дополнительные события трассировки удержания: серверный `lease_req`, клиентские `lease_send`, `lease_recv`, `hold` и `dir_plan`. `lease_req` несёт `cr uid seq lease_ms late_ms catchup_ms elapsed_ms`; `lease_send` — `cr seq lease_dist`; `lease_recv` — `cr uid lease_ms late_ms catchup_ms`; `hold` — `cr own on elapsed_ms`, где `on=1` означает ожидание. Причины `dir_plan`: `start`, `turn`, `extend`, `resume`; `steps=0` означает заблокированное направление.
+| Сторона | Событие | Поля |
+| --- | --- | --- |
+| srv | `move_req` | `cr player client_start server_hex steps bridge joined truncated speed late_ms rtt_ms` |
+| srv | `move_start` | `cr uid start end whole_ms offset_ms lease_ms speed was_moving initiator` |
+| srv | `lease_req` | `cr uid seq lease_ms late_ms catchup_ms elapsed_ms` |
+| srv | `step` | `cr uid hex elapsed_ms runtime_ms` |
+| srv | `stop` | `cr uid reason hex broadcast` |
+| srv | `stopmove_req` | `cr client_hex server_hex reconciled final_hex after_end late_ms rtt_ms` |
+| srv | `finish_req` | `cr reported_end client_hex server_hex remaining_ms allowed_ms rtt_ms outcome` |
+| srv | `speed_change` | `cr uid old_speed speed hex elapsed_ms runtime_ms rebased_ms whole_ms` |
+| srv | `send` | `cr to own kind(move\|pos\|teleport) hex [end offset_ms]` |
+| cl | `move_send`, `stop_send`, `finish_send`, `lease_send` | запросы управляющего клиента; продление: `cr seq lease_dist` |
+| cl | `lease_recv` | `cr uid lease_ms late_ms catchup_ms` |
+| cl | `hold` | `cr own on elapsed_ms` |
+| cl | `frames` | `n ms max_ms` |
+| cl | `dir_plan` | `cr reason(start\|turn\|extend\|resume) dir speed steps slid hex` |
+| cl | `move_recv`, `pos_recv`, `teleport_recv` | `cr own …`; позиция: `jump err_px`; движение: `joined lease_ms late_ms ahead_ms catchup_ms smooth_ms` |
+| cl | `speed_recv` | `cr own old_speed speed hex elapsed_ms rebased_ms whole_ms` |
+| cl | `step`, `arrive` | показанный гекс и конец плана |
+| cl | `in`, `out` | `cr own hex`, при `in` также `moving` |
+| cl | проектные `mark`, `input` | `label=begin:<name>` / `end:<name>`; `state=<keys or stick> pattern_ms` |
 
-`move_req` дополняют `joined` и `late_ms`; `move_start` — `lease_ms`; `stopmove_req` — `after_end` и `late_ms`; `move_recv` — `joined lease_ms late_ms ahead_ms catchup_ms smooth_ms`. Они показывают пропущенное начало маршрута, границу lease, опоздание, серверное опережение и долю догоняющего времени, проигранную плавно. `frames` раз в секунду передаёт `n ms max_ms`: число кадров, длительность окна и самый долгий кадр.
+`joined` считает пройденные шаги начала пути; `late_ms` — превышение обычного времени доставки. Нулевой `lease_ms` проигрывает план до конца; `hold on=1` ждёт продления. `after_end=1` согласует остановку уже завершённого плана игрока. `runtime_ms - elapsed_ms` показывает прогресс, отброшенный при изменении скорости. `own=1` — коррекция выбранного криттера получателя. `jump` измеряет смещение гекса, `err_px` — ошибку нарисованной позиции: нормализация внутри гекса может менять гекс без перемещения изображения. Между `out` и `in` старая позиция неизвестна и не доказывает расхождение. Входное `in` определяет выбранного зрителя. Нехватка кадров относится к хосту, а не к синхронизации; движение обрабатывается один раз за кадр.
+
+Итоги `finish_req`: `accepted`, `not_moving`, `attached`, `stale_plan`, `too_early`, `invalidated`, `superseded`, `rejected` и `reconcile_failed`. Разбор и интерпретация сценариев принадлежат инструментам проекта. Подробная трасса должна быть выключена в production.
 
 ### Причины отключения
 
@@ -467,6 +497,16 @@ Socket-соединения сервера Asio и WebSockets выполняют
 
 ## Маршрутизация изменений
 
+`CritterMoveItem` передаёт перемещённый предмет и старый и новый слоты.
+Для инвентаря выбранного персонажа клиент также переводит прежнего владельца
+единственного места в старый слот. Слоты с несколькими предметами сохраняют
+остальных владельцев. Эхо после предсказанного клиентом обмена не меняет
+уже перемещённого соседа. Тест `ClientAuthoritativeInventorySlotMoveSwapsExclusivePeers`
+проверяет рабочий помощник `CritterView` с обоими скриптовыми бэкендами:
+обмен в обе стороны, предсказанное эхо, неизвестный id и слоты с несколькими
+предметами. AngelScript-тест `AngelScriptClientLogsInThroughARemoteCall` дополнительно
+проверяет обмен и эхо через настоящее соединение.
+
 - Бинарный framing, шифрование и сериализация hash: `Source/Common/NetBuffer.*`.
 - Упорядоченный UDP: `Source/Common/NetworkUdp.*`.
 - Клиентская абстракция транспорта и реализации: `Source/Client/NetworkClient*`.
@@ -482,3 +522,15 @@ Socket-соединения сервера Asio и WebSockets выполняют
 4. Проверьте разрешение hash и поведение debug hash между клиентской и серверной сборками.
 5. При изменении раскладки сообщения или сериализации property data проверьте синхронизацию свойств.
 6. При изменении ASIO, WebSocket или socket-кода проверьте доступность транспорта на каждой платформе.
+
+## Доставка прикреплений на глобальной карте
+
+`AddCritter` передаёт начальный снимок прикреплений. `CritterAttachments` заменяет флаг прикрепления, ID носителя и полный список прикреплённых ID. Перенос карты временно отсоединяет пассажиров, отправляет начальные данные мира и восстанавливает связи; после этого снимок восстановленного носителя должен дойти до клиентов.
+
+На локальной карте получатели определяются видимостью криттеров и spectators. На глобальной карте `Critter.SendAndBroadcast_Attachments` отправляет снимок текущей `GlobalMapGroup` источника. Собственный Player получает одну копию; групповая рассылка удерживает дескрипторы Player и исключает этого игрока и дубли. Shared lock состава группы удерживается до enqueue, упорядочивая снимки до удаления участника и загрузки им следующей карты.
+
+Глобальная ветка вызывает `Player.Send_Attachments` с внутренней проверкой получателя. Под connection lock должны совпасть ожидаемый управляемый криттер и глобальная карта из последнего успешно поставленного `LoadMap`. Player, удержанный до смены персонажа, не получает поздний снимок прежней группы. `Send_LoadMap` сбрасывает временный контекст перед записью и публикует новый ID лишь после завершения output accessor. Неудачная попытка оставляет контекст неизвестным. `SwapConnection` переносит этот контекст вместе с соединением, включая откат, поэтому новое соединение остаётся неизвестным до первой успешной загрузки карты.
+
+Во время bounded map view клиент не получает глобальные обновления прикреплений. `ReturnFromViewMap` восстанавливает управляемого криттера; затем проект покрывает его группу и вызывает `SendGlobalMapGroupInfo`. Этот вызов добавляет остальных участников до отправки актуальных прикреплений всех участников, восстанавливая изменения за время просмотра без новой мутации. Обычный initial info сохраняет прежнее покрытие и оставляет рассылку группы скриптам. Managed `Sync.LockPlayerCritterInitialInfoGraph` подготавливает полный граф возврата.
+
+Форматы пакетов и сохранений прежние. См. [клиентские снимки](../entity-and-property-model/index.md#клиентские-снимки-прикреплений). `CritterGlobalAttachmentSnapshotsReachOnlyTheirGroupOnce` проверяет зашифрованные пакеты, идентичность, приватность, отсутствие дублей и возврат из просмотра в `Source/Tests/Test_ServerMoveReconciliation.cpp`. Тест getter проверяет независимость копий с незагруженными ID.

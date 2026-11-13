@@ -92,9 +92,9 @@ When `FO_ANGELSCRIPT_SCRIPTING` is enabled, CMake passes `--angelscript` to this
 ## Running tests
 
 The `engine-update` CI job also runs
-`python3 -m pytest -q BuildTools/tests/test_codegen_default_args.py` with
-`python3-pytest`. These source-only regressions check generated configuration,
-default arguments and binding metadata. The macro-only configuration fixture
+`python3 -m pytest -q BuildTools/tests/test_codegen_default_args.py BuildTools/tests/test_codegen_value_type_layouts.py BuildTools/tests/test_cmake_map_size_options.py`
+with `python3-pytest` and CMake. These source-only regressions check generated configuration,
+default arguments, binding metadata, the build-selected value-type layouts and the configure-time map size limits. The macro-only configuration fixture
 uses fixed Engine version/revision inputs and checks `FO_ENGINE_VERSION` and
 `FO_ENGINE_REVISION` independently of the checkout's current identity.
 
@@ -219,6 +219,8 @@ configure forwarding, generator-cache checks, and unsupported hosts.
 
 CI keeps the ordinary `unit-tests` job independent of CMake Unity compilation. The separate `unity` job in `validate.yml` sets `FO_UNITY_BUILD=ON` and `FO_UNITY_BUILD_BATCH_SIZE=32`, runs `BuildTools/tests/test_unity_build.py`, and then repeats the same `unit-tests` validator with first-party sources batched. It runs for `all` and can be selected manually with `job: unity`; bundled third-party targets remain outside Unity compilation.
 
+The `wide-coords` job repeats the `unit-tests` validator with `FO_MAP_WIDE_COORDS=ON`, so the native, AngelScript and test code also builds and passes with 32-bit map coordinates. It runs for `all` and can be selected manually with `job: wide-coords`. Tests that depend on the coordinate width branch on `mcoord_t` instead of assuming 16-bit values.
+
 Keep test-only helper names distinct across translation units and qualify calls to shared fixture namespaces when Unity lookup could admit another owner. Give file-owned test macros distinct names too; do not remove test sources or change assertions to make a Unity batch compile.
 
 Use the smallest focused tests first, then the broader run target when the change crosses subsystem boundaries.
@@ -313,7 +315,9 @@ When `FO_CODE_COVERAGE` is enabled, `BuildTools/cmake/stages/Init.cmake` selects
 
 Coverage output is rooted under `CodeCoverage/<Toolchain>/<Platform-Config>/`.
 The isolated Applications-stage fixtures in
-`BuildTools/tests/test_codecoverage_llvm_objects.py` include the real resource-pack
+`BuildTools/tests/test_codecoverage_llvm_objects.py` load the real
+`BuildTools/cmake/helpers/Commands.cmake` before the stage, including its
+`AppendSourceProperty` wrapper. They include the real resource-pack
 hash helper sources and prove that native host platforms build the helper without
 LLVM coverage flags. They also retain actual instrumented-process collection, core
 library reuse and quick-exit flush assertions.
@@ -326,6 +330,10 @@ notes.
 Coverage is platform- and environment-specific. Sources not compiled in the current build have no mapping and are reported separately as untouched. Sources that compile but cannot execute in a headless test process belong in `ENVIRONMENT_EXCLUDED_SOURCES` with a written reason; currently this covers device-backed audio/video, Mongo/updater infrastructure, and the deliberately process-killing diagnostic self-test. Loopback sockets and the debugger endpoint remain in the headline. The report shows scoped, all-source, and excluded buckets independently. An exclusion is a routing decision: the owning platform, windowed run, or real-endpoint integration lane must cover it.
 
 ### Focused harness patterns
+
+- **Binary compatibility:** `ClientBinaryCompatibilityPrecedesPlayerSession` uses real engines with equal metadata: mismatched binary digests refuse outdated resources before a player session; matching digests connect.
+
+- **Shared baker fixtures:** header-only `Test_*Helpers.h` stay outside `FO_TESTS_SOURCE`. `Test_BakerHelpers.h`'s real-baker `TestRig` copies three-role outputs via `AddBakedScriptBytecode` into `BakedFiles` before `MakeContext` clears `Outputs`. Disk AS fixtures include Metadata before Proto.
 
 - **Unattended errors:** run each hidden `ApplicationNonInteractiveErrorMessage`, `ApplicationNonInteractiveException`, `ApplicationHeadlessErrorMessage` and `ApplicationHeadlessException` case by its exact name in a fresh generated unit-test process. Quit state is irreversible; do not run the shared tag as one suite. The headless cases keep `Common.NonInteractive = False`, and the direct-error case verifies that a later successful quit request retains the failed status. These cases exercise the headless implementation; graphical-frontend and pre-application error paths require separate process smokes with log/trace, exit-status and timeout assertions.
 

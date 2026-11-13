@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Common.h"
 
@@ -70,17 +40,17 @@ TEST_CASE("ExceptionHandling")
     {
         // Order matches the unified trace contract: provider emits most-recent first, so
         // SecondFunc (the deeper call) appears before FirstFunc (its caller)
-        stack_trace::script_layer layer;
+        stack_trace::script_layer layer {};
         layer.script_frames.push_back({stack_trace::frame::frame_type::script, "SecondFunc", "/tmp/second.cpp", 22});
         layer.script_frames.push_back({stack_trace::frame::frame_type::script, "FirstFunc", "/tmp/first.cpp", 11});
 
-        std::vector<stack_trace::script_layer> layers;
+        std::vector<stack_trace::script_layer> layers {};
         layers.push_back(std::move(layer));
 
         stack_trace::data st {};
         st.script_layers = std::make_shared<const std::vector<stack_trace::script_layer>>(std::move(layers));
 
-        auto formatted = stack_trace::format(st);
+        auto formatted {stack_trace::format(st)};
 
         CHECK(formatted.find("Stack trace (most recent call first):") == 0);
         CHECK(formatted.find("- [Script] SecondFunc (second.cpp line 22)") != string::npos);
@@ -92,18 +62,18 @@ TEST_CASE("ExceptionHandling")
     {
         stack_trace::data st {};
 
-        auto formatted = stack_trace::format(st);
+        auto formatted {stack_trace::format(st)};
 
         CHECK(formatted == "Stack trace (most recent call first):");
     }
 
     SECTION("SetExceptionCallbackReplacesAndClearsCallback")
     {
-        auto prev_callback = exceptions::get_callback();
+        auto prev_callback {exceptions::get_callback()};
 
-        string message;
-        bool has_origin = false;
-        bool fatal = false;
+        string message {};
+        bool has_origin {false};
+        bool fatal {false};
 
         exceptions::set_callback([&](string_view msg, const stack_trace::catched_data& st, bool is_fatal) {
             message = string(msg);
@@ -111,7 +81,7 @@ TEST_CASE("ExceptionHandling")
             fatal = is_fatal;
         });
 
-        auto callback = exceptions::get_callback();
+        auto callback {exceptions::get_callback()};
         REQUIRE(callback);
         stack_trace::catched_data st {std::nullopt, {}};
         callback("Msg", st, true);
@@ -160,12 +130,12 @@ TEST_CASE("ExceptionHandling")
 
     SECTION("ReportExceptionAndContinueInvokesNonFatalCallback")
     {
-        auto prev_callback = exceptions::get_callback();
+        auto prev_callback {exceptions::get_callback()};
 
-        string message;
-        bool trace_received = false;
-        bool trace_has_origin = false;
-        bool fatal = true;
+        string message {};
+        bool trace_received {false};
+        bool trace_has_origin {false};
+        bool fatal {true};
 
         exceptions::set_callback([&](string_view msg, const stack_trace::catched_data& st, bool is_fatal) {
             message = string(msg);
@@ -203,9 +173,9 @@ TEST_CASE("ExceptionHandling")
 
     SECTION("VerifyAndContinueSupportsMessageForm")
     {
-        auto prev_callback = exceptions::get_callback();
+        auto prev_callback {exceptions::get_callback()};
 
-        vector<string> messages;
+        vector<string> messages {};
 
         exceptions::set_callback([&](string_view msg, const stack_trace::catched_data&, bool is_fatal) {
             messages.emplace_back(msg);
@@ -223,23 +193,24 @@ TEST_CASE("ExceptionHandling")
 
     SECTION("VerifyAndReturnSupportsMessageForms")
     {
-        auto prev_callback = exceptions::get_callback();
+        auto prev_callback {exceptions::get_callback()};
 
-        vector<string> messages;
+        vector<string> messages {};
 
         exceptions::set_callback([&](string_view msg, const stack_trace::catched_data&, bool is_fatal) {
             messages.emplace_back(msg);
             CHECK_FALSE(is_fatal);
         });
 
-        auto return_void_msg = [&] {
+        auto return_void_msg {[&] {
             FO_VERIFY_AND_RETURN(false, "Return context", 42);
             FAIL("Verify return message form did not return");
-        };
-        auto return_value_msg = [&]() -> int32_t {
+        }};
+
+        auto return_value_msg {[&]() -> int32_t {
             FO_VERIFY_AND_RETURN_VALUE(false, 22, "Return value context", 43);
             return 0;
-        };
+        }};
 
         return_void_msg();
         CHECK(return_value_msg() == 22);
@@ -255,10 +226,10 @@ TEST_CASE("ExceptionHandling")
 
     SECTION("CatchedStackTraceDataIncludesOriginForEngineExceptions")
     {
-        auto prev_callback = exceptions::get_callback();
+        auto prev_callback {exceptions::get_callback()};
 
-        bool trace_received = false;
-        bool trace_has_origin = false;
+        bool trace_received {false};
+        bool trace_has_origin {false};
 
         exceptions::set_callback([&](string_view, const stack_trace::catched_data& st, bool) { //
             trace_received = true;
@@ -281,8 +252,8 @@ TEST_CASE("ExceptionHandling")
     SECTION("EngineExceptionTraceStartsAtTheCodeThatConstructedIt")
     {
         // The trace is taken inside the constructor chain, which a reader of the report has no use for
-        ExceptionHandlingTestDerivedException ex = ConstructTracedException();
-        std::vector<stack_trace::frame> resolved = stack_trace::resolve(ex.stack_trace());
+        ExceptionHandlingTestDerivedException ex {ConstructTracedException()};
+        std::vector<stack_trace::frame> resolved {stack_trace::resolve(ex.stack_trace())};
 
 #if FO_MEMORY_SANITIZER || FO_THREAD_SANITIZER
         CHECK(resolved.empty());
@@ -294,10 +265,10 @@ TEST_CASE("ExceptionHandling")
 
     SECTION("CatchedStackTraceDataForNonEngineExceptionPrefixesCatchedAt")
     {
-        auto prev_callback = exceptions::get_callback();
+        auto prev_callback {exceptions::get_callback()};
 
-        bool trace_received = false;
-        bool trace_has_origin = true;
+        bool trace_received {false};
+        bool trace_has_origin {true};
 
         exceptions::set_callback([&](string_view, const stack_trace::catched_data& st, bool) { //
             trace_received = true;
@@ -318,27 +289,28 @@ TEST_CASE("ExceptionHandling")
     }
 }
 
-static const auto NULL_LOG_PATH =
+static constexpr string_view NULL_LOG_PATH {
 #if FO_WINDOWS
-    string_view {"NUL"};
+    "NUL"
 #else
-    string_view {"/dev/null"};
+    "/dev/null"
 #endif
+};
 
 TEST_CASE("CrashReporterHooks")
 {
     // The crash reporter writes through the base log, so the log is pointed at a private file and the
     // emitted report is read back from there instead of leaking into the test console
-    auto log_path = std::filesystem::temp_directory_path() / std::format("lf_crash_report_{}.log", std::chrono::steady_clock::now().time_since_epoch().count());
-    string log_file = fs::path_to_string(log_path);
+    auto log_path {std::filesystem::temp_directory_path() / std::format("lf_crash_report_{}.log", std::chrono::steady_clock::now().time_since_epoch().count())};
+    string log_file {fs::path_to_string(log_path)};
 
     logging::to_file(log_file);
-    auto restore_log = scope_exit([&log_file]() noexcept {
+    auto restore_log {scope_exit([&log_file]() noexcept {
         safe_call([&log_file] {
             logging::to_file(NULL_LOG_PATH);
             (void)fs::remove_file(log_file);
         });
-    });
+    })};
 
     SECTION("TheFatalReportCarriesTheReasonAndTheCapturedTrace")
     {
@@ -346,7 +318,7 @@ TEST_CASE("CrashReporterHooks")
         exceptions::set_crash_termination_reason("std::terminate");
         exceptions::write_crash_report(stack_trace::get());
 
-        optional<string> written = fs::read_file(log_file);
+        optional<string> written {fs::read_file(log_file)};
         REQUIRE(written.has_value());
         CHECK(written->find("FATAL ERROR!") != string::npos);
         CHECK(written->find("Crash reason: Runtime termination: std::terminate") != string::npos);
@@ -370,7 +342,7 @@ TEST_CASE("CrashReporterHooks")
 
         exceptions::write_crash_report(stack_trace::data {});
 
-        optional<string> written = fs::read_file(log_file);
+        optional<string> written {fs::read_file(log_file)};
         REQUIRE(written.has_value());
         CHECK(written->find("current exception:") != string::npos);
         CHECK(written->find("Unhandled boom") != string::npos);
@@ -396,7 +368,7 @@ TEST_CASE("CrashReporterHooks")
     {
         // Only the C-standard six signals exist everywhere, and the POSIX rest are undeclared by the MSVC runtime,
         // so they cannot be listed unconditionally
-        constexpr std::array KNOWN_SIGNALS = {
+        constexpr std::array KNOWN_SIGNALS {
             SIGABRT,
             SIGFPE,
             SIGILL,
@@ -419,7 +391,7 @@ TEST_CASE("CrashReporterHooks")
 
         CHECK_NOTHROW(exceptions::set_crash_signal_reason(0, 0, nullptr));
 
-        constexpr std::array KNOWN_SEH_CODES = {0x40010005U, 0x80000003U, 0x80000004U, 0xC0000005U, 0xC0000006U, 0xC0000008U, 0xC000001DU, 0xC0000025U, 0xC000008CU, 0xC000008DU, 0xC000008EU, 0xC000008FU, 0xC0000090U, 0xC0000091U, 0xC0000092U, 0xC0000093U, 0xC0000094U, 0xC0000095U, 0xC0000096U, 0xC00000FDU, 0xE0434352U, 0xE06D7363U};
+        constexpr std::array KNOWN_SEH_CODES {0x40010005U, 0x80000003U, 0x80000004U, 0xC0000005U, 0xC0000006U, 0xC0000008U, 0xC000001DU, 0xC0000025U, 0xC000008CU, 0xC000008DU, 0xC000008EU, 0xC000008FU, 0xC0000090U, 0xC0000091U, 0xC0000092U, 0xC0000093U, 0xC0000094U, 0xC0000095U, 0xC0000096U, 0xC00000FDU, 0xE0434352U, 0xE06D7363U};
 
         for (uint32_t code : KNOWN_SEH_CODES) {
             CHECK_NOTHROW(exceptions::set_crash_exception_reason(code, 0, nullptr));
@@ -435,7 +407,7 @@ TEST_CASE("CrashReporterHooks")
         CHECK_NOTHROW(exceptions::install_crash_handler_stack());
         CHECK_NOTHROW(exceptions::install_crash_handler_stack());
 
-        bool installed_on_worker = false;
+        bool installed_on_worker {false};
         std::thread worker {[&installed_on_worker] {
             exceptions::install_crash_handler_stack();
             installed_on_worker = true;

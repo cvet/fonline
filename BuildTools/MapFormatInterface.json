@@ -101,7 +101,7 @@
       "description": "Selects the Map prototype id and both baked resource basenames. Without $Name the anchor resolves to the source basename; multi-map containers should name every anchor explicitly.",
       "source": {
         "path": "Source/Common/MapLoader.cpp",
-        "anchors": ["anchor_name_it = section_kv->find(\"$Name\")", "string_view {file_stem}"]
+        "anchors": ["anchor_name_it {section_kv->find(\"$Name\")}", "string_view {file_stem}"]
       }
     },
     {
@@ -341,7 +341,7 @@
       "name": "Mapper round-trip",
       "requirement": "Review mapper-saved diffs as normalized output, not byte-preserving serialization.",
       "stability": "experimental",
-      "description": "The mapper emits $Name and normalized [$Name/...] sections for the edited map, retains $Text fields, flattens inherited map properties, and preserves sibling map blocks byte-exact in a multi-map container.",
+      "description": "The mapper emits $Name and normalized [$Name/...] sections for the edited map, retains $Text fields, and flattens inherited map properties. Standalone output ends with exactly one LF and keeps blank lines between sections. Multi-map save keeps the separator before the next retained section and preserves sibling map blocks byte-exact, including an untouched final sibling's existing EOF.",
       "source": {"path": "Source/Tools/Mapper.cpp", "anchors": ["SpliceMapIntoFomapContent", "Other maps in the file are preserved byte-exact", "SetHeaderExtraFields"]}
     },
     {

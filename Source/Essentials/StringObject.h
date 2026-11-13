@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -40,14 +10,14 @@ FO_BEGIN_NAMESPACE
 
 // Inline character budget of the engine string, set by the build system. The value is a tuning knob rather
 // than a property of the type
-inline constexpr size_t STRING_INLINE_CAPACITY = FO_STRING_INLINE_CAPACITY;
+inline constexpr size_t STRING_INLINE_CAPACITY {FO_STRING_INLINE_CAPACITY};
 
 // Same byte budget as the narrow string, so the rarely used wide string is not the larger object
-inline constexpr size_t WSTRING_INLINE_CAPACITY = (STRING_INLINE_CAPACITY + 1) / sizeof(wchar_t) - 1;
+inline constexpr size_t WSTRING_INLINE_CAPACITY {(STRING_INLINE_CAPACITY + 1) / sizeof(wchar_t) - 1};
 
 // Heap blocks come from rpmalloc, whose small size classes step in 16 bytes; a capacity that fills one
 // spends the tail of the block on characters instead of on padding
-inline constexpr size_t STRING_ALLOCATION_GRANULARITY = 16;
+inline constexpr size_t STRING_ALLOCATION_GRANULARITY {16};
 
 // Behaves as std::basic_string, with the small-string buffer sized by the caller instead of by the standard
 // library. Capacity equal to the inline budget is the discriminator: heap growth never lands on that value
@@ -73,12 +43,12 @@ public:
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
     using view_type = std::basic_string_view<CharT, traits_type>;
 
-    static constexpr size_type npos = static_cast<size_type>(-1);
-    static constexpr size_type inline_capacity = InlineCapacity;
+    static constexpr size_type npos {static_cast<size_type>(-1)};
+    static constexpr size_type inline_capacity {InlineCapacity};
 
     // Mirrors the standard constraint on the std::basic_string overloads that take any string-view-like type
     template<typename T>
-    static constexpr bool view_like = std::is_convertible_v<const T&, view_type> && !std::is_convertible_v<const T&, const CharT*>;
+    static constexpr bool view_like {std::is_convertible_v<const T&, view_type> && !std::is_convertible_v<const T&, const CharT*>};
 
     constexpr basic_string() noexcept { reset_to_empty(); }
 
@@ -100,7 +70,6 @@ public:
         assign_chars(s, count);
     }
 
-    // ReSharper disable once CppNonExplicitConvertingConstructor
     constexpr basic_string(const CharT* s)
     {
         reset_to_empty();
@@ -125,7 +94,8 @@ public:
     constexpr explicit basic_string(const T& t)
     {
         reset_to_empty();
-        view_type sv = t;
+        view_type sv {};
+        sv = t;
         assign_chars(sv.data(), sv.size());
     }
 
@@ -134,14 +104,14 @@ public:
     constexpr basic_string(const T& t, size_type pos, size_type count)
     {
         reset_to_empty();
-        view_type sv = view_type(t).substr(pos, count);
+        view_type sv {view_type(t).substr(pos, count)};
         assign_chars(sv.data(), sv.size());
     }
 
     constexpr basic_string(const basic_string& other, size_type pos, size_type count = npos)
     {
         reset_to_empty();
-        view_type sv = other.view().substr(pos, count);
+        view_type sv {other.view().substr(pos, count)};
         assign_chars(sv.data(), sv.size());
     }
 
@@ -199,7 +169,7 @@ public:
 
     constexpr auto assign(const basic_string& other, size_type pos, size_type count = npos) -> basic_string&
     {
-        view_type sv = other.view().substr(pos, count);
+        view_type sv {other.view().substr(pos, count)};
         assign_chars(sv.data(), sv.size());
         return *this;
     }
@@ -225,7 +195,7 @@ public:
     template<std::input_iterator InputIt>
     constexpr auto assign(InputIt first, InputIt last) -> basic_string&
     {
-        basic_string replacement(first, last);
+        basic_string replacement {basic_string(first, last)};
         swap(replacement);
         return *this;
     }
@@ -234,7 +204,8 @@ public:
         requires(view_like<T>)
     constexpr auto assign(const T& t) -> basic_string&
     {
-        view_type sv = t;
+        view_type sv {};
+        sv = t;
         assign_chars(sv.data(), sv.size());
         return *this;
     }
@@ -243,7 +214,7 @@ public:
         requires(view_like<T>)
     constexpr auto assign(const T& t, size_type pos, size_type count = npos) -> basic_string&
     {
-        view_type sv = view_type(t).substr(pos, count);
+        view_type sv {view_type(t).substr(pos, count)};
         assign_chars(sv.data(), sv.size());
         return *this;
     }
@@ -273,7 +244,6 @@ public:
     [[nodiscard]] constexpr auto data() const noexcept -> const CharT* { return is_inlined() ? _data.inlined : _data.heap; }
     [[nodiscard]] constexpr auto c_str() const noexcept -> const CharT* { return data(); }
 
-    // ReSharper disable once CppNonExplicitConversionOperator
     [[nodiscard]] constexpr operator view_type() const noexcept { return view_type(data(), _size); }
 
     [[nodiscard]] constexpr auto begin() noexcept -> iterator { return mutable_data(); }
@@ -307,8 +277,8 @@ public:
     {
         if (!is_inlined() && _size < _capacity) {
             if (_size <= InlineCapacity) {
-                CharT* old_buf = _data.heap;
-                size_type old_cap = _capacity;
+                CharT* old_buf {_data.heap};
+                size_type old_cap {_capacity};
                 traits_type::copy(_data.inlined, old_buf, _size);
                 _capacity = InlineCapacity;
                 set_size(_size);
@@ -355,7 +325,7 @@ public:
 
     constexpr auto append(const basic_string& other, size_type pos, size_type count = npos) -> basic_string&
     {
-        view_type sv = other.view().substr(pos, count);
+        view_type sv {other.view().substr(pos, count)};
         return append(sv.data(), sv.size());
     }
 
@@ -379,7 +349,8 @@ public:
         requires(view_like<T>)
     constexpr auto append(const T& t) -> basic_string&
     {
-        view_type sv = t;
+        view_type sv {};
+        sv = t;
         return append(sv.data(), sv.size());
     }
 
@@ -387,7 +358,7 @@ public:
         requires(view_like<T>)
     constexpr auto append(const T& t, size_type pos, size_type count = npos) -> basic_string&
     {
-        view_type sv = view_type(t).substr(pos, count);
+        view_type sv {view_type(t).substr(pos, count)};
         return append(sv.data(), sv.size());
     }
 
@@ -405,7 +376,7 @@ public:
 
     constexpr auto insert(size_type index, size_type count, CharT ch) -> basic_string&
     {
-        basic_string filler(count, ch);
+        basic_string filler {basic_string(count, ch)};
         return insert(index, filler.data(), filler.size());
     }
 
@@ -420,7 +391,7 @@ public:
 
     constexpr auto insert(size_type index, const basic_string& other, size_type other_index, size_type count = npos) -> basic_string&
     {
-        view_type sv = other.view().substr(other_index, count);
+        view_type sv {other.view().substr(other_index, count)};
         return insert(index, sv.data(), sv.size());
     }
 
@@ -428,7 +399,8 @@ public:
         requires(view_like<T>)
     constexpr auto insert(size_type index, const T& t) -> basic_string&
     {
-        view_type sv = t;
+        view_type sv {};
+        sv = t;
         return insert(index, sv.data(), sv.size());
     }
 
@@ -436,7 +408,7 @@ public:
         requires(view_like<T>)
     constexpr auto insert(size_type index, const T& t, size_type t_index, size_type count = npos) -> basic_string&
     {
-        view_type sv = view_type(t).substr(t_index, count);
+        view_type sv {view_type(t).substr(t_index, count)};
         return insert(index, sv.data(), sv.size());
     }
 
@@ -444,14 +416,14 @@ public:
 
     constexpr auto insert(const_iterator pos, size_type count, CharT ch) -> iterator
     {
-        size_type index = offset_of(pos);
+        size_type index {offset_of(pos)};
         (void)insert(index, count, ch);
         return mutable_data() + index;
     }
 
     constexpr auto insert(const_iterator pos, std::initializer_list<CharT> chars) -> iterator
     {
-        size_type index = offset_of(pos);
+        size_type index {offset_of(pos)};
         (void)insert(index, chars.begin(), chars.size());
         return mutable_data() + index;
     }
@@ -459,8 +431,8 @@ public:
     template<std::input_iterator InputIt>
     constexpr auto insert(const_iterator pos, InputIt first, InputIt last) -> iterator
     {
-        size_type index = offset_of(pos);
-        basic_string inserted(first, last);
+        size_type index {offset_of(pos)};
+        basic_string inserted {basic_string(first, last)};
         (void)insert(index, inserted.data(), inserted.size());
         return mutable_data() + index;
     }
@@ -468,7 +440,7 @@ public:
     constexpr auto erase(size_type index = 0, size_type count = npos) -> basic_string&
     {
         throw_if_position_past_end(index);
-        size_type erased = std::min(count, _size - index);
+        size_type erased {std::min(count, _size - index)};
         traits_type::move(mutable_data() + index, data() + index + erased, _size - index - erased);
         set_size(_size - erased);
         return *this;
@@ -476,14 +448,14 @@ public:
 
     constexpr auto erase(const_iterator pos) -> iterator
     {
-        size_type index = offset_of(pos);
+        size_type index {offset_of(pos)};
         (void)erase(index, 1);
         return mutable_data() + index;
     }
 
     constexpr auto erase(const_iterator first, const_iterator last) -> iterator
     {
-        size_type index = offset_of(first);
+        size_type index {offset_of(first)};
         (void)erase(index, static_cast<size_type>(last - first));
         return mutable_data() + index;
     }
@@ -499,13 +471,13 @@ public:
 
     constexpr auto replace(size_type pos, size_type count, const basic_string& other, size_type pos2, size_type count2 = npos) -> basic_string&
     {
-        view_type sv = other.view().substr(pos2, count2);
+        view_type sv {other.view().substr(pos2, count2)};
         return replace(pos, count, sv.data(), sv.size());
     }
 
     constexpr auto replace(size_type pos, size_type count, size_type count2, CharT ch) -> basic_string&
     {
-        basic_string filler(count2, ch);
+        basic_string filler {basic_string(count2, ch)};
         return replace(pos, count, filler.data(), filler.size());
     }
 
@@ -513,7 +485,8 @@ public:
         requires(view_like<T>)
     constexpr auto replace(size_type pos, size_type count, const T& t) -> basic_string&
     {
-        view_type sv = t;
+        view_type sv {};
+        sv = t;
         return replace(pos, count, sv.data(), sv.size());
     }
 
@@ -521,7 +494,7 @@ public:
         requires(view_like<T>)
     constexpr auto replace(size_type pos, size_type count, const T& t, size_type pos2, size_type count2 = npos) -> basic_string&
     {
-        view_type sv = view_type(t).substr(pos2, count2);
+        view_type sv {view_type(t).substr(pos2, count2)};
         return replace(pos, count, sv.data(), sv.size());
     }
 
@@ -534,7 +507,7 @@ public:
     template<std::input_iterator InputIt>
     constexpr auto replace(const_iterator first, const_iterator last, InputIt first2, InputIt last2) -> basic_string&
     {
-        basic_string replacement(first2, last2);
+        basic_string replacement {basic_string(first2, last2)};
         return replace(offset_of(first), static_cast<size_type>(last - first), replacement.data(), replacement.size());
     }
 
@@ -549,14 +522,14 @@ public:
 
     constexpr auto copy(CharT* dest, size_type count, size_type pos = 0) const -> size_type
     {
-        view_type sv = view().substr(pos, count);
+        view_type sv {view().substr(pos, count)};
         traits_type::copy(dest, sv.data(), sv.size());
         return sv.size();
     }
 
     constexpr void swap(basic_string& other) noexcept
     {
-        storage tmp_data = _data;
+        storage tmp_data {_data};
         _data = other._data;
         other._data = tmp_data;
         std::swap(_size, other._size);
@@ -682,7 +655,7 @@ private:
         // Constant evaluation rejects a later read of an inline element that was never written, so the whole
         // array is activated there; at run time only the terminator matters
         if (std::is_constant_evaluated()) {
-            for (size_type i = 0; i <= InlineCapacity; i++) {
+            for (size_type i {0}; i <= InlineCapacity; i++) {
                 _data.inlined[i] = CharT();
             }
         }
@@ -721,7 +694,7 @@ private:
 
     [[nodiscard]] constexpr auto points_into_buffer(const CharT* s) const noexcept -> bool
     {
-        const CharT* first = data();
+        const CharT* first {data()};
         return !std::less<const CharT*> {}(s, first) && std::less<const CharT*> {}(s, first + _capacity + 1);
     }
 
@@ -738,19 +711,19 @@ private:
 
     [[nodiscard]] static constexpr auto rounded_capacity(size_type capacity) -> size_type
     {
-        constexpr size_type granularity = std::max<size_type>(STRING_ALLOCATION_GRANULARITY / sizeof(CharT), 1);
+        constexpr size_type granularity {std::max<size_type>(STRING_ALLOCATION_GRANULARITY / sizeof(CharT), 1)};
 
         if (capacity > max_size()) {
             throw std::length_error("String length exceeds the maximum");
         }
 
-        size_type chars = (capacity + 1 + granularity - 1) / granularity * granularity;
+        size_type chars {(capacity + 1 + granularity - 1) / granularity * granularity};
         return std::min(chars - 1, max_size());
     }
 
     [[nodiscard]] static constexpr auto grown_capacity(size_type current, size_type required) -> size_type
     {
-        size_type geometric = current + current / 2;
+        size_type geometric {current + current / 2};
         return rounded_capacity(std::max(required, geometric));
     }
 
@@ -763,7 +736,7 @@ private:
 
     constexpr void reallocate(size_type new_cap)
     {
-        CharT* buf = allocate_buffer(new_cap);
+        CharT* buf {allocate_buffer(new_cap)};
         traits_type::copy(buf, data(), _size);
         release_heap();
         _data.heap = buf;
@@ -775,8 +748,8 @@ private:
     {
         if (count > _capacity) {
             // The source may live inside our own buffer, so the new block is filled before the old one is freed
-            size_type new_cap = grown_capacity(_capacity, count);
-            CharT* buf = allocate_buffer(new_cap);
+            size_type new_cap {grown_capacity(_capacity, count)};
+            CharT* buf {allocate_buffer(new_cap)};
             traits_type::copy(buf, s, count);
             release_heap();
             _data.heap = buf;
@@ -792,8 +765,8 @@ private:
     constexpr void assign_fill(size_type count, CharT ch)
     {
         if (count > _capacity) {
-            size_type new_cap = grown_capacity(_capacity, count);
-            CharT* buf = allocate_buffer(new_cap);
+            size_type new_cap {grown_capacity(_capacity, count)};
+            CharT* buf {allocate_buffer(new_cap)};
             release_heap();
             _data.heap = buf;
             _capacity = new_cap;
@@ -809,18 +782,18 @@ private:
     constexpr void append_range(InputIt first, InputIt last)
     {
         if constexpr (std::forward_iterator<InputIt>) {
-            size_type count = static_cast<size_type>(std::distance(first, last));
+            size_type count {static_cast<size_type>(std::distance(first, last))};
 
             if (count == 0) {
                 return;
             }
 
-            size_type new_size = _size + count;
+            size_type new_size {_size + count};
 
             if (new_size > _capacity) {
                 // The range may live inside our own buffer, so the new block is filled before the old one is freed
-                size_type new_cap = grown_capacity(_capacity, new_size);
-                CharT* buf = allocate_buffer(new_cap);
+                size_type new_cap {grown_capacity(_capacity, new_size)};
+                CharT* buf {allocate_buffer(new_cap)};
                 traits_type::copy(buf, data(), _size);
                 write_range(buf + _size, first, last);
                 release_heap();
@@ -854,12 +827,12 @@ private:
             return;
         }
 
-        size_type new_size = _size + count;
+        size_type new_size {_size + count};
 
         if (new_size > _capacity) {
             // The source may live inside our own buffer, so the new block is filled before the old one is freed
-            size_type new_cap = grown_capacity(_capacity, new_size);
-            CharT* buf = allocate_buffer(new_cap);
+            size_type new_cap {grown_capacity(_capacity, new_size)};
+            CharT* buf {allocate_buffer(new_cap)};
             traits_type::copy(buf, data(), _size);
             traits_type::copy(buf + _size, s, count);
             release_heap();
@@ -879,18 +852,18 @@ private:
 
         // A source taken from this very buffer would be shifted or freed mid-operation, so it is detached first
         if (points_into_buffer(s)) {
-            basic_string detached(s, count2);
+            basic_string detached {basic_string(s, count2)};
             replace_chars(pos, count, detached.data(), detached.size());
             return;
         }
 
-        size_type removed = std::min(count, _size - pos);
-        size_type new_size = _size - removed + count2;
-        size_type tail = _size - pos - removed;
+        size_type removed {std::min(count, _size - pos)};
+        size_type new_size {_size - removed + count2};
+        size_type tail {_size - pos - removed};
 
         if (new_size > _capacity) {
-            size_type new_cap = grown_capacity(_capacity, new_size);
-            CharT* buf = allocate_buffer(new_cap);
+            size_type new_cap {grown_capacity(_capacity, new_size)};
+            CharT* buf {allocate_buffer(new_cap)};
             traits_type::copy(buf, data(), pos);
             traits_type::copy(buf + pos, s, count2);
             traits_type::copy(buf + pos + count2, data() + pos + removed, tail);
@@ -899,7 +872,7 @@ private:
             _capacity = new_cap;
         }
         else {
-            CharT* buf = mutable_data();
+            CharT* buf {mutable_data()};
             traits_type::move(buf + pos + count2, buf + pos + removed, tail);
             traits_type::copy(buf + pos, s, count2);
         }
@@ -939,7 +912,7 @@ template<typename CharT, size_t InlineCapacity>
 template<typename CharT, size_t InlineCapacity>
 [[nodiscard]] constexpr auto operator+(const basic_string<CharT, InlineCapacity>& lhs, const basic_string<CharT, InlineCapacity>& rhs) -> basic_string<CharT, InlineCapacity>
 {
-    basic_string<CharT, InlineCapacity> result;
+    basic_string<CharT, InlineCapacity> result {};
     result.reserve(lhs.size() + rhs.size());
     (void)result.append(lhs);
     (void)result.append(rhs);
@@ -949,7 +922,7 @@ template<typename CharT, size_t InlineCapacity>
 template<typename CharT, size_t InlineCapacity>
 [[nodiscard]] constexpr auto operator+(const basic_string<CharT, InlineCapacity>& lhs, const CharT* rhs) -> basic_string<CharT, InlineCapacity>
 {
-    basic_string<CharT, InlineCapacity> result(lhs);
+    basic_string<CharT, InlineCapacity> result {basic_string<CharT, InlineCapacity>(lhs)};
     (void)result.append(rhs);
     return result;
 }
@@ -957,7 +930,7 @@ template<typename CharT, size_t InlineCapacity>
 template<typename CharT, size_t InlineCapacity>
 [[nodiscard]] constexpr auto operator+(const basic_string<CharT, InlineCapacity>& lhs, CharT rhs) -> basic_string<CharT, InlineCapacity>
 {
-    basic_string<CharT, InlineCapacity> result(lhs);
+    basic_string<CharT, InlineCapacity> result {basic_string<CharT, InlineCapacity>(lhs)};
     result.push_back(rhs);
     return result;
 }
@@ -965,7 +938,7 @@ template<typename CharT, size_t InlineCapacity>
 template<typename CharT, size_t InlineCapacity>
 [[nodiscard]] constexpr auto operator+(const CharT* lhs, const basic_string<CharT, InlineCapacity>& rhs) -> basic_string<CharT, InlineCapacity>
 {
-    basic_string<CharT, InlineCapacity> result(lhs);
+    basic_string<CharT, InlineCapacity> result {basic_string<CharT, InlineCapacity>(lhs)};
     (void)result.append(rhs);
     return result;
 }
@@ -973,7 +946,7 @@ template<typename CharT, size_t InlineCapacity>
 template<typename CharT, size_t InlineCapacity>
 [[nodiscard]] constexpr auto operator+(CharT lhs, const basic_string<CharT, InlineCapacity>& rhs) -> basic_string<CharT, InlineCapacity>
 {
-    basic_string<CharT, InlineCapacity> result(1, lhs);
+    basic_string<CharT, InlineCapacity> result {basic_string<CharT, InlineCapacity>(1, lhs)};
     (void)result.append(rhs);
     return result;
 }
@@ -988,7 +961,7 @@ template<typename CharT, size_t InlineCapacity>
 template<typename CharT, size_t InlineCapacity>
 [[nodiscard]] constexpr auto operator+(const basic_string<CharT, InlineCapacity>& lhs, basic_string<CharT, InlineCapacity>&& rhs) -> basic_string<CharT, InlineCapacity>
 {
-    (void)rhs.insert(0, lhs);
+    (void)rhs.insert(size_t {0}, lhs);
     return std::move(rhs);
 }
 
@@ -1016,14 +989,14 @@ template<typename CharT, size_t InlineCapacity>
 template<typename CharT, size_t InlineCapacity>
 [[nodiscard]] constexpr auto operator+(const CharT* lhs, basic_string<CharT, InlineCapacity>&& rhs) -> basic_string<CharT, InlineCapacity>
 {
-    (void)rhs.insert(0, lhs);
+    (void)rhs.insert(size_t {0}, lhs);
     return std::move(rhs);
 }
 
 template<typename CharT, size_t InlineCapacity>
 [[nodiscard]] constexpr auto operator+(CharT lhs, basic_string<CharT, InlineCapacity>&& rhs) -> basic_string<CharT, InlineCapacity>
 {
-    (void)rhs.insert(0, 1, lhs);
+    (void)rhs.insert(size_t {0}, size_t {1}, lhs);
     return std::move(rhs);
 }
 
@@ -1046,7 +1019,7 @@ FO_END_NAMESPACE
 template<typename CharT, typename Traits, size_t InlineCapacity>
 auto operator>>(std::basic_istream<CharT, Traits>& stream, FO_NAMESPACE basic_string<CharT, InlineCapacity>& value) -> std::basic_istream<CharT, Traits>&
 {
-    std::basic_string<CharT, Traits, FO_NAMESPACE safe_allocator<CharT>> extracted;
+    std::basic_string<CharT, Traits, FO_NAMESPACE safe_allocator<CharT>> extracted {};
     stream >> extracted;
     (void)value.assign(extracted.data(), extracted.size());
     return stream;
@@ -1057,7 +1030,7 @@ FO_BEGIN_NAMESPACE
 template<typename CharT, typename Traits, size_t InlineCapacity>
 auto getline(std::basic_istream<CharT, Traits>& stream, basic_string<CharT, InlineCapacity>& value, CharT delimiter) -> std::basic_istream<CharT, Traits>&
 {
-    std::basic_string<CharT, Traits, safe_allocator<CharT>> extracted;
+    std::basic_string<CharT, Traits, safe_allocator<CharT>> extracted {};
     (void)std::getline(stream, extracted, delimiter);
     (void)value.assign(extracted.data(), extracted.size());
     return stream;

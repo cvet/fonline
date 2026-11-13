@@ -5,7 +5,7 @@ locale: ru
 document_id: entity-model
 permalink: /Docs/ru/explanation/entity-and-property-model/
 ---
-<!-- docs-translation: {"document_id":"entity-model","locale":"ru","source_path":"Docs/en/explanation/entity-and-property-model/index.md","source_sha256":"50d2607cb907a374c41993a2cb44a760e6b85e68e6260437f3820fe0cdffd689"} -->
+<!-- docs-translation: {"document_id":"entity-model","locale":"ru","source_path":"Docs/en/explanation/entity-and-property-model/index.md","source_sha256":"f625e5eeb925fdfcfb0dab29b9afc2523bc95540bc27aff178b81ca0f6cb1455"} -->
 # Модель сущностей
 
 Этот документ описывает переиспользуемую runtime-модель сущностей: дескрипторы типов сущностей, сгенерированные средства доступа к свойствам, сущности-прототипы, владение внутренними сущностями, события сущностей и модель хранения свойств, на которой строятся другие runtime-системы.
@@ -53,6 +53,16 @@ permalink: /Docs/ru/explanation/entity-and-property-model/
 После yield или освобождения покрытия наблюдение устаревает: заново проверяйте сущности и читайте свойство.
 Getter не резервирует перенос и не заменяет native-защиту. Для отложенной операции освободите покрытие
 перед ожиданием, чтобы внешний native-стек смог завершиться, затем заново проверьте всю операцию.
+
+## Клиентские снимки прикреплений
+
+Клиентские скрипты могут вызвать `Critter.GetAttachedCritterIds()` и скопировать ID из последнего полученного снимка прикреплений. ID остаётся в списке, когда его клиентская сущность криттера не загружена, в том числе в представлении глобальной карты. Поэтому `Game.GetCritter(id)` может вернуть null для ID из снимка; `Game.GetCritters(...)` перечисляет загруженные представления и не заменяет этот список.
+
+Возвращённый массив независим: его изменение не прикрепляет и не открепляет криттеров, а последующие обновления прикреплений не меняют ранее возвращённый массив. Пустой снимок возвращает пустой массив. API сохраняет полученный порядок и не выполняет поиск сущностей или дополнительный запрос серверу. Разделение прикреплённых криттеров на водителей, пассажиров и другие роли принадлежит встраивающему проекту.
+
+Нативный владелец — `CritterView.GetAttachedCritters`; `Client_Critter_GetAttachedCritterIds` предоставляет копию его ID. `Player.Send_AddCritter` и `Player.Send_Attachments` передают существующий сетевой снимок. `ClientCritterAttachedIdsSnapshotIncludesUnloadedIdsAndSurvivesListChanges` проверяет незагруженные ID и независимость копий.
+
+После восстановления прикреплений при переносе карты глобальная группа получает обновлённый снимок носителя. Доставка упорядочена с составом группы, идентичностью управляемого криттера и поставленным в очередь контекстом карты соединения получателя. Клиент в bounded map view при возврате получает актуальную группу и снимки прикреплений, включая изменения за время просмотра. `CritterGlobalAttachmentSnapshotsReachOnlyTheirGroupOnce` проверяет настоящие пакеты, точные ID, отсоединение, границы группы, отсутствие дублей, просмотр/возврат, замену соединения и смену персонажа. См. [глобальную доставку прикреплений](../authority-and-networking/index.md#доставка-прикреплений-на-глобальной-карте).
 
 ## Базовый класс сущности
 
@@ -199,7 +209,7 @@ Overlays, производные от прототипов, лениво соз�
 
 `Persistent`-записи сохраняют потомков постоянных держателей или Game; остальные записи временные. Проверяйте потомков и связи через unload/load. Потомки Critter восстанавливаются до `OnCritterPreLoad`; игровые callbacks восстанавливают или завершают состояние.
 
-Общие persistent-поля `CustomHolderId` и `CustomHolderEntry` позволяют custom entities записывать отношения holder. `EntityManagerApi` предоставляет hooks создания, lookup и уничтожения custom entity:
+Общие persistent-поля `CustomHolderId` и `CustomHolderEntry` позволяют custom entities записывать отношения holder. Custom-типы регистрируют все три общих поля под теми же индексами, что и экспортируемые типы, поэтому `MakePersistent()` записывает явное постоянство custom entity так же, как у любой другой сущности. `EntityManagerApi` предоставляет hooks создания, lookup и уничтожения custom entity:
 
 - `CreateCustomInnerEntity()`
 - `CreateCustomEntity()`
@@ -218,6 +228,8 @@ Holder lock предоставляет инициатор публикации. 
 
 - `ContinueChain`
 - `StopChain`
+
+Цепочку решает только callback с явным результатом: он останавливает её, вернув `StopChain` или бросив исключение. Callback, подписанный без него, всегда возвращает `ContinueChain`; `StopChain` от него `Entity::FireEvent` сообщает как нарушение контракта. Нативный подписчик, который запрещает событие, задаёт `EventCallbackData::HasExplicitResult`.
 
 `EntityEventWrapper::Fire()` по-разному формирует native call data для global и non-global entities: для non-global event сущность добавляется первым аргументом.
 

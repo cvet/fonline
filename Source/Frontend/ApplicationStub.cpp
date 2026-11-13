@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Common.h"
 
@@ -48,12 +18,13 @@ public:
     }
 
     [[nodiscard]] auto GetRenderTarget() -> nptr<RenderTexture> override { return _renderTarget; }
-    [[nodiscard]] auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override { return _renderer.CreateTexture(size, linear_filtered, with_depth); }
-    [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override { return _renderer.CreateDrawBuffer(is_static); }
-    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override { return _renderer.CreateEffect(usage, name, loader); }
-    [[nodiscard]] auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override { return _renderer.CreateOrthoMatrix(left, right, bottom, top, nearp, farp); }
     [[nodiscard]] auto IsRenderTargetFlipped() const -> bool override { return _renderer.IsRenderTargetFlipped(); }
     [[nodiscard]] auto GetProjMatrix() const -> mat44 override { return _renderer.GetProjMatrix(); }
+
+    auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override { return _renderer.CreateTexture(size, linear_filtered, with_depth); }
+    auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override { return _renderer.CreateDrawBuffer(is_static); }
+    auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override { return _renderer.CreateEffect(usage, name, loader); }
+    auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override { return _renderer.CreateOrthoMatrix(left, right, bottom, top, nearp, farp); }
 
     void SetRenderTarget(nptr<RenderTexture> tex) override
     {
@@ -70,7 +41,7 @@ public:
     void DisableScissor() override { _renderer.DisableScissor(); }
 
 private:
-    Null_Renderer _renderer;
+    Null_Renderer _renderer {};
     AppScreenState _screen {};
     nptr<RenderTexture> _renderTarget {};
 };
@@ -134,7 +105,7 @@ public:
 private:
     void UpdateModifierState(const InputEvent& ev)
     {
-        auto update_key_state = [this](KeyCode key, bool pressed) {
+        auto update_key_state {[this](KeyCode key, bool pressed) {
             if (key == KeyCode::Lshift || key == KeyCode::Rshift) {
                 _shiftDown = pressed;
             }
@@ -144,7 +115,7 @@ private:
             else if (key == KeyCode::Lmenu || key == KeyCode::Rmenu) {
                 _altDown = pressed;
             }
-        };
+        }};
 
         if (ev.Type == InputEvent::EventType::KeyDownEvent) {
             update_key_state(ev.KeyDown.Code, true);
@@ -234,7 +205,7 @@ public:
     auto ToggleFullscreen(bool enable) -> bool override
     {
         // The interface reports whether the state changed, not the resulting state
-        bool changed = _state.Fullscreen != enable;
+        bool changed {_state.Fullscreen != enable};
         _state.Fullscreen = enable;
         return changed;
     }
@@ -253,7 +224,7 @@ private:
     HeadlessWindowStub _state {};
     StubAppRender _render;
     StubAppInput _input;
-    StubAppAudio _audio;
+    StubAppAudio _audio {};
     bool _grabbed {};
     EventDispatcher<> _onWindowSizeChangedDispatcher {&OnWindowSizeChanged};
     EventDispatcher<> _onScreenSizeChangedDispatcher {&OnScreenSizeChanged};

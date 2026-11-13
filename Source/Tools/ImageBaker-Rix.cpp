@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "ImageBaker-Rix.h"
 
@@ -47,39 +17,43 @@ namespace ImageBakerRix
     {
         FO_TRACE_ZONE(Baking);
 
-        ignore_unused(fname);
         ignore_unused(opt);
         ignore_unused(context);
 
         reader.SetCurPos(0x4);
-        uint16_t w = 0;
-        reader.ReadObject(w);
-        uint16_t h = 0;
-        reader.ReadObject(h);
+        uint16_t width_wire {0};
+        reader.ReadObject(width_wire);
+        int32_t w {numeric_cast<int32_t>(width_wire)};
+        uint16_t height_wire {0};
+        reader.ReadObject(height_wire);
+        int32_t h {numeric_cast<int32_t>(height_wire)};
 
         reader.SetCurPos(0xA);
-        const_span<uint8_t> palette = reader.GetCurDataSpan(256 * 3);
+        const_span<uint8_t> palette {reader.GetCurDataSpan(numeric_cast<size_t>(256 * 3))};
 
-        vector<uint8_t> data(numeric_cast<size_t>(w) * h * 4);
-        span<ucolor> pixels = bytes_to_objects<ucolor>(span {data});
-        reader.SetCurPos(0xA + 256 * 3);
+        FO_VERIFY_AND_THROW(w > 0 && h > 0, "Invalid RIX dimensions", fname, w, h);
+        int64_t pixel_count {checked_mul(numeric_cast<int64_t>(w), numeric_cast<int64_t>(h))};
+        size_t data_size {numeric_cast<size_t>(checked_mul(pixel_count, int64_t {4}))};
+        vector<uint8_t> data {vector<uint8_t>(data_size)};
+        span<ucolor> pixels {bytes_to_objects<ucolor>(span {data})};
+        reader.SetCurPos(numeric_cast<size_t>(0xA + 256 * 3));
 
-        for (int32_t i = 0; i < w * h; i++) {
-            int32_t index = numeric_cast<int32_t>(reader.GetUInt8()) * 3;
-            auto r = numeric_cast<uint8_t>(palette[index + 2] * 4);
-            auto g = numeric_cast<uint8_t>(palette[index + 1] * 4);
-            auto b = numeric_cast<uint8_t>(palette[index + 0] * 4);
+        for (size_t i {0}; i < pixels.size(); i++) {
+            size_t index {checked_mul(numeric_cast<size_t>(reader.ReadUInt8()), size_t {3})};
+            uint8_t r {numeric_cast<uint8_t>(numeric_cast<int32_t>(palette[checked_add(index, size_t {2})]) * 4)};
+            uint8_t g {numeric_cast<uint8_t>(numeric_cast<int32_t>(palette[checked_add(index, size_t {1})]) * 4)};
+            uint8_t b {numeric_cast<uint8_t>(numeric_cast<int32_t>(palette[index]) * 4)};
             pixels[i] = ucolor {r, g, b};
         }
 
-        FrameCollection collection;
-        uint16_t sequence_size {};
+        FrameCollection collection {};
+        int32_t sequence_size {};
         uint32_t duration_ms {};
         bool have_dirs {};
         sequence_size = 1;
         duration_ms = 100;
 
-        collection.Main.Frames.resize(sequence_size);
+        collection.Main.Frames.resize(numeric_cast<size_t>(sequence_size));
         collection.Main.Frames[0].Size = {w, h};
         collection.Main.Frames[0].Data = std::move(data);
 
@@ -91,11 +65,11 @@ namespace ImageBakerRix
             }
         }
 
-        for (uint8_t direction = 0; direction < ImageImport::GetDirectionCount(collection); direction++) {
-            auto& sequence = direction == 0 ? collection.Main : collection.Dirs[direction - 1];
+        for (uint8_t direction {0}; direction < ImageImport::GetDirectionCount(collection); direction++) {
+            auto& sequence {direction == 0 ? collection.Main : collection.Dirs[numeric_cast<size_t>(direction - 1)]};
 
             if (std::all_of(sequence.Frames.begin(), sequence.Frames.end(), [](const ImageImport::FrameShot& frame) { return frame.Duration == timespan::zero; })) {
-                uint32_t count = numeric_cast<uint32_t>(sequence.Frames.size());
+                uint32_t count {numeric_cast<uint32_t>(sequence.Frames.size())};
                 ImageImport::SetFrameSequenceDuration(sequence, std::chrono::milliseconds {duration_ms == 0 ? count * 100 : std::max(duration_ms, count)});
             }
 

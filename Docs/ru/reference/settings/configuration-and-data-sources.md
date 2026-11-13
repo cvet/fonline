@@ -5,7 +5,7 @@ locale: ru
 document_id: configuration-data-sources
 permalink: /Docs/ru/reference/settings/configuration-and-data-sources.html
 ---
-<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"7d3d8d26e4352bc5dfe7e6416e5cb2da998390011a5537114d96d43aa5fda053"} -->
+<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"e14a7134d14e8f76cd69fdff11a8902efeb26ba6b93cefc6adc0c1839c537cbb"} -->
 # Конфигурация и источники данных
 
 > Документация движка. Эта страница описывает переиспользуемые механизмы разбора конфигурации, runtime settings, смонтированные источники данных, поиск файлов и хранение кэша. Конкретные значения конфигурации и правила размещения контента принадлежат встраивающему проекту.
@@ -105,35 +105,72 @@ command-line и runtime lookup используют `Network.ServerPort`. Про
 - `SubConfigInfo` - именованные config overlays и карты settings;
 - `GlobalSettings` - объединенные client/server/baking/base settings с операциями применения, сохранения и работы с custom settings.
 
-`GlobalSettings` применяет входные данные через:
+`GlobalSettings` разделяет начальную настройку и частичные overlays:
 
-- `ApplyConfigAtPath()` и `ApplyConfigFile()` для config files;
-- `ApplyCommandLine()` для runtime и build-tool overrides;
-- `ApplyInternalConfig()` для сгенерированного internal config;
-- `ApplySubConfigSection()` для именованных overlays;
-- `ApplyDefaultSettings()` и `ApplyAutoSettings()` для defaults движка и производных значений.
+- `SetupConfigAtPath()` выбирает основной авторский конфиг;
+- `SetupInternalConfig()` выбирает встроенный Engine/bootstrap-профиль;
+- `SetupResourceConfig()` выбирает полный ресурсный профиль;
+- `SetupDefaultSettings()` выбирает reference defaults движка;
+- `ApplyConfigFile()` накладывает только присутствующие entries/sections, включая local preferences;
+- `ApplyCommandLine()`, `ApplySubConfigSection()`, `ApplyAutoSettings(runtime_name)`,
+  `ApplyWritableRoot()`, `ApplyStartupOverrides()` и `ApplyGameSettings()` меняют свои части настроек.
 
-При обычном запуске приложения создается non-baking `GlobalSettings`, а defaults движка применяются до чтения входов проекта. Итоговый runtime order таков: defaults, конфигурация проекта или упакованный internal config, выбранные sub-configs, writable local-config cache, переопределения командной строки, затем производные auto settings. Поэтому проектный `.fomain` фиксирует намеренно заданные значения, а пропущенный setting получает объявленный Engine default, а не нулевое инициализированное значение. Явно заданный ноль остаётся override. Тест `ApplicationSettings` в `Source/Tests/Test_Settings.cpp` проверяет обычный путь `LoadAppSettings()` на изолированных файлах конфигурации и кэша: default baseline и каждый слой override вплоть до командной строки.
+Выберите один `Setup*` на чистом нулевом объекте, затем применяйте overlays. Каждый
+setup проверяет чистоту до изменения: release проверяет tracked state/контейнеры,
+debug также сверяет все typed engine-поля. Успешный setup не делает очистку или
+проход reference defaults. Ошибка file/profile setup восстанавливает ноль для повтора.
+Существующее состояние полноты также хранит факт setup: повторные defaults и
+смешанные setup отвергаются без дополнительного флага. `CopyFrom()` переносит
+состояние; game-only refresh сохраняет начальную настройку native-профиля и обновляет
+полноту профиля. `HasCompleteConfig()` остаётся true только для embedded/resource
+профилей. Пустое имя основного конфига недопустимо.
 
-`ConfigBaker` из `Source/Tools/ConfigBaker.cpp` заново выводит каждый sub-config
-из root. Metadata хранит настроенное root-значение каждого game setting и служит
-runtime baseline: `BaseEngine` применяет его, только если config, sub-config,
-local config или command line не задавали это имя. Поэтому side-specific internal
-config содержит лишь sub-config deltas game settings; false и empty deltas тоже
-записываются, поскольку обязаны перекрыть непустой metadata baseline. Built-in
-server/client settings сохраняют прежние правила компактной записи непустых
-значений. `MetadataBaker` включает timestamps применённых configs в freshness и
-отклоняет game-setting declaration без настроенного значения.
+Обычный unpackaged-запуск начинает с нулевого объекта, затем применяет авторский
+конфиг, выбранные sub-config, local preferences, CLI и auto settings. Reference
+значения `Settings.inc` применяются только явным `SetupDefaultSettings()`.
 
-Этот metadata baseline применяется только после создания `BaseEngine`.
-Game setting, который читает `ApplicationInitHook` или более ранний startup
-path, поэтому обязан находиться в самом binary config.
-`Baking.BootstrapGameSettings` перечисляет только такие исключения:
-`ConfigBaker` записывает каждый указанный setting полностью для каждого baked
-sub-config, не сокращая его до delta. Каждое имя обязано разрешаться в
-объявленный game setting, иначе baking завершается ошибкой. Список должен
-оставаться узким, чтобы фиксированная internal-config patch area размером
-20000 bytes содержала bootstrap data, а не вторую копию metadata baseline.
+Packaged bootstrap сканирует только строку `Common.ResourcesPath` зашитого конфига,
+разрешает runtime-подстановки и CLI override и открывает Metadata в этом каталоге.
+Ограниченный поиск не разбирает и не применяет остальные зашитые настройки.
+`ReadResourceConfig(const FileSystem& metadata, bool required)` читает уже смонтированный
+caller-ом Metadata: `.fomain-server` имеет приоритет над `.fomain-client` внутри него.
+Application initialization подключает writable client overlays только для standalone
+client; остальные приложения используют базовый Metadata pack. Там же несовместимый
+optional client profile пропускается до синхронизации ресурсов updater-ом. Reader
+не выбирает монтирование и не определяет startup compatibility policy. Updater
+передаёт свой клиентский Metadata view и требует наличия профиля.
+Отсутствие optional-ресурсов выбирает
+`SetupInternalConfig()`, найденный профиль — `SetupResourceConfig()`. На чистом
+объекте выполняется ровно один основной Setup. Повреждённый или
+неоднозначный источник вызывает ошибку. Запрос packaged `ApplySubConfig` сообщается
+через `FO_VERIFY_AND_CONTINUE` и не блокирует выбранный профиль. Затем следуют
+local preferences, полный CLI и auto; CLI и auto вызываются по одному разу.
+CLI cache override выбирает кэш preferences до заключительного CLI Apply.
+
+`SetupResourceConfig()` инициализирует чистые settings с нулевыми значениями и
+сохраняет исходный текст. Вызывайте его до writable root, preferences, CLI и auto.
+Успешной инициализации не нужны replacement allocation, очистка или копия settings.
+Обычные config/CLI Apply сохраняют overlay-семантику. Для обновления игровых
+значений создавайте отдельного чистого кандидата и вызывайте `ApplyGameSettings()`,
+не применяйте другой ресурсный профиль поверх существующего объекта.
+
+`ConfigBaker` независимо разрешает каждый root/sub-config и проверяет полноту
+авторского конфига до фильтрации. Resource profiles сохраняют все ненулевые
+объявленные значения своей стороны. Embedded profiles содержат настройки движка
+и явно выбранные bootstrap game settings. Типизированные numeric/enum zero, false,
+пустые строки и массивы опускаются. Строки `0`/`false`, непустые массивы с нулём,
+малые ненулевые float и неизвестные custom literals сохраняются. Только известные
+boolean сокращаются до `1`; target-runtime directives сохраняются буквально.
+Непустая `Common.ResourcesPath` входит в профиль. Резерв бинарника — 40000 байт.
+
+Metadata Setting содержит ровно имя и тип. `MetadataBaker` требует авторское
+значение, допускает явно пустое и проверяет свежесть конфига. `BaseEngine` больше
+не применяет значения из metadata. Версия metadata file — 6; прежний трёхколоночный
+формат требует rebake. Ранние native readers используют `HasCompleteConfig()`,
+чтобы отличать пропущенный ноль профиля от fallback необязательного fixture.
+`CopyFrom()` переносит признак, в том числе его отсутствие у нулевого snapshot.
+`Baking.BootstrapGameSettings` выбирает объявленные игровые значения, нужные до
+доступности ресурсов; только эти игровые значения также входят в embedded-профиль.
 
 `GlobalSettings::Save()` по-прежнему выводит только settings из
 `_appliedSettings`, который заполняется keys применённых configs и baking-mode
@@ -248,7 +285,20 @@ Snapshot нового источника снимается до его публ
 
 `FilterFiles()` и `GetAllFiles()` продолжают перебирать источники по порядку даже при индексированных точечных lookup-операциях. Загрузка script modules, регистрация прототипов и другие consumers зависят от source-by-source order, который unordered index не сохраняет.
 
-`Common.Packaged` — fixed auto-setting, заполняемый из packaged marker исполняемого файла в `GlobalSettings::ApplyAutoSettings()`. После загрузки настроек runtime-политика обязана читать этот снимок (`settings.Packaged`), чтобы скопированные или подставленные настройки оставались внутренне согласованными и тестируемыми. Прямые проверки `IsPackaged()` зарезервированы за решениями bootstrap до настроек и за `FileSystem::AddPackSource()`, где физический marker исполняемого файла намеренно выбирает монтирование архива или каталога; тесты также могут смотреть на этот marker при выборе совместимых фикстур.
+Только `ApplicationInit.cpp` владеет `PACKAGED_BUILD_NAME`, декодером и private
+bootstrap helper `IsPackaged()`. `GlobalSettings::ApplyAutoSettings(runtime_name)`
+получает identity явно, хранит собственную копию и выставляет fixed-флаг
+`Common.Packaged` по её непустоте. Runtime читает `settings.Common.Packaged` и
+`settings.GetPackagedRuntimeName()`; identity не является авторской опцией или
+значением metadata. Copy/startup restoration переносят её, game-only refresh сохраняет.
+
+C++ callers передают режим первым аргументом в `AddPackSource(packaged, dir, pack, optional)`
+и `AddPacksSource(packaged, dir, packs)`. Используйте загруженный `Common.Packaged`;
+resource bootstrap до settings уже имеет явный режим. True выбирает архивы, false —
+bake directories независимо от host binary. Отсутствующий выбранный layout вызывает
+ошибку, если он не optional; другой layout не используется как fallback. Native
+directory fixtures передают пустое имя runtime в `ApplyAutoSettings({})`. Глобальных
+packaged accessors и host-marker skips вне application initialization больше нет.
 
 Упакованный клиент выбирает один effective source на каждый логический pack: writable замену `Pack.fores`, если она есть, иначе установленную базу, плюс writable `Pack.patch.fores`, привязанный к физическому хешу этой базы. Полный каталог пары определяет как присутствующие, так и удалённые пути; порядок приоритета логических packs сохраняется. `GetClientResources()` собирает одинаковый вид для gameplay и проверки metadata в updater. Для суффикса после последнего Embedded может применяться удаляемый кэш `Resources.foindex`: устаревший или повреждённый кэш заменяется прямым mount авторитетных пар, а повреждение самих packs остаётся ошибкой. При абсолютном installed/APK root замены хранятся в `<UserWritablePath>/Resources`. См. [формат пакетов ресурсов](../../../ResourcePackFormat.md) и [разделение client runtime и updater](../../explanation/runtime/client-updater.md).
 
@@ -327,3 +377,58 @@ Snapshot нового источника снимается до его публ
 `DataSource.cpp` владеет dispatch; соседние пары `DataSource-Directory`, `DataSource-Embedded` обязательны, `DataSource-Dat` требует `FO_DATA_SOURCE_DAT`, `DataSource-Zip` — `FO_DATA_SOURCE_ZIP`. Регистрация/includes безусловны, guards внутренние. [Выбор компонентов](../../how-to/build/project-configuration.md#optional-native-components) описывает роли/зависимости.
 
 Приоритет: Embedded / `.fores` / `.zip` / `.bos` / `.dat`. Существующий выключенный архив сообщает путь/опцию даже при `maybe_not_available=true`; пустой источник — только для отсутствующего optional pack. Повреждённый приоритетный pack не подменяется следующим. Embedded/APK сохраняют bundled minizip при внешнем ZIP OFF; `.fores`/updater patches остаются базовыми.
+
+## Ресурсная конфигурация упакованных приложений
+
+Каждый субконфиг даёт полные `.fomain-client/server` и меньшие `.fomain-embedded-client/server` профили.
+Прежний `--config` выбирает embedded-профили для бинарников и полные профили для
+архива `Metadata` каждой роли; серверный и клиентский архивы остаются раздельными.
+
+`METADATA_PACK_NAME` в `DataSource.h` и `package.py` задаёт имя Metadata.
+Объявите `Bakers=Metadata Config ClientConfig`. Каждый архив содержит один выбранный
+полный профиль относительно нуля и metadata/sidecars своей роли.
+`Common.ResourcesPath` (default `Resources`) задаёт каталог собственных паков.
+Server package хранит клиентскую раздачу в `<Common.ResourcesPath>/Client`;
+bootstrap не ищет в этом дочернем каталоге. Android сохраняет APK asset URI override
+через `Common.ResourcesPath`. Относительный writable overlay следует настроенному
+пути; абсолютный install path и APK URI используют `<UserWritablePath>/Resources`.
+
+### Скачиваемая конфигурация клиента
+
+Отсутствие конфигурации на первом запуске оставляет встроенный bootstrap;
+после синхронизации объявленный `Metadata` обязан содержать однозначный конфиг.
+`BaseSettings::GetResourceConfigContent` хранит применённый ресурсный текст
+в памяти для сравнения обновлятором. Неизменный текст не требует дополнительного
+Apply. Изменённый профиль один раз применяется к чистому кандидату, затем идут
+те же local preferences, повтор сохранённых CLI operations и auto, что при запуске.
+Перезапуск требуют только изменения итоговых движковых полей или объявлений
+resource packs. Только игровые изменения заменяют custom values до создания
+ClientEngine, удаляют пропущенные значения и инвалидируют typed setting caches;
+native-поля и их storage сохраняются. Комментарии и эквивалентные native-значения
+сами по себе не требуют перезапуска.
+Конфиг остаётся в существующем пакете ресурсов; конфигурационный кэш не записывается.
+Для первого внедрения пересоберите и переупакуйте native-приложения. Проверьте
+загрузку клиентом, сохранение ресурсов, перезапуск и следующий запуск на каждой
+поставляемой платформе, а также выбранный ресурсный конфиг сервера до приёмки запуска.
+
+Существующий `AppInitFlags::StandaloneClient` включает клиентские writable
+replacements и patches при bootstrap. Остальные основные приложения читают base
+Metadata в соответствии со своим монтированием ресурсов. Флаг выбирает политику
+overlay, не второй каталог и не второй Apply. Packaged embedded clients меняют
+только клонированную `Common.ResourcesPath` на серверный дочерний `Client` до
+проектного startup hook; серверный snapshot сохраняется.
+
+Baked-профиль начинается комментарием с версией native-совместимости производителя.
+При optional bootstrap standalone-клиента отсутствующая или иная отметка откладывает
+профиль до синхронизации: применяется встроенный fallback без разбора старых ключей.
+Это позволяет native updater перезапуститься до обновления соответствующих ресурсов.
+Текущий совместимый профиль применяется один раз; проверки metadata и ресурсов до
+запуска игры сохраняются. Прежние имена настроек не интерпретируются.
+
+Config baker пишет два профиля для каждой роли и sub-config: `.fomain-server/client` содержит полную конфигурацию ресурсов; `.fomain-embedded-server/client` — только настройки движка и явно перечисленные `Baking.BootstrapGameSettings`. Оба содержат объявления resource packs и пропускают типизированные нули. Упаковщик встраивает меньший профиль в executable и runtime libraries, а полный выбранный профиль оставляет в Metadata. Настройки самой упаковки разрешаются из полного профиля. Отсутствие embedded-профиля прерывает упаковку; игровые значения вместо него не встраиваются. Startup по-прежнему применяет ровно один выбранный основной профиль.
+
+Упаковщик переносит строку `Common.ResourcesPath` главной секции в первую строку каждого встроенного профиля, чтобы bootstrap находил её сразу. Значение и порядок остальных строк сохраняются; полные ресурсные профили и исходные baked-файлы не меняются.
+
+Встроенные игровые клиенты при interthread-соединении используют общую клиентскую раздачу, включая её managed runtime pack. Их handshake запрашивает общее описание обновлений; обычные сетевые игровые клиенты и все updater-соединения сохраняют платформенное описание. В обоих случаях хеши ресурсов проверяются относительно выбранного описания.
+
+Адресный отказ для прежних `Baking.ResourcesDir`, `Baking.CacheResources`, `Baking.PlatformBinaries`, `Baking.ClientResources` и `Baking.ServerResources` отмечен `FO_TEMPORARY_COMPAT(RetiredBakingDirectorySettings, "2026-12-31")` в реализации и проверках отказа. Маркер задаёт срок удаления этой диагностики и не добавляет runtime-работы или aliases старых имён.

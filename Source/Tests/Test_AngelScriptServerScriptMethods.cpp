@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Common.h"
 
@@ -53,20 +23,20 @@ namespace
 {
     static auto ContainsNetworkMessage(const_span<uint8_t> data, NetMessage expected_message) -> bool
     {
-        constexpr size_t header_size = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(NetMessage);
-        size_t offset = 0;
-        bool found = false;
+        constexpr size_t header_size {sizeof(uint32_t) + sizeof(uint32_t) + sizeof(NetMessage)};
+        size_t offset {0};
+        bool found {false};
 
         while (offset + header_size <= data.size()) {
-            uint32_t signature = 0;
-            uint32_t message_size = 0;
+            uint32_t signature {0};
+            uint32_t message_size {0};
             NetMessage message {};
 
             memory::copy(&signature, data.data() + offset, sizeof(signature));
             memory::copy(&message_size, data.data() + offset + sizeof(signature), sizeof(message_size));
             memory::copy(&message, data.data() + offset + sizeof(signature) + sizeof(message_size), sizeof(message));
 
-            size_t message_size_value = numeric_cast<size_t>(message_size);
+            size_t message_size_value {numeric_cast<size_t>(message_size)};
 
             FO_VERIFY_AND_THROW(signature == NetBuffer::NETMSG_SIGNATURE, "Invalid network message signature in test output", signature);
             FO_VERIFY_AND_THROW(message_size_value >= header_size && offset + message_size_value <= data.size(), "Invalid network message size in test output", message_size, offset, data.size());
@@ -84,10 +54,10 @@ namespace
 
     static auto AngelScriptServerScriptMethodsMakeSettings() -> GlobalSettings
     {
-        auto settings = GlobalSettings(false);
+        auto settings {GlobalSettings(false)};
 
-        settings.ApplyDefaultSettings();
-        settings.ApplyAutoSettings();
+        settings.SetupDefaultSettings();
+        settings.ApplyAutoSettings({});
 
         BakerTests::ApplySelfContainedServerSettings(settings);
         BakerTests::OverrideSetting(settings.DataBase.CustomCollections, vector<string> {"test_collection:Int", "test_strings:Str"});
@@ -1477,9 +1447,11 @@ namespace ScriptMethodsTest
 
         Game.Sync(doomed);
         Game.DestroyCritter(doomed);
+        if (!Game.IsEntityLocked(doomed)) return -3;
 
         Game.Sync(anchor, doomed);
-        if (!Game.IsEntityLocked(anchor)) return -3;
+        if (!Game.IsEntityLocked(anchor)) return -4;
+        if (Game.IsEntityLocked(doomed)) return -5;
 
         Game.DestroyCritter(anchor);
 
@@ -2958,7 +2930,7 @@ namespace ScriptMethodsTest
 )"},
             },
             [](string_view message) {
-                string message_str = string(message);
+                string message_str {string(message)};
 
                 if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
                     throw ScriptSystemException(message_str);
@@ -2968,8 +2940,8 @@ namespace ScriptMethodsTest
 
     static auto MakeEmptyMapBlob() -> vector<uint8_t>
     {
-        vector<uint8_t> map_data;
-        auto writer = data_writer(map_data);
+        vector<uint8_t> map_data {};
+        data_writer writer {map_data};
 
         writer.write<uint32_t>(BAKED_MAP_FILE_MAGIC);
         writer.write<uint32_t>(BAKED_MAP_FILE_VERSION);
@@ -2982,15 +2954,15 @@ namespace ScriptMethodsTest
 
     static auto MakeMapProtoBlob(BakerServerEngine& proto_engine, hstring type_name, string_view proto_name, msize map_size) -> vector<uint8_t>
     {
-        vector<uint8_t> props_data;
-        set<hstring> str_hashes;
+        vector<uint8_t> props_data {};
+        set<hstring> str_hashes {};
 
         ProtoMap proto {proto_engine.Hashes.to_hashed_string(proto_name), proto_engine.GetPropertyRegistrar(type_name)};
         proto.SetSize(map_size);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
-        vector<uint8_t> protos_data;
-        auto writer = data_writer(protos_data);
+        vector<uint8_t> protos_data {};
+        data_writer writer {protos_data};
 
         writer.write<uint32_t>(uint32_t {0});
         ignore_unused(str_hashes);
@@ -3008,28 +2980,28 @@ namespace ScriptMethodsTest
 
     static auto AngelScriptServerScriptMethodsMakeResources() -> FileSystem
     {
-        auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
+        auto metadata_blob {BakerTests::MakeEmptyMetadataBlob()};
 
-        auto compiler_resources_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ScriptMethodsCompilerResources");
+        auto compiler_resources_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("ScriptMethodsCompilerResources")};
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
 
-        FileSystem compiler_resources;
+        FileSystem compiler_resources {};
         compiler_resources.AddCustomSource(std::move(compiler_resources_source));
 
         BakerServerEngine proto_engine {compiler_resources};
-        hstring critter_type = proto_engine.Hashes.to_hashed_string("Critter");
-        hstring item_type = proto_engine.Hashes.to_hashed_string("Item");
-        hstring location_type = proto_engine.Hashes.to_hashed_string("Location");
-        hstring map_type = proto_engine.Hashes.to_hashed_string("Map");
-        auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestCritter");
-        auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
-        auto item2_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem2");
-        auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "TestLocation");
-        auto map_blob = MakeMapProtoBlob(proto_engine, map_type, "TestMap", msize {200, 200});
-        auto fomap_blob = MakeEmptyMapBlob();
-        auto script_blob = AngelScriptServerScriptMethodsMakeScriptBinary(compiler_resources);
+        hstring critter_type {proto_engine.Hashes.to_hashed_string("Critter")};
+        hstring item_type {proto_engine.Hashes.to_hashed_string("Item")};
+        hstring location_type {proto_engine.Hashes.to_hashed_string("Location")};
+        hstring map_type {proto_engine.Hashes.to_hashed_string("Map")};
+        auto critter_blob {BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestCritter")};
+        auto item_blob {BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem")};
+        auto item2_blob {BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem2")};
+        auto location_blob {BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "TestLocation")};
+        auto map_blob {MakeMapProtoBlob(proto_engine, map_type, "TestMap", msize {200, 200})};
+        auto fomap_blob {MakeEmptyMapBlob()};
+        auto script_blob {AngelScriptServerScriptMethodsMakeScriptBinary(compiler_resources)};
 
-        auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ScriptMethodsRuntimeResources");
+        auto runtime_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("ScriptMethodsRuntimeResources")};
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
         runtime_source->AddFile("ScriptMethodsCritter.fopro-bin-server", critter_blob);
         runtime_source->AddFile("ScriptMethodsItem.fopro-bin-server", item_blob);
@@ -3039,7 +3011,7 @@ namespace ScriptMethodsTest
         runtime_source->AddFile("TestMap.fomap-bin-server", fomap_blob);
         runtime_source->AddFile("ScriptMethodsTest.fos-bin-server", script_blob);
 
-        FileSystem resources;
+        FileSystem resources {};
         resources.AddCustomSource(std::move(runtime_source));
 
         return resources;
@@ -3047,7 +3019,7 @@ namespace ScriptMethodsTest
 
     static auto AngelScriptServerScriptMethodsWaitForStart(ptr<ServerEngine> server) -> string
     {
-        for (int32_t i = 0; i < 6000; i++) {
+        for (int32_t i {0}; i < 6000; i++) {
             if (server->IsStarted()) {
                 return {};
             }
@@ -3069,30 +3041,30 @@ namespace ScriptMethodsTest
 
 TEST_CASE("ServerCritterInventoryOperations")
 {
-    auto settings = AngelScriptServerScriptMethodsMakeSettings();
-    auto server = AngelScriptServerScriptMethodsMakeServerEngine(settings);
+    auto settings {AngelScriptServerScriptMethodsMakeSettings()};
+    auto server {AngelScriptServerScriptMethodsMakeServerEngine(settings)};
 
-    auto shutdown = scope_exit([&server]() noexcept {
+    auto shutdown {scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
                 server->Shutdown();
             }
         });
-    });
+    })};
 
-    string startup_error = AngelScriptServerScriptMethodsWaitForStart(server);
+    string startup_error {AngelScriptServerScriptMethodsWaitForStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
 
-    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
 
-    auto get_func = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
+    auto get_func {[&server](string_view name) { return server->Hashes.to_hashed_string(name); }};
 
     SECTION("AddAndCountItems")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCritterAddAndCountItems"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCritterAddAndCountItems"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3100,7 +3072,7 @@ TEST_CASE("ServerCritterInventoryOperations")
 
     SECTION("GetItems")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCritterGetItems"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCritterGetItems"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3108,7 +3080,7 @@ TEST_CASE("ServerCritterInventoryOperations")
 
     SECTION("GetItemById")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCritterGetItemById"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCritterGetItemById"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3116,7 +3088,7 @@ TEST_CASE("ServerCritterInventoryOperations")
 
     SECTION("InventoryProtoAndPropertyMethods")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCritterInventoryProtoAndPropertyMethods"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCritterInventoryProtoAndPropertyMethods"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3125,30 +3097,30 @@ TEST_CASE("ServerCritterInventoryOperations")
 
 TEST_CASE("ServerCritterStateOperations")
 {
-    auto settings = AngelScriptServerScriptMethodsMakeSettings();
-    auto server = AngelScriptServerScriptMethodsMakeServerEngine(settings);
+    auto settings {AngelScriptServerScriptMethodsMakeSettings()};
+    auto server {AngelScriptServerScriptMethodsMakeServerEngine(settings)};
 
-    auto shutdown = scope_exit([&server]() noexcept {
+    auto shutdown {scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
                 server->Shutdown();
             }
         });
-    });
+    })};
 
-    string startup_error = AngelScriptServerScriptMethodsWaitForStart(server);
+    string startup_error {AngelScriptServerScriptMethodsWaitForStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
 
-    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
 
-    auto get_func = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
+    auto get_func {[&server](string_view name) { return server->Hashes.to_hashed_string(name); }};
 
     SECTION("InvokeCollectionResults")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestInvokeCollectionResults"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestInvokeCollectionResults"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3156,7 +3128,7 @@ TEST_CASE("ServerCritterStateOperations")
 
     SECTION("StateQueries")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCritterStateQueries"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCritterStateQueries"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3164,7 +3136,7 @@ TEST_CASE("ServerCritterStateOperations")
 
     SECTION("SetupAndViewMethods")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCritterSetupAndViewMethods"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCritterSetupAndViewMethods"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3172,7 +3144,7 @@ TEST_CASE("ServerCritterStateOperations")
 
     SECTION("MovementMethods")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCritterMovementMethods"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCritterMovementMethods"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3180,7 +3152,7 @@ TEST_CASE("ServerCritterStateOperations")
 
     SECTION("TransferMethods")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCritterTransferMethods"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCritterTransferMethods"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3188,7 +3160,7 @@ TEST_CASE("ServerCritterStateOperations")
 
     SECTION("ControlAndActionMethods")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCritterControlAndActionMethods"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCritterControlAndActionMethods"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3196,7 +3168,7 @@ TEST_CASE("ServerCritterStateOperations")
 
     SECTION("ConditionChange")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCritterConditionChange"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCritterConditionChange"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3204,7 +3176,7 @@ TEST_CASE("ServerCritterStateOperations")
 
     SECTION("MapConditionChange")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCritterMapConditionChange"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCritterMapConditionChange"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3212,7 +3184,7 @@ TEST_CASE("ServerCritterStateOperations")
 
     SECTION("Direction")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCritterDirection"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCritterDirection"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3220,7 +3192,7 @@ TEST_CASE("ServerCritterStateOperations")
 
     SECTION("Attachments")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCritterAttachments"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCritterAttachments"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3229,30 +3201,30 @@ TEST_CASE("ServerCritterStateOperations")
 
 TEST_CASE("ServerGameCritterQueries")
 {
-    auto settings = AngelScriptServerScriptMethodsMakeSettings();
-    auto server = AngelScriptServerScriptMethodsMakeServerEngine(settings);
+    auto settings {AngelScriptServerScriptMethodsMakeSettings()};
+    auto server {AngelScriptServerScriptMethodsMakeServerEngine(settings)};
 
-    auto shutdown = scope_exit([&server]() noexcept {
+    auto shutdown {scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
                 server->Shutdown();
             }
         });
-    });
+    })};
 
-    string startup_error = AngelScriptServerScriptMethodsWaitForStart(server);
+    string startup_error {AngelScriptServerScriptMethodsWaitForStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
 
-    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
 
-    auto get_func = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
+    auto get_func {[&server](string_view name) { return server->Hashes.to_hashed_string(name); }};
 
     SECTION("GetCritterById")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameGetCritter"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameGetCritter"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3260,7 +3232,7 @@ TEST_CASE("ServerGameCritterQueries")
 
     SECTION("GetAllNpc")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameGetAllNpc"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameGetAllNpc"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3268,7 +3240,7 @@ TEST_CASE("ServerGameCritterQueries")
 
     SECTION("GetCrittersByFindType")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameGetCrittersByFindType"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameGetCrittersByFindType"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3277,30 +3249,30 @@ TEST_CASE("ServerGameCritterQueries")
 
 TEST_CASE("ServerGameItemOperations")
 {
-    auto settings = AngelScriptServerScriptMethodsMakeSettings();
-    auto server = AngelScriptServerScriptMethodsMakeServerEngine(settings);
+    auto settings {AngelScriptServerScriptMethodsMakeSettings()};
+    auto server {AngelScriptServerScriptMethodsMakeServerEngine(settings)};
 
-    auto shutdown = scope_exit([&server]() noexcept {
+    auto shutdown {scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
                 server->Shutdown();
             }
         });
-    });
+    })};
 
-    string startup_error = AngelScriptServerScriptMethodsWaitForStart(server);
+    string startup_error {AngelScriptServerScriptMethodsWaitForStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
 
-    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
 
-    auto get_func = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
+    auto get_func {[&server](string_view name) { return server->Hashes.to_hashed_string(name); }};
 
     SECTION("ItemSetupScriptMethods")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestItemSetupScriptMethods"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestItemSetupScriptMethods"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3308,7 +3280,7 @@ TEST_CASE("ServerGameItemOperations")
 
     SECTION("ItemContainerMethods")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestItemContainerMethods"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestItemContainerMethods"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3316,7 +3288,7 @@ TEST_CASE("ServerGameItemOperations")
 
     SECTION("ItemQueries")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameItemQueries"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameItemQueries"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3324,7 +3296,7 @@ TEST_CASE("ServerGameItemOperations")
 
     SECTION("MoveItemBetweenCritters")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameMoveItemBetweenCritters"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameMoveItemBetweenCritters"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3332,7 +3304,7 @@ TEST_CASE("ServerGameItemOperations")
 
     SECTION("MoveItemPartial")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameMoveItemPartial"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameMoveItemPartial"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3340,7 +3312,7 @@ TEST_CASE("ServerGameItemOperations")
 
     SECTION("MoveItemRemovalReentry")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameMoveItemRemovalReentry"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameMoveItemRemovalReentry"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3348,7 +3320,7 @@ TEST_CASE("ServerGameItemOperations")
 
     SECTION("DestroyingItemIsNotMoved")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameDestroyingItemIsNotMoved"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameDestroyingItemIsNotMoved"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3356,7 +3328,7 @@ TEST_CASE("ServerGameItemOperations")
 
     SECTION("CloneItem")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameCloneItem"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameCloneItem"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3364,7 +3336,7 @@ TEST_CASE("ServerGameItemOperations")
 
     SECTION("DestroyItemById")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameDestroyItemById"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameDestroyItemById"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3372,7 +3344,7 @@ TEST_CASE("ServerGameItemOperations")
 
     SECTION("GetItemZeroIdThrows")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameGetItemZeroIdThrows"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameGetItemZeroIdThrows"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3380,7 +3352,7 @@ TEST_CASE("ServerGameItemOperations")
 
     SECTION("ItemOwnership")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestItemOwnership"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestItemOwnership"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3388,7 +3360,7 @@ TEST_CASE("ServerGameItemOperations")
 
     SECTION("ItemMapAndNestedOwnership")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestItemMapAndNestedOwnership"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestItemMapAndNestedOwnership"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3397,30 +3369,30 @@ TEST_CASE("ServerGameItemOperations")
 
 TEST_CASE("ServerEntityLifecycle")
 {
-    auto settings = AngelScriptServerScriptMethodsMakeSettings();
-    auto server = AngelScriptServerScriptMethodsMakeServerEngine(settings);
+    auto settings {AngelScriptServerScriptMethodsMakeSettings()};
+    auto server {AngelScriptServerScriptMethodsMakeServerEngine(settings)};
 
-    auto shutdown = scope_exit([&server]() noexcept {
+    auto shutdown {scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
                 server->Shutdown();
             }
         });
-    });
+    })};
 
-    string startup_error = AngelScriptServerScriptMethodsWaitForStart(server);
+    string startup_error {AngelScriptServerScriptMethodsWaitForStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
 
-    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
 
-    auto get_func = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
+    auto get_func {[&server](string_view name) { return server->Hashes.to_hashed_string(name); }};
 
     SECTION("Persistence")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestEntityPersistence"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestEntityPersistence"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3428,7 +3400,7 @@ TEST_CASE("ServerEntityLifecycle")
 
     SECTION("LoadAndDestroyUnloadedCritter")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestLoadAndDestroyUnloadedCritter"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestLoadAndDestroyUnloadedCritter"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3436,7 +3408,7 @@ TEST_CASE("ServerEntityLifecycle")
 
     SECTION("CreateCritterUnderHeldSyncContext")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCreateCritterUnderSyncContext"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCreateCritterUnderSyncContext"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3444,7 +3416,7 @@ TEST_CASE("ServerEntityLifecycle")
 
     SECTION("SyncAcceptsDestroyedEntity")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestSyncAcceptsDestroyedEntity"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestSyncAcceptsDestroyedEntity"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3452,7 +3424,7 @@ TEST_CASE("ServerEntityLifecycle")
 
     SECTION("BulkDestroyCritters")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestBulkDestroyCritters"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestBulkDestroyCritters"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3460,7 +3432,7 @@ TEST_CASE("ServerEntityLifecycle")
 
     SECTION("BulkDestroyItems")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestBulkDestroyItems"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestBulkDestroyItems"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3468,7 +3440,7 @@ TEST_CASE("ServerEntityLifecycle")
 
     SECTION("DestroyEntityGeneric")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestDestroyEntityGeneric"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestDestroyEntityGeneric"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3476,7 +3448,7 @@ TEST_CASE("ServerEntityLifecycle")
 
     SECTION("DestroyEntitiesByHandles")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestDestroyEntitiesByHandles"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestDestroyEntitiesByHandles"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3484,7 +3456,7 @@ TEST_CASE("ServerEntityLifecycle")
 
     SECTION("DestroyEntityNullableAndHandleListOverloads")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestDestroyEntityNullableAndHandleListOverloads"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestDestroyEntityNullableAndHandleListOverloads"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3492,7 +3464,7 @@ TEST_CASE("ServerEntityLifecycle")
 
     SECTION("PlayerCritterCreation")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestPlayerCritterCreation"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestPlayerCritterCreation"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3500,7 +3472,7 @@ TEST_CASE("ServerEntityLifecycle")
 
     SECTION("GameCreateCritterOverloads")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameCreateCritterOverloads"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameCreateCritterOverloads"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3508,7 +3480,7 @@ TEST_CASE("ServerEntityLifecycle")
 
     SECTION("GameCreateCritterInvalidProtoPropsThrows")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameCreateCritterInvalidProtoPropsThrows"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestGameCreateCritterInvalidProtoPropsThrows"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3517,43 +3489,43 @@ TEST_CASE("ServerEntityLifecycle")
 
 TEST_CASE("ServerMiscScriptOperations")
 {
-    auto settings = AngelScriptServerScriptMethodsMakeSettings();
-    auto server = AngelScriptServerScriptMethodsMakeServerEngine(settings);
+    auto settings {AngelScriptServerScriptMethodsMakeSettings()};
+    auto server {AngelScriptServerScriptMethodsMakeServerEngine(settings)};
 
-    auto shutdown = scope_exit([&server]() noexcept {
+    auto shutdown {scope_exit([&server]() noexcept {
         safe_call([&server] {
             if (server->IsStarted()) {
                 server->Shutdown();
             }
         });
-    });
+    })};
 
-    string startup_error = AngelScriptServerScriptMethodsWaitForStart(server);
+    string startup_error {AngelScriptServerScriptMethodsWaitForStart(server)};
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
 
-    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+    auto unlock {scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); })};
 
-    auto get_func = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
-    auto run_throwing_func = [&server, &get_func](string_view func_name, string_view expected_message) {
-        auto func = server->FindFunc<void>(get_func(func_name));
+    auto get_func {[&server](string_view name) { return server->Hashes.to_hashed_string(name); }};
+    auto run_throwing_func {[&server, &get_func](string_view func_name, string_view expected_message) {
+        auto func {server->FindFunc<void>(get_func(func_name))};
         REQUIRE(func);
 
-        auto prev_callback = exceptions::get_callback();
-        string message;
+        auto prev_callback {exceptions::get_callback()};
+        string message {};
         exceptions::set_callback([&](string_view msg, const stack_trace::catched_data&, bool) { message = string(msg); });
-        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); });
+        auto restore_callback {scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); })};
 
         CHECK_FALSE(func.Call());
         INFO(message);
         CHECK(message.find(expected_message) != string::npos);
-    };
+    }};
 
     SECTION("DatabaseQueries")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestDatabaseQueries"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestDatabaseQueries"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3561,7 +3533,7 @@ TEST_CASE("ServerMiscScriptOperations")
 
     SECTION("DatabaseRecordRoundtrip")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestDatabaseRecordRoundtrip"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestDatabaseRecordRoundtrip"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3569,7 +3541,7 @@ TEST_CASE("ServerMiscScriptOperations")
 
     SECTION("DatabaseTryInsertRecord")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestDatabaseTryInsertRecord"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestDatabaseTryInsertRecord"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3589,14 +3561,14 @@ TEST_CASE("ServerMiscScriptOperations")
 
     SECTION("DatabaseRecordEnumerationAfterCommit")
     {
-        auto setup_func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestDatabaseRecordEnumerationSetup"));
+        auto setup_func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestDatabaseRecordEnumerationSetup"))};
         REQUIRE(setup_func);
         REQUIRE(setup_func.Call());
         REQUIRE(setup_func.GetResult() == 0);
 
         server->DbStorage.WaitCommitChanges();
 
-        auto verify_func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestDatabaseRecordEnumerationAfterCommit"));
+        auto verify_func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestDatabaseRecordEnumerationAfterCommit"))};
         REQUIRE(verify_func);
         REQUIRE(verify_func.Call());
         CHECK(verify_func.GetResult() == 0);
@@ -3619,7 +3591,7 @@ TEST_CASE("ServerMiscScriptOperations")
 
     SECTION("LoginPlayerToExistentRecordZeroIdThrows")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestLoginPlayerToExistentRecordZeroIdThrows"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestLoginPlayerToExistentRecordZeroIdThrows"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3727,7 +3699,7 @@ TEST_CASE("ServerMiscScriptOperations")
 
     SECTION("TextPresent")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestTextPresent"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestTextPresent"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3735,7 +3707,7 @@ TEST_CASE("ServerMiscScriptOperations")
 
     SECTION("RegisteredPlayerIds")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestRegisteredPlayerIds"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestRegisteredPlayerIds"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3743,26 +3715,26 @@ TEST_CASE("ServerMiscScriptOperations")
 
     SECTION("PlayerConnectionAndCritterMethods")
     {
-        auto create_not_logged_in_player = [&server](string_view name) -> ptr<Player> {
-            auto not_logged_in_player = server->CreateNotLoggedInPlayer(NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected));
+        auto create_not_logged_in_player {[&server](string_view name) -> ptr<Player> {
+            auto not_logged_in_player {server->CreateNotLoggedInPlayer(NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected))};
 
             not_logged_in_player->SetName(name);
 
             return not_logged_in_player;
-        };
+        }};
 
-        auto methods_func = server->FindFunc<int32_t, ptr<Player>>(get_func("ScriptMethodsTest::TestPlayerConnectionAndCritterMethods"));
+        auto methods_func {server->FindFunc<int32_t, ptr<Player>>(get_func("ScriptMethodsTest::TestPlayerConnectionAndCritterMethods"))};
         REQUIRE(methods_func);
 
-        ptr<Player> methods_player = create_not_logged_in_player("ScriptPlayerMethodsStart");
+        ptr<Player> methods_player {create_not_logged_in_player("ScriptPlayerMethodsStart")};
 
-        auto methods_cleanup = scope_exit([&methods_player]() noexcept {
+        auto methods_cleanup {scope_exit([&methods_player]() noexcept {
             safe_call([&methods_player] {
                 if (!methods_player->IsDestroyed()) {
                     methods_player->GetConnection()->HardDisconnect(DisconnectReason::ScriptRequest);
                 }
             });
-        });
+        })};
 
         REQUIRE(methods_func.Call(methods_player));
         CHECK(methods_func.GetResult() == 0);
@@ -3771,39 +3743,39 @@ TEST_CASE("ServerMiscScriptOperations")
         CHECK_FALSE(static_cast<bool>(methods_player->GetControlledCritter()));
 
         {
-            auto out_buf = methods_player->GetConnection()->WriteBuf();
+            ServerConnection::OutBufAccessor out_buf {methods_player->GetConnection(), std::nullopt};
             CHECK(ContainsNetworkMessage(out_buf->GetData(), NetMessage::RemoveCritter));
         }
 
-        auto name_validation_func = server->FindFunc<int32_t, ptr<Player>>(get_func("ScriptMethodsTest::TestPlayerSetNameValidation"));
+        auto name_validation_func {server->FindFunc<int32_t, ptr<Player>>(get_func("ScriptMethodsTest::TestPlayerSetNameValidation"))};
         REQUIRE(name_validation_func);
 
-        ptr<Player> name_player = create_not_logged_in_player("ScriptPlayerNameStart");
+        ptr<Player> name_player {create_not_logged_in_player("ScriptPlayerNameStart")};
 
-        auto name_cleanup = scope_exit([&name_player]() noexcept {
+        auto name_cleanup {scope_exit([&name_player]() noexcept {
             safe_call([&name_player] {
                 if (!name_player->IsDestroyed()) {
                     name_player->GetConnection()->HardDisconnect(DisconnectReason::ScriptRequest);
                 }
             });
-        });
+        })};
 
         REQUIRE(name_validation_func.Call(name_player));
         CHECK(name_validation_func.GetResult() == 0);
         CHECK(name_player->GetName() == "ScriptPlayerNameOk");
 
-        auto map_view_func = server->FindFunc<int32_t, ptr<Player>>(get_func("ScriptMethodsTest::TestPlayerMapViewMethods"));
+        auto map_view_func {server->FindFunc<int32_t, ptr<Player>>(get_func("ScriptMethodsTest::TestPlayerMapViewMethods"))};
         REQUIRE(map_view_func);
 
-        ptr<Player> map_view_player = create_not_logged_in_player("ScriptPlayerMapView");
+        ptr<Player> map_view_player {create_not_logged_in_player("ScriptPlayerMapView")};
 
-        auto map_view_cleanup = scope_exit([&map_view_player]() noexcept {
+        auto map_view_cleanup {scope_exit([&map_view_player]() noexcept {
             safe_call([&map_view_player] {
                 if (!map_view_player->IsDestroyed()) {
                     map_view_player->GetConnection()->HardDisconnect(DisconnectReason::ScriptRequest);
                 }
             });
-        });
+        })};
 
         REQUIRE(map_view_func.Call(map_view_player));
         CHECK(map_view_func.GetResult() == 0);
@@ -3812,67 +3784,67 @@ TEST_CASE("ServerMiscScriptOperations")
 
     SECTION("PlayerLoginHelpers")
     {
-        auto create_not_logged_in_player = [&server](string_view name) -> ptr<Player> {
-            auto not_logged_in_player = server->CreateNotLoggedInPlayer(NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected));
+        auto create_not_logged_in_player {[&server](string_view name) -> ptr<Player> {
+            auto not_logged_in_player {server->CreateNotLoggedInPlayer(NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected))};
 
             not_logged_in_player->SetName(name);
             not_logged_in_player->SetLastControlledCritterId(ident_t {1});
 
             return not_logged_in_player;
-        };
+        }};
 
-        auto create_func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCreateNotLoggedInPlayerHelper"));
+        auto create_func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCreateNotLoggedInPlayerHelper"))};
         REQUIRE(create_func);
         REQUIRE(create_func.Call());
         REQUIRE(create_func.GetResult() == 0);
 
-        auto login_new_func = server->FindFunc<int32_t, ptr<Player>>(get_func("ScriptMethodsTest::TestLoginPlayerToNewRecordFromPreparedPlayer"));
+        auto login_new_func {server->FindFunc<int32_t, ptr<Player>>(get_func("ScriptMethodsTest::TestLoginPlayerToNewRecordFromPreparedPlayer"))};
         REQUIRE(login_new_func);
 
-        ptr<Player> new_not_logged_in = create_not_logged_in_player("ScriptLoginNew");
+        ptr<Player> new_not_logged_in {create_not_logged_in_player("ScriptLoginNew")};
 
-        auto new_player_cleanup = scope_exit([&new_not_logged_in]() noexcept {
+        auto new_player_cleanup {scope_exit([&new_not_logged_in]() noexcept {
             safe_call([&new_not_logged_in] {
                 if (!new_not_logged_in->IsDestroyed()) {
                     new_not_logged_in->GetConnection()->HardDisconnect(DisconnectReason::ScriptRequest);
                 }
             });
-        });
+        })};
 
         REQUIRE(login_new_func.Call(new_not_logged_in));
         REQUIRE(login_new_func.GetResult() == 0);
 
-        ident_t player_id = new_not_logged_in->GetId();
+        ident_t player_id {new_not_logged_in->GetId()};
         REQUIRE(player_id);
 
-        auto reconnect_func = server->FindFunc<int32_t, ptr<Player>, ident_t>(get_func("ScriptMethodsTest::TestLoginPlayerToExistentRecordFromPreparedPlayer"));
+        auto reconnect_func {server->FindFunc<int32_t, ptr<Player>, ident_t>(get_func("ScriptMethodsTest::TestLoginPlayerToExistentRecordFromPreparedPlayer"))};
         REQUIRE(reconnect_func);
 
-        ptr<Player> reconnect_not_logged_in = create_not_logged_in_player("ScriptLoginReconnect");
+        ptr<Player> reconnect_not_logged_in {create_not_logged_in_player("ScriptLoginReconnect")};
 
         REQUIRE(reconnect_func.Call(reconnect_not_logged_in, player_id));
         CHECK(reconnect_func.GetResult() == 0);
 
-        auto temp_func = server->FindFunc<int32_t, ptr<Player>>(get_func("ScriptMethodsTest::TestLoginPlayerToTempSessionFromPreparedPlayer"));
+        auto temp_func {server->FindFunc<int32_t, ptr<Player>>(get_func("ScriptMethodsTest::TestLoginPlayerToTempSessionFromPreparedPlayer"))};
         REQUIRE(temp_func);
 
-        ptr<Player> temp_not_logged_in = create_not_logged_in_player("ScriptLoginTemp");
+        ptr<Player> temp_not_logged_in {create_not_logged_in_player("ScriptLoginTemp")};
 
         REQUIRE(temp_func.Call(temp_not_logged_in));
         CHECK(temp_func.GetResult() == 0);
 
-        auto already_logged_in_func = server->FindFunc<int32_t, ptr<Player>>(get_func("ScriptMethodsTest::TestLoginAlreadyLoggedInPlayerThrows"));
+        auto already_logged_in_func {server->FindFunc<int32_t, ptr<Player>>(get_func("ScriptMethodsTest::TestLoginAlreadyLoggedInPlayerThrows"))};
         REQUIRE(already_logged_in_func);
 
-        ptr<Player> already_logged_in_not_logged_in = create_not_logged_in_player("ScriptLoginAlready");
+        ptr<Player> already_logged_in_not_logged_in {create_not_logged_in_player("ScriptLoginAlready")};
 
-        auto already_logged_in_cleanup = scope_exit([&already_logged_in_not_logged_in]() noexcept {
+        auto already_logged_in_cleanup {scope_exit([&already_logged_in_not_logged_in]() noexcept {
             safe_call([&already_logged_in_not_logged_in] {
                 if (!already_logged_in_not_logged_in->IsDestroyed()) {
                     already_logged_in_not_logged_in->GetConnection()->HardDisconnect(DisconnectReason::ScriptRequest);
                 }
             });
-        });
+        })};
 
         REQUIRE(already_logged_in_func.Call(already_logged_in_not_logged_in));
         CHECK(already_logged_in_func.GetResult() == 0);
@@ -3880,7 +3852,7 @@ TEST_CASE("ServerMiscScriptOperations")
 
     SECTION("RuntimeHelpers")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestRuntimeHelpers"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestRuntimeHelpers"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3890,14 +3862,14 @@ TEST_CASE("ServerMiscScriptOperations")
     SECTION("SystemCall")
     {
 #if FO_WINDOWS
-        constexpr string_view output_command = "cmd.exe /C \"echo FOnlineSystemCallAlpha&&echo FOnlineSystemCallBeta\"";
-        constexpr string_view log_command = "cmd.exe /C \"echo FOnlineSystemCallLog\"";
+        constexpr string_view output_command {"cmd.exe /C \"echo FOnlineSystemCallAlpha&&echo FOnlineSystemCallBeta\""};
+        constexpr string_view log_command {"cmd.exe /C \"echo FOnlineSystemCallLog\""};
 #else
-        constexpr string_view output_command = "printf 'FOnlineSystemCallAlpha\\nFOnlineSystemCallBeta\\n'";
-        constexpr string_view log_command = "printf 'FOnlineSystemCallLog\\n'";
+        constexpr string_view output_command {"printf 'FOnlineSystemCallAlpha\\nFOnlineSystemCallBeta\\n'"};
+        constexpr string_view log_command {"printf 'FOnlineSystemCallLog\\n'"};
 #endif
 
-        string output;
+        string output {};
         CHECK(Server_Game_SystemCall(server, output_command, output) == 0);
         CHECK(output.find("FOnlineSystemCallAlpha") != string::npos);
         CHECK(output.find("FOnlineSystemCallBeta") != string::npos);
@@ -3908,7 +3880,7 @@ TEST_CASE("ServerMiscScriptOperations")
 
     SECTION("LocationPropertyQueries")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestLocationPropertyQueries"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestLocationPropertyQueries"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3916,7 +3888,7 @@ TEST_CASE("ServerMiscScriptOperations")
 
     SECTION("EntityPlainDataAccessors")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestEntityPlainDataAccessors"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestEntityPlainDataAccessors"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3924,7 +3896,7 @@ TEST_CASE("ServerMiscScriptOperations")
 
     SECTION("PropertyInfoHelpers")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestPropertyInfoHelpers"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestPropertyInfoHelpers"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3960,7 +3932,7 @@ TEST_CASE("ServerMiscScriptOperations")
 
     SECTION("PropertySetterCallback")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestPropertySetterCallback"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestPropertySetterCallback"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3968,7 +3940,7 @@ TEST_CASE("ServerMiscScriptOperations")
 
     SECTION("PropertySetterTransformCallback")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestPropertySetterTransformCallback"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestPropertySetterTransformCallback"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3976,7 +3948,7 @@ TEST_CASE("ServerMiscScriptOperations")
 
     SECTION("RunContextSyncScopeIsolatesPropertySetter")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestRunContextSyncScopeIsolatesPropertySetter"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestRunContextSyncScopeIsolatesPropertySetter"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3984,7 +3956,7 @@ TEST_CASE("ServerMiscScriptOperations")
 
     SECTION("SyncHelpers")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestSyncHelpers"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestSyncHelpers"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
@@ -3992,7 +3964,7 @@ TEST_CASE("ServerMiscScriptOperations")
 
     SECTION("RegistryCounts")
     {
-        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestRegistryCounts"));
+        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestRegistryCounts"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);

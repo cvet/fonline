@@ -97,7 +97,7 @@ Adjust per-client startup settings, including embedded multi-client instances.
 - Stable ID: `native-extension.hook.ClientStartupSettingsHook`
 - Role: `COMMON`
 - Compatibility-hashed presence: `yes`
-- Call sites: [Source/Applications/ClientApp.cpp](https://github.com/cvet/fonline/blob/master/Source/Applications/ClientApp.cpp), [Source/Applications/ServerApp.cpp](https://github.com/cvet/fonline/blob/master/Source/Applications/ServerApp.cpp), [Source/Applications/ServerHeadlessApp.cpp](https://github.com/cvet/fonline/blob/master/Source/Applications/ServerHeadlessApp.cpp)
+- Call sites: [Source/Applications/ClientApp.cpp](https://github.com/cvet/fonline/blob/master/Source/Applications/ClientApp.cpp), [Source/Applications/ClientLib.cpp](https://github.com/cvet/fonline/blob/master/Source/Applications/ClientLib.cpp), [Source/Applications/ServerApp.cpp](https://github.com/cvet/fonline/blob/master/Source/Applications/ServerApp.cpp), [Source/Applications/ServerHeadlessApp.cpp](https://github.com/cvet/fonline/blob/master/Source/Applications/ServerHeadlessApp.cpp)
 
 ```cpp
 FO_BEGIN_NAMESPACE

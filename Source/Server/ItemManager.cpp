@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "ItemManager.h"
 
@@ -55,7 +25,7 @@ auto ItemManager::GetItemHolder(ptr<Item> item) -> ptr<Entity>
         throw ItemManagerException("Item does not have a holder", item->GetId(), item->GetProtoId());
     }
 
-    auto holder = item->GetParent();
+    auto holder {item->GetParent()};
     FO_VERIFY_AND_THROW(holder, "Missing required holder");
     ValidateEntityAccess(holder);
     return holder;
@@ -68,7 +38,7 @@ void ItemManager::RemoveItemHolder(ptr<Item> item, ptr<Entity> holder)
 
     switch (item->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
-        if (auto cr = holder.dyn_cast<Critter>()) {
+        if (auto cr {holder.dyn_cast<Critter>()}) {
             _engine->CrMngr.RemoveItemFromCritter(cr, item, true);
         }
         else {
@@ -76,7 +46,7 @@ void ItemManager::RemoveItemHolder(ptr<Item> item, ptr<Entity> holder)
         }
     } break;
     case ItemOwnership::MapHex: {
-        if (auto map = holder.dyn_cast<Map>()) {
+        if (auto map {holder.dyn_cast<Map>()}) {
             map->RemoveItem(item->GetId());
         }
         else {
@@ -84,7 +54,7 @@ void ItemManager::RemoveItemHolder(ptr<Item> item, ptr<Entity> holder)
         }
     } break;
     case ItemOwnership::ItemContainer: {
-        if (auto cont = holder.dyn_cast<Item>()) {
+        if (auto cont {holder.dyn_cast<Item>()}) {
             cont->RemoveItemFromContainer(item);
         }
         else {
@@ -112,13 +82,13 @@ auto ItemManager::CreateItem(hstring pid, nptr<const Properties> props) -> ptr<I
 {
     FO_TRACE_ZONE(Entity);
 
-    auto proto = _engine->GetProtoItem(pid);
+    auto proto {_engine->GetProtoItem(pid)};
 
     if (!proto) {
         throw ItemManagerException("Item proto not found", pid);
     }
 
-    auto item = safe_alloc::make_refcounted<Item>(_engine, ident_t {}, proto, props);
+    auto item {safe_alloc::make_refcounted<Item>(_engine, ident_t {}, proto, props)};
     _engine->EntityMngr.RegisterItem(item);
 
     item->SetStatic(false);
@@ -150,12 +120,12 @@ auto ItemManager::CreateItemOnHex(ptr<Map> map, mpos hex, hstring pid, nptr<cons
 {
     FO_TRACE_ZONE(Entity);
 
-    auto map_holder = map.hold_ref();
+    auto map_holder {map.hold_ref()};
     ignore_unused(map_holder);
     ValidateEntityAccess(map);
 
-    auto item = CreateItem(pid, props);
-    auto item_holder = item.hold_ref();
+    auto item {CreateItem(pid, props)};
+    auto item_holder {item.hold_ref()};
     ignore_unused(item_holder);
 
     map->AddItem(item, hex, nullptr);
@@ -174,7 +144,7 @@ void ItemManager::DestroyItem(ptr<Item> item)
 {
     FO_TRACE_ZONE(Entity);
 
-    auto item_holder = item.hold_ref();
+    auto item_holder {item.hold_ref()};
     ignore_unused(item_holder);
 
     EnsureEntitySynced(item);
@@ -191,20 +161,20 @@ void ItemManager::DestroyItem(ptr<Item> item)
     FO_VERIFY_AND_THROW(!item->IsDestroyed(), "Item is already destroyed");
 
     if (item->GetOwnership() != ItemOwnership::Nowhere) {
-        auto holder = item->GetParent();
+        auto holder {item->GetParent()};
         FO_VERIFY_AND_THROW(holder, "Missing required holder");
         ValidateEntityAccess(holder);
     }
 
     // Tear off from environment
-    for (size_t prev_deps = std::numeric_limits<size_t>::max(); item->GetOwnership() != ItemOwnership::Nowhere || item->HasInnerItems() || item->HasInnerEntities();) {
+    for (size_t prev_deps {std::numeric_limits<size_t>::max()}; item->GetOwnership() != ItemOwnership::Nowhere || item->HasInnerItems() || item->HasInnerEntities();) {
         try {
             if (item->GetOwnership() != ItemOwnership::Nowhere) {
                 RemoveItemHolder(item, GetItemHolder(item));
             }
 
             while (item->HasInnerItems()) {
-                ptr<Item> inner = item->GetAllInnerItems().front();
+                ptr<Item> inner {item->GetAllInnerItems().front()};
                 // Inner item is covered through the captured container's chain; the recursive
                 // DestroyItem takes the inner item's own lock itself as its teardown capture
                 ValidateEntityAccess(inner);
@@ -221,7 +191,7 @@ void ItemManager::DestroyItem(ptr<Item> item)
 
         // Each teardown pass must strictly reduce the item's remaining dependencies; a non-converging
         // loop is corruption, so terminate rather than leave a half-destroyed "undead" item
-        size_t remaining_deps = (item->GetOwnership() != ItemOwnership::Nowhere ? 1 : 0) + (item->HasInnerItems() ? item->GetAllInnerItems().size() : 0) + item->GetInnerEntitiesCount();
+        size_t remaining_deps {(item->GetOwnership() != ItemOwnership::Nowhere ? 1 : 0) + (item->HasInnerItems() ? item->GetAllInnerItems().size() : 0) + item->GetInnerEntitiesCount()};
         FO_STRONG_ASSERT(remaining_deps < prev_deps, "Item destruction made no progress", item->GetId(), remaining_deps, prev_deps);
         prev_deps = remaining_deps;
     }
@@ -235,7 +205,7 @@ void ItemManager::DestroyItem(ptr<Item> item)
 auto ItemManager::CloneItem(ptr<Item> source) -> ptr<Item>
 {
     EnsureEntitySynced(source);
-    auto source_holder = source.hold_ref();
+    auto source_holder {source.hold_ref()};
     ignore_unused(source_holder);
 
     FO_VERIFY_AND_THROW(!source->IsDestroyed() && !source->IsDestroying(), "Cannot clone an item that is being destroyed", source->GetId());
@@ -250,8 +220,8 @@ auto ItemManager::MoveItem(ptr<Item> item, ptr<Critter> to_cr) -> nptr<Item>
 
     EnsureEntitySynced(item);
     ValidateEntityAccess(to_cr);
-    auto item_holder = item.hold_ref();
-    auto to_cr_holder = to_cr.hold_ref();
+    auto item_holder {item.hold_ref()};
+    auto to_cr_holder {to_cr.hold_ref()};
     ignore_unused(item_holder);
     ignore_unused(to_cr_holder);
 
@@ -259,8 +229,8 @@ auto ItemManager::MoveItem(ptr<Item> item, ptr<Critter> to_cr) -> nptr<Item>
         return item;
     }
 
-    auto holder = GetMoveSourceHolder(item);
-    auto holder_holder = holder.try_hold_ref();
+    auto holder {GetMoveSourceHolder(item)};
+    auto holder_holder {holder.try_hold_ref()};
     ignore_unused(holder_holder);
 
     if (holder) {
@@ -281,8 +251,8 @@ auto ItemManager::MoveItem(ptr<Item> item, ptr<Map> to_map, mpos to_hex) -> nptr
 
     EnsureEntitySynced(item);
     ValidateEntityAccess(to_map);
-    auto item_holder = item.hold_ref();
-    auto to_map_holder = to_map.hold_ref();
+    auto item_holder {item.hold_ref()};
+    auto to_map_holder {to_map.hold_ref()};
     ignore_unused(item_holder);
     ignore_unused(to_map_holder);
 
@@ -290,11 +260,11 @@ auto ItemManager::MoveItem(ptr<Item> item, ptr<Map> to_map, mpos to_hex) -> nptr
         return item;
     }
 
-    auto holder = GetMoveSourceHolder(item);
-    auto holder_holder = holder.try_hold_ref();
+    auto holder {GetMoveSourceHolder(item)};
+    auto holder_holder {holder.try_hold_ref()};
     ignore_unused(holder_holder);
-    auto dropper = holder.dyn_cast<Critter>();
-    auto dropper_holder = dropper.try_hold_ref();
+    auto dropper {holder.dyn_cast<Critter>()};
+    auto dropper_holder {dropper.try_hold_ref()};
     ignore_unused(dropper_holder);
 
     if (holder) {
@@ -324,8 +294,8 @@ auto ItemManager::MoveItem(ptr<Item> item, ptr<Item> to_cont, const any_t& stack
 
     EnsureEntitySynced(item);
     ValidateEntityAccess(to_cont);
-    auto item_holder = item.hold_ref();
-    auto to_cont_holder = to_cont.hold_ref();
+    auto item_holder {item.hold_ref()};
+    auto to_cont_holder {to_cont.hold_ref()};
     ignore_unused(item_holder);
     ignore_unused(to_cont_holder);
 
@@ -333,8 +303,8 @@ auto ItemManager::MoveItem(ptr<Item> item, ptr<Item> to_cont, const any_t& stack
         return item;
     }
 
-    auto holder = GetMoveSourceHolder(item);
-    auto holder_holder = holder.try_hold_ref();
+    auto holder {GetMoveSourceHolder(item)};
+    auto holder_holder {holder.try_hold_ref()};
     ignore_unused(holder_holder);
 
     if (holder) {

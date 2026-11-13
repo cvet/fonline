@@ -5,14 +5,14 @@ locale: ru
 document_id: documentation-site-publication
 permalink: /Docs/ru/contributing/documentation/site-publication.html
 ---
-<!-- docs-translation: {"document_id":"documentation-site-publication","locale":"ru","source_path":"Docs/en/contributing/documentation/site-publication.md","source_sha256":"32fcb956ac0c5ced2d7eacbbfcc1d7bad2ce1757244bf35d5e51ea96e23e0c26"} -->
+<!-- docs-translation: {"document_id":"documentation-site-publication","locale":"ru","source_path":"Docs/en/contributing/documentation/site-publication.md","source_sha256":"c2754705f83a9c6e6ad1d0d8c274dc0c22c11ba28a8eeb226c3f3419bc1fba4b"} -->
 # Публикация сайта документации
 
 > Документация движка. Эта страница определяет, как Markdown-корпус FOnline предварительно просматривается, проверяется и публикуется через существующий маршрут GitHub Pages.
 
 Шаблон включает корневой `VERSION` стандартным тегом Jekyll `include`; `includes_dir: .` делает этот единственный источник доступным и локальной сборке, и обычной сборке GitHub Pages. Копия версии и подготовительный шаг не нужны. Публикуйте `/VERSION` побайтно вместе с `/docs-manifest.json`; отчёты маршрутов и переводов хранятся в разделах этого общего индекса.
 
-Аннотации результатов поиска ограничены 224 символами вместе с многоточием и сокращаются по границе слова. Поисковые слова и оценки полного документа сохраняются; лимит байтов индекса прежний.
+Аннотации результатов поиска ограничены 224 символами вместе с многоточием и сокращаются по границе слова. Поисковые слова и оценки полного документа сохраняются; размер поисковых индексов не ограничивается.
 
 ## Назначение
 
@@ -96,6 +96,12 @@ Production получает проверенный артефакт `documentati
 
 ## Размещение исходников сайта
 
+Индексы поиска назначают более короткие числовые позиции документам с большим
+числом сохранённых вхождений. Эта внутренняя перестановка без потерь сохраняет
+символьные идентификаторы и метаданные всех документов, все термины, оценки и
+порядок списков вхождений; для обеих локалей сохраняются прежние правила
+ранжирования результатов.
+
 Реализация сайта находится в `Docs/Site/`: `Layouts/` содержит HTML-шаблон,
 `Data/` — сгенерированную навигацию, а `Assets/` — стили, скрипты, логотип и
 поисковые индексы локалей. В `Docs/Site/_config.yml` заданы
@@ -155,7 +161,7 @@ Public site оборачивает обычный Markdown, отрендерен
 
 Каждая public current human top-level page должна ровно один раз входить в navigation. Generated detail pages не попадают в sidebar, но доступны в поиске через generated index pages. Internal plans, placeholders и AI-only maintainer routes отсутствуют в обеих reader surfaces.
 
-Поиск использует только JavaScript репозитория и browser APIs. Нет hosted index, account, analytics dependency, remote script или server endpoint. Rendered page загружает только index активной локали, а results остаются в ней. Titles и headings имеют больший вес, чем body terms; полные technical identifiers и camel-case components остаются searchable. Чисто числовые components и terms, встречающиеся более чем в 60 процентах locale corpus, исключаются как неразличающие. Компактный JSON записывается как UTF-8 без разворачивания non-ASCII текста в escape-последовательности `\\uXXXX`, поэтому русский бюджет измеряет фактические байты текста. Source manifest независимо применяет reviewed hard limit 1,78125 MiB (1 867 776 байт) к каждому generated index. Лимит даёт ёмкость полному двуязычному corpus, но не разрешает исключать документы; при превышении любой локалью generation по-прежнему завершается fail-closed.
+Поиск использует только JavaScript репозитория и browser APIs. Нет hosted index, account, analytics dependency, remote script или server endpoint. Rendered page загружает только index активной локали, а results остаются в ней. Titles и headings имеют больший вес, чем body terms; полные technical identifiers и camel-case components остаются searchable. Чисто числовые components и terms, встречающиеся более чем в 60 процентах locale corpus, исключаются как неразличающие. Компактный JSON записывается как UTF-8 без разворачивания non-ASCII текста в escape-последовательности `\\uXXXX`, поэтому размер русского индекса отражает фактические байты текста. Поисковые индексы не имеют лимита размера в байтах; генерация включает полный допустимый корпус каждой локали.
 
 После изменения public Markdown membership, titles, paths, lifecycle state, migration targets, version/localization policy, navigation groups или search policy выполните:
 

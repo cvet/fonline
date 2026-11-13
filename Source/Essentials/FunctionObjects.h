@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -45,7 +15,7 @@ class copyable_function;
 
 // Inline target budget. Sized so a closure capturing up to six pointers, or holding one string by value,
 // stays in place and the whole wrapper still fits a 64 byte cache line on a 64-bit target
-inline constexpr size_t FUNCTION_INLINE_TARGET_SIZE = 48;
+inline constexpr size_t FUNCTION_INLINE_TARGET_SIZE {48};
 
 namespace details
 {
@@ -60,29 +30,29 @@ namespace details
     // A throwing move would defeat the noexcept move of the wrapper itself, so such a target goes to the heap
     // where moving is a pointer steal
     template<typename T>
-    inline constexpr bool function_target_fits_inline = sizeof(T) <= FUNCTION_INLINE_TARGET_SIZE && alignof(T) <= alignof(function_storage) && std::is_nothrow_move_constructible_v<T>;
+    inline constexpr bool function_target_fits_inline {sizeof(T) <= FUNCTION_INLINE_TARGET_SIZE && alignof(T) <= alignof(function_storage) && std::is_nothrow_move_constructible_v<T>};
 
     template<typename T>
-    inline constexpr bool is_function_wrapper_v = false;
+    inline constexpr bool is_function_wrapper_v {false};
     template<typename Signature>
-    inline constexpr bool is_function_wrapper_v<move_only_function<Signature>> = true;
+    inline constexpr bool is_function_wrapper_v<move_only_function<Signature>> {true};
     template<typename Signature>
-    inline constexpr bool is_function_wrapper_v<copyable_function<Signature>> = true;
+    inline constexpr bool is_function_wrapper_v<copyable_function<Signature>> {true};
 
     // copy is populated only for a target adopted through copyable_function; move_only_function leaves it null
     struct function_vtable
     {
-        void (*destroy)(function_storage& storage) noexcept;
-        void (*move)(function_storage& to, function_storage& from) noexcept;
-        void (*copy)(function_storage& to, const function_storage& from);
-        bool heap_allocated;
+        void (*destroy)(function_storage& storage) noexcept {};
+        void (*move)(function_storage& to, function_storage& from) noexcept {};
+        void (*copy)(function_storage& to, const function_storage& from) {};
+        bool heap_allocated {};
     };
 
     // This module sits above SmartPointers and MemorySystem in the Essentials order, so safe_alloc is not
     // reachable; the globally replaced operator new still routes to the engine allocator and OOM exits
     [[nodiscard]] inline auto function_alloc_target(size_t size, size_t alignment) noexcept -> void*
     {
-        void* mem;
+        void* mem {};
 
         if (alignment > __STDCPP_DEFAULT_NEW_ALIGNMENT__) {
             mem = ::operator new(size, std::align_val_t {alignment}, std::nothrow);
@@ -152,7 +122,7 @@ namespace details
     template<typename T, bool Inlined>
     void function_destroy_target(function_storage& storage) noexcept
     {
-        T* target = function_target<T, Inlined>(storage);
+        T* target {function_target<T, Inlined>(storage)};
         std::destroy_at(target);
 
         if constexpr (!Inlined) {
@@ -164,7 +134,7 @@ namespace details
     void function_move_target(function_storage& to, function_storage& from) noexcept
     {
         if constexpr (Inlined) {
-            T* source = function_target<T, Inlined>(from);
+            T* source {function_target<T, Inlined>(from)};
             ::new (static_cast<void*>(to.inlined)) T(std::move(*source));
             std::destroy_at(source);
         }
@@ -177,13 +147,13 @@ namespace details
     template<typename T, bool Inlined>
     void function_copy_target(function_storage& to, const function_storage& from)
     {
-        const T* source = function_target<T, Inlined>(from);
+        const T* source {function_target<T, Inlined>(from)};
 
         if constexpr (Inlined) {
             ::new (static_cast<void*>(to.inlined)) T(*source);
         }
         else {
-            function_target_block block(sizeof(T), alignof(T));
+            function_target_block block {sizeof(T), alignof(T)};
             to.heap = ::new (block.memory()) T(*source);
             block.release();
         }
@@ -192,7 +162,7 @@ namespace details
     template<typename T, bool Inlined, typename R, typename... Args>
     auto function_invoke_target(const function_storage& storage, Args&&... args) -> R
     {
-        T* target = function_target<T, Inlined>(storage);
+        T* target {function_target<T, Inlined>(storage)};
 
         if constexpr (std::is_void_v<R>) {
             std::invoke(*target, std::forward<Args>(args)...);
@@ -214,7 +184,7 @@ namespace details
     }
 
     template<typename T, bool Inlined, bool Copyable>
-    inline constexpr function_vtable function_vtable_of = function_make_vtable<T, Inlined, Copyable>();
+    inline constexpr function_vtable function_vtable_of {function_make_vtable<T, Inlined, Copyable>()};
 }
 
 // Matches std::move_only_function: the target is owned by exactly one wrapper, so it may capture unique
@@ -228,12 +198,10 @@ public:
     using result_type = R;
 
     move_only_function() noexcept { }
-    // ReSharper disable once CppNonExplicitConvertingConstructor
     move_only_function(std::nullptr_t) noexcept { }
 
     template<typename T>
         requires(!details::is_function_wrapper_v<std::decay_t<T>> && std::is_invocable_r_v<R, std::decay_t<T>&, Args...>)
-    // ReSharper disable once CppNonExplicitConvertingConstructor
     move_only_function(T&& target)
     {
         adopt_target<false>(std::forward<T>(target));
@@ -259,16 +227,14 @@ public:
         requires(!details::is_function_wrapper_v<std::decay_t<T>> && std::is_invocable_r_v<R, std::decay_t<T>&, Args...>)
     auto operator=(T&& target) -> move_only_function&
     {
-        move_only_function replacement(std::forward<T>(target));
+        move_only_function replacement {std::forward<T>(target)};
         release_target();
         steal_from(replacement);
         return *this;
     }
 
     // A copyable wrapper narrows to the move-only one by adopting its target in place, never by wrapping it
-    // ReSharper disable once CppNonExplicitConvertingConstructor
     move_only_function(copyable_function<R(Args...)>&& other) noexcept { steal_from(other); }
-    // ReSharper disable once CppNonExplicitConvertingConstructor
     move_only_function(const copyable_function<R(Args...)>& other) { clone_from(other); }
     auto operator=(copyable_function<R(Args...)>&& other) noexcept -> move_only_function&
     {
@@ -278,7 +244,7 @@ public:
     }
     auto operator=(const copyable_function<R(Args...)>& other) -> move_only_function&
     {
-        move_only_function copy(other);
+        move_only_function copy {other};
         release_target();
         steal_from(copy);
         return *this;
@@ -306,7 +272,7 @@ public:
 
     void swap(move_only_function& other) noexcept
     {
-        move_only_function tmp = std::move(other);
+        move_only_function tmp {std::move(other)};
         other = std::move(*this);
         *this = std::move(tmp);
     }
@@ -327,13 +293,13 @@ private:
             }
         }
 
-        constexpr bool inlined = details::function_target_fits_inline<target_type>;
+        constexpr bool inlined {details::function_target_fits_inline<target_type>};
 
         if constexpr (inlined) {
             ::new (static_cast<void*>(_storage.inlined)) target_type(std::forward<T>(target));
         }
         else {
-            details::function_target_block block(sizeof(target_type), alignof(target_type));
+            details::function_target_block block {sizeof(target_type), alignof(target_type)};
             _storage.heap = ::new (block.memory()) target_type(std::forward<T>(target));
             block.release();
         }
@@ -388,12 +354,10 @@ public:
     using result_type = R;
 
     copyable_function() noexcept { }
-    // ReSharper disable once CppNonExplicitConvertingConstructor
     copyable_function(std::nullptr_t) noexcept { }
 
     template<typename T>
         requires(!details::is_function_wrapper_v<std::decay_t<T>> && std::is_invocable_r_v<R, std::decay_t<T>&, Args...> && std::is_copy_constructible_v<std::decay_t<T>>)
-    // ReSharper disable once CppNonExplicitConvertingConstructor
     copyable_function(T&& target)
     {
         adopt_target<true>(std::forward<T>(target));
@@ -403,7 +367,7 @@ public:
         requires(!details::is_function_wrapper_v<std::decay_t<T>> && std::is_invocable_r_v<R, std::decay_t<T>&, Args...> && std::is_copy_constructible_v<std::decay_t<T>>)
     auto operator=(T&& target) -> copyable_function&
     {
-        copyable_function replacement(std::forward<T>(target));
+        copyable_function replacement {std::forward<T>(target)};
         release_target();
         steal_from(replacement);
         return *this;
@@ -413,7 +377,7 @@ public:
     auto operator=(const copyable_function& other) -> copyable_function&
     {
         if (this != &other) {
-            copyable_function copy(other);
+            copyable_function copy {other};
             release_target();
             steal_from(copy);
         }
@@ -454,7 +418,7 @@ public:
 
     void swap(copyable_function& other) noexcept
     {
-        copyable_function tmp = std::move(other);
+        copyable_function tmp {std::move(other)};
         other = std::move(*this);
         *this = std::move(tmp);
     }
@@ -473,13 +437,13 @@ private:
             }
         }
 
-        constexpr bool inlined = details::function_target_fits_inline<target_type>;
+        constexpr bool inlined {details::function_target_fits_inline<target_type>};
 
         if constexpr (inlined) {
             ::new (static_cast<void*>(_storage.inlined)) target_type(std::forward<T>(target));
         }
         else {
-            details::function_target_block block(sizeof(target_type), alignof(target_type));
+            details::function_target_block block {sizeof(target_type), alignof(target_type)};
             _storage.heap = ::new (block.memory()) target_type(std::forward<T>(target));
             block.release();
         }

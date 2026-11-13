@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Common.h"
 
@@ -87,7 +57,7 @@ TEST_CASE("ClientRuntimeApi")
 
     SECTION("UnsafeInProcessReloadHostAbiIsRejected")
     {
-        static constexpr uint32_t unsafe_host_abi = 2;
+        static constexpr uint32_t unsafe_host_abi {2};
 
         CHECK_FALSE(IsSupportedClientRuntimeAbi(unsafe_host_abi));
     }
@@ -101,17 +71,18 @@ TEST_CASE("ClientRuntimeApi")
 
     SECTION("ValidExportsAreAccepted")
     {
-        ClientRuntimeRunFunc stub_run = +[](int32_t argc, char** argv, ClientRuntimeResult* raw_runtime_result) noexcept {
+        ClientRuntimeRunFunc stub_run {+[](int32_t argc, char** argv, ClientRuntimeResult* raw_runtime_result) noexcept {
             CommandLineArgs args {argc, argv};
+
             if (raw_runtime_result != nullptr) {
-                auto result = make_ptr(raw_runtime_result);
+                auto result {make_ptr(raw_runtime_result)};
                 result->StructSize = numeric_cast<uint32_t>(sizeof(ClientRuntimeResult));
                 result->ResultKind = ClientRuntimeResultKind::Shutdown;
                 result->Success = args.empty();
                 result->RequestedRuntimePath = nullptr;
                 result->RequestedCompatibilityVersion = nullptr;
             }
-        };
+        }};
 
         ClientRuntimeResult result {};
         result.StructSize = numeric_cast<uint32_t>(sizeof(ClientRuntimeResult));
@@ -195,13 +166,13 @@ TEST_CASE("ClientRuntimeApi")
         // The runtime frees the data its result strings came from before the host reads them, so the capture
         // must own copies. Longer than the inline string buffer, so a freed source would really be heap
         ClientRuntimeResult result {};
-        string runtime_path;
-        string compatibility_version;
-        string_view expected_path = "C:/Games/LastFrontier/Staged/LF_Client.runtime.staged.dll";
+        string runtime_path {};
+        string compatibility_version {};
+        string_view expected_path {"C:/Games/LastFrontier/Staged/LF_Client.runtime.staged.dll"};
 
         {
             string source_path {expected_path};
-            string source_compatibility = "compatibility-version-of-the-staged-runtime";
+            string source_compatibility {"compatibility-version-of-the-staged-runtime"};
             result.RequestedRuntimePath = source_path.c_str();
             result.RequestedCompatibilityVersion = source_compatibility.c_str();
             CaptureClientRuntimeResultStrings(result, runtime_path, compatibility_version);
@@ -230,7 +201,7 @@ TEST_CASE("ClientRuntimeApi")
         runtime_result->Result.Success = true;
         runtime_result->RequestedRuntimePath = "runtime";
 
-        optional<bool> host_result = RunClientRuntimeHostPass(runtime_result, PromoteExpectedRuntime);
+        optional<bool> host_result {RunClientRuntimeHostPass(runtime_result, PromoteExpectedRuntime)};
 
         REQUIRE(host_result.has_value());
         CHECK(host_result.value());
@@ -243,7 +214,7 @@ TEST_CASE("ClientRuntimeApi")
         runtime_result->Result.ResultKind = ClientRuntimeResultKind::Shutdown;
         runtime_result->Result.Success = true;
 
-        optional<bool> host_result = RunClientRuntimeHostPass(runtime_result, FailUnexpectedRuntimePromotion);
+        optional<bool> host_result {RunClientRuntimeHostPass(runtime_result, FailUnexpectedRuntimePromotion)};
 
         REQUIRE(host_result.has_value());
         CHECK(host_result.value());
@@ -253,8 +224,8 @@ TEST_CASE("ClientRuntimeApi")
     {
         // Both helpers depend on Platform::get_exe_path, so the test only validates the
         // structural contract: staging is the live path with a non-empty suffix appended
-        string live = GetClientRuntimeLivePath();
-        string staging = MakeClientRuntimeStagingPath(live);
+        string live {GetClientRuntimeLivePath()};
+        string staging {MakeClientRuntimeStagingPath(live)};
 
         CHECK_FALSE(live.empty());
         CHECK_FALSE(staging.empty());
@@ -265,7 +236,7 @@ TEST_CASE("ClientRuntimeApi")
 
     SECTION("CurrentRuntimeLibraryNameIsNonEmpty")
     {
-        string name = GetCurrentClientRuntimeLibraryName();
+        string name {GetCurrentClientRuntimeLibraryName()};
 
         CHECK_FALSE(name.empty());
         // Library name must not contain a path separator — it is a basename, not a path
@@ -277,14 +248,14 @@ TEST_CASE("ClientRuntimeApi")
     {
         // One rule for both halves of the client: a writable root holds the modules it may replace and the
         // selector that names them, and without one they sit beside the exe with nothing to select
-        string root = fs::resolve_path(fs::path_to_string(std::filesystem::temp_directory_path() / "lf_client_binary_root"));
+        string root {fs::resolve_path(fs::path_to_string(std::filesystem::temp_directory_path() / "lf_client_binary_root"))};
 
         CHECK(GetClientBinaryDir(root) == root);
         CHECK(string_view(GetClientRuntimeLivePath()).starts_with(GetClientBinaryDir("")));
         CHECK_FALSE(MakeClientRuntimeBootstrapPath("").has_value());
 
-        auto bootstrap_path = MakeClientRuntimeBootstrapPath(root);
-        string selector_name = strex("{}{}.path", GetCurrentClientRuntimeLibraryName(), GetClientRuntimeLibraryExtension()).str();
+        auto bootstrap_path {MakeClientRuntimeBootstrapPath(root)};
+        string selector_name {strex("{}{}.path", GetCurrentClientRuntimeLibraryName(), GetClientRuntimeLibraryExtension()).str()};
 
         REQUIRE(bootstrap_path.has_value());
         CHECK(fs::is_absolute_path(bootstrap_path.value()));
@@ -294,20 +265,20 @@ TEST_CASE("ClientRuntimeApi")
 
     SECTION("InstalledRuntimeBootstrapRoundTrip")
     {
-        std::filesystem::path base = std::filesystem::temp_directory_path() / std::format("lf_client_runtime_bootstrap_{}", std::chrono::steady_clock::now().time_since_epoch().count());
-        string temp_dir = fs::path_to_string(base);
-        string runtime_file_name = strex("Runtime{}", GetClientRuntimeLibraryExtension()).str();
-        string runtime_path = fs::resolve_path(strex(temp_dir).combine_path(runtime_file_name).str());
-        string bootstrap_path = fs::resolve_path(strex(temp_dir).combine_path("selector/runtime.path").str());
+        std::filesystem::path base {std::filesystem::temp_directory_path() / std::format("lf_client_runtime_bootstrap_{}", std::chrono::steady_clock::now().time_since_epoch().count())};
+        string temp_dir {fs::path_to_string(base)};
+        string runtime_file_name {strex("Runtime{}", GetClientRuntimeLibraryExtension()).str()};
+        string runtime_path {fs::resolve_path(strex(temp_dir).combine_path(runtime_file_name).str())};
+        string bootstrap_path {fs::resolve_path(strex(temp_dir).combine_path("selector/runtime.path").str())};
         ignore_unused(fs::remove_dir_tree(temp_dir));
 
         REQUIRE(WriteClientRuntimeBootstrapTarget(bootstrap_path, runtime_path, runtime_file_name));
 
-        optional<string> restored_path = ReadClientRuntimeBootstrapTarget(bootstrap_path, runtime_file_name);
+        optional<string> restored_path {ReadClientRuntimeBootstrapTarget(bootstrap_path, runtime_file_name)};
         REQUIRE(restored_path.has_value());
         CHECK(restored_path.value() == runtime_path);
 
-        string fallback_path = fs::resolve_path(strex(temp_dir).combine_path("BaseRuntime").str());
+        string fallback_path {fs::resolve_path(strex(temp_dir).combine_path("BaseRuntime").str())};
         CHECK(ResolveClientRuntimeBootstrapTarget(bootstrap_path, runtime_file_name, fallback_path) == fallback_path);
 
         REQUIRE(fs::write_file(MakeClientRuntimeStagingPath(runtime_path), "staged"));
@@ -321,18 +292,18 @@ TEST_CASE("ClientRuntimeApi")
 
     SECTION("InstalledRuntimeBootstrapRejectsUnsafeTargets")
     {
-        std::filesystem::path base = std::filesystem::temp_directory_path() / std::format("lf_client_runtime_bootstrap_invalid_{}", std::chrono::steady_clock::now().time_since_epoch().count());
-        string temp_dir = fs::path_to_string(base);
-        string runtime_file_name = strex("Runtime{}", GetClientRuntimeLibraryExtension()).str();
-        string bootstrap_path = fs::resolve_path(strex(temp_dir).combine_path("runtime.path").str());
+        std::filesystem::path base {std::filesystem::temp_directory_path() / std::format("lf_client_runtime_bootstrap_invalid_{}", std::chrono::steady_clock::now().time_since_epoch().count())};
+        string temp_dir {fs::path_to_string(base)};
+        string runtime_file_name {strex("Runtime{}", GetClientRuntimeLibraryExtension()).str()};
+        string bootstrap_path {fs::resolve_path(strex(temp_dir).combine_path("runtime.path").str())};
         ignore_unused(fs::remove_dir_tree(temp_dir));
 
         CHECK_FALSE(WriteClientRuntimeBootstrapTarget(bootstrap_path, "relative/Runtime.dll", runtime_file_name));
 
-        string wrong_runtime_path = fs::resolve_path(strex(temp_dir).combine_path("OtherRuntime.dll").str());
+        string wrong_runtime_path {fs::resolve_path(strex(temp_dir).combine_path("OtherRuntime.dll").str())};
         CHECK_FALSE(WriteClientRuntimeBootstrapTarget(bootstrap_path, wrong_runtime_path, runtime_file_name));
 
-        string valid_runtime_path = fs::resolve_path(strex(temp_dir).combine_path(runtime_file_name).str());
+        string valid_runtime_path {fs::resolve_path(strex(temp_dir).combine_path(runtime_file_name).str())};
         REQUIRE(fs::write_file(bootstrap_path, strex("{}\n{}", valid_runtime_path, valid_runtime_path).str()));
         CHECK_FALSE(ReadClientRuntimeBootstrapTarget(bootstrap_path, runtime_file_name).has_value());
 
@@ -346,10 +317,10 @@ TEST_CASE("ClientSessionMarkerRecordsShutdownStageAcrossRuns")
 {
     CHECK(fs::is_absolute_path(MakeClientSessionMarkerPath("")));
 
-    std::filesystem::path base = std::filesystem::temp_directory_path() / std::format("lf_client_session_{}", std::chrono::steady_clock::now().time_since_epoch().count());
-    string temp_dir = fs::path_to_string(base);
+    std::filesystem::path base {std::filesystem::temp_directory_path() / std::format("lf_client_session_{}", std::chrono::steady_clock::now().time_since_epoch().count())};
+    string temp_dir {fs::path_to_string(base)};
     // An absolute path stands for the resolved writable root: fs::make_writable_path leaves it as given
-    string marker = MakeClientSessionMarkerPath(fs::resolve_path(strex(temp_dir).combine_path("client.session").str()));
+    string marker {MakeClientSessionMarkerPath(fs::resolve_path(strex(temp_dir).combine_path("client.session").str()))};
     ignore_unused(fs::remove_dir_tree(temp_dir));
 
     // A run that never started leaves nothing to report
@@ -362,7 +333,7 @@ TEST_CASE("ClientSessionMarkerRecordsShutdownStageAcrossRuns")
     SetClientShutdownStage(marker, ClientShutdownStage::MainLoopExited);
     SetClientShutdownStage(marker, ClientShutdownStage::ShutdownHookDone);
 
-    auto interrupted = TakePreviousClientSession(marker);
+    auto interrupted {TakePreviousClientSession(marker)};
     REQUIRE(interrupted.has_value());
     CHECK(interrupted->Stage == ClientShutdownStage::ShutdownHookDone);
     CHECK(interrupted->StageName == "ShutdownHookDone");
@@ -383,8 +354,8 @@ TEST_CASE("ClientSessionMarkerRecordsShutdownStageAcrossRuns")
     SetClientShutdownStage(marker, ClientShutdownStage::RuntimeReturned);
     SetClientShutdownStage(marker, ClientShutdownStage::ExitRequested);
     CHECK(fs::exists(marker));
-    auto exited = TakePreviousClientSession(marker);
-    platform::process_identity process = platform::get_current_process_identity();
+    auto exited {TakePreviousClientSession(marker)};
+    platform::process_identity process {platform::get_current_process_identity()};
 
     if (process.pid > 0 && process.start_time != 0) {
         CHECK(!exited.has_value());
@@ -403,7 +374,7 @@ TEST_CASE("ClientSessionMarkerRecordsShutdownStageAcrossRuns")
 
     // A marker from a process that is gone, stopped before it asked to exit, is the unclean run it always was
     REQUIRE(fs::write_file(marker, "Stage: 6\nBuild: previous\nStarted: 2026-09-19 10:00:00\nPid: 1\nProcessStart: 1\nTeardown: global_pools\n"));
-    auto stopped_in_teardown = TakePreviousClientSession(marker);
+    auto stopped_in_teardown {TakePreviousClientSession(marker)};
     REQUIRE(stopped_in_teardown.has_value());
     CHECK(stopped_in_teardown->Stage == ClientShutdownStage::GlobalDataTeardown);
     CHECK(stopped_in_teardown->StageName == "GlobalDataTeardown");
@@ -413,7 +384,7 @@ TEST_CASE("ClientSessionMarkerRecordsShutdownStageAcrossRuns")
 
     // A marker an older build left, with no process named, keeps its old meaning
     REQUIRE(fs::write_file(marker, "Stage: 4\nBuild: previous\nStarted: 2026-09-19 10:00:00\n"));
-    auto older_marker = TakePreviousClientSession(marker);
+    auto older_marker {TakePreviousClientSession(marker)};
     REQUIRE(older_marker.has_value());
     CHECK(older_marker->Stage == ClientShutdownStage::ShutdownHookDone);
     CHECK(older_marker->Pid == 0);
@@ -421,7 +392,7 @@ TEST_CASE("ClientSessionMarkerRecordsShutdownStageAcrossRuns")
 
     // An unreadable marker is consumed rather than reported for ever
     REQUIRE(fs::write_file(marker, "not a marker"));
-    auto unparsable = TakePreviousClientSession(marker);
+    auto unparsable {TakePreviousClientSession(marker)};
     REQUIRE(unparsable.has_value());
     CHECK(unparsable->Stage == ClientShutdownStage::Unknown);
     CHECK(!fs::exists(marker));
@@ -431,16 +402,16 @@ TEST_CASE("ClientSessionMarkerRecordsShutdownStageAcrossRuns")
 
 TEST_CASE("ClientSessionMarkerDoesNotInventACleanExit")
 {
-    std::filesystem::path base = std::filesystem::temp_directory_path() / std::format("lf_client_session_invalid_{}", std::chrono::steady_clock::now().time_since_epoch().count());
-    string temp_dir = fs::path_to_string(base);
-    string marker = MakeClientSessionMarkerPath(temp_dir);
-    auto cleanup = scope_exit([&]() noexcept { (void)fs::remove_dir_tree(temp_dir); });
+    std::filesystem::path base {std::filesystem::temp_directory_path() / std::format("lf_client_session_invalid_{}", std::chrono::steady_clock::now().time_since_epoch().count())};
+    string temp_dir {fs::path_to_string(base)};
+    string marker {MakeClientSessionMarkerPath(temp_dir)};
+    auto cleanup {scope_exit([&]() noexcept { (void)fs::remove_dir_tree(temp_dir); })};
 
     SECTION("UnknownStageIsNotExitRequested")
     {
-        string_view stage = GENERATE("99", "-1", "256", "7.5", "7x", "");
+        string_view stage {GENERATE("99", "-1", "256", "7.5", "7x", "")};
         REQUIRE(fs::write_file(marker, strex("Stage: {}\nBuild: previous\nPid: 1\nProcessStart: 1\n", stage).str()));
-        auto previous = TakePreviousClientSession(marker);
+        auto previous {TakePreviousClientSession(marker)};
         REQUIRE(previous.has_value());
         CHECK(previous->StageName == "Unknown");
     }
@@ -448,15 +419,15 @@ TEST_CASE("ClientSessionMarkerDoesNotInventACleanExit")
     SECTION("ExitWithoutProcessIdentityIsNotProvenClean")
     {
         REQUIRE(fs::write_file(marker, "Stage: 7\nBuild: previous\n"));
-        auto previous = TakePreviousClientSession(marker);
+        auto previous {TakePreviousClientSession(marker)};
         REQUIRE(previous.has_value());
         CHECK(previous->Stage == ClientShutdownStage::ExitRequested);
     }
 
     SECTION("AnotherClientCannotFinishThisSession")
     {
-        platform::process_identity process = platform::get_current_process_identity();
-        string foreign_marker = strex("Stage: 0\nBuild: other\nPid: {}\nProcessStart: {}\n", process.pid, process.start_time + 1).str();
+        platform::process_identity process {platform::get_current_process_identity()};
+        string foreign_marker {strex("Stage: 0\nBuild: other\nPid: {}\nProcessStart: {}\n", process.pid, process.start_time + 1).str()};
         REQUIRE(fs::write_file(marker, foreign_marker));
         SetClientShutdownStage(marker, ClientShutdownStage::ExitRequested);
         CHECK(fs::read_file(marker).value_or("") == foreign_marker);
@@ -482,17 +453,14 @@ namespace
 
     // Stands in for the real sweep: it builds nothing, and afterwards hands the set back as created without
     // running a constructor, since the real globals of the test process were never touched
-    struct FakeGlobalDataSweep final
+    class FakeGlobalDataSweep final
     {
-        std::array<global_data::callback, global_data::MAX_CALLBACKS> SavedDelete {};
-        std::array<const char*, global_data::MAX_CALLBACKS> SavedNames {};
-        int32_t SavedCount {};
-
+    public:
         FakeGlobalDataSweep()
         {
-            std::copy(std::begin(global_data::delete_callbacks), std::end(global_data::delete_callbacks), SavedDelete.begin());
-            std::copy(std::begin(global_data::callback_names), std::end(global_data::callback_names), SavedNames.begin());
-            SavedCount = global_data::callbacks_count;
+            std::copy(std::begin(global_data::delete_callbacks), std::end(global_data::delete_callbacks), _savedDelete.begin());
+            std::copy(std::begin(global_data::callback_names), std::end(global_data::callback_names), _savedNames.begin());
+            _savedCount = global_data::callbacks_count;
 
             global_data::callbacks_count = 2;
             global_data::delete_callbacks[0] = &SnapshotTeardownMarker;
@@ -501,23 +469,33 @@ namespace
             global_data::callback_names[1] = "FakeSetB";
         }
 
+        FakeGlobalDataSweep(const FakeGlobalDataSweep&) = delete;
+        FakeGlobalDataSweep(FakeGlobalDataSweep&&) = delete;
+        auto operator=(const FakeGlobalDataSweep&) -> FakeGlobalDataSweep& = delete;
+        auto operator=(FakeGlobalDataSweep&&) -> FakeGlobalDataSweep& = delete;
+
         ~FakeGlobalDataSweep()
         {
             global_data::callbacks_count = 0;
             (void)global_data::create();
 
-            std::copy(SavedDelete.begin(), SavedDelete.end(), std::begin(global_data::delete_callbacks));
-            std::copy(SavedNames.begin(), SavedNames.end(), std::begin(global_data::callback_names));
-            global_data::callbacks_count = SavedCount;
+            std::copy(_savedDelete.begin(), _savedDelete.end(), std::begin(global_data::delete_callbacks));
+            std::copy(_savedNames.begin(), _savedNames.end(), std::begin(global_data::callback_names));
+            global_data::callbacks_count = _savedCount;
         }
+
+    private:
+        std::array<global_data::callback, global_data::MAX_CALLBACKS> _savedDelete {};
+        std::array<const char*, global_data::MAX_CALLBACKS> _savedNames {};
+        int32_t _savedCount {};
     };
 }
 
 TEST_CASE("ClientSessionMarkerNamesTheGlobalDataPartTeardownStoppedIn")
 {
-    std::filesystem::path base = std::filesystem::temp_directory_path() / std::format("lf_client_teardown_{}", std::chrono::steady_clock::now().time_since_epoch().count());
-    string temp_dir = fs::path_to_string(base);
-    string marker = MakeClientSessionMarkerPath(fs::resolve_path(strex(temp_dir).combine_path("client.session").str()));
+    std::filesystem::path base {std::filesystem::temp_directory_path() / std::format("lf_client_teardown_{}", std::chrono::steady_clock::now().time_since_epoch().count())};
+    string temp_dir {fs::path_to_string(base)};
+    string marker {MakeClientSessionMarkerPath(fs::resolve_path(strex(temp_dir).combine_path("client.session").str()))};
     ignore_unused(fs::remove_dir_tree(temp_dir));
 
     TeardownMarkerPath = marker;
@@ -530,7 +508,7 @@ TEST_CASE("ClientSessionMarkerNamesTheGlobalDataPartTeardownStoppedIn")
         SetClientShutdownStage(marker, ClientShutdownStage::ShutdownHookDone);
 
         {
-            FakeGlobalDataSweep sweep;
+            FakeGlobalDataSweep sweep {};
             DestroyGlobalDataRecordingTeardown(marker);
         }
 
@@ -544,12 +522,12 @@ TEST_CASE("ClientSessionMarkerNamesTheGlobalDataPartTeardownStoppedIn")
 
         // Past the last part the name is gone again: a stop there is on the way back to the host
         REQUIRE(fs::write_file(strex(temp_dir).combine_path("stuck.session").str(), TeardownMarkerSnapshots[1]));
-        auto stuck = TakePreviousClientSession(strex(temp_dir).combine_path("stuck.session").str());
+        auto stuck {TakePreviousClientSession(strex(temp_dir).combine_path("stuck.session").str())};
         REQUIRE(stuck.has_value());
         CHECK(stuck->Stage == ClientShutdownStage::GlobalDataTeardown);
         CHECK(stuck->TeardownSet == "FakeSetB");
 
-        auto finished = TakePreviousClientSession(marker);
+        auto finished {TakePreviousClientSession(marker)};
         REQUIRE(finished.has_value());
         CHECK(finished->Stage == ClientShutdownStage::GlobalDataTeardown);
         CHECK(finished->TeardownSet.empty());
@@ -557,7 +535,7 @@ TEST_CASE("ClientSessionMarkerNamesTheGlobalDataPartTeardownStoppedIn")
         // The host records its own stage next, and the teardown line does not ride along into it
         BeginClientSession(marker);
         {
-            FakeGlobalDataSweep sweep;
+            FakeGlobalDataSweep sweep {};
             DestroyGlobalDataRecordingTeardown(marker);
         }
         SetClientShutdownStage(marker, ClientShutdownStage::RuntimeReturned);
@@ -567,7 +545,7 @@ TEST_CASE("ClientSessionMarkerNamesTheGlobalDataPartTeardownStoppedIn")
     SECTION("WithoutAMarkerTheSetIsStillTornDown")
     {
         {
-            FakeGlobalDataSweep sweep;
+            FakeGlobalDataSweep sweep {};
             TeardownMarkerPath = strex(temp_dir).combine_path("absent.session").str();
             DestroyGlobalDataRecordingTeardown("");
         }
@@ -578,12 +556,12 @@ TEST_CASE("ClientSessionMarkerNamesTheGlobalDataPartTeardownStoppedIn")
 
     SECTION("AnotherClientsMarkerSurvivesTeardown")
     {
-        platform::process_identity process = platform::get_current_process_identity();
-        string foreign_marker = strex("Stage: 0\nBuild: other\nPid: {}\nProcessStart: {}\n", process.pid, process.start_time + 1).str();
+        platform::process_identity process {platform::get_current_process_identity()};
+        string foreign_marker {strex("Stage: 0\nBuild: other\nPid: {}\nProcessStart: {}\n", process.pid, process.start_time + 1).str()};
         REQUIRE(fs::write_file(marker, foreign_marker));
 
         {
-            FakeGlobalDataSweep sweep;
+            FakeGlobalDataSweep sweep {};
             DestroyGlobalDataRecordingTeardown(marker);
         }
 
@@ -596,12 +574,12 @@ TEST_CASE("ClientSessionMarkerNamesTheGlobalDataPartTeardownStoppedIn")
     SECTION("MarkerReplacedBetweenSetsSurvivesRemainingTeardown")
     {
         BeginClientSession(marker);
-        platform::process_identity process = platform::get_current_process_identity();
-        string foreign_marker = strex("Stage: 0\nBuild: other\nPid: {}\nProcessStart: {}\n", process.pid, process.start_time + 1).str();
+        platform::process_identity process {platform::get_current_process_identity()};
+        string foreign_marker {strex("Stage: 0\nBuild: other\nPid: {}\nProcessStart: {}\n", process.pid, process.start_time + 1).str()};
         TeardownMarkerReplacement = foreign_marker;
 
         {
-            FakeGlobalDataSweep sweep;
+            FakeGlobalDataSweep sweep {};
             DestroyGlobalDataRecordingTeardown(marker);
         }
 

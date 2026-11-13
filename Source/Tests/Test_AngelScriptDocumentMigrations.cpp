@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Common.h"
 
@@ -87,7 +57,7 @@ namespace
         });
     }
 
-    static constexpr string_view MIGRATION_SCRIPT = R"(
+    static constexpr string_view MIGRATION_SCRIPT {R"(
 namespace DocMigrations
 {
     void Verify(bool condition, const string&in message)
@@ -286,33 +256,34 @@ namespace DocMigrations
         return true;
     }
 }
-)";
+)"};
 
     static auto MakeMigrationResources() -> FileSystem
     {
-        auto metadata = MakeMigrationMetadata();
-        auto compiler_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("MigrationCompiler");
+        auto metadata {MakeMigrationMetadata()};
+        auto compiler_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("MigrationCompiler")};
         compiler_source->AddFile("Metadata.fometa-server", metadata);
 
-        FileSystem compiler_resources;
+        FileSystem compiler_resources {};
         compiler_resources.AddCustomSource(std::move(compiler_source));
         BakerServerEngine compiler {compiler_resources};
-        auto scripts = BakerTests::CompileInlineScripts(&compiler, "DocumentMigrations", {{"Scripts/DocMigrations.fos", string {MIGRATION_SCRIPT}}}, [](string_view text) { logging::write("Migration script compiler: {}", text); });
-        auto item_type = compiler.Hashes.to_hashed_string("Item");
-        auto configure_proto = [](ProtoItem& proto) {
-            auto kind = proto.GetProperties()->GetRegistrar()->FindProperty("MigrationKind");
+        auto scripts {BakerTests::CompileInlineScripts(&compiler, "DocumentMigrations", {{"Scripts/DocMigrations.fos", string {MIGRATION_SCRIPT}}}, [](string_view text) { logging::write("Migration script compiler: {}", text); })};
+        auto item_type {compiler.Hashes.to_hashed_string("Item")};
+        auto configure_proto {[](ProtoItem& proto) {
+            auto kind {proto.GetProperties()->GetRegistrar()->FindProperty("MigrationKind")};
             proto.GetPropertiesForEdit()->SetValue<int32_t>(kind.as_ptr(), 7);
-        };
-        vector<pair<string, function<void(ProtoItem&)>>> prototype_entries;
-        prototype_entries.emplace_back("Current", configure_proto);
-        auto prototypes = BakerTests::MakeMultiProtoResourceBlob<ProtoItem>(compiler, item_type, prototype_entries);
+        }};
 
-        auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("MigrationRuntime");
+        vector<pair<string, function<void(ProtoItem&)>>> prototype_entries {};
+        prototype_entries.emplace_back("Current", configure_proto);
+        auto prototypes {BakerTests::MakeMultiProtoResourceBlob<ProtoItem>(compiler, item_type, prototype_entries)};
+
+        auto runtime_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("MigrationRuntime")};
         runtime_source->AddFile("Metadata.fometa-server", metadata);
         runtime_source->AddFile("DocumentMigrations.fos-bin-server", scripts);
         runtime_source->AddFile("MigrationItems.fopro-bin-server", prototypes);
 
-        FileSystem resources;
+        FileSystem resources {};
         resources.AddCustomSource(std::move(runtime_source));
 
         return resources;
@@ -320,7 +291,7 @@ namespace DocMigrations
 
     static auto MakeGameDocument(int32_t selector) -> AnyData::Document
     {
-        AnyData::Document document;
+        AnyData::Document document {};
         document.Emplace("MigrationOldFirst", string {"old-first"});
         document.Emplace("MigrationSecond", string {"old-second"});
         document.Emplace("MigrationNote", string {"old-note"});
@@ -328,24 +299,24 @@ namespace DocMigrations
         document.Emplace("MigrationSelector", AnyData::Value {static_cast<int64_t>(selector)});
         document.Emplace("MigrationVariant", string {"old-variant"});
 
-        AnyData::Array tokens;
+        AnyData::Array tokens {};
         tokens.EmplaceBack(AnyData::Value {string {"old-token"}});
         tokens.EmplaceBack(AnyData::Value {string {"unchanged"}});
         document.Emplace("MigrationTokens", std::move(tokens));
 
-        AnyData::Dict counts;
+        AnyData::Dict counts {};
         counts.Emplace("old", AnyData::Value {int64_t {9}});
         document.Emplace("MigrationCounts", std::move(counts));
 
-        AnyData::Dict snapshot;
+        AnyData::Dict snapshot {};
         snapshot.Emplace("Identity", AnyData::Value {string {"old-record"}});
         snapshot.Emplace("Kind", AnyData::Value {int64_t {1}});
         document.Emplace("MigrationSnapshot", std::move(snapshot));
 
-        AnyData::Dict array_record;
+        AnyData::Dict array_record {};
         array_record.Emplace("Identity", string {"old-array-record"});
         array_record.Emplace("Kind", AnyData::Value {int64_t {1}});
-        AnyData::Array records;
+        AnyData::Array records {};
         records.EmplaceBack(AnyData::Value {std::move(array_record)});
         document.Emplace("MigrationRecords", std::move(records));
 
@@ -376,13 +347,13 @@ TEST_CASE("AngelScriptDocumentMigrationSignatures", "[angelscript][migration]")
 
     for (const auto& [reason, script, error] : invalid) {
         INFO(reason);
-        auto metadata = BakerTests::MakeMetadataBlob({
+        auto metadata {BakerTests::MakeMetadataBlob({
             {"Property", {{"Game", "Server", "hstring", "MigrationValue", "Mutable", "Persistent"}}},
             {"MigrationRule", {{"Property", "Game", "Transform", "MigrationValue", "SignatureTest::Rewrite"}}},
-        });
-        auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("SignatureMetadata");
+        })};
+        auto source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("SignatureMetadata")};
         source->AddFile("Metadata.fometa-server", metadata);
-        FileSystem resources;
+        FileSystem resources {};
         resources.AddCustomSource(std::move(source));
         BakerServerEngine compiler {resources};
 
@@ -392,31 +363,31 @@ TEST_CASE("AngelScriptDocumentMigrationSignatures", "[angelscript][migration]")
 
 TEST_CASE("AngelScriptDocumentMigrations", "[angelscript][migration]")
 {
-    auto settings = BakerTests::MakeScriptCompilerSettings();
-    settings.ApplyAutoSettings();
+    auto settings {BakerTests::MakeScriptCompilerSettings()};
+    settings.ApplyAutoSettings({});
     BakerTests::ApplySelfContainedServerSettings(settings);
-    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeMigrationResources());
-    auto shutdown = scope_exit([&]() noexcept {
+    auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, MakeMigrationResources())};
+    auto shutdown {scope_exit([&]() noexcept {
         safe_call([&] {
             if (server->IsStarted()) {
                 server->Shutdown();
             }
         });
-    });
+    })};
 
-    for (int32_t attempt = 0; attempt < 6000 && !server->IsStarted() && !server->IsStartingError(); attempt++) {
+    for (int32_t attempt {0}; attempt < 6000 && !server->IsStarted() && !server->IsStartingError(); attempt++) {
         std::this_thread::sleep_for(std::chrono::milliseconds {10});
     }
 
     REQUIRE(server->IsStarted());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
-    auto unlock = scope_exit([&]() noexcept { safe_call([&] { server->Unlock(); }); });
-    auto game_registrar = server->GetPropertyRegistrar(server->Hashes.to_hashed_string("Game"));
+    auto unlock {scope_exit([&]() noexcept { safe_call([&] { server->Unlock(); }); })};
+    auto game_registrar {server->GetPropertyRegistrar(server->Hashes.to_hashed_string("Game"))};
 
     SECTION("DetachedValuesAndOriginalContext")
     {
-        auto document = MakeGameDocument(1);
-        AnyData::Document updates;
+        auto document {MakeGameDocument(1)};
+        AnyData::Document updates {};
 
         CHECK(PropertiesSerializer::MigrateDocument(game_registrar.as_ptr(), document, &updates));
         CHECK(document["MigrationFirst"].AsString() == "new-first");
@@ -435,14 +406,14 @@ TEST_CASE("AngelScriptDocumentMigrations", "[angelscript][migration]")
         CHECK_FALSE(updates.Contains("MigrationKeep"));
         CHECK_FALSE(updates.Contains("MigrationRetired"));
 
-        AnyData::Document repeated_updates;
+        AnyData::Document repeated_updates {};
 
         CHECK_FALSE(PropertiesSerializer::MigrateDocument(game_registrar.as_ptr(), document, &repeated_updates));
         CHECK(repeated_updates.Empty());
     }
     SECTION("FalseRetainsDifferentDomain")
     {
-        auto document = MakeGameDocument(0);
+        auto document {MakeGameDocument(0)};
 
         CHECK(PropertiesSerializer::MigrateDocument(game_registrar.as_ptr(), document));
         CHECK(document["MigrationFirst"].AsString() == "old-first");
@@ -451,9 +422,9 @@ TEST_CASE("AngelScriptDocumentMigrations", "[angelscript][migration]")
     SECTION("ExceptionAndTypeMismatchPreserveDocumentAndUpdates")
     {
         for (int32_t selector : {2, 3}) {
-            auto document = MakeGameDocument(selector);
-            string original = AnyData::ValueToString(AnyData::Value {document.Copy()});
-            AnyData::Document updates;
+            auto document {MakeGameDocument(selector)};
+            string original {AnyData::ValueToString(AnyData::Value {document.Copy()})};
+            AnyData::Document updates {};
 
             CHECK_THROWS(PropertiesSerializer::MigrateDocument(game_registrar.as_ptr(), document, &updates));
             CHECK(AnyData::ValueToString(AnyData::Value {document.Copy()}) == original);
@@ -462,22 +433,22 @@ TEST_CASE("AngelScriptDocumentMigrations", "[angelscript][migration]")
     }
     SECTION("ProtoTransformsUseOriginalContextAndDefaults")
     {
-        auto item = server->Hashes.to_hashed_string("Item");
-        auto legacy = server->Hashes.to_hashed_string("Legacy");
-        AnyData::Document document;
+        auto item {server->Hashes.to_hashed_string("Item")};
+        auto legacy {server->Hashes.to_hashed_string("Legacy")};
+        AnyData::Document document {};
         document.Emplace("_Proto", string {"Legacy"});
         document.Emplace("MigrationKind", AnyData::Value {int64_t {1}});
         document.Emplace("MigrationIdentity", string {"old-item"});
-        auto result = server->ResolveDocumentProto(item, server->Hashes.to_hashed_string("BeforeLegacy"), document);
+        auto result {server->ResolveDocumentProto(item, server->Hashes.to_hashed_string("BeforeLegacy"), document)};
 
         CHECK(result.as_str() == "Current");
-        AnyData::Document updates;
+        AnyData::Document updates {};
         CHECK(PropertiesSerializer::MigrateDocument(server->GetPropertyRegistrar(item).as_ptr(), document, &updates, AnyData::Value {string {result.as_str()}}));
         CHECK(document["_Proto"].AsString() == "Current");
         CHECK(document["MigrationIdentity"].AsString() == "new-item");
         CHECK(updates.Size() == 2);
 
-        AnyData::Document defaults;
+        AnyData::Document defaults {};
         defaults.Emplace("_Proto", string {"Current"});
         defaults.Emplace("MigrationIdentity", string {"old-item"});
 

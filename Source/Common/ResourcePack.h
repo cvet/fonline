@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -42,28 +12,28 @@ FO_BEGIN_NAMESPACE
 FO_DECLARE_EXCEPTION(ResourcePackException);
 
 // Startup recovery sweeps the whole binary directory for it, so it must never be a name a player would pick
-constexpr string_view REPLACED_FILE_BACKUP_SUFFIX = ".fobackup";
+constexpr string_view REPLACED_FILE_BACKUP_SUFFIX {".fobackup"};
 
 // The engine resource pack format: a header, the payload blobs and the index over them in one file, carried
 // by a `.fores` file
-constexpr uint32_t RESOURCE_PACK_MAGIC = 0x53524F46; // "FORS"
-constexpr uint16_t RESOURCE_PACK_VERSION_MAJOR = 2;
-constexpr uint16_t RESOURCE_PACK_VERSION_MINOR = 0;
-constexpr size_t RESOURCE_PACK_HEADER_SIZE = 80;
-constexpr size_t RESOURCE_PACK_ENTRY_SIZE = 48;
-constexpr size_t RESOURCE_PATCH_HEADER_SIZE = 32;
-constexpr size_t RESOURCE_PATCH_FOOTER_SIZE = 80;
+constexpr uint32_t RESOURCE_PACK_MAGIC {0x53524F46}; // "FORS"
+constexpr uint16_t RESOURCE_PACK_VERSION_MAJOR {2};
+constexpr uint16_t RESOURCE_PACK_VERSION_MINOR {0};
+constexpr size_t RESOURCE_PACK_HEADER_SIZE {80};
+constexpr size_t RESOURCE_PACK_ENTRY_SIZE {48};
+constexpr size_t RESOURCE_PATCH_HEADER_SIZE {32};
+constexpr size_t RESOURCE_PATCH_FOOTER_SIZE {80};
 // Below this a deflate stream's own header costs more than the stream can save, so nothing smaller is tried
-constexpr size_t RESOURCE_PACK_MIN_COMPRESSED_SIZE = 64;
+constexpr size_t RESOURCE_PACK_MIN_COMPRESSED_SIZE {64};
 
 // FNV-1a 64, the digest the updater already computes over whole files, applied to a byte span so a body can
 // be hashed while it is still being written
-constexpr uint64_t RESOURCE_PACK_HASH_SEED = UINT64_C(0xcbf29ce484222325);
-constexpr uint64_t RESOURCE_PACK_HASH_PRIME = UINT64_C(0x100000001b3);
+constexpr uint64_t RESOURCE_PACK_HASH_SEED {UINT64_C(0xcbf29ce484222325)};
+constexpr uint64_t RESOURCE_PACK_HASH_PRIME {UINT64_C(0x100000001b3)};
 
 constexpr auto HashResourceBytes(uint64_t hash, const_span<uint8_t> data) noexcept -> uint64_t
 {
-    for (size_t i = 0; i < data.size(); ++i) {
+    for (size_t i {0}; i < data.size(); ++i) {
         hash = (hash ^ data[i]) * RESOURCE_PACK_HASH_PRIME;
     }
 
@@ -171,7 +141,7 @@ private:
 
     string _path;
     ResourcePackWriteSettings _settings;
-    fs::disk_write_file _file;
+    fs::disk_write_file _file {};
     vector<ResourcePackEntryRef> _entries {};
     uint64_t _bodyHash {};
     uint64_t _bodyOffset {};
@@ -211,7 +181,7 @@ private:
 
     string _fileName;
     fs::disk_read_file _file;
-    fs::disk_read_file _patchFile;
+    fs::disk_read_file _patchFile {};
     optional<ResourcePatchInfo> _patchInfo {};
     ResourcePackHeader _header {};
     vector<ResourcePackEntryRef> _entries {};
@@ -243,7 +213,7 @@ public:
 private:
     string _basePath;
     string _patchPath;
-    fs::disk_write_file _file;
+    fs::disk_write_file _file {};
     ResourcePatchInfo _info {};
     vector<ResourcePackEntryRef> _downloads {};
     vector<uint8_t> _index {};

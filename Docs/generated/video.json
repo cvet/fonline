@@ -210,7 +210,7 @@
         {
           "path": "Source/Client/VideoClip.cpp",
           "anchors": [
-            "static constexpr size_t COUNT = 10",
+            "static constexpr size_t COUNT {10}",
             "read_bytes = std::min(1024, read_bytes)",
             "ogg_sync_buffer",
             "ogg_stream_packetout"
@@ -471,7 +471,7 @@
         {
           "path": "Source/Client/Client.cpp",
           "anchors": [
-            "auto file = Resources.ReadFile(names.front())",
+            "auto file {Resources.ReadFile(names.front())}",
             "if (!file)",
             "return;"
           ]
@@ -573,7 +573,7 @@
         {
           "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
           "anchors": [
-            "irect32 r = {pos.x, pos.y, size.width, size.height}",
+            "irect32 r {pos.x, pos.y, size.width, size.height}",
             "DrawTexture(resources->Tex, false, nullptr, &r)"
           ]
         }
@@ -717,5 +717,5 @@
       "experimental": 34
     }
   },
-  "contract_digest": "e71428249d2e234edc19b825ca4b70363179c0570a9b8dccf304bea729c04d29"
+  "contract_digest": "40706dbf2c38a6c69bcb09daf8f31e95ccada8d464a29b511c3a2472c48a704a"
 }

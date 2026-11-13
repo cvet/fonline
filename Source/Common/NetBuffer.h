@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -43,7 +13,7 @@ FO_DECLARE_EXCEPTION_EXT(UnknownMessageException, NetBufferException);
 class NetBuffer
 {
 public:
-    static constexpr uint32_t NETMSG_SIGNATURE = 0x011E9422;
+    static constexpr uint32_t NETMSG_SIGNATURE {0x011E9422};
 
     explicit NetBuffer(size_t buf_len);
     NetBuffer(const NetBuffer&) = delete;
@@ -95,7 +65,7 @@ public:
         requires(std::same_as<T, string_view> || std::same_as<T, string>)
     void Write(const T& value)
     {
-        auto len = numeric_cast<uint32_t>(value.length());
+        auto len {numeric_cast<uint32_t>(value.length())};
 
         Push(&len, sizeof(len));
         Push(value.data(), len);
@@ -112,6 +82,7 @@ public:
 
     void StartMsg(NetMessage msg);
     void EndMsg();
+    void AbortMsg() noexcept;
 
 private:
     void WriteHashedString(hstring value);
@@ -155,23 +126,23 @@ public:
 
     template<typename T>
         requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || some_property_plain_type<T> || some_strong_type<T>)
-    [[nodiscard]] auto Read() -> T
+    auto Read() -> T
     {
-        T result = {};
+        T result {};
         Pop(&result, sizeof(T));
         return result;
     }
 
     template<typename T>
         requires(std::same_as<T, string>)
-    [[nodiscard]] auto Read() -> string
+    auto Read() -> string
     {
-        string result;
-        uint32_t len = 0;
+        string result {};
+        uint32_t len {0};
         Pop(&len, sizeof(len));
 
         // A declared string can never be longer than the bytes still buffered; reject before allocating
-        size_t unread = GetUnreadSize();
+        size_t unread {GetUnreadSize()};
 
         if (len > unread) {
             ResetBuf();
@@ -185,7 +156,7 @@ public:
 
     template<typename T>
         requires(std::same_as<T, hstring>)
-    [[nodiscard]] auto Read(const hash_resolver& hashes) -> hstring
+    auto Read(const hash_resolver& hashes) -> hstring
     {
         return ReadHashedString(hashes);
     }
@@ -195,8 +166,8 @@ public:
     auto ReadMsg() -> NetMessage;
 
 private:
-    [[nodiscard]] auto ReadHashedString(const hash_resolver& hashes) -> hstring;
-    [[nodiscard]] auto GetReadLimit() const noexcept -> size_t { return _msgEndPos != 0 ? _msgEndPos : _bufEndPos; }
+    auto ReadHashedString(const hash_resolver& hashes) -> hstring;
+    auto GetReadLimit() const noexcept -> size_t { return _msgEndPos != 0 ? _msgEndPos : _bufEndPos; }
     void FinishMessageRead();
 
     size_t _bufReadPos {};

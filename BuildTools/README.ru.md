@@ -5,7 +5,7 @@ permalink: /BuildTools/README.ru.html
 locale: ru
 document_id: buildtools-readme
 ---
-<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"dbf41bc030ee6a7cafb67fa0122394429827e53c42c9833bf0580ab76afcd46a"} -->
+<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"a28963f6a853472192aad8338672c01b9214c47cf9513f7d586bac8e722b8d0a"} -->
 # Инструменты сборки FOnline Engine
 
 ## Скрипты сборки
@@ -554,10 +554,8 @@ python3 Engine/BuildTools/android_device.py --workspace-root Workspace launch-ga
 `RemoteSceneLaunch` подключается обратно к host server без редактирования baked
 config files.
 
-Во время выполнения `FOnlineActivity` размещает `assets/Resources` в app files
-directory при первом запуске после установки или обновления, затем запускает
-движок с абсолютными overrides `Baking.ClientResources` и
-`Baking.CacheResources`, указывающими на runtime location.
+Android читает stored APK resource packs напрямую. Activity передаёт APK asset URI
+через `Common.ResourcesPath`, а также `Common.UserWritablePath` и `Common.CachePath`.
 
 Версия Android SDK command-line tools фиксируется
 `Engine/ThirdParty/android-sdk` и устанавливается в `Workspace/android-sdk`.
@@ -669,8 +667,8 @@ provenance, acceptance и recovery приведён в
 layout файла до и после одинаков, меняются только зарезервированные data bytes.
 Изменяемые области содержат прозрачный **текст** identity/config, а не code:
 
-- `PACKAGED_BUILD_NAME` - marker `###NotPackaged###`, array на 128 bytes. Строка identity package/build; каждый runtime variant изменяет собственную, чтобы `IsPackaged()` и build name отражали package.
-- `INTERNAL_CONFIG` - markers `###InternalConfig###...` / `###InternalConfigEnd###`, фиксированная движком ёмкость 20000 bytes. Подключаемые проекты не могут менять размер baked bootstrap config blob.
+- `PACKAGED_BUILD_NAME` - marker `###NotPackaged###`, array на 128 bytes. Строка identity package/build; каждый runtime variant изменяет собственную. ApplicationInit переносит её в snapshot settings, из которого runtime читает `Common.Packaged` и `GetPackagedRuntimeName()`.
+- `INTERNAL_CONFIG` - markers `###InternalConfig###...` / `###InternalConfigEnd###`, фиксированная движком ёмкость 40000 bytes. Подключаемые проекты не могут менять размер baked bootstrap config blob.
 - Embedded resources - ёмкость `FO_EMBEDDED_DATA_CAPACITY` (200000).
 
 `package.py` также переписывает PE PDB path (`patch_pe_pdb_path`) и tokens
@@ -761,3 +759,8 @@ python3 BuildTools/temporary_compat.py --report # every marker and the days it h
 
 Актуальное руководство по staged CMake pipeline находится в
 [конвейер BuildTools](../Docs/ru/reference/cmake-and-buildtools/pipeline.md).
+
+Packaged-профили полны относительно нуля: `ConfigBaker` опускает типизированные нули
+и сохраняет все ненулевые объявленные значения. `Common.ResourcesPath` — единый каталог
+при компиляции и упаковке. Клиентская раздача сервера находится в дочернем `Client`.
+Пересоберите native-роли и выполните rebake для compatibility `0.0.87`.

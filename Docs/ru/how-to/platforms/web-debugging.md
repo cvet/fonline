@@ -5,7 +5,7 @@ locale: ru
 document_id: web-debugging
 permalink: /Docs/ru/how-to/platforms/web-debugging.html
 ---
-<!-- docs-translation: {"document_id":"web-debugging","locale":"ru","source_path":"Docs/en/how-to/platforms/web-debugging.md","source_sha256":"0642524c7aa44744f62dc7aea021aeabcb566eff2d8a3fd9d4f3ea49fa7428c0"} -->
+<!-- docs-translation: {"document_id":"web-debugging","locale":"ru","source_path":"Docs/en/how-to/platforms/web-debugging.md","source_sha256":"238fa05d551b4a88c5ed3412427004f44c24bcca882b157e7f51dad3d478fd22"} -->
 # Сборка, упаковка и отладка FOnline в браузере
 
 Это принадлежащая Engine инструкция по подготовке закреплённого Emscripten toolchain, сборке и упаковке WebAssembly-клиента, его локальной раздаче для диагностики, подключению к серверу проекта и квалификации браузерного deployment. Она следует текущим BuildTools, package shell, Web runtime, networking, renderer, updater, модели поддержки и проверенным project evidence. Встраивающий проект отвечает за bake контента, серверный профиль, аутентификацию, публичный origin, матрицу браузеров, deployment, мониторинг и решение о выпуске.
@@ -236,8 +236,7 @@ summary; native-thread case отсутствует в single-threaded browser.
 Изменённые файлы назначают асинхронную обратную синхронизацию при закрытии;
 создание узлов и изменения каталогов также используют очередь IDBFS Emscripten.
 Изменения, поставленные в очередь во время активной синхронизации, назначают
-ещё один проход. Callback начальной загрузки сохраняет
-прежнюю политику продолжения при ошибке, теперь с диагностикой в linked bootstrap.
+ещё один проход. Ошибки начальной загрузки и явного сохранения останавливают runtime. При смене конфигурационного ресурса выполняется явное сохранение, завершения которого основной цикл ожидает перед применением профиля ресурсов.
 
 Автоматическая обратная синхронизация не является синхронным подтверждением надёжной записи. Закрытие страницы до завершения поставленной в очередь операции всё ещё может потерять последние изменения. Проект должен определить, какие данные там находятся, поведение quota/eviction, private/incognito mode, schema/version migration, recovery после corruption, удаление пользовательских данных и multi-tab conflict policy. Проверяйте cold reload и browser restart на точном production origin; storage привязан к origin. См. [контракт IDBFS Emscripten](https://emscripten.org/docs/api_reference/Filesystem-API.html#idbfs).
 
@@ -315,7 +314,7 @@ Engine build lane намеренно не предоставляет эти brow
 | Configure выбирает не тот compiler | BuildTools platform `web`, путь workspace toolchain, `emsdk_env` и stale build directory |
 | Link падает только на Web | strict undefined/unimplemented syscall output, unsupported native dependency, Web platform guards и exception flags |
 | Package отсутствует | успешные bake/build, точные dev name/config, project git revision, `FO_OUTPUT` и log `package-web-debug` |
-| Package отклоняет ресурсы | current effective config, `Baking.ClientResources`, свежие metadata, отсутствие `NoRes` и loading-image path |
+| Package отклоняет ресурсы | current effective config, `Common.ResourcesPath`, свежие metadata, отсутствие `NoRes` и loading-image path |
 | `index.html` загружается, а wasm/data нет | раздаваемый package directory, status/MIME, HTML fallback, proxy rewrite, compression и cache |
 | Браузер показывает старый код | точный origin/path, добавленный проектом service worker или CDN, entry-point cache, versioned artifact и package hash |
 | WebGL2 context не запускается | наличие browser/WebGL2, GPU/driver/blocklist, software-rendering policy, console и context attributes |

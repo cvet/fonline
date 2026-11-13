@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -117,11 +87,14 @@ public:
     [[nodiscard]] auto GetStaticItemsInRadius(mpos hex, int32_t radius, hstring pid) const -> vector<ptr<StaticItem>>;
     [[nodiscard]] auto GetTriggerStaticItemsOnHex(mpos hex) const noexcept -> const_span<ptr<StaticItem>>;
     [[nodiscard]] auto HasStaticItem(ident_t static_item_id) const noexcept -> bool;
+    [[nodiscard]] auto IsRuntimeStaticItem(ident_t static_item_id) const noexcept -> bool;
     [[nodiscard]] auto HasRemovedStaticItems() const noexcept -> bool;
     [[nodiscard]] auto IsOutsideArea(mpos hex) const noexcept -> bool;
 
     void SetLocation(nptr<Location> loc) noexcept;
     auto RemoveStaticItem(ident_t static_item_id) -> bool;
+    void AddRuntimeStaticItems(span<refcount_ptr<StaticItem>> static_items);
+    void RemoveRuntimeStaticItems(const unordered_set<ident_t>& static_item_ids);
     void RefreshRemovedStaticItems();
     void VerifyStaticItemRemovalsOnlyGrow(const_span<ident_t> new_ids) const;
     void AddCritter(ptr<Critter> cr);
@@ -184,10 +157,11 @@ private:
         bool ManualBlockFull {};
     };
 
-    static auto CreateHexField(msize map_size, string_view grid_type) -> unique_ptr<TwoDimensionalGrid<Field, mpos, msize>>;
-
+    auto CreateHexField(string_view grid_type) -> unique_ptr<TwoDimensionalGrid<Field, mpos, msize>>;
     auto GetStaticField(mpos hex) const noexcept -> const StaticMap::Field&;
     void RebuildStaticOverlay();
+    void RefreshStaticFieldOverride(mpos hex);
+    void RebuildVisibleStaticItems();
 
     void SetMultihexCritter(ptr<Critter> cr, bool set);
     void RecacheHexFlags(ptr<Field> field);
@@ -203,7 +177,7 @@ private:
 
     ptr<const ProtoMap> _protoMap;
     ptr<StaticMap> _staticMap;
-    msize _mapSize;
+    msize _mapSize {};
     unique_ptr<TwoDimensionalGrid<Field, mpos, msize>> _hexField;
     vector<ptr<Critter>> _critters {};
     unordered_map<ident_t, ptr<Critter>> _crittersMap {};
@@ -211,16 +185,12 @@ private:
     vector<ptr<Critter>> _nonPlayerCritters {};
     vector<ptr<Item>> _items {};
     unordered_map<ident_t, ptr<Item>> _itemsMap {};
-    // Per-instance view over the proto-shared StaticMap. All three stay empty while the map keeps
-    // every baked static item, and the accessors then read the shared data with no extra indirection
     unordered_set<ident_t> _removedStaticItems {};
     unordered_map<mpos, StaticMap::Field> _staticFieldOverrides {};
     vector<ptr<StaticItem>> _visibleStaticItems {};
+    unique_nptr<StaticMap> _runtimeStatics {};
     nptr<Location> _mapLocation {};
-    // Declared before _spectatorPlayers so it outlives the data it guards
     shared_mutex _spectatorLock {};
-    // _spectatorLock protects lock-free snapshots and mutations outside entity cover.
-    // Entity-covered getters and teardown use FO_TSA_NO_ANALYSIS
     vector<ptr<Player>> _spectatorPlayers FO_TSA_GUARDED_BY(_spectatorLock) {};
     unordered_map<ident_t, shared_ptr<SpectatorArea>> _spectatorAreas FO_TSA_GUARDED_BY(_spectatorLock) {};
     EntityLock _ownedLock {};

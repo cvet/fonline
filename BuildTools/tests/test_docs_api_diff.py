@@ -109,6 +109,53 @@ def _resolved_dispositions(report: dict[str, object]) -> dict[str, object]:
 
 
 class DocumentationApiDiffTests(unittest.TestCase):
+    def test_scope_contract_source_locations_are_not_api_changes(self) -> None:
+        baseline = _model(_symbol("script.method.common.Game.Existing"))
+        baseline["scope"]["contract"] = {
+            "selector": "scope:native-codegen",
+            "stability": "experimental",
+            "symbol_count": 1,
+            "inventory_sha256": "a" * 64,
+            "source": {"path": "Source/Common/Common.h", "line": 47},
+        }
+        current = copy.deepcopy(baseline)
+        current["scope"]["contract"]["source"] = {
+            "path": "Source/Common/Common.h", "line": 45
+        }
+
+        report = docs_api_diff.generate_api_diff(baseline, current, _empty_dispositions())
+
+        self.assertEqual(report["status"], "pass")
+        self.assertEqual(report["summary"]["change_count"], 0)
+        self.assertEqual(baseline["scope"]["contract"]["source"]["line"], 47)
+        self.assertEqual(current["scope"]["contract"]["source"]["line"], 45)
+        self.assertNotEqual(
+            docs_api_diff.contract_digest(baseline), docs_api_diff.contract_digest(current)
+        )
+
+    def test_scope_contract_inventory_changes_still_require_disposition(self) -> None:
+        baseline = _model(_symbol("script.method.common.Game.Existing"))
+        baseline["scope"]["contract"] = {
+            "selector": "scope:native-codegen",
+            "symbol_count": 1,
+            "inventory_sha256": "a" * 64,
+            "source": {"path": "Source/Common/Common.h", "line": 47},
+        }
+        current = copy.deepcopy(baseline)
+        current["scope"]["contract"].update({
+            "symbol_count": 2,
+            "inventory_sha256": "b" * 64,
+            "source": {"path": "Source/Common/Common.h", "line": 45},
+        })
+
+        report = docs_api_diff.generate_api_diff(baseline, current, _empty_dispositions())
+
+        self.assertEqual(report["status"], "blocked")
+        self.assertEqual(report["summary"]["required_disposition_count"], 1)
+        self.assertEqual(report["changes"][0]["change_type"], "model-scope")
+        self.assertEqual(report["changes"][0]["before"], baseline["scope"])
+        self.assertEqual(report["changes"][0]["after"], current["scope"])
+
     def test_additions_and_documentation_changes_are_non_blocking(self) -> None:
         baseline = _model(
             _symbol("script.method.common.Game.Existing", description="Old description")

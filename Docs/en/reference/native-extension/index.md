@@ -20,7 +20,7 @@ This interface describes engine-owned composition and hook contracts for project
 | Stability | <code>experimental</code> |
 | Support policy | Source-compatible use is documented for a pinned engine revision; independently built binary compatibility is not promised. |
 | Source manifest | [BuildTools/NativeExtensionInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/NativeExtensionInterface.json) |
-| Contract digest | <code>82ed3091d89d8d525261b4709039af09214f49fa40c074bb31d80a6ce0563e57</code> |
+| Contract digest | <code>c33b2496092e63c15c18e3c22e1874417290c93bff974d30736e8d42896d0229</code> |
 
 | Reference | Entries | Purpose |
 | --- | --- | --- |

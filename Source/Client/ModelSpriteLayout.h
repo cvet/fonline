@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -42,19 +12,19 @@
 
 FO_BEGIN_NAMESPACE
 
-constexpr int32_t MODEL_SPRITE_FRAME_SCALE = 2;
+constexpr int32_t MODEL_SPRITE_FRAME_SCALE {2};
 
 // Keep in sync with the default 3D_Skinned shadow pass
-constexpr float32_t SHADOW_CAMERA_ANGLE_COS = 0.9010770213221f;
-constexpr float32_t SHADOW_CAMERA_ANGLE_SIN = 0.4336590845875f;
-constexpr float32_t SHADOW_ANGLE_TAN = 0.2548968037538f;
+constexpr float32_t SHADOW_CAMERA_ANGLE_COS {0.9010770213221f};
+constexpr float32_t SHADOW_CAMERA_ANGLE_SIN {0.4336590845875f};
+constexpr float32_t SHADOW_ANGLE_TAN {0.2548968037538f};
 
 // Bake-host MAX_ATLAS_WIDTH is not the game device. MIN_ATLAS_SIZE is the portable GPU floor, and the model renders at 2x
-constexpr int32_t MODEL_SPRITE_MAX_LOGICAL_FRAME_DIMENSION = AppRender::MIN_ATLAS_SIZE / MODEL_SPRITE_FRAME_SCALE;
+constexpr int32_t MODEL_SPRITE_MAX_LOGICAL_FRAME_DIMENSION {AppRender::MIN_ATLAS_SIZE / MODEL_SPRITE_FRAME_SCALE};
 
 // Frame size keys the intermediate render-target cache, so it is quantized to this grid: an envelope that
 // breathed with the animation missed that cache and created a GPU texture mid-frame
-constexpr int32_t MODEL_SPRITE_FRAME_ALIGNMENT = 16;
+constexpr int32_t MODEL_SPRITE_FRAME_ALIGNMENT {16};
 static_assert(MODEL_SPRITE_FRAME_ALIGNMENT % MODEL_SPRITE_FRAME_SCALE == 0, "Frame alignment must keep frames aligned to the frame scale");
 static_assert(MODEL_SPRITE_MAX_LOGICAL_FRAME_DIMENSION % MODEL_SPRITE_FRAME_ALIGNMENT == 0, "Portable logical frame cap must stay on the frame grid");
 

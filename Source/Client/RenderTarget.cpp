@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "RenderTarget.h"
 
@@ -84,7 +54,7 @@ auto RenderTargetManager::CreateRenderTarget(bool with_depth, isize32 size, bool
 
     _flush();
 
-    auto rt = safe_alloc::make_unique<RenderTarget>(size, CreateRenderTargetTexture(size, linear_filtered, with_depth));
+    auto rt {safe_alloc::make_unique<RenderTarget>(size, CreateRenderTargetTexture(size, linear_filtered, with_depth))};
 
     _rtAll.push_back(std::move(rt));
     return _rtAll.back();
@@ -103,8 +73,8 @@ void RenderTargetManager::ResizeRenderTarget(ptr<RenderTarget> rt, isize32 size)
 
     _flush();
 
-    bool linear_filtered = rt->_texture->LinearFiltered;
-    bool with_depth = rt->_texture->WithDepth;
+    bool linear_filtered {rt->_texture->LinearFiltered};
+    bool with_depth {rt->_texture->WithDepth};
 
     rt->_texture = CreateRenderTargetTexture(size, linear_filtered, with_depth);
     rt->_size = size;
@@ -112,15 +82,15 @@ void RenderTargetManager::ResizeRenderTarget(ptr<RenderTarget> rt, isize32 size)
 
 auto RenderTargetManager::CreateRenderTargetTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture>
 {
-    isize32 tex_size = size;
+    isize32 tex_size {size};
     tex_size.width = std::max(tex_size.width, 1);
     tex_size.height = std::max(tex_size.height, 1);
 
-    auto texture = _render->CreateTexture(tex_size, linear_filtered, with_depth);
+    auto texture {_render->CreateTexture(tex_size, linear_filtered, with_depth)};
     texture->FlippedHeight = _render->IsRenderTargetFlipped();
 
-    auto prev_tex = _render->GetRenderTarget();
-    auto restore_target = scope_fail([&]() noexcept { safe_call([&] { _render->SetRenderTarget(prev_tex); }); });
+    auto prev_tex {_render->GetRenderTarget()};
+    auto restore_target {scope_fail([&]() noexcept { safe_call([&] { _render->SetRenderTarget(prev_tex); }); })};
     _render->SetRenderTarget(texture);
     _render->ClearRenderTarget(ucolor::clear, with_depth);
     _render->SetRenderTarget(prev_tex);
@@ -130,7 +100,7 @@ auto RenderTargetManager::CreateRenderTargetTexture(isize32 size, bool linear_fi
 
 void RenderTargetManager::PushRenderTarget(ptr<RenderTarget> rt)
 {
-    bool redundant = !_rtStack.empty() && _rtStack.back() == rt;
+    bool redundant {!_rtStack.empty() && _rtStack.back() == rt};
 
     if (!redundant) {
         _flush();
@@ -142,7 +112,7 @@ void RenderTargetManager::PushRenderTarget(ptr<RenderTarget> rt)
 
 void RenderTargetManager::PopRenderTarget()
 {
-    bool redundant = _rtStack.size() > 2 && _rtStack.back() == _rtStack[_rtStack.size() - 2];
+    bool redundant {_rtStack.size() > 2 && _rtStack.back() == _rtStack[_rtStack.size() - 2]};
 
     if (!redundant) {
         _flush();
@@ -171,10 +141,11 @@ void RenderTargetManager::DeleteRenderTarget(nptr<RenderTarget> rt)
         return;
     }
 
-    auto it = std::ranges::find_if(_rtAll, [&rt](auto&& check_rt) {
-        auto check_rt_ptr = check_rt.as_ptr();
+    auto it {std::ranges::find_if(_rtAll, [&rt](auto&& check_rt) {
+        auto check_rt_ptr {check_rt.as_ptr()};
         return check_rt_ptr == rt;
-    });
+    })};
+
     FO_VERIFY_AND_THROW(it != _rtAll.end(), "Lookup failed in rt all");
     _rtAll.erase(it);
 }
@@ -188,28 +159,28 @@ void RenderTargetManager::DumpTextures(string_view writable_root) const
 {
     FO_TRACE_ZONE(Render);
 
-    size_t atlases_memory_size = 0;
+    size_t atlases_memory_size {0};
 
-    for (size_t i = 0; i < _rtAll.size(); i++) {
-        auto rt = _rtAll[i].as_ptr();
+    for (size_t i {0}; i < _rtAll.size(); i++) {
+        auto rt {_rtAll[i].as_ptr()};
         atlases_memory_size += numeric_cast<size_t>(rt->_texture->Size.width) * rt->_texture->Size.height * 4;
     }
 
-    time_desc_t time = nanotime::now().desc(true);
-    string dir = fs::make_writable_path(writable_root,
+    time_desc_t time {nanotime::now().desc(true)};
+    string dir {fs::make_writable_path(writable_root,
         strex("TexDump_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}_{}.{:03}mb", //
             time.year, time.month, time.day, time.hour, time.minute, time.second, //
-            atlases_memory_size / 1000000, atlases_memory_size % 1000000 / 1000));
+            atlases_memory_size / 1000000, atlases_memory_size % 1000000 / 1000))};
 
-    auto write_rt = [&dir](string_view name, ptr<const RenderTarget> rt) {
-        string fname = strex("{}/{}_{}x{}.png", dir, name, rt->_texture->Size.width, rt->_texture->Size.height);
-        auto tex_data = rt->_texture->GetTextureRegion({0, 0}, rt->_texture->Size);
+    auto write_rt {[&dir](string_view name, ptr<const RenderTarget> rt) {
+        string fname {static_cast<string&&>(strex("{}/{}_{}x{}.png", dir, name, rt->_texture->Size.width, rt->_texture->Size.height))};
+        auto tex_data {rt->_texture->GetTextureRegion({0, 0}, rt->_texture->Size)};
         ImageWriter::WritePng(fname, rt->_texture->Size, tex_data);
-    };
+    }};
 
-    size_t num = 1;
+    size_t num {1};
 
-    for (size_t i = 0; i < _rtAll.size(); i++) {
+    for (size_t i {0}; i < _rtAll.size(); i++) {
         write_rt(strex("All_{}", num), _rtAll[i]);
         num++;
     }

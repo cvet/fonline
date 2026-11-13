@@ -54,7 +54,7 @@
         {
           "path": "Source/Frontend/Rendering.h",
           "anchors": [
-            "constexpr size_t MODEL_LAYERS_COUNT = FO_MODEL_LAYERS_COUNT;"
+            "constexpr size_t MODEL_LAYERS_COUNT {FO_MODEL_LAYERS_COUNT};"
           ]
         },
         {
@@ -74,7 +74,7 @@
         {
           "path": "Source/Frontend/Rendering.h",
           "anchors": [
-            "constexpr size_t MODEL_MAX_TEXTURES = FO_MODEL_MAX_TEXTURES;"
+            "constexpr size_t MODEL_MAX_TEXTURES {FO_MODEL_MAX_TEXTURES};"
           ]
         },
         {
@@ -94,7 +94,7 @@
         {
           "path": "Source/Frontend/Rendering.h",
           "anchors": [
-            "constexpr size_t MODEL_MAX_BONES = FO_MODEL_MAX_BONES;"
+            "constexpr size_t MODEL_MAX_BONES {FO_MODEL_MAX_BONES};"
           ]
         },
         {
@@ -114,7 +114,7 @@
         {
           "path": "Source/Frontend/Rendering.h",
           "anchors": [
-            "constexpr size_t MODEL_BONES_PER_VERTEX = FO_MODEL_BONES_PER_VERTEX;"
+            "constexpr size_t MODEL_BONES_PER_VERTEX {FO_MODEL_BONES_PER_VERTEX};"
           ]
         },
         {
@@ -884,7 +884,7 @@
         {
           "path": "Source/Client/ModelInformation.cpp",
           "anchors": [
-            "bool reversed = anim_entry.Name.starts_with('~')",
+            "bool reversed {anim_entry.Name.starts_with('~')}",
             "_animController->RegisterAnimation("
           ]
         }
@@ -1469,7 +1469,7 @@
         {
           "path": "Source/Common/ModelAnimationData.h",
           "anchors": [
-            "MODEL_DESCRIPTION_SCHEMA_VERSION = 5;"
+            "MODEL_DESCRIPTION_SCHEMA_VERSION {5};"
           ]
         },
         {
@@ -1482,7 +1482,7 @@
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
           "anchors": [
-            "for (const auto& [texture_name, mesh_name, texture_index] : TextureInfo)"
+            "for (const auto& [texture_name, mesh_name, texture_index] : description.TextureInfo)"
           ]
         }
       ]

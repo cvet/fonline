@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Common.h"
 
@@ -47,54 +17,56 @@ TEST_CASE("Compressor")
 
     SECTION("CompressDecompressRoundtrip")
     {
-        vector<uint8_t> src;
+        vector<uint8_t> src {};
         src.reserve(4096);
-        for (int32_t i = 0; i < 4096; i++) {
+
+        for (int32_t i {0}; i < 4096; i++) {
             src.emplace_back(static_cast<uint8_t>(i % 251));
         }
 
-        auto compressed = compressor::compress(src);
+        auto compressed {compressor::compress(src)};
         CHECK_FALSE(compressed.empty());
 
-        auto restored = compressor::decompress(compressed, 2);
+        auto restored {compressor::decompress(compressed, 2)};
         CHECK(restored == src);
     }
 
     SECTION("DecompressInvalidData")
     {
-        vector<uint8_t> invalid = {0x01, 0x02, 0x03, 0x04, 0x05};
+        vector<uint8_t> invalid {0x01, 0x02, 0x03, 0x04, 0x05};
         CHECK_THROWS_AS((compressor::decompress(invalid, 2)), DecompressException);
     }
 
     SECTION("DecompressExpandsBufferWhenApproximationIsTooSmall")
     {
-        vector<uint8_t> src(4096, 0x2A);
+        vector<uint8_t> src {vector<uint8_t>(4096, 0x2A)};
 
-        auto compressed = compressor::compress(src);
+        auto compressed {compressor::compress(src)};
         REQUIRE(compressed.size() < src.size());
 
-        auto restored = compressor::decompress(compressed, 1);
+        auto restored {compressor::decompress(compressed, 1)};
         CHECK(restored == src);
     }
 
     SECTION("StreamRoundtrip")
     {
-        vector<uint8_t> part1;
-        vector<uint8_t> part2;
-        for (int32_t i = 0; i < 128; i++) {
+        vector<uint8_t> part1 {};
+        vector<uint8_t> part2 {};
+
+        for (int32_t i {0}; i < 128; i++) {
             part1.emplace_back(static_cast<uint8_t>(i));
             part2.emplace_back(static_cast<uint8_t>(255 - i));
         }
 
-        stream_compressor stream;
-        vector<uint8_t> comp1;
-        vector<uint8_t> comp2;
+        stream_compressor stream {};
+        vector<uint8_t> comp1 {};
+        vector<uint8_t> comp2 {};
         stream.compress(part1, comp1);
         stream.compress(part2, comp2);
 
-        stream_decompressor decompressor;
-        vector<uint8_t> dec1;
-        vector<uint8_t> dec2;
+        stream_decompressor decompressor {};
+        vector<uint8_t> dec1 {};
+        vector<uint8_t> dec2 {};
         decompressor.decompress(comp1, dec1);
         decompressor.decompress(comp2, dec2);
 
@@ -107,25 +79,25 @@ TEST_CASE("Compressor")
 
     SECTION("StreamRejectsMalformedInitialInputWithTypedException")
     {
-        stream_decompressor decompressor;
-        vector<uint8_t> result;
-        vector<uint8_t> invalid = {0x00, 0x00};
+        stream_decompressor decompressor {};
+        vector<uint8_t> result {};
+        vector<uint8_t> invalid {0x00, 0x00};
 
         CHECK_THROWS_AS(decompressor.decompress(invalid, result), DecompressException);
     }
 
     SECTION("StreamRejectsMalformedContinuationInputWithTypedException")
     {
-        vector<uint8_t> source(4096, 0x2A);
-        stream_compressor stream;
-        vector<uint8_t> compressed;
+        vector<uint8_t> source {vector<uint8_t>(4096, 0x2A)};
+        stream_compressor stream {};
+        vector<uint8_t> compressed {};
         stream.compress(source, compressed);
         REQUIRE(compressed.size() * 2 < source.size());
 
         compressed.emplace_back(0x06);
 
-        stream_decompressor decompressor;
-        vector<uint8_t> result;
+        stream_decompressor decompressor {};
+        vector<uint8_t> result {};
         CHECK_THROWS_AS(decompressor.decompress(compressed, result), DecompressException);
     }
 }

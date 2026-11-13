@@ -356,7 +356,6 @@ class DocumentationValidatorTests(unittest.TestCase):
                         "en": docs_site.DEFAULT_SEARCH_OUTPUT,
                         "ru": docs_site.DEFAULT_RUSSIAN_SEARCH_OUTPUT,
                     },
-                    "max_bytes": 65536,
                     "minimum_query_length": 2,
                 },
                 "browser_validation": {

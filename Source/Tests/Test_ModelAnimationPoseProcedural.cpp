@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Common.h"
 
@@ -66,7 +36,7 @@ static auto ComposeModelAnimationRuntimeProceduralTestTransform(const ModelAnima
 
 static auto MakeModelAnimationRuntimeProceduralTestJoint(string_view name, initializer_list<string_view> hierarchy, const mat44& rest_local) -> ModelSkeletonJoint
 {
-    ModelSkeletonJoint result;
+    ModelSkeletonJoint result {};
     result.Name = name;
     result.RestLocalTransform = rest_local;
 
@@ -79,8 +49,8 @@ static auto MakeModelAnimationRuntimeProceduralTestJoint(string_view name, initi
 
 static void CheckModelAnimationRuntimeProceduralTestMatrix(const mat44& actual, const mat44& expected, float32_t margin = 3.0e-4f)
 {
-    for (mat44::length_type column = 0; column < 4; column++) {
-        for (mat44::length_type row = 0; row < 4; row++) {
+    for (mat44::length_type column {0}; column < 4; column++) {
+        for (mat44::length_type row {0}; row < 4; row++) {
             CAPTURE(column, row, actual[column][row], expected[column][row]);
             CHECK(actual[column][row] == Catch::Approx(expected[column][row]).margin(margin));
         }
@@ -89,8 +59,8 @@ static void CheckModelAnimationRuntimeProceduralTestMatrix(const mat44& actual, 
 
 static void CheckModelAnimationRuntimeProceduralTestMatrixExact(const mat44& actual, const mat44& expected)
 {
-    for (mat44::length_type column = 0; column < 4; column++) {
-        for (mat44::length_type row = 0; row < 4; row++) {
+    for (mat44::length_type column {0}; column < 4; column++) {
+        for (mat44::length_type row {0}; row < 4; row++) {
             CAPTURE(column, row, actual[column][row], expected[column][row]);
             CHECK(actual[column][row] == expected[column][row]);
         }
@@ -124,8 +94,8 @@ static auto BuildModelAnimationRuntimeProceduralTestFixture() -> ModelAnimationR
         MakeModelAnimationRuntimeProceduralTestMatrix(translations[2], rotations[2], scales[2]),
         MakeModelAnimationRuntimeProceduralTestMatrix(translations[3], rotations[3], scales[3]),
     };
-    constexpr string_view model_description = "Models/RuntimeProcedural.fo3d";
-    ModelSkeletonSource base_skeleton;
+    constexpr string_view model_description {"Models/RuntimeProcedural.fo3d"};
+    ModelSkeletonSource base_skeleton {};
     base_skeleton.FileName = "Models/RuntimeProcedural.fbx";
     base_skeleton.Joints = {
         MakeModelAnimationRuntimeProceduralTestJoint("Root", {"Root"}, source_rest_locals[0]),
@@ -133,12 +103,12 @@ static auto BuildModelAnimationRuntimeProceduralTestFixture() -> ModelAnimationR
         MakeModelAnimationRuntimeProceduralTestJoint("Head", {"Root", "Body", "Head"}, source_rest_locals[2]),
         MakeModelAnimationRuntimeProceduralTestJoint("Leaf", {"Root", "Body", "Head", "Leaf"}, source_rest_locals[3]),
     };
-    ModelSkeletonCompatibilityReport compatibility_report = BuildModelSkeletonCompatibilityReport(base_skeleton, {});
-    ModelAnimationRigArtifacts artifacts = BuildModelAnimationRigArtifacts(model_description, base_skeleton, compatibility_report, {}, false);
-    ModelAnimationRigData rig_data = BuildModelAnimationRigData(std::move(artifacts), {});
-    vector<uint8_t> serialized = WriteModelAnimationRigData(rig_data, "procedural runtime pose test");
+    ModelSkeletonCompatibilityReport compatibility_report {BuildModelSkeletonCompatibilityReport(base_skeleton, {})};
+    ModelAnimationRigArtifacts artifacts {BuildModelAnimationRigArtifacts(model_description, base_skeleton, compatibility_report, {}, false)};
+    ModelAnimationRigData rig_data {BuildModelAnimationRigData(std::move(artifacts), {})};
+    vector<uint8_t> serialized {WriteModelAnimationRigData(rig_data, "procedural runtime pose test")};
 
-    ModelAnimationRuntimeProceduralTestFixture fixture;
+    ModelAnimationRuntimeProceduralTestFixture fixture {};
     fixture.Rig = LoadModelAnimationRuntimeRig(serialized, model_description, base_skeleton.FileName, false);
     REQUIRE(fixture.Rig);
     REQUIRE(fixture.Rig->GetJointCount() == source_rest_locals.size());
@@ -153,8 +123,8 @@ static auto BuildModelAnimationRuntimeProceduralTestFixture() -> ModelAnimationR
     REQUIRE(fixture.Rig->GetJointName(fixture.HeadJoint) == "Head");
     REQUIRE(fixture.Rig->GetJointName(fixture.LeafJoint) == "Leaf");
 
-    for (size_t source_joint = 0; source_joint < source_rest_locals.size(); source_joint++) {
-        size_t runtime_joint = fixture.Rig->GetBaseJointMapping()[source_joint];
+    for (size_t source_joint {0}; source_joint < source_rest_locals.size(); source_joint++) {
+        size_t runtime_joint {fixture.Rig->GetBaseJointMapping()[source_joint]};
         REQUIRE(fixture.Rig->GetBaseJointPresence()[runtime_joint] == 1);
         fixture.RestLocals[runtime_joint] = source_rest_locals[source_joint];
     }
@@ -167,11 +137,11 @@ static auto BuildModelAnimationRuntimeProceduralTestFixture() -> ModelAnimationR
 TEST_CASE("ModelAnimationRuntimePoseAppliesBoundedProceduralPreRotations")
 {
 #if FO_ENABLE_3D
-    ModelAnimationRuntimeProceduralTestFixture fixture = BuildModelAnimationRuntimeProceduralTestFixture();
+    ModelAnimationRuntimeProceduralTestFixture fixture {BuildModelAnimationRuntimeProceduralTestFixture()};
     ModelAnimationRuntimePose pose {fixture.Rig.get()};
-    mat44 root_matrix = MakeModelAnimationRuntimeProceduralTestMatrix(vec3 {100.0f, -20.0f, 7.0f}, glm::angleAxis(glm::radians(31.0f), glm::normalize(vec3 {1.0f, 2.0f, 1.0f})), vec3 {0.9f, 1.1f, 1.3f});
-    quaternion body_rotation = glm::angleAxis(glm::radians(37.0f), vec3 {0.0f, 1.0f, 0.0f});
-    quaternion head_rotation = glm::angleAxis(glm::radians(-29.0f), vec3 {1.0f, 0.0f, 0.0f});
+    mat44 root_matrix {MakeModelAnimationRuntimeProceduralTestMatrix(vec3 {100.0f, -20.0f, 7.0f}, glm::angleAxis(glm::radians(31.0f), glm::normalize(vec3 {1.0f, 2.0f, 1.0f})), vec3 {0.9f, 1.1f, 1.3f})};
+    quaternion body_rotation {glm::angleAxis(glm::radians(37.0f), vec3 {0.0f, 1.0f, 0.0f})};
+    quaternion head_rotation {glm::angleAxis(glm::radians(-29.0f), vec3 {1.0f, 0.0f, 0.0f})};
     array<ModelAnimationRuntimePose::ProceduralLocalRotation, 2> procedural_rotations {
         ModelAnimationRuntimePose::ProceduralLocalRotation {.JointIndex = fixture.BodyJoint, .Rotation = body_rotation},
         ModelAnimationRuntimePose::ProceduralLocalRotation {.JointIndex = fixture.HeadJoint, .Rotation = head_rotation},
@@ -179,10 +149,10 @@ TEST_CASE("ModelAnimationRuntimePoseAppliesBoundedProceduralPreRotations")
 
     pose.Evaluate({}, {}, root_matrix, procedural_rotations);
 
-    mat44 expected_root = root_matrix * fixture.RestLocals[fixture.RootJoint];
-    mat44 expected_body = expected_root * glm::mat4_cast(body_rotation) * fixture.RestLocals[fixture.BodyJoint];
-    mat44 expected_head = expected_body * glm::mat4_cast(head_rotation) * fixture.RestLocals[fixture.HeadJoint];
-    mat44 expected_leaf = expected_head * fixture.RestLocals[fixture.LeafJoint];
+    mat44 expected_root {root_matrix * fixture.RestLocals[fixture.RootJoint]};
+    mat44 expected_body {expected_root * glm::mat4_cast(body_rotation) * fixture.RestLocals[fixture.BodyJoint]};
+    mat44 expected_head {expected_body * glm::mat4_cast(head_rotation) * fixture.RestLocals[fixture.HeadJoint]};
+    mat44 expected_leaf {expected_head * fixture.RestLocals[fixture.LeafJoint]};
     array<mat44, 4> expected_final_locals {mat44 {1.0f}, mat44 {1.0f}, mat44 {1.0f}, mat44 {1.0f}};
     expected_final_locals[fixture.RootJoint] = fixture.RestLocals[fixture.RootJoint];
     expected_final_locals[fixture.BodyJoint] = glm::mat4_cast(body_rotation) * fixture.RestLocals[fixture.BodyJoint];
@@ -195,7 +165,7 @@ TEST_CASE("ModelAnimationRuntimePoseAppliesBoundedProceduralPreRotations")
     expected_world[fixture.LeafJoint] = expected_leaf;
     REQUIRE(pose.GetJointCount() == expected_world.size());
 
-    for (size_t joint = 0; joint < expected_world.size(); joint++) {
+    for (size_t joint {0}; joint < expected_world.size(); joint++) {
         CheckModelAnimationRuntimeProceduralTestMatrix(ComposeModelAnimationRuntimeProceduralTestTransform(pose.GetBodyLocalTransform(joint)), fixture.RestLocals[joint]);
         CheckModelAnimationRuntimeProceduralTestMatrix(ComposeModelAnimationRuntimeProceduralTestTransform(pose.GetFinalLocalTransform(joint)), expected_final_locals[joint]);
         CheckModelAnimationRuntimeProceduralTestMatrix(pose.GetWorldMatrices()[joint], expected_world[joint]);
@@ -204,7 +174,7 @@ TEST_CASE("ModelAnimationRuntimePoseAppliesBoundedProceduralPreRotations")
     vector<mat44> first_evaluation {pose.GetWorldMatrices().begin(), pose.GetWorldMatrices().end()};
     pose.Evaluate({}, {}, root_matrix, procedural_rotations);
 
-    for (size_t joint = 0; joint < expected_world.size(); joint++) {
+    for (size_t joint {0}; joint < expected_world.size(); joint++) {
         CheckModelAnimationRuntimeProceduralTestMatrix(ComposeModelAnimationRuntimeProceduralTestTransform(pose.GetBodyLocalTransform(joint)), fixture.RestLocals[joint]);
         CheckModelAnimationRuntimeProceduralTestMatrix(ComposeModelAnimationRuntimeProceduralTestTransform(pose.GetFinalLocalTransform(joint)), expected_final_locals[joint]);
         CheckModelAnimationRuntimeProceduralTestMatrix(pose.GetWorldMatrices()[joint], first_evaluation[joint]);
@@ -218,17 +188,17 @@ TEST_CASE("ModelAnimationRuntimePoseAppliesBoundedProceduralPreRotations")
 TEST_CASE("ModelAnimationRuntimePoseRejectsInvalidProceduralRotationsBeforeMutation")
 {
 #if FO_ENABLE_3D
-    ModelAnimationRuntimeProceduralTestFixture fixture = BuildModelAnimationRuntimeProceduralTestFixture();
+    ModelAnimationRuntimeProceduralTestFixture fixture {BuildModelAnimationRuntimeProceduralTestFixture()};
     ModelAnimationRuntimePose pose {fixture.Rig.get()};
-    mat44 root_matrix = glm::translate(mat44 {1.0f}, vec3 {10.0f, 20.0f, 30.0f});
+    mat44 root_matrix {glm::translate(mat44 {1.0f}, vec3 {10.0f, 20.0f, 30.0f})};
     pose.Evaluate({}, {}, root_matrix);
     vector<mat44> before_world {pose.GetWorldMatrices().begin(), pose.GetWorldMatrices().end()};
-    vector<mat44> before_body_locals;
-    vector<mat44> before_final_locals;
+    vector<mat44> before_body_locals {};
+    vector<mat44> before_final_locals {};
     before_body_locals.reserve(pose.GetJointCount());
     before_final_locals.reserve(pose.GetJointCount());
 
-    for (size_t joint = 0; joint < pose.GetJointCount(); joint++) {
+    for (size_t joint {0}; joint < pose.GetJointCount(); joint++) {
         before_body_locals.emplace_back(ComposeModelAnimationRuntimeProceduralTestTransform(pose.GetBodyLocalTransform(joint)));
         before_final_locals.emplace_back(ComposeModelAnimationRuntimeProceduralTestTransform(pose.GetFinalLocalTransform(joint)));
     }
@@ -279,7 +249,7 @@ TEST_CASE("ModelAnimationRuntimePoseRejectsInvalidProceduralRotationsBeforeMutat
         CHECK_THROWS_WITH(pose.Evaluate({}, {}, root_matrix, rotations), Catch::Matchers::ContainsSubstring("duplicate"));
     }
 
-    for (size_t joint = 0; joint < before_world.size(); joint++) {
+    for (size_t joint {0}; joint < before_world.size(); joint++) {
         CheckModelAnimationRuntimeProceduralTestMatrixExact(ComposeModelAnimationRuntimeProceduralTestTransform(pose.GetBodyLocalTransform(joint)), before_body_locals[joint]);
         CheckModelAnimationRuntimeProceduralTestMatrixExact(ComposeModelAnimationRuntimeProceduralTestTransform(pose.GetFinalLocalTransform(joint)), before_final_locals[joint]);
         CheckModelAnimationRuntimeProceduralTestMatrixExact(pose.GetWorldMatrices()[joint], before_world[joint]);
@@ -292,9 +262,9 @@ TEST_CASE("ModelAnimationRuntimePoseRejectsInvalidProceduralRotationsBeforeMutat
 TEST_CASE("ModelAnimationRuntimePoseWorldOverrideDoesNotRecomputeDescendants")
 {
 #if FO_ENABLE_3D
-    ModelAnimationRuntimeProceduralTestFixture fixture = BuildModelAnimationRuntimeProceduralTestFixture();
+    ModelAnimationRuntimeProceduralTestFixture fixture {BuildModelAnimationRuntimeProceduralTestFixture()};
     ModelAnimationRuntimePose pose {fixture.Rig.get()};
-    mat44 root_matrix = glm::translate(mat44 {1.0f}, vec3 {10.0f, 20.0f, 30.0f});
+    mat44 root_matrix {glm::translate(mat44 {1.0f}, vec3 {10.0f, 20.0f, 30.0f})};
     array<ModelAnimationRuntimePose::ProceduralLocalRotation, 1> procedural_rotations {
         ModelAnimationRuntimePose::ProceduralLocalRotation {
             .JointIndex = fixture.HeadJoint,
@@ -303,17 +273,17 @@ TEST_CASE("ModelAnimationRuntimePoseWorldOverrideDoesNotRecomputeDescendants")
     };
     pose.Evaluate({}, {}, root_matrix, procedural_rotations);
     vector<mat44> before_world {pose.GetWorldMatrices().begin(), pose.GetWorldMatrices().end()};
-    vector<mat44> before_body_locals;
-    vector<mat44> before_final_locals;
+    vector<mat44> before_body_locals {};
+    vector<mat44> before_final_locals {};
     before_body_locals.reserve(pose.GetJointCount());
     before_final_locals.reserve(pose.GetJointCount());
 
-    for (size_t joint = 0; joint < pose.GetJointCount(); joint++) {
+    for (size_t joint {0}; joint < pose.GetJointCount(); joint++) {
         before_body_locals.emplace_back(ComposeModelAnimationRuntimeProceduralTestTransform(pose.GetBodyLocalTransform(joint)));
         before_final_locals.emplace_back(ComposeModelAnimationRuntimeProceduralTestTransform(pose.GetFinalLocalTransform(joint)));
     }
 
-    mat44 override_matrix = MakeModelAnimationRuntimeProceduralTestMatrix(vec3 {-50.0f, 80.0f, 12.0f}, glm::angleAxis(glm::radians(61.0f), glm::normalize(vec3 {1.0f, 1.0f, 2.0f})), vec3 {1.7f, 0.6f, 2.2f});
+    mat44 override_matrix {MakeModelAnimationRuntimeProceduralTestMatrix(vec3 {-50.0f, 80.0f, 12.0f}, glm::angleAxis(glm::radians(61.0f), glm::normalize(vec3 {1.0f, 1.0f, 2.0f})), vec3 {1.7f, 0.6f, 2.2f})};
     pose.OverrideWorldMatrix(fixture.BodyJoint, override_matrix);
     CheckModelAnimationRuntimeProceduralTestMatrixExact(pose.GetWorldMatrices()[fixture.BodyJoint], override_matrix);
 
@@ -321,18 +291,18 @@ TEST_CASE("ModelAnimationRuntimePoseWorldOverrideDoesNotRecomputeDescendants")
         CheckModelAnimationRuntimeProceduralTestMatrixExact(pose.GetWorldMatrices()[joint], before_world[joint]);
     }
 
-    for (size_t joint = 0; joint < pose.GetJointCount(); joint++) {
+    for (size_t joint {0}; joint < pose.GetJointCount(); joint++) {
         CheckModelAnimationRuntimeProceduralTestMatrixExact(ComposeModelAnimationRuntimeProceduralTestTransform(pose.GetBodyLocalTransform(joint)), before_body_locals[joint]);
         CheckModelAnimationRuntimeProceduralTestMatrixExact(ComposeModelAnimationRuntimeProceduralTestTransform(pose.GetFinalLocalTransform(joint)), before_final_locals[joint]);
     }
 
-    mat44 invalid_matrix = override_matrix;
+    mat44 invalid_matrix {override_matrix};
     invalid_matrix[2][1] = std::numeric_limits<float32_t>::infinity();
     CHECK_THROWS_WITH(pose.OverrideWorldMatrix(fixture.BodyJoint, invalid_matrix), Catch::Matchers::ContainsSubstring("world override matrix"));
     CHECK_THROWS_WITH(pose.OverrideWorldMatrix(pose.GetJointCount(), override_matrix), Catch::Matchers::ContainsSubstring("outside"));
     CheckModelAnimationRuntimeProceduralTestMatrixExact(pose.GetWorldMatrices()[fixture.BodyJoint], override_matrix);
 
-    for (size_t joint = 0; joint < pose.GetJointCount(); joint++) {
+    for (size_t joint {0}; joint < pose.GetJointCount(); joint++) {
         CheckModelAnimationRuntimeProceduralTestMatrixExact(ComposeModelAnimationRuntimeProceduralTestTransform(pose.GetBodyLocalTransform(joint)), before_body_locals[joint]);
         CheckModelAnimationRuntimeProceduralTestMatrixExact(ComposeModelAnimationRuntimeProceduralTestTransform(pose.GetFinalLocalTransform(joint)), before_final_locals[joint]);
     }

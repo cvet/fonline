@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -327,74 +297,111 @@ struct InputEvent
     {
         KeyCode Code {};
     } KeyUp {};
-
-    InputEvent() = default;
-    explicit InputEvent(MouseMoveEvent ev) :
-        Type {EventType::MouseMoveEvent},
-        MouseMove {ev}
-    {
-    }
-    explicit InputEvent(MouseDownEvent ev) :
-        Type {EventType::MouseDownEvent},
-        MouseDown {ev}
-    {
-    }
-    explicit InputEvent(MouseUpEvent ev) :
-        Type {EventType::MouseUpEvent},
-        MouseUp {ev}
-    {
-    }
-    explicit InputEvent(MouseWheelEvent ev) :
-        Type {EventType::MouseWheelEvent},
-        MouseWheel {ev}
-    {
-    }
-    explicit InputEvent(TouchDownEvent ev) :
-        Type {EventType::TouchDownEvent},
-        TouchDown {ev}
-    {
-    }
-    explicit InputEvent(TouchMoveEvent ev) :
-        Type {EventType::TouchMoveEvent},
-        TouchMove {ev}
-    {
-    }
-    explicit InputEvent(TouchUpEvent ev) :
-        Type {EventType::TouchUpEvent},
-        TouchUp {ev}
-    {
-    }
-    explicit InputEvent(TouchTapEvent ev) :
-        Type {EventType::TouchTapEvent},
-        TouchTap {ev}
-    {
-    }
-    explicit InputEvent(TouchDoubleTapEvent ev) :
-        Type {EventType::TouchDoubleTapEvent},
-        TouchDoubleTap {ev}
-    {
-    }
-    explicit InputEvent(TouchScrollEvent ev) :
-        Type {EventType::TouchScrollEvent},
-        TouchScroll {ev}
-    {
-    }
-    explicit InputEvent(TouchZoomEvent ev) :
-        Type {EventType::TouchZoomEvent},
-        TouchZoom {ev}
-    {
-    }
-    explicit InputEvent(KeyDownEvent ev) :
-        Type {EventType::KeyDownEvent},
-        KeyDown {std::move(ev)}
-    {
-    }
-    explicit InputEvent(KeyUpEvent ev) :
-        Type {EventType::KeyUpEvent},
-        KeyUp {ev}
-    {
-    }
 };
+
+inline auto MakeInputEvent(InputEvent::MouseMoveEvent ev) -> InputEvent
+{
+    return {
+        .Type = InputEvent::EventType::MouseMoveEvent,
+        .MouseMove = ev,
+    };
+}
+
+inline auto MakeInputEvent(InputEvent::MouseDownEvent ev) -> InputEvent
+{
+    return {
+        .Type = InputEvent::EventType::MouseDownEvent,
+        .MouseDown = ev,
+    };
+}
+
+inline auto MakeInputEvent(InputEvent::MouseUpEvent ev) -> InputEvent
+{
+    return {
+        .Type = InputEvent::EventType::MouseUpEvent,
+        .MouseUp = ev,
+    };
+}
+
+inline auto MakeInputEvent(InputEvent::MouseWheelEvent ev) -> InputEvent
+{
+    return {
+        .Type = InputEvent::EventType::MouseWheelEvent,
+        .MouseWheel = ev,
+    };
+}
+
+inline auto MakeInputEvent(InputEvent::TouchDownEvent ev) -> InputEvent
+{
+    return {
+        .Type = InputEvent::EventType::TouchDownEvent,
+        .TouchDown = ev,
+    };
+}
+
+inline auto MakeInputEvent(InputEvent::TouchMoveEvent ev) -> InputEvent
+{
+    return {
+        .Type = InputEvent::EventType::TouchMoveEvent,
+        .TouchMove = ev,
+    };
+}
+
+inline auto MakeInputEvent(InputEvent::TouchUpEvent ev) -> InputEvent
+{
+    return {
+        .Type = InputEvent::EventType::TouchUpEvent,
+        .TouchUp = ev,
+    };
+}
+
+inline auto MakeInputEvent(InputEvent::TouchTapEvent ev) -> InputEvent
+{
+    return {
+        .Type = InputEvent::EventType::TouchTapEvent,
+        .TouchTap = ev,
+    };
+}
+
+inline auto MakeInputEvent(InputEvent::TouchDoubleTapEvent ev) -> InputEvent
+{
+    return {
+        .Type = InputEvent::EventType::TouchDoubleTapEvent,
+        .TouchDoubleTap = ev,
+    };
+}
+
+inline auto MakeInputEvent(InputEvent::TouchScrollEvent ev) -> InputEvent
+{
+    return {
+        .Type = InputEvent::EventType::TouchScrollEvent,
+        .TouchScroll = ev,
+    };
+}
+
+inline auto MakeInputEvent(InputEvent::TouchZoomEvent ev) -> InputEvent
+{
+    return {
+        .Type = InputEvent::EventType::TouchZoomEvent,
+        .TouchZoom = ev,
+    };
+}
+
+inline auto MakeInputEvent(InputEvent::KeyDownEvent ev) -> InputEvent
+{
+    return {
+        .Type = InputEvent::EventType::KeyDownEvent,
+        .KeyDown = std::move(ev),
+    };
+}
+
+inline auto MakeInputEvent(InputEvent::KeyUpEvent ev) -> InputEvent
+{
+    return {
+        .Type = InputEvent::EventType::KeyUpEvent,
+        .KeyUp = ev,
+    };
+}
 
 class IAppRender
 {
@@ -402,12 +409,13 @@ public:
     virtual ~IAppRender() = default;
 
     [[nodiscard]] virtual auto GetRenderTarget() -> nptr<RenderTexture> = 0;
-    [[nodiscard]] virtual auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> = 0;
-    [[nodiscard]] virtual auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> = 0;
-    [[nodiscard]] virtual auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> = 0;
-    [[nodiscard]] virtual auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 = 0;
     [[nodiscard]] virtual auto IsRenderTargetFlipped() const -> bool = 0;
     [[nodiscard]] virtual auto GetProjMatrix() const -> mat44 = 0;
+
+    virtual auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> = 0;
+    virtual auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> = 0;
+    virtual auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> = 0;
+    virtual auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 = 0;
 
     virtual void SetRenderTarget(nptr<RenderTexture> tex) = 0;
     virtual void SetOrthoDepthRange(float32_t nearp, float32_t farp) noexcept = 0;
@@ -541,8 +549,8 @@ private:
     {
     }
 
-    [[nodiscard]] auto ResolveWindowHandle() const -> ptr<WindowInternalHandle>;
-    [[nodiscard]] auto ResolveWindowStub() const -> ptr<HeadlessWindowStub>;
+    auto ResolveWindowHandle() const -> ptr<WindowInternalHandle>;
+    auto ResolveWindowStub() const -> ptr<HeadlessWindowStub>;
 
     ptr<Application> _app;
     nptr<WindowInternalHandle> _windowHandle {};
@@ -564,19 +572,20 @@ class AppRender final : public IAppRender
     friend class Application;
 
 public:
-    static constexpr int32_t MAX_ATLAS_SIZE = 8192;
-    static constexpr int32_t MIN_ATLAS_SIZE = 2048;
+    static constexpr int32_t MAX_ATLAS_SIZE {8192};
+    static constexpr int32_t MIN_ATLAS_SIZE {2048};
     static int32_t MAX_ATLAS_WIDTH;
     static int32_t MAX_ATLAS_HEIGHT;
     static int32_t MAX_BONES;
 
     [[nodiscard]] auto GetRenderTarget() -> nptr<RenderTexture> override;
-    [[nodiscard]] auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
-    [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
-    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
-    [[nodiscard]] auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override;
     [[nodiscard]] auto IsRenderTargetFlipped() const -> bool override;
     [[nodiscard]] auto GetProjMatrix() const -> mat44 override;
+
+    auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
+    auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
+    auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
+    auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override;
 
     void SetRenderTarget(nptr<RenderTexture> tex) override;
     void SetOrthoDepthRange(float32_t nearp, float32_t farp) noexcept override;
@@ -598,7 +607,7 @@ class AppInput final : public IAppInput
     friend class Application;
 
 public:
-    static constexpr size_t DROP_FILE_STRIP_LENGHT = 2048;
+    static constexpr size_t DROP_FILE_STRIP_LENGHT {2048};
 
     [[nodiscard]] auto IsMouseAvailable() const noexcept -> bool override;
     [[nodiscard]] auto GetMousePosition() const -> ipos32 override;
@@ -656,7 +665,7 @@ private:
 enum class AppInitFlags : uint8_t
 {
     None = 0x00,
-    ClientMode = 0x01,
+    StandaloneClient = 0x01,
     DisableLogTags = 0x02,
     ShowMessageOnException = 0x04,
     PrebakeResources = 0x08,
@@ -688,6 +697,7 @@ public:
     [[nodiscard]] auto IsHeadless() const noexcept -> bool;
     [[nodiscard]] auto GetActiveWindow() noexcept -> nptr<AppWindow> { return _activeWindow; }
     [[nodiscard]] auto GetChildWindowsCount() const noexcept -> size_t { return _childWindows.size(); }
+
     [[nodiscard]] auto GetChildWindow(size_t index) noexcept -> nptr<AppWindow>
     {
         if (index < _childWindows.size()) {
@@ -696,6 +706,7 @@ public:
 
         return nullptr;
     }
+
     [[nodiscard]] auto TranslateHostPosToActiveWindow(ipos32 pos) const -> ipos32;
     [[nodiscard]] auto TranslateActiveWindowPosToHost(ipos32 pos) const -> ipos32;
     [[nodiscard]] auto ScaleHostDeltaToActiveWindow(ipos32 delta) const -> ipos32;
@@ -756,8 +767,8 @@ private:
 
     static constexpr timespan TOUCH_TAP_MAX_TIME {std::chrono::milliseconds {250}};
     static constexpr timespan TOUCH_DOUBLE_TAP_MAX_TIME {std::chrono::milliseconds {200}};
-    static constexpr int32_t TOUCH_TAP_MAX_DIST = 12;
-    static constexpr int32_t TOUCH_DOUBLE_TAP_MAX_DIST = 48;
+    static constexpr int32_t TOUCH_TAP_MAX_DIST {12};
+    static constexpr int32_t TOUCH_DOUBLE_TAP_MAX_DIST {48};
 
     struct Context;
 
@@ -794,7 +805,7 @@ private:
     uint64_t _time {};
     uint64_t _timeFrequency {};
     bool _isTablet {};
-    bool _clientMode {};
+    bool _standaloneClient {};
     bool _nativeCursorHidden {};
     bool _mouseCanUseGlobalState {};
     int32_t _pendingMouseLeaveFrame {};
@@ -864,7 +875,8 @@ auto IsAppInitialized() noexcept -> bool;
 auto IsNonInteractiveMode() -> bool;
 auto GetApp() noexcept -> ptr<Application>;
 void ResetApp() noexcept;
-auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings;
+auto LoadAppSettings(CommandLineArgs args, AppInitFlags flags = AppInitFlags::None) -> GlobalSettings;
+void ApplyAppSettingsOverrides(GlobalSettings& settings, CommandLineArgs args);
 void InitApp(CommandLineArgs args, AppInitFlags flags = AppInitFlags::None);
 void InitAppForTesting(AppInitFlags flags = AppInitFlags::None);
 auto GetExeLogFileName() -> string;

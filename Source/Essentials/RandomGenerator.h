@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -58,8 +28,8 @@ public:
 
     [[nodiscard]] auto next() noexcept -> uint64_t
     {
-        uint64_t result = rotate_left(_state[0] + _state[3], 23) + _state[0];
-        uint64_t shifted = _state[1] << 17;
+        uint64_t result {rotate_left(_state[0] + _state[3], 23) + _state[0]};
+        uint64_t shifted {_state[1] << 17};
 
         _state[2] ^= _state[0];
         _state[3] ^= _state[1];
@@ -79,11 +49,11 @@ public:
     {
         FO_VERIFY_AND_THROW(bound != 0, "Random bound must be positive");
 
-        uint64_t product = static_cast<uint64_t>(static_cast<uint32_t>(next())) * bound;
-        uint32_t low = static_cast<uint32_t>(product);
+        uint64_t product {static_cast<uint64_t>(static_cast<uint32_t>(next())) * bound};
+        uint32_t low {static_cast<uint32_t>(product)};
 
         if (low < bound) {
-            uint32_t threshold = (~bound + 1) % bound;
+            uint32_t threshold {(~bound + 1) % bound};
 
             while (low < threshold) {
                 product = static_cast<uint64_t>(static_cast<uint32_t>(next())) * bound;
@@ -99,7 +69,7 @@ public:
     {
         FO_VERIFY_AND_THROW(min_value <= max_value, "Random range must not be inverted", min_value, max_value);
 
-        uint64_t span = static_cast<uint64_t>(static_cast<int64_t>(max_value) - static_cast<int64_t>(min_value)) + 1;
+        uint64_t span {static_cast<uint64_t>(static_cast<int64_t>(max_value) - static_cast<int64_t>(min_value)) + 1};
 
         if (span > std::numeric_limits<uint32_t>::max()) {
             return static_cast<int32_t>(static_cast<uint32_t>(next()));
@@ -132,7 +102,7 @@ private:
     {
         state += 0x9E3779B97F4A7C15ULL;
 
-        uint64_t mixed = state;
+        uint64_t mixed {state};
         mixed = (mixed ^ (mixed >> 30)) * 0xBF58476D1CE4E5B9ULL;
         mixed = (mixed ^ (mixed >> 27)) * 0x94D049BB133111EBULL;
 

@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "ModelMeshData.h"
 
@@ -37,8 +7,8 @@
 
 FO_BEGIN_NAMESPACE
 
-static constexpr size_t MODEL_MESH_STRING_MIN_SIZE = sizeof(uint32_t);
-static constexpr size_t MODEL_MESH_BONE_MIN_SIZE = MODEL_MESH_STRING_MIN_SIZE + 2 * sizeof(mat44) + sizeof(uint8_t) + sizeof(uint32_t);
+static constexpr size_t MODEL_MESH_STRING_MIN_SIZE {sizeof(uint32_t)};
+static constexpr size_t MODEL_MESH_BONE_MIN_SIZE {MODEL_MESH_STRING_MIN_SIZE + 2 * sizeof(mat44) + sizeof(uint8_t) + sizeof(uint32_t)};
 
 static void ValidateModelMeshBone(const ModelMeshBoneData& bone, string_view context, uint32_t depth, uint32_t& joint_count, unordered_set<string>& bone_names, vector<pair<string, string>>& skin_bone_refs);
 static void ValidateModelMeshGeometry(const ModelMeshGeometryData& mesh, string_view owner_bone, string_view context);
@@ -52,8 +22,8 @@ static void VerifyModelMeshCountFitsData(const data_reader& reader, size_t count
 struct ModelMeshBoneReadFrame
 {
     ptr<ModelMeshBoneData> Bone;
-    uint32_t Depth;
-    uint32_t RemainingChildren;
+    uint32_t Depth {};
+    uint32_t RemainingChildren {};
 };
 
 void WriteModelMeshHeader(data_writer& writer)
@@ -65,8 +35,8 @@ void WriteModelMeshHeader(data_writer& writer)
 
 void ReadModelMeshHeader(data_reader& reader, string_view context)
 {
-    data_reader source_reader = reader;
-    const_span<uint8_t> header_data;
+    data_reader source_reader {reader};
+    const_span<uint8_t> header_data {};
 
     try {
         header_data = source_reader.read_bytes(MODEL_MESH_HEADER_SIZE);
@@ -76,19 +46,19 @@ void ReadModelMeshHeader(data_reader& reader, string_view context)
     }
 
     data_reader header_reader {header_data};
-    const_span<uint8_t> magic = header_reader.read_bytes(MODEL_MESH_MAGIC.size());
+    const_span<uint8_t> magic {header_reader.read_bytes(MODEL_MESH_MAGIC.size())};
 
     if (!std::equal(magic.begin(), magic.end(), MODEL_MESH_MAGIC.begin())) {
         throw ModelMeshDataException("Invalid baked model mesh magic; expected 'LFMODMSH'", context);
     }
 
-    uint16_t schema = header_reader.read<uint16_t>();
+    uint16_t schema {header_reader.read<uint16_t>()};
 
     if (schema != MODEL_MESH_SCHEMA_VERSION) {
         throw ModelMeshDataException("Unsupported baked model mesh schema", context, MODEL_MESH_SCHEMA_VERSION, schema);
     }
 
-    uint16_t flags = header_reader.read<uint16_t>();
+    uint16_t flags {header_reader.read<uint16_t>()};
 
     if ((flags & ~MODEL_MESH_SUPPORTED_FLAGS) != 0) {
         throw ModelMeshDataException("Baked model mesh contains unsupported flags", context, flags);
@@ -106,9 +76,9 @@ void ValidateModelMeshData(const ModelMeshData& data, string_view context)
         throw ModelMeshDataException("Baked model mesh has no root bone", context);
     }
 
-    uint32_t joint_count = 0;
-    unordered_set<string> bone_names;
-    vector<pair<string, string>> skin_bone_refs;
+    uint32_t joint_count {0};
+    unordered_set<string> bone_names {};
+    vector<pair<string, string>> skin_bone_refs {};
     ValidateModelMeshBone(*data.RootBone, context, 0, joint_count, bone_names, skin_bone_refs);
 
     for (const auto& [owner_bone, skin_bone] : skin_bone_refs) {
@@ -131,12 +101,12 @@ auto ReadModelMeshData(data_reader& reader, string_view context) -> ModelMeshDat
 {
     FO_TRACE_ZONE(Model);
 
-    data_reader source_reader = reader;
-    ModelMeshData data;
+    data_reader source_reader {reader};
+    ModelMeshData data {};
 
     try {
         ReadModelMeshHeader(source_reader, context);
-        uint32_t joint_count = 0;
+        uint32_t joint_count {0};
         data.RootBone = ReadModelMeshBone(source_reader, context, joint_count);
         source_reader.verify_end();
         ValidateModelMeshData(data, context);
@@ -190,7 +160,7 @@ static void ValidateModelMeshGeometry(const ModelMeshGeometryData& mesh, string_
 {
     FO_TRACE_ZONE(Model);
 
-    constexpr uint64_t max_vertex_count = uint64_t {std::numeric_limits<ModelMeshIndexData>::max()} + uint64_t {1};
+    constexpr uint64_t max_vertex_count {uint64_t {std::numeric_limits<ModelMeshIndexData>::max()} + uint64_t {1}};
 
     if (mesh.Vertices.size() > max_vertex_count) {
         throw ModelMeshDataException("Baked model mesh bone vertex count exceeds maximum addressable count", context, owner_bone, mesh.Vertices.size(), max_vertex_count);
@@ -214,19 +184,19 @@ static void ValidateModelMeshGeometry(const ModelMeshGeometryData& mesh, string_
         }
     }
 
-    for (size_t index_position = 0; index_position < mesh.Indices.size(); index_position++) {
+    for (size_t index_position {0}; index_position < mesh.Indices.size(); index_position++) {
         if (numeric_cast<size_t>(mesh.Indices[index_position]) >= mesh.Vertices.size()) {
             throw ModelMeshDataException("Baked model mesh bone has vertex index outside vertex count", context, owner_bone, mesh.Indices[index_position], index_position, mesh.Vertices.size());
         }
     }
 
-    for (size_t vertex_index = 0; vertex_index < mesh.Vertices.size(); vertex_index++) {
-        const ModelMeshVertexData& vertex = mesh.Vertices[vertex_index];
-        float32_t total_weight = 0.0f;
+    for (size_t vertex_index {0}; vertex_index < mesh.Vertices.size(); vertex_index++) {
+        const ModelMeshVertexData& vertex {mesh.Vertices[vertex_index]};
+        float32_t total_weight {0.0f};
 
-        for (size_t influence = 0; influence < MODEL_MESH_BONES_PER_VERTEX; influence++) {
-            float32_t weight = vertex.BlendWeights[influence];
-            float32_t index = vertex.BlendIndices[influence];
+        for (size_t influence {0}; influence < MODEL_MESH_BONES_PER_VERTEX; influence++) {
+            float32_t weight {vertex.BlendWeights[influence]};
+            float32_t index {vertex.BlendIndices[influence]};
 
             if (!std::isfinite(weight)) {
                 throw ModelMeshDataException("Baked model mesh bone has non-finite skin weight", context, owner_bone, vertex_index, influence);
@@ -287,9 +257,9 @@ static auto ReadModelMeshBone(data_reader& reader, string_view context, uint32_t
 {
     FO_TRACE_ZONE(Model);
 
-    pair<unique_ptr<ModelMeshBoneData>, uint32_t> root_record = ReadModelMeshBoneNode(reader, context, 0, joint_count);
-    unique_ptr<ModelMeshBoneData> root_bone = std::move(root_record.first);
-    vector<ModelMeshBoneReadFrame> frames;
+    pair<unique_ptr<ModelMeshBoneData>, uint32_t> root_record {ReadModelMeshBoneNode(reader, context, 0, joint_count)};
+    unique_ptr<ModelMeshBoneData> root_bone {std::move(root_record.first)};
+    vector<ModelMeshBoneReadFrame> frames {};
     frames.reserve(MODEL_MESH_MAX_HIERARCHY_DEPTH);
 
     if (root_record.second != 0) {
@@ -297,9 +267,9 @@ static auto ReadModelMeshBone(data_reader& reader, string_view context, uint32_t
     }
 
     while (!frames.empty()) {
-        ModelMeshBoneReadFrame& parent_frame = frames.back();
-        pair<unique_ptr<ModelMeshBoneData>, uint32_t> child_record = ReadModelMeshBoneNode(reader, context, parent_frame.Depth + 1, joint_count);
-        ptr<ModelMeshBoneData> child_bone = child_record.first.get();
+        ModelMeshBoneReadFrame& parent_frame {frames.back()};
+        pair<unique_ptr<ModelMeshBoneData>, uint32_t> child_record {ReadModelMeshBoneNode(reader, context, parent_frame.Depth + 1, joint_count)};
+        ptr<ModelMeshBoneData> child_bone {child_record.first.get()};
         parent_frame.Bone->Children.emplace_back(std::move(child_record.first));
         parent_frame.RemainingChildren--;
 
@@ -326,11 +296,11 @@ static auto ReadModelMeshBoneNode(data_reader& reader, string_view context, uint
     }
 
     joint_count++;
-    auto bone = safe_alloc::make_unique<ModelMeshBoneData>();
+    auto bone {safe_alloc::make_unique<ModelMeshBoneData>()};
     bone->Name = reader.read_string();
     bone->TransformationMatrix = reader.read<mat44>();
     bone->GlobalTransformationMatrix = reader.read<mat44>();
-    uint8_t has_attached_mesh = reader.read<uint8_t>();
+    uint8_t has_attached_mesh {reader.read<uint8_t>()};
 
     if (has_attached_mesh > 1) {
         throw ModelMeshDataException("Baked model mesh has an invalid attached-mesh flag", context, bone->Name, has_attached_mesh);
@@ -339,7 +309,7 @@ static auto ReadModelMeshBoneNode(data_reader& reader, string_view context, uint
         bone->AttachedMesh.emplace(ReadModelMeshGeometry(reader, bone->Name, context));
     }
 
-    uint32_t children_count = reader.read<uint32_t>();
+    uint32_t children_count {reader.read<uint32_t>()};
 
     if (children_count > MODEL_MESH_MAX_JOINTS - joint_count) {
         throw ModelMeshDataException("Baked model mesh bone child count exceeds maximum", context, bone->Name, children_count, MODEL_MESH_MAX_JOINTS - joint_count);
@@ -353,9 +323,9 @@ static auto ReadModelMeshBoneNode(data_reader& reader, string_view context, uint
 
 static auto ReadModelMeshGeometry(data_reader& reader, string_view owner_bone, string_view context) -> ModelMeshGeometryData
 {
-    ModelMeshGeometryData mesh;
-    uint32_t vertices_count = reader.read<uint32_t>();
-    constexpr uint64_t max_vertex_count = uint64_t {std::numeric_limits<ModelMeshIndexData>::max()} + uint64_t {1};
+    ModelMeshGeometryData mesh {};
+    uint32_t vertices_count {reader.read<uint32_t>()};
+    constexpr uint64_t max_vertex_count {uint64_t {std::numeric_limits<ModelMeshIndexData>::max()} + uint64_t {1}};
 
     if (vertices_count > max_vertex_count) {
         throw ModelMeshDataException("Baked model mesh bone vertex count exceeds maximum addressable count", context, owner_bone, vertices_count, max_vertex_count);
@@ -365,13 +335,13 @@ static auto ReadModelMeshGeometry(data_reader& reader, string_view owner_bone, s
     mesh.Vertices.resize(vertices_count);
     reader.read_object_array(span {mesh.Vertices});
 
-    uint32_t indices_count = reader.read<uint32_t>();
+    uint32_t indices_count {reader.read<uint32_t>()};
     VerifyModelMeshCountFitsData(reader, indices_count, sizeof(ModelMeshIndexData), "mesh indices", context, owner_bone);
     mesh.Indices.resize(indices_count);
     reader.read_object_array(span {mesh.Indices});
     mesh.DiffuseTexture = reader.read_string();
 
-    uint32_t skin_bones_count = reader.read<uint32_t>();
+    uint32_t skin_bones_count {reader.read<uint32_t>()};
 
     if (skin_bones_count > MODEL_MESH_MAX_SKIN_BONES) {
         throw ModelMeshDataException("Baked model mesh bone skin bone count exceeds maximum", context, owner_bone, skin_bones_count, MODEL_MESH_MAX_SKIN_BONES);
@@ -380,11 +350,11 @@ static auto ReadModelMeshGeometry(data_reader& reader, string_view owner_bone, s
     VerifyModelMeshCountFitsData(reader, skin_bones_count, MODEL_MESH_STRING_MIN_SIZE, "skin bone names", context, owner_bone);
     mesh.SkinBoneNames.reserve(skin_bones_count);
 
-    for (uint32_t i = 0; i < skin_bones_count; i++) {
+    for (uint32_t i {0}; i < skin_bones_count; i++) {
         mesh.SkinBoneNames.emplace_back(reader.read_string());
     }
 
-    uint32_t skin_bone_offsets_count = reader.read<uint32_t>();
+    uint32_t skin_bone_offsets_count {reader.read<uint32_t>()};
 
     if (skin_bone_offsets_count != skin_bones_count) {
         throw ModelMeshDataException("Baked model mesh bone skin bone offset count mismatch", context, owner_bone, skin_bone_offsets_count, skin_bones_count);

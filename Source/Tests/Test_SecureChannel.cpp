@@ -1,41 +1,12 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Common.h"
 
 #include "catch_amalgamated.hpp"
 
 #include "ClientConnection.h"
+#include "Movement.h"
 #include "NetSockets.h"
 #include "NetworkServer.h"
 #include "SecureChannel.h"
@@ -46,13 +17,11 @@
 #define ASIO_STANDALONE 1
 #define ASIO_NO_DEPRECATED 1
 #include "asio.hpp"
-// ReSharper disable CppInconsistentNaming
 #define _WEBSOCKETPP_CPP11_FUNCTIONAL_ // NOLINT(clang-diagnostic-reserved-macro-identifier, bugprone-reserved-identifier)
 #define _WEBSOCKETPP_CPP11_SYSTEM_ERROR_ // NOLINT(clang-diagnostic-reserved-macro-identifier, bugprone-reserved-identifier)
 #define _WEBSOCKETPP_CPP11_RANDOM_DEVICE_ // NOLINT(clang-diagnostic-reserved-macro-identifier, bugprone-reserved-identifier)
 #define _WEBSOCKETPP_CPP11_MEMORY_ // NOLINT(clang-diagnostic-reserved-macro-identifier, bugprone-reserved-identifier)
 #define _WEBSOCKETPP_CPP11_STL_ // NOLINT(clang-diagnostic-reserved-macro-identifier, bugprone-reserved-identifier)
-// ReSharper restore CppInconsistentNaming
 FO_DISABLE_WARNINGS_PUSH()
 #include "websocketpp/client.hpp"
 #include "websocketpp/config/asio_no_tls_client.hpp"
@@ -68,17 +37,17 @@ namespace
 
     auto MakeTestSettings() -> GlobalSettings
     {
-        auto settings = GlobalSettings(false);
+        auto settings {GlobalSettings(false)};
 
-        settings.ApplyDefaultSettings();
-        settings.ApplyAutoSettings();
+        settings.SetupDefaultSettings();
+        settings.ApplyAutoSettings({});
 
         return settings;
     }
 
     auto MakeRandomBytes(size_t size) -> vector<uint8_t>
     {
-        vector<uint8_t> data(size);
+        vector<uint8_t> data {vector<uint8_t>(size)};
         crypto::fill_random(data);
         return data;
     }
@@ -91,22 +60,22 @@ namespace
     // Passes everything one side has for the other, in the chunk size given, until both have nothing left
     void Exchange(SecureChannel& client, SecureChannel& server, size_t chunk_size)
     {
-        auto deliver = [chunk_size](const vector<uint8_t>& data, SecureChannel& receiver) {
-            vector<uint8_t> plaintext;
+        auto deliver {[chunk_size](const vector<uint8_t>& data, SecureChannel& receiver) {
+            vector<uint8_t> plaintext {};
 
-            for (size_t offset = 0; offset < data.size(); offset += chunk_size) {
+            for (size_t offset {0}; offset < data.size(); offset += chunk_size) {
                 receiver.Receive(const_span<uint8_t> {data}.subspan(offset, std::min(chunk_size, data.size() - offset)), plaintext);
             }
 
             FO_VERIFY_AND_THROW(plaintext.empty(), "Handshake exchange produced transport plaintext");
-        };
+        }};
 
         while (client.HasHandshakeOutput() || server.HasHandshakeOutput()) {
-            vector<uint8_t> client_output;
+            vector<uint8_t> client_output {};
             client.TakeHandshakeOutput(client_output);
             deliver(client_output, server);
 
-            vector<uint8_t> server_output;
+            vector<uint8_t> server_output {};
             server.TakeHandshakeOutput(server_output);
             deliver(server_output, client);
         }
@@ -114,7 +83,7 @@ namespace
 
     auto SealAll(SecureChannel& channel, const vector<vector<uint8_t>>& messages) -> vector<uint8_t>
     {
-        vector<uint8_t> sealed;
+        vector<uint8_t> sealed {};
 
         for (const auto& message : messages) {
             channel.Seal(message, sealed);
@@ -143,7 +112,7 @@ TEST_CASE("SecureChannelCarriesAStreamInAnyChunking")
 
     // One message larger than a frame, so it is split and reassembled
     vector<vector<uint8_t>> messages {MakeRandomBytes(1), MakeRandomBytes(SecureChannel::MAX_TRANSPORT_PAYLOAD * 3 + 17), vector<uint8_t>(5000, uint8_t {0x5A})};
-    vector<uint8_t> expected;
+    vector<uint8_t> expected {};
 
     for (const auto& message : messages) {
         expected.insert(expected.end(), message.begin(), message.end());
@@ -152,18 +121,18 @@ TEST_CASE("SecureChannelCarriesAStreamInAnyChunking")
     for (bool from_client : {true, false}) {
         INFO(from_client);
 
-        SecureChannel& sender = from_client ? client : server;
-        SecureChannel& receiver = from_client ? server : client;
-        vector<uint8_t> sealed = SealAll(sender, messages);
+        SecureChannel& sender {from_client ? client : server};
+        SecureChannel& receiver {from_client ? server : client};
+        vector<uint8_t> sealed {SealAll(sender, messages)};
 
         CHECK_FALSE(ContainsSequence(sealed, messages[2]));
 
-        vector<uint8_t> plaintext;
-        size_t offset = 0;
-        size_t chunk_size = 1;
+        vector<uint8_t> plaintext {};
+        size_t offset {0};
+        size_t chunk_size {1};
 
         while (offset < sealed.size()) {
-            size_t size = std::min(chunk_size, sealed.size() - offset);
+            size_t size {std::min(chunk_size, sealed.size() - offset)};
             receiver.Receive(const_span<uint8_t> {sealed}.subspan(offset, size), plaintext);
             offset += size;
             chunk_size = chunk_size * 3 + 1;
@@ -176,13 +145,13 @@ TEST_CASE("SecureChannelCarriesAStreamInAnyChunking")
 TEST_CASE("SecureChannelOffersEveryPinnedKey")
 {
     SecureChannelIdentity identity {crypto::generate_secret_key()};
-    crypto::key_bytes other_key = crypto::derive_public_key(crypto::generate_secret_key());
+    crypto::key_bytes other_key {crypto::derive_public_key(crypto::generate_secret_key())};
 
     for (bool server_key_first : {true, false}) {
         INFO(server_key_first);
 
         // The next key is pinned ahead of a rotation, so either position must open
-        vector<crypto::key_bytes> server_keys = server_key_first ? vector<crypto::key_bytes> {identity.GetPublicKey(), other_key} : vector<crypto::key_bytes> {other_key, identity.GetPublicKey()};
+        vector<crypto::key_bytes> server_keys {server_key_first ? vector<crypto::key_bytes> {identity.GetPublicKey(), other_key} : vector<crypto::key_bytes> {other_key, identity.GetPublicKey()}};
         SecureChannel client {server_keys};
         SecureChannel server {identity};
 
@@ -191,8 +160,8 @@ TEST_CASE("SecureChannelOffersEveryPinnedKey")
         REQUIRE(client.IsEstablished());
         REQUIRE(server.IsEstablished());
 
-        vector<uint8_t> sealed;
-        vector<uint8_t> plaintext;
+        vector<uint8_t> sealed {};
+        vector<uint8_t> plaintext {};
         client.Seal(vector<uint8_t> {1, 2, 3}, sealed);
         server.Receive(sealed, plaintext);
 
@@ -207,8 +176,8 @@ TEST_CASE("SecureChannelRefusesAServerItHasNotPinned")
     SecureChannel client {server_keys};
     SecureChannel server {identity};
 
-    vector<uint8_t> offer;
-    vector<uint8_t> plaintext;
+    vector<uint8_t> offer {};
+    vector<uint8_t> plaintext {};
     client.TakeHandshakeOutput(offer);
 
     CHECK_THROWS_AS(server.Receive(offer, plaintext), SecureChannelException);
@@ -221,7 +190,7 @@ TEST_CASE("SecureChannelRefusesMalformedFrames")
 {
     SecureChannelIdentity identity {crypto::generate_secret_key()};
     vector<crypto::key_bytes> server_keys {identity.GetPublicKey()};
-    vector<uint8_t> plaintext;
+    vector<uint8_t> plaintext {};
 
     // Only the length header is delivered: a frame the channel would refuse is refused before it is buffered
     SECTION("an offer size that fits no offer is refused at the header")
@@ -240,7 +209,7 @@ TEST_CASE("SecureChannelRefusesMalformedFrames")
     {
         SecureChannel client {server_keys};
         SecureChannel server {identity};
-        vector<uint8_t> offer;
+        vector<uint8_t> offer {};
         client.TakeHandshakeOutput(offer);
         offer[2] = 2;
 
@@ -251,8 +220,8 @@ TEST_CASE("SecureChannelRefusesMalformedFrames")
     {
         SecureChannel client {server_keys};
         SecureChannel server {identity};
-        vector<uint8_t> offer;
-        vector<uint8_t> answer;
+        vector<uint8_t> offer {};
+        vector<uint8_t> answer {};
         client.TakeHandshakeOutput(offer);
         server.Receive(offer, plaintext);
         server.TakeHandshakeOutput(answer);
@@ -291,20 +260,20 @@ TEST_CASE("SecureChannelRefusesTamperingReplayAndLoss")
     SecureChannel server {identity};
     Exchange(client, server, 64);
 
-    vector<uint8_t> first;
-    vector<uint8_t> second;
+    vector<uint8_t> first {};
+    vector<uint8_t> second {};
     client.Seal(vector<uint8_t> {1, 2, 3, 4}, first);
     client.Seal(vector<uint8_t> {5, 6, 7, 8}, second);
-    vector<uint8_t> plaintext;
+    vector<uint8_t> plaintext {};
 
     SECTION("a changed byte")
     {
-        for (size_t i = 2; i < first.size(); i++) {
+        for (size_t i {2}; i < first.size(); i++) {
             SecureChannel fresh_client {server_keys};
             SecureChannel fresh_server {identity};
             Exchange(fresh_client, fresh_server, 64);
 
-            vector<uint8_t> sealed;
+            vector<uint8_t> sealed {};
             fresh_client.Seal(vector<uint8_t> {1, 2, 3, 4}, sealed);
             sealed[i] ^= 0x10;
 
@@ -339,7 +308,7 @@ TEST_CASE("SecureChannelHandshakeEdges")
     {
         CHECK_THROWS_AS(SecureChannel(vector<crypto::key_bytes> {}), SecureChannelException);
 
-        vector<crypto::key_bytes> too_many(SecureChannel::MAX_OFFERED_KEYS + 1, identity.GetPublicKey());
+        vector<crypto::key_bytes> too_many {vector<crypto::key_bytes>(SecureChannel::MAX_OFFERED_KEYS + 1, identity.GetPublicKey())};
 
         CHECK_THROWS_AS(SecureChannel(too_many), SecureChannelException);
     }
@@ -349,7 +318,7 @@ TEST_CASE("SecureChannelHandshakeEdges")
         vector<crypto::key_bytes> server_keys {identity.GetPublicKey()};
         SecureChannel client {server_keys};
         SecureChannel server {identity};
-        vector<uint8_t> out;
+        vector<uint8_t> out {};
 
         CHECK_THROWS(client.Seal(vector<uint8_t> {1}, out));
         CHECK_THROWS(server.Seal(vector<uint8_t> {1}, out));
@@ -360,8 +329,8 @@ TEST_CASE("SecureChannelHandshakeEdges")
         vector<crypto::key_bytes> server_keys {identity.GetPublicKey()};
         SecureChannel client {server_keys};
         SecureChannel server {identity};
-        vector<uint8_t> offer;
-        vector<uint8_t> plaintext;
+        vector<uint8_t> offer {};
+        vector<uint8_t> plaintext {};
         client.TakeHandshakeOutput(offer);
         server.Receive(const_span<uint8_t> {offer}.first(offer.size() / 2), plaintext);
 
@@ -375,12 +344,12 @@ TEST_CASE("SecureChannelHandshakeEdges")
         vector<crypto::key_bytes> server_keys {identity.GetPublicKey()};
         SecureChannel client {server_keys};
         SecureChannel server {identity};
-        vector<uint8_t> offer;
-        vector<uint8_t> plaintext;
+        vector<uint8_t> offer {};
+        vector<uint8_t> plaintext {};
         client.TakeHandshakeOutput(offer);
         server.Receive(offer, plaintext);
 
-        vector<uint8_t> output;
+        vector<uint8_t> output {};
         server.Seal(vector<uint8_t> {9, 9, 9}, output);
         client.Receive(output, plaintext);
 
@@ -420,7 +389,7 @@ namespace
         auto MakeAcceptCallback() -> NetworkServer::NewConnectionCallback
         {
             return [this](shared_ptr<NetworkServerConnection> net_connection) {
-                auto connection = safe_alloc::make_unique<ServerConnection>(_settings, std::move(net_connection), _identity);
+                auto connection {safe_alloc::make_unique<ServerConnection>(_settings, std::move(net_connection), _identity)};
                 std::scoped_lock locker {_connectionsLocker};
                 _connections.emplace_back(std::move(connection));
             };
@@ -435,8 +404,8 @@ namespace
     private:
         ptr<ServerNetworkSettings> _settings;
         SecureChannelIdentity _identity;
-        std::mutex _connectionsLocker;
-        vector<unique_ptr<ServerConnection>> _connections;
+        std::mutex _connectionsLocker {};
+        vector<unique_ptr<ServerConnection>> _connections {};
     };
 
     enum class ChannelTestTransport : uint8_t
@@ -447,9 +416,9 @@ namespace
 
     auto StartChannelTestServer(ChannelTestTransport transport, GlobalSettings& settings, ChannelTestServer& test_server, uint16_t& port) -> unique_ptr<NetworkServer>
     {
-        string startup_error;
+        string startup_error {};
 
-        for (int32_t attempt = 0; attempt != 64; ++attempt) {
+        for (int32_t attempt {0}; attempt != 64; ++attempt) {
             port = TestChannelPort.fetch_add(1);
             BakerTests::OverrideSetting(settings.Network.ServerPort, port);
 
@@ -475,13 +444,13 @@ namespace
     // Reads every message the client sent so far; the answer to its handshake makes the connect succeed
     void ServeClientMessages(ServerConnection& connection, vector<NetMessage>& received)
     {
-        bool answer_handshake = false;
+        bool answer_handshake {false};
 
         {
-            auto in_buf = connection.ReadBuf();
+            ServerConnection::InBufAccessor in_buf {make_ptr(&connection)};
 
             while (in_buf->NeedProcess()) {
-                NetMessage msg = in_buf->ReadMsg();
+                NetMessage msg {in_buf->ReadMsg()};
                 received.emplace_back(msg);
 
                 if (msg == NetMessage::Handshake) {
@@ -504,7 +473,7 @@ namespace
         }
 
         if (answer_handshake) {
-            auto out_buf = connection.WriteMsg(NetMessage::HandshakeAnswer);
+            ServerConnection::OutBufAccessor out_buf {make_ptr(&connection), NetMessage::HandshakeAnswer};
             out_buf->Write(false);
             out_buf->Write(false);
             out_buf->Write(false);
@@ -516,36 +485,36 @@ namespace
     {
         REQUIRE(net_sockets::startup());
 
-        auto server_settings = MakeTestSettings();
-        auto client_settings = MakeTestSettings();
+        auto server_settings {MakeTestSettings()};
+        auto client_settings {MakeTestSettings()};
         ChannelTestServer test_server {server_settings};
-        uint16_t port = 0;
-        unique_ptr<NetworkServer> server = StartChannelTestServer(transport, server_settings, test_server, port);
+        uint16_t port {0};
+        unique_ptr<NetworkServer> server {StartChannelTestServer(transport, server_settings, test_server, port)};
 
         // Connections hold asio objects, so they go before the io context they reference
-        auto shutdown_server = scope_exit([&]() noexcept {
+        auto shutdown_server {scope_exit([&]() noexcept {
             safe_call([&] { test_server.Clear(); });
             safe_call([&server] { server->Shutdown(); });
-        });
+        })};
 
-        crypto::key_bytes pinned_key = pin_server_key ? test_server.GetIdentity().GetPublicKey() : crypto::derive_public_key(crypto::generate_secret_key());
+        crypto::key_bytes pinned_key {pin_server_key ? test_server.GetIdentity().GetPublicKey() : crypto::derive_public_key(crypto::generate_secret_key())};
         BakerTests::OverrideSetting(client_settings.ClientNetwork.ServerHost, string {"127.0.0.1"});
         BakerTests::OverrideSetting(client_settings.Network.ServerPort, port);
         BakerTests::OverrideSetting(client_settings.ClientNetwork.UseUdp, transport == ChannelTestTransport::Udp);
         BakerTests::OverrideSetting(client_settings.ClientNetwork.ChannelServerKeys, vector<string> {crypto::format_key(pinned_key)});
 
-        optional<ClientConnection::ConnectResult> connect_result;
-        ClientConnection client {&client_settings};
+        optional<ClientConnection::ConnectResult> connect_result {};
+        ClientConnection client {&client_settings, ClientConnection::ResourceMode::Platform};
         client.SetConnectHandler([&](ClientConnection::ConnectResult result) { connect_result = result; });
         client.Connect();
 
-        vector<NetMessage> server_received;
-        bool server_pinged = false;
+        vector<NetMessage> server_received {};
+        bool server_pinged {false};
 
-        for (int32_t i = 0; i < 1000; i++) {
+        for (int32_t i {0}; i < 1000; i++) {
             client.Process();
 
-            if (auto connection = test_server.GetConnection()) {
+            if (auto connection {test_server.GetConnection()}) {
                 // What ServerEngine::ProcessConnection does with a latched rejection
                 if (connection->IsInputRejected() && !connection->IsHardDisconnected()) {
                     connection->HardDisconnect(DisconnectReason::ProtocolError);
@@ -554,14 +523,14 @@ namespace
                 ServeClientMessages(*connection, server_received);
 
                 if (connect_result == ClientConnection::ConnectResult::Success && !server_pinged) {
-                    auto out_buf = connection->WriteMsg(NetMessage::Ping);
+                    ServerConnection::OutBufAccessor out_buf {connection, NetMessage::Ping};
                     out_buf->Write(false);
                     out_buf->Write(nanotime::now().milliseconds());
                     server_pinged = true;
                 }
             }
 
-            bool pong_received = std::ranges::count(server_received, NetMessage::Ping) >= 2;
+            bool pong_received {std::ranges::count(server_received, NetMessage::Ping) >= 2};
 
             if ((connect_result.has_value() && connect_result != ClientConnection::ConnectResult::Success) || pong_received) {
                 break;
@@ -570,7 +539,7 @@ namespace
             coarse_sleep(std::chrono::milliseconds {5});
         }
 
-        auto connection = test_server.GetConnection();
+        auto connection {test_server.GetConnection()};
         REQUIRE(connection);
 
         if (pin_server_key) {
@@ -619,26 +588,26 @@ TEST_CASE("SecureChannelClientWithoutPinsNeverConnects")
 {
     REQUIRE(net_sockets::startup());
 
-    auto server_settings = MakeTestSettings();
-    auto client_settings = MakeTestSettings();
+    auto server_settings {MakeTestSettings()};
+    auto client_settings {MakeTestSettings()};
     ChannelTestServer test_server {server_settings};
-    uint16_t port = 0;
-    unique_ptr<NetworkServer> server = StartChannelTestServer(ChannelTestTransport::Udp, server_settings, test_server, port);
-    auto shutdown_server = scope_exit([&]() noexcept {
+    uint16_t port {0};
+    unique_ptr<NetworkServer> server {StartChannelTestServer(ChannelTestTransport::Udp, server_settings, test_server, port)};
+    auto shutdown_server {scope_exit([&]() noexcept {
         safe_call([&] { test_server.Clear(); });
         safe_call([&server] { server->Shutdown(); });
-    });
+    })};
 
     BakerTests::OverrideSetting(client_settings.ClientNetwork.ServerHost, string {"127.0.0.1"});
     BakerTests::OverrideSetting(client_settings.Network.ServerPort, port);
     BakerTests::OverrideSetting(client_settings.ClientNetwork.UseUdp, true);
 
-    optional<ClientConnection::ConnectResult> connect_result;
-    ClientConnection client {&client_settings};
+    optional<ClientConnection::ConnectResult> connect_result {};
+    ClientConnection client {&client_settings, ClientConnection::ResourceMode::Platform};
     client.SetConnectHandler([&](ClientConnection::ConnectResult result) { connect_result = result; });
     client.Connect();
 
-    for (int32_t i = 0; i < 1000 && !connect_result.has_value(); i++) {
+    for (int32_t i {0}; i < 1000 && !connect_result.has_value(); i++) {
         client.Process();
         coarse_sleep(std::chrono::milliseconds {5});
     }
@@ -667,18 +636,99 @@ namespace
     };
 }
 
-TEST_CASE("SecureChannelServerSendsNothingInTheClear")
+TEST_CASE("ServerOutgoingMessageFailurePreservesCompletedFrames")
 {
-    auto settings = MakeTestSettings();
+    auto settings {MakeTestSettings()};
     BakerTests::OverrideSetting(settings.Network.DisableZlibCompression, true);
 
     SecureChannelIdentity identity {crypto::generate_secret_key()};
-    auto net_connection = safe_alloc::make_shared<ProbeConnection>(&settings);
-    auto connection = safe_alloc::make_unique<ServerConnection>(&settings, net_connection, identity);
+    auto transport {safe_alloc::make_shared<ProbeConnection>(&settings)};
+    auto connection {safe_alloc::make_unique<ServerConnection>(&settings, transport, identity)};
+    timespan elapsed {};
+    timespan whole_time {std::chrono::milliseconds {1000}};
+
+    SECTION("ElapsedTimeConversionFailsAfterTheWholeTimeWasWritten")
+    {
+        elapsed = timespan {std::chrono::milliseconds {2147483648LL}};
+    }
+
+    SECTION("WholeTimeConversionFailsAfterTheMessagePrefixWasWritten")
+    {
+        whole_time = timespan {std::chrono::milliseconds {2147483648LL}};
+    }
+
+    auto moving {safe_alloc::make_refcounted<MovingContext>(msize {40, 40}, uint16_t {100}, vector<mdir> {hdir::East}, vector<uint16_t> {1}, nanotime {}, elapsed, mpos {20, 20}, ipos16 {}, ipos16 {}, whole_time)};
+    REQUIRE_NOTHROW(moving->ValidateRuntimeState());
+
+    {
+        auto output {connection->WriteMsg(NetMessage::Ping)};
+        output->Write(false);
+        output->Write(int64_t {111});
+    }
+
+    vector<uint8_t> completed {};
+
+    {
+        auto output {connection->WriteBuf()};
+        auto data {output->GetData()};
+        completed.assign(data.begin(), data.end());
+    }
+
+    auto write_failed_movement {[&]() {
+        auto output {connection->WriteMsg(NetMessage::CritterMove)};
+        output->Write(ident_t {42});
+        output->Write(iround<int32_t>(std::ceil(moving->GetWholeTime().to_ms<float64_t>())));
+        output->Write(iround<int32_t>(moving->GetRuntimeElapsedTime(nanotime {}).to_ms<float64_t>()));
+    }};
+
+    CHECK_THROWS_AS(write_failed_movement(), OverflowException);
+
+    {
+        auto output {connection->WriteBuf()};
+        CHECK_FALSE(output->IsMsgStarted());
+        CHECK(std::ranges::equal(output->GetData(), completed));
+    }
+
+    REQUIRE_NOTHROW([&]() {
+        auto output {connection->WriteMsg(NetMessage::Ping)};
+        output->Write(true);
+        output->Write(int64_t {222});
+    }());
+
+    SecureChannel client {vector<crypto::key_bytes> {identity.GetPublicKey()}};
+    vector<uint8_t> offer {};
+    client.TakeHandshakeOutput(offer);
+    transport->Receive(offer);
+
+    vector<uint8_t> plaintext {};
+    client.Receive(transport->SendCallback(), plaintext);
+    REQUIRE(client.IsEstablished());
+
+    NetInBuffer input {64};
+    input.AddData(plaintext);
+    REQUIRE(input.NeedProcess());
+    CHECK(input.ReadMsg() == NetMessage::Ping);
+    CHECK_FALSE(input.Read<bool>());
+    CHECK(input.Read<int64_t>() == 111);
+    REQUIRE(input.NeedProcess());
+    CHECK(input.ReadMsg() == NetMessage::Ping);
+    CHECK(input.Read<bool>());
+    CHECK(input.Read<int64_t>() == 222);
+    CHECK_FALSE(input.NeedProcess());
+}
+
+TEST_CASE("SecureChannelServerSendsNothingInTheClear")
+{
+    auto settings {MakeTestSettings()};
+    BakerTests::OverrideSetting(settings.Network.DisableZlibCompression, true);
+
+    SecureChannelIdentity identity {crypto::generate_secret_key()};
+    auto net_connection {safe_alloc::make_shared<ProbeConnection>(&settings)};
+    auto connection {safe_alloc::make_unique<ServerConnection>(&settings, net_connection, identity)};
 
     // Written before the client's channel stands, so it has to wait instead of leaving unsealed
     {
-        auto out_buf = connection->WriteMsg(NetMessage::Ping);
+        ServerConnection::OutBufAccessor out_buf {connection, NetMessage::Ping};
         out_buf->Write(false);
         out_buf->Write(int64_t {1234});
     }
@@ -687,16 +737,16 @@ TEST_CASE("SecureChannelServerSendsNothingInTheClear")
 
     vector<crypto::key_bytes> server_keys {identity.GetPublicKey()};
     SecureChannel client {server_keys};
-    vector<uint8_t> offer;
+    vector<uint8_t> offer {};
     client.TakeHandshakeOutput(offer);
     net_connection->Receive(offer);
 
-    vector<uint8_t> wire = net_connection->SendCallback();
-    uint32_t signature = NetBuffer::NETMSG_SIGNATURE;
+    vector<uint8_t> wire {net_connection->SendCallback()};
+    uint32_t signature {NetBuffer::NETMSG_SIGNATURE};
 
     CHECK_FALSE(ContainsSequence(wire, make_const_span(&signature, sizeof(signature))));
 
-    vector<uint8_t> plaintext;
+    vector<uint8_t> plaintext {};
     client.Receive(wire, plaintext);
 
     REQUIRE(client.IsEstablished());
@@ -712,26 +762,26 @@ TEST_CASE("SecureChannelServerSendsNothingInTheClear")
 
 TEST_CASE("ServerRpcQueueDeadlineSurvivesLaterArrivalCoalescing", "[rpc-runtime]")
 {
-    auto settings = MakeTestSettings();
+    auto settings {MakeTestSettings()};
     BakerTests::OverrideSetting(settings.Network.DisableZlibCompression, true);
     BakerTests::OverrideSetting(settings.ServerNetwork.RemoteCallWarningTimeMs, 1000);
     BakerTests::OverrideSetting(settings.ServerNetwork.RemoteCallDisconnectTimeMs, 0);
     SecureChannelIdentity identity {crypto::generate_secret_key()};
-    auto transport = safe_alloc::make_shared<ProbeConnection>(&settings);
-    auto connection = safe_alloc::make_unique<ServerConnection>(&settings, transport, identity);
+    auto transport {safe_alloc::make_shared<ProbeConnection>(&settings)};
+    auto connection {safe_alloc::make_unique<ServerConnection>(&settings, transport, identity)};
     SecureChannel client {vector<crypto::key_bytes> {identity.GetPublicKey()}};
-    vector<uint8_t> offer;
+    vector<uint8_t> offer {};
     client.TakeHandshakeOutput(offer);
     transport->Receive(offer);
-    vector<uint8_t> plaintext;
+    vector<uint8_t> plaintext {};
     client.Receive(transport->SendCallback(), plaintext);
     REQUIRE(client.IsEstablished());
 
-    auto send = [&](const_span<uint8_t> data) {
-        vector<uint8_t> sealed;
+    auto send {[&](const_span<uint8_t> data) {
+        vector<uint8_t> sealed {};
         client.Seal(data, sealed);
         transport->Receive(sealed);
-    };
+    }};
     NetOutBuffer frame {32};
     frame.StartMsg(NetMessage::Ping);
     frame.Write(false);
@@ -741,21 +791,21 @@ TEST_CASE("ServerRpcQueueDeadlineSurvivesLaterArrivalCoalescing", "[rpc-runtime]
     send(frame.GetData());
 
     {
-        auto input = connection->ReadBuf();
+        ServerConnection::InBufAccessor input {connection};
         REQUIRE(input->ReadMsg() == NetMessage::Ping);
     }
 
-    nanotime before_later = nanotime::now();
+    nanotime before_later {nanotime::now()};
     coarse_sleep(std::chrono::milliseconds {5});
 
-    for (size_t i = 0; i < 4098; i++) {
+    for (size_t i {0}; i < 4098; i++) {
         send(frame.GetData());
     }
 
     REQUIRE(connection->GetDiagnostics().InputArrivalSegments == 4096);
 
     {
-        auto input = connection->ReadBuf();
+        ServerConnection::InBufAccessor input {connection};
         CHECK_FALSE(input->Read<bool>());
         CHECK(input->Read<int64_t>() == 123);
         input->ShrinkReadBuf();
@@ -773,11 +823,11 @@ namespace
 
     // The protocol before the secure channel is frozen in shipped clients, so these helpers spell it out byte by byte
     // instead of borrowing NetBuffer, which is free to change
-    constexpr uint32_t PRE_CHANNEL_SIGNATURE = 0x011E9422;
+    constexpr uint32_t PRE_CHANNEL_SIGNATURE {0x011E9422};
 
     void AppendLittleEndian(vector<uint8_t>& out, uint32_t value)
     {
-        for (size_t i = 0; i < sizeof(value); i++) {
+        for (size_t i {0}; i < sizeof(value); i++) {
             out.emplace_back(numeric_cast<uint8_t>((value >> (i * 8)) & 0xFF));
         }
     }
@@ -785,12 +835,12 @@ namespace
     // What such a client sent first: its handshake message, in the clear
     auto MakePreChannelHandshake() -> vector<uint8_t>
     {
-        vector<uint8_t> body;
+        vector<uint8_t> body {};
 
-        auto append_string = [&body](string_view value) {
+        auto append_string {[&body](string_view value) {
             AppendLittleEndian(body, numeric_cast<uint32_t>(value.size()));
             body.insert(body.end(), value.begin(), value.end());
-        };
+        }};
 
         body.emplace_back(uint8_t {1}); // NetMessage::Handshake
         append_string("4fdb3c2a6d929a23");
@@ -799,7 +849,7 @@ namespace
         append_string("Windows-win64");
         AppendLittleEndian(body, 0x5A3C1E77);
 
-        vector<uint8_t> message;
+        vector<uint8_t> message {};
         AppendLittleEndian(message, PRE_CHANNEL_SIGNATURE);
         AppendLittleEndian(message, numeric_cast<uint32_t>(sizeof(uint32_t) * 2 + body.size()));
         message.insert(message.end(), body.begin(), body.end());
@@ -818,47 +868,48 @@ namespace
     // that must be consumed exactly
     auto ReadPreChannelAnswer(const_span<uint8_t> wire, bool compressed) -> PreChannelAnswer
     {
-        vector<uint8_t> message;
+        vector<uint8_t> message {};
 
         if (compressed) {
-            stream_decompressor decompressor;
+            stream_decompressor decompressor {};
             decompressor.decompress(wire, message);
         }
         else {
             message.assign(wire.begin(), wire.end());
         }
 
-        size_t pos = 0;
+        size_t pos {0};
 
-        auto read_u32 = [&]() -> uint32_t {
+        auto read_u32 {[&]() -> uint32_t {
             REQUIRE(pos + sizeof(uint32_t) <= message.size());
-            uint32_t value = 0;
+            uint32_t value {0};
 
-            for (size_t i = 0; i < sizeof(uint32_t); i++) {
+            for (size_t i {0}; i < sizeof(uint32_t); i++) {
                 value |= numeric_cast<uint32_t>(message[pos + i]) << (i * 8);
             }
 
             pos += sizeof(uint32_t);
             return value;
-        };
-        auto read_bool = [&]() -> bool {
+        }};
+
+        auto read_bool {[&]() -> bool {
             REQUIRE(pos < message.size());
-            uint8_t value = message[pos++];
+            uint8_t value {message[pos++]};
             REQUIRE(value <= 1);
             return value != 0;
-        };
+        }};
 
         CHECK(read_u32() == PRE_CHANNEL_SIGNATURE);
         CHECK(read_u32() == message.size());
         REQUIRE(pos < message.size());
         CHECK(message[pos++] == 3); // NetMessage::HandshakeAnswer
 
-        PreChannelAnswer answer;
+        PreChannelAnswer answer {};
         answer.CompatibilityOutdated = read_bool();
         answer.UpdaterOutdated = read_bool();
         answer.MetadataOutdated = read_bool();
 
-        uint32_t version_size = read_u32();
+        uint32_t version_size {read_u32()};
         REQUIRE(pos + version_size <= message.size());
         answer.MetadataVersion.assign(reinterpret_cast<const char*>(message.data() + pos), version_size);
         pos += version_size;
@@ -871,21 +922,21 @@ namespace
 
 TEST_CASE("SecureChannelServerTellsAClientFromBeforeTheChannelToUpdate")
 {
-    bool compressed = GENERATE(true, false);
+    bool compressed {GENERATE(true, false)};
     CAPTURE(compressed);
 
-    auto settings = MakeTestSettings();
+    auto settings {MakeTestSettings()};
     BakerTests::OverrideSetting(settings.Network.DisableZlibCompression, !compressed);
 
     SecureChannelIdentity identity {crypto::generate_secret_key()};
-    auto net_connection = safe_alloc::make_shared<ProbeConnection>(&settings);
-    auto connection = safe_alloc::make_unique<ServerConnection>(&settings, net_connection, identity);
-    vector<uint8_t> handshake = MakePreChannelHandshake();
+    auto net_connection {safe_alloc::make_shared<ProbeConnection>(&settings)};
+    auto connection {safe_alloc::make_unique<ServerConnection>(&settings, net_connection, identity)};
+    vector<uint8_t> handshake {MakePreChannelHandshake()};
 
     net_connection->Receive(handshake);
 
     // The updater of such a client checks this flag first, then shows its install-the-latest-client message
-    PreChannelAnswer answer = ReadPreChannelAnswer(net_connection->SendCallback(), compressed);
+    PreChannelAnswer answer {ReadPreChannelAnswer(net_connection->SendCallback(), compressed)};
 
     CHECK(answer.UpdaterOutdated);
     CHECK(answer.CompatibilityOutdated);
@@ -898,16 +949,16 @@ TEST_CASE("SecureChannelServerTellsAClientFromBeforeTheChannelToUpdate")
 
     CHECK(net_connection->SendCallback().empty());
     CHECK_FALSE(connection->IsInputRejected());
-    CHECK(connection->ReadBuf()->GetBufferedUnreadSize() == 0);
+    CHECK(ServerConnection::InBufAccessor {connection}->GetBufferedUnreadSize() == 0);
 }
 
 TEST_CASE("SecureChannelServerRejectsAStreamThatOnlyBeginsLikeAClientFromBeforeTheChannel")
 {
-    auto settings = MakeTestSettings();
+    auto settings {MakeTestSettings()};
     SecureChannelIdentity identity {crypto::generate_secret_key()};
-    auto net_connection = safe_alloc::make_shared<ProbeConnection>(&settings);
-    auto connection = safe_alloc::make_unique<ServerConnection>(&settings, net_connection, identity);
-    vector<uint8_t> handshake = MakePreChannelHandshake();
+    auto net_connection {safe_alloc::make_shared<ProbeConnection>(&settings)};
+    auto connection {safe_alloc::make_unique<ServerConnection>(&settings, net_connection, identity)};
+    vector<uint8_t> handshake {MakePreChannelHandshake()};
 
     SECTION("a signature with one byte changed")
     {
@@ -933,28 +984,28 @@ namespace
     {
         REQUIRE(net_sockets::startup());
 
-        auto server_settings = MakeTestSettings();
-        auto client_settings = MakeTestSettings();
+        auto server_settings {MakeTestSettings()};
+        auto client_settings {MakeTestSettings()};
         ChannelTestServer test_server {server_settings};
-        uint16_t port = 0;
-        unique_ptr<NetworkServer> server = StartChannelTestServer(transport, server_settings, test_server, port);
+        uint16_t port {0};
+        unique_ptr<NetworkServer> server {StartChannelTestServer(transport, server_settings, test_server, port)};
 
-        auto shutdown_server = scope_exit([&]() noexcept {
+        auto shutdown_server {scope_exit([&]() noexcept {
             safe_call([&] { test_server.Clear(); });
             safe_call([&server] { server->Shutdown(); });
-        });
+        })};
 
         BakerTests::OverrideSetting(client_settings.ClientNetwork.ServerHost, string {"127.0.0.1"});
         BakerTests::OverrideSetting(client_settings.Network.ServerPort, port);
 
-        unique_ptr<NetworkClientConnection> client = transport == ChannelTestTransport::Udp ? NetworkClientConnection::CreateUdpSocketsConnection(&client_settings) : NetworkClientConnection::CreateSocketsConnection(&client_settings);
-        vector<uint8_t> handshake = MakePreChannelHandshake();
-        size_t sent_size = 0;
-        vector<uint8_t> wire;
-        int32_t quiet_passes = 0;
+        unique_ptr<NetworkClientConnection> client {transport == ChannelTestTransport::Udp ? NetworkClientConnection::CreateUdpSocketsConnection(&client_settings) : NetworkClientConnection::CreateSocketsConnection(&client_settings)};
+        vector<uint8_t> handshake {MakePreChannelHandshake()};
+        size_t sent_size {0};
+        vector<uint8_t> wire {};
+        int32_t quiet_passes {0};
 
         // The refusal is one short write, so a few quiet passes after its first bytes mean it has all arrived
-        for (int32_t i = 0; i < 1000 && quiet_passes < 20; i++) {
+        for (int32_t i {0}; i < 1000 && quiet_passes < 20; i++) {
             if (client->IsConnecting()) {
                 (void)client->CheckStatus(true);
             }
@@ -964,7 +1015,7 @@ namespace
                 }
 
                 if (client->CheckStatus(false)) {
-                    const_span<uint8_t> data = client->ReceiveData();
+                    const_span<uint8_t> data {client->ReceiveData()};
                     wire.insert(wire.end(), data.begin(), data.end());
                     quiet_passes = 0;
                 }
@@ -979,12 +1030,12 @@ namespace
         REQUIRE(sent_size == handshake.size());
         REQUIRE_FALSE(wire.empty());
 
-        PreChannelAnswer answer = ReadPreChannelAnswer(wire, true);
+        PreChannelAnswer answer {ReadPreChannelAnswer(wire, true)};
 
         CHECK(answer.UpdaterOutdated);
         CHECK(client->IsConnected());
 
-        auto connection = test_server.GetConnection();
+        auto connection {test_server.GetConnection()};
         REQUIRE(connection);
         CHECK_FALSE(connection->IsInputRejected());
 
@@ -1009,16 +1060,16 @@ TEST_CASE("SecureChannelRunsOverWebSockets")
 {
     REQUIRE(net_sockets::startup());
 
-    auto settings = MakeTestSettings();
+    auto settings {MakeTestSettings()};
     BakerTests::OverrideSetting(settings.Network.SecuredWebSockets, false);
     BakerTests::OverrideSetting(settings.Network.DisableZlibCompression, true);
 
     ChannelTestServer test_server {settings};
-    uint16_t port = 0;
-    unique_nptr<NetworkServer> server;
-    string startup_error;
+    uint16_t port {0};
+    unique_nptr<NetworkServer> server {};
+    string startup_error {};
 
-    for (int32_t attempt = 0; attempt != 64 && !server; ++attempt) {
+    for (int32_t attempt {0}; attempt != 64 && !server; ++attempt) {
         port = TestChannelPort.fetch_add(1);
         BakerTests::OverrideSetting(settings.Network.WebSocketPort, static_cast<int32_t>(port));
 
@@ -1033,34 +1084,34 @@ TEST_CASE("SecureChannelRunsOverWebSockets")
     CAPTURE(startup_error);
     REQUIRE(server);
 
-    auto shutdown_server = scope_exit([&]() noexcept {
+    auto shutdown_server {scope_exit([&]() noexcept {
         safe_call([&] { test_server.Clear(); });
         safe_call([&server] { server->Shutdown(); });
-    });
+    })};
 
     // The browser client runs the same ClientConnection, so here the channel is driven by hand over a real WebSocket
     vector<crypto::key_bytes> server_keys {test_server.GetIdentity().GetPublicKey()};
     SecureChannel client_channel {server_keys};
-    std::mutex client_locker;
-    vector<uint8_t> client_plaintext;
+    std::mutex client_locker {};
+    vector<uint8_t> client_plaintext {};
 
-    websocketpp::client<websocketpp::config::asio_client> client;
+    websocketpp::client<websocketpp::config::asio_client> client {};
     client.clear_access_channels(websocketpp::log::alevel::all);
     client.clear_error_channels(websocketpp::log::elevel::all);
     client.init_asio();
 
     client.set_open_handler([&](const websocketpp::connection_hdl& hdl) {
         std::scoped_lock locker {client_locker};
-        vector<uint8_t> offer;
+        vector<uint8_t> offer {};
         client_channel.TakeHandshakeOutput(offer);
-        std::error_code send_error;
+        std::error_code send_error {};
         client.send(hdl, offer.data(), offer.size(), websocketpp::frame::opcode::binary, send_error);
     });
 
     client.set_message_handler([&](const websocketpp::connection_hdl& hdl, const websocketpp::client<websocketpp::config::asio_client>::message_ptr& msg) {
         std::scoped_lock locker {client_locker};
-        const std::string& payload = msg->get_payload();
-        bool was_established = client_channel.IsEstablished();
+        const std::string& payload {msg->get_payload()};
+        bool was_established {client_channel.IsEstablished()};
         client_channel.Receive(make_const_span(payload.data(), payload.size()), client_plaintext);
 
         if (!was_established && client_channel.IsEstablished()) {
@@ -1070,18 +1121,18 @@ TEST_CASE("SecureChannelRunsOverWebSockets")
             out_buf.Write(nanotime::now().milliseconds());
             out_buf.EndMsg();
 
-            vector<uint8_t> sealed;
+            vector<uint8_t> sealed {};
             client_channel.Seal(out_buf.GetData(), sealed);
-            std::error_code send_error;
+            std::error_code send_error {};
             client.send(hdl, sealed.data(), sealed.size(), websocketpp::frame::opcode::binary, send_error);
         }
     });
 
-    std::error_code connect_error;
-    auto connection = client.get_connection("ws://127.0.0.1:" + std::to_string(port), connect_error);
+    std::error_code connect_error {};
+    auto connection {client.get_connection("ws://127.0.0.1:" + std::to_string(port), connect_error)};
     REQUIRE_FALSE(connect_error);
 
-    std::error_code subprotocol_error;
+    std::error_code subprotocol_error {};
     connection->add_subprotocol("binary", subprotocol_error);
     REQUIRE_FALSE(subprotocol_error);
 
@@ -1094,20 +1145,20 @@ TEST_CASE("SecureChannelRunsOverWebSockets")
         catch (...) {
         }
     }};
-    auto stop_client = scope_exit([&client, &client_thread]() noexcept {
+    auto stop_client {scope_exit([&client, &client_thread]() noexcept {
         safe_call([&client] { client.stop(); });
         safe_call([&client_thread] {
             if (client_thread.joinable()) {
                 client_thread.join();
             }
         });
-    });
+    })};
 
-    bool ping_received = false;
+    bool ping_received {false};
 
-    for (int32_t i = 0; i < 1000 && !ping_received; i++) {
-        if (auto server_connection = test_server.GetConnection()) {
-            auto in_buf = server_connection->ReadBuf();
+    for (int32_t i {0}; i < 1000 && !ping_received; i++) {
+        if (auto server_connection {test_server.GetConnection()}) {
+            ServerConnection::InBufAccessor in_buf {server_connection};
 
             if (in_buf->NeedProcess()) {
                 REQUIRE(in_buf->ReadMsg() == NetMessage::Ping);

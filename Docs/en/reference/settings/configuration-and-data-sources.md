@@ -112,43 +112,71 @@ The secure network channel adds `ServerNetwork.ChannelSecretKey` (the required s
 - `SubConfigInfo` — named config overlays and setting maps.
 - `GlobalSettings` — combined client/server/baking/base settings with apply/save/custom-setting operations.
 
-`GlobalSettings` applies input through:
+`GlobalSettings` separates initial setup from partial overlays:
 
-- `ApplyConfigAtPath()` and `ApplyConfigFile()` for config files;
-- `ApplyCommandLine()` for runtime/build-tool overrides;
-- `ApplyInternalConfig()` for generated internal config;
-- `ApplySubConfigSection()` for named overlays;
-- `ApplyDefaultSettings()` and `ApplyAutoSettings()` for engine defaults/derived values.
+- `SetupConfigAtPath()` selects the main authored config;
+- `SetupInternalConfig()` selects the embedded Engine/bootstrap profile;
+- `SetupResourceConfig()` selects the full resource profile;
+- `SetupDefaultSettings()` selects reference engine defaults;
+- `ApplyConfigFile()` overlays only the entries/sections present, including local preferences;
+- `ApplyCommandLine()`, `ApplySubConfigSection()`, `ApplyAutoSettings(runtime_name)`,
+  `ApplyWritableRoot()`, `ApplyStartupOverrides()` and `ApplyGameSettings()` modify their respective subsets.
 
-Ordinary application startup creates non-baking `GlobalSettings` and applies
-Engine defaults before reading project input. The effective runtime order is:
-defaults, project config (or packaged internal config), selected sub-configs,
-the writable local-config cache, command-line overrides, then derived auto
-settings. A project `.fomain` therefore records deliberate authored choices;
-an omitted setting receives its declared Engine default rather than a
-zero-initialized value. An explicit zero remains an override. The
-`ApplicationSettings` test in `Source/Tests/Test_Settings.cpp` exercises the
-ordinary `LoadAppSettings()` path with isolated config and cache files, checking
-the default baseline and each override layer through the final command line.
+Select one `Setup*` on fresh zero-valued settings, then apply overlays. Every setup
+checks freshness before mutation; release checks tracked state/containers and debug
+also checks all typed engine fields. Successful setup performs no clearing or
+reference-default pass. A file/profile setup failure restores zero for retry.
+The existing completeness state also records whether setup already ran, so repeated
+defaults and mixed setups are rejected without another flag. `CopyFrom()` transfers
+that state; game-only refresh preserves native initialization while updating profile
+completeness. `HasCompleteConfig()` remains true only for embedded/resource profiles.
+An empty main config name is invalid.
 
-`ConfigBaker` (`Source/Tools/ConfigBaker.cpp`) re-derives every sub-config from
-the root. Metadata stores each game setting's configured root value and is the
-runtime baseline: `BaseEngine` applies it only when config, sub-config, local
-config, or command line did not set that name. The side-specific internal config
-therefore carries only game-setting sub-config deltas; false and empty deltas are
-written too, because they must override a non-empty metadata baseline. Built-in
-server/client settings retain the existing non-empty compact-config rules.
-`MetadataBaker` includes applied config timestamps in freshness and rejects a
-game-setting declaration that has no configured value.
+Ordinary unpackaged startup starts from zero, then applies the authored config,
+selected sub-configs, local preferences, CLI and auto settings. Reference values in
+`Settings.inc` are applied only by an explicit `SetupDefaultSettings()` call.
 
-That metadata baseline is not applied until `BaseEngine` exists. A game setting
-read by `ApplicationInitHook` or any earlier startup path must therefore travel
-in the binary config itself. `Baking.BootstrapGameSettings` lists exactly those
-exceptions: `ConfigBaker` writes each listed setting in full for every baked
-sub-config instead of reducing it to a delta. Every name must resolve to a
-declared game setting or baking fails. Keep this list narrow so the fixed
-20000-byte internal-config patch remains bootstrap data rather than a second
-copy of the metadata baseline.
+Packaged startup scans only the `Common.ResourcesPath` line in the embedded config,
+resolves its runtime substitutions and CLI override, and opens Metadata there.
+This bounded lookup neither parses nor applies other embedded settings.
+`ReadResourceConfig(const FileSystem& metadata, bool required)` reads a caller-mounted
+Metadata source, preferring `.fomain-server` over `.fomain-client` within it.
+Application initialization mounts writable client overlays only for a standalone
+client; other applications use the base Metadata pack. It also skips an incompatible
+optional client profile until the updater synchronizes resources. The reader owns
+neither mount selection nor startup compatibility policy. The updater supplies its
+client Metadata view and requires a profile.
+Missing optional resources select `SetupInternalConfig()`; a found profile selects
+`SetupResourceConfig()`. Exactly one main Setup runs on the clean object.
+Corrupt or ambiguous resource input fails. A packaged `ApplySubConfig` request is
+reported through `FO_VERIFY_AND_CONTINUE` and does not block the selected profile.
+Local preferences, the full CLI and auto settings follow; CLI and auto run once.
+CLI cache overrides select the preference cache before the final CLI Apply.
+
+`SetupResourceConfig()` initializes fresh, zero-valued settings and retains the
+raw text. Call it before writable root, preferences, CLI and auto settings. Successful initialization needs no replacement allocation, clearing or settings copy.
+Ordinary config/CLI Apply operations retain
+overlay semantics. To refresh game values, build a separate fresh candidate and
+use `ApplyGameSettings()` rather than applying another resource profile in place.
+
+`ConfigBaker` resolves every root/sub-config independently and checks author
+completeness before filtering. Resource profiles retain every nonzero
+value declared for their side. Embedded profiles retain engine settings and
+explicitly selected bootstrap game settings. Typed numeric/enum zero, false, empty strings and
+empty arrays are omitted. Strings `0`/`false`, nonempty arrays containing zero,
+small nonzero floats and unknown custom literals remain. Only known booleans are
+compacted to `1`; target-runtime directives remain literal. Profiles include the
+nonempty `Common.ResourcesPath` value. The binary reservation is 40000 bytes.
+
+Metadata Setting records contain exactly name and type. `MetadataBaker` still
+requires an authored value, accepting explicit empty values, and checks config
+freshness. `BaseEngine` never applies values from metadata. The metadata file
+version is 6; the old three-column layout requires a rebake. Early native readers
+use `HasCompleteConfig()` to distinguish omitted profile zeros from an optional
+fixture fallback. `CopyFrom()` transfers this flag, including the unset flag of
+a zero snapshot.
+`Baking.BootstrapGameSettings` selects the declared game values needed before
+resources are available; only those game values also enter the embedded profile.
 
 `GlobalSettings::Save()` still emits only settings present in `_appliedSettings`,
 which is populated from applied config keys plus the baking-mode
@@ -265,7 +293,20 @@ The snapshot for a newly mounted source is taken before that source is published
 
 `FilterFiles()` and `GetAllFiles()` continue to enumerate sources in order even when point lookup is indexed. Script module load order, prototype registration, and other consumers depend on that source-by-source order, which an unordered index does not preserve.
 
-`Common.Packaged` is a fixed auto-setting populated from the executable's packaged marker by `GlobalSettings::ApplyAutoSettings()`. After settings are loaded, runtime policy must read that snapshot (`settings.Packaged`) so copied or injected settings stay internally consistent and testable. Direct `IsPackaged()` checks are reserved for pre-settings bootstrap decisions and `FileSystem::AddPackSource()`, where the physical executable marker deliberately selects archive-versus-directory mounting; tests may also inspect that marker when choosing compatible fixtures.
+`ApplicationInit.cpp` alone owns `PACKAGED_BUILD_NAME`, its decoder and the private
+`IsPackaged()` bootstrap helper. `GlobalSettings::ApplyAutoSettings(runtime_name)`
+receives that identity explicitly, owns a copy and sets the fixed `Common.Packaged`
+flag from its nonempty value. Runtime code reads `settings.Common.Packaged` and
+`settings.GetPackagedRuntimeName()`; the identity is not an authored option or
+metadata value. Copy/startup restoration retain it; game-only refresh preserves it.
+
+C++ callers now pass the mode first to `AddPackSource(packaged, dir, pack, optional)`
+and `AddPacksSource(packaged, dir, packs)`. Pass the loaded `Common.Packaged` value;
+pre-settings resource bootstrap already has an explicit mode. True selects archives,
+false selects bake directories, independently of the host binary. A missing selected
+layout fails unless optional; it never switches to the other layout. Native directory
+fixtures pass an empty runtime name to `ApplyAutoSettings({})`. No global packaged
+accessor or host-marker skip remains outside application initialization.
 
 Packaged clients select one effective source per configured logical pack: a writable replacement `Pack.fores` when present, otherwise the installed base, paired with a writable `Pack.patch.fores` only when it binds to that exact physical base. Its complete catalog determines present and deleted paths; later configured packs retain precedence. `GetClientResources()` assembles that same view for gameplay and the updater's metadata check. The suffix after the last Embedded entry can use a disposable `Resources.foindex` cache; stale or damaged cache data falls back to authoritative pair mounts, while damaged authoritative pack data remains an error. An absolute installed or APK root puts writable replacements under `<UserWritablePath>/Resources`. See [Resource Pack Format](../../../ResourcePackFormat.md) and [Client Runtime Split and Updater](../../explanation/runtime/client-updater.md).
 
@@ -344,3 +385,58 @@ ZIP/embedded ZIP failures include the pack, entry or index and minizip status. R
 `DataSource.cpp` owns dispatch; adjacent `DataSource-Directory` and `DataSource-Embedded` pairs are mandatory, `DataSource-Dat` requires `FO_DATA_SOURCE_DAT`, `DataSource-Zip` requires `FO_DATA_SOURCE_ZIP`. Registration/includes are unconditional, guards internal. [Component selection](../../how-to/build/project-configuration.md#optional-native-components) owns roles/dependencies.
 
 Priority remains Embedded / `.fores` / `.zip` / `.bos` / `.dat`. Present disabled archives report their path/option even with `maybe_not_available=true`; only absent optional packs return empty sources. Corrupt priority packs never fall back. Embedded/APK retain bundled minizip with external ZIP OFF; `.fores` and updater patches remain baseline.
+
+## Packaged application configuration
+
+Each sub-config produces full `.fomain-client/server` and smaller `.fomain-embedded-client/server` profiles.
+Packaging `--config` selects embedded profiles for binaries and full profiles for each role's `Metadata` archive;
+server and client archives stay separate.
+
+`METADATA_PACK_NAME` in `DataSource.h` and `package.py` names Metadata. Declare
+`Bakers=Metadata Config ClientConfig`. Each archive contains one selected full
+zero-based profile and its target metadata/sidecars. `Common.ResourcesPath`
+(default `Resources`) locates the application's own packs. A Server package puts
+its client distribution in `<Common.ResourcesPath>/Client`; bootstrap never searches
+that child. Android retains the APK asset URI override through `Common.ResourcesPath`.
+Relative writable overlays follow the configured resource path; absolute install
+paths and APK URIs use `<UserWritablePath>/Resources`.
+
+### Downloaded client configuration
+
+No configuration on the first launch leaves the embedded bootstrap active; after
+synchronization a declared `Metadata` pack must contain an unambiguous configuration.
+`BaseSettings::GetResourceConfigContent` retains the applied text in memory for
+updater comparison. Unchanged text needs no extra Apply. A changed profile is
+applied once to a clean candidate, followed by the same local preferences, owned
+CLI replay and auto settings used at startup. Only changed effective Engine fields
+or resource-pack declarations require a restart. Game-only changes replace custom
+values before ClientEngine creation, remove omitted values and invalidate typed
+setting caches; native fields and their storage remain in place. Comments and
+equivalent native values alone do not require a restart.
+
+The configuration stays in its resource pack; no configuration cache is written.
+Rebuild/repackage native applications for first adoption. Qualify client download,
+persistent writes, restart and subsequent launch on every shipped platform, and
+verify the server's selected resource config before accepting its startup.
+
+The existing `AppInitFlags::StandaloneClient` enables client writable replacements
+and patches during bootstrap. Other main applications read base Metadata, matching
+their resource mount policy. This flag selects an overlay policy, not another
+resource directory or another profile Apply. Packaged embedded clients adjust only
+their cloned `Common.ResourcesPath` to the server's `Client` child before project
+startup hooks; the server snapshot remains unchanged.
+
+Baked profiles start with a comment containing the producing native compatibility
+version. During an optional standalone-client bootstrap, a different or missing
+stamp defers that profile to the embedded fallback without parsing it. This allows
+the native updater's restart to precede the matching resource synchronization.
+Current matching profiles still apply once; metadata and resource checks remain
+mandatory before starting the game. No old setting names are interpreted.
+
+The Config baker writes two profiles per role and sub-config: `.fomain-server/client` contains the full resource configuration; `.fomain-embedded-server/client` contains only Engine settings and the explicitly listed `Baking.BootstrapGameSettings`. Both carry resource-pack declarations and omit typed zeros. The packager embeds the smaller profile into executables and runtime libraries, while keeping the full selected profile in Metadata. Package-time settings are resolved from the full profile. Missing embedded profiles fail packaging; they do not fall back to embedding gameplay settings. Startup still applies exactly one selected main profile.
+
+The packager moves the main-section `Common.ResourcesPath` line to the first line of each embedded profile so bootstrap finds it immediately. Its value and all other line ordering are preserved; full resource profiles and baked source files are unchanged.
+
+Embedded game clients use the common client distribution for interthread connections, including its managed runtime pack. Their handshake requests the common update descriptor; ordinary network game clients and every updater connection retain the platform-specific descriptor. Resource hashes are checked against the selected descriptor in both cases.
+
+The targeted refusal of retired `Baking.ResourcesDir`, `Baking.CacheResources`, `Baking.PlatformBinaries`, `Baking.ClientResources` and `Baking.ServerResources` is marked `FO_TEMPORARY_COMPAT(RetiredBakingDirectorySettings, "2026-12-31")` in the implementation and its rejection tests. The dated marker tracks removal of this diagnostic and adds no runtime work or old-name aliases.

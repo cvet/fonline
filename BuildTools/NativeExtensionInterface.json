@@ -148,7 +148,7 @@
       "name": "ClientStartupSettingsHook",
       "role": "COMMON",
       "signature": "void ClientStartupSettingsHook(GlobalSettings& settings, int32_t client_index, bool embedded)",
-      "call_sites": ["Source/Applications/ClientApp.cpp", "Source/Applications/ServerApp.cpp", "Source/Applications/ServerHeadlessApp.cpp"],
+      "call_sites": ["Source/Applications/ClientApp.cpp", "Source/Applications/ClientLib.cpp", "Source/Applications/ServerApp.cpp", "Source/Applications/ServerHeadlessApp.cpp"],
       "stub_declarations": ["struct GlobalSettings;"],
       "stub_definition": "void ClientStartupSettingsHook(GlobalSettings&, int32_t, bool) { /* Stub */ }",
       "default_behavior": "No-op before standalone or embedded client startup.",

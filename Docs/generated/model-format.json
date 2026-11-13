@@ -58,7 +58,7 @@
         {
           "path": "Source/Frontend/Rendering.h",
           "anchors": [
-            "constexpr size_t MODEL_LAYERS_COUNT = FO_MODEL_LAYERS_COUNT;"
+            "constexpr size_t MODEL_LAYERS_COUNT {FO_MODEL_LAYERS_COUNT};"
           ]
         },
         {
@@ -81,7 +81,7 @@
         {
           "path": "Source/Frontend/Rendering.h",
           "anchors": [
-            "constexpr size_t MODEL_MAX_TEXTURES = FO_MODEL_MAX_TEXTURES;"
+            "constexpr size_t MODEL_MAX_TEXTURES {FO_MODEL_MAX_TEXTURES};"
           ]
         },
         {
@@ -104,7 +104,7 @@
         {
           "path": "Source/Frontend/Rendering.h",
           "anchors": [
-            "constexpr size_t MODEL_MAX_BONES = FO_MODEL_MAX_BONES;"
+            "constexpr size_t MODEL_MAX_BONES {FO_MODEL_MAX_BONES};"
           ]
         },
         {
@@ -127,7 +127,7 @@
         {
           "path": "Source/Frontend/Rendering.h",
           "anchors": [
-            "constexpr size_t MODEL_BONES_PER_VERTEX = FO_MODEL_BONES_PER_VERTEX;"
+            "constexpr size_t MODEL_BONES_PER_VERTEX {FO_MODEL_BONES_PER_VERTEX};"
           ]
         },
         {
@@ -900,7 +900,7 @@
         {
           "path": "Source/Client/ModelInformation.cpp",
           "anchors": [
-            "bool reversed = anim_entry.Name.starts_with('~')",
+            "bool reversed {anim_entry.Name.starts_with('~')}",
             "_animController->RegisterAnimation("
           ]
         }
@@ -1556,7 +1556,7 @@
         {
           "path": "Source/Common/ModelAnimationData.h",
           "anchors": [
-            "MODEL_DESCRIPTION_SCHEMA_VERSION = 5;"
+            "MODEL_DESCRIPTION_SCHEMA_VERSION {5};"
           ]
         },
         {
@@ -1569,7 +1569,7 @@
         {
           "path": "Source/Tools/ModelInfoBaker.cpp",
           "anchors": [
-            "for (const auto& [texture_name, mesh_name, texture_index] : TextureInfo)"
+            "for (const auto& [texture_name, mesh_name, texture_index] : description.TextureInfo)"
           ]
         }
       ]
@@ -1629,5 +1629,5 @@
       "experimental": 31
     }
   },
-  "contract_digest": "2c89810b05543516f373a8e6233d4620aed546a9acf01137b53cbd967446c39d"
+  "contract_digest": "339b6d4bc85951323fa16d81875bde81eab0a1dccce8cd9ca26c6a491a2bf41c"
 }

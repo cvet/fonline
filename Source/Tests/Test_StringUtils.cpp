@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Common.h"
 
@@ -46,8 +16,9 @@ struct ThrowingFormatValue
 FO_END_NAMESPACE
 
 template<>
-struct std::formatter<FO_NAMESPACE ThrowingFormatValue> : formatter<FO_NAMESPACE string_view> // NOLINT(cert-dcl58-cpp)
+class std::formatter<FO_NAMESPACE ThrowingFormatValue> : public formatter<FO_NAMESPACE string_view> // NOLINT(cert-dcl58-cpp)
 {
+public:
     // The return type has to be spelled out: the body only throws, so deduction would pick void and the
     // type would stop satisfying the formattable concept
     template<typename FormatContext>
@@ -136,13 +107,13 @@ TEST_CASE("StringUtils")
 
     SECTION("Utf8")
     {
-        constexpr string_view hello_lower = " \xD0\xBF\xD1\x80\xD0\xB8\xD0\xB2\xD0\xB5\xD1\x82   ";
-        constexpr string_view hello_mixed = " \xD0\x9F\xD1\x80\xD0\xB8\xD0\xB2\xD0\xB5\xD1\x82   ";
-        constexpr string_view hello_upper = " \xD0\x9F\xD0\xA0\xD0\x98\xD0\x92\xD0\x95\xD0\xA2   ";
-        constexpr string_view other_word = " \xD1\x82\xD1\x82\xD1\x82\xD0\xB2\xD0\xB2\xD0\xB2   ";
-        constexpr string_view three_e = "\xD0\xB5\xD0\xB5\xD0\xB5";
-        constexpr string_view upper_source = " \xD0\x9F\xD1\x80\xD0\xB8\xD0\x92\xD0\x95\xD0\xA2   ";
-        constexpr string_view upper_mixed = " \xD0\x9F\xD1\x80\xD0\xB8\xD0\x92\xD0\xB5\xD1\x82   ";
+        constexpr string_view hello_lower {" \xD0\xBF\xD1\x80\xD0\xB8\xD0\xB2\xD0\xB5\xD1\x82   "};
+        constexpr string_view hello_mixed {" \xD0\x9F\xD1\x80\xD0\xB8\xD0\xB2\xD0\xB5\xD1\x82   "};
+        constexpr string_view hello_upper {" \xD0\x9F\xD0\xA0\xD0\x98\xD0\x92\xD0\x95\xD0\xA2   "};
+        constexpr string_view other_word {" \xD1\x82\xD1\x82\xD1\x82\xD0\xB2\xD0\xB2\xD0\xB2   "};
+        constexpr string_view three_e {"\xD0\xB5\xD0\xB5\xD0\xB5"};
+        constexpr string_view upper_source {" \xD0\x9F\xD1\x80\xD0\xB8\xD0\x92\xD0\x95\xD0\xA2   "};
+        constexpr string_view upper_mixed {" \xD0\x9F\xD1\x80\xD0\xB8\xD0\x92\xD0\xB5\xD1\x82   "};
 
         CHECK(strex("").is_valid_utf8());
         CHECK_FALSE(strex(string(1, static_cast<char>(200))).is_valid_utf8());
@@ -357,14 +328,15 @@ TEST_CASE("StringUtils")
 
 TEST_CASE("StringUtilsUtf8Validation")
 {
-    auto check_valid = [](string_view text) {
+    auto check_valid {[](string_view text) {
         CHECK(strvex(text).is_valid_utf8());
         CHECK(strex(string(text.data(), text.size())).is_valid_utf8());
-    };
-    auto check_invalid = [](string_view text) {
+    }};
+
+    auto check_invalid {[](string_view text) {
         CHECK_FALSE(strvex(text).is_valid_utf8());
         CHECK_FALSE(strex(string(text.data(), text.size())).is_valid_utf8());
-    };
+    }};
 
     SECTION("AcceptsScalarBoundaries")
     {

@@ -96,6 +96,8 @@ The engine owns the reusable bridge. The embedding project owns game scripts and
 
 This boundary is also where generated nullability checks are inserted. `NativeDataProvider::CheckArgNotNull()` and `CheckReturnNotNull()` are called by codegen-generated `MethodDesc::Call` lambdas, not only by the AngelScript adapter. See [Nullability.md](../../../Nullability.md) for the full contract.
 
+The shared native script methods validate important integer arithmetic before using its result. `Game.DivRem` checks the quotient before computing or writing the remainder: zero divisors raise native `DivisionByZeroException`, and signed `min / -1` raises native `OverflowException`. `Game.RotateDirAngle` computes in 32 bits so the entire signed 16-bit step range normalizes correctly. Integer mouse deltas, sprite anchors, negative text extents, 2D critter bounds and offscreen rectangles use checked arithmetic. Offscreen rectangle checks run before consuming the active surface, so an arithmetic failure leaves it available for a subsequent valid presentation. Each backend retains its normal native-exception reporting path.
+
 ## AngelScript runtime path
 
 `InitAngelScriptScripting()` in `Source/Scripting/AngelScript/AngelScriptScripting.cpp` prepares the AngelScript runtime, creates an `AngelScriptBackend`, registers it at `ScriptSystemBackend::ANGELSCRIPT_BACKEND_INDEX`, and loads binary scripts from resources.
@@ -152,7 +154,7 @@ Entity deletion/unload clears the entity's own event callbacks and time events f
 
 Destroyed entities are rejected at the script-to-native boundary too. `NativeDataCaller::ConvertArg` validates access first and then rejects a destroyed entity for every ordinary `///@ ExportMethod`. On the server, an uncovered destroyed handle therefore reports the actionable missing-cover fault; a still-covered handle that the caller destroyed and reused reports the destroyed-argument fault. The client has no cover validation and sees only the latter.
 
-The sole opt-out is `///@ ExportMethod ... AllowDestroyedEntityArgs`, emitted as a compile-time call-policy flag. It exists for explicit synchronization primitives such as `Game.Sync`: a concurrent destroy can always happen between a script liveness check and the synchronization call, and these wrappers must return `false` rather than fail at argument conversion. Do not apply the flag to ordinary exports. `ServerEngineDestroyedEntityArgumentReportsMissingCoverFirst` and `SyncAcceptsDestroyedEntity` pin the two contracts.
+The sole opt-out is `///@ ExportMethod ... AllowDestroyedEntityArgs`, emitted as a compile-time call-policy flag. It exists for explicit synchronization primitives such as `Game.Sync`: a concurrent destroy can always happen between a script liveness check and the synchronization call, and these wrappers must return `false` rather than fail at argument conversion. The read-only coverage probe `Game.IsEntityLocked` is the one non-primitive export that carries the flag: it reports whether a retained destroyed handle is still covered, including a destroyer's held cover, so the managed `Sync.IsUnavailable` check can observe a raced destroy; it acquires no cover and changes no validation of other calls. Do not apply the flag to ordinary exports. `ServerEngineDestroyedEntityArgumentReportsMissingCoverFirst` and `SyncAcceptsDestroyedEntity` pin these contracts; the latter also checks the probe on a destroyed handle.
 
 ## Attributes, declarations, and metadata
 

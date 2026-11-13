@@ -20,8 +20,8 @@ Engine owns coordinate types, path algorithms, interpolation and file loading. P
 
 `Source/Common/Geometry.h` exports these runtime/API/script value types:
 
-- `mpos` — map hex/tile position stored as `int16 x` + `int16 y`.
-- `msize` — map dimensions stored as `int16 width` + `int16 height`.
+- `mpos` — map hex/tile position stored as `mcoord x` + `mcoord y`.
+- `msize` — map dimensions stored as `mcoord width` + `mcoord height`.
 - `hdir` — discrete hex/tile direction.
 - `mdir` — movement direction angle; convertible to/from hex direction.
 
@@ -31,6 +31,18 @@ Engine owns coordinate types, path algorithms, interpolation and file loading. P
 - `from_raw_pos()` asserts that raw coordinates are already in bounds.
 
 Public map API substitutions with `ipos`/`isize` require generated metadata and script-layout checks.
+
+### Coordinate width and map size limit
+
+`mcoord` (`mcoord_t` in native code) is `int16` by default and `int32` when the embedding project enables the `FO_MAP_WIDE_COORDS` CMake option. Codegen resolves the `mcoord` layout field type from that option, so native structs, AngelScript fields (`int16`/`int32`), Managed C# fields (`short`/`int`), network messages and baked property data follow it. The resolved layout is part of `FO_COMPATIBILITY_VERSION`, so a client and server built with different widths refuse to connect. Database documents and text maps store coordinates as numbers, so switching the width needs a rebake but no data migration while every stored value fits the target width.
+
+Wide coordinates add four bytes to each position in network messages and baked property data. Per-hex grids do not grow: their cells hold no positions.
+
+Managed `mpos` and `msize` constructors take `int` at either width and narrow 16-bit fields with an overflow check. Script code that constructs positions with `new mpos(x, y)` and reads fields into `int` compiles for both widths; code that stores a field in `short` builds only with 16-bit coordinates.
+
+`FO_MAP_MAX_SIZE` (default `4000`) bounds map width and height. It must be at least the Mapper default size `200` and at most `32767`, the `int16` coordinate range, or `GameSettings::MAP_SIZE_LIMIT` (`4194304`) with wide coordinates: the client sprite draw-order key stores a cell X in 22 bits and a screen row, at most twice a side, in 24 bits. Configure rejects other values, and static assertions repeat the bounds. Map area and every array index derived from coordinates are computed in 64 bits and converted to `size_t` with an overflow check, so on a 32-bit target coordinates that `size_t` cannot index raise `OverflowException` instead of wrapping; a static assertion keeps pixel positions within half of the `int32` range for the configured hex size. The server and client reject a map whose `Size` exceeds the limit on load, and the Mapper clamps resizing to it. Client hex lighting lives in the chunked field grid, and a path search indexes its 16x16 search blocks only within the window its length limit allows around the start (`MaxLength`, plus the multihex footprint and the goal ring), so neither grows with map area. The enclosure probe, which floods from the target, tracks the few hexes it visits outside that window separately. Render positions are `float32`, so far from the map origin (past about 2^23 pixels) they lose sub-pixel precision.
+
+`MapView::Resize` checks that the requested area fits `size_t` before changing the map or removing items. A static two-dimensional grid also checks the new area before moving cells and publishes its new dimensions only with the replacement storage. An area-overflow rejection preserves the previous dimensions and cells.
 
 ### Sub-hex offset convention
 
@@ -109,6 +121,24 @@ Important `FindPathInput` fields:
 - `EnclosureProbeLimit` — reverse-flood budget; `0` disables it. `MapManager`/`MapView` use `Geometry.PathFindEnclosureProbe` (default `1024`).
 
 `FindPathOutput` returns a result, direction steps, control steps, the (possibly cut-adjusted) `NewToHex`, and `EndHexOffset` (concrete `ipos16`, zero when FreeMovement is off).
+
+Client `Map.GetPath(critter, target, cut)` and `GetPathLength` use the same
+native search at every distance. `cut` measures the center's distance to the
+target; `Multihex` checks the moving body's clearance and does not add a stopping
+radius. With cut zero, a nearby reachable target still requires every step to
+its center. The same hex and a blocked target both have length zero; the path
+and its reported length agree. `Test_ClientMapPaths.cpp` exercises these script
+exports with a real client map and multihex critter.
+
+For non-adjacent hexes, the client `Map.GetPath(fromHex, toHex, cut, gagCallback)`
+overload applies `cut` and the gag predicate in one native search. A permitted gag
+may be crossed even when the ordinary physical route is blocked; a refused gag
+or a solid non-gag blocker still prevents that route. Cut zero reaches the exact
+target, a positive cut stops within the requested distance, and a start already
+within that distance needs no movement. Negative cut follows native zero-cut
+normalization. The existing adjacent-hex shortcut is unchanged. The native client
+map tests exercise the exported callback, real script-function argument/return
+conversion and a complete wall barrier, separately from core path-finding tests.
 
 `MapManager::FindPathToAny()` builds an indexed target set and supplies it through `CheckTarget`,
 so a server caller can find the nearest reachable exact target with one search instead of launching a
@@ -251,16 +281,31 @@ The mechanics:
 - `Map::RemovedStaticItemIds` (`Common Mutable PublicSync Persistent`) is the stored list. It is the whole contract: persistence, client sync, and script visibility all follow from the property.
 - `Map` derives three caches from it in `RefreshRemovedStaticItems()` → `RebuildStaticOverlay()`: the removed-id set, a `vector` of the surviving static items, and a `StaticMap::Field` override for each hex a removed item covered. All three stay empty while the map keeps every baked item, so an untouched map reads the shared grid with no extra indirection.
 - `Map::VerifyStaticItemRemovalsOnlyGrow()` is the append-only guard, reached through the `ServerEngine::OnSetMapRemovedStaticItems` setter. It mutates nothing and only throws, so a refused write leaves the map exactly as it was.
-- `Map::GetStaticField()` returns the override when one exists and the shared cell otherwise. Every static query (`GetStaticItem`, `GetStaticItemOnHex`, `GetStaticItems`, `GetStaticItemsOnHex`, `GetStaticItemsInRadius`, `GetTriggerStaticItemsOnHex`, `IsTriggerStaticItemOnHex`) and both blocking queries go through it, so a removed item is gone from movement, shooting, triggers, and lookup alike.
-- `StaticMap::ForEachItemHex()` and `StaticMap::ApplyItemToField()` are shared by the loader and by the overlay rebuild, so the two can never disagree about which hexes an item contributes to or what blocking it implies.
+- `Map::GetStaticField()` returns the override when one exists, otherwise a non-empty field of the map's [runtime static items](#runtime-map-content), otherwise the shared cell. Every static query (`GetStaticItem`, `GetStaticItemOnHex`, `GetStaticItems`, `GetStaticItemsOnHex`, `GetStaticItemsInRadius`, `GetTriggerStaticItemsOnHex`, `IsTriggerStaticItemOnHex`) and both blocking queries go through it, so a removed item is gone from movement, shooting, triggers, and lookup alike.
+- `StaticMap::ForEachItemHex()` gives the hexes an item covers, and the private `StaticMap::ApplyItemToField()` adds an item to a field for the loader (`AddStaticItem()`), for the overlay rebuild (`BuildFieldWithout()`, `MergeFieldInto()`) and for unloading runtime static items (`RemoveStaticItems()`), so none of them can disagree about which hexes an item contributes to or what blocking it implies.
 - `StaticMap::Field::ScrollBlocked` exists for this rebuild. The loader's scroll-block pass writes `MoveBlocked` with no owning item, so an override rebuilt purely from the surviving items would silently open the map border; the rebuild seeds `MoveBlocked` from `ScrollBlocked` first.
-- Static items carry the `ident_t` their map file authored (`MapManager::LoadFromResources`), which is what `GetStaticItem()` looks up, what the client's `ItemHexView` carries, and what the removal list records.
+- Baked static items carry the `ident_t` their map file authored, read with the map's content on first use (`MapManager::ReadStaticMap()`); runtime static items carry that id plus their load's `idOffset`. That id is what `GetStaticItem()` looks up and what the client's `ItemHexView` carries; the removal list records baked ids only.
 
 `EntityManager::CallInit(Map, bool)` builds the overlay once per map — that hook covers both a freshly created map and one restored from the database. Runtime changes come through the `ServerEngine::OnPostSetMapRemovedStaticItems` property post-setter, so a script that writes the property directly gets the same rebuild as one that calls `RemoveStaticItem()`.
 
 On the client there are exactly two paths, and the map view holds no state of its own for this. `LoadStaticData()` skips an id in the removed list outright, so the item is never constructed, fielded, drawn, or indexed — the record is still walked past, because the baked entries are variable length and the reader has no index to seek with. `ClientEngine::OnSetMapRemovedStaticItems` calls `MapView::ApplyStaticItemRemovals()`, which destroys the now-removed views through the ordinary `DestroyItems()` path. There is no third path: nothing on the client ever rebuilds a static item on a loaded map.
 
+## Runtime map content
+
+A map instance can take in the content of other proto maps while it runs and give the static part back later. Projects use this to stream a large map in pieces, to compose a map from reusable parts or to place a prefab into a running map; which content goes where and when belongs to project scripts.
+
+- **Baked content on demand.** `MapManager::LoadFromResources()` only checks that every `.fomap-bin-server` has its proto map. `MapManager::GetStaticMap()` reads a proto map's baked content (`ReadStaticMap()`, on the requesting thread) when a map instance, `LoadRuntimeStaticItems`, `GenerateContent` or `Game.GetStaticItemsForProtoMap` first needs it, and caches it. The pending read is cached at once, so concurrent first requests for one map wait for a single read and share its result; a failed read is dropped and the next request reads the file again. `Game.LoadStaticMap(mapPid, asyncLoad)` and `Game.LoadStaticMaps(mapPids, asyncLoad)` read one or several maps ahead: on the calling thread when the flag is false, otherwise on worker threads (each with its own sync context), returning at once; a request for a map being read waits for its read, and `Game.IsStaticMapLoaded(mapPid)` reports a finished one. `ClearStaticMaps()` waits for background reads before the manager goes away. `Game.UnloadStaticMap(mapPid)` frees it and returns whether it is unloaded: false while it is being read or while a map instance of that proto exists, because an instance reads its proto's content through a plain pointer. A damaged map file is therefore reported on first use, not at startup.
+- **Runtime static items.** `Map.LoadRuntimeStaticItems(mapPid, destHex, idOffset)` (`MapManager::LoadRuntimeStaticItems()`) copies the source's static items into the map as its runtime static items, with `Hex` and `MultihexMesh` moved so that the source's first hex lands at `destHex`; every copy must land on the map. `Map.LoadRuntimeStaticItems(mapPid, destHex, sourceHex, sourceSize, idOffset)` copies only the items whose hex lies in that area of the source, which must lie inside the source map, and the area's first hex lands at `destHex`; the shorter form is this with the whole source map. Each copy's id is its baked id plus `idOffset`. A collision is an error that rejects the whole load before the map changes: a copy id that overflows, is zero, repeats or is already used by the map's baked or runtime static items. Choose `idOffset` per placement, outside the range of baked ids and entity ids (`Server.EntityStartId`), so the client can reproduce it. Copies keep the source's bound static and trigger scripts and live in a per-instance sparse `StaticMap` of the map's size (`Server.MapInstanceGridType`). They are not persisted: a restored map has only its baked static items, and the project loads its content again.
+- **Queries and blocking.** `Map::GetStaticField()` reads an override first, then a non-empty runtime field, then the baked field. Where baked and runtime static items share a hex, `RefreshStaticFieldOverride()` merges them into an override, so every static query, both blocking queries and triggers see both. `GetStaticItems()` returns the baked or the runtime list directly when only one is non-empty, and otherwise a joined list without removed items. `HasStaticItem()` and `GetStaticItem()` cover runtime static items, and `IsRuntimeStaticItem()` tells them apart. `RemoveStaticItem()` refuses a runtime static item, because the removal list persists baked ids only.
+- **Unloading.** `Map.UnloadRuntimeStaticItems(runtimeStaticItemIds)` accepts only ids of this map's runtime static items. `StaticMap::RemoveStaticItems()` rebuilds each covered field from the remaining items and releases fields left with no item and no scroll block.
+- **Critters and dynamic items.** `Map.GenerateContent(mapPid, destHex)` creates the source's critters, map items and the items inside them the way `GenerateMapContent()` fills a new map, with the source's first hex at `destHex`, after checking that all of them land on the map. It returns the ids of the created critters and map items; they are ordinary entities that persist with the map until the project destroys them.
+- **Clients.** The engine sends no runtime static items. A client script calls `Map.LoadRuntimeStaticItems(mapPid, destHex, idOffset)` or its area overload on its map view, which reads the same proto map's client bake (`{map}.fomap-bin-client`) and needs that proto map on the client; the client passes the server's `idOffset`, so every item gets the id the server gave it, and the same collisions reject the load. `Map.UnloadRuntimeStaticItems(runtimeStaticItemIds)` destroys those views and releases client field blocks inside the unloaded runtime static items' area that hold nothing, except blocks within one block of the current view, whose fields map sprites may reference for light.
+
+`MapLoadsAndUnloadsContentOfOtherMaps` and `ClientMapLoadsAndUnloadsStaticItemsOfOtherMaps` own the contract.
+
 ## Line tracing
+
+`LineTracer` works in `float64_t` coordinates relative to its start hex; a square-geometry trace takes each position from its step count, so rounding never accumulates along the line. Its angle-and-distance form finds the ray's end from a hex at the map origin with the start's column parity, then moves it back by whole cells. Rounding therefore depends neither on where a line lies nor on its length, and a line far out on a continent-sized map takes the same steps as near the origin.
 
 `TraceLineInput`: `StartHex` toward `TargetHex`; `MaxDist` limits length (`0`: start/target distance), `Angle` sets direction, `CheckLastMovable` requests the last movable hex, `IsHexBlocked` stops tracing, optional `IsHexMovable` records move-valid cells. `TraceLineOutput`: completion, last-movable presence, pre-block/block/last-movable hexes. Uses: movement/pathfinding, visibility, shooting.
 

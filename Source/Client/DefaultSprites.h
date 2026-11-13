@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -62,10 +32,10 @@ public:
     [[nodiscard]] auto GetAtlas() -> nptr<TextureAtlas> { return _atlas; }
     [[nodiscard]] auto GetBatchTexture() const -> nptr<const RenderTexture> override;
     [[nodiscard]] auto IsCopyable() const -> bool override { return true; }
-    [[nodiscard]] auto MakeCopy() const -> shared_ptr<Sprite> override;
     [[nodiscard]] auto GetAtlasRect() const noexcept -> frect32 { return _atlasRect; }
     [[nodiscard]] auto ResolveRegion(fpos32 uv0, fpos32 uv1, const frect32& pos) const -> optional<AtlasSpriteRegion>;
 
+    auto MakeCopy() const -> shared_ptr<Sprite> override;
     auto FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override;
     auto FillRegionData(ptr<RenderDrawBuffer> dbuf, fpos32 uv0, fpos32 uv1, const frect32& pos, ucolor color) const -> size_t;
 
@@ -95,7 +65,7 @@ public:
     [[nodiscard]] auto IsHitTest(ipos32 pos) const -> bool override;
     [[nodiscard]] auto GetBatchTexture() const -> nptr<const RenderTexture> override;
     [[nodiscard]] auto IsCopyable() const -> bool override { return true; }
-    [[nodiscard]] auto MakeCopy() const -> shared_ptr<Sprite> override;
+
     [[nodiscard]] auto GetCurrentSprite() const -> ptr<const Sprite>;
     [[nodiscard]] auto GetCurrentSprite() -> ptr<Sprite>;
     [[nodiscard]] auto GetSprite(int32_t num_frm) const -> ptr<const Sprite>;
@@ -103,7 +73,7 @@ public:
     [[nodiscard]] auto GetDirection(mdir dir) const -> nptr<const SpriteSheet>;
     [[nodiscard]] auto GetDirection(mdir dir) -> nptr<SpriteSheet>;
     [[nodiscard]] auto IsPlaying() const -> bool override { return _playing; }
-    [[nodiscard]] auto GetTime() const -> float32_t override;
+    [[nodiscard]] auto GetPhase() const -> float32_t override;
     [[nodiscard]] auto GetDuration() const noexcept -> timespan { return GetCurrentDirection()->_duration; }
     [[nodiscard]] auto GetFramesCount() const noexcept -> int32_t { return GetCurrentDirection()->_framesCount; }
     [[nodiscard]] auto GetStateAnimation() const noexcept -> CritterStateAnim { return _stateAnim; }
@@ -114,10 +84,11 @@ public:
     [[nodiscard]] auto GetFrameDurations() const noexcept -> const_span<timespan> { return GetCurrentDirection()->_frameDurations; }
     [[nodiscard]] auto GetFrameIndexAtPhase(float64_t phase, bool reversed = false) const -> int32_t;
 
+    auto MakeCopy() const -> shared_ptr<Sprite> override;
     auto FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override;
     void SetFrame(int32_t index, shared_ptr<Sprite> sprite, ipos32 offset, ipos32 motion);
     void Prewarm() override;
-    void SetTime(float32_t normalized_time) override;
+    void SetPhase(float32_t normalized_phase) override;
     void SetDirection(mdir dir) override;
     void Play(hstring anim_name, bool looped, bool reversed) override;
     void Stop() override;

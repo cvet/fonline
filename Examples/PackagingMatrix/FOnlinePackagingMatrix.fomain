@@ -7,6 +7,9 @@ Common.GameVersion = 0.1.0
 Common.AsyncLogWrite = False
 Common.NonInteractive = False
 Common.SecretSettingTokens = secret token password apikey
+Common.ResourcesPath = Resources
+Common.CachePath = Cache
+Common.PlatformBinariesPath = PlatformBinaries
 
 # AngelScript
 AngelScript.OverrunReportTime = 0
@@ -234,6 +237,7 @@ Timer.DeltaTimeCap = 100
 
 # Baking
 Baking.ForceBaking = False
+Baking.FilterResources = False
 Baking.SingleThreadBaking = False
 Baking.IgnoreMissingBakerWarning = False
 Baking.PrebakeOnStartup = True
@@ -248,10 +252,6 @@ Baking.ProtoFileExtensions = fopro fomap
 Baking.AllowRepeatedProtoParents = True
 Baking.BakeLanguages = engl
 Baking.BakeOutput = Baking
-Baking.ServerResources = ServerResources
-Baking.ClientResources = Resources
-Baking.PlatformBinaries = PlatformBinaries
-Baking.CacheResources = Cache
 Baking.ResourcePackCompressLevel = 1
 Baking.ResourcePackMinCompressGain = 5
 Baking.BundleCompressLevel = 1

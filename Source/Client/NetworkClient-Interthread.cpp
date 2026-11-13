@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Common.h"
 
@@ -75,16 +45,16 @@ NetworkClientConnection_Interthread::NetworkClientConnection_Interthread(ptr<Cli
 {
     FO_TRACE_ZONE(Network);
 
-    uint16_t port = numeric_cast<uint16_t>(_settings->Network.ServerPort);
+    uint16_t port {numeric_cast<uint16_t>(_settings->Network.ServerPort)};
 
-    optional<InterthreadListener> listener = FindInterthreadListener(port);
+    optional<InterthreadListener> listener {FindInterthreadListener(port)};
 
     if (!listener.has_value()) {
         throw NetworkClientException("Interthread listener is not available", port);
     }
 
     _interthreadState = safe_alloc::make_shared<NetworkClientInterthreadState>();
-    auto state = _interthreadState;
+    auto state {_interthreadState};
 
     _interthreadSend = (*listener)([state](const_span<uint8_t> buf) mutable FO_DEFERRED {
         if (!state->Alive.load()) {
@@ -116,7 +86,7 @@ auto NetworkClientConnection_Interthread::CheckStatusImpl(bool for_write) -> boo
 {
     FO_TRACE_ZONE(Network);
 
-    auto state = _interthreadState;
+    auto state {_interthreadState};
 
     if (state->RequestDisconnect) {
         Disconnect();
@@ -141,12 +111,12 @@ auto NetworkClientConnection_Interthread::ReceiveDataImpl(vector<uint8_t>& buf) 
 {
     FO_TRACE_ZONE(Network);
 
-    auto state = _interthreadState;
+    auto state {_interthreadState};
 
     scoped_lock locker {state->ReceivedLocker};
 
     FO_VERIFY_AND_THROW(!state->Received.empty(), "Interthread client receive was called without a pending packet", buf.size());
-    size_t recv_size = state->Received.size();
+    size_t recv_size {state->Received.size()};
 
     while (buf.size() < recv_size) {
         buf.resize(buf.size() * 2);
@@ -162,8 +132,8 @@ void NetworkClientConnection_Interthread::DisconnectImpl() noexcept
 {
     FO_TRACE_ZONE(Network);
 
-    InterthreadDataCallback interthread_send;
-    auto state = _interthreadState;
+    InterthreadDataCallback interthread_send {};
+    auto state {_interthreadState};
 
     state->Alive = false;
 

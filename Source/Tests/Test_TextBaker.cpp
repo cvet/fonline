@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Common.h"
 
@@ -46,7 +16,7 @@ TEST_CASE("TextBaker")
 
     SECTION("RejectsEmptyBakeLanguages")
     {
-        TestRig rig;
+        TestRig rig {};
         OverrideSetting(rig.Settings.Baking.BakeLanguages, vector<string> {});
 
         CHECK_THROWS_AS(TextBaker(rig.MakeContext("CorePack")), TextBakerException);
@@ -54,10 +24,10 @@ TEST_CASE("TextBaker")
 
     SECTION("IgnoresNonTextSourceFiles")
     {
-        TestRig rig;
+        TestRig rig {};
         rig.AddSourceFile("Readme.txt", "not a text pack", 7);
 
-        TextBaker baker(rig.MakeContext("CorePack"));
+        TextBaker baker {rig.MakeContext("CorePack")};
         baker.BakeFiles(rig.GetAllSourceFiles(), "");
 
         CHECK(rig.Outputs.empty());
@@ -65,10 +35,10 @@ TEST_CASE("TextBaker")
 
     SECTION("BakesTextPackToBinary")
     {
-        TestRig rig;
+        TestRig rig {};
         rig.AddSourceFile("Game.engl.fotxt", "# Test pack\n\n{1}{}{Hello wasteland}\n", 7);
 
-        TextBaker baker(rig.MakeContext("CorePack"));
+        TextBaker baker {rig.MakeContext("CorePack")};
         baker.BakeFiles(rig.GetAllSourceFiles(), "");
 
         REQUIRE(rig.Outputs.size() == 1);
@@ -78,8 +48,8 @@ TEST_CASE("TextBaker")
 
     SECTION("SetupBakersReturnsRequestedBaker")
     {
-        TestRig rig;
-        auto bakers = MakeRequestedBakers({string(TextBaker::NAME)}, rig);
+        TestRig rig {};
+        auto bakers {MakeRequestedBakers({string(TextBaker::NAME)}, rig)};
 
         REQUIRE(bakers.size() == 1);
         CHECK(bakers.front()->GetName() == TextBaker::NAME);
@@ -88,10 +58,10 @@ TEST_CASE("TextBaker")
 
     SECTION("SkipsUnsupportedTargetPath")
     {
-        TestRig rig;
+        TestRig rig {};
         rig.AddSourceFile("Game.engl.fotxt", "# Test pack\n\n{1}{}{Hello wasteland}\n", 7);
 
-        TextBaker baker(rig.MakeContext("CorePack"));
+        TextBaker baker {rig.MakeContext("CorePack")};
         baker.BakeFiles(rig.GetAllSourceFiles(), "skip.bin");
 
         CHECK(rig.Outputs.empty());
@@ -99,20 +69,20 @@ TEST_CASE("TextBaker")
 
     SECTION("ThrowsWhenDefaultLanguageMissing")
     {
-        TestRig rig;
+        TestRig rig {};
         rig.AddSourceFile("Game.russ.fotxt", "# Test pack\n\n{1}{}{Privet}\n", 7);
 
-        TextBaker baker(rig.MakeContext("CorePack"));
+        TextBaker baker {rig.MakeContext("CorePack")};
 
         CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), ""), TextBakerException);
     }
 
     SECTION("BakeCheckerCanSkipTextBake")
     {
-        TestRig rig;
+        TestRig rig {};
         rig.AddSourceFile("Game.engl.fotxt", "# Test pack\n\n{1}{}{Hello wasteland}\n", 7);
 
-        TextBaker baker(rig.MakeContext("CorePack", [](string_view, uint64_t) { return false; }));
+        TextBaker baker {rig.MakeContext("CorePack", [](string_view, uint64_t) { return false; })};
         baker.BakeFiles(rig.GetAllSourceFiles(), "");
 
         CHECK(rig.Outputs.empty());
@@ -120,17 +90,17 @@ TEST_CASE("TextBaker")
 
     SECTION("BakeCheckerCompletesChangedPackLanguages")
     {
-        TestRig rig;
+        TestRig rig {};
         OverrideSetting(rig.Settings.Baking.BakeLanguages, vector<string> {"engl", "russ"});
         rig.AddSourceFile("Readme.txt", "not a text pack", 7);
         rig.AddSourceFile("Game.engl.fotxt", "# Test pack\n\n{1}{}{Hello wasteland}\n", 7);
         rig.AddSourceFile("Game.russ.fotxt", "# Test pack\n\n{1}{}{Privet}\n", 9);
 
-        vector<pair<string, uint64_t>> checks;
-        TextBaker baker(rig.MakeContext("CorePack", [&checks](string_view path, uint64_t write_time) {
+        vector<pair<string, uint64_t>> checks {};
+        TextBaker baker {rig.MakeContext("CorePack", [&checks](string_view path, uint64_t write_time) {
             checks.emplace_back(string(path), write_time);
             return path == "CorePack.Game.engl.fotxt-bin";
-        }));
+        })};
         baker.BakeFiles(rig.GetAllSourceFiles(), "");
 
         REQUIRE(checks.size() == 2);
@@ -143,10 +113,10 @@ TEST_CASE("TextBaker")
 
     SECTION("RejectsInvalidTextPack")
     {
-        TestRig rig;
+        TestRig rig {};
         rig.AddSourceFile("Game.engl.fotxt", "{10}{}{Valid}\n{20}{Broken\n", 7);
 
-        TextBaker baker(rig.MakeContext("CorePack"));
+        TextBaker baker {rig.MakeContext("CorePack")};
         CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), ""), TextPackException);
     }
 }

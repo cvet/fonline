@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "HashedString.h"
 
@@ -52,7 +22,7 @@ auto hash_storage::check_hashed_string(string_view s) const noexcept -> bool
         return false;
     }
 
-    uint64_t hash_value = _hash_func(const_span<uint8_t> {make_ptr(s.data()).reinterpret_as<uint8_t>().get(), s.length()});
+    uint64_t hash_value {_hash_func(const_span<uint8_t> {make_ptr(s.data()).reinterpret_as<uint8_t>().get(), s.length()})};
 
     shared_lock locker {_hash_storage_locker};
 
@@ -67,17 +37,17 @@ auto hash_storage::to_hashed_string(string_view s) -> hstring
         return {};
     }
 
-    uint64_t hash_value = _hash_func(const_span<uint8_t> {make_ptr(s.data()).reinterpret_as<uint8_t>().get(), s.length()});
+    uint64_t hash_value {_hash_func(const_span<uint8_t> {make_ptr(s.data()).reinterpret_as<uint8_t>().get(), s.length()})};
     FO_VERIFY_AND_THROW(hash_value != 0, "Hashed string value is zero");
 
     {
         shared_lock locker {_hash_storage_locker};
 
-        if (auto it = _hash_storage.find(hash_value); it != _hash_storage.end()) {
+        if (auto it {_hash_storage.find(hash_value)}; it != _hash_storage.end()) {
 #if FO_DEBUG
-            bool collision_detected = s != it->second->str;
+            bool collision_detected {s != it->second->str};
 #else
-            bool collision_detected = s.length() != it->second->str.length();
+            bool collision_detected {s.length() != it->second->str.length()};
 #endif
 
             if (collision_detected) {
@@ -92,11 +62,11 @@ auto hash_storage::to_hashed_string(string_view s) -> hstring
         // Add new entry
         scoped_lock locker {_hash_storage_locker};
 
-        if (auto it = _hash_storage.find(hash_value); it != _hash_storage.end()) {
+        if (auto it {_hash_storage.find(hash_value)}; it != _hash_storage.end()) {
 #if FO_DEBUG
-            bool collision_detected = s != it->second->str;
+            bool collision_detected {s != it->second->str};
 #else
-            bool collision_detected = s.length() != it->second->str.length();
+            bool collision_detected {s.length() != it->second->str.length()};
 #endif
 
             if (collision_detected) {
@@ -106,11 +76,11 @@ auto hash_storage::to_hashed_string(string_view s) -> hstring
             return hstring(it->second.get());
         }
 
-        auto entry = safe_alloc::make_unique<hstring::entry>();
+        auto entry {safe_alloc::make_unique<hstring::entry>()};
         entry->hash = hash_value;
         entry->str = string(s);
 
-        auto [it, inserted] = _hash_storage.emplace(hash_value, std::move(entry));
+        auto [it, inserted] {_hash_storage.emplace(hash_value, std::move(entry))};
         FO_VERIFY_AND_THROW(inserted, "Hash storage insertion failed");
 
         return hstring(it->second.get());
@@ -126,7 +96,7 @@ auto hash_storage::resolve_hash(hstring::hash_t h) const -> hstring
     {
         shared_lock locker {_hash_storage_locker};
 
-        if (auto it = _hash_storage.find(h); it != _hash_storage.end()) {
+        if (auto it {_hash_storage.find(h)}; it != _hash_storage.end()) {
             return hstring(it->second.get());
         }
     }
@@ -147,7 +117,7 @@ auto hash_storage::resolve_hash(hstring::hash_t h, nptr<bool> failed) const noex
     {
         shared_lock locker {_hash_storage_locker};
 
-        if (auto it = _hash_storage.find(h); it != _hash_storage.end()) {
+        if (auto it {_hash_storage.find(h)}; it != _hash_storage.end()) {
             return hstring(it->second.get());
         }
     }

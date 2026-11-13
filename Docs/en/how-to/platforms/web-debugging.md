@@ -235,8 +235,7 @@ The later `WebRelated::InitializePersistentData` call recognizes the initialized
 mount instead of mounting twice. Its fallback remains for nonstandard integrations.
 Modified files schedule asynchronous write-back at close; node creation and
 directory changes also use Emscripten's IDBFS queue. Changes queued during an active
-synchronization schedule another pass. The initial hydration callback retains the existing continue-on-error
-policy, now with a diagnostic in the linked bootstrap.
+synchronization schedule another pass. Hydration and explicit flush errors abort the runtime. A changed configuration resource triggers an explicit flush and the main loop waits for it before applying the resource profile.
 
 Automatic write-back is not a synchronous durability acknowledgement. Closing the page before the queued operation completes can still lose the latest changes. The project must define what data belongs there, quota/eviction behavior, private/incognito behavior, schema/version migration, corruption recovery, user data deletion, and multi-tab conflict policy. Test cold reload and browser restart using the exact production origin; storage is origin-scoped. See the [Emscripten IDBFS contract](https://emscripten.org/docs/api_reference/Filesystem-API.html#idbfs).
 
@@ -314,7 +313,7 @@ The Engine build lane intentionally does not supply this browser/release evidenc
 | Configure uses the wrong compiler | BuildTools `web` platform, workspace toolchain path, `emsdk_env`, and stale build directory |
 | Link fails only for Web | strict undefined/unimplemented syscall output, unsupported native dependency, Web platform guards, and exception flags |
 | Package is absent | successful bake/build, exact dev name/config, project git revision, `FO_OUTPUT`, and `package-web-debug` log |
-| Package rejects resources | current effective config, `Baking.ClientResources`, fresh metadata, no `NoRes`, and loading-image path |
+| Package rejects resources | current effective config, `Common.ResourcesPath`, fresh metadata, no `NoRes`, and loading-image path |
 | `index.html` loads but wasm/data does not | served package directory, status/MIME, HTML fallback, proxy rewrite, compression, and cache |
 | Browser shows old code | exact origin/path, service worker or CDN added by project, entry-point cache, versioned artifact, and package hash |
 | WebGL2 context cannot start | browser/WebGL2 availability, GPU/driver/blocklist, software-rendering policy, console, and context attributes |

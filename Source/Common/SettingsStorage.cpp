@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "SettingsStorage.h"
 
@@ -57,9 +27,9 @@ public:
 
 private:
 #if FO_WINDOWS
-    string _subKey;
+    string _subKey {};
 #else
-    unique_nptr<CacheStorage> _cache;
+    unique_nptr<CacheStorage> _cache {};
 #endif
 };
 
@@ -71,11 +41,11 @@ SettingsStorageImpl::SettingsStorageImpl(string_view app_name)
 #else
     // The one place that names the product without settings, because this layer has none: tool preferences
     // follow the user rather than one game install, so they never move into a client's writable root
-    string base = platform::get_user_data_base();
+    string base {platform::get_user_data_base()};
 
     // No user data base (unusual sandbox): keep the tool running without persistence rather than write next to the binary
     if (!base.empty()) {
-        string dir = strex(base).combine_path(FO_NICE_NAME).combine_path(app_name).str();
+        string dir {strex(base).combine_path(FO_NICE_NAME).combine_path(app_name).str()};
         _cache = safe_alloc::make_unique<CacheStorage>(dir);
     }
 #endif
@@ -141,25 +111,25 @@ auto SettingsStorage::HasKey(string_view key) const -> bool
 
 auto SettingsStorage::GetString(string_view key, string_view default_value) const -> string
 {
-    auto entry = _impl->GetEntry(key);
+    auto entry {_impl->GetEntry(key)};
     return entry ? *entry : string(default_value);
 }
 
 auto SettingsStorage::GetInt(string_view key, int64_t default_value) const -> int64_t
 {
-    auto entry = _impl->GetEntry(key);
+    auto entry {_impl->GetEntry(key)};
     return entry ? strex(*entry).to_int64() : default_value;
 }
 
 auto SettingsStorage::GetBool(string_view key, bool default_value) const -> bool
 {
-    auto entry = _impl->GetEntry(key);
+    auto entry {_impl->GetEntry(key)};
     return entry ? strex(*entry).to_bool() : default_value;
 }
 
 auto SettingsStorage::GetFloat(string_view key, float64_t default_value) const -> float64_t
 {
-    auto entry = _impl->GetEntry(key);
+    auto entry {_impl->GetEntry(key)};
     return entry ? strex(*entry).to_float64() : default_value;
 }
 

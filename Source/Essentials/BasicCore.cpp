@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "BasicCore.h"
 
@@ -46,12 +16,12 @@
 
 FO_BEGIN_NAMESPACE
 
-static bool run_in_debugger = false;
-static std::once_flag run_in_debugger_once;
+static bool run_in_debugger {false};
+static std::once_flag run_in_debugger_once {};
 
 void exit_app(bool success) noexcept
 {
-    int32_t code = success ? EXIT_SUCCESS : EXIT_FAILURE;
+    int32_t code {success ? EXIT_SUCCESS : EXIT_FAILURE};
 
 #if !FO_WEB && !FO_MAC && !FO_IOS && !FO_ANDROID
     std::quick_exit(code);
@@ -76,16 +46,20 @@ auto is_run_in_debugger() noexcept -> bool
 #elif FO_LINUX
     std::call_once(run_in_debugger_once, [] {
         std::ifstream status("/proc/self/status");
+
         if (status.is_open()) {
-            std::string line;
+            std::string line {};
+
             while (std::getline(status, line)) {
                 if (line.starts_with("TracerPid:")) {
                     std::istringstream iss(line.substr("TracerPid:"_len));
-                    std::string value;
+                    std::string value {};
                     iss >> value;
+
                     if (!value.empty() && std::all_of(value.begin(), value.end(), ::isdigit)) {
                         run_in_debugger = value != "0";
                     }
+
                     break;
                 }
             }
@@ -94,9 +68,9 @@ auto is_run_in_debugger() noexcept -> bool
 
 #elif FO_MAC
     std::call_once(run_in_debugger_once, [] {
-        int32_t mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_PID, getpid()};
-        struct kinfo_proc info = {};
-        size_t size = sizeof(info);
+        int32_t mib[4] {CTL_KERN, KERN_PROC, KERN_PROC_PID, getpid()};
+        struct kinfo_proc info {};
+        size_t size {sizeof(info)};
         if (::sysctl(mib, sizeof(mib) / sizeof(*mib), &info, &size, nullptr, 0) == 0) {
             run_in_debugger = (info.kp_proc.p_flag & P_TRACED) != 0;
         }
@@ -137,9 +111,9 @@ auto break_into_debugger() noexcept -> bool
 
 auto itoa(int64_t num, char buf[64], int32_t base) noexcept -> const char*
 {
-    int32_t i = 0;
-    bool is_negative = false;
-    uint64_t unsigned_num = 0;
+    int32_t i {0};
+    bool is_negative {false};
+    uint64_t unsigned_num {0};
 
     if (num == 0) {
         buf[i++] = '0';
@@ -152,14 +126,14 @@ auto itoa(int64_t num, char buf[64], int32_t base) noexcept -> const char*
         unsigned_num = static_cast<uint64_t>(-(num + 1)) + 1;
 
         while (unsigned_num != 0) {
-            uint64_t rem = unsigned_num % static_cast<uint64_t>(base);
+            uint64_t rem {unsigned_num % static_cast<uint64_t>(base)};
             buf[i++] = static_cast<char>(rem > 9 ? rem - 10 + 'a' : rem + '0');
             unsigned_num /= static_cast<uint64_t>(base);
         }
     }
     else {
         while (num != 0) {
-            int64_t rem = num % base;
+            int64_t rem {num % base};
             buf[i++] = static_cast<char>(rem > 9 ? rem - 10 + 'a' : rem + '0');
             num = num / base;
         }
@@ -171,11 +145,11 @@ auto itoa(int64_t num, char buf[64], int32_t base) noexcept -> const char*
 
     buf[i] = '\0';
 
-    int32_t start = 0;
-    int32_t end = i - 1;
+    int32_t start {0};
+    int32_t end {i - 1};
 
     while (start < end) {
-        char ch = buf[start];
+        char ch {buf[start]};
         buf[start] = buf[end];
         buf[end] = ch;
         end--;

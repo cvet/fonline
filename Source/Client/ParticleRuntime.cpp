@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "ParticleRuntime.h"
 
@@ -53,7 +23,7 @@ auto MakeParticleBounds(const vec3& position_min, const vec3& position_max, floa
         return std::nullopt;
     }
 
-    ParticleBounds3D result;
+    ParticleBounds3D result {};
     result.PositionMin = position_min;
     result.PositionMax = position_max;
     result.BillboardRadius = billboard_radius;
@@ -64,23 +34,23 @@ auto TransformParticleBounds(const ParticleBounds3D& bounds, const mat44& matrix
 {
     // The radius follows the placement's scale but never its rotation, because a camera-facing quad keeps the
     // same screen footprint at every orientation
-    float32_t placement_scale = std::max({glm::length(vec3 {matrix[0]}), glm::length(vec3 {matrix[1]}), glm::length(vec3 {matrix[2]})});
+    float32_t placement_scale {std::max({glm::length(vec3 {matrix[0]}), glm::length(vec3 {matrix[1]}), glm::length(vec3 {matrix[2]})})};
 
     if (!std::isfinite(placement_scale) || placement_scale <= 0.0f) {
         return std::nullopt;
     }
 
-    ParticleBounds3D result;
+    ParticleBounds3D result {};
     result.BillboardRadius = bounds.BillboardRadius * placement_scale;
-    bool initialized = false;
+    bool initialized {false};
 
-    for (uint32_t corner_index = 0; corner_index < 8; corner_index++) {
+    for (uint32_t corner_index {0}; corner_index < 8; corner_index++) {
         vec3 corner {
             (corner_index & 1U) != 0 ? bounds.PositionMax.x : bounds.PositionMin.x,
             (corner_index & 2U) != 0 ? bounds.PositionMax.y : bounds.PositionMin.y,
             (corner_index & 4U) != 0 ? bounds.PositionMax.z : bounds.PositionMin.z,
         };
-        glm::vec4 transformed = matrix * glm::vec4 {corner, 1.0f};
+        glm::vec4 transformed {matrix * glm::vec4 {corner, 1.0f}};
 
         if (!std::isfinite(transformed.x) || !std::isfinite(transformed.y) || !std::isfinite(transformed.z) || !is_float_equal(transformed.w, 1.0f)) {
             return std::nullopt;
@@ -123,7 +93,7 @@ auto CreateParticleRuntimeBackends(const ParticleRuntimeServices& services) -> v
 
     ignore_unused(services);
 
-    vector<unique_ptr<ParticleRuntimeBackend>> backends;
+    vector<unique_ptr<ParticleRuntimeBackend>> backends {};
 
 #if FO_SPARK_PARTICLES
     backends.emplace_back(safe_alloc::make_unique<SparkParticleRuntimeBackend>(services));
@@ -147,31 +117,31 @@ void DrawParticleBufferWireframe(ptr<EffectManager> effect_mngr, ptr<IAppRender>
         return;
     }
 
-    nptr<RenderEffect> effect = effect_mngr->Effects.Primitive;
+    nptr<RenderEffect> effect {effect_mngr->Effects.Primitive};
     FO_VERIFY_AND_THROW(effect, "Primitive effect is unavailable for particle wireframe rendering");
 
     if (!overlay_buf) {
         overlay_buf = render->CreateDrawBuffer(false);
     }
 
-    size_t vertex_count = index_count * 2;
+    size_t vertex_count {index_count * 2};
     overlay_buf->CheckAllocBuf(vertex_count, vertex_count);
-    size_t out_index = 0;
+    size_t out_index {0};
 
-    for (size_t i = 0; i < index_count; i += 3) {
-        const vindex_t triangle_indices[3] = {
+    for (size_t i {0}; i < index_count; i += 3) {
+        const vindex_t triangle_indices[3] {
             source_buf.Indices[i],
             source_buf.Indices[i + 1],
             source_buf.Indices[i + 2],
         };
 
-        for (size_t edge = 0; edge < 3; edge++) {
-            vindex_t from_index = triangle_indices[edge];
-            vindex_t to_index = triangle_indices[(edge + 1) % 3];
+        for (size_t edge {0}; edge < 3; edge++) {
+            vindex_t from_index {triangle_indices[edge]};
+            vindex_t to_index {triangle_indices[(edge + 1) % 3]};
             FO_VERIFY_AND_THROW(from_index < source_buf.VertCount && to_index < source_buf.VertCount, "Particle wireframe index is outside the vertex buffer", from_index, to_index, source_buf.VertCount);
 
             for (vindex_t vertex_index : {from_index, to_index}) {
-                Vertex2D vertex = source_buf.Vertices[vertex_index];
+                Vertex2D vertex {source_buf.Vertices[vertex_index]};
                 vertex.Color = PARTICLE_WIREFRAME_COLOR;
                 vertex.TexU = vertex.TexV = 0.0f;
                 vertex.EggFlags[0] = vertex.EggFlags[1] = 0.0f;

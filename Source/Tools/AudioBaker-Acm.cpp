@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "AudioBaker-Acm.h"
 
@@ -40,24 +10,24 @@ FO_BEGIN_NAMESPACE
 namespace AudioBakerAcm
 {
 
-    static constexpr uint32_t ACM_SIGNATURE = 0x032897;
-    static constexpr uint32_t ACM_VERSION = 1;
-    static constexpr size_t AMPLITUDE_TABLE_SIZE = 0x10000;
-    static constexpr int32_t AMPLITUDE_TABLE_MIDDLE = 0x8000;
-    static constexpr string_view MUSIC_DIR = "sound/music/";
+    static constexpr uint32_t ACM_SIGNATURE {0x032897};
+    static constexpr uint32_t ACM_VERSION {1};
+    static constexpr size_t AMPLITUDE_TABLE_SIZE {0x10000};
+    static constexpr int32_t AMPLITUDE_TABLE_MIDDLE {0x8000};
+    static constexpr string_view MUSIC_DIR {"sound/music/"};
 
     // Three base-3 digits packed two bits apiece, indexed by a 5-bit code
-    static constexpr std::array<uint8_t, 27> TRIPLETS_OF_3 = {0, 1, 2, 4, 5, 6, 8, 9, 10, 16, 17, 18, 20, 21, 22, 24, 25, 26, 32, 33, 34, 36, 37, 38, 40, 41, 42};
+    static constexpr std::array<uint8_t, 27> TRIPLETS_OF_3 {0, 1, 2, 4, 5, 6, 8, 9, 10, 16, 17, 18, 20, 21, 22, 24, 25, 26, 32, 33, 34, 36, 37, 38, 40, 41, 42};
 
     // Three base-5 digits packed three bits apiece, indexed by a 7-bit code
-    static constexpr std::array<uint16_t, 125> TRIPLETS_OF_5 = {0, 1, 2, 3, 4, 8, 9, 10, 11, 12, 16, 17, 18, 19, 20, 24, 25, 26, 27, 28, 32, 33, 34, 35, 36, //
+    static constexpr std::array<uint16_t, 125> TRIPLETS_OF_5 {0, 1, 2, 3, 4, 8, 9, 10, 11, 12, 16, 17, 18, 19, 20, 24, 25, 26, 27, 28, 32, 33, 34, 35, 36, //
         64, 65, 66, 67, 68, 72, 73, 74, 75, 76, 80, 81, 82, 83, 84, 88, 89, 90, 91, 92, 96, 97, 98, 99, 100, //
         128, 129, 130, 131, 132, 136, 137, 138, 139, 140, 144, 145, 146, 147, 148, 152, 153, 154, 155, 156, 160, 161, 162, 163, 164, //
         192, 193, 194, 195, 196, 200, 201, 202, 203, 204, 208, 209, 210, 211, 212, 216, 217, 218, 219, 220, 224, 225, 226, 227, 228, //
         256, 257, 258, 259, 260, 264, 265, 266, 267, 268, 272, 273, 274, 275, 276, 280, 281, 282, 283, 284, 288, 289, 290, 291, 292};
 
     // Two base-11 digits packed four bits apiece, indexed by a 7-bit code
-    static constexpr std::array<uint8_t, 121> PAIRS_OF_11 = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, //
+    static constexpr std::array<uint8_t, 121> PAIRS_OF_11 {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, //
         0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, //
         0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2A, //
         0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3A, //
@@ -76,8 +46,8 @@ namespace AudioBakerAcm
             throw DecoderException("Not an ACM stream");
         }
 
-        uint32_t samples_low = GetBits(16) & 0xFFFF;
-        uint32_t samples_high = GetBits(16) & 0xFFFF;
+        uint32_t samples_low {GetBits(16) & 0xFFFF};
+        uint32_t samples_high {GetBits(16) & 0xFFFF};
         _sampleCount = numeric_cast<int32_t>(samples_low | (samples_high << 16));
         _valsToGo = _sampleCount;
         _channels = numeric_cast<int32_t>(GetBits(16) & 0xFFFF);
@@ -112,7 +82,7 @@ namespace AudioBakerAcm
         FO_VERIFY_AND_THROW(!_decoded, "ACM stream is already decoded");
         _decoded = true;
 
-        vector<int16_t> samples;
+        vector<int16_t> samples {};
         samples.reserve(numeric_cast<size_t>(_sampleCount));
 
         while (numeric_cast<int32_t>(samples.size()) < _sampleCount) {
@@ -150,7 +120,7 @@ namespace AudioBakerAcm
     auto Decoder::GetBits(int32_t bits) noexcept -> uint32_t
     {
         PrepareBits(bits);
-        uint32_t result = _nextBits;
+        uint32_t result {_nextBits};
         SkipBits(bits);
         return result;
     }
@@ -183,27 +153,27 @@ namespace AudioBakerAcm
 
     void Decoder::CreateAmplitudeDictionary()
     {
-        int32_t power = numeric_cast<int32_t>(GetBits(4) & 0xF);
-        int64_t step = numeric_cast<int64_t>(GetBits(16) & 0xFFFF);
-        int32_t count = 1 << power;
+        int32_t power {numeric_cast<int32_t>(GetBits(4) & 0xF)};
+        int64_t step {numeric_cast<int64_t>(GetBits(16) & 0xFFFF)};
+        int32_t count {1 << power};
 
         // Entries are shorts, so a step times a large index wraps the way the original's short table did
-        int64_t value = 0;
+        int64_t value {0};
 
-        for (int32_t i = 0; i < count; i++) {
+        for (int32_t i {0}; i < count; i++) {
             _amplitudes[numeric_cast<size_t>(AMPLITUDE_TABLE_MIDDLE + i)] = static_cast<int16_t>(value);
             value += step;
         }
 
         value = -step;
 
-        for (int32_t i = 0; i < count; i++) {
+        for (int32_t i {0}; i < count; i++) {
             _amplitudes[numeric_cast<size_t>(AMPLITUDE_TABLE_MIDDLE - i - 1)] = static_cast<int16_t>(value);
             value -= step;
         }
 
-        for (int32_t pass = 0; pass < _someSize; pass++) {
-            int32_t ind = numeric_cast<int32_t>(GetBits(5) & 0x1F);
+        for (int32_t pass {0}; pass < _someSize; pass++) {
+            int32_t ind {numeric_cast<int32_t>(GetBits(5) & 0x1F)};
             FillColumn(pass, ind);
         }
     }
@@ -263,17 +233,17 @@ namespace AudioBakerAcm
             return;
         }
 
-        int32_t counter = _packAttrs2;
-        size_t block_start = 0;
+        int32_t counter {_packAttrs2};
+        size_t block_start {0};
 
         while (counter > 0) {
-            size_t dec_start = 0;
-            int32_t size = _someSize / 2;
-            int32_t blocks = std::min(_blocks, counter) * 2;
+            size_t dec_start {0};
+            int32_t size {_someSize / 2};
+            int32_t blocks {std::min(_blocks, counter) * 2};
 
             TransformFirstLevel(block_start, size, blocks);
 
-            for (int32_t i = 0; i < blocks; i++) {
+            for (int32_t i {0}; i < blocks; i++) {
                 _someBuff[block_start + numeric_cast<size_t>(i * size)]++;
             }
 
@@ -295,16 +265,16 @@ namespace AudioBakerAcm
     // The first level keeps its running pair in shorts, which truncates it; the next levels keep ints
     void Decoder::TransformFirstLevel(size_t block_start, int32_t size, int32_t blocks)
     {
-        vector<int16_t>& dec = _firstLevelDecomp;
-        size_t row = numeric_cast<size_t>(size);
-        int32_t row_0 = 0;
-        int32_t row_1 = 0;
-        int32_t row_2 = 0;
-        int32_t row_3 = 0;
+        vector<int16_t>& dec {_firstLevelDecomp};
+        size_t row {numeric_cast<size_t>(size)};
+        int32_t row_0 {0};
+        int32_t row_1 {0};
+        int32_t row_2 {0};
+        int32_t row_3 {0};
 
-        for (int32_t i = 0; i < size; i++) {
-            size_t d = numeric_cast<size_t>(i) * 2;
-            size_t s = block_start + numeric_cast<size_t>(i);
+        for (int32_t i {0}; i < size; i++) {
+            size_t d {numeric_cast<size_t>(i) * 2};
+            size_t s {block_start + numeric_cast<size_t>(i)};
 
             if (blocks == 2) {
                 row_0 = _someBuff[s];
@@ -327,9 +297,9 @@ namespace AudioBakerAcm
                 dec[d + 1] = static_cast<int16_t>(row_3);
             }
             else {
-                size_t p = s;
-                int32_t db_0 = 0;
-                int32_t db_1 = 0;
+                size_t p {s};
+                int32_t db_0 {0};
+                int32_t db_1 {0};
 
                 if (((blocks >> 1) & 1) != 0) {
                     row_0 = _someBuff[p];
@@ -345,7 +315,7 @@ namespace AudioBakerAcm
                     db_1 = dec[d + 1];
                 }
 
-                for (int32_t j = 0; j < blocks >> 2; j++) {
+                for (int32_t j {0}; j < blocks >> 2; j++) {
                     row_0 = _someBuff[p];
                     _someBuff[p] = db_0 + 2 * db_1 + row_0;
                     p += row;
@@ -370,16 +340,16 @@ namespace AudioBakerAcm
 
     void Decoder::TransformNextLevel(size_t dec_start, size_t block_start, int32_t size, int32_t blocks)
     {
-        vector<int32_t>& dec = _nextLevelDecomp;
-        size_t row = numeric_cast<size_t>(size);
-        int32_t row_0 = 0;
-        int32_t row_1 = 0;
-        int32_t row_2 = 0;
-        int32_t row_3 = 0;
+        vector<int32_t>& dec {_nextLevelDecomp};
+        size_t row {numeric_cast<size_t>(size)};
+        int32_t row_0 {0};
+        int32_t row_1 {0};
+        int32_t row_2 {0};
+        int32_t row_3 {0};
 
-        for (int32_t i = 0; i < size; i++) {
-            size_t d = dec_start + numeric_cast<size_t>(i) * 2;
-            size_t s = block_start + numeric_cast<size_t>(i);
+        for (int32_t i {0}; i < size; i++) {
+            size_t d {dec_start + numeric_cast<size_t>(i) * 2};
+            size_t s {block_start + numeric_cast<size_t>(i)};
 
             if (blocks == 4) {
                 row_0 = _someBuff[s];
@@ -394,11 +364,11 @@ namespace AudioBakerAcm
                 dec[d + 1] = row_3;
             }
             else {
-                size_t p = s;
-                int32_t db_0 = dec[d];
-                int32_t db_1 = dec[d + 1];
+                size_t p {s};
+                int32_t db_0 {dec[d]};
+                int32_t db_1 {dec[d + 1]};
 
-                for (int32_t j = 0; j < blocks >> 2; j++) {
+                for (int32_t j {0}; j < blocks >> 2; j++) {
                     row_0 = _someBuff[p];
                     _someBuff[p] = db_0 + 2 * db_1 + row_0;
                     p += row;
@@ -425,17 +395,17 @@ namespace AudioBakerAcm
 
     void Decoder::ZeroFill(int32_t pass)
     {
-        for (int32_t i = 0; i < _packAttrs2; i++) {
+        for (int32_t i {0}; i < _packAttrs2; i++) {
             Cell(i, pass) = 0;
         }
     }
 
     void Decoder::LinearFill(int32_t pass, int32_t ind)
     {
-        uint32_t mask = (1u << ind) - 1;
-        int32_t base = -(1 << (ind - 1));
+        uint32_t mask {(1u << ind) - 1};
+        int32_t base {-(1 << (ind - 1))};
 
-        for (int32_t i = 0; i < _packAttrs2; i++) {
+        for (int32_t i {0}; i < _packAttrs2; i++) {
             Cell(i, pass) = Amplitude(base + numeric_cast<int32_t>(GetBits(ind) & mask));
         }
     }
@@ -443,7 +413,7 @@ namespace AudioBakerAcm
     // Zeros, often paired, and +-1
     void Decoder::K1Bits3(int32_t pass)
     {
-        for (int32_t i = 0; i < _packAttrs2; i++) {
+        for (int32_t i {0}; i < _packAttrs2; i++) {
             PrepareBits(3);
 
             if ((_nextBits & 1) == 0) {
@@ -470,7 +440,7 @@ namespace AudioBakerAcm
     // Zeros and +-1
     void Decoder::K1Bits2(int32_t pass)
     {
-        for (int32_t i = 0; i < _packAttrs2; i++) {
+        for (int32_t i {0}; i < _packAttrs2; i++) {
             PrepareBits(2);
 
             if ((_nextBits & 1) == 0) {
@@ -487,14 +457,14 @@ namespace AudioBakerAcm
     // Every triplet of -1, 0 and +1
     void Decoder::T1Bits5(int32_t pass)
     {
-        for (int32_t i = 0; i < _packAttrs2; i++) {
-            uint32_t code = GetBits(5) & 0x1F;
+        for (int32_t i {0}; i < _packAttrs2; i++) {
+            uint32_t code {GetBits(5) & 0x1F};
 
             if (code >= TRIPLETS_OF_3.size()) {
                 throw DecoderException("ACM stream uses an undefined triplet code", code);
             }
 
-            int32_t bits = TRIPLETS_OF_3[code];
+            int32_t bits {TRIPLETS_OF_3[code]};
             Cell(i, pass) = Amplitude(-1 + (bits & 3));
 
             if (++i == _packAttrs2) {
@@ -516,7 +486,7 @@ namespace AudioBakerAcm
     // -2..+2 with paired zeros
     void Decoder::K2Bits4(int32_t pass)
     {
-        for (int32_t i = 0; i < _packAttrs2; i++) {
+        for (int32_t i {0}; i < _packAttrs2; i++) {
             PrepareBits(4);
 
             if ((_nextBits & 1) == 0) {
@@ -549,7 +519,7 @@ namespace AudioBakerAcm
     // -2..+2
     void Decoder::K2Bits3(int32_t pass)
     {
-        for (int32_t i = 0; i < _packAttrs2; i++) {
+        for (int32_t i {0}; i < _packAttrs2; i++) {
             PrepareBits(3);
 
             if ((_nextBits & 1) == 0) {
@@ -572,14 +542,14 @@ namespace AudioBakerAcm
     // Every triplet of -2..+2
     void Decoder::T2Bits7(int32_t pass)
     {
-        for (int32_t i = 0; i < _packAttrs2; i++) {
-            uint32_t code = GetBits(7) & 0x7F;
+        for (int32_t i {0}; i < _packAttrs2; i++) {
+            uint32_t code {GetBits(7) & 0x7F};
 
             if (code >= TRIPLETS_OF_5.size()) {
                 throw DecoderException("ACM stream uses an undefined triplet code", code);
             }
 
-            int32_t val = TRIPLETS_OF_5[code];
+            int32_t val {TRIPLETS_OF_5[code]};
             Cell(i, pass) = Amplitude(-2 + (val & 7));
 
             if (++i == _packAttrs2) {
@@ -601,7 +571,7 @@ namespace AudioBakerAcm
     // -3..+3 with paired zeros
     void Decoder::K3Bits5(int32_t pass)
     {
-        for (int32_t i = 0; i < _packAttrs2; i++) {
+        for (int32_t i {0}; i < _packAttrs2; i++) {
             PrepareBits(5);
 
             if ((_nextBits & 1) == 0) {
@@ -623,7 +593,7 @@ namespace AudioBakerAcm
                 SkipBits(4);
             }
             else {
-                int32_t val = numeric_cast<int32_t>((_nextBits & 0x18) >> 3);
+                int32_t val {numeric_cast<int32_t>((_nextBits & 0x18) >> 3)};
                 SkipBits(5);
 
                 if (val >= 2) {
@@ -638,7 +608,7 @@ namespace AudioBakerAcm
     // -3..+3
     void Decoder::K3Bits4(int32_t pass)
     {
-        for (int32_t i = 0; i < _packAttrs2; i++) {
+        for (int32_t i {0}; i < _packAttrs2; i++) {
             PrepareBits(4);
 
             if ((_nextBits & 1) == 0) {
@@ -650,7 +620,7 @@ namespace AudioBakerAcm
                 SkipBits(3);
             }
             else {
-                int32_t val = numeric_cast<int32_t>((_nextBits & 0xC) >> 2);
+                int32_t val {numeric_cast<int32_t>((_nextBits & 0xC) >> 2)};
                 SkipBits(4);
 
                 if (val >= 2) {
@@ -665,7 +635,7 @@ namespace AudioBakerAcm
     // -4..+4 with paired zeros
     void Decoder::K4Bits5(int32_t pass)
     {
-        for (int32_t i = 0; i < _packAttrs2; i++) {
+        for (int32_t i {0}; i < _packAttrs2; i++) {
             PrepareBits(5);
 
             if ((_nextBits & 1) == 0) {
@@ -683,7 +653,7 @@ namespace AudioBakerAcm
                 Cell(i, pass) = 0;
             }
             else {
-                int32_t val = numeric_cast<int32_t>((_nextBits & 0x1C) >> 2);
+                int32_t val {numeric_cast<int32_t>((_nextBits & 0x1C) >> 2)};
 
                 if (val >= 4) {
                     val++;
@@ -698,7 +668,7 @@ namespace AudioBakerAcm
     // -4..+4
     void Decoder::K4Bits4(int32_t pass)
     {
-        for (int32_t i = 0; i < _packAttrs2; i++) {
+        for (int32_t i {0}; i < _packAttrs2; i++) {
             PrepareBits(4);
 
             if ((_nextBits & 1) == 0) {
@@ -706,7 +676,7 @@ namespace AudioBakerAcm
                 Cell(i, pass) = 0;
             }
             else {
-                int32_t val = numeric_cast<int32_t>((_nextBits & 0xE) >> 1);
+                int32_t val {numeric_cast<int32_t>((_nextBits & 0xE) >> 1)};
                 SkipBits(4);
 
                 if (val >= 4) {
@@ -721,14 +691,14 @@ namespace AudioBakerAcm
     // Every pair of -5..+5
     void Decoder::T3Bits7(int32_t pass)
     {
-        for (int32_t i = 0; i < _packAttrs2; i++) {
-            uint32_t code = GetBits(7) & 0x7F;
+        for (int32_t i {0}; i < _packAttrs2; i++) {
+            uint32_t code {GetBits(7) & 0x7F};
 
             if (code >= PAIRS_OF_11.size()) {
                 throw DecoderException("ACM stream uses an undefined pair code", code);
             }
 
-            int32_t val = PAIRS_OF_11[code];
+            int32_t val {PAIRS_OF_11[code]};
             Cell(i, pass) = Amplitude(-5 + (val & 0xF));
 
             if (++i == _packAttrs2) {
@@ -749,9 +719,9 @@ namespace AudioBakerAcm
             FO_VERIFY_AND_THROW(decoder.GetSampleRate() > 0, "ACM stream declares no sample rate");
             FO_VERIFY_AND_THROW(decoder.GetSampleCount() > 0, "ACM stream declares no samples");
 
-            bool is_music = strex(fname).lower().str().starts_with(MUSIC_DIR);
+            bool is_music {strex(fname).lower().str().starts_with(MUSIC_DIR)};
 
-            AudioBaker::PcmAudio pcm;
+            AudioBaker::PcmAudio pcm {};
             pcm.Channels = is_music ? 2 : 1;
             pcm.SampleRate = decoder.GetSampleRate();
             pcm.Samples = decoder.Decode();
