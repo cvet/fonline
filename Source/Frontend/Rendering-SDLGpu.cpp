@@ -1392,9 +1392,7 @@ void SDLGpu_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<uc
             info.size = numeric_cast<uint32_t>(upload_size);
             dedicated_buf = SDL_CreateGPUTransferBuffer(_ctx->Device.get(), &info);
             FO_VERIFY_AND_THROW(dedicated_buf, "SDL_CreateGPUTransferBuffer failed for a large texture upload", SDL_GetError(), upload_size);
-            auto created {dedicated_buf};
-            FO_VERIFY_AND_THROW(created, "Dedicated transfer buffer is null");
-            return created;
+            return dedicated_buf;
         }
 
         if (!_ctx->UploadRing) {
@@ -1410,16 +1408,15 @@ void SDLGpu_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<uc
             SubmitPending(_ctx);
 
             if (++_ctx->UploadRingsInFlight >= MAX_UPLOAD_RINGS_IN_FLIGHT) {
-                (void)SDL_WaitForGPUIdle(_ctx->Device.get());
+                bool wait_idle_ok {SDL_WaitForGPUIdle(_ctx->Device.get())};
+                FO_VERIFY_AND_THROW(wait_idle_ok, "SDL_WaitForGPUIdle failed while recycling texture upload rings", SDL_GetError());
                 _ctx->UploadRingsInFlight = 0;
             }
 
             _ctx->UploadRingOffset = 0;
         }
 
-        auto ring {_ctx->UploadRing};
-        FO_VERIFY_AND_THROW(ring, "Upload ring is null");
-        return ring;
+        return _ctx->UploadRing;
     }()};
 
     size_t upload_offset {dedicated_buf ? 0 : _ctx->UploadRingOffset};

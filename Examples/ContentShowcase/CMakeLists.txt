@@ -24,10 +24,7 @@ AddThirdPartyLibraries()
 RegisterEngineSources()
 
 function(_focs_post_target_setup)
-    if(TARGET FOCS_Client AND TARGET FOCS_BakerLib)
-        CopyTargetRuntimeToTarget(FOCS_Client FOCS_BakerLib)
-    endif()
-
+    CopyTargetRuntimeToTarget(FOCS_Client FOCS_BakerLib)
     CopyTargetRuntimeToTarget(FOCS_Server FOCS_BakerLib)
     CopyTargetRuntimeToTarget(FOCS_ServerHeadless FOCS_BakerLib)
 endfunction()
