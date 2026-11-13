@@ -9,9 +9,9 @@ This internal audit records discovery material, ownership decisions, and promoti
 ## Coverage
 
 - Snapshots: **4**
-- Classified concerns: **40**
-- Source references: **235**
-- Dispositions: `boundary-owned` 5, `project-owned` 3, `promoted` 31, `promotion-candidate` 1
+- Classified concerns: **44**
+- Source references: **243**
+- Dispositions: `boundary-owned` 5, `project-owned` 3, `promoted` 35, `promotion-candidate` 1
 
 ## Audited snapshots
 
@@ -66,6 +66,10 @@ This internal audit records discovery material, ownership decisions, and promoti
 | `project-versioning-and-release-identity` Generated project version and release identity | `promoted` | `P1` | `build-release` | `Docs/en/how-to/project/versioning-and-releases.md`<br>`BuildTools/project_version.py`<br>`Docs/en/how-to/project/release-tooling.md` | `build-release`<br>`documentation`<br>`runtime` |
 | `project-docs-and-agent-process` Project documentation and AI-agent process | `promoted` | `P2` | `documentation` | `Docs/en/how-to/project/ai-assisted-maintenance.md` | `documentation`<br>`quality`<br>`tooling` |
 | `project-markdown-link-checks` Markdown link and anchor checks for project documentation | `promoted` | `P2` | `documentation` | `BuildTools/markdown_links.py`<br>`Docs/en/how-to/project/documentation-checks.md` | `documentation`<br>`quality`<br>`tooling` |
+| `mechanics-validated-action` Validated action request mechanic | `promoted` | `P2` | `scripting` | `Docs/en/how-to/mechanics/validated-action.md`<br>`Examples/MechanicsSandbox/Scripts/Recipes/ValidatedAction.fos`<br>`Examples/MechanicsSandbox/recipes.json` | `documentation`<br>`scripting` |
+| `mechanics-timed-effect-restart` Timed effect that survives a restart | `promoted` | `P1` | `scripting` | `Docs/en/how-to/mechanics/timed-effect.md`<br>`Docs/en/how-to/scripting/lifecycle-and-concurrency.md`<br>`Examples/MechanicsSandbox/Scripts/Recipes/TimedEffect.fos`<br>`Examples/MechanicsSandbox/recipes.json` | `documentation`<br>`scripting`<br>`runtime` |
+| `mechanics-persistent-character-state` Custom persistent character state | `promoted` | `P2` | `scripting` | `Docs/en/how-to/mechanics/persistent-state.md`<br>`Examples/MechanicsSandbox/Scripts/Recipes/PersistentState.fos`<br>`Examples/MechanicsSandbox/recipes.json` | `documentation`<br>`scripting`<br>`runtime` |
+| `mechanics-cover-transactions` Cover transactions over several entities | `promoted` | `P2` | `scripting` | `Docs/en/how-to/mechanics/cover-transactions.md`<br>`Examples/MechanicsSandbox/Scripts/Recipes/CoverTransaction.fos`<br>`Examples/MechanicsSandbox/recipes.json` | `documentation`<br>`scripting`<br>`runtime` |
 
 ## Decisions and gates
 
@@ -348,6 +352,34 @@ This internal audit records discovery material, ownership decisions, and promoti
 - Reusable claim: Both projects check local links and GitHub-style anchors with independent implementations, and the Engine documentation validator had a third.
 - Decision: The Engine owns the link and anchor checker; evidence snapshot verification and other Ops-specific audits stay project-owned.
 - Promotion gate: One shared module with tests is used by the Engine documentation validator and exposed as a command.
+
+### Validated action request mechanic
+
+- Sources: `last-frontier:Scripts/ChosenRequests.cs`, `fonline-tla:Scripts/ChosenActions.fos`
+- Reusable claim: Both projects answer client intent with a server remote call that re-derives the actor, map and target from the calling player, refuses before it charges a cost and treats payload ids only as hints.
+- Decision: The Engine owns the validation recipe and its sandbox module; concrete actions, costs and replies remain project policy.
+- Promotion gate: The recipe page quotes only sandbox code, the sandbox drill runs refusals and the valid request through a real headless client, and mechanics_recipes.py checks the page.
+
+### Timed effect that survives a restart
+
+- Sources: `last-frontier:Scripts/Radiation.cs`, `last-frontier:Scripts/Poison.cs`, `fonline-tla:Scripts/Drugs.fos`
+- Reusable claim: Both projects start effect timers from setters or actions and do not re-arm them after a database load, so effects stop ending after a restart; the reusable fix is a persisted deadline re-armed from the init event behind a CountTimeEvent guard.
+- Decision: The Engine documents that time events are not restored from the database and owns the restart recipe; effect durations and stacking stay project policy.
+- Promotion gate: A two-phase restart scenario on a JSON database proves the re-armed timer fires and a negative control proves the naive timer is lost.
+
+### Custom persistent character state
+
+- Sources: `last-frontier:Scripts/Health.cs`, `fonline-tla:Scripts/Main.fos`
+- Reusable claim: Both projects declare Mutable Persistent properties for character state and rebuild derived state from the init event, which needs an explicit statement of when a record exists and which restore path runs.
+- Decision: The Engine owns the persistence recipe; which values a game stores remains project policy.
+- Promotion gate: An in-process unload and load and a two-phase restart prove the state, the init and load event counts and the record lifetime.
+
+### Cover transactions over several entities
+
+- Sources: `last-frontier:Scripts/ChosenRequests.cs`
+- Reusable claim: Gameplay actions lock the actor first, widen to the other parties and must re-validate after the widening and after any suspension; the project calls the cover helpers thousands of times and no Engine page showed a transaction.
+- Decision: The Engine owns the cover transaction pattern; which entities an action touches remains project policy.
+- Promotion gate: The sandbox hand-over runs a prepare and commit split around a suspension and the page states the release-and-reacquire behavior of widening from EntitySync.cpp.
 
 ## Owner review requirements
 

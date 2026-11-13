@@ -2044,6 +2044,134 @@
       ],
       "promotion_gate": "One shared module with tests is used by the Engine documentation validator and exposed as a command.",
       "decision": "The Engine owns the link and anchor checker; evidence snapshot verification and other Ops-specific audits stay project-owned."
+    },
+    {
+      "id": "mechanics-validated-action",
+      "title": "Validated action request mechanic",
+      "sources": [
+        {
+          "snapshot": "last-frontier",
+          "path": "Scripts/ChosenRequests.cs"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "Scripts/ChosenActions.fos"
+        }
+      ],
+      "reusable_claim": "Both projects answer client intent with a server remote call that re-derives the actor, map and target from the calling player, refuses before it charges a cost and treats payload ids only as hints.",
+      "disposition": "promoted",
+      "owner": "scripting",
+      "priority": "P2",
+      "engine_targets": [
+        "Docs/en/how-to/mechanics/validated-action.md",
+        "Examples/MechanicsSandbox/Scripts/Recipes/ValidatedAction.fos",
+        "Examples/MechanicsSandbox/recipes.json"
+      ],
+      "planned_targets": [],
+      "external_targets": [],
+      "required_reviews": [
+        "documentation",
+        "scripting"
+      ],
+      "promotion_gate": "The recipe page quotes only sandbox code, the sandbox drill runs refusals and the valid request through a real headless client, and mechanics_recipes.py checks the page.",
+      "decision": "The Engine owns the validation recipe and its sandbox module; concrete actions, costs and replies remain project policy."
+    },
+    {
+      "id": "mechanics-timed-effect-restart",
+      "title": "Timed effect that survives a restart",
+      "sources": [
+        {
+          "snapshot": "last-frontier",
+          "path": "Scripts/Radiation.cs"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Scripts/Poison.cs"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "Scripts/Drugs.fos"
+        }
+      ],
+      "reusable_claim": "Both projects start effect timers from setters or actions and do not re-arm them after a database load, so effects stop ending after a restart; the reusable fix is a persisted deadline re-armed from the init event behind a CountTimeEvent guard.",
+      "disposition": "promoted",
+      "owner": "scripting",
+      "priority": "P1",
+      "engine_targets": [
+        "Docs/en/how-to/mechanics/timed-effect.md",
+        "Docs/en/how-to/scripting/lifecycle-and-concurrency.md",
+        "Examples/MechanicsSandbox/Scripts/Recipes/TimedEffect.fos",
+        "Examples/MechanicsSandbox/recipes.json"
+      ],
+      "planned_targets": [],
+      "external_targets": [],
+      "required_reviews": [
+        "documentation",
+        "scripting",
+        "runtime"
+      ],
+      "promotion_gate": "A two-phase restart scenario on a JSON database proves the re-armed timer fires and a negative control proves the naive timer is lost.",
+      "decision": "The Engine documents that time events are not restored from the database and owns the restart recipe; effect durations and stacking stay project policy."
+    },
+    {
+      "id": "mechanics-persistent-character-state",
+      "title": "Custom persistent character state",
+      "sources": [
+        {
+          "snapshot": "last-frontier",
+          "path": "Scripts/Health.cs"
+        },
+        {
+          "snapshot": "fonline-tla",
+          "path": "Scripts/Main.fos"
+        }
+      ],
+      "reusable_claim": "Both projects declare Mutable Persistent properties for character state and rebuild derived state from the init event, which needs an explicit statement of when a record exists and which restore path runs.",
+      "disposition": "promoted",
+      "owner": "scripting",
+      "priority": "P2",
+      "engine_targets": [
+        "Docs/en/how-to/mechanics/persistent-state.md",
+        "Examples/MechanicsSandbox/Scripts/Recipes/PersistentState.fos",
+        "Examples/MechanicsSandbox/recipes.json"
+      ],
+      "planned_targets": [],
+      "external_targets": [],
+      "required_reviews": [
+        "documentation",
+        "scripting",
+        "runtime"
+      ],
+      "promotion_gate": "An in-process unload and load and a two-phase restart prove the state, the init and load event counts and the record lifetime.",
+      "decision": "The Engine owns the persistence recipe; which values a game stores remains project policy."
+    },
+    {
+      "id": "mechanics-cover-transactions",
+      "title": "Cover transactions over several entities",
+      "sources": [
+        {
+          "snapshot": "last-frontier",
+          "path": "Scripts/ChosenRequests.cs"
+        }
+      ],
+      "reusable_claim": "Gameplay actions lock the actor first, widen to the other parties and must re-validate after the widening and after any suspension; the project calls the cover helpers thousands of times and no Engine page showed a transaction.",
+      "disposition": "promoted",
+      "owner": "scripting",
+      "priority": "P2",
+      "engine_targets": [
+        "Docs/en/how-to/mechanics/cover-transactions.md",
+        "Examples/MechanicsSandbox/Scripts/Recipes/CoverTransaction.fos",
+        "Examples/MechanicsSandbox/recipes.json"
+      ],
+      "planned_targets": [],
+      "external_targets": [],
+      "required_reviews": [
+        "documentation",
+        "scripting",
+        "runtime"
+      ],
+      "promotion_gate": "The sandbox hand-over runs a prepare and commit split around a suspension and the page states the release-and-reacquire behavior of widening from EntitySync.cpp.",
+      "decision": "The Engine owns the cover transaction pattern; which entities an action touches remains project policy."
     }
   ]
 }

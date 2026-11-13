@@ -1,12 +1,12 @@
 # Mechanics Recipes Documentation Plan
 
-> Internal plan. It proposes a task-shaped "mechanics recipes" section for the Engine documentation, derived from two read-only audits of how Last Frontier (Managed C#) and TLA (AngelScript) implement gameplay on the Engine, and a third audit of what the Engine documentation and examples already teach. Nothing in this plan is implemented yet.
+> Internal plan. It proposes a task-shaped "mechanics recipes" section for the Engine documentation, derived from two read-only audits of how Last Frontier (Managed C#) and TLA (AngelScript) implement gameplay on the Engine, and a third audit of what the Engine documentation and examples already teach. The first slice is implemented; later waves are not.
 
 ## Status
 
-- State: proposed, awaiting owner decisions
+- State: first slice implemented; waves 1 (remaining recipes) and 2 open
 - Owner: documentation program
-- Last updated: 2026-11-09
+- Last updated: 2026-11-13
 - Engine baseline: branch `lifecycle-docs-and-tooling` on `origin/master` `7d134df5f8` (`2026.1.118-dev`)
 - Source audits: 35 Last Frontier mechanics, 36 TLA mechanics plus 8 AngelScript idioms, and the Engine coverage audit (98 API symbol IDs checked against `Docs/generated/api.json`)
 
@@ -90,3 +90,17 @@ Project event vocabulary and dispatcher with a check that every declared event h
 ## Suggested first slice
 
 The hub, the page template with its validating test, the sandbox with recipes 1, 2 and 5 (persistent state, validated action request, timed effect that survives restart), and the cover-transaction page. This slice exercises the whole pipeline, repairs the most consequential gap (restart behavior), and costs roughly the bootstrap estimate plus three recipes.
+
+## Decisions taken
+
+1. Approved: `Examples/MechanicsSandbox` is an Engine fixture and `how-to/mechanics/` is the section.
+2. Approved: `BuildTools/tests/test_mechanics_recipes.py` and `test_mechanics_sandbox.py` run in the tooling regression job and read `Examples/`. The runtime route (`validate.py`, a native build) stays on demand.
+3. No managed C# CI lane for now. Managed recipes stay `shape`; parity tests keep their declarations identical to the AngelScript modules. Revisit when a managed example preset exists.
+4. Recipe derivation is recorded in `BuildTools/ExternalProjectEvidence.json` as one `promoted` record per recipe; the pages never name a project.
+5. Engine gaps fixed first are the defects the sandbox exposed: `Game.UnloadCritter` deleted the record of an NPC persistent only through its map, `Game.LoginPlayerToNewRecord` rejected a player with only default properties, and the generated example configurations wrote enum settings as enumerators and left the secure-channel key empty. The never-fired events and the time-event consequence are stated in `lifecycle-and-concurrency.md`; firing or removing those events, persistent timers and the other gaps above remain open.
+
+## First slice results
+
+- Pages: hub, `persistent-state`, `validated-action`, `timed-effect` and `cover-transactions`, each with a Russian mirror, in the manifest, navigation, AI evaluation and changelog.
+- Sandbox: eight smoke scenarios, including two-phase restarts on a JSON database and a validated-action drill through a real headless client, passed on a Windows host; the snapshot restore path of time events is not runtime-tested.
+- Defects found and fixed: the widening sentence of the Managed C# guide and the `Game.SyncWiden` description (widening may release and reacquire the held cover), the two runtime defects above, an exception-safety defect in `ItemHexView::SetAnimPhase`, and the example configuration defects.
