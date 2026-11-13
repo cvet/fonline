@@ -3,15 +3,18 @@
 namespace Sandbox
 {
 
+///@ Property Player Server string SandboxAccount Mutable Persistent
+
 ///@ RemoteCall Server EnterSandbox()
 
-#if SERVER
-
+// Shared by every side, so each runtime module, the mapper's included, has content to build
 const hstring LocationPid = "Sandbox_Location".hstr();
 const hstring MapPid = "Sandbox_Map".hstr();
 const hstring PlayerPid = "Sandbox_Player".hstr();
 const hstring NpcPid = "Sandbox_Npc".hstr();
 const mpos EntryHex = mpos(25, 25);
+
+#if SERVER
 
 // Creates one location with its map; the creating script keeps cover of the new entities
 Map CreateMap()
@@ -38,7 +41,9 @@ void EnterSandbox(Player unloginedPlayer)
     Game.Sync(array<Entity> = {unloginedPlayer, location, body});
     body.TransferToMap(location.GetMapByIndex(0), EntryHex, mdir(0));
 
+    // A new player record needs at least one persistent value; the database rejects an empty document
     unloginedPlayer.SetName("SandboxPlayer");
+    unloginedPlayer.SandboxAccount = "sandbox";
     Player player = Game.LoginPlayerToNewRecord(unloginedPlayer);
     Game.Sync(array<Entity> = {player, location, body});
     player.SwitchCritter(body);

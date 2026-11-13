@@ -129,6 +129,9 @@ void UnloadAndLoadRearmOnlyTheGuardedTimer(Testing::TestContext ctx)
     cr.NaiveBoostEndTime = Game.SynchronizedTime + Testing::Milliseconds(60000);
     location.MakePersistent(true);
 
+    // Persistence through the map ends when the critter leaves it, which would delete the record on unload
+    cr.MakePersistent(true);
+
     Testing::ExpectEq(ctx, cr.CountTimeEvent(TimedEffect::OnBoostTimer), 1, "Recipe timer before unload");
     Testing::ExpectEq(ctx, cr.CountTimeEvent(OnNaiveBoostExpired), 1, "Naive timer before unload");
 

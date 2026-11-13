@@ -112,7 +112,7 @@ void DeviceDrillSent(Player player, int32 testId)
     Location[] locations = Game.GetLocations(Sandbox::LocationPid);
     Entity[] cover = {player};
 
-    for (uint i = 0; i < locations.length(); i++) {
+    for (int i = 0; i < locations.length(); i++) {
         cover.insertLast(locations[i]);
     }
 
@@ -128,10 +128,10 @@ void DeviceDrillSent(Player player, int32 testId)
 
     int devices = 0;
 
-    for (uint i = 0; i < locations.length(); i++) {
+    for (int i = 0; i < locations.length(); i++) {
         Item[] items = locations[i].GetMapByIndex(0).GetItems(ValidatedAction::DevicePid);
 
-        for (uint j = 0; j < items.length(); j++) {
+        for (int j = 0; j < items.length(); j++) {
             int expected = items[j].Id == actor.TestValidTargetId ? 1 : 0;
             Testing::ExpectEq(ctx, items[j].DeviceActivations, expected, "Activations of device " + items[j].Id.value);
             devices++;
@@ -152,7 +152,7 @@ void RunDeviceDrill(int32 testId, ident[] deviceIds)
 {
     Game.Log("validated_action_drill_started requests=" + deviceIds.length());
 
-    for (uint i = 0; i < deviceIds.length(); i++) {
+    for (int i = 0; i < deviceIds.length(); i++) {
         CurPlayer.ServerCall.ActivateDevice(deviceIds[i]);
     }
 
