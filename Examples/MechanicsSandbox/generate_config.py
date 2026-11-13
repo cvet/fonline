@@ -41,6 +41,8 @@ OVERRIDES = {
     # The copied script test harness keeps its run state in its own namespace
     "AngelScript.MutableGlobalsAllowedNamespaces": "Testing",
     "Baking.ForceBaking": "False",
+    # RunMechanicsChecks bakes once before the scenarios; their server and client processes reuse that bake
+    "Baking.PrebakeOnStartup": "False",
     "Baking.SingleThreadBaking": "False",
     "Baking.IgnoreMissingBakerWarning": "False",
     "Baking.RawCopyFileExtensions": "fofnt bmfc fnt acm ogg wav ogv json ini",
