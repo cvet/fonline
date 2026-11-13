@@ -694,6 +694,8 @@ void ClientEngine::HandleOutboundRemoteCall(hstring name, ptr<Entity> caller, co
 {
     ignore_unused(caller);
 
+    FO_VERIFY_AND_THROW(_conn.IsConnected(), "Remote call requires an established client connection", name);
+
     _conn.OutBuf->StartMsg(NetMessage::RemoteCall);
     _conn.OutBuf->Write<hstring>(name);
     _conn.OutBuf->Write<int32_t>(numeric_cast<int32_t>(data.size()));
@@ -1399,6 +1401,9 @@ void ClientEngine::Net_OnCritterMoveItem()
         return;
     }
 
+    // Script callbacks below can unload the map that owns this critter
+    auto cr_ref_holder {cr.hold_ref()};
+
     auto items_count {_conn.InBuf->Read<uint32_t>()};
 
     if (items_count != 0) {
@@ -1426,10 +1431,21 @@ void ClientEngine::Net_OnCritterMoveItem()
         hex_cr->Action(action, static_cast<int32_t>(prev_slot), moved_item, false);
     }
 
+    if (cr->IsDestroyed()) {
+        return;
+    }
+
     if (moved_item && cur_slot != prev_slot && cr->GetIsChosen()) {
-        if (auto item {cr->GetInvItem(moved_item->GetId())}) {
-            item->SetCritterSlot(cur_slot);
-            moved_item->SetCritterSlot(prev_slot);
+        cr->ApplyAuthoritativeItemSlotMove(moved_item->GetId(), prev_slot, cur_slot);
+
+        if (cr->IsDestroyed()) {
+            return;
+        }
+
+        moved_item->SetCritterSlot(prev_slot);
+
+        if (cr->IsDestroyed()) {
+            return;
         }
     }
 

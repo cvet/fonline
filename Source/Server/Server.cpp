@@ -3962,8 +3962,9 @@ void ServerEngine::Process_Move(ptr<Player> player)
     }
 
     nptr<Critter> expected_cr {cr};
+    auto expected_controller {player->GetControlledCritter().try_hold_ref()};
 
-    if (cr->IsDestroyed() || map->GetCritter(cr_id) != expected_cr) {
+    if (cr->IsDestroyed() || map->GetCritter(cr_id) != expected_cr || !player->HasPlayerMovementControl(expected_controller, cr)) {
         logging::write("Process_Move: critter not found, player '{}', map '{}' ({}), cr_id {}", player->GetName(), map->GetName(), map_id, cr_id);
         return;
     }
@@ -3991,7 +3992,7 @@ void ServerEngine::Process_Move(ptr<Player> player)
     if (connection->IsHardDisconnected() || connection->IsGracefulDisconnected()) {
         return;
     }
-    if (cr->IsDestroyed() || map->IsDestroyed() || player->GetControlledCritter() != expected_cr) {
+    if (cr->IsDestroyed() || map->IsDestroyed() || !player->HasPlayerMovementControl(expected_controller, cr)) {
         return;
     }
     if (cr->GetMapId() != map->GetId() || map->GetCritter(cr_id) != expected_cr) {
@@ -4011,7 +4012,7 @@ void ServerEngine::Process_Move(ptr<Player> player)
         if (connection->IsHardDisconnected() || connection->IsGracefulDisconnected()) {
             return;
         }
-        if (cr->IsDestroyed() || map->IsDestroyed() || player->GetControlledCritter() != expected_cr) {
+        if (cr->IsDestroyed() || map->IsDestroyed() || !player->HasPlayerMovementControl(expected_controller, cr)) {
             return;
         }
         if (cr->GetMapId() != map->GetId() || map->GetCritter(cr_id) != expected_cr) {
@@ -4185,17 +4186,53 @@ void ServerEngine::Process_MoveLease(ptr<Player> player)
     small_vector<ptr<ServerEntity>, 3> sync_entities {player, map, cr};
     ctx->SyncEntities(sync_entities);
 
-    if (player->IsDestroyed() || map->IsDestroyed() || cr->IsDestroyed() || player->GetControlledCritter() != cr.get() || cr->GetMapId() != map_id) {
+    nptr<Critter> expected_cr {cr};
+    auto expected_controller {player->GetControlledCritter().try_hold_ref()};
+
+    if (player->IsDestroyed() || map->IsDestroyed() || cr->IsDestroyed() || cr->GetMapId() != map_id || map->GetCritter(cr_id) != expected_cr || !player->HasPlayerMovementControl(expected_controller, cr)) {
         return;
     }
 
-    auto moving {cr->GetPlayerPlanMoving(plan_seq)};
+    auto moving {cr->GetPlayerPlanMoving(plan_seq).try_hold_ref()};
 
     if (!moving) {
         return;
     }
 
     FO_VERIFY_AND_THROW(std::isfinite(lease_distance) && lease_distance > 0.0f, "Movement renewal must name a finite positive distance", lease_distance);
+
+    // An attached controller is only a native candidate: scripts retain the same permission and speed authority
+    // as for a fresh order. A renewal cannot carry a passenger past a driver-role change or a reentrant transfer
+    if (expected_controller != expected_cr) {
+        int32_t corrected_speed {moving->GetSpeed()};
+
+        ValidateEntityAccess(player);
+        ValidateEntityAccess(cr);
+
+        EventResult move_result {OnPlayerMoveCritter.Fire(player, cr, corrected_speed)};
+
+        if (connection->IsHardDisconnected() || connection->IsGracefulDisconnected()) {
+            return;
+        }
+        if (cr->IsDestroyed() || map->IsDestroyed() || cr->GetMapId() != map_id || map->GetCritter(cr_id) != expected_cr || !player->HasPlayerMovementControl(expected_controller, cr)) {
+            return;
+        }
+        if (cr->GetPlayerPlanMoving(plan_seq) != moving.get()) {
+            return;
+        }
+        if (move_result == EventResult::StopChain || corrected_speed <= 0) {
+            player->Send_Moving(cr);
+            return;
+        }
+        if (corrected_speed != moving->GetSpeed()) {
+            uint16_t checked_speed {numeric_cast<uint16_t>(corrected_speed)};
+            ChangeCritterMovingSpeed(cr, checked_speed);
+
+            if (cr->IsDestroyed() || map->IsDestroyed() || cr->GetMapId() != map_id || map->GetCritter(cr_id) != expected_cr || !player->HasPlayerMovementControl(expected_controller, cr) || cr->GetPlayerPlanMoving(plan_seq) != moving.get()) {
+                return;
+            }
+        }
+    }
 
     // An authoritative finite correction has retired this plan's lease, including renewals already in transit
     if (moving->GetLeaseTime() == timespan::zero) {
@@ -4271,8 +4308,9 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
     }
 
     auto expected_cr {cr};
+    auto expected_controller {player->GetControlledCritter().try_hold_ref()};
 
-    if (cr->IsDestroyed() || map->GetCritter(cr_id) != expected_cr) {
+    if (cr->IsDestroyed() || map->GetCritter(cr_id) != expected_cr || !player->HasPlayerMovementControl(expected_controller, cr)) {
         logging::write("Process_StopMove: critter not found, player '{}', map '{}' ({}), cr_id {}", player->GetName(), map->GetName(), map_id, cr_id);
         return;
     }
@@ -4301,7 +4339,7 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
     if (connection->IsHardDisconnected() || connection->IsGracefulDisconnected()) {
         return;
     }
-    if (cr->IsDestroyed() || map->IsDestroyed() || player->GetControlledCritter() != expected_cr) {
+    if (cr->IsDestroyed() || map->IsDestroyed() || !player->HasPlayerMovementControl(expected_controller, cr)) {
         return;
     }
     if (cr->GetMapId() != map->GetId() || map->GetCritter(cr_id) != expected_cr) {
@@ -4339,7 +4377,7 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
     if (connection->IsHardDisconnected() || connection->IsGracefulDisconnected()) {
         return;
     }
-    if (cr->IsDestroyed() || map->IsDestroyed() || player->GetControlledCritter() != expected_cr) {
+    if (cr->IsDestroyed() || map->IsDestroyed() || !player->HasPlayerMovementControl(expected_controller, cr)) {
         return;
     }
     if (cr->GetMapId() != map->GetId() || map->GetCritter(cr_id) != expected_cr) {
@@ -4406,8 +4444,9 @@ void ServerEngine::Process_MoveFinished(ptr<Player> player)
     }
 
     nptr<Critter> expected_cr {cr};
+    auto expected_controller {player->GetControlledCritter().try_hold_ref()};
 
-    if (cr->IsDestroyed() || map->GetCritter(cr_id) != expected_cr || player->GetControlledCritter() != expected_cr) {
+    if (cr->IsDestroyed() || map->GetCritter(cr_id) != expected_cr || !player->HasPlayerMovementControl(expected_controller, cr)) {
         return;
     }
 
@@ -4458,12 +4497,38 @@ void ServerEngine::Process_MoveFinished(ptr<Player> player)
     }
 
     uint32_t reported_moving_uid {cr->GetMovingUid()};
+
+    if (expected_controller != expected_cr) {
+        int32_t stop_speed {0};
+        EventResult move_result {OnPlayerMoveCritter.Fire(player, cr, stop_speed)};
+
+        if (connection->IsHardDisconnected() || connection->IsGracefulDisconnected()) {
+            return;
+        }
+        if (cr->IsDestroyed() || map->IsDestroyed() || !player->HasPlayerMovementControl(expected_controller, cr)) {
+            return;
+        }
+        if (cr->GetMapId() != map->GetId() || map->GetCritter(cr_id) != expected_cr) {
+            trace_finish("invalidated");
+            return;
+        }
+        if (!cr->IsMoving() || cr->GetMovingUid() != reported_moving_uid) {
+            trace_finish("superseded");
+            return;
+        }
+        if (move_result == EventResult::StopChain) {
+            trace_finish("rejected");
+            player->Send_Moving(cr);
+            return;
+        }
+    }
+
     bool position_reconciled {ReconcileCritterStopPosition("Process_MoveFinished", player, cr, map, moving, client_hex, client_hex_offset, client_dir)};
 
     if (connection->IsHardDisconnected() || connection->IsGracefulDisconnected()) {
         return;
     }
-    if (cr->IsDestroyed() || map->IsDestroyed() || player->GetControlledCritter() != expected_cr) {
+    if (cr->IsDestroyed() || map->IsDestroyed() || !player->HasPlayerMovementControl(expected_controller, cr)) {
         return;
     }
     if (cr->GetMapId() != map->GetId() || map->GetCritter(cr_id) != expected_cr) {
@@ -4537,8 +4602,9 @@ void ServerEngine::Process_Dir(ptr<Player> player)
     }
 
     auto expected_cr {cr};
+    auto expected_controller {player->GetControlledCritter().try_hold_ref()};
 
-    if (cr->IsDestroyed() || map->GetCritter(cr_id) != expected_cr) {
+    if (cr->IsDestroyed() || map->GetCritter(cr_id) != expected_cr || !player->HasPlayerMovementControl(expected_controller, cr)) {
         logging::write("Process_Dir: critter not found, player '{}', map '{}' ({}), cr_id {}", player->GetName(), map->GetName(), map_id, cr_id);
         return;
     }
@@ -4553,7 +4619,7 @@ void ServerEngine::Process_Dir(ptr<Player> player)
     if (connection->IsHardDisconnected() || connection->IsGracefulDisconnected()) {
         return;
     }
-    if (cr->IsDestroyed() || map->IsDestroyed() || player->GetControlledCritter() != expected_cr) {
+    if (cr->IsDestroyed() || map->IsDestroyed() || !player->HasPlayerMovementControl(expected_controller, cr)) {
         return;
     }
     if (cr->GetMapId() != map->GetId() || map->GetCritter(cr_id) != expected_cr) {
@@ -5222,6 +5288,8 @@ void ServerEngine::ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map)
 
 auto ServerEngine::ReconcileCritterStopPosition(string_view request_name, ptr<Player> player, ptr<Critter> cr, ptr<Map> map, ptr<MovingContext> moving, mpos client_hex, ipos16 client_hex_offset, mdir client_dir) -> bool
 {
+    auto expected_controller {player->GetControlledCritter().try_hold_ref()};
+
     moving->ValidateRuntimeState();
 
     constexpr int32_t max_path_hex_distance {2};
@@ -5323,10 +5391,9 @@ auto ServerEngine::ReconcileCritterStopPosition(string_view request_name, ptr<Pl
         return false;
     }
 
-    auto controlled_cr {player->GetControlledCritter()};
     nptr<Critter> expected_cr {cr};
 
-    if (cr->IsDestroyed() || map->IsDestroyed() || !(controlled_cr == expected_cr)) {
+    if (cr->IsDestroyed() || map->IsDestroyed() || !player->HasPlayerMovementControl(expected_controller, cr)) {
         return false;
     }
     if (cr->GetMapId() != map->GetId()) {

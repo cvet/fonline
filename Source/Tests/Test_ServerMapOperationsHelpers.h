@@ -5027,8 +5027,8 @@ namespace MapOpsTest
 }
 
 #define MAKE_SERVER \
-    auto settings {MakeSettings()}; \
-    refcount_ptr<ServerEngine> server {MakeServerEngine(settings)}; \
+    auto settings {ServerMapOperationsTests::MakeSettings()}; \
+    refcount_ptr<ServerEngine> server {ServerMapOperationsTests::MakeServerEngine(settings)}; \
     auto shutdown {scope_exit([&server]() noexcept { \
         safe_call([&server] { \
             if (server->IsStarted()) { \
@@ -5036,7 +5036,7 @@ namespace MapOpsTest
             } \
         }); \
     })}; \
-    string startup_error {WaitForStart(server)}; \
+    string startup_error {ServerMapOperationsTests::WaitForStart(server)}; \
     INFO(startup_error); \
     REQUIRE(startup_error.empty()); \
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}})); \

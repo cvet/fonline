@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/lifecycle-and-concurrency.html
 ---
 
 # Жизненный цикл и конкурентность скриптов
-<!-- docs-translation: {"document_id":"script-lifecycle-concurrency","locale":"ru","source_path":"Docs/en/how-to/scripting/lifecycle-and-concurrency.md","source_sha256":"0fee6c129f783d2b7ddb2f69dc8214106a77155ec4ef857ccfb056085f40dd9b"} -->
+<!-- docs-translation: {"document_id":"script-lifecycle-concurrency","locale":"ru","source_path":"Docs/en/how-to/scripting/lifecycle-and-concurrency.md","source_sha256":"ea5d0d21564264f048816c59beb55ee62086785d1333c7f26a90d72ecf766a64"} -->
 > Документация движка. Это руководство описывает переиспользуемое поведение lifecycle и concurrency, общее для AngelScript и Managed C#, а затем явно называет правила каждого языка. Модули проекта, gameplay policies и проектные synchronization helpers принадлежат подключающей игре.
 
 ## Назначение
@@ -194,6 +194,8 @@ Time event остаётся зарегистрированным, пока вы�
 
 Преобразующий setter выполняется до записи: он получает предлагаемое значение по ссылке, а чтение свойства сущности ещё видит старое значение. Используйте его для проверки или изменения этого значения, а не для перестройки UI cache по новому состоянию сущности. Reaction-only callbacks выполняются после записи. В AngelScript `Game.AddPropertySetter` выбирает post-set путь для handler только с сущностью; handler со значением по ссылке выбирает преобразование до записи. В Managed C# атрибут `[PropertySetter]` отмечает handler, а generated `Game.AddPropertyDeferredSetter(property, handler)` явно выбирает entity-only post-set путь; entity-only overload `AddPropertySetter` эквивалентен ему. Overload с `ref T` остаётся pre-set. Последующее событие, случайно обновляющее cache, не заменяет выбор правильной фазы.
 
+Managed callbacks разрешают enum-идентификаторы компонентов в точные имена с точкой: `ItemProperty.Component_Value` выбирает `Component.Value`. Правило общее для getters, преобразующих setters и sync/async post-set callbacks. Подчёркивания плоских имён сохраняются.
+
 ### Граница preload персистентности
 
 `Game.OnCritterPreLoad` является серверным migration hook для существующего сохранённого криттера. Он срабатывает один раз после восстановления свойств криттера, инвентаря и вложенных сущностей и после регистрации криттера, но до входа на карту или глобальную карту, обработки видимости, `OnCritterInit(critter, false)` и `OnCritterLoad`. Новые криттеры это событие не получают.
@@ -266,6 +268,8 @@ Server callbacks могут выполняться конкурентно. Дв�
 - следующий `Game.Sync(...)` не расширяет прежний cover, поэтому запрашивайте полный набор для следующей операции;
 - `Game.GetHeldSyncEntities()` сообщает владельцев текущего entity cover для диагностики;
 - `Game.IsEntityLocked(entity)` проверяет coverage без диагностического сообщения о непокрытом доступе;
+- проба принимает удерживаемый handle уничтоженной сущности и сообщает фактический
+  cover, включая ещё удерживаемый cover уничтожающего, вместо отказа на аргументе;
 - `Game.SyncRelease()` освобождает entity cover и все singleton lock entries текущей script execution scope.
 
 `Game.Sync(...)` несёт `[[Async]]`, поэтому marker распространяется на непосредственных script callers даже тогда, когда получение завершается без suspension AngelScript context.

@@ -1802,4 +1802,59 @@ TEST_CASE("MapViewDeferredRefreshRestoresItemPropertiesWithoutBlockingOtherSubje
     REQUIRE(verified);
 }
 
+TEST_CASE("ServerCoverageProbeAcceptsDestroyedNativeArguments", "[server][sync][binding]")
+{
+    GlobalSettings settings {MakeServerEntityLifetimeSettings()};
+    BakerTests::OverrideSetting(settings.Server.SingleThreadedLogic, false);
+    auto server {safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources())};
+    auto shutdown_guard {scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); })};
+
+    REQUIRE(WaitForServerEntityLifetimeStartup(server));
+
+    refcount_nptr<Critter> subject {};
+
+    REQUIRE(server->RunInQuiescence(std::chrono::seconds {10}, [&](const ServerQuiescenceState&) {
+        auto proto {server->GetProtoCritter(server->Hashes.to_hashed_string("LifetimeCritter"))};
+        REQUIRE(proto);
+        subject = safe_alloc::make_refcounted<Critter>(server, ident_t {1}, proto);
+    }));
+
+    const auto& game_type {server->GetEntityType(server->Hashes.to_hashed_string("Game"))};
+    auto method {std::find_if(game_type.Methods.begin(), game_type.Methods.end(), [](const MethodDesc& candidate) { return candidate.Name == "IsEntityLocked"; })};
+    REQUIRE(method != game_type.Methods.end());
+
+    SyncContext ctx {};
+    ctx.Activate();
+    auto deactivate {scope_exit([&ctx]() noexcept {
+        ctx.Release();
+        ctx.Deactivate();
+    })};
+
+    ctx.SyncEntities(vector<ptr<ServerEntity>> {subject});
+    subject->MarkAsDestroying();
+    subject->MarkAsDestroyed();
+
+    nptr<Entity> target {subject};
+    nptr<Entity> receiver {server};
+    bool covered {false};
+    vector<ptr<void>> arguments {make_ptr(&receiver).void_cast(), make_ptr(&target).void_cast()};
+    FuncCallData call {.Accessor = &NativeDataProvider::NATIVE_DATA_ACCESSOR};
+    call.ArgsData = const_span<ptr<void>> {arguments.data(), arguments.size()};
+    call.RetData = make_ptr(&covered).void_cast();
+
+    REQUIRE_NOTHROW(method->Call(call));
+    CHECK(covered);
+
+    nptr<ServerEntity> scratch {};
+    auto ordinary_conversion {[&]() { return NativeDataCaller::ConvertArg<nptr<ServerEntity>>(make_ptr(&target).void_cast(), NativeDataProvider::NATIVE_DATA_ACCESSOR, scratch); }};
+    CHECK_THROWS_WITH(ordinary_conversion(), Catch::Matchers::ContainsSubstring("destroyed entity"));
+
+    ctx.Release();
+    covered = true;
+
+    REQUIRE_NOTHROW(method->Call(call));
+    CHECK_FALSE(covered);
+    CHECK_THROWS_WITH(ordinary_conversion(), Catch::Matchers::ContainsSubstring("Entity access without sync"));
+}
+
 FO_END_NAMESPACE

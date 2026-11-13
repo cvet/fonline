@@ -175,7 +175,7 @@ When changing commit durability, validate failed-write recovery and pending-log 
 
 JSON files contain ordinary UTF-8 objects; SQLite record BLOBs contain CBOR objects. Both preserve signed Int64 (including limits and values above 2^53), finite Float64, Bool, String, Array and Dict, including embedded NUL in strings/keys. Null/binary, unsigned overflow, non-object roots, malformed/truncated input and trailing CBOR bytes fail. Limits: 64 MiB per record and 64 nesting levels. CBOR SAX validation checks types/depth/declared lengths before DOM allocation; validation precedes writes.
 
-Use empty JSON/SQLite storage: old EJSON/BSON has no reader/converter. Preserve old binaries/storage for rollback. Mongo BSON/Memory semantics and SQLite tables/keys/WAL/snapshots remain unchanged; snapshots require matching current metadata/binaries. [Components](../../how-to/build/project-configuration.md#optional-native-components) defines provider selection; [backup/recovery](../../how-to/release/backup-and-recovery.md) defines consistent sets. Guarded `Test_DataBase.cpp` checks codecs, reopen/update/delete and recovery.
+Use empty JSON/SQLite storage: old EJSON/BSON has no reader/converter. Preserve old binaries/storage for rollback. Mongo BSON/Memory semantics and SQLite tables/keys/WAL/snapshots remain unchanged; Engine snapshots require metadata/binaries matching the current compatibility marker in `Source/Common/Common.h`. [Components](../../how-to/build/project-configuration.md#optional-native-components) defines provider selection; [backup/recovery](../../how-to/release/backup-and-recovery.md) defines consistent sets. Guarded `Test_DataBase.cpp` checks codecs, reopen/update/delete and recovery.
 
 ## Relationship to entity state
 

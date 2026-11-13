@@ -136,7 +136,7 @@ The movement-driven branch in `CritterHexView::Process` is active only when all 
 
 - the critter uses a 2D sprite rather than a loaded 3D model;
 - the critter has an active `MovingContext`;
-- the project returned `CritterAnimationFlags::Movement` and did not return `Freeze` from `OnCritterAnimationInit`.
+- the project returned `CritterAnimationFlags::Movement` and did not return `Freeze` from `OnCritterAnimationPlaybackInit`.
 
 In that branch, movement position selects the frame. Elapsed animation time does not advance the walk/run cycle independently.
 

@@ -52,4 +52,4 @@ This page contains **27** native metadata migration rules.
 
 | Scope | Previous name | Replacement | Symbol ID | Contract | Source | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| <code>0</code> | <code>0</code> | <code>88</code> | <a id="symbol-migration-version-0-0-44f81ee08d"></a><code>migration.Version.0.0</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | [Source/Common/Common.h:18](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L18) | Force change of compatability version |
+| <code>0</code> | <code>0</code> | <code>89</code> | <a id="symbol-migration-version-0-0-44f81ee08d"></a><code>migration.Version.0.0</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | [Source/Common/Common.h:18](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L18) | Force change of compatability version |

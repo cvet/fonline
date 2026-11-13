@@ -1449,7 +1449,7 @@
         {
           "path": "Source/Common/Common.h",
           "anchors": [
-            "MigrationRule Version 0 0 88"
+            "MigrationRule Version 0 0 89"
           ]
         }
       ]
@@ -2128,5 +2128,5 @@
       "internal": 8
     }
   },
-  "contract_digest": "0eb3d3d93a8f86424e241c4930fba31988fc22cb0547d76a94de8bd3a1459a36"
+  "contract_digest": "4e96c6ac8b9aa2b8dd23161cf57eda229d664874fec198f40db7660e910fc1ef"
 }

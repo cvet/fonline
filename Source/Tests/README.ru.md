@@ -5,7 +5,7 @@ permalink: /Source/Tests/README.ru.html
 locale: ru
 document_id: unit-tests-readme
 ---
-<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"04362e9ccb117d89993a2b0f29a13a30646dcf281ed4e0c8f3ccdcc413ae68c8"} -->
+<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"1f309ad57d0ca4d39d270c58f214ea75d3febda33cea31d50b73a144c995c00a"} -->
 # Модульные тесты
 
 Детерминированные тесты движка; карта, проверки и покрытие ведутся в разделе [Тестирование](../../Docs/ru/contributing/testing/).
@@ -22,6 +22,11 @@ document_id: unit-tests-readme
 `<ProjectDevName>` — префикс встраивающего проекта, а не универсальный API.
 
 ## Текущие наборы тестов
+
+`ClientBinaryCompatibilityPrecedesPlayerSession` использует настоящие клиентский
+и серверный движки в общем наборе. При совпадающих метаданных другой binary digest
+должен вызвать отказ устаревших ресурсов до появления игрока; одинаковый разрешает
+подключение.
 
 Генерируемые имена и количество файлов: [source-inventory.json](https://fonline.ru/Docs/generated/source-inventory.json); владение и проверки: [Тестирование](../../Docs/ru/contributing/testing/).
 

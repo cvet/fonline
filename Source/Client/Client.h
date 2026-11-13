@@ -291,9 +291,9 @@ public:
     // Runs before the client applies a critter action; `localCall` distinguishes local initiation from server delivery
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterAction, bool /*localCall*/, ptr<CritterView> /*cr*/, CritterAction /*action*/, int32_t /*actionData*/, nptr<AbstractItem> /*contextItem*/);
-    // Selects project animation identifiers and playback for a context and effective movement speed; normalizedTime is in [0,1], speed must be finite and positive
+    // Selects project animation identifiers and playback for a context and effective movement speed; normalizedPosition is a mode-dependent 2D frame position/phase or 3D clip start in [0,1], speed must be finite and positive
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterAnimationInit, ptr<CritterView> /*cr*/, CritterStateAnim& /*stateAnim*/, CritterActionAnim& /*actionAnim*/, nptr<AbstractItem> /*contextItem*/, CritterAnimationContext /*context*/, int32_t /*movingSpeed*/, CritterAnimationFlags& /*flags*/, float32_t& /*normalizedTime*/, float32_t& /*speed*/);
+    FO_ENTITY_EVENT(OnCritterAnimationPlaybackInit, ptr<CritterView> /*cr*/, CritterStateAnim& /*stateAnim*/, CritterActionAnim& /*actionAnim*/, nptr<AbstractItem> /*contextItem*/, CritterAnimationContext /*context*/, int32_t /*movingSpeed*/, CritterAnimationFlags& /*flags*/, float32_t& /*normalizedPosition*/, float32_t& /*speed*/);
     // Runs after animation selection and before playback; `refreshAnim` distinguishes view refresh from a queued action
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterAnimationProcess, ptr<CritterView> /*cr*/, CritterStateAnim /*stateAnim*/, CritterActionAnim /*actionAnim*/, nptr<AbstractItem> /*contextItem*/, bool /*refreshAnim*/);

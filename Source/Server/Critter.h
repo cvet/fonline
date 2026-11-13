@@ -233,6 +233,7 @@ public:
 
     void AddMember(ptr<Critter> cr);
     void RemoveMember(ptr<Critter> cr);
+    void BroadcastAttachments(ptr<const Critter> from_cr, nptr<const Player> ignore_player) const;
 
 private:
     // Declared before the state it guards so it outlives it

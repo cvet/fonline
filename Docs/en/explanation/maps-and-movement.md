@@ -122,6 +122,24 @@ Important `FindPathInput` fields:
 
 `FindPathOutput` returns a result, direction steps, control steps, the (possibly cut-adjusted) `NewToHex`, and `EndHexOffset` (concrete `ipos16`, zero when FreeMovement is off).
 
+Client `Map.GetPath(critter, target, cut)` and `GetPathLength` use the same
+native search at every distance. `cut` measures the center's distance to the
+target; `Multihex` checks the moving body's clearance and does not add a stopping
+radius. With cut zero, a nearby reachable target still requires every step to
+its center. The same hex and a blocked target both have length zero; the path
+and its reported length agree. `Test_ClientMapPaths.cpp` exercises these script
+exports with a real client map and multihex critter.
+
+For non-adjacent hexes, the client `Map.GetPath(fromHex, toHex, cut, gagCallback)`
+overload applies `cut` and the gag predicate in one native search. A permitted gag
+may be crossed even when the ordinary physical route is blocked; a refused gag
+or a solid non-gag blocker still prevents that route. Cut zero reaches the exact
+target, a positive cut stops within the requested distance, and a start already
+within that distance needs no movement. Negative cut follows native zero-cut
+normalization. The existing adjacent-hex shortcut is unchanged. The native client
+map tests exercise the exported callback, real script-function argument/return
+conversion and a complete wall barrier, separately from core path-finding tests.
+
 `MapManager::FindPathToAny()` builds an indexed target set and supplies it through `CheckTarget`,
 so a server caller can find the nearest reachable exact target with one search instead of launching a
 full path search for every candidate. The server script `Map.FindPathToAny(...)` overloads expose

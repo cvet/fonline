@@ -4042,9 +4042,9 @@
           "source_sha256": "d667ed9c51ad1942a691b1356fe696c9fba888a4e9f4a36865c5fbbc067289a4",
           "translation": "Выполняется до применения клиентом действия криттера; `localCall` отличает локальную инициацию от доставки сервером."
         },
-        "/symbols/@id=script.event.client.Game.OnCritterAnimationInit/description": {
-          "source_sha256": "a4ecf8673ffde0f7fc2f640ccf0a2a07a1dc9b905136069ef8216c23875ff8a3",
-          "translation": "Выбирает идентификаторы анимаций и воспроизведение проекта по контексту и фактической скорости движения; normalizedTime находится в [0,1], speed должен быть конечным и положительным"
+        "/symbols/@id=script.event.client.Game.OnCritterAnimationPlaybackInit/description": {
+          "source_sha256": "d1ef399c3d12ac0ca4c8e0e69b6b6903c7d3f0f327cdef24f36d960a27365715",
+          "translation": "Выбирает проектные идентификаторы анимации и воспроизведение для контекста и эффективной скорости движения; normalizedPosition в [0,1] означает зависящие от режима положение кадра/фазу 2D или начало клипа 3D, speed должна быть конечной и положительной"
         },
         "/symbols/@id=script.event.client.Game.OnCritterAnimationProcess/description": {
           "source_sha256": "2e45f0bf37a9294dee6c1400c22547329eb09ce9c027d284b88323093d67688c",
@@ -4525,6 +4525,10 @@
         "/symbols/@id=script.method.client.Critter.GetAlpha/description": {
           "source_sha256": "ef55c9e73e54d8594c4421718374db056587caf7a0cf959da1aa6c1afa39cd71",
           "translation": "Возвращает текущую отображаемую прозрачность спрайта на карте или 255, если криттер находится вне представления карты."
+        },
+        "/symbols/@id=script.method.client.Critter.GetAttachedCritterIds/description": {
+          "source_sha256": "ef40d784a88606d5c32635df4e817c56faae9c96473cebe23c3c79004ab2de61",
+          "translation": "Возвращает снимок полученных ID прикреплённых криттеров, включая ID сущностей, не загруженных на этом клиенте"
         },
         "/symbols/@id=script.method.client.Critter.GetBodyAngle/description": {
           "source_sha256": "dada7d239159b7ee7903bb7628c1a40981b814b774a2c10e25e0e1191e88be14",
@@ -5270,9 +5274,9 @@
           "source_sha256": "52ae1b6995ada3fc96832117dcf98cd2cef9a1237c37e6c7b30f214597770ff6",
           "translation": "Изменяет текущую громкость звуковых эффектов в процентах, не меняя стартовые настройки."
         },
-        "/symbols/@id=script.method.client.Game.SetSpriteTime/description": {
-          "source_sha256": "9366570c6374b89611bc4b34971d796f46e637dd516340c6c6519a681821e9b4",
-          "translation": "Задаёт нормализованное время воспроизведения клиентского локального спрайта; неизвестные дескрипторы игнорируются."
+        "/symbols/@id=script.method.client.Game.SetSpritePhase/description": {
+          "source_sha256": "e42bf851e0f3e6ee1fb02f5ced866c434285818b5574d3941e48a00f2d1b8f86",
+          "translation": "Устанавливает нормализованную фазу воспроизведения локального клиентского спрайта; неизвестный handle игнорируется"
         },
         "/symbols/@id=script.method.client.Game.SetUserConfig%23404272fae1b8c4d2/description": {
           "source_sha256": "5de990be46a5997ae1c1cafae81af30c88b47574d80221e5aac79de4ff097754",
@@ -5410,9 +5414,9 @@
           "source_sha256": "8589a66ec8b38576567a1a7a9c5a4cf0f084d2e450ecf37ce397d92569ffdf73",
           "translation": "Задает вариант направления для анимации спрайта предмета на карте; ничего не делает с предметами вне представления карты."
         },
-        "/symbols/@id=script.method.client.Item.SetAnimTime/description": {
-          "source_sha256": "a8975b67cd07c8efa133e0ad719ce67ca0888b58e7d48fe26039e48e99cc8efa",
-          "translation": "Задает нормализованную позицию воспроизведения анимации спрайта предмета на карте; ничего не делает с предметами вне представления карты."
+        "/symbols/@id=script.method.client.Item.SetAnimPhase/description": {
+          "source_sha256": "5009598adde02262666632e9706169197e510c0df4ea491159c75bd890990546",
+          "translation": "Устанавливает нормализованную фазу воспроизведения анимации спрайта предмета на карте; вне map view ничего не делает"
         },
         "/symbols/@id=script.method.client.Item.StopAnim/description": {
           "source_sha256": "700cb7b56627183d99e5154d467493de7bdbe6bac51ee77c38695b568b17c21a",
@@ -15628,8 +15632,8 @@
           "translation": "Задавайте каждой карте в контейнере с несколькими картами уникальное $Name ProtoMap; одиночный безымянный якорь наследует базовое имя исходника."
         },
         "/rules/@id=map-format.rule.mapper-round-trip/description": {
-          "source_sha256": "5febb16894876dd777ccbb178f897acb67734e25100b978294875ea8184f7292",
-          "translation": "Mapper выпускает $Name и нормализованные секции [$Name/...] изменённой карты, сохраняет поля $Text, разворачивает унаследованные свойства карты и побайтно сохраняет соседние блоки в контейнере с несколькими картами."
+          "source_sha256": "dace90b48471985ae943dd569d66664b885d919210f8b9bf3f767c274381ddcd",
+          "translation": "Mapper выпускает $Name и нормализованные секции [$Name/...] изменённой карты, сохраняет поля $Text и разворачивает унаследованные свойства карты. Самостоятельный output заканчивается ровно одним LF и сохраняет пустые строки между секциями. При сохранении нескольких карт сохраняется разделитель перед следующей нетронутой секцией, а соседние блоки остаются побайтно прежними, включая прежний EOF нетронутого последнего блока."
         },
         "/rules/@id=map-format.rule.mapper-round-trip/name": {
           "source_sha256": "eff721a9988b7f95a4b2380935a50eb983a459b268cd4d8539a306178c9287f1",

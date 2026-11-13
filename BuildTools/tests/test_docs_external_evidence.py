@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 import copy
 import io
+import json
 import subprocess
 import sys
 import tempfile
@@ -28,8 +29,8 @@ class ExternalProjectEvidenceTests(unittest.TestCase):
             self.model,
             docs_external_evidence.generate_model(ENGINE_ROOT),
         )
-        self.assertEqual(self.model["summary"]["snapshot_count"], 3)
-        self.assertEqual(self.model["summary"]["record_count"], 32)
+        self.assertEqual(self.model["summary"]["snapshot_count"], 4)
+        self.assertEqual(self.model["summary"]["record_count"], 33)
         self.assertIn(
             "private-item-policy-and-map-spectators",
             {record["id"] for record in self.model["records"]},
@@ -256,6 +257,116 @@ class ExternalProjectEvidenceTests(unittest.TestCase):
 
         self.assertEqual(result, 1)
         self.assertIn("unsupported external repository", errors.getvalue())
+
+    def test_external_verification_reads_multiple_pins_from_one_repository(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            old_revision = self._create_repository(root, "Docs/Guide.md")
+            later_path = root / "Docs/Later.md"
+            later_path.write_text("later committed source\n", encoding="utf-8")
+            subprocess.run(["git", "-C", str(root), "add", "."], check=True)
+            subprocess.run(["git", "-C", str(root), "commit", "-q", "-m", "later"], check=True)
+            later_revision = subprocess.run(
+                ["git", "-C", str(root), "rev-parse", "HEAD"],
+                check=True, capture_output=True, text=True, encoding="utf-8",
+            ).stdout.strip()
+            model = {
+                "snapshots": {
+                    "old": {"revision": old_revision},
+                    "later": {"revision": later_revision},
+                },
+                "records": [{"sources": [
+                    {"snapshot": "old", "path": "Docs/Guide.md"},
+                    {"snapshot": "later", "path": "Docs/Later.md"},
+                ]}],
+            }
+            roots = {"old": root, "later": root}
+            (root / "Docs/Guide.md").unlink()
+            later_path.write_text("dirty overlay\n", encoding="utf-8")
+            docs_external_evidence.verify_external_sources(model, roots)
+
+            wrong_pin = copy.deepcopy(model)
+            wrong_pin["records"][0]["sources"][0]["path"] = "Docs/Later.md"
+            with self.assertRaisesRegex(ValueError, "old pinned source is missing"):
+                docs_external_evidence.verify_external_sources(wrong_pin, roots)
+            with self.assertRaisesRegex(ValueError, "roots must match snapshots exactly"):
+                docs_external_evidence.verify_external_sources(model, {"old": root})
+
+    def test_cli_verifies_every_snapshot_with_existing_repository_roots(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            lf_root = root / "lf"
+            tla_root = root / "tla"
+            lf_revisions = [self._create_repository(lf_root, "Docs/Guide.md")]
+            tla_revision = self._create_repository(tla_root, "Docs/Guide.md")
+
+            for index in range(2):
+                (lf_root / "Docs/Guide.md").write_text(f"revision {index}\n", encoding="utf-8")
+                subprocess.run(["git", "-C", str(lf_root), "add", "."], check=True)
+                subprocess.run(["git", "-C", str(lf_root), "commit", "-q", "-m", f"revision {index}"], check=True)
+                lf_revisions.append(subprocess.run(
+                    ["git", "-C", str(lf_root), "rev-parse", "HEAD"],
+                    check=True, capture_output=True, text=True, encoding="utf-8",
+                ).stdout.strip())
+
+            manifest = {
+                "schema_version": 1,
+                "title": "Source verification fixture",
+                "policy": copy.deepcopy(self.model["policy"]),
+                "snapshots": {},
+                "records": [],
+            }
+            ids = ("last-frontier", "last-frontier-map-acceptance", "last-frontier-client-path-cut", "fonline-tla")
+            for index, snapshot_id in enumerate(ids):
+                is_tla = snapshot_id == "fonline-tla"
+                manifest["snapshots"][snapshot_id] = {
+                    "repository": "cvet/fonline-tla" if is_tla else "lastfrontierdev/lf",
+                    "url": "https://example.invalid/repository",
+                    "revision": tla_revision if is_tla else lf_revisions[index],
+                    "availability": "test-owned",
+                    "role": "Pinned source fixture",
+                }
+                record = copy.deepcopy(self.model["records"][0])
+                record.update({
+                    "id": f"source-fixture-{index}",
+                    "sources": [{"snapshot": snapshot_id, "path": "Docs/Guide.md"}],
+                    "disposition": "project-owned",
+                    "engine_targets": [],
+                    "planned_targets": [],
+                    "external_targets": [snapshot_id + ":Docs/Guide.md"],
+                })
+                manifest["records"].append(record)
+
+            manifest_path = root / docs_external_evidence.DEFAULT_MANIFEST
+            manifest_path.parent.mkdir(parents=True)
+            policy_path = root / docs_external_evidence.DOCUMENTATION_MANIFEST
+            policy_path.parent.mkdir(parents=True)
+            policy_path.write_text(json.dumps({
+                "owners": self.model["owners"],
+                "owner_review_requirements": self.model["owner_review_requirements"],
+            }), encoding="utf-8")
+            arguments = [
+                "--root", str(root), "--check", "--verify-sources",
+                "--last-frontier-root", str(lf_root), "--tla-root", str(tla_root),
+            ]
+            for bad_repository in (False, True):
+                with self.subTest(bad_repository=bad_repository):
+                    if bad_repository:
+                        manifest["snapshots"][ids[1]]["repository"] = "unknown/project"
+                    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+                    for relative_path, content in docs_external_evidence.render_outputs(root).items():
+                        output = root / relative_path
+                        output.parent.mkdir(parents=True, exist_ok=True)
+                        output.write_text(content, encoding="utf-8")
+                    (lf_root / "Docs/Guide.md").write_text("dirty uncommitted overlay\n", encoding="utf-8")
+                    stdout, stderr = io.StringIO(), io.StringIO()
+                    with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                        result = docs_external_evidence.main(arguments)
+                    self.assertEqual(result, 1 if bad_repository else 0)
+                    if bad_repository:
+                        self.assertIn("unsupported external repository", stderr.getvalue())
+                    else:
+                        self.assertIn("External project source snapshots are verified", stdout.getvalue())
 
     def test_ci_checks_generator_and_test(self) -> None:
         workflow = (ENGINE_ROOT / ".github/workflows/validate.yml").read_text(

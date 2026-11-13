@@ -9,6 +9,17 @@ FO_BEGIN_NAMESPACE
 
 using namespace ClientEngineTests;
 
+template<typename T>
+concept client_animation_playback_init = requires(T& client) { client.OnCritterAnimationPlaybackInit; };
+
+template<typename T>
+concept client_legacy_animation_init = requires(T& client) { client.OnCritterAnimationInit; };
+
+static_assert(client_animation_playback_init<ClientEngine>);
+static_assert(!client_legacy_animation_init<ClientEngine>);
+
+FO_SCRIPT_API vector<ident_t> Client_Critter_GetAttachedCritterIds(ptr<CritterView> self);
+
 void Client_Game_DrawText(ptr<ClientEngine> client, string_view text, ipos32 pos, isize32 size, ucolor color, TextFormat format);
 void Client_Game_ActivateOffscreenSurface(ptr<ClientEngine> client, bool forceClear);
 void Client_Game_PresentOffscreenSurface(ptr<ClientEngine> client, int32_t effectSubtype, ipos32 pos, isize32 size);
@@ -1175,6 +1186,51 @@ TEST_CASE("ClientEngineStartsAndRegistersEntities")
     CHECK_FALSE(static_cast<bool>(client->GetEntity(ident_t {1001})));
 }
 
+TEST_CASE("ClientCritterAttachedIdsSnapshotIncludesUnloadedIdsAndSurvivesListChanges")
+{
+    auto settings {MakeClientTestSettings()};
+    auto client {MakeClientEngine(settings)};
+
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+
+    hstring critter_pid {client->Hashes.to_hashed_string("UnitTestClientCritter")};
+    auto critter_proto {client->GetProtoCritter(critter_pid)};
+    REQUIRE(static_cast<bool>(critter_proto));
+
+    auto vehicle {safe_alloc::make_refcounted<CritterView>(client, ident_t {1002}, critter_proto)};
+    auto driver {safe_alloc::make_refcounted<CritterView>(client, ident_t {11}, critter_proto)};
+
+    CHECK(Client_Critter_GetAttachedCritterIds(vehicle).empty());
+
+    // The passenger id replicates as a bare id, so its critter is deliberately never created on this client
+    vehicle->SetAttachedCritters({driver->GetId(), ident_t {22}});
+    CHECK_FALSE(static_cast<bool>(client->GetEntity(ident_t {22})));
+
+    vector<ident_t> snapshot {Client_Critter_GetAttachedCritterIds(vehicle)};
+    REQUIRE(snapshot.size() == 2);
+    CHECK(snapshot[0] == driver->GetId());
+    CHECK(snapshot[1] == ident_t {22});
+
+    // Caller mutations leave the critter intact, and replacing its native list must preserve the old snapshot
+    snapshot[0] = ident_t {9999};
+    CHECK(vehicle->GetAttachedCritters()[0] == driver->GetId());
+
+    vehicle->SetAttachedCritters({driver->GetId()});
+    CHECK(snapshot[0] == ident_t {9999});
+    CHECK(snapshot[1] == ident_t {22});
+    CHECK(Client_Critter_GetAttachedCritterIds(vehicle).size() == 1);
+
+    vehicle->SetAttachedCritters({});
+    CHECK(snapshot.size() == 2);
+    CHECK(Client_Critter_GetAttachedCritterIds(vehicle).empty());
+
+    vehicle->DestroySelf();
+    driver->DestroySelf();
+
+    CHECK_FALSE(static_cast<bool>(client->GetEntity(ident_t {1002})));
+    CHECK_FALSE(static_cast<bool>(client->GetEntity(ident_t {11})));
+}
+
 TEST_CASE("ClientEngineScheduledCallbacksDoNotRunNestedZeroDelayInSamePass")
 {
     auto settings {MakeClientTestSettings()};
@@ -1291,8 +1347,8 @@ TEST_CASE("MultiFrameSpritesPlayAndCopy")
         CHECK(sheet->IsPlaying());
 
         // Seeking addresses a frame directly rather than waiting for the clock
-        for (float32_t normalized_time : {0.0f, 0.25f, 0.5f, 0.99f, 1.0f}) {
-            REQUIRE_NOTHROW(sheet->SetTime(normalized_time));
+        for (float32_t phase : {0.0f, 0.25f, 0.5f, 0.99f, 1.0f}) {
+            REQUIRE_NOTHROW(sheet->SetPhase(phase));
             ignore_unused(sheet->Update());
         }
 
@@ -2145,6 +2201,50 @@ TEST_CASE("ModelAnimationUsesProjectLocomotionAndFrozenPose")
         model->PoseSpriteFrame(true);
     }};
 
+    SECTION("ActionContextIsRetainedAndDeliveredToBothAnimationEvents")
+    {
+        auto context_proto {safe_alloc::make_refcounted<ProtoItem>(client->Hashes.to_hashed_string("AnimationContextItem"), client->GetPropertyRegistrar("Item").as_ptr())};
+        int32_t initial_refs {context_proto->GetRefCount()};
+        nptr<Entity> playback_context {};
+        nptr<Entity> process_context {};
+
+        Entity::EventCallbackData playback {};
+        playback.Callback = [&](FuncCallData& call) {
+            if (*cast_from_void<CritterAnimationContext*>(call.ArgsData[4]) == CritterAnimationContext::Action) {
+                playback_context = *cast_from_void<Entity**>(call.ArgsData[3]);
+                *cast_from_void<CritterAnimationFlags*>(call.ArgsData[6]) = CritterAnimationFlags::Freeze;
+            }
+
+            return Entity::EventResult::ContinueChain;
+        };
+
+        Entity::EventCallbackData processing {};
+        processing.Callback = [&](FuncCallData& call) {
+            nptr<Entity> context {*cast_from_void<Entity**>(call.ArgsData[3])};
+
+            if (context) {
+                process_context = context;
+            }
+
+            return Entity::EventResult::ContinueChain;
+        };
+
+        client->OnCritterAnimationPlaybackInit.Subscribe(std::move(playback));
+        client->OnCritterAnimationProcess.Subscribe(std::move(processing));
+        auto map {safe_alloc::make_refcounted<MapView>(client, ident_t {1001}, client->GetProtoMap(client->Hashes.to_hashed_string("PolicyMap")), isize32 {320, 200})};
+        auto destroy_map {scope_exit([&map]() noexcept { safe_call([&map] { map->DestroySelf(); }); })};
+        map->EnableMapperMode();
+        auto critter {map->AddMapperCritter(client->Hashes.to_hashed_string("UnitTestModelCritter"), mpos {6, 6}, mdir {0}, nullptr)};
+
+        critter->AppendAnim(state, action, context_proto);
+        CHECK(playback_context == context_proto.get());
+        CHECK(process_context == context_proto.get());
+        CHECK(context_proto->GetRefCount() == initial_refs + 1);
+
+        critter->StopAnim();
+        CHECK(context_proto->GetRefCount() == initial_refs);
+    }
+
     SECTION("SamePairCanChangeItsFrozenTime")
     {
         (void)model->PlayAnim(state, action, nullptr, 0.0f, ModelAnimFlags::Freeze);
@@ -2362,7 +2462,7 @@ TEST_CASE("ModelAnimationUsesProjectLocomotionAndFrozenPose")
             return Entity::EventResult::ContinueChain;
         };
 
-        client->OnCritterAnimationInit.Subscribe(std::move(selection));
+        client->OnCritterAnimationPlaybackInit.Subscribe(std::move(selection));
         auto map {safe_alloc::make_refcounted<MapView>(client, ident_t {1001}, client->GetProtoMap(client->Hashes.to_hashed_string("PolicyMap")), isize32 {320, 200})};
         auto destroy_map {scope_exit([&map]() noexcept { safe_call([&map] { map->DestroySelf(); }); })};
         map->EnableMapperMode();
@@ -2391,8 +2491,7 @@ TEST_CASE("ModelAnimationUsesProjectLocomotionAndFrozenPose")
 
             return Entity::EventResult::ContinueChain;
         };
-
-        client->OnCritterAnimationInit.Subscribe(std::move(selection));
+        client->OnCritterAnimationPlaybackInit.Subscribe(std::move(selection));
 
         auto map {safe_alloc::make_refcounted<MapView>(client, ident_t {1001}, client->GetProtoMap(client->Hashes.to_hashed_string("PolicyMap")), isize32 {320, 200})};
         auto destroy_map {scope_exit([&map]() noexcept { safe_call([&map] { map->DestroySelf(); }); })};
@@ -2428,8 +2527,7 @@ TEST_CASE("ModelAnimationUsesProjectLocomotionAndFrozenPose")
 
             return Entity::EventResult::ContinueChain;
         };
-
-        client->OnCritterAnimationInit.Subscribe(std::move(selection));
+        client->OnCritterAnimationPlaybackInit.Subscribe(std::move(selection));
         auto map {safe_alloc::make_refcounted<MapView>(client, ident_t {1001}, client->GetProtoMap(client->Hashes.to_hashed_string("PolicyMap")), isize32 {320, 200})};
         auto destroy_map {scope_exit([&map]() noexcept { safe_call([&map] { map->DestroySelf(); }); })};
         map->EnableMapperMode();

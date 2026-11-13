@@ -16,6 +16,53 @@ import docs_site  # noqa: E402
 
 
 class DocumentationSiteTests(unittest.TestCase):
+    def test_search_compacts_positions_without_changing_symbolic_posting_order(self) -> None:
+        for locale in ("en", "ru"):
+            with self.subTest(locale=locale):
+                records = [
+                    {
+                        "id": f"document-{number:02}",
+                        "title": "Same" if number < 2 else f"Title {number:02}",
+                        "path": f"Docs/{number}.md",
+                        "content": "sharedmarker " + (
+                            " ".join(f"uniquetoken{letter}" for letter in "abcdefghijklmnopqrstuvwxyz")
+                            if number == 11 else "brief"
+                        ),
+                        "visibility": "public", "state": "current", "human": True,
+                        "diataxis": "reference",
+                    }
+                    for number in range(12)
+                ]
+                index = json.loads(docs_site.render_search(
+                    {"publishing": {"production_url": "https://example.com"}},
+                    {"navigation": [], "search": {"minimum_query_length": 2, "max_bytes": 65536}},
+                    records, {}, {record["id"]: record for record in records}, locale,
+                ))
+                self.assertEqual(index["documents"][0]["id"], "document-11")
+                self.assertEqual(len(index["documents"]), 12)
+                self.assertEqual(
+                    [index["documents"][position]["id"] for position, _ in index["terms"]["same"]],
+                    ["document-00", "document-01"],
+                )
+                for query in ("same", "sam", "same same"):
+                    self.assertEqual(
+                        [result["document"]["id"] for result in docs_site.search_documents(index, query)],
+                        ["document-00", "document-01"],
+                    )
+                self.assertEqual(
+                    docs_site.search_documents(index, "uniquetokena uniquetokenb")[0]["document"]["id"],
+                    "document-11",
+                )
+                lexical = sorted(index["documents"], key=lambda document: document["id"])
+                lexical_positions = {document["id"]: number for number, document in enumerate(lexical)}
+                uncompressed = dict(index, documents=lexical, terms={
+                    token: [[lexical_positions[index["documents"][position]["id"]], score]
+                            for position, score in postings]
+                    for token, postings in index["terms"].items()
+                })
+                encode = lambda value: json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+                self.assertLess(len(encode(index)), len(encode(uncompressed)))
+
     def test_version_source_does_not_rewrite_site_artifacts(self) -> None:
         temporary_directory, root = self._create_fixture()
         self.addCleanup(temporary_directory.cleanup)

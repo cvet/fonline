@@ -198,8 +198,8 @@ class MapperToolsDocumentationTests(unittest.TestCase):
 
         self.assertIn("void ItemHexView::RefreshAnim()", source)
         self.assertIn("if (_map->IsMapperMode())", source)
-        self.assertIn("SetTime(0.0f)", source)
-        self.assertIn("at time `0.0`", guide)
+        self.assertIn("SetPhase(0.0f)", source)
+        self.assertIn("at normalized phase `0.0`", guide)
         self.assertIn("representative client scene", guide)
 
     def test_locale_guides_and_legacy_routes_preserve_contracts(self) -> None:

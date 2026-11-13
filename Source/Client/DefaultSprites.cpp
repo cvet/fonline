@@ -528,25 +528,27 @@ void SpriteSheet::Prewarm()
     auto direction {GetCurrentDirection()};
     int32_t frame {_sprMngr->Random(0, direction->_framesCount - 1)};
     timespan start {frame == 0 ? timespan::zero : direction->_frameEnds[frame - 1]};
+
     if (direction->_duration > timespan::zero) {
         _phase = start.div<float64_t>(direction->_duration);
     }
     else {
         _phase = direction->_framesCount > 1 ? numeric_cast<float64_t>(frame) / (direction->_framesCount - 1) : 0.0;
     }
+
     RefreshParameters();
 }
 
-auto SpriteSheet::GetTime() const -> float32_t
+auto SpriteSheet::GetPhase() const -> float32_t
 {
     return numeric_cast<float32_t>(_phase);
 }
 
-void SpriteSheet::SetTime(float32_t normalized_time)
+void SpriteSheet::SetPhase(float32_t normalized_phase)
 {
-    FO_VERIFY_AND_THROW(std::isfinite(normalized_time), "Sprite normalized time must be finite");
+    FO_VERIFY_AND_THROW(std::isfinite(normalized_phase), "Sprite phase must be finite");
 
-    _phase = std::clamp(numeric_cast<float64_t>(normalized_time), 0.0, 1.0);
+    _phase = std::clamp(numeric_cast<float64_t>(normalized_phase), 0.0, 1.0);
     _startTick = _sprMngr->GetTimer().GetFrameTime();
     RefreshParameters();
 }
@@ -647,6 +649,7 @@ auto SpriteSheet::GetFrameIndexAtPhase(float64_t phase, bool reversed) const -> 
     FO_VERIFY_AND_THROW(std::isfinite(phase) && phase >= 0 && phase <= 1, "Sprite phase must be finite and within 0..1", phase);
 
     auto direction {GetCurrentDirection()};
+
     if (direction->_duration == timespan::zero) {
         return iround<int32_t>(phase * (direction->_framesCount - 1));
     }

@@ -93,8 +93,10 @@ class SpriteRootMotionDocumentationTests(unittest.TestCase):
         self.assertIn("_sprOffset[index] = offset;", sprites)
         self.assertIn("Do not clamp HexOffset: prediction can leave current_hex a full step behind", movement)
         self.assertIn("progress.HexOffset = ipos16", movement)
-        self.assertIn("is_enum_set(cur_anim.Flags, CritterAnimationFlags::Freeze)", critter)
-        self.assertIn("!frozen && IsMoving() && is_enum_set(cur_anim.Flags, CritterAnimationFlags::Movement)", critter)
+        frame_selection = critter.split("void CritterHexView::UpdateAnimFrame(", 1)[1].split("\nvoid CritterHexView::RefreshView(", 1)[0]
+        self.assertIn("is_enum_set(anim.Flags, CritterAnimationFlags::Freeze)", frame_selection)
+        self.assertIn("!frozen && IsMoving() && is_enum_set(anim.Flags, CritterAnimationFlags::Movement)", frame_selection)
+        self.assertIn("UpdateAnimFrame(cur_anim);", critter)
         self.assertIn("frame_index = i;", animation)
         self.assertIn("AnimationMovement::EvaluateWalkFrame(offsets, total, pos, _walkAnchorDisp, anim.FrameIndex, _offsAnim);", critter)
         self.assertIn("AnimationMovement::AccumulateFrameOffsets(offsets, anim.FrameIndex)", critter)
