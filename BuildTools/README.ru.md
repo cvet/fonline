@@ -5,7 +5,7 @@ permalink: /BuildTools/README.ru.html
 locale: ru
 document_id: buildtools-readme
 ---
-<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"1e777fd745d575aff5ede124d71757dee010bbeab4bf7144dc8f6fb4ff57aaca"} -->
+<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"5ea7f00a1a0edf17ebb8b8018b1808fc293a68dba34f3cd05f9fe2d0611db13e"} -->
 # Инструменты сборки FOnline Engine
 
 ## Скрипты сборки
@@ -754,6 +754,14 @@ python3 BuildTools/secure_channel_key.py public /path/to/channel.key
 ```
 
 `generate` записывает 64 шестнадцатеричных знака в новый файл, доступный только владельцу, не перезаписывает существующий файл и выводит публичный ключ для закрепления в клиентах. `public` повторно выводит публичную половину имеющегося секрета. Для работы нужен только стандартный Python.
+
+Локальные и тестовые запуски, которым нужна стабильная одноразовая идентичность, используют `ensure-pair`:
+
+```bash
+python3 BuildTools/secure_channel_key.py ensure-pair Workspace/Channel.key Workspace/Channel.pub
+```
+
+Команда сохраняет существующий секрет или создаёт новый так же, как `generate`, затем записывает публичный ключ во второй файл и выводит его. Запускаемые примеры вызывают её перед каждым запеканием и хранят оба файла в игнорируемом `Workspace/`; такая пара никогда не является production-идентичностью.
 
 ## Форматирование исходного кода
 

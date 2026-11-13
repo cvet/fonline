@@ -55,8 +55,27 @@ if(FO_BUILD_CLIENT AND FO_BUILD_SERVER AND FO_BUILD_BAKER)
         VERBATIM
         COMMENT "Check generated Minimal Multiplayer config")
 
-    add_dependencies(BakeResources CheckTutorialConfig)
-    add_dependencies(ForceBakeResources CheckTutorialConfig)
+    # Throwaway local secure-channel identity in the ignored Workspace/: the config reads the secret at run time
+    # and the bake embeds the public pin, so every bake creates the pair first and keeps an existing secret
+    add_custom_target(ProvisionTutorialChannelKey
+        COMMAND ${Python3_EXECUTABLE}
+            "${FO_BUILDTOOLS_DIR}/secure_channel_key.py"
+            ensure-pair
+            Workspace/TutorialChannel.key
+            Workspace/TutorialChannel.pub
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        VERBATIM
+        COMMENT "Provision the local Minimal Multiplayer channel key")
+
+    add_dependencies(BakeResources CheckTutorialConfig ProvisionTutorialChannelKey)
+    add_dependencies(ForceBakeResources CheckTutorialConfig ProvisionTutorialChannelKey)
+
+    # Script compilers read the same config, so the pinned public key must exist before they run
+    foreach(config_reader CompileAngelScript CompileManagedScripts)
+        if(TARGET ${config_reader})
+            add_dependencies(${config_reader} ProvisionTutorialChannelKey)
+        endif()
+    endforeach()
 
     add_custom_target(RunTutorialChecks
         COMMAND ${Python3_EXECUTABLE}

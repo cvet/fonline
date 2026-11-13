@@ -591,6 +591,16 @@ python3 BuildTools/secure_channel_key.py public /path/to/channel.key
 `generate` writes 64 hex digits readable by the owner only, refuses to overwrite an existing file, and prints the public
 key that clients pin; `public` prints it again later. The script needs nothing beyond the Python standard library.
 
+Local and test runs that need a stable throwaway identity use `ensure-pair`:
+
+```bash
+python3 BuildTools/secure_channel_key.py ensure-pair Workspace/Channel.key Workspace/Channel.pub
+```
+
+It keeps an existing secret or creates a new one like `generate`, then writes the public key to the second file and prints
+it. The runnable examples call it before each bake and keep both files in their ignored `Workspace/`; such a pair is never a
+production identity.
+
 ## Source formatting
 
 `buildtools.py format-source` formats the `.cpp`, `.h` and `.cs` files of the Engine `Source/` tree with clang-format; that tree contains no `.fos` files. A project formats its own AngelScript by calling the importable `format_files(clang_format, root, patterns)` with a `*.fos` pattern, which applies the `fix_fos_nullable_suffix` repair to every `.fos` file it formats. The binary is resolved by `discover_clang_format()`: the `FO_CLANG_FORMAT` override first (when set), then `clang-format-20`/`clang-format` on `PATH`; the resolved binary must report major version 20. BuildTools then repairs AngelScript nullable and named-argument forms that clang-format parses as C++. The complete contract and embedding-project boundary are in [AngelScript Style and Refactoring](../Docs/en/how-to/scripting/style-and-refactoring.md). `buildtools.py format-content` formats the Engine-owned content formats of a project, its `.fomain` and prototype files, and with `--fos <glob>` its AngelScript through the same wrapper; see [Format Game Content Files](../Docs/en/how-to/project/format-content.md).

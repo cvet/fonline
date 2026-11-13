@@ -51,7 +51,28 @@ if(FO_WINDOWS OR FO_LINUX)
         VERBATIM
         COMMENT "Check generated packaging-matrix config")
 
-    add_dependencies(ForceBakeResources CheckPackagingMatrixConfig)
+    # Throwaway local secure-channel identity in the ignored Workspace/: the config reads the secret at run time
+    # and the bake embeds the public pin, so every bake creates the pair first and keeps an existing secret
+    add_custom_target(ProvisionPackageSmokeChannelKey
+        COMMAND ${Python3_EXECUTABLE}
+            "${FO_BUILDTOOLS_DIR}/secure_channel_key.py"
+            ensure-pair
+            Workspace/PackageSmokeChannel.key
+            Workspace/PackageSmokeChannel.pub
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        VERBATIM
+        COMMENT "Provision the local packaging-matrix channel key")
+
+    add_dependencies(BakeResources ProvisionPackageSmokeChannelKey)
+    add_dependencies(ForceBakeResources CheckPackagingMatrixConfig ProvisionPackageSmokeChannelKey)
+
+    # Script compilers read the same config, so the pinned public key must exist before they run
+    foreach(config_reader CompileAngelScript CompileManagedScripts)
+        if(TARGET ${config_reader})
+            add_dependencies(${config_reader} ProvisionPackageSmokeChannelKey)
+        endif()
+    endforeach()
+
     add_dependencies(MakePackage-PackageSmoke
         ForceBakeResources
         FOPKG_Baker

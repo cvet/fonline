@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/release/packaging.html
 ---
 
 # Упаковка и выпуск
-<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"d0b708b07adbed51aa1380d5a99ab88295916352202eb2b11ddfdce391dff26a"} -->
+<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"346b71d5c3b55b061273b986266b6331dda648bb4b0a619db4cafa654472bea5"} -->
 Точная текущая grammar, совместимость target/platform, pack tokens, payloads и
 command-line arguments находятся в сгенерированном
 [package interface](../../reference/packages/index.md). Перед тем как
@@ -248,6 +248,21 @@ roles и runtime results. Сохраняйте manifest и archives в release l
 подключающего проекта, когда это evidence обязательно; текущий Engine workflow
 их не публикует.
 
+Пакет никогда не содержит секрет защищённого канала сервера. Перед каждым
+запеканием цель fixture `ProvisionPackageSmokeChannelKey` запускает
+`BuildTools/secure_channel_key.py ensure-pair` и хранит одноразовую локальную
+пару в игнорируемом `Workspace/` fixture. Bake встраивает в client config только
+публичный pin из `ClientNetwork.ChannelServerKeys = $FILE{Workspace/PackageSmokeChannel.pub}`,
+а server config сохраняет directive
+`ServerNetwork.ChannelSecretKey = $TARGET_FILE{Workspace/PackageSmokeChannel.key}`,
+которую packaged server разрешает относительно своего рабочего каталога. Для
+runtime-проверки verifier копирует локальный секрет по этому пути внутрь raw
+server payload, как это сделал бы оператор на server host, и удаляет его до
+инвентаризации, поэтому inventory payload и archives его никогда не содержат.
+Реальное развёртывание создаёт собственный секрет на server host, размещает его
+там, куда указывает эта directive, и запекает clients с соответствующим
+публичным pin; см. [безопасность и секреты](security-and-secrets.md).
+
 Fixture даёт необязательное evidence для Engine package path Windows x64 или
 Ubuntu/Linux x64 на host, где он был запущен. Он не квалифицирует
 package declaration другой игры, signing, installer, store, deployment host,
@@ -262,7 +277,8 @@ configuration и создаёт нативные raw и ZIP/tar.gz client/server
 Собственный verifier примера проверяет parity archive/payload, записывает
 SHA-256 каждого archive и payload file и запускает взаимодействие packaged
 headless server/client с картой и предметом через общий gameplay process
-runner.
+runner. Его цель `ProvisionTutorialChannelKey` и verifier обращаются с ключом
+защищённого канала так же, как packaging fixture.
 
 Checked-in `.fomain` генерируется из текущих defaults `Settings.inc` и
 проверенных tutorial overrides/sections. `CheckTutorialConfig` выполняется до

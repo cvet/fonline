@@ -93,7 +93,7 @@ ServerNetwork.ListenRetryTime = 30000
 ServerNetwork.ListenRetryDelay = 500
 ServerNetwork.WssPrivateKey =
 ServerNetwork.WssCertificate =
-ServerNetwork.ChannelSecretKey =
+ServerNetwork.ChannelSecretKey = $TARGET_FILE{Workspace/TutorialChannel.key}
 
 # ClientNetwork
 ClientNetwork.ServerHost = 127.0.0.1
@@ -108,7 +108,7 @@ ClientNetwork.ProxyPort = 8080
 ClientNetwork.ProxyUser =
 ClientNetwork.ProxyPass =
 ClientNetwork.DebugNet = False
-ClientNetwork.ChannelServerKeys =
+ClientNetwork.ChannelServerKeys = $FILE{Workspace/TutorialChannel.pub}
 
 # Audio
 Audio.DisableAudio = False

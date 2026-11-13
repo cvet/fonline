@@ -30,6 +30,10 @@ OVERRIDES = {
     "Network.WebSocketPort": "4011",
     "Client.Language": "engl",
     "ClientNetwork.ServerHost": "127.0.0.1",
+    # Throwaway local secure-channel identity, created in the ignored Workspace/ before every bake and run.
+    # The server reads its secret at run time; the bake embeds the public pin, so packaged clients need no file
+    "ServerNetwork.ChannelSecretKey": "$TARGET_FILE{Workspace/TutorialChannel.key}",
+    "ClientNetwork.ChannelServerKeys": "$FILE{Workspace/TutorialChannel.pub}",
     "Server.DbStorage": "Memory",
     "Server.WorkerThreads": "2",
     "Server.EntityStartId": "10000000001",

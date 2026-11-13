@@ -30,6 +30,10 @@ OVERRIDES = {
     "Network.WebSocketPort": "4021",
     "Client.Language": "engl",
     "ClientNetwork.ServerHost": "127.0.0.1",
+    # Throwaway local secure-channel identity, created in the ignored Workspace/ before every bake and run.
+    # The server reads its secret at run time; the bake embeds the public pin, so packaged clients need no file
+    "ServerNetwork.ChannelSecretKey": "$TARGET_FILE{Workspace/PackageSmokeChannel.key}",
+    "ClientNetwork.ChannelServerKeys": "$FILE{Workspace/PackageSmokeChannel.pub}",
     "Server.DbStorage": "Memory",
     # Enum settings are read as integers, while Settings.inc spells these defaults as C++ enumerators
     "Animation.PreviewStateAnim": "0",

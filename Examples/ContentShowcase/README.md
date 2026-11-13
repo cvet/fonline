@@ -72,6 +72,24 @@ bakes all resources, builds the client and server, runs an isolated content
 test, and completes a real headless client/server session. The runtime session
 loads the TGA, FOFRM, SPARK, effect, and WAV resources before it may pass.
 
+## Local channel key
+
+Every server needs a secure-channel secret in `ServerNetwork.ChannelSecretKey`,
+and clients pin its public half in `ClientNetwork.ChannelServerKeys`. Before
+each bake, the `ProvisionShowcaseChannelKey` target runs
+`Engine/BuildTools/secure_channel_key.py ensure-pair` and writes a throwaway
+pair to the ignored `Workspace/` directory: the secret `ShowcaseChannel.key`
+and the public pin `ShowcaseChannel.pub`. An existing secret is kept, so later
+bakes, the smoke and capture runners, and the Web runtime route share one
+identity. The native server reads the secret at run time through
+`$TARGET_FILE{Workspace/ShowcaseChannel.key}`; the bake embeds the pin from
+`$FILE{Workspace/ShowcaseChannel.pub}` into native and Web clients, so a
+package carries only the public key. A packaged server resolves the same
+relative path from its working directory; provide the secret there on the
+server host, never inside the package. This pair is a local test identity,
+never a production key; do not commit or ship it. After deleting `Workspace/`,
+bake again before running a package.
+
 ## Produce the reference capture
 
 On Windows after configuration:

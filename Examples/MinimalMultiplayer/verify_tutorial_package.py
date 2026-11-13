@@ -3,15 +3,17 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import hashlib
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tarfile
 import zipfile
 from pathlib import Path
-from typing import Sequence
+from typing import Iterator, Sequence
 
 
 ROOT = Path(__file__).resolve().parent
@@ -29,6 +31,8 @@ PACKAGE_ID = "Tutorial"
 PACKAGE_CONFIG = "TutorialSmoke"
 DEV_NAME = "FOMM"
 NICE_NAME = "FOnline Minimal Multiplayer"
+# The packaged server keeps the config's $TARGET_FILE directive and resolves it from its working directory
+CHANNEL_SECRET = Path("Workspace/TutorialChannel.key")
 
 
 def sha256(path: Path) -> str:
@@ -76,6 +80,23 @@ def verify_archive(payload_root: Path, archive_path: Path) -> None:
         raise RuntimeError(f"archive inventory mismatch for {archive_path}: missing={missing}, extra={extra}")
 
 
+@contextlib.contextmanager
+def deployed_channel_secret(server_root: Path) -> Iterator[None]:
+    """Places the local throwaway secret where the packaged server reads it, as an operator would, for one run."""
+    source = ROOT / CHANNEL_SECRET
+    if not source.is_file():
+        raise RuntimeError(f"missing local channel key {source}; bake the example first to create it")
+    target = server_root / CHANNEL_SECRET
+    target.parent.mkdir(exist_ok=True)
+    shutil.copy(source, target)
+    try:
+        yield
+    finally:
+        target.unlink(missing_ok=True)
+        with contextlib.suppress(OSError):
+            target.parent.rmdir()
+
+
 def git_revision(engine_root: Path) -> str:
     result = subprocess.run(
         ["git", "-C", str(engine_root), "rev-parse", "HEAD"],
@@ -116,15 +137,16 @@ def verify(package_root: Path, engine_root: Path, platform: str) -> dict[str, ob
     verify_archive(server_root, server_archive)
 
     runtime_manifest = gameplay_test_runner.load_manifest(ROOT / "package-smoke.json")
-    runtime_report = gameplay_test_runner.run_manifest(
-        runtime_manifest,
-        {
-            "server": str(server),
-            "server_root": str(server_root),
-            "client": str(client),
-            "client_root": str(client_root),
-        },
-    )
+    with deployed_channel_secret(server_root):
+        runtime_report = gameplay_test_runner.run_manifest(
+            runtime_manifest,
+            {
+                "server": str(server),
+                "server_root": str(server_root),
+                "client": str(client),
+                "client_root": str(client_root),
+            },
+        )
     runtime_report_path = package_root / "tutorial-package-runtime-report.json"
     gameplay_test_runner.write_report(runtime_report_path, runtime_report)
     if runtime_report["status"] != "passed":
