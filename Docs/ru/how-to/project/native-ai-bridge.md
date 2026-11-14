@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/project/native-ai-bridge.html
 ---
 
 # Встраивание AiControl listener в игровой клиент
-<!-- docs-translation: {"document_id":"project-native-ai-bridge","locale":"ru","source_path":"Docs/en/how-to/project/native-ai-bridge.md","source_sha256":"39c2adbde4dfb566a974d50fde53a00e9103abe4bbfb3c01edb3fd3cbbb61450"} -->
+<!-- docs-translation: {"document_id":"project-native-ai-bridge","locale":"ru","source_path":"Docs/en/how-to/project/native-ai-bridge.md","source_sha256":"2ff709bdbe4108ca2c335c73ed045cfefb0dea0f49d0ee17e1323c4f7ee43815"} -->
 Engine поставляет необязательный native listener для [протокола AiControl](../ai-control-protocol.md): TCP endpoint на loopback внутри клиента разработки, через который QA-инструмент, локальный скрипт или MCP-адаптер наблюдает за игрой и ставит команды в очередь. Engine отвечает за транспорт, авторизацию, ограниченные очереди и завершение работы; игровой проект отвечает за свои настройки, схему наблюдения и набор команд. На этой странице описано, как компилировать listener только в клиенты разработки, запускать его из проектных настроек, регистрировать проектные команды и перевести проект с собственной копии listener. Как и протокол, listener экспериментальный.
 
 ## Проверенные исходные пути
@@ -49,7 +49,7 @@ Listener никогда не читает и не изменяет игрово�
 
 ## Компилируйте его только в клиенты разработки
 
-`FO_AI_CONTROL` (по умолчанию `OFF`, см. [справочник CMake-опций](../../reference/cmake/options.md)) компилирует listener в клиентские сборки и сборки Mapper для Windows, Linux и macOS. Для Web, Android и iOS опция ни на что не влияет. При выключенной опции `Game.AiControlAvailable` равно `false`, `Game.AiControlStart` выбрасывает `AiControlException`, а бинарный файл не содержит кода listener.
+`FO_AI_CONTROL` (по умолчанию `OFF`, см. [справочник CMake-опций](../../reference/cmake/options.md)) компилирует listener в клиентские сборки и сборки Mapper для Windows, Linux и macOS. Для Web, Android и iOS опция ни на что не влияет. При выключенной опции `Game.AiControlAvailable` равно `false`, `Game.AiControlStart` выбрасывает `AiControlException`, а бинарный файл не содержит кода listener. Нативный код проверяет не саму опцию, а производное определение компиляции `FO_HAVE_AI_CONTROL`: конфигурация Engine задаёт его равным `1`, только когда `FO_AI_CONTROL` включена, а платформа — Windows, Linux или macOS, так же как `FO_HAVE_VULKAN` и `FO_HAVE_SDL_GPU` следуют своим опциям.
 
 Держите решение в одной принадлежащей проекту переменной, чтобы конфигурация выпуска не унаследовала значение разработки по умолчанию:
 

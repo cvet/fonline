@@ -49,7 +49,7 @@ The listener never reads or changes game state on its own thread. It copies each
 
 ## Compile it into development clients only
 
-`FO_AI_CONTROL` (default `OFF`, see the [CMake option reference](../../reference/cmake/options.md)) compiles the listener into Windows, Linux and macOS client and Mapper builds. On Web, Android and iOS the option has no effect. With the option off, `Game.AiControlAvailable` is `false`, `Game.AiControlStart` throws `AiControlException`, and the binary contains no listener code.
+`FO_AI_CONTROL` (default `OFF`, see the [CMake option reference](../../reference/cmake/options.md)) compiles the listener into Windows, Linux and macOS client and Mapper builds. On Web, Android and iOS the option has no effect. With the option off, `Game.AiControlAvailable` is `false`, `Game.AiControlStart` throws `AiControlException`, and the binary contains no listener code. Native code tests the derived compile definition `FO_HAVE_AI_CONTROL` instead of the option: Engine configuration sets it to `1` only when `FO_AI_CONTROL` is on and the platform is Windows, Linux or macOS, the same way `FO_HAVE_VULKAN` and `FO_HAVE_SDL_GPU` follow their options.
 
 Keep the decision in one project-owned variable so that a release configuration cannot inherit the development default:
 
