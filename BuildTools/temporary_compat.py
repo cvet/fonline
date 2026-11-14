@@ -3,9 +3,10 @@
 """Fails once code marked as temporary compatibility has outlived its date.
 
 Native code is marked with FO_TEMPORARY_COMPAT(Id, "YYYY-MM-DD"); managed code with [TemporaryCompat("Id", "YYYY-MM-DD")].
+CMake uses TemporaryCompat(Id "YYYY-MM-DD") for temporary refusals and platform restrictions.
 Every place of one compatibility repeats the same id and date, the last day the code may exist. Before the date nothing
 is reported; from the day after the check fails and lists every place to delete. Without arguments it scans the engine
-Source tree; an embedding project passes its own directories, the engine's among them.
+Source and BuildTools/cmake trees; an embedding project passes its own files and directories, the engine's among them.
 """
 
 from __future__ import annotations
@@ -19,7 +20,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 ENGINE_SOURCE = Path(__file__).resolve().parents[1] / "Source"
-EXTENSIONS = {".h", ".hpp", ".cpp", ".inl", ".cs"}
+ENGINE_CMAKE = Path(__file__).resolve().parent / "cmake"
+DEFAULT_INPUTS = [ENGINE_SOURCE, ENGINE_CMAKE]
+EXTENSIONS = {".h", ".hpp", ".cpp", ".inl", ".cs", ".cmake"}
 
 # A date further ahead would let a marker keep its code for good, which is what the marker exists to prevent
 MAX_HORIZON_DAYS = 366
@@ -29,6 +32,9 @@ MANAGED_RE = re.compile(r"\bTemporaryCompat(?:Attribute)?\s*\(")
 NATIVE_ARGS_RE = re.compile(r'\(\s*(?P<id>[A-Za-z]\w*)\s*,\s*"(?P<until>[^"\n]*)"\s*\)')
 MANAGED_ARGS_RE = re.compile(r'\(\s*"(?P<id>[A-Za-z]\w*)"\s*,\s*"(?P<until>[^"\n]*)"\s*\)')
 DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
+CMAKE_RE = re.compile(r"\bTemporaryCompat\s*\(", re.IGNORECASE)
+CMAKE_ARGS_RE = re.compile(r'\(\s*(?P<id>[A-Za-z][A-Za-z0-9_]*)\s+"(?P<until>[^"\n]*)"\s*\)')
+CMAKE_BRACKET_RE = re.compile(r"\[(=*)\[")
 
 
 @dataclass(frozen=True)
@@ -48,7 +54,7 @@ class Issue:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("dirs", nargs="*", type=Path, default=[ENGINE_SOURCE], help="directories to scan (default: the engine Source tree)")
+    parser.add_argument("dirs", nargs="*", type=Path, default=DEFAULT_INPUTS, help="files or directories to scan (default: engine Source and BuildTools/cmake)")
     parser.add_argument("--today", type=datetime.date.fromisoformat, default=datetime.date.today())
     parser.add_argument("--report", action="store_true", help="list every marked compatibility and its date")
     args = parser.parse_args()
@@ -76,18 +82,33 @@ def collect(dirs: list[Path]) -> tuple[list[Marker], list[Issue]]:
     markers: list[Marker] = []
     issues: list[Issue] = []
 
+    seen: set[Path] = set()
+
     for scan_dir in dirs:
-        for path in sorted(scan_dir.rglob("*")):
-            if path.suffix not in EXTENSIONS or not path.is_file():
+        paths = [scan_dir] if scan_dir.is_file() else sorted(scan_dir.rglob("*"))
+
+        for path in paths:
+            cmake = path.suffix == ".cmake" or path.name == "CMakeLists.txt"
+
+            if (path.suffix not in EXTENSIONS and not cmake) or not path.is_file():
                 continue
 
+            resolved = path.resolve()
+
+            if resolved in seen:
+                continue
+
+            seen.add(resolved)
             text = path.read_text(encoding="utf-8", errors="replace")
 
             # Only a file naming a marker is parsed, so large vendored trees cost a substring search
-            if "FO_TEMPORARY_COMPAT" not in text and "TemporaryCompat" not in text:
+            if cmake:
+                if "temporarycompat" not in text.lower():
+                    continue
+            elif "FO_TEMPORARY_COMPAT" not in text and "TemporaryCompat" not in text:
                 continue
 
-            found, problems = find_markers(display_path(path), text)
+            found, problems = find_cmake_markers(display_path(path), text) if cmake else find_markers(display_path(path), text)
             markers += found
             issues += problems
 
@@ -110,7 +131,7 @@ def check(markers: list[Marker], today: datetime.date) -> list[Issue]:
 
         if today > until:
             places = "".join(f"\n  {marker.path}:{marker.line}" for marker in group)
-            issues.append(Issue(first.path, first.line, f"temporary compatibility {compat_id} expired after {until.isoformat()}: delete the code at every place below, or move the date in a reviewed change{places}"))
+            issues.append(Issue(first.path, first.line, f"temporary compatibility {compat_id} expired after {until.isoformat()}: remove the marked compatibility or temporary restriction at every place below, or move the date in a reviewed change{places}"))
         elif (until - today).days > MAX_HORIZON_DAYS:
             issues.append(Issue(first.path, first.line, f"temporary compatibility {compat_id} is dated {until.isoformat()}, more than {MAX_HORIZON_DAYS} days ahead; set a nearer date and move it again if still needed"))
 
@@ -159,6 +180,78 @@ def parse_date(text: str) -> datetime.date | None:
         return datetime.date.fromisoformat(text)
     except ValueError:
         return None
+
+
+def find_cmake_markers(rel_path: str, text: str) -> tuple[list[Marker], list[Issue]]:
+    code = mask_cmake_comments(text)
+    commands = mask_cmake_comments(text, mask_strings=True)
+    markers: list[Marker] = []
+    issues: list[Issue] = []
+
+    for match in CMAKE_RE.finditer(commands):
+        line = code.count("\n", 0, match.start()) + 1
+        args = CMAKE_ARGS_RE.match(code, match.end() - 1)
+
+        if args is None:
+            issues.append(Issue(rel_path, line, 'temporary compatibility marker is not written as TemporaryCompat(Id "YYYY-MM-DD")'))
+            continue
+
+        until = parse_date(args.group("until"))
+
+        if until is None:
+            issues.append(Issue(rel_path, line, f"temporary compatibility {args.group('id')} has no valid date: {args.group('until')!r}"))
+            continue
+
+        markers.append(Marker(rel_path, line, args.group("id"), until))
+
+    return markers, issues
+
+
+def mask_cmake_comments(text: str, mask_strings: bool = False) -> str:
+    """Preserves offsets and newlines; command discovery also masks quoted/bracket arguments."""
+
+    chars = list(text)
+    index = 0
+
+    while index < len(text):
+        start = index
+        char = text[index]
+        bracket = CMAKE_BRACKET_RE.match(text, index + 1 if char == "#" else index)
+        masked = False
+
+        if bracket:
+            closing = "]" + bracket.group(1) + "]"
+            end = text.find(closing, bracket.end())
+            index = len(text) if end == -1 else end + len(closing)
+            masked = char == "#" or mask_strings
+        elif char == "#":
+            end = text.find("\n", index)
+            index = len(text) if end == -1 else end
+            masked = True
+        elif char == '"':
+            index += 1
+
+            while index < len(text):
+                if text[index] == "\\":
+                    index += 2
+                elif text[index] == '"':
+                    index += 1
+                    break
+                else:
+                    index += 1
+
+            masked = mask_strings
+        elif char == "\\":
+            index += 2
+        else:
+            index += 1
+
+        if masked:
+            for offset in range(start, min(index, len(text))):
+                if chars[offset] != "\n":
+                    chars[offset] = " "
+
+    return "".join(chars)
 
 
 def display_path(path: Path) -> str:

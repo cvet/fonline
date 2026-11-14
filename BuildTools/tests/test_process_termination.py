@@ -22,8 +22,8 @@ def termination_probe(request, tmp_path_factory):
 
     source = (ENGINE / "Source/Essentials/BasicCore.cpp").read_text(encoding="utf-8")
     header = (ENGINE / "Source/Essentials/BasicCore.h").read_text(encoding="utf-8")
-    declaration = next(line for line in header.splitlines() if line.startswith("[[noreturn]] extern void ExitApp("))
-    start = source.index("void ExitApp(bool success) noexcept\n{")
+    declaration = next(line for line in header.splitlines() if line.startswith("[[noreturn]] void exit_app("))
+    start = source.index("void exit_app(bool success) noexcept\n{")
     end = source.index("\n}\n", start) + len("\n}\n")
     # Compile the exact canonical declaration/body. Platform macros only select its existing CRT branch
     probe = "\n".join([
@@ -54,7 +54,7 @@ int main(int argc, char** argv)
     }
 #endif
     LocalGuard guard;
-    ExitApp(std::strcmp(argv[1], "success") == 0);
+    exit_app(std::strcmp(argv[1], "success") == 0);
 }
 """
     directory = tmp_path_factory.mktemp("process-termination")

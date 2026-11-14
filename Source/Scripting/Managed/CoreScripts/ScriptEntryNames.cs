@@ -34,9 +34,8 @@ internal static class ScriptEntryNames
         return entry != null ? entry.GetType().Name : "null";
     }
 
-    // An adapter is plumbing, not the work it runs: RemoteCallScriptFuncs wraps every async remote call in the
-    // Action the engine invokes, so the method behind the delegate is that one adapter for all of them and the
-    // handler for none. The wrapped handler is named first, because it is the script code an overrun asks about
+    // A generated adapter may wrap a delegate. Name its actual handler first so diagnostics identify
+    // the script work; direct delegates, including RPC handlers, already name their own method
     private static string DescribeDelegate(Delegate handler)
     {
         Delegate? wrapped = FindWrappedHandler(handler);

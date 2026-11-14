@@ -1,1970 +1,108 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
-#include <chrono>
-#include <filesystem>
-#include <thread>
+#include "Common.h"
 
-#include "catch_amalgamated.hpp"
-
-#if FO_ANGELSCRIPT_SCRIPTING
-#include "AngelScriptDebugger.h"
-#include "AngelScriptHelpers.h"
-#include "AngelScriptScripting.h"
-#endif
-#include "AnimationViewer.h"
-#include "Application.h"
-#include "Baker.h"
-#include "Client.h"
-#include "CritterView.h"
-#include "DataSerialization.h"
-#include "DefaultSprites.h"
-#include "EffectBaker.h"
-#include "ImGuiStuff.h"
-#include "MetadataRegistration.h"
-#include "ModelAnimationData.h"
-#include "ModelInfoBaker.h"
-#include "ModelManager.h"
-#include "ModelMeshBaker.h"
-#include "ModelMeshData.h"
-#include "ModelSourceLoader.h"
-#include "ModelSprites.h"
-#include "PlayerView.h"
-#include "ResourceIndex.h"
-#include "SettingsStorage.h"
-#include "Test_BakerHelpers.h"
-#include "Test_DumpArtifacts.h"
+#include "Test_ClientEngineHelpers.h"
 
 FO_BEGIN_NAMESPACE
 
-namespace
+using namespace ClientEngineTests;
+
+template<typename T>
+concept client_animation_playback_init = requires(T& client) { client.OnCritterAnimationPlaybackInit; };
+
+template<typename T>
+concept client_legacy_animation_init = requires(T& client) { client.OnCritterAnimationInit; };
+
+static_assert(client_animation_playback_init<ClientEngine>);
+static_assert(!client_legacy_animation_init<ClientEngine>);
+
+FO_SCRIPT_API vector<ident_t> Client_Critter_GetAttachedCritterIds(ptr<CritterView> self);
+
+void Client_Game_DrawText(ptr<ClientEngine> client, string_view text, ipos32 pos, isize32 size, ucolor color, TextFormat format);
+void Client_Game_ActivateOffscreenSurface(ptr<ClientEngine> client, bool forceClear);
+void Client_Game_PresentOffscreenSurface(ptr<ClientEngine> client, int32_t effectSubtype, ipos32 pos, isize32 size);
+void Client_Game_PresentOffscreenSurface(ptr<ClientEngine> client, int32_t effectSubtype, ipos32 pos, isize32 size, float32_t scriptValue0, float32_t scriptValue1, float32_t scriptValue2, float32_t scriptValue3);
+void Client_Game_PresentOffscreenSurface(ptr<ClientEngine> client, int32_t effectSubtype, int32_t fromX, int32_t fromY, int32_t fromW, int32_t fromH, int32_t toX, int32_t toY, int32_t toW, int32_t toH);
+void Client_Game_SetEffect(ptr<ClientEngine> client, EffectType effectType, int64_t effectSubtype, string_view effectPath);
+
+TEST_CASE("ClientScriptTextRejectsArithmeticOverflow")
 {
-    struct RecordedQuadDraw
-    {
-        vector<Vertex2D> Vertices {};
-        vector<vindex_t> Indices {};
-        size_t StartIndex {};
-        optional<size_t> IndicesToDraw {};
-        nptr<const RenderTexture> CustomTexture {};
-    };
-
-    static auto MakeRecordingQuadEffectLoader() -> RenderEffectLoader
-    {
-        return [](string_view name) -> string {
-            if (name == "Effects/Test_Recording.fofx") {
-                return "[Effect]\nPasses = 1\n";
-            }
-
-            if (name == "Effects/Test_Recording.fofx-1-info") {
-                return "[EffectInfo]\nMainTex = 0\nSpriteBorderBuf = 1\n";
-            }
-
-            throw GenericException("Unexpected recording effect request", name);
-        };
-    }
-
-    class RecordingQuadEffect final : public RenderEffect
-    {
-    public:
-        RecordingQuadEffect() :
-            RenderEffect(EffectUsage::QuadSprite, "Effects/Test_Recording.fofx", MakeRecordingQuadEffectLoader())
-        {
-        }
-
-        void DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, optional<size_t> indices_to_draw, nptr<const RenderTexture> custom_tex) override
-        {
-            RecordedQuadDraw draw;
-            draw.Vertices.assign(dbuf->Vertices.begin(), dbuf->Vertices.begin() + numeric_cast<ptrdiff_t>(dbuf->VertCount));
-            draw.Indices.assign(dbuf->Indices.begin(), dbuf->Indices.begin() + numeric_cast<ptrdiff_t>(dbuf->IndCount));
-            draw.StartIndex = start_index;
-            draw.IndicesToDraw = indices_to_draw;
-            draw.CustomTexture = custom_tex;
-            Draws.emplace_back(std::move(draw));
-        }
-
-        vector<RecordedQuadDraw> Draws {};
-    };
-
-    static auto MakeClientTestSettings() -> GlobalSettings
-    {
-        auto settings = GlobalSettings(false);
-
-        settings.ApplyDefaultSettings();
-        settings.ApplyAutoSettings();
-
-        BakerTests::ApplySelfContainedClientSettings(settings);
-
-        return settings;
-    }
-
-    static auto MakeTempClientResourceDir(string_view name) -> string
-    {
-        std::filesystem::path base = std::filesystem::temp_directory_path() / std::format("lf_client_resources_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
-        return fs::path_to_string(base);
-    }
-
-    static auto CanUseDirectoryBackedClientResourceFixtures() noexcept -> bool
-    {
-        return !IsPackaged();
-    }
-
-    static void WriteClientTestPack(string_view directory, string_view name, const vector<pair<string, string>>& files)
-    {
-        REQUIRE(fs::create_directories(directory));
-        ResourcePackWriter writer {strex(directory).combine_path(strex("{}.fores", name)).str()};
-
-        for (const auto& [path, contents] : files) {
-            writer.AddFile(path, {reinterpret_cast<const uint8_t*>(contents.data()), contents.size()});
-        }
-
-        writer.Finish();
-    }
-
-    static auto MakeClientScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
-    {
-        BakerClientEngine compiler_engine {metadata_resources};
-
-        return BakerTests::CompileInlineScripts(&compiler_engine, "ClientEngineScripts",
-            {
-                {"Scripts/ClientEngineTest.fos",
-                    R"(
-namespace ClientEngineTest
-{
-    int StartCalls = 0;
-    int LoopCalls = 0;
-    int ManualCalls = 0;
-
-    int RenderCalls = 0;
-    bool DrawDuringRender = false;
-
-    [[ModuleInit]]
-    void InitClientEngineTest()
-    {
-        Game.OnStart.Subscribe(OnStart);
-        Game.OnLoop.Subscribe(OnLoop);
-        Game.OnRenderIface.Subscribe(OnRenderIface);
-    }
-
-    [[Event]]
-    void OnRenderIface()
-    {
-        RenderCalls++;
-
-        if (!DrawDuringRender) {
-            return;
-        }
-
-        // The 2D drawing surface is only legal inside the interface render pass
-        // DrawPrimitive takes a flat int stream of x/y/colour triples
-        int[] primitive = {0, 0, 0xFFFF0000, 10, 10, 0xFF00FF00};
-        Game.DrawPrimitive(RenderPrimitiveType::LineList, primitive);
-
-        Game.PushDrawScissor(ipos(0, 0), isize(100, 100));
-        Game.PopDrawScissor();
-
-        DrawSpritesAndText();
-        DrawCritterPreviews();
-        DrawImGuiSurface();
-    }
-
-    void DrawCritterPreviews()
-    {
-        // The 2d critter draw resolves its frames through the animation resolver and simply draws nothing
-        // when the model has none, which is the path a client takes for an unknown critter
-        Game.DrawCritter2d("Models/RuntimeInstance.fo3d".hstr(), CritterStateAnim(1), CritterActionAnim(1), mdir(0), 0, 0, 64, 64, false, true, ucolor(255, 255, 255, 255));
-
-        // Game.DrawCritter3d needs a model sprite, and building one through the interface atlas fails to
-        // converge without real atlas storage, so only the 2d path runs here
-    }
-
-    void DrawSpritesAndText()
-    {
-        uint spr = Game.LoadSprite("Quad.png");
-
-        if (spr != 0) {
-            Game.DrawSprite(spr, ipos(10, 10));
-            Game.DrawSprite(spr, ipos(10, 10), ucolor(255, 255, 255, 255), true);
-            Game.DrawSprite(spr, fpos(10.0f, 10.0f), ucolor(255, 255, 255, 255));
-            Game.DrawSprite(spr, fpos(10.0f, 10.0f), fsize(20.0f, 20.0f), ucolor(255, 255, 255, 255));
-            Game.DrawSprite(spr, ipos(10, 10), isize(20, 20));
-            Game.DrawSprite(spr, ipos(10, 10), isize(20, 20), ucolor(255, 255, 255, 255), false, true);
-            Game.DrawSpritePattern(spr, ipos(0, 0), isize(40, 40), isize(4, 4), ucolor(255, 255, 255, 255));
-            Game.DrawSpriteRegion(spr, fpos(0.0f, 0.0f), fpos(1.0f, 1.0f), ipos(0, 0), isize(20, 20));
-            Game.FreeSprite(spr);
-        }
-
-        Game.BindFont(FontType::Default, "UnitTestFont.fofnt");
-        // Registering an offscreen effect is what makes the offscreen surface pair usable
-        Game.SetEffect(EffectType::Offscreen, 0, "Effects/UnitTestOffscreen.fofx");
-
-        Game.ActivateOffscreenSurface(true);
-        Game.PresentOffscreenSurface(0);
-        Game.ActivateOffscreenSurface(false);
-        Game.PresentOffscreenSurface(0, ipos(0, 0), isize(50, 50));
-        Game.ActivateOffscreenSurface(false);
-        Game.PresentOffscreenSurface(0, ipos(0, 0), isize(50, 50), 0.0f, 0.0f, 0.0f, 0.0f);
-        Game.ActivateOffscreenSurface(false);
-        Game.PresentOffscreenSurface(0, 0, 0, 50, 50, 0, 0, 50, 50);
-
-        Game.DrawText("drawn text", ipos(0, 0), isize(200, 40), ucolor(255, 255, 255, 255), TextFormat());
-
-        TextFormat wrappedDraw;
-        wrappedDraw.Flags = FontFlag(uint(FontFlag::CenterX) | uint(FontFlag::Bordered));
-        Game.DrawText("a longer drawn sentence that wraps", ipos(0, 40), isize(60, 60), ucolor(200, 200, 200, 255), wrappedDraw);
-    }
-
-    void DrawImGuiSurface()
-    {
-        if (!Game.IsImGuiAvailable()) {
-            return;
-        }
-
-        ImGui.SetNextWindowPos(ipos(20, 20), ImGui_Cond::Always);
-        ImGui.SetNextWindowSize(isize(400, 300), ImGui_Cond::Always);
-        ImGui.SetNextWindowBgAlpha(0.9f);
-        ImGui.SetNextWindowCollapsed(false, ImGui_Cond::Always);
-        ImGui.SetNextWindowFocus();
-
-        if (ImGui.Begin("ScriptImGuiCoverage", ImGui_WindowFlags::None)) {
-            // The engine swallows anything escaping OnRenderIface, so a throw would skip ImGui.End and abort the
-            // next render instead of failing here; catching keeps the window balanced and records the failure
-            try {
-                ImGui.Text("plain text");
-                ImGui.TextDisabled("disabled text");
-                ImGui.TextWrapped("wrapped text that is long enough to actually wrap inside the window");
-                ImGui.AlignTextToFramePadding();
-
-                ImGui.PushID(1);
-                ImGui.PopID();
-                ImGui.PushID("named");
-                ImGui.PopID();
-
-                ImGui.PushStyleColor(ImGui_Col::Text, 1.0f, 1.0f, 1.0f, 1.0f);
-                ImGui.PopStyleColor(1);
-                ImGui.PushStyleVar(ImGui_StyleVar::Alpha, 1.0f);
-                ImGui.PopStyleVar(1);
-
-                ImGui.Separator();
-                ImGui.SameLine();
-                ImGui.Spacing();
-                ImGui.NewLine();
-                ImGui.Indent();
-                ImGui.Unindent();
-
-                if (ImGui.Button("button")) {
-                }
-
-                ImGui.SmallButton("small");
-                ImGui.Bullet();
-                ImGui.BulletText("bullet text");
-
-                // Geometry and state queries answer inside a live window
-                fsize textSize = ImGui.CalcTextSize("measure me");
-                fpos windowPos = ImGui.GetWindowPos();
-                fsize windowSize = ImGui.GetWindowSize();
-
-                float scrollX = ImGui.GetScrollX();
-                float scrollY = ImGui.GetScrollY();
-                ImGui.SetScrollX(scrollX);
-                ImGui.SetScrollY(scrollY);
-                float maxX = ImGui.GetScrollMaxX();
-                float maxY = ImGui.GetScrollMaxY();
-
-                // Skipped by branching, never by returning: the matching ImGui.End must still run, or the next
-                // render aborts the whole frame over the unbalanced window
-                bool geometryIsSane = textSize.width >= 0.0f && windowPos.x >= -100000.0f && windowSize.width >= 0.0f && maxX >= 0.0f && maxY >= 0.0f;
-
-                if (geometryIsSane) {
-                    ImGui.GetTextLineHeight();
-                    ImGui.GetTextLineHeightWithSpacing();
-                    ImGui.GetFrameHeight();
-                    ImGui.GetFrameHeightWithSpacing();
-                    ImGui.GetWindowWidth();
-                    ImGui.GetWindowHeight();
-                    ImGui.GetTime();
-                    ImGui.GetFrameCount();
-                    ImGui.IsWindowAppearing();
-                    ImGui.IsAnyItemHovered();
-                    ImGui.IsAnyItemActive();
-
-                    ImGuiStage = "layout";
-                    DrawImGuiLayout();
-                    ImGuiStage = "input widgets";
-                    DrawImGuiInputWidgets();
-                    ImGuiStage = "containers";
-                    DrawImGuiContainers();
-                    ImGuiStage = "item queries";
-                    DrawImGuiItemQueries();
-                    ImGuiStage = "trees and selectables";
-                    DrawImGuiTreesAndSelectables();
-                    ImGuiStage = "tooltips and popups";
-                    DrawImGuiTooltipsAndPopups();
-                    ImGuiStage = "tables and tabs";
-                    DrawImGuiTablesAndTabs();
-                    ImGuiStage = "text and color widgets";
-                    DrawImGuiTextAndColorWidgets();
-                    ImGuiStage = "menus and settings";
-                    DrawImGuiMenusAndSettings();
-                    ImGuiStage = "remaining bindings";
-                    DrawImGuiRemainingBindings();
-                    ImGuiStage = "sprites";
-                    DrawImGuiSprites();
-                    ImGuiStage = "empty id sweep";
-                    SweepImGuiEmptyIds();
-                }
-            }
-            catch {
-                ImGuiSurfaceFailures++;
-                ImGuiFailedStage = ImGuiStage;
-            }
-        }
-
-        ImGui.End();
-    }
-
-    void DrawImGuiLayout()
-    {
-        ImGui.SeparatorText("layout");
-        ImGui.GetTreeNodeToLabelSpacing();
-        ImGui.GetContentRegionAvailX();
-        ImGui.GetContentRegionAvailY();
-        ImGui.GetCursorPosX();
-        ImGui.GetCursorPosY();
-        ImGui.GetCursorScreenPos();
-        ImGui.SetCursorPos(10.0f, 10.0f);
-        ImGui.SetCursorScreenPos(fpos(20.0f, 20.0f));
-        ImGui.PushTextWrapPos(0.0f);
-        ImGui.PopTextWrapPos();
-        ImGui.SetNextItemWidth(120.0f);
-        ImGui.PushItemWidth(120.0f);
-        ImGui.CalcItemWidth();
-        ImGui.PopItemWidth();
-        ImGui.Dummy(isize(10, 10));
-        ImGui.BeginGroup();
-        ImGui.EndGroup();
-        ImGui.SmallButton("small2");
-    }
-
-    void DrawImGuiInputWidgets()
-    {
-        bool flag = false;
-        ImGui.Checkbox("checkbox", flag);
-
-        int flags = 0;
-        ImGui.CheckboxFlags("checkflags", flags, 1);
-
-        int i1 = 1;
-        int i2 = 2;
-        int i3 = 3;
-        int i4 = 4;
-        ImGui.InputInt("int", i1);
-        ImGui.InputInt2("int2", i1, i2);
-        ImGui.InputInt3("int3", i1, i2, i3);
-        ImGui.InputInt4("int4", i1, i2, i3, i4);
-
-        float f1 = 1.0f;
-        float f2 = 2.0f;
-        float f3 = 3.0f;
-        float f4 = 4.0f;
-        ImGui.DragFloat("dragf", f1, 0.1f, 0.0f, 10.0f);
-        ImGui.DragFloat2("dragf2", f1, f2, 0.1f, 0.0f, 10.0f);
-        ImGui.DragFloat3("dragf3", f1, f2, f3, 0.1f, 0.0f, 10.0f);
-        ImGui.DragFloat4("dragf4", f1, f2, f3, f4, 0.1f, 0.0f, 10.0f);
-        ImGui.DragInt("dragi", i1, 1.0f, 0, 10);
-        ImGui.DragInt2("dragi2", i1, i2, 1.0f, 0, 10);
-        ImGui.DragInt3("dragi3", i1, i2, i3, 1.0f, 0, 10);
-        ImGui.DragInt4("dragi4", i1, i2, i3, i4, 1.0f, 0, 10);
-
-        ImGui.SliderFloat("slidef", f1, 0.0f, 10.0f);
-        ImGui.SliderFloat2("slidef2", f1, f2, 0.0f, 10.0f);
-        ImGui.SliderFloat3("slidef3", f1, f2, f3, 0.0f, 10.0f);
-        ImGui.SliderFloat4("slidef4", f1, f2, f3, f4, 0.0f, 10.0f);
-        ImGui.SliderInt("slidei", i1, 0, 10);
-        ImGui.SliderInt2("slidei2", i1, i2, 0, 10);
-        ImGui.SliderInt3("slidei3", i1, i2, i3, 0, 10);
-        ImGui.SliderInt4("slidei4", i1, i2, i3, i4, 0, 10);
-        ImGui.VSliderFloat("vslidef", fsize(20.0f, 60.0f), f1, 0.0f, 10.0f);
-        ImGui.VSliderInt("vslidei", fsize(20.0f, 60.0f), i1, 0, 10);
-    }
-
-    void DrawImGuiContainers()
-    {
-        if (ImGui.BeginChild("child", isize(120, 80), true)) {
-            ImGui.Text("inside child");
-        }
-
-        ImGui.EndChild();
-    }
-
-    void DrawImGuiSprites()
-    {
-        uint spr = Game.LoadSprite("Quad.png");
-
-        if (spr != 0) {
-            ImGui.Image(spr, fsize(16.0f, 16.0f));
-            ImGui.Image(spr, fsize(16.0f, 16.0f), fpos(0.0f, 0.0f), fpos(0.5f, 0.5f));
-            ImGui.ImageButton("image button", spr, fsize(16.0f, 16.0f));
-            ImGui.ImageButton("tinted image button", spr, fsize(16.0f, 16.0f), fpos(0.0f, 0.0f), fpos(1.0f, 1.0f), ucolor(0, 0, 0, 0), ucolor(255, 255, 255, 255));
-        }
-
-        // An unknown sprite id draws nothing by design, but a degenerate size, an out-of-range UV pair and an
-        // empty button id are all authoring mistakes and must be rejected
-        ImGuiSpriteRejections = 0;
-        ImGui.Image(0, fsize(16.0f, 16.0f));
-        try { ImGui.Image(spr, fsize(0.0f, 16.0f)); } catch { ImGuiSpriteRejections++; }
-        try { ImGui.Image(spr, fsize(16.0f, 16.0f), fpos(0.0f, 0.0f), fpos(2.0f, 2.0f)); } catch { ImGuiSpriteRejections++; }
-        try { ImGui.ImageButton("", spr, fsize(16.0f, 16.0f)); } catch { ImGuiSpriteRejections++; }
-        try { ImGui.ImageButton("bad size", spr, fsize(16.0f, -1.0f)); } catch { ImGuiSpriteRejections++; }
-
-        Game.FreeSprite(spr);
-    }
-
-    void DrawImGuiRemainingBindings()
-    {
-        float f2a = 1.0f;
-        float f2b = 2.0f;
-        float f2c = 3.0f;
-        float f2d = 4.0f;
-        ImGui.InputFloat2("input float2", f2a, f2b);
-        ImGui.InputFloat3("input float3", f2a, f2b, f2c);
-        ImGui.InputFloat4("input float4", f2a, f2b, f2c, f2d);
-
-        uint flagsValue = 0;
-        ImGui.CheckboxFlags("checkbox flags", flagsValue, 1);
-
-        ucolor pickerColor = ucolor(10, 20, 30, 255);
-        ImGui.ColorPicker4("picker4", pickerColor);
-
-        ImGui.Value("float", 1.5f);
-        ImGui.IsRectVisible(fpos(0.0f, 0.0f), fpos(10.0f, 10.0f));
-        ImGui.GetMousePosOnOpeningCurrentPopup();
-        ImGui.TextLinkOpenURL("link label");
-        ImGui.TextLinkOpenURL("link with url", "https://fonline.ru");
-        if (ImGui.BeginItemTooltip()) {
-            ImGui.EndTooltip();
-        }
-
-        ImGui.Button("context target");
-        ImGui.OpenPopupOnItemClick("item popup");
-
-        if (ImGui.BeginPopupContextItem("item popup")) {
-            ImGui.EndPopup();
-        }
-
-        ImGui.OpenPopup("modal popup");
-
-        if (ImGui.BeginPopupModal("modal popup")) {
-            ImGui.Text("inside modal");
-            ImGui.CloseCurrentPopup();
-            ImGui.EndPopup();
-        }
-
-        // The disk-backed ini surface must round-trip through the workspace without disturbing the live layout
-        ImGui.SaveIniSettingsToDisk("Workspace/imgui_coverage.ini");
-        ImGui.LoadIniSettingsFromDisk("Workspace/imgui_coverage.ini");
-
-        ImGui.LogToTTY(1);
-        ImGui.LogFinish();
-        ImGui.LogToFile(1, "Workspace/imgui_coverage.log");
-        ImGui.LogFinish();
-    }
-
-    void DrawImGuiTablesAndTabs()
-    {
-        if (ImGui.BeginTable("table", 3, ImGui_TableFlags(uint(ImGui_TableFlags::Borders) | uint(ImGui_TableFlags::Hideable)))) {
-            ImGui.TableSetupColumn("first");
-            ImGui.TableSetupColumn("second", ImGui_TableColumnFlags::WidthFixed);
-            ImGui.TableSetupColumn("third");
-            ImGui.TableSetupScrollFreeze(1, 1);
-            ImGui.TableHeadersRow();
-
-            for (int row = 0; row < 2; row++) {
-                ImGui.TableNextRow();
-
-                for (int col = 0; col < 3; col++) {
-                    ImGui.TableSetColumnIndex(col);
-                    ImGui.Text("cell");
-                }
-            }
-
-            ImGui.TableNextRow();
-            ImGui.TableNextColumn();
-            ImGui.TableSetBgColor(ImGui_TableBgTarget::CellBg, ucolor(200, 40, 40, 255), -1);
-            ImGui.TableGetColumnCount();
-            ImGui.TableGetColumnIndex();
-            ImGui.TableGetRowIndex();
-            ImGui.TableGetColumnName(0);
-            ImGui.TableGetColumnFlags(0);
-            ImGui.TableSetColumnEnabled(2, true);
-            ImGui.TableGetHoveredColumn();
-
-            ImGui.EndTable();
-        }
-
-        if (ImGui.BeginTabBar("tabs", ImGui_TabBarFlags::Reorderable)) {
-            if (ImGui.BeginTabItem("first tab")) {
-                ImGui.Text("first tab body");
-                ImGui.EndTabItem();
-            }
-
-            bool opened = true;
-
-            if (ImGui.BeginTabItem("closable tab", opened)) {
-                ImGui.EndTabItem();
-            }
-
-            ImGui.TabItemButton("tab button");
-            ImGui.SetTabItemClosed("closable tab");
-            ImGui.EndTabBar();
-        }
-
-        if (ImGui.BeginMainMenuBar()) {
-            if (ImGui.BeginMenu("File")) {
-                ImGui.MenuItem("Open", false, true);
-                ImGui.EndMenu();
-            }
-
-            ImGui.EndMainMenuBar();
-        }
-    }
-
-    void DrawImGuiTextAndColorWidgets()
-    {
-        ImGui.TextColored("colored", 1.0f, 0.5f, 0.25f, 1.0f);
-        ImGui.TextLink("link");
-)"
-                    R"(        ImGui.Value("bool", true);
-        ImGui.Value("int", 42);
-        ImGui.Value("uint", uint(7));
-        ImGui.ProgressBar(0.5f);
-        ImGui.ProgressBar(0.25f, isize(120, 16), "quarter");
-
-        float[] plotValues = {0.0f, 0.5f, 1.0f, 0.25f};
-        ImGui.PlotLines("lines", plotValues);
-        ImGui.PlotHistogram("histogram", plotValues);
-
-        float f1 = 1.0f;
-        ImGui.InputFloat("input float", f1);
-
-        ucolor editedColor = ucolor(50, 100, 150, 255);
-        ImGui.ColorEdit3("color3", editedColor);
-        ImGui.ColorPicker3("picker3", editedColor);
-        ImGui.ColorEdit4("color4", editedColor);
-        ImGui.ColorButton("color button", editedColor);
-        ImGui.SetColorEditOptions(ImGui_ColorEditFlags::None);
-
-        string textValue = "editable";
-        ImGui.InputText("input text", textValue, 64);
-        ImGui.InputTextWithHint("input hint", "hint", textValue, 64);
-        ImGui.InputTextMultiline("input multiline", textValue, 64, isize(200, 60));
-
-        if (ImGui.BeginCombo("combo", "preview")) {
-            ImGui.Selectable("combo item", false);
-            ImGui.EndCombo();
-        }
-
-        int comboItem = 0;
-        ImGui.Combo("combo simple", comboItem, "one\0two\0three\0");
-
-        if (ImGui.BeginListBox("listbox")) {
-            ImGui.Selectable("list item", false);
-            ImGui.EndListBox();
-        }
-
-        if (ImGui.CollapsingHeader("header")) {
-            ImGui.Text("inside header");
-        }
-
-        if (ImGui.TreeNode("plain tree")) {
-            ImGui.TreePop();
-        }
-    }
-
-    void DrawImGuiMenusAndSettings()
-    {
-        ImGui.BeginDisabled(true);
-        ImGui.Button("disabled button");
-        ImGui.EndDisabled();
-
-        ImGui.SetKeyboardFocusHere();
-        ImGui.IsRectVisible(fsize(10.0f, 10.0f));
-        ImGui.SetNextWindowContentSize(isize(200, 200));
-        ImGui.SetNextWindowScroll(fpos(0.0f, 0.0f));
-        ImGui.SetNextWindowSizeConstraints(isize(50, 50), isize(500, 500));
-        ImGui.SetScrollHereX();
-        ImGui.SetScrollHereY();
-        ImGui.SetScrollFromPosX(1.0f);
-        ImGui.SetScrollFromPosY(1.0f);
-        ImGui.PushStyleVarVec2(ImGui_StyleVar::ItemSpacing, 4.0f, 4.0f);
-        ImGui.PopStyleVar();
-
-        ImGui.SetClipboardText("clipboard payload");
-        ImGui.GetClipboardText();
-
-        // The ini surface must round-trip an in-memory settings blob without touching disk
-        string settings = ImGui.SaveIniSettingsToMemory();
-        ImGui.LoadIniSettingsFromMemory(settings);
-
-        ImGui.LogToClipboard();
-        ImGui.LogText("logged text");
-        ImGui.LogFinish();
-        ImGui.LogButtons();
-    }
-
-    void DrawImGuiItemQueries()
-    {
-        ImGui.Button("query target");
-
-        // Every per-item and per-window state query answers off the item just submitted
-        ImGui.IsItemHovered();
-        ImGui.IsItemClicked();
-        ImGui.IsItemActivated();
-        ImGui.IsItemDeactivated();
-        ImGui.IsItemDeactivatedAfterEdit();
-        ImGui.IsItemToggledOpen();
-        ImGui.IsItemActive();
-        ImGui.IsItemEdited();
-        ImGui.IsItemVisible();
-        ImGui.IsAnyItemFocused();
-        ImGui.IsWindowFocused();
-        ImGui.IsWindowHovered();
-        ImGui.SetItemDefaultFocus();
-
-        ImGui.GetItemRectMin();
-        ImGui.GetItemRectMax();
-        ImGui.GetItemRectSize();
-
-        ImGui.GetMousePos();
-        ImGui.IsMouseDown(ImGui_MouseButton::Left);
-        ImGui.IsMouseClicked(ImGui_MouseButton::Left);
-        ImGui.IsMouseReleased(ImGui_MouseButton::Left);
-        ImGui.IsMouseDoubleClicked(ImGui_MouseButton::Left);
-        ImGui.IsMouseHoveringRect(fpos(0.0f, 0.0f), fpos(50.0f, 50.0f));
-        ImGui.IsMouseDragging(ImGui_MouseButton::Left);
-        ImGui.GetMouseDragDelta();
-        ImGui.ResetMouseDragDelta();
-
-        ImGui.ArrowButton("arrow", ImGui_Dir::Right);
-        ImGui.InvisibleButton("invisible", fsize(20.0f, 20.0f));
-    }
-
-    void DrawImGuiTreesAndSelectables()
-    {
-        ImGui.SetNextItemOpen(true, ImGui_Cond::Always);
-
-        if (ImGui.TreeNodeEx("tree", ImGui_TreeNodeFlags::DefaultOpen)) {
-            ImGui.Text("inside tree");
-            ImGui.TreePop();
-        }
-
-        ImGui.Selectable("selectable", false);
-        ImGui.Selectable("selectable selected", true);
-
-        ImGui.RadioButton("radio", false);
-
-        int radioValue = 0;
-        ImGui.RadioButton("radio value", radioValue, 0);
-    }
-
-    void DrawImGuiTooltipsAndPopups()
-    {
-        ImGui.SetTooltip("tooltip text");
-        ImGui.SetItemTooltip("item tooltip");
-
-        if (ImGui.BeginTooltip()) {
-            ImGui.Text("inside tooltip");
-            ImGui.EndTooltip();
-        }
-
-        // A popup that was never opened must report closed and skip its body
-        if (ImGui.IsPopupOpen("popup")) {
-            return;
-        }
-
-        if (ImGui.BeginPopup("popup")) {
-            ImGui.EndPopup();
-        }
-
-        ImGui.OpenPopup("popup");
-
-        if (ImGui.BeginPopup("popup")) {
-            ImGui.Text("inside popup");
-            ImGui.CloseCurrentPopup();
-            ImGui.EndPopup();
-        }
-
-        if (ImGui.BeginPopupContextWindow("ctxwindow")) {
-            ImGui.EndPopup();
-        }
-
-        if (ImGui.BeginPopupContextVoid("ctxvoid")) {
-            ImGui.EndPopup();
-        }
-    }
-
-    int UnitTestGetRenderCalls()
-    {
-        return RenderCalls;
-    }
-
-    void UnitTestEnableRenderDrawing()
-    {
-        DrawDuringRender = true;
-    }
-
-    [[Event]]
-    void OnStart()
-    {
-        StartCalls++;
-    }
-
-    [[Event]]
-    void OnLoop()
-    {
-        LoopCalls++;
-    }
-
-    void UnitTestNoop() {}
-
-    void UnitTestMarkManualCall()
-    {
-        ManualCalls++;
-    }
-
-    int UnitTestGetStartCalls()
-    {
-        return StartCalls;
-    }
-
-    int UnitTestGetLoopCalls()
-    {
-        return LoopCalls;
-    }
-
-    int UnitTestGetManualCalls()
-    {
-        return ManualCalls;
-    }
-
-    int ImGuiEmptyIdRejections = 0;
-    int ImGuiSpriteRejections = 0;
-    int ImGuiSurfaceFailures = 0;
-    string ImGuiStage;
-    string ImGuiFailedStage;
-
-    int UnitTestGetImGuiSpriteRejections()
-    {
-        return ImGuiSpriteRejections;
-    }
-
-    void SweepImGuiEmptyIds()
-    {
-        for (int i = 0; i < UnitTestImGuiEmptyIdProbeCount(); i++) {
-            try {
-                UnitTestImGuiRejectsEmptyId(i);
-            }
-            catch {
-                ImGuiEmptyIdRejections++;
-            }
-        }
-    }
-
-    int UnitTestGetImGuiEmptyIdRejections()
-    {
-        return ImGuiEmptyIdRejections;
-    }
-
-    int UnitTestGetImGuiSurfaceFailures()
-    {
-        return ImGuiSurfaceFailures;
-    }
-
-    string UnitTestGetImGuiFailedStage()
-    {
-        return ImGuiFailedStage;
-    }
-
-    void UnitTestImGuiRejectsEmptyId(int index)
-    {
-        bool boolValue = false;
-        int intValue = 0;
-        int intValue2 = 0;
-        int intValue3 = 0;
-        int intValue4 = 0;
-        uint uintValue = 0;
-        float floatValue = 0.0f;
-        float floatValue2 = 0.0f;
-        float floatValue3 = 0.0f;
-        float floatValue4 = 0.0f;
-        string stringValue = "";
-        ucolor colorValue = ucolor(0, 0, 0, 255);
-        float[] plotData = {0.0f, 1.0f};
-
-        // Every entry passes an empty label or id, which each binding must reject before touching ImGui
-        switch (index) {
-            case 0:
-                ImGui.Begin("");
-                break;
-            case 1:
-                ImGui.Begin("", boolValue);
-                break;
-            case 2:
-                ImGui.PushID("");
-                break;
-            case 3:
-                ImGui.SeparatorText("");
-                break;
-            case 4:
-                ImGui.Button("");
-                break;
-            case 5:
-                ImGui.Checkbox("", boolValue);
-                break;
-            case 6:
-                ImGui.CheckboxFlags("", intValue, 1);
-                break;
-            case 7:
-                ImGui.CheckboxFlags("", uintValue, 1);
-                break;
-            case 8:
-                ImGui.InputInt("", intValue);
-                break;
-            case 9:
-                ImGui.InputInt2("", intValue, intValue2);
-                break;
-            case 10:
-                ImGui.InputInt3("", intValue, intValue2, intValue3);
-                break;
-            case 11:
-                ImGui.InputInt4("", intValue, intValue2, intValue3, intValue4);
-                break;
-            case 12:
-                ImGui.DragFloat("", floatValue, 1.0f, 0.0f, 10.0f);
-                break;
-            case 13:
-                ImGui.DragInt("", intValue, 1.0f, 0, 10);
-                break;
-            case 14:
-                ImGui.DragFloat2("", floatValue, floatValue2, 1.0f, 0.0f, 10.0f);
-                break;
-            case 15:
-                ImGui.DragFloat3("", floatValue, floatValue2, floatValue3, 1.0f, 0.0f, 10.0f);
-                break;
-            case 16:
-                ImGui.DragFloat4("", floatValue, floatValue2, floatValue3, floatValue4, 1.0f, 0.0f, 10.0f);
-                break;
-            case 17:
-                ImGui.DragInt2("", intValue, intValue2, 1.0f, 0, 10);
-                break;
-            case 18:
-                ImGui.DragInt3("", intValue, intValue2, intValue3, 1.0f, 0, 10);
-                break;
-            case 19:
-                ImGui.DragInt4("", intValue, intValue2, intValue3, intValue4, 1.0f, 0, 10);
-                break;
-            case 20:
-                ImGui.SliderFloat("", floatValue, 0.0f, 1.0f);
-                break;
-            case 21:
-                ImGui.SliderInt("", intValue, 0, 10);
-                break;
-            case 22:
-                ImGui.SliderFloat2("", floatValue, floatValue2, 0.0f, 1.0f);
-                break;
-            case 23:
-                ImGui.SliderFloat3("", floatValue, floatValue2, floatValue3, 0.0f, 1.0f);
-                break;
-            case 24:
-                ImGui.SliderFloat4("", floatValue, floatValue2, floatValue3, floatValue4, 0.0f, 1.0f);
-                break;
-            case 25:
-                ImGui.SliderInt2("", intValue, intValue2, 0, 10);
-                break;
-            case 26:
-                ImGui.SliderInt3("", intValue, intValue2, intValue3, 0, 10);
-                break;
-            case 27:
-                ImGui.SliderInt4("", intValue, intValue2, intValue3, intValue4, 0, 10);
-                break;
-            case 28:
-                ImGui.VSliderFloat("", fsize(20.0f, 60.0f), floatValue, 0.0f, 1.0f);
-                break;
-            case 29:
-                ImGui.VSliderInt("", fsize(20.0f, 60.0f), intValue, 0, 10);
-                break;
-            case 30:
-                ImGui.BeginChild("", isize(10, 10), true);
-                break;
-            case 31:
-                ImGui.BeginChild("", isize(10, 10), ImGui_ChildFlags::None, ImGui_WindowFlags::None);
-                break;
-            case 32:
-                ImGui.CollapsingHeader("");
-                break;
-            case 33:
-                ImGui.TreeNode("");
-                break;
-            case 34:
-                ImGui.TreeNodeEx("", ImGui_TreeNodeFlags::None);
-                break;
-            case 35:
-                ImGui.Selectable("", false);
-                break;
-            case 36:
-                ImGui.RadioButton("", false);
-                break;
-            case 37:
-                ImGui.RadioButton("", intValue, 0);
-                break;
-            case 38:
-                ImGui.SmallButton("");
-                break;
-            case 39:
-                ImGui.ArrowButton("", ImGui_Dir::Up);
-                break;
-            case 40:
-                ImGui.InvisibleButton("", fsize(5.0f, 5.0f));
-                break;
-            case 41:
-                ImGui.OpenPopup("");
-                break;
-            case 42:
-                ImGui.BeginPopup("");
-                break;
-            case 43:
-                ImGui.BeginPopupModal("");
-                break;
-            case 44:
-                ImGui.BeginPopupModal("", boolValue, ImGui_WindowFlags::None);
-                break;
-            case 45:
-                ImGui.IsPopupOpen("");
-                break;
-            case 46:
-                ImGui.BeginMenu("");
-                break;
-            case 47:
-                ImGui.MenuItem("");
-                break;
-            case 48:
-                ImGui.BeginTable("", 1);
-                break;
-            case 49:
-                ImGui.TableHeader("");
-                break;
-            case 50:
-                ImGui.TableSetupColumn("");
-                break;
-            case 51:
-                ImGui.BeginTabBar("");
-                break;
-            case 52:
-                ImGui.BeginTabItem("");
-                break;
-            case 53:
-                ImGui.BeginTabItem("", boolValue);
-                break;
-            case 54:
-                ImGui.TabItemButton("");
-                break;
-            case 55:
-                ImGui.SetTabItemClosed("");
-                break;
-            case 56:
-                ImGui.BeginCombo("", "preview");
-                break;
-            case 57:
-                ImGui.Combo("", intValue, "a\0b\0");
-                break;
-            case 58:
-                ImGui.BeginListBox("");
-                break;
-            case 59:
-                ImGui.TextLink("");
-                break;
-            case 60:
-                ImGui.TextLinkOpenURL("");
-                break;
-            case 61:
-                ImGui.TextLinkOpenURL("", "https://fonline.ru");
-                break;
-            case 62:
-                ImGui.PlotLines("", plotData);
-                break;
-            case 63:
-                ImGui.PlotHistogram("", plotData);
-                break;
-            case 64:
-                ImGui.Value("", true);
-                break;
-            case 65:
-                ImGui.Value("", 1);
-                break;
-            case 66:
-                ImGui.Value("", uint(1));
-                break;
-            case 67:
-                ImGui.Value("", 1.0f);
-                break;
-            case 68:
-                ImGui.ColorEdit3("", colorValue);
-                break;
-            case 69:
-)"
-                    R"(                ImGui.ColorEdit4("", colorValue);
-                break;
-            case 70:
-                ImGui.ColorPicker3("", colorValue);
-                break;
-            case 71:
-                ImGui.ColorPicker4("", colorValue);
-                break;
-            case 72:
-                ImGui.ColorButton("", colorValue);
-                break;
-            case 73:
-                ImGui.InputFloat("", floatValue);
-                break;
-            case 74:
-                ImGui.InputFloat2("", floatValue, floatValue2);
-                break;
-            case 75:
-                ImGui.InputFloat3("", floatValue, floatValue2, floatValue3);
-                break;
-            case 76:
-                ImGui.InputFloat4("", floatValue, floatValue2, floatValue3, floatValue4);
-                break;
-            case 77:
-                ImGui.InputText("", stringValue, 8);
-                break;
-            case 78:
-                ImGui.InputTextMultiline("", stringValue, 8, isize(50, 20));
-                break;
-            case 79:
-                ImGui.InputTextWithHint("", "hint", stringValue, 8);
-                break;
-            case 80:
-                ImGui.LoadIniSettingsFromDisk("");
-                break;
-            case 81:
-                ImGui.SaveIniSettingsToDisk("");
-                break;
-        }
-    }
-
-    int UnitTestImGuiEmptyIdProbeCount()
-    {
-        return 82;
-    }
-
-    int UnitTestClientSpriteApi()
-    {
-        // The fixture injects these baked sprites, so the loaders must resolve them to live ids
-        uint quad = Game.LoadSprite("Quad.png");
-        if (quad == 0) return -1;
-
-        isize quadSize = Game.GetSpriteSize(quad);
-        if (quadSize.width != 2 || quadSize.height != 2) return -2;
-
-        uint mapSpr = Game.LoadMapSprite("Quad.png");
-        if (mapSpr == 0) return -3;
-
-        uint separate = Game.LoadSeparateSprite("Quad.png");
-        if (separate == 0) return -4;
-
-        uint hashed = Game.LoadSprite("Quad.png".hstr());
-        if (hashed == 0) return -5;
-
-        Game.IsSpriteHit(quad, ipos(0, 0));
-        Game.IsSpriteHit(quad, ipos(100, 100));
-
-        // Animation controls are legal on a still sprite and simply have nothing to advance
-        Game.PlaySprite(quad, "".hstr(), true, false);
-        Game.SetSpriteTime(quad, 0.5f);
-        Game.StopSprite(quad);
-        Game.SetParticleScale(quad, 2.0f);
-        Game.PrewarmParticle(quad);
-
-        // A missing sprite resolves to the zero id rather than throwing
-        if (Game.LoadSprite("NoSuchSprite.png") != 0) return -6;
-        if (Game.GetSpriteSize(0).width != 0) return -7;
-        if (Game.IsSpriteHit(0, ipos(0, 0))) return -8;
-
-        Game.FreeSprite(quad);
-        Game.FreeSprite(mapSpr);
-        Game.FreeSprite(separate);
-        Game.FreeSprite(hashed);
-        Game.FreeSprite(0);
-
-        return 0;
-    }
-
-    int UnitTestClientEffectsAndText()
-    {
-        // The fixture binds no shader, so writing script values must be rejected rather than land nowhere
-        float[] effectValues = {1.0f, 2.0f, 3.0f, 4.0f};
-        int effectRejections = 0;
-        try { Game.SetEffectScriptValue(EffectType::GenericSprite, 0, 0, 1.0f); } catch { effectRejections++; }
-        try { Game.SetEffectScriptValues(EffectType::GenericSprite, 0, 0, effectValues); } catch { effectRejections++; }
-        try { Game.SetEffectScriptValues(EffectType::GenericSprite, 0, 0, effectValues, 1, 2); } catch { effectRejections++; }
-        try { Game.ClearEffectScriptValues(EffectType::GenericSprite, 0); } catch { effectRejections++; }
-        if (effectRejections != 4) return -10;
-
-        // Every effect slot resolves through its own arm of one switch, so the whole enum is walked. The
-        // fixture binds no shader, so each call is expected to be rejected once the slot is resolved
-        EffectType[] effectTypes = {
-            EffectType::GenericSprite, EffectType::CritterSprite, EffectType::TileSprite,
-            EffectType::RoofSprite, EffectType::RainSprite, EffectType::SkinnedMesh,
-            EffectType::Interface, EffectType::Primitive, EffectType::Light, EffectType::Fog,
-            EffectType::FlushRenderTarget, EffectType::FlushPrimitive, EffectType::FlushMap,
-            EffectType::FlushLight, EffectType::FlushFog, EffectType::Offscreen};
-
-        int slotRejections = 0;
-        for (uint i = 0; i < effectTypes.length(); i++) {
-            try { Game.ClearEffectScriptValues(effectTypes[i], 0); } catch { slotRejections++; }
-        }
-        if (slotRejections != int(effectTypes.length())) return -11;
-
-        // Font is the one slot that takes -1 as its only accepted subtype
-        int fontRejections = 0;
-        try { Game.ClearEffectScriptValues(EffectType::Font, -1); } catch { fontRejections++; }
-        try { Game.ClearEffectScriptValues(EffectType::Font, 0); } catch { fontRejections++; }
-        if (fontRejections != 2) return -12;
-
-        // A per-entity subtype needs a current map, and an out-of-range one is rejected before that
-        int subtypeRejections = 0;
-        try { Game.ClearEffectScriptValues(EffectType::GenericSprite, -5); } catch { subtypeRejections++; }
-        try { Game.ClearEffectScriptValues(EffectType::CritterSprite, -5); } catch { subtypeRejections++; }
-        try { Game.ClearEffectScriptValues(EffectType::GenericSprite, 1); } catch { subtypeRejections++; }
-        try { Game.ClearEffectScriptValues(EffectType::CritterSprite, 1); } catch { subtypeRejections++; }
-        if (subtypeRejections != 4) return -13;
-
-        // The headless backend stubs any effect path, so this proves every slot is addressable rather than that
-        // the path is validated
-        int bindRejections = 0;
-        for (uint i = 0; i < effectTypes.length(); i++) {
-            try { Game.SetEffect(effectTypes[i], 0, "Effects/UnitTestMissing.fofx"); } catch { bindRejections++; }
-        }
-        if (bindRejections != 0) return -14;
-
-        // The fixture declares no text packs, so presence queries answer empty instead of failing
-        if (Game.IsTextPresent(TextPackKey(TextPackName("Game".hstr()), "UnitTestMissingKey".hstr(), hstring(), hstring()))) return -1;
-        if (Game.GetTextCount(TextPackKey(TextPackName("Game".hstr()), "UnitTestMissingKey".hstr(), hstring(), hstring())) != 0) return -2;
-
-        // Measurement needs a real font slot, so the fixture font is bound first
-        Game.BindFont(FontType::Default, "UnitTestFont.fofnt");
-
-        isize measured;
-        int lines = 0;
-        Game.GetTextInfo("measured text", isize(200, 50), TextFormat(), measured, lines);
-        if (measured.width <= 0 || measured.height <= 0) return -3;
-        if (lines <= 0) return -4;
-
-        // Wrapping, truncation and alignment each take their own path through the formatter
-        TextFormat wrapped;
-        wrapped.Flags = FontFlag(uint(FontFlag::CenterX) | uint(FontFlag::CenterY));
-        Game.GetTextInfo("a much longer sentence that has to wrap across several lines", isize(40, 200), wrapped, measured, lines);
-        if (lines < 2) return -5;
-
-        TextFormat noWrap;
-        noWrap.Flags = FontFlag::NoWrap;
-        Game.GetTextInfo("a much longer sentence that has to wrap across several lines", isize(40, 200), noWrap, measured, lines);
-        if (lines < 1) return -6;
-
-        TextFormat justified;
-        justified.Flags = FontFlag(uint(FontFlag::Justify) | uint(FontFlag::Bordered));
-        Game.GetTextInfo("justified text sample", isize(120, 200), justified, measured, lines);
-
-        TextFormat skipped;
-        skipped.Flags = FontFlag(uint(FontFlag::AlignRight) | uint(FontFlag::AlignBottom));
-        skipped.SkipLines = 1;
-        Game.GetTextInfo("first line\nsecond line\nthird line", isize(200, 200), skipped, measured, lines);
-
-        // Inline colour tags take their own parse path, both when honoured and when stripped
-        Game.GetTextInfo("plain @color:0xFFFF0000@red@color@ tail", isize(200, 50), TextFormat(), measured, lines);
-
-        TextFormat stripped;
-        stripped.Flags = FontFlag::NoColorize;
-        Game.GetTextInfo("plain @color:0xFFFF0000@red@color@ tail", isize(200, 50), stripped, measured, lines);
-        Game.GetTextInfo("malformed @color:notahexvalue@ tail", isize(200, 50), TextFormat(), measured, lines);
-
-        if (Game.GetTextLines(isize(200, 50), FontType::Default) < 0) return -7;
-
-        // Re-binding with a different scale re-bakes the glyph atlas
-        Game.BindFont(FontType::Default, "UnitTestFont.fofnt", 0.5f);
-        Game.GetTextInfo("rescaled text", isize(200, 50), TextFormat(), measured, lines);
-        Game.BindFont(FontType::Default, "UnitTestFont.fofnt");
-
-        string[] noModels;
-)"
-#if FO_ENABLE_3D
-                    R"(        Game.Preload3dFiles(noModels);
-)"
-#else
-                    R"(        // The binding stays exported without the 3D submodule and rejects the call
-        int preloadRejections = 0;
-        try { Game.Preload3dFiles(noModels); } catch { preloadRejections++; }
-        if (preloadRejections != 1) return -15;
-)"
-#endif
-                    R"(
-        return 0;
-    }
-
-    int UnitTestClientWindowAndConfig()
-    {
-        bool wasFullscreen = Game.IsFullscreen();
-        Game.ToggleFullscreen();
-        Game.ToggleFullscreen();
-        if (Game.IsFullscreen() != wasFullscreen) return -1;
-
-        Game.MinimizeWindow();
-        Game.SetAlwaysOnTop(Game.IsAlwaysOnTop());
-        Game.FlashUnfocusedWindow();
-        Game.SetScreenKeyboard(true);
-        Game.SetScreenKeyboard(false);
-        Game.DumpAtlases();
-
-        ipos before = Game.MousePos;
-        Game.SetMousePos(ipos(5, 7));
-        Game.SetForcedMousePos(ipos(11, 13));
-        Game.ClearForcedMousePos();
-        Game.SetMousePos(before);
-
-        string[] configPairs = {"UnitTestKey", "UnitTestValue"};
-        Game.SetUserConfig(configPairs);
-
-        dict<string, string> configMap = dict<string, string>();
-        configMap.set("UnitTestKey", "UnitTestValue");
-        Game.SetUserConfig(configMap);
-
-        // The user config lands in the on-disk cache, so leaving a test key behind would follow the next run
-        string[] emptyConfig;
-        Game.SetUserConfig(emptyConfig);
-
-        Game.SaveText("Workspace/client_script_save.txt", "saved by unit test");
-
-        // Resolution changes reach the process-global app window, so the caller restores it afterwards
-        Game.SetResolution(800, 600);
-
-        return 0;
-    }
-
-    int ClientRejectionCount = 0;
-
-    int UnitTestClientRejectsBadArguments()
-    {
-        ClientRejectionCount = 0;
-
-        // Each probe passes media or a path the fixture cannot resolve; the bit records whether it was rejected
-        try { Game.PlaySound("NoSuchSound.wav"); } catch { ClientRejectionCount |= 1; }
-        try { Game.PlayMusic("NoSuchMusic.ogg", timespan()); } catch { ClientRejectionCount |= 2; }
-        try { Game.PlayVideo("NoSuchVideo.ogv", true, false); } catch { ClientRejectionCount |= 4; }
-        try { Game.CreateVideoPlayback("NoSuchVideo.ogv", false); } catch { ClientRejectionCount |= 8; }
-        try { Game.BindFont(FontType::Default, "NoSuchFont"); } catch { ClientRejectionCount |= 16; }
-        try { Game.SetEffect(EffectType::GenericSprite, 0, "NoSuchEffect.fofx"); } catch { ClientRejectionCount |= 32; }
-        try { Game.ChangeLanguage("nolang"); } catch { ClientRejectionCount |= 64; }
-        try { Game.SaveScreenshot(""); } catch { ClientRejectionCount |= 128; }
-        try { Game.SaveText("", "text"); } catch { ClientRejectionCount |= 256; }
-        try { Game.CaptureScreenshot(-1); } catch { ClientRejectionCount |= 512; }
-
-        // Video playback is idle, so the query must answer false rather than fail
-        if (Game.IsVideoPlaying()) return -1;
-
-        return 0;
-    }
-
-    int UnitTestGetClientRejectionCount()
-    {
-        return ClientRejectionCount;
-    }
-
-    int UnitTestClientStateQueries()
-    {
-        // Without a session none of the current-context accessors have anything to hand out.
-        // These are GlobalGetter exports, so they are bare globals rather than Game members
-        if (HasChosen) return -1;
-        if (HasCurPlayer) return -2;
-        if (HasCurLocation) return -3;
-        if (HasCurMap) return -4;
-        if (Game.IsConnecting()) return -5;
-        if (Game.IsConnected()) return -6;
-
-        if (Game.BytesSend() < 0) return -7;
-        if (Game.BytesReceive() < 0) return -8;
-
-        // These read window/input state and must answer even with no real device attached
-        ipos mouse = Game.MousePos;
-        bool mouseAvailable = Game.IsMouseAvailable();
-        bool fullscreen = Game.IsFullscreen();
-        if (mouse.x != 0 || mouse.y != 0) return -9;
-        if (mouseAvailable) return -10;
-        if (fullscreen) return -11;
-
-        Game.GetGamepadState();
-
-        // With no current map the critter query answers empty instead of failing
-        if (!Game.GetCritters(CritterFindType::Any).isEmpty()) return -14;
-
-        return 0;
-    }
-
-    int UnitTestClientGeometry()
-    {
-        mpos a = mpos(10, 10);
-        mpos b = mpos(14, 10);
-
-        if (Game.GetDistance(a, a) != 0) return -1;
-        if (Game.GetDistance(a, b) <= 0) return -2;
-
-        return 0;
-    }
-
-    int UnitTestClientTextAndCache()
-    {
-        // The fixture declares no text packs, so only the pack-independent helpers are exercised here
-        string replaced = Game.ReplaceText("hello $name", "$name", "world");
-        if (replaced != "hello world") return -3;
-
-        string replacedNum = Game.ReplaceText("count $n", "$n", 42);
-        if (replacedNum != "count 42") return -4;
-
-        // The client cache round-trips both binary and text payloads
-        if (Game.IsCacheEntry("unit_test_entry")) return -5;
-
-        Game.SetCacheText("unit_test_entry", "cached value");
-        if (!Game.IsCacheEntry("unit_test_entry")) return -6;
-        if (Game.GetCacheText("unit_test_entry") != "cached value") return -7;
-
-        uint8[] payload = {1, 2, 3};
-        Game.SetCacheData("unit_test_bin", payload);
-        uint8[] readBack = Game.GetCacheData("unit_test_bin");
-        if (readBack.length() != 3) return -8;
-        if (readBack[2] != 3) return -9;
-
-)"
-                    R"(        Game.RemoveCacheEntry("unit_test_entry");
-        Game.RemoveCacheEntry("unit_test_bin");
-        if (Game.IsCacheEntry("unit_test_entry")) return -10;
-
-        return 0;
-    }
-
-    int UnitTestClientInputSimulation()
-    {
-        // The simulated-input surface is what automated play uses, so it must run without a device
-        Game.SimulateMouseMove(ipos(10, 10));
-        Game.SimulateMouseDown(ipos(10, 10), MouseButton::Left);
-        Game.SimulateMouseUp(ipos(10, 10), MouseButton::Left);
-        Game.SimulateMouseClick(ipos(12, 12), MouseButton::Right);
-        Game.SimulateTouchDown(0, ipos(5, 5));
-        Game.SimulateTouchMove(0, ipos(6, 6), ipos(1, 1));
-        Game.SimulateTouchUp(0, ipos(6, 6));
-        Game.SimulateTouchTap(ipos(7, 7));
-
-        return 0;
-    }
-
-    int UnitTestMapSpriteHolderRefType()
-    {
-        MapSpriteHolder holder = MapSpriteHolder();
-        if (holder is null) return -1;
-        if (holder.Valid) return -2;
-
-        holder.SprId = 42;
-        if (holder.SprId != 42) return -3;
-
-        holder.NoLight = true;
-        if (!holder.NoLight) return -4;
-
-        holder.Angle = 90;
-        if (holder.Angle != 90) return -5;
-
-        holder.TweakAlpha = 123;
-        if (holder.TweakAlpha != 123) return -6;
-
-        holder.MapProjected = true;
-        if (!holder.MapProjected) return -7;
-
-        MapSpriteHolder same = holder;
-        if (!(holder == same)) return -8;
-
-        holder.StopDraw();
-        return 0;
-    }
-}
-)"},
-            },
-            [](string_view message) {
-                string message_str = string(message);
-
-                if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
-                    throw ScriptSystemException(message_str);
-                }
-            });
-    }
-
-    // A minimal BMFont binary: the info/common/pages/chars blocks the loader walks, with one glyph per
-    // ASCII letter so the measurement paths behave the same as with the text descriptor
-    static auto MakeUnitTestBmfFont(string_view image_name) -> vector<uint8_t>
-    {
-        vector<uint8_t> data;
-        data_writer writer {data};
-
-        writer.write<uint8_t>(uint8_t {'B'});
-        writer.write<uint8_t>(uint8_t {'M'});
-        writer.write<uint8_t>(uint8_t {'F'});
-        writer.write<uint8_t>(uint8_t {3});
-
-        // Info block: everything up to the padding quad is skipped, the padding itself must read as 1/1/1/1
-        string font_name = "UnitTest";
-        writer.write<uint8_t>(uint8_t {1});
-        writer.write<uint32_t>(numeric_cast<uint32_t>(14 + font_name.size() + 1));
-        writer.write<uint16_t>(uint16_t {8}); // Font size
-        writer.write<uint8_t>(uint8_t {0}); // Bit field
-        writer.write<uint8_t>(uint8_t {0}); // Char set
-        writer.write<uint16_t>(uint16_t {100}); // Stretch height
-        writer.write<uint8_t>(uint8_t {0}); // Anti-aliasing
-        writer.write<uint8_t>(uint8_t {1}); // Padding up
-        writer.write<uint8_t>(uint8_t {1}); // Padding right
-        writer.write<uint8_t>(uint8_t {1}); // Padding down
-        writer.write<uint8_t>(uint8_t {1}); // Padding left
-        writer.write<uint8_t>(uint8_t {0}); // Spacing horizontal
-        writer.write<uint8_t>(uint8_t {0}); // Spacing vertical
-        writer.write<uint8_t>(uint8_t {0}); // Outline
-
-        for (char ch : font_name) {
-            writer.write<uint8_t>(numeric_cast<uint8_t>(ch));
-        }
-
-        writer.write<uint8_t>(uint8_t {0});
-
-        // Common block
-        writer.write<uint8_t>(uint8_t {2});
-        writer.write<uint32_t>(uint32_t {15});
-        writer.write<uint16_t>(uint16_t {10}); // Line height
-        writer.write<uint16_t>(uint16_t {8}); // Base height
-        writer.write<uint16_t>(uint16_t {16}); // Texture width
-        writer.write<uint16_t>(uint16_t {16}); // Texture height
-        writer.write<uint16_t>(uint16_t {1}); // Pages
-        writer.write<uint8_t>(uint8_t {0}); // Bit field
-        writer.write<uint8_t>(uint8_t {0}); // Alpha channel
-        writer.write<uint8_t>(uint8_t {0}); // Red channel
-        writer.write<uint8_t>(uint8_t {0}); // Green channel
-        writer.write<uint8_t>(uint8_t {0}); // Blue channel
-
-        // Pages block
-        writer.write<uint8_t>(uint8_t {3});
-        writer.write<uint32_t>(numeric_cast<uint32_t>(image_name.size() + 1));
-
-        for (char ch : image_name) {
-            writer.write<uint8_t>(numeric_cast<uint8_t>(ch));
-        }
-
-        writer.write<uint8_t>(uint8_t {0});
-
-        // Chars block: 20 bytes per glyph
-        string glyphs = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .,!?-";
-        writer.write<uint8_t>(uint8_t {4});
-        writer.write<uint32_t>(numeric_cast<uint32_t>(glyphs.size() * 20));
-
-        for (char ch : glyphs) {
-            writer.write<uint32_t>(numeric_cast<uint32_t>(numeric_cast<uint8_t>(ch)));
-            writer.write<uint16_t>(uint16_t {0}); // X
-            writer.write<uint16_t>(uint16_t {0}); // Y
-            writer.write<uint16_t>(uint16_t {6}); // Width
-            writer.write<uint16_t>(uint16_t {8}); // Height
-            writer.write<uint16_t>(uint16_t {0}); // X offset
-            writer.write<uint16_t>(uint16_t {0}); // Y offset
-            writer.write<uint16_t>(uint16_t {4}); // X advance
-            writer.write<uint16_t>(uint16_t {0}); // Page and channel
-        }
-
-        return data;
-    }
-
-    // A minimal .fofnt descriptor plus its atlas page. Every glyph shares one cell, which is enough for the
-    // measurement, wrapping and draw paths to run end to end without a real bitmap font
-    static auto MakeUnitTestFontResources() -> vector<pair<string, vector<uint8_t>>>
-    {
-        string descriptor = "Version 2\n";
-        descriptor += "Image UnitTestFont.png\n";
-        descriptor += "LineHeight 8\n";
-        descriptor += "YAdvance 1\n";
-
-        for (char letter : string {"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .,!?-"}) {
-            descriptor += strex("Letter '{}'\nPositionX 0\nPositionY 0\nWidth 4\nHeight 6\nOffsetX 0\nOffsetY 0\nXAdvance 5\n", letter);
-        }
-
-        descriptor += "End\n";
-
-        vector<uint8_t> descriptor_bytes(descriptor.begin(), descriptor.end());
-
-        vector<pair<string, vector<uint8_t>>> resources;
-        resources.emplace_back("UnitTestFont.fofnt", std::move(descriptor_bytes));
-        resources.emplace_back("UnitTestFont.png", BakerTests::MakeMinimalBakedSprite(16, 16));
-        resources.emplace_back("UnitTestFont.fnt", MakeUnitTestBmfFont("UnitTestFont.png"));
-        return resources;
-    }
-
-    static auto MakeClientTestResources(vector<pair<string, vector<uint8_t>>> extra_resources = {}) -> FileSystem
-    {
-        auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
-
-        auto compiler_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ClientEngineCompilerResources");
-        compiler_source->AddFile("Metadata.fometa-client", metadata_blob);
-
-        FileSystem compiler_resources;
-        compiler_resources.AddCustomSource(std::move(compiler_source));
-
-        BakerClientEngine proto_engine {compiler_resources};
-        hstring critter_type = proto_engine.Hashes.to_hashed_string("Critter");
-        // The model-backed proto lets the animation viewer build a real preview instead of stopping at a
-        // missing model
-        vector<pair<string, function<void(ProtoCritter&)>>> critter_protos;
-        critter_protos.emplace_back(string {"UnitTestClientCritter"}, [](ProtoCritter&) { });
-        critter_protos.emplace_back(string {"UnitTestModelCritter"}, [&proto_engine](ProtoCritter& proto) { proto.SetModelName(proto_engine.Hashes.to_hashed_string("Models/RuntimeInstance.fo3d")); });
-        auto proto_blob = BakerTests::MakeMultiProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, critter_protos);
-        auto script_blob = MakeClientScriptBinary(compiler_resources);
-
-        auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ClientEngineRuntimeResources");
-        runtime_source->AddFile("Metadata.fometa-client", metadata_blob);
-        runtime_source->AddFile("ClientEngineTest.fopro-bin-client", proto_blob);
-        runtime_source->AddFile("ClientEngineTest.fos-bin-client", script_blob);
-
-        for (auto& [resource_path, resource_data] : extra_resources) {
-            runtime_source->AddFile(resource_path, std::move(resource_data));
-        }
-
-        FileSystem resources;
-        resources.AddCustomSource(std::move(runtime_source));
-        return resources;
-    }
-
-    static auto MakeClientEngine(GlobalSettings& settings, FileSystem resources) -> refcount_ptr<ClientEngine>
-    {
-        return safe_alloc::make_refcounted<ClientEngine>(&settings, std::move(resources), &GetApp()->MainWindow);
-    }
-
-    static auto MakeClientEngine(GlobalSettings& settings) -> refcount_ptr<ClientEngine>
-    {
-        return MakeClientEngine(settings, MakeClientTestResources());
-    }
-
-    // A minimal effect, baked through the real EffectBaker so the runtime accepts it. Registering one as an
-    // offscreen effect is what makes the offscreen surface bindings usable at all
-    static auto MakeBakedEffectResources(string_view effect_path) -> vector<pair<string, vector<uint8_t>>>
-    {
-        constexpr string_view EFFECT_SOURCE = R"EFFECT(
-[Effect]
-
-[VertexShader]
-layout(binding = 0, std140) uniform ProjBuf { mat4 ProjMatrix; };
-
-layout(location = 0) in vec3 InPosition;
-layout(location = 1) in vec4 InColor;
-layout(location = 2) in vec2 InTexCoord;
-
-layout(location = 0) out vec2 TexCoord;
-
-void main(void)
-{
-    gl_Position = ProjMatrix * vec4(InPosition.xy, 0.0, 1.0);
-    TexCoord = InTexCoord;
+    auto settings {MakeClientTestSettings()};
+    auto client {MakeClientEngine(settings, MakeClientTestResources(MakeUnitTestFontResources()))};
+
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+    client->FontMngr.BindFoFont(FontType::Default, "UnitTestFont.fofnt", AtlasType::IfaceSprites, false, false, 1.0f);
+    client->CanDrawInScripts = true;
+
+    CHECK_THROWS_AS(Client_Game_DrawText(client, "x", {}, {std::numeric_limits<int32_t>::min(), 1}, {}, {}), OverflowException);
+    CHECK_THROWS_AS(Client_Game_DrawText(client, "x", {}, {1, std::numeric_limits<int32_t>::min()}, {}, {}), OverflowException);
+    CHECK_THROWS_AS(Client_Game_DrawText(client, "x", {std::numeric_limits<int32_t>::min(), 0}, {-1, 1}, {}, {}), OverflowException);
+    CHECK_THROWS_AS(Client_Game_DrawText(client, "x", {0, std::numeric_limits<int32_t>::min()}, {1, -1}, {}, {}), OverflowException);
+    CHECK_NOTHROW(Client_Game_DrawText(client, "x", {10, 10}, {-1, -1}, {}, {}));
 }
 
-[FragmentShader]
-layout(binding = 0) uniform sampler2D MainTex;
-
-layout(location = 0) in vec2 TexCoord;
-layout(location = 0) out vec4 FragColor;
-
-void main(void)
+TEST_CASE("ClientScriptOffscreenOverflowPreservesActiveSurface")
 {
-    FragColor = texture(MainTex, TexCoord);
-}
-)EFFECT";
+    auto settings {MakeClientTestSettings()};
+    auto client {MakeClientEngine(settings, MakeClientTestResources(MakeBakedEffectResources("Effects/UnitTestOffscreen.fofx")))};
 
-        BakerTests::TestRig rig;
-        rig.AddSourceFile(effect_path, EFFECT_SOURCE, 10);
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+    client->CanDrawInScripts = true;
+    Client_Game_SetEffect(client, EffectType::Offscreen, 0, "Effects/UnitTestOffscreen.fofx");
+    client->SprMngr.BeginScene();
 
-        EffectBaker baker(rig.MakeContext());
-        baker.BakeFiles(rig.GetAllSourceFiles(), "");
+    auto abort_scene {scope_exit([&client]() noexcept { client->SprMngr.AbortScene(); })};
+    Client_Game_ActivateOffscreenSurface(client, true);
+    REQUIRE(client->ActiveOffscreenSurfaces.size() == 1);
+    auto surface {client->ActiveOffscreenSurfaces.back()};
 
-        vector<pair<string, vector<uint8_t>>> resources;
-
-        for (const auto& [output_path, output_data] : rig.Outputs) {
-            resources.emplace_back(output_path, output_data);
-        }
-
-        return resources;
-    }
-
-#if FO_ENABLE_3D
-    static void WriteRuntimeModelBoneHeader(data_writer& writer, string_view name, bool attached_mesh)
+    SECTION("Rectangle")
     {
-        writer.write_string(name);
-        writer.write<mat44>(mat44 {1.0f});
-        writer.write<mat44>(mat44 {1.0f});
-        writer.write<uint8_t>(attached_mesh ? uint8_t {1} : uint8_t {0});
+        CHECK_THROWS_AS(Client_Game_PresentOffscreenSurface(client, 0, {std::numeric_limits<int32_t>::max(), 0}, {1, 1}), OverflowException);
     }
 
-    static auto MakeRuntimeModelMesh(const function<void(data_writer&)>& write_root) -> vector<uint8_t>
+    SECTION("RectangleWithScriptValues")
     {
-        vector<uint8_t> data;
-        data_writer writer {data};
-        WriteModelMeshHeader(writer);
-        write_root(writer);
-        return data;
+        CHECK_THROWS_AS(Client_Game_PresentOffscreenSurface(client, 0, {0, std::numeric_limits<int32_t>::max()}, {1, 1}, 0.0f, 0.0f, 0.0f, 0.0f), OverflowException);
     }
 
-    static auto MakeRuntimeModelMeshWithVertex(const Vertex3D& vertex, uint32_t skin_bones_count = 1) -> vector<uint8_t>
+    SECTION("IndependentRectangles")
     {
-        return MakeRuntimeModelMesh([&](data_writer& writer) {
-            WriteRuntimeModelBoneHeader(writer, "Root", true);
-            array<Vertex3D, 1> vertices {vertex};
-            writer.write<uint32_t>(numeric_cast<uint32_t>(vertices.size()));
-            writer.write_object_array(const_span<Vertex3D> {vertices});
-            writer.write<uint32_t>(uint32_t {0});
-            writer.write_string({});
-            writer.write<uint32_t>(skin_bones_count);
-
-            for (uint32_t i = 0; i < skin_bones_count; i++) {
-                writer.write_string({});
-            }
-
-            writer.write<uint32_t>(skin_bones_count);
-
-            for (uint32_t i = 0; i < skin_bones_count; i++) {
-                writer.write<mat44>(mat44 {1.0f});
-            }
-
-            writer.write<uint32_t>(uint32_t {0});
-        });
+        CHECK_THROWS_AS(Client_Game_PresentOffscreenSurface(client, 0, std::numeric_limits<int32_t>::min(), 0, 1, 1, 0, 0, 1, 1), OverflowException);
     }
 
-    // A real triangle, so the model-info baker can compute static bounds from it. The origin moves the whole
-    // triangle, which lets a test place it far outside the bounds and tell a swept mesh from a skipped one
-    static auto MakeRuntimeModelTriangleMesh(vec3 origin = vec3 {}) -> vector<uint8_t>
-    {
-        return MakeRuntimeModelMesh([origin](data_writer& writer) {
-            WriteRuntimeModelBoneHeader(writer, "Root", true);
+    REQUIRE(client->ActiveOffscreenSurfaces.size() == 1);
+    CHECK(client->ActiveOffscreenSurfaces.back() == surface);
+    CHECK(client->SprMngr.GetRtMngr().GetCurrentRenderTarget() == surface);
 
-            array<Vertex3D, 3> vertices {};
-            vertices[0].Position = origin;
-            vertices[1].Position = origin + vec3 {1.0f, 0.0f, 0.0f};
-            vertices[2].Position = origin + vec3 {0.0f, 1.0f, 0.0f};
-
-            for (Vertex3D& vertex : vertices) {
-                vertex.BlendWeights[0] = 1.0f;
-                vertex.BlendIndices[0] = 0.0f;
-            }
-
-            writer.write<uint32_t>(numeric_cast<uint32_t>(vertices.size()));
-            writer.write_object_array(const_span<Vertex3D> {vertices});
-
-            array<ModelMeshIndexData, 3> indices {0, 1, 2};
-            writer.write<uint32_t>(numeric_cast<uint32_t>(indices.size()));
-            writer.write_object_array(const_span<ModelMeshIndexData> {indices});
-
-            writer.write_string({});
-            writer.write<uint32_t>(uint32_t {1});
-            writer.write_string({});
-            writer.write<uint32_t>(uint32_t {1});
-            writer.write<mat44>(mat44 {1.0f});
-            writer.write<uint32_t>(uint32_t {0});
-        });
-    }
-
-    // The second bone carries its own offset, so half the corners move by a different matrix and the posed
-    // silhouette is genuinely skeleton-driven
-    static auto MakeSkinnedRuntimeModelMesh() -> vector<uint8_t>
-    {
-        auto root_bone = safe_alloc::make_unique<ModelMeshBoneData>();
-        root_bone->Name = "Root";
-        root_bone->TransformationMatrix = mat44 {1.0f};
-        root_bone->GlobalTransformationMatrix = mat44 {1.0f};
-
-        auto limb_bone = safe_alloc::make_unique<ModelMeshBoneData>();
-        limb_bone->Name = "Limb";
-        limb_bone->TransformationMatrix = glm::translate(mat44 {1.0f}, vec3 {0.35f, 0.7f, 0.0f});
-        limb_bone->GlobalTransformationMatrix = limb_bone->TransformationMatrix;
-
-        ModelMeshGeometryData geometry;
-        geometry.SkinBoneNames = {"Root", "Limb"};
-        geometry.SkinBoneOffsets = {mat44 {1.0f}, mat44 {1.0f}};
-
-        for (uint32_t corner = 0; corner < 8; corner++) {
-            ModelMeshVertexData vertex {};
-
-            vertex.Position = {
-                (corner & 1U) != 0 ? 0.45f : -0.45f,
-                (corner & 2U) != 0 ? 1.7f : 0.0f,
-                (corner & 4U) != 0 ? 0.3f : -0.3f,
-            };
-            vertex.Normal = {0.0f, 1.0f, 0.0f};
-            vertex.BlendWeights[0] = 1.0f;
-            vertex.BlendIndices[0] = (corner & 2U) != 0 ? 1.0f : 0.0f;
-            geometry.Vertices.emplace_back(vertex);
-        }
-
-        constexpr array<uint32_t, 36> box_indices {0, 1, 3, 0, 3, 2, 4, 6, 7, 4, 7, 5, 0, 2, 6, 0, 6, 4, 1, 5, 7, 1, 7, 3, 2, 3, 7, 2, 7, 6, 0, 4, 5, 0, 5, 1};
-
-        for (uint32_t index : box_indices) {
-            geometry.Indices.emplace_back(numeric_cast<ModelMeshIndexData>(index));
-        }
-
-        root_bone->AttachedMesh = std::move(geometry);
-        root_bone->Children.emplace_back(std::move(limb_bone));
-
-        ModelMeshData data;
-        data.RootBone = std::move(root_bone);
-
-        vector<uint8_t> blob;
-        data_writer writer {blob};
-        WriteModelMeshData(writer, data, "SkinnedSpriteBoundsModel");
-        return blob;
-    }
-
-    static void WriteRuntimeModelDescriptionPrefix(data_writer& writer, string_view base_model = "Models/UnusedBase.fbx")
-    {
-        writer.write_bytes({MODEL_DESCRIPTION_MAGIC.data(), MODEL_DESCRIPTION_MAGIC.size()});
-        writer.write<uint16_t>(MODEL_DESCRIPTION_SCHEMA_VERSION);
-        writer.write<uint16_t>(MODEL_DESCRIPTION_SUPPORTED_FLAGS);
-        writer.write_string(base_model);
-        writer.write<uint8_t>(uint8_t {0});
-        writer.write<uint8_t>(uint8_t {0});
-        writer.write<uint8_t>(uint8_t {0});
-        writer.write<int32_t>(0);
-        writer.write<int32_t>(0);
-        writer.write<int32_t>(0);
-        writer.write<int32_t>(0);
-        writer.write_string({});
-    }
-
-    static void WriteRuntimeModelDescriptionLinkPrefix(data_writer& writer)
-    {
-        writer.write<int32_t>(0);
-        writer.write<int32_t>(0);
-        writer.write_string({});
-        writer.write_string({});
-        writer.write<uint8_t>(uint8_t {0});
-
-        for (size_t i = 0; i < 10; i++) {
-            writer.write<float32_t>(0.0f);
-        }
-
-        writer.write<uint32_t>(uint32_t {0});
-    }
-
-    static void WriteRuntimeModelDescriptionLink(data_writer& writer)
-    {
-        WriteRuntimeModelDescriptionLinkPrefix(writer);
-        writer.write<uint32_t>(uint32_t {0});
-        writer.write<uint32_t>(uint32_t {0});
-        writer.write<uint32_t>(uint32_t {0});
-        writer.write<uint32_t>(uint32_t {0});
-        writer.write<uint8_t>(uint8_t {0});
-    }
-
-    // The runtime requires the baked animation-info document: a plain config keyed by the model resource
-    // name, carrying the bounds version, the twelve model/view bounds keys and one duration record
-    static auto MakeUnitTestModelAnimationInfo(string_view model_path) -> vector<uint8_t>
-    {
-        string anim_info = strex(R"([{}]
-BoundsVersion = 2
-ModelBoundsMinX = -1
-ModelBoundsMinY = -1
-ModelBoundsMinZ = -1
-ModelBoundsMaxX = 1
-ModelBoundsMaxY = 1
-ModelBoundsMaxZ = 1
-ViewBoundsMinX = -1
-ViewBoundsMinY = -1
-ViewBoundsMinZ = -1
-ViewBoundsMaxX = 1
-ViewBoundsMaxY = 1
-ViewBoundsMaxZ = 1
-StateAnimations = 1 1 1 1
-ActionAnimations = 1 3 5 17
-DurationsMs = 1000 2000 1000 1000
-BoundsStateAnimations = 1 1 1 1
-BoundsActionAnimations = 1 3 5 17
-BoundsMinX = -1 -1 -1 -1
-BoundsMinY = -1 -1 -1 -1
-BoundsMinZ = -1 -1 -1 -1
-BoundsMaxX = 1 1 1 1
-BoundsMaxY = 1 1 1 1
-BoundsMaxZ = 1 1 1 1
-)",
-            model_path)
-                               .str();
-
-        return vector<uint8_t>(anim_info.begin(), anim_info.end());
-    }
-
-    // A valid baked model description is produced by the real ModelInfoBaker: the fixture supplies the
-    // source asset directly through the loader callback, so no source-file format has to be reproduced
-    static auto MakeRuntimeModelDescription(string_view model_path, string_view mesh_path, const vector<uint8_t>& mesh_blob, string_view default_link_extra = {}, string_view attached_mesh_path = {}, nptr<const vector<uint8_t>> attached_mesh_blob = nullptr, bool use_two_bone_rig = false) -> vector<uint8_t>
-    {
-        BakerTests::TestRig rig;
-        // A one-line description leaves the layer machinery unreachable, so the caller's extra is inserted right
-        // after the model line — where the description's own default link is authored
-        string mesh_name = strex(mesh_path).extract_file_name().str();
-        string description = strex("Model {}\n"
-                                   "{}"
-                                   "Anim 1 1 {} Base\n"
-                                   "Anim 1 3 {} Base\n"
-                                   "Anim 1 5 {} Base\n"
-                                   "Anim 1 17 {} Base\n"
-                                   "AnimSpeed 1 1 1.5\n"
-                                   "AnimSpeed 1 3 0.5\n"
-                                   "AnimLayerValue 1 1 1 1\n"
-                                   "AnimLayerValue 1 3 1 2\n"
-                                   "Layer 1\n"
-                                   "Value 1\n"
-                                   "Root\n"
-                                   "Link Root\n"
-                                   "Scale 1.5\n"
-                                   "RotX+ 15.0\n"
-                                   "MoveY* 2.0\n"
-                                   "ScaleZ+ 0.25\n"
-                                   "Speed* 1.25\n"
-                                   "Value 2\n"
-                                   "Root\n"
-                                   "Link Root\n"
-                                   "DisableLayer 2\n"
-                                   "DisableMesh All\n"
-                                   "Layer 2\n"
-                                   "Value 1\n"
-                                   "Root\n"
-                                   "Link Root\n"
-                                   "Scale* 0.5\n",
-            mesh_name, default_link_extra, mesh_name, mesh_name, mesh_name, mesh_name)
-                                 .str();
-
-        rig.AddSourceFile(model_path, description, 1);
-
-        // The info baker resolves the mesh through the source loader as well as the baked output
-        rig.AddSourceFile(mesh_path, string {"model source fixture"}, 1);
-        rig.AddBakedFile(mesh_path, mesh_blob, 1);
-
-        if (!attached_mesh_path.empty()) {
-            FO_VERIFY_AND_THROW(attached_mesh_blob, "Runtime model description attachment has no mesh blob", attached_mesh_path);
-            rig.AddSourceFile(attached_mesh_path, string {"attached model source fixture"}, 1);
-            rig.AddBakedFile(attached_mesh_path, *attached_mesh_blob, 1);
-        }
-
-        rig.AddBakedFile("Metadata.fometa-client", BakerTests::MakeEmptyMetadataBlob());
-
-        ModelInfoBaker info_baker(rig.MakeContext(), [mesh_path, use_two_bone_rig](string_view path, const File& file) -> ModelSourceAsset {
-            ModelSourceAsset asset;
-            asset.FileName = path;
-            asset.WriteTime = file.GetWriteTime();
-            asset.Skeleton.FileName = path;
-            asset.Skeleton.Joints.emplace_back(ModelSkeletonJoint {.Name = "Root", .Hierarchy = {"Root"}, .RestLocalTransform = mat44 {1.0f}});
-
-            if (use_two_bone_rig) {
-                asset.Skeleton.Joints.emplace_back(ModelSkeletonJoint {.Name = "Limb", .Hierarchy = {"Root", "Limb"}, .RestLocalTransform = mat44 {1.0f}});
-            }
-
-            // One real clip, so the runtime rig carries a timeline the instance can actually play
-            ModelAnimationSource animation;
-            animation.FileName = path;
-            animation.Name = "Base";
-            animation.Duration = 1.0f;
-
-            ModelAnimationJointSource joint;
-            joint.OutputName = "Root";
-            joint.Hierarchy = {"Root"};
-            joint.Translation.Times = {0.0f, 0.5f, 1.0f};
-            joint.Translation.Values = {vec3 {0.0f, 0.0f, 0.0f}, vec3 {0.0f, 1.0f, 0.0f}, vec3 {0.0f, 0.0f, 0.0f}};
-            joint.Rotation.Times = {0.0f, 1.0f};
-            joint.Rotation.Values = {quaternion {1.0f, 0.0f, 0.0f, 0.0f}, quaternion {1.0f, 0.0f, 0.0f, 0.0f}};
-            joint.Scale.Times = {0.0f, 1.0f};
-            joint.Scale.Values = {vec3 {1.0f, 1.0f, 1.0f}, vec3 {1.0f, 1.0f, 1.0f}};
-            animation.Joints.emplace_back(std::move(joint));
-
-            if (use_two_bone_rig) {
-                ModelAnimationJointSource limb_joint;
-                limb_joint.OutputName = "Limb";
-                limb_joint.Hierarchy = {"Root", "Limb"};
-                limb_joint.Translation.Times = {0.0f, 1.0f};
-                limb_joint.Translation.Values = {vec3 {}, vec3 {}};
-                limb_joint.Rotation.Times = {0.0f, 1.0f};
-                limb_joint.Rotation.Values = {quaternion {1.0f, 0.0f, 0.0f, 0.0f}, quaternion {1.0f, 0.0f, 0.0f, 0.0f}};
-                limb_joint.Scale.Times = {0.0f, 1.0f};
-                limb_joint.Scale.Values = {vec3 {1.0f}, vec3 {1.0f}};
-                animation.Joints.emplace_back(std::move(limb_joint));
-            }
-
-            if (path == mesh_path) {
-                asset.Animations.emplace_back(std::move(animation));
-            }
-
-            return asset;
-        });
-
-        info_baker.BakeFiles(rig.GetAllSourceFiles(), "");
-
-        REQUIRE(rig.Outputs.count(string {model_path}) == 1);
-        return rig.Outputs.at(string {model_path});
-    }
-
-#endif
+    Client_Game_PresentOffscreenSurface(client, 0, {0, 0}, {1, 1});
+    CHECK(client->ActiveOffscreenSurfaces.empty());
+    client->SprMngr.EndScene();
 }
 
 TEST_CASE("ClientResourcesRecoverOutdatedInstalledMetadataFromWritableBase")
 {
-    string unique_name = strex("lf_client_metadata_mount_{}", std::chrono::steady_clock::now().time_since_epoch().count()).str();
-    string writable_root = MakeTempClientResourceDir("writable_overlay");
-    bool removed_base_before = fs::remove_dir_tree(unique_name);
-    bool removed_writable_before = fs::remove_dir_tree(writable_root);
+    string unique_name {strex("lf_client_metadata_mount_{}", std::chrono::steady_clock::now().time_since_epoch().count()).str()};
+    string writable_root {MakeTempClientResourceDir("writable_overlay")};
+    bool removed_base_before {fs::remove_dir_tree(unique_name)};
+    bool removed_writable_before {fs::remove_dir_tree(writable_root)};
     ignore_unused(removed_base_before);
     ignore_unused(removed_writable_before);
 
-    auto cleanup = scope_exit([&unique_name, &writable_root]() noexcept {
-        fs::remove_dir_tree(unique_name);
-        fs::remove_dir_tree(writable_root);
-    });
+    auto cleanup {scope_exit([&unique_name, &writable_root]() noexcept {
+        (void)fs::remove_dir_tree(unique_name);
+        (void)fs::remove_dir_tree(writable_root);
+    })};
 
-    string pack_name = "ClientPack";
-    string metadata_file = "Metadata.fometa-client";
-    string writable_resources = fs::make_writable_path(writable_root, unique_name);
+    string pack_name {"ClientPack"};
+    string metadata_file {"Metadata.fometa-client"};
+    string writable_resources {fs::make_writable_path(writable_root, unique_name)};
 
     STATIC_REQUIRE(METADATA_FILE_VERSION > 1);
-    constexpr uint16_t outdated_file_version = METADATA_FILE_VERSION - 1;
-    vector<uint8_t> outdated_metadata;
+    constexpr uint16_t outdated_file_version {METADATA_FILE_VERSION - 1};
+    vector<uint8_t> outdated_metadata {};
     data_writer outdated_writer {outdated_metadata};
     outdated_writer.write<uint32_t>(METADATA_FILE_MAGIC);
     outdated_writer.write<uint16_t>(outdated_file_version);
@@ -1972,24 +110,24 @@ TEST_CASE("ClientResourcesRecoverOutdatedInstalledMetadataFromWritableBase")
     outdated_writer.write_string_bytes(BakerTests::TEST_METADATA_VERSION);
     outdated_writer.write<uint16_t>(uint16_t {0});
 
-    vector<uint8_t> current_metadata = BakerTests::MakeEmptyMetadataBlob();
+    vector<uint8_t> current_metadata {BakerTests::MakeEmptyMetadataBlob()};
     WriteClientTestPack(unique_name, pack_name, {{metadata_file, string(outdated_metadata.begin(), outdated_metadata.end())}});
     WriteClientTestPack(writable_resources, pack_name, {{metadata_file, string(current_metadata.begin(), current_metadata.end())}});
 
-    FileSystem install_resources;
+    FileSystem install_resources {};
     install_resources.AddCustomSource(safe_alloc::make_unique<ResourcePackSource>(strex(unique_name).combine_path(strex("{}.fores", pack_name)).str()));
-    vector<uint8_t> installed_metadata = ReadMetadataBin(&install_resources, "Client");
+    vector<uint8_t> installed_metadata {ReadMetadataBin(&install_resources, "Client")};
     CHECK_THROWS_AS(ReadMetadataVersion(installed_metadata), MetadataOutdatedException);
 
-    GlobalSettings settings = MakeClientTestSettings();
+    GlobalSettings settings {MakeClientTestSettings()};
     BakerTests::OverrideSetting(settings.Common.Packaged, true);
-    BakerTests::OverrideSetting(settings.Baking.ClientResources, unique_name);
-    auto pack_config = ConfigFile(strex("[ResourcePack]\nName = {}\nClientOnly = True\n", pack_name).str());
+    BakerTests::OverrideSetting(settings.Common.ResourcesPath, unique_name);
+    auto pack_config {ConfigFile(strex("[ResourcePack]\nName = {}\nClientOnly = True\n", pack_name).str())};
     settings.ApplyConfigFile(pack_config, "");
     settings.ApplyWritableRoot(writable_root);
 
-    FileSystem resources = GetClientResources(settings);
-    vector<uint8_t> recovered_metadata = ReadMetadataBin(&resources, "Client");
+    FileSystem resources {GetClientResources(settings)};
+    vector<uint8_t> recovered_metadata {ReadMetadataBin(&resources, "Client")};
 
     CHECK(ReadMetadataVersion(recovered_metadata) == BakerTests::TEST_METADATA_VERSION);
 
@@ -1998,100 +136,99 @@ TEST_CASE("ClientResourcesRecoverOutdatedInstalledMetadataFromWritableBase")
     CHECK_NOTHROW(RegisterDynamicMetadata(&metadata, recovered_metadata));
 }
 
-TEST_CASE("ClientResourceIndexPreservesEmbeddedAndWritablePrecedence")
+TEST_CASE("ClientResourceIndexPreservesBootstrapPacksAndWritablePrecedence")
 {
-    if (!CanUseDirectoryBackedClientResourceFixtures()) {
-        SKIP("Directory-backed prefix and overlay fixtures require an unpackaged test binary");
-    }
-
-    string dir = MakeTempClientResourceDir("merged_index");
-    string install = strex("lf_client_index_{}", std::chrono::steady_clock::now().time_since_epoch().count()).str();
-    auto cleanup = scope_exit([&dir, &install]() noexcept {
+    string dir {MakeTempClientResourceDir("merged_index")};
+    string install {strex("lf_client_index_{}", std::chrono::steady_clock::now().time_since_epoch().count()).str()};
+    auto cleanup {scope_exit([&dir, &install]() noexcept {
         (void)fs::remove_dir_tree(dir);
         (void)fs::remove_dir_tree(install);
-    });
-    string writable = strex(dir).combine_path("Writable").str();
-    string overlay = fs::make_writable_path(writable, install);
+    })};
 
-    WriteClientTestPack(install, "Before", {{"Shared.txt", "before"}});
+    string writable {strex(dir).combine_path("Writable").str()};
+    string overlay {fs::make_writable_path(writable, install)};
+
+    WriteClientTestPack(install, "Before", {{"Shared.txt", "before"}, {"Bootstrap.txt", "bootstrap"}});
     REQUIRE(fs::write_file(strex(install).combine_path("Embedded/Shared.txt").str(), string_view {"embedded"}));
-    REQUIRE(fs::write_file(strex(install).combine_path("Embedded/Bootstrap.txt").str(), string_view {"bootstrap"}));
-    WriteClientTestPack(overlay, "Before", {{"Shared.txt", "before"}, {"Overlay.txt", "writable"}});
+    REQUIRE(fs::write_file(strex(install).combine_path("Embedded/Bootstrap.txt").str(), string_view {"wrong-directory-bootstrap"}));
+    WriteClientTestPack(overlay, "Before", {{"Shared.txt", "before"}, {"Bootstrap.txt", "bootstrap"}, {"Overlay.txt", "writable"}});
 
     {
         ResourcePackWriter writer {strex(install).combine_path("Art.fores").str()};
-        string payload = "art";
+        string payload {"art"};
         writer.AddFile("Shared.txt", {reinterpret_cast<const uint8_t*>(payload.data()), payload.size()});
         writer.AddFile("Overlay.txt", {reinterpret_cast<const uint8_t*>(payload.data()), payload.size()});
         writer.Finish();
     }
 
-    GlobalSettings settings = MakeClientTestSettings();
+    GlobalSettings settings {MakeClientTestSettings()};
     BakerTests::OverrideSetting(settings.Common.Packaged, true);
-    BakerTests::OverrideSetting(settings.Baking.ClientResources, install);
-    auto pack_config = ConfigFile("[ResourcePack]\nName = Before\nClientOnly = True\n[ResourcePack]\nName = Embedded\nClientOnly = True\n[ResourcePack]\nName = Art\nClientOnly = True\n");
+    BakerTests::OverrideSetting(settings.Common.ResourcesPath, install);
+    auto pack_config {ConfigFile("[ResourcePack]\nName = Before\nClientOnly = True\n[ResourcePack]\nName = Embedded\nClientOnly = True\n[ResourcePack]\nName = Art\nClientOnly = True\n")};
     settings.ApplyConfigFile(pack_config, "");
     settings.ApplyWritableRoot(writable);
 
-    vector<ResourceIndexPack> packs;
-    vector<string> pack_paths;
-    vector<string> indexed_names = GetResourceIndexPackNames(settings.GetClientResourcePacks());
+    vector<ResourceIndexPack> packs {};
+    vector<string> pack_paths {};
+    vector<string> indexed_names {GetResourceIndexPackNames(settings.GetClientResourcePacks())};
     REQUIRE(ResolveResourceIndexPacks({install}, indexed_names, packs, pack_paths));
-    string index_path = GetClientResourceIndexPath(settings);
+    string index_path {GetClientResourceIndexPath(settings)};
     REQUIRE(fs::create_directories(strex(index_path).extract_dir().str()));
     BuildResourceIndex(index_path, pack_paths, packs, ResourcePackWriteSettings {0, 100});
 
     SECTION("MountsTheIndexWithoutDroppingBootstrapOrOverlayFiles")
     {
-        FileSystem resources = GetClientResources(settings);
+        FileSystem resources {GetClientResources(settings)};
         CHECK(resources.ReadFileText("Shared.txt") == "art");
         CHECK(resources.ReadFileText("Bootstrap.txt") == "bootstrap");
+        CHECK_FALSE(resources.ReadFileHeader("Bootstrap.txt").GetDataSource()->IsDiskDir());
         CHECK(resources.ReadFileText("Overlay.txt") == "art");
         CHECK(resources.ReadFileHeader("Shared.txt").GetDataSource()->GetPackName() == index_path);
     }
 
     SECTION("DiscardsACorruptDerivedIndexAndMountsThePacks")
     {
-        auto original = fs::read_file(index_path);
+        auto original {fs::read_file(index_path)};
         REQUIRE(original.has_value());
-        vector<uint8_t> bytes(original->begin(), original->end());
+        vector<uint8_t> bytes {vector<uint8_t>(original->begin(), original->end())};
         span_write_uint32(bytes, RESOURCE_INDEX_HEADER_SIZE + RESOURCE_INDEX_PACK_SIZE, std::numeric_limits<uint32_t>::max());
         REQUIRE(fs::write_file(index_path, bytes));
 
-        FileSystem resources = GetClientResources(settings);
+        FileSystem resources {GetClientResources(settings)};
         CHECK(resources.ReadFileText("Shared.txt") == "art");
         CHECK(resources.ReadFileText("Bootstrap.txt") == "bootstrap");
+        CHECK_FALSE(resources.ReadFileHeader("Bootstrap.txt").GetDataSource()->IsDiskDir());
         CHECK_FALSE(fs::exists(index_path));
     }
 }
 
 TEST_CASE("InstalledClientResourcesSelectWritableBaseWithoutOldCatalogLayering")
 {
-    string unique_name = strex("lf_client_pack_mount_{}", std::chrono::steady_clock::now().time_since_epoch().count()).str();
-    string writable_root = MakeTempClientResourceDir("writable_overlay");
-    bool removed_base_before = fs::remove_dir_tree(unique_name);
-    bool removed_writable_before = fs::remove_dir_tree(writable_root);
+    string unique_name {strex("lf_client_pack_mount_{}", std::chrono::steady_clock::now().time_since_epoch().count()).str()};
+    string writable_root {MakeTempClientResourceDir("writable_overlay")};
+    bool removed_base_before {fs::remove_dir_tree(unique_name)};
+    bool removed_writable_before {fs::remove_dir_tree(writable_root)};
     ignore_unused(removed_base_before);
     ignore_unused(removed_writable_before);
 
-    auto cleanup = scope_exit([&unique_name, &writable_root]() noexcept {
-        fs::remove_dir_tree(unique_name);
-        fs::remove_dir_tree(writable_root);
-    });
+    auto cleanup {scope_exit([&unique_name, &writable_root]() noexcept {
+        (void)fs::remove_dir_tree(unique_name);
+        (void)fs::remove_dir_tree(writable_root);
+    })};
 
-    string writable_resources = fs::make_writable_path(writable_root, unique_name);
+    string writable_resources {fs::make_writable_path(writable_root, unique_name)};
     WriteClientTestPack(unique_name, "Main", {{"shared.txt", "install-base"}, {"base-only.txt", "base-only"}});
     WriteClientTestPack(unique_name, "Fallback", {{"fallback.txt", "base-fallback"}});
     WriteClientTestPack(writable_resources, "Main", {{"shared.txt", "writable-base"}, {"overlay-only.txt", "overlay-only"}});
 
-    GlobalSettings settings = MakeClientTestSettings();
+    GlobalSettings settings {MakeClientTestSettings()};
     BakerTests::OverrideSetting(settings.Common.Packaged, true);
-    BakerTests::OverrideSetting(settings.Baking.ClientResources, unique_name);
-    auto pack_config = ConfigFile("[ResourcePack]\nName = Main\nClientOnly = True\n[ResourcePack]\nName = Fallback\nClientOnly = True\n");
+    BakerTests::OverrideSetting(settings.Common.ResourcesPath, unique_name);
+    auto pack_config {ConfigFile("[ResourcePack]\nName = Main\nClientOnly = True\n[ResourcePack]\nName = Fallback\nClientOnly = True\n")};
     settings.ApplyConfigFile(pack_config, "");
     settings.ApplyWritableRoot(writable_root);
 
-    FileSystem resources = GetClientResources(settings);
+    FileSystem resources {GetClientResources(settings)};
     CHECK(resources.ReadFileText("shared.txt") == "writable-base");
     CHECK_FALSE(resources.IsFileExists("base-only.txt"));
     CHECK(resources.ReadFileText("overlay-only.txt") == "overlay-only");
@@ -2106,12 +243,104 @@ TEST_CASE("InstalledClientResourcesSelectWritableBaseWithoutOldCatalogLayering")
     }
 }
 
+#if (FO_ENABLE_3D)
+TEST_CASE("ClientEngineRejectsMultiFrameModelTextures")
+{
+    constexpr string_view model_path {"Models/MultiFrameTexture.fo3d"};
+    constexpr string_view mesh_path {"Models/MultiFrameTexture.fbx"};
+    vector<pair<string, vector<uint8_t>>> resources {{"Models/Cycle.fofrm", BakerTests::MakeMinimalBakedSprite()}};
+    auto mesh {MakeRuntimeModelTriangleMesh()};
+    auto description {MakeRuntimeModelDescription(model_path, mesh_path, mesh, "Texture 0 Cycle.fofrm\n", {}, nullptr, false, resources)};
+
+    // The baker saw a one-frame resource, so the description is valid; only the mounted bytes become multi-frame
+    resources.front().second = BakerTests::MakeMultiFrameBakedSprite(2, 1, 1, 200);
+    resources.emplace_back(string {mesh_path}, std::move(mesh));
+    resources.emplace_back(string {model_path}, std::move(description));
+    resources.emplace_back("ModelAnimationInfo.foinfo", MakeUnitTestModelAnimationInfo(model_path));
+    auto settings {MakeClientTestSettings()};
+    auto client {MakeClientEngine(settings, MakeClientTestResources(std::move(resources)))};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+    auto factory {client->ResMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>()};
+    REQUIRE(factory);
+    REQUIRE_THROWS_WITH(factory->GetModelMngr()->CreateModel(model_path), Catch::Matchers::ContainsSubstring("Image resource must contain exactly one frame"));
+}
+
+TEST_CASE("ClientEngineOverridesConsumedImportedDiffuse")
+{
 #if FO_ENABLE_3D
+    constexpr string_view model_path {"Models/EffectiveTexture.fo3d"};
+    constexpr string_view mesh_path {"Models/EffectiveTexture.fbx"};
+    auto mesh {MakeRuntimeModelTriangleMesh({}, "Consumed.png")};
+    vector<pair<string, vector<uint8_t>>> resources {{"Models/Effective.fofrm", BakerTests::MakeMinimalBakedSprite()}};
+    auto description {MakeRuntimeModelDescription(model_path, mesh_path, mesh, "Texture 0 Effective.fofrm\n", {}, nullptr, false, resources)};
+    resources.emplace_back(string {mesh_path}, std::move(mesh));
+    resources.emplace_back(string {model_path}, std::move(description));
+    resources.emplace_back("ModelAnimationInfo.foinfo", MakeUnitTestModelAnimationInfo(model_path));
+    auto settings {MakeClientTestSettings()};
+    auto client {MakeClientEngine(settings, MakeClientTestResources(std::move(resources)))};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+    auto factory {client->ResMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>()};
+    REQUIRE(factory);
+    auto model {factory->GetModelMngr()->CreateModel(model_path)};
+    REQUIRE(model);
+    model->StartMeshGeneration();
+    REQUIRE(model->GetMeshTexture(0, 0));
+    CHECK(model->GetMeshTexture(0, 0)->MainTex->Size.width > 0);
+#endif
+}
+
+TEST_CASE("ClientEngineLoadsLargeFofrmModelTextures")
+{
+#if FO_ENABLE_3D
+    constexpr string_view model_path {"Models/LargeTexture.fo3d"};
+    constexpr string_view mesh_path {"Models/LargeTexture.fbx"};
+    auto mesh {MakeRuntimeModelTriangleMesh()};
+    vector<pair<string, vector<uint8_t>>> resources {{"Models/Large.fofrm", BakerTests::MakeMinimalBakedSprite(1024, 1024)}};
+    auto description {MakeRuntimeModelDescription(model_path, mesh_path, mesh, "Texture 0 Large.fofrm\n", {}, nullptr, false, resources)};
+    resources.emplace_back(string {mesh_path}, std::move(mesh));
+    resources.emplace_back(string {model_path}, std::move(description));
+    resources.emplace_back("ModelAnimationInfo.foinfo", MakeUnitTestModelAnimationInfo(model_path));
+    auto settings {MakeClientTestSettings()};
+    auto client {MakeClientEngine(settings, MakeClientTestResources(std::move(resources)))};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+    auto factory {client->ResMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>()};
+    REQUIRE(factory);
+    auto model {factory->GetModelMngr()->CreateModel(model_path)};
+    REQUIRE(model);
+    model->StartMeshGeneration();
+    auto texture {model->GetMeshTexture(0, 0)};
+    REQUIRE(texture);
+    CHECK(texture->MainTex->Size.width >= 1026);
+    CHECK(texture->MainTex->Size.height >= 1026);
+#endif
+}
+
+TEST_CASE("ClientEngineRetriesMissingImportedDiffuse")
+{
+#if FO_ENABLE_3D
+    constexpr string_view model_path {"Models/MissingTexture.fo3d"};
+    constexpr string_view mesh_path {"Models/MissingTexture.fbx"};
+    auto mesh {MakeRuntimeModelTriangleMesh({}, "Missing.png")};
+    vector<pair<string, vector<uint8_t>>> bake_resources {{"Models/Missing.png", BakerTests::MakeMinimalBakedSprite()}};
+    auto description {MakeRuntimeModelDescription(model_path, mesh_path, mesh, "", {}, nullptr, false, bake_resources)};
+    vector<pair<string, vector<uint8_t>>> resources {{string {mesh_path}, std::move(mesh)}, {string {model_path}, std::move(description)}, {"ModelAnimationInfo.foinfo", MakeUnitTestModelAnimationInfo(model_path)}};
+    auto settings {MakeClientTestSettings()};
+    auto client {MakeClientEngine(settings, MakeClientTestResources(std::move(resources)))};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+    auto factory {client->ResMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>()};
+    REQUIRE(factory);
+    auto model {factory->GetModelMngr()->CreateModel(model_path)};
+    REQUIRE(model);
+    REQUIRE_THROWS_WITH(model->StartMeshGeneration(), Catch::Matchers::ContainsSubstring("Model texture could not be loaded"));
+    REQUIRE_THROWS_WITH(model->StartMeshGeneration(), Catch::Matchers::ContainsSubstring("Model texture could not be loaded"));
+#endif
+}
+
 TEST_CASE("ClientEngineLoadsModelMeshBakerOutputThroughRuntimeParser")
 {
-    constexpr string_view model_path = "Models/RuntimeParserTriangle.obj";
+    constexpr string_view model_path {"Models/RuntimeParserTriangle.obj"};
 
-    BakerTests::TestRig rig;
+    BakerTests::TestRig rig {};
     rig.AddSourceFile(model_path, R"(o RuntimeParserTriangle
 v 0 0 0
 v 1 0 0
@@ -2119,29 +348,31 @@ v 0 1 0
 f 1 2 3
 )");
 
-    ModelMeshBaker baker(rig.MakeContext());
+    ModelMeshBaker baker {rig.MakeContext()};
     baker.BakeFiles(rig.GetAllSourceFiles(), model_path);
 
-    auto output_it = rig.Outputs.find(string(model_path));
+    auto output_it {rig.Outputs.find(string(model_path))};
     REQUIRE(output_it != rig.Outputs.end());
 
-    auto resources = MakeClientTestResources({{string {model_path}, output_it->second}});
+    auto resources {MakeClientTestResources({{string {model_path}, output_it->second}})};
     REQUIRE(resources.IsFileExists(model_path));
 
-    auto settings = MakeClientTestSettings();
-    auto client = MakeClientEngine(settings, std::move(resources));
-    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto settings {MakeClientTestSettings()};
+    auto client {MakeClientEngine(settings, std::move(resources))};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
 
-    auto factory = client->SprMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
+    auto factory {client->ResMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>()};
     REQUIRE(factory);
     CHECK_NOTHROW(factory->GetModelMngr()->PreloadModel(model_path));
 }
+#endif
 
+#if (FO_ENABLE_3D)
 TEST_CASE("ClientEngineRejectsMalformedBakedModelCountsAndBounds")
 {
-    static_assert(MODEL_DESCRIPTION_SCHEMA_VERSION == 3);
+    static_assert(MODEL_DESCRIPTION_SCHEMA_VERSION == 5);
 
-    vector<pair<string, vector<uint8_t>>> malformed_resources;
+    vector<pair<string, vector<uint8_t>>> malformed_resources {};
 
     malformed_resources.emplace_back("Models/VertexCountBomb.fbx", MakeRuntimeModelMesh([](data_writer& writer) {
         WriteRuntimeModelBoneHeader(writer, "Root", true);
@@ -2191,27 +422,27 @@ TEST_CASE("ClientEngineRejectsMalformedBakedModelCountsAndBounds")
     Vertex3D valid_skin_vertex {};
     valid_skin_vertex.BlendWeights[0] = 1.0f;
 
-    Vertex3D non_finite_skin_weight = valid_skin_vertex;
+    Vertex3D non_finite_skin_weight {valid_skin_vertex};
     non_finite_skin_weight.BlendWeights[0] = std::numeric_limits<float32_t>::quiet_NaN();
     malformed_resources.emplace_back("Models/NonFiniteSkinWeight.fbx", MakeRuntimeModelMeshWithVertex(non_finite_skin_weight));
 
-    Vertex3D out_of_range_skin_weight = valid_skin_vertex;
+    Vertex3D out_of_range_skin_weight {valid_skin_vertex};
     out_of_range_skin_weight.BlendWeights[0] = -0.25f;
     malformed_resources.emplace_back("Models/OutOfRangeSkinWeight.fbx", MakeRuntimeModelMeshWithVertex(out_of_range_skin_weight));
 
-    Vertex3D non_finite_skin_index = valid_skin_vertex;
+    Vertex3D non_finite_skin_index {valid_skin_vertex};
     non_finite_skin_index.BlendIndices[0] = std::numeric_limits<float32_t>::infinity();
     malformed_resources.emplace_back("Models/NonFiniteSkinIndex.fbx", MakeRuntimeModelMeshWithVertex(non_finite_skin_index));
 
-    Vertex3D non_integral_skin_index = valid_skin_vertex;
+    Vertex3D non_integral_skin_index {valid_skin_vertex};
     non_integral_skin_index.BlendIndices[0] = 0.5f;
     malformed_resources.emplace_back("Models/NonIntegralSkinIndex.fbx", MakeRuntimeModelMeshWithVertex(non_integral_skin_index));
 
-    Vertex3D out_of_range_skin_index = valid_skin_vertex;
+    Vertex3D out_of_range_skin_index {valid_skin_vertex};
     out_of_range_skin_index.BlendIndices[0] = 1.0f;
     malformed_resources.emplace_back("Models/OutOfRangeSkinIndex.fbx", MakeRuntimeModelMeshWithVertex(out_of_range_skin_index));
 
-    Vertex3D invalid_skin_weight_sum = valid_skin_vertex;
+    Vertex3D invalid_skin_weight_sum {valid_skin_vertex};
     invalid_skin_weight_sum.BlendWeights[0] = 0.5f;
     malformed_resources.emplace_back("Models/InvalidSkinWeightSum.fbx", MakeRuntimeModelMeshWithVertex(invalid_skin_weight_sum));
 
@@ -2221,23 +452,25 @@ TEST_CASE("ClientEngineRejectsMalformedBakedModelCountsAndBounds")
     }));
 
     malformed_resources.emplace_back("Models/HierarchyDepthBomb.fbx", MakeRuntimeModelMesh([](data_writer& writer) {
-        for (uint32_t depth = 0; depth <= MODEL_MESH_MAX_HIERARCHY_DEPTH; depth++) {
+        for (uint32_t depth {0}; depth <= MODEL_MESH_MAX_HIERARCHY_DEPTH; depth++) {
             WriteRuntimeModelBoneHeader(writer, "Bone", false);
             writer.write<uint32_t>(depth < MODEL_MESH_MAX_HIERARCHY_DEPTH ? uint32_t {1} : uint32_t {0});
         }
     }));
 
     {
-        vector<uint8_t> data;
+        FO_TEMPORARY_COMPAT(test_model_description_schema4, "2026-12-31");
+
+        vector<uint8_t> data {};
         data_writer writer {data};
         writer.write_bytes({MODEL_DESCRIPTION_MAGIC.data(), MODEL_DESCRIPTION_MAGIC.size()});
-        writer.write<uint16_t>(uint16_t {2});
+        writer.write<uint16_t>(uint16_t {4});
         writer.write<uint16_t>(MODEL_DESCRIPTION_SUPPORTED_FLAGS);
         malformed_resources.emplace_back("Models/DescriptionOldSchema.fo3d", std::move(data));
     }
 
     {
-        vector<uint8_t> data;
+        vector<uint8_t> data {};
         data_writer writer {data};
         writer.write_bytes({MODEL_DESCRIPTION_MAGIC.data(), MODEL_DESCRIPTION_MAGIC.size()});
         writer.write<uint16_t>(MODEL_DESCRIPTION_SCHEMA_VERSION);
@@ -2247,7 +480,7 @@ TEST_CASE("ClientEngineRejectsMalformedBakedModelCountsAndBounds")
     }
 
     {
-        vector<uint8_t> data;
+        vector<uint8_t> data {};
         data_writer writer {data};
         WriteRuntimeModelDescriptionPrefix(writer);
         WriteRuntimeModelDescriptionLink(writer);
@@ -2256,7 +489,7 @@ TEST_CASE("ClientEngineRejectsMalformedBakedModelCountsAndBounds")
     }
 
     {
-        vector<uint8_t> data;
+        vector<uint8_t> data {};
         data_writer writer {data};
         WriteRuntimeModelDescriptionPrefix(writer);
         WriteRuntimeModelDescriptionLinkPrefix(writer);
@@ -2265,7 +498,7 @@ TEST_CASE("ClientEngineRejectsMalformedBakedModelCountsAndBounds")
     }
 
     {
-        vector<uint8_t> data;
+        vector<uint8_t> data {};
         data_writer writer {data};
         WriteRuntimeModelDescriptionPrefix(writer);
         WriteRuntimeModelDescriptionLinkPrefix(writer);
@@ -2278,7 +511,7 @@ TEST_CASE("ClientEngineRejectsMalformedBakedModelCountsAndBounds")
     }
 
     {
-        vector<uint8_t> data;
+        vector<uint8_t> data {};
         data_writer writer {data};
         WriteRuntimeModelDescriptionPrefix(writer);
         WriteRuntimeModelDescriptionLinkPrefix(writer);
@@ -2312,33 +545,35 @@ TEST_CASE("ClientEngineRejectsMalformedBakedModelCountsAndBounds")
         {"Models/DescriptionGeometryFlagOutOfRange.fo3d", "geometry flag is not 0 or 1"},
     }};
 
-    auto settings = MakeClientTestSettings();
-    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(malformed_resources)));
-    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto settings {MakeClientTestSettings()};
+    auto client {MakeClientEngine(settings, MakeClientTestResources(std::move(malformed_resources)))};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
 
-    auto factory = client->SprMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
+    auto factory {client->ResMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>()};
     REQUIRE(factory);
-    auto model_mngr = factory->GetModelMngr();
+    auto model_mngr {factory->GetModelMngr()};
 
     for (const auto& [model_path, expected_failure] : expected_failures) {
         INFO(model_path);
         CHECK_THROWS_WITH(model_mngr->PreloadModel(model_path), Catch::Matchers::ContainsSubstring(std::string {expected_failure}));
     }
 }
+#endif
 
+#if (FO_ENABLE_3D)
 TEST_CASE("ModelSpriteBoundsFollowEveryStateChangeThatMovesTheEnvelope")
 {
     // Pinned differentially against a fresh instance rather than hardcoded rectangles, because the frame is derived
     // through per-instance state that can go stale, and a stale rectangle clips the model with nothing logged
-    constexpr string_view model_path = "Models/SkinnedSpriteBounds.fbx";
+    constexpr string_view model_path {"Models/SkinnedSpriteBounds.fbx"};
 
-    auto settings = MakeClientTestSettings();
-    auto client = MakeClientEngine(settings, MakeClientTestResources({{string {model_path}, MakeSkinnedRuntimeModelMesh()}}));
-    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto settings {MakeClientTestSettings()};
+    auto client {MakeClientEngine(settings, MakeClientTestResources({{string {model_path}, MakeSkinnedRuntimeModelMesh()}}))};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
 
-    auto factory = client->SprMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
+    auto factory {client->ResMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>()};
     REQUIRE(factory);
-    auto model_mngr = factory->GetModelMngr();
+    auto model_mngr {factory->GetModelMngr()};
 
     struct SpriteBoundsStep
     {
@@ -2357,51 +592,51 @@ TEST_CASE("ModelSpriteBoundsFollowEveryStateChangeThatMovesTheEnvelope")
 
     // model_path is a constexpr string_view, but passing it by value and by reference odr-uses it, so it
     // has to be captured rather than relied on as a constant expression
-    auto make_model = [&model_mngr, model_path]() {
-        auto model = model_mngr->CreateModel(model_path);
+    auto make_model {[&model_mngr, model_path]() {
+        auto model {model_mngr->CreateModel(model_path)};
         FO_VERIFY_AND_THROW(model, "Skinned test model was not created", model_path);
-        auto owned = model.take_not_null();
+        auto owned {model.take_not_null()};
 
         owned->StartMeshGeneration();
         owned->PrepareFrameLayout();
         owned->SetupFrame(owned->GetDrawSize(), owned->GetFramePivot());
         return owned;
-    };
+    }};
 
-    auto measure = [](ptr<ModelInstance> model) -> optional<ModelSpriteBounds> {
+    auto measure {[](ptr<ModelInstance> model) -> optional<ModelSpriteBounds> {
         model->PoseSpriteFrame(false);
         return model->GetSpriteBounds();
-    };
+    }};
 
-    auto same_bounds = [](const ModelSpriteBounds& first, const ModelSpriteBounds& second) { //
+    auto same_bounds {[](const ModelSpriteBounds& first, const ModelSpriteBounds& second) { //
         return first.Rect == second.Rect && first.RequiredFrameSize == second.RequiredFrameSize && first.Pivot == second.Pivot;
-    };
+    }};
 
-    auto warm_model = make_model();
+    auto warm_model {make_model()};
 
     // The hit path on its own: measuring twice without touching anything must reproduce the first answer exactly
-    optional<ModelSpriteBounds> first_bounds = measure(warm_model.as_ptr());
-    optional<ModelSpriteBounds> repeated_bounds = measure(warm_model.as_ptr());
+    optional<ModelSpriteBounds> first_bounds {measure(warm_model.as_ptr())};
+    optional<ModelSpriteBounds> repeated_bounds {measure(warm_model.as_ptr())};
 
     REQUIRE(first_bounds);
     REQUIRE(repeated_bounds);
     CHECK(same_bounds(*first_bounds, *repeated_bounds));
 
-    optional<ModelSpriteBounds> previous_bounds;
-    size_t moved_steps = 0;
+    optional<ModelSpriteBounds> previous_bounds {};
+    size_t moved_steps {0};
 
-    for (size_t step_index = 0; step_index < steps.size(); step_index++) {
+    for (size_t step_index {0}; step_index < steps.size(); step_index++) {
         INFO("step " << step_index << " (" << steps[step_index].Name << ")");
 
         steps[step_index].Apply(warm_model.as_ptr());
-        optional<ModelSpriteBounds> warm_bounds = measure(warm_model.as_ptr());
-        auto cold_model = make_model();
+        optional<ModelSpriteBounds> warm_bounds {measure(warm_model.as_ptr())};
+        auto cold_model {make_model()};
 
-        for (size_t applied_index = 0; applied_index <= step_index; applied_index++) {
+        for (size_t applied_index {0}; applied_index <= step_index; applied_index++) {
             steps[applied_index].Apply(cold_model.as_ptr());
         }
 
-        optional<ModelSpriteBounds> cold_bounds = measure(cold_model.as_ptr());
+        optional<ModelSpriteBounds> cold_bounds {measure(cold_model.as_ptr())};
 
         REQUIRE(warm_bounds);
         REQUIRE(cold_bounds);
@@ -2420,35 +655,35 @@ TEST_CASE("ModelSpriteBoundsFollowEveryStateChangeThatMovesTheEnvelope")
 }
 #endif
 
-#if FO_ENABLE_3D
+#if (FO_ENABLE_3D)
 TEST_CASE("ModelDefaultLinkDisablesItsOwnMeshes")
 {
     // Baked model and animation bounds are calculated with the default link's disabled meshes excluded, so the
     // runtime model state must agree with the geometry the bake budgeted for
-    constexpr string_view MESH_PATH = "Models/DefaultLinkDisabled.fbx";
-    constexpr string_view MODEL_PATH = "Models/DefaultLinkDisabled.fo3d";
+    constexpr string_view MESH_PATH {"Models/DefaultLinkDisabled.fbx"};
+    constexpr string_view MODEL_PATH {"Models/DefaultLinkDisabled.fo3d"};
 
     // Far outside the declared bounds; the test is about applying the authored disable state, not measuring vertices
-    vector<uint8_t> mesh_blob = MakeRuntimeModelTriangleMesh(vec3 {12.0f, 12.0f, 0.0f});
+    vector<uint8_t> mesh_blob {MakeRuntimeModelTriangleMesh(vec3 {12.0f, 12.0f, 0.0f})};
 
-    vector<pair<string, vector<uint8_t>>> model_resources;
+    vector<pair<string, vector<uint8_t>>> model_resources {};
     model_resources.emplace_back(string {"ModelAnimationInfo.foinfo"}, MakeUnitTestModelAnimationInfo(MODEL_PATH));
     model_resources.emplace_back(string {MESH_PATH}, mesh_blob);
     model_resources.emplace_back(string {MODEL_PATH}, MakeRuntimeModelDescription(MODEL_PATH, MESH_PATH, mesh_blob, "DisableMesh All\n"));
 
-    auto settings = MakeClientTestSettings();
-    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(model_resources)));
+    auto settings {MakeClientTestSettings()};
+    auto client {MakeClientEngine(settings, MakeClientTestResources(std::move(model_resources)))};
 
-    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
 
-    auto factory = client->SprMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
+    auto factory {client->ResMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>()};
     REQUIRE(factory);
 
-    auto model_mngr = factory->GetModelMngr();
+    auto model_mngr {factory->GetModelMngr()};
 
     REQUIRE_NOTHROW(model_mngr->PreloadModel(MODEL_PATH));
 
-    auto model = model_mngr->CreateModel(MODEL_PATH);
+    auto model {model_mngr->CreateModel(MODEL_PATH)};
     REQUIRE(static_cast<bool>(model));
 
     // Creation leaves the root layout pending: _parent is assigned only after CreateModel returns, and an
@@ -2460,95 +695,99 @@ TEST_CASE("ModelDefaultLinkDisablesItsOwnMeshes")
 
     // Guard the fixture: the layout must come from the declared +/-1 bounds, or the far triangle is already
     // inside the frame and the check below would pass without proving anything
-    isize32 layout_size = model->GetDrawSize();
-    int32_t bounds_span_limit = iround<int32_t>(6.0f * client->Settings->Render.ModelProjFactor);
+    isize32 layout_size {model->GetDrawSize()};
+    int32_t bounds_span_limit {iround<int32_t>(6.0f * client->Settings->Render.ModelProjFactor)};
     REQUIRE(layout_size.width <= bounds_span_limit);
     REQUIRE(layout_size.height <= bounds_span_limit);
 
     model->SetupFrame(layout_size, model->GetFramePivot());
     model->PoseSpriteFrame(true);
 
-    auto bounds = model->GetSpriteBounds();
+    auto bounds {model->GetSpriteBounds()};
     REQUIRE(bounds);
     CHECK(bounds->RequiredFrameSize == layout_size);
 }
+#endif
 
+#if (FO_ENABLE_3D)
 TEST_CASE("ModelSpriteBoundsUseBakedBoundsForTheActiveGeometryLink")
 {
-    constexpr string_view BASE_MESH_PATH = "Models/BakedLinkBase.fbx";
-    constexpr string_view LINK_MESH_PATH = "Models/BakedLinkEquipment.fbx";
-    constexpr string_view MODEL_PATH = "Models/BakedLink.fo3d";
-    vector<uint8_t> base_mesh_blob = MakeSkinnedRuntimeModelMesh();
-    vector<uint8_t> link_mesh_blob = MakeSkinnedRuntimeModelMesh();
-    vector<uint8_t> model_blob = MakeRuntimeModelDescription(MODEL_PATH, BASE_MESH_PATH, base_mesh_blob, "Layer 3\n Value 1 Attach BakedLinkEquipment.fbx MoveX 3\n", LINK_MESH_PATH, &link_mesh_blob, true);
-    vector<pair<string, vector<uint8_t>>> model_resources;
+    constexpr string_view BASE_MESH_PATH {"Models/BakedLinkBase.fbx"};
+    constexpr string_view LINK_MESH_PATH {"Models/BakedLinkEquipment.fbx"};
+    constexpr string_view MODEL_PATH {"Models/BakedLink.fo3d"};
+    vector<uint8_t> base_mesh_blob {MakeSkinnedRuntimeModelMesh()};
+    vector<uint8_t> link_mesh_blob {MakeSkinnedRuntimeModelMesh()};
+    vector<uint8_t> model_blob {MakeRuntimeModelDescription(MODEL_PATH, BASE_MESH_PATH, base_mesh_blob, "Layer 3\n Value 1 Attach BakedLinkEquipment.fbx MoveX 3\n", LINK_MESH_PATH, &link_mesh_blob, true)};
+    vector<pair<string, vector<uint8_t>>> model_resources {};
     model_resources.emplace_back(string {"ModelAnimationInfo.foinfo"}, MakeUnitTestModelAnimationInfo(MODEL_PATH));
     model_resources.emplace_back(string {BASE_MESH_PATH}, base_mesh_blob);
     model_resources.emplace_back(string {LINK_MESH_PATH}, link_mesh_blob);
     model_resources.emplace_back(string {MODEL_PATH}, std::move(model_blob));
 
-    auto settings = MakeClientTestSettings();
-    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(model_resources)));
-    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
-    auto factory = client->SprMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
+    auto settings {MakeClientTestSettings()};
+    auto client {MakeClientEngine(settings, MakeClientTestResources(std::move(model_resources)))};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+    auto factory {client->ResMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>()};
     REQUIRE(factory);
-    auto model = factory->GetModelMngr()->CreateModel(MODEL_PATH);
+    auto model {factory->GetModelMngr()->CreateModel(MODEL_PATH)};
     REQUIRE(static_cast<bool>(model));
 
     model->StartMeshGeneration();
     model->PrepareFrameLayout();
-    isize32 base_size = model->GetDrawSize();
+    isize32 base_size {model->GetDrawSize()};
     array<int32_t, MODEL_LAYERS_COUNT> layers {};
     layers[3] = 1;
     REQUIRE(model->PlayAnim(static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(1), layers.data(), 0.0f, ModelAnimFlags::None));
-    isize32 equipped_size = model->GetDrawSize();
+    isize32 equipped_size {model->GetDrawSize()};
     CHECK(equipped_size.width > base_size.width);
 
     model->SetupFrame(equipped_size, model->GetFramePivot());
     model->PoseSpriteFrame(true);
-    optional<ModelSpriteBounds> bounds = model->GetSpriteBounds();
+    optional<ModelSpriteBounds> bounds {model->GetSpriteBounds()};
     REQUIRE(bounds);
     CHECK(bounds->RequiredFrameSize == equipped_size);
 
     layers[3] = 0;
     REQUIRE(model->PlayAnim(static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(1), layers.data(), 0.0f, ModelAnimFlags::None));
-    isize32 unequipped_size = model->GetDrawSize();
+    isize32 unequipped_size {model->GetDrawSize()};
     CHECK(unequipped_size.width < equipped_size.width);
     CHECK(unequipped_size.height < equipped_size.height);
 }
+#endif
 
+#if (FO_ENABLE_3D)
 TEST_CASE("ModelManagerInstantiatesABakedModel")
 {
     // The 3D instance surface was assumed to need a GPU, but the headless Null renderer serves it: with a
     // baked mesh and a valid baked description the manager builds a real ModelInstance
-    constexpr string_view MESH_PATH = "Models/RuntimeInstance.fbx";
-    constexpr string_view MODEL_PATH = "Models/RuntimeInstance.fo3d";
+    constexpr string_view MESH_PATH {"Models/RuntimeInstance.fbx"};
+    constexpr string_view MODEL_PATH {"Models/RuntimeInstance.fo3d"};
 
     Vertex3D vertex {};
     vertex.BlendWeights[0] = 1.0f;
     vertex.BlendIndices[0] = 0.0f;
 
-    vector<pair<string, vector<uint8_t>>> model_resources;
+    vector<pair<string, vector<uint8_t>>> model_resources {};
     ignore_unused(vertex);
-    vector<uint8_t> mesh_blob = MakeRuntimeModelTriangleMesh();
+    vector<uint8_t> mesh_blob {MakeRuntimeModelTriangleMesh()};
 
     model_resources.emplace_back(string {"ModelAnimationInfo.foinfo"}, MakeUnitTestModelAnimationInfo(MODEL_PATH));
     model_resources.emplace_back(string {MESH_PATH}, mesh_blob);
     model_resources.emplace_back(string {MODEL_PATH}, MakeRuntimeModelDescription(MODEL_PATH, MESH_PATH, mesh_blob));
 
-    auto settings = MakeClientTestSettings();
-    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(model_resources)));
+    auto settings {MakeClientTestSettings()};
+    auto client {MakeClientEngine(settings, MakeClientTestResources(std::move(model_resources)))};
 
-    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
 
-    auto factory = client->SprMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
+    auto factory {client->ResMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>()};
     REQUIRE(factory);
 
-    auto model_mngr = factory->GetModelMngr();
+    auto model_mngr {factory->GetModelMngr()};
 
     REQUIRE_NOTHROW(model_mngr->PreloadModel(MODEL_PATH));
 
-    auto model = model_mngr->CreateModel(MODEL_PATH);
+    auto model {model_mngr->CreateModel(MODEL_PATH)};
     REQUIRE(static_cast<bool>(model));
 
     SECTION("TheInstanceAnswersItsGeometryAndAnimationState")
@@ -2556,7 +795,7 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
         ignore_unused(model->GetInformation());
         ignore_unused(model->GetStateAnim());
         ignore_unused(model->GetActionAnim());
-        ignore_unused(model->GetMovingAnim());
+        ignore_unused(model->GetMovingContext());
         ignore_unused(model->GetDrawSize());
         ignore_unused(model->GetLightingSize());
         ignore_unused(model->GetSpriteBounds());
@@ -2566,14 +805,14 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
         ignore_unused(model->NeedDraw());
         ignore_unused(model->HasAnimation(static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(1)));
 
-        ipos32 screen_pos = model->Convert3dTo2d(vec3 {0.0f, 0.0f, 0.0f});
-        vec3 world_pos = model->Convert2dTo3d(screen_pos);
+        ipos32 screen_pos {model->Convert3dTo2d(vec3 {0.0f, 0.0f, 0.0f})};
+        vec3 world_pos {model->Convert2dTo3d(screen_pos)};
         CHECK(std::isfinite(world_pos.x));
         CHECK(std::isfinite(world_pos.y));
         CHECK(std::isfinite(world_pos.z));
 
-        auto state_anim = static_cast<CritterStateAnim>(1);
-        auto action_anim = static_cast<CritterActionAnim>(1);
+        auto state_anim {static_cast<CritterStateAnim>(1)};
+        auto action_anim {static_cast<CritterActionAnim>(1)};
         ignore_unused(model->ResolveAnimation(state_anim, action_anim));
     }
 
@@ -2583,7 +822,7 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
         REQUIRE_NOTHROW(model->PrepareFrameLayout());
         REQUIRE_NOTHROW(model->RequestRedraw());
 
-        for (int32_t dir = 0; dir < 6; dir++) {
+        for (int32_t dir {0}; dir < 6; dir++) {
             REQUIRE_NOTHROW(model->SetDir(mdir {numeric_cast<uint8_t>(dir)}, false));
             REQUIRE_NOTHROW(model->SetLookDir(mdir {numeric_cast<uint8_t>(dir)}));
             REQUIRE_NOTHROW(model->SetMoveDir(mdir {numeric_cast<uint8_t>(dir)}, true));
@@ -2606,21 +845,21 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
         ignore_unused(model->GetAnimDuration(static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(1)));
         ignore_unused(model->IsAnimationPlaying());
 
-        hstring root_bone = client->Hashes.to_hashed_string("Root");
+        hstring root_bone {client->Hashes.to_hashed_string("Root")};
         ignore_unused(model->FindBone(root_bone));
         ignore_unused(model->GetBonePos(root_bone));
         ignore_unused(model->GetBoneSpritePos(root_bone));
 
         REQUIRE_NOTHROW(model->ClearAnimationCallbacks());
-        REQUIRE_NOTHROW(model->SetAnimInitCallback([](CritterStateAnim&, CritterActionAnim&) { }));
+        REQUIRE_NOTHROW(model->SetAnimInitCallback([](CritterAnimationContext, int32_t, CritterStateAnim&, CritterActionAnim&, CritterAnimationFlags&, float32_t&, float32_t&) { }));
     }
 
     SECTION("AFrameLargerThanTheMaximumRenderTextureIsRejected")
     {
         // Rejected while the model is still identifiable, instead of reaching the graphics API and failing there as
         // an anonymous invalid argument
-        int32_t max_draw_width = AppRender::MAX_ATLAS_WIDTH / ModelInstance::FRAME_SCALE;
-        int32_t max_draw_height = AppRender::MAX_ATLAS_HEIGHT / ModelInstance::FRAME_SCALE;
+        int32_t max_draw_width {AppRender::MAX_ATLAS_WIDTH / ModelInstance::FRAME_SCALE};
+        int32_t max_draw_height {AppRender::MAX_ATLAS_HEIGHT / ModelInstance::FRAME_SCALE};
 
         REQUIRE(max_draw_width > 0);
         REQUIRE(max_draw_height > 0);
@@ -2635,18 +874,18 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
         // an animation plays with layers set
         model->SetupFrame(isize32 {128, 128}, ipos32 {64, 96});
 
-        auto state_anim = static_cast<CritterStateAnim>(1);
-        auto action_anim = static_cast<CritterActionAnim>(1);
+        auto state_anim {static_cast<CritterStateAnim>(1)};
+        auto action_anim {static_cast<CritterActionAnim>(1)};
 
         std::array<int32_t, MODEL_LAYERS_COUNT> layers {};
 
-        auto play_with_layers = [&](ModelAnimFlags flags) {
+        auto play_with_layers {[&](ModelAnimFlags flags) {
             REQUIRE_NOTHROW(ignore_unused(model->PlayAnim(state_anim, action_anim, layers.data(), 0.0f, flags)));
 
-            for (int32_t frame = 0; frame < 3; frame++) {
+            for (int32_t frame {0}; frame < 3; frame++) {
                 REQUIRE_NOTHROW(model->PoseSpriteFrame(true));
             }
-        };
+        }};
 
         // Layer 1 / value 1 is the block that links a bone and scales, rotates and moves it
         layers[1] = 1;
@@ -2676,11 +915,11 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
 
         // Switching between the authored animations is what runs the cross-fade and the per-animation
         // speed and layer-value overrides, none of which a single-animation model can reach
-        for (CritterActionAnim authored : {CritterActionAnim::Idle, CritterActionAnim::Walk, CritterActionAnim::Run, CritterActionAnim::TurnRight, CritterActionAnim::Walk, CritterActionAnim::Idle}) {
+        for (CritterActionAnim authored : {static_cast<CritterActionAnim>(1), static_cast<CritterActionAnim>(3), static_cast<CritterActionAnim>(5), static_cast<CritterActionAnim>(17), static_cast<CritterActionAnim>(3), static_cast<CritterActionAnim>(1)}) {
             CHECK(model->HasAnimation(state_anim, authored));
             REQUIRE_NOTHROW(ignore_unused(model->PlayAnim(state_anim, authored, layers.data(), 0.0f, ModelAnimFlags::None)));
 
-            for (int32_t frame = 0; frame < 3; frame++) {
+            for (int32_t frame {0}; frame < 3; frame++) {
                 REQUIRE_NOTHROW(model->PoseSpriteFrame(true));
             }
 
@@ -2703,7 +942,7 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
     {
         model->SetupFrame(isize32 {128, 128}, ipos32 {64, 96});
 
-        for (int32_t frame = 0; frame < 4; frame++) {
+        for (int32_t frame {0}; frame < 4; frame++) {
             REQUIRE_NOTHROW(model->PoseSpriteFrame(true));
             std::this_thread::sleep_for(std::chrono::milliseconds {8});
         }
@@ -2722,7 +961,7 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
         // The Null renderer accepts the draw calls, so the mesh combine and submit paths run for real
         REQUIRE_NOTHROW(model->DrawSpriteFrame());
 
-        mat44 proj = client->SprMngr.GetRender().CreateOrthoMatrix(0.0f, 128.0f, 0.0f, 128.0f, -10.0f, 10.0f);
+        mat44 proj {client->SprMngr.GetRender().CreateOrthoMatrix(0.0f, 128.0f, 0.0f, 128.0f, -10.0f, 10.0f)};
         REQUIRE_NOTHROW(model->DrawInScene(proj, 1.0f));
 
         REQUIRE_NOTHROW(model->PrewarmParticles());
@@ -2734,7 +973,7 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
     {
         // The viewer selects through a list click or through its persisted "last critter" setting, so the
         // setting is seeded and restored around the run
-        string saved_selected_proto;
+        string saved_selected_proto {};
 
         {
             SettingsStorage viewer_settings {"AnimationViewer"};
@@ -2742,35 +981,35 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
             viewer_settings.SetString("SelectedProto", "UnitTestModelCritter");
         }
 
-        auto restore_viewer_settings = scope_exit([&saved_selected_proto]() noexcept {
+        auto restore_viewer_settings {scope_exit([&saved_selected_proto]() noexcept {
             safe_call([&saved_selected_proto] {
                 SettingsStorage viewer_settings {"AnimationViewer"};
                 viewer_settings.SetString("SelectedProto", saved_selected_proto);
             });
-        });
+        })};
 
         REQUIRE(ImGui::GetCurrentContext() == nullptr);
         ImGuiExt::Init();
 
-        auto destroy_context = scope_exit([]() noexcept {
+        auto destroy_context {scope_exit([]() noexcept {
             safe_call([] {
                 if (ImGui::GetCurrentContext() != nullptr) {
                     ImGui::DestroyContext();
                 }
             });
-        });
+        })};
 
-        ImGuiIO& io = ImGui::GetIO();
+        ImGuiIO& io {ImGui::GetIO()};
         io.DisplaySize = ImVec2 {1280.0f, 720.0f};
         io.DeltaTime = 1.0f / 60.0f;
         io.IniFilename = nullptr;
         io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
 
-        AnimationViewer viewer {client.as_ptr(), &client->SprMngr, &client->ResMngr, &client->GameTime};
+        AnimationViewer viewer {client.as_ptr(), &client->SprMngr, &client->ResMngr, &client->CritterFrames, &client->GameTime};
         viewer.SetVisible(true);
         viewer.SetFillViewport(true);
 
-        for (int32_t frame = 0; frame < 4; frame++) {
+        for (int32_t frame {0}; frame < 4; frame++) {
             ImGui::NewFrame();
             ImGui::LogToBuffer(12);
             REQUIRE_NOTHROW(viewer.Draw());
@@ -2784,9 +1023,9 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
 
     SECTION("TheSpriteFactoryWrapsTheModelAsASprite")
     {
-        // Going through the sprite manager takes the model down the model-sprite path instead of the raw
+        // Going through the resource manager takes the model down the model-sprite path instead of the raw
         // instance one: atlas placement, per-frame update and the sprite-side draw
-        shared_ptr<Sprite> sprite = client->SprMngr.LoadSprite(client->Hashes.to_hashed_string(MODEL_PATH), AtlasType::MapSprites, true);
+        shared_ptr<Sprite> sprite {client->ResMngr.LoadSprite(client->Hashes.to_hashed_string(MODEL_PATH), AtlasType::MapSprites, true)};
         REQUIRE(static_cast<bool>(sprite));
 
         CHECK(sprite->GetSize().width > 0);
@@ -2795,7 +1034,7 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
         REQUIRE_NOTHROW(sprite->Prewarm());
         REQUIRE_NOTHROW(sprite->PlayDefault());
 
-        for (int32_t frame = 0; frame < 4; frame++) {
+        for (int32_t frame {0}; frame < 4; frame++) {
             REQUIRE_NOTHROW(sprite->Update());
             std::this_thread::sleep_for(std::chrono::milliseconds {8});
         }
@@ -2807,111 +1046,120 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
 }
 #endif
 
-#if FO_ANGELSCRIPT_SCRIPTING
-TEST_CASE("ScriptDebuggerEndpointServesItsTcpPort")
+#if (FO_ENABLE_3D)
+TEST_CASE("ModelSpritePreparesItsHitMaskDuringRenderUpdate")
 {
-    // The debugger was assumed to need an attached debugger client, but the endpoint server is ordinary
-    // engine code: it binds a loopback port and runs its worker threads without anyone connecting
-    auto settings = MakeClientTestSettings();
-    auto client = MakeClientEngine(settings);
+    constexpr string_view MESH_PATH {"Models/InitialHitMask.fbx"};
+    constexpr string_view MODEL_PATH {"Models/InitialHitMask.fo3d"};
 
-    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    vector<uint8_t> mesh_blob {MakeRuntimeModelTriangleMesh()};
+    vector<pair<string, vector<uint8_t>>> model_resources {};
+    model_resources.emplace_back(string {"ModelAnimationInfo.foinfo"}, MakeUnitTestModelAnimationInfo(MODEL_PATH));
+    model_resources.emplace_back(string {MESH_PATH}, mesh_blob);
+    model_resources.emplace_back(string {MODEL_PATH}, MakeRuntimeModelDescription(MODEL_PATH, MESH_PATH, mesh_blob));
 
-    auto backend = GetScriptBackend(client.as_ptr());
+    auto settings {MakeClientTestSettings()};
+    auto client {MakeClientEngine(settings, MakeClientTestResources(std::move(model_resources)))};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
 
-    DebuggerEndpointServer debugger {backend};
+    shared_ptr<Sprite> sprite {client->ResMngr.LoadSprite(client->Hashes.to_hashed_string(MODEL_PATH), AtlasType::MapSprites, true)};
+    auto model_spr {sprite.dyn_cast<ModelSprite>()};
+    REQUIRE(static_cast<bool>(model_spr));
+    REQUIRE(model_spr->Update());
 
-    auto stop_debugger = scope_exit([&debugger]() noexcept { safe_call([&debugger] { debugger.Stop(); }); });
-
-    CHECK_FALSE(debugger.IsPaused());
-
-    // Events are queued for whichever client attaches later, so emitting without one must be harmless
-    REQUIRE_NOTHROW(debugger.EmitEvent("unitTestEvent"));
-    REQUIRE_NOTHROW(debugger.EmitEvent("unitTestEventWithBody", R"({"value":1})"));
-
-    // Attaching a plain socket drives the accept path, the handshake write and the request reader. The
-    // listener picks its port from the process id inside a fixed span, so the same arithmetic finds it
-    REQUIRE(net_sockets::startup());
-
-    constexpr uint16_t DEBUGGER_BASE_PORT = 43000;
-    constexpr uint16_t DEBUGGER_PORT_SPAN = 2000;
-    int32_t pid_num = strvex(platform::get_current_process_id_str()).to_int32();
-    uint16_t start_offset = pid_num > 0 ? numeric_cast<uint16_t>(pid_num % DEBUGGER_PORT_SPAN) : uint16_t {0};
-
-    tcp_socket client_sock;
-    bool attached = false;
-
-    for (uint16_t i = 0; i < 8 && !attached; i++) {
-        uint16_t candidate = numeric_cast<uint16_t>(DEBUGGER_BASE_PORT + (start_offset + i) % DEBUGGER_PORT_SPAN);
-        attached = client_sock.connect("127.0.0.1", candidate);
+    SECTION("FirstPictureIsPreparedBeforePicking")
+    {
+    }
+    SECTION("PickingARedrawnPictureDoesNotStartAReadback")
+    {
+        model_spr->DrawToAtlas();
     }
 
-    CHECK(attached);
+    // Picking must use the completed mask even after a redraw. GPU work belongs to the render update
+    ptr<RenderTexture> atlas_tex {model_spr->GetAtlas()->GetTexture()};
+    ipos32 origin {iround<int32_t>(atlas_tex->SizeData[0] * model_spr->GetAtlasRect().x), iround<int32_t>(atlas_tex->SizeData[1] * model_spr->GetAtlasRect().y)};
+    atlas_tex->UpdateTextureRegion(origin, {1, 1}, vector<ucolor>(1, ucolor {255, 255, 255, 255}));
 
-    if (attached) {
-        // The server greets a fresh client, then answers requests line by line
-        std::this_thread::sleep_for(std::chrono::milliseconds {120});
+    CHECK_FALSE(model_spr->IsHitTest({0, 0}));
+}
+#endif
 
-        // Walk the request surface: every command has its own handler and response shape
-        vector<string> requests {
-            R"({"seq":1,"type":"request","command":"capabilities"})",
-            R"({"seq":2,"type":"request","command":"setBreakpoints","arguments":{"source":{"path":"ClientEngineTest.fos"},"breakpoints":[{"line":10},{"line":20}]}})",
-            R"({"seq":3,"type":"request","command":"stackTrace"})",
-            R"({"seq":4,"type":"request","command":"variables","arguments":{"variablesReference":1}})",
-            R"({"seq":5,"type":"request","command":"pause"})",
-            R"({"seq":6,"type":"request","command":"next"})",
-            R"({"seq":7,"type":"request","command":"stepIn"})",
-            R"({"seq":8,"type":"request","command":"stepOut"})",
-            R"({"seq":9,"type":"request","command":"continue"})",
-            R"({"seq":10,"type":"request","command":"setBreakpoints","arguments":{"source":{"path":"ClientEngineTest.fos"},"breakpoints":[]}})",
-            R"({"seq":11,"type":"request","command":"noSuchCommand"})",
-            R"({"seq":12,"type":"request"})",
-        };
+#if (FO_ENABLE_3D)
+TEST_CASE("ModelSpriteHitTestReadsItsMaskFromTheAtlas")
+{
+    // A model sprite has no pixels on the CPU until its atlas picture comes back from the GPU. The null renderer reads
+    // at once, which pins what the mask holds and when it is refreshed; the non-blocking backends only delay the answer
+    constexpr string_view MESH_PATH {"Models/HitMask.fbx"};
+    constexpr string_view MODEL_PATH {"Models/HitMask.fo3d"};
 
-        for (const string& request_body : requests) {
-            string request = request_body;
-            request += "\n";
-            ignore_unused(client_sock.send({reinterpret_cast<const uint8_t*>(request.data()), request.size()}));
-            std::this_thread::sleep_for(std::chrono::milliseconds {40});
-        }
+    vector<uint8_t> mesh_blob {MakeRuntimeModelTriangleMesh()};
+    vector<pair<string, vector<uint8_t>>> model_resources {};
+    model_resources.emplace_back(string {"ModelAnimationInfo.foinfo"}, MakeUnitTestModelAnimationInfo(MODEL_PATH));
+    model_resources.emplace_back(string {MESH_PATH}, mesh_blob);
+    model_resources.emplace_back(string {MODEL_PATH}, MakeRuntimeModelDescription(MODEL_PATH, MESH_PATH, mesh_blob));
 
-        std::this_thread::sleep_for(std::chrono::milliseconds {120});
+    auto settings {MakeClientTestSettings()};
+    auto client {MakeClientEngine(settings, MakeClientTestResources(std::move(model_resources)))};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
 
-        REQUIRE_NOTHROW(debugger.EmitEvent("attachedEvent"));
+    shared_ptr<Sprite> sprite {client->ResMngr.LoadSprite(client->Hashes.to_hashed_string(MODEL_PATH), AtlasType::MapSprites, true)};
+    auto model_spr {sprite.dyn_cast<ModelSprite>()};
+    REQUIRE(static_cast<bool>(model_spr));
 
-        std::this_thread::sleep_for(std::chrono::milliseconds {120});
+    // The null renderer draws nothing, so each picture is painted into the atlas right after the draw that claims it
+    auto draw_with_opaque_pixel {[&model_spr](ipos32 opaque_pos) {
+        model_spr->DrawToAtlas();
 
-        for (string_view malformed : {"not json\n", "{\n", "{\"seq\":\"notanumber\"}\n", "\n"}) {
-            ignore_unused(client_sock.send({reinterpret_cast<const uint8_t*>(malformed.data()), malformed.size()}));
-            std::this_thread::sleep_for(std::chrono::milliseconds {40});
-        }
+        isize32 size {model_spr->GetSize()};
+        REQUIRE(size.width >= 2);
+        REQUIRE(size.height >= 2);
 
-        string disconnect_request = R"({"seq":99,"type":"request","command":"disconnect"})";
-        disconnect_request += "\n";
-        ignore_unused(client_sock.send({reinterpret_cast<const uint8_t*>(disconnect_request.data()), disconnect_request.size()}));
+        ptr<RenderTexture> atlas_tex {model_spr->GetAtlas()->GetTexture()};
+        ipos32 origin {iround<int32_t>(atlas_tex->SizeData[0] * model_spr->GetAtlasRect().x), iround<int32_t>(atlas_tex->SizeData[1] * model_spr->GetAtlasRect().y)};
+        vector<ucolor> pixels {vector<ucolor>(size.square<size_t>(), ucolor {0, 0, 0, 0})};
+        pixels[numeric_cast<size_t>(opaque_pos.y) * numeric_cast<size_t>(size.width) + numeric_cast<size_t>(opaque_pos.x)] = ucolor {255, 255, 255, 255};
+        atlas_tex->UpdateTextureRegion(origin, size, pixels);
 
-        std::this_thread::sleep_for(std::chrono::milliseconds {120});
+        return origin;
+    }};
 
-        client_sock.close();
-    }
+    ipos32 first {0, 0};
+    ipos32 second {1, 1};
+    ipos32 origin {draw_with_opaque_pixel(first)};
 
-    // Let the worker and discovery threads take at least one more pass over their loops
-    std::this_thread::sleep_for(std::chrono::milliseconds {120});
+    CHECK_FALSE(model_spr->IsHitTest(first));
+    REQUIRE(model_spr->Update());
+    CHECK(model_spr->IsHitTest(first));
+    CHECK_FALSE(model_spr->IsHitTest(second));
 
-    CHECK_FALSE(debugger.IsPaused());
+    // Without a new picture the mask stands, so picking again reads nothing back, whatever the atlas holds now
+    ptr<RenderTexture> atlas_tex {model_spr->GetAtlas()->GetTexture()};
+    atlas_tex->UpdateTextureRegion(origin + second, {1, 1}, vector<ucolor>(1, ucolor {255, 255, 255, 255}));
 
-    REQUIRE_NOTHROW(debugger.Stop());
-    REQUIRE_NOTHROW(debugger.Stop());
-    stop_debugger.release();
+    CHECK(model_spr->IsHitTest(first));
+    CHECK_FALSE(model_spr->IsHitTest(second));
+
+    // A redraw leaves the mask stale; picking only requests a copy for the next render update
+    coarse_sleep(std::chrono::milliseconds {110});
+    client->GameTime.FrameAdvance(false);
+    draw_with_opaque_pixel(second);
+
+    CHECK(model_spr->IsHitTest(first));
+    CHECK_FALSE(model_spr->IsHitTest(second));
+    REQUIRE(model_spr->Update());
+    CHECK_FALSE(model_spr->IsHitTest(first));
+    CHECK(model_spr->IsHitTest(second));
+    CHECK_FALSE(model_spr->IsHitTest({-1, 0}));
+    CHECK_FALSE(model_spr->IsHitTest({model_spr->GetSize().width, 0}));
 }
 #endif
 
 TEST_CASE("ClientEngineStartsAndRegistersEntities")
 {
-    auto settings = MakeClientTestSettings();
-    auto client = MakeClientEngine(settings);
+    auto settings {MakeClientTestSettings()};
+    auto client {MakeClientEngine(settings)};
 
-    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
 
     CHECK_FALSE(client->IsConnecting());
     CHECK_FALSE(client->IsConnected());
@@ -2919,12 +1167,12 @@ TEST_CASE("ClientEngineStartsAndRegistersEntities")
     CHECK_FALSE(static_cast<bool>(client->GetCurLocation()));
     CHECK_FALSE(static_cast<bool>(client->GetCurMap()));
 
-    hstring critter_pid = client->Hashes.to_hashed_string("UnitTestClientCritter");
-    auto critter_proto = client->GetProtoCritter(critter_pid);
+    hstring critter_pid {client->Hashes.to_hashed_string("UnitTestClientCritter")};
+    auto critter_proto {client->GetProtoCritter(critter_pid)};
     REQUIRE(static_cast<bool>(critter_proto));
 
-    auto player = safe_alloc::make_refcounted<PlayerView>(client, ident_t {1001});
-    auto critter = safe_alloc::make_refcounted<CritterView>(client, ident_t {1002}, critter_proto);
+    auto player {safe_alloc::make_refcounted<PlayerView>(client, ident_t {1001})};
+    auto critter {safe_alloc::make_refcounted<CritterView>(client, ident_t {1002}, critter_proto)};
 
     REQUIRE(client->GetEntity(player->GetId()) == player);
     REQUIRE(client->GetEntity(critter->GetId()) == critter);
@@ -2938,46 +1186,59 @@ TEST_CASE("ClientEngineStartsAndRegistersEntities")
     CHECK_FALSE(static_cast<bool>(client->GetEntity(ident_t {1001})));
 }
 
-TEST_CASE("ClientEngineScriptModuleInitAndLoopAreCallable")
+TEST_CASE("ClientCritterAttachedIdsSnapshotIncludesUnloadedIdsAndSurvivesListChanges")
 {
-    auto settings = MakeClientTestSettings();
-    auto client = MakeClientEngine(settings);
+    auto settings {MakeClientTestSettings()};
+    auto client {MakeClientEngine(settings)};
 
-    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
 
-    auto get_func_name = [&client](string_view name) { return client->Hashes.to_hashed_string(name); };
+    hstring critter_pid {client->Hashes.to_hashed_string("UnitTestClientCritter")};
+    auto critter_proto {client->GetProtoCritter(critter_pid)};
+    REQUIRE(static_cast<bool>(critter_proto));
 
-    int start_calls = 0;
-    int loop_calls = 0;
-    int manual_calls = 0;
+    auto vehicle {safe_alloc::make_refcounted<CritterView>(client, ident_t {1002}, critter_proto)};
+    auto driver {safe_alloc::make_refcounted<CritterView>(client, ident_t {11}, critter_proto)};
 
-    REQUIRE(client->CallFunc(get_func_name("ClientEngineTest::UnitTestGetStartCalls"), start_calls));
-    REQUIRE(client->CallFunc(get_func_name("ClientEngineTest::UnitTestGetLoopCalls"), loop_calls));
-    REQUIRE(client->CallFunc(get_func_name("ClientEngineTest::UnitTestGetManualCalls"), manual_calls));
+    CHECK(Client_Critter_GetAttachedCritterIds(vehicle).empty());
 
-    CHECK(start_calls == 1);
-    CHECK(loop_calls == 0);
-    CHECK(manual_calls == 0);
+    // The passenger id replicates as a bare id, so its critter is deliberately never created on this client
+    vehicle->SetAttachedCritters({driver->GetId(), ident_t {22}});
+    CHECK_FALSE(static_cast<bool>(client->GetEntity(ident_t {22})));
 
-    REQUIRE(client->CallFunc(get_func_name("ClientEngineTest::UnitTestMarkManualCall")));
-    REQUIRE(client->CallFunc(get_func_name("ClientEngineTest::UnitTestGetManualCalls"), manual_calls));
-    CHECK(manual_calls == 1);
+    vector<ident_t> snapshot {Client_Critter_GetAttachedCritterIds(vehicle)};
+    REQUIRE(snapshot.size() == 2);
+    CHECK(snapshot[0] == driver->GetId());
+    CHECK(snapshot[1] == ident_t {22});
 
-    client->MainLoop();
-    client->MainLoop();
+    // Caller mutations leave the critter intact, and replacing its native list must preserve the old snapshot
+    snapshot[0] = ident_t {9999};
+    CHECK(vehicle->GetAttachedCritters()[0] == driver->GetId());
 
-    REQUIRE(client->CallFunc(get_func_name("ClientEngineTest::UnitTestGetLoopCalls"), loop_calls));
-    CHECK(loop_calls >= 2);
+    vehicle->SetAttachedCritters({driver->GetId()});
+    CHECK(snapshot[0] == ident_t {9999});
+    CHECK(snapshot[1] == ident_t {22});
+    CHECK(Client_Critter_GetAttachedCritterIds(vehicle).size() == 1);
+
+    vehicle->SetAttachedCritters({});
+    CHECK(snapshot.size() == 2);
+    CHECK(Client_Critter_GetAttachedCritterIds(vehicle).empty());
+
+    vehicle->DestroySelf();
+    driver->DestroySelf();
+
+    CHECK_FALSE(static_cast<bool>(client->GetEntity(ident_t {1002})));
+    CHECK_FALSE(static_cast<bool>(client->GetEntity(ident_t {11})));
 }
 
 TEST_CASE("ClientEngineScheduledCallbacksDoNotRunNestedZeroDelayInSamePass")
 {
-    auto settings = MakeClientTestSettings();
-    auto client = MakeClientEngine(settings);
+    auto settings {MakeClientTestSettings()};
+    auto client {MakeClientEngine(settings)};
 
-    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
 
-    int32_t callback_count = 0;
+    int32_t callback_count {0};
 
     client->ScheduleDelayedCallback(timespan::zero, [&client, &callback_count] {
         callback_count++;
@@ -2992,79 +1253,12 @@ TEST_CASE("ClientEngineScheduledCallbacksDoNotRunNestedZeroDelayInSamePass")
     CHECK(callback_count == 2);
 }
 
-TEST_CASE("ClientEngineMethodRefTypeOps")
-{
-    auto settings = MakeClientTestSettings();
-    auto client = MakeClientEngine(settings);
-
-    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
-
-    auto get_func_name = [&client](string_view name) { return client->Hashes.to_hashed_string(name); };
-
-    int32_t result = 0;
-    REQUIRE(client->CallFunc(get_func_name("ClientEngineTest::UnitTestMapSpriteHolderRefType"), result));
-    CHECK(result == 0);
-}
-
-TEST_CASE("ResourceManagerLoadsLegacyCritterAnimations")
-{
-    // The legacy path only runs under art/critters/ and builds sprite names by index letter, then casts the result
-    // to a SpriteSheet — hence the multi-frame fixtures
-    constexpr string_view FRM_IND = "_abcdefghijklmnopqrstuvwxyz0123456789";
-    constexpr string_view MODEL_NAME = "art/critters/utxx.frm";
-    constexpr string_view MODEL_STEM = "art/critters/ut";
-
-    vector<pair<string, vector<uint8_t>>> anim_resources;
-
-    for (int32_t state_anim = 0; state_anim < 14; state_anim++) {
-        for (int32_t action_anim = 0; action_anim < 14; action_anim++) {
-            string spr_name = strex("{}{}{}.fofrm", MODEL_STEM, FRM_IND[numeric_cast<size_t>(state_anim)], FRM_IND[numeric_cast<size_t>(action_anim)]).str();
-            anim_resources.emplace_back(std::move(spr_name), BakerTests::MakeMultiFrameBakedSprite(3));
-        }
-    }
-
-    auto settings = MakeClientTestSettings();
-    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(anim_resources)));
-
-    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
-
-    hstring model_name = client->Hashes.to_hashed_string(MODEL_NAME);
-
-    SECTION("AnimationPairsResolveThroughTheLegacyLoader")
-    {
-        int32_t resolved = 0;
-
-        for (int32_t state_anim = 1; state_anim < 14; state_anim++) {
-            for (int32_t action_anim = 1; action_anim < 14; action_anim++) {
-                if (client->ResMngr.GetCritterAnimFrames(model_name, static_cast<CritterStateAnim>(state_anim), static_cast<CritterActionAnim>(action_anim), mdir {0})) {
-                    resolved++;
-                }
-            }
-        }
-
-        CHECK(resolved > 0);
-    }
-
-    SECTION("RepeatedLookupsComeFromTheCache")
-    {
-        nptr<const SpriteSheet> first = client->ResMngr.GetCritterAnimFrames(model_name, static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(1), mdir {0});
-        nptr<const SpriteSheet> second = client->ResMngr.GetCritterAnimFrames(model_name, static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(1), mdir {0});
-        CHECK(first == second);
-    }
-
-    SECTION("AModelWithNoSpritesAnswersEmpty")
-    {
-        hstring missing = client->Hashes.to_hashed_string("art/critters/nosuchxx.frm");
-        CHECK_FALSE(static_cast<bool>(client->ResMngr.GetCritterAnimFrames(missing, static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(1), mdir {0})));
-    }
-}
-
 TEST_CASE("FontManagerMeasuresAndSplitsText")
 {
-    auto settings = MakeClientTestSettings();
-    auto client = MakeClientEngine(settings, MakeClientTestResources(MakeUnitTestFontResources()));
+    auto settings {MakeClientTestSettings()};
+    auto client {MakeClientEngine(settings, MakeClientTestResources(MakeUnitTestFontResources()))};
 
-    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
 
     client->FontMngr.BindFoFont(FontType::Default, "UnitTestFont.fofnt", AtlasType::IfaceSprites, false, false, 1.0f);
 
@@ -3082,16 +1276,16 @@ TEST_CASE("FontManagerMeasuresAndSplitsText")
     SECTION("SplittingPaginatesWhatDoesNotFitTheRect")
     {
         // Splitting yields rect-sized pages, not individual lines, so text that fits comes back as one entry
-        vector<string> single = client->FontMngr.SplitLines(irect32 {0, 0, 200, 100}, "one line", FontType::Default);
+        vector<string> single {client->FontMngr.SplitLines(irect32 {0, 0, 200, 100}, "one line", FontType::Default)};
         CHECK(single.size() == 1);
 
-        vector<string> explicit_breaks = client->FontMngr.SplitLines(irect32 {0, 0, 200, 10}, "first\nsecond\nthird", FontType::Default);
+        vector<string> explicit_breaks {client->FontMngr.SplitLines(irect32 {0, 0, 200, 10}, "first\nsecond\nthird", FontType::Default)};
         CHECK(explicit_breaks.size() > 1);
 
-        vector<string> wrapped = client->FontMngr.SplitLines(irect32 {0, 0, 40, 10}, "a sentence long enough to wrap over several lines", FontType::Default);
+        vector<string> wrapped {client->FontMngr.SplitLines(irect32 {0, 0, 40, 10}, "a sentence long enough to wrap over several lines", FontType::Default)};
         CHECK(wrapped.size() > 1);
 
-        vector<string> empty = client->FontMngr.SplitLines(irect32 {0, 0, 200, 100}, "", FontType::Default);
+        vector<string> empty {client->FontMngr.SplitLines(irect32 {0, 0, 200, 100}, "", FontType::Default)};
         CHECK(empty.empty());
     }
 
@@ -3122,63 +1316,20 @@ TEST_CASE("FontManagerMeasuresAndSplitsText")
     }
 }
 
-TEST_CASE("ClientEngineGlobalScriptBindings")
-{
-    auto settings = MakeClientTestSettings();
-    auto client_resources = MakeUnitTestFontResources();
-    client_resources.emplace_back("Quad.png", BakerTests::MakeMinimalBakedSprite(2, 2));
-    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(client_resources)));
-
-    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
-
-    // The sweep below dumps the atlases, so the directories it writes are cleared once the case is done
-    set<string> tex_dumps_before = TexDumpArtifacts::CollectDumpDirs();
-
-    auto remove_tex_dumps = scope_exit([&tex_dumps_before]() noexcept { safe_call([&tex_dumps_before] { TexDumpArtifacts::RemoveNewDumpDirs(tex_dumps_before); }); });
-
-    // The scripts below change the resolution, which writes through to the process-global app window and would
-    // otherwise leave every later test computing ratios against the changed size
-    isize32 saved_screen_size = GetApp()->MainWindow.GetScreenSize();
-    auto restore_screen_size = scope_exit([saved_screen_size]() noexcept { safe_call([saved_screen_size] { GetApp()->MainWindow.SetScreenSize(saved_screen_size); }); });
-
-    auto run_script = [&client](string_view name) {
-        int32_t result = -1;
-        INFO(name);
-        REQUIRE(client->CallFunc(client->Hashes.to_hashed_string(name), result));
-        CHECK(result == 0);
-    };
-
-    run_script("ClientEngineTest::UnitTestClientStateQueries");
-
-    run_script("ClientEngineTest::UnitTestClientGeometry");
-    run_script("ClientEngineTest::UnitTestClientTextAndCache");
-    run_script("ClientEngineTest::UnitTestClientInputSimulation");
-    run_script("ClientEngineTest::UnitTestClientSpriteApi");
-    run_script("ClientEngineTest::UnitTestClientEffectsAndText");
-    run_script("ClientEngineTest::UnitTestClientWindowAndConfig");
-    run_script("ClientEngineTest::UnitTestClientRejectsBadArguments");
-
-    int32_t rejection_count = 0;
-    REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientEngineTest::UnitTestGetClientRejectionCount"), rejection_count));
-    // Only five probes must reject; the rest legitimately answer instead of throwing, reporting a bool or a zero
-    // sound handle, queueing nothing, or accepting a pack that resolves to no entries
-    CHECK(rejection_count == 8 + 16 + 128 + 256 + 512);
-}
-
 TEST_CASE("MultiFrameSpritesPlayAndCopy")
 {
     // A single-frame sprite resolves to an atlas sprite, so sheet playback has nothing to run on until the fixture
     // serves a real multi-frame one
-    auto settings = MakeClientTestSettings();
+    auto settings {MakeClientTestSettings()};
 
-    vector<pair<string, vector<uint8_t>>> sprite_resources;
+    vector<pair<string, vector<uint8_t>>> sprite_resources {};
     sprite_resources.emplace_back(string {"AnimSheet.png"}, BakerTests::MakeMultiFrameBakedSprite(4, 2, 2, 40));
 
-    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(sprite_resources)));
+    auto client {MakeClientEngine(settings, MakeClientTestResources(std::move(sprite_resources)))};
 
-    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
 
-    auto sheet = client->SprMngr.LoadSprite(client->Hashes.to_hashed_string("AnimSheet.png"), AtlasType::IfaceSprites);
+    auto sheet {client->ResMngr.LoadSprite(client->Hashes.to_hashed_string("AnimSheet.png"), AtlasType::IfaceSprites)};
     REQUIRE(sheet);
     CHECK(sheet->GetSize() == isize32 {2, 2});
 
@@ -3188,7 +1339,7 @@ TEST_CASE("MultiFrameSpritesPlayAndCopy")
         CHECK(sheet->IsPlaying());
 
         // The frame clock is driven by the game time, so the update is run over enough frames to wrap
-        for (int32_t frame = 0; frame < 24; frame++) {
+        for (int32_t frame {0}; frame < 24; frame++) {
             client->GameTime.FrameAdvance(false);
             ignore_unused(sheet->Update());
         }
@@ -3196,15 +1347,15 @@ TEST_CASE("MultiFrameSpritesPlayAndCopy")
         CHECK(sheet->IsPlaying());
 
         // Seeking addresses a frame directly rather than waiting for the clock
-        for (float32_t normalized_time : {0.0f, 0.25f, 0.5f, 0.99f, 1.0f}) {
-            REQUIRE_NOTHROW(sheet->SetTime(normalized_time));
+        for (float32_t phase : {0.0f, 0.25f, 0.5f, 0.99f, 1.0f}) {
+            REQUIRE_NOTHROW(sheet->SetPhase(phase));
             ignore_unused(sheet->Update());
         }
 
         // A one-shot run stops at the end instead of wrapping
         REQUIRE_NOTHROW(sheet->Play({}, false, false));
 
-        for (int32_t frame = 0; frame < 24; frame++) {
+        for (int32_t frame {0}; frame < 24; frame++) {
             client->GameTime.FrameAdvance(false);
             ignore_unused(sheet->Update());
         }
@@ -3212,7 +1363,7 @@ TEST_CASE("MultiFrameSpritesPlayAndCopy")
         // Reversed playback walks the same frames the other way
         REQUIRE_NOTHROW(sheet->Play({}, true, true));
 
-        for (int32_t frame = 0; frame < 12; frame++) {
+        for (int32_t frame {0}; frame < 12; frame++) {
             client->GameTime.FrameAdvance(false);
             ignore_unused(sheet->Update());
         }
@@ -3223,7 +1374,7 @@ TEST_CASE("MultiFrameSpritesPlayAndCopy")
 
     SECTION("ACopyPlaysIndependentlyOfTheSpriteItWasMadeFrom")
     {
-        auto copy = sheet->MakeCopy();
+        auto copy {sheet->MakeCopy()};
         REQUIRE(copy);
         CHECK(copy != sheet);
 
@@ -3231,7 +1382,7 @@ TEST_CASE("MultiFrameSpritesPlayAndCopy")
         CHECK(copy->IsPlaying());
         CHECK_FALSE(sheet->IsPlaying());
 
-        for (int32_t frame = 0; frame < 12; frame++) {
+        for (int32_t frame {0}; frame < 12; frame++) {
             client->GameTime.FrameAdvance(false);
             ignore_unused(copy->Update());
         }
@@ -3242,22 +1393,22 @@ TEST_CASE("MultiFrameSpritesPlayAndCopy")
 
 TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
 {
-    auto settings = MakeClientTestSettings();
-    auto client = MakeClientEngine(settings);
+    auto settings {MakeClientTestSettings()};
+    auto client {MakeClientEngine(settings)};
 
-    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
 
-    frect32 atlas_rect = {0.25f, 0.5f, 0.5f, 0.25f};
-    frect32 draw_rect = {100.0f, 200.0f, 20.0f, 40.0f};
-    ucolor color_left = {10, 20, 30, 40};
-    ucolor color_right = {110, 120, 130, 140};
+    frect32 atlas_rect {0.25f, 0.5f, 0.5f, 0.25f};
+    frect32 draw_rect {100.0f, 200.0f, 20.0f, 40.0f};
+    ucolor color_left {10, 20, 30, 40};
+    ucolor color_right {110, 120, 130, 140};
 
     SECTION("Absent mesh keeps the legacy quad")
     {
-        auto sprite = safe_alloc::make_shared<AtlasSprite>(&client->SprMngr, isize32 {10, 10}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {});
-        auto draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
+        auto sprite {safe_alloc::make_shared<AtlasSprite>(&client->SprMngr, isize32 {10, 10}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {})};
+        auto draw_buf {client->SprMngr.GetRender().CreateDrawBuffer(false)};
 
-        size_t index_count = sprite->FillData(draw_buf, draw_rect, {color_left, color_right});
+        size_t index_count {sprite->FillData(draw_buf, draw_rect, {color_left, color_right})};
 
         REQUIRE(index_count == 6);
         REQUIRE(draw_buf->VertCount == 4);
@@ -3276,10 +1427,10 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
 
     SECTION("Explicit empty mesh emits no draw data")
     {
-        auto sprite = safe_alloc::make_shared<AtlasSprite>(&client->SprMngr, isize32 {10, 10}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, SpriteMeshData {});
-        auto draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
+        auto sprite {safe_alloc::make_shared<AtlasSprite>(&client->SprMngr, isize32 {10, 10}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, SpriteMeshData {})};
+        auto draw_buf {client->SprMngr.GetRender().CreateDrawBuffer(false)};
 
-        size_t index_count = sprite->FillData(draw_buf, draw_rect, {color_left, color_right});
+        size_t index_count {sprite->FillData(draw_buf, draw_rect, {color_left, color_right})};
 
         CHECK(index_count == 0);
         CHECK_FALSE(sprite->ResolveRegion({0.0f, 0.0f}, {1.0f, 1.0f}, draw_rect).has_value());
@@ -3289,20 +1440,20 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
 
     SECTION("Mesh maps positions UVs indices and horizontal light colors")
     {
-        SpriteMeshData mesh;
+        SpriteMeshData mesh {};
         mesh.SourceSize = {10, 10};
         mesh.Vertices = {{0, 0}, {5, 10}, {10, 0}};
         mesh.Indices = {0, 1, 2};
 
-        auto sprite = safe_alloc::make_shared<AtlasSprite>(&client->SprMngr, isize32 {10, 10}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
-        auto draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
+        auto sprite {safe_alloc::make_shared<AtlasSprite>(&client->SprMngr, isize32 {10, 10}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)})};
+        auto draw_buf {client->SprMngr.GetRender().CreateDrawBuffer(false)};
         draw_buf->Vertices.resize(2);
         draw_buf->VertCount = 2;
         draw_buf->Indices.resize(1);
         draw_buf->Indices[0] = 0;
         draw_buf->IndCount = 1;
 
-        size_t index_count = sprite->FillData(draw_buf, draw_rect, {color_left, color_right});
+        size_t index_count {sprite->FillData(draw_buf, draw_rect, {color_left, color_right})};
 
         REQUIRE(index_count == 3);
         REQUIRE(draw_buf->VertCount == 5);
@@ -3311,9 +1462,9 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
         CHECK(draw_buf->Indices[2] == 3);
         CHECK(draw_buf->Indices[3] == 4);
 
-        const Vertex2D& left = draw_buf->Vertices[2];
-        const Vertex2D& center = draw_buf->Vertices[3];
-        const Vertex2D& right = draw_buf->Vertices[4];
+        const Vertex2D& left {draw_buf->Vertices[2]};
+        const Vertex2D& center {draw_buf->Vertices[3]};
+        const Vertex2D& right {draw_buf->Vertices[4]};
         CHECK(left.PosX == Catch::Approx(100.0f));
         CHECK(left.PosY == Catch::Approx(200.0f));
         CHECK(left.TexU == Catch::Approx(0.25f));
@@ -3333,14 +1484,14 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
 
     SECTION("Cropped mesh preserves source-relative horizontal light colors")
     {
-        SpriteMeshData mesh;
+        SpriteMeshData mesh {};
         mesh.SourceSize = {10, 10};
         mesh.SourceOffset = {2, 0};
         mesh.Vertices = {{0, 0}, {3, 10}, {6, 0}};
         mesh.Indices = {0, 1, 2};
 
-        auto sprite = safe_alloc::make_shared<AtlasSprite>(&client->SprMngr, isize32 {6, 10}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
-        auto draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
+        auto sprite {safe_alloc::make_shared<AtlasSprite>(&client->SprMngr, isize32 {6, 10}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)})};
+        auto draw_buf {client->SprMngr.GetRender().CreateDrawBuffer(false)};
 
         CHECK(sprite->GetSize() == isize32 {10, 10});
         CHECK(sprite->GetOffset() == ipos32 {});
@@ -3359,15 +1510,15 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
 
     SECTION("Cropped mesh region preserves logical source coordinates")
     {
-        SpriteMeshData mesh;
+        SpriteMeshData mesh {};
         mesh.SourceSize = {10, 10};
         mesh.SourceOffset = {2, 3};
         mesh.Vertices = {{0, 0}, {6, 0}, {0, 5}};
         mesh.Indices = {0, 1, 2};
 
-        auto sprite = safe_alloc::make_shared<AtlasSprite>(&client->SprMngr, isize32 {6, 5}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
-        auto draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
-        optional<AtlasSpriteRegion> region = sprite->ResolveRegion({0.0f, 0.0f}, {1.0f, 1.0f}, draw_rect);
+        auto sprite {safe_alloc::make_shared<AtlasSprite>(&client->SprMngr, isize32 {6, 5}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)})};
+        auto draw_buf {client->SprMngr.GetRender().CreateDrawBuffer(false)};
+        optional<AtlasSpriteRegion> region {sprite->ResolveRegion({0.0f, 0.0f}, {1.0f, 1.0f}, draw_rect)};
 
         REQUIRE(region.has_value());
         CHECK(region->DrawRect.x == Catch::Approx(104.0f));
@@ -3396,15 +1547,15 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
 
     SECTION("Expanded mesh region clips atlas padding outside the logical source")
     {
-        SpriteMeshData mesh;
+        SpriteMeshData mesh {};
         mesh.SourceSize = {10, 10};
         mesh.SourceOffset = {-2, -1};
         mesh.Vertices = {{0, 0}, {14, 0}, {0, 13}};
         mesh.Indices = {0, 1, 2};
 
-        auto sprite = safe_alloc::make_shared<AtlasSprite>(&client->SprMngr, isize32 {14, 13}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
-        auto draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
-        optional<AtlasSpriteRegion> region = sprite->ResolveRegion({0.0f, 0.0f}, {1.0f, 1.0f}, draw_rect);
+        auto sprite {safe_alloc::make_shared<AtlasSprite>(&client->SprMngr, isize32 {14, 13}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)})};
+        auto draw_buf {client->SprMngr.GetRender().CreateDrawBuffer(false)};
+        optional<AtlasSpriteRegion> region {sprite->ResolveRegion({0.0f, 0.0f}, {1.0f, 1.0f}, draw_rect)};
 
         REQUIRE(region.has_value());
         CHECK(region->DrawRect.x == Catch::Approx(100.0f));
@@ -3429,14 +1580,14 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
 
     SECTION("Partial logical region intersects the cropped atlas frame")
     {
-        SpriteMeshData mesh;
+        SpriteMeshData mesh {};
         mesh.SourceSize = {10, 10};
         mesh.SourceOffset = {2, 3};
         mesh.Vertices = {{0, 0}, {6, 0}, {0, 5}};
         mesh.Indices = {0, 1, 2};
 
-        auto sprite = safe_alloc::make_shared<AtlasSprite>(&client->SprMngr, isize32 {6, 5}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
-        optional<AtlasSpriteRegion> region = sprite->ResolveRegion({0.1f, 0.2f}, {0.5f, 0.6f}, draw_rect);
+        auto sprite {safe_alloc::make_shared<AtlasSprite>(&client->SprMngr, isize32 {6, 5}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)})};
+        optional<AtlasSpriteRegion> region {sprite->ResolveRegion({0.1f, 0.2f}, {0.5f, 0.6f}, draw_rect)};
 
         REQUIRE(region.has_value());
         CHECK(region->DrawRect.x == Catch::Approx(105.0f));
@@ -3452,17 +1603,17 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
     SECTION("Live atlas allocation observes sprite mesh metadata for dump lifetime")
     {
         TextureAtlasLayout layout {{12, 12}};
-        auto atlas_allocation = layout.Allocate({12, 12});
+        auto atlas_allocation {layout.Allocate({12, 12})};
         REQUIRE(atlas_allocation);
-        nptr<TextureAtlasLayout::Allocation> allocation_observer = atlas_allocation.as_nptr();
-        SpriteMeshData mesh;
+        nptr<TextureAtlasLayout::Allocation> allocation_observer {atlas_allocation.as_nptr()};
+        SpriteMeshData mesh {};
         mesh.SourceSize = {10, 10};
         mesh.Vertices = {{0, 0}, {5, 5}, {10, 0}};
         mesh.Indices = {0, 1, 2};
 
         {
-            auto sprite = safe_alloc::make_shared<AtlasSprite>(&client->SprMngr, isize32 {10, 10}, ipos32 {}, nullptr, std::move(atlas_allocation), atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
-            auto draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
+            auto sprite {safe_alloc::make_shared<AtlasSprite>(&client->SprMngr, isize32 {10, 10}, ipos32 {}, nullptr, std::move(atlas_allocation), atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)})};
+            auto draw_buf {client->SprMngr.GetRender().CreateDrawBuffer(false)};
 
             REQUIRE(allocation_observer->GetSpriteMesh());
             CHECK(allocation_observer->GetSpriteMesh()->Vertices.size() == 3);
@@ -3476,22 +1627,22 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
     SECTION("Moving an atlas sprite rebinds the allocation mesh observer")
     {
         TextureAtlasLayout layout {{12, 12}};
-        auto atlas_allocation = layout.Allocate({12, 12});
+        auto atlas_allocation {layout.Allocate({12, 12})};
         REQUIRE(atlas_allocation);
-        nptr<TextureAtlasLayout::Allocation> allocation_observer = atlas_allocation.as_nptr();
-        SpriteMeshData mesh;
+        nptr<TextureAtlasLayout::Allocation> allocation_observer {atlas_allocation.as_nptr()};
+        SpriteMeshData mesh {};
         mesh.SourceSize = {10, 10};
         mesh.Vertices = {{0, 0}, {5, 5}, {10, 0}};
         mesh.Indices = {0, 1, 2};
 
         {
             AtlasSprite source {&client->SprMngr, isize32 {10, 10}, ipos32 {}, nullptr, std::move(atlas_allocation), atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)}};
-            nptr<const SpriteMeshData> source_mesh = allocation_observer->GetSpriteMesh();
+            nptr<const SpriteMeshData> source_mesh {allocation_observer->GetSpriteMesh()};
             AtlasSprite moved {std::move(source)};
 
             REQUIRE(allocation_observer->GetSpriteMesh());
             CHECK(allocation_observer->GetSpriteMesh() != source_mesh);
-            auto draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
+            auto draw_buf {client->SprMngr.GetRender().CreateDrawBuffer(false)};
             CHECK(moved.FillData(draw_buf, draw_rect, {color_left, color_right}) == 3);
         }
 
@@ -3502,111 +1653,113 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
 
 TEST_CASE("DefaultSpriteFactoryValidatesBakedMeshPayload")
 {
-    auto settings = MakeClientTestSettings();
-    auto client = MakeClientEngine(settings);
+    auto settings {MakeClientTestSettings()};
+    auto client {MakeClientEngine(settings)};
 
-    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
 
-    SpriteMeshData mesh;
+    SpriteMeshData mesh {};
     mesh.SourceSize = {2, 2};
     mesh.Vertices = {{0, 0}, {2, 0}, {0, 2}};
     mesh.Indices = {0, 1, 2};
 
-    vector<uint8_t> valid_blob = BakerTests::MakeMinimalBakedSprite(2, 2, SpriteMeshKind::Mesh, mesh);
-    SpriteMeshData cropped_mesh;
+    vector<uint8_t> valid_blob {BakerTests::MakeMinimalBakedSprite(2, 2, SpriteMeshKind::Mesh, mesh)};
+    SpriteMeshData cropped_mesh {};
     cropped_mesh.SourceSize = {4, 3};
     cropped_mesh.SourceOffset = {1, -1};
     cropped_mesh.Vertices = {{0, 0}, {3, 0}, {0, 3}};
     cropped_mesh.Indices = {0, 1, 2};
-    constexpr size_t mesh_kind_offset = 20 + 2 * 2 * sizeof(ucolor);
-    constexpr size_t mesh_vertex_count_offset = mesh_kind_offset + 1;
-    constexpr size_t mesh_index_count_offset = mesh_vertex_count_offset + sizeof(uint16_t);
-    constexpr size_t mesh_source_size_offset = mesh_index_count_offset + sizeof(uint32_t);
-    constexpr size_t mesh_source_offset_offset = mesh_source_size_offset + sizeof(uint16_t) * 2;
-    constexpr size_t mesh_vertices_offset = mesh_source_offset_offset + sizeof(int32_t) * 2;
-    constexpr size_t mesh_indices_offset = mesh_vertices_offset + 3 * sizeof(uint16_t) * 2;
+    static_assert(SPRITE_RESOURCE_VERSION == 3);
+    constexpr size_t mesh_kind_offset {30 + 2 * 2 * sizeof(ucolor)};
+    constexpr size_t mesh_vertex_count_offset {mesh_kind_offset + 1};
+    constexpr size_t mesh_index_count_offset {mesh_vertex_count_offset + sizeof(uint16_t)};
+    constexpr size_t mesh_source_size_offset {mesh_index_count_offset + sizeof(uint32_t)};
+    constexpr size_t mesh_source_offset_offset {mesh_source_size_offset + sizeof(uint16_t) * 2};
+    constexpr size_t mesh_vertices_offset {mesh_source_offset_offset + sizeof(int32_t) * 2};
+    constexpr size_t mesh_indices_offset {mesh_vertices_offset + 3 * sizeof(uint16_t) * 2};
 
-    auto write_u16 = [](vector<uint8_t>& data, size_t offset, uint16_t value) {
+    auto write_u16 {[](vector<uint8_t>& data, size_t offset, uint16_t value) {
         data[offset] = numeric_cast<uint8_t>(value & 0xFF);
         data[offset + 1] = numeric_cast<uint8_t>(value >> 8);
-    };
-    auto write_u32 = [](vector<uint8_t>& data, size_t offset, uint32_t value) {
+    }};
+
+    auto write_u32 {[](vector<uint8_t>& data, size_t offset, uint32_t value) {
         data[offset] = numeric_cast<uint8_t>(value & 0xFF);
         data[offset + 1] = numeric_cast<uint8_t>((value >> 8) & 0xFF);
         data[offset + 2] = numeric_cast<uint8_t>((value >> 16) & 0xFF);
         data[offset + 3] = numeric_cast<uint8_t>(value >> 24);
-    };
+    }};
 
-    auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("PolygonSpriteResources");
+    auto source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("PolygonSpriteResources")};
     source->AddFile("Quad.png", BakerTests::MakeMinimalBakedSprite(2, 2));
     source->AddFile("Empty.png", BakerTests::MakeMinimalBakedSprite(2, 2, SpriteMeshKind::Empty));
     source->AddFile("ValidMesh.png", valid_blob);
     source->AddFile("CroppedMesh.png", BakerTests::MakeMinimalBakedSprite(3, 3, SpriteMeshKind::Mesh, cropped_mesh));
 
-    vector<uint8_t> bad_version = valid_blob;
+    vector<uint8_t> bad_version {valid_blob};
     bad_version[1]++;
     source->AddFile("BadVersion.png", std::move(bad_version));
 
-    vector<uint8_t> bad_kind = valid_blob;
+    vector<uint8_t> bad_kind {valid_blob};
     bad_kind[mesh_kind_offset] = 0xFF;
     source->AddFile("BadKind.png", std::move(bad_kind));
 
-    vector<uint8_t> bad_vertex_count = valid_blob;
+    vector<uint8_t> bad_vertex_count {valid_blob};
     write_u16(bad_vertex_count, mesh_vertex_count_offset, uint16_t {2});
     source->AddFile("BadVertexCount.png", std::move(bad_vertex_count));
 
-    vector<uint8_t> bad_index_count = valid_blob;
+    vector<uint8_t> bad_index_count {valid_blob};
     write_u32(bad_index_count, mesh_index_count_offset, uint32_t {4});
     source->AddFile("BadIndexCount.png", std::move(bad_index_count));
 
-    vector<uint8_t> implausible_index_count = valid_blob;
+    vector<uint8_t> implausible_index_count {valid_blob};
     write_u32(implausible_index_count, mesh_index_count_offset, uint32_t {21});
     source->AddFile("ImplausibleIndexCount.png", std::move(implausible_index_count));
 
-    vector<uint8_t> bad_source_size = valid_blob;
+    vector<uint8_t> bad_source_size {valid_blob};
     write_u16(bad_source_size, mesh_source_size_offset, uint16_t {0});
     source->AddFile("BadSourceSize.png", std::move(bad_source_size));
 
-    vector<uint8_t> bad_source_offset = valid_blob;
+    vector<uint8_t> bad_source_offset {valid_blob};
     write_u32(bad_source_offset, mesh_source_offset_offset, uint32_t {2});
     source->AddFile("BadSourceOffset.png", std::move(bad_source_offset));
 
-    vector<uint8_t> bad_coordinate = valid_blob;
+    vector<uint8_t> bad_coordinate {valid_blob};
     write_u16(bad_coordinate, mesh_vertices_offset, uint16_t {3});
     source->AddFile("BadCoordinate.png", std::move(bad_coordinate));
 
-    vector<uint8_t> bad_index = valid_blob;
+    vector<uint8_t> bad_index {valid_blob};
     write_u16(bad_index, mesh_indices_offset, uint16_t {3});
     source->AddFile("BadIndex.png", std::move(bad_index));
 
-    vector<uint8_t> degenerate_triangle = valid_blob;
+    vector<uint8_t> degenerate_triangle {valid_blob};
     write_u16(degenerate_triangle, mesh_vertices_offset + 2 * sizeof(uint16_t) * 2, uint16_t {1});
     write_u16(degenerate_triangle, mesh_vertices_offset + 2 * sizeof(uint16_t) * 2 + sizeof(uint16_t), uint16_t {0});
     source->AddFile("DegenerateTriangle.png", std::move(degenerate_triangle));
 
-    SpriteMeshData inconsistent_winding_mesh;
+    SpriteMeshData inconsistent_winding_mesh {};
     inconsistent_winding_mesh.Vertices = {{0, 0}, {2, 0}, {0, 2}, {2, 2}};
     inconsistent_winding_mesh.Indices = {0, 1, 2, 1, 2, 3};
     source->AddFile("InconsistentWinding.png", BakerTests::MakeMinimalBakedSprite(2, 2, SpriteMeshKind::Mesh, inconsistent_winding_mesh));
 
-    vector<uint8_t> trailing_data = valid_blob;
+    vector<uint8_t> trailing_data {valid_blob};
     trailing_data.emplace_back(uint8_t {0});
     source->AddFile("TrailingData.png", std::move(trailing_data));
 
-    vector<uint8_t> truncated_payload = valid_blob;
+    vector<uint8_t> truncated_payload {valid_blob};
     truncated_payload.resize(mesh_indices_offset);
     source->AddFile("TruncatedPayload.png", std::move(truncated_payload));
 
-    client->SprMngr.GetResources()->AddCustomSource(std::move(source));
-    DefaultSpriteFactory factory {&client->SprMngr};
-    auto load = [&client, &factory](string_view path) { return factory.LoadSprite(client->Hashes.to_hashed_string(path), AtlasType::MapSprites); };
+    client->ResMngr.GetResources()->AddCustomSource(std::move(source));
+    DefaultSpriteFactory factory {&client->SprMngr, &client->ResMngr};
+    auto load {[&client, &factory](string_view path) { return factory.LoadSprite(client->Hashes.to_hashed_string(path), AtlasType::MapSprites); }};
 
-    auto valid_sprite = load("ValidMesh.png");
+    auto valid_sprite {load("ValidMesh.png")};
     REQUIRE(static_cast<bool>(valid_sprite));
-    auto valid_draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
+    auto valid_draw_buf {client->SprMngr.GetRender().CreateDrawBuffer(false)};
     CHECK(valid_sprite->FillData(valid_draw_buf, frect32 {0.0f, 0.0f, 2.0f, 2.0f}, {ucolor {0, 0, 0}, ucolor {255, 255, 255}}) == 3);
 
-    auto cropped_sprite = load("CroppedMesh.png");
+    auto cropped_sprite {load("CroppedMesh.png")};
     REQUIRE(cropped_sprite);
     CHECK(cropped_sprite->GetSize() == cropped_mesh.SourceSize);
     CHECK(cropped_sprite->GetOffset() == ipos32 {0, 1});
@@ -3614,7 +1767,7 @@ TEST_CASE("DefaultSpriteFactoryValidatesBakedMeshPayload")
     CHECK(cropped_sprite->IsHitTest({1, 0}));
     CHECK(cropped_sprite->IsHitTest({3, 1}));
     CHECK_FALSE(cropped_sprite->IsHitTest({3, 2}));
-    auto cropped_draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
+    auto cropped_draw_buf {client->SprMngr.GetRender().CreateDrawBuffer(false)};
     REQUIRE(cropped_sprite->FillData(cropped_draw_buf, frect32 {0.0f, 0.0f, 4.0f, 3.0f}, {ucolor {0, 0, 0}, ucolor {255, 255, 255}}) == 3);
     REQUIRE(cropped_draw_buf->VertCount == 3);
     CHECK(cropped_draw_buf->Vertices[0].PosX == Catch::Approx(1.0f));
@@ -3624,26 +1777,26 @@ TEST_CASE("DefaultSpriteFactoryValidatesBakedMeshPayload")
     CHECK(cropped_draw_buf->Vertices[2].PosX == Catch::Approx(1.0f));
     CHECK(cropped_draw_buf->Vertices[2].PosY == Catch::Approx(2.0f));
 
-    auto restored_image = client->SprMngr.LoadSpriteAsQuad(client->Hashes.to_hashed_string("CroppedMesh.png"), AtlasType::IfaceSprites);
+    auto restored_image {client->ResMngr.LoadSpriteAsQuad(client->Hashes.to_hashed_string("CroppedMesh.png"), AtlasType::IfaceSprites)};
     REQUIRE(restored_image);
     CHECK(restored_image->GetSize() == cropped_mesh.SourceSize);
     CHECK(restored_image->GetAtlasRect().width * restored_image->GetAtlas()->GetTexture()->SizeData[0] == Catch::Approx(4.0f));
     CHECK(restored_image->GetAtlasRect().height * restored_image->GetAtlas()->GetTexture()->SizeData[1] == Catch::Approx(3.0f));
-    optional<AtlasSpriteRegion> restored_region = restored_image->ResolveRegion({0.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 0.0f, 4.0f, 3.0f});
+    optional<AtlasSpriteRegion> restored_region {restored_image->ResolveRegion({0.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 0.0f, 4.0f, 3.0f})};
     REQUIRE(restored_region.has_value());
     CHECK(restored_region->DrawRect == frect32 {0.0f, 0.0f, 4.0f, 3.0f});
     CHECK(restored_region->TextureRect == restored_image->GetAtlasRect());
-    auto restored_draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
+    auto restored_draw_buf {client->SprMngr.GetRender().CreateDrawBuffer(false)};
     CHECK(restored_image->FillData(restored_draw_buf, frect32 {0.0f, 0.0f, 4.0f, 3.0f}, {ucolor {0, 0, 0}, ucolor {255, 255, 255}}) == 6);
 
-    auto quad_sprite = load("Quad.png");
+    auto quad_sprite {load("Quad.png")};
     REQUIRE(static_cast<bool>(quad_sprite));
-    auto quad_draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
+    auto quad_draw_buf {client->SprMngr.GetRender().CreateDrawBuffer(false)};
     CHECK(quad_sprite->FillData(quad_draw_buf, frect32 {0.0f, 0.0f, 2.0f, 2.0f}, {ucolor {0, 0, 0}, ucolor {255, 255, 255}}) == 6);
 
-    auto empty_sprite = load("Empty.png");
+    auto empty_sprite {load("Empty.png")};
     REQUIRE(static_cast<bool>(empty_sprite));
-    auto empty_draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
+    auto empty_draw_buf {client->SprMngr.GetRender().CreateDrawBuffer(false)};
     CHECK(empty_sprite->FillData(empty_draw_buf, frect32 {0.0f, 0.0f, 2.0f, 2.0f}, {ucolor {0, 0, 0}, ucolor {255, 255, 255}}) == 0);
 
     CHECK_THROWS(load("BadVersion.png"));
@@ -3663,20 +1816,20 @@ TEST_CASE("DefaultSpriteFactoryValidatesBakedMeshPayload")
 
 TEST_CASE("SpriteManagerMapsPolygonAtlasPatternsAndPaddedEffects")
 {
-    SpriteMeshData mesh;
+    SpriteMeshData mesh {};
     mesh.SourceSize = {4, 3};
     mesh.SourceOffset = {1, 0};
     mesh.Vertices = {{0, 0}, {3, 0}, {0, 3}};
     mesh.Indices = {0, 1, 2};
 
-    auto settings = MakeClientTestSettings();
-    auto client = MakeClientEngine(settings, MakeClientTestResources({{"PatternMesh.png", BakerTests::MakeMinimalBakedSprite(3, 3, SpriteMeshKind::Mesh, mesh)}}));
-    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
-    RecordingQuadEffect effect;
+    auto settings {MakeClientTestSettings()};
+    auto client {MakeClientEngine(settings, MakeClientTestResources({{"PatternMesh.png", BakerTests::MakeMinimalBakedSprite(3, 3, SpriteMeshKind::Mesh, mesh)}}))};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+    RecordingQuadEffect effect {};
 
-    auto sprite = client->SprMngr.LoadSprite("PatternMesh.png", AtlasType::IfaceSprites);
+    auto sprite {client->ResMngr.LoadSprite("PatternMesh.png", AtlasType::IfaceSprites)};
     REQUIRE(sprite);
-    auto atlas_sprite = sprite.dyn_cast<AtlasSprite>();
+    auto atlas_sprite {sprite.dyn_cast<AtlasSprite>()};
     REQUIRE(atlas_sprite);
     sprite->SetDrawEffect(make_nptr(&effect));
 
@@ -3684,7 +1837,7 @@ TEST_CASE("SpriteManagerMapsPolygonAtlasPatternsAndPaddedEffects")
     client->SprMngr.Flush();
 
     REQUIRE(effect.Draws.size() == 1);
-    const RecordedQuadDraw& pattern_draw = effect.Draws.front();
+    const RecordedQuadDraw& pattern_draw {effect.Draws.front()};
     REQUIRE(pattern_draw.Vertices.size() == 16);
     REQUIRE(pattern_draw.Indices.size() == 24);
     CHECK(pattern_draw.StartIndex == 0);
@@ -3692,8 +1845,8 @@ TEST_CASE("SpriteManagerMapsPolygonAtlasPatternsAndPaddedEffects")
     CHECK(*pattern_draw.IndicesToDraw == 24);
     CHECK(pattern_draw.CustomTexture == atlas_sprite->GetBatchTexture());
 
-    frect32 atlas_rect = atlas_sprite->GetAtlasRect();
-    auto check_quad = [](const RecordedQuadDraw& draw, size_t vertex, frect32 draw_rect, frect32 texture_rect) {
+    frect32 atlas_rect {atlas_sprite->GetAtlasRect()};
+    auto check_quad {[](const RecordedQuadDraw& draw, size_t vertex, frect32 draw_rect, frect32 texture_rect) {
         REQUIRE(vertex + 3 < draw.Vertices.size());
         CHECK(draw.Vertices[vertex + 0].PosX == Catch::Approx(draw_rect.x));
         CHECK(draw.Vertices[vertex + 0].PosY == Catch::Approx(draw_rect.y + draw_rect.height));
@@ -3711,7 +1864,7 @@ TEST_CASE("SpriteManagerMapsPolygonAtlasPatternsAndPaddedEffects")
         CHECK(draw.Vertices[vertex + 3].PosY == Catch::Approx(draw_rect.y + draw_rect.height));
         CHECK(draw.Vertices[vertex + 3].TexU == Catch::Approx(texture_rect.x + texture_rect.width));
         CHECK(draw.Vertices[vertex + 3].TexV == Catch::Approx(texture_rect.y + texture_rect.height));
-    };
+    }};
 
     check_quad(pattern_draw, 0, {11.0f, 20.0f, 3.0f, 3.0f}, atlas_rect);
     check_quad(pattern_draw, 4, {15.0f, 20.0f, 2.0f, 3.0f}, {atlas_rect.x, atlas_rect.y, atlas_rect.width * 2.0f / 3.0f, atlas_rect.height});
@@ -3722,26 +1875,26 @@ TEST_CASE("SpriteManagerMapsPolygonAtlasPatternsAndPaddedEffects")
     REQUIRE(client->SprMngr.DrawSpriteRegion(sprite, {0.0f, 0.0f}, {1.0f, 1.0f}, {50.0f, 60.0f}, {4.0f, 3.0f}, ucolor {255, 255, 255, 255}));
     client->SprMngr.Flush();
     REQUIRE(effect.Draws.size() == 1);
-    const RecordedQuadDraw& region_draw = effect.Draws.front();
+    const RecordedQuadDraw& region_draw {effect.Draws.front()};
     REQUIRE(region_draw.Vertices.size() == 4);
     REQUIRE(region_draw.Indices.size() == 6);
     check_quad(region_draw, 0, {51.0f, 60.0f, 3.0f, 3.0f}, atlas_rect);
 
     effect.Draws.clear();
     effect.SpriteBorderBuf.reset();
-    constexpr int32_t padding = 2;
+    constexpr int32_t padding {2};
     client->SprMngr.DrawSpriteWithEffect(sprite, {100, 200}, ucolor {255, 255, 255, 255}, make_ptr(&effect), padding);
 
     REQUIRE(effect.Draws.size() == 1);
-    const RecordedQuadDraw& effect_draw = effect.Draws.front();
+    const RecordedQuadDraw& effect_draw {effect.Draws.front()};
     REQUIRE(effect_draw.Vertices.size() == 4);
     REQUIRE(effect_draw.Indices.size() == 6);
     CHECK(effect_draw.StartIndex == 0);
     CHECK_FALSE(effect_draw.IndicesToDraw.has_value());
     CHECK(effect_draw.CustomTexture == atlas_sprite->GetBatchTexture());
 
-    float32_t texture_padding_x = atlas_sprite->GetAtlas()->GetTexture()->SizeData[2] * numeric_cast<float32_t>(padding);
-    float32_t texture_padding_y = atlas_sprite->GetAtlas()->GetTexture()->SizeData[3] * numeric_cast<float32_t>(padding);
+    float32_t texture_padding_x {atlas_sprite->GetAtlas()->GetTexture()->SizeData[2] * numeric_cast<float32_t>(padding)};
+    float32_t texture_padding_y {atlas_sprite->GetAtlas()->GetTexture()->SizeData[3] * numeric_cast<float32_t>(padding)};
     frect32 effect_draw_rect {99.0f, 198.0f, 7.0f, 7.0f};
     frect32 effect_texture_rect {atlas_rect.x - texture_padding_x, atlas_rect.y - texture_padding_y, atlas_rect.width + texture_padding_x * 2.0f, atlas_rect.height + texture_padding_y * 2.0f};
 
@@ -3772,18 +1925,18 @@ TEST_CASE("SpriteManagerMapsPolygonAtlasPatternsAndPaddedEffects")
 
 TEST_CASE("SpriteWireframeRendersThroughPrimitiveOverlay")
 {
-    auto settings = MakeClientTestSettings();
+    auto settings {MakeClientTestSettings()};
     BakerTests::OverrideSetting(settings.Render.DrawWireframe, true);
-    auto client = MakeClientEngine(settings);
+    auto client {MakeClientEngine(settings)};
 
-    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
 
-    SpriteMeshData mesh;
+    SpriteMeshData mesh {};
     mesh.SourceSize = {10, 10};
     mesh.Vertices = {{0, 0}, {5, 10}, {10, 0}};
     mesh.Indices = {0, 1, 2};
 
-    auto [atlas, atlas_allocation, atlas_pos] = client->SprMngr.GetAtlasMngr()->FindAtlasPlace(AtlasType::OneImage, {10, 10});
+    auto [atlas, atlas_allocation, atlas_pos] {client->SprMngr.GetAtlasMngr()->FindAtlasPlace(AtlasType::OneImage, {10, 10})};
     CHECK(atlas->GetSize() == isize32 {12, 12});
     CHECK(atlas_pos == ipos32 {1, 1});
     CHECK(atlas_allocation->GetPosition() == ipos32 {0, 0});
@@ -3794,120 +1947,650 @@ TEST_CASE("SpriteWireframeRendersThroughPrimitiveOverlay")
         10.0f / numeric_cast<float32_t>(atlas->GetSize().width),
         10.0f / numeric_cast<float32_t>(atlas->GetSize().height),
     };
-    auto sprite = safe_alloc::make_shared<AtlasSprite>(&client->SprMngr, isize32 {10, 10}, ipos32 {}, atlas, std::move(atlas_allocation), sprite_atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
+    auto sprite {safe_alloc::make_shared<AtlasSprite>(&client->SprMngr, isize32 {10, 10}, ipos32 {}, atlas, std::move(atlas_allocation), sprite_atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)})};
 
     client->SprMngr.DrawSprite(sprite, {2, 3}, ucolor {255, 255, 255});
     CHECK_NOTHROW(client->SprMngr.Flush());
 }
 
-TEST_CASE("ClientEngineRunsMainLoopHeadlessly")
+TEST_CASE("ClientEngineAnimationResolverReportsCleanupExceptions")
 {
-    // The ImGui sweep below writes under `Workspace/`, relative to whatever directory the binary was launched
-    // from, and `ImGui::LogToFile` asserts on a file it cannot open — aborting the frame mid-sweep
-    (void)fs::create_directories("Workspace");
+    class ThrowingStopSprite final : public Sprite
+    {
+    public:
+        ThrowingStopSprite(ptr<SpriteManager> spr_mngr, shared_ptr<Sprite> copy) :
+            Sprite(spr_mngr, copy->GetSize(), copy->GetOffset()),
+            Copy {std::move(copy)}
+        {
+        }
 
-    auto settings = MakeClientTestSettings();
-    auto client_resources = MakeUnitTestFontResources();
-    client_resources.emplace_back("Quad.png", BakerTests::MakeMinimalBakedSprite(2, 2));
+        auto MakeCopy() const -> shared_ptr<Sprite> override
+        {
+            if (ThrowOnCopy) {
+                throw InvalidCallException("Animation copy failed");
+            }
 
-    for (auto& [effect_path, effect_data] : MakeBakedEffectResources("Effects/UnitTestOffscreen.fofx")) {
-        client_resources.emplace_back(effect_path, effect_data);
+            return Copy->MakeCopy();
+        }
+
+        auto FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override { return Copy->FillData(dbuf, pos, colors); }
+
+        void Stop() override
+        {
+            StopCalls++;
+
+            if (ThrowOnStop) {
+                throw InvalidCallException("Animation stop failed");
+            }
+        }
+
+        shared_ptr<Sprite> Copy;
+        bool ThrowOnCopy {};
+        bool ThrowOnStop {true};
+        int32_t StopCalls {};
+    };
+
+    auto settings {MakeClientTestSettings()};
+    auto client {MakeClientEngine(settings, MakeClientTestResources({{"Sequence.fofrm", BakerTests::MakeMultiFrameBakedSprite(3, 2, 2, 120)}}))};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+    auto source {safe_alloc::make_shared<ThrowingStopSprite>(&client->SprMngr, client->ResMngr.LoadSprite("Sequence.fofrm", AtlasType::MapSprites))};
+    uint32_t spr_id {client->AnimAdd(source)};
+    bool resolved {true};
+    Entity::EventCallbackData callback {};
+    callback.Callback = [&spr_id, &resolved](FuncCallData& call) {
+        *cast_from_void<uint32_t*>(call.ArgsData[3]) = spr_id;
+        return resolved ? Entity::EventResult::ContinueChain : Entity::EventResult::StopChain;
+    };
+
+    callback.SubscriptionPtr = reinterpret_cast<uintptr_t>(&spr_id);
+    callback.HasExplicitResult = true;
+    client->OnCritterAnimationSprite.Subscribe(std::move(callback));
+    auto unsubscribe {scope_exit([&client, &spr_id]() noexcept { client->OnCritterAnimationSprite.Unsubscribe(reinterpret_cast<uintptr_t>(&spr_id)); })};
+    auto resolve {[&] { return client->ResolveCritterAnimationSprite(client->Hashes.to_hashed_string("ThrowingStop"), CritterStateAnim {}, CritterActionAnim {}); }};
+
+    SECTION("SuccessfulResolution")
+    {
+        auto sprite {resolve()};
+        REQUIRE(sprite);
+        CHECK(sprite->GetFramesCount() == 3);
     }
+
+    SECTION("CopyFailurePreservesTheOriginalException")
+    {
+        source->ThrowOnCopy = true;
+        CHECK_THROWS_MATCHES(resolve(), InvalidCallException, Catch::Matchers::MessageMatches(Catch::Matchers::ContainsSubstring("Animation copy failed")));
+    }
+
+    SECTION("StoppedEventStillCleansUp")
+    {
+        resolved = false;
+        CHECK_FALSE(resolve());
+    }
+
+    SECTION("DirectFreeReleasesTheHandleWhenStopThrows")
+    {
+        CHECK_THROWS_MATCHES(client->AnimFree(spr_id), InvalidCallException, Catch::Matchers::MessageMatches(Catch::Matchers::ContainsSubstring("Animation stop failed")));
+    }
+
+    CHECK(source->StopCalls == 1);
+    CHECK_FALSE(client->AnimGetSpr(spr_id));
+
+    source->ThrowOnStop = false;
+    client->AnimFree(spr_id);
+    CHECK_FALSE(client->AnimGetSpr(spr_id));
+}
+
+TEST_CASE("ClientEngineSpriteCleanupReleasesUnusedFrames")
+{
+    class SpriteCleanupClient final : public ClientEngine
+    {
+    public:
+        using ClientEngine::CleanupSpriteCache;
+        using ClientEngine::ClientEngine;
+    };
+
+    auto settings {MakeClientTestSettings()};
+    auto client {safe_alloc::make_refcounted<SpriteCleanupClient>(&settings,
+        MakeClientTestResources({
+            {"Released.fofrm", BakerTests::MakeMultiFrameBakedSprite(3, 2, 2, 120)},
+            {"Active.fofrm", BakerTests::MakeMultiFrameBakedSprite(3, 2, 2, 120)},
+        }),
+        &GetApp()->MainWindow)};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+
+    uint32_t released_id {client->AnimLoad(client->Hashes.to_hashed_string("Released.fofrm"), AtlasType::MapSprites)};
+    auto released {client->AnimGetSpr(released_id).dyn_cast<SpriteSheet>()};
+    REQUIRE(released);
+    auto frame_owner {released->GetSprite(0)->weak_from_this()};
+    client->AnimFree(released_id);
+    CHECK(frame_owner.lock());
+
+    uint32_t active_id {client->AnimLoad(client->Hashes.to_hashed_string("Active.fofrm"), AtlasType::MapSprites)};
+    client->CleanupSpriteCache();
+    CHECK_FALSE(frame_owner.lock());
+    REQUIRE(client->AnimGetSpr(active_id));
+    CHECK(client->AnimGetSpr(active_id)->GetSize() == isize32 {2, 2});
+    client->AnimFree(active_id);
+}
+
+TEST_CASE("CritterFramesCacheReentrantResolutionUsesCachedResult")
+{
+    class ObservedCopySprite final : public Sprite
+    {
+    public:
+        ObservedCopySprite(ptr<SpriteManager> spr_mngr, shared_ptr<Sprite> source, ptr<shared_ptr<Sprite>> observed_copy) :
+            Sprite(spr_mngr, source->GetSize(), source->GetOffset()),
+            _source {std::move(source)},
+            _observedCopy {observed_copy}
+        {
+        }
+
+        auto MakeCopy() const -> shared_ptr<Sprite> override
+        {
+            auto copy {_source->MakeCopy()};
+            *_observedCopy = copy;
+            return copy;
+        }
+
+        auto FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override { return _source->FillData(dbuf, pos, colors); }
+
+    private:
+        shared_ptr<Sprite> _source;
+
+        // Const copies still publish their result to the test observer slot
+        mutable ptr<shared_ptr<Sprite>> _observedCopy;
+    };
+
+    auto settings {MakeClientTestSettings()};
+    auto client {MakeClientEngine(settings,
+        MakeClientTestResources({
+            {"Inner.fofrm", BakerTests::MakeMultiFrameBakedSprite(2, 2, 2, 120)},
+            {"Outer.fofrm", BakerTests::MakeMultiFrameBakedSprite(3, 2, 2, 180)},
+        }))};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+    bool nested_missing {false};
+
+    SECTION("AnAlreadyCachedSheetWins")
+    {
+    }
+
+    SECTION("AnAlreadyCachedMissingResultWins")
+    {
+        nested_missing = true;
+    }
+
+    hstring model_name {client->Hashes.to_hashed_string("ReentrantResolution")};
+    CritterStateAnim state_anim {static_cast<CritterStateAnim>(401)};
+    CritterActionAnim action_anim {static_cast<CritterActionAnim>(509)};
+    auto inner_source {client->ResMngr.LoadSprite("Inner.fofrm", AtlasType::MapSprites)};
+    REQUIRE(inner_source);
+    shared_ptr<Sprite> observed_outer_copy {};
+    auto outer_source {safe_alloc::make_shared<ObservedCopySprite>(&client->SprMngr, client->ResMngr.LoadSprite("Outer.fofrm", AtlasType::MapSprites), make_ptr(&observed_outer_copy))};
+    nptr<const SpriteSheet> nested {};
+    bool resolving {false};
+    client->OnCritterAnimationSprite.UnsubscribeAll();
+    Entity::EventCallbackData callback {};
+    callback.Callback = [&](FuncCallData& call) {
+        if (resolving) {
+            *cast_from_void<uint32_t*>(call.ArgsData[3]) = nested_missing ? 0 : client->AnimAdd(inner_source);
+        }
+        else {
+            resolving = true;
+            nested = client->CritterFrames.GetCritterAnimFrames(model_name, state_anim, action_anim, mdir {0});
+            resolving = false;
+            *cast_from_void<uint32_t*>(call.ArgsData[3]) = client->AnimAdd(outer_source);
+        }
+
+        return Entity::EventResult::ContinueChain;
+    };
+
+    client->OnCritterAnimationSprite.Subscribe(std::move(callback));
+    auto unsubscribe {scope_exit([&client]() noexcept { client->OnCritterAnimationSprite.UnsubscribeAll(); })};
+    auto result {client->CritterFrames.GetCritterAnimFrames(model_name, state_anim, action_anim, mdir {0})};
+
+    // Keep the rejected outer copy alive so the wrong implementation fails without dereferencing freed memory
+    REQUIRE(observed_outer_copy);
+    CHECK(result == nested);
+    CHECK(client->CritterFrames.GetCritterAnimFrames(model_name, state_anim, action_anim, mdir {0}) == nested);
+
+    if (nested_missing) {
+        CHECK_FALSE(result);
+    }
+    else {
+        REQUIRE(result);
+        CHECK(result->GetFramesCount() == 2);
+    }
+}
 
 #if FO_ENABLE_3D
-    // The baked model makes the 3D critter draw bindings reachable from the render pass
-    vector<uint8_t> model_mesh = MakeRuntimeModelTriangleMesh();
-    client_resources.emplace_back("Models/RuntimeInstance.fbx", model_mesh);
-    client_resources.emplace_back("Models/RuntimeInstance.fo3d", MakeRuntimeModelDescription("Models/RuntimeInstance.fo3d", "Models/RuntimeInstance.fbx", model_mesh));
-    client_resources.emplace_back("ModelAnimationInfo.foinfo", MakeUnitTestModelAnimationInfo("Models/RuntimeInstance.fo3d"));
-#endif
-    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(client_resources)));
 
-    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+TEST_CASE("ModelAnimationUsesProjectLocomotionAndFrozenPose")
+{
+    constexpr string_view mesh_path {"Models/RuntimeInstance.fbx"};
+    constexpr string_view model_path {"Models/RuntimeInstance.fo3d"};
+    vector<uint8_t> mesh {MakeSkinnedRuntimeModelMesh()};
+    vector<uint8_t> animation_info {};
+    vector<pair<string, vector<uint8_t>>> resources {};
+    resources.emplace_back(string(mesh_path), mesh);
+    resources.emplace_back(string(model_path), MakeRuntimeModelDescription(model_path, mesh_path, mesh, "RotationBone Limb\nAnim 401 509 ModelFile Base\n", {}, nullptr, true, {}, 2.0f, &animation_info));
+    resources.emplace_back("ModelAnimationInfo.foinfo", std::move(animation_info));
+    auto proto_source {safe_alloc::make_unique<BakerTests::MemoryDataSource>("PolicyMapMetadata")};
+    proto_source->AddFile("Metadata.fometa-client", BakerTests::MakeEmptyMetadataBlob());
+    FileSystem proto_resources {};
+    proto_resources.AddCustomSource(std::move(proto_source));
+    BakerClientEngine proto_engine {proto_resources};
+    vector<pair<string, function<void(ProtoMap&)>>> maps {};
+    maps.emplace_back("PolicyMap", [](ProtoMap& proto) { proto.SetSize(msize {20, 20}); });
+    resources.emplace_back("PolicyMap.fopro-bin-client", BakerTests::MakeMultiProtoResourceBlob<ProtoMap>(proto_engine, proto_engine.Hashes.to_hashed_string("Map"), maps));
+    auto settings {MakeClientTestSettings()};
+    BakerTests::OverrideSetting(settings.Render.LegBones, vector<string> {"Limb"});
+    auto client {MakeClientEngine(settings, MakeClientTestResources(std::move(resources)))};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+    auto factory {client->ResMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>()};
+    REQUIRE(factory);
+    auto model {factory->GetModelMngr()->CreateModel(model_path)};
+    REQUIRE(model);
+    model->SetupFrame(isize32 {128, 128}, ipos32 {64, 96});
+    auto state {static_cast<CritterStateAnim>(401)};
+    auto action {static_cast<CritterActionAnim>(509)};
+    REQUIRE(model->HasAnimation(state, action));
+    hstring root {client->Hashes.to_hashed_string("Limb")};
+    auto pose {[&] {
+        coarse_sleep(std::chrono::milliseconds {5});
+        client->GameTime.FrameAdvance(false);
+        model->PoseSpriteFrame(true);
+    }};
 
-    REQUIRE(ImGui::GetCurrentContext() == nullptr);
-    ImGuiExt::Init();
+    SECTION("ActionContextIsRetainedAndDeliveredToBothAnimationEvents")
+    {
+        auto context_proto {safe_alloc::make_refcounted<ProtoItem>(client->Hashes.to_hashed_string("AnimationContextItem"), client->GetPropertyRegistrar("Item").as_ptr())};
+        int32_t initial_refs {context_proto->GetRefCount()};
+        nptr<Entity> playback_context {};
+        nptr<Entity> process_context {};
 
-    auto destroy_context = scope_exit([]() noexcept {
-        safe_call([] {
-            if (ImGui::GetCurrentContext() != nullptr) {
-                ImGui::DestroyContext();
+        Entity::EventCallbackData playback {};
+        playback.Callback = [&](FuncCallData& call) {
+            if (*cast_from_void<CritterAnimationContext*>(call.ArgsData[4]) == CritterAnimationContext::Action) {
+                playback_context = *cast_from_void<Entity**>(call.ArgsData[3]);
+                *cast_from_void<CritterAnimationFlags*>(call.ArgsData[6]) = CritterAnimationFlags::Freeze;
             }
+
+            return Entity::EventResult::ContinueChain;
+        };
+
+        Entity::EventCallbackData processing {};
+        processing.Callback = [&](FuncCallData& call) {
+            nptr<Entity> context {*cast_from_void<Entity**>(call.ArgsData[3])};
+
+            if (context) {
+                process_context = context;
+            }
+
+            return Entity::EventResult::ContinueChain;
+        };
+
+        client->OnCritterAnimationPlaybackInit.Subscribe(std::move(playback));
+        client->OnCritterAnimationProcess.Subscribe(std::move(processing));
+        auto map {safe_alloc::make_refcounted<MapView>(client, ident_t {1001}, client->GetProtoMap(client->Hashes.to_hashed_string("PolicyMap")), isize32 {320, 200})};
+        auto destroy_map {scope_exit([&map]() noexcept { safe_call([&map] { map->DestroySelf(); }); })};
+        map->EnableMapperMode();
+        auto critter {map->AddMapperCritter(client->Hashes.to_hashed_string("UnitTestModelCritter"), mpos {6, 6}, mdir {0}, nullptr)};
+
+        critter->AppendAnim(state, action, context_proto);
+        CHECK(playback_context == context_proto.get());
+        CHECK(process_context == context_proto.get());
+        CHECK(context_proto->GetRefCount() == initial_refs + 1);
+
+        critter->StopAnim();
+        CHECK(context_proto->GetRefCount() == initial_refs);
+    }
+
+    SECTION("SamePairCanChangeItsFrozenTime")
+    {
+        (void)model->PlayAnim(state, action, nullptr, 0.0f, ModelAnimFlags::Freeze);
+        pose();
+        auto initial {model->GetBonePos(root)};
+        REQUIRE(initial);
+        (void)model->PlayAnim(state, action, nullptr, 0.5f, ModelAnimFlags::Freeze);
+        pose();
+        auto middle {model->GetBonePos(root)};
+        REQUIRE(middle);
+        CHECK(*initial != *middle);
+        pose();
+        CHECK(model->GetBonePos(root) == middle);
+        CHECK(model->GetStateAnim() == state);
+        CHECK(model->GetActionAnim() == action);
+    }
+
+    SECTION("FrozenMovementEndpointDoesNotWrap")
+    {
+        float32_t time {0.999f};
+        model->SetAnimInitCallback([&](CritterAnimationContext, int32_t, CritterStateAnim& selected_state, CritterActionAnim& selected_action, CritterAnimationFlags& flags, float32_t& normalized_time, float32_t&) {
+            selected_state = state;
+            selected_action = action;
+            flags = CritterAnimationFlags::Freeze;
+            normalized_time = time;
         });
-    });
 
-    ImGuiIO& io = ImGui::GetIO();
-    io.DisplaySize = ImVec2 {1280.0f, 720.0f};
-    io.DeltaTime = 1.0f / 60.0f;
-    io.IniFilename = nullptr;
-    io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
-
-    // A disconnected client still runs its whole frame: timers, scheduled callbacks, script loop
-    // events and the interface render pass
-    for (int32_t frame = 0; frame < 3; frame++) {
-        ImGui::NewFrame();
-        REQUIRE_NOTHROW(client->MainLoop());
-        ImGui::Render();
+        (void)model->PlayAnim(state, action, nullptr, 0.0f, ModelAnimFlags::NoSmooth);
+        pose();
+        auto first {model->GetBonePos(root)};
+        REQUIRE(first);
+        model->SetMovementState(true, true, 137);
+        pose();
+        auto near_end {model->GetBonePos(root)};
+        REQUIRE(near_end);
+        CHECK(*near_end != *first);
+        time = 1.0f;
+        model->SetMovementState(true, true, 137);
+        pose();
+        CHECK(model->GetBonePos(root) == near_end);
+        model->SetMoveDir(mdir {180}, false);
+        pose();
+        auto turned_end {model->GetBonePos(root)};
+        time = 0.999f;
+        model->SetMovementState(true, true, 137);
+        pose();
+        CHECK(model->GetBonePos(root) == turned_end);
     }
 
-    int32_t loop_calls = 0;
-    REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientEngineTest::UnitTestGetLoopCalls"), loop_calls));
-    CHECK(loop_calls > 0);
+    SECTION("FrozenTurnCanBeReselected")
+    {
+        float32_t time {0.0f};
+        model->SetAnimInitCallback([&](CritterAnimationContext, int32_t, CritterStateAnim& selected_state, CritterActionAnim& selected_action, CritterAnimationFlags& flags, float32_t& normalized_time, float32_t&) {
+            selected_state = state;
+            selected_action = action;
+            flags = CritterAnimationFlags::Freeze;
+            normalized_time = time;
+        });
 
-    int32_t render_calls = 0;
-    REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientEngineTest::UnitTestGetRenderCalls"), render_calls));
-    CHECK(render_calls > 0);
+        (void)model->PlayAnim(state, action, nullptr, 0.0f, ModelAnimFlags::NoSmooth);
+        model->SetDir(mdir {0}, false);
+        model->SetMovementState(true, false, 0);
+        pose();
+        model->SetLookDir(mdir {120});
+        nanotime turn_deadline {client->GameTime.GetFrameTime() + std::chrono::seconds {3}};
 
-    // Re-run with script drawing enabled so the render-pass-only draw bindings execute
-    REQUIRE(client->CallFunc<void>(client->Hashes.to_hashed_string("ClientEngineTest::UnitTestEnableRenderDrawing")));
+        // Bone positions include world facing; settle the turn before comparing frozen animation samples
+        while (!is_float_equal(model->GetMoveDirAngle(), 60.0f) && client->GameTime.GetFrameTime() < turn_deadline) {
+            pose();
+        }
 
-    for (int32_t frame = 0; frame < 2; frame++) {
-        ImGui::NewFrame();
-        REQUIRE_NOTHROW(client->MainLoop());
-        ImGui::Render();
+        REQUIRE(is_float_equal(model->GetMoveDirAngle(), 60.0f));
+        pose();
+        float32_t turn_angle {model->GetMoveDirAngle()};
+        auto first {model->GetBonePos(root)};
+        REQUIRE(first);
+        REQUIRE(model->GetMovingContext() == CritterAnimationContext::TurnRight);
+        time = 0.5f;
+        model->SetMovementState(true, false, 0);
+        pose();
+        auto middle {model->GetBonePos(root)};
+        REQUIRE(middle);
+        CHECK(middle != first);
+        pose();
+        CHECK(model->GetMoveDirAngle() == turn_angle);
+        CHECK(model->GetMovingContext() == CritterAnimationContext::TurnRight);
+        CHECK(model->GetBonePos(root) == middle);
     }
 
-    // An empty label must surface as a script exception rather than an unaddressable widget; the sweep runs inside
-    // the render pass because the accessor exists only while a frame is open
-    int32_t probe_count = 0;
-    int32_t rejections = 0;
-    REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientEngineTest::UnitTestImGuiEmptyIdProbeCount"), probe_count));
-    REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientEngineTest::UnitTestGetImGuiEmptyIdRejections"), rejections));
-    CHECK(probe_count > 0);
-    CHECK(rejections > 0);
-    CHECK(rejections % probe_count == 0);
+    SECTION("SelectionSpeedMultipliesInstanceSpeedAndPreservesPhase")
+    {
+        auto reference {factory->GetModelMngr()->CreateModel(model_path)};
+        REQUIRE(reference);
+        reference->SetupFrame(isize32 {128, 128}, ipos32 {64, 96});
+        (void)reference->PlayAnim(state, action, nullptr, 0.25f, ModelAnimFlags::NoSmooth);
+        model->SetSpeed(2.0f);
+        (void)model->PlayAnim(state, action, nullptr, 0.25f, ModelAnimFlags::NoSmooth, 0.5f);
+        model->PoseSpriteFrame(true);
+        reference->PoseSpriteFrame(true);
+        coarse_sleep(std::chrono::milliseconds {60});
+        client->GameTime.FrameAdvance(false);
+        model->PoseSpriteFrame(true);
+        reference->PoseSpriteFrame(true);
+        CHECK(model->GetBonePos(root) == reference->GetBonePos(root));
+        auto previous {model->GetBonePos(root)};
+        REQUIRE(previous);
+        (void)model->PlayAnim(state, action, nullptr, 0.25f, ModelAnimFlags::NoSmooth, 0.25f);
+        model->PoseSpriteFrame(true);
+        auto current {model->GetBonePos(root)};
+        REQUIRE(current);
+        CHECK(current == previous);
+    }
 
-    int32_t sprite_rejections = 0;
-    REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientEngineTest::UnitTestGetImGuiSpriteRejections"), sprite_rejections));
-    CHECK(sprite_rejections == 4);
+    SECTION("TurnLifetimeUsesRemainingClipTimeAndCurrentSpeed")
+    {
+        float32_t start_time {0.8f};
+        float32_t speed {1.0f};
+        float32_t updated_speed {1.0f};
+        bool expect_still_turning {false};
+        SECTION("NormalizedStartUsesRemainingDuration")
+        {
+        }
+        SECTION("FasterSelectionReschedulesCompletion")
+        {
+            start_time = 0.2f;
+            updated_speed = 4.0f;
+        }
+        SECTION("SlowerSelectionReschedulesCompletion")
+        {
+            start_time = 0.5f;
+            speed = 2.0f;
+            updated_speed = 0.5f;
+            expect_still_turning = true;
+        }
+        model->SetAnimInitCallback([&](CritterAnimationContext, int32_t, CritterStateAnim& selected_state, CritterActionAnim& selected_action, CritterAnimationFlags&, float32_t& normalized_time, float32_t& playback_speed) {
+            selected_state = state;
+            selected_action = action;
+            normalized_time = start_time;
+            playback_speed = speed;
+        });
 
-    // The surface guard keeps ImGui balanced when a probe throws, but a throw still means a binding
-    // misbehaved - the engine swallows it inside the event, so it is only visible through this counter
-    int32_t surface_failures = 0;
-    REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientEngineTest::UnitTestGetImGuiSurfaceFailures"), surface_failures));
+        (void)model->PlayAnim(state, action, nullptr, 0.0f, ModelAnimFlags::NoSmooth);
+        client->GameTime.FrameAdvance(false);
+        client->GameTime.Pause();
+        auto resume_clock {scope_exit([&]() noexcept {
+            if (client->GameTime.IsPaused()) {
+                safe_call([&]() { client->GameTime.Resume(); });
+            }
+        })};
 
-    string failed_stage;
-    REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientEngineTest::UnitTestGetImGuiFailedStage"), failed_stage));
-    INFO("last ImGui stage entered before the throw: " << failed_stage);
-    CHECK(surface_failures == 0);
+        model->PoseSpriteFrame(true);
+        model->SetDir(mdir {0}, false);
+        model->SetMovementState(true, false, 0);
+        model->SetLookDir(mdir {120});
+        nanotime selected_at {client->GameTime.GetFrameTime()};
+        pose();
+        INFO("Initial pose elapsed: " << (client->GameTime.GetFrameTime() - selected_at).milliseconds());
+        INFO("Selected clip duration: " << model->GetAnimDuration(state, action).milliseconds());
+        REQUIRE(model->GetMovingContext() == CritterAnimationContext::TurnRight);
+        model->PoseSpriteFrame(false);
+        auto before_speed_change {model->GetBonePos(root)};
+        speed = updated_speed;
+        model->SetMovementState(true, false, 0);
+        model->PoseSpriteFrame(false);
+        CHECK(model->GetBonePos(root) == before_speed_change);
+        client->GameTime.Resume();
 
-    // Input events must be safe to feed outside of a session too
-    InputEvent move;
-    move.Type = InputEvent::EventType::MouseMoveEvent;
-    move.MouseMove.MouseX = 40;
-    move.MouseMove.MouseY = 40;
-    REQUIRE_NOTHROW(client->ProcessInputEvent(move));
+        nanotime retimed_at {client->GameTime.GetFrameTime()};
+        coarse_sleep(std::chrono::milliseconds {650});
+        client->GameTime.FrameAdvance(false);
+        model->PoseSpriteFrame(true);
+        INFO("Time since retiming: " << (client->GameTime.GetFrameTime() - retimed_at).milliseconds());
+        INFO("Clip duration: " << model->GetAnimDuration(state, action).milliseconds());
+        CHECK(model->GetMovingContext() == (expect_still_turning ? CritterAnimationContext::TurnRight : CritterAnimationContext::Default));
 
-    InputEvent key_down;
-    key_down.Type = InputEvent::EventType::KeyDownEvent;
-    key_down.KeyDown.Code = KeyCode::A;
-    key_down.KeyDown.Text = "a";
-    REQUIRE_NOTHROW(client->ProcessInputEvent(key_down));
+        if (expect_still_turning) {
+            coarse_sleep(std::chrono::milliseconds {650});
+            client->GameTime.FrameAdvance(false);
+            model->PoseSpriteFrame(true);
+            CHECK(model->GetMovingContext() == CritterAnimationContext::Default);
+        }
+    }
 
-    InputEvent key_up;
-    key_up.Type = InputEvent::EventType::KeyUpEvent;
-    key_up.KeyUp.Code = KeyCode::A;
-    REQUIRE_NOTHROW(client->ProcessInputEvent(key_up));
+    SECTION("FrozenBodyOwnsTheSkeletonWhileMoving")
+    {
+        (void)model->PlayAnim(state, action, nullptr, 0.5f, ModelAnimFlags::Freeze);
+        pose();
+        auto frozen {model->GetBonePos(root)};
+        REQUIRE(frozen);
+        model->SetAnimInitCallback([&](CritterAnimationContext, int32_t, CritterStateAnim& selected_state, CritterActionAnim& selected_action, CritterAnimationFlags& flags, float32_t& normalized_time, float32_t&) {
+            selected_state = state;
+            selected_action = action;
+            flags = CritterAnimationFlags::Freeze;
+            normalized_time = 0.0f;
+        });
+
+        model->SetMovementState(true, true, 137);
+        pose();
+        CHECK(model->GetBonePos(root) == frozen);
+    }
+
+    SECTION("MovingSelectionCanFreezeWithoutBeingReplacedByDefaultContext")
+    {
+        int32_t observed_speed {0};
+        Entity::EventCallbackData selection {};
+        selection.Callback = [&](FuncCallData& call) {
+            if (*cast_from_void<CritterAnimationContext*>(call.ArgsData[4]) == CritterAnimationContext::Moving) {
+                observed_speed = *cast_from_void<int32_t*>(call.ArgsData[5]);
+                *cast_from_void<CritterStateAnim*>(call.ArgsData[1]) = state;
+                *cast_from_void<CritterActionAnim*>(call.ArgsData[2]) = action;
+                *cast_from_void<CritterAnimationFlags*>(call.ArgsData[6]) = CritterAnimationFlags::Freeze;
+                *cast_from_void<float32_t*>(call.ArgsData[7]) = 0.5f;
+            }
+
+            return Entity::EventResult::ContinueChain;
+        };
+
+        client->OnCritterAnimationPlaybackInit.Subscribe(std::move(selection));
+        auto map {safe_alloc::make_refcounted<MapView>(client, ident_t {1001}, client->GetProtoMap(client->Hashes.to_hashed_string("PolicyMap")), isize32 {320, 200})};
+        auto destroy_map {scope_exit([&map]() noexcept { safe_call([&map] { map->DestroySelf(); }); })};
+        map->EnableMapperMode();
+        auto critter {map->AddMapperCritter(client->Hashes.to_hashed_string("UnitTestModelCritter"), mpos {6, 6}, mdir {0}, nullptr)};
+        critter->SetScaleFactor(2000);
+        critter->SetMoving(safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {137}, vector<mdir> {mdir {0}}, vector<uint16_t> {1}, client->GameTime.GetFrameTime(), timespan {}, critter->GetHex(), ipos16 {}, ipos16 {}));
+        critter->RefreshView();
+        auto actor_model {critter->GetModel()};
+        REQUIRE(actor_model);
+        CHECK(actor_model->GetStateAnim() == state);
+        CHECK(actor_model->GetActionAnim() == action);
+        CHECK(observed_speed == 69);
+    }
+
+    SECTION("FrozenDefaultSelectionDisablesLocomotionDuringAdvancingAction")
+    {
+        Entity::EventCallbackData selection {};
+        selection.Callback = [&](FuncCallData& call) {
+            *cast_from_void<CritterStateAnim*>(call.ArgsData[1]) = state;
+            *cast_from_void<CritterActionAnim*>(call.ArgsData[2]) = action;
+
+            if (*cast_from_void<CritterAnimationContext*>(call.ArgsData[4]) != CritterAnimationContext::Action) {
+                *cast_from_void<CritterAnimationFlags*>(call.ArgsData[6]) = CritterAnimationFlags::Freeze;
+                *cast_from_void<float32_t*>(call.ArgsData[7]) = 1.0f;
+            }
+
+            return Entity::EventResult::ContinueChain;
+        };
+        client->OnCritterAnimationPlaybackInit.Subscribe(std::move(selection));
+
+        auto map {safe_alloc::make_refcounted<MapView>(client, ident_t {1001}, client->GetProtoMap(client->Hashes.to_hashed_string("PolicyMap")), isize32 {320, 200})};
+        auto destroy_map {scope_exit([&map]() noexcept { safe_call([&map] { map->DestroySelf(); }); })};
+
+        map->EnableMapperMode();
+
+        auto critter {map->AddMapperCritter(client->Hashes.to_hashed_string("UnitTestModelCritter"), mpos {6, 6}, mdir {0}, nullptr)};
+        auto actor_model {critter->GetModel()};
+        REQUIRE(actor_model);
+
+        critter->AppendAnim(state, action);
+        critter->SetMoving(safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {137}, vector<mdir> {mdir {0}}, vector<uint16_t> {1}, client->GameTime.GetFrameTime(), timespan {}, critter->GetHex(), ipos16 {}, ipos16 {}));
+        critter->RefreshView();
+
+        CHECK(actor_model->GetMovingContext() == CritterAnimationContext::Default);
+        CHECK(critter->IsAnimPlaying());
+        CHECK(actor_model->GetActionAnim() == action);
+    }
+
+    SECTION("QueuedFrozenActionOwnsMovingCritterLegs")
+    {
+        int32_t action_speed {-1};
+        Entity::EventCallbackData selection {};
+        selection.Callback = [&](FuncCallData& call) {
+            *cast_from_void<CritterStateAnim*>(call.ArgsData[1]) = state;
+            *cast_from_void<CritterActionAnim*>(call.ArgsData[2]) = action;
+
+            if (*cast_from_void<CritterAnimationContext*>(call.ArgsData[4]) == CritterAnimationContext::Action) {
+                action_speed = *cast_from_void<int32_t*>(call.ArgsData[5]);
+                *cast_from_void<CritterAnimationFlags*>(call.ArgsData[6]) = CritterAnimationFlags::Freeze;
+                *cast_from_void<float32_t*>(call.ArgsData[7]) = 0.5f;
+            }
+
+            return Entity::EventResult::ContinueChain;
+        };
+        client->OnCritterAnimationPlaybackInit.Subscribe(std::move(selection));
+        auto map {safe_alloc::make_refcounted<MapView>(client, ident_t {1001}, client->GetProtoMap(client->Hashes.to_hashed_string("PolicyMap")), isize32 {320, 200})};
+        auto destroy_map {scope_exit([&map]() noexcept { safe_call([&map] { map->DestroySelf(); }); })};
+        map->EnableMapperMode();
+        auto critter {map->AddMapperCritter(client->Hashes.to_hashed_string("UnitTestModelCritter"), mpos {6, 6}, mdir {0}, nullptr)};
+        auto actor_model {critter->GetModel()};
+        REQUIRE(actor_model);
+        critter->AppendAnim(state, action);
+        CHECK(action_speed == 0);
+        actor_model->PoseSpriteFrame(true);
+        auto frozen {actor_model->GetBonePos(root)};
+        REQUIRE(frozen);
+        critter->SetMoving(safe_alloc::make_refcounted<MovingContext>(map->GetSize(), uint16_t {137}, vector<mdir> {mdir {0}}, vector<uint16_t> {1}, client->GameTime.GetFrameTime(), timespan {}, critter->GetHex(), ipos16 {}, ipos16 {}));
+        critter->RefreshView();
+        coarse_sleep(std::chrono::milliseconds {20});
+        client->GameTime.FrameAdvance(false);
+        actor_model->PoseSpriteFrame(true);
+        CHECK(actor_model->GetBonePos(root) == frozen);
+        CHECK(critter->IsAnimPlaying());
+        critter->StopAnim();
+        coarse_sleep(std::chrono::milliseconds {20});
+        client->GameTime.FrameAdvance(false);
+        actor_model->PoseSpriteFrame(true);
+        CHECK_FALSE(critter->IsAnimPlaying());
+        CHECK(actor_model->GetBonePos(root) != frozen);
+        critter->SetScaleFactor(2000);
+        critter->AppendAnim(state, action);
+        CHECK(action_speed == 69);
+    }
+
+    SECTION("LocomotionCallbackReceivesDirectionAndSpeed")
+    {
+        vector<CritterAnimationContext> contexts {};
+        int32_t effective_speed {0};
+        model->SetAnimInitCallback([&](CritterAnimationContext context, int32_t moving_speed, CritterStateAnim& selected_state, CritterActionAnim& selected_action, CritterAnimationFlags&, float32_t&, float32_t& speed) {
+            contexts.emplace_back(context);
+            effective_speed = moving_speed;
+            selected_state = state;
+            selected_action = action;
+            speed = 0.73f;
+        });
+
+        model->SetDir(mdir {0}, false);
+        model->SetMovementState(true, true, 137);
+        CHECK(effective_speed == 137);
+        CHECK(model->GetMovingContext() == CritterAnimationContext::Moving);
+        model->SetMoveDir(mdir {180}, true);
+        CHECK(model->GetMovingContext() == CritterAnimationContext::MovingBack);
+        model->SetMovementState(true, false, 0);
+        model->SetLookDir(mdir {120});
+        CHECK(std::ranges::find(contexts, CritterAnimationContext::TurnRight) != contexts.end());
+        model->SetMoveDir(mdir {120}, false);
+        model->SetLookDir(mdir {0});
+        CHECK(std::ranges::find(contexts, CritterAnimationContext::TurnLeft) != contexts.end());
+        coarse_sleep(std::chrono::milliseconds {1500});
+        client->GameTime.FrameAdvance(false);
+        model->PoseSpriteFrame(true);
+        CHECK(model->GetMovingContext() == CritterAnimationContext::Default);
+        (void)model->PlayAnim(state, action, nullptr, 0.0f, ModelAnimFlags::PlayOnce);
+        pose();
+        CHECK(model->GetActionAnim() == action);
+    }
 }
+
+#endif
 
 FO_END_NAMESPACE

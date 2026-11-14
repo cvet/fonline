@@ -3,7 +3,7 @@ namespace FOnline;
 // Resolution of the entity an item currently lives in. This is pure entity-model mechanics -- a switch over
 // the engine's own ItemOwnership plus the matching engine id property -- so it belongs beside the entity
 // types rather than in a game module. Sync's holder-covering helpers need it, and the engine cannot depend
-// on a project class.
+// on a project class
 public static class ItemHolderExtensions
 {
 #if SERVER
@@ -26,7 +26,7 @@ public static class ItemHolderExtensions
         return null;
     }
 
-    // For paths where a missing holder is an invariant violation rather than a race.
+    // For paths where a missing holder is an invariant violation rather than a race
     public static Entity GetHolder(this Item item)
     {
         Entity? holder = item.FindHolder();

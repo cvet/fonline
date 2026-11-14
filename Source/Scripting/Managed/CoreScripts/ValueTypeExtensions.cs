@@ -1,6 +1,6 @@
 namespace FOnline;
 
-// Converts managed text to the engine hashed-string handle through the native hash registry.
+// Converts managed text to the engine hashed-string handle through the native hash registry
 public static class HStringExtensions
 {
     public static hstring hstr(this string? value) => new hstring(value ?? string.Empty);
@@ -21,7 +21,7 @@ public partial struct hdir
 }
 
 // AngelScript `mdir` methods are geometry-dependent. `hex` routes through the engine because square-map
-// rounding is engine-owned; hex rotation only needs the direction count.
+// rounding is engine-owned; hex rotation only needs the direction count
 public partial struct mdir
 {
     public mdir(short angle) : this((int)angle)
@@ -68,28 +68,26 @@ public partial struct mdir
 // (it only emits the raw field + its constructor). These mirror the AngelScript registrations in
 // Engine/Source/Scripting/AngelScript/AngelScriptTypes.cpp so a ported module sees the same surface.
 // ==/!=/Equals/GetHashCode come from the generic value-struct emission and are intentionally not
-// repeated here.
+// repeated here
 
 // timespan/nanotime store raw nanoseconds. synctime stores raw milliseconds (TimeRelated.h), so synctime
-// arithmetic must convert timespan deltas to and from milliseconds to match the native ABI.
+// arithmetic must convert timespan deltas to and from milliseconds to match the native ABI
 public partial struct timespan
 {
-    // Unit-tagged constructor mirroring AngelScriptTypes.cpp Time_ConstructWithPlace: `place` selects the
-    // unit of `value` (0 ns, 1 us, 2 ms, 3 s) and the stored `value` is normalized to nanoseconds. Used by
-    // the Time core script (Time.Milliseconds/Seconds/…).
+    // TimePlace selects the input unit; storage remains nanoseconds, matching Time_ConstructWithPlace
     public timespan(long value, int place)
     {
         switch (place) {
-        case 0:
+        case TimePlace.Nanoseconds:
             this.value = value;
             break;
-        case 1:
+        case TimePlace.Microseconds:
             this.value = value * 1_000L;
             break;
-        case 2:
+        case TimePlace.Milliseconds:
             this.value = value * 1_000_000L;
             break;
-        case 3:
+        case TimePlace.Seconds:
             this.value = value * 1_000_000_000L;
             break;
         default:
@@ -111,7 +109,7 @@ public partial struct timespan
 
     // Mirrors the engine std::formatter<steady_time_point::duration> (Essentials/TimeRelated.h), which
     // picks the scale from the magnitude. Without it a duration reaches a log through the default
-    // ValueType.ToString and prints its type name, which is what the combat timeout lines were showing.
+    // ValueType.ToString and prints its type name, which is what the combat timeout lines were showing
     public override string ToString() => FormatNanoseconds(value);
 
     internal static string FormatNanoseconds(long ns)
@@ -163,21 +161,20 @@ public partial struct timespan
 
 public partial struct synctime
 {
-    // Place-based constructor mirroring native synctime: `place` (0 ns, 1 us, 2 ms, 3 s) normalizes `value`
-    // to the stored millisecond count. Sub-millisecond inputs truncate just like duration_cast<milliseconds>.
+    // TimePlace selects the input unit; storage remains milliseconds, truncating sub-millisecond inputs
     public synctime(long value, int place)
     {
         switch (place) {
-        case 0:
+        case TimePlace.Nanoseconds:
             this.value = value / 1_000_000L;
             break;
-        case 1:
+        case TimePlace.Microseconds:
             this.value = value / 1_000L;
             break;
-        case 2:
+        case TimePlace.Milliseconds:
             this.value = value;
             break;
-        case 3:
+        case TimePlace.Seconds:
             this.value = value * 1_000L;
             break;
         default:
@@ -191,13 +188,14 @@ public partial struct synctime
     public static bool operator >=(synctime a, synctime b) => a.value >= b.value;
     public static synctime operator +(synctime a, timespan b) => new synctime(a.value + b.milliseconds);
     public static synctime operator -(synctime a, timespan b) => new synctime(a.value - b.milliseconds);
-    public static timespan operator -(synctime a, synctime b) => new timespan(a.value - b.value, 2);
+    public static timespan operator -(synctime a, synctime b) => new timespan(a.value - b.value,
+                                                                              TimePlace.Milliseconds);
 
     public long milliseconds => value;
     public long seconds => value / 1_000L;
-    public timespan timeSinceEpoch => new timespan(value, 2);
+    public timespan timeSinceEpoch => new timespan(value, TimePlace.Milliseconds);
 
-    // The native formatter renders a synctime through its duration value, and synctime stores milliseconds.
+    // The native formatter renders a synctime through its duration value, and synctime stores milliseconds
     public override string ToString() => timespan.FormatNanoseconds(value * 1_000_000L);
 }
 
@@ -229,17 +227,17 @@ public partial struct ident
 }
 
 // ucolor is a union of a uint32 `value` (rgba) and four bytes laid out r, g, b, a from the low byte up
-// (ExtendedTypes.h), so on the little-endian targets the components pack as r | g<<8 | b<<16 | a<<24.
+// (ExtendedTypes.h), so on the little-endian targets the components pack as r | g<<8 | b<<16 | a<<24
 public partial struct ucolor
 {
     public ucolor(int r, int g, int b, int a = 255)
     {
-        value = (uint)((r & 0xFF) | ((g & 0xFF) << 8) | ((b & 0xFF) << 16) | ((a & 0xFF) << 24));
+        value = (uint)(r & 0xFF) | ((uint)(g & 0xFF) << 8) | ((uint)(b & 0xFF) << 16) | ((uint)(a & 0xFF) << 24);
     }
 
     // red/green/blue/alpha are read/write (AngelScript registers them as direct-field properties on ucolor and
     // game scripts assign `color.alpha = ...`); the setter param `value` is the byte component, `this.value` the
-    // packed uint. The per-channel mask clears that channel's byte before OR-ing in the shifted new value.
+    // packed uint. The per-channel mask clears that channel's byte before OR-ing in the shifted new value
     public byte red
     {
         get => (byte)(value & 0xFF);
@@ -269,7 +267,7 @@ public partial struct ucolor
 
 // nanotime is a nanosecond timestamp (like synctime above): comparisons operate on the raw `value`,
 // arithmetic is with timespan deltas, and subtracting two nanotimes yields a timespan. Mirrors the
-// AngelScriptTypes.cpp nanotime registration.
+// AngelScriptTypes.cpp nanotime registration
 public partial struct nanotime
 {
     public static bool operator<(nanotime a, nanotime b) => a.value < b.value;
@@ -297,7 +295,7 @@ public partial struct nanotime
 // ToString is a separate question from opCmp parity: every one of these has a native std::formatter
 // (FO_DECLARE_TYPE_FORMATTER in Essentials/ExtendedTypes.h and Common/Geometry.h) that renders the fields
 // space-separated, so a struct without the managed mirror reaches a log as its own type name instead. That
-// is silent -- the line still prints -- so the mirrors are kept complete rather than added on demand.
+// is silent -- the line still prints -- so the mirrors are kept complete rather than added on demand
 internal static class SpatialFormat
 {
     public static string Fields(params object[] fields)
@@ -394,8 +392,8 @@ public partial struct mpos
     public mpos(string text)
     {
         string[] parts = text.Split(' ', System.StringSplitOptions.RemoveEmptyEntries);
-        x = short.Parse(parts[0], System.Globalization.CultureInfo.InvariantCulture);
-        y = short.Parse(parts[1], System.Globalization.CultureInfo.InvariantCulture);
+        this = new mpos(int.Parse(parts[0], System.Globalization.CultureInfo.InvariantCulture),
+                        int.Parse(parts[1], System.Globalization.CultureInfo.InvariantCulture));
     }
 
     public static bool operator<(mpos a, mpos b) => a.x != b.x ? a.x < b.x : a.y < b.y;
@@ -419,7 +417,7 @@ public partial struct msize
 // Convenience constructors for TextPackKey mirroring the C++ defaulted-arg ctors (TextPack.h) and the
 // AngelScript FromPack registration: the generated value-struct emits only the raw 4-field ctor, so a ported
 // `TextPackKey(TextPackName.Game, "Key")` (1-2 keys) needs these. String overloads hash via `new hstring(...)`
-// exactly as TextPackKey::FromParts/ToHashedString does; omitted keys default to the empty hstring.
+// exactly as TextPackKey::FromParts/ToHashedString does; omitted keys default to the empty hstring
 public partial struct TextPackKey
 {
     public TextPackKey(TextPackName collection, hstring key1) : this(collection, key1, default, default)

@@ -1,0 +1,278 @@
+namespace Showcase
+{
+
+///@ Property Player Server string ShowcaseAccount Mutable Persistent
+
+///@ RemoteCall Server EnterWorld()
+///@ RemoteCall Server FinishSmoke()
+///@ RemoteCall Client WorldReady()
+///@ RemoteCall Client FinishAcknowledged()
+
+#if SERVER
+///@ Setting Server bool Showcase.Automation
+///@ Setting Server bool Showcase.ContentTest
+#endif
+
+#if CLIENT
+///@ Setting Client bool Showcase.Automation
+///@ Setting Client bool Showcase.Capture
+#endif
+
+const hstring PlayerPid = "ShowcasePlayer".hstr();
+const hstring LocationPid = "ShowcaseLocation".hstr();
+const hstring MapPid = "ShowcaseMap".hstr();
+const int CaptureWarmupFrames = 180;
+const int CaptureSampleCount = 12;
+const int CaptureSampleStrideFrames = 4;
+const int TimespanMillisecondsPlace = 2;
+
+timespan Milliseconds(int value)
+{
+    return timespan(value, TimespanMillisecondsPlace);
+}
+
+#if SERVER
+
+[[ModuleInit]]
+void InitServer()
+{
+    Game.OnStart.Subscribe(OnServerStart);
+}
+
+[[Event]]
+void OnServerStart()
+{
+    Game.Log("showcase_server_started");
+    if (Settings.Showcase.ContentTest) {
+        RunContentTest();
+    }
+}
+
+void RunContentTest()
+{
+    verify(Game.CheckProtoCritter(PlayerPid), "Showcase player prototype is missing");
+    verify(Game.CheckProtoItem("ShowcaseFloor".hstr()), "Showcase floor prototype is missing");
+    verify(Game.CheckProtoItem("ShowcaseBeacon".hstr()), "Showcase beacon prototype is missing");
+    verify(Game.CheckProtoItem("ShowcasePanel".hstr()), "Showcase panel prototype is missing");
+    verify(Game.CheckProtoItem("ShowcaseParticle".hstr()), "Showcase particle prototype is missing");
+    verify(Game.CheckProtoLocation(LocationPid), "Showcase location prototype is missing");
+    verify(Game.CheckProtoMap(MapPid), "Showcase map prototype is missing");
+
+    hstring[] mapPids = {MapPid};
+    Location location = Game.CreateLocation(LocationPid, mapPids);
+    Map map = location.GetMapByIndex(0);
+    verify(map.Size.width == 40 && map.Size.height == 40, "Showcase map size changed unexpectedly");
+    verify(map.WorkHex == mpos(20, 20), "Showcase map work hex changed unexpectedly");
+
+    Game.Log("showcase_content_test_passed");
+    Game.RequestQuit(true);
+}
+
+[[ServerRemoteCall]] [[Async]]
+void EnterWorld(Player unloginedPlayer)
+{
+    hstring[] mapPids = {MapPid};
+    Location location = Game.CreateLocation(LocationPid, mapPids);
+    Map map = location.GetMapByIndex(0);
+    Critter visitor = Game.CreateCritter(PlayerPid, true);
+
+    Game.Sync(array<Entity> = {unloginedPlayer, location, map, visitor});
+    visitor.TransferToMap(map, mpos(20, 20), mdir(0));
+    unloginedPlayer.SetName("ShowcaseVisitor");
+    unloginedPlayer.ShowcaseAccount = "showcase";
+    Player player = Game.LoginPlayerToNewRecord(unloginedPlayer);
+    Game.Sync(array<Entity> = {player, location, map, visitor});
+    player.SwitchCritter(visitor);
+    player.ClientCall.WorldReady();
+    Game.Log("showcase_server_world_ready");
+}
+
+[[ServerRemoteCall]]
+void FinishSmoke(Player player)
+{
+    if (!Settings.Showcase.Automation) {
+        return;
+    }
+
+    Game.Log("showcase_server_smoke_passed");
+    player.ClientCall.FinishAcknowledged();
+    Game.StartTimeEvent(Milliseconds(250), QuitAfterSmoke);
+}
+
+[[TimeEvent]]
+void QuitAfterSmoke()
+{
+    Game.RequestQuit(true);
+}
+
+#endif
+
+#if CLIENT
+
+bool MapLoaded = false;
+bool WorldReadyReceived = false;
+bool SmokeFinished = false;
+int CaptureFrames = 0;
+int CaptureSamplesSaved = 0;
+uint FloorSprite = 0;
+uint BeaconSprite = 0;
+uint PanelSprite = 0;
+uint ParticleSprite = 0;
+
+[[ModuleInit]]
+void InitClient()
+{
+    Game.OnStart.Subscribe(OnClientStart);
+    Game.OnConnected.Subscribe(OnConnected);
+    Game.OnMapLoaded.Subscribe(OnMapLoaded);
+    Game.OnRenderIface.Subscribe(OnRenderIface);
+    Game.OnLoop.Subscribe(OnLoop);
+}
+
+[[Event]]
+void OnClientStart()
+{
+    Game.BindFont(FontType::Default, "Fonts/Default.fofnt");
+    Game.Connect();
+}
+
+[[Event]]
+void OnConnected()
+{
+    Game.Log("showcase_client_connected");
+    CurPlayer.ServerCall.EnterWorld();
+}
+
+[[Event]]
+void OnMapLoaded()
+{
+    FloorSprite = Game.LoadSprite("Showcase/Tiles/ShowcaseFloor.tga");
+    BeaconSprite = Game.LoadSprite("Showcase/Sprites/Beacon.fofrm");
+    PanelSprite = Game.LoadSprite("Showcase/Sprites/ShowcasePanel.tga");
+    ParticleSprite = Game.LoadSprite("Showcase/Particles/Showcase.spk");
+    verify(FloorSprite != 0, "Showcase floor sprite failed to load");
+    verify(BeaconSprite != 0, "Showcase beacon animation failed to load");
+    verify(PanelSprite != 0, "Showcase panel sprite failed to load");
+    verify(ParticleSprite != 0, "Showcase particle failed to load");
+
+    bool soundAccepted = Game.PlaySound("Showcase/Audio/ShowcaseChime.wav");
+    verify(soundAccepted, "Showcase chime was not accepted");
+    MapLoaded = true;
+    Game.Log("showcase_client_resources_loaded");
+    MaybeFinishSmoke();
+}
+
+[[ClientRemoteCall]]
+void WorldReady()
+{
+    WorldReadyReceived = true;
+    Game.Log("showcase_client_world_ready");
+    MaybeFinishSmoke();
+}
+
+void MaybeFinishSmoke()
+{
+    if (!Settings.Showcase.Automation || Settings.Showcase.Capture || !MapLoaded || !WorldReadyReceived || SmokeFinished) {
+        return;
+    }
+
+    SmokeFinished = true;
+    Game.Log("showcase_client_smoke_passed");
+    CurPlayer.ServerCall.FinishSmoke();
+}
+
+[[Event]]
+void OnLoop()
+{
+    if (!Settings.Showcase.Capture || !MapLoaded || !WorldReadyReceived || SmokeFinished) {
+        return;
+    }
+
+    CaptureFrames++;
+    if (CaptureFrames < CaptureWarmupFrames) {
+        return;
+    }
+    if ((CaptureFrames - CaptureWarmupFrames) % CaptureSampleStrideFrames != 0) {
+        return;
+    }
+
+    string capturePath = "ShowcaseCapture_" + CaptureSamplesSaved + ".tga";
+    Game.SaveScreenshot(capturePath);
+    Game.Log("showcase_client_capture_saved=" + capturePath);
+    CaptureSamplesSaved++;
+    if (CaptureSamplesSaved < CaptureSampleCount) {
+        return;
+    }
+
+    SmokeFinished = true;
+    Game.Log("showcase_client_capture_samples_saved=" + CaptureSamplesSaved);
+    CurPlayer.ServerCall.FinishSmoke();
+}
+
+[[ClientRemoteCall]]
+void FinishAcknowledged()
+{
+    Game.Log("showcase_client_finish_acknowledged");
+    Game.RequestQuit(true);
+}
+
+[[Event]]
+void OnRenderIface()
+{
+    if (HasCurMap) {
+        CurMap.DrawMap();
+    }
+
+    TextFormat title = TextFormat(FontType::Default, FontFlag::Bordered, 0);
+    Game.DrawText("FONLINE CONTENT SHOWCASE", ipos(48, 39), isize(560, 32), ucolor(239, 189, 82, 255), title);
+    Game.DrawText("SPRITES  /  ROOT MOTION  /  LIGHTING  /  EFFECTS  /  PARTICLES  /  AUDIO",
+                  ipos(48, 75), isize(1020, 22), ucolor(181, 224, 215, 255), title);
+    Game.DrawText("MAPPER MAP  /  RUNTIME MATERIALIZATION", ipos(48, 145), isize(520, 22), ucolor(181, 224, 215, 255), title);
+
+    if (FloorSprite != 0) {
+        Game.DrawSpritePattern(FloorSprite, ipos(44, 590), isize(360, 100), isize(128, 64), ucolor(255, 255, 255, 255));
+    }
+    if (BeaconSprite != 0) {
+        Game.DrawSprite(BeaconSprite, ipos(562, 528), isize(120, 160), ucolor(255, 255, 255, 255), true, false);
+    }
+    if (PanelSprite != 0) {
+        Game.DrawSprite(PanelSprite, ipos(858, 550), isize(300, 138), ucolor(255, 255, 255, 255), true, false);
+    }
+
+    DrawLabel(44, 698, 360, "PROCEDURAL TILE  |  128 x 64 TGA");
+    DrawLabel(464, 698, 320, "FOFRM  |  6 FRAMES  |  8 FPS");
+    DrawLabel(844, 698, 360, "TGA PANEL  |  180 x 110  |  CC0");
+    Game.DrawText("Deterministic CC0 source assets  |  1280 x 800 capture profile  |  60 FPS budget",
+                  ipos(34, 764), isize(1212, 22), ucolor(159, 203, 195, 255), title);
+}
+
+void DrawLabel(int x, int y, int width, string text)
+{
+    DrawFilledRect(x, y, width, 30, ucolor(16, 30, 34, 235));
+    DrawBorderRect(x, y, width, 30, ucolor(75, 144, 138, 255));
+    TextFormat label = TextFormat(FontType::Default, FontFlag::Bordered, 0);
+    Game.DrawText(text, ipos(x + 12, y + 7), isize(width - 24, 18), ucolor(218, 230, 224, 255), label);
+}
+
+void DrawFilledRect(int x, int y, int width, int height, ucolor color)
+{
+    int packedColor = int(color.value);
+    int x2 = x + width;
+    int y2 = y + height;
+    int[] data = {x, y, packedColor, x, y2, packedColor, x2, y2, packedColor, x2, y2, packedColor, x2, y, packedColor, x, y, packedColor};
+    Game.DrawPrimitive(RenderPrimitiveType::TriangleList, data);
+}
+
+void DrawBorderRect(int x, int y, int width, int height, ucolor color)
+{
+    int packedColor = int(color.value);
+    int x2 = x + width;
+    int y2 = y + height;
+    int[] data = {x, y, packedColor, x2, y, packedColor, x2, y, packedColor, x2, y2, packedColor,
+                  x2, y2, packedColor, x, y2, packedColor, x, y2, packedColor, x, y, packedColor};
+    Game.DrawPrimitive(RenderPrimitiveType::LineList, data);
+}
+
+#endif
+
+}

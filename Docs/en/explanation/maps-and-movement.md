@@ -1,0 +1,422 @@
+---
+layout: default
+title: Maps, Movement, and Geometry
+locale: en
+document_id: maps-movement-geometry
+permalink: /Docs/en/explanation/maps-and-movement.html
+---
+
+# Maps, Movement, and Geometry
+
+Engine geometry/movement owners: `Source/Common/Geometry.*`, `LineTracer.*`, `Movement.*`, `PathFinding.*`, `MapLoader.*`, map bakers and tests.
+
+For `.fomap` sections, placement identity/ownership, Mapper round-trips, side-specific baking and runtime materialization, see [Map Format](../how-to/content/map-format.md).
+
+## Ownership model
+
+Engine owns coordinate types, path algorithms, interpolation and file loading. Projects own maps, blockers, encounter rules and gameplay navigation/quests.
+
+## Coordinate and direction types
+
+`Source/Common/Geometry.h` exports these runtime/API/script value types:
+
+- `mpos` — map hex/tile position stored as `mcoord x` + `mcoord y`.
+- `msize` — map dimensions stored as `mcoord width` + `mcoord height`.
+- `hdir` — discrete hex/tile direction.
+- `mdir` — movement direction angle; convertible to/from hex direction.
+
+`msize` bounds helpers:
+
+- `clamp_pos()` clamps raw coordinates into map bounds;
+- `from_raw_pos()` asserts that raw coordinates are already in bounds.
+
+Public map API substitutions with `ipos`/`isize` require generated metadata and script-layout checks.
+
+### Coordinate width and map size limit
+
+`mcoord` (`mcoord_t` in native code) is `int16` by default and `int32` when the embedding project enables the `FO_MAP_WIDE_COORDS` CMake option. Codegen resolves the `mcoord` layout field type from that option, so native structs, AngelScript fields (`int16`/`int32`), Managed C# fields (`short`/`int`), network messages and baked property data follow it. The resolved layout is part of `FO_COMPATIBILITY_VERSION`, so a client and server built with different widths refuse to connect. Database documents and text maps store coordinates as numbers, so switching the width needs a rebake but no data migration while every stored value fits the target width.
+
+Wide coordinates add four bytes to each position in network messages and baked property data. Per-hex grids do not grow: their cells hold no positions.
+
+Managed `mpos` and `msize` constructors take `int` at either width and narrow 16-bit fields with an overflow check. Script code that constructs positions with `new mpos(x, y)` and reads fields into `int` compiles for both widths; code that stores a field in `short` builds only with 16-bit coordinates.
+
+`FO_MAP_MAX_SIZE` (default `4000`) bounds map width and height. It must be at least the Mapper default size `200` and at most `32767`, the `int16` coordinate range, or `GameSettings::MAP_SIZE_LIMIT` (`4194304`) with wide coordinates: the client sprite draw-order key stores a cell X in 22 bits and a screen row, at most twice a side, in 24 bits. Configure rejects other values, and static assertions repeat the bounds. Map area and every array index derived from coordinates are computed in 64 bits and converted to `size_t` with an overflow check, so on a 32-bit target coordinates that `size_t` cannot index raise `OverflowException` instead of wrapping; a static assertion keeps pixel positions within half of the `int32` range for the configured hex size. The server and client reject a map whose `Size` exceeds the limit on load, and the Mapper clamps resizing to it. Client hex lighting lives in the chunked field grid, and a path search indexes its 16x16 search blocks only within the window its length limit allows around the start (`MaxLength`, plus the multihex footprint and the goal ring), so neither grows with map area. The enclosure probe, which floods from the target, tracks the few hexes it visits outside that window separately. Render positions are `float32`, so far from the map origin (past about 2^23 pixels) they lose sub-pixel precision.
+
+`MapView::Resize` checks that the requested area fits `size_t` before changing the map or removing items. A static two-dimensional grid also checks the new area before moving cells and publishes its new dimensions only with the replacement storage. An area-overflow rejection preserves the previous dimensions and cells.
+
+### Sub-hex offset convention
+
+Sub-hex pixel offsets use the hex **visual center**, bounded by `±{MAP_HEX_WIDTH/2, MAP_HEX_HEIGHT/2}`. Critter `HexOffset`, `MovingContext` start/end, `MoveToHex`, transparent eggs and `MapView::GetHexAtScreen` / `Client_Map_GetHexAtScreenPos` share this convention; cursor offsets need no conversion.
+
+`GeometryHelper::GetHexPos`, `MapView::GetHexMapPos` and per-`Field` `Offset` return the **top-left** origin, stepping by `MAP_HEX_WIDTH` / `MAP_HEX_LINE_HEIGHT`. `HexView::AddSprite` anchors critters/items at origin `+ {MAP_HEX_WIDTH/2, MAP_HEX_HEIGHT/2}`; `MapView::GetHexScreenPos` returns this visual center (critter feet).
+
+When combining center offsets with `GetHexMapPos`, apply that half-hex bias. `GetHexAtScreen` subtracts it before `GetHexPosCoord`, selecting the nearest visual center and returning an in-range center offset without clamping. `UpdateTransparentEgg` and critter-based `SetTransparentEgg` add/subtract the same bias. `GetHexScreenPos(hex) + offset` projects directly without another bias.
+
+## Geometry modes
+
+`hdir` is compiled differently depending on `FO_GEOMETRY`:
+
+- `FO_GEOMETRY == 1` — six directions: north-east, east, south-east, south-west, west, north-west.
+- `FO_GEOMETRY == 2` — eight directions: the six above plus south and north.
+
+`GameSettings::MAP_DIR_COUNT` participates in direction normalization. When changing geometry, inspect compile-time geometry settings, generated value types, path-finding tests, and any rendering code that projects map positions.
+
+`mdir` stores normalized angles and `hdir` stores discrete map directions. Use the shared conversion helpers when moving or reversing directions: square builds place the north direction at angle `0`, so hand-written angle bucketing must handle wraparound at `360`/`0`.
+
+`MapView::RebuildMapOffset` keeps the camera center visible when reversing or combining axes on large maps. Negative X uses west; alternating positive Y uses south-east/south-west, negative Y north-east/north-west, in both geometries.
+
+## Map camera projection
+
+The map camera uses a world frame of `+X` right, `+Y` up, and `+Z` map-south, with one world unit equal to one pixel of hex spacing. Its parallel projection tilts the world around X by `MAP_CAMERA_ANGLE` (`arcsin(sqrt(3)/4)`): ground northing is foreshortened by `sin(angle)` and elevation by `cos(angle)`. Anchoring a ground point at `z = legacy_y / sin(angle)` makes `ProjectWorldToMap` reproduce the legacy `GetHexPos` position at elevation zero.
+
+`ProjectWorldToMap` is the reference form without scroll or zoom. It returns map-space pixels in `.x/.y` and view depth in `.z`; larger depth is nearer the camera. Its `(.y, .z)` result is an orthonormal rotation of world `(Z, Y)`, not a shear.
+
+`MakeMapCameraView` is the GPU form with scroll, zoom, and a `yaw_deg` orbit around the vertical axis. At zero yaw it reproduces `(ProjectWorldToMap(world).xy - scroll) * zoom` with unchanged depth. The backend ortho composes over this matrix, so sprites, 3D models, and particles share one world-to-clip transform. Map sprites also write world depth with `DepthFunc = LessEqual`; CPU painter order still handles blended layers while the shared depth buffer resolves cross-type occlusion. `Test_Geometry.cpp` pins both projection forms against each other and against `GetHexPos`. It also pins `GetHexOffset(from, to) == GetHexPos(to) - GetHexPos(from)`, which makes a view-origin change a uniform pixel translation; `MapView` relies on that identity when shifting cached light primitives during scroll.
+
+## Geometry helper responsibilities
+
+`GeometryHelper` is a static utility class. It owns coordinate projection and directional math such as:
+
+- map hex/tile to projected screen/map coordinate conversion: `GetHexPos()`, `GetHexPosCoord()`, `GetHexOffset()`;
+- hex/offset canonicalization: `NormalizeHexOffset()` rewrites a projected point to the nearest in-bounds hex plus a small local offset;
+- axial-coordinate helpers: `GetHexAxialCoord()`, `GetAxialHexes()`;
+- distance and direction: `GetDistance()`, `GetHexDir()`, `GetDirAngle()`, angle-difference helpers;
+- radius and line/circle checks: `HexesInRadius()`, `IntersectCircleLine()`;
+- movement stepping: `MoveHexByDir()`, `MoveHexByDirUnsafe()`, `MoveHexAroundAway()`;
+- multihex traversal helpers: `ForEachMultihexLines()`.
+
+Safe helpers check `msize` bounds; unsafe helpers are for internal algorithms that already proved bounds.
+
+## Path finding
+
+`Source/Common/PathFinding.h` exposes the core path-finding API:
+
+- `FindPathInput`
+- `FindPathOutput`
+- `TraceLineInput`
+- `TraceLineOutput`
+- `PathFinding::CheckHexWithMultihex()`
+- `PathFinding::FindPath()`
+- `PathFinding::EvaluateFreeMovementEndOffset()`
+- `PathFinding::TraceLine()`
+
+`FindPathInput` is deliberately callback-driven. Runtime code supplies `CheckHex(mpos)` so map ownership, blockers, critters, gag items, and game-specific blocking policy stay outside the generic algorithm.
+
+Important `FindPathInput` fields:
+
+- `FromHex` / `ToHex` — requested route endpoints.
+- `ToHexOffset` — the target's real sub-hex offset within `ToHex` (the continuous target position is `ToHex` center + `ToHexOffset`). Used only by the `FreeMovement` end-offset computation.
+- `MapSize` — bounds for all checks.
+- `MaxLength` — longest permitted route in steps, normally derived from engine
+  settings. A route of exactly this length is allowed; search state is allocated
+  in 16×16 blocks only for touched hexes, not in proportion to the limit.
+- `CritterDetour` — extra route cost for entering a hex occupied by a living critter.
+  `MapManager` and `MapView` use `Geometry.PathFindCritterDetour` (default `12`).
+- `Cut` — stop when route is within this distance of target; `0` requires exact target.
+- `Multihex` — radius for multihex actors.
+- `FreeMovement` — enables the line-tracer optimization for control steps and the continuous sub-hex end offset (see below).
+- `CheckTarget` — optional exact-goal predicate for multi-target searches. When set, it replaces
+  the single `ToHex` / `Cut` goal check; the nearest reachable goal is returned in `NewToHex`.
+- `CheckHex` — callback returning block/defer status.
+- `EnclosureProbeLimit` — reverse-flood budget; `0` disables it. `MapManager`/`MapView` use `Geometry.PathFindEnclosureProbe` (default `1024`).
+
+`FindPathOutput` returns a result, direction steps, control steps, the (possibly cut-adjusted) `NewToHex`, and `EndHexOffset` (concrete `ipos16`, zero when FreeMovement is off).
+
+Client `Map.GetPath(critter, target, cut)` and `GetPathLength` use the same
+native search at every distance. `cut` measures the center's distance to the
+target; `Multihex` checks the moving body's clearance and does not add a stopping
+radius. With cut zero, a nearby reachable target still requires every step to
+its center. The same hex and a blocked target both have length zero; the path
+and its reported length agree. `Test_ClientMapPaths.cpp` exercises these script
+exports with a real client map and multihex critter.
+
+For non-adjacent hexes, the client `Map.GetPath(fromHex, toHex, cut, gagCallback)`
+overload applies `cut` and the gag predicate in one native search. A permitted gag
+may be crossed even when the ordinary physical route is blocked; a refused gag
+or a solid non-gag blocker still prevents that route. Cut zero reaches the exact
+target, a positive cut stops within the requested distance, and a start already
+within that distance needs no movement. Negative cut follows native zero-cut
+normalization. The existing adjacent-hex shortcut is unchanged. The native client
+map tests exercise the exported callback, real script-function argument/return
+conversion and a complete wall barrier, separately from core path-finding tests.
+
+`MapManager::FindPathToAny()` builds an indexed target set and supplies it through `CheckTarget`,
+so a server caller can find the nearest reachable exact target with one search instead of launching a
+full path search for every candidate. The server script `Map.FindPathToAny(...)` overloads expose
+the same operation for a raw start hex or a critter and return both the selected target and route
+length through output arguments.
+
+For a set of targets that each needs a reachability answer rather than one chosen route,
+`PathFinding::FindReachable()` performs one breadth-first flood from `FromHex` and stops when
+all targets are found or `MaxLength` steps are exhausted. `Map.FindReachableHexes(fromHex,
+targetHexes, gagCallback)` exposes it on the server: it returns the reachable targets in input
+order, including repeated targets, and rejects out-of-bounds inputs. It checks only map
+blockers (and optional gag passability), not occupied critter hexes or actor-specific
+multihex clearance; use `FindPathToAny()` when route choice or movement costs matter.
+
+### A* search and route choice
+
+`FindPath()` uses A*: route cost so far plus the hex distance still needed to
+reach the target's `Cut` radius. For `CheckTarget`, the remaining-distance
+estimate is zero, so the search spreads evenly toward the nearest reachable
+goal. Each step costs one; `DeferGag` adds ten, and `DeferCritter` adds
+`CritterDetour` (clamped to zero if negative). A shorter way around a critter is
+preferred, but a critter standing in a doorway may be crossed instead of routing
+around the whole building. This replaces the former rule that charged more than
+any critter-free route: a ring of critters no longer makes the search exhaust a
+large free region before considering a route through them.
+
+For a single `ToHex`/`Cut` goal, the search checks the goal disk before its first
+step. A hex occupied by a critter may be crossed at its detour cost but is not a
+stopping point while any goal hex is `Passable` or `DeferGag`. If every goal is
+blocked or occupied and at least one is occupied, the route may stop on an
+occupied goal. A `CheckTarget` multi-target search has no goal disk and accepts
+its selected target as given. Gameplay that must never end on another critter
+must enforce that rule at its own movement request boundary.
+
+A goal farther than `MaxLength` even by straight-line distance returns
+`TooFar` without asking `CheckHex`. Other hexes whose route length plus
+remaining distance exceeds the limit are not entered. Exhausting a truncated
+search returns `TooFar`; closing the whole reachable region returns `NoWay`.
+The engine caches each single-hex `CheckHex` answer, while multihex footprints
+are checked for the entry direction, so an actor can enter the same center hex
+from one side but not another.
+
+After finding the cheapest goal, the search settles all equally cheap choices
+and backtracks along the straightest cheapest route. For equally cheap goals
+within `Cut`, it prefers the one nearest the direct start-to-target line. The
+cost-bucket open list preserves deterministic route selection across platforms.
+
+For one target, the probe floods back from its `Cut` radius over non-`Blocked` hexes. A closed region short of the start means `NoWay`; budget exhaustion resumes forward search. `FindPathToAny()` is not probed. Early success pays no probe cost.
+
+`MapManager::FindPath(max_length)` uses `Geometry.MaxPathFindLength` for `0`, caps positives, and rejects negatives. Server `Critter.MoveToHex(..., maxPathLength, ...)` returns `HexTooFar` beyond the bound. Use it to avoid purposeless detours.
+
+Backtracking must enumerate `GameSettings::MAP_DIR_COUNT` through `GeometryHelper::MoveHexByDirUnsafe()` instead of hard-coding the six hex-neighbor offsets. Hexagonal builds compile six directions, while square builds compile eight; using the shared direction helpers keeps both search expansion and path reconstruction on the same geometry rules.
+
+### FreeMovement end offset
+
+When `FreeMovement` is set, straight segments may replace stretches of the
+searched route if every hex can be entered from the side of the segment, even
+when that hex was not reached during search. The route is still cut to whole
+hexes by the search, but the final
+standing position is refined to a sub-hex point instead of snapping to `NewToHex` center.
+`PathFinding::EvaluateFreeMovementEndOffset()` computes `EndHexOffset` (relative to `NewToHex`
+center) so the continuous end position sits exactly at the cut gap
+`R = dist(NewToHex center, ToHex center)` from the target's real position
+(`ToHex` center + `ToHexOffset`), on the `NewToHex` side of it. Distances use the camera `Y`
+projection (`GeometryHelper::GetYProj()`), matching the metric `MovingContext` uses for segment
+distances. Behavior:
+
+- `EndHexOffset` is a plain `ipos16`: when `FreeMovement` is off (or the request short-circuits
+  before the FreeMovement pass) it stays at its zero default, meaning the mover stops at the
+  reached hex center.
+- A centered target reached short of its hex (`ToHexOffset == 0`, `Cut > 0`) yields
+  `EndHexOffset == 0` (hex center).
+- `Cut == 0` onto an off-center target yields `EndHexOffset == ToHexOffset` (stop exactly on the
+  target point).
+- The offset magnitude is bounded by `|ToHexOffset|` and clamped to half a hex.
+- Degenerate stop direction. Internally `EvaluateFreeMovementEndOffset` returns `optional<ipos16>`
+  and yields `nullopt` when the real target essentially coincides with the reached hex center
+  (e.g. `Cut == 0` onto a centered target, or `Cut > 0` with a target offset that exactly cancels
+  the inter-hex vector). In that case `FindPath` substitutes `FindPathInput::FromHexOffset` — the
+  mover's own current sub-hex offset — so the mover stays where it already is instead of being
+  snapped to the reached hex center. `MapView::FindPath` and `MapManager::FindPath` fill
+  `FromHexOffset` from the supplied critter automatically.
+
+Callers supply `ToHexOffset` and consume `EndHexOffset` directly: on the client through
+`MapView::FindPath` plus the cut-aware `Critter.MoveToHex(hex, cut, hexOffset, speed)` script
+overload; on the server through `MapManager::FindPath` plus
+`Critter.MoveToHex(hex, cut, endHexOffset, speed)`. The resolved offset travels in the existing
+`SendCritterMove` end-offset field (a concrete `ipos16`), so client prediction and server
+authority stop at the same continuous point and there is no protocol change.
+
+## Blocking model
+
+`HexBlockResult` expresses path-finding priority:
+
+- `Passable` — hex can be used.
+- `Blocked` — permanent blocker.
+- `DeferGag` — gag item, passable at the cost of ten extra steps.
+- `DeferCritter` — critter, passable for `CritterDetour` extra cost; a stopping point only if no goal hex is free.
+
+For multihex actors, `CheckHexWithMultihex()` checks the directional front arc and returns the worst blocker result across checked hexes.
+
+When gameplay code changes blocker semantics, update the callback provider and tests; do not bake game-specific blocking rules into the generic path algorithm.
+
+Server-side `Map::IsHexMovable()` / `IsHexShootable()` combine two grids: the map's own `Field`, recomputed by `RecacheHexFlags()` from dynamic items and manual blocks, and the static `StaticMap::Field` for the same hex. The static half is read through `Map::GetStaticField()`, which is where per-instance static item removal is applied — see below.
+
+Map item blocking flags are cached across the item's entire registered footprint:
+the origin, `MultihexMesh` cells and the `MultihexLines` expanded from each origin.
+Changes to `NoBlock`, `ShootThru`, `IsGag` or `IsTrigger` recache all those fields.
+Recaching only the sprite origin leaves stale server blockers after a wide door
+opens even when the client already admits the route. The `MapHexOperations`
+`MultihexItemFlagChanges` regression covers movement/shooting transitions and
+retains blocking contributed by a different item on a shared cell.
+
+`DeferGag` is opt-in for each server or client search. `Map::CheckGagItem()` and
+`MapView::CheckGagItem()` require the field's `MovableWithGag` flag—set only
+when every movement blocker on that hex is a gag item—and a caller predicate
+that accepts every gag item there. `MapManager::FindPath()` and
+`MapView::FindPath()` return `Blocked` for the same hex when no predicate is
+supplied, so ordinary movement is unchanged. The client `Map.GetPath` and
+server `Map.GetPathLength` script overloads with a `gagCallback` expose the
+same choice; a caller can therefore distinguish a route sealed by a wall from
+one that passes a door it is allowed to open.
+
+Server gag checks reject `MoveBlocked` in the instance's current static field
+before considering dynamic gag items. An accepting predicate cannot override a
+static wall. Removing that static item through the instance overlay releases
+its blocking contribution; a remaining dynamic gag still needs an accepting
+predicate. `MapPathGagChecksRespectStaticBlockers` covers exact path queries,
+batch reachability and the removal transition using baked static items.
+
+## Static item removal
+
+Baked static items live in `StaticMap` (`Source/Server/StaticMap.h`), which `MapManager` keys by `ProtoMap` and shares across **every** live instance of that map. A map instance can still drop individual static items, and it does so without touching that shared data.
+
+**Removal is one-way for the life of the map instance.** `RemovedStaticItemIds` only ever grows: taking an id back out is refused by a property *setter*, which runs before the value is stored, so the write fails and both the stored list and the overlay stand unchanged. Do not expect an item to reappear on maps players already have loaded — the live client path is only ever told to drop a static item, never to build one back, and a rejection after the store would have persisted a shrunk list that silently undid the removal on the next server start. `MapManager::RegenerateMap()` regenerates map *content* and leaves removals in place; a map that needs its static layer whole again is a new map instance.
+
+The mechanics:
+
+- `Map::RemovedStaticItemIds` (`Common Mutable PublicSync Persistent`) is the stored list. It is the whole contract: persistence, client sync, and script visibility all follow from the property.
+- `Map` derives three caches from it in `RefreshRemovedStaticItems()` → `RebuildStaticOverlay()`: the removed-id set, a `vector` of the surviving static items, and a `StaticMap::Field` override for each hex a removed item covered. All three stay empty while the map keeps every baked item, so an untouched map reads the shared grid with no extra indirection.
+- `Map::VerifyStaticItemRemovalsOnlyGrow()` is the append-only guard, reached through the `ServerEngine::OnSetMapRemovedStaticItems` setter. It mutates nothing and only throws, so a refused write leaves the map exactly as it was.
+- `Map::GetStaticField()` returns the override when one exists, otherwise a non-empty field of the map's [runtime static items](#runtime-map-content), otherwise the shared cell. Every static query (`GetStaticItem`, `GetStaticItemOnHex`, `GetStaticItems`, `GetStaticItemsOnHex`, `GetStaticItemsInRadius`, `GetTriggerStaticItemsOnHex`, `IsTriggerStaticItemOnHex`) and both blocking queries go through it, so a removed item is gone from movement, shooting, triggers, and lookup alike.
+- `StaticMap::ForEachItemHex()` gives the hexes an item covers, and the private `StaticMap::ApplyItemToField()` adds an item to a field for the loader (`AddStaticItem()`), for the overlay rebuild (`BuildFieldWithout()`, `MergeFieldInto()`) and for unloading runtime static items (`RemoveStaticItems()`), so none of them can disagree about which hexes an item contributes to or what blocking it implies.
+- `StaticMap::Field::ScrollBlocked` exists for this rebuild. The loader's scroll-block pass writes `MoveBlocked` with no owning item, so an override rebuilt purely from the surviving items would silently open the map border; the rebuild seeds `MoveBlocked` from `ScrollBlocked` first.
+- Baked static items carry the `ident_t` their map file authored, read with the map's content on first use (`MapManager::ReadStaticMap()`); runtime static items carry that id plus their load's `idOffset`. That id is what `GetStaticItem()` looks up and what the client's `ItemHexView` carries; the removal list records baked ids only.
+
+`EntityManager::CallInit(Map, bool)` builds the overlay once per map — that hook covers both a freshly created map and one restored from the database. Runtime changes come through the `ServerEngine::OnPostSetMapRemovedStaticItems` property post-setter, so a script that writes the property directly gets the same rebuild as one that calls `RemoveStaticItem()`.
+
+On the client there are exactly two paths, and the map view holds no state of its own for this. `LoadStaticData()` skips an id in the removed list outright, so the item is never constructed, fielded, drawn, or indexed — the record is still walked past, because the baked entries are variable length and the reader has no index to seek with. `ClientEngine::OnSetMapRemovedStaticItems` calls `MapView::ApplyStaticItemRemovals()`, which destroys the now-removed views through the ordinary `DestroyItems()` path. There is no third path: nothing on the client ever rebuilds a static item on a loaded map.
+
+## Runtime map content
+
+A map instance can take in the content of other proto maps while it runs and give the static part back later. Projects use this to stream a large map in pieces, to compose a map from reusable parts or to place a prefab into a running map; which content goes where and when belongs to project scripts.
+
+- **Baked content on demand.** `MapManager::LoadFromResources()` only checks that every `.fomap-bin-server` has its proto map. `MapManager::GetStaticMap()` reads a proto map's baked content (`ReadStaticMap()`, on the requesting thread) when a map instance, `LoadRuntimeStaticItems`, `GenerateContent` or `Game.GetStaticItemsForProtoMap` first needs it, and caches it. The pending read is cached at once, so concurrent first requests for one map wait for a single read and share its result; a failed read is dropped and the next request reads the file again. `Game.LoadStaticMap(mapPid, asyncLoad)` and `Game.LoadStaticMaps(mapPids, asyncLoad)` read one or several maps ahead: on the calling thread when the flag is false, otherwise on worker threads (each with its own sync context), returning at once; a request for a map being read waits for its read, and `Game.IsStaticMapLoaded(mapPid)` reports a finished one. `ClearStaticMaps()` waits for background reads before the manager goes away. `Game.UnloadStaticMap(mapPid)` frees it and returns whether it is unloaded: false while it is being read or while a map instance of that proto exists, because an instance reads its proto's content through a plain pointer. A damaged map file is therefore reported on first use, not at startup.
+- **Runtime static items.** `Map.LoadRuntimeStaticItems(mapPid, destHex, idOffset)` (`MapManager::LoadRuntimeStaticItems()`) copies the source's static items into the map as its runtime static items, with `Hex` and `MultihexMesh` moved so that the source's first hex lands at `destHex`; every copy must land on the map. `Map.LoadRuntimeStaticItems(mapPid, destHex, sourceHex, sourceSize, idOffset)` copies only the items whose hex lies in that area of the source, which must lie inside the source map, and the area's first hex lands at `destHex`; the shorter form is this with the whole source map. Each copy's id is its baked id plus `idOffset`. A collision is an error that rejects the whole load before the map changes: a copy id that overflows, is zero, repeats or is already used by the map's baked or runtime static items. Choose `idOffset` per placement, outside the range of baked ids and entity ids (`Server.EntityStartId`), so the client can reproduce it. Copies keep the source's bound static and trigger scripts and live in a per-instance sparse `StaticMap` of the map's size (`Server.MapInstanceGridType`). They are not persisted: a restored map has only its baked static items, and the project loads its content again.
+- **Queries and blocking.** `Map::GetStaticField()` reads an override first, then a non-empty runtime field, then the baked field. Where baked and runtime static items share a hex, `RefreshStaticFieldOverride()` merges them into an override, so every static query, both blocking queries and triggers see both. `GetStaticItems()` returns the baked or the runtime list directly when only one is non-empty, and otherwise a joined list without removed items. `HasStaticItem()` and `GetStaticItem()` cover runtime static items, and `IsRuntimeStaticItem()` tells them apart. `RemoveStaticItem()` refuses a runtime static item, because the removal list persists baked ids only.
+- **Unloading.** `Map.UnloadRuntimeStaticItems(runtimeStaticItemIds)` accepts only ids of this map's runtime static items. `StaticMap::RemoveStaticItems()` rebuilds each covered field from the remaining items and releases fields left with no item and no scroll block.
+- **Critters and dynamic items.** `Map.GenerateContent(mapPid, destHex)` creates the source's critters, map items and the items inside them the way `GenerateMapContent()` fills a new map, with the source's first hex at `destHex`, after checking that all of them land on the map. It returns the ids of the created critters and map items; they are ordinary entities that persist with the map until the project destroys them.
+- **Clients.** The engine sends no runtime static items. A client script calls `Map.LoadRuntimeStaticItems(mapPid, destHex, idOffset)` or its area overload on its map view, which reads the same proto map's client bake (`{map}.fomap-bin-client`) and needs that proto map on the client; the client passes the server's `idOffset`, so every item gets the id the server gave it, and the same collisions reject the load. `Map.UnloadRuntimeStaticItems(runtimeStaticItemIds)` destroys those views and releases client field blocks inside the unloaded runtime static items' area that hold nothing, except blocks within one block of the current view, whose fields map sprites may reference for light.
+
+`MapLoadsAndUnloadsContentOfOtherMaps` and `ClientMapLoadsAndUnloadsStaticItemsOfOtherMaps` own the contract.
+
+## Line tracing
+
+`LineTracer` works in `float64_t` coordinates relative to its start hex; a square-geometry trace takes each position from its step count, so rounding never accumulates along the line. Its angle-and-distance form finds the ray's end from a hex at the map origin with the start's column parity, then moves it back by whole cells. Rounding therefore depends neither on where a line lies nor on its length, and a line far out on a continent-sized map takes the same steps as near the origin.
+
+`TraceLineInput`: `StartHex` toward `TargetHex`; `MaxDist` limits length (`0`: start/target distance), `Angle` sets direction, `CheckLastMovable` requests the last movable hex, `IsHexBlocked` stops tracing, optional `IsHexMovable` records move-valid cells. `TraceLineOutput`: completion, last-movable presence, pre-block/block/last-movable hexes. Uses: movement/pathfinding, visibility, shooting.
+
+Under caller-held map cover, native `Map::GetMovableHexesInSight` / script `Map.GetMovableHexesInSight(origin, radius)` returns movable cells by ascending x/y with `GeometryHelper::GetDistance <= radius`. Negative radii or out-of-bounds origins throw. The origin skips tracing; others match scalar `TracePath(..., distance, 0.0f).PreBlock` via `PathFinding::TraceLine` + `Map::IsHexShootable`. Dynamic/manual/instance-static blockers are read anew, without caching. Visibility/vision/friendliness/sneak/privacy remain project-owned.
+
+### Direction traces
+
+`TraceDirectionInput`: `StartHex`, rendered `StartHexOffset`, `Dir`, line point (`RayHex` + `RayHexOffset`), `MaxSteps`, `Multihex`, `MapSize`, `CheckHex`, `Slide`. `PathFinding::TraceDirection()` picks the bracketing direction whose hex centre is nearest the line in `MovingContext`'s camera-projected plane, without re-aiming at rounded targets. Only `Passable` permits steps; gags/critters block. `TraceDirectionOutput`: steps, control steps, `EndHexOffset`:
+
+- Without deviation: one segment ends projected onto the line. Its line point is the fresh start or whole run's start on extension; rounding never accumulates across plans.
+- `Slide`: replace a blocked step with the free neighbour nearest the input angle, strictly within 90°; resume parallel from there. Steps advance without oscillation/backtracking. Slid traces use hex centres, a control step per side step, zero `EndHexOffset`. Perpendicular flat-wall input stops. Map edges stop without `Slide`, follow with it.
+
+`MapView::TraceMoveWay()` adds map blocking; only the client's [direct-move controller](runtime/client.md#held-direction-movement) calls it.
+
+## Movement contexts
+
+`Source/Common/Movement.h` defines movement state and interpolation:
+
+- `MovingState` — completion/error reason.
+- `MovingMetrics` — end hex, whole time, whole distance.
+- `MovingProgress` — current hex, offset, direction, completion flag.
+- `MovingRawProgress` — internal segment/progress data.
+- `MovingContext` — ref-counted movement plan and runtime evaluator.
+
+`MovingContext` stores:
+
+- map size;
+- speed;
+- direction steps;
+- control steps;
+- start time and offset time;
+- start/end hex and offsets;
+- computed whole time/distance;
+- completion state and block/pre-block hexes.
+
+Key operations:
+
+- evaluate: `EvaluateMetrics()`, `EvaluateProjectedHex()`, `EvaluateNearestPathHex()`, `EvaluatePathHexes()`, `EvaluateProgress()`;
+- advance time: `UpdateCurrentTime()`, `UpdateCurrentTimeToNextHex()`;
+- mutate runtime state: `ChangeSpeed()`, `Complete()`, `SetBlockHexes()`;
+- sanity check: `ValidateRuntimeState()`.
+
+Movement is therefore a reusable time-based plan, not just a list of positions. Client prediction, server correction, and script-visible movement data should all preserve that distinction.
+
+`_offsetTime` tells an observer how far a plan has already progressed: server-to-client movement includes it, while a client's initial move request does not. The server therefore starts the player's plan one uplink transit later than the client. On ordinary completion, the client reports its arrival and the server reconciles along that same plan before processing the next ordered request; see [Networking](authority-and-networking/#the-client-reports-a-movement-it-finished-predicting).
+
+Server and client runtime processing keep `MovingContext` active regardless of `CritterCondition`. Game scripts own condition-based movement permissions, so a game can represent knockout falls, dead-body slides, or custom state movement while still relying on the same path, offset, and completion state machinery. Attached critters are still stopped by runtime processing because attachment is a transport/ownership relationship rather than a critter condition.
+
+## Sparse field storage
+
+`DynamicTwoDimensionalGrid` stores cells created by writes. `Resize` validates
+the new bounds, visits only stored cells and erases those outside the new size.
+Values inside the overlap remain intact; growth does not materialize missing
+cells, and previously erased cells do not return. Its work scales with stored
+cells rather than the old or new map area. `TwoDimensionalGrid` tests cover
+shrink/grow preservation and removal independently of map geometry.
+
+## Map loading
+
+`Source/Common/MapLoader.h` exposes `MapLoader::Load()`:
+
+```cpp
+static void Load(
+    string_view name,
+    string_view file_name,
+    const string& buf,
+    const EngineMetadata& meta,
+    HashResolver& hash_resolver,
+    const CrLoadFunc& cr_load,
+    const ItemLoadFunc& item_load);
+```
+
+The loader parses a map buffer, uses `file_name` in source diagnostics, and calls engine/runtime-provided callbacks for critters and items:
+
+- `CrLoadFunc(ident_t id, ptr<const ProtoCritter> proto, ptr<const map<string_view, string_view>> kv)`
+- `ItemLoadFunc(ident_t id, ptr<const ProtoItem> proto, ptr<const map<string_view, string_view>> kv)`
+
+This keeps file parsing generic while letting server/tools decide how loaded critters/items become live entities or editor objects.
+
+`MapLoader::EnumerateMaps(file_name, buf)` returns the map names declared by a source file without materializing their entities. Keep source-name diagnostics and multi-map enumeration covered when changing the parser.
+
+Map resource production is adjacent to baking. For `MapBaker`, see [Baking Pipeline](content-pipeline/baking.md).
+
+## Tests to inspect
+
+Relevant tests include:
+
+- `Source/Tests/Test_Geometry.cpp`
+- `Source/Tests/Test_PathFinding.cpp`
+- `Source/Tests/Test_Movement.cpp`
+- `Source/Tests/Test_MapLoader.cpp`
+- `Source/Tests/Test_MapBaker.cpp`
+- `Source/Tests/Test_ServerMapOperations.cpp`
+- `Source/Tests/Test_AngelScriptServerMapOperations.cpp`
+
+## Change routing
+
+- Coordinate/value-type changes: `Source/Common/Geometry.*` and generated metadata docs.
+- Line tracing: `Source/Common/LineTracer.*` and `Source/Common/PathFinding.*`.
+- Path search and blocking behavior: `Source/Common/PathFinding.*` plus caller-provided blocker callbacks.
+- Movement interpolation/state: `Source/Common/Movement.*`.
+- Client 2D walk/run presentation over movement interpolation: [Sprite Root Motion](../how-to/content/sprite-root-motion.md).
+- Map file parsing: `Source/Common/MapLoader.*`.
+- Map resource baking: `Source/Tools/MapBaker.*` and [Baking Pipeline](content-pipeline/baking.md).
+- Runtime map entity behavior: [Server Runtime](runtime/server.md), [Client Runtime](runtime/client.md), and [Entity Model](entity-and-property-model/).
+
+## Validation checklist
+
+1. Run movement/path/map-loader tests relevant to the changed algorithm.
+2. Test both direct and multihex movement if blocker logic changes.
+3. Validate `FO_GEOMETRY` assumptions when changing directions/projection.
+4. Validate map loading with real baked map resources from an embedding project when parser behavior changes.
+5. If movement state is replicated, validate network and client/server behavior; update [Networking](authority-and-networking/) if packet/property flow changes.
+6. If script-visible movement APIs change, update [GeneratedApiAndMetadata.md](../reference/metadata/index.md) and [Nullability.md](../../Nullability.md) if signatures/nullability changed.

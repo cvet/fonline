@@ -125,6 +125,9 @@ typedef struct rpmalloc_thread_statistics_t {
 	} span_use[5];
 	//! Per size class statistics (only if ENABLE_STATISTICS=1)
 	struct {
+		//! (FOnline Patch) Block capacity and immediately reusable blocks in the calling heap
+		size_t block_size;
+		size_t reusable_count;
 		//! Current number of allocations
 		size_t alloc_current;
 		//! Peak number of allocations
@@ -326,6 +329,14 @@ rpmalloc_test_set_span_commit_failures(int failures);
 //! (FOnline Patch) Return the number of unconsumed injected failures
 RPMALLOC_EXPORT int
 rpmalloc_test_get_span_commit_failures(void);
+
+//! (FOnline Patch) Force recommit failures of decommitted free pages in allocator contract tests
+RPMALLOC_EXPORT void
+rpmalloc_test_set_page_recommit_failures(int failures);
+
+//! (FOnline Patch) Return the number of unconsumed injected recommit failures
+RPMALLOC_EXPORT int
+rpmalloc_test_get_page_recommit_failures(void);
 
 //! (FOnline Patch) Attach a pristine heap to an allocator-uninitialized calling thread
 //! so allocator-path tests do not depend on free pages retained by earlier tests

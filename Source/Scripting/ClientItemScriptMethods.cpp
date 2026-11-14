@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Common.h"
 
@@ -39,10 +9,11 @@
 
 FO_BEGIN_NAMESPACE
 
+// Returns whether this map item's sprite currently participates in rendering; throws if the item is not on the loaded map
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Item_IsVisible(ptr<ItemView> self)
 {
-    auto hex_item = self.dyn_cast<ItemHexView>();
+    auto hex_item {self.dyn_cast<ItemHexView>()};
 
     if (!hex_item) {
         throw ScriptException("Item is not on map");
@@ -51,10 +22,11 @@ FO_SCRIPT_API bool Client_Item_IsVisible(ptr<ItemView> self)
     return hex_item->IsMapSpriteVisible();
 }
 
+// Returns the current rendered pixel offset of this map item's sprite; throws if the item is not on the loaded map
 ///@ ExportMethod
 FO_SCRIPT_API ipos32 Client_Item_GetSpriteOffset(ptr<ItemView> self)
 {
-    auto hex_item = self.dyn_cast<ItemHexView>();
+    auto hex_item {self.dyn_cast<ItemHexView>()};
 
     if (!hex_item) {
         throw ScriptException("Item is not on map");
@@ -63,17 +35,18 @@ FO_SCRIPT_API ipos32 Client_Item_GetSpriteOffset(ptr<ItemView> self)
     return hex_item->GetSpriteOffset();
 }
 
+// Creates a standalone client-side clone with the same id, prototype, and property values without inserting it into a map or inventory
 ///@ ExportMethod PassOwnership
 FO_SCRIPT_API ptr<ItemView> Client_Item_Clone(ptr<ItemView> self)
 {
-    auto cloned_item = self->CreateRefClone();
+    auto cloned_item {self->CreateRefClone()};
     cloned_item->AddRef();
     return cloned_item;
 }
 
 static void ItemGetMapPos(ptr<ItemView> item, mpos& hex)
 {
-    auto map = item->GetEngine()->GetCurMap();
+    auto map {item->GetEngine()->GetCurMap()};
 
     if (!map) {
         throw ScriptException("Map is not loaded");
@@ -81,7 +54,7 @@ static void ItemGetMapPos(ptr<ItemView> item, mpos& hex)
 
     switch (item->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
-        auto cr = map->GetCritter(item->GetCritterId());
+        auto cr {map->GetCritter(item->GetCritterId())};
         if (!cr) {
             throw ScriptException("Invalid critter ownership, critter not found");
         }
@@ -96,7 +69,7 @@ static void ItemGetMapPos(ptr<ItemView> item, mpos& hex)
             throw ScriptException("Invalid container ownership, crosslinks");
         }
 
-        auto cont = map->GetItem(item->GetContainerId());
+        auto cont {map->GetItem(item->GetContainerId())};
         if (!cont) {
             throw ScriptException("Invalid container ownership, container not found");
         }
@@ -109,6 +82,7 @@ static void ItemGetMapPos(ptr<ItemView> item, mpos& hex)
     }
 }
 
+// Resolves the item's map hex from direct map ownership, its owning critter, or recursively through containing items; throws when the map or ownership chain is invalid
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Item_GetMapPos(ptr<ItemView> self, mpos& hex)
 {
@@ -119,85 +93,94 @@ FO_SCRIPT_API void Client_Item_GetMapPos(ptr<ItemView> self, mpos& hex)
     ItemGetMapPos(self, hex);
 }
 
+// Reports whether this map item's sprite animation is playing; returns false for items outside the map view
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Item_IsAnimPlaying(ptr<ItemView> self)
 {
-    if (auto hex_item = self.dyn_cast<const ItemHexView>()) {
+    if (auto hex_item {self.dyn_cast<const ItemHexView>()}) {
         return hex_item->GetAnim()->IsPlaying();
     }
 
     return false;
 }
 
+// Starts the named sprite animation for a map item with the requested looping and reverse modes; does nothing for items outside the map view
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Item_PlayAnim(ptr<ItemView> self, hstring animName, bool looped, bool reversed)
 {
-    if (auto hex_item = self.dyn_cast<ItemHexView>()) {
+    if (auto hex_item {self.dyn_cast<ItemHexView>()}) {
         hex_item->PlayAnim(animName, looped, reversed);
     }
 }
 
+// Stops the current sprite animation for a map item; does nothing for items outside the map view
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Item_StopAnim(ptr<ItemView> self)
 {
-    if (auto hex_item = self.dyn_cast<ItemHexView>()) {
+    if (auto hex_item {self.dyn_cast<ItemHexView>()}) {
         hex_item->StopAnim();
     }
 }
 
+// Sets the normalized playback phase of a map item's sprite animation; does nothing for items outside the map view
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Item_SetAnimTime(ptr<ItemView> self, float32_t normalizedTime)
+FO_SCRIPT_API void Client_Item_SetAnimPhase(ptr<ItemView> self, float32_t normalizedPhase)
 {
-    if (auto hex_item = self.dyn_cast<ItemHexView>()) {
-        hex_item->SetAnimTime(normalizedTime);
+    if (auto hex_item {self.dyn_cast<ItemHexView>()}) {
+        hex_item->SetAnimPhase(normalizedPhase);
     }
 }
 
+// Sets the directional variant used by a map item's sprite animation; does nothing for items outside the map view
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Item_SetAnimDir(ptr<ItemView> self, mdir dir)
 {
-    if (auto hex_item = self.dyn_cast<ItemHexView>()) {
+    if (auto hex_item {self.dyn_cast<ItemHexView>()}) {
         hex_item->SetAnimDir(dir);
     }
 }
 
+// Reports whether this map item is undergoing client-side visual movement; returns false for items outside the map view
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Item_IsMoving(ptr<ItemView> self)
 {
-    if (auto hex_item = self.dyn_cast<const ItemHexView>()) {
+    if (auto hex_item {self.dyn_cast<const ItemHexView>()}) {
         return hex_item->IsMoving();
     }
 
     return false;
 }
 
+// Starts client-side visual movement of a map item toward the target hex at the requested speed; does nothing for items outside the map view
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Item_MoveToHex(ptr<ItemView> self, mpos hex, float32_t speed)
 {
-    if (auto hex_item = self.dyn_cast<ItemHexView>()) {
+    if (auto hex_item {self.dyn_cast<ItemHexView>()}) {
         hex_item->MoveToHex(hex, speed);
     }
 }
 
+// Returns a snapshot of handles to the item's immediate contained items, without recursively flattening nested containers
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<ItemView>> Client_Item_GetInnerItems(ptr<ItemView> self)
 {
-    span<refcount_ptr<ItemView>> inner_items = self->GetInnerItems();
+    span<refcount_ptr<ItemView>> inner_items {self->GetInnerItems()};
 
-    vector<ptr<ItemView>> items;
+    vector<ptr<ItemView>> items {};
     items.reserve(inner_items.size());
 
-    for (size_t i = 0; i < inner_items.size(); i++) {
+    for (size_t i {0}; i < inner_items.size(); i++) {
         items.emplace_back(inner_items[i]);
     }
 
     return items;
 }
 
+// Returns the map sprite's current rendered alpha, or 255 for an item outside the map view
 ///@ ExportMethod
 FO_SCRIPT_API uint8_t Client_Item_GetAlpha(ptr<ItemView> self)
 {
-    auto hex_item = self.dyn_cast<ItemHexView>();
+    auto hex_item {self.dyn_cast<ItemHexView>()};
     if (!hex_item) {
         return 0xFF;
     }
@@ -205,18 +188,20 @@ FO_SCRIPT_API uint8_t Client_Item_GetAlpha(ptr<ItemView> self)
     return hex_item->GetCurAlpha();
 }
 
+// Fades a map item's sprite toward the requested target alpha; does nothing for items outside the map view
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Item_SetAlpha(ptr<ItemView> self, uint8_t alpha)
 {
-    if (auto hex_item = self.dyn_cast<ItemHexView>()) {
+    if (auto hex_item {self.dyn_cast<ItemHexView>()}) {
         hex_item->SetTargetAlpha(alpha);
     }
 }
 
+// Starts the standard fade-out and finish sequence for a map item once; does nothing for items outside the map view
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Item_Finish(ptr<ItemView> self)
 {
-    if (auto hex_item = self.dyn_cast<ItemHexView>()) {
+    if (auto hex_item {self.dyn_cast<ItemHexView>()}) {
         if (!hex_item->IsFinishing()) {
             hex_item->Finish();
         }

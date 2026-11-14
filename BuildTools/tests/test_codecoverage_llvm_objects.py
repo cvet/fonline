@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
+import json
 import os
 from pathlib import Path
 import shutil
@@ -181,6 +182,7 @@ def test_cmake_coverage_companions_reuse_libraries_and_scope_quick_exit(tmp_path
     helper = root / "Engine/BuildTools/cmake/helpers/CoverageQuickExit.c"
     helper.parent.mkdir(parents=True)
     shutil.copy2(QUICK_EXIT, helper)
+    shutil.copytree(BUILD_TOOLS / "resource-pack-hash", root / "Engine/BuildTools/resource-pack-hash")
     (root / "core.cpp").write_text("int core() { return 7; }\n")
     for name in ("TestingApp", "ServerHeadlessApp", "BakerApp", "ManagedScriptBakerApp"):
         body = "return core() == 7 ? 0 : 1;" if name == "TestingApp" else "std::quick_exit(core() == 7 ? 0 : 1);"
@@ -188,6 +190,7 @@ def test_cmake_coverage_companions_reuse_libraries_and_scope_quick_exit(tmp_path
     cmake = r'''
 cmake_minimum_required(VERSION 3.22)
 project(CoverageCompanions C CXX)
+include("@COMMANDS@")
 add_compile_options(-O0 -fprofile-instr-generate -fcoverage-mapping -Wall -Wextra -Werror)
 add_link_options(-fprofile-instr-generate)
 add_library(Core STATIC core.cpp)
@@ -226,11 +229,20 @@ if(TARGET Probe_BakerLib OR TARGET Probe_Server)
 endif()
 '''
     stage = BUILD_TOOLS / "cmake/stages/Applications.cmake"
-    (root / "CMakeLists.txt").write_text(cmake.replace("@PLATFORM@", platform).replace("@STAGE@", str(stage)))
+    commands = BUILD_TOOLS / "cmake/helpers/Commands.cmake"
+    (root / "CMakeLists.txt").write_text(
+        cmake.replace("@PLATFORM@", platform).replace("@STAGE@", str(stage)).replace("@COMMANDS@", str(commands)))
     build = root / "build"
     run(["cmake", "-S", str(root), "-B", str(build), "-G", "Ninja",
-         "-DCMAKE_C_COMPILER=clang-20", "-DCMAKE_CXX_COMPILER=clang++-20"])
+         "-DCMAKE_C_COMPILER=clang-20", "-DCMAKE_CXX_COMPILER=clang++-20",
+         "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"])
     run(["cmake", "--build", str(build), "--parallel", "2"])
+    hash_commands = [entry for entry in json.loads((build / "compile_commands.json").read_text())
+                     if Path(entry["file"]).name == "ResourcePackHash.cpp"]
+    assert len(hash_commands) == (1 if platform in ("LINUX", "MAC") else 0)
+    for entry in hash_commands:
+        assert "-fprofile-instr-generate" not in entry["command"]
+        assert "-fcoverage-mapping" not in entry["command"]
     for name in ("Probe_ServerHeadless", "Probe_Baker", "Probe_ManagedScriptBaker"):
         sources = (build / f"{name}.sources").read_text()
         assert ("CoverageQuickExit.c" in sources) == (platform == "LINUX")

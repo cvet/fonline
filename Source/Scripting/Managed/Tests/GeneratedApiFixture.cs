@@ -10,10 +10,12 @@ internal static class Native
     public static void RegisterGlobalScriptFunc(string name, string attribute, string[] parameters, string result,
                                                 Delegate handler) => RegisteredFunctions.Add(name + ":" + attribute);
     public static readonly System.Collections.Generic.List<Delegate> RegisteredRemoteCallHandlers = new();
+    public static readonly System.Collections.Generic.List<int> RegisteredRemoteCallParameterCounts = new();
     public static void RegisterRemoteCallHandler(string name, int parameters, Delegate handler)
     {
         RegisteredRemoteCalls.Add(name);
         RegisteredRemoteCallHandlers.Add(handler);
+        RegisteredRemoteCallParameterCounts.Add(parameters);
     }
     public static int FallbackCalls;
     public static bool InvokeScriptFunc(string name, object?[] args)
@@ -21,11 +23,15 @@ internal static class Native
         FallbackCalls++;
         return false;
     }
+    public static string LastLog = "";
     public static void Log(string text)
     {
+        LastLog = text;
     }
+    public static int ReportedExceptions;
     public static void ReportException(Exception exception)
     {
+        System.Threading.Interlocked.Increment(ref ReportedExceptions);
     }
     public static int ContinuationSignals;
     public static void SignalContinuationsReady() => ContinuationSignals++;
@@ -47,6 +53,14 @@ public class Critter
 public static partial class Game
 {
     public static void Log(string text) => Native.Log(text);
+    internal static timespan LastTimerDuration;
+    internal static System.Action? LastTimerCallback;
+
+    public static void StartTimeEvent(timespan duration, System.Action callback)
+    {
+        LastTimerDuration = duration;
+        LastTimerCallback = callback;
+    }
 }
 
 public enum CritterProperty
@@ -157,6 +171,11 @@ public partial struct irect
 public partial struct mpos
 {
     public short x, y;
+    public mpos(int x, int y)
+    {
+        this.x = (short)x;
+        this.y = (short)y;
+    }
 }
 public partial struct msize
 {

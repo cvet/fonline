@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -95,6 +65,9 @@ public:
     [[nodiscard]] auto GetMovingContext() const noexcept -> nptr<const MovingContext>;
     [[nodiscard]] auto GetMovingContext() noexcept -> nptr<MovingContext>;
     [[nodiscard]] auto GetMovingState() const noexcept -> MovingState;
+    [[nodiscard]] auto GetFinishedPlayerMoving() noexcept -> nptr<MovingContext>;
+    [[nodiscard]] auto GetPlayerPlanMoving(uint32_t plan_seq) noexcept -> nptr<MovingContext>;
+    [[nodiscard]] auto GetPlayerPlanDistanceShift() const noexcept -> float32_t { return _playerPlanDistanceShift; }
     [[nodiscard]] auto IsMapTransfersLocked() const noexcept -> bool;
     [[nodiscard]] auto HasAttachedCritters() const noexcept -> bool;
     [[nodiscard]] auto GetAttachedCritters() noexcept -> span<ptr<Critter>>;
@@ -118,6 +91,7 @@ public:
     void MarkIsForPlayer();
     void UnmarkIsForPlayer();
     void SetMoving(refcount_ptr<MovingContext> moving);
+    void MarkMovingStartedByPlayer(uint32_t plan_seq, float32_t plan_distance_shift);
     void StopMoving(MovingState reason = MovingState::Stopped);
     void AttachPlayer(ptr<Player> player);
     void DetachPlayer();
@@ -166,34 +140,49 @@ public:
     void Send_SomeItems(const_span<ptr<const Item>> items, bool owned, bool with_inner_entities, const any_t& context_param);
     void Send_Attachments(ptr<const Critter> from_cr);
 
+    // Runs while this critter is being finished
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnFinish);
+    // Runs when another critter enters this critter's current visibility set
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterAppeared, ptr<Critter> /*appearedCr*/);
+    // Runs when another visible critter enters the ShowCritterDist1 distance tier
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterAppearedDist1, ptr<Critter> /*appearedCr*/);
+    // Runs when another visible critter enters the ShowCritterDist2 distance tier
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterAppearedDist2, ptr<Critter> /*appearedCr*/);
+    // Runs when another visible critter enters the ShowCritterDist3 distance tier
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterAppearedDist3, ptr<Critter> /*appearedCr*/);
+    // Runs when another critter leaves this critter's current visibility set
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterDisappeared, ptr<Critter> /*disappearedCr*/);
+    // Runs when another critter leaves the ShowCritterDist1 distance tier or is no longer visible
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterDisappearedDist1, ptr<Critter> /*disappearedCr*/);
+    // Runs when another critter leaves the ShowCritterDist2 distance tier or is no longer visible
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterDisappearedDist2, ptr<Critter> /*disappearedCr*/);
+    // Runs when another critter leaves the ShowCritterDist3 distance tier or is no longer visible
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterDisappearedDist3, ptr<Critter> /*disappearedCr*/);
+    // Runs when `targetCr` remains visible but changes visibility mode for this critter
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterVisibilityModeChanged, ptr<Critter> /*targetCr*/, CritterVisibilityMode /*mode*/);
+    // Runs when a map item enters this critter's visibility set; `dropper` is present for a direct critter drop
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemOnMapAppeared, ptr<Item> /*item*/, nptr<Critter> /*dropper*/);
+    // Runs when a map item leaves this critter's visibility set; `picker` is present when a critter picks it up
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemOnMapDisappeared, ptr<Item> /*item*/, nptr<Critter> /*picker*/);
+    // Runs when a still-visible map item's view-relevant state changes
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemOnMapChanged, ptr<Item> /*item*/);
+    // Exposes a project-defined talk lifecycle event; Engine does not fire it directly
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnTalk, ptr<Critter> /*playerCr*/, bool /*begin*/, int32_t /*talkers*/);
+    // Exposes a project-defined barter lifecycle event; Engine does not fire it directly
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnBarter, ptr<Critter> /*playerCr*/, bool /*begin*/, int32_t /*barterCount*/);
 
@@ -202,6 +191,10 @@ private:
     auto GetBroadcastRecipients(nptr<const Player> ignore_player = nullptr) -> small_vector<refcount_ptr<Player>, 8>;
 
     uint32_t _movingUid {};
+    uint32_t _playerMovingUid {};
+    // The player's plan number and the distance added by bridging its start or removed by joining its prefix
+    uint32_t _playerPlanSeq {};
+    float32_t _playerPlanDistanceShift {};
     refcount_nptr<MovingContext> _moving {};
     refcount_nptr<MovingContext> _lastMoving {};
     mutable atomic_mutex _playerLinkLocker {};
@@ -240,6 +233,7 @@ public:
 
     void AddMember(ptr<Critter> cr);
     void RemoveMember(ptr<Critter> cr);
+    void BroadcastAttachments(ptr<const Critter> from_cr, nptr<const Player> ignore_player) const;
 
 private:
     // Declared before the state it guards so it outlives it

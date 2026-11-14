@@ -11,6 +11,7 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
+    <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
     <ImplicitUsings>false</ImplicitUsings>
     <!-- The script build invokes this project with its own Configuration (Server/Client/Mapper), which
          produces a second obj/<Config> tree. Listing sources explicitly instead of globbing keeps those

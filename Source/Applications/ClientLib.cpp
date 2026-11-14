@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "Common.h"
 
@@ -49,6 +19,7 @@ static_assert(false, "Client runtime library is supported only on Windows, Linux
 
 FO_BEGIN_NAMESPACE
 void ApplicationShutdownHook();
+void ClientStartupSettingsHook(GlobalSettings& settings, int32_t client_index, bool embedded);
 FO_END_NAMESPACE
 
 struct ClientAppData
@@ -56,7 +27,7 @@ struct ClientAppData
     refcount_nptr<ClientEngine> Client {};
     bool ResourcesSynced {};
     bool ReloadRequested {};
-    string StagedRuntimePath;
+    string StagedRuntimePath {};
     optional<Updater> ResourceUpdater {};
 };
 FO_GLOBAL_DATA(ClientAppData, Data);
@@ -70,19 +41,19 @@ static void RunClientRuntimeAbi(int32_t argc, char** argv, ClientRuntimeResult* 
 {
     // Resolved by the run once settings are loaded; declared here so that the teardown below can name its parts
     // in the marker. Empty when the run never got that far, and then the teardown records nothing
-    string session_marker;
+    string session_marker {};
 
     // The host carries on in this process after the call: nothing started here may still be running, or be
     // killed holding a lock when the host exits, so the set is torn down before control goes back
-    auto join_before_return = scope_exit([&session_marker]() noexcept { DestroyGlobalDataRecordingTeardown(session_marker); });
+    auto join_before_return {scope_exit([&session_marker]() noexcept { DestroyGlobalDataRecordingTeardown(session_marker); })};
 
     // The host reads the result strings after the call, when the global data they came from is already
     // gone. The host never unloads this library (see its TryLoadRuntime), so storage it owns outlives the read
-    static string published_runtime_path;
-    static string published_compatibility_version;
+    static string published_runtime_path {};
+    static string published_compatibility_version {};
 
     CommandLineArgs args {argc, argv};
-    auto result = make_nptr(runtime_result);
+    auto result {make_nptr(runtime_result)};
     RunClientRuntime(args, result, session_marker);
 
     if (result) {
@@ -99,11 +70,11 @@ FO_EXPORT_FUNC auto FO_QueryClientRuntimeExports(uint32_t host_abi_version, Clie
         return false;
     }
 
-    auto exports = make_ptr(raw_exports);
+    auto exports {make_ptr(raw_exports)};
 
     // Pin the runtime name string for the lifetime of this DLL — host reads it as
     // const char* through the ABI, and it must outlive every consumer call
-    static const string runtime_name = GetCurrentClientRuntimeLibraryName();
+    static const string runtime_name {GetCurrentClientRuntimeLibraryName()};
 
     exports->StructSize = numeric_cast<uint32_t>(sizeof(ClientRuntimeExports));
     exports->Metadata.StructSize = numeric_cast<uint32_t>(sizeof(ClientRuntimeMetadata));
@@ -121,19 +92,19 @@ FO_EXPORT_FUNC auto FO_QueryClientRuntimeExports(uint32_t host_abi_version, Clie
 // client files and breaks the next update; one that is gone never finished its exit
 static void ReportPreviousUncleanSession(string_view marker_path) noexcept
 {
-    auto previous = TakePreviousClientSession(marker_path);
+    auto previous {TakePreviousClientSession(marker_path)};
 
     if (!previous.has_value()) {
         return;
     }
 
-    string_view teardown_set = !previous->TeardownSet.empty() ? string_view {previous->TeardownSet} : string_view {"none"};
+    string_view teardown_set {!previous->TeardownSet.empty() ? string_view {previous->TeardownSet} : string_view {"none"}};
 
     if (previous->StillRunning) {
         logging::write(logging::type::warning, "Client runtime DLL: previous client process {} is still running, stage {}, teardown {}, build {}, started {}", previous->Pid, previous->StageName, teardown_set, previous->BuildHash, previous->StartedAt);
 
         safe_call([&] {
-            ClientSessionException ex("Previous client process is still running", previous->StageName, teardown_set, previous->Pid, previous->BuildHash, previous->StartedAt, FO_BUILD_HASH);
+            ClientSessionException ex {"Previous client process is still running", previous->StageName, teardown_set, previous->Pid, previous->BuildHash, previous->StartedAt, FO_BUILD_HASH};
             exceptions::report_and_continue(ex);
         });
     }
@@ -141,7 +112,7 @@ static void ReportPreviousUncleanSession(string_view marker_path) noexcept
         logging::write(logging::type::warning, "Client runtime DLL: previous session did not exit cleanly, stage {}, teardown {}, build {}, started {}", previous->StageName, teardown_set, previous->BuildHash, previous->StartedAt);
 
         safe_call([&] {
-            ClientSessionException ex("Previous client session did not exit cleanly", previous->StageName, teardown_set, previous->BuildHash, previous->StartedAt, FO_BUILD_HASH);
+            ClientSessionException ex {"Previous client session did not exit cleanly", previous->StageName, teardown_set, previous->BuildHash, previous->StartedAt, FO_BUILD_HASH};
             exceptions::report_and_continue(ex);
         });
     }
@@ -160,7 +131,7 @@ static void RunClientRuntime(CommandLineArgs args, nptr<ClientRuntimeResult> run
     try {
         logging::write("Client runtime DLL: starting, build {}, compatibility {}", FO_BUILD_HASH, FO_COMPATIBILITY_VERSION);
 
-        InitApp(args, combine_enum(AppInitFlags::ClientMode, AppInitFlags::ShowMessageOnException, AppInitFlags::PrebakeResources, AppInitFlags::AppendLogFile));
+        InitApp(args, combine_enum(AppInitFlags::StandaloneClient, AppInitFlags::ShowMessageOnException, AppInitFlags::PrebakeResources, AppInitFlags::AppendLogFile));
         logging::write("Client runtime DLL: compatibility version: {}", GetApp()->Settings.Network.CompatibilityVersion);
 
         // The crash reporter is alive only from here, and a run that hung on the way out could report
@@ -169,7 +140,7 @@ static void RunClientRuntime(CommandLineArgs args, nptr<ClientRuntimeResult> run
         ReportPreviousUncleanSession(session_marker);
         BeginClientSession(session_marker);
 
-        auto balancer = FrameBalancer(!GetApp()->Settings.Render.VSync, GetApp()->Settings.Render.Sleep, GetApp()->Settings.Render.FixedFPS);
+        auto balancer {FrameBalancer(!GetApp()->Settings.Render.VSync, GetApp()->Settings.Render.Sleep, GetApp()->Settings.Render.FixedFPS)};
 
         while (!GetApp()->IsQuitRequested()) {
             balancer.StartLoop();
@@ -180,7 +151,7 @@ static void RunClientRuntime(CommandLineArgs args, nptr<ClientRuntimeResult> run
         logging::write("Client runtime DLL: main loop exited");
         SetClientShutdownStage(session_marker, ClientShutdownStage::MainLoopExited);
 
-        bool quit_success = GetApp()->GetRequestedQuitSuccess();
+        bool quit_success {GetApp()->GetRequestedQuitSuccess()};
         CleanupClientApp();
         SetClientShutdownStage(session_marker, ClientShutdownStage::ClientStopped);
 
@@ -221,8 +192,8 @@ static void RunClientRuntime(CommandLineArgs args, nptr<ClientRuntimeResult> run
     safe_call([] { ApplicationShutdownHook(); });
     SetClientShutdownStage(session_marker, ClientShutdownStage::ShutdownHookDone);
 
-    string_view result_kind = "none";
-    bool result_success = false;
+    string_view result_kind {"none"};
+    bool result_success {false};
 
     if (runtime_result) {
         result_kind = ClientRuntimeResultKindToString(runtime_result->ResultKind);
@@ -254,14 +225,14 @@ static void MainEntry([[maybe_unused]] void* data)
             exceptions::report_and_exit(ex);
         }
 
-        auto end_frame = scope_success([&]() {
+        auto end_frame {scope_success([&]() {
             try {
                 GetApp()->EndFrame();
             }
             catch (const std::exception& ex) {
                 exceptions::report_and_exit(ex);
             }
-        });
+        })};
 
         if (!Data->Client) {
             try {
@@ -280,10 +251,10 @@ static void MainEntry([[maybe_unused]] void* data)
                         return;
                     }
 
-                    auto result = Data->ResourceUpdater->GetResult();
+                    auto result {Data->ResourceUpdater->GetResult()};
                     // The updater stages the new runtime under its own binary dir (the writable root
                     // for an installed client, the exe dir for a portable one); request that exact path
-                    string staged_runtime_path = Data->ResourceUpdater->GetRuntimeLivePath();
+                    string staged_runtime_path {Data->ResourceUpdater->GetRuntimeLivePath()};
                     Data->ResourceUpdater.reset();
 
                     switch (result) {
@@ -291,6 +262,10 @@ static void MainEntry([[maybe_unused]] void* data)
                         logging::write("Client runtime DLL: updater finished, resources ready");
                         Data->ResourcesSynced = true;
                         break;
+                    case UpdaterResult::SettingsRestartRequired:
+                        logging::write("Client runtime DLL: exiting for configuration restart");
+                        GetApp()->RequestQuit();
+                        return;
                     case UpdaterResult::BinariesStaged:
                         Data->StagedRuntimePath = staged_runtime_path;
                         Data->ReloadRequested = true;
@@ -305,10 +280,11 @@ static void MainEntry([[maybe_unused]] void* data)
                     }
                 }
 
-                auto settings = make_ptr(&GetApp()->Settings);
+                ClientStartupSettingsHook(GetApp()->Settings, 1, false);
+                auto settings {make_ptr(&GetApp()->Settings)};
                 Data->Client = safe_alloc::make_refcounted<ClientEngine>(settings, GetClientResources(*settings), &GetApp()->MainWindow);
 #if FO_HEADLESS_APP
-                auto client = GetClient();
+                auto client {GetClient()};
                 client->Connect();
 #endif
             }
@@ -318,12 +294,12 @@ static void MainEntry([[maybe_unused]] void* data)
         }
 
         try {
-            auto client = GetClient();
+            auto client {GetClient()};
             client->MainLoop();
         }
         catch (const ResourcesOutdatedException&) {
             Data->ResourcesSynced = false;
-            auto client = GetClient();
+            auto client {GetClient()};
             client->Shutdown();
             Data->Client.reset();
         }
@@ -334,7 +310,7 @@ static void MainEntry([[maybe_unused]] void* data)
             exceptions::report_and_continue(ex);
 
             if (GetApp()->Settings.Render.RecreateClientOnError) {
-                auto client = GetClient();
+                auto client {GetClient()};
                 client->Shutdown();
                 Data->Client.reset();
             }
@@ -352,7 +328,7 @@ static void CleanupClientApp() noexcept
     Data->ResourceUpdater.reset();
 
     if (Data->Client) {
-        auto client = GetClient();
+        auto client {GetClient()};
         client->Shutdown();
         Data->Client.reset();
     }

@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -67,6 +37,8 @@ FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(MapperException);
 
+class ModelSprite;
+
 class MapperEngine final : public ClientEngine
 {
     friend class MapperScriptSystem;
@@ -92,24 +64,14 @@ public:
         nptr<const ProtoEntity> Proto {};
         optional<Properties> Props {};
         vector<unique_ptr<EntityBuf>> Children {};
-        EntityBuf() = default;
-        EntityBuf(const EntityBuf& other);
-        auto operator=(const EntityBuf& other) -> EntityBuf&;
-        EntityBuf(EntityBuf&&) noexcept = default;
-        // Properties move assignment is deleted, so the defaulted variant would be implicitly deleted anyway
-        auto operator=(EntityBuf&&) noexcept -> EntityBuf& = delete;
-        [[nodiscard]] auto GetProps() const noexcept -> nptr<const Properties> { return Props ? make_nptr(&*Props) : nullptr; }
     };
 
     struct UndoOp
     {
         string Label {};
-        bool IsSnapshot {};
         function<bool(ptr<MapperEngine>, ptr<ptr<MapView>>)> Undo {};
         function<bool(ptr<MapperEngine>, ptr<ptr<MapView>>)> Redo {};
-
-        UndoOp() = default;
-        UndoOp(string label, function<bool(ptr<MapperEngine>, ptr<ptr<MapView>>)> undo, function<bool(ptr<MapperEngine>, ptr<ptr<MapView>>)> redo, bool is_snapshot = false);
+        bool IsSnapshot {};
     };
 
     struct UndoContext
@@ -139,38 +101,38 @@ public:
         string Time {};
     };
 
-    static constexpr auto CUR_MODE_DEFAULT = 0;
-    static constexpr auto CUR_MODE_MOVE_SELECTION = 1;
-    static constexpr auto CUR_MODE_PLACE_OBJECT = 2;
-    static constexpr auto INT_MODE_CUSTOM0 = 0;
-    static constexpr auto INT_MODE_CUSTOM1 = 1;
-    static constexpr auto INT_MODE_CUSTOM2 = 2;
-    static constexpr auto INT_MODE_CUSTOM3 = 3;
-    static constexpr auto INT_MODE_CUSTOM4 = 4;
-    static constexpr auto INT_MODE_CUSTOM5 = 5;
-    static constexpr auto INT_MODE_CUSTOM6 = 6;
-    static constexpr auto INT_MODE_CUSTOM7 = 7;
-    static constexpr auto INT_MODE_CUSTOM8 = 8;
-    static constexpr auto INT_MODE_CUSTOM9 = 9;
-    static constexpr auto INT_MODE_ITEM = 10;
-    static constexpr auto INT_MODE_TILE = 11;
-    static constexpr auto INT_MODE_CRIT = 12;
-    static constexpr auto INT_MODE_FAST = 13;
-    static constexpr auto INT_MODE_IGNORE = 14;
-    static constexpr auto INT_MODE_INCONT = 15;
-    static constexpr auto INT_MODE_MESS = 16;
-    static constexpr auto INT_MODE_LIST = 17;
-    static constexpr auto INT_MODE_COUNT = 18;
-    static constexpr auto TAB_COUNT = 15;
-    static constexpr auto INT_NONE = 0;
-    static constexpr auto INT_BUTTON = 1;
-    static constexpr auto INT_SELECT = 3;
-    static constexpr auto INT_MOVE_SELECTION = 4;
-    static constexpr auto INT_PAN = 5;
-    static constexpr auto DEFAULT_SUB_TAB = "000 - all";
-    static constexpr auto DRAW_NEXT_HEIGHT = 12;
-    static constexpr auto CONSOLE_KEY_TICK = 500;
-    static constexpr auto CONSOLE_MAX_ACCELERATE = 460;
+    static constexpr auto CUR_MODE_DEFAULT {0};
+    static constexpr auto CUR_MODE_MOVE_SELECTION {1};
+    static constexpr auto CUR_MODE_PLACE_OBJECT {2};
+    static constexpr auto INT_MODE_CUSTOM0 {0};
+    static constexpr auto INT_MODE_CUSTOM1 {1};
+    static constexpr auto INT_MODE_CUSTOM2 {2};
+    static constexpr auto INT_MODE_CUSTOM3 {3};
+    static constexpr auto INT_MODE_CUSTOM4 {4};
+    static constexpr auto INT_MODE_CUSTOM5 {5};
+    static constexpr auto INT_MODE_CUSTOM6 {6};
+    static constexpr auto INT_MODE_CUSTOM7 {7};
+    static constexpr auto INT_MODE_CUSTOM8 {8};
+    static constexpr auto INT_MODE_CUSTOM9 {9};
+    static constexpr auto INT_MODE_ITEM {10};
+    static constexpr auto INT_MODE_TILE {11};
+    static constexpr auto INT_MODE_CRIT {12};
+    static constexpr auto INT_MODE_FAST {13};
+    static constexpr auto INT_MODE_IGNORE {14};
+    static constexpr auto INT_MODE_INCONT {15};
+    static constexpr auto INT_MODE_MESS {16};
+    static constexpr auto INT_MODE_LIST {17};
+    static constexpr auto INT_MODE_COUNT {18};
+    static constexpr auto TAB_COUNT {15};
+    static constexpr auto INT_NONE {0};
+    static constexpr auto INT_BUTTON {1};
+    static constexpr auto INT_SELECT {3};
+    static constexpr auto INT_MOVE_SELECTION {4};
+    static constexpr auto INT_PAN {5};
+    static constexpr auto DEFAULT_SUB_TAB {"000 - all"};
+    static constexpr auto DRAW_NEXT_HEIGHT {12};
+    static constexpr auto CONSOLE_KEY_TICK {500};
+    static constexpr auto CONSOLE_MAX_ACCELERATE {460};
 
     explicit MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources, ptr<IAppWindow> window);
 
@@ -179,6 +141,17 @@ public:
     auto operator=(const MapperEngine&) = delete;
     auto operator=(MapperEngine&&) noexcept = delete;
     ~MapperEngine() override = default;
+
+    [[nodiscard]] auto IsCurInRect(const irect32& rect, int32_t ax, int32_t ay) const -> bool;
+    [[nodiscard]] auto IsCurInRect(const irect32& rect) const -> bool;
+    [[nodiscard]] auto IsCurInInterface() const -> bool;
+    [[nodiscard]] auto IsMapperHexOverlayVisible() const noexcept -> bool { return MapperHexOverlayVisible; }
+    [[nodiscard]] auto GetMapperTrackOverlayHexes() const noexcept -> const vector<mpos>& { return MapperTrackOverlayHexes; }
+    [[nodiscard]] auto GetMapperTrackOverlayKinds() const noexcept -> const vector<int32_t>& { return MapperTrackOverlayKinds; }
+    [[nodiscard]] auto IsItemMode() const -> bool { return ActiveItemProtos && ActiveProtoScroll; }
+    [[nodiscard]] auto IsCritMode() const -> bool { return ActiveCritterProtos && ActiveProtoScroll; }
+    [[nodiscard]] auto IsImGuiMouseCaptured() const -> bool;
+    [[nodiscard]] auto IsImGuiTextInputActive() const -> bool;
 
     void Shutdown() override;
 
@@ -205,9 +178,6 @@ public:
     void CommitPendingSelectionMove();
     void ResetPendingSelectionMove();
 
-    auto IsCurInRect(const irect32& rect, int32_t ax, int32_t ay) const -> bool;
-    auto IsCurInRect(const irect32& rect) const -> bool;
-    auto IsCurInInterface() const -> bool;
     auto GetCurHex(mpos& hex, bool ignore_interface) -> bool;
 
     void DrawMainPanelImGui();
@@ -227,11 +197,8 @@ public:
 
     void SetMapperHexOverlayVisible(bool visible);
     void ToggleMapperHexOverlay();
-    auto IsMapperHexOverlayVisible() const noexcept -> bool { return MapperHexOverlayVisible; }
     void ClearMapperTrackOverlay();
     void AddMapperTrackOverlayHex(mpos hex, int32_t kind);
-    auto GetMapperTrackOverlayHexes() const noexcept -> const vector<mpos>& { return MapperTrackOverlayHexes; }
-    auto GetMapperTrackOverlayKinds() const noexcept -> const vector<int32_t>& { return MapperTrackOverlayKinds; }
     void MarkBlockedHexes();
 
     auto GetActiveSubTab() -> nptr<SubTab>;
@@ -239,8 +206,6 @@ public:
     auto GetActiveProtoIndex() const -> int32_t;
     void SetActiveProtoIndex(int32_t index);
     void RefreshActiveProtoLists();
-    auto IsItemMode() const -> bool { return ActiveItemProtos && ActiveProtoScroll; }
-    auto IsCritMode() const -> bool { return ActiveCritterProtos && ActiveProtoScroll; }
 
     void MoveEntity(ptr<ClientEntity> entity, mpos hex);
     void DeleteEntity(ptr<ClientEntity> entity);
@@ -283,8 +248,6 @@ public:
     void DrawConsoleImGui();
     void ConsoleSubmitCommand();
     void ResetImGuiSettings();
-    auto IsImGuiMouseCaptured() const -> bool;
-    auto IsImGuiTextInputActive() const -> bool;
     auto CanUndo() const -> bool;
     auto CanRedo() const -> bool;
     auto GetUndoLabel() const -> string;
@@ -321,12 +284,16 @@ public:
     auto CaptureMapSnapshot(nptr<const MapView> map) const -> string;
     auto RestoreMapSnapshot(ptr<ptr<MapView>> map, string_view map_name, const string& map_text) -> bool;
 
+    // Runs for submitted Mapper console text; handlers may replace `text`, and `StopChain` suppresses built-in command parsing
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnMapperMessage, string& /*text*/);
+    // Runs after a map is loaded and normalized, before it is added to the Mapper's loaded-map list
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnEditMapLoad, ptr<MapView> /*map*/);
+    // Runs after Mapper writes a map successfully and before it marks the undo state clean
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnEditMapSave, ptr<MapView> /*map*/);
+    // Runs when the Inspector selects `entity`; handlers populate or reorder the mutable property-index list
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnInspectorProperties, ptr<Entity> /*entity*/, vector<int32_t>& /*properties*/);
 
@@ -461,6 +428,12 @@ public:
     ucolor SelectContourColor {255, 215, 40};
 
 private:
+    auto GetCritterPreviewSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, mdir dir, nptr<const int32_t> layers3d) -> ptr<const Sprite>;
+#if FO_ENABLE_3D
+    auto GetCritterPreviewModelSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, mdir dir, nptr<const int32_t> layers3d) -> nptr<const ModelSprite>;
+    unordered_map<hstring, shared_ptr<ModelSprite>> _critterPreviewModels {};
+#endif
+
     struct ImGuiInputTextStringUserData
     {
         ptr<string> Value;

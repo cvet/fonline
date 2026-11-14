@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "catch_amalgamated.hpp"
 
@@ -37,6 +7,7 @@
 #include "DefaultSprites.h"
 #include "EffectManager.h"
 #include "FontManager.h"
+#include "ResourceManager.h"
 #include "SpriteManager.h"
 #include "Test_BakerHelpers.h"
 #include "Test_FontFixtures.h"
@@ -64,7 +35,7 @@ public:
     ~TrueTypeFontRig() = default;
 
     [[nodiscard]] auto GetFonts() -> FontManager& { return _fonts; }
-    [[nodiscard]] auto GetSprites() -> SpriteManager& { return _sprites; }
+    [[nodiscard]] auto GetAssets() -> ResourceManager& { return _assets; }
     [[nodiscard]] auto GetTextWidth(string_view text) -> int32_t;
 
     void Bind(const vector<string>& faces, int32_t pixel_size, FontOptions options = {}, const vector<int32_t>& preload_ranges = {});
@@ -76,6 +47,7 @@ private:
     GameTimer _timer;
     EffectManager _effects;
     SpriteManager _sprites;
+    ResourceManager _assets;
     FontManager _fonts;
 };
 
@@ -101,7 +73,7 @@ static auto MakeUnhintedOptions() -> FontOptions
 FontManagerTestSettings::FontManagerTestSettings() :
     GlobalSettings {false}
 {
-    ApplyDefaultSettings();
+    SetupDefaultSettings();
     BakerTests::ApplySelfContainedClientSettings(*this);
 }
 
@@ -109,10 +81,11 @@ TrueTypeFontRig::TrueTypeFontRig() :
     _resources {MakeFontResources()},
     _timer {&_settings},
     _effects {&_settings, &_resources, GetApp()->MainWindow.GetRender()},
-    _sprites {&_settings, &GetApp()->MainWindow, &_resources, &_timer, &_effects, &_hashes},
-    _fonts {&_sprites}
+    _sprites {&_settings, &GetApp()->MainWindow, &_timer, &_effects, &_hashes},
+    _assets {&_resources, &_sprites},
+    _fonts {&_sprites, &_assets}
 {
-    _sprites.RegisterSpriteFactory(safe_alloc::make_unique<DefaultSpriteFactory>(&_sprites));
+    _assets.RegisterSpriteFactory(safe_alloc::make_unique<DefaultSpriteFactory>(&_sprites, &_assets));
 }
 
 auto TrueTypeFontRig::GetTextWidth(string_view text) -> int32_t
@@ -259,7 +232,7 @@ TEST_CASE("FontManagerTrueTypeSheetLifetime")
         rig.Bind({string(MainFontPath)}, 24, outlined);
 
         vector<ucolor> probe_pixels {ucolor::clear};
-        auto probe = rig.GetSprites().CreateQuadSprite(AtlasType::IfaceSprites, {1, 1}, probe_pixels);
+        auto probe = rig.GetAssets().CreateQuadSprite(AtlasType::IfaceSprites, {1, 1}, probe_pixels);
         auto atlas = probe->GetAtlas();
         REQUIRE(atlas);
         size_t used_area = atlas->GetLayout()->GetUsedArea();

@@ -1,42 +1,14 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
 #include "Common.h"
 
+#include "LinkDelay.h"
 #include "NetBuffer.h"
 #include "NetworkServer.h"
+#include "RpcRuntimeTracker.h"
 #include "SecureChannel.h"
 
 FO_BEGIN_NAMESPACE
@@ -46,24 +18,35 @@ FO_BEGIN_NAMESPACE
 ///@ ExportEnum
 enum class DisconnectReason : uint8_t
 {
-    None = 0,
-    ClientClosed = 1,
-    InactivityTimeout = 2,
-    PingTimeout = 3,
-    LoginTimeout = 4,
-    ProtocolError = 5,
-    UpdaterError = 6,
-    ServerShutdown = 7,
-    ScriptRequest = 8,
-    LoginFailed = 9,
-    ReplacedByReconnect = 10,
+    None = 0, // Indicates that the connection has not recorded a close cause
+    ClientClosed = 1, // Indicates that the transport reported the peer disappearing; voluntary quit and network loss are indistinguishable
+    InactivityTimeout = 2, // Indicates that no inbound message arrived before the configured inactivity deadline
+    PingTimeout = 3, // Indicates that the peer did not answer the previous server ping
+    LoginTimeout = 4, // Indicates that a pre-login connection made no progress before the configured login deadline
+    ProtocolError = 5, // Indicates malformed or unexpected protocol data or failed connection publication
+    UpdaterError = 6, // Indicates that the client requested an invalid updater file or range
+    ServerShutdown = 7, // Indicates an orderly server shutdown
+    ScriptRequest = 8, // Indicates that server script called Player.HardDisconnect()
+    LoginFailed = 9, // Indicates that login was rolled back after a server-side failure
+    ReplacedByReconnect = 10, // Indicates that a new login for the same account replaced this session
+    RpcRuntimeLimit = 11, // Indicates that an inbound RPC or ready input queue exceeded its configured runtime limit
 };
 
 auto GetDisconnectReasonName(DisconnectReason reason) noexcept -> string_view;
 
+class ScriptCallCompletion;
+
 class ServerConnection final
 {
 public:
+    class RuntimeState;
+
+    struct InboundCall
+    {
+        bool Accepted {true};
+        shared_ptr<ScriptCallCompletion> Completion {};
+    };
+
     using DataArrivedCallback = copyable_function<void()>;
 
     class FO_TSA_SCOPED_CAPABILITY OutBufAccessor
@@ -82,7 +65,7 @@ public:
     private:
         ptr<ServerConnection> _owner;
         nptr<NetOutBuffer> _outBuf {};
-        optional<NetMessage> _msg;
+        optional<NetMessage> _msg {};
         stack_unwind_detector _isStackUnwinding {};
     };
 
@@ -115,6 +98,12 @@ public:
         timespan RoundTrip {};
         int32_t PendingUpdateFileIndex {-1};
         int32_t PendingUpdateFilePortion {};
+        size_t PendingRemoteCalls {};
+        size_t BufferedInputBytes {};
+        size_t InputArrivalSegments {};
+        uint64_t RuntimeWarnings {};
+        uint64_t RuntimeDisconnects {};
+        size_t AbandonedRemoteCalls {};
     };
 
     struct UpdateFilePortion
@@ -138,6 +127,7 @@ public:
     [[nodiscard]] auto IsInputRejected() const noexcept -> bool;
     [[nodiscard]] auto GetDisconnectReason() const noexcept -> DisconnectReason;
     [[nodiscard]] auto GetDiagnostics() const -> Diagnostics;
+    [[nodiscard]] auto GetRuntimeState() const -> shared_ptr<RuntimeState>;
     [[nodiscard]] auto IsHandshakeComplete() const noexcept -> bool;
     [[nodiscard]] auto IsInactive(nanotime time) const noexcept -> bool;
     [[nodiscard]] auto IsLoginTimedOut(nanotime time) const noexcept -> bool;
@@ -147,6 +137,12 @@ public:
     [[nodiscard]] auto GetRoundTrip() const noexcept -> timespan;
     [[nodiscard]] auto GetUpdateFileTransferIndex() const noexcept -> optional<size_t>;
 
+    auto BeginRemoteCall(hstring name, ident_t caller_id) -> InboundCall;
+    static auto GetRuntimeDisconnectReason(ptr<const RuntimeState> state) -> DisconnectReason;
+    static auto GetRuntimeDiagnostics(ptr<const RuntimeState> state) -> Diagnostics;
+    static auto IsRuntimeStateActive(ptr<const RuntimeState> state) -> bool;
+    static void CheckRuntimeState(ptr<RuntimeState> state, nanotime now);
+
     void SetDataArrivedCallback(DataArrivedCallback callback);
     void MarkHandshakeComplete() noexcept;
     void EnsureActivityTime(nanotime time) noexcept;
@@ -154,6 +150,8 @@ public:
     void RegisterLoginProgress(nanotime time) noexcept;
     void RegisterPingRequest(nanotime time) noexcept;
     void RegisterPingAnswer(nanotime time) noexcept;
+    // A client message stamped with the client's clock: how much later than the link usually takes it arrived
+    auto RegisterSenderTime(int64_t sender_ms, nanotime receive_time) -> timespan;
     void BeginUpdateFileTransfer(size_t file_index) noexcept;
     auto PullUpdateFilePortion(size_t file_size, size_t max_portion_size) -> UpdateFilePortion;
 
@@ -189,9 +187,10 @@ private:
     void AsyncReceiveData(const_span<uint8_t> buf);
     void RejectInput(const std::exception& ex, bool report) noexcept;
     void RecordDisconnectReason(DisconnectReason reason) noexcept;
+    void UpdateInputDiagnostics(size_t added_bytes = 0) FO_TSA_REQUIRES(_inBufLocker);
 
     ptr<ServerNetworkSettings> _settings;
-    shared_ptr<NetworkServerConnection> _netConnection;
+    shared_ptr<NetworkServerConnection> _netConnection {};
     mutex _inBufLocker {};
     NetInBuffer _inBuf;
     mutex _outBufLocker {};
@@ -208,11 +207,13 @@ private:
     bool _preChannelClient {};
     std::atomic_bool _preChannelRefusalPending {};
     ActivityState _activity {};
+    LinkDelayEstimator _uplinkDelay;
     UpdateFileTransferState _updateFileTransfer {};
     DataArrivedCallback _dataArrivedCallback {};
     bool _gracefulDisconnected {};
     std::atomic<bool> _inputRejected {};
-    std::atomic<DisconnectReason> _disconnectReason {};
+    shared_ptr<RuntimeState> _runtimeState {};
+    size_t _accountedInputBytes FO_TSA_GUARDED_BY(_inBufLocker) {};
 };
 
 FO_END_NAMESPACE

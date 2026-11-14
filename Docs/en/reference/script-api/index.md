@@ -1,0 +1,73 @@
+---
+title: Generated API Reference
+document_id: generated-api-index
+locale: en
+generated: true
+---
+
+# Generated API Reference
+
+> Generated reference. Do not edit these pages directly. The canonical input is [`Docs/generated/api.json`](../../../generated/api.json), produced from the engine's native codegen metadata parser.
+
+This reference describes the declarations in the model's `engine-native-codegen` scope. The current inventory is available to embedding projects as an `experimental`, revision-pinned API; no broad stable compatibility promise is implied.
+
+| Reference | Symbols | Coverage |
+| --- | --- | --- |
+| [Native script methods](methods.md) | 1030 | Native methods exported to scripts. |
+| [Entity properties](properties.md) | 134 | Generated entity property contracts. |
+| [Engine events](events.md) | 121 | Server, client, common, and mapper events. |
+| [Script types](types.md) | 1009 | Entities, enums, value types, reference types, fields, and methods. |
+| [Engine settings](settings.md) | 296 | Read-only engine settings grouped by domain. |
+| [Migration rules](migrations.md) | 27 | Native metadata migration declarations. |
+
+## Model quality
+
+| Signal | Count |
+| --- | --- |
+| Addressable symbols | 2617 |
+| Symbols with descriptions | 2610 |
+| Symbols missing descriptions | 7 |
+| Symbols without source provenance | 14 |
+| Metadata source files | 43 |
+| Explicit contract declarations | 5 |
+| Explicitly classified symbols | 2617 |
+| Unclassified default symbols | 0 |
+
+## Stability labels
+
+| Label | Symbols |
+| --- | --- |
+| <code>experimental</code> | 2616 |
+| <code>internal</code> | 1 |
+
+## Scope contract
+
+The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2617 stable IDs with SHA-256 <code>3c392a15d56f47e508dda95f98390d3272472a368d8a8007a9495e3b79937d0c</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
+
+The native-codegen surface is offered for evaluation only, and stays revision-pinned until supported release lines exist.<br>SymbolCount and InventorySha256 force owner review of every addition, removal or stable-ID change
+
+Contract source: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15)
+
+## Scope
+
+Included:
+
+- native script enums, value types, reference types, entities, properties, methods, and events
+- engine settings parsed from ExportSettings
+- native migration rules
+- source-authored API contracts parsed from ApiContract
+
+Excluded from the current model:
+
+- project-authored script metadata, including remote calls
+- CMake options and stage helpers
+- BuildTools command-line interfaces
+- package layouts and native extension ABI details
+
+Project-facing CMake declarations are intentionally outside this model; use the separate [generated CMake project-interface reference](../cmake/index.md).
+
+The main BuildTools command line is also outside this model; use the separate [parser-backed CLI reference](../buildtools/index.md).
+
+Package declarations and payloads use their own runtime-consumed contract; use the separate [package interface reference](../packages/index.md).
+
+Source links follow the repository's `master` branch. The path and line stored in the canonical JSON are the generated provenance record; revision-pinned links remain part of the publication roadmap.

@@ -51,6 +51,8 @@ endmacro()
 StatusMessage("Third-party libs:")
 
 # Rpmalloc
+SetValue(expr_AllocatorStatistics $<OR:${expr_DebugBuild},${expr_TracyEnabled},$<BOOL:${FO_MEMORY_DIAGNOSTICS}>>)
+AddCompileDefinitionsList(FO_ALLOCATOR_STATISTICS=${expr_AllocatorStatistics})
 if(NOT FO_DISABLE_RPMALLOC AND (FO_WINDOWS OR FO_LINUX OR FO_MAC OR FO_IOS OR FO_ANDROID))
     SetValue(FO_RPMALLOC_DIR "${FO_ENGINE_ROOT}/ThirdParty/rpmalloc")
     SetValue(FO_RPMALLOC_SOURCE
@@ -70,7 +72,7 @@ if(NOT FO_DISABLE_RPMALLOC AND (FO_WINDOWS OR FO_LINUX OR FO_MAC OR FO_IOS OR FO
         TargetCompileDefinitions(rpmalloc PRIVATE RPMALLOC_ENABLE_TESTS=1)
     endif()
     TargetCompileDefinitions(rpmalloc PRIVATE "$<$<PLATFORM_ID:Linux>:_GNU_SOURCE>")
-    TargetCompileDefinitions(rpmalloc PRIVATE $<$<OR:${expr_DebugBuild},${expr_TracyEnabled}>:ENABLE_STATISTICS=1>)
+    TargetCompileDefinitions(rpmalloc PRIVATE $<${expr_AllocatorStatistics}:ENABLE_STATISTICS=1>)
     # rpmalloc.c uses <stdatomic.h> unconditionally; MSVC compiles C sources without C11 by
     # default and keeps C atomics behind an extra switch (still experimental as of VS 17.14).
     SetTargetProperty(rpmalloc C_STANDARD 11)
@@ -558,9 +560,9 @@ else()
         FO_HAVE_WEB_SOCKETS=0)
 endif()
 
-# MongoDB & Bson
-if(FO_BUILD_SERVER_LIB)
-    StatusMessage("+ Bson")
+# MongoDB and its private BSON dependency
+if(FO_DATABASE_MONGO AND FO_BUILD_SERVER_LIB)
+    StatusMessage("+ MongoDB and BSON")
     SetValue(FO_MONGODB_DIR "${FO_ENGINE_ROOT}/ThirdParty/mongo-c-driver")
 
     SetCacheValues(
@@ -587,14 +589,7 @@ if(FO_BUILD_SERVER_LIB)
         SetCacheValues(BSON_HAVE_STRLCPY 0)
     endif()
 
-    if(NOT FO_DISABLE_MONGO)
-        StatusMessage("+ MongoDB")
-        SetCacheValues(ENABLE_MONGOC ON)
-        AddCompileDefinitionsList(FO_HAVE_MONGO=1)
-    else()
-        SetCacheValues(ENABLE_MONGOC OFF)
-        AddCompileDefinitionsList(FO_HAVE_MONGO=0)
-    endif()
+    SetCacheValues(ENABLE_MONGOC ON)
 
     AddSubdirectory("${FO_MONGODB_DIR}" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
     if(TARGET utf8proc_obj)
@@ -621,7 +616,7 @@ if(FO_BUILD_SERVER_LIB)
 endif()
 
 # SQLite
-if(NOT FO_DISABLE_SQLITE AND NOT FO_WEB AND FO_BUILD_SERVER_LIB)
+if(FO_DATABASE_SQLITE AND FO_BUILD_SERVER_LIB)
     StatusMessage("+ SQLite")
     SetValue(FO_SQLITE_DIR "${FO_ENGINE_ROOT}/ThirdParty/sqlite")
     SetValue(FO_SQLITE_SOURCE
@@ -646,9 +641,6 @@ if(NOT FO_DISABLE_SQLITE AND NOT FO_WEB AND FO_BUILD_SERVER_LIB)
         "SQLITE_OMIT_AUTOINIT"
         "SQLITE_DQS=0"
         "SQLITE_USE_URI=0")
-    AddCompileDefinitionsList(FO_HAVE_SQLITE=1)
-else()
-    AddCompileDefinitionsList(FO_HAVE_SQLITE=0)
 endif()
 
 # Dear ImGui
@@ -935,7 +927,11 @@ if(FO_MANAGED_SCRIPTING)
     # override — point it at a short path, and it doubles as the place the runtime's own markers make
     # a repeat build a no-op
     if(NOT FO_DOTNET_DIR AND NOT "$ENV{FO_DOTNET_DIR}" STREQUAL "")
-        SetValue(FO_DOTNET_DIR "$ENV{FO_DOTNET_DIR}")
+        if(CMAKE_HOST_WIN32)
+            file(TO_CMAKE_PATH "$ENV{FO_DOTNET_DIR}" FO_DOTNET_DIR)
+        else()
+            SetValue(FO_DOTNET_DIR "$ENV{FO_DOTNET_DIR}")
+        endif()
     endif()
     if(NOT FO_DOTNET_DIR)
         SetValue(FO_DOTNET_DIR ${CMAKE_CURRENT_BINARY_DIR}/dotnet)

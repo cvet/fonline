@@ -13,7 +13,7 @@ sys.path.insert(0, str(BUILDTOOLS_DIR))
 import check_windows7_imports as _check  # noqa: E402
 
 
-def _make_pe(import_name: str, is_64bit: bool, library: str = "KERNEL32.dll") -> bytes:
+def _make_pe(import_name: str, is_64bit: bool, library: str = "KERNEL32.dll", large_address_aware: bool = False) -> bytes:
     data = bytearray(0x400)
     data[:2] = b"MZ"
     struct.pack_into("<I", data, 0x3C, 0x80)
@@ -24,7 +24,8 @@ def _make_pe(import_name: str, is_64bit: bool, library: str = "KERNEL32.dll") ->
     number_of_directories_offset = 108 if is_64bit else 92
     directories_offset = 112 if is_64bit else 96
     thunk_format = "<QQ" if is_64bit else "<II"
-    struct.pack_into("<HHIIIHH", data, 0x84, machine, 1, 0, 0, 0, optional_header_size, 0x102)
+    characteristics = 0x102 | (_check.IMAGE_FILE_LARGE_ADDRESS_AWARE if large_address_aware else 0)
+    struct.pack_into("<HHIIIHH", data, 0x84, machine, 1, 0, 0, 0, optional_header_size, characteristics)
 
     optional_offset = 0x98
     struct.pack_into("<H", data, optional_offset, optional_magic)
@@ -103,6 +104,16 @@ def test_check_binary_accepts_import_windows_7_resolves(library: str, import_nam
     binary.write_bytes(_make_pe(import_name, is_64bit=False, library=library))
 
     assert _check.check_binary(binary) == []
+
+
+@pytest.mark.parametrize("large_address_aware", [False, True])
+def test_large_address_flag_is_checked_for_win7_executable(large_address_aware: bool, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    binary = tmp_path / "LF_Client.exe"
+    binary.write_bytes(_make_pe("CreateFileW", is_64bit=False, large_address_aware=large_address_aware))
+
+    assert _check.is_large_address_aware(binary) is large_address_aware
+    monkeypatch.setattr(sys, "argv", ["check_windows7_imports.py", "--require-large-address-aware", str(binary)])
+    assert _check.main() == (0 if large_address_aware else 1)
 
 
 @pytest.mark.parametrize("is_64bit", [False, True])

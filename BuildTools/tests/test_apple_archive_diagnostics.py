@@ -19,9 +19,17 @@ def _tool(name: str) -> str | None:
 
 
 def _configure_flags(tmp_path: Path, system: str, generator: str = "Xcode") -> dict[str, str]:
+    actual_generator = generator
+    if generator == "Xcode":
+        actual_generator = "Ninja" if shutil.which("ninja") else "Unix Makefiles"
+    build_tool = "ninja" if actual_generator == "Ninja" else "make"
+    if not shutil.which(build_tool):
+        pytest.skip(f"{build_tool} is required for {actual_generator}")
+
     (tmp_path / "CMakeLists.txt").write_text(
         "cmake_minimum_required(VERSION 3.22)\n"
         "project(AppleArchiveDiagnostics NONE)\n"
+        "set(WIN32 FALSE)\n"
         f'include("{(BUILDTOOLS_DIR / "Init.cmake").as_posix()}")\n'
         f"set(CMAKE_SYSTEM_NAME {system})\n"
         + ("set(CMAKE_GENERATOR Xcode)\n" if generator == "Xcode" else "")
@@ -50,7 +58,7 @@ def _configure_flags(tmp_path: Path, system: str, generator: str = "Xcode") -> d
         encoding="utf-8",
     )
     result = subprocess.run(
-        ["cmake", "-G", "Unix Makefiles" if generator == "Xcode" else generator, "-S", str(tmp_path), "-B", str(tmp_path / "build")],
+        ["cmake", "-G", actual_generator, "-S", str(tmp_path), "-B", str(tmp_path / "build")],
         capture_output=True, text=True,
     )
     assert result.returncode == 0, result.stdout + result.stderr

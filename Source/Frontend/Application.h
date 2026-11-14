@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -46,131 +16,156 @@ class IAppWindow;
 
 FO_DECLARE_EXCEPTION(AppInitException);
 
+// Physical SDL-scancode key identifiers used by input events and key-state queries, plus a synthetic Text event for UTF-8 text, paste, and drop payloads
 ///@ ExportEnum
 enum class KeyCode : uint8_t
 {
-    None = 0x00,
-    Escape = 0x01,
-    C1 = 0x02,
-    C2 = 0x03,
-    C3 = 0x04,
-    C4 = 0x05,
-    C5 = 0x06,
-    C6 = 0x07,
-    C7 = 0x08,
-    C8 = 0x09,
-    C9 = 0x0A,
-    C0 = 0x0B,
-    Minus = 0x0C,
-    Equals = 0x0D,
-    Back = 0x0E,
-    Tab = 0x0F,
-    Q = 0x10,
-    W = 0x11,
-    E = 0x12,
-    R = 0x13,
-    T = 0x14,
-    Y = 0x15,
-    U = 0x16,
-    I = 0x17,
-    O = 0x18,
-    P = 0x19,
-    Lbracket = 0x1A,
-    Rbracket = 0x1B,
-    Return = 0x1C,
-    Lcontrol = 0x1D,
-    A = 0x1E,
-    S = 0x1F,
-    D = 0x20,
-    F = 0x21,
-    G = 0x22,
-    H = 0x23,
-    J = 0x24,
-    K = 0x25,
-    L = 0x26,
-    Semicolon = 0x27,
-    Apostrophe = 0x28,
-    Grave = 0x29,
-    Lshift = 0x2A,
-    Backslash = 0x2B,
-    Z = 0x2C,
-    X = 0x2D,
-    C = 0x2E,
-    V = 0x2F,
-    B = 0x30,
-    N = 0x31,
-    M = 0x32,
-    Comma = 0x33,
-    Period = 0x34,
-    Slash = 0x35,
-    Rshift = 0x36,
-    Multiply = 0x37,
-    Lmenu = 0x38,
-    Space = 0x39,
-    Capital = 0x3A,
-    F1 = 0x3B,
-    F2 = 0x3C,
-    F3 = 0x3D,
-    F4 = 0x3E,
-    F5 = 0x3F,
-    F6 = 0x40,
-    F7 = 0x41,
-    F8 = 0x42,
-    F9 = 0x43,
-    F10 = 0x44,
-    Numlock = 0x45,
-    Scroll = 0x46,
-    Numpad7 = 0x47,
-    Numpad8 = 0x48,
-    Numpad9 = 0x49,
-    Subtract = 0x4A,
-    Numpad4 = 0x4B,
-    Numpad5 = 0x4C,
-    Numpad6 = 0x4D,
-    Add = 0x4E,
-    Numpad1 = 0x4F,
-    Numpad2 = 0x50,
-    Numpad3 = 0x51,
-    Numpad0 = 0x52,
-    Decimal = 0x53,
-    F11 = 0x57,
-    F12 = 0x58,
-    Numpadenter = 0x9C,
-    Rcontrol = 0x9D,
-    Divide = 0xB5,
-    Sysrq = 0xB7,
-    Rmenu = 0xB8,
-    Pause = 0xC5,
-    Home = 0xC7,
-    Up = 0xC8,
-    Prior = 0xC9,
-    Left = 0xCB,
-    Right = 0xCD,
-    End = 0xCF,
-    Down = 0xD0,
-    Next = 0xD1,
-    Insert = 0xD2,
-    Delete = 0xD3,
-    Lwin = 0xDB,
-    Rwin = 0xDC,
-    Text = 0xFF,
+    None = 0x00, // Indicates that no physical or synthetic keyboard input code is selected
+    Escape = 0x01, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_ESCAPE` by the application input layer
+    C1 = 0x02, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_1` by the application input layer
+    C2 = 0x03, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_2` by the application input layer
+    C3 = 0x04, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_3` by the application input layer
+    C4 = 0x05, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_4` by the application input layer
+    C5 = 0x06, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_5` by the application input layer
+    C6 = 0x07, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_6` by the application input layer
+    C7 = 0x08, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_7` by the application input layer
+    C8 = 0x09, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_8` by the application input layer
+    C9 = 0x0A, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_9` by the application input layer
+    C0 = 0x0B, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_0` by the application input layer
+    Minus = 0x0C, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_MINUS` by the application input layer
+    Equals = 0x0D, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_EQUALS` by the application input layer
+    Back = 0x0E, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_BACKSPACE` by the application input layer
+    Tab = 0x0F, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_TAB` by the application input layer
+    Q = 0x10, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_Q` by the application input layer
+    W = 0x11, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_W` by the application input layer
+    E = 0x12, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_E` by the application input layer
+    R = 0x13, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_R` by the application input layer
+    T = 0x14, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_T` by the application input layer
+    Y = 0x15, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_Y` by the application input layer
+    U = 0x16, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_U` by the application input layer
+    I = 0x17, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_I` by the application input layer
+    O = 0x18, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_O` by the application input layer
+    P = 0x19, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_P` by the application input layer
+    Lbracket = 0x1A, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_LEFTBRACKET` by the application input layer
+    Rbracket = 0x1B, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_RIGHTBRACKET` by the application input layer
+    Return = 0x1C, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_RETURN` by the application input layer
+    Lcontrol = 0x1D, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_LCTRL` by the application input layer
+    A = 0x1E, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_A` by the application input layer
+    S = 0x1F, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_S` by the application input layer
+    D = 0x20, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_D` by the application input layer
+    F = 0x21, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_F` by the application input layer
+    G = 0x22, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_G` by the application input layer
+    H = 0x23, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_H` by the application input layer
+    J = 0x24, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_J` by the application input layer
+    K = 0x25, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_K` by the application input layer
+    L = 0x26, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_L` by the application input layer
+    Semicolon = 0x27, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_SEMICOLON` by the application input layer
+    Apostrophe = 0x28, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_APOSTROPHE` by the application input layer
+    Grave = 0x29, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_GRAVE` by the application input layer
+    Lshift = 0x2A, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_LSHIFT` by the application input layer
+    Backslash = 0x2B, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_BACKSLASH` by the application input layer
+    Z = 0x2C, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_Z` by the application input layer
+    X = 0x2D, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_X` by the application input layer
+    C = 0x2E, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_C` by the application input layer
+    V = 0x2F, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_V` by the application input layer
+    B = 0x30, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_B` by the application input layer
+    N = 0x31, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_N` by the application input layer
+    M = 0x32, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_M` by the application input layer
+    Comma = 0x33, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_COMMA` by the application input layer
+    Period = 0x34, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_PERIOD` by the application input layer
+    Slash = 0x35, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_SLASH` by the application input layer
+    Rshift = 0x36, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_RSHIFT` by the application input layer
+    Multiply = 0x37, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_KP_MULTIPLY` by the application input layer
+    Lmenu = 0x38, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_LALT` by the application input layer
+    Space = 0x39, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_SPACE` by the application input layer
+    Capital = 0x3A, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_CAPSLOCK` by the application input layer
+    F1 = 0x3B, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_F1` by the application input layer
+    F2 = 0x3C, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_F2` by the application input layer
+    F3 = 0x3D, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_F3` by the application input layer
+    F4 = 0x3E, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_F4` by the application input layer
+    F5 = 0x3F, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_F5` by the application input layer
+    F6 = 0x40, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_F6` by the application input layer
+    F7 = 0x41, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_F7` by the application input layer
+    F8 = 0x42, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_F8` by the application input layer
+    F9 = 0x43, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_F9` by the application input layer
+    F10 = 0x44, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_F10` by the application input layer
+    Numlock = 0x45, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_NUMLOCKCLEAR` by the application input layer
+    Scroll = 0x46, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_SCROLLLOCK` by the application input layer
+    Numpad7 = 0x47, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_KP_7` by the application input layer
+    Numpad8 = 0x48, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_KP_8` by the application input layer
+    Numpad9 = 0x49, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_KP_9` by the application input layer
+    Subtract = 0x4A, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_KP_MINUS` by the application input layer
+    Numpad4 = 0x4B, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_KP_4` by the application input layer
+    Numpad5 = 0x4C, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_KP_5` by the application input layer
+    Numpad6 = 0x4D, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_KP_6` by the application input layer
+    Add = 0x4E, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_KP_PLUS` by the application input layer
+    Numpad1 = 0x4F, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_KP_1` by the application input layer
+    Numpad2 = 0x50, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_KP_2` by the application input layer
+    Numpad3 = 0x51, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_KP_3` by the application input layer
+    Numpad0 = 0x52, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_KP_0` by the application input layer
+    Decimal = 0x53, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_KP_PERIOD` by the application input layer
+    F11 = 0x57, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_F11` by the application input layer
+    F12 = 0x58, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_F12` by the application input layer
+    Numpadenter = 0x9C, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_KP_ENTER` by the application input layer
+    Rcontrol = 0x9D, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_RCTRL` by the application input layer
+    Divide = 0xB5, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_KP_DIVIDE` by the application input layer
+    Sysrq = 0xB7, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_SYSREQ` by the application input layer
+    Rmenu = 0xB8, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_RALT` by the application input layer
+    Pause = 0xC5, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_PAUSE` by the application input layer
+    Home = 0xC7, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_HOME` by the application input layer
+    Up = 0xC8, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_UP` by the application input layer
+    Prior = 0xC9, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_PAGEUP` by the application input layer
+    Left = 0xCB, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_LEFT` by the application input layer
+    Right = 0xCD, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_RIGHT` by the application input layer
+    End = 0xCF, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_END` by the application input layer
+    Down = 0xD0, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_DOWN` by the application input layer
+    Next = 0xD1, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_PAGEDOWN` by the application input layer
+    Insert = 0xD2, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_INSERT` by the application input layer
+    Delete = 0xD3, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_DELETE` by the application input layer
+    Lwin = 0xDB, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_LGUI` by the application input layer
+    Rwin = 0xDC, // Identifies the physical keyboard key mapped from `SDL_SCANCODE_RGUI` by the application input layer
+    Text = 0xFF, // Identifies a synthetic text event whose UTF-8 input, clipboard, or dropped-data payload is carried separately by the input event
 };
 
+// Mouse buttons and wheel directions exposed through application input events
 ///@ ExportEnum
 enum class MouseButton : uint8_t
 {
-    Left = 0,
-    Right = 1,
-    Middle = 2,
-    WheelUp = 3,
-    WheelDown = 4,
-    Ext0 = 5,
-    Ext1 = 6,
-    Ext2 = 7,
-    Ext3 = 8,
-    Ext4 = 9,
+    Left = 0, // Primary mouse button mapped from the platform left-button input
+    Right = 1, // Secondary mouse button mapped from the platform right-button input
+    Middle = 2, // Middle mouse button mapped from the platform middle-button input
+    WheelUp = 3, // Synthetic button event emitted for upward mouse-wheel motion
+    WheelDown = 4, // Synthetic button event emitted for downward mouse-wheel motion
+    Ext0 = 5, // First extended mouse button, mapped from the platform X1 button
+    Ext1 = 6, // Second extended mouse button, mapped from the platform X2 button
+    Ext2 = 7, // Third extended mouse button, mapped from platform button 6
+    Ext3 = 8, // Fourth extended mouse button, mapped from platform button 7
+    Ext4 = 9, // Fifth extended mouse button, mapped from platform button 8
 };
 
+// Per-frame gamepad snapshot containing availability, stick and trigger values, face buttons, shoulders, sticks, and D-pad state
+// LeftStickX: Left-stick horizontal axis normalized to -1 through 1 after the dead zone
+// LeftStickY: Left-stick vertical axis normalized to -1 through 1 after the dead zone
+// RightStickX: Right-stick horizontal axis normalized to -1 through 1 after the dead zone
+// RightStickY: Right-stick vertical axis normalized to -1 through 1 after the dead zone
+// LeftTrigger: Left-trigger pressure normalized to 0 through 1 after the dead zone
+// RightTrigger: Right-trigger pressure normalized to 0 through 1 after the dead zone
+// Available: Reports whether the application currently has an opened gamepad
+// South: Reports whether the south face button is pressed
+// East: Reports whether the east face button is pressed
+// West: Reports whether the west face button is pressed
+// North: Reports whether the north face button is pressed
+// Back: Reports whether the back button is pressed
+// Start: Reports whether the start button is pressed
+// LeftStickButton: Reports whether the left-stick button is pressed
+// RightStickButton: Reports whether the right-stick button is pressed
+// LeftShoulder: Reports whether the left shoulder button is pressed
+// RightShoulder: Reports whether the right shoulder button is pressed
+// DpadUp: Reports whether the D-pad up button is pressed
+// DpadDown: Reports whether the D-pad down button is pressed
+// DpadLeft: Reports whether the D-pad left button is pressed
+// DpadRight: Reports whether the D-pad right button is pressed
+// Reserved: Reserved compatibility field; the current input backend leaves it false
 ///@ ExportValueType Layout = float32-LeftStickX+float32-LeftStickY+float32-RightStickX+float32-RightStickY+float32-LeftTrigger+float32-RightTrigger+bool-Available+bool-South+bool-East+bool-West+bool-North+bool-Back+bool-Start+bool-LeftStickButton+bool-RightStickButton+bool-LeftShoulder+bool-RightShoulder+bool-DpadUp+bool-DpadDown+bool-DpadLeft+bool-DpadRight+bool-Reserved
 struct GamepadState
 {
@@ -302,74 +297,111 @@ struct InputEvent
     {
         KeyCode Code {};
     } KeyUp {};
-
-    InputEvent() = default;
-    explicit InputEvent(MouseMoveEvent ev) :
-        Type {EventType::MouseMoveEvent},
-        MouseMove {ev}
-    {
-    }
-    explicit InputEvent(MouseDownEvent ev) :
-        Type {EventType::MouseDownEvent},
-        MouseDown {ev}
-    {
-    }
-    explicit InputEvent(MouseUpEvent ev) :
-        Type {EventType::MouseUpEvent},
-        MouseUp {ev}
-    {
-    }
-    explicit InputEvent(MouseWheelEvent ev) :
-        Type {EventType::MouseWheelEvent},
-        MouseWheel {ev}
-    {
-    }
-    explicit InputEvent(TouchDownEvent ev) :
-        Type {EventType::TouchDownEvent},
-        TouchDown {ev}
-    {
-    }
-    explicit InputEvent(TouchMoveEvent ev) :
-        Type {EventType::TouchMoveEvent},
-        TouchMove {ev}
-    {
-    }
-    explicit InputEvent(TouchUpEvent ev) :
-        Type {EventType::TouchUpEvent},
-        TouchUp {ev}
-    {
-    }
-    explicit InputEvent(TouchTapEvent ev) :
-        Type {EventType::TouchTapEvent},
-        TouchTap {ev}
-    {
-    }
-    explicit InputEvent(TouchDoubleTapEvent ev) :
-        Type {EventType::TouchDoubleTapEvent},
-        TouchDoubleTap {ev}
-    {
-    }
-    explicit InputEvent(TouchScrollEvent ev) :
-        Type {EventType::TouchScrollEvent},
-        TouchScroll {ev}
-    {
-    }
-    explicit InputEvent(TouchZoomEvent ev) :
-        Type {EventType::TouchZoomEvent},
-        TouchZoom {ev}
-    {
-    }
-    explicit InputEvent(KeyDownEvent ev) :
-        Type {EventType::KeyDownEvent},
-        KeyDown {std::move(ev)}
-    {
-    }
-    explicit InputEvent(KeyUpEvent ev) :
-        Type {EventType::KeyUpEvent},
-        KeyUp {ev}
-    {
-    }
 };
+
+inline auto MakeInputEvent(InputEvent::MouseMoveEvent ev) -> InputEvent
+{
+    return {
+        .Type = InputEvent::EventType::MouseMoveEvent,
+        .MouseMove = ev,
+    };
+}
+
+inline auto MakeInputEvent(InputEvent::MouseDownEvent ev) -> InputEvent
+{
+    return {
+        .Type = InputEvent::EventType::MouseDownEvent,
+        .MouseDown = ev,
+    };
+}
+
+inline auto MakeInputEvent(InputEvent::MouseUpEvent ev) -> InputEvent
+{
+    return {
+        .Type = InputEvent::EventType::MouseUpEvent,
+        .MouseUp = ev,
+    };
+}
+
+inline auto MakeInputEvent(InputEvent::MouseWheelEvent ev) -> InputEvent
+{
+    return {
+        .Type = InputEvent::EventType::MouseWheelEvent,
+        .MouseWheel = ev,
+    };
+}
+
+inline auto MakeInputEvent(InputEvent::TouchDownEvent ev) -> InputEvent
+{
+    return {
+        .Type = InputEvent::EventType::TouchDownEvent,
+        .TouchDown = ev,
+    };
+}
+
+inline auto MakeInputEvent(InputEvent::TouchMoveEvent ev) -> InputEvent
+{
+    return {
+        .Type = InputEvent::EventType::TouchMoveEvent,
+        .TouchMove = ev,
+    };
+}
+
+inline auto MakeInputEvent(InputEvent::TouchUpEvent ev) -> InputEvent
+{
+    return {
+        .Type = InputEvent::EventType::TouchUpEvent,
+        .TouchUp = ev,
+    };
+}
+
+inline auto MakeInputEvent(InputEvent::TouchTapEvent ev) -> InputEvent
+{
+    return {
+        .Type = InputEvent::EventType::TouchTapEvent,
+        .TouchTap = ev,
+    };
+}
+
+inline auto MakeInputEvent(InputEvent::TouchDoubleTapEvent ev) -> InputEvent
+{
+    return {
+        .Type = InputEvent::EventType::TouchDoubleTapEvent,
+        .TouchDoubleTap = ev,
+    };
+}
+
+inline auto MakeInputEvent(InputEvent::TouchScrollEvent ev) -> InputEvent
+{
+    return {
+        .Type = InputEvent::EventType::TouchScrollEvent,
+        .TouchScroll = ev,
+    };
+}
+
+inline auto MakeInputEvent(InputEvent::TouchZoomEvent ev) -> InputEvent
+{
+    return {
+        .Type = InputEvent::EventType::TouchZoomEvent,
+        .TouchZoom = ev,
+    };
+}
+
+inline auto MakeInputEvent(InputEvent::KeyDownEvent ev) -> InputEvent
+{
+    return {
+        .Type = InputEvent::EventType::KeyDownEvent,
+        .KeyDown = std::move(ev),
+    };
+}
+
+inline auto MakeInputEvent(InputEvent::KeyUpEvent ev) -> InputEvent
+{
+    return {
+        .Type = InputEvent::EventType::KeyUpEvent,
+        .KeyUp = ev,
+    };
+}
 
 class IAppRender
 {
@@ -377,12 +409,13 @@ public:
     virtual ~IAppRender() = default;
 
     [[nodiscard]] virtual auto GetRenderTarget() -> nptr<RenderTexture> = 0;
-    [[nodiscard]] virtual auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> = 0;
-    [[nodiscard]] virtual auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> = 0;
-    [[nodiscard]] virtual auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> = 0;
-    [[nodiscard]] virtual auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 = 0;
     [[nodiscard]] virtual auto IsRenderTargetFlipped() const -> bool = 0;
     [[nodiscard]] virtual auto GetProjMatrix() const -> mat44 = 0;
+
+    virtual auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> = 0;
+    virtual auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> = 0;
+    virtual auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> = 0;
+    virtual auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 = 0;
 
     virtual void SetRenderTarget(nptr<RenderTexture> tex) = 0;
     virtual void SetOrthoDepthRange(float32_t nearp, float32_t farp) noexcept = 0;
@@ -434,6 +467,8 @@ public:
     virtual ~IAppWindow() = default;
 
     [[nodiscard]] virtual auto GetSize() const -> isize32 = 0;
+    [[nodiscard]] virtual auto GetDisplaySize() const -> isize32 = 0;
+    [[nodiscard]] virtual auto GetDisplayModes() const -> vector<isize32> = 0;
     [[nodiscard]] virtual auto GetScreenSize() const -> isize32 = 0;
     [[nodiscard]] virtual auto GetPosition() const -> ipos32 = 0;
     [[nodiscard]] virtual auto IsFocused() const -> bool = 0;
@@ -475,6 +510,8 @@ class AppWindow final : public IAppWindow
 
 public:
     [[nodiscard]] auto GetSize() const -> isize32 override;
+    [[nodiscard]] auto GetDisplaySize() const -> isize32 override;
+    [[nodiscard]] auto GetDisplayModes() const -> vector<isize32> override;
     [[nodiscard]] auto GetScreenSize() const -> isize32 override;
     [[nodiscard]] auto GetPosition() const -> ipos32 override;
     [[nodiscard]] auto IsFocused() const -> bool override;
@@ -512,8 +549,8 @@ private:
     {
     }
 
-    [[nodiscard]] auto ResolveWindowHandle() const -> ptr<WindowInternalHandle>;
-    [[nodiscard]] auto ResolveWindowStub() const -> ptr<HeadlessWindowStub>;
+    auto ResolveWindowHandle() const -> ptr<WindowInternalHandle>;
+    auto ResolveWindowStub() const -> ptr<HeadlessWindowStub>;
 
     ptr<Application> _app;
     nptr<WindowInternalHandle> _windowHandle {};
@@ -535,19 +572,20 @@ class AppRender final : public IAppRender
     friend class Application;
 
 public:
-    static constexpr int32_t MAX_ATLAS_SIZE = 8192;
-    static constexpr int32_t MIN_ATLAS_SIZE = 2048;
+    static constexpr int32_t MAX_ATLAS_SIZE {8192};
+    static constexpr int32_t MIN_ATLAS_SIZE {2048};
     static int32_t MAX_ATLAS_WIDTH;
     static int32_t MAX_ATLAS_HEIGHT;
     static int32_t MAX_BONES;
 
     [[nodiscard]] auto GetRenderTarget() -> nptr<RenderTexture> override;
-    [[nodiscard]] auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
-    [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
-    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
-    [[nodiscard]] auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override;
     [[nodiscard]] auto IsRenderTargetFlipped() const -> bool override;
     [[nodiscard]] auto GetProjMatrix() const -> mat44 override;
+
+    auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
+    auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
+    auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
+    auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override;
 
     void SetRenderTarget(nptr<RenderTexture> tex) override;
     void SetOrthoDepthRange(float32_t nearp, float32_t farp) noexcept override;
@@ -569,7 +607,7 @@ class AppInput final : public IAppInput
     friend class Application;
 
 public:
-    static constexpr size_t DROP_FILE_STRIP_LENGHT = 2048;
+    static constexpr size_t DROP_FILE_STRIP_LENGHT {2048};
 
     [[nodiscard]] auto IsMouseAvailable() const noexcept -> bool override;
     [[nodiscard]] auto GetMousePosition() const -> ipos32 override;
@@ -627,7 +665,7 @@ private:
 enum class AppInitFlags : uint8_t
 {
     None = 0x00,
-    ClientMode = 0x01,
+    StandaloneClient = 0x01,
     DisableLogTags = 0x02,
     ShowMessageOnException = 0x04,
     PrebakeResources = 0x08,
@@ -659,6 +697,7 @@ public:
     [[nodiscard]] auto IsHeadless() const noexcept -> bool;
     [[nodiscard]] auto GetActiveWindow() noexcept -> nptr<AppWindow> { return _activeWindow; }
     [[nodiscard]] auto GetChildWindowsCount() const noexcept -> size_t { return _childWindows.size(); }
+
     [[nodiscard]] auto GetChildWindow(size_t index) noexcept -> nptr<AppWindow>
     {
         if (index < _childWindows.size()) {
@@ -667,6 +706,7 @@ public:
 
         return nullptr;
     }
+
     [[nodiscard]] auto TranslateHostPosToActiveWindow(ipos32 pos) const -> ipos32;
     [[nodiscard]] auto TranslateActiveWindowPosToHost(ipos32 pos) const -> ipos32;
     [[nodiscard]] auto ScaleHostDeltaToActiveWindow(ipos32 delta) const -> ipos32;
@@ -725,10 +765,10 @@ private:
         bool Active {};
     };
 
-    static constexpr uint32_t TOUCH_TAP_MAX_TIME_MS = 250;
-    static constexpr uint32_t TOUCH_DOUBLE_TAP_MAX_TIME_MS = 200;
-    static constexpr int32_t TOUCH_TAP_MAX_DIST = 12;
-    static constexpr int32_t TOUCH_DOUBLE_TAP_MAX_DIST = 48;
+    static constexpr timespan TOUCH_TAP_MAX_TIME {std::chrono::milliseconds {250}};
+    static constexpr timespan TOUCH_DOUBLE_TAP_MAX_TIME {std::chrono::milliseconds {200}};
+    static constexpr int32_t TOUCH_TAP_MAX_DIST {12};
+    static constexpr int32_t TOUCH_DOUBLE_TAP_MAX_DIST {48};
 
     struct Context;
 
@@ -740,7 +780,7 @@ private:
     void SyncMainWindowBackbufferSize();
     auto MakeAspectFitRect(isize32 source_size, isize32 target_size) const -> irect32;
     auto ResolveTouchPos(float32_t normalized_x, float32_t normalized_y) const -> ipos32;
-    auto GetTouchElapsedMs(uint64_t start_time, uint64_t end_time) const -> uint32_t;
+    auto GetTouchElapsedTime(uint64_t start_time, uint64_t end_time) const -> timespan;
     auto GetTouchDistance(ipos32 from, ipos32 to) const -> float32_t;
     auto FindTouchPoint(int64_t finger_id) -> nptr<TouchPointState>;
     auto FindOtherTouchPoint(int64_t finger_id) -> nptr<TouchPointState>;
@@ -765,7 +805,7 @@ private:
     uint64_t _time {};
     uint64_t _timeFrequency {};
     bool _isTablet {};
-    bool _clientMode {};
+    bool _standaloneClient {};
     bool _nativeCursorHidden {};
     bool _mouseCanUseGlobalState {};
     int32_t _pendingMouseLeaveFrame {};
@@ -832,9 +872,11 @@ inline auto AppWindow::GetWindowHandleForInput() const -> nptr<WindowInternalHan
 }
 
 auto IsAppInitialized() noexcept -> bool;
+auto IsNonInteractiveMode() -> bool;
 auto GetApp() noexcept -> ptr<Application>;
 void ResetApp() noexcept;
-auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings;
+auto LoadAppSettings(CommandLineArgs args, AppInitFlags flags = AppInitFlags::None) -> GlobalSettings;
+void ApplyAppSettingsOverrides(GlobalSettings& settings, CommandLineArgs args);
 void InitApp(CommandLineArgs args, AppInitFlags flags = AppInitFlags::None);
 void InitAppForTesting(AppInitFlags flags = AppInitFlags::None);
 auto GetExeLogFileName() -> string;

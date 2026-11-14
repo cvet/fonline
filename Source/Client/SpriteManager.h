@@ -1,42 +1,11 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
 #include "Common.h"
 
 #include "EffectManager.h"
-#include "FileSystem.h"
 #include "Geometry.h"
 #include "MapSprite.h"
 #include "RenderTarget.h"
@@ -48,8 +17,8 @@ FO_BEGIN_NAMESPACE
 
 namespace Color
 {
-    static constexpr auto Neutral = ucolor {128, 128, 128};
-    static constexpr auto TextWhite = ucolor {255, 255, 255};
+    static constexpr auto Neutral {ucolor {128, 128, 128}};
+    static constexpr auto TextWhite {ucolor {255, 255, 255}};
 }
 
 class IAppWindow;
@@ -58,19 +27,20 @@ class IAppInput;
 class SpriteManager;
 class AtlasSprite;
 
+// Selects one of the two simultaneous transparency-egg masks supported by sprite rendering
 ///@ ExportEnum
 enum class TransparentEggSlot : uint8_t
 {
-    Primary = 0,
-    Secondary = 1,
+    Primary = 0, // First transparency-egg mask evaluated for map sprites
+    Secondary = 1, // Second independent transparency-egg mask evaluated for map sprites
 };
 
 // Which of the sprites standing in front of an egg's hex the egg cuts
 ///@ ExportEnum
 enum class TransparentEggTarget : uint8_t
 {
-    AnyOccluder = 0, // Every sprite whose egg appearance puts it in front of the egg hex
-    Structure = 1, // Only wall pieces and roof tiles, so props standing in front of a wall stay drawn
+    AnyOccluder = 0, // Cut every sprite whose egg appearance places it before the egg
+    Structure = 1, // Cut walls and roofs only, leaving foreground props drawn
 };
 
 // Whether an egg of this target standing on egg_hex fades a sprite standing on hex
@@ -94,16 +64,16 @@ public:
     [[nodiscard]] virtual auto GetViewSize() const -> optional<irect32> { return std::nullopt; }
     [[nodiscard]] virtual auto IsDirectDraw() const -> bool { return false; }
     [[nodiscard]] virtual auto IsCopyable() const -> bool { return false; }
-    [[nodiscard]] virtual auto MakeCopy() const -> shared_ptr<Sprite> { throw InvalidCallException(FO_LINE_STR); }
     [[nodiscard]] virtual auto IsPlaying() const -> bool { return false; }
-    [[nodiscard]] virtual auto GetTime() const -> float32_t { return 0.0f; }
+    [[nodiscard]] virtual auto GetPhase() const -> float32_t { return 0.0f; }
 
     void SetOffset(ipos32 offset) noexcept { _offset = offset; }
     void SetDrawEffect(nptr<RenderEffect> effect) const noexcept { _drawEffect = effect; }
+    virtual auto MakeCopy() const -> shared_ptr<Sprite> { throw InvalidCallException(FO_LINE_STR); }
     virtual auto FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t = 0;
     virtual void Prewarm() { }
-    virtual void SetTime(float32_t normalized_time) { ignore_unused(normalized_time); }
-    virtual void SetDir(mdir dir) { ignore_unused(dir); }
+    virtual void SetPhase(float32_t normalized_phase) { ignore_unused(normalized_phase); }
+    virtual void SetDirection(mdir dir) { ignore_unused(dir); }
     virtual void PlayDefault() { Play({}, true, false); }
     virtual void Play(hstring anim_name, bool looped, bool reversed) { ignore_unused(anim_name, looped, reversed); }
     virtual void Stop() { }
@@ -114,28 +84,9 @@ protected:
     void StartUpdate();
 
     ptr<SpriteManager> _sprMngr;
-    isize32 _size;
-    ipos32 _offset;
+    isize32 _size {};
+    ipos32 _offset {};
     mutable nptr<RenderEffect> _drawEffect {};
-};
-
-class SpriteFactory
-{
-public:
-    SpriteFactory() = default;
-    SpriteFactory(const SpriteFactory&) = delete;
-    SpriteFactory(SpriteFactory&&) noexcept = default;
-    auto operator=(const SpriteFactory&) = delete;
-    auto operator=(SpriteFactory&&) noexcept -> SpriteFactory& = delete;
-    virtual ~SpriteFactory() = default;
-
-    [[nodiscard]] virtual auto GetExtensions() const -> vector<string> = 0;
-
-    virtual auto LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite> = 0;
-    virtual void Update() { }
-    virtual void RetryFailedLoads() { }
-    virtual void InvalidateResource(hstring path) { ignore_unused(path); }
-    virtual void ClenupCache() { }
 };
 
 struct PrimitivePoint
@@ -172,10 +123,10 @@ class SpriteManager final
     friend class Sprite;
 
 public:
-    static constexpr size_t EGG_SLOT_COUNT = 2;
+    static constexpr size_t EGG_SLOT_COUNT {2};
 
     SpriteManager() = delete;
-    SpriteManager(ptr<RenderSettings> settings, ptr<IAppWindow> window, ptr<FileSystem> resources, ptr<GameTimer> game_time, ptr<EffectManager> effect_mngr, ptr<hash_resolver> hashes);
+    SpriteManager(ptr<RenderSettings> settings, ptr<IAppWindow> window, ptr<GameTimer> game_time, ptr<EffectManager> effect_mngr, ptr<hash_resolver> hashes);
     SpriteManager(const SpriteManager&) = delete;
     SpriteManager(SpriteManager&&) noexcept = delete;
     auto operator=(const SpriteManager&) = delete;
@@ -183,13 +134,8 @@ public:
     ~SpriteManager() = default;
 
     [[nodiscard]] auto ToHashedString(string_view str) -> hstring { return _hashResolver->to_hashed_string(str); }
-    [[nodiscard]] auto GetResources() noexcept -> ptr<FileSystem> { return _resources; }
     [[nodiscard]] auto GetRtMngr() const noexcept -> const RenderTargetManager& { return _rtMngr; }
     [[nodiscard]] auto GetRtMngr() noexcept -> RenderTargetManager& { return _rtMngr; }
-    // Copied on demand and at most once per direct-draw replay, so a frame with nothing refracting never pays
-    // for it
-    [[nodiscard]] auto AcquireSceneBackground() -> nptr<const RenderTexture>;
-
     [[nodiscard]] auto GetMainRenderTarget() noexcept -> nptr<RenderTarget> { return _rtMain; }
     [[nodiscard]] auto GetMainRenderTarget() const noexcept -> nptr<const RenderTarget> { return _rtMain; }
     [[nodiscard]] auto GetAtlasMngr() noexcept -> ptr<TextureAtlasManager> { return &_atlasMngr; }
@@ -204,14 +150,13 @@ public:
     [[nodiscard]] auto IsAlwaysOnTop() const noexcept -> bool { return _alwaysOnTop; }
     [[nodiscard]] auto IsDrawWireframe() const noexcept -> bool { return _drawWireframe; }
     [[nodiscard]] auto IsWindowFocused() const -> bool;
-    [[nodiscard]] auto Random(int32_t min_value, int32_t max_value) -> int32_t;
     [[nodiscard]] auto CheckHitTest(int32_t value) const -> bool { return value > _settings->Render.SpriteHitValue; }
     [[nodiscard]] auto SpriteHitTest(ptr<const Sprite> spr, ipos32 pos) const -> bool;
     [[nodiscard]] auto IsEggTransp(ipos32 pos, ptr<const MapSprite> mspr) const -> bool;
-    [[nodiscard]] auto LoadSprite(string_view path, AtlasType atlas_type, bool no_warn_if_not_exists = false) -> shared_ptr<Sprite>;
-    [[nodiscard]] auto LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_if_not_exists = false) -> shared_ptr<Sprite>;
-    [[nodiscard]] auto LoadSpriteAsQuad(hstring path, AtlasType atlas_type) -> shared_ptr<AtlasSprite>;
-    [[nodiscard]] auto CreateQuadSprite(AtlasType atlas_type, isize32 size, const_span<ucolor> pixels) -> shared_ptr<AtlasSprite>;
+    [[nodiscard]] auto GetOnBeginScene() noexcept -> ptr<EventObserver<>> { return &_onBeginScene; }
+
+    auto AcquireSceneBackground() -> nptr<const RenderTexture>;
+    auto Random(int32_t min_value, int32_t max_value) -> int32_t;
 
     void SetWindowSize(isize32 size);
     void SetScreenSize(isize32 size);
@@ -222,12 +167,6 @@ public:
     void SetAlwaysOnTop(bool enable);
     void SetDrawWireframe(bool enable) noexcept { _drawWireframe = enable; }
 
-    void RegisterSpriteFactory(unique_ptr<SpriteFactory> factory);
-    auto GetSpriteFactory(std::type_index ti) -> nptr<SpriteFactory>;
-    void ForgetFailedSprite(string_view path);
-    void InvalidateSpriteResource(string_view path);
-    void RetryFailedSpriteLoads();
-    void CleanupSpriteCache();
     void UnsubscribeWindowEvents() noexcept;
 
     void PushScissor(irect32 rect);
@@ -245,7 +184,8 @@ public:
     void DrawSpriteSizeExt(ptr<const Sprite> spr, fpos32 pos, fsize32 size, bool fit, bool center, bool stretch, ucolor color);
     auto DrawSpriteRegion(ptr<const Sprite> spr, fpos32 uv0, fpos32 uv1, fpos32 pos, fsize32 size, ucolor color) -> bool;
     void DrawSpritePattern(ptr<const Sprite> spr, ipos32 pos, isize32 size, isize32 spr_size, ucolor color);
-    void DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, ucolor color, ptr<RenderEffect> default_effect);
+    // Sprite depths are measured from map pixel row depth_origin_y, the same origin as the scene depth range
+    void DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, int32_t depth_origin_y, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, ucolor color, ptr<RenderEffect> default_effect);
     void DrawSpriteWithEffect(ptr<const Sprite> spr, ipos32 pos, ucolor color, ptr<RenderEffect> effect, int32_t padding);
     void DrawPoints(const_span<PrimitivePoint> points, RenderPrimitiveType prim, nptr<const irect32> draw_area = nullptr, nptr<RenderEffect> custom_effect = nullptr);
     void DrawTexture(ptr<const RenderTexture> tex, bool alpha_blend, nptr<const frect32> region_from = nullptr, nptr<const irect32> region_to = nullptr, nptr<RenderEffect> custom_effect = nullptr);
@@ -267,9 +207,9 @@ private:
         fpos32 DrawOffset {};
     };
 
-    [[nodiscard]] auto ApplyColorBrightness(ucolor color) const -> ucolor;
-    [[nodiscard]] auto CheckEggAppearence(TransparentEggSlot slot, ptr<const MapSprite> mspr) const -> bool;
-    [[nodiscard]] auto MakeAspectFitRect(isize32 source_size, isize32 target_size) const -> irect32;
+    auto ApplyColorBrightness(ucolor color) const -> ucolor;
+    auto CheckEggAppearence(TransparentEggSlot slot, ptr<const MapSprite> mspr) const -> bool;
+    auto MakeAspectFitRect(isize32 source_size, isize32 target_size) const -> irect32;
 
     void FlushBatch();
     void RefreshScissor();
@@ -280,7 +220,6 @@ private:
 
     ptr<RenderSettings> _settings;
     ptr<IAppWindow> _window;
-    ptr<FileSystem> _resources;
     ptr<GameTimer> _gameTimer;
     RenderTargetManager _rtMngr;
     TextureAtlasManager _atlasMngr;
@@ -289,11 +228,6 @@ private:
     ptr<EffectManager> _effectMngr;
     ptr<hash_resolver> _hashResolver;
     random_generator _randomGenerator {};
-
-    vector<unique_ptr<SpriteFactory>> _spriteFactories {};
-    unordered_map<string, ptr<SpriteFactory>> _spriteFactoryMap {};
-    unordered_set<hstring> _nonFoundSprites {};
-    unordered_map<pair<hstring, AtlasType>, shared_ptr<Sprite>> _copyableSpriteCache {};
     unordered_map<ptr<const Sprite>, weak_ptr<Sprite>> _updateSprites {};
 
     nptr<RenderTarget> _rtMain {};
@@ -319,6 +253,7 @@ private:
     ipos32 _windowSizeDiff {};
     optional<isize32> _pendingWindowedSize {};
 
+    EventObserver<> _onBeginScene {};
     EventUnsubscriber _eventUnsubscriber {};
 };
 

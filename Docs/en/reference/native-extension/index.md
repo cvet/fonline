@@ -1,0 +1,45 @@
+---
+title: Generated Native Extension Interface
+document_id: generated-native-extension-index
+locale: en
+generated: true
+---
+
+# Generated Native Extension Interface
+
+> Generated reference. Do not edit directly. Update `BuildTools/NativeExtensionInterface.json`, then run `python BuildTools/docs_native_extension.py --write`.
+
+[Index](index.md) | [Roles](roles.md) | [Hooks](hooks.md) | [Bindings](bindings.md) | [Canonical JSON](../../../generated/native-extension.json) | [Guide](../../how-to/native-extensions.md)
+
+This interface describes engine-owned composition and hook contracts for project-native C++ sources. It does not document any particular game's extension implementation.
+
+## Contract status
+
+| Field | Value |
+| --- | --- |
+| Stability | <code>experimental</code> |
+| Support policy | Source-compatible use is documented for a pinned engine revision; independently built binary compatibility is not promised. |
+| Source manifest | [BuildTools/NativeExtensionInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/NativeExtensionInterface.json) |
+| Contract digest | <code>c33b2496092e63c15c18e3c22e1874417290c93bff974d30736e8d42896d0229</code> |
+
+| Reference | Entries | Purpose |
+| --- | --- | --- |
+| [Roles](roles.md) | 6 | CMake source routing, libraries, headers, and consumers. |
+| [Hooks](hooks.md) | 10 | Optional declarations, call sites, defaults, and compatibility state. |
+| [Bindings](bindings.md) | 6 | Registration, namespace, pointer, and dependency rules. |
+
+## Boundary
+
+Included:
+
+- role-scoped project C++ source registration through AddEngineSources
+- metadata/codegen participation of registered project sources
+- optional EngineHook declarations, signatures, owning roles, call sites, and generated fallback behavior
+- native binding and namespace rules required by generated script exports
+
+Excluded:
+
+- project-local extension implementations, dependencies, settings, persistence, and release policy
+- third-party SDK ABI and project-specific native library packaging
+- client host/runtime updater ABI and compatibility across independently built engine revisions
+- native scripting backend internals controlled by FO_NATIVE_SCRIPTING

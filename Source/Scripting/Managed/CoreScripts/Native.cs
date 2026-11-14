@@ -11,7 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 // Invoked by the engine when a virtual property with a managed setter is written; the setter may
-// mutate value, and the engine stores the result. Registered via Game.AddPropertySetter.
+// mutate value, and the engine stores the result. Registered via Game.AddPropertySetter
 public delegate void PropertySetter<TEntity, TValue>(TEntity entity, ref TValue value);
 public delegate void PropertySetterWithProperty<TEntity, TProperty, TValue>(TEntity entity, TProperty property,
                                                                             ref TValue value);
@@ -45,8 +45,10 @@ internal static class WrapperFactory<T>
     internal static Func<IntPtr, T>? Create;
 }
 
-internal static class Native
+internal static partial class Native
 {
+    static partial void ClearPropertyMigrators();
+
     // Every backend loads its own copy of the core scripts, so this names the engine behind this assembly on any
     // thread; internal calls that reach an engine pass it, and zero means the engine is gone
     private static volatile IntPtr BoundBackend;
@@ -66,12 +68,14 @@ internal static class Native
     [CallableByEngine]
     internal static void UnbindBackend()
     {
+        ClearPropertyMigrators();
         BoundBackend = IntPtr.Zero;
     }
 
     // An orderly teardown clears the script statics and collects while the backend is still bound, so a finalizer
     // running in that window cannot tell a dropped resource from one its owner held until the engine stopped
     private static volatile bool BackendTearingDown;
+    private static readonly object CallCompletionGate = new object();
 
     internal static bool IsBackendTearingDown => BackendTearingDown;
 
@@ -79,7 +83,11 @@ internal static class Native
     [CallableByEngine]
     internal static void BeginBackendTeardown()
     {
-        BackendTearingDown = true;
+        // Detached completion holds this gate through its native call; teardown waits before closing entry
+        lock (CallCompletionGate)
+        {
+            BackendTearingDown = true;
+        }
     }
 
     // The generated non-nullable members prove the pointer before they wrap it -- a property that reads a
@@ -210,7 +218,7 @@ internal static class Native
 
             if (task != null) {
                 if (hasExplicitResult) {
-                    // Native event dispatch cannot advance the subscriber chain until it knows whether to stop.
+                    // Native event dispatch cannot advance the subscriber chain until it knows whether to stop
                     context.Wait(task);
                     object? taskResult = task.GetType().GetProperty("Result")?.GetValue(task);
 
@@ -238,13 +246,14 @@ internal static class Native
             return EventResult.ContinueChain;
         }
         catch (Exception ex) {
+            // The fault is reported here once; only a handler that decides the chain may stop it
             ScriptExceptions.Record(ex, true);
-            return EventResult.StopChain;
+            return hasExplicitResult ? EventResult.StopChain : EventResult.ContinueChain;
         }
     }
 
     [CallableByEngine]
-    internal static object? InvokeCallback(Delegate handler, object?[] args)
+    internal static object? InvokeCallback(Delegate handler, object?[] args, bool ignoreCancellation = false)
     {
         MethodInfo delegateInvoke = handler.GetType().GetMethod("Invoke") ??
                                     throw new InvalidOperationException("Delegate type is missing its Invoke method");
@@ -269,9 +278,11 @@ internal static class Native
 
             // Task-returning script functions are registered as native void callbacks. Waiting here would
             // block the script pump that must fire ScriptTask.Delay's completion event, so let the callback
-            // continue asynchronously and retain deferred exception accounting.
+            // continue asynchronously and retain deferred exception accounting
             if (task.IsCompleted) {
-                task.GetAwaiter().GetResult();
+                if (!ignoreCancellation || !task.IsCanceled) {
+                    task.GetAwaiter().GetResult();
+                }
             }
             else {
                 ScriptExceptions.ObserveTask(task);
@@ -286,9 +297,83 @@ internal static class Native
     }
 
     [CallableByEngine]
+    internal static int InvokeTrackedCallback(Delegate handler, object?[] args, ulong id, bool anyThread,
+                                              bool ignoreCancellation)
+    {
+        using ScriptSynchronizationContext context = ScriptSynchronizationContext.Enter();
+
+        try {
+            object? result = handler.DynamicInvoke(args);
+            Invariant.Verify(result is Task, "Tracked callback must return a Task");
+            Task task = (Task)result;
+
+            if (task.IsCompleted) {
+                if (ignoreCancellation && task.IsCanceled) {
+                    return 2;
+                }
+
+                task.GetAwaiter().GetResult();
+                return 0;
+            }
+
+            ScriptExceptions.ObserveTask(task, true);
+            ScriptExceptions.ObserveTask(CompleteTrackedCallbackTask(task, id, anyThread), true);
+            return 1;
+        }
+        catch (Exception ex) {
+            ScriptExceptions.Record(ex, false);
+            throw;
+        }
+    }
+
+    private static async Task CompleteTrackedCallbackTask(Task task, ulong id, bool anyThread)
+    {
+        bool success = true;
+
+        try {
+            if (anyThread) {
+                // Runtime accounting touches only the detached completion under CallCompletionGate
+#pragma warning disable RS0030
+                await task.ConfigureAwait(false);
+#pragma warning restore RS0030
+            }
+            else {
+                await task;
+            }
+        }
+        catch (Exception) {
+            // ObserveTask owns deferred fault reporting; the timer applies its explicit Stop/Repeat policy
+            success = false;
+        }
+
+        if (anyThread) {
+            lock (CallCompletionGate)
+            {
+                if (BackendTearingDown || BoundBackend == IntPtr.Zero) {
+                    return;
+                }
+
+                ThrowNativeError(CompleteScriptCallInternal(BoundBackend, id, success));
+            }
+        }
+        else {
+            ThrowNativeError(CompleteScriptCallInternal(BoundBackend, id, success));
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.InternalCall)]
+    private static extern string? CompleteScriptCallInternal(IntPtr backend, ulong id, bool success);
+
+    [CallableByEngine]
     internal static void PumpContinuations()
     {
         ScriptSynchronizationContext.Pump();
+    }
+
+    [CallableByEngine]
+    internal static long GetSnapshotWorkCount()
+    {
+        return ScriptExceptions.PendingTaskCount + ScriptSynchronizationContext.PendingWorkCount;
     }
 
     [CallableByEngine]
@@ -704,7 +789,10 @@ internal static class Native
         where T : unmanaged
     {
         int elementSize = Unsafe.SizeOf<T>();
-        Invariant.Verify(raw.Length % elementSize == 0, "Raw list block must hold a whole number of elements", raw.Length, elementSize);
+        Invariant.Verify(raw.Length % elementSize == 0,
+                         "Raw list block must hold a whole number of elements",
+                         raw.Length,
+                         elementSize);
         CollectionsMarshal.SetCount(values, raw.Length / elementSize);
         raw.AsSpan().CopyTo(MemoryMarshal.AsBytes(CollectionsMarshal.AsSpan(values)));
         return true;
@@ -825,7 +913,7 @@ internal static class Native
 
     // Custom-entity proto lookup (mirrors AngelScript Game_GetProtoCustomEntity / Game_CheckProtoCustomEntity):
     // returns the proto entity pointer for `typeName`/`protoIdHash` (IntPtr.Zero if unknown), or whether it
-    // exists. Backs the baker-generated Game.GetProto<X> / CheckProto<X> wrappers for custom HasProtos entities.
+    // exists. Backs the baker-generated Game.GetProto<X> / CheckProto<X> wrappers for custom HasProtos entities
     internal static IntPtr GetProtoEntity(string typeName, IntPtr protoId)
     {
         string ? error;
@@ -875,7 +963,7 @@ internal static class Native
                                                           out string? error);
 
     // Entity-holder accessors (managed equivalent of AngelScript CustomEntity_Add/HasAny/GetOne/GetAll),
-    // backing generated Add<X>/Has<X>s/Get<X>/Get<X>s methods for metadata EntityHolder entries.
+    // backing generated Add<X>/Has<X>s/Get<X>/Get<X>s methods for metadata EntityHolder entries
     internal static IntPtr CreateInnerEntity(IntPtr holderPtr, int entryId, IntPtr protoId)
     {
         string ? error;
@@ -1051,7 +1139,7 @@ internal static class Native
 
     // Generic property accessors by index (mirror AngelScript Entity_GetValueAsInt/SetValueAsInt and
     // Entity_GetValueAsAny/SetValueAsAny); back the generated Entity.GetAs*/SetAs* wrappers.
-    // propIndex is the property enum's member value.
+    // propIndex is the property enum's member value
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static int GetEntityValueAsInt(IntPtr entityPtr, int propIndex)
     {
@@ -1374,7 +1462,7 @@ internal static class Native
 
     // Outcome of a managed -> script invocation. Mirrors INVOKE_STATUS_* in ManagedScriptBackend.cpp.
     // Kept distinct because a single bool made "no such function" and "the call failed" the same answer,
-    // and callers legitimately assert the former as a missing bridge.
+    // and callers legitimately assert the former as a missing bridge
     internal const int ScriptInvokeStatusFailed = -1;
     internal const int ScriptInvokeStatusNoCandidate = 0;
     internal const int ScriptInvokeStatusCompleted = 1;
@@ -1392,7 +1480,7 @@ internal static class Native
                                                              out string? error);
 
     // A failed invocation is an error at the callee, not a missing entry: surface it instead of letting the
-    // caller mistake it for one. The engine has already logged the underlying exception with its stack.
+    // caller mistake it for one. The engine has already logged the underlying exception with its stack
     internal static bool InvokeScriptFunc(string funcName, object?[] args)
     {
         int status = InvokeScriptFuncStatus(funcName, args);
@@ -1406,7 +1494,7 @@ internal static class Native
 
     // Registers a managed global script function into the engine's cross-backend function map under a named
     // marker attribute, so a consumer that resolves funcs by attribute (ScriptSystem::FindFunc) can invoke it.
-    // paramTypeNames/returnTypeName are engine base-type names; the engine builds the matching signature.
+    // paramTypeNames/returnTypeName are engine base-type names; the engine builds the matching signature
     internal static void RegisterGlobalScriptFunc(string fullName, string attributeName, string[] paramTypeNames,
                                                   string returnTypeName, Delegate handler)
     {
@@ -1450,7 +1538,7 @@ internal static class Native
 
     // Diagnostic/test: serializes the boxed args and dispatches them through the engine's real inbound
     // remote-call path in-process (no network peer), invoking the registered handler for the named inbound
-    // "cs" remote call. Used to exercise the managed serialize -> deserialize -> dispatch glue on one side.
+    // "cs" remote call. Used to exercise the managed serialize -> deserialize -> dispatch glue on one side
     internal static void LoopbackRemoteCall(object? caller, string name, object?[] args)
     {
         ThrowNativeError(LoopbackRemoteCallInternal(BoundBackend, caller, name, args));

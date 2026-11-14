@@ -1,48 +1,20 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #include "DataBase.h"
+
+#include "DataBase-Json.h"
+#include "DataBase-Memory.h"
+#include "DataBase-Mongo.h"
+#include "DataBase-SQLite.h"
+#include "DataBaseSerialization.h"
 #include "ImGuiStuff.h"
 
 FO_DISABLE_WARNINGS_PUSH()
-#include <bson/bson.h>
 #include <json.hpp>
 FO_DISABLE_WARNINGS_POP()
 
 #include "WinApiUndef.inc"
-
-FO_CLANG_IGNORE_WARNINGS_PUSH("-Walign-mismatch")
-FO_GCC_IGNORE_WARNINGS_PUSH("-Wignored-attributes")
 
 FO_BEGIN_NAMESPACE
 
@@ -52,8 +24,8 @@ namespace osfile = winapi;
 namespace osfile = posix;
 #endif
 
-static auto AnyDocumentToJson(const AnyData::Document& doc) -> nlohmann::json;
-static auto JsonToAnyDocument(const nlohmann::json& doc_json) -> AnyData::Document;
+static constexpr std::chrono::milliseconds FAILED_BACKEND_POLL_INTERVAL {10};
+
 static void ValidateFiniteAnyValue(const AnyData::Value& value);
 static void ValidateFiniteAnyDocument(const AnyData::Document& doc);
 static auto AreDocumentsEqual(const AnyData::Document& left, const AnyData::Document& right) -> bool;
@@ -68,53 +40,6 @@ static auto EncodeDbStringKey(string_view value, DataBaseStringKeyEscaping escap
 static auto DecodeDbStringKey(string_view value, DataBaseStringKeyEscaping escaping) -> string;
 static auto ShouldEscapeDbStringByte(uint8_t byte, DataBaseStringKeyEscaping escaping) noexcept -> bool;
 static auto DecodeHexDigit(char ch) -> uint8_t;
-
-static auto BsonMalloc(size_t size) noexcept -> void*
-{
-    return safe_alloc::malloc_raw(size).get();
-}
-
-static auto BsonCalloc(size_t num, size_t size) noexcept -> void*
-{
-    return safe_alloc::calloc_raw(num, size).get();
-}
-
-static auto BsonRealloc(void* mem, size_t size) noexcept -> void*
-{
-    return safe_alloc::realloc_raw(mem, size).get();
-}
-
-static void BsonFree(void* mem) noexcept
-{
-    safe_alloc::free_raw(mem);
-}
-
-// bson frees every block through the plain free member, so the aligned path must stay free()-compatible — on
-// Windows without rpmalloc it is not, which is why bson's own vtable also falls back to plain malloc
-static auto BsonAlignedAlloc(size_t alignment, size_t size) noexcept -> void*
-{
-#if FO_HAVE_RPMALLOC || !FO_WINDOWS
-    return safe_alloc::malloc_aligned_raw(size, alignment).get();
-#else
-    ignore_unused(alignment);
-
-    return safe_alloc::malloc_raw(size).get();
-#endif
-}
-
-void InitializeBsonMemory() noexcept
-{
-    static std::once_flag once;
-    std::call_once(once, [] {
-        bson_mem_vtable_t vtable {};
-        vtable.malloc = &BsonMalloc;
-        vtable.calloc = &BsonCalloc;
-        vtable.realloc = &BsonRealloc;
-        vtable.free = &BsonFree;
-        vtable.aligned_alloc = &BsonAlignedAlloc;
-        bson_mem_set_vtable(&vtable);
-    });
-}
 
 DataBase::DataBase() = default;
 
@@ -151,33 +76,20 @@ auto DataBase::GetDbRequestsPerMinute() const -> size_t
 
 auto DataBase::GetAllIds(hstring collection_name) const -> vector<DataBaseKey>
 {
-    FO_TRACE_ZONE(Database);
-
     FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
-    auto key_type = _impl->GetCollectionKeyType(collection_name);
-    auto ids = _impl->GetAllRecordIds(collection_name);
-
-    for (auto& id : ids) {
-        id = DecodeBackendDbKey(id, key_type, _impl->GetStringKeyEscaping());
-
-        if (GetDbKeyType(id) != key_type) {
-            throw DataBaseException("Database collection returned invalid key type", collection_name, id, DbKeyTypeName(key_type));
-        }
-    }
-
-    return ids;
+    return _impl->GetAllDocumentIds(collection_name);
 }
 
 auto DataBase::GetAllIntIds(hstring collection_name) const -> vector<ident_t>
 {
     FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
-    auto key_type = _impl->GetCollectionKeyType(collection_name);
+    auto key_type {_impl->GetCollectionKeyType(collection_name)};
 
     if (key_type != DataBaseKeyType::IntId) {
         throw DataBaseException("Invalid database collection key type", collection_name, DbKeyTypeName(DataBaseKeyType::IntId), DbKeyTypeName(key_type));
     }
 
-    vector<ident_t> typed_ids;
+    vector<ident_t> typed_ids {};
 
     for (const auto& id : GetAllIds(collection_name)) {
         typed_ids.emplace_back(std::get<ident_t>(id));
@@ -189,13 +101,13 @@ auto DataBase::GetAllIntIds(hstring collection_name) const -> vector<ident_t>
 auto DataBase::GetAllStringIds(hstring collection_name) const -> vector<string>
 {
     FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
-    auto key_type = _impl->GetCollectionKeyType(collection_name);
+    auto key_type {_impl->GetCollectionKeyType(collection_name)};
 
     if (key_type != DataBaseKeyType::String) {
         throw DataBaseException("Invalid database collection key type", collection_name, DbKeyTypeName(DataBaseKeyType::String), DbKeyTypeName(key_type));
     }
 
-    vector<string> typed_ids;
+    vector<string> typed_ids {};
 
     for (const auto& id : GetAllIds(collection_name)) {
         typed_ids.emplace_back(std::get<string>(id));
@@ -232,6 +144,18 @@ void DataBase::Update(hstring collection_name, const DataBaseKey& id, string_vie
 {
     FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
     _impl->Update(collection_name, id, key, value);
+}
+
+auto DataBase::TryInsert(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) -> bool
+{
+    FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
+    return _impl->TryInsert(collection_name, id, doc);
+}
+
+auto DataBase::CompareExchange(hstring collection_name, const DataBaseKey& id, string_view key, const AnyData::Value& expected, const AnyData::Value& desired) -> bool
+{
+    FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
+    return _impl->CompareExchange(collection_name, id, key, expected, desired);
 }
 
 void DataBase::Delete(hstring collection_name, const DataBaseKey& id)
@@ -293,7 +217,7 @@ DataBaseImpl::DataBaseImpl(ptr<DataBaseSettings> db_settings, DataBasePanicCallb
 
 auto DataBaseImpl::GetCollectionKeyType(hstring collection_name) const -> DataBaseKeyType
 {
-    auto it = _collectionKeyTypes.find(collection_name);
+    auto it {_collectionKeyTypes.find(collection_name)};
 
     if (it == _collectionKeyTypes.end()) {
         throw DataBaseException("Unknown database collection", collection_name);
@@ -304,7 +228,7 @@ auto DataBaseImpl::GetCollectionKeyType(hstring collection_name) const -> DataBa
 
 auto DataBaseImpl::ResolveCollectionName(string_view collection_name) const -> hstring
 {
-    auto it = _collectionNames.find(collection_name);
+    auto it {_collectionNames.find(collection_name)};
 
     if (it == _collectionNames.end()) {
         throw DataBaseException("Unknown database collection name", collection_name);
@@ -337,12 +261,12 @@ void DataBaseImpl::InitializeOpLogs()
         throw DataBaseException("Empty oplog path in settings");
     }
 
-    auto open_log_file = [&](optional<RecoveryLogHandle>& handle, string_view file_path, string_view file_desc) {
+    auto open_log_file {[&](optional<RecoveryLogHandle>& handle, string_view file_path, string_view file_desc) {
         if (file_path.empty()) {
             throw DataBaseException("Empty oplog path", file_desc);
         }
 
-        string dir = strex(file_path).extract_dir().str();
+        string dir {strex(file_path).extract_dir().str()};
 
         if (!dir.empty() && !fs::create_directories(dir)) {
             throw DataBaseException("Oplog directory can't be created", file_desc, dir);
@@ -351,23 +275,23 @@ void DataBaseImpl::InitializeOpLogs()
         handle.emplace(string(file_path));
 
         // Validate oplog line format
-        const_span<string> content = handle->GetContent();
+        const_span<string> content {handle->GetContent()};
 
-        for (size_t i = 0; i < handle->GetLinesCount(); i++) {
-            auto line = string_view {content[i]};
-            auto first_space = line.find(' ');
-            size_t second_space = first_space != string_view::npos ? line.find(' ', first_space + 1) : string_view::npos;
-            size_t third_space = second_space != string_view::npos ? line.find(' ', second_space + 1) : string_view::npos;
+        for (size_t i {0}; i < handle->GetLinesCount(); i++) {
+            auto line {string_view {content[i]}};
+            auto first_space {line.find(' ')};
+            size_t second_space {first_space != string_view::npos ? line.find(' ', first_space + 1) : string_view::npos};
+            size_t third_space {second_space != string_view::npos ? line.find(' ', second_space + 1) : string_view::npos};
 
             if (first_space == string_view::npos || first_space == 0 || second_space == string_view::npos || second_space == first_space + 1) {
                 throw DataBaseException("Oplog file has invalid command format", i + 1, file_path);
             }
 
-            auto command = line.substr(0, first_space);
-            auto collection = line.substr(first_space + 1, second_space - first_space - 1);
+            auto command {line.substr(0, first_space)};
+            auto collection {line.substr(first_space + 1, second_space - first_space - 1)};
             string_view record_id_str {};
             string_view other {};
-            bool has_other = false;
+            bool has_other {false};
 
             if (third_space == string_view::npos) {
                 if (second_space + 1 >= line.size()) {
@@ -395,9 +319,10 @@ void DataBaseImpl::InitializeOpLogs()
             if (command == "delete" && has_other) {
                 throw DataBaseException("Oplog file has invalid delete command format", i + 1, file_path);
             }
+
             try {
-                hstring collection_name = ResolveCollectionName(collection);
-                auto record_id = DecodeStorageDbKey(record_id_str, GetCollectionKeyType(collection_name), GetStringKeyEscaping());
+                hstring collection_name {ResolveCollectionName(collection)};
+                auto record_id {DecodeStorageDbKey(record_id_str, GetCollectionKeyType(collection_name), GetStringKeyEscaping())};
 
                 if (!IsDbKeyValueValid(record_id)) {
                     throw DataBaseException("Oplog file has invalid record id value", record_id_str, i + 1, file_path);
@@ -406,15 +331,16 @@ void DataBaseImpl::InitializeOpLogs()
             catch (const std::exception&) {
                 throw DataBaseException("Oplog file has invalid record id value", record_id_str, i + 1, file_path);
             }
+
             if (has_other && (other.find('\n') != string_view::npos || other.find('\r') != string_view::npos)) {
                 throw DataBaseException("Oplog file has invalid payload line break", i + 1, file_path);
             }
         }
 
         return;
-    };
+    }};
 
-    string oplog_path = fs::make_writable_path(_settings->Common.UserWritablePath, _settings->DataBase.OpLogPath);
+    string oplog_path {fs::make_writable_path(_settings->Common.UserWritablePath, _settings->DataBase.OpLogPath)};
     open_log_file(_pendingChangesLog, oplog_path, "pending database changes file");
     open_log_file(_committedChangesLog, strex(oplog_path).replace(".oplog", "-committed.oplog").str(), "committed database changes file");
 
@@ -434,40 +360,40 @@ void DataBaseImpl::RestorePendingChanges()
     FO_VERIFY_AND_THROW(_pendingChangesLog, "Missing required pending changes log");
     FO_VERIFY_AND_THROW(_committedChangesLog, "Missing required committed changes log");
 
-    const_span<string> pending_changes_content = _pendingChangesLog->GetContent();
-    const_span<string> committed_changes_content = _committedChangesLog->GetContent();
+    const_span<string> pending_changes_content {_pendingChangesLog->GetContent()};
+    const_span<string> committed_changes_content {_committedChangesLog->GetContent()};
 
     if (committed_changes_content.size() > pending_changes_content.size()) {
         throw DataBaseException("Committed database changes file has more lines than pending database changes file");
     }
 
-    for (size_t i = 0; i < committed_changes_content.size(); i++) {
+    for (size_t i {0}; i < committed_changes_content.size(); i++) {
         FO_VERIFY_AND_THROW(i < pending_changes_content.size(), "Committed oplog line index is outside the pending oplog content", i, pending_changes_content.size(), committed_changes_content.size(), _settings->DataBase.OpLogPath);
-        size_t line_index = i + 1;
+        size_t line_index {i + 1};
 
         if (pending_changes_content[i] != committed_changes_content[i]) {
             throw DataBaseException("Committed oplog line doesn't match pending oplog line", line_index, _settings->DataBase.OpLogPath);
         }
     }
 
-    size_t pending_commands_to_replay = pending_changes_content.size() - committed_changes_content.size();
-    size_t replayed_commands = 0;
+    size_t pending_commands_to_replay {pending_changes_content.size() - committed_changes_content.size()};
+    size_t replayed_commands {0};
 
     try {
-        for (size_t i = committed_changes_content.size(); i < pending_changes_content.size(); i++) {
-            const auto& line = pending_changes_content[i];
-            auto line_view = string_view {line};
-            auto first_space = line_view.find(' ');
-            auto second_space = line_view.find(' ', first_space + 1);
+        for (size_t i {committed_changes_content.size()}; i < pending_changes_content.size(); i++) {
+            const auto& line {pending_changes_content[i]};
+            auto line_view {string_view {line}};
+            auto first_space {line_view.find(' ')};
+            auto second_space {line_view.find(' ', first_space + 1)};
             FO_VERIFY_AND_THROW(first_space != string_view::npos && first_space != 0, "Pending database oplog command has no collection name", i + 1, _settings->DataBase.OpLogPath, line_view.size(), first_space);
             FO_VERIFY_AND_THROW(second_space != string_view::npos && second_space != first_space + 1, "Pending database oplog command has no record id", i + 1, _settings->DataBase.OpLogPath, line_view.size(), first_space, second_space);
 
-            auto command = line_view.substr(0, first_space);
-            auto collection = line_view.substr(first_space + 1, second_space - first_space - 1);
+            auto command {line_view.substr(0, first_space)};
+            auto collection {line_view.substr(first_space + 1, second_space - first_space - 1)};
             string_view record_id_str {};
             string_view other {};
 
-            auto third_space = line_view.find(' ', second_space + 1);
+            auto third_space {line_view.find(' ', second_space + 1)};
 
             if (third_space == string_view::npos) {
                 FO_VERIFY_AND_THROW(second_space + 1 < line_view.size(), "Pending database oplog command has no record id after the second separator", i + 1, command, collection, second_space, line_view.size());
@@ -479,11 +405,11 @@ void DataBaseImpl::RestorePendingChanges()
                 other = line_view.substr(third_space + 1);
             }
 
-            hstring collection_name = ResolveCollectionName(collection);
-            auto key_type = GetCollectionKeyType(collection_name);
-            auto record_id = DecodeStorageDbKey(record_id_str, key_type, GetStringKeyEscaping());
-            auto storage_record_id = EncodeBackendDbKey(record_id, key_type, GetStringKeyEscaping());
-            auto current_doc = GetRecord(collection_name, storage_record_id);
+            hstring collection_name {ResolveCollectionName(collection)};
+            auto key_type {GetCollectionKeyType(collection_name)};
+            auto record_id {DecodeStorageDbKey(record_id_str, key_type, GetStringKeyEscaping())};
+            auto storage_record_id {EncodeBackendDbKey(record_id, key_type, GetStringKeyEscaping())};
+            auto current_doc {GetRecord(collection_name, storage_record_id)};
 
             if (command == "delete") {
                 if (!current_doc.Empty()) {
@@ -491,7 +417,7 @@ void DataBaseImpl::RestorePendingChanges()
                 }
             }
             else {
-                auto doc = JsonToAnyDocument(nlohmann::json::parse(other));
+                auto doc {DataBaseSerialization::FromJson(nlohmann::json::parse(other))};
 
                 if (command == "insert") {
                     if (current_doc.Empty()) {
@@ -547,9 +473,82 @@ auto DataBaseImpl::GetDbRequestsPerMinute() const -> size_t
     return _dbRequestsPerMinute.load(std::memory_order_relaxed);
 }
 
+auto DataBaseImpl::GetAllDocumentIds(hstring collection_name) const -> vector<DataBaseKey>
+{
+    FO_TRACE_ZONE(Database);
+
+    auto key_type {GetCollectionKeyType(collection_name)};
+    auto key_escaping {GetStringKeyEscaping()};
+
+    // Keys the commit thread added or removed while the backend was listed are listed again, so the result is the
+    // stored key set with the still-pending inserts and deletes laid over it, the same view document reads give
+    while (true) {
+        uint64_t committed_before {0};
+
+        {
+            scoped_lock locker {_stateLocker};
+
+            auto it {_committedKeyChanges.find(collection_name)};
+            committed_before = it != _committedKeyChanges.end() ? it->second : 0;
+        }
+
+        auto ids {GetAllRecordIds(collection_name)};
+
+        for (auto& id : ids) {
+            id = DecodeBackendDbKey(id, key_type, key_escaping);
+
+            if (GetDbKeyType(id) != key_type) {
+                throw DataBaseException("Database collection returned invalid key type", collection_name, id, DbKeyTypeName(key_type));
+            }
+        }
+
+        scoped_lock locker {_stateLocker};
+
+        auto committed_it {_committedKeyChanges.find(collection_name)};
+        uint64_t committed_after {committed_it != _committedKeyChanges.end() ? committed_it->second : 0};
+
+        if (committed_after != committed_before) {
+            continue;
+        }
+
+        unordered_set<DataBaseKey> present {ids.begin(), ids.end()};
+        vector<DataBaseKey> inserted {};
+
+        for (const auto& pending_op : _pendingCommitOperations) {
+            if (pending_op->CollectionName != collection_name) {
+                continue;
+            }
+
+            if (pending_op->Type == CommitOperationType::Insert) {
+                if (present.emplace(pending_op->RecordId).second) {
+                    inserted.emplace_back(pending_op->RecordId);
+                }
+            }
+            else if (pending_op->Type == CommitOperationType::Delete) {
+                present.erase(pending_op->RecordId);
+            }
+        }
+
+        vector<DataBaseKey> result {};
+        result.reserve(present.size());
+
+        auto take_present {[&](vector<DataBaseKey>& source) {
+            for (auto& id : source) {
+                if (present.erase(id) != 0) {
+                    result.emplace_back(std::move(id));
+                }
+            }
+        }};
+
+        take_present(ids);
+        take_present(inserted);
+        return result;
+    }
+}
+
 auto DataBaseImpl::GetDocument(hstring collection_name, const DataBaseKey& id) const -> AnyData::Document
 {
-    auto docs = GetDocuments(collection_name, {id});
+    auto docs {GetDocuments(collection_name, {id})};
     FO_VERIFY_AND_THROW(docs.size() == 1, "Database returned a different number of documents than requested", collection_name, id, docs.size());
     return std::move(docs.front());
 }
@@ -562,22 +561,22 @@ auto DataBaseImpl::GetDocuments(hstring collection_name, const vector<DataBaseKe
         throw DataBaseException("Database backend is in failed state");
     }
 
-    vector<AnyData::Document> docs(ids.size());
+    vector<AnyData::Document> docs {vector<AnyData::Document>(ids.size())};
 
     if (ids.empty()) {
         return docs;
     }
 
-    auto key_type = GetCollectionKeyType(collection_name);
-    auto key_escaping = GetStringKeyEscaping();
-    unordered_map<DataBaseKey, size_t> unique_index_by_id;
-    vector<DataBaseKey> unique_ids;
-    vector<DataBaseKey> storage_ids;
-    vector<size_t> doc_unique_index;
+    auto key_type {GetCollectionKeyType(collection_name)};
+    auto key_escaping {GetStringKeyEscaping()};
+    unordered_map<DataBaseKey, size_t> unique_index_by_id {};
+    vector<DataBaseKey> unique_ids {};
+    vector<DataBaseKey> storage_ids {};
+    vector<size_t> doc_unique_index {};
     doc_unique_index.reserve(ids.size());
 
     for (const auto& id : ids) {
-        auto [it, inserted] = unique_index_by_id.emplace(id, unique_ids.size());
+        auto [it, inserted] {unique_index_by_id.emplace(id, unique_ids.size())};
 
         if (inserted) {
             ValidateCollectionKey(collection_name, id);
@@ -592,29 +591,45 @@ auto DataBaseImpl::GetDocuments(hstring collection_name, const vector<DataBaseKe
         scoped_lock locker {_stateLocker};
 
         for (const auto& id : unique_ids) {
-            _docReadRetryMarkers.emplace(collection_name, id);
+            _documentReadStates[{collection_name, id}].Readers++;
         }
     }
 
-    auto release_readers = scope_exit([&]() noexcept {
+    auto release_readers {scope_exit([&]() noexcept {
         safe_call([&]() {
             scoped_lock locker {_stateLocker};
 
             for (const auto& id : unique_ids) {
-                _docReadRetryMarkers.erase({collection_name, id});
+                auto it {_documentReadStates.find({collection_name, id})};
+                FO_STRONG_ASSERT(it != _documentReadStates.end() && it->second.Readers != 0, "Database reader tracking is missing", collection_name, id);
+
+                if (--it->second.Readers == 0) {
+                    _documentReadStates.erase(it);
+                }
             }
         });
-    });
+    })};
 
-    vector<AnyData::Document> unique_docs(unique_ids.size());
-    vector<size_t> pending_indices(unique_ids.size());
+    vector<AnyData::Document> unique_docs {vector<AnyData::Document>(unique_ids.size())};
+    vector<size_t> pending_indices {vector<size_t>(unique_ids.size())};
     std::iota(pending_indices.begin(), pending_indices.end(), size_t {0});
 
-    // A record committed while it was being read loses its marker to the commit thread and is read again, so
+    // A record committed while it was being read changes its generation and is read again, so
     // every returned document is the stored one with the still-pending operations laid over it
     while (!pending_indices.empty()) {
-        vector<DataBaseKey> request_ids = vec_transform(pending_indices, [&](size_t index) -> DataBaseKey { return storage_ids[index]; });
-        vector<AnyData::Document> records;
+        vector<DataBaseKey> request_ids {vec_transform(pending_indices, [&](size_t index) -> DataBaseKey { return storage_ids[index]; })};
+        vector<uint64_t> expected_generations {};
+        expected_generations.reserve(pending_indices.size());
+
+        {
+            scoped_lock locker {_stateLocker};
+
+            for (size_t index : pending_indices) {
+                expected_generations.emplace_back(_documentReadStates.at({collection_name, unique_ids[index]}).Generation);
+            }
+        }
+
+        vector<AnyData::Document> records {};
 
         try {
             records = GetRecords(collection_name, request_ids);
@@ -628,16 +643,17 @@ auto DataBaseImpl::GetDocuments(hstring collection_name, const vector<DataBaseKe
         FO_VERIFY_AND_THROW(records.size() == request_ids.size(), "Database backend returned a different number of documents than requested", collection_name, request_ids.size(), records.size());
         RegisterDbRequests(1);
 
-        vector<size_t> retry_indices;
-        vector<uint8_t> read_completed(unique_ids.size());
-        vector<vector<shared_ptr<CommitOperationData>>> pending_ops(unique_ids.size());
+        vector<size_t> retry_indices {};
+        vector<uint8_t> read_completed {vector<uint8_t>(unique_ids.size())};
+        vector<vector<shared_ptr<CommitOperationData>>> pending_ops {vector<vector<shared_ptr<CommitOperationData>>>(unique_ids.size())};
 
         {
             scoped_lock locker {_stateLocker};
 
-            for (size_t index : pending_indices) {
-                if (_docReadRetryMarkers.erase({collection_name, unique_ids[index]}) == 0) {
-                    _docReadRetryMarkers.emplace(collection_name, unique_ids[index]);
+            for (size_t request_index {0}; request_index < pending_indices.size(); request_index++) {
+                size_t index {pending_indices[request_index]};
+
+                if (_documentReadStates.at({collection_name, unique_ids[index]}).Generation != expected_generations[request_index]) {
                     retry_indices.emplace_back(index);
                 }
                 else {
@@ -650,20 +666,20 @@ auto DataBaseImpl::GetDocuments(hstring collection_name, const vector<DataBaseKe
                     continue;
                 }
 
-                if (auto it = unique_index_by_id.find(pending_op->RecordId); it != unique_index_by_id.end() && read_completed[it->second] != 0) {
+                if (auto it {unique_index_by_id.find(pending_op->RecordId)}; it != unique_index_by_id.end() && read_completed[it->second] != 0) {
                     pending_ops[it->second].emplace_back(pending_op);
                 }
             }
         }
 
-        for (size_t i = 0; i < pending_indices.size(); i++) {
-            size_t index = pending_indices[i];
+        for (size_t i {0}; i < pending_indices.size(); i++) {
+            size_t index {pending_indices[i]};
 
             if (read_completed[index] == 0) {
                 continue;
             }
 
-            AnyData::Document doc = std::move(records[i]);
+            AnyData::Document doc {std::move(records[i])};
 
             for (const auto& pending_op : pending_ops[index]) {
                 if (pending_op->Type == CommitOperationType::Insert) {
@@ -685,10 +701,10 @@ auto DataBaseImpl::GetDocuments(hstring collection_name, const vector<DataBaseKe
         pending_indices = std::move(retry_indices);
     }
 
-    vector<size_t> first_doc_position(unique_ids.size(), ids.size());
+    vector<size_t> first_doc_position {vector<size_t>(unique_ids.size(), ids.size())};
 
-    for (size_t i = 0; i < ids.size(); i++) {
-        size_t index = doc_unique_index[i];
+    for (size_t i {0}; i < ids.size(); i++) {
+        size_t index {doc_unique_index[i]};
 
         if (first_doc_position[index] == ids.size()) {
             docs[i] = std::move(unique_docs[index]);
@@ -711,6 +727,51 @@ void DataBaseImpl::Insert(hstring collection_name, const DataBaseKey& id, const 
 {
     FO_TRACE_ZONE(Database);
 
+    scoped_lock mutation_locker {_mutationLocker};
+
+    InsertInner(collection_name, id, doc);
+}
+
+auto DataBaseImpl::TryInsert(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) -> bool
+{
+    FO_TRACE_ZONE(Database);
+
+    if (doc.Empty()) {
+        throw DataBaseException("Cannot insert empty document");
+    }
+
+    ValidateFiniteAnyDocument(doc);
+
+    scoped_lock mutation_locker {_mutationLocker};
+
+    if (!GetDocument(collection_name, id).Empty()) {
+        return false;
+    }
+
+    InsertInner(collection_name, id, doc);
+    return true;
+}
+
+auto DataBaseImpl::CompareExchange(hstring collection_name, const DataBaseKey& id, string_view key, const AnyData::Value& expected, const AnyData::Value& desired) -> bool
+{
+    FO_TRACE_ZONE(Database);
+
+    ValidateFiniteAnyValue(desired);
+
+    scoped_lock mutation_locker {_mutationLocker};
+
+    auto doc {GetDocument(collection_name, id)};
+
+    if (!doc.Contains(key) || doc[string {key}] != expected) {
+        return false;
+    }
+
+    UpdateInner(collection_name, id, key, desired);
+    return true;
+}
+
+void DataBaseImpl::InsertInner(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc)
+{
     if (doc.Empty()) {
         throw DataBaseException("Cannot insert empty document");
     }
@@ -725,7 +786,7 @@ void DataBaseImpl::Insert(hstring collection_name, const DataBaseKey& id, const 
             _snapshotDoneSignal.wait(locker);
         }
 
-        auto op = safe_alloc::make_shared<CommitOperationData>();
+        auto op {safe_alloc::make_shared<CommitOperationData>()};
         op->Type = CommitOperationType::Insert;
         op->CollectionName = collection_name;
         op->RecordId = id;
@@ -738,6 +799,13 @@ void DataBaseImpl::Insert(hstring collection_name, const DataBaseKey& id, const 
 
 void DataBaseImpl::Update(hstring collection_name, const DataBaseKey& id, string_view key, const AnyData::Value& value)
 {
+    scoped_lock mutation_locker {_mutationLocker};
+
+    UpdateInner(collection_name, id, key, value);
+}
+
+void DataBaseImpl::UpdateInner(hstring collection_name, const DataBaseKey& id, string_view key, const AnyData::Value& value)
+{
     ValidateFiniteAnyValue(value);
     ValidateCollectionKey(collection_name, id);
 
@@ -748,7 +816,7 @@ void DataBaseImpl::Update(hstring collection_name, const DataBaseKey& id, string
             _snapshotDoneSignal.wait(locker);
         }
 
-        auto op = safe_alloc::make_shared<CommitOperationData>();
+        auto op {safe_alloc::make_shared<CommitOperationData>()};
         op->Type = CommitOperationType::Update;
         op->CollectionName = collection_name;
         op->RecordId = id;
@@ -763,6 +831,8 @@ void DataBaseImpl::Delete(hstring collection_name, const DataBaseKey& id)
 {
     FO_TRACE_ZONE(Database);
 
+    scoped_lock mutation_locker {_mutationLocker};
+
     ValidateCollectionKey(collection_name, id);
 
     {
@@ -772,7 +842,7 @@ void DataBaseImpl::Delete(hstring collection_name, const DataBaseKey& id)
             _snapshotDoneSignal.wait(locker);
         }
 
-        auto op = safe_alloc::make_shared<CommitOperationData>();
+        auto op {safe_alloc::make_shared<CommitOperationData>()};
         op->Type = CommitOperationType::Delete;
         op->CollectionName = collection_name;
         op->RecordId = id;
@@ -843,16 +913,17 @@ auto DataBaseImpl::CreateSnapshot() -> vector<uint8_t>
         _snapshotInProgress = true;
     }
 
-    auto finish_snapshot = scope_exit([this]() noexcept {
+    auto finish_snapshot {scope_exit([this]() noexcept {
         safe_call([this] {
             {
                 scoped_lock locker {_stateLocker};
+
                 _snapshotInProgress = false;
             }
 
             _snapshotDoneSignal.notify_all();
         });
-    });
+    })};
 
     return CreateSnapshotData();
 }
@@ -860,6 +931,8 @@ auto DataBaseImpl::CreateSnapshot() -> vector<uint8_t>
 void DataBaseImpl::RestoreSnapshot(const_span<uint8_t> snapshot_data)
 {
     FO_TRACE_ZONE(Database);
+
+    scoped_lock mutation_locker {_mutationLocker};
 
     if (snapshot_data.empty()) {
         throw DataBaseException("Database snapshot data is empty");
@@ -882,16 +955,17 @@ void DataBaseImpl::RestoreSnapshot(const_span<uint8_t> snapshot_data)
         _snapshotInProgress = true;
     }
 
-    auto finish_restore = scope_exit([this]() noexcept {
+    auto finish_restore {scope_exit([this]() noexcept {
         safe_call([this] {
             {
                 scoped_lock locker {_stateLocker};
+
                 _snapshotInProgress = false;
             }
 
             _snapshotDoneSignal.notify_all();
         });
-    });
+    })};
 
     RestoreSnapshotData(snapshot_data);
 }
@@ -908,6 +982,8 @@ void DataBaseImpl::RestoreSnapshotData(const_span<uint8_t> snapshot_data)
 
 void DataBaseImpl::ClearChanges() noexcept
 {
+    scoped_lock mutation_locker {_mutationLocker};
+
     scoped_lock locker {_stateLocker};
 
     _pendingCommitOperations.clear();
@@ -915,18 +991,18 @@ void DataBaseImpl::ClearChanges() noexcept
 
 void DataBaseImpl::DrawGui()
 {
-    constexpr ImGuiTableFlags TABLE_FLAGS = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_SizingStretchProp;
+    constexpr ImGuiTableFlags TABLE_FLAGS {ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_SizingStretchProp};
 
-    auto info_row = [](string_view key, string_view value) {
+    auto info_row {[](string_view key, string_view value) {
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         ImGuiTextUnformatted(key);
         ImGui::TableSetColumnIndex(1);
         ImGuiTextUnformatted(value);
-    };
+    }};
 
-    size_t pending_count = 0;
-    bool commit_thread_active = false;
+    size_t pending_count {0};
+    bool commit_thread_active {false};
 
     {
         scoped_lock locker {_stateLocker};
@@ -965,8 +1041,8 @@ void DataBaseImpl::DrawGui()
     }
 
     if (!_collectionKeyTypes.empty()) {
-        string collections_label = strex("Collections ({})", _collectionKeyTypes.size()).str();
-        auto collections_label_cstr = make_ptr(collections_label.c_str());
+        string collections_label {strex("Collections ({})", _collectionKeyTypes.size()).str()};
+        auto collections_label_cstr {make_ptr(collections_label.c_str())};
 
         if (ImGui::TreeNode(collections_label_cstr.get())) {
             if (ImGui::BeginTable("##DbCollections", 2, TABLE_FLAGS)) {
@@ -974,7 +1050,7 @@ void DataBaseImpl::DrawGui()
                 ImGui::TableSetupColumn("Key type", ImGuiTableColumnFlags_WidthStretch);
 
                 for (const auto& [collection_name, key_type] : _collectionKeyTypes) {
-                    string_view key_type_str = key_type == DataBaseKeyType::IntId ? "IntId" : "String";
+                    string_view key_type_str {key_type == DataBaseKeyType::IntId ? "IntId" : "String"};
                     info_row(collection_name, key_type_str);
                 }
 
@@ -988,7 +1064,7 @@ void DataBaseImpl::DrawGui()
 
 void DataBaseImpl::ScheduleCommit()
 {
-    bool should_notify = false;
+    bool should_notify {false};
 
     {
         scoped_lock locker {_stateLocker};
@@ -1045,8 +1121,8 @@ void DataBaseImpl::CommitThreadEntry() noexcept
 {
     while (true) {
         try {
-            bool has_changes = false;
-            bool stop_requested = false;
+            bool has_changes {false};
+            bool stop_requested {false};
 
             {
                 unique_lock locker {_stateLocker};
@@ -1101,7 +1177,7 @@ void DataBaseImpl::CommitThreadEntry() noexcept
                 CommitNextChange();
             }
             else if (_backendFailed) {
-                coarse_sleep(std::chrono::milliseconds {10});
+                coarse_sleep(FAILED_BACKEND_POLL_INTERVAL);
             }
         }
         catch (const std::exception& ex) {
@@ -1116,7 +1192,7 @@ void DataBaseImpl::CommitNextChange() noexcept
 {
     FO_TRACE_ZONE(Database);
 
-    shared_ptr<CommitOperationData> op;
+    shared_ptr<CommitOperationData> op {};
 
     {
         scoped_lock locker {_stateLocker};
@@ -1130,7 +1206,7 @@ void DataBaseImpl::CommitNextChange() noexcept
 
     if (!_backendFailed) {
         try {
-            auto storage_record_id = EncodeBackendDbKey(op->RecordId, GetCollectionKeyType(op->CollectionName), GetStringKeyEscaping());
+            auto storage_record_id {EncodeBackendDbKey(op->RecordId, GetCollectionKeyType(op->CollectionName), GetStringKeyEscaping())};
 
             switch (op->Type) {
             case CommitOperationType::Insert:
@@ -1158,23 +1234,23 @@ void DataBaseImpl::CommitNextChange() noexcept
                 return;
             }
 
-            string log_data;
+            string log_data {};
 
             switch (op->Type) {
             case CommitOperationType::Insert: {
-                auto doc_json = AnyDocumentToJson(op->Doc).dump();
+                auto doc_json {DataBaseSerialization::ToJson(op->Doc).dump()};
                 FO_VERIFY_AND_THROW(doc_json.find_first_of("\r\n") == string::npos, "Database insert oplog JSON contains a newline and cannot be stored as a single log command", op->CollectionName, doc_json.size(), doc_json.find_first_of("\r\n"));
-                string key = EncodeStorageDbKey(op->RecordId, GetCollectionKeyType(op->CollectionName), GetStringKeyEscaping());
+                string key {EncodeStorageDbKey(op->RecordId, GetCollectionKeyType(op->CollectionName), GetStringKeyEscaping())};
                 log_data += strex("insert {} {} {}\n", op->CollectionName.as_str(), key, doc_json).str();
             } break;
             case CommitOperationType::Update: {
-                auto doc_json = AnyDocumentToJson(op->Doc).dump();
+                auto doc_json {DataBaseSerialization::ToJson(op->Doc).dump()};
                 FO_VERIFY_AND_THROW(doc_json.find_first_of("\r\n") == string::npos, "Database update oplog JSON contains a newline and cannot be stored as a single log command", op->CollectionName, doc_json.size(), doc_json.find_first_of("\r\n"));
-                string key = EncodeStorageDbKey(op->RecordId, GetCollectionKeyType(op->CollectionName), GetStringKeyEscaping());
+                string key {EncodeStorageDbKey(op->RecordId, GetCollectionKeyType(op->CollectionName), GetStringKeyEscaping())};
                 log_data += strex("update {} {} {}\n", op->CollectionName.as_str(), key, doc_json).str();
             } break;
             case CommitOperationType::Delete: {
-                string key = EncodeStorageDbKey(op->RecordId, GetCollectionKeyType(op->CollectionName), GetStringKeyEscaping());
+                string key {EncodeStorageDbKey(op->RecordId, GetCollectionKeyType(op->CollectionName), GetStringKeyEscaping())};
                 log_data += strex("delete {} {}\n", op->CollectionName.as_str(), key).str();
             } break;
             }
@@ -1207,7 +1283,14 @@ void DataBaseImpl::CommitNextChange() noexcept
         scoped_lock state_locker {_stateLocker};
 
         // The change stops being laid over reads here, so a reader that fetched the record before the write reads it again
-        _docReadRetryMarkers.erase({op->CollectionName, op->RecordId});
+        if (auto it {_documentReadStates.find({op->CollectionName, op->RecordId})}; it != _documentReadStates.end()) {
+            it->second.Generation++;
+        }
+
+        if (op->Type != CommitOperationType::Update) {
+            _committedKeyChanges[op->CollectionName]++;
+        }
+
         _pendingCommitOperations.pop_front();
     }
     catch (const std::exception& ex) {
@@ -1222,11 +1305,11 @@ void DataBaseImpl::RegisterDbRequests(size_t request_count) const
         return;
     }
 
-    auto now_second = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+    auto now_second {std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now().time_since_epoch()).count()};
 
     scoped_lock locker {_dbRequestsMetricLocker};
 
-    auto& bucket = _dbRequestsPerMinuteBuckets[static_cast<size_t>(now_second % numeric_cast<int64_t>(_dbRequestsPerMinuteBuckets.size()))];
+    auto& bucket {_dbRequestsPerMinuteBuckets[static_cast<size_t>(now_second % numeric_cast<int64_t>(_dbRequestsPerMinuteBuckets.size()))]};
 
     if (bucket.Second != now_second) {
         bucket.Second = now_second;
@@ -1235,7 +1318,7 @@ void DataBaseImpl::RegisterDbRequests(size_t request_count) const
 
     bucket.Count += request_count;
 
-    size_t requests_per_minute = 0;
+    size_t requests_per_minute {0};
 
     for (const auto& it : _dbRequestsPerMinuteBuckets) {
         if (it.Second > 0 && now_second - it.Second < 60) {
@@ -1252,7 +1335,7 @@ void DataBaseImpl::ValidateCollectionKey(hstring collection_name, const DataBase
         throw DataBaseException("Invalid database key value", collection_name, id);
     }
 
-    auto expected_type = GetCollectionKeyType(collection_name);
+    auto expected_type {GetCollectionKeyType(collection_name)};
 
     if (GetDbKeyType(id) != expected_type) {
         throw DataBaseException("Invalid database key type for collection", collection_name, DbKeyTypeName(expected_type), id);
@@ -1293,15 +1376,15 @@ DataBaseImpl::RecoveryLogHandle::RecoveryLogHandle(string path) :
         throw DataBaseException("Failed to open recovery oplog file, it may be used by another process", _path);
     }
 
-    auto fd_guard = scope_fail([this]() noexcept { osfile::close_exclusive_file(_fd); });
+    auto fd_guard {scope_fail([this]() noexcept { osfile::close_exclusive_file(_fd); })};
 
-    auto read_content = Read();
+    auto read_content {Read()};
 
     if (!read_content.has_value()) {
         throw DataBaseException("Oplog file can't be read", _path);
     }
 
-    string normalized_content = strex(read_content.value()).normalize_line_endings().str();
+    string normalized_content {strex(read_content.value()).normalize_line_endings().str()};
 
     if (!normalized_content.empty() && !normalized_content.ends_with('\n')) {
         throw DataBaseException("Oplog file has invalid line ending", _path);
@@ -1320,7 +1403,7 @@ DataBaseImpl::RecoveryLogHandle::~RecoveryLogHandle() noexcept
 
 auto DataBaseImpl::RecoveryLogHandle::Read() noexcept -> optional<string>
 {
-    int64_t size = osfile::seek_file_end(_fd);
+    int64_t size {osfile::seek_file_end(_fd)};
 
     if (size < 0) {
         return std::nullopt;
@@ -1330,16 +1413,16 @@ auto DataBaseImpl::RecoveryLogHandle::Read() noexcept -> optional<string>
         return std::nullopt;
     }
 
-    string content;
+    string content {};
     content.resize(static_cast<size_t>(size));
 
-    size_t offset = 0;
+    size_t offset {0};
 
     while (offset < content.size()) {
-        size_t remaining = content.size() - offset;
-        auto read_pos = make_ptr(content.data() + offset);
+        size_t remaining {content.size() - offset};
+        auto read_pos {make_ptr(content.data() + offset)};
 
-        int64_t read_size = osfile::read_file_chunk(_fd, read_pos, remaining);
+        int64_t read_size {osfile::read_file_chunk(_fd, read_pos, remaining)};
 
         if (read_size <= 0) {
             return std::nullopt;
@@ -1388,34 +1471,34 @@ auto DataBaseImpl::RecoveryLogHandle::Append(string_view text) noexcept -> bool
         return true;
     }
 
-    string normalized_content = strex(text).normalize_line_endings().str();
+    string normalized_content {strex(text).normalize_line_endings().str()};
 
     if (!normalized_content.ends_with('\n')) {
         return false;
     }
 
     vector<string> parsed_content {};
-    size_t line_begin = 0;
+    size_t line_begin {0};
 
     while (line_begin < normalized_content.size()) {
-        auto line_end = normalized_content.find('\n', line_begin);
+        auto line_end {normalized_content.find('\n', line_begin)};
 
         if (line_end == string::npos || line_end == line_begin) {
             return false;
         }
 
-        auto line = string_view {normalized_content}.substr(line_begin, line_end - line_begin);
-        auto first_space = line.find(' ');
-        size_t second_space = first_space != string_view::npos ? line.find(' ', first_space + 1) : string_view::npos;
-        size_t third_space = second_space != string_view::npos ? line.find(' ', second_space + 1) : string_view::npos;
+        auto line {string_view {normalized_content}.substr(line_begin, line_end - line_begin)};
+        auto first_space {line.find(' ')};
+        size_t second_space {first_space != string_view::npos ? line.find(' ', first_space + 1) : string_view::npos};
+        size_t third_space {second_space != string_view::npos ? line.find(' ', second_space + 1) : string_view::npos};
 
         if (first_space == string_view::npos || first_space == 0 || second_space == string_view::npos || second_space == first_space + 1) {
             return false;
         }
 
-        auto command = line.substr(0, first_space);
+        auto command {line.substr(0, first_space)};
         string_view other {};
-        bool has_other = false;
+        bool has_other {false};
 
         if (third_space == string_view::npos) {
             if (second_space + 1 >= line.size()) {
@@ -1452,13 +1535,13 @@ auto DataBaseImpl::RecoveryLogHandle::Append(string_view text) noexcept -> bool
         return false;
     }
 
-    size_t offset = 0;
+    size_t offset {0};
 
     while (offset < normalized_content.size()) {
-        size_t remaining = normalized_content.size() - offset;
-        auto write_pos = make_ptr(normalized_content.data() + offset);
+        size_t remaining {normalized_content.size() - offset};
+        auto write_pos {make_ptr(normalized_content.data() + offset)};
 
-        int64_t written_size = osfile::write_file_chunk(_fd, write_pos, remaining);
+        int64_t written_size {osfile::write_file_chunk(_fd, write_pos, remaining)};
 
         if (written_size <= 0) {
             return false;
@@ -1484,248 +1567,53 @@ auto ConnectToDataBase(ptr<DataBaseSettings> db_settings, string_view connection
 {
     FO_TRACE_ZONE(Database);
 
-    auto finish_connect = [&](unique_ptr<DataBaseImpl> impl) -> DataBase {
+    auto finish_connect {[&](unique_ptr<DataBaseImpl> impl) -> DataBase {
         impl->InitializeCollections(collection_schemas);
         impl->InitializeOpLogs();
         impl->RestorePendingChanges();
         return DataBase(std::move(impl));
-    };
+    }};
 
-    if (auto options = strvex(connection_info).split(' '); !options.empty()) {
+    connection_info = strvex(connection_info).trim();
+
+    if (auto options {strvex(connection_info).split(' ')}; !options.empty()) {
         logging::write("Connect to {} data base", options.front());
+        string_view storage_dir {static_cast<string_view>(strvex(connection_info.substr(options.front().size())).trim())};
+        ignore_unused(storage_dir);
 
-        if (options.front() == "JSON" && options.size() == 2) {
-            return finish_connect(CreateJsonDataBase(db_settings, options[1], std::move(panic_callback)));
+#if FO_DATABASE_JSON
+        if (options.front() == "JSON" && !storage_dir.empty()) {
+            return finish_connect(DataBaseJson::Create(db_settings, storage_dir, std::move(panic_callback)));
         }
-#if FO_HAVE_SQLITE
-        if (options.front() == "DbSQLite" && options.size() == 2) {
-            return finish_connect(CreateSQLiteDataBase(db_settings, options[1], std::move(panic_callback)));
+#else
+        if (options.front() == "JSON") {
+            throw DataBaseException("Database provider is disabled; enable FO_DATABASE_JSON");
         }
 #endif
-#if FO_HAVE_MONGO
+#if FO_DATABASE_SQLITE
+        if (options.front() == "DbSQLite" && !storage_dir.empty()) {
+            return finish_connect(DataBaseSQLite::Create(db_settings, storage_dir, std::move(panic_callback)));
+        }
+#else
+        if (options.front() == "DbSQLite") {
+            throw DataBaseException("Database provider is disabled; enable FO_DATABASE_SQLITE");
+        }
+#endif
+#if FO_DATABASE_MONGO
         if (options.front() == "Mongo" && options.size() == 3) {
-            return finish_connect(CreateMongoDataBase(db_settings, options[1], options[2], std::move(panic_callback)));
+            return finish_connect(DataBaseMongo::Create(db_settings, options[1], options[2], std::move(panic_callback)));
+        }
+#else
+        if (options.front() == "Mongo") {
+            throw DataBaseException("Database provider is disabled; enable FO_DATABASE_MONGO");
         }
 #endif
         if (options.front() == "Memory" && options.size() == 1) {
-            return finish_connect(CreateMemoryDataBase(db_settings, std::move(panic_callback)));
+            return finish_connect(DataBaseMemory::Create(db_settings, std::move(panic_callback)));
         }
     }
 
     throw DataBaseException("Wrong storage options", connection_info);
-}
-
-static void ValueToBson(string_view key, const AnyData::Value& value, ptr<bson_t> bson, char escape_dot)
-{
-    strex key_buf = strex(key);
-    string_view escaped_key = escape_dot != 0 ? key_buf.replace('.', escape_dot).strv() : key;
-    string_view key_data = escaped_key;
-    int32_t key_len = numeric_cast<int32_t>(escaped_key.length());
-    auto key_ptr = make_nptr(key_data.data());
-    auto aligned_bson = std::assume_aligned<BSON_ALIGN_OF_PTR>(bson.get());
-
-    if (value.Type() == AnyData::ValueType::Int64) {
-        if (!bson_append_int64(aligned_bson, key_ptr.get(), key_len, value.AsInt64())) {
-            throw DataBaseException("ValueToBson bson_append_int64", key, value.AsInt64());
-        }
-    }
-    else if (value.Type() == AnyData::ValueType::Float64) {
-        float64_t double_value = value.AsDouble();
-
-        if (!std::isfinite(double_value)) {
-            throw DataBaseException("ValueToBson non-finite double", key, double_value);
-        }
-        if (!bson_append_double(aligned_bson, key_ptr.get(), key_len, double_value)) {
-            throw DataBaseException("ValueToBson bson_append_double", key, double_value);
-        }
-    }
-    else if (value.Type() == AnyData::ValueType::Bool) {
-        if (!bson_append_bool(aligned_bson, key_ptr.get(), key_len, value.AsBool())) {
-            throw DataBaseException("ValueToBson bson_append_bool", key, value.AsBool());
-        }
-    }
-    else if (value.Type() == AnyData::ValueType::String) {
-        string_view value_str = value.AsString();
-
-        if (!bson_append_utf8(aligned_bson, key_ptr.get(), key_len, value_str.data(), numeric_cast<int32_t>(value_str.length()))) {
-            throw DataBaseException("ValueToBson bson_append_utf8", key, value_str);
-        }
-    }
-    else if (value.Type() == AnyData::ValueType::Array) {
-        bson_t bson_arr;
-
-        if (!bson_append_array_unsafe_begin(aligned_bson, key_ptr.get(), key_len, &bson_arr)) {
-            throw DataBaseException("ValueToBson bson_append_array_unsafe_begin", key);
-        }
-
-        const auto& arr = value.AsArray();
-        size_t arr_index = 0;
-
-        for (const auto& arr_entry : arr) {
-            string arr_key = strex("{}", arr_index++);
-            ValueToBson(arr_key, arr_entry, &bson_arr, escape_dot);
-        }
-
-        if (!bson_append_array_end(aligned_bson, &bson_arr)) {
-            throw DataBaseException("ValueToBson bson_append_array_end");
-        }
-    }
-    else if (value.Type() == AnyData::ValueType::Dict) {
-        bson_t bson_doc;
-
-        if (!bson_append_document_begin(aligned_bson, key_ptr.get(), key_len, &bson_doc)) {
-            throw DataBaseException("ValueToBson bson_append_bool", key);
-        }
-
-        const auto& dict = value.AsDict();
-
-        for (auto&& [dict_key, dict_value] : dict) {
-            ValueToBson(dict_key, dict_value, &bson_doc, escape_dot);
-        }
-
-        if (!bson_append_document_end(aligned_bson, &bson_doc)) {
-            throw DataBaseException("ValueToBson bson_append_document_end");
-        }
-    }
-    else {
-        FO_UNREACHABLE_PLACE();
-    }
-}
-
-void DocumentToBson(const AnyData::Document& doc, ptr<bson_t> bson, char escape_dot)
-{
-    for (auto&& [doc_key, doc_value] : doc) {
-        ValueToBson(doc_key, doc_value, bson, escape_dot);
-    }
-}
-
-static auto BsonToValue(bson_iter_t* iter, char escape_dot) -> AnyData::Value
-{
-    auto value = make_ptr(bson_iter_value(iter));
-
-    if (value->value_type == BSON_TYPE_INT32) {
-        return numeric_cast<int64_t>(value->value.v_int32);
-    }
-    else if (value->value_type == BSON_TYPE_INT64) {
-        return value->value.v_int64;
-    }
-    else if (value->value_type == BSON_TYPE_DOUBLE) {
-        float64_t double_value = value->value.v_double;
-
-        if (!std::isfinite(double_value)) {
-            throw DataBaseException("BsonToValue non-finite double", bson_iter_key(iter), double_value);
-        }
-
-        return double_value;
-    }
-    else if (value->value_type == BSON_TYPE_BOOL) {
-        return value->value.v_bool;
-    }
-    else if (value->value_type == BSON_TYPE_UTF8) {
-        return string(value->value.v_utf8.str, value->value.v_utf8.len);
-    }
-    else if (value->value_type == BSON_TYPE_ARRAY) {
-        bson_iter_t arr_iter;
-
-        if (!bson_iter_recurse(iter, &arr_iter)) {
-            throw DataBaseException("BsonToValue bson_iter_recurse");
-        }
-
-        AnyData::Array arr;
-
-        while (bson_iter_next(&arr_iter)) {
-            auto arr_entry = BsonToValue(&arr_iter, escape_dot);
-            arr.EmplaceBack(std::move(arr_entry));
-        }
-
-        return std::move(arr);
-    }
-    else if (value->value_type == BSON_TYPE_DOCUMENT) {
-        bson_iter_t doc_iter;
-
-        if (!bson_iter_recurse(iter, &doc_iter)) {
-            throw DataBaseException("BsonToValue bson_iter_recurse");
-        }
-
-        AnyData::Dict dict;
-
-        while (bson_iter_next(&doc_iter)) {
-            auto key = make_ptr(bson_iter_key(&doc_iter));
-            string unescaped_key = escape_dot != 0 ? strex(key.get()).replace(escape_dot, '.') : string(key.get());
-            auto dict_value = BsonToValue(&doc_iter, escape_dot);
-            dict.Emplace(std::move(unescaped_key), std::move(dict_value));
-        }
-
-        return std::move(dict);
-    }
-    else {
-        throw DataBaseException("BsonToValue Invalid type", value->value_type);
-    }
-}
-
-void BsonToDocument(ptr<const bson_t> bson, AnyData::Document& doc, char escape_dot)
-{
-    bson_iter_t iter;
-    auto aligned_bson = std::assume_aligned<BSON_ALIGN_OF_PTR>(bson.get());
-
-    if (!bson_iter_init(&iter, aligned_bson)) {
-        throw DataBaseException("BsonToDocument bson_iter_init");
-    }
-
-    while (bson_iter_next(&iter)) {
-        auto key = make_ptr(bson_iter_key(&iter));
-        string_view key_text {key.get()};
-
-        if (key_text == "_id") {
-            continue;
-        }
-
-        auto value = BsonToValue(&iter, escape_dot);
-        string unescaped_key = escape_dot != 0 ? strex(key_text).replace(escape_dot, '.').str() : string(key_text);
-        doc.Emplace(std::move(unescaped_key), std::move(value));
-    }
-}
-
-static auto AnyValueToJson(const AnyData::Value& value) -> nlohmann::json
-{
-    switch (value.Type()) {
-    case AnyData::ValueType::Int64:
-        return value.AsInt64();
-    case AnyData::ValueType::Float64: {
-        float64_t double_value = value.AsDouble();
-
-        if (!std::isfinite(double_value)) {
-            throw DataBaseException("AnyValueToJson non-finite double", double_value);
-        }
-
-        return double_value;
-    }
-    case AnyData::ValueType::Bool:
-        return value.AsBool();
-    case AnyData::ValueType::String:
-        return string(value.AsString());
-    case AnyData::ValueType::Array: {
-        auto arr_json = nlohmann::json::array();
-
-        for (const auto& arr_entry : value.AsArray()) {
-            arr_json.emplace_back(AnyValueToJson(arr_entry));
-        }
-
-        return arr_json;
-    }
-    case AnyData::ValueType::Dict: {
-        auto dict_json = nlohmann::json::object();
-
-        for (auto&& [dict_key, dict_value] : value.AsDict()) {
-            auto dict_key_cstr = make_ptr(dict_key.c_str());
-            dict_json[dict_key_cstr.get()] = AnyValueToJson(dict_value);
-        }
-
-        return dict_json;
-    }
-    }
-
-    throw DataBaseException("Invalid AnyData value type for pending database json", static_cast<int>(value.Type()));
 }
 
 static void ValidateFiniteAnyValue(const AnyData::Value& value)
@@ -1735,16 +1623,19 @@ static void ValidateFiniteAnyValue(const AnyData::Value& value)
         if (!std::isfinite(value.AsDouble())) {
             throw DataBaseException("Database value is not finite", value.AsDouble());
         }
+
         break;
     case AnyData::ValueType::Array:
         for (const AnyData::Value& array_value : value.AsArray()) {
             ValidateFiniteAnyValue(array_value);
         }
+
         break;
     case AnyData::ValueType::Dict:
         for (const auto& dict_entry : value.AsDict()) {
             ValidateFiniteAnyValue(dict_entry.second);
         }
+
         break;
     case AnyData::ValueType::Int64:
     case AnyData::ValueType::Bool:
@@ -1760,75 +1651,6 @@ static void ValidateFiniteAnyDocument(const AnyData::Document& doc)
     for (const auto& doc_entry : doc) {
         ValidateFiniteAnyValue(doc_entry.second);
     }
-}
-
-static auto JsonToAnyValue(const nlohmann::json& value) -> AnyData::Value
-{
-    if (value.is_number_integer() || value.is_number_unsigned()) {
-        return numeric_cast<int64_t>(value.get<int64_t>());
-    }
-    if (value.is_number_float()) {
-        float64_t double_value = value.get<float64_t>();
-
-        if (!std::isfinite(double_value)) {
-            throw DataBaseException("JsonToAnyValue non-finite double", double_value);
-        }
-
-        return double_value;
-    }
-    if (value.is_boolean()) {
-        return value.get<bool>();
-    }
-    if (value.is_string()) {
-        return value.get<string>();
-    }
-    if (value.is_array()) {
-        AnyData::Array arr;
-
-        for (const auto& arr_entry : value) {
-            arr.EmplaceBack(JsonToAnyValue(arr_entry));
-        }
-
-        return std::move(arr);
-    }
-    if (value.is_object()) {
-        AnyData::Dict dict;
-
-        for (auto&& [dict_key, dict_value] : value.items()) {
-            dict.Emplace(string(dict_key), JsonToAnyValue(dict_value));
-        }
-
-        return std::move(dict);
-    }
-
-    throw DataBaseException("Invalid pending database json value type");
-}
-
-static auto AnyDocumentToJson(const AnyData::Document& doc) -> nlohmann::json
-{
-    auto doc_json = nlohmann::json::object();
-
-    for (auto&& [doc_key, doc_value] : doc) {
-        auto doc_key_cstr = make_ptr(doc_key.c_str());
-        doc_json[doc_key_cstr.get()] = AnyValueToJson(doc_value);
-    }
-
-    return doc_json;
-}
-
-static auto JsonToAnyDocument(const nlohmann::json& doc_json) -> AnyData::Document
-{
-    if (!doc_json.is_object()) {
-        throw DataBaseException("Invalid pending database json document");
-    }
-
-    AnyData::Document doc;
-
-    for (auto&& [doc_key, doc_value] : doc_json.items()) {
-        doc.Emplace(string(doc_key), JsonToAnyValue(doc_value));
-    }
-
-    return doc;
 }
 
 static auto AreDocumentsEqual(const AnyData::Document& left, const AnyData::Document& right) -> bool
@@ -1918,7 +1740,7 @@ static auto DecodeStorageDbKey(string_view key_str, DataBaseKeyType key_type, Da
             throw DataBaseException("Invalid database numeric key format", key_str);
         }
 
-        int64_t id_value = strvex(key_str).to_int64();
+        int64_t id_value {strvex(key_str).to_int64()};
 
         if (id_value <= 0) {
             throw DataBaseException("Invalid database numeric key value", key_str);
@@ -1927,7 +1749,7 @@ static auto DecodeStorageDbKey(string_view key_str, DataBaseKeyType key_type, Da
         return ident_t {id_value};
     }
 
-    string decoded_value = DecodeDbStringKey(key_str, escaping);
+    string decoded_value {DecodeDbStringKey(key_str, escaping)};
 
     if (decoded_value.empty()) {
         throw DataBaseException("Invalid database string key value", key_str);
@@ -1949,7 +1771,7 @@ static auto EncodeBackendDbKey(const DataBaseKey& key, DataBaseKeyType key_type,
         throw DataBaseException("Database key type mismatch", DbKeyTypeName(key_type), key);
     }
 
-    const auto& value = std::get<string>(key);
+    const auto& value {std::get<string>(key)};
     FO_VERIFY_AND_THROW(!value.empty(), "Backend database key cannot encode an empty string identifier", DbKeyTypeName(key_type), escaping);
 
     if (!strvex(value).is_valid_utf8()) {
@@ -1973,7 +1795,7 @@ static auto DecodeBackendDbKey(const DataBaseKey& key, DataBaseKeyType key_type,
         throw DataBaseException("Database collection returned invalid key type", DbKeyTypeName(key_type), key);
     }
 
-    const auto& value = std::get<string>(key);
+    const auto& value {std::get<string>(key)};
     FO_VERIFY_AND_THROW(!value.empty(), "Backend database key cannot decode an empty string identifier", DbKeyTypeName(key_type), escaping);
 
     if (escaping == DataBaseStringKeyEscaping::Raw) {
@@ -1984,7 +1806,7 @@ static auto DecodeBackendDbKey(const DataBaseKey& key, DataBaseKeyType key_type,
         return string(value);
     }
 
-    string decoded_value = DecodeDbStringKey(value, escaping);
+    string decoded_value {DecodeDbStringKey(value, escaping)};
 
     if (!strvex(decoded_value).is_valid_utf8()) {
         throw DataBaseException("Invalid database string key utf8", value);
@@ -1995,15 +1817,15 @@ static auto DecodeBackendDbKey(const DataBaseKey& key, DataBaseKeyType key_type,
 
 static auto EncodeDbStringKey(string_view value, DataBaseStringKeyEscaping escaping) -> string
 {
-    static constexpr char hex_digits[] = "0123456789abcdef";
+    static constexpr char hex_digits[] {"0123456789abcdef"};
 
     if (escaping == DataBaseStringKeyEscaping::Hex) {
-        string result;
+        string result {};
         result.reserve(2 + value.size() * 2);
         result += "s_";
 
         for (auto ch : value) {
-            uint8_t byte = static_cast<uint8_t>(ch);
+            uint8_t byte {static_cast<uint8_t>(ch)};
             result.push_back(hex_digits[byte >> 4]);
             result.push_back(hex_digits[byte & 0x0F]);
         }
@@ -2011,11 +1833,11 @@ static auto EncodeDbStringKey(string_view value, DataBaseStringKeyEscaping escap
         return result;
     }
 
-    string result;
+    string result {};
     result.reserve(value.size());
 
     for (auto ch : value) {
-        uint8_t byte = static_cast<uint8_t>(ch);
+        uint8_t byte {static_cast<uint8_t>(ch)};
 
         if (!ShouldEscapeDbStringByte(byte, escaping)) {
             result.push_back(ch);
@@ -2037,28 +1859,28 @@ static auto DecodeDbStringKey(string_view value, DataBaseStringKeyEscaping escap
             throw DataBaseException("Invalid database string key format", value);
         }
 
-        auto encoded_value = value.substr(2);
+        auto encoded_value {value.substr(2)};
 
         if (encoded_value.empty() || encoded_value.size() % 2 != 0) {
             throw DataBaseException("Invalid database string key value", value);
         }
 
-        string decoded_value;
+        string decoded_value {};
         decoded_value.reserve(encoded_value.size() / 2);
 
-        for (size_t i = 0; i < encoded_value.size(); i += 2) {
-            uint8_t high = DecodeHexDigit(encoded_value[i]);
-            uint8_t low = DecodeHexDigit(encoded_value[i + 1]);
+        for (size_t i {0}; i < encoded_value.size(); i += 2) {
+            uint8_t high {DecodeHexDigit(encoded_value[i])};
+            uint8_t low {DecodeHexDigit(encoded_value[i + 1])};
             decoded_value.push_back(static_cast<char>((high << 4) | low));
         }
 
         return decoded_value;
     }
 
-    string decoded_value;
+    string decoded_value {};
     decoded_value.reserve(value.size());
 
-    for (size_t i = 0; i < value.size(); i++) {
+    for (size_t i {0}; i < value.size(); i++) {
         if (value[i] != '%') {
             decoded_value.push_back(value[i]);
             continue;
@@ -2068,8 +1890,8 @@ static auto DecodeDbStringKey(string_view value, DataBaseStringKeyEscaping escap
             throw DataBaseException("Invalid database string key value", value);
         }
 
-        uint8_t high = DecodeHexDigit(value[i + 1]);
-        uint8_t low = DecodeHexDigit(value[i + 2]);
+        uint8_t high {DecodeHexDigit(value[i + 1])};
+        uint8_t low {DecodeHexDigit(value[i + 2])};
         decoded_value.push_back(static_cast<char>((high << 4) | low));
         i += 2;
     }
@@ -2111,6 +1933,3 @@ static auto DecodeHexDigit(char ch) -> uint8_t
 }
 
 FO_END_NAMESPACE
-
-FO_GCC_IGNORE_WARNINGS_POP()
-FO_CLANG_IGNORE_WARNINGS_POP()

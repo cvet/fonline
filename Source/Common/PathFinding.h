@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -57,6 +27,7 @@ struct FindPathInput
     msize MapSize {};
     int32_t MaxLength {}; // Longest route allowed, in steps (from engine Settings.Geometry.MaxPathFindLength)
     int32_t EnclosureProbeLimit {}; // Forward hexes after which the target side is flooded back within the same budget; 0 = never
+    int32_t CritterDetour {}; // A project-marked critter obstacle costs as much as a detour this many steps long
     int32_t Cut {}; // Stop the search when within this distance of target; 0 = must reach exact target
     int32_t Multihex {}; // Multihex radius; 0 = single hex; >0 = directional perimeter check per step
     bool FreeMovement {}; // Use LineTracer optimization for control steps and continuous end offset
@@ -116,6 +87,30 @@ struct TraceLineOutput
     mpos LastMovable {};
 };
 
+struct TraceDirectionInput
+{
+    mpos StartHex {};
+    ipos16 StartHexOffset {}; // The ray starts where the mover is drawn, not at its hex centre
+    // A point the ray passes through, onto which the end is projected back: the start of a fresh direction, or where
+    // an extended one was first held, so rounding never accumulates along a chain of traces
+    mpos RayHex {};
+    ipos16 RayHexOffset {};
+    mdir Dir {};
+    int32_t MaxSteps {};
+    int32_t Multihex {};
+    bool Slide {}; // Step round a blocked hex toward the direction instead of stopping at it
+    msize MapSize {};
+    function<HexBlockResult(mpos)> CheckHex {}; // Anything but Passable blocks: a held direction does not route through gags or critters
+};
+
+struct TraceDirectionOutput
+{
+    vector<mdir> Steps {};
+    vector<uint16_t> ControlSteps {};
+    ipos16 EndHexOffset {}; // Puts the end of a trace that never left the ray back on the ray; zero once it slid
+    bool Slid {};
+};
+
 namespace PathFinding
 {
     // Check the movement-direction front arc for a single hex or multihex perimeter.
@@ -135,6 +130,10 @@ namespace PathFinding
 
     // Core line trace from start toward target, stopping at blocked hexes
     auto TraceLine(const TraceLineInput& input) -> TraceLineOutput;
+
+    // Trace a held direction along its ray, optionally sliding past what blocks it. A trace that stays on the ray
+    // ends on it, so consecutive traces draw one straight line; a side step never goes against the direction
+    auto TraceDirection(const TraceDirectionInput& input) -> TraceDirectionOutput;
 }
 
 FO_END_NAMESPACE

@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -53,6 +23,12 @@ class EngineMetadata : public NameResolver
 {
 public:
     using MetadataRegistrar = function<void()>;
+
+    struct ProtoMigrator
+    {
+        string Name {};
+        function<optional<hstring>(hstring, const AnyData::Document&)> Callback {};
+    };
 
     explicit EngineMetadata(const MetadataRegistrar& registrar);
     EngineMetadata(const EngineMetadata&) = delete;
@@ -88,7 +64,6 @@ public:
     [[nodiscard]] auto GetInboundRemoteCalls() const noexcept -> ptr<const unordered_map<hstring, RemoteCallDesc>> { return &_inboundRemoteCalls; }
     [[nodiscard]] auto GetGameSetting(string_view name) const -> const BaseTypeDesc&;
     [[nodiscard]] auto GetGameSettings() const noexcept -> const auto& { return _gameSettings; }
-    [[nodiscard]] auto GetGameSettingsInitialValues() const noexcept -> const auto& { return _gameSettingsInitialValues; }
     [[nodiscard]] auto CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const noexcept -> optional<hstring> override;
     [[nodiscard]] auto GetAllProtos() const noexcept -> const auto& { return _protoMngr.GetAllProtos(); }
     [[nodiscard]] auto GetProtoItems() const noexcept -> const auto& { return _protoMngr.GetProtoItems(); }
@@ -102,6 +77,8 @@ public:
     [[nodiscard]] auto GetProtoEntity(hstring type_name, hstring proto_id) const noexcept -> nptr<const ProtoEntity> override;
     [[nodiscard]] auto GetProtoEntities(hstring type_name) const noexcept -> const unordered_map<hstring, refcount_ptr<ProtoEntity>>&;
     [[nodiscard]] auto GetAnimationInfo(hstring resource_name) const noexcept -> nptr<const AnimationInfo>;
+    [[nodiscard]] auto GetProtoMigrators() const noexcept -> const auto& { return _protoMigrators; }
+    [[nodiscard]] auto ResolveDocumentProto(hstring owner, hstring target, const AnyData::Document& document) const -> hstring;
 
     void RegisterSide(EngineSideKind side);
     void RegisterMetadataVersion(string_view version);
@@ -123,9 +100,12 @@ public:
     void RegisterEntityEvent(string_view entity_name, EntityEventDesc&& event);
     void RegisterOutboundRemoteCall(RemoteCallDesc&& remote_call);
     void RegisterInboundRemoteCall(RemoteCallDesc&& remote_call);
-    void RegisterGameSetting(string_view name, const BaseTypeDesc& type, string_view initial_value);
+    void RegisterGameSetting(string_view name, const BaseTypeDesc& type);
     void RegisterMigrationRules(unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>&& migration_rules);
     void RegisterMigrationRule(string_view rule_name, string_view extra_info, string_view target, string_view replacement);
+    void RegisterPropertyMigrationRule(string_view owner, string_view action, string_view target, string_view replacement = {});
+    void RegisterProtoMigrationRule(string_view owner, string_view action, string_view target, string_view replacement = {});
+    void BindProtoMigrator(hstring owner, hstring target, function<optional<hstring>(hstring, const AnyData::Document&)> callback);
     void RegisterProtos(const FileSystem& resources);
     void RegisterAnimationInfo(const FileSystem& resources);
     void RegisterProto(hstring type_name, refcount_ptr<ProtoEntity> proto);
@@ -158,8 +138,8 @@ private:
     unordered_map<hstring, RemoteCallDesc> _outboundRemoteCalls {};
     unordered_map<hstring, RemoteCallDesc> _inboundRemoteCalls {};
     unordered_map<string, ptr<const BaseTypeDesc>> _gameSettings {};
-    map<string, string> _gameSettingsInitialValues {};
     unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>> _migrationRules {};
+    map<hstring, map<hstring, ProtoMigrator>> _protoMigrators {};
     string _emptyStr {};
 };
 
@@ -176,7 +156,7 @@ struct ScriptOverrunRecord
 class BaseEngine : public EngineMetadata, public ScriptSystem, public Entity, public GameProperties
 {
 public:
-    using RemoteCallHandler = function<void(hstring, nptr<Entity>, span<uint8_t>)>;
+    using RemoteCallHandler = function<void(hstring, nptr<Entity>, span<uint8_t>, shared_ptr<ScriptCallCompletion>)>;
 
     BaseEngine(const BaseEngine&) = delete;
     BaseEngine(BaseEngine&&) noexcept = delete;
@@ -197,7 +177,7 @@ public:
     auto Random(int32_t min_value, int32_t max_value) const -> int32_t;
     auto CaptureRandomState() const -> random_generator::state_data;
     void RestoreRandomState(const random_generator::state_data& state);
-    void FrameAdvance();
+    void FrameAdvance(bool process_backends = true);
 
     virtual void Shutdown() { }
     virtual void ScheduleDelayedCallback(timespan delay, function<void()> body);
@@ -211,7 +191,7 @@ public:
     void SendRemoteCall(hstring name, ptr<Entity> caller, const_span<uint8_t> data);
     void SetRemoteCallHandler(hstring name, RemoteCallHandler handler, bool replace = false);
     void VerifyBindedRemoteCalls() const noexcept(false);
-    void HandleInboundRemoteCall(hstring name, nptr<Entity> caller, span<uint8_t> data);
+    void HandleInboundRemoteCall(hstring name, nptr<Entity> caller, span<uint8_t> data, shared_ptr<ScriptCallCompletion> completion = {});
 
     ptr<GlobalSettings> Settings;
     FileSystem Resources;

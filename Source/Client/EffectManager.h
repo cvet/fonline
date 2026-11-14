@@ -1,35 +1,5 @@
-//      __________        ___               ______            _
-//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
-//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
-//                                                  /____/
 // FOnline Engine
-// https://fonline.ru
-// https://github.com/cvet/fonline
-//
-// MIT License
-//
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
+// SPDX-License-Identifier: MIT
 
 #pragma once
 
@@ -46,27 +16,28 @@ FO_DECLARE_EXCEPTION(EffectManagerException);
 
 class IAppRender;
 
+// Bit mask selecting the render pipeline or flush stage served by an effect
 ///@ ExportEnum
 enum class EffectType : uint32_t
 {
-    None = 0,
-    GenericSprite = 0x00000001,
-    CritterSprite = 0x00000002,
-    TileSprite = 0x00000004,
-    RoofSprite = 0x00000008,
-    RainSprite = 0x00000010,
-    SkinnedMesh = 0x00000400,
-    Interface = 0x00001000,
-    Font = 0x00010000,
-    Primitive = 0x00100000,
-    Light = 0x00200000,
-    Fog = 0x00400000,
-    FlushRenderTarget = 0x01000000,
-    FlushPrimitive = 0x04000000,
-    FlushMap = 0x08000000,
-    FlushLight = 0x10000000,
-    FlushFog = 0x20000000,
-    Offscreen = 0x40000000,
+    None = 0, // Selects no effect category
+    GenericSprite = 0x00000001, // Replaces the default generic-sprite effect or one map item's draw effect
+    CritterSprite = 0x00000002, // Replaces the default critter-sprite effect or one map critter's draw effect
+    TileSprite = 0x00000004, // Replaces the default flat tile-sprite effect
+    RoofSprite = 0x00000008, // Replaces the default roof-sprite effect
+    RainSprite = 0x00000010, // Replaces the default rain-sprite effect
+    SkinnedMesh = 0x00000400, // Replaces the default skinned-model effect when 3D rendering is enabled
+    Interface = 0x00001000, // Replaces the default interface-sprite effect
+    Font = 0x00010000, // Replaces the default font effect or the effect of one font slot selected by subtype
+    Primitive = 0x00100000, // Replaces the default generic primitive effect
+    Light = 0x00200000, // Replaces the primitive effect used for map light accumulation
+    Fog = 0x00400000, // Replaces the primitive effect used for map fog rendering
+    FlushRenderTarget = 0x01000000, // Replaces the effect used to flush a render-target texture
+    FlushPrimitive = 0x04000000, // Replaces the effect used to flush primitive rendering
+    FlushMap = 0x08000000, // Replaces the effect used to composite the rendered map
+    FlushLight = 0x10000000, // Replaces the effect used to composite the light buffer
+    FlushFog = 0x20000000, // Replaces the effect used to composite the fog buffer
+    Offscreen = 0x40000000, // Registers the effect in an indexed offscreen-effect subtype slot
 };
 
 struct EffectCollection
@@ -126,6 +97,7 @@ public:
     void SetEffectScriptValue(ptr<RenderEffect> effect, int32_t valueIndex, float32_t value);
     void SetEffectScriptValues(ptr<RenderEffect> effect, int32_t valueStartIndex, const_span<float32_t> values);
     void ClearEffectScriptValues(ptr<RenderEffect> effect);
+    void ClearIndoorMaskTexture(ptr<const RenderTexture> texture);
     auto GetOrCreateScriptValueBuf(ptr<RenderEffect> effect) -> ptr<RenderEffect::ScriptValueBuffer>;
     void LoadMinimalEffects();
     void LoadDefaultEffects();

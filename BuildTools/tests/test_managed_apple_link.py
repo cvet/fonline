@@ -18,8 +18,9 @@ def _tool(name: str) -> str | None:
 
 
 @pytest.mark.skipif(
-    not shutil.which("cmake") or not all(_tool(name) for name in ("clang", "ld64.lld", "llvm-ar")),
-    reason="CMake and LLVM Mach-O tools are required",
+    not shutil.which("cmake") or not (shutil.which("gmake") or shutil.which("make"))
+    or not all(_tool(name) for name in ("clang", "ld64.lld", "llvm-ar")),
+    reason="CMake, Make and LLVM Mach-O tools are required",
 )
 @pytest.mark.parametrize(
     ("architecture", "target", "platform", "runtime_os"),
