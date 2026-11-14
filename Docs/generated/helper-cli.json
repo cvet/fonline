@@ -3738,7 +3738,7 @@
         "ci-maintainer"
       ],
       "invocation_owner": "Engine validate workflow, embedding-project native validation tasks and CI",
-      "description": "Reject native code that changes entity cover behind server script exports and gate per-function exception-safety classifications of Engine and project sources against committed baselines.",
+      "description": "Reject native code that changes entity cover behind server script exports and gate per-function exception-safety classifications of Engine and project sources against committed baselines, including markerless throw-capable functions that have no row.",
       "parser_description": "Audit Engine and project native sources against the entity-cover and exception-safety contracts.",
       "usage": "usage: native_safety_audit.py [-h] command ...",
       "help_output": "usage: native_safety_audit.py [-h] command ...\n\nAudit Engine and project native sources against the entity-cover and exception-safety contracts.\n\npositional arguments:\n  command\n    sync-scope        reject native code that obtains, replaces or releases entity cover for script exports\n    exception-safety  check per-function exception-safety classifications against the baselines\n\noptions:\n  -h, --help          show this help message and exit\n",
@@ -3855,8 +3855,8 @@
           "name": "exception-safety",
           "summary": "check per-function exception-safety classifications against the baselines",
           "description": null,
-          "usage": "usage: native_safety_audit.py exception-safety [-h] [--root ROOT] [--engine-root ENGINE_ROOT] [--scope DIR] [--config FILE] [--baseline FILE] [--fail-on {error,warning}] [--level {NoThrow,Strong,Basic,None,Unclassified}] [--area AREA]\n                                               [--file FILE_FILTER] [--function FUNCTION_FILTER] [--add-new] [--prune-removed] [--migrate-signatures] [--accept FILE::FUNCTION] [--accept-all-changed]\n                                               [{audit,report,update}]",
-          "help_output": "usage: native_safety_audit.py exception-safety [-h] [--root ROOT] [--engine-root ENGINE_ROOT] [--scope DIR] [--config FILE] [--baseline FILE] [--fail-on {error,warning}] [--level {NoThrow,Strong,Basic,None,Unclassified}] [--area AREA]\n                                               [--file FILE_FILTER] [--function FUNCTION_FILTER] [--add-new] [--prune-removed] [--migrate-signatures] [--accept FILE::FUNCTION] [--accept-all-changed]\n                                               [{audit,report,update}]\n\npositional arguments:\n  {audit,report,update}\n                        audit (default) fails on drift; report summarizes the baselines; update maintains them\n\noptions:\n  -h, --help            show this help message and exit\n  --root ROOT           repository root for --scope, --config and --baseline paths (default: current directory)\n  --engine-root ENGINE_ROOT\n                        Engine checkout to audit (default: the checkout that contains this script)\n  --scope DIR           root-relative project native directory audited with the Engine rules (repeatable)\n  --config FILE         project JSON configuration with vendored exclusions and reviewed project rules\n  --baseline FILE       project baseline TSV for findings in the --scope directories\n  --fail-on {error,warning}\n                        audit: also fail on warnings (pending None adjudication, review notes)\n  --level {NoThrow,Strong,Basic,None,Unclassified}\n                        report: list rows with this level\n  --area AREA           report: list rows of this source area (second path component)\n  --file FILE_FILTER    report: list rows whose file contains this text\n  --function FUNCTION_FILTER\n                        report: list rows whose function contains this text\n  --add-new             update: add unclassified rows for new functions\n  --prune-removed       update: remove rows whose function vanished\n  --migrate-signatures  update: carry classifications across signature-only changes with identical body hashes\n  --accept FILE::FUNCTION\n                        update: refresh the body hash of a re-derived function (repeatable)\n  --accept-all-changed  update: refresh every changed body hash\n",
+          "usage": "usage: native_safety_audit.py exception-safety [-h] [--root ROOT] [--engine-root ENGINE_ROOT] [--scope DIR] [--config FILE] [--baseline FILE] [--fail-on {error,warning}] [--require-classified]\n                                               [--level {NoThrow,Strong,Basic,None,Unclassified}] [--area AREA] [--file FILE_FILTER] [--function FUNCTION_FILTER] [--add-new] [--add-markerless] [--prune-removed] [--migrate-signatures]\n                                               [--accept FILE::FUNCTION] [--accept-all-changed]\n                                               [{audit,report,update}]",
+          "help_output": "usage: native_safety_audit.py exception-safety [-h] [--root ROOT] [--engine-root ENGINE_ROOT] [--scope DIR] [--config FILE] [--baseline FILE] [--fail-on {error,warning}] [--require-classified]\n                                               [--level {NoThrow,Strong,Basic,None,Unclassified}] [--area AREA] [--file FILE_FILTER] [--function FUNCTION_FILTER] [--add-new] [--add-markerless] [--prune-removed] [--migrate-signatures]\n                                               [--accept FILE::FUNCTION] [--accept-all-changed]\n                                               [{audit,report,update}]\n\npositional arguments:\n  {audit,report,update}\n                        audit (default) fails on drift; report summarizes the baselines; update maintains them\n\noptions:\n  -h, --help            show this help message and exit\n  --root ROOT           repository root for --scope, --config and --baseline paths (default: current directory)\n  --engine-root ENGINE_ROOT\n                        Engine checkout to audit (default: the checkout that contains this script)\n  --scope DIR           root-relative project native directory audited with the Engine rules (repeatable)\n  --config FILE         project JSON configuration with vendored exclusions and reviewed project rules\n  --baseline FILE       project baseline TSV for findings in the --scope directories\n  --fail-on {error,warning}\n                        audit: also fail on warnings (pending None adjudication, review notes)\n  --require-classified  audit: fail on markerless functions without a row that contain throw points or call classified functions\n  --level {NoThrow,Strong,Basic,None,Unclassified}\n                        report: list rows with this level\n  --area AREA           report: list rows of this source area (second path component)\n  --file FILE_FILTER    report: list rows whose file contains this text\n  --function FUNCTION_FILTER\n                        report: list rows whose function contains this text\n  --add-new             update: add unclassified rows for new functions\n  --add-markerless      update: add unclassified rows for the markerless functions the audit reports\n  --prune-removed       update: remove rows whose function vanished\n  --migrate-signatures  update: carry classifications across signature-only changes with identical body hashes\n  --accept FILE::FUNCTION\n                        update: refresh the body hash of a re-derived function (repeatable)\n  --accept-all-changed  update: refresh every changed body hash\n",
           "arguments": [
             {
               "id": "helper-cli.native-safety-audit.command.exception-safety.argument.root",
@@ -3976,6 +3976,22 @@
               "description": "audit: also fail on warnings (pending None adjudication, review notes)"
             },
             {
+              "id": "helper-cli.native-safety-audit.command.exception-safety.argument.require_classified",
+              "destination": "require_classified",
+              "kind": "option",
+              "action": "store_true",
+              "option_strings": [
+                "--require-classified"
+              ],
+              "metavar": null,
+              "required": false,
+              "nargs": 0,
+              "choices": null,
+              "default": false,
+              "type": null,
+              "description": "audit: fail on markerless functions without a row that contain throw points or call classified functions"
+            },
+            {
               "id": "helper-cli.native-safety-audit.command.exception-safety.argument.level",
               "destination": "level",
               "kind": "option",
@@ -4060,6 +4076,22 @@
               "default": false,
               "type": null,
               "description": "update: add unclassified rows for new functions"
+            },
+            {
+              "id": "helper-cli.native-safety-audit.command.exception-safety.argument.add_markerless",
+              "destination": "add_markerless",
+              "kind": "option",
+              "action": "store_true",
+              "option_strings": [
+                "--add-markerless"
+              ],
+              "metavar": null,
+              "required": false,
+              "nargs": 0,
+              "choices": null,
+              "default": false,
+              "type": null,
+              "description": "update: add unclassified rows for the markerless functions the audit reports"
             },
             {
               "id": "helper-cli.native-safety-audit.command.exception-safety.argument.prune_removed",
@@ -6001,7 +6033,7 @@
     "helper_count": 24,
     "command_count": 26,
     "global_argument_count": 149,
-    "command_argument_count": 174
+    "command_argument_count": 176
   },
-  "contract_digest": "7e8bebc4bf6dac70fc285e133eb7ce4f87da6cfae939d2794e45f3f073595ca6"
+  "contract_digest": "55a5c60c7cde2a1ffd5e108b7fbcbf9aa65f24878202bcee7d000be84755df11"
 }

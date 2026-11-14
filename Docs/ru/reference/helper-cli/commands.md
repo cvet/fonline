@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-helper-cli-commands","locale":"ru","source_path":"Docs/en/reference/helper-cli/commands.md","source_sha256":"c11a4fa56dc3b929de05dcc87bcd2fa3d74ba4dbb3265046e617b136cc16f796"} -->
+<!-- docs-translation: {"document_id":"generated-helper-cli-commands","locale":"ru","source_path":"Docs/en/reference/helper-cli/commands.md","source_sha256":"3539f806d13bb3c5d5dc042e391a300defd6de5abf25ad07a4aacd6417e6a91c"} -->
 
 # Команды вспомогательных CLI
 
@@ -1295,7 +1295,7 @@ options:
 <a id="entry-helper-cli-native-safety-audit-2f4598f1d2"></a>
 ## Аудиты нативной безопасности
 
-Отклоняет нативный код, меняющий покрытие сущностей в обход серверных экспортов в скрипты, и сверяет пофункциональные классификации безопасности исключений в исходниках движка и проекта с зафиксированными baseline.
+Отклоняет нативный код, меняющий покрытие сущностей в обход серверных экспортов в скрипты, и сверяет пофункциональные классификации безопасности исключений в исходниках движка и проекта с зафиксированными baseline, включая функции без зоны, способные бросить исключение, но не имеющие строки.
 
 - Стабильный ID: `helper-cli.native-safety-audit`
 - Программа: `native_safety_audit.py`
@@ -1368,8 +1368,9 @@ options:
 Stable ID: `helper-cli.native-safety-audit.command.exception-safety`
 
 ```text
-usage: native_safety_audit.py exception-safety [-h] [--root ROOT] [--engine-root ENGINE_ROOT] [--scope DIR] [--config FILE] [--baseline FILE] [--fail-on {error,warning}] [--level {NoThrow,Strong,Basic,None,Unclassified}] [--area AREA]
-                                               [--file FILE_FILTER] [--function FUNCTION_FILTER] [--add-new] [--prune-removed] [--migrate-signatures] [--accept FILE::FUNCTION] [--accept-all-changed]
+usage: native_safety_audit.py exception-safety [-h] [--root ROOT] [--engine-root ENGINE_ROOT] [--scope DIR] [--config FILE] [--baseline FILE] [--fail-on {error,warning}] [--require-classified]
+                                               [--level {NoThrow,Strong,Basic,None,Unclassified}] [--area AREA] [--file FILE_FILTER] [--function FUNCTION_FILTER] [--add-new] [--add-markerless] [--prune-removed] [--migrate-signatures]
+                                               [--accept FILE::FUNCTION] [--accept-all-changed]
                                                [{audit,report,update}]
 ```
 
@@ -1382,11 +1383,13 @@ usage: native_safety_audit.py exception-safety [-h] [--root ROOT] [--engine-root
 | <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-baseline-15731f3d0c"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.baseline</code> | <code>--baseline</code> | <code>option</code> | нет | <code>1</code> | - | - | Проектный baseline TSV для находок в каталогах --scope. |
 | <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-action-fe490ae347"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.action</code> | <code>action</code> | <code>positional</code> | нет | <code>?</code> | <code>audit</code>, <code>report</code>, <code>update</code> | <code>audit</code> | audit (по умолчанию) завершается ошибкой при расхождении; report сводит baseline; update поддерживает их в актуальном состоянии. |
 | <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-fail-on-7e82c37cb6"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.fail_on</code> | <code>--fail-on</code> | <code>option</code> | нет | <code>1</code> | <code>error</code>, <code>warning</code> | - | audit: также завершаться ошибкой при предупреждениях (неразобранные уровни None, заметки ревью). |
+| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-require-classified-3a243271ca"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.require_classified</code> | <code>--require-classified</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | audit: завершаться ошибкой для функций без зоны и без строки, в которых есть точки выброса или вызовы классифицированных функций. |
 | <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-level-0401e86486"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.level</code> | <code>--level</code> | <code>option</code> | нет | <code>1</code> | <code>NoThrow</code>, <code>Strong</code>, <code>Basic</code>, <code>None</code>, <code>Unclassified</code> | - | report: перечислить строки с этим уровнем. |
 | <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-area-e417e6bb25"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.area</code> | <code>--area</code> | <code>option</code> | нет | <code>1</code> | - | - | report: перечислить строки этой области исходников (второй компонент пути). |
 | <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-file-filter-b4b911f1b9"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.file_filter</code> | <code>--file</code> | <code>option</code> | нет | <code>1</code> | - | - | report: перечислить строки, файл которых содержит этот текст. |
 | <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-function-filter-6fa689a4b9"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.function_filter</code> | <code>--function</code> | <code>option</code> | нет | <code>1</code> | - | - | report: перечислить строки, функция которых содержит этот текст. |
 | <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-add-new-4c6e13395d"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.add_new</code> | <code>--add-new</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | update: добавить неклассифицированные строки для новых функций. |
+| <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-add-markerless-5c8939734b"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.add_markerless</code> | <code>--add-markerless</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | update: добавить неклассифицированные строки для функций без зоны, о которых сообщает аудит. |
 | <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-prune-removed-9eddff4bd8"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.prune_removed</code> | <code>--prune-removed</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | update: удалить строки исчезнувших функций. |
 | <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-migrate-signatures-91bfff0832"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.migrate_signatures</code> | <code>--migrate-signatures</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | update: переносить классификации через изменения только сигнатуры при одинаковых хешах тел. |
 | <a id="entry-helper-cli-native-safety-audit-command-exception-safety-argument-accept-e6ce13f96f"></a><code>helper-cli.native-safety-audit.command.exception-safety.argument.accept</code> | <code>--accept</code> | <code>option</code> | нет | <code>1</code> | - | - | update: обновить хеш тела функции, классификация которой выведена заново (можно повторять). |
@@ -1395,8 +1398,9 @@ usage: native_safety_audit.py exception-safety [-h] [--root ROOT] [--engine-root
 #### Точный вывод `--help`
 
 ```text
-usage: native_safety_audit.py exception-safety [-h] [--root ROOT] [--engine-root ENGINE_ROOT] [--scope DIR] [--config FILE] [--baseline FILE] [--fail-on {error,warning}] [--level {NoThrow,Strong,Basic,None,Unclassified}] [--area AREA]
-                                               [--file FILE_FILTER] [--function FUNCTION_FILTER] [--add-new] [--prune-removed] [--migrate-signatures] [--accept FILE::FUNCTION] [--accept-all-changed]
+usage: native_safety_audit.py exception-safety [-h] [--root ROOT] [--engine-root ENGINE_ROOT] [--scope DIR] [--config FILE] [--baseline FILE] [--fail-on {error,warning}] [--require-classified]
+                                               [--level {NoThrow,Strong,Basic,None,Unclassified}] [--area AREA] [--file FILE_FILTER] [--function FUNCTION_FILTER] [--add-new] [--add-markerless] [--prune-removed] [--migrate-signatures]
+                                               [--accept FILE::FUNCTION] [--accept-all-changed]
                                                [{audit,report,update}]
 
 positional arguments:
@@ -1413,6 +1417,7 @@ options:
   --baseline FILE       project baseline TSV for findings in the --scope directories
   --fail-on {error,warning}
                         audit: also fail on warnings (pending None adjudication, review notes)
+  --require-classified  audit: fail on markerless functions without a row that contain throw points or call classified functions
   --level {NoThrow,Strong,Basic,None,Unclassified}
                         report: list rows with this level
   --area AREA           report: list rows of this source area (second path component)
@@ -1420,6 +1425,7 @@ options:
   --function FUNCTION_FILTER
                         report: list rows whose function contains this text
   --add-new             update: add unclassified rows for new functions
+  --add-markerless      update: add unclassified rows for the markerless functions the audit reports
   --prune-removed       update: remove rows whose function vanished
   --migrate-signatures  update: carry classifications across signature-only changes with identical body hashes
   --accept FILE::FUNCTION

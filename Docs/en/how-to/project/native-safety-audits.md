@@ -36,9 +36,9 @@ permalink: /Docs/en/how-to/project/native-safety-audits.html
 | Command | Engine rule it enforces | Owning contract | Fails on |
 |---|---|---|---|
 | `sync-scope` | Ordinary server script calls supply complete entity cover; native callees may call `ValidateEntityAccess` and `EnsureEntitySynced` but must not repair missing cover with `SyncEntity`/`SyncEntities`, `ScopedSyncContext::Sync`, direct `EntityLock` use, cover probing, or blocking, sleeping and retrying while obtaining cover. The cover-retention terminals themselves stay non-blocking. | `AGENTS.md` (Invariants, synchronization and lifetime), [native retention of covered entities](../scripting/lifecycle-and-concurrency.md#native-retention-of-covered-entities), [server entity synchronization](../scripting/managed-csharp.md#server-entity-synchronization) | A script export or registered `FO_SCRIPT_GENERIC` callback whose call graph reaches a forbidden sink |
-| `exception-safety` | Each function's exception-safety level (`NoThrow`, `Strong`, `Basic`, `None`) is derived from its body and re-derived when the body changes. | [Exception safety, section 8](../../contributing/coding-contracts/exception-safety.md#8-per-function-exception-safety-classification-es-levels) | A new, changed or removed function without a matching row, a row without a reason, an unclassified row, a malformed row |
+| `exception-safety` | Each function's exception-safety level (`NoThrow`, `Strong`, `Basic`, `None`) is derived from its body and re-derived when the body changes. | [Exception safety, section 8](../../contributing/coding-contracts/exception-safety.md#8-per-function-exception-safety-classification-es-levels) | A new zone-marked or exported function, a changed or removed function without a matching row, a row without a reason, an unclassified row, a malformed row; with `--require-classified` also a markerless throw-capable function without a row |
 
-Both audits are pure Python 3.12 standard-library programs. They read source text only: no compiler, `clang`, `compile_commands.json`, bake or build is needed, and they run on any host with Python. The parser is lexical. It finds functions by brace shape and by the `FO_TRACE_ZONE` and `FO_SCRIPT_API` conventions, does not evaluate the preprocessor, and resolves calls conservatively by name and receiver type. A new function without a zone or an export prefix is not discovered by `exception-safety` until a baseline row names it, so review still covers such additions.
+Both audits are pure Python 3.12 standard-library programs. They read source text only: no compiler, `clang`, `compile_commands.json`, bake or build is needed, and they run on any host with Python. The parser is lexical. It finds functions by brace shape and by the `FO_TRACE_ZONE` and `FO_SCRIPT_API` conventions, does not evaluate the preprocessor, and resolves calls conservatively by name and receiver type. A function without a zone or an export prefix is gated only after a baseline row names it. Because a silent omission would hide a new throw-capable function, `exception-safety` also scans every markerless definition without a row and reports the ones that contain a `throw`, `FO_VERIFY_AND_THROW`, `FO_STRONG_ASSERT`, `FO_VALIDATE_ENTITY`, `numeric_cast` or `safe_alloc`, or that call a function the baseline classifies `Strong`, `Basic` or `None` under the same name. The report is a warning; `--require-classified` makes it an error. A definition that shows none of these signals, a getter or a pure forwarder, stays outside the audit until a row names it, and review still covers it.
 
 ## Run the audits on the Engine
 
@@ -77,7 +77,7 @@ Add `--json` to `sync-scope` for a machine-readable summary, diagnostics and err
 
 | Code | Meaning |
 |---|---|
-| `0` | No finding. `exception-safety` warnings (`None` rows pending adjudication, review notes) do not fail unless `--fail-on warning` is given. |
+| `0` | No finding. `exception-safety` warnings (`None` rows pending adjudication, review notes, markerless functions without a row) do not fail unless `--fail-on warning` or `--require-classified` is given. |
 | `1` | Audit findings: violations, classification drift, rows without reasons, stale or malformed baseline rows, stale configuration entries. |
 | `2` | Invalid command line or configuration: unknown option, a scope outside the root or overlapping Engine `Source/`, a missing project baseline option, an invalid configuration file. |
 
@@ -98,10 +98,10 @@ The exact parser help is in the [helper command reference](../../reference/helpe
 The `exception-safety` command takes an optional action: `audit` (the default), `report` or `update`. A change that touches native code follows this loop:
 
 1. Run `exception-safety` and read the errors.
-2. For a new function, run `exception-safety update --add-new`, derive its level by the [derivation rules](../../contributing/coding-contracts/exception-safety.md#8-per-function-exception-safety-classification-es-levels), and write `level`, `status` (normally `annotated`) and `reason` in the new row.
+2. For a new function, run `exception-safety update --add-new`; for a markerless function named by the unclassified warning, run `exception-safety update --add-markerless`. Derive each level by the [derivation rules](../../contributing/coding-contracts/exception-safety.md#8-per-function-exception-safety-classification-es-levels), and write `level`, `status` (normally `annotated`) and `reason` in the new row. Use `annotated` with a `review_note` when a level is not fully verified.
 3. For a changed body, re-derive the level and reason, edit the row, then accept the new body hash with `exception-safety update --accept "Source/Client/MapView.cpp::MapView::DrawMap"`.
 4. For a signature change with an unchanged body, run `exception-safety update --migrate-signatures`; for a removed function, run `exception-safety update --prune-removed`.
-5. Run `exception-safety` again until it passes, and commit the source change and the baseline change together.
+5. Run `exception-safety` again until it passes, and commit the source change and the baseline change together. Gate CI with `exception-safety --require-classified` so a new markerless throw-capable function cannot land without a row.
 
 `report` prints the level distribution, the `None` rows and the manual-review queue; `report --level Basic --area Server` or `report --file MapView --function DrawMap` list matching rows. A level is a fact about the current body: never add `noexcept` because a row says `NoThrow`.
 
@@ -178,7 +178,7 @@ Run both audits after formatting and before the bake, next to the other static c
 
 ```bash
 python3 Engine/BuildTools/native_safety_audit.py sync-scope --scope SourceExt --config Validation/NativeSafety/config.json --baseline Validation/NativeSafety/sync-scope.tsv
-python3 Engine/BuildTools/native_safety_audit.py exception-safety --scope SourceExt --config Validation/NativeSafety/config.json --baseline Validation/NativeSafety/exception-safety.tsv
+python3 Engine/BuildTools/native_safety_audit.py exception-safety --require-classified --scope SourceExt --config Validation/NativeSafety/config.json --baseline Validation/NativeSafety/exception-safety.tsv
 ```
 
 Gate on the exit code; the step prints its own summary and findings. A baseline file passed with `--baseline` to `sync-scope` must exist, even when it holds only the header. Never baseline a finding to turn a run green: fix the native code, or record a reviewed row with its reason and remove it with the fix.

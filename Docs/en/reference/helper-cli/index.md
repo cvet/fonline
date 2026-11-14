@@ -21,7 +21,7 @@ This reference is generated from the `argparse.ArgumentParser` objects used by e
 | Since | Not declared |
 | Support policy | Helper command lines are revision-pinned implementation interfaces; automation must pin an engine revision. |
 | Source manifest | [BuildTools/HelperCliInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/HelperCliInterface.json) |
-| Contract digest | <code>7e8bebc4bf6dac70fc285e133eb7ce4f87da6cfae939d2794e45f3f073595ca6</code> |
+| Contract digest | <code>55a5c60c7cde2a1ffd5e108b7fbcbf9aa65f24878202bcee7d000be84755df11</code> |
 
 ## Inventory
 
@@ -54,7 +54,7 @@ This reference is generated from the `argparse.ArgumentParser` objects used by e
 
 ## Coverage
 
-The model contains 24 helpers, 26 subcommands, 149 global arguments, and 174 subcommand arguments.
+The model contains 24 helpers, 26 subcommands, 149 global arguments, and 176 subcommand arguments.
 
 Included:
 

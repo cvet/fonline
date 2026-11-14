@@ -14532,6 +14532,10 @@
           "source_sha256": "c7e6f646b7aac7618e465deaf2f0075c22d19fb61015d0ebc0a4b0b5cadd5ea3",
           "translation": "audit (по умолчанию) завершается ошибкой при расхождении; report сводит baseline; update поддерживает их в актуальном состоянии."
         },
+        "/helpers/@id=helper-cli.native-safety-audit/commands/@id=helper-cli.native-safety-audit.command.exception-safety/arguments/@id=helper-cli.native-safety-audit.command.exception-safety.argument.add_markerless/description": {
+          "source_sha256": "1d1f2ae2daa6b40af71260c7189f65f52b79f85ccd3e3147ea7f2f9ece1488a5",
+          "translation": "update: добавить неклассифицированные строки для функций без зоны, о которых сообщает аудит."
+        },
         "/helpers/@id=helper-cli.native-safety-audit/commands/@id=helper-cli.native-safety-audit.command.exception-safety/arguments/@id=helper-cli.native-safety-audit.command.exception-safety.argument.add_new/description": {
           "source_sha256": "bd73ebbb072a834fac1a58d57d93345c069b315fe6c15043a9a143b9407e9959",
           "translation": "update: добавить неклассифицированные строки для новых функций."
@@ -14576,6 +14580,10 @@
           "source_sha256": "fbf85e825c8a876d2ff5ba6c23198944d2e7c4a5e831fd04dd6f4bb9c2567e1c",
           "translation": "update: удалить строки исчезнувших функций."
         },
+        "/helpers/@id=helper-cli.native-safety-audit/commands/@id=helper-cli.native-safety-audit.command.exception-safety/arguments/@id=helper-cli.native-safety-audit.command.exception-safety.argument.require_classified/description": {
+          "source_sha256": "8d8c6b9af0d5714fe4221685f257c0d3b377782d5c16e63ca75d9103c85a4ff1",
+          "translation": "audit: завершаться ошибкой для функций без зоны и без строки, в которых есть точки выброса или вызовы классифицированных функций."
+        },
         "/helpers/@id=helper-cli.native-safety-audit/commands/@id=helper-cli.native-safety-audit.command.exception-safety/arguments/@id=helper-cli.native-safety-audit.command.exception-safety.argument.root/description": {
           "source_sha256": "b23d913800c69b26b4baa204f23e1f61ea576d8ca978767eaf48c44bc2a1d2fe",
           "translation": "Корень репозитория для путей --scope, --config и --baseline (по умолчанию текущий каталог)."
@@ -14617,8 +14625,8 @@
           "translation": "Отклонить нативный код, который получает, заменяет или освобождает покрытие сущностей для экспортов в скрипты."
         },
         "/helpers/@id=helper-cli.native-safety-audit/description": {
-          "source_sha256": "e8b13a8062ba1e4cc3ed76a7c2e2ed5c17af6d65373b575e4ce53be58fc3f66d",
-          "translation": "Отклоняет нативный код, меняющий покрытие сущностей в обход серверных экспортов в скрипты, и сверяет пофункциональные классификации безопасности исключений в исходниках движка и проекта с зафиксированными baseline."
+          "source_sha256": "0a2f5367c2cd011933ba37090a936f577b07abe591be267a07cc8f61fbbfb760",
+          "translation": "Отклоняет нативный код, меняющий покрытие сущностей в обход серверных экспортов в скрипты, и сверяет пофункциональные классификации безопасности исключений в исходниках движка и проекта с зафиксированными baseline, включая функции без зоны, способные бросить исключение, но не имеющие строки."
         },
         "/helpers/@id=helper-cli.native-safety-audit/invocation_owner": {
           "source_sha256": "842053d5a0eb71018e2d9dd7d307d6ea517f69d0866eb1e39d80daada0f8ed27",
