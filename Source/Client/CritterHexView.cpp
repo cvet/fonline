@@ -702,6 +702,9 @@ void CritterHexView::ProcessMoving()
     if (progress.Completed && GetHex() == moving->GetEndHex()) {
         mpos end_hex {moving->GetEndHex()};
 
+        // Preserve chosen arrivals and local indirect predictions before StopMoving clears the server UID
+        bool report_arrival {GetIsChosen() || GetMovingServerUid() == 0};
+
         StopMoving();
         RefreshView();
 
@@ -713,7 +716,9 @@ void CritterHexView::ProcessMoving()
 
         // Reported after the stop, so the position sent is the one the player is now looking at: StopMoving
         // re-splits the accumulated offset and may settle the logical hex differently
-        _engine->CritterMovingFinished(this, end_hex);
+        if (report_arrival) {
+            _engine->CritterMovingFinished(this, end_hex);
+        }
     }
 }
 

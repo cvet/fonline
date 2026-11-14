@@ -5,7 +5,7 @@ locale: ru
 document_id: native-essentials
 permalink: /Docs/ru/reference/native/essentials.html
 ---
-<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"7384c0a1fbb9c512ca91ccd4a71d07cc19b7aa313ee0f029d6e6d54b1e84935c"} -->
+<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"43187367e7a59581d5d2f7457639d3ba2c05efe0b941dd88e184359f5be48087"} -->
 # Базовый слой Essentials
 
 > Документация движка. Эта страница описывает низкоуровневый слой `Source/Essentials/`: требования к платформе и компилятору, вспомогательные средства жизненного цикла процесса, журналирование, память, строки, сериализацию, файловую систему, сокеты и базовые типы, используемые всеми вышележащими слоями движка.
@@ -230,6 +230,17 @@ CMake использует `TemporaryCompat(Id "YYYY-MM-DD")` из `BuildTools/c
 `logging::write` / `logging::write_base` безопасно деградируют, если global data ещё не созданы: сначала переходят к base log, затем к `std::cout`.
 
 `FatalError.*` является ранним native-only fatal layer. Он следует за `StackTrace` и `BaseLogging`, приостанавливает asynchronous writes, пишет одно синхронное сообщение с native trace и передаёт `exit_app(false)` только механическое завершение. Ему принадлежат `fatal::report_and_exit`, `fatal::report_strong_assert_and_exit` и `FO_BASIC_STRONG_ASSERT`; слой не создаёт exception objects и не зависит от более позднего `ExceptionHandling`. Сам `exit_app(false)` остаётся status-only, поскольку его используют и контролируемые command failures, и fatal invariant failures.
+
+`exit_app_immediately(bool success)` — отдельная native-only граница завершения
+для отказов, при которых очистка процесса сама была бы небезопасной. Она вызывает
+`std::_Exit` с запрошенным успешным/ошибочным статусом: без раскрутки стека,
+статических деструкторов, обработчиков `atexit` и `at_quick_exit`. Вызывающая
+сторона предварительно выводит нужную диагностику синхронно; flush логирования
+и остановка приложения не подразумеваются. В Web функция отсутствует,
+существующая платформенная очистка `exit_app` не меняется.
+`BuildTools/tests/test_process_termination.py` компилирует канонические тела
+в дочерних процессах и проверяет оба статуса, маркеры очистки и обычный возврат,
+который подтверждает работоспособность этих маркеров.
 
 `StackTrace.*` собирает и форматирует native/script stacks, а `ExceptionHandling.*` владеет более поздними helpers отчётов об exception objects. Debugger-сценарии описаны в разделе [Native-, AngelScript- и Managed-отладка](../../troubleshooting/debugging.md).
 

@@ -6,6 +6,7 @@
 #include "catch_amalgamated.hpp"
 
 #include "MapSprite.h"
+#include "Settings.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -228,6 +229,54 @@ TEST_CASE("MapSpriteListDrawOrder")
         CHECK(corpse < same_hex_critter);
         CHECK(corpse < near_item);
     }
+}
+
+TEST_CASE("MapSpriteDepthOffsetKeepsTheScreenAnchor")
+{
+    MapSpriteList list {};
+    ipos32 field_offset {1000, 500};
+    ipos32 sprite_offset {5, -8};
+    ipos32 root_offset {2, 3};
+    auto sprite {list.AddSprite(DrawOrderType::Particles, mpos {100, 100}, ipos32 {12, -17}, &field_offset, nullptr, nullptr, &sprite_offset, &root_offset, nullptr, nullptr, nullptr, 0)};
+    sprite->SetElevation(18);
+
+    CHECK(sprite->GetDepthOffset() == 0.0f);
+    ipos32 draw_root {sprite->GetDrawRootPos()};
+    vec3 anchor_world {GeometryHelper::GetHexWorldPos(ipos32 {100, 100}, ipos32 {15, -28}, 18.0f)};
+    vec3 anchor_projection {GeometryHelper::ProjectWorldToMap(anchor_world)};
+    float32_t angle {GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT};
+
+    // Moving along the camera ray changes physical depth while leaving the screen point fixed.
+    // This world-space reference does not use the sprite's projection or depth-offset implementation
+    for (float32_t delta : {12.5f, -9.25f, 0.0f}) {
+        vec3 world_point {anchor_world + vec3 {0.0f, std::sin(angle) * delta, std::cos(angle) * delta}};
+        vec3 expected {GeometryHelper::ProjectWorldToMap(world_point)};
+        sprite->SetDepthOffset(delta);
+        vec3 actual {sprite->GetMapRootProjection()};
+
+        CHECK(is_float_equal(actual.x, expected.x));
+        CHECK(is_float_equal(actual.y, expected.y));
+        CHECK(is_float_equal(actual.z, expected.z));
+        CHECK(is_float_equal(actual.x, anchor_projection.x));
+        CHECK(is_float_equal(actual.y, anchor_projection.y));
+        CHECK(sprite->GetDrawRootPos() == draw_root);
+    }
+}
+
+TEST_CASE("MapSpriteDepthOffsetResetsWhenThePoolReusesASprite")
+{
+    MapSpriteList list {};
+    auto sprite {AddTestSprite(list, DrawOrderType::Particles, mpos {100, 100}, 0)};
+    sprite->SetDepthOffset(73.5f);
+    sprite->Invalidate();
+    auto replacement {AddTestSprite(list, DrawOrderType::Particles, mpos {100, 100}, 0)};
+
+    // Invalidate pushes this object onto the same LIFO pool AddSprite reads
+    REQUIRE(replacement == sprite);
+    CHECK(replacement->GetDepthOffset() == 0.0f);
+
+    MapSpriteHolder holder {};
+    CHECK(holder.DepthOffset == 0.0f);
 }
 
 FO_END_NAMESPACE

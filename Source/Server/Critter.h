@@ -15,6 +15,7 @@
 FO_BEGIN_NAMESPACE
 
 class Player;
+struct PlayerMovementIdentity;
 class MapManager;
 class Item;
 class Map;
@@ -68,6 +69,9 @@ public:
     [[nodiscard]] auto GetFinishedPlayerMoving() noexcept -> nptr<MovingContext>;
     [[nodiscard]] auto GetPlayerPlanMoving(uint32_t plan_seq) noexcept -> nptr<MovingContext>;
     [[nodiscard]] auto GetPlayerPlanDistanceShift() const noexcept -> float32_t { return _playerPlanDistanceShift; }
+    [[nodiscard]] auto GetPlayerMovingPlayerId() const noexcept -> ident_t { return _playerMovingPlayerId; }
+    [[nodiscard]] auto GetAttachmentRevision() const noexcept -> uint64_t { return _attachmentRevision; }
+    [[nodiscard]] auto IsPlayerMovementOwner(ptr<const Player> player) const -> bool;
     [[nodiscard]] auto IsMapTransfersLocked() const noexcept -> bool;
     [[nodiscard]] auto HasAttachedCritters() const noexcept -> bool;
     [[nodiscard]] auto GetAttachedCritters() noexcept -> span<ptr<Critter>>;
@@ -91,7 +95,7 @@ public:
     void MarkIsForPlayer();
     void UnmarkIsForPlayer();
     void SetMoving(refcount_ptr<MovingContext> moving);
-    void MarkMovingStartedByPlayer(uint32_t plan_seq, float32_t plan_distance_shift);
+    void MarkMovingStartedByPlayer(ptr<const Player> player, uint32_t plan_seq, float32_t plan_distance_shift);
     void StopMoving(MovingState reason = MovingState::Stopped);
     void AttachPlayer(ptr<Player> player);
     void DetachPlayer();
@@ -192,6 +196,13 @@ private:
 
     uint32_t _movingUid {};
     uint32_t _playerMovingUid {};
+    ident_t _playerMovingPlayerId {};
+    ident_t _playerMovingActorId {};
+    shared_ptr<const PlayerMovementIdentity> _playerMovementIdentity {};
+    uint64_t _playerControlRevision {};
+    uint64_t _playerAttachmentRevision {};
+    uint64_t _attachmentRevision {};
+
     // The player's plan number and the distance added by bridging its start or removed by joining its prefix
     uint32_t _playerPlanSeq {};
     float32_t _playerPlanDistanceShift {};

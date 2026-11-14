@@ -3033,8 +3033,10 @@ void ClientEngine::CritterMoveTo(ptr<CritterHexView> cr, variant<tuple<mpos, ipo
         return;
     }
 
-    // A path order or a stop ends a held direction
-    if (_directMove.has_value() && _directMove->CritterId == cr->GetId()) {
+    // A local completion can end playback while the server still holds the outstanding lease
+    bool had_direct_intent {_directMove.has_value() && _directMove->CritterId == cr->GetId()};
+
+    if (had_direct_intent) {
         _directMove.reset();
     }
 
@@ -3080,7 +3082,7 @@ void ClientEngine::CritterMoveTo(ptr<CritterHexView> cr, variant<tuple<mpos, ipo
         Net_SendMove(cr);
     }
 
-    if (prev_moving && !cr->IsMoving()) {
+    if ((prev_moving || had_direct_intent) && !cr->IsMoving()) {
         cr->StopMoving();
         cr->RefreshView();
         Net_SendStopMove(cr);
@@ -3306,12 +3308,12 @@ void ClientEngine::TraceFrameHealth()
 
 void ClientEngine::CritterMovingFinished(ptr<CritterHexView> cr, mpos end_hex)
 {
+    // The caller preserves chosen arrivals and locally predicted indirect plans before StopMoving clears
+    // their origin. Playback of another entity's server plan never reaches this path
     nptr<CritterHexView> chosen {GetMapChosen()};
     nptr<CritterHexView> reporting_cr {cr};
 
-    // Only the critter this client predicts may report an arrival. Every other critter on the map is played
-    // out from the server's own plan, so its completion carries no information the server does not have
-    if (!IsConnected() || chosen != reporting_cr) {
+    if (!IsConnected()) {
         return;
     }
 

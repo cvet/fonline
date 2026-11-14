@@ -14,6 +14,20 @@ static constexpr float32_t MAP_LAYER_DEPTH_BIAS_PIXEL_BUDGET {0.5f};
 static constexpr size_t MAP_LAYER_DEPTH_BIAS_STEPS {static_cast<size_t>(DrawOrderType::Last) + 1};
 static constexpr float32_t MAP_LAYER_DEPTH_BIAS {MAP_LAYER_DEPTH_BIAS_PIXEL_BUDGET / numeric_cast<float32_t>(MAP_LAYER_DEPTH_BIAS_STEPS)};
 
+// Shared rotation and map-projected flattening around the bitmap rectangle center
+struct MapSpriteTransform
+{
+    bool Enabled {};
+    float32_t Cos {};
+    float32_t Sin {};
+    float32_t YScale {};
+    float32_t CenterX {};
+    float32_t CenterY {};
+};
+
+static auto MakeMapSpriteTransform(int16_t angle_deg, bool use_map_projected, float32_t center_x, float32_t center_y, float32_t map_camera_angle) -> MapSpriteTransform;
+static void ApplyMapSpriteTransform(float32_t& pos_x, float32_t& pos_y, const MapSpriteTransform& transform);
+
 Sprite::Sprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32 offset) :
     _sprMngr {spr_mngr},
     _size {size},
@@ -622,23 +636,33 @@ void SpriteManager::DrawSprite(ptr<const Sprite> spr, ipos32 pos, ucolor color)
 
     color = ApplyColorBrightness(color);
 
-    size_t start_index {_spritesDrawBuf->IndCount};
-    size_t ind_count {spr->FillData(_spritesDrawBuf, frect32(fpos32(pos), fsize32(spr->GetSize())), {color, color})};
+    frect32 draw_rect {fpos32(pos), fsize32(spr->GetSize())};
+    nptr<const Sprite> overlay_spr {spr->GetUnlitOverlay()};
+    array<nptr<const Sprite>, 2> layers {spr, overlay_spr};
 
-    if (ind_count != 0) {
-        if (_drawWireframe) {
-            QueueSpriteWireframe(start_index, ind_count);
+    for (nptr<const Sprite> layer_spr : layers) {
+        if (!layer_spr) {
+            continue;
         }
 
-        if (_dipQueue.empty() || _dipQueue.back().MainTexture != spr->GetBatchTexture() || _dipQueue.back().SourceEffect != effect) {
-            _dipQueue.emplace_back(DipData {.MainTexture = spr->GetBatchTexture(), .SourceEffect = effect, .IndicesCount = ind_count});
-        }
-        else {
-            _dipQueue.back().IndicesCount += ind_count;
-        }
+        size_t start_index {_spritesDrawBuf->IndCount};
+        size_t ind_count {layer_spr->FillData(_spritesDrawBuf, draw_rect, {color, color})};
 
-        if (_spritesDrawBuf->VertCount >= _flushVertCount) {
-            Flush();
+        if (ind_count != 0) {
+            if (_drawWireframe) {
+                QueueSpriteWireframe(start_index, ind_count);
+            }
+
+            if (_dipQueue.empty() || _dipQueue.back().MainTexture != layer_spr->GetBatchTexture() || _dipQueue.back().SourceEffect != effect) {
+                _dipQueue.emplace_back(DipData {.MainTexture = layer_spr->GetBatchTexture(), .SourceEffect = effect, .IndicesCount = ind_count});
+            }
+            else {
+                _dipQueue.back().IndicesCount += ind_count;
+            }
+
+            if (_spritesDrawBuf->VertCount >= _flushVertCount) {
+                Flush();
+            }
         }
     }
 }
@@ -685,23 +709,33 @@ void SpriteManager::DrawSpriteSizeExt(ptr<const Sprite> spr, fpos32 pos, fsize32
 
     color = ApplyColorBrightness(color);
 
-    size_t start_index {_spritesDrawBuf->IndCount};
-    size_t ind_count {spr->FillData(_spritesDrawBuf, {xf, yf, wf, hf}, {color, color})};
+    frect32 draw_rect {xf, yf, wf, hf};
+    nptr<const Sprite> overlay_spr {spr->GetUnlitOverlay()};
+    array<nptr<const Sprite>, 2> layers {spr, overlay_spr};
 
-    if (ind_count != 0) {
-        if (_drawWireframe) {
-            QueueSpriteWireframe(start_index, ind_count);
+    for (nptr<const Sprite> layer_spr : layers) {
+        if (!layer_spr) {
+            continue;
         }
 
-        if (_dipQueue.empty() || _dipQueue.back().MainTexture != spr->GetBatchTexture() || _dipQueue.back().SourceEffect != effect) {
-            _dipQueue.emplace_back(DipData {.MainTexture = spr->GetBatchTexture(), .SourceEffect = effect, .IndicesCount = ind_count});
-        }
-        else {
-            _dipQueue.back().IndicesCount += ind_count;
-        }
+        size_t start_index {_spritesDrawBuf->IndCount};
+        size_t ind_count {layer_spr->FillData(_spritesDrawBuf, draw_rect, {color, color})};
 
-        if (_spritesDrawBuf->VertCount >= _flushVertCount) {
-            Flush();
+        if (ind_count != 0) {
+            if (_drawWireframe) {
+                QueueSpriteWireframe(start_index, ind_count);
+            }
+
+            if (_dipQueue.empty() || _dipQueue.back().MainTexture != layer_spr->GetBatchTexture() || _dipQueue.back().SourceEffect != effect) {
+                _dipQueue.emplace_back(DipData {.MainTexture = layer_spr->GetBatchTexture(), .SourceEffect = effect, .IndicesCount = ind_count});
+            }
+            else {
+                _dipQueue.back().IndicesCount += ind_count;
+            }
+
+            if (_spritesDrawBuf->VertCount >= _flushVertCount) {
+                Flush();
+            }
         }
     }
 }
@@ -906,7 +940,7 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, int
 
     auto get_map_sprite_depth {[depth_origin_y](const MapSprite* mspr) -> float32_t {
         float32_t elevation {numeric_cast<float32_t>(mspr->GetElevation())};
-        return GeometryHelper::GetHexMapDepth(ipos32(mspr->GetHex()), mspr->GetMapRootOffset(), elevation, depth_origin_y);
+        return GeometryHelper::GetHexMapDepth(ipos32(mspr->GetHex()), mspr->GetMapRootOffset(), elevation, depth_origin_y) + mspr->GetDepthOffset();
     }};
     auto is_standing_sprite {[](DrawOrderType draw_order) -> bool { //
         return draw_order >= DrawOrderType::NormalBegin && draw_order <= DrawOrderType::NormalEnd;
@@ -916,23 +950,15 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, int
 
     for (uint32_t i {range_begin}; i < range_end; i++) {
         const auto& mspr {sprites[i]};
-        FO_VERIFY_AND_THROW(mspr->IsValid(), "Map sprite is invalid");
+        auto visible_rect {GetMapSpriteDrawRect(mspr, draw_area)};
 
-        if (mspr->IsHidden()) {
+        if (!visible_rect) {
             continue;
         }
 
         auto spr {mspr->GetSprite()};
         FO_VERIFY_AND_THROW(spr, "Missing required sprite");
-
-        irect32 mspr_rect {mspr->GetDrawRect()};
-        mspr_rect.x -= draw_area.x;
-        mspr_rect.y -= draw_area.y;
-
-        // Skip not visible
-        if (mspr_rect.x > draw_area.width || mspr_rect.x + mspr_rect.width < 0 || mspr_rect.y > draw_area.height || mspr_rect.y + mspr_rect.height < 0) {
-            continue;
-        }
+        irect32 mspr_rect {*visible_rect};
 
         if (spr->IsDirectDraw()) {
             // Only a tiny ground separation, because inheriting the direct-draw draw-order bias would pull
@@ -993,6 +1019,25 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, int
             color_l = ApplyColorBrightness(color_l);
         }
 
+        // Unlit overlay keeps the authored tint but never receives map light
+        ucolor overlay_color_r;
+        ucolor overlay_color_l;
+
+        if (spr_color != ucolor::clear) {
+            overlay_color_r = overlay_color_l = ucolor(spr_color, 255);
+        }
+        else {
+            overlay_color_r = overlay_color_l = Color::Neutral;
+        }
+
+        overlay_color_r.comp.a = color_r.comp.a;
+        overlay_color_l.comp.a = color_l.comp.a;
+
+        if (apply_brightness) {
+            overlay_color_r = ApplyColorBrightness(overlay_color_r);
+            overlay_color_l = ApplyColorBrightness(overlay_color_l);
+        }
+
         DrawOrderType draw_order {mspr->GetDrawOrder()};
 
         // Choose effect
@@ -1002,81 +1047,82 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, int
             effect = spr->GetDrawEffectOr(default_effect);
         }
 
-        // Fill buffer
         float32_t xf {numeric_cast<float32_t>(mspr_rect.x)};
         float32_t yf {numeric_cast<float32_t>(mspr_rect.y)};
         float32_t wf {numeric_cast<float32_t>(spr->GetSize().width)};
         float32_t hf {numeric_cast<float32_t>(spr->GetSize().height)};
-        size_t start_vpos {_spritesDrawBuf->VertCount};
-        size_t start_ipos {_spritesDrawBuf->IndCount};
-        size_t ind_count {spr->FillData(_spritesDrawBuf, {xf, yf, wf, hf}, {color_l, color_r})};
-
-        auto& vbuf {_spritesDrawBuf->Vertices};
         bool standing_sprite {is_standing_sprite(draw_order)};
         float32_t pos_z {get_map_sprite_depth(mspr.get())};
-
-        for (size_t j {start_vpos}; j < _spritesDrawBuf->VertCount; j++) {
-            vbuf[j].PosZ = pos_z;
-        }
-
-        // Rotation and map-projected flattening
         int16_t angle_deg {mspr->GetAngle()};
         bool use_map_projected {mspr->GetMapProjected()};
-
-        if (angle_deg != 0 || use_map_projected) {
-            float32_t rad {numeric_cast<float32_t>(angle_deg) * (3.14159265f / 180.0f)};
-            float32_t cs {angle_deg != 0 ? std::cos(rad) : 1.0f};
-            float32_t sn {angle_deg != 0 ? std::sin(rad) : 0.0f};
-            float32_t y_scale {use_map_projected ? std::cos(_settings->Geometry.MapCameraAngle * (3.14159265f / 180.0f)) : 1.0f};
-            float32_t cx {xf + wf * 0.5f};
-            float32_t cy {yf + hf * 0.5f};
-
-            for (size_t j {start_vpos}; j < _spritesDrawBuf->VertCount; j++) {
-                float32_t dx {vbuf[j].PosX - cx};
-                float32_t dy {vbuf[j].PosY - cy};
-                vbuf[j].PosX = cx + dx * cs - dy * sn;
-                vbuf[j].PosY = cy + (dx * sn + dy * cs) * y_scale;
-            }
-        }
-
-        if (standing_sprite) {
-            float32_t scene_pos_y {numeric_cast<float32_t>(mspr_rect.y + mspr->GetSpriteRootOffset().y - mspr->GetRootOffset().y)};
-            float32_t angle_rad {GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT};
-            float32_t sin_a {std::sin(angle_rad)};
-            float32_t cos_a {std::cos(angle_rad)};
-            float32_t tan_a {sin_a / cos_a};
-
-            // A vertex's map row lies its screen offset from the root's, so only that offset scales the depth slope
-            for (size_t j {start_vpos}; j < _spritesDrawBuf->VertCount; j++) {
-                vbuf[j].PosZ = pos_z - (vbuf[j].PosY - scene_pos_y) * tan_a;
-            }
-        }
-
-        // Setup eggs
         bool use_first_egg {use_egg && CheckEggAppearence(TransparentEggSlot::Primary, mspr)};
         bool use_second_egg {use_egg && CheckEggAppearence(TransparentEggSlot::Secondary, mspr)};
+        nptr<const Sprite> overlay_spr {spr->GetUnlitOverlay()};
+        array<nptr<const Sprite>, 2> layers {spr, overlay_spr};
+        MapSpriteTransform transform {MakeMapSpriteTransform(angle_deg, use_map_projected, xf + wf * 0.5f, yf + hf * 0.5f, _settings->Geometry.MapCameraAngle)};
 
-        if (use_first_egg || use_second_egg) {
+        // Fill both layers into the same map rectangle and run them through the same map pipeline
+        for (size_t layer_index {0}; layer_index < layers.size(); layer_index++) {
+            nptr<const Sprite> layer_spr {layers[layer_index]};
+
+            if (!layer_spr) {
+                continue;
+            }
+
+            ucolor layer_color_r {layer_index == 0 ? color_r : overlay_color_r};
+            ucolor layer_color_l {layer_index == 0 ? color_l : overlay_color_l};
+            size_t start_vpos {_spritesDrawBuf->VertCount};
+            size_t start_ipos {_spritesDrawBuf->IndCount};
+            size_t ind_count {layer_spr->FillData(_spritesDrawBuf, {xf, yf, wf, hf}, {layer_color_l, layer_color_r})};
+
+            auto& vbuf {_spritesDrawBuf->Vertices};
+
             for (size_t j {start_vpos}; j < _spritesDrawBuf->VertCount; j++) {
-                vbuf[j].EggFlags[0] = use_first_egg ? EGG_ENABLED_FLAG : 0.0f;
-                vbuf[j].EggFlags[1] = use_second_egg ? EGG_ENABLED_FLAG : 0.0f;
-            }
-        }
-
-        if (ind_count != 0) {
-            if (_drawWireframe) {
-                QueueSpriteWireframe(start_ipos, ind_count);
+                vbuf[j].PosZ = pos_z;
             }
 
-            if (_dipQueue.empty() || _dipQueue.back().MainTexture != spr->GetBatchTexture() || _dipQueue.back().SourceEffect != effect) {
-                _dipQueue.emplace_back(DipData {.MainTexture = spr->GetBatchTexture(), .SourceEffect = effect, .IndicesCount = ind_count});
-            }
-            else {
-                _dipQueue.back().IndicesCount += ind_count;
+            // Rotation and map-projected flattening
+            if (transform.Enabled) {
+                for (size_t j {start_vpos}; j < _spritesDrawBuf->VertCount; j++) {
+                    ApplyMapSpriteTransform(vbuf[j].PosX, vbuf[j].PosY, transform);
+                }
             }
 
-            if (_spritesDrawBuf->VertCount >= _flushVertCount) {
-                Flush();
+            if (standing_sprite) {
+                float32_t scene_pos_y {numeric_cast<float32_t>(mspr_rect.y + mspr->GetSpriteRootOffset().y - mspr->GetRootOffset().y)};
+                float32_t angle_rad {GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT};
+                float32_t sin_a {std::sin(angle_rad)};
+                float32_t cos_a {std::cos(angle_rad)};
+                float32_t tan_a {sin_a / cos_a};
+
+                for (size_t j {start_vpos}; j < _spritesDrawBuf->VertCount; j++) {
+                    vbuf[j].PosZ = pos_z - (vbuf[j].PosY - scene_pos_y) * tan_a;
+                }
+            }
+
+            // Setup eggs
+            if (use_first_egg || use_second_egg) {
+                for (size_t j {start_vpos}; j < _spritesDrawBuf->VertCount; j++) {
+                    vbuf[j].EggFlags[0] = use_first_egg ? EGG_ENABLED_FLAG : 0.0f;
+                    vbuf[j].EggFlags[1] = use_second_egg ? EGG_ENABLED_FLAG : 0.0f;
+                }
+            }
+
+            if (ind_count != 0) {
+                if (_drawWireframe) {
+                    QueueSpriteWireframe(start_ipos, ind_count);
+                }
+
+                if (_dipQueue.empty() || _dipQueue.back().MainTexture != layer_spr->GetBatchTexture() || _dipQueue.back().SourceEffect != effect) {
+                    _dipQueue.emplace_back(DipData {.MainTexture = layer_spr->GetBatchTexture(), .SourceEffect = effect, .IndicesCount = ind_count});
+                }
+                else {
+                    _dipQueue.back().IndicesCount += ind_count;
+                }
+
+                if (_spritesDrawBuf->VertCount >= _flushVertCount) {
+                    Flush();
+                }
             }
         }
     }
@@ -1101,6 +1147,129 @@ auto SpriteManager::SpriteHitTest(ptr<const Sprite> spr, ipos32 pos) const -> bo
     }
 
     return spr->IsHitTest(pos);
+}
+
+auto SpriteManager::GetMapSpriteDrawRect(ptr<const MapSprite> mspr, irect32 draw_area) const -> optional<irect32>
+{
+    FO_VERIFY_AND_THROW(mspr->IsValid(), "Map sprite is invalid");
+
+    if (mspr->IsHidden()) {
+        return std::nullopt;
+    }
+
+    auto spr {mspr->GetSprite()};
+    FO_VERIFY_AND_THROW(spr, "Missing required sprite");
+
+    irect32 rect {mspr->GetDrawRect()};
+    rect.x -= draw_area.x;
+    rect.y -= draw_area.y;
+
+    if (rect.x > draw_area.width || rect.x + rect.width < 0 || rect.y > draw_area.height || rect.y + rect.height < 0) {
+        return std::nullopt;
+    }
+
+    return rect;
+}
+
+// Converts a draw-root-relative logical sprite point into holder map pixels and a depth-only correction for the submitted plane.
+// Returns no value for entries without a bitmap plane or results that are not representable
+auto SpriteManager::GetMapSpritePointAnchor(ptr<const MapSprite> mspr, ipos32 local_point) const -> optional<pair<ipos32, float32_t>>
+{
+    if (!mspr->IsValid() || mspr->IsHidden()) {
+        return std::nullopt;
+    }
+
+    nptr<const Sprite> spr {mspr->GetSprite()};
+
+    if (!spr || spr->IsDirectDraw() || spr->GetSize().width <= 0 || spr->GetSize().height <= 0) {
+        return std::nullopt;
+    }
+
+    isize32 spr_size {spr->GetSize()};
+    ipos32 sprite_root_offset {mspr->GetSpriteRootOffset()};
+    int16_t angle_deg {mspr->GetAngle()};
+    bool use_map_projected {mspr->GetMapProjected()};
+    ipos32 local_displacement;
+
+    if (angle_deg == 0 && !use_map_projected) {
+        local_displacement = local_point;
+    }
+    else {
+        float32_t center_x {numeric_cast<float32_t>(spr_size.width) * 0.5f - numeric_cast<float32_t>(sprite_root_offset.x)};
+        float32_t center_y {numeric_cast<float32_t>(spr_size.height) * 0.5f - numeric_cast<float32_t>(sprite_root_offset.y)};
+        MapSpriteTransform transform {MakeMapSpriteTransform(angle_deg, use_map_projected, center_x, center_y, _settings->Geometry.MapCameraAngle)};
+        float32_t point_x {numeric_cast<float32_t>(local_point.x)};
+        float32_t point_y {numeric_cast<float32_t>(local_point.y)};
+
+        ApplyMapSpriteTransform(point_x, point_y, transform);
+
+        float32_t int32_min {numeric_cast<float32_t>(std::numeric_limits<int32_t>::min())};
+        float32_t int32_max {numeric_cast<float32_t>(std::numeric_limits<int32_t>::max())};
+
+        if (!std::isfinite(point_x) || !std::isfinite(point_y) || point_x < int32_min || point_x >= int32_max || point_y < int32_min || point_y >= int32_max) {
+            return std::nullopt;
+        }
+
+        local_displacement = ipos32 {iround<int32_t>(point_x), iround<int32_t>(point_y)};
+    }
+
+    nptr<const ipos32> spr_offset_ptr {mspr->GetPSprOffset()};
+    ipos32 spr_offset {spr_offset_ptr ? *spr_offset_ptr : ipos32 {}};
+    int32_t elevation_offset {0};
+
+    if (mspr->GetElevation() != 0) {
+        float32_t elevation {numeric_cast<float32_t>(mspr->GetElevation())};
+        float32_t elevation_y {std::cos(GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT) * elevation};
+        elevation_offset = iround<int32_t>(elevation_y);
+    }
+
+    constexpr int32_t CENTER_X {GameSettings::MAP_HEX_WIDTH / 2};
+    constexpr int32_t CENTER_Y {GameSettings::MAP_HEX_HEIGHT / 2};
+    ipos32 hex_offset {mspr->GetHexOffset()};
+    int64_t offset_x {numeric_cast<int64_t>(hex_offset.x) + numeric_cast<int64_t>(spr_offset.x) + numeric_cast<int64_t>(local_displacement.x) - CENTER_X};
+    int64_t offset_y {numeric_cast<int64_t>(hex_offset.y) + numeric_cast<int64_t>(spr_offset.y) + numeric_cast<int64_t>(local_displacement.y) - CENTER_Y - elevation_offset};
+
+    int64_t center_offset_x {offset_x + CENTER_X};
+    int64_t center_offset_y {offset_y + CENTER_Y};
+
+    // DrawMapSprite adds the hex center in int32 arithmetic when attaching the holder
+    if (offset_x < std::numeric_limits<int32_t>::min() || offset_x > std::numeric_limits<int32_t>::max() || //
+        offset_y < std::numeric_limits<int32_t>::min() || offset_y > std::numeric_limits<int32_t>::max() || //
+        center_offset_x < std::numeric_limits<int32_t>::min() || center_offset_x > std::numeric_limits<int32_t>::max() || //
+        center_offset_y < std::numeric_limits<int32_t>::min() || center_offset_y > std::numeric_limits<int32_t>::max()) {
+        return std::nullopt;
+    }
+
+    ipos32 holder_offset {numeric_cast<int32_t>(offset_x), numeric_cast<int32_t>(offset_y)};
+    ipos32 ground_offset {numeric_cast<int32_t>(center_offset_x), numeric_cast<int32_t>(center_offset_y)};
+    vec3 carrier {mspr->GetMapRootProjection()};
+    DrawOrderType draw_order {mspr->GetDrawOrder()};
+    float32_t target_depth {carrier.z};
+
+    if (draw_order >= DrawOrderType::NormalBegin && draw_order <= DrawOrderType::NormalEnd) {
+        float32_t angle_rad {GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT};
+        float32_t sin_a {std::sin(angle_rad)};
+        float32_t cos_a {std::cos(angle_rad)};
+        float32_t tan_a {sin_a / cos_a};
+        int64_t depth_y {numeric_cast<int64_t>(local_displacement.y) + numeric_cast<int64_t>(mspr->GetRootOffset().y)};
+
+        target_depth = carrier.z - numeric_cast<float32_t>(depth_y) * tan_a;
+    }
+
+    vec3 ground_world {GeometryHelper::GetHexWorldPos(mspr->GetHex(), ground_offset, 0.0f)};
+    float32_t ground_depth {GeometryHelper::ProjectWorldToMap(ground_world).z};
+
+    if (!std::isfinite(target_depth) || !std::isfinite(ground_depth)) {
+        return std::nullopt;
+    }
+
+    float32_t depth_correction {target_depth - ground_depth};
+
+    if (!std::isfinite(depth_correction)) {
+        return std::nullopt;
+    }
+
+    return pair<ipos32, float32_t> {holder_offset, depth_correction};
 }
 
 auto SpriteManager::IsEggTransp(ipos32 pos, ptr<const MapSprite> mspr) const -> bool
@@ -1319,6 +1488,38 @@ auto SpriteManager::ApplyColorBrightness(ucolor color) const -> ucolor
     else {
         return color;
     }
+}
+
+static auto MakeMapSpriteTransform(int16_t angle_deg, bool use_map_projected, float32_t center_x, float32_t center_y, float32_t map_camera_angle) -> MapSpriteTransform
+{
+    MapSpriteTransform transform {};
+
+    if (angle_deg == 0 && !use_map_projected) {
+        return transform;
+    }
+
+    transform.Enabled = true;
+
+    float32_t rad {numeric_cast<float32_t>(angle_deg) * (3.14159265f / 180.0f)};
+    transform.Cos = angle_deg != 0 ? std::cos(rad) : 1.0f;
+    transform.Sin = angle_deg != 0 ? std::sin(rad) : 0.0f;
+    transform.YScale = use_map_projected ? std::cos(map_camera_angle * (3.14159265f / 180.0f)) : 1.0f;
+    transform.CenterX = center_x;
+    transform.CenterY = center_y;
+
+    return transform;
+}
+
+static void ApplyMapSpriteTransform(float32_t& pos_x, float32_t& pos_y, const MapSpriteTransform& transform)
+{
+    if (!transform.Enabled) {
+        return;
+    }
+
+    float32_t dx {pos_x - transform.CenterX};
+    float32_t dy {pos_y - transform.CenterY};
+    pos_x = transform.CenterX + dx * transform.Cos - dy * transform.Sin;
+    pos_y = transform.CenterY + (dx * transform.Sin + dy * transform.Cos) * transform.YScale;
 }
 
 FO_END_NAMESPACE

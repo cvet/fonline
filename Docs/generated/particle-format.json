@@ -43,10 +43,14 @@
     "BuildTools/buildtools.py",
     "Source/Tools/ModelInfoBaker.cpp",
     "Source/Client/ModelInstance.cpp",
+    "Source/Client/MapSprite.h",
+    "Source/Client/MapSprite.cpp",
+    "Source/Scripting/ClientMapScriptMethods.cpp",
     "Source/Scripting/ClientGlobalScriptMethods.cpp",
     "Source/Scripting/ClientCritterScriptMethods.cpp",
     "Source/Tests/Test_ParticleBaker.cpp",
-    "Source/Tests/Test_EffekseerParticleRuntime.cpp"
+    "Source/Tests/Test_EffekseerParticleRuntime.cpp",
+    "ThirdParty/Effekseer/Dev/Cpp/Effekseer/Effekseer/SIMD/Mat43f.cpp"
   ],
   "outputs": {
     "authored_extensions": [
@@ -2410,8 +2414,8 @@
       "id": "particle-format.runtime.baked-bounds",
       "name": "Mandatory baked bounds",
       "stability": "experimental",
-      "requirement": "Bake reproducible position box and maximum billboard radius into each runtime resource. SPARK seeds emitter-copy initialization and rejects systems without visible particles; Effekseer appends and validates a mandatory bounds trailer.",
-      "rationale": "Static measured bounds replace manual draw dimensions and avoid recomputing a particle AABB every frame.",
+      "requirement": "Bake reproducible position box and maximum billboard radius into each runtime resource. SPARK seeds emitter-copy initialization and rejects systems without visible particles. Effekseer uses a nonnegative authored seed or a fixed local fallback for its bounds simulation and appends and validates a mandatory bounds trailer. One simulation does not cover every random trajectory.",
+      "rationale": "Reproducible baseline dimensions provide stable atlas layout without manual authoring; model trails can extend the baseline with current live instances.",
       "source": [
         {
           "path": "Source/Tools/ParticleBaker.cpp",
@@ -2419,6 +2423,7 @@
             "deterministic run of a throwaway copy",
             "SPARK particle system showed no visible particles while baking its bounds",
             "SimulateEffekseerBounds",
+            "manager->SetRandFunc",
             "AppendEffekseerBoundsTrailer",
             "SPK::RandomSeedScope bake_seed_scope"
           ]
@@ -2433,7 +2438,8 @@
         {
           "path": "Source/Tests/Test_ParticleBaker.cpp",
           "anchors": [
-            "ContinuousEmitterBoundsIgnoreEarlierBakes"
+            "ContinuousEmitterBoundsIgnoreEarlierBakes",
+            "EffekseerBoundsAreRepeatableAndHonorAuthoredSeed"
           ]
         }
       ]
@@ -2459,7 +2465,7 @@
       "id": "particle-format.runtime.live-bounds",
       "name": "Live bounds",
       "stability": "experimental",
-      "requirement": "GetLiveBounds returns transformed baked bounds only while the backend has live particles or instances; dormant and finished systems reserve no model-frame space.",
+      "requirement": "While instances live, retain the transformed baked envelope and extend Effekseer model bounds with current Sprite/Ribbon/Ring/Track/Model positions and shape radii. Cache the CPU probe until setup or simulation changes; do not advance time, RNG, GPU draws or scene-background capture. Expired instances release their envelope.",
       "rationale": "Occasional attached effects must expand their owning model only while visible.",
       "source": [
         {
@@ -2483,6 +2489,154 @@
           "anchors": [
             "model_particle.Particle->GetLiveBounds()",
             "force_full_frame = true"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_EffekseerParticleRuntime.cpp",
+          "anchors": [
+            "Effekseer live bounds measure each supported renderer family",
+            "Effekseer bounds queries preserve future seeded generations",
+            "Effekseer bounds queries do not acquire a distortion scene background"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.runtime.effekseer-placement",
+      "name": "Effekseer model placement",
+      "stability": "experimental",
+      "requirement": "World is the complete model-bone pose. Accept a finite LookDirectionAngle as an unused legacy hint without applying a second yaw; reject non-finite hints. Existing zero-hint placement is unchanged.",
+      "rationale": "A model already supplies its facing in the bone pose.",
+      "source": [
+        {
+          "path": "Source/Client/EffekseerExtension.cpp",
+          "anchors": [
+            "EffekseerParticleRuntimeSystem::Setup",
+            "look-direction hint is not finite"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_EffekseerParticleRuntime.cpp",
+          "anchors": [
+            "Effekseer model placement accepts facing hints without rotating the bone pose twice"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.runtime.effekseer-singular-srt",
+      "name": "Effekseer zero-scale rotation basis",
+      "stability": "experimental",
+      "requirement": "Complete collapsed SRT rotation axes without division by zero. Preserve signed surviving directions; use cross products for missing axes, a deterministic perpendicular frame for one survivor, and identity for an all-zero basis. Keep noncollapsed decomposition and non-finite callback rejection unchanged.",
+      "rationale": "Zero-scale animation must not introduce NaN into inherited Track transforms; erased orientation is underdetermined.",
+      "source": [
+        {
+          "path": "ThirdParty/Effekseer/Dev/Cpp/Effekseer/Effekseer/SIMD/Mat43f.cpp",
+          "anchors": [
+            "RecoverCollapsedRotation",
+            "Mat43f::GetRotation",
+            "Mat43f::GetSRT"
+          ]
+        },
+        {
+          "path": "Source/Client/EffekseerExtension.cpp",
+          "anchors": [
+            "track callback emitted non-finite geometry data"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_EffekseerParticleRuntime.cpp",
+          "anchors": [
+            "Effekseer decomposes collapsed diagonal scales into finite canonical frames",
+            "Effekseer singular SRT decomposition preserves surviving rotated axes",
+            "Effekseer singular SRT decomposition preserves an independent 3D basis",
+            "Effekseer singular SRT decomposition retains invalid surviving basis components"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.runtime.effekseer-refresh",
+      "name": "Effekseer render refresh",
+      "stability": "experimental",
+      "requirement": "Every active render refresh retains UpdateHandle(0). Reuse an unchanged shared rendering snapshot; flush pending creation or placement changes from any handle. A deferred rebase stays pending on its own handle until SDK matrices are applied; decide whether to Flip afterwards. Root-only or empty handles after simulation or prewarm keep the next retirement check. Ordinary Update, prewarm and three retirement flushes still Flip unconditionally.",
+      "rationale": "Repeated direct-scene draws must preserve zero-time simulation and cross-handle publication without rebuilding an unchanged manager snapshot.",
+      "source": [
+        {
+          "path": "Source/Client/EffekseerExtension.cpp",
+          "anchors": [
+            "RenderingSnapshotDirty",
+            "RebasePending",
+            "GetInstanceCount(_impl->Handle) <= 1",
+            "EffekseerParticleRuntimeSystem::UpdateInternal",
+            "EffekseerParticleRuntimeSystem::RefreshRenderTransform"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_EffekseerParticleRuntime.cpp",
+          "anchors": [
+            "Effekseer unchanged repeated refresh preserves seeded draws and expiration",
+            "Effekseer transform and rebase refresh match explicit-zero control packets",
+            "Effekseer shared-manager identities track their own refresh controls",
+            "Effekseer expired prewarm retires on its first render refresh",
+            "Effekseer neighbour refresh publishes rebased kill-rule coordinates"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.runtime.world-rebase",
+      "name": "Atlas-origin rebase",
+      "stability": "experimental",
+      "requirement": "RebaseWorldParticles translates existing Effekseer instances once through a rendering base while compensating the simulation root. Pair it with the new absolute Setup and zero-time RefreshRenderTransform. Ignore invalid deltas before mutation; respawn and retirement reset the translation base.",
+      "rationale": "Atlas-coordinate changes must preserve world-space tails without aging particles or moving future births twice.",
+      "source": [
+        {
+          "path": "Source/Client/EffekseerExtension.cpp",
+          "anchors": [
+            "EffekseerParticleRuntimeSystem::RebaseWorldParticles",
+            "ApplyEffekseerRootMatrix",
+            "SetBaseMatrix"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_EffekseerParticleRuntime.cpp",
+          "anchors": [
+            "Effekseer atlas rebases move each live particle once without advancing generation",
+            "Effekseer rejects nonfinite hints and ignores invalid rebases without mutation"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.runtime.model-unlit-overlay",
+      "name": "Explicit unlit model particle layer",
+      "stability": "experimental",
+      "requirement": "Native ModelInstance.RunUnlitParticle shares RunParticle placement, first-pose initialization, bounds and retirement, but selects the parent-owned ModelSprite overlay. The atlas producer draws meshes and lit particles first, retains their depth while clearing only color, and draws unlit particles without posing or advancing simulation again. Both images use the same crop and pivot offset; stable sizes reuse the overlay allocation. Sprite update releases it when no initialized unlit systems remain active, including after direct-scene retirement without a preview atlas redraw. RunParticle, AttachParticles and the direct-scene all-particle route retain their meanings. Picking and specialized image effects address the base atlas.",
+      "rationale": "An emissive model-bone effect can bypass map lighting without detaching from the authoritative pose or changing existing particle callers.",
+      "source": [
+        {
+          "path": "Source/Client/ModelInstance.cpp",
+          "anchors": [
+            "void ModelInstance::RunUnlitParticle",
+            "void ModelInstance::DrawSpriteFrameLit",
+            "void ModelInstance::DrawUnlitParticles",
+            "void ModelInstance::DrawParticles"
+          ]
+        },
+        {
+          "path": "Source/Client/ModelSprites.cpp",
+          "anchors": [
+            "ModelSpriteFactory::DrawModelToAtlas",
+            "ClearCurrentRenderTarget(ucolor::clear, false)",
+            "model_spr->_unlitOverlay = std::move(unlit_overlay)"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ClientEngine.cpp",
+          "anchors": [
+            "ModelParticleEmitsAtItsBoneBeforeAnotherPose",
+            "AtlasOverlayUsesTheBornPoseAndRetires"
           ]
         }
       ]
@@ -2704,6 +2858,105 @@
       ]
     },
     {
+      "id": "particle-format.integration.bone-map-anchor",
+      "name": "Independent map sprite at a bone point",
+      "stability": "experimental",
+      "requirement": "Call Critter.GetBoneMapAnchor in authored model units. Set one MapSpriteHolder's Hex, Offset and DepthOffset from the current critter hex and both outputs. DepthOffset is finite, defaults to 0, uses logical map pixels and preserves XY; positive values are nearer. Reattach after rebuild. Invalid/unavailable anchors return false with sprite offset/zero depth; off-map critters throw. Keep the old 2D methods.",
+      "rationale": "A bone point needs its posed physical depth; reconstructing it on the ground loses height. A cached model bitmap has a distinct submitted plane, so particles meeting the displayed model use GetBoneSpriteMapAnchor instead.",
+      "source": [
+        {
+          "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
+          "anchors": [
+            "Client_Critter_GetBoneMapAnchor",
+            "RequireHexCritter"
+          ]
+        },
+        {
+          "path": "Source/Client/MapSprite.h",
+          "anchors": [
+            "float32_t DepthOffset {};"
+          ]
+        },
+        {
+          "path": "Source/Scripting/ClientMapScriptMethods.cpp",
+          "anchors": [
+            "Map sprite depth offset must be finite",
+            "mspr->SetDepthOffset(mapSpr->DepthOffset)"
+          ]
+        },
+        {
+          "path": "Source/Client/MapSprite.cpp",
+          "anchors": [
+            "GetMapRootProjection",
+            "projection.z += _depthOffset"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.integration.bone-sprite-map-anchor",
+      "name": "Independent map sprite on the displayed model",
+      "stability": "experimental",
+      "requirement": "Call Critter.GetBoneSpriteMapAnchor in authored bone-local units. It uses the same bone pose as GetBoneMapAnchor and resolves the submitted bitmap point and plane for an atlas model or the physical bone point for a direct scene model. Apply the current hex, Offset and DepthOffset to one holder and reattach after movement/rebuild. Hidden, unavailable or invalid anchors return false with sprite offset/zero depth; off-map throws. GetBoneMapAnchor keeps physical depth in both render modes.",
+      "rationale": "An atlas model discards its physical per-pixel depth when copied to a bitmap. A physical bone depth can hide an independent particle behind its own displayed carrier.",
+      "source": [
+        {
+          "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
+          "anchors": [
+            "Client_Critter_GetBoneSpriteMapAnchor"
+          ]
+        },
+        {
+          "path": "Source/Client/SpriteManager.cpp",
+          "anchors": [
+            "GetMapSpritePointAnchor"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ClientEngine.cpp",
+          "anchors": [
+            "IndependentSpritesFollowTheSubmittedCarrierDepth"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.integration.item-map-anchor",
+      "name": "Independent map sprite on a visible item bitmap",
+      "stability": "experimental",
+      "requirement": "Call Item.GetSpriteMapAnchor for the exact visible copy's hex. localOffset uses logical sprite pixels relative to the draw root before rotation/projection. Set one MapSpriteHolder's Hex to that same hex and use both outputs as Offset and DepthOffset. Flat/standing planes, authored roots and rounded elevation follow the renderer. Valid out-of-view hexes, unavailable/empty/direct-scene sprites and invalid or unrepresentable results return false with zero outputs. Off-map items or invalid hexes throw before changing outputs. Pixel alpha and frontmost picking remain caller-owned.",
+      "rationale": "A separate holder needs the visible copy's transformed point and plane depth; origin-only offsets and ground depth cannot represent them.",
+      "source": [
+        {
+          "path": "Source/Scripting/ClientItemScriptMethods.cpp",
+          "anchors": [
+            "Client_Item_GetSpriteMapAnchor",
+            "GetVisibleMapSpriteAtHex"
+          ]
+        },
+        {
+          "path": "Source/Client/HexView.cpp",
+          "anchors": [
+            "HexView::GetVisibleMapSpriteAtHex"
+          ]
+        },
+        {
+          "path": "Source/Client/SpriteManager.cpp",
+          "anchors": [
+            "MakeMapSpriteTransform",
+            "SpriteManager::GetMapSpritePointAnchor",
+            "GetMapRootProjection"
+          ]
+        },
+        {
+          "path": "Source/Tests/Test_ClientEngine.cpp",
+          "anchors": [
+            "MapSpriteStandingPointAnchorOracle"
+          ]
+        }
+      ]
+    },
+    {
       "id": "particle-format.integration.project-boundary",
       "name": "Embedding-project ownership",
       "stability": "stable",
@@ -2723,7 +2976,7 @@
       "id": "particle-format.integration.critter-run-particle",
       "name": "Critter model particle",
       "stability": "experimental",
-      "requirement": "Critter.RunParticle creates a named particle on a model bone only in FO_ENABLE_3D builds; the export is a no-op otherwise.",
+      "requirement": "Critter.RunParticle requests a redraw and queues a named model-bone particle only in FO_ENABLE_3D builds; the export is a no-op otherwise. A valid full pose places each new system with Setup and Update(0), including callback-born systems before the current draw. Unposed attachment owners remain pending without drawing or expanding bounds; later pose deltas advance normally.",
       "rationale": "The script method depends on an active ModelInstance and is not a 2D critter-sprite fallback.",
       "source": [
         {
@@ -2732,6 +2985,37 @@
             "Client_Critter_RunParticle",
             "#if FO_ENABLE_3D",
             "model->RunParticle"
+          ]
+        },
+        {
+          "path": "Source/Client/ModelInstance.cpp",
+          "anchors": [
+            "void ModelInstance::RunParticle",
+            "void ModelInstance::InitializePendingParticles",
+            "void ModelInstance::UpdateModelParticle"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "particle-format.integration.critter-run-unlit-particle",
+      "name": "Unlit critter model particle",
+      "stability": "experimental",
+      "requirement": "Critter.RunUnlitParticle uses the same bone name, model-unit offset, first-pose placement and lifetime as RunParticle, selecting the ModelSprite unlit atlas overlay. The client and mapper export does nothing without a loaded model or FO_ENABLE_3D support, and throws off-map. Existing RunParticle and direct-scene playback retain their meanings.",
+      "rationale": "Scripts can explicitly choose emissive model-bone playback without moving the effect to an independent world sprite or changing the existing particle API.",
+      "source": [
+        {
+          "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
+          "anchors": [
+            "Client_Critter_RunUnlitParticle",
+            "model->RunUnlitParticle"
+          ]
+        },
+        {
+          "path": "Source/Client/ModelInstance.cpp",
+          "anchors": [
+            "void ModelInstance::RunUnlitParticle",
+            "StartParticle(particle_name, bone_name, move, true)"
           ]
         }
       ]
@@ -2887,22 +3171,22 @@
     }
   ],
   "summary": {
-    "entry_count": 113,
+    "entry_count": 122,
     "backend_count": 2,
     "format_count": 4,
     "graph_object_count": 37,
     "xml_rule_count": 12,
     "renderer_field_count": 19,
     "tooling_rule_count": 5,
-    "runtime_rule_count": 14,
-    "integration_rule_count": 6,
+    "runtime_rule_count": 19,
+    "integration_rule_count": 10,
     "validation_rule_count": 7,
     "stability_counts": {
       "deprecated": 1,
-      "experimental": 106,
+      "experimental": 115,
       "internal": 2,
       "stable": 4
     }
   },
-  "contract_digest": "79904fb9d0de9219cd484d56cf8d55888aba00a61172f1cb62ab44b1990bf44f"
+  "contract_digest": "5bf5536e10f8176f20b54f61037ade9cd6911f50fb688becdcd2b877daeb22fb"
 }

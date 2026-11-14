@@ -94,6 +94,15 @@ auto MapSprite::GetMapRootOffset() const noexcept -> ipos32
     return offset;
 }
 
+auto MapSprite::GetMapRootProjection() const -> vec3
+{
+    vec3 world {GeometryHelper::GetHexWorldPos(_hex, GetMapRootOffset(), numeric_cast<float32_t>(_elevation))};
+    vec3 projection {GeometryHelper::ProjectWorldToMap(world)};
+    projection.z += _depthOffset;
+
+    return projection;
+}
+
 auto MapSprite::GetSpriteRootOffset() const noexcept -> ipos32
 {
     auto spr {GetSprite()};
@@ -168,6 +177,11 @@ void MapSprite::SetHidden(bool hidden) noexcept
 void MapSprite::SetElevation(int16_t elevation) noexcept
 {
     _elevation = elevation;
+}
+
+void MapSprite::SetDepthOffset(float32_t depth_offset) noexcept
+{
+    _depthOffset = depth_offset;
 }
 
 void MapSprite::SetAngle(int16_t angle) noexcept
@@ -276,6 +290,7 @@ auto MapSpriteList::AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_off
     mspr->_eggStructure = false;
     mspr->_color = ucolor::clear;
     mspr->_elevation = 0;
+    mspr->_depthOffset = 0;
     mspr->_angle = 0;
     mspr->_mapProjected = false;
     mspr->_drawEffect = effect;

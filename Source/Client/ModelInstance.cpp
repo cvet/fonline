@@ -40,7 +40,7 @@ ModelInstance::ModelInstance(ptr<ModelManager> model_mngr, ptr<ModelInformation>
         joint_mask.assign(_worldMatrices.size(), 0);
     }
 
-    _forceDraw = true;
+    RequestRedraw();
     _lastDrawTime = GetTime();
     SetupFrame({4, 4}, {2, 2});
     _frameLayoutDirty = true;
@@ -58,6 +58,28 @@ ModelInstance::~ModelInstance()
 
     _children.clear();
     _modelParticles.clear();
+}
+
+auto ModelInstance::GetRoot() -> ptr<ModelInstance>
+{
+    ptr<ModelInstance> root {this};
+
+    while (root->_parent) {
+        root = root->_parent;
+    }
+
+    return root;
+}
+
+auto ModelInstance::GetRoot() const -> ptr<const ModelInstance>
+{
+    ptr<const ModelInstance> root {this};
+
+    while (root->_parent) {
+        root = root->_parent;
+    }
+
+    return root;
 }
 
 void ModelInstance::StartMeshGeneration()
@@ -80,6 +102,8 @@ void ModelInstance::PrewarmParticles()
         return;
     }
 
+    InvalidateSceneFrame();
+
     // Reset on the next animation advance, not here: a prepared model may wait off-screen, and feeding that wall
     // time to the emitters as one frame would expire the warmed distribution into a detached clump
     _resetDrawTimeOnNextAnimationAdvance = true;
@@ -91,12 +115,14 @@ void ModelInstance::PrewarmParticles()
 
 void ModelInstance::AddMoveOffset(ipos32 offset)
 {
+    InvalidateSceneFrame();
+
     vec3 pos_zero {Convert2dTo3d({0, 0})};
     vec3 pos {Convert2dTo3d(offset)};
     vec3 diff {pos - pos_zero};
 
     _moveOffset += diff;
-    _forceDraw = true;
+    RequestRedraw();
 }
 
 void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
@@ -308,6 +334,7 @@ void ModelInstance::SetLookDir(mdir dir)
 
     if (!_noRotate) {
         if (!is_float_equal(new_angle, _lookDirAngle)) {
+            InvalidateSceneFrame();
             _lookDirAngle = new_angle;
             RefreshMoveAnimation();
         }
@@ -322,6 +349,7 @@ void ModelInstance::SetMoveDir(mdir dir, bool smooth_rotation)
     float32_t new_angle {numeric_cast<float32_t>(180 - dir.angle())};
 
     if (!is_float_equal(new_angle, _targetMoveDirAngle) || (!smooth_rotation && !is_float_equal(new_angle, _moveDirAngle))) {
+        InvalidateSceneFrame();
         _targetMoveDirAngle = new_angle;
 
         if (!smooth_rotation) {
@@ -339,6 +367,8 @@ void ModelInstance::SetMoveDir(mdir dir, bool smooth_rotation)
 
 void ModelInstance::SetRotation(float32_t rx, float32_t ry, float32_t rz)
 {
+    InvalidateSceneFrame();
+
     mat44 mx {glm::rotate(mat44 {1.0f}, rx, vec3 {1.0f, 0.0f, 0.0f})};
     mat44 my {glm::rotate(mat44 {1.0f}, ry, vec3 {0.0f, 1.0f, 0.0f})};
     mat44 mz {glm::rotate(mat44 {1.0f}, rz, vec3 {0.0f, 0.0f, 1.0f})};
@@ -349,6 +379,8 @@ void ModelInstance::SetRotation(float32_t rx, float32_t ry, float32_t rz)
 
 void ModelInstance::SetScale(float32_t sx, float32_t sy, float32_t sz)
 {
+    InvalidateSceneFrame();
+
     _matScale = glm::scale(mat44 {1.0f}, vec3 {sx, sy, sz});
     RefreshFrameLayout();
 }
@@ -361,13 +393,15 @@ void ModelInstance::EnableShadow(bool enabled)
         return;
     }
 
+    InvalidateSceneFrame();
     _shadowDisabled = shadow_disabled;
     RefreshFrameLayout();
-    _forceDraw = true;
+    RequestRedraw();
 }
 
 void ModelInstance::SetSpeed(float32_t speed)
 {
+    InvalidateSceneFrame();
     _speedAdjustBase = speed;
 }
 
@@ -396,11 +430,52 @@ auto ModelInstance::FindPoseJoint(hstring bone_name) const noexcept -> optional<
     return std::nullopt;
 }
 
+auto ModelInstance::HasUnlitParticles() const -> bool
+{
+    for (const auto& model_particle : _modelParticles) {
+        if (model_particle.Unlit && model_particle.Initialized && model_particle.Particle->IsActive()) {
+            return true;
+        }
+    }
+
+    for (const auto& child : _children) {
+        if (child->HasUnlitParticles()) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 void ModelInstance::RunParticle(string_view particle_name, hstring bone_name, vec3 move)
 {
+    StartParticle(particle_name, bone_name, move, false);
+}
+
+void ModelInstance::RunUnlitParticle(string_view particle_name, hstring bone_name, vec3 move)
+{
+    StartParticle(particle_name, bone_name, move, true);
+}
+
+void ModelInstance::StartParticle(string_view particle_name, hstring bone_name, vec3 move, bool unlit)
+{
+    FO_TRACE_ZONE(Model);
+
     if (auto target_joint {FindPoseJoint(bone_name)}; target_joint) {
         if (optional<ParticleSystem> particle {_modelMngr->_particleMngr.CreateParticle(particle_name)}; particle) {
-            _modelParticles.emplace_back(ModelParticleSystem {0, safe_alloc::make_unique<ParticleSystem>(std::move(*particle)), target_joint->Owner, target_joint->JointIndex, move, _lookDirAngle, string(particle_name), bone_name});
+            _modelParticles.emplace_back(ModelParticleSystem {
+                .Id = 0,
+                .Particle = safe_alloc::make_unique<ParticleSystem>(std::move(*particle)),
+                .Owner = target_joint->Owner,
+                .JointIndex = target_joint->JointIndex,
+                .Move = move,
+                .Rot = _lookDirAngle,
+                .EffectName = string(particle_name),
+                .BoneName = bone_name,
+                .Unlit = unlit,
+            });
+
+            RequestRedraw();
         }
     }
 }
@@ -411,6 +486,8 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
 
     FO_VERIFY_AND_THROW(std::isfinite(ntime) && ntime >= 0.0f && ntime <= 1.0f, "Invalid normalized model animation time", ntime);
     FO_VERIFY_AND_THROW(std::isfinite(playback_speed) && playback_speed > 0.0f, "Invalid model playback speed", playback_speed);
+
+    InvalidateSceneFrame();
 
     auto prev_state_anim {_curStateAnim};
     auto prev_action_anim {_curActionAnim};
@@ -466,7 +543,7 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
         if (!is_float_equal(playback_speed, _playbackSpeed)) {
             _playbackSpeed = playback_speed;
             _speedAdjustCur = speed * playback_speed;
-            _forceDraw = true;
+            RequestRedraw();
 
             for (auto& child : _children) {
                 (void)child->PlayAnim(state_anim, action_anim, layers, ntime, flags, playback_speed);
@@ -568,7 +645,16 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
 
                             optional<ParticleSystem> particle {_modelMngr->_particleMngr.CreateParticle(link.ChildName)};
                             FO_VERIFY_AND_THROW(particle, "Particle was not found for a model link", link.ChildName);
-                            _modelParticles.emplace_back(ModelParticleSystem {link.Id, safe_alloc::make_unique<ParticleSystem>(std::move(*particle)), target_joint->Owner, target_joint->JointIndex, vec3(link.MoveX, link.MoveY, link.MoveZ), link.RotY, link.ChildName, link.LinkBone});
+                            _modelParticles.emplace_back(ModelParticleSystem {
+                                .Id = link.Id,
+                                .Particle = safe_alloc::make_unique<ParticleSystem>(std::move(*particle)),
+                                .Owner = target_joint->Owner,
+                                .JointIndex = target_joint->JointIndex,
+                                .Move = vec3 {link.MoveX, link.MoveY, link.MoveZ},
+                                .Rot = link.RotY,
+                                .EffectName = link.ChildName,
+                                .BoneName = link.LinkBone,
+                            });
                         }
 
                         keep_alive_particles.insert(link.Id);
@@ -705,8 +791,14 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
         _bodyAnimController->ResetEvents();
 
         bool no_smooth {is_enum_set(flags, ModelAnimFlags::NoSmooth) || is_enum_set(flags, ModelAnimFlags::Freeze) || is_enum_set(flags, ModelAnimFlags::Init)};
+        bool looping {!is_enum_set(flags, ModelAnimFlags::PlayOnce) && !is_enum_set(flags, ModelAnimFlags::Freeze) && !is_enum_set(flags, ModelAnimFlags::Init)};
         timespan smooth_time {no_smooth ? timespan::zero : _modelMngr->_moveTransitionTime};
-        timespan anim_start_time {std::min(ScaleModelAnimationTime(_animDuration, ntime), std::max(_animDuration - ANIMATION_END_EXCLUSION, timespan::zero))};
+        timespan anim_start_time {ScaleModelAnimationTime(_animDuration, ntime)};
+
+        if (looping) {
+            anim_start_time = std::min(anim_start_time, std::max(_animDuration - ANIMATION_END_EXCLUSION, timespan::zero));
+        }
+
         timespan anim_duration {is_enum_set(flags, ModelAnimFlags::Freeze) || is_enum_set(flags, ModelAnimFlags::Init) ? timespan::zero : _animDuration - anim_start_time};
 
         // Disable current track
@@ -725,10 +817,11 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
 
         _bodyAnimController->SetTrackEnable(new_track, true);
         _bodyAnimController->SetTrackAnimation(new_track, anim_index, nullptr);
+        _bodyAnimController->SetTrackLooping(new_track, looping);
         _bodyAnimController->SetTrackPosition(new_track, anim_start_time);
         _bodyAnimController->AddEventSpeed(new_track, 1.0f, {}, {});
 
-        if (is_enum_set(flags, ModelAnimFlags::PlayOnce) || is_enum_set(flags, ModelAnimFlags::Freeze) || is_enum_set(flags, ModelAnimFlags::Init)) {
+        if (!looping) {
             _bodyAnimController->AddEventSpeed(new_track, 0.0f, anim_duration, {});
         }
 
@@ -740,7 +833,7 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
         }
 
         // Force redraw
-        _forceDraw = true;
+        RequestRedraw();
     }
 
     // Set animation for children
@@ -768,6 +861,10 @@ void ModelInstance::SetMovementState(bool movement_enabled, bool moving, int32_t
 {
     FO_VERIFY_AND_THROW(moving_speed >= 0, "Invalid movement speed", moving_speed);
 
+    if (_movementEnabled != movement_enabled || _isMoving != (movement_enabled && moving) || _movingSpeed != moving_speed) {
+        InvalidateSceneFrame();
+    }
+
     _movementEnabled = movement_enabled;
     _isMoving = movement_enabled && moving;
 
@@ -779,7 +876,7 @@ void ModelInstance::SetMovementState(bool movement_enabled, bool moving, int32_t
             _moveAnimController->SetTrackEnable(0, false);
             _moveAnimController->SetTrackEnable(1, false);
             _curMovingAnimIndex = -1;
-            _forceDraw = true;
+            RequestRedraw();
         }
 
         _turnAnimPlaying = false;
@@ -792,6 +889,9 @@ void ModelInstance::SetMovementState(bool movement_enabled, bool moving, int32_t
 void ModelInstance::RefreshMoveAnimation()
 {
     FO_TRACE_ZONE(Model);
+
+    // Every input of the selection changes only through a nested refresh, so a newer request supersedes this one
+    uint32_t request {++_moveAnimationRequest};
 
     if (!_moveAnimController) {
         return;
@@ -816,29 +916,32 @@ void ModelInstance::RefreshMoveAnimation()
     auto state_anim {CritterStateAnim::None};
     auto action_anim {CritterActionAnim::None};
     auto context {CritterAnimationContext::Default};
+    bool moving_back {_isMovingBack};
+    bool turning {_turnAnimPlaying};
+    float32_t move_angle {_moveDirAngle};
+    float32_t target_angle {_targetMoveDirAngle};
 
     if (_isMoving) {
         context = GetMovingContext();
-        _isMovingBack = context == CritterAnimationContext::MovingBack;
-        _turnAnimPlaying = false;
+        moving_back = context == CritterAnimationContext::MovingBack;
+        turning = false;
     }
     else {
-        if (_isMovingBack) {
-            _moveDirAngle = _targetMoveDirAngle = _lookDirAngle;
+        if (moving_back) {
+            move_angle = target_angle = _lookDirAngle;
         }
 
         state_anim = _curStateAnim;
-        _isMovingBack = false;
+        moving_back = false;
 
-        float32_t angle_diff {GeometryHelper::GetDirAngleDiffSided(_targetMoveDirAngle, _lookDirAngle)};
+        float32_t angle_diff {GeometryHelper::GetDirAngleDiffSided(target_angle, _lookDirAngle)};
 
         if (std::abs(angle_diff) > _modelMngr->_settings->Render.CritterTurnAngle) {
-            _targetMoveDirAngle = _lookDirAngle;
-
+            target_angle = _lookDirAngle;
             context = angle_diff < 0.0f ? CritterAnimationContext::TurnRight : CritterAnimationContext::TurnLeft;
-            _turnAnimPlaying = true;
+            turning = true;
         }
-        else if (_turnAnimPlaying) {
+        else if (turning) {
             context = _movingContext;
         }
     }
@@ -851,12 +954,14 @@ void ModelInstance::RefreshMoveAnimation()
         _animInitCallback(context, _movingSpeed, state_anim, action_anim, flags, normalized_time, playback_speed);
     }
 
+    if (_moveAnimationRequest != request) {
+        return;
+    }
+
     FO_VERIFY_AND_THROW(std::isfinite(normalized_time) && normalized_time >= 0.0f && normalized_time <= 1.0f, "Invalid normalized movement animation time", normalized_time);
     FO_VERIFY_AND_THROW(std::isfinite(playback_speed) && playback_speed > 0.0f, "Invalid movement playback speed", playback_speed);
 
     bool context_changed {_movingContext != context};
-    _movingContext = context;
-
     float32_t speed {1.0f};
     int32_t anim_index {_modelInfo->GetAnimationIndex(state_anim, action_anim, &speed)};
 
@@ -868,8 +973,45 @@ void ModelInstance::RefreshMoveAnimation()
         speed = 0.0f;
     }
 
-    if (!context_changed && anim_index == _curMovingAnimIndex && flags == _movementFlags && is_float_equal(normalized_time, _movementNormalizedTime)) {
-        if (anim_index != -1 && !is_float_equal(_moveAnimController->GetTrackSpeed(_curMoveTrack), speed)) {
+    if (anim_index != -1) {
+        FO_VERIFY_AND_THROW(std::isfinite(speed), "Effective movement animation speed is not finite", speed);
+    }
+
+    bool same_selection {!context_changed && anim_index == _curMovingAnimIndex && flags == _movementFlags && is_float_equal(normalized_time, _movementNormalizedTime)};
+    bool retime {same_selection && anim_index != -1 && !is_float_equal(_moveAnimController->GetTrackSpeed(_curMoveTrack), speed)};
+    timespan smooth_time {frozen ? timespan::zero : MOVE_TRACK_TRANSITION_TIME};
+    timespan start_time {};
+    optional<timespan> completion_time {};
+
+    if (retime && turning && !frozen) {
+        timespan remaining {std::max(_moveAnimController->GetAnimDuration(anim_index) - _moveAnimController->GetTrackPosition(_curMoveTrack), timespan::zero)};
+        completion_time = ScaleModelAnimationTime(remaining, 1.0 / speed);
+    }
+    else if (!same_selection && anim_index != -1) {
+        timespan duration {_moveAnimController->GetAnimDuration(anim_index)};
+        start_time = ScaleModelAnimationTime(duration, normalized_time);
+
+        if (!frozen && !turning) {
+            start_time = std::min(start_time, std::max(duration - ANIMATION_END_EXCLUSION, timespan::zero));
+        }
+
+        if (turning && !frozen) {
+            completion_time = ScaleModelAnimationTime(duration - start_time, 1.0 / speed);
+        }
+    }
+
+    if (completion_time) {
+        FO_VERIFY_AND_THROW(*completion_time >= timespan::zero, "Movement animation completion time is negative", *completion_time);
+    }
+
+    _isMovingBack = moving_back;
+    _turnAnimPlaying = turning;
+    _moveDirAngle = move_angle;
+    _targetMoveDirAngle = target_angle;
+    _movingContext = context;
+
+    if (same_selection) {
+        if (retime) {
             // Retiming must not seek, and pending speed/completion events must not restore the previous selection
             _moveAnimController->ResetEvents();
 
@@ -881,12 +1023,11 @@ void ModelInstance::RefreshMoveAnimation()
             _moveAnimController->AddEventWeight(_curMoveTrack, 1.0f, {}, MOVE_TRACK_TRANSITION_TIME);
             _moveAnimController->SetTrackSpeed(_curMoveTrack, speed);
 
-            if (_turnAnimPlaying && !frozen) {
-                timespan remaining {std::max(_moveAnimController->GetAnimDuration(anim_index) - _moveAnimController->GetTrackPosition(_curMoveTrack), timespan::zero)};
-                _moveAnimController->AddEventEnable(_curMoveTrack, false, ScaleModelAnimationTime(remaining, 1.0 / speed));
+            if (completion_time) {
+                _moveAnimController->AddEventEnable(_curMoveTrack, false, *completion_time);
             }
 
-            _forceDraw = true;
+            RequestRedraw();
         }
 
         return;
@@ -896,9 +1037,7 @@ void ModelInstance::RefreshMoveAnimation()
     _movementNormalizedTime = normalized_time;
     _curMovingAnimIndex = anim_index;
     _frameLayoutDirty = true;
-    _forceDraw = true;
-
-    timespan smooth_time {frozen ? timespan::zero : MOVE_TRACK_TRANSITION_TIME};
+    RequestRedraw();
 
     if (anim_index != -1) {
         int32_t new_track {_curMoveTrack == 0 ? 1 : 0};
@@ -911,17 +1050,14 @@ void ModelInstance::RefreshMoveAnimation()
 
         _moveAnimController->SetTrackEnable(new_track, true);
         _moveAnimController->SetTrackAnimation(new_track, anim_index, &_modelMngr->_legBones);
-
-        timespan duration {_moveAnimController->GetAnimDuration(anim_index)};
-        timespan start_time {std::min(ScaleModelAnimationTime(duration, normalized_time), std::max(duration - ANIMATION_END_EXCLUSION, timespan::zero))};
-
+        _moveAnimController->SetTrackLooping(new_track, !frozen && !turning);
         _moveAnimController->SetTrackPosition(new_track, start_time);
 
         _moveAnimController->AddEventSpeed(new_track, speed, {}, smooth_time);
         _moveAnimController->AddEventWeight(new_track, 1.0f, {}, smooth_time);
 
-        if (_turnAnimPlaying && !frozen) {
-            _moveAnimController->AddEventEnable(new_track, false, ScaleModelAnimationTime(duration - start_time, 1.0 / speed));
+        if (completion_time) {
+            _moveAnimController->AddEventEnable(new_track, false, *completion_time);
         }
 
         _curMoveTrack = new_track;
@@ -1226,6 +1362,10 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
 
     auto include_particle_bounds {[&](ptr<const ModelInstance> model, const auto& recurse) -> bool {
         for (const auto& model_particle : model->_modelParticles) {
+            if (!model_particle.Initialized) {
+                continue;
+            }
+
             // A dormant system reserves nothing, or every model with an occasional effect would carry an inflated
             // frame; once it emits, the render's frame-expansion pass grows the frame to fit
             optional<ParticleBounds3D> live_bounds {model_particle.Particle->GetLiveBounds()};
@@ -1370,6 +1510,31 @@ auto ModelInstance::GetTime() const -> nanotime
     return _modelMngr->_gameTime->GetFrameTime();
 }
 
+auto ModelInstance::IsWorldPoseReady() const -> bool
+{
+    if (!_worldPoseReady) {
+        return false;
+    }
+
+    for (const auto& child : _children) {
+        if (!child->IsWorldPoseReady()) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+void ModelInstance::InvalidateSceneFrame() noexcept
+{
+    _scenePoseReady = false;
+    _scenePoseMutated = true;
+
+    if (_parent) {
+        _parent->InvalidateSceneFrame();
+    }
+}
+
 auto ModelInstance::GetPoseJointIndex(ptr<const ModelBone> bone) const -> uint32_t
 {
     auto it {_modelInfo->_poseBoneJointIndexes.find(bone)};
@@ -1452,6 +1617,7 @@ void ModelInstance::FillAnimationTrackInputs(nptr<const ModelAnimationController
         input.Reversed = state.Reversed;
         input.Position = state.Position.to_sec<float64_t>();
         input.Weight = state.Weight;
+        input.Looping = state.Looping;
     }
 }
 
@@ -1462,6 +1628,10 @@ void ModelInstance::ProcessAnimation(timespan elapsed, ipos32 pos, float32_t sca
     // Update world matrix, only for root
     if (!_parent) {
         _parentMatrix = MakeRootTransformation(pos, scale, _directSceneDraw);
+
+        // Direct poses omit the atlas pivot, supersample and camera tilt. Keep their conversion with the pose:
+        // _directSceneDraw is restored after drawing, while script callbacks can query the retained matrices later
+        _poseToSpriteFrame = _directSceneDraw ? MakeRootTransformation(pos, const_numeric_cast<float32_t>(FRAME_SCALE), false) * glm::inverse(_parentMatrix) : mat44 {1.0f};
         _groundPos = vec3 {_parentMatrix[3][0], _parentMatrix[3][1], _parentMatrix[3][2]};
     }
 
@@ -1477,6 +1647,7 @@ void ModelInstance::ProcessAnimation(timespan elapsed, ipos32 pos, float32_t sca
     // Advance animation time
     timespan prev_track_pos {};
     timespan new_track_pos {};
+    bool looping {true};
 
     if (_bodyAnimController && elapsed >= timespan::zero) {
         prev_track_pos = _bodyAnimController->GetTrackPosition(_curTrack);
@@ -1492,20 +1663,21 @@ void ModelInstance::ProcessAnimation(timespan elapsed, ipos32 pos, float32_t sca
             }
         }
 
-        new_track_pos = _bodyAnimController->GetTrackPosition(_curTrack);
+        ModelAnimationController::TrackState body_track {_bodyAnimController->GetTrackState(_curTrack)};
+        new_track_pos = body_track.Position;
+        looping = body_track.Looping;
 
         if (_animDuration > timespan::zero) {
-            _animPosProc = new_track_pos.div<float32_t>(_animDuration);
-
-            if (_animPosProc >= 1.0f) {
-                _animPosProc = std::fmod(_animPosProc, 1.0f);
-            }
-
             _animPosTime = new_track_pos;
 
-            if (_animPosTime >= _animDuration) {
+            if (looping && _animPosTime >= _animDuration) {
                 _animPosTime = timespan {_animPosTime.nanoseconds() % _animDuration.nanoseconds()};
             }
+            else if (!looping) {
+                _animPosTime = std::min(_animPosTime, _animDuration);
+            }
+
+            _animPosProc = _animPosTime.div<float32_t>(_animDuration);
         }
     }
 
@@ -1529,19 +1701,46 @@ void ModelInstance::ProcessAnimation(timespan elapsed, ipos32 pos, float32_t sca
 
     // Update linked matrices
     if (_parent && !_linkJoints.empty()) {
-        for (const ModelPoseJointLink& binding : _linkJoints) {
-            FO_STRONG_ASSERT(binding.ChildJointIndex < _worldMatrices.size(), "Linked model child joint index is outside its world-matrix snapshot", _modelInfo->_fileName, binding.ChildJointIndex, _worldMatrices.size());
-            const mat44& parent_world_matrix {_parent->GetWorldMatrix(binding.ParentJointIndex)};
+        size_t link_index {0};
 
-            if (_animationRuntimePose) {
-                _animationRuntimePose->OverrideWorldMatrix(binding.ChildJointIndex, parent_world_matrix);
-                _worldMatrices[binding.ChildJointIndex] = _animationRuntimePose->GetWorldMatrices()[binding.ChildJointIndex];
+        for (size_t joint_index {0}; joint_index < _worldMatrices.size(); joint_index++) {
+            mat44 world_matrix;
+
+            if (link_index < _linkJoints.size() && _linkJoints[link_index].ChildJointIndex == joint_index) {
+                world_matrix = _parent->GetWorldMatrix(_linkJoints[link_index].ParentJointIndex);
+                link_index++;
             }
             else {
-                _worldMatrices[binding.ChildJointIndex] = parent_world_matrix;
+                int32_t parent_index {_animationRuntimePose ? _modelInfo->_animationRuntimeRig->GetJointParentIndex(joint_index) : _modelInfo->_restPoseJoints[joint_index].ParentIndex};
+                const mat44& parent_matrix {parent_index >= 0 ? _worldMatrices[numeric_cast<size_t>(parent_index)] : _parentMatrix};
+                mat44 local_matrix;
+
+                if (_animationRuntimePose) {
+                    ModelAnimationRuntimeTransform local {_animationRuntimePose->GetFinalLocalTransform(joint_index)};
+                    local_matrix = glm::translate(mat44 {1.0f}, local.Translation) * glm::mat4_cast(local.Rotation) * glm::scale(mat44 {1.0f}, local.Scale);
+                }
+                else {
+                    local_matrix = _modelInfo->_restPoseJoints[joint_index].RestLocalTransform;
+
+                    if (auto angle {GetProceduralJointRotationAngle(numeric_cast<uint32_t>(joint_index))}; angle) {
+                        local_matrix = glm::rotate(mat44 {1.0f}, *angle, vec3 {1.0f, 0.0f, 0.0f}) * local_matrix;
+                    }
+                }
+
+                world_matrix = parent_matrix * local_matrix;
             }
+
+            if (_animationRuntimePose) {
+                _animationRuntimePose->OverrideWorldMatrix(joint_index, world_matrix);
+            }
+
+            _worldMatrices[joint_index] = world_matrix;
         }
+
+        FO_STRONG_ASSERT(link_index == _linkJoints.size(), "Linked model child joint index is outside its world-matrix snapshot", _modelInfo->_fileName, link_index, _linkJoints.size());
     }
+
+    _worldPoseReady = true;
 
     // Update world matrices for children
     for (size_t i {0}; i != _children.size(); ++i) {
@@ -1559,25 +1758,7 @@ void ModelInstance::ProcessAnimation(timespan elapsed, ipos32 pos, float32_t sca
     // Placed only after the whole hierarchy is posed: a child-joint effect left one pose behind is a harmless lag
     // while drawing, but makes the frame-sizing loop chase a stale box and never converge
     for (auto& model_particle : _modelParticles) {
-        const mat44& proj {_directSceneDraw ? _drawProj : _frameProj};
-        vec3 view_offset {_directSceneDraw ? vec3 {} : _moveOffset};
-
-        // The tilt always arrives through the transform inherited from the model, so re-applying it in the view
-        // matrix would double-tilt the effect and leave the frame-sizing loop chasing a growing box
-        bool tilt_in_proj {true};
-        FO_VERIFY_AND_THROW(model_particle.Owner, "Model particle has no pose owner", model_particle.Id);
-        const mat44& bone_world_matrix {model_particle.Owner->GetWorldMatrix(model_particle.JointIndex)};
-
-        if (model_particle.Id == 0) {
-            model_particle.Particle->Setup(proj, bone_world_matrix, model_particle.Move, model_particle.Rot, view_offset, tilt_in_proj);
-        }
-        else {
-            model_particle.Particle->Setup(proj, bone_world_matrix, model_particle.Move, model_particle.Rot + _lookDirAngle, view_offset, tilt_in_proj);
-        }
-
-        // Model-attached effects have no update loop of their own, so they advance on the pose's logical delta;
-        // frame-layout re-poses pass zero and never advance an effect twice
-        model_particle.Particle->Update(std::max(elapsed, timespan::zero));
+        UpdateModelParticle(model_particle, elapsed);
     }
 
     for (auto it {_modelParticles.begin()}; it != _modelParticles.end();) {
@@ -1597,12 +1778,55 @@ void ModelInstance::ProcessAnimation(timespan elapsed, ipos32 pos, float32_t sca
     if (_bodyAnimController && elapsed >= timespan::zero && _animDuration > timespan::zero) {
         for (auto& callback : _animationCallbacks) {
             if ((callback.StateAnim == CritterStateAnim::None || callback.StateAnim == _curStateAnim) && (callback.ActionAnim == CritterActionAnim::None || callback.ActionAnim == _curActionAnim)) {
-                if (IsModelAnimationCallbackReached(prev_track_pos, new_track_pos, _animDuration, callback.NormalizedTime)) {
+                if (IsModelAnimationCallbackReached(prev_track_pos, new_track_pos, _animDuration, callback.NormalizedTime, looping)) {
                     callback.Callback();
                 }
             }
         }
     }
+
+    // A callback may add particles anywhere in the posed hierarchy, after its ordinary update has finished
+    if (!_parent) {
+        InitializePendingParticles();
+    }
+}
+
+void ModelInstance::InitializePendingParticles()
+{
+    for (auto& model_particle : _modelParticles) {
+        if (!model_particle.Initialized) {
+            UpdateModelParticle(model_particle, timespan::zero);
+        }
+    }
+
+    for (auto& child : _children) {
+        child->InitializePendingParticles();
+    }
+}
+
+void ModelInstance::UpdateModelParticle(ModelParticleSystem& model_particle, timespan elapsed)
+{
+    FO_VERIFY_AND_THROW(model_particle.Owner, "Model particle has no pose owner", model_particle.Id);
+
+    // A callback can replace a child or the atlas layout; its next pose supplies the new attachment transform
+    if (!_worldPoseReady || !model_particle.Owner->_worldPoseReady) {
+        RequestRedraw();
+        return;
+    }
+
+    ptr<ModelInstance> root {GetRoot()};
+    const mat44& proj {root->_directSceneDraw ? root->_drawProj : root->_frameProj};
+    const mat44& bone_world_matrix {model_particle.Owner->GetWorldMatrix(model_particle.JointIndex)};
+    vec3 view_offset {root->_directSceneDraw ? vec3 {} : root->_moveOffset};
+    float32_t rotation {model_particle.Id == 0 ? model_particle.Rot : model_particle.Rot + _lookDirAngle};
+
+    // The bone transform already includes camera tilt; applying it again makes frame sizing chase a growing box
+    model_particle.Particle->Setup(proj, bone_world_matrix, model_particle.Move, rotation, view_offset, true);
+
+    // A newborn emits without inheriting time before its request; later atlas re-poses also keep a zero delta
+    timespan particle_elapsed {model_particle.Initialized ? std::max(elapsed, timespan::zero) : timespan::zero};
+    model_particle.Particle->Update(particle_elapsed);
+    model_particle.Initialized = true;
 }
 
 void ModelInstance::SnapshotAnimationWorldMatrices()
@@ -1677,6 +1901,11 @@ void ModelInstance::GenerateCombinedMeshes()
     if (!_allowMeshGeneration) {
         return;
     }
+
+    auto discard_failed_generation {scope_fail([this]() noexcept {
+        _allowMeshGeneration = false;
+        InvalidateCombinedMeshes();
+    })};
 
     // Clean up buffers
     for (size_t i {0}; i != _combinedMeshes.size(); ++i) {
@@ -2254,25 +2483,50 @@ void ModelInstance::SetupFrame(isize32 draw_size, ipos32 frame_pivot)
     FO_VERIFY_AND_THROW(draw_size.width > 0 && draw_size.width <= max_draw_width, "3D model frame width is out of range", _modelInfo->_fileName, draw_size.width, max_draw_width);
     FO_VERIFY_AND_THROW(draw_size.height > 0 && draw_size.height <= max_draw_height, "3D model frame height is out of range", _modelInfo->_fileName, draw_size.height, max_draw_height);
 
+    isize32 frame_size {draw_size.width * FRAME_SCALE, draw_size.height * FRAME_SCALE};
+
+    // Resolve each root against its own layout, because the committed projection remains authoritative on failure
+    auto unproject_frame_pos {[this](ipos32 pos, isize32 viewport_size, const mat44& frame_proj) -> vec3 {
+        const int32_t viewport[4] {0, 0, viewport_size.width, viewport_size.height};
+        float32_t xf {numeric_cast<float32_t>(pos.x) * const_numeric_cast<float32_t>(FRAME_SCALE)};
+        float32_t yf {numeric_cast<float32_t>(pos.y) * const_numeric_cast<float32_t>(FRAME_SCALE)};
+        vec3 out {};
+        mat44 identity {1.0f};
+
+        if (!UnprojectPoint(vec3 {xf, numeric_cast<float32_t>(viewport_size.height) - yf, 0.0f}, identity, frame_proj, viewport, out)) {
+            return {};
+        }
+
+        out.z = 0.0f;
+        return out;
+    }};
+
     optional<vec3> old_root_pos {};
 
     if (_frameSize.width > 0 && _frameSize.height > 0 && _frameSize.width % FRAME_SCALE == 0 && _frameSize.height % FRAME_SCALE == 0) {
-        old_root_pos = Convert2dTo3d(_framePivot);
+        old_root_pos = unproject_frame_pos(_framePivot, _frameSize, _frameProj);
+    }
+
+    // Projection
+    float32_t frame_ratio {numeric_cast<float32_t>(frame_size.width) / numeric_cast<float32_t>(frame_size.height)};
+    float32_t proj_height {numeric_cast<float32_t>(frame_size.height) * (1.0f / _modelMngr->_settings->Render.ModelProjFactor)};
+    float32_t proj_width {proj_height * frame_ratio};
+    mat44 frame_proj {_modelMngr->_render->CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f)};
+
+    vec3 new_root_pos {};
+
+    if (old_root_pos) {
+        new_root_pos = unproject_frame_pos(frame_pivot, frame_size, frame_proj);
     }
 
     _spriteBoundsPoseReady = false;
-    _frameSize.width = draw_size.width * FRAME_SCALE;
-    _frameSize.height = draw_size.height * FRAME_SCALE;
-
-    // Projection
-    float32_t frame_ratio {numeric_cast<float32_t>(_frameSize.width) / numeric_cast<float32_t>(_frameSize.height)};
-    float32_t proj_height {numeric_cast<float32_t>(_frameSize.height) * (1.0f / _modelMngr->_settings->Render.ModelProjFactor)};
-    float32_t proj_width {proj_height * frame_ratio};
-
-    _frameProj = _modelMngr->_render->CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
+    _worldPoseReady = false;
+    InvalidateSceneFrame();
+    _frameSize = frame_size;
+    _frameProj = frame_proj;
+    _framePivot = frame_pivot;
 
     if (old_root_pos) {
-        vec3 new_root_pos {Convert2dTo3d(frame_pivot)};
         vec3 rebase_delta {new_root_pos - *old_root_pos};
         auto rebase_particles {[&rebase_delta](ptr<ModelInstance> model, const auto& recurse) noexcept -> void {
             for (auto& model_particle : model->_modelParticles) {
@@ -2286,8 +2540,6 @@ void ModelInstance::SetupFrame(isize32 draw_size, ipos32 frame_pivot)
 
         rebase_particles(this, rebase_particles);
     }
-
-    _framePivot = frame_pivot;
 }
 
 void ModelInstance::PrepareFrameLayout()
@@ -2300,11 +2552,18 @@ void ModelInstance::PrepareFrameLayout()
 void ModelInstance::RequestRedraw() noexcept
 {
     _forceDraw = true;
+
+    for (nptr<ModelInstance> current {this}; current; current = current->_parent) {
+        current->_scenePoseReady = false;
+    }
 }
 
 void ModelInstance::RefreshFrameLayout()
 {
     FO_TRACE_ZONE(Model);
+
+    // Keep recovery pending through every fallible step, so ordinary PrepareFrameLayout can retry a failed layout
+    _frameLayoutDirty = true;
 
     mat44 post_direction_transform {_matTransBase * _matRot};
     mat44 pre_direction_transform {_matRotBase * _matScale * _matScaleBase};
@@ -2312,30 +2571,33 @@ void ModelInstance::RefreshFrameLayout()
     ModelBounds3D draw_bounds {CollectActiveAnimationBounds()};
     optional<ModelSpriteLayout> draw_layout {CalculateModelSpriteLayout(draw_bounds, post_direction_transform, pre_direction_transform, _modelMngr->_settings->Render.ModelProjFactor, !_shadowDisabled && !_modelInfo->_shadowDisabled, true, max_logical_frame)};
     FO_STRONG_ASSERT(draw_layout, "Model sprite layout could not be calculated", _modelInfo->_fileName, draw_bounds.Min.x, draw_bounds.Min.y, draw_bounds.Min.z, draw_bounds.Max.x, draw_bounds.Max.y, draw_bounds.Max.z);
-    _layoutDrawSize = draw_layout->DrawSize;
-    _drawRect = draw_layout->DrawRect;
+    isize32 layout_draw_size {draw_layout->DrawSize};
+    irect32 draw_rect {draw_layout->DrawRect};
 
     // Lighting uses the aggregate envelope, not the current clip. A zoom that misses the texture cap is cropped to
     // that cap rather than terminating, so what is left here is bounds the bake gate already rejects
     const ModelBounds3D& lighting_bounds {_modelInfo->_modelBounds};
     optional<ModelSpriteLayout> lighting_layout {CalculateModelSpriteLayout(lighting_bounds, post_direction_transform, pre_direction_transform, _modelMngr->_settings->Render.ModelProjFactor, false, true, max_logical_frame)};
     FO_STRONG_ASSERT(lighting_layout, "Model sprite lighting layout could not be calculated", _modelInfo->_fileName, lighting_bounds.Min.x, lighting_bounds.Min.y, lighting_bounds.Min.z, lighting_bounds.Max.x, lighting_bounds.Max.y, lighting_bounds.Max.z);
-    _lightingDrawSize = lighting_layout->DrawSize;
+    isize32 lighting_draw_size {lighting_layout->DrawSize};
 
     // Origin is the projected root inside the tight frame. A tight frame may legitimately lie entirely on one side of
     // that root, so the anchor stays signed; only a texture-cap crop pulls it back onto the smaller scratch RT
-    ipos32 frame_pivot {-_drawRect.x, -_drawRect.y};
+    ipos32 frame_pivot {-draw_rect.x, -draw_rect.y};
 
-    if (_layoutDrawSize.width < _drawRect.width || _layoutDrawSize.height < _drawRect.height) {
-        frame_pivot.x = std::clamp(frame_pivot.x, 0, _layoutDrawSize.width);
-        frame_pivot.y = std::clamp(frame_pivot.y, 0, _layoutDrawSize.height);
+    if (layout_draw_size.width < draw_rect.width || layout_draw_size.height < draw_rect.height) {
+        frame_pivot.x = std::clamp(frame_pivot.x, 0, layout_draw_size.width);
+        frame_pivot.y = std::clamp(frame_pivot.y, 0, layout_draw_size.height);
     }
 
-    if (_frameSize.width != _layoutDrawSize.width * FRAME_SCALE || _frameSize.height != _layoutDrawSize.height * FRAME_SCALE) {
-        SetupFrame(_layoutDrawSize, frame_pivot);
-        _forceDraw = true;
+    if (_frameSize.width != layout_draw_size.width * FRAME_SCALE || _frameSize.height != layout_draw_size.height * FRAME_SCALE) {
+        SetupFrame(layout_draw_size, frame_pivot);
+        RequestRedraw();
     }
 
+    _layoutDrawSize = layout_draw_size;
+    _drawRect = draw_rect;
+    _lightingDrawSize = lighting_draw_size;
     _framePivot = frame_pivot;
     _frameLayoutDirty = false;
 }
@@ -2472,6 +2734,8 @@ auto ModelInstance::NeedDraw() const -> bool
 
 void ModelInstance::PoseSpriteFrame(bool advance_animation)
 {
+    InvalidateSceneFrame();
+
     // GetSpriteBounds derives the extent from the posed skeleton and the baked particle box rather than from pixels,
     // so the atlas path sizes the frame from this pose and draws only once, at the final size
     _drawProj = _frameProj;
@@ -2485,9 +2749,61 @@ void ModelInstance::DrawSpriteFrame()
     DrawPosed(true);
 }
 
-void ModelInstance::DrawInScene(const mat44& proj, float32_t scale)
+void ModelInstance::DrawSpriteFrameLit()
+{
+    DrawPosed(false);
+    DrawParticles(false);
+}
+
+void ModelInstance::DrawUnlitParticles()
+{
+    DrawParticles(true);
+}
+
+auto ModelInstance::PrepareSceneFrame(float32_t scale) -> bool
 {
     FO_TRACE_ZONE(Model);
+
+    nanotime time {GetTime()};
+
+    if (_scenePoseReady && _scenePoseTime == time && _scenePoseScale == scale) {
+        return true;
+    }
+
+    _scenePoseReady = false;
+
+    _drawProj = _frameProj;
+    _directSceneDraw = true;
+    bool previous_manager_direct_scene {_modelMngr->_directSceneDraw};
+    _modelMngr->_directSceneDraw = true;
+    auto restore_direct_scene {scope_exit([this, previous_manager_direct_scene]() noexcept {
+        _directSceneDraw = false;
+        _modelMngr->_directSceneDraw = previous_manager_direct_scene;
+    })};
+
+    for (int32_t pass {0}; pass < 3; pass++) {
+        isize32 frame_size {_frameSize};
+        ipos32 frame_pivot {_framePivot};
+        _scenePoseMutated = false;
+        Pose(scale, pass == 0);
+
+        if (!_scenePoseMutated && IsWorldPoseReady() && _frameSize == frame_size && _framePivot == frame_pivot) {
+            _scenePoseReady = true;
+            break;
+        }
+    }
+
+    _scenePoseTime = time;
+    _scenePoseScale = scale;
+
+    return _scenePoseReady;
+}
+
+void ModelInstance::DrawPreparedInScene(const mat44& proj)
+{
+    FO_TRACE_ZONE(Model);
+
+    FO_VERIFY_AND_THROW(_scenePoseReady && _scenePoseTime == GetTime(), "Direct scene draw requires a current prepared pose");
 
     _drawProj = proj;
     _directSceneDraw = true;
@@ -2498,8 +2814,15 @@ void ModelInstance::DrawInScene(const mat44& proj, float32_t scale)
         _modelMngr->_directSceneDraw = previous_manager_direct_scene;
     })};
 
-    Pose(scale, true);
+    RefreshSceneParticleTransforms(proj);
     DrawPosed(true);
+}
+
+void ModelInstance::DrawInScene(const mat44& proj, float32_t scale)
+{
+    if (PrepareSceneFrame(scale)) {
+        DrawPreparedInScene(proj);
+    }
 }
 
 auto ModelInstance::GetMeshTexture(size_t mesh_index, size_t slot) const -> nptr<const MeshTexture>
@@ -2633,39 +2956,111 @@ void ModelInstance::DrawCombinedMesh(ptr<CombinedMesh> combined_mesh, bool shado
 
 void ModelInstance::DrawAllParticles()
 {
+    DrawParticles(std::nullopt);
+}
+
+void ModelInstance::DrawParticles(optional<bool> unlit)
+{
     for (auto& model_particle : _modelParticles) {
+        if (!model_particle.Initialized || (unlit.has_value() && model_particle.Unlit != unlit.value())) {
+            continue;
+        }
+
         model_particle.Particle->Draw();
     }
 
     for (size_t i {0}; i != _children.size(); ++i) {
-        _children[i]->DrawAllParticles();
+        _children[i]->DrawParticles(unlit);
     }
 }
 
-auto ModelInstance::GetBonePos(hstring bone_name) const -> optional<ipos32>
+void ModelInstance::RefreshSceneParticleTransforms(const mat44& proj)
 {
+    for (auto& model_particle : _modelParticles) {
+        if (!model_particle.Initialized) {
+            continue;
+        }
+
+        FO_VERIFY_AND_THROW(model_particle.Owner, "Model particle has no pose owner", model_particle.Id);
+
+        const mat44& world {model_particle.Owner->GetWorldMatrix(model_particle.JointIndex)};
+        float32_t rotation {model_particle.Id == 0 ? model_particle.Rot : model_particle.Rot + _lookDirAngle};
+
+        model_particle.Particle->Setup(proj, world, model_particle.Move, rotation, vec3 {}, true);
+        model_particle.Particle->RefreshRenderTransform();
+    }
+
+    for (auto it {_modelParticles.begin()}; it != _modelParticles.end();) {
+        if (it->Initialized && !it->Particle->IsActive()) {
+            it = _modelParticles.erase(it);
+        }
+        else {
+            ++it;
+        }
+    }
+
+    for (auto& child : _children) {
+        child->RefreshSceneParticleTransforms(proj);
+    }
+}
+
+auto ModelInstance::GetBonePos(hstring bone_name, vec3 local_offset) const -> optional<ipos32>
+{
+    return GetBonePos(bone_name, local_offset, nullptr);
+}
+
+auto ModelInstance::GetBonePos(hstring bone_name, vec3 local_offset, nptr<float32_t> view_depth) const -> optional<ipos32>
+{
+    if (view_depth) {
+        *view_depth = 0.0f;
+    }
+
+    if (!std::isfinite(local_offset.x) || !std::isfinite(local_offset.y) || !std::isfinite(local_offset.z)) {
+        return std::nullopt;
+    }
+
     auto binding {FindPoseJoint(bone_name)};
 
     if (!binding) {
         return std::nullopt;
     }
 
-    vec3 pos {};
-    quaternion rot {};
-    vec3 scale {};
-    vec3 skew {};
-    glm::vec<4, float32_t, glm::defaultp> perspective {};
     FO_VERIFY_AND_THROW(binding->Owner, "Resolved model pose joint has no owner", bone_name);
-    glm::decompose(binding->Owner->GetWorldMatrix(binding->JointIndex), scale, rot, pos, skew, perspective);
 
-    ipos32 p {Convert3dTo2d(pos)};
-    // Convert3dTo2d gives a sprite-space point measured from the bottom, so the origin's row from the bottom is
-    // (frame_height - pivot.y). The bone offset is taken relative to the exact origin pivot, not a fixed fraction
+    auto frame_pos {_poseToSpriteFrame * binding->Owner->GetWorldMatrix(binding->JointIndex) * glm::vec4 {local_offset, 1.0f}};
+    vec3 pos {frame_pos.x, frame_pos.y, frame_pos.z};
+
+    if (!std::isfinite(pos.x) || !std::isfinite(pos.y) || !std::isfinite(pos.z)) {
+        return std::nullopt;
+    }
+
+    const int32_t viewport[4] {0, 0, _frameSize.width, _frameSize.height};
+    vec3 screen_pos {};
+
+    if (!ProjectPoint(pos, mat44 {1.0f}, _frameProj, viewport, screen_pos) || !std::isfinite(screen_pos.x) || !std::isfinite(screen_pos.y)) {
+        return std::nullopt;
+    }
+
+    // Match Convert3dTo2d's rounding before applying the integer pivot, while rejecting unrepresentable points
     int32_t frame_height {_frameSize.height / FRAME_SCALE};
-    int32_t x {p.x - _framePivot.x};
-    int32_t y {-(p.y - (frame_height - _framePivot.y))};
+    float64_t x {std::round(numeric_cast<float64_t>(screen_pos.x / const_numeric_cast<float32_t>(FRAME_SCALE))) - _framePivot.x};
+    float64_t y {frame_height - _framePivot.y - std::round(numeric_cast<float64_t>(screen_pos.y / const_numeric_cast<float32_t>(FRAME_SCALE)))};
 
-    return ipos32 {x, y};
+    if (x < std::numeric_limits<int32_t>::min() || x > std::numeric_limits<int32_t>::max() || y < std::numeric_limits<int32_t>::min() || y > std::numeric_limits<int32_t>::max()) {
+        return std::nullopt;
+    }
+
+    if (view_depth) {
+        float32_t depth {pos.z * _modelMngr->_settings->Render.ModelProjFactor / const_numeric_cast<float32_t>(FRAME_SCALE)};
+
+        if (!std::isfinite(depth)) {
+            return std::nullopt;
+        }
+
+        *view_depth = depth;
+    }
+
+    return ipos32 {iround<int32_t>(x), iround<int32_t>(y)};
 }
 
 auto ModelInstance::GetBoneSpritePos(hstring bone_name) const -> optional<ipos32>

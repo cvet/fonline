@@ -294,6 +294,9 @@ void Property::SetMigrator(PropertyMigratorCallback migrator) const
 
 void Property::AddSetter(PropertySetCallback setter) const
 {
+    // The engine commits its own properties together with derived state, so scripts react after the store
+    FO_VERIFY_AND_THROW(!_isCoreProperty, "Engine property accepts post-setters only", GetName());
+
     _setters.emplace(_setters.begin(), std::move(setter));
 }
 

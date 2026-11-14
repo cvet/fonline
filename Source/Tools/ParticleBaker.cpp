@@ -864,8 +864,8 @@ private:
     ptr<EffekseerBoundsCollector> _collector;
 };
 
-// Simulated here so the runtime frames an emitting instance from a static box, as with the SPARK bounds,
-// instead of measuring live particles every frame
+// Simulated here to provide a reproducible baseline envelope, as with SPARK bounds.
+// Model attachments may extend that envelope with cached live-instance bounds at runtime
 static void SimulateEffekseerBounds(string_view source_path, string_view source_root_path, const_span<uint8_t> binary, vec3& out_min, vec3& out_max, float32_t& out_billboard_radius)
 {
     FO_TRACE_ZONE(Baking);
@@ -883,6 +883,10 @@ static void SimulateEffekseerBounds(string_view source_path, string_view source_
     setting->SetCoordinateSystem(Effekseer::CoordinateSystem::RH);
     setting->SetModelLoader(Effekseer::MakeRefPtr<EffekseerBoundsModelLoader>(string {source_root_path}, string {source_path}));
     manager->SetSetting(setting);
+
+    // A zero callback is a valid LCG seed, so bounds sampling repeats without touching process RNG; Play still
+    // prefers an authored nonnegative seed
+    manager->SetRandFunc([] { return 0; });
 
     ptr<EffekseerBoundsCollector> collector_ptr {&collector};
     manager->SetSpriteRenderer(Effekseer::MakeRefPtr<EffekseerBoundsRenderer<Effekseer::SpriteRenderer>>(collector_ptr));

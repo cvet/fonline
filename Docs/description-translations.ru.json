@@ -4458,6 +4458,10 @@
           "source_sha256": "6f67aa6a72ef704d2a5bd7632f405f976257b79fc6327f734906485f72a6a987",
           "translation": "Проверяет запрос игрока на перемещение; обработчики могут заменить `speed`, а `StopChain` отклоняет запрос."
         },
+        "/symbols/@id=script.event.server.Game.OnPlayerMovementAuthority/description": {
+          "source_sha256": "f78d9c7662aaff2db76c088597e10e1d7d09883d1321adbf470e1296225a496b",
+          "translation": "Проверяет право игрока на движение; начальное `allowed` истинно только для выбранного актора, а `StopChain` запрещает запрос."
+        },
         "/symbols/@id=script.event.server.Game.OnStart/description": {
           "source_sha256": "6aa15f6900756b0166069c613265e5686816c86a43467f82bb6230febd2bc86a",
           "translation": "Выполняется после создания или восстановления мира и до начала штатной работы сервера; `StopChain` прерывает запуск."
@@ -4534,9 +4538,21 @@
           "source_sha256": "dada7d239159b7ee7903bb7628c1a40981b814b774a2c10e25e0e1191e88be14",
           "translation": "Возвращает отображаемый угол тела 3D-модели в градусах при наличии модели, иначе угол дискретного направления криттера."
         },
+        "/symbols/@id=script.method.client.Critter.GetBoneMapAnchor/description": {
+          "source_sha256": "e51101959da5dc3f5830f79e14e22236b74b0a1d0ea1cd0f3221c1a06811dfff",
+          "translation": "Проецирует локальную точку кости в смещение спрайта карты и поправку только к глубине в логических пикселях. Возвращает false со смещением спрайта и нулевой глубиной для недоступного или некорректного якоря; выбрасывает исключение вне карты."
+        },
         "/symbols/@id=script.method.client.Critter.GetBonePos/description": {
           "source_sha256": "e18af78befbf522aebf558b8bed6c761563dc9c51d47d5edc9f9375741674a64",
           "translation": "Записывает экранную позицию именованной кости и возвращает true; возвращает false для 2D-криттера или отсутствующей кости и выбрасывает исключение, если поддержка 3D отключена."
+        },
+        "/symbols/@id=script.method.client.Critter.GetBonePosWithOffset/description": {
+          "source_sha256": "8b6368f9a9efc6461c19626a9449d2cb181d3946b049a2d753fd2c8db6d8071a",
+          "translation": "Проецирует локальную точку кости в авторских единицах модели в логические пиксели относительно спрайта; возвращает false при отсутствии модели/кости, некорректной или непредставимой точке, оставляя смещение спрайта; выбрасывает исключение вне карты."
+        },
+        "/symbols/@id=script.method.client.Critter.GetBoneSpriteMapAnchor/description": {
+          "source_sha256": "50e10661449c00d081b8cb2c80aa8e93468bb1a46c60666094e2f09cc64a279c",
+          "translation": "Проецирует локальную точку кости в XY держателя и глубину отображаемой модели в логических пикселях. Использует bitmap-плоскость atlas либо точку direct-сцены; скрытый или недоступный якорь даёт false, криттер вне карты вызывает исключение."
         },
         "/symbols/@id=script.method.client.Critter.GetItem%2320907df3571a66a9/description": {
           "source_sha256": "b7d8dfd569eb8e12b2ef27b17b8cd5bd00a9999078ce7f3a7e62bfb24e119123",
@@ -4641,6 +4657,10 @@
         "/symbols/@id=script.method.client.Critter.RunParticle/description": {
           "source_sha256": "f4c3c7c151a7c5a26e6e1b25b281988aa0d971d169ca8241483998e256e6a747",
           "translation": "Запускает именованную частицу на кости загруженной 3D-модели криттера с заданным смещением; ничего не делает для 2D или сборок без 3D и выбрасывает исключение вне карты."
+        },
+        "/symbols/@id=script.method.client.Critter.RunUnlitParticle/description": {
+          "source_sha256": "79f5960ae8ae242fd63fb7775d36f46f5176d8153cebe2265947cfb25feb95ea",
+          "translation": "Запускает неосвещаемую частицу на кости загруженной 3D-модели со смещениями и сроком жизни RunParticle; её слой атласа обходит освещение карты. Ничего не делает без модели или поддержки 3D и выбрасывает исключение вне карты"
         },
         "/symbols/@id=script.method.client.Critter.SetAlpha/description": {
           "source_sha256": "895c54b5a3ba7fd3ddf6ff7595442294bbc39e0e8d21c57fd474e44b39563359",
@@ -5330,6 +5350,10 @@
           "source_sha256": "db7b3665cff44b4cec354182c291fb1f5bb39ad1cbd75a2685e752236db0939e",
           "translation": "Внедряет событие перемещения касания с переданными идентификатором пальца, позицией и смещением."
         },
+        "/symbols/@id=script.method.client.Game.SimulateTouchScroll/description": {
+          "source_sha256": "925fc3bcc97a0e01e405d9023343a9b28dc43312b3f7a97e2b2201f6d0678518",
+          "translation": "Передаёт событие прокрутки касанием в заданной позиции клиента со знаковым смещением в пикселях"
+        },
         "/symbols/@id=script.method.client.Game.SimulateTouchTap/description": {
           "source_sha256": "2fe12632ec01d8c70f1f217244b53bb3992caacf53104e347bc7b655506fb1e1",
           "translation": "Внедряет событие короткого касания в заданной клиентской позиции."
@@ -5381,6 +5405,10 @@
         "/symbols/@id=script.method.client.Item.GetMapPos/description": {
           "source_sha256": "62fe94b1bb8c20978d1bd63c1e0c11aef117df87d6762fca7bb5b8a7c0d7d20c",
           "translation": "Определяет гекс предмета на карте по прямому владению картой, владеющему криттеру или рекурсивно через содержащие его предметы; выбрасывает исключение при некорректной карте или цепочке владения."
+        },
+        "/symbols/@id=script.method.client.Item.GetSpriteMapAnchor/description": {
+          "source_sha256": "f67da9552ac00c283129cd1c4552494602b21d3fb8bf304afb15af19f51aeaa7",
+          "translation": "Проецирует локальную точку спрайта относительно опоры отрисовки видимой копии в запрошенном гексе в смещение holder на карте и поправку к глубине. Возвращает false с нулевыми выходами, если гекс вне ограниченной области обзора либо копия или привязка недоступна; предмет вне карты или неверный гекс вызывает исключение."
         },
         "/symbols/@id=script.method.client.Item.GetSpriteOffset/description": {
           "source_sha256": "7cab4238c43f01415a6ac15bd12f77c116b3c37e51db7d2eaf4ed2e094c3bf07",
@@ -5455,8 +5483,8 @@
           "translation": "Рисует загруженную карту во время события RenderIface; при вызове вне этого обработчика рендера выбрасывает исключение."
         },
         "/symbols/@id=script.method.client.Map.DrawMapSprite/description": {
-          "source_sha256": "bb973ead3728041e1604a054507de96f3d105f06939ae57370046a020448f66c",
-          "translation": "Добавляет в отрисовку карты спрайт, заданный держателем, молча пропуская некорректные, внеэкранные или неразрешенные спрайты и применяя правила рендера указанного прототипа предмета, если он задан."
+          "source_sha256": "bafcf6047541b77c4c7b5cacc0306c0d9608ce4d16fa8f192dcbc2dd26c43c7e",
+          "translation": "Добавляет определённый holder спрайт в отрисовку карты, применяя правила отображения прототипа предмета при его наличии. Отклоняет неконечный DepthOffset до обработки holder; иначе пропускает некорректный, невидимый или неразрешённый спрайт."
         },
         "/symbols/@id=script.method.client.Map.GetCritter/description": {
           "source_sha256": "92fc36c66b646342fa432031066462e6bf0df158dbfb56ef422c2fafc96e6aff",
@@ -5594,6 +5622,10 @@
           "source_sha256": "405236e72866f39de76e9df74279e73d7e1f02bf1b494b0e7f924f1fe6a41224",
           "translation": "Возвращает все гексы карты, которые это представление сейчас выбирает для отрисовки."
         },
+        "/symbols/@id=script.method.client.Map.GetVisibleItemOnHex/description": {
+          "source_sha256": "1a8f07fbb8bc65cd866d13eadd18348d524c789efad4f0382d95f7aa735ff488",
+          "translation": "Возвращает предмет с заданным ненулевым runtime ID, если в запрошенном гексе внутри области обзора есть его видимая запись отрисовки; иначе null. Нулевой ID или неверный гекс вызывает исключение."
+        },
         "/symbols/@id=script.method.client.Map.GetVisibleLayers/description": {
           "source_sha256": "736f71b53bbf0b66e5fe692549decded5cb111a877ffca9964ea878c17880007",
           "translation": "Возвращает набор слоёв, видимых в текущем представлении карты."
@@ -5625,6 +5657,14 @@
         "/symbols/@id=script.method.client.Map.IsScrollCheck/description": {
           "source_sha256": "7e50fccf6338d4bc8976bdd4b1489b8662c8da42795433c2757b0fe0e6b4e467",
           "translation": "Возвращает текущее значение флага проверки прокрутки представления карты."
+        },
+        "/symbols/@id=script.method.client.Map.LoadRuntimeStaticItems%230971edd694992850/description": {
+          "source_sha256": "74bf8007d1c46e1800c3d58588eefef0b0e439427aef63aef9970c795076ce29",
+          "translation": "Загрузить статические предметы области прототипа карты из её клиентской выпечки как статические предметы времени выполнения так, чтобы первый гекс области попал в `destHex`, с запечёнными идентификаторами плюс `idOffset`, и вернуть их идентификаторы"
+        },
+        "/symbols/@id=script.method.client.Map.LoadRuntimeStaticItems%237af3f0c56f49e919/description": {
+          "source_sha256": "cdefc1d21ff4c438707cb9b0766caf07968afb34cacfc6065243948cfb719eb1",
+          "translation": "Загрузить статические предметы клиентской выпечки прототипа карты как статические предметы времени выполнения так, чтобы её первый гекс попал в `destHex`, с запечёнными идентификаторами плюс `idOffset`, и вернуть их идентификаторы"
         },
         "/symbols/@id=script.method.client.Map.MoveHexByDir%2362392271e1b42030/description": {
           "source_sha256": "bf3d396b2e51d1c84def1baf9d12d10a071a67c92d7d35912b4e8db9ebb83df5",
@@ -5685,6 +5725,10 @@
         "/symbols/@id=script.method.client.Map.SetVisibleLayers/description": {
           "source_sha256": "21d4d1661087088874996cfaf76755294c917eb128ba371abfaf39c2a52ead51",
           "translation": "Заменяет набор слоёв, видимых в текущем представлении карты."
+        },
+        "/symbols/@id=script.method.client.Map.UnloadRuntimeStaticItems/description": {
+          "source_sha256": "20d4c22d77c7c152de0b91cb6410121adc9fb054c6a429a71148238734e66a1c",
+          "translation": "Удалить статические предметы времени выполнения, добавленные в представление карты через `LoadRuntimeStaticItems`, и освободить оставшиеся пустыми блоки полей"
         },
         "/symbols/@id=script.method.common.Game.AndroidBuild/description": {
           "source_sha256": "3db581a240a4a9044c0bb2836762ab57eb407acf4e1286399c233ca10e68e14f",
@@ -8018,6 +8062,10 @@
           "source_sha256": "e5076c27b251772e0615f185bcbcae09812d64810bf477fd9f7ad7f8ca34500e",
           "translation": "Возвращает, покрыта ли сущность, не выводя диагностику"
         },
+        "/symbols/@id=script.method.server.Game.IsStaticMapLoaded/description": {
+          "source_sha256": "2a0c98334e5eef32635c4198c60bfe72156c02892b4e89807aecec9ba0150eca",
+          "translation": "Вернуть, кэшировано ли запечённое содержимое прототипа карты"
+        },
         "/symbols/@id=script.method.server.Game.IsTextPresent/description": {
           "source_sha256": "f1fedeac2de1487c3f34053b682cb71d83e7fe2708521dedda248485311c79c1",
           "translation": "Возвращает, содержит ли языковой пакет указанный текстовый ключ"
@@ -8029,6 +8077,14 @@
         "/symbols/@id=script.method.server.Game.LoadCritter%23f50433829d33781c/description": {
           "source_sha256": "786aa674b51cbd23d87c43167327ff22b414f42741794f1956c09a9a0b228949",
           "translation": "Загружает сохранённого криттера на карту"
+        },
+        "/symbols/@id=script.method.server.Game.LoadStaticMap/description": {
+          "source_sha256": "3a361908396a2839a54c8d58bbd24f94f499d09c9a5ebe35e9168f3e5804bfb5",
+          "translation": "Прочитать запечённое содержимое прототипа карты в кэш сейчас или в рабочем потоке; запрос до конца этого чтения ждёт его"
+        },
+        "/symbols/@id=script.method.server.Game.LoadStaticMaps/description": {
+          "source_sha256": "939de09b3a046d2dafe1799af0bf780ce4e47bee720b3670b091ee561d2a3c64",
+          "translation": "Прочитать запечённое содержимое прототипов карт в кэш сейчас или в рабочих потоках; запрос одного из них ждёт его чтения"
         },
         "/symbols/@id=script.method.server.Game.Lock/description": {
           "source_sha256": "c1329133078c99ddc79ab91b337b8fbf23fe8aaef43c5355b8ba47ba0126171d",
@@ -8117,6 +8173,10 @@
         "/symbols/@id=script.method.server.Game.UnloadCritter/description": {
           "source_sha256": "53787ac96144222c11507313f85a26f3f4217c318d496983fe1723a0bcff7c5c",
           "translation": "Выгружает криттера из симуляции"
+        },
+        "/symbols/@id=script.method.server.Game.UnloadStaticMap/description": {
+          "source_sha256": "356c0f0b3fc7a0650e10952431c82171d9a0ab9d01f53ec530418ed118fbe052",
+          "translation": "Освободить кэшированное запечённое содержимое прототипа карты и вернуть, выгружено ли оно; оно остаётся, пока читается или используется картой"
         },
         "/symbols/@id=script.method.server.Game.Unlock/description": {
           "source_sha256": "e3cbd4106541d43aab4ca5a88215cecb0c8c561bd45f3b8d54ca3c557c35a519",
@@ -8261,6 +8321,10 @@
         "/symbols/@id=script.method.server.Map.FindReachableHexes/description": {
           "source_sha256": "0b0db970ebc95869d95fcc034ed9b018c72cb0c8977ab74164ba95b30658df4d",
           "translation": "Определяет, какие целевые гексы достижимы от начального в пределах заданной максимальной длины пути."
+        },
+        "/symbols/@id=script.method.server.Map.GenerateContent/description": {
+          "source_sha256": "182ba1bf365dcd142d22952cde840d9eac542f05ca939862dd40049d671d3b20",
+          "translation": "Создать криттеров и динамические предметы прототипа карты так, чтобы её первый гекс попал в `destHex`, и вернуть идентификаторы созданных криттеров и предметов карты"
         },
         "/symbols/@id=script.method.server.Map.GetCritter%23beaf90ce99481bb9/description": {
           "source_sha256": "c350318c415ad7051e0f6f8ddd6bf654bb9e176d35b0a99e6a86fbcd454af629",
@@ -8486,6 +8550,14 @@
           "source_sha256": "f4921eec8d478d08784c2d2e5f09c0505877f063dc64a42d9d2267496422625e",
           "translation": "Возвращает, находится ли допустимый гекс карты вне крытой области"
         },
+        "/symbols/@id=script.method.server.Map.LoadRuntimeStaticItems%230971edd694992850/description": {
+          "source_sha256": "8aa96ba2c5245e828d249939e326fed372c1bd399d01616bfed930f96744ef46",
+          "translation": "Загрузить статические предметы области прототипа карты как статические предметы времени выполнения так, чтобы первый гекс области попал в `destHex`, с запечёнными идентификаторами плюс `idOffset`, и вернуть их идентификаторы"
+        },
+        "/symbols/@id=script.method.server.Map.LoadRuntimeStaticItems%237af3f0c56f49e919/description": {
+          "source_sha256": "4b2a8fdca3fa15d9beae675ab7f368a95d5f91d388f4e6515d4c922e01536d8f",
+          "translation": "Загрузить статические предметы прототипа карты как статические предметы времени выполнения так, чтобы её первый гекс попал в `destHex`, с запечёнными идентификаторами плюс `idOffset`, и вернуть их идентификаторы"
+        },
         "/symbols/@id=script.method.server.Map.MoveHexByDir%2362392271e1b42030/description": {
           "source_sha256": "8f148627cc8ea229579824c17ddf24640a19796d3dcf57dec19deff562d8184d",
           "translation": "Сдвигает гекс на один шаг в направлении с учётом границ карты и возвращает, сдвинулся ли он"
@@ -8517,6 +8589,10 @@
         "/symbols/@id=script.method.server.Map.UnblockHex/description": {
           "source_sha256": "165a5021fe48753a5c87f52c6afd59beda2e55aeb1a93205106fcb2083846bea",
           "translation": "Снимает ручную блокировку допустимого гекса карты"
+        },
+        "/symbols/@id=script.method.server.Map.UnloadRuntimeStaticItems/description": {
+          "source_sha256": "621ddfb90e2ab8cd8dd2c547a0fcae48a47f5f5df66423b829aef204baf8a93d",
+          "translation": "Удалить статические предметы времени выполнения, добавленные в карту через `LoadRuntimeStaticItems`"
         },
         "/symbols/@id=script.method.server.Map.VerifyTrigger/description": {
           "source_sha256": "6ca3c0b3e99248cf5d48d176d8adf2918ac9c81843772643c63449659bc4b713",
@@ -9197,6 +9273,10 @@
         "/symbols/@id=script.ref-field.client.MapSpriteHolder.Corner/description": {
           "source_sha256": "cc038ff07d6f2c398acfda60b034260a9cd4965a94d098d5b16d39e4891d3c1a",
           "translation": "Заданная вручную классификация угла для освещения и egg-эффекта, когда ProtoId пуст."
+        },
+        "/symbols/@id=script.ref-field.client.MapSpriteHolder.DepthOffset/description": {
+          "source_sha256": "4022b30f0a60c31fab117ccb55826d0b29ec18979890d420e213251cb22f5c34",
+          "translation": "Поправка к глубине вида в логических пикселях карты, копируемая при прикреплении; положительное значение приближает, по умолчанию 0."
         },
         "/symbols/@id=script.ref-field.client.MapSpriteHolder.DisableEgg/description": {
           "source_sha256": "f9b23f0e2174d2a91b066adb472855746d337bd3080bf20d2eeeb1c610500f9c",
@@ -10170,6 +10250,10 @@
           "source_sha256": "436ee2776ffc7d3214d7e8c18beab0c492386c5ca87908c52830efa9b1b64780",
           "translation": "Если true, выделенный фоновый поток записывает сообщения лога в файл и консоль"
         },
+        "/symbols/@id=setting.common.Common.CachePath/description": {
+          "source_sha256": "1143f80ae15a2e775c416766d73a40ac6bde20c9950de5065a48a61efcd08fc4",
+          "translation": "Каталог кэша"
+        },
         "/symbols/@id=setting.common.Common.GameName/description": {
           "source_sha256": "75a486c1d1e7dba9804fc9503a233d738fd39a69d7db1a239d4d6b3b78b1c0f0",
           "translation": "Имя игры, используемое в логах и заголовке окна"
@@ -10185,6 +10269,14 @@
         "/symbols/@id=setting.common.Common.Packaged/description": {
           "source_sha256": "ce8c99725bab653a35c82f3c3fc3c6a5ea92b9cd34d1c0cdc9a3312b4559d2d3",
           "translation": "Если yes, упаковка выполнена (только чтение)"
+        },
+        "/symbols/@id=setting.common.Common.PlatformBinariesPath/description": {
+          "source_sha256": "f6c416bd17d29f1a813c4eae79e270cccb6d9f9030937919e9fc15f3cb63f4fb",
+          "translation": "Каталог клиентских runtime binaries по платформам, раздаваемых updater"
+        },
+        "/symbols/@id=setting.common.Common.ResourcesPath/description": {
+          "source_sha256": "ac191455e235e9d8922aa87d48485d267c19696be5d620947888efbf03622eb7",
+          "translation": "Каталог ресурсов приложения; клиентская раздача сервера находится в его дочернем Client"
         },
         "/symbols/@id=setting.common.Common.SecretSettingTokens/description": {
           "source_sha256": "ca17dee98cb802f600af5284a3246be7593fd24b68225b87aba3097859a3f4d9",
@@ -10933,66 +11025,6 @@
         "/symbols/@id=setting.server.ServerNetwork.WssPrivateKey/description": {
           "source_sha256": "db82685ecf12b80c08ba089ca50bdded3ee37cf20534d42acd149600a028fbaa",
           "translation": "Закрытый ключ защищенного WebSocket"
-        },
-        "/symbols/@id=script.method.client.Game.SimulateTouchScroll/description": {
-          "source_sha256": "925fc3bcc97a0e01e405d9023343a9b28dc43312b3f7a97e2b2201f6d0678518",
-          "translation": "Передаёт событие прокрутки касанием в заданной позиции клиента со знаковым смещением в пикселях"
-        },
-        "/symbols/@id=setting.common.Common.CachePath/description": {
-          "source_sha256": "1143f80ae15a2e775c416766d73a40ac6bde20c9950de5065a48a61efcd08fc4",
-          "translation": "Каталог кэша"
-        },
-        "/symbols/@id=setting.common.Common.PlatformBinariesPath/description": {
-          "source_sha256": "f6c416bd17d29f1a813c4eae79e270cccb6d9f9030937919e9fc15f3cb63f4fb",
-          "translation": "Каталог клиентских runtime binaries по платформам, раздаваемых updater"
-        },
-        "/symbols/@id=setting.common.Common.ResourcesPath/description": {
-          "source_sha256": "ac191455e235e9d8922aa87d48485d267c19696be5d620947888efbf03622eb7",
-          "translation": "Каталог ресурсов приложения; клиентская раздача сервера находится в его дочернем Client"
-        },
-        "/symbols/@id=script.method.client.Map.LoadRuntimeStaticItems%230971edd694992850/description": {
-          "source_sha256": "74bf8007d1c46e1800c3d58588eefef0b0e439427aef63aef9970c795076ce29",
-          "translation": "Загрузить статические предметы области прототипа карты из её клиентской выпечки как статические предметы времени выполнения так, чтобы первый гекс области попал в `destHex`, с запечёнными идентификаторами плюс `idOffset`, и вернуть их идентификаторы"
-        },
-        "/symbols/@id=script.method.client.Map.LoadRuntimeStaticItems%237af3f0c56f49e919/description": {
-          "source_sha256": "cdefc1d21ff4c438707cb9b0766caf07968afb34cacfc6065243948cfb719eb1",
-          "translation": "Загрузить статические предметы клиентской выпечки прототипа карты как статические предметы времени выполнения так, чтобы её первый гекс попал в `destHex`, с запечёнными идентификаторами плюс `idOffset`, и вернуть их идентификаторы"
-        },
-        "/symbols/@id=script.method.client.Map.UnloadRuntimeStaticItems/description": {
-          "source_sha256": "20d4c22d77c7c152de0b91cb6410121adc9fb054c6a429a71148238734e66a1c",
-          "translation": "Удалить статические предметы времени выполнения, добавленные в представление карты через `LoadRuntimeStaticItems`, и освободить оставшиеся пустыми блоки полей"
-        },
-        "/symbols/@id=script.method.server.Game.IsStaticMapLoaded/description": {
-          "source_sha256": "2a0c98334e5eef32635c4198c60bfe72156c02892b4e89807aecec9ba0150eca",
-          "translation": "Вернуть, кэшировано ли запечённое содержимое прототипа карты"
-        },
-        "/symbols/@id=script.method.server.Game.LoadStaticMap/description": {
-          "source_sha256": "3a361908396a2839a54c8d58bbd24f94f499d09c9a5ebe35e9168f3e5804bfb5",
-          "translation": "Прочитать запечённое содержимое прототипа карты в кэш сейчас или в рабочем потоке; запрос до конца этого чтения ждёт его"
-        },
-        "/symbols/@id=script.method.server.Game.LoadStaticMaps/description": {
-          "source_sha256": "939de09b3a046d2dafe1799af0bf780ce4e47bee720b3670b091ee561d2a3c64",
-          "translation": "Прочитать запечённое содержимое прототипов карт в кэш сейчас или в рабочих потоках; запрос одного из них ждёт его чтения"
-        },
-        "/symbols/@id=script.method.server.Game.UnloadStaticMap/description": {
-          "source_sha256": "356c0f0b3fc7a0650e10952431c82171d9a0ab9d01f53ec530418ed118fbe052",
-          "translation": "Освободить кэшированное запечённое содержимое прототипа карты и вернуть, выгружено ли оно; оно остаётся, пока читается или используется картой"
-        },
-        "/symbols/@id=script.method.server.Map.GenerateContent/description": {
-          "source_sha256": "182ba1bf365dcd142d22952cde840d9eac542f05ca939862dd40049d671d3b20",
-          "translation": "Создать криттеров и динамические предметы прототипа карты так, чтобы её первый гекс попал в `destHex`, и вернуть идентификаторы созданных криттеров и предметов карты"
-        },
-        "/symbols/@id=script.method.server.Map.LoadRuntimeStaticItems%230971edd694992850/description": {
-          "source_sha256": "8aa96ba2c5245e828d249939e326fed372c1bd399d01616bfed930f96744ef46",
-          "translation": "Загрузить статические предметы области прототипа карты как статические предметы времени выполнения так, чтобы первый гекс области попал в `destHex`, с запечёнными идентификаторами плюс `idOffset`, и вернуть их идентификаторы"
-        },
-        "/symbols/@id=script.method.server.Map.LoadRuntimeStaticItems%237af3f0c56f49e919/description": {
-          "source_sha256": "4b2a8fdca3fa15d9beae675ab7f368a95d5f91d388f4e6515d4c922e01536d8f",
-          "translation": "Загрузить статические предметы прототипа карты как статические предметы времени выполнения так, чтобы её первый гекс попал в `destHex`, с запечёнными идентификаторами плюс `idOffset`, и вернуть их идентификаторы"
-        },
-        "/symbols/@id=script.method.server.Map.UnloadRuntimeStaticItems/description": {
-          "source_sha256": "621ddfb90e2ab8cd8dd2c547a0fcae48a47f5f5df66423b829aef204baf8a93d",
-          "translation": "Удалить статические предметы времени выполнения, добавленные в карту через `LoadRuntimeStaticItems`"
         }
       }
     },
@@ -15976,6 +16008,18 @@
           "source_sha256": "8f3577c8290270029dd8ed1002cab4f580134d2c1d8acc2458d0fd30a04f53d1",
           "translation": "Каждый non-particle child link содержит проверенный aggregate root-space AABB и per-animation AABB mapped clips parent; default и particle links не содержат geometry payload."
         },
+        "/rules/@id=model-format.rule.bone-point-depth/name": {
+          "source_sha256": "c2b0601198408ee7e02255f6d66762a0171fc4fb3c24c6119331e171f441ab66",
+          "translation": "Проекция локальной точки кости"
+        },
+        "/rules/@id=model-format.rule.bone-point-depth/rationale": {
+          "source_sha256": "0cda7701653a2bbc9b0fe0a890b666757a0e23282f601ee79f8870efc1658d93",
+          "translation": "Экранные XY не различают глубины вдоль луча камеры."
+        },
+        "/rules/@id=model-format.rule.bone-point-depth/requirement": {
+          "source_sha256": "ffb7dcdaec6ec8e4f625f71096e484311c66dce868fd3d0f88c9215401750f48",
+          "translation": "Перегрузка ModelInstance.GetBonePos с глубиной проецирует авторские единицы модели в целочисленные пиксели относительно спрайта и логическую глубину вида из одной позы, независимо от pivot и масштаба прямого рендеринга. Сохраняйте 2D-результат метода с двумя аргументами; некорректная точка не имеет позиции и обнуляет запрошенную глубину."
+        },
         "/rules/@id=model-format.rule.first-animation-wins/name": {
           "source_sha256": "2b12d8e38b381cab1614f933ecfb4cb2dc0c323a7cd9a98adf03fb4d04eb2abe",
           "translation": "Побеждает первая animation mapping"
@@ -16912,6 +16956,30 @@
           "source_sha256": "734ab1ad61c0c614cdcf7b72bceec3cdbb567a2da3f397a4412f76653d80376c",
           "translation": "Основанный на исходном коде контракт авторинга, запекания, runtime, отрисовки, инструментов и интеграции частиц SPARK и Effekseer в FOnline."
         },
+        "/integration_rules/@id=particle-format.integration.bone-map-anchor/name": {
+          "source_sha256": "e8222f0f359e5d50a6bdb50ef7ca8dbdf3423b3693d1843875003f7f6b28c8b8",
+          "translation": "Независимый спрайт карты в точке кости"
+        },
+        "/integration_rules/@id=particle-format.integration.bone-map-anchor/rationale": {
+          "source_sha256": "5c0b46bd1799b6c43252283757929a7e603ee972c48316070e2e123c6ca8c9d3",
+          "translation": "Точке кости нужна физическая глубина её позы; восстановление на плоскости земли теряет высоту. У кэшированного изображения модели отдельная нарисованная плоскость, поэтому для частиц на отображаемой модели используется GetBoneSpriteMapAnchor."
+        },
+        "/integration_rules/@id=particle-format.integration.bone-map-anchor/requirement": {
+          "source_sha256": "5ffca7dd1a9a1f17c37b89893a6f8469c12f1cc4b47500184baecef543f8455c",
+          "translation": "Вызывайте Critter.GetBoneMapAnchor в авторских единицах модели. Задавайте Hex, Offset и DepthOffset одного MapSpriteHolder из текущего гекса криттера и обоих выходов. DepthOffset конечен, по умолчанию равен 0, измеряется в логических пикселях карты, сохраняет XY и приближает при положительном значении. Заново прикрепляйте после перестроения карты. Некорректный/недоступный якорь даёт false со смещением спрайта и нулевой глубиной; криттер вне карты вызывает исключение. Сохраняйте прежние 2D-методы."
+        },
+        "/integration_rules/@id=particle-format.integration.bone-sprite-map-anchor/name": {
+          "source_sha256": "b030aafb3dda54ad350dca2c74631146d9a0f2747b955600dc423a58ea565d7b",
+          "translation": "Независимый спрайт карты на отображаемой модели"
+        },
+        "/integration_rules/@id=particle-format.integration.bone-sprite-map-anchor/rationale": {
+          "source_sha256": "2954518f958aa8768672d4b822554725a424f07e97b72e301d2d479b821165e6",
+          "translation": "При копировании в bitmap atlas-модель теряет физическую глубину отдельных пикселей. Физическая глубина кости может скрыть независимую частицу за её отображаемым носителем."
+        },
+        "/integration_rules/@id=particle-format.integration.bone-sprite-map-anchor/requirement": {
+          "source_sha256": "e30e2f40f01f8bf2e935a66e983031bdf6e7f82421bde99542bfb1ff33332206",
+          "translation": "Вызывайте Critter.GetBoneSpriteMapAnchor в авторских локальных единицах кости. Запрос использует ту же позу кости, что и GetBoneMapAnchor, и возвращает нарисованную bitmap-точку/плоскость для atlas-модели либо физическую точку direct-модели. Применяйте текущий гекс, Offset и DepthOffset к одному держателю и заново прикрепляйте после движения или перестроения. Скрытый, недоступный или некорректный якорь даёт false со смещением спрайта и нулевой глубиной; криттер вне карты вызывает исключение. GetBoneMapAnchor сохраняет физическую глубину в обоих режимах отрисовки."
+        },
         "/integration_rules/@id=particle-format.integration.client-script/name": {
           "source_sha256": "60b2ee2d720b775a1d974f13afd1b111a37caa1dda21572185898cf4b37f2eeb",
           "translation": "Клиентское управление из скрипта"
@@ -16933,8 +17001,32 @@
           "translation": "Скриптовый метод требует активный ModelInstance и не является запасным маршрутом для 2D-спрайта криттера."
         },
         "/integration_rules/@id=particle-format.integration.critter-run-particle/requirement": {
-          "source_sha256": "2495b2628b4cd5137127d8f08f0ada001ccb1a661b273f8d6c003f19154f72e1",
-          "translation": "Critter.RunParticle создаёт именованную частицу на кости модели только в сборках FO_ENABLE_3D; иначе экспорт ничего не делает."
+          "source_sha256": "85958b9f059f641b144b09b4cc1a0fa0976dd29bba40ed7f2dc5271a40038a8d",
+          "translation": "Critter.RunParticle запрашивает перерисовку и откладывает именованную частицу на кости модели только в сборках FO_ENABLE_3D; иначе экспорт ничего не делает. Полная валидная поза размещает каждую новую систему через Setup и Update(0), включая созданные callback системы до текущей отрисовки. Непозированные владельцы привязок остаются в ожидании без отрисовки и расширения границ; дальнейшие delta позы продвигают эффект обычным образом."
+        },
+        "/integration_rules/@id=particle-format.integration.critter-run-unlit-particle/name": {
+          "source_sha256": "2e4e822e050b1fa93bfc426f8feef8bb801529f143c9ef125e9fc3d00d67984a",
+          "translation": "Неосвещаемая частица модели криттера"
+        },
+        "/integration_rules/@id=particle-format.integration.critter-run-unlit-particle/rationale": {
+          "source_sha256": "8f91200bd390877f95aae153877da7acaefe6ca5b908e8cc60c54f21c361510d",
+          "translation": "Скрипты могут явно выбирать светящиеся частицы на кости модели без переноса эффекта в независимый мировой спрайт или изменения существующего particle API."
+        },
+        "/integration_rules/@id=particle-format.integration.critter-run-unlit-particle/requirement": {
+          "source_sha256": "54c02732aac526a0c10a22d5b350155b14a54eb7ba7d4e05eb66644d135ca335",
+          "translation": "Critter.RunUnlitParticle использует те же имя кости, смещение в единицах модели, размещение на первой позе и срок жизни, что RunParticle, выбирая неосвещаемый слой атласа ModelSprite. Экспорт для клиента и Mapper ничего не делает без загруженной модели или поддержки FO_ENABLE_3D и выбрасывает исключение вне карты. Смысл существующего RunParticle и прямого scene-воспроизведения сохраняется."
+        },
+        "/integration_rules/@id=particle-format.integration.item-map-anchor/name": {
+          "source_sha256": "7ca1e8e044cf75231a6a4b4d3237e32788dffb591c551d1c2be8b5a2f0917d97",
+          "translation": "Независимый спрайт карты на видимом bitmap предмета"
+        },
+        "/integration_rules/@id=particle-format.integration.item-map-anchor/rationale": {
+          "source_sha256": "f7ae24fb17d3b529f2d2371b852a31c19a021521b245a4a71aff8ef117e8da0e",
+          "translation": "Отдельному holder нужны преобразованная точка и глубина плоскости видимой копии; смещение только по исходной клетке и глубина земли их не представляют."
+        },
+        "/integration_rules/@id=particle-format.integration.item-map-anchor/requirement": {
+          "source_sha256": "e0e6a830811eaf69ea270e6ab060dba583c4593f09a026d1ba0a765a929ab9d2",
+          "translation": "Вызывайте Item.GetSpriteMapAnchor для гекса точной видимой копии. localOffset задаётся в логических пикселях спрайта относительно опоры отрисовки до вращения/проекции. Задавайте одному MapSpriteHolder тот же Hex и используйте оба выхода как Offset и DepthOffset. Плоские и вертикальные плоскости, авторские корни и округлённая высота соответствуют renderer. Действительные гексы вне обзора, недоступные, пустые и direct-scene спрайты, некорректные или непредставимые результаты дают false с нулевыми выходами. Предмет вне карты или неверный гекс вызывает исключение до изменения выходов. Alpha пикселей и выбор верхней поверхности принадлежат вызывающему коду."
         },
         "/integration_rules/@id=particle-format.integration.model-attachment/name": {
           "source_sha256": "4ff2d5a184d1211d78147f32d3af8e4de4f5c98433ad15c4b98c9944ab7bd13b",
@@ -17881,12 +17973,12 @@
           "translation": "Обязательные запечённые границы"
         },
         "/runtime_rules/@id=particle-format.runtime.baked-bounds/rationale": {
-          "source_sha256": "f1dae483e1dc422d0b350ca11d37793d13bdd537f5865ad0ca7198fe0bf297c9",
-          "translation": "Статически измеренные границы заменяют ручные размеры отрисовки и не требуют пересчитывать AABB частиц каждый кадр."
+          "source_sha256": "afbdde93d2b67dca06aa482a9ca569ee92c937115a8809ce14684e5efca28568",
+          "translation": "Воспроизводимые исходные размеры дают стабильную раскладку атласа без ручного авторинга; модельные шлейфы могут расширять эту рамку текущими живыми экземплярами."
         },
         "/runtime_rules/@id=particle-format.runtime.baked-bounds/requirement": {
-          "source_sha256": "78b9509f9b8473cf1f6fa209f52bb210b4b86870d8a063219b7f335818ddd4be",
-          "translation": "Запекайте воспроизводимый параллелепипед позиций и максимальный радиус billboard в каждый runtime-ресурс. SPARK задаёт seed перед инициализацией копий эмиттеров и отклоняет системы без видимых частиц; Effekseer добавляет и проверяет обязательный trailer границ."
+          "source_sha256": "32834f5fa66507467ccb4e4ba54b37f860029a03095aadf556e1a8613c69ca8b",
+          "translation": "Запекайте воспроизводимый параллелепипед позиций и максимальный радиус billboard в каждый runtime-ресурс. SPARK задаёт seed перед инициализацией копий эмиттеров и отклоняет системы без видимых частиц. Effekseer использует неотрицательный авторский seed либо фиксированный локальный seed для симуляции границ, добавляет и проверяет обязательный trailer границ. Одна симуляция не охватывает все случайные траектории."
         },
         "/runtime_rules/@id=particle-format.runtime.bounds-semantics/name": {
           "source_sha256": "84d8592be0066dd21e6c04bac2dc3805c7c132ad93ef592dc15622c7ce98c509",
@@ -17899,6 +17991,42 @@
         "/runtime_rules/@id=particle-format.runtime.bounds-semantics/requirement": {
           "source_sha256": "8f6031bcc99d4c4f2c0151f6629acefaeb4948d1dcbaef85e30909433ba6e6c1",
           "translation": "Считайте ParticleBounds3D.PositionMin/PositionMax мировыми позициями, преобразованными полной матрицей размещения, а BillboardRadius — ориентированным к камере запасом, преобразованным только масштабом размещения."
+        },
+        "/runtime_rules/@id=particle-format.runtime.effekseer-placement/name": {
+          "source_sha256": "c1022a8420438ee6f7d1ab164a4dea87915d42fb0722b52247c2476186f97d9b",
+          "translation": "Размещение Effekseer на модели"
+        },
+        "/runtime_rules/@id=particle-format.runtime.effekseer-placement/rationale": {
+          "source_sha256": "5533225c549ffc8a9796318bcce79bbcaa9a3d3896a8d643f994c9b65cf29448",
+          "translation": "Модель уже передаёт своё направление в позе кости."
+        },
+        "/runtime_rules/@id=particle-format.runtime.effekseer-placement/requirement": {
+          "source_sha256": "7d1584cb2a74995df9f860777f2b6284ccd686e28107b555b55616a9066b7b56",
+          "translation": "World задаёт полную позу кости модели. Принимайте конечный LookDirectionAngle как неиспользуемую прежнюю подсказку без второго yaw; отклоняйте неконечную подсказку. Прежнее размещение с нулевой подсказкой не меняется."
+        },
+        "/runtime_rules/@id=particle-format.runtime.effekseer-refresh/name": {
+          "source_sha256": "c5913ff7beaf9d090bfc26917266289687b16c66d48d3ac1b6e0eaaa9532adf5",
+          "translation": "Обновление рисования Effekseer"
+        },
+        "/runtime_rules/@id=particle-format.runtime.effekseer-refresh/rationale": {
+          "source_sha256": "77c7a799636f57d6005f704e1c721faceb309b345f91126c0875893876c96090",
+          "translation": "Повторное рисование в сцене должно сохранять симуляцию с нулевой дельтой и публикацию изменений других handle без пересоздания неизменного снимка Manager."
+        },
+        "/runtime_rules/@id=particle-format.runtime.effekseer-refresh/requirement": {
+          "source_sha256": "7718d9ce511b0d26faead59c4ab4b75ec92341ff8e7ee7d2f68246a9372ab138",
+          "translation": "Каждый активный render refresh сохраняет UpdateHandle(0). Повторно используйте неизменный общий снимок рисования; применяйте ожидающие изменения создания или размещения любого handle. Отложенный rebase остаётся ожидающим на собственном handle до применения SDK-матриц; решение о Flip принимается после этого. Если после симуляции или prewarm остался только корень либо нет instances, сохраняйте следующую проверку завершения. Обычный Update, prewarm и три прохода освобождения по-прежнему безусловно выполняют Flip."
+        },
+        "/runtime_rules/@id=particle-format.runtime.effekseer-singular-srt/name": {
+          "source_sha256": "a6d3feda818ddd87f458dd141d911bef01259617f24417f925814742fa6260ac",
+          "translation": "Базис вращения Effekseer при нулевом масштабе"
+        },
+        "/runtime_rules/@id=particle-format.runtime.effekseer-singular-srt/rationale": {
+          "source_sha256": "f03650581f123c5dec77ab33aeb982d3f15545dd927daae0122c6a9517d69061",
+          "translation": "Анимация нулевого масштаба не должна создавать NaN в наследуемых Track transforms; утраченная ориентация не определена однозначно."
+        },
+        "/runtime_rules/@id=particle-format.runtime.effekseer-singular-srt/requirement": {
+          "source_sha256": "2a2d2b34f630763eb057d8f9ae32c9115c3097ac870ad9ee0a87c3bb36cb5fb6",
+          "translation": "Дополняйте схлопнувшиеся оси вращения SRT без деления на ноль. Сохраняйте направления ненулевых осей с учётом знака; используйте векторные произведения для отсутствующих осей, детерминированный перпендикулярный базис при одной сохранившейся оси и identity для полностью нулевого базиса. Разложение несхлопнувшегося базиса и отклонение non-finite callback data остаются прежними."
         },
         "/runtime_rules/@id=particle-format.runtime.extension-routing/name": {
           "source_sha256": "97c3da94e448c91b354aa0f8b5c7ef53d2754f59960c30039c005fdbccbef9e4",
@@ -17921,8 +18049,20 @@
           "translation": "Периодические прикреплённые эффекты должны расширять содержащую их модель только во время видимости."
         },
         "/runtime_rules/@id=particle-format.runtime.live-bounds/requirement": {
-          "source_sha256": "de21a3048bbf72b3ea7069208027372c253f2d57472ac52f0f6c2d9508b6d22d",
-          "translation": "GetLiveBounds возвращает преобразованные запечённые границы, только пока в подсистеме есть активные частицы или экземпляры; неактивные и завершённые системы не резервируют пространство кадра модели."
+          "source_sha256": "f3f7c9c6867a435da941dd2c5104122ada17316a292e38ebfda9f0e94c1fce71",
+          "translation": "Пока экземпляры живы, сохраняйте преобразованную baked-рамку и расширяйте границы модели Effekseer текущими позициями и радиусами геометрии Sprite/Ribbon/Ring/Track/Model. Кешируйте CPU-измерение до изменения setup или симуляции; не продвигайте время и RNG, не рисуйте GPU-пакеты и не захватывайте фон сцены. Истёкшие экземпляры освобождают свой вклад в рамку."
+        },
+        "/runtime_rules/@id=particle-format.runtime.model-unlit-overlay/name": {
+          "source_sha256": "5a1378d40aae2d63b8c0b9ef544c74a35300780765085d98d871413cfe285f66",
+          "translation": "Явный неосвещаемый слой модельных частиц"
+        },
+        "/runtime_rules/@id=particle-format.runtime.model-unlit-overlay/rationale": {
+          "source_sha256": "b2b0177ee4806db2ccf81ebca65c88f767c1e82b5a74366a0fbddbdb2ee77249",
+          "translation": "Светящийся эффект на кости модели может обходить освещение карты, сохраняя привязку к авторитетной позе и смысл существующих particle-вызовов."
+        },
+        "/runtime_rules/@id=particle-format.runtime.model-unlit-overlay/requirement": {
+          "source_sha256": "84a33866ca5e6648e9fe1891bf1b5e821b0a7da08f7a4a4acba69e59baf50ec6",
+          "translation": "Нативный ModelInstance.RunUnlitParticle использует общие с RunParticle размещение, инициализацию на первой позе, границы и завершение, но выбирает принадлежащий родителю overlay ModelSprite. Производитель атласа сначала рисует меши и освещаемые частицы, сохраняет их глубину при очистке только цвета и рисует неосвещаемые частицы без новой позы или шага симуляции. Оба изображения используют одинаковые crop и смещение pivot; неизменный размер позволяет повторно использовать allocation слоя. Обновление спрайта освобождает его, когда активных инициализированных unlit-систем больше нет, в том числе после завершения в прямой сцене без перерисовки атласа preview. Смысл RunParticle, AttachParticles и прямого scene-маршрута всех частиц сохраняется. Выбор и специализированные image effects обращаются к основному атласу."
         },
         "/runtime_rules/@id=particle-format.runtime.prewarm/name": {
           "preserve_source": true,
@@ -18008,6 +18148,18 @@
         "/runtime_rules/@id=particle-format.runtime.update-cadence/requirement": {
           "source_sha256": "61829bdc1bb9b2f5b748de3b1325ceca4b78676413e87bf57adeeae3eb9d8829",
           "translation": "Render.Animation3dFPS задаёт порог обновления частиц в миллисекундах; ноль оставляет нулевой порог и тем самым допускает обновление каждый кадр."
+        },
+        "/runtime_rules/@id=particle-format.runtime.world-rebase/name": {
+          "source_sha256": "775d7b45f5d2704e466ce0ce561098563989c0a138139bbaa379de489d6b2c64",
+          "translation": "Перенос начала координат атласа"
+        },
+        "/runtime_rules/@id=particle-format.runtime.world-rebase/rationale": {
+          "source_sha256": "d474c96f8d787b89f9ecaa3c65421262e6a28cd407915893a52a136e83555a0e",
+          "translation": "Изменения координат атласа должны сохранять мировые шлейфы без старения частиц и двойного перемещения будущих рождений."
+        },
+        "/runtime_rules/@id=particle-format.runtime.world-rebase/requirement": {
+          "source_sha256": "a6ba985c039cf7f25de44613e46eefffd3b403067be1b5a145a48e121978649f",
+          "translation": "RebaseWorldParticles переносит существующие экземпляры Effekseer один раз через базу отрисовки с компенсацией корня симуляции. Сочетайте его с новым абсолютным Setup и RefreshRenderTransform с нулевым временем. Игнорируйте некорректные delta до изменения состояния; respawn и освобождение handle сбрасывают базу переноса."
         },
         "/runtime_rules/@id=particle-format.runtime.world-scale/name": {
           "source_sha256": "d7279f62766bcc3c71a20f73f9a37e80de59c4d50f56db94b42fa8790bb7ba2d",

@@ -167,6 +167,9 @@ struct VulkanDeferredDestroyQueue
     vector<VkImage> Images {};
     vector<VkImageView> ImageViews {};
     vector<VkFramebuffer> Framebuffers {};
+    vector<VkPipeline> Pipelines {};
+    vector<VkPipelineLayout> PipelineLayouts {};
+    vector<VkShaderModule> ShaderModules {};
 };
 
 // Resources of one in-flight frame slot; reused only after BeginFrame waits the slot's fence
@@ -277,6 +280,9 @@ static void DestroyMemorySafe(ptr<Vulkan_Renderer::Context> ctx, VkDeviceMemory&
 static void DestroyImageSafe(ptr<Vulkan_Renderer::Context> ctx, VkImage& image);
 static void DestroyImageViewSafe(ptr<Vulkan_Renderer::Context> ctx, VkImageView& image_view);
 static void DestroyFramebufferSafe(ptr<Vulkan_Renderer::Context> ctx, VkFramebuffer& framebuffer);
+static void DestroyPipelineSafe(ptr<Vulkan_Renderer::Context> ctx, VkPipeline& pipeline);
+static void DestroyPipelineLayoutSafe(ptr<Vulkan_Renderer::Context> ctx, VkPipelineLayout& pipeline_layout);
+static void DestroyShaderModuleSafe(ptr<Vulkan_Renderer::Context> ctx, VkShaderModule& shader_module);
 static void FlushDeferredDestroyQueue(ptr<Vulkan_Renderer::Context> ctx, VulkanDeferredDestroyQueue& queue);
 static void FlushAllDeferredDestroyQueues(ptr<Vulkan_Renderer::Context> ctx);
 static void BeginCommandBufferRecording(VkCommandBuffer cmd_buf);
@@ -317,6 +323,30 @@ static void EndCommandBufferRecording(VkCommandBuffer cmd_buf)
     VerifyVkResult(vk_result);
 }
 
+[[noreturn]] static void FatalVulkanStagingError(string_view stage, VkResult vk_result) noexcept
+{
+    char result_text[16] {};
+    auto result {std::to_chars(result_text, result_text + sizeof(result_text), static_cast<int32_t>(vk_result))};
+    size_t result_length {static_cast<size_t>(result.ptr - result_text)};
+
+    logging::suspend_async_writing();
+    logging::write_base("Vulkan staging fatal: ");
+    logging::write_base(stage);
+    logging::write_base(" result ");
+    logging::write_base(string_view {result_text, result_length});
+    logging::write_base("\n");
+    exit_app_immediately(false);
+}
+
+static void ResetStagingCommandBufferAfterFailure(VkCommandBuffer cmd_buf) noexcept
+{
+    auto vk_result {vkResetCommandBuffer(cmd_buf, 0)};
+
+    if (vk_result != VK_SUCCESS) {
+        FatalVulkanStagingError("reset", vk_result);
+    }
+}
+
 static void SubmitCommandBufferAndWait(ptr<Vulkan_Renderer::Context> ctx, VkCommandBuffer cmd_buf)
 {
     FO_TRACE_ZONE(Render);
@@ -327,10 +357,20 @@ static void SubmitCommandBufferAndWait(ptr<Vulkan_Renderer::Context> ctx, VkComm
     submit_info.pCommandBuffers = &cmd_buf;
 
     auto vk_result {vkQueueSubmit(ctx->GraphicsQueue, 1, &submit_info, VK_NULL_HANDLE)};
-    VerifyVkResult(vk_result);
+
+    if (vk_result != VK_SUCCESS) {
+        if (vk_result != VK_ERROR_OUT_OF_HOST_MEMORY && vk_result != VK_ERROR_OUT_OF_DEVICE_MEMORY) {
+            FatalVulkanStagingError("submit", vk_result);
+        }
+
+        VerifyVkResult(vk_result);
+    }
 
     vk_result = vkQueueWaitIdle(ctx->GraphicsQueue);
-    VerifyVkResult(vk_result);
+
+    if (vk_result != VK_SUCCESS) {
+        FatalVulkanStagingError("wait", vk_result);
+    }
 }
 
 static void ResetCommandBufferRecording(VkCommandBuffer cmd_buf)
@@ -728,6 +768,24 @@ static void AllocateImage(ptr<Vulkan_Renderer::Context> ctx, uint32_t width, uin
 
     VkResult vk_result {VK_SUCCESS};
 
+    VkImage created_image {};
+    VkDeviceMemory created_memory {};
+    VkImage owned_image {};
+    VkDeviceMemory owned_memory {};
+
+    // Failed API outputs stay untouchable scratch; only successful results become owned
+    auto image_guard {scope_fail([&]() noexcept {
+        if (owned_image != VK_NULL_HANDLE) {
+            vkDestroyImage(ctx->Device, owned_image, nullptr);
+            owned_image = VK_NULL_HANDLE;
+        }
+
+        if (owned_memory != VK_NULL_HANDLE) {
+            vkFreeMemory(ctx->Device, owned_memory, nullptr);
+            owned_memory = VK_NULL_HANDLE;
+        }
+    })};
+
     VkImageCreateInfo image_ci {};
     image_ci.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     image_ci.imageType = VK_IMAGE_TYPE_2D;
@@ -741,11 +799,12 @@ static void AllocateImage(ptr<Vulkan_Renderer::Context> ctx, uint32_t width, uin
     image_ci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     image_ci.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-    vk_result = vkCreateImage(ctx->Device, &image_ci, nullptr, &image);
+    vk_result = vkCreateImage(ctx->Device, &image_ci, nullptr, &created_image);
     VerifyVkResult(vk_result);
+    owned_image = created_image;
 
     VkMemoryRequirements mem_req {};
-    vkGetImageMemoryRequirements(ctx->Device, image, &mem_req);
+    vkGetImageMemoryRequirements(ctx->Device, owned_image, &mem_req);
 
     // Find suitable memory type
     optional<uint32_t> mem_type_idx {};
@@ -765,11 +824,16 @@ static void AllocateImage(ptr<Vulkan_Renderer::Context> ctx, uint32_t width, uin
     alloc_info.allocationSize = mem_req.size;
     alloc_info.memoryTypeIndex = mem_type_idx.value();
 
-    vk_result = vkAllocateMemory(ctx->Device, &alloc_info, nullptr, &memory);
+    vk_result = vkAllocateMemory(ctx->Device, &alloc_info, nullptr, &created_memory);
+    VerifyVkResult(vk_result);
+    owned_memory = created_memory;
+
+    vk_result = vkBindImageMemory(ctx->Device, owned_image, owned_memory, 0);
     VerifyVkResult(vk_result);
 
-    vk_result = vkBindImageMemory(ctx->Device, image, memory, 0);
-    VerifyVkResult(vk_result);
+    image = owned_image;
+    memory = owned_memory;
+    image_guard.release();
 }
 
 Vulkan_Texture::Vulkan_Texture(isize32 size, bool linear_filtered, bool with_depth, ptr<Vulkan_Renderer::Context> ctx) :
@@ -779,6 +843,41 @@ Vulkan_Texture::Vulkan_Texture(isize32 size, bool linear_filtered, bool with_dep
     FO_VERIFY_AND_THROW(_ctx->Device, "Vulkan device is not initialized");
 
     VkResult vk_result {VK_SUCCESS};
+    bool staging_touched {false};
+
+    auto construction_guard {scope_fail([&]() noexcept {
+        if (staging_touched) {
+            ResetStagingCommandBufferAfterFailure(_ctx->StagingCommandBuffer);
+            staging_touched = false;
+        }
+
+        if (TextureImageView != VK_NULL_HANDLE) {
+            vkDestroyImageView(_ctx->Device, TextureImageView, nullptr);
+            TextureImageView = VK_NULL_HANDLE;
+        }
+        if (DepthImageView != VK_NULL_HANDLE) {
+            vkDestroyImageView(_ctx->Device, DepthImageView, nullptr);
+            DepthImageView = VK_NULL_HANDLE;
+        }
+
+        if (TextureImage != VK_NULL_HANDLE) {
+            vkDestroyImage(_ctx->Device, TextureImage, nullptr);
+            TextureImage = VK_NULL_HANDLE;
+        }
+        if (DepthImage != VK_NULL_HANDLE) {
+            vkDestroyImage(_ctx->Device, DepthImage, nullptr);
+            DepthImage = VK_NULL_HANDLE;
+        }
+
+        if (TextureImageMemory != VK_NULL_HANDLE) {
+            vkFreeMemory(_ctx->Device, TextureImageMemory, nullptr);
+            TextureImageMemory = VK_NULL_HANDLE;
+        }
+        if (DepthImageMemory != VK_NULL_HANDLE) {
+            vkFreeMemory(_ctx->Device, DepthImageMemory, nullptr);
+            DepthImageMemory = VK_NULL_HANDLE;
+        }
+    })};
 
     AllocateImage(_ctx, numeric_cast<uint32_t>(Size.width), numeric_cast<uint32_t>(Size.height), VK_FORMAT_B8G8R8A8_UNORM, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, TextureImage, TextureImageMemory);
 
@@ -793,8 +892,10 @@ Vulkan_Texture::Vulkan_Texture(isize32 size, bool linear_filtered, bool with_dep
     image_view_ci.subresourceRange.baseArrayLayer = 0;
     image_view_ci.subresourceRange.layerCount = 1;
 
-    vk_result = vkCreateImageView(_ctx->Device, &image_view_ci, nullptr, &TextureImageView);
+    VkImageView texture_image_view {};
+    vk_result = vkCreateImageView(_ctx->Device, &image_view_ci, nullptr, &texture_image_view);
     VerifyVkResult(vk_result);
+    TextureImageView = texture_image_view;
 
     if (WithDepth) {
         AllocateImage(_ctx, numeric_cast<uint32_t>(Size.width), numeric_cast<uint32_t>(Size.height), VK_FORMAT_D32_SFLOAT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, DepthImage, DepthImageMemory);
@@ -810,20 +911,27 @@ Vulkan_Texture::Vulkan_Texture(isize32 size, bool linear_filtered, bool with_dep
         depth_view_ci.subresourceRange.baseArrayLayer = 0;
         depth_view_ci.subresourceRange.layerCount = 1;
 
-        vk_result = vkCreateImageView(_ctx->Device, &depth_view_ci, nullptr, &DepthImageView);
+        VkImageView depth_image_view {};
+        vk_result = vkCreateImageView(_ctx->Device, &depth_view_ci, nullptr, &depth_image_view);
         VerifyVkResult(vk_result);
+        DepthImageView = depth_image_view;
     }
 
     // Put texture into a valid sampling layout immediately.
     // Some textures are sampled before any UpdateTextureRegion call
     BeginCommandBufferRecording(_ctx->StagingCommandBuffer);
+    staging_touched = true;
 
     TransitionColorImage(_ctx->StagingCommandBuffer, TextureImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
     EndCommandBufferRecording(_ctx->StagingCommandBuffer);
     SubmitCommandBufferAndWait(_ctx, _ctx->StagingCommandBuffer);
 
+    ResetCommandBufferRecording(_ctx->StagingCommandBuffer);
+    staging_touched = false;
+
     TextureImageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    construction_guard.release();
 }
 
 Vulkan_Texture::~Vulkan_Texture()
@@ -1349,34 +1457,23 @@ void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
 
 Vulkan_Effect::~Vulkan_Effect()
 {
+    // In-flight command buffers may still bind these pipelines; the frame-slot fence releases them
     for (size_t pass {0}; pass < EFFECT_MAX_PASSES; pass++) {
-        if (VertexShaderModule[pass] != VK_NULL_HANDLE) {
-            vkDestroyShaderModule(_ctx->Device, VertexShaderModule[pass], nullptr);
-            VertexShaderModule[pass] = VK_NULL_HANDLE;
-        }
-        if (FragmentShaderModule[pass] != VK_NULL_HANDLE) {
-            vkDestroyShaderModule(_ctx->Device, FragmentShaderModule[pass], nullptr);
-            FragmentShaderModule[pass] = VK_NULL_HANDLE;
-        }
+        DestroyShaderModuleSafe(_ctx, VertexShaderModule[pass]);
+        DestroyShaderModuleSafe(_ctx, FragmentShaderModule[pass]);
 
         for (size_t prim {0}; prim < 5; prim++) {
             for (size_t blend_disabled {0}; blend_disabled < 2; blend_disabled++) {
                 for (size_t depth_slot {0}; depth_slot < EFFECT_DEPTH_VARIANTS; depth_slot++) {
                     for (size_t cull_mode {0}; cull_mode < EFFECT_CULL_MODES; cull_mode++) {
-                        if (Pipeline[pass][prim][blend_disabled][depth_slot][cull_mode] != VK_NULL_HANDLE) {
-                            vkDestroyPipeline(_ctx->Device, Pipeline[pass][prim][blend_disabled][depth_slot][cull_mode], nullptr);
-                            Pipeline[pass][prim][blend_disabled][depth_slot][cull_mode] = VK_NULL_HANDLE;
-                        }
+                        DestroyPipelineSafe(_ctx, Pipeline[pass][prim][blend_disabled][depth_slot][cull_mode]);
                     }
                 }
             }
         }
     }
 
-    if (PipelineLayout != VK_NULL_HANDLE) {
-        vkDestroyPipelineLayout(_ctx->Device, PipelineLayout, nullptr);
-        PipelineLayout = VK_NULL_HANDLE;
-    }
+    DestroyPipelineLayoutSafe(_ctx, PipelineLayout);
 }
 
 void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, optional<size_t> indices_to_draw, nptr<const RenderTexture> custom_tex)
@@ -3644,9 +3741,57 @@ static void DestroyFramebufferSafe(ptr<Vulkan_Renderer::Context> ctx, VkFramebuf
     }
 }
 
+static void DestroyPipelineSafe(ptr<Vulkan_Renderer::Context> ctx, VkPipeline& pipeline)
+{
+    if (pipeline != VK_NULL_HANDLE) {
+        GetCurrentVulkanFrameSlot(ctx).DestroyQueue.Pipelines.emplace_back(pipeline);
+        pipeline = VK_NULL_HANDLE;
+    }
+}
+
+static void DestroyPipelineLayoutSafe(ptr<Vulkan_Renderer::Context> ctx, VkPipelineLayout& pipeline_layout)
+{
+    if (pipeline_layout != VK_NULL_HANDLE) {
+        GetCurrentVulkanFrameSlot(ctx).DestroyQueue.PipelineLayouts.emplace_back(pipeline_layout);
+        pipeline_layout = VK_NULL_HANDLE;
+    }
+}
+
+static void DestroyShaderModuleSafe(ptr<Vulkan_Renderer::Context> ctx, VkShaderModule& shader_module)
+{
+    if (shader_module != VK_NULL_HANDLE) {
+        GetCurrentVulkanFrameSlot(ctx).DestroyQueue.ShaderModules.emplace_back(shader_module);
+        shader_module = VK_NULL_HANDLE;
+    }
+}
+
 static void FlushDeferredDestroyQueue(ptr<Vulkan_Renderer::Context> ctx, VulkanDeferredDestroyQueue& queue)
 {
     FO_TRACE_ZONE(Render);
+
+    for (VkPipeline pipeline : queue.Pipelines) {
+        if (pipeline != VK_NULL_HANDLE) {
+            vkDestroyPipeline(ctx->Device, pipeline, nullptr);
+        }
+    }
+
+    queue.Pipelines.clear();
+
+    for (VkPipelineLayout pipeline_layout : queue.PipelineLayouts) {
+        if (pipeline_layout != VK_NULL_HANDLE) {
+            vkDestroyPipelineLayout(ctx->Device, pipeline_layout, nullptr);
+        }
+    }
+
+    queue.PipelineLayouts.clear();
+
+    for (VkShaderModule shader_module : queue.ShaderModules) {
+        if (shader_module != VK_NULL_HANDLE) {
+            vkDestroyShaderModule(ctx->Device, shader_module, nullptr);
+        }
+    }
+
+    queue.ShaderModules.clear();
 
     for (VkFramebuffer framebuffer : queue.Framebuffers) {
         if (framebuffer != VK_NULL_HANDLE) {

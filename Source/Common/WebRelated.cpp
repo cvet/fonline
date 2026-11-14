@@ -185,8 +185,13 @@ EM_JS(void, WebSyncClipboardToSystemImpl, (const char* text_ptr), {
 });
 
 EM_JS(void, WebInitializePersistentDataImpl, (), {
+    if (Module.persistentDataInitialized) {
+        return;
+    }
+
     FS.mkdir('/PersistentData');
-    FS.mount(IDBFS, {}, '/PersistentData');
+    FS.mount(IDBFS, { autoPersist: true }, '/PersistentData');
+    Module.persistentDataInitialized = true;
     Module.syncfsDone = 0;
     FS.syncfs(true, function(err) {
         if (err) {

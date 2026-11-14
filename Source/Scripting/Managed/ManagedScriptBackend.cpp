@@ -78,6 +78,9 @@ extern "C" void mono_wasm_install_interp_to_native_callback(void* (*cb)(char*));
 extern "C" void mono_marshal_ilgen_init();
 extern "C" void mono_method_builder_ilgen_init();
 extern "C" void mono_sgen_mono_ilgen_init();
+
+// The single-threaded browser queues finalizers here instead of waking a finalizer thread
+extern "C" void mono_background_exec();
 #endif
 
 FO_BEGIN_NAMESPACE
@@ -623,7 +626,7 @@ static void AddManagedListItem(ptr<const ManagedScriptBackend> backend, MonoObje
 static void CountManagedListItemCrossing(ptr<const ManagedScriptBackend> backend);
 static auto IsManagedRawArrayElement(const BaseTypeDesc& element_type) -> bool;
 static auto TryReadManagedListRaw(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& element_type, MonoObject* list, span<uint8_t> dest) -> bool;
-static auto TryWriteManagedListRaw(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& element_type, MonoObject* list, const_span<uint8_t> src) -> bool;
+static auto TryWriteManagedListRaw(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& element_type, const ManagedObjectRoot& list_root, const_span<uint8_t> src) -> bool;
 static auto CreateManagedDictionary(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& key_type, const BaseTypeDesc& value_type) -> MonoObject*;
 static auto CreateManagedDictionaryOfList(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& key_type, const BaseTypeDesc& element_type) -> MonoObject*;
 static auto GetManagedDictionaryCount(ptr<const ManagedScriptBackend> backend, MonoObject* dictionary) -> size_t;
@@ -912,13 +915,14 @@ public:
         }
 
         // The bridge keeps its old list until the new one is filled, the same way ClearArray replaces it
-        MonoObject* list {CreateManagedList(array->Backend, array->Type.BaseType)};
+        ManagedObjectRoot list {};
+        list.SetObject(CreateManagedList(array->Backend, array->Type.BaseType));
 
         if (!TryWriteManagedListRaw(array->Backend, array->Type.BaseType, list, src)) {
             return false;
         }
 
-        array->Root.SetObject(list);
+        array->Root.SetObject(list.GetObject());
         array->Elements.clear();
         return true;
     }
@@ -1201,8 +1205,7 @@ void ManagedScriptBackend::FinalizeManagedObjects() noexcept
         return;
     }
 
-    // GC.WaitForPendingFinalizers in managed code is the supported finalizer wait; mono_domain_finalize belongs to domain unloading and
-    // timed out, then crashed, on a root-domain shutdown. Passes repeat because a finalized wrapper can drop the last reference to another
+    // A finalized wrapper can drop the last reference to another. Domain unloading is not a root-domain finalizer wait
     constexpr int32_t PASS_LIMIT {8};
 
     safe_call([this] {
@@ -1212,7 +1215,23 @@ void ManagedScriptBackend::FinalizeManagedObjects() noexcept
         int32_t outstanding {-1};
 
         // A timed-out or failed collection must still leave a wrapper report for diagnosis
-        safe_call([&] { outstanding = InvokeEntityWrapperTrackerCollect(this, collect_method, PASS_LIMIT); });
+        safe_call([&] {
+#if FO_WEB
+            for (int32_t pass {0}; pass < PASS_LIMIT; pass++) {
+                (void)InvokeEntityWrapperTrackerCollect(this, collect_method, 1);
+
+                // Run outside managed collection, while finalizers can still return references through the bound backend
+                mono_background_exec();
+                outstanding = InvokeEntityWrapperTrackerCollect(this, collect_method, 0);
+
+                if (outstanding == 0) {
+                    break;
+                }
+            }
+#else
+            outstanding = InvokeEntityWrapperTrackerCollect(this, collect_method, PASS_LIMIT);
+#endif
+        });
 
         timespan collect_duration {collect_time.get_duration()};
         MonoMethod* dump_method {FindCoreScriptMethod(this, "EntityWrapperTracker", "DumpOutstandingWrappers", 0)};
@@ -1224,14 +1243,9 @@ void ManagedScriptBackend::FinalizeManagedObjects() noexcept
             logging::write("Managed wrapper tracking: {}, collected in {}", report, collect_duration);
         }
 
-#if FO_WEB
-        // Browser finalizers run as main-thread jobs after the shutdown returns, so the count is not final here
-        ignore_unused(outstanding);
-#else
         // Not a gate: what a wrapper still holds does not stop the rest of the shutdown, but it is a native entity
         // reference nobody gave back, and the report is the only place it is visible
         FO_VERIFY_AND_CONTINUE(outstanding <= 0, "Managed entity wrappers outlived the script backend", outstanding, report);
-#endif
     });
 }
 
@@ -5003,7 +5017,7 @@ static void NativeRegisterRemoteCallHandlerImpl(void* backend_ptr, MonoString* n
                     // Plain numbers are stored on the wire exactly as in memory, so the whole block goes over at once
                     if (count != 0 && IsManagedRawArrayElement(arg_type.BaseType)) {
                         const_span<uint8_t> raw {reader.read_bytes(numeric_cast<size_t>(count) * arg_type.BaseType.Size)};
-                        bool written {TryWriteManagedListRaw(backend, arg_type.BaseType, bridge.Root.GetObject(), raw)};
+                        bool written {TryWriteManagedListRaw(backend, arg_type.BaseType, bridge.Root, raw)};
                         FO_VERIFY_AND_THROW(written, "Managed list rejected a raw remote call array", call_name, wire_arg_name, arg_type.BaseType.Name);
                     }
                     else {
@@ -5704,7 +5718,7 @@ static auto BoxNativeCallValue(ptr<const ManagedScriptBackend> backend, const Co
             vector<uint8_t> raw {vector<uint8_t>(size * type.BaseType.Size)};
 
             if (accessor->ReadArrayRaw(data, raw)) {
-                bool written {TryWriteManagedListRaw(backend, type.BaseType, list.GetObject(), raw)};
+                bool written {TryWriteManagedListRaw(backend, type.BaseType, list, raw)};
                 FO_VERIFY_AND_THROW(written, "Managed list rejected a raw array block", type.BaseType.Name);
                 return list.GetObject();
             }
@@ -6453,22 +6467,24 @@ static auto TryReadManagedListRaw(ptr<const ManagedScriptBackend> backend, const
     return true;
 }
 
-static auto TryWriteManagedListRaw(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& element_type, MonoObject* list, const_span<uint8_t> src) -> bool
+static auto TryWriteManagedListRaw(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& element_type, const ManagedObjectRoot& list_root, const_span<uint8_t> src) -> bool
 {
-    if (!IsManagedRawArrayElement(element_type) || list == nullptr) {
+    if (!IsManagedRawArrayElement(element_type) || list_root.GetObject() == nullptr) {
         return false;
     }
 
     FO_VERIFY_AND_THROW(element_type.Size != 0 && src.size() % element_type.Size == 0, "Raw array block is not a whole number of elements", element_type.Name, src.size());
 
-    MonoArray* raw {mono_array_new(GetDomainOrThrow(backend->GetDomain()), mono_get_byte_class(), src.size())};
+    ManagedObjectRoot raw_root {};
+    raw_root.SetObject(reinterpret_cast<MonoObject*>(mono_array_new(GetDomainOrThrow(backend->GetDomain()), mono_get_byte_class(), src.size())));
+    MonoArray* raw {reinterpret_cast<MonoArray*>(raw_root.GetObject())};
     FO_VERIFY_AND_THROW(raw != nullptr, "Can't allocate a managed raw array block", element_type.Name, src.size());
 
     if (!src.empty()) {
         memory::copy(mono_array_addr(raw, uint8_t, 0), src.data(), src.size());
     }
 
-    void* args[] {list, raw};
+    void* args[] {list_root.GetObject(), raw_root.GetObject()};
     MonoObject* result {InvokeNativeHelper(backend, "SetListRawBytes", 2, args)};
     return result != nullptr && *static_cast<MonoBoolean*>(mono_object_unbox(result)) != 0;
 }

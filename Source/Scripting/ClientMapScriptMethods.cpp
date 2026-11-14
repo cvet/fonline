@@ -21,10 +21,15 @@ FO_SCRIPT_API void Client_Map_DrawMap(ptr<MapView> self)
     self->DrawMap();
 }
 
-// Adds a holder-defined sprite to this map draw, silently skipping invalid, offscreen, or unresolved sprites and applying referenced item-prototype rendering rules when present
+// Adds a holder-defined sprite to this map draw, applying item-prototype rendering rules when present.
+// Rejects a non-finite DepthOffset before processing the holder; otherwise skips invalid, offscreen or unresolved sprites
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Map_DrawMapSprite(ptr<MapView> self, ptr<MapSpriteHolder> mapSpr)
 {
+    if (!std::isfinite(mapSpr->DepthOffset)) {
+        throw ScriptException("Map sprite depth offset must be finite");
+    }
+
     auto engine {self->GetEngine()};
 
     if (!self->GetSize().is_valid_pos(mapSpr->Hex)) {
@@ -77,6 +82,9 @@ FO_SCRIPT_API void Client_Map_DrawMapSprite(ptr<MapView> self, ptr<MapSpriteHold
     if (mapSpr->MapProjected) {
         mspr->SetMapProjected(true);
     }
+
+    mspr->SetDepthOffset(mapSpr->DepthOffset);
+
     if (!no_light) {
         self->SetupSpriteLight(mspr, corner);
     }
@@ -245,6 +253,31 @@ FO_SCRIPT_API nptr<ItemView> Client_Map_GetItem(ptr<MapView> self, ident_t itemI
     }
 
     return item;
+}
+
+// Returns the item with the supplied nonzero runtime id when a visible sprite render entry represents it at the requested in-view hex, or null when absent; a zero id or invalid hex throws
+///@ ExportMethod
+FO_SCRIPT_API nptr<ItemView> Client_Map_GetVisibleItemOnHex(ptr<MapView> self, ident_t itemId, mpos hex)
+{
+    if (!itemId) {
+        throw ScriptException("Item id arg is zero");
+    }
+    if (!self->GetSize().is_valid_pos(hex)) {
+        throw ScriptException("Invalid hex arg");
+    }
+    if (!self->IsHexInViewArea(hex)) {
+        return nullptr;
+    }
+
+    span<ptr<ItemHexView>> hex_items {self->GetItemsOnHex(hex)};
+
+    for (auto item : hex_items) {
+        if (item->GetId() == itemId && item->IsMapSpriteVisibleAtHex(hex)) {
+            return item;
+        }
+    }
+
+    return nullptr;
 }
 
 // Returns the map's single-item lookup result for a valid hex, or null when no item is selected there; an invalid hex throws

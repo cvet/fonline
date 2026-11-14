@@ -50,7 +50,7 @@ class WebDebuggingDocumentationTests(unittest.TestCase):
             "The `build_gated` label qualifies compilation of the browser client",
             "The helper does not build or bake.",
             "binds `('', port)`",
-            "this does not establish automatic write-back for every other virtual-filesystem modification",
+            "Automatic write-back is not a synchronous durability acknowledgement.",
             "The Engine build lane intentionally does not supply this browser/release evidence.",
         ):
             self.assertIn(contract, guide)
@@ -181,7 +181,7 @@ class WebDebuggingDocumentationTests(unittest.TestCase):
         for contract in (
             "window.visualViewport.addEventListener('resize', notifyResize)",
             "document.addEventListener('fullscreenchange', notifyResize)",
-            "FS.mount(IDBFS, {}, '/PersistentData')",
+            "FS.mount(IDBFS, { autoPersist: true }, '/PersistentData')",
             "FS.syncfs(true, function(err)",
             "FS.syncfs(false, function(err)",
             "abort('Unable to load persistent client data: ' + err)",
@@ -190,6 +190,14 @@ class WebDebuggingDocumentationTests(unittest.TestCase):
             'SDL_SetHint(SDL_HINT_EMSCRIPTEN_ASYNCIFY, "0")',
         ):
             self.assertIn(contract, web)
+
+        bootstrap = self._read("BuildTools/web/persistent-data.js")
+        guide = self._read(GUIDE_PATH)
+        self.assertIn("addRunDependency(dependency)", bootstrap)
+        self.assertIn("abort('Unable to load persistent client data: ' + error)", bootstrap)
+        self.assertIn("args.push('--Common.UserWritablePath', '/PersistentData')", bootstrap)
+        self.assertIn("before `main`", guide.lower())
+        self.assertIn("LoadAppSettings", guide)
 
         self.assertIn('SETTING(string, ClientNetwork, WebSocketHost, "localhost")', settings)
         self.assertIn("SETTING(int32_t, Network, WebSocketPort, 4001)", settings)

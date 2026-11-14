@@ -2678,9 +2678,6 @@ namespace ScriptMethodsTest
     [[PropertySetter]]
     void OnLookDistanceTransformSetter(Critter cr, CritterProperty prop, int& value)
     {
-        if (prop != CritterProperty::LookDistance) return;
-
-        PropertySetterTransformCallCount++;
         value += 4;
     }
 
@@ -2691,7 +2688,6 @@ namespace ScriptMethodsTest
     }
 
     int PropertySetterCallCount = 0;
-    int PropertySetterTransformCallCount = 0;
     Critter? PropertySetterSyncIsolationTarget = null;
     int PropertySetterSyncIsolationCallCount = 0;
     int PropertySetterSyncIsolationError = 0;
@@ -2762,26 +2758,9 @@ namespace ScriptMethodsTest
         return 0;
     }
 
-    int TestPropertySetterTransformCallback()
+    void TestPropertySetterTransformEnginePropertyThrows()
     {
-        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
-        if (cr is null) return -1;
-
-        PropertySetterTransformCallCount = 0;
         Game.AddPropertySetter(CritterProperty::LookDistance, OnLookDistanceTransformSetter);
-
-        cr.LookDistance = 21;
-        if (PropertySetterTransformCallCount != 1) {
-            Game.DestroyCritter(cr);
-            return -2;
-        }
-        if (cr.LookDistance != 25) {
-            Game.DestroyCritter(cr);
-            return -3;
-        }
-
-        Game.DestroyCritter(cr);
-        return 0;
     }
 
     [[Async]]
@@ -3928,19 +3907,12 @@ TEST_CASE("ServerMiscScriptOperations")
         run_throwing_func("ScriptMethodsTest::TestPropertyGetterNonVirtualThrows", "Property is not virtual");
         run_throwing_func("ScriptMethodsTest::TestPropertySetterNoneThrows", "'None' is not valid property entry in this context");
         run_throwing_func("ScriptMethodsTest::TestPropertySetterInvalidFunctionThrows", "Invalid setter function");
+        run_throwing_func("ScriptMethodsTest::TestPropertySetterTransformEnginePropertyThrows", "Engine property accepts post-setters only");
     }
 
     SECTION("PropertySetterCallback")
     {
         auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestPropertySetterCallback"))};
-        REQUIRE(func);
-        REQUIRE(func.Call());
-        CHECK(func.GetResult() == 0);
-    }
-
-    SECTION("PropertySetterTransformCallback")
-    {
-        auto func {server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestPropertySetterTransformCallback"))};
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);

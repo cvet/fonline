@@ -65,12 +65,90 @@ Vec3f Mat43f::GetScale() const
 //----------------------------------------------------------------------------------
 //
 //----------------------------------------------------------------------------------
+// (FOnline Patch) Complete collapsed SRT axes without dividing by zero.
+// Surviving SRT axes retain their direction; missing axes form a right-handed basis.
+static Mat43f RecoverCollapsedRotation(const Mat43f& matrix, const Float4& squaredScale)
+{
+	const bool zeroX = squaredScale.GetX() == 0.0f;
+	const bool zeroY = squaredScale.GetY() == 0.0f;
+	const bool zeroZ = squaredScale.GetZ() == 0.0f;
+
+	if (zeroX && zeroY && zeroZ)
+	{
+		return Mat43f::Identity;
+	}
+
+	Vec3f x(matrix.X.GetX(), matrix.Y.GetX(), matrix.Z.GetX());
+	Vec3f y(matrix.X.GetY(), matrix.Y.GetY(), matrix.Z.GetY());
+	Vec3f z(matrix.X.GetZ(), matrix.Y.GetZ(), matrix.Z.GetZ());
+
+	if (!zeroX)
+	{
+		x = x.GetNormalPrecisely();
+	}
+	if (!zeroY)
+	{
+		y = y.GetNormalPrecisely();
+	}
+	if (!zeroZ)
+	{
+		z = z.GetNormalPrecisely();
+	}
+
+	if (zeroX && zeroY)
+	{
+		const Vec3f reference = std::abs(z.GetX()) <= std::abs(z.GetY()) ? Vec3f(1.0f, 0.0f, 0.0f) : Vec3f(0.0f, 1.0f, 0.0f);
+		y = Vec3f::Cross(z, reference).GetNormalPrecisely();
+		x = Vec3f::Cross(y, z).GetNormalPrecisely();
+	}
+	else if (zeroX && zeroZ)
+	{
+		const Vec3f reference = std::abs(y.GetZ()) <= std::abs(y.GetX()) ? Vec3f(0.0f, 0.0f, 1.0f) : Vec3f(1.0f, 0.0f, 0.0f);
+		x = Vec3f::Cross(y, reference).GetNormalPrecisely();
+		z = Vec3f::Cross(x, y).GetNormalPrecisely();
+	}
+	else if (zeroY && zeroZ)
+	{
+		const Vec3f reference = std::abs(x.GetY()) <= std::abs(x.GetZ()) ? Vec3f(0.0f, 1.0f, 0.0f) : Vec3f(0.0f, 0.0f, 1.0f);
+		z = Vec3f::Cross(x, reference).GetNormalPrecisely();
+		y = Vec3f::Cross(z, x).GetNormalPrecisely();
+	}
+	else if (zeroX)
+	{
+		x = Vec3f::Cross(y, z).GetNormalPrecisely();
+	}
+	else if (zeroY)
+	{
+		y = Vec3f::Cross(z, x).GetNormalPrecisely();
+	}
+	else
+	{
+		z = Vec3f::Cross(x, y).GetNormalPrecisely();
+	}
+
+	return Mat43f(
+		x.GetX(), x.GetY(), x.GetZ(),
+		y.GetX(), y.GetY(), y.GetZ(),
+		z.GetX(), z.GetY(), z.GetZ(),
+		0.0f, 0.0f, 0.0f);
+}
+
+//----------------------------------------------------------------------------------
+//
+//----------------------------------------------------------------------------------
 Mat43f Mat43f::GetRotation() const
 {
 	Float4 x2 = X * X;
 	Float4 y2 = Y * Y;
 	Float4 z2 = Z * Z;
 	Float4 s2 = x2 + y2 + z2;
+
+	// (FOnline Patch) A collapsed axis has no reciprocal scale.
+	if (s2.GetX() == 0.0f || s2.GetY() == 0.0f || s2.GetZ() == 0.0f)
+	{
+		return RecoverCollapsedRotation(*this, s2);
+	}
+
 	Float4 rsq = Float4::Rsqrt(s2);
 	rsq.SetW(0.0f);
 
@@ -110,9 +188,18 @@ void Mat43f::GetSRT(Vec3f& s, Mat43f& r, Vec3f& t) const
 		rsq.SetW(0.0f);
 
 		s = Float4(1.0f) / rsq;
-		r.X = X * rsq;
-		r.Y = Y * rsq;
-		r.Z = Z * rsq;
+
+		// (FOnline Patch) Preserve finite rotation when only some scale axes collapse.
+		if (s2.GetX() == 0.0f || s2.GetY() == 0.0f || s2.GetZ() == 0.0f)
+		{
+			r = RecoverCollapsedRotation(*this, s2);
+		}
+		else
+		{
+			r.X = X * rsq;
+			r.Y = Y * rsq;
+			r.Z = Z * rsq;
+		}
 	}
 
 	t = Vec3f(X.GetW(), Y.GetW(), Z.GetW());

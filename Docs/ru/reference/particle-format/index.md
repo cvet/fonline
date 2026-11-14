@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-particle-format-index","locale":"ru","source_path":"Docs/en/reference/particle-format/index.md","source_sha256":"3ec616cfb3a53499974839b87f43a06a9092b26a4991e61313682bf26907aa65"} -->
+<!-- docs-translation: {"document_id":"generated-particle-format-index","locale":"ru","source_path":"Docs/en/reference/particle-format/index.md","source_sha256":"b5827f0ef6b9d04d360da8c18c81ce5cc68029fa1dc835c17d4c1e430da4f5a9"} -->
 
 # Сгенерированный справочник форматов частиц
 
@@ -22,7 +22,7 @@ generated: true
 | Стабильность | <code>experimental</code> |
 | Политика поддержки | SPARK и Effekseer являются независимыми необязательными backend-ами. Подключаемые проекты должны закреплять ревизию Engine и явно включать, проверять и поддерживать поставляемые ими форматы. |
 | Исходный манифест | <code>BuildTools/ParticleFormatInterface.json</code> |
-| Дайджест контракта | <code>79904fb9d0de9219cd484d56cf8d55888aba00a61172f1cb62ab44b1990bf44f</code> |
+| Дайджест контракта | <code>5bf5536e10f8176f20b54f61037ade9cd6911f50fb688becdcd2b877daeb22fb</code> |
 | Авторские расширения | <code>spark</code>, <code>efkproj</code> |
 | Расширения runtime | <code>spk</code>, <code>efk</code> |
 | Сторона runtime | <code>client</code> |
@@ -33,8 +33,8 @@ generated: true
 | [Formats and backends](objects.md) | 4 | Необязательные backend-ы и формы source-to-runtime. |
 | [Rendering](renderer.md) | 19 | Маршруты и поля отрисовки backend-ов. |
 | [Tooling](tooling.md) | 5 | Процессы авторинга в Mapper и отдельных инструментах. |
-| [Runtime](runtime.md) | 14 | Компоновка, маршрутизация, seed, масштаб и prewarm. |
-| [Integration](integration.md) | 6 | Границы спрайтов, моделей, скриптов и проекта. |
+| [Runtime](runtime.md) | 19 | Компоновка, маршрутизация, seed, масштаб и prewarm. |
+| [Integration](integration.md) | 10 | Границы спрайтов, моделей, скриптов и проекта. |
 | [Validation](validation.md) | 7 | Gate документации, native-кода, запекания и видимой проверки. |
 
 ## Граница ответственности

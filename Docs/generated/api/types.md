@@ -3187,6 +3187,9 @@ Continue with the [canonical reference](../../en/reference/script-api/types.md).
 <a id="symbol-script-ref-field-client-mapspriteholder-corner-0c782b7813"></a>
 - [`symbol-script-ref-field-client-mapspriteholder-corner-0c782b7813`](../../en/reference/script-api/types.md#symbol-script-ref-field-client-mapspriteholder-corner-0c782b7813)
 
+<a id="symbol-script-ref-field-client-mapspriteholder-depthoffset-1be37a0f42"></a>
+- [`symbol-script-ref-field-client-mapspriteholder-depthoffset-1be37a0f42`](../../en/reference/script-api/types.md#symbol-script-ref-field-client-mapspriteholder-depthoffset-1be37a0f42)
+
 <a id="symbol-script-ref-field-client-mapspriteholder-disableegg-ecff4521f9"></a>
 - [`symbol-script-ref-field-client-mapspriteholder-disableegg-ecff4521f9`](../../en/reference/script-api/types.md#symbol-script-ref-field-client-mapspriteholder-disableegg-ecff4521f9)
 

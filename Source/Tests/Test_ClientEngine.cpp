@@ -3,11 +3,383 @@
 
 #include "Common.h"
 
+#include "EffekseerCompiler.h"
+#include "EffekseerExtension.h"
+#include "MapView.h"
+#include "ParticleSprites.h"
 #include "Test_ClientEngineHelpers.h"
 
 FO_BEGIN_NAMESPACE
 
 using namespace ClientEngineTests;
+
+void Client_Map_DrawMapSprite(ptr<MapView> self, ptr<MapSpriteHolder> mapSpr);
+bool Client_Critter_GetBoneMapAnchor(ptr<CritterView> self, hstring boneName, float32_t moveX, float32_t moveY, float32_t moveZ, ipos32& boneOffset, float32_t& depthOffset);
+bool Client_Critter_GetBoneSpriteMapAnchor(ptr<CritterView> self, hstring boneName, float32_t moveX, float32_t moveY, float32_t moveZ, ipos32& boneOffset, float32_t& depthOffset);
+
+class TestUnlitOverlaySprite final : public Sprite
+{
+public:
+    TestUnlitOverlaySprite(ptr<SpriteManager> spr_mngr, shared_ptr<Sprite> base, shared_ptr<Sprite> overlay) :
+        Sprite(spr_mngr, base->GetSize(), base->GetOffset()),
+        _base {std::move(base)},
+        _overlay {std::move(overlay)}
+    {
+    }
+
+    [[nodiscard]] auto GetUnlitOverlay() const -> nptr<const Sprite> override { return nptr<const Sprite> {_overlay.get()}; }
+    [[nodiscard]] auto GetBatchTexture() const -> nptr<const RenderTexture> override { return _base->GetBatchTexture(); }
+
+    auto FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override { return _base->FillData(dbuf, pos, colors); }
+
+private:
+    shared_ptr<Sprite> _base;
+    shared_ptr<Sprite> _overlay;
+};
+
+static auto ReadRecordedLayerQuad(const RecordedQuadDraw& draw) -> vector<Vertex2D>
+{
+    REQUIRE(draw.IndicesToDraw.has_value());
+    REQUIRE(*draw.IndicesToDraw == 6);
+    REQUIRE(draw.StartIndex + 6 <= draw.Indices.size());
+
+    size_t vertex_start {numeric_cast<size_t>(draw.Indices[draw.StartIndex])};
+
+    REQUIRE(vertex_start + 4 <= draw.Vertices.size());
+    REQUIRE(draw.Indices[draw.StartIndex + 0] == numeric_cast<vindex_t>(vertex_start + 0));
+    REQUIRE(draw.Indices[draw.StartIndex + 1] == numeric_cast<vindex_t>(vertex_start + 1));
+    REQUIRE(draw.Indices[draw.StartIndex + 2] == numeric_cast<vindex_t>(vertex_start + 3));
+    REQUIRE(draw.Indices[draw.StartIndex + 3] == numeric_cast<vindex_t>(vertex_start + 1));
+    REQUIRE(draw.Indices[draw.StartIndex + 4] == numeric_cast<vindex_t>(vertex_start + 2));
+    REQUIRE(draw.Indices[draw.StartIndex + 5] == numeric_cast<vindex_t>(vertex_start + 3));
+
+    vector<Vertex2D> vertices {};
+    vertices.reserve(4);
+
+    for (size_t i {0}; i < 4; i++) {
+        vertices.emplace_back(draw.Vertices[vertex_start + i]);
+    }
+
+    return vertices;
+}
+
+TEST_CASE("MapSpriteDepthOffsetReachesBothRenderPaths")
+{
+    class RecordingSceneSprite final : public Sprite
+    {
+    public:
+        explicit RecordingSceneSprite(ptr<SpriteManager> manager) :
+            Sprite(manager, isize32 {8, 8}, ipos32 {})
+        {
+        }
+
+        auto IsDirectDraw() const -> bool override { return true; }
+
+        auto FillData(ptr<RenderDrawBuffer> buffer, const frect32& position, const tuple<ucolor, ucolor>& colors) const -> size_t override
+        {
+            ignore_unused(buffer, position, colors);
+            return 0;
+        }
+
+        void DrawInScene(fpos32 position, float32_t depth) const override { Calls.emplace_back(position, depth); }
+
+        mutable vector<pair<fpos32, float32_t>> Calls {};
+    };
+
+    auto settings {MakeClientTestSettings()};
+    vector<pair<string, vector<uint8_t>>> resources {};
+    resources.emplace_back("DepthSprite.png", BakerTests::MakeMinimalBakedSprite(8, 8));
+    auto client {MakeClientEngine(settings, MakeClientTestResources(std::move(resources)))};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+    RecordingQuadEffect effect {};
+    ipos32 field_offset {100, 100};
+
+    SECTION("DirectSceneReceivesTheDepthWithoutMovingItsAnchor")
+    {
+        RecordingSceneSprite visual {&client->SprMngr};
+        MapSpriteList list {};
+        auto sprite {list.AddSprite(DrawOrderType::Particles, mpos {3, 3}, ipos32 {12, -17}, &field_offset, &visual, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0)};
+
+        for (float32_t delta : {0.0f, 12.5f, -9.25f}) {
+            sprite->SetDepthOffset(delta);
+            client->SprMngr.DrawSprites(list, irect32 {0, 0, 320, 200}, 0, false, DrawOrderType::Particles, DrawOrderType::Particles, ucolor {255, 255, 255}, &effect);
+            REQUIRE(visual.Calls.size() > 0);
+            const auto& baseline {visual.Calls.front()};
+            const auto& actual {visual.Calls.back()};
+            CHECK(actual.first == baseline.first);
+            CHECK(is_float_equal(actual.second, baseline.second + delta));
+        }
+
+        REQUIRE(visual.Calls.size() == 3);
+    }
+
+    SECTION("StandingSpriteVerticesReceiveTheSameDepthAdjustment")
+    {
+        auto visual {client->ResMngr.LoadSprite(client->Hashes.to_hashed_string("DepthSprite.png"), AtlasType::MapSprites)};
+        REQUIRE(visual);
+        MapSpriteList list {};
+        auto sprite {list.AddSprite(DrawOrderType::Particles, mpos {3, 3}, ipos32 {12, -17}, &field_offset, visual.get(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0)};
+        vector<Vertex2D> baseline {};
+
+        for (float32_t delta : {0.0f, 12.5f, -9.25f}) {
+            sprite->SetDepthOffset(delta);
+            effect.Draws.clear();
+            client->SprMngr.DrawSprites(list, irect32 {0, 0, 320, 200}, 0, false, DrawOrderType::Particles, DrawOrderType::Particles, ucolor {255, 255, 255}, &effect);
+            REQUIRE(effect.Draws.size() == 1);
+            const auto& vertices {effect.Draws.front().Vertices};
+            REQUIRE(vertices.size() == 4);
+
+            if (baseline.empty()) {
+                baseline = vertices;
+            }
+
+            for (size_t index {0}; index < vertices.size(); index++) {
+                CHECK(is_float_equal(vertices[index].PosX, baseline[index].PosX));
+                CHECK(is_float_equal(vertices[index].PosY, baseline[index].PosY));
+                CHECK(is_float_equal(vertices[index].PosZ, baseline[index].PosZ + delta));
+            }
+        }
+    }
+
+    SECTION("PointAnchorRejectsInvalidHiddenAndDirectSceneSprites")
+    {
+        auto visual {client->ResMngr.LoadSprite(client->Hashes.to_hashed_string("DepthSprite.png"), AtlasType::MapSprites)};
+        REQUIRE(visual);
+        MapSpriteList list {};
+        auto sprite {list.AddSprite(DrawOrderType::Item, mpos {3, 3}, ipos32 {12, -17}, &field_offset, visual.get(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0)};
+        CHECK(client->SprMngr.GetMapSpritePointAnchor(sprite, ipos32 {}).has_value());
+
+        sprite->SetHidden(true);
+        CHECK_FALSE(client->SprMngr.GetMapSpritePointAnchor(sprite, ipos32 {}).has_value());
+        sprite->SetHidden(false);
+        sprite->Invalidate();
+        CHECK_FALSE(client->SprMngr.GetMapSpritePointAnchor(sprite, ipos32 {}).has_value());
+
+        auto unavailable {list.AddSprite(DrawOrderType::Item, mpos {3, 3}, ipos32 {12, -17}, &field_offset, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0)};
+        CHECK_FALSE(client->SprMngr.GetMapSpritePointAnchor(unavailable, ipos32 {}).has_value());
+
+        RecordingSceneSprite direct {&client->SprMngr};
+        auto scene {list.AddSprite(DrawOrderType::Particles, mpos {3, 3}, ipos32 {12, -17}, &field_offset, &direct, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0)};
+        CHECK_FALSE(client->SprMngr.GetMapSpritePointAnchor(scene, ipos32 {}).has_value());
+    }
+
+    SECTION("PointAnchorRejectsNonFiniteDepthAndUnrepresentableSums")
+    {
+        auto visual {client->ResMngr.LoadSprite(client->Hashes.to_hashed_string("DepthSprite.png"), AtlasType::MapSprites)};
+        REQUIRE(visual);
+        MapSpriteList list {};
+        auto sprite {list.AddSprite(DrawOrderType::Item, mpos {3, 3}, ipos32 {12, -17}, &field_offset, visual.get(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0)};
+        optional<pair<ipos32, float32_t>> anchor {};
+
+        for (float32_t invalid : {std::numeric_limits<float32_t>::quiet_NaN(), std::numeric_limits<float32_t>::infinity(), -std::numeric_limits<float32_t>::infinity()}) {
+            sprite->SetDepthOffset(invalid);
+            CHECK_NOTHROW(anchor = client->SprMngr.GetMapSpritePointAnchor(sprite, ipos32 {}));
+            CHECK_FALSE(anchor.has_value());
+        }
+
+        sprite->SetDepthOffset(0.0f);
+        CHECK(client->SprMngr.GetMapSpritePointAnchor(sprite, ipos32 {}).has_value());
+
+        ipos32 safe_base {std::numeric_limits<int32_t>::max() - 1024, std::numeric_limits<int32_t>::min() + 1024};
+        auto large {list.AddSprite(DrawOrderType::Item, mpos {3, 3}, safe_base, &field_offset, visual.get(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0)};
+        ipos32 safe_local {123, -456};
+        CHECK_NOTHROW(anchor = client->SprMngr.GetMapSpritePointAnchor(large, safe_local));
+        REQUIRE(anchor.has_value());
+        CHECK(anchor->first == ipos32 {safe_base.x + safe_local.x - GameSettings::MAP_HEX_WIDTH / 2, safe_base.y + safe_local.y - GameSettings::MAP_HEX_HEIGHT / 2});
+
+        // The identity path must preserve integers above float32's exact range
+        ipos32 exact_local {16777217, -16777219};
+        auto exact {list.AddSprite(DrawOrderType::Item, mpos {3, 3}, ipos32 {}, &field_offset, visual.get(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0)};
+        CHECK_NOTHROW(anchor = client->SprMngr.GetMapSpritePointAnchor(exact, exact_local));
+        REQUIRE(anchor.has_value());
+        CHECK(anchor->first == ipos32 {exact_local.x - GameSettings::MAP_HEX_WIDTH / 2, exact_local.y - GameSettings::MAP_HEX_HEIGHT / 2});
+
+        auto overflow {list.AddSprite(DrawOrderType::Item, mpos {3, 3}, ipos32 {std::numeric_limits<int32_t>::max() - 4, 0}, &field_offset, visual.get(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0)};
+        CHECK_NOTHROW(anchor = client->SprMngr.GetMapSpritePointAnchor(overflow, ipos32 {100, 0}));
+        CHECK_FALSE(anchor.has_value());
+
+        auto center_overflow {list.AddSprite(DrawOrderType::Item, mpos {3, 3}, ipos32 {std::numeric_limits<int32_t>::max() - 2, 0}, &field_offset, visual.get(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0)};
+        CHECK_NOTHROW(anchor = client->SprMngr.GetMapSpritePointAnchor(center_overflow, ipos32 {4, 0}));
+        CHECK_FALSE(anchor.has_value());
+
+        auto underflow {list.AddSprite(DrawOrderType::Item, mpos {3, 3}, ipos32 {std::numeric_limits<int32_t>::min() + 4, 0}, &field_offset, visual.get(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0)};
+        CHECK_NOTHROW(anchor = client->SprMngr.GetMapSpritePointAnchor(underflow, ipos32 {-100, 0}));
+        CHECK_FALSE(anchor.has_value());
+
+        auto rotated {list.AddSprite(DrawOrderType::Item, mpos {3, 3}, ipos32 {}, &field_offset, visual.get(), nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0)};
+        rotated->SetAngle(45);
+        CHECK_NOTHROW(anchor = client->SprMngr.GetMapSpritePointAnchor(rotated, ipos32 {std::numeric_limits<int32_t>::max(), std::numeric_limits<int32_t>::max()}));
+        CHECK_FALSE(anchor.has_value());
+    }
+}
+
+TEST_CASE("MapSpriteStandingPointAnchorOracle")
+{
+    struct PointTransform
+    {
+        int16_t Angle {};
+        bool Flat {};
+        bool MapProjected {};
+    };
+
+    auto settings {MakeClientTestSettings()};
+    vector<pair<string, vector<uint8_t>>> resources {};
+    resources.emplace_back("StandingAnchor.png", BakerTests::MakeMinimalBakedSprite(32, 96));
+    auto client {MakeClientEngine(settings, MakeClientTestResources(std::move(resources)))};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+    auto visual {client->ResMngr.LoadSprite(client->Hashes.to_hashed_string("StandingAnchor.png"), AtlasType::MapSprites)};
+    REQUIRE(visual);
+    REQUIRE(visual->GetSize() == isize32 {32, 96});
+
+    visual->SetOffset(ipos32 {4, -3});
+    RecordingQuadEffect effect {};
+    ipos32 center {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
+    ipos32 sprite_offset {12, -9};
+    ipos32 root_offset {7, -11};
+    ipos32 local_point {3, -36};
+    array<PointTransform, 6> transforms {{{0, false, false}, {37, false, false}, {-23, false, true}, {0, true, false}, {37, true, false}, {-23, true, true}}};
+
+    for (mpos contact : {mpos {8, 8}, mpos {10, 8}}) {
+        ipos32 field_offset {ipos32 {180, 160} + GeometryHelper::GetHexOffset(mpos {8, 8}, contact)};
+
+        for (int16_t elevation : {int16_t {0}, int16_t {18}, int16_t {-13}}) {
+            for (auto transform : transforms) {
+                DrawOrderType order {transform.Flat ? DrawOrderType::FlatItemAfterLight : DrawOrderType::Item};
+                MapSpriteList walls {};
+                auto wall {walls.AddSprite(order, contact, center, &field_offset, visual.get(), nullptr, &sprite_offset, &root_offset, nullptr, nullptr, nullptr, 0)};
+                wall->SetElevation(elevation);
+                wall->SetDepthOffset(7.5f);
+                wall->SetAngle(transform.Angle);
+                wall->SetMapProjected(transform.MapProjected);
+                effect.Draws.clear();
+                client->SprMngr.DrawSprites(walls, irect32 {0, 0, 640, 400}, 0, false, order, order, ucolor {255, 255, 255}, &effect);
+                REQUIRE(effect.Draws.size() == 1);
+                vector<Vertex2D> vertices {ReadRecordedLayerQuad(effect.Draws.front())};
+                REQUIRE(vertices[1].TexU == vertices[0].TexU);
+                REQUIRE(vertices[1].TexU < vertices[2].TexU);
+                REQUIRE(vertices[1].TexV == vertices[2].TexV);
+                REQUIRE(vertices[1].TexV < vertices[0].TexV);
+                REQUIRE(wall->GetSpriteRootOffset() == ipos32 {12, 99});
+
+                // Texture coordinates identify the original corners after the renderer transforms their positions
+                float32_t u {15.0f / 32.0f};
+                float32_t v {63.0f / 96.0f};
+                fpos32 precise {vertices[1].PosX + u * (vertices[2].PosX - vertices[1].PosX) + v * (vertices[0].PosX - vertices[1].PosX), vertices[1].PosY + u * (vertices[2].PosY - vertices[1].PosY) + v * (vertices[0].PosY - vertices[1].PosY)};
+                float32_t precise_depth {vertices[1].PosZ + u * (vertices[2].PosZ - vertices[1].PosZ) + v * (vertices[0].PosZ - vertices[1].PosZ)};
+                auto top {std::ranges::min_element(vertices, {}, &Vertex2D::PosY)};
+                auto bottom {std::ranges::max_element(vertices, {}, &Vertex2D::PosY)};
+                REQUIRE(top->PosY < bottom->PosY);
+                float32_t slope {(bottom->PosZ - top->PosZ) / (bottom->PosY - top->PosY)};
+
+                ipos32 draw_root {wall->GetDrawRootPos()};
+                ipos32 point {draw_root + ipos32 {iround<int32_t>(precise.x - numeric_cast<float32_t>(draw_root.x)), iround<int32_t>(precise.y - numeric_cast<float32_t>(draw_root.y))}};
+                float32_t target_depth {precise_depth + (numeric_cast<float32_t>(point.y) - precise.y) * slope};
+                REQUIRE(std::isfinite(target_depth));
+
+                ipos32 offset {point - field_offset - center};
+                MapSpriteList points {};
+                auto marker {points.AddSprite(DrawOrderType::Particles, contact, center, &field_offset, visual.get(), nullptr, &offset, nullptr, nullptr, nullptr, nullptr, 0)};
+                CHECK(marker->GetDrawRootPos() == point);
+                vec3 ground_projection {marker->GetMapRootProjection()};
+                REQUIRE(std::abs(ground_projection.z - target_depth) > 1.0f);
+
+                float32_t correction {target_depth - ground_projection.z};
+                marker->SetDepthOffset(correction);
+                CHECK(std::abs(marker->GetMapRootProjection().z - target_depth) < 0.002f);
+                CHECK(marker->GetDrawRootPos() == point);
+
+                optional<pair<ipos32, float32_t>> native_anchor {client->SprMngr.GetMapSpritePointAnchor(wall, local_point)};
+                REQUIRE(native_anchor.has_value());
+                CHECK(native_anchor->first == offset);
+                CHECK(field_offset + center + native_anchor->first == point);
+                CHECK(std::abs(native_anchor->second - correction) < 0.002f);
+                CHECK(std::abs(ground_projection.z + native_anchor->second - target_depth) < 0.002f);
+
+                vec3 carrier_projection {wall->GetMapRootProjection()};
+
+                if (transform.Flat) {
+                    CHECK(std::abs(target_depth - carrier_projection.z) < 0.002f);
+                }
+                else if (transform.Angle == 0 && !transform.MapProjected) {
+                    float32_t without_root {GeometryHelper::ProjectMapYToVerticalDepth(carrier_projection.y + numeric_cast<float32_t>(local_point.y), carrier_projection.y, carrier_projection.z)};
+                    REQUIRE(std::abs(without_root - target_depth) > 1.0f);
+
+                    if (elevation != 0) {
+                        ipos32 old_offset {sprite_offset + local_point};
+                        CHECK(field_offset + center + old_offset != point);
+                        float32_t without_rounding {GeometryHelper::ProjectMapYToVerticalDepth(ground_projection.y, carrier_projection.y, carrier_projection.z)};
+                        REQUIRE(std::abs(without_rounding - target_depth) > 0.02f);
+                    }
+                }
+
+                if (transform.Angle != 0 || transform.MapProjected) {
+                    CHECK(point != draw_root + local_point);
+                }
+
+                string quad {};
+
+                for (auto&& vertex : vertices) {
+                    quad += strex("|v={:.9g},{:.9g},{:.9g}", vertex.PosX, vertex.PosY, vertex.PosZ).str();
+                }
+
+                INFO(strex("POINT_MATRIX|hex={},{}|elevation={}|angle={}|flat={}|projected={}|x={}|y={}|depth={:.9g}|correction={:.9g}{}", contact.x, contact.y, elevation, transform.Angle, transform.Flat ? 1 : 0, transform.MapProjected ? 1 : 0, point.x, point.y, target_depth, correction, quad).str());
+                CHECK(std::isfinite(correction));
+            }
+        }
+    }
+}
+
+TEST_CASE("MapSpriteDepthOffsetIsCopiedAndValidatedBeforeAttachment")
+{
+    auto settings {MakeClientTestSettings()};
+    vector<pair<string, vector<uint8_t>>> resources {};
+    resources.emplace_back("DepthSprite.png", BakerTests::MakeMinimalBakedSprite(8, 8));
+    auto client {MakeClientEngine(settings, MakeClientTestResources(std::move(resources)))};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+    ProtoMap proto {client->Hashes.to_hashed_string("DepthMap"), client->GetPropertyRegistrar(MapView::ENTITY_TYPE_NAME)};
+    proto.SetSize(msize {16, 16});
+    auto map {safe_alloc::make_refcounted<MapView>(client, ident_t {1001}, make_ptr(&proto), isize32 {320, 200}, nullptr)};
+    auto destroy_map {scope_exit([&map]() noexcept { safe_call([&map] { map->DestroySelf(); }); })};
+    map->InstantScrollTo(mpos {8, 8});
+    map->RebuildMap();
+    REQUIRE(map->IsHexToDraw(mpos {8, 8}));
+
+    MapSpriteHolder holder {};
+    holder.SprId = client->AnimLoad(client->Hashes.to_hashed_string("DepthSprite.png"), AtlasType::MapSprites);
+    holder.Hex = mpos {8, 8};
+    holder.Elevation = 18;
+    holder.DepthOffset = 12.5f;
+    REQUIRE(holder.SprId != 0);
+
+    REQUIRE_NOTHROW(Client_Map_DrawMapSprite(map, &holder));
+    REQUIRE(holder.Valid);
+    REQUIRE(holder.MSpr);
+
+    auto original_sprite {holder.MSpr};
+
+    CHECK(holder.MSpr->GetElevation() == 18);
+    CHECK(holder.MSpr->GetDepthOffset() == 12.5f);
+
+    for (float32_t invalid : {std::numeric_limits<float32_t>::quiet_NaN(), std::numeric_limits<float32_t>::infinity(), -std::numeric_limits<float32_t>::infinity()}) {
+        holder.DepthOffset = invalid;
+        CHECK_THROWS_AS(Client_Map_DrawMapSprite(map, &holder), ScriptException);
+        CHECK(holder.Valid);
+        CHECK(holder.MSpr == original_sprite);
+        CHECK(holder.MSpr->GetElevation() == 18);
+        CHECK(holder.MSpr->GetDepthOffset() == 12.5f);
+
+        // Validation must also reject non-finite input before the invalid-hex/missing-sprite early returns
+        MapSpriteHolder invalid_holder {};
+        invalid_holder.Hex = mpos {100, 100};
+        invalid_holder.DepthOffset = invalid;
+        CHECK_THROWS_AS(Client_Map_DrawMapSprite(map, &invalid_holder), ScriptException);
+        CHECK_FALSE(invalid_holder.Valid);
+        CHECK_FALSE(invalid_holder.MSpr);
+    }
+
+    holder.StopDraw();
+    CHECK_FALSE(holder.Valid);
+}
 
 template<typename T>
 concept client_animation_playback_init = requires(T& client) { client.OnCritterAnimationPlaybackInit; };
@@ -242,6 +614,156 @@ TEST_CASE("InstalledClientResourcesSelectWritableBaseWithoutOldCatalogLayering")
         CHECK_THROWS(GetClientResources(settings));
     }
 }
+
+#if FO_EFFEKSEER_PARTICLES
+TEST_CASE("ParticleSpriteInitialSimulationUsesSceneSpace", "[particles][effekseer][particle-sprites]")
+{
+    constexpr string_view particle_path {"Particles/SceneBirth.efk"};
+    constexpr string_view particle_project {R"EFK(<?xml version="1.0" encoding="utf-8"?>
+<EffekseerProject>
+  <Root>
+    <Name>Root</Name>
+    <Children>
+      <Node>
+        <Name>Stationary</Name>
+        <CommonValues>
+          <MaxGeneration>
+            <Value>1</Value>
+            <Infinite>False</Infinite>
+          </MaxGeneration>
+          <Life>
+            <Min>30</Min>
+            <Max>30</Max>
+          </Life>
+          <Generation>
+            <GenerationTime>
+              <Min>0</Min>
+              <Max>0</Max>
+            </GenerationTime>
+          </Generation>
+          <LocationEffectType>1</LocationEffectType>
+        </CommonValues>
+        <LocationValues>
+          <Type>0</Type>
+          <Fixed>
+            <Location>
+              <X>3</X>
+              <Y>0</Y>
+              <Z>0</Z>
+            </Location>
+          </Fixed>
+        </LocationValues>
+        <RendererCommonValues>
+          <AlphaBlend>1</AlphaBlend>
+          <ZTest>False</ZTest>
+          <ZWrite>False</ZWrite>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <R>255</R>
+              <G>255</G>
+              <B>255</B>
+              <A>255</A>
+            </Fixed>
+          </ColorAll>
+          <Sprite>
+            <Billboard>0</Billboard>
+          </Sprite>
+        </DrawingValues>
+        <Children />
+      </Node>
+    </Children>
+  </Root>
+  <ToolVersion>1.80.5</ToolVersion>
+  <Version>3</Version>
+  <StartFrame>0</StartFrame>
+  <EndFrame>30</EndFrame>
+  <IsLoop>False</IsLoop>
+</EffekseerProject>
+)EFK"};
+
+    auto project_bytes {const_span<uint8_t> {reinterpret_cast<const uint8_t*>(particle_project.data()), particle_project.size()}};
+    EffekseerCompilerOutput particle {CompileEffekseerProject("Particles/SceneBirth.efkproj", project_bytes)};
+    REQUIRE(particle.Dependencies.empty());
+
+    AppendEffekseerBoundsTrailer(particle.Binary, vec3 {3.0f, 0.0f, 0.0f}, vec3 {3.0f, 0.0f, 0.0f}, 0.75f);
+
+    vector<pair<string, vector<uint8_t>>> resources {};
+    resources.emplace_back(string {particle_path}, std::move(particle.Binary));
+
+    auto settings {MakeClientTestSettings()};
+    auto client {MakeClientEngine(settings, MakeClientTestResources(std::move(resources)))};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+
+    float32_t scale {GENERATE(1.0f, 2.0f)};
+    bool switch_from_atlas {GENERATE(false, true)};
+    CAPTURE(scale, switch_from_atlas);
+
+    auto actual {client->ResMngr.LoadSprite(particle_path, AtlasType::MapSprites).dyn_cast<ParticleSprite>()};
+    REQUIRE(actual);
+    REQUIRE(actual->IsDirectDraw());
+
+    auto reference {client->ResMngr.LoadSprite(particle_path, AtlasType::MapSprites).dyn_cast<ParticleSprite>()};
+    REQUIRE(reference);
+
+    auto wrong {client->ResMngr.LoadSprite(particle_path, AtlasType::MapSprites).dyn_cast<ParticleSprite>()};
+    REQUIRE(wrong);
+
+    auto atlas {client->ResMngr.LoadSprite(particle_path, AtlasType::MapSprites).dyn_cast<ParticleSprite>()};
+    REQUIRE(atlas);
+
+    mat44 projection {1.0f};
+    mat44 scene_world {1.0f};
+
+    for (int32_t replay {0}; replay < 2; replay++) {
+        CAPTURE(replay);
+
+        if (switch_from_atlas) {
+            actual->SetDrawInScene(false);
+            actual->SetDrawInScene(true);
+        }
+
+        reference->GetParticle()->Setup(projection, scene_world, {}, 0.0f, {}, true);
+        wrong->GetParticle()->Setup(projection, glm::translate(scene_world, vec3 {8.0f, 0.0f, 0.0f}), {}, 0.0f, {}, true);
+
+        atlas->SetDrawInScene(true);
+        atlas->SetDrawInScene(false);
+
+        for (auto sprite : {actual, reference, wrong, atlas}) {
+            auto system {sprite->GetParticle()};
+            system->SetScale(scale);
+
+            bool played {sprite->PlayWithSeed(1337)};
+            REQUIRE(played);
+
+            system->Update(timespan {std::chrono::nanoseconds {16'666'667}});
+            system->Setup(projection, scene_world, {}, 0.0f, {}, true);
+            system->RefreshRenderTransform();
+        }
+
+        auto actual_bounds {actual->GetParticle()->GetLiveBounds()};
+        auto reference_bounds {reference->GetParticle()->GetLiveBounds()};
+        auto wrong_bounds {wrong->GetParticle()->GetLiveBounds()};
+        REQUIRE(actual_bounds);
+        REQUIRE(reference_bounds);
+        REQUIRE(wrong_bounds);
+
+        auto atlas_bounds {atlas->GetParticle()->GetLiveBounds()};
+        REQUIRE(atlas_bounds);
+
+        CAPTURE(actual_bounds->PositionMin.x, actual_bounds->PositionMax.x, reference_bounds->PositionMin.x, reference_bounds->PositionMax.x, wrong_bounds->PositionMin.x, wrong_bounds->PositionMax.x);
+        REQUIRE(wrong_bounds->PositionMax.x > reference_bounds->PositionMax.x + 1.0f);
+        CHECK(atlas_bounds->PositionMin.x < reference_bounds->PositionMin.x - 1.0f);
+
+        for (int32_t axis {0}; axis < 3; axis++) {
+            CAPTURE(axis);
+            CHECK(is_float_equal(actual_bounds->PositionMin[axis], reference_bounds->PositionMin[axis]));
+            CHECK(is_float_equal(actual_bounds->PositionMax[axis], reference_bounds->PositionMax[axis]));
+        }
+    }
+}
+#endif
 
 #if (FO_ENABLE_3D)
 TEST_CASE("ClientEngineRejectsMultiFrameModelTextures")
@@ -756,6 +1278,820 @@ TEST_CASE("ModelSpriteBoundsUseBakedBoundsForTheActiveGeometryLink")
 #endif
 
 #if (FO_ENABLE_3D)
+TEST_CASE("BoneMapAnchorPreservesTheCarrierAndModelDepth")
+{
+    constexpr string_view MESH_PATH {"Models/BoneAnchor.fbx"};
+    constexpr string_view MODEL_PATH {"Models/RuntimeInstance.fo3d"};
+    constexpr string_view DESCRIPTION {"Model BoneAnchor.fbx\nScale 1.25\nAnim 1 1 BoneAnchor.fbx Base\n"};
+    auto mesh {MakeRuntimeModelTriangleMesh()};
+    vector<pair<string, vector<uint8_t>>> resources {};
+    resources.emplace_back(string {"ModelAnimationInfo.foinfo"}, MakeUnitTestModelAnimationInfo(MODEL_PATH));
+    resources.emplace_back(string {MESH_PATH}, mesh);
+    resources.emplace_back(string {MODEL_PATH}, MakeRuntimeModelDescription(MODEL_PATH, MESH_PATH, mesh, {}, {}, nullptr, false, {}, 0.0f, nullptr, DESCRIPTION));
+    resources.emplace_back("AnchorSprite.png", BakerTests::MakeMinimalBakedSprite(8, 8));
+    auto settings {MakeClientTestSettings()};
+    bool direct_draw {GENERATE(false, true)};
+    CAPTURE(direct_draw);
+    BakerTests::OverrideSetting(settings.Render.ModelDirectDraw, direct_draw);
+    BakerTests::OverrideSetting(settings.Render.ModelProjFactor, 32.0f);
+    auto client {MakeClientEngine(settings, MakeClientTestResources(std::move(resources)))};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+    ProtoMap proto {client->Hashes.to_hashed_string("BoneAnchorMap"), client->GetPropertyRegistrar(MapView::ENTITY_TYPE_NAME)};
+    proto.SetSize(msize {16, 16});
+    auto map {safe_alloc::make_refcounted<MapView>(client, ident_t {1001}, make_ptr(&proto), isize32 {320, 200}, nullptr)};
+    auto destroy_map {scope_exit([&map]() noexcept { safe_call([&map] { map->DestroySelf(); }); })};
+    map->EnableMapperMode();
+    map->InstantScrollTo(mpos {8, 8});
+    auto cr {map->AddMapperCritter(client->Hashes.to_hashed_string("UnitTestModelCritter"), mpos {8, 8}, mdir {int16_t {180}}, nullptr)};
+    REQUIRE(cr->IsMapSpriteValid());
+    auto model {cr->GetModel()};
+    REQUIRE(model);
+    cr->SetHexOffset(ipos16 {13, -7});
+    cr->RefreshOffs();
+    model->SetupFrame(isize32 {128, 128}, ipos32 {64, 96});
+    hstring bone {client->Hashes.to_hashed_string(MESH_PATH)};
+    float32_t angle {GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT};
+
+    SECTION("AHolderReconstructsThePhysicalPointAtEachElevationAndFacing")
+    {
+        MapSpriteHolder holder {};
+        holder.SprId = client->AnimLoad(client->Hashes.to_hashed_string("AnchorSprite.png"), AtlasType::MapSprites);
+        holder.Hex = cr->GetHex();
+        REQUIRE(holder.SprId != 0);
+        auto stop_holder {scope_exit([&holder]() noexcept { holder.StopDraw(); })};
+        vec3 local {0.7f, 0.4f, 0.3f};
+
+        for (int16_t elevation : {int16_t {0}, int16_t {18}, int16_t {-12}}) {
+            cr->SetElevation(elevation);
+            cr->RefreshSprite();
+
+            for (int16_t direction : {int16_t {180}, int16_t {90}, int16_t {0}}) {
+                model->SetDir(mdir {direction}, false);
+                model->PoseSpriteFrame(false);
+                float32_t yaw {numeric_cast<float32_t>(180 - direction) * DEG_TO_RAD_FLOAT};
+                vec3 local_world {
+                    (std::cos(yaw) * local.x + std::sin(yaw) * local.z) * 40.0f,
+                    local.y * 40.0f,
+                    (-std::sin(yaw) * local.x + std::cos(yaw) * local.z) * 40.0f,
+                };
+                ipos32 sprite_offset {cr->GetSpriteOffset()};
+                ipos32 center {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
+                vec3 carrier_world {GeometryHelper::GetHexWorldPos(cr->GetHex(), center + sprite_offset, numeric_cast<float32_t>(elevation))};
+                vec3 expected {GeometryHelper::ProjectWorldToMap(carrier_world + local_world)};
+                ipos32 offset {};
+                float32_t depth {0.0f};
+                REQUIRE(Client_Critter_GetBoneMapAnchor(cr, bone, local.x, local.y, local.z, offset, depth));
+                vec3 local_screen {GeometryHelper::ProjectWorldToMap(local_world)};
+                CHECK(offset.x == sprite_offset.x + iround<int32_t>(local_screen.x));
+                CHECK(offset.y == sprite_offset.y + iround<int32_t>(local_screen.y) - iround<int32_t>(std::cos(angle) * elevation));
+                holder.StopDraw();
+                holder.Offset = offset;
+                holder.DepthOffset = depth;
+                Client_Map_DrawMapSprite(map, &holder);
+                REQUIRE(holder.Valid);
+                REQUIRE(holder.MSpr);
+                CHECK(is_float_equal(holder.MSpr->GetMapRootProjection().z, expected.z));
+            }
+        }
+    }
+
+    SECTION("IndependentSpritesFollowTheSubmittedCarrierDepth")
+    {
+        cr->RestoreAlpha();
+        MapSpriteHolder holder {};
+        holder.SprId = client->AnimLoad(client->Hashes.to_hashed_string("AnchorSprite.png"), AtlasType::MapSprites);
+        holder.Hex = cr->GetHex();
+        REQUIRE(holder.SprId != 0);
+        auto stop_holder {scope_exit([&holder]() noexcept { holder.StopDraw(); })};
+        vec3 local {0.7f, 0.4f, 0.3f};
+        RecordingQuadEffect effect {};
+
+        for (ipos16 movement : {ipos16 {13, -7}, ipos16 {-18, 11}}) {
+            cr->SetHexOffset(movement);
+            cr->RefreshOffs();
+
+            for (int16_t elevation : {int16_t {0}, int16_t {18}, int16_t {-12}}) {
+                cr->SetElevation(elevation);
+                cr->RefreshSprite();
+
+                for (int16_t direction : {int16_t {180}, int16_t {90}, int16_t {0}}) {
+                    model->SetDir(mdir {direction}, false);
+                    model->PoseSpriteFrame(false);
+
+                    client->SprMngr.BeginScene();
+                    client->SprMngr.EndScene();
+
+                    ipos32 offset {};
+                    float32_t depth {0.0f};
+                    REQUIRE(Client_Critter_GetBoneSpriteMapAnchor(cr, bone, local.x, local.y, local.z, offset, depth));
+
+                    ipos32 physical_offset {};
+                    float32_t physical_depth {0.0f};
+                    REQUIRE(Client_Critter_GetBoneMapAnchor(cr, bone, local.x, local.y, local.z, physical_offset, physical_depth));
+                    CHECK(offset == physical_offset);
+
+                    holder.StopDraw();
+                    holder.Offset = offset;
+                    holder.DepthOffset = depth;
+                    Client_Map_DrawMapSprite(map, &holder);
+                    REQUIRE(holder.Valid);
+                    REQUIRE(holder.MSpr);
+
+                    if (direct_draw) {
+                        CHECK(is_float_equal(depth, physical_depth));
+                        continue;
+                    }
+
+                    auto carrier {cr->GetMapSprite()};
+                    auto local_point {model->GetBonePos(bone, local)};
+                    REQUIRE(local_point);
+                    ipos32 field_offset {320, 240};
+                    ipos32 root_offset {carrier->GetRootOffset()};
+                    MapSpriteList carriers {};
+                    auto submitted {carriers.AddSprite(DrawOrderType::Critter, cr->GetHex(), carrier->GetHexOffset(), &field_offset, carrier->GetSprite(), nullptr, carrier->GetPSprOffset(), &root_offset, nullptr, nullptr, nullptr, 0)};
+                    submitted->SetElevation(elevation);
+                    submitted->SetDepthOffset(carrier->GetDepthOffset());
+                    CHECK(submitted->GetSpriteRootOffset() == carrier->GetSpriteRootOffset());
+
+                    effect.Draws.clear();
+                    client->SprMngr.DrawSprites(carriers, irect32 {0, 0, 1280, 960}, 0, false, DrawOrderType::Critter, DrawOrderType::Critter, ucolor {255, 255, 255}, &effect);
+                    REQUIRE(effect.Draws.size() == 1);
+
+                    vector<Vertex2D> vertices {ReadRecordedLayerQuad(effect.Draws.front())};
+                    auto top {std::ranges::min_element(vertices, {}, &Vertex2D::PosY)};
+                    auto bottom {std::ranges::max_element(vertices, {}, &Vertex2D::PosY)};
+                    REQUIRE(top->PosY < bottom->PosY);
+
+                    // The submitted vertices are the oracle, independent of the anchor helper's projection formula
+                    ipos32 point {submitted->GetDrawRootPos() + *local_point};
+                    float32_t fraction {(numeric_cast<float32_t>(point.y) - top->PosY) / (bottom->PosY - top->PosY)};
+                    float32_t expected_depth {top->PosZ + fraction * (bottom->PosZ - top->PosZ)};
+                    CHECK(std::abs(holder.MSpr->GetMapRootProjection().z - expected_depth) < 0.002f);
+                    CHECK(std::abs(physical_depth - depth) > 1.0f);
+                    CHECK(holder.MSpr->GetDrawRootPos() - *holder.MSpr->GetPHexOffset() == point - field_offset);
+                }
+            }
+        }
+    }
+
+    SECTION("HiddenSpritesHaveNoRenderedAnchor")
+    {
+        cr->RestoreAlpha();
+        model->PoseSpriteFrame(false);
+
+        client->SprMngr.BeginScene();
+        client->SprMngr.EndScene();
+
+        ipos32 offset {};
+        float32_t depth {0.0f};
+        REQUIRE(Client_Critter_GetBoneSpriteMapAnchor(cr, bone, 0.0f, 0.0f, 0.0f, offset, depth));
+
+        cr->GetMapSprite()->SetHidden(true);
+        offset = ipos32 {123, 456};
+        depth = 123.0f;
+        CHECK_FALSE(Client_Critter_GetBoneSpriteMapAnchor(cr, bone, 0.0f, 0.0f, 0.0f, offset, depth));
+        CHECK(offset == cr->GetSpriteOffset());
+        CHECK(depth == 0.0f);
+    }
+
+    SECTION("RenderedInvalidAndDetachedPointsLeaveDeterministicOutputs")
+    {
+        cr->RestoreAlpha();
+        model->PoseSpriteFrame(false);
+
+        client->SprMngr.BeginScene();
+        client->SprMngr.EndScene();
+
+        ipos32 offset {};
+        float32_t depth {0.0f};
+        REQUIRE(Client_Critter_GetBoneSpriteMapAnchor(cr, bone, 0.0f, 0.0f, 0.0f, offset, depth));
+
+        offset = ipos32 {123, 456};
+        depth = 123.0f;
+        CHECK_FALSE(Client_Critter_GetBoneSpriteMapAnchor(cr, client->Hashes.to_hashed_string("MissingBone"), 0.0f, 0.0f, 0.0f, offset, depth));
+        CHECK(offset == cr->GetSpriteOffset());
+        CHECK(depth == 0.0f);
+
+        for (float32_t invalid : {std::numeric_limits<float32_t>::quiet_NaN(), std::numeric_limits<float32_t>::infinity(), std::numeric_limits<float32_t>::max()}) {
+            offset = ipos32 {123, 456};
+            depth = 123.0f;
+            CHECK_FALSE(Client_Critter_GetBoneSpriteMapAnchor(cr, bone, invalid, 0.0f, 0.0f, offset, depth));
+            CHECK(offset == cr->GetSpriteOffset());
+            CHECK(depth == 0.0f);
+        }
+
+        cr->InvalidateSprite();
+        depth = 123.0f;
+        CHECK_FALSE(Client_Critter_GetBoneSpriteMapAnchor(cr, bone, 0.0f, 0.0f, 0.0f, offset, depth));
+        CHECK(offset == cr->GetSpriteOffset());
+        CHECK(depth == 0.0f);
+
+        auto flat {map->AddMapperCritter(client->Hashes.to_hashed_string("UnitTestClientCritter"), mpos {9, 8}, mdir {}, nullptr)};
+        depth = 123.0f;
+        CHECK_FALSE(Client_Critter_GetBoneSpriteMapAnchor(flat, bone, 0.0f, 0.0f, 0.0f, offset, depth));
+        CHECK(offset == flat->GetSpriteOffset());
+        CHECK(depth == 0.0f);
+
+        auto off_map {safe_alloc::make_refcounted<CritterView>(client, ident_t {2002}, client->GetProtoCritter(client->Hashes.to_hashed_string("UnitTestClientCritter")), nullptr)};
+        auto destroy_off_map {scope_exit([&off_map]() noexcept { safe_call([&off_map] { off_map->DestroySelf(); }); })};
+        offset = ipos32 {123, 456};
+        depth = 123.0f;
+        CHECK_THROWS_AS(Client_Critter_GetBoneSpriteMapAnchor(off_map, bone, 0.0f, 0.0f, 0.0f, offset, depth), ScriptException);
+        CHECK(offset == ipos32 {123, 456});
+        CHECK(depth == 123.0f);
+    }
+
+    SECTION("InvalidAndDetachedPointsLeaveDeterministicOutputs")
+    {
+        model->PoseSpriteFrame(false);
+        ipos32 offset {123, 456};
+        float32_t depth {123.0f};
+        CHECK_FALSE(Client_Critter_GetBoneMapAnchor(cr, client->Hashes.to_hashed_string("MissingBone"), 0.0f, 0.0f, 0.0f, offset, depth));
+        CHECK(offset == cr->GetSpriteOffset());
+        CHECK(depth == 0.0f);
+
+        for (float32_t invalid : {std::numeric_limits<float32_t>::quiet_NaN(), std::numeric_limits<float32_t>::infinity()}) {
+            offset = ipos32 {123, 456};
+            depth = 123.0f;
+            CHECK_FALSE(Client_Critter_GetBoneMapAnchor(cr, bone, invalid, 0.0f, 0.0f, offset, depth));
+            CHECK(offset == cr->GetSpriteOffset());
+            CHECK(depth == 0.0f);
+        }
+
+        cr->InvalidateSprite();
+        offset = ipos32 {123, 456};
+        depth = 123.0f;
+        CHECK_FALSE(Client_Critter_GetBoneMapAnchor(cr, bone, 0.0f, 0.0f, 0.0f, offset, depth));
+        CHECK(offset == cr->GetSpriteOffset());
+        CHECK(depth == 0.0f);
+
+        auto flat {map->AddMapperCritter(client->Hashes.to_hashed_string("UnitTestClientCritter"), mpos {9, 8}, mdir {}, nullptr)};
+        depth = 123.0f;
+        CHECK_FALSE(Client_Critter_GetBoneMapAnchor(flat, bone, 0.0f, 0.0f, 0.0f, offset, depth));
+        CHECK(offset == flat->GetSpriteOffset());
+        CHECK(depth == 0.0f);
+
+        auto off_map {safe_alloc::make_refcounted<CritterView>(client, ident_t {2002}, client->GetProtoCritter(client->Hashes.to_hashed_string("UnitTestClientCritter")), nullptr)};
+        auto destroy_off_map {scope_exit([&off_map]() noexcept { safe_call([&off_map] { off_map->DestroySelf(); }); })};
+        CHECK_THROWS_AS(Client_Critter_GetBoneMapAnchor(off_map, bone, 0.0f, 0.0f, 0.0f, offset, depth), ScriptException);
+    }
+}
+
+TEST_CASE("ModelBoneDepthKeepsThePosedPointAcrossRenderPaths")
+{
+    constexpr string_view MESH_PATH {"Models/BoneDepth.fbx"};
+    constexpr string_view MODEL_PATH {"Models/BoneDepth.fo3d"};
+    constexpr string_view DESCRIPTION {"Model BoneDepth.fbx\nScale 1.25\nAnim 1 1 BoneDepth.fbx Base\n"};
+    auto mesh {MakeRuntimeModelTriangleMesh()};
+    vector<pair<string, vector<uint8_t>>> resources {};
+    resources.emplace_back(string {"ModelAnimationInfo.foinfo"}, MakeUnitTestModelAnimationInfo(MODEL_PATH));
+    resources.emplace_back(string {MESH_PATH}, mesh);
+    resources.emplace_back(string {MODEL_PATH}, MakeRuntimeModelDescription(MODEL_PATH, MESH_PATH, mesh, {}, {}, nullptr, false, {}, 0.0f, nullptr, DESCRIPTION));
+    auto settings {MakeClientTestSettings()};
+    BakerTests::OverrideSetting(settings.Render.ModelProjFactor, 32.0f);
+    BakerTests::OverrideSetting(settings.Geometry.MapCameraAngle, GameSettings::MAP_CAMERA_ANGLE);
+    auto client {MakeClientEngine(settings, MakeClientTestResources(std::move(resources)))};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+    auto factory {client->ResMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>()};
+    REQUIRE(factory);
+    auto model {factory->GetModelMngr()->CreateModel(MODEL_PATH)};
+    REQUIRE(model);
+    model->StartMeshGeneration();
+    REQUIRE(model->HasAnimation(static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(1)));
+    ignore_unused(model->PlayAnim(static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(1), nullptr, 0.0f, ModelAnimFlags::Freeze));
+    CHECK(model->GetStateAnim() == static_cast<CritterStateAnim>(1));
+    CHECK(model->GetActionAnim() == static_cast<CritterActionAnim>(1));
+    hstring bone {client->Hashes.to_hashed_string(MESH_PATH)};
+    float32_t angle {GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT};
+
+    SECTION("OneScreenPointCanHaveDifferentPhysicalDepths")
+    {
+        model->SetDir(mdir {int16_t {180}}, false);
+        model->SetupFrame(isize32 {128, 128}, ipos32 {64, 96});
+        model->PoseSpriteFrame(false);
+        float32_t near_depth {-1.0f};
+        float32_t far_depth {-1.0f};
+        auto far {model->GetBonePos(bone, vec3 {}, make_ptr(&far_depth))};
+        auto near {model->GetBonePos(bone, vec3 {0.0f, std::sin(angle), std::cos(angle)}, make_ptr(&near_depth))};
+        REQUIRE(far);
+        REQUIRE(near);
+        CHECK(*far == *near);
+        CHECK(is_float_equal(far_depth, 0.0f));
+        CHECK(is_float_equal(near_depth, 40.0f));
+    }
+
+    SECTION("WorldProjectionIsIndependentOfPivotAndDirectSceneScale")
+    {
+        vec3 local {0.7f, 0.4f, 0.3f};
+
+        for (int16_t direction : {int16_t {180}, int16_t {90}, int16_t {0}}) {
+            float32_t yaw {numeric_cast<float32_t>(180 - direction) * DEG_TO_RAD_FLOAT};
+            vec3 world {
+                (std::cos(yaw) * local.x + std::sin(yaw) * local.z) * 40.0f,
+                local.y * 40.0f,
+                (-std::sin(yaw) * local.x + std::cos(yaw) * local.z) * 40.0f,
+            };
+            vec3 expected {GeometryHelper::ProjectWorldToMap(world)};
+
+            for (ipos32 pivot : {ipos32 {64, 96}, ipos32 {23, 71}}) {
+                model->SetDir(mdir {direction}, false);
+                model->SetupFrame(isize32 {128, 128}, pivot);
+                model->PoseSpriteFrame(false);
+                float32_t depth {-1.0f};
+                auto offset {model->GetBonePos(bone, local, make_ptr(&depth))};
+                REQUIRE(offset);
+                CHECK(offset == model->GetBonePos(bone, local));
+                CHECK(offset->x == iround<int32_t>(expected.x));
+                CHECK(offset->y == iround<int32_t>(expected.y));
+                CHECK(is_float_equal(depth, expected.z));
+
+                for (float32_t scale : {0.5f, 2.0f}) {
+                    mat44 projection {client->SprMngr.GetRender().CreateOrthoMatrix(-50.0f, 200.0f, -75.0f, 175.0f, -10.0f, 10.0f)};
+                    model->DrawInScene(projection, scale);
+                    float32_t direct_depth {-1.0f};
+                    auto direct_offset {model->GetBonePos(bone, local, make_ptr(&direct_depth))};
+                    CHECK(direct_offset == offset);
+                    CHECK(is_float_equal(direct_depth, expected.z));
+                }
+            }
+        }
+    }
+
+    SECTION("InvalidPointsClearTheRequestedDepth")
+    {
+        model->SetupFrame(isize32 {128, 128}, ipos32 {64, 96});
+        model->PoseSpriteFrame(false);
+        float32_t depth {123.0f};
+        CHECK_FALSE(model->GetBonePos(client->Hashes.to_hashed_string("MissingBone"), vec3 {}, make_ptr(&depth)));
+        CHECK(depth == 0.0f);
+
+        for (float32_t invalid : {std::numeric_limits<float32_t>::quiet_NaN(), std::numeric_limits<float32_t>::infinity(), std::numeric_limits<float32_t>::max()}) {
+            depth = 123.0f;
+            CHECK_FALSE(model->GetBonePos(bone, vec3 {invalid, 0.0f, 0.0f}, make_ptr(&depth)));
+            CHECK(depth == 0.0f);
+        }
+    }
+}
+
+#if FO_EFFEKSEER_PARTICLES
+TEST_CASE("ModelParticleEmitsAtItsBoneBeforeAnotherPose")
+{
+    constexpr string_view mesh_path {"Models/ImmediateParticle.fbx"};
+    constexpr string_view model_path {"Models/ImmediateParticle.fo3d"};
+    constexpr string_view particle_path {"Particles/Immediate.efk"};
+    bool unlit {GENERATE(false, true)};
+    CAPTURE(unlit);
+    constexpr string_view particle_project {R"EFK(<?xml version="1.0" encoding="utf-8"?>
+<EffekseerProject>
+  <Root>
+    <Name>Root</Name>
+    <Children>
+      <Node>
+        <Name>Instant</Name>
+        <CommonValues>
+          <MaxGeneration>
+            <Value>1</Value>
+            <Infinite>False</Infinite>
+          </MaxGeneration>
+          <Life>
+            <Min>5</Min>
+            <Max>5</Max>
+          </Life>
+          <Generation>
+            <GenerationTime>
+              <Min>0</Min>
+              <Max>0</Max>
+            </GenerationTime>
+          </Generation>
+        </CommonValues>
+        <RendererCommonValues>
+          <AlphaBlend>1</AlphaBlend>
+          <ZTest>False</ZTest>
+          <ZWrite>False</ZWrite>
+        </RendererCommonValues>
+        <DrawingValues>
+          <ColorAll>
+            <Fixed>
+              <R>255</R>
+              <G>255</G>
+              <B>255</B>
+              <A>255</A>
+            </Fixed>
+          </ColorAll>
+          <Sprite>
+            <Billboard>0</Billboard>
+          </Sprite>
+        </DrawingValues>
+        <Children />
+      </Node>
+    </Children>
+  </Root>
+  <ToolVersion>1.80.5</ToolVersion>
+  <Version>3</Version>
+  <StartFrame>0</StartFrame>
+  <EndFrame>5</EndFrame>
+  <IsLoop>False</IsLoop>
+</EffekseerProject>
+)EFK"};
+
+    auto project_bytes {const_span<uint8_t> {reinterpret_cast<const uint8_t*>(particle_project.data()), particle_project.size()}};
+    EffekseerCompilerOutput particle {CompileEffekseerProject("Particles/Immediate.efkproj", project_bytes)};
+    REQUIRE(particle.Dependencies.empty());
+
+    AppendEffekseerBoundsTrailer(particle.Binary, vec3 {-0.5f}, vec3 {0.5f}, 0.75f);
+
+    vector<uint8_t> mesh {MakeSkinnedRuntimeModelMesh()};
+    vector<uint8_t> animation_info {};
+    vector<pair<string, vector<uint8_t>>> resources {};
+    resources.emplace_back(string {mesh_path}, mesh);
+    resources.emplace_back(string {model_path}, MakeRuntimeModelDescription(model_path, mesh_path, mesh, {}, {}, nullptr, true, {}, 2.0f, &animation_info, "Model ImmediateParticle.fbx\nAnim 1 1 ModelFile Base\n"));
+    resources.emplace_back("ModelAnimationInfo.foinfo", std::move(animation_info));
+    resources.emplace_back(string {particle_path}, std::move(particle.Binary));
+
+    constexpr string_view particle_effect {"[Effect]\nPasses = 1\nDepthWrite = False\nDepthFunc = LessEqual\nDepthVariants = True\nCullVariants = True\n"};
+    resources.emplace_back("Effects/Particles_ColorMulAtlas.fofx", vector<uint8_t> {particle_effect.begin(), particle_effect.end()});
+
+    auto settings {MakeClientTestSettings()};
+    BakerTests::OverrideSetting(settings.Render.ModelProjFactor, 32.0f);
+
+    auto client {MakeClientEngine(settings, MakeClientTestResources(std::move(resources)))};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+    auto factory {client->ResMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>()};
+    REQUIRE(factory);
+
+    auto model {factory->GetModelMngr()->CreateModel(model_path)};
+    REQUIRE(model);
+
+    model->StartMeshGeneration();
+    model->PrepareFrameLayout();
+    hstring bone {client->Hashes.to_hashed_string(mesh_path)};
+    auto state {static_cast<CritterStateAnim>(1)};
+    auto action {static_cast<CritterActionAnim>(1)};
+    (void)model->PlayAnim(state, action, nullptr, 0.0f, ModelAnimFlags::Freeze);
+    model->SetupFrame(isize32 {512, 512}, ipos32 {256, 384});
+    model->PoseSpriteFrame(false);
+
+    auto before {model->GetSpriteBounds()};
+    REQUIRE(before);
+    REQUIRE(before->Rect.width < 512);
+
+    auto particle_attach_count {[](const auto& instance) -> int32_t {
+        int32_t count {0};
+
+        for (const ModelAttachPoint& attach : instance->GetAttachPoints()) {
+            if (attach.Kind == ModelAttachKind::Particle) {
+                count++;
+            }
+        }
+
+        return count;
+    }};
+
+    auto run_particle {[unlit](ptr<ModelInstance> instance, string_view path, hstring bone_name, vec3 offset) {
+        if (unlit) {
+            instance->RunUnlitParticle(path, bone_name, offset);
+        }
+        else {
+            instance->RunParticle(path, bone_name, offset);
+        }
+    }};
+
+    SECTION("CallbackBirthIsReadyBeforeTheNextPose")
+    {
+        vec3 offset {4.0f, 0.0f, 0.0f};
+        int32_t callbacks {0};
+
+        // Consume the construction interval before arming the callback, so only the explicit 200 ms crosses it
+        client->GameTime.FrameAdvance(false);
+        model->PoseSpriteFrame(true);
+
+        model->AddAnimationCallback(ModelAnimationCallback {
+            .StateAnim = state,
+            .ActionAnim = action,
+            .NormalizedTime = 0.5f,
+            .Callback =
+                [&model, &run_particle, particle_path, bone, offset, &callbacks] {
+                    callbacks++;
+
+                    run_particle(model.get(), particle_path, bone, offset);
+                },
+        });
+        model->SetSpeed(10.0f);
+        (void)model->PlayAnim(state, action, nullptr, 0.0f, combine_enum(ModelAnimFlags::PlayOnce, ModelAnimFlags::NoSmooth));
+        model->SetupFrame(isize32 {512, 512}, ipos32 {256, 384});
+        model->PoseSpriteFrame(true);
+
+        coarse_sleep(std::chrono::milliseconds {200});
+        client->GameTime.FrameAdvance(false);
+        model->PoseSpriteFrame(true);
+        REQUIRE(callbacks == 1);
+
+        // The callback runs after the particle loop; the first observation must contain the zero-time effect itself
+        CHECK(particle_attach_count(model) == 1);
+        CHECK(model->HasUnlitParticles() == unlit);
+        auto first {model->GetSpriteBounds()};
+        REQUIRE(first);
+        CAPTURE(first->Rect.x, first->Rect.y, first->Rect.width, first->Rect.height, first->RequiredFrameSize.width, first->RequiredFrameSize.height);
+        CHECK(model->GetDrawSize() == isize32 {512, 512});
+
+        auto relative {model->GetBonePos(bone, offset)};
+        REQUIRE(relative);
+
+        ipos32 point {*relative + model->GetFramePivot()};
+        REQUIRE((point.x < before->Rect.x || point.x >= before->Rect.x + before->Rect.width || point.y < before->Rect.y || point.y >= before->Rect.y + before->Rect.height));
+        CHECK(point.x >= first->Rect.x);
+        CHECK(point.x < first->Rect.x + first->Rect.width);
+        CHECK(point.y >= first->Rect.y);
+        CHECK(point.y < first->Rect.y + first->Rect.height);
+        CHECK(first->RequiredFrameSize.width <= 512);
+        CHECK(first->RequiredFrameSize.height <= 512);
+
+        // A zero-time re-pose is the independent resource control and must reveal the same live particle
+        model->PoseSpriteFrame(false);
+        auto after_repose {model->GetSpriteBounds()};
+        REQUIRE(after_repose);
+        CHECK(particle_attach_count(model) == 1);
+        CHECK(model->HasUnlitParticles() == unlit);
+
+        auto after_relative {model->GetBonePos(bone, offset)};
+        REQUIRE(after_relative);
+
+        ipos32 after_point {*after_relative + model->GetFramePivot()};
+        CHECK(after_point.x >= after_repose->Rect.x);
+        CHECK(after_point.x < after_repose->Rect.x + after_repose->Rect.width);
+        CHECK(after_point.y >= after_repose->Rect.y);
+        CHECK(after_point.y < after_repose->Rect.y + after_repose->Rect.height);
+        CHECK(after_repose->RequiredFrameSize.width <= 512);
+        CHECK(after_repose->RequiredFrameSize.height <= 512);
+    }
+
+    SECTION("DirectBirthUsesThePosedBoneAndIgnoresPreBirthTime")
+    {
+        vec3 offset {4.0f, 0.0f, 0.0f};
+
+        // The unconsumed interval reaches the first pose after the request; birth must not inherit it
+        coarse_sleep(std::chrono::milliseconds {200});
+        client->GameTime.FrameAdvance(false);
+        run_particle(model.get(), particle_path, bone, offset);
+        model->PoseSpriteFrame(true);
+
+        CHECK(particle_attach_count(model) == 1);
+        CHECK(model->HasUnlitParticles() == unlit);
+        auto first {model->GetSpriteBounds()};
+        REQUIRE(first);
+        CAPTURE(first->Rect.x, first->Rect.y, first->Rect.width, first->Rect.height, first->RequiredFrameSize.width, first->RequiredFrameSize.height);
+        CHECK(model->GetDrawSize() == isize32 {512, 512});
+
+        auto relative {model->GetBonePos(bone, offset)};
+        REQUIRE(relative);
+
+        ipos32 point {*relative + model->GetFramePivot()};
+        REQUIRE((point.x < before->Rect.x || point.x >= before->Rect.x + before->Rect.width || point.y < before->Rect.y || point.y >= before->Rect.y + before->Rect.height));
+        CHECK(point.x >= first->Rect.x);
+        CHECK(point.x < first->Rect.x + first->Rect.width);
+        CHECK(point.y >= first->Rect.y);
+        CHECK(point.y < first->Rect.y + first->Rect.height);
+        CHECK(first->RequiredFrameSize.width <= 512);
+        CHECK(first->RequiredFrameSize.height <= 512);
+    }
+
+    SECTION("DirectBirthKeepsTheRequestedOffset")
+    {
+        vec3 offset {6.0f, 0.0f, 0.0f};
+
+        coarse_sleep(std::chrono::milliseconds {200});
+        client->GameTime.FrameAdvance(false);
+        run_particle(model.get(), particle_path, bone, offset);
+        model->PoseSpriteFrame(true);
+
+        CHECK(particle_attach_count(model) == 1);
+        CHECK(model->HasUnlitParticles() == unlit);
+        auto first {model->GetSpriteBounds()};
+        REQUIRE(first);
+        CAPTURE(first->Rect.x, first->Rect.y, first->Rect.width, first->Rect.height, first->RequiredFrameSize.width, first->RequiredFrameSize.height);
+        CHECK(model->GetDrawSize() == isize32 {512, 512});
+
+        auto relative {model->GetBonePos(bone, offset)};
+        REQUIRE(relative);
+
+        ipos32 point {*relative + model->GetFramePivot()};
+        CHECK(point.x >= first->Rect.x);
+        CHECK(point.x < first->Rect.x + first->Rect.width);
+        CHECK(point.y >= first->Rect.y);
+        CHECK(point.y < first->Rect.y + first->Rect.height);
+
+        // Six authored units need more than 320 pixels; dropping the request offset cannot reach that width
+        CHECK(first->RequiredFrameSize.width > 320);
+        CHECK(first->RequiredFrameSize.width <= 512);
+        CHECK(first->RequiredFrameSize.height <= 512);
+    }
+
+    SECTION("DirectBirthAtZeroTimeIsAValidResourceControl")
+    {
+        vec3 offset {4.0f, 0.0f, 0.0f};
+        CHECK_FALSE(model->NeedForceDraw());
+
+        run_particle(model.get(), particle_path, bone, offset);
+        CHECK(model->NeedForceDraw());
+
+        model->PoseSpriteFrame(false);
+
+        CHECK(particle_attach_count(model) == 1);
+        CHECK(model->HasUnlitParticles() == unlit);
+        auto control {model->GetSpriteBounds()};
+        REQUIRE(control);
+        CAPTURE(control->Rect.x, control->Rect.y, control->Rect.width, control->Rect.height, control->RequiredFrameSize.width, control->RequiredFrameSize.height);
+        CHECK(model->GetDrawSize() == isize32 {512, 512});
+
+        auto relative {model->GetBonePos(bone, offset)};
+        REQUIRE(relative);
+
+        ipos32 point {*relative + model->GetFramePivot()};
+        REQUIRE((point.x < before->Rect.x || point.x >= before->Rect.x + before->Rect.width || point.y < before->Rect.y || point.y >= before->Rect.y + before->Rect.height));
+        CHECK(point.x >= control->Rect.x);
+        CHECK(point.x < control->Rect.x + control->Rect.width);
+        CHECK(point.y >= control->Rect.y);
+        CHECK(point.y < control->Rect.y + control->Rect.height);
+        CHECK(control->RequiredFrameSize.width <= 512);
+        CHECK(control->RequiredFrameSize.height <= 512);
+    }
+
+    SECTION("UnposedRequestWaitsForTheFirstPoseAndThenExpires")
+    {
+        vec3 offset {4.0f, 0.0f, 0.0f};
+        auto fresh_model {factory->GetModelMngr()->CreateModel(model_path)};
+        REQUIRE(fresh_model);
+
+        fresh_model->StartMeshGeneration();
+        fresh_model->PrepareFrameLayout();
+        (void)fresh_model->PlayAnim(state, action, nullptr, 0.0f, ModelAnimFlags::Freeze);
+        fresh_model->SetupFrame(isize32 {512, 512}, ipos32 {256, 384});
+
+        auto mesh_bounds {fresh_model->GetSpriteBounds()};
+        REQUIRE(mesh_bounds);
+        REQUIRE(mesh_bounds->Rect.width < 512);
+
+        run_particle(fresh_model.get(), particle_path, bone, offset);
+
+        // A request without a valid pose must not reserve an identity-origin envelope
+        auto pending_bounds {fresh_model->GetSpriteBounds()};
+        REQUIRE(pending_bounds);
+        CHECK(pending_bounds->Rect == mesh_bounds->Rect);
+        CHECK(pending_bounds->RequiredFrameSize == mesh_bounds->RequiredFrameSize);
+
+        CHECK_FALSE(fresh_model->HasUnlitParticles());
+
+        fresh_model->PoseSpriteFrame(false);
+        auto placed {fresh_model->GetSpriteBounds()};
+        REQUIRE(placed);
+        CAPTURE(placed->Rect.x, placed->Rect.y, placed->Rect.width, placed->Rect.height, placed->RequiredFrameSize.width, placed->RequiredFrameSize.height);
+        CHECK(particle_attach_count(fresh_model) == 1);
+        CHECK(fresh_model->HasUnlitParticles() == unlit);
+        CHECK(fresh_model->GetDrawSize() == isize32 {512, 512});
+
+        auto relative {fresh_model->GetBonePos(bone, offset)};
+        REQUIRE(relative);
+
+        ipos32 point {*relative + fresh_model->GetFramePivot()};
+        REQUIRE((point.x < before->Rect.x || point.x >= before->Rect.x + before->Rect.width || point.y < before->Rect.y || point.y >= before->Rect.y + before->Rect.height));
+        CHECK(point.x >= placed->Rect.x);
+        CHECK(point.x < placed->Rect.x + placed->Rect.width);
+        CHECK(point.y >= placed->Rect.y);
+        CHECK(point.y < placed->Rect.y + placed->Rect.height);
+
+        // A ghost left at the identity world origin would demand more than the allocated 512-pixel frame
+        CHECK(placed->RequiredFrameSize.width <= 512);
+        CHECK(placed->RequiredFrameSize.height <= 512);
+
+        // A live particle advances with positive time and must disappear from both consumers after its short life
+        coarse_sleep(std::chrono::milliseconds {200});
+        client->GameTime.FrameAdvance(false);
+        fresh_model->PoseSpriteFrame(true);
+
+        auto finished {fresh_model->GetSpriteBounds()};
+        REQUIRE(finished);
+
+        int32_t retirement_poses {0};
+
+        while (particle_attach_count(fresh_model) != 0 && retirement_poses < 3) {
+            fresh_model->PoseSpriteFrame(false);
+            finished = fresh_model->GetSpriteBounds();
+            REQUIRE(finished);
+            retirement_poses++;
+        }
+
+        CHECK(particle_attach_count(fresh_model) == 0);
+        CHECK_FALSE(fresh_model->HasUnlitParticles());
+        REQUIRE(finished);
+        CHECK((point.x < finished->Rect.x || point.x >= finished->Rect.x + finished->Rect.width || point.y < finished->Rect.y || point.y >= finished->Rect.y + finished->Rect.height));
+    }
+
+    SECTION("MissingBoneCreatesNoParticleAndLeavesTheModelUsable")
+    {
+        vec3 offset {4.0f, 0.0f, 0.0f};
+        CHECK(particle_attach_count(model) == 0);
+        CHECK_FALSE(model->HasUnlitParticles());
+
+        run_particle(model.get(), particle_path, client->Hashes.to_hashed_string("MissingParticleBone"), offset);
+
+        auto rejected {model->GetSpriteBounds()};
+        REQUIRE(rejected);
+        CHECK(rejected->Rect == before->Rect);
+        CHECK(rejected->RequiredFrameSize == before->RequiredFrameSize);
+        CHECK(particle_attach_count(model) == 0);
+        CHECK_FALSE(model->HasUnlitParticles());
+
+        run_particle(model.get(), particle_path, bone, offset);
+        model->PoseSpriteFrame(false);
+
+        auto accepted {model->GetSpriteBounds()};
+        REQUIRE(accepted);
+        CHECK(particle_attach_count(model) == 1);
+        CHECK(model->HasUnlitParticles() == unlit);
+
+        auto relative {model->GetBonePos(bone, offset)};
+        REQUIRE(relative);
+
+        ipos32 point {*relative + model->GetFramePivot()};
+        CHECK(point.x >= accepted->Rect.x);
+        CHECK(point.x < accepted->Rect.x + accepted->Rect.width);
+        CHECK(point.y >= accepted->Rect.y);
+        CHECK(point.y < accepted->Rect.y + accepted->Rect.height);
+        CHECK(accepted->RequiredFrameSize.width <= 512);
+        CHECK(accepted->RequiredFrameSize.height <= 512);
+    }
+    SECTION("AtlasOverlayUsesTheBornPoseAndRetires")
+    {
+        bool direct_draw {GENERATE(false, true)};
+        CAPTURE(direct_draw);
+        BakerTests::OverrideSetting(settings.Render.ModelDirectDraw, direct_draw);
+
+        auto sprite {factory->LoadSprite(client->Hashes.to_hashed_string(model_path), AtlasType::OneImage).dyn_cast<ModelSprite>()};
+        REQUIRE(sprite);
+        REQUIRE(sprite->IsDirectDraw() == direct_draw);
+
+        auto instance {sprite->GetModel()};
+        instance->StartMeshGeneration();
+        instance->PrepareFrameLayout();
+        (void)instance->PlayAnim(state, action, nullptr, 0.0f, ModelAnimFlags::Freeze);
+        instance->SetupFrame(isize32 {512, 512}, ipos32 {256, 384});
+        sprite->SetSize(isize32 {512, 512});
+
+        run_particle(instance, particle_path, bone, vec3 {4.0f, 0.0f, 0.0f});
+        CHECK_FALSE(instance->HasUnlitParticles());
+        CHECK(sprite->Update());
+        CHECK(particle_attach_count(instance) == 1);
+        CHECK(instance->HasUnlitParticles() == unlit);
+
+        auto overlay {sprite->GetUnlitOverlay()};
+
+        if (unlit) {
+            REQUIRE(overlay);
+            CHECK(overlay->GetSize() == sprite->GetSize());
+            CHECK(overlay->GetOffset() == sprite->GetOffset());
+            CHECK(overlay->GetBatchTexture());
+            CHECK(overlay->GetBatchTexture() != sprite->GetBatchTexture());
+
+            instance->RequestRedraw();
+            CHECK(sprite->Update());
+            CHECK(sprite->GetUnlitOverlay() == overlay);
+        }
+        else {
+            CHECK_FALSE(overlay);
+        }
+
+        coarse_sleep(std::chrono::milliseconds {200});
+        client->GameTime.FrameAdvance(false);
+
+        if (direct_draw) {
+            instance->DrawInScene(mat44 {1.0f}, 1.0f);
+            CHECK_FALSE(instance->NeedForceDraw());
+        }
+
+        CHECK(sprite->Update());
+
+        int32_t retirement_poses {0};
+
+        while (particle_attach_count(instance) != 0 && retirement_poses < 3) {
+            if (direct_draw) {
+                instance->DrawInScene(mat44 {1.0f}, 1.0f);
+                CHECK_FALSE(instance->NeedForceDraw());
+            }
+            else {
+                instance->RequestRedraw();
+            }
+
+            CHECK(sprite->Update());
+            retirement_poses++;
+        }
+
+        CHECK(particle_attach_count(instance) == 0);
+        CHECK_FALSE(instance->HasUnlitParticles());
+        CHECK_FALSE(sprite->GetUnlitOverlay());
+    }
+}
+#endif
+
 TEST_CASE("ModelManagerInstantiatesABakedModel")
 {
     // The 3D instance surface was assumed to need a GPU, but the headless Null renderer serves it: with a
@@ -950,6 +2286,159 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
         ignore_unused(model->GetSpriteBounds());
         ignore_unused(model->GetDrawSize());
         ignore_unused(model->NeedDraw());
+    }
+
+    SECTION("ScenePreparationIncludesPoseChangesRequestedByAnimationCallbacks")
+    {
+        auto state {static_cast<CritterStateAnim>(1)};
+        auto action {static_cast<CritterActionAnim>(1)};
+        (void)model->PlayAnim(state, action, nullptr, 0.0f, ModelAnimFlags::Freeze);
+        model->StartMeshGeneration();
+        model->SetDir(mdir {int16_t {180}}, false);
+        client->GameTime.FrameAdvance(false);
+        model->PoseSpriteFrame(true);
+
+        int32_t callbacks {0};
+        model->AddAnimationCallback(ModelAnimationCallback {
+            .StateAnim = state,
+            .ActionAnim = action,
+            .NormalizedTime = 0.5f,
+            .Callback =
+                [&model, &callbacks] {
+                    callbacks++;
+                    model->SetDir(mdir {int16_t {90}}, false);
+                },
+        });
+        model->SetSpeed(10.0f);
+        (void)model->PlayAnim(state, action, nullptr, 0.0f, combine_enum(ModelAnimFlags::PlayOnce, ModelAnimFlags::NoSmooth));
+        model->PoseSpriteFrame(true);
+
+        coarse_sleep(std::chrono::milliseconds {200});
+        client->GameTime.FrameAdvance(false);
+        REQUIRE(model->PrepareSceneFrame(1.0f));
+        REQUIRE(callbacks == 1);
+
+        hstring root_bone {client->Hashes.to_hashed_string(MESH_PATH)};
+        auto point {vec3 {4.0f, 2.0f, 1.0f}};
+        auto prepared {model->GetBonePos(root_bone, point)};
+        REQUIRE(prepared);
+
+        model->PoseSpriteFrame(false);
+        auto settled {model->GetBonePos(root_bone, point)};
+        REQUIRE(settled);
+
+        CAPTURE(prepared->x, prepared->y, settled->x, settled->y);
+        CHECK(prepared == settled);
+        CHECK(callbacks == 1);
+    }
+
+    SECTION("RepeatedDirectSceneDrawKeepsTheDisplayedBonePose")
+    {
+        BakerTests::OverrideSetting(settings.Render.ModelDirectDraw, true);
+
+        auto sprite {factory->LoadSprite(client->Hashes.to_hashed_string(MODEL_PATH), AtlasType::OneImage).dyn_cast<ModelSprite>()};
+        REQUIRE(sprite);
+        REQUIRE(sprite->IsDirectDraw());
+
+        auto instance {sprite->GetModel()};
+        instance->StartMeshGeneration();
+        instance->SetDir(mdir {int16_t {0}}, false);
+        CHECK(sprite->Update());
+
+        instance->SetDir(mdir {int16_t {90}}, true);
+        coarse_sleep(std::chrono::milliseconds {50});
+        client->GameTime.FrameAdvance(false);
+        CHECK(sprite->Update());
+
+        sprite->DrawInScene(fpos32 {64.0f, 64.0f}, 0.0f);
+
+        hstring root_bone {client->Hashes.to_hashed_string(MESH_PATH)};
+        auto point {vec3 {4.0f, 2.0f, 1.0f}};
+        auto submitted_anchor {instance->GetBonePos(root_bone, point)};
+        REQUIRE(submitted_anchor);
+
+        float32_t submitted_angle {instance->GetMoveDirAngle()};
+
+        for (fpos32 scene_pos : {fpos32 {160.0f, 96.0f}, fpos32 {240.0f, 128.0f}}) {
+            sprite->DrawInScene(scene_pos, 0.0f);
+
+            auto drawn_anchor {instance->GetBonePos(root_bone, point)};
+            REQUIRE(drawn_anchor);
+            CAPTURE(submitted_anchor->x, submitted_anchor->y, drawn_anchor->x, drawn_anchor->y, submitted_angle, instance->GetMoveDirAngle());
+
+            CHECK(drawn_anchor == submitted_anchor);
+            CHECK(instance->GetMoveDirAngle() == submitted_angle);
+        }
+    }
+
+    SECTION("BoneOffsetsKeepSpriteCoordinatesAfterDirectSceneDraw")
+    {
+        // ModelManager names the physical root after the loaded mesh resource
+        hstring root_bone {client->Hashes.to_hashed_string(MESH_PATH)};
+        CHECK_FALSE(model->GetBonePos(client->Hashes.to_hashed_string("MissingBone")));
+
+        ignore_unused(model->PlayAnim(static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(1), nullptr, 0.0f, ModelAnimFlags::Freeze));
+        model->StartMeshGeneration();
+
+        for (ipos32 pivot : {ipos32 {64, 96}, ipos32 {23, 71}}) {
+            model->SetupFrame(isize32 {128, 128}, pivot);
+            model->PoseSpriteFrame(false);
+            auto atlas_offset {model->GetBonePos(root_bone)};
+            REQUIRE(atlas_offset);
+
+            // The independently posed atlas is the reference, including authored/default layer transforms
+            for (float32_t scene_scale : {0.5f, 2.0f}) {
+                mat44 proj {client->SprMngr.GetRender().CreateOrthoMatrix(-50.0f, 200.0f, -75.0f, 175.0f, -10.0f, 10.0f)};
+                model->DrawInScene(proj, scene_scale);
+                auto direct_offset {model->GetBonePos(root_bone)};
+                REQUIRE(direct_offset);
+                CHECK(direct_offset->x == atlas_offset->x);
+                CHECK(direct_offset->y == atlas_offset->y);
+            }
+
+            model->PoseSpriteFrame(false);
+
+            CHECK(model->GetBonePos(root_bone) == atlas_offset);
+        }
+    }
+
+    SECTION("BoneLocalPointsRotateAndKeepSpriteCoordinatesAfterDirectDraw")
+    {
+        hstring root_bone {client->Hashes.to_hashed_string(MESH_PATH)};
+        model->SetupFrame(isize32 {128, 128}, ipos32 {64, 96});
+        model->StartMeshGeneration();
+        auto point {vec3 {0.7f, 0.4f, 0.3f}};
+        optional<ipos32> previous {};
+
+        for (int16_t angle : {int16_t {0}, int16_t {90}, int16_t {180}}) {
+            model->SetDir(mdir {angle}, false);
+            model->PoseSpriteFrame(false);
+            auto origin {model->GetBonePos(root_bone)};
+            auto shifted {model->GetBonePos(root_bone, point)};
+            REQUIRE(origin);
+            REQUIRE(shifted);
+            CHECK(shifted != origin);
+            CHECK(model->GetBonePos(root_bone, vec3 {0.0f}) == origin);
+
+            if (previous) {
+                CHECK(shifted != previous);
+            }
+
+            previous = shifted;
+
+            for (float32_t scene_scale : {0.5f, 2.0f}) {
+                mat44 proj {client->SprMngr.GetRender().CreateOrthoMatrix(-50.0f, 200.0f, -75.0f, 175.0f, -10.0f, 10.0f)};
+                model->DrawInScene(proj, scene_scale);
+
+                CHECK(model->GetBonePos(root_bone, point) == shifted);
+            }
+        }
+
+        CHECK_FALSE(model->GetBonePos(client->Hashes.to_hashed_string("MissingBone"), point));
+        CHECK_FALSE(model->GetBonePos(root_bone, vec3 {std::numeric_limits<float32_t>::quiet_NaN(), 0.0f, 0.0f}));
+        CHECK_FALSE(model->GetBonePos(root_bone, vec3 {0.0f, std::numeric_limits<float32_t>::infinity(), 0.0f}));
+        CHECK_FALSE(model->GetBonePos(root_bone, vec3 {1.0e20f, 0.0f, 0.0f}));
+        CHECK_FALSE(model->GetBonePos(root_bone, vec3 {-1.0e20f, 0.0f, 0.0f}));
     }
 
     SECTION("TheInstanceDrawsThroughTheHeadlessRenderer")
@@ -1923,6 +3412,338 @@ TEST_CASE("SpriteManagerMapsPolygonAtlasPatternsAndPaddedEffects")
     sprite->SetDrawEffect(nullptr);
 }
 
+TEST_CASE("SpriteManagerUnlitOverlayReplaysGuiRectangleAndTint")
+{
+    auto settings {MakeClientTestSettings()};
+    BakerTests::OverrideSetting(settings.Render.Brightness, 0);
+
+    vector<pair<string, vector<uint8_t>>> resources {};
+    resources.emplace_back("OverlayBase.png", BakerTests::MakeMinimalBakedSprite(8, 6));
+    resources.emplace_back("OverlayLayer.png", BakerTests::MakeMinimalBakedSprite(3, 5));
+
+    auto client {MakeClientEngine(settings, MakeClientTestResources(std::move(resources)))};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+    RecordingQuadEffect effect {};
+    auto base_sprite {client->ResMngr.LoadSprite("OverlayBase.png", AtlasType::OneImage)};
+    auto overlay_sprite {client->ResMngr.LoadSprite("OverlayLayer.png", AtlasType::OneImage)};
+
+    REQUIRE(base_sprite);
+    REQUIRE(overlay_sprite);
+    REQUIRE(base_sprite->GetBatchTexture());
+    REQUIRE(overlay_sprite->GetBatchTexture());
+    REQUIRE(base_sprite->GetBatchTexture() != overlay_sprite->GetBatchTexture());
+
+    SECTION("NoOverlayKeepsOneGuiQuad")
+    {
+        base_sprite->SetDrawEffect(make_nptr(&effect));
+
+        client->SprMngr.DrawSprite(base_sprite, ipos32 {13, 29}, ucolor {40, 70, 90, 110});
+        client->SprMngr.Flush();
+
+        REQUIRE(effect.Draws.size() == 1);
+        const RecordedQuadDraw& draw {effect.Draws.front()};
+
+        REQUIRE(draw.Vertices.size() == 4);
+        REQUIRE(draw.Indices.size() == 6);
+        CHECK(draw.StartIndex == 0);
+        REQUIRE(draw.IndicesToDraw.has_value());
+        CHECK(*draw.IndicesToDraw == 6);
+        CHECK(draw.CustomTexture == base_sprite->GetBatchTexture());
+
+        CHECK(draw.Vertices[0].PosX == Catch::Approx(13.0f));
+        CHECK(draw.Vertices[0].PosY == Catch::Approx(35.0f));
+        CHECK(draw.Vertices[1].PosX == Catch::Approx(13.0f));
+        CHECK(draw.Vertices[1].PosY == Catch::Approx(29.0f));
+        CHECK(draw.Vertices[2].PosX == Catch::Approx(21.0f));
+        CHECK(draw.Vertices[2].PosY == Catch::Approx(29.0f));
+        CHECK(draw.Vertices[3].PosX == Catch::Approx(21.0f));
+        CHECK(draw.Vertices[3].PosY == Catch::Approx(35.0f));
+        CHECK(draw.Vertices[0].Color == (ucolor {40, 70, 90, 110}));
+        CHECK(draw.Vertices[1].Color == (ucolor {40, 70, 90, 110}));
+        CHECK(draw.Vertices[2].Color == (ucolor {40, 70, 90, 110}));
+        CHECK(draw.Vertices[3].Color == (ucolor {40, 70, 90, 110}));
+    }
+
+    SECTION("DrawSpriteReplaysOverlayAtTheMainRectangle")
+    {
+        auto sprite {safe_alloc::make_shared<TestUnlitOverlaySprite>(&client->SprMngr, base_sprite, overlay_sprite)};
+
+        sprite->SetDrawEffect(make_nptr(&effect));
+
+        client->SprMngr.DrawSprite(sprite, ipos32 {23, 41}, ucolor {200, 120, 60, 77});
+        client->SprMngr.Flush();
+
+        REQUIRE(effect.Draws.size() == 2);
+        vector<Vertex2D> main_vertices {ReadRecordedLayerQuad(effect.Draws[0])};
+        vector<Vertex2D> overlay_vertices {ReadRecordedLayerQuad(effect.Draws[1])};
+
+        CHECK(effect.Draws[0].CustomTexture == base_sprite->GetBatchTexture());
+        CHECK(effect.Draws[1].CustomTexture == overlay_sprite->GetBatchTexture());
+        CHECK(effect.Draws[0].CustomTexture != effect.Draws[1].CustomTexture);
+
+        REQUIRE(main_vertices.size() == 4);
+        REQUIRE(overlay_vertices.size() == 4);
+
+        for (size_t i {0}; i < 4; i++) {
+            CHECK(main_vertices[i].PosX == Catch::Approx(overlay_vertices[i].PosX));
+            CHECK(main_vertices[i].PosY == Catch::Approx(overlay_vertices[i].PosY));
+            CHECK(main_vertices[i].Color == (ucolor {200, 120, 60, 77}));
+            CHECK(overlay_vertices[i].Color == (ucolor {200, 120, 60, 77}));
+        }
+
+        CHECK(main_vertices[0].PosX == Catch::Approx(23.0f));
+        CHECK(main_vertices[0].PosY == Catch::Approx(47.0f));
+        CHECK(main_vertices[1].PosX == Catch::Approx(23.0f));
+        CHECK(main_vertices[1].PosY == Catch::Approx(41.0f));
+        CHECK(main_vertices[2].PosX == Catch::Approx(31.0f));
+        CHECK(main_vertices[2].PosY == Catch::Approx(41.0f));
+        CHECK(main_vertices[3].PosX == Catch::Approx(31.0f));
+        CHECK(main_vertices[3].PosY == Catch::Approx(47.0f));
+    }
+
+    SECTION("DrawSpriteSizeDelegatesOverlayToTheScaledRectangle")
+    {
+        auto sprite {safe_alloc::make_shared<TestUnlitOverlaySprite>(&client->SprMngr, base_sprite, overlay_sprite)};
+
+        sprite->SetDrawEffect(make_nptr(&effect));
+
+        client->SprMngr.DrawSpriteSize(sprite, ipos32 {5, 7}, isize32 {16, 12}, true, true, ucolor {90, 80, 70, 60});
+        client->SprMngr.Flush();
+
+        REQUIRE(effect.Draws.size() == 2);
+        vector<Vertex2D> main_vertices {ReadRecordedLayerQuad(effect.Draws[0])};
+        vector<Vertex2D> overlay_vertices {ReadRecordedLayerQuad(effect.Draws[1])};
+
+        CHECK(effect.Draws[0].CustomTexture == base_sprite->GetBatchTexture());
+        CHECK(effect.Draws[1].CustomTexture == overlay_sprite->GetBatchTexture());
+        CHECK(effect.Draws[0].CustomTexture != effect.Draws[1].CustomTexture);
+
+        REQUIRE(main_vertices.size() == 4);
+        REQUIRE(overlay_vertices.size() == 4);
+
+        for (size_t i {0}; i < 4; i++) {
+            CHECK(main_vertices[i].PosX == Catch::Approx(overlay_vertices[i].PosX));
+            CHECK(main_vertices[i].PosY == Catch::Approx(overlay_vertices[i].PosY));
+            CHECK(main_vertices[i].Color == (ucolor {90, 80, 70, 60}));
+            CHECK(overlay_vertices[i].Color == (ucolor {90, 80, 70, 60}));
+        }
+
+        CHECK(main_vertices[0].PosX == Catch::Approx(5.0f));
+        CHECK(main_vertices[0].PosY == Catch::Approx(19.0f));
+        CHECK(main_vertices[1].PosX == Catch::Approx(5.0f));
+        CHECK(main_vertices[1].PosY == Catch::Approx(7.0f));
+        CHECK(main_vertices[2].PosX == Catch::Approx(21.0f));
+        CHECK(main_vertices[2].PosY == Catch::Approx(7.0f));
+        CHECK(main_vertices[3].PosX == Catch::Approx(21.0f));
+        CHECK(main_vertices[3].PosY == Catch::Approx(19.0f));
+    }
+
+    SECTION("DrawSpriteSizeExtScalesOverlayToTheMainRectangle")
+    {
+        auto sprite {safe_alloc::make_shared<TestUnlitOverlaySprite>(&client->SprMngr, base_sprite, overlay_sprite)};
+
+        sprite->SetDrawEffect(make_nptr(&effect));
+
+        client->SprMngr.DrawSpriteSizeExt(sprite, fpos32 {51.5f, 63.25f}, fsize32 {20.0f, 30.0f}, true, true, false, ucolor {10, 220, 140, 33});
+        client->SprMngr.Flush();
+
+        REQUIRE(effect.Draws.size() == 2);
+        vector<Vertex2D> main_vertices {ReadRecordedLayerQuad(effect.Draws[0])};
+        vector<Vertex2D> overlay_vertices {ReadRecordedLayerQuad(effect.Draws[1])};
+
+        CHECK(effect.Draws[0].CustomTexture == base_sprite->GetBatchTexture());
+        CHECK(effect.Draws[1].CustomTexture == overlay_sprite->GetBatchTexture());
+        CHECK(effect.Draws[0].CustomTexture != effect.Draws[1].CustomTexture);
+
+        REQUIRE(main_vertices.size() == 4);
+        REQUIRE(overlay_vertices.size() == 4);
+
+        for (size_t i {0}; i < 4; i++) {
+            CHECK(main_vertices[i].PosX == Catch::Approx(overlay_vertices[i].PosX));
+            CHECK(main_vertices[i].PosY == Catch::Approx(overlay_vertices[i].PosY));
+            CHECK(main_vertices[i].Color == (ucolor {10, 220, 140, 33}));
+            CHECK(overlay_vertices[i].Color == (ucolor {10, 220, 140, 33}));
+        }
+
+        CHECK(main_vertices[0].PosX == Catch::Approx(51.5f));
+        CHECK(main_vertices[0].PosY == Catch::Approx(86.25f));
+        CHECK(main_vertices[1].PosX == Catch::Approx(51.5f));
+        CHECK(main_vertices[1].PosY == Catch::Approx(71.25f));
+        CHECK(main_vertices[2].PosX == Catch::Approx(71.5f));
+        CHECK(main_vertices[2].PosY == Catch::Approx(71.25f));
+        CHECK(main_vertices[3].PosX == Catch::Approx(71.5f));
+        CHECK(main_vertices[3].PosY == Catch::Approx(86.25f));
+    }
+}
+
+TEST_CASE("SpriteManagerUnlitOverlayMapKeepsUnlitColorGeometryAndDepth")
+{
+    auto settings {MakeClientTestSettings()};
+    BakerTests::OverrideSetting(settings.Render.Brightness, 0);
+    BakerTests::OverrideSetting(settings.Geometry.MapCameraAngle, 30.0f);
+
+    vector<pair<string, vector<uint8_t>>> resources {};
+    resources.emplace_back("MapOverlayBase.png", BakerTests::MakeMinimalBakedSprite(8, 8));
+    resources.emplace_back("MapOverlayLayer.png", BakerTests::MakeMinimalBakedSprite(5, 11));
+
+    auto client {MakeClientEngine(settings, MakeClientTestResources(std::move(resources)))};
+    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
+    RecordingQuadEffect effect {};
+    auto base_sprite {client->ResMngr.LoadSprite("MapOverlayBase.png", AtlasType::OneImage)};
+    auto overlay_sprite {client->ResMngr.LoadSprite("MapOverlayLayer.png", AtlasType::OneImage)};
+
+    REQUIRE(base_sprite);
+    REQUIRE(overlay_sprite);
+    REQUIRE(base_sprite->GetBatchTexture());
+    REQUIRE(overlay_sprite->GetBatchTexture());
+    REQUIRE(base_sprite->GetBatchTexture() != overlay_sprite->GetBatchTexture());
+
+    auto sprite {safe_alloc::make_shared<TestUnlitOverlaySprite>(&client->SprMngr, base_sprite, overlay_sprite)};
+
+    sprite->SetDrawEffect(make_nptr(&effect));
+
+    uint8_t map_alpha {150};
+    ipos32 field_offset {100, 100};
+    MapSpriteList list {};
+    auto mspr {list.AddSprite(DrawOrderType::Item, mpos {3, 3}, ipos32 {12, -17}, &field_offset, sprite.get(), nullptr, nullptr, nullptr, &map_alpha, nullptr, nullptr, 0)};
+
+    REQUIRE(mspr->GetAlpha());
+    CHECK(*mspr->GetAlpha() == 150);
+
+    client->SprMngr.SetEgg(TransparentEggSlot::Primary, mpos {3, 3}, fpos32 {50.0f, 50.0f}, fsize32 {30.0f, 20.0f}, TransparentEggTarget::AnyOccluder);
+    client->SprMngr.SetEgg(TransparentEggSlot::Secondary, mpos {3, 3}, fpos32 {70.0f, 45.0f}, fsize32 {15.0f, 25.0f}, TransparentEggTarget::AnyOccluder);
+
+    irect32 draw_area {0, 0, 320, 200};
+    auto draw_layers {[&]() -> pair<vector<Vertex2D>, vector<Vertex2D>> {
+        effect.Draws.clear();
+        client->SprMngr.DrawSprites(list, draw_area, 0, true, DrawOrderType::Item, DrawOrderType::Item, ucolor {36, 24, 12, 255}, &effect);
+
+        REQUIRE(effect.Draws.size() == 2);
+        CHECK(effect.Draws[0].CustomTexture == base_sprite->GetBatchTexture());
+        CHECK(effect.Draws[1].CustomTexture == overlay_sprite->GetBatchTexture());
+        CHECK(effect.Draws[0].CustomTexture != effect.Draws[1].CustomTexture);
+
+        vector<Vertex2D> main_vertices {ReadRecordedLayerQuad(effect.Draws[0])};
+        vector<Vertex2D> overlay_vertices {ReadRecordedLayerQuad(effect.Draws[1])};
+
+        REQUIRE(main_vertices.size() == 4);
+        REQUIRE(overlay_vertices.size() == 4);
+
+        return {std::move(main_vertices), std::move(overlay_vertices)};
+    }};
+
+    SECTION("NeutralOverlayBypassesDayLightAndPreservesAlpha")
+    {
+        auto layers {draw_layers()};
+
+        for (size_t i {0}; i < 4; i++) {
+            CHECK(layers.first[i].Color == (ucolor {36, 24, 12, 150}));
+            CHECK(layers.second[i].Color == (ucolor {128, 128, 128, 150}));
+        }
+    }
+
+    SECTION("LocalLightReachesOnlyTheMainLayer")
+    {
+        ucolor local_light {20, 30, 40, 255};
+        array<ucolor, 256> light_samples {};
+
+        for (auto& sample : light_samples) {
+            sample = local_light;
+        }
+
+        // A uniform light buffer keeps the corner selection irrelevant while taking the local-light path
+        mspr->SetLight(make_ptr(&light_samples[0]), make_ptr(&light_samples[0]), make_ptr(&light_samples[0]));
+
+        auto layers {draw_layers()};
+
+        for (size_t i {0}; i < 4; i++) {
+            CHECK(layers.first[i].Color == (ucolor {56, 54, 52, 150}));
+            CHECK(layers.second[i].Color == (ucolor {128, 128, 128, 150}));
+        }
+    }
+
+    SECTION("ExplicitMapColorIsTheOverlayTint")
+    {
+        mspr->SetColor(ucolor {200, 90, 30, 255});
+        mspr->SetAlpha(&map_alpha);
+
+        auto layers {draw_layers()};
+
+        for (size_t i {0}; i < 4; i++) {
+            CHECK(layers.first[i].Color == (ucolor {200, 90, 30, 150}));
+            CHECK(layers.second[i].Color == (ucolor {200, 90, 30, 150}));
+        }
+    }
+
+    SECTION("RotationProjectionDepthAndBothEggSlotsCoverBothLayers")
+    {
+        mspr->SetEggAppearence(EggAppearenceType::Always);
+        mspr->SetAngle(int16_t {30});
+        mspr->SetMapProjected(true);
+
+        auto transformed {draw_layers()};
+
+        for (size_t i {0}; i < 4; i++) {
+            CHECK(transformed.first[i].PosX == Catch::Approx(transformed.second[i].PosX));
+            CHECK(transformed.first[i].PosY == Catch::Approx(transformed.second[i].PosY));
+            CHECK(transformed.first[i].PosZ == Catch::Approx(transformed.second[i].PosZ));
+            CHECK(transformed.first[i].EggFlags[0] == 1.0f);
+            CHECK(transformed.first[i].EggFlags[1] == 1.0f);
+            CHECK(transformed.second[i].EggFlags[0] == 1.0f);
+            CHECK(transformed.second[i].EggFlags[1] == 1.0f);
+        }
+
+        mspr->SetAngle(int16_t {0});
+        mspr->SetMapProjected(false);
+
+        auto plain {draw_layers()};
+        bool vertices_moved {false};
+
+        for (size_t i {0}; i < 4; i++) {
+            if (!is_float_equal(transformed.first[i].PosX, plain.first[i].PosX) || !is_float_equal(transformed.first[i].PosY, plain.first[i].PosY)) {
+                vertices_moved = true;
+            }
+        }
+
+        CHECK(vertices_moved);
+
+        mspr->SetAngle(int16_t {30});
+        mspr->SetMapProjected(true);
+        mspr->SetDepthOffset(7.0f);
+
+        auto depth {draw_layers()};
+
+        for (size_t i {0}; i < 4; i++) {
+            CHECK(depth.first[i].PosX == Catch::Approx(transformed.first[i].PosX));
+            CHECK(depth.first[i].PosY == Catch::Approx(transformed.first[i].PosY));
+            CHECK(depth.second[i].PosX == Catch::Approx(transformed.second[i].PosX));
+            CHECK(depth.second[i].PosY == Catch::Approx(transformed.second[i].PosY));
+            CHECK(depth.first[i].PosZ == Catch::Approx(transformed.first[i].PosZ + 7.0f));
+            CHECK(depth.second[i].PosZ == Catch::Approx(transformed.second[i].PosZ + 7.0f));
+            CHECK(depth.first[i].PosZ == Catch::Approx(depth.second[i].PosZ));
+            CHECK(depth.first[i].EggFlags[0] == 1.0f);
+            CHECK(depth.first[i].EggFlags[1] == 1.0f);
+            CHECK(depth.second[i].EggFlags[0] == 1.0f);
+            CHECK(depth.second[i].EggFlags[1] == 1.0f);
+        }
+    }
+
+    SECTION("HiddenMapSpriteEmitsNeitherLayer")
+    {
+        effect.Draws.clear();
+        client->SprMngr.DrawSprites(list, draw_area, 0, true, DrawOrderType::Item, DrawOrderType::Item, ucolor {36, 24, 12, 255}, &effect);
+
+        REQUIRE(effect.Draws.size() == 2);
+
+        mspr->SetHidden(true);
+
+        effect.Draws.clear();
+        client->SprMngr.DrawSprites(list, draw_area, 0, true, DrawOrderType::Item, DrawOrderType::Item, ucolor {36, 24, 12, 255}, &effect);
+
+        CHECK(effect.Draws.empty());
+    }
+}
+
 TEST_CASE("SpriteWireframeRendersThroughPrimitiveOverlay")
 {
     auto settings {MakeClientTestSettings()};
@@ -2184,6 +4005,8 @@ TEST_CASE("ModelAnimationUsesProjectLocomotionAndFrozenPose")
     resources.emplace_back("PolicyMap.fopro-bin-client", BakerTests::MakeMultiProtoResourceBlob<ProtoMap>(proto_engine, proto_engine.Hashes.to_hashed_string("Map"), maps));
     auto settings {MakeClientTestSettings()};
     BakerTests::OverrideSetting(settings.Render.LegBones, vector<string> {"Limb"});
+    BakerTests::OverrideSetting(settings.Timer.DeltaTimeCap, 650);
+
     auto client {MakeClientEngine(settings, MakeClientTestResources(std::move(resources)))};
     auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
     auto factory {client->ResMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>()};
@@ -2358,6 +4181,526 @@ TEST_CASE("ModelAnimationUsesProjectLocomotionAndFrozenPose")
         CHECK(current == previous);
     }
 
+    SECTION("OneShotLongFrameCallbacksAndFinalPoseHold")
+    {
+        float32_t start_time {0.0f};
+        int32_t expected_middle_callbacks {1};
+
+        SECTION("StartAtZeroFiresMiddleAndEnd")
+        {
+            start_time = 0.0f;
+            expected_middle_callbacks = 1;
+        }
+
+        SECTION("StartPastMiddleSkipsEarlierPhase")
+        {
+            start_time = 0.75f;
+            expected_middle_callbacks = 0;
+        }
+
+        // Keep the authored endpoint on a separate instance so the one-shot result cannot define its own expectation
+        auto endpoint_model {factory->GetModelMngr()->CreateModel(model_path)};
+        REQUIRE(endpoint_model);
+        endpoint_model->SetupFrame(isize32 {128, 128}, ipos32 {64, 96});
+        (void)endpoint_model->PlayAnim(state, action, nullptr, 1.0f, ModelAnimFlags::Freeze);
+        endpoint_model->PoseSpriteFrame(true);
+        auto endpoint {endpoint_model->GetBonePos(root)};
+        REQUIRE(endpoint);
+
+        int32_t zero_callbacks {0};
+        int32_t middle_callbacks {0};
+        int32_t end_callbacks {0};
+
+        model->AddAnimationCallback(ModelAnimationCallback {
+            .StateAnim = state,
+            .ActionAnim = action,
+            .NormalizedTime = 0.0f,
+            .Callback = [&zero_callbacks] { zero_callbacks++; },
+        });
+        model->AddAnimationCallback(ModelAnimationCallback {
+            .StateAnim = state,
+            .ActionAnim = action,
+            .NormalizedTime = 0.5f,
+            .Callback = [&middle_callbacks] { middle_callbacks++; },
+        });
+        model->AddAnimationCallback(ModelAnimationCallback {
+            .StateAnim = state,
+            .ActionAnim = action,
+            .NormalizedTime = 1.0f,
+            .Callback = [&end_callbacks] { end_callbacks++; },
+        });
+
+        model->SetSpeed(10.0f);
+        (void)model->PlayAnim(state, action, nullptr, start_time, combine_enum(ModelAnimFlags::PlayOnce, ModelAnimFlags::NoSmooth));
+
+        // This pose observes the initial position; only the next displayed frame may complete the clip
+        model->PoseSpriteFrame(true);
+        REQUIRE(model->IsAnimationPlaying());
+        CHECK(zero_callbacks == 0);
+        CHECK(middle_callbacks == 0);
+        CHECK(end_callbacks == 0);
+
+        coarse_sleep(std::chrono::milliseconds {200});
+        client->GameTime.FrameAdvance(false);
+        model->PoseSpriteFrame(true);
+        auto finished {model->GetBonePos(root)};
+        REQUIRE(finished);
+        CHECK(*finished == *endpoint);
+        CHECK_FALSE(model->IsAnimationPlaying());
+        CHECK(zero_callbacks == 0);
+        CHECK(middle_callbacks == expected_middle_callbacks);
+        CHECK(end_callbacks == 1);
+
+        pose();
+        CHECK(model->GetBonePos(root) == finished);
+        CHECK(zero_callbacks == 0);
+        CHECK(middle_callbacks == expected_middle_callbacks);
+        CHECK(end_callbacks == 1);
+
+        model->ClearAnimationCallbacks();
+    }
+
+    SECTION("TurnSelectionExceptionRecoveryMatchesCleanModel")
+    {
+        auto reference {factory->GetModelMngr()->CreateModel(model_path)};
+        REQUIRE(reference);
+        REQUIRE(reference.as_ptr() != model.as_ptr());
+        reference->SetupFrame(isize32 {128, 128}, ipos32 {64, 96});
+        REQUIRE(reference->HasAnimation(state, action));
+        REQUIRE(reference->FindBone(root));
+
+        constexpr float32_t tiny_speed {1.0e-12f};
+        constexpr float32_t normal_speed {2.0f};
+        REQUIRE(std::isfinite(tiny_speed));
+        REQUIRE(tiny_speed > std::numeric_limits<float32_t>::min());
+
+        timespan duration {model->GetAnimDuration(state, action)};
+        REQUIRE(duration == timespan {std::chrono::seconds {1}});
+        REQUIRE(reference->GetAnimDuration(state, action) == duration);
+        timespan remaining {duration.nanoseconds() / 2};
+        float64_t completion_nanoseconds {numeric_cast<float64_t>(remaining.nanoseconds()) / numeric_cast<float64_t>(tiny_speed)};
+        REQUIRE(std::isfinite(completion_nanoseconds));
+        REQUIRE(completion_nanoseconds >= numeric_cast<float64_t>(std::numeric_limits<int64_t>::max()));
+        REQUIRE_THROWS_AS(ScaleModelAnimationTime(remaining, 1.0 / numeric_cast<float64_t>(tiny_speed)), OverflowException);
+        CHECK(ScaleModelAnimationTime(remaining, 1.0 / numeric_cast<float64_t>(normal_speed)) == timespan {std::chrono::milliseconds {250}});
+
+        float32_t selected_speed {normal_speed};
+        int32_t turn_callbacks {0};
+        int32_t reference_turn_callbacks {0};
+        model->SetAnimInitCallback([&](CritterAnimationContext context, int32_t, CritterStateAnim& selected_state, CritterActionAnim& selected_action, CritterAnimationFlags& flags, float32_t& normalized_time, float32_t& playback_speed) {
+            selected_state = state;
+            selected_action = action;
+            flags = CritterAnimationFlags::None;
+            normalized_time = context == CritterAnimationContext::TurnRight ? 0.5f : 0.0f;
+            playback_speed = context == CritterAnimationContext::TurnRight ? selected_speed : 1.0f;
+
+            if (context == CritterAnimationContext::TurnRight) {
+                turn_callbacks++;
+            }
+        });
+        reference->SetAnimInitCallback([&](CritterAnimationContext context, int32_t, CritterStateAnim& selected_state, CritterActionAnim& selected_action, CritterAnimationFlags& flags, float32_t& normalized_time, float32_t& playback_speed) {
+            selected_state = state;
+            selected_action = action;
+            flags = CritterAnimationFlags::None;
+            normalized_time = context == CritterAnimationContext::TurnRight ? 0.5f : 0.0f;
+            playback_speed = context == CritterAnimationContext::TurnRight ? normal_speed : 1.0f;
+
+            if (context == CritterAnimationContext::TurnRight) {
+                reference_turn_callbacks++;
+            }
+        });
+
+        client->GameTime.FrameAdvance(false);
+        client->GameTime.Pause();
+        auto resume_clock {scope_exit([&]() noexcept {
+            if (client->GameTime.IsPaused()) {
+                safe_call([&]() { client->GameTime.Resume(); });
+            }
+        })};
+
+        (void)model->PlayAnim(state, action, nullptr, 0.0f, ModelAnimFlags::NoSmooth);
+        (void)reference->PlayAnim(state, action, nullptr, 0.0f, ModelAnimFlags::NoSmooth);
+        model->SetDir(mdir {0}, false);
+        reference->SetDir(mdir {0}, false);
+        model->SetMovementState(true, false, 0);
+        reference->SetMovementState(true, false, 0);
+        model->PoseSpriteFrame(true);
+        reference->PoseSpriteFrame(true);
+
+        REQUIRE(model->GetMovingContext() == CritterAnimationContext::Default);
+        REQUIRE(reference->GetMovingContext() == CritterAnimationContext::Default);
+        REQUIRE(turn_callbacks == 0);
+        REQUIRE(reference_turn_callbacks == 0);
+        auto initial {model->GetBonePos(root)};
+        auto reference_initial {reference->GetBonePos(root)};
+        REQUIRE(initial);
+        REQUIRE(reference_initial);
+        REQUIRE(initial == reference_initial);
+
+        selected_speed = tiny_speed;
+        REQUIRE_THROWS_MATCHES(model->SetLookDir(mdir {120}), OverflowException, Catch::Matchers::MessageMatches(Catch::Matchers::ContainsSubstring("Floating point rounding received value out of integer range")));
+        REQUIRE(turn_callbacks == 1);
+        CHECK(model->GetMovingContext() == CritterAnimationContext::Default);
+        REQUIRE_NOTHROW(reference->SetLookDir(mdir {120}));
+        REQUIRE(reference_turn_callbacks == 1);
+
+        // Evaluate the partial selection without advancing its clock, then retry through the ordinary caller
+        REQUIRE_NOTHROW(model->PoseSpriteFrame(false));
+        REQUIRE_NOTHROW(reference->PoseSpriteFrame(false));
+        auto after_throw {model->GetBonePos(root)};
+        REQUIRE(after_throw);
+
+        selected_speed = normal_speed;
+        REQUIRE_NOTHROW(model->SetMovementState(true, false, 0));
+        REQUIRE_NOTHROW(reference->SetMovementState(true, false, 0));
+        REQUIRE(turn_callbacks == 2);
+        REQUIRE(reference_turn_callbacks == 2);
+        model->PoseSpriteFrame(false);
+        reference->PoseSpriteFrame(false);
+
+        nanotime recovery_start {client->GameTime.GetFrameTime()};
+        client->GameTime.Resume();
+        coarse_sleep(std::chrono::milliseconds {20});
+        client->GameTime.FrameAdvance(false);
+        client->GameTime.Pause();
+        timespan recovery_elapsed {client->GameTime.GetFrameTime() - recovery_start};
+        INFO("RETIMING_RECOVERY_ELAPSED_NS=" << recovery_elapsed.nanoseconds());
+        REQUIRE(recovery_elapsed > timespan {std::chrono::milliseconds {1}});
+        REQUIRE(recovery_elapsed < timespan {std::chrono::milliseconds {100}});
+        REQUIRE_NOTHROW(model->PoseSpriteFrame(true));
+        REQUIRE_NOTHROW(reference->PoseSpriteFrame(true));
+
+        auto recovered {model->GetBonePos(root)};
+        auto reference_recovered {reference->GetBonePos(root)};
+        REQUIRE(recovered);
+        REQUIRE(reference_recovered);
+        CAPTURE(initial->x, initial->y, after_throw->x, after_throw->y, recovered->x, recovered->y, reference_recovered->x, reference_recovered->y);
+        CHECK(model->GetStateAnim() == reference->GetStateAnim());
+        CHECK(model->GetActionAnim() == reference->GetActionAnim());
+        CHECK(model->GetMoveDirAngle() == reference->GetMoveDirAngle());
+        CHECK(model->GetMovingContext() == CritterAnimationContext::TurnRight);
+        CHECK(reference->GetMovingContext() == CritterAnimationContext::TurnRight);
+        CHECK(recovered == reference_recovered);
+
+        // A deliberate context reset distinguishes a failed retry from an unusable model
+        model->SetMovementState(false, false, 0);
+        reference->SetMovementState(false, false, 0);
+        model->SetDir(mdir {0}, false);
+        reference->SetDir(mdir {0}, false);
+        model->SetMovementState(true, false, 0);
+        reference->SetMovementState(true, false, 0);
+        model->SetLookDir(mdir {120});
+        reference->SetLookDir(mdir {120});
+
+        nanotime reset_start {client->GameTime.GetFrameTime()};
+        client->GameTime.Resume();
+        coarse_sleep(std::chrono::milliseconds {20});
+        client->GameTime.FrameAdvance(false);
+        client->GameTime.Pause();
+        timespan reset_elapsed {client->GameTime.GetFrameTime() - reset_start};
+        INFO("RETIMING_RESET_ELAPSED_NS=" << reset_elapsed.nanoseconds());
+        REQUIRE(reset_elapsed > timespan {std::chrono::milliseconds {1}});
+        REQUIRE(reset_elapsed < timespan {std::chrono::milliseconds {100}});
+        REQUIRE_NOTHROW(model->PoseSpriteFrame(true));
+        REQUIRE_NOTHROW(reference->PoseSpriteFrame(true));
+
+        auto reset {model->GetBonePos(root)};
+        auto reference_reset {reference->GetBonePos(root)};
+        REQUIRE(reset);
+        REQUIRE(reference_reset);
+        CAPTURE(reset->x, reset->y, reference_reset->x, reference_reset->y);
+        CHECK(model->GetMovingContext() == CritterAnimationContext::TurnRight);
+        CHECK(reference->GetMovingContext() == CritterAnimationContext::TurnRight);
+        CHECK(model->GetMoveDirAngle() == reference->GetMoveDirAngle());
+        CHECK(reset == reference_reset);
+    }
+
+    SECTION("SameTurnRetimingFailurePreservesPhaseAndCompletionBeforeRetry")
+    {
+        auto reference {factory->GetModelMngr()->CreateModel(model_path)};
+        REQUIRE(reference);
+        REQUIRE(reference.as_ptr() != model.as_ptr());
+        reference->SetupFrame(isize32 {128, 128}, ipos32 {64, 96});
+        REQUIRE(reference->HasAnimation(state, action));
+        REQUIRE(model->HasBodyRotation());
+        REQUIRE(reference->HasBodyRotation());
+        REQUIRE(reference->FindBone(root));
+
+        constexpr float32_t normal_speed {0.125f};
+        constexpr float32_t tiny_speed {1.0e-12f};
+        REQUIRE(std::isfinite(tiny_speed));
+        REQUIRE(tiny_speed > std::numeric_limits<float32_t>::min());
+        REQUIRE(model->GetAnimDuration(state, action) == timespan {std::chrono::seconds {1}});
+        REQUIRE(reference->GetAnimDuration(state, action) == timespan {std::chrono::seconds {1}});
+        float32_t selected_speed {normal_speed};
+        int32_t turn_callbacks {0};
+        int32_t reference_turn_callbacks {0};
+        model->SetAnimInitCallback([&](CritterAnimationContext context, int32_t, CritterStateAnim& selected_state, CritterActionAnim& selected_action, CritterAnimationFlags& flags, float32_t& normalized_time, float32_t& playback_speed) {
+            selected_state = state;
+            selected_action = action;
+            flags = CritterAnimationFlags::None;
+            normalized_time = context == CritterAnimationContext::TurnRight ? 0.5f : 0.0f;
+            playback_speed = context == CritterAnimationContext::TurnRight ? selected_speed : 1.0f;
+
+            if (context == CritterAnimationContext::TurnRight) {
+                turn_callbacks++;
+            }
+        });
+        reference->SetAnimInitCallback([&](CritterAnimationContext context, int32_t, CritterStateAnim& selected_state, CritterActionAnim& selected_action, CritterAnimationFlags& flags, float32_t& normalized_time, float32_t& playback_speed) {
+            selected_state = state;
+            selected_action = action;
+            flags = CritterAnimationFlags::None;
+            normalized_time = context == CritterAnimationContext::TurnRight ? 0.5f : 0.0f;
+            playback_speed = context == CritterAnimationContext::TurnRight ? normal_speed : 1.0f;
+
+            if (context == CritterAnimationContext::TurnRight) {
+                reference_turn_callbacks++;
+            }
+        });
+
+        client->GameTime.FrameAdvance(false);
+        client->GameTime.Pause();
+        auto resume_clock {scope_exit([&]() noexcept {
+            if (client->GameTime.IsPaused()) {
+                safe_call([&]() { client->GameTime.Resume(); });
+            }
+        })};
+        auto advance_pair {[&](std::chrono::milliseconds wait) -> timespan {
+            nanotime before {client->GameTime.GetFrameTime()};
+            client->GameTime.Resume();
+            coarse_sleep(wait);
+            client->GameTime.FrameAdvance(true);
+            client->GameTime.Pause();
+            timespan elapsed {client->GameTime.GetFrameTime() - before};
+            INFO("SAME_TURN_FRAME_NS=" << elapsed.nanoseconds());
+            REQUIRE(elapsed > timespan {std::chrono::milliseconds {1}});
+            REQUIRE(elapsed < timespan {std::chrono::milliseconds {700}});
+            REQUIRE_NOTHROW(model->PoseSpriteFrame(true));
+            REQUIRE_NOTHROW(reference->PoseSpriteFrame(true));
+            model->PoseSpriteFrame(false);
+            reference->PoseSpriteFrame(false);
+            return elapsed;
+        }};
+
+        (void)model->PlayAnim(state, action, nullptr, 0.0f, ModelAnimFlags::NoSmooth);
+        (void)reference->PlayAnim(state, action, nullptr, 0.0f, ModelAnimFlags::NoSmooth);
+        model->SetDir(mdir {0}, false);
+        reference->SetDir(mdir {0}, false);
+        model->SetMovementState(true, false, 0);
+        reference->SetMovementState(true, false, 0);
+        model->PoseSpriteFrame(true);
+        reference->PoseSpriteFrame(true);
+        model->SetLookDir(mdir {120});
+        reference->SetLookDir(mdir {120});
+        nanotime selected_at {client->GameTime.GetFrameTime()};
+        REQUIRE(turn_callbacks == 1);
+        REQUIRE(reference_turn_callbacks == 1);
+
+        // Finish the speed ramp and settle facing before measuring translation on the offset limb point
+        advance_pair(std::chrono::milliseconds {100});
+        REQUIRE(is_float_equal(model->GetMoveDirAngle(), 60.0f));
+        REQUIRE(model->GetMoveDirAngle() == reference->GetMoveDirAngle());
+        vec3 local_offset {4.0f, 2.0f, 1.0f};
+        auto settled {model->GetBonePos(root, local_offset)};
+        auto reference_settled {reference->GetBonePos(root, local_offset)};
+        auto zero_offset {model->GetBonePos(root)};
+        REQUIRE(settled);
+        REQUIRE(reference_settled);
+        REQUIRE(zero_offset);
+        REQUIRE(settled == reference_settled);
+        REQUIRE(settled != zero_offset);
+
+        advance_pair(std::chrono::milliseconds {500});
+        advance_pair(std::chrono::milliseconds {500});
+        auto before_failure {model->GetBonePos(root, local_offset)};
+        auto reference_before_failure {reference->GetBonePos(root, local_offset)};
+        REQUIRE(before_failure);
+        REQUIRE(reference_before_failure);
+        REQUIRE(before_failure == reference_before_failure);
+        REQUIRE(reference_before_failure != reference_settled);
+        REQUIRE(model->GetMoveDirAngle() == 60.0f);
+        REQUIRE(model->GetMovingContext() == CritterAnimationContext::TurnRight);
+        REQUIRE(reference->GetMovingContext() == CritterAnimationContext::TurnRight);
+
+        selected_speed = tiny_speed;
+        REQUIRE_THROWS_MATCHES(model->SetMovementState(true, false, 0), OverflowException, Catch::Matchers::MessageMatches(Catch::Matchers::ContainsSubstring("Floating point rounding received value out of integer range")));
+        REQUIRE(turn_callbacks == 2);
+        REQUIRE(reference_turn_callbacks == 1);
+        CHECK(model->GetMovingContext() == CritterAnimationContext::TurnRight);
+        model->PoseSpriteFrame(false);
+        reference->PoseSpriteFrame(false);
+        CHECK(model->GetBonePos(root, local_offset) == reference->GetBonePos(root, local_offset));
+
+        // Observe the prior speed and its original completion event before making any successful retry
+        advance_pair(std::chrono::milliseconds {500});
+        advance_pair(std::chrono::milliseconds {500});
+        auto after_failure {model->GetBonePos(root, local_offset)};
+        auto reference_after_failure {reference->GetBonePos(root, local_offset)};
+        REQUIRE(after_failure);
+        REQUIRE(reference_after_failure);
+        REQUIRE(reference_after_failure != reference_before_failure);
+        CAPTURE(before_failure->x, before_failure->y, after_failure->x, after_failure->y, reference_after_failure->x, reference_after_failure->y);
+        CHECK(after_failure == reference_after_failure);
+        CHECK(model->GetMoveDirAngle() == reference->GetMoveDirAngle());
+        CHECK(model->GetStateAnim() == reference->GetStateAnim());
+        CHECK(model->GetActionAnim() == reference->GetActionAnim());
+        CHECK(model->GetMovingContext() == CritterAnimationContext::TurnRight);
+        CHECK(reference->GetMovingContext() == CritterAnimationContext::TurnRight);
+        CHECK(turn_callbacks == 2);
+        CHECK(reference_turn_callbacks == 1);
+
+        timespan completion {std::chrono::seconds {4}};
+        int32_t completion_frames {0};
+
+        while (client->GameTime.GetFrameTime() - selected_at < completion + std::chrono::milliseconds {200}) {
+            REQUIRE(completion_frames < 8);
+            advance_pair(std::chrono::milliseconds {500});
+            completion_frames++;
+        }
+
+        CAPTURE(completion_frames, turn_callbacks, reference_turn_callbacks);
+        CHECK(reference->GetMovingContext() == CritterAnimationContext::Default);
+        CHECK(model->GetMovingContext() == CritterAnimationContext::Default);
+        CHECK(model->GetMoveDirAngle() == reference->GetMoveDirAngle());
+        auto completed {model->GetBonePos(root, local_offset)};
+        auto reference_completed {reference->GetBonePos(root, local_offset)};
+        REQUIRE(completed);
+        REQUIRE(reference_completed);
+        CHECK(completed == reference_completed);
+        CHECK(turn_callbacks == 2);
+        CHECK(reference_turn_callbacks == 1);
+
+        selected_speed = normal_speed;
+        REQUIRE_NOTHROW(model->SetMovementState(true, false, 0));
+        REQUIRE_NOTHROW(reference->SetMovementState(true, false, 0));
+        model->PoseSpriteFrame(false);
+        reference->PoseSpriteFrame(false);
+        CHECK(model->GetMovingContext() == reference->GetMovingContext());
+        CHECK(model->GetBonePos(root, local_offset) == reference->GetBonePos(root, local_offset));
+    }
+
+    SECTION("NestedInitializerDirectionWinsOverTheOuterSelection")
+    {
+        float32_t turn_threshold {client->Settings->Render.CritterTurnAngle};
+        CAPTURE(turn_threshold);
+        REQUIRE(std::isfinite(turn_threshold));
+        REQUIRE(turn_threshold >= 0.0f);
+        REQUIRE(turn_threshold < 120.0f);
+
+        auto reference {factory->GetModelMngr()->CreateModel(model_path)};
+        REQUIRE(reference);
+        REQUIRE(reference.as_ptr() != model.as_ptr());
+        reference->SetupFrame(isize32 {128, 128}, ipos32 {64, 96});
+        REQUIRE(reference->HasAnimation(state, action));
+        REQUIRE(reference->FindBone(root));
+
+        bool arm_reentry {false};
+        bool reentry_requested {false};
+        bool inside_reentry {false};
+        int32_t outer_callbacks {0};
+        int32_t nested_callbacks {0};
+        int32_t reference_turn_callbacks {0};
+        model->SetAnimInitCallback([&](CritterAnimationContext context, int32_t, CritterStateAnim& selected_state, CritterActionAnim& selected_action, CritterAnimationFlags& flags, float32_t& normalized_time, float32_t& playback_speed) {
+            selected_state = state;
+            selected_action = action;
+            flags = CritterAnimationFlags::None;
+            normalized_time = context == CritterAnimationContext::TurnRight ? 0.25f : 0.0f;
+            playback_speed = context == CritterAnimationContext::TurnRight ? 0.125f : 1.0f;
+
+            if (context == CritterAnimationContext::TurnRight && inside_reentry) {
+                nested_callbacks++;
+            }
+
+            if (context == CritterAnimationContext::TurnRight && arm_reentry && !reentry_requested) {
+                outer_callbacks++;
+                reentry_requested = true;
+                inside_reentry = true;
+                model->SetLookDir(mdir {150});
+                inside_reentry = false;
+
+                // This valid stale result must not replace the nested target and its quarter-clip selection
+                normalized_time = 0.75f;
+            }
+        });
+        reference->SetAnimInitCallback([&](CritterAnimationContext context, int32_t, CritterStateAnim& selected_state, CritterActionAnim& selected_action, CritterAnimationFlags& flags, float32_t& normalized_time, float32_t& playback_speed) {
+            selected_state = state;
+            selected_action = action;
+            flags = CritterAnimationFlags::None;
+            normalized_time = context == CritterAnimationContext::TurnRight ? 0.25f : 0.0f;
+            playback_speed = context == CritterAnimationContext::TurnRight ? 0.125f : 1.0f;
+
+            if (context == CritterAnimationContext::TurnRight) {
+                reference_turn_callbacks++;
+            }
+        });
+
+        client->GameTime.FrameAdvance(false);
+        client->GameTime.Pause();
+        auto resume_clock {scope_exit([&]() noexcept {
+            if (client->GameTime.IsPaused()) {
+                safe_call([&]() { client->GameTime.Resume(); });
+            }
+        })};
+        (void)model->PlayAnim(state, action, nullptr, 0.0f, ModelAnimFlags::NoSmooth);
+        (void)reference->PlayAnim(state, action, nullptr, 0.0f, ModelAnimFlags::NoSmooth);
+        model->SetDir(mdir {0}, false);
+        reference->SetDir(mdir {0}, false);
+        model->SetMovementState(true, false, 0);
+        reference->SetMovementState(true, false, 0);
+        model->PoseSpriteFrame(true);
+        reference->PoseSpriteFrame(true);
+        vec3 local_offset {4.0f, 2.0f, 1.0f};
+        auto initial {model->GetBonePos(root, local_offset)};
+        auto reference_initial {reference->GetBonePos(root, local_offset)};
+        REQUIRE(initial);
+        REQUIRE(reference_initial);
+        REQUIRE(initial == reference_initial);
+
+        arm_reentry = true;
+        REQUIRE_NOTHROW(model->SetLookDir(mdir {120}));
+        REQUIRE_NOTHROW(reference->SetLookDir(mdir {150}));
+        REQUIRE(reentry_requested);
+        REQUIRE_FALSE(inside_reentry);
+        REQUIRE(outer_callbacks == 1);
+        REQUIRE(nested_callbacks == 1);
+        REQUIRE(reference_turn_callbacks == 1);
+        CHECK(model->GetMovingContext() == CritterAnimationContext::TurnRight);
+        CHECK(model->GetMovingContext() == reference->GetMovingContext());
+
+        nanotime selected_at {client->GameTime.GetFrameTime()};
+        client->GameTime.Resume();
+        coarse_sleep(std::chrono::milliseconds {150});
+        client->GameTime.FrameAdvance(true);
+        client->GameTime.Pause();
+        timespan elapsed {client->GameTime.GetFrameTime() - selected_at};
+        INFO("INITIALIZER_REENTRY_FRAME_NS=" << elapsed.nanoseconds());
+        REQUIRE(elapsed > timespan {std::chrono::milliseconds {100}});
+        REQUIRE(elapsed < timespan {std::chrono::milliseconds {700}});
+        REQUIRE_NOTHROW(model->PoseSpriteFrame(true));
+        REQUIRE_NOTHROW(reference->PoseSpriteFrame(true));
+        model->PoseSpriteFrame(false);
+        reference->PoseSpriteFrame(false);
+
+        auto nested_pose {model->GetBonePos(root, local_offset)};
+        auto reference_pose {reference->GetBonePos(root, local_offset)};
+        auto zero_offset {model->GetBonePos(root)};
+        REQUIRE(nested_pose);
+        REQUIRE(reference_pose);
+        REQUIRE(zero_offset);
+        REQUIRE(nested_pose != zero_offset);
+        REQUIRE(reference_pose != reference_initial);
+        CAPTURE(nested_pose->x, nested_pose->y, reference_pose->x, reference_pose->y, outer_callbacks, nested_callbacks);
+        CHECK(model->GetMoveDirAngle() == reference->GetMoveDirAngle());
+        CHECK(is_float_equal(model->GetMoveDirAngle(), 30.0f));
+        CHECK(model->GetMovingContext() == reference->GetMovingContext());
+        CHECK(model->GetStateAnim() == reference->GetStateAnim());
+        CHECK(model->GetActionAnim() == reference->GetActionAnim());
+        CHECK(nested_pose == reference_pose);
+        CHECK(outer_callbacks == 1);
+        CHECK(nested_callbacks == 1);
+        CHECK(reference_turn_callbacks == 1);
+    }
+
     SECTION("TurnLifetimeUsesRemainingClipTimeAndCurrentSpeed")
     {
         float32_t start_time {0.8f};
@@ -2413,8 +4756,16 @@ TEST_CASE("ModelAnimationUsesProjectLocomotionAndFrozenPose")
         client->GameTime.Resume();
 
         nanotime retimed_at {client->GameTime.GetFrameTime()};
-        coarse_sleep(std::chrono::milliseconds {650});
-        client->GameTime.FrameAdvance(false);
+
+        // Cap logical frames so scheduler stalls cannot skip the intermediate turn state
+        nanotime timed_frame_start {client->GameTime.GetFrameTime()};
+        coarse_sleep(std::chrono::milliseconds {1100});
+        client->GameTime.FrameAdvance(true);
+
+        int64_t timed_delta_ms {(client->GameTime.GetFrameTime() - timed_frame_start).to_ms<int64_t>()};
+        INFO("MODEL_TURN_LOGICAL_FRAME|elapsed_ms=" << timed_delta_ms);
+        CHECK(timed_delta_ms == 650);
+
         model->PoseSpriteFrame(true);
         INFO("Time since retiming: " << (client->GameTime.GetFrameTime() - retimed_at).milliseconds());
         INFO("Clip duration: " << model->GetAnimDuration(state, action).milliseconds());
@@ -2422,7 +4773,8 @@ TEST_CASE("ModelAnimationUsesProjectLocomotionAndFrozenPose")
 
         if (expect_still_turning) {
             coarse_sleep(std::chrono::milliseconds {650});
-            client->GameTime.FrameAdvance(false);
+            client->GameTime.FrameAdvance(true);
+
             model->PoseSpriteFrame(true);
             CHECK(model->GetMovingContext() == CritterAnimationContext::Default);
         }

@@ -383,7 +383,12 @@ public static class DynamicScriptCompiler
     // At run time in, ref readonly and ref are one byref type
     private static bool SameRefKind(RefKind left, RefKind right)
     {
-        return (left == RefKind.None) == (right == RefKind.None) && (left == RefKind.Out) == (right == RefKind.Out);
+        bool leftByValue = left == RefKind.None;
+        bool rightByValue = right == RefKind.None;
+        bool leftOut = left == RefKind.Out;
+        bool rightOut = right == RefKind.Out;
+
+        return leftByValue == rightByValue && leftOut == rightOut;
     }
 
     private static string FormatPatchError(IMethodSymbol replacement, string message)

@@ -52,6 +52,7 @@ public:
 
     [[nodiscard]] auto IsHitTest(ipos32 pos) const -> bool override;
     [[nodiscard]] auto GetViewSize() const -> optional<irect32> override;
+    [[nodiscard]] auto GetUnlitOverlay() const -> nptr<const Sprite> override { return nptr<const Sprite> {_unlitOverlay.get()}; }
     [[nodiscard]] auto IsCopyable() const -> bool override { return false; }
     [[nodiscard]] auto IsDirectDraw() const -> bool override;
     [[nodiscard]] auto GetModel() -> ptr<ModelInstance>;
@@ -90,6 +91,7 @@ private:
 
     ptr<ModelSpriteFactory> _factory;
     mutable unique_ptr<ModelInstance> _model;
+    shared_ptr<AtlasSprite> _unlitOverlay {};
     AtlasType _atlasType {};
     isize32 _frameSize {};
     irect32 _cropRect {};

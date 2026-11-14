@@ -15,11 +15,23 @@ The canonical generated reference moved to locale-specific paths.
 <a id="entry-particle-format-integration-client-script-3c35e6ad00"></a>
 - [`entry-particle-format-integration-client-script-3c35e6ad00`](../../en/reference/particle-format/integration.md#entry-particle-format-integration-client-script-3c35e6ad00)
 
+<a id="entry-particle-format-integration-bone-map-anchor-9cefc279aa"></a>
+- [`entry-particle-format-integration-bone-map-anchor-9cefc279aa`](../../en/reference/particle-format/integration.md#entry-particle-format-integration-bone-map-anchor-9cefc279aa)
+
+<a id="entry-particle-format-integration-bone-sprite-map-anchor-1ab221f287"></a>
+- [`entry-particle-format-integration-bone-sprite-map-anchor-1ab221f287`](../../en/reference/particle-format/integration.md#entry-particle-format-integration-bone-sprite-map-anchor-1ab221f287)
+
+<a id="entry-particle-format-integration-item-map-anchor-22845aef41"></a>
+- [`entry-particle-format-integration-item-map-anchor-22845aef41`](../../en/reference/particle-format/integration.md#entry-particle-format-integration-item-map-anchor-22845aef41)
+
 <a id="entry-particle-format-integration-project-boundary-87d72207f8"></a>
 - [`entry-particle-format-integration-project-boundary-87d72207f8`](../../en/reference/particle-format/integration.md#entry-particle-format-integration-project-boundary-87d72207f8)
 
 <a id="entry-particle-format-integration-critter-run-particle-b803c79a33"></a>
 - [`entry-particle-format-integration-critter-run-particle-b803c79a33`](../../en/reference/particle-format/integration.md#entry-particle-format-integration-critter-run-particle-b803c79a33)
+
+<a id="entry-particle-format-integration-critter-run-unlit-particle-369102bcdf"></a>
+- [`entry-particle-format-integration-critter-run-unlit-particle-369102bcdf`](../../en/reference/particle-format/integration.md#entry-particle-format-integration-critter-run-unlit-particle-369102bcdf)
 
 <a id="entry-particle-format-integration-model-attachment-6fac6386d9"></a>
 - [`entry-particle-format-integration-model-attachment-6fac6386d9`](../../en/reference/particle-format/integration.md#entry-particle-format-integration-model-attachment-6fac6386d9)

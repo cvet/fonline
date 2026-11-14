@@ -268,6 +268,13 @@ Arrays of primitives, enums, `hstring`, and registered value types use `GetPrope
 
 Ordinary native/managed `List<T>` arguments and results use a single raw-byte block for `byte`, `sbyte`, `short`, `ushort`, `int`, `uint`, `long`, `ulong`, `float`, and `double`. Other element types retain the element-wise conversion path. The receiver rejects a byte count that is not a multiple of the element size; this optimization changes neither the list order nor the declared method signature.
 
+The raw-byte writer requires a rooted destination list and roots its temporary byte array.
+Native pointers are retrieved from those roots after allocating the byte array,
+before invoking the managed copy helper. A caller's GC handle preserves ownership
+but does not keep a previously borrowed pointer current across a moving collection.
+Proxy writeback retains the new list's root through ownership transfer; the old list
+remains attached to the bridge until the replacement is fully populated.
+
 ### Mutable event collections
 
 A synchronous `[Event]` handler may edit or replace a `ref List<T>` or `ref Dictionary<K, V>` argument whose element, key and value types are supported by the bridge. After the handler returns, the backend converts every entry of that argument before clearing the caller's collection, then writes through the caller's `DataAccessor`. Empty results clear the collection. The next subscriber sees the resulting entries; list order and the native dictionary's insertion and iteration rules are preserved.
@@ -342,7 +349,7 @@ Shutdown first calls `BeginManagedTeardown`, which invokes `Native.BeginBackendT
 
 Shutdown then closes the continuation scheduler and discards queued work before releasing backend state. It clears project static references and persistent callback roots, closes and drains native RefType ownership on the engine thread, then runs bounded collect/finalizer passes while the Engine and assembly images still exist. Returning RefType ownership first also removes native callback roots that could keep entity wrappers alive. Shutdown reports remaining entity wrappers (and names them when deep tracking is enabled), then calls `Native.UnbindBackend` for every entry assembly before releasing the load scope and native global data. A non-browser finalizer wait runs on an Engine-requested pool task with a separate five-second budget, so a blocked finalizer cannot park the teardown thread indefinitely. A timeout or remaining-wrapper report is diagnostic and teardown continues; a wrapper that finalizes after unbinding must not release through dead native state.
 
-The single-threaded browser runtime has neither a usable managed thread pool nor a finalizer thread. Its shutdown therefore performs one inline collect/wait pass; `GC.WaitForPendingFinalizers()` returns immediately, finalizers run later as main-thread jobs, and the interim wrapper count is reported but not verified. Later posts cannot run against a disposed Engine. Managed exceptions are counted and logged through the common script exception path; deferred task faults are observed once. Managed frames and nested managed causes are spliced into the common native stack trace, while native exceptions crossing managed code keep identity through GC handles.
+The single-threaded browser runtime has neither a usable managed thread pool nor a finalizer thread. `GC.WaitForPendingFinalizers()` returns immediately and Mono queues finalizers as main-thread jobs. Native shutdown alternates one managed collection with `mono_background_exec()` after the managed call returns, while the backend, Engine and assembly images remain alive. It then reads the wrapper count without another collection and stops at zero or eight passes. The pass limit does not preempt a running finalizer. Remaining wrappers receive the same diagnostic verification as on native platforms; the client still requires zero live entities before Engine destruction. Unbinding follows finalization, so collected entity wrappers can return their native references. Later posts cannot run against a disposed Engine. Managed exceptions are counted and logged through the common script exception path; deferred task faults are observed once. Managed frames and nested managed causes are spliced into the common native stack trace, while native exceptions crossing managed code keep identity through GC handles.
 
 ## Build and bake workflow
 

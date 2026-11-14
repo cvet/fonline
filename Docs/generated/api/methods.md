@@ -31,8 +31,17 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-client-critter-getbodyangle-8cb57229bd"></a>
 - [`symbol-script-method-client-critter-getbodyangle-8cb57229bd`](../../en/reference/script-api/methods.md#symbol-script-method-client-critter-getbodyangle-8cb57229bd)
 
+<a id="symbol-script-method-client-critter-getbonemapanchor-e6b67bb839"></a>
+- [`symbol-script-method-client-critter-getbonemapanchor-e6b67bb839`](../../en/reference/script-api/methods.md#symbol-script-method-client-critter-getbonemapanchor-e6b67bb839)
+
 <a id="symbol-script-method-client-critter-getbonepos-e97f807758"></a>
 - [`symbol-script-method-client-critter-getbonepos-e97f807758`](../../en/reference/script-api/methods.md#symbol-script-method-client-critter-getbonepos-e97f807758)
+
+<a id="symbol-script-method-client-critter-getboneposwithoffset-cd9073df2a"></a>
+- [`symbol-script-method-client-critter-getboneposwithoffset-cd9073df2a`](../../en/reference/script-api/methods.md#symbol-script-method-client-critter-getboneposwithoffset-cd9073df2a)
+
+<a id="symbol-script-method-client-critter-getbonespritemapanchor-69f0b1f73d"></a>
+- [`symbol-script-method-client-critter-getbonespritemapanchor-69f0b1f73d`](../../en/reference/script-api/methods.md#symbol-script-method-client-critter-getbonespritemapanchor-69f0b1f73d)
 
 <a id="symbol-script-method-client-critter-getitem-20907df3571a66a9-f3cb4c4e9a"></a>
 - [`symbol-script-method-client-critter-getitem-20907df3571a66a9-f3cb4c4e9a`](../../en/reference/script-api/methods.md#symbol-script-method-client-critter-getitem-20907df3571a66a9-f3cb4c4e9a)
@@ -111,6 +120,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 
 <a id="symbol-script-method-client-critter-runparticle-85de689b2a"></a>
 - [`symbol-script-method-client-critter-runparticle-85de689b2a`](../../en/reference/script-api/methods.md#symbol-script-method-client-critter-runparticle-85de689b2a)
+
+<a id="symbol-script-method-client-critter-rununlitparticle-88b38c90de"></a>
+- [`symbol-script-method-client-critter-rununlitparticle-88b38c90de`](../../en/reference/script-api/methods.md#symbol-script-method-client-critter-rununlitparticle-88b38c90de)
 
 <a id="symbol-script-method-client-critter-setalpha-26dae4c519"></a>
 - [`symbol-script-method-client-critter-setalpha-26dae4c519`](../../en/reference/script-api/methods.md#symbol-script-method-client-critter-setalpha-26dae4c519)
@@ -698,6 +710,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-client-item-getmappos-7b7a1139c2"></a>
 - [`symbol-script-method-client-item-getmappos-7b7a1139c2`](../../en/reference/script-api/methods.md#symbol-script-method-client-item-getmappos-7b7a1139c2)
 
+<a id="symbol-script-method-client-item-getspritemapanchor-c5c1d1645e"></a>
+- [`symbol-script-method-client-item-getspritemapanchor-c5c1d1645e`](../../en/reference/script-api/methods.md#symbol-script-method-client-item-getspritemapanchor-c5c1d1645e)
+
 <a id="symbol-script-method-client-item-getspriteoffset-b58872333c"></a>
 - [`symbol-script-method-client-item-getspriteoffset-b58872333c`](../../en/reference/script-api/methods.md#symbol-script-method-client-item-getspriteoffset-b58872333c)
 
@@ -863,6 +878,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 
 <a id="symbol-script-method-client-map-getvisiblehexes-f304ec4403"></a>
 - [`symbol-script-method-client-map-getvisiblehexes-f304ec4403`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-getvisiblehexes-f304ec4403)
+
+<a id="symbol-script-method-client-map-getvisibleitemonhex-262234ff85"></a>
+- [`symbol-script-method-client-map-getvisibleitemonhex-262234ff85`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-getvisibleitemonhex-262234ff85)
 
 <a id="symbol-script-method-client-map-getvisiblelayers-be4054caf4"></a>
 - [`symbol-script-method-client-map-getvisiblelayers-be4054caf4`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-getvisiblelayers-be4054caf4)

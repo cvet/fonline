@@ -93,6 +93,7 @@ namespace
         {"Source/Server/Server.cpp", "EventResult move_result {OnPlayerMoveCritter.Fire(player, cr, zero_speed)};", 1, "player movement gate"},
         {"Source/Server/Server.cpp", "EventResult move_result {OnPlayerMoveCritter.Fire(player, cr, stop_speed)};", 1, "attachment master arrival permission gate"},
         {"Source/Server/Server.cpp", "EventResult dir_result {OnPlayerDirCritter.Fire(player, cr, checked_dir)};", 2, "player direction gate"},
+        {"Source/Server/Server.cpp", "Entity::EventResult result {_engine->OnPlayerMovementAuthority.Fire(_player, _cr, allowed)};", 1, "explicit player movement authority with retained actor and revision revalidation"},
         {"Source/Server/Server.cpp", "OnCritterMoved.Fire(cr, old_hex);", 1, "post-move guarded"},
         {"Source/Server/Server.cpp", "EventResult dir_result {OnPlayerDirCritter.Fire(player, cr, checked_dir)};", 1, "player direction gate"},
         {"Source/Server/Server.cpp", "OnCritterMoved.Fire(cr, old_hex);", 2, "post-move guarded"},

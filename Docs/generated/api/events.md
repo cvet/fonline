@@ -358,6 +358,9 @@ Continue with the [canonical reference](../../en/reference/script-api/events.md)
 <a id="symbol-script-event-server-game-onplayermovecritter-f612ab415d"></a>
 - [`symbol-script-event-server-game-onplayermovecritter-f612ab415d`](../../en/reference/script-api/events.md#symbol-script-event-server-game-onplayermovecritter-f612ab415d)
 
+<a id="symbol-script-event-server-game-onplayermovementauthority-27d30c0ebb"></a>
+- [`symbol-script-event-server-game-onplayermovementauthority-27d30c0ebb`](../../en/reference/script-api/events.md#symbol-script-event-server-game-onplayermovementauthority-27d30c0ebb)
+
 <a id="symbol-script-event-server-game-onstart-60703820d5"></a>
 - [`symbol-script-event-server-game-onstart-60703820d5`](../../en/reference/script-api/events.md#symbol-script-event-server-game-onstart-60703820d5)
 

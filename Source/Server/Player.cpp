@@ -68,17 +68,6 @@ auto Player::GetControlledCritter() const noexcept -> nptr<const Critter>
     return _controlledCr.load(std::memory_order_acquire);
 }
 
-auto Player::HasPlayerMovementControl(nptr<const Critter> controller, ptr<const Critter> target) const -> bool
-{
-    FO_VALIDATE_ENTITY(NONE);
-
-    if (IsDestroyed() || !controller || controller->IsDestroyed() || GetControlledCritter() != controller) {
-        return false;
-    }
-
-    return controller->GetMapId() == target->GetMapId() && (controller == target || (controller->GetIsAttached() && controller->GetAttachMaster() == target->GetId()));
-}
-
 ptr<ServerConnection> Player::GetConnection() noexcept FO_TSA_NO_ANALYSIS
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
@@ -121,6 +110,7 @@ void Player::SetControlledCritter(nptr<Critter> cr)
 
     scoped_lock locker {_controlledCrLinkLocker};
 
+    _movementControlRevision++;
     _controlledCr.store(cr.get(), std::memory_order_release);
 }
 
@@ -164,6 +154,8 @@ void Player::SwapConnection(ptr<Player> other) noexcept FO_TSA_NO_ANALYSIS
     // The not-yet-visible reconnect player cannot be a send target and needs no guard
     scoped_lock conn_lock {_connectionLock};
 
+    _movementControlRevision++;
+    other->_movementControlRevision++;
     std::swap(_connection, other->_connection);
     std::swap(_sentMapId, other->_sentMapId);
 }

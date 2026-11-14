@@ -34,6 +34,7 @@ public:
     [[nodiscard]] auto GetBakedBounds() const noexcept -> optional<ParticleBounds3D> override;
     [[nodiscard]] auto GetLiveBounds() const noexcept -> optional<ParticleBounds3D> override;
 
+    void RebaseWorldParticles(vec3 delta) noexcept override;
     void Setup(const ParticleRuntimeSetup& setup) override;
     auto Prewarm() -> float32_t override;
     void Respawn(optional<int32_t> seed) override;
@@ -43,6 +44,8 @@ public:
 
 private:
     explicit EffekseerParticleRuntimeSystem(unique_ptr<Impl>&& impl);
+
+    void UpdateInternal(float32_t delta_seconds, bool flip);
 
     unique_ptr<Impl> _impl;
 };

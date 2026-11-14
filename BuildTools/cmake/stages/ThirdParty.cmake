@@ -898,7 +898,8 @@ if(FO_MANAGED_SCRIPTING)
 
     # Keep in sync with buildtools.py so subset, cmake args, and source patches invalidate only their platforms
     if(FO_WEB)
-        SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_sfx_nogl_overridable_allocators_wasmglue_asm_id)
+        TemporaryCompat(BrowserMonoZlibPicDispatch "2027-01-20")
+        SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_sfx_nogl_overridable_allocators_wasmglue_asm_id_zlib_dispatch_o0)
     elseif(FO_ANDROID)
         SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_sfx_nogl_overridable_allocators_android_sources_isa_fallback)
     elseif(FO_MAC OR FO_IOS)

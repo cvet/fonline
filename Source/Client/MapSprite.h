@@ -83,6 +83,7 @@ public:
     [[nodiscard]] auto GetDrawRect() const noexcept -> irect32;
     [[nodiscard]] auto GetDrawRootPos() const noexcept -> ipos32;
     [[nodiscard]] auto GetMapRootOffset() const noexcept -> ipos32;
+    [[nodiscard]] auto GetMapRootProjection() const -> vec3;
     [[nodiscard]] auto GetSpriteRootOffset() const noexcept -> ipos32;
     [[nodiscard]] auto GetViewRect() const noexcept -> irect32;
     [[nodiscard]] auto IsHidden() const noexcept -> bool { return _hidden; }
@@ -100,6 +101,7 @@ public:
     [[nodiscard]] auto IsEggStructure() const noexcept -> bool { return _eggStructure; }
     [[nodiscard]] auto GetColor() const noexcept -> ucolor { return _color; }
     [[nodiscard]] auto GetElevation() const noexcept -> int16_t { return _elevation; }
+    [[nodiscard]] auto GetDepthOffset() const noexcept -> float32_t { return _depthOffset; }
     [[nodiscard]] auto GetDrawEffect() const noexcept -> nptr<RenderEffect> { return _drawEffect ? *_drawEffect : nullptr; }
     [[nodiscard]] auto GetAngle() const noexcept -> int16_t { return _angle; }
     [[nodiscard]] auto GetMapProjected() const noexcept -> bool { return _mapProjected; }
@@ -115,6 +117,7 @@ public:
     void SetLight(nptr<const ucolor> light, nptr<const ucolor> light_right, nptr<const ucolor> light_left) noexcept;
     void SetHidden(bool hidden) noexcept;
     void SetElevation(int16_t elevation) noexcept;
+    void SetDepthOffset(float32_t depth_offset) noexcept;
     void SetAngle(int16_t angle) noexcept;
     void SetMapProjected(bool map_projected) noexcept;
     void SetItemOwner(nptr<ItemHexView> item, bool hit_test_when_hidden) noexcept;
@@ -152,6 +155,7 @@ private:
     bool _eggStructure {};
     ucolor _color {};
     int16_t _elevation {};
+    float32_t _depthOffset {};
     int16_t _angle {};
     bool _mapProjected {};
     mutable nptr<RenderEffect*> _drawEffect {};
@@ -200,7 +204,7 @@ private:
 };
 
 // Script-configured holder for a client-local map sprite added by Map.DrawMapSprite and kept alive until invalidated or stopped
-///@ ExportRefType Client RefCounted HasFactory Export = Valid, SprId, Hex, ProtoId, Offset, Elevation, IsFlat, NoLight, DrawOrder, DrawOrderSubLayer, Corner, DisableEgg, Color, IsTweakOffs, TweakOffset, IsTweakAlpha, TweakAlpha, Angle, MapProjected, StopDraw
+///@ ExportRefType Client RefCounted HasFactory Export = Valid, SprId, Hex, ProtoId, Offset, Elevation, DepthOffset, IsFlat, NoLight, DrawOrder, DrawOrderSubLayer, Corner, DisableEgg, Color, IsTweakOffs, TweakOffset, IsTweakAlpha, TweakAlpha, Angle, MapProjected, StopDraw
 class MapSpriteHolder : public refcounted<MapSpriteHolder>
 {
 public:
@@ -226,6 +230,9 @@ public:
     ipos32 Offset {};
     // Vertical map elevation applied at attachment, independently of the sprite pixel offset
     int16_t Elevation {};
+    // View-depth correction in logical map pixels copied at attachment;
+    // positive is nearer, default 0
+    float32_t DepthOffset {};
     // Manual flat-sprite selection used when ProtoId is empty
     bool IsFlat {};
     // Manual lighting bypass used when ProtoId is empty

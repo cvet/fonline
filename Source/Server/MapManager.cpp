@@ -1168,6 +1168,10 @@ void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, op
 {
     FO_TRACE_ZONE(Map);
 
+    auto cr_holder {cr.hold_ref()};
+    auto requested_map_holder {map.try_hold_ref()};
+    ignore_unused(cr_holder, requested_map_holder);
+
     EnsureEntitySynced(cr);
     ValidateEntityAccess(map);
 
@@ -1232,10 +1236,23 @@ void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, op
                 }
             }
 
+            // Dir and hex callbacks may destroy, relocate or restart the critter, which supersedes this transfer
+            uint32_t moving_uid {cr->GetMovingUid()};
+            auto is_placed {[&](mpos expected_hex) { return !cr->IsDestroyed() && !map->IsDestroyed() && IsEntityAccessValid(cr) && IsEntityAccessValid(map) && map->GetCritter(cr->GetId()) == cr && cr->GetHex() == expected_hex && cr->GetMovingUid() == moving_uid; }};
+
+            mpos before_dir_hex {cr->GetHex()};
             cr->ChangeDir(dir);
-            map->RemoveCritterFromField(cr);
-            cr->SetHex(start_hex);
-            map->AddCritterToField(cr);
+
+            if (!is_placed(before_dir_hex)) {
+                return;
+            }
+
+            map->MoveCritterOnField(cr, start_hex);
+
+            if (!is_placed(start_hex)) {
+                return;
+            }
+
             cr->Send_Teleport(cr, start_hex);
             cr->Broadcast_Teleport(start_hex);
             cr->ClearVisibleEnitites();

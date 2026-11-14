@@ -2343,6 +2343,24 @@ TEST_CASE("PropertiesStoreAllDataSkipsVirtualHashProperties")
     CHECK(str_hashes.contains(hashes.to_hashed_string("stored-tag")));
 }
 
+TEST_CASE("EnginePropertiesAcceptPostSettersOnly")
+{
+    hash_storage hashes {};
+    TestNameResolver resolver {};
+    PropertyRegistrar registrar {"EngineSetterEntity", EngineSideKind::ServerSide, &hashes, &resolver};
+
+    auto engine_prop {registrar.RegisterProperty({"Common", "int32", "EngineValue", "Persistent", "CoreProperty"})};
+    auto game_prop {registrar.RegisterProperty({"Server", "int32", "GameValue", "Mutable", "Persistent"})};
+    REQUIRE(engine_prop->IsCoreProperty());
+    REQUIRE_FALSE(game_prop->IsCoreProperty());
+
+    CHECK_THROWS_AS(engine_prop->AddSetter([](nptr<Entity>, ptr<const Property>, PropertyRawData&) { }), VerificationException);
+    CHECK(engine_prop->GetSetters()->empty());
+    CHECK_NOTHROW(engine_prop->AddPostSetter([](nptr<Entity>, ptr<const Property>) { }));
+    CHECK_NOTHROW(game_prop->AddSetter([](nptr<Entity>, ptr<const Property>, PropertyRawData&) { }));
+    CHECK(game_prop->GetSetters()->size() == 1);
+}
+
 TEST_CASE("PropertiesCustomAccessors")
 {
     hash_storage hashes {};

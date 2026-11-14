@@ -195,6 +195,24 @@ auto Critter::GetPlayerPlanMoving(uint32_t plan_seq) noexcept -> nptr<MovingCont
     return _moving;
 }
 
+auto Critter::IsPlayerMovementOwner(ptr<const Player> player) const -> bool
+{
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+    ValidateEntityAccess(player);
+
+    if (player->IsDestroyed() || _playerMovingUid == 0 || _playerMovingPlayerId != player->GetId() || _playerMovementIdentity != player->GetMovementIdentity()) {
+        return false;
+    }
+
+    auto actor {player->GetControlledCritter()};
+
+    if (!actor || actor->IsDestroyed() || actor->GetId() != _playerMovingActorId || player->GetMovementControlRevision() != _playerControlRevision || actor->GetAttachmentRevision() != _playerAttachmentRevision) {
+        return false;
+    }
+
+    return _movingUid == _playerMovingUid || (!_moving && _lastMoving && _movingUid == _playerMovingUid + 1 && _lastMoving->GetCompleteReason() == MovingState::Success);
+}
+
 auto Critter::IsMapTransfersLocked() const noexcept -> bool
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
@@ -404,12 +422,20 @@ void Critter::SetMoving(refcount_ptr<MovingContext> moving)
     SetMovingSpeed(numeric_cast<int32_t>(_moving->GetSpeed()));
 }
 
-void Critter::MarkMovingStartedByPlayer(uint32_t plan_seq, float32_t plan_distance_shift)
+void Critter::MarkMovingStartedByPlayer(ptr<const Player> player, uint32_t plan_seq, float32_t plan_distance_shift)
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
     FO_VERIFY_AND_THROW(_moving, "Critter has no movement to mark as started by its player");
 
+    auto actor {player->GetControlledCritter()};
+    FO_VERIFY_AND_THROW(actor, "Movement initiator has no controlled actor");
+
     _playerMovingUid = _movingUid;
+    _playerMovingPlayerId = player->GetId();
+    _playerMovingActorId = actor->GetId();
+    _playerMovementIdentity = player->GetMovementIdentity();
+    _playerControlRevision = player->GetMovementControlRevision();
+    _playerAttachmentRevision = actor->GetAttachmentRevision();
     _playerPlanSeq = plan_seq;
     _playerPlanDistanceShift = plan_distance_shift;
 }
@@ -421,6 +447,9 @@ void Critter::StopMoving(MovingState reason)
 
     if (reason != MovingState::Success) {
         _playerMovingUid = 0;
+        _playerMovingPlayerId = {};
+        _playerMovingActorId = {};
+        _playerMovementIdentity.reset();
         _playerPlanSeq = 0;
     }
 
@@ -469,6 +498,7 @@ void Critter::AttachToCritter(ptr<Critter> cr)
     }
 
     cr->AddAttachedCritter(this);
+    _attachmentRevision++;
     SetIsAttached(true);
     SetAttachMaster(cr->GetId());
 
@@ -488,6 +518,7 @@ void Critter::DetachFromCritter()
     FO_VERIFY_AND_THROW(cr, "Attach master not found");
 
     cr->RemoveAttachedCritter(this);
+    _attachmentRevision++;
     SetIsAttached(false);
     SetAttachMaster({});
 
@@ -520,29 +551,36 @@ void Critter::MoveAttachedCritters()
     auto new_hex {GetHex()};
     auto new_hex_offset {GetHexOffset()};
 
-    auto attached {GetAttachedCritters()};
+    auto this_ref_holder {refcount_ptr<Critter>::from_addref(this)};
+    auto attached {copy_hold_ref(GetAttachedCritters())};
+
+    // Offset and hex setters may run scripts that move the master or detach and destroy riders
+    auto is_master_in_place {[this, map, new_hex] { return !IsDestroyed() && !map->IsDestroyed() && GetMapId() == map->GetId() && GetHex() == new_hex; }};
+    auto is_rider {[this, map](ptr<const Critter> cr) { return !cr->IsDestroyed() && cr->GetIsAttached() && cr->GetAttachMaster() == GetId() && cr->GetMapId() == map->GetId(); }};
 
     for (ptr<Critter> cr : attached) {
-        FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
-        FO_VERIFY_AND_THROW(cr->GetIsAttached(), "Critter is not attached");
-        FO_VERIFY_AND_THROW(cr->GetAttachMaster() == GetId(), "Attached critter has a different master");
-        FO_VERIFY_AND_THROW(cr->GetMapId() == map->GetId(), "Critter belongs to a different map");
+        if (!is_master_in_place()) {
+            break;
+        }
+        if (!is_rider(cr)) {
+            continue;
+        }
 
         cr->SetHexOffset(new_hex_offset);
 
         auto hex {cr->GetHex()};
 
-        if (hex != new_hex) {
-            map->RemoveCritterFromField(cr);
-            cr->SetHex(new_hex);
-            map->AddCritterToField(cr);
+        if (hex != new_hex && is_master_in_place() && is_rider(cr)) {
+            map->MoveCritterOnField(cr, new_hex);
 
-            moved_critters.emplace_back(cr.hold_ref(), hex);
+            // Riders moved before a failure still need their trigger and visibility callbacks below
+            if (is_rider(cr) && cr->GetHex() == new_hex) {
+                moved_critters.emplace_back(cr.hold_ref(), hex);
+            }
         }
     }
 
     // Callbacks time
-    auto this_ref_holder {refcount_ptr<Critter>::from_addref(this)};
     auto map_ref_holder {map};
     auto dir {GetDir()};
 

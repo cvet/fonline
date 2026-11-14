@@ -96,7 +96,6 @@ public:
     void AddRuntimeStaticItems(span<refcount_ptr<StaticItem>> static_items);
     void RemoveRuntimeStaticItems(const unordered_set<ident_t>& static_item_ids);
     void RefreshRemovedStaticItems();
-    void VerifyStaticItemRemovalsOnlyGrow(const_span<ident_t> new_ids) const;
     void AddCritter(ptr<Critter> cr);
     void RemoveCritter(ptr<Critter> cr);
     void RefreshCritterPlayerState(ptr<Critter> cr);
@@ -114,6 +113,7 @@ public:
     void SetHexManualBlock(mpos hex, bool enable, bool full);
     void AddCritterToField(ptr<Critter> cr);
     void RemoveCritterFromField(ptr<Critter> cr);
+    void MoveCritterOnField(ptr<Critter> cr, mpos hex);
     void RecacheHexFlags(mpos hex);
     void VerifyTrigger(ptr<Critter> cr, mpos from_hex, mpos to_hex, mdir dir);
     auto CheckGagItems(mpos hex, int32_t radius, const function<bool(ptr<const Item>)>& gag_callback) const -> bool;

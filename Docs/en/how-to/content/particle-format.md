@@ -71,8 +71,11 @@ advertised by `ParticleSpriteFactory`.
 
 Both formats store simulated position bounds and maximum camera-facing billboard
 radius (`.spk` or an Engine `.efk` trailer) for sprite framing and model visibility.
-SPARK seeds emitter copying; bounds ignore process time and effect order. Rebake
-after contract changes; `.efk` without a valid trailer fails.
+SPARK seeds emitter copying. Effekseer uses a nonnegative authored random seed
+or a fixed fallback, local to the bounds simulation. Bounds do not depend
+on process random state or effect order. One simulation is a sample, not a proof
+that every random trajectory fits. Fully rebake existing Effekseer resources after
+updating the baker; `.efk` without a valid trailer fails.
 
 ### Incremental Effekseer baking
 
@@ -202,11 +205,17 @@ drawing. `ParticleSystem` adds the shared timing and control facade. Its explici
 - `Prewarm` advances an effect before ordinary playback;
 - `SetScale` reapplies runtime setup without replacing the effect;
 - `GetBakedBounds` exposes the validated position box and billboard radius;
-- `GetLiveBounds` returns transformed baked bounds only while particles are
-  visible;
+- `GetLiveBounds` retains transformed baked bounds while instances live and
+  extends them with current Effekseer instance positions and shape radii;
 - `ComputeSpriteFrame` projects baked bounds through the map camera and derives
   sprite allocation, emitter offset, and world transform;
 - `GetDrawInScene` selects the atlas or direct-scene rendering route.
+
+Standalone scene sprites start with identity World before their first simulation
+tick, including a switch from atlas rendering. `DrawInScene` supplies the map
+projection later. Birth placement therefore excludes atlas-frame translation;
+atlas sprites retain their computed frame transform. Seeded respawn uses the
+selected placement even before a draw.
 
 `ParticleBounds3D` deliberately separates two quantities. The position box
 follows the complete emitter placement. The billboard radius follows placement
@@ -214,12 +223,65 @@ scale but remains camera-facing, so callers add it as view-plane padding and do
 not rotate it as another world-space point. Attached model particles expand the
 model frame only while their backend reports live particles or instances.
 
+`ModelInstance::RunParticle` requests a redraw and queues the effect until a
+complete bone pose is available. Its first placement uses `Setup` followed by
+`Update(0)`, so the pose interval before creation does not age the newborn.
+Animation-callback effects receive this initialization before the current draw,
+including requests on already posed children. A newly created child or changed
+atlas layout waits for its next valid pose. Pending effects neither draw nor
+expand the frame at identity transforms. Later positive pose deltas advance
+normally; zero-time frame-sizing re-poses do not age the effect.
+
+Effekseer model placement treats `ParticleRuntimeSetup.World` as the complete
+bone pose. A finite `LookDirectionAngle` is accepted as a legacy hint without
+applying a second yaw; a non-finite hint rejects the effect. Orient the effect
+through `World` or its authored nodes.
+
+Particles owned by child model instances use the root model's current frame
+projection and view offset. Their bone pose still comes from the child. This
+keeps nested attachments in the same atlas or direct-scene frame as the model.
+
+For emitters bound at particle creation, moving or shrinking the emitter does
+not move or shrink older particles. Live bounds therefore union the current
+baked envelope with Sprite/Ribbon/Ring/Track/Model instance geometry. A cached
+CPU callback pass measures those instances without GPU packets, scene-background
+capture, simulation advancement or random generation. Expired particles stop
+extending the frame; the existing model texture-size cap still applies.
+
+`RebaseWorldParticles(delta)` changes the internal atlas origin, separately from
+ordinary emitter movement. The model pairs it with its new absolute `Setup`
+and zero-time `RefreshRenderTransform`; old particles translate once while a
+compensating simulation root keeps future births at the current emitter.
+Non-finite deltas or overflowing accumulated coordinates are ignored before
+mutation. Respawn and handle retirement clear the old translation base.
+
+Every active Effekseer render refresh still runs `UpdateHandle(0)`. The shared
+Manager reuses its rendering snapshot while placement and handles are unchanged;
+creation or placement changes from any handle require the next refresh to `Flip`.
+Deferred rebase remains pending on its own handle until its SDK matrices are
+applied; another handle cannot consume that publication. The refresh decides
+whether to `Flip` after applying those matrices.
+Root-only or empty handles after simulation or prewarm also require that next
+`Flip`, because it checks effect completion before retiring the snapshot.
+Ordinary `Update`, prewarm and the three retirement flushes always `Flip`.
+Projection-only changes use the current draw parameters without advancing time.
+
 The same seed is deterministic only with the same resource, backend revision,
 setup, and update sequence. Do not use seeded replay as a cross-version visual
 compatibility promise.
 
-Effekseer currently uses direct-scene rendering. SPARK may use either atlas or
-direct-scene rendering. Both routes still depend on the embedding project's
+Authored SRT transforms may collapse individual scale axes to zero. Effekseer's
+local `Mat43f` patch completes their rotation basis without dividing by zero:
+surviving axes retain their signed direction, one missing axis uses their cross
+product, and a lone survivor receives deterministic perpendicular axes. An
+all-zero basis uses identity. The erased orientation is underdetermined; the
+completion is canonical. Noncollapsed decomposition retains the upstream path.
+This prevents invalid inherited Track transforms during zero-scale animation.
+Non-finite callback geometry still fails runtime validation.
+
+Standalone Effekseer particle sprites use direct-scene rendering. SPARK sprites
+may use either atlas or direct-scene rendering. Model-bone particles follow the
+model atlas/direct-scene route, including GUI atlas previews. Both routes still depend on the embedding project's
 effect state, image resources, camera settings, and draw order.
 
 ## Integration
@@ -231,6 +293,52 @@ sprite loader. A map sprite or client script therefore references a baked
 Client script exports provide seeded playback, prewarm, and scale controls.
 `Critter.RunParticle` starts a live particle on a model bone in 3D-enabled
 builds.
+
+`Critter.RunUnlitParticle` uses the same bone, model-unit offset, first-pose
+placement and lifetime, selecting the model's unlit atlas layer instead.
+The model and ordinary particles retain map lighting; the extra layer keeps
+the same crop, alpha and model depth with its authored node depth settings.
+Both exports do nothing without a loaded model or 3D support, and throw off-map.
+Direct scene rendering retains its existing all-particle route. See
+[sprite overlays](../../explanation/rendering/index.md#optional-unlit-sprite-overlay).
+
+`MapSpriteHolder.DepthOffset` is a finite logical-pixel view-depth correction:
+zero default, positive nearer, unchanged screen XY in both render paths.
+`Map.DrawMapSprite` copies it on attachment; field changes/rebuilds require
+reattachment. NaN/infinity throw before any holder processing, even invalid/offscreen.
+
+`Critter.GetBoneMapAnchor` projects authored bone-local units to integer offset
+and `DepthOffset` for the critter's current hex. Both outputs use one retained
+pose, actual carrier elevation/root depth and pixel rounding across atlas/direct.
+Missing models/bones, detached sprites and invalid/unrepresentable points return
+`false` with sprite offset/zero depth; off-map throws. Existing 2D methods stay
+unchanged. Independent sprites follow later movement only if updated.
+
+This query always preserves the bone point's physical view depth. A cached atlas
+model is drawn as a bitmap plane, whose submitted depth can differ at the same XY.
+Use `Critter.GetBoneSpriteMapAnchor` when an independent particle must meet the
+displayed model: it uses the same bone pose, follows the submitted bitmap point
+and plane in atlas mode and the physical point in direct scene mode. It returns
+`false` with sprite offset/zero depth for a hidden carrier as well as unavailable
+or invalid anchors. The physical query retains its existing meaning. Both queries
+use authored bone-local units and require reattachment after movement or rebuild.
+
+Update a following holder in `Game.OnRenderMap_BeforeSprites` when it must meet
+the pose drawn in that map pass. Visible direct-scene critters are prepared before
+this event; atlas poses have already been updated. Earlier loop callbacks can read
+the preceding retained pose. Bone queries do not advance animation. Replayed direct
+draws keep the prepared pose and only rebind particle projection, without advancing
+particle time. Hidden or offscreen critters are not advanced by this preparation pass.
+
+`Item.GetSpriteMapAnchor(hex, localOffset, mapOffset, depthOffset)` resolves the
+visible bitmap copy at `hex`. `localOffset` is in logical sprite pixels relative
+to its draw root before rotation and map projection. Set a holder's `Hex` to that
+same hex and use both outputs as `Offset` and `DepthOffset`. The query follows the
+submitted bitmap plane, including flat layers, authored roots and rounded elevation.
+A valid out-of-view hex, unavailable copy, direct scene sprite, empty bitmap or
+invalid/unrepresentable result returns `false` with zero outputs. Off-map items
+and invalid hexes throw before changing the outputs. Pixel alpha and frontmost
+picking remain caller-owned; refresh and reattach independent holders as required.
 
 Model descriptions attach a baked particle with `AttachParticles`:
 
@@ -279,6 +387,14 @@ python BuildTools\docs_contract_diff.py --base-ref <base>
 After changing native particle code, configure both relevant feature lanes and
 run the focused native tests, including `Test_ParticleBaker.cpp` and, for
 Effekseer runtime changes, `Test_EffekseerParticleRuntime.cpp`.
+
+Run each hidden `EffekseerManagerFailurePolicy` section in a separate native test
+process. `ordinary_respawn` and `wrong_alignment_control` must exit 0;
+`throw_bad_alloc` and `throw_unexpected` must exit 1 with their Engine fatal
+diagnostic. These controls replace a process-wide allocator callback and must
+not run concurrently in one process. Internal manager operations have no rollback
+contract; resource validation, loaders and render callbacks retain their existing
+failure behavior outside that fatal boundary.
 
 An embedding project must then:
 

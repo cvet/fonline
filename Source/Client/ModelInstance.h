@@ -29,6 +29,8 @@ struct ModelParticleSystem
     float32_t Rot {};
     string EffectName {};
     hstring BoneName {};
+    bool Unlit {};
+    bool Initialized {};
 };
 
 enum class ModelAttachKind : uint8_t
@@ -64,6 +66,10 @@ public:
     auto operator=(ModelInstance&&) noexcept = delete;
     ~ModelInstance();
 
+    [[nodiscard]] auto GetRoot() -> ptr<ModelInstance>;
+    [[nodiscard]] auto GetRoot() const -> ptr<const ModelInstance>;
+    [[nodiscard]] auto GetParent() -> nptr<ModelInstance> { return _parent; }
+    [[nodiscard]] auto GetParent() const -> nptr<const ModelInstance> { return _parent; }
     [[nodiscard]] auto Convert2dTo3d(ipos32 pos) const -> vec3;
     [[nodiscard]] auto Convert3dTo2d(vec3 pos) const -> ipos32;
     [[nodiscard]] auto HasAnimation(CritterStateAnim state_anim, CritterActionAnim action_anim) const noexcept -> bool;
@@ -82,9 +88,11 @@ public:
     [[nodiscard]] auto GetFramePivot() const noexcept -> ipos32 { return _framePivot; }
     [[nodiscard]] auto GetViewRect() const -> irect32;
     [[nodiscard]] auto FindBone(hstring bone_name) const noexcept -> nptr<const ModelBone>;
-    [[nodiscard]] auto GetBonePos(hstring bone_name) const -> optional<ipos32>;
+    [[nodiscard]] auto GetBonePos(hstring bone_name, vec3 local_offset = vec3 {0.0f}) const -> optional<ipos32>;
+    [[nodiscard]] auto GetBonePos(hstring bone_name, vec3 local_offset, nptr<float32_t> view_depth) const -> optional<ipos32>;
     [[nodiscard]] auto GetBoneSpritePos(hstring bone_name) const -> optional<ipos32>;
     [[nodiscard]] auto GetAttachPoints() const -> vector<ModelAttachPoint>;
+    [[nodiscard]] auto HasUnlitParticles() const -> bool;
     [[nodiscard]] auto GetAnimDuration() const -> timespan;
     [[nodiscard]] auto GetAnimDuration(CritterStateAnim state_anim, CritterActionAnim action_anim) -> timespan;
     [[nodiscard]] auto HasBodyRotation() const { return !!_moveAnimController; }
@@ -106,11 +114,16 @@ public:
     void EnableShadow(bool enabled);
     void PoseSpriteFrame(bool advance_animation);
     void DrawSpriteFrame();
+    void DrawSpriteFrameLit();
+    void DrawUnlitParticles();
+    auto PrepareSceneFrame(float32_t scale) -> bool;
+    void DrawPreparedInScene(const mat44& proj);
     void DrawInScene(const mat44& proj, float32_t scale);
     void AddMoveOffset(ipos32 offset);
     void SetMovementState(bool movement_enabled, bool moving, int32_t moving_speed);
     void SetAnimInitCallback(function<void(CritterAnimationContext, int32_t, CritterStateAnim&, CritterActionAnim&, CritterAnimationFlags&, float32_t&, float32_t&)> anim_init);
     void RunParticle(string_view particle_name, hstring bone_name, vec3 move);
+    void RunUnlitParticle(string_view particle_name, hstring bone_name, vec3 move);
 
     void AddAnimationCallback(ModelAnimationCallback callback);
     void SetAnimationCallbacks(vector<ModelAnimationCallback> callbacks);
@@ -158,6 +171,7 @@ private:
     auto GetSpeed() const -> float32_t;
     auto GetMovementSpeed() const -> float32_t;
     auto GetTime() const -> nanotime;
+    auto IsWorldPoseReady() const -> bool;
     auto FindPoseJoint(hstring bone_name) const noexcept -> optional<PoseJointBinding>;
     auto GetPoseJointIndex(ptr<const ModelBone> bone) const -> uint32_t;
     auto GetWorldMatrix(uint32_t joint_index) const -> const mat44&;
@@ -173,6 +187,10 @@ private:
     void CutCombinedMeshes(ptr<const ModelInstance> cur);
     void CutCombinedMesh(ptr<CombinedMesh> combined_mesh, ptr<const ModelCutData> cut);
     void ProcessAnimation(timespan elapsed, ipos32 pos, float32_t scale);
+    void InitializePendingParticles();
+    void UpdateModelParticle(ModelParticleSystem& model_particle, timespan elapsed);
+    void StartParticle(string_view particle_name, hstring bone_name, vec3 move, bool unlit);
+    void InvalidateSceneFrame() noexcept;
     void Pose(float32_t scale, bool advance_animation);
     void DrawPosed(bool draw_particles);
     void FillAnimationTrackInputs(nptr<const ModelAnimationController> controller, bool active, array<vector<uint8_t>, 2>& joint_masks, array<ModelAnimationRuntimePose::TrackInput, 2>& track_inputs) const;
@@ -180,6 +198,8 @@ private:
     void BuildRestWorldMatrices();
     void DrawCombinedMesh(ptr<CombinedMesh> combined_mesh, bool shadow_disabled);
     void DrawAllParticles();
+    void DrawParticles(optional<bool> unlit);
+    void RefreshSceneParticleTransforms(const mat44& proj);
     void SetAnimData(ModelAnimationData& data, bool clear);
     void ApplyDisabledMeshes(const vector<hstring>& disabled_meshes);
     void RefreshMoveAnimation();
@@ -211,6 +231,7 @@ private:
     optional<ModelAnimationController> _moveAnimController {};
     unique_nptr<ModelAnimationRuntimePose> _animationRuntimePose {};
     vector<mat44> _worldMatrices {};
+    bool _worldPoseReady {};
     array<vector<uint8_t>, 2> _animationBodyJointMasks {};
     array<vector<uint8_t>, 2> _animationMovementJointMasks {};
     int32_t _curLayers[MODEL_LAYERS_COUNT] {};
@@ -245,6 +266,7 @@ private:
     int32_t _curMoveTrack {};
     int32_t _movingSpeed {};
     CritterAnimationContext _movingContext {};
+    uint32_t _moveAnimationRequest {};
     float32_t _playbackSpeed {1.0f};
     float32_t _normalizedTime {};
     ModelAnimFlags _playbackFlags {};
@@ -258,6 +280,10 @@ private:
     bool _frameLayoutDirty {};
     bool _spriteBoundsPoseReady {};
     bool _directSceneDraw {};
+    bool _scenePoseReady {};
+    bool _scenePoseMutated {};
+    nanotime _scenePoseTime {};
+    float32_t _scenePoseScale {};
     vector<ModelAnimationCallback> _animationCallbacks {};
 
     // Derived animations
@@ -265,6 +291,7 @@ private:
     nptr<ModelInstance> _parent {};
     uint32_t _parentJointIndex {std::numeric_limits<uint32_t>::max()};
     mat44 _parentMatrix {};
+    mat44 _poseToSpriteFrame {1.0f};
     vector<ModelPoseJointLink> _linkJoints {};
     ModelAnimationData _animLink {};
     bool _childChecker {};

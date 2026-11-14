@@ -14,6 +14,8 @@
 
 FO_BEGIN_NAMESPACE
 
+static auto ProjectCritterBoneMapAnchor(ptr<CritterHexView> hex_cr, hstring bone_name, vec3 local_point, bool sprite_plane, ipos32& bone_offset, float32_t& depth_offset) -> bool;
+
 static auto RequireHexCritter(ptr<CritterView> cr) -> ptr<CritterHexView>
 {
     auto hex_cr {cr.dyn_cast<CritterHexView>()};
@@ -345,6 +347,29 @@ FO_SCRIPT_API void Client_Critter_RunParticle(ptr<CritterView> self, string_view
     }
 }
 
+// Starts an unlit particle on a loaded 3D model bone with RunParticle offsets and lifetime; its atlas layer bypasses
+// map lighting. Does nothing without a model or 3D support and throws off-map
+///@ ExportMethod
+FO_SCRIPT_API void Client_Critter_RunUnlitParticle(ptr<CritterView> self, string_view particleName, hstring boneName, float32_t moveX, float32_t moveY, float32_t moveZ)
+{
+    auto hex_cr {RequireHexCritter(self)};
+
+#if FO_ENABLE_3D
+    if (auto model {hex_cr->GetModel()}; model) {
+        model->RunUnlitParticle(particleName, boneName, vec3 {moveX, moveY, moveZ});
+    }
+    else
+#endif
+    {
+        ignore_unused(hex_cr);
+        ignore_unused(particleName);
+        ignore_unused(boneName);
+        ignore_unused(moveX);
+        ignore_unused(moveY);
+        ignore_unused(moveZ);
+    }
+}
+
 // Registers a deferred callback at the clamped normalized time of the selected 3D animation tuple; does nothing without a model, skips destroyed critters, and throws off-map
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Critter_AddAnimCallback(ptr<CritterView> self, CritterStateAnim stateAnim, CritterActionAnim actionAnim, float32_t normalizedTime, ScriptFunc<void, ptr<CritterView>> animCallback)
@@ -402,6 +427,150 @@ FO_SCRIPT_API bool Client_Critter_GetBonePos(ptr<CritterView> self, hstring bone
 
 #else
     ignore_unused(boneName);
+
+    return false;
+#endif
+}
+
+// Projects a bone-local point in authored model units to sprite-relative logical pixels; returns false for missing models/bones or invalid/unrepresentable points, leaving the sprite offset; throws off-map
+///@ ExportMethod
+FO_SCRIPT_API bool Client_Critter_GetBonePosWithOffset(ptr<CritterView> self, hstring boneName, float32_t moveX, float32_t moveY, float32_t moveZ, ipos32& boneOffset)
+{
+    auto hex_cr {RequireHexCritter(self)};
+    boneOffset = hex_cr->GetSpriteOffset();
+
+#if FO_ENABLE_3D
+    auto model {hex_cr->GetModel()};
+
+    if (!model) {
+        return false;
+    }
+
+    auto point {model->GetBonePos(boneName, vec3 {moveX, moveY, moveZ})};
+
+    if (!point) {
+        return false;
+    }
+
+    int64_t x {numeric_cast<int64_t>(boneOffset.x) + point->x};
+    int64_t y {numeric_cast<int64_t>(boneOffset.y) + point->y};
+
+    if (x < std::numeric_limits<int32_t>::min() || x > std::numeric_limits<int32_t>::max() || y < std::numeric_limits<int32_t>::min() || y > std::numeric_limits<int32_t>::max()) {
+        return false;
+    }
+
+    boneOffset = ipos32 {numeric_cast<int32_t>(x), numeric_cast<int32_t>(y)};
+
+    return true;
+
+#else
+    ignore_unused(boneName);
+    ignore_unused(moveX);
+    ignore_unused(moveY);
+    ignore_unused(moveZ);
+
+    return false;
+#endif
+}
+
+// Projects a bone-local point to a map sprite offset and depth-only correction in logical pixels.
+// Returns false with sprite offset and zero depth for unavailable or invalid anchors; throws off-map
+///@ ExportMethod
+FO_SCRIPT_API bool Client_Critter_GetBoneMapAnchor(ptr<CritterView> self, hstring boneName, float32_t moveX, float32_t moveY, float32_t moveZ, ipos32& boneOffset, float32_t& depthOffset)
+{
+    auto hex_cr {RequireHexCritter(self)};
+
+    return ProjectCritterBoneMapAnchor(hex_cr, boneName, vec3 {moveX, moveY, moveZ}, false, boneOffset, depthOffset);
+}
+
+// Projects a bone-local point to holder XY and the displayed model's depth in logical pixels.
+// Uses the atlas bitmap plane or direct-scene point; hidden/unavailable anchors return false, off-map throws
+///@ ExportMethod
+FO_SCRIPT_API bool Client_Critter_GetBoneSpriteMapAnchor(ptr<CritterView> self, hstring boneName, float32_t moveX, float32_t moveY, float32_t moveZ, ipos32& boneOffset, float32_t& depthOffset)
+{
+    auto hex_cr {RequireHexCritter(self)};
+
+    return ProjectCritterBoneMapAnchor(hex_cr, boneName, vec3 {moveX, moveY, moveZ}, true, boneOffset, depthOffset);
+}
+
+static auto ProjectCritterBoneMapAnchor(ptr<CritterHexView> hex_cr, hstring bone_name, vec3 local_point, bool sprite_plane, ipos32& bone_offset, float32_t& depth_offset) -> bool
+{
+    bone_offset = hex_cr->GetSpriteOffset();
+    depth_offset = 0.0f;
+
+#if FO_ENABLE_3D
+    auto model {hex_cr->GetModel()};
+
+    if (!model || !hex_cr->IsMapSpriteValid()) {
+        return false;
+    }
+
+    float32_t point_depth {0.0f};
+    auto point {model->GetBonePos(bone_name, local_point, make_ptr(&point_depth))};
+
+    if (!point) {
+        return false;
+    }
+
+    auto carrier {hex_cr->GetMapSprite()};
+
+    if (sprite_plane) {
+        auto sprite {carrier->GetSprite()};
+
+        if (!sprite || carrier->IsHidden()) {
+            return false;
+        }
+
+        if (!sprite->IsDirectDraw()) {
+            auto anchor {hex_cr->GetEngine()->SprMngr.GetMapSpritePointAnchor(carrier, *point)};
+
+            if (!anchor) {
+                return false;
+            }
+
+            bone_offset = anchor->first;
+            depth_offset = anchor->second;
+
+            return true;
+        }
+    }
+
+    float32_t elevation {numeric_cast<float32_t>(carrier->GetElevation())};
+    int32_t elevation_y {iround<int32_t>(std::cos(GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT) * elevation)};
+    int64_t x {numeric_cast<int64_t>(bone_offset.x) + point->x};
+    int64_t y {numeric_cast<int64_t>(bone_offset.y) + point->y - elevation_y};
+    constexpr int32_t CENTER_X {GameSettings::MAP_HEX_WIDTH / 2};
+    constexpr int32_t CENTER_Y {GameSettings::MAP_HEX_HEIGHT / 2};
+
+    // DrawMapSprite adds the hex center in int32 arithmetic when attaching the holder
+    if (x < std::numeric_limits<int32_t>::min() || x > std::numeric_limits<int32_t>::max() - CENTER_X) {
+        return false;
+    }
+
+    if (y < std::numeric_limits<int32_t>::min() || y > std::numeric_limits<int32_t>::max() - CENTER_Y) {
+        return false;
+    }
+
+    ipos32 offset {numeric_cast<int32_t>(x), numeric_cast<int32_t>(y)};
+    ipos32 ground_offset {CENTER_X + offset.x, CENTER_Y + offset.y};
+    vec3 ground {GeometryHelper::GetHexWorldPos(hex_cr->GetHex(), ground_offset)};
+    float32_t ground_depth {GeometryHelper::ProjectWorldToMap(ground).z};
+    float32_t target_depth {carrier->GetMapRootProjection().z + point_depth};
+    float32_t correction {target_depth - ground_depth};
+
+    if (!std::isfinite(correction)) {
+        return false;
+    }
+
+    bone_offset = offset;
+    depth_offset = correction;
+
+    return true;
+
+#else
+    ignore_unused(bone_name);
+    ignore_unused(local_point);
+    ignore_unused(sprite_plane);
 
     return false;
 #endif

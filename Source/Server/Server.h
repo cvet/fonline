@@ -235,6 +235,9 @@ public:
     // Runs after a player switches from `prevCr` to `cr` and initial critter information is sent
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnPlayerCritterSwitched, ptr<Player> /*player*/, ptr<Critter> /*cr*/, ptr<Critter> /*prevCr*/);
+    // Grants movement authority; `allowed` starts true only for the selected actor, and `StopChain` denies it
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnPlayerMovementAuthority, ptr<Player> /*player*/, ptr<Critter> /*cr*/, bool& /*allowed*/);
     // Validates a player movement request; handlers may replace `speed`, and `StopChain` rejects the request
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnPlayerMoveCritter, ptr<Player> /*player*/, ptr<Critter> /*cr*/, int32_t& /*speed*/);
@@ -415,16 +418,15 @@ private:
     void OnSendCustomEntityValue(ptr<Entity> entity, ptr<const Property> prop);
 
     void OnSetCritterLookDistance(ptr<Entity> entity, ptr<const Property> prop);
-    void OnSetMapRemovedStaticItems(ptr<Entity> entity, ptr<const Property> prop, PropertyRawData& data);
     void OnPostSetMapRemovedStaticItems(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetItemHidden(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetItemRecacheHex(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetItemMultihexLines(ptr<Entity> entity, ptr<const Property> prop);
 
-    void ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map);
-    auto ReconcileCritterStopPosition(string_view request_name, ptr<Player> player, ptr<Critter> cr, ptr<Map> map, ptr<MovingContext> moving, mpos client_hex, ipos16 client_hex_offset, mdir client_dir) -> bool;
-    auto MoveCritterAlongStopCorrectionPath(string_view request_name, ptr<Player> player, ptr<Critter> cr, ptr<Map> map, mpos target_hex, int32_t max_hex_distance) -> bool;
-    auto MoveCritterToStopHex(ptr<Critter> cr, ptr<Map> map, mpos target_hex) -> bool;
+    void ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map, const function<bool()>& validate_authority = {});
+    auto ReconcileCritterStopPosition(string_view request_name, ptr<Player> player, ptr<Critter> cr, ptr<Map> map, ptr<MovingContext> moving, mpos client_hex, ipos16 client_hex_offset, mdir client_dir, const function<bool()>& validate_authority) -> bool;
+    auto MoveCritterAlongStopCorrectionPath(string_view request_name, ptr<Player> player, ptr<Critter> cr, ptr<Map> map, mpos target_hex, int32_t max_hex_distance, const function<bool()>& validate_authority) -> bool;
+    auto MoveCritterToStopHex(ptr<Critter> cr, ptr<Map> map, mpos target_hex, const function<bool()>& validate_authority) -> bool;
     void SendCritterInitialInfo(ptr<Critter> cr, nptr<Critter> prev_cr);
 
     auto InitHealthFileJob() -> std::optional<timespan>;

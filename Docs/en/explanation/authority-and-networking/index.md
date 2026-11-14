@@ -242,11 +242,45 @@ A logged-in connection is also dropped when it stops answering pings. `ServerNet
 
 The server pairs `RegisterPingRequest` with `RegisterPingAnswer` and smooths the measured round trip in `GetRoundTrip()`. Unpaired answers are ignored. Because the client answers from its frame loop, this is an upper bound including client scheduling, not pure wire latency. It is zero before the first answer and is never chosen by the client.
 
+### Player movement authority
+
+`Game.OnPlayerMovementAuthority(player, cr, ref allowed)` governs movement,
+direction, stop reconciliation, lease renewal and arrival reports. `allowed`
+starts true only when `cr` is the player's selected actor. An embedding game
+must explicitly grant an indirect target and apply its driver/owner policy;
+attachment alone grants nothing. `StopChain`, a throwing handler or an unchanged
+false value denies the request. Keep this synchronous query free of world mutations.
+`OnPlayerMoveCritter` still validates speed and `OnPlayerDirCritter` still validates
+direction; neither grants indirect control by itself.
+
+Native requests snapshot authority before changing synchronization cover and retain
+the player, selected actor, target and map across callbacks.
+They recheck identity, map membership, connection state and revisions of selection
+and attachment. The game itself is asked when a request starts, inside each movement
+step commit and once after that step; other callbacks only trigger these engine
+rechecks. Detaching and reattaching, or switching away and back, invalidates
+the original request. Player plans retain a passive runtime-session identity and
+both revisions; logging in with the same persistent player ID cannot adopt an old plan.
+Another authorized player cannot renew or finish that plan. The movement job
+rechecks authority and retires the plan when permission, the driver link or the
+session is lost. Script-initiated NPC movement has no player authority owner.
+After callbacks, the packet loop verifies the captured control revision before
+reusing its connection buffer. A connection displaced by reconnect is never reused.
+Movement and direction policies also preserve a replacement plan created by a
+callback by checking its movement UID before applying the original request.
+
+Rebuild matching endpoints and rebake metadata/scripts together: this advances
+the runtime compatibility gate to `0.0.85`. Packet fields and persisted data do
+not change. `ServerMovementAuthority` exercises encrypted packets, owner and
+passenger controls, processing barriers and revocation.
+`ServerMovementSessionIdentity` logs out and restores the same persistent player
+record with matching counters, and verifies that the new session cannot own the old plan.
+
 ### The client reports a movement it finished predicting
 
-Movement/lease/stop/direction/arrival may target the controlled critter or its same-map direct master. Controller and attachment are rechecked after callbacks/advancing the old plan. `OnPlayerMoveCritter`/`OnPlayerDirCritter` enforce roles; unrelated targets are rejected first. Master leases require permission, corrected speed and the same numbered plan; replacement cannot renew a successor. `ServerAttachedMasterMovementAuthority` tests encrypted packets, replacement/refusal, detach/control changes.
+The client starts predicting its own movement before its `SendCritterMove` reaches the server. An interrupted plan already sends `SendStopCritterMove` with its final position. When a plan plays to its end, the locally predicted critter, including an indirectly controlled target, sends `SendCritterMoveFinished` with map and critter ids, the plan's end hex, and final position and direction. `Process_MoveFinished` checks that the report names the current plan and reconciles through the same path and blocking checks as a stop. The end hex identifies the plan because the initiating client does not receive the server's `CritterMove` id.
 
-The client starts predicting its own movement before its `SendCritterMove` reaches the server. An interrupted plan already sends `SendStopCritterMove` with its final position. When a plan plays to its end, the chosen critter instead sends `SendCritterMoveFinished` with map and critter ids, the plan's end hex, and final position and direction. `Process_MoveFinished` checks that the report names the current plan and reconciles through the same path and blocking checks as a stop. The end hex identifies the plan because the initiating client does not receive the server's `CritterMove` id.
+The view captures the plan's local origin before `StopMoving()` clears its server UID. Completion of a server-supplied NPC plan does not report an arrival.
 
 The maximum fast-forward is `min(round trip / 2, Server.MoveFinishCatchUpMaxMs) + Server.CritterMovingPeriodMs`; without a measured round trip only the movement period applies. An early, stale, invalid, or superseded report is rejected. The connection's message order ensures arrival reconciliation completes before an action request behind it is processed. Ordinary arrival sends no redundant position broadcast; a correction is broadcast only if the reconciled hex differs from the plan's end hex. See [Server Runtime](../runtime/server.md#an-arrival-the-client-predicted-is-reconciled-before-the-request-behind-it).
 

@@ -353,6 +353,23 @@ Native `MapView::GetItemAtScreen` and `GetEntityAtScreen` expose the same
 default-false option. The script default applies to both AngelScript and Managed
 C#; an embedding project owns when its input mode opts in.
 
+`map.GetVisibleItemOnHex(itemId, hex)` resolves an exact item ID only when a
+valid, nonhidden sprite represents it at the requested occupied hex. This
+includes drawn multihex copies whose primary sprite is hidden or outside the
+viewport. The requested hex must be inside the bounded view area; the item's
+origin may be outside it. Zero IDs and invalid hexes throw; unknown IDs, hidden
+or invalid copies, physical-only mesh cells and removed items return null.
+`item.GetSpriteMapAnchor(hex, localOffset, mapOffset, depthOffset)` uses the
+item's owning map and the same exact-copy visibility rule. It returns a logical
+pixel offset and depth correction for an independent map holder on that bitmap
+plane; see [particle anchors](../../how-to/content/particle-format.md#integration).
+
+This query checks render entries, not pixel alpha or frontmost screen picking.
+
+Existing `GetItem`, `GetItemOnHex`, `GetItems` and `GetItemsOnHex` retain their
+origin-based view-area filtering. `Item.IsVisible()` still checks the primary
+sprite; it does not report visibility of every additional copy.
+
 `MapView` is still a client-side view over the Common map model. Reusable coordinate/pathfinding rules belong in [Maps, Movement, and Geometry](../maps-and-movement.md); presentation details such as render targets, light textures, transparent eggs, map scrolling, and hit testing belong here and in [Frontend and Rendering](../rendering/).
 
 `MapView::SetTransparentEgg` configures either screen-space egg slot; its critter overload uses sprite size. The explicit-rectangle script overload takes `TransparentEggTarget` after `eggSize`. `TransparentEggTarget::AnyOccluder` cuts all occluders; `Structure` cuts only walls and roofs, not props. `MapSprite::SetEggStructure` holds prototype-derived classification; roofs use `EggAppearenceType::Always`. `CheckEggAppearence` includes the egg's own line, so full wall runs are cut without hex-parity adjustment. `IsCutByTransparentEgg` defines eligibility (`Test_TransparentEgg.cpp`).
@@ -616,7 +633,9 @@ For local critter movement prediction, `ClientEngine::CritterMoveTo()` synchroni
 
 ### Held-direction movement
 
-`Critter.MoveToDir(dir, speed)` holds client intent until `StopMove()`, `MoveToHex()` or map unload. `PathFinding::TraceDirection()` respects map blocking and critter footprint.
+`Critter.MoveToDir(dir, speed)` is a held direction — keyboard, D-pad or stick — not a path to a point ahead. It sets or steers the critter's *direct-move intent*, which lasts until `StopMove()`, a path order (`MoveToHex()`), or the critter leaving the current map (`UnloadMap()` drops it). A stop still sends `SendStopCritterMove` when local playback has already ended but the direct intent remains active; the server may still hold its lease.
+
+The client materialises the intent itself:
 
 - `Client.DirectMoveTraceSteps` bounds each trace. `Client.DirectMoveSlide` allows forward side steps around blockers. Extensions retain the ray and authoritative speed without rounding drift. Only full traces extend when `Client.DirectMoveExtendAheadSteps` remain.
 - Numbered plans lease projected distance. Server and observers advance at most `Client.DirectMoveLeaseSteps` ahead of confirmed input. `SendCritterMoveLease` renews when `Client.DirectMoveLeaseRenewSteps` remain. Uplink stalls stop them at the lease regardless of speed corrections or usual transit delay.
