@@ -15,7 +15,6 @@
 FO_BEGIN_NAMESPACE
 
 class Player;
-struct PlayerMovementIdentity;
 class MapManager;
 class Item;
 class Map;
@@ -198,7 +197,6 @@ private:
     uint32_t _playerMovingUid {};
     ident_t _playerMovingPlayerId {};
     ident_t _playerMovingActorId {};
-    shared_ptr<const PlayerMovementIdentity> _playerMovementIdentity {};
     uint64_t _playerControlRevision {};
     uint64_t _playerAttachmentRevision {};
     uint64_t _attachmentRevision {};

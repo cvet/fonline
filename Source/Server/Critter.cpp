@@ -200,7 +200,7 @@ auto Critter::IsPlayerMovementOwner(ptr<const Player> player) const -> bool
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     ValidateEntityAccess(player);
 
-    if (player->IsDestroyed() || _playerMovingUid == 0 || _playerMovingPlayerId != player->GetId() || _playerMovementIdentity != player->GetMovementIdentity()) {
+    if (player->IsDestroyed() || _playerMovingUid == 0 || _playerMovingPlayerId != player->GetId()) {
         return false;
     }
 
@@ -433,7 +433,6 @@ void Critter::MarkMovingStartedByPlayer(ptr<const Player> player, uint32_t plan_
     _playerMovingUid = _movingUid;
     _playerMovingPlayerId = player->GetId();
     _playerMovingActorId = actor->GetId();
-    _playerMovementIdentity = player->GetMovementIdentity();
     _playerControlRevision = player->GetMovementControlRevision();
     _playerAttachmentRevision = actor->GetAttachmentRevision();
     _playerPlanSeq = plan_seq;
@@ -449,7 +448,6 @@ void Critter::StopMoving(MovingState reason)
         _playerMovingUid = 0;
         _playerMovingPlayerId = {};
         _playerMovingActorId = {};
-        _playerMovementIdentity.reset();
         _playerPlanSeq = 0;
     }
 

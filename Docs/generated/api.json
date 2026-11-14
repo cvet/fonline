@@ -34036,7 +34036,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Critter.h",
-        "line": 190
+        "line": 189
       },
       "contract": {
         "explicit": true,
@@ -34090,7 +34090,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Critter.h",
-        "line": 151
+        "line": 150
       },
       "contract": {
         "explicit": true,
@@ -34130,7 +34130,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Critter.h",
-        "line": 154
+        "line": 153
       },
       "contract": {
         "explicit": true,
@@ -34170,7 +34170,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Critter.h",
-        "line": 157
+        "line": 156
       },
       "contract": {
         "explicit": true,
@@ -34210,7 +34210,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Critter.h",
-        "line": 160
+        "line": 159
       },
       "contract": {
         "explicit": true,
@@ -34250,7 +34250,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Critter.h",
-        "line": 163
+        "line": 162
       },
       "contract": {
         "explicit": true,
@@ -34290,7 +34290,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Critter.h",
-        "line": 166
+        "line": 165
       },
       "contract": {
         "explicit": true,
@@ -34330,7 +34330,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Critter.h",
-        "line": 169
+        "line": 168
       },
       "contract": {
         "explicit": true,
@@ -34370,7 +34370,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Critter.h",
-        "line": 172
+        "line": 171
       },
       "contract": {
         "explicit": true,
@@ -34410,7 +34410,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Critter.h",
-        "line": 175
+        "line": 174
       },
       "contract": {
         "explicit": true,
@@ -34457,7 +34457,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Critter.h",
-        "line": 148
+        "line": 147
       },
       "contract": {
         "explicit": true,
@@ -34489,7 +34489,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Critter.h",
-        "line": 178
+        "line": 177
       },
       "contract": {
         "explicit": true,
@@ -34536,7 +34536,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Critter.h",
-        "line": 184
+        "line": 183
       },
       "contract": {
         "explicit": true,
@@ -34576,7 +34576,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Critter.h",
-        "line": 181
+        "line": 180
       },
       "contract": {
         "explicit": true,
@@ -34623,7 +34623,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Critter.h",
-        "line": 187
+        "line": 186
       },
       "contract": {
         "explicit": true,
@@ -34677,7 +34677,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 290
+        "line": 293
       },
       "contract": {
         "explicit": true,
@@ -34717,7 +34717,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 287
+        "line": 290
       },
       "contract": {
         "explicit": true,
@@ -34764,7 +34764,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 302
+        "line": 305
       },
       "contract": {
         "explicit": true,
@@ -34818,7 +34818,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 293
+        "line": 296
       },
       "contract": {
         "explicit": true,
@@ -34858,7 +34858,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 248
+        "line": 251
       },
       "contract": {
         "explicit": true,
@@ -34905,7 +34905,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 284
+        "line": 287
       },
       "contract": {
         "explicit": true,
@@ -34945,7 +34945,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 299
+        "line": 302
       },
       "contract": {
         "explicit": true,
@@ -34985,7 +34985,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 251
+        "line": 254
       },
       "contract": {
         "explicit": true,
@@ -35032,7 +35032,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 254
+        "line": 257
       },
       "contract": {
         "explicit": true,
@@ -35072,7 +35072,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 257
+        "line": 260
       },
       "contract": {
         "explicit": true,
@@ -35119,7 +35119,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 296
+        "line": 299
       },
       "contract": {
         "explicit": true,
@@ -35159,7 +35159,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 223
+        "line": 226
       },
       "contract": {
         "explicit": true,
@@ -35191,7 +35191,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 217
+        "line": 220
       },
       "contract": {
         "explicit": true,
@@ -35223,7 +35223,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 260
+        "line": 263
       },
       "contract": {
         "explicit": true,
@@ -35263,7 +35263,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 263
+        "line": 266
       },
       "contract": {
         "explicit": true,
@@ -35303,7 +35303,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 214
+        "line": 217
       },
       "contract": {
         "explicit": true,
@@ -35335,7 +35335,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 308
+        "line": 311
       },
       "contract": {
         "explicit": true,
@@ -35375,7 +35375,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 305
+        "line": 308
       },
       "contract": {
         "explicit": true,
@@ -35422,7 +35422,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 269
+        "line": 272
       },
       "contract": {
         "explicit": true,
@@ -35462,7 +35462,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 266
+        "line": 269
       },
       "contract": {
         "explicit": true,
@@ -35509,7 +35509,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 278
+        "line": 281
       },
       "contract": {
         "explicit": true,
@@ -35556,7 +35556,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 281
+        "line": 284
       },
       "contract": {
         "explicit": true,
@@ -35603,7 +35603,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 275
+        "line": 278
       },
       "contract": {
         "explicit": true,
@@ -35643,7 +35643,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 272
+        "line": 275
       },
       "contract": {
         "explicit": true,
@@ -35690,7 +35690,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 236
+        "line": 239
       },
       "contract": {
         "explicit": true,
@@ -35744,7 +35744,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 245
+        "line": 248
       },
       "contract": {
         "explicit": true,
@@ -35798,7 +35798,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 230
+        "line": 233
       },
       "contract": {
         "explicit": true,
@@ -35845,7 +35845,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 233
+        "line": 236
       },
       "contract": {
         "explicit": true,
@@ -35885,7 +35885,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 242
+        "line": 245
       },
       "contract": {
         "explicit": true,
@@ -35939,7 +35939,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 239
+        "line": 242
       },
       "contract": {
         "explicit": true,
@@ -35993,7 +35993,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 220
+        "line": 223
       },
       "contract": {
         "explicit": true,
@@ -36025,7 +36025,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Server.h",
-        "line": 311
+        "line": 314
       },
       "contract": {
         "explicit": true,
@@ -36410,7 +36410,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Player.h",
-        "line": 107
+        "line": 101
       },
       "contract": {
         "explicit": true,
@@ -36457,7 +36457,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Player.h",
-        "line": 104
+        "line": 98
       },
       "contract": {
         "explicit": true,
@@ -36504,7 +36504,7 @@
       "examples": [],
       "source": {
         "path": "Source/Server/Player.h",
-        "line": 110
+        "line": 104
       },
       "contract": {
         "explicit": true,

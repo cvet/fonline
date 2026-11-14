@@ -17,7 +17,8 @@ FO_BEGIN_NAMESPACE
 Player::Player(ptr<ServerEngine> engine, ident_t id, unique_ptr<ServerConnection> connection, nptr<const Properties> props) noexcept :
     ServerEntity(engine, id, engine->GetPropertyRegistrar(ENTITY_TYPE_NAME), props, nullptr),
     PlayerProperties(*GetInitRef()),
-    _connection {std::move(connection)}
+    _connection {std::move(connection)},
+    _movementControlRevision {engine->NextMovementControlRevision()}
 {
     FO_VALIDATE_ENTITY(NONE);
     SetEntityLock(&_ownedLock);
@@ -110,7 +111,7 @@ void Player::SetControlledCritter(nptr<Critter> cr)
 
     scoped_lock locker {_controlledCrLinkLocker};
 
-    _movementControlRevision++;
+    _movementControlRevision = GetEngine()->NextMovementControlRevision();
     _controlledCr.store(cr.get(), std::memory_order_release);
 }
 
@@ -154,8 +155,8 @@ void Player::SwapConnection(ptr<Player> other) noexcept FO_TSA_NO_ANALYSIS
     // The not-yet-visible reconnect player cannot be a send target and needs no guard
     scoped_lock conn_lock {_connectionLock};
 
-    _movementControlRevision++;
-    other->_movementControlRevision++;
+    _movementControlRevision = GetEngine()->NextMovementControlRevision();
+    other->_movementControlRevision = GetEngine()->NextMovementControlRevision();
     std::swap(_connection, other->_connection);
     std::swap(_sentMapId, other->_sentMapId);
 }

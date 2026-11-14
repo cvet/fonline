@@ -185,9 +185,12 @@ public:
     void RegisterSnapshotEligibilityCheck(SnapshotEligibilityCheck check);
     void PauseSimulation();
     void ResumeSimulation();
-    [[nodiscard]] auto HoldSimulation(string_view reason) -> bool;
-    [[nodiscard]] auto ReleaseSimulationHold(string_view reason) -> bool;
+    auto HoldSimulation(string_view reason) -> bool;
+    auto ReleaseSimulationHold(string_view reason) -> bool;
     void DrawGui();
+
+    // Engine-wide sequence, so no player or session ever repeats a revision an earlier movement plan recorded
+    auto NextMovementControlRevision() noexcept -> uint64_t { return _movementControlRevisions.fetch_add(1, std::memory_order_relaxed) + 1; }
 
     auto CreateNotLoggedInPlayer(shared_ptr<NetworkServerConnection> net_connection) -> ptr<Player>;
     auto LoginPlayerToNewRecord(ptr<Player> not_logged_in_player) -> ptr<Player>;
@@ -370,6 +373,16 @@ private:
         vector<float32_t> CpuCoreLoads {};
     };
 
+    struct PlayerMovementAuthority
+    {
+        refcount_ptr<Player> Initiator;
+        refcount_ptr<Critter> Cr;
+        refcount_ptr<Map> CrMap;
+        refcount_nptr<Critter> Actor {};
+        uint64_t ControlRevision {};
+        uint64_t AttachmentRevision {};
+    };
+
     void SyncPoint();
     void SyncWholeWorld(SyncContext& ctx, span<const refcount_ptr<Player>> additional_players = {});
     void SuspendSimulationWork();
@@ -422,6 +435,9 @@ private:
     void OnSetItemRecacheHex(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetItemMultihexLines(ptr<Entity> entity, ptr<const Property> prop);
 
+    static auto MakePlayerMovementAuthority(ptr<Player> player, ptr<Critter> cr, ptr<Map> map) -> PlayerMovementAuthority;
+    static auto IsPlayerMovementAuthorityCurrent(PlayerMovementAuthority& authority) -> bool;
+    auto CheckPlayerMovementAuthority(PlayerMovementAuthority& authority) -> bool;
     void ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map, const function<bool()>& validate_authority = {});
     auto ReconcileCritterStopPosition(string_view request_name, ptr<Player> player, ptr<Critter> cr, ptr<Map> map, ptr<MovingContext> moving, mpos client_hex, ipos16 client_hex_offset, mdir client_dir, const function<bool()>& validate_authority) -> bool;
     auto MoveCritterAlongStopCorrectionPath(string_view request_name, ptr<Player> player, ptr<Critter> cr, ptr<Map> map, mpos target_hex, int32_t max_hex_distance, const function<bool()>& validate_authority) -> bool;
@@ -470,6 +486,7 @@ private:
     string _healthFileName {};
     optional<WorkerPool> _workerPool {};
     std::atomic<uint64_t> _completedServerStatsJobs {};
+    std::atomic<uint64_t> _movementControlRevisions {};
 
     synctime _persistedSyncTimeMark {};
     static constexpr auto SyncTimePersistLead {std::chrono::seconds {10}};

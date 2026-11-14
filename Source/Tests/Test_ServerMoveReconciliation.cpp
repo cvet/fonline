@@ -1982,7 +1982,8 @@ TEST_CASE("ServerMovementSessionIdentity")
     server->SwitchPlayerCritter(next_player, actor);
 
     CHECK(next_player->GetId() == player_id);
-    CHECK(next_player->GetMovementControlRevision() == original_revision);
+    // Revisions come from one engine sequence, so the new session cannot repeat the one the plan recorded
+    CHECK(next_player->GetMovementControlRevision() != original_revision);
     CHECK_FALSE(actor->IsPlayerMovementOwner(next_player));
 
     server->StopCritterMoving(actor);

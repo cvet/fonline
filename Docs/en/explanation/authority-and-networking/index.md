@@ -259,8 +259,9 @@ They recheck identity, map membership, connection state and revisions of selecti
 and attachment. The game itself is asked when a request starts, inside each movement
 step commit and once after that step; other callbacks only trigger these engine
 rechecks. Detaching and reattaching, or switching away and back, invalidates
-the original request. Player plans retain a passive runtime-session identity and
-both revisions; logging in with the same persistent player ID cannot adopt an old plan.
+the original request. Player plans retain both revisions. Control revisions come
+from one engine-wide sequence, so logging in with the same persistent player ID
+yields a new revision and cannot adopt an old plan.
 Another authorized player cannot renew or finish that plan. The movement job
 rechecks authority and retires the plan when permission, the driver link or the
 session is lost. Script-initiated NPC movement has no player authority owner.
@@ -274,7 +275,8 @@ the runtime compatibility gate to `0.0.85`. Packet fields and persisted data do
 not change. `ServerMovementAuthority` exercises encrypted packets, owner and
 passenger controls, processing barriers and revocation.
 `ServerMovementSessionIdentity` logs out and restores the same persistent player
-record with matching counters, and verifies that the new session cannot own the old plan.
+record, and verifies that the new session gets another control revision and cannot
+own the old plan.
 
 ### The client reports a movement it finished predicting
 

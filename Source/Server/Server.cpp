@@ -49,69 +49,6 @@ private:
 static constexpr timespan JOB_STATS_SAMPLE_INTERVAL {std::chrono::seconds {1}};
 static constexpr timespan JOB_STATS_ROLLING_WINDOW {std::chrono::minutes {1}};
 
-class PlayerMovementAuthority final
-{
-public:
-    PlayerMovementAuthority(ptr<ServerEngine> engine, ptr<Player> player, ptr<Critter> cr, ptr<Map> map) :
-        _engine {engine},
-        _player {player.hold_ref()},
-        _cr {cr.hold_ref()},
-        _map {map.hold_ref()},
-        _actor {player->GetControlledCritter().try_hold_ref()},
-        _controlRevision {player->GetMovementControlRevision()},
-        _attachmentRevision {_actor ? _actor->GetAttachmentRevision() : 0}
-    {
-    }
-
-    PlayerMovementAuthority(const PlayerMovementAuthority&) = delete;
-    PlayerMovementAuthority(PlayerMovementAuthority&&) = delete;
-    auto operator=(const PlayerMovementAuthority&) = delete;
-    auto operator=(PlayerMovementAuthority&&) = delete;
-    ~PlayerMovementAuthority() = default;
-
-    // Control, attachment and session changes invalidate an earlier grant without asking the game again
-    [[nodiscard]] auto IsCurrent() -> bool
-    {
-        if (_player->IsDestroyed() || _player->IsDestroying() || _cr->IsDestroyed() || _cr->IsDestroying() || _map->IsDestroyed() || _map->IsDestroying() || !_actor || _actor->IsDestroyed() || _actor->IsDestroying()) {
-            return false;
-        }
-        if (_player->GetControlledCritter() != _actor.get() || _player->GetMovementControlRevision() != _controlRevision || _actor->GetAttachmentRevision() != _attachmentRevision) {
-            return false;
-        }
-
-        auto connection {_player->GetConnection()};
-
-        if (connection->IsHardDisconnected() || connection->IsGracefulDisconnected()) {
-            return false;
-        }
-
-        return _cr->GetMapId() == _map->GetId() && _actor->GetMapId() == _map->GetId() && _map->GetCritter(_cr->GetId()) == _cr.get() && _map->GetCritter(_actor->GetId()) == _actor.get();
-    }
-
-    auto Check() -> bool
-    {
-        if (!IsCurrent()) {
-            return false;
-        }
-
-        uint32_t moving_uid {_cr->GetMovingUid()};
-        bool allowed {_actor == _cr};
-
-        Entity::EventResult result {_engine->OnPlayerMovementAuthority.Fire(_player, _cr, allowed)};
-
-        return result != Entity::EventResult::StopChain && allowed && IsCurrent() && _cr->GetMovingUid() == moving_uid;
-    }
-
-private:
-    ptr<ServerEngine> _engine;
-    refcount_ptr<Player> _player;
-    refcount_ptr<Critter> _cr;
-    refcount_ptr<Map> _map;
-    refcount_nptr<Critter> _actor;
-    uint64_t _controlRevision;
-    uint64_t _attachmentRevision;
-};
-
 // An off-thread caller that Locks to pause the main worker still mutates engine state on its own thread, and
 // the engine-wide invariant requires an active SyncContext there
 thread_local optional<SyncContext> ExternalLockSyncCtx {};
@@ -4007,7 +3944,7 @@ void ServerEngine::Process_Move(ptr<Player> player)
 
     if (cr) {
         sync_entities.emplace_back(cr);
-        authority.emplace(make_ptr(this), player, cr, map);
+        authority.emplace(MakePlayerMovementAuthority(player, cr, map));
     }
 
     ctx->SyncEntities(sync_entities);
@@ -4028,7 +3965,7 @@ void ServerEngine::Process_Move(ptr<Player> player)
         return;
     }
 
-    if (!authority->Check()) {
+    if (!CheckPlayerMovementAuthority(*authority)) {
         return;
     }
 
@@ -4053,7 +3990,7 @@ void ServerEngine::Process_Move(ptr<Player> player)
 
     EventResult move_result {OnPlayerMoveCritter.Fire(player, cr, corrected_speed)};
 
-    if (!authority->IsCurrent() || cr->GetMovingUid() != policy_moving_uid) {
+    if (!IsPlayerMovementAuthorityCurrent(*authority) || cr->GetMovingUid() != policy_moving_uid) {
         return;
     }
     if (move_result == EventResult::StopChain) {
@@ -4065,9 +4002,9 @@ void ServerEngine::Process_Move(ptr<Player> player)
     // The critter's steps advance once a movement period, so between them its hex lags where its plan has it by now;
     // the plan is brought up to this frame first, or a continuation that arrives in that lag bridges a step it need not
     if (cr->IsMoving()) {
-        ProcessCritterMovingBySteps(cr, map, [&authority] { return authority->Check(); });
+        ProcessCritterMovingBySteps(cr, map, [this, &authority] { return CheckPlayerMovementAuthority(*authority); });
 
-        if (!authority->IsCurrent() || (cr->IsMoving() && cr->GetMovingUid() != policy_moving_uid)) {
+        if (!IsPlayerMovementAuthorityCurrent(*authority) || (cr->IsMoving() && cr->GetMovingUid() != policy_moving_uid)) {
             return;
         }
     }
@@ -4236,7 +4173,7 @@ void ServerEngine::Process_MoveLease(ptr<Player> player)
 
     auto ctx {RequireCurrentSyncContext()};
     small_vector<ptr<ServerEntity>, 3> sync_entities {player, map, cr};
-    PlayerMovementAuthority authority {make_ptr(this), player, cr, map};
+    PlayerMovementAuthority authority {MakePlayerMovementAuthority(player, cr, map)};
 
     ctx->SyncEntities(sync_entities);
 
@@ -4247,7 +4184,7 @@ void ServerEngine::Process_MoveLease(ptr<Player> player)
         return;
     }
 
-    if (!authority.Check() || !cr->IsPlayerMovementOwner(player)) {
+    if (!CheckPlayerMovementAuthority(authority) || !cr->IsPlayerMovementOwner(player)) {
         return;
     }
 
@@ -4269,7 +4206,7 @@ void ServerEngine::Process_MoveLease(ptr<Player> player)
 
         EventResult move_result {OnPlayerMoveCritter.Fire(player, cr, corrected_speed)};
 
-        if (!authority.IsCurrent()) {
+        if (!IsPlayerMovementAuthorityCurrent(authority)) {
             return;
         }
         if (cr->GetPlayerPlanMoving(plan_seq) != moving.get()) {
@@ -4283,7 +4220,7 @@ void ServerEngine::Process_MoveLease(ptr<Player> player)
             uint16_t checked_speed {numeric_cast<uint16_t>(corrected_speed)};
             ChangeCritterMovingSpeed(cr, checked_speed);
 
-            if (!authority.IsCurrent() || cr->GetPlayerPlanMoving(plan_seq) != moving.get()) {
+            if (!IsPlayerMovementAuthorityCurrent(authority) || cr->GetPlayerPlanMoving(plan_seq) != moving.get()) {
                 return;
             }
         }
@@ -4353,7 +4290,7 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
 
     if (cr) {
         sync_entities.emplace_back(cr);
-        authority.emplace(make_ptr(this), player, cr, map);
+        authority.emplace(MakePlayerMovementAuthority(player, cr, map));
     }
 
     ctx->SyncEntities(sync_entities);
@@ -4374,7 +4311,7 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
         return;
     }
 
-    if (!authority->Check() || (cr->GetPlayerMovingPlayerId() != ident_t {} && !cr->IsPlayerMovementOwner(player))) {
+    if (!CheckPlayerMovementAuthority(*authority) || (cr->GetPlayerMovingPlayerId() != ident_t {} && !cr->IsPlayerMovementOwner(player))) {
         return;
     }
 
@@ -4400,7 +4337,7 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
 
     EventResult move_result {OnPlayerMoveCritter.Fire(player, cr, zero_speed)};
 
-    if (!authority->IsCurrent() || cr->GetMovingUid() != policy_moving_uid) {
+    if (!IsPlayerMovementAuthorityCurrent(*authority) || cr->GetMovingUid() != policy_moving_uid) {
         return;
     }
     if (move_result == EventResult::StopChain) {
@@ -4424,7 +4361,7 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
         cr->StopMoving();
     }
 
-    bool stop_position_reconciled {ReconcileCritterStopPosition("Process_StopMove", player, cr, map, stop_moving, client_hex, client_hex_offset, client_dir, [&authority] { return authority->Check(); })};
+    bool stop_position_reconciled {ReconcileCritterStopPosition("Process_StopMove", player, cr, map, stop_moving, client_hex, client_hex_offset, client_dir, [this, &authority] { return CheckPlayerMovementAuthority(*authority); })};
 
     if (Settings->Network.MoveSyncTrace && !cr->IsDestroyed()) {
         mpos reconciled_hex {cr->GetHex()};
@@ -4432,7 +4369,7 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
         TraceMoveSync("stopmove_req", strex("cr={} client_hex={},{} server_hex={},{} reconciled={} final_hex={},{} after_end={} late_ms={} rtt_ms={}", cr_id, client_hex.x, client_hex.y, stop_server_hex.x, stop_server_hex.y, stop_position_reconciled ? 1 : 0, reconciled_hex.x, reconciled_hex.y, was_moving ? 0 : 1, late_time.milliseconds(), round_trip.milliseconds()).strv());
     }
 
-    if (!authority->IsCurrent()) {
+    if (!IsPlayerMovementAuthorityCurrent(*authority)) {
         return;
     }
     if (cr->IsMoving() != was_moving || cr->GetMovingUid() != stop_moving_uid) {
@@ -4491,7 +4428,7 @@ void ServerEngine::Process_MoveFinished(ptr<Player> player)
 
     if (cr) {
         sync_entities.emplace_back(cr);
-        authority.emplace(make_ptr(this), player, cr, map);
+        authority.emplace(MakePlayerMovementAuthority(player, cr, map));
     }
 
     ctx->SyncEntities(sync_entities);
@@ -4507,7 +4444,7 @@ void ServerEngine::Process_MoveFinished(ptr<Player> player)
         return;
     }
 
-    if (!authority->Check() || !cr->IsPlayerMovementOwner(player)) {
+    if (!CheckPlayerMovementAuthority(*authority) || !cr->IsPlayerMovementOwner(player)) {
         return;
     }
 
@@ -4563,7 +4500,7 @@ void ServerEngine::Process_MoveFinished(ptr<Player> player)
         int32_t stop_speed {0};
         EventResult move_result {OnPlayerMoveCritter.Fire(player, cr, stop_speed)};
 
-        if (!authority->IsCurrent()) {
+        if (!IsPlayerMovementAuthorityCurrent(*authority)) {
             return;
         }
         if (!cr->IsMoving() || cr->GetMovingUid() != reported_moving_uid) {
@@ -4577,9 +4514,9 @@ void ServerEngine::Process_MoveFinished(ptr<Player> player)
         }
     }
 
-    bool position_reconciled {ReconcileCritterStopPosition("Process_MoveFinished", player, cr, map, moving, client_hex, client_hex_offset, client_dir, [&authority] { return authority->Check(); })};
+    bool position_reconciled {ReconcileCritterStopPosition("Process_MoveFinished", player, cr, map, moving, client_hex, client_hex_offset, client_dir, [this, &authority] { return CheckPlayerMovementAuthority(*authority); })};
 
-    if (!authority->IsCurrent()) {
+    if (!IsPlayerMovementAuthorityCurrent(*authority)) {
         return;
     }
     if (!cr->IsMoving() || cr->GetMovingUid() != reported_moving_uid) {
@@ -4637,7 +4574,7 @@ void ServerEngine::Process_Dir(ptr<Player> player)
 
     if (cr) {
         sync_entities.emplace_back(cr);
-        authority.emplace(make_ptr(this), player, cr, map);
+        authority.emplace(MakePlayerMovementAuthority(player, cr, map));
     }
 
     ctx->SyncEntities(sync_entities);
@@ -4658,7 +4595,7 @@ void ServerEngine::Process_Dir(ptr<Player> player)
         return;
     }
 
-    if (!authority->Check()) {
+    if (!CheckPlayerMovementAuthority(*authority)) {
         return;
     }
 
@@ -4670,7 +4607,7 @@ void ServerEngine::Process_Dir(ptr<Player> player)
 
     EventResult dir_result {OnPlayerDirCritter.Fire(player, cr, checked_dir)};
 
-    if (!authority->IsCurrent() || cr->GetMovingUid() != policy_moving_uid) {
+    if (!IsPlayerMovementAuthorityCurrent(*authority) || cr->GetMovingUid() != policy_moving_uid) {
         return;
     }
     if (dir_result == EventResult::StopChain) {
@@ -5151,6 +5088,58 @@ void ServerEngine::OnSetItemMultihexLines(ptr<Entity> entity, ptr<const Property
 
         throw NotImplementedException(FO_LINE_STR);
     }
+}
+
+auto ServerEngine::MakePlayerMovementAuthority(ptr<Player> player, ptr<Critter> cr, ptr<Map> map) -> PlayerMovementAuthority
+{
+    refcount_nptr<Critter> actor {player->GetControlledCritter().try_hold_ref()};
+    uint64_t attachment_revision {actor ? actor->GetAttachmentRevision() : 0};
+
+    return PlayerMovementAuthority {
+        .Initiator = player.hold_ref(),
+        .Cr = cr.hold_ref(),
+        .CrMap = map.hold_ref(),
+        .Actor = std::move(actor),
+        .ControlRevision = player->GetMovementControlRevision(),
+        .AttachmentRevision = attachment_revision,
+    };
+}
+
+auto ServerEngine::IsPlayerMovementAuthorityCurrent(PlayerMovementAuthority& authority) -> bool
+{
+    auto& player {authority.Initiator};
+    auto& cr {authority.Cr};
+    auto& map {authority.CrMap};
+    auto& actor {authority.Actor};
+
+    if (player->IsDestroyed() || player->IsDestroying() || cr->IsDestroyed() || cr->IsDestroying() || map->IsDestroyed() || map->IsDestroying() || !actor || actor->IsDestroyed() || actor->IsDestroying()) {
+        return false;
+    }
+    if (player->GetControlledCritter() != actor.get() || player->GetMovementControlRevision() != authority.ControlRevision || actor->GetAttachmentRevision() != authority.AttachmentRevision) {
+        return false;
+    }
+
+    auto connection {player->GetConnection()};
+
+    if (connection->IsHardDisconnected() || connection->IsGracefulDisconnected()) {
+        return false;
+    }
+
+    return cr->GetMapId() == map->GetId() && actor->GetMapId() == map->GetId() && map->GetCritter(cr->GetId()) == cr.get() && map->GetCritter(actor->GetId()) == actor.get();
+}
+
+auto ServerEngine::CheckPlayerMovementAuthority(PlayerMovementAuthority& authority) -> bool
+{
+    if (!IsPlayerMovementAuthorityCurrent(authority)) {
+        return false;
+    }
+
+    uint32_t moving_uid {authority.Cr->GetMovingUid()};
+    bool allowed {authority.Actor == authority.Cr};
+
+    Entity::EventResult result {OnPlayerMovementAuthority.Fire(authority.Initiator, authority.Cr, allowed)};
+
+    return result != Entity::EventResult::StopChain && allowed && IsPlayerMovementAuthorityCurrent(authority) && authority.Cr->GetMovingUid() == moving_uid;
 }
 
 void ServerEngine::ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map, const function<bool()>& validate_authority)
@@ -5697,8 +5686,8 @@ auto ServerEngine::CritterMovingJob(ptr<Critter> cr) -> std::optional<timespan>
             return std::nullopt;
         }
 
-        authority.emplace(make_ptr(this), player, cr, map);
-        validate_authority = [&authority, &player, cr] { return authority->Check() && cr->IsPlayerMovementOwner(player); };
+        authority.emplace(MakePlayerMovementAuthority(player, cr, map));
+        validate_authority = [this, &authority, &player, cr] { return CheckPlayerMovementAuthority(*authority) && cr->IsPlayerMovementOwner(player); };
     }
 
     try {
