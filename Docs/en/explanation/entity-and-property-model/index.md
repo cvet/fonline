@@ -122,6 +122,8 @@ Server-side AngelScript property getters copy non-virtual raw property data thro
 
 Engine properties (`CoreProperty`) accept post-setters only: the engine stores them together with derived engine state, so `Property::AddSetter` rejects them and every script reaction observes the committed state. Project-declared properties keep value-transforming setters.
 
+A synchronized property must be `Mutable` or an engine property. An engine property synchronized without `Mutable`, such as `Map.RemovedStaticItemIds`, is written only by native engine code: scripts read it, and its sync and persistence follow the declared flags. A client-modifiable property must be `Mutable`.
+
 Typed and script-facing property assignment rejects non-finite floating-point leaves before storage, including values nested in arrays, structs, and dictionary keys or values. The same validation runs again after setter callbacks mutate raw data, and document/text serialization rejects non-finite values if trusted binary restore or native code supplied a corrupted payload.
 
 Numeric `Min = value` and `Max = value` metadata are enforced on every write.
@@ -171,7 +173,7 @@ A `Properties` instance can have base properties. This is used heavily by protot
 - `StoreData()` can include or exclude protected data depending on sync/persistence needs;
 - `RemoveSyncedOverlayEntries()` and related overlay helpers keep replicated state compact.
 
-`StoreData(with_protected)` includes only properties whose declared synchronization mode makes `IsSynced()` true: Common, Mutable, and PublicSync or OwnerSync. Common alone specifies availability on both sides, not network transfer. OwnerSync requires `with_protected`; NoSync, immutable Common, Server-only and Client-only values are excluded. The public and owner snapshots use two independent cache slots. Initial item snapshots follow this same filter before sprite setup; unsynchronized structural values must already agree through the shared prototype.
+`StoreData(with_protected)` includes only properties whose declared synchronization mode makes `IsSynced()` true: Common, Mutable or engine-declared (`CoreProperty`), and PublicSync or OwnerSync. Common alone specifies availability on both sides, not network transfer. OwnerSync requires `with_protected`; NoSync, immutable Common, Server-only and Client-only values are excluded. The public and owner snapshots use two independent cache slots. Initial item snapshots follow this same filter before sprite setup; unsynchronized structural values must already agree through the shared prototype.
 
 This means a runtime entity is not simply a flat map from property name to value. When debugging, inspect whether the value is coming from base properties, own POD/complex storage, or overlay data.
 

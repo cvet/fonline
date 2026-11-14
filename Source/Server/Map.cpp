@@ -775,7 +775,6 @@ void Map::MoveCritterOnField(ptr<Critter> cr, mpos hex)
         }
     }};
 
-    // Hex accepts post-setters only, so script reactions observe the field and the hex already moved together
     set_field_membership(old_hex, false);
     set_field_membership(hex, true);
     cr->SetHex(hex);

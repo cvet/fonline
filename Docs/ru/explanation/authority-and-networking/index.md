@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/authority-and-networking/
 ---
 
 # Сеть и авторитетность
-<!-- docs-translation: {"document_id":"networking","locale":"ru","source_path":"Docs/en/explanation/authority-and-networking/index.md","source_sha256":"aa6577082332c13538fa061047844b7fb3765440a2942a5d0c6616d2bea58886"} -->
+<!-- docs-translation: {"document_id":"networking","locale":"ru","source_path":"Docs/en/explanation/authority-and-networking/index.md","source_sha256":"fd82ac0f96ad7ac842dc27ce1528dff5159e4af9e99f381dec87efa0816352c9"} -->
 Этот документ описывает переиспользуемые сетевые слои движка: защищённый канал, буферы сообщений, обработку хешей, клиентские и серверные соединения и упорядоченный UDP-транспорт.
 
 Используйте его при изменении `Source/Common/SecureChannel.*`, `NoiseProtocol.*`, `NetBuffer.*`, `NetworkUdp.*`, клиентских и серверных соединений или сетевых тестов.
@@ -18,7 +18,7 @@ permalink: /Docs/ru/explanation/authority-and-networking/
 
 Не документируйте здесь хосты, порты или инфраструктуру релиза конкретного проекта.
 
-Начальные снимки динамических предметов передают только свойства с объявленной синхронизацией. Доступность Common сама по себе не разрешает передачу; неизменяемые значения и NoSync остаются локальными либо берутся из общего прототипа. Правила синхронизации и фильтрации владельческих/частных данных определяет [Entity Model](../entity-and-property-model/).
+Начальные снимки динамических предметов передают только свойства с объявленной синхронизацией. Доступность Common сама по себе не разрешает передачу; значения без объявленного режима синхронизации и NoSync остаются локальными либо берутся из общего прототипа. Правила синхронизации и фильтрации владельческих/частных данных определяет [Entity Model](../entity-and-property-model/).
 
 [Готовность/ошибки клиентского RPC](../../reference/scripting/remote-calls.md): завершённый handshake; offline-вызов отклоняется до записи в буфер.
 

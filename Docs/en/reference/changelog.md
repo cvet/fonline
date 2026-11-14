@@ -69,10 +69,11 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
   a handler to an entity-only post-set reaction (Managed
   `Game.AddPropertyDeferredSetter`) that reads the new value; project-declared
   properties keep transforming setters.
-- The engine no longer refuses a script write that shrinks
-  `Map.RemovedStaticItemIds`; `Map.RemoveStaticItem()` owns the append-only rule.
-  Grow the list through that call: a direct write that drops an id brings the
-  item back on the server only. Saved lists need no conversion.
+- An engine property may now synchronize without `Mutable`; it is then written
+  only by native engine code and read-only for scripts. `Map.RemovedStaticItemIds`
+  uses this: grow it with `Map.RemoveStaticItem()`, its only writer, instead of
+  writing the property. Rebake metadata; saved lists need no conversion. A
+  client-modifiable property must still be `Mutable`.
 - Integrating feature baseline `27067e77ac80daf7d0c88a2868224e44948662f2` with master `9af8dc5ff4a80fda232d2539e61c1d0a52f62942` advances the compatibility marker from master `0.0.89` to `0.0.90`. Rebuild all native roles and rebake matching metadata and resources; do not mix client, server or resources across that boundary. Apply the intervening master migrations in order. The integration itself adds no saved-data conversion.
 
 - For independent sprites following a changing bone, update and reattach the

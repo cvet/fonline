@@ -2690,7 +2690,8 @@ auto PropertyRegistrar::RegisterProperty(const span<const string_view>& tokens) 
         }
     }
 
-    prop->_isSynced = prop->_isCommon && prop->_isMutable && (prop->_isOwnerSync || prop->_isPublicSync);
+    // An engine property may synchronize without Mutable: the engine writes it natively and scripts only read it
+    prop->_isSynced = prop->_isCommon && (prop->_isMutable || prop->_isCoreProperty) && (prop->_isOwnerSync || prop->_isPublicSync);
 
     if (is_component_marker) {
         FO_VERIFY_AND_THROW(prop->_componentName.empty(), "Component marker property must not itself be component-qualified", _typeName, prop->GetName(), prop->_componentName);
@@ -2699,7 +2700,7 @@ auto PropertyRegistrar::RegisterProperty(const span<const string_view>& tokens) 
     }
 
     FO_VERIFY_AND_THROW(!(prop->_isOwnerSync || prop->_isPublicSync || prop->_isNoSync) || prop->_isCommon, "Synchronized property is not marked as common");
-    FO_VERIFY_AND_THROW(!(prop->_isOwnerSync || prop->_isPublicSync || prop->_isNoSync) || prop->_isMutable, "Synchronized property is not mutable");
+    FO_VERIFY_AND_THROW(!(prop->_isOwnerSync || prop->_isPublicSync || prop->_isNoSync) || (prop->_isMutable || prop->_isCoreProperty), "Synchronized property must be mutable or core");
     FO_VERIFY_AND_THROW(!(prop->_isOwnerSync || prop->_isPublicSync || prop->_isNoSync) || !prop->_isVirtual, "Virtual property cannot be synchronized directly");
     FO_VERIFY_AND_THROW(!prop->_isNoSync || !(prop->_isOwnerSync || prop->_isPublicSync), "NoSync property also has network sync flags");
     FO_VERIFY_AND_THROW(!prop->_isOwnerSync || !(prop->_isNoSync || prop->_isPublicSync), "OwnerSync property has conflicting sync flags");
@@ -2707,6 +2708,7 @@ auto PropertyRegistrar::RegisterProperty(const span<const string_view>& tokens) 
     FO_VERIFY_AND_THROW(!(prop->_isMutable && prop->_isCommon && !prop->_isVirtual) || (prop->_isOwnerSync || prop->_isPublicSync || prop->_isNoSync), "Mutable common property has no explicit sync mode");
     FO_VERIFY_AND_THROW(!prop->_isModifiableByClient || prop->_isSynced, "Client-modifiable property is not synchronized");
     FO_VERIFY_AND_THROW(!prop->_isModifiableByAnyClient || prop->_isPublicSync, "Any-client-modifiable property is not public synchronized");
+    FO_VERIFY_AND_THROW(!(prop->_isModifiableByClient || prop->_isModifiableByAnyClient) || prop->_isMutable, "Client-modifiable property is not mutable");
     FO_VERIFY_AND_THROW(!prop->_isPersistent || (prop->_isMutable || prop->_isCoreProperty), "Persistent property must be mutable or core");
     FO_VERIFY_AND_THROW(!prop->_isVirtual || !prop->_isSynced, "Virtual property cannot be synchronized");
     FO_VERIFY_AND_THROW(!prop->_isVirtual || !prop->_isPersistent, "Virtual property cannot be persistent");

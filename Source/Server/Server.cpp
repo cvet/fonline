@@ -630,7 +630,6 @@ auto ServerEngine::InitMetadataJob() -> std::optional<timespan>
         }};
 
         set_post_setter(GetPropertyRegistrar(CritterProperties::ENTITY_TYPE_NAME), Critter::LookDistance_RegIndex, wrap_post_setter(&ServerEngine::OnSetCritterLookDistance));
-        set_post_setter(GetPropertyRegistrar(MapProperties::ENTITY_TYPE_NAME), Map::RemovedStaticItemIds_RegIndex, wrap_post_setter(&ServerEngine::OnPostSetMapRemovedStaticItems));
         set_post_setter(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), Item::Hidden_RegIndex, wrap_post_setter(&ServerEngine::OnSetItemHidden));
         set_post_setter(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), Item::NoBlock_RegIndex, wrap_post_setter(&ServerEngine::OnSetItemRecacheHex));
         set_post_setter(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), Item::ShootThru_RegIndex, wrap_post_setter(&ServerEngine::OnSetItemRecacheHex));
@@ -5090,16 +5089,6 @@ void ServerEngine::OnSetCritterLookDistance(ptr<Entity> entity, ptr<const Proper
     if (prop == look_distance_prop) {
         MapMngr.ProcessVisibleItems(cr);
     }
-}
-
-void ServerEngine::OnPostSetMapRemovedStaticItems(ptr<Entity> entity, ptr<const Property> prop)
-{
-    ignore_unused(prop);
-
-    auto map {entity.dyn_cast<Map>()};
-    FO_VERIFY_AND_THROW(map, "Missing map instance");
-
-    map->RefreshRemovedStaticItems();
 }
 
 void ServerEngine::OnSetItemHidden(ptr<Entity> entity, ptr<const Property> prop)

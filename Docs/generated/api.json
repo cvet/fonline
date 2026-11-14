@@ -96517,7 +96517,6 @@
       "signature": "ident[] Map.RemovedStaticItemIds",
       "description": "Identifiers of the baked static items this map instance has dropped; removal is one-way for the life of the instance",
       "flags": [
-        "Mutable",
         "PublicSync",
         "Persistent",
         "CoreProperty"
@@ -96542,7 +96541,7 @@
       "access": "common",
       "type": "ident[]",
       "nullable": false,
-      "mutability": "mutable",
+      "mutability": "read-only",
       "persistent": true
     },
     {

@@ -5,7 +5,7 @@ locale: ru
 document_id: entity-model
 permalink: /Docs/ru/explanation/entity-and-property-model/
 ---
-<!-- docs-translation: {"document_id":"entity-model","locale":"ru","source_path":"Docs/en/explanation/entity-and-property-model/index.md","source_sha256":"1f1a19ee44504f44f120b6940f49917db54ed10306bedad9cf98469ea1f3500d"} -->
+<!-- docs-translation: {"document_id":"entity-model","locale":"ru","source_path":"Docs/en/explanation/entity-and-property-model/index.md","source_sha256":"564dededaf869b6634d4dd87845160ff29da7fe2b7311d2218e44e00d075db62"} -->
 # Модель сущностей
 
 Этот документ описывает переиспользуемую runtime-модель сущностей: дескрипторы типов сущностей, сгенерированные средства доступа к свойствам, сущности-прототипы, владение внутренними сущностями, события сущностей и модель хранения свойств, на которой строятся другие runtime-системы.
@@ -122,6 +122,8 @@ Item ownership resolvers являются эталонным шаблоном: �
 
 Свойства движка (`CoreProperty`) принимают только post-setters: движок записывает их вместе с производным состоянием движка, поэтому `Property::AddSetter` их отклоняет, а любая скриптовая реакция видит зафиксированное состояние. Свойства, объявленные проектом, сохраняют преобразующие setters.
 
+Синхронизируемое свойство должно быть `Mutable` или свойством движка. Свойство движка, синхронизируемое без `Mutable`, например `Map.RemovedStaticItemIds`, пишет только native-код движка: скрипты его читают, а синхронизация и сохранение следуют объявленным флагам. Свойство, изменяемое клиентом, должно быть `Mutable`.
+
 Типизированное и скриптовое присваивание свойств отклоняет не конечные floating-point leaves до записи, в том числе значения внутри массивов, структур и ключей или значений словарей. Та же проверка повторяется после того, как setter callback изменили raw-данные, а сериализация документа и текста отклоняет не конечные значения, если доверенное бинарное восстановление или native-код передали повреждённый payload.
 
 Числовые metadata `Min = value` и `Max = value` применяются при каждой записи.
@@ -181,7 +183,7 @@ Overlays, производные от прототипов, лениво соз�
 
 `MAX_SERIALIZED_ALIGNMENT`, определённый в `BasicCore.h` и сейчас равный 8, ограничивает весь контракт. Это единая compile-time константа, а не platform-dependent `alignof(std::max_align_t)`, равный 16 на x64 из-за `long double` и 8 на wasm, чтобы serialized byte layout был одинаков на всех targets независимо от platform `max_align_t` или стандартного выравнивания `new`. Контракт корректен, только пока каждый serialized scalar leaf помещается в `MAX_SERIALIZED_ALIGNMENT`: layout позднее читает fixed-size items прямым типизированным доступом (`reinterpret_as<T>()`), поэтому over-aligned leaf привёл бы к misaligned load, то есть UB, sanitizer trap или hard fault на targets со строгим выравниванием. Это закреплено на этапе компиляции: fundamental integer/float leaves проверяются в `BasicCore.h`, hash leaf hashed string в `Properties.h`, а каждый типизированный accessor свойства (`GetValue`/`GetValueFast`/`SetValue`) при инстанцировании статически проверяет `alignof(T) <= MAX_SERIALIZED_ALIGNMENT`. Добавление over-aligned типа (`SIMD`, `__int128`, `long double`, `alignas(16)`) в любой serialized path приводит к ошибке сборки, а не к незаметному недовыравниванию. Текущая type grammar не может выразить такой leaf: primitives имеют размер не более 8 байт, `hstring` сериализуется как 64-bit hash, а structs состоят из этих элементов, поэтому `alignof(struct)` не превышает 8.
 
-`StoreData(with_protected)` включает только свойства, для которых объявленный режим синхронизации задаёт `IsSynced()`: Common, Mutable и PublicSync либо OwnerSync. Сам по себе Common определяет доступность на обеих сторонах, а не передачу по сети. OwnerSync требует `with_protected`; NoSync, неизменяемые Common, Server-only и Client-only исключены. Публичный и владельческий снимки используют два независимых слота кеша. Начальный снимок предмета применяет тот же фильтр до создания спрайта; несинхронизируемая структура должна совпадать благодаря общему прототипу.
+`StoreData(with_protected)` включает только свойства, для которых объявленный режим синхронизации задаёт `IsSynced()`: Common, Mutable или объявленное движком (`CoreProperty`), и PublicSync либо OwnerSync. Сам по себе Common определяет доступность на обеих сторонах, а не передачу по сети. OwnerSync требует `with_protected`; NoSync, неизменяемые Common, Server-only и Client-only исключены. Публичный и владельческий снимки используют два независимых слота кеша. Начальный снимок предмета применяет тот же фильтр до создания спрайта; несинхронизируемая структура должна совпадать благодаря общему прототипу.
 
 ## Прототипы
 

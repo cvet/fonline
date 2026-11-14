@@ -2361,6 +2361,21 @@ TEST_CASE("EnginePropertiesAcceptPostSettersOnly")
     CHECK(game_prop->GetSetters()->size() == 1);
 }
 
+TEST_CASE("EnginePropertiesSynchronizeWithoutScriptWrites")
+{
+    hash_storage hashes {};
+    TestNameResolver resolver {};
+    PropertyRegistrar registrar {"EngineSyncEntity", EngineSideKind::ServerSide, &hashes, &resolver};
+
+    auto engine_prop {registrar.RegisterProperty({"Common", "int32", "EngineValue", "PublicSync", "Persistent", "CoreProperty"})};
+    CHECK(engine_prop->IsSynced());
+    CHECK_FALSE(engine_prop->IsMutable());
+
+    // A game property still needs Mutable to synchronize, and a client never writes a property scripts cannot
+    CHECK_THROWS_AS(registrar.RegisterProperty({"Common", "int32", "GameValue", "PublicSync"}), VerificationException);
+    CHECK_THROWS_AS(registrar.RegisterProperty({"Common", "int32", "ClientValue", "PublicSync", "ModifiableByClient", "CoreProperty"}), VerificationException);
+}
+
 TEST_CASE("PropertiesCustomAccessors")
 {
     hash_storage hashes {};

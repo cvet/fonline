@@ -389,15 +389,17 @@ TEST_CASE("AngelScriptMapStaticItemRemoval")
     {
         REQUIRE(map->RemoveStaticItem(visible_id));
 
-        // RemoveStaticItem only appends to the list, so clients already on the map are only ever told to drop
-        // a static item
+        // Scripts only read the list and RemoveStaticItem only appends to it, so clients already on the map
+        // are only ever told to drop a static item
+        CHECK_FALSE(map->GetPropertyRemovedStaticItemIds()->IsMutable());
+        CHECK(map->GetPropertyRemovedStaticItemIds()->IsPublicSync());
         CHECK_FALSE(map->RemoveStaticItem(visible_id));
         CHECK(map->GetRemovedStaticItemIds() == vector<ident_t> {visible_id});
         CHECK_FALSE(static_cast<bool>(map->GetStaticItem(visible_id)));
         CHECK(map->IsHexMovable(visible_hex));
 
-        // A direct write rebuilds the overlay through the post-setter
-        CHECK_NOTHROW(map->SetRemovedStaticItemIds(vector<ident_t> {visible_id, hidden_id}));
+        REQUIRE(map->RemoveStaticItem(hidden_id));
+        CHECK(map->GetRemovedStaticItemIds() == (vector<ident_t> {visible_id, hidden_id}));
         CHECK(map->GetStaticItems().empty());
     }
 
