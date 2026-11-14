@@ -74,6 +74,8 @@ BuildTools Python regression tests live under `Engine/BuildTools/tests/` and can
 pytest -q Engine/BuildTools/tests
 ```
 
+Tests that run CMake configure, build or script steps share one subprocess timeout, `CMAKE_TIMEOUT_SECONDS` in `Engine/BuildTools/tests/_timeouts.py`: 600 seconds unless the `FO_TEST_CMAKE_TIMEOUT` environment variable sets another positive number of seconds. Raise it on a loaded host instead of editing individual tests.
+
 ## CMake layout
 
 All internal CMake modules now live under `Engine/BuildTools/cmake`.

@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/testing/
 ---
 
 # Тестирование
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"9e928a0a0ea2bc5ec9cb85ad27e4321d8453bb0db5b45336e448048a20c1f4df"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"39fdd9b610c9e13c7c7f3d9ca69bbdc9157a23f638c34df1e0dcd1897db764c2"} -->
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
 > `Source/Tests/Test_*.cpp`.
@@ -163,6 +163,8 @@ python3 BuildTools/tests/check_resource_usage_pipeline.py --baker /absolute/path
 
 ## Запуск тестов
 
+Тесты, которые конфигурируют, собирают или выполняют скрипт проекта-фикстуры через CMake (`cmake -S ... -B ...`, `cmake --build`, `cmake -P`), используют общий таймаут подпроцесса из `BuildTools/tests/_timeouts.py`. По умолчанию он равен 600 секундам; чтобы изменить его, задайте переменную окружения `FO_TEST_CMAKE_TIMEOUT` с другим числом секунд. Значение, не являющееся положительным конечным числом, останавливает сбор тестов, а не заменяется значением по умолчанию. На загруженном хосте или медленном CI runner увеличивайте таймаут, а не правьте тест; меньшее значение лишь превращает медленную конфигурацию в ложную ошибку.
+
 Задача CI `engine-update` также выполняет
 `python3 -m pytest -q BuildTools/tests/test_codegen_default_args.py BuildTools/tests/test_codegen_value_type_layouts.py BuildTools/tests/test_cmake_map_size_options.py`
 с `python3-pytest` и CMake. Эти проверки исходников охватывают сгенерированную конфигурацию,
@@ -314,6 +316,8 @@ platform resolution, передачу configure, проверки generator cach
 Обычная job `unit-tests` в CI остаётся независимой от CMake Unity-сборки. Отдельная job `unity` в `validate.yml` задаёт `FO_UNITY_BUILD=ON` и `FO_UNITY_BUILD_BATCH_SIZE=32`, запускает `BuildTools/tests/test_unity_build.py`, а затем повторяет тот же validator `unit-tests` с пакетами first-party исходников. Она выполняется при `all` и доступна вручную через `job: unity`; bundled third-party targets не объединяются.
 
 Job `wide-coords` повторяет validator `unit-tests` с `FO_MAP_WIDE_COORDS=ON`, чтобы нативный код, AngelScript и тесты собирались и проходили и с 32-битными координатами карты. Она выполняется при `all` и доступна вручную через `job: wide-coords`. Тесты, зависящие от ширины координат, ветвятся по `mcoord_t`, а не предполагают 16-битные значения.
+
+Job `examples` запускает исполняемые примеры целиком, а не только проверяет их статически. На `ubuntu-24.04` и `windows-2025` она связывает каждый пример с рабочей копией, как описано в README примера, и запускает `Examples/MinimalMultiplayer/validate.py` и `Examples/MechanicsSandbox/validate.py`: конфигурацию по preset хоста, сборку сервера, клиента и baker, принудительное запекание и smoke-сценарии примера через gameplay test runner. Варианты для Linux устанавливают Ninja для preset `linux` и собирают в два параллельных задания, как и остальные сборки Linux на GitHub-hosted runner. Упавший вариант выгружает отчёты smoke (`Workspace/*smoke*`, `Build/*/*smoke*`) как артефакт. Она выполняется при `all` и доступна вручную через `job: examples`.
 
 Различайте имена внутренних helper’ов разных единиц трансляции и явно указывайте пространства имён общих фикстур, если Unity lookup может выбрать другого владельца. Макросы, принадлежащие тестовому файлу, также получают отдельные имена; не исключайте тестовые исходники и не меняйте проверки ради компиляции Unity batch.
 
