@@ -30,7 +30,7 @@ import gameplay_test_runner  # noqa: E402
 
 EXPECTED_RECIPES = ["persistent-state", "validated-action", "timed-effect"]
 EXPECTED_CROSS_CUTTING = ["cover-transactions"]
-RECIPE_KEYS = {"slug", "title", "kind", "backends", "page", "files", "symbols", "metadata", "builtins", "events_fired_by_recipe", "smoke"}
+RECIPE_KEYS = {"slug", "title", "kind", "backends", "page", "files", "symbols", "metadata", "builtins", "smoke"}
 CROSS_CUTTING_KEYS = RECIPE_KEYS - {"kind", "backends"}
 FILE_KINDS = {"angelscript", "managed", "content", "maps", "tests"}
 BACKEND_STATUSES = {"shape", "compile-verified", "runtime-verified"}
@@ -108,7 +108,6 @@ def test_recipe_manifest_lists_the_first_slice() -> None:
     for entry in _entries():
         assert entry["page"] == f"Docs/en/how-to/mechanics/{entry['slug']}.md"
         assert entry["title"].strip() == entry["title"] and entry["title"]
-        assert entry["events_fired_by_recipe"] == []
         assert all(isinstance(item, str) and item for item in entry["builtins"])
 
 

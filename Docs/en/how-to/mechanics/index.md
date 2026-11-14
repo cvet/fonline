@@ -51,7 +51,7 @@ The front matter field `recipe_kind` has one of two values:
 | `primitive` | The Engine provides the core primitive, for example persistent properties, time events or validated remote calls. The recipe shows its correct use and its traps. |
 | `pattern` | The Engine has no primitive for the mechanic. The recipe teaches a project-side structure built from Engine primitives and says that the policy belongs to the project. |
 
-Mechanics without an Engine primitive include dialog runtimes, quests and journals, trade flows, stats and skills, combat resolution, factions, AI decisions, crafting, and equipment slots beyond the three `CritterItemSlot` values `Inventory`, `Main` and `Outside`. Some of them have declared Engine events that the Engine never fires; see [Declared events the Engine never fires](../scripting/lifecycle-and-concurrency.md#declared-events-the-engine-never-fires).
+Mechanics without an Engine primitive include dialog runtimes, quests and journals, trade flows, stats and skills, combat resolution, factions, AI decisions, crafting, and equipment slots beyond the three `CritterItemSlot` values `Inventory`, `Main` and `Outside`. A hook for such a mechanic is a project event that the project declares and fires; see [Events and callback ownership](../scripting/lifecycle-and-concurrency.md#events-and-callback-ownership).
 
 ## Status badges
 
@@ -104,7 +104,7 @@ recipe_kind: <primitive or pattern>
 | Section | Holds |
 | --- | --- |
 | Problem | What the player experiences and which part is project policy. |
-| Engine primitives used | A table of generated API ids with side and purpose, plus the primitives that are absent or never fired. |
+| Engine primitives used | A table of generated API ids with side and purpose, plus the primitives that are absent. |
 | Minimal example | The sandbox files and the command that runs them. |
 | Step by step | Verbatim excerpts in order: declarations, server authority, client presentation, content. |
 | Authority and sync | Which side owns the state, sync flags, remote-call limits, the `Game.Sync` cover and revalidation after `Yield`. |
@@ -148,14 +148,13 @@ The gate checks each item marked as checked; the others are review items.
 
 1. Confirm the mechanic in the Engine first: every symbol exists in `Docs/generated/api.json`, the Engine fires the events it relies on, and an Engine test or example exercises it. Choose `primitive` or `pattern`.
 2. Add the module, tests, content and Managed C# file with identical `///@` declarations, plus smoke scenarios, in `Examples/MechanicsSandbox`.
-3. Add the manifest entry (checked): `slug`, `title`, `kind`, `backends` with both `angelscript` and `managed`, `page` as `Docs/en/how-to/mechanics/<slug>.md`, `files` grouped as `angelscript`, `managed`, `content`, `maps` or `tests` with every path inside the sandbox, `symbols`, optional `builtins`, `events_fired_by_recipe` and `smoke` with existing scenario ids.
+3. Add the manifest entry (checked): `slug`, `title`, `kind`, `backends` with both `angelscript` and `managed`, `page` as `Docs/en/how-to/mechanics/<slug>.md`, `files` grouped as `angelscript`, `managed`, `content`, `maps` or `tests` with every path inside the sandbox, `symbols`, optional `builtins` and `smoke` with existing scenario ids.
 4. Write the page (checked): the front matter keys in the template order with matching `recipe_kind`, a title matching the manifest title, the twelve `##` sections in order, at least three pitfall list items, and a table row per backend showing its status in backticks.
 5. Quote code verbatim (checked): an `angelscript`, `csharp`, `ini` or `json` fence must be a contiguous run of whole lines, with their original indentation, from a file listed for the same recipe. A fence inside a list item is indented as a whole. `bash`, `powershell` and `text` fences are free.
 6. Cite symbols (checked): the page mentions every manifest symbol id and no generated API id that the manifest does not list. Backend built-ins and metadata grammar go to `builtins`.
-7. Keep to fired events (checked): a recipe file must not subscribe to an event that the Engine never fires unless the recipe lists it in `events_fired_by_recipe` and one of its files fires it.
-8. Add the Russian mirror (checked): the same front matter keys with `locale: ru`, the same number of `##` headings and identical fenced blocks.
-9. Stay project-neutral (checked): no embedding-project names in pages, this index or sandbox files.
-10. Add a row to the table below (checked) with the same kind and statuses as the manifest, then run the static gate, the sandbox route and the documentation gates.
+7. Add the Russian mirror (checked): the same front matter keys with `locale: ru`, the same number of `##` headings and identical fenced blocks.
+8. Stay project-neutral (checked): no embedding-project names in pages, this index or sandbox files.
+9. Add a row to the table below (checked) with the same kind and statuses as the manifest, then run the static gate, the sandbox route and the documentation gates.
 
 ## Recipes
 

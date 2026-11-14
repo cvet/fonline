@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/coding-contracts/nullability.html
 ---
 
 # Nullable-типы
-<!-- docs-translation: {"document_id":"nullability","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/nullability.md","source_sha256":"20539a0cfabaf0a344d99e0124d80c53116f7e92a4af5f0832b8aa93e11f3170"} -->
+<!-- docs-translation: {"document_id":"nullability","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/nullability.md","source_sha256":"a9cd98da91dc636821ade625023f57fb2d1437dd9df45352b7837ab2f873f6a2"} -->
 > Документация принадлежит движку. Эта страница задает переиспользуемый
 > контракт компилятора, runtime и native-границы. Анализаторы проекта могут
 > вводить более строгую политику авторинга, но не являются частью контракта

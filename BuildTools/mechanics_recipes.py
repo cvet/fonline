@@ -9,7 +9,6 @@ files that prove it and the generated API symbols it uses. The checks keep the p
   page          front matter order, recipe kind, fixed ``##`` order, pitfalls and backend status rows
   excerpt       angelscript, csharp, ini and json fences are contiguous slices of the entry's files
   symbol        manifest symbols exist in ``api.json`` and the page cites exactly those symbol ids
-  event         no subscription to an event the Engine never fires unless the recipe fires it itself
   mirror        the Russian page keeps the front matter, ``##`` count and fenced blocks
   project-name  no embedding-project names in the pages, the section index or the example tree
   hub           the section index links every page and repeats each recipe's kind and statuses
@@ -52,10 +51,10 @@ BACKEND_STATUSES = ("runtime-verified", "compile-verified", "shape")
 FILE_CATEGORIES = ("angelscript", "managed", "content", "maps", "tests")
 CATEGORY_SUFFIXES = {"angelscript": (".fos",), "managed": (".cs",)}
 MANIFEST_FIELDS = {"schema_version", "description", "sandbox", "recipes", "cross_cutting"}
-RECIPE_FIELDS = {"slug", "title", "kind", "backends", "page", "files", "symbols", "builtins", "metadata", "events_fired_by_recipe", "smoke"}
+RECIPE_FIELDS = {"slug", "title", "kind", "backends", "page", "files", "symbols", "builtins", "metadata", "smoke"}
 RECIPE_OPTIONAL_FIELDS = {"builtins", "metadata"}
-CROSS_CUTTING_FIELDS = {"slug", "title", "page", "files", "symbols", "builtins", "metadata", "events_fired_by_recipe", "smoke"}
-CROSS_CUTTING_OPTIONAL_FIELDS = {"title", "builtins", "metadata", "events_fired_by_recipe", "smoke"}
+CROSS_CUTTING_FIELDS = {"slug", "title", "page", "files", "symbols", "builtins", "metadata", "smoke"}
+CROSS_CUTTING_OPTIONAL_FIELDS = {"title", "builtins", "metadata", "smoke"}
 SMOKE_FIELDS = {"manifest", "scenarios"}
 SLUG_PATTERN = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
 RECIPE_FRONT_MATTER_KEYS = ("layout", "title", "locale", "document_id", "permalink", "recipe_kind")
@@ -84,8 +83,6 @@ EXCERPT_SUFFIXES = {
     "ini": (".fomain", ".fopro", ".fotxt", ".fomap", ".focfg", ".ini"),
     "json": (".json",),
 }
-VESTIGIAL_EVENT_PATTERN = re.compile(r"\bEngine does not fire it\b")
-SUBSCRIPTION_PATTERN = re.compile(r"\b(?P<event>On[A-Za-z0-9_]+)\s*\.\s*Subscribe\s*\(")
 SYMBOL_ID_PATTERN = re.compile(
     r"(?<![\w.#-])(?:script\.(?:entity|enum|enum-value|event|method|property|ref-field|ref-method|ref-type|value-field|value-type)"
     r"|setting\.(?:common|client|server)|migration\.[A-Za-z]+)\.[A-Za-z0-9_.#-]*[A-Za-z0-9_]"
@@ -135,7 +132,6 @@ class Entry:
     backends: dict[str, str]
     files: dict[str, list[str]]
     symbols: list[str]
-    fired_events: list[str]
     smoke_manifest: str | None = None
     smoke_scenarios: list[str] = field(default_factory=list)
     cross_cutting: bool = False
@@ -169,8 +165,6 @@ class Document:
 @dataclass
 class ApiModel:
     identifiers: set[str]
-    events_by_name: dict[str, list[str]]
-    vestigial_events: dict[str, list[str]]
 
 
 class Report:
@@ -225,8 +219,6 @@ def load_api_model(path: Path) -> ApiModel:
         raise ConfigurationError(f"API model has no symbols array: {path}")
 
     identifiers: set[str] = set()
-    events_by_name: dict[str, list[str]] = {}
-    vestigial: dict[str, list[str]] = {}
 
     for symbol in symbols:
         if not isinstance(symbol, dict) or not isinstance(symbol.get("id"), str):
@@ -236,14 +228,7 @@ def load_api_model(path: Path) -> ApiModel:
         if isinstance(symbol.get("family_id"), str):
             identifiers.add(symbol["family_id"])
 
-        if symbol.get("kind") == "event" and isinstance(symbol.get("name"), str):
-            events_by_name.setdefault(symbol["name"], []).append(symbol["id"])
-            if VESTIGIAL_EVENT_PATTERN.search(str(symbol.get("description", ""))):
-                vestigial.setdefault(symbol["name"], []).append(symbol["id"])
-
-    # A name is a trap only when every event declared under it is never fired
-    vestigial_events = {name: ids for name, ids in vestigial.items() if len(ids) == len(events_by_name[name])}
-    return ApiModel(identifiers, events_by_name, vestigial_events)
+    return ApiModel(identifiers)
 
 
 def parse_markdown(text: str) -> Document:
@@ -316,7 +301,6 @@ def _check_entry(root: Path, sandbox: str, entry: Entry, api: ApiModel, report: 
 
     if files_present:
         _check_excerpts(root, entry, document, report)
-        _check_events(root, entry, api, report)
 
     _check_symbols(entry, document, api, report)
     _check_mirror(root, entry, document, report)
@@ -433,7 +417,6 @@ def _parse_entry(value: object, where: str, cross_cutting: bool, label: str, rep
     symbols = _string_list(value["symbols"], f"{where}.symbols", label, report, allow_empty=False)
     _string_list(value.get("builtins", []), f"{where}.builtins", label, report, allow_empty=True)
     _string_list(value.get("metadata", []), f"{where}.metadata", label, report, allow_empty=True)
-    fired_events = _string_list(value.get("events_fired_by_recipe", []), f"{where}.events_fired_by_recipe", label, report, allow_empty=True)
 
     smoke_manifest: str | None = None
     smoke_scenarios: list[str] = []
@@ -451,7 +434,7 @@ def _parse_entry(value: object, where: str, cross_cutting: bool, label: str, rep
     if len(report.findings) != errors_before:
         return None
 
-    return Entry(slug, page, title, kind, backends, files, symbols, fired_events, smoke_manifest, smoke_scenarios, cross_cutting)
+    return Entry(slug, page, title, kind, backends, files, symbols, smoke_manifest, smoke_scenarios, cross_cutting)
 
 
 def _parse_backends(value: object, where: str, label: str, report: Report) -> dict[str, str]:
@@ -659,30 +642,6 @@ def _check_symbols(entry: Entry, document: Document, api: ApiModel, report: Repo
         for match in SYMBOL_ID_PATTERN.finditer(line):
             if match.group(0) not in listed:
                 report.error("symbol", entry.page, f"line {line_number} cites {match.group(0)}, which is not in the manifest symbols of {entry.label}")
-
-
-def _check_events(root: Path, entry: Entry, api: ApiModel, report: Report) -> None:
-    texts = {path: _source_text(root / path) for path in entry.listed_files}
-
-    for fired in entry.fired_events:
-        if fired.startswith("script.event.") and fired not in api.identifiers:
-            report.error("event", entry.page, f"events_fired_by_recipe entry {fired} of {entry.label} is not an event in the API model")
-        name = fired.rsplit(".", 1)[-1].split("#", 1)[0]
-        fire_site = re.compile(rf"\b{re.escape(name)}\s*\.\s*Fire\s*\(")
-        if not any(fire_site.search(text) for text in texts.values()):
-            report.error("event", entry.page, f"{entry.label} lists {fired} in events_fired_by_recipe, but none of its files fires {name}")
-
-    fired_names = {fired.rsplit(".", 1)[-1].split("#", 1)[0] for fired in entry.fired_events}
-    for path, text in texts.items():
-        if not path.endswith((".fos", ".cs")):
-            continue
-        for line_number, line in enumerate(text.split("\n"), start=1):
-            for match in SUBSCRIPTION_PATTERN.finditer(line):
-                name = match.group("event")
-                if name in api.vestigial_events and name not in fired_names:
-                    ids = ", ".join(api.vestigial_events[name])
-                    report.error("event", f"{path}:{line_number}", f"{entry.label} subscribes to {name} ({ids}), which the Engine never fires; "
-                                 "fire it in the recipe and list it in events_fired_by_recipe, or use an event the Engine fires")
 
 
 def _check_mirror(root: Path, entry: Entry, document: Document, report: Report) -> None:

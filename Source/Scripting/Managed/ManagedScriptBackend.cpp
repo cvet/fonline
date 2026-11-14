@@ -5519,7 +5519,7 @@ static void DispatchManagedCallbackBoxed(ptr<ManagedScriptBackend> backend, uint
     }
 }
 
-// The managed registration admits one by-ref shape, the dialog start function's string, so anything else here is a
+// The managed registration admits one by-ref shape, (Critter, Critter, ref string), so anything else here is a
 // signature that should never have been registered rather than a case to grow support for
 static void CopyManagedCallbackByRefArg(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& type, MonoObject* value, ptr<void> arg_data)
 {

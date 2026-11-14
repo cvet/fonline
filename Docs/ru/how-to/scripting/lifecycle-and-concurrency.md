@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/lifecycle-and-concurrency.html
 ---
 
 # Жизненный цикл и конкурентность скриптов
-<!-- docs-translation: {"document_id":"script-lifecycle-concurrency","locale":"ru","source_path":"Docs/en/how-to/scripting/lifecycle-and-concurrency.md","source_sha256":"5fcacd5c1f7e14c689b535cfa673c43038a02c856521e9d91e39e023a36d9e0b"} -->
+<!-- docs-translation: {"document_id":"script-lifecycle-concurrency","locale":"ru","source_path":"Docs/en/how-to/scripting/lifecycle-and-concurrency.md","source_sha256":"178486a7fbc28d44ded27f9a7070acc83a1198407f4431df993c70c16e0489e3"} -->
 > Документация движка. Это руководство описывает переиспользуемое поведение lifecycle и concurrency, общее для AngelScript и Managed C#, а затем явно называет правила каждого языка. Модули проекта, gameplay policies и проектные synchronization helpers принадлежат подключающей игре.
 
 ## Назначение
@@ -192,21 +192,7 @@ void ApplyImmediateRule(Critter critter)
 
 Event dispatch может запускать пользовательские callbacks, изменяющие подписки, поэтому движок обходит snapshot callback. Не рассчитывайте, что подписка, добавленная во время dispatch, будет вызвана в том же dispatch.
 
-### Объявленные события, которые движок не вызывает
-
-Движок объявляет семь серверных событий, смысл которых задаёт проект, но ни один код движка их не вызывает. В сгенерированном описании API у них сказано "Engine does not fire it directly":
-
-- `Critter.OnTalk`
-- `Critter.OnBarter`
-- `Map.OnCheckLook`
-- `Map.OnCheckTrapLook`
-- `Player.OnLogout`
-- `Player.OnAllowCommand`
-- `Player.OnGetAccess`
-
-Они существуют только как объявления в `Source/Server/Critter.h`, `Source/Server/Map.h` и `Source/Server/Player.h`. Скрипт тоже не может их вызвать: генерация кода помечает события движка как exported, а оба backend генерируют скриптовый метод `Fire` только для событий, не помеченных как exported (`AngelScriptEntity.cpp`, `ManagedScriptBaker.cpp`). Скриптовая подписка на такое событие компилируется, но никогда не вызывается. Источником события может стать только нативное расширение проекта, которое вызывает его `Fire`.
-
-Используйте вызываемый аналог, если он есть: `Game.OnPlayerLogout` срабатывает при отключении игрока. Иначе объявите событие проекта через `///@ Event` и вызывайте его из кода, которому принадлежит действие. [Проверка рецептов механик](../mechanics/index.md#предложить-рецепт) отклоняет рецепт, подписанный на одно из этих событий, если рецепт не вызывает его сам.
+У каждого события, которое объявляет движок, есть источник в движке. Хук для проектной механики, например диалога, торговли или правила видимости, является событием проекта: объявите его через `///@ Event` и вызывайте из кода, которому принадлежит действие.
 
 ### Завершение time event
 
@@ -488,5 +474,5 @@ Suspended continuation может пережить gameplay assumptions, при 
 - Preload migration изменяет только поддерживаемое на этой фазе состояние восстановленного криттера.
 - Mutable state находится на явном владельце lifecycle.
 - Destruction cleanup не дублируется в project-global registry без функциональной причины.
-- Нет подписок на события, которые движок не вызывает, а таймер, который должен пережить перезагрузку, хранит срок окончания в сохраняемом свойстве и перезапускается на пути восстановления.
+- Таймер, который должен пережить перезагрузку, хранит срок окончания в сохраняемом свойстве и перезапускается на пути восстановления.
 - Выбранный тест выполняет настоящую границу compile, scheduling, synchronization или teardown.

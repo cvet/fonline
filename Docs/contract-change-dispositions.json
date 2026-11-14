@@ -16010,26 +16010,14 @@
       "owner": "Engine networking, lifecycle and compatibility maintainers"
     },
     {
-      "domain": "api",
-      "change_id": "api-change.model-scope.2645586b6e803453",
-      "baseline_contract_sha256": "4bce6f1905c27e3cf40c1a287c3e5c430d7ad77db3ee0e9cfa850da6020a80c9",
-      "current_contract_sha256": "55384cb0e58b5cf03edc1e77f763d1982a19345aa91026a5a9bc03d6dd45d76b",
-      "classification": "breaking",
-      "rationale": "The native-codegen inventory gains the optional client AiControl listener script methods (Game.AiControlAvailable, AiControlStart, AiControlStop, AiControlIsRunning, AiControlPullCommand, AiControlSetObservation, AiControlPushEvent, AiControlCompleteCommand, AiControlGetStatus) and the server image reader (Game.LoadImage, ServerImage.GetSize, ServerImage.GetColor). SymbolCount and InventorySha256 are updated for owner review; existing symbols keep their identities.",
-      "migration": "Docs/en/reference/changelog.md#current---2026-11-13: additive surface; no source, data or resource conversion is required. A project that carries its own AiControl listener or server image methods deletes them (the changelog lists the search command) because codegen rejects the duplicate names. Rebuild every native role and regenerate both scripting backends from the same revision.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-13",
-      "compatibility": "No property, protocol or resource change: MigrationRule Version 0.0.89 and Managed ABI 9 are unchanged. The generated metadata and the derived CompatibilityVersion change, so deploy matching binaries and scripts; rollback restores the preceding complete set.",
-      "owner": "Engine client runtime, server runtime and scripting maintainers"
-    },
-    {
       "domain": "ai-control-protocol",
       "change_id": "ai-control-protocol-change.model-scope.694ab2f9e49aa004",
       "baseline_contract_sha256": "9a4272404028ac2fe11bec66caef7dd60e22036cf28d28ed533a715f290bf86e",
       "current_contract_sha256": "f3a5d74a1ba02e3fdfffbe16d951d43b0a12e2e333554a141e2c91a75a324f43",
       "classification": "breaking",
       "rationale": "The AiControl integration rules describe the Engine-owned MCP adapter core (BuildTools/ai_control_mcp) and the optional native client listener (FO_AI_CONTROL) instead of leaving both to embedding projects; the protocol, wire format, security boundary and reference client behavior are unchanged apart from the token requirement for non-loopback endpoints.",
-      "migration": "Docs/en/reference/changelog.md#current---2026-11-13: a project with its own MCP adapter or native listener follows the changelog migration steps; the wire protocol needs no conversion.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-13",
+      "migration": "Docs/en/reference/changelog.md#current---2026-11-14: a project with its own MCP adapter or native listener follows the changelog migration steps; the wire protocol needs no conversion.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-14",
       "compatibility": "No protocol or runtime compatibility change: the AiControl protocol version, MigrationRule Version 0.0.89 and Managed ABI 9 are unchanged. Non-loopback endpoints now require a non-empty token in the reference client and the Engine listener.",
       "owner": "Engine AiControl, client runtime and tooling maintainers"
     },
@@ -16040,8 +16028,8 @@
       "current_contract_sha256": "f3a5d74a1ba02e3fdfffbe16d951d43b0a12e2e333554a141e2c91a75a324f43",
       "classification": "breaking",
       "rationale": "The AiControl integration rules describe the Engine-owned MCP adapter core (BuildTools/ai_control_mcp) and the optional native client listener (FO_AI_CONTROL) instead of leaving both to embedding projects; the protocol, wire format, security boundary and reference client behavior are unchanged apart from the token requirement for non-loopback endpoints.",
-      "migration": "Docs/en/reference/changelog.md#current---2026-11-13: a project with its own MCP adapter or native listener follows the changelog migration steps; the wire protocol needs no conversion.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-13",
+      "migration": "Docs/en/reference/changelog.md#current---2026-11-14: a project with its own MCP adapter or native listener follows the changelog migration steps; the wire protocol needs no conversion.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-14",
       "compatibility": "No protocol or runtime compatibility change: the AiControl protocol version, MigrationRule Version 0.0.89 and Managed ABI 9 are unchanged. Non-loopback endpoints now require a non-empty token in the reference client and the Engine listener.",
       "owner": "Engine AiControl, client runtime and tooling maintainers"
     },
@@ -16052,10 +16040,106 @@
       "current_contract_sha256": "f3a5d74a1ba02e3fdfffbe16d951d43b0a12e2e333554a141e2c91a75a324f43",
       "classification": "breaking",
       "rationale": "The AiControl integration rules describe the Engine-owned MCP adapter core (BuildTools/ai_control_mcp) and the optional native client listener (FO_AI_CONTROL) instead of leaving both to embedding projects; the protocol, wire format, security boundary and reference client behavior are unchanged apart from the token requirement for non-loopback endpoints.",
-      "migration": "Docs/en/reference/changelog.md#current---2026-11-13: a project with its own MCP adapter or native listener follows the changelog migration steps; the wire protocol needs no conversion.",
-      "release_note": "Docs/en/reference/changelog.md#current---2026-11-13",
+      "migration": "Docs/en/reference/changelog.md#current---2026-11-14: a project with its own MCP adapter or native listener follows the changelog migration steps; the wire protocol needs no conversion.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-14",
       "compatibility": "No protocol or runtime compatibility change: the AiControl protocol version, MigrationRule Version 0.0.89 and Managed ABI 9 are unchanged. Non-loopback endpoints now require a non-empty token in the reference client and the Engine listener.",
       "owner": "Engine AiControl, client runtime and tooling maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.a6b1f29231e97183",
+      "baseline_contract_sha256": "4bce6f1905c27e3cf40c1a287c3e5c430d7ad77db3ee0e9cfa850da6020a80c9",
+      "current_contract_sha256": "f9ad936abebcdf4498db6ce6f6f891e8c9e4a2d6b981a7aac0bd1de7d9878340",
+      "classification": "breaking",
+      "rationale": "The native-codegen inventory changes from 2604 to 2610 symbols. It gains the optional client AiControl listener script methods (Game.AiControlAvailable, AiControlStart, AiControlStop, AiControlIsRunning, AiControlPullCommand, AiControlSetObservation, AiControlPushEvent, AiControlCompleteCommand, AiControlGetStatus) and the server image reader (Game.LoadImage, ServerImage.GetSize, ServerImage.GetColor), and loses the seven server events that no Engine code fired (Critter.OnTalk, Critter.OnBarter, Map.OnCheckLook, Map.OnCheckTrapLook, Player.OnGetAccess, Player.OnAllowCommand, Player.OnLogout). SymbolCount and InventorySha256 are updated for owner review; the remaining symbols keep their identities.",
+      "migration": "Docs/en/reference/changelog.md#current---2026-11-14: a project that carries its own AiControl listener or server image methods deletes them because codegen rejects the duplicate names; a project that subscribes to a removed event deletes the subscription (rg -n \"\\b(OnTalk|OnBarter|OnCheckLook|OnCheckTrapLook|OnAllowCommand|OnGetAccess)\\b|\\.OnLogout\\b\" Scripts SourceExt) and declares and fires its own event when it needs the hook. Rebuild every native role and regenerate both scripting backends from the same revision.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-14",
+      "compatibility": "No property, protocol or resource change: MigrationRule Version 0.0.89 and Managed ABI 9 are unchanged. The generated metadata and the derived CompatibilityVersion change, so deploy matching binaries and scripts; rollback restores the preceding complete set.",
+      "owner": "Engine client runtime, server runtime and scripting maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.removed.cc7d1d02f8dd8a7f",
+      "baseline_contract_sha256": "4bce6f1905c27e3cf40c1a287c3e5c430d7ad77db3ee0e9cfa850da6020a80c9",
+      "current_contract_sha256": "f9ad936abebcdf4498db6ce6f6f891e8c9e4a2d6b981a7aac0bd1de7d9878340",
+      "classification": "breaking",
+      "rationale": "event Critter.OnBarter(Critter playerCr, bool begin, int32 barterCount) was a hook of an earlier Engine dialog, barter, perception or command implementation. No Engine code fired it and scripts cannot fire an exported Engine event, so a subscription compiled and never ran.",
+      "migration": "Delete every subscription, unsubscription and handler of Critter.OnBarter (rg -n \"\\b(OnTalk|OnBarter|OnCheckLook|OnCheckTrapLook|OnAllowCommand|OnGetAccess)\\b|\\.OnLogout\\b\" Scripts SourceExt). A project that needs the hook declares its own ///@ Event and fires it from the code that owns the action.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-14 (Removed and Migration).",
+      "compatibility": "No runtime behavior changes because the event never ran. Script code that still names it fails to compile until the subscription is deleted. No property, protocol, resource or Managed ABI change.",
+      "owner": "Engine server runtime and scripting maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.removed.77d1064cf0138185",
+      "baseline_contract_sha256": "4bce6f1905c27e3cf40c1a287c3e5c430d7ad77db3ee0e9cfa850da6020a80c9",
+      "current_contract_sha256": "f9ad936abebcdf4498db6ce6f6f891e8c9e4a2d6b981a7aac0bd1de7d9878340",
+      "classification": "breaking",
+      "rationale": "event Critter.OnTalk(Critter playerCr, bool begin, int32 talkers) was a hook of an earlier Engine dialog, barter, perception or command implementation. No Engine code fired it and scripts cannot fire an exported Engine event, so a subscription compiled and never ran.",
+      "migration": "Delete every subscription, unsubscription and handler of Critter.OnTalk (rg -n \"\\b(OnTalk|OnBarter|OnCheckLook|OnCheckTrapLook|OnAllowCommand|OnGetAccess)\\b|\\.OnLogout\\b\" Scripts SourceExt). A project that needs the hook declares its own ///@ Event and fires it from the code that owns the action.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-14 (Removed and Migration).",
+      "compatibility": "No runtime behavior changes because the event never ran. Script code that still names it fails to compile until the subscription is deleted. No property, protocol, resource or Managed ABI change.",
+      "owner": "Engine server runtime and scripting maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.removed.e41ad36fdb984777",
+      "baseline_contract_sha256": "4bce6f1905c27e3cf40c1a287c3e5c430d7ad77db3ee0e9cfa850da6020a80c9",
+      "current_contract_sha256": "f9ad936abebcdf4498db6ce6f6f891e8c9e4a2d6b981a7aac0bd1de7d9878340",
+      "classification": "breaking",
+      "rationale": "event Map.OnCheckLook(Critter cr, Critter target) was a hook of an earlier Engine dialog, barter, perception or command implementation. No Engine code fired it and scripts cannot fire an exported Engine event, so a subscription compiled and never ran.",
+      "migration": "Delete every subscription, unsubscription and handler of Map.OnCheckLook (rg -n \"\\b(OnTalk|OnBarter|OnCheckLook|OnCheckTrapLook|OnAllowCommand|OnGetAccess)\\b|\\.OnLogout\\b\" Scripts SourceExt). A project that needs the hook declares its own ///@ Event and fires it from the code that owns the action.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-14 (Removed and Migration).",
+      "compatibility": "No runtime behavior changes because the event never ran. Script code that still names it fails to compile until the subscription is deleted. No property, protocol, resource or Managed ABI change.",
+      "owner": "Engine server runtime and scripting maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.removed.1a22fb1868ce7305",
+      "baseline_contract_sha256": "4bce6f1905c27e3cf40c1a287c3e5c430d7ad77db3ee0e9cfa850da6020a80c9",
+      "current_contract_sha256": "f9ad936abebcdf4498db6ce6f6f891e8c9e4a2d6b981a7aac0bd1de7d9878340",
+      "classification": "breaking",
+      "rationale": "event Map.OnCheckTrapLook(Critter cr, Item item) was a hook of an earlier Engine dialog, barter, perception or command implementation. No Engine code fired it and scripts cannot fire an exported Engine event, so a subscription compiled and never ran.",
+      "migration": "Delete every subscription, unsubscription and handler of Map.OnCheckTrapLook (rg -n \"\\b(OnTalk|OnBarter|OnCheckLook|OnCheckTrapLook|OnAllowCommand|OnGetAccess)\\b|\\.OnLogout\\b\" Scripts SourceExt). A project that needs the hook declares its own ///@ Event and fires it from the code that owns the action.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-14 (Removed and Migration).",
+      "compatibility": "No runtime behavior changes because the event never ran. Script code that still names it fails to compile until the subscription is deleted. No property, protocol, resource or Managed ABI change.",
+      "owner": "Engine server runtime and scripting maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.removed.5f3599ba5b3f4630",
+      "baseline_contract_sha256": "4bce6f1905c27e3cf40c1a287c3e5c430d7ad77db3ee0e9cfa850da6020a80c9",
+      "current_contract_sha256": "f9ad936abebcdf4498db6ce6f6f891e8c9e4a2d6b981a7aac0bd1de7d9878340",
+      "classification": "breaking",
+      "rationale": "event Player.OnAllowCommand(string arg1, uint8 arg2) was a hook of an earlier Engine dialog, barter, perception or command implementation. No Engine code fired it and scripts cannot fire an exported Engine event, so a subscription compiled and never ran.",
+      "migration": "Delete every subscription, unsubscription and handler of Player.OnAllowCommand (rg -n \"\\b(OnTalk|OnBarter|OnCheckLook|OnCheckTrapLook|OnAllowCommand|OnGetAccess)\\b|\\.OnLogout\\b\" Scripts SourceExt). A project that needs the hook declares its own ///@ Event and fires it from the code that owns the action.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-14 (Removed and Migration).",
+      "compatibility": "No runtime behavior changes because the event never ran. Script code that still names it fails to compile until the subscription is deleted. No property, protocol, resource or Managed ABI change.",
+      "owner": "Engine server runtime and scripting maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.removed.94778ce74d9cb51a",
+      "baseline_contract_sha256": "4bce6f1905c27e3cf40c1a287c3e5c430d7ad77db3ee0e9cfa850da6020a80c9",
+      "current_contract_sha256": "f9ad936abebcdf4498db6ce6f6f891e8c9e4a2d6b981a7aac0bd1de7d9878340",
+      "classification": "breaking",
+      "rationale": "event Player.OnGetAccess(int32 arg1, string& arg2) was a hook of an earlier Engine dialog, barter, perception or command implementation. No Engine code fired it and scripts cannot fire an exported Engine event, so a subscription compiled and never ran.",
+      "migration": "Delete every subscription, unsubscription and handler of Player.OnGetAccess (rg -n \"\\b(OnTalk|OnBarter|OnCheckLook|OnCheckTrapLook|OnAllowCommand|OnGetAccess)\\b|\\.OnLogout\\b\" Scripts SourceExt). A project that needs the hook declares its own ///@ Event and fires it from the code that owns the action.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-14 (Removed and Migration).",
+      "compatibility": "No runtime behavior changes because the event never ran. Script code that still names it fails to compile until the subscription is deleted. No property, protocol, resource or Managed ABI change.",
+      "owner": "Engine server runtime and scripting maintainers"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.removed.ba1fdae9183f916f",
+      "baseline_contract_sha256": "4bce6f1905c27e3cf40c1a287c3e5c430d7ad77db3ee0e9cfa850da6020a80c9",
+      "current_contract_sha256": "f9ad936abebcdf4498db6ce6f6f891e8c9e4a2d6b981a7aac0bd1de7d9878340",
+      "classification": "breaking",
+      "rationale": "event Player.OnLogout() was a hook of an earlier Engine dialog, barter, perception or command implementation. No Engine code fired it and scripts cannot fire an exported Engine event, so a subscription compiled and never ran.",
+      "migration": "Delete every subscription, unsubscription and handler of Player.OnLogout (rg -n \"\\b(OnTalk|OnBarter|OnCheckLook|OnCheckTrapLook|OnAllowCommand|OnGetAccess)\\b|\\.OnLogout\\b\" Scripts SourceExt). A project that needs the hook declares its own ///@ Event and fires it from the code that owns the action; Game.OnPlayerLogout is the fired disconnect event and is unchanged.",
+      "release_note": "Docs/en/reference/changelog.md#current---2026-11-14 (Removed and Migration).",
+      "compatibility": "No runtime behavior changes because the event never ran. Script code that still names it fails to compile until the subscription is deleted. No property, protocol, resource or Managed ABI change.",
+      "owner": "Engine server runtime and scripting maintainers"
     }
   ]
 }

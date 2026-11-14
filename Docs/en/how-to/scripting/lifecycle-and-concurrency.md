@@ -190,21 +190,7 @@ Explicitly unsubscribe when behavior must stop before the owner is destroyed, wh
 
 Event dispatch may run user callbacks that alter subscriptions, so the engine iterates a callback snapshot. Do not rely on a subscription added during a dispatch being called in that same dispatch.
 
-### Declared events the Engine never fires
-
-The Engine declares seven server events for a project to give meaning to, but no Engine code fires them. Their generated API descriptions say "Engine does not fire it directly":
-
-- `Critter.OnTalk`
-- `Critter.OnBarter`
-- `Map.OnCheckLook`
-- `Map.OnCheckTrapLook`
-- `Player.OnLogout`
-- `Player.OnAllowCommand`
-- `Player.OnGetAccess`
-
-They exist only as declarations in `Source/Server/Critter.h`, `Source/Server/Map.h` and `Source/Server/Player.h`. Scripts cannot fire them either: code generation marks Engine events as exported, and both backends generate a script `Fire` method only for events that are not exported (`AngelScriptEntity.cpp`, `ManagedScriptBaker.cpp`). A script subscription to one of them compiles and is never called. Only a project native extension that calls the event's `Fire` gives it a producer.
-
-Use the fired equivalent where one exists: `Game.OnPlayerLogout` runs when a player disconnects. Otherwise declare a project event with `///@ Event` and fire it from the code that owns the action. The [mechanics recipe gate](../mechanics/index.md#propose-a-recipe) rejects a recipe that subscribes to one of these events unless the recipe fires it itself.
+Every event the Engine declares has an Engine producer. A hook for a project-owned mechanic such as a dialog, a trade or a perception rule is a project event: declare it with `///@ Event` and fire it from the code that owns the action.
 
 ### Time-event completion
 
@@ -484,5 +470,5 @@ For all engine documentation changes, also run the standalone documentation gate
 - A preload migration touches only the restored critter state supported at that phase.
 - Mutable state lives on an explicit lifecycle owner.
 - Destruction cleanup is not duplicated in a project-global registry without functional need.
-- No subscription targets an event the Engine never fires, and a timer that must survive a reload keeps its deadline in a persistent property and is re-armed on the restore path.
+- A timer that must survive a reload keeps its deadline in a persistent property and is re-armed on the restore path.
 - The selected test exercises the actual compile, scheduling, synchronization, or teardown boundary.

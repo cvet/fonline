@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/coding-contracts/smart-pointers.html
 ---
 
 # Умные указатели
-<!-- docs-translation: {"document_id":"smart-pointers","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/smart-pointers.md","source_sha256":"85306ef63de77293bdcc7e4023cc772fc3b90a7d0c922d4250c30dfa7f1bd9d8"} -->
+<!-- docs-translation: {"document_id":"smart-pointers","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/smart-pointers.md","source_sha256":"50f7c6c6a6e0ac4e6c4c5e92d88e017e427be66518db4f39b414fde7465cc152"} -->
 > Документация движка. Эта страница определяет словарь native C++-указателей
 > из `Source/Essentials/SmartPointers.h`: владение, nullability, правила
 > миграции и требования к проверке.

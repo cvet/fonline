@@ -55,7 +55,6 @@
         "Entity.Id",
         "ZERO_SYNCTIME"
       ],
-      "events_fired_by_recipe": [],
       "smoke": {
         "manifest": "Examples/MechanicsSandbox/mechanics-smoke.json",
         "scenarios": [
@@ -125,7 +124,6 @@
         "Entity.Id",
         "Entity.ProtoId"
       ],
-      "events_fired_by_recipe": [],
       "smoke": {
         "manifest": "Examples/MechanicsSandbox/mechanics-smoke.json",
         "scenarios": [
@@ -188,7 +186,6 @@
         "ZERO_SYNCTIME",
         "ZERO_TIMESPAN"
       ],
-      "events_fired_by_recipe": [],
       "smoke": {
         "manifest": "Examples/MechanicsSandbox/mechanics-smoke.json",
         "scenarios": [
@@ -245,7 +242,6 @@
         "Entity.IsDestroyed",
         "ZERO_IDENT"
       ],
-      "events_fired_by_recipe": [],
       "smoke": {
         "manifest": "Examples/MechanicsSandbox/mechanics-smoke.json",
         "scenarios": [

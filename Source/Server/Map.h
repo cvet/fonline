@@ -123,12 +123,6 @@ public:
     // Runs while this map is being finished
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnFinish);
-    // Exposes a project-defined critter visibility check; Engine does not fire it directly
-    ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCheckLook, ptr<Critter> /*cr*/, ptr<Critter> /*target*/);
-    // Exposes a project-defined trap visibility check; Engine does not fire it directly
-    ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCheckTrapLook, ptr<Critter> /*cr*/, ptr<Item> /*item*/);
 
 private:
     struct SpectatorArea

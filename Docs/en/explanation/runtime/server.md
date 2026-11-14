@@ -519,7 +519,7 @@ Master destruction preserves/detaches passengers; passenger destruction removes 
 Server entity classes combine Common-layer property/prototype behavior with server-only ownership rules:
 
 - `Location` groups maps and raises `OnMapAdded` / `OnMapRemoved`.
-- `Map` owns map fields, critter/item presence, spectators, item visibility, manual blocks, trigger verification, and `OnCheckLook` / `OnCheckTrapLook`.
+- `Map` owns map fields, critter/item presence, spectators, item visibility, manual blocks, and trigger verification.
 - `Critter` owns visibility, current map/location/global state, inventory, moving state, player attachment, and broadcast helpers.
 - `Item` owns holder/container relationships, stack/multihex behavior, and `OnCritterWalk`.
 - `Player` owns connection/session state and the send surface to one client.

@@ -179,12 +179,6 @@ public:
     // Runs when a still-visible map item's view-relevant state changes
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnItemOnMapChanged, ptr<Item> /*item*/);
-    // Exposes a project-defined talk lifecycle event; Engine does not fire it directly
-    ///@ ExportEvent
-    FO_ENTITY_EVENT(OnTalk, ptr<Critter> /*playerCr*/, bool /*begin*/, int32_t /*talkers*/);
-    // Exposes a project-defined barter lifecycle event; Engine does not fire it directly
-    ///@ ExportEvent
-    FO_ENTITY_EVENT(OnBarter, ptr<Critter> /*playerCr*/, bool /*begin*/, int32_t /*barterCount*/);
 
 private:
     auto GetMapSpectators() -> vector<refcount_ptr<Player>>;

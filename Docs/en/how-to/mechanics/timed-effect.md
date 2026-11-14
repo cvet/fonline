@@ -270,7 +270,7 @@ A delegate is part of the time-event registration, and a separately constructed 
 
 - **Data-driven catalogs.** Durations, magnitudes and stacking rules of many effects are authored rows, for example a [FixedType catalog](../../explanation/entity-and-property-model/choosing-a-representation.md#fixedtype-catalog-row) keyed by effect id. The critter stores only what changes: the deadline per active effect, in one property per effect or in a RefType list written with read, change and assign back, and one guarded timer that wakes for the earliest deadline.
 - **Components.** When only some kinds of critter can carry an effect, group its fields under a [property component](../content/prototype-format.md#property-components) instead of adding them to every critter.
-- **Project events with the producer rule.** Fire one project event where the expiry happens, in the timer callback, so every declared event has a producer and other modules react without polling. Do not subscribe to Engine events that the Engine never fires ([the list](../scripting/lifecycle-and-concurrency.md#declared-events-the-engine-never-fires)). The declaration shape, not part of the sandbox:
+- **Project events with the producer rule.** Fire one project event where the expiry happens, in the timer callback, so every declared event has a producer and other modules react without polling. The declaration shape, not part of the sandbox:
 
 ```text
 ///@ Event Server Game OnBoostExpired(Critter cr)

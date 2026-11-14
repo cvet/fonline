@@ -6,7 +6,7 @@
 
 - State: first slice implemented; waves 1 (remaining recipes) and 2 open
 - Owner: documentation program
-- Last updated: 2026-11-13
+- Last updated: 2026-11-14
 - Engine baseline: branch `lifecycle-docs-and-tooling` on `origin/master` `7d134df5f8` (`2026.1.118-dev`)
 - Source audits: 35 Last Frontier mechanics, 36 TLA mechanics plus 8 AngelScript idioms, and the Engine coverage audit (98 API symbol IDs checked against `Docs/generated/api.json`)
 
@@ -18,7 +18,7 @@ A game team that has finished the first tutorials can learn how to build a real 
 
 1. **The Engine teaches setup and internals, not mechanics.** The tutorials end at one remote call that increments one persistent `int32` (`Examples/MinimalMultiplayer/Scripts/Tutorial.fos`, 262 lines at most in any example). Reference pages explain the cover model, remote-call security and persistence, but no page answers "how do I build X". No Engine example proves behavior across a database restart; every example uses an in-memory database.
 2. **Every API symbol is `experimental`** (2,615 of 2,616; one is `internal`). A "stable symbols only" filter is impossible, so recipes use a proxy: the symbol exists, is described, is fired or exercised by Engine code or tests, and is checked against `api.json` in CI.
-3. **Some declared Engine events are never fired.** The API descriptions say so for `Critter.OnTalk`, `Critter.OnBarter`, `Map.OnCheckLook`, `Map.OnCheckTrapLook`, `Player.OnLogout` (only `Game.OnPlayerLogout` fires), `Player.OnAllowCommand` and `Player.OnGetAccess`. Dialog, barter and perception recipes must say so and show the project-side pattern instead.
+3. **Some declared Engine events were never fired.** `Critter.OnTalk`, `Critter.OnBarter`, `Map.OnCheckLook`, `Map.OnCheckTrapLook`, `Player.OnLogout` (only `Game.OnPlayerLogout` fires), `Player.OnAllowCommand` and `Player.OnGetAccess` had no Engine producer, and the Engine removed them. Dialog, barter and perception recipes show the project-side pattern with a project event instead.
 4. **Time events do not survive an ordinary database reload.** The load path does not restore them; destroy and unload paths cancel them; only server snapshots save them. A timed effect therefore needs a persisted deadline that is re-armed on load behind a `CountTimeEvent == 0` check. No Engine page states this consequence for gameplay. Both projects contain code that gets it wrong (see "Project findings").
 5. **Several families have no Engine primitive**: dialog runtime, quests, trade flow, stats and skills, combat resolution, factions, AI decisions, crafting and equipment slots beyond `Inventory/Main/Outside`. Recipes for them are labelled "pattern recipes" and teach a project-side structure built from Engine primitives.
 6. **The same subsystems are rebuilt by both projects**: the native dialog system (`Dialogs.cpp` plus `DialogBaker.cpp`, about 1,200 and 1,500 lines), item stacking (the Engine removed it; each project rebuilt it), a visibility hook, a project event vocabulary (77 and about 120 events), and a GUI library. These are the strongest signals for recipes and for possible Engine features.

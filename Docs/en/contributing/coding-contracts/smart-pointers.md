@@ -213,7 +213,7 @@ For engine-owned APIs outside these categories, prefer `ptr<T>` or `nptr<T>` for
 - The engine/entity **receiver** (first parameter) is always non-null, so it is `ptr<EngineType>` / `ptr<EntityType>`.
 - A non-null entity/ref argument or return is `ptr<T>`; a nullable one is `nptr<T>`. Bare `T*` no longer carries a nullable contract at the export/event boundary; spell the contract explicitly with the wrapper.
 - **Container element types** use the wrapper vocabulary too: returns such as `vector<ptr<T>>` and parameters such as `readonly_vector<ptr<T>>` / `readonly_vector<nptr<T>>` are the supported handle-container shapes. Codegen reduces the element to the raw handle only for the AngelScript metadata (the registered `T@[]` signature and the compatibility hash are unchanged), while the generated extern and `NativeCall` cast keep the wrapper element type so the glue matches the C++ signature.
-- `///@ ExportRefType` methods (e.g. the dialog accessors) likewise use `ptr<T>` / `nptr<T>` for handle returns and generated `ptr<RefType>` receivers. The script `.Ret` metadata still reduces to the handle type, so the registered script signature and compatibility hash are unchanged.
+- `///@ ExportRefType` methods likewise use `ptr<T>` / `nptr<T>` for handle returns and generated `ptr<RefType>` receivers. The script `.Ret` metadata still reduces to the handle type, so the registered script signature and compatibility hash are unchanged.
 - The script-facing AngelScript registration is unchanged, so no `.fos`, bytecode, or save migration is required; only the C++ glue type changes. The client/server compatibility hash deliberately excludes the wrapper spelling.
 
 These script-binding shapes intentionally stay raw at the ABI edge:

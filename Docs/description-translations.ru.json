@@ -4282,10 +4282,6 @@
           "source_sha256": "329dc23d72f3a06e177c37029cd4691966a2618d52c9abe1e5dd26ceeea00b9a",
           "translation": "Выполняется для отправленного текста консоли Mapper; обработчики могут заменить `text`, а `StopChain` подавляет встроенный разбор команды."
         },
-        "/symbols/@id=script.event.server.Critter.OnBarter/description": {
-          "source_sha256": "fc663c32ced4d4a47cd8e1cda1729b8e7f1819c6f66c7747c13210096c898cf1",
-          "translation": "Предоставляет определяемое проектом событие жизненного цикла бартера; Engine напрямую его не вызывает."
-        },
         "/symbols/@id=script.event.server.Critter.OnCritterAppeared/description": {
           "source_sha256": "539188d358b2bb0a023031c0546025d463630a27f2ac7eb3a7d727d8bcee620b",
           "translation": "Выполняется при входе другого криттера в текущий набор видимости этого криттера."
@@ -4337,10 +4333,6 @@
         "/symbols/@id=script.event.server.Critter.OnItemOnMapDisappeared/description": {
           "source_sha256": "c0f6f530ef4176294247b9760af2ef9ed94315de107c2f4b7b41cce42a6e6666",
           "translation": "Выполняется при выходе предмета карты из набора видимости этого криттера; `picker` присутствует, когда предмет подбирает криттер."
-        },
-        "/symbols/@id=script.event.server.Critter.OnTalk/description": {
-          "source_sha256": "429dcdc840be311861fbed5766e1a878e9c868ee3ec6073c8984b4b53f7de4e1",
-          "translation": "Предоставляет определяемое проектом событие жизненного цикла разговора; Engine напрямую его не вызывает."
         },
         "/symbols/@id=script.event.server.Game.OnCritterFinish/description": {
           "source_sha256": "41eb2ac52eec4e99a207ac92eaaaf9653236dfefb7f80d89295712e3500061e0",
@@ -4486,29 +4478,9 @@
           "source_sha256": "87a7c03fec4ea9bd520f6111229a1ec0136af24c8ca83b2d376a7cc5ccc63e5e",
           "translation": "Выполняется при удалении карты из этой локации."
         },
-        "/symbols/@id=script.event.server.Map.OnCheckLook/description": {
-          "source_sha256": "3166da8fa4fb109b3447fcab0fbe151f89fb2f8574694e97526271742dc6c048",
-          "translation": "Предоставляет определяемую проектом проверку видимости криттера; Engine напрямую её не вызывает."
-        },
-        "/symbols/@id=script.event.server.Map.OnCheckTrapLook/description": {
-          "source_sha256": "39ea472352ae648ad97685e4003045dd477ab3a31b1d3be60be2881ef6862a2c",
-          "translation": "Предоставляет определяемую проектом проверку видимости ловушки; Engine напрямую её не вызывает."
-        },
         "/symbols/@id=script.event.server.Map.OnFinish/description": {
           "source_sha256": "fc2cbfcd824eb24c8e0a5833f119e011706732f954d00e9d8c562c1895bcef96",
           "translation": "Выполняется во время завершения этой карты."
-        },
-        "/symbols/@id=script.event.server.Player.OnAllowCommand/description": {
-          "source_sha256": "8b8718e69414036d8aff534417b58ea1c19b907981adadd0b494dbb015d380ef",
-          "translation": "Предоставляет определяемый проектом callback авторизации команд; Engine напрямую его не вызывает."
-        },
-        "/symbols/@id=script.event.server.Player.OnGetAccess/description": {
-          "source_sha256": "9bfda213f2cb322645babb824a5c24fe49a91174cc39d09ba6887a72e79aeab4",
-          "translation": "Предоставляет определяемый проектом callback доступа игрока с целочисленным входом и изменяемым текстовым аргументом; Engine напрямую его не вызывает."
-        },
-        "/symbols/@id=script.event.server.Player.OnLogout/description": {
-          "source_sha256": "13e5234aa7f8d53a64b931fd5a93f84632364c93bfb95814938a0a74cfd2b2ea",
-          "translation": "Предоставляет определяемый проектом callback выхода игрока; Engine напрямую его не вызывает."
         },
         "/symbols/@id=script.method.client.Critter.AddAnimCallback/description": {
           "source_sha256": "860fc52f34d6b14f45fd8bb0e3b82a8be9e6448c93dc96062ce5554aa40eab21",

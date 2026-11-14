@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import re
 import subprocess
 import sys
 from collections.abc import Callable
@@ -30,10 +29,6 @@ COVER_PAGE = "Docs/en/how-to/mechanics/cover-transactions.md"
 COVER_MIRROR = "Docs/ru/how-to/mechanics/cover-transactions.md"
 HUB = "Docs/en/how-to/mechanics/index.md"
 HUB_MIRROR = "Docs/ru/how-to/mechanics/index.md"
-LIFECYCLE_PAGES = {
-    "Docs/en/how-to/scripting/lifecycle-and-concurrency.md": "Declared events the Engine never fires",
-    "Docs/ru/how-to/scripting/lifecycle-and-concurrency.md": "Объявленные события, которые движок не вызывает",
-}
 
 SCRIPT_TEXT = """namespace RecipePersistentState
 {
@@ -128,8 +123,6 @@ def _api_model() -> dict[str, object]:
             symbol("script.method.server.Entity.IsPersistent#0123456789abcdef", "method", "IsPersistent", "Returns persistence",
                    "script.method.server.Entity.IsPersistent"),
             symbol("script.method.server.Game.Sync", "method", "Sync", "Covers entities"),
-            symbol("script.event.server.Critter.OnTalk", "event", "OnTalk",
-                   "Exposes a project-defined talk lifecycle event; Engine does not fire it directly"),
         ],
     }
 
@@ -153,7 +146,6 @@ def _manifest() -> dict[str, object]:
                 },
                 "symbols": ["script.event.server.Game.OnCritterInit", "script.method.server.Entity.IsPersistent"],
                 "builtins": ["Subscribe"],
-                "events_fired_by_recipe": [],
                 "smoke": {"manifest": SMOKE, "scenarios": ["persistent-state", "persistent-state-restart"]},
             }
         ],
@@ -607,49 +599,7 @@ def test_exact_overload_ids_are_accepted(tree: Path) -> None:
     assert _findings(tree) == []
 
 
-# (f) Events the Engine never fires
-
-
-def _subscribe_to_talk(root: Path) -> None:
-    _replace(root, RECIPE_SCRIPT, "    Game.OnCritterInit.Subscribe(OnCritterInit);\n}", "    Game.OnCritterInit.Subscribe(OnCritterInit);\n}\n\nvoid Talk(Critter critter)\n{\n    critter.OnTalk.Subscribe(OnTalk);\n}")
-
-
-def test_subscription_to_a_vestigial_event_is_reported(tree: Path) -> None:
-    _subscribe_to_talk(tree)
-    findings = _findings(tree)
-    assert [finding.check for finding in findings] == ["event"], [finding.render() for finding in findings]
-    assert findings[0].path == f"{RECIPE_SCRIPT}:16"
-    assert "script.event.server.Critter.OnTalk" in findings[0].message
-
-
-def test_vestigial_event_listed_without_a_fire_site_is_reported(tree: Path) -> None:
-    _subscribe_to_talk(tree)
-    _edit_manifest(tree, lambda manifest: manifest["recipes"][0].update(events_fired_by_recipe=["script.event.server.Critter.OnTalk"]))
-    _assert_single(tree, "event", "none of its files fires OnTalk")
-
-
-def test_vestigial_event_fired_by_the_recipe_is_accepted(tree: Path) -> None:
-    _subscribe_to_talk(tree)
-    _replace(tree, RECIPE_SCRIPT, "    critter.OnTalk.Subscribe(OnTalk);", "    critter.OnTalk.Subscribe(OnTalk);\n    critter.OnTalk.Fire(critter, true, 1);")
-    _edit_manifest(tree, lambda manifest: manifest["recipes"][0].update(events_fired_by_recipe=["script.event.server.Critter.OnTalk"]))
-    assert _findings(tree) == []
-
-
-def test_unknown_fired_event_id_is_reported(tree: Path) -> None:
-    _edit_manifest(tree, lambda manifest: manifest["recipes"][0].update(events_fired_by_recipe=["script.event.server.Critter.OnMissing"]))
-    messages = [finding.message for finding in _findings(tree) if finding.check == "event"]
-    assert any("is not an event in the API model" in message for message in messages), messages
-
-
-def test_fired_events_are_only_traps_when_every_declaration_is_vestigial(tree: Path) -> None:
-    model = _api_model()
-    model["symbols"].append({"id": "script.event.server.Map.OnTalk", "family_id": "script.event.server.Map.OnTalk", "kind": "event", "name": "OnTalk", "description": "Fires"})
-    _write_json(tree, mechanics_recipes.DEFAULT_API_MODEL, model)
-    _subscribe_to_talk(tree)
-    assert _findings(tree) == []
-
-
-# (g) Russian mirror
+# (f) Russian mirror
 
 
 def test_missing_mirror_is_reported(tree: Path) -> None:
@@ -673,7 +623,7 @@ def test_mirror_negative_controls(tree: Path, old: str, new: str, fragment: str)
     _assert_single(tree, "mirror", fragment)
 
 
-# (h) Project names
+# (g) Project names
 
 
 @pytest.mark.parametrize(
@@ -764,19 +714,6 @@ def test_real_hub_and_its_mirror_are_structurally_valid() -> None:
     hub = (ENGINE_ROOT / HUB).read_text(encoding="utf-8")
     for page in ("persistent-state.md", "validated-action.md", "timed-effect.md", "cover-transactions.md"):
         assert f"]({page})" in hub, page
-
-
-def test_lifecycle_page_lists_exactly_the_events_the_engine_never_fires() -> None:
-    api = mechanics_recipes.load_api_model(ENGINE_ROOT / mechanics_recipes.DEFAULT_API_MODEL)
-    expected = {identifier.split(".", 3)[3] for identifiers in api.vestigial_events.values() for identifier in identifiers}
-    assert expected
-
-    for relative, heading in LIFECYCLE_PAGES.items():
-        text = (ENGINE_ROOT / relative).read_text(encoding="utf-8").replace("\r\n", "\n")
-        section = re.search(rf"^### {re.escape(heading)}\n(.*?)(?=^#{{2,3}} |\Z)", text, re.MULTILINE | re.DOTALL)
-        assert section is not None, relative
-        listed = set(re.findall(r"^- `([A-Za-z]+\.On[A-Za-z]+)`", section.group(1), re.MULTILINE))
-        assert listed == expected, relative
 
 
 @pytest.mark.skipif(not REAL_MANIFEST.is_file(), reason=f"{mechanics_recipes.DEFAULT_MANIFEST} is not in this checkout yet; the example lands separately")

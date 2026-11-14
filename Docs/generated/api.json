@@ -10,8 +10,8 @@
       "selector": "scope:native-codegen",
       "stability": "experimental",
       "since": "2022.1.0.wip",
-      "symbol_count": 2617,
-      "inventory_sha256": "d8cb53270305344e053c38a11a1764f7fddb56a9871e731c13973eef18c8a37e",
+      "symbol_count": 2610,
+      "inventory_sha256": "9c22eb5e3098116714e0c2370625767a66d9abb4b0690b694439033b523bc507",
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
@@ -72,12 +72,12 @@
     "api_contract_scope_selector": "scope:native-codegen"
   },
   "summary": {
-    "symbol_count": 2617,
+    "symbol_count": 2610,
     "symbols_by_kind": {
       "entity": 7,
       "enum": 60,
       "enum-value": 770,
-      "event": 121,
+      "event": 114,
       "method": 1039,
       "migration-rule": 27,
       "property": 134,
@@ -89,20 +89,20 @@
       "value-type": 22
     },
     "symbols_by_stability": {
-      "experimental": 2616,
+      "experimental": 2609,
       "internal": 1
     },
     "explicit_contract_declaration_count": 5,
-    "explicit_contract_symbol_count": 2617,
+    "explicit_contract_symbol_count": 2610,
     "default_contract_symbol_count": 0,
     "explicit_contracts_by_stability": {
-      "experimental": 2616,
+      "experimental": 2609,
       "internal": 1
     },
-    "described_symbol_count": 2617,
+    "described_symbol_count": 2610,
     "missing_description_count": 0,
     "symbols_without_source_count": 14,
-    "metadata_source_file_count": 44,
+    "metadata_source_file_count": 43,
     "contract_source_file_count": 4
   },
   "metadata_source_files": [
@@ -145,7 +145,6 @@
     "Source/Server/Item.h",
     "Source/Server/Location.h",
     "Source/Server/Map.h",
-    "Source/Server/Player.h",
     "Source/Server/Server.h",
     "Source/Server/ServerConnection.h",
     "Source/Server/ServerImage.h",
@@ -34020,60 +34019,6 @@
       ]
     },
     {
-      "id": "script.event.server.Critter.OnBarter",
-      "family_id": "script.event.server.Critter.OnBarter",
-      "kind": "event",
-      "name": "OnBarter",
-      "runtime_sides": [
-        "server"
-      ],
-      "receiver": "Critter",
-      "signature": "event Critter.OnBarter(Critter playerCr, bool begin, int32 barterCount)",
-      "description": "Exposes a project-defined barter lifecycle event; Engine does not fire it directly",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Server/Critter.h",
-        "line": 186
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 15
-        },
-        "notes": ""
-      },
-      "declared_target": "server",
-      "arguments": [
-        {
-          "name": "playerCr",
-          "type": "Critter",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "begin",
-          "type": "bool",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "barterCount",
-          "type": "int32",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
       "id": "script.event.server.Critter.OnCritterAppeared",
       "family_id": "script.event.server.Critter.OnCritterAppeared",
       "kind": "event",
@@ -34601,60 +34546,6 @@
           "name": "picker",
           "type": "Critter?",
           "nullable": true,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.event.server.Critter.OnTalk",
-      "family_id": "script.event.server.Critter.OnTalk",
-      "kind": "event",
-      "name": "OnTalk",
-      "runtime_sides": [
-        "server"
-      ],
-      "receiver": "Critter",
-      "signature": "event Critter.OnTalk(Critter playerCr, bool begin, int32 talkers)",
-      "description": "Exposes a project-defined talk lifecycle event; Engine does not fire it directly",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Server/Critter.h",
-        "line": 183
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 15
-        },
-        "notes": ""
-      },
-      "declared_target": "server",
-      "arguments": [
-        {
-          "name": "playerCr",
-          "type": "Critter",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "begin",
-          "type": "bool",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "talkers",
-          "type": "int32",
-          "nullable": false,
           "by_reference": false,
           "default": null
         }
@@ -36214,100 +36105,6 @@
       ]
     },
     {
-      "id": "script.event.server.Map.OnCheckLook",
-      "family_id": "script.event.server.Map.OnCheckLook",
-      "kind": "event",
-      "name": "OnCheckLook",
-      "runtime_sides": [
-        "server"
-      ],
-      "receiver": "Map",
-      "signature": "event Map.OnCheckLook(Critter cr, Critter target)",
-      "description": "Exposes a project-defined critter visibility check; Engine does not fire it directly",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Server/Map.h",
-        "line": 127
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 15
-        },
-        "notes": ""
-      },
-      "declared_target": "server",
-      "arguments": [
-        {
-          "name": "cr",
-          "type": "Critter",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "target",
-          "type": "Critter",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.event.server.Map.OnCheckTrapLook",
-      "family_id": "script.event.server.Map.OnCheckTrapLook",
-      "kind": "event",
-      "name": "OnCheckTrapLook",
-      "runtime_sides": [
-        "server"
-      ],
-      "receiver": "Map",
-      "signature": "event Map.OnCheckTrapLook(Critter cr, Item item)",
-      "description": "Exposes a project-defined trap visibility check; Engine does not fire it directly",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Server/Map.h",
-        "line": 130
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 15
-        },
-        "notes": ""
-      },
-      "declared_target": "server",
-      "arguments": [
-        {
-          "name": "cr",
-          "type": "Critter",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "item",
-          "type": "Item",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
       "id": "script.event.server.Map.OnFinish",
       "family_id": "script.event.server.Map.OnFinish",
       "kind": "event",
@@ -36326,132 +36123,6 @@
       "source": {
         "path": "Source/Server/Map.h",
         "line": 124
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 15
-        },
-        "notes": ""
-      },
-      "declared_target": "server",
-      "arguments": []
-    },
-    {
-      "id": "script.event.server.Player.OnAllowCommand",
-      "family_id": "script.event.server.Player.OnAllowCommand",
-      "kind": "event",
-      "name": "OnAllowCommand",
-      "runtime_sides": [
-        "server"
-      ],
-      "receiver": "Player",
-      "signature": "event Player.OnAllowCommand(string arg1, uint8 arg2)",
-      "description": "Exposes a project-defined command authorization callback; Engine does not fire it directly",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Server/Player.h",
-        "line": 101
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 15
-        },
-        "notes": ""
-      },
-      "declared_target": "server",
-      "arguments": [
-        {
-          "name": "arg1",
-          "type": "string",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "arg2",
-          "type": "uint8",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.event.server.Player.OnGetAccess",
-      "family_id": "script.event.server.Player.OnGetAccess",
-      "kind": "event",
-      "name": "OnGetAccess",
-      "runtime_sides": [
-        "server"
-      ],
-      "receiver": "Player",
-      "signature": "event Player.OnGetAccess(int32 arg1, string& arg2)",
-      "description": "Exposes a project-defined player access callback with an integer input and mutable text argument; Engine does not fire it directly",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Server/Player.h",
-        "line": 98
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 15
-        },
-        "notes": ""
-      },
-      "declared_target": "server",
-      "arguments": [
-        {
-          "name": "arg1",
-          "type": "int32",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "arg2",
-          "type": "string&",
-          "nullable": false,
-          "by_reference": true,
-          "default": null
-        }
-      ]
-    },
-    {
-      "id": "script.event.server.Player.OnLogout",
-      "family_id": "script.event.server.Player.OnLogout",
-      "kind": "event",
-      "name": "OnLogout",
-      "runtime_sides": [
-        "server"
-      ],
-      "receiver": "Player",
-      "signature": "event Player.OnLogout()",
-      "description": "Exposes a project-defined player logout callback; Engine does not fire it directly",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Server/Player.h",
-        "line": 104
       },
       "contract": {
         "explicit": true,

@@ -261,7 +261,7 @@ The persistence rules, hooks and pitfalls above are backend-neutral. A project o
 
 - **Data-driven catalogs.** Thresholds and rewards that depend on the value are authored data: one tunable scalar is a `///@ Setting`, a table of named rows is a [FixedType catalog](../../explanation/entity-and-property-model/choosing-a-representation.md#fixedtype-catalog-row). The per-character value stays a property.
 - **Components.** When only some kinds of critter carry the state, group its fields under a property component with a presence marker instead of flat properties on every critter ([property components](../content/prototype-format.md#property-components)). Several values that always change together become a RefType held by one property, written with the same read, change and assign-back step as `RecordVisit`.
-- **Project events with the producer rule.** When other modules react to a change, declare a project event and fire it from the single writer, so every declared event has exactly one producer and no subscriber waits for an event nothing fires. Do not subscribe to Engine events that the Engine never fires ([the list](../scripting/lifecycle-and-concurrency.md#declared-events-the-engine-never-fires)). The declaration shape, not part of the sandbox:
+- **Project events with the producer rule.** When other modules react to a change, declare a project event and fire it from the single writer, so every declared event has exactly one producer and no subscriber waits for an event nothing fires. The declaration shape, not part of the sandbox:
 
 ```text
 ///@ Event Server Game OnVisitRecorded(Critter cr, int32 count)
