@@ -16929,7 +16929,7 @@
       "classification": "breaking",
       "rationale": "The combined feature API increases the reviewed native-codegen inventory from 2604 to 2611 symbols.",
       "migration": "Regenerate bindings and metadata, rebuild all native roles, and rebake resources. Apply the intervening master migrations in order.",
-      "release_note": "Docs/en/reference/changelog.md#unreleased and its Russian mirror.",
+      "release_note": "Docs/en/reference/changelog.md Current 2026-11-14 (2026.1.121-dev) and its Russian mirror.",
       "compatibility": "Marker 0.0.90 requires matching native roles, generated metadata and rebaked resources; do not mix with the master baseline.",
       "owner": "Engine API and code generation"
     },
@@ -16941,7 +16941,7 @@
       "classification": "breaking",
       "rationale": "The merged runtime adds script and particle contracts absent from master 0.0.89, requiring a distinct compatibility marker.",
       "migration": "Rebuild and rebake matching clients, servers, Mapper and tools; no stored-data conversion is introduced by this marker.",
-      "release_note": "Docs/en/reference/changelog.md#unreleased and its Russian mirror.",
+      "release_note": "Docs/en/reference/changelog.md Current 2026-11-14 (2026.1.121-dev) and its Russian mirror.",
       "compatibility": "Marker 0.0.90 requires matching native roles, generated metadata and rebaked resources; do not mix with the master baseline.",
       "owner": "Engine compatibility and code generation"
     },
@@ -16953,7 +16953,7 @@
       "classification": "breaking",
       "rationale": "MapSpriteHolder's exported field list adds DepthOffset while preserving the existing Elevation field and the other exports.",
       "migration": "Regenerate client and Mapper bindings. Existing callers retain zero depth correction; new callers supply finite logical map pixels. See Docs/en/reference/changelog.md#unreleased and its Russian mirror.",
-      "release_note": "Docs/en/reference/changelog.md#unreleased and Docs/ru/reference/changelog.md#unreleased; final version and date belong to eventual master integration.",
+      "release_note": "Docs/en/reference/changelog.md Current 2026-11-14 (2026.1.121-dev) and its Russian mirror.",
       "compatibility": "The additive field has default zero; elevation remains independent. Rebuild and rebake matching metadata under marker 0.0.90.",
       "owner": "Engine client map sprite and scripting contracts"
     },
@@ -16965,7 +16965,7 @@
       "classification": "breaking",
       "rationale": "Map.RemovedStaticItemIds drops Mutable: an engine property may now synchronize without it, so Map.RemoveStaticItem, which only appends and rebuilds the overlay, is its only writer and no setter has to refuse shrinking writes.",
       "migration": "Replace direct script writes of Map.RemovedStaticItemIds with Map.RemoveStaticItem calls and rebake metadata. See Docs/en/reference/changelog.md#unreleased and its Russian mirror.",
-      "release_note": "Docs/en/reference/changelog.md#unreleased and Docs/ru/reference/changelog.md#unreleased; final version and date belong to eventual master integration.",
+      "release_note": "Docs/en/reference/changelog.md Current 2026-11-14 (2026.1.121-dev) and its Russian mirror.",
       "compatibility": "Stored lists, sync and reads are unchanged; saved data needs no conversion. Rebuild and rebake matching metadata under marker 0.0.90.",
       "owner": "Engine server map static content"
     },
@@ -16977,7 +16977,7 @@
       "classification": "breaking",
       "rationale": "Model-bone particle requests wait for a complete pose and initialize newborn systems at zero time, including callback-created systems, instead of inheriting pre-birth time.",
       "migration": "Review effects that depend on the first visible frame and run the real model-particle first-pose and lifecycle checks after rebuilding. See Docs/en/reference/changelog.md#unreleased and its Russian mirror.",
-      "release_note": "Docs/en/reference/changelog.md#unreleased and Docs/ru/reference/changelog.md#unreleased; final version and date belong to eventual master integration.",
+      "release_note": "Docs/en/reference/changelog.md Current 2026-11-14 (2026.1.121-dev) and its Russian mirror.",
       "compatibility": "Existing name, bone and offset inputs are retained; unposed requests remain pending until a pose is available. Platform rendering acceptance is separate.",
       "owner": "Engine model particle integration"
     },
@@ -16989,7 +16989,7 @@
       "classification": "breaking",
       "rationale": "Effekseer bounds now use an authored seed or fixed local fallback and combine the baked envelope with current live model instances; one simulated trajectory is not exhaustive.",
       "migration": "Rebake existing Effekseer resources and inspect representative particle trajectories and framing after rebuilding the matching runtime.",
-      "release_note": "Docs/en/reference/changelog.md#unreleased and its Russian mirror.",
+      "release_note": "Docs/en/reference/changelog.md Current 2026-11-14 (2026.1.121-dev) and its Russian mirror.",
       "compatibility": "Marker 0.0.90 requires matching native roles, generated metadata and rebaked resources; do not mix with the master baseline.",
       "owner": "Engine particle baking and model bounds"
     },
@@ -17001,7 +17001,7 @@
       "classification": "breaking",
       "rationale": "Live Effekseer model bounds extend the transformed baked envelope with current supported renderer instances so moved particles are not clipped.",
       "migration": "Rebuild particle-enabled roles and rebake matching resources; check Sprite, Ribbon, Ring, Track and Model effects and release after expiry. See Docs/en/reference/changelog.md#unreleased and its Russian mirror.",
-      "release_note": "Docs/en/reference/changelog.md#unreleased and Docs/ru/reference/changelog.md#unreleased; final version and date belong to eventual master integration.",
+      "release_note": "Docs/en/reference/changelog.md Current 2026-11-14 (2026.1.121-dev) and its Russian mirror.",
       "compatibility": "The live CPU probe is cached and does not advance simulation or draw; dormant and expired instances no longer reserve the live envelope.",
       "owner": "Engine Effekseer runtime and model bounds"
     }

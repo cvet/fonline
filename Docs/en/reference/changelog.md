@@ -12,6 +12,8 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
+## Current - 2026-11-14
+
 ### Added
 
 - Add `Game.OnPlayerMovementAuthority` for game-owned indirect movement policy,
@@ -61,20 +63,29 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Migration
 
-- Engine properties (`CoreProperty`) accept post-setters only. Registering a
-  value-transforming setter for one (native `Property::AddSetter`, an AngelScript
-  `Game.AddPropertySetter` handler with a by-reference value, or a Managed
-  `ref T` handler) throws `Engine property accepts post-setters only`. Move such
-  a handler to an entity-only post-set reaction (Managed
-  `Game.AddPropertyDeferredSetter`) that reads the new value; project-declared
-  properties keep transforming setters.
-- An engine property may now synchronize without `Mutable`; it is then written
-  only by native engine code and read-only for scripts. `Map.RemovedStaticItemIds`
-  uses this: grow it with `Map.RemoveStaticItem()`, its only writer, instead of
-  writing the property. Rebake metadata; saved lists need no conversion. A
-  client-modifiable property must still be `Mutable`.
+- Engine properties (`CoreProperty`, every `///@ ExportProperty`) accept
+  post-setters only. Registering a value-transforming setter for one (native
+  `Property::AddSetter`, an AngelScript `Game.AddPropertySetter` handler with a
+  by-reference value, or a Managed `ref T` handler) now throws
+  `Engine property accepts post-setters only` during module initialization, before
+  gameplay. Find such registrations by searching `AddPropertySetter(` and `AddSetter(`
+  for engine property enums whose handler takes the value by reference. Move each
+  to an entity-only post-set reaction (Managed `Game.AddPropertyDeferredSetter` or
+  the entity-only `AddPropertySetter` overload) that reads the new value and derives
+  the transition from state it can read; project-declared properties keep
+  transforming setters. Regenerate bindings and rebuild every role. This rule alone
+  changes no saved data, resources or network marker.
+- An engine property may now synchronize without `Mutable`; native engine code
+  then writes it and scripts only read it. `Map.RemovedStaticItemIds` uses this,
+  and the Engine pre-setter that refused shrinking writes is removed: script code
+  that assigns the property, or writes it through `SetAsAny`/`SetAsInt`, now fails
+  to compile or is rejected as immutable. Replace such writes with
+  `Map.RemoveStaticItem()`, the only writer; it appends and returns `false` for an
+  id already removed. Search scripts for `RemovedStaticItemIds` to prove no other
+  writer remains. Regenerate bindings, rebuild and rebake metadata. Stored lists,
+  their synchronization and reads keep their meaning, so saved data needs no
+  conversion. A client-modifiable property must still be `Mutable`.
 - Integrating feature baseline `27067e77ac80daf7d0c88a2868224e44948662f2` with master `9af8dc5ff4a80fda232d2539e61c1d0a52f62942` advances the compatibility marker from master `0.0.89` to `0.0.90`. Rebuild all native roles and rebake matching metadata and resources; do not mix client, server or resources across that boundary. Apply the intervening master migrations in order. The integration itself adds no saved-data conversion.
-
 - For independent sprites following a changing bone, update and reattach the
   holder in `OnRenderMap_BeforeSprites`. Bone queries remain non-advancing reads
   of the retained pose; hidden/offscreen model timing is preserved. Rebuild native
@@ -88,7 +99,7 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
   and resources together. This change introduces no saved-data conversion.
 - Movement authority defaults to the selected actor. Projects allowing indirect
   movement subscribe to `OnPlayerMovementAuthority` and apply their own control
-  policy; the engine rechecks current session, actor, map and movement identity.
+  policy; the engine rechecks current session, actor, map and control revision.
   Native `Player::HasPlayerMovementControl` is removed; native extensions use the
   same event. Revalidate existing vehicle and attachment paths with ordinary clients.
 - Consumers of bone particles should account for first-pose placement and
@@ -101,7 +112,7 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
   A fixed simulation seed provides repeatability, not coverage of every trajectory;
   inspect effect framing in representative scenes.
 
-## Current - 2026-11-12
+## 2026.1.120-dev - 2026-11-12
 
 ### Added
 
