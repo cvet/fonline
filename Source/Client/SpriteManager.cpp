@@ -260,6 +260,13 @@ auto SpriteManager::LoadSpriteAsQuad(hstring path, AtlasType atlas_type) -> shar
     return factory->LoadSpriteAsQuad(path, atlas_type);
 }
 
+auto SpriteManager::CreateQuadSprite(AtlasType atlas_type, isize32 size, const_span<ucolor> pixels) -> shared_ptr<AtlasSprite>
+{
+    auto factory = GetSpriteFactory(typeid(DefaultSpriteFactory)).dyn_cast<DefaultSpriteFactory>();
+    FO_VERIFY_AND_THROW(factory, "Default sprite factory is not registered", size);
+    return factory->CreateQuadSprite(atlas_type, size, pixels);
+}
+
 void SpriteManager::BeginScene()
 {
     FO_TRACE_ZONE(Render);

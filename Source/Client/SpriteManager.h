@@ -211,6 +211,7 @@ public:
     [[nodiscard]] auto LoadSprite(string_view path, AtlasType atlas_type, bool no_warn_if_not_exists = false) -> shared_ptr<Sprite>;
     [[nodiscard]] auto LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_if_not_exists = false) -> shared_ptr<Sprite>;
     [[nodiscard]] auto LoadSpriteAsQuad(hstring path, AtlasType atlas_type) -> shared_ptr<AtlasSprite>;
+    [[nodiscard]] auto CreateQuadSprite(AtlasType atlas_type, isize32 size, const_span<ucolor> pixels) -> shared_ptr<AtlasSprite>;
 
     void SetWindowSize(isize32 size);
     void SetScreenSize(isize32 size);

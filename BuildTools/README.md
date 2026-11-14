@@ -439,6 +439,18 @@ python3 BuildTools/temporary_compat.py --report                               # 
 `--today YYYY-MM-DD` pins the date. It needs nothing beyond the Python standard library; its tests are
 `tests/test_temporary_compat.py`, and the `validate` workflow runs both.
 
+## Test font fixtures
+
+`generate_test_fonts.py` builds the three TrueType fonts the engine unit tests rasterize (`Test_FontRasterizer`,
+`Test_FontManager`) and writes them into `Source/Tests/Test_FontFixtures.h`. The glyphs are rectangles drawn by
+the script, so the fixture carries no third-party font data and every metric a test asserts follows from the
+script's numbers. One fixture shifts a glyph up by a pixel in native TrueType bytecode to prove that forced
+automatic hinting ignores native instructions. The output is byte-identical between runs. It needs `fontTools`:
+
+```sh
+python3 BuildTools/generate_test_fonts.py
+```
+
 ## Pipeline documentation
 
 For the maintained staged CMake pipeline guide, see [../Docs/BuildToolsPipeline.md](../Docs/BuildToolsPipeline.md).

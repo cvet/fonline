@@ -37,6 +37,7 @@
 
 #include "EffectManager.h"
 #include "FileSystem.h"
+#include "FontRasterizer.h"
 #include "Geometry.h"
 #include "RenderTarget.h"
 #include "TextureAtlas.h"
@@ -88,6 +89,30 @@ struct TextFormat
 };
 static_assert(sizeof(TextFormat) == 12 && std::is_standard_layout_v<TextFormat>);
 
+// How TrueType glyphs are fitted to the pixel grid
+///@ ExportEnum
+enum class FontHinting : int32_t
+{
+    Light = 0, // Automatic hinting on the vertical axis only: crisp horizontal stems, shapes stay faithful
+    Normal = 1, // Full hinting, by the font's own instructions where it carries them
+    Unhinted = 2, // Outlines as drawn, not fitted to the pixel grid
+};
+
+// Rendering options of a font bound from TrueType faces; the zero value is antialiased, lightly hinted text
+// without kerning or an outlined variant
+///@ ExportValueType Layout = FontHinting-Hinting+int32-OutlineWidth+int32-LineSpacing+bool-Monochrome+bool-Kerning+bool-ForceAutoHint+bool-Embolden
+struct FontOptions
+{
+    FontHinting Hinting {};
+    int32_t OutlineWidth {}; // Pixels of the dark outline drawn by FontFlag::Bordered, zero keeps that variant unoutlined
+    int32_t LineSpacing {}; // Pixels added between lines on top of the face's own line gap, may be negative
+    bool Monochrome {}; // Render without antialiasing, for pixel fonts used at their design size
+    bool Kerning {};
+    bool ForceAutoHint {}; // Use FreeType's auto-hinter instead of the face's instructions; Unhinted still disables hinting
+    bool Embolden {}; // Synthetic bold: grow the rasterized strokes one pixel to the right and advance one pixel farther
+};
+static_assert(sizeof(FontOptions) == 16 && std::is_standard_layout_v<FontOptions>);
+
 class FontManager final
 {
 public:
@@ -99,14 +124,18 @@ public:
     auto operator=(FontManager&&) noexcept = delete;
     ~FontManager() = default;
 
-    [[nodiscard]] auto GetLinesCount(isize32 size, string_view str, FontType num_font) const -> int32_t;
-    [[nodiscard]] auto GetLinesHeight(isize32 size, string_view str, FontType num_font) const -> int32_t;
+    // Measuring may rasterize the TrueType glyphs a text needs for the first time, hence the non-const queries
+    [[nodiscard]] auto GetLinesCount(isize32 size, string_view str, FontType num_font) -> int32_t;
+    [[nodiscard]] auto GetLinesHeight(isize32 size, string_view str, FontType num_font) -> int32_t;
     [[nodiscard]] auto GetLineHeight(FontType num_font) const -> int32_t;
-    [[nodiscard]] auto GetTextInfo(isize32 size, string_view str, TextFormat format, isize32& result_size, int32_t& lines) const -> bool;
+    [[nodiscard]] auto GetTextInfo(isize32 size, string_view str, TextFormat format, isize32& result_size, int32_t& lines) -> bool;
     [[nodiscard]] auto HaveLetter(FontType num_font, uint32_t letter) const -> bool;
 
     void BindFoFont(FontType font, string_view font_path, AtlasType atlas_type, bool not_bordered, bool skip_if_loaded, float32_t default_scale = 1.0f);
     void BindBmfFont(FontType font, string_view font_path, AtlasType atlas_type, float32_t default_scale = 1.0f);
+    // Faces form a fallback chain: a letter comes from the first face that has it, or is the first face's missing-glyph box.
+    // Preload ranges are inclusive codepoint pairs rasterized at once; every other letter is rasterized on first use
+    void BindTrueTypeFont(FontType font, const vector<string>& face_paths, int32_t pixel_size, FontOptions options, const vector<int32_t>& preload_ranges, AtlasType atlas_type);
     void SetFontEffect(FontType font, nptr<RenderEffect> effect);
     void DrawText(irect32 rect, string_view str, ucolor color, TextFormat format);
     auto SplitLines(irect32 rect, string_view cstr, FontType num_font) -> vector<string>;
@@ -131,6 +160,24 @@ private:
             int32_t XAdvance {};
             frect32 TexPos {};
             frect32 TexBorderedPos {};
+            int32_t FaceIndex {-1};
+            uint32_t GlyphIndex {};
+        };
+
+        // Glyph cells are packed in shelves; the sheet doubles when full and is uploaded again as a new atlas sprite
+        struct TrueTypeSheet
+        {
+            vector<unique_ptr<FontFace>> Faces {};
+            FontOptions Options {};
+            AtlasType Atlas {};
+            int32_t Ascender {};
+            int32_t CellPadding {};
+            isize32 Size {};
+            vector<ucolor> Pixels {};
+            vector<ucolor> BorderedPixels {};
+            ipos32 ShelfPos {};
+            int32_t ShelfHeight {};
+            optional<Letter> MissingLetter {};
         };
 
         nptr<RenderEffect> DrawEffect {};
@@ -144,6 +191,7 @@ private:
         shared_ptr<AtlasSprite> ImageNormal {};
         shared_ptr<AtlasSprite> ImageBordered {};
         bool MakeGray {};
+        unique_nptr<TrueTypeSheet> TrueType {};
     };
 
     struct FontFormatInfo
@@ -176,11 +224,23 @@ private:
     [[nodiscard]] static auto ResolveFontScale(float32_t scale) -> float32_t;
     [[nodiscard]] static auto IsInlineColorHex(string_view value) -> bool;
     [[nodiscard]] static auto ParseInlineColorTag(string_view str, size_t marker_pos, size_t& tag_end, ucolor& color, bool& reset) -> bool;
-    auto GetOrFormat(TextFormat format, FontType font, irect32 rect, ucolor color, FormatMode mode, string_view str) const -> ptr<const FontFormatInfo>;
+    [[nodiscard]] static auto GetKerning(const FontData& font, nptr<const FontData::Letter> left, const FontData::Letter& right) -> int32_t;
+    auto GetOrFormat(TextFormat format, FontType font, irect32 rect, ucolor color, FormatMode mode, string_view str) -> ptr<const FontFormatInfo>;
+
+    auto ReadFontFile(string_view path) -> shared_ptr<const vector<uint8_t>>;
+    void EnsureLetters(FontData& font, string_view str);
+    void AddTrueTypeLetters(FontData& font, const vector<uint32_t>& letters, bool substitute_missing);
+    auto RasterizeTrueTypeLetter(FontData& font, int32_t face_index, uint32_t glyph_index, vector<irect32>& new_cells) -> FontData::Letter;
+    auto ReserveSheetCell(FontData::TrueTypeSheet& sheet, isize32 cell_size) -> ipos32;
+    void UploadTrueTypeSheet(FontData& font);
+    void UploadTrueTypeCell(FontData& font, irect32 cell);
+    static void UpdateLetterTexPos(const FontData& font, FontData::Letter& letter);
 
     static constexpr string_view InlineColorTagPrefix = "@color";
 
     ptr<SpriteManager> _sprMngr;
+    unique_nptr<FontRasterizer> _rasterizer {};
+    unordered_map<string, shared_ptr<const vector<uint8_t>>> _fontFiles {};
     vector<optional<FontData>> _allFonts {};
     uint64_t _frameIndex {1};
     mutable unordered_map<uint64_t, unique_ptr<FontFormatInfo>> _formatCache {};

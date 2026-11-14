@@ -826,6 +826,12 @@ FO_SCRIPT_API void Client_Game_BindFont(ptr<ClientEngine> client, FontType font,
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API void Client_Game_BindFont(ptr<ClientEngine> client, FontType font, readonly_vector<string> faceFnames, int32_t pixelSize, FontOptions options, readonly_vector<int32_t> preloadRanges)
+{
+    client->FontMngr.BindTrueTypeFont(font, faceFnames, pixelSize, options, preloadRanges, AtlasType::IfaceSprites);
+}
+
+///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SetEffect(ptr<ClientEngine> client, EffectType effectType, int64_t effectSubtype, string_view effectPath)
 {
     client->SetEffect(effectType, effectSubtype, effectPath);

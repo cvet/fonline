@@ -90,6 +90,8 @@ when `FO_MANAGED_SCRIPTING` is enabled. Backend-neutral suites are always presen
 - `Source/Tests/Test_DataBase.cpp`
 - `Source/Tests/Test_EntitySync.cpp`
 - `Source/Tests/Test_FogOfWar.cpp`
+- `Source/Tests/Test_FontManager.cpp`
+- `Source/Tests/Test_FontRasterizer.cpp`
 - `Source/Tests/Test_LocationAndEntityMgmt.cpp`
 - `Source/Tests/Test_ModelAnimation.cpp`
 - `Source/Tests/Test_NetBuffer.cpp`
@@ -220,3 +222,7 @@ Header-only helpers live next to the suites and are not listed in `FO_TESTS_SOUR
 - New test sources must be added to `FO_TESTS_SOURCE` in `BuildTools/cmake/stages/EngineSources.cmake`.
 - Update [../../Docs/Testing.md](../../Docs/Testing.md) and this README when adding, removing, or regrouping test suites.
 - Treat `RunUnitTests` as the minimum broad validation baseline for engine-side changes after focused tests pass.
+
+`FontRasterizerAutoHintAndSyntheticBold` uses the native-bytecode fixture to distinguish forced
+automatic hinting from font instructions, verifies that unhinted mode overrides the hinting choice,
+and checks synthetic bold coverage, bearings, advance and whitespace.

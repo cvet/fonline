@@ -38,6 +38,15 @@
 FO_BEGIN_NAMESPACE
 
 static constexpr int32_t CACHE_INVALIDATION_FRAME_COUNT = 3;
+static constexpr int32_t TRUETYPE_MAX_PIXEL_SIZE = 256;
+static constexpr int32_t TRUETYPE_MAX_OUTLINE_WIDTH = 8;
+static constexpr int32_t TRUETYPE_MAX_PRELOAD_LETTERS = 0x10000;
+static constexpr int32_t TRUETYPE_SHEET_MIN_SIDE = 64;
+static constexpr int32_t TRUETYPE_SHEET_MAX_SIDE = 2048;
+// Transparent pixels between glyph cells, so linear atlas filtering never samples a neighbour glyph
+static constexpr int32_t TRUETYPE_CELL_GAP = 1;
+// The shader doubles the vertex color, so mid grey is the neutral glyph color
+static constexpr uint8_t TRUETYPE_GLYPH_GREY = 128;
 
 FontManager::FontManager(ptr<SpriteManager> spr_mngr) :
     _sprMngr {spr_mngr}
@@ -77,6 +86,7 @@ auto FontManager::GetFont(FontType font) const -> ptr<const FontData>
 void FontManager::ClearFonts()
 {
     _allFonts.clear();
+    _fontFiles.clear();
     _formatCache.clear();
 }
 
@@ -93,8 +103,14 @@ void FontManager::StoreFont(int32_t index, FontData&& font_data)
         _allFonts.resize(index + 1);
     }
 
+    bool is_true_type = static_cast<bool>(font_data.TrueType);
     _allFonts[index].emplace(std::move(font_data));
-    BuildFont(index);
+
+    // A TrueType sheet is built in memory and uploaded already finished
+    if (!is_true_type) {
+        BuildFont(index);
+    }
+
     _formatCache.clear();
 }
 
@@ -638,6 +654,90 @@ void FontManager::BindBmfFont(FontType font, string_view font_path, AtlasType at
     StoreFont(index, std::move(font_data));
 }
 
+void FontManager::BindTrueTypeFont(FontType font, const vector<string>& face_paths, int32_t pixel_size, FontOptions options, const vector<int32_t>& preload_ranges, AtlasType atlas_type)
+{
+    FO_TRACE_ZONE(Gui);
+
+    int32_t index = static_cast<int32_t>(font);
+    FO_VERIFY_AND_THROW(index >= 0, "Font index must not be negative", index);
+    FO_VERIFY_AND_THROW(!face_paths.empty(), "TrueType font needs at least one face", index);
+    FO_VERIFY_AND_THROW(pixel_size > 0 && pixel_size <= TRUETYPE_MAX_PIXEL_SIZE, "TrueType font pixel size is out of range", pixel_size);
+    FO_VERIFY_AND_THROW(options.OutlineWidth >= 0 && options.OutlineWidth <= TRUETYPE_MAX_OUTLINE_WIDTH, "TrueType font outline width is out of range", options.OutlineWidth);
+    FO_VERIFY_AND_THROW(preload_ranges.size() % 2 == 0, "Preload ranges must come in first and last codepoint pairs", preload_ranges.size());
+
+    FontFaceHinting hinting {};
+
+    switch (options.Hinting) {
+    case FontHinting::Light:
+        hinting = FontFaceHinting::Light;
+        break;
+    case FontHinting::Normal:
+        hinting = FontFaceHinting::Normal;
+        break;
+    case FontHinting::Unhinted:
+        hinting = FontFaceHinting::None;
+        break;
+    default:
+        throw FontManagerException("Unknown TrueType font hinting", static_cast<int32_t>(options.Hinting));
+    }
+
+    // Collect the preload letters before any face is opened, so a malformed range fails cheaply
+    vector<uint32_t> preload_letters {uint32_t {' '}};
+
+    for (size_t i = 0; i < preload_ranges.size(); i += 2) {
+        int32_t first = preload_ranges[i];
+        int32_t last = preload_ranges[i + 1];
+        FO_VERIFY_AND_THROW(first > 0 && first <= last && last <= 0x10FFFF, "Preload range must be an ordered pair of Unicode codepoints", first, last);
+        FO_VERIFY_AND_THROW(numeric_cast<int32_t>(preload_letters.size()) + (last - first) < TRUETYPE_MAX_PRELOAD_LETTERS, "Preload ranges cover too many letters", preload_ranges.size());
+
+        for (int32_t letter = first; letter <= last; letter++) {
+            preload_letters.emplace_back(numeric_cast<uint32_t>(letter));
+        }
+    }
+
+    if (!_rasterizer) {
+        _rasterizer = safe_alloc::make_unique<FontRasterizer>();
+    }
+
+    auto sheet = safe_alloc::make_unique<FontData::TrueTypeSheet>();
+    sheet->Options = options;
+    sheet->Atlas = atlas_type;
+    sheet->CellPadding = std::max(options.OutlineWidth, 1);
+
+    for (const string& face_path : face_paths) {
+        sheet->Faces.emplace_back(_rasterizer->OpenFace(ReadFontFile(face_path), pixel_size, hinting, options.Monochrome, options.ForceAutoHint, options.Embolden));
+    }
+
+    FontFaceMetrics metrics = sheet->Faces.front()->GetMetrics();
+    sheet->Ascender = metrics.Ascender;
+
+    // Room for about four rows of sixteen letters; the sheet doubles on demand
+    int32_t cell_side = pixel_size + sheet->CellPadding * 2 + TRUETYPE_CELL_GAP;
+    int32_t sheet_width = std::clamp(numeric_cast<int32_t>(std::bit_ceil(numeric_cast<uint32_t>(cell_side * 16))), TRUETYPE_SHEET_MIN_SIDE, TRUETYPE_SHEET_MAX_SIDE);
+    int32_t sheet_height = std::clamp(numeric_cast<int32_t>(std::bit_ceil(numeric_cast<uint32_t>(cell_side * 4))), TRUETYPE_SHEET_MIN_SIDE, sheet_width);
+    sheet->Size = {sheet_width, sheet_height};
+    sheet->Pixels.assign(numeric_cast<size_t>(sheet_width) * numeric_cast<size_t>(sheet_height), ucolor::clear);
+
+    if (options.OutlineWidth != 0) {
+        sheet->BorderedPixels.assign(sheet->Pixels.size(), ucolor::clear);
+    }
+
+    FontData font_data;
+    font_data.DrawEffect = _sprMngr->_effectMngr->Effects.Font;
+    font_data.LineHeight = metrics.Ascender + metrics.Descender;
+    font_data.YAdvance = metrics.LineGap + options.LineSpacing;
+    FO_VERIFY_AND_THROW(font_data.LineHeight > 0 && font_data.LineHeight + font_data.YAdvance > 0, "TrueType font line step must be positive", font_data.LineHeight, font_data.YAdvance);
+    font_data.TrueType = std::move(sheet);
+
+    AddTrueTypeLetters(font_data, preload_letters, false);
+
+    auto space_it = font_data.Letters.find(uint32_t {' '});
+    FO_VERIFY_AND_THROW(space_it != font_data.Letters.end(), "No face of a TrueType font has the space letter", face_paths.front());
+    font_data.SpaceWidth = space_it->second.XAdvance;
+
+    StoreFont(index, std::move(font_data));
+}
+
 void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
 {
     FO_TRACE_ZONE(Gui);
@@ -715,6 +815,9 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
     curx = r.x;
     cury = r.y;
 
+    // Kerning applies only between two letters standing directly next to each other, the same in every pass below
+    nptr<const FontData::Letter> prev_letter;
+
     for (int32_t i = 0, i_advance = 1; i < numeric_cast<int32_t>(str.size()); i += i_advance) {
         size_t letter_len = utf8::decode_str_nt_len(&str[numeric_cast<size_t>(i)]);
         uint32_t letter = utf8::decode(&str[numeric_cast<size_t>(i)], letter_len);
@@ -722,9 +825,11 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
         i_advance = numeric_cast<int32_t>(letter_len);
 
         int32_t x_advance = 0;
+        nptr<const FontData::Letter> cur_letter;
 
         switch (letter) {
         case '\r':
+            prev_letter = nullptr;
             continue;
         case ' ':
             x_advance = font->SpaceWidth;
@@ -735,7 +840,8 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
         default:
             auto it = font->Letters.find(letter);
             if (it != font->Letters.end()) {
-                x_advance = it->second.XAdvance;
+                cur_letter = &it->second;
+                x_advance = it->second.XAdvance + GetKerning(*font, prev_letter, it->second);
             }
             else {
                 x_advance = 0;
@@ -771,7 +877,7 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
                     }
                 }
             }
-            else if (str[i] != '\n') {
+            else if (str[i] != '\n' && curx != r.x) {
                 int32_t j = i;
 
                 for (; j >= 0; j--) {
@@ -829,6 +935,8 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
 
         switch (letter) {
         case '\n':
+            prev_letter = nullptr;
+
             if (skip_line == 0) {
                 cury += font->LineHeight + font->YAdvance;
 
@@ -869,6 +977,7 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
             break;
         default:
             curx += x_advance;
+            prev_letter = cur_letter;
             continue;
         }
 
@@ -955,6 +1064,7 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
     bool can_count = false;
     int32_t spaces = 0;
     int32_t curstr = 0;
+    prev_letter = nullptr;
 
     for (int32_t i = 0, i_advance = 1;; i += i_advance) {
         if (i >= numeric_cast<int32_t>(str.size())) {
@@ -976,6 +1086,10 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
         uint32_t letter = utf8::decode(&str[numeric_cast<size_t>(i)], letter_len);
         letter = utf8::is_valid(letter) ? letter : 0;
         i_advance = numeric_cast<int32_t>(letter_len);
+
+        if (letter == ' ' || letter == '\t' || letter == '\n' || letter == '\r' || letter == 0) {
+            prev_letter = nullptr;
+        }
 
         switch (letter) {
         case ' ':
@@ -1009,7 +1123,11 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
             break;
         default:
             if (auto it = font->Letters.find(letter); it != font->Letters.end()) {
-                curx += it->second.XAdvance;
+                curx += it->second.XAdvance + GetKerning(*font, prev_letter, it->second);
+                prev_letter = &it->second;
+            }
+            else {
+                prev_letter = nullptr;
             }
 
             can_count = true;
@@ -1101,7 +1219,7 @@ auto FontManager::ParseInlineColorTag(string_view str, size_t marker_pos, size_t
     return true;
 }
 
-auto FontManager::GetOrFormat(TextFormat format, FontType font, irect32 rect, ucolor color, FormatMode mode, string_view str) const -> ptr<const FontFormatInfo>
+auto FontManager::GetOrFormat(TextFormat format, FontType font, irect32 rect, ucolor color, FormatMode mode, string_view str) -> ptr<const FontFormatInfo>
 {
     FO_VERIFY_AND_THROW(static_cast<size_t>(font) < _allFonts.size(), "Text formatting requested a font index outside the loaded font table", font, _allFonts.size(), str.size(), rect);
     FO_VERIFY_AND_THROW(format.SkipLines >= 0, "Text format skip-line count must not be negative");
@@ -1130,9 +1248,12 @@ auto FontManager::GetOrFormat(TextFormat format, FontType font, irect32 rect, uc
     auto max_chars = std::max<size_t>(str_len * 2 + 1, 1);
     auto max_lines = std::max<size_t>(str_len + 1, 1);
 
-    auto fi = safe_alloc::make_unique<FontFormatInfo>();
     FO_VERIFY_AND_THROW(_allFonts[static_cast<size_t>(font)], "Requested font is not loaded");
-    fi->CurFont = &*_allFonts[static_cast<size_t>(font)];
+    FontData& font_data = *_allFonts[static_cast<size_t>(font)];
+    EnsureLetters(font_data, str);
+
+    auto fi = safe_alloc::make_unique<FontFormatInfo>();
+    fi->CurFont = &font_data;
     fi->Format = format;
     fi->Rect = irect32 {0, 0, rect.width, rect.height};
     fi->Color = color;
@@ -1194,6 +1315,7 @@ void FontManager::DrawText(irect32 rect, string_view str, ucolor color, TextForm
     size_t start_ipos = ipos;
 
     bool variable_space = false;
+    nptr<const FontData::Letter> prev_letter;
     int32_t i_advance;
 
     for (int32_t i = 0; i < numeric_cast<int32_t>(format_str.size()); i += i_advance) {
@@ -1220,11 +1342,14 @@ void FontManager::DrawText(irect32 rect, string_view str, ucolor color, TextForm
         switch (letter) {
         case ' ':
             curx += variable_space ? fi->LineSpaceWidth[curstr] : font->SpaceWidth;
+            prev_letter = nullptr;
             continue;
         case '\t':
             curx += font->SpaceWidth * 4;
+            prev_letter = nullptr;
             continue;
         case '\n':
+            prev_letter = nullptr;
             cury += font->LineHeight + font->YAdvance;
             curx = rect.x;
             curstr++;
@@ -1238,15 +1363,19 @@ void FontManager::DrawText(irect32 rect, string_view str, ucolor color, TextForm
             }
             continue;
         case '\r':
+            prev_letter = nullptr;
             continue;
         default:
             auto it = font->Letters.find(letter);
 
             if (it == font->Letters.end()) {
+                prev_letter = nullptr;
                 continue;
             }
 
             const auto& l = it->second;
+            curx += GetKerning(*font, prev_letter, l);
+            prev_letter = &l;
 
             float32_t x = numeric_cast<float32_t>(curx - l.Offset.x - 1);
             float32_t y = numeric_cast<float32_t>(cury - l.Offset.y - 1);
@@ -1327,7 +1456,7 @@ void FontManager::DrawText(irect32 rect, string_view str, ucolor color, TextForm
     }
 }
 
-auto FontManager::GetLinesCount(isize32 size, string_view str, FontType num_font) const -> int32_t
+auto FontManager::GetLinesCount(isize32 size, string_view str, FontType num_font) -> int32_t
 {
     if (size.width <= 0 || size.height <= 0) {
         return 0;
@@ -1345,7 +1474,7 @@ auto FontManager::GetLinesCount(isize32 size, string_view str, FontType num_font
     return fi->LinesInRect;
 }
 
-auto FontManager::GetLinesHeight(isize32 size, string_view str, FontType num_font) const -> int32_t
+auto FontManager::GetLinesHeight(isize32 size, string_view str, FontType num_font) -> int32_t
 {
     if (size.width <= 0 || size.height <= 0) {
         return 0;
@@ -1366,7 +1495,7 @@ auto FontManager::GetLineHeight(FontType num_font) const -> int32_t
     return GetFont(num_font)->LineHeight;
 }
 
-auto FontManager::GetTextInfo(isize32 size, string_view str, TextFormat format, isize32& result_size, int32_t& lines) const -> bool
+auto FontManager::GetTextInfo(isize32 size, string_view str, TextFormat format, isize32& result_size, int32_t& lines) -> bool
 {
     result_size = {};
     lines = {};
@@ -1399,7 +1528,331 @@ auto FontManager::SplitLines(irect32 rect, string_view cstr, FontType num_font) 
 
 auto FontManager::HaveLetter(FontType num_font, uint32_t letter) const -> bool
 {
-    return GetFont(num_font)->Letters.count(letter) != 0;
+    auto font = GetFont(num_font);
+
+    // A TrueType font answers for every letter its faces carry, rasterized or not
+    if (font->TrueType) {
+        return std::ranges::any_of(font->TrueType->Faces, [letter](const unique_ptr<FontFace>& face) { return face->GetGlyphIndex(letter) != 0; });
+    }
+
+    return font->Letters.count(letter) != 0;
+}
+
+auto FontManager::GetKerning(const FontData& font, nptr<const FontData::Letter> left, const FontData::Letter& right) -> int32_t
+{
+    if (!left || !font.TrueType || !font.TrueType->Options.Kerning) {
+        return 0;
+    }
+    if (left->FaceIndex < 0 || left->FaceIndex != right.FaceIndex) {
+        return 0;
+    }
+
+    return font.TrueType->Faces[numeric_cast<size_t>(right.FaceIndex)]->GetKerning(left->GlyphIndex, right.GlyphIndex);
+}
+
+auto FontManager::ReadFontFile(string_view path) -> shared_ptr<const vector<uint8_t>>
+{
+    FO_TRACE_ZONE(Gui);
+
+    if (auto it = _fontFiles.find(string(path)); it != _fontFiles.end()) {
+        return it->second;
+    }
+
+    auto file = _sprMngr->_resources->ReadFile(path);
+
+    if (!file) {
+        throw FontManagerException("Font file not found", path);
+    }
+
+    shared_ptr<const vector<uint8_t>> data = safe_alloc::make_shared<const vector<uint8_t>>(file.GetData());
+    _fontFiles.emplace(string(path), data);
+    return data;
+}
+
+void FontManager::EnsureLetters(FontData& font, string_view str)
+{
+    if (!font.TrueType) {
+        return;
+    }
+
+    vector<uint32_t> missing_letters;
+
+    for (size_t i = 0; i < str.size();) {
+        // The view need not be null-terminated, so the decoder is bounded by what is left of it
+        size_t letter_len = str.size() - i;
+        uint32_t letter = utf8::decode(&str[i], letter_len);
+        i += letter_len;
+
+        // Control characters are layout commands, never glyphs
+        if (!utf8::is_valid(letter) || letter < 0x20 || (letter >= 0x7F && letter < 0xA0)) {
+            continue;
+        }
+        if (font.Letters.contains(letter) || std::ranges::find(missing_letters, letter) != missing_letters.end()) {
+            continue;
+        }
+
+        missing_letters.emplace_back(letter);
+    }
+
+    if (!missing_letters.empty()) {
+        AddTrueTypeLetters(font, missing_letters, true);
+    }
+}
+
+void FontManager::AddTrueTypeLetters(FontData& font, const vector<uint32_t>& letters, bool substitute_missing)
+{
+    FO_TRACE_ZONE(Gui);
+
+    auto& sheet = *font.TrueType;
+    vector<irect32> new_cells;
+    vector<uint32_t> added_letters;
+    bool had_missing_letter = sheet.MissingLetter.has_value();
+
+    // A letter must never outlive a failed batch without its pixels in the atlas
+    auto discard_on_fail = scope_fail([&font, &sheet, &added_letters, had_missing_letter]() noexcept {
+        for (uint32_t letter : added_letters) {
+            font.Letters.erase(letter);
+        }
+
+        if (!had_missing_letter) {
+            sheet.MissingLetter.reset();
+        }
+    });
+
+    for (uint32_t letter : letters) {
+        if (font.Letters.contains(letter)) {
+            continue;
+        }
+
+        auto face_it = std::ranges::find_if(sheet.Faces, [letter](const unique_ptr<FontFace>& face) { return face->GetGlyphIndex(letter) != 0; });
+
+        if (face_it != sheet.Faces.end()) {
+            int32_t face_index = numeric_cast<int32_t>(std::distance(sheet.Faces.begin(), face_it));
+            FontData::Letter rasterized = RasterizeTrueTypeLetter(font, face_index, (*face_it)->GetGlyphIndex(letter), new_cells);
+            font.Letters.emplace(letter, rasterized);
+        }
+        else if (substitute_missing) {
+            // Every letter no face carries shares one cell with the first face's missing-glyph box
+            if (!sheet.MissingLetter) {
+                sheet.MissingLetter = RasterizeTrueTypeLetter(font, 0, 0, new_cells);
+            }
+
+            font.Letters.emplace(letter, *sheet.MissingLetter);
+        }
+        else {
+            continue;
+        }
+
+        added_letters.emplace_back(letter);
+    }
+
+    if (added_letters.empty()) {
+        return;
+    }
+
+    // A sheet that grew since its last upload, in this batch or in a failed one, goes up whole
+    if (!font.ImageNormal || font.ImageNormal->GetSize() != sheet.Size) {
+        UploadTrueTypeSheet(font);
+        return;
+    }
+
+    for (irect32 cell : new_cells) {
+        UploadTrueTypeCell(font, cell);
+    }
+    for (uint32_t letter : added_letters) {
+        UpdateLetterTexPos(font, font.Letters[letter]);
+    }
+}
+
+auto FontManager::RasterizeTrueTypeLetter(FontData& font, int32_t face_index, uint32_t glyph_index, vector<irect32>& new_cells) -> FontData::Letter
+{
+    auto& sheet = *font.TrueType;
+    RasterizedGlyph glyph = sheet.Faces[numeric_cast<size_t>(face_index)]->RenderGlyph(glyph_index);
+
+    int32_t padding = sheet.CellPadding;
+    isize32 cell_size = {glyph.Size.width + padding * 2, glyph.Size.height + padding * 2};
+    ipos32 cell_pos = ReserveSheetCell(sheet, cell_size);
+    size_t sheet_width = numeric_cast<size_t>(sheet.Size.width);
+
+    auto coverage_at = [&glyph, padding](int32_t cell_x, int32_t cell_y) -> int32_t {
+        int32_t x = cell_x - padding;
+        int32_t y = cell_y - padding;
+
+        if (x < 0 || y < 0 || x >= glyph.Size.width || y >= glyph.Size.height) {
+            return 0;
+        }
+
+        return glyph.Coverage[numeric_cast<size_t>(y) * numeric_cast<size_t>(glyph.Size.width) + numeric_cast<size_t>(x)];
+    };
+
+    int32_t outline = sheet.Options.OutlineWidth;
+
+    for (int32_t cell_y = 0; cell_y < cell_size.height; cell_y++) {
+        for (int32_t cell_x = 0; cell_x < cell_size.width; cell_x++) {
+            size_t pixel_index = numeric_cast<size_t>(cell_pos.y + cell_y) * sheet_width + numeric_cast<size_t>(cell_pos.x + cell_x);
+            int32_t coverage = coverage_at(cell_x, cell_y);
+
+            if (coverage != 0) {
+                sheet.Pixels[pixel_index] = ucolor {TRUETYPE_GLYPH_GREY, TRUETYPE_GLYPH_GREY, TRUETYPE_GLYPH_GREY, numeric_cast<uint8_t>(coverage)};
+            }
+
+            if (outline == 0) {
+                continue;
+            }
+
+            // The outline is the glyph's coverage spread over a disc of the outline radius, laid black under the glyph
+            int32_t spread = 0;
+
+            for (int32_t dy = -outline; dy <= outline; dy++) {
+                for (int32_t dx = -outline; dx <= outline; dx++) {
+                    if (dx * dx + dy * dy <= outline * outline + outline) {
+                        spread = std::max(spread, coverage_at(cell_x + dx, cell_y + dy));
+                    }
+                }
+            }
+
+            int32_t alpha = coverage + (spread * (255 - coverage) + 127) / 255;
+
+            if (alpha != 0) {
+                uint8_t grey = numeric_cast<uint8_t>((TRUETYPE_GLYPH_GREY * coverage + alpha / 2) / alpha);
+                sheet.BorderedPixels[pixel_index] = ucolor {grey, grey, grey, numeric_cast<uint8_t>(alpha)};
+            }
+        }
+    }
+
+    new_cells.emplace_back(irect32 {cell_pos, cell_size});
+
+    // The drawn quad is the letter rect grown by one pixel, which is exactly the cell
+    FontData::Letter letter;
+    letter.Pos = {cell_pos.x + 1, cell_pos.y + 1};
+    letter.Size = {cell_size.width - 2, cell_size.height - 2};
+    letter.Offset = {padding - 1 - glyph.Bearing.x, glyph.Bearing.y - sheet.Ascender + padding - 1};
+    letter.XAdvance = glyph.Advance;
+    letter.FaceIndex = face_index;
+    letter.GlyphIndex = glyph_index;
+    return letter;
+}
+
+auto FontManager::ReserveSheetCell(FontData::TrueTypeSheet& sheet, isize32 cell_size) -> ipos32
+{
+    while (true) {
+        bool fits_shelf = sheet.ShelfPos.x + cell_size.width <= sheet.Size.width;
+
+        if (!fits_shelf && sheet.ShelfPos.x != 0) {
+            sheet.ShelfPos = {0, sheet.ShelfPos.y + sheet.ShelfHeight + TRUETYPE_CELL_GAP};
+            sheet.ShelfHeight = 0;
+            continue;
+        }
+
+        if (fits_shelf && sheet.ShelfPos.y + cell_size.height <= sheet.Size.height) {
+            ipos32 cell_pos = sheet.ShelfPos;
+            sheet.ShelfPos.x += cell_size.width + TRUETYPE_CELL_GAP;
+            sheet.ShelfHeight = std::max(sheet.ShelfHeight, cell_size.height);
+            return cell_pos;
+        }
+
+        // Cells keep their places: the grown sheet takes the old one as its top left corner
+        isize32 new_size = sheet.Size.height < sheet.Size.width ? isize32 {sheet.Size.width, sheet.Size.height * 2} : isize32 {sheet.Size.width * 2, sheet.Size.height};
+
+        if (new_size.width > TRUETYPE_SHEET_MAX_SIDE || new_size.height > TRUETYPE_SHEET_MAX_SIDE) {
+            throw FontManagerException("TrueType glyph sheet is full", sheet.Size, cell_size);
+        }
+
+        auto grow = [&sheet, new_size](vector<ucolor>& pixels) {
+            if (pixels.empty()) {
+                return;
+            }
+
+            vector<ucolor> grown(numeric_cast<size_t>(new_size.width) * numeric_cast<size_t>(new_size.height), ucolor::clear);
+
+            for (int32_t y = 0; y < sheet.Size.height; y++) {
+                auto row = pixels.begin() + numeric_cast<ptrdiff_t>(y) * sheet.Size.width;
+                std::copy_n(row, sheet.Size.width, grown.begin() + numeric_cast<ptrdiff_t>(y) * new_size.width);
+            }
+
+            pixels = std::move(grown);
+        };
+
+        grow(sheet.Pixels);
+        grow(sheet.BorderedPixels);
+        sheet.Size = new_size;
+    }
+}
+
+void FontManager::UploadTrueTypeSheet(FontData& font)
+{
+    FO_TRACE_ZONE(Gui);
+
+    auto& sheet = *font.TrueType;
+
+    // The new sprites are created beside the old ones, so a failure leaves the font drawing from the old
+    shared_ptr<AtlasSprite> image_normal = _sprMngr->CreateQuadSprite(sheet.Atlas, sheet.Size, sheet.Pixels);
+    shared_ptr<AtlasSprite> image_bordered;
+
+    if (!sheet.BorderedPixels.empty()) {
+        image_bordered = _sprMngr->CreateQuadSprite(sheet.Atlas, sheet.Size, sheet.BorderedPixels);
+    }
+
+    // Text queued this frame still samples the old sprites, which are released below
+    _sprMngr->Flush();
+
+    font.ImageNormal = std::move(image_normal);
+    font.FontTex = font.ImageNormal->GetAtlas()->GetTexture();
+
+    if (image_bordered) {
+        font.ImageBordered = std::move(image_bordered);
+        font.FontTexBordered = font.ImageBordered->GetAtlas()->GetTexture();
+    }
+
+    for (auto& letter : font.Letters | std::views::values) {
+        UpdateLetterTexPos(font, letter);
+    }
+}
+
+void FontManager::UploadTrueTypeCell(FontData& font, irect32 cell)
+{
+    auto& sheet = *font.TrueType;
+
+    auto upload = [&sheet, cell](shared_ptr<AtlasSprite>& sprite, const vector<ucolor>& pixels) {
+        vector<ucolor> cell_pixels;
+        cell_pixels.reserve(numeric_cast<size_t>(cell.width) * numeric_cast<size_t>(cell.height));
+
+        for (int32_t y = 0; y < cell.height; y++) {
+            auto row = pixels.begin() + numeric_cast<ptrdiff_t>(cell.y + y) * sheet.Size.width + cell.x;
+            cell_pixels.insert(cell_pixels.end(), row, row + cell.width);
+        }
+
+        auto atlas = sprite->GetAtlas();
+        int32_t sheet_x = iround<int32_t>(numeric_cast<float32_t>(atlas->GetSize().width) * sprite->GetAtlasRect().x);
+        int32_t sheet_y = iround<int32_t>(numeric_cast<float32_t>(atlas->GetSize().height) * sprite->GetAtlasRect().y);
+        atlas->GetTexture()->UpdateTextureRegion({sheet_x + cell.x, sheet_y + cell.y}, {cell.width, cell.height}, cell_pixels);
+    };
+
+    upload(font.ImageNormal, sheet.Pixels);
+
+    if (font.ImageBordered) {
+        upload(font.ImageBordered, sheet.BorderedPixels);
+    }
+}
+
+void FontManager::UpdateLetterTexPos(const FontData& font, FontData::Letter& letter)
+{
+    auto tex_pos_in = [&letter](const shared_ptr<AtlasSprite>& sprite) -> frect32 {
+        float32_t tex_w = numeric_cast<float32_t>(sprite->GetAtlas()->GetSize().width);
+        float32_t tex_h = numeric_cast<float32_t>(sprite->GetAtlas()->GetSize().height);
+        float32_t image_x = tex_w * sprite->GetAtlasRect().x;
+        float32_t image_y = tex_h * sprite->GetAtlasRect().y;
+
+        frect32 tex_pos;
+        tex_pos.x = (image_x + numeric_cast<float32_t>(letter.Pos.x) - 1.0f) / tex_w;
+        tex_pos.y = (image_y + numeric_cast<float32_t>(letter.Pos.y) - 1.0f) / tex_h;
+        tex_pos.width = numeric_cast<float32_t>(letter.Size.width + 2) / tex_w;
+        tex_pos.height = numeric_cast<float32_t>(letter.Size.height + 2) / tex_h;
+        return tex_pos;
+    };
+
+    letter.TexPos = tex_pos_in(font.ImageNormal);
+    letter.TexBorderedPos = font.ImageBordered ? tex_pos_in(font.ImageBordered) : letter.TexPos;
 }
 
 FO_END_NAMESPACE

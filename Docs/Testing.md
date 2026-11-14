@@ -742,6 +742,8 @@ Current count: **118** `Test_*.cpp` suites.
 - `Source/Tests/Test_DataBase.cpp`
 - `Source/Tests/Test_EntitySync.cpp`
 - `Source/Tests/Test_FogOfWar.cpp`
+- `Source/Tests/Test_FontManager.cpp`
+- `Source/Tests/Test_FontRasterizer.cpp`
 - `Source/Tests/Test_LocationAndEntityMgmt.cpp`
 - `Source/Tests/Test_ModelAnimation.cpp`
 - `Source/Tests/Test_NetBuffer.cpp`
