@@ -10,8 +10,8 @@
       "selector": "scope:native-codegen",
       "stability": "experimental",
       "since": "2022.1.0.wip",
-      "symbol_count": 2612,
-      "inventory_sha256": "b1936a4ffcade84e8ff9b86fde0392fd2ece97551d317b3bbc1cfd71e288b694",
+      "symbol_count": 2611,
+      "inventory_sha256": "5d4fb7a50790b1d792304c4154483bdb4eb386ec0e8a200cc8f48d3261c2f336",
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
@@ -72,13 +72,13 @@
     "api_contract_scope_selector": "scope:native-codegen"
   },
   "summary": {
-    "symbol_count": 2612,
+    "symbol_count": 2611,
     "symbols_by_kind": {
       "entity": 7,
       "enum": 60,
       "enum-value": 770,
       "event": 122,
-      "method": 1035,
+      "method": 1034,
       "migration-rule": 27,
       "property": 134,
       "ref-field": 43,
@@ -89,17 +89,17 @@
       "value-type": 22
     },
     "symbols_by_stability": {
-      "experimental": 2611,
+      "experimental": 2610,
       "internal": 1
     },
     "explicit_contract_declaration_count": 5,
-    "explicit_contract_symbol_count": 2612,
+    "explicit_contract_symbol_count": 2611,
     "default_contract_symbol_count": 0,
     "explicit_contracts_by_stability": {
-      "experimental": 2611,
+      "experimental": 2610,
       "internal": 1
     },
-    "described_symbol_count": 2612,
+    "described_symbol_count": 2611,
     "missing_description_count": 0,
     "symbols_without_source_count": 14,
     "metadata_source_file_count": 43,
@@ -36537,7 +36537,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 374
+        "line": 351
       },
       "contract": {
         "explicit": true,
@@ -36675,7 +36675,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 653
+        "line": 630
       },
       "contract": {
         "explicit": true,
@@ -36723,7 +36723,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 662
+        "line": 639
       },
       "contract": {
         "explicit": true,
@@ -36803,7 +36803,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 627
+        "line": 604
       },
       "contract": {
         "explicit": true,
@@ -36843,7 +36843,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 478
+        "line": 455
       },
       "contract": {
         "explicit": true,
@@ -36926,7 +36926,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 405
+        "line": 382
       },
       "contract": {
         "explicit": true,
@@ -36981,7 +36981,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 436
+        "line": 413
       },
       "contract": {
         "explicit": true,
@@ -37057,7 +37057,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 488
+        "line": 465
       },
       "contract": {
         "explicit": true,
@@ -38032,7 +38032,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 686
+        "line": 663
       },
       "contract": {
         "explicit": true,
@@ -38094,7 +38094,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 609
+        "line": 586
       },
       "contract": {
         "explicit": true,
@@ -38149,7 +38149,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 580
+        "line": 557
       },
       "contract": {
         "explicit": true,
@@ -38211,7 +38211,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 595
+        "line": 572
       },
       "contract": {
         "explicit": true,
@@ -38378,82 +38378,6 @@
       ]
     },
     {
-      "id": "script.method.client.Critter.RunUnlitParticle",
-      "family_id": "script.method.client.Critter.RunUnlitParticle",
-      "kind": "method",
-      "name": "RunUnlitParticle",
-      "runtime_sides": [
-        "client",
-        "mapper"
-      ],
-      "receiver": "Critter",
-      "signature": "void Critter.RunUnlitParticle(string particleName, hstring boneName, float32 moveX, float32 moveY, float32 moveZ)",
-      "description": "Starts an unlit particle on a loaded 3D model bone with RunParticle offsets and lifetime; its atlas layer bypasses\nmap lighting. Does nothing without a model or 3D support and throws off-map",
-      "flags": [],
-      "stability": "experimental",
-      "since": "2022.1.0.wip",
-      "deprecated": null,
-      "examples": [],
-      "source": {
-        "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 352
-      },
-      "contract": {
-        "explicit": true,
-        "selector": "scope:native-codegen",
-        "source": {
-          "path": "Source/Common/Common.h",
-          "line": 15
-        },
-        "notes": ""
-      },
-      "declared_target": "client",
-      "receivers": [
-        "Critter"
-      ],
-      "return": {
-        "type": "void",
-        "nullable": false
-      },
-      "arguments": [
-        {
-          "name": "particleName",
-          "type": "string",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "boneName",
-          "type": "hstring",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "moveX",
-          "type": "float32",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "moveY",
-          "type": "float32",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        },
-        {
-          "name": "moveZ",
-          "type": "float32",
-          "nullable": false,
-          "by_reference": false,
-          "default": null
-        }
-      ]
-    },
-    {
       "id": "script.method.client.Critter.SetAlpha",
       "family_id": "script.method.client.Critter.SetAlpha",
       "kind": "method",
@@ -38472,7 +38396,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 675
+        "line": 652
       },
       "contract": {
         "explicit": true,
@@ -38608,7 +38532,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-        "line": 618
+        "line": 595
       },
       "contract": {
         "explicit": true,

@@ -2609,39 +2609,6 @@
       ]
     },
     {
-      "id": "particle-format.runtime.model-unlit-overlay",
-      "name": "Explicit unlit model particle layer",
-      "stability": "experimental",
-      "requirement": "Native ModelInstance.RunUnlitParticle shares RunParticle placement, first-pose initialization, bounds and retirement, but selects the parent-owned ModelSprite overlay. The atlas producer draws meshes and lit particles first, retains their depth while clearing only color, and draws unlit particles without posing or advancing simulation again. Both images use the same crop and pivot offset; stable sizes reuse the overlay allocation. Sprite update releases it when no initialized unlit systems remain active, including after direct-scene retirement without a preview atlas redraw. RunParticle, AttachParticles and the direct-scene all-particle route retain their meanings. Picking and specialized image effects address the base atlas.",
-      "rationale": "An emissive model-bone effect can bypass map lighting without detaching from the authoritative pose or changing existing particle callers.",
-      "source": [
-        {
-          "path": "Source/Client/ModelInstance.cpp",
-          "anchors": [
-            "void ModelInstance::RunUnlitParticle",
-            "void ModelInstance::DrawSpriteFrameLit",
-            "void ModelInstance::DrawUnlitParticles",
-            "void ModelInstance::DrawParticles"
-          ]
-        },
-        {
-          "path": "Source/Client/ModelSprites.cpp",
-          "anchors": [
-            "ModelSpriteFactory::DrawModelToAtlas",
-            "ClearCurrentRenderTarget(ucolor::clear, false)",
-            "model_spr->_unlitOverlay = std::move(unlit_overlay)"
-          ]
-        },
-        {
-          "path": "Source/Tests/Test_ClientEngine.cpp",
-          "anchors": [
-            "ModelParticleEmitsAtItsBoneBeforeAnotherPose",
-            "AtlasOverlayUsesTheBornPoseAndRetires"
-          ]
-        }
-      ]
-    },
-    {
       "id": "particle-format.runtime.sprite-frame",
       "name": "Automatic particle sprite frame",
       "stability": "experimental",
@@ -2998,29 +2965,6 @@
       ]
     },
     {
-      "id": "particle-format.integration.critter-run-unlit-particle",
-      "name": "Unlit critter model particle",
-      "stability": "experimental",
-      "requirement": "Critter.RunUnlitParticle uses the same bone name, model-unit offset, first-pose placement and lifetime as RunParticle, selecting the ModelSprite unlit atlas overlay. The client and mapper export does nothing without a loaded model or FO_ENABLE_3D support, and throws off-map. Existing RunParticle and direct-scene playback retain their meanings.",
-      "rationale": "Scripts can explicitly choose emissive model-bone playback without moving the effect to an independent world sprite or changing the existing particle API.",
-      "source": [
-        {
-          "path": "Source/Scripting/ClientCritterScriptMethods.cpp",
-          "anchors": [
-            "Client_Critter_RunUnlitParticle",
-            "model->RunUnlitParticle"
-          ]
-        },
-        {
-          "path": "Source/Client/ModelInstance.cpp",
-          "anchors": [
-            "void ModelInstance::RunUnlitParticle",
-            "StartParticle(particle_name, bone_name, move, true)"
-          ]
-        }
-      ]
-    },
-    {
       "id": "particle-format.integration.model-attachment",
       "name": ".fo3d AttachParticles",
       "stability": "experimental",
@@ -3171,22 +3115,22 @@
     }
   ],
   "summary": {
-    "entry_count": 122,
+    "entry_count": 120,
     "backend_count": 2,
     "format_count": 4,
     "graph_object_count": 37,
     "xml_rule_count": 12,
     "renderer_field_count": 19,
     "tooling_rule_count": 5,
-    "runtime_rule_count": 19,
-    "integration_rule_count": 10,
+    "runtime_rule_count": 18,
+    "integration_rule_count": 9,
     "validation_rule_count": 7,
     "stability_counts": {
       "deprecated": 1,
-      "experimental": 115,
+      "experimental": 113,
       "internal": 2,
       "stable": 4
     }
   },
-  "contract_digest": "5bf5536e10f8176f20b54f61037ade9cd6911f50fb688becdcd2b877daeb22fb"
+  "contract_digest": "29db46bbb96521b57103bd480050c8a9e804f2e88bc4f4eb68ff0b9860deff7c"
 }

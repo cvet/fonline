@@ -17,26 +17,6 @@ void Client_Map_DrawMapSprite(ptr<MapView> self, ptr<MapSpriteHolder> mapSpr);
 bool Client_Critter_GetBoneMapAnchor(ptr<CritterView> self, hstring boneName, float32_t moveX, float32_t moveY, float32_t moveZ, ipos32& boneOffset, float32_t& depthOffset);
 bool Client_Critter_GetBoneSpriteMapAnchor(ptr<CritterView> self, hstring boneName, float32_t moveX, float32_t moveY, float32_t moveZ, ipos32& boneOffset, float32_t& depthOffset);
 
-class TestUnlitOverlaySprite final : public Sprite
-{
-public:
-    TestUnlitOverlaySprite(ptr<SpriteManager> spr_mngr, shared_ptr<Sprite> base, shared_ptr<Sprite> overlay) :
-        Sprite(spr_mngr, base->GetSize(), base->GetOffset()),
-        _base {std::move(base)},
-        _overlay {std::move(overlay)}
-    {
-    }
-
-    [[nodiscard]] auto GetUnlitOverlay() const -> nptr<const Sprite> override { return nptr<const Sprite> {_overlay.get()}; }
-    [[nodiscard]] auto GetBatchTexture() const -> nptr<const RenderTexture> override { return _base->GetBatchTexture(); }
-
-    auto FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override { return _base->FillData(dbuf, pos, colors); }
-
-private:
-    shared_ptr<Sprite> _base;
-    shared_ptr<Sprite> _overlay;
-};
-
 static auto ReadRecordedLayerQuad(const RecordedQuadDraw& draw) -> vector<Vertex2D>
 {
     REQUIRE(draw.IndicesToDraw.has_value());
@@ -1639,8 +1619,6 @@ TEST_CASE("ModelParticleEmitsAtItsBoneBeforeAnotherPose")
     constexpr string_view mesh_path {"Models/ImmediateParticle.fbx"};
     constexpr string_view model_path {"Models/ImmediateParticle.fo3d"};
     constexpr string_view particle_path {"Particles/Immediate.efk"};
-    bool unlit {GENERATE(false, true)};
-    CAPTURE(unlit);
     constexpr string_view particle_project {R"EFK(<?xml version="1.0" encoding="utf-8"?>
 <EffekseerProject>
   <Root>
@@ -1708,9 +1686,6 @@ TEST_CASE("ModelParticleEmitsAtItsBoneBeforeAnotherPose")
     resources.emplace_back("ModelAnimationInfo.foinfo", std::move(animation_info));
     resources.emplace_back(string {particle_path}, std::move(particle.Binary));
 
-    constexpr string_view particle_effect {"[Effect]\nPasses = 1\nDepthWrite = False\nDepthFunc = LessEqual\nDepthVariants = True\nCullVariants = True\n"};
-    resources.emplace_back("Effects/Particles_ColorMulAtlas.fofx", vector<uint8_t> {particle_effect.begin(), particle_effect.end()});
-
     auto settings {MakeClientTestSettings()};
     BakerTests::OverrideSetting(settings.Render.ModelProjFactor, 32.0f);
 
@@ -1747,15 +1722,6 @@ TEST_CASE("ModelParticleEmitsAtItsBoneBeforeAnotherPose")
         return count;
     }};
 
-    auto run_particle {[unlit](ptr<ModelInstance> instance, string_view path, hstring bone_name, vec3 offset) {
-        if (unlit) {
-            instance->RunUnlitParticle(path, bone_name, offset);
-        }
-        else {
-            instance->RunParticle(path, bone_name, offset);
-        }
-    }};
-
     SECTION("CallbackBirthIsReadyBeforeTheNextPose")
     {
         vec3 offset {4.0f, 0.0f, 0.0f};
@@ -1770,10 +1736,10 @@ TEST_CASE("ModelParticleEmitsAtItsBoneBeforeAnotherPose")
             .ActionAnim = action,
             .NormalizedTime = 0.5f,
             .Callback =
-                [&model, &run_particle, particle_path, bone, offset, &callbacks] {
+                [&model, particle_path, bone, offset, &callbacks] {
                     callbacks++;
 
-                    run_particle(model.get(), particle_path, bone, offset);
+                    model->RunParticle(particle_path, bone, offset);
                 },
         });
         model->SetSpeed(10.0f);
@@ -1788,7 +1754,6 @@ TEST_CASE("ModelParticleEmitsAtItsBoneBeforeAnotherPose")
 
         // The callback runs after the particle loop; the first observation must contain the zero-time effect itself
         CHECK(particle_attach_count(model) == 1);
-        CHECK(model->HasUnlitParticles() == unlit);
         auto first {model->GetSpriteBounds()};
         REQUIRE(first);
         CAPTURE(first->Rect.x, first->Rect.y, first->Rect.width, first->Rect.height, first->RequiredFrameSize.width, first->RequiredFrameSize.height);
@@ -1811,7 +1776,6 @@ TEST_CASE("ModelParticleEmitsAtItsBoneBeforeAnotherPose")
         auto after_repose {model->GetSpriteBounds()};
         REQUIRE(after_repose);
         CHECK(particle_attach_count(model) == 1);
-        CHECK(model->HasUnlitParticles() == unlit);
 
         auto after_relative {model->GetBonePos(bone, offset)};
         REQUIRE(after_relative);
@@ -1832,11 +1796,10 @@ TEST_CASE("ModelParticleEmitsAtItsBoneBeforeAnotherPose")
         // The unconsumed interval reaches the first pose after the request; birth must not inherit it
         coarse_sleep(std::chrono::milliseconds {200});
         client->GameTime.FrameAdvance(false);
-        run_particle(model.get(), particle_path, bone, offset);
+        model->RunParticle(particle_path, bone, offset);
         model->PoseSpriteFrame(true);
 
         CHECK(particle_attach_count(model) == 1);
-        CHECK(model->HasUnlitParticles() == unlit);
         auto first {model->GetSpriteBounds()};
         REQUIRE(first);
         CAPTURE(first->Rect.x, first->Rect.y, first->Rect.width, first->Rect.height, first->RequiredFrameSize.width, first->RequiredFrameSize.height);
@@ -1861,11 +1824,10 @@ TEST_CASE("ModelParticleEmitsAtItsBoneBeforeAnotherPose")
 
         coarse_sleep(std::chrono::milliseconds {200});
         client->GameTime.FrameAdvance(false);
-        run_particle(model.get(), particle_path, bone, offset);
+        model->RunParticle(particle_path, bone, offset);
         model->PoseSpriteFrame(true);
 
         CHECK(particle_attach_count(model) == 1);
-        CHECK(model->HasUnlitParticles() == unlit);
         auto first {model->GetSpriteBounds()};
         REQUIRE(first);
         CAPTURE(first->Rect.x, first->Rect.y, first->Rect.width, first->Rect.height, first->RequiredFrameSize.width, first->RequiredFrameSize.height);
@@ -1891,13 +1853,12 @@ TEST_CASE("ModelParticleEmitsAtItsBoneBeforeAnotherPose")
         vec3 offset {4.0f, 0.0f, 0.0f};
         CHECK_FALSE(model->NeedForceDraw());
 
-        run_particle(model.get(), particle_path, bone, offset);
+        model->RunParticle(particle_path, bone, offset);
         CHECK(model->NeedForceDraw());
 
         model->PoseSpriteFrame(false);
 
         CHECK(particle_attach_count(model) == 1);
-        CHECK(model->HasUnlitParticles() == unlit);
         auto control {model->GetSpriteBounds()};
         REQUIRE(control);
         CAPTURE(control->Rect.x, control->Rect.y, control->Rect.width, control->Rect.height, control->RequiredFrameSize.width, control->RequiredFrameSize.height);
@@ -1931,7 +1892,7 @@ TEST_CASE("ModelParticleEmitsAtItsBoneBeforeAnotherPose")
         REQUIRE(mesh_bounds);
         REQUIRE(mesh_bounds->Rect.width < 512);
 
-        run_particle(fresh_model.get(), particle_path, bone, offset);
+        fresh_model->RunParticle(particle_path, bone, offset);
 
         // A request without a valid pose must not reserve an identity-origin envelope
         auto pending_bounds {fresh_model->GetSpriteBounds()};
@@ -1939,14 +1900,11 @@ TEST_CASE("ModelParticleEmitsAtItsBoneBeforeAnotherPose")
         CHECK(pending_bounds->Rect == mesh_bounds->Rect);
         CHECK(pending_bounds->RequiredFrameSize == mesh_bounds->RequiredFrameSize);
 
-        CHECK_FALSE(fresh_model->HasUnlitParticles());
-
         fresh_model->PoseSpriteFrame(false);
         auto placed {fresh_model->GetSpriteBounds()};
         REQUIRE(placed);
         CAPTURE(placed->Rect.x, placed->Rect.y, placed->Rect.width, placed->Rect.height, placed->RequiredFrameSize.width, placed->RequiredFrameSize.height);
         CHECK(particle_attach_count(fresh_model) == 1);
-        CHECK(fresh_model->HasUnlitParticles() == unlit);
         CHECK(fresh_model->GetDrawSize() == isize32 {512, 512});
 
         auto relative {fresh_model->GetBonePos(bone, offset)};
@@ -1981,7 +1939,6 @@ TEST_CASE("ModelParticleEmitsAtItsBoneBeforeAnotherPose")
         }
 
         CHECK(particle_attach_count(fresh_model) == 0);
-        CHECK_FALSE(fresh_model->HasUnlitParticles());
         REQUIRE(finished);
         CHECK((point.x < finished->Rect.x || point.x >= finished->Rect.x + finished->Rect.width || point.y < finished->Rect.y || point.y >= finished->Rect.y + finished->Rect.height));
     }
@@ -1990,24 +1947,21 @@ TEST_CASE("ModelParticleEmitsAtItsBoneBeforeAnotherPose")
     {
         vec3 offset {4.0f, 0.0f, 0.0f};
         CHECK(particle_attach_count(model) == 0);
-        CHECK_FALSE(model->HasUnlitParticles());
 
-        run_particle(model.get(), particle_path, client->Hashes.to_hashed_string("MissingParticleBone"), offset);
+        model->RunParticle(particle_path, client->Hashes.to_hashed_string("MissingParticleBone"), offset);
 
         auto rejected {model->GetSpriteBounds()};
         REQUIRE(rejected);
         CHECK(rejected->Rect == before->Rect);
         CHECK(rejected->RequiredFrameSize == before->RequiredFrameSize);
         CHECK(particle_attach_count(model) == 0);
-        CHECK_FALSE(model->HasUnlitParticles());
 
-        run_particle(model.get(), particle_path, bone, offset);
+        model->RunParticle(particle_path, bone, offset);
         model->PoseSpriteFrame(false);
 
         auto accepted {model->GetSpriteBounds()};
         REQUIRE(accepted);
         CHECK(particle_attach_count(model) == 1);
-        CHECK(model->HasUnlitParticles() == unlit);
 
         auto relative {model->GetBonePos(bone, offset)};
         REQUIRE(relative);
@@ -2019,75 +1973,6 @@ TEST_CASE("ModelParticleEmitsAtItsBoneBeforeAnotherPose")
         CHECK(point.y < accepted->Rect.y + accepted->Rect.height);
         CHECK(accepted->RequiredFrameSize.width <= 512);
         CHECK(accepted->RequiredFrameSize.height <= 512);
-    }
-    SECTION("AtlasOverlayUsesTheBornPoseAndRetires")
-    {
-        bool direct_draw {GENERATE(false, true)};
-        CAPTURE(direct_draw);
-        BakerTests::OverrideSetting(settings.Render.ModelDirectDraw, direct_draw);
-
-        auto sprite {factory->LoadSprite(client->Hashes.to_hashed_string(model_path), AtlasType::OneImage).dyn_cast<ModelSprite>()};
-        REQUIRE(sprite);
-        REQUIRE(sprite->IsDirectDraw() == direct_draw);
-
-        auto instance {sprite->GetModel()};
-        instance->StartMeshGeneration();
-        instance->PrepareFrameLayout();
-        (void)instance->PlayAnim(state, action, nullptr, 0.0f, ModelAnimFlags::Freeze);
-        instance->SetupFrame(isize32 {512, 512}, ipos32 {256, 384});
-        sprite->SetSize(isize32 {512, 512});
-
-        run_particle(instance, particle_path, bone, vec3 {4.0f, 0.0f, 0.0f});
-        CHECK_FALSE(instance->HasUnlitParticles());
-        CHECK(sprite->Update());
-        CHECK(particle_attach_count(instance) == 1);
-        CHECK(instance->HasUnlitParticles() == unlit);
-
-        auto overlay {sprite->GetUnlitOverlay()};
-
-        if (unlit) {
-            REQUIRE(overlay);
-            CHECK(overlay->GetSize() == sprite->GetSize());
-            CHECK(overlay->GetOffset() == sprite->GetOffset());
-            CHECK(overlay->GetBatchTexture());
-            CHECK(overlay->GetBatchTexture() != sprite->GetBatchTexture());
-
-            instance->RequestRedraw();
-            CHECK(sprite->Update());
-            CHECK(sprite->GetUnlitOverlay() == overlay);
-        }
-        else {
-            CHECK_FALSE(overlay);
-        }
-
-        coarse_sleep(std::chrono::milliseconds {200});
-        client->GameTime.FrameAdvance(false);
-
-        if (direct_draw) {
-            instance->DrawInScene(mat44 {1.0f}, 1.0f);
-            CHECK_FALSE(instance->NeedForceDraw());
-        }
-
-        CHECK(sprite->Update());
-
-        int32_t retirement_poses {0};
-
-        while (particle_attach_count(instance) != 0 && retirement_poses < 3) {
-            if (direct_draw) {
-                instance->DrawInScene(mat44 {1.0f}, 1.0f);
-                CHECK_FALSE(instance->NeedForceDraw());
-            }
-            else {
-                instance->RequestRedraw();
-            }
-
-            CHECK(sprite->Update());
-            retirement_poses++;
-        }
-
-        CHECK(particle_attach_count(instance) == 0);
-        CHECK_FALSE(instance->HasUnlitParticles());
-        CHECK_FALSE(sprite->GetUnlitOverlay());
     }
 }
 #endif
@@ -3410,338 +3295,6 @@ TEST_CASE("SpriteManagerMapsPolygonAtlasPatternsAndPaddedEffects")
     CHECK(effect.SpriteBorderBuf->SpriteBorder[2] == Catch::Approx(atlas_rect.x + atlas_rect.width));
     CHECK(effect.SpriteBorderBuf->SpriteBorder[3] == Catch::Approx(atlas_rect.y + atlas_rect.height));
     sprite->SetDrawEffect(nullptr);
-}
-
-TEST_CASE("SpriteManagerUnlitOverlayReplaysGuiRectangleAndTint")
-{
-    auto settings {MakeClientTestSettings()};
-    BakerTests::OverrideSetting(settings.Render.Brightness, 0);
-
-    vector<pair<string, vector<uint8_t>>> resources {};
-    resources.emplace_back("OverlayBase.png", BakerTests::MakeMinimalBakedSprite(8, 6));
-    resources.emplace_back("OverlayLayer.png", BakerTests::MakeMinimalBakedSprite(3, 5));
-
-    auto client {MakeClientEngine(settings, MakeClientTestResources(std::move(resources)))};
-    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
-    RecordingQuadEffect effect {};
-    auto base_sprite {client->ResMngr.LoadSprite("OverlayBase.png", AtlasType::OneImage)};
-    auto overlay_sprite {client->ResMngr.LoadSprite("OverlayLayer.png", AtlasType::OneImage)};
-
-    REQUIRE(base_sprite);
-    REQUIRE(overlay_sprite);
-    REQUIRE(base_sprite->GetBatchTexture());
-    REQUIRE(overlay_sprite->GetBatchTexture());
-    REQUIRE(base_sprite->GetBatchTexture() != overlay_sprite->GetBatchTexture());
-
-    SECTION("NoOverlayKeepsOneGuiQuad")
-    {
-        base_sprite->SetDrawEffect(make_nptr(&effect));
-
-        client->SprMngr.DrawSprite(base_sprite, ipos32 {13, 29}, ucolor {40, 70, 90, 110});
-        client->SprMngr.Flush();
-
-        REQUIRE(effect.Draws.size() == 1);
-        const RecordedQuadDraw& draw {effect.Draws.front()};
-
-        REQUIRE(draw.Vertices.size() == 4);
-        REQUIRE(draw.Indices.size() == 6);
-        CHECK(draw.StartIndex == 0);
-        REQUIRE(draw.IndicesToDraw.has_value());
-        CHECK(*draw.IndicesToDraw == 6);
-        CHECK(draw.CustomTexture == base_sprite->GetBatchTexture());
-
-        CHECK(draw.Vertices[0].PosX == Catch::Approx(13.0f));
-        CHECK(draw.Vertices[0].PosY == Catch::Approx(35.0f));
-        CHECK(draw.Vertices[1].PosX == Catch::Approx(13.0f));
-        CHECK(draw.Vertices[1].PosY == Catch::Approx(29.0f));
-        CHECK(draw.Vertices[2].PosX == Catch::Approx(21.0f));
-        CHECK(draw.Vertices[2].PosY == Catch::Approx(29.0f));
-        CHECK(draw.Vertices[3].PosX == Catch::Approx(21.0f));
-        CHECK(draw.Vertices[3].PosY == Catch::Approx(35.0f));
-        CHECK(draw.Vertices[0].Color == (ucolor {40, 70, 90, 110}));
-        CHECK(draw.Vertices[1].Color == (ucolor {40, 70, 90, 110}));
-        CHECK(draw.Vertices[2].Color == (ucolor {40, 70, 90, 110}));
-        CHECK(draw.Vertices[3].Color == (ucolor {40, 70, 90, 110}));
-    }
-
-    SECTION("DrawSpriteReplaysOverlayAtTheMainRectangle")
-    {
-        auto sprite {safe_alloc::make_shared<TestUnlitOverlaySprite>(&client->SprMngr, base_sprite, overlay_sprite)};
-
-        sprite->SetDrawEffect(make_nptr(&effect));
-
-        client->SprMngr.DrawSprite(sprite, ipos32 {23, 41}, ucolor {200, 120, 60, 77});
-        client->SprMngr.Flush();
-
-        REQUIRE(effect.Draws.size() == 2);
-        vector<Vertex2D> main_vertices {ReadRecordedLayerQuad(effect.Draws[0])};
-        vector<Vertex2D> overlay_vertices {ReadRecordedLayerQuad(effect.Draws[1])};
-
-        CHECK(effect.Draws[0].CustomTexture == base_sprite->GetBatchTexture());
-        CHECK(effect.Draws[1].CustomTexture == overlay_sprite->GetBatchTexture());
-        CHECK(effect.Draws[0].CustomTexture != effect.Draws[1].CustomTexture);
-
-        REQUIRE(main_vertices.size() == 4);
-        REQUIRE(overlay_vertices.size() == 4);
-
-        for (size_t i {0}; i < 4; i++) {
-            CHECK(main_vertices[i].PosX == Catch::Approx(overlay_vertices[i].PosX));
-            CHECK(main_vertices[i].PosY == Catch::Approx(overlay_vertices[i].PosY));
-            CHECK(main_vertices[i].Color == (ucolor {200, 120, 60, 77}));
-            CHECK(overlay_vertices[i].Color == (ucolor {200, 120, 60, 77}));
-        }
-
-        CHECK(main_vertices[0].PosX == Catch::Approx(23.0f));
-        CHECK(main_vertices[0].PosY == Catch::Approx(47.0f));
-        CHECK(main_vertices[1].PosX == Catch::Approx(23.0f));
-        CHECK(main_vertices[1].PosY == Catch::Approx(41.0f));
-        CHECK(main_vertices[2].PosX == Catch::Approx(31.0f));
-        CHECK(main_vertices[2].PosY == Catch::Approx(41.0f));
-        CHECK(main_vertices[3].PosX == Catch::Approx(31.0f));
-        CHECK(main_vertices[3].PosY == Catch::Approx(47.0f));
-    }
-
-    SECTION("DrawSpriteSizeDelegatesOverlayToTheScaledRectangle")
-    {
-        auto sprite {safe_alloc::make_shared<TestUnlitOverlaySprite>(&client->SprMngr, base_sprite, overlay_sprite)};
-
-        sprite->SetDrawEffect(make_nptr(&effect));
-
-        client->SprMngr.DrawSpriteSize(sprite, ipos32 {5, 7}, isize32 {16, 12}, true, true, ucolor {90, 80, 70, 60});
-        client->SprMngr.Flush();
-
-        REQUIRE(effect.Draws.size() == 2);
-        vector<Vertex2D> main_vertices {ReadRecordedLayerQuad(effect.Draws[0])};
-        vector<Vertex2D> overlay_vertices {ReadRecordedLayerQuad(effect.Draws[1])};
-
-        CHECK(effect.Draws[0].CustomTexture == base_sprite->GetBatchTexture());
-        CHECK(effect.Draws[1].CustomTexture == overlay_sprite->GetBatchTexture());
-        CHECK(effect.Draws[0].CustomTexture != effect.Draws[1].CustomTexture);
-
-        REQUIRE(main_vertices.size() == 4);
-        REQUIRE(overlay_vertices.size() == 4);
-
-        for (size_t i {0}; i < 4; i++) {
-            CHECK(main_vertices[i].PosX == Catch::Approx(overlay_vertices[i].PosX));
-            CHECK(main_vertices[i].PosY == Catch::Approx(overlay_vertices[i].PosY));
-            CHECK(main_vertices[i].Color == (ucolor {90, 80, 70, 60}));
-            CHECK(overlay_vertices[i].Color == (ucolor {90, 80, 70, 60}));
-        }
-
-        CHECK(main_vertices[0].PosX == Catch::Approx(5.0f));
-        CHECK(main_vertices[0].PosY == Catch::Approx(19.0f));
-        CHECK(main_vertices[1].PosX == Catch::Approx(5.0f));
-        CHECK(main_vertices[1].PosY == Catch::Approx(7.0f));
-        CHECK(main_vertices[2].PosX == Catch::Approx(21.0f));
-        CHECK(main_vertices[2].PosY == Catch::Approx(7.0f));
-        CHECK(main_vertices[3].PosX == Catch::Approx(21.0f));
-        CHECK(main_vertices[3].PosY == Catch::Approx(19.0f));
-    }
-
-    SECTION("DrawSpriteSizeExtScalesOverlayToTheMainRectangle")
-    {
-        auto sprite {safe_alloc::make_shared<TestUnlitOverlaySprite>(&client->SprMngr, base_sprite, overlay_sprite)};
-
-        sprite->SetDrawEffect(make_nptr(&effect));
-
-        client->SprMngr.DrawSpriteSizeExt(sprite, fpos32 {51.5f, 63.25f}, fsize32 {20.0f, 30.0f}, true, true, false, ucolor {10, 220, 140, 33});
-        client->SprMngr.Flush();
-
-        REQUIRE(effect.Draws.size() == 2);
-        vector<Vertex2D> main_vertices {ReadRecordedLayerQuad(effect.Draws[0])};
-        vector<Vertex2D> overlay_vertices {ReadRecordedLayerQuad(effect.Draws[1])};
-
-        CHECK(effect.Draws[0].CustomTexture == base_sprite->GetBatchTexture());
-        CHECK(effect.Draws[1].CustomTexture == overlay_sprite->GetBatchTexture());
-        CHECK(effect.Draws[0].CustomTexture != effect.Draws[1].CustomTexture);
-
-        REQUIRE(main_vertices.size() == 4);
-        REQUIRE(overlay_vertices.size() == 4);
-
-        for (size_t i {0}; i < 4; i++) {
-            CHECK(main_vertices[i].PosX == Catch::Approx(overlay_vertices[i].PosX));
-            CHECK(main_vertices[i].PosY == Catch::Approx(overlay_vertices[i].PosY));
-            CHECK(main_vertices[i].Color == (ucolor {10, 220, 140, 33}));
-            CHECK(overlay_vertices[i].Color == (ucolor {10, 220, 140, 33}));
-        }
-
-        CHECK(main_vertices[0].PosX == Catch::Approx(51.5f));
-        CHECK(main_vertices[0].PosY == Catch::Approx(86.25f));
-        CHECK(main_vertices[1].PosX == Catch::Approx(51.5f));
-        CHECK(main_vertices[1].PosY == Catch::Approx(71.25f));
-        CHECK(main_vertices[2].PosX == Catch::Approx(71.5f));
-        CHECK(main_vertices[2].PosY == Catch::Approx(71.25f));
-        CHECK(main_vertices[3].PosX == Catch::Approx(71.5f));
-        CHECK(main_vertices[3].PosY == Catch::Approx(86.25f));
-    }
-}
-
-TEST_CASE("SpriteManagerUnlitOverlayMapKeepsUnlitColorGeometryAndDepth")
-{
-    auto settings {MakeClientTestSettings()};
-    BakerTests::OverrideSetting(settings.Render.Brightness, 0);
-    BakerTests::OverrideSetting(settings.Geometry.MapCameraAngle, 30.0f);
-
-    vector<pair<string, vector<uint8_t>>> resources {};
-    resources.emplace_back("MapOverlayBase.png", BakerTests::MakeMinimalBakedSprite(8, 8));
-    resources.emplace_back("MapOverlayLayer.png", BakerTests::MakeMinimalBakedSprite(5, 11));
-
-    auto client {MakeClientEngine(settings, MakeClientTestResources(std::move(resources)))};
-    auto shutdown {scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); })};
-    RecordingQuadEffect effect {};
-    auto base_sprite {client->ResMngr.LoadSprite("MapOverlayBase.png", AtlasType::OneImage)};
-    auto overlay_sprite {client->ResMngr.LoadSprite("MapOverlayLayer.png", AtlasType::OneImage)};
-
-    REQUIRE(base_sprite);
-    REQUIRE(overlay_sprite);
-    REQUIRE(base_sprite->GetBatchTexture());
-    REQUIRE(overlay_sprite->GetBatchTexture());
-    REQUIRE(base_sprite->GetBatchTexture() != overlay_sprite->GetBatchTexture());
-
-    auto sprite {safe_alloc::make_shared<TestUnlitOverlaySprite>(&client->SprMngr, base_sprite, overlay_sprite)};
-
-    sprite->SetDrawEffect(make_nptr(&effect));
-
-    uint8_t map_alpha {150};
-    ipos32 field_offset {100, 100};
-    MapSpriteList list {};
-    auto mspr {list.AddSprite(DrawOrderType::Item, mpos {3, 3}, ipos32 {12, -17}, &field_offset, sprite.get(), nullptr, nullptr, nullptr, &map_alpha, nullptr, nullptr, 0)};
-
-    REQUIRE(mspr->GetAlpha());
-    CHECK(*mspr->GetAlpha() == 150);
-
-    client->SprMngr.SetEgg(TransparentEggSlot::Primary, mpos {3, 3}, fpos32 {50.0f, 50.0f}, fsize32 {30.0f, 20.0f}, TransparentEggTarget::AnyOccluder);
-    client->SprMngr.SetEgg(TransparentEggSlot::Secondary, mpos {3, 3}, fpos32 {70.0f, 45.0f}, fsize32 {15.0f, 25.0f}, TransparentEggTarget::AnyOccluder);
-
-    irect32 draw_area {0, 0, 320, 200};
-    auto draw_layers {[&]() -> pair<vector<Vertex2D>, vector<Vertex2D>> {
-        effect.Draws.clear();
-        client->SprMngr.DrawSprites(list, draw_area, 0, true, DrawOrderType::Item, DrawOrderType::Item, ucolor {36, 24, 12, 255}, &effect);
-
-        REQUIRE(effect.Draws.size() == 2);
-        CHECK(effect.Draws[0].CustomTexture == base_sprite->GetBatchTexture());
-        CHECK(effect.Draws[1].CustomTexture == overlay_sprite->GetBatchTexture());
-        CHECK(effect.Draws[0].CustomTexture != effect.Draws[1].CustomTexture);
-
-        vector<Vertex2D> main_vertices {ReadRecordedLayerQuad(effect.Draws[0])};
-        vector<Vertex2D> overlay_vertices {ReadRecordedLayerQuad(effect.Draws[1])};
-
-        REQUIRE(main_vertices.size() == 4);
-        REQUIRE(overlay_vertices.size() == 4);
-
-        return {std::move(main_vertices), std::move(overlay_vertices)};
-    }};
-
-    SECTION("NeutralOverlayBypassesDayLightAndPreservesAlpha")
-    {
-        auto layers {draw_layers()};
-
-        for (size_t i {0}; i < 4; i++) {
-            CHECK(layers.first[i].Color == (ucolor {36, 24, 12, 150}));
-            CHECK(layers.second[i].Color == (ucolor {128, 128, 128, 150}));
-        }
-    }
-
-    SECTION("LocalLightReachesOnlyTheMainLayer")
-    {
-        ucolor local_light {20, 30, 40, 255};
-        array<ucolor, 256> light_samples {};
-
-        for (auto& sample : light_samples) {
-            sample = local_light;
-        }
-
-        // A uniform light buffer keeps the corner selection irrelevant while taking the local-light path
-        mspr->SetLight(make_ptr(&light_samples[0]), make_ptr(&light_samples[0]), make_ptr(&light_samples[0]));
-
-        auto layers {draw_layers()};
-
-        for (size_t i {0}; i < 4; i++) {
-            CHECK(layers.first[i].Color == (ucolor {56, 54, 52, 150}));
-            CHECK(layers.second[i].Color == (ucolor {128, 128, 128, 150}));
-        }
-    }
-
-    SECTION("ExplicitMapColorIsTheOverlayTint")
-    {
-        mspr->SetColor(ucolor {200, 90, 30, 255});
-        mspr->SetAlpha(&map_alpha);
-
-        auto layers {draw_layers()};
-
-        for (size_t i {0}; i < 4; i++) {
-            CHECK(layers.first[i].Color == (ucolor {200, 90, 30, 150}));
-            CHECK(layers.second[i].Color == (ucolor {200, 90, 30, 150}));
-        }
-    }
-
-    SECTION("RotationProjectionDepthAndBothEggSlotsCoverBothLayers")
-    {
-        mspr->SetEggAppearence(EggAppearenceType::Always);
-        mspr->SetAngle(int16_t {30});
-        mspr->SetMapProjected(true);
-
-        auto transformed {draw_layers()};
-
-        for (size_t i {0}; i < 4; i++) {
-            CHECK(transformed.first[i].PosX == Catch::Approx(transformed.second[i].PosX));
-            CHECK(transformed.first[i].PosY == Catch::Approx(transformed.second[i].PosY));
-            CHECK(transformed.first[i].PosZ == Catch::Approx(transformed.second[i].PosZ));
-            CHECK(transformed.first[i].EggFlags[0] == 1.0f);
-            CHECK(transformed.first[i].EggFlags[1] == 1.0f);
-            CHECK(transformed.second[i].EggFlags[0] == 1.0f);
-            CHECK(transformed.second[i].EggFlags[1] == 1.0f);
-        }
-
-        mspr->SetAngle(int16_t {0});
-        mspr->SetMapProjected(false);
-
-        auto plain {draw_layers()};
-        bool vertices_moved {false};
-
-        for (size_t i {0}; i < 4; i++) {
-            if (!is_float_equal(transformed.first[i].PosX, plain.first[i].PosX) || !is_float_equal(transformed.first[i].PosY, plain.first[i].PosY)) {
-                vertices_moved = true;
-            }
-        }
-
-        CHECK(vertices_moved);
-
-        mspr->SetAngle(int16_t {30});
-        mspr->SetMapProjected(true);
-        mspr->SetDepthOffset(7.0f);
-
-        auto depth {draw_layers()};
-
-        for (size_t i {0}; i < 4; i++) {
-            CHECK(depth.first[i].PosX == Catch::Approx(transformed.first[i].PosX));
-            CHECK(depth.first[i].PosY == Catch::Approx(transformed.first[i].PosY));
-            CHECK(depth.second[i].PosX == Catch::Approx(transformed.second[i].PosX));
-            CHECK(depth.second[i].PosY == Catch::Approx(transformed.second[i].PosY));
-            CHECK(depth.first[i].PosZ == Catch::Approx(transformed.first[i].PosZ + 7.0f));
-            CHECK(depth.second[i].PosZ == Catch::Approx(transformed.second[i].PosZ + 7.0f));
-            CHECK(depth.first[i].PosZ == Catch::Approx(depth.second[i].PosZ));
-            CHECK(depth.first[i].EggFlags[0] == 1.0f);
-            CHECK(depth.first[i].EggFlags[1] == 1.0f);
-            CHECK(depth.second[i].EggFlags[0] == 1.0f);
-            CHECK(depth.second[i].EggFlags[1] == 1.0f);
-        }
-    }
-
-    SECTION("HiddenMapSpriteEmitsNeitherLayer")
-    {
-        effect.Draws.clear();
-        client->SprMngr.DrawSprites(list, draw_area, 0, true, DrawOrderType::Item, DrawOrderType::Item, ucolor {36, 24, 12, 255}, &effect);
-
-        REQUIRE(effect.Draws.size() == 2);
-
-        mspr->SetHidden(true);
-
-        effect.Draws.clear();
-        client->SprMngr.DrawSprites(list, draw_area, 0, true, DrawOrderType::Item, DrawOrderType::Item, ucolor {36, 24, 12, 255}, &effect);
-
-        CHECK(effect.Draws.empty());
-    }
 }
 
 TEST_CASE("SpriteWireframeRendersThroughPrimitiveOverlay")

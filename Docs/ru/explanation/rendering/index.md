@@ -5,7 +5,7 @@ locale: ru
 document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"274c06373f5ad1bd679790d2f5f8f1918c68b84c718f943441709cb884807a81"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"71691b1945102d338db6bd0a9f040930ee174fa4e7d558c58ca7fb4a2baf5a3a"} -->
 # Frontend и рендеринг
 
 ## Отображение ограниченного обзора карты
@@ -1057,47 +1057,6 @@ depth attachment (UI, light, final screen flush) state является no-op.
 - **Models** (`3D_*`) используют `LessEqual` + `DepthWrite=True`, поэтому direct mesh пишет реальную surface depth, а не плоскость atlas quad.
 - `OnRenderMap_AfterSpritesAndFog` вызывается после sprite/fog pass до flush map target. Script debug markers вычисляют position из `Map.GetHexMapPos`, `entity.GetSpriteOffset`, `entity.Elevation` и draw-area origin, не обращаясь к transient sprite instances.
 - **Contours принадлежат scripts проекта.** Native contour pass отсутствует. Проект может cache-ить entities с ненулевым `Contour` и на `OnRenderMap_AfterSprites` вызывать `Map.DrawEntitySprite(entity, effectSubtype, colour, padding)`. Mapper selection использует тот же property-based путь.
-
-## Дополнительный неосвещаемый слой спрайта
-
-Нативный `Sprite` может вернуть из `GetUnlitOverlay()` один слой, которым
-владеет родитель. `DrawSprite`, `DrawSpriteSize` / `DrawSpriteSizeExt` и
-`DrawSprites` на карте рисуют его сразу после основного изображения с теми же
-логическим прямоугольником и эффектом. Каждый слой предоставляет собственную
-текстуру батча. Заимствование должно оставаться действительным до конца draw;
-вложенные overlay рекурсивно не обходятся.
-
-На карте слой получает нейтральный RGB вместо дневного и локального освещения.
-Явный цвет map sprite остаётся его tint; `Render.Brightness` также применяется.
-Alpha, поворот, проекция на карту, глубина и флаги обеих transparency egg берутся
-у того же map sprite. В GUI сохраняются переданные вызывающим кодом tint и alpha.
-Спрайты без дополнительного слоя сохраняют прежний маршрут; direct-scene
-спрайты остаются в отложенном scene pass. Region, pattern и специализированные
-операции image effects обращаются к основному изображению атласа.
-
-`ModelInstance::RunUnlitParticle` выбирает этот слой для явно названной частицы
-на кости модели. Обычный `RunParticle` и авторский `AttachParticles` остаются
-в освещаемом основном изображении. Оба пути используют общие размещение,
-рождение на первой позе, симуляцию, границы и завершение. `DrawSpriteFrame`
-по-прежнему рисует все частицы; производитель атласа использует
-`DrawSpriteFrameLit`, затем `DrawUnlitParticles`. Второй проход очищает только
-цвет того же промежуточного target, сохраняя глубину модели без новой позы или
-шага симуляции. Авторские depth-test и depth-write узлов продолжают действовать.
-
-`ModelSprite` владеет allocation слоя, копирует тот же окончательный crop и
-смещение pivot, повторно использует allocation при неизменном размере и
-освобождает его на следующем обновлении спрайта, когда активных инициализированных
-unlit-систем больше нет. Это действует и после завершения в прямой сцене,
-когда атлас preview не перерисовывается.
-Маска выбора и специализированные image-effect draws используют основной
-атлас; декоративный слой не расширяет выбираемый силуэт. Прямые map draws
-рисуют оба типа частиц в сцене, а GUI snapshots могут использовать пару атласов.
-
-Нативные регрессии буферов в `Test_ClientEngine.cpp` покрывают разные текстуры,
-размеры GUI, свет карты, alpha, преобразованную геометрию, глубину и egg-флаги.
-Настоящая Effekseer/Ozz-фикстура покрывает оба пути рождения, геометрию слоя,
-повторное использование и завершение. Это проверяет буферы и жизненный цикл;
-композиция на GPU и визуальная приёмка контента требуют отдельных проверок.
 
 ## Спрайты direct-to-scene
 

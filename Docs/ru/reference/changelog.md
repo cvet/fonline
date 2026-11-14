@@ -7,7 +7,7 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"25e517aaffb657aadfad5e4fea3f8f24457c1854dea8d5392668b5e6cd0ab05a"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"fbeedaec3b028b1ab5a149270111ce5f860a0a6a0c1f3ff72fcdce62d074445a"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
@@ -15,9 +15,9 @@ permalink: /Docs/ru/reference/changelog.html
 ### Добавлено
 
 - Добавлены `Game.OnPlayerMovementAuthority` для игровой политики косвенного
-  управления движением, привязки к костям и видимым копиям спрайтов,
-  `MapSpriteHolder.DepthOffset` и неосвещаемые частицы модели. Значения
-  существующих `Elevation` и `GetBonePos` сохранены. См. [сетевую авторитетность](../explanation/authority-and-networking/index.md)
+  управления движением, привязки к костям и видимым копиям спрайтов
+  и `MapSpriteHolder.DepthOffset`. Значения существующих `Elevation`
+  и `GetBonePos` сохранены. См. [сетевую авторитетность](../explanation/authority-and-networking/index.md)
   и [подключение частиц](../how-to/content/particle-format.md#integration).
 
 ### Исправлено

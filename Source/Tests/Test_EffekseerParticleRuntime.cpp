@@ -3174,7 +3174,6 @@ struct ModelChildPoseParticleDrawSnapshot
     size_t MeshIndexCount {};
     int32_t ParticleAttachmentCount {};
     int32_t CallbackCount {};
-    bool HasUnlitParticles {};
 };
 
 static auto GetModelChildPoseParticlePacketFrame(const CapturedEffekseerDraw& draw) -> ModelChildPoseParticlePacketFrame
@@ -3350,7 +3349,6 @@ static auto CaptureModelChildPoseParticleDraw(CapturingAppRender& render, Effect
         }
     }
 
-    snapshot.HasUnlitParticles = instance->HasUnlitParticles();
     snapshot.Anchor = instance->GetBonePos(anchor_bone, anchor_offset);
     snapshot.ModelDirection = instance->GetMoveDirAngle();
 
@@ -3509,8 +3507,6 @@ TEST_CASE("LinkedChildNozzleFollowsParentJoint", "[model-child-pose-particles]")
 TEST_CASE("ModelChildPoseParticleRegressionCallbackBirthReplayAndFiniteRetirement", "[model-child-pose-particles]")
 {
     using namespace ClientEngineTests;
-    bool unlit {GENERATE(false, true)};
-    CAPTURE(unlit);
 
     auto settings {MakeClientTestSettings()};
     BakerTests::OverrideSetting(settings.Render.ModelProjFactor, 32.0f);
@@ -3584,15 +3580,10 @@ TEST_CASE("ModelChildPoseParticleRegressionCallbackBirthReplayAndFiniteRetiremen
         .ActionAnim = action,
         .NormalizedTime = ModelChildPoseParticleCallbackPhase,
         .Callback =
-            [&model, &child_callbacks, unlit, child_bone, offset] {
+            [&model, &child_callbacks, child_bone, offset] {
                 child_callbacks++;
 
-                if (unlit) {
-                    model->RunUnlitParticle(ModelChildPoseParticleParticlePath, child_bone, offset);
-                }
-                else {
-                    model->RunParticle(ModelChildPoseParticleParticlePath, child_bone, offset);
-                }
+                model->RunParticle(ModelChildPoseParticleParticlePath, child_bone, offset);
             },
     });
     control->AddAnimationCallback(ModelAnimationCallback {
@@ -3600,15 +3591,10 @@ TEST_CASE("ModelChildPoseParticleRegressionCallbackBirthReplayAndFiniteRetiremen
         .ActionAnim = action,
         .NormalizedTime = ModelChildPoseParticleCallbackPhase,
         .Callback =
-            [&control, &control_callbacks, unlit, child_bone, offset] {
+            [&control, &control_callbacks, child_bone, offset] {
                 control_callbacks++;
 
-                if (unlit) {
-                    control->RunUnlitParticle(ModelChildPoseParticleParticlePath, child_bone, offset);
-                }
-                else {
-                    control->RunParticle(ModelChildPoseParticleParticlePath, child_bone, offset);
-                }
+                control->RunParticle(ModelChildPoseParticleParticlePath, child_bone, offset);
             },
     });
     parent_control->AddAnimationCallback(ModelAnimationCallback {
@@ -3616,15 +3602,10 @@ TEST_CASE("ModelChildPoseParticleRegressionCallbackBirthReplayAndFiniteRetiremen
         .ActionAnim = action,
         .NormalizedTime = ModelChildPoseParticleCallbackPhase,
         .Callback =
-            [&parent_control, &parent_control_callbacks, unlit, parent_bone, offset] {
+            [&parent_control, &parent_control_callbacks, parent_bone, offset] {
                 parent_control_callbacks++;
 
-                if (unlit) {
-                    parent_control->RunUnlitParticle(ModelChildPoseParticleParticlePath, parent_bone, offset);
-                }
-                else {
-                    parent_control->RunParticle(ModelChildPoseParticleParticlePath, parent_bone, offset);
-                }
+                parent_control->RunParticle(ModelChildPoseParticleParticlePath, parent_bone, offset);
             },
     });
 
@@ -3663,9 +3644,6 @@ TEST_CASE("ModelChildPoseParticleRegressionCallbackBirthReplayAndFiniteRetiremen
     CHECK(first.CallbackCount == 1);
     CHECK(control_first.CallbackCount == 1);
     CHECK(parent_control_first.CallbackCount == 1);
-    CHECK(first.HasUnlitParticles == unlit);
-    CHECK(control_first.HasUnlitParticles == unlit);
-    CHECK(parent_control_first.HasUnlitParticles == unlit);
     REQUIRE(first.ParticleAttachment);
     REQUIRE(control_first.ParticleAttachment);
     REQUIRE(parent_control_first.ParticleAttachment);
@@ -3731,8 +3709,6 @@ TEST_CASE("ModelChildPoseParticleRegressionCallbackBirthReplayAndFiniteRetiremen
     CHECK(third.ParticleAttachmentCount == 1);
     CHECK(second.CallbackCount == 1);
     CHECK(third.CallbackCount == 1);
-    CHECK(second.HasUnlitParticles == unlit);
-    CHECK(third.HasUnlitParticles == unlit);
     CHECK(second.Anchor == first.Anchor);
     CHECK(third.Anchor == first.Anchor);
     CHECK(second.ModelDirection == first.ModelDirection);
@@ -3764,9 +3740,6 @@ TEST_CASE("ModelChildPoseParticleRegressionCallbackBirthReplayAndFiniteRetiremen
     CHECK(retired.CallbackCount == 1);
     CHECK(control_retired.CallbackCount == 1);
     CHECK(parent_control_retired.CallbackCount == 1);
-    CHECK_FALSE(retired.HasUnlitParticles);
-    CHECK_FALSE(control_retired.HasUnlitParticles);
-    CHECK_FALSE(parent_control_retired.HasUnlitParticles);
     CHECK(retired.AnimAbsoluteTime > first.AnimAbsoluteTime);
     CHECK(control_retired.AnimAbsoluteTime > control_first.AnimAbsoluteTime);
     CHECK(parent_control_retired.AnimAbsoluteTime > parent_control_first.AnimAbsoluteTime);
@@ -3797,8 +3770,6 @@ TEST_CASE("ModelChildPoseParticleRegressionCallbackBirthReplayAndFiniteRetiremen
 TEST_CASE("ModelChildPoseParticleRegressionChildRemovalAndParentReuse", "[model-child-pose-particles]")
 {
     using namespace ClientEngineTests;
-    bool unlit {GENERATE(false, true)};
-    CAPTURE(unlit);
 
     auto settings {MakeClientTestSettings()};
     BakerTests::OverrideSetting(settings.Render.ModelProjFactor, 32.0f);
@@ -3854,16 +3825,13 @@ TEST_CASE("ModelChildPoseParticleRegressionChildRemovalAndParentReuse", "[model-
     mat44 first_projection {render.CreateOrthoMatrix(-50.0f, 200.0f, -75.0f, 175.0f, -10.0f, 10.0f)};
 
     CHECK(CountModelChildPoseParticleParticleAttachments(*model) == 0);
-    CHECK_FALSE(model->HasUnlitParticles());
     model->RunParticle(ModelChildPoseParticleParticlePath, client->Hashes.to_hashed_string("MissingChildProjectionBone"), offset);
     CHECK(CountModelChildPoseParticleParticleAttachments(*model) == 0);
-    CHECK_FALSE(model->HasUnlitParticles());
 
     REQUIRE(model->PrepareSceneFrame(1.0f));
     auto missing {CaptureModelChildPoseParticleDraw(render, effects, model_shader, model.get(), first_projection, child_bone, offset, callbacks)};
     CHECK(missing.ParticleAttachmentCount == 0);
     CHECK(missing.Particles.empty());
-    CHECK_FALSE(missing.HasUnlitParticles);
 
     // The next ordinary RunParticle is the one-shot callback below and must add exactly the accepted child effect
     model->AddAnimationCallback(ModelAnimationCallback {
@@ -3871,15 +3839,10 @@ TEST_CASE("ModelChildPoseParticleRegressionChildRemovalAndParentReuse", "[model-
         .ActionAnim = action,
         .NormalizedTime = ModelChildPoseParticleCallbackPhase,
         .Callback =
-            [&model, &callbacks, unlit, child_bone, offset] {
+            [&model, &callbacks, child_bone, offset] {
                 callbacks++;
 
-                if (unlit) {
-                    model->RunUnlitParticle(ModelChildPoseParticleParticlePath, child_bone, offset);
-                }
-                else {
-                    model->RunParticle(ModelChildPoseParticleParticlePath, child_bone, offset);
-                }
+                model->RunParticle(ModelChildPoseParticleParticlePath, child_bone, offset);
             },
     });
     (void)model->PlayAnim(state, action, child_layers.data(), 0.0f, combine_enum(ModelAnimFlags::PlayOnce, ModelAnimFlags::NoSmooth), 1.0f);
@@ -3895,7 +3858,6 @@ TEST_CASE("ModelChildPoseParticleRegressionChildRemovalAndParentReuse", "[model-
     REQUIRE(live.Particles.size() == 1);
     CHECK(live.ParticleAttachmentCount == 1);
     CHECK(live.CallbackCount == 1);
-    CHECK(live.HasUnlitParticles == unlit);
     REQUIRE(live.ParticleAttachment);
     CHECK(live.ParticleAttachment->Name == ModelChildPoseParticleParticlePath);
     CHECK(live.ParticleAttachment->BoneName == child_bone);
@@ -3913,7 +3875,6 @@ TEST_CASE("ModelChildPoseParticleRegressionChildRemovalAndParentReuse", "[model-
     CHECK(removed.ParticleAttachmentCount == 0);
     CHECK(removed.Particles.empty());
     CHECK(removed.CallbackCount == 1);
-    CHECK_FALSE(removed.HasUnlitParticles);
     REQUIRE(removed.Anchor);
     REQUIRE(model->FindBone(parent_bone));
 
@@ -3923,7 +3884,6 @@ TEST_CASE("ModelChildPoseParticleRegressionChildRemovalAndParentReuse", "[model-
     REQUIRE(reused.Particles.size() == 1);
     CHECK(reused.ParticleAttachmentCount == 1);
     CHECK(reused.CallbackCount == 1);
-    CHECK_FALSE(reused.HasUnlitParticles);
     REQUIRE(reused.ParticleAttachment);
     CHECK(reused.ParticleAttachment->Name == ModelChildPoseParticleParticlePath);
     CHECK(reused.ParticleAttachment->BoneName == parent_bone);

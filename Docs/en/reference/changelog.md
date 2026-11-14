@@ -15,9 +15,8 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 ### Added
 
 - Add `Game.OnPlayerMovementAuthority` for game-owned indirect movement policy,
-  bone and visible-sprite map anchors, `MapSpriteHolder.DepthOffset`, and
-  explicit unlit model particles. Existing `Elevation` and `GetBonePos` retain
-  their meanings. See [network authority](../explanation/authority-and-networking/index.md)
+  bone and visible-sprite map anchors, and `MapSpriteHolder.DepthOffset`.
+  Existing `Elevation` and `GetBonePos` retain their meanings. See [network authority](../explanation/authority-and-networking/index.md)
   and [particle integration](../how-to/content/particle-format.md#integration).
 
 ### Fixed
