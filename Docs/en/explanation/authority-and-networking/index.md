@@ -265,8 +265,8 @@ yields a new revision and cannot adopt an old plan.
 Another authorized player cannot renew or finish that plan. The movement job
 rechecks authority and retires the plan when permission, the driver link or the
 session is lost. Script-initiated NPC movement has no player authority owner.
-After callbacks, the packet loop verifies the captured control revision before
-reusing its connection buffer. A connection displaced by reconnect is never reused.
+Before each message the packet loop checks that the player still owns the
+connection it reads, so a connection displaced by reconnect is never read again.
 Movement and direction policies also preserve a replacement plan created by a
 callback by checking its movement UID before applying the original request.
 

@@ -2672,7 +2672,6 @@ void ServerEngine::ProcessNotLoggedInPlayer(ptr<Player> not_logged_in_player)
 void ServerEngine::ProcessPlayer(ptr<Player> player)
 {
     auto connection {player->GetConnection()};
-    uint64_t connection_revision {player->GetMovementControlRevision()};
 
     if (connection->IsHardDisconnected()) {
         ProcessPendingUnresolvedHash(connection);
@@ -2782,13 +2781,6 @@ void ServerEngine::ProcessPlayer(ptr<Player> player)
             break;
         default:
             throw GenericException("Unexpected player message", msg);
-        }
-
-        // A callback may reconnect or replace its cover; restore the player before checking the epoch
-        RequireCurrentSyncContext()->SyncEntity(player);
-
-        if (player->IsDestroyed() || player->GetMovementControlRevision() != connection_revision) {
-            return;
         }
 
         in_buf.Lock();
