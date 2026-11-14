@@ -7,7 +7,7 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"c12ba5439544b0fe2f9b2f8e0c8f1f8eaa12cc6050475dacaee3a9ad04ff314b"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"2146c7360e49eda4abc4711d85a0e5bd9d001f74c219dc23fea6b4addbde8f66"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
@@ -80,8 +80,10 @@ permalink: /Docs/ru/reference/changelog.html
 - По умолчанию управление движением разрешено выбранному персонажу. Для
   косвенного управления проект подписывается на `OnPlayerMovementAuthority` и
   применяет собственную политику; движок повторно проверяет текущие сессию,
-  персонажа, карту и идентичность движения. Повторно проверьте транспорт и
-  присоединённые сущности обычными клиентами.
+  персонажа, карту и идентичность движения. Нативный
+  `Player::HasPlayerMovementControl` удалён; нативные расширения используют то же
+  событие. Повторно проверьте транспорт и присоединённые сущности обычными
+  клиентами.
 - При использовании частиц на костях учитывайте размещение после первой позы
   и расширенные живые границы; до получения позы рисование откладывается.
   `DepthOffset` — конечная поправка глубины в логических пикселях карты,

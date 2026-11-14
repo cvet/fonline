@@ -1236,35 +1236,20 @@ void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, op
                 }
             }
 
+            // Dir and hex callbacks may destroy, relocate or restart the critter, which supersedes this transfer
+            uint32_t moving_uid {cr->GetMovingUid()};
+            auto is_placed {[&](mpos expected_hex) { return !cr->IsDestroyed() && !map->IsDestroyed() && IsEntityAccessValid(cr) && IsEntityAccessValid(map) && map->GetCritter(cr->GetId()) == cr && cr->GetHex() == expected_hex && cr->GetMovingUid() == moving_uid; }};
+
             mpos before_dir_hex {cr->GetHex()};
-            uint32_t before_dir_uid {cr->GetMovingUid()};
             cr->ChangeDir(dir);
 
-            if (cr->IsDestroyed() || map->IsDestroyed()) {
-                return;
-            }
-            if (!IsEntityAccessValid(cr) || !IsEntityAccessValid(map)) {
-                return;
-            }
-
-            auto after_dir_parent {cr->GetParent<Map>()};
-
-            if (cr->GetMapId() != map->GetId() || after_dir_parent != prev_map_ref || cr->GetHex() != before_dir_hex || cr->GetMovingUid() != before_dir_uid || cr->GetMultihex() != multihex) {
+            if (!is_placed(before_dir_hex)) {
                 return;
             }
 
             map->MoveCritterOnField(cr, start_hex);
 
-            if (cr->IsDestroyed() || map->IsDestroyed()) {
-                return;
-            }
-            if (!IsEntityAccessValid(cr) || !IsEntityAccessValid(map)) {
-                return;
-            }
-
-            auto after_move_parent {cr->GetParent<Map>()};
-
-            if (cr->GetMapId() != map->GetId() || after_move_parent != prev_map_ref || cr->GetHex() != start_hex || cr->GetMovingUid() != before_dir_uid || cr->GetMultihex() != multihex) {
+            if (!is_placed(start_hex)) {
                 return;
             }
 

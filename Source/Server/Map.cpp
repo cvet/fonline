@@ -746,105 +746,53 @@ void Map::MoveCritterOnField(ptr<Critter> cr, mpos requested_hex, const function
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
     ValidateEntityAccess(cr);
-    FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Cannot move an unavailable critter on a map field");
     FO_VERIFY_AND_THROW(_mapSize.is_valid_pos(requested_hex), "Critter field movement target is outside map bounds", requested_hex, _mapSize);
+    FO_VERIFY_AND_THROW(GetCritter(cr->GetId()) == cr, "Critter is not registered on its field movement map", cr->GetId());
 
+    // Hex setters and the context check may run scripts that destroy or relocate either entity
     auto map_holder {refcount_ptr<Map>::from_addref(this)};
     auto cr_holder {cr.hold_ref()};
-    ignore_unused(cr_holder);
-    ident_t expected_map_id {GetId()};
-    ident_t expected_cr_id {cr->GetId()};
+    ignore_unused(map_holder, cr_holder);
     mpos old_hex {cr->GetHex()};
     int32_t multihex {cr->GetMultihex()};
-    uint32_t expected_uid {cr->GetMovingUid()};
-    auto original_parent {cr->GetParent<Map>()};
-    auto original_registered {GetCritter(expected_cr_id)};
-    FO_VERIFY_AND_THROW(original_parent == map_holder && cr->GetMapId() == expected_map_id && original_registered == cr, "Critter is not registered on its field movement map");
+    uint32_t moving_uid {cr->GetMovingUid()};
 
-    auto validate_current {[&] {
-        FO_VERIFY_AND_THROW(!IsDestroyed() && !IsDestroying() && !cr->IsDestroyed(), "Critter field movement context became unavailable");
+    auto set_field_membership {[&](mpos hex, bool set) {
+        int32_t hexes_count {multihex != 0 ? GeometryHelper::HexesInRadius(multihex) : 1};
 
-        ValidateEntityAccess(this);
-        ValidateEntityAccess(cr);
+        for (int32_t i {0}; i < hexes_count; i++) {
+            mpos field_hex {hex};
 
-        auto current_parent {cr->GetParent<Map>()};
-        auto current_registered {GetCritter(expected_cr_id)};
-        FO_VERIFY_AND_THROW(cr->GetId() == expected_cr_id && GetId() == expected_map_id && cr->GetMapId() == expected_map_id && current_parent == map_holder && current_registered == cr, "Critter field movement ownership changed during setter");
-        FO_VERIFY_AND_THROW(cr->GetHex() == old_hex && cr->GetMultihex() == multihex && cr->GetMovingUid() == expected_uid, "Critter field movement position or plan changed during setter");
-    }};
-
-    function<void(mpos)> before_commit = [&](mpos actual_hex) {
-        validate_current();
-
-        bool authority_valid {!validate_context || validate_context()};
-
-        validate_current();
-        FO_VERIFY_AND_THROW(authority_valid, "Critter field movement authority changed during setter");
-
-        FO_VERIFY_AND_THROW(_mapSize.is_valid_pos(actual_hex), "Critter field movement transformed target is outside map bounds", actual_hex, _mapSize);
-
-        vector<mpos> old_hexes {old_hex};
-        vector<mpos> new_hexes {actual_hex};
-
-        if (multihex != 0) {
-            int32_t count {GeometryHelper::HexesInRadius(multihex)};
-
-            for (int32_t i {1}; i < count; i++) {
-                mpos old_around {old_hex};
-                mpos new_around {actual_hex};
-
-                if (GeometryHelper::MoveHexAroundAway(old_around, i, _mapSize)) {
-                    old_hexes.emplace_back(old_around);
-                }
-                if (GeometryHelper::MoveHexAroundAway(new_around, i, _mapSize)) {
-                    new_hexes.emplace_back(new_around);
-                }
-            }
-        }
-
-        // Materialize before retaining cell addresses; sparse-grid insertion may grow its storage
-        for (mpos hex : old_hexes) {
-            (void)_hexField->GetCellForWriting(hex);
-        }
-        for (mpos hex : new_hexes) {
-            (void)_hexField->GetCellForWriting(hex);
-        }
-
-        vector<ptr<Field>> old_fields;
-        vector<ptr<Field>> new_fields;
-        old_fields.reserve(old_hexes.size());
-        new_fields.reserve(new_hexes.size());
-
-        for (mpos hex : old_hexes) {
-            auto field {_hexField->GetCellForWriting(hex)};
-            FO_VERIFY_AND_THROW(std::ranges::count(field->Critters, cr) == 1, "Critter field movement source membership is inconsistent");
-            old_fields.emplace_back(field);
-        }
-        for (mpos hex : new_hexes) {
-            auto field {_hexField->GetCellForWriting(hex)};
-            bool shared {std::ranges::find(old_hexes, hex) != old_hexes.end()};
-            FO_VERIFY_AND_THROW(std::ranges::count(field->Critters, cr) == (shared ? 1 : 0), "Critter field movement target membership is inconsistent");
-
-            if (!shared) {
-                FO_VERIFY_AND_THROW(field->Critters.size() < field->Critters.max_size(), "Critter field movement target storage is full");
-                field->Critters.reserve(field->Critters.size() + 1);
+            if (i != 0 && !GeometryHelper::MoveHexAroundAway(field_hex, i, _mapSize)) {
+                continue;
             }
 
-            new_fields.emplace_back(field);
-        }
+            auto field {_hexField->GetCellForWriting(field_hex)};
 
-        for (auto field : old_fields) {
-            auto it {std::ranges::find(field->Critters, cr)};
-            FO_STRONG_ASSERT(it != field->Critters.end(), "Prevalidated critter field movement lost source membership");
-            field->Critters.erase(it);
+            if (set) {
+                vec_add_unique_value(field->Critters, cr);
+            }
+            else {
+                vec_remove_unique_value(field->Critters, cr);
+            }
+
             field->HasCritter = !field->Critters.empty();
         }
-        for (auto field : new_fields) {
-            FO_STRONG_ASSERT(std::ranges::find(field->Critters, cr) == field->Critters.end(), "Prevalidated critter field movement duplicated target membership");
-            field->Critters.emplace_back(cr);
-            field->HasCritter = true;
-        }
-    };
+    }};
+
+    function<void(mpos)> before_commit {[&](mpos new_hex) {
+        bool context_valid {!validate_context || validate_context()};
+
+        FO_VERIFY_AND_THROW(!IsDestroyed() && !cr->IsDestroyed(), "Critter field movement context became unavailable");
+        ValidateEntityAccess(this);
+        ValidateEntityAccess(cr);
+        FO_VERIFY_AND_THROW(GetCritter(cr->GetId()) == cr && cr->GetHex() == old_hex && cr->GetMultihex() == multihex && cr->GetMovingUid() == moving_uid, "Critter field movement position or plan changed during setter");
+        FO_VERIFY_AND_THROW(context_valid, "Critter field movement context was rejected during setter");
+        FO_VERIFY_AND_THROW(_mapSize.is_valid_pos(new_hex), "Critter field movement transformed target is outside map bounds", new_hex, _mapSize);
+
+        set_field_membership(old_hex, false);
+        set_field_membership(new_hex, true);
+    }};
 
     cr->GetPropertiesForEdit()->SetValue(cr->GetPropertyHex(), requested_hex, before_commit);
 }

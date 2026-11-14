@@ -266,6 +266,7 @@ private:
     int32_t _curMoveTrack {};
     int32_t _movingSpeed {};
     CritterAnimationContext _movingContext {};
+    uint32_t _moveAnimationRequest {};
     float32_t _playbackSpeed {1.0f};
     float32_t _normalizedTime {};
     ModelAnimFlags _playbackFlags {};
@@ -280,7 +281,6 @@ private:
     bool _spriteBoundsPoseReady {};
     bool _directSceneDraw {};
     bool _scenePoseReady {};
-    bool _preparingScenePose {};
     bool _scenePoseMutated {};
     nanotime _scenePoseTime {};
     float32_t _scenePoseScale {};

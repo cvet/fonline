@@ -553,37 +553,30 @@ void Critter::MoveAttachedCritters()
 
     auto this_ref_holder {refcount_ptr<Critter>::from_addref(this)};
     auto attached {copy_hold_ref(GetAttachedCritters())};
-    auto validate_attached {[this, map, new_hex](ptr<const Critter> cr) {
-        if (IsDestroyed() || map->IsDestroyed() || cr->IsDestroyed()) {
-            return false;
-        }
 
-        return GetMapId() == map->GetId() && GetHex() == new_hex && cr->GetMapId() == map->GetId() && cr->GetIsAttached() && cr->GetAttachMaster() == GetId();
-    }};
+    // Offset and hex setters may run scripts that move the master or detach and destroy riders
+    auto is_master_in_place {[this, map, new_hex] { return !IsDestroyed() && !map->IsDestroyed() && GetMapId() == map->GetId() && GetHex() == new_hex; }};
+    auto is_rider {[this, map](ptr<const Critter> cr) { return !cr->IsDestroyed() && cr->GetIsAttached() && cr->GetAttachMaster() == GetId() && cr->GetMapId() == map->GetId(); }};
 
     for (ptr<Critter> cr : attached) {
-        FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
-        FO_VERIFY_AND_THROW(cr->GetIsAttached(), "Critter is not attached");
-        FO_VERIFY_AND_THROW(cr->GetAttachMaster() == GetId(), "Attached critter has a different master");
-        FO_VERIFY_AND_THROW(cr->GetMapId() == map->GetId(), "Critter belongs to a different map");
+        if (!is_master_in_place()) {
+            break;
+        }
+        if (!is_rider(cr)) {
+            continue;
+        }
 
         cr->SetHexOffset(new_hex_offset);
 
-        if (!validate_attached(cr)) {
-            return;
-        }
-
         auto hex {cr->GetHex()};
 
-        if (hex != new_hex) {
-            function<bool()> validate_commit = [&] { return validate_attached(cr); };
-            map->MoveCritterOnField(cr, new_hex, validate_commit);
+        if (hex != new_hex && is_master_in_place() && is_rider(cr)) {
+            map->MoveCritterOnField(cr, new_hex);
 
-            if (!validate_attached(cr) || cr->GetHex() != new_hex) {
-                return;
+            // Riders moved before a failure still need their trigger and visibility callbacks below
+            if (is_rider(cr) && cr->GetHex() == new_hex) {
+                moved_critters.emplace_back(cr.hold_ref(), hex);
             }
-
-            moved_critters.emplace_back(cr.hold_ref(), hex);
         }
     }
 

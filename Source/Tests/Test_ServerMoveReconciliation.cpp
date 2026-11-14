@@ -1488,7 +1488,7 @@ TEST_CASE("ServerMovementAuthority")
     bool grant {true};
     bool allow_passenger {false};
     bool mutate_attachment {false};
-    function<void()> mutate_target;
+    function<void()> mutate_target {};
     Entity::EventCallbackData authority {};
     authority.SubscriptionPtr = reinterpret_cast<uintptr_t>(&grant);
     authority.Callback = [&](FuncCallData& call) {
@@ -1690,7 +1690,7 @@ TEST_CASE("ServerMovementAuthority")
 
         REQUIRE(wait([&] { return vehicle->IsMoving() && vehicle->GetMoving()->IsHeldByLease(); }));
 
-        refcount_nptr<MovingContext> replacement;
+        refcount_nptr<MovingContext> replacement {};
         Entity::EventCallbackData stop_policy {};
         stop_policy.SubscriptionPtr = reinterpret_cast<uintptr_t>(&replacement);
         stop_policy.Callback = [&](FuncCallData&) {

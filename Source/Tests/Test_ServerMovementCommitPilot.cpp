@@ -322,7 +322,7 @@ TEST_CASE("ServerMovementCommitBoundaryPilot")
     control->FinishArmed.store(scenario == 30);
     mpos requested {scenario == 11 ? mpos {2, 1} : mpos {22, 23}};
     uint32_t authority_calls {0};
-    function<bool()> authority = [&] {
+    function<bool()> authority {[&] {
         authority_calls++;
 
         if (scenario == 31) {
@@ -354,7 +354,7 @@ TEST_CASE("ServerMovementCommitBoundaryPilot")
         }
 
         return scenario != 12 && scenario != 24;
-    };
+    }};
 
     if (scenario <= 2 || scenario == 21) {
         auto moving_template {ServerEngineTests::MakeServerMovementContext(source->GetSize(), initial_hex, server->GameTime.GetFrameTime())};

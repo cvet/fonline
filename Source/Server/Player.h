@@ -48,7 +48,6 @@ public:
     [[nodiscard]] auto GetControlledCritter() const noexcept -> nptr<const Critter>;
     [[nodiscard]] auto GetMovementControlRevision() const noexcept -> uint64_t { return _movementControlRevision; }
     [[nodiscard]] auto GetMovementIdentity() const noexcept -> const shared_ptr<const PlayerMovementIdentity>& { return _movementIdentity; }
-    [[nodiscard]] auto HasPlayerMovementControl(nptr<const Critter> controller, ptr<const Critter> target) const -> bool;
     [[nodiscard]] auto GetSyncWidenEntity() noexcept -> refcount_nptr<ServerEntity> override;
     [[nodiscard]] auto GetSyncWidenEntity() const noexcept -> refcount_nptr<const ServerEntity> override;
     [[nodiscard]] ptr<ServerConnection> GetConnection() noexcept FO_TSA_NO_ANALYSIS;

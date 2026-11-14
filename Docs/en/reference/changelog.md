@@ -77,7 +77,8 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 - Movement authority defaults to the selected actor. Projects allowing indirect
   movement subscribe to `OnPlayerMovementAuthority` and apply their own control
   policy; the engine rechecks current session, actor, map and movement identity.
-  Revalidate existing vehicle and attachment paths with ordinary clients.
+  Native `Player::HasPlayerMovementControl` is removed; native extensions use the
+  same event. Revalidate existing vehicle and attachment paths with ordinary clients.
 - Consumers of bone particles should account for first-pose placement and
   expanded live bounds; unposed owners defer their first draw. `DepthOffset` is
   a finite view-depth correction in logical map pixels and defaults to zero;

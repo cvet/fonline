@@ -256,7 +256,9 @@ direction; neither grants indirect control by itself.
 Native requests snapshot authority before changing synchronization cover and retain
 the player, selected actor, target and map across callbacks.
 They recheck identity, map membership, connection state and revisions of selection
-and attachment. Detaching and reattaching, or switching away and back, invalidates
+and attachment. The game itself is asked when a request starts, inside each movement
+step commit and once after that step; other callbacks only trigger these engine
+rechecks. Detaching and reattaching, or switching away and back, invalidates
 the original request. Player plans retain a passive runtime-session identity and
 both revisions; logging in with the same persistent player ID cannot adopt an old plan.
 Another authorized player cannot renew or finish that plan. The movement job

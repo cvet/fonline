@@ -3059,58 +3059,29 @@ void MapView::PrepareCritterSceneFrames(const irect32& draw_area)
 #if FO_ENABLE_3D
     FO_TRACE_ZONE(Model);
 
-    for (ptr<CritterHexView> cr : copy_hold_ref(GetCritters())) {
+    for (auto& cr : _critters) {
+        // An animation callback may change ModelName; the replacement model is prepared on the next pass
         for (int32_t pass {0}; pass < 3; pass++) {
-            if (IsDestroyed()) {
-                return;
-            }
-
-            if (cr->IsDestroyed() || cr->GetMap() != this || !cr->IsMapSpriteValid()) {
+            if (!cr->IsMapSpriteValid()) {
                 break;
             }
 
             auto mspr {cr->GetMapSprite()};
-            auto visible_rect {_engine->SprMngr.GetMapSpriteDrawRect(mspr, draw_area)};
-
-            if (!visible_rect) {
-                break;
-            }
-
             auto spr {mspr->GetSprite()};
-
-            if (!spr->IsDirectDraw()) {
-                break;
-            }
-
             auto model {cr->GetModel()};
 
-            if (!model) {
+            if (!model || !spr->IsDirectDraw() || !_engine->SprMngr.GetMapSpriteDrawRect(mspr, draw_area)) {
                 break;
             }
 
-            // Model callbacks may replace this carrier's sprite or remove it from the map
+            // The replaced model sprite owns the instance that is still posing
             auto sprite_owner {spr->shared_from_this()};
-
-            bool prepared {model->PrepareSceneFrame(_engine->Settings->Render.ModelProjFactor)};
             ignore_unused(sprite_owner);
 
-            if (IsDestroyed()) {
-                return;
-            }
+            bool prepared {model->PrepareSceneFrame(_engine->Settings->Render.ModelProjFactor)};
 
-            if (cr->IsDestroyed() || cr->GetMap() != this || !cr->IsMapSpriteValid()) {
-                break;
-            }
-
-            auto current_sprite {cr->GetMapSprite()->GetSprite()};
-            auto current_model {cr->GetModel()};
-
-            if (current_sprite == spr && current_model == model) {
+            if (cr->GetModel() == model) {
                 FO_VERIFY_AND_THROW(prepared, "Critter scene pose did not stabilize", cr->GetId());
-                break;
-            }
-
-            if (!current_sprite || !current_sprite->IsDirectDraw() || !current_model) {
                 break;
             }
 

@@ -890,6 +890,9 @@ void ModelInstance::RefreshMoveAnimation()
 {
     FO_TRACE_ZONE(Model);
 
+    // Every input of the selection changes only through a nested refresh, so a newer request supersedes this one
+    uint32_t request {++_moveAnimationRequest};
+
     if (!_moveAnimController) {
         return;
     }
@@ -909,11 +912,6 @@ void ModelInstance::RefreshMoveAnimation()
 
         return;
     }
-
-    // A nested initializer may resolve a newer request; do not publish stale intent over its result
-    auto selection_unchanged {[this, enabled = _movementEnabled, moving = _isMoving, moving_speed = _movingSpeed, look_angle = _lookDirAngle, move_angle = _moveDirAngle, target_angle = _targetMoveDirAngle, moving_back = _isMovingBack, turning = _turnAnimPlaying, state = _curStateAnim, action = _curActionAnim, playback_flags = _playbackFlags, context = _movingContext, movement_flags = _movementFlags, normalized_time = _movementNormalizedTime, anim_index = _curMovingAnimIndex, track = _curMoveTrack, track_speed = _moveAnimController->GetTrackSpeed(_curMoveTrack)] {
-        return _movementEnabled == enabled && _isMoving == moving && _movingSpeed == moving_speed && _lookDirAngle == look_angle && _moveDirAngle == move_angle && _targetMoveDirAngle == target_angle && _isMovingBack == moving_back && _turnAnimPlaying == turning && _curStateAnim == state && _curActionAnim == action && _playbackFlags == playback_flags && _movingContext == context && _movementFlags == movement_flags && _movementNormalizedTime == normalized_time && _curMovingAnimIndex == anim_index && _curMoveTrack == track && _moveAnimController->GetTrackSpeed(_curMoveTrack) == track_speed;
-    }};
 
     auto state_anim {CritterStateAnim::None};
     auto action_anim {CritterActionAnim::None};
@@ -956,7 +954,7 @@ void ModelInstance::RefreshMoveAnimation()
         _animInitCallback(context, _movingSpeed, state_anim, action_anim, flags, normalized_time, playback_speed);
     }
 
-    if (!selection_unchanged()) {
+    if (_moveAnimationRequest != request) {
         return;
     }
 
@@ -966,10 +964,6 @@ void ModelInstance::RefreshMoveAnimation()
     bool context_changed {_movingContext != context};
     float32_t speed {1.0f};
     int32_t anim_index {_modelInfo->GetAnimationIndex(state_anim, action_anim, &speed)};
-
-    if (!selection_unchanged()) {
-        return;
-    }
 
     speed *= playback_speed;
 
@@ -1534,10 +1528,7 @@ auto ModelInstance::IsWorldPoseReady() const -> bool
 void ModelInstance::InvalidateSceneFrame() noexcept
 {
     _scenePoseReady = false;
-
-    if (_preparingScenePose) {
-        _scenePoseMutated = true;
-    }
+    _scenePoseMutated = true;
 
     if (_parent) {
         _parent->InvalidateSceneFrame();
@@ -2779,13 +2770,7 @@ auto ModelInstance::PrepareSceneFrame(float32_t scale) -> bool
         return true;
     }
 
-    if (_preparingScenePose) {
-        return false;
-    }
-
     _scenePoseReady = false;
-    _preparingScenePose = true;
-    auto finish_preparation {scope_exit([this]() noexcept { _preparingScenePose = false; })};
 
     _drawProj = _frameProj;
     _directSceneDraw = true;
