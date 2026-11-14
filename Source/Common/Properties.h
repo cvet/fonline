@@ -387,7 +387,7 @@ public:
 
     template<typename T>
         requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || some_property_plain_type<T> || some_strong_type<T>)
-    void SetValue(ptr<const Property> prop, T new_value, const function<void(T)>& before_commit = {});
+    void SetValue(ptr<const Property> prop, T new_value);
     template<typename T>
         requires(std::same_as<T, hstring>)
     void SetValue(ptr<const Property> prop, T new_value);
@@ -780,7 +780,7 @@ auto Properties::GetValueFast(ptr<const Property> prop) const noexcept -> T
 
 template<typename T>
     requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || some_property_plain_type<T> || some_strong_type<T>)
-void Properties::SetValue(ptr<const Property> prop, T new_value, const function<void(T)>& before_commit)
+void Properties::SetValue(ptr<const Property> prop, T new_value)
 {
     static_assert(alignof(T) <= MAX_SERIALIZED_ALIGNMENT, "Property value type is over-aligned for the MAX_SERIALIZED_ALIGNMENT raw-data layout contract");
 
@@ -788,8 +788,6 @@ void Properties::SetValue(ptr<const Property> prop, T new_value, const function<
     FO_VERIFY_AND_THROW(prop->GetBaseSize() == sizeof(T), "Property base size does not match assigned value type", prop->GetName(), prop->GetBaseSize(), sizeof(T));
     FO_VERIFY_AND_THROW(prop->IsPlainData(), "Property is not plain data");
     FO_VERIFY_AND_THROW(prop->IsMutable() || prop->IsCoreProperty(), "Property must be mutable or core before raw data update");
-
-    FO_VERIFY_AND_THROW(!before_commit || !prop->IsVirtual(), "Plain property commit hook cannot target a virtual property");
 
     auto new_value_ptr {make_ptr(&new_value)};
     ValidateAndClampRawData(prop, {new_value_ptr.template reinterpret_as<uint8_t>().get(), sizeof(T)});
@@ -830,26 +828,9 @@ void Properties::SetValue(ptr<const Property> prop, T new_value, const function<
                 }
 
                 ValidateAndClampRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
-
-                if (before_commit) {
-                    FO_VERIFY_AND_THROW(prop_data.GetSize() == sizeof(T), "Plain property commit hook received a malformed value", prop->GetName(), prop_data.GetSize(), sizeof(T));
-                    T frozen_value {prop_data.GetAs<T>()};
-                    auto frozen_value_ptr {make_ptr(&frozen_value)};
-                    span<const uint8_t> frozen_data {frozen_value_ptr.template reinterpret_as<uint8_t>().get(), sizeof(T)};
-
-                    before_commit(frozen_value);
-
-                    SetRawData(prop, frozen_data);
-                }
-                else {
-                    SetRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
-                }
+                SetRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
             }
             else {
-                if (before_commit) {
-                    before_commit(new_value);
-                }
-
                 SetRawData(prop, {new_value_ptr.template reinterpret_as<uint8_t>().get(), sizeof(T)});
             }
 

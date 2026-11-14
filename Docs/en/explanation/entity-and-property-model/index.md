@@ -120,6 +120,8 @@ The generated wrapper classes are thin over `Properties`; the real storage, type
 
 Server-side AngelScript property getters copy non-virtual raw property data through `Properties::CopyRawData()` before converting it to script values. `Properties` serializes only the raw buffer copy/write window; property setter and post-setter callbacks run outside that storage lock so event dispatch, reparenting, and destruction do not inherit a property-buffer lock.
 
+Engine properties (`CoreProperty`) accept post-setters only: the engine stores them together with derived engine state, so `Property::AddSetter` rejects them and every script reaction observes the committed state. Project-declared properties keep value-transforming setters.
+
 Typed and script-facing property assignment rejects non-finite floating-point leaves before storage, including values nested in arrays, structs, and dictionary keys or values. The same validation runs again after setter callbacks mutate raw data, and document/text serialization rejects non-finite values if trusted binary restore or native code supplied a corrupted payload.
 
 Numeric `Min = value` and `Max = value` metadata are enforced on every write.

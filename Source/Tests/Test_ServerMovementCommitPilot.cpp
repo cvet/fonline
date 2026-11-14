@@ -11,17 +11,13 @@ struct MovementCommitPilotControl
 {
     ident_t TargetId {};
     ident_t DestinationMapId {};
-    mpos TransformedHex {};
     int32_t Scenario {};
     std::atomic_bool Armed {};
-    std::atomic_uint32_t Pre {};
     std::atomic_uint32_t Post {};
     std::atomic_uint32_t Actions {};
     std::atomic_uint32_t Reports {};
     std::atomic_uint32_t UnexpectedReports {};
-    std::atomic_uint32_t PreConsistent {};
     std::atomic_uint32_t PostConsistent {};
-    std::atomic_uint32_t AuthorityConsistent {};
     std::atomic_bool DirArmed {};
     std::atomic_uint32_t DirCalls {};
     std::atomic_uint32_t LockedRefusals {};
@@ -29,8 +25,6 @@ struct MovementCommitPilotControl
     std::atomic_bool FinishArmed {};
     std::atomic_uint32_t FinishCalls {};
     std::atomic_uint32_t FinishMoved {};
-    nptr<PropertyRawData> BorrowedRawData {};
-    std::atomic_uint32_t AliasMutations {};
 };
 
 static void ApplyMovementCommitPilotAction(ptr<Critter> target, ptr<MovementCommitPilotControl> control)
@@ -38,29 +32,29 @@ static void ApplyMovementCommitPilotAction(ptr<Critter> target, ptr<MovementComm
     control->Actions.fetch_add(1);
     int32_t scenario {control->Scenario};
 
-    if (scenario == 5 || scenario == 6 || scenario == 9 || scenario == 21) {
+    if (scenario == 6 || scenario == 21) {
         target->GetEngine()->CrMngr.DestroyCritter(target);
     }
-    else if (scenario == 18 || scenario == 19 || scenario == 20) {
+    else if (scenario == 19) {
         auto owner {target->GetParent<Map>()};
         FO_VERIFY_AND_THROW(owner, "Commit pilot map destruction has no owner");
         target->GetEngine()->MapMngr.DestroyMap(owner);
     }
-    else if (scenario == 7 || scenario == 8 || scenario == 10 || scenario == 16 || scenario == 17) {
+    else if (scenario == 8 || scenario == 17) {
         auto destination {target->GetEngine()->EntityMngr.GetMap(control->DestinationMapId)};
         FO_VERIFY_AND_THROW(destination, "Commit pilot destination is absent");
         FO_VERIFY_AND_THROW(IsEntityAccessValid(destination), "Commit pilot destination lacks existing cover");
         target->GetEngine()->MapMngr.TransferToMap(target, destination, mpos {40, 40}, mdir {}, std::nullopt);
     }
 
-    if (scenario == 1 || scenario == 2 || scenario == 5 || scenario == 6 || scenario == 7 || scenario == 8 || scenario == 16 || scenario == 17 || scenario == 18 || scenario == 19) {
+    if (scenario == 2 || scenario == 6 || scenario == 8 || scenario == 17 || scenario == 19) {
         throw GenericException("COMMIT_PILOT_INJECT");
     }
 }
 
 TEST_CASE("ServerMovementCommitBoundaryPilot")
 {
-    int32_t scenario {GENERATE(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31)};
+    int32_t scenario {GENERATE(0, 2, 6, 8, 11, 15, 17, 19, 21, 26, 27, 28, 29, 30)};
     INFO(scenario);
     REQUIRE(IsTestingInProgress);
     auto settings {ServerEngineTests::MakeServerTestSettings()};
@@ -112,7 +106,7 @@ TEST_CASE("ServerMovementCommitBoundaryPilot")
     ident_t source_id {source->GetId()};
     ident_t destination_id {destination->GetId()};
     control->TargetId = critter_id;
-    control->DestinationMapId = scenario == 16 || scenario == 17 || scenario == 26 ? source_id : destination_id;
+    control->DestinationMapId = scenario == 17 || scenario == 26 ? source_id : destination_id;
     mpos initial_hex {scenario == 11 ? mpos {1, 1} : mpos {20, 20}};
 
     if (scenario == 11) {
@@ -144,7 +138,6 @@ TEST_CASE("ServerMovementCommitBoundaryPilot")
         control->Armed.store(false);
         control->DirArmed.store(false);
         control->FinishArmed.store(false);
-        control->BorrowedRawData = nullptr;
 
         if (!locked) {
             locked = server->Lock(timespan {std::chrono::seconds {10}});
@@ -184,47 +177,11 @@ TEST_CASE("ServerMovementCommitBoundaryPilot")
     REQUIRE(property->GetBaseSize() == sizeof(mpos));
     size_t initial_pre {property->GetSetters()->size()};
     size_t initial_post {property->GetPostSetters()->size()};
-    control->TransformedHex = scenario == 4 ? initial_hex : scenario == 13 ? mpos {-1, 21} : mpos {24, 25};
 
-    property->AddSetter([control](nptr<Entity> entity, ptr<const Property> prop, PropertyRawData& data) mutable {
-        auto target {entity.dyn_cast<Critter>()};
+    // Engine properties are committed together with derived engine state, so they accept post-setters only
+    REQUIRE_THROWS_AS(property->AddSetter([](nptr<Entity>, ptr<const Property>, PropertyRawData&) { }), VerificationException);
+    REQUIRE(property->GetSetters()->size() == initial_pre);
 
-        if (!target || target->GetId() != control->TargetId) {
-            return;
-        }
-
-        control->Pre.fetch_add(1);
-
-        if (control->Scenario == 31) {
-            FO_VERIFY_AND_THROW(!control->BorrowedRawData, "Commit pilot raw-data borrow was already active");
-            control->BorrowedRawData = make_nptr(&data);
-            return;
-        }
-
-        if (!control->Armed.load() || control->Scenario == 2 || control->Scenario == 6 || control->Scenario == 8 || control->Scenario == 17 || control->Scenario == 19 || control->Scenario == 21) {
-            return;
-        }
-
-        FO_VERIFY_AND_THROW(prop == target->GetPropertyHex() && data.GetSize() == sizeof(mpos), "Commit pilot pre-setter type mismatch");
-        auto owner {target->GetParent<Map>()};
-        FO_VERIFY_AND_THROW(owner && IsEntityAccessValid(target) && IsEntityAccessValid(owner), "Commit pilot pre-setter has no existing map cover");
-        FO_VERIFY_AND_THROW(owner->GetCritter(target->GetId()) == target && owner->IsCritterOnHex(target->GetHex(), target), "Commit pilot pre-setter sees inconsistent membership");
-        control->PreConsistent.fetch_add(1);
-        control->Armed.store(false);
-        int32_t mode {control->Scenario};
-
-        if (mode == 3 || mode == 4 || mode == 13) {
-            data.SetAs<mpos>(control->TransformedHex);
-            control->Actions.fetch_add(1);
-        }
-        else if (mode == 14) {
-            data.SetAs<uint16_t>(7);
-            control->Actions.fetch_add(1);
-        }
-        else {
-            ApplyMovementCommitPilotAction(target, control);
-        }
-    });
     property->AddPostSetter([control](nptr<Entity> entity, ptr<const Property>) mutable {
         auto target {entity.dyn_cast<Critter>()};
 
@@ -233,10 +190,6 @@ TEST_CASE("ServerMovementCommitBoundaryPilot")
         }
 
         control->Post.fetch_add(1);
-
-        if (control->Scenario == 31) {
-            control->BorrowedRawData = nullptr;
-        }
 
         auto owner {target->GetParent<Map>()};
 
@@ -249,7 +202,6 @@ TEST_CASE("ServerMovementCommitBoundaryPilot")
             ApplyMovementCommitPilotAction(target, control);
         }
     });
-    REQUIRE(property->GetSetters()->size() == initial_pre + 1);
     REQUIRE(property->GetPostSetters()->size() == initial_post + 1);
     auto dir_property {critter->GetPropertyDir()};
     REQUIRE(dir_property->IsCoreProperty());
@@ -293,7 +245,7 @@ TEST_CASE("ServerMovementCommitBoundaryPilot")
         }
     });
     REQUIRE(dir_property->GetPostSetters()->size() == initial_dir_post + 1);
-    control->Armed.store(scenario != 0 && scenario != 11 && scenario != 12 && scenario != 15 && scenario < 22);
+    control->Armed.store(scenario == 2 || scenario == 6 || scenario == 8 || scenario == 17 || scenario == 19 || scenario == 21);
     control->DirArmed.store(scenario >= 26 && scenario <= 29);
     Entity::EventCallbackData finish {};
     finish.SubscriptionPtr = finish_subscription;
@@ -321,40 +273,6 @@ TEST_CASE("ServerMovementCommitBoundaryPilot")
     finish_subscribed = true;
     control->FinishArmed.store(scenario == 30);
     mpos requested {scenario == 11 ? mpos {2, 1} : mpos {22, 23}};
-    uint32_t authority_calls {0};
-    function<bool()> authority {[&] {
-        authority_calls++;
-
-        if (scenario == 31) {
-            auto clear_borrow {scope_exit([control]() mutable noexcept { control->BorrowedRawData = nullptr; })};
-            FO_VERIFY_AND_THROW(control->BorrowedRawData && control->BorrowedRawData->GetSize() == sizeof(mpos), "Commit pilot raw-data borrow is absent or has wrong size");
-            FO_VERIFY_AND_THROW(control->BorrowedRawData->GetAs<mpos>() == requested, "Commit pilot raw-data borrow has an unexpected input");
-            FO_VERIFY_AND_THROW(critter->GetHex() == initial_hex && source->IsCritterOnHex(initial_hex, critter), "Commit pilot alias callback changed the live position prematurely");
-            control->BorrowedRawData->SetAs<mpos>(mpos {25, 26});
-            FO_VERIFY_AND_THROW(control->BorrowedRawData->GetAs<mpos>() == (mpos {25, 26}), "Commit pilot raw-data alias mutation was skipped");
-            control->Actions.fetch_add(1);
-            control->AliasMutations.fetch_add(1);
-        }
-
-        if (scenario >= 22 && scenario <= 25) {
-            FO_VERIFY_AND_THROW(source->GetCritter(critter_id) == critter && source->IsCritterOnHex(initial_hex, critter), "Commit pilot authority entered inconsistent source state");
-            control->AuthorityConsistent.fetch_add(1);
-            control->Actions.fetch_add(1);
-
-            if (scenario == 22) {
-                server->CrMngr.DestroyCritter(critter);
-            }
-            else if (scenario == 23 || scenario == 24) {
-                server->MapMngr.TransferToMap(critter, destination, mpos {40, 40}, mdir {}, std::nullopt);
-            }
-            else {
-                auto moving {ServerEngineTests::MakeServerMovementContext(source->GetSize(), initial_hex, server->GameTime.GetFrameTime())};
-                server->StartCritterMoving(critter, moving, nullptr);
-            }
-        }
-
-        return scenario != 12 && scenario != 24;
-    }};
 
     if (scenario <= 2 || scenario == 21) {
         auto moving_template {ServerEngineTests::MakeServerMovementContext(source->GetSize(), initial_hex, server->GameTime.GetFrameTime())};
@@ -379,16 +297,14 @@ TEST_CASE("ServerMovementCommitBoundaryPilot")
         if (scenario == 0) {
             REQUIRE(critter->GetMovingState() == MovingState::Success);
             REQUIRE(critter->GetHex() == requested);
-            REQUIRE(control->Pre.load() == ServerEngineTests::SERVER_TEST_MOVE_STEPS.size());
             REQUIRE(control->Post.load() == ServerEngineTests::SERVER_TEST_MOVE_STEPS.size());
         }
         else {
-            REQUIRE(control->Pre.load() == 1);
-            REQUIRE(control->Post.load() == (scenario == 1 ? uint32_t {0} : uint32_t {1}));
+            REQUIRE(control->Post.load() == 1);
             REQUIRE(control->Actions.load() == 1);
 
             if (scenario != 21) {
-                REQUIRE((critter->GetHex() == initial_hex) == (scenario == 1));
+                REQUIRE(critter->GetHex() != initial_hex);
                 REQUIRE(critter->IsMoving());
                 REQUIRE(critter->GetMovingUid() == active_uid);
             }
@@ -396,7 +312,6 @@ TEST_CASE("ServerMovementCommitBoundaryPilot")
     }
     else if (scenario == 15) {
         REQUIRE_NOTHROW(critter->SetHex(initial_hex));
-        REQUIRE(control->Pre.load() == 0);
         REQUIRE(control->Post.load() == 0);
     }
     else if (scenario == 30) {
@@ -426,58 +341,22 @@ TEST_CASE("ServerMovementCommitBoundaryPilot")
         }
     }
     else {
-        bool should_throw {scenario == 5 || scenario == 6 || scenario == 7 || scenario == 8 || scenario == 9 || scenario == 10 || scenario == 12 || scenario == 13 || scenario == 14 || scenario == 16 || scenario == 17 || scenario == 18 || scenario == 19 || scenario == 20 || (scenario >= 22 && scenario <= 25)};
+        bool should_throw {scenario == 6 || scenario == 8 || scenario == 17 || scenario == 19};
 
         if (should_throw) {
-            REQUIRE_THROWS_AS(source->MoveCritterOnField(critter, requested, authority), std::exception);
+            REQUIRE_THROWS_AS(source->MoveCritterOnField(critter, requested), std::exception);
         }
         else {
-            REQUIRE_NOTHROW(source->MoveCritterOnField(critter, requested, authority));
+            REQUIRE_NOTHROW(source->MoveCritterOnField(critter, requested));
         }
 
         REQUIRE(control->Reports.load() == 0);
-
-        if (scenario != 12) {
-            REQUIRE(control->Actions.load() == (scenario == 11 ? uint32_t {0} : uint32_t {1}));
-        }
-
-        if (scenario == 3 || scenario == 4) {
-            REQUIRE(critter->GetHex() == control->TransformedHex);
-            REQUIRE(control->Pre.load() == 1);
-            REQUIRE(control->Post.load() == 1);
-        }
-        if (scenario == 12 || scenario == 13 || scenario == 14) {
-            REQUIRE(critter->GetHex() == initial_hex);
-            REQUIRE(control->Post.load() == 0);
-        }
-        if (scenario == 12) {
-            REQUIRE(authority_calls == 1);
-        }
-        if (scenario >= 22 && scenario <= 25) {
-            REQUIRE(authority_calls == 1);
-            REQUIRE(control->AuthorityConsistent.load() == 1);
-        }
-        if (scenario == 25) {
-            REQUIRE(critter->IsMoving());
-            REQUIRE(critter->GetHex() == initial_hex);
-            REQUIRE(control->Post.load() == 0);
-        }
-        if (scenario == 31) {
-            REQUIRE(authority_calls == 1);
-            REQUIRE(control->AliasMutations.load() == 1);
-            REQUIRE_FALSE(control->BorrowedRawData);
-            REQUIRE(critter->GetHex() == requested);
-            REQUIRE(source->IsCritterOnHex(requested, critter));
-            REQUIRE_FALSE(source->IsCritterOnHex(mpos {25, 26}, critter));
-            REQUIRE(control->Pre.load() == 1);
-            REQUIRE(control->Post.load() == 1);
-            logging::write("MOVEMENT_COMMIT_ALIAS mutations=1 frozen_hex={},{} raw_hex={},{} third_field=false borrow_cleared=true", requested.x, requested.y, critter->GetHex().x, critter->GetHex().y);
-        }
+        REQUIRE(control->Actions.load() == (scenario == 11 ? uint32_t {0} : uint32_t {1}));
     }
 
-    bool destroyed {scenario == 5 || scenario == 6 || scenario == 9 || scenario == 18 || scenario == 19 || scenario == 20 || scenario == 21 || scenario == 22 || scenario == 29 || scenario == 30};
-    bool map_destroyed {scenario == 18 || scenario == 19 || scenario == 20};
-    bool relocated {scenario == 7 || scenario == 8 || scenario == 10 || scenario == 16 || scenario == 17 || scenario == 23 || scenario == 24 || scenario == 26};
+    bool destroyed {scenario == 6 || scenario == 19 || scenario == 21 || scenario == 29 || scenario == 30};
+    bool map_destroyed {scenario == 19};
+    bool relocated {scenario == 8 || scenario == 17 || scenario == 26};
 
     if (destroyed) {
         REQUIRE_FALSE(server->EntityMngr.GetCritter(critter_id));
@@ -531,17 +410,12 @@ TEST_CASE("ServerMovementCommitBoundaryPilot")
         }
     }
 
-    if (control->Actions.load() != 0 && scenario < 22) {
-        if (scenario == 2 || scenario == 6 || scenario == 8 || scenario == 17 || scenario == 19 || scenario == 21) {
-            REQUIRE(control->PostConsistent.load() >= 1);
-        }
-        else {
-            REQUIRE(control->PreConsistent.load() == 1);
-        }
+    if (control->Actions.load() != 0 && scenario < 26) {
+        REQUIRE(control->PostConsistent.load() >= 1);
     }
 
     REQUIRE(control->UnexpectedReports.load() == 0);
-    logging::write("MOVEMENT_COMMIT_RESULT scenario={} grid={} pre={} post={} pre_consistent={} post_consistent={} authority_consistent={} actions={} reports={} destroyed={} relocated={} map_destroyed={}", scenario, grid_name, control->Pre.load(), control->Post.load(), control->PreConsistent.load(), control->PostConsistent.load(), control->AuthorityConsistent.load(), control->Actions.load(), control->Reports.load(), destroyed, relocated, map_destroyed);
+    logging::write("MOVEMENT_COMMIT_RESULT scenario={} grid={} post={} post_consistent={} actions={} reports={} destroyed={} relocated={} map_destroyed={}", scenario, grid_name, control->Post.load(), control->PostConsistent.load(), control->Actions.load(), control->Reports.load(), destroyed, relocated, map_destroyed);
     cleanup_fixture();
     cleanup.release();
     REQUIRE_FALSE(repaired);

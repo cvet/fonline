@@ -32,10 +32,11 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
   OOM submit failures still propagate; other submit failures and any failed wait
   terminate through the immediate native exit instead of unwinding into GPU or
   application teardown.
-- Commit a server movement step's hex and map-field membership together. A
-  property setter or re-entrant event that destroys or relocates the critter, or
-  an authority callback that rejects the step, now aborts it without losing the
-  old field membership or leaving the hex inconsistent with the map.
+- Commit a server movement step's hex and map-field membership together, so
+  script reactions to the step observe both already moved. A post-setter or
+  re-entrant event that destroys or relocates the critter, or an authority
+  callback that rejects the committed step, stops the movement without leaving
+  the hex inconsistent with the map.
 - Prepare visible direct-scene critters before `OnRenderMap_BeforeSprites` and
   reuse their pose across repeated draws. Independent bone followers can use
   that event; particle projection refresh does not advance simulation time.
@@ -61,6 +62,17 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Migration
 
+- Engine properties (`CoreProperty`) accept post-setters only. Registering a
+  value-transforming setter for one (native `Property::AddSetter`, an AngelScript
+  `Game.AddPropertySetter` handler with a by-reference value, or a Managed
+  `ref T` handler) throws `Engine property accepts post-setters only`. Move such
+  a handler to an entity-only post-set reaction (Managed
+  `Game.AddPropertyDeferredSetter`) that reads the new value; project-declared
+  properties keep transforming setters.
+- The engine no longer refuses a script write that shrinks
+  `Map.RemovedStaticItemIds`; `Map.RemoveStaticItem()` owns the append-only rule.
+  Grow the list through that call: a direct write that drops an id brings the
+  item back on the server only. Saved lists need no conversion.
 - Integrating feature baseline `27067e77ac80daf7d0c88a2868224e44948662f2` with master `9af8dc5ff4a80fda232d2539e61c1d0a52f62942` advances the compatibility marker from master `0.0.89` to `0.0.90`. Rebuild all native roles and rebake matching metadata and resources; do not mix client, server or resources across that boundary. Apply the intervening master migrations in order. The integration itself adds no saved-data conversion.
 
 - For independent sprites following a changing bone, update and reattach the

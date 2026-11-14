@@ -3060,33 +3060,23 @@ void MapView::PrepareCritterSceneFrames(const irect32& draw_area)
     FO_TRACE_ZONE(Model);
 
     for (auto& cr : _critters) {
-        // An animation callback may change ModelName; the replacement model is prepared on the next pass
-        for (int32_t pass {0}; pass < 3; pass++) {
-            if (!cr->IsMapSpriteValid()) {
-                break;
-            }
-
-            auto mspr {cr->GetMapSprite()};
-            auto spr {mspr->GetSprite()};
-            auto model {cr->GetModel()};
-
-            if (!model || !spr->IsDirectDraw() || !_engine->SprMngr.GetMapSpriteDrawRect(mspr, draw_area)) {
-                break;
-            }
-
-            // The replaced model sprite owns the instance that is still posing
-            auto sprite_owner {spr->shared_from_this()};
-            ignore_unused(sprite_owner);
-
-            bool prepared {model->PrepareSceneFrame(_engine->Settings->Render.ModelProjFactor)};
-
-            if (cr->GetModel() == model) {
-                FO_VERIFY_AND_THROW(prepared, "Critter scene pose did not stabilize", cr->GetId());
-                break;
-            }
-
-            FO_VERIFY_AND_THROW(pass < 2, "Critter model kept changing during scene preparation", cr->GetId());
+        if (!cr->IsMapSpriteValid()) {
+            continue;
         }
+
+        auto mspr {cr->GetMapSprite()};
+        auto spr {mspr->GetSprite()};
+        auto model {cr->GetModel()};
+
+        if (!model || !spr->IsDirectDraw() || !_engine->SprMngr.GetMapSpriteDrawRect(mspr, draw_area)) {
+            continue;
+        }
+
+        // An animation callback may replace the model while it poses; the sprite owns the posing instance
+        auto sprite_owner {spr->shared_from_this()};
+        ignore_unused(sprite_owner);
+
+        (void)model->PrepareSceneFrame(_engine->Settings->Render.ModelProjFactor);
     }
 #else
     ignore_unused(draw_area);

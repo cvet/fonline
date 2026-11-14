@@ -566,6 +566,7 @@ static auto ProjectCritterBoneMapAnchor(ptr<CritterHexView> hex_cr, hstring bone
     depth_offset = correction;
 
     return true;
+
 #else
     ignore_unused(bone_name);
     ignore_unused(local_point);

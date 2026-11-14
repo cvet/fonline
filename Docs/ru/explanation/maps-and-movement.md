@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/maps-and-movement.html
 ---
 
 # Карты, движение и геометрия
-<!-- docs-translation: {"document_id":"maps-movement-geometry","locale":"ru","source_path":"Docs/en/explanation/maps-and-movement.md","source_sha256":"289037d24d8079fd50e3f739bd91ebdd7eac8874fe0107e5d5eae75708faf6d4"} -->
+<!-- docs-translation: {"document_id":"maps-movement-geometry","locale":"ru","source_path":"Docs/en/explanation/maps-and-movement.md","source_sha256":"39d2859881ca28788136315a0fbe9ac62c3eac9fd89e2f783ed1f84b0210f141"} -->
 Владельцы геометрии/движения Engine: `Source/Common/Geometry.*`, `LineTracer.*`, `Movement.*`, `PathFinding.*`, `MapLoader.*`, map bakers и тесты.
 
 Разделы `.fomap`, identity/владение размещением, Mapper round-trip, side-specific baking и материализация runtime описаны в [формате карт](../how-to/content/map-format.md).
@@ -253,13 +253,13 @@ callback проход через gag-предметы, но не занятос�
 
 Запечённые статические предметы живут в `StaticMap` (`Source/Server/StaticMap.h`), который `MapManager` ключует по `ProtoMap` и разделяет между **всеми** живыми экземплярами этой карты. Экземпляр всё равно может убрать отдельные статические предметы, не трогая эти общие данные.
 
-**Удаление одностороннее на всё время жизни экземпляра карты.** `RemovedStaticItemIds` только растёт: попытку вынуть id обратно отклоняет *setter* свойства, который срабатывает до записи значения, поэтому запись не проходит, а сохранённый список и overlay остаются нетронутыми. Не рассчитывайте, что предмет вернётся на уже загруженные у игроков карты: живой клиентский путь умеет только убирать статический предмет, но не строить его заново, а отказ после записи сохранил бы укороченный список и молча отменил удаление при следующем старте сервера. `MapManager::RegenerateMap()` перегенерирует *содержимое* карты и оставляет удаления на месте; карте, которой нужен целый статический слой, нужен новый экземпляр.
+**Удаление одностороннее на всё время жизни экземпляра карты.** `RemovedStaticItemIds` только растёт: `Map::RemoveStaticItem()` добавляет id и никогда не убирает его. Скрипт, пишущий свойство напрямую, сам соблюдает это правило, потому что у свойства движка нет pre-setter, который мог бы отклонить запись; возврат id из списка вернул бы предмет только на сервере. Не рассчитывайте, что предмет вернётся на уже загруженные у игроков карты: живой клиентский путь умеет только убирать статический предмет, но не строить его заново. `MapManager::RegenerateMap()` перегенерирует *содержимое* карты и оставляет удаления на месте; карте, которой нужен целый статический слой, нужен новый экземпляр.
 
 Механика:
 
 - `Map::RemovedStaticItemIds` (`Common Mutable PublicSync Persistent`) — сохранённый список. Он и есть весь контракт: сохранение, синхронизация с клиентом и видимость из скриптов следуют из свойства.
 - `Map` выводит из него три кэша в `RefreshRemovedStaticItems()` → `RebuildStaticOverlay()`: множество удалённых id, `vector` уцелевших статических предметов и override `StaticMap::Field` для каждого гекса, который покрывал удалённый предмет. Все три пусты, пока карта хранит все запечённые предметы, поэтому нетронутая карта читает общую сетку без лишней косвенности.
-- `Map::VerifyStaticItemRemovalsOnlyGrow()` — страж append-only, вызываемый через setter `ServerEngine::OnSetMapRemovedStaticItems`. Он ничего не меняет и только бросает исключение, поэтому отклонённая запись оставляет карту ровно такой, какой она была.
+- `Map::RemoveStaticItem()` владеет правилом append-only: отклоняет runtime static item, возвращает `false` для id, который уже есть в списке, а иначе добавляет id и сам пересобирает кэши.
 - `Map::GetStaticField()` возвращает override, когда он есть, иначе непустое поле [runtime static items](#содержимое-карт-во-время-работы) карты, иначе общую ячейку. Через него проходят все статические запросы (`GetStaticItem`, `GetStaticItemOnHex`, `GetStaticItems`, `GetStaticItemsOnHex`, `GetStaticItemsInRadius`, `GetTriggerStaticItemsOnHex`, `IsTriggerStaticItemOnHex`) и оба запроса блокировки, поэтому удалённый предмет исчезает из движения, стрельбы, триггеров и поиска одинаково.
 - `StaticMap::ForEachItemHex()` даёт гексы, которые покрывает предмет, а приватный `StaticMap::ApplyItemToField()` добавляет предмет в поле для загрузчика (`AddStaticItem()`), для пересборки overlay (`BuildFieldWithout()`, `MergeFieldInto()`) и для выгрузки runtime static items (`RemoveStaticItems()`), поэтому никто из них не может разойтись в том, какие гексы занимает предмет и какую блокировку он даёт.
 - `StaticMap::Field::ScrollBlocked` существует ради этой пересборки. Проход загрузчика по scroll-блокировке пишет `MoveBlocked` без владеющего предмета, поэтому override, собранный только из уцелевших предметов, молча открыл бы границу карты; пересборка сначала засевает `MoveBlocked` из `ScrollBlocked`.

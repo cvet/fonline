@@ -556,15 +556,6 @@ auto ServerEngine::InitMetadataJob() -> std::optional<timespan>
         };
     }};
 
-    auto wrap_setter {[this](void (ServerEngine::*callback)(ptr<Entity>, ptr<const Property>, PropertyRawData&)) -> PropertySetCallback {
-        return [this, callback](nptr<Entity> entity, ptr<const Property> prop, PropertyRawData& data) FO_DEFERRED {
-            FO_VERIFY_AND_THROW(entity, "Missing entity in property setter");
-            auto entity_ptr {entity};
-            FO_VERIFY_AND_THROW(entity_ptr, "Entity pointer is null");
-            (this->*callback)(entity_ptr, prop, data);
-        };
-    }};
-
     sync_time_prop->AddPostSetter(wrap_post_setter(&ServerEngine::OnSaveSynchronizedTime));
 
     for (const auto& type_desc : GetEntityTypes() | std::views::values) {
@@ -628,16 +619,6 @@ auto ServerEngine::InitMetadataJob() -> std::optional<timespan>
 
     // Properties with custom behaviours
     {
-        auto set_setter {[](nptr<const PropertyRegistrar> registrar, int32_t prop_index, PropertySetCallback callback) {
-            FO_VERIFY_AND_THROW(registrar, "Missing property registrar");
-            auto registrar_ptr {registrar};
-            FO_VERIFY_AND_THROW(registrar_ptr, "Property registrar pointer is null");
-
-            auto prop {registrar_ptr->GetPropertyByIndex(prop_index)};
-            FO_VERIFY_AND_THROW(prop, "Property not found by index");
-            prop->AddSetter(std::move(callback));
-        }};
-
         auto set_post_setter {[](nptr<const PropertyRegistrar> registrar, int32_t prop_index, PropertyPostSetCallback callback) {
             FO_VERIFY_AND_THROW(registrar, "Missing property registrar");
             auto registrar_ptr {registrar};
@@ -649,9 +630,6 @@ auto ServerEngine::InitMetadataJob() -> std::optional<timespan>
         }};
 
         set_post_setter(GetPropertyRegistrar(CritterProperties::ENTITY_TYPE_NAME), Critter::LookDistance_RegIndex, wrap_post_setter(&ServerEngine::OnSetCritterLookDistance));
-        // A setter runs before the value is stored, which is what makes the append-only rule a real rejection
-        // instead of a persisted list the map overlay and the loaded clients no longer agree with
-        set_setter(GetPropertyRegistrar(MapProperties::ENTITY_TYPE_NAME), Map::RemovedStaticItemIds_RegIndex, wrap_setter(&ServerEngine::OnSetMapRemovedStaticItems));
         set_post_setter(GetPropertyRegistrar(MapProperties::ENTITY_TYPE_NAME), Map::RemovedStaticItemIds_RegIndex, wrap_post_setter(&ServerEngine::OnPostSetMapRemovedStaticItems));
         set_post_setter(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), Item::Hidden_RegIndex, wrap_post_setter(&ServerEngine::OnSetItemHidden));
         set_post_setter(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), Item::NoBlock_RegIndex, wrap_post_setter(&ServerEngine::OnSetItemRecacheHex));
@@ -5114,18 +5092,6 @@ void ServerEngine::OnSetCritterLookDistance(ptr<Entity> entity, ptr<const Proper
     }
 }
 
-void ServerEngine::OnSetMapRemovedStaticItems(ptr<Entity> entity, ptr<const Property> prop, PropertyRawData& data)
-{
-    ignore_unused(prop);
-
-    auto map {entity.dyn_cast<Map>()};
-    FO_VERIFY_AND_THROW(map, "Missing map instance");
-    FO_VERIFY_AND_THROW(data.GetSize() % sizeof(ident_t) == 0, "Static item removal list is not aligned to its element size", data.GetSize(), sizeof(ident_t));
-
-    auto new_ids {data.GetPtrAs<ident_t>()};
-    map->VerifyStaticItemRemovalsOnlyGrow({new_ids.get(), data.GetSize() / sizeof(ident_t)});
-}
-
 void ServerEngine::OnPostSetMapRemovedStaticItems(ptr<Entity> entity, ptr<const Property> prop)
 {
     ignore_unused(prop);
@@ -5251,7 +5217,7 @@ void ServerEngine::ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map, co
             auto check_hex {[map](mpos h) -> HexBlockResult { return map->IsHexMovable(h) ? HexBlockResult::Passable : HexBlockResult::Blocked; }};
 
             if (PathFinding::CheckHexWithMultihex(target_hex, dir, multihex, map->GetSize(), check_hex) != HexBlockResult::Blocked) {
-                map->MoveCritterOnField(cr, target_hex, validate_authority);
+                map->MoveCritterOnField(cr, target_hex);
 
                 // The game reviews the committed step once more before its triggers and visibility run
                 bool step_authorized {!validate_authority || validate_authority()};
@@ -5553,7 +5519,7 @@ auto ServerEngine::MoveCritterToStopHex(ptr<Critter> cr, ptr<Map> map, mpos targ
     auto cr_ref_holder {cr.hold_ref()};
     auto map_ref_holder {map.hold_ref()};
 
-    map->MoveCritterOnField(cr, target_hex, validate_authority);
+    map->MoveCritterOnField(cr, target_hex);
 
     // The game reviews the committed step once more before its triggers and visibility run
     bool step_authorized {validate_authority()};

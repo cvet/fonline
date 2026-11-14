@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-api-events","locale":"ru","source_path":"Docs/en/reference/script-api/events.md","source_sha256":"376e4d856934d9bef0af5840e759f2f1d4fd94ebcb8fd1027966ed35df12ffa1"} -->
+<!-- docs-translation: {"document_id":"generated-api-events","locale":"ru","source_path":"Docs/en/reference/script-api/events.md","source_sha256":"18533f217326b6549b8bf3166fda0be11efce3fcdf13fc312c420f54fabce75f"} -->
 
 # События движка
 
@@ -174,9 +174,9 @@ generated: true
 
 | Сигнатура | ID символа | Runtime | Контракт | Флаги | Исходник | Описание |
 | --- | --- | --- | --- | --- | --- | --- |
-| <code>event Map.OnCheckLook(Critter cr, Critter target)</code> | <a id="symbol-script-event-server-map-onchecklook-4dae2b8c8c"></a><code>script.event.server.Map.OnCheckLook</code> | server | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | - | [Source/Server/Map.h:128](https://github.com/cvet/fonline/blob/master/Source/Server/Map.h#L128) | Предоставляет определяемую проектом проверку видимости криттера; Engine напрямую её не вызывает. |
-| <code>event Map.OnCheckTrapLook(Critter cr, Item item)</code> | <a id="symbol-script-event-server-map-onchecktraplook-7fea5348d0"></a><code>script.event.server.Map.OnCheckTrapLook</code> | server | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | - | [Source/Server/Map.h:131](https://github.com/cvet/fonline/blob/master/Source/Server/Map.h#L131) | Предоставляет определяемую проектом проверку видимости ловушки; Engine напрямую её не вызывает. |
-| <code>event Map.OnFinish()</code> | <a id="symbol-script-event-server-map-onfinish-2b73dbc8d5"></a><code>script.event.server.Map.OnFinish</code> | server | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | - | [Source/Server/Map.h:125](https://github.com/cvet/fonline/blob/master/Source/Server/Map.h#L125) | Выполняется во время завершения этой карты. |
+| <code>event Map.OnCheckLook(Critter cr, Critter target)</code> | <a id="symbol-script-event-server-map-onchecklook-4dae2b8c8c"></a><code>script.event.server.Map.OnCheckLook</code> | server | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | - | [Source/Server/Map.h:127](https://github.com/cvet/fonline/blob/master/Source/Server/Map.h#L127) | Предоставляет определяемую проектом проверку видимости криттера; Engine напрямую её не вызывает. |
+| <code>event Map.OnCheckTrapLook(Critter cr, Item item)</code> | <a id="symbol-script-event-server-map-onchecktraplook-7fea5348d0"></a><code>script.event.server.Map.OnCheckTrapLook</code> | server | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | - | [Source/Server/Map.h:130](https://github.com/cvet/fonline/blob/master/Source/Server/Map.h#L130) | Предоставляет определяемую проектом проверку видимости ловушки; Engine напрямую её не вызывает. |
+| <code>event Map.OnFinish()</code> | <a id="symbol-script-event-server-map-onfinish-2b73dbc8d5"></a><code>script.event.server.Map.OnFinish</code> | server | <code>experimental</code> (область)<br>с версии <code>2022.1.0.wip</code><br>исходник контракта: [Source/Common/Common.h:15](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L15) | - | [Source/Server/Map.h:124](https://github.com/cvet/fonline/blob/master/Source/Server/Map.h#L124) | Выполняется во время завершения этой карты. |
 
 <a id="group-event-server-player-e1c621f0ad"></a>
 ## <code>Player</code> (server)
