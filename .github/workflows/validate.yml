@@ -97,6 +97,7 @@ jobs:
         BuildTools/tests/test_mechanics_sandbox.py
         BuildTools/tests/test_cmake_baker_runtime_copy.py
         BuildTools/tests/test_cmake_option_names.py
+        BuildTools/tests/test_cmake_timeouts.py
     - name: Run managed script analyzer self-tests
       run: dotnet run --project Source/Scripting/Managed/Analyzers/Tests/FOnline.Analyzers.Tests.csproj --configuration Release
     - run: python3 BuildTools/tests/test_engine_version.py

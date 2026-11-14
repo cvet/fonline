@@ -8,6 +8,8 @@ import subprocess
 
 import pytest
 
+from _timeouts import CMAKE_TIMEOUT_SECONDS
+
 
 ENGINE = Path(__file__).resolve().parents[2]
 APPLICATIONS_STAGE = (ENGINE / 'BuildTools/cmake/stages/Applications.cmake').read_text(encoding='utf-8')
@@ -108,7 +110,7 @@ def configure(tmp_path: Path, options: str, hooks: str = '') -> subprocess.Compl
     if shutil.which('ninja') is not None:
         arguments += ['-G', 'Ninja']
     environment = {key: value for key, value in os.environ.items() if not key.startswith('FO_')}
-    return subprocess.run(arguments, text=True, encoding='utf-8', capture_output=True, timeout=120, env=environment)
+    return subprocess.run(arguments, text=True, encoding='utf-8', capture_output=True, timeout=CMAKE_TIMEOUT_SECONDS, env=environment)
 
 
 def recorded(tmp_path: Path, name: str) -> list[str]:

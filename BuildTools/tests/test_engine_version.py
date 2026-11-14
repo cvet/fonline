@@ -18,6 +18,7 @@ sys.path.insert(0, str(BUILDTOOLS))
 import codegen
 import engine_version
 import docs_engine_version
+from _timeouts import CMAKE_TIMEOUT_SECONDS
 
 
 class EngineVersionTests(unittest.TestCase):
@@ -89,11 +90,11 @@ class EngineVersionTests(unittest.TestCase):
                 encoding="utf-8")
             build = fixture / "build"
             subprocess.run(["cmake", "-G", "Ninja", "-S", str(source), "-B", str(build)],
-                           check=True, capture_output=True, text=True, timeout=60)
+                           check=True, capture_output=True, text=True, timeout=CMAKE_TIMEOUT_SECONDS)
 
             def assert_consumed(expected: str) -> None:
                 subprocess.run(["cmake", "--build", str(build)], check=True,
-                               capture_output=True, text=True, timeout=60)
+                               capture_output=True, text=True, timeout=CMAKE_TIMEOUT_SECONDS)
                 self.assertEqual(expected, (build / "consumed-head.txt").read_text(encoding="utf-8"))
                 dependencies = (build / "tracked.txt").read_text(encoding="utf-8").split(";")
                 self.assertTrue(dependencies)

@@ -9,6 +9,8 @@ import subprocess
 
 import pytest
 
+from _timeouts import CMAKE_TIMEOUT_SECONDS
+
 
 ENGINE = Path(__file__).resolve().parents[2]
 INTERFACE = json.loads((ENGINE / 'BuildTools/cmake/ProjectInterface.json').read_text(encoding='utf-8'))
@@ -28,7 +30,7 @@ include("{ENGINE.as_posix()}/BuildTools/cmake/helpers/Options.cmake")
     clean_env = {key: value for key, value in os.environ.items() if not key.startswith('FO_')}
     clean_env.update(env or {})
     result = subprocess.run(['cmake', *args, '-P', str(script)], text=True, encoding='utf-8',
-                            capture_output=True, timeout=60, env=clean_env)
+                            capture_output=True, timeout=CMAKE_TIMEOUT_SECONDS, env=clean_env)
     assert result.returncode == 0, result.stdout + result.stderr
     return re.findall(r'Hash=([a-f0-9]{64})', result.stdout + result.stderr)
 

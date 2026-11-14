@@ -11,6 +11,8 @@ import xml.etree.ElementTree as ET
 
 import pytest
 
+from _timeouts import CMAKE_TIMEOUT_SECONDS
+
 
 ENGINE = Path(__file__).resolve().parents[2]
 INIT = (ENGINE / 'BuildTools/cmake/stages/Init.cmake').read_text(encoding='utf-8')
@@ -122,7 +124,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def run(*args: str, cwd: Path, timeout: int = 60, env: dict[str, str] | None = None) -> str:
+def run(*args: str, cwd: Path, timeout: float = CMAKE_TIMEOUT_SECONDS, env: dict[str, str] | None = None) -> str:
     environment = os.environ.copy()
     if env is not None:
         environment.update(env)
@@ -180,7 +182,7 @@ def build_target(source: Path, build: Path, target: str, environment: dict[str, 
     arguments = ['cmake', '--build', str(build), '--config', 'Release', '--target', target]
     if generator is not None and generator.startswith('Visual Studio '):
         arguments.extend(['--', '/nologo', '/verbosity:normal'])
-    return run(*arguments, cwd=source, timeout=120, env=environment)
+    return run(*arguments, cwd=source, timeout=CMAKE_TIMEOUT_SECONDS, env=environment)
 
 
 def configure_hashes(build: Path) -> list[str]:
@@ -495,7 +497,7 @@ def test_build_hash_writer_rejects_invalid_input_before_output_changes(
         arguments.append('-DBUILD_HASH_INPUT_FILE=' + str(source))
     arguments.extend(['-P', str(ENGINE / 'BuildTools/cmake/helpers/WriteBuildHash.cmake')])
     result = subprocess.run(arguments, cwd=tmp_path, capture_output=True, text=True,
-                            encoding='utf-8', timeout=30)
+                            encoding='utf-8', timeout=CMAKE_TIMEOUT_SECONDS)
     assert result.returncode != 0
     assert output.read_bytes() == b'previous marker'
 
