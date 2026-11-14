@@ -6,6 +6,7 @@ Maintenance workflow: [Docs/ThirdPartyMaintenance.md](../Docs/ThirdPartyMaintena
 * Asio - [asio-1.38.2](https://github.com/chriskohlhoff/asio)
 * Catch2 - [Catch2-3.15.3](https://github.com/catchorg/Catch2)
 * Effekseer - [Effekseer-1.80.6](https://github.com/effekseer/Effekseer)
+* FreeType - [freetype-2.14.3](https://freetype.org)
 * Clipper2 - [Clipper2-2.0.1](https://github.com/AngusJohnson/Clipper2)
 * earcut.hpp - [earcut.hpp-3.2.3](https://github.com/mapbox/earcut.hpp)
 * GLM - [glm-1.0.3](https://github.com/g-truc/glm)
