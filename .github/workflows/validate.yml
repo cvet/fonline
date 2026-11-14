@@ -21,6 +21,7 @@ on:
           - all
           - unity
           - wide-coords
+          - examples
           - managed-apple
 
 jobs:
@@ -547,6 +548,61 @@ jobs:
     - uses: actions/checkout@v6
     - run: BuildTools/prepare-workspace.sh ${{ matrix.prepare }}
     - run: BuildTools/validate.sh ${{matrix.app}}
+  examples:
+    if: ${{github.event_name != 'workflow_dispatch' || !inputs.job || inputs.job == 'all' || inputs.job == 'examples'}}
+    name: Example validate (${{ matrix.runner }} / ${{ matrix.example }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 180
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, windows-2025]
+        example: [MinimalMultiplayer, MechanicsSandbox]
+    steps:
+    - uses: actions/checkout@v6
+    - uses: actions/setup-python@v6
+      with:
+        python-version: '3.13'
+    - name: Install Linux build packages and Ninja
+      if: runner.os == 'Linux'
+      run: |
+        BuildTools/prepare-workspace.sh linux-packages
+        sudo apt-get update
+        sudo apt-get install -y ninja-build
+    - name: Link the example to this Engine checkout
+      if: runner.os == 'Linux'
+      working-directory: Examples/${{ matrix.example }}
+      run: ln -s ../.. Engine
+    - name: Link the example to this Engine checkout
+      if: runner.os == 'Windows'
+      working-directory: Examples/${{ matrix.example }}
+      shell: pwsh
+      # PowerShell 7 rejects a relative junction target
+      run: New-Item -ItemType Junction -Path Engine -Target (Resolve-Path ..\..)
+    # Configure, build the server, clients and baker, bake, then run the example's smoke scenarios
+    - name: Run the example validator
+      if: runner.os == 'Linux'
+      working-directory: Examples/${{ matrix.example }}
+      env:
+        CMAKE_BUILD_PARALLEL_LEVEL: '2'
+      run: python3 validate.py
+    - name: Run the example validator
+      if: runner.os == 'Windows'
+      working-directory: Examples/${{ matrix.example }}
+      shell: pwsh
+      run: python validate.py
+    - name: Upload smoke reports
+      if: failure()
+      uses: actions/upload-artifact@v6
+      with:
+        name: examples-${{ matrix.runner }}-${{ matrix.example }}
+        path: |
+          Examples/${{ matrix.example }}/Workspace/*smoke*
+          Examples/${{ matrix.example }}/Build/*/*smoke*
+        if-no-files-found: warn
   macos:
     if: ${{github.event_name != 'workflow_dispatch' || !inputs.job || inputs.job == 'all'}}
     name: macOS validate (${{ matrix.runner }} / ${{ matrix.app }})
