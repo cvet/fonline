@@ -408,6 +408,11 @@ its hex and the two neighbours its corner type reads, writing those fields so
 that later light changes reach the stored addresses. Light storage therefore
 follows the touched fields instead of the map area.
 
+Only sprites drawn after the light pass take this per-hex light. Sprites below
+`DrawOrderType::PreLight` (tiles and flat static items) are composited under the
+light render target and are lit by it alone, so `ItemHexView::SetupSprite()`
+gives them no vertex light.
+
 No map-sized allocation or whole-map pass remains on construction, scrolling or
 lighting. Roof groups are numbered from the tracked set of roof fields, in the
 former x-major, y-minor order, so group numbers are unchanged. A map without a

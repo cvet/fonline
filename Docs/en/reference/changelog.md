@@ -16,6 +16,16 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Fixed
 
+- Stop applying vertex light to map sprites drawn below the light pass. `ItemHexView::SetupSprite` pointed every item without `NoLightInfluence` at the light of its hex, so a flat static item (`DrawFlatten` with `Static`, drawn as `FlatItemPreLight`) was lit twice: by the light render target composited over it, like the ground, and again by the per-hex light mixed into its colour, like an upright object. Near a light source such a puddle or snowdrift glowed brighter than the ground around it. Sprites whose draw order is below `DrawOrderType::PreLight` now take only the light target, so they are lit exactly like tiles. Sprites drawn after the light pass (upright items, dynamic flat items, critters, flat bodies) keep their vertex light.
+
+### Migration
+
+- Baseline `2026.1.122-dev` to `2026.1.123-dev`. No project migration is required: no API, property, serialization, network or resource contract changes, and no rebake is needed for this change alone. Flat static items without `NoLightInfluence` now look darker and blend with the ground near light sources; a project that added `NoLightInfluence` to such prototypes only to hide the glow may remove it. Rebuild the client runtime library and host to pick up the change.
+
+## 2026.1.122-dev - 2026-11-15
+
+### Fixed
+
 - Align the translation inventory regression counts with the 360 particle descriptions in the generated model, and format the managed timespan conversion as required by the source formatter.
 - Qualify the client-server integration startup helper so unity builds do not confuse it with the server test helper of the same name.
 - Restore the frame index, sprite and presentation offsets together when an animation-frame update throws, allowing a later update to retry the frame.

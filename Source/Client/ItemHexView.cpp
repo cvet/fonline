@@ -51,7 +51,8 @@ void ItemHexView::SetupSprite(ptr<MapSprite> mspr)
     mspr->SetEggAppearence(GetEggType());
     mspr->SetEggStructure(GetIsWall() || (GetIsTile() && GetIsRoofTile()));
 
-    if (!GetNoLightInfluence()) {
+    // Sprites below the light pass are lit by the light render target, so vertex light would count twice
+    if (!GetNoLightInfluence() && mspr->GetDrawOrder() >= DrawOrderType::PreLight) {
         _map->SetupSpriteLight(mspr, GetCorner());
     }
 
