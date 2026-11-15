@@ -5,7 +5,7 @@ document_id: baking-pipeline
 locale: ru
 permalink: /Docs/ru/explanation/content-pipeline/baking.html
 ---
-<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"a1dc2507d39edb87a631ca0e8ec1d363037e418dc1eccbdf38220f7951218e11"} -->
+<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"a7eb6456501a0681326f8e1afad196100b3ac47fb677025e89c21fc3c167019b"} -->
 # Конвейер запекания ресурсов
 
 Bake выдаёт loose outputs для каждого target. Затем packaging фильтрует логический pack по target и пишет детерминированную базу `.fores`; Embedded внутри executable остаётся ZIP. Клиентское обновление может соединить базу с одним append-only writable `.patch.fores`, а удаляемый `Resources.foindex` ускоряет общий поиск. Бинарный формат, хеши, проверки и восстановление описаны в [формате пакетов ресурсов](../../../ResourcePackFormat.md), синхронизация клиента — в [разделении client runtime и updater](../runtime/client-updater.md). `BuildTools/measure_resource_packs.py` сравнивает реальные форматы baked tree с необязательным readback; `analyze_resource_corpus.py` оценивает распределение исходников и стоимость индекса без записи packs.
@@ -341,6 +341,8 @@ Windows пытается применить OS/filesystem-specific POSIX rename 
 ### `BakerDataSource`
 
 `BakerDataSource` адаптирует входы и выходы к интерфейсу `DataSource`, хранит resource packs, output resources, cache checks и построение output paths. `Reindex()` пересоздаёт mounts, baker-ы, collections и output index и сообщает, изменились ли пути или source write times. Это позволяет долгоживущим tools обнаруживать и лениво запекать новые или изменённые ресурсы без постоянного полного сканирования диска. Dry-run обнаружения output и последующее per-file запекание не подключают collector `MasterBaker` и поэтому намеренно отсутствуют в его отчёте.
+
+У output, для которого baker вместо времени записи источника сообщает `ALWAYS_STALE_INPUT_WRITE_TIME` (например, конфиг `ConfigBaker`), сравнивать нечего. Первое ленивое обращение после индексации запекает его заново и запоминает время записи свежего output, поэтому последующие обращения до следующего `Reindex()` используют этот output без повторного запекания.
 
 ## Отчёт полного прохода
 

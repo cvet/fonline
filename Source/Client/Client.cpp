@@ -1416,9 +1416,10 @@ void ClientEngine::Net_OnCritterMoveItem()
 
     auto items_count {_conn.InBuf->Read<uint32_t>()};
 
-    if (items_count != 0) {
-        FO_VERIFY_AND_THROW(!cr->GetIsChosen(), "Critter is already marked as chosen");
-
+    if (cr->GetIsChosen()) {
+        FO_VERIFY_AND_THROW(items_count == 0, "Chosen critter received an inventory snapshot");
+    }
+    else {
         cr->DeleteAllInvItems();
 
         for (uint32_t i {0}; i < items_count; i++) {
@@ -1436,6 +1437,15 @@ void ClientEngine::Net_OnCritterMoveItem()
         }
     }
 
+    // Apply authoritative slots before the view refresh and script callbacks inspect the inventory
+    if (moved_item && cur_slot != prev_slot && cr->GetIsChosen()) {
+        cr->ApplyAuthoritativeItemSlotMove(moved_item->GetId(), prev_slot, cur_slot);
+
+        if (cr->IsDestroyed()) {
+            return;
+        }
+    }
+
     if (auto hex_cr {cr.dyn_cast<CritterHexView>()}) {
         hex_cr->RefreshView();
         hex_cr->Action(action, static_cast<int32_t>(prev_slot), moved_item, false);
@@ -1443,20 +1453,6 @@ void ClientEngine::Net_OnCritterMoveItem()
 
     if (cr->IsDestroyed()) {
         return;
-    }
-
-    if (moved_item && cur_slot != prev_slot && cr->GetIsChosen()) {
-        cr->ApplyAuthoritativeItemSlotMove(moved_item->GetId(), prev_slot, cur_slot);
-
-        if (cr->IsDestroyed()) {
-            return;
-        }
-
-        moved_item->SetCritterSlot(prev_slot);
-
-        if (cr->IsDestroyed()) {
-            return;
-        }
     }
 
     if (_curMap) {
