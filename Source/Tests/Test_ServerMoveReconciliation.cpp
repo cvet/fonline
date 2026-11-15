@@ -123,12 +123,12 @@ namespace
                     }
 
                     (void)packet.Read<ipos16>();
-                    (void)packet.Read<uint32_t>();
+                    (void)packet.Read<uint64_t>();
                     (void)packet.Read<float32_t>();
                 }
                 else {
                     REQUIRE(message == NetMessage::CritterMoveLease);
-                    (void)packet.Read<uint32_t>();
+                    (void)packet.Read<uint64_t>();
                     (void)packet.Read<float32_t>();
                 }
 
