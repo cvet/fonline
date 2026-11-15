@@ -332,6 +332,69 @@
           "equip-slot-client"
         ]
       }
+    },
+    {
+      "slug": "derived-stats",
+      "title": "Derived stats with getters and setters",
+      "kind": "primitive",
+      "backends": {
+        "angelscript": "runtime-verified",
+        "managed": "shape"
+      },
+      "page": "Docs/en/how-to/mechanics/derived-stats.md",
+      "files": {
+        "angelscript": [
+          "Examples/MechanicsSandbox/Scripts/Recipes/DerivedStats.fos",
+          "Examples/MechanicsSandbox/Scripts/Sandbox.fos"
+        ],
+        "managed": [
+          "Examples/MechanicsSandbox/Managed/Recipes/DerivedStats.cs"
+        ],
+        "content": [
+          "Examples/MechanicsSandbox/Content/DerivedStats.fopro",
+          "Examples/MechanicsSandbox/Content/Sandbox.fopro"
+        ],
+        "maps": [
+          "Examples/MechanicsSandbox/Maps/Sandbox_Map.fomap"
+        ],
+        "tests": [
+          "Examples/MechanicsSandbox/Scripts/Tests/Test_DerivedStats.fos",
+          "Examples/MechanicsSandbox/Scripts/Testing.fos",
+          "Examples/MechanicsSandbox/mechanics-smoke.json",
+          "Examples/MechanicsSandbox/FOnlineMechanicsSandbox.fomain"
+        ]
+      },
+      "symbols": [
+        "script.method.server.Entity.IsPersistent",
+        "script.method.client.Game.Chosen",
+        "script.method.client.Game.GetCritter"
+      ],
+      "metadata": [
+        "///@ Property Critter Common int32 Strength Mutable Persistent PublicSync",
+        "///@ Property Critter Common int32 Endurance Mutable Persistent OwnerSync",
+        "///@ Property Critter Common int32 CurLife Mutable Persistent PublicSync",
+        "///@ Property Critter Common bool Collapsed Mutable Persistent PublicSync",
+        "///@ Property Critter Common int32 CarryWeight Virtual",
+        "///@ Property Critter Common int32 MaxLife Virtual",
+        "///@ Property Critter Common int32 MaxLifeShown Mutable Persistent PublicSync"
+      ],
+      "builtins": [
+        "[[PropertyGetter]]",
+        "[[PropertySetter]]",
+        "Game.SetPropertyGetter",
+        "Game.AddPropertySetter",
+        "[[ModuleInit]]"
+      ],
+      "events_fired_by_recipe": [],
+      "smoke": {
+        "manifest": "Examples/MechanicsSandbox/mechanics-smoke.json",
+        "scenarios": [
+          "derived-stats",
+          "derived-stats-client",
+          "derived-stats-restart-write",
+          "derived-stats-restart-verify"
+        ]
+      }
     }
   ],
   "cross_cutting": [

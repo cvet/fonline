@@ -354,6 +354,122 @@
       ]
     },
     {
+      "id": "derived-stats",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeTests",
+            "-Testing.Filter",
+            "derived_stats."
+          ],
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS derived_stats.getters_compute_from_stored_values",
+            "[Testing] PASS derived_stats.pre_setter_clamps_and_post_setter_reacts",
+            "[Testing] PASS derived_stats.setters_see_the_old_value_before_and_the_new_one_after",
+            "[Testing] PASS derived_stats.equal_request_runs_no_setter_but_a_clamped_one_does",
+            "[Testing] PASS derived_stats.shrinking_the_cap_lowers_the_stored_life",
+            "[Testing] COMPLETE status=passed",
+            "derived_stats_collapsed_changed critter="
+          ]
+        }
+      ]
+    },
+    {
+      "id": "derived-stats-client",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeNetworkTests",
+            "-Testing.Filter",
+            "derived_stats_client."
+          ],
+          "ready_marker": "derived_stats_waiting_for_client",
+          "ready_timeout_seconds": 30,
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS derived_stats_client.client_views_compute_what_they_can_replicate",
+            "[Testing] COMPLETE status=passed",
+            "sandbox_player_entered",
+            "derived_stats_drill_sent",
+            "derived_stats_report own=40/35 npc=70/20/50 npc_endurance=0"
+          ]
+        },
+        {
+          "id": "client",
+          "command": [
+            "{client}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeClient"
+          ],
+          "required_markers": [
+            "sandbox_client_connected",
+            "sandbox_client_disconnected"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "derived-stats-restart-write",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeRestart",
+            "-Server.DbStorage",
+            "JSON {restart_db}/derived-stats",
+            "-Testing.Filter",
+            "derived_stats_restart_write."
+          ],
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS derived_stats_restart_write.store_base_values_before_restart",
+            "[Testing] COMPLETE status=passed"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "derived-stats-restart-verify",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeRestart",
+            "-Server.DbStorage",
+            "JSON {restart_db}/derived-stats",
+            "-Testing.Filter",
+            "derived_stats_restart_verify."
+          ],
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS derived_stats_restart_verify.derived_values_recompute_after_restart",
+            "[Testing] COMPLETE status=passed"
+          ]
+        }
+      ]
+    },
+    {
       "id": "cover-transactions",
       "processes": [
         {

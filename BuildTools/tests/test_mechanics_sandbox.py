@@ -34,6 +34,7 @@ EXPECTED_RECIPES = [
     "timed-effect",
     "data-driven-item",
     "equip-slot",
+    "derived-stats",
 ]
 EXPECTED_CROSS_CUTTING = ["cover-transactions"]
 RECIPE_KEYS = {"slug", "title", "kind", "backends", "page", "files", "symbols", "metadata", "builtins", "events_fired_by_recipe", "smoke"}
