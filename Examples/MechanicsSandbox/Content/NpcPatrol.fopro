@@ -1,0 +1,18 @@
+# The guard walks its saved route; without a project visibility hook every critter on the map is in view
+[ProtoCritter]
+$Name = NpcPatrol_Guard
+$Text engl = "Patrol guard"
+$Text russ = "Страж патруля"
+LookDistance = 12
+InitScript = NpcPatrol::InitPatroller
+
+[ProtoCritter]
+$Name = NpcPatrol_Intruder
+$Text engl = "Intruder"
+$Text russ = "Нарушитель"
+
+# A crate that blocks its hex: a waypoint under it is refused before any walk starts
+[ProtoItem]
+$Name = NpcPatrol_Barrier
+$Text engl = "Crate"
+$Text russ = "Ящик"

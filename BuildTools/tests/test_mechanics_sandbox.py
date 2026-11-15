@@ -28,7 +28,18 @@ import docs_snippets  # noqa: E402
 import gameplay_test_runner  # noqa: E402
 
 
-EXPECTED_RECIPES = ["persistent-state", "validated-action", "timed-effect"]
+EXPECTED_RECIPES = [
+    "persistent-state",
+    "validated-action",
+    "timed-effect",
+    "data-driven-item",
+    "equip-slot",
+    "derived-stats",
+    "container-transfer",
+    "map-transition",
+    "npc-patrol",
+    "long-action",
+]
 EXPECTED_CROSS_CUTTING = ["cover-transactions"]
 RECIPE_KEYS = {"slug", "title", "kind", "backends", "page", "files", "symbols", "metadata", "builtins", "smoke"}
 CROSS_CUTTING_KEYS = RECIPE_KEYS - {"kind", "backends"}
@@ -89,7 +100,7 @@ def _config_sections(text: str) -> tuple[dict[str, str], dict[str, dict[str, str
     return root, sub_configs
 
 
-def test_recipe_manifest_lists_the_first_slice() -> None:
+def test_recipe_manifest_lists_the_expected_recipes() -> None:
     manifest = _manifest()
 
     assert manifest["schema_version"] == 1

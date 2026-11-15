@@ -1,0 +1,221 @@
+// Tests for the data-driven item recipe: the kind marker, the content check, the init script and a restart
+// The stone and the blank tonic are negative controls: one has no component, the other has a marker without values
+namespace Test_DataDrivenItem
+{
+
+#if SERVER
+
+const hstring PatientPid = "DataDrivenItem_Npc".hstr();
+const hstring TonicPid = "DataDrivenItem_Tonic".hstr();
+const hstring StonePid = "DataDrivenItem_Stone".hstr();
+const hstring BlankPid = "DataDrivenItem_Blank".hstr();
+const hstring LegacyPid = "DataDrivenItem_Legacy".hstr();
+const hstring MissingPid = "DataDrivenItem_Missing".hstr();
+const mpos PatientHex = mpos(20, 20);
+
+[[ModuleInit]]
+void InitTestDataDrivenItem()
+{
+    Game.OnTestingInit.Subscribe(OnTestingInit);
+}
+
+[[Event]]
+void OnTestingInit()
+{
+    Testing::RegisterTest("data_driven_item", "kind_comes_from_the_component", KindComesFromTheComponent);
+    Testing::RegisterTest("data_driven_item", "use_is_capped_by_the_setting_and_needs_the_owner", UseIsCappedByTheSettingAndNeedsTheOwner);
+    Testing::RegisterTest("data_driven_item", "component_read_without_the_marker_throws", ComponentReadWithoutTheMarkerThrows);
+    Testing::RegisterTest("data_driven_item", "content_check_catches_a_marker_without_values", ContentCheckCatchesAMarkerWithoutValues);
+    Testing::RegisterTest("data_driven_item", "legacy_flat_property_resolves_into_the_component", LegacyFlatPropertyResolvesIntoTheComponent);
+    Testing::RegisterTest("data_driven_item", "restored_item_keeps_its_charges", RestoredItemKeepsItsCharges);
+    Testing::RegisterTest("data_driven_item_restart_write", "spend_a_charge_before_restart", SpendAChargeBeforeRestart);
+    Testing::RegisterTest("data_driven_item_restart_verify", "charges_survive_restart", ChargesSurviveRestart);
+}
+
+Critter MakePatient(Map map)
+{
+    return map.AddCritter(PatientPid, PatientHex, mdir(0));
+}
+
+void KindComesFromTheComponent(Testing::TestContext ctx)
+{
+    Map map = Sandbox::CreateMap();
+    Critter cr = MakePatient(map);
+    Item tonic = cr.AddItem(TonicPid);
+    Item stone = cr.AddItem(StonePid);
+
+    Testing::Expect(ctx, tonic.HasRemedy, "The tonic prototype carries the component");
+    Testing::ExpectEq(ctx, tonic.Remedy.ChargesLeft, 3, "The init script seeded the charges from the prototype");
+    Testing::Expect(ctx, !stone.HasRemedy, "The stone has no component");
+
+    Testing::ExpectEq(ctx, DataDrivenItem::UseItem(cr, stone), 0, "An item without the component is left alone");
+    Testing::ExpectEq(ctx, cr.Vigor, 0, "Nothing was restored");
+    Testing::Expect(ctx, !stone.IsDestroyed, "The stone is untouched");
+
+    Testing::ExpectEq(ctx, DataDrivenItem::UseItem(cr, tonic), 30, "The first use restores the authored amount");
+    Testing::ExpectEq(ctx, tonic.Remedy.ChargesLeft, 2, "A use spends one charge");
+    DataDrivenItem::UseItem(cr, tonic);
+    DataDrivenItem::UseItem(cr, tonic);
+    Testing::ExpectEq(ctx, cr.Vigor, 90, "Three uses restored three times the authored amount");
+    Testing::Expect(ctx, tonic.IsDestroyed, "The last charge consumes the item");
+
+    Game.DestroyLocation(map.GetLocation());
+}
+
+void UseIsCappedByTheSettingAndNeedsTheOwner(Testing::TestContext ctx)
+{
+    Map map = Sandbox::CreateMap();
+    Critter cr = MakePatient(map);
+    Critter other = MakePatient(map);
+    Item tonic = cr.AddItem(TonicPid);
+    Item foreign = other.AddItem(TonicPid);
+
+    cr.Vigor = Settings.DataDrivenItem.MaxVigor - 5;
+    Testing::ExpectEq(ctx, DataDrivenItem::UseItem(cr, tonic), 5, "The setting read at use time caps the restored amount");
+    Testing::ExpectEq(ctx, cr.Vigor, Settings.DataDrivenItem.MaxVigor, "The critter stands at the cap");
+    Testing::ExpectEq(ctx, DataDrivenItem::UseItem(cr, tonic), 0, "At the cap nothing is used up");
+    Testing::ExpectEq(ctx, tonic.Remedy.ChargesLeft, 2, "The refused use kept its charge");
+
+    Testing::ExpectEq(ctx, DataDrivenItem::UseItem(cr, foreign), 0, "An item in another inventory is refused");
+    Testing::ExpectEq(ctx, foreign.Remedy.ChargesLeft, 3, "The foreign item kept its charges");
+
+    Game.DestroyLocation(map.GetLocation());
+}
+
+// Negative control: the component accessor of an entity without the marker throws instead of returning a default
+void ComponentReadWithoutTheMarkerThrows(Testing::TestContext ctx)
+{
+    Map map = Sandbox::CreateMap();
+    Critter cr = MakePatient(map);
+    Item stone = cr.AddItem(StonePid);
+
+    bool threw = false;
+
+    try {
+        int32 restore = stone.Remedy.Restore;
+        Game.Log("data_driven_item_unexpected_read value=" + restore);
+    }
+    catch {
+        threw = true;
+    }
+
+    Testing::Expect(ctx, threw, "Reading a component field without the marker throws");
+
+    Game.DestroyLocation(map.GetLocation());
+}
+
+// Negative control: the blank tonic has the marker and zero values, so only a value check separates it from a real tonic
+void ContentCheckCatchesAMarkerWithoutValues(Testing::TestContext ctx)
+{
+    Testing::Expect(ctx, DataDrivenItem::IsValidRemedyProto(TonicPid), "The tonic is a valid remedy");
+    Testing::Expect(ctx, !DataDrivenItem::IsValidRemedyProto(StonePid), "The stone is not a remedy");
+    Testing::Expect(ctx, !DataDrivenItem::IsValidRemedyProto(BlankPid), "The blank tonic has the marker without values");
+    Testing::Expect(ctx, !DataDrivenItem::IsValidRemedyProto(MissingPid), "An unknown prototype id is not a remedy");
+
+    ProtoItem blankProto = Game.GetProtoItem(BlankPid);
+    Testing::Expect(ctx, blankProto.HasRemedy, "The blank prototype has the marker");
+    Testing::ExpectEq(ctx, blankProto.Remedy.Restore, 0, "An omitted authored field reads as zero");
+
+    Map map = Sandbox::CreateMap();
+    Critter cr = MakePatient(map);
+    Item blank = cr.AddItem(BlankPid);
+    Testing::ExpectEq(ctx, DataDrivenItem::UseItem(cr, blank), 0, "The use path refuses the blank tonic");
+    Testing::ExpectEq(ctx, blank.Remedy.ChargesLeft, 0, "The init script seeded the zero charges of the blank tonic");
+
+    Game.DestroyLocation(map.GetLocation());
+}
+
+void LegacyFlatPropertyResolvesIntoTheComponent(Testing::TestContext ctx)
+{
+    ProtoItem legacy = Game.GetProtoItem(LegacyPid);
+    Testing::Expect(ctx, legacy.HasRemedy, "The legacy prototype carries the component");
+    Testing::ExpectEq(ctx, legacy.Remedy.Restore, 15, "The flat RemedyRestore key resolved into Remedy.Restore");
+    Testing::Expect(ctx, DataDrivenItem::IsValidRemedyProto(LegacyPid), "The migrated prototype is a valid remedy");
+}
+
+// The memory database keeps records for the process lifetime, so an unload and a load replay a restore in-process
+void RestoredItemKeepsItsCharges(Testing::TestContext ctx)
+{
+    Map map = Sandbox::CreateMap();
+    Location location = map.GetLocation();
+    Critter cr = MakePatient(map);
+    Item tonic = cr.AddItem(TonicPid);
+    DataDrivenItem::UseItem(cr, tonic);
+    location.MakePersistent(true);
+
+    ident crId = cr.Id;
+    Game.UnloadCritter(cr);
+
+    Critter restored = Game.LoadCritter(crId, false, map);
+    Item? restoredTonic = restored.GetItem(TonicPid);
+    if (restoredTonic == null) {
+        Testing::Fail(ctx, "The inventory item did not come back with its critter");
+        return;
+    }
+
+    Testing::Expect(ctx, restoredTonic.HasRemedy, "The restored item still carries the component");
+    Testing::ExpectEq(ctx, restoredTonic.Remedy.ChargesLeft, 2, "The init script did not reseed the restored item");
+    Testing::ExpectEq(ctx, restored.Vigor, 30, "The critter vigor came back too");
+
+    Game.DestroyLocation(location);
+}
+
+// Restart phase 1 runs on an empty JSON database and quits; phase 2 starts on the same directory
+void SpendAChargeBeforeRestart(Testing::TestContext ctx)
+{
+    if (!Testing::ExpectEq(ctx, Game.GetLocations(Sandbox::LocationPid).length(), 0, "The restart database starts empty")) {
+        return;
+    }
+
+    Map map = Sandbox::CreateMap();
+    Critter cr = MakePatient(map);
+    Item tonic = cr.AddItem(TonicPid);
+    Testing::ExpectEq(ctx, DataDrivenItem::UseItem(cr, tonic), 30, "The tonic works before the restart");
+    map.GetLocation().MakePersistent(true);
+
+    Testing::Expect(ctx, tonic.IsPersistent(), "The inventory item has a database record before the restart");
+}
+
+void ChargesSurviveRestart(Testing::TestContext ctx)
+{
+    Testing::Defer(ctx);
+    Game.StartTimeEvent(Testing::Milliseconds(1), VerifyRestoredCharges, ctx.Id);
+}
+
+[[TimeEvent]] [[Async]]
+void VerifyRestoredCharges(any value)
+{
+    Testing::TestContext? ctx = Testing::Resume(int(value));
+    if (ctx == null) {
+        return;
+    }
+
+    Location[] locations = Game.GetLocations(Sandbox::LocationPid);
+    if (!Testing::ExpectEq(ctx, locations.length(), 1, "The saved location was loaded")) {
+        return;
+    }
+
+    Game.Sync(locations[0]);
+    Critter[] critters = locations[0].GetMapByIndex(0).GetCritters(PatientPid, CritterFindType::Any);
+    if (!Testing::ExpectEq(ctx, critters.length(), 1, "The saved critter was loaded with its map")) {
+        return;
+    }
+
+    Critter cr = critters[0];
+    Item? tonic = cr.GetItem(TonicPid);
+    if (tonic == null) {
+        Testing::Fail(ctx, "The saved item was not loaded with its critter");
+        return;
+    }
+
+    Testing::Expect(ctx, tonic.HasRemedy, "The restored item still carries the component");
+    Testing::ExpectEq(ctx, tonic.Remedy.Restore, 30, "The authored value comes from the prototype");
+    Testing::ExpectEq(ctx, tonic.Remedy.ChargesLeft, 2, "The spent charge survived the restart and was not reseeded");
+    Testing::ExpectEq(ctx, cr.Vigor, 30, "The critter vigor survived the restart");
+    Testing::ExpectEq(ctx, DataDrivenItem::UseItem(cr, tonic), 30, "The restored item is still usable");
+    Testing::Pass(ctx);
+}
+
+#endif
+
+}

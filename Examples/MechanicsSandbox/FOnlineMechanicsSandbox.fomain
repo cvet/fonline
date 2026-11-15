@@ -258,7 +258,7 @@ Baking.BundleCompressLevel = 1
 Baking.BootstrapGameSettings =
 
 # Critter
-Critter.CritterSlotEnabled = true true
+Critter.CritterSlotEnabled = true true true
 Critter.CritterSlotSendData = false true
 Critter.CritterSlotMultiItem = true false
 
@@ -349,6 +349,7 @@ Testing.TestTimeout = 10000
 
 # Sandbox-owned script settings
 Sandbox.ClientAutomation = False
+DataDrivenItem.MaxVigor = 100
 
 # In-process recipe tests on an in-memory database
 [SubConfig]

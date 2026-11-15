@@ -207,6 +207,715 @@
       ]
     },
     {
+      "id": "data-driven-item",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeTests",
+            "-Testing.Filter",
+            "data_driven_item."
+          ],
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS data_driven_item.kind_comes_from_the_component",
+            "[Testing] PASS data_driven_item.use_is_capped_by_the_setting_and_needs_the_owner",
+            "[Testing] PASS data_driven_item.component_read_without_the_marker_throws",
+            "[Testing] PASS data_driven_item.content_check_catches_a_marker_without_values",
+            "[Testing] PASS data_driven_item.legacy_flat_property_resolves_into_the_component",
+            "[Testing] PASS data_driven_item.restored_item_keeps_its_charges",
+            "[Testing] COMPLETE status=passed"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "data-driven-item-restart-write",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeRestart",
+            "-Server.DbStorage",
+            "JSON {restart_db}/data-driven-item",
+            "-Testing.Filter",
+            "data_driven_item_restart_write."
+          ],
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS data_driven_item_restart_write.spend_a_charge_before_restart",
+            "[Testing] COMPLETE status=passed"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "data-driven-item-restart-verify",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeRestart",
+            "-Server.DbStorage",
+            "JSON {restart_db}/data-driven-item",
+            "-Testing.Filter",
+            "data_driven_item_restart_verify."
+          ],
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS data_driven_item_restart_verify.charges_survive_restart",
+            "[Testing] COMPLETE status=passed"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "equip-slot",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeTests",
+            "-Testing.Filter",
+            "equip_slot."
+          ],
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS equip_slot.shared_rule_decides_each_slot",
+            "[Testing] PASS equip_slot.finer_slot_is_enabled_by_settings_and_swaps_its_occupant",
+            "[Testing] PASS equip_slot.engine_accepts_a_script_move_and_the_audit_repairs_it",
+            "[Testing] COMPLETE status=passed",
+            "equip_slot_repaired item="
+          ]
+        }
+      ]
+    },
+    {
+      "id": "equip-slot-client",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeNetworkTests",
+            "-Testing.Filter",
+            "equip_slot_client."
+          ],
+          "ready_marker": "equip_slot_waiting_for_client",
+          "ready_timeout_seconds": 30,
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS equip_slot_client.client_requests_are_enforced_on_the_server",
+            "[Testing] COMPLETE status=passed",
+            "sandbox_player_entered",
+            "equip_slot_drill_sent",
+            "equip_slot_refused reason=slot_rule",
+            "equip_slot_refused reason=not_owned",
+            "equip_slot_accepted item="
+          ]
+        },
+        {
+          "id": "client",
+          "command": [
+            "{client}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeClient"
+          ],
+          "required_markers": [
+            "sandbox_client_connected",
+            "equip_slot_drill_started requests=4",
+            "equip_slot_client_refused item=",
+            "accepted=true",
+            "accepted=false",
+            "sandbox_client_disconnected"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "derived-stats",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeTests",
+            "-Testing.Filter",
+            "derived_stats."
+          ],
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS derived_stats.getters_compute_from_stored_values",
+            "[Testing] PASS derived_stats.pre_setter_clamps_and_post_setter_reacts",
+            "[Testing] PASS derived_stats.setters_see_the_old_value_before_and_the_new_one_after",
+            "[Testing] PASS derived_stats.equal_request_runs_no_setter_but_a_clamped_one_does",
+            "[Testing] PASS derived_stats.shrinking_the_cap_lowers_the_stored_life",
+            "[Testing] COMPLETE status=passed",
+            "derived_stats_collapsed_changed critter="
+          ]
+        }
+      ]
+    },
+    {
+      "id": "derived-stats-client",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeNetworkTests",
+            "-Testing.Filter",
+            "derived_stats_client."
+          ],
+          "ready_marker": "derived_stats_waiting_for_client",
+          "ready_timeout_seconds": 30,
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS derived_stats_client.client_views_compute_what_they_can_replicate",
+            "[Testing] COMPLETE status=passed",
+            "sandbox_player_entered",
+            "derived_stats_drill_sent",
+            "derived_stats_report own=40/35 npc=70/20/50 npc_endurance=0"
+          ]
+        },
+        {
+          "id": "client",
+          "command": [
+            "{client}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeClient"
+          ],
+          "required_markers": [
+            "sandbox_client_connected",
+            "sandbox_client_disconnected"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "derived-stats-restart-write",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeRestart",
+            "-Server.DbStorage",
+            "JSON {restart_db}/derived-stats",
+            "-Testing.Filter",
+            "derived_stats_restart_write."
+          ],
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS derived_stats_restart_write.store_base_values_before_restart",
+            "[Testing] COMPLETE status=passed"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "derived-stats-restart-verify",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeRestart",
+            "-Server.DbStorage",
+            "JSON {restart_db}/derived-stats",
+            "-Testing.Filter",
+            "derived_stats_restart_verify."
+          ],
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS derived_stats_restart_verify.derived_values_recompute_after_restart",
+            "[Testing] COMPLETE status=passed"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "container-transfer",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeTests",
+            "-Testing.Filter",
+            "container_transfer."
+          ],
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS container_transfer.put_and_take_move_items_between_the_holders",
+            "[Testing] PASS container_transfer.every_refusal_changes_nothing",
+            "[Testing] PASS container_transfer.bag_in_the_inventory_needs_no_reach",
+            "[Testing] PASS container_transfer.sections_group_items_and_nothing_is_merged",
+            "[Testing] PASS container_transfer.a_container_moved_into_itself_throws",
+            "[Testing] PASS container_transfer.destroying_the_container_destroys_its_contents",
+            "[Testing] PASS container_transfer.unloaded_critter_keeps_its_inventory",
+            "[Testing] COMPLETE status=passed"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "container-transfer-client",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeNetworkTests",
+            "-Testing.Filter",
+            "container_transfer_client."
+          ],
+          "ready_marker": "container_transfer_waiting_for_client",
+          "ready_timeout_seconds": 30,
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS container_transfer_client.client_requests_are_validated_and_snapshots_arrive",
+            "[Testing] COMPLETE status=passed",
+            "sandbox_player_entered",
+            "container_transfer_drill_sent",
+            "container_transfer_refused reason=not_carried",
+            "container_transfer_refused reason=unknown_container"
+          ]
+        },
+        {
+          "id": "client",
+          "command": [
+            "{client}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeClient"
+          ],
+          "required_markers": [
+            "sandbox_client_connected",
+            "container_transfer_drill_started requests=6",
+            "container_snapshot container=",
+            "accepted=true",
+            "accepted=false",
+            "sandbox_client_disconnected"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "container-transfer-restart-write",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeRestart",
+            "-Server.DbStorage",
+            "JSON {restart_db}/container-transfer",
+            "-Testing.Filter",
+            "container_transfer_restart_write."
+          ],
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS container_transfer_restart_write.fill_both_holders_before_restart",
+            "[Testing] COMPLETE status=passed"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "container-transfer-restart-verify",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeRestart",
+            "-Server.DbStorage",
+            "JSON {restart_db}/container-transfer",
+            "-Testing.Filter",
+            "container_transfer_restart_verify."
+          ],
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS container_transfer_restart_verify.both_holders_survive_restart",
+            "[Testing] COMPLETE status=passed"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "map-transition",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeTests",
+            "-Testing.Filter",
+            "map_transition."
+          ],
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS map_transition.walking_onto_a_pad_transfers_the_critter",
+            "[Testing] PASS map_transition.locked_pads_need_the_key",
+            "[Testing] PASS map_transition.transfer_inside_the_walking_step_is_the_naive_variant",
+            "[Testing] PASS map_transition.persistence_follows_the_destination_map",
+            "[Testing] COMPLETE status=passed",
+            "map_transition_done critter=",
+            "map_transition_refused reason=no_key",
+            "map_transition_naive_refused critter=",
+            "locked=false uncovered=true"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "map-transition-client",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeNetworkTests",
+            "-Testing.Filter",
+            "map_transition_client."
+          ],
+          "ready_marker": "map_transition_waiting_for_client",
+          "ready_timeout_seconds": 30,
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS map_transition_client.player_walks_onto_the_pad_and_the_client_reloads",
+            "[Testing] COMPLETE status=passed",
+            "sandbox_player_entered",
+            "map_transition_player_walking",
+            "map_transition_done critter="
+          ]
+        },
+        {
+          "id": "client",
+          "command": [
+            "{client}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeClient"
+          ],
+          "required_markers": [
+            "sandbox_client_connected",
+            "map_transition_client_map_loaded id=",
+            "sandbox_client_disconnected"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "map-transition-restart-write",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeRestart",
+            "-Server.DbStorage",
+            "JSON {restart_db}/map-transition",
+            "-Testing.Filter",
+            "map_transition_restart_write."
+          ],
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS map_transition_restart_write.send_couriers_before_restart",
+            "[Testing] COMPLETE status=passed"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "map-transition-restart-verify",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeRestart",
+            "-Server.DbStorage",
+            "JSON {restart_db}/map-transition",
+            "-Testing.Filter",
+            "map_transition_restart_verify."
+          ],
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS map_transition_restart_verify.persistence_decided_by_the_destination_survives_restart",
+            "[Testing] COMPLETE status=passed",
+            "map_transition_load_refused critter=",
+            "error=GenericException: Critter data base loading error",
+            "error=GenericException: Cannot restore critter on stored map",
+            "map_transition_orphan_recovered critter="
+          ]
+        }
+      ]
+    },
+    {
+      "id": "npc-patrol",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeTests",
+            "-Testing.Filter",
+            "npc_patrol."
+          ],
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS npc_patrol.route_loops_and_every_finished_walk_raises_a_stop_event",
+            "[Testing] PASS npc_patrol.blocked_waypoint_is_retried_and_skipped_without_a_stop_event",
+            "[Testing] PASS npc_patrol.script_stop_is_not_continued_by_the_stop_event",
+            "[Testing] PASS npc_patrol.sight_pauses_the_patrol_and_it_resumes",
+            "[Testing] COMPLETE status=passed",
+            "npc_patrol_arrived critter=",
+            "npc_patrol_leg_failed critter=",
+            "npc_patrol_saw critter=",
+            "npc_patrol_lost critter="
+          ]
+        }
+      ]
+    },
+    {
+      "id": "npc-patrol-restart-write",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeRestart",
+            "-Server.DbStorage",
+            "JSON {restart_db}/npc-patrol",
+            "-Testing.Filter",
+            "npc_patrol_restart_write."
+          ],
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS npc_patrol_restart_write.walk_part_of_the_route_before_restart",
+            "[Testing] COMPLETE status=passed"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "npc-patrol-restart-verify",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeRestart",
+            "-Server.DbStorage",
+            "JSON {restart_db}/npc-patrol",
+            "-Testing.Filter",
+            "npc_patrol_restart_verify."
+          ],
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS npc_patrol_restart_verify.restored_guard_walks_again_and_watches_again",
+            "[Testing] COMPLETE status=passed"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "long-action",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeTests",
+            "-Testing.Filter",
+            "long_action."
+          ],
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS long_action.work_completes_after_its_time_and_is_exclusive",
+            "[Testing] PASS long_action.refusals_start_nothing",
+            "[Testing] PASS long_action.movement_transfer_and_incapacity_cancel_the_work",
+            "[Testing] PASS long_action.stale_completion_is_ignored",
+            "[Testing] PASS long_action.stop_time_event_does_not_stop_a_running_completion",
+            "[Testing] COMPLETE status=passed",
+            "long_action_done critter=",
+            "long_action_cancelled critter=",
+            "long_action_naive_granted critter="
+          ]
+        }
+      ]
+    },
+    {
+      "id": "long-action-client",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeNetworkTests",
+            "-Testing.Filter",
+            "long_action_client."
+          ],
+          "ready_marker": "long_action_waiting_for_client",
+          "ready_timeout_seconds": 30,
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS long_action_client.client_requests_are_validated_and_disconnect_cancels",
+            "[Testing] COMPLETE status=passed",
+            "sandbox_player_entered",
+            "long_action_drill_sent",
+            "long_action_refused reason=too_far",
+            "long_action_refused reason=no_node",
+            "long_action_refused reason=busy",
+            "reason=disconnected"
+          ]
+        },
+        {
+          "id": "client",
+          "command": [
+            "{client}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeClient"
+          ],
+          "required_markers": [
+            "sandbox_client_connected",
+            "long_action_drill_started requests=4",
+            "accepted=true",
+            "accepted=false",
+            "sandbox_client_disconnected"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "long-action-restart-write",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeRestart",
+            "-Server.DbStorage",
+            "JSON {restart_db}/long-action",
+            "-Testing.Filter",
+            "long_action_restart_write."
+          ],
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS long_action_restart_write.start_work_before_restart",
+            "[Testing] COMPLETE status=passed"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "long-action-restart-verify",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeRestart",
+            "-Server.DbStorage",
+            "JSON {restart_db}/long-action",
+            "-Testing.Filter",
+            "long_action_restart_verify."
+          ],
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS long_action_restart_verify.restart_abandons_the_work",
+            "[Testing] COMPLETE status=passed"
+          ]
+        }
+      ]
+    },
+    {
       "id": "cover-transactions",
       "processes": [
         {
