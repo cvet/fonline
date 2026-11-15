@@ -549,6 +549,83 @@
           "map-transition-restart-verify"
         ]
       }
+    },
+    {
+      "slug": "npc-patrol",
+      "title": "NPC patrol with awareness",
+      "kind": "primitive",
+      "backends": {
+        "angelscript": "runtime-verified",
+        "managed": "shape"
+      },
+      "page": "Docs/en/how-to/mechanics/npc-patrol.md",
+      "files": {
+        "angelscript": [
+          "Examples/MechanicsSandbox/Scripts/Recipes/NpcPatrol.fos",
+          "Examples/MechanicsSandbox/Scripts/Sandbox.fos"
+        ],
+        "managed": [
+          "Examples/MechanicsSandbox/Managed/Recipes/NpcPatrol.cs"
+        ],
+        "content": [
+          "Examples/MechanicsSandbox/Content/NpcPatrol.fopro",
+          "Examples/MechanicsSandbox/Content/Sandbox.fopro"
+        ],
+        "maps": [
+          "Examples/MechanicsSandbox/Maps/Sandbox_Map.fomap"
+        ],
+        "tests": [
+          "Examples/MechanicsSandbox/Scripts/Tests/Test_NpcPatrol.fos",
+          "Examples/MechanicsSandbox/Scripts/Testing.fos",
+          "Examples/MechanicsSandbox/mechanics-smoke.json",
+          "Examples/MechanicsSandbox/FOnlineMechanicsSandbox.fomain"
+        ]
+      },
+      "symbols": [
+        "script.method.server.Critter.MoveToHex#59785332969dbd15",
+        "script.ref-type.common.MovingContext",
+        "script.ref-method.common.MovingContext.IsCompleted",
+        "script.ref-method.common.MovingContext.GetCompleteReason",
+        "script.method.server.Critter.GetMovingState",
+        "script.enum.MovingState",
+        "script.method.server.Critter.StopMoving",
+        "script.event.server.Game.OnCritterStopMoving",
+        "script.event.server.Critter.OnCritterAppeared",
+        "script.event.server.Critter.OnCritterDisappeared",
+        "script.property.Critter.LookDistance",
+        "script.property.Critter.InitScript",
+        "script.method.server.Entity.StartTimeEvent#e59548a665ddb838",
+        "script.method.server.Entity.CountTimeEvent#7ed3553b71048a0d",
+        "script.method.server.Entity.StopTimeEvent#d792082ed73a8fc8",
+        "script.method.server.Game.Sync#b42b6f6d6b684d2a",
+        "script.method.server.Critter.GetMap",
+        "script.enum-value.MovingState.Success",
+        "script.enum-value.MovingState.Stopped",
+        "script.enum-value.MovingState.HexBusy"
+      ],
+      "metadata": [
+        "///@ Property Critter Server mpos[] PatrolRoute Mutable Persistent",
+        "///@ Property Critter Server int32 PatrolIndex Mutable Persistent",
+        "///@ Property Critter Server int32 PatrolFailures Mutable",
+        "///@ Property Critter Server bool PatrolPaused Mutable"
+      ],
+      "builtins": [
+        "[[TimeEvent]]",
+        "[[Async]]",
+        "[[Event]]",
+        "[[ModuleInit]]",
+        "Critter.OnCritterAppeared.Subscribe",
+        "Entity.IsDestroyed"
+      ],
+      "events_fired_by_recipe": [],
+      "smoke": {
+        "manifest": "Examples/MechanicsSandbox/mechanics-smoke.json",
+        "scenarios": [
+          "npc-patrol",
+          "npc-patrol-restart-write",
+          "npc-patrol-restart-verify"
+        ]
+      }
     }
   ],
   "cross_cutting": [

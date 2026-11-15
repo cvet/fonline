@@ -37,6 +37,7 @@ EXPECTED_RECIPES = [
     "derived-stats",
     "container-transfer",
     "map-transition",
+    "npc-patrol",
 ]
 EXPECTED_CROSS_CUTTING = ["cover-transactions"]
 RECIPE_KEYS = {"slug", "title", "kind", "backends", "page", "files", "symbols", "metadata", "builtins", "events_fired_by_recipe", "smoke"}
