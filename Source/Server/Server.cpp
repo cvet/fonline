@@ -3718,12 +3718,13 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> not_logged_in_player,
             throw GenericException("Invalid player data");
         }
 
-        EntityMngr.RegisterPlayer(player, player_id);
-        registered_player = true;
-
+        // Restored before registration makes the player persistent, so reading the name back does not rewrite it
         if (player_doc.Contains("_Name")) {
             player->SetName(AnyData::ValueToString(player_doc["_Name"]));
         }
+
+        EntityMngr.RegisterPlayer(player, player_id);
+        registered_player = true;
 
         player->SetLoggedIn(true);
         player->Send_LoginSuccess();

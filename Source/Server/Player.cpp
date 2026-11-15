@@ -112,7 +112,16 @@ auto Player::GetViewMapTarget() noexcept -> nptr<Map>
 void Player::SetName(string_view name)
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
-    _name = name;
+
+    string new_name {name};
+
+    // A player with a database record restores its name from the record at the next login, so the record changes first
+    // and a failed write leaves both names as they were
+    if (IsPersistent() && GetId()) {
+        _engine->DbStorage.Update(_engine->PlayersCollectionName, GetId(), "_Name", AnyData::Value {new_name});
+    }
+
+    _name = std::move(new_name);
 }
 
 void Player::SetControlledCritter(nptr<Critter> cr)

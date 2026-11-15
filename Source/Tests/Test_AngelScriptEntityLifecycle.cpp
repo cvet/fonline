@@ -479,6 +479,64 @@ TEST_CASE("AngelScriptPlayerRegistrationCppApi")
         CHECK(AnyData::ValueToString(player_doc["_Name"]) == "DefaultPropertiesPlayer");
     }
 
+    SECTION("PlayerRenameAfterLoginPersistsTheRecordName")
+    {
+        auto reset_func {server->FindFunc<void>(fn("EntityLifecycle::ResetCounters"))};
+        REQUIRE(reset_func);
+        REQUIRE(reset_func.Call());
+
+        size_t initial_player_count {server->EntityMngr.GetPlayersCount()};
+        shared_ptr<NetworkServerConnection> net_connection {NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected)};
+        auto not_logged_in_player {server->CreateNotLoggedInPlayer(std::move(net_connection))};
+        not_logged_in_player->SetName("NameAtRegistration");
+
+        auto player {server->LoginPlayerToNewRecord(not_logged_in_player)};
+        ident_t player_id {player->GetId()};
+
+        player->SetName("NameAfterRename");
+        server->DbStorage.WaitCommitChanges();
+
+        auto player_doc {server->DbStorage.Get(fn("Players"), player_id)};
+        REQUIRE(player_doc.Contains("_Name"));
+        CHECK(AnyData::ValueToString(player_doc["_Name"]) == "NameAfterRename");
+
+        player->GetConnection()->HardDisconnect(DisconnectReason::ScriptRequest);
+        REQUIRE(EntityLifecycleTests::WaitForUnlockedServerCondition(server, server_locked, [&server, initial_player_count] { return server->EntityMngr.GetPlayersCount() == initial_player_count; }, std::chrono::milliseconds {10000}));
+
+        // The existing-record login restores the renamed name, and reading it back writes nothing
+        shared_ptr<NetworkServerConnection> reconnect_connection {NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected)};
+        auto reconnect_not_logged_in {server->CreateNotLoggedInPlayer(std::move(reconnect_connection))};
+        auto restored_player {server->LoginPlayerToExistentRecord(reconnect_not_logged_in, player_id)};
+        CHECK(restored_player->GetName() == "NameAfterRename");
+
+        restored_player->GetConnection()->HardDisconnect(DisconnectReason::ScriptRequest);
+        REQUIRE(EntityLifecycleTests::WaitForUnlockedServerCondition(server, server_locked, [&server, initial_player_count] { return server->EntityMngr.GetPlayersCount() == initial_player_count; }, std::chrono::milliseconds {10000}));
+    }
+
+    SECTION("TempSessionPlayerRenameWritesNoRecord")
+    {
+        auto reset_func {server->FindFunc<void>(fn("EntityLifecycle::ResetCounters"))};
+        REQUIRE(reset_func);
+        REQUIRE(reset_func.Call());
+
+        size_t initial_player_count {server->EntityMngr.GetPlayersCount()};
+        shared_ptr<NetworkServerConnection> net_connection {NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected)};
+        auto not_logged_in_player {server->CreateNotLoggedInPlayer(std::move(net_connection))};
+        not_logged_in_player->SetName("TempSessionName");
+
+        auto player {server->LoginPlayerToTempSession(not_logged_in_player)};
+        ident_t player_id {player->GetId()};
+
+        player->SetName("TempSessionRenamed");
+        server->DbStorage.WaitCommitChanges();
+
+        CHECK(player->GetName() == "TempSessionRenamed");
+        CHECK(server->DbStorage.Get(fn("Players"), player_id).Empty());
+
+        player->GetConnection()->HardDisconnect(DisconnectReason::ScriptRequest);
+        REQUIRE(EntityLifecycleTests::WaitForUnlockedServerCondition(server, server_locked, [&server, initial_player_count] { return server->EntityMngr.GetPlayersCount() == initial_player_count; }, std::chrono::milliseconds {10000}));
+    }
+
     SECTION("LoginPlayerToExistentRecordThrowsWhenPlayerLoginStopsChain")
     {
         auto reset_func {server->FindFunc<void>(fn("EntityLifecycle::ResetCounters"))};
