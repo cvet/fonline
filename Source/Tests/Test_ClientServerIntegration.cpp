@@ -177,6 +177,114 @@ TEST_CASE("ServerRejectsMalformedPingAfterHandshakeWithoutExceptionReport")
     CHECK(exception_reports.load() == 0);
 }
 
+TEST_CASE("ServerRejectsForgedRemoteCallWithoutExceptionReport")
+{
+    using namespace TestClientServerIntegration;
+
+    // Forged calls the server refuses for that connection alone: an undeclared name, a bad size, a payload that
+    // does not fit the declared arguments or leaves bytes over
+    enum class Forgery
+    {
+        UnknownCall,
+        NegativeSize,
+        SizePastFrame,
+        ShortPayload,
+        TrailingBytes,
+    };
+
+    Forgery forgery {GENERATE(Forgery::UnknownCall, Forgery::NegativeSize, Forgery::SizePastFrame, Forgery::ShortPayload, Forgery::TrailingBytes)};
+    CAPTURE(static_cast<int32_t>(forgery));
+
+    auto port {IntegrationTestPort.fetch_add(1)};
+    auto server_settings {MakeServerTestSettings(port)};
+    BakerTests::OverrideSetting(server_settings.Network.DisableZlibCompression, true);
+    auto server {MakeServerEngine(server_settings)};
+
+    auto shutdown {scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    })};
+
+    string startup_error {WaitForServerStart(server)};
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+    REQUIRE(HasInterthreadListener(port));
+
+    auto previous_exception_callback {exceptions::get_callback()};
+    std::atomic_int exception_reports {};
+    exceptions::set_callback([&exception_reports](string_view, const stack_trace::catched_data&, bool) { exception_reports.fetch_add(1); });
+    auto restore_exception_callback {scope_exit([previous = std::move(previous_exception_callback)]() mutable noexcept { exceptions::set_callback(std::move(previous)); })};
+
+    auto send_ping {[](RawChannelClient& client) {
+        NetOutBuffer ping {64};
+        ping.StartMsg(NetMessage::Ping);
+        ping.Write(false);
+        ping.Write(nanotime::now().milliseconds());
+        ping.EndMsg();
+        client.Send(ping.GetData());
+    }};
+
+    auto send_remote_call {[&](RawChannelClient& client, Forgery kind) {
+        NetOutBuffer call {64};
+        call.StartMsg(NetMessage::RemoteCall);
+
+        switch (kind) {
+        case Forgery::UnknownCall:
+            call.Write<hstring>(server->Hashes.to_hashed_string("UnitTestNoSuchRemoteCall"));
+            call.Write<int32_t>(0);
+            break;
+        case Forgery::NegativeSize:
+            call.Write<hstring>(server->Hashes.to_hashed_string("UnitTestWorldStep"));
+            call.Write<int32_t>(-1);
+            break;
+        case Forgery::SizePastFrame:
+            call.Write<hstring>(server->Hashes.to_hashed_string("UnitTestWorldStep"));
+            call.Write<int32_t>(4096);
+            call.Write<int32_t>(7);
+            break;
+        case Forgery::ShortPayload:
+            call.Write<hstring>(server->Hashes.to_hashed_string("UnitTestWorldStep"));
+            call.Write<int32_t>(2);
+            call.Write<int16_t>(7);
+            break;
+        case Forgery::TrailingBytes:
+            call.Write<hstring>(server->Hashes.to_hashed_string("UnitTestWorldStep"));
+            call.Write<int32_t>(8);
+            call.Write<int32_t>(7);
+            call.Write<int32_t>(7);
+            break;
+        }
+
+        call.EndMsg();
+        client.Send(call.GetData());
+    }};
+
+    RawChannelClient live_client {port};
+    RawChannelClient faulty_client {port};
+    REQUIRE(WaitForServerConnectionCount(server, 2));
+
+    SendCompatibleHandshake(live_client, server);
+    SendCompatibleHandshake(faulty_client, server);
+    REQUIRE(WaitForServerMessageCount(live_client, NetMessage::InitData, 1));
+    REQUIRE(WaitForServerMessageCount(faulty_client, NetMessage::InitData, 1));
+
+    send_remote_call(faulty_client, forgery);
+
+    REQUIRE(WaitForServerConnectionCount(server, 1));
+    CHECK(faulty_client.IsDisconnected());
+    CHECK(exception_reports.load() == 0);
+
+    // The independent connection keeps being served after the forged call is refused
+    CHECK_FALSE(live_client.IsDisconnected());
+    send_ping(live_client);
+    CHECK(WaitForServerMessageCount(live_client, NetMessage::TimeSync, 1));
+    CHECK(GetServerConnectionCount(server) == 1);
+    CHECK(exception_reports.load() == 0);
+}
+
 TEST_CASE("ServerDisconnectsPreLoginConnectionAfterLoginTimeout")
 {
     using namespace TestClientServerIntegration;

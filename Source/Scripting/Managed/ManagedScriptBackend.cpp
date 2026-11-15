@@ -5039,7 +5039,7 @@ static void NativeRegisterRemoteCallHandlerImpl(void* backend_ptr, MonoString* n
                 DispatchManagedCallback(backend, handler_handle, *plan, call);
             }
             catch (const std::exception& ex) {
-                exceptions::report_and_continue(ex);
+                engine->ReportRemoteCallHandlerFault(call_name, entity, ex);
             }
         },
         client_facade_call);

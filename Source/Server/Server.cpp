@@ -5771,7 +5771,7 @@ void ServerEngine::Process_RemoteCall(ptr<Player> player)
     auto remote_call_it {remote_calls->find(remote_call_name)};
 
     if (remote_call_it == remote_calls->end()) {
-        throw GenericException("Invalid remote call", remote_call_name);
+        throw ClientDataValidationException("Unknown remote call", remote_call_name);
     }
 
     int32_t remote_call_data_size {in_buf->Read<int32_t>()};
@@ -5779,16 +5779,16 @@ void ServerEngine::Process_RemoteCall(ptr<Player> player)
     // Structural generated bounds are checked before runtime configuration and before allocating. Runtime
     // limits may only narrow a declaration, never enlarge it
     if (remote_call_data_size < 0 || numeric_cast<size_t>(remote_call_data_size) > in_buf->GetUnreadSize()) {
-        throw GenericException("Invalid remote call data size", remote_call_data_size);
+        throw ClientDataValidationException("Invalid remote call data size", remote_call_name, remote_call_data_size);
     }
 
     size_t remote_call_payload_size {numeric_cast<size_t>(remote_call_data_size)};
 
     if (remote_call_it->second.MaxPayloadSize != 0 && remote_call_payload_size > remote_call_it->second.MaxPayloadSize) {
-        throw GenericException("Remote call data exceeds structural payload limit", remote_call_name, remote_call_payload_size, remote_call_it->second.MaxPayloadSize);
+        throw ClientDataValidationException("Remote call data exceeds structural payload limit", remote_call_name, remote_call_payload_size, remote_call_it->second.MaxPayloadSize);
     }
     if (Settings->ServerNetwork.MaxRemoteCallPayloadSize != 0 && remote_call_payload_size > numeric_cast<size_t>(Settings->ServerNetwork.MaxRemoteCallPayloadSize)) {
-        throw GenericException("Remote call data exceeds runtime payload limit", remote_call_name, remote_call_payload_size, Settings->ServerNetwork.MaxRemoteCallPayloadSize);
+        throw ClientDataValidationException("Remote call data exceeds runtime payload limit", remote_call_name, remote_call_payload_size, Settings->ServerNetwork.MaxRemoteCallPayloadSize);
     }
 
     vector<uint8_t> remote_call_data {};
