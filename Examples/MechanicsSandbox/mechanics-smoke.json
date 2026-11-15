@@ -282,6 +282,78 @@
       ]
     },
     {
+      "id": "equip-slot",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeTests",
+            "-Testing.Filter",
+            "equip_slot."
+          ],
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS equip_slot.shared_rule_decides_each_slot",
+            "[Testing] PASS equip_slot.finer_slot_is_enabled_by_settings_and_swaps_its_occupant",
+            "[Testing] PASS equip_slot.engine_accepts_a_script_move_and_the_audit_repairs_it",
+            "[Testing] COMPLETE status=passed",
+            "equip_slot_repaired item="
+          ]
+        }
+      ]
+    },
+    {
+      "id": "equip-slot-client",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeNetworkTests",
+            "-Testing.Filter",
+            "equip_slot_client."
+          ],
+          "ready_marker": "equip_slot_waiting_for_client",
+          "ready_timeout_seconds": 30,
+          "required_markers": [
+            "[Testing] START",
+            "[Testing] PASS equip_slot_client.client_requests_are_enforced_on_the_server",
+            "[Testing] COMPLETE status=passed",
+            "sandbox_player_entered",
+            "equip_slot_drill_sent",
+            "equip_slot_refused reason=slot_rule",
+            "equip_slot_refused reason=not_owned",
+            "equip_slot_accepted item="
+          ]
+        },
+        {
+          "id": "client",
+          "command": [
+            "{client}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "RecipeClient"
+          ],
+          "required_markers": [
+            "sandbox_client_connected",
+            "equip_slot_drill_started requests=4",
+            "equip_slot_client_refused item=",
+            "accepted=true",
+            "accepted=false",
+            "sandbox_client_disconnected"
+          ]
+        }
+      ]
+    },
+    {
       "id": "cover-transactions",
       "processes": [
         {

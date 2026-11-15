@@ -258,7 +258,7 @@ Baking.BundleCompressLevel = 1
 Baking.BootstrapGameSettings =
 
 # Critter
-Critter.CritterSlotEnabled = true true
+Critter.CritterSlotEnabled = true true true
 Critter.CritterSlotSendData = false true
 Critter.CritterSlotMultiItem = true false
 

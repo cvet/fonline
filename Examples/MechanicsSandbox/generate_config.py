@@ -34,6 +34,8 @@ OVERRIDES = {
     "ServerNetwork.ChannelSecretKey": "$TARGET_FILE{Workspace/SandboxChannel.key}",
     "ClientNetwork.ChannelServerKeys": "$TARGET_FILE{Workspace/SandboxChannel.pub}",
     "Server.DbStorage": "Memory",
+    # The equip-slot recipe declares a third slot, Armor, as a script enum value; the engine allows only enabled slots
+    "Critter.CritterSlotEnabled": "true true true",
     "Server.WorkerThreads": "2",
     "Server.EntityStartId": "10000000001",
     "Server.EntityIdReserveBatch": "1000",

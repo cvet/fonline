@@ -265,6 +265,73 @@
           "data-driven-item-restart-verify"
         ]
       }
+    },
+    {
+      "slug": "equip-slot",
+      "title": "Equip into a slot with one shared rule",
+      "kind": "primitive",
+      "backends": {
+        "angelscript": "runtime-verified",
+        "managed": "shape"
+      },
+      "page": "Docs/en/how-to/mechanics/equip-slot.md",
+      "files": {
+        "angelscript": [
+          "Examples/MechanicsSandbox/Scripts/Recipes/EquipSlot.fos",
+          "Examples/MechanicsSandbox/Scripts/Sandbox.fos"
+        ],
+        "managed": [
+          "Examples/MechanicsSandbox/Managed/Recipes/EquipSlot.cs"
+        ],
+        "content": [
+          "Examples/MechanicsSandbox/Content/EquipSlot.fopro",
+          "Examples/MechanicsSandbox/Content/Sandbox.fopro"
+        ],
+        "maps": [
+          "Examples/MechanicsSandbox/Maps/Sandbox_Map.fomap"
+        ],
+        "tests": [
+          "Examples/MechanicsSandbox/Scripts/Tests/Test_EquipSlot.fos",
+          "Examples/MechanicsSandbox/Scripts/Testing.fos",
+          "Examples/MechanicsSandbox/mechanics-smoke.json",
+          "Examples/MechanicsSandbox/FOnlineMechanicsSandbox.fomain"
+        ]
+      },
+      "symbols": [
+        "script.enum.CritterItemSlot",
+        "script.enum-value.CritterItemSlot.Inventory",
+        "script.enum-value.CritterItemSlot.Main",
+        "script.property.Item.CritterSlot",
+        "script.property.Item.CritterId",
+        "script.method.server.Critter.ChangeItemSlot",
+        "script.event.server.Game.OnCritterItemMoved",
+        "script.method.server.Player.GetControlledCritter",
+        "script.method.server.Critter.GetItem#3e4a8f273e418d3b",
+        "script.method.client.Game.Chosen",
+        "setting.server.Critter.CritterSlotEnabled"
+      ],
+      "metadata": [
+        "///@ Enum CritterItemSlot Armor = 2",
+        "///@ Property Item Common CritterItemSlot EquipSlot",
+        "///@ RemoteCall Server EquipItem(ident itemId, CritterItemSlot slot) MaxBytes 9",
+        "///@ RemoteCall Client EquipResult(ident itemId, bool accepted) MaxBytes 9"
+      ],
+      "builtins": [
+        "[[ServerRemoteCall]]",
+        "[[ClientRemoteCall]]",
+        "[[Event]]",
+        "[[ModuleInit]]",
+        "Player.ClientCall",
+        "Player.ServerCall"
+      ],
+      "events_fired_by_recipe": [],
+      "smoke": {
+        "manifest": "Examples/MechanicsSandbox/mechanics-smoke.json",
+        "scenarios": [
+          "equip-slot",
+          "equip-slot-client"
+        ]
+      }
     }
   ],
   "cross_cutting": [
