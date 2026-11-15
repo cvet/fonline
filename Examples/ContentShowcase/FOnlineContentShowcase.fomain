@@ -295,6 +295,7 @@ Mapper.ParticlePreviewEffect =
 Mapper.ParticlePreviewSeed = 0
 Mapper.ParticlePreviewScale = 1.0f
 Mapper.ParticlePreviewPrewarm = False
+Mapper.SparkEditorSource =
 
 # Client
 Client.UpdaterInfoDelay = 1000

@@ -351,6 +351,7 @@ SETTING(string, Mapper, ParticlePreviewEffect, ""); // Particle resource to prev
 SETTING(int32_t, Mapper, ParticlePreviewSeed, 0); // Seed used when the selected runtime supports seeded startup preview
 SETTING(float32_t, Mapper, ParticlePreviewScale, 1.0f); // Scale for the startup particle preview
 SETTING(bool, Mapper, ParticlePreviewPrewarm, false); // If true, prewarm the startup particle preview
+SETTING(string, Mapper, SparkEditorSource, ""); // Raw .spark source opened directly in the SPARK particle editor at Mapper startup; it must be one of the indexed raw sources
 SETTING_GROUP_END(Mapper);
 
 ///@ ExportSettings Client
